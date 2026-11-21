@@ -199,7 +199,7 @@ describe('backtracking.ts', () => {
 				pairedItem: { item: 0 },
 			};
 
-			const result = findPairedItemThroughWorkflowData(workflowRunData, item, 0);
+			const result = findPairedItemThroughWorkflowData(workflowRunData, item);
 
 			expect(result).toBeUndefined();
 		});
@@ -216,7 +216,7 @@ describe('backtracking.ts', () => {
 				pairedItem: { item: 0 },
 			};
 
-			const result = findPairedItemThroughWorkflowData(workflowRunData, item, 0);
+			const result = findPairedItemThroughWorkflowData(workflowRunData, item);
 
 			expect(result).toBeUndefined();
 		});
@@ -235,7 +235,7 @@ describe('backtracking.ts', () => {
 				pairedItem: { item: 0 },
 			};
 
-			const result = findPairedItemThroughWorkflowData(workflowRunData, item, 0);
+			const result = findPairedItemThroughWorkflowData(workflowRunData, item);
 
 			expect(result).toBeUndefined();
 		});
@@ -254,7 +254,7 @@ describe('backtracking.ts', () => {
 				pairedItem: { item: 0 },
 			};
 
-			const result = findPairedItemThroughWorkflowData(workflowRunData, item, 0);
+			const result = findPairedItemThroughWorkflowData(workflowRunData, item);
 
 			expect(result).toBeUndefined();
 		});
@@ -281,7 +281,7 @@ describe('backtracking.ts', () => {
 				pairedItem: expectedPairedItem,
 			};
 
-			const result = findPairedItemThroughWorkflowData(workflowRunData, item, 0);
+			const result = findPairedItemThroughWorkflowData(workflowRunData, item);
 
 			expect(result).toBe(expectedPairedItem);
 		});
@@ -319,7 +319,7 @@ describe('backtracking.ts', () => {
 				},
 			});
 
-			const result = findPairedItemThroughWorkflowData(workflowRunData, item, 0);
+			const result = findPairedItemThroughWorkflowData(workflowRunData, item);
 
 			expect(result).toBe(finalPairedItem);
 		});
@@ -355,12 +355,12 @@ describe('backtracking.ts', () => {
 				},
 			});
 
-			const result = findPairedItemThroughWorkflowData(workflowRunData, item, 0);
+			const result = findPairedItemThroughWorkflowData(workflowRunData, item);
 
 			expect(result).toBe(finalPairedItem);
 		});
 
-		it('should use itemIndex parameter when paired item is numeric', () => {
+		it('should follow a numeric paired item', () => {
 			const finalPairedItem: IPairedItemData = { item: 7 };
 
 			const item: INodeExecutionData = {
@@ -401,7 +401,7 @@ describe('backtracking.ts', () => {
 				},
 			});
 
-			const result = findPairedItemThroughWorkflowData(workflowRunData, item, 5);
+			const result = findPairedItemThroughWorkflowData(workflowRunData, item);
 
 			expect(result).toBe(finalPairedItem);
 		});
@@ -446,7 +446,7 @@ describe('backtracking.ts', () => {
 				pairedItem: { item: 0 },
 			};
 
-			const result = findPairedItemThroughWorkflowData(workflowRunData, item, 0);
+			const result = findPairedItemThroughWorkflowData(workflowRunData, item);
 
 			expect(result).toBe(finalPairedItem);
 		});
@@ -489,7 +489,7 @@ describe('backtracking.ts', () => {
 				pairedItem: { item: 0 },
 			};
 
-			const result = findPairedItemThroughWorkflowData(workflowRunData, item, 0);
+			const result = findPairedItemThroughWorkflowData(workflowRunData, item);
 
 			expect(result).toBe(finalPairedItem);
 		});
@@ -524,7 +524,7 @@ describe('backtracking.ts', () => {
 				pairedItem: { item: 0 },
 			};
 
-			const result = findPairedItemThroughWorkflowData(workflowRunData, item, 0);
+			const result = findPairedItemThroughWorkflowData(workflowRunData, item);
 
 			expect(result).toBeUndefined();
 		});
@@ -559,7 +559,7 @@ describe('backtracking.ts', () => {
 					},
 				});
 
-				expect(findPairedItemThroughWorkflowData(workflowRunData, item, 0)).toBe(firstPairedItem);
+				expect(findPairedItemThroughWorkflowData(workflowRunData, item)).toBe(firstPairedItem);
 			});
 
 			it('should follow the input that the paired item names when both inputs have a source', () => {
@@ -577,7 +577,7 @@ describe('backtracking.ts', () => {
 					},
 				});
 
-				expect(findPairedItemThroughWorkflowData(workflowRunData, item, 0)).toBe(pairedItemOfB);
+				expect(findPairedItemThroughWorkflowData(workflowRunData, item)).toBe(pairedItemOfB);
 			});
 
 			it('should read the output that the source names', () => {
@@ -593,7 +593,7 @@ describe('backtracking.ts', () => {
 					},
 				});
 
-				expect(findPairedItemThroughWorkflowData(workflowRunData, item, 0)).toBe(firstPairedItem);
+				expect(findPairedItemThroughWorkflowData(workflowRunData, item)).toBe(firstPairedItem);
 			});
 
 			it('should return undefined when the input of the paired item has no source', () => {
@@ -608,7 +608,122 @@ describe('backtracking.ts', () => {
 					},
 				});
 
-				expect(findPairedItemThroughWorkflowData(workflowRunData, item, 0)).toBeUndefined();
+				expect(findPairedItemThroughWorkflowData(workflowRunData, item)).toBeUndefined();
+			});
+		});
+
+		describe('with an item that has several paired items', () => {
+			const task = (source: Array<ISourceData | null>, items: INodeExecutionData[]): ITaskData => ({
+				source,
+				data: { main: [items] },
+				executionTime: 0,
+				executionStatus: 'success',
+				executionIndex: 0,
+				startTime: 0,
+			});
+			const triggerItems = (...origins: number[]): INodeExecutionData[] =>
+				origins.map((origin) => ({ json: {}, pairedItem: { item: origin } }));
+			const runDataEndingWith = (lastNodeExecuted: string, runData: Record<string, ITaskData[]>) =>
+				createRunExecutionData({ resultData: { runData, lastNodeExecuted } });
+
+			it('should keep the origin of each item that the last node aggregates', () => {
+				const item: INodeExecutionData = { json: {}, pairedItem: [{ item: 0 }, { item: 1 }] };
+				const workflowRunData = runDataEndingWith('aggregate', {
+					trigger: [task([], triggerItems(0, 1))],
+					aggregate: [task([{ previousNode: 'trigger' }], [item])],
+				});
+
+				expect(findPairedItemThroughWorkflowData(workflowRunData, item)).toEqual([
+					{ item: 0 },
+					{ item: 1 },
+				]);
+			});
+
+			it('should keep the origin of each item that a node before the last node aggregates', () => {
+				const item: INodeExecutionData = { json: {}, pairedItem: { item: 0 } };
+				const workflowRunData = runDataEndingWith('last', {
+					trigger: [task([], triggerItems(3, 4))],
+					aggregate: [
+						task(
+							[{ previousNode: 'trigger' }],
+							[{ json: {}, pairedItem: [{ item: 0 }, { item: 1 }] }],
+						),
+					],
+					last: [task([{ previousNode: 'aggregate' }], [item])],
+				});
+
+				expect(findPairedItemThroughWorkflowData(workflowRunData, item)).toEqual([
+					{ item: 3 },
+					{ item: 4 },
+				]);
+			});
+
+			it('should follow each paired item through the input, the output and the run that it names', () => {
+				const item: INodeExecutionData = {
+					json: {},
+					pairedItem: [
+						{ item: 0, input: 0 },
+						{ item: 0, input: 1 },
+					],
+				};
+				const branchB: ITaskData = {
+					...task([{ previousNode: 'trigger' }], []),
+					data: { main: [[], [{ json: {}, pairedItem: { item: 1 } }]] },
+				};
+				const workflowRunData = runDataEndingWith('merge', {
+					trigger: [task([], triggerItems(5, 6))],
+					branchA: [task([{ previousNode: 'trigger' }], [{ json: {}, pairedItem: { item: 0 } }])],
+					branchB: [task([{ previousNode: 'trigger' }], []), branchB],
+					merge: [
+						task(
+							[
+								{ previousNode: 'branchA' },
+								{ previousNode: 'branchB', previousNodeOutput: 1, previousNodeRun: 1 },
+							],
+							[item],
+						),
+					],
+				});
+
+				expect(findPairedItemThroughWorkflowData(workflowRunData, item)).toEqual([
+					{ item: 5 },
+					{ item: 6 },
+				]);
+			});
+
+			it('should return one paired item when all paths end at the same item', () => {
+				const origin: IPairedItemData = { item: 2 };
+				const item: INodeExecutionData = {
+					json: {},
+					pairedItem: [
+						{ item: 0, input: 0 },
+						{ item: 0, input: 1 },
+					],
+				};
+				const workflowRunData = runDataEndingWith('merge', {
+					trigger: [task([], [{ json: {}, pairedItem: origin }])],
+					branchA: [task([{ previousNode: 'trigger' }], [{ json: {}, pairedItem: { item: 0 } }])],
+					branchB: [task([{ previousNode: 'trigger' }], [{ json: {}, pairedItem: { item: 0 } }])],
+					merge: [task([{ previousNode: 'branchA' }, { previousNode: 'branchB' }], [item])],
+				});
+
+				expect(findPairedItemThroughWorkflowData(workflowRunData, item)).toBe(origin);
+			});
+
+			it('should return undefined when one of the paths does not reach the first task', () => {
+				const item: INodeExecutionData = { json: {}, pairedItem: [{ item: 0 }, { item: 1 }] };
+				const workflowRunData = runDataEndingWith('aggregate', {
+					trigger: [task([], triggerItems(0, 1))],
+					middle: [
+						task(
+							[{ previousNode: 'trigger' }],
+							[{ json: {}, pairedItem: { item: 0 } }, { json: {} }],
+						),
+					],
+					aggregate: [task([{ previousNode: 'middle' }], [item])],
+				});
+
+				expect(findPairedItemThroughWorkflowData(workflowRunData, item)).toBeUndefined();
 			});
 		});
 	});

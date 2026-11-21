@@ -4,6 +4,7 @@ import type {
 	IRunExecutionData,
 	ITaskData,
 } from 'n8n-workflow';
+import { pairedItemStateKey } from 'n8n-workflow';
 
 /*
  * These functions do not cover all possible edge cases for backtracking through workflow run data.
@@ -47,72 +48,98 @@ function isFirstTask(taskData: ITaskData): boolean {
 	return !taskData.source?.some((source) => source !== null);
 }
 
-/** A missing input index means input 0. A missing item index means the given item index. */
-function toPairedItemPosition(
-	pairedItem: INodeExecutionData['pairedItem'],
-	itemIndex: number,
-): { input: number; item: number } {
-	const single = typeof pairedItem === 'number' ? { item: pairedItem } : pairedItem;
-	if (single !== undefined && !Array.isArray(single)) {
-		return { input: single.input ?? 0, item: single.item ?? itemIndex };
+/** The paired items of an item, as a list of objects. An item without paired item gives an empty list. */
+function toPairedItems(pairedItem: INodeExecutionData['pairedItem']): IPairedItemData[] {
+	if (pairedItem === undefined) {
+		return [];
 	}
-	return { input: 0, item: itemIndex };
+	const pairedItems = Array.isArray(pairedItem) ? pairedItem : [pairedItem];
+	return pairedItems.map((single) => (typeof single === 'number' ? { item: single } : single));
 }
 
+/** Collects paired items and keeps one for each input item. */
+function createPairedItemCollection() {
+	const byPosition = new Map<string, IPairedItemData>();
+
+	return {
+		add(pairedItem: IPairedItemData) {
+			const position = `${pairedItem.input ?? 0}|${pairedItem.item}`;
+			if (!byPosition.has(position)) {
+				byPosition.set(position, pairedItem);
+			}
+		},
+		/** One paired item, a list when there are several, undefined when there is none. */
+		toPairedItem(): IPairedItemData | IPairedItemData[] | undefined {
+			const pairedItems = [...byPosition.values()];
+			return pairedItems.length > 1 ? pairedItems : pairedItems[0];
+		},
+	};
+}
+
+/**
+ * Returns the paired items of the given item of the last executed node, as they
+ * were in the first task of the workflow run. Follows each paired item of each
+ * item on the way, so an item that comes from several items keeps all of them.
+ * Returns undefined when one of the paths does not reach the first task.
+ */
 export function findPairedItemThroughWorkflowData(
 	workflowRunData: IRunExecutionData,
 	item: INodeExecutionData,
-	itemIndex: number,
-): IPairedItemData | IPairedItemData[] | number | undefined {
-	// The provided item is already the item of the last node executed in this workflow run
-	// So the item.pairedItem is the paired item of the last node executed and is therefore referencing
-	// a node in the previous task data
-
-	const currentNodeName = workflowRunData.resultData.lastNodeExecuted;
-	if (!currentNodeName) {
+): IPairedItemData | IPairedItemData[] | undefined {
+	const { runData, lastNodeExecuted } = workflowRunData.resultData;
+	if (!lastNodeExecuted) {
 		// If no node name is available, then we don't know where to start backtracking
 		return undefined;
 	}
 
-	// This is the run data of the last node executed in the workflow run
-	const runData = workflowRunData.resultData.runData[currentNodeName];
-
-	if (!runData) {
-		// No run data available for the last node executed
-		return undefined;
-	}
-
 	// Since we are backtracking through the workflow, we start with the last run data
-	const runIndex = runData.length - 1;
-
-	const taskData = runData[runIndex];
-
-	if (!taskData) {
+	const lastTaskData = runData[lastNodeExecuted]?.at(-1);
+	if (!lastTaskData) {
 		// If no run data is available, then the workflow did not run at all
 		return undefined;
 	}
 
-	let currentTaskData = taskData;
-	let pairedItem = item.pairedItem;
+	const firstPairedItems = createPairedItemCollection();
+	const visitedItems = new Set<string>();
+	// Each entry is the paired item data of one item, with the task that produced the item.
+	const toFollow = [{ taskData: lastTaskData, pairedItem: item.pairedItem }];
 
-	// Each paired item points to an input of the current task.
-	// We follow the source of that input until we reach the first task of the workflow run.
-	while (!isFirstTask(currentTaskData)) {
-		const { input, item: sourceItemIndex } = toPairedItemPosition(pairedItem, itemIndex);
-		const sourceTaskData = previousTaskData(
-			workflowRunData.resultData.runData,
-			currentTaskData,
-			input,
-		);
-		if (sourceTaskData === undefined) {
+	for (let current = toFollow.pop(); current !== undefined; current = toFollow.pop()) {
+		const { taskData } = current;
+		const pairedItems = toPairedItems(current.pairedItem);
+		if (pairedItems.length === 0) {
 			return undefined;
 		}
 
-		const outputIndex = currentTaskData.source[input]?.previousNodeOutput ?? 0;
-		pairedItem = sourceTaskData.data?.main?.[outputIndex]?.[sourceItemIndex]?.pairedItem;
-		currentTaskData = sourceTaskData;
+		if (isFirstTask(taskData)) {
+			pairedItems.forEach((pairedItem) => firstPairedItems.add(pairedItem));
+			continue;
+		}
+
+		// Each paired item points to an input of the current task.
+		// We follow the source of that input until we reach the first task of the workflow run.
+		const sourceItems: typeof toFollow = [];
+		for (const pairedItem of pairedItems) {
+			const input = pairedItem.input ?? 0;
+			const source = taskData.source[input];
+			const sourceTaskData = previousTaskData(runData, taskData, input);
+			if (!source || sourceTaskData === undefined) {
+				return undefined;
+			}
+
+			const sourceItemKey = pairedItemStateKey(source, pairedItem);
+			if (!visitedItems.has(sourceItemKey)) {
+				visitedItems.add(sourceItemKey);
+				const outputIndex = source.previousNodeOutput ?? 0;
+				sourceItems.push({
+					taskData: sourceTaskData,
+					pairedItem: sourceTaskData.data?.main?.[outputIndex]?.[pairedItem.item]?.pairedItem,
+				});
+			}
+		}
+		// The last entry is followed first. The reverse order keeps the order of the paired items.
+		toFollow.push(...sourceItems.reverse());
 	}
 
-	// This is the paired item that was in the first task data when the workflow was executed
-	return pairedItem;
+	return firstPairedItems.toPairedItem();
 }

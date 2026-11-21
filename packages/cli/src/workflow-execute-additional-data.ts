@@ -61,6 +61,7 @@ import {
 	attachDynamicCredentialsUsage,
 	summarizeDynamicCredentialsUsage,
 	attachSubWorkflowRedaction,
+	attachSubExecutionRunData,
 	summarizeSubWorkflowRedaction,
 } from 'n8n-workflow';
 import { OperationalError, UnexpectedError, UserError } from '@n8n/errors';
@@ -885,17 +886,21 @@ async function startExecution(
 	// subworkflow either finished, or is in status waiting due to a wait node, both cases are considered successes here
 	// oxlint-disable-next-line typescript/no-deprecated
 	if (data.finished === true || data.status === 'waiting') {
-		return {
-			executionId,
-			data: data.data.subWorkflowOutput
-				? await collectSubWorkflowOutput(data, workflow, data.data.subWorkflowOutput)
-				: buildSubWorkflowOutput(data, workflowData.nodes, options.returnLastRunOnly ?? false),
-			waitTill: data.waitTill,
-			// Report private-credential usage to the caller (detached runs return earlier, skipping this).
-			...summarizeDynamicCredentialsUsage(data.data, workflowCredentialIds),
-			// The caller keeps a copy of the output above, so it must redact what this run redacts.
-			subWorkflowRedaction: summarizeSubWorkflowRedaction(data.data, { includeOwn }),
-		};
+		// The caller cannot read the run data from the database when this execution is not saved.
+		return attachSubExecutionRunData(
+			{
+				executionId,
+				data: data.data.subWorkflowOutput
+					? await collectSubWorkflowOutput(data, workflow, data.data.subWorkflowOutput)
+					: buildSubWorkflowOutput(data, workflowData.nodes, options.returnLastRunOnly ?? false),
+				waitTill: data.waitTill,
+				// Report private-credential usage to the caller (detached runs return earlier, skipping this).
+				...summarizeDynamicCredentialsUsage(data.data, workflowCredentialIds),
+				// The caller keeps a copy of the output above, so it must redact what this run redacts.
+				subWorkflowRedaction: summarizeSubWorkflowRedaction(data.data, { includeOwn }),
+			},
+			data.data,
+		);
 	} else {
 		throw buildErrorForParent(data.data.resultData.error, data.data);
 	}
