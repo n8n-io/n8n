@@ -18,6 +18,7 @@ import { credentials, transportSelect } from '../shared/descriptions';
 import type { McpAuthenticationOption, McpServerTransport } from '../shared/types';
 import {
 	connectMcpClientForCredential,
+	getMcpHttpErrorMessage,
 	isStructuredContent,
 	mapToNodeOperationError,
 } from '../shared/utils';
@@ -334,7 +335,8 @@ export class McpClient implements INodeType {
 					});
 				} catch (e) {
 					const errorMessage =
-						e instanceof ZodError ? prettifyError(e) : e instanceof Error ? e.message : String(e);
+						getMcpHttpErrorMessage(e) ??
+						(e instanceof ZodError ? prettifyError(e) : e instanceof Error ? e.message : String(e));
 					if (this.continueOnFail()) {
 						returnData.push({
 							json: {
