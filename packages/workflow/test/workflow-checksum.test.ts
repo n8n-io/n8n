@@ -1,6 +1,6 @@
 import { vi } from 'vitest';
 
-import type { INode } from '../src/interfaces';
+import type { INode, IWorkflowSettings } from '../src/interfaces';
 import { calculateWorkflowChecksum, type WorkflowSnapshot } from '../src/workflow-checksum';
 
 describe('calculateWorkflowChecksum', () => {
@@ -369,5 +369,144 @@ describe('calculateWorkflowChecksum', () => {
 		} finally {
 			digestSpy.mockRestore();
 		}
+	});
+
+	describe('nullable top-level fields', () => {
+		const nullableFieldCases = [
+			['description', 'Nightly sync'],
+			['activeVersionId', 'v-42'],
+		] as const;
+
+		const withField = (
+			field: 'description' | 'activeVersionId',
+			value: string | null | undefined,
+		): WorkflowSnapshot =>
+			field === 'description'
+				? { ...baseWorkflow, description: value }
+				: { ...baseWorkflow, activeVersionId: value };
+
+		it.each(nullableFieldCases)(
+			'should treat missing, undefined, and null %s as equivalent',
+			async (field) => {
+				const missing = await calculateWorkflowChecksum(baseWorkflow);
+				const undefinedValue = await calculateWorkflowChecksum(withField(field, undefined));
+				const nullValue = await calculateWorkflowChecksum(withField(field, null));
+
+				expect(undefinedValue).toBe(missing);
+				expect(nullValue).toBe(missing);
+				expect(nullValue).toBe(undefinedValue);
+			},
+		);
+
+		it.each(nullableFieldCases)('should keep a real %s value significant', async (field, value) => {
+			const actual = await calculateWorkflowChecksum(withField(field, value));
+			const missing = await calculateWorkflowChecksum(baseWorkflow);
+			const nullValue = await calculateWorkflowChecksum(withField(field, null));
+
+			expect(actual).not.toBe(missing);
+			expect(actual).not.toBe(nullValue);
+		});
+
+		it.each(nullableFieldCases)(
+			'should distinguish different non-null %s values',
+			async (field, value) => {
+				const first = await calculateWorkflowChecksum(withField(field, value));
+				const second = await calculateWorkflowChecksum(withField(field, `${value}-other`));
+
+				expect(first).not.toBe(second);
+			},
+		);
+
+		it('should treat both nullable fields null as equivalent to missing', async () => {
+			const bothNull = await calculateWorkflowChecksum({
+				...baseWorkflow,
+				description: null,
+				activeVersionId: null,
+			});
+			const missing = await calculateWorkflowChecksum(baseWorkflow);
+
+			expect(bothNull).toBe(missing);
+		});
+
+		it('should keep a real value when the other nullable field is null', async () => {
+			const descriptionOnly = await calculateWorkflowChecksum({
+				...baseWorkflow,
+				description: 'Nightly sync',
+				activeVersionId: null,
+			});
+			const activeVersionOnly = await calculateWorkflowChecksum({
+				...baseWorkflow,
+				description: null,
+				activeVersionId: 'v-42',
+			});
+			const descriptionAndActiveVersion = await calculateWorkflowChecksum({
+				...baseWorkflow,
+				description: 'Nightly sync',
+				activeVersionId: 'v-42',
+			});
+			const missing = await calculateWorkflowChecksum(baseWorkflow);
+
+			expect(descriptionOnly).not.toBe(missing);
+			expect(activeVersionOnly).not.toBe(missing);
+			expect(descriptionOnly).not.toBe(activeVersionOnly);
+			expect(descriptionAndActiveVersion).not.toBe(descriptionOnly);
+		});
+
+		it('should keep unrelated checksum fields significant when nullable fields are null', async () => {
+			const workflow1 = await calculateWorkflowChecksum({
+				...baseWorkflow,
+				description: null,
+				activeVersionId: null,
+			});
+			const workflow2 = await calculateWorkflowChecksum({
+				...baseWorkflow,
+				name: 'Other Workflow',
+				description: null,
+				activeVersionId: null,
+			});
+
+			expect(workflow1).not.toBe(workflow2);
+		});
+	});
+
+	describe('nested null values', () => {
+		it('should keep a nested null in meta distinct from a missing property', async () => {
+			const withNull = await calculateWorkflowChecksum({
+				...baseWorkflow,
+				meta: { description: null },
+			});
+			const missing = await calculateWorkflowChecksum({ ...baseWorkflow, meta: {} });
+
+			expect(withNull).not.toBe(missing);
+		});
+
+		it('should keep a nested null in settings distinct from a missing property', async () => {
+			const withNull = await calculateWorkflowChecksum({
+				...baseWorkflow,
+				settings: { timezone: null } as unknown as IWorkflowSettings,
+			});
+			const missing = await calculateWorkflowChecksum({ ...baseWorkflow, settings: {} });
+
+			expect(withNull).not.toBe(missing);
+		});
+
+		it('should keep a nested null in node parameters distinct from a missing property', async () => {
+			const withNull = await calculateWorkflowChecksum({
+				...baseWorkflow,
+				nodes: [
+					{
+						id: 'node1',
+						name: 'Start',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [250, 300],
+						parameters: { description: null },
+					},
+				],
+			});
+			const missing = await calculateWorkflowChecksum(baseWorkflow);
+
+			expect(withNull).not.toBe(missing);
+		});
 	});
 });
