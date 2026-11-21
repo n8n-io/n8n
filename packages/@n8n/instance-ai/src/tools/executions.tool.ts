@@ -187,6 +187,13 @@ const getNodeOutputAction = z.object({
 		.max(50)
 		.optional()
 		.describe('Maximum number of items to return (default 10, max 50)'),
+	storeFiles: z
+		.boolean()
+		.optional()
+		.describe(
+			'Store the files (binary data) of the returned items as conversation files, at most 10 for each call. ' +
+				'The result lists them in `files` with a fileId. Use it when `binaryFileCount` shows files that you or the user need.',
+		),
 });
 
 const getResolvedNodeParametersAction = z.object({
@@ -501,9 +508,11 @@ async function handleGetNodeOutput(
 	context: InstanceAiContext,
 	input: Extract<Input, { action: 'get-node-output' }>,
 ) {
+	const workflowFiles = input.storeFiles ? workflowFilesOf(context) : undefined;
 	return await context.executionService.getNodeOutput(input.executionId, input.nodeName, {
 		startIndex: input.startIndex,
 		maxItems: input.maxItems,
+		...(workflowFiles ? { storeFile: workflowFiles.storeWorkflowFile } : {}),
 	});
 }
 
@@ -614,13 +623,21 @@ const neverSuspend = async (): Promise<never> => {
 	throw new Error('This execution tool cannot ask for approval');
 };
 
+/** The input schema of an action, without the file fields when the host cannot store files. */
+function actionSchemaFor(
+	context: InstanceAiContext,
+	action: ExecutionToolAction,
+): z.ZodDiscriminatedUnionOption<'action'> {
+	if (workflowFilesOf(context)) return ACTION_SCHEMAS[action];
+	if (action === 'run') return runAction.omit({ files: true });
+	if (action === 'get-node-output') return getNodeOutputAction.omit({ storeFiles: true });
+	return ACTION_SCHEMAS[action];
+}
+
 /** Builds the tool for one execution action. */
 export function createExecutionTool(context: InstanceAiContext, action: ExecutionToolAction) {
 	const name = EXECUTION_TOOL_NAME_BY_ACTION[action];
-	const schema: z.ZodDiscriminatedUnionOption<'action'> =
-		action === 'run' && !workflowFilesOf(context)
-			? runAction.omit({ files: true })
-			: ACTION_SCHEMAS[action];
+	const schema = actionSchemaFor(context, action);
 	const tool = new Tool(name)
 		.description(getActionDescription(action))
 		.input(sanitizeInputSchema(schema.omit({ action: true })));
