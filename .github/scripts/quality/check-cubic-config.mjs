@@ -199,6 +199,7 @@ export function checkConfig(config, charsIn, onDisk = []) {
 	});
 
 	for (const path of onDisk) {
+		if (path.startsWith('.agents/review-rules/teams/')) continue;
 		if (!linked.has(path)) {
 			violations.push(`\`${path}\` is not linked by any agent, so it is never applied.`);
 		}

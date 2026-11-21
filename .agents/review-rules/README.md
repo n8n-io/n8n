@@ -33,6 +33,26 @@ assigns to `@n8n-io/qa-dx`. Code-quality rules that happen to apply broadly
 migrations is split out of Backend because a migration is permanent and runs
 unattended on every instance, so it is judged against a different bar.
 
+## Team rules
+
+The PR shepherd loads `.agents/review-rules/teams/<team-slug>/*.md`.
+Use the OWNERS team handle without `@n8n-io/` as the slug. Add one rule per
+file. Start each file with `Applies to:`. Write checks that static analysis
+and CI cannot make. Cubic does not load these files. Do not link them in
+`cubic.yaml`; all five agent slots are in use.
+
+Add an optional `profile.json` with a `lanes` array. Each lane has `preset`
+and `paths`. It can also have `evidence` (a string array) and `notes` (a
+string). Paths use OWNERS patterns: `*`, an exact path, or a directory with
+a trailing `/`. Unknown keys and presets fail validation. No shell commands
+are allowed in a profile. See the fixed presets in
+`.github/scripts/pr-shepherd/README.md`. Run
+`node .github/scripts/pr-shepherd/pr-shepherd.mjs --check`.
+
+The planner reads policy from a pinned trusted revision, not the PR head.
+New team policy takes effect only after it merges. A missing team folder is
+a review gap, not permission to skip review.
+
 ## Limits that bite
 
 cubic fails silently on all three of these, which is why `pnpm check:cubic-config`

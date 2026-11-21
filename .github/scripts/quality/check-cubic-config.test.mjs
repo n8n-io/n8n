@@ -47,6 +47,10 @@ describe('limits', () => {
 });
 
 describe('checkConfig', () => {
+	it('does not require shepherd team rules to link to cubic', () => {
+		assert.deepEqual(violationsOf(config([]), emptyFiles, ['.agents/review-rules/teams/ai-agents/provider.md']), []);
+		assert.equal(violationsOf(config([]), emptyFiles, ['.agents/review-rules/backend/unlinked.md']).length, 1);
+	});
 	it('accepts a config at the agent cap', () => {
 		const rules = Array.from({ length: MAX_CUBIC_AGENTS }, (_, i) => rule(`r${i}`));
 		assert.deepEqual(violationsOf(config(rules), emptyFiles), []);

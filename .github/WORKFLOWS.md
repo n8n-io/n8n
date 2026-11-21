@@ -2,6 +2,15 @@
 
 Complete reference for n8n's `.github/` folder.
 
+## PR shepherd (shadow mode)
+
+`.github/scripts/pr-shepherd/pr-shepherd.mjs` plans private PR reviews. Run
+`node .github/scripts/pr-shepherd/pr-shepherd.mjs plan --base <sha> --head <sha>
+--policy-ref <trusted-sha>`. Add `--json` for structured output. Run `--check`
+to validate local team policy. See `scripts/pr-shepherd/README.md` for fixed
+verification presets. The planner uses trusted Git policy and makes no GitHub
+writes. It does not replace Required Reviews or run a GitHub workflow.
+
 ---
 
 ## Folder Structure
