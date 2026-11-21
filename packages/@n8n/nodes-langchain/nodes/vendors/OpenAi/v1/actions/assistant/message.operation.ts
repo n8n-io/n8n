@@ -26,7 +26,7 @@ import { getTracingConfig } from '@utils/tracing';
 import { assertOpenAiCredentialAllowsUrl } from '../../../helpers/credentials';
 import { formatToOpenAIAssistantTool, getChatMessages } from '../../../helpers/utils';
 import { assistantRLC } from '../descriptions';
-import { getProxyAgent, aiClientFetch } from '@n8n/ai-utilities';
+import { getProxyAgent, createAiClientFetch } from '@n8n/ai-utilities';
 import { Container } from '@n8n/di';
 import { AiConfig } from '@n8n/config';
 
@@ -196,7 +196,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		maxRetries: options.maxRetries ?? 2,
 		timeout: timeout ?? 10000,
 		baseURL,
-		fetch: aiClientFetch,
+		fetch: createAiClientFetch(this),
 		fetchOptions: {
 			dispatcher: getProxyAgent(
 				baseURL,

@@ -1,7 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/unbound-method */
-import { aiClientFetch } from '@n8n/ai-utilities';
+import { createAiClientFetch } from '@n8n/ai-utilities';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import type { ILoadOptionsFunctions, INode, ISupplyDataFunctions } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
@@ -20,8 +20,12 @@ vi.mock('@n8n/ai-utilities', async () => {
 		...actual,
 		logWrapper: vi.fn().mockImplementation(() => vi.fn()),
 		getProxyAgent: vi.fn().mockImplementation(() => new MockProxyAgent()),
+		createAiClientFetch: vi.fn(),
 	};
 });
+
+const mockedCreateAiClientFetch = vi.mocked(createAiClientFetch);
+const tracedFetch = vi.fn() as unknown as typeof fetch;
 
 const MockedNvidiaEmbeddings = vi.mocked(NvidiaEmbeddings);
 
@@ -66,6 +70,7 @@ describe('EmbeddingsNvidia', () => {
 	beforeEach(() => {
 		node = new EmbeddingsNvidia();
 		vi.clearAllMocks();
+		mockedCreateAiClientFetch.mockReturnValue(tracedFetch);
 	});
 
 	describe('node description', () => {
@@ -106,6 +111,7 @@ describe('EmbeddingsNvidia', () => {
 			const ctx = setupMockContext();
 
 			const result = await node.supplyData.call(ctx, 0);
+			expect(mockedCreateAiClientFetch).toHaveBeenCalledWith(ctx);
 
 			expect(ctx.getCredentials).toHaveBeenCalledWith('nvidiaApi');
 			expect(MockedNvidiaEmbeddings).toHaveBeenCalledWith(
@@ -113,7 +119,7 @@ describe('EmbeddingsNvidia', () => {
 					apiKey: 'test-key',
 					model: 'nvidia/llama-3.2-nv-embedqa-1b-v2',
 					configuration: expect.objectContaining({
-						fetch: aiClientFetch,
+						fetch: tracedFetch,
 						baseURL: 'https://integrate.api.nvidia.com/v1',
 						fetchOptions: { dispatcher: expect.any(MockProxyAgent) },
 					}),
