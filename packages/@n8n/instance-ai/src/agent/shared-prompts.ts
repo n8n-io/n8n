@@ -39,7 +39,7 @@ const SANDBOX_FILE_VIEWING_GUIDANCE =
 
 /** Only turns that have the `share-files` tool get this text. */
 const SANDBOX_FILE_SHARING_GUIDANCE =
-	'Put each file that you make for the user in `outputs/`, for example `outputs/report.xlsx`. To give a file to the user, call `share-files` with its path: the chat shows the file and the user can download it. Keep scratch files out of `outputs/`, because n8n stores every new file there with the conversation when your turn ends.';
+	'Put each file that you make for the user in `outputs/`, for example `outputs/report.xlsx`. To give a file to the user, call `share-files` with its path: the chat shows the file and the user can download it. Keep scratch files out of `outputs/`, because n8n stores every new file there with the conversation when your turn ends. To give a workspace file to a workflow run, share it first and pass its fileId in the `files` of the run.';
 
 export function getSandboxWorkspaceSection(
 	workspaceRoot?: string,

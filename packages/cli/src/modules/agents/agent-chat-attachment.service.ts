@@ -221,6 +221,23 @@ export class AgentChatAttachmentService {
 	}
 
 	/**
+	 * Whether a file of a system-chat thread has these stored bytes, in the
+	 * scope of `getForSystemAgent`. The caller checks access to the thread.
+	 */
+	async isSystemAgentThreadBinary(
+		threadId: string,
+		binaryDataId: string,
+		scope: { agentId: string; resourceId: string; sources: readonly string[] },
+	): Promise<boolean> {
+		return await this.repository.existsInSystemThreadByBinaryDataId(
+			threadId,
+			binaryDataId,
+			scope,
+			{},
+		);
+	}
+
+	/**
 	 * Files with the given content hashes that the thread can read, keyed by
 	 * hash. Each hash maps to its readable files, newest first.
 	 */

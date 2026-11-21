@@ -14,6 +14,8 @@ import { FileNotFoundError } from 'n8n-core';
 import { randomUUID } from 'node:crypto';
 import { buffer as streamToBuffer } from 'node:stream/consumers';
 
+import { BinaryDataAccessService } from '@/binary-data/binary-data-access.service';
+
 import { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import { AgentChatExecutionService } from '../agent-chat-execution.service';
 import { AgentConversationStateService } from '../agent-conversation-state.service';
@@ -21,6 +23,7 @@ import { AgentExecutionService, type StartExecutionParams } from '../agent-execu
 import { AgentFormattedTurnError } from '../agent-formatted-turn.error';
 import type { ClaimedAgentMessage } from '../agent-message-queue.service';
 import { AgentMessageQueueService } from '../agent-message-queue.service';
+import { AgentFileBridge, attachmentToBinaryData } from '../agent-file-bridge.service';
 import { AgentSandboxFilesService } from '../agent-sandbox-files.service';
 import { chatErrorCode, emitChunkEvents } from '../agent-sse-stream';
 import { AgentTurnExecutionService, type AgentTurnRequest } from '../agent-turn-execution.service';
@@ -47,6 +50,7 @@ import {
 	SANDBOX_FILE_SOURCE,
 	SYSTEM_CHAT_SOURCE,
 	systemChatFileScope,
+	TOOL_FILE_SOURCE,
 } from '../utils/agent-thread-access';
 import { canUseSystemAgent } from './system-agent-access';
 import { SystemAgentHostEventChannel } from './system-agent-host-events';
@@ -152,6 +156,8 @@ export class SystemAgentExecutionService {
 		private readonly n8nMemory: N8nMemory,
 		private readonly threadGrants: AgentThreadGrantRepository,
 		private readonly sandboxFiles: AgentSandboxFilesService,
+		private readonly fileBridge: AgentFileBridge,
+		private readonly binaryDataAccess: BinaryDataAccessService,
 	) {}
 
 	resourceIdFor(user: Pick<User, 'id'>): string {
@@ -698,7 +704,7 @@ export class SystemAgentExecutionService {
 						...(workspace ? { workspace: workspace.lease } : {}),
 						...this.turnStateOf(thread),
 						emitHostEvent: hostEvents.emit,
-						readFile: async (fileId) => await this.readThreadFile(thread, resourceId, fileId),
+						...this.threadFilesOf(thread, resourceId, user),
 						...(await this.sandboxFilesOf(thread, resourceId)),
 						executionId: admission.executionId,
 						message: payload.message,
@@ -796,7 +802,7 @@ export class SystemAgentExecutionService {
 					...(workspace ? { workspace: workspace.lease } : {}),
 					...this.turnStateOf(thread),
 					emitHostEvent: hostEvents.emit,
-					readFile: async (fileId) => await this.readThreadFile(thread, resourceId, fileId),
+					...this.threadFilesOf(thread, resourceId, params.user),
 					...(await this.sandboxFilesOf(thread, resourceId)),
 					runId,
 					toolCallId: pending.toolCallId,
@@ -1067,9 +1073,71 @@ export class SystemAgentExecutionService {
 			fileName: file.fileName,
 			mimeType: file.mimeType,
 			sizeBytes: file.sizeBytes,
-			origin: file.source === SANDBOX_FILE_SOURCE ? 'sandbox' : 'upload',
+			origin:
+				file.source === SANDBOX_FILE_SOURCE
+					? 'sandbox'
+					: file.source === TOOL_FILE_SOURCE
+						? 'workflow'
+						: 'upload',
 			createdAt: file.createdAt,
 		}));
+	}
+
+	/** The file reads and writes of a turn, in the system chat of the thread's owner. */
+	private threadFilesOf(
+		thread: AgentExecutionThread,
+		resourceId: string,
+		user: User,
+	): Pick<SystemAgentStartTurn, 'readFile' | 'readFileBinary' | 'storeWorkflowFile'> {
+		return {
+			readFile: async (fileId) => await this.readThreadFile(thread, resourceId, fileId),
+			readFileBinary: async (fileId) => {
+				const attachment = await this.findThreadAttachment(thread, resourceId, fileId);
+				// Storage can prune the bytes while the attachment row stays.
+				if (!attachment || !(await this.attachmentService.hasStoredData(attachment))) {
+					return undefined;
+				}
+				return attachmentToBinaryData(attachment);
+			},
+			storeWorkflowFile: async (binary) => {
+				if (binary.id && !(await this.canStoreBinary(thread, resourceId, user, binary.id))) {
+					this.logger.warn('Refused to store a workflow file that the user cannot read', {
+						threadId: thread.id,
+					});
+					return {
+						fileName: binary.fileName ?? 'file',
+						reason: 'you do not have access to this file',
+					};
+				}
+				return await this.fileBridge.adoptBinary(binary, {
+					agentId: thread.agentId,
+					projectId: thread.projectId,
+					threadId: thread.id,
+					// The reads and the downloads of the system chat find its files by resource.
+					resourceId,
+				});
+			},
+		};
+	}
+
+	/**
+	 * Execution data can name any stored binary, for example in pinned data, so
+	 * the id alone does not prove access. The user can store a file of this
+	 * thread that a run passed on, or a binary of an execution that the user can
+	 * read, as the binary data download route checks.
+	 */
+	private async canStoreBinary(
+		thread: AgentExecutionThread,
+		resourceId: string,
+		user: User,
+		binaryDataId: string,
+	): Promise<boolean> {
+		const isThreadFile = await this.attachmentService.isSystemAgentThreadBinary(
+			thread.id,
+			binaryDataId,
+			systemChatFileScope(thread.agentId, resourceId),
+		);
+		return isThreadFile || (await this.binaryDataAccess.hasReadAccess(user, binaryDataId));
 	}
 
 	private async readThreadFile(

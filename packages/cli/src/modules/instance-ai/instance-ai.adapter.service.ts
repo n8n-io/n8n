@@ -149,6 +149,7 @@ import {
 	type DataTableRows,
 	type WorkflowExecuteMode,
 	type ExecutionError,
+	type IBinaryData,
 	type IRunData,
 	type ITaskData,
 	NodeConnectionTypes,
@@ -248,6 +249,7 @@ import {
 	assertExecutionTimeoutWithinMax,
 	exceedsMaxExecutionTimeout,
 } from '@/workflows/execution-timeout-validation';
+import { collectResultItems } from '@/workflows/callable/callable-workflow-result';
 import { getRequiredRedactionScopes } from '@/workflows/utils';
 import { WorkflowEngineDefaults } from '@/workflows/workflow-engine-defaults';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -2428,6 +2430,7 @@ export class InstanceAiAdapterService {
 					workflowPinData: workflow.pinData ?? {},
 					verificationPinData: options?.verificationPinData,
 					inputData,
+					binary: options?.binary,
 					triggerNode,
 				});
 				if (pinDataPlan.startNodeName) {
@@ -2559,6 +2562,16 @@ export class InstanceAiAdapterService {
 						credentialRefusal,
 					);
 					await pruneVerificationPins(result.executedNodeNames);
+					// The privacy setting hides the output items, so it keeps their files out of the chat too.
+					const storeOutputFile = allowSendingParameterValues
+						? options?.storeOutputFile
+						: undefined;
+					if (storeOutputFile && result.status !== 'running') {
+						const execution = await loadExecutionForViewer(executionId, user);
+						if (execution) {
+							Object.assign(result, await storeRunOutputFiles(execution, storeOutputFile));
+						}
+					}
 					trackBuilderExecutedWorkflow(result.status, telemetryError);
 					// Saved workflow pins fed this run (they ride every instance-ai run) —
 					// report them so callers don't mistake pin-fed nodes for live ones.
@@ -5237,6 +5250,52 @@ function foldToolExecutorRun(
 	}
 
 	return folded;
+}
+
+/** Most output files that one run stores, so a large batch cannot flood the conversation. */
+export const MAX_RUN_OUTPUT_FILES = 10;
+
+/**
+ * Store each file that the last node of a run returned as a conversation file,
+ * one time for each binary, as the workflow tools of project agents do. A
+ * redacted execution stores nothing, because its data is hidden from the user.
+ */
+export async function storeRunOutputFiles(
+	execution: IExecutionResponse,
+	storeOutputFile: NonNullable<
+		NonNullable<Parameters<InstanceAiExecutionService['run']>[2]>['storeOutputFile']
+	>,
+): Promise<Pick<ExecutionResult, 'files' | 'skippedFiles'>> {
+	const runData = execution.data?.resultData?.runData;
+	if (!runData || getExecutionRedaction(execution)) return {};
+	const files: NonNullable<ExecutionResult['files']> = [];
+	const skippedFiles: NonNullable<ExecutionResult['skippedFiles']> = [];
+	const seen = new Set<IBinaryData | string>();
+	for (const items of Object.values(collectResultItems(runData, false))) {
+		for (const item of items) {
+			for (const [key, binary] of Object.entries(item.binary ?? {})) {
+				// Nodes pass the same stored binary on, so store it one time.
+				const identity = binary.id ?? binary;
+				if (seen.has(identity)) continue;
+				seen.add(identity);
+				if (files.length >= MAX_RUN_OUTPUT_FILES) {
+					skippedFiles.push({
+						fileName: binary.fileName ?? key,
+						reason: `one run returns at most ${MAX_RUN_OUTPUT_FILES} files`,
+					});
+					continue;
+				}
+				const stored = await storeOutputFile(binary);
+				if (!stored) continue;
+				if ('reason' in stored) skippedFiles.push(stored);
+				else files.push(stored);
+			}
+		}
+	}
+	return {
+		...(files.length > 0 ? { files } : {}),
+		...(skippedFiles.length > 0 ? { skippedFiles } : {}),
+	};
 }
 
 /**
