@@ -165,4 +165,21 @@ describe('EmbeddingsGoogleGemini', () => {
 			vi.useRealTimers();
 		}
 	});
+
+	it('should retry twice when a request with an output dimensionality fails', async () => {
+		vi.useFakeTimers();
+		try {
+			const ctx = setupContext({ outputDimensionality: 768 });
+			mockedProxyFetch.mockRejectedValue(new TypeError('fetch failed'));
+
+			const { response } = await node.supplyData.call(ctx, 0);
+			const result = (response as Embeddings).embedQuery('hello').catch((e: unknown) => e);
+			await vi.runAllTimersAsync();
+
+			expect(await result).toBeInstanceOf(Error);
+			expect(mockedProxyFetch).toHaveBeenCalledTimes(3);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
 });
