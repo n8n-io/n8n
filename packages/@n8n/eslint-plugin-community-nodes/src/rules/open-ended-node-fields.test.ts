@@ -40,7 +40,7 @@ describe.each(['recommended', 'recommendedWithoutN8nCloudSupport'] as const)(
 			}`);
 
 			const warnings = lintNode(code, config).filter(
-				({ severity, message }) => severity === 1 && /Additional (Options|Fields)/i.test(message),
+				({ ruleId }) => ruleId === '@n8n/community-nodes/open-ended-node-fields',
 			);
 
 			expect(warnings).toEqual([
@@ -70,7 +70,7 @@ describe.each(['recommended', 'recommendedWithoutN8nCloudSupport'] as const)(
 			);
 
 			const warnings = messages.filter(
-				({ severity, message }) => severity === 1 && /Additional (Options|Fields)/i.test(message),
+				({ ruleId }) => ruleId === '@n8n/community-nodes/open-ended-node-fields',
 			);
 
 			expect(warnings).toEqual([]);
