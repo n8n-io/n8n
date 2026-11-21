@@ -10,6 +10,7 @@ import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import { useMessage } from '@/app/composables/useMessage';
 import { EnterpriseEditionFeature, MODAL_CONFIRM, VIEWS } from '@/app/constants';
+import { LOCAL_STORAGE_EXECUTIONS_EXPAND_GROUPS } from '@/app/constants/localStorage';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { formatBytes } from '@n8n/utils/number/bytes';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
@@ -20,6 +21,7 @@ import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/execu
 import type { AnnotationVote, ExecutionSummary } from 'n8n-workflow';
 import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { useLocalStorage } from '@vueuse/core';
 import { useExecutionsStore } from '../../executions.store';
 import { useEvaluationsWizardSidepanelStore } from '@/features/ai/evaluation.ee/wizardSidepanel.store';
 import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/workflowHistory.store';
@@ -29,7 +31,9 @@ import {
 	N8nButton,
 	N8nDropdownMenu,
 	N8nIconButton,
+	N8nPopover,
 	N8nSpinner,
+	N8nSwitch,
 	N8nText,
 	N8nTooltip,
 	type DropdownMenuExposed,
@@ -49,6 +53,9 @@ const emit = defineEmits<{
 const route = useRoute();
 const locale = useI18n();
 const { showError } = useToast();
+const expandGroupsByDefault = useLocalStorage(LOCAL_STORAGE_EXECUTIONS_EXPAND_GROUPS, false, {
+	writeDefaults: false,
+});
 
 const executionHelpers = useExecutionHelpers();
 const message = useMessage();
@@ -496,6 +503,35 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 					:execution="activeExecution"
 				/>
 
+				<N8nTooltip
+					:content="locale.baseText('executionDetails.viewOptions.title')"
+					placement="bottom"
+				>
+					<N8nPopover
+						side="bottom"
+						align="end"
+						:enable-scrolling="false"
+						:content-class="$style.viewOptions"
+					>
+						<template #trigger>
+							<N8nButton
+								variant="outline"
+								icon="sliders-horizontal"
+								icon-only
+								:aria-label="locale.baseText('executionDetails.viewOptions.title')"
+								data-test-id="execution-preview-view-options"
+							/>
+						</template>
+						<template #content>
+							<N8nSwitch
+								v-model="expandGroupsByDefault"
+								:label="locale.baseText('executionDetails.viewOptions.expandGroups')"
+								data-test-id="execution-preview-expand-groups"
+							/>
+						</template>
+					</N8nPopover>
+				</N8nTooltip>
+
 				<N8nIconButton
 					variant="outline"
 					:title="locale.baseText('executionDetails.deleteExecution')"
@@ -513,6 +549,7 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 			:workflow-id="workflowId"
 			:execution-id="executionId"
 			:node-id="nodeId"
+			:expand-groups-by-default="expandGroupsByDefault"
 		/>
 	</div>
 </template>
@@ -603,6 +640,10 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 .actions {
 	display: flex;
 	gap: var(--spacing--2xs);
+}
+
+.viewOptions {
+	padding: var(--spacing--xs);
 }
 
 .highlightDataButton {

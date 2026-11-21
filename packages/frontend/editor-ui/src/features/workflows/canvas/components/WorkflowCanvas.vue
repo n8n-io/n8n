@@ -120,13 +120,15 @@ const nodeGroupDescriptionVisibility = useCanvasNodeGroupDescriptionVisibility({
 	onNodeGroupsChange: (handler) => workflowDocumentStore.value.onNodeGroupsChange(handler),
 });
 
-// Keep the group view in sync with the currently displayed document
+// Restore the group view when the document or its expansion default changes.
 watch(
-	() => workflowDocumentStore.value.documentId,
-	() => {
+	[() => workflowDocumentStore.value.documentId, () => props.groupExpansionMode],
+	([documentId], [previousDocumentId]) => {
 		nodeGroupView.reinitialize();
 		applyGroupExpansion();
-		nodeGroupDescriptionVisibility.reinitialize();
+		if (documentId !== previousDocumentId) {
+			nodeGroupDescriptionVisibility.reinitialize();
+		}
 	},
 );
 
