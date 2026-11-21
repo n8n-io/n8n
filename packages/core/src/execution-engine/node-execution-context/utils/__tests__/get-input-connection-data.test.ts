@@ -1383,6 +1383,24 @@ describe('createHitlToolkit', () => {
 		expect(wrappedTool.metadata?.gatedToolNodeName).toBe('Original Node');
 	});
 
+	it('should preserve MCP metadata on gated tools', () => {
+		const originalTool = new DynamicStructuredTool({
+			name: 'mcp_tool',
+			description: 'MCP tool description',
+			schema: z.object({ query: z.string() }),
+			func: async () => 'result',
+			metadata: {
+				sourceNodeName: 'Original MCP Node',
+				isFromToolkit: true,
+				isMcpTool: true,
+			},
+		});
+
+		const result = createHitlToolkit(originalTool, hitlNode);
+
+		expect(result.tools[0].metadata?.isMcpTool).toBe(true);
+	});
+
 	it('should wrap tool schema with toolParameters and hitlParameters', () => {
 		const originalSchema = z.object({ input: z.string(), count: z.number() });
 		const originalTool = new DynamicStructuredTool({

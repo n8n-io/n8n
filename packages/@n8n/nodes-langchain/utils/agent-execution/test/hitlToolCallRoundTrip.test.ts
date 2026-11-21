@@ -4,6 +4,7 @@ import { z } from 'zod';
 
 import { buildHitlNodeInput, createEngineRequests } from '../createEngineRequests';
 import { processHitlResponses } from '../processHitlResponses';
+import { INTERNAL_TOOL_ARG_STASH_KEY } from '../types';
 import type { RequestResponseMetadata } from '../types';
 
 // Same lookup order as `$tool` in the expression proxy: `query.<name>` first, then `<name>`.
@@ -70,6 +71,52 @@ describe('HITL tool call round trip', () => {
 
 		const { pendingGatedToolRequest } = processHitlResponses(approve([action]), 0);
 		expect(pendingGatedToolRequest?.actions[0].input).toEqual({ tool: 'refund', amount: 100 });
+	});
+
+	it('preserves MCP argument keys through an approved HITL call', () => {
+		const mcpTool = new DynamicStructuredTool({
+			name: 'search',
+			description: 'search',
+			schema: z.object({
+				toolParameters: z.object({ query: z.string() }),
+				hitlParameters: z.object({ note: z.string() }),
+			}),
+			func: async () => '',
+			metadata: {
+				sourceNodeName: 'Review',
+				gatedToolNodeName: 'MCP Client',
+				isFromToolkit: true,
+				isMcpTool: true,
+			},
+		});
+		const [action] = createEngineRequests(
+			[
+				{
+					tool: 'search',
+					toolCallId: 'mcp-call-1',
+					toolInput: {
+						toolParameters: { query: 'hello' },
+						hitlParameters: { note: 'Approve this call' },
+					},
+				},
+			],
+			0,
+			[mcpTool],
+		);
+
+		// The internal marker must not be exposed to the HITL review node.
+		expect(action.input).toEqual({
+			note: 'Approve this call',
+			tool: 'search',
+			toolParameters: { query: 'hello' },
+		});
+
+		const { pendingGatedToolRequest } = processHitlResponses(approve([action]), 0);
+		expect(pendingGatedToolRequest?.actions[0].input).toEqual({
+			query: 'hello',
+			tool: 'search',
+			[INTERNAL_TOOL_ARG_STASH_KEY]: { argumentKeys: ['query'] },
+		});
 	});
 
 	it('ignores tool, toolParameters, object query and undeclared keys in hitlParameters', () => {

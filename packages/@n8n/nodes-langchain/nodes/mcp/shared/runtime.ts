@@ -259,8 +259,23 @@ async function runToolCall(opts: {
 			tool: _routingKey,
 			toolCallId: _toolCallId,
 			[INTERNAL_TOOL_ARG_STASH_KEY]: stashedArguments,
-			...toolArguments
+			...mergedToolArguments
 		} = item.json;
+
+		// The engine adds the parent item to tool input so expressions can resolve
+		// against it. Only send keys that were actually supplied by the model.
+		const originalArgumentKeys =
+			stashedArguments &&
+			typeof stashedArguments === 'object' &&
+			Array.isArray(stashedArguments.argumentKeys)
+				? stashedArguments.argumentKeys.filter(
+						(key): key is string => typeof key === 'string',
+					)
+				: undefined;
+		const toolArguments: IDataObject = originalArgumentKeys
+			? pick(mergedToolArguments, originalArgumentKeys)
+			: mergedToolArguments;
+
 		if (stashedArguments && typeof stashedArguments === 'object') {
 			if ('tool' in stashedArguments) toolArguments.tool = stashedArguments.tool;
 			if ('toolCallId' in stashedArguments) {

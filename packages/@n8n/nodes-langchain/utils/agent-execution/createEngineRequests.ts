@@ -36,10 +36,26 @@ export function extractHitlMetadata(
 ): HitlMetadata | undefined {
 	if (!hasGatedToolNodeName(metadata)) return undefined;
 
+	const originalInput = toolInput.toolParameters as IDataObject;
+	const mcpToolArguments =
+		metadata.isMcpTool &&
+		originalInput !== null &&
+		typeof originalInput === 'object' &&
+		!Array.isArray(originalInput)
+			? {
+					argumentKeys: Object.keys(originalInput),
+					...(Object.hasOwn(originalInput, 'tool') && { tool: originalInput.tool }),
+					...(Object.hasOwn(originalInput, 'toolCallId') && {
+						toolCallId: originalInput.toolCallId,
+					}),
+				}
+			: undefined;
+
 	return {
 		gatedToolNodeName: metadata.gatedToolNodeName,
 		toolName,
-		originalInput: toolInput.toolParameters as IDataObject,
+		originalInput,
+		...(mcpToolArguments && { mcpToolArguments }),
 	};
 }
 
@@ -306,12 +322,10 @@ export function createEngineRequests(
 				input = { ...input };
 				delete input[INTERNAL_TOOL_ARG_STASH_KEY];
 				if (metadata.isMcpTool) {
-					const stashedArguments: IDataObject = {};
+					const stashedArguments: IDataObject = { argumentKeys: Object.keys(input) };
 					if ('tool' in input) stashedArguments.tool = input.tool;
 					if ('toolCallId' in input) stashedArguments.toolCallId = input.toolCallId;
-					if (Object.keys(stashedArguments).length > 0) {
-						input[INTERNAL_TOOL_ARG_STASH_KEY] = stashedArguments;
-					}
+					input[INTERNAL_TOOL_ARG_STASH_KEY] = stashedArguments;
 				}
 				input.tool = toolCall.tool;
 			}

@@ -154,6 +154,8 @@ export type HitlMetadata = {
 	toolName: string;
 	/** Original input for the gated tool */
 	originalInput: IDataObject;
+	/** Original MCP argument keys and reserved-key values, restored after approval. */
+	mcpToolArguments?: IDataObject;
 };
 
 /**
@@ -229,8 +231,8 @@ export function isThinkingBlock(block: unknown): block is ThinkingContentBlock {
 }
 
 /**
- * Internal key used to stash user arguments that collide with engine metadata.
- * MCP schemas must not declare this key.
+ * Internal key used to preserve original MCP tool argument keys and values when
+ * engine metadata is added to the tool input. MCP schemas must not declare this key.
  */
 export const INTERNAL_TOOL_ARG_STASH_KEY = '_n8nOriginalToolArg';
 

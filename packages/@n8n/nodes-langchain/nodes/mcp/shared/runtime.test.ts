@@ -18,6 +18,7 @@ import { buildMcpToolkit, executeMcpTool, loadMcpToolOptions } from './runtime';
 import type { ResolvedMcpConfig, McpConnectionConfig } from './runtime';
 import type { McpAuthenticationOption, McpTool } from './types';
 import * as utils from './utils';
+import { INTERNAL_TOOL_ARG_STASH_KEY } from '../../../utils/agent-execution';
 import { buildMcpToolName } from '../McpClientTool/utils';
 
 vi.mock('@modelcontextprotocol/sdk/client/sse.js');
@@ -350,6 +351,92 @@ describe('runtime', () => {
 			const ctx = createExecuteCtx([{ json: { query: 'foo' } }]);
 
 			await expect(executeMcpTool(ctx, () => baseConfig)).rejects.toThrow('Tool name not found');
+		});
+
+		it.each([false, true])(
+			'only forwards model-supplied arguments when additionalProperties is %s',
+			async (additionalProperties) => {
+				vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+				vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+					tools: [
+						{
+							name: 'search',
+							description: '',
+							inputSchema: {
+								type: 'object' as const,
+								properties: {
+									text: { type: 'string' },
+									action: { type: 'string' },
+								},
+								additionalProperties,
+							},
+						},
+					],
+				});
+				const callTool = vi
+					.spyOn(Client.prototype, 'callTool')
+					.mockResolvedValue({ content: [{ type: 'text', text: 'ok' }] });
+				vi.spyOn(Client.prototype, 'close').mockResolvedValue();
+
+				const ctx = createExecuteCtx([
+					{
+						json: {
+							tool: buildMcpToolName('MCP', 'search'),
+							text: 'hello',
+							action: 'sendMessage',
+							[INTERNAL_TOOL_ARG_STASH_KEY]: { argumentKeys: ['text'] },
+						},
+					},
+				]);
+
+				await executeMcpTool(ctx, () => baseConfig);
+
+				expect(callTool).toHaveBeenCalledWith(
+					{ name: 'search', arguments: { text: 'hello' } },
+					expect.anything(),
+					expect.objectContaining({ timeout: baseConfig.timeout }),
+				);
+			},
+		);
+
+		it('preserves optional parameters when the model explicitly supplies them', async () => {
+			vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [
+					{
+						name: 'search',
+						description: '',
+						inputSchema: {
+							type: 'object' as const,
+							properties: { text: { type: 'string' }, action: { type: 'string' } },
+							additionalProperties: false,
+						},
+					},
+				],
+			});
+			const callTool = vi
+				.spyOn(Client.prototype, 'callTool')
+				.mockResolvedValue({ content: [{ type: 'text', text: 'ok' }] });
+			vi.spyOn(Client.prototype, 'close').mockResolvedValue();
+
+			const ctx = createExecuteCtx([
+				{
+					json: {
+						tool: buildMcpToolName('MCP', 'search'),
+						text: 'hello',
+						action: 'model-supplied',
+						[INTERNAL_TOOL_ARG_STASH_KEY]: { argumentKeys: ['text', 'action'] },
+					},
+				},
+			]);
+
+			await executeMcpTool(ctx, () => baseConfig);
+
+			expect(callTool).toHaveBeenCalledWith(
+				{ name: 'search', arguments: { text: 'hello', action: 'model-supplied' } },
+				expect.anything(),
+				expect.objectContaining({ timeout: baseConfig.timeout }),
+			);
 		});
 
 		it('sanitizes arguments against the tool inputSchema when additionalProperties is false', async () => {
