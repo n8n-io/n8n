@@ -356,6 +356,9 @@ catalogs:
     '@opentelemetry/sdk-trace-base':
       specifier: 2.10.0
       version: 2.10.0
+    '@oxlint/plugins':
+      specifier: 1.93.0
+      version: 1.93.0
     '@pinecone-database/pinecone':
       specifier: ^5.0.2
       version: 5.1.2
@@ -4355,6 +4358,9 @@ importers:
       '@n8n/eslint-plugin-design-system':
         specifier: workspace:*
         version: link:../../frontend/@n8n/eslint-plugin-design-system
+      '@oxlint/plugins':
+        specifier: 'catalog:'
+        version: 1.93.0
       '@stylistic/eslint-plugin':
         specifier: ^5.0.0
         version: 5.0.0(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))
@@ -14954,6 +14960,10 @@ packages:
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [x64]
     os: [win32]
+
+  '@oxlint/plugins@1.93.0':
+    resolution: {integrity: sha512-bKWQI1g9jn8bWUZsvhbOLfgva576Fbp1KwoTNSUCMdT9tlTAvQS2JkifX1UrhPPdyN4GHvM20HhvIMqqU1yotQ==}
+    engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
 
   '@pagefind/darwin-arm64@1.6.0':
     resolution: {integrity: sha512-611gl64aqN12UcMyKPtZ8+vRWBKlJFSh2JgO8uScxa1Eyjo1dXz9r4wZuRno0yCUE/KN0FauEoKZ3KEwUYHCCg==}
@@ -33339,6 +33349,8 @@ snapshots:
 
   '@oxlint/binding-win32-x64-msvc@1.93.0':
     optional: true
+
+  '@oxlint/plugins@1.93.0': {}
 
   '@pagefind/darwin-arm64@1.6.0':
     optional: true

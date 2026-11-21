@@ -1,0 +1,13 @@
+{
+	"$schema": "./node_modules/oxlint/configuration_schema.json",
+	"categories": { "correctness": "off" },
+	"plugins": [],
+	"jsPlugins": [{ "name": "anti-slop", "specifier": "./dist/anti-slop/index.js" }],
+	"rules": {
+		"anti-slop/no-array-filter-map": "error",
+		"anti-slop/no-chained-type-assertions": "error",
+		"anti-slop/no-conditional-empty-object-spread": "error",
+		"anti-slop/no-object-parameters": "error",
+		"anti-slop/no-reflect-get": "error"
+	}
+}

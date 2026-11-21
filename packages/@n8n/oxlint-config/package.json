@@ -27,6 +27,10 @@
     "./import-x-alias": {
       "types": "./dist/import-x-alias.d.ts",
       "default": "./dist/import-x-alias.js"
+    },
+    "./anti-slop": {
+      "types": "./dist/anti-slop/index.d.ts",
+      "default": "./dist/anti-slop/index.js"
     }
   },
   "scripts": {
@@ -50,6 +54,7 @@
   "dependencies": {
     "@n8n/eslint-config": "workspace:*",
     "@n8n/eslint-plugin-design-system": "workspace:*",
+    "@oxlint/plugins": "catalog:",
     "@stylistic/eslint-plugin": "^5.0.0",
     "eslint-plugin-import-x": "^4.15.2",
     "eslint-plugin-n8n-nodes-base": "catalog:",

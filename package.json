@@ -67,6 +67,7 @@
     "lint:styles": "turbo run lint:styles",
     "lint:styles:fix": "turbo run lint:styles:fix",
     "lint:affected": "turbo run lint --affected",
+    "lint:anti-slop": "node scripts/lint-anti-slop-new-code.mjs",
     "lint:fix": "turbo run lint:fix",
     "lint:ci": "turbo run lint lint:styles --concurrency=2 && pnpm boundaries:check && pnpm check:workspace-private-deps",
     "boundaries": "turbo boundaries",
