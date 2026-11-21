@@ -154,9 +154,9 @@ sequenceDiagram
    deletes what the node stored, as the payload guard does today. A crash between the write and the
    dispatch leaves files that nothing deletes. No sweep for those exists today, in v1 or v2.
    CAT-4756 tracks it.
-7.  The retention note ("Retention is unsolved") in
-   ADR-20260904-store-the-workflow-revision-that-ran-with-the-execution stays open for the
-   workflow snapshot. This decision covers binary files only.
+7.  The retention of the workflow snapshot in
+   ADR-20260904-store-the-workflow-revision-that-ran-with-the-execution is not part of this
+   decision. This decision covers binary files only.
 
 ## Links
 
