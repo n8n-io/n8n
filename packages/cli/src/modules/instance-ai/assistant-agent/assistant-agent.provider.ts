@@ -81,6 +81,7 @@ import {
 	createThreadTemporaryWorkflowMarkers,
 } from './assistant-temporary-workflow-markers';
 import { AssistantThreadTabsService } from './assistant-thread-tabs.service';
+import { AssistantUsageService } from '../assistant-usage/assistant-usage.service';
 import { AssistantTurnTracer, type AssistantTurnTrace } from './assistant-turn-trace';
 import {
 	ASSISTANT_AGENT_ID,
@@ -170,6 +171,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 		private readonly userRepository: UserRepository,
 		private readonly turnOverrides: AssistantTurnOverrides,
 		private readonly telemetry: TelemetryProxy,
+		private readonly usageService: AssistantUsageService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.aiConfig = globalConfig.ai;
@@ -448,6 +450,15 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 					// Finish before the host events close and the next queued turn reads the cursor.
 					await inputAccepted;
 					await this.claimTurnUsage(user, thread.id, runId, outcome, usage);
+					// A resume continues the message of its start turn, so only a start counts.
+					// Not awaited: the record must not delay the next queued turn.
+					if (turn.type === 'start') {
+						void this.usageService.recordMessage({
+							userId: user.id,
+							threadId: thread.id,
+							projectId: thread.projectId,
+						});
+					}
 					// Before the card resumes, so that the resumed turn does not route setup again.
 					await setupRoute.markSuspendedSetupsRouted();
 					// A suspended turn can still be building the workflows it marked.
@@ -545,6 +556,12 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 						error: getErrorMessage(error),
 					});
 				}
+				void this.usageService.recordArtifact({
+					userId: turn.user.id,
+					threadId: turn.thread.id,
+					projectId: turn.thread.projectId,
+					artifact,
+				});
 			},
 			readSetupItemsSnapshots: async () => [],
 			// The setup panel announces the checklist without suspending the turn.

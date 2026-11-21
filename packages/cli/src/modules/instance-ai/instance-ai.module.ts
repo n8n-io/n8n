@@ -144,6 +144,8 @@ export class InstanceAiModule implements ModuleInterface {
 		);
 		// Its routes depend on the agents module, so they load only with the agent.
 		await import('./assistant-agent/assistant-agent.controller.js');
+		// Only the agent records usage, so the usage page has nothing to show without it.
+		await import('./assistant-usage/assistant-usage.controller.js');
 		const { InstanceAiConfig } = await import('@n8n/config');
 		if (Container.get(InstanceAiConfig).evalInstance) {
 			await import('./eval/assistant-agent-eval.controller.js');
@@ -187,6 +189,14 @@ export class InstanceAiModule implements ModuleInterface {
 				'./instance-ai-checkpoint-pruning.task.js'
 			);
 			tasks.push(InstanceAiCheckpointPruningTask);
+		}
+
+		// Also without the Assistant agent, so records from when it ran still expire.
+		if (config.usageMaxAgeDays > 0) {
+			const { AssistantUsagePruningTask } = await import(
+				'./assistant-usage/assistant-usage-pruning.task.js'
+			);
+			tasks.push(AssistantUsagePruningTask);
 		}
 		return tasks;
 	}
@@ -268,6 +278,9 @@ export class InstanceAiModule implements ModuleInterface {
 		const { SelfHealingConfigurationReviewer } = await import(
 			'./self-healing/database/self-healing-configuration-reviewer.entity.js'
 		);
+		const { AssistantUsageEvent } = await import(
+			'./assistant-usage/database/assistant-usage-event.entity.js'
+		);
 
 		return [
 			InstanceAiThread,
@@ -289,6 +302,7 @@ export class InstanceAiModule implements ModuleInterface {
 			SelfHealingConfigurationReviewer,
 			SelfHealingConfigurationWorkflow,
 			SelfHealingConfiguration,
+			AssistantUsageEvent,
 		];
 	}
 

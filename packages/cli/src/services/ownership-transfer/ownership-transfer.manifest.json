@@ -143,6 +143,11 @@
 			"name": "ExecutionLedgerEntity",
 			"path": "packages/modules/execution-ledger/backend/src/database/entities/execution-ledger.entity.ts",
 			"reason": "Event record of runs in the project at the time they happened; re-homing rows would misstate where they ran. Rows live only seconds before the fold deletes them, and no foreign key ties them to the project."
+		},
+		{
+			"name": "AssistantUsageEvent",
+			"path": "packages/cli/src/modules/instance-ai/assistant-usage/database/assistant-usage-event.entity.ts",
+			"reason": "Append-only record of n8n Assistant usage; re-homing entries would misstate where the usage happened. The project reference is set to NULL when the project is deleted."
 		}
 	]
 }

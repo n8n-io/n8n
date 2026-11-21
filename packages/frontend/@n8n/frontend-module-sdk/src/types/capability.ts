@@ -1,4 +1,7 @@
 import type {
+	AssistantUsageResponse,
+	AssistantUsageUsersResponse,
+	AssistantUsageUsersSortBy,
 	CreateCredentialDto,
 	EnvironmentsVersion,
 	SelfHealingResultDetail,
@@ -186,4 +189,25 @@ export interface AppAssistantHandoff {
 	openApp(input: { appId: string; projectId: string; appName?: string }): Promise<boolean>;
 	/** Opens the Assistant empty state for a new App. */
 	createApp(input: { appId: string; projectId: string }): Promise<void>;
+}
+
+export interface AssistantUsageFilter {
+	startDate: Date;
+	endDate: Date;
+	projectId?: string;
+}
+
+/** The n8n Assistant usage of the instance. The shell owns the Assistant and its settings. */
+export interface AssistantUsage {
+	/** The instance records the usage and the current user may see it. Reactive. */
+	isAvailable(): boolean;
+	/** Totals and daily counts. The days are in the browser's time zone. */
+	fetchUsage(filter: AssistantUsageFilter): Promise<AssistantUsageResponse>;
+	fetchUsers(
+		filter: AssistantUsageFilter & {
+			skip: number;
+			take: number;
+			sortBy?: AssistantUsageUsersSortBy;
+		},
+	): Promise<AssistantUsageUsersResponse>;
 }

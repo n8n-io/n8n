@@ -1624,6 +1624,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						type: 'workflow',
 						id: saved.id,
 						...(json.name ? { name: json.name } : {}),
+						created: operation === 'create',
 					});
 
 					trackWorkflowSourceBuild(context, {

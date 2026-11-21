@@ -50,6 +50,12 @@ export { TrackPageHideEventRequestDto } from './telemetry/track-page-hide-event-
 export { AssistantThreadTabsRequestDto } from './assistant/assistant-thread-tabs-request.dto';
 export { AssistantAgentTargetRequestDto } from './assistant/assistant-agent-target-request.dto';
 export {
+	ASSISTANT_USAGE_MAX_RANGE_DAYS,
+	AssistantUsageQueryDto,
+	AssistantUsageUsersQueryDto,
+	type AssistantUsageUsersSortBy,
+} from './assistant/assistant-usage-query.dto';
+export {
 	InstanceAiPreferenceCardUndoRequestDto,
 	InstanceAiPreferenceCardEditRequestDto,
 } from './instance-ai/instance-ai-preference-card-request.dto';

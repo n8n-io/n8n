@@ -1,4 +1,5 @@
 import type { ListInsightsWorkflowQueryDto, InsightsDateFilterDto } from '@n8n/api-types';
+import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -25,6 +26,11 @@ export const useInsightsStore = defineStore('insights', () => {
 
 	const isSummaryEnabled = computed(
 		() => globalInsightsPermissions.value.list && isInsightsEnabled.value,
+	);
+
+	/** The Assistant tab. The shell, which owns the Assistant, decides whether it shows. */
+	const isAssistantUsageEnabled = computed(
+		() => capabilityRegistry.tryUse(capabilities.assistantUsage)?.isAvailable() ?? false,
 	);
 
 	const weeklySummary = useAsyncState(
@@ -78,6 +84,7 @@ export const useInsightsStore = defineStore('insights', () => {
 		isInsightsEnabled,
 		isSummaryEnabled,
 		isDashboardEnabled,
+		isAssistantUsageEnabled,
 		weeklySummary,
 		summary,
 		charts,

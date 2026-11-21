@@ -1,4 +1,5 @@
 import type { FrontendModuleSettings } from '@n8n/api-types';
+import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
 import { mockedStore, type MockedStore } from '@n8n/frontend-test-utils';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 import { useSettingsStore } from '@n8n/stores/settings.store';
@@ -57,6 +58,29 @@ describe('useInsightsStore', () => {
 
 	afterEach(() => {
 		vi.clearAllMocks();
+		capabilityRegistry.clear();
+	});
+
+	describe('isAssistantUsageEnabled', () => {
+		const usage = (available: boolean) => ({
+			isAvailable: () => available,
+			fetchUsage: vi.fn(),
+			fetchUsers: vi.fn(),
+		});
+
+		it('is false when the shell provides no Assistant usage', () => {
+			expect(insightsStore.isAssistantUsageEnabled).toBe(false);
+		});
+
+		it('follows the availability that the shell reports', () => {
+			capabilityRegistry.provide(capabilities.assistantUsage, usage(false));
+			expect(useInsightsStore().isAssistantUsageEnabled).toBe(false);
+
+			capabilityRegistry.clear();
+			createTestingPinia();
+			capabilityRegistry.provide(capabilities.assistantUsage, usage(true));
+			expect(useInsightsStore().isAssistantUsageEnabled).toBe(true);
+		});
 	});
 
 	describe('charts data fetcher', () => {

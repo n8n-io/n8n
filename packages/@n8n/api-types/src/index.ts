@@ -788,6 +788,20 @@ export type {
 } from './schemas/assistant-thread-tabs.schema';
 
 export {
+	assistantUsageResourceTypeSchema,
+	assistantUsageResponseSchema,
+	assistantUsageUsersResponseSchema,
+} from './schemas/assistant-usage.schema';
+export type {
+	AssistantUsageResourceType,
+	AssistantUsageSummary,
+	AssistantUsageDay,
+	AssistantUsageResponse,
+	AssistantUsageUser,
+	AssistantUsageUsersResponse,
+} from './schemas/assistant-usage.schema';
+
+export {
 	assistantAgentTargetSchema,
 	assistantAgentPreviewSessionSchema,
 } from './schemas/assistant-agent-targets.schema';

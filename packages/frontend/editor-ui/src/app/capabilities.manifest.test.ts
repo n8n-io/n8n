@@ -88,6 +88,12 @@ describe('registerShellCapabilities', () => {
 		expect(createAppAssistantHandoff).not.toHaveBeenCalled();
 	});
 
+	it('provides the Assistant usage, unavailable while the Assistant agent is off', () => {
+		registerShellCapabilities();
+
+		expect(capabilityRegistry.use(capabilities.assistantUsage).isAvailable()).toBe(false);
+	});
+
 	it('forwards openModal to the UI store', () => {
 		registerShellCapabilities();
 		const uiStore = useUIStore();

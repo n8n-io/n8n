@@ -34,6 +34,7 @@ import { AssistantTurnOverrides } from '../../turn-setup/assistant-turn-override
 import { QUOTA_EXHAUSTED_USER_MESSAGE } from '../../user-facing-errors';
 import { AssistantAgentProvider, FILES_ONLY_MESSAGE } from '../assistant-agent.provider';
 import type { AssistantThreadTabsService } from '../assistant-thread-tabs.service';
+import type { AssistantUsageService } from '../../assistant-usage/assistant-usage.service';
 import type { AssistantTurnTrace, AssistantTurnTracer } from '../assistant-turn-trace';
 import type {
 	AssistantSandboxLease,
@@ -100,6 +101,7 @@ function setup() {
 	// The real default, so that the tests see "no override" unless a test sets one.
 	const turnOverrides = new AssistantTurnOverrides();
 	const telemetry = mock<TelemetryProxy>();
+	const usageService = mock<AssistantUsageService>();
 	const provider = new AssistantAgentProvider(
 		logger,
 		mock<GlobalConfig>({ ai: {} }),
@@ -116,11 +118,13 @@ function setup() {
 		userRepository,
 		turnOverrides,
 		telemetry,
+		usageService,
 	);
 	return {
 		userRepository,
 		provider,
 		telemetry,
+		usageService,
 		turnOverrides,
 		sentry,
 		errorReporter,
@@ -323,6 +327,35 @@ describe('AssistantAgentProvider', () => {
 				type: 'workflow',
 				id: 'wf-1',
 				name: 'Digest',
+			});
+		});
+
+		it('records an artifact that the turn changes as Assistant usage', async () => {
+			const { provider, turnEnvironment, usageService } = setup();
+			await provider.prepareTurn(startTurn());
+
+			const runtime: AssistantTurnRuntime = turnEnvironment.create.mock.calls[0][1];
+			const artifact = { type: 'workflow' as const, id: 'wf-1', created: true };
+			await runtime.onArtifactChanged?.(artifact);
+
+			expect(usageService.recordArtifact).toHaveBeenCalledWith({
+				userId: 'user-1',
+				threadId: 'thread-1',
+				projectId: 'project-1',
+				artifact,
+			});
+		});
+
+		it('records the message of a start turn as Assistant usage when it settles', async () => {
+			const { provider, usageService } = setup();
+
+			const handle = await provider.prepareTurn(startTurn());
+			await handle.onSettled?.({ executionId: 'exec-1', status: 'completed' });
+
+			expect(usageService.recordMessage).toHaveBeenCalledWith({
+				userId: 'user-1',
+				threadId: 'thread-1',
+				projectId: 'project-1',
 			});
 		});
 
@@ -762,6 +795,15 @@ describe('AssistantAgentProvider', () => {
 			): SystemAgentResumeTurn['openSuspensions'][number] {
 				return { toolCallId, toolName: 'workflows', suspendPayload };
 			}
+
+			it('does not record a resumed turn as a new message', async () => {
+				const { provider, usageService } = setup();
+
+				const handle = await provider.prepareTurn(resumeTurn([]));
+				await handle.onSettled?.({ executionId: 'exec-1', status: 'completed' });
+
+				expect(usageService.recordMessage).not.toHaveBeenCalled();
+			});
 
 			it('sends one event for each new Assistant card, with the request id as input id', async () => {
 				const { provider, telemetry } = setup();

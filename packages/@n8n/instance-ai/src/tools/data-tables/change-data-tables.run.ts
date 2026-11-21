@@ -195,11 +195,16 @@ function tableOf(run: Run, planned: PlannedTable): TableState {
 }
 
 /** Tells the host which tables changed. A failed report must not hide what the batch did. */
-async function reportChangedTables({ context, changed }: Run) {
+async function reportChangedTables({ context, created, changed }: Run) {
+	const createdIds = new Set([...created.values()].map((table) => table.id));
 	for (const table of changed.values()) {
 		if (table.deleted) continue;
 		try {
-			await context.onArtifactChanged?.({ type: 'data-table', ...toRunTable(table) });
+			await context.onArtifactChanged?.({
+				type: 'data-table',
+				...toRunTable(table),
+				created: createdIds.has(table.id),
+			});
 		} catch {
 			// The changes already ran. The host only misses a tab update.
 		}

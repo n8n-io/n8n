@@ -1,3 +1,4 @@
+export { assistantUsage } from './assistantUsage';
 export { createAppAssistantHandoff } from './createAppAssistantHandoff';
 export { createSelfHealingChatHandoff } from './createSelfHealingChatHandoff';
 export { environmentsSettings } from './environmentsSettings';

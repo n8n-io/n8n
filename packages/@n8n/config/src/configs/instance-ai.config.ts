@@ -273,6 +273,14 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_THREAD_TTL_DAYS')
 	threadTtlDays: number = 30;
 
+	/**
+	 * How many days n8n keeps the n8n Assistant usage records that admins see in
+	 * Insights. n8n deletes older records once a day. Set to 0 to keep them
+	 * forever.
+	 */
+	@Env('N8N_INSTANCE_AI_USAGE_MAX_AGE_DAYS')
+	usageMaxAgeDays: number = 365;
+
 	/** Interval in milliseconds between scheduled pruning runs. 0 = disabled. */
 	@Env('N8N_INSTANCE_AI_PRUNE_INTERVAL')
 	pruneInterval: number = 1 * Time.hours.toMilliseconds;

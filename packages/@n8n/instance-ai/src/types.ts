@@ -1719,11 +1719,15 @@ export interface InstanceAiStoredFileReader {
 
 // ── Context bundle ───────────────────────────────────────────────────────────
 
-/** An artifact that a tool created or changed. Tools pass the name when they know it. */
+/**
+ * An artifact that a tool created or changed. Tools pass the name when they know
+ * it. `created` is true when the tool created the artifact, and the host counts
+ * that as Assistant usage.
+ */
 export type InstanceAiChangedArtifact = Pick<
 	InstanceAiThreadArtifact,
 	'type' | 'id' | 'name' | 'projectId'
->;
+> & { created?: boolean };
 
 export interface InstanceAiContext {
 	/** Instance-wide gate for credential description output and guidance. */

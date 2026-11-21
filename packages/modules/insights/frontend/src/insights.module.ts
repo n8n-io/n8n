@@ -2,7 +2,10 @@ import { VIEWS } from '@n8n/frontend-constants/views';
 import { defineFrontendModule } from '@n8n/frontend-module-sdk';
 import { RouterView } from 'vue-router';
 
+import { INSIGHTS_ASSISTANT_VIEW } from './insights.views';
+
 const InsightsDashboard = async () => await import('./components/InsightsDashboard.vue');
+const InsightsAssistantUsage = async () => await import('./components/InsightsAssistantUsage.vue');
 
 export const InsightsModule = defineFrontendModule({
 	id: 'insights',
@@ -29,6 +32,16 @@ export const InsightsModule = defineFrontendModule({
 				},
 			},
 			children: [
+				{
+					// A static segment, so vue-router ranks it above `:insightType?`.
+					path: 'assistant',
+					name: INSIGHTS_ASSISTANT_VIEW,
+					async beforeEnter() {
+						const { useInsightsStore } = await import('./insights.store');
+						return useInsightsStore().isAssistantUsageEnabled || { name: VIEWS.INSIGHTS };
+					},
+					component: InsightsAssistantUsage,
+				},
 				{
 					path: ':insightType?',
 					name: VIEWS.INSIGHTS,

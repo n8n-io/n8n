@@ -56,6 +56,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [app](app.md) | 9 |  | table |
 | [app_artifact](app_artifact.md) | 8 |  | table |
 | [app_version](app_version.md) | 12 |  | table |
+| [assistant_usage_event](assistant_usage_event.md) | 7 |  | table |
 | [auth_identity](auth_identity.md) | 5 |  | table |
 | [auth_provider_sync_history](auth_provider_sync_history.md) | 11 |  | table |
 | [binary_data](binary_data.md) | 9 |  | table |
@@ -287,6 +288,8 @@ erDiagram
 "app_version" }o--o| "app_artifact" : "FOREIGN KEY (bundleArtifactId) REFERENCES app_artifact (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "app_version" }o--|| "app_artifact" : "FOREIGN KEY (sourceArtifactId) REFERENCES app_artifact (id) ON UPDATE NO ACTION ON DELETE RESTRICT MATCH NONE"
 "app_version" }o--|| "app" : "FOREIGN KEY (appId) REFERENCES app (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"assistant_usage_event" }o--o| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"assistant_usage_event" }o--o| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "auth_identity" }o--o| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
 "chat_hub_agent_tools" |o--|| "chat_hub_tools" : "FOREIGN KEY (toolId) REFERENCES chat_hub_tools (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "chat_hub_agent_tools" |o--|| "chat_hub_agents" : "FOREIGN KEY (agentId) REFERENCES chat_hub_agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -1020,6 +1023,15 @@ erDiagram
   varchar_255_ label
   INTEGER sourceArtifactId FK
   datetime_3_ updatedAt
+}
+"assistant_usage_event" {
+  datetime_3_ createdAt
+  INTEGER id
+  varchar_36_ projectId FK
+  varchar_64_ resourceId
+  varchar_128_ threadId
+  varchar_32_ type
+  varchar userId FK
 }
 "auth_identity" {
   timestamp createdAt
