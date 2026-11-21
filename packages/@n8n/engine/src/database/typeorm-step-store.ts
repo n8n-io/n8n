@@ -1,10 +1,19 @@
-import { In, LessThanOrEqual, type EntityManager, type Repository } from '@n8n/typeorm';
+import {
+	In,
+	IsNull,
+	LessThanOrEqual,
+	Not,
+	type EntityManager,
+	type Repository,
+} from '@n8n/typeorm';
 
 import { WorkflowStepExecution } from './entities';
 import { generateId } from './generate-id';
 import { UnexpectedError } from '../common';
 import {
+	ANNOUNCED_STEP_STATUSES,
 	SETTLED_STEP_STATUSES,
+	isAnnouncedStatus,
 	isLiveExecutionStatus,
 	stepKeyId,
 	type ExecutionStatus,
@@ -24,6 +33,7 @@ import {
 	type NewStepRecord,
 	type StaleQueuedStep,
 	type StaleRunningStep,
+	type StaleSettledStep,
 	type StepRecord,
 	type StepStore,
 	type StepSummary,
@@ -37,6 +47,13 @@ const FILLED_OUTPUT_SLOTS = `COALESCE(
 	 FROM jsonb_array_elements(step.outputs) WITH ORDINALITY AS slot),
 	'{}'
 )`;
+
+/**
+ * For a write that changes only `stale_after` of a settled step. TypeORM sets
+ * `updated_at` to the current time in each UPDATE that does not name the
+ * column, and readers use `updated_at` as the time the step settled.
+ */
+const KEEP_UPDATED_AT = { updatedAt: () => 'updated_at' };
 
 type StepSummaryRow = {
 	id: string;
@@ -83,10 +100,18 @@ export class TypeOrmStepStore implements StepStore {
 		private readonly staleness: StalenessThresholds = DEFAULT_STALENESS_THRESHOLDS,
 	) {}
 
+	/** The `stale_after` value of a step whose message waits on a queue from now. */
+	private staleAfterForMessage(): Date {
+		return new Date(Date.now() + this.staleness.queuedMs);
+	}
+
 	/** The `stale_after` value of a step that enters `status` now. */
 	private staleAfterFor(status: StepStatus): Date | null {
-		if (status === 'queued') return new Date(Date.now() + this.staleness.queuedMs);
 		if (status === 'running') return new Date(Date.now() + this.staleness.runningStepMs);
+		// A `queued` step waits for its `step:ready` message on the step queue. An
+		// announced step waits for its `step:settled` message on the orchestration
+		// queue.
+		if (status === 'queued' || isAnnouncedStatus(status)) return this.staleAfterForMessage();
 		return null;
 	}
 
@@ -344,6 +369,36 @@ export class TypeOrmStepStore implements StepStore {
 		return await this.failStepFrom('running', id, error, staleAfter);
 	}
 
+	async findStaleSettledSteps(at: Date, limit: number): Promise<StaleSettledStep[]> {
+		// Served by the partial index on `status` and `stale_after`. A settled step
+		// is in that index only until `acknowledgeSettledStep` clears its time.
+		const rows = await this.repo.find({
+			select: { id: true, executionId: true, staleAfter: true },
+			where: { status: In([...ANNOUNCED_STEP_STATUSES]), staleAfter: LessThanOrEqual(at) },
+			order: { staleAfter: 'ASC' },
+			take: limit,
+		});
+		return rows.flatMap(({ id, executionId, staleAfter }) =>
+			staleAfter ? [{ id, executionId, staleAfter }] : [],
+		);
+	}
+
+	async renewSettledStep(id: string, staleAfter: Date): Promise<boolean> {
+		const result = await this.repo.update(
+			{ id, status: In([...ANNOUNCED_STEP_STATUSES]), staleAfter },
+			{ staleAfter: this.staleAfterForMessage(), ...KEEP_UPDATED_AT },
+		);
+		return result.affected === 1;
+	}
+
+	async acknowledgeSettledStep(id: string): Promise<void> {
+		// The test on `stale_after` makes a second call write no row version.
+		await this.repo.update(
+			{ id, status: In([...ANNOUNCED_STEP_STATUSES]), staleAfter: Not(IsNull()) },
+			{ staleAfter: null, ...KEEP_UPDATED_AT },
+		);
+	}
+
 	async cancelPendingSteps(executionId: string): Promise<void> {
 		await this.repo.update(
 			{ executionId, status: In(['queued', 'waiting'] satisfies StepStatus[]) },
@@ -383,7 +438,7 @@ export class TypeOrmStepStore implements StepStore {
 			const result = await manager.update(
 				WorkflowStepExecution,
 				{ id, status: from, ...(observedStaleAfter ? { staleAfter: observedStaleAfter } : {}) },
-				{ error, status: 'failed', staleAfter: null },
+				{ error, status: 'failed', staleAfter: this.staleAfterFor('failed') },
 			);
 			return result.affected === 1;
 		});

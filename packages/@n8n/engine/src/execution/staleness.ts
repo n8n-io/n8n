@@ -6,7 +6,11 @@ import { UnexpectedError } from '../common';
  * they write the result in the `stale_after` column of the row.
  */
 export interface StalenessThresholds {
-	/** For an execution or a step that is `queued`. */
+	/**
+	 * For a row whose message waits on a queue: an execution or a step that is
+	 * `queued`, and a settled step whose `step:settled` message the orchestration
+	 * worker has not handled.
+	 */
 	queuedMs: number;
 	/**
 	 * For a step that is `running`. The engine fails a step that runs longer, so

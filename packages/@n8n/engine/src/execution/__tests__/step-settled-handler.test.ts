@@ -121,6 +121,9 @@ function makeStepStore(
 		renewQueuedStep: vi.fn(),
 		findStaleRunningSteps: vi.fn().mockResolvedValue([]),
 		failStaleRunningStep: vi.fn(),
+		findStaleSettledSteps: vi.fn().mockResolvedValue([]),
+		renewSettledStep: vi.fn(),
+		acknowledgeSettledStep: vi.fn(),
 		failStep: vi.fn(),
 		failWaitingStep: vi.fn(),
 		cancelStep: vi.fn(),
@@ -590,6 +593,65 @@ describe('StepSettledHandler', () => {
 		await handler.handle(event);
 
 		expect(executionStore.refreshLiveStatus).toHaveBeenCalledExactlyOnceWith('exec-1');
+	});
+
+	describe('acknowledgement of the settled step', () => {
+		it('acknowledges the step after the last write of the settlement', async () => {
+			const stepStore = makeStepStore();
+			const { handler, executionStore } = makeHandler(stepStore);
+
+			await handler.handle(event);
+
+			expect(stepStore.acknowledgeSettledStep).toHaveBeenCalledExactlyOnceWith('step-a');
+			expect(vi.mocked(executionStore.refreshLiveStatus).mock.invocationCallOrder[0]).toBeLessThan(
+				vi.mocked(stepStore.acknowledgeSettledStep).mock.invocationCallOrder[0],
+			);
+		});
+
+		it('acknowledges a failed step after it failed the execution', async () => {
+			const stepStore = makeStepStore({ status: 'failed' });
+			const { handler } = makeHandler(stepStore);
+
+			await handler.handle(event);
+
+			expect(stepStore.acknowledgeSettledStep).toHaveBeenCalledExactlyOnceWith('step-a');
+			expect(vi.mocked(stepStore.cancelPendingSteps).mock.invocationCallOrder[0]).toBeLessThan(
+				vi.mocked(stepStore.acknowledgeSettledStep).mock.invocationCallOrder[0],
+			);
+		});
+
+		it('acknowledges a step of an execution that already ended', async () => {
+			const stepStore = makeStepStore();
+			const { handler } = makeHandler(stepStore, {
+				executionStore: makeExecutionStore({ status: 'cancelled' }),
+			});
+
+			await handler.handle(event);
+
+			expect(stepStore.createSteps).not.toHaveBeenCalled();
+			expect(stepStore.acknowledgeSettledStep).toHaveBeenCalledExactlyOnceWith('step-a');
+		});
+
+		it('does not acknowledge the step when the settlement throws', async () => {
+			const stepStore = makeStepStore(
+				{},
+				{ createSteps: vi.fn().mockRejectedValue(new Error('db down')) },
+			);
+			const { handler } = makeHandler(stepStore);
+
+			await expect(handler.handle(event)).rejects.toThrow('db down');
+
+			expect(stepStore.acknowledgeSettledStep).not.toHaveBeenCalled();
+		});
+
+		it('does not acknowledge a step that the event does not match', async () => {
+			const stepStore = makeStepStore({ executionId: 'exec-2' });
+			const { handler } = makeHandler(stepStore);
+
+			await expect(handler.handle(event)).rejects.toMatchObject({ name: 'UnexpectedError' });
+
+			expect(stepStore.acknowledgeSettledStep).not.toHaveBeenCalled();
+		});
 	});
 
 	it('plans successors for a waiting execution', async () => {

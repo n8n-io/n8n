@@ -61,6 +61,20 @@ export class StepSettledHandler {
 		]);
 		const node = validateStepContext(step, execution);
 
+		await this.advanceExecution(execution, step, node);
+
+		// Last, so an error before this line leaves the `stale_after` time on the
+		// step. The reconciliation sweeper then publishes `step:settled` to the
+		// orchestration queue again.
+		await this.stepStore.acknowledgeSettledStep(step.id);
+	}
+
+	/** Applies the consequences of the settled step to its execution. */
+	private async advanceExecution(
+		execution: ExecutionRecord,
+		step: StepRecord,
+		node: GraphNode,
+	): Promise<void> {
 		// v1 parity: an error that escapes a node ends the whole execution, not
 		// just its branch.
 		if (step.status === 'failed') {
@@ -161,9 +175,10 @@ export class StepSettledHandler {
 		// One batch, so a settlement's consequence lands atomically and a fan-out
 		// costs one round trip. A row another planner got to first isn't
 		// returned, so it isn't announced twice either.
-		// TODO(CAT-2938): a crash between the insert and the publishes strands
-		// the rows forever; the reconciler re-announces stale queued steps and
-		// settled steps whose decidable successors have no rows.
+		// A crash between the insert and the publishes loses the messages of the
+		// new rows. The reconciliation sweeper publishes them again: `step:ready`
+		// to the step queue for a row that is still `queued`, and `step:settled`
+		// to the orchestration queue for a row that was created settled.
 		const created = await this.stepStore.createSteps(execution.id, [
 			...toQueue.map((key) => ({ ...key, status: 'queued' as const })),
 			...toSeed.map((key) => ({
