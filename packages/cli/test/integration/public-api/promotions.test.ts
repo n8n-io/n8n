@@ -14,6 +14,7 @@ import {
 	GLOBAL_MEMBER_ROLE,
 	ProjectRepository,
 	RoleRepository,
+	SettingsRepository,
 	TransactionRunner,
 	UserRepository,
 } from '@n8n/db';
@@ -113,6 +114,8 @@ describe('Promotions in Public API', () => {
 			whoCanApply: 'instanceAdmins',
 			...settings,
 		});
+		// No stored row, as on an instance that upgrades to this version.
+		await Container.get(SettingsRepository).delete({ key: 'promotions.requireApproval' });
 	}
 
 	beforeAll(async () => {
@@ -259,6 +262,8 @@ describe('Promotions in Public API', () => {
 				whoCanApply: 'projectAdminsAndEditors',
 			});
 			expect(widened.status, JSON.stringify(widened.body)).toBe(200);
+			// Nothing stored yet, so the default applies.
+			expect(widened.body.requireApproval).toBe('whenConfigured');
 			expect(await scopesOf(PROJECT_EDITOR_ROLE_SLUG)).toEqual(
 				expect.arrayContaining(['promotions:promote', 'promotions:apply']),
 			);
@@ -268,6 +273,7 @@ describe('Promotions in Public API', () => {
 			const narrowed = await agent.patch('/promotions/settings').send({
 				whoCanPromote: 'projectAdmins',
 				whoCanApply: 'instanceAdmins',
+				requireApproval: 'alwaysRequired',
 			});
 			expect(narrowed.status, JSON.stringify(narrowed.body)).toBe(200);
 
@@ -296,6 +302,7 @@ describe('Promotions in Public API', () => {
 				whoCanPromote: 'projectAdmins',
 				whoCanApprove: 'projectAdminsAndEditors',
 				whoCanApply: 'instanceAdmins',
+				requireApproval: 'alwaysRequired',
 			});
 
 			const user = expect.objectContaining({ id: owner.id });
@@ -304,8 +311,13 @@ describe('Promotions in Public API', () => {
 				before: {
 					whoCanPromote: 'projectAdminsAndEditors',
 					whoCanApply: 'projectAdminsAndEditors',
+					requireApproval: 'whenConfigured',
 				},
-				after: { whoCanPromote: 'projectAdmins', whoCanApply: 'instanceAdmins' },
+				after: {
+					whoCanPromote: 'projectAdmins',
+					whoCanApply: 'instanceAdmins',
+					requireApproval: 'alwaysRequired',
+				},
 			});
 			expect(emit).toHaveBeenCalledWith('instance-policies-updated', {
 				user,
@@ -316,6 +328,11 @@ describe('Promotions in Public API', () => {
 				user,
 				settingName: 'promotions_who_can_apply',
 				value: 'instanceAdmins',
+			});
+			expect(emit).toHaveBeenCalledWith('instance-policies-updated', {
+				user,
+				settingName: 'promotions_require_approval',
+				value: 'alwaysRequired',
 			});
 		});
 

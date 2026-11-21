@@ -1561,6 +1561,7 @@ export class LogStreamingEventRelay extends EventRelay {
 			case 'promotions_who_can_promote':
 			case 'promotions_who_can_approve':
 			case 'promotions_who_can_apply':
+			case 'promotions_require_approval':
 				// Telemetry-only signal. The audit trail is emitted separately via
 				// 'promotion-settings-updated'.
 				break;

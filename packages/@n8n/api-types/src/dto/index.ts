@@ -893,6 +893,8 @@ export {
 export {
 	PromotionSettingsPublicDto,
 	UpdatePromotionSettingsDto,
+	promotionRequireApprovalSchema,
+	type PromotionRequireApproval,
 	type PromotionSettings,
 } from './promotions/promotion-settings.dto';
 
