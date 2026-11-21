@@ -2,6 +2,7 @@ import type {
 	CredentialsEntity,
 	CredentialsRepository,
 	FolderRepository,
+	Folder,
 	Project,
 	SharedWorkflow,
 	User,
@@ -10,6 +11,7 @@ import type {
 	WorkflowPublishHistoryRepository,
 	WorkflowRepository,
 } from '@n8n/db';
+import { BadRequestError, ForbiddenError, UserError } from '@n8n/errors';
 import type { EntityManager, UpdateResult } from '@n8n/typeorm';
 import type { INode, IWorkflowBase } from 'n8n-workflow';
 import { WorkflowActivationError } from 'n8n-workflow';
@@ -19,6 +21,7 @@ import type { ActiveWorkflowManager } from '@/active-workflow-manager';
 import type { CredentialsFinderService, WorkflowMutationHooksProxy } from '@n8n/backend-services';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import { TransferWorkflowError } from '@/errors/response-errors/transfer-workflow.error';
+import { TriggerCredentialAccessError } from '@/errors/trigger-credential-access.error';
 import type { NodeTypes } from '@/node-types';
 import type { CredentialsPermissionChecker } from '@/executions/pre-execution-checks/credentials-permission-checker';
 import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
@@ -27,7 +30,10 @@ import type { OwnershipService } from '@/services/ownership.service';
 import type { ProjectService } from '@/services/project.service.ee';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
-import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
+import {
+	type CredentialGuardOptions,
+	EnterpriseWorkflowService,
+} from '@/workflows/workflow.service.ee';
 
 describe('EnterpriseWorkflowService', () => {
 	let service: EnterpriseWorkflowService;
@@ -49,6 +55,9 @@ describe('EnterpriseWorkflowService', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		folderRepository.findOneOrFailFolderInProject.mockResolvedValue(
+			mock<Folder>({ resourceType: 'workflow' }),
+		);
 		nodeTypes.getByNameAndVersion.mockReset();
 		service = new EnterpriseWorkflowService(
 			mock(), // logger
@@ -876,6 +885,230 @@ describe('EnterpriseWorkflowService', () => {
 
 			expect(result.nodes[0]).toEqual(previous);
 		});
+
+		describe('with readOnlyNodeEdits set to reject', () => {
+			const rejectEdits: CredentialGuardOptions = { readOnlyNodeEdits: 'reject' };
+			const foreignCredential = { httpHeaderAuth: { id: 'foreign-cred', name: 'Theirs' } };
+
+			it('rejects a parameter change on a read-only node', () => {
+				const previousVersion = {
+					nodes: [httpNode(foreignCredential)],
+				} as unknown as IWorkflowBase;
+				const newVersion = {
+					nodes: [httpNode(foreignCredential, { url: 'https://changed.test' })],
+				} as unknown as IWorkflowBase;
+
+				expect(() =>
+					service.validateWorkflowCredentialUsage(
+						newVersion,
+						previousVersion,
+						accessible,
+						[],
+						rejectEdits,
+					),
+				).toThrow(
+					/^You don't have access to the credentials in the 'Call' node\. Ask the owner to share them with you\.$/,
+				);
+			});
+
+			it('rejects a read-only node whose credential is swapped for another the user cannot use', () => {
+				const previousVersion = {
+					nodes: [httpNode(foreignCredential)],
+				} as unknown as IWorkflowBase;
+				const newVersion = {
+					nodes: [httpNode({ httpHeaderAuth: { id: 'other-foreign-cred', name: 'Fake' } })],
+				} as unknown as IWorkflowBase;
+
+				expect(() =>
+					service.validateWorkflowCredentialUsage(
+						newVersion,
+						previousVersion,
+						accessible,
+						[],
+						rejectEdits,
+					),
+				).toThrow(
+					/^You don't have access to the credentials in the 'Call' node\. Ask the owner to share them with you\.$/,
+				);
+			});
+
+			it('rejects a read-only node whose unresolved credential is replaced', () => {
+				const previousVersion = {
+					nodes: [httpNode({ httpHeaderAuth: { id: null, name: 'Old' } })],
+				} as unknown as IWorkflowBase;
+				const newVersion = {
+					nodes: [httpNode({ httpHeaderAuth: { id: null, name: 'New' } })],
+				} as unknown as IWorkflowBase;
+
+				expect(() =>
+					service.validateWorkflowCredentialUsage(
+						newVersion,
+						previousVersion,
+						accessible,
+						[],
+						rejectEdits,
+					),
+				).toThrow(
+					/^You don't have access to the credentials in the 'Call' node\. Ask the owner to share them with you\.$/,
+				);
+			});
+
+			it('keeps a read-only node that is only renamed, moved or disabled', () => {
+				const previousNode = httpNode(foreignCredential);
+				const newNode = {
+					...previousNode,
+					name: 'Renamed',
+					position: [10, 20],
+					disabled: true,
+				};
+
+				const previousVersion = { nodes: [previousNode] } as unknown as IWorkflowBase;
+				const newVersion = { nodes: [newNode] } as unknown as IWorkflowBase;
+
+				const result = service.validateWorkflowCredentialUsage(
+					newVersion,
+					previousVersion,
+					accessible,
+					[],
+					rejectEdits,
+				);
+
+				expect(result.nodes[0]).toEqual(newNode);
+			});
+
+			it('keeps a read-only node whose submitted custom field matches the stored one', () => {
+				const previousNode = { ...httpNode(foreignCredential), customField: 'stored' };
+				const newNode = { ...httpNode(foreignCredential), customField: 'stored' };
+
+				const previousVersion = { nodes: [previousNode] } as unknown as IWorkflowBase;
+				const newVersion = { nodes: [newNode] } as unknown as IWorkflowBase;
+
+				const result = service.validateWorkflowCredentialUsage(
+					newVersion,
+					previousVersion,
+					accessible,
+					[],
+					rejectEdits,
+				);
+
+				expect(result.nodes[0]).toEqual(previousNode);
+			});
+
+			it('rejects a read-only node whose submitted custom field differs from the stored one', () => {
+				const previousNode = { ...httpNode(foreignCredential), customField: 'stored' };
+				const newNode = { ...httpNode(foreignCredential), customField: 'changed' };
+
+				const previousVersion = { nodes: [previousNode] } as unknown as IWorkflowBase;
+				const newVersion = { nodes: [newNode] } as unknown as IWorkflowBase;
+
+				expect(() =>
+					service.validateWorkflowCredentialUsage(
+						newVersion,
+						previousVersion,
+						accessible,
+						[],
+						rejectEdits,
+					),
+				).toThrow(
+					/^You don't have access to the credentials in the 'Call' node\. Ask the owner to share them with you\.$/,
+				);
+			});
+
+			describe('unsentNodeFields', () => {
+				const unsentCustomFieldOptions: CredentialGuardOptions = {
+					readOnlyNodeEdits: 'reject',
+					unsentNodeFields: ['customField'],
+				};
+
+				it('keeps a read-only node whose listed unsent field is missing from the submitted node', () => {
+					const previousNode = { ...httpNode(foreignCredential), customField: 'stored' };
+					const newNode = httpNode(foreignCredential);
+
+					const previousVersion = { nodes: [previousNode] } as unknown as IWorkflowBase;
+					const newVersion = { nodes: [newNode] } as unknown as IWorkflowBase;
+
+					const result = service.validateWorkflowCredentialUsage(
+						newVersion,
+						previousVersion,
+						accessible,
+						[],
+						unsentCustomFieldOptions,
+					);
+
+					expect(result.nodes[0]).toEqual(previousNode);
+				});
+
+				it('rejects the same change when the caller does not list the field', () => {
+					const previousNode = { ...httpNode(foreignCredential), customField: 'stored' };
+					const newNode = httpNode(foreignCredential);
+
+					const previousVersion = { nodes: [previousNode] } as unknown as IWorkflowBase;
+					const newVersion = { nodes: [newNode] } as unknown as IWorkflowBase;
+
+					expect(() =>
+						service.validateWorkflowCredentialUsage(
+							newVersion,
+							previousVersion,
+							accessible,
+							[],
+							rejectEdits,
+						),
+					).toThrow(
+						/^You don't have access to the credentials in the 'Call' node\. Ask the owner to share them with you\.$/,
+					);
+				});
+			});
+
+			describe('with parameter defaults from the node type', () => {
+				beforeEach(() => {
+					nodeTypes.getByNameAndVersion.mockReturnValue({
+						description: {
+							properties: [
+								{ displayName: 'Method', name: 'method', type: 'options', default: 'GET' },
+							],
+						},
+					} as never);
+				});
+
+				it('keeps an unchanged read-only node that omits a default parameter', () => {
+					const previous = httpNode(foreignCredential, { url: '', method: 'GET' });
+					const previousVersion = { nodes: [previous] } as unknown as IWorkflowBase;
+					const newVersion = {
+						nodes: [httpNode(foreignCredential, { url: '' })],
+					} as unknown as IWorkflowBase;
+
+					const result = service.validateWorkflowCredentialUsage(
+						newVersion,
+						previousVersion,
+						accessible,
+						[],
+						rejectEdits,
+					);
+
+					expect(result.nodes[0]).toEqual(previous);
+				});
+			});
+
+			it('still saves a read-only node switched to a credential the user can use', () => {
+				const previous = httpNode(foreignCredential);
+				const previousVersion = { nodes: [previous] } as unknown as IWorkflowBase;
+				const switched = httpNode(
+					{ httpHeaderAuth: { id: 'team-cred', name: 'Team' } },
+					{ url: 'https://changed.test' },
+				);
+				const newVersion = { nodes: [switched] } as unknown as IWorkflowBase;
+
+				const result = service.validateWorkflowCredentialUsage(
+					newVersion,
+					previousVersion,
+					accessible,
+					[],
+					rejectEdits,
+				);
+
+				expect(result.nodes[0]).toEqual(switched);
+			});
+		});
 	});
 
 	describe('validateWorkflowCredentialUsage() - agent node parameters', () => {
@@ -1165,6 +1398,23 @@ describe('EnterpriseWorkflowService', () => {
 			expect(result.nodes[0]).toEqual(httpNode('foreign-cred'));
 			expect(workflowHistoryRepository.findNewestVersionNodes).not.toHaveBeenCalled();
 		});
+
+		it('rejects a changed read-only node with a bad request when readOnlyNodeEdits is set to reject', async () => {
+			workflowRepository.get.mockResolvedValue({
+				nodes: [httpNode('foreign-cred')],
+			} as unknown as WorkflowEntity);
+
+			const saved = service.preventTampering(
+				{ nodes: [httpNode('foreign-cred', 'https://changed.test')] } as IWorkflowBase,
+				'w1',
+				user,
+				[],
+				{ readOnlyNodeEdits: 'reject' },
+			);
+
+			await expect(saved).rejects.toBeInstanceOf(BadRequestError);
+			await expect(saved).rejects.toThrow(/credentials in the 'Call' node/);
+		});
 	});
 
 	describe('attemptWorkflowReactivation', () => {
@@ -1207,6 +1457,17 @@ describe('EnterpriseWorkflowService', () => {
 			expect(result).toEqual({ error: { name: 'Error', message: 'active version missing' } });
 			expect(workflowRepository.updateActiveState).toHaveBeenCalledWith('wf-1', false);
 			expect(service['logger'].error).toHaveBeenCalled();
+		});
+
+		it('should deactivate without a trigger teardown when the credential check refuses', async () => {
+			activeWorkflowManager.add.mockRejectedValue(
+				new TriggerCredentialAccessError(new UserError('Node "Trigger" cannot use the credential')),
+			);
+
+			await service['attemptWorkflowReactivation']('wf-1', 'version-1', 'user-1');
+
+			expect(activeWorkflowManager.remove).not.toHaveBeenCalled();
+			expect(workflowRepository.updateActiveState).toHaveBeenCalledWith('wf-1', false);
 		});
 
 		it('should still deactivate the workflow when the trigger teardown fails', async () => {
@@ -1270,6 +1531,9 @@ describe('EnterpriseWorkflowService', () => {
 		beforeEach(() => {
 			folderRepository.getAllFolderIdsInHierarchy.mockResolvedValue([]);
 			workflowRepository.findInFoldersForTransfer.mockResolvedValue(workflows);
+			workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(
+				new Set(workflows.map((workflow) => workflow.id)),
+			);
 			projectService.getProjectWithScope.mockResolvedValue(destinationProject);
 			activeWorkflowManager.remove.mockResolvedValue(undefined);
 			activeWorkflowManager.add.mockResolvedValue({ webhooks: true, triggersAndPollers: true });
@@ -1283,6 +1547,25 @@ describe('EnterpriseWorkflowService', () => {
 			moveFoldersSpy = vi
 				.spyOn(service as any, 'moveFoldersToDestination')
 				.mockResolvedValue(undefined);
+		});
+
+		it('rejects a transfer when the source folder is not found', async () => {
+			folderRepository.findOneOrFailFolderInProject.mockRejectedValue(
+				new Error('Folder not found'),
+			);
+
+			await expect(
+				service.transferFolder(user, 'proj-source', 'folder-1', 'proj-dest', '0'),
+			).rejects.toThrow('Folder not found in the requested project');
+
+			expect(folderRepository.findOneOrFailFolderInProject).toHaveBeenCalledWith(
+				'folder-1',
+				'proj-source',
+				'workflow',
+			);
+
+			expect(transferOwnershipSpy).not.toHaveBeenCalled();
+			expect(moveFoldersSpy).not.toHaveBeenCalled();
 		});
 
 		it('moves the folder without asking the transfer policy', async () => {
@@ -1351,6 +1634,37 @@ describe('EnterpriseWorkflowService', () => {
 
 			expect(result).toEqual({ unpublishedWorkflows: [] });
 		});
+
+		it('requires workflow:create and folder:create in the destination project', async () => {
+			await service.transferFolder(user, 'proj-source', 'folder-1', 'proj-dest', '0');
+
+			expect(projectService.getProjectWithScope).toHaveBeenCalledWith(user, 'proj-dest', [
+				'workflow:create',
+				'folder:create',
+			]);
+		});
+
+		it('checks workflow:move for every workflow in the folder', async () => {
+			await service.transferFolder(user, 'proj-source', 'folder-1', 'proj-dest', '0');
+
+			expect(workflowFinderService.findWorkflowIdsWithScopeForUser).toHaveBeenCalledWith(
+				['wf-1', 'wf-2'],
+				user,
+				['workflow:move'],
+			);
+		});
+
+		it('performs no mutation when the user cannot move a workflow in the folder', async () => {
+			workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(new Set(['wf-1']));
+
+			await expect(
+				service.transferFolder(user, 'proj-source', 'folder-1', 'proj-dest', '0'),
+			).rejects.toThrow(ForbiddenError);
+
+			expect(activeWorkflowManager.remove).not.toHaveBeenCalled();
+			expect(transferOwnershipSpy).not.toHaveBeenCalled();
+			expect(moveFoldersSpy).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('previewFolderTransfer()', () => {
@@ -1371,11 +1685,16 @@ describe('EnterpriseWorkflowService', () => {
 			await service.previewFolderTransfer(user, 'proj-source', 'folder-1', 'proj-dest');
 
 		beforeEach(() => {
-			folderRepository.findOneOrFailFolderInProject.mockResolvedValue(mock());
+			folderRepository.findOneOrFailFolderInProject.mockResolvedValue(
+				mock<Folder>({ resourceType: 'workflow' }),
+			);
 			folderRepository.getAllFolderIdsInHierarchy.mockResolvedValue([]);
 			projectService.getProjectWithScope.mockResolvedValue(destinationProject);
 			policyEnforcementService.hasChecksFor.mockReturnValue(true);
 			policyEnforcementService.evaluateWorkflowTransfer.mockResolvedValue({ violations: [] });
+			workflowFinderService.findWorkflowIdsWithScopeForUser.mockImplementation(
+				async (workflowIds) => new Set(workflowIds),
+			);
 		});
 
 		describe('when no check is registered', () => {
@@ -1432,6 +1751,33 @@ describe('EnterpriseWorkflowService', () => {
 
 			await expect(preview()).rejects.toThrow(TransferWorkflowError);
 			expect(policyEnforcementService.evaluateWorkflowTransfer).not.toHaveBeenCalled();
+		});
+
+		it('refuses a folder with a workflow the user cannot move', async () => {
+			workflowRepository.findInFoldersForTransfer.mockResolvedValue([
+				makeWorkflow('wf-1'),
+				makeWorkflow('wf-2'),
+			]);
+			workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(new Set(['wf-1']));
+
+			await expect(preview()).rejects.toThrow(ForbiddenError);
+			expect(workflowFinderService.findWorkflowIdsWithScopeForUser).toHaveBeenCalledWith(
+				['wf-1', 'wf-2'],
+				user,
+				['workflow:move'],
+			);
+			expect(policyEnforcementService.evaluateWorkflowTransfer).not.toHaveBeenCalled();
+		});
+
+		it('requires workflow:create and folder:create in the destination project', async () => {
+			workflowRepository.findInFoldersForTransfer.mockResolvedValue([makeWorkflow('wf-1')]);
+
+			await preview();
+
+			expect(projectService.getProjectWithScope).toHaveBeenCalledWith(user, 'proj-dest', [
+				'workflow:create',
+				'folder:create',
+			]);
 		});
 	});
 

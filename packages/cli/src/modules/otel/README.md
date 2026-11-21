@@ -51,7 +51,9 @@ n8n calls can then continue the trace.
 
 There are two ways to add the headers:
 
-- `httpRequest` and `request` add them for you. A node that uses these helpers needs no code.
+- `httpRequest`, `request` and their credential variants (`httpRequestWithAuthentication`,
+  `requestWithAuthentication` and the paginated helper) add them for you. A node that uses these
+  helpers needs no code.
 - A node with its own HTTP transport calls `helpers.getTraceHeaders()` and adds the result to
   its request. The MCP client nodes do this, because the MCP SDK opens its own connection. The
   helper is public, so a community node can use it too.
@@ -194,7 +196,7 @@ replaces them with a JSON object, for example `{"project":"","node":""}`.
 - An empty string removes the prefix for that level. A level that is left out keeps its default.
 - An invalid value logs a warning, and n8n uses the default prefixes.
 - When keys collide, the more specific level wins: node, then workflow, then project.
-- n8n compares the key after it adds the prefix. If that key matches a built-in key in `ATTR`, n8n drops it and keeps the built-in value.
+- n8n compares the key after it adds the prefix. If that key matches a built-in key in `ATTR`, n8n drops it and keeps the built-in value. The reserved keys are `service.name`, `service.version` and each `n8n.*` key in `ATTR`, and n8n logs one warning for each level and dropped key.
 - Node metadata from the Tools Agent (`ai.agent.*`) uses the node prefix too.
 - Set the same value on main, workers and webhook processes.
 
@@ -203,7 +205,7 @@ replaces them with a JSON object, for example `{"project":"","node":""}`.
 An operator can change what n8n sends to the OTel backend with one
 [external hook](https://docs.n8n.io/deploy/host-n8n/configure-n8n/external-hooks) file.
 `OtelService` runs the hook once at startup, on main, worker and webhook processes, and gives
-it an API with two functions. Each mapper gets the attributes of one span and returns a plain
+it an API with four functions. Each mapper gets the attributes of one span and returns a plain
 object. n8n keeps only string values.
 
 - `registerResourceAttributeMapper((spanAttributes) => attributes)`: the result is merged into
@@ -212,6 +214,22 @@ object. n8n keeps only string values.
 - `registerOutboundBaggageMapper((spanAttributes) => entries)`: the result is sent as a
   `baggage` header next to `traceparent` on outbound requests. Without a mapper, n8n sends no
   `baggage` header.
+- `dangerouslyOverrideResourceAttributes((spanAttributes) => attributes)`: the result wins over
+  n8n's own resource attributes, for example `service.name`.
+- `dangerouslyOverrideSpanAttributes((spanAttributes) => attributes)`: the result wins over the
+  attributes of the exported span, for example `gen_ai.agent.id`.
+
+The two `dangerously` functions go against the rule that n8n's own values win. n8n reports the
+n8n instance as the OpenTelemetry resource, and the OpenTelemetry Collector is the correct place
+to rename or regroup telemetry. Use these functions only when the operator cannot change the
+collector. n8n does not check the result. The operator who writes the hook owns it.
+
+- They change the export only. The mappers and the outbound baggage still get the span
+  attributes that n8n set.
+- n8n ignores a key that starts with `n8n.`, because that prefix is reserved.
+- n8n logs one warning for each key that an override sets or that n8n ignores.
+- A span override runs for each exported span, also agent spans. The mapper must return `{}`
+  for the spans that it does not change.
 
 A failing `otel.configure` callback at startup logs one warning, and n8n starts without the
 mappers. A mapper that throws logs one warning, then n8n ignores it and keeps the span as it is.
@@ -230,6 +248,10 @@ module.exports = {
 			async (api) => {
 				api.registerResourceAttributeMapper(projectIdFrom);
 				api.registerOutboundBaggageMapper(projectIdFrom);
+				api.dangerouslyOverrideResourceAttributes((spanAttributes) => {
+					const team = spanAttributes['n8n.project.custom.team'];
+					return typeof team === 'string' ? { 'service.name': `n8n-${team}` } : {};
+				});
 			},
 		],
 	},
@@ -278,7 +300,7 @@ graph TD
         PUB(("Pub/Sub
         reload-otel-config"))
         REQ["Request helpers
-        httpRequest, request"]
+        httpRequest, request, *WithAuthentication"]
         MCP["Nodes with their own transport
         MCP client nodes, helpers.getTraceHeaders()"]
         AGT["AgentRunTracingService

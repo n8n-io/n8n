@@ -1,0 +1,15 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"@odata.id": {
+			"type": "string"
+		},
+		"@odata.type": {
+			"type": "string"
+		},
+		"id": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

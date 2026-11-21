@@ -1,0 +1,8 @@
+{
+	"properties": {
+		"table": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

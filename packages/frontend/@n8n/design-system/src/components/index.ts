@@ -1,3 +1,9 @@
+export { default as N8nAttachment } from './N8nAttachments/Attachment/Attachment.vue';
+export { default as N8nAttachmentGroup } from './N8nAttachments/AttachmentGroup/AttachmentGroup.vue';
+export type {
+	AttachmentProps,
+	AttachmentEmits,
+} from './N8nAttachments/Attachment/Attachment.types';
 export { default as N8nAskAssistantButton } from './AskAssistantButton';
 export {
 	default as N8nAskAssistantChat,
@@ -135,6 +141,8 @@ export { default as N8nSettingsPageHeader } from './N8nSettingsPageHeader';
 export type { SettingsPageHeaderProps } from './N8nSettingsPageHeader';
 export { default as N8nSettingsRow } from './N8nSettingsRow';
 export type { SettingsRowProps, SettingsRowLayout } from './N8nSettingsRow';
+export { default as N8nSettingsEnableRow } from './N8nSettingsEnableRow';
+export type { SettingsEnableRowEmits, SettingsEnableRowProps } from './N8nSettingsEnableRow';
 export { default as N8nSettingsRowButton } from './N8nSettingsRowButton';
 export type { SettingsRowButtonProps } from './N8nSettingsRowButton';
 export { default as N8nSettingsRowConfigure } from './N8nSettingsRowConfigure';
@@ -157,6 +165,13 @@ export {
 	type ChatInputAutoFocusTarget,
 } from './N8nChatInput';
 export { default as N8nChatMessage } from './N8nChatMessage';
+export { default as N8nChatScrollArea } from './N8nChatScrollArea';
+export type {
+	ChatScrollAreaEmits,
+	ChatScrollAreaExposed,
+	ChatScrollAreaProps,
+	ChatScrollAreaSlots,
+} from './N8nChatScrollArea/ChatScrollArea.types';
 export { default as N8nChatActions } from './N8nChatActions/ChatActions.vue';
 export type {
 	ChatActionCopyResult,
@@ -172,6 +187,8 @@ export type { SegmentControlProps, SegmentControlSize, SegmentOption } from './N
 export { default as N8nRoute } from './N8nRoute';
 export { default as N8nRecycleScroller } from './N8nRecycleScroller';
 export { default as N8nResizeWrapper } from './N8nResizeWrapper';
+export { default as N8nSidebar } from './N8nSidebar';
+export type { SidebarProps, SidebarSide } from './N8nSidebar';
 export { default as N8nSelect } from './N8nSelect';
 export { default as N8nSpinner } from './N8nSpinner';
 export { default as N8nStatusDot } from './N8nStatusDot';
@@ -183,7 +200,20 @@ export { default as N8nSuggestedActions } from './N8nSuggestedActions';
 export { default as N8nSwitch } from './N8nSwitch';
 export { default as N8nSlider } from './N8nSlider';
 export type * from './N8nSlider/Slider.types';
-export { default as N8nTabs } from './N8nTabs';
+export {
+	N8nTabs,
+	N8nTabsContent,
+	N8nTabsList,
+	N8nTabsRoot,
+	N8nTabsTrigger,
+} from './N8nTabs';
+export type {
+	N8nTabsContentProps,
+	N8nTabsListProps,
+	N8nTabsRootEmits,
+	N8nTabsRootProps,
+	N8nTabsTriggerProps,
+} from './N8nTabs/Tabs.types';
 export { default as N8nTag } from './N8nTag';
 export { default as N8nTags } from './N8nTags';
 export { default as N8nText } from './N8nText';
@@ -221,6 +251,7 @@ export * from './DateRangePicker';
 export { default as N8nCommandBar } from './N8nCommandBar';
 export type {
 	CommandBarItem,
+	CommandBarItemComponent,
 	CommandBarItemIcon,
 	CommandBarSection,
 	CommandBarSelectOptions,
@@ -228,4 +259,6 @@ export type {
 } from './N8nCommandBar/types';
 export * from './N8nDialog';
 export * from './N8nAlertDialog';
+export { FocusScope } from './FocusScope';
+export type { FocusScopeEmits, FocusScopeProps } from './FocusScope';
 export { default as N8nVisuallyHidden } from './N8nVisuallyHidden';

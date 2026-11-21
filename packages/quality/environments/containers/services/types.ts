@@ -18,6 +18,7 @@ export const SERVICE_NAMES = [
 	'tracing',
 	'proxy',
 	'taskRunner',
+	'engineTaskRunner',
 	'loadBalancer',
 	'cloudflared',
 	'kafka',
@@ -30,6 +31,7 @@ export const SERVICE_NAMES = [
 	'cadvisor',
 	'sandbox',
 	'npmRegistry',
+	'litellm',
 ] as const;
 
 export type ServiceName = (typeof SERVICE_NAMES)[number];
@@ -89,6 +91,10 @@ export interface StackConfig {
 	 */
 	engine?: EngineMode;
 	env?: Record<string, string>;
+	/** Remove these keys after the stack merges the n8n environment. */
+	unsetEnv?: string[];
+	/** Copy these files into each main, worker, and webhook container. */
+	files?: FileToMount[];
 	projectName?: string;
 	resourceQuota?: { memory?: number; cpu?: number };
 	workerResourceQuota?: { memory?: number; cpu?: number };

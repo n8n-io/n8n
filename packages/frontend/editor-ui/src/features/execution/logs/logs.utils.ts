@@ -240,6 +240,7 @@ function snapshotFromRunData(runData: ITaskData | undefined): NodeExecutionSnaps
 		// Crashed nodes carry no error object but must not read as success (mirrors canvas)
 		hasExecutionError: status === 'error' || status === 'crashed' || Boolean(runData?.error),
 		hasValidationError: false,
+		needsCredentialSetup: false,
 		status,
 		dirty: false,
 		iterations: 0,

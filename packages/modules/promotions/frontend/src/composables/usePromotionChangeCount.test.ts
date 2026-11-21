@@ -7,7 +7,7 @@ import * as api from '../promotions.api';
 import { resource } from '../__tests__/preview.fixtures';
 
 vi.mock('@n8n/stores/useRootStore', () => ({
-	useRootStore: () => ({ restApiContext: {} }),
+	useRootStore: () => ({ publicApiContext: {} }),
 }));
 
 vi.mock('../promotions.api');
@@ -20,6 +20,7 @@ type Pending = {
 const preview = (count: number): PromotionPreview => ({
 	commitSha: 'a'.repeat(40),
 	source: { environmentId: 'config-1', branchName: 'main' },
+	environment: { name: 'Production', providerType: 'git' },
 	resources: Array.from({ length: count }, (_, index) =>
 		resource({
 			key: `workflow:workflow-${index}`,
@@ -28,16 +29,7 @@ const preview = (count: number): PromotionPreview => ({
 		}),
 	),
 	dependencies: [],
-	changes: Array.from({ length: count }, (_, index) => ({
-		id: `workflow-${index}`,
-		name: `Workflow ${index}`,
-		type: 'workflow',
-		status: 'new',
-		version: null,
-		updatedAt: null,
-		updatedBy: null,
-		dependencyCount: 0,
-	})),
+	revision: 'b'.repeat(64),
 });
 
 describe('usePromotionChangeCount blocker', () => {
@@ -80,7 +72,7 @@ describe('usePromotionChangeCount', () => {
 	});
 
 	it.each([
-		{ direction: 'promote' as const, expected: 1 },
+		{ direction: 'promote' as const, expected: 2 },
 		{ direction: 'apply' as const, expected: 2 },
 	])('should count changes included by $direction', async ({ direction, expected }) => {
 		const { changeCount, loading } = usePromotionChangeCount(
@@ -90,7 +82,9 @@ describe('usePromotionChangeCount', () => {
 		);
 		expect(loading.value).toBe(true);
 		const result = preview(1);
-		result.resources.push(resource({ key: 'folder:empty', name: 'Empty folder', change: 'added' }));
+		result.resources.push(
+			resource({ key: 'folder:empty', name: 'Empty folder', change: 'added', selectable: true }),
+		);
 
 		pending[0].resolve(result);
 		await waitAllPromises();

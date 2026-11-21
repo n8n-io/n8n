@@ -132,7 +132,10 @@ describe('MainSidebarSourceControl', () => {
 
 			const pullButton = queryByTestId('main-sidebar-source-control-pull');
 			expect(pullButton).toBeInTheDocument();
-			expect(pullButton).toBeDisabled();
+			expect(pullButton).toHaveAttribute('aria-disabled', 'true');
+			expect(pullButton).toHaveAccessibleDescription(
+				'Only the instance owner or instance admins can pull changes',
+			);
 		});
 
 		it('should disable push button if branch is read-only', async () => {
@@ -151,7 +154,10 @@ describe('MainSidebarSourceControl', () => {
 				props: { isCollapsed: false },
 			});
 			const pushButton = getByTestId('main-sidebar-source-control-push');
-			expect(pushButton).toBeDisabled();
+			expect(pushButton).toHaveAttribute('aria-disabled', 'true');
+			expect(pushButton).toHaveAccessibleDescription(
+				"You can't push changes from a protected instance",
+			);
 		});
 	});
 
@@ -201,7 +207,7 @@ describe('MainSidebarSourceControl', () => {
 				props: { isCollapsed: false },
 			});
 			const pushButton = getByTestId('main-sidebar-source-control-push');
-			expect(pushButton).toBeDisabled();
+			expect(pushButton).toHaveAttribute('aria-disabled', 'true');
 		});
 
 		it('should navigate to pull route when pull button is clicked', async () => {

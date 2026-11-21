@@ -18,12 +18,12 @@ describe('normalizePromptCachingForModelChange', () => {
 		expect(result.config?.promptCaching).toEqual({ enabled: true });
 	});
 
-	it('force-enables even when the prior config had enabled: false (mandatory, cannot be disabled)', () => {
+	it('keeps prompt caching off when the prior config had enabled: false', () => {
 		const result = normalizePromptCachingForModelChange(
 			{ promptCaching: { enabled: false } },
 			true,
 		);
-		expect(result.config?.promptCaching).toEqual({ enabled: true });
+		expect(result.config?.promptCaching).toEqual({ enabled: false });
 	});
 
 	it('strips promptCaching entirely when switching to an unsupported provider', () => {
@@ -68,12 +68,12 @@ describe('normalizePromptCachingForModelChange', () => {
 		expect(result.config?.promptCaching).toEqual({ enabled: true, anthropic: { ttl: '5m' } });
 	});
 
-	it('force-enables and preserves ttl even when the prior Anthropic config had enabled: false', () => {
+	it('keeps prompt caching off and preserves ttl when the prior Anthropic config had enabled: false', () => {
 		const result = normalizePromptCachingForModelChange(
 			{ promptCaching: { enabled: false, anthropic: { ttl: '1h' } } },
 			'ttl',
 		);
-		expect(result.config?.promptCaching).toEqual({ enabled: true, anthropic: { ttl: '1h' } });
+		expect(result.config?.promptCaching).toEqual({ enabled: false, anthropic: { ttl: '1h' } });
 	});
 
 	it('drops a previously-set Anthropic ttl when switching away to a non-ttl supported provider (e.g. OpenAI)', () => {

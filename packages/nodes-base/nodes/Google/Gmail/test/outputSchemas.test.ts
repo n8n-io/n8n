@@ -18,6 +18,14 @@ describe.each(['v2.1.0', 'v2.2.0'])('Gmail message output schemas %s', (version)
 			expect(properties).not.toHaveProperty('from');
 		});
 
+		it('omits parsed headers and body fields when Simplify is on', () => {
+			const { properties } = readSchema(version, `${operation}.json`);
+
+			for (const key of ['headers', 'text', 'html', 'textAsHtml']) {
+				expect(properties).not.toHaveProperty(key);
+			}
+		});
+
 		it('describes the parsed email when Simplify is off', () => {
 			const { properties } = readSchema(version, `${operation}.simple-false.json`);
 

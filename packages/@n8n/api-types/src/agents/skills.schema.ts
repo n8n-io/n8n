@@ -9,7 +9,7 @@ import {
 } from './agent-skill.schema';
 import type { SkillSyncedFrom, SkillSyncState } from '../skills/skill-sources.schema';
 import type { AgentSkill } from './types';
-import type { ProjectType } from '../schemas/project.schema';
+import type { ProjectIcon, ProjectType } from '../schemas/project.schema';
 import { paginationSchema } from '../dto/pagination/pagination.dto';
 import { Z } from '../zod-class';
 
@@ -60,6 +60,8 @@ export type SkillListItem = {
 	projectName: string | null;
 	/** Lets the editor name another member's personal project, which it does not list. */
 	projectType: ProjectType | null;
+	/** The icon of a project skill's project, for the scope badge. */
+	projectIcon?: ProjectIcon | null;
 	source: SkillSource;
 	/** Null when the creator is unknown or the user no longer exists. */
 	createdBy: SkillUserDto | null;
@@ -75,15 +77,42 @@ export type SkillListItem = {
 	canStopSyncing: boolean;
 	/** The sync state of a synced skill, for its badge. Null for a skill that is not synced. */
 	syncState: SkillSyncState | null;
-	/** Whether the skill is synced and the user may check its source for updates now. */
-	canCheckForUpdates: boolean;
+	/** The source that syncs the skill. Null for a skill that no source syncs. */
+	sourceId: string | null;
 	createdAt: string;
 	updatedAt: string;
 };
 
+/** A folded or empty source with no skill rows on this page. */
+export type SkillListCollapsedSource = {
+	sourceId: string;
+	/** Where its row goes in `data`: before the skill at this index, or last for `data.length`. */
+	index: number;
+	/** The skills of the source that match the filters, which its row stands for. */
+	skillCount: number;
+};
+
+/** The matching skills assigned to a source on this page, including folded skills. */
+export type SkillListSourceRange = {
+	sourceId: string;
+	/** One-based positions within the source. Both ends are included. */
+	start: number;
+	end: number;
+	/** All skills in this source that match the filters. */
+	total: number;
+};
+
 export type SkillListResponse = {
+	/** All matching skills, including the skills of folded sources. Headers do not count. */
 	count: number;
 	data: SkillListItem[];
+	/** Folded and empty sources on this page. Only with `groupBy: 'source'`. */
+	collapsedSources?: SkillListCollapsedSource[];
+	/** Source ranges on this page. Empty sources have no range. Only with `groupBy: 'source'`. */
+	sourceRanges?: SkillListSourceRange[];
+	/** The selected page and page count. Only with `groupBy: 'source'`. */
+	page?: number;
+	pageCount?: number;
 };
 
 /** The agents that use a skill, limited to the agents the caller may read. */
@@ -159,6 +188,13 @@ export const SKILLS_SORT_OPTIONS = [
 
 export type SkillSortOption = (typeof SKILLS_SORT_OPTIONS)[number];
 
+/** A comma-separated list of source ids in a query string. */
+const sourceIdList = z
+	.string()
+	.optional()
+	.transform((value) => (value ? value.split(',') : undefined))
+	.pipe(z.array(z.string().uuid()).optional());
+
 export class ListSkillsQueryDto extends Z.class({
 	skip: paginationSchema.skip,
 	take: optionalTake,
@@ -172,6 +208,8 @@ export class ListSkillsQueryDto extends Z.class({
 	agentId: z.string().max(36).optional(),
 	/** The id of the user who created the skill. User ids are UUIDs. */
 	createdById: z.string().uuid().optional(),
+	/** Comma-separated ids of connected sources. Match any selected source. */
+	sourceIds: sourceIdList,
 	/**
 	 * The id of an agent: the skills it may attach, which are its project's skills and
 	 * instance skills. Not combined with `scope`, `projectId` or `agentId`.
@@ -182,6 +220,20 @@ export class ListSkillsQueryDto extends Z.class({
 			message: `sortBy must be one of: ${SKILLS_SORT_OPTIONS.join(', ')}`,
 		})
 		.optional(),
+	/**
+	 * `source` puts the sources first, by repository, each one a group of its synced skills, and
+	 * then the skills that no source syncs. `sortBy` sorts the skills in each group.
+	 */
+	groupBy: z.enum(['source']).optional(),
+	/** Zero-based page. `take` limits skills; source headers do not count. */
+	page: z.coerce.number().int().nonnegative().optional(),
+	/** Select the page of this visible source, for navigation from the connect dialog. */
+	focusSourceId: z.string().uuid().optional(),
+	/**
+	 * Comma-separated ids of folded sources. Hide their skills but keep their pagination slots.
+	 * Only with `groupBy: 'source'`.
+	 */
+	collapsedSourceIds: sourceIdList,
 }) {}
 
 export const SKILL_AGENTS_MAX_PAGE_SIZE = 50;

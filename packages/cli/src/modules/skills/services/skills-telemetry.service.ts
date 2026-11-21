@@ -1,9 +1,9 @@
+import type { SkillScanFinding } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { TelemetryProxy } from '@n8n/backend-services';
 import { Service } from '@n8n/di';
 import { TELEMETRY_EVENT, type InferTelemetryProps } from '@n8n/telemetry';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-
-import { Telemetry } from '@/telemetry';
 
 import type { Skill, SkillSource } from '../database/entities/skill.entity';
 import { SkillRepository } from '../database/repositories/skill.repository';
@@ -33,11 +33,29 @@ type ImportedFromSourceProps = InferTelemetryProps<
 /** A Skill Sync reason code, or `unexpected` for a failure with no known reason. */
 export type SkillSourceTelemetryReason = NonNullable<ConnectedSourceProps['reason']>;
 
+/** The codes that a flagged-skill event sends for the findings of one check. */
+export function flaggedCodes(
+	findings: SkillScanFinding[],
+): Pick<FlaggedSkillProps, 'rule_codes' | 'link_reason_codes'> {
+	const flagged = findings.filter(({ severity }) => severity !== 'info');
+	const linkReasons = new Set(
+		flagged.flatMap(({ linkReason }) => (linkReason ? [linkReason] : [])),
+	);
+	return {
+		rule_codes: [...new Set(flagged.map(({ rule }) => rule))],
+		...(linkReasons.size ? { link_reason_codes: [...linkReasons] } : {}),
+	};
+}
+
 type FlaggedSkillProps = InferTelemetryProps<
 	typeof TELEMETRY_EVENT.CONTEXT.SKILL_SOURCE_CHECK_FLAGGED_SKILL
 >;
 
 type StoppedSyncProps = InferTelemetryProps<typeof TELEMETRY_EVENT.CONTEXT.USER_STOPPED_SKILL_SYNC>;
+
+type DeletedSourceProps = InferTelemetryProps<
+	typeof TELEMETRY_EVENT.CONTEXT.USER_DELETED_SKILL_SOURCE
+>;
 
 type UpdateFoundProps = InferTelemetryProps<
 	typeof TELEMETRY_EVENT.CONTEXT.SKILL_SOURCE_UPDATE_FOUND
@@ -56,13 +74,13 @@ type SkillTelemetryTarget = Pick<Skill, 'id' | 'projectId'>;
 export type SkillTelemetryRef = SkillTelemetryTarget | string;
 
 /**
- * Skills telemetry. Callers emit only once the write commits, and only while the agents
- * module is on (`SkillsGate.isEnabled`). An emit never fails the write: an error is logged and dropped.
+ * Skills telemetry. Callers emit only once the write commits, and only while skills
+ * are on (`SkillsGate.isEnabled`). An emit never fails the write: an error is logged and dropped.
  */
 @Service()
 export class SkillsTelemetry {
 	constructor(
-		private readonly telemetry: Telemetry,
+		private readonly telemetry: TelemetryProxy,
 		private readonly skillRepository: SkillRepository,
 		private readonly logger: Logger,
 	) {}
@@ -127,6 +145,21 @@ export class SkillsTelemetry {
 		});
 	}
 
+	async changedSourceScope(
+		props: Omit<
+			InferTelemetryProps<typeof TELEMETRY_EVENT.CONTEXT.USER_CHANGED_SKILL_SOURCE_SCOPE>,
+			'user_id'
+		>,
+		userId: string,
+	) {
+		await this.safely(async () => {
+			this.telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_CHANGED_SKILL_SOURCE_SCOPE, {
+				user_id: userId,
+				...props,
+			});
+		});
+	}
+
 	/** One connect request of Skill Sync, also a failed one. */
 	async connectedSource(props: Omit<ConnectedSourceProps, 'user_id'>, userId: string) {
 		await this.safely(async () => {
@@ -157,6 +190,16 @@ export class SkillsTelemetry {
 		});
 	}
 
+	/** One source delete, after the transaction commits or fails. */
+	async deletedSource(props: Omit<DeletedSourceProps, 'user_id'>, userId: string) {
+		await this.safely(async () => {
+			this.telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_DELETED_SKILL_SOURCE, {
+				user_id: userId,
+				...props,
+			});
+		});
+	}
+
 	/** One synced skill that became a normal skill. */
 	async stoppedSync(props: Omit<StoppedSyncProps, 'user_id'>, userId: string) {
 		await this.safely(async () => {
@@ -181,6 +224,44 @@ export class SkillsTelemetry {
 				user_id: userId,
 				...props,
 			});
+		});
+	}
+
+	async reviewedUpdate(
+		props: Omit<
+			InferTelemetryProps<typeof TELEMETRY_EVENT.CONTEXT.USER_REVIEWED_SKILL_UPDATE>,
+			'user_id'
+		>,
+		userId: string,
+	) {
+		await this.safely(async () => {
+			this.telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_REVIEWED_SKILL_UPDATE, {
+				user_id: userId,
+				...props,
+			});
+		});
+	}
+
+	async updatedSourceCredential(
+		props: Omit<
+			InferTelemetryProps<typeof TELEMETRY_EVENT.CONTEXT.USER_UPDATED_SKILL_SOURCE_CREDENTIAL>,
+			'user_id'
+		>,
+		userId: string,
+	) {
+		await this.safely(async () => {
+			this.telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_UPDATED_SKILL_SOURCE_CREDENTIAL, {
+				user_id: userId,
+				...props,
+			});
+		});
+	}
+
+	async sourceHealthChanged(
+		props: InferTelemetryProps<typeof TELEMETRY_EVENT.CONTEXT.SKILL_SOURCE_HEALTH_CHANGED>,
+	) {
+		await this.safely(async () => {
+			this.telemetry.track(TELEMETRY_EVENT.CONTEXT.SKILL_SOURCE_HEALTH_CHANGED, props);
 		});
 	}
 

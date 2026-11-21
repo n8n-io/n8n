@@ -1,5 +1,6 @@
 import type { OperationContext } from '@n8n/db';
 import { Logger } from '@n8n/backend-common';
+import type { UserDeletionContext } from '@n8n/backend-services';
 import { Service } from '@n8n/di';
 import { sleep } from '@n8n/utils/sleep';
 import { OperationalError } from '@n8n/errors';
@@ -7,6 +8,7 @@ import { OperationalError } from '@n8n/errors';
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
 import { AgentExecutionService } from './agent-execution.service';
 import { AgentKnowledgeService } from './agent-knowledge.service';
+import { AgentServiceAccountService } from './agent-service-account.service';
 import { AgentTestChatService } from './agent-test-chat.service';
 import { AgentProjectDeletionRepository } from './repositories/agent-project-deletion.repository';
 import { AgentExecutionRepository } from './repositories/agent-execution.repository';
@@ -26,9 +28,15 @@ export class AgentProjectCleanupService {
 		private readonly deletion: AgentProjectDeletionRepository,
 		private readonly sessions: AgentSessionStopService,
 		private readonly executions: AgentExecutionRepository,
+		private readonly agentServiceAccount: AgentServiceAccountService,
 	) {}
 
-	async cleanupProject(projectId: string): Promise<void> {
+	/**
+	 * `deletion.actor` caused the project deletion. With `deletion.transferId`,
+	 * the work of each agent service account moves to that project. Without it,
+	 * that work is deleted with the account.
+	 */
+	async cleanupProject(projectId: string, deletion: UserDeletionContext): Promise<void> {
 		await this.deletion.beginDeletion(projectId);
 		await this.sessions.stopProjectSessions(projectId);
 		const deadline = Date.now() + 60_000;
@@ -58,6 +66,18 @@ export class AgentProjectCleanupService {
 
 			await agentKnowledgeService.destroyKnowledgeSandbox(projectId, agent.id);
 			await agentTestChatService.clearAllTestChatMessages(agent.id);
+			await this.agentServiceAccount.deleteForAgent(
+				agent,
+				deletion.actor,
+				deletion.transferId,
+				deletion.ctx ?? {},
+				async () => {
+					await agentExecutionService.deleteExecutionLogsForAgent(agent.id);
+					await agentExecutionService.deleteMemoryThreadsForAgent(agent.id);
+					await agentChatAttachmentService.deleteByAgent(agent.id);
+				},
+				{ source: 'project-deletion' },
+			);
 		}
 		await agentExecutionService.deleteExecutionLogsForProject(projectId);
 		await agentExecutionService.deleteMemoryThreadsForProject(projectId);

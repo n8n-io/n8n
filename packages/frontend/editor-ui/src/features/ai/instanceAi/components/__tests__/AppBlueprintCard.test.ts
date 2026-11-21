@@ -88,6 +88,51 @@ describe('AppBlueprintCard', () => {
 		expect(getByTestId('instance-ai-app-blueprint-start')).toBeDisabled();
 	});
 
+	it('shows a taken namespace and blocks approval until the user changes it', async () => {
+		const { emitted, getByTestId, queryByTestId } = renderComponent({
+			props: { blueprint, errors: { namespace: 'taken' } },
+		});
+		const namespace = getByTestId('instance-ai-app-blueprint-namespace');
+
+		expect(getByTestId('instance-ai-app-blueprint-namespace-error')).toHaveTextContent(
+			'Another app already uses this namespace. Choose a different one.',
+		);
+		expect(namespace).toHaveAttribute('aria-invalid', 'true');
+		expect(getByTestId('instance-ai-app-blueprint-start')).toBeDisabled();
+
+		await userEvent.clear(namespace);
+		await userEvent.type(namespace, 'weekly-planner-2');
+
+		expect(queryByTestId('instance-ai-app-blueprint-namespace-error')).not.toBeInTheDocument();
+		await userEvent.click(getByTestId('instance-ai-app-blueprint-start'));
+		expect(emitted().submit?.[0]).toEqual([
+			{
+				kind: 'appBlueprint',
+				approved: true,
+				blueprint: { ...blueprint, namespace: 'weekly-planner-2' },
+			},
+		]);
+	});
+
+	it('shows no namespace error after resolution', () => {
+		const { getByTestId, queryByTestId } = renderComponent({
+			props: { blueprint, errors: { namespace: 'taken' }, readOnly: true },
+		});
+
+		expect(queryByTestId('instance-ai-app-blueprint-namespace-error')).not.toBeInTheDocument();
+		expect(getByTestId('instance-ai-app-blueprint-namespace')).not.toHaveAttribute('aria-invalid');
+	});
+
+	it('shows that n8n could not create the app', () => {
+		const { getByTestId } = renderComponent({
+			props: { blueprint, readOnly: true, failed: true },
+		});
+
+		expect(getByTestId('instance-ai-app-blueprint-failed')).toHaveTextContent(
+			"Couldn't create this app.",
+		);
+	});
+
 	it('shows the description as read-only text', () => {
 		const { getByTestId } = renderComponent({ props: { blueprint } });
 

@@ -33,14 +33,17 @@ const check = (fields: Partial<ApplyCheckResult> = {}): ApplyCheckResult => ({
 });
 
 describe('promotion operation', () => {
-	it('should send only the selected workflows and leave their shared dependencies to the server', () => {
-		const graph = buildSelectionGraph(billingPreview(), 'promote');
-		const { reminders, reconciliation } = billingResources;
+	it('should send the selected workflows and folders, and leave the project and their shared dependencies to the server', () => {
+		const graph = buildSelectionGraph(billingPreview(), 'apply');
+		const { reminders, reconciliation, payments, project } = billingResources;
 
-		// Both workflows include the "Invoices" table, but the request names only the workflows.
-		expect(toOperationRequest(graph, new Set([reminders.key, reconciliation.key]))).toEqual({
-			workflowIds: ['w1', 'w2'],
-		});
+		// Both workflows include the "Invoices" table, but the request does not name it.
+		expect(
+			toOperationRequest(
+				graph,
+				new Set([reminders.key, reconciliation.key, payments.key, project.key]),
+			),
+		).toEqual({ workflowIds: ['w1', 'w2'], folderIds: ['f1'] });
 	});
 
 	it('should block only the workflows that need a missing binding or moved to another project', () => {

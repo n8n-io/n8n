@@ -48,7 +48,7 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 	override needsExpressionEngine = true;
 
-	override needsTaskRunner = true;
+	override needsCodeExecution = true;
 
 	override seedsInstanceIdentity = true;
 
@@ -167,10 +167,11 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 	}
 
 	async initEventBus() {
+		// Before initialize(), which runs crash recovery.
+		Container.get(LogStreamingEventRelay).init();
 		await Container.get(MessageEventBus).initialize({
 			workerId: this.instanceSettings.hostId,
 		});
-		Container.get(LogStreamingEventRelay).init();
 	}
 
 	/**

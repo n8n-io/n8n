@@ -1,10 +1,15 @@
 import { z } from 'zod';
 
 import { Tool } from '../../sdk/tool';
-import type { AgentDbMessage, BuiltTool } from '../../types';
-import { DeferredToolManager, LOAD_TOOL_TOOL_NAME } from '../tools/deferred-tool-manager';
+import type { BuiltTool, LegacyCallConverter } from '../../types';
 import { fixToolCall } from '../tools/fix-tool-call';
-import { buildToolMap, resolveToolForCall, toAiSdkTools } from '../tools/tool-adapter';
+import {
+	buildToolMap,
+	resolveToolCallTarget,
+	resolveToolForCall,
+	toAiSdkTools,
+} from '../tools/tool-adapter';
+import { ToolCatalog } from '../tools/tool-catalog';
 
 function makeTool(name: string, legacyNames?: string[]): BuiltTool {
 	const builder = new Tool(name)
@@ -22,23 +27,6 @@ function makeActionTool(name: string, legacyName: string, ...actions: string[]):
 		.legacyActions(legacyName, ...actions)
 		.handler(async () => await Promise.resolve({ ok: true }))
 		.build();
-}
-
-function loadToolMessage(toolName: string): AgentDbMessage {
-	return {
-		id: 'm-1',
-		role: 'assistant',
-		content: [
-			{
-				type: 'tool-call',
-				toolCallId: 'tc-1',
-				toolName: LOAD_TOOL_TOOL_NAME,
-				input: { toolName },
-				state: 'resolved',
-				output: { status: 'loaded', toolName },
-			},
-		],
-	} as unknown as AgentDbMessage;
 }
 
 describe('tool legacy names', () => {
@@ -69,38 +57,28 @@ describe('tool legacy names', () => {
 		expect(Object.keys(aiTools)).toEqual(['new_name']);
 	});
 
-	it('loads a deferred tool requested by its legacy name', () => {
-		const manager = new DeferredToolManager([makeTool('new_name', ['old-name'])]);
-
-		const result = manager.load('old-name');
-
-		expect(result.status).toBe('loaded');
-		expect(result.toolName).toBe('new_name');
-		expect(manager.getLoadedTools().map((t) => t.name)).toEqual(['new_name']);
-	});
-
-	it('resolves a legacy name in getTool', () => {
+	it('resolves a legacy name in the tool catalog', () => {
 		const tool = makeTool('new_name', ['old-name']);
-		const manager = new DeferredToolManager([tool]);
+		const catalog = new ToolCatalog([tool]);
 
-		expect(manager.getTool('old-name')).toBe(tool);
+		expect(catalog.getTool('old-name')).toBe(tool);
 	});
 
 	it('gives a shared legacy name to the first tool, as the tool map does', () => {
 		const first = makeTool('first', ['shared-old']);
 		const second = makeTool('second', ['shared-old']);
-		const manager = new DeferredToolManager([first, second]);
+		const catalog = new ToolCatalog([first, second]);
 
-		expect(manager.load('shared-old').toolName).toBe('first');
+		expect(catalog.getTool('shared-old')).toBe(first);
 		expect(buildToolMap([first, second]).get('shared-old')).toBe(first);
 	});
 
-	it('hydrates a deferred tool loaded under its legacy name', () => {
-		const manager = new DeferredToolManager([makeTool('new_name', ['old-name'])]);
+	it('routes call_tool with a legacy name to the current tool', () => {
+		const tool = makeTool('new_name', ['old-name']);
+		const catalog = new ToolCatalog([tool]);
+		const map = buildToolMap(catalog.getControllerTools());
 
-		manager.hydrateLoadedToolsFromMessages([loadToolMessage('old-name')]);
-
-		expect(manager.getLoadedTools().map((t) => t.name)).toEqual(['new_name']);
+		expect(resolveToolForCall(map, 'call_tool', { tool: 'old-name', arguments: {} })).toBe(tool);
 	});
 
 	describe('legacy actions', () => {
@@ -134,7 +112,7 @@ describe('tool legacy names', () => {
 		});
 
 		it('resolves a deferred tool by the call action in getTool', () => {
-			const manager = new DeferredToolManager([publish, remove]);
+			const manager = new ToolCatalog([publish, remove]);
 
 			expect(manager.getTool('items', { action: 'delete' })).toBe(remove);
 			expect(manager.getTool('items', '{"action":"publish","id":"1"}')).toBe(publish);
@@ -143,7 +121,7 @@ describe('tool legacy names', () => {
 
 		it('lets a registered deferred tool with the former name win over legacy actions', () => {
 			const items = makeTool('items');
-			const manager = new DeferredToolManager([publish, items]);
+			const manager = new ToolCatalog([publish, items]);
 
 			expect(manager.getTool('items', { action: 'publish' })).toBe(items);
 		});
@@ -167,5 +145,73 @@ describe('tool legacy names', () => {
 				expect.objectContaining({ toolName: 'delete_item', input: '{"id":"1"}' }),
 			);
 		});
+	});
+
+	describe('a batch tool that replaces the write tools of a split tool', () => {
+		// Shaped like the data table tools: one tool for each read action, and one batch
+		// tool that took over the per-action write tools and the write actions of `items`.
+		const formerNames = ['items', 'items-old'];
+		const writeActions = { create: 'create_item', delete: 'delete_item' };
+		const readTools = ['list', 'get'].map((action) => {
+			const tool = new Tool(`${action}_items`)
+				.description(`${action} items`)
+				.input(z.object({ id: z.string() }));
+			for (const former of formerNames) tool.legacyActions(former, action);
+			return tool.handler(async () => await Promise.resolve({ ok: true })).build();
+		});
+		const batchBuilder = new Tool('change_items')
+			.description('change items')
+			.input(z.object({ changes: z.array(z.unknown()) }))
+			.legacyNames(...Object.values(writeActions));
+		for (const former of formerNames) {
+			batchBuilder.legacyActions(former, ...Object.keys(writeActions));
+		}
+		const batch = batchBuilder.handler(async () => await Promise.resolve({ ok: true })).build();
+		const map = buildToolMap([...readTools, batch]);
+
+		it('resolves every former write tool name to the batch tool', () => {
+			for (const name of Object.values(writeActions)) {
+				expect(resolveToolForCall(map, name, { id: '1' })).toBe(batch);
+				expect(resolveToolCallTarget(map, name, { id: '1' })?.tool).toBe(batch);
+			}
+		});
+
+		it('resolves write actions of the former split tool to the batch tool', () => {
+			for (const former of formerNames) {
+				for (const action of Object.keys(writeActions)) {
+					expect(resolveToolForCall(map, former, { action, id: '1' })).toBe(batch);
+					expect(resolveToolCallTarget(map, former, { action, id: '1' })?.tool).toBe(batch);
+				}
+			}
+		});
+
+		it('keeps read actions of the former split tool on the read tools', () => {
+			for (const former of formerNames) {
+				expect(resolveToolForCall(map, former, { action: 'list' })).toBe(readTools[0]);
+				expect(resolveToolCallTarget(map, former, { action: 'get' })?.tool).toBe(readTools[1]);
+			}
+		});
+
+		it('lets a registered per-action write tool keep its own name', () => {
+			const create = makeTool('create_item');
+			const both = buildToolMap([...readTools, batch, create]);
+
+			expect(resolveToolForCall(both, 'create_item', {})).toBe(create);
+			expect(resolveToolForCall(both, 'delete_item', {})).toBe(batch);
+		});
+	});
+
+	it('stores a resume-only converter on the built tool', () => {
+		const convert: LegacyCallConverter = (_formerName, input) => input;
+		const tool = new Tool('current')
+			.description('current')
+			.input(z.object({}))
+			.legacyNames('old')
+			.legacyForResumeOnly(convert)
+			.handler(async () => await Promise.resolve({ ok: true }))
+			.build();
+
+		expect(tool.legacyResumeOnly?.convert).toBe(convert);
+		expect(makeTool('plain').legacyResumeOnly).toBeUndefined();
 	});
 });

@@ -20,12 +20,15 @@ import {
 	N8N_CHAT_INTEGRATION_TYPE,
 	type AgentBackgroundJobSignal,
 	type AgentJsonConfig,
+	type AgentToolGuardrailConfig,
 	type BudgetGuardrailConfig,
 } from '@n8n/api-types';
+import type { LanguageModel } from 'ai';
+import { MockLanguageModelV3 } from 'ai/test';
 import { mockLogger } from '@n8n/backend-test-utils';
-import { LockService } from '@n8n/backend-common';
+import { LockService, type Logger } from '@n8n/backend-common';
 import type { AiConfig } from '@n8n/config';
-import type { User } from '@n8n/db';
+import type { UserRepository, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { OperationalError, UserError } from '@n8n/errors';
@@ -33,10 +36,10 @@ import type { InstanceSettings } from 'n8n-core';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 import type { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
+import type { AgentUsageTelemetryService } from '../agent-usage-telemetry.service';
 import type { AgentsSettingsService } from '../agents-settings.service';
 
 import type { ExternalHooks } from '@/external-hooks';
-import type { Telemetry } from '@/telemetry';
 import type { Publisher } from '@n8n/backend-services';
 import { CredentialsService } from '@/credentials/credentials.service';
 
@@ -129,7 +132,7 @@ const selectedContext: IntegrationMessageContext = {
 
 const schema: AgentJsonConfig = {
 	name: 'Support Agent',
-	model: 'anthropic/claude-sonnet-4-5',
+	model: 'anthropic/claude-sonnet-5-5',
 	instructions: 'Help users',
 };
 
@@ -174,6 +177,23 @@ function makeFailingStream(error: Error): ReadableStream<StreamChunk> {
 	});
 }
 
+/** A minimal mock model for guardrail-model wiring tests. */
+function mockLanguageModel(): LanguageModel {
+	return new MockLanguageModelV3({
+		provider: 'mock',
+		modelId: 'guardrail-test',
+		doGenerate: {
+			content: [{ type: 'text', text: '{"confidenceScore":0,"flagged":false}' }],
+			finishReason: { unified: 'stop', raw: 'stop' },
+			usage: {
+				inputTokens: { total: 1, noCache: 1, cacheRead: 0, cacheWrite: 0 },
+				outputTokens: { total: 1, text: 1, reasoning: 0 },
+			},
+			warnings: [],
+		},
+	});
+}
+
 function makeRuntime(
 	chunks: StreamChunk[] = [{ type: 'finish', finishReason: 'stop' }],
 	mcpServerAttributions = new Map<string, string>(),
@@ -185,7 +205,7 @@ function makeRuntime(
 		budget,
 		agent: {
 			name: 'Runtime Agent',
-			snapshot: { model: { provider: 'anthropic', name: 'claude-sonnet-4-5' } },
+			snapshot: { model: { provider: 'anthropic', name: 'claude-sonnet-5-5' } },
 			stream: vi
 				.fn()
 				.mockResolvedValue({ runId: 'runtime-run-1', stream: makeReadableStream(chunks) }),
@@ -229,7 +249,7 @@ function makeService(sandboxEnabled = false) {
 		backgroundJobs,
 		new SystemAgentRegistry(),
 	);
-	const telemetry = mock<Telemetry>();
+	const telemetry = mock<AgentUsageTelemetryService>();
 	const knowledgeUsageTracker = mock<AgentKnowledgeUsageTracker>();
 	const runtimeCacheService = mock<AgentRuntimeCacheService>();
 	const contextService = new IntegrationMessageContextService(
@@ -289,8 +309,10 @@ function makeService(sandboxEnabled = false) {
 	agentRunTracingService.build.mockResolvedValue(undefined);
 	const cancellations = mock<AgentExecutionThreadRepository>();
 
+	const logger = mock<Logger>({ scoped: vi.fn().mockReturnValue(mock<Logger>()) });
+	const userRepository = mock<UserRepository>();
 	const service = new AgentExecutionOrchestratorService(
-		mockLogger(),
+		logger,
 		checkpointStorage,
 		executionService,
 		new AgentTurnExecutionService(
@@ -316,10 +338,13 @@ function makeService(sandboxEnabled = false) {
 		backgroundJobs,
 		settingsService,
 		createAgentSkillRefsService(),
+		userRepository,
 	);
 
 	return {
 		service,
+		logger,
+		userRepository,
 		cancellations,
 		settingsService,
 		backgroundJobRepository,
@@ -1076,7 +1101,7 @@ describe('AgentExecutionOrchestratorService', () => {
 
 				const ctx = {
 					callId: 'call-1',
-					model: 'anthropic/claude-sonnet-4-5',
+					model: 'anthropic/claude-sonnet-5-5',
 					source: 'turn' as const,
 				};
 				await hook.before(ctx);
@@ -2331,7 +2356,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			expect.objectContaining({
 				source: 'instance-ai',
 				threadId: 'thread-1',
-				modelId: 'anthropic/claude-sonnet-4-5',
+				modelId: 'anthropic/claude-sonnet-5-5',
 			}),
 		);
 		const options = runtime.agent.stream.mock.calls[0][1] as ExecutionOptions;
@@ -2555,6 +2580,82 @@ describe('AgentExecutionOrchestratorService', () => {
 		const hooks = options.guardrails?.hooks ?? [];
 
 		expect(hooks.filter((hook) => hook.after)).toHaveLength(1);
+	});
+
+	it('attaches the tool guardrails saved on the published runtime to the turn', async () => {
+		const { service, agentRepository, runtimeCacheService, executionService } = makeService();
+		agentRepository.isN8nChatPublished.mockResolvedValue(true);
+		executionService.canUseProductionChatThread.mockResolvedValue(true);
+		const runtime = {
+			...makeRuntime(),
+			toolRegistry: new Map([
+				['read_file', { kind: 'node', nodeType: 'n8n-nodes-base.readBinaryFile' }],
+			]) as ToolRegistry,
+			toolGuardrails: [
+				{
+					kind: 'keywords',
+					id: 'g1',
+					stage: 'before',
+					keywords: ['secret'],
+					tools: [{ type: 'node', name: 'read_file' }],
+				},
+			] as AgentToolGuardrailConfig[],
+		};
+		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+
+		await collect(
+			service.executeForN8nChatPublished({
+				agentId,
+				projectId,
+				user,
+				message: 'Hello',
+				memory: { threadId: 'thread-1', resourceId: 'n8n-chat-production:user-1' },
+			}),
+		);
+
+		const options = runtime.agent.stream.mock.calls[0][1] as ExecutionOptions;
+		const hooks = options.guardrails?.hooks ?? [];
+		expect(hooks).toHaveLength(1);
+
+		// The hook is the configured guardrail, wired through to the run.
+		const stop = await hooks[0].beforeTool?.({
+			toolCallId: 'tc-1',
+			toolName: 'read_file',
+			input: { note: 'a secret' },
+			runId: 'run-1',
+		});
+		expect(stop).toEqual({ action: 'stop', code: 'guardrail.keywords.g1' });
+	});
+
+	it('attaches the guardrail model saved on the published runtime to the turn', async () => {
+		const { service, agentRepository, runtimeCacheService, executionService } = makeService();
+		agentRepository.isN8nChatPublished.mockResolvedValue(true);
+		executionService.canUseProductionChatThread.mockResolvedValue(true);
+		const guardrailModel = mockLanguageModel();
+		const runtime = {
+			...makeRuntime(),
+			toolRegistry: new Map([['read_file', { kind: 'node' }]]) as ToolRegistry,
+			toolGuardrails: [{ kind: 'nsfw', id: 'g1', stage: 'before' }] as AgentToolGuardrailConfig[],
+			guardrailModel,
+		};
+		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+
+		await collect(
+			service.executeForN8nChatPublished({
+				agentId,
+				projectId,
+				user,
+				message: 'Hello',
+				memory: { threadId: 'thread-1', resourceId: 'n8n-chat-production:user-1' },
+			}),
+		);
+
+		// The model kind built a hook from the runtime's model: the configured
+		// model instance reached withToolGuardrails through the turn options.
+		const options = runtime.agent.stream.mock.calls[0][1] as ExecutionOptions;
+		const hooks = options.guardrails?.hooks ?? [];
+		expect(hooks).toHaveLength(1);
+		expect(hooks[0].beforeTool).toBeTypeOf('function');
 	});
 
 	it('rejects a production turn with a foreign thread or memory scope', async () => {
@@ -2975,6 +3076,44 @@ describe('AgentExecutionOrchestratorService', () => {
 		);
 	});
 
+	it('records a failed runtime build for an archived agent and rethrows the build error', async () => {
+		const { service, runtimeCacheService, executionService, agentRepository } = makeService();
+		const buildError = new UserError('Agent is archived. Restore the agent before running it.');
+		runtimeCacheService.getRuntime.mockRejectedValue(buildError);
+		agentRepository.findByIdAndProjectId.mockResolvedValue({
+			id: agentId,
+			name: 'Support Agent',
+			schema,
+			activeVersion: { schema },
+			integrations: [],
+			isArchived: true,
+		} as unknown as ProjectAgent);
+
+		await expect(
+			collect(
+				service.executeForChatPublished({
+					agentId,
+					projectId,
+					message: 'from slack',
+					memory: { threadId: 'thread-1', resourceId: 'platform-user-1' },
+					integrationType: 'slack',
+					sandboxPrincipalHash: integrationPrincipalHash,
+				}),
+			),
+		).rejects.toBe(buildError);
+
+		expect(executionService.startExecutionRecording).toHaveBeenCalledWith(
+			expect.objectContaining({ agentId, agentName: 'Support Agent' }),
+			expect.any(Date),
+		);
+		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+			'execution-1',
+			expect.objectContaining({
+				record: expect.objectContaining({ finishReason: 'error', error: buildError.message }),
+			}),
+		);
+	});
+
 	it('rethrows the build error without recording when the agent no longer exists', async () => {
 		const { service, runtimeCacheService, executionService, agentRepository } = makeService();
 		const buildError = new Error('boom');
@@ -3095,6 +3234,14 @@ describe('AgentExecutionOrchestratorService', () => {
 			expect.objectContaining({
 				sandboxPrincipalHash: userPrincipalHash,
 				allowBackgroundTasks: false,
+			}),
+		);
+		expect(runtime.agent.stream).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({
+				persistence: expect.objectContaining({
+					hostMetadata: expect.objectContaining({ n8nTaskRunStarterUserId: userId }),
+				}),
 			}),
 		);
 	});
@@ -3841,6 +3988,57 @@ describe('AgentExecutionOrchestratorService', () => {
 		).resolves.toEqual({ messages: [], activeExecutionId: 'execution-1' });
 	});
 
+	it('returns one page of turns with the cursor of its oldest turn', async () => {
+		const { service, executionService } = makeService();
+		const createdAt = new Date('2026-04-26T10:00:00.000Z');
+		executionService.getThreadDetailPage.mockResolvedValue({
+			thread: { id: 'thread-1' },
+			executions: [
+				{ id: 'execution-2', userMessage: 'Hi', createdAt, timeline: [] },
+				{ id: 'execution-3', userMessage: 'Again', createdAt, timeline: [] },
+			],
+			hasOlder: true,
+		} as never);
+
+		const result = await service.getConversationHistory({
+			threadId: 'thread-1',
+			projectId,
+			agentId,
+			userId,
+			page: { limit: 2 },
+		});
+
+		expect(executionService.getThreadDetailPage).toHaveBeenCalledWith(
+			'thread-1',
+			projectId,
+			agentId,
+			userId,
+			{ limit: 2 },
+		);
+		expect(executionService.getThreadDetail).not.toHaveBeenCalled();
+		expect(result?.messages.map(({ id }) => id)).toEqual(['execution-2:user', 'execution-3:user']);
+		expect(result?.nextCursor).toBe('2026-04-26T10:00:00.000Z|execution-2');
+	});
+
+	it('returns no cursor on the oldest page', async () => {
+		const { service, executionService } = makeService();
+		executionService.getThreadDetailPage.mockResolvedValue({
+			thread: { id: 'thread-1' },
+			executions: [{ id: 'execution-1', userMessage: 'Hi', createdAt: new Date(), timeline: [] }],
+			hasOlder: false,
+		} as never);
+
+		const result = await service.getConversationHistory({
+			threadId: 'thread-1',
+			projectId,
+			agentId,
+			userId,
+			page: { limit: 2 },
+		});
+
+		expect(result?.nextCursor).toBeNull();
+	});
+
 	it('rejects expired checkpoints and resumes active checkpoints without passing resourceId', async () => {
 		const {
 			service,
@@ -4116,6 +4314,53 @@ describe('AgentExecutionOrchestratorService', () => {
 
 		expect(runtimeCacheService.getRuntime).toHaveBeenCalledWith(
 			expect.objectContaining({ sandboxPrincipalHash: integrationPrincipalHash }),
+		);
+	});
+
+	it('resumes a Run now approval as the starter when another member approves', async () => {
+		const { service, checkpointStorage, runtimeCacheService, userRepository } = makeService(true);
+		const approver = mock<User>({ id: 'user-2' });
+		const starter = mock<User>({ id: userId, disabled: false });
+		const runtime = makeRuntime();
+		userRepository.findByIdWithRole.mockResolvedValue(starter);
+		checkpointStorage.getStatus.mockResolvedValue({
+			status: 'active',
+			checkpoint: {
+				persistence: {
+					threadId: 'thread-1',
+					resourceId: 'task:task-1',
+					hostMetadata: {
+						...encodeAgentSandboxHostMetadata({
+							projectId,
+							principalHash: userPrincipalHash,
+						}),
+						n8nTaskRunStarterUserId: userId,
+					},
+				},
+			},
+		} as never);
+		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+
+		await collect(
+			service.resumeForChat({
+				agentId,
+				projectId,
+				runId: 'run-1',
+				toolCallId: 'tc-1',
+				resumeData: { approved: true },
+				user: approver,
+				usePublishedVersion: false,
+				source: 'task',
+				expectedMemory: { threadId: 'thread-1', resourceId: 'task:task-1' },
+			}),
+		);
+
+		expect(userRepository.findByIdWithRole).toHaveBeenCalledWith(userId);
+		expect(runtimeCacheService.getRuntime).toHaveBeenCalledWith(
+			expect.objectContaining({
+				user: starter,
+				sandboxPrincipalHash: userPrincipalHash,
+			}),
 		);
 	});
 
@@ -4646,5 +4891,109 @@ describe('AgentExecutionOrchestratorService', () => {
 		);
 		expect(wakeService.onParentTurnFinished).not.toHaveBeenCalled();
 		expect(runtimeCacheService.releaseRuntimeLease).toHaveBeenCalledExactlyOnceWith(runtime.agent);
+	});
+});
+
+describe('task approval resume', () => {
+	it('resumes an awaiting task thread through the published runtime', async () => {
+		const { service, executionService, checkpointStorage } = makeService();
+		executionService.findThreadById.mockResolvedValue({
+			id: 'thread-1',
+			projectId,
+			agentId,
+			taskId: 'task-1',
+			taskVersionId: 'version-1',
+			accessScope: 'project',
+			ownerId: null,
+		} as never);
+		executionService.findLatestSuspendedRun.mockResolvedValue({
+			source: 'task',
+			status: 'awaiting',
+		} as never);
+		checkpointStorage.findApprovalRunId.mockResolvedValue('run-1');
+		const resumeForChat = vi
+			.spyOn(service, 'resumeForChat')
+			.mockImplementation(async function* () {});
+
+		await service.resumeTaskApproval({
+			agentId,
+			projectId,
+			threadId: 'thread-1',
+			user,
+			toolCallId: 'call-1',
+			resumeData: { approved: true },
+		});
+		await vi.waitFor(() => {
+			expect(resumeForChat).toHaveBeenCalledWith(
+				expect.objectContaining({
+					runId: 'run-1',
+					toolCallId: 'call-1',
+					source: 'task',
+					usePublishedVersion: true,
+					integrationType: 'task',
+					expectedMemory: { threadId: 'thread-1', resourceId: 'task:task-1' },
+					resumeData: { approved: true },
+				}),
+			);
+		});
+	});
+
+	it('scrubs credential material out of a failed resume log', async () => {
+		const { service, executionService, checkpointStorage, logger } = makeService();
+		executionService.findThreadById.mockResolvedValue({
+			id: 'thread-1',
+			projectId,
+			agentId,
+			taskId: 'task-1',
+			taskVersionId: 'version-1',
+			accessScope: 'project',
+			ownerId: null,
+		} as never);
+		executionService.findLatestSuspendedRun.mockResolvedValue({
+			source: 'task',
+			status: 'awaiting',
+		} as never);
+		checkpointStorage.findApprovalRunId.mockResolvedValue('run-1');
+		vi.spyOn(service, 'resumeForChat').mockImplementation(async function* () {
+			yield* [];
+			throw new Error(
+				'request to https://api.telegram.org/bot123456789:AAFakeTokenValueForTestingOnly12345/setWebhook failed',
+			);
+		});
+
+		await service.resumeTaskApproval({
+			agentId,
+			projectId,
+			threadId: 'thread-1',
+			user,
+			toolCallId: 'call-1',
+			resumeData: { approved: true },
+		});
+
+		await vi.waitFor(() => {
+			const logged = logger.error.mock.calls.at(-1)?.[1] as { error: string };
+			expect(logged.error).not.toContain('AAFakeTokenValueForTestingOnly12345');
+			expect(logged.error).toContain('setWebhook');
+		});
+	});
+
+	it('rejects a session that is not an awaiting task run', async () => {
+		const { service, executionService, checkpointStorage } = makeService();
+		executionService.findLatestSuspendedRun.mockResolvedValue({
+			source: 'slack',
+			status: 'success',
+		} as never);
+
+		await expect(
+			service.resumeTaskApproval({
+				agentId,
+				projectId,
+				threadId: 'thread-1',
+				user,
+				toolCallId: 'call-1',
+				resumeData: { approved: false },
+			}),
+		).rejects.toThrow('This session has no approval to resume');
+		expect(checkpointStorage.findApprovalRunId).not.toHaveBeenCalled();
 	});
 });

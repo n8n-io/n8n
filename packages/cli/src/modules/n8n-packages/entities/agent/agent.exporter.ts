@@ -36,7 +36,8 @@ export class AgentExporter {
 				extra: { agentId: agent.id },
 			});
 		}
-		if (agent.activeVersionId === null) {
+		// An archived agent has no published version. It always exports its draft.
+		if (agent.activeVersionId === null && !agent.isArchived) {
 			if (policy === ExportVersionPolicy.IgnoreUnpublished) return undefined;
 			if (policy === ExportVersionPolicy.PublishedStrict) {
 				throw new PackageExportBlockedError(
@@ -69,6 +70,7 @@ export class AgentExporter {
 
 		const content = this.serializer.serialize(agent, definition, integrations);
 		return {
+			parentFolderId: agent.parentFolderId,
 			projectId: agent.projectId,
 			content,
 			metadata: this.serializer.serializeMetadata({

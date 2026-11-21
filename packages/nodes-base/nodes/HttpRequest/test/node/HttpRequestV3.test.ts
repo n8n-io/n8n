@@ -1,6 +1,11 @@
 import FormData from 'form-data';
 import { IncomingMessage } from 'http';
-import { NodeHelpers, READ_ONLY_ANNOTATIONS, resolveNodeAnnotations } from 'n8n-workflow';
+import {
+	NodeApiError,
+	NodeHelpers,
+	READ_ONLY_ANNOTATIONS,
+	resolveNodeAnnotations,
+} from 'n8n-workflow';
 import { Socket } from 'net';
 import type {
 	IExecuteFunctions,
@@ -86,7 +91,7 @@ describe('HttpRequestV3', () => {
 	});
 
 	describe('Method dropdown', () => {
-		const webdavMethods = ['PROPFIND', 'MKCOL', 'MOVE', 'COPY', 'REPORT'];
+		const webdavMethods = ['PROPFIND', 'MKCOL', 'MOVE', 'COPY', 'REPORT', 'SEARCH'];
 
 		const visibleMethods = (nodeParameters: INodeParameters) => {
 			const methodProperty = node.description.properties.find((p) => p.name === 'method');
@@ -149,6 +154,7 @@ describe('HttpRequestV3', () => {
 		it.each([
 			['GET', {}, READ_ONLY_ANNOTATIONS],
 			['PROPFIND', { webdavMethods: true }, READ_ONLY_ANNOTATIONS],
+			['SEARCH', { webdavMethods: true }, READ_ONLY_ANNOTATIONS],
 			['PUT', {}, { effect: 'write', destructive: true, idempotent: true }],
 			['DELETE', {}, { effect: 'write', destructive: true, idempotent: false }],
 			[
@@ -180,7 +186,7 @@ describe('HttpRequestV3', () => {
 		});
 	});
 
-	it.each(['PROPFIND', 'MKCOL', 'MOVE', 'COPY', 'REPORT'])(
+	it.each(['PROPFIND', 'MKCOL', 'MOVE', 'COPY', 'REPORT', 'SEARCH'])(
 		'should make a %s request',
 		async (method) => {
 			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
@@ -528,6 +534,21 @@ describe('HttpRequestV3', () => {
 				authValue: { Authorization: 'Bearer token' },
 			},
 			{
+				genericCredentialType: 'httpMultipleHeadersAuth',
+				credentials: {
+					headers: {
+						values: [
+							{ name: 'X-Service-Token', value: 'first-test-value' },
+							{ name: 'X-Account-Key', value: 'second-test-value' },
+						],
+					},
+					allowedHttpRequestDomains: 'domains',
+					allowedDomains: 'example.com',
+				},
+				authField: 'headers',
+				authValue: { 'X-Service-Token': 'first-test-value', 'X-Account-Key': 'second-test-value' },
+			},
+			{
 				genericCredentialType: 'httpQueryAuth',
 				credentials: { name: 'Token', value: 'secretToken' },
 				authField: 'qs',
@@ -563,6 +584,16 @@ describe('HttpRequestV3', () => {
 							return genericCredentialType;
 						case 'options':
 							return options;
+						case 'sendQuery':
+							return genericCredentialType === 'httpMultipleHeadersAuth';
+						case 'specifyQuery':
+							return 'keypair';
+						case 'queryParameters.parameters':
+							return [
+								{ name: 'First', value: 'first-test-value' },
+								{ name: 'Second', value: 'prefix-second-test-value' },
+								{ name: 'Keep', value: 'visible' },
+							];
 						default:
 							return undefined;
 					}
@@ -586,6 +617,26 @@ describe('HttpRequestV3', () => {
 					expect(executeFunctions.helpers.request).toHaveBeenCalledWith(
 						expect.objectContaining({
 							[authField]: expect.objectContaining(authValue),
+						}),
+					);
+				}
+				if (genericCredentialType === 'httpMultipleHeadersAuth') {
+					expect(executeFunctions.sendMessageToUI).toHaveBeenCalledWith(
+						expect.objectContaining({
+							headers: expect.objectContaining(
+								Object.fromEntries(Object.keys(authValue).map((name) => [name, '**hidden**'])),
+							),
+							qs: { First: '**hidden**', Second: 'prefix-**hidden**', Keep: 'visible' },
+						}),
+					);
+					expect(executeFunctions.helpers.request).toHaveBeenCalledWith(
+						expect.objectContaining({
+							allowedDomains: 'example.com',
+							qs: {
+								First: 'first-test-value',
+								Second: 'prefix-second-test-value',
+								Keep: 'visible',
+							},
 						}),
 					);
 				}
@@ -892,6 +943,44 @@ describe('HttpRequestV3', () => {
 
 			expect(result).toEqual([[{ json: {}, pairedItem: { item: 0 } }]]);
 		});
+
+		it('should return an empty object for a paginated JSON response with no body', async () => {
+			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation(
+				(paramName: string, _itemIndex: number, defaultValue: unknown) => {
+					switch (paramName) {
+						case 'method':
+							return 'GET';
+						case 'url':
+							return baseUrl;
+						case 'authentication':
+							return 'none';
+						case 'options':
+							return { ...options, response: { response: { responseFormat: 'json' } } };
+						case 'options.pagination.pagination':
+							return {
+								paginationMode: 'responseContainsNextURL',
+								nextURL: '={{ $response.body?.next }}',
+								paginationCompleteWhen: 'other',
+								completeExpression: '={{ !$response.body?.next }}',
+								limitPagesFetched: false,
+								requestInterval: 0,
+							};
+						case 'options.response.response.responseFormat':
+							return 'json';
+						default:
+							return defaultValue;
+					}
+				},
+			);
+			(executeFunctions.helpers.requestWithAuthenticationPaginated as Mock).mockResolvedValue([
+				{ headers: {}, body: undefined, statusCode: 204 },
+			]);
+
+			const result = await node.execute.call(executeFunctions);
+
+			expect(result).toEqual([[{ json: {}, pairedItem: { item: 0 } }]]);
+		});
 	});
 
 	describe('Continued request errors', () => {
@@ -928,6 +1017,93 @@ describe('HttpRequestV3', () => {
 				body: responseBody,
 				context: { itemIndex: 0 },
 			});
+		});
+
+		it('should remove request options from continued errors', async () => {
+			const headerName = 'x-custom-header-name';
+			const headerValue = 'header-value';
+
+			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.continueOnFail as Mock).mockReturnValue(true);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return baseUrl;
+					case 'authentication':
+						return 'genericCredentialType';
+					case 'genericAuthType':
+						return 'httpHeaderAuth';
+					case 'options':
+						return options;
+					default:
+						return undefined;
+				}
+			});
+			(executeFunctions.getCredentials as Mock).mockResolvedValue({
+				name: headerName,
+				value: headerValue,
+			});
+			(executeFunctions.helpers.request as Mock).mockImplementation(
+				async (requestOptions: { headers: Record<string, unknown> }) => {
+					expect(requestOptions.headers[headerName]).toBe(headerValue);
+
+					throw Object.assign(new Error('Request failed'), {
+						statusCode: 400,
+						error: { message: 'Bad Request' },
+						options: { headers: requestOptions.headers },
+					});
+				},
+			);
+
+			const result = await node.execute.call(executeFunctions);
+			const outputError = result[0][0].json.error;
+
+			expect(outputError).toMatchObject({ message: 'Request failed', statusCode: 400 });
+			expect(outputError).not.toHaveProperty('options');
+			expect(JSON.stringify(outputError)).not.toContain(headerValue);
+		});
+
+		it('should remove request options from the cause of continued errors', async () => {
+			const headerValue = 'header-value';
+
+			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.continueOnFail as Mock).mockReturnValue(true);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return baseUrl;
+					case 'authentication':
+						return 'predefinedCredentialType';
+					case 'nodeCredentialType':
+						return 'testApi';
+					case 'options':
+						return options;
+					default:
+						return undefined;
+				}
+			});
+			(executeFunctions.getCredentials as Mock).mockResolvedValue({ apiKey: headerValue });
+			(executeFunctions.helpers.requestWithAuthentication as Mock).mockImplementation(async () => {
+				const cause = Object.assign(new Error('Request failed'), {
+					statusCode: 401,
+					error: { message: 'Unauthorized' },
+					options: { headers: { Authorization: `Bearer ${headerValue}` } },
+				});
+
+				throw new NodeApiError(executeFunctions.getNode(), cause as unknown as JsonObject);
+			});
+
+			const result = await node.execute.call(executeFunctions);
+			const outputError = result[0][0].json.error as NodeApiError;
+
+			expect(outputError).toBeInstanceOf(NodeApiError);
+			expect(outputError.cause).toMatchObject({ message: 'Request failed', statusCode: 401 });
+			expect(outputError.cause).not.toHaveProperty('options');
+			expect(JSON.stringify(outputError.cause)).not.toContain(headerValue);
 		});
 
 		const errorResponseBodies: Array<{
@@ -1396,80 +1572,98 @@ describe('HttpRequestV3', () => {
 			expect(executeFunctions.helpers.requestWithAuthenticationPaginated).not.toHaveBeenCalled();
 		});
 
-		it('should pass a redacted request snapshot to the paginated helper for a generic header credential', async () => {
-			const headerName = 'x-owner-domain-secret';
-			const headerValue = 'super-secret-value';
+		it.each(['httpHeaderAuth', 'httpMultipleHeadersAuth'])(
+			'should pass a redacted request snapshot to the paginated helper for %s',
+			async (genericAuthType) => {
+				const headerName = 'x-owner-domain-secret';
+				const headerValue = 'super-secret-value';
 
-			const paginationTestOptions = {
-				...options,
-				response: {
+				const paginationTestOptions = {
+					...options,
 					response: {
-						neverError: false,
-						responseFormat: 'json',
-						fullResponse: false,
-						outputPropertyName: 'data',
+						response: {
+							neverError: false,
+							responseFormat: 'json',
+							fullResponse: false,
+							outputPropertyName: 'data',
+						},
 					},
-				},
-			};
+				};
 
-			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
-			(executeFunctions.getNodeParameter as Mock).mockImplementation(
-				(paramName: string, _itemIndex: number, defaultValue: unknown) => {
-					switch (paramName) {
-						case 'method':
-							return 'GET';
-						case 'url':
-							return baseUrl;
-						case 'authentication':
-							return 'genericCredentialType';
-						case 'genericAuthType':
-							return 'httpHeaderAuth';
-						case 'options':
-							return paginationTestOptions;
-						case 'options.pagination.pagination':
-							return {
-								paginationMode: 'responseContainsNextURL',
-								nextURL: `={{ $request.headers['${headerName}'] }}`,
-								paginationCompleteWhen: 'receiveSpecificStatusCodes',
-								statusCodesWhenComplete: '200',
-								completeExpression: '',
-								limitPagesFetched: true,
-								maxRequests: 1,
-								requestInterval: 0,
-							};
-						default:
-							return defaultValue;
-					}
-				},
-			);
-			(executeFunctions.getCredentials as Mock).mockResolvedValue({
-				name: headerName,
-				value: headerValue,
-			});
-			(executeFunctions.helpers.requestWithAuthenticationPaginated as Mock).mockResolvedValue([
-				{
-					headers: { 'content-type': 'application/json' },
-					body: { success: true },
-					statusCode: 200,
-				},
-			]);
+				(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+				(executeFunctions.getNodeParameter as Mock).mockImplementation(
+					(paramName: string, _itemIndex: number, defaultValue: unknown) => {
+						switch (paramName) {
+							case 'method':
+								return 'GET';
+							case 'url':
+								return baseUrl;
+							case 'authentication':
+								return 'genericCredentialType';
+							case 'genericAuthType':
+								return genericAuthType;
+							case 'options':
+								return paginationTestOptions;
+							case 'options.pagination.pagination':
+								return {
+									paginationMode: 'responseContainsNextURL',
+									nextURL: `={{ $request.headers['${headerName}'] }}`,
+									paginationCompleteWhen: 'receiveSpecificStatusCodes',
+									statusCodesWhenComplete: '200',
+									completeExpression: '',
+									limitPagesFetched: true,
+									maxRequests: 1,
+									requestInterval: 0,
+								};
+							default:
+								return defaultValue;
+						}
+					},
+				);
+				(executeFunctions.getCredentials as Mock).mockResolvedValue(
+					genericAuthType === 'httpHeaderAuth'
+						? { name: headerName, value: headerValue }
+						: {
+								headers: {
+									values: [
+										{ name: headerName, value: headerValue },
+										{ name: 'x-secondary-secret', value: 'second-secret-value' },
+									],
+								},
+							},
+				);
+				(executeFunctions.helpers.requestWithAuthenticationPaginated as Mock).mockResolvedValue([
+					{
+						headers: { 'content-type': 'application/json' },
+						body: { success: true },
+						statusCode: 200,
+					},
+				]);
 
-			await node.execute.call(executeFunctions);
+				await node.execute.call(executeFunctions);
 
-			expect(executeFunctions.helpers.requestWithAuthenticationPaginated).toHaveBeenCalledTimes(1);
+				expect(executeFunctions.helpers.requestWithAuthenticationPaginated).toHaveBeenCalledTimes(
+					1,
+				);
 
-			// The live request options (1st arg) keep the credential header so the
-			// actual outgoing requests stay authenticated.
-			const liveRequest = (executeFunctions.helpers.requestWithAuthenticationPaginated as Mock).mock
-				.calls[0][0] as { headers: Record<string, unknown> };
-			expect(liveRequest.headers[headerName]).toBe(headerValue);
+				// The live request options (1st arg) keep the credential header so the
+				// actual outgoing requests stay authenticated.
+				const liveRequest = (executeFunctions.helpers.requestWithAuthenticationPaginated as Mock)
+					.mock.calls[0][0] as { headers: Record<string, unknown> };
+				expect(liveRequest.headers[headerName]).toBe(headerValue);
 
-			// The sanitized snapshot (6th arg) exposed to pagination expressions has
-			// the credential-derived header redacted.
-			const sanitizedRequest = (executeFunctions.helpers.requestWithAuthenticationPaginated as Mock)
-				.mock.calls[0][5] as { headers: Record<string, unknown> };
-			expect(sanitizedRequest.headers[headerName]).toBe('**hidden**');
-		});
+				// The sanitized snapshot (6th arg) exposed to pagination expressions has
+				// the credential-derived header redacted.
+				const sanitizedRequest = (
+					executeFunctions.helpers.requestWithAuthenticationPaginated as Mock
+				).mock.calls[0][5] as { headers: Record<string, unknown> };
+				expect(sanitizedRequest.headers[headerName]).toBe('**hidden**');
+				if (genericAuthType === 'httpMultipleHeadersAuth') {
+					expect(liveRequest.headers['x-secondary-secret']).toBe('second-secret-value');
+					expect(sanitizedRequest.headers['x-secondary-secret']).toBe('**hidden**');
+				}
+			},
+		);
 	});
 
 	describe('Parallel item scoping fixes', () => {

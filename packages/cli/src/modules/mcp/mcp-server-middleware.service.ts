@@ -14,9 +14,8 @@ import {
 import type { SecurityContext } from '@n8n/permissions';
 import { NextFunction, Response, Request } from 'express';
 
-import { JwtService } from '@n8n/backend-services';
+import { JwtService, TelemetryProxy } from '@n8n/backend-services';
 import type { AuthFailureReason, TelemetryAuthContext } from '@n8n/backend-services/auth';
-import { Telemetry } from '@/telemetry';
 
 import { McpServerApiKeyService, type McpApiKeyResult } from './mcp-api-key.service';
 import { McpProtectedResource } from './mcp-protected-resource';
@@ -80,7 +79,7 @@ export class McpServerMiddlewareService {
 		private readonly admission: ResourceAdmission,
 		private readonly userRepository: UserRepository,
 		private readonly jwtService: JwtService,
-		private readonly telemetry: Telemetry,
+		private readonly telemetry: TelemetryProxy,
 		private readonly logger: Logger,
 	) {}
 

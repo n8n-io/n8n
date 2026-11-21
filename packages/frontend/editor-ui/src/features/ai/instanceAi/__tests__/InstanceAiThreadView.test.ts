@@ -5,10 +5,12 @@ import userEvent from '@testing-library/user-event';
 import { fireEvent, within } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
 import { createTestingPinia } from '@pinia/testing';
+import { mock } from 'vitest-mock-extended';
 import type {
 	AgentEvalVerdict,
 	InstanceAiAgentNode,
 	InstanceAiHandoffContext,
+	SkillDetail,
 } from '@n8n/api-types';
 import { USER_TYPED_MESSAGE } from '../prefills';
 import { setActivePinia } from 'pinia';
@@ -34,6 +36,7 @@ import { useAgentEvalsStore } from '@/features/agents/agentEvals.store';
 import { handoffContextKey } from '../instanceAi.handoffContext';
 import { useAgentReturnContextStore } from '@/features/agents/agentReturnContext.store';
 import { useRecentWorkflowsStore } from '@/app/stores/recentWorkflows.store';
+import { useSkillsStore } from '@/features/settings/context/skills.store';
 import {
 	defaultModuleSettings,
 	InstanceAiInputStub,
@@ -88,6 +91,12 @@ vi.mock('../instanceAi.memory.api', async (importOriginal) => ({
 		storedThreadTabs.set(threadId, state);
 		return { state };
 	}),
+}));
+
+const fetchCloudBrowserLiveViewSpy = vi.hoisted(() => vi.fn());
+vi.mock('../instanceAi.api', async (importOriginal) => ({
+	...(await importOriginal<typeof import('../instanceAi.api')>()),
+	fetchCloudBrowserLiveView: fetchCloudBrowserLiveViewSpy,
 }));
 
 vi.mock('@n8n/composables/useTelemetry', () => ({
@@ -586,6 +595,209 @@ describe('InstanceAiThreadView', () => {
 		});
 	});
 
+	describe('skill drafts', () => {
+		async function renderSkillArtifacts() {
+			const skillsStore = mockedStore(useSkillsStore);
+			skillsStore.fetchSkill.mockImplementation(async (id) =>
+				mock<SkillDetail>({
+					id,
+					name: id,
+					canEdit: true,
+					skillHash: `hash-${id}`,
+					skill: {
+						name: id,
+						description: 'When to use this skill',
+						instructions: 'Original instructions',
+						references: [{ path: 'references/tone.md', content: 'Original reference' }],
+					},
+				}),
+			);
+			skillsStore.saveSkill.mockImplementation(async (id, payload) => ({
+				id,
+				versionId: 'version-2',
+				version: 2,
+				created: true,
+				skill: {
+					name: payload.name ?? id,
+					description: payload.description ?? '',
+					instructions: payload.instructions ?? '',
+					references: payload.references,
+				},
+				skillHash: `saved-hash-${id}`,
+			}));
+			thread.producedArtifacts = new Map([
+				['skill-1', { type: 'skill', id: 'skill-1', name: 'skill-1' }],
+				['skill-2', { type: 'skill', id: 'skill-2', name: 'skill-2' }],
+				['workflow-1', { type: 'workflow', id: 'workflow-1', name: 'Workflow' }],
+			]);
+			storedThreadTabs.set('thread-1', {
+				tabs: [...thread.producedArtifacts.values()],
+				closedTabs: [],
+				activeTab: { type: 'skill', id: 'skill-1' },
+				previewOpen: true,
+			});
+			const rendered = renderView({
+				props: { threadId: 'thread-1' },
+				global: {
+					stubs: {
+						...defaultViewStubs,
+						MarkdownEditor: {
+							props: ['modelValue', 'disabled'],
+							emits: ['update:modelValue'],
+							template:
+								'<textarea :value="modelValue" :disabled="disabled" @input="$emit(\'update:modelValue\', $event.target.value)" />',
+						},
+					},
+				},
+			});
+			await rendered.findByRole('button', { name: 'Save skill' });
+			const field = (testId: string) =>
+				rendered.container.querySelector<HTMLElement>(`[data-testid="${testId}"]`)!;
+			const nameInput = () => field('agent-skill-name-input').querySelector('input')!;
+			const selectTab = async (id: string) => {
+				await userEvent.click(
+					rendered.container.querySelector<HTMLElement>(`[data-tab-id="${id}"]`)!,
+				);
+				await flushPromises();
+			};
+			return { ...rendered, skillsStore, field, nameInput, selectTab };
+		}
+
+		it.each(['skill-2', 'workflow-1', 'hidden panel'])(
+			'preserves unsaved fields and references after visiting %s',
+			async (destination) => {
+				const { getByRole, getAllByTestId, skillsStore, field, nameInput, selectTab } =
+					await renderSkillArtifacts();
+				await fireEvent.update(nameInput(), 'Unsaved name');
+				await fireEvent.update(field('agent-skill-instructions-editor'), 'Unsaved instructions');
+				await userEvent.click(field('agent-skill-reference-nav-item-references-tone-md'));
+				await fireEvent.update(field('agent-skill-reference-editor'), 'Unsaved reference');
+
+				if (destination === 'hidden panel') {
+					const toggle = () =>
+						getAllByTestId('instance-ai-artifacts-preview-toggle').find((element) =>
+							element.hasAttribute('aria-pressed'),
+						)!;
+					await userEvent.click(toggle());
+					await userEvent.click(toggle());
+				} else {
+					await selectTab(destination);
+					if (destination === 'skill-2') {
+						expect(nameInput()).toHaveValue('skill-2');
+						await fireEvent.update(nameInput(), 'Other unsaved name');
+					}
+					await selectTab('skill-1');
+				}
+
+				expect(field('agent-skill-reference-editor')).toHaveValue('Unsaved reference');
+				const save = getByRole('button', { name: 'Save skill' });
+				expect(save).toBeEnabled();
+				await userEvent.click(save);
+				await flushPromises();
+				expect(skillsStore.saveSkill).toHaveBeenCalledExactlyOnceWith('skill-1', {
+					name: 'Unsaved name',
+					description: 'When to use this skill',
+					instructions: 'Unsaved instructions',
+					references: [{ path: 'references/tone.md', content: 'Unsaved reference' }],
+					baseSkillHash: 'hash-skill-1',
+				});
+				expect(save).toBeDisabled();
+				expect(skillsStore.fetchSkill).toHaveBeenCalledTimes(destination === 'skill-2' ? 2 : 1);
+				if (destination === 'skill-2') {
+					await selectTab('skill-2');
+					expect(nameInput()).toHaveValue('Other unsaved name');
+				}
+			},
+		);
+
+		it.each(['skill-2', 'workflow-1'])(
+			'reloads a cached skill after an Assistant save while %s is pinned',
+			async (pinnedTabId) => {
+				const { getByRole, getByTestId, skillsStore, field, nameInput, selectTab } =
+					await renderSkillArtifacts();
+				thread.isStreaming = true;
+				await selectTab(pinnedTabId);
+				if (pinnedTabId === 'skill-2') {
+					await fireEvent.update(nameInput(), 'Pinned skill draft');
+				}
+				const fetchCount = skillsStore.fetchSkill.mock.calls.length;
+				skillsStore.fetchSkill.mockResolvedValueOnce({
+					...mock<SkillDetail>(),
+					id: 'skill-1',
+					name: 'Updated skill',
+					canEdit: true,
+					skillHash: 'assistant-saved-hash',
+					skill: {
+						name: 'Updated skill',
+						description: 'Updated description',
+						instructions: 'Updated instructions',
+						references: [{ path: 'references/tone.md', content: 'Updated reference' }],
+					},
+				});
+				thread.messages = [
+					{
+						id: 'assistant-skill-update',
+						role: 'assistant',
+						content: '',
+						reasoning: '',
+						isStreaming: false,
+						createdAt: '2026-04-01T00:00:00.000Z',
+						agentTree: {
+							agentId: 'orchestrator',
+							role: 'orchestrator',
+							status: 'completed',
+							textContent: '',
+							reasoning: '',
+							children: [],
+							timeline: [],
+							toolCalls: [
+								{
+									toolCallId: 'skill-update',
+									toolName: 'skills',
+									args: { action: 'update', skillId: 'skill-1' },
+									isLoading: false,
+									result: { success: true, saved: { id: 'skill-1', created: true } },
+								},
+							],
+						},
+					},
+				];
+				await flushPromises();
+
+				if (pinnedTabId === 'skill-2') {
+					expect(nameInput()).toHaveValue('Pinned skill draft');
+					expect(getByRole('button', { name: 'Save skill' })).toBeEnabled();
+				} else {
+					expect(getByTestId('instance-ai-workflow-preview-stub')).toHaveAttribute(
+						'data-workflow-id',
+						'workflow-1',
+					);
+				}
+				expect(skillsStore.fetchSkill).toHaveBeenCalledTimes(fetchCount);
+
+				thread.isStreaming = false;
+				await selectTab('skill-1');
+
+				expect(skillsStore.fetchSkill).toHaveBeenCalledTimes(fetchCount + 1);
+				expect(skillsStore.fetchSkill).toHaveBeenLastCalledWith('skill-1');
+				expect(nameInput()).toHaveValue('Updated skill');
+				expect(field('agent-skill-instructions-editor')).toHaveValue('Updated instructions');
+				expect(getByRole('button', { name: 'Save skill' })).toBeDisabled();
+				await fireEvent.update(field('agent-skill-instructions-editor'), 'User instructions');
+				await userEvent.click(getByRole('button', { name: 'Save skill' }));
+				await flushPromises();
+
+				expect(skillsStore.saveSkill).toHaveBeenCalledExactlyOnceWith('skill-1', {
+					name: 'Updated skill',
+					description: 'Updated description',
+					instructions: 'User instructions',
+					references: [{ path: 'references/tone.md', content: 'Updated reference' }],
+					baseSkillHash: 'assistant-saved-hash',
+				});
+			},
+		);
+	});
+
 	it('registers an explicit workflow open without a project as unscoped', async () => {
 		seedWorkflowArtifact();
 		thread.projectId = undefined;
@@ -649,14 +861,20 @@ describe('InstanceAiThreadView', () => {
 	});
 
 	it('shows no resource picker until the stored tabs load', async () => {
+		const user = userEvent.setup();
 		vi.mocked(fetchThreadTabs).mockReturnValueOnce(new Promise(() => {}));
 		const { findAllByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
 		const toggles = await findAllByTestId('instance-ai-artifacts-preview-toggle');
 		expect(queryByTestId('instance-ai-open-resource-picker')).toBeNull();
-		expect(
-			toggles.find((toggle) => toggle.getAttribute('aria-pressed') === 'false'),
-		).toBeDisabled();
+		const toggle = toggles.find((toggle) => toggle.getAttribute('aria-pressed') === 'false')!;
+		expect(toggle).toHaveAttribute('aria-disabled', 'true');
+		expect(toggle).not.toBeDisabled();
+		toggle.focus();
+		expect(toggle).toHaveFocus();
+		await user.keyboard('{Enter} ');
+		await user.click(toggle);
+		expect(toggle).toHaveAttribute('aria-pressed', 'false');
 	});
 
 	it('shows the preview toggle, not the picker, while tabs are open', async () => {
@@ -1791,7 +2009,7 @@ describe('InstanceAiThreadView', () => {
 		expect(thread.sendMessage).not.toHaveBeenCalled();
 	});
 
-	it('swaps the chat input for the floating panel when a generic approval is pending', () => {
+	it('hides the chat input behind the floating panel when a generic approval is pending', () => {
 		thread.pendingConfirmations = [
 			{
 				messageId: 'msg-floating',
@@ -1807,13 +2025,13 @@ describe('InstanceAiThreadView', () => {
 			},
 		] as unknown as ThreadRuntime['pendingConfirmations'];
 
-		const { getByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
+		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
 		expect(getByTestId('instance-ai-confirmation-panel-floating')).toBeTruthy();
-		expect(queryByTestId('instance-ai-input-stub')).toBeNull();
+		expect(getByTestId('instance-ai-input-stub')).not.toBeVisible();
 	});
 
-	it('swaps the chat input for the floating panel when questions are pending', () => {
+	it('hides the chat input behind the floating panel when questions are pending', () => {
 		thread.pendingConfirmations = [
 			{
 				messageId: 'msg-questions',
@@ -1835,10 +2053,10 @@ describe('InstanceAiThreadView', () => {
 			},
 		] as unknown as ThreadRuntime['pendingConfirmations'];
 
-		const { getByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
+		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
 		expect(getByTestId('instance-ai-confirmation-panel-floating')).toBeTruthy();
-		expect(queryByTestId('instance-ai-input-stub')).toBeNull();
+		expect(getByTestId('instance-ai-input-stub')).not.toBeVisible();
 	});
 
 	it('connects the route thread when navigating to a known thread', async () => {
@@ -1967,32 +2185,14 @@ describe('InstanceAiThreadView', () => {
 				textContent: '',
 				reasoning: '',
 				timeline: [],
-				children: [
-					{
-						agentId: 'agent-builder-child',
-						role: 'agent-builder',
-						kind: 'agent-builder',
-						status: 'completed',
-						textContent: '',
-						reasoning: '',
-						timeline: [],
-						children: [],
-						toolCalls: [],
-						targetResource: {
-							type: 'agent',
-							id: 'agent-1',
-							projectId: 'proj-1',
-							name: 'SEO Auditor',
-						},
-					},
-				],
+				children: [],
 				toolCalls: [
 					{
 						toolCallId: 'tc-create-agent',
-						toolName: 'agent_builder_build_agent',
-						args: { message: 'build me an SEO auditor', name: 'SEO Auditor' },
+						toolName: 'agent_builder_select_agent',
+						args: { name: 'SEO Auditor' },
 						isLoading: false,
-						result: { ok: true, builderReply: 'Created the agent.' },
+						result: { ok: true, agentId: 'agent-1', projectId: 'proj-1', agentChange: 'created' },
 					},
 				],
 			},
@@ -2308,6 +2508,64 @@ describe('InstanceAiThreadView', () => {
 		expect(queryByTestId('instance-ai-assistant-message')).not.toBeInTheDocument();
 	});
 
+	it('fetches live views only for running browser tasks', async () => {
+		fetchCloudBrowserLiveViewSpy.mockResolvedValue({ status: 'starting' });
+		const browserAgent = (agentId: string, taskId: string, status: 'active' | 'completed') => ({
+			agentId,
+			role: 'cloud-browser',
+			kind: 'cloud-browser',
+			title: 'Find the price',
+			taskId,
+			status,
+			textContent: '',
+			reasoning: '',
+			timeline: [],
+			children: [],
+			// Both tasks opened a session, so only the task state decides which one is fetched.
+			toolCalls: [
+				{
+					toolCallId: `start-${taskId}`,
+					toolName: 'browser_start_session',
+					args: {},
+					isLoading: false,
+				},
+			],
+		});
+		thread.messages = [
+			{
+				id: 'msg-browser',
+				role: 'assistant',
+				content: '',
+				reasoning: '',
+				isStreaming: false,
+				createdAt: '2026-04-01T00:00:00.000Z',
+				agentTree: {
+					agentId: 'orchestrator-1',
+					role: 'orchestrator',
+					status: 'completed',
+					textContent: '',
+					reasoning: '',
+					timeline: [],
+					toolCalls: [],
+					children: [
+						browserAgent('browser-running', 'task-running', 'active'),
+						browserAgent('browser-done', 'task-done', 'completed'),
+					],
+				},
+			},
+		] as never;
+
+		renderView({ props: { threadId: 'thread-1' } });
+		await flushPromises();
+
+		expect(fetchCloudBrowserLiveViewSpy).toHaveBeenCalledTimes(1);
+		expect(fetchCloudBrowserLiveViewSpy).toHaveBeenCalledWith(
+			expect.anything(),
+			'thread-1',
+			'task-running',
+		);
+	});
+
 	it('closes the agent artifact preview from the wrapper toggle', async () => {
 		const { getByTestId, queryByTestId, user } = await renderAgentArtifact();
 		const previewPanel = getByTestId('instance-ai-preview-panel');
@@ -2555,7 +2813,7 @@ describe('InstanceAiThreadView', () => {
 			testAgentOfferState.capabilitySummary = {
 				id: 'agent-1',
 				name: 'Trip Planner',
-				model: { provider: 'anthropic', model: 'claude-sonnet-4-5' },
+				model: { provider: 'anthropic', model: 'claude-sonnet-5-5' },
 				channels: [],
 				tools: [{ type: 'custom', name: 'search' }],
 				mcpServers: [],
@@ -2927,7 +3185,7 @@ describe('InstanceAiThreadView', () => {
 			testAgentOfferState.capabilitySummary = {
 				id: 'agent-1',
 				name: 'Trip Planner',
-				model: { provider: 'anthropic', model: 'claude-sonnet-4-5' },
+				model: { provider: 'anthropic', model: 'claude-sonnet-5-5' },
 				channels: [],
 				tools: [{ type: 'custom', name: 'search' }],
 				mcpServers: [],
@@ -3246,5 +3504,132 @@ describe('InstanceAiThreadView', () => {
 			handoffContext: undefined,
 		});
 		expect(thread.confirmAction).not.toHaveBeenCalled();
+	});
+
+	describe('cloud browser tabs', () => {
+		const OpenBrowserTabButtons = {
+			setup() {
+				const openCloudBrowserTab = inject<((taskId: string) => void) | undefined>(
+					'openCloudBrowserTab',
+					undefined,
+				);
+				return () =>
+					['task-1', 'task-2'].map((taskId) =>
+						h(
+							'button',
+							{
+								'data-test-id': `open-browser-tab-${taskId}`,
+								onClick: () => openCloudBrowserTab?.(taskId),
+							},
+							taskId,
+						),
+					);
+			},
+		};
+
+		const InstanceAiBrowserPreviewStub = defineComponent({
+			props: { taskId: { type: String, required: true } },
+			setup(props) {
+				return () =>
+					h('div', [
+						h('div', {
+							'data-test-id': 'instance-ai-browser-preview-stub',
+							'data-task-id': props.taskId,
+						}),
+						h(OpenBrowserTabButtons),
+					]);
+			},
+		});
+
+		const browserStubs = {
+			...defaultViewStubs,
+			InstanceAiArtifactsPanel: OpenBrowserTabButtons,
+			InstanceAiBrowserPreview: InstanceAiBrowserPreviewStub,
+		};
+
+		function seedBrowserTasks() {
+			const browserAgent = (taskId: string) => ({
+				agentId: `browser-${taskId}`,
+				role: 'cloud-browser',
+				kind: 'cloud-browser',
+				title: `Task ${taskId}`,
+				taskId,
+				status: 'active',
+				textContent: '',
+				reasoning: '',
+				timeline: [],
+				children: [],
+				toolCalls: [],
+			});
+			fetchCloudBrowserLiveViewSpy.mockResolvedValue({ status: 'starting' });
+			thread.hasMessages = true;
+			thread.messages = [
+				{
+					id: 'msg-browser',
+					role: 'assistant',
+					content: '',
+					reasoning: '',
+					isStreaming: false,
+					createdAt: '2026-04-01T00:00:00.000Z',
+					agentTree: {
+						agentId: 'orchestrator-1',
+						role: 'orchestrator',
+						status: 'completed',
+						textContent: '',
+						reasoning: '',
+						timeline: [],
+						toolCalls: [],
+						children: [browserAgent('task-1'), browserAgent('task-2')],
+					},
+				},
+			] as never;
+		}
+
+		it('does not send browser tabs to the agent as open tabs or as the active artifact', async () => {
+			seedBrowserTasks();
+			thread.producedArtifacts = new Map([
+				['workflow-1', { type: 'workflow', id: 'workflow-1', name: 'Orders workflow' }],
+			]) as typeof thread.producedArtifacts;
+			const user = userEvent.setup();
+			const { findByTestId } = renderView({
+				props: { threadId: 'thread-1' },
+				global: { stubs: browserStubs },
+			});
+			await flushPromises();
+
+			await user.click(await findByTestId('open-browser-tab-task-1'));
+			await flushPromises();
+
+			expect(await findByTestId('instance-ai-browser-preview-stub')).toBeVisible();
+			expect(vi.mocked(thread.setOpenTabs).mock.lastCall?.[0]).toEqual([
+				expect.objectContaining({ id: 'workflow-1' }),
+			]);
+			expect(vi.mocked(thread.setActiveArtifactId).mock.lastCall).toEqual([undefined]);
+			for (const [tabs] of vi.mocked(thread.setOpenTabs).mock.calls) {
+				expect(tabs?.some((tab) => tab.id.startsWith('browser:'))).toBeFalsy();
+			}
+			for (const [artifactId] of vi.mocked(thread.setActiveArtifactId).mock.calls) {
+				expect(artifactId?.startsWith('browser:')).toBeFalsy();
+			}
+		});
+
+		it('keeps one preview for each browser tab and shows only the active one', async () => {
+			seedBrowserTasks();
+			const user = userEvent.setup();
+			const { findByTestId, findAllByTestId } = renderView({
+				props: { threadId: 'thread-1' },
+				global: { stubs: browserStubs },
+			});
+			await flushPromises();
+
+			await user.click(await findByTestId('open-browser-tab-task-1'));
+			const [firstPreview] = await findAllByTestId('instance-ai-browser-preview-stub');
+			await user.click(within(firstPreview.parentElement!).getByTestId('open-browser-tab-task-2'));
+
+			const previews = await findAllByTestId('instance-ai-browser-preview-stub');
+			expect(previews.map((preview) => preview.dataset.taskId)).toEqual(['task-1', 'task-2']);
+			expect(previews[0]).not.toBeVisible();
+			expect(previews[1]).toBeVisible();
+		});
 	});
 });

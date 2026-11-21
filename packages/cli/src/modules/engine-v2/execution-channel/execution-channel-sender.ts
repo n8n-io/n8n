@@ -23,7 +23,13 @@ export class ExecutionChannelSender<T> {
 		}
 
 		const frameResult = this.codec.serialize(message);
-		this.publisher.publish(this.codec.topic, this.codec.executionIdOf(message), frameResult.frame);
+		if (frameResult.frame !== undefined) {
+			this.publisher.publish(
+				this.codec.topic,
+				this.codec.executionIdOf(message),
+				frameResult.frame,
+			);
+		}
 
 		return frameResult.ok ? createResultOk(undefined) : createResultError(frameResult.error);
 	}

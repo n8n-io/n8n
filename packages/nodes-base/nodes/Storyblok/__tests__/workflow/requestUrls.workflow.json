@@ -1,0 +1,255 @@
+{
+	"name": "Storyblok Request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "trigger",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"identifier": "blog/my-first-post"
+			},
+			"type": "n8n-nodes-base.storyblok",
+			"typeVersion": 1,
+			"position": [400, 0],
+			"id": "node-0",
+			"name": "Content Get",
+			"credentials": {
+				"storyblokContentApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "getAll",
+				"limit": 2,
+				"filters": {}
+			},
+			"type": "n8n-nodes-base.storyblok",
+			"typeVersion": 1,
+			"position": [400, 200],
+			"id": "node-1",
+			"name": "Content Get Many",
+			"credentials": {
+				"storyblokContentApi": {
+					"id": "2",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"source": "managementApi",
+				"space": "123456",
+				"storyId": "7891011"
+			},
+			"type": "n8n-nodes-base.storyblok",
+			"typeVersion": 1,
+			"position": [400, 400],
+			"id": "node-2",
+			"name": "Management Get",
+			"credentials": {
+				"storyblokManagementApi": {
+					"id": "3",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"source": "managementApi",
+				"operation": "delete",
+				"space": "123456",
+				"storyId": "7891011"
+			},
+			"type": "n8n-nodes-base.storyblok",
+			"typeVersion": 1,
+			"position": [400, 600],
+			"id": "node-3",
+			"name": "Management Delete",
+			"credentials": {
+				"storyblokManagementApi": {
+					"id": "4",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"source": "managementApi",
+				"operation": "getAll",
+				"space": "123456",
+				"limit": 2,
+				"filters": {}
+			},
+			"type": "n8n-nodes-base.storyblok",
+			"typeVersion": 1,
+			"position": [400, 800],
+			"id": "node-4",
+			"name": "Management Get Many",
+			"credentials": {
+				"storyblokManagementApi": {
+					"id": "5",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"source": "managementApi",
+				"operation": "publish",
+				"space": "123456",
+				"storyId": "7891011",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.storyblok",
+			"typeVersion": 1,
+			"position": [400, 1000],
+			"id": "node-5",
+			"name": "Management Publish",
+			"credentials": {
+				"storyblokManagementApi": {
+					"id": "6",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"source": "managementApi",
+				"operation": "unpublish",
+				"space": "123456",
+				"storyId": "7891011"
+			},
+			"type": "n8n-nodes-base.storyblok",
+			"typeVersion": 1,
+			"position": [400, 1200],
+			"id": "node-6",
+			"name": "Management Unpublish",
+			"credentials": {
+				"storyblokManagementApi": {
+					"id": "7",
+					"name": "Test account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Content Get": [
+			{
+				"json": {
+					"id": 7891011,
+					"name": "My first post",
+					"full_slug": "blog/my-first-post"
+				}
+			}
+		],
+		"Content Get Many": [
+			{
+				"json": {
+					"id": 7891011,
+					"name": "My first post",
+					"full_slug": "blog/my-first-post"
+				}
+			}
+		],
+		"Management Get": [
+			{
+				"json": {
+					"id": 7891011,
+					"name": "My first post",
+					"full_slug": "blog/my-first-post"
+				}
+			}
+		],
+		"Management Delete": [
+			{
+				"json": {
+					"id": 7891011,
+					"name": "My first post",
+					"full_slug": "blog/my-first-post"
+				}
+			}
+		],
+		"Management Get Many": [
+			{
+				"json": {
+					"id": 7891011,
+					"name": "My first post",
+					"full_slug": "blog/my-first-post"
+				}
+			}
+		],
+		"Management Publish": [
+			{
+				"json": {
+					"id": 7891011,
+					"name": "My first post",
+					"full_slug": "blog/my-first-post"
+				}
+			}
+		],
+		"Management Unpublish": [
+			{
+				"json": {
+					"id": 7891011,
+					"name": "My first post",
+					"full_slug": "blog/my-first-post"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Content Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Content Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Management Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Management Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Management Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Management Publish",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Management Unpublish",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

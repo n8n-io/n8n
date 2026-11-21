@@ -8,7 +8,13 @@ import type { ProviderAttachmentCapabilities } from './provider-capabilities';
 
 export type AgentActor = 'user' | 'builder' | 'mcp';
 
-export type AgentExecutionStatus = 'running' | 'success' | 'error' | 'cancelled' | 'interrupted';
+export type AgentExecutionStatus =
+	| 'running'
+	| 'success'
+	| 'error'
+	| 'cancelled'
+	| 'interrupted'
+	| 'awaiting';
 
 export interface AgentSessionPreviewAccess {
 	canContinueInPreview: boolean;
@@ -207,6 +213,11 @@ export interface AgentIntegrationConnectResponse {
  */
 export interface AgentWhatsAppVerifyTokenResponse {
 	verifyToken: string;
+}
+
+/** The URL of an agent's webhook channel. Callers send `POST` requests to `${url}/responses`. */
+export interface AgentWebhookUrlResponse {
+	url: string;
 }
 
 export interface AgentSkillReference {
@@ -414,6 +425,11 @@ export interface AgentVersionListItemDto {
 	description?: string | null;
 	isCurrent?: boolean;
 	lastPublished?: Pick<AgentPublishHistoryItemDto, 'author' | 'createdAt' | 'isLegacy'>;
+	/**
+	 * Whether this version's config adds the agent to n8n Chat. Only the
+	 * single-version endpoint sets it, so the publish modal can say so before it publishes.
+	 */
+	includesN8nChat?: boolean;
 }
 
 export interface AgentPublishHistoryItemDto {
@@ -435,7 +451,7 @@ export interface AgentPublishHistoryItemDto {
 export interface AgentCapabilityModel {
 	/** Provider prefix of the model id, e.g. 'anthropic'. Empty when the id has no prefix. */
 	provider: string;
-	/** Model name, e.g. 'claude-sonnet-4-5'. */
+	/** Model name, e.g. 'claude-sonnet-5-5'. */
 	model: string;
 }
 
@@ -670,6 +686,11 @@ export interface AgentChatMessagesResponse {
 	 * An omitted value means that the endpoint does not report execution state.
 	 */
 	activeExecutionId?: string | null;
+	/**
+	 * Cursor of the next older page. `null` means that no older turns exist.
+	 * An omitted value means that the response holds the whole thread.
+	 */
+	nextCursor?: string | null;
 }
 
 /**

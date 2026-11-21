@@ -1,14 +1,13 @@
 import { AgentEvent } from '@n8n/agents';
 import type { AgentEventData, MemoryTaskUsageReport } from '@n8n/agents';
-import { Logger } from '@n8n/backend-common';
 import { SsrfProtectionService } from '@n8n/backend-network';
+import { PushProxy, TelemetryProxy } from '@n8n/backend-services';
 import { GlobalConfig, SsrfProtectionConfig, type InstanceAiConfig } from '@n8n/config';
 import { type User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import {
 	createInstanceAgent,
 	McpClientManager,
-	tokenUsageToBuilderUsageItems,
 	orchestratorAgentId,
 	resolveAgentPreviewSession,
 	type InstanceAiContext,
@@ -16,14 +15,12 @@ import {
 	type McpServerConfig,
 	type ModelConfig,
 	type InstanceAiTraceContext,
+	type OrchestrationContext,
 } from '@n8n/instance-ai';
-import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { ErrorReporter } from 'n8n-core';
 
 import { formatPreviewSessionContext } from '@/modules/agents/format-agent-session-context';
 import { userHasScopes } from '@/permissions.ee/check-access';
-import { Push } from '@/push';
-import { Telemetry } from '@/telemetry';
 
 import { canAccessAgentTestHandoff } from '../agent-test-handoff';
 import { getAgentContextService, isAgentsAccessEnabled } from '../agents-access';
@@ -69,12 +66,9 @@ export interface AssistantAgentParams {
 export class AssistantAgentFactory {
 	private _mcpClientManager?: McpClientManager;
 
-	private readonly logger: Logger;
-
 	private readonly instanceAiConfig: InstanceAiConfig;
 
 	constructor(
-		logger: Logger,
 		globalConfig: GlobalConfig,
 		private readonly ssrfProtectionConfig: SsrfProtectionConfig,
 		private readonly ssrfProtectionService: SsrfProtectionService,
@@ -83,11 +77,10 @@ export class AssistantAgentFactory {
 		private readonly creditService: InstanceAiCreditService,
 		private readonly instanceAiErrorReporter: InstanceAiErrorReporterService,
 		private readonly errorReporter: ErrorReporter,
-		private readonly telemetry: Telemetry,
-		private readonly push: Push,
+		private readonly telemetry: TelemetryProxy,
+		private readonly push: PushProxy,
 		private readonly modelService: InstanceAiModelService,
 	) {
-		this.logger = logger.scoped('instance-ai');
 		this.instanceAiConfig = globalConfig.instanceAi;
 	}
 
@@ -134,7 +127,7 @@ export class AssistantAgentFactory {
 				user,
 				threadId,
 				runId,
-				environment.memoryModelId,
+				environment.utilityModelId,
 				runtime.turnState.getObserverThresholdTokens(),
 				generateTitle,
 			),
@@ -174,7 +167,7 @@ export class AssistantAgentFactory {
 				},
 			});
 		}
-		this.subscribeToAgentErrors(agent, threadId, runId);
+		this.subscribeToAgentErrors(agent, environment.orchestrationContext);
 		return agent;
 	}
 
@@ -262,20 +255,53 @@ export class AssistantAgentFactory {
 		});
 	}
 
+	/**
+	 * Memory policy options from config. Thresholds are shares of the model's
+	 * window (capped by the max window), like Agents get from the SDK defaults.
+	 * An unknown window falls back to the cap, so the fixed token thresholds
+	 * apply only when the cap is 0 and the window is unknown. A per-run observer threshold (from
+	 * eval requests) wins over window shares.
+	 */
+	private buildObservationPolicy(
+		hasThresholdOverride: boolean,
+	): NonNullable<InstanceAiMemoryConfig['observationalMemory']>['policy'] {
+		const config = this.instanceAiConfig;
+		return {
+			// Empty shares use the SDK defaults and look the window up in the model catalog.
+			...(!hasThresholdOverride
+				? {
+						windowShares:
+							config.observationMaxWindowTokens > 0
+								? { maxContextWindowTokens: config.observationMaxWindowTokens }
+								: {},
+					}
+				: {}),
+			logPlacement: config.observationLogPlacement,
+			failurePolicy: config.observationFailurePolicy,
+			// 0 means no limit, so it must reach the SDK instead of its default.
+			// A negative value would skip every batch, so the SDK default applies.
+			...(config.observerMaxBatches >= 0 && {
+				maxObserverBatchesAfterTurn: config.observerMaxBatches,
+			}),
+			reflectionMode: config.reflectionMode,
+			historyRecall: config.historyRecall,
+		};
+	}
+
 	private createAgentMemoryOptions(
 		user: User,
 		threadId: string,
 		runId: string,
-		memoryModelId: ModelConfig | undefined,
+		utilityModelId: ModelConfig | undefined,
 		observerThresholdTokens: number | undefined,
 		generateTitle = false,
 	): InstanceAiMemoryConfig {
 		return {
-			// Titles run on the memory model, like the observer and the reflector.
+			// Titles run on the utility model, like the observer and the reflector.
 			...(generateTitle
 				? {
 						titleGeneration: {
-							...(memoryModelId ? { model: memoryModelId } : {}),
+							...(utilityModelId ? { model: utilityModelId } : {}),
 							// The host copies the title to the thread list when the run ends, so the
 							// title must be saved by then to show after the first turn.
 							sync: true,
@@ -283,33 +309,25 @@ export class AssistantAgentFactory {
 					}
 				: {}),
 			observationalMemory: {
-				model: memoryModelId,
+				model: utilityModelId,
 				observerThresholdTokens:
 					observerThresholdTokens ?? this.instanceAiConfig.observerMessageTokens,
-				reflectorThresholdTokens: this.instanceAiConfig.reflectorObservationTokens,
+				// Only a set value replaces the SDK's reflect share.
+				...(this.instanceAiConfig.reflectorObservationTokens !== undefined && {
+					reflectorThresholdTokens: this.instanceAiConfig.reflectorObservationTokens,
+				}),
 				midRunObservation: this.instanceAiConfig.midRunObservation,
+				policy: this.buildObservationPolicy(observerThresholdTokens !== undefined),
 				// Observer/reflector calls run in the background outside the run's
 				// finish-chunk usage, so they are claimed here per report. Best-effort:
 				// a billing failure must never block observation persistence.
 				onTaskUsage: async (report: MemoryTaskUsageReport) => {
-					try {
-						const items = tokenUsageToBuilderUsageItems(report.model, report.usage);
-						if (items.length === 0) return;
-						await this.creditService.claimRunUsage(
-							user,
-							threadId,
-							`${runId}:memory:${report.task}:${report.reportId}`,
-							items,
-							'completed',
-						);
-					} catch (error) {
-						this.logger.warn('Failed to claim observational-memory usage', {
-							threadId,
-							runId,
-							task: report.task,
-							error: getErrorMessage(error),
-						});
-					}
+					await this.creditService.claimSideCallUsage(
+						user,
+						threadId,
+						`${runId}:memory:${report.task}:${report.reportId}`,
+						report,
+					);
 				},
 			},
 		};
@@ -324,7 +342,7 @@ export class AssistantAgentFactory {
 	 * the `source`-tagged events — the main agentic-loop errors (no source) already
 	 * reach Sentry via the errored run/stream result.
 	 */
-	private subscribeToAgentErrors(agent: InstanceAgent, threadId: string, runId: string): void {
+	private subscribeToAgentErrors(agent: InstanceAgent, context: OrchestrationContext): void {
 		agent.on(AgentEvent.Error, (event: AgentEventData) => {
 			if (event.type !== AgentEvent.Error) return;
 			if (!event.source) return;
@@ -332,8 +350,11 @@ export class AssistantAgentFactory {
 			this.instanceAiErrorReporter.report(event.error, {
 				component: `instance-ai-${event.source}`,
 				...(severity ? { severity } : {}),
-				threadId,
-				runId,
+				threadId: context.threadId,
+				runId: context.runId,
+				userId: context.userId,
+				...(context.messageGroupId ? { messageGroupId: context.messageGroupId } : {}),
+				...(context.tracing ? { tracing: context.tracing } : {}),
 			});
 		});
 	}

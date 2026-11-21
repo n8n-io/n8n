@@ -13,7 +13,7 @@ import {
 } from './helpers/utils';
 import { waitForNetworkQuiet } from './network-stabilization';
 import { ResourceTracker, type CleanupReport } from './resource-tracker';
-import { assertEngineSupported } from './services/engine';
+import { assertEngineSupported, createEngineTlsFiles } from './services/engine';
 import type { LoadBalancerResult } from './services/load-balancer';
 import {
 	createN8NInstances,
@@ -21,6 +21,7 @@ import {
 	type N8NInstancesResult,
 	type N8NStartupDiagnostics,
 } from './services/n8n';
+import type { PostgresHelper } from './services/postgres';
 import { helperFactories, services } from './services/registry';
 import type { TaskRunnerResult } from './services/task-runner';
 import type {
@@ -75,6 +76,8 @@ export interface N8NStack {
 	 * stacks only — the substrate of the upgrade/downgrade cycles.
 	 */
 	replaceN8N: (options: ReplaceN8NOptions) => Promise<void>;
+	/** The database engine v2 writes to. Present only when the stack runs engine v2. */
+	engineDatabase?: PostgresHelper;
 	/** Direct URLs to each main instance (bypasses load balancer). Index 0 = main-1, etc. */
 	mainUrls: string[];
 	/**
@@ -89,6 +92,14 @@ export interface N8NStack {
 	 */
 	processUrls: N8NProcessUrl[];
 	startupDiagnostics: N8NStartupDiagnostics;
+}
+
+function logKeepalive(baseUrl: string, projectName: string): void {
+	console.log('\n=== KEEPALIVE: Containers left running for debugging ===');
+	console.log(`    URL: ${baseUrl}`);
+	console.log(`    Project: ${projectName}`);
+	console.log('    Cleanup: pnpm --filter n8n-containers stack:clean:all');
+	console.log('=========================================================\n');
 }
 
 export interface N8NProcessUrl {
@@ -146,6 +157,8 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		postgres: usePostgresConfig = false,
 		engine,
 		env = {},
+		unsetEnv,
+		files: stackFiles,
 		projectName,
 		resourceQuota,
 		workerResourceQuota,
@@ -179,6 +192,9 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		engine === 'container'
 			? createHash('sha256').update(`${uniqueProjectName}:engine-auth`).digest('hex')
 			: undefined;
+	// Once per stack, like the secret, so a replaced main still trusts the engine.
+	const engineTlsFiles =
+		engine === 'container' ? createEngineTlsFiles(uniqueProjectName) : undefined;
 
 	let allocatedMainPort: number | undefined;
 	let allocatedLbPort: number | undefined;
@@ -394,15 +410,18 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 				network,
 				serviceEnvironment: environment,
 				userEnvironment: env,
+				unsetEnv,
 				usePostgres,
 				engine,
 				engineAuthSecret,
+				engineTlsFiles,
 				baseUrl: needsLoadBalancer ? undefined : baseUrl,
 				allocatedPort: needsLoadBalancer ? undefined : allocatedMainPort,
 				resourceQuota,
 				workerResourceQuota,
 				webhookResourceQuota,
 				filesToMount,
+				stackFiles,
 				coverageHostDir,
 				registerContainer: (container) => {
 					resources.trackContainer(container);
@@ -453,21 +472,29 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		// runner's own log is the one place the signal is observable. Match each
 		// launcher separately, so one launcher reconnecting cannot stand in for the
 		// other, and only from this run, since a reused container keeps its old logs.
-		const taskRunnerResult = serviceResults.taskRunner as TaskRunnerResult | undefined;
-		if (taskRunnerResult) {
+		const runnerResults = [
+			serviceResults.taskRunner as TaskRunnerResult | undefined,
+			serviceResults.engineTaskRunner as TaskRunnerResult | undefined,
+		].filter((result): result is TaskRunnerResult => result !== undefined);
+		if (runnerResults.length > 0) {
 			telemetry.startStage('task-runner-registration');
 			try {
-				await waitForContainerLogMessages(
-					taskRunnerResult.container,
-					[
-						/\[launcher:js\].*Received message `broker:runnerregistered`/,
-						/\[launcher:py\].*Received message `broker:runnerregistered`/,
-					],
-					{
-						since: n8nStartedAtSeconds,
-						timeoutMs: startupDeadline.remainingMs,
-						signal: startupDeadline.signal,
-					},
+				await Promise.all(
+					runnerResults.map(
+						async (runnerResult) =>
+							await waitForContainerLogMessages(
+								runnerResult.container,
+								[
+									/\[launcher:js\].*Received message `broker:runnerregistered`/,
+									/\[launcher:py\].*Received message `broker:runnerregistered`/,
+								],
+								{
+									since: n8nStartedAtSeconds,
+									timeoutMs: startupDeadline.remainingMs,
+									signal: startupDeadline.signal,
+								},
+							),
+					),
 				);
 				telemetry.finishStage();
 			} catch (error) {
@@ -583,6 +610,10 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			baseUrl,
 			projectName: uniqueProjectName,
 			stop: async () => {
+				if (process.env.N8N_CONTAINERS_KEEPALIVE === 'true') {
+					logKeepalive(baseUrl, uniqueProjectName);
+					return;
+				}
 				const cleanup = await resources.dispose(coverageHostDir ? { timeout: 30_000 } : undefined);
 				if (cleanup.failures.length > 0 || cleanup.remaining.length > 0) {
 					throw new Error(cleanupDetails(cleanup));
@@ -592,6 +623,8 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			serviceResults,
 			hostedServiceEnv,
 			services: servicesProxy,
+			// The engine uses its own server when one is started, otherwise the shared one.
+			engineDatabase: engine ? (servicesProxy.enginePostgres ?? servicesProxy.postgres) : undefined,
 			get logs() {
 				return servicesProxy.observability.logs;
 			},
@@ -626,11 +659,13 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 						network,
 						serviceEnvironment: environment,
 						userEnvironment: { ...env, ...options.env },
+						unsetEnv,
 						usePostgres,
 						// Without this the replacement main drops the engine-v2 module, and a
 						// workflow that still asks for engine v2 fails far from the cause.
 						engine,
 						engineAuthSecret,
+						engineTlsFiles,
 						// The engine container is not replaced: it keeps running against the
 						// new main.
 						reuseEngine: true,
@@ -639,6 +674,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 						allocatedPort: allocatedMainPort,
 						resourceQuota,
 						filesToMount,
+						stackFiles,
 						coverageHostDir,
 						registerContainer: (container) => {
 							resources.trackContainer(container);

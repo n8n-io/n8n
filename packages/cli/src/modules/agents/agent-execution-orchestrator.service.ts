@@ -2,25 +2,27 @@ import {
 	readEpisodicScopeDecision,
 	type Agent as RuntimeAgent,
 	type EpisodicScopeDecision,
+	type JSONObject,
 	type SerializableAgentState,
 } from '@n8n/agents';
+import type { LanguageModel } from 'ai';
 import type {
 	AgentBackgroundJobSignal,
 	AgentMessageAuthor,
 	AgentChatMessagesResponse,
+	AgentToolGuardrailConfig,
 	BudgetGuardrailConfig,
 	AgentBudgetNotice,
 } from '@n8n/api-types';
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { AiConfig } from '@n8n/config';
-import type { User } from '@n8n/db';
+import { UserRepository, type User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { OperationalError, UserError } from '@n8n/errors';
+import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 
 import { ExternalHooks } from '@/external-hooks';
-import type { AgentRunTelemetryType, IAgentConfigurationTelemetryProperties } from '@/interfaces';
-import { Telemetry } from '@/telemetry';
 
 import { AgentExecutionService, type StartExecutionParams } from './agent-execution.service';
 import {
@@ -28,10 +30,16 @@ import {
 	type CancelSuspendedRunParams,
 } from './agent-chat-execution.service';
 import { AgentN8nChatUnavailableError } from './agent-n8n-chat-unavailable.error';
+import type {
+	AgentRunTelemetryType,
+	IAgentConfigurationTelemetryProperties,
+} from './agent-telemetry.types';
+import { AgentUsageTelemetryService } from './agent-usage-telemetry.service';
 import type { AgentThreadAccess } from './entities/agent-execution-thread.entity';
 import type { AgentChatSurface, AgentSessionMode } from './utils/agent-thread-access';
 import {
 	isTaskRunMemoryResourceId,
+	taskRunMemoryResourceId,
 	userIdFromDraftChatMemoryResourceId,
 	userIdFromProductionChatMemoryResourceId,
 } from './utils/agent-memory-scope';
@@ -59,6 +67,7 @@ import { AgentSkillRefsService } from './agent-skill-refs.service';
 import { buildAgentConfigurationTelemetry } from './agent-telemetry';
 import { AgentTurnExecutionService, type AgentTurnRequest } from './agent-turn-execution.service';
 import { withBudgetGuardrail } from './budget-guardrail';
+import { withToolGuardrails } from './tool-guardrails';
 import { AgentExecutionRecordingError } from './agent-execution-recording.error';
 import type { AgentChatBridge } from './integrations/agent-chat-bridge';
 import {
@@ -87,6 +96,22 @@ import { createAgentExecutionCounter } from './utils/agent-execution-counter';
 import { resolveAgentRunSource } from './utils/agent-published-snapshot';
 import { buildInboundUserMessage } from './utils/inbound-attachments';
 import { executionsToMessagesDto } from './utils/execution-to-message-mapper';
+import type { AgentExecution } from './entities/agent-execution.entity';
+import { encodeChatHistoryCursor, type ChatHistoryPageRequest } from './utils/chat-history-page';
+
+/** Written on a manual task run so a later approval can rebuild that starter's runtime. */
+const TASK_RUN_STARTER_USER_KEY = 'n8nTaskRunStarterUserId';
+
+function taskRunStarterUserId(hostMetadata: JSONObject | undefined): string | undefined {
+	const value = hostMetadata?.[TASK_RUN_STARTER_USER_KEY];
+	return typeof value === 'string' && value.length > 0 ? value : undefined;
+}
+
+/** User-visible history of a chat thread, or of one page of its turns. */
+export type ConversationHistory = Pick<
+	AgentChatMessagesResponse,
+	'messages' | 'activeExecutionId' | 'nextCursor'
+>;
 
 export interface AgentMemoryScope {
 	threadId: string;
@@ -233,6 +258,10 @@ export interface ExecuteForWakeConfig extends AgentExecutionInput {
 	backgroundJobSignal: AgentBackgroundJobSignal;
 	pauseReport?: boolean;
 	abortSignal: AbortSignal;
+	/** Runs after the execution record exists and before the agent starts. */
+	onAdmitted?: () => Promise<void>;
+	/** Runs when the agent runtime starts. */
+	onRuntimeStarted?: () => void;
 	identity:
 		| { type: 'draft'; user: User; principalHash: AgentSandboxPrincipalHash }
 		| {
@@ -244,6 +273,7 @@ export interface ExecuteForWakeConfig extends AgentExecutionInput {
 
 export interface StreamChatResponseConfig extends ChatExecutionInput, ChatExecutionCallbacks {
 	onAdmitted?: () => Promise<void>;
+	onRuntimeStarted?: () => void;
 	access: AgentThreadAccess;
 	messageContext?: IntegrationMessageContext | null;
 	/** The channel's episodic scope decision. Absent on an integration resource means off. */
@@ -254,6 +284,10 @@ export interface StreamChatResponseConfig extends ChatExecutionInput, ChatExecut
 	budget?: BudgetGuardrailConfig;
 	/** See `ReconstructedAgentRuntime.modelCredentialGatewayManaged`. */
 	modelCredentialGatewayManaged?: boolean;
+	/** Saved tool guardrails from the reconstructed runtime. Absent when the config has none. */
+	toolGuardrails?: AgentToolGuardrailConfig[];
+	/** Model instance for the model-based guardrail kinds. Absent when none is configured. */
+	guardrailModel?: LanguageModel;
 	/** See `AgentRuntime.mcpServerAttributions`. */
 	mcpServerAttributions: Map<string, string>;
 	userId?: string;
@@ -357,7 +391,7 @@ export class AgentExecutionOrchestratorService {
 		private readonly n8nCheckpointStorage: N8NCheckpointStorage,
 		private readonly agentExecutionService: AgentExecutionService,
 		private readonly turnExecutionService: AgentTurnExecutionService,
-		private readonly telemetry: Telemetry,
+		private readonly agentUsageTelemetry: AgentUsageTelemetryService,
 		private readonly runtimeCacheService: AgentRuntimeCacheService,
 		private readonly integrationMessageContextService: IntegrationMessageContextService,
 		private readonly agentRunTracingService: AgentRunTracingService,
@@ -370,6 +404,7 @@ export class AgentExecutionOrchestratorService {
 		private readonly backgroundJobService: AgentBackgroundJobService,
 		private readonly settingsService: AgentsSettingsService,
 		private readonly agentSkillRefs: AgentSkillRefsService,
+		private readonly userRepository: UserRepository,
 	) {}
 
 	async getSessionMode(threadId: string): Promise<AgentSessionMode> {
@@ -388,8 +423,25 @@ export class AgentExecutionOrchestratorService {
 		projectId: string;
 		agentId: string;
 		userId: string;
-	}): Promise<Pick<AgentChatMessagesResponse, 'messages' | 'activeExecutionId'> | null> {
-		const { threadId, projectId, agentId, userId } = params;
+		/** One page of turns. Without it, the history holds the whole thread. */
+		page?: ChatHistoryPageRequest;
+	}): Promise<ConversationHistory | null> {
+		const { threadId, projectId, agentId, userId, page } = params;
+		if (page) {
+			const detail = await this.agentExecutionService.getThreadDetailPage(
+				threadId,
+				projectId,
+				agentId,
+				userId,
+				page,
+			);
+			if (!detail) return null;
+			const oldest = detail.executions[0];
+			return {
+				...this.toConversationHistory(detail.executions),
+				nextCursor: detail.hasOlder && oldest ? encodeChatHistoryCursor(oldest) : null,
+			};
+		}
 		const detail = await this.agentExecutionService.getThreadDetail(
 			threadId,
 			projectId,
@@ -397,10 +449,14 @@ export class AgentExecutionOrchestratorService {
 			userId,
 		);
 		if (!detail) return null;
+		return this.toConversationHistory(detail.executions);
+	}
+
+	private toConversationHistory(executions: AgentExecution[]): ConversationHistory {
 		return {
-			messages: executionsToMessagesDto(detail.executions),
+			messages: executionsToMessagesDto(executions),
 			activeExecutionId:
-				detail.executions.findLast((execution) => execution.status === 'running')?.id ?? null,
+				executions.findLast((execution) => execution.status === 'running')?.id ?? null,
 		};
 	}
 
@@ -494,22 +550,53 @@ export class AgentExecutionOrchestratorService {
 		) {
 			throw notThisChat();
 		}
-		// A draft task run ("Run now") stays bound to the user who started it.
-		const owner = usePublishedVersion ? undefined : user;
+		// A Run now checkpoint keeps the member who started it. The caller may be
+		// another project member approving the action.
+		const taskRun = isTaskRunMemoryResourceId(memoryScope.resourceId);
+		const runtimeUser = usePublishedVersion
+			? undefined
+			: taskRun
+				? await this.starterForTaskRun(memoryScope)
+				: user;
 		const sandboxPrincipalHash = this.checkResumeSandbox(config, memoryScope, {
 			always: false,
-			owner: usePublishedVersion
-				? undefined
-				: {
-						principalHash: owner
-							? hashAgentSandboxPrincipal({ type: 'n8n-user', userId: owner.id })
-							: undefined,
-					},
+			owner:
+				usePublishedVersion || taskRun
+					? undefined
+					: {
+							principalHash: runtimeUser
+								? hashAgentSandboxPrincipal({ type: 'n8n-user', userId: runtimeUser.id })
+								: undefined,
+						},
 		});
 		return {
-			scope: { access: { accessScope: 'project', ownerId: null }, runtime: { user: owner } },
+			scope: {
+				access: { accessScope: 'project', ownerId: null },
+				runtime: { user: runtimeUser },
+			},
 			sandboxPrincipalHash,
 		};
+	}
+
+	/**
+	 * The Run now starter, when the checkpoint names one whose sandbox principal
+	 * still matches. A missing or disabled starter leaves the runtime unscoped.
+	 */
+	private async starterForTaskRun(
+		memoryScope: ResumeCheckpoint['memoryScope'],
+	): Promise<User | undefined> {
+		const userId = taskRunStarterUserId(memoryScope.hostMetadata);
+		const scope = decodeAgentSandboxHostMetadata(memoryScope.hostMetadata);
+		if (
+			!userId ||
+			!scope ||
+			hashAgentSandboxPrincipal({ type: 'n8n-user', userId }) !== scope.principalHash
+		) {
+			return undefined;
+		}
+		const starter = await this.userRepository.findByIdWithRole(userId);
+		if (!starter || starter.disabled) return undefined;
+		return starter;
 	}
 
 	private checkResumeSandbox(
@@ -555,6 +642,94 @@ export class AgentExecutionOrchestratorService {
 			async () => await this.getResumeRuntime(run, checkpoint),
 			(runtime) => this.resumeRuntimeTurn(run, checkpoint, runtime),
 		);
+	}
+
+	/**
+	 * Approve or deny a gated action on a task session. The resume continues
+	 * in the background, the same way a manual task run does.
+	 */
+	async resumeTaskApproval(config: {
+		agentId: string;
+		projectId: string;
+		threadId: string;
+		user: User;
+		toolCallId: string;
+		resumeData: unknown;
+	}): Promise<void> {
+		const { agentId, projectId, threadId, user, toolCallId, resumeData } = config;
+		const thread = await this.agentExecutionService.findThreadById(threadId);
+		const suspended = await this.agentExecutionService.findLatestSuspendedRun(threadId);
+		if (
+			!thread ||
+			thread.projectId !== projectId ||
+			thread.agentId !== agentId ||
+			suspended?.source !== 'task' ||
+			suspended.status !== 'awaiting'
+		) {
+			throw new UserError('This session has no approval to resume');
+		}
+		const runId = await this.n8nCheckpointStorage.findApprovalRunId(agentId, threadId, toolCallId);
+		if (!runId) {
+			throw new UserError(
+				'This action is no longer available. The link may have expired or already been used.',
+			);
+		}
+		const usePublishedVersion = thread.taskVersionId !== null;
+		void this.drainTaskApprovalResume({
+			agentId,
+			projectId,
+			threadId,
+			runId,
+			toolCallId,
+			resumeData,
+			user,
+			usePublishedVersion,
+			resourceId: thread.taskId ? taskRunMemoryResourceId(thread.taskId) : undefined,
+		}).catch((error: unknown) => {
+			// Scrub before logging. A platform error can quote the credential it failed with.
+			const message = error instanceof Error ? error.message : String(error);
+			this.logger.error('Task approval resume failed', {
+				agentId,
+				threadId,
+				error: scrubSecretsInText(message),
+			});
+		});
+	}
+
+	private async drainTaskApprovalResume(config: {
+		agentId: string;
+		projectId: string;
+		threadId: string;
+		runId: string;
+		toolCallId: string;
+		resumeData: unknown;
+		user: User;
+		usePublishedVersion: boolean;
+		resourceId: string | undefined;
+	}): Promise<void> {
+		const stream = this.resumeForChat({
+			agentId: config.agentId,
+			projectId: config.projectId,
+			runId: config.runId,
+			toolCallId: config.toolCallId,
+			resumeData: config.resumeData,
+			// The approver. A Run now runtime stays the starter named on the checkpoint.
+			user: config.user,
+			usePublishedVersion: config.usePublishedVersion,
+			source: 'task',
+			...(config.usePublishedVersion ? { integrationType: 'task' } : {}),
+			expectedMemory: {
+				threadId: config.threadId,
+				...(config.resourceId ? { resourceId: config.resourceId } : {}),
+			},
+		});
+		let chunkCount = 0;
+		for await (const _chunk of stream) chunkCount += 1;
+		this.logger.debug('Task approval resume finished', {
+			agentId: config.agentId,
+			threadId: config.threadId,
+			chunkCount,
+		});
 	}
 
 	async resumeBackgroundForChat(config: ResumeForChatConfig): Promise<boolean> {
@@ -788,6 +963,8 @@ export class AgentExecutionOrchestratorService {
 					mcpServerAttributions: runtime.mcpServerAttributions,
 					budget: runtime.budget,
 					modelCredentialGatewayManaged: runtime.modelCredentialGatewayManaged,
+					toolGuardrails: runtime.toolGuardrails,
+					guardrailModel: runtime.guardrailModel,
 					agentId,
 					message,
 					modelMessage,
@@ -869,6 +1046,8 @@ export class AgentExecutionOrchestratorService {
 					mcpServerAttributions: runtime.mcpServerAttributions,
 					budget: runtime.budget,
 					modelCredentialGatewayManaged: runtime.modelCredentialGatewayManaged,
+					toolGuardrails: runtime.toolGuardrails,
+					guardrailModel: runtime.guardrailModel,
 					agentId,
 					projectId,
 					message,
@@ -930,6 +1109,8 @@ export class AgentExecutionOrchestratorService {
 					mcpServerAttributions: runtime.mcpServerAttributions,
 					budget: runtime.budget,
 					modelCredentialGatewayManaged: runtime.modelCredentialGatewayManaged,
+					toolGuardrails: runtime.toolGuardrails,
+					guardrailModel: runtime.guardrailModel,
 					agentId,
 					message,
 					memory,
@@ -989,6 +1170,8 @@ export class AgentExecutionOrchestratorService {
 					mcpServerAttributions: runtime.mcpServerAttributions,
 					budget: runtime.budget,
 					modelCredentialGatewayManaged: runtime.modelCredentialGatewayManaged,
+					toolGuardrails: runtime.toolGuardrails,
+					guardrailModel: runtime.guardrailModel,
 					agentId,
 					userId: user.id,
 					message,
@@ -1145,6 +1328,7 @@ export class AgentExecutionOrchestratorService {
 		yield* this.turnExecutionService.execute({
 			admittedExecution: config.admittedExecution,
 			onAdmitted: config.onAdmitted,
+			onRuntimeStarted: config.onRuntimeStarted,
 			agentInstance: config.agentInstance,
 			toolRegistry: config.toolRegistry,
 			mcpServerAttributions: config.mcpServerAttributions,
@@ -1243,6 +1427,8 @@ export class AgentExecutionOrchestratorService {
 						params.usePublishedVersion === true && Boolean(agent.activeVersion?.schema),
 						this.agentSkillRefs,
 						{},
+						// The record of a rejected run needs the content of an archived agent.
+						{ allowArchived: true },
 					);
 				}
 			} catch (cause) {
@@ -1354,16 +1540,25 @@ export class AgentExecutionOrchestratorService {
 		return {
 			type: 'resume',
 			resumeData: config.resumeData,
-			options: withBudgetGuardrail(
-				this.createResumeOptions(config, memoryScope, messageContext, executionSource, tracing),
+			options: withToolGuardrails(
+				withBudgetGuardrail(
+					this.createResumeOptions(config, memoryScope, messageContext, executionSource, tracing),
+					{
+						budget: runtime.budget,
+						sessionId: memoryScope.threadId,
+						agentId: config.agentId,
+						...(runtime.modelCredentialGatewayManaged
+							? { modelCredentialGatewayManaged: true }
+							: {}),
+						...(config.chatSurface === 'preview' && config.onBudgetNotice
+							? { onNotice: config.onBudgetNotice }
+							: {}),
+					},
+				),
 				{
-					budget: runtime.budget,
-					sessionId: memoryScope.threadId,
-					agentId: config.agentId,
-					...(runtime.modelCredentialGatewayManaged ? { modelCredentialGatewayManaged: true } : {}),
-					...(config.chatSurface === 'preview' && config.onBudgetNotice
-						? { onNotice: config.onBudgetNotice }
-						: {}),
+					toolGuardrails: runtime.toolGuardrails,
+					toolRegistry: runtime.toolRegistry,
+					guardrailModel: runtime.guardrailModel,
 				},
 			),
 			recording: this.createResumeRecording(config, checkpoint, runtime, executionSource),
@@ -1425,7 +1620,7 @@ export class AgentExecutionOrchestratorService {
 							),
 					}
 				: {}),
-			executionCounter: createAgentExecutionCounter(this.telemetry, {
+			executionCounter: createAgentExecutionCounter(this.agentUsageTelemetry, {
 				agentId,
 				userId: user?.id,
 				runType,
@@ -1657,6 +1852,8 @@ export class AgentExecutionOrchestratorService {
 			mcpServerAttributions: runtime.mcpServerAttributions,
 			budget: runtime.budget,
 			modelCredentialGatewayManaged: runtime.modelCredentialGatewayManaged,
+			toolGuardrails: runtime.toolGuardrails,
+			guardrailModel: runtime.guardrailModel,
 			agentId,
 			userId: user.id,
 			message,
@@ -1724,6 +1921,9 @@ export class AgentExecutionOrchestratorService {
 				projectId,
 				principalHash: sandboxPrincipalHash,
 			}),
+			...(config.source === 'task' && config.userId
+				? { [TASK_RUN_STARTER_USER_KEY]: config.userId }
+				: {}),
 			...encodeIntegrationMessageContext(messageContext),
 			...episodicScopeHostMetadata(resourceId, config.episodicScope),
 			...(config.chatSurface !== undefined &&
@@ -1736,42 +1936,51 @@ export class AgentExecutionOrchestratorService {
 		return {
 			type: 'start',
 			input,
-			options: withBudgetGuardrail(
-				{
-					persistence: { threadId, resourceId, hostMetadata },
-					...(config.pauseReport
-						? {
-								toolsEnabled: false,
-								guardrails: {
-									hooks: [
-										{
-											beforeTool: async () => ({
-												action: 'stop' as const,
-												code: 'background-pause-report',
-											}),
-										},
-									],
-								},
-							}
-						: {}),
-					executionCounter: createAgentExecutionCounter(this.telemetry, {
+			options: withToolGuardrails(
+				withBudgetGuardrail(
+					{
+						persistence: { threadId, resourceId, hostMetadata },
+						...(config.pauseReport
+							? {
+									toolsEnabled: false,
+									guardrails: {
+										hooks: [
+											{
+												beforeTool: async () => ({
+													action: 'stop' as const,
+													code: 'background-pause-report',
+												}),
+											},
+										],
+									},
+								}
+							: {}),
+						executionCounter: createAgentExecutionCounter(this.agentUsageTelemetry, {
+							agentId,
+							userId,
+							runType: telemetry.runType,
+							source,
+						}),
+						...modelStreamStallOptions(this.aiConfig),
+						...(tracing ? { telemetry: tracing } : {}),
+						...(abortSignal ? { abortSignal } : {}),
+					},
+					{
+						budget: config.budget,
+						sessionId: threadId,
 						agentId,
-						userId,
-						runType: telemetry.runType,
-						source,
-					}),
-					...modelStreamStallOptions(this.aiConfig),
-					...(tracing ? { telemetry: tracing } : {}),
-					...(abortSignal ? { abortSignal } : {}),
-				},
+						...(config.modelCredentialGatewayManaged
+							? { modelCredentialGatewayManaged: true }
+							: {}),
+						...(config.chatSurface === 'preview' && config.onBudgetNotice
+							? { onNotice: config.onBudgetNotice }
+							: {}),
+					},
+				),
 				{
-					budget: config.budget,
-					sessionId: threadId,
-					agentId,
-					...(config.modelCredentialGatewayManaged ? { modelCredentialGatewayManaged: true } : {}),
-					...(config.chatSurface === 'preview' && config.onBudgetNotice
-						? { onNotice: config.onBudgetNotice }
-						: {}),
+					toolGuardrails: config.toolGuardrails,
+					toolRegistry: config.toolRegistry,
+					guardrailModel: config.guardrailModel,
 				},
 			),
 			recording: this.createChatRecording(config),
@@ -1874,6 +2083,8 @@ export class AgentExecutionOrchestratorService {
 			mcpServerAttributions: runtime.mcpServerAttributions,
 			budget: runtime.budget,
 			modelCredentialGatewayManaged: runtime.modelCredentialGatewayManaged,
+			toolGuardrails: runtime.toolGuardrails,
+			guardrailModel: runtime.guardrailModel,
 			agentId,
 			...(access.ownerId ? { userId: access.ownerId } : {}),
 			message,
@@ -1892,6 +2103,8 @@ export class AgentExecutionOrchestratorService {
 			pauseReport: config.pauseReport,
 			sessionMode: 'existing',
 			backgroundJobSignal: config.pauseReport ? undefined : config.backgroundJobSignal,
+			onAdmitted: config.onAdmitted,
+			onRuntimeStarted: config.onRuntimeStarted,
 		});
 	}
 }

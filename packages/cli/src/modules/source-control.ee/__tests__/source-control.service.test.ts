@@ -1,5 +1,5 @@
 import type { EventService } from '@n8n/backend-services';
-import type { Mock } from 'vitest';
+import type { Mock, MockInstance } from 'vitest';
 import type { SourceControlledFile } from '@n8n/api-types';
 import { isContainedWithin } from '@n8n/backend-common';
 import { GLOBAL_ADMIN_ROLE, GLOBAL_MEMBER_ROLE, Person, User, type WorkflowEntity } from '@n8n/db';
@@ -682,6 +682,23 @@ describe('SourceControlService', () => {
 					workflowReviewRequestId: 'review-1',
 				},
 			});
+		});
+
+		it('passes the public API client to the pull status check', async () => {
+			const user = mock<User>({ id: 'user-1' });
+			mockStatusService.getStatus.mockResolvedValueOnce([]);
+			sourceControlImportService.importWorkflowFromWorkFolder.mockResolvedValue([]);
+
+			await sourceControlService.pullWorkfolder(
+				user,
+				{ force: true, autoPublish: 'none' },
+				'other',
+			);
+
+			expect(mockStatusService.getStatus).toHaveBeenCalledWith(
+				user,
+				expect.objectContaining({ direction: 'pull', publicApi: 'other' }),
+			);
 		});
 
 		it('does not run the policy preview, because the import enforces on its own', async () => {
@@ -1576,6 +1593,47 @@ describe('SourceControlService', () => {
 				branchName: 'main',
 				connected: true,
 			});
+		});
+	});
+
+	describe('setBranch', () => {
+		let setPreferencesSpy: MockInstance<typeof preferencesService.setPreferences>;
+
+		beforeEach(() => {
+			gitService.setBranch.mockResolvedValue({ branches: ['main'], currentBranch: 'main' });
+			setPreferencesSpy = vi
+				.spyOn(preferencesService, 'setPreferences')
+				.mockResolvedValue(preferencesService.getPreferences());
+		});
+
+		afterEach(() => {
+			setPreferencesSpy.mockRestore();
+		});
+
+		it('persists the branch preference only after the checkout succeeded', async () => {
+			await sourceControlService.setBranch('feature-branch');
+
+			expect(gitService.setBranch).toHaveBeenCalledWith('feature-branch');
+			expect(setPreferencesSpy).toHaveBeenCalledWith({
+				branchName: 'feature-branch',
+				connected: true,
+			});
+			// The checkout must happen before the preference write is persisted.
+			expect(gitService.setBranch.mock.invocationCallOrder[0]).toBeLessThan(
+				setPreferencesSpy.mock.invocationCallOrder[0],
+			);
+		});
+
+		it('does not persist the branch preference when the checkout fails', async () => {
+			gitService.setBranch.mockRejectedValue(
+				new Error("fatal: Couldn't find remote ref refs/remotes/origin/feature-branch"),
+			);
+
+			await expect(sourceControlService.setBranch('feature-branch')).rejects.toThrow(
+				/feature-branch/,
+			);
+
+			expect(setPreferencesSpy).not.toHaveBeenCalled();
 		});
 	});
 

@@ -18,6 +18,7 @@ import {
 	type ArtifactInfo,
 	type TimelineBlock,
 } from '../agentTimeline.utils';
+import { isContextPreferencesEnabled } from '@/features/settings/context/context.utils';
 import { INSTANCE_AI_EMBED_SUBJECT_KEY, isEmbedSubject } from '../embed/instanceAiEmbed.types';
 import { useThread } from '../instanceAi.store';
 import AgentSection from './AgentSection.vue';
@@ -116,6 +117,8 @@ const canActOnPreferenceCard = computed(
 		props.messageId === thread.messages.at(-1)?.id,
 );
 
+const preferencesEnabled = computed(() => isContextPreferencesEnabled());
+
 const timelineEntries = computed(() => props.visibleEntries ?? props.agentNode.timeline);
 
 /** Index tool calls by ID for O(1) lookup and proper reactivity tracking. */
@@ -156,6 +159,7 @@ const renderBlocks = computed(() =>
 		toolCallsById.value,
 		childrenById.value,
 		props.agentNode.status,
+		preferencesEnabled.value,
 	),
 );
 
@@ -278,6 +282,11 @@ function isCardReadOnly(tc: InstanceAiToolCallState): boolean {
 	return !!requestId && thread.resolvedConfirmationIds.has(requestId);
 }
 
+/** Approval went through, but n8n could not create the app. */
+function hasAppCreateError(tc: InstanceAiToolCallState): boolean {
+	return isRecord(tc.result) && tc.result.approved === true && typeof tc.result.error === 'string';
+}
+
 function resolveAppBlueprint(tc: InstanceAiToolCallState): AppBlueprint | undefined {
 	if (isRecord(tc.result)) {
 		const parsed = appBlueprintSchema.safeParse(tc.result.blueprint);
@@ -342,6 +351,8 @@ function resolveAppBlueprint(tc: InstanceAiToolCallState): AppBlueprint | undefi
 						:request-id="block.toolCall.confirmation.requestId"
 						:input-thread-id="block.toolCall.confirmation.inputThreadId"
 						:blueprint="resolveAppBlueprint(block.toolCall)!"
+						:errors="block.toolCall.confirmation.appBlueprintErrors"
+						:failed="hasAppCreateError(block.toolCall)"
 						:read-only="isCardReadOnly(block.toolCall)"
 						:expired="block.toolCall.confirmation.expired"
 					/>
