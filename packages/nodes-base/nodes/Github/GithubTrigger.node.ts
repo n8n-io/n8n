@@ -13,7 +13,7 @@ import { NodeConnectionTypes, NodeApiError, NodeOperationError, requestPath } fr
 
 import { githubApiRequest } from './GenericFunctions';
 import { getHooksPath, verifySignature } from './GithubTriggerHelpers';
-import { getRepositories, getUsers } from './SearchFunctions';
+import { getOrganizations, getRepositories, getUsers } from './SearchFunctions';
 
 const CANNOT_CREATE_MESSAGE = 'Github refused to create the webhook for this workflow';
 
@@ -50,7 +50,7 @@ function getOwnerProperty(
 				type: 'list',
 				placeholder,
 				typeOptions: {
-					searchListMethod: 'getUsers',
+					searchListMethod: resource === 'organization' ? 'getOrganizations' : 'getUsers',
 					searchable: true,
 					searchFilterRequired: true,
 				},
@@ -856,6 +856,7 @@ export class GithubTrigger implements INodeType {
 	methods = {
 		listSearch: {
 			getUsers,
+			getOrganizations,
 			getRepositories,
 		},
 	};
