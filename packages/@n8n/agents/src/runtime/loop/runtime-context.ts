@@ -278,6 +278,7 @@ export class RuntimeContextBuilder {
 			combinedVolatileInstructions || undefined,
 			supportsSplitSystemMessages(this.config.model),
 			splitModelId(this.modelId).provider,
+			this.modelId,
 		);
 		const preparedMessages =
 			this.nativeToolDeferral?.prepareMessages?.(messages, tools.aiTools, tools.searchToolName) ??

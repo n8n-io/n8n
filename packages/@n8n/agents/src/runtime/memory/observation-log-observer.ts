@@ -5,6 +5,7 @@ import { renderObservationLog } from './observation-log-renderer';
 import { reportSideCallUsage } from './forward-usage';
 import { outputTokenCounter } from './measured-tokens';
 import { messageToText } from './message-text';
+import { settleOrphanedToolMessages } from './strip-orphaned-tool-messages';
 import { redactText } from '../../sdk/guardrails';
 import type { AgentExecutionCounter, TokenUsage } from '../../types/sdk/agent';
 import type { BuiltMemory } from '../../types/sdk/memory';
@@ -18,6 +19,7 @@ import type {
 	ObservationLogObserverInput,
 } from '../../types/sdk/observation-log';
 import type { BuiltTelemetry } from '../../types/telemetry';
+import { fileMetadataText } from '../model/messages';
 import { estimateObservationTokens, type TokenCounter } from '../model/model-token-counter';
 import { guardSerializedToolResultForModel } from '../tools/tool-result-guard';
 
@@ -109,6 +111,12 @@ export interface RunObservationLogObserverOpts {
 	onMalformedLine?: (line: string) => void;
 	executionCounter?: AgentExecutionCounter;
 	telemetry?: BuiltTelemetry;
+	abortSignal?: AbortSignal;
+	/**
+	 * Settle abandoned pending tool calls in memory before observing, instead of
+	 * stopping the cursor before them. Used for pre-turn forced compaction.
+	 */
+	settlePendingToolCalls?: boolean;
 	modelFetch?: typeof globalThis.fetch;
 	functionId?: string;
 	/**
@@ -223,8 +231,11 @@ export function renderObserverTranscript(
 			message.createdAt instanceof Date ? message.createdAt : new Date(message.createdAt);
 		const timestamp = createdAt.toISOString();
 		const text = message.content
-			.filter((content): content is { type: 'text'; text: string } => content.type === 'text')
-			.map((content) => content.text)
+			.flatMap((content) => {
+				if (content.type === 'text') return [content.text];
+				if (content.type === 'file') return [fileMetadataText(content)];
+				return [];
+			})
 			.join('\n');
 		if (text) {
 			// Messages synthesized from tool output (toMessage, e.g. MCP rich
@@ -280,11 +291,15 @@ export async function runObservationLogObserver(
 	// yet. Observing past its host would advance the cursor over it, and the
 	// later in-place resolution would land behind the cursor — masked from the
 	// LLM window and never part of a future observer delta. Observe only the
-	// messages before the host; the rest is picked up once the call settles.
-	const firstPendingIndex = deltaMessages.findIndex(hasPendingToolCall);
-	const settled =
-		firstPendingIndex === -1 ? deltaMessages : deltaMessages.slice(0, firstPendingIndex);
-	if (settled.length === 0) return { status: 'skipped', reason: 'pending-tool-call' };
+	// messages before the host unless the caller explicitly settles abandoned calls.
+	let settled: AgentDbMessage[];
+	if (opts.settlePendingToolCalls) {
+		settled = settleOrphanedToolMessages(deltaMessages);
+	} else {
+		const firstPendingIndex = deltaMessages.findIndex(hasPendingToolCall);
+		settled = firstPendingIndex === -1 ? deltaMessages : deltaMessages.slice(0, firstPendingIndex);
+		if (settled.length === 0) return { status: 'skipped', reason: 'pending-tool-call' };
+	}
 
 	const tokenCounter = opts.tokenCounter ?? estimateObservationTokens;
 	const observable = await takeBatch(settled, opts.maxBatchTokens, tokenCounter);
@@ -410,6 +425,7 @@ async function prepareObserverInput(
 		workingSet,
 		executionCounter: opts.executionCounter,
 		telemetry: opts.telemetry,
+		...(opts.abortSignal ? { abortSignal: opts.abortSignal } : {}),
 		modelFetch: opts.modelFetch,
 		functionId: opts.functionId,
 	};

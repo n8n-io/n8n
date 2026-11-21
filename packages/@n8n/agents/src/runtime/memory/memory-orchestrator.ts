@@ -64,6 +64,7 @@ import { promptSizeOf } from '../loop/prompt-size-usage';
 import { computeSideCallCost } from '../loop/side-call-cost';
 import { stripEncryptedReasoning } from '../model/encrypted-reasoning';
 import type { AgentMessageList } from '../model/message-list';
+import { hasIncompatibleModelHistory } from '../model/model-compatibility';
 import { getPromptCacheRetentionMs } from '../model/prompt-cache';
 import { estimateObservationTokens, type TokenCounter } from '../model/model-token-counter';
 import type { BackgroundTaskTracker } from '../state/background-task-tracker';
@@ -157,6 +158,13 @@ function validResumeState(
 interface MidRunObserverTask {
 	handle: ScopedMemoryTaskHandle<RunObservationLogObserverResult>;
 	result?: ScopedMemoryTaskResult<RunObservationLogObserverResult>;
+}
+
+interface ScheduleObserverOptions {
+	unlimited?: boolean;
+	force?: boolean;
+	settlePendingToolCalls?: boolean;
+	abortSignal?: AbortSignal;
 }
 
 function didAdvanceCursor(
@@ -384,11 +392,30 @@ export class MemoryOrchestrator {
 			};
 		};
 		const view = resumeView(all, state);
+		const modelId = this.modelId();
+		if (
+			modelId &&
+			view.messages.length > 0 &&
+			hasIncompatibleModelHistory(view.messages, modelId)
+		) {
+			const compactedAt = await this.compactHistoryForModelSwitch(
+				options,
+				telemetry,
+				view.messages,
+				cursor,
+			);
+			if (compactedAt) {
+				const notes = await this.renderLiveNotes(persistence);
+				await resume.moveTo(compactedAt, notes, modelId);
+				logger.debug('Observation resume point moved for model switch', { threadId });
+				return withEarlierSkills(resumeView(all, resume.current));
+			}
+		}
+
 		const budget = cursor ? await this.resolveBudget() : undefined;
 		if (!cursor || !budget) return withEarlierSkills(view);
 
 		const viewTokens = await this.sumTokens(view.messages);
-		const modelId = this.modelId();
 		const reason = decideResume({
 			// The saved size is the provider's count for the same view, so it
 			// includes the system prompt and tools that the estimate misses.
@@ -1069,6 +1096,132 @@ export class MemoryOrchestrator {
 	}
 
 	/**
+	 * Compact visible history synchronously when a resumed or crash-resumed turn
+	 * runs on a different model and contains model-specific blocks.
+	 */
+	async maybeCompactForModelSwitch(
+		list: AgentMessageList,
+		options: (RunOptions & ExecutionOptions) | undefined,
+	): Promise<void> {
+		const modelId = this.modelId();
+		if (!modelId || !hasIncompatibleModelHistory(list.llmVisibleMessages(), modelId)) return;
+
+		const { memory, observationalMemory } = this.config;
+		if (!memory || !options?.persistence || !hasObservationLogObserverMemory(memory)) return;
+		if (!observationalMemory?.observe) return;
+
+		try {
+			await this.persistTurnDelta(list, options);
+			const telemetry = this.runtimeTelemetry.resolve(options);
+			const handle = this.scheduleObserverTask(
+				options.persistence,
+				options.executionCounter,
+				telemetry,
+				options.onSideCallUsage,
+				{
+					unlimited: true,
+					force: true,
+					abortSignal: options.abortSignal,
+				},
+			);
+			if (!handle) return;
+
+			const result = await handle.done;
+			if (options.abortSignal?.aborted) {
+				throw result.status === 'failed' ? result.error : new Error('Agent run was aborted');
+			}
+
+			const alreadyObserved =
+				result.status === 'completed' &&
+				result.value.status === 'skipped' &&
+				result.value.reason === 'no-delta';
+			if (this.noteMidRunObserverResult(result) || alreadyObserved) {
+				await this.activateObservations(list, options.persistence);
+				return;
+			}
+
+			logger.warn(
+				'Resume model-switch compaction did not advance cursor; falling back to history sanitization',
+				{
+					threadId: options.persistence.threadId,
+					status: result.status,
+				},
+			);
+		} catch (error) {
+			if (options.abortSignal?.aborted) throw error;
+
+			logger.warn('Resume model-switch compaction failed; falling back to history sanitization', {
+				error,
+				threadId: options.persistence.threadId,
+			});
+		}
+	}
+
+	private async compactHistoryForModelSwitch(
+		options: RunOptions & ExecutionOptions & { persistence: AgentPersistenceOptions },
+		telemetry: BuiltTelemetry | undefined,
+		visibleMessages: AgentDbMessage[],
+		existingCursor: ObservationPoint | null,
+	): Promise<ObservationPoint | undefined> {
+		const { memory, observationalMemory } = this.config;
+		if (!memory || !hasObservationLogObserverMemory(memory)) return undefined;
+		if (!observationalMemory?.observe) return undefined;
+
+		// Skip the Observer call when the cursor already covers every visible message.
+		if (existingCursor && visibleMessages.every((m) => !isAfterPoint(m, existingCursor))) {
+			return existingCursor;
+		}
+
+		try {
+			const handle = this.scheduleObserverTask(
+				options.persistence,
+				options.executionCounter,
+				telemetry,
+				options.onSideCallUsage,
+				{
+					unlimited: true,
+					force: true,
+					settlePendingToolCalls: true,
+					abortSignal: options.abortSignal,
+				},
+			);
+			if (!handle) return undefined;
+
+			const result = await handle.done;
+			if (options.abortSignal?.aborted) {
+				throw result.status === 'failed' ? result.error : new Error('Agent run was aborted');
+			}
+
+			const alreadyObserved =
+				result.status === 'completed' &&
+				result.value.status === 'skipped' &&
+				result.value.reason === 'no-delta';
+			if (didAdvanceCursor(result) || alreadyObserved) {
+				const { cursor } = await readObservationState(memory, options.persistence.threadId);
+				this.knownCursor = cursor ?? undefined;
+				return cursor ?? undefined;
+			}
+
+			logger.warn(
+				'Pre-turn model-switch compaction did not advance cursor; falling back to history sanitization',
+				{
+					threadId: options.persistence.threadId,
+					status: result.status,
+				},
+			);
+			return undefined;
+		} catch (error) {
+			if (options.abortSignal?.aborted) throw error;
+
+			logger.warn('Pre-turn model-switch compaction failed; falling back to history sanitization', {
+				error,
+				threadId: options.persistence.threadId,
+			});
+			return undefined;
+		}
+	}
+
+	/**
 	 * Queue an Observer task on the scoped task runner, or return `undefined`
 	 * when observation is not configured. The task reads the backlog in batches
 	 * that fit the memory model, up to `maxObserverBatchesAfterTurn` calls after a
@@ -1079,7 +1232,12 @@ export class MemoryOrchestrator {
 		executionCounter?: AgentExecutionCounter,
 		telemetry?: BuiltTelemetry,
 		onSideCallUsage?: OnSideCallUsage,
-		{ unlimited = false }: { unlimited?: boolean } = {},
+		{
+			unlimited = false,
+			force = false,
+			settlePendingToolCalls = false,
+			abortSignal,
+		}: ScheduleObserverOptions = {},
 	): ScopedMemoryTaskHandle<RunObservationLogObserverResult> | undefined {
 		const run = this.observerRun;
 		if (run.stopped) return undefined;
@@ -1089,8 +1247,10 @@ export class MemoryOrchestrator {
 		}
 		const observe = observationalMemory.observe;
 		if (!observe) return undefined;
-		// Without a threshold or window shares there is nothing to observe against.
+		// Without a threshold or window shares there is nothing to observe against
+		// unless a caller explicitly forces compaction (e.g. model switch).
 		if (
+			!force &&
 			observationalMemory.observerThresholdTokens === undefined &&
 			!observationalMemory.windowShares
 		)
@@ -1121,6 +1281,8 @@ export class MemoryOrchestrator {
 							tokenCounter: this.tokenCounter,
 							executionCounter,
 							telemetry,
+							...(settlePendingToolCalls ? { settlePendingToolCalls: true } : {}),
+							...(abortSignal ? { abortSignal } : {}),
 							modelFetch: this.config.modelFetch,
 							functionId: this.config.functionId,
 							// Usage is forwarded inside the observer right after the model
