@@ -207,7 +207,10 @@ export class WorkflowRunner {
 						// decision they would have made, regardless of data readability.
 						if (fullExecutionData && status === 'success') {
 							try {
-								const saveSettings = toSaveSettings(fullExecutionData.workflowData?.settings);
+								const saveSettings = toSaveSettings(
+									fullExecutionData.workflowData?.settings,
+									fullExecutionData.mode,
+								);
 								const isManualExecution = fullExecutionData.mode === 'manual';
 								if (isManualExecution && !saveSettings.manual) {
 									await this.executionRepository.softDelete(executionId);

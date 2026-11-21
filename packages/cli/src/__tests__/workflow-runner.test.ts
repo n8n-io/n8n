@@ -238,64 +238,71 @@ describe('processError', () => {
 		expect(deleteInFlightSpy).not.toHaveBeenCalled();
 	});
 
-	test('processError deletes the false-positive success when the workflow does not save successful executions', async () => {
-		const workflow = await createWorkflow(
-			{ settings: { saveDataSuccessExecution: 'none' } },
-			owner,
-		);
-		const execution = await createExecution({ status: 'waiting', finished: false }, workflow);
-		const activeExecutions = Container.get(ActiveExecutions);
+	test.each(['webhook', 'retry'] as const)(
+		'processError applies the save policy to a recovered %s execution',
+		async (mode) => {
+			const workflow = await createWorkflow(
+				{ settings: { saveDataSuccessExecution: 'none' } },
+				owner,
+			);
+			const execution = await createExecution({ status: 'waiting', finished: false }, workflow);
+			const activeExecutions = Container.get(ActiveExecutions);
 
-		await activeExecutions.add(
-			{ executionMode: 'webhook', workflowData: workflow },
-			{ executionId: execution.id, expectedStatus: 'waiting' },
-		);
-		const postExecutePromise = activeExecutions.getPostExecutePromise(execution.id);
-		const responsePromise = createDeferredPromise<IExecuteResponsePromiseData>();
-		activeExecutions.attachResponsePromise(execution.id, responsePromise);
+			await activeExecutions.add(
+				{ executionMode: mode, workflowData: workflow },
+				{ executionId: execution.id, expectedStatus: 'waiting' },
+			);
+			const postExecutePromise = activeExecutions.getPostExecutePromise(execution.id);
+			const responsePromise = createDeferredPromise<IExecuteResponsePromiseData>();
+			activeExecutions.attachResponsePromise(execution.id, responsePromise);
 
-		const successData = createRunExecutionData({
-			resultData: { runData: { Start: [] }, lastNodeExecuted: 'Start' },
-		});
+			const successData = createRunExecutionData({
+				resultData: { runData: { Start: [] }, lastNodeExecuted: 'Start' },
+			});
 
-		vi.spyOn(Container.get(ExecutionRepository), 'findSingleExecution').mockResolvedValue(
-			mock<IExecutionBase>({ status: 'success', finished: true }),
-		);
-		vi.spyOn(Container.get(ExecutionPersistence), 'findSingleExecution').mockResolvedValue(
-			mock<IExecutionResponse>({
-				status: 'success',
-				finished: true,
-				mode: 'webhook',
-				data: successData,
-				workflowId: workflow.id,
-				workflowData: workflow,
-				storedAt: 'db',
-			}),
-		);
-		const deleteInFlightSpy = vi
-			.spyOn(Container.get(ExecutionPersistence), 'deleteInFlightExecution')
-			.mockResolvedValue({ ended: false });
+			vi.spyOn(Container.get(ExecutionRepository), 'findSingleExecution').mockResolvedValue(
+				mock<IExecutionBase>({ status: 'success', finished: true }),
+			);
+			vi.spyOn(Container.get(ExecutionPersistence), 'findSingleExecution').mockResolvedValue(
+				mock<IExecutionResponse>({
+					status: 'success',
+					finished: true,
+					mode,
+					data: successData,
+					workflowId: workflow.id,
+					workflowData: workflow,
+					storedAt: 'db',
+				}),
+			);
+			const deleteInFlightSpy = vi
+				.spyOn(Container.get(ExecutionPersistence), 'deleteInFlightExecution')
+				.mockResolvedValue({ ended: false });
 
-		globalConfig.executions.mode = 'queue';
-		await runner.processError(
-			new Error('test') as ExecutionError,
-			new Date(),
-			'webhook',
-			execution.id,
-			hooks,
-		);
+			globalConfig.executions.mode = 'queue';
+			await runner.processError(
+				new Error('test') as ExecutionError,
+				new Date(),
+				mode,
+				execution.id,
+				hooks,
+			);
 
-		await expect(postExecutePromise).resolves.toEqual(
-			expect.objectContaining({ status: 'success', finished: true, data: successData }),
-		);
-		await expect(responsePromise.promise).resolves.toBe(EXECUTION_ENDED_WITHOUT_RESPONSE);
-		expect(deleteInFlightSpy).toHaveBeenCalledWith(
-			{ workflowId: workflow.id, executionId: execution.id, storedAt: 'db' },
-			expect.objectContaining({ status: 'success', finished: true }),
-		);
-		expect(activeExecutions.has(execution.id)).toBe(false);
-		expect(watcher.workflowExecuteAfter).toHaveBeenCalledTimes(0);
-	});
+			await expect(postExecutePromise).resolves.toEqual(
+				expect.objectContaining({ status: 'success', finished: true, data: successData }),
+			);
+			await expect(responsePromise.promise).resolves.toBe(EXECUTION_ENDED_WITHOUT_RESPONSE);
+			if (mode === 'retry') {
+				expect(deleteInFlightSpy).not.toHaveBeenCalled();
+			} else {
+				expect(deleteInFlightSpy).toHaveBeenCalledWith(
+					{ workflowId: workflow.id, executionId: execution.id, storedAt: 'db' },
+					expect.objectContaining({ status: 'success', finished: true }),
+				);
+			}
+			expect(activeExecutions.has(execution.id)).toBe(false);
+			expect(watcher.workflowExecuteAfter).toHaveBeenCalledTimes(0);
+		},
+	);
 
 	test('processError soft-deletes a false-positive success for a manual execution that is not saved', async () => {
 		const workflow = await createWorkflow({ settings: { saveManualExecutions: false } }, owner);

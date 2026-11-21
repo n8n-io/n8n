@@ -729,6 +729,84 @@ describe('Execution Lifecycle Hooks', () => {
 		});
 	});
 
+	describe('retry retention', () => {
+		it.each([
+			['regular', getLifecycleHooksForRegularMain],
+			['queue worker', getLifecycleHooksForScalingWorker],
+		] as const)(
+			'should save a successful retry and link its original execution in %s mode',
+			async (_mode, createHooks) => {
+				workflowData.settings = {
+					saveDataSuccessExecution: 'none',
+					saveManualExecutions: false,
+				};
+				const hooks = createHooks({ executionMode: 'retry', workflowData, retryOf }, executionId);
+
+				await hooks.runHook('workflowExecuteAfter', [successfulRunWithMetadata, {}]);
+
+				expect(executionPersistence.deleteInFlightExecution).not.toHaveBeenCalled();
+				expect(executionRepository.softDelete).not.toHaveBeenCalled();
+				expect(executionPersistence.saveExecutionOutcome).toHaveBeenCalledWith(
+					executionId,
+					expect.objectContaining({
+						status: 'success',
+						finished: true,
+						retryOf,
+						data: successfulRunWithMetadata.data,
+					}),
+					{ requireNotCanceled: true },
+				);
+				expect(executionPersistence.updateExistingExecution).toHaveBeenCalledWith(retryOf, {
+					retrySuccessId: executionId,
+				});
+				expect(workflowData.settings.saveDataSuccessExecution).toBe('none');
+			},
+		);
+
+		it('should keep the successful retry and its metadata on the queue main', async () => {
+			workflowData.settings = {
+				saveDataSuccessExecution: 'none',
+				saveManualExecutions: false,
+			};
+			const hooks = getLifecycleHooksForScalingMain(
+				{ executionMode: 'retry', workflowData, retryOf },
+				executionId,
+			);
+
+			await hooks.runHook('workflowExecuteAfter', [successfulRunWithMetadata, {}]);
+
+			expect(executionPersistence.deleteInFlightExecution).not.toHaveBeenCalled();
+			expect(executionRepository.softDelete).not.toHaveBeenCalled();
+			expect(executionMetadataService.save).toHaveBeenCalledWith(executionId, {
+				testKey1: 'testValue1',
+				testKey2: 'testValue2',
+			});
+		});
+
+		it.each([
+			['regular', getLifecycleHooksForRegularMain],
+			['queue main', getLifecycleHooksForScalingMain],
+		] as const)(
+			'should still discard a failed retry when error saving is disabled in %s mode',
+			async (_mode, createHooks) => {
+				workflowData.settings = {
+					saveDataSuccessExecution: 'none',
+					saveDataErrorExecution: 'none',
+				};
+				const hooks = createHooks({ executionMode: 'retry', workflowData, retryOf }, executionId);
+
+				await hooks.runHook('workflowExecuteAfter', [failedRun, {}]);
+
+				expect(executionPersistence.deleteInFlightExecution).toHaveBeenCalledWith(
+					{ workflowId, executionId, storedAt: 'db' },
+					{ status: 'error', finished: false, stoppedAt: failedRun.stoppedAt },
+				);
+				expect(executionPersistence.saveExecutionOutcome).not.toHaveBeenCalled();
+				expect(executionPersistence.updateExistingExecution).not.toHaveBeenCalled();
+			},
+		);
+	});
+
 	describe('getLifecycleHooksForRegularMain', () => {
 		const createHooks = (
 			executionMode: WorkflowExecuteMode = 'manual',
