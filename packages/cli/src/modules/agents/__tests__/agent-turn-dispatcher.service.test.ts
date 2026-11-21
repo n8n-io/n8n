@@ -1,16 +1,32 @@
+import {
+	AGENT_TURNS_CAPABILITY,
+	type AgentSseEvent,
+	type InstanceRegistration,
+} from '@n8n/api-types';
+import { mockLogger } from '@n8n/backend-test-utils';
+import { InstanceRegistryProxyService } from '@n8n/backend-services';
+import type { AgentsConfig } from '@n8n/config';
+import { UnexpectedError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
-import type { AgentTurnGate } from '../queue/agent-turn-gate.service';
+import { AgentAppTurnService } from '../agent-app-turn.service';
+import type { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
+import type { AgentMainMemory } from '../queue/agent-main-memory.service';
+import { AgentQueueMetrics, type AgentQueueMetricEvent } from '../queue/agent-queue-metrics';
+import { AgentTurnGate } from '../queue/agent-turn-gate.service';
 import type { AgentTurnEntry } from '../queue/agent-turn-runner';
 import { AgentTurnNotAdmittedError } from '../queue/agent-turn-runner';
 import type {
+	AgentChannelInboundRequest,
+	AgentAppChatRequest,
 	AgentTaskRunRequest,
 	AgentWebhookRespondRequest,
 	AgentWakeRequest,
 } from '../queue/agent-turn-request.types';
-import type { AgentTurnPlacement } from '../queue/agent-turn-placement.service';
-import { testCluster } from './test-utils/cluster';
-import { testTurns } from './test-utils/turns';
+import { AgentTurnPlacement } from '../queue/agent-turn-placement.service';
+import type { AgentTurnQueue } from '../queue/agent-turn-queue.service';
+import { testCluster, type TestClusterOptions } from './test-utils/cluster';
+import { fakeRequests, testTurns } from './test-utils/turns';
 
 const webhook: AgentWebhookRespondRequest = {
 	kind: 'webhook-respond',
@@ -27,6 +43,56 @@ const fullGate = () =>
 			retryAfterSeconds: 17,
 		})),
 	});
+
+/**
+ * A real placement and gate over plain config, for a process in agent queue
+ * mode. `workers` says whether an agent worker is registered.
+ */
+function queueMode(cluster: TestClusterOptions, { workers }: { workers: boolean }) {
+	const config = {
+		queueModeEnabled: true,
+		workerEnabled: true,
+		mainFallbackTurns: 0,
+		mainMaxTurns: 20,
+		mainMaxIntake: 0,
+		mainMaxStreams: 0,
+		queueMaxWaiting: 0,
+		queueMaxWaitingPerAgent: 0,
+		queueMaxWaitSeconds: 60,
+	} as AgentsConfig;
+	const registry = new InstanceRegistryProxyService();
+	const instances = workers
+		? [{ instanceType: 'worker', capabilities: [AGENT_TURNS_CAPABILITY] } as InstanceRegistration]
+		: [];
+	registry.registerProvider({
+		getAllInstances: async () => instances,
+		getLocalInstance: () => null,
+	});
+	const metrics = new AgentQueueMetrics();
+	const events: AgentQueueMetricEvent[] = [];
+	metrics.onEvent((event) => events.push(event));
+	const gate = new AgentTurnGate(config, metrics, { isHigh: () => false } as AgentMainMemory);
+	const agentCluster = testCluster({ queue: true, instanceKey: 'instance-a', ...cluster });
+	const turnQueue = { waitingCount: async () => 0 } as AgentTurnQueue;
+	const placement = new AgentTurnPlacement(
+		config,
+		agentCluster,
+		registry,
+		turnQueue,
+		gate,
+		metrics,
+	);
+	const turns = testTurns({
+		cluster: agentCluster,
+		placement,
+		gate,
+		agentsConfig: config,
+		metrics,
+	});
+	const queuedStart = vi.spyOn(turns.queued, 'start');
+	const inProcessStart = vi.spyOn(turns.inProcess, 'start');
+	return { ...turns, placement, events, queuedStart, inProcessStart };
+}
 
 /** Resolves on the next turn of the event loop, after started handlers ran. */
 const tick = async () => await new Promise((resolve) => setImmediate(resolve));
@@ -100,6 +166,32 @@ describe('InProcessTurnRunner', () => {
 		await inProcess.whenIdle();
 
 		expect(gate.waitForRoom).not.toHaveBeenCalled();
+	});
+
+	it('refuses a public turn on a main in agent queue mode, as a last check', async () => {
+		const run = vi.fn();
+		const { handlers, inProcess } = queueMode({ instanceType: 'main' }, { workers: true });
+		handlers.handle('webhook-respond', { mode: 'result', run });
+
+		await expect(inProcess.start({ turnId: 'turn-1', payload: webhook })).rejects.toBeInstanceOf(
+			UnexpectedError,
+		);
+		expect(run).not.toHaveBeenCalled();
+	});
+
+	it('runs a public turn on an agent worker, where mayRunHere is false', async () => {
+		const run = vi.fn(async () => ({}));
+		const { handlers, inProcess, placement } = queueMode(
+			{ instanceType: 'worker' },
+			{ workers: true },
+		);
+		handlers.handle('webhook-respond', { mode: 'result', run });
+		expect(placement.mayRunHere('webhook-respond')).toBe(false);
+
+		await inProcess.start({ turnId: 'turn-1', payload: webhook });
+		await inProcess.whenIdle();
+
+		expect(run).toHaveBeenCalledOnce();
 	});
 });
 
@@ -202,6 +294,7 @@ describe('AgentTurnDispatcher', () => {
 		const run = vi.fn();
 		const placement = mock<AgentTurnPlacement>({
 			dispatchEnabled: true,
+			mayRunHere: () => true,
 			workersAvailable: async () => true,
 		});
 		const { handlers, dispatcher, queued, inProcess } = testTurns({ placement });
@@ -218,5 +311,334 @@ describe('AgentTurnDispatcher', () => {
 		expect(queuedStart).toHaveBeenCalledTimes(1);
 		expect(inProcessStart).not.toHaveBeenCalled();
 		expect(run).toHaveBeenCalledTimes(1);
+	});
+
+	describe('public turns in agent queue mode', () => {
+		it('rejects a public turn on a main as busy at once when no agent worker is up', async () => {
+			const { handlers, dispatcher, inProcessStart, queuedStart, events } = queueMode(
+				{ instanceType: 'main' },
+				{ workers: false },
+			);
+			const run = vi.fn();
+			handlers.handle('webhook-respond', { mode: 'result', run });
+
+			await expect(dispatcher.result(webhook, new AbortController().signal)).resolves.toEqual({
+				outcome: 'busy',
+				retryAfterSeconds: expect.any(Number),
+			});
+			expect(inProcessStart).not.toHaveBeenCalled();
+			expect(queuedStart).not.toHaveBeenCalled();
+			expect(run).not.toHaveBeenCalled();
+			expect(events).toContainEqual({ type: 'turn-rejected', reason: 'no-worker' });
+		});
+
+		it('sends a busy error to a public stream turn when no agent worker is up', async () => {
+			const { dispatcher, inProcessStart } = queueMode(
+				{ instanceType: 'main' },
+				{ workers: false },
+			);
+			const send = vi.fn();
+
+			await dispatcher.stream(
+				mock({ kind: 'app-chat' }),
+				{ send, abortSignal: new AbortController().signal },
+				{ stopOnLeave: true },
+			);
+
+			expect(send).toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'error', errorCode: 'main_busy' }),
+			);
+			expect(inProcessStart).not.toHaveBeenCalled();
+		});
+
+		it('sends a public turn from a main to an agent worker', async () => {
+			const { handlers, dispatcher, inProcessStart, queuedStart } = queueMode(
+				{ instanceType: 'main' },
+				{ workers: true },
+			);
+			handlers.handle('webhook-respond', { mode: 'result', run: async () => ({ status: 200 }) });
+
+			await expect(dispatcher.result(webhook, new AbortController().signal)).resolves.toEqual({
+				outcome: 'done',
+				result: { status: 200 },
+			});
+			expect(queuedStart).toHaveBeenCalledTimes(1);
+			expect(inProcessStart).not.toHaveBeenCalled();
+		});
+
+		it('still runs an editor turn on a main when no agent worker is up', async () => {
+			const { handlers, dispatcher, inProcessStart } = queueMode(
+				{ instanceType: 'main' },
+				{ workers: false },
+			);
+			const run = vi.fn(async () => {});
+			handlers.handle('task-run', { mode: 'detached', run });
+
+			await dispatcher.detached(mock<AgentTaskRunRequest>({ kind: 'task-run' }), {
+				workerCapable: true,
+			});
+
+			expect(inProcessStart).toHaveBeenCalledTimes(1);
+		});
+
+		it('sends a public turn from a webhook process to an agent worker', async () => {
+			const { handlers, dispatcher, inProcessStart, queuedStart } = queueMode(
+				{ instanceType: 'webhook' },
+				{ workers: true },
+			);
+			handlers.handle('webhook-respond', { mode: 'result', run: async () => ({ status: 200 }) });
+
+			await expect(dispatcher.result(webhook, new AbortController().signal)).resolves.toEqual({
+				outcome: 'done',
+				result: { status: 200 },
+			});
+			expect(queuedStart).toHaveBeenCalledTimes(1);
+			expect(inProcessStart).not.toHaveBeenCalled();
+		});
+
+		it('rejects a public turn on a webhook process when no agent worker is up', async () => {
+			const { dispatcher, inProcessStart, queuedStart } = queueMode(
+				{ instanceType: 'webhook' },
+				{ workers: false },
+			);
+
+			await expect(dispatcher.result(webhook, new AbortController().signal)).resolves.toMatchObject(
+				{
+					outcome: 'busy',
+				},
+			);
+			expect(inProcessStart).not.toHaveBeenCalled();
+			expect(queuedStart).not.toHaveBeenCalled();
+		});
+
+		it('runs no turn of any kind on a webhook process', async () => {
+			const { dispatcher, inProcessStart } = queueMode(
+				{ instanceType: 'webhook' },
+				{ workers: false },
+			);
+			const onRejected = vi.fn(async () => {});
+
+			await dispatcher.detached(mock<AgentWakeRequest>({ kind: 'wake' }), {
+				workerCapable: false,
+				onRejected,
+			});
+
+			expect(inProcessStart).not.toHaveBeenCalled();
+			expect(onRejected).toHaveBeenCalledTimes(1);
+		});
+
+		describe('app visitor turns on a webhook process', () => {
+			const appChat: AgentAppChatRequest = {
+				kind: 'app-chat',
+				agentId: 'agent-1',
+				projectId: 'project-1',
+				sessionId: 'session-1',
+				message: 'Hi',
+				memory: { threadId: 'thread-1', resourceId: 'app:app-1:user:user-1' },
+			};
+
+			/** The app turn service registers its handlers on the process that serves the visitor. */
+			const appTurns = (workers: boolean) => {
+				const turns = queueMode({ instanceType: 'webhook' }, { workers });
+				const orchestrator = mock<AgentExecutionOrchestratorService>();
+				orchestrator.executeForChatPublished.mockImplementation(async function* () {
+					yield* [];
+				});
+				const service = new AgentAppTurnService(
+					mockLogger(),
+					orchestrator,
+					turns.dispatcher,
+					turns.handlers,
+				);
+				return { ...turns, service, orchestrator };
+			};
+
+			const collect = async (events: AsyncIterable<AgentSseEvent>) => {
+				const all: AgentSseEvent[] = [];
+				for await (const event of events) all.push(event);
+				return all;
+			};
+
+			it('registers the app handlers, but sends the turn to an agent worker', async () => {
+				const { service, handlers, inProcessStart, queuedStart } = appTurns(true);
+
+				expect(handlers.modeOf('app-chat')).toBe('stream');
+				const events = await collect(service.events(appChat, new AbortController().signal));
+
+				// The fake worker of the test runs the handler, as the agent worker would.
+				expect(events).toEqual([{ type: 'done', sessionId: 'session-1' }]);
+				expect(queuedStart).toHaveBeenCalledTimes(1);
+				expect(inProcessStart).not.toHaveBeenCalled();
+			});
+
+			it('rejects the turn as busy, and runs nothing, when no agent worker is up', async () => {
+				const { service, orchestrator, inProcessStart, queuedStart } = appTurns(false);
+
+				const events = await collect(service.events(appChat, new AbortController().signal));
+
+				expect(events).toEqual([
+					expect.objectContaining({ type: 'error', errorCode: 'main_busy' }),
+				]);
+				expect(orchestrator.executeForChatPublished).not.toHaveBeenCalled();
+				expect(inProcessStart).not.toHaveBeenCalled();
+				expect(queuedStart).not.toHaveBeenCalled();
+			});
+		});
+
+		it('sends a public turn from an agent worker to the agent queue', async () => {
+			const { handlers, dispatcher, inProcessStart, queuedStart } = queueMode(
+				{ instanceType: 'worker' },
+				{ workers: true },
+			);
+			handlers.handle('webhook-respond', { mode: 'result', run: async () => ({ status: 200 }) });
+
+			await dispatcher.result(webhook, new AbortController().signal);
+
+			expect(queuedStart).toHaveBeenCalledTimes(1);
+			expect(inProcessStart).not.toHaveBeenCalled();
+		});
+	});
+});
+
+describe('AgentTurnDispatcher.submit (chat platform events)', () => {
+	const inbound: AgentChannelInboundRequest = {
+		kind: 'channel-inbound',
+		agentId: 'agent-1',
+		projectId: 'project-1',
+		platform: 'slack',
+		credentialId: 'cred-1',
+		method: 'POST',
+		url: 'https://n8n.example/agent-hook/agent-1/slack',
+		headers: {},
+		rawBody: '',
+		receivedAt: '2026-11-21T00:00:00.000Z',
+	};
+
+	it('runs in this process in regular mode, and the full gate does not count it', async () => {
+		const gate = fullGate();
+		const { handlers, dispatcher, inProcess } = testTurns({ gate });
+		const run = vi.fn(async () => {});
+		handlers.handle('channel-inbound', { mode: 'detached', run });
+
+		await expect(
+			dispatcher.submit(inbound, { turnId: 'turn-1', ackWithinMs: 1_000 }),
+		).resolves.toEqual({ outcome: 'accepted' });
+		await inProcess.whenIdle();
+
+		expect(run).toHaveBeenCalledTimes(1);
+		expect(gate.waitForRoom).not.toHaveBeenCalled();
+	});
+
+	it('drops a retry with the same turn ID while the first delivery runs', async () => {
+		const { handlers, dispatcher, inProcess } = testTurns();
+		let finish!: () => void;
+		handlers.handle('channel-inbound', {
+			mode: 'detached',
+			run: async () => await new Promise<void>((resolve) => (finish = resolve)),
+		});
+
+		await dispatcher.submit(inbound, { turnId: 'turn-1', ackWithinMs: 1_000 });
+		await tick();
+		await expect(
+			dispatcher.submit(inbound, { turnId: 'turn-1', ackWithinMs: 1_000 }),
+		).resolves.toEqual({ outcome: 'duplicate' });
+		finish();
+		await inProcess.whenIdle();
+	});
+
+	it.each(['webhook', 'main'] as const)(
+		'stores the event for a later worker on a %s process in agent queue mode when no agent worker is up',
+		async (instanceType) => {
+			const { dispatcher, inProcessStart, queuedStart, requests, events } = queueMode(
+				{ instanceType },
+				{ workers: false },
+			);
+
+			await expect(
+				dispatcher.submit(inbound, { turnId: 'turn-1', ackWithinMs: 1_000 }),
+			).resolves.toEqual({ outcome: 'accepted' });
+			expect(queuedStart).toHaveBeenCalledTimes(1);
+			expect(requests.createPendingIfAbsent).toHaveBeenCalledWith('turn-1', inbound);
+			expect(inProcessStart).not.toHaveBeenCalled();
+			expect(events).not.toContainEqual({ type: 'turn-rejected', reason: 'no-worker' });
+		},
+	);
+
+	it('rejects the event as busy before the ack when the agent queue is down', async () => {
+		const placement = mock<AgentTurnPlacement>({
+			mayRunHere: () => false,
+			workersAvailable: async () => false,
+			queueFull: async () => false,
+			retryAfterSeconds: async () => 9,
+		});
+		const turnQueue = mock<AgentTurnQueue>();
+		turnQueue.enqueueRequest.mockRejectedValue(new Error('Redis unavailable'));
+		const { requests, rows } = fakeRequests();
+		const { dispatcher } = testTurns({ placement, turnQueue, requests });
+
+		await expect(
+			dispatcher.submit(inbound, { turnId: 'turn-1', ackWithinMs: 1_000 }),
+		).resolves.toEqual({ outcome: 'busy', retryAfterSeconds: 9 });
+		expect(rows.size).toBe(0);
+	});
+
+	it('rejects the event as busy before the ack when the agent queue is full', async () => {
+		const placement = mock<AgentTurnPlacement>({
+			mayRunHere: () => false,
+			workersAvailable: async () => true,
+			queueFull: async () => true,
+			retryAfterSeconds: async () => 9,
+		});
+		const { dispatcher, requests } = testTurns({ placement });
+
+		await expect(
+			dispatcher.submit(inbound, { turnId: 'turn-1', ackWithinMs: 1_000 }),
+		).resolves.toEqual({ outcome: 'busy', retryAfterSeconds: 9 });
+		expect(requests.createPendingIfAbsent).not.toHaveBeenCalled();
+	});
+
+	it('sends the event to an agent worker in agent queue mode, and drops a retry by its row', async () => {
+		const { handlers, dispatcher, queuedStart, inProcessStart, requests } = queueMode(
+			{ instanceType: 'webhook' },
+			{ workers: true },
+		);
+		handlers.handle('channel-inbound', { mode: 'detached', run: async () => {} });
+		vi.mocked(requests.createPendingIfAbsent).mockResolvedValueOnce(false);
+
+		await expect(
+			dispatcher.submit(inbound, { turnId: 'turn-1', ackWithinMs: 1_000 }),
+		).resolves.toEqual({ outcome: 'duplicate' });
+		expect(queuedStart).toHaveBeenCalledTimes(1);
+		expect(inProcessStart).not.toHaveBeenCalled();
+	});
+
+	it('answers within the ack time while a turn that is not durable still waits', async () => {
+		const placement = mock<AgentTurnPlacement>({
+			mayRunHere: () => false,
+			workersAvailable: async () => true,
+		});
+		const { dispatcher, queued } = testTurns({ placement });
+		vi.spyOn(queued, 'start').mockReturnValue(new Promise(() => {}));
+
+		await expect(
+			dispatcher.submit(webhook, { turnId: 'turn-1', ackWithinMs: 10 }),
+		).resolves.toEqual({ outcome: 'accepted' });
+	});
+
+	it('answers for a chat platform event only once it is stored or rejected', async () => {
+		const placement = mock<AgentTurnPlacement>({
+			mayRunHere: () => false,
+			workersAvailable: async () => true,
+		});
+		const { dispatcher, queued } = testTurns({ placement });
+		vi.spyOn(queued, 'start').mockImplementation(async () => {
+			await new Promise((resolve) => setTimeout(resolve, 30));
+			throw new AgentTurnNotAdmittedError('agent-queue-full', 21);
+		});
+
+		// A late rejection is not hidden behind an early ack, so the platform retries.
+		await expect(dispatcher.submit(inbound, { turnId: 'turn-1', ackWithinMs: 1 })).resolves.toEqual(
+			{ outcome: 'busy', retryAfterSeconds: 21 },
+		);
 	});
 });

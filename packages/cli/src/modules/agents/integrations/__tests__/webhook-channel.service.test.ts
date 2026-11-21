@@ -4,7 +4,7 @@ import { APPROVAL_RESUME_SCHEMA } from '@n8n/agents/tool';
 import { zodToJsonSchema } from '@n8n/ai-utilities/json-schema';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
-import type { UrlService } from '@n8n/backend-services';
+import type { EventService, Publisher, UrlService } from '@n8n/backend-services';
 import { UserError } from '@n8n/errors';
 import jwt from 'jsonwebtoken';
 import { mock } from 'vitest-mock-extended';
@@ -22,6 +22,8 @@ import type { AgentRepository } from '../../repositories/agent.repository';
 import type { AgentCredentialLookupService } from '../agent-credential-lookup.service';
 import type { N8NCheckpointStorage } from '../n8n-checkpoint-storage';
 import type { AgentExecutionStreamChunk } from '../../types/agent-steering';
+import { WebhookChannelAuthCache } from '../platforms/webhook/webhook-channel-auth-cache.service';
+import { WebhookChannelIngressService } from '../platforms/webhook/webhook-channel-ingress.service';
 import { WebhookChannelService } from '../platforms/webhook/webhook-channel.service';
 import type { CredentialsHelper } from '@/credentials-helper';
 
@@ -78,23 +80,31 @@ function makeService(agent: ProjectAgent | null = makeAgent()) {
 		(agentId) => `https://n8n.example.com/agent-webhook/${agentId}`,
 	);
 	const logger = mock<Logger>();
+	logger.scoped.mockReturnValue(logger);
 	const turns = testTurns();
 	// Runs the turn in this process unless a test sets what the dispatcher returns.
 	const dispatchResult = vi.spyOn(turns.dispatcher, 'result');
-	const service = new WebhookChannelService(
+	// The runner registers the turn handlers, so a turn that the ingress dispatches runs here.
+	new WebhookChannelService(
 		agentRepository,
 		settings,
 		executionService,
 		orchestrator,
 		chatExecution,
-		credentials,
-		credentialsHelper,
 		checkpointStorage,
-		urlService,
 		logger,
-		turns.dispatcher,
 		turns.handlers,
 	);
+	const cache = new WebhookChannelAuthCache(
+		agentRepository,
+		settings,
+		credentials,
+		credentialsHelper,
+		mock<Publisher>(),
+		logger,
+		mock<EventService>(),
+	);
+	const service = new WebhookChannelIngressService(cache, urlService, turns.dispatcher, logger);
 	const respond = async (
 		body: unknown = { input: 'Hi' },
 		headers = {},
@@ -906,5 +916,75 @@ describe('WebhookChannelService', () => {
 			expect(end.result).toMatchObject({ status: 200 });
 			expect(JSON.stringify(end.result.body)).toContain('"text":"Hello"');
 		});
+
+		const runOnWorker = async (
+			handlers: ReturnType<typeof makeService>['handlers'],
+			kind: 'webhook-respond' | 'webhook-decide',
+		) =>
+			await handlers.run(
+				{
+					kind,
+					agentId: 'agent-1',
+					input: 'Hi',
+					// A respond without a conversation starts a new one.
+					...(kind === 'webhook-decide' ? { conversationId: 'c-1' } : {}),
+					runId: 'run-1',
+					toolCallId: 'call-1',
+					decision: { approved: true },
+					approvalBaseUrl: 'https://n8n.example.com/agent-webhook/agent-1',
+				} as never,
+				{ turnId: 'turn-1', abortSignal: new AbortController().signal },
+				() => {},
+			);
+
+		it.each(['webhook-respond', 'webhook-decide'] as const)(
+			'returns 404 from the worker for %s when agents were disabled while the turn waited',
+			async (kind) => {
+				const { handlers, settings, orchestrator } = makeService();
+				settings.getEnabled.mockResolvedValue(false);
+
+				const end = await runOnWorker(handlers, kind);
+
+				expect(end).toMatchObject({ outcome: 'done', result: { status: 404 } });
+				expect(orchestrator.executeForChatPublished).not.toHaveBeenCalled();
+				expect(orchestrator.resumeForChat).not.toHaveBeenCalled();
+			},
+		);
+
+		it('returns 404 from the worker when the channel was removed while the turn waited', async () => {
+			const { handlers, orchestrator } = makeService(makeAgent({ integrations: [] }));
+
+			const end = await runOnWorker(handlers, 'webhook-respond');
+
+			expect(end).toMatchObject({ outcome: 'done', result: { status: 404 } });
+			expect(orchestrator.executeForChatPublished).not.toHaveBeenCalled();
+		});
+
+		it('does not authenticate again on the worker', async () => {
+			const { handlers, credentials, orchestrator } = makeService(
+				makeAgent({ integrations: [webhook('headerAuth')] }),
+			);
+
+			await runOnWorker(handlers, 'webhook-respond');
+
+			expect(credentials.decryptForProject).not.toHaveBeenCalled();
+			expect(orchestrator.executeForChatPublished).toHaveBeenCalledOnce();
+		});
+
+		it.each([undefined, 'abc', 42, 1000])(
+			'returns 500 when the worker reply has the invalid status %s',
+			async (status) => {
+				const { respond, dispatchResult } = makeService();
+				dispatchResult.mockResolvedValue({
+					outcome: 'done',
+					result: { status, body: {} },
+				} as never);
+
+				const reply = await respond();
+
+				expect(reply.status).toBe(500);
+				expect(reply.body).toMatchObject({ error: { code: 'agent_error' } });
+			},
+		);
 	});
 });

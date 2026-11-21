@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useIntervalFn } from '@vueuse/core';
-import { N8nButton, N8nCallout, N8nIcon, N8nTooltip } from '@n8n/design-system';
+import { N8nButton, N8nCallout, N8nIcon, N8nTooltip, N8nVisuallyHidden } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { AGENT_CHAT_ERROR_CODES } from '@n8n/api-types';
 import { TIME } from '@/app/constants/durations';
@@ -12,13 +12,27 @@ const emit = defineEmits<{ dismiss: [] }>();
 
 const locale = useI18n();
 const now = ref(Date.now());
-const { pause } = useIntervalFn(() => {
+const { pause, resume } = useIntervalFn(() => {
 	now.value = Date.now();
 	if (secondsLeft.value === 0) pause();
 }, TIME.SECOND);
 
+// A new busy rejection replaces the notice while this component stays mounted.
+watch(
+	() => props.notice,
+	() => {
+		now.value = Date.now();
+		resume();
+	},
+);
+
 const secondsLeft = computed(() =>
 	Math.max(0, Math.ceil((props.notice.retryAt - now.value) / TIME.SECOND)),
+);
+
+// The callout is an alert region, so screen readers get the wait once, not every second.
+const announcedSeconds = computed(() =>
+	Math.max(0, Math.ceil((props.notice.retryAt - Date.now()) / TIME.SECOND)),
 );
 
 const titleKey = computed<BaseTextKey>(() => {
@@ -27,24 +41,38 @@ const titleKey = computed<BaseTextKey>(() => {
 	return 'agents.chat.busy.mainBusy';
 });
 
-const detail = computed(() => {
-	const retry =
-		secondsLeft.value > 0
-			? locale.baseText('agents.chat.busy.retryIn', {
-					interpolate: { seconds: String(secondsLeft.value) },
-				})
-			: locale.baseText('agents.chat.busy.retryNow');
-	return props.notice.draftKept
-		? `${locale.baseText('agents.chat.busy.draftKept')} ${retry}`
-		: retry;
-});
+function retryText(seconds: number): string {
+	const { draftKept } = props.notice;
+	if (seconds === 0) {
+		return locale.baseText(
+			draftKept ? 'agents.chat.busy.retryNowDraftKept' : 'agents.chat.busy.retryNow',
+		);
+	}
+	return locale.baseText(
+		draftKept ? 'agents.chat.busy.retryInDraftKept' : 'agents.chat.busy.retryIn',
+		{ interpolate: { seconds: String(seconds) } },
+	);
+}
+
+const detail = computed(() => retryText(secondsLeft.value));
+const announcedDetail = computed(() =>
+	retryText(secondsLeft.value === 0 ? 0 : announcedSeconds.value),
+);
 </script>
 
 <template>
 	<N8nCallout theme="warning" slim data-test-id="agent-chat-busy-notice">
 		<div :class="$style.body">
 			<span :class="$style.title">{{ locale.baseText(titleKey) }}</span>
-			<span :class="$style.detail" data-test-id="agent-chat-busy-notice-detail">{{ detail }}</span>
+			<span
+				:class="$style.detail"
+				aria-hidden="true"
+				data-test-id="agent-chat-busy-notice-detail"
+				>{{ detail }}</span
+			>
+			<N8nVisuallyHidden data-test-id="agent-chat-busy-notice-announcement">{{
+				announcedDetail
+			}}</N8nVisuallyHidden>
 		</div>
 		<template #trailingContent>
 			<N8nTooltip :content="locale.baseText('agents.chat.warning.dismiss')" placement="top">

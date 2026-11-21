@@ -31,6 +31,47 @@ describe('AgentChatBusyNotice', () => {
 		);
 	});
 
+	it('restarts the countdown when a new busy notice replaces a finished one', async () => {
+		const { getByTestId, rerender } = renderComponent({
+			props: { notice: { code: 'main_busy', draftKept: false, retryAt: 1_000_000 + 2_000 } },
+		});
+
+		await vi.advanceTimersByTimeAsync(3_000);
+		expect(getByTestId('agent-chat-busy-notice-detail')).toHaveTextContent(
+			'You can try again now.',
+		);
+
+		await rerender({
+			notice: { code: 'queue_full', draftKept: false, retryAt: Date.now() + 5_000 },
+		});
+		expect(getByTestId('agent-chat-busy-notice-detail')).toHaveTextContent('Try again in 5 s.');
+
+		await vi.advanceTimersByTimeAsync(2_000);
+		expect(getByTestId('agent-chat-busy-notice-detail')).toHaveTextContent('Try again in 3 s.');
+
+		await vi.advanceTimersByTimeAsync(3_000);
+		expect(getByTestId('agent-chat-busy-notice-detail')).toHaveTextContent(
+			'You can try again now.',
+		);
+	});
+
+	it('keeps the ticking countdown out of the alert announcement', async () => {
+		const { getByTestId } = renderComponent({
+			props: { notice: { code: 'main_busy', draftKept: false, retryAt: 1_000_000 + 3_000 } },
+		});
+
+		expect(getByTestId('agent-chat-busy-notice-detail')).toHaveAttribute('aria-hidden', 'true');
+		const announcement = getByTestId('agent-chat-busy-notice-announcement');
+		expect(announcement).toHaveTextContent('Try again in 3 s.');
+
+		await vi.advanceTimersByTimeAsync(1_000);
+		expect(getByTestId('agent-chat-busy-notice-detail')).toHaveTextContent('Try again in 2 s.');
+		expect(announcement).toHaveTextContent('Try again in 3 s.');
+
+		await vi.advanceTimersByTimeAsync(2_000);
+		expect(announcement).toHaveTextContent('You can try again now.');
+	});
+
 	it('shows the low-memory reason without the draft hint', () => {
 		const { getByTestId, getByText } = renderComponent({
 			props: { notice: { code: 'low_memory', draftKept: false, retryAt: 1_000_000 + 10_000 } },

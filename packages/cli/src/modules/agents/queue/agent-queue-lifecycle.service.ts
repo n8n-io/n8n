@@ -3,7 +3,7 @@ import { Logger } from '@n8n/backend-common';
 import { InstanceRegistryProxyService } from '@n8n/backend-services';
 import { AgentsConfig } from '@n8n/config';
 import { HIGHEST_SHUTDOWN_PRIORITY, OnShutdown } from '@n8n/decorators';
-import { Service } from '@n8n/di';
+import { Container, type Constructable, Service } from '@n8n/di';
 
 import { AgentAppTurnService } from '../agent-app-turn.service';
 import { AgentClusterService } from '../agent-cluster.service';
@@ -13,18 +13,37 @@ import { AgentTaskService } from '../agent-task.service';
 import { AgentWakeService } from '../background/agent-wake.service';
 import { AgentWorkflowToolResumeService } from '../agent-workflow-tool-resume.service';
 import { WebhookChannelService } from '../integrations/platforms/webhook/webhook-channel.service';
+import { ChannelInboundProcessor } from '../integrations/channel-inbound/channel-inbound.processor';
 import { AgentBackgroundJobService } from '../background/agent-background-job.service';
 import { AgentQueueMetrics } from './agent-queue-metrics';
 import { AgentWorkerCapacity } from './agent-worker-capacity.service';
 import { AgentTurnPlacement } from './agent-turn-placement.service';
 import { AgentTurnQueue } from './agent-turn-queue.service';
 import { QueuedTurnRunner } from './queued-turn-runner';
+import { QueuedTurnWorker } from './queued-turn-worker';
+
+/**
+ * The services that register the request kinds that they run, see
+ * `AgentTurnHandlers`. Each one registers its kinds when it is built. A
+ * worker gets request jobs from other processes, so it must build all of
+ * them before it pulls a job.
+ */
+const TURN_HANDLER_OWNERS: readonly Constructable[] = [
+	AgentChatResumeService,
+	WebhookChannelService,
+	ChannelInboundProcessor,
+	AgentAppTurnService,
+	AgentWorkflowToolResumeService,
+	AgentTaskService,
+	AgentWakeService,
+];
 
 /**
  * Starts and stops agent queue mode on this process.
  *
  * A main opens the agent queue so that it can send drain jobs, and advertises
- * that it dispatches. A worker opens the queue, pulls drain jobs, and
+ * that it dispatches. A webhook process opens the queue only to send request
+ * jobs: it pulls no job and runs no main-only work, see `startOnIngress`. A worker opens the queue, pulls drain jobs, and
  * advertises the `agent-turns` capability only once it can take work. On
  * shutdown the worker withdraws the capability first, so mains stop sending
  * it turns while its running turns drain.
@@ -44,17 +63,10 @@ export class AgentQueueLifecycle {
 		private readonly turnQueue: AgentTurnQueue,
 		private readonly consumer: AgentMessageQueueConsumer,
 		private readonly queuedTurns: QueuedTurnRunner,
+		private readonly queuedTurnWorker: QueuedTurnWorker,
 		private readonly registry: InstanceRegistryProxyService,
 		private readonly agentsConfig: AgentsConfig,
 		private readonly logger: Logger,
-		// Each of these registers the request kinds it runs when it is built, so a
-		// worker must build them before it pulls request jobs.
-		_chatResume: AgentChatResumeService,
-		_webhookChannel: WebhookChannelService,
-		_appTurns: AgentAppTurnService,
-		_workflowToolResume: AgentWorkflowToolResumeService,
-		_tasks: AgentTaskService,
-		_wakes: AgentWakeService,
 		private readonly capacity: AgentWorkerCapacity,
 		private readonly backgroundJobs: AgentBackgroundJobService,
 		private readonly metrics: AgentQueueMetrics,
@@ -67,6 +79,7 @@ export class AgentQueueLifecycle {
 	}
 
 	async startOnMain(): Promise<void> {
+		this.registerTurnHandlers();
 		if (!this.placement.dispatchEnabled) return;
 		await this.turnQueue.init();
 		this.startStaleRequestSweep();
@@ -74,11 +87,29 @@ export class AgentQueueLifecycle {
 		this.logger.info('Agent queue mode is on. This main sends agent turns to agent workers.');
 	}
 
+	/**
+	 * Open the agent queue on a webhook process in agent queue mode, so that it
+	 * can send public turns to agent workers. The process pulls no job, so it
+	 * does not register as a worker. The stale request sweep, the message queue
+	 * scan and the channel reconcile stay on mains. The stream channel opens its
+	 * Redis connections on first use. A failure here leaves the queue closed, and
+	 * this process then rejects every public turn as busy.
+	 */
+	async startOnIngress(): Promise<void> {
+		if (!this.placement.ingressOnly) return;
+		await this.turnQueue.init();
+		await this.advertise(AGENT_QUEUE_DISPATCH_CAPABILITY);
+		this.logger.info(
+			'Agent queue mode is on. This webhook process sends public agent turns to agent workers.',
+		);
+	}
+
 	async startOnWorker(): Promise<void> {
+		this.registerTurnHandlers();
 		if (!this.placement.runsTurnsOnWorker) return;
 		await this.turnQueue.init();
 		this.consumer.startOnWorker();
-		await this.queuedTurns.startWorker();
+		await this.queuedTurnWorker.startWorker();
 		const concurrency = this.agentsConfig.workerConcurrency;
 		// Background sub-agents outlive the job of the turn that started them. Count
 		// them too, and stop pulling jobs while they fill this worker.
@@ -92,7 +123,7 @@ export class AgentQueueLifecycle {
 			drain: async ({ threadId }) =>
 				await this.counted(async () => await this.consumer.drainForJob(threadId)),
 			request: async ({ requestId }) =>
-				await this.counted(async () => await this.queuedTurns.runJob(requestId)),
+				await this.counted(async () => await this.queuedTurnWorker.runJob(requestId)),
 		});
 		await this.advertise(AGENT_TURNS_CAPABILITY);
 		this.logger.info('This worker runs agent turns', { concurrency });
@@ -113,10 +144,15 @@ export class AgentQueueLifecycle {
 		}
 	}
 
+	/** Build the services in `TURN_HANDLER_OWNERS`, so that this process can run their request kinds. */
+	private registerTurnHandlers(): void {
+		for (const owner of TURN_HANDLER_OWNERS) Container.get(owner);
+	}
+
 	/** One sweep per cluster is enough, so only the leader deletes. */
 	private startStaleRequestSweep(): void {
 		const sweep = () => {
-			if (this.cluster.isLeader) this.queuedTurns.removeStaleRequests();
+			if (this.cluster.isLeader) void this.queuedTurns.removeStaleRequests();
 		};
 		sweep();
 		this.staleRequestSweep = setInterval(sweep, AgentQueueLifecycle.STALE_REQUEST_SWEEP_MS);

@@ -1,4 +1,5 @@
 import {
+	AGENT_CHAT_ERROR_CODES,
 	type AgentBackgroundJobsResponse,
 	type AgentSessionFilesResponse,
 	AgentChatMessageDto,
@@ -32,6 +33,9 @@ import { redactDeep } from '@n8n/utils/redaction/redact-text';
 import type { Response } from 'express';
 import { randomUUID } from 'node:crypto';
 
+import { CredentialsService } from '@/credentials/credentials.service';
+
+import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 import { AgentPlanService } from './agent-plan.service';
 import { presentPlan } from './plans/agent-plan-tools';
 import { AgentTaskCancellationService } from './agent-task-cancellation.service';
@@ -89,6 +93,7 @@ export class AgentChatController {
 		private readonly chatRelay: AgentChatRelayService,
 		private readonly plans: AgentPlanService,
 		private readonly chatResumeService: AgentChatResumeService,
+		private readonly credentialsService: CredentialsService,
 	) {}
 
 	private async requireProductionChat(agentId: string, projectId: string): Promise<void> {
@@ -244,8 +249,10 @@ export class AgentChatController {
 		const { message, sessionId, messageId, newSession, attachments } = payload;
 
 		await this.chatRelay.relayQueuedMessage(res, async (send, abortSignal) => {
-			// No runnable check here: the queue consumer checks the agent config and
-			// credentials before the turn, and a burst of chats would repeat it on main.
+			// Reject an agent that cannot run before the message is stored. The check
+			// reads the config and the credentials only. The queue consumer checks
+			// again, because the agent can change while the message waits, so a
+			// recent pass is reused here.
 			const prepared = await this.agentTestRunService.prepareDraftRun({
 				agentId,
 				projectId,
@@ -253,10 +260,26 @@ export class AgentChatController {
 				sessionId,
 				previewChat: true,
 				newSession,
+				reuseRecentPass: true,
+				credentialProvider: new AgentsCredentialProvider(
+					this.credentialsService,
+					projectId,
+					req.user,
+					agentId,
+				),
 			});
 			if (abortSignal.aborted) return undefined;
-			if (prepared.status !== 'ready') {
+			if (prepared.status === 'session_not_found') {
 				send({ type: 'error', message: 'Session not found' });
+				return undefined;
+			}
+			if (prepared.status === 'agent_misconfigured') {
+				send({
+					type: 'error',
+					message: 'This agent is not ready to run yet.',
+					errorCode: AGENT_CHAT_ERROR_CODES.agentMisconfigured,
+					missing: prepared.missing,
+				});
 				return undefined;
 			}
 			const threadId = prepared.sessionId;

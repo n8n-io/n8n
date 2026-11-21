@@ -1,22 +1,11 @@
 import type { SerializableAgentState } from '@n8n/agents';
-import {
-	isDraftIntegration,
-	WEBHOOK_INTEGRATION_TYPE,
-	webhookAuthentication,
-	webhookCredentialType,
-	type AgentIntegrationConfig,
-	type AgentWebhookIntegrationConfig,
-} from '@n8n/api-types';
+import { WEBHOOK_INTEGRATION_TYPE } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { UrlService } from '@n8n/backend-services';
 import { Service } from '@n8n/di';
 import { UserError } from '@n8n/errors';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { sanitizeErrorDetail } from '@n8n/utils/redaction/sanitize-error-detail';
-import { jsonParse, NodeHelpers, type INodeParameters, type JsonObject } from 'n8n-workflow';
+import { jsonParse, type JsonObject } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
-
-import { CredentialsHelper } from '@/credentials-helper';
 
 import { AgentChatExecutionService } from '../../../agent-chat-execution.service';
 import { AgentExecutionOrchestratorService } from '../../../agent-execution-orchestrator.service';
@@ -25,12 +14,10 @@ import { hashAgentSandboxPrincipal } from '../../../agent-sandbox-principal';
 import { AgentTurnAlreadyRunningError } from '../../../agent-turn-already-running.error';
 import { AgentsSettingsService } from '../../../agents-settings.service';
 import type { ProjectAgent } from '../../../entities/agent.entity';
-import { AgentTurnDispatcher } from '../../../queue/agent-turn-dispatcher.service';
 import { AgentTurnHandlers } from '../../../queue/agent-turn-handlers.service';
-import {
-	toResumeJson,
-	type AgentWebhookDecideRequest,
-	type AgentWebhookRespondRequest,
+import type {
+	AgentWebhookDecideRequest,
+	AgentWebhookRespondRequest,
 } from '../../../queue/agent-turn-request.types';
 import { AgentRepository } from '../../../repositories/agent.repository';
 import {
@@ -39,18 +26,16 @@ import {
 } from '../../../standard-approval';
 import type { AgentExecutionStreamChunk } from '../../../types/agent-steering';
 import { integrationMemoryResourceId } from '../../../utils/agent-memory-scope';
-import { AgentCredentialLookupService } from '../../agent-credential-lookup.service';
 import { N8NCheckpointStorage } from '../../n8n-checkpoint-storage';
 import {
 	parseApprovalDecision,
-	parseResponsesRequest,
 	toResponseBody,
 	WebhookChannelError,
 	type WebhookApprovalRequest,
 } from './responses-api';
-import { authenticateWebhookRequest } from './webhook-auth';
+import { errorReply, findWebhookChannel, type WebhookChannelReply } from './webhook-channel.shared';
 
-const MAX_LOGGED_ERROR_LENGTH = 500;
+export type { WebhookChannelReply } from './webhook-channel.shared';
 
 /**
  * Characters of agent text that one webhook reply can hold. n8n keeps the text
@@ -65,15 +50,6 @@ const REPLY_TOO_LARGE_ERROR = () =>
 		`The agent wrote more than ${MAX_WEBHOOK_REPLY_TEXT_LENGTH} characters, so n8n stopped the run.`,
 	);
 
-export interface WebhookChannelReply {
-	status: number;
-	body: unknown;
-	/** Seconds for the `Retry-After` header of a busy reply. */
-	retryAfterSeconds?: number;
-}
-
-type WebhookHeaders = Readonly<Record<string, string | string[] | undefined>>;
-
 interface WebhookConversation {
 	id: string;
 	threadId: string;
@@ -86,20 +62,6 @@ type Suspension = Extract<AgentExecutionStreamChunk, { type: 'tool-call-suspende
 /** A worker stores the reply as JSON, so the status and the body reach the main intact. */
 const toResultJson = (reply: WebhookChannelReply): JsonObject =>
 	jsonParse<JsonObject>(JSON.stringify({ status: reply.status, body: reply.body ?? null }));
-
-const LOST_TURN_ERROR = () =>
-	new WebhookChannelError(
-		503,
-		'agent_unavailable',
-		'The agent stopped before it could answer. Send the request again.',
-	);
-
-const BUSY_ERROR = () =>
-	new WebhookChannelError(
-		503,
-		'server_busy',
-		'n8n is busy right now. Send the request again after the time in the Retry-After header.',
-	);
 
 const approvalNotFound = () =>
 	new WebhookChannelError(
@@ -115,9 +77,10 @@ const approvalNotFound = () =>
  * needs approval stops the run, and the reply gives a URL for the decision. New
  * input in the conversation cancels the action instead.
  *
- * In agent queue mode, the main that serves the request checks the caller and
- * the body, then an agent worker runs the turn and stores the reply. No
- * credential or header leaves the main.
+ * This is the runner part: it runs on the process that runs the turn, a main
+ * or an agent worker. `WebhookChannelIngressService` checks the caller and the
+ * body first, on the process that serves the request. No credential or header
+ * reaches the runner.
  */
 @Service()
 export class WebhookChannelService {
@@ -127,12 +90,8 @@ export class WebhookChannelService {
 		private readonly executionService: AgentExecutionService,
 		private readonly orchestrator: AgentExecutionOrchestratorService,
 		private readonly chatExecution: AgentChatExecutionService,
-		private readonly credentials: AgentCredentialLookupService,
-		private readonly credentialsHelper: CredentialsHelper,
 		private readonly checkpointStorage: N8NCheckpointStorage,
-		private readonly urlService: UrlService,
 		private readonly logger: Logger,
-		private readonly dispatcher: AgentTurnDispatcher,
 		handlers: AgentTurnHandlers,
 	) {
 		handlers.handle('webhook-respond', {
@@ -147,30 +106,6 @@ export class WebhookChannelService {
 		});
 	}
 
-	async respond(request: {
-		agentId: string;
-		headers: WebhookHeaders;
-		body: unknown;
-		abortSignal: AbortSignal;
-	}): Promise<WebhookChannelReply> {
-		let payload: AgentWebhookRespondRequest;
-		try {
-			const { agent, channel } = await this.findChannel(request.agentId);
-			await this.authenticate(agent, channel, request.headers);
-			const { input, conversationId } = parseResponsesRequest(request.body);
-			payload = {
-				kind: 'webhook-respond',
-				agentId: agent.id,
-				input,
-				conversationId,
-				approvalBaseUrl: this.urlService.getAgentWebhookUrl(agent.id),
-			};
-		} catch (error) {
-			return this.errorReply(request.abortSignal, error);
-		}
-		return await this.dispatch(payload, request.abortSignal);
-	}
-
 	/** Runs one webhook message in this process. The caller is already authenticated. */
 	async runRespond(
 		payload: AgentWebhookRespondRequest,
@@ -178,7 +113,7 @@ export class WebhookChannelService {
 	): Promise<WebhookChannelReply> {
 		const { input, conversationId, approvalBaseUrl } = payload;
 		return await this.reply(abortSignal, approvalBaseUrl, async () => {
-			const agent = await this.findPublishedAgent(payload.agentId);
+			const agent = await this.findRunnableAgent(payload.agentId);
 			const conversation = await this.resolveConversation(agent.id, conversationId);
 			// A caller that lost the reply has no approval URL, so new input drops the waiting action.
 			// The next history load marks the action as not done.
@@ -220,44 +155,15 @@ export class WebhookChannelService {
 		});
 	}
 
-	/** Resumes the run with the caller's decision on one approval request. */
-	async decide(request: {
-		agentId: string;
-		conversationId: string;
-		runId: string;
-		toolCallId: string;
-		headers: WebhookHeaders;
-		body: unknown;
-		abortSignal: AbortSignal;
-	}): Promise<WebhookChannelReply> {
-		let payload: AgentWebhookDecideRequest;
-		try {
-			const { agent, channel } = await this.findChannel(request.agentId);
-			await this.authenticate(agent, channel, request.headers);
-			payload = {
-				kind: 'webhook-decide',
-				agentId: agent.id,
-				conversationId: request.conversationId,
-				runId: request.runId,
-				toolCallId: request.toolCallId,
-				decision: toResumeJson(parseApprovalDecision(request.body)),
-				approvalBaseUrl: this.urlService.getAgentWebhookUrl(agent.id),
-			};
-		} catch (error) {
-			return this.errorReply(request.abortSignal, error);
-		}
-		return await this.dispatch(payload, request.abortSignal);
-	}
-
 	/** Runs one approval decision in this process. The caller is already authenticated. */
 	async runDecide(
 		payload: AgentWebhookDecideRequest,
 		abortSignal: AbortSignal,
 	): Promise<WebhookChannelReply> {
 		return await this.reply(abortSignal, payload.approvalBaseUrl, async () => {
-			const agent = await this.findPublishedAgent(payload.agentId);
+			const agent = await this.findRunnableAgent(payload.agentId);
 			const conversation = await this.resolveConversation(agent.id, payload.conversationId);
-			// The main parsed the decision, so this parse only restores its type.
+			// The ingress parsed the decision, so this parse only restores its type.
 			const decision = parseApprovalDecision(payload.decision);
 			const { runId, toolCallId } = payload;
 			const pending = { agentId: agent.id, conversation, runId, toolCallId };
@@ -299,38 +205,6 @@ export class WebhookChannelService {
 		});
 	}
 
-	/**
-	 * Runs the turn on an agent worker when one is up, else in this process. A
-	 * worker that leaves before it stores the reply gives a 503, because the
-	 * turn runs at most once.
-	 */
-	private async dispatch(
-		payload: AgentWebhookRespondRequest | AgentWebhookDecideRequest,
-		abortSignal: AbortSignal,
-	): Promise<WebhookChannelReply> {
-		const remote = await this.dispatcher.result(payload, abortSignal);
-		switch (remote.outcome) {
-			case 'done':
-				return { status: Number(remote.result.status), body: remote.result.body ?? null };
-			case 'left':
-				return { status: 500, body: null };
-			case 'lost':
-				return this.errorReply(abortSignal, LOST_TURN_ERROR());
-			case 'busy':
-				return {
-					...this.errorReply(abortSignal, BUSY_ERROR()),
-					retryAfterSeconds: remote.retryAfterSeconds,
-				};
-		}
-	}
-
-	private errorReply(abortSignal: AbortSignal, error: unknown): WebhookChannelReply {
-		// The caller left, so nothing reads the reply, and the abort is not a failure.
-		if (abortSignal.aborted) return { status: 500, body: null };
-		const channelError = this.toChannelError(error);
-		return { status: channelError.status, body: channelError.toBody() };
-	}
-
 	/** Reads the run that `start` begins or resumes, and renders the reply or the error. */
 	private async reply(
 		abortSignal: AbortSignal,
@@ -360,70 +234,17 @@ export class WebhookChannelService {
 				}),
 			};
 		} catch (error) {
-			return this.errorReply(abortSignal, error);
+			return errorReply(abortSignal, error, this.logger);
 		}
 	}
 
-	/** The main checked the channel. A worker only checks that the agent is still published. */
-	private async findPublishedAgent(agentId: string): Promise<ProjectAgent> {
-		const agent = await this.agentRepository.findById(agentId);
-		if (!agent || agent.activeVersionId === null) {
-			throw new WebhookChannelError(404, 'agent_not_found', 'No published agent with this URL');
-		}
-		return agent;
-	}
-
-	private async findChannel(agentId: string) {
-		const agent = await this.agentRepository.findById(agentId);
-		const channel = agent?.integrations?.find(
-			(entry: AgentIntegrationConfig): entry is AgentWebhookIntegrationConfig =>
-				entry.type === WEBHOOK_INTEGRATION_TYPE && !isDraftIntegration(entry),
-		);
-		if (
-			!agent ||
-			agent.activeVersionId === null ||
-			!channel ||
-			!(await this.settings.getEnabled())
-		) {
-			throw new WebhookChannelError(404, 'agent_not_found', 'No published agent with this URL');
-		}
-		return { agent, channel };
-	}
-
-	private async authenticate(
-		agent: ProjectAgent,
-		channel: AgentWebhookIntegrationConfig,
-		headers: WebhookHeaders,
-	) {
-		const authentication = webhookAuthentication(channel);
-		if (authentication === 'none') return;
-		const credentialType = webhookCredentialType(channel.settings);
-		const credential =
-			credentialType &&
-			(await this.credentials.decryptForProject(
-				agent.projectId,
-				channel.credentialId,
-				credentialType,
-			));
-		if (!authentication || !credential) {
-			// A deleted credential, or one of another type: no request may pass.
-			throw new WebhookChannelError(
-				500,
-				'credential_unavailable',
-				'The webhook credential is missing',
-			);
-		}
-		authenticateWebhookRequest(
-			headers,
-			authentication,
-			this.withDefaults(credentialType, credential as INodeParameters),
-		);
-	}
-
-	/** Stored credential data leaves out the fields that keep their default, such as the JWT algorithm. */
-	private withDefaults(credentialType: string, data: INodeParameters) {
-		const properties = this.credentialsHelper.getCredentialsProperties(credentialType);
-		return NodeHelpers.getNodeParameters(properties, data, true, false, null, null) ?? data;
+	/**
+	 * The ingress checked the channel and the caller. The turn can wait for a worker,
+	 * and Agents or the channel can be turned off while it waits. So check them
+	 * again, but do not authenticate again: the headers stay on the ingress.
+	 */
+	private async findRunnableAgent(agentId: string): Promise<ProjectAgent> {
+		return (await findWebhookChannel(this.agentRepository, this.settings, agentId)).agent;
 	}
 
 	private async resolveConversation(
@@ -558,21 +379,5 @@ export class WebhookChannelService {
 		const execution = await this.executionService.findLatestSuspendedRun(threadId);
 		if (execution)
 			await this.chatExecution.cancelSessionSuspension(agentId, threadId, execution.id);
-	}
-
-	private agentError(error: unknown) {
-		// A provider error can carry secrets, for example in a request URL.
-		this.logger.error('Webhook agent turn failed', {
-			error: sanitizeErrorDetail(ensureError(error).message, MAX_LOGGED_ERROR_LENGTH),
-		});
-		return new WebhookChannelError(500, 'agent_error', 'The agent could not answer');
-	}
-
-	private toChannelError(error: unknown): WebhookChannelError {
-		if (error instanceof WebhookChannelError) return error;
-		if (error instanceof AgentTurnAlreadyRunningError) {
-			return new WebhookChannelError(409, 'conversation_busy', error.message, 'conversation');
-		}
-		return this.agentError(error);
 	}
 }

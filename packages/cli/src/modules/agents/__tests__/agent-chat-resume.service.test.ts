@@ -5,6 +5,8 @@ import { jsonParse } from 'n8n-workflow';
 import { EventEmitter } from 'node:events';
 import { mock } from 'vitest-mock-extended';
 
+import { userHasScopes } from '@/permissions.ee/check-access';
+
 import { AgentChatResumeService } from '../agent-chat-resume.service';
 import type { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
 import type { FlushableResponse } from '../agent-sse-stream';
@@ -16,6 +18,8 @@ import type { AgentChatResumeRequest } from '../queue/agent-turn-request.types';
 import { QueuedTurnRunner } from '../queue/queued-turn-runner';
 import { fakeStreamChannel } from './test-utils/stream-channel';
 import { fakeRequests, testTurns } from './test-utils/turns';
+
+vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
 
 function makeSseResponse(writes: string[]) {
 	const emitter = new EventEmitter();
@@ -73,6 +77,7 @@ describe('AgentChatResumeService', () => {
 	}) {
 		const placement = mock<AgentTurnPlacement>({
 			dispatchEnabled: true,
+			mayRunHere: () => true,
 			queueFull: async () => false,
 			retryAfterSeconds: async () => 15,
 			workersAvailable: async () => workers,
@@ -81,6 +86,7 @@ describe('AgentChatResumeService', () => {
 		const { channel, published } = fakeStreamChannel();
 		userRepository = mock<UserRepository>();
 		userRepository.findByIdWithRole.mockResolvedValue(user);
+		vi.mocked(userHasScopes).mockResolvedValue(true);
 		testRuns = mock<AgentTestRunService>();
 		testRuns.resumePreparedDraftRun.mockImplementation(async ({ onExecutionStarted }) => {
 			onExecutionStarted?.('exec-1', 'thread-1', []);
@@ -122,7 +128,7 @@ describe('AgentChatResumeService', () => {
 
 		await service.relay(res, request);
 
-		expect(requests.createPending).not.toHaveBeenCalled();
+		expect(requests.createPendingIfAbsent).not.toHaveBeenCalled();
 		expect(testRuns.resumePreparedDraftRun).toHaveBeenCalledOnce();
 		expect(sentEvents(writes).map((event) => event.type)).toEqual(['execution-started', 'done']);
 		expect(res.end).toHaveBeenCalled();
@@ -138,7 +144,7 @@ describe('AgentChatResumeService', () => {
 		expect(testRuns.resumePreparedDraftRun).toHaveBeenCalledOnce();
 		expect(userRepository.findByIdWithRole).toHaveBeenCalledWith('user-1');
 		expect(sentEvents(writes).map((event) => event.type)).toEqual(['execution-started', 'done']);
-		const requestId = requests.createPending.mock.calls[0][0];
+		const requestId = requests.createPendingIfAbsent.mock.calls[0][0];
 		expect(requests.remove).toHaveBeenCalledWith(requestId);
 		expect(rows.size).toBe(0);
 	});
@@ -177,8 +183,9 @@ describe('AgentChatResumeService', () => {
 
 		expect(testRuns.resumePreparedDraftRun).not.toHaveBeenCalled();
 		expect(rows.size).toBe(0);
+		// The queue is down, not full.
 		expect(sentEvents(writes)).toEqual([
-			expect.objectContaining({ type: 'error', errorCode: AGENT_CHAT_ERROR_CODES.queueFull }),
+			expect.objectContaining({ type: 'error', errorCode: AGENT_CHAT_ERROR_CODES.mainBusy }),
 		]);
 	});
 
@@ -208,25 +215,40 @@ describe('AgentChatResumeService', () => {
 
 	describe('worker side', () => {
 		it('does nothing when another process claimed the request', async () => {
-			const { queued, requests, rows } = setup({ workers: true });
+			const { worker, requests, rows } = setup({ workers: true });
 			await requests.createPending('request-1', request);
 			await requests.claim('request-1', 'main');
 
-			await queued.runJob('request-1');
+			await worker.runJob('request-1');
 
 			expect(testRuns.resumePreparedDraftRun).not.toHaveBeenCalled();
 			expect(rows.has('request-1')).toBe(true);
 		});
 
 		it('refuses a resume for a user who can no longer execute the agent', async () => {
-			const { queued, requests, rows, published } = setup({ workers: true });
+			const { worker, requests, rows, published } = setup({ workers: true });
 			await requests.createPending('request-1', request);
 			userRepository.findByIdWithRole.mockResolvedValue(null);
 
-			await queued.runJob('request-1');
+			await worker.runJob('request-1');
 
 			expect(testRuns.resumePreparedDraftRun).not.toHaveBeenCalled();
 			expect(rows.size).toBe(0);
+			const sent = published.map(({ message }) => message).join('\n');
+			expect(sent).toContain('You can no longer execute this agent');
+		});
+
+		it('refuses a resume for a user who lost the execute scope in the project', async () => {
+			const { worker, requests, published } = setup({ workers: true });
+			await requests.createPending('request-1', request);
+			vi.mocked(userHasScopes).mockResolvedValue(false);
+
+			await worker.runJob('request-1');
+
+			expect(userHasScopes).toHaveBeenCalledWith(user, ['agent:execute'], false, {
+				projectId: 'project-1',
+			});
+			expect(testRuns.resumePreparedDraftRun).not.toHaveBeenCalled();
 			const sent = published.map(({ message }) => message).join('\n');
 			expect(sent).toContain('You can no longer execute this agent');
 		});

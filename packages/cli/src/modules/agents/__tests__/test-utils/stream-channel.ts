@@ -27,10 +27,10 @@ export function fakeStreamChannel() {
 		onCancel: async (handler) => {
 			cancelHandlers.push(handler);
 		},
-		cancel: async (turnId) => {
+		cancel: vi.fn(async (turnId: string) => {
 			await Promise.resolve();
 			for (const handler of cancelHandlers) handler(turnId);
-		},
+		}),
 	});
 
 	return {

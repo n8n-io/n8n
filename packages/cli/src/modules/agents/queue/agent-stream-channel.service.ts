@@ -194,7 +194,11 @@ export class AgentStreamChannel {
 	}
 
 	onPublisherClose(listener: () => void): void {
-		void this.ensurePublisher().then((client) => client.on('close', listener));
+		this.ensurePublisher()
+			.then((client) => client.on('close', listener))
+			.catch((error: unknown) => {
+				this.logger.warn('Failed to open the agent stream publish connection', { error });
+			});
 	}
 
 	onSubscriberClose(listener: () => void): void {

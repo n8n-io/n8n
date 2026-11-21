@@ -82,6 +82,7 @@ function setup(options: SetupOptions = {}) {
 	const cluster = testCluster(options.cluster);
 	const placement = mock<AgentTurnPlacement>({
 		dispatchEnabled: options.placement?.dispatchEnabled ?? false,
+		mayRunHere: () => true,
 		runsTurnsOnWorker: options.placement?.runsTurnsOnWorker ?? false,
 		sendsJobs:
 			(options.placement?.dispatchEnabled ?? false) ||

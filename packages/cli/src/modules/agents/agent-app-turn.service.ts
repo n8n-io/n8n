@@ -29,8 +29,9 @@ type AppTurnRequest = AgentAppChatRequest | AgentAppResumeRequest;
 
 /**
  * Runs the agent turns of app visitors. The apps module resolves the binding
- * and the visitor on the main, then this service runs the turn: on an agent
- * worker in agent queue mode, else in this process.
+ * and the visitor on the process that serves the app host, a main or a
+ * webhook process. Then this service runs the turn: on an agent worker in
+ * agent queue mode, else in this process. A webhook process never runs it.
  *
  * Visitors only see the events that this service makes. It hides internal
  * errors and ends a finished turn with `done`, so the same rules apply on a

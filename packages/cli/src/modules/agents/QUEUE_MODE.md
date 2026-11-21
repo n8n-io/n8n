@@ -25,12 +25,23 @@ Set these variables to run agent turns on workers:
 | `N8N_AGENTS_WORKER_CONCURRENCY` | workers | `30` | Maximum agent turns on one worker. Background sub-agents count toward it. |
 | `N8N_AGENTS_TURN_TIMEOUT` | all | `0` | Maximum seconds for one turn. `0` means no limit. |
 | `N8N_AGENTS_QUEUE_MAX_WAITING` | every main | `200` | Maximum turns that wait for a worker. Over the limit, mains reject new turns as busy. `0` means no limit. |
+| `N8N_AGENTS_QUEUE_MAX_WAITING_PER_AGENT` | mains and webhook processes | `50` | Maximum public turns of one agent that wait for a worker. Over the limit, n8n rejects new public turns of that agent as busy. `0` means no limit. |
 | `N8N_AGENTS_QUEUE_MAX_WAIT` | every main | `60` | Maximum seconds that an app chat or webhook channel request waits for a worker. Then the main rejects it as busy. `0` means no limit. |
 | `N8N_AGENTS_MAIN_MAX_TURNS` | every main | `20` | Maximum agent turns that one main runs at the same time. `0` means no limit. |
 | `N8N_AGENTS_MAIN_FALLBACK_TURNS` | every main | `0` | A main takes over turns from stuck workers only while it runs fewer agent turns than this. All turns on the main count. `0` turns off the takeover. |
 | `N8N_AGENTS_MAIN_MAX_INTAKE` | every main | `20` | Maximum chat messages that one main accepts at the same time. |
 | `N8N_AGENTS_MAIN_MAX_STREAMS` | every main | `200` | Maximum live chat streams on one main. Over the limit, the chat loads the reply when it is ready. |
 | `N8N_AGENTS_MAIN_MEMORY_HOLD_LEVEL` | every main | `0.8` | Share of the memory limit above which a main starts no new turns or streams. |
+| `N8N_AGENTS_WEBHOOK_CHANNEL_AGENT_RATE_LIMIT` | mains and webhook processes | `0` | Maximum webhook channel requests for one agent in 5 minutes. `0` means no limit. |
+| `N8N_AGENTS_CHANNEL_WEBHOOK_IP_RATE_LIMIT` | mains and webhook processes | `6000` | Maximum chat platform webhook requests from one IP address in 5 minutes. `0` means no limit. |
+| `N8N_AGENTS_CHANNEL_WEBHOOK_AGENT_RATE_LIMIT` | mains and webhook processes | `0` | Maximum chat platform webhook requests for one agent in 5 minutes. `0` means no limit. |
+
+In queue mode, all mains and webhook processes share the rate limit counts in
+Redis. A request that ends with a `4xx` status other than `429`, such as a bad
+signature or key, does not count toward the per-agent rate limits. So
+unsigned requests cannot use up the limit of a real agent. The per-agent waiting limit counts only public turns.
+Editor turns do not count. The webhook channel sends its `429` in the OpenAI
+error shape, so OpenAI clients can read it.
 
 Use `database` or `s3` for `N8N_DEFAULT_BINARY_DATA_MODE`. With filesystem
 storage, workers cannot read files that a main wrote. n8n logs a warning at
@@ -38,13 +49,15 @@ startup in this case.
 
 ```mermaid
 flowchart LR
-  Browser -->|HTTP or SSE| Main
-  Platform[Slack, Teams, Telegram, Linear] -->|webhook| Main
+  Browser -->|editor chat| Main
+  Public[Platforms, webhook channel, app visitors] -->|public routes| Ingress[Webhook process]
   Main -->|job| Queue[(agent-turns queue)]
+  Ingress -->|job| Queue
   Queue --> Worker
   Worker -->|batched events| Stream[(Redis stream channel)]
   Stream --> Main
-  Worker -->|reply over send-only connection| Platform
+  Stream --> Ingress
+  Worker -->|reply over send-only connection| Public
 ```
 
 ### Where each turn runs
@@ -55,6 +68,7 @@ flowchart LR
 | Responses API webhook channel and approval decisions | worker |
 | App agent chat and resume | worker |
 | Slack, Teams, Telegram, Linear | worker |
+| Chat platform events (Slack, Teams, Telegram, Linear, WhatsApp) | worker |
 | Workflow-tool resume, scheduled tasks, wakes | worker when the platform allows it |
 | Discord, WhatsApp | main |
 | n8n Assistant (system agents) | main |
@@ -63,10 +77,59 @@ Discord needs the Gateway connection hook of a main. WhatsApp keeps a send
 rate guard for each connection. n8n Assistant registers its provider and tool
 closures only on mains.
 
+### Public routes on webhook processes
+
+Anyone on the internet can start a public turn: the Responses API webhook
+channel, chat platform events, and app visitor chat. In agent queue mode, a
+public turn runs only on an agent worker. It never runs on a main or a webhook
+process. When no agent worker is registered, n8n rejects it as busy at once.
+
+With agent workers, webhook processes serve the public agent routes and the
+app hosts under `N8N_APPS_BASE_URL`: app pages, app sign-in, preview hosts,
+and the app API. They send public turns to agent workers and never run a turn.
+Mains also serve these routes, unless `N8N_DISABLE_PRODUCTION_MAIN_PROCESS` is
+set. Then route the app hosts to the webhook processes. The API that builds,
+previews, and publishes apps stays on mains. Without agent workers, only mains
+serve these routes.
+
+The public routes are:
+
+- `/agent-webhook/...`: the Responses API webhook channel. The ingress keeps
+  the checked channel settings in memory for 30 seconds, so a request does not
+  decrypt the credential each time. A change to the credential, or a change to
+  who it is shared with, clears the cached settings at once.
+- `/agent-hook/:agentId/:platform`: chat platform webhooks for Slack, Teams,
+  Telegram, Linear, and WhatsApp. The ingress checks the signature, stores the
+  event as a `channel-inbound` turn, and answers the platform within 2 seconds.
+  An agent worker then replays the event, downloads attachments, and starts
+  the reply turn. A retry of the same event gets the same turn ID, so n8n
+  takes it in only once. The ingress reads at most 512 KB of the body and
+  answers `413` to a larger body.
+
+  A stored event waits for an agent worker, also when no agent worker is
+  registered. `N8N_AGENTS_QUEUE_MAX_WAIT` does not apply to it. The leader
+  main sends a waiting event to the queue again after 10 minutes, and deletes
+  it after 24 hours.
+- App hosts under `N8N_APPS_BASE_URL`.
+
+New chat platform channels get the `/agent-hook` URL. Channels set up before
+it keep the old `/rest/projects/.../agents/v2/.../webhooks/:platform` URL. The
+main still serves the old URL with the same check-and-store path and the same
+rate limits, so existing channels keep working. Telegram in webhook mode
+registers the new URL when the channel connects again. For Slack, Teams,
+Linear, and WhatsApp, update the URL in the platform settings. The
+`agent_channel_webhooks_total` metric counts the requests on the `legacy`
+route. Discord stays on the old URL, because it uses the Gateway connection
+of a main.
+
+To deploy, route `/agent-hook/*`, `/agent-webhook/*`, and the app hosts to
+the webhook processes. Telegram polling and the Discord Gateway connection
+stay on the leader main.
+
 ### Fallback and failure rules
 
-- When no agent worker is registered, mains run the turns, within the limits
-  of the main.
+- When no agent worker is registered, mains run editor turns, within the
+  limits of the main. Mains never run public turns in agent queue mode.
 - While an agent worker is registered, a main does not run worker turns.
   Turns wait in the agent queue. When no worker starts a turn in
   `N8N_AGENTS_QUEUE_MAX_WAIT`, the main rejects it as busy.
@@ -100,11 +163,16 @@ turns that wait for room on this main.
 | Responses API webhook channel | queue full, or the turn does not start in `N8N_AGENTS_QUEUE_MAX_WAIT` | `503` `server_busy` with `Retry-After` |
 | Scheduled tasks | queue full, or no room for 5 minutes | the run is skipped and logged |
 | Wakes and workflow-tool resumes | never | the turn waits for room |
-| Slack, Teams, Telegram, Linear | never | the turn queues |
+| Chat platform events | queue full, the agent has too many waiting turns, or the queue is down | `503` with `Retry-After` |
 
-Chat platforms always queue. They retry deliveries that fail, and a rejected
-message would be lost to the user. A wake or a workflow-tool resume continues
-work that already started, so n8n does not drop it.
+In agent queue mode, app agent chat and the webhook channel are also rejected
+when the agent has `N8N_AGENTS_QUEUE_MAX_WAITING_PER_AGENT` waiting turns, or
+when no agent worker is registered.
+
+Slack, Telegram, Linear, and WhatsApp retry an event that gets a `503`.
+Microsoft Teams does not retry. The Teams user sees that the message failed
+and can send it again. A wake or a workflow-tool resume continues work that
+already started, so n8n does not drop it.
 
 The `Retry-After` time is between 5 and 120 seconds. It grows with the number
 of waiting turns, with a random spread of 20%. The chat shows it as a
@@ -292,8 +360,13 @@ starts with `N8N_METRICS_PREFIX` (default `n8n_`).
 - `agent_active_turns` and `agent_active_background_runs`: work in this process.
 - `agent_turn_queue_jobs{state}`: waiting and active jobs in the agent queue.
 - `agent_turns_rejected_total{reason}`: turns rejected as busy, by
-  `queue-full`, `wait-too-long`, `main-at-limit`, `main-memory-high`, or
-  `queue-unavailable` (the database or Redis failed). `main-memory-high` can
-  come from low memory on the server, not only from agent load.
+  `queue-full`, `agent-queue-full`, `no-worker`, `wait-too-long`,
+  `main-at-limit`, `main-memory-high`, or `queue-unavailable` (the database or
+  Redis failed). `main-memory-high` can come from low memory on the server,
+  not only from agent load.
+- `agent_channel_webhooks_total{route,platform,outcome}`: chat platform
+  webhooks, by `legacy` or `agent-hook` route, and by `accepted`,
+  `duplicate`, `busy`, `rejected`, `answered`, or `not-found`. Use the
+  `legacy` count to find channels that still use the old URL.
 
 Telemetry adds `worker_turn_count` to agent session metrics.

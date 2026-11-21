@@ -553,6 +553,9 @@ export class AgentTaskService {
 			holderId: request.holderId,
 			heldUntil: new Date(request.heldUntil),
 		};
+		// The run can wait in a queue for longer than the lock lasts. Then the next
+		// scheduled run can take the lock. Do not run when this run lost the lock.
+		if (!(await this.renewLockBeforeRun(lock))) return;
 		// The agent can change between the lock and the claim. Read it again.
 		const agent = await this.agentRepository.findOne({ where: { id: request.agentId } });
 		const snapshot = agent?.activeVersionId
@@ -566,6 +569,24 @@ export class AgentTaskService {
 			return;
 		}
 		await this.runScheduledTask(agent, snapshot, lock);
+	}
+
+	private async renewLockBeforeRun(lock: AgentTaskRunLockHandle): Promise<boolean> {
+		try {
+			if (await this.taskRunLockRepository.renew(lock, TASK_RUN_LOCK_TTL_MS)) return true;
+			this.logger.warn('[AgentTaskService] Skipping task run because its lock expired', {
+				taskId: lock.taskId,
+				agentId: lock.agentId,
+			});
+		} catch (error) {
+			this.logger.warn('[AgentTaskService] Skipping task run because its lock was not renewed', {
+				taskId: lock.taskId,
+				agentId: lock.agentId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			await this.releaseLock(lock);
+		}
+		return false;
 	}
 
 	private async releaseLock(lock: AgentTaskRunLockHandle): Promise<void> {

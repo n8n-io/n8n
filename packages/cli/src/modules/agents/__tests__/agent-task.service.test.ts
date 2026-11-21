@@ -1117,6 +1117,33 @@ describe('AgentTaskService', () => {
 			expect(taskRunLockRepository.release).not.toHaveBeenCalled();
 		});
 
+		it('does not run when the lock expired and another run took it while the run waited', async () => {
+			arrangePublishedTask();
+			taskRunLockRepository.renew.mockResolvedValue(false);
+
+			await expect(service.startScheduledRun(AGENT_ID, 'task-1')).resolves.toBe('started');
+			await flushAsyncWork();
+
+			expect(taskRunLockRepository.renew).toHaveBeenCalledWith(
+				expect.objectContaining({ agentId: AGENT_ID, taskId: 'task-1' }),
+				expect.any(Number),
+			);
+			expect(agentExecutionOrchestratorService.executeForTaskPublished).not.toHaveBeenCalled();
+			// The lock belongs to the other run now, so this run must not release it.
+			expect(taskRunLockRepository.release).not.toHaveBeenCalled();
+		});
+
+		it('does not run and frees the lock when the lock cannot be renewed', async () => {
+			arrangePublishedTask();
+			taskRunLockRepository.renew.mockRejectedValue(new Error('db down'));
+
+			await service.startScheduledRun(AGENT_ID, 'task-1');
+			await flushAsyncWork();
+
+			expect(agentExecutionOrchestratorService.executeForTaskPublished).not.toHaveBeenCalled();
+			expect(taskRunLockRepository.release).toHaveBeenCalledTimes(1);
+		});
+
 		it("returns 'started' before the run resolves, then releases the lock after it", async () => {
 			let finishRun!: () => void;
 			// eslint-disable-next-line require-yield

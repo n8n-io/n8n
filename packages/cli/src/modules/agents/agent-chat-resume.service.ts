@@ -3,6 +3,8 @@ import { UserRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { UserError } from '@n8n/errors';
 
+import { userHasScopes } from '@/permissions.ee/check-access';
+
 import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service';
 import {
 	emitChunkEvents,
@@ -48,8 +50,7 @@ export class AgentChatResumeService {
 		handlers.handle('chat-resume', {
 			mode: 'stream',
 			run: async (request, { send }) => {
-				const user = await this.userRepository.findByIdWithRole(request.userId);
-				if (!user || user.disabled) throw new UserError('You can no longer execute this agent');
+				const user = await this.getAllowedUser(request);
 				await this.run(request, user, toResumeStream(send));
 			},
 			onError: (error, send) => send(toChatErrorEvent(error, 'Resume failed')),
@@ -58,8 +59,8 @@ export class AgentChatResumeService {
 
 	/**
 	 * Stream a resume to the browser. A worker runs it when agent queue mode is
-	 * on. The handler reads the user again, so a user that was disabled since
-	 * the request cannot resume.
+	 * on. The handler reads the user again, so a user that was disabled or lost
+	 * access to the project since the request cannot resume.
 	 */
 	async relay(res: FlushableResponse, request: AgentChatResumeRequest): Promise<void> {
 		const delivery = initSseStream(res);
@@ -71,6 +72,22 @@ export class AgentChatResumeService {
 		} finally {
 			delivery.close();
 		}
+	}
+
+	/**
+	 * Load the user again and check the `agent:execute` scope of the project.
+	 * The turn can wait for a worker, and the user can lose access while it waits.
+	 */
+	private async getAllowedUser(request: AgentChatResumeRequest): Promise<User> {
+		const user = await this.userRepository.findByIdWithRole(request.userId);
+		if (
+			!user ||
+			user.disabled ||
+			!(await userHasScopes(user, ['agent:execute'], false, { projectId: request.projectId }))
+		) {
+			throw new UserError('You can no longer execute this agent');
+		}
+		return user;
 	}
 
 	/** Run the resumed turn in this process. */

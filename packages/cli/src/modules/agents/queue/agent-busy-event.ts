@@ -19,7 +19,9 @@ export const busyEvent = (
 		type: 'error',
 		message: 'n8n is busy right now. Try again in a moment.',
 		errorCode:
-			reason === 'queue-full' ? AGENT_CHAT_ERROR_CODES.queueFull : AGENT_CHAT_ERROR_CODES.mainBusy,
+			reason === 'queue-full' || reason === 'agent-queue-full'
+				? AGENT_CHAT_ERROR_CODES.queueFull
+				: AGENT_CHAT_ERROR_CODES.mainBusy,
 		retryAfterSeconds,
 	};
 };

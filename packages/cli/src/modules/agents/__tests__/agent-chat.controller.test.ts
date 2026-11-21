@@ -10,6 +10,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { FileNotFoundError } from 'n8n-core';
 
+import type { CredentialsService } from '@/credentials/credentials.service';
 import type { AgentTaskCancellationService } from '@/modules/agents/agent-task-cancellation.service';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 
@@ -21,6 +22,7 @@ import { testCluster } from './test-utils/cluster';
 import type { Publisher, Subscriber } from '@n8n/backend-services';
 import type { AgentMessageQueueService } from '../agent-message-queue.service';
 import { AgentQueuedTestStreamService } from '../agent-queued-test-stream.service';
+import { AgentQueueMetrics } from '../queue/agent-queue-metrics';
 import type { AgentStreamChannel } from '../queue/agent-stream-channel.service';
 import type { AgentMessageQueueRepository } from '../repositories/agent-message-queue.repository';
 import type { AgentMessageQueue } from '../entities/agent-message-queue.entity';
@@ -111,6 +113,7 @@ function makeController() {
 		mockLogger(),
 		mock<Subscriber>(),
 		mock<AgentStreamChannel>({ enabled: false }),
+		new AgentQueueMetrics(),
 	);
 
 	const taskCancellation = mock<AgentTaskCancellationService>();
@@ -152,6 +155,7 @@ function makeController() {
 			turns.dispatcher,
 			turns.handlers,
 		),
+		mock<CredentialsService>(),
 	);
 
 	return {
@@ -1325,9 +1329,64 @@ describe('AgentChatController HITL cancellation', () => {
 });
 
 describe('AgentChatController preview chat intake', () => {
-	it('queues the message without the runnable check, which the queue consumer runs', async () => {
-		const { controller, messageQueue, agentValidationService } = makeController();
+	const sentEvents = (writes: string[]) =>
+		writes
+			.filter((line) => line.startsWith('data: '))
+			.map((line) => JSON.parse(line.slice(6).trim()) as Record<string, unknown>);
+
+	it('rejects a misconfigured agent before it stores the message', async () => {
+		const { controller, messageQueue, agentValidationService, agentChatAttachmentService } =
+			makeController();
 		agentValidationService.validateAgentIsRunnable.mockResolvedValue({ missing: ['model'] });
+		const writes: string[] = [];
+
+		await controller.chat(
+			{ params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never,
+			makeSseResponse(writes),
+			'agent-1',
+			{
+				message: 'hi',
+				attachments: [
+					{ fileName: 'a.txt', mimeType: 'text/plain', data: Buffer.from('a').toString('base64') },
+				],
+			} as never,
+		);
+
+		expect(agentValidationService.validateAgentIsRunnable).toHaveBeenCalledWith(
+			'agent-1',
+			'project-1',
+			expect.anything(),
+		);
+		expect(messageQueue.enqueue).not.toHaveBeenCalled();
+		expect(agentChatAttachmentService.storeInbound).not.toHaveBeenCalled();
+		expect(sentEvents(writes)).toContainEqual(
+			expect.objectContaining({
+				type: 'error',
+				errorCode: 'agent_misconfigured',
+				missing: ['model'],
+			}),
+		);
+		expect(writes.some((line) => line.includes('Session not found'))).toBe(false);
+	});
+
+	it('reports a session that the user cannot use as not found', async () => {
+		const { controller, messageQueue, agentExecutionService } = makeController();
+		agentExecutionService.canUseDraftThread.mockResolvedValue(false);
+		const writes: string[] = [];
+
+		await controller.chat(
+			{ params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never,
+			makeSseResponse(writes),
+			'agent-1',
+			{ message: 'hi', sessionId: 'foreign-thread' } as never,
+		);
+
+		expect(messageQueue.enqueue).not.toHaveBeenCalled();
+		expect(sentEvents(writes)).toContainEqual({ type: 'error', message: 'Session not found' });
+	});
+
+	it('queues the message of a runnable agent', async () => {
+		const { controller, messageQueue } = makeController();
 		// A duplicate ends the request without waiting for a reply.
 		messageQueue.enqueue.mockResolvedValueOnce({ status: 'duplicate' } as never);
 
@@ -1338,7 +1397,6 @@ describe('AgentChatController preview chat intake', () => {
 			{ message: 'hi' } as never,
 		);
 
-		expect(agentValidationService.validateAgentIsRunnable).not.toHaveBeenCalled();
 		expect(messageQueue.enqueue).toHaveBeenCalledWith(
 			expect.objectContaining({ agentId: 'agent-1', projectId: 'project-1' }),
 			expect.any(Function),

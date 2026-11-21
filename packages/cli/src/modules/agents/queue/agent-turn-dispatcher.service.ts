@@ -6,8 +6,9 @@ import { randomUUID } from 'node:crypto';
 
 import { busyEvent } from './agent-busy-event';
 import { AgentTurnPlacement } from './agent-turn-placement.service';
-import type { AgentTurnRequestPayload } from './agent-turn-request.types';
+import { type AgentTurnRequestPayload, isDurableTurnKind } from './agent-turn-request.types';
 import {
+	AgentTurnDuplicateError,
 	type AgentTurnEnd,
 	AgentTurnNotAdmittedError,
 	type AgentTurnRunner,
@@ -39,6 +40,18 @@ export type AgentDispatchResult =
 	| { outcome: 'left' }
 	| { outcome: 'busy'; retryAfterSeconds: number };
 
+/**
+ * How the hand-off of a turn that no caller waits for ended.
+ *
+ * - `accepted`: a runner took the turn, or the turn waits for a worker.
+ * - `duplicate`: a turn with the same ID waits or runs already.
+ * - `busy`: n8n has no room for the turn now. Nothing was stored.
+ */
+export type AgentSubmitResult =
+	| { outcome: 'accepted' }
+	| { outcome: 'duplicate' }
+	| { outcome: 'busy'; retryAfterSeconds: number };
+
 /** Kinds of work that already started and that no caller waits for. n8n never rejects them. */
 const MUST_RUN_KINDS: ReadonlySet<Kind> = new Set(['wake', 'workflow-tool-resume']);
 
@@ -50,6 +63,12 @@ const MUST_RUN_KINDS: ReadonlySet<Kind> = new Set(['wake', 'workflow-tool-resume
  *
  * When agent workers are up, this main never runs a turn that can run on
  * them. The turn waits in the agent queue, or n8n rejects it.
+ *
+ * In agent queue mode, public turns (`PUBLIC_TURN_KINDS`) never run in this
+ * process, and a webhook process runs no turn at all. With no agent worker,
+ * n8n rejects such a turn as busy at once. A durable turn
+ * (`DURABLE_TURN_KINDS`) is the exception: it waits in the agent queue until
+ * a worker registers, see `submit`.
  *
  * Each runner admits the turn or rejects it. A rejected stream turn gets a
  * busy error event, a rejected result turn gets `busy`.
@@ -70,7 +89,17 @@ export class AgentTurnDispatcher {
 		return workerCapable && (await this.placement.workersAvailable());
 	}
 
-	private async runnerFor(workerCapable = true): Promise<AgentTurnRunner> {
+	/**
+	 * The runner for a turn, or `no-worker` when the turn must run on an agent
+	 * worker and none is registered.
+	 */
+	private async runnerFor(
+		kind: Kind,
+		workerCapable = true,
+	): Promise<AgentTurnRunner | 'no-worker'> {
+		if (!this.placement.mayRunHere(kind)) {
+			return (await this.placement.workersAvailable()) ? this.queued : 'no-worker';
+		}
 		return (await this.goesToWorker(workerCapable)) ? this.queued : this.inProcess;
 	}
 
@@ -84,7 +113,7 @@ export class AgentTurnDispatcher {
 		delivery: AgentTurnDelivery,
 		options: { stopOnLeave: boolean },
 	): Promise<void> {
-		const end = await this.run(await this.runnerFor(), payload, delivery.abortSignal, {
+		const end = await this.run(await this.runnerFor(payload.kind), payload, delivery.abortSignal, {
 			send: delivery.send,
 			stopOnLeave: options.stopOnLeave,
 		});
@@ -102,7 +131,7 @@ export class AgentTurnDispatcher {
 		payload: AgentTurnRequestPayload,
 		abortSignal: AbortSignal,
 	): Promise<AgentDispatchResult> {
-		const end = await this.run(await this.runnerFor(), payload, abortSignal, {
+		const end = await this.run(await this.runnerFor(payload.kind), payload, abortSignal, {
 			stopOnLeave: true,
 		});
 		return this.toResult(end, abortSignal);
@@ -118,8 +147,11 @@ export class AgentTurnDispatcher {
 		payload: AgentTurnRequestPayload,
 		options: { workerCapable: boolean; onRejected?: () => Promise<void> },
 	): Promise<void> {
-		const runner = await this.runnerFor(options.workerCapable);
+		const runner = await this.runnerFor(payload.kind, options.workerCapable);
 		try {
+			if (runner === 'no-worker') {
+				throw new AgentTurnNotAdmittedError('no-worker', this.placement.rejectNoWorker());
+			}
 			await runner.start({
 				turnId: randomUUID(),
 				payload,
@@ -133,17 +165,90 @@ export class AgentTurnDispatcher {
 	}
 
 	/**
+	 * Hand off a turn that no caller waits for, under an ID that the caller
+	 * picks, so that a retry of the same input is dropped.
+	 *
+	 * A durable turn (`DURABLE_TURN_KINDS`) resolves only when it is stored or
+	 * rejected, so `accepted` always means stored. n8n rejects it only here: when
+	 * the agent queue or the cap of its agent is full, or the queue is down. A
+	 * stored durable turn waits for a worker, also when no worker is registered.
+	 *
+	 * Any other turn resolves at the latest after `ackWithinMs`, so that a
+	 * platform that needs a fast answer gets one. A turn that still waits then
+	 * counts as accepted. When n8n rejects it later, the turn is lost, and a
+	 * warning is logged.
+	 */
+	async submit(
+		payload: AgentTurnRequestPayload,
+		{ turnId, ackWithinMs }: { turnId: string; ackWithinMs: number },
+	): Promise<AgentSubmitResult> {
+		const durable = isDurableTurnKind(payload.kind);
+		let runner = await this.runnerFor(payload.kind);
+		if (runner === 'no-worker') {
+			if (!durable) {
+				return { outcome: 'busy', retryAfterSeconds: this.placement.rejectNoWorker() };
+			}
+			runner = this.queued;
+		}
+		const settled = runner.start({ turnId, payload }).then(
+			(): AgentSubmitResult => ({ outcome: 'accepted' }),
+			(error: unknown): AgentSubmitResult => {
+				if (error instanceof AgentTurnDuplicateError) return { outcome: 'duplicate' };
+				if (error instanceof AgentTurnNotAdmittedError) {
+					return { outcome: 'busy', retryAfterSeconds: error.retryAfterSeconds };
+				}
+				throw error;
+			},
+		);
+		// A platform that got no answer sends the event again, and the stored row drops the copy.
+		if (durable) return await settled;
+		let timer: NodeJS.Timeout | undefined;
+		const deadline = new Promise<'pending'>((resolve) => {
+			timer = setTimeout(() => resolve('pending'), ackWithinMs);
+		});
+		try {
+			const first = await Promise.race([settled, deadline]);
+			if (first !== 'pending') return first;
+		} finally {
+			clearTimeout(timer);
+		}
+		settled
+			.then((late) => {
+				if (late.outcome !== 'busy') return;
+				this.logger.warn(
+					'Dropped an agent turn after its caller got an answer, because n8n is busy',
+					{
+						kind: payload.kind,
+						turnId,
+					},
+				);
+			})
+			.catch((error: unknown) => {
+				this.logger.warn('Failed to start an agent turn', { kind: payload.kind, turnId, error });
+			});
+		return { outcome: 'accepted' };
+	}
+
+	/**
 	 * Subscribe, start and wait for the end of a turn. A caller that leaves
 	 * while the turn waits for room always gives up its place. A caller that
 	 * leaves while the turn runs stops it only with `stopOnLeave`, and then
 	 * gets `cancelled` without waiting for the end.
 	 */
 	private async run(
-		runner: AgentTurnRunner,
+		runner: AgentTurnRunner | 'no-worker',
 		payload: AgentTurnRequestPayload,
 		abortSignal: AbortSignal,
 		{ send, stopOnLeave }: { send?: (event: AgentSseEvent) => void; stopOnLeave: boolean },
 	): Promise<AgentTurnEnd> {
+		if (runner === 'no-worker') {
+			if (abortSignal.aborted) return { outcome: 'cancelled' };
+			return {
+				outcome: 'rejected',
+				reason: 'no-worker',
+				retryAfterSeconds: this.placement.rejectNoWorker(),
+			};
+		}
 		const turnId = randomUUID();
 		let admitted = false;
 		let resolveEnd!: (end: AgentTurnEnd) => void;

@@ -47,6 +47,7 @@ export function requestTurnClass(kind: AgentTurnRequestPayload['kind']): AgentTu
 			return 'chat';
 		case 'webhook-respond':
 		case 'webhook-decide':
+		case 'channel-inbound':
 			return 'channel';
 		case 'task-run':
 			return 'background';
@@ -95,7 +96,7 @@ function once(fn: () => void): () => void {
  * job of `AgentTurnPlacement`.
  *
  * The gate holds four limits of this process:
- * - running agent turns, `N8N_AGENTS_MAIN_MAX_TURNS`,
+ * - running agent turns, `N8N_AGENTS_MAIN_MAX_TURNS`, where 0 means no limit,
  * - memory use, `N8N_AGENTS_MAIN_MEMORY_HOLD_LEVEL`,
  * - chat messages that are accepted at the same time, `N8N_AGENTS_MAIN_MAX_INTAKE`,
  * - live chat streams, `N8N_AGENTS_MAIN_MAX_STREAMS`.
@@ -137,7 +138,10 @@ export class AgentTurnGate {
 
 	static readonly MAX_RETRY_AFTER_SECONDS = 120;
 
-	private recentClaims: number[] = [];
+	/** Turns that this process took and that may not run yet: the time of each claim, by claim ID. */
+	private readonly recentClaims = new Map<number, number>();
+
+	private nextClaimId = 0;
 
 	private intakeRunning = 0;
 
@@ -160,7 +164,7 @@ export class AgentTurnGate {
 		// A started turn counts as a running turn from now on, so stop counting its claim.
 		// Without this, each turn counted twice for `CLAIM_START_MS`.
 		this.metrics.onEvent((event) => {
-			if (event.type === 'turn-started') this.recentClaims.shift();
+			if (event.type === 'turn-started') this.releaseOldestClaim(Date.now());
 		});
 	}
 
@@ -177,7 +181,7 @@ export class AgentTurnGate {
 	): Promise<AgentTurnAdmission> {
 		const now = Date.now();
 		if (turnClass === 'nested') {
-			this.recentClaims.push(now);
+			this.takeClaim(now);
 			return { admitted: true };
 		}
 		if (this.waiters.length === 0 && this.admit(now)) return { admitted: true };
@@ -251,8 +255,8 @@ export class AgentTurnGate {
 
 	/** Running agent turns here, plus turns taken that may not run yet. */
 	turnsHere(now = Date.now()): number {
-		this.recentClaims = this.recentClaims.filter((at) => now - at < AgentTurnGate.CLAIM_START_MS);
-		return this.metrics.localTurns() + this.recentClaims.length;
+		this.dropExpiredClaims(now);
+		return this.metrics.localTurns() + this.recentClaims.size;
 	}
 
 	/**
@@ -343,7 +347,7 @@ export class AgentTurnGate {
 		}
 		// No hold metric here: a waiting turn is checked four times each second.
 		while (this.waiters.length > 0 && this.blockedBy(now) === undefined) {
-			this.recentClaims.push(now);
+			this.takeClaim(now);
 			this.waiters[0].finish(true);
 		}
 		if (this.waiters.length === 0) this.stopPump();
@@ -374,8 +378,31 @@ export class AgentTurnGate {
 		const turns = this.turnsHere(now);
 		// With no agent turn here, agent turns do not hold the memory. A hold could then never end.
 		if (turns > 0 && this.memory.isHigh()) return 'main-memory-high';
-		if (turns >= this.agentsConfig.mainMaxTurns) return 'main-at-limit';
+		const maxTurns = this.agentsConfig.mainMaxTurns;
+		// A limit of 0 means no turn limit.
+		if (maxTurns > 0 && turns >= maxTurns) return 'main-at-limit';
 		return undefined;
+	}
+
+	private takeClaim(now: number): void {
+		this.recentClaims.set(this.nextClaimId++, now);
+	}
+
+	private dropExpiredClaims(now: number): void {
+		for (const [id, at] of this.recentClaims) {
+			if (now - at >= AgentTurnGate.CLAIM_START_MS) this.recentClaims.delete(id);
+		}
+	}
+
+	/**
+	 * Stop counting the oldest claim that still counts. An expired claim no
+	 * longer counts, so a started turn must not use it up.
+	 */
+	private releaseOldestClaim(now: number): void {
+		this.dropExpiredClaims(now);
+		// A Map keeps insertion order, so the first key is the oldest claim.
+		const oldest = this.recentClaims.keys().next();
+		if (!oldest.done) this.recentClaims.delete(oldest.value);
 	}
 
 	private admit(now: number, queuedAt?: number): boolean {
@@ -388,7 +415,7 @@ export class AgentTurnGate {
 			}
 			this.held.delete(queuedAt);
 		}
-		this.recentClaims.push(now);
+		this.takeClaim(now);
 		return true;
 	}
 

@@ -164,6 +164,25 @@ describe('AgentTurnGate', () => {
 			expect(gate.mayStartQueued(Date.now())).toBe(false);
 		});
 
+		it('does not let a started turn use up an expired claim', () => {
+			vi.useFakeTimers();
+			const { gate, running, turnStartedAndEnded } = setup({ mainMaxTurns: 2 });
+			expect(gate.mayStartQueued(Date.now())).toBe(true);
+			vi.advanceTimersByTime(AgentTurnGate.CLAIM_START_MS - 1);
+			expect(gate.mayStartQueued(Date.now())).toBe(true);
+			// The first claim expires. The turn that starts now uses up the second claim.
+			vi.advanceTimersByTime(1);
+			running.turns = 1;
+			turnStartedAndEnded();
+			expect(gate.turnsHere()).toBe(1);
+		});
+
+		it('applies no turn limit with a limit of 0', () => {
+			const { gate } = setup({ mainMaxTurns: 0, localTurns: 500 });
+			expect(gate.mayStartQueued(Date.now())).toBe(true);
+			expect(gate.tryTake()).toBe(true);
+		});
+
 		it('counts a turn that waitForRoom admitted once when it starts to run', async () => {
 			const { gate, running, turnStartedAndEnded } = setup({ mainMaxTurns: 2 });
 			await gate.waitForRoom('channel');

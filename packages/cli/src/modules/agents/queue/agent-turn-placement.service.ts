@@ -6,9 +6,10 @@ import { InstanceRegistryProxyService } from '@n8n/backend-services';
 
 import { AgentClusterService } from '../agent-cluster.service';
 import type { AgentQueueDispatch } from '../types/agent-queued-message';
-import type { AgentTurnHoldReason } from './agent-queue-metrics';
+import { AgentQueueMetrics, type AgentTurnHoldReason } from './agent-queue-metrics';
 import { AgentTurnGate } from './agent-turn-gate.service';
 import { AgentTurnQueue } from './agent-turn-queue.service';
+import { type AgentTurnRequestKind, isPublicTurnKind } from './agent-turn-request.types';
 
 export type QueuedTurnKind = AgentQueueDispatch['kind'];
 
@@ -44,6 +45,10 @@ const WORKER_PLATFORMS: ReadonlySet<string> = new Set(['slack', 'teams', 'telegr
  * stuck. Busy workers are not stuck: they still start or finish jobs. See
  * `mayFallBack`.
  *
+ * Public turns (`PUBLIC_TURN_KINDS`) never run on a main in agent queue mode.
+ * A webhook process in agent queue mode is ingress only: it sends every turn
+ * to the agent workers and runs none. See `mayRunHere`.
+ *
  * Every process still claims through the database, so a wrong guess here can
  * only delay a turn, not run it twice.
  */
@@ -67,6 +72,7 @@ export class AgentTurnPlacement {
 		private readonly registry: InstanceRegistryProxyService,
 		private readonly turnQueue: AgentTurnQueue,
 		private readonly gate: AgentTurnGate,
+		private readonly metrics: AgentQueueMetrics,
 	) {}
 
 	/** True on a main that may send turns to workers. */
@@ -88,12 +94,49 @@ export class AgentTurnPlacement {
 	}
 
 	/**
+	 * True on a webhook process in agent queue mode. It takes public turns in
+	 * and sends them to agent workers. It never runs a turn itself.
+	 */
+	get ingressOnly(): boolean {
+		return (
+			this.cluster.isWebhook &&
+			this.cluster.shouldRelayAcrossProcesses() &&
+			this.agentsConfig.queueModeEnabled
+		);
+	}
+
+	/**
 	 * True on a process that may send jobs to agent workers: a main that
-	 * dispatches, or an agent worker. An agent worker sends the resume of a
-	 * workflow tool whose sub-workflow finished on it.
+	 * dispatches, a webhook process in agent queue mode, or an agent worker.
+	 * An agent worker sends the resume of a workflow tool whose sub-workflow
+	 * finished on it.
 	 */
 	get sendsJobs(): boolean {
-		return this.dispatchEnabled || this.runsTurnsOnWorker;
+		return this.dispatchEnabled || this.ingressOnly || this.runsTurnsOnWorker;
+	}
+
+	/**
+	 * Whether this process may run a turn of this kind outside the agent
+	 * queue: in process, or by a claim of a turn that waits for a worker.
+	 * False on a webhook process in agent queue mode, for every kind. False
+	 * for public kinds on every process in agent queue mode, agent workers
+	 * included: an agent worker runs a public turn only as a request job that
+	 * it pulls from the agent queue (`QueuedTurnWorker`), never through this
+	 * check. So a false result on a worker does not mean that the worker
+	 * cannot run the kind.
+	 */
+	mayRunHere(kind: AgentTurnRequestKind): boolean {
+		if (this.ingressOnly) return false;
+		return !(isPublicTurnKind(kind) && this.sendsJobs);
+	}
+
+	/**
+	 * Count the rejection of a turn that must run on an agent worker when no
+	 * agent worker is registered, and return its `Retry-After` time.
+	 */
+	rejectNoWorker(): number {
+		this.gate.rejected('no-worker');
+		return this.gate.retryAfterSeconds();
 	}
 
 	/** `platform` is the chat platform of an `integration` turn. */
@@ -135,6 +178,7 @@ export class AgentTurnPlacement {
 	 * main counts as a taken turn until the turn starts, see `AgentTurnGate.CLAIM_START_MS`.
 	 */
 	async mayClaim(kind: QueuedTurnKind, queuedAt: Date, platform?: string): Promise<boolean> {
+		if (this.ingressOnly) return false;
 		if (this.cluster.isWorker) return this.runsTurnsOnWorker && this.isWorkerKind(kind, platform);
 		if (!(await this.goesToWorker(kind, platform))) {
 			return this.gate.mayStartQueued(queuedAt.getTime());
@@ -176,9 +220,17 @@ export class AgentTurnPlacement {
 	 * - this main runs fewer agent turns than `N8N_AGENTS_MAIN_FALLBACK_TURNS`.
 	 *   The default of 0 means a main never takes over from a running worker.
 	 * The limits of the gate apply with or without a worker.
+	 * A request of a kind that may not run here (`mayRunHere`) never falls back,
+	 * and a webhook process in agent queue mode never takes over any turn.
 	 * A true result counts as a fallback, so call it only right before a claim.
 	 */
-	async mayFallBack(sentAt: number, path: 'queued-message' | 'request'): Promise<boolean> {
+	async mayFallBack(
+		sentAt: number,
+		path: 'queued-message' | 'request',
+		kind?: AgentTurnRequestKind,
+	): Promise<boolean> {
+		if (this.ingressOnly) return false;
+		if (kind !== undefined && !this.mayRunHere(kind)) return false;
 		const now = Date.now();
 		if (now - sentAt < AgentTurnPlacement.FALLBACK_WAIT_MS) return false;
 		if (await this.workersAvailable()) {
@@ -193,12 +245,12 @@ export class AgentTurnPlacement {
 		// An agent worker also asks here, for a request that it sent itself. Its own job limit applies.
 		if (this.dispatchEnabled && !this.gate.tryTake()) return false;
 		this.fallbackClaims++;
-		this.cluster.metrics.record({ type: 'fallback', path });
+		this.metrics.record({ type: 'fallback', path });
 		return true;
 	}
 
 	private hold(reason: AgentTurnHoldReason): false {
-		this.cluster.metrics.record({ type: 'turn-held', reason });
+		this.metrics.record({ type: 'turn-held', reason });
 		return false;
 	}
 
