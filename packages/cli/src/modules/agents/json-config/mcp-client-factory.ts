@@ -115,6 +115,7 @@ export interface BuildMcpClientDeps {
 	 * storage), so tool permissions must never require approval.
 	 */
 	nonInterrupting?: boolean;
+	wrapApproval?: McpServerConfig['wrapApproval'];
 }
 
 /** Stand-in for a URL that could not be built. `.invalid` never resolves (RFC 2606), and `authFetch` rejects before any request is sent. */
@@ -242,6 +243,7 @@ export async function buildMcpClientForServer(
 		url,
 		transport: runtimeTransport,
 		fetch: authFetch,
+		...(deps.wrapApproval && { wrapApproval: deps.wrapApproval }),
 		...(toolPermissions !== undefined && {
 			configureTools: (tools) => compileMcpToolPermissions(toolPermissions, tools),
 		}),
@@ -267,7 +269,7 @@ export async function buildMcpClientForServer(
 export async function listMcpServerTools(
 	server: AgentJsonMcpServerConfig,
 	deps: BuildMcpClientDeps,
-): Promise<Array<{ name: string; description: string }>> {
+): Promise<{ name: string; description: string }[]> {
 	let client: McpClient | undefined;
 	try {
 		client = await buildMcpClientForServer(server, deps);

@@ -1150,6 +1150,7 @@ describe('ProjectService', () => {
 						mock<AgentSessionStopService>(),
 						mock<AgentExecutionRepository>(),
 						agentServiceAccount,
+						mock(),
 					),
 			});
 			projectRepository.findOneWithUserRoles.mockResolvedValueOnce(project);
@@ -1457,6 +1458,7 @@ describe('ProjectService', () => {
 						mock<AgentSessionStopService>(),
 						mock<AgentExecutionRepository>(),
 						mock<AgentServiceAccountService>(),
+						mock(),
 					),
 			});
 			projectRepository.findOneWithUserRoles.mockResolvedValueOnce(project);

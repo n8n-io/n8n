@@ -499,7 +499,7 @@ export function createSendAndWaitMessageBody(context: IExecuteFunctions, chatApp
 		reply_markup: {
 			inline_keyboard: [
 				config.options.map((option) => {
-					if (chatApproval) {
+					if (chatApproval || context.getNode()?.parameters.agentApproval === true) {
 						return {
 							text: option.label,
 							callback_data: context.getApprovalCallbackReference(
