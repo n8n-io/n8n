@@ -90,6 +90,16 @@
 			"env": ["COVERAGE_ENABLED", "COVERAGE_SCOPE"],
 			"passThroughEnv": ["CHANGED_FILES"]
 		},
+		"@n8n/test-rig#test": {
+			"dependsOn": ["^build", "build"],
+			"outputs": ["coverage/**", "*.xml"],
+			"env": ["COVERAGE_ENABLED", "COVERAGE_SCOPE"],
+			"passThroughEnv": ["CHANGED_FILES"],
+			"inputs": [
+				"$TURBO_DEFAULT$",
+				"$TURBO_ROOT$/packages/quality/testing/playwright/tests/infrastructure/test-rig/**"
+			]
+		},
 		"test:changed": {
 			"dependsOn": ["^build", "build"],
 			"outputs": ["coverage/**", "*.xml"],
@@ -101,6 +111,16 @@
 			"outputs": ["coverage/**", "*.xml"],
 			"env": ["COVERAGE_ENABLED", "COVERAGE_SCOPE"],
 			"passThroughEnv": ["CHANGED_FILES"]
+		},
+		"@n8n/test-rig#test:unit": {
+			"dependsOn": ["^build", "build"],
+			"outputs": ["coverage/**", "*.xml"],
+			"env": ["COVERAGE_ENABLED", "COVERAGE_SCOPE"],
+			"passThroughEnv": ["CHANGED_FILES"],
+			"inputs": [
+				"$TURBO_DEFAULT$",
+				"$TURBO_ROOT$/packages/quality/testing/playwright/tests/infrastructure/test-rig/**"
+			]
 		},
 		"test:unit:changed": {
 			"dependsOn": ["^build", "build"],

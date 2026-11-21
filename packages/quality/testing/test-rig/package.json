@@ -2,13 +2,14 @@
   "name": "@n8n/test-rig",
   "private": true,
   "version": "0.1.0",
-  "description": "Runs n8n stacks under test control: in-process hooks, signals and probes",
+  "description": "Runs n8n stacks under test control: in-process hooks, signals, probes and scenarios",
   "main": "src/index.ts",
   "scripts": {
     "test": "vitest run --passWithNoTests",
     "test:unit": "vitest run --passWithNoTests",
     "test:docker": "vitest run --config vitest.docker.config.ts",
     "test:watch": "vitest",
+    "scenarios": "tsx src/cli/run.ts",
     "typecheck": "tsc --noEmit",
     "format": "biome format --write .",
     "format:check": "biome ci .",
@@ -30,6 +31,7 @@
     "@types/node": "catalog:",
     "oxlint": "catalog:",
     "oxlint-tsgolint": "catalog:",
+    "tsx": "catalog:",
     "typescript": "catalog:typescript",
     "vitest": "catalog:",
     "zod": "catalog:"

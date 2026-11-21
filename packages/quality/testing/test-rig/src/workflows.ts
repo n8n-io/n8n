@@ -30,6 +30,16 @@ export const nodes = {
 		webhookId: path,
 	}),
 	code: (name: string, jsCode: string) => node(name, 'n8n-nodes-base.code', 2, { jsCode }),
+	noOp: (name: string) => node(name, 'n8n-nodes-base.noOp', 1),
+	subWorkflowTrigger: () =>
+		node('When Executed by Another Workflow', 'n8n-nodes-base.executeWorkflowTrigger', 1),
+	executeWorkflow: (name: string, workflowId: string, waitForSubWorkflow: boolean) =>
+		node(name, 'n8n-nodes-base.executeWorkflow', 1.2, {
+			source: 'database',
+			workflowId: { __rl: true, value: workflowId, mode: 'id' },
+			mode: 'once',
+			options: { waitForSubWorkflow },
+		}),
 };
 
 /** A workflow whose nodes run one after the other in the given order. */

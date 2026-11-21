@@ -49,6 +49,11 @@ async function writeInContainer(container: Container, file: string, content: str
 	return result.exitCode === 0;
 }
 
+async function removeInContainer(container: Container, file: string) {
+	const script = `require('fs').rmSync(${JSON.stringify(file)},{force:true})`;
+	return (await container.exec(['node', '-e', script])).exitCode === 0;
+}
+
 /**
  * Control for one declared hook point. The channel is a file per point inside
  * the container: `.arm` enables it, the preload logs each hit and polls for `.release`.
@@ -61,6 +66,14 @@ export function hook(containers: Container[], point: string) {
 				(only ?? containers).map(async (c) => {
 					if (!(await writeInContainer(c, path('arm'), '1')))
 						throw new Error(`hook ${point}: arm failed in ${c.getName()}`);
+				}),
+			);
+		},
+		async disarm() {
+			await Promise.all(
+				containers.map(async (c) => {
+					if (!(await removeInContainer(c, path('arm'))))
+						throw new Error(`hook ${point}: disarm failed in ${c.getName()}`);
 				}),
 			);
 		},
