@@ -24,6 +24,7 @@ import { NoForbiddenLifecycleScriptsRule } from './no-forbidden-lifecycle-script
 import { NoHardcodedSecretsRule } from './no-hardcoded-secrets.js';
 import { NoHttpRequestWithManualAuthRule } from './no-http-request-with-manual-auth.js';
 import { NoMcpProtocolClientRule } from './no-mcp-protocol-client.js';
+import { NoMonorepoRule } from './no-monorepo.js';
 import { NoOverridesFieldRule } from './no-overrides-field.js';
 import { NoRestrictedGlobalsRule } from './no-restricted-globals.js';
 import { NoRestrictedImportsRule } from './no-restricted-imports.js';
@@ -75,6 +76,7 @@ export const rules = {
 	'no-hardcoded-secrets': NoHardcodedSecretsRule,
 	'no-http-request-with-manual-auth': NoHttpRequestWithManualAuthRule,
 	'no-mcp-protocol-client': NoMcpProtocolClientRule,
+	'no-monorepo': NoMonorepoRule,
 	'no-overrides-field': NoOverridesFieldRule,
 	'no-runtime-dependencies': NoRuntimeDependenciesRule,
 	'no-silent-error-swallowing': NoSilentErrorSwallowingRule,
