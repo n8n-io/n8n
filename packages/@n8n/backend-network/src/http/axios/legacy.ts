@@ -323,8 +323,12 @@ export async function buildAxiosConfigFromLegacyRequest(
 		});
 	}
 
+	const { acceptedStatusCodes } = requestObject;
 	if (requestObject.simple === false) {
 		axiosConfig.validateStatus = () => true;
+	} else if (acceptedStatusCodes?.length) {
+		axiosConfig.validateStatus = (status) =>
+			(status >= 200 && status < 300) || acceptedStatusCodes.includes(status);
 	}
 
 	applyDefaultOutboundUserAgent(axiosConfig);

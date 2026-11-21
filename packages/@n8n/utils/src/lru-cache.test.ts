@@ -80,6 +80,31 @@ describe('LruCache', () => {
 		expect(cache.get('c')).toBe(3);
 	});
 
+	it('should free a deleted entry without evicting retained entries', () => {
+		const onEvict = vi.fn();
+		const cache = new LruCache<string, number>(2, onEvict);
+		cache.set('a', 1);
+		cache.set('b', 2);
+
+		expect(cache.delete('b')).toBe(true);
+		expect(cache.size).toBe(1);
+		expect(cache.get('b')).toBeUndefined();
+		cache.set('c', 3);
+
+		expect(cache.get('a')).toBe(1);
+		expect(cache.get('c')).toBe(3);
+		expect(onEvict).not.toHaveBeenCalled();
+	});
+
+	it('should leave entries unchanged when deleting a missing key', () => {
+		const cache = new LruCache<string, number>(1);
+		cache.set('a', 1);
+
+		expect(cache.delete('missing')).toBe(false);
+		expect(cache.size).toBe(1);
+		expect(cache.get('a')).toBe(1);
+	});
+
 	it('should clear all entries', () => {
 		const cache = new LruCache<string, number>(3);
 		cache.set('a', 1);
