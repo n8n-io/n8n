@@ -2,11 +2,13 @@ import { Logger } from '@n8n/backend-common';
 import {
 	type HttpRequestClient,
 	isConnectionRefusedError,
+	isHttpRequestError,
 	isTransportFailure,
 	OutboundHttp,
 } from '@n8n/backend-network';
 import { Time } from '@n8n/constants';
 import { Container } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
 import type {
 	IDataObject,
 	IHttpRequestMethods,
@@ -119,6 +121,30 @@ interface KvMount {
 	path: string;
 	version: string;
 	subPath: string;
+}
+
+function isCachedSecretData(value: IDataObject[string]): value is IDataObject {
+	return isRecord(value);
+}
+
+function isEmptyKvListResponse(statusCode: number | undefined, body: unknown): boolean {
+	// Vault returns 404 with no errors for an empty KV path. Unknown mounts include an error.
+	return (
+		statusCode === 404 && isRecord(body) && Array.isArray(body.errors) && body.errors.length === 0
+	);
+}
+
+function isDeletedKvV2SecretResponse(body: unknown): boolean {
+	if (
+		!isRecord(body) ||
+		!isRecord(body.data) ||
+		body.data.data !== null ||
+		!isRecord(body.data.metadata)
+	) {
+		return false;
+	}
+	const { deletion_time: deletionTime, destroyed } = body.data.metadata;
+	return destroyed === true || (typeof deletionTime === 'string' && deletionTime !== '');
 }
 
 export class VaultProvider extends SecretsProvider {
@@ -291,6 +317,9 @@ export class VaultProvider extends SecretsProvider {
 	name = 'vault';
 
 	private cachedSecrets: Record<string, IDataObject> = {};
+
+	// Secret payloads can contain nested objects, so track folders separately.
+	private readonly cachedFolders = new WeakSet<IDataObject>();
 
 	private settings: VaultSettings;
 
@@ -528,6 +557,7 @@ export class VaultProvider extends SecretsProvider {
 		mount: KvMount,
 		path: string,
 		limit: KvReadLimit,
+		previousSecrets: IDataObject | null,
 	): Promise<IDataObject | null> {
 		const { path: mountPath, version: kvVersion, subPath } = mount;
 		this.logger.debug(`Getting kv secrets from ${mountPath}${path} (version ${kvVersion})`);
@@ -538,11 +568,18 @@ export class VaultProvider extends SecretsProvider {
 				async () => await this.#http.request<VaultResponse<VaultSecretList>>(listRequest),
 			);
 		} catch (error) {
-			// A broken or timed-out request fails the whole pull, so the last complete snapshot
-			// stays. Only a denied or missing path is skipped.
+			// A transport failure preserves the full snapshot.
 			if (isTransportFailure(error)) throw error;
+			if (
+				isHttpRequestError(error) &&
+				isEmptyKvListResponse(error.response?.status, error.response?.data)
+			) {
+				const emptyFolder = {};
+				this.cachedFolders.add(emptyFolder);
+				return emptyFolder;
+			}
 			const errorContext = buildHttpProviderErrorContext(error);
-			this.logger.debug('Vault provider failed to list KV secrets', {
+			this.logger.warn('Vault provider failed to list KV secrets', {
 				providerName: this.name,
 				operation: 'update',
 				mountPath,
@@ -550,15 +587,23 @@ export class VaultProvider extends SecretsProvider {
 				vaultApiPath: listRequest.url,
 				...errorContext,
 			});
-			return null;
+			return previousSecrets;
 		}
 		const data = Object.fromEntries(
 			(
 				await Promise.allSettled(
 					listBody.data.keys.map(async (key): Promise<[string, IDataObject] | null> => {
 						if (key.endsWith('/')) {
-							const folder = await this.getKVSecrets(mount, path + key, limit);
 							const folderKey = (path + key).slice(subPath.length, -1);
+							const previousFolder = previousSecrets?.[folderKey];
+							const folder = await this.getKVSecrets(
+								mount,
+								path + key,
+								limit,
+								isCachedSecretData(previousFolder) && this.cachedFolders.has(previousFolder)
+									? previousFolder
+									: null,
+							);
 							return folder === null ? null : [folderKey, folder];
 						}
 						const secretPath = this.kvApiPath(mountPath, kvVersion, 'data', path + key);
@@ -570,6 +615,9 @@ export class VaultProvider extends SecretsProvider {
 										method: 'GET',
 									}),
 							);
+							if (kvVersion === '2' && isDeletedKvV2SecretResponse(secretBody)) {
+								return null;
+							}
 							this.logger.debug(`Vault provider retrieved secrets from ${secretPath}`);
 							return [
 								key,
@@ -577,8 +625,17 @@ export class VaultProvider extends SecretsProvider {
 							];
 						} catch (error) {
 							if (isTransportFailure(error)) throw error;
+							// KV v2 keeps deleted versions in metadata LIST responses.
+							if (
+								kvVersion === '2' &&
+								isHttpRequestError(error) &&
+								error.response?.status === 404 &&
+								isDeletedKvV2SecretResponse(error.response.data)
+							) {
+								return null;
+							}
 							const errorContext = buildHttpProviderErrorContext(error);
-							this.logger.debug('Vault provider failed to read KV secret', {
+							this.logger.warn('Vault provider failed to read KV secret', {
 								providerName: this.name,
 								operation: 'update',
 								mountPath,
@@ -586,18 +643,22 @@ export class VaultProvider extends SecretsProvider {
 								secretPath,
 								...errorContext,
 							});
-							return null;
+							const previousSecret = previousSecrets?.[key];
+							return isCachedSecretData(previousSecret) && !this.cachedFolders.has(previousSecret)
+								? [key, previousSecret]
+								: null;
 						}
 					}),
 				)
 			)
 				.map((i) => {
-					// Only a transport failure rejects here; every other read error was already skipped.
+					// Transport failures reject after all reads finish.
 					if (i.status === 'rejected') throw i.reason;
 					return i.value;
 				})
 				.filter((v): v is [string, IDataObject] => v !== null),
 		);
+		this.cachedFolders.add(data);
 		this.logger.debug(`Vault provider retrieved kv secrets from ${mountPath}${path}`);
 		return data;
 	}
@@ -694,16 +755,7 @@ export class VaultProvider extends SecretsProvider {
 		if (resp.statusCode === 403) {
 			return [false, forbiddenMessage];
 		}
-		const { body } = resp;
-		// Vault answers a list on an empty KV mount with 404 and an empty `errors` array. A 404 for an
-		// unknown mount path carries an error message instead.
-		const isEmptyMount =
-			resp.statusCode === 404 &&
-			typeof body === 'object' &&
-			body !== null &&
-			'errors' in body &&
-			Array.isArray(body.errors) &&
-			body.errors.length === 0;
+		const isEmptyMount = isEmptyKvListResponse(resp.statusCode, resp.body);
 		if (resp.statusCode === 200 || (manualMount?.subPath === '' && isEmptyMount)) {
 			return [true];
 		}
@@ -719,15 +771,21 @@ export class VaultProvider extends SecretsProvider {
 				(
 					await Promise.allSettled(
 						kvMounts.map(async (mount): Promise<[string, IDataObject] | null> => {
-							const value = await this.getKVSecrets(mount, mount.subPath, limit);
+							const mountKey = mount.path.slice(0, -1);
+							const folders = mount.subPath.split('/').filter(Boolean);
+							const previousSecrets = folders.reduce<IDataObject | null>((inner, folder) => {
+								const previousFolder = inner?.[folder];
+								return isCachedSecretData(previousFolder) ? previousFolder : null;
+							}, this.cachedSecrets[mountKey] ?? null);
+							const value = await this.getKVSecrets(mount, mount.subPath, limit, previousSecrets);
 							if (value === null) {
 								return null;
 							}
-							const nested = mount.subPath
-								.split('/')
-								.filter(Boolean)
-								.reduceRight<IDataObject>((inner, folder) => ({ [folder]: inner }), value);
-							return [mount.path.substring(0, mount.path.length - 1), nested];
+							const nested = folders.reduceRight<IDataObject>(
+								(inner, folder) => ({ [folder]: inner }),
+								value,
+							);
+							return [mountKey, nested];
 						}),
 					)
 				)
