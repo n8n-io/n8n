@@ -70,16 +70,16 @@ describe('InstanceAiDataTablePreview', () => {
 		await flushPromises();
 		await vi.advanceTimersByTimeAsync(399);
 		expect(store.fetchDataTableContent).toHaveBeenCalledTimes(2);
-		expect(queryByTestId('data-table-loading')).not.toBeInTheDocument();
+		expect(queryByTestId('data-grid-loading')).not.toBeInTheDocument();
 		await vi.advanceTimersByTimeAsync(1);
-		expect(getByTestId('data-table-loading')).toBeVisible();
+		expect(getByTestId('data-grid-loading')).toBeVisible();
 		expect(displayedGrid).toHaveTextContent('Notebook');
 		expect(displayedGrid).toHaveAttribute('inert');
 
 		rows.resolve({ data: [{ id: 2, name: 'Pencil' }], count: 1 });
 		await flushPromises();
 		await vi.advanceTimersByTimeAsync(100);
-		expect(queryByTestId('data-table-loading')).not.toBeInTheDocument();
+		expect(queryByTestId('data-grid-loading')).not.toBeInTheDocument();
 		expect(displayedGrid).not.toBeInTheDocument();
 		expect(getByTestId('instance-ai-data-table-grid')).toHaveTextContent('Pencil');
 	});
@@ -101,16 +101,16 @@ describe('InstanceAiDataTablePreview', () => {
 		await vi.advanceTimersByTimeAsync(999);
 		await rerender({ dataTableId: 'table-3' });
 		await vi.advanceTimersByTimeAsync(999);
-		expect(queryByTestId('data-table-loading')).not.toBeInTheDocument();
+		expect(queryByTestId('data-grid-loading')).not.toBeInTheDocument();
 		await vi.advanceTimersByTimeAsync(1);
-		expect(getByTestId('data-table-loading')).toBeVisible();
+		expect(getByTestId('data-grid-loading')).toBeVisible();
 
 		earlierDetails.resolve(secondTable);
 		await flushPromises();
-		expect(getByTestId('data-table-loading')).toBeVisible();
+		expect(getByTestId('data-grid-loading')).toBeVisible();
 		currentDetails.reject(new Error('Request failed'));
 		await flushPromises();
-		expect(queryByTestId('data-table-loading')).not.toBeInTheDocument();
+		expect(queryByTestId('data-grid-loading')).not.toBeInTheDocument();
 		expect(queryByTestId('instance-ai-data-table-grid')).not.toBeInTheDocument();
 	});
 
@@ -130,9 +130,9 @@ describe('InstanceAiDataTablePreview', () => {
 			'data-table-id',
 			secondTable.id,
 		);
-		expect(queryByTestId('data-table-loading')).not.toBeInTheDocument();
+		expect(queryByTestId('data-grid-loading')).not.toBeInTheDocument();
 		await vi.advanceTimersByTimeAsync(1000);
-		expect(queryByTestId('data-table-loading')).not.toBeInTheDocument();
+		expect(queryByTestId('data-grid-loading')).not.toBeInTheDocument();
 	});
 
 	it.each([firstRows, { data: [], count: 0 }])(
@@ -264,7 +264,7 @@ describe('InstanceAiDataTablePreview', () => {
 				expect(gridApi.getGridOption('suppressMovableColumns')).toBe(locked);
 				expect(getByTestId('instance-ai-data-table-grid')).toBe(displayedGrid);
 				await fireEvent.mouseEnter(
-					header.querySelector('[data-test-id="data-table-column-header"]')!,
+					header.querySelector('[data-test-id="data-grid-column-header"]')!,
 				);
 				const addRow = getByRole('button', { name: 'Add Row' });
 				const addColumn = getByTestId('data-table-add-column-trigger-button');
@@ -319,7 +319,7 @@ describe('InstanceAiDataTablePreview', () => {
 		const gridApi = getGridApi(displayedGrid.querySelector('[grid-id]')?.parentElement)!;
 		const header = displayedGrid.querySelector('.ag-header-cell[col-id="name-column"]')!;
 		const row = gridApi.getRowNode('1')!;
-		await fireEvent.mouseEnter(header.querySelector('[data-test-id="data-table-column-header"]')!);
+		await fireEvent.mouseEnter(header.querySelector('[data-test-id="data-grid-column-header"]')!);
 
 		expect(row.selectable).toBe(true);
 		expect(getByRole('button', { name: 'Add Row' })).toBeEnabled();
@@ -418,7 +418,7 @@ describe('InstanceAiDataTablePreview', () => {
 		const header = getByTestId('instance-ai-data-table-grid').querySelector(
 			'.ag-header-cell[col-id="name-column"]',
 		)!;
-		await fireEvent.mouseEnter(header.querySelector('[data-test-id="data-table-column-header"]')!);
+		await fireEvent.mouseEnter(header.querySelector('[data-test-id="data-grid-column-header"]')!);
 		await user.click(header.querySelector('button[aria-haspopup="menu"]')!);
 		expect(getByRole('menu')).toBeInTheDocument();
 

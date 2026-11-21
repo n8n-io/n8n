@@ -1,9 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { useDataTableTypes } from './useDataTableTypes';
-import type { AGGridCellType } from '@/features/core/dataTable/dataTable.types';
 
 describe('useDataTableTypes', () => {
-	const { getIconForType, mapToAGCellType, mapToDataTableColumnType } = useDataTableTypes();
+	const { getIconForType, mapToAGCellType } = useDataTableTypes();
 
 	describe('getIconForType', () => {
 		it('should return correct icon for string type', () => {
@@ -38,36 +37,6 @@ describe('useDataTableTypes', () => {
 
 		it('should map date to date', () => {
 			expect(mapToAGCellType('date')).toBe('date');
-		});
-	});
-
-	describe('mapToDataTableColumnType', () => {
-		it('should map text to string', () => {
-			expect(mapToDataTableColumnType('text')).toBe('string');
-		});
-
-		it('should map number to number', () => {
-			expect(mapToDataTableColumnType('number')).toBe('number');
-		});
-
-		it('should map boolean to boolean', () => {
-			expect(mapToDataTableColumnType('boolean')).toBe('boolean');
-		});
-
-		it('should map date to date', () => {
-			expect(mapToDataTableColumnType('date')).toBe('date');
-		});
-
-		it('should preserve dateString type', () => {
-			expect(mapToDataTableColumnType('dateString')).toBe('dateString');
-		});
-
-		it('should preserve object type', () => {
-			expect(mapToDataTableColumnType('object')).toBe('object');
-		});
-
-		it('should map unknown type to string', () => {
-			expect(mapToDataTableColumnType('unknown' as AGGridCellType)).toBe('string');
 		});
 	});
 });

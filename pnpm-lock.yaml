@@ -898,6 +898,12 @@ catalogs:
     '@vueuse/core':
       specifier: ^14.3.0
       version: 14.3.0
+    ag-grid-community:
+      specifier: ^34.1.1
+      version: 34.1.1
+    ag-grid-vue3:
+      specifier: ^34.1.1
+      version: 34.1.1
     autoprefixer:
       specifier: ^10.4.19
       version: 10.4.19
@@ -6208,6 +6214,12 @@ importers:
       '@vueuse/core':
         specifier: catalog:frontend
         version: 14.3.0(vue@3.5.26(typescript@6.0.2))
+      ag-grid-community:
+        specifier: catalog:frontend
+        version: 34.1.1
+      ag-grid-vue3:
+        specifier: catalog:frontend
+        version: 34.1.1(vue@3.5.26(typescript@6.0.2))
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
@@ -7248,11 +7260,8 @@ importers:
         specifier: catalog:frontend
         version: 14.3.0(vue@3.5.26(typescript@6.0.2))
       ag-grid-community:
-        specifier: ^34.1.1
+        specifier: catalog:frontend
         version: 34.1.1
-      ag-grid-vue3:
-        specifier: ^34.1.1
-        version: 34.1.1(vue@3.5.26(typescript@6.0.2))
       array.prototype.tosorted:
         specifier: 1.1.4
         version: 1.1.4

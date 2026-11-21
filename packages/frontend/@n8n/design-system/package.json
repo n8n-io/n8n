@@ -113,6 +113,8 @@
     "@tiptap/starter-kit": "catalog:",
     "@tiptap/vue-3": "catalog:",
     "@vueuse/core": "catalog:frontend",
+    "ag-grid-community": "catalog:frontend",
+    "ag-grid-vue3": "catalog:frontend",
     "clsx": "^2.1.1",
     "dateformat": "^3.0.3",
     "element-plus": "catalog:frontend",

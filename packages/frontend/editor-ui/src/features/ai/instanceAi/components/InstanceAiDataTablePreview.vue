@@ -1,9 +1,8 @@
 <script lang="ts" setup>
 import { computed, ref, shallowRef, watch } from 'vue';
-import { N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nDataGridLoadingIndicator, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import DataTableTable from '@/features/core/dataTable/components/dataGrid/DataTableTable.vue';
-import DataTableLoadingIndicator from '@/features/core/dataTable/components/dataGrid/DataTableLoadingIndicator.vue';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 import type { DataTable } from '@/features/core/dataTable/dataTable.types';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
@@ -133,7 +132,7 @@ watch(
 			/>
 		</div>
 
-		<DataTableLoadingIndicator v-if="isLoading && tableSlots.displayed" :key="requestKey" />
+		<N8nDataGridLoadingIndicator v-if="isLoading && tableSlots.displayed" :key="requestKey" />
 
 		<div
 			v-if="isLoading && !tableSlots.displayed"

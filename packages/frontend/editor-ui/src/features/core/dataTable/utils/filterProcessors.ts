@@ -1,106 +1,56 @@
-import type { BackendFilterRecord, FilterModel } from '../types/dataTableFilters.types';
-import { mapTextTypeToBackend, mapNumberDateTypeToBackend } from './filterMappings';
+import type {
+	DataGridFilter,
+	DataGridFilterOperator,
+	DataGridFilterValue,
+} from '@n8n/design-system';
 
-export function processTextFilter(
-	filter: FilterModel[string],
-	colField: string,
-): BackendFilterRecord {
-	let value: string | number | boolean | Date | null = filter.filter ?? null;
+import type {
+	BackendFilter,
+	BackendFilterCondition,
+	BackendFilterRecord,
+} from '../types/dataTableFilters.types';
 
-	if (typeof filter.filter === 'string') {
-		if (filter.type === 'startsWith') {
-			value = `${filter.filter}%`;
-		} else if (filter.type === 'endsWith') {
-			value = `%${filter.filter}`;
-		} else if (filter.type === 'contains') {
-			// backend will auto-wrap to %value% if % not present
-			value = filter.filter;
-		}
-	} else if (filter.type === 'isEmpty' || filter.type === 'notEmpty') {
-		value = '';
-	} else if (filter.type === 'null' || filter.type === 'notNull') {
-		value = null;
-	} else if (filter.type === 'true') {
-		value = true;
-	} else if (filter.type === 'false') {
-		value = false;
-	}
+type FixedCondition = { condition: BackendFilterCondition; value: DataGridFilterValue };
 
-	return {
-		columnName: colField,
-		condition: mapTextTypeToBackend(filter.type),
-		value,
-	};
-}
+const VALUE_CONDITIONS: Partial<Record<DataGridFilterOperator, BackendFilterCondition>> = {
+	contains: 'ilike',
+	equals: 'eq',
+	notEqual: 'neq',
+	lessThan: 'lt',
+	lessThanOrEqual: 'lte',
+	greaterThan: 'gt',
+	greaterThanOrEqual: 'gte',
+};
 
-export function processNumberFilter(
-	filter: FilterModel[string],
-	colField: string,
-): BackendFilterRecord[] {
-	let value: string | number | boolean | Date | null = filter.filter ?? null;
+const FIXED_CONDITIONS: Partial<Record<DataGridFilterOperator, FixedCondition>> = {
+	isEmpty: { condition: 'eq', value: '' },
+	notEmpty: { condition: 'neq', value: '' },
+	null: { condition: 'eq', value: null },
+	notNull: { condition: 'neq', value: null },
+	true: { condition: 'eq', value: true },
+	false: { condition: 'eq', value: false },
+};
 
-	if (filter.type === 'between') {
+const toBackendValue = (value: DataGridFilterValue | undefined) =>
+	value instanceof Date ? value.toISOString() : (value ?? null);
+
+const toBackendRecords = (filter: DataGridFilter): BackendFilterRecord[] => {
+	const columnName = filter.field;
+	if (filter.operator === 'between') {
 		return [
-			{
-				columnName: colField,
-				condition: 'gte',
-				value: filter.filter ?? null,
-			},
-			{
-				columnName: colField,
-				condition: 'lte',
-				value: filter.filterTo ?? null,
-			},
+			{ columnName, condition: 'gte', value: toBackendValue(filter.value) },
+			{ columnName, condition: 'lte', value: toBackendValue(filter.valueTo) },
 		];
 	}
 
-	if (filter.type === 'null' || filter.type === 'notNull') {
-		value = null;
-	}
+	const fixed = FIXED_CONDITIONS[filter.operator];
+	if (fixed) return [{ columnName, ...fixed }];
 
-	return [
-		{
-			columnName: colField,
-			condition: mapNumberDateTypeToBackend(filter.type),
-			value,
-		},
-	];
-}
+	const condition = VALUE_CONDITIONS[filter.operator];
+	return condition ? [{ columnName, condition, value: toBackendValue(filter.value) }] : [];
+};
 
-export function processDateFilter(
-	filter: FilterModel[string],
-	colField: string,
-): BackendFilterRecord[] {
-	const filters: BackendFilterRecord[] = [];
-	let value: string | number | boolean | Date | null = filter.filter ?? null;
-
-	if (filter.type === 'null' || filter.type === 'notNull') {
-		value = null;
-		filters.push({
-			columnName: colField,
-			condition: mapNumberDateTypeToBackend(filter.type),
-			value,
-		});
-	} else {
-		if (filter.dateFrom) {
-			value = new Date(String(filter.dateFrom)).toISOString();
-		}
-
-		if (filter.type === 'inRange') {
-			if (filter.dateFrom && filter.dateTo) {
-				const fromIso = new Date(String(filter.dateFrom)).toISOString();
-				const toIso = new Date(String(filter.dateTo)).toISOString();
-				filters.push({ columnName: colField, condition: 'gte', value: fromIso });
-				filters.push({ columnName: colField, condition: 'lte', value: toIso });
-			}
-		} else {
-			filters.push({
-				columnName: colField,
-				condition: mapNumberDateTypeToBackend(filter.type),
-				value,
-			});
-		}
-	}
-
-	return filters;
-}
+export const toBackendFilter = (filters: DataGridFilter[]): BackendFilter | undefined => {
+	const records = filters.flatMap(toBackendRecords);
+	return records.length > 0 ? { type: 'and', filters: records } : undefined;
+};
