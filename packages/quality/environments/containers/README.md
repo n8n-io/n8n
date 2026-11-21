@@ -116,6 +116,32 @@ test.use({ capability: 'oidc' });
 test.use({ capability: 'source-control' });
 ```
 
+### File-Based Configuration
+
+The `files` option adds files to each main, worker, and webhook container.
+Use `unsetEnv` to remove variables after the stack merges its defaults and overrides.
+This lets n8n read a value from a `_FILE` variable when the stack normally sets the direct variable.
+
+```typescript
+test.use({
+  capability: {
+    files: [{ target: '/tmp/encryption-key', content: 'test-key-from-file' }],
+    env: { N8N_ENCRYPTION_KEY_FILE: '/tmp/encryption-key' },
+    unsetEnv: ['N8N_ENCRYPTION_KEY'],
+  },
+});
+```
+
+### Shared Storage
+
+Use `sharedStorage` to give the mains, workers, and webhook processors one writable storage directory.
+The stack sets `N8N_STORAGE_PATH` to the mount path and removes the directory when it stops.
+In queue mode, set `N8N_DEFAULT_BINARY_DATA_MODE` in `env` to override the `filesystem` default.
+
+```typescript
+test.use({ capability: { workers: 1, sharedStorage: true } });
+```
+
 ## Architecture
 
 ```

@@ -108,7 +108,7 @@ keep their explicit pattern. `like` matches case; `ilike` ignores case.
 | `eval-config` | 6 |
 | `n8n-docs` | 3 |
 | `agent-context` | 13 lookup types |
-| `skills` | 5 |
+| `skills` | 5 (8 when Skill Sync is on) |
 | `apps` | 6 |
 | `workflow_builder_build_workflow`, `ask_user`, `parse-file`, `import-files`, `search_models`, `search_nodes`, `get_node_types`, `get_node_parameter_options`, `execute_node` | single-purpose |
 
@@ -1096,7 +1096,7 @@ so the agent can pass a node it is building verbatim:
 | `config.parameters` | object | yes | Same shape as workflow-sdk `NodeConfig.parameters` |
 | `config.credentials` | object | no | Resolved credential references `{ id, name }` by credential type; n8n Connect managed credentials use `{ id: null, name, __aiGatewayManaged: true }` |
 | `input` | array | no | Input items `{ json }` (defaults to one empty item) |
-| `timeoutMs` | number | no | Max execution time, capped at 60s |
+| `timeoutMs` | number | no | Max execution time (default 30s, max 10 min). `EXECUTIONS_TIMEOUT_MAX` can lower the max |
 
 **Returns**: `{ status: 'success', output }` or
 `{ status: 'error', error: { message, description?, nodeErrorType? } }`. The
@@ -1666,6 +1666,15 @@ a `delete` that the user has no permission for, before it asks for approval.
 For `update`, pass the `skillHash` that `get` returns as `baseSkillHash`. The
 tool marks its output as untrusted data, because other users can write skill
 content. The tool does not attach a skill to an Agent.
+
+When Skill Sync is on, `list-sources` lists visible sources and their update
+counts. `discover-source` previews a public GitHub link and reports the check
+verdict for each skill. `import-from-source` connects the source and imports the
+selected skills that pass. The result lists the other selected skills in
+`failed`. The backend checks the selection first, so the approval card names the
+skills that come in. A selection with no skill that can come in is refused
+before the card. The import checks the source revision again before writing. Use **Settings > Context > Skills** for
+private repositories, warning review, and update acceptance.
 
 ## MCP Registry Tool
 

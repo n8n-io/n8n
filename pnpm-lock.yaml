@@ -2347,6 +2347,9 @@ importers:
       '@n8n/code-task-contract':
         specifier: workspace:*
         version: link:../code-task-contract
+      '@n8n/utils':
+        specifier: workspace:*
+        version: link:../utils
       n8n-workflow:
         specifier: workspace:*
         version: link:../../workflow
@@ -5260,8 +5263,8 @@ importers:
         specifier: 'catalog:'
         version: 1.27.0
       '@n8n_io/license-sdk':
-        specifier: 4.2.0
-        version: 4.2.0
+        specifier: 4.3.0
+        version: 4.3.0
       '@opentelemetry/api':
         specifier: 1.9.1
         version: 1.9.1
@@ -13430,8 +13433,8 @@ packages:
     resolution: {integrity: sha512-xCELByG49K24I1rVx6o3FueAH1+cu66d7ojoQepkbfsphIK0HLZisTCZ3/MmgtZUjvXMUI0Ekg46NWHvMMcJtQ==}
     engines: {node: '>=20.15', pnpm: '>=8.14'}
 
-  '@n8n_io/license-sdk@4.2.0':
-    resolution: {integrity: sha512-KEVZdD8k+N7OBSb6G4s8l8McfAk7/V2TM6SFCOMQC5oMltlk0vA0MQc08riDYLDCitESAeqI4VOvp17Pgvr7gA==}
+  '@n8n_io/license-sdk@4.3.0':
+    resolution: {integrity: sha512-JMrJoNFqNk0A7ZFzLKAOaQBy8YcgnxTHIeBDhbmKKm6vmpDTJhB+WEIWdTU+zEsLKIADWbIx0JgQ57fhIM1ouw==}
     engines: {node: '>=22.19.0'}
 
   '@napi-rs/canvas-android-arm64@1.0.11':
@@ -32137,7 +32140,7 @@ snapshots:
 
   '@n8n_io/ai-assistant-sdk@1.27.0': {}
 
-  '@n8n_io/license-sdk@4.2.0':
+  '@n8n_io/license-sdk@4.3.0':
     dependencies:
       crypto-js: 4.2.0
       node-machine-id: 1.1.12

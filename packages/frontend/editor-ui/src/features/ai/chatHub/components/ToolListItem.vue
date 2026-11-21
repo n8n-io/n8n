@@ -15,7 +15,7 @@ import {
 } from '@n8n/frontend-module-type-availability-policies';
 import { useI18n } from '@n8n/i18n';
 import type { INode, INodeTypeDescription } from 'n8n-workflow';
-import { computed, ref } from 'vue';
+import { computed, ref, useId } from 'vue';
 
 const props = defineProps<{
 	nodeType: INodeTypeDescription;
@@ -39,6 +39,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const installReasonId = useId();
 
 const description = computed(() => {
 	if (props.configuredNode && props.configuredNode.name !== props.nodeType.displayName) {
@@ -120,6 +121,15 @@ const toggleLabel = computed(() =>
 			<N8nText :class="$style.description" size="small" color="text-light">
 				{{ description }}
 			</N8nText>
+			<N8nText
+				v-if="
+					mode === 'available' && !restriction && communityPreview && installDisabled && !installing
+				"
+				:id="installReasonId"
+				size="small"
+				color="text-light"
+				>{{ i18n.baseText('communityNodeInfo.contact.admin') }}</N8nText
+			>
 		</div>
 
 		<div :class="$style.actions">
@@ -181,21 +191,22 @@ const toggleLabel = computed(() =>
 			<template v-else-if="!restriction">
 				<N8nTooltip
 					v-if="communityPreview && installDisabled && !installing"
-					:content="i18n.baseText('communityNodeInfo.contact.admin')"
+					as-child
 					placement="top"
 				>
-					<span>
-						<N8nButton
-							variant="outline"
-							size="small"
-							icon="plus"
-							:loading="installing"
-							:disabled="true"
-							data-test-id="chat-tool-install-button"
-						>
-							{{ actionLabel }}
-						</N8nButton>
-					</span>
+					<template #content>{{ i18n.baseText('communityNodeInfo.contact.admin') }}</template>
+					<N8nButton
+						variant="outline"
+						size="small"
+						icon="plus"
+						:loading="installing"
+						:disabled="true"
+						focusable-when-disabled
+						:aria-describedby="installReasonId"
+						data-test-id="chat-tool-install-button"
+					>
+						{{ actionLabel }}
+					</N8nButton>
 				</N8nTooltip>
 				<N8nButton
 					v-else

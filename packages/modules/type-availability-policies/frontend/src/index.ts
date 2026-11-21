@@ -48,6 +48,7 @@ export {
 	getPolicyViolations,
 	type PolicyViolationListItem,
 } from './policy-violations/policyViolations';
+export { getGeneratedToolVariantBase } from './related-types/relatedTypes';
 export { parseExecutionBlockCauses } from './wont-execute/wontExecute';
 export { default as WontExecuteFilter } from './wont-execute/WontExecuteFilter.vue';
 export { default as CauseCheckboxFilter } from './components/CauseCheckboxFilter.vue';

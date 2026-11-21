@@ -74,12 +74,14 @@ const LOW_RISK_TOOLS: ReadonlySet<string> = new Set([
 	DOMAIN_TOOL_IDS.TAG_WORKFLOW,
 ]);
 
-/** A skill delete cannot be undone, and the skills tool never lets "Always allow" cover it. */
-function isSkillDelete(approval: Pick<PendingApproval, 'toolName' | 'args'>): boolean {
+/** Skill deletion and source import always ask the user. */
+function isSkillActionRequiringReview(
+	approval: Pick<PendingApproval, 'toolName' | 'args'>,
+): boolean {
 	return (
 		approval.toolName === DOMAIN_TOOL_IDS.SKILLS &&
 		isRecord(approval.args) &&
-		approval.args.action === 'delete'
+		(approval.args.action === 'delete' || approval.args.action === 'import-from-source')
 	);
 }
 
@@ -115,7 +117,9 @@ export function routeApproval(
 	if (approval.toolName === DOMAIN_TOOL_IDS.CHANGE_DATA_TABLES) {
 		return routeDataTableChanges(approval.args);
 	}
-	if (ALWAYS_ASK_TOOLS.has(approval.toolName) || isSkillDelete(approval)) return 'always-ask';
+	if (ALWAYS_ASK_TOOLS.has(approval.toolName) || isSkillActionRequiringReview(approval)) {
+		return 'always-ask';
+	}
 	if (LOW_RISK_TOOLS.has(approval.toolName)) return 'low-risk';
 	return 'judge';
 }

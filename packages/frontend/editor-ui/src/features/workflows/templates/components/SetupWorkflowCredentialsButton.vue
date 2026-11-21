@@ -158,12 +158,13 @@ watch(
 			icon="package-open"
 			@click="handleTemplateSetup()"
 		/>
-		<N8nTooltip v-if="collapsible" :content="label" placement="bottom">
+		<N8nTooltip v-if="collapsible" as-child :content="label" placement="bottom">
 			<N8nButton
 				variant="outline"
 				icon-only
 				:aria-label="label"
 				:disabled="isButtonDisabled"
+				focusable-when-disabled
 				:class="$style.compact"
 				data-test-id="setup-credentials-button-compact"
 				size="large"

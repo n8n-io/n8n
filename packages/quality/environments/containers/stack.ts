@@ -13,7 +13,11 @@ import {
 } from './helpers/utils';
 import { waitForNetworkQuiet } from './network-stabilization';
 import { ResourceTracker, type CleanupReport } from './resource-tracker';
-import { assertEngineSupported, createEngineTlsFiles } from './services/engine';
+import {
+	assertEngineSupported,
+	createEngineTlsFiles,
+	ENGINE_SHARED_STORAGE_PATH,
+} from './services/engine';
 import type { LoadBalancerResult } from './services/load-balancer';
 import {
 	createN8NInstances,
@@ -149,6 +153,35 @@ function groupByDependencyLevel(serviceNames: ServiceName[]): ServiceName[][] {
 	return levels;
 }
 
+/** Lets the host remove nested directories that n8n wrote. */
+async function openSharedStorage(
+	storageContainers: Iterable<StartedTestContainer>,
+	signal: AbortSignal,
+): Promise<void> {
+	for (const container of storageContainers) {
+		if (signal.aborted) return;
+		try {
+			// The mount root is already writable and can belong to a different user.
+			const { exitCode } = await container.exec([
+				'find',
+				ENGINE_SHARED_STORAGE_PATH,
+				'-mindepth',
+				'1',
+				'-type',
+				'd',
+				'-exec',
+				'chmod',
+				'a+rwx',
+				'{}',
+				'+',
+			]);
+			if (exitCode === 0) return;
+		} catch {
+			// The container is stopped or gone: try the next one.
+		}
+	}
+}
+
 export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> {
 	const {
 		mains = 1,
@@ -156,7 +189,10 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		webhooks = 0,
 		postgres: usePostgresConfig = false,
 		engine,
+		sharedStorage,
 		env = {},
+		unsetEnv,
+		files: stackFiles,
 		projectName,
 		resourceQuota,
 		workerResourceQuota,
@@ -212,6 +248,10 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 	}
 
 	const containers: StartedTestContainer[] = [];
+	const registerContainer = (container: StartedTestContainer) => {
+		resources.trackContainer(container);
+		if (!containers.includes(container)) containers.push(container);
+	};
 	const serviceResults: Record<string, ServiceResult> = {};
 	const hostedServiceEnv: Partial<Record<ServiceName, Record<string, string>>> = {};
 	let environment: Record<string, string> = {};
@@ -273,10 +313,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 				main: allocatedMainPort,
 				loadBalancer: allocatedLbPort,
 			},
-			registerContainer: (container) => {
-				resources.trackContainer(container);
-				if (!containers.includes(container)) containers.push(container);
-			},
+			registerContainer,
 			registerPath: (path) => resources.trackPath(path),
 		};
 
@@ -334,8 +371,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 						? (result.containers as StartedTestContainer[])
 						: [result.container];
 				for (const container of serviceContainers) {
-					resources.trackContainer(container);
-					if (!containers.includes(container)) containers.push(container);
+					registerContainer(container);
 				}
 				telemetry.recordService(name, Math.round(performance.now() - serviceStart));
 				telemetry.finishStage();
@@ -384,13 +420,17 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			return meta?.n8nFilesToMount ?? [];
 		});
 
-		// The main and the engine container share one binary data store, so a
-		// file one plane stores is read by the other. Deleted with the stack.
 		let binaryDataHostDir: string | undefined;
-		if (engine === 'container') {
+		const storageContainers = new Set<StartedTestContainer>();
+		if (sharedStorage || engine === 'container') {
 			binaryDataHostDir = mkdtempSync(join(tmpdir(), `${uniqueProjectName}-binary-data-`));
 			resources.trackPath(binaryDataHostDir);
+			resources.beforeStop(async (signal) => await openSharedStorage(storageContainers, signal));
 		}
+		const registerN8NContainer = (container: StartedTestContainer) => {
+			registerContainer(container);
+			if (binaryDataHostDir) storageContainers.add(container);
+		};
 
 		// Earliest log line the readiness gate below may accept
 		const n8nStartedAtSeconds = Math.floor(Date.now() / 1000);
@@ -408,6 +448,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 				network,
 				serviceEnvironment: environment,
 				userEnvironment: env,
+				unsetEnv,
 				usePostgres,
 				engine,
 				engineAuthSecret,
@@ -418,11 +459,9 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 				workerResourceQuota,
 				webhookResourceQuota,
 				filesToMount,
+				stackFiles,
 				coverageHostDir,
-				registerContainer: (container) => {
-					resources.trackContainer(container);
-					if (!containers.includes(container)) containers.push(container);
-				},
+				registerContainer: registerN8NContainer,
 				startupDeadline,
 				image,
 				userHomeHostDir,
@@ -644,6 +683,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 				if (current) {
 					await current.stop();
 					containers.splice(containers.indexOf(current), 1);
+					storageContainers.delete(current);
 				}
 				const endAcquisition = resources.beginAcquisition();
 				const replacementDeadline = new StartupDeadline(startupDeadlineMs);
@@ -655,6 +695,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 						network,
 						serviceEnvironment: environment,
 						userEnvironment: { ...env, ...options.env },
+						unsetEnv,
 						usePostgres,
 						// Without this the replacement main drops the engine-v2 module, and a
 						// workflow that still asks for engine v2 fails far from the cause.
@@ -669,15 +710,13 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 						allocatedPort: allocatedMainPort,
 						resourceQuota,
 						filesToMount,
+						stackFiles,
 						coverageHostDir,
-						registerContainer: (container) => {
-							resources.trackContainer(container);
-							if (!containers.includes(container)) containers.push(container);
-						},
+						registerContainer: registerN8NContainer,
 						startupDeadline: replacementDeadline,
 						image: options.image,
 						userHomeHostDir,
-						// The kept engine container still writes here.
+						// Keep the storage directory across the swap.
 						binaryDataHostDir,
 						user,
 						startupTimeoutMs,

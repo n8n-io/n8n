@@ -157,7 +157,16 @@ describe('buildKnowledgeBaseWorkspaceBundle', () => {
 				id: 'node-groups',
 				file: 'reference/node-groups.md',
 			}),
+			expect.objectContaining({
+				id: 'sdk-additional-functions',
+				file: 'reference/sdk-additional-functions.md',
+			}),
 		]);
+		expect(
+			bundle.files.has(
+				`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}/reference/sdk-additional-functions.md`,
+			),
+		).toBe(true);
 		expect(rootIndex.bestPractices.entries.some((entry) => entry.id === 'scheduling')).toBe(true);
 		expect(bundle.indexPath).toBe(
 			`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}/${KNOWLEDGE_BASE_INDEX_FILE}`,
