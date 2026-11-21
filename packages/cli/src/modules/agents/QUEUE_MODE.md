@@ -240,10 +240,22 @@ run spread of the bench host:
 | 30 | 1,002 | 913 | 4.0 s / 13.4 s | 3.9 s / 12.8 s |
 | 40 | 1,298 | 1,066 | 4.1 s / 13.6 s | 5.0 s / 14.3 s |
 
-In the overload run after the change, at 400 turns in flight with the limits
-on, the main rejected 310 of 1,117 turns. Accepted turns had a p50 of 5.8 s
-and a p95 of 40.5 s. When the bench killed a worker, the main ran no turns,
-and the probe stayed under its limits.
+The overload run after the change used the same phases as the run in
+[Overload](#overload):
+
+| In flight | Limits off: turn p50 / p95 | Limits on: turn p50 / p95 | Limits on: rejected |
+|---|---|---|---|
+| 40 | 4.3 s / 15.7 s | 3.6 s / 13.5 s | 0 |
+| 80 | 7.4 s / 24.4 s | 3.5 s / 20.3 s | 24 of 1,088 |
+| 200 | 16.1 s / 131.3 s | 6.1 s / 58.6 s | 126 of 1,107 |
+| 400 | 20.2 s / 85.4 s | 6.1 s / 35.6 s | 335 of 1,125 |
+| 20 | 3.2 s / 12.3 s | 2.7 s / 11.9 s | 0 |
+
+With the limits on, the main REST probe p95 was 74 ms for the whole run. With
+the limits off, it was 2.0 s. With the limits on, the system did 559 turns a
+minute. With the limits off, it did 490. No container ran out of memory. When
+the bench killed a worker, the main ran no turns, 2 turns were rejected, and
+the probe stayed under its limits.
 
 ### Run the bench
 
