@@ -133,6 +133,7 @@ const outputDimensionsProperties: INodeProperties[] =
 				default: DEFAULT_OUTPUT_DIMENSIONS,
 				displayOptions: {
 					show: {
+						'/servingMode': ['onDemand'],
 						'/model.value': [modelId],
 					},
 				},
@@ -149,12 +150,24 @@ const customOutputDimensionsProperty: INodeProperties = {
 	default: '',
 	placeholder: '1536',
 	displayOptions: {
+		show: {
+			'/servingMode': ['onDemand'],
+		},
 		hide: {
 			'/model.value': [...getOciEmbeddingModelIdsWithOutputDimensions()],
 		},
 	},
 	description:
 		'Optional number of dimensions in the returned embedding vector. Leave empty to use the model default. OCI validates values for models without known dimension metadata.',
+};
+
+const dedicatedOutputDimensionsProperty: INodeProperties = {
+	...customOutputDimensionsProperty,
+	displayOptions: {
+		show: {
+			'/servingMode': ['dedicated'],
+		},
+	},
 };
 
 const modelProperty: INodeProperties = {
@@ -279,6 +292,7 @@ const optionsProperty: INodeProperties = {
 		},
 		...outputDimensionsProperties,
 		customOutputDimensionsProperty,
+		dedicatedOutputDimensionsProperty,
 		{
 			displayName: 'Truncate',
 			name: 'truncate',

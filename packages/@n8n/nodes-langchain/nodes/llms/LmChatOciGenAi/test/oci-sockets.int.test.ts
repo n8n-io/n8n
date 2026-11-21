@@ -331,5 +331,14 @@ async function run(): Promise<void> {
 }
 
 describe.skipIf(!runOciIntegrationTests)('OCI Generative AI socket diagnostics', () => {
-	it('reports socket snapshots for repeated OCI requests', run, 120_000);
+	// Account for configurable idle waits plus request execution overhead.
+	const firstIdleObservationMs = getIdleObservationDurationMs('OCI_SOCKET_IDLE_SECONDS', 5);
+	const extendedIdleObservationMs = getIdleObservationDurationMs(
+		'OCI_SOCKET_EXTENDED_IDLE_SECONDS',
+		25,
+	);
+	const requestWorkBudgetMs = 90_000;
+	const timeoutMs = requestWorkBudgetMs + firstIdleObservationMs + extendedIdleObservationMs;
+
+	it('reports socket snapshots for repeated OCI requests', run, timeoutMs);
 });

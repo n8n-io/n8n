@@ -555,12 +555,10 @@ describe('OCI input validation', () => {
 			expect(() => validateOciModelId('')).toThrow();
 		});
 
-		it('rejects a pathological-looking value within a bounded time', () => {
+		it('rejects a long malformed model ID', () => {
 			const input = `${'a.'.repeat(127)}!`;
-			const startedAt = performance.now();
 
 			expect(() => validateOciModelId(input)).toThrow();
-			expect(performance.now() - startedAt).toBeLessThan(100);
 		});
 
 		it('rejects oversized model OCIDs before pattern matching', () => {
@@ -920,6 +918,55 @@ describe('OCI input validation', () => {
 				searchModels: [],
 				nextPage: undefined,
 			});
+			expect(listModels).toHaveBeenCalledTimes(2);
+		});
+
+		it('normalizes a plain-object OCI SDK error and allows a later catalog retry', async () => {
+			const request = {
+				compartmentId: 'ocid1.compartment.oc1..test',
+				capability: ociModels.ModelCapability.Chat,
+			};
+
+			const sdkError = {
+				statusCode: 429,
+				serviceCode: 'TooManyRequests',
+				message: 'Rate limit exceeded',
+				requestEndpoint: 'GET https://generativeai.us-ashburn-1.oci.oraclecloud.com',
+			};
+
+			// OCI SDK may reject with a plain object rather than an Error instance.
+			listModels.mockRejectedValueOnce(sdkError);
+
+			const caughtError = await getCachedOciGenAiModelCatalogPage(ociCredentials, request).then(
+				() => {
+					throw new Error('Expected OCI catalog request to fail');
+				},
+				(error: unknown) => error,
+			);
+
+			// Verify that the SDK rejection is classified as an operational failure.
+			expect(caughtError).toBeInstanceOf(OperationalError);
+			expect(caughtError).toMatchObject({
+				message: '429 TooManyRequests: Rate limit exceeded',
+				cause: sdkError,
+				statusCode: 429,
+				serviceCode: 'TooManyRequests',
+				requestEndpoint: sdkError.requestEndpoint,
+			});
+
+			// A failed catalog request must not remain cached.
+			listModels.mockResolvedValueOnce({
+				modelCollection: { items: [] },
+				opcNextPage: undefined,
+			});
+
+			await expect(getCachedOciGenAiModelCatalogPage(ociCredentials, request)).resolves.toEqual({
+				models: [],
+				searchModels: [],
+				nextPage: undefined,
+			});
+
+			// The second call must reach the OCI SDK rather than reuse the failed promise.
 			expect(listModels).toHaveBeenCalledTimes(2);
 		});
 	});

@@ -445,14 +445,6 @@ export class LmChatOciGenAi implements INodeType {
 					throw new NodeOperationError(this.getNode(), error as Error);
 				}
 				const normalizedFilter = (filter ?? '').trim().toLowerCase();
-				let modelId: string | undefined;
-				if (normalizedFilter) {
-					try {
-						modelId = validateOciModelId(normalizedFilter);
-					} catch {
-						// Non-ID typeahead input continues to use local filtering of the cached catalog.
-					}
-				}
 
 				const { genai } = await loadOciSdk();
 				const response = await getCachedOciGenAiModelCatalogPage(
@@ -461,7 +453,7 @@ export class LmChatOciGenAi implements INodeType {
 						compartmentId,
 						capability: genai.models.ModelCapability.Chat,
 						vendor,
-						...(modelId === undefined ? { paginationToken } : { modelId }),
+						paginationToken,
 					},
 					this.helpers.getSecureEgressFilter(),
 				);

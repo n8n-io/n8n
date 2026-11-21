@@ -68,7 +68,30 @@ async function runDisconnectedTimeout(): Promise<void> {
 		async () => await chatModel.invoke([new HumanMessage('This request must not reach OCI')]),
 		(error: unknown) => {
 			assert.ok(error instanceof Error, 'OCI returned a non-Error rejection');
-			assert.ok(error.message.trim(), 'OCI returned an empty network error message');
+
+			const details = error as Error & {
+				statusCode?: number;
+				serviceCode?: string;
+				code?: string;
+			};
+
+			// An OCI HTTP response indicates that the request reached the service.
+			assert.equal(details.statusCode, undefined);
+			assert.equal(details.serviceCode, undefined);
+
+			const message = [
+				error.message,
+				details.code,
+				error.cause instanceof Error ? error.cause.message : '',
+			]
+				.filter(Boolean)
+				.join(' ');
+
+			assert.match(
+				message,
+				/fetch failed|network|timed?\s*out|timeout|ECONNREFUSED|ENETUNREACH|EHOSTUNREACH|UND_ERR_CONNECT_TIMEOUT/i,
+			);
+
 			return true;
 		},
 	);

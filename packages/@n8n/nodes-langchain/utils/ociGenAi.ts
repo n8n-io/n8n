@@ -540,9 +540,34 @@ function getOciSdkErrorMessage(error: unknown): string {
 function normalizeOciSdkError(error: unknown): Error {
 	if (error instanceof Error) return error;
 
-	const normalizedError = new Error(getOciSdkErrorMessage(error), { cause: error });
+	const normalizedError = new OperationalError(getOciSdkErrorMessage(error), {
+		cause: error,
+	});
+
 	if (typeof error === 'object' && error !== null) {
-		Object.assign(normalizedError, error);
+		const details = error as Record<string, unknown>;
+
+		// Preserve OCI diagnostics without overwriting standard Error properties.
+		for (const key of [
+			'statusCode',
+			'serviceCode',
+			'code',
+			'opcRequestId',
+			'targetService',
+			'operationName',
+			'timestamp',
+			'requestEndpoint',
+			'apiReferenceLink',
+			'troubleshootingPage',
+		] as const) {
+			if (details[key] !== undefined) {
+				Object.defineProperty(normalizedError, key, {
+					value: details[key],
+					enumerable: true,
+					configurable: true,
+				});
+			}
+		}
 	}
 	return normalizedError;
 }

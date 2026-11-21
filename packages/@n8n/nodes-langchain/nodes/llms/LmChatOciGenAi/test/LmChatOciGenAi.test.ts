@@ -326,23 +326,87 @@ describe('LmChatOciGenAi', () => {
 		expect(result.results).toEqual([{ name: 'Meta Llama', value: 'meta.llama-3.3-70b-instruct' }]);
 	});
 
-	it('uses an exact OCI catalog lookup for a typed provider model ID', async () => {
+	it('uses paginated catalog search for a typed provider model ID', async () => {
 		const node = new LmChatOciGenAi();
 		const context = createContext();
+
 		getCachedCatalog.mockResolvedValue({
-			searchModels: [{ id: 'xai.grok-4.6', name: 'xai.grok-4.6', searchText: 'xai.grok-4.6' }],
+			searchModels: [
+				{
+					id: 'xai.grok-4.6',
+					name: 'xai.grok-4.6',
+					searchText: 'xai.grok-4.6',
+				},
+			],
+			nextPage: undefined,
 		});
 
 		const search = node.methods.listSearch?.searchChatModels;
 		if (!search) throw new Error('Chat model search is not configured');
+
 		const result = await search.call(context as unknown as ILoadOptionsFunctions, 'xai.grok-4.6');
 
 		expect(getCachedCatalog).toHaveBeenCalledWith(
 			expect.anything(),
-			expect.objectContaining({ modelId: 'xai.grok-4.6' }),
+			expect.objectContaining({
+				compartmentId: 'ocid1.compartment.oc1..test',
+				capability: 'CHAT',
+				paginationToken: undefined,
+			}),
 			expect.anything(),
 		);
+
+		// Typeahead input must not be interpreted as an exact model ID.
+		expect(getCachedCatalog.mock.calls[0][1]).not.toHaveProperty('modelId');
+
 		expect(result.results).toEqual([{ name: 'xai.grok-4.6', value: 'xai.grok-4.6' }]);
+	});
+
+	it('uses paginated catalog search for partial model prefixes', async () => {
+		const node = new LmChatOciGenAi();
+		const context = createContext();
+
+		getCachedCatalog.mockResolvedValue({
+			searchModels: [
+				{
+					id: 'meta.llama-guard-4-12b',
+					name: 'Meta Llama Guard 4 12B',
+					searchText: 'meta.llama-guard-4-12b meta llama guard',
+				},
+				{
+					id: 'cohere.command-a',
+					name: 'Cohere Command A',
+					searchText: 'cohere.command-a cohere command',
+				},
+			],
+			nextPage: 'next-page',
+		});
+
+		const search = node.methods.listSearch?.searchChatModels;
+		if (!search) throw new Error('Chat model search is not configured');
+
+		const result = await search.call(context as unknown as ILoadOptionsFunctions, 'meta');
+
+		expect(getCachedCatalog).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({
+				compartmentId: 'ocid1.compartment.oc1..test',
+				capability: 'CHAT',
+			}),
+			expect.anything(),
+		);
+
+		expect(getCachedCatalog.mock.calls[0][1]).not.toHaveProperty('modelId');
+
+		expect(result).toEqual({
+			results: [
+				{
+					name: 'Meta Llama Guard 4 12B',
+					value: 'meta.llama-guard-4-12b',
+				},
+			],
+			paginationToken: 'next-page',
+		});
 	});
 
 	it('returns the OCI pagination token from model search', async () => {
