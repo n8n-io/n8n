@@ -83,7 +83,12 @@ import { WorkflowPublicationStatusService } from './publication/workflow-publica
 import { NodeGroupRulesFlagGate } from './node-group-rules-flag-gate';
 
 import { getEnabledTriggerNodes } from './triggers/enabled-trigger-nodes';
-import { getErrorDescription, getErrorNodeId, getRequiredRedactionScopes } from './utils';
+import {
+	getErrorDescription,
+	getErrorNodeId,
+	getRequiredRedactionScopes,
+	getWorkflowProjectDetailsSafe,
+} from './utils';
 import { WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowHistoryService } from './workflow-history/workflow-history.service';
 
@@ -117,6 +122,7 @@ import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 
 import { TagService } from '@/services/tag.service';
+import { toUserLike } from '@/utils/to-user-like';
 import { WEBHOOK_CONFLICT_MESSAGE } from '@/webhooks/constants';
 import { WebhookService } from '@/webhooks/webhook.service';
 import { getBase as getWorkflowExecutionData } from '@/workflow-execute-additional-data';
@@ -2135,6 +2141,23 @@ export class WorkflowService {
 			},
 		});
 		return this.roleService.combineResourceScopes('workflow', user, shared, userProjectRelations);
+	}
+
+	async emitWorkflowExecuted(user: User, workflow: WorkflowEntity, executionId: string) {
+		const { projectId, projectName } = await getWorkflowProjectDetailsSafe(
+			this.ownershipService,
+			workflow.id,
+		);
+
+		this.eventService.emit('workflow-executed', {
+			user: toUserLike(user),
+			workflowId: workflow.id,
+			workflowName: workflow.name,
+			executionId,
+			projectId,
+			projectName,
+			source: 'user-manual',
+		});
 	}
 
 	/**

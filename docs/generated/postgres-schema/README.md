@@ -9,7 +9,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | Name | Columns | Comment | Type |
 | ---- | ------- | ------- | ---- |
 | [public.activity_event](public.activity_event.md) | 11 |  | BASE TABLE |
-| [public.agent_background_job](public.agent_background_job.md) | 26 |  | BASE TABLE |
+| [public.agent_background_job](public.agent_background_job.md) | 28 |  | BASE TABLE |
 | [public.agent_budget_applied_call](public.agent_budget_applied_call.md) | 2 |  | BASE TABLE |
 | [public.agent_budget_spend](public.agent_budget_spend.md) | 4 |  | BASE TABLE |
 | [public.agent_channel_status](public.agent_channel_status.md) | 11 |  | BASE TABLE |
@@ -39,7 +39,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.agent_thread_grants](public.agent_thread_grants.md) | 4 |  | BASE TABLE |
 | [public.agent_version_skill_dependency](public.agent_version_skill_dependency.md) | 4 |  | BASE TABLE |
 | [public.agent_workflow_dependency](public.agent_workflow_dependency.md) | 3 |  | BASE TABLE |
-| [public.agents](public.agents.md) | 19 |  | BASE TABLE |
+| [public.agents](public.agents.md) | 20 |  | BASE TABLE |
 | [public.agents_memory_entries](public.agents_memory_entries.md) | 13 |  | BASE TABLE |
 | [public.agents_memory_entry_candidates](public.agents_memory_entry_candidates.md) | 14 |  | BASE TABLE |
 | [public.agents_memory_entry_locks](public.agents_memory_entry_locks.md) | 6 |  | BASE TABLE |
@@ -82,6 +82,10 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.execution_data](public.execution_data.md) | 4 |  | BASE TABLE |
 | [public.execution_entity](public.execution_entity.md) | 20 |  | BASE TABLE |
 | [public.execution_ledger](public.execution_ledger.md) | 16 |  | BASE TABLE |
+| [public.execution_ledger_parked](public.execution_ledger_parked.md) | 20 |  | BASE TABLE |
+| [public.execution_limit_audit](public.execution_limit_audit.md) | 8 |  | BASE TABLE |
+| [public.execution_limit_instance_usage](public.execution_limit_instance_usage.md) | 5 |  | BASE TABLE |
+| [public.execution_limit_usage](public.execution_limit_usage.md) | 6 |  | BASE TABLE |
 | [public.execution_metadata](public.execution_metadata.md) | 4 |  | BASE TABLE |
 | [public.folder](public.folder.md) | 7 |  | BASE TABLE |
 | [public.folder_tag](public.folder_tag.md) | 2 |  | BASE TABLE |
@@ -180,7 +184,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.workflow_entity](public.workflow_entity.md) | 20 |  | BASE TABLE |
 | [public.workflow_history](public.workflow_history.md) | 12 |  | BASE TABLE |
 | [public.workflow_publication_outbox](public.workflow_publication_outbox.md) | 8 |  | BASE TABLE |
-| [public.workflow_publication_retry_state](public.workflow_publication_retry_state.md) | 4 |  | BASE TABLE |
+| [public.workflow_publication_retry_state](public.workflow_publication_retry_state.md) | 5 |  | BASE TABLE |
 | [public.workflow_publication_trigger_status](public.workflow_publication_trigger_status.md) | 8 |  | BASE TABLE |
 | [public.workflow_publish_history](public.workflow_publish_history.md) | 6 |  | BASE TABLE |
 | [public.workflow_published_version](public.workflow_published_version.md) | 4 |  | BASE TABLE |
@@ -220,6 +224,7 @@ erDiagram
 
 "public.activity_event" }o--o| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.activity_event" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
+"public.agent_background_job" }o--o| "public.execution_entity" : "FOREIGN KEY (#quot;callerExecutionId#quot;) REFERENCES execution_entity(id) ON DELETE SET NULL"
 "public.agent_background_job" }o--|| "public.agents" : "FOREIGN KEY (#quot;parentAgentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agent_background_job" }o--o| "public.agent_execution" : "FOREIGN KEY (#quot;sourceExecutionId#quot;) REFERENCES agent_execution(id) ON DELETE SET NULL"
 "public.agent_background_job" }o--o| "public.agent_plan" : "FOREIGN KEY (#quot;planId#quot;) REFERENCES agent_plan(id) ON DELETE SET NULL"
@@ -273,6 +278,7 @@ erDiagram
 "public.agent_workflow_dependency" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 "public.agent_workflow_dependency" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agents" }o--|| "public.user" : "FOREIGN KEY (#quot;identityId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE RESTRICT"
+"public.agents" }o--o| "public.workflow_entity" : "FOREIGN KEY (#quot;approvalWorkflowId#quot;) REFERENCES workflow_entity(id) ON DELETE RESTRICT"
 "public.agents" }o--o| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.agents" }o--o| "public.folder" : "FOREIGN KEY (#quot;parentFolderId#quot;) REFERENCES folder(id) ON DELETE RESTRICT"
 "public.agents" }o--o| "public.agent_history" : "FOREIGN KEY (#quot;activeVersionId#quot;) REFERENCES agent_history(#quot;versionId#quot;) ON DELETE SET NULL"
@@ -531,6 +537,7 @@ erDiagram
   uuid userId FK
 }
 "public.agent_background_job" {
+  integer callerExecutionId FK
   varchar_36_ childExecutionId
   varchar_128_ childThreadId
   timestamp_3__with_time_zone createdAt
@@ -542,6 +549,7 @@ erDiagram
   varchar_36_ parentAgentId FK
   varchar_64_ parentPrincipalHash
   varchar_255_ parentResourceId
+  varchar_128_ parentRunId
   varchar_128_ parentThreadId
   uuid pauseRequestId
   uuid planId FK
@@ -864,6 +872,7 @@ erDiagram
 }
 "public.agents" {
   varchar_36_ activeVersionId FK
+  varchar_36_ approvalWorkflowId FK
   boolean availableInMCP
   timestamp_3__with_time_zone createdAt
   varchar_36_ id
@@ -1318,6 +1327,53 @@ erDiagram
   bigint runtimeMs
   varchar_32_ source
   integer timeSavedMin
+}
+"public.execution_ledger_parked" {
+  varchar_32_ blockedBy
+  varchar_36_ entityId
+  varchar_128_ entityName
+  varchar_16_ entityType
+  varchar_255_ error
+  varchar_16_ event
+  uuid eventId
+  varchar_36_ executionId
+  integer id
+  bigint ledgerId
+  varchar_32_ mode
+  timestamp_3__with_time_zone occurredAt
+  varchar_8_ origin
+  varchar_16_ outcome
+  timestamp_3__with_time_zone parkedAt
+  varchar_36_ projectId
+  bigint runtimeMs
+  varchar_32_ source
+  varchar_48_ step
+  integer timeSavedMin
+}
+"public.execution_limit_audit" {
+  timestamp_3__with_time_zone createdAt
+  varchar_32_ field
+  integer id
+  varchar_255_ loginId
+  json newValue
+  json oldValue
+  varchar_36_ projectId
+  uuid updatedBy
+}
+"public.execution_limit_instance_usage" {
+  integer blockedCount
+  date day
+  varchar_16_ entityType
+  integer startedCount
+  timestamp_3__with_time_zone updatedAt
+}
+"public.execution_limit_usage" {
+  integer blockedCount
+  date day
+  varchar_16_ entityType
+  varchar_36_ projectId
+  integer startedCount
+  timestamp_3__with_time_zone updatedAt
 }
 "public.execution_metadata" {
   integer executionId FK
@@ -2303,6 +2359,7 @@ erDiagram
 }
 "public.workflow_publication_retry_state" {
   timestamp_3__with_time_zone createdAt
+  integer retryDelaySeconds
   varchar_36_ targetVersionId
   timestamp_3__with_time_zone updatedAt
   varchar_36_ workflowId FK

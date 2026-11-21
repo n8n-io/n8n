@@ -41,6 +41,8 @@ export class ServiceAccountService {
 	 * `owner` removes what acts as the account, such as an agent, in the same
 	 * deletion. See {@link ServiceAccountOwnerRemoval}. It also runs when no
 	 * service account has this id.
+	 *
+	 * Returns `false` when no service account has this id.
 	 */
 	async remove(
 		serviceAccountId: string,
@@ -48,14 +50,15 @@ export class ServiceAccountService {
 		transferId: string | undefined,
 		ctx: OperationContext,
 		owner: ServiceAccountOwnerRemoval,
-	) {
+	): Promise<boolean> {
 		const serviceAccount = await this.serviceAccountRepository.findById(serviceAccountId);
 		if (!serviceAccount) {
 			await owner.cleanUp();
 			await owner.deleteInTransaction(ctx);
-			return;
+			return false;
 		}
 
 		await this.userService.deleteServiceAccount(actor, serviceAccountId, transferId, ctx, owner);
+		return true;
 	}
 }

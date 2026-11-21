@@ -1,4 +1,4 @@
-import { ModelStreamStallError } from '@n8n/agents';
+import { ModelStreamStallError, type Workspace } from '@n8n/agents';
 import { ASSISTANT_TRACE_EVENT, ASSISTANT_WORKFLOWS_ARCHIVED_EVENT } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
@@ -11,6 +11,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type {
 	SystemAgentResumeTurn,
+	SystemAgentSandboxFiles,
 	SystemAgentStartTurn,
 } from '@/modules/agents/system-agents/system-agent.types';
 import type { TelemetryProxy } from '@n8n/backend-services';
@@ -82,7 +83,10 @@ function setup() {
 	} as unknown as AssistantTurnInput;
 	turnInput.buildInput.mockResolvedValue(input);
 	turnInput.onInputAccepted.mockResolvedValue(undefined);
-	const agent = { name: 'assistant' };
+	const agent = {
+		name: 'assistant',
+		snapshot: { model: { provider: 'anthropic', name: 'claude-sonnet' } },
+	};
 	const agentFactory = mock<AssistantAgentFactory>();
 	agentFactory.createAgent.mockResolvedValue(
 		agent as unknown as Awaited<ReturnType<AssistantAgentFactory['createAgent']>>,
@@ -139,6 +143,19 @@ function setup() {
 		input,
 		agent,
 		archiveIfAiTemporary,
+	};
+}
+
+/** The sandbox files that a turn has when the sandbox files flag is on. */
+function turnSandboxFiles(
+	overrides: Partial<SystemAgentSandboxFiles> = {},
+): SystemAgentSandboxFiles {
+	return {
+		maxImportBytes: 200 * 1024 * 1024,
+		importFiles: vi.fn(),
+		storeOutput: vi.fn(),
+		listFiles: vi.fn(async () => []),
+		...overrides,
 	};
 }
 
@@ -452,6 +469,7 @@ describe('AssistantAgentProvider', () => {
 				fileName: 'notes.csv',
 				mimeType: 'text/csv',
 				sizeBytes: 3,
+				hasContent: vi.fn(async () => true),
 				readContent: vi.fn(async () => Buffer.from('a,b')),
 			};
 			const turn = startTurn({
@@ -477,6 +495,125 @@ describe('AssistantAgentProvider', () => {
 			expect(handle.input).toBe('Build a digest');
 		});
 
+		it('lets the Assistant import files into its sandbox only when the turn has sandbox files', async () => {
+			const off = setup();
+			await off.provider.prepareTurn(startTurn());
+			expect(off.environment.context.sandboxFiles).toBeUndefined();
+
+			const on = setup();
+			const sandboxWorkspace = { id: 'workspace-1' };
+			on.environment.context.workspace = sandboxWorkspace as never;
+			const imported = [
+				{
+					fileId: 'f1',
+					fileName: 'a.csv',
+					mimeType: 'text/csv',
+					sizeBytes: 1,
+					path: 'inputs/a.csv',
+				},
+			];
+			const importFiles = vi.fn(async () => imported);
+			await on.provider.prepareTurn(startTurn({ sandboxFiles: turnSandboxFiles({ importFiles }) }));
+			const { sandboxFiles } = on.environment.context;
+			expect(sandboxFiles?.maxImportBytes).toBe(200 * 1024 * 1024);
+			// The Assistant gives the files only. The host adds the sandbox of the turn.
+			const abortSignal = new AbortController().signal;
+			await expect(sandboxFiles?.importFiles({ 'a.csv': 'f1' }, abortSignal)).resolves.toEqual(
+				imported,
+			);
+			expect(importFiles).toHaveBeenCalledWith(sandboxWorkspace, { 'a.csv': 'f1' }, abortSignal);
+		});
+
+		it('tells the model that a conversation without a sandbox cannot import files', async () => {
+			const { provider, environment } = setup();
+			const importFiles = vi.fn();
+			await provider.prepareTurn(startTurn({ sandboxFiles: turnSandboxFiles({ importFiles }) }));
+
+			await expect(
+				environment.context.sandboxFiles?.importFiles({ 'a.csv': 'f1' }),
+			).rejects.toThrow('This conversation has no sandbox');
+			expect(importFiles).not.toHaveBeenCalled();
+		});
+
+		it('lists the files of the thread for the model only when the sandbox files flag is on', async () => {
+			const off = setup();
+			await off.provider.prepareTurn(startTurn());
+			expect(off.environment.context.storedFiles?.list).toBeUndefined();
+
+			const on = setup();
+			const files = [
+				{
+					fileId: 'out-1',
+					fileName: 'report.csv',
+					mimeType: 'text/csv',
+					sizeBytes: 3,
+					origin: 'sandbox' as const,
+					createdAt: '2026-11-18T10:00:00.000Z',
+				},
+			];
+			await on.provider.prepareTurn(
+				startTurn({ sandboxFiles: turnSandboxFiles({ listFiles: vi.fn(async () => files) }) }),
+			);
+
+			await expect(on.environment.context.storedFiles?.list?.()).resolves.toEqual(files);
+		});
+
+		it.each([
+			['anthropic', 'image/png', true],
+			['anthropic', 'application/pdf', true],
+			['anthropic', 'image/svg+xml', false],
+			['xai', 'image/png', false],
+			['xai', 'application/pdf', false],
+		])('with a %s model, lets the model view %s: %s', async (modelProvider, mimeType, viewable) => {
+			const { provider, environment, agent } = setup();
+			// The provider of the built agent decides, as for the file store of the runtime.
+			agent.snapshot.model.provider = modelProvider;
+
+			await provider.prepareTurn(startTurn());
+
+			expect(environment.context.storedFiles?.canView?.(mimeType)).toBe(viewable);
+		});
+
+		describe('storing a file of outputs/', () => {
+			async function prepareWithSandbox(workspace?: Workspace) {
+				const context = setup();
+				context.environment.context.workspace = workspace;
+				const turnStoreOutput = vi.fn(async () => ({
+					fileId: 'file-1',
+					fileName: 'report.csv',
+					mimeType: 'text/csv',
+					sizeBytes: 3,
+				}));
+				await context.provider.prepareTurn(
+					startTurn({ sandboxFiles: turnSandboxFiles({ storeOutput: turnStoreOutput }) }),
+				);
+				const sandboxFiles = context.environment.context.sandboxFiles;
+				if (!sandboxFiles) throw new Error('expected the sandbox files of the turn');
+				return { turnStoreOutput, storeOutput: sandboxFiles.storeOutput };
+			}
+
+			it('stores the file of the turn sandbox through the turn', async () => {
+				const workspace = mock<Workspace>();
+				const { turnStoreOutput, storeOutput } = await prepareWithSandbox(workspace);
+				const abortSignal = new AbortController().signal;
+
+				await expect(storeOutput('report.csv', abortSignal)).resolves.toEqual({
+					fileId: 'file-1',
+					fileName: 'report.csv',
+					mimeType: 'text/csv',
+					sizeBytes: 3,
+				});
+				expect(turnStoreOutput).toHaveBeenCalledWith(workspace, 'report.csv', abortSignal);
+			});
+
+			it('refuses to store a file when the conversation has no sandbox', async () => {
+				const { turnStoreOutput, storeOutput } = await prepareWithSandbox();
+
+				await expect(storeOutput('report.csv')).rejects.toThrow(UserError);
+				expect(turnStoreOutput).not.toHaveBeenCalled();
+			});
+		});
+
 		it('asks the model to inspect the files of a message without text', async () => {
 			const { provider, turnInput } = setup();
 			const ref = { id: 'att-1', fileName: 'notes.csv', mimeType: 'text/csv', sizeBytes: 3 };
@@ -497,6 +634,7 @@ describe('AssistantAgentProvider', () => {
 				fileName: 'notes.csv',
 				mimeType: 'text/csv',
 				sizeBytes: 3,
+				hasContent: vi.fn(async () => true),
 				readContent: vi.fn(async () => Buffer.from('a,b')),
 			};
 			const turn: SystemAgentResumeTurn<AssistantSandboxLease> = {

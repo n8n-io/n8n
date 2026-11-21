@@ -312,6 +312,11 @@ it("previews against the project's environment, not the instance one", async () 
 		environmentId: projectPromote.id,
 		branchName: 'production',
 	});
+	expect(linkedPreview.body.environment).toEqual({
+		name: 'Project',
+		providerType: 'git',
+		createBranchOnPromotion: false,
+	});
 	const otherPreview = await agent
 		.get(`/promotions/projects/${other.id}/changes/promote`)
 		.expect(200);
