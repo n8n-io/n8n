@@ -136,6 +136,14 @@ export interface StackConfig {
 	userHomeHostDir?: string;
 	/** Run the n8n containers as this uid:gid (e.g. the host user for bind mounts). */
 	user?: string;
+	/** Container settings for the main, worker, and webhook processes. */
+	n8nContainer?: {
+		readOnlyRootfs?: boolean;
+		/** Map from container paths to Docker tmpfs mount options. */
+		tmpfs?: Record<string, string>;
+		/** Docker image platform, for example `linux/arm64`. */
+		platform?: string;
+	};
 }
 
 export interface Service<TResult extends ServiceResult = ServiceResult> {

@@ -142,6 +142,30 @@ In queue mode, set `N8N_DEFAULT_BINARY_DATA_MODE` in `env` to override the `file
 test.use({ capability: { workers: 1, sharedStorage: true } });
 ```
 
+### Container Hardening
+
+Use `n8nContainer` to configure the main, worker, and webhook containers.
+Set `readOnlyRootfs` to make the root filesystem read-only.
+Use `tmpfs` to give the runtime user writable paths.
+Mount `/home/node` so n8n can write its settings and editor asset cache.
+Set `platform` to select a Docker image platform, such as `linux/arm64`.
+
+```typescript
+test.use({
+  capability: {
+    user: '12345:0',
+    env: { N8N_USER_FOLDER: '/home/node' },
+    n8nContainer: {
+      readOnlyRootfs: true,
+      tmpfs: {
+        '/home/node': 'rw,uid=12345,gid=0,mode=0700',
+        '/tmp': 'rw,mode=1777',
+      },
+    },
+  },
+});
+```
+
 ## Architecture
 
 ```

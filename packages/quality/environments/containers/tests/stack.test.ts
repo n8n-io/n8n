@@ -18,6 +18,11 @@ const queue = { workers: 1, webhooks: 1 };
 const queueNames = [main, `${projectName}-n8n-worker-1`, `${projectName}-n8n-webhook-1`];
 const serviceFile = { target: '/tmp/service-ca.pem', content: 'service certificate' };
 const keyFile = { target: '/tmp/encryption-key', content: 'key-from-file' };
+const hardeningOptions = {
+	readOnlyRootfs: true,
+	tmpfs: { '/tmp': 'rw,nosuid,nodev' },
+	platform: 'linux/arm64',
+};
 
 type BindMounts = Parameters<GenericContainer['withBindMounts']>[0];
 
@@ -27,6 +32,7 @@ const built = new Map<
 		environment: Record<string, string>;
 		files: Parameters<GenericContainer['withCopyContentToContainer']>[0];
 		bindMounts: BindMounts;
+		n8nContainer: NonNullable<N8NConfig['n8nContainer']>;
 		reuse: boolean;
 	}
 >();
@@ -61,6 +67,11 @@ vi.mock('testcontainers', async (importOriginal) => {
 				environment: this.environment,
 				files: this.contentsToCopy,
 				bindMounts: this.bindMounts,
+				n8nContainer: {
+					readOnlyRootfs: this.hostConfig.ReadonlyRootfs,
+					tmpfs: this.hostConfig.Tmpfs,
+					platform: this.createOpts.platform,
+				},
 				reuse: this.reuse,
 			});
 			return startedContainer(name);
@@ -148,18 +159,45 @@ test('copies stack and service files into the main, worker, and webhook', async 
 	}
 });
 
-test('keeps the default env and service files when the new options are absent', async () => {
+test('keeps the defaults when the stack sets no overrides', async () => {
 	await startStack(queue);
 
 	for (const name of queueNames) {
-		const { environment, files, bindMounts, reuse } = built.get(name)!;
+		const { environment, files, bindMounts, n8nContainer, reuse } = built.get(name)!;
 		expect(Object.hasOwn(environment, 'N8N_ENCRYPTION_KEY')).toBe(true);
 		expect(environment.N8N_STORAGE_PATH).toBeUndefined();
 		expect(environment.N8N_DEFAULT_BINARY_DATA_MODE).toBeUndefined();
 		expect(files).toEqual([serviceFile]);
 		expect(bindMounts).toEqual([]);
+		expect(n8nContainer).toEqual({});
 		expect(reuse).toBe(true);
 	}
+});
+
+test.each([
+	{ scenario: 'all options', n8nContainer: hardeningOptions, reuse: false },
+	{ scenario: 'read-only root filesystem', n8nContainer: { readOnlyRootfs: true }, reuse: false },
+	{ scenario: 'tmpfs mounts', n8nContainer: { tmpfs: hardeningOptions.tmpfs }, reuse: false },
+	{
+		scenario: 'platform with a writable root filesystem',
+		n8nContainer: { readOnlyRootfs: false, platform: hardeningOptions.platform },
+		reuse: true,
+	},
+])('applies container settings to every queue role: $scenario', async ({ n8nContainer, reuse }) => {
+	await startStack({ ...queue, n8nContainer });
+
+	for (const name of queueNames) {
+		expect(built.get(name)).toMatchObject({ n8nContainer, reuse });
+	}
+});
+
+test('keeps the container settings when replacing the main', async () => {
+	const { replaceN8N } = await startStack({ n8nContainer: hardeningOptions });
+	built.clear();
+
+	await replaceN8N({ image: 'n8nio/n8n:next' });
+
+	expect(built.get(main)).toMatchObject({ n8nContainer: hardeningOptions, reuse: false });
 });
 
 test.each([

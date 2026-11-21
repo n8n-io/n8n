@@ -21,7 +21,7 @@ import {
 	engineHostname,
 	type EngineMode,
 } from './engine';
-import type { FileToMount } from './types';
+import type { FileToMount, StackConfig } from './types';
 
 const N8N_IMAGE = TEST_CONTAINER_IMAGES.n8n;
 
@@ -125,6 +125,7 @@ export interface N8NInstancesOptions {
 	binaryDataHostDir?: string;
 	/** Run the container as this uid:gid (e.g. the host user for bind mounts). */
 	user?: string;
+	n8nContainer?: StackConfig['n8nContainer'];
 	/** Readiness timeout override; an old release migrating a fresh DB can exceed the default. */
 	startupTimeoutMs?: number;
 }
@@ -237,6 +238,7 @@ interface SharedConfig {
 	userHomeHostDir?: string;
 	binaryDataHostDir?: string;
 	user?: string;
+	n8nContainer?: StackConfig['n8nContainer'];
 	startupTimeoutMs?: number;
 }
 
@@ -252,6 +254,13 @@ const SERVICE_LABEL: Record<InstanceRole, string> = {
 	worker: 'n8n-worker',
 	engine: 'n8n-engine',
 };
+
+class N8NContainer extends GenericContainer {
+	withReadOnlyRootfs(readOnly: boolean): this {
+		this.hostConfig.ReadonlyRootfs = readOnly;
+		return this;
+	}
+}
 
 async function createContainer(
 	instance: InstanceConfig,
@@ -273,6 +282,7 @@ async function createContainer(
 		userHomeHostDir,
 		binaryDataHostDir,
 		user,
+		n8nContainer: { readOnlyRootfs, tmpfs, platform } = {},
 		startupTimeoutMs,
 	} = shared;
 	const { consumer, throwWithLogs, getLogs } = createSilentLogConsumer();
@@ -296,7 +306,7 @@ async function createContainer(
 	);
 
 	const containerImage = image ?? N8N_IMAGE;
-	let container = new GenericContainer(containerImage)
+	let container = new N8NContainer(containerImage)
 		.withEnvironment(environment)
 		.withLabels({
 			'com.docker.compose.project': projectName,
@@ -310,6 +320,15 @@ async function createContainer(
 
 	if (user) {
 		container = container.withUser(user);
+	}
+	if (readOnlyRootfs !== undefined) {
+		container = container.withReadOnlyRootfs(readOnlyRootfs);
+	}
+	if (tmpfs) {
+		container = container.withTmpFs(tmpfs);
+	}
+	if (platform) {
+		container = container.withPlatform(platform);
 	}
 
 	// withBindMounts REPLACES the mount list, so all mounts go in one call.
@@ -353,8 +372,15 @@ async function createContainer(
 	// Reuse stays off for a container with a host dir mounted: the process must
 	// exit to flush coverage, cycle data belongs to the cycle, and a reused
 	// container would keep the binary data dir of an earlier stack.
-	// Reuse also stays off for stack files because Testcontainers does not hash their contents.
-	if (!coverageHostDir && !userHomeHostDir && !binaryDataHostDir && stackFiles.length === 0) {
+	// Testcontainers does not hash stack file contents or filesystem settings in HostConfig.
+	if (
+		!coverageHostDir &&
+		!userHomeHostDir &&
+		!binaryDataHostDir &&
+		stackFiles.length === 0 &&
+		!readOnlyRootfs &&
+		!tmpfs
+	) {
 		container = container.withReuse();
 	}
 
@@ -431,6 +457,7 @@ export async function createN8NInstances(
 		userHomeHostDir,
 		binaryDataHostDir,
 		user,
+		n8nContainer,
 		startupTimeoutMs,
 		engine,
 		engineTlsFiles,
@@ -461,6 +488,7 @@ export async function createN8NInstances(
 		userHomeHostDir,
 		binaryDataHostDir,
 		user,
+		n8nContainer,
 		startupTimeoutMs,
 	};
 
@@ -477,6 +505,7 @@ export async function createN8NInstances(
 		image,
 		binaryDataHostDir,
 		user,
+		n8nContainer,
 		startupTimeoutMs,
 	};
 
@@ -492,6 +521,7 @@ export async function createN8NInstances(
 		image,
 		binaryDataHostDir,
 		user,
+		n8nContainer,
 		startupTimeoutMs,
 	};
 

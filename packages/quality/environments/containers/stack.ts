@@ -204,6 +204,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		image,
 		userHomeHostDir,
 		user,
+		n8nContainer,
 		startupTimeoutMs,
 	} = config;
 
@@ -467,6 +468,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 				userHomeHostDir,
 				binaryDataHostDir,
 				user,
+				n8nContainer,
 				startupTimeoutMs,
 			});
 			startupDeadline.throwIfAborted();
@@ -719,6 +721,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 						// Keep the storage directory across the swap.
 						binaryDataHostDir,
 						user,
+						n8nContainer,
 						startupTimeoutMs,
 					});
 				} finally {
