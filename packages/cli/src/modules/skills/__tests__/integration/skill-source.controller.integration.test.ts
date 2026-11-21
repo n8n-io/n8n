@@ -213,7 +213,13 @@ describe('SkillSourceController', () => {
 			expect(checkOf('huge')).toEqual({
 				verdict: 'blocked',
 				findings: [
-					{ rule: 'over_limit', severity: 'blocked', file: 'SKILL.md', detail: expect.any(String) },
+					{
+						rule: 'over_limit',
+						severity: 'blocked',
+						file: 'SKILL.md',
+						detail: expect.any(String),
+						limit: { field: 'description', max: 1024, current: 2000 },
+					},
 				],
 			});
 			expect(checkOf('broken')).toEqual({

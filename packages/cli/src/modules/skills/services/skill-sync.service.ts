@@ -55,7 +55,9 @@ import {
 } from '../utils/skill-content';
 import { skillContentHash, type SkillContent } from '../utils/skill-content-hash';
 import { skillSourceHealth } from '../utils/skill-source-health';
+import { checkShape } from '../utils/skill-security-rules';
 import { getSkillHash } from '../utils/skill-hash';
+import { skillPreview } from '../utils/skill-preview';
 import {
 	pendingContent,
 	pendingScan,
@@ -141,10 +143,25 @@ export class SkillSyncService {
 			const row = latest.get(link.skillId);
 			if (!row || !link.pendingContentHash || !link.pendingRevision) continue;
 			const check = pendingScan(link);
-			const content = check.verdict === 'blocked' ? null : pendingContent(link);
+			const content = pendingContent(link);
+			if (content && check.findings.some(({ rule }) => rule === 'over_limit')) {
+				// Refresh size explanations for stored reviews. Keep the stored verdict.
+				const limits = checkShape({ content }).filter(({ rule }) => rule === 'over_limit');
+				if (limits.length)
+					check.findings = [
+						...limits,
+						...check.findings.filter(({ rule }) => rule !== 'over_limit'),
+					];
+			}
+			const blocked = check.verdict === 'blocked';
+			// A blocked update cannot be saved, so the row keeps the saved name and has no clash.
+			const incoming = blocked ? null : content;
+			// Blocked content can be as large as the archive limit. The review then shows a cut
+			// preview and no diff, so the row has no counts.
+			const compared = content && !(blocked && skillPreview(content).truncated);
 			updates.push({
 				skillId: link.skillId,
-				name: content?.name ?? row.version.name,
+				name: incoming?.name ?? row.version.name,
 				location: client.location(link.remoteRef),
 				webUrl: client.webUrl(source.locator, link.remoteRef, link.pendingRevision),
 				contentHash: link.pendingContentHash,
@@ -152,8 +169,8 @@ export class SkillSyncService {
 				revision: link.pendingRevision,
 				revisionUrl: client.revisionUrl?.(source.locator, link.pendingRevision) ?? null,
 				check,
-				nameClash: content ? await this.nameClash(row, content.name) : null,
-				changes: content
+				nameClash: incoming ? await this.nameClash(row, incoming.name) : null,
+				changes: compared
 					? updateCounts(updateFiles(rowContent(row), content))
 					: { added: 0, removed: 0 },
 				nextVersion: row.version.version + 1,
@@ -187,10 +204,14 @@ export class SkillSyncService {
 	): Promise<SkillUpdateReview> {
 		await this.requireReview(user, sourceId);
 		const { link, row } = await this.reviewedUpdate(sourceId, skillId, reviewed);
-		const content = pendingScan(link).verdict === 'blocked' ? null : pendingContent(link);
+		const content = pendingContent(link);
+		const preview =
+			content && pendingScan(link).verdict === 'blocked' ? skillPreview(content) : null;
 		const followers = await this.skillUsage.findFollowingAgentIds(skillId);
 		return {
-			files: content ? updateFiles(rowContent(row), content) : [],
+			...(preview?.truncated
+				? { files: [], preview: { previewFiles: preview.files, previewTruncated: true } }
+				: { files: content ? updateFiles(rowContent(row), content) : [] }),
 			...(await this.visibleAgents(user, followers)),
 		};
 	}
