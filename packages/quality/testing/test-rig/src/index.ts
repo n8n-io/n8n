@@ -24,6 +24,13 @@ export { anything, atMost, below, excludes, includes, is, isNot, Scenario } from
 export { chain, nodes, webhookPath } from './workflows';
 export type { WorkflowNode } from './workflows';
 export { network } from './network';
-export { leaderOverlaps, oneLeaderAtATime } from './invariants';
-export type { LeadershipEvent, Overlap, Violation } from './invariants';
+export { Workload } from './workload';
+export type { Effect, WorkloadRequest } from './workload';
+export { checkWorkload, leaderOverlaps, oneLeaderAtATime } from './invariants';
+export type { LeadershipEvent, Overlap, RunRecord, Violation } from './invariants';
 export { currentLeader, fastLeaderElection, LEADER_HOOKS, leadershipEvents } from './multi-main';
+export { CHAOS_HOOKS, chaosRun, chaosSchedule } from './chaos/run';
+export type { ChaosOptions, ChaosResult } from './chaos/run';
+export { generateSchedule, random } from './chaos/schedule';
+export type { Fault, FaultKind, ScheduledFault } from './chaos/schedule';
+export { shrink } from './chaos/shrink';

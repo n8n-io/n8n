@@ -59,6 +59,13 @@ export class N8nClient {
 		return id;
 	}
 
+	/** Creates a credential and returns its id. */
+	async createCredential(name: string, type: string, data: Record<string, unknown>) {
+		const res = await this.request('POST', '/rest/credentials', { name, type, data });
+		if (res.status !== 200) throw new Error(`create credential: ${JSON.stringify(res.body)}`);
+		return (res.body as { data: { id: string } }).data.id;
+	}
+
 	/** Calls a production webhook; retries while the webhook is not registered yet, since activation can finish after its response. */
 	async webhook(path: string, payload: unknown = {}) {
 		const deadline = Date.now() + 15_000;

@@ -10,6 +10,7 @@
     "test:docker": "vitest run --config vitest.docker.config.ts",
     "test:watch": "vitest",
     "scenarios": "tsx src/cli/run.ts",
+    "chaos": "tsx src/cli/chaos.ts",
     "typecheck": "tsc --noEmit",
     "format": "biome format --write .",
     "format:check": "biome ci .",

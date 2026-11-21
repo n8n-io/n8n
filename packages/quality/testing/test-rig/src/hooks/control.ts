@@ -37,6 +37,15 @@ export function parseHookLine(line: string): HookLogLine | undefined {
 	return { at: Date.parse(iso), event, point, detail };
 }
 
+export const hitBetween = (log: string, point: string, fromMs: number, toMs: number) =>
+	log
+		.split('\n')
+		.map(parseHookLine)
+		.some(
+			(line) =>
+				line?.event === 'hit' && line.point === point && line.at >= fromMs && line.at <= toMs,
+		);
+
 export interface HookHit {
 	container: Container;
 	detail: Record<string, unknown>;
