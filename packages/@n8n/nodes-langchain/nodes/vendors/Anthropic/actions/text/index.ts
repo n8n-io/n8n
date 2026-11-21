@@ -16,6 +16,7 @@ export const description: INodeProperties[] = [
 				value: 'message',
 				action: 'Message a model',
 				description: 'Create a completion with Anthropic model',
+				// Connected tools can change external data, so keep the default annotations.
 			},
 		],
 		default: 'message',
