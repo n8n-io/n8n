@@ -171,10 +171,17 @@ function computeEnvironment(options: N8NInstancesOptions): ComputedEnvironment {
 	// Before `applyEngineEnv`: it removes the dedicated engine URL from the main.
 	const engineEnvironment =
 		engine === 'container'
-			? engineContainerEnv(env, { projectName, authSecret: engineAuthSecret ?? '' })
+			? engineContainerEnv(env, { projectName, mains, authSecret: engineAuthSecret ?? '' })
 			: undefined;
 
-	applyEngineEnv(env, { engine, authSecret: engineAuthSecret, mains, isQueueMode, projectName });
+	applyEngineEnv(env, {
+		engine,
+		authSecret: engineAuthSecret,
+		mains,
+		workers,
+		webhooks,
+		projectName,
+	});
 
 	if (isQueueMode) {
 		env.EXECUTIONS_MODE = 'queue';
@@ -471,6 +478,8 @@ export async function createN8NInstances(
 		registerContainer,
 		startupDeadline,
 		image,
+		// A worker gets the storage path of the mains, so it uses their store too.
+		binaryDataHostDir,
 		user,
 		startupTimeoutMs,
 	};
