@@ -52,6 +52,8 @@ function createSetupFactory() {
 				approvalModesEnabled: false,
 				instanceContextEnabled: false,
 				nodeUsageEnabled: false,
+				preferencesNoteVariant: undefined as string | undefined,
+				skillSourcesEnabled: undefined as boolean | undefined,
 			})),
 		},
 		settingsService: {
@@ -378,6 +380,36 @@ describe('AssistantTurnEnvironmentFactory', () => {
 			expect(fields.approvalReviewerFactory.create).not.toHaveBeenCalled();
 		});
 
+		it.each(['control', 'variant'])(
+			'passes the preferences note variant %s to the turn',
+			async (variant) => {
+				const { factory, fields } = createSetupFactory();
+				fields.adapterService.resolveExperimentGates.mockResolvedValue({
+					...(await fields.adapterService.resolveExperimentGates()),
+					preferencesNoteVariant: variant,
+				});
+
+				const environment = await factory.create(params, createRuntime());
+
+				expect(environment.preferencesNoteVariant).toBe(variant);
+			},
+		);
+
+		it('passes the skill sources gate of the turn to the tool context', async () => {
+			const { factory, fields } = createSetupFactory();
+			fields.adapterService.resolveExperimentGates.mockResolvedValue({
+				...(await fields.adapterService.resolveExperimentGates()),
+				skillSourcesEnabled: true,
+			});
+
+			await factory.create(params, createRuntime());
+
+			expect(fields.adapterService.createContext).toHaveBeenCalledWith(
+				user,
+				expect.objectContaining({ skillSourcesEnabled: true }),
+			);
+		});
+
 		it('keeps the MCP settings of a user who picked Manual', async () => {
 			const { factory, fields } = createSetupFactory();
 			fields.adapterService.resolveExperimentGates.mockResolvedValue({
@@ -499,6 +531,44 @@ describe('AssistantTurnEnvironmentFactory', () => {
 			expect(
 				(fields.adapterService as { createContext: unknown }).createContext,
 			).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('createProxyRunConfig', () => {
+		function createProxyFactory(isModelTrainingAllowed: () => Promise<boolean>) {
+			return createFactory({
+				aiService: {
+					isProxyEnabled: vi.fn(() => true),
+					getClient: vi.fn(async () => ({ getApiProxyBaseUrl: () => 'https://proxy.test' })),
+				},
+				aiUsageService: { isModelTrainingAllowed: vi.fn(isModelTrainingAllowed) },
+			});
+		}
+
+		it('tags traces when the instance opted out of model training', async () => {
+			const { tracingProxyConfig, searchProxyConfig } = await createProxyFactory(
+				async () => false,
+			).createProxyRunConfig(user);
+
+			expect(tracingProxyConfig?.traceTags).toEqual(['model-training-opt-out']);
+			expect(searchProxyConfig?.traceTags).toBeUndefined();
+		});
+
+		it('does not tag traces when the instance allows model training', async () => {
+			const { tracingProxyConfig } = await createProxyFactory(
+				async () => true,
+			).createProxyRunConfig(user);
+
+			expect(tracingProxyConfig?.apiUrl).toBe('https://proxy.test/langsmith');
+			expect(tracingProxyConfig?.traceTags).toBeUndefined();
+		});
+
+		it('tags traces when the model training setting cannot be read', async () => {
+			const { tracingProxyConfig } = await createProxyFactory(async () => {
+				throw new Error('db down');
+			}).createProxyRunConfig(user);
+
+			expect(tracingProxyConfig?.traceTags).toEqual(['model-training-opt-out']);
 		});
 	});
 

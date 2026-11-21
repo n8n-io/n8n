@@ -10,19 +10,14 @@ import type {
 	AiPreferencesAppliedPayload,
 } from '@n8n/api-types';
 import { AI_PREFERENCE_MAX_PER_SCOPE, aiPreferenceTargetOf } from '@n8n/api-types';
-import type { AiPreference, Project, ProjectRelation, User } from '@n8n/db';
-import {
-	AiPreferenceRepository,
-	ProjectRelationRepository,
-	ProjectRepository,
-	UserRepository,
-	accountSummary,
-} from '@n8n/db';
+import type { AiPreference, Project, User } from '@n8n/db';
+import { AiPreferenceRepository, ProjectRepository, UserRepository, accountSummary } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 import { hasGlobalScope } from '@n8n/permissions';
 import { randomUUID } from 'node:crypto';
 
+import { ProjectScopeService } from './project-scope.service';
 import { AiPreferenceScopeFullError } from '../errors/response-errors/ai-preference-scope-full.error';
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 
@@ -36,15 +31,13 @@ type ProjectOperation = 'list' | 'read' | WriteOperation;
 /** The projects one operation is allowed in. `'all'` covers every project. */
 type AllowedProjects = Set<string> | 'all';
 
-/** Per-request project access. The relations and their role scopes are read once. */
+/** Per-request project access. Each operation is resolved once. */
 class ProjectAccess {
-	private relations: Promise<ProjectRelation[]> | undefined;
-
 	private readonly allowedByOperation = new Map<ProjectOperation, Promise<AllowedProjects>>();
 
 	constructor(
 		private readonly user: User,
-		private readonly projectRelationRepository: ProjectRelationRepository,
+		private readonly projectScopeService: ProjectScopeService,
 	) {}
 
 	async allowed(operation: ProjectOperation): Promise<AllowedProjects> {
@@ -62,16 +55,10 @@ class ProjectAccess {
 	}
 
 	private async resolve(operation: ProjectOperation): Promise<AllowedProjects> {
-		const scope: Scope = `projectAiPreference:${operation}`;
-		if (hasGlobalScope(this.user, scope)) return 'all';
-
-		this.relations ??= this.projectRelationRepository.findAllByUser(this.user.id);
-		const relations = await this.relations;
-		return new Set(
-			relations
-				.filter((relation) => relation.role.scopes.some((granted) => granted.slug === scope))
-				.map((relation) => relation.projectId),
-		);
+		const projectIds = await this.projectScopeService.getProjectIds(this.user, [
+			`projectAiPreference:${operation}`,
+		]);
+		return projectIds === null ? 'all' : new Set(projectIds);
 	}
 }
 
@@ -130,7 +117,7 @@ export class AiPreferenceService {
 	constructor(
 		private readonly aiPreferenceRepository: AiPreferenceRepository,
 		private readonly projectRepository: ProjectRepository,
-		private readonly projectRelationRepository: ProjectRelationRepository,
+		private readonly projectScopeService: ProjectScopeService,
 		private readonly userRepository: UserRepository,
 	) {}
 
@@ -187,18 +174,21 @@ export class AiPreferenceService {
 	async list(
 		user: User,
 		page: {
-			skip: number;
-			take: number;
+			offset: number;
+			limit: number;
 			ids?: string[];
 			search?: string;
 			sortBy?: AiPreferenceSortOption;
+			scope?: AiPreferenceScope;
+			projectId?: string;
 		},
 	): Promise<AiPreferenceListDto> {
 		const access = this.projectAccess(user);
 		const [rows, count] = await this.aiPreferenceRepository.findPageVisible({
 			...(await this.visibleTo(user, access)),
-			skip: page.skip,
-			take: page.take,
+			...(await this.narrowedTo(access, page)),
+			skip: page.offset,
+			take: page.limit,
 			...(page.ids ? { ids: page.ids } : {}),
 			...(page.search ? { search: page.search } : {}),
 			...(page.sortBy ? { sortBy: page.sortBy } : {}),
@@ -262,6 +252,7 @@ export class AiPreferenceService {
 		user: User,
 		id: string,
 		request: AiPreferenceUpdateRequest,
+		options: { allowMove?: boolean } = {},
 	): Promise<AiPreferenceDto> {
 		const access = this.projectAccess(user);
 		const row = await this.requireVisible(user, id, access);
@@ -271,6 +262,11 @@ export class AiPreferenceService {
 				: { ...request, scope: request.scope };
 		this.assertEditNamesOwner(resolved);
 		const moved = this.isMove(user, row, resolved);
+		if (moved && options.allowMove === false) {
+			throw new ForbiddenError(
+				'Moving a preference to another scope needs the aiPreference:create and aiPreference:delete API key scopes',
+			);
+		}
 		await this.assertCanWrite(user, row, moved ? 'delete' : 'update', access);
 		const target = await this.resolveTarget(user, resolved, moved ? 'create' : 'update', access);
 		// A move adds a row to the scope it lands in. An edit in place adds nothing.
@@ -350,7 +346,7 @@ export class AiPreferenceService {
 	}
 
 	private projectAccess(user: User): ProjectAccess {
-		return new ProjectAccess(user, this.projectRelationRepository);
+		return new ProjectAccess(user, this.projectScopeService);
 	}
 
 	private async visibleTo(user: User, access: ProjectAccess) {
@@ -360,6 +356,18 @@ export class AiPreferenceService {
 			allUsers: hasGlobalScope(user, 'aiPreference:list'),
 			projectIds: readable === 'all' ? readable : [...readable],
 		};
+	}
+
+	private async narrowedTo(
+		access: ProjectAccess,
+		filter: { scope?: AiPreferenceScope; projectId?: string },
+	) {
+		if (filter.projectId === undefined) return filter.scope ? { scope: filter.scope } : {};
+		if (filter.scope && filter.scope !== 'project') {
+			throw new BadRequestError('The projectId filter works only with the project scope');
+		}
+		const readable = await access.has(filter.projectId, 'list');
+		return { scope: 'project' as const, projectIds: readable ? [filter.projectId] : [] };
 	}
 
 	/** A hidden row answers like a missing one. */

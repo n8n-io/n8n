@@ -54,7 +54,6 @@ import {
 	type ResolvedSkillRow,
 } from '../utils/skill-content';
 import { skillContentHash, type SkillContent } from '../utils/skill-content-hash';
-import { skillSourceBackoffSeconds } from '../utils/skill-source-backoff';
 import { skillSourceHealth } from '../utils/skill-source-health';
 import { getSkillHash } from '../utils/skill-hash';
 import {
@@ -66,6 +65,7 @@ import {
 import { SkillNameTakenError } from '../errors/skill-name-taken.error';
 import { SkillAgentNameTakenError } from '../errors/skill-agent-name-taken.error';
 import { SkillService } from './skill.service';
+import { publicAccessKey, SkillSourceBackoff } from './skill-source-backoff';
 import { SkillSourceNewSkillsService } from './skill-source-new-skills.service';
 import { unreadableSkillHash } from '../utils/skill-unlinked';
 import { SkillUsageProxy } from './skill-usage-proxy.service';
@@ -105,11 +105,6 @@ export class SkillSyncService {
 	 */
 	private readonly running = new Map<string, Promise<void>>();
 
-	/**
-	 * When each access may read its source again after a rate limit: a credential, or the
-	 * public access of a source type. In memory, so a restart or another main forgets it.
-	 */
-	private readonly backoff = new Map<string, { until: number; attempts: number }>();
 	private readonly commits = new LRUCache<string, Promise<SkillUpdateCommit>>({
 		max: 100,
 		ttl: 60 * 60 * 1000,
@@ -131,6 +126,7 @@ export class SkillSyncService {
 		private readonly projectScopeService: ProjectScopeService,
 		private readonly txRunner: TransactionRunner,
 		private readonly newSkills: SkillSourceNewSkillsService,
+		private readonly backoff: SkillSourceBackoff,
 	) {}
 
 	/** Lists stored updates and reads new skills live for the shared review. */
@@ -220,7 +216,7 @@ export class SkillSyncService {
 			const key = JSON.stringify([source.type, source.locator, revision, accessKey(source)]);
 			const cached = this.commits.get(key);
 			if (cached) return await cached;
-			if ((this.backoff.get(metadataKey)?.until ?? 0) > Date.now()) return fallback;
+			if (this.backoff.isWaiting(metadataKey)) return fallback;
 			const pending = client
 				.describeRevision(source.locator, revision, auth)
 				.then((details) => ({ ...fallback, ...details }));
@@ -232,7 +228,7 @@ export class SkillSyncService {
 				throw error;
 			}
 		} catch (error) {
-			this.recordBackoff(metadataKey, error);
+			this.backoff.record(metadataKey, error);
 			this.logger.debug('Could not read skill update commit details', {
 				sourceId,
 				reason: skillSourceReasonOf(error),
@@ -677,7 +673,7 @@ export class SkillSyncService {
 		const previousBackoff = this.backoff.get(access);
 		// Still waiting after a rate limit: no request, and the wait does not grow. The check time
 		// stays, because n8n did not read the source, so the task still checks it first next time.
-		if ((previousBackoff?.until ?? 0) > checkedAt.getTime()) {
+		if (this.backoff.isWaiting(access, checkedAt.getTime())) {
 			if (await this.sourceRepository.recordDelayed(source)) {
 				await this.trackHealthChange(source, 'rate_limited');
 			}
@@ -691,7 +687,7 @@ export class SkillSyncService {
 			const cursor = client.probe ? await client.probe(source.locator, auth) : undefined;
 			if (cursor !== undefined && cursor === source.probeCursor && source.unlinkedSkills !== null) {
 				await this.recordCheck(source, { checkedAt, errorReason: null });
-				if (this.backoff.get(access) === previousBackoff) this.backoff.delete(access);
+				this.backoff.release(access, previousBackoff);
 				return;
 			}
 			const links = await this.sourceRepository.findLinksBySource(source.id);
@@ -706,7 +702,7 @@ export class SkillSyncService {
 				...(next !== undefined ? { probeCursor: { from: source.probeCursor, to: next } } : {}),
 			});
 			// A concurrent source check can set a newer limit for the same credential.
-			if (this.backoff.get(access) === previousBackoff) this.backoff.delete(access);
+			this.backoff.release(access, previousBackoff);
 			const found = counts.pass + counts.needs_review + counts.blocked;
 			if (found > 0) {
 				await this.skillsTelemetry.updateFound({
@@ -717,24 +713,13 @@ export class SkillSyncService {
 				});
 			}
 		} catch (error) {
-			this.recordBackoff(access, error);
+			this.backoff.record(access, error);
 			await this.recordCheck(source, {
 				checkedAt,
 				errorReason: skillSourceReasonOf(error) ?? 'unexpected',
 			});
 			throw error;
 		}
-	}
-
-	private recordBackoff(key: string, error: unknown): void {
-		if (!(error instanceof SkillSourceReadError) || error.reason !== 'rate_limited') return;
-		const current = this.backoff.get(key);
-		const attempts = (current?.attempts ?? 0) + 1;
-		const seconds = skillSourceBackoffSeconds(attempts, error.retryAfterSeconds);
-		this.backoff.set(key, {
-			until: Math.max(current?.until ?? 0, Date.now() + seconds * 1000),
-			attempts,
-		});
 	}
 
 	private async recordCheck(
@@ -988,7 +973,7 @@ export class SkillSyncService {
 /** A credential, or the public access of a source type, as a rate limit applies to it. */
 function accessKey(source: SkillSourceConnection): string {
 	if (source.credentialId) return `credential:${source.credentialId}`;
-	return source.credentialRequired ? `missing:${source.id}` : `public:${source.type}`;
+	return source.credentialRequired ? `missing:${source.id}` : publicAccessKey(source.type);
 }
 
 function staleUpdate() {

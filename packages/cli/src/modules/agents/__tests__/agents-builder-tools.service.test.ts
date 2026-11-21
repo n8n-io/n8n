@@ -168,7 +168,7 @@ function makeService() {
 
 const baseConfig: AgentJsonConfig = {
 	name: 'Agent One',
-	model: 'anthropic/claude-sonnet-4-5',
+	model: 'anthropic/claude-sonnet-5-5',
 	credential: 'Anthropic Key',
 	instructions: 'Help the user.',
 	tools: [],
@@ -1875,9 +1875,9 @@ describe('AgentsBuilderToolsService', () => {
 
 		describe('prompt caching defaults', () => {
 			it.each([
-				'anthropic/claude-sonnet-4-5',
-				'openrouter/anthropic/claude-sonnet-4.5',
-				'google-vertex/claude-sonnet-4-5',
+				'anthropic/claude-sonnet-5-5',
+				'openrouter/anthropic/claude-sonnet-5.5',
+				'google-vertex/claude-sonnet-5-5',
 			])('agent_builder_write_config enables caching for %s when omitted', async (model) => {
 				const { service, agentsService } = makeService();
 				const currentConfig = { ...baseConfig, model, integrations: [] };
@@ -1977,13 +1977,13 @@ describe('AgentsBuilderToolsService', () => {
 				const currentConfig = { ...baseAgent };
 				const updatedConfig: AgentJsonConfig = {
 					...currentConfig,
-					model: 'anthropic/claude-sonnet-4-5',
+					model: 'anthropic/claude-sonnet-5-5',
 					credential: 'Anthropic Key',
 					config: { webSearch: { enabled: false }, promptCaching: { enabled: false } },
 				};
 				const normalizedConfig = {
 					...currentConfig,
-					model: 'anthropic/claude-sonnet-4-5',
+					model: 'anthropic/claude-sonnet-5-5',
 					credential: 'Anthropic Key',
 					config: { webSearch: { enabled: false }, promptCaching: { enabled: false } },
 				};
@@ -2057,9 +2057,9 @@ describe('AgentsBuilderToolsService', () => {
 			});
 
 			it.each([
-				'anthropic/claude-sonnet-4-5',
-				'openrouter/anthropic/claude-sonnet-4.5',
-				'google-vertex/claude-sonnet-4-5',
+				'anthropic/claude-sonnet-5-5',
+				'openrouter/anthropic/claude-sonnet-5.5',
+				'google-vertex/claude-sonnet-5-5',
 			])('agent_builder_write_config preserves the cache TTL for %s', async (model) => {
 				const { service, agentsService } = makeService();
 				const baseAgent = {

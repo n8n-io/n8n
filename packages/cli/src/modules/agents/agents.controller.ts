@@ -61,6 +61,7 @@ export class AgentsController {
 			{
 				actor: { kind: 'user', user: req.user },
 				user: req.user,
+				ctx: req.ctx,
 				createdBy: 'user',
 				pushRef: req.headers?.['push-ref'],
 				id: payload.id,

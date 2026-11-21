@@ -9,6 +9,7 @@ import {
 	promotionInstanceProjectSchema,
 	promotionPreviewCheckSchema,
 } from './promotion-apply-check.dto';
+import { promotionProviderTypeSchema } from './promotion-provider.dto';
 import { n8nIdSchema } from '../../schemas/id.schema';
 import { Z } from '../../zod-class';
 import {
@@ -115,10 +116,24 @@ export const promotionBlockerSchema = z.object({
 
 export type PromotionBlocker = z.infer<typeof promotionBlockerSchema>;
 
+/**
+ * How the environment that the preview reads presents itself: the project's own environment,
+ * or else the instance one. `source` identifies it, so Apply can send `source` back.
+ */
+const promotionPreviewEnvironmentSchema = z.object({
+	name: z.string(),
+	providerType: promotionProviderTypeSchema,
+	createBranchOnPromotion: z.boolean().optional().openapi({
+		description:
+			'Promote only. When true, Promote pushes to a new branch created from `source.branchName`. When false, it pushes to `source.branchName` directly.',
+	}),
+});
+
 export const promotionPreviewSchema = z.object({
 	/** The commit the preview was read from. `null` when the branch has no commit yet. */
 	commitSha: z.string().nullable(),
 	source: z.object({ environmentId: n8nIdSchema, branchName: z.string() }),
+	environment: promotionPreviewEnvironmentSchema,
 	resources: z.array(promotionResourceSchema),
 	dependencies: z.array(promotionResourceDependencySchema),
 	blocker: promotionBlockerSchema.optional().openapi({

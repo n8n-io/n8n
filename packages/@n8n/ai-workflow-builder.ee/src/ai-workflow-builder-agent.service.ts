@@ -14,7 +14,7 @@ import { z } from 'zod';
 
 import { AssistantHandler } from '@/assistant';
 import { LLMServiceError } from '@/errors';
-import { anthropicClaudeSonnet45 } from '@/llm-config';
+import { anthropicClaudeSonnet46 } from '@/llm-config';
 import { SessionManagerService } from '@/session-manager.service';
 import { SsrfGuard } from '@/tools/utils/ssrf-guard';
 import { ResourceLocatorCallbackFactory } from '@/types/callbacks';
@@ -75,7 +75,7 @@ export class AiWorkflowBuilderService {
 		authHeaders?: Record<string, string>;
 		apiKey?: string;
 	} = {}): Promise<ChatAnthropic> {
-		return await anthropicClaudeSonnet45({
+		return await anthropicClaudeSonnet46({
 			baseUrl,
 			apiKey,
 			headers: {

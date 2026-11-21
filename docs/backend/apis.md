@@ -1,12 +1,12 @@
 ---
 title: APIs
-last_reviewed: 2026-11-06
+last_reviewed: 2026-11-20
 contact: SamWooler
 ---
 
 # APIs
 
-The [Workflow publication](workflow-publication.md) page followed a REST call from the editor. The backend serves two HTTP APIs:
+The [Workflow publication](workflow-publication.md) page followed a REST call from the editor. This page covers two HTTP APIs:
 
 - The **REST API** under `/rest` serves the editor. It is private and can change without notice.
 - The **public API** under `/api/v1` serves scripts, CI pipelines, and other tools. Since it is public, a change must not break existing callers.

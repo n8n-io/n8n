@@ -3,6 +3,7 @@ import {
 	AGENT_BUILDER_TOOL_NAMES,
 	resolveBuilderToolName,
 	unwrapToolCatalogCall,
+	instanceAiApprovalAskReasonSchema,
 	instanceAiApprovalDetailsSchema,
 	instanceAiQuestionSchema,
 	credentialRequestSchema,
@@ -344,6 +345,7 @@ function mapSuspendedChunk(
 		suspendPayload.approvalDetails,
 		instanceAiApprovalDetailsSchema,
 	);
+	const askReason = parseSchemaRecord(suspendPayload.askReason, instanceAiApprovalAskReasonSchema);
 	const resourceDecision = parseSchemaRecord(
 		suspendPayload.resourceDecision,
 		gatewayConfirmationRequiredPayloadSchema,
@@ -401,6 +403,7 @@ function mapSuspendedChunk(
 			...(workflowId ? { workflowId } : {}),
 			...(resourceName ? { resourceName } : {}),
 			...(approvalDetails ? { approvalDetails } : {}),
+			...(askReason ? { askReason } : {}),
 			...(questions ? { questions } : {}),
 			...(introMessage ? { introMessage } : {}),
 			...(resourceDecision ? { resourceDecision } : {}),
