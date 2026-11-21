@@ -2399,6 +2399,7 @@
 	"logs.overview.body.open": "Open...",
 	"logs.overview.body.openTooltip": "Open node",
 	"logs.overview.body.toggleRow": "Toggle row",
+	"logs.overview.body.subExecutionLoadError": "Unable to load sub execution",
 	"logs.details.header.actions.input": "Input",
 	"logs.details.header.actions.output": "Output",
 	"logs.details.header.actions.viewAgentSession": "View session",
