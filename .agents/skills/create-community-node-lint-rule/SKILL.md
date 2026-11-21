@@ -80,7 +80,17 @@ export const YourRuleNameRule = createRule({
 
 **Naming**: Export as `PascalCaseRule` (e.g. `MissingPairedItemRule`). The `name` field is kebab-case.
 
-**Available AST helpers** — see [reference.md](reference.md) for the full catalog of `ast-utils` and `file-utils` exports.
+**Helpers**: before you write a helper function, look for an existing one:
+1. `src/utils/`: see [reference.md](reference.md) for the catalog of `ast-utils` and `file-utils` exports.
+2. `ASTUtils` from `@typescript-eslint/utils`. For example, `ASTUtils.getPropertyName(node)` returns the name in `a.b` and `a['b']`.
+
+Put each new helper where its scope is:
+- **Generic AST check** (other rules can use it): export it from `src/utils/ast-utils.ts`, next to similar helpers. Add a row for it to [reference.md](reference.md).
+- **Logic for this rule only** (its messages, value checks, constant lists): keep it in the rule file.
+
+Follow this scope rule also when the rule you copy from keeps generic helpers in its own file.
+
+Support only the code shapes that real nodes use. Before you add a helper for a new shape, search `packages/nodes-base/nodes` for that shape.
 
 ## Step 3: Write Tests
 
@@ -210,6 +220,7 @@ popd
 ## Checklist
 
 - [ ] Rule file: `src/rules/<rule-name>.ts`
+- [ ] Each generic helper is exported from `src/utils/` and listed in `reference.md`
 - [ ] Test file: `src/rules/<rule-name>.test.ts`
 - [ ] Registered in `src/rules/index.ts`
 - [ ] Added to configs in `src/plugin.ts`
