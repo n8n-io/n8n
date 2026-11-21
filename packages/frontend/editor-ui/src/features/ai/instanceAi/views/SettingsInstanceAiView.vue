@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import {
 	N8nBadge,
 	N8nButton,
@@ -7,6 +7,7 @@ import {
 	N8nEmptyState,
 	N8nEnterpriseReadinessBadge,
 	N8nExternalLink,
+	N8nInput,
 	N8nLoading,
 	N8nOption,
 	N8nSelect,
@@ -23,8 +24,10 @@ import {
 } from '@n8n/design-system';
 import {
 	DEFAULT_INSTANCE_AI_PERMISSIONS,
+	instanceAiSavedLoginsModeSchema,
 	type InstanceAiPermissions,
 	type InstanceAiPermissionMode,
+	type InstanceAiSavedLoginsMode,
 } from '@n8n/api-types';
 import { type BaseTextKey, useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
@@ -83,6 +86,38 @@ const showCloudBrowserRow = computed(
 		settingsStore.isAiGatewayCloudUbbEnabled &&
 		!settingsStore.isMultiMain,
 );
+const isCloudBrowserOn = computed(
+	() => !isOff.value && (store.settings?.cloudBrowserEnabled ?? true),
+);
+const savedLoginsMode = computed(
+	(): InstanceAiSavedLoginsMode => store.settings?.cloudBrowserSavedLoginsMode ?? 'all',
+);
+const showSavedLoginSites = computed(
+	() =>
+		isCloudBrowserOn.value &&
+		(savedLoginsMode.value === 'only' || savedLoginsMode.value === 'except'),
+);
+const savedLoginSitesLabel = computed(() =>
+	i18n.baseText(
+		savedLoginsMode.value === 'except'
+			? 'settings.n8nAgent.savedLogins.sites.blockedLabel'
+			: 'settings.n8nAgent.savedLogins.sites.allowedLabel',
+	),
+);
+const SAVED_LOGINS_MODE_LABEL: Record<InstanceAiSavedLoginsMode, BaseTextKey> = {
+	off: 'settings.n8nAgent.savedLogins.mode.off',
+	all: 'settings.n8nAgent.savedLogins.mode.all',
+	only: 'settings.n8nAgent.savedLogins.mode.only',
+	except: 'settings.n8nAgent.savedLogins.mode.except',
+};
+// The site list as the admin edits it. It is saved when the input loses focus.
+const savedLoginSitesText = ref('');
+const showStoredSavedLoginSites = () => {
+	savedLoginSitesText.value = (store.settings?.cloudBrowserSavedLoginSites ?? []).join('\n');
+};
+watch(() => store.settings?.cloudBrowserSavedLoginSites, showStoredSavedLoginSites, {
+	immediate: true,
+});
 const isMcpAccessEnabled = computed(() => store.settings?.mcpAccessEnabled ?? true);
 const isSelfManaged = computed(() => !store.isProxyEnabled && !store.isCloudManaged);
 const showCredentialsRows = computed(() => isAdmin.value && isSelfManaged.value);
@@ -426,6 +461,37 @@ function handleCloudBrowserToggle(value: boolean) {
 	void store.save();
 }
 
+function handleSavedLoginsModeChange(value: InstanceAiSavedLoginsMode) {
+	store.setField('cloudBrowserSavedLoginsMode', value);
+	void store.save();
+}
+
+const enteredSavedLoginSites = computed(() =>
+	savedLoginSitesText.value.split(/[\s,]+/).filter(Boolean),
+);
+const hasUnsavedLoginSites = computed(
+	() =>
+		enteredSavedLoginSites.value.join(',') !==
+		(store.settings?.cloudBrowserSavedLoginSites ?? []).join(','),
+);
+
+// The list saves when it loses focus, or with the Save button. A click on the button also
+// moves the focus, so the second call reuses the save that is still running.
+let pendingSavedLoginSitesSave: Promise<void> | undefined;
+async function handleSavedLoginSitesChange() {
+	pendingSavedLoginSitesSave ??= saveSavedLoginSites().finally(() => {
+		pendingSavedLoginSitesSave = undefined;
+	});
+	await pendingSavedLoginSitesSave;
+}
+
+async function saveSavedLoginSites() {
+	if (!hasUnsavedLoginSites.value) return;
+	store.setField('cloudBrowserSavedLoginSites', enteredSavedLoginSites.value);
+	// The server rejects a site it cannot read, so show the stored list again.
+	if (!(await store.save())) showStoredSavedLoginSites();
+}
+
 function handleMcpAccessToggle(value: boolean) {
 	store.setField('mcpAccessEnabled', value);
 	void store.save();
@@ -664,6 +730,66 @@ const { isLoading: isSavingModelTraining, executeImmediate: handleModelTrainingT
 								@update:model-value="handleCloudBrowserToggle"
 							/>
 						</template>
+					</N8nSettingsRow>
+
+					<N8nSettingsRow
+						v-if="showCloudBrowserRow"
+						:class="{ [$style.dim]: !isCloudBrowserOn }"
+						:title="i18n.baseText('settings.n8nAgent.savedLogins.label')"
+						:description="i18n.baseText('settings.n8nAgent.savedLogins.description')"
+					>
+						<template #action>
+							<N8nSelect
+								:class="$style.permissionSelect"
+								:model-value="savedLoginsMode"
+								size="small"
+								:disabled="store.isSaving || !isCloudBrowserOn"
+								:aria-label="i18n.baseText('settings.n8nAgent.savedLogins.label')"
+								data-test-id="n8n-agent-saved-logins-mode"
+								@update:model-value="
+									handleSavedLoginsModeChange($event as InstanceAiSavedLoginsMode)
+								"
+							>
+								<N8nOption
+									v-for="mode in instanceAiSavedLoginsModeSchema.options"
+									:key="mode"
+									:value="mode"
+									:label="i18n.baseText(SAVED_LOGINS_MODE_LABEL[mode])"
+								/>
+							</N8nSelect>
+						</template>
+					</N8nSettingsRow>
+
+					<N8nSettingsRow v-if="showCloudBrowserRow && showSavedLoginSites" layout="custom">
+						<div :class="$style.savedLoginSites">
+							<N8nText tag="label" for="n8n-agent-saved-login-sites" size="small" bold>
+								{{ savedLoginSitesLabel }}
+							</N8nText>
+							<N8nInput
+								v-model="savedLoginSitesText"
+								type="textarea"
+								:rows="5"
+								:placeholder="i18n.baseText('settings.n8nAgent.savedLogins.sites.placeholder')"
+								id="n8n-agent-saved-login-sites"
+								:disabled="store.isSaving"
+								data-test-id="n8n-agent-saved-login-sites"
+								@blur="handleSavedLoginSitesChange"
+							/>
+							<div :class="$style.savedLoginSitesFooter">
+								<N8nText size="small" color="text-light">
+									{{ i18n.baseText('settings.n8nAgent.savedLogins.sites.hint') }}
+								</N8nText>
+								<N8nButton
+									v-if="hasUnsavedLoginSites"
+									variant="solid"
+									size="small"
+									:label="i18n.baseText('generic.save')"
+									:disabled="store.isSaving"
+									data-test-id="n8n-agent-saved-login-sites-save"
+									@click="handleSavedLoginSitesChange"
+								/>
+							</div>
+						</div>
 					</N8nSettingsRow>
 				</N8nSettingsRowGroup>
 			</N8nSettingsSection>
@@ -910,6 +1036,20 @@ const { isLoading: isSavingModelTraining, executeImmediate: handleModelTrainingT
 	align-items: center;
 	justify-content: space-between;
 	gap: var(--spacing--sm);
+}
+
+.savedLoginSites {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
+	width: 100%;
+}
+
+.savedLoginSitesFooter {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: var(--spacing--xs);
 }
 
 .permissionSelect {

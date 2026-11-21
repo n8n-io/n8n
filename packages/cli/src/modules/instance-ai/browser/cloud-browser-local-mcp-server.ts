@@ -21,7 +21,6 @@ import type {
 import { BaseError } from '@n8n/errors';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { createDeferredPromise, type IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
-import { isIP } from 'node:net';
 import { z } from 'zod';
 
 import {
@@ -39,6 +38,11 @@ import type {
 	CloudBrowserSessionScope,
 	CloudBrowserSessionProvider,
 } from './cloud-browser-session-provider';
+import {
+	isSavedLoginAllowed,
+	registrableDomainOf,
+	type SavedLoginPolicy,
+} from './cloud-browser-saved-login-policy';
 
 /**
  * Toolkit tools the model gets in the cloud browser. A tool that is not in this list stays
@@ -186,10 +190,10 @@ export interface CloudBrowserLocalMcpServerOptions {
 	scope: CloudBrowserSessionScope;
 	sessionProvider: CloudBrowserSessionProvider;
 	/**
-	 * Gives each session a login profile, so the user can save the logins they make in it. Without
-	 * it, sessions open without a login profile.
+	 * Gives each session on an allowed site a login profile, so the user can save the logins they
+	 * make in it. Without it, sessions open without a login profile.
 	 */
-	enableLoginProfiles?: boolean;
+	savedLoginPolicy?: SavedLoginPolicy;
 	createToolkit: (connectUrl?: string) => BrowserToolkit;
 	toolContext: ToolContext;
 	/**
@@ -705,8 +709,8 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 		host: string,
 		requestedLocation: Partial<CloudBrowserSessionLocation>,
 	): Promise<ActiveSession> {
-		const { scope, sessionProvider, enableLoginProfiles, createToolkit, logger } = this.options;
-		const loginProfile = enableLoginProfiles ? await this.resolveLoginProfile(host) : undefined;
+		const { scope, sessionProvider, createToolkit, logger } = this.options;
+		const loginProfile = await this.resolveLoginProfile(host);
 		// A saved login must open where it was saved, regardless of what the agent asked for.
 		const locationToOpen = loginProfile?.savedLocation ?? requestedLocation;
 		let createdSession: CloudBrowserSession;
@@ -785,6 +789,8 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 	private async resolveLoginProfile(host: string): Promise<CloudBrowserLoginProfile | undefined> {
 		const domain = await registrableDomainOf(host);
 		if (!domain) return undefined;
+		const { savedLoginPolicy } = this.options;
+		if (!savedLoginPolicy || !isSavedLoginAllowed(savedLoginPolicy, domain)) return undefined;
 		const savedLoginProfile = await this.findSavedLoginProfileForDomain(domain);
 		if (savedLoginProfile) return savedLoginProfile;
 		return await this.createLoginProfile(domain);
@@ -1133,16 +1139,6 @@ function withWindowChangeNote(
 /** The host of the current window, or nothing when the connection is gone or it has none. */
 function currentHostOf(session: ActiveSession): string | undefined {
 	return hostOfWindow(session, session.windows.at(-1));
-}
-
-/**
- * The registrable domain of a host, for example "linkedin.com" for "accounts.linkedin.com".
- * Nothing for an IP address or a host without one, such as "localhost".
- */
-async function registrableDomainOf(host: string | undefined): Promise<string | undefined> {
-	if (!host || isIP(host)) return undefined;
-	const { get: getRegistrableDomain } = await import('psl');
-	return getRegistrableDomain(host) ?? undefined;
 }
 
 /**

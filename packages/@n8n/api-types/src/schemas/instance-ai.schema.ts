@@ -2697,6 +2697,13 @@ export interface InstanceAiEnvManagedFields {
 	};
 }
 
+/**
+ * Where users can save cloud browser logins for n8n Assistant to reuse: nowhere, on every site,
+ * only on the listed sites, or on every site except the listed ones.
+ */
+export const instanceAiSavedLoginsModeSchema = z.enum(['off', 'all', 'only', 'except']);
+export type InstanceAiSavedLoginsMode = z.infer<typeof instanceAiSavedLoginsModeSchema>;
+
 export interface InstanceAiAdminSettingsResponse {
 	enabled: boolean;
 	permissions: InstanceAiPermissions;
@@ -2716,6 +2723,9 @@ export interface InstanceAiAdminSettingsResponse {
 	envManaged: InstanceAiEnvManagedFields;
 	browserUseEnabled: boolean;
 	cloudBrowserEnabled: boolean;
+	cloudBrowserSavedLoginsMode: InstanceAiSavedLoginsMode;
+	/** The registrable domains for `cloudBrowserSavedLoginsMode`, for example "github.com". */
+	cloudBrowserSavedLoginSites: string[];
 }
 
 export type InstanceAiComponentSource = 'ui' | 'env' | 'none';
@@ -2828,6 +2838,9 @@ export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
 	n8nSandboxServiceUrl: z.string().url().nullable().optional(),
 	browserUseEnabled: z.boolean().optional(),
 	cloudBrowserEnabled: z.boolean().optional(),
+	cloudBrowserSavedLoginsMode: instanceAiSavedLoginsModeSchema.optional(),
+	/** Sites or URLs. The server stores the registrable domain of each. */
+	cloudBrowserSavedLoginSites: z.array(z.string().trim().min(1).max(2048)).max(500).optional(),
 }) {}
 
 export const instanceAiVerificationFailureSchema = z.enum([
