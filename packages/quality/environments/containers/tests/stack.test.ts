@@ -237,13 +237,29 @@ test.each([
 	expect(built.size).toBe(0);
 });
 
-test('copies files outside tmpfs mounts', async () => {
-	const file = { ...keyFile, target: '/tmp-config/encryption-key' };
-	await startStack({
+test.each([
+	['/run', '/var/run/secrets/key'],
+	['/var/run', '/run/secrets/key'],
+	['/var', '/var/run/secrets/key'],
+])('rejects a tmpfs mount at %s that hides a copied file at %s', async (mountPath, target) => {
+	const startup = startStack({
 		services: [],
-		files: [file],
-		n8nContainer: { tmpfs: hardeningOptions.tmpfs },
-	});
+		files: [{ ...keyFile, target }],
+		n8nContainer: { tmpfs: { [mountPath]: 'rw' } },
+	}).then(({ baseUrl }) => baseUrl);
+
+	await expect(startup).rejects.toThrow(
+		`cannot copy "${target}": the tmpfs mount at "${mountPath}" hides this path`,
+	);
+	expect(built.size).toBe(0);
+});
+
+test.each([
+	['/tmp', '/tmp-config/encryption-key'],
+	['/run-config', '/var/run-config/encryption-key'],
+])('copies files outside the tmpfs mount at %s: %s', async (mountPath, target) => {
+	const file = { ...keyFile, target };
+	await startStack({ services: [], files: [file], n8nContainer: { tmpfs: { [mountPath]: 'rw' } } });
 
 	expect(built.get(main)?.files).toEqual([file]);
 });

@@ -151,6 +151,7 @@ Mount `/home/node` so n8n can write its settings and editor asset cache.
 
 Use a writable root filesystem if the stack copies files through `files`, a service such as Keycloak, or `engine: 'container'`.
 Keep copied files outside tmpfs mount paths. Docker mounts tmpfs after Testcontainers copies the files, so the mount hides files at or below its path.
+The stack treats `/var/run` and `/run` as the same path. Use resolved paths for other symlinks in the image.
 
 Set `platform` to select a Docker image platform, such as `linux/arm64`.
 Set `image` to a platform-specific tag or digest that is available on the Docker daemon.

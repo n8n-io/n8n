@@ -277,6 +277,16 @@ class N8NContainer extends GenericContainer {
 	}
 }
 
+function isAtOrBelow(path: string, directory: string): boolean {
+	const relative = posix.relative(directory, path);
+	return relative !== '..' && !relative.startsWith('../');
+}
+
+function resolveRunAlias(path: string): string {
+	// n8n images link /var/run to /run.
+	return path.replace(/^\/var\/run(?=\/|$)/, '/run');
+}
+
 async function createContainer(
 	instance: InstanceConfig,
 	shared: SharedConfig,
@@ -309,9 +319,10 @@ async function createContainer(
 		}
 		for (const mountPath of Object.keys(tmpfs ?? {})) {
 			const mount = posix.resolve('/', mountPath);
+			const resolvedMount = resolveRunAlias(mount);
 			const hidden = filesToCopy.find(({ target }) => {
-				const relative = posix.relative(mount, posix.resolve('/', target));
-				return relative !== '..' && !relative.startsWith('../');
+				const file = posix.resolve('/', target);
+				return isAtOrBelow(file, mount) || isAtOrBelow(resolveRunAlias(file), resolvedMount);
 			});
 			if (hidden) {
 				throw new Error(
