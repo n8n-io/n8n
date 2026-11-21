@@ -72,7 +72,25 @@ export const DOMAIN_TOOL_IDS = {
 	SAVE_USER_PREFERENCE: 'save_user_preference',
 	SKILLS: 'skills',
 	APPS: 'apps',
+	RUN_SCRIPT: 'run_script',
 } as const;
+
+/**
+ * PROTOTYPE (Code Mode study). The granular tools that read the same data as
+ * `run_script`. The control arm of the study sends them in full.
+ */
+export const STUDY_READ_TOOL_NAMES = new Set<string>([
+	DOMAIN_TOOL_IDS.LIST_WORKFLOWS,
+	DOMAIN_TOOL_IDS.GET_WORKFLOW_AS_CODE,
+	DOMAIN_TOOL_IDS.LIST_EXECUTIONS,
+	DOMAIN_TOOL_IDS.GET_EXECUTION,
+	DOMAIN_TOOL_IDS.DEBUG_EXECUTION,
+	DOMAIN_TOOL_IDS.GET_EXECUTION_NODE_OUTPUT,
+	DOMAIN_TOOL_IDS.GET_RESOLVED_NODE_PARAMETERS,
+	DOMAIN_TOOL_IDS.LIST_DATA_TABLES,
+	DOMAIN_TOOL_IDS.GET_DATA_TABLE_SCHEMA,
+	DOMAIN_TOOL_IDS.QUERY_DATA_TABLE,
+]);
 
 /** Trace-only chain-typed child run emitted by `workflow_builder_build_workflow` with the
  *  compiled workflow JSON — bookkeeping, not an agent-facing tool. Consumed by
@@ -127,6 +145,8 @@ export const AGENT_BUILDER_ORCHESTRATOR_TOOL_NAMES: readonly string[] = Object.v
  */
 export const ALWAYS_LOADED_TOOL_NAMES = new Set<string>([
 	DOMAIN_TOOL_IDS.ASK_USER,
+	// PROTOTYPE (Code Mode study). Registered only when the flag is on.
+	DOMAIN_TOOL_IDS.RUN_SCRIPT,
 	// Registered on onboarding threads only, so every other thread pays nothing for the entry.
 	// Deferring it would route the user's "let me out" through `call_tool`.
 	DOMAIN_TOOL_IDS.LEAVE_ONBOARDING,

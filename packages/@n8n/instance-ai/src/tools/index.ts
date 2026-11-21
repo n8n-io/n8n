@@ -127,6 +127,9 @@ const loadBuildWorkflowTool = lazyMod(
 const loadWorkflowsTool = lazyMod(
 	() => require('./workflows.tool') as typeof import('./workflows.tool'),
 );
+const loadRunScriptTool = lazyMod(
+	() => require('./run-script.tool') as typeof import('./run-script.tool'),
+);
 const loadWorkspaceTool = lazyMod(
 	() => require('./workspace.tool') as typeof import('./workspace.tool'),
 );
@@ -196,6 +199,14 @@ function getOrchestratorDomainToolFactories(
 			() => loadBuildWorkflowTool().createBuildWorkflowTool(context),
 		],
 	];
+
+	// PROTOTYPE (Code Mode study)
+	if (context.codeModeEnabled === true) {
+		tools.push([
+			DOMAIN_TOOL_IDS.RUN_SCRIPT,
+			() => loadRunScriptTool().createRunScriptTool(context),
+		]);
+	}
 
 	if (context.credentialDescriptionsEnabled === true) {
 		tools.push([

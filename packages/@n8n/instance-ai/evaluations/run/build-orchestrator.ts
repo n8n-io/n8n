@@ -13,8 +13,11 @@ import type {
 	InstanceAiRunDebugResponse,
 } from '@n8n/api-types';
 import { sleep } from '@n8n/utils/sleep';
+import { writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 import type { LaneAllocator } from './lane-allocator';
+import { buildContextReport } from '../ab-bench/context-report';
 import { provisionCaseBuildUser, type LaneUserPool } from './lane-users';
 import { prepareMcpBuildSeed, type McpBuildSeed } from './mcp-seed';
 import { collectExpectations } from '../build-expectations/collect';
@@ -559,6 +562,17 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 			build.threadId,
 			captureThreadRunDebug(client, build.threadId, logger)
 				.then((debug) => redactLocalRunSecrets(debug, build.credentialSetup))
+				// PROTOTYPE (Code Mode study): keep the token numbers of each LLM call.
+				.then((debug) => {
+					const dir = process.env.EVAL_CONTEXT_REPORT_DIR;
+					if (dir && build.threadId) {
+						writeFileSync(
+							join(dir, `${build.threadId}.json`),
+							JSON.stringify(buildContextReport(build.threadId, debug)),
+						);
+					}
+					return debug;
+				})
 				// Drop the payload rather than ship it or kill the run: run debug is
 				// diagnostic, and an unscrubable local run must not reach the report.
 				.catch((error: unknown) => {

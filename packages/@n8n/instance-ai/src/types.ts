@@ -1807,6 +1807,10 @@ export interface InstanceAiContext {
 	 * and rows carry `folder`. Absent or false keeps the pre-feature shape.
 	 */
 	folderExplorationEnabled?: boolean;
+	/** PROTOTYPE (Code Mode study): registers the `run_script` tool. */
+	codeModeEnabled?: boolean;
+	/** PROTOTYPE (Code Mode study): sends the granular read tools in full, with no `call_tool` step. */
+	alwaysLoadedReadTools?: boolean;
 	/** True while the thread runs the host-seeded onboarding flow. Presence gates `leave-onboarding`. */
 	onboardingThread?: boolean;
 	/**

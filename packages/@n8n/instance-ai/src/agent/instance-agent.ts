@@ -27,6 +27,7 @@ import {
 import { createToolsFromLocalMcpServer } from '../tools/create-tools-from-mcp-server';
 import {
 	ALWAYS_LOADED_TOOL_NAMES,
+	STUDY_READ_TOOL_NAMES,
 	DOMAIN_TOOL_IDS,
 	getMcpToolGroup,
 	getToolGroup,
@@ -67,12 +68,15 @@ function resolveModalSessionModelId(
 
 // ── Agent factory ───────────────────────────────────────────────────────────
 
-function splitDeferredTools(tools: InstanceAiToolRegistry) {
+function splitDeferredTools(tools: InstanceAiToolRegistry, readToolsInFull = false) {
 	const coreTools = createToolRegistry();
 	const deferredTools = createToolRegistry();
 
 	for (const [name, tool] of tools) {
-		if (ALWAYS_LOADED_TOOL_NAMES.has(name)) {
+		if (
+			ALWAYS_LOADED_TOOL_NAMES.has(name) ||
+			(readToolsInFull && STUDY_READ_TOOL_NAMES.has(name))
+		) {
 			coreTools.set(name, tool);
 		} else {
 			deferredTools.set(name, tool);
@@ -200,7 +204,10 @@ export async function createInstanceAgent(
 			agentRole: 'orchestrator',
 			tags: ['orchestrator'],
 		}) ?? reviewedOrchestratorTools;
-	const { coreTools, deferredTools } = splitDeferredTools(tracedOrchestratorTools);
+	const { coreTools, deferredTools } = splitDeferredTools(
+		tracedOrchestratorTools,
+		domainContext.alwaysLoadedReadTools === true,
+	);
 	const hasDeferrableTools = !options.disableDeferredTools && deferredTools.size > 0;
 	const hasDeferredExternalMcpTools =
 		hasDeferrableTools && Array.from(safeMcpTools.keys()).some((name) => deferredTools.has(name));

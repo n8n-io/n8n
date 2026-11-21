@@ -435,6 +435,9 @@ export interface InstanceAiFeatureFlags {
 	 *  closed with every other gate: `getFeatureFlags` never throws, it
 	 *  returns `{}` on a PostHog outage. */
 	folderExplorationEnabled: boolean;
+	/** PROTOTYPE (Code Mode study). */
+	codeModeEnabled?: boolean;
+	alwaysLoadedReadTools?: boolean;
 	credentialDescriptionsEnabled: boolean;
 	/** Approval modes: the Manual and Auto selector, and Auto for users without a saved choice. */
 	approvalModesEnabled: boolean;
@@ -586,6 +589,8 @@ export class InstanceAiAdapterService {
 			 *  Falsy → `list` keeps the pre-feature shape: no folder fields, no
 			 *  folder attribution. */
 			folderExplorationEnabled?: boolean;
+			codeModeEnabled?: boolean;
+			alwaysLoadedReadTools?: boolean;
 			/** Keeps the temporary workflows of the thread. Absent → the temporary workflow table. */
 			temporaryWorkflowMarkers?: TemporaryWorkflowMarkers;
 			/** True while the thread runs the onboarding flow. Gates the `leave-onboarding` tool. */
@@ -621,6 +626,8 @@ export class InstanceAiAdapterService {
 			instanceContextEnabled,
 			conversationHistory,
 			folderExplorationEnabled,
+			codeModeEnabled,
+			alwaysLoadedReadTools,
 			onboardingThread,
 			credentialDescriptionsEnabled,
 			assistantSkillsEnabled,
@@ -663,6 +670,8 @@ export class InstanceAiAdapterService {
 			projectId,
 			assertInThreadProject,
 			...(folderExplorationEnabled ? { folderExplorationEnabled: true } : {}),
+			...(codeModeEnabled ? { codeModeEnabled: true } : {}),
+			...(alwaysLoadedReadTools ? { alwaysLoadedReadTools: true } : {}),
 			...(onboardingThread ? { onboardingThread: true } : {}),
 			...(credentialDescriptionsEnabled ? { credentialDescriptionsEnabled: true } : {}),
 			modelId,
@@ -873,6 +882,9 @@ export class InstanceAiAdapterService {
 				flags[INSTANCE_AI_FOLDER_EXPLORATION_FLAG] ===
 				INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
 			approvalModesEnabled: flags[INSTANCE_AI_APPROVAL_MODES_FLAG] === true,
+			// PROTOTYPE (Code Mode study). No PostHog flag has this name: only N8N_FEATURE_FLAG_OVERRIDES sets it.
+			codeModeEnabled: flags.prototype_instance_ai_code_mode === true,
+			alwaysLoadedReadTools: flags.prototype_instance_ai_read_tools_in_full === true,
 			instanceContextEnabled,
 			assistantSkillsEnabled,
 			...(skillSourcesEnabled ? { skillSourcesEnabled } : {}),
