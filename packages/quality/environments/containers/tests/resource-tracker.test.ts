@@ -36,4 +36,27 @@ describe('ResourceTracker', () => {
 		expect(cleanup.failures[0]?.error.message).toBe('daemon refused to stop');
 		expect(cleanup.remaining).toEqual(['container stuck-container']);
 	});
+
+	test('runs before-stop steps while containers still run, and ignores their failures', async () => {
+		const order: string[] = [];
+		const tracker = new ResourceTracker();
+		tracker.trackContainer(
+			container(
+				'n8n',
+				vi.fn(async () => {
+					order.push('stop');
+				}),
+			) as never,
+		);
+		tracker.beforeStop(async () => {
+			order.push('failing step');
+			throw new Error('container already gone');
+		});
+		tracker.beforeStop(async () => {
+			order.push('step');
+		});
+
+		await expect(tracker.dispose()).resolves.toEqual({ failures: [], remaining: [] });
+		expect(order).toEqual(['failing step', 'step', 'stop']);
+	});
 });

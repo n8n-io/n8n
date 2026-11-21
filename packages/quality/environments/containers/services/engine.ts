@@ -32,7 +32,12 @@ export const ENGINE_PORT = 3000;
 /** Port the main's control plane server listens on. The engine dials it. */
 export const ENGINE_CONTROL_PLANE_PORT = 3001;
 
-/** Mount target for the shared storage directory in n8n and engine containers. */
+/**
+ * Mount target for the shared storage directory in n8n and engine containers.
+ * The stack owns this path: a caller's `N8N_STORAGE_PATH` or deprecated
+ * `N8N_BINARY_DATA_STORAGE_PATH` would point the containers at different
+ * directories, or stop n8n from starting when the two differ.
+ */
 export const ENGINE_SHARED_STORAGE_PATH = '/data/storage';
 
 /** Where each plane finds its own TLS certificate and key and the shared CA. */
@@ -96,6 +101,7 @@ export function applySharedStorageEnv(
 	env.N8N_DEFAULT_BINARY_DATA_MODE = binaryDataMode;
 	// n8n fails to start if the deprecated path differs from the storage path.
 	delete env.N8N_BINARY_DATA_STORAGE_PATH;
+	delete env.N8N_BINARY_DATA_STORAGE_PATH_FILE;
 }
 
 /** Every value the URL interpolates, so a missing one is named, not printed. */

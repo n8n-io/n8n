@@ -21,6 +21,8 @@ export class ResourceTracker {
 
 	private readonly paths = new Set<string>();
 
+	private readonly beforeStopSteps: Array<() => Promise<void>> = [];
+
 	private network: StartedNetwork | undefined;
 
 	private activeAcquisitions = 0;
@@ -41,6 +43,11 @@ export class ResourceTracker {
 
 	trackPath(path: string): void {
 		this.paths.add(path);
+	}
+
+	/** Runs before the containers stop. A failed step is ignored: a resource it could not prepare is reported when its removal fails. */
+	beforeStop(step: () => Promise<void>): void {
+		this.beforeStopSteps.push(step);
 	}
 
 	beginAcquisition(): () => void {
@@ -65,6 +72,12 @@ export class ResourceTracker {
 				this.resolveDisposalWait = resolve;
 			});
 			await this.disposalComplete;
+		}
+
+		for (const step of this.beforeStopSteps) {
+			try {
+				await step();
+			} catch {}
 		}
 
 		const failures: CleanupFailure[] = [];

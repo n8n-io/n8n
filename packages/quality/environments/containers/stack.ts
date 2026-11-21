@@ -13,7 +13,11 @@ import {
 } from './helpers/utils';
 import { waitForNetworkQuiet } from './network-stabilization';
 import { ResourceTracker, type CleanupReport } from './resource-tracker';
-import { assertEngineSupported, createEngineTlsFiles } from './services/engine';
+import {
+	assertEngineSupported,
+	createEngineTlsFiles,
+	ENGINE_SHARED_STORAGE_PATH,
+} from './services/engine';
 import type { LoadBalancerResult } from './services/load-balancer';
 import {
 	createN8NInstances,
@@ -147,6 +151,23 @@ function groupByDependencyLevel(serviceNames: ServiceName[]): ServiceName[][] {
 	}
 
 	return levels;
+}
+
+/** Makes the shared storage tree writable for everyone, through the first n8n container that answers. */
+async function openSharedStorage(storageContainers: StartedTestContainer[]): Promise<void> {
+	for (const container of storageContainers) {
+		try {
+			const { exitCode } = await container.exec([
+				'chmod',
+				'-R',
+				'a+rwX',
+				ENGINE_SHARED_STORAGE_PATH,
+			]);
+			if (exitCode === 0) return;
+		} catch {
+			// The container is stopped or gone: try the next one.
+		}
+	}
 }
 
 export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> {
@@ -391,6 +412,14 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		if (sharedStorage || engine === 'container') {
 			binaryDataHostDir = mkdtempSync(join(tmpdir(), `${uniqueProjectName}-binary-data-`));
 			resources.trackPath(binaryDataHostDir);
+			// n8n creates the nested storage directories as the container user with mode 0755.
+			// On a Linux host, a test user with another uid cannot delete them, so open them up first.
+			resources.beforeStop(
+				async () =>
+					await openSharedStorage(
+						containers.filter((c) => c.getName().startsWith(`${uniqueProjectName}-n8n`)),
+					),
+			);
 		}
 
 		// Earliest log line the readiness gate below may accept

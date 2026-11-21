@@ -31,14 +31,18 @@ const built = new Map<
 	}
 >();
 let stack: N8NStack | undefined;
+const started = new Map<string, StartedTestContainer>();
 
 function startedContainer(name: string): StartedTestContainer {
-	return {
+	const container = {
 		getId: () => name,
 		getName: () => name,
 		getMappedPort: () => 5678,
+		exec: vi.fn().mockResolvedValue({ exitCode: 0, output: '' }),
 		stop: vi.fn().mockResolvedValue(undefined),
 	} as unknown as StartedTestContainer;
+	started.set(name, container);
+	return container;
 }
 
 vi.mock('testcontainers', async (importOriginal) => {
@@ -83,6 +87,7 @@ vi.mock('../services/registry', () => ({
 
 beforeEach(() => {
 	built.clear();
+	started.clear();
 	vi.stubEnv('QA_METRICS_WEBHOOK_URL', '');
 	vi.stubEnv('CONTAINER_TELEMETRY_VERBOSE', '0');
 	vi.stubEnv('N8N_CONTAINERS_KEEPALIVE', 'false');
@@ -165,6 +170,7 @@ test.each([
 			env: {
 				N8N_STORAGE_PATH: '/custom/storage',
 				N8N_BINARY_DATA_STORAGE_PATH: '/custom/binary',
+				N8N_BINARY_DATA_STORAGE_PATH_FILE: '/run/secrets/binary-path',
 				...(configuredMode ? { N8N_DEFAULT_BINARY_DATA_MODE: configuredMode } : {}),
 			},
 		});
@@ -179,6 +185,7 @@ test.each([
 				N8N_DEFAULT_BINARY_DATA_MODE: expectedMode,
 			});
 			expect(environment.N8N_BINARY_DATA_STORAGE_PATH).toBeUndefined();
+			expect(environment.N8N_BINARY_DATA_STORAGE_PATH_FILE).toBeUndefined();
 			expect(bindMounts).toEqual([{ source, target: ENGINE_SHARED_STORAGE_PATH, mode: 'rw' }]);
 			expect(reuse).toBe(false);
 		}
@@ -188,6 +195,29 @@ test.each([
 		await expect(stat(source)).rejects.toMatchObject({ code: 'ENOENT' });
 	},
 );
+
+test('opens the shared storage tree through the first n8n container that answers', async () => {
+	const { stop } = await startStack({ ...queue, sharedStorage: true });
+	const [mainContainer, workerContainer, webhookContainer] = queueNames.map(
+		(name) => started.get(name)!,
+	);
+	vi.mocked(mainContainer.exec).mockRejectedValue(new Error('container is not running'));
+
+	await stop();
+
+	const chmod = ['chmod', '-R', 'a+rwX', ENGINE_SHARED_STORAGE_PATH];
+	expect(mainContainer.exec).toHaveBeenCalledWith(chmod);
+	// Worker and webhook start in parallel, so either one may answer next. Only one is asked.
+	const answered = [workerContainer, webhookContainer].filter(
+		(c) => vi.mocked(c.exec).mock.calls.length > 0,
+	);
+	expect(answered).toHaveLength(1);
+	expect(answered[0].exec).toHaveBeenCalledWith(chmod);
+	expect(started.get(`${projectName}-mailpit`)!.exec).not.toHaveBeenCalled();
+	expect(vi.mocked(answered[0].exec).mock.invocationCallOrder[0]).toBeLessThan(
+		vi.mocked(answered[0].stop).mock.invocationCallOrder[0],
+	);
+});
 
 test.each([
 	{
