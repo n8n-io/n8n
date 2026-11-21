@@ -21,8 +21,8 @@ export const scenarioSchema = z
 			.regex(/^[A-Z]+-\d+$/)
 			.optional(),
 		spec: z.string().regex(/\.spec\.ts$/),
-		before: image,
-		after: image,
+		before: image.nullable(),
+		after: image.nullable(),
 		env: z.record(z.string().regex(/^TEST_RIG_[A-Z_]+$/), z.string()).optional(),
 	})
 	.strict();

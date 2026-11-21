@@ -57,11 +57,13 @@ interface Row {
 	image: string;
 	passed: number;
 	total: number;
-	note?: 'image missing';
+	note?: 'no image' | 'image missing';
 }
 
 export function runFailed(rows: Row[]): boolean {
-	return rows.some((row) => row.note !== undefined || row.passed !== row.total);
+	return rows.some(
+		(row) => row.note === 'image missing' || (!row.note && row.passed !== row.total),
+	);
 }
 
 function formatTable(rows: Row[]): string {
@@ -110,6 +112,10 @@ function main() {
 		for (const variant of options.variants) {
 			const image = scenario[variant];
 			const total = options.runs;
+			if (!image) {
+				rows.push({ name, variant, image: '-', passed: 0, total: 0, note: 'no image' });
+				continue;
+			}
 			if (!ensureImage(image) || !ensureImage(runnersImage(image))) {
 				rows.push({ name, variant, image, passed: 0, total, note: 'image missing' });
 				continue;
