@@ -3,7 +3,7 @@ import type { IExecuteFunctions, INode } from 'n8n-workflow';
 import { requestPath } from 'n8n-workflow';
 
 import * as transport from '../../../../transport';
-import { execute } from '../../../../v2/actions/image/generate.operation';
+import { description, execute } from '../../../../v2/actions/image/generate.operation';
 import type { Mocked } from 'vitest';
 
 vi.mock('../../../../transport');
@@ -49,6 +49,26 @@ describe('Image Generate Operation', () => {
 
 	afterEach(() => {
 		vi.resetAllMocks();
+	});
+
+	describe('model defaults', () => {
+		const getProperty = (name: string) => description.find((property) => property.name === name);
+
+		it('uses a supported default for version 2.2 and later', () => {
+			expect(getProperty('modelId')?.default).toEqual({
+				mode: 'list',
+				value: 'gpt-image-2.6-sunburst',
+			});
+		});
+
+		it('lists only supported models before version 2.2', () => {
+			const options = getProperty('model')?.options as Array<{ value: string }>;
+
+			expect(options.map((option) => option.value)).toEqual([
+				'gpt-image-2.6-sunburst',
+				'gpt-image-2.6-flare',
+			]);
+		});
 	});
 
 	describe('empty prompt validation', () => {
