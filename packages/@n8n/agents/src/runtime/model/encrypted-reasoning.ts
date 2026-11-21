@@ -1,8 +1,8 @@
-import { errorChain } from '@n8n/utils/errors/error-chain';
 import { isRecord } from '@n8n/utils/is-record';
 import type { ModelMessage } from 'ai';
 
 import { isLlmMessage } from '../../sdk/message';
+import { hasErrorCode } from './error-code';
 import type { AgentDbMessage } from '../../types/sdk/message';
 
 /** The OpenAI keys that replay a reasoning item (see `PROVIDER_QUIRKS.openai.reasoningReplayKeys`). */
@@ -14,12 +14,7 @@ const OPENAI_REPLAY_KEYS = ['itemId', 'reasoningEncryptedContent'];
  * from Gateway credits to an own API key.
  */
 export function isEncryptedReasoningRejected(error: unknown): boolean {
-	return errorChain(error)
-		.flatMap((entry) => [entry, entry.data, entry.error])
-		.flatMap((detail) =>
-			isRecord(detail) && isRecord(detail.error) ? [detail, detail.error] : [detail],
-		)
-		.some((detail) => isRecord(detail) && detail.code === 'invalid_encrypted_content');
+	return hasErrorCode(error, 'invalid_encrypted_content');
 }
 
 function hasEncryptedReasoning(options: Record<string, unknown> | undefined): boolean {
