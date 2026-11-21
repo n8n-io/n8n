@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import WorkflowSettingsRowTitle from './WorkflowSettingsRowTitle.vue';
+import type { WorkflowSettingsRowLayout } from './useWorkflowSettingsLayout';
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import {
 	N8nButton,
@@ -12,12 +14,11 @@ import {
 	N8nIconButton,
 	N8nInput,
 	N8nInputLabel,
+	N8nSettingsRow,
 	N8nText,
-	N8nTooltip,
 } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import type { ICustomTelemetryTag } from 'n8n-workflow';
-import { ElCol, ElRow } from 'element-plus';
 
 const OPEN_TELEMETRY_DOCS_URL = 'https://docs.n8n.io/hosting/logging-monitoring/opentelemetry/';
 
@@ -25,6 +26,8 @@ type Props = {
 	modelValue?: ICustomTelemetryTag[];
 	isReadOnly: boolean;
 	saveTags?: (tags: ICustomTelemetryTag[]) => Promise<void> | void;
+	/** The layout of the settings row. The settings modal sets it from its width. */
+	layout?: WorkflowSettingsRowLayout;
 };
 
 type Emits = {
@@ -32,7 +35,7 @@ type Emits = {
 	'validity-change': [hasErrors: boolean];
 };
 
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), { layout: 'horizontal' });
 const emit = defineEmits<Emits>();
 
 const i18n = useI18n();
@@ -196,54 +199,57 @@ const onModalOpenChange = (open: boolean) => {
 
 <template>
 	<div :class="$style.wrapper">
-		<ElRow
-			:class="$style.customTelemetryTags"
+		<N8nSettingsRow
+			:layout="layout"
+			:show-divider="false"
 			data-test-id="workflow-settings-custom-telemetry-tags"
 		>
-			<ElCol :span="10" :class="$style.settingName">
-				<label>
-					{{ i18n.baseText('workflowSettings.customSpanAttributes.displayName') }}
-					<N8nTooltip placement="top">
-						<template #content>
-							{{ i18n.baseText('workflowSettings.customSpanAttributes.description') }}
-						</template>
-						<N8nIcon icon="circle-help" />
-					</N8nTooltip>
-				</label>
-			</ElCol>
-			<ElCol :span="14" :class="$style.customTelemetryTagsControl">
-				<div :class="$style.customTelemetryTagsSummary">
-					<N8nButton
-						variant="outline"
-						size="large"
-						native-type="button"
-						:class="$style.customTelemetryTagsConfigure"
-						:aria-label="configureButtonAriaLabel"
-						data-test-id="workflow-settings-custom-telemetry-tags-configure"
-						@click="openModal"
-					>
-						{{ i18n.baseText('workflowSettings.customSpanAttributes.configure') }}
-					</N8nButton>
-					<span
-						v-if="hasConfiguredTags"
-						:class="$style.customTelemetryTagsCount"
-						data-test-id="workflow-settings-custom-telemetry-tags-count"
-					>
-						{{ configuredTagsCountLabel }}
-					</span>
-				</div>
-				<N8nText
-					v-if="validationError"
-					size="small"
-					color="danger"
-					tag="p"
-					:class="$style.customTelemetryTagsError"
-					data-test-id="workflow-settings-custom-telemetry-tags-error"
+			<template #info>
+				<WorkflowSettingsRowTitle
+					:title="i18n.baseText('workflowSettings.customSpanAttributes.displayName')"
+					:tooltip="i18n.baseText('workflowSettings.customSpanAttributes.description')"
+				/>
+			</template>
+			<template #action>
+				<div
+					:class="[
+						$style.customTelemetryTagsControl,
+						{ [$style.customTelemetryTagsControlVertical]: layout === 'vertical' },
+					]"
 				>
-					{{ validationError }}
-				</N8nText>
-			</ElCol>
-		</ElRow>
+					<div :class="$style.customTelemetryTagsSummary">
+						<N8nButton
+							variant="outline"
+							size="large"
+							native-type="button"
+							:class="$style.customTelemetryTagsConfigure"
+							:aria-label="configureButtonAriaLabel"
+							data-test-id="workflow-settings-custom-telemetry-tags-configure"
+							@click="openModal"
+						>
+							{{ i18n.baseText('workflowSettings.customSpanAttributes.configure') }}
+						</N8nButton>
+						<span
+							v-if="hasConfiguredTags"
+							:class="$style.customTelemetryTagsCount"
+							data-test-id="workflow-settings-custom-telemetry-tags-count"
+						>
+							{{ configuredTagsCountLabel }}
+						</span>
+					</div>
+					<N8nText
+						v-if="validationError"
+						size="small"
+						color="danger"
+						tag="p"
+						:class="$style.customTelemetryTagsError"
+						data-test-id="workflow-settings-custom-telemetry-tags-error"
+					>
+						{{ validationError }}
+					</N8nText>
+				</div>
+			</template>
+		</N8nSettingsRow>
 		<N8nDialog :open="showModal" size="large" @update:open="onModalOpenChange">
 			<N8nDialogHeader>
 				<div :class="$style.customTelemetryTagsModalTitle">
@@ -400,36 +406,14 @@ const onModalOpenChange = (open: boolean) => {
 	display: contents;
 }
 
-.customTelemetryTags {
-	margin-top: var(--spacing--xs);
-	align-items: flex-start;
-}
-
-.settingName {
-	&,
-	& label {
-		display: flex;
-		align-items: center;
-		gap: var(--spacing--4xs);
-	}
-
-	svg {
-		display: inline-flex;
-		opacity: 0;
-		transition: opacity 0.3s ease;
-	}
-
-	&:hover {
-		svg {
-			opacity: 1;
-		}
-	}
-}
-
 .customTelemetryTagsControl {
 	min-width: 0;
 	display: flex;
 	flex-direction: column;
+	align-items: flex-end;
+}
+
+.customTelemetryTagsControlVertical {
 	align-items: flex-start;
 }
 

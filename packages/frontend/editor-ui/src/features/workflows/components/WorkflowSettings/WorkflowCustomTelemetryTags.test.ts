@@ -49,6 +49,26 @@ async function openModal(getByTestId: (id: string) => HTMLElement) {
 }
 
 describe('WorkflowCustomTelemetryTags', () => {
+	describe('row layout', () => {
+		it('renders the row in the horizontal layout by default', () => {
+			const { getByTestId } = renderComponent();
+
+			expect(getByTestId('workflow-settings-custom-telemetry-tags')).toHaveAttribute(
+				'data-layout',
+				'horizontal',
+			);
+		});
+
+		it('renders the row in the vertical layout when the layout prop is vertical', () => {
+			const { getByTestId } = renderComponent({ props: { layout: 'vertical' } });
+
+			expect(getByTestId('workflow-settings-custom-telemetry-tags')).toHaveAttribute(
+				'data-layout',
+				'vertical',
+			);
+		});
+	});
+
 	describe('summary', () => {
 		it.each([
 			{
