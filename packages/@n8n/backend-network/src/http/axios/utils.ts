@@ -395,7 +395,7 @@ export async function generateContentLengthHeader(config: AxiosRequestConfig) {
 			'content-length': length,
 		};
 	} catch (error) {
-		Container.get(Logger).error('Unable to calculate form data length', { error });
+		Container.get(Logger).warn('Unable to calculate form data length', { error });
 	}
 }
 
