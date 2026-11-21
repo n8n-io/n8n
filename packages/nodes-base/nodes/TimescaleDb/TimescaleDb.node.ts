@@ -1,4 +1,5 @@
 import type {
+	ICredentialDataDecryptedObject,
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
@@ -10,6 +11,38 @@ import pgPromise from 'pg-promise';
 import { getDateAsStringTypeParsers } from '@utils/postgres';
 
 import { pgInsert, pgQueryV2, pgUpdate } from '../Postgres/v1/genericFunctions';
+
+type TimescaleDbConfig = {
+	host: string;
+	port: number;
+	database: string;
+	user: string;
+	password: string;
+	ssl: boolean | { rejectUnauthorized: false };
+};
+
+export function getTimescaleDbConfig(
+	credentials: ICredentialDataDecryptedObject,
+): TimescaleDbConfig {
+	const connection = {
+		host: credentials.host as string,
+		port: credentials.port as number,
+		database: credentials.database as string,
+		user: credentials.user as string,
+		password: credentials.password as string,
+	};
+
+	// The SSL selector is hidden while this toggle is on, so it arrives undefined and
+	// the expression below would resolve `ssl` to false. Matches the Postgres node.
+	if (credentials.allowUnauthorizedCerts === true) {
+		return { ...connection, ssl: { rejectUnauthorized: false } };
+	}
+
+	return {
+		...connection,
+		ssl: !['disable', undefined].includes(credentials.ssl as string | undefined),
+	};
+}
 
 export class TimescaleDb implements INodeType {
 	description: INodeTypeDescription = {
@@ -261,15 +294,7 @@ export class TimescaleDb implements INodeType {
 
 		const pgp = pgPromise();
 
-		const config = {
-			host: credentials.host as string,
-			port: credentials.port as number,
-			database: credentials.database as string,
-			user: credentials.user as string,
-			password: credentials.password as string,
-			ssl: !['disable', undefined].includes(credentials.ssl as string | undefined),
-			sslmode: (credentials.ssl as string) || 'disable',
-		};
+		const config = getTimescaleDbConfig(credentials);
 
 		const db = pgp({
 			...config,

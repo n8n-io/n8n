@@ -40,7 +40,8 @@ export class TimescaleDb implements ICredentialType {
 			name: 'allowUnauthorizedCerts',
 			type: 'boolean',
 			default: false,
-			description: 'Whether to connect even if SSL certificate validation is not possible',
+			description:
+				'Whether to keep the connection encrypted but skip certificate verification, for example against a self-signed or hostname-mismatched certificate',
 		},
 		{
 			displayName: 'SSL',
