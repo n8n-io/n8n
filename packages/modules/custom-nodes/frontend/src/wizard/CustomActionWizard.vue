@@ -16,6 +16,7 @@ import { computed, onMounted, ref } from 'vue';
 import { useTypeNames } from '../composables/useTypeNames';
 import { CUSTOM_NODE_CREATE_SCOPE, CUSTOM_NODE_UPDATE_SCOPE } from '../custom-nodes.constants';
 import { useCustomNodesStore } from '../custom-nodes.store';
+import { escapedIconReason } from '../icon/iconFile';
 import ChooseStep from './steps/ChooseStep.vue';
 import FieldsStep from './steps/FieldsStep.vue';
 import RequestStep from './steps/RequestStep.vue';
@@ -44,7 +45,7 @@ const store = useCustomNodesStore();
 const rbacStore = useRBACStore();
 const typeNames = useTypeNames();
 const wizard = useCustomActionDraft();
-const { target, node, name, description, request, inputs, changeNote } = wizard;
+const { target, node, icon, name, description, request, inputs, changeNote } = wizard;
 
 const step = ref<WizardStep>('choose');
 /** Steps that the user left once. Their issues show from then on. */
@@ -147,8 +148,16 @@ async function save() {
 	saving.value = true;
 	emit('busy', true);
 	try {
-		const { kind } = await wizard.save();
-		if (kind) {
+		const { kind, iconError } = await wizard.save();
+		if (iconError !== undefined) {
+			// The toast renders HTML, so the reason is escaped.
+			toast.showMessage({
+				title: i18n.baseText('customNodes.wizard.saved.node.iconError', {
+					interpolate: { reason: escapedIconReason(iconError) },
+				}),
+				type: 'warning',
+			});
+		} else if (kind) {
 			toast.showMessage({
 				title: i18n.baseText(SAVED_MESSAGES[kind]),
 				message:
@@ -204,6 +213,7 @@ onMounted(async () => {
 					v-model:node="node"
 					v-model:name="name"
 					v-model:description="description"
+					v-model:icon="icon"
 					:mode="isEdit ? 'edit' : 'create'"
 					:target-items="targetItems"
 					:edit-target-label="targetLabel"

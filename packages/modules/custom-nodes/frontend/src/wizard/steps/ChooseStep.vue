@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { CustomNodeAuth } from '@n8n/api-types';
 import {
+	N8nButton,
 	N8nCombobox2,
 	N8nInput,
 	N8nInputLabel,
@@ -12,9 +13,11 @@ import {
 	type SelectItem,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { useToast } from '@n8n/composables/useToast';
 import { computed, ref } from 'vue';
 
-import type { NewNodeFields, WizardIssue, WizardTarget } from '../wizard.types';
+import { readIconFile } from '../../icon/iconFile';
+import type { NewNodeFields, WizardIcon, WizardIssue, WizardTarget } from '../wizard.types';
 import IssueList from './IssueList.vue';
 
 const props = defineProps<{
@@ -32,8 +35,32 @@ const target = defineModel<WizardTarget | null>('target', { required: true });
 const node = defineModel<NewNodeFields>('node', { required: true });
 const name = defineModel<string>('name', { required: true });
 const description = defineModel<string>('description', { required: true });
+const icon = defineModel<WizardIcon | null>('icon', { default: null });
 
 const i18n = useI18n();
+const toast = useToast();
+
+const ICON_REJECTIONS = {
+	tooLarge: 'customNodes.icon.tooLarge',
+	wrongType: 'customNodes.icon.wrongType',
+	unreadable: 'customNodes.icon.error',
+} as const;
+
+const iconInput = ref<HTMLInputElement | null>(null);
+
+async function onIconChange(event: Event) {
+	const input = event.target;
+	if (!(input instanceof HTMLInputElement)) return;
+	const file = input.files?.[0];
+	input.value = '';
+	if (!file) return;
+	const result = await readIconFile(file);
+	if (!result.ok) {
+		toast.showMessage({ title: i18n.baseText(ICON_REJECTIONS[result.reason]), type: 'error' });
+		return;
+	}
+	icon.value = { fileName: file.name, dataUri: result.dataUri };
+}
 
 const choice = ref<'new' | 'existing'>(target.value?.kind === 'newNode' ? 'new' : 'existing');
 
@@ -186,6 +213,47 @@ function onCredentialType(credentialType: string) {
 					</N8nText>
 					<IssueList :issues="issuesAt('node.baseUrl')" />
 				</N8nInputLabel>
+				<N8nInputLabel :label="i18n.baseText('customNodes.icon.optional')" color="text-dark">
+					<div :class="$style.icon">
+						<input
+							ref="iconInput"
+							type="file"
+							accept="image/png,image/svg+xml"
+							hidden
+							data-test-id="custom-action-wizard-icon-input"
+							@change="onIconChange"
+						/>
+						<template v-if="icon">
+							<img
+								:class="$style.preview"
+								:src="icon.dataUri"
+								:alt="i18n.baseText('customNodes.icon.preview')"
+								data-test-id="custom-action-wizard-icon-preview"
+							/>
+							<N8nText color="text-dark" data-test-id="custom-action-wizard-icon-name">
+								{{ icon.fileName }}
+							</N8nText>
+							<N8nButton
+								variant="ghost"
+								icon="trash-2"
+								:label="i18n.baseText('customNodes.icon.remove')"
+								data-test-id="custom-action-wizard-icon-remove"
+								@click="icon = null"
+							/>
+						</template>
+						<N8nButton
+							v-else
+							variant="outline"
+							icon="image"
+							:label="i18n.baseText('customNodes.icon.choose')"
+							data-test-id="custom-action-wizard-icon-choose"
+							@click="iconInput?.click()"
+						/>
+					</div>
+					<N8nText size="small" color="text-light">
+						{{ i18n.baseText('customNodes.icon.hint') }}
+					</N8nText>
+				</N8nInputLabel>
 				<N8nInputLabel :label="i18n.baseText('customNodes.wizard.node.auth')" color="text-dark">
 					<N8nSelect2
 						:model-value="authValue"
@@ -246,5 +314,17 @@ function onCredentialType(credentialType: string) {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--sm);
+}
+
+.icon {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+
+.preview {
+	width: var(--spacing--xl);
+	height: var(--spacing--xl);
+	object-fit: contain;
 }
 </style>

@@ -24,6 +24,12 @@ export type WizardTarget =
 	| { kind: 'node'; customNodeId: string }
 	| { kind: 'parent'; parentNodeType: string };
 
+/** The icon that the user chose for a new custom node. */
+export interface WizardIcon {
+	fileName: string;
+	dataUri: string;
+}
+
 export interface NewNodeFields {
 	displayName: string;
 	description: string;

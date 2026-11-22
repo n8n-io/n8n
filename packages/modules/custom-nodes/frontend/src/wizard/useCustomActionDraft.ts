@@ -19,6 +19,7 @@ import type {
 	EditableRequest,
 	LocalIssue,
 	NewNodeFields,
+	WizardIcon,
 	WizardIssue,
 	WizardStep,
 	WizardTarget,
@@ -41,6 +42,7 @@ export function useCustomActionDraft() {
 	const i18n = useI18n();
 
 	const target = ref<WizardTarget | null>({ kind: 'newNode' });
+	const icon = ref<WizardIcon | null>(null);
 	const node = ref<NewNodeFields>({
 		displayName: '',
 		description: '',
@@ -234,7 +236,7 @@ export function useCustomActionDraft() {
 	);
 
 	/** Saves the draft for its target. Returns the kind of the edit for an existing action. */
-	async function save(): Promise<{ kind?: CustomActionEditKind }> {
+	async function save(): Promise<{ kind?: CustomActionEditKind; iconError?: unknown }> {
 		const current = target.value;
 		const note = changeNote.value.trim() || undefined;
 		if (editingAction.value) {
@@ -245,13 +247,21 @@ export function useCustomActionDraft() {
 			return { kind: result.kind };
 		}
 		if (current?.kind === 'newNode') {
-			await store.createNode({
+			const created = await store.createNode({
 				displayName: node.value.displayName.trim(),
 				description: node.value.description.trim() || undefined,
 				baseUrl: node.value.baseUrl.trim(),
 				auth: node.value.auth,
 				actions: [draft.value],
 			});
+			if (icon.value) {
+				// The node exists now. A rejected icon must not undo it.
+				try {
+					await store.setNodeIcon(created.id, { iconDataUri: icon.value.dataUri });
+				} catch (iconError) {
+					return { iconError };
+				}
+			}
 		} else if (current?.kind === 'node') {
 			await store.addActionToNode(current.customNodeId, { draft: draft.value, changeNote: note });
 		} else if (current?.kind === 'parent') {
@@ -267,6 +277,7 @@ export function useCustomActionDraft() {
 	return {
 		target,
 		node,
+		icon,
 		name,
 		description,
 		request,

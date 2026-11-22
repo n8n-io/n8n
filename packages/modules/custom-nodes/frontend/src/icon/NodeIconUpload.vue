@@ -3,11 +3,9 @@ import { ref } from 'vue';
 import { N8nButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
-import { escapeXmlText } from '@n8n/utils/string/escape-xml';
 
 import { useCustomNodesStore } from '../custom-nodes.store';
-
-const MAX_ICON_BYTES = 256 * 1024;
+import { escapedIconReason, readIconFile, serverStatus } from './iconFile';
 
 const props = defineProps<{ nodeId: string }>();
 
@@ -17,26 +15,14 @@ const i18n = useI18n();
 const toast = useToast();
 const store = useCustomNodesStore();
 
+const REJECTIONS = {
+	tooLarge: 'customNodes.icon.tooLarge',
+	wrongType: 'customNodes.icon.wrongType',
+	unreadable: 'customNodes.icon.error',
+} as const;
+
 const input = ref<HTMLInputElement | null>(null);
 const uploading = ref(false);
-
-function readAsDataUri(file: File): Promise<string> {
-	return new Promise((resolve, reject) => {
-		const reader = new FileReader();
-		reader.onload = () =>
-			typeof reader.result === 'string' ? resolve(reader.result) : reject(new Error('read'));
-		reader.onerror = () => reject(new Error('read'));
-		reader.readAsDataURL(file);
-	});
-}
-
-function serverStatus(error: unknown): number | undefined {
-	if (typeof error === 'object' && error !== null && 'httpStatusCode' in error) {
-		const status = error.httpStatusCode;
-		return typeof status === 'number' ? status : undefined;
-	}
-	return undefined;
-}
 
 async function onChange(event: Event) {
 	const target = event.target;
@@ -45,9 +31,10 @@ async function onChange(event: Event) {
 	target.value = '';
 	if (!file) return;
 
-	if (file.size > MAX_ICON_BYTES) {
+	const result = await readIconFile(file);
+	if (!result.ok) {
 		toast.showMessage({
-			title: i18n.baseText('customNodes.icon.tooLarge'),
+			title: i18n.baseText(REJECTIONS[result.reason]),
 			type: 'error',
 		});
 		return;
@@ -55,14 +42,12 @@ async function onChange(event: Event) {
 
 	uploading.value = true;
 	try {
-		const iconDataUri = await readAsDataUri(file);
-		await store.setNodeIcon(props.nodeId, { iconDataUri });
+		await store.setNodeIcon(props.nodeId, { iconDataUri: result.dataUri });
 		emit('uploaded');
 		toast.showMessage({ title: i18n.baseText('customNodes.icon.success'), type: 'success' });
 	} catch (error) {
 		if (serverStatus(error) === 400) {
-			// The toast renders HTML, so escape the reason: it can name an element such as <script>.
-			const reason = escapeXmlText(error instanceof Error ? error.message : '');
+			const reason = escapedIconReason(error);
 			toast.showMessage({
 				title: i18n.baseText('customNodes.icon.error'),
 				message: `${reason} ${i18n.baseText('customNodes.icon.svgHint')}`.trim(),

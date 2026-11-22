@@ -165,6 +165,48 @@ describe('useCustomActionDraft', () => {
 			});
 		});
 
+		describe('icon of a new custom node', () => {
+			const icon = { fileName: 'icon.png', dataUri: 'data:image/png;base64,AQID' };
+
+			it('creates the node first, then sets the icon', async () => {
+				const { store, wizard } = setup();
+				store.createNode.mockResolvedValue(createNode({ id: 'new-node' }));
+				fillNewNode(wizard);
+				wizard.icon.value = icon;
+
+				expect(await wizard.save()).toEqual({});
+
+				expect(store.setNodeIcon).toHaveBeenCalledWith('new-node', {
+					iconDataUri: icon.dataUri,
+				});
+				expect(store.createNode.mock.invocationCallOrder[0]).toBeLessThan(
+					store.setNodeIcon.mock.invocationCallOrder[0],
+				);
+			});
+
+			it('keeps the node and returns the error when the icon fails', async () => {
+				const { store, wizard } = setup();
+				store.createNode.mockResolvedValue(createNode({ id: 'new-node' }));
+				const failure = new Error('SVG contains a script');
+				store.setNodeIcon.mockRejectedValue(failure);
+				fillNewNode(wizard);
+				wizard.icon.value = icon;
+
+				expect(await wizard.save()).toEqual({ iconError: failure });
+				expect(store.createNode).toHaveBeenCalledTimes(1);
+			});
+
+			it('does not set an icon when none is chosen', async () => {
+				const { store, wizard } = setup();
+				store.createNode.mockResolvedValue(createNode({ id: 'new-node' }));
+				fillNewNode(wizard);
+
+				await wizard.save();
+
+				expect(store.setNodeIcon).not.toHaveBeenCalled();
+			});
+		});
+
 		it('adds the action to a custom node', async () => {
 			const { store, wizard } = setup();
 			fillNewNode(wizard);

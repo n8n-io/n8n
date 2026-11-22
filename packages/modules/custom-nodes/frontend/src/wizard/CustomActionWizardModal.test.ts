@@ -149,6 +149,69 @@ describe('CustomActionWizardModal', () => {
 		expect(view.emitted('update:open')).toEqual([[false]]);
 	});
 
+	describe('icon of a new custom node', () => {
+		const fillAndSave = async (view: View, icon?: File) => {
+			await userEvent.type(view.getByTestId('custom-action-wizard-node-name'), 'Acme');
+			await userEvent.type(
+				view.getByTestId('custom-action-wizard-node-base-url'),
+				'https://api.acme.test',
+			);
+			await userEvent.type(view.getByTestId('custom-action-wizard-action-name'), 'Get item');
+			if (icon) {
+				await userEvent.upload(view.getByTestId('custom-action-wizard-icon-input'), icon);
+				await waitAllPromises();
+			}
+			await next(view);
+			await userEvent.type(view.getByTestId('custom-action-wizard-url'), '/items');
+			await next(view, 2);
+			await userEvent.click(view.getByTestId('custom-action-wizard-save'));
+			await waitAllPromises();
+		};
+		const png = () => new File([new Uint8Array([1, 2, 3])], 'icon.png', { type: 'image/png' });
+
+		it('creates the node, then uploads the chosen icon', async () => {
+			const view = await setup();
+			view.store.createNode.mockResolvedValue(createNode({ id: 'new-node' }));
+
+			await fillAndSave(view, png());
+
+			expect(view.store.setNodeIcon).toHaveBeenCalledWith('new-node', {
+				iconDataUri: 'data:image/png;base64,AQID',
+			});
+			expect(showMessage).toHaveBeenCalledWith(
+				expect.objectContaining({ title: 'Custom node created' }),
+			);
+			expect(view.emitted('update:open')).toEqual([[false]]);
+		});
+
+		it('keeps the node and shows the escaped reason when the icon is rejected', async () => {
+			const view = await setup();
+			view.store.createNode.mockResolvedValue(createNode({ id: 'new-node' }));
+			view.store.setNodeIcon.mockRejectedValue(new Error('Element <script> is not allowed'));
+
+			await fillAndSave(view, png());
+
+			expect(showMessage).toHaveBeenCalledWith(
+				expect.objectContaining({
+					title:
+						'Custom node created, but the icon was not accepted: Element &lt;script&gt; is not allowed. Upload a PNG from the settings page.',
+				}),
+			);
+			expect(view.emitted('saved')).toEqual([[]]);
+			expect(view.emitted('update:open')).toEqual([[false]]);
+		});
+
+		it('sends no icon when none is chosen', async () => {
+			const view = await setup();
+			view.store.createNode.mockResolvedValue(createNode({ id: 'new-node' }));
+
+			await fillAndSave(view);
+
+			expect(view.store.createNode).toHaveBeenCalled();
+			expect(view.store.setNodeIcon).not.toHaveBeenCalled();
+		});
+	});
+
 	it('adds an action to a parent node with an absolute URL', async () => {
 		const view = await setup({ mode: 'create', parentNodeType: 'n8n-nodes-base.slack' });
 		expect(view.getByTestId('custom-action-wizard-target-select')).toHaveValue(

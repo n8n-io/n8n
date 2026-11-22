@@ -1,4 +1,4 @@
-import { createComponentRenderer } from '@n8n/frontend-test-utils';
+import { createComponentRenderer, waitAllPromises } from '@n8n/frontend-test-utils';
 import userEvent from '@testing-library/user-event';
 import { screen, waitFor } from '@testing-library/vue';
 
@@ -10,6 +10,9 @@ vi.mock('@n8n/design-system', async () => {
 	const { N8nSelect2Stub } = await import('../../__tests__/designSystemStubs');
 	return { ...actual, N8nSelect2: N8nSelect2Stub };
 });
+
+const { showMessage } = vi.hoisted(() => ({ showMessage: vi.fn() }));
+vi.mock('@n8n/composables/useToast', () => ({ useToast: () => ({ showMessage }) }));
 
 const renderStep = createComponentRenderer(ChooseStep);
 
@@ -64,6 +67,96 @@ describe('ChooseStep', () => {
 			[expect.objectContaining({ baseUrl: 'h' })],
 			[expect.objectContaining({ auth: { kind: 'generic', type: 'httpBearerAuth' } })],
 		]);
+	});
+
+	describe('icon', () => {
+		const upload = async (view: ReturnType<typeof setup>, file: File) => {
+			await userEvent.upload(view.getByTestId('custom-action-wizard-icon-input'), file);
+			await waitAllPromises();
+		};
+
+		it('shows the field only for a new custom node', async () => {
+			const view = setup();
+			expect(view.getByTestId('custom-action-wizard-icon-choose')).toBeInTheDocument();
+
+			await userEvent.click(view.getByTestId('custom-action-wizard-choice-existing'));
+			expect(view.queryByTestId('custom-action-wizard-icon-choose')).not.toBeInTheDocument();
+		});
+
+		it('does not show the field when the node is an action target in the edit mode', () => {
+			const view = setup({
+				mode: 'edit',
+				target: { kind: 'parent', parentNodeType: 'n8n-nodes-base.slack' },
+			});
+			expect(view.queryByTestId('custom-action-wizard-icon-choose')).not.toBeInTheDocument();
+		});
+
+		it('emits the chosen file as a data URI', async () => {
+			const view = setup();
+
+			await upload(view, new File([new Uint8Array([1, 2, 3])], 'icon.png', { type: 'image/png' }));
+
+			expect(view.emitted('update:icon')).toEqual([
+				[{ fileName: 'icon.png', dataUri: 'data:image/png;base64,AQID' }],
+			]);
+		});
+
+		it('rejects a file over 256 KiB', async () => {
+			const view = setup();
+
+			await upload(
+				view,
+				new File([new Uint8Array(256 * 1024 + 1)], 'big.png', { type: 'image/png' }),
+			);
+
+			expect(view.emitted('update:icon')).toBeUndefined();
+			expect(showMessage).toHaveBeenCalledWith(
+				expect.objectContaining({ title: expect.stringContaining('too large'), type: 'error' }),
+			);
+		});
+
+		it('rejects a file that is not PNG or SVG', async () => {
+			const view = setup();
+
+			// The file picker filters by type. A dropped or renamed file can still arrive.
+			await userEvent
+				.setup({ applyAccept: false })
+				.upload(
+					view.getByTestId('custom-action-wizard-icon-input'),
+					new File(['x'], 'icon.gif', { type: 'image/gif' }),
+				);
+			await waitAllPromises();
+
+			expect(view.emitted('update:icon')).toBeUndefined();
+			expect(showMessage).toHaveBeenCalledWith(
+				expect.objectContaining({ title: 'Use a PNG or SVG file.', type: 'error' }),
+			);
+		});
+
+		it('shows the file name and a preview, and removes the icon', async () => {
+			const view = renderStep({
+				props: {
+					mode: 'create',
+					target: { kind: 'newNode' },
+					node: node(),
+					name: '',
+					description: '',
+					targetItems: [],
+					issues: [],
+					icon: { fileName: 'icon.png', dataUri: 'data:image/png;base64,AQID' },
+				},
+			});
+
+			expect(view.getByTestId('custom-action-wizard-icon-name')).toHaveTextContent('icon.png');
+			expect(view.getByTestId('custom-action-wizard-icon-preview')).toHaveAttribute(
+				'src',
+				'data:image/png;base64,AQID',
+			);
+
+			await userEvent.click(view.getByTestId('custom-action-wizard-icon-remove'));
+
+			expect(view.emitted('update:icon')).toEqual([[null]]);
+		});
 	});
 
 	it('asks for the credential type of a predefined credential', async () => {
