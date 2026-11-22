@@ -1123,3 +1123,20 @@ export {
 	type ExecutionLimitPeriodUnit,
 	type ExecutionLimitSettings,
 } from './schemas/execution-limit-settings.schema';
+
+export {
+	CUSTOM_DEFINITIONS_PACKAGE_NAME,
+	customNodeAuthSchema,
+	customActionInputSchema,
+	customActionRequestSchema,
+	customActionDraftSchema,
+	type CustomNodeAuth,
+	type CustomActionInput,
+	type CustomActionRequest,
+	type CustomActionDraft,
+	type CustomActionEditKind,
+	type CustomActionDraftIssue,
+	type CustomActionVersionSummary,
+	type CustomActionResponse,
+	type CustomNodeResponse,
+} from './schemas/custom-nodes.schema';
