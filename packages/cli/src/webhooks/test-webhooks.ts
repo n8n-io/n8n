@@ -305,7 +305,14 @@ export class TestWebhooks implements IWebhookManager {
 		const found: TestWebhookRegistration[] = [];
 		const registrations = await this.registrations.getRegistrationsHash();
 
-		for (const httpMethod of ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'] as IHttpRequestMethods[]) {
+		for (const httpMethod of [
+			'GET',
+			'HEAD',
+			'POST',
+			'PUT',
+			'DELETE',
+			'PATCH',
+		] as IHttpRequestMethods[]) {
 			const key = this.registrations.toKey({ httpMethod, path });
 			let registration = registrations?.[key];
 			if (!registration) {
