@@ -1,7 +1,15 @@
 import type { LicenseState } from '@n8n/backend-common';
 import type { CacheService, EventService } from '@n8n/backend-services';
 import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
-import type { OperationContext, Project, User, Variables, VariablesRepository } from '@n8n/db';
+import type {
+	OperationContext,
+	Project,
+	Role,
+	Scope,
+	User,
+	Variables,
+	VariablesRepository,
+} from '@n8n/db';
 import type { SecurityContext } from '@n8n/permissions';
 import { mock } from 'vitest-mock-extended';
 
@@ -83,4 +91,96 @@ describe('VariablesService', () => {
 			expect(call?.[1]).toMatchObject({ loginId: undefined });
 		},
 	);
+
+	describe('moving a variable to a scope with a same-key variable', () => {
+		it('rejects the move when the destination project already has the same key', async () => {
+			const variableInProject1 = mock<Variables>({
+				id: 'variable-a',
+				key: 'SHARED_KEY',
+				project: mock<Project>({ id: 'project-1' }),
+			});
+			const variableInProject2 = mock<Variables>({
+				id: 'variable-b',
+				key: 'SHARED_KEY',
+				project: mock<Project>({ id: 'project-2' }),
+			});
+			cacheService.get.mockResolvedValue([variableInProject1, variableInProject2]);
+
+			await expect(
+				variablesService.update(user, 'variable-a', { projectId: 'project-2' }),
+			).rejects.toThrow('A variable with key "SHARED_KEY" already exists in the specified project');
+			expect(variablesRepository.update).not.toHaveBeenCalled();
+		});
+
+		it('rejects the move to global when a global variable with the same key exists', async () => {
+			const userWithGlobalScope = mock<User>({
+				id: 'user-id',
+				role: mock<Role>({
+					slug: 'global:admin',
+					scopes: [mock<Scope>({ slug: 'variable:update' })],
+				}),
+			});
+			const variableInProject = mock<Variables>({
+				id: 'variable-a',
+				key: 'SHARED_KEY',
+				project: mock<Project>({ id: 'project-1' }),
+			});
+			const globalVariable = mock<Variables>({
+				id: 'variable-b',
+				key: 'SHARED_KEY',
+				project: null,
+			});
+			cacheService.get.mockResolvedValue([variableInProject, globalVariable]);
+
+			await expect(
+				variablesService.update(userWithGlobalScope, 'variable-a', { projectId: null }),
+			).rejects.toThrow('A global variable with key "SHARED_KEY" already exists');
+			expect(variablesRepository.update).not.toHaveBeenCalled();
+		});
+
+		it('allows the move when the destination project has no same-key variable', async () => {
+			const variableInProject1 = mock<Variables>({
+				id: 'variable-a',
+				key: 'KEY_A',
+				project: mock<Project>({ id: 'project-1' }),
+			});
+			const variableInProject2 = mock<Variables>({
+				id: 'variable-b',
+				key: 'KEY_B',
+				project: mock<Project>({ id: 'project-2' }),
+			});
+			cacheService.get.mockResolvedValue([variableInProject1, variableInProject2]);
+			variablesRepository.update.mockResolvedValue({} as never);
+
+			const updated = await variablesService.update(user, 'variable-a', { projectId: 'project-2' });
+
+			expect(updated.key).toBe('KEY_A');
+		});
+
+		it('validates the renamed key, not the colliding old key, when moving and renaming together', async () => {
+			const variableInProject1 = mock<Variables>({
+				id: 'variable-a',
+				key: 'SHARED_KEY',
+				project: mock<Project>({ id: 'project-1' }),
+			});
+			const variableInProject2 = mock<Variables>({
+				id: 'variable-b',
+				key: 'SHARED_KEY',
+				project: mock<Project>({ id: 'project-2' }),
+			});
+			cacheService.get.mockResolvedValue([variableInProject1, variableInProject2]);
+			variablesRepository.update.mockResolvedValue({} as never);
+
+			await variablesService.update(user, 'variable-a', {
+				key: 'KEY_A',
+				projectId: 'project-2',
+			});
+
+			// The move proceeds: the key that lands in the destination (`KEY_A`) is unique there.
+			expect(variablesRepository.update).toHaveBeenCalledWith(
+				'variable-a',
+				expect.objectContaining({ key: 'KEY_A', project: { id: 'project-2' } }),
+			);
+		});
+	});
 });
