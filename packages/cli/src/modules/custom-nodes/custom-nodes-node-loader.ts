@@ -13,7 +13,7 @@ import type {
 	NodeLoader,
 } from 'n8n-workflow';
 
-import { createCustomNodeType, type ServedActionVersions } from './custom-node-type';
+import { createCustomNodeType, servedVersions } from './custom-node-type';
 import {
 	generateCustomNodeDescription,
 	type ActionView,
@@ -33,9 +33,6 @@ export interface CustomNodeDefinition {
 	node: CustomNodeView;
 	actions: ActionView[];
 }
-
-const servedVersions = (actions: ActionView[]): ServedActionVersions =>
-	new Map(actions.map((action) => [action.id, new Set(action.versions.map((v) => v.version))]));
 
 /**
  * Serves each stored custom node as a declarative node type.

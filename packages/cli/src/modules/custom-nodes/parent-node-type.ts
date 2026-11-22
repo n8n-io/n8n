@@ -10,8 +10,8 @@ export interface ParentExtension {
 	shape: ParentShape;
 	/** The editor and parameter resolution use this description. */
 	extendedDescription: INodeTypeDescription;
-	/** `RoutingNode` runs this description for a custom action. */
-	runtimeDescription: INodeTypeDescription;
+	/** `RoutingNode` runs this description for a custom action. `undefined`: no action has a version. */
+	runtimeDescription?: INodeTypeDescription;
 	served: ServedActionVersions;
 }
 
@@ -40,6 +40,12 @@ export function createParentNodeType(nodeType: INodeType, extension: ParentExten
 		}
 
 		assertServedAction(node, served);
+		// Not reached without a served version: `assertServedAction` throws first.
+		if (!runtimeDescription) {
+			throw new UnexpectedError('A served custom action has no run-time description', {
+				extra: { nodeType: nodeType.description.name },
+			});
+		}
 		return (await new RoutingNode(context, { description: runtimeDescription }).runNode()) ?? [];
 	}
 

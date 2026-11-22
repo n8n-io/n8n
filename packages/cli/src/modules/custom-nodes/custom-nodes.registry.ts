@@ -21,6 +21,7 @@ import {
 } from './database/repositories/custom-action.repository';
 import { CustomNodeRepository } from './database/repositories/custom-node.repository';
 import type { ActionView, CustomNodeView } from './node-description.generator';
+import { ParentActionsProvider } from './parent-actions.provider';
 
 function toNodeView(entity: CustomNodeEntity, restEndpoint: string): CustomNodeView {
 	return {
@@ -43,6 +44,12 @@ function toActionView({ action, versions }: ActionAggregate): ActionView {
 	};
 }
 
+function addTo(map: Map<string, ActionView[]>, key: string, view: ActionView) {
+	const list = map.get(key) ?? [];
+	list.push(view);
+	map.set(key, list);
+}
+
 /** Keeps the node loader of custom nodes in step with the database. */
 @Service()
 export class CustomNodesRegistry {
@@ -54,6 +61,7 @@ export class CustomNodesRegistry {
 		private readonly nodeRepository: CustomNodeRepository,
 		private readonly actionRepository: CustomActionRepository,
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
+		private readonly parentActionsProvider: ParentActionsProvider,
 		private readonly push: PushProxy,
 		private readonly publisher: Publisher,
 		private readonly instanceSettings: InstanceSettings,
@@ -71,9 +79,11 @@ export class CustomNodesRegistry {
 				return;
 			}
 
-			const definitions = await this.readDefinitions();
+			const { definitions, actionsByParent } = await this.readDefinitions();
 			loader.setDefinitions(definitions);
 			await loader.loadAll();
+			// Before the rebuild: its `transform` post-processor serves the parent actions.
+			this.parentActionsProvider.setActions(actionsByParent);
 			await this.loadNodesAndCredentials.postProcessLoaders();
 			this.loadNodesAndCredentials.releaseTypes();
 			this.logger.debug('Custom nodes loaded', { nodeCount: loader.types.nodes.length });
@@ -93,25 +103,34 @@ export class CustomNodesRegistry {
 		await this.refresh({ notifyEditors: true, notifyInstances: false });
 	}
 
-	/** Standalone custom nodes only. Actions of a built-in parent node are served elsewhere. */
-	private async readDefinitions(): Promise<CustomNodeDefinition[]> {
+	/**
+	 * Standalone custom nodes with their actions, and the actions of built-in parent nodes
+	 * by full node type name.
+	 */
+	private async readDefinitions(): Promise<{
+		definitions: CustomNodeDefinition[];
+		actionsByParent: Map<string, ActionView[]>;
+	}> {
 		const [nodes, actions] = await Promise.all([
 			this.nodeRepository.findAllNodes({}),
 			this.actionRepository.findAllActions({}),
 		]);
 
 		const actionsByNode = new Map<string, ActionView[]>();
+		const actionsByParent = new Map<string, ActionView[]>();
 		for (const aggregate of actions) {
-			const { customNodeId } = aggregate.action;
-			if (customNodeId === null) continue;
-			const list = actionsByNode.get(customNodeId) ?? [];
-			list.push(toActionView(aggregate));
-			actionsByNode.set(customNodeId, list);
+			const { customNodeId, parentNodeType } = aggregate.action;
+			if (customNodeId !== null) {
+				addTo(actionsByNode, customNodeId, toActionView(aggregate));
+			} else if (parentNodeType !== null) {
+				addTo(actionsByParent, parentNodeType, toActionView(aggregate));
+			}
 		}
 
-		return nodes.map((node) => ({
+		const definitions = nodes.map((node) => ({
 			node: toNodeView(node, this.globalConfig.endpoints.rest),
 			actions: actionsByNode.get(node.id) ?? [],
 		}));
+		return { definitions, actionsByParent };
 	}
 }

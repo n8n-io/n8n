@@ -18,6 +18,7 @@ import type {
 	CustomActionRepository,
 } from '../database/repositories/custom-action.repository';
 import type { CustomNodeRepository } from '../database/repositories/custom-node.repository';
+import type { ParentActionsProvider } from '../parent-actions.provider';
 
 const nodeEntity = (overrides: Partial<CustomNodeEntity> = {}) =>
 	({
@@ -92,6 +93,7 @@ function createRegistry(
 	nodeRepository.findAllNodes.mockResolvedValue(options.nodes ?? [nodeEntity()]);
 	const actionRepository = mock<CustomActionRepository>();
 	actionRepository.findAllActions.mockResolvedValue(options.actions ?? [actionAggregate()]);
+	const parentActionsProvider = mock<ParentActionsProvider>();
 	const push = mock<PushProxy>();
 	const publisher = mock<Publisher>({ publishCommand: vi.fn().mockResolvedValue(undefined) });
 	const instanceSettings = mock<InstanceSettings>({
@@ -103,12 +105,21 @@ function createRegistry(
 		nodeRepository,
 		actionRepository,
 		loadNodesAndCredentials,
+		parentActionsProvider,
 		push,
 		publisher,
 		instanceSettings,
 		mock<GlobalConfig>({ endpoints: { rest: options.restEndpoint ?? 'rest' } }),
 	);
-	return { registry, loader, loadNodesAndCredentials, push, publisher, logger };
+	return {
+		registry,
+		loader,
+		loadNodesAndCredentials,
+		parentActionsProvider,
+		push,
+		publisher,
+		logger,
+	};
 }
 
 const servedNames = (loader: CustomNodesNodeLoader) => loader.types.nodes.map((d) => d.name);
@@ -154,6 +165,51 @@ describe('CustomNodesRegistry', () => {
 		const operation = description.properties.find((p) => p.name === 'operation');
 		expect(JSON.stringify(operation?.options)).toContain('act_list');
 		expect(JSON.stringify(description)).not.toContain('act_parent');
+	});
+
+	it('passes the parent actions, grouped by node type, to the provider before it rebuilds', async () => {
+		const { registry, loadNodesAndCredentials, parentActionsProvider } = createRegistry({
+			actions: [
+				actionAggregate(),
+				actionAggregate({
+					id: 'act_a',
+					customNodeId: null,
+					parentNodeType: 'n8n-nodes-base.github',
+				}),
+				actionAggregate({
+					id: 'act_b',
+					customNodeId: null,
+					parentNodeType: 'n8n-nodes-base.stripe',
+				}),
+				actionAggregate({
+					id: 'act_c',
+					customNodeId: null,
+					parentNodeType: 'n8n-nodes-base.github',
+				}),
+			],
+		});
+		const calls: string[] = [];
+		parentActionsProvider.setActions.mockImplementation(() => {
+			calls.push('setActions');
+		});
+		loadNodesAndCredentials.postProcessLoaders.mockImplementation(async () => {
+			calls.push('postProcessLoaders');
+		});
+
+		await registry.refresh({ notifyEditors: false, notifyInstances: false });
+
+		expect(calls).toEqual(['setActions', 'postProcessLoaders']);
+		const [actionsByParent] = parentActionsProvider.setActions.mock.calls[0];
+		expect([...actionsByParent.keys()].sort()).toEqual([
+			'n8n-nodes-base.github',
+			'n8n-nodes-base.stripe',
+		]);
+		const idsOf = (nodeType: string) => actionsByParent.get(nodeType)?.map(({ id }) => id);
+		expect(idsOf('n8n-nodes-base.github')).toEqual(['act_a', 'act_c']);
+		expect(idsOf('n8n-nodes-base.stripe')).toEqual(['act_b']);
+		// The actions of a custom node go to the custom nodes loader only.
+		expect(JSON.stringify([...actionsByParent.values()])).not.toContain('act_list');
+		expect(actionsByParent.get('n8n-nodes-base.github')?.[0].versions[0].version).toBe(1);
 	});
 
 	it('sets iconUrl from the icon path only for a node with an icon', async () => {

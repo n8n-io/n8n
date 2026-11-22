@@ -2,10 +2,14 @@ import { RoutingNode, type ExecuteContext } from 'n8n-core';
 import type { INode, INodeType, INodeTypeDescription } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
+import type { ActionView } from './node-description.generator';
 import { OPERATION_PARAMETER, PIN_ACTION_NAME_PARAMETER, readPin } from './version-pin';
 
 /** The action versions that a node type serves, by action id. */
 export type ServedActionVersions = ReadonlyMap<string, ReadonlySet<number>>;
+
+export const servedVersions = (actions: ActionView[]): ServedActionVersions =>
+	new Map(actions.map((action) => [action.id, new Set(action.versions.map((v) => v.version))]));
 
 /**
  * Checks the selected action of a node before a request is sent.
