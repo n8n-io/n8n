@@ -1,9 +1,18 @@
+import { Logger } from '@n8n/backend-common';
 import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule } from '@n8n/decorators';
+import { Container } from '@n8n/di';
 
 @BackendModule({ name: 'custom-nodes', instanceTypes: ['main', 'worker', 'webhook'] })
 export class CustomNodesModule implements ModuleInterface {
-	async init() {}
+	async init() {
+		// The loader is registered with an empty set. This serves the stored definitions.
+		const { CustomNodesRegistry } = await import('./custom-nodes.registry.js');
+		await Container.get(CustomNodesRegistry).refresh({
+			notifyEditors: false,
+			notifyInstances: false,
+		});
+	}
 
 	async entities() {
 		const { CustomNodeEntity } = await import('./database/entities/custom-node.entity.js');
@@ -24,7 +33,8 @@ export class CustomNodesModule implements ModuleInterface {
 	}
 
 	async nodeLoaders() {
-		return [];
+		const { CustomNodesNodeLoader } = await import('./custom-nodes-node-loader.js');
+		return [new CustomNodesNodeLoader(Container.get(Logger))];
 	}
 
 	async settings() {

@@ -49,6 +49,8 @@ export type PubSubCommandMap = {
 
 	'reload-mcp-registry': never;
 
+	'reload-custom-nodes': never;
+
 	'reload-otel-config': never;
 	'reload-public-api-rate-limit-settings': never;
 	'reload-instance-ai-settings': never;
