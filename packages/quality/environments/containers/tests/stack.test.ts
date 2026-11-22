@@ -9,11 +9,13 @@ import {
 } from 'testcontainers';
 import { afterEach, beforeEach, expect, onTestFinished, test, vi } from 'vitest';
 
+import * as containerUtils from '../helpers/utils';
 import { ENGINE_SHARED_STORAGE_PATH } from '../services/engine';
 import { createN8NStack, type N8NConfig, type N8NStack } from '../stack';
 
 const projectName = 'test-stack';
 const main = `${projectName}-n8n`;
+const caddy = `${projectName}-caddy-lb`;
 const queue = { workers: 1, webhooks: 1 };
 const queueNames = [main, `${projectName}-n8n-worker-1`, `${projectName}-n8n-webhook-1`];
 const serviceFile = { target: '/tmp/service-ca.pem', content: 'service certificate' };
@@ -44,7 +46,8 @@ function startedContainer(name: string): StartedTestContainer {
 	const container = {
 		getId: () => name,
 		getName: () => `/${name}`,
-		getMappedPort: () => 5678,
+		getHost: () => 'docker-host.test',
+		getMappedPort: (port: number) => (port === 80 ? 8080 : 5678),
 		exec: vi.fn().mockResolvedValue({ exitCode: 0, output: '' }),
 		stop: vi.fn().mockResolvedValue(undefined),
 	} as unknown as StartedTestContainer;
@@ -87,7 +90,7 @@ vi.mock('testcontainers', async (importOriginal) => {
 
 vi.mock('get-port', () => ({ default: vi.fn().mockResolvedValue(5678) }));
 vi.mock('../network-stabilization', () => ({ waitForNetworkQuiet: vi.fn() }));
-vi.mock('../services/registry', () => ({
+vi.mock('../services/registry', async () => ({
 	services: {
 		mailpit: {
 			description: 'Mailpit',
@@ -101,6 +104,9 @@ vi.mock('../services/registry', () => ({
 			description: 'Tracing',
 			start: async () => ({ container: startedContainer(`${projectName}-n8n-tracer`) }),
 		},
+		loadBalancer: (
+			await vi.importActual<typeof import('../services/load-balancer')>('../services/load-balancer')
+		).loadBalancer,
 	},
 	helperFactories: {},
 }));
@@ -112,6 +118,7 @@ beforeEach(() => {
 	vi.stubEnv('QA_METRICS_WEBHOOK_URL', '');
 	vi.stubEnv('CONTAINER_TELEMETRY_VERBOSE', '0');
 	vi.stubEnv('N8N_CONTAINERS_KEEPALIVE', 'false');
+	vi.spyOn(containerUtils, 'pollContainerHttpEndpoint').mockResolvedValue(undefined);
 	vi.spyOn(Network.prototype, 'start').mockResolvedValue({
 		getName: () => 'test-network',
 		stop: vi.fn().mockResolvedValue(undefined),
@@ -165,20 +172,77 @@ test('copies stack and service files into the main, worker, and webhook', async 
 	}
 });
 
-test('keeps the defaults when the stack sets no overrides', async () => {
-	await startStack(queue);
+test.each([
+	{ mode: 'standalone', topology: {}, names: [main], port: 5678 },
+	{ mode: 'queue', topology: queue, names: queueNames, port: 8080 },
+])('keeps defaults in $mode mode', async ({ mode, topology, names, port }) => {
+	const { baseUrl } = await startStack(topology);
 
-	for (const name of queueNames) {
+	for (const name of names) {
 		const { environment, files, bindMounts, n8nContainer, reuse } = built.get(name)!;
 		expect(Object.hasOwn(environment, 'N8N_ENCRYPTION_KEY')).toBe(true);
 		expect(environment.N8N_STORAGE_PATH).toBeUndefined();
 		expect(environment.N8N_DEFAULT_BINARY_DATA_MODE).toBeUndefined();
+		expect(environment.N8N_PATH).toBeUndefined();
+		expect(environment.N8N_EDITOR_BASE_URL).toBeUndefined();
+		expect(environment.WEBHOOK_URL).toBe(baseUrl);
 		expect(files).toEqual([serviceFile]);
 		expect(bindMounts).toEqual([]);
 		expect(n8nContainer).toEqual({});
 		expect(reuse).toBe(true);
 	}
+	expect(baseUrl).toBe(`http://localhost:${port}`);
+	expect(started.has(caddy)).toBe(mode === 'queue');
+	if (mode === 'queue') {
+		expect(built.get(caddy)?.files[0].content).not.toContain('handle_path');
+	}
 	expect(imageExists).not.toHaveBeenCalled();
+});
+
+test.each([
+	{ mode: 'single main', pathPrefix: '/n8n', webhooks: 0 },
+	{ mode: 'webhook processors', pathPrefix: '/n8n/', webhooks: 1 },
+])('strips the public prefix before Caddy routes to $mode', async ({ pathPrefix, webhooks }) => {
+	const { baseUrl } = await startStack({ pathPrefix, webhooks });
+	const caddyfile = built.get(caddy)?.files.find(({ target }) => target === '/etc/caddy/Caddyfile');
+	const route = webhooks
+		? `@webhooks path /webhook/* /form/* /chat\n    handle @webhooks {\n      reverse_proxy ${projectName}-n8n-webhook-1:5678 {`
+		: `reverse_proxy ${main}:5678 {`;
+
+	expect(caddyfile?.content).toContain(`handle_path /n8n/* {\n    ${route}`);
+	expect(caddyfile?.content).toContain(`reverse_proxy ${main}:5678 {`);
+	expect(caddyfile?.content).toContain('health_uri /healthz');
+	expect(caddyfile?.content).toContain('\n  handle {\n    respond 404\n  }');
+	expect(baseUrl).toBe('http://docker-host.test:8080/n8n/');
+	expect(containerUtils.pollContainerHttpEndpoint).toHaveBeenCalledWith(
+		started.get(caddy),
+		'/n8n/healthz/readiness',
+		expect.any(Number),
+		expect.any(AbortSignal),
+	);
+});
+
+test.each(['/', 'n8n/', '/n8n/*', '/n8n/../editor/', '/n8n//editor/'])(
+	'rejects an invalid path prefix: %s',
+	async (pathPrefix) => {
+		await expect(startStack({ pathPrefix })).rejects.toThrow(
+			'pathPrefix must be an absolute subpath',
+		);
+		expect(Network.prototype.start).not.toHaveBeenCalled();
+	},
+);
+
+test('lets env and unsetEnv override path prefix URL defaults', async () => {
+	const editorUrl = 'https://editor.example.test/n8n/';
+	await startStack({
+		pathPrefix: '/n8n/',
+		env: { N8N_EDITOR_BASE_URL: editorUrl },
+		unsetEnv: ['WEBHOOK_URL'],
+	});
+
+	const { environment } = built.get(main)!;
+	expect(environment.N8N_EDITOR_BASE_URL).toBe(editorUrl);
+	expect(environment.WEBHOOK_URL).toBeUndefined();
 });
 
 test.each([

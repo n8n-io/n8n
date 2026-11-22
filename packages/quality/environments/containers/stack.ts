@@ -56,6 +56,7 @@ export interface ReplaceN8NOptions {
 
 export interface N8NStack {
 	attemptId: string;
+	/** Includes the trailing slash when the stack serves n8n under a subpath. */
 	baseUrl: string;
 	projectName: string;
 	stop: () => Promise<void>;
@@ -76,8 +77,8 @@ export interface N8NStack {
 	 * image, keeping the service containers, network, host port, and
 	 * readiness/logging/cleanup behavior. Data survives the swap when it lives
 	 * outside the replaced container: in the postgres service, or in a
-	 * `userHomeHostDir` mount (the sqlite file and user folder). Single-main
-	 * stacks only — the substrate of the upgrade/downgrade cycles.
+	 * `userHomeHostDir` mount (the sqlite file and user folder). This requires
+	 * a single main without a load balancer.
 	 */
 	replaceN8N: (options: ReplaceN8NOptions) => Promise<void>;
 	/** The database engine v2 writes to. Present only when the stack runs engine v2. */
@@ -182,6 +183,18 @@ async function openSharedStorage(
 	}
 }
 
+function normalizePathPrefix(value: string): string {
+	const prefix = value.replace(/\/$/, '');
+	const segments = prefix.slice(1).split('/');
+	if (
+		!prefix.startsWith('/') ||
+		segments.some((segment) => !/^[\w.~-]+$/.test(segment) || segment === '.' || segment === '..')
+	) {
+		throw new Error('pathPrefix must be an absolute subpath, such as "/n8n/".');
+	}
+	return `${prefix}/`;
+}
+
 export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> {
 	const {
 		mains = 1,
@@ -214,8 +227,10 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 
 	const log = createElapsedLogger('stack');
 
+	const pathPrefix =
+		config.pathPrefix === undefined ? undefined : normalizePathPrefix(config.pathPrefix);
 	const isQueueMode = mains > 1 || workers > 0 || webhooks > 0;
-	const needsLoadBalancer = mains > 1 || webhooks > 0;
+	const needsLoadBalancer = mains > 1 || webhooks > 0 || pathPrefix !== undefined;
 	const usePostgres = usePostgresConfig || isQueueMode || enabledServices.includes('keycloak');
 
 	assertEngineSupported({ engine, mains, isQueueMode, usePostgres });
@@ -299,7 +314,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 
 	try {
 		const ctx: StartContext = {
-			config: { ...config, postgres: usePostgres },
+			config: { ...config, postgres: usePostgres, pathPrefix },
 			projectName: uniqueProjectName,
 			mains,
 			workers,
@@ -415,6 +430,12 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		// Step 2: Start n8n (main 1 first for DB setup, then rest in parallel)
 		const lbResult = serviceResults.loadBalancer as LoadBalancerResult | undefined;
 		const baseUrl = lbResult?.meta.baseUrl ?? `http://localhost:${allocatedMainPort}`;
+		if (pathPrefix) {
+			environment.N8N_PATH = pathPrefix;
+			environment.N8N_EDITOR_BASE_URL = baseUrl;
+			// Keep the prefix if a tunnel supplies the public webhook URL.
+			environment.WEBHOOK_URL = new URL(pathPrefix, environment.WEBHOOK_URL ?? baseUrl).href;
+		}
 
 		const filesToMount: FileToMount[] = Object.values(serviceResults).flatMap((result) => {
 			const meta = result.meta as { n8nFilesToMount?: FileToMount[] } | undefined;
@@ -490,7 +511,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			try {
 				await pollContainerHttpEndpoint(
 					lbResult.container,
-					'/healthz/readiness',
+					new URL('healthz/readiness', baseUrl).pathname,
 					startupDeadline.remainingMs,
 					startupDeadline.signal,
 				);
@@ -679,7 +700,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			},
 			async replaceN8N(options: ReplaceN8NOptions): Promise<void> {
 				if (mains > 1 || needsLoadBalancer) {
-					throw new Error('replaceN8N supports single-main stacks only');
+					throw new Error('replaceN8N requires a single main without a load balancer');
 				}
 				const current = containers.find((c) => c.getName().endsWith('-n8n'));
 				if (current) {
