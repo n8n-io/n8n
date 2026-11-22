@@ -100,7 +100,7 @@ describe('SettingsCustomNodesView', () => {
 		expect(getAllByTestId('custom-nodes-node-row')[0]).toHaveTextContent('Acme');
 		expect(getAllByTestId('custom-nodes-node-row')[0].querySelector('img')).toHaveAttribute(
 			'src',
-			'/rest/custom-nodes/nodes/node-1/icon',
+			'/rest/custom-nodes/nodes/node-1/icon?v=2026-01-01T00%3A00%3A00.000Z-0',
 		);
 		const sections = getAllByTestId('custom-nodes-parent-section');
 		expect(sections).toHaveLength(2);

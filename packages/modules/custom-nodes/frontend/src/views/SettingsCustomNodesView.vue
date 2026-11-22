@@ -14,11 +14,17 @@ import {
 	N8nSettingsSection,
 	N8nText,
 } from '@n8n/design-system';
-import type { CustomNodeResponse, ParentCustomActionResponse } from '@n8n/api-types';
+import type {
+	CustomActionResponse,
+	CustomNodeResponse,
+	ParentCustomActionResponse,
+} from '@n8n/api-types';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 import { useTypeNames } from '../composables/useTypeNames';
 import { CUSTOM_NODE_UPDATE_SCOPE } from '../custom-nodes.constants';
 import { useCustomNodesStore } from '../custom-nodes.store';
+import ActionHistoryDialog from '../history/ActionHistoryDialog.vue';
+import NodeIconUpload from '../icon/NodeIconUpload.vue';
 import CustomActionWizardModal from '../wizard/CustomActionWizardModal.vue';
 import type { CustomActionWizardData } from '../wizard/wizard.types';
 
@@ -51,6 +57,30 @@ const isEmpty = computed(
 const dialogOpen = computed(() => pendingDelete.value !== null);
 
 const canEdit = computed(() => rbacStore.hasScope(CUSTOM_NODE_UPDATE_SCOPE));
+
+// The icon URL stays the same after an upload, so a query param busts the image cache.
+const iconNonce = ref(0);
+
+function iconSrc(node: CustomNodeResponse) {
+	return `${store.iconUrl(node.id)}?v=${encodeURIComponent(node.updatedAt)}-${iconNonce.value}`;
+}
+
+const historyOpen = ref(false);
+const historyActionId = ref<string | null>(null);
+
+// Read from the store, so the dialog shows new data after a rollback.
+const historyAction = computed<CustomActionResponse | undefined>(() => {
+	const id = historyActionId.value;
+	return (
+		store.parentActions.find((action) => action.id === id) ??
+		store.nodes.flatMap((node) => node.actions).find((action) => action.id === id)
+	);
+});
+
+function openHistory(actionId: string) {
+	historyActionId.value = actionId;
+	historyOpen.value = true;
+}
 
 const wizardOpen = ref(false);
 const wizardData = ref<CustomActionWizardData>({ mode: 'create' });
@@ -165,11 +195,12 @@ onMounted(async () => {
 					data-test-id="custom-nodes-node-row"
 				>
 					<template #visual>
-						<N8nNodeIcon v-if="node.hasIcon" type="file" :src="store.iconUrl(node.id)" :size="24" />
+						<N8nNodeIcon v-if="node.hasIcon" type="file" :src="iconSrc(node)" :size="24" />
 						<N8nNodeIcon v-else type="icon" name="blocks" :size="24" />
 					</template>
 					<template #action>
 						<div :class="$style.actions">
+							<NodeIconUpload v-if="canEdit" :node-id="node.id" @uploaded="iconNonce += 1" />
 							<N8nButton
 								variant="ghost"
 								icon="plus"
@@ -195,14 +226,24 @@ onMounted(async () => {
 					:description="action.description"
 					data-test-id="custom-nodes-node-action-row"
 				>
-					<template v-if="canEdit" #action>
-						<N8nButton
-							variant="ghost"
-							icon="pencil"
-							:label="i18n.baseText('customNodes.settings.edit')"
-							data-test-id="custom-nodes-edit-node-action"
-							@click="openEdit(action.id)"
-						/>
+					<template #action>
+						<div :class="$style.actions">
+							<N8nButton
+								variant="ghost"
+								icon="history"
+								:label="i18n.baseText('customNodes.settings.history')"
+								data-test-id="custom-nodes-history-node-action"
+								@click="openHistory(action.id)"
+							/>
+							<N8nButton
+								v-if="canEdit"
+								variant="ghost"
+								icon="pencil"
+								:label="i18n.baseText('customNodes.settings.edit')"
+								data-test-id="custom-nodes-edit-node-action"
+								@click="openEdit(action.id)"
+							/>
+						</div>
 					</template>
 				</N8nSettingsRow>
 			</N8nSettingsRowGroup>
@@ -229,6 +270,13 @@ onMounted(async () => {
 					<template #action>
 						<div :class="$style.actions">
 							<N8nButton
+								variant="ghost"
+								icon="history"
+								:label="i18n.baseText('customNodes.settings.history')"
+								data-test-id="custom-nodes-history-parent-action"
+								@click="openHistory(action.id)"
+							/>
+							<N8nButton
 								v-if="canEdit"
 								variant="ghost"
 								icon="pencil"
@@ -249,6 +297,8 @@ onMounted(async () => {
 				</N8nSettingsRow>
 			</N8nSettingsRowGroup>
 		</N8nSettingsSection>
+
+		<ActionHistoryDialog v-model:open="historyOpen" :action="historyAction" />
 
 		<CustomActionWizardModal v-model:open="wizardOpen" :data="wizardData" />
 
