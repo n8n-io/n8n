@@ -41,13 +41,16 @@ test.describe('Canvas Node Actions', () => {
 
 		test('should clear search and show all nodes', async ({ n8n }) => {
 			await n8n.canvas.clickCanvasPlusButton();
+			const manualTrigger = n8n.canvas.nodeCreatorItemByName('Trigger manually');
+			await expect(manualTrigger).toBeVisible();
+
 			await n8n.canvas.fillNodeCreatorSearchBar('Linear');
-			const searchCount = await n8n.canvas.nodeCreatorNodeItems().count();
-			await expect(n8n.canvas.nodeCreatorNodeItems()).toHaveCount(1);
+			await expect(n8n.canvas.nodeCreatorItemByName('Linear')).toBeVisible();
+			await expect(manualTrigger).toBeHidden();
 
 			await n8n.canvas.nodeCreatorSearchBar().clear();
-			const nodeCount = await n8n.canvas.nodeCreatorNodeItems().count();
-			expect(nodeCount).toBeGreaterThan(searchCount);
+			await expect(manualTrigger).toBeVisible();
+			await expect(n8n.canvas.nodeCreatorItemByName('Linear')).toBeHidden();
 		});
 
 		test('should add connected node via plus endpoint', async ({ n8n }) => {

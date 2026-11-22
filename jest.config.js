@@ -45,7 +45,7 @@ const config = {
 		[esmDependenciesRegex]: [
 			'babel-jest',
 			{
-				presets: ['@babel/preset-env'],
+				presets: [['@babel/preset-env', { targets: { node: 'current' } }]],
 				plugins: ['babel-plugin-transform-import-meta'],
 			},
 		],
