@@ -15,19 +15,15 @@ import { NodeApiError, NodeOperationError, requestPath, requestUrl } from 'n8n-w
 
 const DEFAULT_API_DOMAIN = 'api.jotform.com';
 
-// A custom domain is `host[:port]` with an optional `/path` prefix. These guard
-// the value before it reaches requestUrl's base-URL slot: a non-http scheme or
-// userinfo (`host@attacker`) would otherwise change the request destination.
+// Guard the custom domain before it reaches requestUrl's base-URL slot: a
+// non-http scheme or userinfo (`host@attacker`) changes the request destination.
 const SCHEME = /^([a-z][a-z0-9+.-]*):\/\//i;
 const HOST = /^[A-Za-z0-9.-]+(?::\d{1,5})?$/;
 
 /**
- * Resolve the effective API domain from the credential.
- *
- * `apiDomain === 'custom'` is JotForm Enterprise, where the user supplies the
- * full host and optional `/API` path. An empty custom domain resolves to `''`
- * so the caller can reject it -- silently falling back to the public host would
- * send the API key to the wrong instance.
+ * Resolve the configured domain. `apiDomain === 'custom'` is JotForm Enterprise,
+ * where the user supplies the host. An empty custom domain resolves to `''` so
+ * the caller rejects it instead of falling back to the public host.
  */
 function resolveApiDomain(apiDomain: unknown, customApiDomain: unknown): string {
 	if (apiDomain === 'custom') {
@@ -39,13 +35,7 @@ function resolveApiDomain(apiDomain: unknown, customApiDomain: unknown): string 
 	return DEFAULT_API_DOMAIN;
 }
 
-/**
- * Turn a configured domain into `host[/path]` without a protocol or trailing
- * slash, e.g. `eu-api.jotform.com` or `subdomain.jotform.com/API`.
- *
- * The custom field is free text, so tolerate a pasted `http(s)://` and repeated
- * or trailing slashes.
- */
+/** Normalize free text into `host[/path]` without a protocol or trailing slash. */
 function normalizeApiDomain(apiDomain: string): string {
 	return apiDomain
 		.trim()
@@ -55,11 +45,10 @@ function normalizeApiDomain(apiDomain: string): string {
 }
 
 /**
- * Split a normalized domain into the requestUrl authority (the host) and an
- * optional path prefix.
+ * Split into the requestUrl authority (host) and an optional path prefix.
  *
- * JotForm Enterprise uses `subdomain.jotform.com/API`. The `/API` part must stay
- * in the path: in the authority slot requestUrl rejects it with "Invalid host".
+ * The `/API` of `subdomain.jotform.com/API` must stay in the path: the authority
+ * slot rejects it with "Invalid host".
  */
 function splitApiDomain(normalized: string): { host: string; basePath: string } {
 	const slash = normalized.indexOf('/');
@@ -69,15 +58,11 @@ function splitApiDomain(normalized: string): { host: string; basePath: string } 
 
 	return {
 		host: normalized.slice(0, slash),
-		basePath: normalized.slice(slash), // keeps its leading '/'
+		basePath: normalized.slice(slash),
 	};
 }
 
-/**
- * Strip userinfo and any query or fragment from a domain before it goes into an
- * error message, so an embedded credential is never echoed back to the user or
- * to the logs.
- */
+/** Strip userinfo, query, and fragment so an error never echoes a credential. */
 function redactDomain(value: string): string {
 	return value
 		.replace(/\/\/[^/?#]*@/, '//')
@@ -86,12 +71,8 @@ function redactDomain(value: string): string {
 }
 
 /**
- * Resolve the effective base URL, e.g. `https://api.jotform.com` or
- * `https://subdomain.jotform.com/API`.
- *
- * This is the single source of truth for the domain selection, normalization
- * and validation in the node request path. The credential test builds its base
- * URL with a declarative expression that mirrors this normalization.
+ * Resolve the base URL for the node request path. The credential test mirrors this
+ * in a declarative expression.
  */
 export function getJotFormBaseUrl(
 	credentials: { apiDomain?: unknown; customApiDomain?: unknown },
@@ -99,9 +80,8 @@ export function getJotFormBaseUrl(
 ): string {
 	const raw = resolveApiDomain(credentials.apiDomain, credentials.customApiDomain).trim();
 
-	// Only http(s) is supported. A pasted `ftp://host/API` must fail here: the
-	// normalization below strips only `http(s)://`, so it would otherwise rewrite
-	// the value into a different host.
+	// Reject a non-http scheme. The normalization below strips only `http(s)://`,
+	// so it would otherwise rewrite `ftp://host/API` into a different host.
 	const scheme = SCHEME.exec(raw)?.[1];
 	if (scheme && !/^https?$/i.test(scheme)) {
 		throw new NodeOperationError(
@@ -119,8 +99,7 @@ export function getJotFormBaseUrl(
 		);
 	}
 
-	// A query string or fragment here would reach requestUrl's base-URL slot and
-	// surface as a generic UserError. Reject it up front with a clear message.
+	// requestUrl's base-URL slot rejects these with a generic error; fail earlier.
 	if (/[?#]/.test(domain)) {
 		throw new NodeOperationError(
 			node,
@@ -128,8 +107,7 @@ export function getJotFormBaseUrl(
 		);
 	}
 
-	// Userinfo (`host@attacker`) makes everything after "@" the request host, so
-	// the APIKEY header would go to that host. Reject it.
+	// Userinfo makes everything after "@" the request host, which would leak the key.
 	if (domain.includes('@')) {
 		throw new NodeOperationError(
 			node,
@@ -150,11 +128,8 @@ export function getJotFormBaseUrl(
 }
 
 /**
- * Ensure the resource is a rooted request path.
- *
- * Defensive: production callers always pass rooted paths (requestPath`/...`).
- * RequestPath's type does not enforce rootedness, and a future caller should not
- * silently build a malformed URL. The non-rooted test row covers this branch.
+ * Ensure the resource is rooted. Callers always pass rooted paths; this guards a
+ * future caller, because RequestPath does not enforce rootedness.
  */
 function toRootedResourcePath(resource: RequestPath): RequestPath {
 	return resource.value.startsWith('/') ? resource : requestPath`/${resource}`;
@@ -170,10 +145,7 @@ export async function jotformApiRequest(
 	const credentials = await this.getCredentials('jotFormApi');
 	const node = this.getNode();
 
-	// `requestUrl`'s leading hole is its base-URL slot: it parses the value into
-	// protocol + host + path and rejects anything malformed. That keeps the `/API`
-	// prefix in the path, where it belongs, instead of in the authority, where it
-	// would trigger "Invalid host".
+	// requestUrl's base-URL slot keeps the `/API` prefix in the path, not the authority.
 	const baseUrl = getJotFormBaseUrl(credentials, node);
 
 	const options: WithRequestTarget<IRequestOptions, 'uri'> = {

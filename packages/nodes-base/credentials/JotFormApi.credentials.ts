@@ -58,10 +58,8 @@ export class JotFormApi implements ICredentialType {
 	];
 
 	// Declarative credential tests cannot call `getJotFormBaseUrl`, so this mirrors
-	// its validation: trim, allow only http(s), normalize the slashes, and reject an
-	// empty domain, userinfo, and a query or fragment. An invalid domain returns an
-	// empty base URL, so the request fails instead of sending the API key to an
-	// unintended host.
+	// its validation. An invalid domain returns an empty base URL, so the request
+	// fails instead of sending the API key to an unintended host.
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL:
