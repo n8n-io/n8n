@@ -25,6 +25,7 @@ import {
 	WorkflowTagMappingRepository,
 } from '@n8n/db';
 import { GlobalConfig } from '@n8n/config';
+import { GLOBAL_MEMBER_SCOPES } from '@n8n/permissions';
 import { Container } from '@n8n/di';
 import type { InstanceSettings } from 'n8n-core';
 import { mkdtempSync } from 'node:fs';
@@ -51,7 +52,13 @@ import { packageManifestSchema } from '@/modules/n8n-packages/spec/manifest.sche
 import { TagService } from '@/services/tag.service';
 import { saveCredential } from '@test-integration/db/credentials';
 import { createTag } from '@test-integration/db/tags';
-import { createMember, createOwner, createOwnerWithApiKey } from '@test-integration/db/users';
+import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
+import {
+	createMember,
+	createOwner,
+	createOwnerWithApiKey,
+	createUser,
+} from '@test-integration/db/users';
 import { createFolder } from '@test-integration/db/folders';
 import { createVariable } from '@test-integration/db/variables';
 import { initNodeTypes, setupTestServer } from '@test-integration/utils';
@@ -84,7 +91,12 @@ const server = setupTestServer({
 	reuseServer: true,
 	endpointGroups: ['publicApi'],
 	modules: ['promotions', 'n8n-packages', 'data-table'],
-	enabledFeatures: ['feat:promotions', 'feat:projectRole:admin', 'feat:folders'],
+	enabledFeatures: [
+		'feat:promotions',
+		'feat:projectRole:admin',
+		'feat:folders',
+		'feat:customRoles',
+	],
 });
 
 let remoteRoot: string;
@@ -1012,7 +1024,66 @@ describe('resources in the preview', () => {
 		expect(changedResources(await loadPreview())).toEqual([]);
 	}, 60_000);
 
-	it('lets a project admin promote their project, stops Promote when the project or its branch changed after the preview, then pushes what the preview shows', async () => {
+	it('shows the branch value of a missing variable on Apply to a role that cannot list variables, and no value on Promote', async () => {
+		const owner = await createOwner();
+		const project = await createTeamProject('Config', owner);
+		const variables = Container.get(VariablesRepository);
+		const variable = await createVariable('API_URL', 'https://branch.example.com');
+		await Container.get(VariablesService).updateCache();
+		await buildWorkflowReferencingVariables({
+			name: 'Caller',
+			project,
+			variableNames: ['API_URL'],
+		});
+		const environments = await createInstanceEnvironments(['promote', 'apply']);
+		await exportPreviewBaseline(environments.promote, owner);
+		// Only the branch holds the variable, so Apply asks for it with the branch value.
+		await variables.delete(variable.id);
+		await Container.get(VariablesService).updateCache();
+		// The instance role decides, not the key: only a custom role lacks `variable:list`.
+		const instanceRole = await createCustomRoleWithScopeSlugs(
+			GLOBAL_MEMBER_SCOPES.filter((scope) => scope !== 'variable:list'),
+			{ roleType: 'global' },
+		);
+		const member = await createUser({ role: instanceRole });
+		const projectRole = await createCustomRoleWithScopeSlugs(
+			[
+				'promotions:promote',
+				'promotions:apply',
+				'project:read',
+				'project:export',
+				'folder:read',
+				'workflow:read',
+				'workflow:export',
+				'credential:read',
+			],
+			{ roleType: 'project' },
+		);
+		await linkUserToProject(member, project, projectRole.slug);
+		const agent = server.publicApiAgentWithCookie(member);
+		const detailsOf = async (direction: PromotionDirection) => {
+			const endpoint = `/promotions/projects/${project.id}/changes/${direction}`;
+			const { commitSha } = (await agent.get(endpoint).expect(200)).body;
+			const { body } = await agent
+				.post(`${endpoint}/details`)
+				.send({ commitSha, keys: ['variable:global:API_URL'] })
+				.expect(200);
+			return body.details;
+		};
+		const withoutValue = { name: 'API_URL', type: expect.any(String) };
+
+		expect(await detailsOf('apply')).toEqual([
+			expect.objectContaining({
+				before: null,
+				after: { ...withoutValue, value: 'https://branch.example.com' },
+			}),
+		]);
+		expect(await detailsOf('promote')).toEqual([
+			expect.objectContaining({ before: withoutValue, after: null, valueHidden: true }),
+		]);
+	}, 60_000);
+
+	it('lets a project admin and a custom project role promote their project, stops Promote when the project or its branch changed after the preview, then pushes what the preview shows', async () => {
 		const owner = await createOwner();
 		const project = await createTeamProject('Billing', owner);
 		const invoice = await createWorkflow({ name: 'Invoice', nodes: [], connections: {} }, project);
@@ -1057,12 +1128,40 @@ describe('resources in the preview', () => {
 		expect(await promoteShown(beforeEdit)).toEqual(stopped);
 		expect(await remoteHead()).toBe(head);
 
-		// Another promotion of the project lands on the branch during the review.
+		// A release manager promotes the project during the review. An instance admin created
+		// their role with the scopes that the role editor selects with promote.
 		const beforePromotion = await loadPreview();
-		await Container.get(PromotionsService).promoteProjectSelection(project.id, owner, {
-			workflowIds: [reminder.id],
-		});
+		const { body: releaseRole } = await server
+			.publicApiAgentWithCookie(owner)
+			.post('/roles')
+			.send({
+				displayName: 'Release manager',
+				roleType: 'project',
+				scopes: [
+					'promotions:promote',
+					'promotions:readReviews',
+					'project:export',
+					'workflow:export',
+					'folder:read',
+					'dataTable:read',
+				],
+			})
+			.expect(201);
+		const releaseManager = await createMember();
+		await linkUserToProject(releaseManager, project, releaseRole.slug);
+		const otherProject = await createTeamProject('Payroll', owner);
+		await linkUserToProject(releaseManager, otherProject, 'project:viewer');
+		const releaseAgent = server.publicApiAgentWithCookie(releaseManager);
+		const { revision } = (
+			await releaseAgent.get(`/promotions/projects/${project.id}/changes/promote`).expect(200)
+		).body;
+		await releaseAgent
+			.post(`/promotions/projects/${project.id}/promote`)
+			.send({ workflowIds: [reminder.id], expectedPreviewRevision: revision })
+			.expect(200);
+		await releaseAgent.get(`/promotions/projects/${otherProject.id}/changes/promote`).expect(403);
 		const promotedHead = await remoteHead();
+		expect(promotedHead).not.toBe(head);
 		expect(await promoteShown(beforePromotion)).toEqual(stopped);
 		expect(await remoteHead()).toBe(promotedHead);
 

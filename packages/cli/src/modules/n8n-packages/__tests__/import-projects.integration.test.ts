@@ -29,6 +29,7 @@ import { VariablesService } from '@/environments.ee/variables/variables.service.
 import { ConflictError, ForbiddenError, UnprocessableRequestError } from '@n8n/errors';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { createFolder } from '@test-integration/db/folders';
+import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
 import { createTag } from '@test-integration/db/tags';
 import { createMember, createOwner } from '@test-integration/db/users';
 import { createProjectVariable, createVariable } from '@test-integration/db/variables';
@@ -915,7 +916,7 @@ describe('project shell import', () => {
 		]);
 	});
 
-	it('reuses the project and folder and updates the workflow on re-import', async () => {
+	it('reuses the project and folder and updates the workflow on re-import, but writes nothing for a role that cannot write the workflows', async () => {
 		const pkg = async () =>
 			await buildEntityPackageBuffer({
 				projects: [
@@ -941,6 +942,72 @@ describe('project shell import', () => {
 		expect(await Container.get(ProjectRepository).count({ where: { type: 'team' } })).toBe(1);
 		expect(await Container.get(FolderRepository).countBy({ id: 'FA' })).toBe(1);
 		expect(await Container.get(WorkflowRepository).countBy({ id: localId })).toBe(1);
+
+		// The role can create the new folder, but not the workflows. The import stops before the
+		// folder write that the role allows.
+		const member = await createMember();
+		const role = await createCustomRoleWithScopeSlugs(
+			[
+				'project:read',
+				'project:update',
+				'workflow:read',
+				'workflow:import',
+				'folder:read',
+				'folder:create',
+			],
+			{ roleType: 'project' },
+		);
+		await linkUserToProject(member, (await findProject('P1'))!, role.slug);
+		const before = await findWorkflow(localId);
+		const changed = await buildEntityPackageBuffer({
+			projects: [
+				{ target: 'projects/brie', project: serializedProject({ id: 'P1', name: 'brie' }) },
+			],
+			folders: [
+				{ target: 'projects/brie/folders/a', folder: serializedFolder({ id: 'FA', name: 'a' }) },
+				{ target: 'projects/brie/folders/b', folder: serializedFolder({ id: 'FB', name: 'b' }) },
+			],
+			workflows: [
+				{
+					target: 'projects/brie/folders/a/workflows/wf',
+					workflow: serializedWorkflow({ id: 'WF', name: 'wf changed' }),
+				},
+				{
+					target: 'projects/brie/folders/b/workflows/new',
+					workflow: serializedWorkflow({ id: 'WN', name: 'new' }),
+				},
+			],
+		});
+
+		const blocked = importProjects(member, changed);
+
+		await expect(blocked).rejects.toBeInstanceOf(UnprocessableRequestError);
+		await expect(blocked).rejects.toMatchObject({
+			meta: {
+				issues: [
+					{
+						type: 'workflow-write-forbidden',
+						sourceWorkflowId: 'WN',
+						name: 'new',
+						projectId: 'P1',
+						action: 'create',
+					},
+					{
+						type: 'workflow-write-forbidden',
+						sourceWorkflowId: 'WF',
+						existingWorkflowId: localId,
+						name: 'wf',
+						projectId: 'P1',
+						action: 'update',
+					},
+				],
+			},
+		});
+		expect(await findFolder('FB')).toBeNull();
+		expect(await findWorkflow(localId)).toMatchObject({
+			name: 'wf',
+			versionId: before?.versionId,
+		});
 	});
 
 	it('resolves a project workflow credential in the project scope, blocking when it is missing', async () => {

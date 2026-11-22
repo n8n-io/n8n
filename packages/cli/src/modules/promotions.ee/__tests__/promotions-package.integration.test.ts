@@ -20,6 +20,7 @@ import {
 	testModules,
 } from '@n8n/backend-test-utils';
 import type { Person, Project } from '@n8n/db';
+import type { Scope } from '@n8n/permissions';
 import {
 	CredentialsRepository,
 	SharedCredentialsRepository,
@@ -512,8 +513,8 @@ async function setupProjectWithWorkflows(projectName: string, workflowNames: str
 }
 
 /** The Apply preview, read through the test's `service` and its working directory. */
-async function loadApplyPreview(projectId: string) {
-	const preview = await changeService().getPreview(owner, projectId, 'apply');
+async function loadApplyPreview(projectId: string, user: Person = owner) {
+	const preview = await changeService().getPreview(user, projectId, 'apply');
 	assert(preview.check && preview.commitSha && preview.revision);
 	return {
 		...preview,
@@ -2320,7 +2321,7 @@ describe('Apply moves and renames within a project', () => {
 		expect(await head()).toBe(before);
 	});
 
-	it('applies only the selected folders on project Apply, and the project details with every selection', async () => {
+	it('applies only the selected folders on project Apply, and the project details with every selection, and blocks the folder writes that a project role does not allow', async () => {
 		const { exportSource } = await connect();
 		const {
 			project,
@@ -2343,7 +2344,75 @@ describe('Apply moves and renames within a project', () => {
 		const projectName = async () =>
 			(await projectRepository.findOneByOrFail({ id: project.id })).name;
 
-		const result = await service.applyProjectSelection(project.id, owner, {
+		// A custom role that can apply and change workflows, but not create or change folders.
+		const member = await createMember();
+		const scopes: Scope[] = [
+			'promotions:apply',
+			'project:read',
+			'project:list',
+			'project:export',
+			'folder:read',
+			'folder:list',
+			'workflow:read',
+			'workflow:list',
+			'workflow:export',
+			'workflow:update',
+			'credential:read',
+			'credential:list',
+		];
+		const role = await createCustomRoleWithScopeSlugs(scopes, { roleType: 'project' });
+		await linkUserToProject(member, project, role.slug);
+		const forbiddenFolder = (id: string, reason: 'create' | 'update', consumers?: unknown[]) =>
+			expect.objectContaining({
+				kind: 'folder',
+				code: 'folder-forbidden',
+				id,
+				reason,
+				...(consumers ? { consumers } : {}),
+			});
+		// The workflows inside a blocked folder are blocked with it. An empty folder blocks nothing else.
+		const inFolder = (...workflowIds: string[]) =>
+			workflowIds.length === 0
+				? []
+				: [
+						expect.objectContaining({
+							workflows: workflowIds.map((id) => expect.objectContaining({ id })),
+						}),
+					];
+
+		const preview = await loadApplyPreview(project.id, member);
+
+		expect(preview.check.conflicts).toEqual(
+			expect.arrayContaining([
+				forbiddenFolder(reports.id, 'update', inFolder(report.id)),
+				forbiddenFolder(archive.id, 'update', inFolder(old.id)),
+				forbiddenFolder(drafts.id, 'create', inFolder()),
+			]),
+		);
+		const before = await snapshotApplyState();
+		expect(
+			await service.applyProjectSelection(project.id, member, {
+				folderIds: [archive.id, drafts.id],
+			}),
+		).toMatchObject({
+			status: 'blocked',
+			check: {
+				conflicts: expect.arrayContaining([
+					forbiddenFolder(archive.id, 'update'),
+					forbiddenFolder(drafts.id, 'create'),
+				]),
+			},
+		});
+		// Nothing is written, also not the project details that come first.
+		expect(await snapshotApplyState()).toEqual(before);
+
+		// With `folder:update`, a selection that only renames a folder applies.
+		const canRename = await createCustomRoleWithScopeSlugs([...scopes, 'folder:update'], {
+			roleType: 'project',
+		});
+		await linkUserToProject(member, project, canRename.slug);
+
+		const result = await service.applyProjectSelection(project.id, member, {
 			workflowIds: [report.id],
 		});
 

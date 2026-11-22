@@ -80,6 +80,12 @@ export function scopeCheck(check: ApplyCheckResult, graph: SelectionGraph): Appl
 		missingBindings: scope(check.missingBindings),
 		accessRequirements: scope(check.accessRequirements),
 		conflicts: check.conflicts.flatMap((conflict): PromotionBindingConflict[] => {
+			// An empty folder has no consumers, but its own row still shows the blocker.
+			if (conflict.code === 'folder-forbidden') {
+				const [scoped] = scope([conflict]);
+				if (scoped) return [scoped];
+				return graph.resources.has(`folder:${conflict.id}`) ? [{ ...conflict, consumers: [] }] : [];
+			}
 			if ('consumers' in conflict) return scope([conflict]);
 			if (conflict.code === 'project-not-team') {
 				return conflict.workflows.some(({ id }) => listed(id)) ? [conflict] : [];
@@ -137,6 +143,12 @@ export function listBlockers(
 				kind: 'conflict',
 				resourceKey: `project:${conflict.project.id}`,
 				workflowKeys: conflict.workflows.map(({ id }) => workflowKey(id)),
+			});
+		} else if (conflict.code === 'folder-forbidden') {
+			blockers.push({
+				kind: 'conflict',
+				resourceKey: `folder:${conflict.id}`,
+				workflowKeys: consumerKeys(conflict.consumers),
 			});
 		} else if (conflict.kind === 'credential') {
 			blockers.push({

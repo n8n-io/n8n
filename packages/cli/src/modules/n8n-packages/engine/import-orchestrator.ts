@@ -453,6 +453,7 @@ export class ImportOrchestrator {
 		const workflowPlan = await this.workflowImporter.plan(context, workflows, options, {
 			checkRootPlacement: input.checkRootPlacement,
 			layoutConflictPolicy: options.layoutConflictPolicy,
+			projectPendingCreation: input.projectPendingCreation,
 		});
 		// Tags plan after workflows: only tags referenced by non-skipped workflows gate or create.
 		const activeWorkflows = workflowPlan.items.filter((item) => item.action !== 'skip');
@@ -461,6 +462,7 @@ export class ImportOrchestrator {
 			...context,
 			folderConflictPolicy: options.folderConflictPolicy,
 			layoutConflictPolicy: options.layoutConflictPolicy,
+			projectPendingCreation: input.projectPendingCreation,
 		};
 		const folderPlan = await this.folderImporter.plan(folderContext, folders);
 
@@ -659,6 +661,7 @@ export class ImportOrchestrator {
 
 	private collectBlockingIssues({
 		input: {
+			context,
 			credentialRequest,
 			dataTableRequest,
 			variableRequest,
@@ -690,9 +693,13 @@ export class ImportOrchestrator {
 			...workflowPlan.archiveForbidden.map(
 				(failure): BlockingIssue => ({ type: 'workflow-archive-forbidden', ...failure }),
 			),
+			...workflowPlan.writeForbidden.map(
+				(failure): BlockingIssue => ({ type: 'workflow-write-forbidden', ...failure }),
+			),
 			...folderPlan.conflicts.map(
 				(conflict): BlockingIssue => ({ type: 'folder-conflict', ...conflict }),
 			),
+			...folderWriteForbidden(folderPlan, workflowPlan, context),
 			...removalPlan.failures.map(
 				(failure): BlockingIssue => ({ type: 'workflow-removal-forbidden', ...failure }),
 			),
@@ -914,6 +921,43 @@ function withOneFailurePerPolicyCheck(issues: BlockingIssue[]): BlockingIssue[] 
 		failedPoints.add(issue.point);
 		return true;
 	});
+}
+
+/**
+ * Each folder write that the role does not allow, with the workflows that the import writes
+ * into that folder or into a folder below it.
+ */
+function folderWriteForbidden(
+	folderPlan: FolderImportPlan,
+	workflowPlan: WorkflowImportPlan,
+	context: ImportContext,
+): BlockingIssue[] {
+	if (folderPlan.forbidden.length === 0) return [];
+	const parents = new Map(
+		folderPlan.items.map(({ sourceFolderId, targetParentFolderId }) => [
+			sourceFolderId,
+			targetParentFolderId,
+		]),
+	);
+	const consumersByFolder = new Map<string, PackageRequirementConsumer[]>();
+	for (const item of workflowPlan.items) {
+		if (item.action === 'skip') continue;
+		// The folder plan rejects cycles, so this walk ends at the project root.
+		for (
+			let folderId = item.parentFolderId ?? context.folderId;
+			folderId !== null;
+			folderId = parents.get(folderId) ?? null
+		) {
+			const consumers = consumersByFolder.get(folderId) ?? [];
+			consumers.push({ kind: 'workflow', id: item.sourceWorkflowId });
+			consumersByFolder.set(folderId, consumers);
+		}
+	}
+	return folderPlan.forbidden.map((failure) => ({
+		type: 'folder-write-forbidden',
+		...failure,
+		usedBy: consumersByFolder.get(failure.sourceFolderId) ?? [],
+	}));
 }
 
 function variableConsumers(

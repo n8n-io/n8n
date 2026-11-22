@@ -126,8 +126,9 @@ export class PromotionChangeService {
 	 * The file content of each requested resource on both sides, for the change cards.
 	 * The branch side is read at the commit of the summary. The instance side is read now,
 	 * so its blob SHA tells the caller whether the resource changed after the summary.
-	 * Variable values are left out unless the user's role can list variables. The scopes of an
-	 * API key do not matter, as for every promotion read.
+	 * Promote leaves out variable values unless the user's role can list variables. Apply shows
+	 * them: the branch holds them as plain text, and the instance side holds only the variables
+	 * that the user can list. The scopes of an API key do not matter, as for every promotion read.
 	 */
 	async getDetails(
 		user: User,
@@ -136,7 +137,7 @@ export class PromotionChangeService {
 		{ commitSha, keys }: PromotionResourceDetailsRequestDto,
 	): Promise<PromotionResourceDetails> {
 		await this.assertCanPreview(user, projectId, direction);
-		const canSeeVariableValues = hasGlobalScope(user, 'variable:list');
+		const canSeeVariableValues = direction === 'apply' || hasGlobalScope(user, 'variable:list');
 		const requestedIds = new Set(keys.map((key) => key.slice(key.indexOf(':') + 1)));
 		const readBranch = async (paths: readonly string[]) =>
 			commitSha === null

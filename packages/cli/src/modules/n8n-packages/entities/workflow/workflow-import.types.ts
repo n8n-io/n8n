@@ -90,6 +90,16 @@ export interface WorkflowArchiveForbidden {
 	transition: WorkflowArchiveTransition;
 }
 
+/** A workflow that the import must create or update, but the user's project role does not allow it. */
+export interface WorkflowWriteForbidden {
+	sourceWorkflowId: string;
+	/** On `update`: the matched workflow on this instance. */
+	existingWorkflowId?: string;
+	name: string;
+	projectId: string;
+	action: 'create' | 'update';
+}
+
 /**
  * The planned actions for a batch of workflows, plus any conflicts that abort
  * the import before anything is written.
@@ -101,6 +111,7 @@ export interface WorkflowImportPlan {
 	idConflicts: WorkflowIdConflict[];
 	folderConflicts: WorkflowFolderConflict[];
 	archiveForbidden: WorkflowArchiveForbidden[];
+	writeForbidden: WorkflowWriteForbidden[];
 }
 
 export interface WorkflowImportOutcome {

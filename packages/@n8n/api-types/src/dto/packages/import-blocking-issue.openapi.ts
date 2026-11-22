@@ -63,6 +63,22 @@ export const workflowArchiveForbiddenIssueOpenApi: ZodOpenAPIMetadata = {
 		'time so nothing is written.',
 };
 
+export const workflowWriteForbiddenFieldDocs = {
+	existingWorkflowId: { description: 'For `update`: the matched workflow on this instance.' },
+	projectId: { description: 'Project that the import writes the workflow into.' },
+	action: {
+		description:
+			'The write that the project role does not allow: `create` needs `workflow:create`, ' +
+			'and `update` needs `workflow:update`.',
+	},
+} as const satisfies Record<string, ZodOpenAPIMetadata>;
+
+export const workflowWriteForbiddenIssueOpenApi: ZodOpenAPIMetadata = {
+	description:
+		"A workflow that the import must create or update, but the caller's role in the target " +
+		'project does not allow it. Reported at plan time, so nothing is written.',
+};
+
 export const credentialUnresolvedFieldDocs = {
 	reason: {
 		description:
@@ -199,6 +215,24 @@ export const folderRemovalForbiddenIssueOpenApi: ZodOpenAPIMetadata = {
 		'define it and reconciliation leaves it empty — but the caller lacks `folder:delete` on ' +
 		'the target project. Reported instead of removing a subset, which would leave the project ' +
 		'matching neither the package nor its previous state.',
+};
+
+export const folderWriteForbiddenFieldDocs = {
+	projectId: { description: 'Project that the import writes the folder into.' },
+	action: {
+		description:
+			'The write that the project role does not allow: `create` needs `folder:create`, and ' +
+			'`update` (a move or a rename) needs `folder:update`.',
+	},
+	usedBy: {
+		description: 'The workflows that the import writes into this folder or a folder below it.',
+	},
+} as const satisfies Record<string, ZodOpenAPIMetadata>;
+
+export const folderWriteForbiddenIssueOpenApi: ZodOpenAPIMetadata = {
+	description:
+		"A folder that the import must create, move or rename, but the caller's role in the " +
+		'target project does not allow it. Reported at plan time, so nothing is written.',
 };
 
 export const dataTableUnresolvedFieldDocs = {

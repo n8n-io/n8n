@@ -78,6 +78,13 @@ function formatIssue(issue: unknown): string {
 	if (it.type === 'folder-removal-forbidden') {
 		return `folder "${it.name}" (${it.folderId}) in project ${it.projectId} is not in the package and would be removed, but you lack permission to remove it`;
 	}
+	if (it.type === 'workflow-write-forbidden') {
+		return `workflow "${it.name}" (source ${it.sourceWorkflowId}) in project ${it.projectId} needs workflow:${it.action}, which your project role does not have`;
+	}
+	if (it.type === 'folder-write-forbidden') {
+		const usedBy = formatConsumers(it.usedBy);
+		return `folder "${it.name}" (source ${it.sourceFolderId}) in project ${it.projectId} needs folder:${it.action}, which your project role does not have${usedBy ? `, used by ${usedBy}` : ''}`;
+	}
 	if (it.type === 'credential-unresolved') {
 		const usedBy = formatConsumers(it.usedBy);
 		return `credential ${it.sourceId} unresolved (${it.kind}), used by ${usedBy}`;

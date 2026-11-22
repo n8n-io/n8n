@@ -325,7 +325,17 @@ function describeIssue(
 			);
 		case 'workflow-conflict':
 		case 'workflow-archive-forbidden':
+		case 'workflow-write-forbidden':
 			return workflowConflict('workflow-forbidden', issue.type, ofWorkflow(issue.sourceWorkflowId));
+		case 'folder-write-forbidden':
+			return {
+				kind: 'folder',
+				code: 'folder-forbidden',
+				id: issue.sourceFolderId,
+				name: issue.name,
+				reason: issue.action,
+				consumers: consumersOfIds(issue.usedBy),
+			};
 		case 'credential-update-forbidden':
 			return workflowConflict('workflow-forbidden', issue.type, consumersOfIds(issue.usedBy));
 		case 'credential-policy-violation':

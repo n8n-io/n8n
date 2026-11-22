@@ -259,6 +259,35 @@ oneOf:
       type:
         type: string
         enum:
+          - workflow-write-forbidden
+      sourceWorkflowId:
+        type: string
+      existingWorkflowId:
+        type: string
+        description: 'For `update`: the matched workflow on this instance.'
+      name:
+        type: string
+      projectId:
+        type: string
+        description: Project that the import writes the workflow into.
+      action:
+        type: string
+        enum:
+          - create
+          - update
+        description: 'The write that the project role does not allow: `create` needs `workflow:create`, and `update` needs `workflow:update`.'
+    required:
+      - type
+      - sourceWorkflowId
+      - name
+      - projectId
+      - action
+    description: A workflow that the import must create or update, but the caller's role in the target project does not allow it. Reported at plan time, so nothing is written.
+  - type: object
+    properties:
+      type:
+        type: string
+        enum:
           - credential-unresolved
       kind:
         type: string
@@ -477,6 +506,38 @@ oneOf:
       - name
       - projectId
     description: A folder that `folderConflictPolicy=overwrite` would delete — the package does not define it and reconciliation leaves it empty — but the caller lacks `folder:delete` on the target project. Reported instead of removing a subset, which would leave the project matching neither the package nor its previous state.
+  - type: object
+    properties:
+      type:
+        type: string
+        enum:
+          - folder-write-forbidden
+      sourceFolderId:
+        type: string
+      name:
+        type: string
+      projectId:
+        type: string
+        description: Project that the import writes the folder into.
+      action:
+        type: string
+        enum:
+          - create
+          - update
+        description: 'The write that the project role does not allow: `create` needs `folder:create`, and `update` (a move or a rename) needs `folder:update`.'
+      usedBy:
+        type: array
+        items:
+          $ref: packageRequirementConsumer.generated.yml
+        description: The workflows that the import writes into this folder or a folder below it.
+    required:
+      - type
+      - sourceFolderId
+      - name
+      - projectId
+      - action
+      - usedBy
+    description: A folder that the import must create, move or rename, but the caller's role in the target project does not allow it. Reported at plan time, so nothing is written.
   - type: object
     properties:
       type:

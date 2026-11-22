@@ -3,6 +3,7 @@ import type { FolderResourceType } from '@n8n/api-types';
 import type {
 	FolderConflict,
 	FolderConflictPolicy,
+	FolderWriteForbidden,
 	ImportContext,
 	LayoutConflictPolicy,
 } from '../../n8n-packages.types';
@@ -17,6 +18,8 @@ export interface PreparedFolder {
 export interface FolderImportContext extends ImportContext {
 	folderConflictPolicy: FolderConflictPolicy;
 	layoutConflictPolicy?: LayoutConflictPolicy;
+	/** The import creates the project, and its creator becomes project admin. */
+	projectPendingCreation?: boolean;
 }
 
 export type FolderPlannedAction = 'create' | 'skip' | 'update';
@@ -38,4 +41,5 @@ export interface FolderPlanItem {
 export interface FolderImportPlan {
 	items: FolderPlanItem[];
 	conflicts: FolderConflict[];
+	forbidden: FolderWriteForbidden[];
 }

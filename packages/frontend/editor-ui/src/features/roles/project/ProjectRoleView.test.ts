@@ -5,6 +5,7 @@ import { waitFor, type RenderResult } from '@testing-library/vue';
 import { VIEWS } from '@/app/constants';
 import { useRolesStore } from '@n8n/stores/roles.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import ProjectRoleView from './ProjectRoleView.vue';
 
@@ -713,6 +714,38 @@ describe('ProjectRoleView', () => {
 
 			await waitFor(() => expect(getByTestId('scope-checkbox-app:read')).toBeInTheDocument());
 			expect(getByTestId('scope-checkbox-app:create')).toBeInTheDocument();
+		});
+	});
+
+	describe('Promotion scopes', () => {
+		it('selects the scopes that a promotion operation reads the project with, drops the operation without them, and saves the role', async () => {
+			vi.mocked(settingsStore.isModuleActive).mockImplementation((name) => name === 'promotions');
+			mockedStore(useSourceControlStore).preferences.environmentsVersion = 'v2';
+			rolesStore.createRole.mockResolvedValueOnce({ ...mockExistingRole, slug: 'apply-role' });
+			const { container, getByRole, getByTestId } = renderComponent();
+
+			await fillForm(container, 'Release manager');
+			await userEvent.click(getByTestId('scope-checkbox-promotions:promote'));
+			await userEvent.click(getByTestId('scope-checkbox-promotions:apply'));
+			// Both operations read folders, so clearing that scope clears both.
+			await userEvent.click(getByTestId('scope-checkbox-folder:read'));
+			await userEvent.click(getByTestId('scope-checkbox-promotions:apply'));
+			await userEvent.click(getByRole('button', { name: 'Create' }));
+
+			await waitFor(() => expect(rolesStore.createRole).toHaveBeenCalled());
+			const { scopes } = rolesStore.createRole.mock.calls[0][0];
+			expect(scopes).toEqual(
+				expect.arrayContaining([
+					'promotions:apply',
+					'project:read',
+					'project:export',
+					'workflow:export',
+					'folder:read',
+					'dataTable:read',
+					'credential:read',
+				]),
+			);
+			expect(scopes).not.toContain('promotions:promote');
 		});
 	});
 

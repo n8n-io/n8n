@@ -1,4 +1,4 @@
-import { WorkflowEntity, type OperationContext, type User } from '@n8n/db';
+import { WorkflowEntity, type OperationContext, type Project, type User } from '@n8n/db';
 import type { SecurityContext } from '@n8n/permissions';
 import { jsonParse } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
@@ -8,6 +8,7 @@ import type {
 	WorkflowCreationService,
 } from '@/workflows/workflow-creation.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import type { ProjectService } from '@/services/project.service.ee';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
 import type { PackageImportBindings } from '../../../n8n-packages.types';
@@ -45,6 +46,14 @@ const context = {
 	publicApi: false,
 } as WorkflowImportContext;
 
+// The user's project role allows every workflow write unless a test says otherwise.
+const projectService = mock<ProjectService>();
+projectService.getProjectWithScope.mockResolvedValue(mock<Project>());
+const allowWrites = (finder = mock<WorkflowFinderService>()) => {
+	finder.findWorkflowIdsWithScopeForUser.mockImplementation(async (ids) => new Set(ids));
+	return finder;
+};
+
 describe('WorkflowImporter.apply', () => {
 	it('prepares one batch context and passes it only to created workflows', async () => {
 		const prepareBatchContext = vi.fn<WorkflowCreationService['prepareBatchContext']>();
@@ -60,6 +69,7 @@ describe('WorkflowImporter.apply', () => {
 			workflowCreationService,
 			workflowService,
 			mock<WorkflowFinderService>(),
+			projectService,
 		);
 		const batchContext = mock<WorkflowCreateBatchContext>();
 		const createEntity = makeWorkflow('source-create');
@@ -108,6 +118,7 @@ describe('WorkflowImporter.apply', () => {
 			idConflicts: [],
 			folderConflicts: [],
 			archiveForbidden: [],
+			writeForbidden: [],
 		};
 		prepareBatchContext.mockResolvedValue(batchContext);
 		createWorkflow.mockResolvedValue(created);
@@ -152,6 +163,7 @@ describe('WorkflowImporter.apply', () => {
 			workflowCreationService,
 			workflowService,
 			mock<WorkflowFinderService>(),
+			projectService,
 		);
 		const existing = makeWorkflow('existing');
 		const plan: WorkflowImportPlan = {
@@ -173,6 +185,7 @@ describe('WorkflowImporter.apply', () => {
 			idConflicts: [],
 			folderConflicts: [],
 			archiveForbidden: [],
+			writeForbidden: [],
 		};
 		updateWorkflow.mockResolvedValue(existing);
 
@@ -193,6 +206,7 @@ describe('WorkflowImporter.apply', () => {
 			workflowCreationService,
 			mock<WorkflowService>(),
 			mock<WorkflowFinderService>(),
+			projectService,
 		);
 		const source = makeWorkflow('source');
 		const deepestWorkflow = JSON.stringify({
@@ -244,6 +258,7 @@ describe('WorkflowImporter.apply', () => {
 			idConflicts: [],
 			folderConflicts: [],
 			archiveForbidden: [],
+			writeForbidden: [],
 		};
 		const batchContext = mock<WorkflowCreateBatchContext>();
 		prepareBatchContext.mockResolvedValue(batchContext);
@@ -275,6 +290,7 @@ describe('WorkflowImporter.apply', () => {
 			mock<WorkflowCreationService>(),
 			workflowService,
 			mock<WorkflowFinderService>(),
+			projectService,
 		);
 		const existing = Object.assign(makeWorkflow('existing'), { isArchived: true });
 		const entity = Object.assign(makeWorkflow('source'), { isArchived: true, name: 'New name' });
@@ -301,6 +317,7 @@ describe('WorkflowImporter.apply', () => {
 			idConflicts: [],
 			folderConflicts: [],
 			archiveForbidden: [],
+			writeForbidden: [],
 		};
 		update.mockResolvedValue(updated);
 
@@ -337,6 +354,7 @@ describe('WorkflowImporter.apply', () => {
 				mock<WorkflowCreationService>(),
 				workflowService,
 				mock<WorkflowFinderService>(),
+				projectService,
 			);
 			const archive = transition === 'archive';
 			const existing = Object.assign(makeWorkflow('existing'), { isArchived: !archive });
@@ -360,6 +378,7 @@ describe('WorkflowImporter.apply', () => {
 				idConflicts: [],
 				folderConflicts: [],
 				archiveForbidden: [],
+				writeForbidden: [],
 			};
 			update.mockResolvedValue(existing);
 			transitionArchive.mockResolvedValue(transitioned);
@@ -383,6 +402,7 @@ describe('WorkflowImporter.apply', () => {
 			mock<WorkflowCreationService>(),
 			workflowService,
 			mock<WorkflowFinderService>(),
+			projectService,
 		);
 		const existing = Object.assign(makeWorkflow('existing'), { isArchived: true });
 		const plan: WorkflowImportPlan = {
@@ -404,6 +424,7 @@ describe('WorkflowImporter.apply', () => {
 			idConflicts: [],
 			folderConflicts: [],
 			archiveForbidden: [],
+			writeForbidden: [],
 		};
 		update.mockRejectedValue(new Error('Update failed'));
 
@@ -415,12 +436,13 @@ describe('WorkflowImporter.apply', () => {
 describe('WorkflowImporter.plan', () => {
 	it('plans a content update when both workflows are archived', async () => {
 		const matchService = mock<WorkflowImportMatchService>();
-		const finder = mock<WorkflowFinderService>();
+		const finder = allowWrites();
 		const importer = new WorkflowImporter(
 			matchService,
 			mock<WorkflowCreationService>(),
 			mock<WorkflowService>(),
 			finder,
+			projectService,
 		);
 		const existing = Object.assign(makeWorkflow('existing'), { isArchived: true });
 		const entity = Object.assign(makeWorkflow('source'), { isArchived: true });
@@ -451,7 +473,11 @@ describe('WorkflowImporter.plan', () => {
 		);
 
 		expect(plan.items[0]).toMatchObject({ action: 'update', archiveTransition: null });
-		expect(finder.findWorkflowIdsWithScopeForUser).not.toHaveBeenCalled();
+		expect(finder.findWorkflowIdsWithScopeForUser).not.toHaveBeenCalledWith(
+			expect.anything(),
+			expect.anything(),
+			['workflow:delete'],
+		);
 	});
 
 	it('reports an archive transition when the user cannot delete the workflow', async () => {
@@ -462,6 +488,7 @@ describe('WorkflowImporter.plan', () => {
 			mock<WorkflowCreationService>(),
 			mock<WorkflowService>(),
 			finder,
+			projectService,
 		);
 		const existing = Object.assign(makeWorkflow('existing'), { isArchived: false });
 		const entity = Object.assign(makeWorkflow('source'), { isArchived: true });
@@ -502,6 +529,60 @@ describe('WorkflowImporter.plan', () => {
 			},
 		]);
 	});
+
+	it('reports each workflow create and update that the project role does not allow', async () => {
+		const matchService = mock<WorkflowImportMatchService>();
+		const finder = mock<WorkflowFinderService>();
+		finder.findWorkflowIdsWithScopeForUser.mockResolvedValue(new Set());
+		const denyingProjectService = mock<ProjectService>();
+		denyingProjectService.getProjectWithScope.mockResolvedValue(null);
+		const importer = new WorkflowImporter(
+			matchService,
+			mock<WorkflowCreationService>(),
+			mock<WorkflowService>(),
+			finder,
+			denyingProjectService,
+		);
+		matchService.findBySourceWorkflowIds.mockResolvedValue({
+			matches: new Map([['changed', makeWorkflow('existing')]]),
+			lineageConflicts: [],
+		});
+		matchService.findOwningProjectsByWorkflowId.mockResolvedValue(new Map());
+		const prepared = (sourceWorkflowId: string) => ({
+			sourceWorkflowId,
+			entity: makeWorkflow(sourceWorkflowId),
+			parentFolderId: null,
+			sourcePublished: false,
+			sourceArchived: false,
+		});
+
+		const plan = await importer.plan(
+			context,
+			[prepared('new'), prepared('changed')],
+			{
+				conflictPolicy: 'new-version',
+				idPolicy: 'source',
+				publishingPolicy: 'preserve-published-state',
+				missingNodeTypeMode: 'fail',
+			},
+			{ checkRootPlacement: false },
+		);
+
+		expect(plan.writeForbidden).toEqual([
+			{ sourceWorkflowId: 'new', name: 'new', projectId: 'project-1', action: 'create' },
+			{
+				sourceWorkflowId: 'changed',
+				existingWorkflowId: 'existing',
+				name: 'existing',
+				projectId: 'project-1',
+				action: 'update',
+			},
+		]);
+		expect(finder.findWorkflowIdsWithScopeForUser).toHaveBeenCalledWith(['existing'], user, [
+			'workflow:update',
+		]);
+	});
+
 	describe('placement of a matched workflow', () => {
 		const options = {
 			conflictPolicy: 'new-version',
@@ -520,7 +601,8 @@ describe('WorkflowImporter.plan', () => {
 				matchService,
 				mock<WorkflowCreationService>(),
 				mock<WorkflowService>(),
-				mock<WorkflowFinderService>(),
+				allowWrites(),
+				projectService,
 			);
 			const existing = Object.assign(makeWorkflow('existing'), {
 				parentFolder: { id: 'old-folder' },

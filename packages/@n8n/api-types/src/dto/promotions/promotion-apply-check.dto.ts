@@ -226,6 +226,18 @@ export const promotionBindingConflictSchema = z.discriminatedUnion('code', [
 		reason: z.string().optional(),
 		consumers: consumersSchema,
 	}),
+	/**
+	 * The project role cannot create, move or rename this folder. `consumers` lists the workflows
+	 * that the import writes into it, and is empty for an empty folder.
+	 */
+	z.object({
+		kind: z.literal('folder'),
+		code: z.literal('folder-forbidden'),
+		id: sourceId,
+		name: z.string(),
+		reason: z.enum(['create', 'update']),
+		consumers: z.array(promotionBindingConsumerSchema),
+	}),
 	z.object({
 		kind: z.literal('data-table'),
 		code: z.literal('data-table-conflict'),
