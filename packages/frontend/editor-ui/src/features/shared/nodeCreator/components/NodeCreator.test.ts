@@ -82,7 +82,7 @@ vi.mock('@/features/ai/assistant/chatPanel.store', () => ({
 
 const mockSettings = vi.hoisted(() => ({
 	isCanvasOnly: false,
-	isModuleActive: vi.fn(() => false),
+	isModuleActive: vi.fn((_name: string) => false),
 }));
 vi.mock('@n8n/stores/settings.store', () => ({
 	useSettingsStore: vi.fn(() => mockSettings),
@@ -131,8 +131,16 @@ describe('NodeCreator', () => {
 		expect(customActionSelection.preload).toHaveBeenCalledOnce();
 	});
 
-	it('loads no custom actions when it is closed or the module is off', () => {
+	it('loads no custom actions when the module is off', () => {
 		renderComponent({ props: { active: true } });
+		renderComponent({ props: { active: false } });
+
+		expect(customActionSelection.preload).not.toHaveBeenCalled();
+	});
+
+	it('loads no custom actions when it is closed and the module is on', () => {
+		mockSettings.isModuleActive.mockImplementation((name: string) => name === 'custom-nodes');
+
 		renderComponent({ props: { active: false } });
 
 		expect(customActionSelection.preload).not.toHaveBeenCalled();
