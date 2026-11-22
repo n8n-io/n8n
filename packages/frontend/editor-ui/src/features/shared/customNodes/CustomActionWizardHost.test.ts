@@ -6,6 +6,8 @@ import userEvent from '@testing-library/user-event';
 import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
 import { useClipboard } from '@n8n/composables/useClipboard';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useCustomNodesStore } from '@n8n/frontend-module-custom-nodes';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 
 import { createComponentRenderer } from '@/__tests__/render';
 import { useKeybindings } from '@/app/composables/useKeybindings';
@@ -46,6 +48,43 @@ const mountCanvas = (onDelete: () => void, onPaste: (text: string) => void) =>
 			},
 		}),
 	);
+
+describe('CustomActionWizardHost node types refresh', () => {
+	const setupRefresh = (moduleActive: boolean) => {
+		const view = setup(moduleActive);
+		const nodeTypesStore = useNodeTypesStore();
+		const getNodeTypes = vi.spyOn(nodeTypesStore, 'getNodeTypes').mockResolvedValue();
+		return { view, getNodeTypes, customNodesStore: useCustomNodesStore() };
+	};
+
+	it('reloads the node types when the module store counts a write', async () => {
+		const { getNodeTypes, customNodesStore } = setupRefresh(true);
+
+		customNodesStore.definitionsRevision += 1;
+		await nextTick();
+
+		expect(getNodeTypes).toHaveBeenCalledTimes(1);
+	});
+
+	it('does not fail when the reload of the node types fails', async () => {
+		const { getNodeTypes, customNodesStore } = setupRefresh(true);
+		getNodeTypes.mockRejectedValue(new Error('offline'));
+
+		customNodesStore.definitionsRevision += 1;
+		await nextTick();
+
+		expect(getNodeTypes).toHaveBeenCalledTimes(1);
+	});
+
+	it('does nothing with the module off', async () => {
+		const { getNodeTypes, customNodesStore } = setupRefresh(false);
+
+		customNodesStore.definitionsRevision += 1;
+		await nextTick();
+
+		expect(getNodeTypes).not.toHaveBeenCalled();
+	});
+});
 
 describe('CustomActionWizardHost', () => {
 	beforeEach(() => {

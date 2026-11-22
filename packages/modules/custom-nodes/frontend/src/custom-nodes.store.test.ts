@@ -181,6 +181,23 @@ describe('custom-nodes.store', () => {
 			expect(store.nodes).toEqual([node]);
 		});
 
+		it.each(cases)('%s counts one revision', async (_name, run, mock) => {
+			mock();
+			expect(store.definitionsRevision).toBe(0);
+
+			await run();
+
+			expect(store.definitionsRevision).toBe(1);
+		});
+
+		it('does not count a revision when the write fails', async () => {
+			vi.spyOn(api, 'deleteCustomNode').mockRejectedValue(new Error('nope'));
+
+			await expect(store.deleteNode('node-1')).rejects.toThrow('nope');
+
+			expect(store.definitionsRevision).toBe(0);
+		});
+
 		it('does not refetch when the write fails', async () => {
 			vi.spyOn(api, 'deleteCustomNode').mockRejectedValue(new Error('nope'));
 

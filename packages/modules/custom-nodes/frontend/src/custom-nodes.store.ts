@@ -39,6 +39,8 @@ export const useCustomNodesStore = defineStore(CUSTOM_NODES_STORE_ID, () => {
 	const parentActions = ref<ParentCustomActionResponse[]>([]);
 	const parents = ref<CustomActionParent[]>([]);
 	const loading = ref(false);
+	/** Counts the successful writes. The editor watches it to reload the node types. */
+	const definitionsRevision = ref(0);
 	// Not reactive: a computed that calls `ensureLoaded` must not re-run when a load starts or ends.
 	let loaded = false;
 	// The newest load. Loads run one after the other, so an older response never replaces a newer one.
@@ -143,6 +145,7 @@ export const useCustomNodesStore = defineStore(CUSTOM_NODES_STORE_ID, () => {
 	/** Runs a write, then reloads the lists so they show the new state. */
 	async function write<T>(operation: () => Promise<T>): Promise<T> {
 		const result = await operation();
+		definitionsRevision.value += 1;
 		await fetchAll();
 		return result;
 	}
@@ -213,6 +216,7 @@ export const useCustomNodesStore = defineStore(CUSTOM_NODES_STORE_ID, () => {
 		parentActions,
 		parents,
 		loading,
+		definitionsRevision,
 		fetchAll,
 		ensureLoaded,
 		whenLoaded,
