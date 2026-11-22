@@ -3279,6 +3279,11 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	polling?: true | undefined;
 	supportsCORS?: true | undefined;
 	requestDefaults?: DeclarativeRestApiSettings.HttpRequestOptions;
+	/**
+	 * The endpoint of this node comes from a definition that a user wrote, not from the node author.
+	 * Domain restrictions of a credential apply without additions.
+	 */
+	userDefinedEndpoint?: true;
 	requestOperations?: IN8nRequestOperations;
 	hooks?: {
 		[key: string]: INodeHookDescription[] | undefined;

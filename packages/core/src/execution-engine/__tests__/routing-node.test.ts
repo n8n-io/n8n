@@ -2798,9 +2798,11 @@ describe('RoutingNode', () => {
 			baseURL: string | null = 'https://api.example.com',
 			routedUrl = '/path',
 			propertyBaseURL?: string,
+			userDefinedEndpoint?: true,
 		): INodeType => {
 			const routingNodeType = nodeTypes.getByNameAndVersion(baseNode.type);
 			routingNodeType.description = {
+				...(userDefinedEndpoint ? { userDefinedEndpoint } : {}),
 				credentials: [{ name: 'testCredential', required: true }],
 				requestDefaults: { baseURL: baseURL ?? undefined },
 				properties: [
@@ -2838,10 +2840,16 @@ describe('RoutingNode', () => {
 				routedUrl?: string;
 				nodeParameters?: INodeParameters;
 				propertyBaseURL?: string;
+				userDefinedEndpoint?: true;
 			} = {},
 		) => {
 			const credentialData = data as unknown as ICredentialDataDecryptedObject;
-			const nodeType = buildNodeType(options.baseURL, options.routedUrl, options.propertyBaseURL);
+			const nodeType = buildNodeType(
+				options.baseURL,
+				options.routedUrl,
+				options.propertyBaseURL,
+				options.userDefinedEndpoint,
+			);
 			const node: INode = { ...baseNode, parameters: options.nodeParameters ?? {} };
 			const workflow = new Workflow({
 				nodes: [node],
@@ -3207,6 +3215,103 @@ describe('RoutingNode', () => {
 
 				const requestOptions = getRequestOptions(result);
 				expect(requestOptions.allowedDomains).toBeUndefined();
+			});
+		});
+
+		describe('when the description declares a user-defined endpoint', () => {
+			const baseURL = 'https://api.custom.test';
+
+			// Characterization of the built-in behavior: keep it as a regression guard.
+			test("sends the request for a built-in node with requestDefaults.baseURL when mode is 'none'", async () => {
+				const result = await runWithCredential(
+					{ apiKey: 'testApiKey', allowedHttpRequestDomains: 'none' },
+					{ baseURL },
+				);
+
+				const requestOptions = getRequestOptions(result);
+				expect(requestOptions.allowedDomains).toBeUndefined();
+				expect(requestOptions.baseURL).toBe(baseURL);
+			});
+
+			it('blocks a credential in mode "none"', async () => {
+				await expect(
+					runWithCredential(
+						{ apiKey: 'testApiKey', allowedHttpRequestDomains: 'none' },
+						{ baseURL, userDefinedEndpoint: true },
+					),
+				).rejects.toThrow(/configured to prevent use/);
+			});
+
+			it('names an admin-defined node in the error for mode "none"', async () => {
+				await expect(
+					runWithCredential(
+						{ apiKey: 'testApiKey', allowedHttpRequestDomains: 'none' },
+						{ baseURL, userDefinedEndpoint: true },
+					),
+				).rejects.toThrow(
+					'This credential is configured to prevent use within an admin-defined node',
+				);
+			});
+
+			it('applies the allowed-domains list without the endpoint host', async () => {
+				const result = await runWithCredential(
+					{
+						apiKey: 'testApiKey',
+						allowedHttpRequestDomains: 'domains',
+						allowedDomains: 'api.other.test',
+					},
+					{ baseURL, userDefinedEndpoint: true },
+				);
+
+				const requestOptions = getRequestOptions(result);
+				expect(requestOptions.allowedDomains).toBe('api.other.test');
+			});
+
+			it('sends the request when the host is in the list', async () => {
+				const result = await runWithCredential(
+					{
+						apiKey: 'testApiKey',
+						allowedHttpRequestDomains: 'domains',
+						allowedDomains: 'api.custom.test',
+					},
+					{ baseURL, userDefinedEndpoint: true },
+				);
+
+				const requestOptions = getRequestOptions(result);
+				expect(requestOptions.allowedDomains).toBe('api.custom.test');
+				expect(requestOptions.baseURL).toBe(baseURL);
+			});
+
+			it('does not restrict a credential in mode "all"', async () => {
+				const result = await runWithCredential(
+					{ apiKey: 'testApiKey', allowedHttpRequestDomains: 'all' },
+					{ baseURL, userDefinedEndpoint: true },
+				);
+
+				const requestOptions = getRequestOptions(result);
+				expect(requestOptions.allowedDomains).toBeUndefined();
+			});
+
+			it('blocks a credential in mode "none" when only the routed url is absolute', async () => {
+				await expect(
+					runWithCredential(
+						{ apiKey: 'testApiKey', allowedHttpRequestDomains: 'none' },
+						{
+							baseURL: null,
+							routedUrl: 'https://api.custom.test/path',
+							userDefinedEndpoint: true,
+						},
+					),
+				).rejects.toThrow(/configured to prevent use/);
+			});
+
+			it('fails when the allowed-domains list is empty, without a fallback to the endpoint host', async () => {
+				await expect(
+					runWithCredential(
+						{ apiKey: 'testApiKey', allowedHttpRequestDomains: 'domains', allowedDomains: '' },
+						{ baseURL, userDefinedEndpoint: true },
+					),
+				).rejects.toThrow('No allowed domains specified');
 			});
 		});
 	});

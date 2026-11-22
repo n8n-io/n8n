@@ -264,13 +264,17 @@ export class RoutingNode {
 					}),
 				);
 				const targetUrl = ownHost ? buildTargetUrl(url, baseURL) : baseURL;
-				const baseUrlIsNodeOwned = toHostname(targetUrl) === ownHost;
+				// A user-written definition chooses its own host, so it never counts as node-owned.
+				const { userDefinedEndpoint } = nodeType.description;
+				const baseUrlIsNodeOwned =
+					userDefinedEndpoint !== true && toHostname(targetUrl) === ownHost;
 				const allowedDomains = credentials
 					? getCredentialAllowedDomains({
 							node,
 							credentialData: credentials,
 							credentialOwnedSurface: baseUrlIsNodeOwned,
 							nodeEndpointUrl: targetUrl,
+							...(userDefinedEndpoint === true ? { surface: 'admin-defined' } : {}),
 						})
 					: undefined;
 				if (allowedDomains) {
