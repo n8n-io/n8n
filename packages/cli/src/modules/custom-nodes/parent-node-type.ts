@@ -35,7 +35,7 @@ export function createParentNodeType(nodeType: INodeType, extension: ParentExten
 
 	async function run(context: ExecuteContext, response?: EngineResponse) {
 		const node = context.getNode();
-		if (!isCustomActionSelected(shape, node.parameters, served)) {
+		if (!isCustomActionSelected(shape, node.parameters)) {
 			return await runOriginal(context, response);
 		}
 

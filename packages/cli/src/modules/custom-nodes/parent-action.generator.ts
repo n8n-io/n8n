@@ -10,12 +10,12 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { CUSTOM_API_CALL_KEY } from '@/constants';
 
-import type { ServedActionVersions } from './custom-node-type';
 import {
 	ADDITIONAL_FIELDS,
 	actionVersionRefs,
 	buildInputProperties,
 	buildRoutedActionProperties,
+	type ActionVersionsRef,
 	type ActionView,
 	type InputNaming,
 } from './node-description.generator';
@@ -130,18 +130,33 @@ function withOptions(property: INodeProperties, added: INodePropertyOptions[]): 
 	return { ...property, options };
 }
 
-/** Description for the editor and for parameter resolution. Returns `description` itself when `actions` is empty. */
+/** `displayOptions.show` for the Custom resource. A new object for each call. */
+const customShow = () => ({ [RESOURCE_PARAMETER]: [CUSTOM_RESOURCE_VALUE] });
+
+/** The pins of a parent. In the resource shape they show for the Custom resource only. */
+function parentPinProperties(shape: ParentShape, refs: ActionVersionsRef[]): INodeProperties[] {
+	// No condition in the operation shape: the `operation` value of a deleted action is not known,
+	// and the stored name must stay for the error.
+	if (shape === 'operation') return pinProperties(refs);
+	return pinProperties(refs).map((pin) => ({ ...pin, displayOptions: { show: customShow() } }));
+}
+
+/**
+ * Description for the editor and for parameter resolution. Always a new description.
+ * Without actions it has the pins and, in the resource shape, the Action property: the engine
+ * and the editor resolve the parameters against it, so a node keeps the selection of a deleted
+ * action and fails with its name.
+ */
 export function extendParentDescription(
 	description: INodeTypeDescription,
 	shape: ParentShape,
 	actions: ActionView[],
 ): INodeTypeDescription {
 	const refs = actionVersionRefs(actions);
-	if (refs.length === 0) return description;
+	const hasActions = refs.length > 0;
 
 	// The editor needs no request. Only the run-time description has routing.
-	const resourceShow =
-		shape === 'resource' ? { [RESOURCE_PARAMETER]: [CUSTOM_RESOURCE_VALUE] } : {};
+	const resourceShow = shape === 'resource' ? customShow() : {};
 	const inputProperties = actions.flatMap((action) =>
 		action.versions.flatMap((version) =>
 			buildInputProperties(
@@ -154,8 +169,9 @@ export function extendParentDescription(
 
 	let properties: INodeProperties[];
 	if (shape === 'resource') {
+		// Without actions, the editor shows no empty Custom resource.
 		properties = description.properties.map((property) =>
-			isOptionsProperty(property, RESOURCE_PARAMETER)
+			hasActions && isOptionsProperty(property, RESOURCE_PARAMETER)
 				? withOptions(property, [{ name: CUSTOM_RESOURCE_NAME, value: CUSTOM_RESOURCE_VALUE }])
 				: property,
 		);
@@ -172,7 +188,7 @@ export function extendParentDescription(
 	} else {
 		// Each property gets its own option objects.
 		properties = description.properties.map((property) =>
-			isOptionsProperty(property, OPERATION_PARAMETER)
+			hasActions && isOptionsProperty(property, OPERATION_PARAMETER)
 				? withOptions(property, operationOptions(refs))
 				: property,
 		);
@@ -180,7 +196,7 @@ export function extendParentDescription(
 
 	return {
 		...description,
-		properties: [...properties, ...pinProperties(refs), ...inputProperties],
+		properties: [...properties, ...parentPinProperties(shape, refs), ...inputProperties],
 	};
 }
 
@@ -232,13 +248,8 @@ export function parentPinValues(shape: ParentShape, ref: ActionVersionRef): Reco
 }
 
 /** True when the node parameters select a custom action, also one that does not exist any more. */
-export function isCustomActionSelected(
-	shape: ParentShape,
-	parameters: INodeParameters,
-	served: ServedActionVersions,
-): boolean {
+export function isCustomActionSelected(shape: ParentShape, parameters: INodeParameters): boolean {
 	if (shape === 'resource') return parameters[RESOURCE_PARAMETER] === CUSTOM_RESOURCE_VALUE;
-	const pin = readPin(parameters);
-	if (!pin) return false;
-	return served.has(pin.actionId) || parameters[PIN_ACTION_ID_PARAMETER] === pin.actionId;
+	// `parentShape` makes sure that no built-in `operation` value reads as a pin.
+	return readPin(parameters) !== undefined;
 }

@@ -7,7 +7,7 @@ import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { convertNodeToAiTool } from '@/tool-generation';
 
 import type { ActionView } from '../node-description.generator';
-import { parentPinValues } from '../parent-action.generator';
+import { CUSTOM_RESOURCE_VALUE, parentPinValues } from '../parent-action.generator';
 import { ParentActionsProvider } from '../parent-actions.provider';
 import { listPayouts, operationParent, refundPayment, resourceParent } from './parent-node.fixture';
 
@@ -151,16 +151,27 @@ describe('ParentActionsProvider', () => {
 		expect(provider.extendDescription(tool.name, tool)).toBe(tool);
 	});
 
-	it('leaves the served description of an eligible parent without actions unchanged', () => {
+	it('serves the pins of an eligible parent without actions, without a Custom resource option', () => {
 		const entry = served(resourceParent);
 		const { provider, loadNodesAndCredentials } = createProvider([entry]);
 		provider.setActions(actionsOf([[LEDGER, [listPayouts]]]));
 
 		provider.transformTypes();
 
-		expect(loadNodesAndCredentials.types.nodes[0]).toBe(entry);
+		const [servedEntry] = loadNodesAndCredentials.types.nodes;
+		expect(servedEntry).not.toBe(entry);
 		expect(provider.shapeOf(BILLING)).toBe('resource');
-		expect(provider.extendDescription(BILLING, resourceParent)).toBe(resourceParent);
+		expect(servedEntry.properties).toEqual(
+			provider.extendDescription(BILLING, resourceParent).properties,
+		);
+		expect(servedEntry.properties.map((property) => property.name)).toEqual([
+			...resourceParent.properties.map((property) => property.name),
+			'operation',
+			'customActionId',
+			'customActionName',
+		]);
+		expect(servedEntry.properties[0]).toBe(entry.properties[0]);
+		expect(JSON.stringify(servedEntry.properties[0])).not.toContain(CUSTOM_RESOURCE_VALUE);
 	});
 
 	it('wraps an eligible parent without actions at run time', async () => {
@@ -171,10 +182,14 @@ describe('ParentActionsProvider', () => {
 		const copy = provider.extendNodeType(BILLING, loaded);
 
 		expect(copy).not.toBe(loaded);
-		expect(copy.description).toEqual(resourceParent);
+		expect(copy.description).toEqual(provider.extendDescription(BILLING, resourceParent));
 		expect(await run(copy, { resource: 'invoice', operation: 'get' })).toBe(builtInResult);
 		// A workflow can still select an action that was deleted. It must fail before a request.
-		await expect(run(copy, refundV1)).rejects.toThrow(NodeOperationError);
+		const error = await run(copy, refundV1).catch((e: unknown) => e);
+		expect(error).toBeInstanceOf(NodeOperationError);
+		expect((error as Error).message).toMatch(
+			/^The action "Refund Payment" does not exist any more or is not available for this node/,
+		);
 		expect(routed.descriptions).toEqual([]);
 		expect(loaded.execute).toHaveBeenCalledTimes(1);
 	});

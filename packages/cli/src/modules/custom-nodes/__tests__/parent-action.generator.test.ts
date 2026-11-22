@@ -9,7 +9,6 @@ import { NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
 
 import { CUSTOM_API_CALL_KEY } from '@/constants';
 
-import type { ServedActionVersions } from '../custom-node-type';
 import { buildRequest, paramPathFor } from '../node-description.generator';
 import {
 	CUSTOM_RESOURCE_NAME,
@@ -163,9 +162,65 @@ describe('extendParentDescription', () => {
 	const extendedOperation = extendParentDescription(operationParent, 'operation', actions);
 	const extendedDeclarative = extendParentDescription(declarativeParent, 'resource', actions);
 
-	it('returns the same object when there are no actions', () => {
-		expect(extendParentDescription(resourceParent, 'resource', [])).toBe(resourceParent);
-		expect(extendParentDescription(operationParent, 'operation', [])).toBe(operationParent);
+	describe('without actions', () => {
+		const emptyResource = extendParentDescription(resourceParent, 'resource', []);
+		const emptyOperation = extendParentDescription(operationParent, 'operation', []);
+
+		it('adds no Custom resource option and an Action property without options', () => {
+			expect(emptyResource).not.toBe(resourceParent);
+			expect(named(emptyResource, 'resource')).toEqual([resourceParent.properties[0]]);
+			const custom = named(emptyResource, OPERATION_PARAMETER).filter((property) =>
+				property.displayOptions?.show?.resource?.includes(CUSTOM_RESOURCE_VALUE),
+			);
+			expect(custom).toEqual([
+				{
+					displayName: 'Action',
+					name: 'operation',
+					type: 'options',
+					noDataExpression: true,
+					default: '',
+					options: [],
+					displayOptions: { show: { resource: ['__CUSTOM_ACTION__'] } },
+				},
+			]);
+			expect(customProperties(emptyResource)).toEqual([]);
+		});
+
+		it('keeps the operation of a parent without resource and adds the pins', () => {
+			expect(emptyOperation).not.toBe(operationParent);
+			expect(named(emptyOperation, OPERATION_PARAMETER)).toEqual([operationParent.properties[1]]);
+			expect(emptyOperation.properties.map((property) => property.name)).toEqual([
+				...operationParent.properties.map((property) => property.name),
+				PIN_ACTION_ID_PARAMETER,
+				PIN_ACTION_NAME_PARAMETER,
+			]);
+		});
+
+		it.each<[string, INodeTypeDescription, INodeParameters]>([
+			[
+				'resource',
+				emptyResource,
+				parentPinValues('resource', { actionId: 'act_gone', actionName: 'Gone', version: 1 }),
+			],
+			[
+				'operation',
+				emptyOperation,
+				pinValues({ actionId: 'act_gone', actionName: 'Gone', version: 1 }),
+			],
+		])(
+			'keeps the selection of a missing action in the %s shape when the parameters are resolved',
+			(_shape, description, params) => {
+				const resolved = NodeHelpers.getNodeParameters(
+					description.properties,
+					params,
+					true,
+					false,
+					null,
+					description,
+				);
+				expect(resolved).toMatchObject(params);
+			},
+		);
 	});
 
 	it('does not change the parent description', () => {
@@ -247,9 +302,33 @@ describe('extendParentDescription', () => {
 				const pins = named(extended, name);
 				expect(pins).toHaveLength(1);
 				expect(pins[0]).toMatchObject({ type: 'hidden', default: '' });
-				expect(pins[0].displayOptions).toBeUndefined();
 			}
 		}
+	});
+
+	it('shows the pins for the Custom resource only, and always in a parent without resource', () => {
+		for (const extended of [extendedResource, extendedDeclarative]) {
+			for (const name of [PIN_ACTION_ID_PARAMETER, PIN_ACTION_NAME_PARAMETER]) {
+				expect(named(extended, name)[0].displayOptions).toEqual({
+					show: { resource: ['__CUSTOM_ACTION__'] },
+				});
+			}
+		}
+		for (const name of [PIN_ACTION_ID_PARAMETER, PIN_ACTION_NAME_PARAMETER]) {
+			expect(named(extendedOperation, name)[0].displayOptions).toBeUndefined();
+		}
+
+		// A built-in node of a resource parent gets no pin parameters.
+		const resolved = NodeHelpers.getNodeParameters(
+			extendedResource.properties,
+			{ resource: 'invoice', operation: 'get', invoiceId: 'inv_1' },
+			true,
+			false,
+			null,
+			extendedResource,
+		);
+		expect(resolved).not.toHaveProperty(PIN_ACTION_ID_PARAMETER);
+		expect(resolved).not.toHaveProperty(PIN_ACTION_NAME_PARAMETER);
 	});
 
 	it('gives each input the prefix customAction_ and puts optional inputs in customAction_additionalFields', () => {
@@ -403,8 +482,6 @@ describe('parentPinValues', () => {
 });
 
 describe('isCustomActionSelected', () => {
-	const served: ServedActionVersions = new Map([['act_refund', new Set([1, 2])]]);
-
 	it.each<[string, 'resource' | 'operation', INodeParameters, boolean]>([
 		[
 			'resource shape with the Custom resource',
@@ -430,9 +507,9 @@ describe('isCustomActionSelected', () => {
 			'operation shape with an unknown pin and no customActionId',
 			'operation',
 			{ operation: valueOf('act_gone', 3) },
-			false,
+			true,
 		],
 	])('%s', (_label, shape, parameters, expected) => {
-		expect(isCustomActionSelected(shape, parameters, served)).toBe(expected);
+		expect(isCustomActionSelected(shape, parameters)).toBe(expected);
 	});
 });

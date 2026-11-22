@@ -21,6 +21,7 @@ import type {
 } from 'n8n-workflow';
 import {
 	Node,
+	NodeHelpers,
 	NodeOperationError,
 	Workflow,
 	createEmptyRunExecutionData,
@@ -77,7 +78,8 @@ function extensionOf(description: INodeTypeDescription, views: ActionView[]): Pa
 	return {
 		shape,
 		extendedDescription: extendParentDescription(description, shape, views),
-		runtimeDescription: buildParentRuntimeDescription(description, views),
+		runtimeDescription:
+			views.length > 0 ? buildParentRuntimeDescription(description, views) : undefined,
 		served: servedOf(views),
 	};
 }
@@ -162,9 +164,18 @@ function createContext(
 	);
 }
 
-/** Calls `execute` as the engine does: a `Node` subclass gets the context as an argument. */
+/**
+ * Calls `execute` as the engine does. First the engine checks the node parameters against the
+ * description, then a `Node` subclass gets the context as an argument.
+ */
 async function execute(type: INodeType, context: ExecuteContext, response?: EngineResponse) {
 	if (!type.execute) throw new Error('The node type has no execute');
+	const issues = NodeHelpers.getNodeParametersIssues(
+		type.description.properties,
+		context.getNode(),
+		type.description,
+	);
+	if (issues !== null) throw new Error(`The node has parameter issues: ${JSON.stringify(issues)}`);
 	const data = isNodeClassInstance(type)
 		? await type.execute(context, response)
 		: await type.execute.call(context, response);
@@ -541,6 +552,182 @@ describe('parent node type', () => {
 			expect(scope.isDone()).toBe(true);
 			expect(result[0][0].json).toEqual({ data: ['po_1'] });
 			expect(original.calls).toHaveLength(0);
+		});
+	});
+
+	describe('a node that selects a custom action that does not exist', () => {
+		const ledgerCredentials: INodeCredentials = {
+			acmeLedgerApi: { id: 'cred-3', name: 'Ledger Key' },
+		};
+		const echoRef = { actionId: 'act_echo', actionName: 'Get Echo Item', version: 1 };
+		const missingMessage =
+			/The action "Get Echo Item" does not exist any more or is not available for this node/;
+
+		/** Runs the node as the engine does: the `Workflow` constructor and the parameter check come first. */
+		async function runParent(
+			description: INodeTypeDescription,
+			views: ActionView[],
+			parameters: INodeParameters,
+			credentials: INodeCredentials,
+			dataByType: Record<string, ICredentialDataDecryptedObject>,
+		) {
+			const original = programmaticParent(description);
+			const type = createParentNodeType(original, extensionOf(description, views));
+			const context = createContext(type, parameters, credentials, dataByType);
+			const result = await execute(type, context).catch((e: unknown) => e);
+			return { original, result };
+		}
+
+		it.each<[string, INodeTypeDescription, INodeParameters, INodeCredentials, string]>([
+			[
+				'resource',
+				resourceParent,
+				parentPinValues('resource', echoRef),
+				billingCredentials,
+				'acmeBillingApi',
+			],
+			[
+				'operation',
+				operationParent,
+				{ authentication: 'apiKey', ...parentPinValues('operation', echoRef) },
+				ledgerCredentials,
+				'acmeLedgerApi',
+			],
+		])(
+			'fails with the name of the action in the %s shape when the parent has no actions',
+			async (_shape, description, parameters, credentials, credentialType) => {
+				const scope = nock(HOST).persist().get(/.*/).query(true).reply(200, {});
+				scope.post(/.*/).query(true).reply(200, {});
+
+				const { original, result } = await runParent(
+					description,
+					[],
+					parameters,
+					credentials,
+					keyOf(credentialType),
+				);
+
+				expect(result).toBeInstanceOf(NodeOperationError);
+				expect((result as Error).message).toMatch(missingMessage);
+				expect(original.execute).not.toHaveBeenCalled();
+				expect(scope.isDone()).toBe(false);
+			},
+		);
+
+		it('fails with the name of the action when the parent has other actions only', async () => {
+			const scope = nock(HOST).persist().get(/.*/).query(true).reply(200, {});
+
+			const { original, result } = await runParent(
+				operationParent,
+				[listPayouts],
+				{ authentication: 'apiKey', ...parentPinValues('operation', echoRef) },
+				ledgerCredentials,
+				keyOf('acmeLedgerApi'),
+			);
+
+			expect((result as Error).message).toMatch(missingMessage);
+			expect(original.execute).not.toHaveBeenCalled();
+			expect(scope.isDone()).toBe(false);
+		});
+
+		it('runs a served action for an operation-shape node that stores only the operation', async () => {
+			const scope = nock(HOST)
+				.get('/v1/payouts')
+				.query({ limit: '5' })
+				.matchHeader(KEY_HEADER, 'acmeLedgerApi-key')
+				.reply(200, { data: ['po_1'] });
+			const { operation } = pinValues({
+				actionId: 'act_payouts',
+				actionName: 'List Payouts',
+				version: 1,
+			});
+
+			const { original, result } = await runParent(
+				operationParent,
+				[listPayouts],
+				{ authentication: 'apiKey', operation, customAction_limit: 5 },
+				ledgerCredentials,
+				keyOf('acmeLedgerApi'),
+			);
+
+			expect((result as INodeExecutionData[][])[0][0].json).toEqual({ data: ['po_1'] });
+			expect(scope.isDone()).toBe(true);
+			expect(original.execute).not.toHaveBeenCalled();
+		});
+
+		it('fails with the action id for an operation-shape node that stores only the operation of a missing action', async () => {
+			const scope = nock(HOST).persist().get(/.*/).query(true).reply(200, {});
+			const { operation } = pinValues(echoRef);
+
+			const { original, result } = await runParent(
+				operationParent,
+				[listPayouts],
+				{ authentication: 'apiKey', operation },
+				ledgerCredentials,
+				keyOf('acmeLedgerApi'),
+			);
+
+			expect(result).toBeInstanceOf(NodeOperationError);
+			expect((result as Error).message).toMatch(/The action "act_echo" does not exist any more/);
+			expect(original.execute).not.toHaveBeenCalled();
+			expect(scope.isDone()).toBe(false);
+		});
+	});
+
+	describe('parameter check of the engine', () => {
+		it.each<[string, INodeTypeDescription, INodeParameters]>([
+			['resource', resourceParent, { ...refundV2, customAction_paymentId: 'pay_1' }],
+			[
+				'operation',
+				operationParent,
+				{
+					authentication: 'apiKey',
+					...parentPinValues('operation', {
+						actionId: 'act_payouts',
+						actionName: 'List Payouts',
+						version: 1,
+					}),
+					customAction_limit: 5,
+				},
+			],
+		])(
+			'finds no issue for a valid custom selection in the %s shape',
+			(_shape, description, params) => {
+				const type = createParentNodeType(
+					programmaticParent(description),
+					extensionOf(description, actions),
+				);
+				const node = createContext(
+					type,
+					params,
+					billingCredentials,
+					keyOf('acmeBillingApi'),
+				).getNode();
+
+				expect(
+					NodeHelpers.getNodeParametersIssues(type.description.properties, node, type.description),
+				).toBeNull();
+			},
+		);
+
+		it('finds the missing required input of a custom action', () => {
+			const type = createParentNodeType(
+				programmaticParent(resourceParent),
+				extensionOf(resourceParent, actions),
+			);
+			const node = createContext(
+				type,
+				refundV2,
+				billingCredentials,
+				keyOf('acmeBillingApi'),
+			).getNode();
+
+			const issues = NodeHelpers.getNodeParametersIssues(
+				type.description.properties,
+				node,
+				type.description,
+			);
+			expect(Object.keys(issues?.parameters ?? {})).toEqual(['customAction_paymentId']);
 		});
 	});
 
