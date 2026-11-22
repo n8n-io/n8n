@@ -38,7 +38,7 @@
 3. **Nodes panel respects option-level display conditions.** `useActionsGeneration.ts` skips an option whose `displayOptions` do not match the default parameters of a new node. The check uses the defaults only, not the option's own value: an old version's option shows only for its own value, so a check that includes that value would always pass. This is a general fix and helps any node that uses option-level conditions.
 4. **Canvas subtitle.** When the subtitle contains `CUSTOM_ACTION_RESOURCE_VALUE` or the node's `operation` equals a known `pinValues.operation`, the subtitle is the stored `customActionName`, else empty.
 5. **Settings page access.** The page needs `customNode:create`. Members do not see it.
-6. **Save as custom action** from the HTTP Request node never copies an `Authorization`, `Cookie`, or `Proxy-Authorization` header, or a query parameter whose name contains `key`, `token`, or `secret`. The wizard tells the administrator to use a credential for secrets (spec §18 finding).
+6. **Save as custom action** from the HTTP Request node never copies an `Authorization`, `Cookie`, or `Proxy-Authorization` header, or a header, query, or body field whose name contains `key`, `token`, `secret`, `auth`, `password`, `signature`, or `session` (widened after the final review). The wizard tells the administrator to use a credential for secrets (spec §18 finding).
 7. **Credential mode "none".** The review step and the error text explain that a credential with the domain setting "None" blocks custom actions and that the owner must allow the action's host.
 
 ## Review Focus

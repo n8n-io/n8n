@@ -473,8 +473,8 @@ Do not build the tool in project 1.
 4. Custom nodes: loader, service, controller, reload. Done in plan 1.
 5. Custom actions: provider hook in `NodeTypes`, served descriptions, version
    pin. Done in plan 2.
-6. Frontend module: settings page.
-7. Frontend: wizard and canvas entry points.
+6. Frontend module: settings page. Done in plan 3.
+7. Frontend: wizard and canvas entry points. Done in plan 3.
 8. Dependency index, version usage view, delete guard, upgrade notice.
 9. Telemetry and docs.
 
@@ -761,3 +761,80 @@ the local branch `custom-nodes-and-actions`. The module is off unless
   canvas subtitle shows the raw value of a custom selection.
 - Plan 3: offer only parents from `GET /custom-nodes/parents`.
 - Plan 4: the dependency index needs the parent node type and the pin.
+
+## 20. Plan 3 record
+
+Plan 3 (frontend) ended on 2026-11-23 on the local branch
+`custom-nodes-and-actions`. It also fixed the AWS limit of section 19: the
+run-time request of a parent custom action sends the origin of its URL as
+`baseURL`, so credentials that build the endpoint themselves (AWS signing)
+work. An AWS SNS custom action ran and was signed on a real instance.
+
+### What exists
+
+- Backend: `GET /custom-nodes/actions/:id/versions/:version` and
+  `GET /custom-nodes/nodes/:id`. `CUSTOM_ACTION_RESOURCE_VALUE` is exported
+  from `@n8n/api-types`.
+- The frontend module `packages/modules/custom-nodes/frontend`: API client,
+  store, settings page "Custom nodes" (Integrations), a four-step wizard,
+  version history with rollback, icon upload, the selection composable, and
+  entry-point components.
+- Editor edits, each inert with the module off: the nodes panel writes all
+  pin values and hides options whose option-level conditions do not match a
+  new node; the node settings write all pin values on selection; the canvas
+  subtitle shows the action name; the push `nodeDescriptionUpdated` refreshes
+  the module store; "Create custom node", "Add custom action to <node>", "Save
+  as custom action" (HTTP Request), and an upgrade notice.
+- A browser check on a real instance covered: create through the wizard, add
+  from the nodes panel, run with the parent credential, a blocked credential
+  domain, the upgrade notice, the member view (can use, cannot create), and
+  the module off.
+
+### Decisions made during the work
+
+- **Wizard as a dialog owned by the module.** A module cannot close a modal
+  that the shell registers, so the wizard is an `N8nDialog` with its own open
+  state. The settings page renders it, and the editor mounts one lazy-loaded
+  instance in `AppModals`. The dialog has the class `ignore-key-press-canvas`,
+  so canvas shortcuts and paste ignore it.
+- **Pin values on every path.** The nodes panel (also the shortcut for a node
+  with one action) and the node settings write all pin values. The data loads
+  when the nodes panel or the node settings open. A write that ran before the
+  load ends is completed once the data arrives, only if the node's
+  `operation` is unchanged. Store loads run one after the other.
+- **Selection checks `parentAvailable`.** An action whose parent is not
+  eligible is ignored, and the settings page marks it.
+- **Subtitle.** The current action name from the API; the stored
+  `customActionName` only when the action is not known.
+- **Save as custom action** drops every header, query, and body field (also
+  nested and in array bodies) whose name contains `key`, `token`, `secret`,
+  `auth`, `password`, `signature`, or `session`, and the standard
+  authorization headers. The review step names each dropped field. The rule
+  over-matches harmless names such as `author`.
+- **Buttons check the scope of their route.** Create needs `customNode:create`;
+  edit, add action, icon, and rollback need `customNode:update`; delete needs
+  `customNode:delete`. Members see no create or edit entry point.
+
+### Known limits and open items
+
+- The nodes-panel entries cannot be reached with the keyboard.
+- "Create custom node" shows in the regular nodes view, not in the trigger or
+  AI views.
+- A custom node with one action is added directly, so its "Add action" entry
+  shows in the node settings and on the settings page.
+- "Save as custom action" reads only the HTTP Request v3+ parameter shape. It
+  does not scan whole-body expressions or nested values in JSON-mode query and
+  headers.
+- A failed save shows only a toast; the server issue list is not mapped back.
+- The wizard has no loading or error state if its chunk fails to load.
+- A wizard opened by a user with `customNode:update` but without
+  `customNode:create` still offers "New node"; the save fails with 403.
+- `pnpm-lock.yaml` has unrelated catalog and deprecation lines from the
+  install; regenerate it on the rebase.
+
+### Findings for plan 4
+
+- The version usage view and the delete guard need the workflows that use a
+  pin: parent node type, action id, version.
+- Telemetry: creation, edit, and execution counts per parent node type.
+- A Playwright test for the main flow can follow the browser check above.
