@@ -120,4 +120,15 @@ describe('getJotFormBaseUrl', () => {
 			NodeOperationError,
 		);
 	});
+
+	it.each([
+		'user:password@attacker.example',
+		'user:password@attacker.example?x=1',
+		'ftp://user:password@attacker.example/API',
+	])('should not echo embedded credentials for "%s"', (customApiDomain) => {
+		const build = () => getJotFormBaseUrl({ apiDomain: 'custom', customApiDomain }, testNode);
+
+		expect(build).toThrow(NodeOperationError);
+		expect(build).not.toThrow('password');
+	});
 });

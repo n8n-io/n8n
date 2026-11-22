@@ -74,12 +74,24 @@ function splitApiDomain(normalized: string): { host: string; basePath: string } 
 }
 
 /**
+ * Strip userinfo and any query or fragment from a domain before it goes into an
+ * error message, so an embedded credential is never echoed back to the user or
+ * to the logs.
+ */
+function redactDomain(value: string): string {
+	return value
+		.replace(/\/\/[^/?#]*@/, '//')
+		.replace(/^[^/?#]*@/, '')
+		.replace(/[?#].*$/, '');
+}
+
+/**
  * Resolve the effective base URL, e.g. `https://api.jotform.com` or
  * `https://subdomain.jotform.com/API`.
  *
  * This is the single source of truth for the domain selection, normalization
- * and validation. Both `jotformApiRequest` and the credential test call it, so
- * the node and the credential test cannot drift.
+ * and validation in the node request path. The credential test builds its base
+ * URL with a declarative expression that mirrors this normalization.
  */
 export function getJotFormBaseUrl(
 	credentials: { apiDomain?: unknown; customApiDomain?: unknown },
@@ -94,7 +106,7 @@ export function getJotFormBaseUrl(
 	if (scheme && !/^https?$/i.test(scheme)) {
 		throw new NodeOperationError(
 			node,
-			`Invalid JotForm API domain "${raw}". Use an http:// or https:// URL, or a bare host such as "your-subdomain.jotform.com/API".`,
+			`Invalid JotForm API domain "${redactDomain(raw)}". Use an http:// or https:// URL, or a bare host such as "your-subdomain.jotform.com/API".`,
 		);
 	}
 
@@ -112,7 +124,7 @@ export function getJotFormBaseUrl(
 	if (/[?#]/.test(domain)) {
 		throw new NodeOperationError(
 			node,
-			`Invalid JotForm API domain "${domain}". Do not include a query string or fragment.`,
+			`Invalid JotForm API domain "${redactDomain(domain)}". Do not include a query string or fragment.`,
 		);
 	}
 
@@ -121,7 +133,7 @@ export function getJotFormBaseUrl(
 	if (domain.includes('@')) {
 		throw new NodeOperationError(
 			node,
-			`Invalid JotForm API domain "${domain}". Do not include credentials in the domain.`,
+			`Invalid JotForm API domain "${redactDomain(domain)}". Do not include credentials in the domain.`,
 		);
 	}
 
@@ -130,7 +142,7 @@ export function getJotFormBaseUrl(
 	if (!HOST.test(host)) {
 		throw new NodeOperationError(
 			node,
-			`Invalid JotForm API domain "${domain}". Enter a host such as "your-subdomain.jotform.com/API".`,
+			`Invalid JotForm API domain "${redactDomain(domain)}". Enter a host such as "your-subdomain.jotform.com/API".`,
 		);
 	}
 
