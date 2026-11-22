@@ -14,6 +14,7 @@ import type { StartupDeadline } from '../startup-deadline';
 import { TEST_CONTAINER_IMAGES } from '../test-containers';
 import {
 	applyEngineEnv,
+	applySharedStorageEnv,
 	ENGINE_PORT,
 	ENGINE_SHARED_STORAGE_PATH,
 	engineContainerEnv,
@@ -118,9 +119,8 @@ export interface N8NInstancesOptions {
 	 */
 	userHomeHostDir?: string;
 	/**
-	 * Host dir bind-mounted as the storage path of the main and the engine
-	 * container, so a binary file one plane stores is read by the other.
-	 * `container` engine mode only. Disables container reuse.
+	 * Host directory to bind-mount at the same storage path in every container.
+	 * Disables container reuse.
 	 */
 	binaryDataHostDir?: string;
 	/** Run the container as this uid:gid (e.g. the host user for bind mounts). */
@@ -154,6 +154,7 @@ function computeEnvironment(options: N8NInstancesOptions): ComputedEnvironment {
 		projectName,
 		serviceEnvironment,
 		userEnvironment = {},
+		binaryDataHostDir,
 		unsetEnv = [],
 	} = options;
 
@@ -175,6 +176,10 @@ function computeEnvironment(options: N8NInstancesOptions): ComputedEnvironment {
 			: undefined;
 
 	applyEngineEnv(env, { engine, authSecret: engineAuthSecret, mains, isQueueMode, projectName });
+
+	if (binaryDataHostDir && engine !== 'container') {
+		applySharedStorageEnv(env, env.N8N_DEFAULT_BINARY_DATA_MODE);
+	}
 
 	if (isQueueMode) {
 		env.EXECUTIONS_MODE = 'queue';
@@ -331,8 +336,7 @@ async function createContainer(
 	}
 
 	if (binaryDataHostDir) {
-		// One host dir in both planes, at the path their env names. Writable by
-		// the container's `node` user for the same reason as the coverage dir.
+		// Make the directory writable by the container's `node` user.
 		mkdirSync(binaryDataHostDir, { recursive: true });
 		chmodSync(binaryDataHostDir, 0o777);
 		bindMounts.push({
@@ -471,6 +475,7 @@ export async function createN8NInstances(
 		registerContainer,
 		startupDeadline,
 		image,
+		binaryDataHostDir,
 		user,
 		startupTimeoutMs,
 	};
@@ -485,6 +490,7 @@ export async function createN8NInstances(
 		registerContainer,
 		startupDeadline,
 		image,
+		binaryDataHostDir,
 		user,
 		startupTimeoutMs,
 	};

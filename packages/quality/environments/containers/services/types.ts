@@ -90,6 +90,8 @@ export interface StackConfig {
 	 * or a service that brings it), one main, no workers, no webhook procs.
 	 */
 	engine?: EngineMode;
+	/** Share one temporary storage directory across all n8n containers. */
+	sharedStorage?: boolean;
 	env?: Record<string, string>;
 	/** Remove these keys after the stack merges the n8n environment. */
 	unsetEnv?: string[];

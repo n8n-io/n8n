@@ -132,6 +132,16 @@ test.use({
 });
 ```
 
+### Shared Storage
+
+Use `sharedStorage` to give the mains, workers, and webhook processors one writable storage directory.
+The stack sets `N8N_STORAGE_PATH` to the mount path and removes the directory when it stops.
+In queue mode, set `N8N_DEFAULT_BINARY_DATA_MODE` in `env` to override the `filesystem` default.
+
+```typescript
+test.use({ capability: { workers: 1, sharedStorage: true } });
+```
+
 ## Architecture
 
 ```
