@@ -1,4 +1,4 @@
-import { UserError } from '@n8n/errors';
+import { UnexpectedError, UserError } from '@n8n/errors';
 
 /** The largest icon the service stores, in bytes after base64 decoding. */
 export const MAX_ICON_BYTES = 256 * 1024;
@@ -118,29 +118,50 @@ function checkAttribute(element: string, name: string, value: unknown): void {
 	}
 }
 
-/** Walks the parsed tree. Each node has `#name`, optional attributes `$` and optional children `$$`. */
-function checkTree(root: unknown): void {
-	const stack: unknown[] = [root];
-	while (stack.length > 0) {
-		const node = stack.pop();
-		if (!isRecord(node)) continue;
-		const name = typeof node['#name'] === 'string' ? node['#name'] : '';
-		if (!ALLOWED_ELEMENTS.has(name)) {
-			throw new UserError(`The SVG icon has the element <${name}>, which is not allowed.`);
-		}
-		const attributes = node.$;
-		if (isRecord(attributes)) {
-			for (const [attribute, value] of Object.entries(attributes)) {
-				checkAttribute(name, attribute, value);
-			}
-		}
-		const children = node.$$;
-		if (Array.isArray(children)) stack.push(...children);
+/** The part of the `sax` parser inside `xml2js` that the check uses. */
+interface SaxParser {
+	write(text: string): SaxParser;
+	close(): SaxParser;
+	onerror?: (error: unknown) => void;
+	ondoctype?: () => void;
+	onprocessinginstruction?: (instruction: unknown) => void;
+	onopentagstart?: (tag: unknown) => void;
+	onattribute?: (attribute: unknown) => void;
+	onopentag?: () => void;
+	onclosetag?: () => void;
+	ontext?: (text: unknown) => void;
+	oncdata?: () => void;
+	onopencdata?: () => void;
+	oncomment?: () => void;
+	onend?: () => void;
+}
+
+function isSaxParser(value: unknown): value is SaxParser {
+	return isRecord(value) && typeof value.write === 'function' && typeof value.close === 'function';
+}
+
+const nameOf = (value: unknown) =>
+	isRecord(value) && typeof value.name === 'string' ? value.name : '';
+
+/**
+ * `packages/cli` has no direct `sax` dependency, so the check uses the `sax` parser of an
+ * `xml2js` Parser. The xml2js result is not used: it stops at the end of the root element
+ * and drops attributes such as `__proto__`. The sax events show every element, every
+ * attribute, and everything before and after the root element.
+ */
+async function createSaxParser(): Promise<SaxParser> {
+	const { Parser } = await import('xml2js');
+	const saxParser: unknown = Reflect.get(new Parser({ strict: true }), 'saxParser');
+	if (!isSaxParser(saxParser)) {
+		throw new UnexpectedError('The XML parser does not expose a sax parser');
 	}
+	return saxParser;
 }
 
 /**
- * Accepts an SVG only when every element and attribute is on the allow lists above.
+ * Accepts an SVG only when the whole text is one well-formed XML document with the root
+ * element `svg`, and every element and attribute is on the allow lists above.
+ * Outside the root element, only whitespace, comments and a leading XML declaration are allowed.
  * The check rejects and never cleans, so the stored bytes are the bytes the admin sent.
  * The route that serves the icon must also send the sandbox Content-Security-Policy and
  * `X-Content-Type-Options: nosniff`.
@@ -153,38 +174,81 @@ async function checkSvg(data: Buffer): Promise<void> {
 		throw new UserError('The SVG icon is not UTF-8 text.');
 	}
 
-	if (/<!DOCTYPE/i.test(text)) {
-		throw new UserError('The SVG icon must not have a document type declaration.');
-	}
-	if (/<!ENTITY/i.test(text)) {
-		throw new UserError('The SVG icon must not declare entities.');
-	}
-	// Only the XML declaration may appear, and only at the start.
-	const withoutDeclaration = text.replace(/^﻿?\s*<\?xml\s[^?]*\?>/, '');
-	if (withoutDeclaration.includes('<?')) {
-		throw new UserError('The SVG icon must not contain processing instructions.');
-	}
+	const sax = await createSaxParser();
+	let depth = 0;
+	let rootClosed = false;
+	let sawEvent = false;
+	let element = '';
 
-	const { Parser } = await import('xml2js');
-	const parser = new Parser({
-		strict: true,
-		explicitRoot: true,
-		explicitChildren: true,
-		preserveChildrenOrder: true,
-		attrkey: '$',
-		childkey: '$$',
-	});
-	let parsed: unknown;
+	const outsideRoot = () => depth === 0;
+	const rejectOutsideRoot = () => {
+		throw new UserError(
+			rootClosed
+				? 'The SVG icon has content after the root element.'
+				: 'The SVG icon has content before the root element.',
+		);
+	};
+
+	sax.onerror = () => {
+		throw new UserError('The SVG icon is not well-formed XML.');
+	};
+	sax.ondoctype = () => {
+		throw new UserError('The SVG icon must not have a document type declaration or entities.');
+	};
+	sax.onprocessinginstruction = (instruction) => {
+		// Only one XML declaration, and only as the first thing in the file.
+		if (sawEvent || nameOf(instruction) !== 'xml') {
+			throw new UserError('The SVG icon must not contain processing instructions.');
+		}
+		sawEvent = true;
+	};
+	sax.onopentagstart = (tag) => {
+		sawEvent = true;
+		element = nameOf(tag);
+		if (rootClosed) rejectOutsideRoot();
+		if (outsideRoot() && element !== 'svg') {
+			throw new UserError('The root element of the SVG icon must be <svg>.');
+		}
+		if (!ALLOWED_ELEMENTS.has(element)) {
+			throw new UserError(`The SVG icon has the element <${element}>, which is not allowed.`);
+		}
+	};
+	sax.onattribute = (attribute) => {
+		const value = isRecord(attribute) ? attribute.value : undefined;
+		checkAttribute(element, nameOf(attribute), value);
+	};
+	sax.onopentag = () => {
+		depth++;
+	};
+	sax.onclosetag = () => {
+		depth--;
+		if (depth === 0) rootClosed = true;
+	};
+	sax.ontext = (chunk) => {
+		sawEvent = true;
+		if (outsideRoot() && typeof chunk === 'string' && chunk.trim() !== '') rejectOutsideRoot();
+	};
+	sax.onopencdata = () => {
+		sawEvent = true;
+		if (outsideRoot()) rejectOutsideRoot();
+	};
+
+	sax.oncomment = () => {
+		sawEvent = true;
+	};
+	// Replace the remaining handlers of xml2js, which expect its own tree state.
+	sax.oncdata = () => {};
+	sax.onend = () => {};
+
 	try {
-		parsed = await parser.parseStringPromise(text);
-	} catch {
+		sax.write(text).close();
+	} catch (error) {
+		if (error instanceof UserError) throw error;
 		throw new UserError('The SVG icon is not well-formed XML.');
 	}
-
-	if (!isRecord(parsed) || !isRecord(parsed.svg) || Object.keys(parsed).length !== 1) {
-		throw new UserError('The root element of the SVG icon must be <svg>.');
+	if (!rootClosed) {
+		throw new UserError('The SVG icon is not well-formed XML.');
 	}
-	checkTree(parsed.svg);
 }
 
 /** Decodes and checks an icon data URI. Accepts only base64 PNG and base64 SVG. */

@@ -133,6 +133,48 @@ describe('validateIcon', () => {
 		await expectRejected(svgUri(text), message);
 	});
 
+	it.each([
+		['a second element after the root element', `${svg('')}<svg onload="x()"></svg>`],
+		['an unquoted element after the root element', `${svg('')}<img src=x onerror=x()>`],
+		['a script element after the root element', `${svg('')}<script>`],
+		['text after the root element', `${svg('')}garbage <b>`],
+		['a CDATA section after the root element', `${svg('')}<![CDATA[x]]>`],
+		['text before the root element', `x${svg('')}`],
+		['a second XML declaration', `<?xml version="1.0"?><?xml version="1.0"?>${svg('')}`],
+		['an XML declaration after a comment', `<!-- c --><?xml version="1.0"?>${svg('')}`],
+		['an unclosed root element', '<svg xmlns="http://www.w3.org/2000/svg">'],
+		['an empty document', '   '],
+	])('rejects an SVG with %s', async (_, text) => {
+		await expectRejected(svgUri(text));
+	});
+
+	it('rejects a second root element even when it has only allowed content', async () => {
+		await expectRejected(svgUri(`${svg('')}${svg('<path d="M0 0"/>')}`), /after the root element/);
+	});
+
+	it('rejects an attribute named __proto__', async () => {
+		await expectRejected(svgUri(svg('<path d="M0 0" __proto__="x"/>')), /"__proto__"/);
+		await expectRejected(svgUri(svg('', ' __proto__="x"')), /"__proto__"/);
+	});
+
+	it('accepts a trailing comment and trailing whitespace after the root element', async () => {
+		const text = `${svg('<path d="M0 0"/>')}\n<!-- end -->\n  \n`;
+
+		await expect(validateIcon(svgUri(text))).resolves.toMatchObject({ mimeType: 'image/svg+xml' });
+	});
+
+	it('accepts an XML declaration and a comment before the root element', async () => {
+		const text = `<?xml version="1.0" encoding="UTF-8"?>\n<!-- made by hand -->\n${svg('')}`;
+
+		await expect(validateIcon(svgUri(text))).resolves.toMatchObject({ mimeType: 'image/svg+xml' });
+	});
+
+	it('accepts a comment and CDATA text inside the root element', async () => {
+		const text = svg('<!-- inner --><title><![CDATA[Acme & Co]]></title><path d="M0 0"/>');
+
+		await expect(validateIcon(svgUri(text))).resolves.toMatchObject({ mimeType: 'image/svg+xml' });
+	});
+
 	it('names the element that is not allowed in the error', async () => {
 		await expect(validateIcon(svgUri(svg('<script>x()</script>')))).rejects.toThrow(
 			'The SVG icon has the element <script>, which is not allowed.',
