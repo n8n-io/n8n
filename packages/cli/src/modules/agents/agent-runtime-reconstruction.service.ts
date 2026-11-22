@@ -50,6 +50,7 @@ import { nanoid } from 'nanoid';
 
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsFinderService } from '@n8n/backend-services';
+import { sanitizeSandboxErrorDetail } from '@n8n/utils/redaction/sanitize-sandbox-error-detail';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
 import { EphemeralNodeExecutor } from '@/node-execution';
@@ -59,7 +60,6 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 import { AiService } from '@/services/ai.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
 import { createAiMcpFetch, createAiProxyFetch, createWebSearchFetch } from '@/utils/ai-proxy-fetch';
-import { sanitizeSandboxErrorDetail } from '@/utils/sanitize-sandbox-error-detail';
 import { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
 import type { KnowledgeConsumerScope } from '@/modules/knowledge/knowledge-consumer-scope';
 import { KnowledgeRetrievalService } from '@/modules/knowledge/retrieval/knowledge-retrieval.service';
@@ -82,6 +82,7 @@ import { AgentWorkspaceService } from './agent-workspace.service';
 import type { AgentRuntimeInstrumentation } from './evaluation/agent-evaluation.contracts';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import { buildFileUploadGuidance } from './integrations/integration-tool-descriptions';
+import { createConversationTools } from './integrations/conversation-tools';
 import {
 	createIntegrationActionTool,
 	createIntegrationContextTool,
@@ -194,6 +195,11 @@ export interface ReconstructAgentRuntimeParams extends AgentRuntimeAssets {
 	 */
 	user?: User;
 	attributionUserId?: string;
+	/**
+	 * The stored agent's service account (`agents.identityId`). Workflow tools stamp it
+	 * for attribution in log events only. Absent for inline agents.
+	 */
+	agentServiceAccountId?: string;
 	/** Runtime seams inherited from the delegating parent run (see {@link AgentRuntimeInstrumentation}). */
 	instrumentation?: AgentRuntimeInstrumentation;
 	abortSignal?: AbortSignal;
@@ -254,6 +260,8 @@ interface ToolRunIdentity {
 	userId?: string;
 	previewChat?: boolean;
 	publishedN8nChat?: boolean;
+	agentServiceAccountId?: string;
+	delegatingAgentId?: string;
 	supportsHitl: boolean;
 	backgroundTasksEnabled: boolean;
 }
@@ -352,6 +360,25 @@ export interface UnavailableTool {
 function toolRefName(ref: AgentJsonToolConfig): string {
 	if (ref.type === 'custom') return ref.id;
 	return ref.type === 'workflow' ? (ref.name ?? ref.workflow) : ref.name;
+}
+
+/** Ids that workflow tools stamp for log attribution. The run does not act as the account. */
+function workflowToolAttribution({
+	agentServiceAccountId,
+	runtimeProfile,
+	parentAgentIdForDelegation,
+}: RuntimeReconstructionOptions): Pick<
+	ToolRunIdentity,
+	'agentServiceAccountId' | 'delegatingAgentId'
+> {
+	if (!agentServiceAccountId || !Container.get(AgentsConfig).serviceAccountsEnabled) return {};
+	return {
+		agentServiceAccountId,
+		// Only a sub-agent runtime has a delegating agent; delegation is one level deep.
+		...(runtimeProfile === 'sub-agent' && parentAgentIdForDelegation
+			? { delegatingAgentId: parentAgentIdForDelegation }
+			: {}),
+	};
 }
 
 /** The guardrail kinds whose check runs on an LLM rather than a local pattern. */
@@ -480,6 +507,7 @@ export class AgentRuntimeReconstructionService {
 			subAgentDelegation,
 			user,
 			attributionUserId,
+			...(agentEntity.identityId ? { agentServiceAccountId: agentEntity.identityId } : {}),
 			instrumentation,
 			abortSignal,
 			sandboxPrincipalHash,
@@ -927,6 +955,7 @@ export class AgentRuntimeReconstructionService {
 					runType === 'production' &&
 					integrationType === N8N_CHAT_INTEGRATION_TYPE &&
 					attributionUserId !== undefined,
+				...workflowToolAttribution(options),
 				// Sub-agent checkpoints are rejected on resume and inline agents have no
 				// checkpoint storage, so neither can be woken again.
 				supportsHitl: canResume,
@@ -1101,6 +1130,8 @@ export class AgentRuntimeReconstructionService {
 			userId,
 			previewChat,
 			publishedN8nChat,
+			agentServiceAccountId,
+			delegatingAgentId,
 			supportsHitl,
 			backgroundTasksEnabled,
 		} = runIdentity;
@@ -1122,6 +1153,8 @@ export class AgentRuntimeReconstructionService {
 			userId,
 			previewChat,
 			publishedN8nChat,
+			agentServiceAccountId,
+			delegatingAgentId,
 			supportsHitl,
 			backgroundTasksEnabled,
 		};
@@ -1280,6 +1313,9 @@ export class AgentRuntimeReconstructionService {
 				createIntegrationActionTool({ descriptor, messageContextStore, actionExecutor, projectId }),
 			);
 		}
+		agent.tool(
+			createConversationTools({ descriptors, messageContextStore, actionExecutor, projectId }),
+		);
 	}
 
 	private createIntegrationDescriptors(
@@ -1293,6 +1329,8 @@ export class AgentRuntimeReconstructionService {
 			(integrationConfig) => {
 				const integrationDef = integrationRegistry.get(integrationConfig.type);
 				return {
+					conversationTools: integrationDef?.conversationTools,
+					supportedComponents: integrationDef?.supportedComponents,
 					contextToolDefinitions: integrationDef?.contextToolDefinitions,
 					actionToolDefinitions: integrationDef?.actionToolDefinitions,
 					contextQueries: integrationDef?.contextQueries,
@@ -1335,6 +1373,8 @@ export class AgentRuntimeReconstructionService {
 			actionToolDefinitions: [...n8nChat.actionToolDefinitions],
 			contextToolGuidance: n8nChat.contextToolGuidance,
 			actionToolGuidance: n8nChat.actionToolGuidance,
+			conversationTools: n8nChat.conversationTools,
+			supportedComponents: n8nChat.supportedComponents,
 		};
 	}
 

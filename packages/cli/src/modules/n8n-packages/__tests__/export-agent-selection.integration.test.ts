@@ -20,6 +20,7 @@ import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-hist
 import { AgentHistory } from '@/modules/agents/entities/agent-history.entity';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { ProjectService } from '@/services/project.service.ee';
+import { createAgent } from '@test-integration/db/agents';
 import { createFolder } from '@test-integration/db/folders';
 import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
 import { createMember, createOwner } from '@test-integration/db/users';
@@ -69,22 +70,20 @@ beforeEach(async () => {
 	owner = await createOwner();
 	project = await createTeamProject('Selected project', owner);
 	otherProject = await createTeamProject('Dependency project', owner);
-	[parent, child] = await repository.save([
-		{
-			id: 'parent',
-			name: 'Parent',
-			projectId: project.id,
-			schema: null,
-			versionId: 'parent_draft',
-		},
-		{
-			id: 'child',
-			name: 'Child',
-			projectId: otherProject.id,
-			schema: null,
-			versionId: 'child_draft',
-		},
-	]);
+	parent = await createAgent({
+		id: 'parent',
+		name: 'Parent',
+		projectId: project.id,
+		schema: null,
+		versionId: 'parent_draft',
+	});
+	child = await createAgent({
+		id: 'child',
+		name: 'Child',
+		projectId: otherProject.id,
+		schema: null,
+		versionId: 'child_draft',
+	});
 });
 
 afterEach(() => vi.restoreAllMocks());
@@ -137,7 +136,7 @@ it.each(['loose', 'project'] as const)(
 			],
 		});
 		await setConfig(child, { subAgents: { agents: [{ agentId: parent.id }] } });
-		await repository.save({
+		await createAgent({
 			id: 'unrelated-agent',
 			name: 'Unrelated',
 			projectId: otherProject.id,
@@ -566,7 +565,7 @@ it.each([undefined, false, true])(
 	async (includeArchived) => {
 		const folder = await createFolder(project, { name: 'Support', resourceType: 'agent' });
 		await repository.update(parent.id, { parentFolderId: folder.id, isArchived: true });
-		const active = await repository.save({
+		const active = await createAgent({
 			id: 'active',
 			name: 'Active',
 			projectId: project.id,

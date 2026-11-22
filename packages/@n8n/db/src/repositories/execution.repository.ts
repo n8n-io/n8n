@@ -1,5 +1,5 @@
 import { Logger, parseFlatted } from '@n8n/backend-common';
-import { GlobalConfig } from '@n8n/config';
+import { GlobalConfig, type DatabaseConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
@@ -132,6 +132,8 @@ export type ResumeAttemptClaim =
 	| { outcome: 'conflict' };
 
 export interface UpdateExecutionConditions {
+	/** Match the wait that the caller read before replacing its response. */
+	requireWaitTill?: Date;
 	requireStatus?: ExecutionStatus;
 	requireStatuses?: readonly ExecutionStatus[];
 	requireNotFinished?: boolean;
@@ -164,8 +166,15 @@ export type ExecutionDeletionCriteria = {
 	};
 };
 
+function toDateQueryParameter(date: Date, dbType: DatabaseConfig['type']) {
+	// SQLite compares stored UTC text. PostgreSQL needs the timezone that the
+	// driver includes for Date values, otherwise it applies the session timezone.
+	return dbType === 'sqlite' ? DateUtils.mixedDateToUtcDatetimeString(date) : date;
+}
+
 function parseFiltersToQueryBuilder(
 	qb: SelectQueryBuilder<ExecutionEntity>,
+	dbType: DatabaseConfig['type'],
 	filters?: IGetExecutionsQueryFilter,
 ) {
 	if (filters?.status) {
@@ -186,7 +195,7 @@ function parseFiltersToQueryBuilder(
 			}
 		}
 	}
-	const startedAt = startedAtCondition(filters ?? {});
+	const startedAt = startedAtCondition(filters ?? {}, dbType);
 	if (startedAt) qb.andWhere({ startedAt });
 	if (filters?.workflowId) {
 		qb.andWhere({
@@ -195,25 +204,18 @@ function parseFiltersToQueryBuilder(
 	}
 }
 
-const startedAtCondition = ({
-	startedAfter,
-	startedBefore,
-}: {
-	startedAfter?: string;
-	startedBefore?: string;
-}) => {
+const startedAtCondition = (
+	{ startedAfter, startedBefore }: { startedAfter?: string; startedBefore?: string },
+	dbType: DatabaseConfig['type'],
+) => {
 	const conditions = [];
 
 	if (startedAfter) {
-		conditions.push(
-			MoreThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(new Date(startedAfter))),
-		);
+		conditions.push(MoreThanOrEqual(toDateQueryParameter(new Date(startedAfter), dbType)));
 	}
 
 	if (startedBefore) {
-		conditions.push(
-			LessThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(new Date(startedBefore))),
-		);
+		conditions.push(LessThanOrEqual(toDateQueryParameter(new Date(startedBefore), dbType)));
 	}
 
 	if (conditions.length === 0) return undefined;
@@ -646,6 +648,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 	 * @param executionId - The ID of the execution to update
 	 * @param execution - Partial execution data to update
 	 * @param conditions - Optional conditions that must be met for the update to proceed.
+	 *   `requireWaitTill`: only update if the wait timestamp matches.
 	 *   `requireStatus`: only update if execution has this exact status.
 	 *   `requireStatuses`: only update if execution has one of these statuses.
 	 *   `requireNotFinished`: only update if `finished = false`.
@@ -689,6 +692,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		return await this.manager.transaction(async (tx) => {
 			if (Object.keys(executionInformation).length > 0) {
 				const whereCondition: FindOptionsWhere<ExecutionEntity> = { id: executionId };
+				if (conditions?.requireWaitTill) whereCondition.waitTill = conditions.requireWaitTill;
 				if (conditions?.requireStatus) whereCondition.status = conditions.requireStatus;
 				if (conditions?.requireStatuses)
 					whereCondition.status = In([...conditions.requireStatuses]);
@@ -731,6 +735,20 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		}));
 	}
 
+	/** Whether any of `executionIds`, deleted or not, belongs to `workflowId`. */
+	async hasWorkflowExecutionAmong(workflowId: string, executionIds: string[]): Promise<boolean> {
+		for (const ids of chunkIds(executionIds)) {
+			const match = await this.createQueryBuilder('execution')
+				.withDeleted()
+				.select('execution.id')
+				.where('execution.workflowId = :workflowId', { workflowId })
+				.andWhere('execution.id IN (:...ids)', { ids })
+				.getOne();
+			if (match) return true;
+		}
+		return false;
+	}
+
 	async findExecutionsToDelete({
 		filters,
 		accessibleWorkflowIds,
@@ -754,7 +772,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 				deleteBefore: deleteConditions.deleteBefore,
 			});
 			// Filters are only used when filtering by date
-			parseFiltersToQueryBuilder(query, filters);
+			parseFiltersToQueryBuilder(query, this.globalConfig.database.type, filters);
 		} else if (deleteConditions.ids) {
 			// delete executions by IDs, if user may access the underlying workflows
 			query.andWhere('execution.id IN (:...executionIds)', { executionIds: deleteConditions.ids });
@@ -782,12 +800,12 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		return await this.find({
 			select: ['id'],
 			where: {
-				startedAt: MoreThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(date)),
+				startedAt: MoreThanOrEqual(toDateQueryParameter(date, this.globalConfig.database.type)),
 			},
 		}).then((executions) => executions.map(({ id }) => id));
 	}
 
-	async softDeletePrunableExecutions() {
+	async softDeletePrunableExecutions(retainedExecutionIds: string[] = []) {
 		const { pruneDataMaxAge, pruneDataMaxCount } = this.globalConfig.executions;
 
 		// Sub-query to exclude executions having annotations
@@ -831,6 +849,16 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			})
 			// Only mark executions as deleted if they are not annotated
 			.andWhere('id NOT IN ' + annotatedExecutionsSubQuery.getQuery())
+			.andWhere(
+				isPostgres
+					? 'CAST(id AS TEXT) <> ALL(CAST(:retainedExecutionIds AS TEXT[]))'
+					: 'CAST(id AS TEXT) NOT IN (SELECT value FROM json_each(:retainedExecutionIds))',
+				{
+					retainedExecutionIds: isPostgres
+						? retainedExecutionIds
+						: JSON.stringify(retainedExecutionIds),
+				},
+			)
 			.andWhere(pruningCriteria)
 			.execute();
 	}
@@ -1167,7 +1195,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			workflowId: In(workflowIds),
 		};
 
-		const startedAt = startedAtCondition(options);
+		const startedAt = startedAtCondition(options, this.globalConfig.database.type);
 		if (startedAt) where.startedAt = startedAt;
 
 		return where;
@@ -1433,7 +1461,10 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		if (status) qb.andWhere('execution.status IN (:...status)', { status });
 		if (query.mode) qb.andWhere('execution.mode = :filterMode', { filterMode: query.mode });
 		if (workflowId) qb.andWhere({ workflowId });
-		const startedAt = startedAtCondition({ startedAfter, startedBefore });
+		const startedAt = startedAtCondition(
+			{ startedAfter, startedBefore },
+			this.globalConfig.database.type,
+		);
 		if (startedAt) qb.andWhere({ startedAt });
 
 		if (metadata?.length === 1) {
@@ -1560,7 +1591,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		const result = await this.createQueryBuilder('execution')
 			.select('DISTINCT execution.workflowId', 'workflowId')
 			.where('execution.startedAt >= :date', {
-				date: DateUtils.mixedDateToUtcDatetimeString(date),
+				date: toDateQueryParameter(date, this.globalConfig.database.type),
 			})
 			.getRawMany<{ workflowId: string }>();
 
@@ -1585,6 +1616,20 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			where: { status: In(['running', 'unknown']) },
 		});
 		return rows.map(({ id }) => id);
+	}
+
+	/** IDs among `ids` of executions with `running` status. */
+	async findRunningIds(ids: string[]): Promise<string[]> {
+		const running: string[] = [];
+		for (const chunk of chunkIds(ids)) {
+			const rows = await this.find({
+				select: ['id'],
+				where: { id: In(chunk), status: 'running' },
+			});
+			running.push(...rows.map(({ id }) => id));
+		}
+
+		return running;
 	}
 
 	async findStatusesByIds(ids: string[]): Promise<Array<Pick<ExecutionEntity, 'id' | 'status'>>> {
@@ -1658,7 +1703,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			where.workflowId = query.workflowId;
 		}
 
-		const startedAt = startedAtCondition(query);
+		const startedAt = startedAtCondition(query, this.globalConfig.database.type);
 		if (startedAt) where.startedAt = startedAt;
 
 		return await this.find({ select: ['id'], where });

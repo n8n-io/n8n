@@ -13,6 +13,7 @@ export class KnowledgeModule implements ModuleInterface {
 	 * Settings exposed to the frontend under `/rest/module-settings`. The editor
 	 * rejects an upload with these limits before the request, so a configured
 	 * limit shows up as the friendly client message and not as a server error.
+	 * `collectionsEnabled` is the operator override of the collections flag.
 	 */
 	async settings() {
 		const { KnowledgeConfig } = await import('./knowledge.config.js');
@@ -24,6 +25,7 @@ export class KnowledgeModule implements ModuleInterface {
 				maxFilesPerUpload: config.maxFilesPerUpload,
 				maxTotalSizeBytes: config.maxTotalSizeBytes,
 			},
+			collectionsEnabled: config.collectionsEnabled,
 		} satisfies FrontendModuleSettings['knowledge'];
 	}
 
@@ -35,9 +37,7 @@ export class KnowledgeModule implements ModuleInterface {
 		// reached — so a live process in s3/az mode always has that location
 		// registered here.
 		const { KnowledgeFileStore } = await import('./files/knowledge-file-store.js');
-		const { ExecutionDataJsonStore } = await import(
-			'@/executions/execution-data/execution-data-json-store.js'
-		);
+		const { ExecutionDataJsonStore } = await import('@n8n/backend-services');
 		const { registerKnowledgeByteStores } = await import(
 			'./files/register-knowledge-byte-stores.js'
 		);
@@ -48,8 +48,22 @@ export class KnowledgeModule implements ModuleInterface {
 	}
 
 	async entities(): Promise<EntityClass[]> {
-		const { KnowledgeFile } = await import('./entities/knowledge-file.entity.js');
+		const {
+			AgentFile,
+			KnowledgeCollection,
+			SharedKnowledgeCollection,
+			KnowledgeFile,
+			KnowledgeVectorStore,
+			AgentKnowledgeDependency,
+		} = await import('./entities/index.js');
 
-		return [KnowledgeFile];
+		return [
+			AgentFile,
+			KnowledgeCollection,
+			SharedKnowledgeCollection,
+			KnowledgeFile,
+			KnowledgeVectorStore,
+			AgentKnowledgeDependency,
+		];
 	}
 }

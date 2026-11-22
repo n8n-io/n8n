@@ -17,16 +17,7 @@ vi.mock('@n8n/instance-ai', async () => {
 			const safeContent = content.replace(/<\/untrusted_data/gi, '&lt;/untrusted_data');
 			return `<untrusted_data source="${esc(source)}"${safeLabel}>\n${safeContent}\n</untrusted_data>`;
 		},
-		builderTemplatesOptionsFromEnv: () => ({}),
 		RESOURCE_EXPLORATION_UNAVAILABLE: 'Resource exploration is not available.',
-		BuilderTemplatesService: class {
-			async getBundle() {
-				return { files: [], indexTxt: '', version: null };
-			}
-			getVersion() {
-				return null;
-			}
-		},
 	};
 });
 

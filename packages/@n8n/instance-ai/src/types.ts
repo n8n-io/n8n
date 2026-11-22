@@ -19,6 +19,7 @@ import type {
 import type { AiGatewayNodeMeta } from '@n8n/ai-utilities/node-catalog';
 import type {
 	AgentConfigValidationIssueCode,
+	AgentToolOutputFile,
 	AgentJsonConfig,
 	AgentSessionStatus,
 	AgentSkill,
@@ -32,11 +33,16 @@ import type {
 	SkillListResponse,
 	SkillSaveResponse,
 	SkillScope,
+	ConnectPublicSkillSource,
+	DiscoverPublicSkillSource,
+	PublicSkillSourceDiscovery,
+	PublicSkillSourceImportCheck,
+	SkillSourceConnectResponse,
+	SkillSourceListItem,
 	EvaluationMetric,
 	TaskList,
 	InstanceAiApprovalMode,
 	InstanceAiPromptConfiguration,
-	InstanceAiEvent,
 	InstanceAiFileAttachment,
 	InstanceAiPermissions,
 	InstanceAiSetupItem,
@@ -90,7 +96,6 @@ import type {
 	WorkflowVerificationEvidence,
 	WorkflowTriggerVerificationProgress,
 } from './workflow-loop/workflow-loop-state';
-import type { BuilderTemplatesService } from './workspace/builder-templates-service';
 
 // ── Data shapes ──────────────────────────────────────────────────────────────
 
@@ -1244,6 +1249,13 @@ export interface InstanceAiPreferenceService {
 
 export interface InstanceAiSkillService {
 	assistantSkillsEnabled: boolean;
+	sources?: {
+		list(): Promise<SkillSourceListItem[]>;
+		discover(input: DiscoverPublicSkillSource): Promise<PublicSkillSourceDiscovery>;
+		/** What an import of the selection does, before the user approves it. Stores nothing. */
+		checkImport(input: ConnectPublicSkillSource): Promise<PublicSkillSourceImportCheck>;
+		connect(input: ConnectPublicSkillSource): Promise<SkillSourceConnectResponse>;
+	};
 	list(options: {
 		query?: string;
 		scope?: SkillScope;
@@ -1709,13 +1721,65 @@ export interface InstanceAiStoredFile {
 	fileName: string;
 	mimeType: string;
 	sizeBytes: number;
+	/** Checks that storage still has the bytes, without loading them. */
+	hasContent(): Promise<boolean>;
 	/** Loads the bytes. Gives `undefined` when storage no longer has them. */
 	readContent(): Promise<Buffer | undefined>;
+}
+
+/** A conversation file, as the chat shows it. */
+export type InstanceAiConversationFile = AgentToolOutputFile;
+
+/** The sandbox files feature of the host: conversation files in and out of the sandbox. */
+export interface InstanceAiSandboxFiles {
+	/** Most bytes that one `import-files` call copies, for all files together. */
+	maxImportBytes: number;
+	/**
+	 * Copy conversation files into `inputs/` of the sandbox. Each key is a path
+	 * relative to `inputs/`, each value a fileId. The host checks every file,
+	 * path and the cap before the first write. Throws when a check or the copy
+	 * fails. The message is for the model, and for a failed copy it names the
+	 * files that were copied before it.
+	 */
+	importFiles(
+		files: Record<string, string>,
+		abortSignal?: AbortSignal,
+	): Promise<InstanceAiImportedFile[]>;
+	/**
+	 * Store one file of `outputs/` as a conversation file, or give the stored
+	 * file when its name and bytes did not change. `path` is relative to `outputs/`.
+	 * Throws when the file is missing or over a storage cap. The message is for the model.
+	 */
+	storeOutput(path: string, abortSignal?: AbortSignal): Promise<InstanceAiConversationFile>;
+}
+
+/** A conversation file that the host copied into the sandbox. */
+export type InstanceAiImportedFile = AgentToolOutputFile & {
+	/** Path relative to the workspace root, e.g. `inputs/sales.csv`. */
+	path: string;
+};
+
+/** A file in the list of the thread's files. */
+export interface InstanceAiListedFile extends InstanceAiConversationFile {
+	/** `upload`: the user attached it. `sandbox`: it came from `outputs/` of the sandbox. */
+	origin: 'upload' | 'sandbox';
+	/** ISO date and time when n8n stored the file. */
+	createdAt: string;
 }
 
 export interface InstanceAiStoredFileReader {
 	/** Gives `undefined` when the thread has no such file. */
 	read(fileId: string): Promise<InstanceAiStoredFile | undefined>;
+	/**
+	 * The files of the thread, newest first. `read` finds each listed file.
+	 * The host sets it only when the sandbox files feature is on.
+	 */
+	list?(): Promise<InstanceAiListedFile[]>;
+	/**
+	 * Whether the model of the turn can see a file of this type. The runtime
+	 * attaches only these types to the model input. `view-file` needs it.
+	 */
+	canView?(mimeType: string): boolean;
 }
 
 // ── Context bundle ───────────────────────────────────────────────────────────
@@ -1806,8 +1870,6 @@ export interface InstanceAiContext {
 		executionId?: string;
 	}) => Promise<{ title: string; sessionNumber: number; transcript: string } | null>;
 	webResearchService?: InstanceAiWebResearchService;
-	/** Curated workflow-template provider — materializes `knowledge-base/templates/` in the sandbox. */
-	templatesService?: BuilderTemplatesService;
 	workspaceService?: InstanceAiWorkspaceService;
 	workflowTemplateService: InstanceAiWorkflowTemplateService;
 	/**
@@ -1921,6 +1983,11 @@ export interface InstanceAiContext {
 	 * and files from earlier messages stay readable.
 	 */
 	storedFiles?: InstanceAiStoredFileReader;
+	/**
+	 * Moves conversation files in and out of the sandbox. The host sets it only
+	 * when the sandbox files feature is on, so its presence is the gate.
+	 */
+	sandboxFiles?: InstanceAiSandboxFiles;
 	/** Logger for diagnostics from domain tools. */
 	logger: Logger;
 	/** Optional telemetry sink for domain tools. */
@@ -2125,6 +2192,8 @@ export interface ServiceProxyConfig {
 	 * transparently refreshed during long-running agent turns.
 	 */
 	getAuthHeaders: () => Promise<Record<string, string>>;
+	/** Tags added to every span exported through the LangSmith proxy. Other proxies ignore them. */
+	traceTags?: string[];
 }
 
 // ── LangSmith tracing ────────────────────────────────────────────────────────
@@ -2326,8 +2395,6 @@ export interface OrchestrationContext {
 	mcpTools?: InstanceAiToolRegistry;
 	/** Skills that the agent can load. */
 	skills?: RuntimeSkillSource;
-	/** Add loaded Hub content to UI events without changing agent memory. */
-	mapSkillEventForDisplay?: (event: InstanceAiEvent) => InstanceAiEvent;
 	/** OAuth2 callback URL for the n8n instance (e.g. http://localhost:5678/rest/oauth2-credential/callback) */
 	oauth2CallbackUrl?: string;
 	/** Cancel a running background task by its ID */

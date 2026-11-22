@@ -15,9 +15,7 @@ import {
 	type InstanceAiConfirmResponse,
 	type InstanceAiEvent,
 	type InstanceAiThreadStatusResponse,
-	type InstanceContextInjection,
 	type InstanceContextReach,
-	INSTANCE_CONTEXT_SURFACE_DEPTH,
 	type InstanceAiEvalThreadMemoryResponse,
 	type InstanceAiThreadArtifactsContext,
 	TOOL_CATALOG_CALL_TOOL_NAME,
@@ -110,6 +108,11 @@ import { assertNever } from '@/utils';
 
 import { buildPreferencesAppliedTelemetry } from './ai-preferences-telemetry';
 import { InstanceAiSkillTelemetry } from './instance-ai-skill-telemetry';
+import {
+	trackInstanceContextTurn,
+	type InstanceContextTurn,
+	type InstanceContextTurnSegment,
+} from './instance-context-turn-telemetry';
 import { InstanceAiBrowserSessionService } from './browser/instance-ai-browser-session.service';
 import { InstanceAiCloudBrowserTaskService } from './browser/instance-ai-cloud-browser-task.service';
 import { InstanceAiCloudBrowserService } from './browser/instance-ai-cloud-browser.service';
@@ -138,6 +141,7 @@ import {
 import {
 	AUTO_FOLLOW_UP_MESSAGE,
 	cleanStoredUserMessage,
+	buildRunStoppedMessage,
 	extractStoredMessageText,
 } from './internal-messages';
 import { INSTANCE_AI_RUN_TIMEOUT_REASON, InstanceAiLivenessService } from './liveness';
@@ -364,15 +368,7 @@ const MAX_CONSECUTIVE_FAILED_INTERNAL_FOLLOW_UPS = 3;
 const TITLE_REFINE_HISTORY_LIMIT = 50;
 
 /** Bind identity, gate results, and injection once for all segments of a turn. */
-type InstanceContextTurnBinding = {
-	skills?: InstanceAiSkillTelemetry;
-	userId: string;
-	threadId: string;
-	runId: string;
-	injection: InstanceContextInjection;
-	instanceContextEnabled: boolean;
-	nodeUsageEnabled: boolean;
-};
+type InstanceContextTurnBinding = Omit<InstanceContextTurn, 'runtime'>;
 
 @Service()
 export class InstanceAiService {
@@ -550,6 +546,8 @@ export class InstanceAiService {
 			backgroundTaskIdleTimeoutMs: livenessPolicyConfig.backgroundTaskIdleTimeoutMs,
 			runState: this.runState,
 			backgroundTasks: this.backgroundTasks,
+			isTaskWaitingForUser: (taskId) =>
+				this.cloudBrowserService.findServer(taskId)?.isUserInControl() ?? false,
 			eventBus: this.eventBus,
 			logger: this.logger,
 			finalizeCancelledSuspendedRun: (suspended, reason) => {
@@ -578,7 +576,6 @@ export class InstanceAiService {
 			backgroundTasks: this.backgroundTasks,
 			settingsService: this.settingsService,
 			aiService: this.aiService,
-			getTemplatesService: () => this.adapterService.getTemplatesService(),
 			resolveTracingConfig: async (threadId, userId) => {
 				const ownerId = userId ?? (await this.memoryService.getThreadActorId(threadId));
 				if (!ownerId) return { userId: 'system' };
@@ -603,14 +600,18 @@ export class InstanceAiService {
 			agentMemory: this.agentMemory,
 			runState: this.runState,
 			suspendedThreads: this.suspendedThreads,
-			startFollowUpRun: async (user, threadId, message, messageGroupId) =>
-				await this.startInternalFollowUpRun(
-					user,
+			startFollowUpRun: async (user, threadId, message, messageGroupId) => {
+				// The task can end long after the user lost access. No run starts for that user.
+				const activeUser = await this.revalidateActiveUser(user.id);
+				if (!activeUser) return '';
+				return await this.startInternalFollowUpRun(
+					activeUser,
 					threadId,
 					message,
 					messageGroupId,
 					'background_task_completed',
-				),
+				);
+			},
 		});
 		this.terminalOutcome = new InstanceAiTerminalOutcomeService({
 			// The terminal guard and outcome-replay dedup must see the run's events
@@ -1283,10 +1284,14 @@ export class InstanceAiService {
 		}
 	}
 
-	cancelRun(threadId: string, reason = 'user_cancelled'): void {
+	cancelRun(
+		threadId: string,
+		reason = 'user_cancelled',
+		options: { skipTasksDetachedFromTurn?: boolean } = {},
+	): void {
 		const quotaStop = reason === 'quota_exhausted';
 		const abortReason = quotaStop ? assistantCreditsExhaustedError() : undefined;
-		const cancelledTasks = this.backgroundTasks.cancelThread(threadId, abortReason);
+		const cancelledTasks = this.backgroundTasks.cancelThread(threadId, abortReason, options);
 		for (const task of cancelledTasks) {
 			void this.tracing.finalizeBackgroundTaskTracing(task, 'cancelled');
 			if (quotaStop) {
@@ -1318,6 +1323,7 @@ export class InstanceAiService {
 		const { active, suspended } = this.runState.cancelThread(threadId);
 		if (active) {
 			if (reason === INSTANCE_AI_RUN_TIMEOUT_REASON) this.liveness.markRunTimedOut(active.runId);
+			if (reason === 'user_cancelled') active.stoppedByUser = true;
 			active.abortController.abort(abortReason);
 			// inline-kind rows are dropped via the resolve-callback fired by
 			// runState.cancelThread; suspended-kind rows (no in-memory
@@ -1446,7 +1452,9 @@ export class InstanceAiService {
 			}
 			case 'cancel-thread':
 				// A thread's run + tasks can be spread across mains, so always fan out.
-				this.cancelRun(threadId);
+				// The user stopped the reply. A task detached from its turn runs next to the chat, and
+				// the user stops it from its own card.
+				this.cancelRun(threadId, 'user_cancelled', { skipTasksDetachedFromTurn: true });
 				return false;
 			case 'clear-thread':
 				await this.clearThreadState(threadId, userId);
@@ -2240,7 +2248,7 @@ export class InstanceAiService {
 	 * it ends, but the method skips delivery if the cloud browser is disabled or unavailable.
 	 * It logs errors without propagating them to the calling run.
 	 */
-	private async maybeDeliverCloudBrowserTaskResults(user: User, threadId: string): Promise<void> {
+	async maybeDeliverCloudBrowserTaskResults(user: User, threadId: string): Promise<void> {
 		try {
 			if (!this.settingsService.isCloudBrowserEnabled()) return;
 			if (!(await this.cloudBrowserService.isAvailable())) return;
@@ -2461,6 +2469,37 @@ export class InstanceAiService {
 			this.logger.warn('Failed to persist user message on cancel', {
 				threadId,
 				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+	}
+
+	/**
+	 * Tell later runs that the user stopped this one, so the run that reports a finished cloud
+	 * browser task does not resume the stopped work. Only for threads with such a task: no other
+	 * run starts after a stop. Runs after the SDK has saved the partial reply, so the note comes
+	 * after it.
+	 */
+	private async persistRunStoppedNote(threadId: string, userId: string): Promise<void> {
+		try {
+			if (!this.settingsService.isCloudBrowserEnabled()) return;
+			if (!(await this.cloudBrowserTaskService.hasPendingTasks(threadId))) return;
+			await this.agentMemory.saveMessages({
+				threadId,
+				resourceId: userId,
+				messages: [
+					{
+						id: nanoid(),
+						createdAt: new Date(),
+						type: 'llm',
+						role: 'user',
+						content: [{ type: 'text', text: buildRunStoppedMessage() }],
+					},
+				],
+			});
+		} catch (error) {
+			this.logger.warn('Failed to persist the run-stopped note', {
+				threadId,
+				error: getErrorMessage(error),
 			});
 		}
 	}
@@ -2687,11 +2726,7 @@ export class InstanceAiService {
 				nodeUsageEnabled,
 			} = environment;
 			skillTelemetry.bind(orchestrationContext.skills);
-			const contextEventBus = this.createRunEventBus(
-				observedContextWork,
-				orchestrationContext,
-				skillTelemetry,
-			);
+			const contextEventBus = this.createRunEventBus(observedContextWork, skillTelemetry);
 			modelId = resolvedModelId;
 			promptVersion = orchestrationContext.promptConfiguration?.version;
 			setTracePromptVersion(tracing, promptVersion);
@@ -3305,6 +3340,9 @@ export class InstanceAiService {
 				},
 			);
 		} finally {
+			const active = this.runState.getActiveRun(threadId);
+			const stoppedByUser = active?.runId === runId && active.stoppedByUser === true;
+			if (stoppedByUser) await this.persistRunStoppedNote(threadId, user.id);
 			this.runState.clearActiveRun(threadId);
 			const segmentSuspended = messageTraceFinalization?.status === 'suspended';
 			// Note: don't delete threadPushRef here. Follow-up runs start later in
@@ -3330,13 +3368,15 @@ export class InstanceAiService {
 			// Post-run wiring (only when the run is actually ending, not when it
 			// merely suspended for HITL): project task states to the client even
 			// on a stop, and start a setup follow-up unless the run was stopped.
+			// Cloud browser results are delivered even on a stop, see below.
 			if (!segmentSuspended && !this.runState.hasSuspendedRun(threadId)) {
 				const reschedule = !signal.aborted && !blockedForQuota;
 				await this.taskProjector.syncFromWorkflowLoop(threadId, runId);
-				if (reschedule) {
-					await this.maybeStartWorkflowSetupFollowUp(user, threadId);
-					await this.maybeDeliverCloudBrowserTaskResults(user, threadId);
-				}
+				if (reschedule) await this.maybeStartWorkflowSetupFollowUp(user, threadId);
+				// Even after a stop: a stop does not stop cloud browser tasks, so their results
+				// still have to reach the user. The run-stopped note keeps the delivery run from
+				// resuming the stopped work.
+				if (!blockedForQuota) await this.maybeDeliverCloudBrowserTaskResults(user, threadId);
 			}
 			if (errorReporterExecutionToken) {
 				this.instanceAiErrorReporter.endRun(runId, errorReporterExecutionToken);
@@ -3863,11 +3903,7 @@ export class InstanceAiService {
 		let contextSegmentReported = false;
 		let blockedForQuota = false;
 		const observedContextWork = new WorkSummaryAccumulator();
-		const contextEventBus = this.createRunEventBus(
-			observedContextWork,
-			opts.orchestrationContext,
-			skillTelemetry,
-		);
+		const contextEventBus = this.createRunEventBus(observedContextWork, skillTelemetry);
 		/**
 		 * Set once the model run has yielded output. The catch below also wraps
 		 * post-result finalization, so without this a finalization failure after a
@@ -4423,6 +4459,11 @@ export class InstanceAiService {
 				},
 			);
 		} finally {
+			const active = this.runState.getActiveRun(opts.threadId);
+			const stoppedByUser = active?.runId === opts.runId && active.stoppedByUser === true;
+			if (stoppedByUser && !skipPostRunCleanup) {
+				await this.persistRunStoppedNote(opts.threadId, opts.user.id);
+			}
 			this.runState.clearActiveRun(opts.threadId, opts.resumeExecutionToken);
 			const segmentSuspended = messageTraceFinalization?.status === 'suspended';
 			// See note in executeRun's finally — keep threadPushRef alive for
@@ -4461,8 +4502,8 @@ export class InstanceAiService {
 					await this.markWorkflowSetupHandled(opts.threadId, completedSetupWorkflowId, opts.runId);
 				}
 				await this.taskProjector.syncFromWorkflowLoop(opts.threadId, opts.runId);
-				if (reschedule) {
-					await this.maybeStartWorkflowSetupFollowUp(opts.user, opts.threadId);
+				if (reschedule) await this.maybeStartWorkflowSetupFollowUp(opts.user, opts.threadId);
+				if (!blockedForQuota) {
 					await this.maybeDeliverCloudBrowserTaskResults(opts.user, opts.threadId);
 				}
 			}
@@ -4684,6 +4725,9 @@ export class InstanceAiService {
 	): Promise<void> {
 		// Covers the stop button and the confirmation timeout of the liveness service.
 		void this.settleCancelledSuspension(suspended.threadId, suspended.user.id);
+		if (reason === 'user_cancelled') {
+			await this.persistRunStoppedNote(suspended.threadId, suspended.user.id);
+		}
 		const runTimeout =
 			reason === INSTANCE_AI_RUN_TIMEOUT_REASON
 				? this.liveness.consumeRunTimeout(suspended.runId)
@@ -4727,6 +4771,8 @@ export class InstanceAiService {
 		});
 
 		void this.suspendedThreads.dropPendingConfirmation(suspended.requestId);
+		// Results that came in while the run waited at its card. No run end delivers them.
+		await this.maybeDeliverCloudBrowserTaskResults(suspended.user, suspended.threadId);
 	}
 
 	private publishRunFinish(
@@ -4929,9 +4975,6 @@ export class InstanceAiService {
 		}
 	}
 
-	/** Use a fixed estimate to avoid loading a tokenizer on every turn. */
-	private static readonly BLOCK_CHARS_PER_TOKEN = 4;
-
 	/** Save the summary before the confirmation card is visible. */
 	private async persistSuspendedInstanceContext(
 		checkpointKey: string,
@@ -4977,14 +5020,13 @@ export class InstanceAiService {
 
 	private createRunEventBus(
 		workSummary: WorkSummaryAccumulator,
-		context?: OrchestrationContext,
 		skills?: InstanceAiSkillTelemetry,
 	): InstanceAiEventBus {
 		return {
 			publish: (threadId, event) => {
 				workSummary.observe(event);
 				skills?.observe(event);
-				this.eventBus.publish(threadId, context?.mapSkillEventForDisplay?.(event) ?? event);
+				this.eventBus.publish(threadId, event);
 			},
 			subscribe: (threadId, handler) => this.eventBus.subscribe(threadId, handler),
 		};
@@ -4992,62 +5034,10 @@ export class InstanceAiService {
 
 	private emitInstanceContextTurn(
 		turn: InstanceContextTurnBinding | undefined,
-		input: {
-			/** A turn can suspend more than once. Aggregate segments by run ID. */
-			segment: 'whole' | 'suspended' | 'resumed';
-			status: 'completed' | 'cancelled' | 'errored' | 'suspended';
-			reach: InstanceContextReach;
-			workSummary?: WorkSummary;
-			/** Measured usage for this segment, not the estimated block size. */
-			usage?: RunTokenUsage;
-		},
+		input: InstanceContextTurnSegment,
 	): void {
 		if (!turn) return;
-		const { injection } = turn;
-		this.telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.INSTANCE_CONTEXT_TURN, {
-			...turn.skills?.snapshot(),
-			user_id: turn.userId,
-			thread_id: turn.threadId,
-			run_id: turn.runId,
-			surface: 'aia',
-			segment: input.segment,
-			instance_context_enabled: turn.instanceContextEnabled,
-			node_usage_enabled: turn.nodeUsageEnabled,
-			...(injection.state === 'absent'
-				? { block_state: injection.state, absence_reason: injection.reason }
-				: {
-						block_state: injection.state,
-						block_is_update: injection.isUpdate,
-						block_inventory_rows: injection.legs.inventory,
-						block_event_rows: injection.legs.events,
-						block_run_rows: injection.legs.runs,
-						block_chars: injection.chars,
-						// The block is not tokenized separately. Report an estimate beside its exact length.
-						block_tokens_estimated: Math.ceil(
-							injection.chars / InstanceAiService.BLOCK_CHARS_PER_TOKEN,
-						),
-					}),
-			// Derived here rather than shipped: the depth is a function of the surfaces, and
-			// the map that defines it is in scope at the only place that needs a number.
-			context_depth: input.reach.surfaces.reduce(
-				(deepest, surface) => Math.max(deepest, INSTANCE_CONTEXT_SURFACE_DEPTH[surface]),
-				0,
-			),
-			context_surfaces: input.reach.surfaces,
-			asked_clarifying_question: input.workSummary?.askedClarifyingQuestion ?? false,
-			tool_calls: input.workSummary?.totalToolCalls ?? 0,
-			// A suspended turn spends tokens in each segment, so these are per segment and
-			// sum over the shared `run_id`. Absent when the segment reported no usage.
-			...(input.usage
-				? {
-						turn_prompt_tokens: input.usage.promptTokens,
-						turn_completion_tokens: input.usage.completionTokens,
-						turn_total_tokens: input.usage.totalTokens,
-						turn_cost_usd: input.usage.costUsd,
-					}
-				: {}),
-			status: input.status,
-		});
+		trackInstanceContextTurn(this.telemetry, { ...turn, runtime: 'instance-ai' }, input);
 	}
 
 	/** Emit a typed event consumed by the Prometheus Instance AI metrics collector. */

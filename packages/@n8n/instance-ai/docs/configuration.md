@@ -20,6 +20,7 @@ persisted in settings takes precedence over `N8N_INSTANCE_AI_SANDBOX_PROVIDER`.
 | `N8N_INSTANCE_AI_VERTEX_LOCATION` | string | `''` | Vertex location for `google-vertex-anthropic/*` (e.g. `global`, `us-east5`). Empty falls back to `GOOGLE_VERTEX_LOCATION`, then `global`. |
 | `N8N_INSTANCE_AI_VERTEX_SERVICE_ACCOUNT_JSON` | string | `''` | Service-account JSON for Vertex Claude. Omit to use ADC (`gcloud auth application-default login`). |
 | `N8N_INSTANCE_AI_REASONING_EFFORT` | string | unset | Optional reasoning effort for `custom/*` (`none`/`minimal`/`low`/`medium`/`high`/`xhigh`/`max`). Unset = known-model map in `src/utils/custom-model-defaults.ts`; still unresolved = omit. |
+| `N8N_INSTANCE_AI_REPLAY_REASONING` | string | unset | Set to `conversation` to send a `custom/*` model the reasoning of earlier turns as well. Unset = reasoning is sent back within the current tool chain only. Use it when the model's chat template keeps earlier reasoning. |
 | `N8N_INSTANCE_AI_SUPPORTS_STRUCTURED_OUTPUTS` | string | unset | Optional `true`/`false` for `custom/*` structured-output support. Unset = known-model map; still unresolved = omit. |
 | `N8N_INSTANCE_AI_MCP_SERVERS` | string | `''` | Comma-separated MCP server configs. Format: `name=url,name=url` |
 | `N8N_AI_ALLOW_SENDING_PARAMETER_VALUES` | boolean | `true` | Deprecated; removal is planned for v4. Allow Instance AI to receive workflow and node parameter values. The effective value is `true` only when this variable and the "Send actual data values" setting in Settings > AI usage are both on. Instance AI reads it at the start of each run. When it is `false`, the adapter hides parameter values and execution data, and the Assistant runs in a limited mode: it cannot create or edit workflows. After it is turned on, the Assistant must read a workflow again before it can rebuild or save it. This is a global n8n AI setting. |
@@ -130,16 +131,6 @@ reclaim idle remote sandboxes.
 | `N8N_INSTANCE_AI_HISTORY_RECALL` | boolean | `true` | Let the agent read earlier messages that the summary replaced (`read_history` tool) |
 
 Observer and Reflector run on the utility model (`N8N_INSTANCE_AI_UTILITY_MODEL`, see Core). Without a utility model they use the orchestrator agent's model.
-
-### Builder templates
-
-These environment variables are read directly by `BuilderTemplatesService`.
-
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `N8N_INSTANCE_AI_TEMPLATES_URL` | string | `https://sdk-templates.n8n.io` | Override the builder-template CDN base URL |
-| `N8N_INSTANCE_AI_TEMPLATES_REFRESH_HOURS` | number | `24` | Refresh interval in hours. Invalid or non-positive values use 24 hours |
-| `N8N_INSTANCE_AI_TEMPLATES_DISABLED` | boolean | `false` | Disable remote builder templates |
 
 ### Lifecycle & Housekeeping
 

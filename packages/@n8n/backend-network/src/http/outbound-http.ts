@@ -222,6 +222,7 @@ export class OutboundHttp {
 
 		return {
 			request,
+			// oxlint-disable-next-line typescript/no-deprecated -- Keep the adapter for legacy node request helpers.
 			requestLegacy: async (requestOptions, callbacks) => {
 				try {
 					// oxlint-disable-next-line typescript/no-deprecated

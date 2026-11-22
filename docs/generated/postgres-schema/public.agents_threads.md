@@ -102,6 +102,7 @@ erDiagram
   varchar_36_ resumeFromMessageId
   text resumeNotes
   timestamp_3__with_time_zone updatedAt
+  text workingSet
 }
 "public.agents_observation_locks" {
   varchar_36_ agentId FK

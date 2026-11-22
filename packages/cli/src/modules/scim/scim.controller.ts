@@ -17,7 +17,6 @@ import {
 import { Container } from '@n8n/di';
 import { Router, type Response } from 'express';
 
-import { scimOptInGate } from './scim-opt-in';
 import { markScimRejection, ScimRequestObserver } from './scim-request-observer';
 import { scimRoute } from './scim-route';
 import {
@@ -49,7 +48,7 @@ export class ScimController {
 			router: Router(),
 			skipAuth: true,
 			allowBots: true,
-			middlewares: [scimOptInGate, Container.get(ScimRequestObserver).getMiddleware()],
+			middlewares: [Container.get(ScimRequestObserver).getMiddleware()],
 		},
 	];
 

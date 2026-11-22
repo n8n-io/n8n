@@ -22,7 +22,8 @@ function onSelect(recommended: RecommendedSkillSelection) {
 <template>
 	<N8nDialog
 		v-model:open="open"
-		size="2xlarge"
+		size="full"
+		:container-class="$style.dialog"
 		:header="i18n.baseText('experiments.recommendedSkills.dialog.title')"
 		data-test-id="recommended-skills-dialog"
 	>
@@ -36,6 +37,11 @@ function onSelect(recommended: RecommendedSkillSelection) {
 </template>
 
 <style lang="scss" module>
+/* Wide enough to keep the "Based on" source of each card on one line. */
+.dialog {
+	--dialog--max-width: min(62rem, calc(100dvw - var(--spacing--lg)));
+}
+
 .body {
 	display: flex;
 	flex-direction: column;

@@ -2124,6 +2124,33 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		expect(assistant.status).toBe('awaitingUser');
 	});
 
+	it('shows the tool that a tool catalog call_tool call runs', async () => {
+		const events: AgentSseEvent[] = [
+			{ type: 'start-step' },
+			{ type: 'tool-input-start', toolCallId: 'tc-1', toolName: 'call_tool' },
+			{
+				type: 'tool-call',
+				toolCallId: 'tc-1',
+				toolName: 'call_tool',
+				input: { tool: 'list_workflows', arguments: { limit: 5 } },
+			},
+			{ type: 'tool-result', toolCallId: 'tc-1', toolName: 'call_tool', output: { workflows: [] } },
+			{ type: 'finish-step' },
+			{ type: 'done' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('list my workflows');
+		await flushPromises();
+		await nextTick();
+
+		const toolCall = hook.messages.value[1].toolCalls?.[0];
+		expect(toolCall?.tool).toBe('list_workflows');
+		expect(toolCall?.input).toEqual({ limit: 5 });
+		expect(toolCall?.output).toEqual({ workflows: [] });
+	});
+
 	// -----------------------------------------------------------------------
 	// Error event handling
 	// -----------------------------------------------------------------------

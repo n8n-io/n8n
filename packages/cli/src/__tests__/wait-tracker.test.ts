@@ -1337,6 +1337,9 @@ describe('WaitTracker', () => {
 				.mockResolvedValue(parkedParent([childId]));
 			executionPersistence.findSingleExecution.calledWith(childId).mockResolvedValue(crashedChild);
 			executionRepository.findStatusesByIds.mockResolvedValue([{ id: childId, status: 'crashed' }]);
+			executionPersistence.findStatusesByIds.mockResolvedValue([
+				{ id: parentId, status: 'waiting' },
+			]);
 
 			await waitTracker.resumeParentsOfFinishedSubExecutions();
 

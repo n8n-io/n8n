@@ -4,10 +4,18 @@ import { join } from "node:path";
 import { isTestFile } from "../test-files.mjs";
 
 /**
+ * `required`: `count` team members other than the author approve.
+ * `involved`: `count` team members review; an author in the team counts as one.
+ * @typedef ReviewRequirement
+ * @property { 'required' | 'involved' } rule
+ * @property { number } count
+ * */
+
+/**
  * @typedef OwnersEntry
  * @property { string } pattern
  * @property { string } team
- * @property { boolean } required A member of the team must approve before merge.
+ * @property { ReviewRequirement | null } review
  * @property { number } line 1-based line number in the OWNERS file.
  * */
 
@@ -30,11 +38,14 @@ export const OWNERS_FILE = join(REPO_ROOT, "OWNERS");
 // GitHub team handle, e.g. `@n8n-io/catalysts`.
 const TEAM_TOKEN = /^@[\w.-]+\/[\w.-]+$/;
 
+const MIN_REVIEW_COUNT = 1;
+const MAX_REVIEW_COUNT = 5;
+
 /**
- * Line grammar: `<pattern> <@org/team> [required]`
- * New option keywords go here.
+ * Line grammar: `<pattern> <@org/team> [required[(k)] | involved[(k)]]`
+ * Keep in sync with the DevHub parser, which enforces these options.
  */
-const OPTION_TOKENS = new Set(["required"]);
+const REVIEW_TOKEN = /^(required|involved)(?:\((\d+)\))?$/;
 
 /**
  * @param { string } line
@@ -66,23 +77,32 @@ export function parseOwnersContent(content) {
 		const [pattern, ...tokens] = line.split(/\s+/);
 		/** @type { string | null } */
 		let team = null;
-		let required = false;
-		let sawOption = false;
+		/** @type { ReviewRequirement | null } */
+		let review = null;
 
 		for (const token of tokens) {
+			const reviewToken = REVIEW_TOKEN.exec(token);
 			if (TEAM_TOKEN.test(token)) {
-				if (sawOption) {
+				if (review) {
 					throw new Error(`OWNERS line ${lineNumber}: team "${token}" must come before options`);
 				}
 				if (team) {
 					throw new Error(`OWNERS line ${lineNumber}: only one team per pattern is supported`);
 				}
 				team = token;
-			} else if (token === "required") {
-				required = true;
-				sawOption = true;
-			} else if (OPTION_TOKENS.has(token)) {
-				throw new Error(`OWNERS line ${lineNumber}: option "${token}" is not handled`);
+			} else if (reviewToken) {
+				if (review) {
+					throw new Error(
+						`OWNERS line ${lineNumber}: only one of "required" and "involved" per pattern is supported`,
+					);
+				}
+				const count = Number(reviewToken[2] ?? 1);
+				if (count < MIN_REVIEW_COUNT || count > MAX_REVIEW_COUNT) {
+					throw new Error(
+						`OWNERS line ${lineNumber}: count in "${token}" must be from ${MIN_REVIEW_COUNT} to ${MAX_REVIEW_COUNT}`,
+					);
+				}
+				review = { rule: /** @type { 'required' | 'involved' } */ (reviewToken[1]), count };
 			} else {
 				throw new Error(`OWNERS line ${lineNumber}: unknown token "${token}"`);
 			}
@@ -92,7 +112,7 @@ export function parseOwnersContent(content) {
 			throw new Error(`OWNERS line ${lineNumber}: no team for pattern "${pattern}"`);
 		}
 
-		entries.push({ pattern, team, required, line: lineNumber });
+		entries.push({ pattern, team, review, line: lineNumber });
 	});
 
 	return entries;
@@ -237,12 +257,12 @@ export function assignOwnership(files, entries) {
 }
 
 /**
- * Determine which teams must approve the changeset: a team is required when
- * its `required` entry wins (last-match) for a changed non-test file.
+ * Determine which teams must review the changeset: a team is listed when
+ * its `required` or `involved` entry wins (last-match) for a changed non-test file.
  *
  * @param { Set<string> } files
  * @param { OwnersEntry[] } entries
- * @returns { Ownerships } required team -> files that triggered the requirement
+ * @returns { Ownerships } team -> files that triggered the review rule
  * */
 export function resolveRequiredTeams(files, entries) {
 	/** @type { Ownerships } */
@@ -252,7 +272,7 @@ export function resolveRequiredTeams(files, entries) {
 		if (isTestFile(file)) continue;
 
 		const entry = findOwningEntry(file, entries);
-		if (!entry?.required) continue;
+		if (!entry?.review) continue;
 
 		const bucket = teamToFiles.get(entry.team);
 
@@ -319,8 +339,10 @@ function runCheck() {
 		process.exit(1);
 	}
 
-	const requiredCount = entries.filter((entry) => entry.required).length;
-	console.log(`OWNERS is valid: ${entries.length} entries, ${requiredCount} with required review.`);
+	const count = (rule) => entries.filter((entry) => entry.review?.rule === rule).length;
+	console.log(
+		`OWNERS is valid: ${entries.length} entries, ${count("required")} required, ${count("involved")} involved.`,
+	);
 }
 
 // CLI: `node owners.mjs <changed-files-list>` prints ownership allocations for

@@ -2,6 +2,7 @@ import {
 	type AgentMessageAuthor,
 	type APPROVAL_TOOL_NAME,
 	type AgentBackgroundJobSignal,
+	type InstanceAiApprovalAskReason,
 	type N8N_CHAT_ACTION_TOOL_NAME,
 	type WAIT_TOOL_NAME,
 } from '@n8n/api-types';
@@ -81,6 +82,8 @@ export interface ApprovalInput {
 	displayName?: string;
 	supportsSessionApproval?: boolean;
 	args: unknown;
+	/** Why the "Approve for me" mode of the n8n Assistant showed the card. */
+	askReason?: InstanceAiApprovalAskReason;
 }
 
 export interface ApprovalResume {
