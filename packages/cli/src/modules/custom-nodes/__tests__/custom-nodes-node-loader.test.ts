@@ -55,7 +55,8 @@ describe('CustomNodesNodeLoader', () => {
 	it('has the package name n8n-custom and builds type names and icon paths', () => {
 		expect(loader.packageName).toBe('n8n-custom');
 		expect(customNodeTypeName('cn_acme')).toBe('n8n-custom.cn_acme');
-		expect(customNodeIconPath('cn_acme')).toBe('rest/custom-nodes/nodes/cn_acme/icon');
+		expect(customNodeIconPath('rest', 'cn_acme')).toBe('rest/custom-nodes/nodes/cn_acme/icon');
+		expect(customNodeIconPath('api/v0', 'cn_acme')).toBe('api/v0/custom-nodes/nodes/cn_acme/icon');
 	});
 
 	it('serves one description and one known entry for each custom node', async () => {
@@ -117,7 +118,7 @@ describe('CustomNodesNodeLoader', () => {
 		const withIcon: CustomNodeView = {
 			...node,
 			id: 'cn_icon',
-			iconUrl: customNodeIconPath('cn_icon'),
+			iconUrl: customNodeIconPath('rest', 'cn_icon'),
 		};
 		loader.setDefinitions([
 			{ node, actions: [] },

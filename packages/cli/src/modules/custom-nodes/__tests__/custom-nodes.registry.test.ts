@@ -1,5 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
 import type { Publisher, PushProxy } from '@n8n/backend-services';
+import type { GlobalConfig } from '@n8n/config';
 import { PubSubMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { InstanceSettings } from 'n8n-core';
@@ -79,6 +80,7 @@ function createRegistry(
 		instanceType?: 'main' | 'worker' | 'webhook';
 		nodes?: CustomNodeEntity[];
 		actions?: ActionAggregate[];
+		restEndpoint?: string;
 	} = {},
 ) {
 	const logger = mock<Logger>({ scoped: vi.fn().mockReturnThis() });
@@ -104,6 +106,7 @@ function createRegistry(
 		push,
 		publisher,
 		instanceSettings,
+		mock<GlobalConfig>({ endpoints: { rest: options.restEndpoint ?? 'rest' } }),
 	);
 	return { registry, loader, loadNodesAndCredentials, push, publisher, logger };
 }
@@ -165,6 +168,21 @@ describe('CustomNodesRegistry', () => {
 			(loader.getNode(id).type.description as INodeTypeDescription).iconUrl;
 		expect(iconUrlOf('cn_icon')).toBe('rest/custom-nodes/nodes/cn_icon/icon');
 		expect(iconUrlOf('cn_acme')).toBeUndefined();
+	});
+
+	it('builds iconUrl from the configured REST endpoint', async () => {
+		const { registry, loader } = createRegistry({
+			nodes: [nodeEntity({ id: 'cn_icon', iconMimeType: 'image/png' })],
+			actions: [],
+			restEndpoint: 'api/v0',
+		});
+
+		await registry.refresh({ notifyEditors: false, notifyInstances: false });
+
+		const { description } = loader.getNode('cn_icon').type;
+		expect((description as INodeTypeDescription).iconUrl).toBe(
+			'api/v0/custom-nodes/nodes/cn_icon/icon',
+		);
 	});
 
 	it('broadcasts nodeDescriptionUpdated only when notifyEditors is true', async () => {

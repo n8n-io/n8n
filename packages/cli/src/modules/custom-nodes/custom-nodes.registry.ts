@@ -1,6 +1,7 @@
 import { CUSTOM_DEFINITIONS_PACKAGE_NAME } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Publisher, PushProxy } from '@n8n/backend-services';
+import { GlobalConfig } from '@n8n/config';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
@@ -21,7 +22,7 @@ import {
 import { CustomNodeRepository } from './database/repositories/custom-node.repository';
 import type { ActionView, CustomNodeView } from './node-description.generator';
 
-function toNodeView(entity: CustomNodeEntity): CustomNodeView {
+function toNodeView(entity: CustomNodeEntity, restEndpoint: string): CustomNodeView {
 	return {
 		id: entity.id,
 		displayName: entity.displayName,
@@ -29,7 +30,7 @@ function toNodeView(entity: CustomNodeEntity): CustomNodeView {
 		baseUrl: entity.baseUrl,
 		auth: entity.auth,
 		// The icon bytes stay in the database. The editor loads them from the icon route.
-		...(entity.iconMimeType !== null && { iconUrl: customNodeIconPath(entity.id) }),
+		...(entity.iconMimeType !== null && { iconUrl: customNodeIconPath(restEndpoint, entity.id) }),
 	};
 }
 
@@ -56,6 +57,7 @@ export class CustomNodesRegistry {
 		private readonly push: PushProxy,
 		private readonly publisher: Publisher,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly globalConfig: GlobalConfig,
 	) {
 		this.logger = logger.scoped('custom-nodes');
 	}
@@ -108,7 +110,7 @@ export class CustomNodesRegistry {
 		}
 
 		return nodes.map((node) => ({
-			node: toNodeView(node),
+			node: toNodeView(node, this.globalConfig.endpoints.rest),
 			actions: actionsByNode.get(node.id) ?? [],
 		}));
 	}

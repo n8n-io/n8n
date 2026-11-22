@@ -21,8 +21,12 @@ import {
 
 export const customNodeTypeName = (id: string) => `${CUSTOM_DEFINITIONS_PACKAGE_NAME}.${id}`;
 
-/** Relative to the instance base URL. */
-export const customNodeIconPath = (id: string) => `rest/custom-nodes/nodes/${id}/icon`;
+/**
+ * Relative to the instance base URL. `restEndpoint` is the configured REST prefix
+ * (`GlobalConfig.endpoints.rest`), so the path matches the route of the icon controller.
+ */
+export const customNodeIconPath = (restEndpoint: string, id: string) =>
+	`${restEndpoint}/custom-nodes/nodes/${id}/icon`;
 
 export interface CustomNodeDefinition {
 	node: CustomNodeView;

@@ -154,6 +154,10 @@ export class AuthService {
 
 			// System agent chat attachments (the Assistant agent) render via <img> tags too.
 			`/${restEndpoint}/agents/system/:agentId/chat/attachments/:attachmentId`,
+
+			// Custom node icons load via <img> tags, which can't send the browser-id header.
+			// The route still needs a session and the customNode:list scope.
+			`/${restEndpoint}/custom-nodes/nodes/:id/icon`,
 		];
 	}
 

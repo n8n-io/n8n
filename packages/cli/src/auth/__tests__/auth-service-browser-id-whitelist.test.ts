@@ -60,5 +60,11 @@ describe('AuthService Browser ID Whitelist', () => {
 
 			expect(skipEndpoints).toContain('/rest/credentials/:id/authorize');
 		});
+
+		it('should include the custom node icon route in the skip browser ID check endpoints', () => {
+			const skipEndpoints = (authService as any).skipBrowserIdCheckEndpoints;
+
+			expect(skipEndpoints).toContain('/rest/custom-nodes/nodes/:id/icon');
+		});
 	});
 });

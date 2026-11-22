@@ -6,6 +6,8 @@ import { Container } from '@n8n/di';
 @BackendModule({ name: 'custom-nodes', instanceTypes: ['main', 'worker', 'webhook'] })
 export class CustomNodesModule implements ModuleInterface {
 	async init() {
+		await import('./custom-nodes.controller.js');
+
 		// The loader is registered with an empty set. This serves the stored definitions.
 		const { CustomNodesRegistry } = await import('./custom-nodes.registry.js');
 		await Container.get(CustomNodesRegistry).refresh({
