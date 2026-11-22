@@ -62,9 +62,10 @@ flowchart LR
   removes nothing needs no delete scope. `WorkflowPackageImporter.findImportLocation` still
   checks the user's project role for the folder scopes before the plan (see LIGO-1439).
 - The folder and workflow plans check the project role for each create and update
-  (`folder-write-forbidden`, `workflow-write-forbidden`). `WorkflowService` checks them again
-  only when it writes, after the earlier writes ran. `FolderService` takes no user and does not
-  check them, so keep the folder plan check. A project that the import creates needs no check,
+  (`folder-write-forbidden`, `workflow-write-forbidden`). `WorkflowCreationService` checks
+  `workflow:create` and `WorkflowService` checks `workflow:update` again only when they write,
+  after the earlier writes ran. `FolderService` takes no user and does not check them, so keep
+  the folder plan check. A project that the import creates needs no check,
   because its creator becomes project admin.
 
 ### Adding an IMPORT property

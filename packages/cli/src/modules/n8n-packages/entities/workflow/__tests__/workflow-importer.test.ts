@@ -533,7 +533,8 @@ describe('WorkflowImporter.plan', () => {
 	it('reports each workflow create and update that the project role does not allow', async () => {
 		const matchService = mock<WorkflowImportMatchService>();
 		const finder = mock<WorkflowFinderService>();
-		finder.findWorkflowIdsWithScopeForUser.mockResolvedValue(new Set());
+		// The role can update one of the two matched workflows, for example through a share.
+		finder.findWorkflowIdsWithScopeForUser.mockResolvedValue(new Set(['editable']));
 		const denyingProjectService = mock<ProjectService>();
 		denyingProjectService.getProjectWithScope.mockResolvedValue(null);
 		const importer = new WorkflowImporter(
@@ -544,7 +545,10 @@ describe('WorkflowImporter.plan', () => {
 			denyingProjectService,
 		);
 		matchService.findBySourceWorkflowIds.mockResolvedValue({
-			matches: new Map([['changed', makeWorkflow('existing')]]),
+			matches: new Map([
+				['changed', makeWorkflow('existing')],
+				['shared', makeWorkflow('editable')],
+			]),
 			lineageConflicts: [],
 		});
 		matchService.findOwningProjectsByWorkflowId.mockResolvedValue(new Map());
@@ -558,7 +562,7 @@ describe('WorkflowImporter.plan', () => {
 
 		const plan = await importer.plan(
 			context,
-			[prepared('new'), prepared('changed')],
+			[prepared('new'), prepared('changed'), prepared('shared')],
 			{
 				conflictPolicy: 'new-version',
 				idPolicy: 'source',
@@ -578,9 +582,11 @@ describe('WorkflowImporter.plan', () => {
 				action: 'update',
 			},
 		]);
-		expect(finder.findWorkflowIdsWithScopeForUser).toHaveBeenCalledWith(['existing'], user, [
-			'workflow:update',
-		]);
+		expect(finder.findWorkflowIdsWithScopeForUser).toHaveBeenCalledWith(
+			['existing', 'editable'],
+			user,
+			['workflow:update'],
+		);
 	});
 
 	describe('placement of a matched workflow', () => {

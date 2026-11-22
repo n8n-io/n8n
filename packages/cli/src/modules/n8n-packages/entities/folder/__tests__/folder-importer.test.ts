@@ -193,8 +193,12 @@ describe('FolderImporter', () => {
 			existingFolder('moved', 'project-1', null),
 			existingFolder('kept', 'project-1', null),
 		]);
+		// The role can move and rename folders, but not create them.
 		const denyingProjectService = mock<ProjectService>();
-		denyingProjectService.getProjectWithScope.mockResolvedValue(null);
+		denyingProjectService.getProjectWithScope.mockImplementation(
+			async (_user, _projectId, scopes) =>
+				scopes.includes('folder:update') ? mock<Project>() : null,
+		);
 		const importer = new FolderImporter(folderService, denyingProjectService);
 		const folders = () => [folder('new', null), folder('moved', 'new'), folder('kept', null)];
 
@@ -202,7 +206,6 @@ describe('FolderImporter', () => {
 
 		expect(plan.forbidden).toEqual([
 			{ sourceFolderId: 'new', name: 'new', projectId: 'project-1', action: 'create' },
-			{ sourceFolderId: 'moved', name: 'moved', projectId: 'project-1', action: 'update' },
 		]);
 
 		denyingProjectService.getProjectWithScope.mockClear();

@@ -737,6 +737,8 @@ describe('ProjectRoleView', () => {
 			expect(scopes).toEqual(
 				expect.arrayContaining([
 					'promotions:apply',
+					// Only Promote selects it, and clearing `folder:read` keeps it.
+					'promotions:readReviews',
 					'project:read',
 					'project:export',
 					'workflow:export',
