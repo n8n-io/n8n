@@ -13,6 +13,13 @@ export const customNodeAuthSchema = z.discriminatedUnion('kind', [
 ]);
 export type CustomNodeAuth = z.infer<typeof customNodeAuthSchema>;
 
+/** A fixed map of the request, such as headers or query parameters. */
+const fixedEntriesSchema = z
+	.record(z.string().max(256), z.string().max(4096))
+	.refine((entries) => Object.keys(entries).length <= 50, {
+		message: 'At most 50 entries are allowed',
+	});
+
 export const customActionInputSchema = z.object({
 	name: z
 		.string()
@@ -21,7 +28,10 @@ export const customActionInputSchema = z.object({
 	displayName: z.string().min(1).max(128),
 	description: z.string().max(1000).optional(),
 	type: z.enum(['string', 'number', 'boolean', 'options', 'json']),
-	options: z.array(z.object({ name: z.string(), value: z.string() })).optional(),
+	options: z
+		.array(z.object({ name: z.string().min(1).max(256), value: z.string().min(1).max(256) }))
+		.max(100)
+		.optional(),
 	required: z.boolean(),
 	default: z.union([z.string(), z.number(), z.boolean()]).optional(),
 	target: z.enum(['url', 'header', 'query', 'body']),
@@ -31,9 +41,9 @@ export type CustomActionInput = z.infer<typeof customActionInputSchema>;
 
 export const customActionRequestSchema = z.object({
 	method: z.enum(['GET', 'POST', 'PUT', 'PATCH', 'DELETE']),
-	url: z.string(),
-	headers: z.record(z.string()).default({}),
-	query: z.record(z.string()).default({}),
+	url: z.string().max(2048),
+	headers: fixedEntriesSchema.default({}),
+	query: fixedEntriesSchema.default({}),
 	bodyType: z.enum(['none', 'json', 'form']).default('none'),
 	body: z.record(z.unknown()).default({}),
 });

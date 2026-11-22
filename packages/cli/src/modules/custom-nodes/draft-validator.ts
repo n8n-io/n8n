@@ -7,12 +7,18 @@ import { RESERVED_BODY_KEYS, RESERVED_INPUT_NAMES } from './node-description.gen
 /**
  * Validates a custom action draft before every save.
  *
- * This is a security boundary. `RoutingNode` evaluates a string that starts with `=` as an
- * expression, and that expression can read credentials. A definition must never carry one.
+ * A definition holds only plain values. The validator rejects a value that contains `{{` or
+ * starts with `=`. The generator builds every expression of the node itself.
  */
 
 const INPUT_NAME_PATTERN = /^[a-z][A-Za-z0-9]*$/;
 const PLACEHOLDER_PATTERN = /\{([^{}]*)\}/g;
+/** An HTTP header name is a token (RFC 9110). */
+const HEADER_NAME_PATTERN = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/;
+/** The largest fixed body, in bytes of its JSON text. */
+export const MAX_BODY_BYTES = 64 * 1024;
+/** A body input key uses dot and bracket notation. Each part becomes an object key. */
+const BODY_KEY_SEPARATORS = /[.[\]]/;
 
 export class InvalidCustomActionError extends UserError {
 	constructor(readonly issues: CustomActionDraftIssue[]) {
@@ -48,6 +54,32 @@ function collectStrings(
 	return found;
 }
 
+/** The JSON size of the body. A body that cannot be serialized counts as too large. */
+function bodyBytes(body: Record<string, unknown>): number {
+	try {
+		return Buffer.byteLength(JSON.stringify(body));
+	} catch {
+		return Number.POSITIVE_INFINITY;
+	}
+}
+
+/** Whether a default has the value type of the parameter that the generator builds. */
+function defaultFitsType(input: CustomActionDraft['inputs'][number]): boolean {
+	const value = input.default;
+	if (value === undefined) return true;
+	switch (input.type) {
+		case 'number':
+			return typeof value === 'number';
+		case 'boolean':
+			return typeof value === 'boolean';
+		case 'string':
+		case 'json':
+			return typeof value === 'string';
+		case 'options':
+			return (input.options ?? []).some((option) => option.value === value);
+	}
+}
+
 function placeholderNames(text: string): string[] {
 	return [...text.matchAll(PLACEHOLDER_PATTERN)].map((match) => match[1]);
 }
@@ -69,6 +101,13 @@ export function validateDraft(draft: CustomActionDraft): CustomActionDraftIssue[
 	for (const [name, value] of Object.entries(request.headers)) {
 		checkExpression(`request.headers.${name}`, name);
 		checkExpression(`request.headers.${name}`, value);
+		if (!HEADER_NAME_PATTERN.test(name)) {
+			add(
+				`request.headers.${name}`,
+				'invalid_header_name',
+				`"${name}" is not a valid header name.`,
+			);
+		}
 	}
 	for (const [key, value] of Object.entries(request.query)) {
 		checkExpression(`request.query.${key}`, key);
@@ -212,6 +251,24 @@ export function validateDraft(draft: CustomActionDraft): CustomActionDraftIssue[
 		}
 		targetKeys.add(id);
 
+		if (input.target === 'header' && !HEADER_NAME_PATTERN.test(input.key)) {
+			add(
+				`inputs[${index}].key`,
+				'invalid_header_name',
+				`"${input.key}" is not a valid header name.`,
+			);
+		}
+		if (
+			input.target === 'body' &&
+			input.key.split(BODY_KEY_SEPARATORS).some((part) => RESERVED_BODY_KEYS.includes(part))
+		) {
+			add(
+				`inputs[${index}].key`,
+				'reserved_body_key',
+				`The body key "${input.key}" is not allowed.`,
+			);
+		}
+
 		if (input.type === 'options' && (!input.options || input.options.length === 0)) {
 			add(
 				`inputs[${index}].options`,
@@ -219,9 +276,34 @@ export function validateDraft(draft: CustomActionDraft): CustomActionDraftIssue[
 				'An options input needs at least one option.',
 			);
 		}
+		if (input.type === 'options') {
+			const values = new Set<string>();
+			input.options?.forEach((option, optionIndex) => {
+				if (values.has(option.value)) {
+					add(
+						`inputs[${index}].options[${optionIndex}].value`,
+						'duplicate_option_value',
+						`The option value "${option.value}" is used twice.`,
+					);
+				}
+				values.add(option.value);
+			});
+		}
+		if (!defaultFitsType(input)) {
+			add(
+				`inputs[${index}].default`,
+				'invalid_default',
+				input.type === 'options'
+					? 'The default must be one of the option values.'
+					: `The default must be a value of the type ${input.type}.`,
+			);
+		}
 	});
 
 	// Body
+	if (bodyBytes(request.body) > MAX_BODY_BYTES) {
+		add('request.body', 'body_too_large', 'The body must not be larger than 64 KiB.');
+	}
 	if (request.bodyType === 'none') {
 		if (Object.keys(request.body).length > 0) {
 			add(

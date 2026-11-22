@@ -28,9 +28,9 @@ import {
  * Turns a custom node and its actions into a declarative node description.
  * `RoutingNode` runs the result with no extra code.
  *
- * This is a security boundary. `RoutingNode` evaluates every string that starts with `=` as an
- * expression, with access to `$credentials`. Only this file decides which strings start with
- * `=`. A stored string never does: the generator throws when it finds one.
+ * `RoutingNode` evaluates every string that starts with `=` as an expression. Only this file
+ * builds the expressions of the node. A stored value is a plain value: the generator throws
+ * when a stored string contains `{{` or starts with `=`.
  */
 
 export interface ActionVersionView {
@@ -364,7 +364,7 @@ export function generateCustomNodeDescription(
 	node: CustomNodeView,
 	actions: ActionView[],
 ): INodeTypeDescription {
-	// `requestDefaults` is evaluated with access to `$credentials`.
+	// `RoutingNode` evaluates the values of `requestDefaults`, so the base URL must be plain.
 	assertNoExpression(node.baseUrl, 'base URL');
 	// An action id is part of the `operation` value, and parameter values are evaluated.
 	for (const action of actions) assertNoExpression(action.id, 'action id');

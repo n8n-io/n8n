@@ -268,7 +268,7 @@ describe('CustomNodesRegistry', () => {
 
 	it('keeps serving the valid node when another definition is invalid', async () => {
 		const { registry, loader, logger } = createRegistry({
-			nodes: [nodeEntity({ id: 'cn_bad', baseUrl: '={{ $credentials.token }}' }), nodeEntity()],
+			nodes: [nodeEntity({ id: 'cn_bad', baseUrl: '={{ $json.token }}' }), nodeEntity()],
 			actions: [actionAggregate(), actionAggregate({ id: 'act_bad', customNodeId: 'cn_bad' })],
 		});
 

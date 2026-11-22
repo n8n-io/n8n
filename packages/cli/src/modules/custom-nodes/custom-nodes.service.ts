@@ -1,20 +1,25 @@
-import type {
-	CreateCustomNodeDto,
-	CustomActionDraft,
-	CustomActionDraftIssue,
-	CustomActionEditKind,
-	CustomActionResponse,
-	CustomActionVersionSummary,
-	CustomNodeResponse,
-	SaveCustomActionDto,
-	UpdateCustomNodeDto,
+import {
+	customActionDraftSchema,
+	type CreateCustomNodeDto,
+	type CustomActionDraft,
+	type CustomActionDraftIssue,
+	type CustomActionEditKind,
+	type CustomActionResponse,
+	type CustomActionVersionSummary,
+	type CustomNodeAuth,
+	type CustomNodeResponse,
+	type SaveCustomActionDto,
+	type UpdateCustomNodeDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { type OperationContext, TransactionRunner, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ForbiddenError, NotFoundError, UnexpectedError, UserError } from '@n8n/errors';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { INodeProperties } from 'n8n-workflow';
+
+import { CredentialTypes } from '@/credential-types';
 
 import { validateBaseUrl } from './base-url-validator';
 import { customNodeTypeName } from './custom-nodes-node-loader';
@@ -36,13 +41,46 @@ import { pinValues } from './version-pin';
 
 const REFRESH_AFTER_WRITE = { notifyEditors: true, notifyInstances: true };
 
-function assertValidDraft(draft: CustomActionDraft, pathPrefix = ''): void {
-	const issues = validateDraft(draft);
-	if (issues.length > 0) {
+type WriteIds = { nodeId?: string; actionId?: string };
+
+/** A schema path in the path format of draft issues, for example `inputs[0].name`. */
+const issuePath = (path: Array<string | number>) =>
+	path
+		.map((part, index) =>
+			typeof part === 'number' ? `[${part}]` : index === 0 ? part : `.${part}`,
+		)
+		.join('');
+
+/**
+ * Checks a draft against the draft schema and then against the save rules.
+ * The service checks the schema again, so that a caller without the controller gets the same checks.
+ */
+function checkDraft(input: CustomActionDraft): {
+	draft?: CustomActionDraft;
+	issues: CustomActionDraftIssue[];
+} {
+	const parsed = customActionDraftSchema.safeParse(input);
+	if (!parsed.success) {
+		return {
+			issues: parsed.error.issues.map((issue) => ({
+				path: issuePath(issue.path),
+				code: issue.code,
+				message: issue.message,
+			})),
+		};
+	}
+	return { draft: parsed.data, issues: validateDraft(parsed.data) };
+}
+
+/** Returns the parsed draft. Throws with every issue of the draft. */
+function assertValidDraft(input: CustomActionDraft, pathPrefix = ''): CustomActionDraft {
+	const { draft, issues } = checkDraft(input);
+	if (!draft || issues.length > 0) {
 		throw new InvalidCustomActionError(
 			issues.map((issue) => ({ ...issue, path: `${pathPrefix}${issue.path}` })),
 		);
 	}
+	return draft;
 }
 
 function actionMeta(action: ActionAggregate['action']): { name: string; description?: string } {
@@ -139,6 +177,7 @@ export class CustomNodesService {
 		private readonly nodeRepository: CustomNodeRepository,
 		private readonly actionRepository: CustomActionRepository,
 		private readonly registry: CustomNodesRegistry,
+		private readonly credentialTypes: CredentialTypes,
 	) {
 		this.logger = logger.scoped('custom-nodes');
 	}
@@ -155,28 +194,32 @@ export class CustomNodesService {
 	async createNode(user: User, dto: CreateCustomNodeDto): Promise<CustomNodeResponse> {
 		this.assertScope(user, 'customNode:create');
 		validateBaseUrl(dto.baseUrl);
+		this.assertKnownCredentialType(dto.auth);
 		if (dto.actions.length === 0) {
 			throw new UserError('A custom node needs at least one action.');
 		}
-		dto.actions.forEach((draft, index) => assertValidDraft(draft, `actions[${index}].`));
+		const drafts = dto.actions.map((draft, index) => assertValidDraft(draft, `actions[${index}].`));
 
-		const nodeId = await this.write(async (ctx) => {
-			const node = await this.nodeRepository.insertNode(
-				{
-					displayName: dto.displayName,
-					// An empty description is stored as no description, as in `updateNode`.
-					description: dto.description === '' ? undefined : dto.description,
-					baseUrl: dto.baseUrl,
-					auth: dto.auth,
-					createdById: user.id,
-				},
-				ctx,
-			);
-			for (const draft of dto.actions) {
-				await this.insertAction(user, node.id, draft, undefined, ctx);
-			}
-			return node.id;
-		});
+		const nodeId = await this.write(
+			async (ctx) => {
+				const node = await this.nodeRepository.insertNode(
+					{
+						displayName: dto.displayName,
+						// An empty description is stored as no description, as in `updateNode`.
+						description: dto.description === '' ? undefined : dto.description,
+						baseUrl: dto.baseUrl,
+						auth: dto.auth,
+						createdById: user.id,
+					},
+					ctx,
+				);
+				for (const draft of drafts) {
+					await this.insertAction(user, node.id, draft, undefined, ctx);
+				}
+				return node.id;
+			},
+			(id) => ({ nodeId: id }),
+		);
 		this.logger.debug('Custom node created', { nodeId, actionCount: dto.actions.length });
 		return await this.getNodeResponse(nodeId);
 	}
@@ -197,7 +240,7 @@ export class CustomNodesService {
 
 		// An update that changes nothing writes nothing and does not refresh the registry.
 		if (changedFields.length > 0) {
-			await this.registry.refresh(REFRESH_AFTER_WRITE);
+			await this.refreshAfterWrite({ nodeId: id });
 			this.logger.debug('Custom node updated', { nodeId: id, fields: changedFields });
 		}
 		return await this.getNodeResponse(id);
@@ -206,25 +249,32 @@ export class CustomNodesService {
 	/** Deletes the node with its actions, versions and revisions. */
 	async deleteNode(user: User, id: string): Promise<void> {
 		this.assertScope(user, 'customNode:delete');
-		await this.write(async (ctx) => {
-			await this.findNodeOrFail(id, ctx);
-			await this.nodeRepository.deleteNode(id, ctx);
-		});
+		await this.write(
+			async (ctx) => {
+				await this.findNodeOrFail(id, ctx);
+				await this.nodeRepository.deleteNode(id, ctx);
+			},
+			() => ({ nodeId: id }),
+		);
 		this.logger.debug('Custom node deleted', { nodeId: id });
 	}
 
 	async setIcon(user: User, id: string, iconDataUri: string): Promise<void> {
 		this.assertScope(user, 'customNode:update');
 		const icon = await validateIcon(iconDataUri);
-		await this.write(async (ctx) => {
-			await this.findNodeOrFail(id, ctx);
-			await this.nodeRepository.setIcon(id, icon, ctx);
-			await this.nodeRepository.updateNode(id, { updatedById: user.id }, ctx);
-		});
+		await this.write(
+			async (ctx) => {
+				await this.findNodeOrFail(id, ctx);
+				await this.nodeRepository.setIcon(id, icon, ctx);
+				await this.nodeRepository.updateNode(id, { updatedById: user.id }, ctx);
+			},
+			() => ({ nodeId: id }),
+		);
 	}
 
-	/** No scope check: the editor loads icons as images for every user who can see the node. */
-	async getIcon(id: string): Promise<{ mimeType: string; data: Buffer }> {
+	/** The editor loads icons as images for every user who can list custom nodes. */
+	async getIcon(user: User, id: string): Promise<{ mimeType: string; data: Buffer }> {
+		this.assertScope(user, 'customNode:list');
 		const icon = await this.nodeRepository.findIcon(id, {});
 		if (!icon) throw new NotFoundError('The custom node has no icon');
 		return icon;
@@ -236,11 +286,14 @@ export class CustomNodesService {
 		dto: SaveCustomActionDto,
 	): Promise<CustomActionResponse> {
 		this.assertScope(user, 'customNode:update');
-		assertValidDraft(dto.draft);
-		const actionId = await this.write(async (ctx) => {
-			await this.lockNodeOrFail(nodeId, ctx);
-			return await this.insertAction(user, nodeId, dto.draft, dto.changeNote, ctx);
-		});
+		const draft = assertValidDraft(dto.draft);
+		const actionId = await this.write(
+			async (ctx) => {
+				await this.lockNodeOrFail(nodeId, ctx);
+				return await this.insertAction(user, nodeId, draft, dto.changeNote, ctx);
+			},
+			(id) => ({ nodeId, actionId: id }),
+		);
 		this.logger.debug('Custom action added', { nodeId, actionId });
 		return await this.getActionResponse(actionId);
 	}
@@ -252,8 +305,7 @@ export class CustomNodesService {
 		dto: SaveCustomActionDto,
 	): Promise<{ action: CustomActionResponse; kind: CustomActionEditKind }> {
 		this.assertScope(user, 'customNode:update');
-		assertValidDraft(dto.draft);
-		const { draft } = dto;
+		const draft = assertValidDraft(dto.draft);
 
 		const kind = await this.txRunner.run({}, async (ctx) => {
 			// Classify against the state that the write builds on. A concurrent save waits here.
@@ -283,7 +335,7 @@ export class CustomNodesService {
 			return editKind;
 		});
 
-		if (kind !== 'none') await this.registry.refresh(REFRESH_AFTER_WRITE);
+		if (kind !== 'none') await this.refreshAfterWrite({ actionId });
 		this.logger.debug('Custom action saved', { actionId, kind });
 		return { action: await this.getActionResponse(actionId), kind };
 	}
@@ -296,40 +348,46 @@ export class CustomNodesService {
 		revision: number,
 	): Promise<CustomActionResponse> {
 		this.assertScope(user, 'customNode:update');
-		await this.write(async (ctx) => {
-			await this.lockActionOrFail(actionId, ctx);
-			const aggregate = await this.findActionOrFail(actionId, ctx);
-			const target = aggregate.versions.find((v) => v.version === version);
-			if (!target)
-				throw new NotFoundError(`Version ${version} of the custom action does not exist`);
-			// Revisions are numbered 1 to n without gaps. The service never deletes one.
-			if (!Number.isInteger(revision) || revision < 1 || revision > target.revisionCount) {
-				throw new NotFoundError(`Revision ${revision} of version ${version} does not exist`);
-			}
-			await this.actionRepository.setCurrentRevision(target.id, revision, ctx);
-		});
+		await this.write(
+			async (ctx) => {
+				await this.lockActionOrFail(actionId, ctx);
+				const aggregate = await this.findActionOrFail(actionId, ctx);
+				const target = aggregate.versions.find((v) => v.version === version);
+				if (!target)
+					throw new NotFoundError(`Version ${version} of the custom action does not exist`);
+				// Revisions are numbered 1 to n without gaps. The service never deletes one.
+				if (!Number.isInteger(revision) || revision < 1 || revision > target.revisionCount) {
+					throw new NotFoundError(`Revision ${revision} of version ${version} does not exist`);
+				}
+				await this.actionRepository.setCurrentRevision(target.id, revision, ctx);
+			},
+			() => ({ actionId }),
+		);
 		this.logger.debug('Custom action revision rolled back', { actionId, version, revision });
 		return await this.getActionResponse(actionId);
 	}
 
 	async deleteAction(user: User, actionId: string): Promise<void> {
 		this.assertScope(user, 'customNode:delete');
-		await this.write(async (ctx) => {
-			const { customNodeId } = (await this.findActionOrFail(actionId, ctx)).action;
-			// Lock the node first, as a node delete does, and then count. Two concurrent deletes
-			// of the last two actions then see each other's result.
-			if (customNodeId !== null) await this.lockNodeOrFail(customNodeId, ctx);
-			await this.lockActionOrFail(actionId, ctx);
-			if (
-				customNodeId !== null &&
-				(await this.actionRepository.countActionsOfNode(customNodeId, ctx)) <= 1
-			) {
-				throw new UserError(
-					'A custom node needs at least one action. Delete the custom node instead.',
-				);
-			}
-			await this.actionRepository.deleteAction(actionId, ctx);
-		});
+		await this.write(
+			async (ctx) => {
+				const { customNodeId } = (await this.findActionOrFail(actionId, ctx)).action;
+				// Lock the node first, as a node delete does, and then count. Two concurrent deletes
+				// of the last two actions then see each other's result.
+				if (customNodeId !== null) await this.lockNodeOrFail(customNodeId, ctx);
+				await this.lockActionOrFail(actionId, ctx);
+				if (
+					customNodeId !== null &&
+					(await this.actionRepository.countActionsOfNode(customNodeId, ctx)) <= 1
+				) {
+					throw new UserError(
+						'A custom node needs at least one action. Delete the custom node instead.',
+					);
+				}
+				await this.actionRepository.deleteAction(actionId, ctx);
+			},
+			() => ({ actionId }),
+		);
 		this.logger.debug('Custom action deleted', { actionId });
 	}
 
@@ -339,12 +397,19 @@ export class CustomNodesService {
 		draft: CustomActionDraft,
 	): { issues: CustomActionDraftIssue[]; properties: INodeProperties[] } {
 		this.assertScope(user, 'customNode:list');
-		const issues = validateDraft(draft);
-		if (issues.length > 0) return { issues, properties: [] };
+		const { draft: parsed, issues } = checkDraft(draft);
+		if (!parsed || issues.length > 0) return { issues, properties: [] };
 
-		const { inputs, request } = splitDraft(draft);
+		const { inputs, request } = splitDraft(parsed);
 		// No operation exists in a preview, so the properties have no display condition.
 		return { issues, properties: buildInputProperties({ version: 1, inputs, request }, {}) };
+	}
+
+	/** A predefined credential type must exist on this instance. */
+	private assertKnownCredentialType(auth: CustomNodeAuth): void {
+		if (auth.kind === 'predefined' && !this.credentialTypes.recognizes(auth.credentialType)) {
+			throw new UserError(`The credential type "${auth.credentialType}" does not exist.`);
+		}
 	}
 
 	private assertScope(user: User, scope: Scope): void {
@@ -354,10 +419,28 @@ export class CustomNodesService {
 	}
 
 	/** Runs the write in one transaction. Refreshes the registry once, only after a commit. */
-	private async write<T>(fn: (ctx: OperationContext) => Promise<T>): Promise<T> {
+	private async write<T>(
+		fn: (ctx: OperationContext) => Promise<T>,
+		ids: (result: T) => WriteIds,
+	): Promise<T> {
 		const result = await this.txRunner.run({}, fn);
-		await this.registry.refresh(REFRESH_AFTER_WRITE);
+		await this.refreshAfterWrite(ids(result));
 		return result;
+	}
+
+	/**
+	 * The data is saved when this runs. A failed refresh must not fail the request:
+	 * the caller could then retry and save the data again.
+	 */
+	private async refreshAfterWrite(ids: WriteIds): Promise<void> {
+		try {
+			await this.registry.refresh(REFRESH_AFTER_WRITE);
+		} catch (error) {
+			this.logger.error('Saved a custom node change, but could not refresh the custom nodes', {
+				...ids,
+				error: ensureError(error),
+			});
+		}
 	}
 
 	private async insertAction(

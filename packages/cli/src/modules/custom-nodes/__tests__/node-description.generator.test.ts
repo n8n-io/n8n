@@ -31,10 +31,6 @@ import {
 } from '../version-pin';
 import { createInvoice, createV1, createV2, getInvoice, node } from './custom-node.fixture';
 
-// ---------------------------------------------------------------------------
-// Fixture
-// ---------------------------------------------------------------------------
-
 const formVersion: ActionVersionView = {
 	version: 1,
 	inputs: [],
@@ -392,7 +388,7 @@ describe('generateCustomNodeDescription', () => {
 		expect(() => generateCustomNodeDescription(node, actions)).toThrow(UnexpectedError);
 	});
 
-	it.each(['=https://evil.test', 'https://{{ $credentials.host }}'])(
+	it.each(['=https://other.test', 'https://{{ $json.host }}'])(
 		'rejects the base URL %s',
 		(baseUrl) => {
 			expect(() => generateCustomNodeDescription({ ...node, baseUrl }, [getInvoice])).toThrow(
@@ -476,9 +472,9 @@ describe('buildRequest', () => {
 	it.each([
 		['url', versionWithUrl('=/x')],
 		['url with spaces', versionWithUrl('  =/x')],
-		['url', versionWithUrl('/x/{{ $credentials.token }}')],
+		['url', versionWithUrl('/x/{{ $json.token }}')],
 		['header name', withRequest({ headers: { '={{ 1 }}': 'a' } })],
-		['header value', withRequest({ headers: { Accept: '={{ $credentials.token }}' } })],
+		['header value', withRequest({ headers: { Accept: '={{ $json.token }}' } })],
 		['header value', withRequest({ headers: { Accept: 'a{{ 1 }}' } })],
 		['query key', withRequest({ query: { '=k': 'a' } })],
 		['query value', withRequest({ query: { k: '={{ 1 }}' } })],
@@ -489,7 +485,7 @@ describe('buildRequest', () => {
 			withRequest({
 				inputTargets: {
 					invoiceId: { target: 'url', key: 'invoiceId' },
-					includeLines: { target: 'query', key: '={{ $credentials.token }}' },
+					includeLines: { target: 'query', key: '={{ $json.token }}' },
 				},
 			}),
 		],
@@ -509,10 +505,8 @@ describe('buildRequest', () => {
 
 	it.each(RESERVED_BODY_KEYS)('throws for the reserved body key %s at any depth', (key) => {
 		// JSON.parse creates an own property for "__proto__", as a stored body does.
-		const nested = jsonParse<Record<string, unknown>>(
-			`{ "a": [{ "${key}": { "polluted": true } }] }`,
-		);
-		const top = jsonParse<Record<string, unknown>>(`{ "${key}": { "polluted": true } }`);
+		const nested = jsonParse<Record<string, unknown>>(`{ "a": [{ "${key}": { "x": true } }] }`);
+		const top = jsonParse<Record<string, unknown>>(`{ "${key}": { "x": true } }`);
 		expect(() => buildRequest(withRequest({ bodyType: 'json', body: nested }), p)).toThrow(
 			UnexpectedError,
 		);
@@ -657,7 +651,7 @@ describe('buildInputProperties', () => {
 	});
 
 	it.each([
-		['default', { default: '={{ $credentials.token }}' }],
+		['default', { default: '={{ $json.token }}' }],
 		['option value', { type: 'options' as const, options: [{ name: 'A', value: '={{ 1 }}' }] }],
 	])('throws for an expression in the %s of an input', (_where, patch) => {
 		const version: ActionVersionView = {
@@ -668,7 +662,7 @@ describe('buildInputProperties', () => {
 	});
 });
 
-describe('URL encoding (Review Focus 1)', () => {
+describe('URL encoding', () => {
 	function resolveUrl(description: INodeTypeDescription, url: string, parameters: INodeParameters) {
 		const { workflow, nodeName } = makeWorkflow(description, parameters);
 		return workflow.expression.getParameterValue(url, null, 0, 0, nodeName, [], 'manual', {});

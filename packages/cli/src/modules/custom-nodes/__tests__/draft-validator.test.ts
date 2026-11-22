@@ -74,7 +74,7 @@ describe('validateDraft', () => {
 		});
 
 		it('rejects a leading = in a header value', () => {
-			expect(codes(withHeader('Authorization', '={{ $credentials.secretKey }}'))).toContain(
+			expect(codes(withHeader('Authorization', '={{ $json.secretKey }}'))).toContain(
 				'expression_not_allowed',
 			);
 		});
@@ -121,7 +121,7 @@ describe('validateDraft', () => {
 			const draft = withInputs([
 				bodyInput('a'),
 				bodyInput('b'),
-				{ ...bodyInput('c'), default: '={{ $credentials.x }}' },
+				{ ...bodyInput('c'), default: '={{ $json.x }}' },
 			]);
 			expect(pathsOf(draft, 'expression_not_allowed')).toEqual(['inputs[2].default']);
 		});
@@ -318,8 +318,112 @@ describe('validateDraft', () => {
 		});
 
 		it('rejects a reserved key at the top level of the body', () => {
-			const body = jsonParse<Record<string, unknown>>('{ "__proto__": { "polluted": true } }');
+			const body = jsonParse<Record<string, unknown>>('{ "__proto__": { "x": true } }');
 			expect(pathsOf(withBody(body), 'reserved_body_key')).toEqual(['request.body.__proto__']);
+		});
+
+		it.each([
+			'__proto__',
+			'a.__proto__.b',
+			'constructor.prototype',
+			'items[0].prototype',
+			'a[__proto__]',
+		])('rejects the body input key %s', (key) => {
+			const draft = withInputs([bodyInput('a', key)]);
+			expect(pathsOf(draft, 'reserved_body_key')).toEqual(['inputs[0].key']);
+		});
+
+		it.each(['customer.id', 'line_items[0].price', 'protoType', 'constructors'])(
+			'accepts the body input key %s',
+			(key) => {
+				expect(codes(withInputs([bodyInput('a', key)]))).toEqual([]);
+			},
+		);
+	});
+
+	describe('header names', () => {
+		const headerInput = (key: string): CustomActionInput => ({
+			...bodyInput('a', key),
+			target: 'header',
+		});
+
+		it.each(['X Api Key', 'X-Key:', 'X-Ключ', '', 'X(Key)', 'X-Key\u0000'])(
+			'rejects the header input key %j',
+			(key) => {
+				expect(pathsOf(withInputs([headerInput(key)]), 'invalid_header_name')).toEqual([
+					'inputs[0].key',
+				]);
+			},
+		);
+
+		it.each(['X Api Version', 'Accept:', ''])('rejects the fixed header name %j', (name) => {
+			expect(pathsOf(withHeader(name, '1'), 'invalid_header_name')).toEqual([
+				`request.headers.${name}`,
+			]);
+		});
+
+		it.each(['X-Api-Key', 'Idempotency-Key', "x_custom.!#$%&'*+^`|~1"])(
+			'accepts the header name %s',
+			(name) => {
+				expect(codes(withInputs([headerInput(name)]))).toEqual([]);
+				expect(codes(withHeader(name, '1'))).toEqual([]);
+			},
+		);
+	});
+
+	describe('defaults and options', () => {
+		const input = (patch: Partial<CustomActionInput>): CustomActionInput => ({
+			...bodyInput('a'),
+			...patch,
+		});
+		const speed = (options: Array<{ name: string; value: string }>, value?: string) =>
+			input({ type: 'options', options, ...(value !== undefined && { default: value }) });
+
+		it.each<[CustomActionInput['type'], string | number | boolean]>([
+			['number', '5'],
+			['number', true],
+			['boolean', 'true'],
+			['boolean', 0],
+			['string', 5],
+			['string', false],
+			['json', 1],
+		])('rejects a %s input with the default %j', (type, value) => {
+			expect(pathsOf(withInputs([input({ type, default: value })]), 'invalid_default')).toEqual([
+				'inputs[0].default',
+			]);
+		});
+
+		it.each<[CustomActionInput['type'], string | number | boolean]>([
+			['number', 5],
+			['boolean', false],
+			['string', 'x'],
+			['json', '{"a":1}'],
+		])('accepts a %s input with the default %j', (type, value) => {
+			expect(codes(withInputs([input({ type, default: value })]))).toEqual([]);
+		});
+
+		it('rejects an options default that is not an option value', () => {
+			const draft = withInputs([speed([{ name: 'Fast', value: 'fast' }], 'slow')]);
+			expect(pathsOf(draft, 'invalid_default')).toEqual(['inputs[0].default']);
+			expect(codes(withInputs([speed([{ name: 'Fast', value: 'fast' }], 'fast')]))).toEqual([]);
+		});
+
+		it('rejects an options input with the same option value twice', () => {
+			const draft = withInputs([
+				speed([
+					{ name: 'Fast', value: 'fast' },
+					{ name: 'Quick', value: 'fast' },
+				]),
+			]);
+			expect(pathsOf(draft, 'duplicate_option_value')).toEqual(['inputs[0].options[1].value']);
+		});
+	});
+
+	describe('body size', () => {
+		it('rejects a body that is larger than 64 KiB as JSON', () => {
+			const atLimit = { a: 'x'.repeat(64 * 1024 - '{"a":""}'.length) };
+			expect(codes(withBody(atLimit))).toEqual([]);
+			expect(pathsOf(withBody({ ...atLimit, b: 1 }), 'body_too_large')).toEqual(['request.body']);
 		});
 	});
 

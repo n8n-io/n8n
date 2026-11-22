@@ -140,7 +140,7 @@ describe('CustomNodesNodeLoader', () => {
 		const invalid: CustomNodeView = {
 			...node,
 			id: 'cn_invalid',
-			baseUrl: '={{ $credentials.token }}',
+			baseUrl: '={{ $json.token }}',
 		};
 		loader.setDefinitions([
 			{ node: invalid, actions: [action] },
@@ -157,7 +157,7 @@ describe('CustomNodesNodeLoader', () => {
 			expect.any(String),
 			expect.objectContaining({ customNodeId: 'cn_invalid' }),
 		);
-		expect(JSON.stringify(vi.mocked(logger.error).mock.calls)).not.toContain('$credentials');
+		expect(JSON.stringify(vi.mocked(logger.error).mock.calls)).not.toContain('$json.token');
 
 		// A rebuild of the same definitions does not log the same error again.
 		loader.releaseTypes();

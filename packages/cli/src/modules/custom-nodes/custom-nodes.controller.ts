@@ -120,12 +120,11 @@ export class CustomNodesController {
 	/**
 	 * The editor loads the icon with an `<img>` element, which cannot send the browser-id header.
 	 * So this route is on the browser-id skip list in `AuthService`. It still needs a session.
-	 * This scope check is the only gate, because `getIcon` has no user.
 	 */
 	@Get('/nodes/:id/icon')
 	@GlobalScope('customNode:list')
-	async getIcon(_req: AuthenticatedRequest, res: Response, @Param('id') id: string) {
-		const icon = await this.service.getIcon(id);
+	async getIcon(req: AuthenticatedRequest, res: Response, @Param('id') id: string) {
+		const icon = await this.service.getIcon(req.user, id);
 		if (!ICON_MIME_TYPES.includes(icon.mimeType)) {
 			throw new UnexpectedError('The stored icon has an unknown mime type', {
 				extra: { customNodeId: id },

@@ -6,15 +6,15 @@ import { customActionDraftSchema, customNodeAuthSchema } from '../../schemas/cus
 export class CreateCustomNodeDto extends Z.class({
 	displayName: z.string().min(1).max(128),
 	description: z.string().max(1000).optional(),
-	baseUrl: z.string().url(),
+	baseUrl: z.string().max(2048).url(),
 	auth: customNodeAuthSchema,
-	actions: z.array(customActionDraftSchema).min(1),
+	actions: z.array(customActionDraftSchema).min(1).max(100),
 }) {}
 
 export class UpdateCustomNodeDto extends Z.class({
 	displayName: z.string().min(1).max(128).optional(),
 	description: z.string().max(1000).optional(),
-	baseUrl: z.string().url().optional(),
+	baseUrl: z.string().max(2048).url().optional(),
 }) {}
 
 export class SaveCustomActionDto extends Z.class({

@@ -1,10 +1,12 @@
 import type { CustomActionDraft, CreateCustomNodeDto } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import { mockInstance, testDb, testModules } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { ForbiddenError, NotFoundError, UserError } from '@n8n/errors';
 import { DataSource, In } from '@n8n/typeorm';
 
+import { CredentialTypes } from '@/credential-types';
 import { createMember, createOwner } from '@test-integration/db/users';
 
 import { CustomNodeConflictError } from '../custom-nodes.errors';
@@ -17,6 +19,7 @@ import { CustomNodeEntity } from '../database/entities/custom-node.entity';
 import { InvalidCustomActionError } from '../draft-validator';
 
 const registry = mockInstance(CustomNodesRegistry);
+const credentialTypes = mockInstance(CredentialTypes);
 
 let service: CustomNodesService;
 let owner: User;
@@ -94,6 +97,7 @@ beforeAll(async () => {
 beforeEach(() => {
 	registry.refresh.mockReset();
 	registry.refresh.mockResolvedValue(undefined);
+	credentialTypes.recognizes.mockImplementation((type) => type === 'acmeApi');
 });
 
 afterEach(async () => {
@@ -148,7 +152,7 @@ describe('CustomNodesService', () => {
 	it('throws InvalidCustomActionError with issues and writes nothing for an invalid draft', async () => {
 		const invalid: CustomActionDraft = {
 			...getInvoice(),
-			request: { ...getInvoice().request, headers: { Authorization: '={{ $credentials.key }}' } },
+			request: { ...getInvoice().request, headers: { Authorization: '={{ $json.key }}' } },
 		};
 
 		const error = await service.createNode(owner, newNode([invalid])).catch((e: unknown) => e);
@@ -170,6 +174,48 @@ describe('CustomNodesService', () => {
 		);
 		expect(await countRows()).toEqual({ nodes: 1, actions: 1, versions: 1, revisions: 1 });
 		expect(registry.refresh).not.toHaveBeenCalled();
+	});
+
+	it('checks each draft against the draft schema, also without the controller', async () => {
+		const tooLong = getInvoice();
+		tooLong.request.url = `/invoices/{invoiceId}/${'x'.repeat(2048)}`;
+		const badName = getInvoice();
+		badName.inputs[0].name = 'Invoice-Id';
+
+		const error = await service.createNode(owner, newNode([tooLong])).catch((e: unknown) => e);
+		expect(error).toBeInstanceOf(InvalidCustomActionError);
+		expect((error as InvalidCustomActionError).issues).toEqual([
+			expect.objectContaining({ path: 'actions[0].request.url' }),
+		]);
+		expect(await countRows()).toEqual({ nodes: 0, actions: 0, versions: 0, revisions: 0 });
+
+		const { nodeId, actionId } = await createNodeWithAction();
+		const addError = await service
+			.addAction(owner, nodeId, { draft: badName })
+			.catch((e: unknown) => e);
+		expect((addError as InvalidCustomActionError).issues).toEqual([
+			expect.objectContaining({ path: 'inputs[0].name' }),
+		]);
+		await expect(service.saveAction(owner, actionId, { draft: tooLong })).rejects.toThrow(
+			InvalidCustomActionError,
+		);
+		expect(service.preview(owner, badName).issues).toEqual([
+			expect.objectContaining({ path: 'inputs[0].name' }),
+		]);
+		expect(await countRows()).toEqual({ nodes: 1, actions: 1, versions: 1, revisions: 1 });
+	});
+
+	it('accepts a predefined credential type that the instance knows and rejects another', async () => {
+		const withAuth = (credentialType: string): CreateCustomNodeDto => ({
+			...newNode(),
+			auth: { kind: 'predefined', credentialType },
+		});
+
+		await expect(service.createNode(owner, withAuth('unknownApi'))).rejects.toThrow(UserError);
+		expect(await countRows()).toMatchObject({ nodes: 0 });
+
+		const node = await service.createNode(owner, withAuth('acmeApi'));
+		expect(node.auth).toEqual({ kind: 'predefined', credentialType: 'acmeApi' });
 	});
 
 	it('rejects a node without actions and writes nothing', async () => {
@@ -476,11 +522,12 @@ describe('CustomNodesService', () => {
 
 	it('stores and returns the icon', async () => {
 		const { nodeId } = await createNodeWithAction();
-		await expect(service.getIcon(nodeId)).rejects.toThrow(NotFoundError);
+		await expect(service.getIcon(owner, nodeId)).rejects.toThrow(NotFoundError);
 
 		await service.setIcon(owner, nodeId, pngUri);
 
-		expect(await service.getIcon(nodeId)).toEqual({ mimeType: 'image/png', data: PNG });
+		expect(await service.getIcon(owner, nodeId)).toEqual({ mimeType: 'image/png', data: PNG });
+		expect(await service.getIcon(member, nodeId)).toEqual({ mimeType: 'image/png', data: PNG });
 		expect((await service.list(owner))[0].hasIcon).toBe(true);
 		await expect(service.setIcon(owner, nodeId, 'data:image/png;base64,AAAA')).rejects.toThrow(
 			UserError,
@@ -502,6 +549,43 @@ describe('CustomNodesService', () => {
 
 		expect(preview.issues.length).toBeGreaterThan(0);
 		expect(preview.properties).toEqual([]);
+	});
+
+	it('throws ForbiddenError for the icon of a user without the list scope', async () => {
+		const { nodeId } = await createNodeWithAction();
+		await service.setIcon(owner, nodeId, pngUri);
+		const withoutScope = { ...member, role: { ...member.role, scopes: [] } } as unknown as User;
+
+		await expect(service.getIcon(withoutScope, nodeId)).rejects.toThrow(ForbiddenError);
+	});
+
+	it('resolves a write and logs the node id when the registry refresh fails after the commit', async () => {
+		const loggerError = vi.spyOn(Logger.prototype, 'error');
+		registry.refresh.mockRejectedValue(new Error('refresh failed'));
+
+		const node = await service.createNode(owner, newNode());
+		await service.updateNode(owner, node.id, { displayName: 'Renamed' });
+		const added = await service.addAction(owner, node.id, {
+			draft: { ...getInvoice(), name: 'Second' },
+		});
+		const { kind } = await service.saveAction(owner, added.id, {
+			draft: { ...getInvoice(), name: 'Third' },
+		});
+
+		expect(kind).toBe('cosmetic');
+		expect(await countRows()).toEqual({ nodes: 1, actions: 2, versions: 2, revisions: 2 });
+		expect(registry.refresh).toHaveBeenCalledTimes(4);
+		expect(loggerError).toHaveBeenCalledTimes(4);
+		expect(loggerError).toHaveBeenCalledWith(
+			expect.any(String),
+			expect.objectContaining({ nodeId: node.id }),
+		);
+		expect(loggerError).toHaveBeenCalledWith(
+			expect.any(String),
+			expect.objectContaining({ actionId: added.id }),
+		);
+		expect(JSON.stringify(loggerError.mock.calls)).not.toContain('/invoices/');
+		loggerError.mockRestore();
 	});
 
 	it('refreshes the registry once after each write', async () => {

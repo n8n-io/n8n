@@ -1,3 +1,4 @@
+import { Logger } from '@n8n/backend-common';
 import {
 	BaseRepository,
 	generateNanoId,
@@ -6,7 +7,6 @@ import {
 	TransactionRunner,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { UnexpectedError } from '@n8n/errors';
 import { DataSource, type EntityManager } from '@n8n/typeorm';
 
 import { CustomNodeConflictError } from '../../custom-nodes.errors';
@@ -69,8 +69,13 @@ async function withConflictCheck<T>(fn: () => Promise<T>): Promise<T> {
 export class CustomActionRepository {
 	private readonly table: CustomActionTable;
 
-	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+	constructor(
+		dataSource: DataSource,
+		transactionRunner: TransactionRunner,
+		private readonly logger: Logger,
+	) {
 		this.table = new CustomActionTable(dataSource, transactionRunner);
+		this.logger = logger.scoped('custom-nodes');
 	}
 
 	/** Inserts the action with version 1 and revision 1. Returns the id of the action. */
@@ -287,12 +292,18 @@ export class CustomActionRepository {
 		const requestByVersion = new Map(currentRevisions.map((row) => [row.versionId, row.request]));
 
 		const versionsByAction = new Map<string, ActionVersionAggregate[]>();
+		// A delete that commits between the reads can leave a version without its current revision.
+		// Skip that action, so that one action does not stop the read of all others.
+		const incomplete = new Set<string>();
 		for (const version of versions) {
 			const request = requestByVersion.get(version.id);
 			if (request === undefined) {
-				throw new UnexpectedError('Custom action version has no current revision', {
-					extra: { versionId: version.id, currentRevision: version.currentRevision },
+				incomplete.add(version.actionId);
+				this.logger.warn('Skipped a custom action with a version that has no current revision', {
+					actionId: version.actionId,
+					versionId: version.id,
 				});
+				continue;
 			}
 			const list = versionsByAction.get(version.actionId) ?? [];
 			list.push({
@@ -307,6 +318,8 @@ export class CustomActionRepository {
 			versionsByAction.set(version.actionId, list);
 		}
 
-		return actions.map((action) => ({ action, versions: versionsByAction.get(action.id) ?? [] }));
+		return actions
+			.filter((action) => !incomplete.has(action.id))
+			.map((action) => ({ action, versions: versionsByAction.get(action.id) ?? [] }));
 	}
 }

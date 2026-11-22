@@ -1,4 +1,5 @@
 import { UnexpectedError, UserError } from '@n8n/errors';
+import { isRecord } from '@n8n/utils/is-record';
 
 /** The largest icon the service stores, in bytes after base64 decoding. */
 export const MAX_ICON_BYTES = 256 * 1024;
@@ -91,9 +92,6 @@ export type IconMimeType = 'image/png' | 'image/svg+xml';
 function isIconMimeType(value: string): value is IconMimeType {
 	return value === 'image/png' || value === 'image/svg+xml';
 }
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-	typeof value === 'object' && value !== null && !Array.isArray(value);
 
 function checkAttribute(element: string, name: string, value: unknown): void {
 	if (!ALLOWED_ATTRIBUTES.has(name)) {

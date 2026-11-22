@@ -1,3 +1,4 @@
+import { Logger } from '@n8n/backend-common';
 import { testDb, testModules } from '@n8n/backend-test-utils';
 import { TransactionRunner } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -296,6 +297,31 @@ describe('CustomActionRepository', () => {
 		await actions.deleteAction(first, {});
 		expect((await actions.findAllActions({})).map((a) => a.action.id)).toEqual([second]);
 		expect(await countRows()).toMatchObject({ actions: 1, versions: 2, revisions: 2 });
+	});
+
+	it('skips and logs an action whose version has no current revision, and lists the others', async () => {
+		const loggerWarn = vi.spyOn(Logger.prototype, 'warn');
+		const kept = await actions.insertAction(parentAction(), { inputs }, revision(), {});
+		const broken = await actions.insertAction(
+			{ ...parentAction(), name: 'List Invoices' },
+			{ inputs: [] },
+			revision('/invoices'),
+			{},
+		);
+		// A delete that commits between the reads leaves a version without its current revision.
+		await Container.get(DataSource)
+			.getRepository(CustomActionVersionEntity)
+			.update({ actionId: broken }, { currentRevision: 7 });
+
+		const all = await actions.findAllActions({});
+
+		expect(all.map((a) => a.action.id)).toEqual([kept]);
+		expect(await actions.findAction(broken, {})).toBeNull();
+		expect(loggerWarn).toHaveBeenCalledWith(
+			expect.any(String),
+			expect.objectContaining({ actionId: broken }),
+		);
+		loggerWarn.mockRestore();
 	});
 });
 
