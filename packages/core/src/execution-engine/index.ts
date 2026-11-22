@@ -68,6 +68,12 @@ declare module 'n8n-workflow' {
 		 * production sends. Never present in normal executions.
 		 */
 		evalEgressProxy?: string;
+		/**
+		 * Simulation only: when true, unconfigured credentials on a node are delegated to
+		 * `credentialsHelper.getDecrypted` with `id: null` so a simulation credentials helper
+		 * can synthesize credentials without requiring real saved credentials.
+		 */
+		synthesizeUnconfiguredCredentials?: boolean;
 		'data-table'?: { dataTableProxyProvider: DataTableProxyProvider };
 		'dynamic-credentials'?: { credentialCheckProxy: DynamicCredentialCheckProxyProvider };
 		'oauth-jwe'?: { oauthJweProxyProvider: OauthJweProxyProvider };

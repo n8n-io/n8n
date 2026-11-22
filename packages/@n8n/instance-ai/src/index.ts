@@ -863,6 +863,10 @@ export type {
 	InstanceAiStoredFileReader,
 	InstanceAiSkillService,
 	BrowserUseState,
+	WorkflowTestInput,
+	WorkflowTestOutput,
+	WorkflowTestCredentialCheck,
+	RunWorkflowTestFn,
 } from './types';
 export {
 	CONVERSATION_HISTORY_MAX_SEARCH_LIMIT,

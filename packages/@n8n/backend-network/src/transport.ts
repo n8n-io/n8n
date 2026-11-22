@@ -14,6 +14,11 @@
  * The Node `http.Agent` path (`getNodeAgent` / `buildNodeAgents`) is
  * intentionally NOT re-exported here: it is not yet dependency-free.
  */
+import {
+	getScopedHttpInterceptor,
+	runWithScopedHttpInterceptor,
+	type ScopedFetchInterceptor,
+} from './http/scoped-interceptor';
 export {
 	buildDispatcher,
 	createSsrfInterceptor,
@@ -23,6 +28,8 @@ export {
 	dispatchedFetch,
 	limitResponseBody,
 } from './http/undici/transport';
+export { getScopedHttpInterceptor, runWithScopedHttpInterceptor };
+export type { ScopedFetchInterceptor };
 export type {
 	CustomFetch,
 	DispatcherTransport,

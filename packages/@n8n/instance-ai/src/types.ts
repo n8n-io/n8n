@@ -2331,6 +2331,51 @@ export interface WorkflowTaskService {
 	): Promise<VerificationClaim | undefined>;
 }
 
+export interface WorkflowTestCredentialCheck {
+	nodeName: string;
+	credentialType: string;
+	credentialId?: string;
+	credentialName?: string;
+	outcome: 'accepted' | 'rejected' | 'unverified' | 'missing';
+	message?: string;
+}
+
+export interface WorkflowTestUnsupportedNode {
+	nodeName: string;
+	nodeType: string;
+	reason: string;
+}
+
+export interface WorkflowTestInput {
+	workflowId: string;
+	startNode?: string;
+	destinationNode?: string;
+	pinData?: Record<string, Array<{ json: Record<string, unknown> }>>;
+	seeds?: Record<string, Record<string, unknown>>;
+	faults?: Record<string, number>;
+	skipCredentialCheck?: boolean;
+	timeoutMs?: number;
+}
+
+export interface WorkflowTestOutput {
+	status: 'passed' | 'credentials_failed' | 'unsupported_nodes' | 'simulation_failed';
+	credentialChecks: WorkflowTestCredentialCheck[];
+	unsupportedNodes?: WorkflowTestUnsupportedNode[];
+	vendorsUsed?: string[];
+	durationMs?: number;
+	error?: string;
+	nodeResults?: Array<{
+		nodeName: string;
+		status: 'success' | 'error';
+		itemCount: number;
+		error?: string;
+	}>;
+	eventCount?: number;
+	vendorStates?: Record<string, Record<string, unknown>>;
+}
+
+export type RunWorkflowTestFn = (input: WorkflowTestInput) => Promise<WorkflowTestOutput>;
+
 // ── Orchestration context (plan tools) ──────────────────────────────────────
 
 export interface OrchestrationContext {
@@ -2388,6 +2433,11 @@ export interface OrchestrationContext {
 	cancelBackgroundTask?: (taskId: string) => Promise<void>;
 	/** Start a browser task in the background. Set only when this run can use the cloud browser. */
 	startCloudBrowserTask?: StartCloudBrowserTask;
+	/**
+	 * Run the two-stage ai-gym workflow test (credential validation + ephemeral simulation).
+	 * Presence gates the `workflow_test` tool (set only when the feature flag is enabled).
+	 */
+	runWorkflowTest?: RunWorkflowTestFn;
 	/** Hand off durable work to follow-up tasks once the current tool result reaches the UI. */
 	requestRunHandoff?: (reason: OrchestratorRunHandoffReason) => void;
 	/** Shared runtime workspace for the current orchestration context. */

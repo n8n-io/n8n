@@ -336,13 +336,17 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 	): Promise<T> {
 		const { workflow, node, additionalData, mode, runExecutionData, runIndex } = this;
 
-		// Eval bypass: only mock when the node is fully unconfigured, so nodes
+		// Eval / simulation bypass: only mock when the node is fully unconfigured, so nodes
 		// probing multiple auth types still get production's throw. Handler
 		// presence (not execution mode) gates it — `evalLlmMockHandler` is set
-		// only by eval execution services, and eval agent tools run in modes
-		// other than 'evaluation'. `EvalMockedCredentialsHelper` catches the
-		// null-id `CredentialNotFoundError` and schema-synthesizes.
-		if (additionalData.evalLlmMockHandler && !node.credentials?.[type]) {
+		// only by eval execution services, `synthesizeUnconfiguredCredentials` is
+		// set by in-process simulation, and eval agent tools run in modes
+		// other than 'evaluation'. The mocked credentials helper catches the
+		// null-id `CredentialNotFoundError` and synthesizes credentials.
+		if (
+			(additionalData.evalLlmMockHandler || additionalData.synthesizeUnconfiguredCredentials) &&
+			!node.credentials?.[type]
+		) {
 			const hasOtherCreds = !!node.credentials && Object.keys(node.credentials).length > 0;
 			if (!hasOtherCreds) {
 				return (await additionalData.credentialsHelper.getDecrypted(

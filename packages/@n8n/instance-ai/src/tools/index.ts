@@ -103,6 +103,10 @@ const loadVerifyBuiltWorkflowTool = lazyMod(
 	() =>
 		require('./orchestration/verify-built-workflow.tool') as typeof import('./orchestration/verify-built-workflow.tool'),
 );
+const loadWorkflowTestTool = lazyMod(
+	() =>
+		require('./orchestration/workflow-test.tool') as typeof import('./orchestration/workflow-test.tool'),
+);
 const loadResearchTool = lazyMod(
 	() => require('./research.tool') as typeof import('./research.tool'),
 );
@@ -386,6 +390,14 @@ export function createOrchestrationTools(context: OrchestrationContext): Instanc
 			loadStartCloudBrowserTaskTool().createStartCloudBrowserTaskTool(
 				context.startCloudBrowserTask,
 			),
+		]);
+	}
+
+	// Presence is the gate: the host sets it only when the ai-gym workflow_test feature flag is on.
+	if (context.runWorkflowTest) {
+		tools.push([
+			ORCHESTRATION_TOOL_IDS.WORKFLOW_TEST,
+			loadWorkflowTestTool().createWorkflowTestTool(context.runWorkflowTest),
 		]);
 	}
 

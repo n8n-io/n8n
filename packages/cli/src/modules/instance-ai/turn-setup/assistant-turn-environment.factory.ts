@@ -58,6 +58,7 @@ import {
 	InstanceAiAdapterService,
 	type InstanceAiFeatureFlags,
 } from '../instance-ai.adapter.service';
+import { InstanceAiWorkflowTestService } from '../workflow-test/instance-ai-workflow-test.service';
 import { AssistantTurnOverrides } from './assistant-turn-overrides';
 import type { AssistantTurnMemory, AssistantTurnRuntime } from './assistant-turn-runtime';
 import {
@@ -166,6 +167,7 @@ export class AssistantTurnEnvironmentFactory {
 		private readonly skillsService: InstanceAiSkillsService,
 		private readonly approvalModeService: InstanceAiApprovalModeService,
 		private readonly approvalReviewerFactory: InstanceAiApprovalReviewerFactory,
+		private readonly workflowTestService: InstanceAiWorkflowTestService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.instanceAiConfig = globalConfig.instanceAi;
@@ -636,6 +638,11 @@ export class AssistantTurnEnvironmentFactory {
 					},
 					getCredentialFields: context.credentialService.getCredentialFields,
 				});
+		}
+
+		if (await this.workflowTestService.isAvailable()) {
+			orchestrationContext.runWorkflowTest = async (input) =>
+				await this.workflowTestService.runTest(user, input, pushRef);
 		}
 
 		return {
