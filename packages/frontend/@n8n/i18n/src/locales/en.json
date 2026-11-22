@@ -11575,5 +11575,18 @@
 	"selfHealing.config.subWorkflows.tooltip": "Sub-workflows this workflow calls",
 	"selfHealing.config.subWorkflows.count": "{count} sub-workflow | {count} sub-workflows",
 	"selfHealing.config.subWorkflows.external": "Other project",
-	"selfHealing.config.subWorkflows.notCovered": "Not covered"
+	"selfHealing.config.subWorkflows.notCovered": "Not covered",
+	"customNodes.settings.title": "Custom nodes",
+	"customNodes.settings.description": "Nodes and actions that call an HTTP API. Your team can add them from the nodes panel.",
+	"customNodes.settings.empty": "No custom nodes or actions yet.",
+	"customNodes.settings.nodes.title": "Custom nodes",
+	"customNodes.settings.node.actionCount": "{count} action | {count} actions",
+	"customNodes.settings.parent.title": "Actions for {parent}",
+	"customNodes.settings.delete.button": "Delete",
+	"customNodes.settings.delete.title": "Delete \"{name}\"?",
+	"customNodes.settings.delete.node.description": "This deletes the node and all of its actions. Workflows that use them stop working.",
+	"customNodes.settings.delete.action.description": "Workflows that use this action stop working.",
+	"customNodes.settings.delete.success": "Deleted",
+	"customNodes.settings.delete.error": "Could not delete",
+	"customNodes.settings.load.error": "Could not load custom nodes"
 }
