@@ -182,10 +182,14 @@ export class DbConnection {
 		if (options.type !== 'postgres' || !options.applySessionSettingsOnce) return;
 
 		try {
-			const rows = await this.dataSource.query<Array<{ name: string; reset_val: string }>>(
-				"SELECT name, reset_val FROM pg_settings WHERE name IN ('search_path', 'statement_timeout')",
-			);
-			const resetValue = (name: string) => rows.find((row) => row.name === name)?.reset_val ?? null;
+			// Go back to the role's search_path for this transaction only, and let Postgres
+			// resolve it: current_schema() is where unqualified table names go.
+			const [row] = await this.dataSource.transaction(async (manager) => {
+				await manager.query('SET LOCAL search_path TO DEFAULT');
+				return await manager.query<Array<{ schema: string | null; statement_timeout: string }>>(
+					"SELECT current_schema() AS schema, reset_val AS statement_timeout FROM pg_settings WHERE name = 'statement_timeout'",
+				);
+			});
 
 			const warning = getMissingRoleDefaultsWarning(
 				{
@@ -194,8 +198,8 @@ export class DbConnection {
 					statementTimeoutMs: options.statementTimeout ?? 0,
 				},
 				{
-					searchPath: resetValue('search_path'),
-					statementTimeout: resetValue('statement_timeout'),
+					schema: row?.schema ?? null,
+					statementTimeout: row?.statement_timeout ?? null,
 				},
 			);
 			if (warning) this.logger.warn(warning);

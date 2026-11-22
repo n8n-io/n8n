@@ -1058,24 +1058,29 @@ export class PostgresDriver implements Driver {
 		}
 
 		const connection = await this.master.connect();
-		// Apply per-connection session settings (schema creation moved to afterConnect).
-		// With applySessionSettingsOnce, skip them on later checkouts of the same client:
-		// they persist on a direct connection, but not behind a transaction-mode pooler.
-		const { applySessionSettingsOnce } = this.options;
-		if (!applySessionSettingsOnce || !this.sessionInitializedClients.has(connection)) {
-			const { schema, statementTimeout } = this.options;
-			if (schema && schema !== 'public') {
-				await connection.query(`SET search_path TO "${schema}",public`);
-			} else {
-				await connection.query('SET search_path TO public');
+		try {
+			// Apply per-connection session settings (schema creation moved to afterConnect).
+			// With applySessionSettingsOnce, skip them on later checkouts of the same client:
+			// they persist on a direct connection, but not behind a transaction-mode pooler.
+			const { applySessionSettingsOnce } = this.options;
+			if (!applySessionSettingsOnce || !this.sessionInitializedClients.has(connection)) {
+				const { schema, statementTimeout } = this.options;
+				if (schema && schema !== 'public') {
+					await connection.query(`SET search_path TO "${schema}",public`);
+				} else {
+					await connection.query('SET search_path TO public');
+				}
+				if (statementTimeout) {
+					await connection.query(`SET statement_timeout = ${statementTimeout}`);
+				}
+				if (applySessionSettingsOnce) this.sessionInitializedClients.add(connection);
 			}
-			if (statementTimeout) {
-				await connection.query(`SET statement_timeout = ${statementTimeout}`);
-			}
-			if (applySessionSettingsOnce) this.sessionInitializedClients.add(connection);
+		} catch (error) {
+			connection.release(error);
+			throw error;
 		}
 
-		return [connection, () => connection.release()];
+		return [connection, (err?: Error) => connection.release(err)];
 	}
 
 	/**

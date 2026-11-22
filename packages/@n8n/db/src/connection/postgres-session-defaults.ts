@@ -9,27 +9,16 @@ export type SessionSettings = {
 	statementTimeoutMs: number;
 };
 
-/** `reset_val` of each setting in `pg_settings`: the value a new session starts with. */
+/** What a new session starts with, as Postgres reports it. */
 export type RoleDefaults = {
-	searchPath: string | null;
+	/** `current_schema()` under the role's default `search_path`: where unqualified names resolve. */
+	schema: string | null;
+	/** `reset_val` of `statement_timeout`, in milliseconds. */
 	statementTimeout: string | null;
 };
 
 function quoteIdentifier(name: string): string {
 	return `"${name.replace(/"/g, '""')}"`;
-}
-
-/** Splits a `search_path` value like `"my schema", public` into schema names. */
-function parseSearchPath(value: string): string[] {
-	return value
-		.split(',')
-		.map((entry) => entry.trim())
-		.filter((entry) => entry.length > 0)
-		.map((entry) =>
-			entry.length > 1 && entry.startsWith('"') && entry.endsWith('"')
-				? entry.slice(1, -1).replace(/""/g, '"')
-				: entry,
-		);
 }
 
 /**
@@ -43,14 +32,14 @@ export function getMissingRoleDefaultStatements(
 	const alterRole = `ALTER ROLE CURRENT_USER IN DATABASE ${quoteIdentifier(settings.database)}`;
 	const statements: string[] = [];
 
-	// For `public`, Postgres's own default (`"$user", public`) already resolves n8n's tables.
-	if (settings.schema && settings.schema !== 'public') {
-		const firstSchema = parseSearchPath(defaults.searchPath ?? '')[0];
-		if (firstSchema !== settings.schema) {
-			statements.push(
-				`${alterRole} SET search_path = ${quoteIdentifier(settings.schema)}, public;`,
-			);
-		}
+	// n8n sends a search_path for `public` too, so this applies to every schema.
+	const schema = settings.schema || 'public';
+	if (defaults.schema !== schema) {
+		statements.push(
+			schema === 'public'
+				? `${alterRole} SET search_path = public;`
+				: `${alterRole} SET search_path = ${quoteIdentifier(schema)}, public;`,
+		);
 	}
 
 	if (settings.statementTimeoutMs > 0) {
@@ -71,7 +60,7 @@ export function getMissingRoleDefaultsWarning(
 	if (statements.length === 0) return null;
 
 	return [
-		'DB_POSTGRESDB_APPLY_SESSION_SETTINGS_ONCE is enabled, but the database role has no matching defaults for the schema and statement timeout.',
+		'DB_POSTGRESDB_APPLY_SESSION_SETTINGS_ONCE is enabled, but the database role defaults do not match the configured session settings.',
 		'This is safe on a direct connection to Postgres.',
 		'Behind a pooler in transaction mode, such as PgBouncer, queries can fail with "relation does not exist" or run without a timeout.',
 		`To fix this, connect as the n8n database user, run ${statements.join(' ')} Then reconnect the pooler.`,

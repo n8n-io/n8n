@@ -8,28 +8,13 @@ describe('getMissingRoleDefaultStatements', () => {
 
 	it('should return nothing when the role defaults match', () => {
 		expect(
-			getMissingRoleDefaultStatements(settings, {
-				searchPath: 'n8n, public',
-				statementTimeout: '300000',
-			}),
-		).toEqual([]);
-	});
-
-	it('should accept a quoted schema in the search_path default', () => {
-		expect(
-			getMissingRoleDefaultStatements(
-				{ ...settings, schema: 'My Schema' },
-				{ searchPath: '"My Schema", public', statementTimeout: '300000' },
-			),
+			getMissingRoleDefaultStatements(settings, { schema: 'n8n', statementTimeout: '300000' }),
 		).toEqual([]);
 	});
 
 	it('should return both statements when the role has no defaults', () => {
 		expect(
-			getMissingRoleDefaultStatements(settings, {
-				searchPath: '"$user", public',
-				statementTimeout: '0',
-			}),
+			getMissingRoleDefaultStatements(settings, { schema: 'public', statementTimeout: '0' }),
 		).toEqual([
 			'ALTER ROLE CURRENT_USER IN DATABASE "n8n" SET search_path = "n8n", public;',
 			'ALTER ROLE CURRENT_USER IN DATABASE "n8n" SET statement_timeout = 300000;',
@@ -38,27 +23,39 @@ describe('getMissingRoleDefaultStatements', () => {
 
 	it('should return the timeout statement when only the timeout differs', () => {
 		expect(
-			getMissingRoleDefaultStatements(settings, {
-				searchPath: 'n8n, public',
-				statementTimeout: '60000',
-			}),
+			getMissingRoleDefaultStatements(settings, { schema: 'n8n', statementTimeout: '60000' }),
 		).toEqual(['ALTER ROLE CURRENT_USER IN DATABASE "n8n" SET statement_timeout = 300000;']);
 	});
 
-	it('should not ask for a search_path default on the public schema', () => {
+	it('should accept the public schema when the role default resolves to it', () => {
 		expect(
 			getMissingRoleDefaultStatements(
 				{ ...settings, schema: 'public' },
-				{ searchPath: '"$user", public', statementTimeout: '300000' },
+				{ schema: 'public', statementTimeout: '300000' },
 			),
 		).toEqual([]);
+	});
+
+	it('should ask for a search_path default when the role resolves elsewhere on the public schema', () => {
+		expect(
+			getMissingRoleDefaultStatements(
+				{ ...settings, schema: 'public' },
+				{ schema: 'private', statementTimeout: '300000' },
+			),
+		).toEqual(['ALTER ROLE CURRENT_USER IN DATABASE "n8n" SET search_path = public;']);
+	});
+
+	it('should ask for a search_path default when no schema in the role default exists', () => {
+		expect(
+			getMissingRoleDefaultStatements(settings, { schema: null, statementTimeout: '300000' }),
+		).toEqual(['ALTER ROLE CURRENT_USER IN DATABASE "n8n" SET search_path = "n8n", public;']);
 	});
 
 	it('should not ask for a timeout default when the timeout is disabled', () => {
 		expect(
 			getMissingRoleDefaultStatements(
 				{ ...settings, statementTimeoutMs: 0 },
-				{ searchPath: 'n8n, public', statementTimeout: '0' },
+				{ schema: 'n8n', statementTimeout: '0' },
 			),
 		).toEqual([]);
 	});
@@ -67,7 +64,7 @@ describe('getMissingRoleDefaultStatements', () => {
 		expect(
 			getMissingRoleDefaultStatements(
 				{ database: 'my"db', schema: 'a"b', statementTimeoutMs: 0 },
-				{ searchPath: null, statementTimeout: null },
+				{ schema: 'public', statementTimeout: null },
 			),
 		).toEqual(['ALTER ROLE CURRENT_USER IN DATABASE "my""db" SET search_path = "a""b", public;']);
 	});
@@ -78,7 +75,7 @@ describe('getMissingRoleDefaultsWarning', () => {
 		expect(
 			getMissingRoleDefaultsWarning(
 				{ database: 'n8n', schema: 'public', statementTimeoutMs: 0 },
-				{ searchPath: '"$user", public', statementTimeout: '0' },
+				{ schema: 'public', statementTimeout: '0' },
 			),
 		).toBeNull();
 	});
@@ -86,7 +83,7 @@ describe('getMissingRoleDefaultsWarning', () => {
 	it('should name the setting and the statements to run', () => {
 		const warning = getMissingRoleDefaultsWarning(
 			{ database: 'n8n', schema: 'public', statementTimeoutMs: 300_000 },
-			{ searchPath: '"$user", public', statementTimeout: '0' },
+			{ schema: 'public', statementTimeout: '0' },
 		);
 
 		expect(warning).toContain('DB_POSTGRESDB_APPLY_SESSION_SETTINGS_ONCE');

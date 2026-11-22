@@ -176,6 +176,16 @@ describe('DbConnection', () => {
 				);
 			};
 
+			const manager = mock<EntityManager>();
+			const mockRoleDefaults = (row: { schema: string | null; statement_timeout: string }) => {
+				manager.query.mockImplementation(async (sql: string) =>
+					sql.startsWith('SELECT') ? [row] : [],
+				);
+				(dataSource.transaction as unknown as Mock).mockImplementation(
+					async (run: (m: EntityManager) => Promise<unknown>) => await run(manager),
+				);
+			};
+
 			beforeEach(() => {
 				dataSource.initialize.mockResolvedValue(dataSource);
 			});
@@ -183,14 +193,23 @@ describe('DbConnection', () => {
 			it('should not check the role defaults when the setting is off', async () => {
 				await createConnection({ statementTimeout: 300_000 }).init();
 
-				expect(dataSource.query).not.toHaveBeenCalled();
+				expect(dataSource.transaction).not.toHaveBeenCalled();
+			});
+
+			it('should read the schema under the role default search_path', async () => {
+				mockRoleDefaults({ schema: 'n8n', statement_timeout: '300000' });
+
+				await createConnection({ schema: 'n8n', applySessionSettingsOnce: true }).init();
+
+				expect(manager.query).toHaveBeenNthCalledWith(1, 'SET LOCAL search_path TO DEFAULT');
+				expect(manager.query).toHaveBeenNthCalledWith(
+					2,
+					expect.stringContaining('current_schema()'),
+				);
 			});
 
 			it('should warn with the missing statements when the setting is on', async () => {
-				dataSource.query.mockResolvedValue([
-					{ name: 'search_path', reset_val: '"$user", public' },
-					{ name: 'statement_timeout', reset_val: '0' },
-				]);
+				mockRoleDefaults({ schema: 'public', statement_timeout: '0' });
 
 				await createConnection({
 					schema: 'n8n',
@@ -207,10 +226,7 @@ describe('DbConnection', () => {
 			});
 
 			it('should not warn when the role defaults match', async () => {
-				dataSource.query.mockResolvedValue([
-					{ name: 'search_path', reset_val: 'n8n, public' },
-					{ name: 'statement_timeout', reset_val: '300000' },
-				]);
+				mockRoleDefaults({ schema: 'n8n', statement_timeout: '300000' });
 
 				await createConnection({
 					schema: 'n8n',
@@ -222,7 +238,7 @@ describe('DbConnection', () => {
 			});
 
 			it('should complete startup when the check fails', async () => {
-				dataSource.query.mockRejectedValue(new Error('boom'));
+				(dataSource.transaction as unknown as Mock).mockRejectedValue(new Error('boom'));
 				const connection = createConnection({ applySessionSettingsOnce: true });
 
 				await connection.init();

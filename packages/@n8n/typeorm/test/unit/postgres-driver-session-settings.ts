@@ -4,6 +4,7 @@ import type { PostgresConnectionOptions } from '../../src/driver/postgres/Postgr
 
 class FakeClient {
 	queries: string[] = [];
+	releaseCalls: Array<unknown> = [];
 	failOn?: string;
 
 	async query(sql: string) {
@@ -14,7 +15,9 @@ class FakeClient {
 		return { rows: [] };
 	}
 
-	release() {}
+	release(err?: unknown) {
+		this.releaseCalls.push(err);
+	}
 }
 
 function createDriver(options: Partial<PostgresConnectionOptions>, clients: FakeClient[]) {
@@ -78,7 +81,7 @@ describe('PostgresDriver session settings', () => {
 		expect(client.queries).to.deep.equal(['SET search_path TO "my_schema",public']);
 	});
 
-	it('retries the session settings on the next checkout when a SET fails', async () => {
+	it('releases the client with the error and retries when a SET fails', async () => {
 		const client = new FakeClient();
 		client.failOn = 'SET statement_timeout';
 		const driver = createDriver({ statementTimeout: 5000, applySessionSettingsOnce: true }, [
@@ -88,6 +91,8 @@ describe('PostgresDriver session settings', () => {
 		]);
 
 		await expect(driver.obtainMasterConnection()).to.be.rejectedWith('query failed');
+		expect(client.releaseCalls).to.have.lengthOf(1);
+		expect(client.releaseCalls[0]).to.be.instanceOf(Error);
 
 		client.failOn = undefined;
 		await driver.obtainMasterConnection();
@@ -101,18 +106,15 @@ describe('PostgresDriver session settings', () => {
 		]);
 	});
 
-	it('returns a release function for the checked-out client', async () => {
+	it('returns a release function that forwards errors to the client', async () => {
 		const client = new FakeClient();
-		let released = false;
-		client.release = () => {
-			released = true;
-		};
 		const driver = createDriver({}, [client]);
 
 		const [connection, release] = await driver.obtainMasterConnection();
-		release();
+		const err = new Error('connection lost');
+		release(err);
 
 		expect(connection).to.equal(client);
-		expect(released).to.equal(true);
+		expect(client.releaseCalls).to.deep.equal([err]);
 	});
 });
