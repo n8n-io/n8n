@@ -98,7 +98,9 @@ export class EnterpriseCredentialsService {
 	}
 
 	async getOne(credentialId: string) {
-		return await this.credentialsFinderService.findById(credentialId);
+		return await this.credentialsFinderService.findById(credentialId, {
+			includeSharedProject: true,
+		});
 	}
 
 	async getOneForUser(user: User, credentialId: string, includeDecryptedData: boolean) {
