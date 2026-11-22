@@ -68,6 +68,10 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.chat_hub_tools](public.chat_hub_tools.md) | 9 |  | BASE TABLE |
 | [public.credential_dependency](public.credential_dependency.md) | 5 |  | BASE TABLE |
 | [public.credentials_entity](public.credentials_entity.md) | 14 |  | BASE TABLE |
+| [public.custom_action](public.custom_action.md) | 9 |  | BASE TABLE |
+| [public.custom_action_revision](public.custom_action_revision.md) | 7 |  | BASE TABLE |
+| [public.custom_action_version](public.custom_action_version.md) | 6 |  | BASE TABLE |
+| [public.custom_node](public.custom_node.md) | 12 |  | BASE TABLE |
 | [public.data_table](public.data_table.md) | 5 |  | BASE TABLE |
 | [public.data_table_column](public.data_table_column.md) | 7 |  | BASE TABLE |
 | [public.deployment_key](public.deployment_key.md) | 7 |  | BASE TABLE |
@@ -339,6 +343,14 @@ erDiagram
 "public.chat_hub_tools" }o--|| "public.user" : "FOREIGN KEY (#quot;ownerId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
 "public.credential_dependency" }o--|| "public.credentials_entity" : "FOREIGN KEY (#quot;credentialId#quot;) REFERENCES credentials_entity(id) ON DELETE CASCADE"
 "public.credentials_entity" }o--o| "public.dynamic_credential_resolver" : "FOREIGN KEY (#quot;resolverId#quot;) REFERENCES dynamic_credential_resolver(id) ON DELETE SET NULL"
+"public.custom_action" }o--o| "public.user" : "FOREIGN KEY (#quot;createdById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
+"public.custom_action" }o--o| "public.user" : "FOREIGN KEY (#quot;updatedById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
+"public.custom_action" }o--o| "public.custom_node" : "FOREIGN KEY (#quot;customNodeId#quot;) REFERENCES custom_node(id) ON DELETE CASCADE"
+"public.custom_action_revision" }o--o| "public.user" : "FOREIGN KEY (#quot;createdById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
+"public.custom_action_revision" }o--|| "public.custom_action_version" : "FOREIGN KEY (#quot;versionId#quot;) REFERENCES custom_action_version(id) ON DELETE CASCADE"
+"public.custom_action_version" }o--|| "public.custom_action" : "FOREIGN KEY (#quot;actionId#quot;) REFERENCES custom_action(id) ON DELETE CASCADE"
+"public.custom_node" }o--o| "public.user" : "FOREIGN KEY (#quot;createdById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
+"public.custom_node" }o--o| "public.user" : "FOREIGN KEY (#quot;updatedById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.data_table" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.data_table_column" }o--|| "public.data_table" : "FOREIGN KEY (#quot;dataTableId#quot;) REFERENCES data_table(id) ON DELETE CASCADE"
 "public.dynamic_credential_entry" }o--|| "public.credentials_entity" : "FOREIGN KEY (credential_id) REFERENCES credentials_entity(id) ON DELETE CASCADE"
@@ -1189,6 +1201,48 @@ erDiagram
   varchar_128_ type
   timestamp_3__with_time_zone updatedAt
   varchar_16_ usageScope
+}
+"public.custom_action" {
+  timestamp_3__with_time_zone createdAt
+  uuid createdById FK
+  varchar_36_ customNodeId FK
+  text description
+  varchar_36_ id
+  varchar_128_ name
+  varchar_255_ parentNodeType
+  timestamp_3__with_time_zone updatedAt
+  uuid updatedById FK
+}
+"public.custom_action_revision" {
+  text changeNote
+  timestamp_3__with_time_zone createdAt
+  uuid createdById FK
+  integer id
+  json request
+  integer revision
+  integer versionId FK
+}
+"public.custom_action_version" {
+  varchar_36_ actionId FK
+  timestamp_3__with_time_zone createdAt
+  integer currentRevision
+  integer id
+  json inputs
+  integer version
+}
+"public.custom_node" {
+  json auth
+  text baseUrl
+  json baseUrlHistory
+  timestamp_3__with_time_zone createdAt
+  uuid createdById FK
+  text description
+  varchar_128_ displayName
+  bytea iconData
+  varchar_32_ iconMimeType
+  varchar_36_ id
+  timestamp_3__with_time_zone updatedAt
+  uuid updatedById FK
 }
 "public.data_table" {
   timestamp_3__with_time_zone createdAt

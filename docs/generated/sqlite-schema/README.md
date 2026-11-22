@@ -68,6 +68,10 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [chat_hub_tools](chat_hub_tools.md) | 9 |  | table |
 | [credential_dependency](credential_dependency.md) | 5 |  | table |
 | [credentials_entity](credentials_entity.md) | 14 |  | table |
+| [custom_action](custom_action.md) | 9 |  | table |
+| [custom_action_revision](custom_action_revision.md) | 7 |  | table |
+| [custom_action_version](custom_action_version.md) | 6 |  | table |
+| [custom_node](custom_node.md) | 12 |  | table |
 | [data_table](data_table.md) | 5 |  | table |
 | [data_table_column](data_table_column.md) | 7 |  | table |
 | [deployment_key](deployment_key.md) | 7 |  | table |
@@ -321,6 +325,14 @@ erDiagram
 "chat_hub_tools" }o--|| "user" : "FOREIGN KEY (ownerId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "credential_dependency" }o--|| "credentials_entity" : "FOREIGN KEY (credentialId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "credentials_entity" }o--o| "dynamic_credential_resolver" : "FOREIGN KEY (resolverId) REFERENCES dynamic_credential_resolver (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"custom_action" }o--o| "user" : "FOREIGN KEY (updatedById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"custom_action" }o--o| "user" : "FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"custom_action" }o--o| "custom_node" : "FOREIGN KEY (customNodeId) REFERENCES custom_node (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"custom_action_revision" }o--o| "user" : "FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"custom_action_revision" }o--|| "custom_action_version" : "FOREIGN KEY (versionId) REFERENCES custom_action_version (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"custom_action_version" }o--|| "custom_action" : "FOREIGN KEY (actionId) REFERENCES custom_action (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"custom_node" }o--o| "user" : "FOREIGN KEY (updatedById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"custom_node" }o--o| "user" : "FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "data_table" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "data_table_column" }o--|| "data_table" : "FOREIGN KEY (dataTableId) REFERENCES data_table (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "dynamic_credential_entry" |o--|| "dynamic_credential_resolver" : "FOREIGN KEY (resolver_id) REFERENCES dynamic_credential_resolver (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -1175,6 +1187,48 @@ erDiagram
   varchar_32_ type
   datetime_3_ updatedAt
   VARCHAR_16_ usageScope
+}
+"custom_action" {
+  datetime_3_ createdAt
+  varchar createdById FK
+  varchar_36_ customNodeId FK
+  TEXT description
+  varchar_36_ id PK
+  varchar_128_ name
+  varchar_255_ parentNodeType
+  datetime_3_ updatedAt
+  varchar updatedById FK
+}
+"custom_action_revision" {
+  TEXT changeNote
+  datetime_3_ createdAt
+  varchar createdById FK
+  INTEGER id
+  TEXT request
+  INTEGER revision
+  INTEGER versionId FK
+}
+"custom_action_version" {
+  varchar_36_ actionId FK
+  datetime_3_ createdAt
+  INTEGER currentRevision
+  INTEGER id
+  TEXT inputs
+  INTEGER version
+}
+"custom_node" {
+  TEXT auth
+  TEXT baseUrl
+  TEXT baseUrlHistory
+  datetime_3_ createdAt
+  varchar createdById FK
+  TEXT description
+  varchar_128_ displayName
+  BLOB iconData
+  varchar_32_ iconMimeType
+  varchar_36_ id PK
+  datetime_3_ updatedAt
+  varchar updatedById FK
 }
 "data_table" {
   datetime_3_ createdAt
