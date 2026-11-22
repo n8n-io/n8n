@@ -517,7 +517,9 @@ The order and size are the builder's call. Use the `n8n:gh-stack` skill.
 
 - Plan 1, backend foundation and custom nodes:
   `.agents/specs/2026-11-22-custom-nodes-and-actions-plan-1-backend-foundation.md`
-- Plans 2 to 4 are listed at the end of plan 1. Each is written when the plan
+- Plan 2, custom actions in parent nodes:
+  `.agents/specs/2026-11-22-custom-nodes-and-actions-plan-2-custom-actions-in-parent-nodes.md`
+- Plans 3 and 4 are listed at the end of plan 2. Each is written when the plan
   before it is done.
 
 ## 17. Review record
