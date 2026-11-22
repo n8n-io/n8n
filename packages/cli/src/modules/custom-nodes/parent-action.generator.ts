@@ -1,3 +1,4 @@
+import { CUSTOM_ACTION_RESOURCE_VALUE } from '@n8n/api-types';
 import { UnexpectedError } from '@n8n/errors';
 import type {
 	DeclarativeRestApiSettings,
@@ -40,7 +41,7 @@ import {
  *
  * Stored values. Saved workflows contain them, so they must never change.
  */
-export const CUSTOM_RESOURCE_VALUE = '__CUSTOM_ACTION__';
+export const CUSTOM_RESOURCE_VALUE = CUSTOM_ACTION_RESOURCE_VALUE;
 export const CUSTOM_RESOURCE_NAME = 'Custom';
 export const PARENT_INPUT_PREFIX = 'customAction_';
 

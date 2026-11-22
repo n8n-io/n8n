@@ -78,6 +78,12 @@ export class CustomNodesController {
 		return this.service.preview(req.user, dto.draft);
 	}
 
+	@Get('/nodes/:id')
+	@GlobalScope('customNode:list')
+	async getNode(req: AuthenticatedRequest, _res: Response, @Param('id') id: string) {
+		return await this.service.getNode(req.user, id);
+	}
+
 	@Post('/nodes')
 	@GlobalScope('customNode:create')
 	async createNode(req: AuthenticatedRequest, res: Response, @Body dto: CreateCustomNodeDto) {
@@ -183,6 +189,17 @@ export class CustomNodesController {
 			res,
 			async () => await this.service.saveAction(req.user, id, dto),
 		);
+	}
+
+	@Get('/actions/:id/versions/:version')
+	@GlobalScope('customNode:list')
+	async getActionVersion(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('id') id: string,
+		@Param('version') version: string,
+	) {
+		return await this.service.getActionVersion(req.user, id, parseVersion(version));
 	}
 
 	@Post('/actions/:id/versions/:version/rollback')

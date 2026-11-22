@@ -18,6 +18,8 @@ const routes: Array<['get' | 'post' | 'patch' | 'put' | 'delete', string]> = [
 	['get', '/custom-nodes'],
 	['post', '/custom-nodes/preview'],
 	['post', '/custom-nodes/nodes'],
+	['get', '/custom-nodes/nodes/cn_acme'],
+	['get', '/custom-nodes/actions/act_x/versions/1'],
 	['patch', '/custom-nodes/nodes/cn_acme'],
 	['delete', '/custom-nodes/nodes/cn_acme'],
 	['put', '/custom-nodes/nodes/cn_acme/icon'],

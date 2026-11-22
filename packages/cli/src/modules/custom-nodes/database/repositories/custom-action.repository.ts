@@ -49,6 +49,12 @@ export interface ActionVersionAggregate {
 	createdAt: Date;
 }
 
+export interface RevisionRow {
+	revision: number;
+	changeNote: string | null;
+	createdAt: Date;
+}
+
 export interface ActionAggregate {
 	action: CustomActionEntity;
 	/** Sorted ascending by `version`. */
@@ -208,6 +214,16 @@ export class CustomActionRepository {
 
 	async countActionsOfNode(customNodeId: string, ctx: OperationContext): Promise<number> {
 		return await this.table.managerFor(ctx).countBy(CustomActionEntity, { customNodeId });
+	}
+
+	/** Returns the revisions of one version, sorted ascending by revision number. */
+	async findRevisions(versionId: number, ctx: OperationContext): Promise<RevisionRow[]> {
+		const rows = await this.table.managerFor(ctx).find(CustomActionRevisionEntity, {
+			select: { revision: true, changeNote: true, createdAt: true },
+			where: { versionId },
+			order: { revision: 'ASC' },
+		});
+		return rows.map(({ revision, changeNote, createdAt }) => ({ revision, changeNote, createdAt }));
 	}
 
 	async countRevisions(versionId: number, ctx: OperationContext): Promise<number> {

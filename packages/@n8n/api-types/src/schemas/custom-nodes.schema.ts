@@ -3,6 +3,12 @@ import { z } from 'zod';
 /** Package name of the generated custom node types. */
 export const CUSTOM_DEFINITIONS_PACKAGE_NAME = 'n8n-custom';
 
+/**
+ * The value of the `resource` parameter that selects a custom action of a parent node.
+ * Saved workflows contain it, so it must never change.
+ */
+export const CUSTOM_ACTION_RESOURCE_VALUE = '__CUSTOM_ACTION__';
+
 export const customNodeAuthSchema = z.discriminatedUnion('kind', [
 	z.object({ kind: z.literal('none') }),
 	z.object({ kind: z.literal('predefined'), credentialType: z.string().min(1) }),
@@ -72,6 +78,22 @@ export interface CustomActionVersionSummary {
 	createdAt: string;
 	/** Node parameter values that select this version. The editor writes them to the node as they are. */
 	pinValues: Record<string, string>;
+}
+
+export interface CustomActionRevisionSummary {
+	revision: number;
+	changeNote?: string;
+	createdAt: string;
+	/** True for the revision that the version currently uses. */
+	current: boolean;
+}
+
+export interface CustomActionVersionDetailResponse {
+	version: number;
+	/** The draft of this version, built from its current revision. */
+	draft: CustomActionDraft;
+	/** Sorted ascending by `revision`. */
+	revisions: CustomActionRevisionSummary[];
 }
 
 export interface CustomActionResponse {

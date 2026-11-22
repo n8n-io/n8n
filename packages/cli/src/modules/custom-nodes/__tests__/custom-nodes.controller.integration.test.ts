@@ -137,9 +137,11 @@ describe('CustomNodesController', () => {
 			'PATCH /nodes/:id': 'customNode:update',
 			'DELETE /nodes/:id': 'customNode:delete',
 			'PUT /nodes/:id/icon': 'customNode:update',
+			'GET /nodes/:id': 'customNode:list',
 			'GET /nodes/:id/icon': 'customNode:list',
 			'POST /nodes/:id/actions': 'customNode:update',
 			'PATCH /actions/:id': 'customNode:update',
+			'GET /actions/:id/versions/:version': 'customNode:list',
 			'POST /actions/:id/versions/:version/rollback': 'customNode:update',
 			'DELETE /actions/:id': 'customNode:delete',
 			'POST /actions': 'customNode:create',
@@ -228,6 +230,13 @@ describe('CustomNodesController', () => {
 			expect(res.body.data.properties.map((p: { name: string }) => p.name)).toContain('invoiceId');
 		});
 
+		it('GET /nodes/:id and GET /actions/:id/versions/:version return 200 for a member', async () => {
+			const { nodeId, actionId } = await createNode();
+
+			await memberAgent.get(`/custom-nodes/nodes/${nodeId}`).expect(200);
+			await memberAgent.get(`/custom-nodes/actions/${actionId}/versions/1`).expect(200);
+		});
+
 		it('returns 401 without a session', async () => {
 			await testServer.authlessAgent.get('/custom-nodes').expect(401);
 		});
@@ -279,6 +288,84 @@ describe('CustomNodesController', () => {
 			await ownerAgent.delete(`/custom-nodes/actions/${added.body.data.id}`).expect(200);
 			const list = await ownerAgent.get('/custom-nodes').expect(200);
 			expect(list.body.data[0].actions).toHaveLength(1);
+		});
+
+		it('returns one node by id', async () => {
+			const { nodeId } = await createNode([getInvoice(), listInvoices()]);
+			await createNode();
+
+			const res = await ownerAgent.get(`/custom-nodes/nodes/${nodeId}`).expect(200);
+
+			expect(res.body.data).toMatchObject({ id: nodeId, displayName: 'Acme Billing' });
+			expect(res.body.data.actions).toHaveLength(2);
+		});
+
+		it('returns 404 for an unknown node', async () => {
+			await ownerAgent.get('/custom-nodes/nodes/cn_unknown').expect(404);
+		});
+
+		it('returns the draft and the revisions of a version', async () => {
+			const { actionId } = await createNode();
+			const changed = { ...getInvoice(), request: { ...getInvoice().request, method: 'POST' } };
+			await ownerAgent
+				.patch(`/custom-nodes/actions/${actionId}`)
+				.send({ draft: changed, changeNote: 'Use POST' })
+				.expect(200);
+
+			const res = await ownerAgent.get(`/custom-nodes/actions/${actionId}/versions/1`).expect(200);
+
+			expect(res.body.data.version).toBe(1);
+			expect(res.body.data.draft).toEqual(changed);
+			expect(res.body.data.revisions).toHaveLength(2);
+			expect(res.body.data.revisions[0]).toMatchObject({ revision: 1, current: false });
+			expect(res.body.data.revisions[0]).not.toHaveProperty('changeNote');
+			expect(res.body.data.revisions[1]).toMatchObject({
+				revision: 2,
+				changeNote: 'Use POST',
+				current: true,
+			});
+			expect(typeof res.body.data.revisions[1].createdAt).toBe('string');
+
+			await ownerAgent
+				.post(`/custom-nodes/actions/${actionId}/versions/1/rollback`)
+				.send({ revision: 1 })
+				.expect(200);
+			const rolledBack = await ownerAgent
+				.get(`/custom-nodes/actions/${actionId}/versions/1`)
+				.expect(200);
+			expect(rolledBack.body.data.draft).toEqual(getInvoice());
+			expect(rolledBack.body.data.revisions.map((r: { current: boolean }) => r.current)).toEqual([
+				true,
+				false,
+			]);
+		});
+
+		it('returns the draft of an older version', async () => {
+			const { actionId } = await createNode();
+			const breaking: CustomActionDraft = {
+				...getInvoice(),
+				inputs: [{ ...getInvoice().inputs[0], name: 'id', key: 'id' }],
+				request: { ...getInvoice().request, url: '/invoices/{id}' },
+			};
+			const saved = await ownerAgent
+				.patch(`/custom-nodes/actions/${actionId}`)
+				.send({ draft: breaking })
+				.expect(200);
+			expect(saved.body.data.kind).toBe('version');
+
+			const v1 = await ownerAgent.get(`/custom-nodes/actions/${actionId}/versions/1`).expect(200);
+			const v2 = await ownerAgent.get(`/custom-nodes/actions/${actionId}/versions/2`).expect(200);
+
+			expect(v1.body.data.draft.inputs[0].name).toBe('invoiceId');
+			expect(v2.body.data.draft.inputs[0].name).toBe('id');
+		});
+
+		it('returns 404 for an unknown version or action', async () => {
+			const { actionId } = await createNode();
+
+			await ownerAgent.get(`/custom-nodes/actions/${actionId}/versions/9`).expect(404);
+			await ownerAgent.get('/custom-nodes/actions/act_unknown/versions/1').expect(404);
+			await ownerAgent.get(`/custom-nodes/actions/${actionId}/versions/abc`).expect(400);
 		});
 
 		it('returns 400 for a version that is not a positive integer', async () => {

@@ -7,6 +7,7 @@ import {
 	type CustomActionEditKind,
 	type CustomActionResponse,
 	type CustomActionVersionSummary,
+	type CustomActionVersionDetailResponse,
 	type CustomNodeAuth,
 	type CustomNodeResponse,
 	type ParentCustomActionResponse,
@@ -218,6 +219,33 @@ export class CustomNodesService {
 			this.actionRepository.findAllActions({}),
 		]);
 		return nodes.map((node) => toNodeResponse(node, actions));
+	}
+
+	async getNode(user: User, id: string): Promise<CustomNodeResponse> {
+		this.assertScope(user, 'customNode:list');
+		return await this.getNodeResponse(id);
+	}
+
+	async getActionVersion(
+		user: User,
+		actionId: string,
+		versionNumber: number,
+	): Promise<CustomActionVersionDetailResponse> {
+		this.assertScope(user, 'customNode:list');
+		const { action, versions } = await this.findActionOrFail(actionId, {});
+		const version = versions.find((v) => v.version === versionNumber);
+		if (!version) throw new NotFoundError('The version of the custom action does not exist');
+		const revisions = await this.actionRepository.findRevisions(version.id, {});
+		return {
+			version: version.version,
+			draft: joinDraft(actionMeta(action), version.inputs, version.request),
+			revisions: revisions.map((row) => ({
+				revision: row.revision,
+				...(row.changeNote !== null && { changeNote: row.changeNote }),
+				createdAt: row.createdAt.toISOString(),
+				current: row.revision === version.currentRevision,
+			})),
+		};
 	}
 
 	async createNode(user: User, dto: CreateCustomNodeDto): Promise<CustomNodeResponse> {

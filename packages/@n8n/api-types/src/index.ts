@@ -1126,6 +1126,7 @@ export {
 
 export {
 	CUSTOM_DEFINITIONS_PACKAGE_NAME,
+	CUSTOM_ACTION_RESOURCE_VALUE,
 	customNodeAuthSchema,
 	customActionInputSchema,
 	customActionRequestSchema,
@@ -1137,6 +1138,8 @@ export {
 	type CustomActionEditKind,
 	type CustomActionDraftIssue,
 	type CustomActionVersionSummary,
+	type CustomActionRevisionSummary,
+	type CustomActionVersionDetailResponse,
 	type CustomActionResponse,
 	type ParentCustomActionResponse,
 	type CustomActionParent,
