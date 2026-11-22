@@ -1,6 +1,8 @@
 import type { CustomActionDraft, CustomActionDraftIssue } from '@n8n/api-types';
 import { UserError } from '@n8n/errors';
 
+import { RESERVED_BODY_KEYS, RESERVED_INPUT_NAMES } from './node-description.generator';
+
 /**
  * Validates a custom action draft before every save.
  *
@@ -21,20 +23,23 @@ const containsExpression = (value: string) =>
 	value.includes('{{') || value.trimStart().startsWith('=');
 
 /** Collects every string leaf and every object key of a value, with its path. */
-function collectStrings(root: unknown, rootPath: string): Array<{ path: string; text: string }> {
-	const found: Array<{ path: string; text: string }> = [];
+function collectStrings(
+	root: unknown,
+	rootPath: string,
+): Array<{ path: string; text: string; isKey: boolean }> {
+	const found: Array<{ path: string; text: string; isKey: boolean }> = [];
 	// Iterative on purpose: a deeply nested body must not overflow the stack.
 	const stack: Array<{ value: unknown; path: string }> = [{ value: root, path: rootPath }];
 	while (stack.length > 0) {
 		const { value, path } = stack.pop()!;
 		if (typeof value === 'string') {
-			found.push({ path, text: value });
+			found.push({ path, text: value, isKey: false });
 		} else if (Array.isArray(value)) {
 			value.forEach((item, index) => stack.push({ value: item, path: `${path}[${index}]` }));
 		} else if (value !== null && typeof value === 'object') {
 			for (const [key, child] of Object.entries(value)) {
 				const childPath = `${path}.${key}`;
-				found.push({ path: childPath, text: key });
+				found.push({ path: childPath, text: key, isKey: true });
 				stack.push({ value: child, path: childPath });
 			}
 		}
@@ -70,7 +75,10 @@ export function validateDraft(draft: CustomActionDraft): CustomActionDraftIssue[
 	}
 	// Report each body path once, even when both the key and the value are bad.
 	const seenBodyPaths = new Set<string>();
-	for (const { path, text } of collectStrings(request.body, 'request.body')) {
+	for (const { path, text, isKey } of collectStrings(request.body, 'request.body')) {
+		if (isKey && RESERVED_BODY_KEYS.includes(text)) {
+			add(path, 'reserved_body_key', `The body key "${text}" is not allowed.`);
+		}
 		if (containsExpression(text) && !seenBodyPaths.has(path)) {
 			seenBodyPaths.add(path);
 			checkExpression(path, text);
@@ -173,6 +181,18 @@ export function validateDraft(draft: CustomActionDraft): CustomActionDraftIssue[
 			);
 		}
 		names.add(input.name);
+
+		if (RESERVED_INPUT_NAMES.includes(input.name)) {
+			add(
+				`inputs[${index}].name`,
+				'reserved_input_name',
+				`The input name "${input.name}" is reserved.`,
+			);
+		}
+		// An empty value of an optional URL input would change the path structure.
+		if (input.target === 'url' && !input.required) {
+			add(`inputs[${index}].required`, 'url_input_not_required', 'A URL input must be required.');
+		}
 
 		const id = slot(input.target, input.key);
 		if (targetKeys.has(id)) {

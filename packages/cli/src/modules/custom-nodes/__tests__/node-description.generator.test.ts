@@ -1,5 +1,6 @@
 import { UnexpectedError } from '@n8n/errors';
 import type {
+	IWorkflowDataProxyAdditionalKeys,
 	IDataObject,
 	INodeProperties,
 	INodePropertyOptions,
@@ -8,10 +9,12 @@ import type {
 	INodeTypes,
 	INodeParameters,
 } from 'n8n-workflow';
-import { Expression, NodeConnectionTypes, Workflow } from 'n8n-workflow';
+import { Expression, NodeConnectionTypes, Workflow, jsonParse } from 'n8n-workflow';
 
 import {
 	ADDITIONAL_FIELDS,
+	RESERVED_BODY_KEYS,
+	RESERVED_INPUT_NAMES,
 	buildInputProperties,
 	buildRequest,
 	generateCustomNodeDescription,
@@ -153,7 +156,7 @@ const p = (name: string) => `$parameter["${name}"]`;
 
 /** The URL segment expression that the generator builds for one input. */
 const segment = (path: string) =>
-	`{{ ((v) => (v === "." || v === ".." ? v.replaceAll(".", "%252E") : encodeURIComponent(v)))(String(${path})) }}`;
+	`{{ ((v) => (v === "" || v === "." ? "%252E" : v === ".." ? "%252E%252E" : encodeURIComponent(v)))(String(${path})) }}`;
 const invoiceUrl = `=/invoices/${segment('$parameter["invoiceId"]')}`;
 
 const withRequest = (patch: Partial<ActionVersionView['request']>): ActionVersionView => ({
@@ -240,6 +243,7 @@ function makeWorkflow(description: INodeTypeDescription, parameters: INodeParame
 /** Values of the URL input and the path that the legacy engine resolves for them. */
 const URL_VALUE_CASES: Array<[string, string]> = [
 	['inv_1', '/invoices/inv_1'],
+	['', '/invoices/%252E'],
 	['..', '/invoices/%252E%252E'],
 	['.', '/invoices/%252E'],
 	['../../admin?x=1#y', '/invoices/..%2F..%2Fadmin%3Fx%3D1%23y'],
@@ -450,7 +454,7 @@ describe('generateCustomNodeDescription', () => {
 	it('emits only expressions that the generator itself builds', () => {
 		const allowed = [
 			/^=\{\{ \$value \}\}$/,
-			/^=\{\{ typeof \$value === "string" \? JSON\.parse\(\$value\) : \$value \}\}$/,
+			/^=\{\{ typeof \$value === "string" \? \$value\.parseJson\(\) : \$value \}\}$/,
 			new RegExp(`^${invoiceUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`),
 		];
 		const expressions = stringsIn(d).filter(
@@ -601,6 +605,20 @@ describe('buildRequest', () => {
 		expect(() => buildRequest(versionWithUrl(url), p)).toThrow(UnexpectedError);
 	});
 
+	it.each(RESERVED_BODY_KEYS)('throws for the reserved body key %s at any depth', (key) => {
+		// JSON.parse creates an own property for "__proto__", as a stored body does.
+		const nested = jsonParse<Record<string, unknown>>(
+			`{ "a": [{ "${key}": { "polluted": true } }] }`,
+		);
+		const top = jsonParse<Record<string, unknown>>(`{ "${key}": { "polluted": true } }`);
+		expect(() => buildRequest(withRequest({ bodyType: 'json', body: nested }), p)).toThrow(
+			UnexpectedError,
+		);
+		expect(() => buildRequest(withRequest({ bodyType: 'json', body: top }), p)).toThrow(
+			UnexpectedError,
+		);
+	});
+
 	it('throws when a placeholder belongs to an input that does not target the URL', () => {
 		const version = withRequest({
 			url: '/invoices/{includeLines}',
@@ -682,7 +700,7 @@ describe('buildInputProperties', () => {
 			send: {
 				type: 'body',
 				property: 'metadata',
-				value: '={{ typeof $value === "string" ? JSON.parse($value) : $value }}',
+				value: '={{ typeof $value === "string" ? $value.parseJson() : $value }}',
 			},
 		});
 	});
@@ -702,6 +720,30 @@ describe('buildInputProperties', () => {
 		for (const prop of v2Props) {
 			expect(prop.displayOptions).toEqual({ show: showFor('act_create', 2) });
 		}
+	});
+
+	it.each([
+		'operation',
+		'resource',
+		'authentication',
+		'requestOptions',
+		'additionalFields',
+		'customActionId',
+		'customActionName',
+	])('throws for the reserved input name %s', (name) => {
+		expect(RESERVED_INPUT_NAMES).toContain(name);
+		const version: ActionVersionView = {
+			...createV1,
+			inputs: [...createV1.inputs, { name, displayName: 'X', type: 'string', required: true }],
+			request: {
+				...createV1.request,
+				inputTargets: { ...createV1.request.inputTargets, [name]: { target: 'body', key: 'x' } },
+			},
+		};
+		expect(() => buildInputProperties(version, showFor('act_create', 1))).toThrow(UnexpectedError);
+		expect(() =>
+			generateCustomNodeDescription(node, [{ ...createInvoice, versions: [version] }]),
+		).toThrow(UnexpectedError);
 	});
 
 	it('throws when an input has no target', () => {
@@ -772,6 +814,7 @@ describe('URL encoding (Review Focus 1)', () => {
 		it.each([
 			['..', '/invoices/%252E%252E'],
 			['.', '/invoices/%252E'],
+			['', '/invoices/%252E'],
 		])('encodes the dots of %j twice', (value, expected) => {
 			const resolved = resolveInvoice(value);
 			expect(resolved).toBe(expected);
@@ -782,7 +825,7 @@ describe('URL encoding (Review Focus 1)', () => {
 			);
 		});
 
-		it.each(URL_VALUE_CASES.filter(([value]) => value !== '.' && value !== '..'))(
+		it.each(URL_VALUE_CASES.filter(([value]) => !['', '.', '..'].includes(value)))(
 			'encodes the value %j',
 			(value, expected) => {
 				expect(resolveInvoice(value)).toBe(expected);
@@ -823,7 +866,7 @@ describe('URL encoding (Review Focus 1)', () => {
 		});
 	});
 
-	it('resolves an optional URL input from the collection, and an empty string without it', () => {
+	it('resolves an optional URL input from the collection, and a neutral segment without it', () => {
 		const version: ActionVersionView = {
 			version: 1,
 			inputs: [{ name: 'folder', displayName: 'Folder', type: 'string', required: false }],
@@ -850,36 +893,153 @@ describe('URL encoding (Review Focus 1)', () => {
 				[ADDITIONAL_FIELDS]: { folder: 'a/b' },
 			}),
 		).toBe('/folders/a%2Fb/items');
-		expect(resolveUrl(generated, url, { operation: option.value })).toBe('/folders//items');
+		// The validator rejects an optional URL input. The generator still keeps the path structure.
+		expect(resolveUrl(generated, url, { operation: option.value })).toBe('/folders/%252E/items');
 	});
 });
 
-describe('URL encoding in the vm expression engine', () => {
-	beforeAll(async () => {
-		await Expression.initExpressionEngine({
-			engine: 'vm',
-			bridgeTimeout: 5000,
-			bridgeMemoryLimit: 128,
-			poolSize: 1,
-			maxCodeCacheSize: 64,
+/** A node with one action whose only input is a required URL input. */
+function urlActionDescription(url: string, inputName: string) {
+	return generateCustomNodeDescription(node, [
+		{
+			id: 'act_url',
+			name: 'Url',
+			versions: [
+				{
+					version: 1,
+					inputs: [{ name: inputName, displayName: 'Value', type: 'string', required: true }],
+					request: {
+						method: 'DELETE',
+						url,
+						headers: {},
+						query: {},
+						bodyType: 'none',
+						body: {},
+						inputTargets: { [inputName]: { target: 'url', key: inputName } },
+					},
+				},
+			],
+		},
+	]);
+}
+
+/** [stored URL, input name, value, resolved URL]. */
+const SEGMENT_CASES: Array<[string, string, string, string]> = [
+	['/users/{id}/sessions', 'id', '', '/users/%252E/sessions'],
+	['/users/{id}/sessions', 'id', '..', '/users/%252E%252E/sessions'],
+	['/x/{a}./y', 'a', '', '/x/%252E./y'],
+	['/x/{a}./y', 'a', '.', '/x/%252E./y'],
+];
+
+/** Joins like axios does with `baseURL` and `url`. */
+const joinedPathname = (resolved: unknown) =>
+	new URL(`${node.baseUrl.replace(/\/+$/, '')}/${String(resolved).replace(/^\/+/, '')}`).pathname;
+
+async function evaluate(
+	description: INodeTypeDescription,
+	expression: string,
+	parameters: INodeParameters,
+	additionalKeys: IWorkflowDataProxyAdditionalKeys = {},
+) {
+	const { workflow, nodeName } = makeWorkflow(description, parameters);
+	return await workflow.expression.withIsolate(async () =>
+		workflow.expression.getParameterValue(
+			expression,
+			null,
+			0,
+			0,
+			nodeName,
+			[],
+			'manual',
+			additionalKeys,
+		),
+	);
+}
+
+/** Tests that must give the same result in every expression engine. */
+function defineEngineTests() {
+	it.each(URL_VALUE_CASES)('resolves the URL input value %j', async (invoiceId, expected) => {
+		const option = optionFor(d, 'act_get', 1);
+		const url = option.routing?.request?.url;
+		if (typeof url !== 'string') throw new Error('no url');
+
+		expect(await evaluate(d, url, { operation: option.value, invoiceId })).toBe(expected);
+	});
+
+	it.each(SEGMENT_CASES)(
+		'keeps the path structure of %s with %s = %j',
+		async (storedUrl, name, value, expected) => {
+			const description = urlActionDescription(storedUrl, name);
+			const option = optionFor(description, 'act_url', 1);
+			const url = option.routing?.request?.url;
+			if (typeof url !== 'string') throw new Error('no url');
+
+			const resolved = await evaluate(description, url, { operation: option.value, [name]: value });
+
+			expect(resolved).toBe(expected);
+			const pathname = joinedPathname(resolved);
+			expect(pathname).toBe(`/api${expected}`);
+			expect(pathname.split('/').filter((s) => s === '.' || s === '..' || s === '')).toEqual(['']);
+		},
+	);
+
+	describe('JSON input value', () => {
+		const metadata = buildInputProperties(createV2, showFor('act_create', 2))
+			.flatMap((prop) => prop.options ?? [])
+			.find((option) => 'name' in option && option.name === 'metadata');
+		const send = metadata && 'routing' in metadata ? metadata.routing?.send : undefined;
+		const run = async ($value: string | IDataObject) => {
+			if (typeof send?.value !== 'string') throw new Error('no value expression');
+			return await evaluate(d, send.value, {}, { $value });
+		};
+
+		it('parses a JSON string', async () => {
+			expect(await run('{"a":[1,2],"b":"x"}')).toEqual({ a: [1, 2], b: 'x' });
 		});
+
+		it('passes an object through', async () => {
+			expect(await run({ a: 1 })).toEqual({ a: 1 });
+		});
+
+		it('throws for invalid JSON', async () => {
+			await expect(run('{bad')).rejects.toThrow();
+		});
+	});
+}
+
+describe('legacy expression engine', () => {
+	it('is the active engine', () => {
+		expect(Expression.getActiveImplementation()).toBe('legacy');
+	});
+
+	defineEngineTests();
+});
+
+describe('vm expression engine', () => {
+	// The engine is process-wide state. Restore the engine that was active before this block.
+	let previous: ReturnType<typeof Expression.getActiveImplementation>;
+
+	beforeAll(async () => {
+		previous = Expression.getActiveImplementation();
+		if (previous !== 'vm') {
+			await Expression.initExpressionEngine({
+				engine: 'vm',
+				bridgeTimeout: 5000,
+				bridgeMemoryLimit: 128,
+				poolSize: 1,
+				maxCodeCacheSize: 64,
+			});
+		}
 		expect(Expression.getActiveImplementation()).toBe('vm');
 	});
 
 	afterAll(async () => {
+		if (previous === 'vm') return;
 		await Expression.disposeExpressionEngine();
+		// Disposing keeps `vm` selected, and a selected engine without an evaluator throws.
+		Expression.setExpressionEngine(previous);
+		expect(Expression.getActiveImplementation()).toBe(previous);
 	});
 
-	it.each(URL_VALUE_CASES)('resolves %j as the legacy engine does', async (invoiceId, expected) => {
-		const option = optionFor(d, 'act_get', 1);
-		const url = option.routing?.request?.url;
-		if (typeof url !== 'string') throw new Error('no url');
-		const { workflow, nodeName } = makeWorkflow(d, { operation: option.value, invoiceId });
-
-		const resolved = await workflow.expression.withIsolate(async () =>
-			workflow.expression.getParameterValue(url, null, 0, 0, nodeName, [], 'manual', {}),
-		);
-
-		expect(resolved).toBe(expected);
-	});
+	defineEngineTests();
 });

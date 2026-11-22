@@ -15,7 +15,14 @@ import type {
 import { NodeConnectionTypes } from 'n8n-workflow';
 
 import type { StoredInput, StoredRequest } from './edit-classifier';
-import { OPERATION_PARAMETER, operationOptions, pinProperties, showFor } from './version-pin';
+import {
+	OPERATION_PARAMETER,
+	PIN_ACTION_ID_PARAMETER,
+	PIN_ACTION_NAME_PARAMETER,
+	operationOptions,
+	pinProperties,
+	showFor,
+} from './version-pin';
 
 /**
  * Turns a custom node and its actions into a declarative node description.
@@ -51,10 +58,25 @@ export interface CustomNodeView {
 
 export const ADDITIONAL_FIELDS = 'additionalFields';
 
+/** Input names that would collide with a parameter of the generated node or of a parent node. */
+export const RESERVED_INPUT_NAMES: readonly string[] = [
+	OPERATION_PARAMETER,
+	'resource',
+	'authentication',
+	'requestOptions',
+	ADDITIONAL_FIELDS,
+	PIN_ACTION_ID_PARAMETER,
+	PIN_ACTION_NAME_PARAMETER,
+];
+
+/** Body keys that would change the prototype of an object instead of adding a key. */
+export const RESERVED_BODY_KEYS: readonly string[] = ['__proto__', 'constructor', 'prototype'];
+
 const INPUT_NAME_PATTERN = /^[a-z][A-Za-z0-9]*$/;
 const PLACEHOLDER_PATTERN = /\{([^{}]*)\}/g;
 const VALUE_EXPRESSION = '={{ $value }}';
-const JSON_VALUE_EXPRESSION = '={{ typeof $value === "string" ? JSON.parse($value) : $value }}';
+// `parseJson()` throws an error that the engine forwards. A `JSON.parse` error is ignored.
+const JSON_VALUE_EXPRESSION = '={{ typeof $value === "string" ? $value.parseJson() : $value }}';
 
 function assertNoExpression(text: string, where: string): void {
 	if (text.includes('{{') || text.trimStart().startsWith('=')) {
@@ -66,6 +88,9 @@ function assertInputName(name: string): void {
 	// The name goes into a parameter path inside an expression.
 	if (!INPUT_NAME_PATTERN.test(name)) {
 		throw new UnexpectedError(`The input name "${name}" is not valid`);
+	}
+	if (RESERVED_INPUT_NAMES.includes(name)) {
+		throw new UnexpectedError(`The input name "${name}" is reserved`);
 	}
 }
 
@@ -84,6 +109,9 @@ function copyBody(source: Record<string, unknown>): IDataObject {
 	const pushEntries = (from: Record<string, unknown>, into: IDataObject) => {
 		for (const [key, child] of Object.entries(from)) {
 			assertNoExpression(key, 'body');
+			if (RESERVED_BODY_KEYS.includes(key)) {
+				throw new UnexpectedError(`The body of a custom action has the reserved key "${key}"`);
+			}
 			stack.push({ from: child, assign: (value) => (into[key] = value) });
 		}
 	};
@@ -125,12 +153,13 @@ function copyStringRecord(source: Record<string, string>, where: string): IDataO
 
 /**
  * Expression for one URL segment. Encoding keeps `/`, `?`, and `#` out of the path.
- * The URL parser treats `.` and `..` (also when encoded once) as dot segments, so their dots
- * are encoded twice. The remote API then gets a segment that it cannot match.
+ * An empty value, `.`, and `..` would change the path structure. The URL parser treats a dot
+ * segment as such also when it is encoded once, so these values become dots encoded twice.
+ * The remote API then gets a segment that it cannot match.
  * The expression must not throw: the legacy engine ignores an error from expression code.
  */
 function segmentExpression(paramPath: string): string {
-	return `{{ ((v) => (v === "." || v === ".." ? v.replaceAll(".", "%252E") : encodeURIComponent(v)))(String(${paramPath})) }}`;
+	return `{{ ((v) => (v === "" || v === "." ? "%252E" : v === ".." ? "%252E%252E" : encodeURIComponent(v)))(String(${paramPath})) }}`;
 }
 
 /**

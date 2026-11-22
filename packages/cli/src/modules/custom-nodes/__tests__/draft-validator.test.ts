@@ -1,7 +1,9 @@
 import type { CustomActionDraft, CustomActionInput } from '@n8n/api-types';
 import { UserError } from '@n8n/errors';
+import { jsonParse } from 'n8n-workflow';
 
 import { InvalidCustomActionError, validateDraft } from '../draft-validator';
+import { RESERVED_INPUT_NAMES } from '../node-description.generator';
 
 const codes = (draft: CustomActionDraft) => validateDraft(draft).map((issue) => issue.code);
 const pathsOf = (draft: CustomActionDraft, code: string) =>
@@ -215,6 +217,13 @@ describe('validateDraft', () => {
 			expect(codes(withUrl('/a/{b'))).toContain('invalid_url');
 		});
 
+		it('rejects a URL input that is not required', () => {
+			const draft = withUrl('/invoices/{invoiceId}', [
+				{ ...urlInput('invoiceId'), required: false },
+			]);
+			expect(pathsOf(draft, 'url_input_not_required')).toEqual(['inputs[0].required']);
+		});
+
 		it('rejects a URL input whose key differs from its name', () => {
 			const draft = withUrl('/a/{x}', [urlInput('x', 'y')]);
 			expect(codes(draft)).toEqual(
@@ -259,6 +268,38 @@ describe('validateDraft', () => {
 			expect(codes(withInputs([{ ...bodyInput('a'), type: 'options' }]))).toContain(
 				'options_missing',
 			);
+		});
+	});
+
+	describe('reserved names', () => {
+		it.each([
+			'operation',
+			'resource',
+			'authentication',
+			'requestOptions',
+			'additionalFields',
+			'customActionId',
+			'customActionName',
+		])('rejects the input name %s', (name) => {
+			const draft = withInputs([bodyInput('a'), bodyInput(name)]);
+			expect(pathsOf(draft, 'reserved_input_name')).toEqual(['inputs[1].name']);
+		});
+
+		it('uses the generator list of reserved input names', () => {
+			for (const name of RESERVED_INPUT_NAMES) {
+				expect(codes(withInputs([bodyInput(name)]))).toContain('reserved_input_name');
+			}
+		});
+
+		it.each(['__proto__', 'constructor', 'prototype'])('rejects the body key %s', (key) => {
+			// JSON.parse creates an own property for "__proto__", as a request body does.
+			const body = jsonParse<Record<string, unknown>>(`{ "a": [{ "${key}": { "x": 1 } }] }`);
+			expect(pathsOf(withBody(body), 'reserved_body_key')).toEqual([`request.body.a[0].${key}`]);
+		});
+
+		it('rejects a reserved key at the top level of the body', () => {
+			const body = jsonParse<Record<string, unknown>>('{ "__proto__": { "polluted": true } }');
+			expect(pathsOf(withBody(body), 'reserved_body_key')).toEqual(['request.body.__proto__']);
 		});
 	});
 
