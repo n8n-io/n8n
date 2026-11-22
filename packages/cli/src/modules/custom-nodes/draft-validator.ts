@@ -1,6 +1,7 @@
 import type { CustomActionDraft, CustomActionDraftIssue } from '@n8n/api-types';
 import { UserError } from '@n8n/errors';
 
+import { hasControlCharacter } from './base-url-validator';
 import { RESERVED_BODY_KEYS, RESERVED_INPUT_NAMES } from './node-description.generator';
 
 /**
@@ -99,7 +100,12 @@ export function validateDraft(draft: CustomActionDraft): CustomActionDraftIssue[
 	{
 		const absolute = /^([^:/?#]*):\/\/([^/?#]*)(.*)$/s.exec(request.url);
 		let rest: string | undefined;
-		if (absolute) {
+		// The URL parser reads these characters in another way than the pattern above.
+		if (request.url.includes('\\')) {
+			add('request.url', 'invalid_url', 'The URL must not contain a backslash.');
+		} else if (hasControlCharacter(request.url)) {
+			add('request.url', 'invalid_url', 'The URL must not contain a control character.');
+		} else if (absolute) {
 			const [, scheme, authority, remainder] = absolute;
 			if (scheme.includes('{') || scheme.includes('}')) {
 				add('request.url', 'placeholder_in_host', 'A placeholder is not allowed in the scheme.');
@@ -109,6 +115,8 @@ export function validateDraft(draft: CustomActionDraft): CustomActionDraftIssue[
 				add('request.url', 'invalid_url', 'The URL must have a host.');
 			} else if (authority.includes('{') || authority.includes('}')) {
 				add('request.url', 'placeholder_in_host', 'A placeholder is not allowed in the host.');
+			} else if (authority.includes('@')) {
+				add('request.url', 'invalid_url', 'The URL must not contain user information.');
 			} else {
 				rest = remainder;
 			}

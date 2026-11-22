@@ -13,6 +13,7 @@ import type {
 	NodeLoader,
 } from 'n8n-workflow';
 
+import { createCustomNodeType, type ServedActionVersions } from './custom-node-type';
 import {
 	generateCustomNodeDescription,
 	type ActionView,
@@ -33,9 +34,12 @@ export interface CustomNodeDefinition {
 	actions: ActionView[];
 }
 
+const servedVersions = (actions: ActionView[]): ServedActionVersions =>
+	new Map(actions.map((action) => [action.id, new Set(action.versions.map((v) => v.version))]));
+
 /**
  * Serves each stored custom node as a declarative node type.
- * The node types have no `execute`, so `NodeTypes` runs them with `RoutingNode`.
+ * `execute` checks the selected action and then runs the request with `RoutingNode`.
  */
 export class CustomNodesNodeLoader implements NodeLoader {
 	packageName = CUSTOM_DEFINITIONS_PACKAGE_NAME;
@@ -77,7 +81,7 @@ export class CustomNodesNodeLoader implements NodeLoader {
 				continue;
 			}
 
-			const type: INodeType = { description };
+			const type: INodeType = createCustomNodeType(description, servedVersions(actions));
 			this.types.nodes.push(description);
 			this.nodeTypes[node.id] = { type, sourcePath: '' };
 			// No source file exists. An empty path makes file lookups (schemas, translations) skip it.

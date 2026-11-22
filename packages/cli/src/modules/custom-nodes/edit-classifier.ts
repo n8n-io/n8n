@@ -53,12 +53,21 @@ export function joinDraft(
 	};
 }
 
+/**
+ * The default that the generated parameter gets. Without an explicit default, an options input
+ * uses its first option. See `defaultFor` in the generator.
+ */
+const effectiveDefault = (input: CustomActionInput) =>
+	input.type === 'options' && input.default === undefined
+		? (input.options?.[0]?.value ?? '')
+		: input.default;
+
 /** The part of an input that nodes depend on. Option names and `options` of other types do not count. */
 function contractOf(input: CustomActionInput) {
 	return {
 		type: input.type,
 		required: input.required,
-		default: input.default,
+		default: effectiveDefault(input),
 		optionValues:
 			input.type === 'options'
 				? [...new Set((input.options ?? []).map((o) => o.value))].sort()
@@ -89,10 +98,9 @@ function sameRevision(current: CustomActionDraft, next: CustomActionDraft): bool
 	});
 }
 
-const optionNames = (input: CustomActionInput) =>
-	input.type === 'options'
-		? Object.fromEntries((input.options ?? []).map((o) => [o.value, o.name]))
-		: {};
+/** Option order counts as display. The contract compares the effective default separately. */
+const optionList = (input: CustomActionInput) =>
+	input.type === 'options' ? (input.options ?? []).map((o) => [o.value, o.name]) : [];
 
 function sameDisplay(current: CustomActionDraft, next: CustomActionDraft): boolean {
 	if (current.name !== next.name || current.description !== next.description) return false;
@@ -109,7 +117,9 @@ function sameDisplay(current: CustomActionDraft, next: CustomActionDraft): boole
 		return (
 			other?.displayName === input.displayName &&
 			other.description === input.description &&
-			isEqual(optionNames(input), optionNames(other))
+			// An explicit default equal to the effective default is stored, not dropped.
+			isEqual(input.default, other.default) &&
+			isEqual(optionList(input), optionList(other))
 		);
 	});
 }

@@ -157,9 +157,10 @@ function copyStringRecord(source: Record<string, string>, where: string): IDataO
  * segment as such also when it is encoded once, so these values become dots encoded twice.
  * The remote API then gets a segment that it cannot match.
  * The expression must not throw: the legacy engine ignores an error from expression code.
+ * `encodeURIComponent` throws for a lone surrogate, so `toWellFormed()` replaces it first.
  */
 function segmentExpression(paramPath: string): string {
-	return `{{ ((v) => (v === "" || v === "." ? "%252E" : v === ".." ? "%252E%252E" : encodeURIComponent(v)))(String(${paramPath})) }}`;
+	return `{{ ((v) => (v === "" || v === "." ? "%252E" : v === ".." ? "%252E%252E" : encodeURIComponent(v.toWellFormed())))(String(${paramPath})) }}`;
 }
 
 /**
@@ -369,6 +370,10 @@ export function generateCustomNodeDescription(
 	for (const action of actions) assertNoExpression(action.id, 'action id');
 
 	const withVersions = actions.filter((action) => action.versions.length > 0);
+	// The loader skips a node that throws here. Other code reads the last `operation` option.
+	if (withVersions.length === 0) {
+		throw new UnexpectedError('A custom node has no action with a version');
+	}
 	const refs = withVersions.map((action) => ({
 		id: action.id,
 		name: action.name,

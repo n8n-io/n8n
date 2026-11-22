@@ -155,6 +155,9 @@ export class CustomNodesService {
 	async createNode(user: User, dto: CreateCustomNodeDto): Promise<CustomNodeResponse> {
 		this.assertScope(user, 'customNode:create');
 		validateBaseUrl(dto.baseUrl);
+		if (dto.actions.length === 0) {
+			throw new UserError('A custom node needs at least one action.');
+		}
 		dto.actions.forEach((draft, index) => assertValidDraft(draft, `actions[${index}].`));
 
 		const nodeId = await this.write(async (ctx) => {

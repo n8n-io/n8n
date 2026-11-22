@@ -1,14 +1,15 @@
 import { UserError } from '@n8n/errors';
 
 /** ASCII control characters (0x00 to 0x1F) and DEL (0x7F). */
-const hasControlCharacter = (value: string) =>
+export const hasControlCharacter = (value: string) =>
 	[...value].some((char) => {
 		const code = char.charCodeAt(0);
 		return code <= 0x1f || code === 0x7f;
 	});
 
 /**
- * Accepts only an absolute http or https URL without expression syntax.
+ * Accepts only an absolute http or https URL without expression syntax, user information,
+ * or query string.
  * The URL parser removes tabs and line breaks, so the raw value is checked first.
  */
 export function validateBaseUrl(value: string): void {
@@ -31,4 +32,11 @@ export function validateBaseUrl(value: string): void {
 	if (url.protocol !== 'http:' && url.protocol !== 'https:') {
 		reject('it must use http or https.');
 	}
+	// The parser drops an empty user name, so the raw authority is checked too.
+	const authority = /^[^:/?#]*:\/\/([^/?#]*)/.exec(value)?.[1] ?? '';
+	if (url.username !== '' || url.password !== '' || authority.includes('@')) {
+		reject('it must not contain user information.');
+	}
+	// The parser drops an empty query string, so the raw value is checked.
+	if (value.includes('?')) reject('it must not contain a query string.');
 }

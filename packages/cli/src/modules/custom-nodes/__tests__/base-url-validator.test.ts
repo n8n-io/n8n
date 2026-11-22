@@ -21,6 +21,10 @@ describe('validateBaseUrl', () => {
 		['a tab', 'https://api.acme.test/\tv1'],
 		['a null character', 'https://api.acme.test/\u0000'],
 		['a delete character', 'https://api.acme.test/\u007f'],
+		['user information', 'https://user:pw@api.acme.test/v1'],
+		['a user name', 'https://user@api.acme.test'],
+		['a query string', 'https://api.acme.test/v1?key=1'],
+		['an empty query string', 'https://api.acme.test/v1?'],
 	])('rejects %s', (_, url) => {
 		expect(() => validateBaseUrl(url)).toThrow(UserError);
 	});

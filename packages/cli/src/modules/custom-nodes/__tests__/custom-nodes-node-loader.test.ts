@@ -63,7 +63,7 @@ describe('CustomNodesNodeLoader', () => {
 		const other: CustomNodeView = { ...node, id: 'cn_other', displayName: 'Other' };
 		loader.setDefinitions([
 			{ node, actions: [action] },
-			{ node: other, actions: [] },
+			{ node: other, actions: [action] },
 		]);
 
 		await loader.loadAll();
@@ -76,13 +76,17 @@ describe('CustomNodesNodeLoader', () => {
 		expect(loader.resolveSourcePath(loader.known.nodes.cn_acme.sourcePath)).toBe('');
 	});
 
-	it('returns an INodeType without execute, so NodeTypes assigns the RoutingNode execute', async () => {
+	it('returns an INodeType with its own execute and the declarative description', async () => {
 		loader.setDefinitions([{ node, actions: [action] }]);
 		await loader.loadAll();
 
 		const { type } = loader.getNode(node.id);
-		expect('execute' in type && type.execute).toBeFalsy();
-		expect(loader.getNode(node.id).type).not.toHaveProperty('execute');
+		// The execute checks the selected action before `RoutingNode` runs the request.
+		expect('execute' in type && typeof type.execute).toBe('function');
+		expect(descriptionOf(loader, node.id).requestDefaults).toEqual({
+			baseURL: node.baseUrl,
+			json: true,
+		});
 	});
 
 	it('throws UnrecognizedNodeTypeError for an unknown id', async () => {
@@ -121,8 +125,8 @@ describe('CustomNodesNodeLoader', () => {
 			iconUrl: customNodeIconPath('rest', 'cn_icon'),
 		};
 		loader.setDefinitions([
-			{ node, actions: [] },
-			{ node: withIcon, actions: [] },
+			{ node, actions: [action] },
+			{ node: withIcon, actions: [action] },
 		]);
 		await loader.loadAll();
 
@@ -161,11 +165,35 @@ describe('CustomNodesNodeLoader', () => {
 		expect(logger.error).toHaveBeenCalledTimes(1);
 	});
 
-	it('ignores an action that has no versions and keeps an empty node', async () => {
-		loader.setDefinitions([{ node, actions: [{ ...action, versions: [] }] }]);
+	it('ignores an action that has no versions and serves the other actions', async () => {
+		loader.setDefinitions([
+			{ node, actions: [{ ...action, id: 'act_empty', versions: [] }, action] },
+		]);
 		await loader.loadAll();
 
 		expect(loader.types.nodes.map((d) => d.name)).toEqual(['cn_acme']);
+	});
+
+	it('skips and logs a node without an action that has a version', async () => {
+		const empty: CustomNodeView = {
+			...node,
+			id: 'cn_empty',
+			auth: { kind: 'generic', type: 'httpHeaderAuth' },
+		};
+		loader.setDefinitions([
+			{ node: empty, actions: [] },
+			{ node: { ...empty, id: 'cn_no_version' }, actions: [{ ...action, versions: [] }] },
+			{ node, actions: [action] },
+		]);
+
+		await loader.loadAll();
+
+		expect(loader.types.nodes.map((d) => d.name)).toEqual(['cn_acme']);
+		expect(logger.error).toHaveBeenCalledTimes(2);
+		expect(logger.error).toHaveBeenCalledWith(
+			expect.any(String),
+			expect.objectContaining({ customNodeId: 'cn_empty' }),
+		);
 	});
 
 	it('keeps a description object unchanged for a caller that already holds it', async () => {

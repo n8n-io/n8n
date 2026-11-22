@@ -16,10 +16,19 @@ import type {
 	INodeTypes,
 	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
-import { Workflow, createEmptyRunExecutionData } from 'n8n-workflow';
+import {
+	NodeHelpers,
+	NodeOperationError,
+	Workflow,
+	createEmptyRunExecutionData,
+} from 'n8n-workflow';
 import nock from 'nock';
 import { mock } from 'vitest-mock-extended';
 
+import { CUSTOM_API_CALL_KEY } from '@/constants';
+import { shouldAssignExecuteMethod } from '@/utils';
+
+import { CustomNodesNodeLoader } from '../custom-nodes-node-loader';
 import { generateCustomNodeDescription } from '../node-description.generator';
 import { pinValues } from '../version-pin';
 import { createInvoice, getInvoice, node as customNode } from './custom-node.fixture';
@@ -29,6 +38,23 @@ const API_KEY_HEADER = 'X-Api-Key';
 
 const description = generateCustomNodeDescription(customNode, [getInvoice, createInvoice]);
 const nodeType: INodeType = { description };
+
+/**
+ * The node type that the loader serves, as `NodeTypes` hands it to the engine:
+ * `NodeTypes` adds the `RoutingNode` execute when the type has none.
+ */
+async function engineNodeType(): Promise<INodeType> {
+	const loader = new CustomNodesNodeLoader(mock<Logger>());
+	loader.setDefinitions([{ node: customNode, actions: [getInvoice, createInvoice] }]);
+	await loader.loadAll();
+	const type = NodeHelpers.getVersionedNodeType(loader.getNode(customNode.id).type, 1);
+	if (shouldAssignExecuteMethod(type)) {
+		type.execute = async function (this: ExecuteContext) {
+			return (await new RoutingNode(this, type).runNode()) ?? [];
+		};
+	}
+	return type;
+}
 
 /** A credential for the generic header auth of the fixture. */
 function headerCredential(extra: ICredentialDataDecryptedObject = {}): ICredentialsDecrypted {
@@ -45,6 +71,8 @@ function credentialsHelper(): ICredentialsHelper {
 	const helper = mock<ICredentialsHelper>();
 	helper.getParentTypes.mockReturnValue([]);
 	helper.preAuthentication.mockResolvedValue(undefined);
+	helper.isCredentialUsableByNode.mockReturnValue(true);
+	helper.getDecrypted.mockResolvedValue(headerCredential().data ?? {});
 	helper.authenticate.mockImplementation(async (credentials, _type, requestOptions) => {
 		const options = requestOptions as IHttpRequestOptions;
 		options.headers = {
@@ -56,13 +84,14 @@ function credentialsHelper(): ICredentialsHelper {
 	return helper;
 }
 
-async function run(
+function createContext(
+	type: INodeType,
 	parameters: INodeParameters,
-	options: { credential?: ICredentialsDecrypted; continueOnFail?: boolean } = {},
-): Promise<INodeExecutionData[][]> {
+	options: { continueOnFail?: boolean } = {},
+): ExecuteContext {
 	const nodeTypes: INodeTypes = {
-		getByName: () => nodeType,
-		getByNameAndVersion: () => nodeType,
+		getByName: () => type,
+		getByNameAndVersion: () => type,
 		getKnownTypes: () => ({}),
 	};
 	const node: INode = {
@@ -72,6 +101,7 @@ async function run(
 		typeVersion: 1,
 		position: [0, 0],
 		parameters,
+		credentials: { httpHeaderAuth: { id: 'cred-1', name: 'Acme Key' } },
 		...(options.continueOnFail && { onError: 'continueRegularOutput' }),
 	};
 	const workflow = new Workflow({
@@ -91,7 +121,7 @@ async function run(
 	});
 	const inputData = { main: [[{ json: {} }]] };
 	const executeData: IExecuteData = { data: inputData, node: workflowNode, source: null };
-	const context = new ExecuteContext(
+	return new ExecuteContext(
 		workflow,
 		workflowNode,
 		additionalData,
@@ -103,9 +133,23 @@ async function run(
 		executeData,
 		[],
 	);
+}
 
+async function run(
+	parameters: INodeParameters,
+	options: { credential?: ICredentialsDecrypted; continueOnFail?: boolean } = {},
+): Promise<INodeExecutionData[][]> {
+	const context = createContext(nodeType, parameters, options);
 	const routingNode = new RoutingNode(context, nodeType, options.credential ?? headerCredential());
 	return (await routingNode.runNode()) ?? [];
+}
+
+/** Runs the node through the `execute` of the served node type, as the engine does. */
+async function runServed(parameters: INodeParameters): Promise<INodeExecutionData[][]> {
+	const type = await engineNodeType();
+	const context = createContext(type, parameters);
+	if (!type.execute) throw new Error('The served node type has no execute');
+	return (await type.execute.call(context)) as INodeExecutionData[][];
 }
 
 const getInvoicePin = pinValues({ actionId: 'act_get', actionName: 'Get Invoice', version: 1 });
@@ -129,6 +173,7 @@ describe('custom node execution', () => {
 
 	afterAll(() => {
 		nock.enableNetConnect();
+		Container.reset();
 	});
 
 	it('sends GET /api/invoices/inv_1?expand=customer&include_lines=true with the header credential', async () => {
@@ -211,26 +256,33 @@ describe('custom node execution', () => {
 		expect(result[0][0].json).toEqual({ id: 'inv_3' });
 	});
 
-	it('sends a URL input value of ".." as an encoded path segment that keeps the path structure', async () => {
-		const seenPaths: string[] = [];
-		// Record the path in the reply: nock can call a path matcher more than once.
-		const scope = nock(HOST)
-			.get(() => true)
-			.query(true)
-			.reply((uri) => {
-				seenPaths.push(uri);
-				return [200, { ok: true }];
-			});
+	it.each([
+		['..', '%252E%252E'],
+		// A lone surrogate becomes U+FFFD.
+		['\ud800', '%EF%BF%BD'],
+	])(
+		'sends the URL input value %j as an encoded path segment that keeps the path structure',
+		async (invoiceId, segment) => {
+			const seenPaths: string[] = [];
+			// Record the path in the reply: nock can call a path matcher more than once.
+			const scope = nock(HOST)
+				.get(() => true)
+				.query(true)
+				.reply((uri) => {
+					seenPaths.push(uri);
+					return [200, { ok: true }];
+				});
 
-		await run({ ...getInvoicePin, invoiceId: '..' });
+			await run({ ...getInvoicePin, invoiceId });
 
-		expect(scope.isDone()).toBe(true);
-		expect(seenPaths).toHaveLength(1);
-		const [path] = seenPaths;
-		expect(path.split('?')[0]).toBe('/api/invoices/%252E%252E');
-		// The URL parser does not resolve the segment, so the request stays below the action path.
-		expect(new URL(path, HOST).pathname).toBe('/api/invoices/%252E%252E');
-	});
+			expect(scope.isDone()).toBe(true);
+			expect(seenPaths).toHaveLength(1);
+			const [path] = seenPaths;
+			expect(path.split('?')[0]).toBe(`/api/invoices/${segment}`);
+			// The URL parser does not resolve the segment, so the request stays below the action path.
+			expect(new URL(path, HOST).pathname).toBe(`/api/invoices/${segment}`);
+		},
+	);
 
 	it('fails the item with an error for a JSON input that is not valid JSON', async () => {
 		const scope = nock(HOST).post(/.*/).reply(201, {});
@@ -261,5 +313,56 @@ describe('custom node execution', () => {
 			/Domain not allowed.*billing\.acme\.test/,
 		);
 		expect(scope.isDone()).toBe(false);
+	});
+
+	describe('action check of the served node type', () => {
+		it('runs the selected action and sends the request with the credential', async () => {
+			const scope = nock(HOST)
+				.get('/api/invoices/inv_1')
+				.query({ expand: 'customer' })
+				.matchHeader(API_KEY_HEADER, 'k')
+				.reply(200, { id: 'inv_1' });
+
+			const result = await runServed({ ...getInvoicePin, invoiceId: 'inv_1' });
+
+			expect(scope.isDone()).toBe(true);
+			expect(result[0][0].json).toEqual({ id: 'inv_1' });
+		});
+
+		it.each<[string, INodeParameters, RegExp]>([
+			['no action is selected', {}, /No action is selected\. Select an action/],
+			[
+				'the action does not exist',
+				pinValues({ actionId: 'act_gone', actionName: 'Old Action', version: 1 }),
+				/The action "Old Action" does not exist any more or is not available for this node/,
+			],
+			[
+				'the version does not exist',
+				pinValues({ actionId: 'act_get', actionName: 'Get Invoice', version: 3 }),
+				/The action "Get Invoice" does not exist any more or is not available for this node/,
+			],
+			[
+				'the value is the Custom API Call option',
+				{
+					operation: CUSTOM_API_CALL_KEY,
+					customActionId: 'act_get',
+					customActionName: 'Get Invoice',
+				},
+				/The action "Get Invoice" does not exist any more or is not available for this node/,
+			],
+			[
+				'the value is other text',
+				{ operation: 'listEverything' },
+				/The selected action does not exist any more or is not available for this node/,
+			],
+		])('fails and sends no request when %s', async (_case, parameters, message) => {
+			const scope = nock(HOST).get(/.*/).query(true).reply(200, { ok: true });
+
+			const error = await runServed(parameters).catch((e: unknown) => e);
+
+			expect(error).toBeInstanceOf(NodeOperationError);
+			expect((error as Error).message).toMatch(message);
+			expect(scope.isDone()).toBe(false);
+		});
 	});
 });

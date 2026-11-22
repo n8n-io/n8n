@@ -53,7 +53,7 @@ const p = (name: string) => `$parameter["${name}"]`;
 
 /** The URL segment expression that the generator builds for one input. */
 const segment = (path: string) =>
-	`{{ ((v) => (v === "" || v === "." ? "%252E" : v === ".." ? "%252E%252E" : encodeURIComponent(v)))(String(${path})) }}`;
+	`{{ ((v) => (v === "" || v === "." ? "%252E" : v === ".." ? "%252E%252E" : encodeURIComponent(v.toWellFormed())))(String(${path})) }}`;
 const invoiceUrl = `=/invoices/${segment('$parameter["invoiceId"]')}`;
 
 const withRequest = (patch: Partial<ActionVersionView['request']>): ActionVersionView => ({
@@ -149,6 +149,8 @@ const URL_VALUE_CASES: Array<[string, string]> = [
 	['..a', '/invoices/..a'],
 	['./', '/invoices/.%2F'],
 	['%2e%2e', '/invoices/%252e%252e'],
+	// A lone surrogate becomes U+FFFD. The segment stays in the path.
+	['\ud800', '/invoices/%EF%BF%BD'],
 ];
 
 const d = generateCustomNodeDescription(node, [getInvoice, createInvoice]);
@@ -378,13 +380,16 @@ describe('generateCustomNodeDescription', () => {
 	it('skips an action without versions', () => {
 		const generated = generateCustomNodeDescription(node, [
 			{ id: 'act_empty', name: 'Empty', versions: [] },
+			getInvoice,
 		]);
-		expect(operationOptionsOf(generated)).toEqual([]);
-		expect(generated.properties.map((prop) => prop.name)).toEqual([
-			OPERATION_PARAMETER,
-			PIN_ACTION_ID_PARAMETER,
-			PIN_ACTION_NAME_PARAMETER,
-		]);
+		expect(operationOptionsOf(generated).map((option) => option.value)).toEqual(['act_get@1']);
+	});
+
+	it.each([
+		['no action', []],
+		['only actions without versions', [{ id: 'act_empty', name: 'Empty', versions: [] }]],
+	])('throws for a node with %s', (_case, actions: ActionView[]) => {
+		expect(() => generateCustomNodeDescription(node, actions)).toThrow(UnexpectedError);
 	});
 
 	it.each(['=https://evil.test', 'https://{{ $credentials.host }}'])(
@@ -826,6 +831,7 @@ const SEGMENT_CASES: Array<[string, string, string, string]> = [
 	['/users/{id}/sessions', 'id', '..', '/users/%252E%252E/sessions'],
 	['/x/{a}./y', 'a', '', '/x/%252E./y'],
 	['/x/{a}./y', 'a', '.', '/x/%252E./y'],
+	['/users/{id}/sessions', 'id', '\ud800', '/users/%EF%BF%BD/sessions'],
 ];
 
 /** Joins like axios does with `baseURL` and `url`. */

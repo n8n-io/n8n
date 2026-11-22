@@ -172,6 +172,13 @@ describe('CustomNodesService', () => {
 		expect(registry.refresh).not.toHaveBeenCalled();
 	});
 
+	it('rejects a node without actions and writes nothing', async () => {
+		await expect(service.createNode(owner, newNode([]))).rejects.toThrow(UserError);
+
+		expect(await countRows()).toEqual({ nodes: 0, actions: 0, versions: 0, revisions: 0 });
+		expect(registry.refresh).not.toHaveBeenCalled();
+	});
+
 	it('rejects a base URL that is not http or https, on create and on update', async () => {
 		await expect(
 			service.createNode(owner, { ...newNode(), baseUrl: 'ftp://files.acme.test' }),
@@ -281,6 +288,66 @@ describe('CustomNodesService', () => {
 		expect(action.name).toBe('Fetch Invoice');
 		expect(action.draft).toEqual(draft);
 		expect(action.versions[0].pinValues.customActionName).toBe('Fetch Invoice');
+	});
+
+	describe('option order', () => {
+		const optionsInput = (
+			options: Array<{ name: string; value: string }>,
+			defaultValue?: string,
+		): CustomActionDraft['inputs'][number] => ({
+			name: 'speed',
+			displayName: 'Speed',
+			type: 'options',
+			options,
+			required: false,
+			...(defaultValue !== undefined && { default: defaultValue }),
+			target: 'query',
+			key: 'speed',
+		});
+		const fast = { name: 'Fast', value: 'fast' };
+		const safe = { name: 'Safe', value: 'safe' };
+		const slow = { name: 'Slow', value: 'slow' };
+		const withSpeed = (input: CustomActionDraft['inputs'][number]): CustomActionDraft => ({
+			...getInvoice(),
+			inputs: [...getInvoice().inputs, input],
+		});
+
+		const createWith = async (draft: CustomActionDraft) => {
+			const node = await service.createNode(owner, newNode([draft]));
+			return node.actions[0].id;
+		};
+
+		it('appends a version when a reorder changes the first option of an input without a default', async () => {
+			const actionId = await createWith(withSpeed(optionsInput([fast, safe])));
+			const draft = withSpeed(optionsInput([safe, fast]));
+			draft.request.headers = { Accept: 'application/json' };
+
+			const { kind, action } = await service.saveAction(owner, actionId, { draft });
+
+			expect(kind).toBe('version');
+			expect(action.newestVersion).toBe(2);
+			const rows = await Container.get(DataSource)
+				.getRepository(CustomActionVersionEntity)
+				.find({ where: { actionId }, order: { version: 'ASC' } });
+			expect(rows[0].inputs[1].options?.map((o) => o.value)).toEqual(['fast', 'safe']);
+		});
+
+		it.each([
+			['an explicit default', [fast, safe], [safe, fast], 'fast'],
+			['the same first option', [fast, safe, slow], [fast, slow, safe], undefined],
+		])(
+			'stores a reorder in place as cosmetic for an input with %s',
+			async (_case, before, after, defaultValue) => {
+				const actionId = await createWith(withSpeed(optionsInput(before, defaultValue)));
+				const draft = withSpeed(optionsInput(after, defaultValue));
+
+				const { kind, action } = await service.saveAction(owner, actionId, { draft });
+
+				expect(kind).toBe('cosmetic');
+				expect(action.newestVersion).toBe(1);
+				expect(action.draft).toEqual(draft);
+			},
+		);
 	});
 
 	it('appends a revision for a request change', async () => {

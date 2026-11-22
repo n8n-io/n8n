@@ -129,14 +129,49 @@ describe('classifyEdit', () => {
 		expect(classifyEdit(base, next)).toBe('cosmetic');
 	});
 
-	it('ignores the order of option values', () => {
-		const next = withInput(1, {
-			options: [
-				{ name: 'Dollar', value: 'usd' },
-				{ name: 'Euro', value: 'eur' },
-			],
+	describe('option order', () => {
+		const euroFirst = [
+			{ name: 'Euro', value: 'eur' },
+			{ name: 'Dollar', value: 'usd' },
+		];
+		const dollarFirst = [
+			{ name: 'Dollar', value: 'usd' },
+			{ name: 'Euro', value: 'eur' },
+		];
+		const pound = { name: 'Pound', value: 'gbp' };
+		const noDefault = withInput(1, { default: undefined, options: euroFirst });
+
+		it('returns cosmetic for a reorder when an explicit default keeps the effective default', () => {
+			expect(classifyEdit(base, withInput(1, { options: dollarFirst }))).toBe('cosmetic');
 		});
-		expect(classifyEdit(base, next)).not.toBe('version');
+
+		it('returns version for a reorder that changes the first option without a default', () => {
+			const next = withInput(1, { default: undefined, options: dollarFirst });
+			expect(classifyEdit(noDefault, next)).toBe('version');
+		});
+
+		it('returns version for a reorder with a request change that changes the effective default', () => {
+			const next: CustomActionDraft = {
+				...withInput(1, { default: undefined, options: dollarFirst }),
+				request: { ...base.request, url: '/v2/invoices/{invoiceId}' },
+			};
+			expect(classifyEdit(noDefault, next)).toBe('version');
+		});
+
+		it('returns cosmetic for a reorder that keeps the first option without a default', () => {
+			const current = withInput(1, { default: undefined, options: [...euroFirst, pound] });
+			const next = withInput(1, {
+				default: undefined,
+				options: [euroFirst[0], pound, euroFirst[1]],
+			});
+			expect(classifyEdit(current, next)).toBe('cosmetic');
+		});
+
+		it('returns cosmetic for an explicit default equal to the first option', () => {
+			expect(classifyEdit(noDefault, withInput(1, { default: 'eur', options: euroFirst }))).toBe(
+				'cosmetic',
+			);
+		});
 	});
 
 	it('returns revision when the url changes', () => {

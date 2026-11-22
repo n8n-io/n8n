@@ -205,6 +205,26 @@ describe('validateDraft', () => {
 			expect(codes(withUrl('https:///a'))).toContain('invalid_url');
 		});
 
+		it.each([
+			['a backslash in the authority', 'https://good.test\\@other.test/x'],
+			['a backslash in the path', '/invoices\\x'],
+			['a tab', 'https://api.x.test/\tv1'],
+			['a line break', 'https://api.x.test/v1\n'],
+			['a carriage return', '/invoices\r/x'],
+			['a null character', '/invoices/\u0000'],
+			['a delete character', '/invoices/\u007f'],
+			['user information', 'https://user:pw@api.x.test/x'],
+			['a user name', 'https://user@api.x.test/x'],
+			['a URL that starts with //', '//api.x.test/x'],
+		])('rejects a URL with %s', (_, url) => {
+			expect(codes(withUrl(url))).toContain('invalid_url');
+		});
+
+		it('accepts an @ in the path of a relative URL and of an absolute URL', () => {
+			expect(codes(withUrl('/users/@me'))).toEqual([]);
+			expect(codes(withUrl('https://api.x.test/users/@me'))).toEqual([]);
+		});
+
 		it('rejects a placeholder in the URL query string', () => {
 			expect(codes(withUrl('/a?x={q}', [urlInput('q')]))).toContain('invalid_url');
 		});

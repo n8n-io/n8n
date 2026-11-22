@@ -159,7 +159,7 @@ describe('CustomNodesRegistry', () => {
 	it('sets iconUrl from the icon path only for a node with an icon', async () => {
 		const { registry, loader } = createRegistry({
 			nodes: [nodeEntity(), nodeEntity({ id: 'cn_icon', iconMimeType: 'image/png' })],
-			actions: [],
+			actions: [actionAggregate(), actionAggregate({ id: 'act_icon', customNodeId: 'cn_icon' })],
 		});
 
 		await registry.refresh({ notifyEditors: false, notifyInstances: false });
@@ -173,7 +173,7 @@ describe('CustomNodesRegistry', () => {
 	it('builds iconUrl from the configured REST endpoint', async () => {
 		const { registry, loader } = createRegistry({
 			nodes: [nodeEntity({ id: 'cn_icon', iconMimeType: 'image/png' })],
-			actions: [],
+			actions: [actionAggregate({ id: 'act_icon', customNodeId: 'cn_icon' })],
 			restEndpoint: 'api/v0',
 		});
 
