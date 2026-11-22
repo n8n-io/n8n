@@ -168,7 +168,9 @@ function isNotEmpty(value: string): boolean {
 }
 
 function length(value: string): number {
-	return value.length;
+	// Count Unicode code points, not UTF-16 code units, so surrogate pairs
+	// (e.g. emoji) are one character each.
+	return [...value].length;
 }
 
 export function toJsonString(value: string): string {
