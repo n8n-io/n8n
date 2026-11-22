@@ -18,10 +18,15 @@ import { CustomNodesRegistry } from '../custom-nodes.registry';
 import { CustomNodesService } from '../custom-nodes.service';
 import { CustomActionEntity } from '../database/entities/custom-action.entity';
 import { CustomNodeEntity } from '../database/entities/custom-node.entity';
+import { listenOnLoopback } from './loopback-server';
 
 const registry = mockInstance(CustomNodesRegistry);
 
-const testServer = setupTestServer({ endpointGroups: ['me'], modules: ['custom-nodes'] });
+const testServer = setupTestServer({
+	endpointGroups: ['me'],
+	modules: ['custom-nodes'],
+	reuseServer: true,
+});
 
 const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00]);
 const pngUri = `data:image/png;base64,${PNG.toString('base64')}`;
@@ -84,12 +89,13 @@ const requestFromOtherBrowser = (user: User, method: 'get', path: string) => {
 		false,
 		'another-browser-id',
 	);
-	return request(testServer.app)
+	return request(testServer.httpServer)
 		[method](`/${REST_PATH_SEGMENT}${path}`)
 		.set('Cookie', `${AUTH_COOKIE_NAME}=${token}`);
 };
 
 beforeAll(async () => {
+	await listenOnLoopback(testServer.httpServer);
 	owner = await createOwner();
 	member = await createMember();
 	ownerAgent = testServer.authAgentFor(owner);

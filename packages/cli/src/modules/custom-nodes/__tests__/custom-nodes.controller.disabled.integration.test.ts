@@ -4,9 +4,15 @@ import { Container } from '@n8n/di';
 import { createOwner } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
+import { listenOnLoopback } from './loopback-server';
+
 // The module is not in `modules`, so its `init()` never runs and never imports the controller.
 // One endpoint group is needed, so that the test server registers controllers at all.
-const testServer = setupTestServer({ endpointGroups: ['me'] });
+const testServer = setupTestServer({ endpointGroups: ['me'], reuseServer: true });
+
+beforeAll(async () => {
+	await listenOnLoopback(testServer.httpServer);
+});
 
 const routes: Array<['get' | 'post' | 'patch' | 'put' | 'delete', string]> = [
 	['get', '/custom-nodes'],
