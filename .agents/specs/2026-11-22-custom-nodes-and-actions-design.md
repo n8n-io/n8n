@@ -578,7 +578,8 @@ on the local branch `custom-nodes-and-actions`. The module is off unless
   allowed domains of a credential. This is a change in `packages/core` and
   `packages/workflow` and needs agreement from the owning team.
 - **One bad definition.** The loader skips a definition that it cannot build,
-  logs the id, and serves the others.
+  logs the id, and serves the others. The repository skips an action whose
+  stored data is not complete.
 - **Base URL.** The service accepts only `http` and `https`, and rejects a
   value with an expression, a backslash, or a control character.
 - **Write order.** A save or a rollback locks the action row before it reads.
@@ -589,6 +590,51 @@ on the local branch `custom-nodes-and-actions`. The module is off unless
 - **Ids.** A custom node id never ends with `Tool`, because the node type
   lookup handles such names differently.
 - **Icon path.** The icon URL uses the configured REST prefix.
+
+### Changes after the whole-branch review
+
+- **Action check at run time.** A custom node checks its `operation` value
+  before it sends a request. A node with no action, with an action or version
+  that no longer exists, or with the "Custom API Call" value fails with an
+  error that names the stored action. Before this change such a node sent a
+  request to the base URL with the credential. The node type therefore has
+  its own `execute`, which runs the check and then delegates to `RoutingNode`.
+  Plan 2 reuses this dispatch for parent nodes.
+- **Effective default.** For an options input without a default, the first
+  option is the default. The classifier compares this effective default as
+  part of the input contract. A reorder that changes it creates a new version.
+  A reorder that does not change it is cosmetic and applies in place.
+- **A node needs one action.** The service refuses a node without an action,
+  and the loader skips a stored node that has none.
+- **Request URL.** The validator rejects a backslash, a control character, and
+  user information in a request URL. The base URL also cannot have a query
+  string.
+- **Limits.** The schemas limit the size of URLs, headers, query values,
+  options, bodies (64 KiB), and the number of actions (100). A default must
+  fit the input type. Header names must be valid.
+- **Service boundary.** The service parses each draft with the schema, checks
+  a predefined credential type against the known types, and checks the scope
+  for the icon too. A refresh that fails after a commit is logged and does not
+  fail the request.
+
+### Known limits and open items
+
+- `n8n execute` and `n8n execute-batch` do not load this module, so a custom
+  node type is unknown there. `mcp-registry` has the same limit.
+- A credential in the mode "none" cannot be used on a custom node. This
+  follows the decision in section 5.1. The error text needs a review in plan 3.
+- The SVG check uses the parser inside `xml2js` through a field that is not in
+  its type definitions. If an upgrade removes the field, each SVG upload fails
+  and the icon tests fail.
+- Each write rebuilds all definitions on each instance. This is correct but
+  not combined. Combine waiting refreshes before a tool can write in bursts.
+- Open test items: one generator test still uses test data that shows a
+  break-out attempt and must be reworded before the first public pull request;
+  no test pins an older version through the served node type; the conflict
+  test of the controller failed once without a found cause.
+- The check of a predefined credential type accepts a name that is an
+  inherited property name, such as `constructor`. The effect is a node that
+  names an unknown credential.
 
 ### Findings for the next plans
 
@@ -602,4 +648,15 @@ on the local branch `custom-nodes-and-actions`. The module is off unless
   administrator why an SVG was refused, and offer PNG.
 - Plan 3 or 4: `LoadNodesAndCredentials` adds a "Custom API Call" option to a
   custom node that uses a predefined credential. Decide if that is wanted.
-- Plan 4: duplicate action names inside one node are possible today.
+- Plan 3: a fixed header, query value, or body value of a definition is
+  readable by each user who can list custom nodes. The wizard must tell the
+  administrator to use a credential for a secret. "Save as custom action"
+  from an HTTP Request node must not copy a fixed authorization header.
+- Plan 3: the canvas shows the raw `operation` value for a node whose action
+  does not exist. No API exists yet for the detail of an old version, the
+  revision list, a single node, or icon removal.
+- Plan 2: the pin parser must not read a built-in operation value that ends
+  with `@` and digits as a custom action. Parent parameters need a prefix.
+- Plan 4: duplicate action names inside one node are possible today. Export
+  and import must keep ids, because the node type name contains the id. A
+  request of an old version can only be rolled back, not edited.
