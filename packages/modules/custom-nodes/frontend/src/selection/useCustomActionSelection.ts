@@ -106,5 +106,19 @@ export function useCustomActionSelection() {
 		return undefined;
 	}
 
-	return { pinValuesFor, newestPinValuesFor, actionNameFor };
+	/** Starts the load early, for example when the nodes panel opens, so the first lookup finds the data. */
+	function preload() {
+		prepare();
+	}
+
+	/**
+	 * Resolves when the custom actions are loaded, or at once when they cannot exist. A lookup that
+	 * missed because the load still ran can try once more after it.
+	 */
+	async function whenLoaded() {
+		if (!prepare()) return;
+		await store.whenLoaded();
+	}
+
+	return { pinValuesFor, newestPinValuesFor, actionNameFor, preload, whenLoaded };
 }

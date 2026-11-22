@@ -38,6 +38,8 @@ const customActionSelection = vi.hoisted(() => ({
 	pinValuesFor: vi.fn(),
 	newestPinValuesFor: vi.fn(),
 	actionNameFor: vi.fn(),
+	preload: vi.fn(),
+	whenLoaded: vi.fn(async () => {}),
 }));
 vi.mock('@n8n/frontend-module-custom-nodes', async (importOriginal) => ({
 	...(await importOriginal<object>()),

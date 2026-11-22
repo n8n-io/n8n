@@ -25,16 +25,34 @@ import { waitAllPromises } from '@n8n/frontend-test-utils';
 import { mockRestrictedNodeTypes } from '@n8n/frontend-module-type-availability-policies/__tests__/mocks';
 import { mockSimplifiedNodeType } from '../../__tests__/utils';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import NodesMode from './NodesMode.vue';
 
 const mockIsFeatureEnabled = vi.hoisted(() => vi.fn(() => true));
 
+const mockSetLastNodeParameters = vi.fn();
 const mockDocumentStoreState = {
 	allNodes: [],
 	workflowTriggerNodes: [],
 	aiNodes: [],
 	getExpressionHandler: () => null,
+	onNodesChange: vi.fn(() => ({ off: vi.fn() })),
+	setLastNodeParameters: mockSetLastNodeParameters,
+	getNodeById: vi.fn(),
+	setNodeParameters: vi.fn(),
 };
+
+const customActionSelection = vi.hoisted(() => ({
+	pinValuesFor: vi.fn(),
+	newestPinValuesFor: vi.fn(),
+	actionNameFor: vi.fn(),
+	preload: vi.fn(),
+	whenLoaded: vi.fn(async () => {}),
+}));
+vi.mock('@n8n/frontend-module-custom-nodes', async (importOriginal) => ({
+	...(await importOriginal<object>()),
+	useCustomActionSelection: () => customActionSelection,
+}));
 vi.mock('@/app/stores/workflowDocument.store', () => ({
 	useWorkflowDocumentStore: () => mockDocumentStoreState,
 	createWorkflowDocumentId: (id: string) => `${id}@latest`,
@@ -165,6 +183,99 @@ describe('NodesMode', () => {
 		await userEvent.click(screen.getByText('Edit Fields'));
 
 		expect(emitted('nodeTypeSelected')).toEqual([[[{ type: 'n8n-nodes-base.set' }]]]);
+	});
+
+	describe('a node with one action', () => {
+		const customPins = {
+			operation: 'action-1@2',
+			customActionId: 'action-1',
+			customActionName: 'Get weather',
+		};
+		const singleActionNode = (name: string, displayName: string, operation: string) => {
+			useNodeCreatorStore().setActions({
+				[name]: [
+					{
+						...mockSimplifiedNodeType({ name, displayName, group: ['transform'] }),
+						actionKey: operation,
+						displayName,
+						values: { operation },
+						codex: { label: 'Actions', categories: ['Actions'] },
+					},
+				],
+			});
+			useViewStacks().pushViewStack({
+				title: 'What happens next?',
+				mode: 'nodes',
+				rootView: REGULAR_NODE_CREATOR_VIEW,
+				hasSearch: true,
+				items: [
+					{
+						key: name,
+						type: 'node',
+						subcategory: '*',
+						properties: mockSimplifiedNodeType({ name, displayName, group: ['transform'] }),
+					},
+				],
+			});
+		};
+		// The listener of the added node gets the parameters that the panel writes.
+		const writtenParameters = () => {
+			const onAdd = mockDocumentStoreState.onNodesChange.mock.calls.at(-1)?.[0] as unknown as (
+				event: unknown,
+			) => void;
+			onAdd({ action: 'add', payload: { node: { id: 'n1', type: 'n8n-custom.acme' } } });
+			return mockSetLastNodeParameters.mock.calls.at(-1)?.[0]?.value;
+		};
+
+		beforeEach(() => {
+			useSettingsStore().settings.activeModules = ['custom-nodes'];
+			customActionSelection.pinValuesFor.mockImplementation(
+				(_type: string, parameters: { operation?: string }) =>
+					parameters.operation === customPins.operation ? { ...customPins } : undefined,
+			);
+		});
+
+		it('writes all pin values of the only custom action', async () => {
+			singleActionNode('n8n-custom.acme', 'Acme', 'action-1@2');
+			const { emitted } = render({ pinia });
+			await nextTick();
+
+			await userEvent.click(screen.getByText('Acme'));
+
+			expect(emitted('nodeTypeSelected')).toEqual([
+				[[{ type: 'n8n-custom.acme', parameters: customPins }]],
+			]);
+			expect(writtenParameters()).toEqual(customPins);
+		});
+
+		it('does not change a built-in node with one action', async () => {
+			singleActionNode('n8n-nodes-base.single', 'Single', 'run');
+			const { emitted } = render({ pinia });
+			await nextTick();
+
+			await userEvent.click(screen.getByText('Single'));
+
+			expect(emitted('nodeTypeSelected')).toEqual([[[{ type: 'n8n-nodes-base.single' }]]]);
+			expect(mockSetLastNodeParameters).not.toHaveBeenCalled();
+			const onAdd = mockDocumentStoreState.onNodesChange.mock.calls.at(-1)?.[0] as unknown as (
+				event: unknown,
+			) => void;
+			onAdd({ action: 'add', payload: { node: { id: 'n1', type: 'n8n-nodes-base.single' } } });
+			expect(mockSetLastNodeParameters.mock.calls.at(-1)?.[0]?.value).toEqual({ operation: 'run' });
+		});
+
+		it('writes only the operation with the module off', async () => {
+			useSettingsStore().settings.activeModules = [];
+			singleActionNode('n8n-custom.acme', 'Acme', 'action-1@2');
+			const { emitted } = render({ pinia });
+			await nextTick();
+
+			await userEvent.click(screen.getByText('Acme'));
+
+			expect(emitted('nodeTypeSelected')).toEqual([[[{ type: 'n8n-custom.acme' }]]]);
+			expect(writtenParameters()).toEqual({ operation: 'action-1@2' });
+			expect(customActionSelection.pinValuesFor).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('restricted node types', () => {

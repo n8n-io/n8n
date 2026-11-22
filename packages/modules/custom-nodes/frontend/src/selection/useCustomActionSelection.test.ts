@@ -1,4 +1,4 @@
-import { CUSTOM_ACTION_RESOURCE_VALUE } from '@n8n/api-types';
+import { CUSTOM_ACTION_RESOURCE_VALUE, type CustomNodeResponse } from '@n8n/api-types';
 import type { Scope } from '@n8n/permissions';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
@@ -250,6 +250,102 @@ describe('useCustomActionSelection', () => {
 			expect(selection.pinValuesFor('n8n-custom.acme', { operation: 'action-1@1' })).toBe(
 				undefined,
 			);
+		});
+	});
+
+	describe('first selection', () => {
+		it('finds the pin values after whenLoaded, with no earlier call', async () => {
+			const selection = setup();
+
+			expect(selection.pinValuesFor('n8n-custom.acme', { operation: 'action-1@1' })).toBe(
+				undefined,
+			);
+			await selection.whenLoaded();
+
+			expect(selection.pinValuesFor('n8n-custom.acme', { operation: 'action-1@1' })).toEqual(
+				nodePin(1),
+			);
+		});
+
+		it('preload starts the load before the first lookup', async () => {
+			const selection = setup();
+
+			selection.preload();
+			await flushPromises();
+
+			expect(listNodes).toHaveBeenCalledTimes(1);
+			expect(selection.pinValuesFor('n8n-custom.acme', { operation: 'action-1@1' })).toEqual(
+				nodePin(1),
+			);
+		});
+
+		it('preload and whenLoaded load nothing when the module is not active', async () => {
+			const selection = setup({ active: false });
+
+			selection.preload();
+			await selection.whenLoaded();
+
+			expect(listNodes).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('load failures and order', () => {
+		it('tries again on the next lookup after a failed first load', async () => {
+			listNodes.mockRejectedValueOnce(new Error('offline'));
+			const selection = setup();
+
+			selection.pinValuesFor('n8n-custom.acme', {});
+			await flushPromises();
+			expect(listNodes).toHaveBeenCalledTimes(1);
+
+			selection.pinValuesFor('n8n-custom.acme', {});
+			await flushPromises();
+
+			expect(listNodes).toHaveBeenCalledTimes(2);
+			expect(selection.pinValuesFor('n8n-custom.acme', { operation: 'action-1@1' })).toEqual(
+				nodePin(1),
+			);
+		});
+
+		it('does not try again without a lookup', async () => {
+			listNodes.mockRejectedValue(new Error('offline'));
+			const selection = setup();
+
+			selection.pinValuesFor('n8n-custom.acme', {});
+			await flushPromises();
+			await flushPromises();
+
+			expect(listNodes).toHaveBeenCalledTimes(1);
+		});
+
+		it('runs a refresh after the running load, so the newer response stays', async () => {
+			const renamed = createNode({
+				...customNode,
+				actions: [{ ...customNode.actions[0], name: 'Get weather now' }],
+			});
+			let resolveFirst: (value: CustomNodeResponse[]) => void = () => {};
+			listNodes
+				.mockImplementationOnce(
+					async () =>
+						await new Promise<CustomNodeResponse[]>((resolve) => {
+							resolveFirst = resolve;
+						}),
+				)
+				.mockResolvedValueOnce([renamed]);
+			const selection = setup();
+
+			selection.pinValuesFor('n8n-custom.acme', {});
+			await flushPromises();
+			const refreshed = useCustomNodesStore().refresh();
+			await flushPromises();
+
+			expect(listNodes).toHaveBeenCalledTimes(1);
+
+			resolveFirst([customNode]);
+			await refreshed;
+
+			expect(listNodes).toHaveBeenCalledTimes(2);
+			expect(selection.actionNameFor({ operation: 'action-1@1' })).toBe('Get weather now');
 		});
 	});
 

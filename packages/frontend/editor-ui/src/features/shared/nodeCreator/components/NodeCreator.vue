@@ -17,6 +17,10 @@ import { EmbeddedCanvasElementKey } from '@/app/constants/injectionKeys';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import {
+	CUSTOM_NODES_MODULE_ID,
+	useCustomActionSelection,
+} from '@n8n/frontend-module-custom-nodes';
 import { useAiGateway } from '@/app/composables/useAiGateway';
 import type { NodeTypeSelectedPayload } from '@/Interface';
 import { onClickOutside, useElementBounding } from '@vueuse/core';
@@ -145,6 +149,17 @@ const { fetchConfig: fetchAiGatewayConfig } = useAiGateway();
 onMounted(() => {
 	void fetchAiGatewayConfig();
 });
+
+// Load the custom actions when the panel opens, so the first selection finds them.
+watch(
+	() => props.active,
+	(isActive) => {
+		if (isActive && settingsStore.isModuleActive(CUSTOM_NODES_MODULE_ID)) {
+			useCustomActionSelection().preload();
+		}
+	},
+	{ immediate: true },
+);
 
 watch(
 	() => props.active,

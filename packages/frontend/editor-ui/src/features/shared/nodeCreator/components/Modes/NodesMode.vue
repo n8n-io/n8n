@@ -67,7 +67,11 @@ const {
 	subcategoryStack,
 	viewStackByKey,
 } = useViewStacks();
-const { setAddedNodeActionParameters, nodeCreateElementToNodeTypeSelectedPayload } = useActions();
+const {
+	setAddedNodeActionParameters,
+	nodeCreateElementToNodeTypeSelectedPayload,
+	customActionPinValues,
+} = useActions();
 const emptyCanvasGroupsEnabled = useEmptyCanvasGroupsFlag();
 
 const { registerKeyHook } = useKeyboardNavigation();
@@ -183,11 +187,16 @@ function onSelected(item: INodeCreateElement) {
 
 		// If there is only one action, use it
 		if (nodeActions.length === 1) {
-			emit('nodeTypeSelected', [payload]);
+			const value = nodeActions[0].values as INodeParameters;
+			// A custom action also stores its id and name. A built-in action has no pin values.
+			const pinValues = customActionPinValues(item.key, value);
+			emit('nodeTypeSelected', [
+				pinValues ? { ...payload, parameters: { ...payload.parameters, ...pinValues } } : payload,
+			]);
 			setAddedNodeActionParameters({
 				name: nodeActions[0].defaults.name ?? item.properties.displayName,
 				key: item.key,
-				value: nodeActions[0].values as INodeParameters,
+				value: pinValues ? { ...value, ...pinValues } : value,
 			});
 			return;
 		}

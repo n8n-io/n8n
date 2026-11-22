@@ -35,6 +35,8 @@ const customActionSelection = vi.hoisted(() => ({
 	pinValuesFor: vi.fn(),
 	newestPinValuesFor: vi.fn(),
 	actionNameFor: vi.fn(),
+	preload: vi.fn(),
+	whenLoaded: vi.fn(async () => {}),
 }));
 vi.mock('@n8n/frontend-module-custom-nodes', async (importOriginal) => ({
 	...(await importOriginal<object>()),
@@ -701,6 +703,83 @@ describe('useActions', () => {
 				type: SLACK_NODE_TYPE,
 				actionName: 'Archive channel',
 				parameters: customPins,
+			});
+		});
+
+		describe('first selection before the custom actions are loaded', () => {
+			const addedNode = {
+				id: 'node-1',
+				name: 'Slack',
+				type: SLACK_NODE_TYPE,
+				parameters: { operation: 'action-1@2', resource: '__CUSTOM_ACTION__' },
+			} as unknown as INodeUi;
+			let addNode: (node: INodeUi) => void;
+			const setNodeParameters = vi.fn();
+
+			beforeEach(() => {
+				let loaded = false;
+				customActionSelection.pinValuesFor.mockImplementation(
+					(_type: string, parameters: { operation?: string }) =>
+						loaded && parameters.operation === customPins.operation ? { ...customPins } : undefined,
+				);
+				customActionSelection.whenLoaded.mockImplementation(async () => {
+					loaded = true;
+				});
+				Object.assign(mockDocumentStoreState, {
+					onNodesChange: (handler: (event: unknown) => void) => {
+						addNode = (node) => handler({ action: 'add', payload: { node } });
+						return { off: vi.fn() };
+					},
+					setLastNodeParameters: vi.fn(),
+					setNodeParameters,
+					getNodeById: () => addedNode,
+				});
+			});
+
+			test('writes all pin values after the load, with no earlier lookup', async () => {
+				setModuleActive(true);
+				const { setAddedNodeActionParameters } = useActions();
+
+				setAddedNodeActionParameters({
+					name: 'Archive channel',
+					key: SLACK_NODE_TYPE,
+					value: { operation: 'action-1@2', resource: '__CUSTOM_ACTION__' },
+				});
+				addNode(addedNode);
+				await vi.waitFor(() => expect(setNodeParameters).toHaveBeenCalled());
+
+				expect(setNodeParameters).toHaveBeenCalledWith({ name: 'Slack', value: customPins }, true);
+			});
+
+			test('writes nothing more for a built-in action', async () => {
+				setModuleActive(true);
+				const { setAddedNodeActionParameters } = useActions();
+
+				setAddedNodeActionParameters({
+					name: 'Archive',
+					key: SLACK_NODE_TYPE,
+					value: { operation: 'archive', resource: 'channel' },
+				});
+				addNode({ ...addedNode, parameters: { operation: 'archive' } } as INodeUi);
+				await new Promise((resolve) => setTimeout(resolve, 0));
+
+				expect(setNodeParameters).not.toHaveBeenCalled();
+			});
+
+			test('waits for nothing with the module off', async () => {
+				setModuleActive(false);
+				const { setAddedNodeActionParameters } = useActions();
+
+				setAddedNodeActionParameters({
+					name: 'Archive channel',
+					key: SLACK_NODE_TYPE,
+					value: { operation: 'action-1@2', resource: '__CUSTOM_ACTION__' },
+				});
+				addNode(addedNode);
+				await new Promise((resolve) => setTimeout(resolve, 0));
+
+				expect(customActionSelection.whenLoaded).not.toHaveBeenCalled();
+				expect(setNodeParameters).not.toHaveBeenCalled();
 			});
 		});
 

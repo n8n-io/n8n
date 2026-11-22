@@ -1,6 +1,7 @@
 import { computed } from 'vue';
 import {
 	CHAIN_LLM_LANGCHAIN_NODE_TYPE,
+	isNodeParameters,
 	NodeConnectionTypes,
 	type IDataObject,
 	type INodeParameters,
@@ -444,8 +445,31 @@ export const useActions = () => {
 			workflowDocumentStore.value.setLastNodeParameters(action);
 			if (telemetry) trackActionSelected(action, telemetry, rootView);
 			off();
+			completeCustomActionPinValues(event.payload.node.id, action);
 		});
 		return off;
+	}
+
+	/**
+	 * The first selection in a session can come before the custom actions are loaded. Then the
+	 * lookup misses, and the node gets only `operation`. This writes the other pin values after the
+	 * load, once, when the node still has the same `operation`.
+	 */
+	function completeCustomActionPinValues(nodeId: string, action: IUpdateInformation) {
+		const nodeTypeName = action.key;
+		const parameters = action.value;
+		if (!nodeTypeName || !isNodeParameters(parameters)) return;
+		if (!settingsStore.isModuleActive(CUSTOM_NODES_MODULE_ID)) return;
+		if (customActionPinValues(nodeTypeName, parameters)) return;
+
+		customActionSelection ??= useCustomActionSelection();
+		void customActionSelection.whenLoaded().then(() => {
+			const pinValues = customActionPinValues(nodeTypeName, parameters);
+			if (!pinValues) return;
+			const node = workflowDocumentStore.value.getNodeById(nodeId);
+			if (!node || node.parameters.operation !== pinValues.operation) return;
+			workflowDocumentStore.value.setNodeParameters({ name: node.name, value: pinValues }, true);
+		});
 	}
 
 	function trackActionSelected(
@@ -471,6 +495,7 @@ export const useActions = () => {
 		getAddedNodesAndConnections,
 		getConnectionTriggerNode,
 		getActionData,
+		customActionPinValues,
 		setAddedNodeActionParameters,
 		shouldPrependChatTrigger,
 	};

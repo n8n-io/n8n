@@ -366,9 +366,35 @@ const hasOutputConnection = computed(() => {
 
 let customActionSelection: ReturnType<typeof useCustomActionSelection> | undefined;
 
+const getCustomActionSelection = () => {
+	if (!settingsStore.isModuleActive(CUSTOM_NODES_MODULE_ID)) return undefined;
+	customActionSelection ??= useCustomActionSelection();
+	return customActionSelection;
+};
+
+/** Writes all pin values of the custom action that `operation` selects, in one `parameters` update. */
+const writePinValuesForOperation = (nodeName: string, operation: NodeParameterValue) => {
+	const selection = getCustomActionSelection();
+	const currentNode = workflowDocumentStore?.value?.getNodeByName(nodeName);
+	if (!selection || !currentNode) return false;
+
+	const pinValues = selection.pinValuesFor(currentNode.type, {
+		...currentNode.parameters,
+		operation,
+	});
+	if (!pinValues) return false;
+
+	// The `parameters` update takes parameter paths, like the cURL import.
+	const pinPaths = Object.fromEntries(
+		Object.entries(pinValues).map(([name, pinValue]) => [`parameters.${name}`, pinValue]),
+	);
+	valueChanged({ node: nodeName, name: 'parameters', value: pinPaths });
+	return true;
+};
+
 /**
  * A custom action keeps its id and name next to the `operation` value.
- * When the user selects one, all of its pin values go to the node in one `parameters` update.
+ * When the user selects one, all of its pin values go to the node.
  */
 const writeCustomActionPinValues = (
 	nodeName: string,
@@ -376,23 +402,15 @@ const writeCustomActionPinValues = (
 	value: NodeParameterValue,
 ) => {
 	if (parameterName !== 'parameters.operation') return;
-	if (!settingsStore.isModuleActive(CUSTOM_NODES_MODULE_ID)) return;
+	const selection = getCustomActionSelection();
+	if (!selection || writePinValuesForOperation(nodeName, value)) return;
 
-	const updatedNode = workflowDocumentStore?.value?.getNodeByName(nodeName);
-	if (!updatedNode) return;
-
-	customActionSelection ??= useCustomActionSelection();
-	const pinValues = customActionSelection.pinValuesFor(updatedNode.type, {
-		...updatedNode.parameters,
-		operation: value,
+	// The lookup can miss because the custom actions still load. Try once more after the load,
+	// when the user did not select another value in the meantime.
+	void selection.whenLoaded().then(() => {
+		const currentNode = workflowDocumentStore?.value?.getNodeByName(nodeName);
+		if (currentNode?.parameters.operation === value) writePinValuesForOperation(nodeName, value);
 	});
-	if (!pinValues) return;
-
-	// The `parameters` update takes parameter paths, like the cURL import.
-	const pinPaths = Object.fromEntries(
-		Object.entries(pinValues).map(([name, pinValue]) => [`parameters.${name}`, pinValue]),
-	);
-	valueChanged({ node: nodeName, name: 'parameters', value: pinPaths });
 };
 
 const valueChanged = (parameterData: IUpdateInformation) => {
@@ -698,6 +716,8 @@ watch(node, () => {
 });
 
 onMounted(async () => {
+	// Load the custom actions now, so the first selection in the dropdown finds them.
+	getCustomActionSelection()?.preload();
 	populateHiddenIssuesSet();
 	setNodeValues();
 	props.eventBus?.on('openSettings', openSettings);

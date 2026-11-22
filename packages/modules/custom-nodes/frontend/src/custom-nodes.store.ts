@@ -39,11 +39,12 @@ export const useCustomNodesStore = defineStore(CUSTOM_NODES_STORE_ID, () => {
 	const parentActions = ref<ParentCustomActionResponse[]>([]);
 	const parents = ref<CustomActionParent[]>([]);
 	const loading = ref(false);
-	// Not reactive: a computed that calls `ensureLoaded` must not re-run when a load starts or fails.
-	let loadRequested = false;
+	// Not reactive: a computed that calls `ensureLoaded` must not re-run when a load starts or ends.
+	let loaded = false;
+	// The newest load. Loads run one after the other, so an older response never replaces a newer one.
+	let latestLoad: Promise<void> | undefined;
 
-	async function fetchAll() {
-		loadRequested = true;
+	async function fetchLists() {
 		loading.value = true;
 		try {
 			const context = rootStore.restApiContext;
@@ -56,21 +57,52 @@ export const useCustomNodesStore = defineStore(CUSTOM_NODES_STORE_ID, () => {
 		}
 	}
 
-	/** Starts one load in the background. Later calls do nothing. */
-	function ensureLoaded() {
-		if (loadRequested) return;
-		loadRequested = true;
-		// A computed or a render can call this. The load starts after it, so no state changes during it.
-		queueMicrotask(() => {
-			fetchAll().catch(() => {
-				// `refresh` tries again. The lists stay empty until then.
+	/** Loads the lists after the loads that started before. The request starts in a microtask. */
+	async function fetchAll() {
+		const load = (latestLoad ?? Promise.resolve())
+			.catch(() => {
+				// The caller of the earlier load handles its error.
+			})
+			.then(fetchLists);
+		latestLoad = load;
+		load
+			.then(
+				() => {
+					loaded = true;
+				},
+				() => {
+					// The caller handles the error. A next `ensureLoaded` tries again.
+				},
+			)
+			.finally(() => {
+				if (latestLoad === load) latestLoad = undefined;
 			});
+		await load;
+	}
+
+	/**
+	 * Starts a load in the background when the lists are not loaded and no load runs.
+	 * A computed or a render can call it: the request starts after it, so no state changes during it.
+	 * After a failed load, the next call tries again. One call starts one load at most.
+	 */
+	function ensureLoaded() {
+		if (loaded || latestLoad) return;
+		fetchAll().catch(() => {
+			// The lists stay empty. The next call tries again.
 		});
 	}
 
-	/** Reloads the lists when a load happened before. A failure keeps the old lists. */
+	/** Resolves when the running loads end, also when they fail. Starts a load if one is needed. */
+	async function whenLoaded() {
+		ensureLoaded();
+		await latestLoad?.catch(() => {
+			// A failed load leaves the lists as they are.
+		});
+	}
+
+	/** Reloads the lists when a load happened or runs. A failure keeps the old lists. */
 	async function refresh() {
-		if (!loadRequested) return;
+		if (!loaded && !latestLoad) return;
 		try {
 			await fetchAll();
 		} catch {
@@ -157,6 +189,7 @@ export const useCustomNodesStore = defineStore(CUSTOM_NODES_STORE_ID, () => {
 		loading,
 		fetchAll,
 		ensureLoaded,
+		whenLoaded,
 		refresh,
 		fetchParents,
 		fetchNode,

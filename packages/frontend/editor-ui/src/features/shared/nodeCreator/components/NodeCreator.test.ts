@@ -80,8 +80,18 @@ vi.mock('@/features/ai/assistant/chatPanel.store', () => ({
 	useChatPanelStore: vi.fn(() => ({ isOpen: false, width: 0 })),
 }));
 
+const mockSettings = vi.hoisted(() => ({
+	isCanvasOnly: false,
+	isModuleActive: vi.fn(() => false),
+}));
 vi.mock('@n8n/stores/settings.store', () => ({
-	useSettingsStore: vi.fn(() => ({ isCanvasOnly: false })),
+	useSettingsStore: vi.fn(() => mockSettings),
+}));
+
+const customActionSelection = vi.hoisted(() => ({ preload: vi.fn() }));
+vi.mock('@n8n/frontend-module-custom-nodes', async (importOriginal) => ({
+	...(await importOriginal<object>()),
+	useCustomActionSelection: () => customActionSelection,
 }));
 
 vi.mock('@/features/credentials/credentials.store', () => ({
@@ -108,8 +118,24 @@ describe('NodeCreator', () => {
 		vi.clearAllMocks();
 		mockNodeCreatorState.openingContext = null;
 		mockNodeCreatorState.isReplacingFromSetupPanel = false;
+		mockSettings.isModuleActive.mockReset().mockReturnValue(false);
 		mockFocusPanel.focusPanelActive = false;
 		mockFocusPanel.focusPanelWidth = 0;
+	});
+
+	it('starts the load of the custom actions when it opens with the module on', () => {
+		mockSettings.isModuleActive.mockImplementation((name: string) => name === 'custom-nodes');
+
+		renderComponent({ props: { active: true } });
+
+		expect(customActionSelection.preload).toHaveBeenCalledOnce();
+	});
+
+	it('loads no custom actions when it is closed or the module is off', () => {
+		renderComponent({ props: { active: true } });
+		renderComponent({ props: { active: false } });
+
+		expect(customActionSelection.preload).not.toHaveBeenCalled();
 	});
 
 	it('calls fetchConfig from useAiGateway composable on mount', async () => {

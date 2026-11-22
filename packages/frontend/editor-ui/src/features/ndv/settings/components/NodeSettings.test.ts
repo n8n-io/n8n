@@ -39,6 +39,8 @@ const customActionSelection = vi.hoisted(() => ({
 	pinValuesFor: vi.fn(),
 	newestPinValuesFor: vi.fn(),
 	actionNameFor: vi.fn(),
+	preload: vi.fn(),
+	whenLoaded: vi.fn(async () => {}),
 }));
 vi.mock('@n8n/frontend-module-custom-nodes', async (importOriginal) => ({
 	...(await importOriginal<object>()),
@@ -760,6 +762,8 @@ describe('NodeSettings', () => {
 
 		beforeEach(() => {
 			customActionSelection.pinValuesFor.mockReset();
+			customActionSelection.preload.mockClear();
+			customActionSelection.whenLoaded.mockReset().mockImplementation(async () => {});
 			customActionSelection.pinValuesFor.mockImplementation(
 				(_type: string, parameters: { operation?: string }) =>
 					parameters.operation === customPins.operation ? { ...customPins } : undefined,
@@ -792,6 +796,32 @@ describe('NodeSettings', () => {
 			});
 		});
 
+		it('writes all pin values when the first lookup runs before the load ends', async () => {
+			let loaded = false;
+			customActionSelection.pinValuesFor.mockImplementation(
+				(_type: string, parameters: { operation?: string }) =>
+					loaded && parameters.operation === customPins.operation ? { ...customPins } : undefined,
+			);
+			customActionSelection.whenLoaded.mockImplementation(async () => {
+				loaded = true;
+			});
+			const { findAllByTestId, workflowDocumentStore } = render(true);
+
+			const buttons = await findAllByTestId('select-action-1@2');
+			await fireEvent.click(buttons[0]);
+
+			await waitFor(() =>
+				expect(workflowDocumentStore.getNodeByName('Acme')?.parameters).toMatchObject(customPins),
+			);
+		});
+
+		it('starts the load of the custom actions when it opens', async () => {
+			const { findAllByTestId } = render(true);
+			await findAllByTestId('select-plain');
+
+			expect(customActionSelection.preload).toHaveBeenCalled();
+		});
+
 		it('writes only the operation and asks for no pin values with the module off', async () => {
 			const { findAllByTestId, workflowDocumentStore } = render(false);
 
@@ -799,6 +829,7 @@ describe('NodeSettings', () => {
 			await fireEvent.click(buttons[0]);
 
 			expect(customActionSelection.pinValuesFor).not.toHaveBeenCalled();
+			expect(customActionSelection.preload).not.toHaveBeenCalled();
 			expect(workflowDocumentStore.getNodeByName('Acme')?.parameters).toEqual({
 				operation: 'action-1@2',
 				customActionId: '',
