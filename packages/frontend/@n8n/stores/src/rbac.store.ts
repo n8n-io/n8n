@@ -40,6 +40,7 @@ export const useRBACStore = defineStore(STORES.RBAC, () => {
 		banner: {},
 		community: {},
 		communityPackage: {},
+		customNode: {},
 		ldap: {},
 		license: {},
 		logStreaming: {},

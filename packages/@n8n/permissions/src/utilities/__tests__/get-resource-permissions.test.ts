@@ -18,6 +18,7 @@ describe('permissions', () => {
 			banner: {},
 			community: {},
 			communityPackage: {},
+			customNode: {},
 			credential: {},
 			credentialTypePolicy: {},
 			externalSecretsProvider: {},
@@ -118,6 +119,7 @@ describe('permissions', () => {
 			banner: {},
 			community: {},
 			communityPackage: {},
+			customNode: {},
 			credential: {
 				create: true,
 				delete: true,

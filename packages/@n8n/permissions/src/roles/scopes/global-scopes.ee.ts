@@ -44,6 +44,10 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'communityPackage:uninstall',
 	'communityPackage:update',
 	'communityPackage:list',
+	'customNode:list',
+	'customNode:create',
+	'customNode:update',
+	'customNode:delete',
 	'eventBusDestination:create',
 	'eventBusDestination:read',
 	'eventBusDestination:update',
@@ -258,6 +262,7 @@ export const GLOBAL_MEMBER_SCOPES: Scope[] = [
 	'instanceAi:message',
 	'instanceAi:gateway',
 	'trustedSource:list',
+	'customNode:list',
 ];
 
 export const GLOBAL_CHAT_USER_SCOPES: Scope[] = [

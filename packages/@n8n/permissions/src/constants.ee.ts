@@ -25,6 +25,7 @@ export const RESOURCES = {
 	banner: ['dismiss'] as const,
 	community: ['register'] as const,
 	communityPackage: ['install', 'uninstall', 'update', 'list', 'manage'] as const,
+	customNode: ['list', 'create', 'update', 'delete'] as const,
 	// `use` is global-only by construction: it means "may use any credential on the
 	// instance in a workflow, without being a member of its project". It is never a
 	// per-credential or per-project right, so it stays out of every PROJECT_* scope
