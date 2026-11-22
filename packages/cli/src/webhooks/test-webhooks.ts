@@ -341,24 +341,22 @@ export class TestWebhooks implements IWebhookManager {
 	}
 
 	async findAccessControlOptions(path: string, httpMethod: IHttpRequestMethods) {
-		const allKeys = await this.registrations.getAllKeys();
+		const registrations = await this.getRegistrationsFromPath(removeTrailingSlash(path));
 
-		const webhookKey = allKeys.find((key) => key.includes(path) && key.startsWith(httpMethod));
-
-		if (!webhookKey) return;
-
-		const registration = await this.registrations.get(webhookKey);
+		const registration = registrations.find(({ webhook }) => webhook.httpMethod === httpMethod);
 
 		if (!registration) return;
 
-		const { workflowEntity } = registration;
+		const { workflowEntity, webhook: registrationWebhook } = registration;
 
 		const workflow = this.toWorkflow(workflowEntity);
 
+		// The registration is the webhook that owns this `(method, path)`, so match the node by
+		// its name. Comparing the node's configured `path` against the request path would miss
+		// dynamic webhooks, which register under `<webhookId>/<path with :params>`.
 		const webhookNode = Object.values(workflow.nodes).find(
-			({ type, parameters, typeVersion }) =>
-				parameters?.path === path &&
-				(parameters?.httpMethod ?? 'GET') === httpMethod &&
+			({ name, type, typeVersion }) =>
+				name === registrationWebhook.node &&
 				'webhook' in this.nodeTypes.getByNameAndVersion(type, typeVersion),
 		);
 

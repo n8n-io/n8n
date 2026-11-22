@@ -629,6 +629,58 @@ describe('LiveWebhooks', () => {
 
 			expect(result).toBeUndefined();
 		});
+
+		it('returns access control options for a dynamic webhook path, matched by webhookId', async () => {
+			const allowedOrigins = 'https://dynamic.example.com';
+			const webhookNode: INode = {
+				id: 'webhook-node-dynamic',
+				name: NODE_NAME,
+				type: 'n8n-nodes-base.webhook',
+				typeVersion: 1,
+				position: [0, 0],
+				webhookId: 'dynamic-uuid',
+				parameters: {
+					path: 'user/:id',
+					httpMethod,
+					options: { allowedOrigins },
+				},
+			};
+			const workflowEntity = {
+				id: WORKFLOW_ID,
+				activeVersionId: 'v1',
+				activeVersion: {
+					versionId: 'v1',
+					workflowId: WORKFLOW_ID,
+					nodes: [webhookNode],
+					connections: {},
+				},
+			} as unknown as WorkflowEntity;
+
+			const webhookEntity = mock<WebhookEntity>({
+				workflowId: WORKFLOW_ID,
+				node: NODE_NAME,
+				webhookPath: 'user/:id',
+				method: httpMethod,
+				webhookId: 'dynamic-uuid',
+				isDynamic: true,
+			});
+
+			webhookService.findWebhook.mockResolvedValue(webhookEntity);
+			workflowRepository.findOne.mockResolvedValue(workflowEntity);
+			nodeTypes.getByNameAndVersion.mockReturnValue(
+				mock<INodeType>({
+					description: { name: NODE_NAME, properties: [] },
+					webhook: vi.fn(),
+				}),
+			);
+
+			const result = await liveWebhooks.findAccessControlOptions(
+				'dynamic-uuid/user/value',
+				httpMethod,
+			);
+
+			expect(result).toEqual({ allowedOrigins });
+		});
 	});
 
 	describe('route family scoping', () => {

@@ -80,7 +80,12 @@ export class LiveWebhooks implements IWebhookManager {
 					'webhook' in this.nodeTypes.getByNameAndVersion(type, typeVersion)) ||
 				// Chat Trigger has doesn't have configurable path and is always using POST, so
 				// we need to use webhookId for matching
-				isChatWebhookNode(type, webhookId),
+				isChatWebhookNode(type, webhookId) ||
+				// A dynamic webhook registers under `<webhookId>/<path with :params>`, so the
+				// concrete request path never equals the node's configured path. Only dynamic
+				// rows carry the node's webhookId, so matching on it cannot collide with a
+				// static webhook of another node.
+				(!!webhookId && !!webhook.webhookId && webhookId === webhook.webhookId),
 		);
 
 		return webhookNode?.parameters?.options as WebhookAccessControlOptions;

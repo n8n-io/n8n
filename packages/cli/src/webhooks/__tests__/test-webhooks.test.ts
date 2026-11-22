@@ -9,6 +9,7 @@ import { CHAT_TRIGGER_NODE_TYPE, FORM_TRIGGER_NODE_TYPE, WEBHOOK_NODE_TYPE } fro
 import type {
 	INode,
 	INodeParameters,
+	INodeType,
 	IWebhookDescription,
 	ITaskData,
 	IWorkflowBase,
@@ -28,6 +29,7 @@ import {
 	TEST_WEBHOOK_TIMEOUT_BUFFER,
 } from '@/constants';
 import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
+import type { NodeTypes } from '@/node-types';
 import type { Push } from '@/push';
 import type {
 	TestWebhookRegistrationsService,
@@ -65,6 +67,7 @@ const flushMicrotasks = async () => {
 
 describe('TestWebhooks', () => {
 	const logger = mock<Logger>();
+	const nodeTypes = mock<NodeTypes>();
 	const registrations = mock<TestWebhookRegistrationsService>();
 	const webhookService = mock<WebhookService>();
 	const executionContextService = mock<ExecutionContextService>();
@@ -74,7 +77,7 @@ describe('TestWebhooks', () => {
 	const testWebhooks = new TestWebhooks(
 		logger,
 		push,
-		mock(),
+		nodeTypes,
 		registrations,
 		mock(),
 		mock(),
@@ -1189,6 +1192,78 @@ describe('TestWebhooks', () => {
 			const result = await testWebhooks.getWebhookMethods(PATH);
 
 			expect(result).toEqual([METHOD]);
+		});
+	});
+
+	describe('findAccessControlOptions()', () => {
+		const buildNode = (parameters: INodeParameters): INode => ({
+			id: 'webhook-node-id',
+			name: 'Webhook',
+			type: WEBHOOK_NODE_TYPE,
+			typeVersion: 2,
+			position: [0, 0],
+			webhookId: 'dynamic-uuid',
+			parameters,
+		});
+
+		const mockResolvedRegistration = (node: INode, webhookPath: string, key: string) => {
+			const registration = mock<TestWebhookRegistration>({
+				version: 1,
+				webhook: {
+					httpMethod: 'GET' as IHttpRequestMethods,
+					path: webhookPath,
+					workflowId: workflowEntity.id,
+					node: node.name,
+				} as IWebhookData,
+				workflowEntity: mock<WorkflowEntity>(),
+			});
+			registrations.getRegistrationsHash.mockResolvedValue({ [key]: registration });
+			registrations.getAllKeys.mockResolvedValue([key]);
+			registrations.get.mockResolvedValue(registration);
+			registrations.toKey.mockImplementation(
+				({
+					httpMethod: method,
+					path: webhookPath,
+					webhookId,
+				}: Pick<IWebhookData, 'webhookId' | 'httpMethod' | 'path'>) => {
+					if (!webhookId) return [method, webhookPath].join('|');
+
+					let pathWithoutId = webhookPath;
+					if (pathWithoutId.startsWith(webhookId)) {
+						const cutFromIndex = pathWithoutId.indexOf('/') + 1;
+						pathWithoutId = pathWithoutId.slice(cutFromIndex);
+					}
+					return [method, webhookId, pathWithoutId.split('/').length].join('|');
+				},
+			);
+			vi.spyOn(testWebhooks, 'toWorkflow').mockReturnValue(
+				mock<Workflow>({ nodes: { [node.name]: node } }),
+			);
+			nodeTypes.getByNameAndVersion.mockReturnValue(
+				mock<INodeType>({ description: { name: 'Webhook' }, webhook: vi.fn() }),
+			);
+		};
+
+		test('returns the options of the node owning the registration for a dynamic path', async () => {
+			const options = { allowedOrigins: 'https://example.com' };
+			const node = buildNode({ path: 'user/:id', httpMethod: 'GET', options });
+
+			mockResolvedRegistration(node, 'user/:id', 'GET|dynamic-uuid|2');
+
+			const result = await testWebhooks.findAccessControlOptions('dynamic-uuid/user/value', 'GET');
+
+			expect(result).toEqual(options);
+		});
+
+		test('returns the options of the node owning the registration for a static path', async () => {
+			const options = { allowedOrigins: 'https://example.com' };
+			const node = buildNode({ path: 'user-defined-path', httpMethod: 'GET', options });
+
+			mockResolvedRegistration(node, 'user-defined-path', 'GET|user-defined-path');
+
+			const result = await testWebhooks.findAccessControlOptions('user-defined-path', 'GET');
+
+			expect(result).toEqual(options);
 		});
 	});
 });
