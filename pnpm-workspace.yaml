@@ -47,7 +47,7 @@ catalog:
   reflect-metadata: 0.2.2
   rimraf: 6.0.1
   run-script-os: 1.1.6
-  sanitize-html: 2.17.5
+  sanitize-html: 2.18.0
   simple-git: 4.0.2
   tsdown: ^0.16.5
   tsx: ^4.19.3
