@@ -429,9 +429,19 @@ export class OauthService {
 		};
 	}
 
-	/** `userId` names the user on a policy block while the credential is decrypted. */
-	protected async getAdditionalData(userId?: string) {
-		return await WorkflowExecuteAdditionalData.getBase({ userId });
+	/**
+	 * Adds the credential's owning project to the policy context used during OAuth
+	 * decryption. A credential may also be shared into other projects; policy must
+	 * be evaluated against the project that owns it, not one of its sharees.
+	 */
+	protected async getAdditionalData(
+		userId?: string,
+		credential?: Pick<CredentialsEntity, 'shared'>,
+	) {
+		const projectId = credential?.shared?.find(
+			(sharing) => sharing.role === 'credential:owner',
+		)?.projectId;
+		return await WorkflowExecuteAdditionalData.getBase({ userId, projectId });
 	}
 
 	/**
@@ -520,9 +530,9 @@ export class OauthService {
 		credentialId: string,
 		options: { onlyProjectCredentials?: boolean } = {},
 	): Promise<CredentialsEntity | null> {
-		return await this.credentialsRepository.findOneBy({
-			id: credentialId,
-			...(options.onlyProjectCredentials ? { usageScope: 'project' as const } : {}),
+		return await this.credentialsFinderService.findById(credentialId, {
+			includeInstanceCredentials: !options.onlyProjectCredentials,
+			includeSharedProject: true,
 		});
 	}
 
@@ -719,7 +729,7 @@ export class OauthService {
 		}
 
 		// The state holds the verified starter; the callback request may carry no user at all.
-		const additionalData = await this.getAdditionalData(csrfUserId(state));
+		const additionalData = await this.getAdditionalData(csrfUserId(state, credential));
 		const decryptedDataOriginal = await this.getDecryptedDataForCallback(
 			credential,
 			additionalData,
@@ -807,7 +817,7 @@ export class OauthService {
 	 * credential stores.
 	 */
 	async getOAuthCredentials<T>(credential: CredentialsEntity, userId?: string): Promise<T> {
-		const additionalData = await this.getAdditionalData(userId);
+		const additionalData = await this.getAdditionalData(userId, credential);
 		const decryptedData = await this.loadCredentialData(credential, additionalData);
 
 		return await this.applyDefaultsAndOverwrites<T>(credential, decryptedData, additionalData);
@@ -822,7 +832,7 @@ export class OauthService {
 		credential: CredentialsEntity,
 		userId?: string,
 	): Promise<{ oauthCredentials: T; managedVersion?: number }> {
-		const additionalData = await this.getAdditionalData(userId);
+		const additionalData = await this.getAdditionalData(userId, credential);
 
 		// The stored data has no overwrite applied. Whether the credential uses a managed app
 		// follows from its own client fields, which an overwrite would fill.
