@@ -1,6 +1,12 @@
 import type { Logger } from '@n8n/backend-common';
 import type { ExecuteContext } from 'n8n-core';
-import type { INode, INodeParameters, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	INode,
+	INodeParameters,
+	INodeProperties,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 import { NodeOperationError, deepCopy } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
@@ -77,6 +83,11 @@ const refundV1 = parentPinValues('resource', {
 });
 
 const actionsOf = (entries: Array<[string, ActionView[]]>) => new Map(entries);
+
+const withProperties = (
+	description: INodeTypeDescription,
+	properties: INodeProperties[],
+): INodeTypeDescription => ({ ...description, properties });
 
 describe('ParentActionsProvider', () => {
 	beforeEach(() => {
@@ -272,6 +283,43 @@ describe('ParentActionsProvider', () => {
 			'Served a parent node without its custom actions',
 			expect.objectContaining({ parentNodeType: BILLING }),
 		);
+	});
+
+	describe('a parent field that blocks custom actions', () => {
+		const requiredDomain: INodeProperties = {
+			displayName: 'Domain',
+			name: 'domain',
+			type: 'string',
+			required: true,
+			default: '',
+		};
+
+		it('makes a parent with a required field for every operation not eligible', () => {
+			const entry = served(
+				withProperties(operationParent, [...operationParent.properties, requiredDomain]),
+			);
+			const { provider, loadNodesAndCredentials } = createProvider([entry]);
+			provider.setActions(actionsOf([[LEDGER, [listPayouts]]]));
+
+			provider.transformTypes();
+
+			expect(provider.shapeOf(LEDGER)).toBeUndefined();
+			expect(loadNodesAndCredentials.types.nodes[0]).toBe(entry);
+		});
+
+		it('keeps a parent eligible when the required field shows for built-in operations only', () => {
+			const entry = served(
+				withProperties(operationParent, [
+					...operationParent.properties,
+					{ ...requiredDomain, displayOptions: { show: { operation: ['get', 'export'] } } },
+				]),
+			);
+			const { provider } = createProvider([entry]);
+
+			provider.transformTypes();
+
+			expect(provider.shapeOf(LEDGER)).toBe('operation');
+		});
 	});
 
 	it('returns the node type itself for a node that is not eligible', () => {

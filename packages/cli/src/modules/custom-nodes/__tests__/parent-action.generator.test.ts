@@ -17,6 +17,7 @@ import {
 	PARENT_INPUT_PREFIX,
 	PARENT_NAMING,
 	assertParentActionValid,
+	blocksCustomActions,
 	buildParentRuntimeDescription,
 	extendParentDescription,
 	isCustomActionSelected,
@@ -570,5 +571,94 @@ describe('assertParentActionValid', () => {
 		],
 	])('throws for %s', (_label, action) => {
 		expect(() => assertParentActionValid(action)).toThrow(UnexpectedError);
+	});
+});
+
+describe('blocksCustomActions', () => {
+	const requiredDomain: INodeProperties = {
+		displayName: 'Domain',
+		name: 'domain',
+		type: 'string',
+		required: true,
+		default: '',
+	};
+
+	it.each<[string, INodeTypeDescription, 'resource' | 'operation']>([
+		['a parent with resource', resourceParent, 'resource'],
+		['a parent with only operation', operationParent, 'operation'],
+		['a declarative parent', declarativeParent, 'resource'],
+		[
+			'a resource parent whose required field shows for built-in resources only',
+			withProperties(resourceParent, [
+				...resourceParent.properties,
+				{ ...requiredDomain, displayOptions: { show: { resource: ['invoice', 'customer'] } } },
+			]),
+			'resource',
+		],
+		[
+			'an operation parent whose required field shows for built-in operations only',
+			withProperties(operationParent, [
+				...operationParent.properties,
+				{ ...requiredDomain, displayOptions: { show: { operation: ['get', 'export'] } } },
+			]),
+			'operation',
+		],
+		[
+			'a parent whose required field has a default value',
+			withProperties(operationParent, [
+				...operationParent.properties,
+				{ ...requiredDomain, default: 'acme.test' },
+			]),
+			'operation',
+		],
+	])('allows %s', (_label, description, shape) => {
+		expect(parentShape(description)).toBe(shape);
+		expect(blocksCustomActions(description, shape)).toBe(false);
+	});
+
+	it.each<[string, INodeTypeDescription, 'resource' | 'operation']>([
+		[
+			'a resource parent with a required field that always shows',
+			withProperties(resourceParent, [...resourceParent.properties, requiredDomain]),
+			'resource',
+		],
+		[
+			'an operation parent with a required field that always shows',
+			withProperties(operationParent, [...operationParent.properties, requiredDomain]),
+			'operation',
+		],
+		[
+			'an operation parent with a required field for one authentication',
+			withProperties(operationParent, [
+				...operationParent.properties,
+				{ ...requiredDomain, displayOptions: { show: { authentication: ['oAuth2'] } } },
+			]),
+			'operation',
+		],
+		[
+			'a parent with a required field for one version',
+			withProperties({ ...resourceParent, version: [1, 2] }, [
+				...resourceParent.properties,
+				{ ...requiredDomain, displayOptions: { show: { '@version': [2] } } },
+			]),
+			'resource',
+		],
+		[
+			'a resource parent whose operation has no resource condition',
+			withProperties(resourceParent, [
+				resourceParent.properties[0],
+				{ ...resourceParent.properties[1], displayOptions: undefined },
+			]),
+			'resource',
+		],
+	])('rejects %s', (_label, description, shape) => {
+		expect(parentShape(description)).toBe(shape);
+		expect(blocksCustomActions(description, shape)).toBe(true);
+	});
+
+	it('does not change the parent description', () => {
+		const frozen = deepFreeze(structuredClone(operationParent));
+		expect(blocksCustomActions(frozen, 'operation')).toBe(false);
+		expect(frozen).toEqual(operationParent);
 	});
 });

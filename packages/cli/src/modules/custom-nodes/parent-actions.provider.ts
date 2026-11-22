@@ -10,6 +10,7 @@ import { servedVersions } from './custom-node-type';
 import { actionVersionRefs, type ActionView } from './node-description.generator';
 import {
 	assertParentActionValid,
+	blocksCustomActions,
 	buildParentRuntimeDescription,
 	extendParentDescription,
 	parentShape,
@@ -210,7 +211,10 @@ export class ParentActionsProvider implements NodeTypeExtensionProvider {
 		return eligible;
 	}
 
-	/** `RoutingNode` can use each credential of the node for a custom action. */
+	/**
+	 * `RoutingNode` can use each credential of the node for a custom action, and no parameter
+	 * of the parent stops a custom action before `execute`.
+	 */
 	private shapeOfEntry(entry: INodeTypeDescription): ParentShape | undefined {
 		const shape = parentShape(entry);
 		if (!shape) return undefined;
@@ -219,6 +223,17 @@ export class ParentActionsProvider implements NodeTypeExtensionProvider {
 		const supported = credentials.every((credential) =>
 			this.loadNodesAndCredentials.supportsProxyAuth({ ...entry, credentials: [credential] }),
 		);
-		return supported ? shape : undefined;
+		if (!supported) return undefined;
+
+		try {
+			return blocksCustomActions(entry, shape) ? undefined : shape;
+		} catch (error) {
+			// A description that the check cannot resolve is not a parent. Startup must not fail.
+			this.logger.debug('A node type is not a parent: its parameters cannot be checked', {
+				nodeType: entry.name,
+				error: ensureError(error),
+			});
+			return undefined;
+		}
 	}
 }

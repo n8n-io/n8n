@@ -1,12 +1,13 @@
 import { UnexpectedError } from '@n8n/errors';
 import type {
+	INode,
 	INodeCredentialDescription,
 	INodeParameters,
 	INodeProperties,
 	INodePropertyOptions,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
 
 import { CUSTOM_API_CALL_KEY } from '@/constants';
 
@@ -206,6 +207,82 @@ export function extendParentDescription(
  */
 export function assertParentActionValid(action: ActionView): void {
 	buildRoutedActionProperties([action], PARENT_NAMING);
+}
+
+const PLACEHOLDER_REF: ActionVersionRef = {
+	actionId: 'eligibility',
+	actionName: 'Eligibility',
+	version: 1,
+};
+
+const versionsOf = (version: INodeTypeDescription['version']) =>
+	Array.isArray(version) ? version : [version];
+
+/** The values of `authentication` that select a credential. `[undefined]`: the default applies. */
+function authenticationValues(description: INodeTypeDescription): (string | undefined)[] {
+	if ((description.credentials ?? []).length < 2) return [undefined];
+	const values = description.properties
+		.filter((property) => isOptionsProperty(property, AUTHENTICATION_PARAMETER))
+		.flatMap((property) => (property.options ?? []).filter(isOption))
+		.map((option) => option.value)
+		.filter((value): value is string => typeof value === 'string');
+	return values.length > 0 ? [...new Set(values)] : [undefined];
+}
+
+/**
+ * True when a parameter of the parent stops each custom action before `execute`.
+ * Mirrors the engine: it resolves the node parameters against the extended description,
+ * then checks them. A required parent parameter without a value that shows for a custom
+ * action is an issue. In the resource shape, a parent `operation` that shows for the
+ * Custom resource gives a second Action dropdown.
+ */
+export function blocksCustomActions(
+	description: INodeTypeDescription,
+	shape: ParentShape,
+): boolean {
+	const extended = extendParentDescription(description, shape, []);
+	const parentOperations = description.properties.filter(
+		(property) => property.name === OPERATION_PARAMETER,
+	);
+
+	for (const typeVersion of versionsOf(description.version)) {
+		for (const authentication of authenticationValues(description)) {
+			const node: INode = {
+				id: 'eligibility',
+				name: 'Eligibility',
+				type: description.name,
+				typeVersion,
+				position: [0, 0],
+				parameters: {
+					...(authentication !== undefined && { [AUTHENTICATION_PARAMETER]: authentication }),
+					...parentPinValues(shape, PLACEHOLDER_REF),
+				},
+			};
+			node.parameters =
+				NodeHelpers.getNodeParameters(
+					extended.properties,
+					node.parameters,
+					true,
+					false,
+					node,
+					extended,
+				) ?? {};
+
+			if (
+				shape === 'resource' &&
+				parentOperations.some((property) =>
+					NodeHelpers.displayParameter(node.parameters, property, node, extended),
+				)
+			) {
+				return true;
+			}
+
+			const issues = NodeHelpers.getNodeParametersIssues(extended.properties, node, extended);
+			const names = Object.keys(issues?.parameters ?? {});
+			if (names.some((name) => !isReservedName(name))) return true;
+		}
+	}
+	return false;
 }
 
 /** Description that `RoutingNode` runs for a custom action. Holds only the custom action properties. */
