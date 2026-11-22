@@ -179,6 +179,7 @@ Set `pathPrefix` to serve n8n under an absolute subpath such as `/n8n/`.
 Caddy strips the prefix before it forwards requests to n8n.
 The stack includes the prefix and a trailing slash in `baseUrl`.
 Use relative paths to resolve URLs against `baseUrl`.
+Use `n8n-playwright/containers` for prefixed tests. The standard `n8n-playwright` fixture sends root-relative requests, which Caddy rejects with HTTP 404.
 
 ```typescript
 import { test } from 'n8n-playwright/containers';

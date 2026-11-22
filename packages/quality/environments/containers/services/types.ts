@@ -107,7 +107,10 @@ export interface StackConfig {
 	external?: boolean;
 	/** When set, the Docker network uses this exact name instead of a random UUID. */
 	networkName?: string;
-	/** Start Caddy and serve n8n under an absolute subpath, such as `/n8n/`. */
+	/**
+	 * Start Caddy and serve n8n under an absolute subpath, such as `/n8n/`.
+	 * Use with `n8n-playwright/containers` and relative paths; root-relative requests receive HTTP 404.
+	 */
 	pathPrefix?: string;
 	/**
 	 * Caddy upstream-selection policy. Applies when the stack starts Caddy.

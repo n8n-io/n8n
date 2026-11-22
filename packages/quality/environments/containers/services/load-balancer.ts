@@ -140,6 +140,7 @@ export const loadBalancer: Service<LoadBalancerResult> = {
 				.start();
 
 			const actualHostPort = container.getMappedPort(80);
+			// Use the runtime host when prefixed so remote runners can reach baseUrl; keep localhost by default.
 			const host = pathPrefix ? container.getHost() : 'localhost';
 
 			return {

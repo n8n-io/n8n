@@ -16,6 +16,7 @@ import { createN8NStack, type N8NConfig, type N8NStack } from '../stack';
 const projectName = 'test-stack';
 const main = `${projectName}-n8n`;
 const caddy = `${projectName}-caddy-lb`;
+const keycloakContainer = `${projectName}-keycloak`;
 const queue = { workers: 1, webhooks: 1 };
 const queueNames = [main, `${projectName}-n8n-worker-1`, `${projectName}-n8n-webhook-1`];
 const serviceFile = { target: '/tmp/service-ca.pem', content: 'service certificate' };
@@ -48,7 +49,13 @@ function startedContainer(name: string): StartedTestContainer {
 		getName: () => `/${name}`,
 		getHost: () => 'docker-host.test',
 		getMappedPort: (port: number) => (port === 80 ? 8080 : 5678),
-		exec: vi.fn().mockResolvedValue({ exitCode: 0, output: '' }),
+		exec: vi.fn().mockImplementation(async (command: string[]) => ({
+			exitCode: 0,
+			output:
+				command[0] === 'cat' && command[1] === '/tmp/keycloak-ca.pem'
+					? '-----BEGIN CERTIFICATE-----\ntest\n-----END CERTIFICATE-----'
+					: '',
+		})),
 		stop: vi.fn().mockResolvedValue(undefined),
 	} as unknown as StartedTestContainer;
 	started.set(name, container);
@@ -107,6 +114,8 @@ vi.mock('../services/registry', async () => ({
 		loadBalancer: (
 			await vi.importActual<typeof import('../services/load-balancer')>('../services/load-balancer')
 		).loadBalancer,
+		keycloak: (await vi.importActual<typeof import('../services/keycloak')>('../services/keycloak'))
+			.keycloak,
 	},
 	helperFactories: {},
 }));
@@ -248,6 +257,42 @@ test('lets env and unsetEnv override path prefix URL defaults', async () => {
 	const { environment } = built.get(main)!;
 	expect(environment.N8N_EDITOR_BASE_URL).toBe(editorUrl);
 	expect(environment.WEBHOOK_URL).toBeUndefined();
+});
+
+test.each([
+	{ scenario: 'default root', pathPrefix: undefined, expectedBase: 'http://localhost:5678' },
+	{
+		scenario: 'prefixed path',
+		pathPrefix: '/n8n',
+		expectedBase: 'http://docker-host.test:8080/n8n',
+	},
+	{
+		scenario: 'prefix containing /rest/',
+		pathPrefix: '/rest/',
+		expectedBase: 'http://docker-host.test:8080/rest',
+	},
+])('registers Keycloak redirect URIs under $scenario', async ({ pathPrefix, expectedBase }) => {
+	vi.spyOn(globalThis, 'fetch').mockResolvedValue({ ok: true } as Response);
+
+	const { baseUrl } = await startStack({ pathPrefix, services: ['keycloak'] });
+	const realmFile = built
+		.get(keycloakContainer)
+		?.files.find(({ target }) => target === '/opt/keycloak/data/import/realm.json');
+	if (typeof realmFile?.content !== 'string') {
+		throw new Error('Expected Keycloak realm.json to be copied as a string');
+	}
+	const realm = JSON.parse(realmFile.content) as {
+		clients: Array<{ redirectUris: string[] }>;
+	};
+
+	expect(baseUrl.replace(/\/$/, '')).toBe(expectedBase);
+	expect(realm.clients[0].redirectUris).toEqual([
+		`${expectedBase}/rest/sso/oidc/callback`,
+		`${expectedBase}/rest/sso/oidc/callback/*`,
+		`${expectedBase}/rest/oauth2-credential/callback`,
+		`${expectedBase}/form/inbound-auth-keycloak-form`,
+		`${expectedBase}/webhook/inbound-auth-keycloak-chat/chat`,
+	]);
 });
 
 test.each([
