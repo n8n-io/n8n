@@ -187,14 +187,14 @@ describe('CustomActionWizardModal', () => {
 		it('keeps the node and shows the escaped reason when the icon is rejected', async () => {
 			const view = await setup();
 			view.store.createNode.mockResolvedValue(createNode({ id: 'new-node' }));
-			view.store.setNodeIcon.mockRejectedValue(new Error('Element <script> is not allowed'));
+			view.store.setNodeIcon.mockRejectedValue(new Error('Element <script> is not allowed.'));
 
 			await fillAndSave(view, png());
 
 			expect(showMessage).toHaveBeenCalledWith(
 				expect.objectContaining({
 					title:
-						'Custom node created, but the icon was not accepted: Element &lt;script&gt; is not allowed. Upload a PNG from the settings page.',
+						'Custom node created, but the icon was not accepted. Element &lt;script&gt; is not allowed. Upload a PNG from the settings page.',
 				}),
 			);
 			expect(view.emitted('saved')).toEqual([[]]);

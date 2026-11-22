@@ -11614,7 +11614,7 @@
 	"customNodes.icon.remove": "Remove icon",
 	"customNodes.icon.hint": "PNG or SVG, 256 KB or less.",
 	"customNodes.icon.preview": "Preview of the icon",
-	"customNodes.wizard.saved.node.iconError": "Custom node created, but the icon was not accepted: {reason}. Upload a PNG from the settings page.",
+	"customNodes.wizard.saved.node.iconError": "Custom node created, but the icon was not accepted. {reason} Upload a PNG from the settings page.",
 	"customNodes.icon.success": "Icon saved",
 	"customNodes.icon.error": "Could not save the icon",
 	"customNodes.icon.svgHint": "Some SVG files from design tools are not accepted. Use PNG instead.",
