@@ -81,6 +81,15 @@ const ALLOWED_ATTRIBUTES = new Set([
 	'preserveAspectRatio',
 	'href',
 	'xlink:href',
+	// Plain text that design tools and icon sets add. The value checks below still apply.
+	'role',
+	'aria-label',
+	'aria-labelledby',
+	'aria-describedby',
+	'aria-hidden',
+	'focusable',
+	'data-name',
+	'xml:space',
 ]);
 
 const LINK_ATTRIBUTES = new Set(['href', 'xlink:href']);

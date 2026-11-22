@@ -49,6 +49,21 @@ describe('validateIcon', () => {
 		});
 	});
 
+	it('accepts accessibility and editor attributes that design tools add', async () => {
+		const icon = svg(
+			'<g data-name="Layer 1"><path d="M0 0h24v24H0z" aria-hidden="true"/></g>',
+			' role="img" aria-label="Acme" aria-labelledby="t" focusable="false" xml:space="preserve"',
+		);
+
+		await expect(validateIcon(svgUri(icon))).resolves.toMatchObject({ mimeType: 'image/svg+xml' });
+	});
+
+	it('rejects url() in an accessibility attribute', async () => {
+		const icon = svg('', ' aria-label="url(https://example.test/x)"');
+
+		await expect(validateIcon(svgUri(icon))).rejects.toThrow('url()');
+	});
+
 	it('accepts an icon of exactly 256 KiB', async () => {
 		const data = Buffer.concat([
 			PNG_SIGNATURE,
