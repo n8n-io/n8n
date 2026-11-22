@@ -13,12 +13,9 @@ const routeCases = Array.from(metadata.routes.entries()).map(([handlerName, rout
 }));
 
 describe('WorkflowSimulationController route access scopes', () => {
-	it.each(routeCases)(
-		'$handlerName is gated by a project-scoped workflow:execute check',
-		({ route }) => {
-			expect(route.accessScope).toBeDefined();
-			expect(route.accessScope?.globalOnly).toBe(false);
-			expect(route.accessScope?.scope).toBe('workflow:execute');
-		},
-	);
+	it.each(routeCases)('$handlerName is gated by a project-scoped workflow check', ({ route }) => {
+		expect(route.accessScope).toBeDefined();
+		expect(route.accessScope?.globalOnly).toBe(false);
+		expect(['workflow:execute', 'workflow:read']).toContain(route.accessScope?.scope);
+	});
 });

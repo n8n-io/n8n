@@ -69,9 +69,9 @@ declare module 'n8n-workflow' {
 		 */
 		evalEgressProxy?: string;
 		/**
-		 * Simulation only: when true, unconfigured credentials on a node are delegated to
-		 * `credentialsHelper.getDecrypted` with `id: null` so a simulation credentials helper
-		 * can synthesize credentials without requiring real saved credentials.
+		 * Simulation-only flag: allows nodes without configured credentials to
+		 * request credentials from `credentialsHelper` (which synthesizes tenant-minted
+		 * credentials inside an ai-gym simulation). Never set in normal executions.
 		 */
 		synthesizeUnconfiguredCredentials?: boolean;
 		'data-table'?: { dataTableProxyProvider: DataTableProxyProvider };

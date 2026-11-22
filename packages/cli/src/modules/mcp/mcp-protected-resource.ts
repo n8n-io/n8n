@@ -17,6 +17,7 @@ import { SkillsGate } from '@/modules/skills';
 
 import {
 	ACTIVITY_LOG_TOOLS,
+	AI_GYM_SIMULATION_TOOLS,
 	BUILDER_TOOLS,
 	FOLDER_FEATURE_TOOLS,
 	INSTANCE_CONTEXT_TOOLS,
@@ -108,6 +109,7 @@ export class McpProtectedResource implements ProtectedResource {
 		const supportedScopes = new Set(this.scopes);
 		// Consent and tool registration use the same instance activity gate.
 		const instanceContextAvailable = this.moduleRegistry.isActive('instance-ai');
+		const aiGymAvailable = this.moduleRegistry.isActive('ai-gym');
 		let instanceContextEnabled = false;
 		try {
 			instanceContextEnabled =
@@ -134,6 +136,7 @@ export class McpProtectedResource implements ProtectedResource {
 							(foldersLicensed || !FOLDER_FEATURE_TOOLS.has(tool)) &&
 							(instanceContextAvailable || !ACTIVITY_LOG_TOOLS.has(tool)) &&
 							(instanceContextEnabled || !INSTANCE_CONTEXT_TOOLS.has(tool)) &&
+							(aiGymAvailable || !AI_GYM_SIMULATION_TOOLS.has(tool)) &&
 							(credentialDescriptionsEnabled || tool !== 'update_credential_description'),
 					),
 				]),

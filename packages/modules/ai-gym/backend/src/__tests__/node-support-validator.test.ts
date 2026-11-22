@@ -1,5 +1,5 @@
 import type { GymManifest } from '@n8n/ai-gym';
-import type { INode } from 'n8n-workflow';
+import type { INode, INodeType, INodeTypes } from 'n8n-workflow';
 import { describe, expect, it } from 'vitest';
 
 import { checkWorkflowSupport, matchManifestHost } from '../node-support-validator';
@@ -81,5 +81,71 @@ describe('node-support-validator', () => {
 		expect(result.supported).toBe(false);
 		expect(result.unsupportedNodes).toHaveLength(2);
 		expect(result.unsupportedNodes.map((n) => n.nodeName)).toEqual(['Postgres', 'Custom API']);
+	});
+
+	it('reports missing required credentials when nodeTypes are supplied', () => {
+		const slackNodeType: Partial<INodeType> = {
+			description: {
+				displayName: 'Slack',
+				name: 'slack',
+				group: ['output'],
+				version: 2,
+				description: 'Slack node',
+				defaults: { name: 'Slack' },
+				inputs: [],
+				outputs: [],
+				properties: [],
+				credentials: [
+					{
+						name: 'slackApi',
+						required: true,
+						displayOptions: { show: { authentication: ['accessToken'] } },
+					},
+				],
+			},
+		};
+		const nodeTypes = {
+			getByNameAndVersion: (name: string) =>
+				name === 'n8n-nodes-base.slack' ? (slackNodeType as INodeType) : undefined,
+		} as unknown as INodeTypes;
+
+		const missing = checkWorkflowSupport(
+			{
+				nodes: [
+					makeNode({
+						name: 'Post to Slack',
+						type: 'n8n-nodes-base.slack',
+						typeVersion: 2,
+						parameters: { authentication: 'accessToken' },
+					}),
+				],
+			},
+			sampleManifest,
+			nodeTypes,
+		);
+		expect(missing.supported).toBe(true);
+		expect(missing.missingCredentials).toHaveLength(1);
+		expect(missing.missingCredentials[0]).toMatchObject({
+			nodeName: 'Post to Slack',
+			credentialType: 'slackApi',
+			reason: 'missing',
+		});
+
+		const configured = checkWorkflowSupport(
+			{
+				nodes: [
+					makeNode({
+						name: 'Post to Slack',
+						type: 'n8n-nodes-base.slack',
+						typeVersion: 2,
+						parameters: { authentication: 'accessToken' },
+						credentials: { slackApi: { id: 'cred-1', name: 'My Slack' } },
+					}),
+				],
+			},
+			sampleManifest,
+			nodeTypes,
+		);
+		expect(configured.missingCredentials).toEqual([]);
 	});
 });

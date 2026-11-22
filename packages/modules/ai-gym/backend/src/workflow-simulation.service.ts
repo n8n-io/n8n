@@ -12,6 +12,12 @@ import { checkWorkflowSupport } from './node-support-validator';
 import { SimulationCredentialsHelper } from './simulation-credentials-helper';
 import { createAiGymScopedInterceptor } from './simulation-transport';
 import { AiGymExecutionHostPort } from './types';
+import {
+	applyVendorSeed,
+	buildVendorCapabilities,
+	executePendingApiSeedActions,
+	type PendingApiSeedAction,
+} from './vendor-seed-schemas';
 import type {
 	SimulateWorkflowOptions,
 	SimulationResult,
@@ -21,8 +27,9 @@ import type {
 /**
  * Runs ephemeral, in-process workflow simulations backed by `@n8n/ai-gym`.
  *
- * Simulations do not persist execution rows to the database, synthesize all credentials
- * from ai-gym tenant tokens, and fail fast if the workflow contains unsupported nodes.
+ * Simulations do not persist execution rows to the database, synthesize tenant-minted
+ * credentials when nodes are unconfigured (while honoring non-secret fields on real
+ * credentials if configured), and fail fast if the workflow contains unsupported nodes.
  */
 @Service()
 export class WorkflowSimulationService {
@@ -35,13 +42,22 @@ export class WorkflowSimulationService {
 
 	async checkSupport(workflow: Pick<IWorkflowBase, 'nodes'>): Promise<WorkflowSupportCheckResult> {
 		const manifest = await this.runtime.getManifest();
-		return checkWorkflowSupport(workflow, manifest);
+		const nodeTypes = this.host.getNodeTypes();
+		return checkWorkflowSupport(workflow, manifest, nodeTypes);
+	}
+
+	async getCapabilities() {
+		const manifest = await this.runtime.getManifest();
+		return {
+			vendors: manifest.vendors.map((v) => buildVendorCapabilities(v)),
+		};
 	}
 
 	async simulate(options: SimulateWorkflowOptions): Promise<SimulationResult> {
 		const startedAt = Date.now();
 		const manifest = await this.runtime.getManifest();
-		const support = checkWorkflowSupport(options.workflowData, manifest);
+		const nodeTypes = this.host.getNodeTypes();
+		const support = checkWorkflowSupport(options.workflowData, manifest, nodeTypes);
 
 		if (!support.supported) {
 			throw new UnsupportedWorkflowNodesError(support.unsupportedNodes);
@@ -54,9 +70,22 @@ export class WorkflowSimulationService {
 		try {
 			const { tenant } = session;
 
+			const pendingSeedActions: PendingApiSeedAction[] = [];
 			if (options.seeds) {
-				for (const [service, payload] of Object.entries(options.seeds)) {
-					await tenant.seed(service, payload);
+				let seedSeq = 0;
+				for (const [service, payloadOrList] of Object.entries(options.seeds)) {
+					const payloads = Array.isArray(payloadOrList) ? payloadOrList : [payloadOrList];
+					for (const payload of payloads) {
+						if (payload && typeof payload === 'object') {
+							const actions = await applyVendorSeed({
+								tenant,
+								vendor: service,
+								payload,
+								nextSeq: () => ++seedSeq,
+							});
+							pendingSeedActions.push(...actions);
+						}
+					}
 				}
 			}
 
@@ -83,7 +112,6 @@ export class WorkflowSimulationService {
 				synthesizeUnconfiguredCredentials: true,
 			};
 
-			const nodeTypes = this.host.getNodeTypes();
 			const workflow = new Workflow({
 				id: options.workflowData.id,
 				name: options.workflowData.name,
@@ -115,6 +143,9 @@ export class WorkflowSimulationService {
 					});
 
 					return await runWithScopedHttpInterceptor(interceptor, async () => {
+						if (pendingSeedActions.length > 0) {
+							await executePendingApiSeedActions(tenant, pendingSeedActions);
+						}
 						const workflowExecute = new WorkflowExecute(additionalData, 'manual');
 						const executionPromise = workflowExecute.run({
 							workflow,

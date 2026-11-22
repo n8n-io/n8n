@@ -336,13 +336,9 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 	): Promise<T> {
 		const { workflow, node, additionalData, mode, runExecutionData, runIndex } = this;
 
-		// Eval / simulation bypass: only mock when the node is fully unconfigured, so nodes
-		// probing multiple auth types still get production's throw. Handler
-		// presence (not execution mode) gates it — `evalLlmMockHandler` is set
-		// only by eval execution services, `synthesizeUnconfiguredCredentials` is
-		// set by in-process simulation, and eval agent tools run in modes
-		// other than 'evaluation'. The mocked credentials helper catches the
-		// null-id `CredentialNotFoundError` and synthesizes credentials.
+		// Eval & simulation bypass: allow synthesis when the node is unconfigured
+		// for this credential type, so nodes probing multiple auth types only
+		// synthesize the requested one when no other credentials are set.
 		if (
 			(additionalData.evalLlmMockHandler || additionalData.synthesizeUnconfiguredCredentials) &&
 			!node.credentials?.[type]

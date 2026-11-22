@@ -1,7 +1,12 @@
 import type { GymManifest } from '@n8n/ai-gym';
-import type { INode, IWorkflowBase } from 'n8n-workflow';
+import { validateNodeCredentials } from 'n8n-workflow';
+import type { INode, INodeTypes, IWorkflowBase } from 'n8n-workflow';
 
-import type { UnsupportedNodeInfo, WorkflowSupportCheckResult } from './types';
+import type {
+	MissingCredentialIssue,
+	UnsupportedNodeInfo,
+	WorkflowSupportCheckResult,
+} from './types';
 
 /**
  * Pure/local n8n nodes that do not make external vendor API calls and are always safe to run
@@ -280,18 +285,41 @@ function findVendorForHttpNode(node: INode, manifest: GymManifest): string | und
 
 /**
  * Validates that every enabled node in a workflow is supported by the compiled-in ai-gym manifest.
- * Fails fast when any node targets an unsupported external service.
+ * When `nodeTypes` is provided, also checks that every required credential on each enabled node
+ * is configured so simulations never mask missing credentials.
  */
 export function checkWorkflowSupport(
 	workflow: Pick<IWorkflowBase, 'nodes'>,
 	manifest: GymManifest,
+	nodeTypes?: INodeTypes,
 ): WorkflowSupportCheckResult {
 	const availableVendors = new Set(manifest.vendors.map((v) => v.slug));
 	const unsupportedNodes: UnsupportedNodeInfo[] = [];
+	const missingCredentials: MissingCredentialIssue[] = [];
 	const requiredVendors = new Set<string>();
 
 	for (const node of workflow.nodes) {
 		if (node.disabled) continue;
+
+		if (nodeTypes) {
+			try {
+				const nodeType = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+				if (nodeType) {
+					const credIssues = validateNodeCredentials(node, nodeType);
+					for (const issue of credIssues) {
+						missingCredentials.push({
+							nodeName: node.name,
+							nodeType: node.type,
+							credentialType: issue.credentialName,
+							credentialDisplayName: issue.displayName,
+							reason: issue.type,
+						});
+					}
+				}
+			} catch {
+				// Ignore unknown node types here; they are reported as unsupported below.
+			}
+		}
 
 		if (LOCAL_SAFE_NODE_TYPES.has(node.type)) {
 			continue;
@@ -333,6 +361,7 @@ export function checkWorkflowSupport(
 	return {
 		supported: unsupportedNodes.length === 0,
 		unsupportedNodes,
+		missingCredentials,
 		requiredVendors: [...requiredVendors],
 	};
 }

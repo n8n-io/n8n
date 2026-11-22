@@ -1,5 +1,4 @@
 import type { CredentialResult, Tenant } from '@n8n/ai-gym';
-import { buildEvalMockCredentials } from 'n8n-core';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentials,
@@ -22,11 +21,27 @@ import { resolveVendorForCredentialType } from './node-support-validator';
 
 const SIMULATED_MARKER = '__aiGymSimulatedCredential' as const;
 
+const TOKEN_FIELD_NAMES = new Set([
+	'accessToken',
+	'apiKey',
+	'apiToken',
+	'token',
+	'botToken',
+	'secretKey',
+	'privateKey',
+	'personalAccessToken',
+	'password',
+]);
+
 /**
  * Credentials helper used during ai-gym workflow simulation.
  *
- * Always synthesizes credentials using tokens minted from the active ai-gym `Tenant`
- * so real user secrets are never loaded or sent during simulation.
+ * When a node already has a real credential configured, it loads the decrypted
+ * credential first and keeps its non-secret fields while swapping secret/OAuth2
+ * fields to tokens minted by the active ai-gym `Tenant`. When a node has no
+ * configured credential (or decryption is unavailable during simulation), it
+ * synthesizes a credential populated with tenant-minted tokens so workflows can
+ * be simulated before real credentials are set up.
  */
 export class SimulationCredentialsHelper extends ICredentialsHelper {
 	private readonly mintedByVendor = new Map<string, Promise<CredentialResult>>();
@@ -74,12 +89,8 @@ export class SimulationCredentialsHelper extends ICredentialsHelper {
 		node: INode,
 	): Promise<IHttpRequestOptions> {
 		// Delegate to the real authenticate so the exact headers/query params that production
-		// sends are attached — using our minted ai-gym token in `credentials`.
-		try {
-			return await this.inner.authenticate(credentials, typeName, requestOptions, workflow, node);
-		} catch {
-			return requestOptions as IHttpRequestOptions;
-		}
+		// sends are attached, using the tenant-accepted token mapped from the real credential.
+		return await this.inner.authenticate(credentials, typeName, requestOptions, workflow, node);
 	}
 
 	async preAuthentication(
@@ -120,35 +131,63 @@ export class SimulationCredentialsHelper extends ICredentialsHelper {
 	}
 
 	async getDecrypted(
-		_additionalData: IWorkflowExecuteAdditionalData,
-		_nodeCredentials: INodeCredentialsDetails,
+		additionalData: IWorkflowExecuteAdditionalData,
+		nodeCredentials: INodeCredentialsDetails,
 		type: string,
-		_mode: WorkflowExecuteMode,
-		_executeData?: IExecuteData,
-		_raw?: boolean,
-		_expressionResolveValues?: ICredentialsExpressionResolveValues,
-		_options?: IGetDecryptedCredentialsOptions,
+		mode: WorkflowExecuteMode,
+		executeData?: IExecuteData,
+		raw?: boolean,
+		expressionResolveValues?: ICredentialsExpressionResolveValues,
+		options?: IGetDecryptedCredentialsOptions,
 	): Promise<ICredentialDataDecryptedObject> {
-		const properties = this.getCredentialsProperties(type);
-		const base = buildEvalMockCredentials(properties) as ICredentialDataDecryptedObject;
-		const vendor = resolveVendorForCredentialType(type);
+		let baseDecrypted: ICredentialDataDecryptedObject = {};
+		const hasConfiguredId =
+			typeof nodeCredentials?.id === 'string' && nodeCredentials.id.trim().length > 0;
 
-		let minted: CredentialResult | undefined;
-		if (vendor) {
-			minted = await this.mintOnce(vendor);
+		if (hasConfiguredId) {
+			try {
+				baseDecrypted = await this.inner.getDecrypted(
+					additionalData,
+					nodeCredentials,
+					type,
+					mode,
+					executeData,
+					raw,
+					expressionResolveValues,
+					options,
+				);
+			} catch {
+				// Fall back to synthesized credentials when the configured credential
+				// cannot be loaded in the simulation environment.
+				baseDecrypted = {};
+			}
 		}
 
-		const populated = this.applyMintedToken(base, properties, minted);
-		return {
-			...populated,
-			[SIMULATED_MARKER]: true,
-		};
+		const vendor = resolveVendorForCredentialType(type);
+		const properties = this.getCredentialsProperties(type);
+
+		if (vendor) {
+			const minted = await this.mintOnce(vendor);
+			if (minted) {
+				const mapped = this.applyMintedTokenToCredential(baseDecrypted, properties, minted);
+				return {
+					...mapped,
+					[SIMULATED_MARKER]: true,
+				};
+			}
+		}
+
+		if (Object.keys(baseDecrypted).length > 0) {
+			return baseDecrypted;
+		}
+
+		return this.buildFallbackSyntheticCredential(properties);
 	}
 
 	private async mintOnce(vendor: string): Promise<CredentialResult | undefined> {
 		let pending = this.mintedByVendor.get(vendor);
 		if (!pending) {
-			pending = this.tenant.mintCredential(vendor);
+			pending = this.mintAndExchange(vendor);
 			this.mintedByVendor.set(vendor, pending);
 		}
 		try {
@@ -158,50 +197,167 @@ export class SimulationCredentialsHelper extends ICredentialsHelper {
 		}
 	}
 
-	private applyMintedToken(
-		base: ICredentialDataDecryptedObject,
-		properties: INodeProperties[],
-		minted: CredentialResult | undefined,
-	): ICredentialDataDecryptedObject {
-		const result: ICredentialDataDecryptedObject = { ...base };
-		if (!minted?.token) {
-			return result;
-		}
+	private async mintAndExchange(vendor: string): Promise<CredentialResult> {
+		const minted = await this.tenant.mintCredential(vendor);
+		const record = minted as Record<string, unknown>;
+		const hasAccessToken =
+			typeof record.token === 'string' || typeof record.access_token === 'string';
+		const refreshToken =
+			typeof record.refresh_token === 'string' ? record.refresh_token : undefined;
+		const tokenUri = typeof record.token_uri === 'string' ? record.token_uri : undefined;
+		const clientId = typeof record.client_id === 'string' ? record.client_id : undefined;
+		const clientSecret =
+			typeof record.client_secret === 'string' ? record.client_secret : undefined;
 
-		const token = minted.token;
-		const tokenFieldNames = new Set([
-			'accessToken',
-			'apiKey',
-			'apiToken',
-			'token',
-			'botToken',
-			'secretKey',
-			'privateKey',
-			'personalAccessToken',
-			'password',
-		]);
-
-		for (const prop of properties) {
-			if (tokenFieldNames.has(prop.name)) {
-				result[prop.name] = token;
+		// OAuth2 vendors like Gmail mint a refresh_token + token_uri instead of a direct access_token.
+		// Exchange it through the in-process gym tenant so the returned credential has a valid bearer token.
+		if (!hasAccessToken && refreshToken && tokenUri) {
+			try {
+				const form = new URLSearchParams({
+					grant_type: 'refresh_token',
+					refresh_token: refreshToken,
+					...(clientId ? { client_id: clientId } : {}),
+					...(clientSecret ? { client_secret: clientSecret } : {}),
+				});
+				const exchanged = await this.tenant.run(
+					{ services: [vendor], unmatched: 'block' },
+					async () => {
+						const res = await fetch(tokenUri, {
+							method: 'POST',
+							headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+							body: form.toString(),
+						});
+						if (!res.ok) return undefined;
+						return (await res.json()) as Record<string, unknown>;
+					},
+				);
+				if (exchanged && typeof exchanged.access_token === 'string') {
+					return {
+						...minted,
+						token: exchanged.access_token,
+					};
+				}
+			} catch {
+				// Fall through with the raw minted payload if exchange is unsupported.
 			}
 		}
 
-		// OAuth2 credentials store their bearer token under `oauthTokenData.access_token`.
-		const existingOAuth = result.oauthTokenData;
-		if (existingOAuth && typeof existingOAuth === 'object') {
+		return minted;
+	}
+
+	/**
+	 * Starts from credential property defaults plus any non-secret fields from the
+	 * user's real credential (base URLs, regions, custom scopes, usernames, etc.),
+	 * then populates auth token fields with the tenant-accepted token so simulated
+	 * vendors authenticate both configured and unconfigured nodes cleanly.
+	 */
+	private applyMintedTokenToCredential(
+		baseDecrypted: ICredentialDataDecryptedObject,
+		properties: INodeProperties[],
+		minted: CredentialResult,
+	): ICredentialDataDecryptedObject {
+		const result: ICredentialDataDecryptedObject = {};
+		for (const prop of properties) {
+			if (
+				typeof prop.default === 'string' ||
+				typeof prop.default === 'number' ||
+				typeof prop.default === 'boolean'
+			) {
+				if (prop.default !== '') {
+					result[prop.name] = prop.default;
+				}
+			}
+		}
+		Object.assign(result, baseDecrypted);
+
+		const mintedRecord = minted as Record<string, unknown>;
+		const token =
+			(typeof mintedRecord.token === 'string' && mintedRecord.token) ||
+			(typeof mintedRecord.access_token === 'string' && mintedRecord.access_token) ||
+			(typeof mintedRecord.api_key === 'string' && mintedRecord.api_key) ||
+			undefined;
+
+		const refreshToken =
+			typeof mintedRecord.refresh_token === 'string' ? mintedRecord.refresh_token : undefined;
+		const clientId =
+			typeof mintedRecord.client_id === 'string' ? mintedRecord.client_id : undefined;
+		const clientSecret =
+			typeof mintedRecord.client_secret === 'string' ? mintedRecord.client_secret : undefined;
+		const tokenUri =
+			typeof mintedRecord.token_uri === 'string' ? mintedRecord.token_uri : undefined;
+		const authUri = typeof mintedRecord.auth_uri === 'string' ? mintedRecord.auth_uri : undefined;
+
+		if (clientId && properties.some((p) => p.name === 'clientId')) {
+			result.clientId = clientId;
+		}
+		if (clientSecret && properties.some((p) => p.name === 'clientSecret')) {
+			result.clientSecret = clientSecret;
+		}
+		if (tokenUri && properties.some((p) => p.name === 'accessTokenUrl')) {
+			result.accessTokenUrl = tokenUri;
+		}
+		if (authUri && properties.some((p) => p.name === 'authUrl')) {
+			result.authUrl = authUri;
+		}
+
+		if (token) {
+			for (const prop of properties) {
+				if (TOKEN_FIELD_NAMES.has(prop.name)) {
+					result[prop.name] = token;
+				}
+			}
+			// Also update any token-shaped property already populated on the decrypted object
+			// (for credential types that extend parent credentials not listed directly).
+			for (const key of Object.keys(result)) {
+				if (TOKEN_FIELD_NAMES.has(key) && typeof result[key] === 'string') {
+					result[key] = token;
+				}
+			}
+		}
+
+		// OAuth2 credentials store their bearer/refresh tokens under `oauthTokenData`.
+		const isOAuth2 =
+			(result.oauthTokenData && typeof result.oauthTokenData === 'object') ||
+			properties.some((p) => p.name === 'oauthTokenData' || p.name === 'accessTokenUrl');
+
+		if (isOAuth2 && (token || refreshToken)) {
+			const existingOAuth =
+				result.oauthTokenData && typeof result.oauthTokenData === 'object'
+					? (result.oauthTokenData as Record<string, unknown>)
+					: {};
 			result.oauthTokenData = {
-				...(existingOAuth as Record<string, unknown>),
-				access_token: token,
-				token_type: 'Bearer',
-			};
-		} else if (properties.some((p) => p.name === 'oauthTokenData' || p.name === 'accessTokenUrl')) {
-			result.oauthTokenData = {
-				access_token: token,
-				token_type: 'Bearer',
+				...existingOAuth,
+				...(token ? { access_token: token, token_type: 'Bearer' } : {}),
+				...(refreshToken ? { refresh_token: refreshToken } : {}),
 			};
 		}
 
+		return result;
+	}
+
+	private buildFallbackSyntheticCredential(
+		properties: INodeProperties[],
+	): ICredentialDataDecryptedObject {
+		const result: ICredentialDataDecryptedObject = {
+			[SIMULATED_MARKER]: true,
+		};
+		for (const prop of properties) {
+			if (TOKEN_FIELD_NAMES.has(prop.name)) {
+				result[prop.name] = 'sim-token';
+			} else if (
+				typeof prop.default === 'string' ||
+				typeof prop.default === 'number' ||
+				typeof prop.default === 'boolean'
+			) {
+				result[prop.name] = prop.default;
+			}
+		}
+		if (properties.some((p) => p.name === 'oauthTokenData' || p.name === 'accessTokenUrl')) {
+			result.oauthTokenData = {
+				access_token: 'sim-token',
+				token_type: 'Bearer',
+			};
+		}
 		return result;
 	}
 }

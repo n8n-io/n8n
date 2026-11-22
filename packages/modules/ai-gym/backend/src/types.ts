@@ -7,11 +7,68 @@ export interface UnsupportedNodeInfo {
 	reason: string;
 }
 
+export interface MissingCredentialIssue {
+	nodeName: string;
+	nodeType: string;
+	credentialType: string;
+	credentialDisplayName: string;
+	reason: 'missing' | 'not-configured';
+}
+
 export interface WorkflowSupportCheckResult {
 	supported: boolean;
 	unsupportedNodes: UnsupportedNodeInfo[];
+	/** Enabled nodes missing a required credential (or referencing an unconfigured one). */
+	missingCredentials: MissingCredentialIssue[];
 	/** Distinct ai-gym vendor slugs needed by nodes in this workflow. */
 	requiredVendors: string[];
+}
+
+export interface AiGymSeedPayload {
+	[key: string]: unknown;
+}
+
+export type SeedFieldType = 'string' | 'text' | 'boolean' | 'number' | 'select';
+
+export interface SeedFieldOption {
+	value: string;
+	label: string;
+}
+
+export interface SimulationSeedField {
+	key: string;
+	label: string;
+	type: SeedFieldType;
+	required?: boolean;
+	defaultValue?: string | number | boolean;
+	placeholder?: string;
+	options?: SeedFieldOption[];
+}
+
+export interface SimulationSeedCollection {
+	key: string;
+	label: string;
+	singularLabel: string;
+	description?: string;
+	applyMode: 'seed-array' | 'seed-each' | 'seed-nested-array' | 'api-action';
+	seedArrayKey?: string;
+	seedWrapKey?: string;
+	seedNestedPath?: string[];
+	actionId?: string;
+	fields: SimulationSeedField[];
+}
+
+export interface SimulationSeedSchema {
+	description: string;
+	settings: SimulationSeedField[];
+	collections: SimulationSeedCollection[];
+}
+
+export interface SimulationVendorCapabilities {
+	slug: string;
+	hosts: string[];
+	faultFlags: string[];
+	seedSchema: SimulationSeedSchema;
 }
 
 export interface SimulateWorkflowOptions {
@@ -22,8 +79,11 @@ export interface SimulateWorkflowOptions {
 	destinationNode?: string;
 	/** Optional pinData overrides (e.g. trigger payloads). */
 	pinData?: IWorkflowBase['pinData'];
-	/** Optional vendor state seeds keyed by ai-gym vendor slug. */
-	seeds?: Record<string, Record<string, unknown>>;
+	/**
+	 * Optional vendor state seeds keyed by ai-gym vendor slug.
+	 * Accepts either a single seed object or an array of seed payloads applied in order.
+	 */
+	seeds?: Record<string, AiGymSeedPayload | AiGymSeedPayload[]>;
 	/** Optional fault flags keyed by fault name (e.g. `slack.rate_limit`) -> count (`-1` = always). */
 	faults?: Record<string, number>;
 	/** Optional LLM backend override for this simulation tenant. */

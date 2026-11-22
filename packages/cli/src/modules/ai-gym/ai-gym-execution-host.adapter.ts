@@ -1,6 +1,6 @@
 import { AiGymExecutionHostPort } from '@n8n/backend-module-ai-gym';
 import { WorkflowRepository } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import { ExecutionLifecycleHooks } from 'n8n-core';
 import type { INodeTypes, IWorkflowBase, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 
@@ -11,19 +11,15 @@ import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-da
 /**
  * CLI-side adapter supplying n8n runtime dependencies (node types, additionalData,
  * workflow lookup, optional ephemeral push streaming) to `@n8n/backend-module-ai-gym`.
+ *
+ * Dependencies are resolved lazily via `Container.get` because `modules.manifest.ts`
+ * registers this adapter during module loading, before the TypeORM `DataSource` is
+ * initialized.
  */
 @Service()
 export class AiGymExecutionHostAdapter extends AiGymExecutionHostPort {
-	constructor(
-		private readonly nodeTypes: NodeTypes,
-		private readonly workflowRepository: WorkflowRepository,
-		private readonly push: Push,
-	) {
-		super();
-	}
-
 	getNodeTypes(): INodeTypes {
-		return this.nodeTypes;
+		return Container.get(NodeTypes);
 	}
 
 	async getBaseAdditionalData(params: {
@@ -37,15 +33,17 @@ export class AiGymExecutionHostAdapter extends AiGymExecutionHostPort {
 			workflowSettings: params.workflowData.settings,
 		});
 
+		const executionId = `sim-${Date.now()}`;
+		const hooks = new ExecutionLifecycleHooks('manual', executionId, params.workflowData);
+
 		if (params.pushRef) {
-			const executionId = `sim-${Date.now()}`;
-			const hooks = new ExecutionLifecycleHooks('manual', executionId, params.workflowData);
+			const push = Container.get(Push);
 			const pushRef = params.pushRef;
 			const userId = params.userId;
 			let sequenceNumber = 0;
 
 			hooks.addHandler('nodeExecuteBefore', (nodeName, data) => {
-				this.push.send(
+				push.send(
 					{
 						type: 'nodeExecuteBefore',
 						data: { executionId, nodeName, sequenceNumber: sequenceNumber++, data },
@@ -57,7 +55,7 @@ export class AiGymExecutionHostAdapter extends AiGymExecutionHostPort {
 
 			hooks.addHandler('nodeExecuteAfter', (nodeName, data) => {
 				const { data: _nodeData, ...taskData } = data;
-				this.push.send(
+				push.send(
 					{
 						type: 'nodeExecuteAfter',
 						data: {
@@ -72,9 +70,10 @@ export class AiGymExecutionHostAdapter extends AiGymExecutionHostPort {
 					userId,
 				);
 			});
-
-			additionalData.hooks = hooks;
 		}
+
+		additionalData.hooks = hooks;
+		additionalData.executionId = executionId;
 
 		return additionalData;
 	}
@@ -83,7 +82,7 @@ export class AiGymExecutionHostAdapter extends AiGymExecutionHostPort {
 		workflowId: string;
 		userId: string;
 	}): Promise<IWorkflowBase | undefined> {
-		const workflow = await this.workflowRepository.get({ id: params.workflowId });
+		const workflow = await Container.get(WorkflowRepository).get({ id: params.workflowId });
 		return workflow ?? undefined;
 	}
 }
