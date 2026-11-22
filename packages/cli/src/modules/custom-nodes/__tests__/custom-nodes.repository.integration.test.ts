@@ -1,10 +1,11 @@
 import { testDb, testModules } from '@n8n/backend-test-utils';
 import { TransactionRunner } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { DataSource } from '@n8n/typeorm';
+import { DataSource, EntityManager } from '@n8n/typeorm';
 
 import { createOwner } from '@test-integration/db/users';
 
+import { CustomNodeConflictError } from '../custom-nodes.errors';
 import { CustomActionRevisionEntity } from '../database/entities/custom-action-revision.entity';
 import { CustomActionVersionEntity } from '../database/entities/custom-action-version.entity';
 import { CustomActionEntity } from '../database/entities/custom-action.entity';
@@ -141,6 +142,40 @@ describe('CustomActionRepository', () => {
 		expect(second).toMatchObject({ version: 2, currentRevision: 1, revisionCount: 1 });
 		expect(await actions.countRevisions(v1, {})).toBe(3);
 		expect(await actions.countRevisions(second.id, {})).toBe(1);
+	});
+
+	it('throws CustomNodeConflictError when the next version number is taken', async () => {
+		const id = await actions.insertAction(parentAction(), { inputs }, revision(), {});
+		// A stale maximum makes the append reuse version 1, as a concurrent append would.
+		const maximum = vi.spyOn(EntityManager.prototype, 'maximum').mockResolvedValueOnce(0);
+
+		await expect(actions.appendVersion(id, { inputs }, revision('/v2'), {})).rejects.toThrow(
+			CustomNodeConflictError,
+		);
+		maximum.mockRestore();
+		expect(await countRows()).toMatchObject({ versions: 1, revisions: 1 });
+	});
+
+	it('throws CustomNodeConflictError when the next revision number is taken', async () => {
+		const id = await actions.insertAction(parentAction(), { inputs }, revision(), {});
+		const versionId = (await actions.findAction(id, {}))!.versions[0].id;
+		const maximum = vi.spyOn(EntityManager.prototype, 'maximum').mockResolvedValueOnce(0);
+
+		await expect(actions.appendRevision(versionId, revision('/r2'), {})).rejects.toThrow(
+			CustomNodeConflictError,
+		);
+		maximum.mockRestore();
+		expect(await countRows()).toMatchObject({ versions: 1, revisions: 1 });
+	});
+
+	it('counts the actions of a custom node', async () => {
+		const node = await nodes.insertNode(newNode(), {});
+		const own = { ...parentAction(), parentNodeType: null, customNodeId: node.id };
+		await actions.insertAction(own, { inputs }, revision(), {});
+		await actions.insertAction(own, { inputs }, revision(), {});
+		await actions.insertAction(parentAction(), { inputs }, revision(), {});
+
+		expect(await actions.countActionsOfNode(node.id, {})).toBe(2);
 	});
 
 	it('rejects an action with both parentNodeType and customNodeId', async () => {

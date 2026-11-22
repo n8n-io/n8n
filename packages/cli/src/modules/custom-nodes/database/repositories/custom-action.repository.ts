@@ -1,8 +1,15 @@
-import { BaseRepository, generateNanoId, type OperationContext, TransactionRunner } from '@n8n/db';
+import {
+	BaseRepository,
+	generateNanoId,
+	isUniqueConstraintError,
+	type OperationContext,
+	TransactionRunner,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import { UnexpectedError } from '@n8n/errors';
 import { DataSource, type EntityManager } from '@n8n/typeorm';
 
+import { CustomNodeConflictError } from '../../custom-nodes.errors';
 import type { StoredInput, StoredRequest } from '../../edit-classifier';
 import { CustomActionRevisionEntity } from '../entities/custom-action-revision.entity';
 import { CustomActionVersionEntity } from '../entities/custom-action-version.entity';
@@ -46,6 +53,16 @@ export interface ActionAggregate {
 	action: CustomActionEntity;
 	/** Sorted ascending by `version`. */
 	versions: ActionVersionAggregate[];
+}
+
+/** Turns a unique-constraint violation into a conflict error, so callers never inspect driver errors. */
+async function withConflictCheck<T>(fn: () => Promise<T>): Promise<T> {
+	try {
+		return await fn();
+	} catch (error) {
+		if (isUniqueConstraintError(error)) throw new CustomNodeConflictError();
+		throw error;
+	}
 }
 
 @Service()
@@ -119,14 +136,23 @@ export class CustomActionRepository {
 		revision: NewRevision,
 		ctx: OperationContext,
 	): Promise<number> {
-		return await this.table.runInTransaction(ctx, async (manager) => {
-			const latest = await manager.maximum(CustomActionRevisionEntity, 'revision', { versionId });
-			const next = (latest ?? 0) + 1;
-			// The unique index on (versionId, revision) rejects a concurrent append with the same number.
-			await this.insertRevision(manager, versionId, next, revision);
-			await manager.update(CustomActionVersionEntity, { id: versionId }, { currentRevision: next });
-			return next;
-		});
+		return await withConflictCheck(
+			async () =>
+				await this.table.runInTransaction(ctx, async (manager) => {
+					const latest = await manager.maximum(CustomActionRevisionEntity, 'revision', {
+						versionId,
+					});
+					const next = (latest ?? 0) + 1;
+					// The unique index on (versionId, revision) rejects a concurrent append with the same number.
+					await this.insertRevision(manager, versionId, next, revision);
+					await manager.update(
+						CustomActionVersionEntity,
+						{ id: versionId },
+						{ currentRevision: next },
+					);
+					return next;
+				}),
+		);
 	}
 
 	/** Appends the next version with revision 1. Returns the version number. */
@@ -136,13 +162,16 @@ export class CustomActionRepository {
 		revision: NewRevision,
 		ctx: OperationContext,
 	): Promise<number> {
-		return await this.table.runInTransaction(ctx, async (manager) => {
-			const latest = await manager.maximum(CustomActionVersionEntity, 'version', { actionId });
-			const next = (latest ?? 0) + 1;
-			// The unique index on (actionId, version) rejects a concurrent append with the same number.
-			await this.insertVersion(manager, actionId, next, version, revision);
-			return next;
-		});
+		return await withConflictCheck(
+			async () =>
+				await this.table.runInTransaction(ctx, async (manager) => {
+					const latest = await manager.maximum(CustomActionVersionEntity, 'version', { actionId });
+					const next = (latest ?? 0) + 1;
+					// The unique index on (actionId, version) rejects a concurrent append with the same number.
+					await this.insertVersion(manager, actionId, next, version, revision);
+					return next;
+				}),
+		);
 	}
 
 	/** The caller checks that the revision exists. */
@@ -154,6 +183,10 @@ export class CustomActionRepository {
 		await this.table
 			.managerFor(ctx)
 			.update(CustomActionVersionEntity, { id: versionId }, { currentRevision: revision });
+	}
+
+	async countActionsOfNode(customNodeId: string, ctx: OperationContext): Promise<number> {
+		return await this.table.managerFor(ctx).countBy(CustomActionEntity, { customNodeId });
 	}
 
 	async countRevisions(versionId: number, ctx: OperationContext): Promise<number> {

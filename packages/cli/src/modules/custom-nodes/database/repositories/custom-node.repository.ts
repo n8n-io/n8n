@@ -1,7 +1,8 @@
-import { BaseRepository, generateNanoId, type OperationContext, TransactionRunner } from '@n8n/db';
+import { BaseRepository, type OperationContext, TransactionRunner } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 
+import { generateCustomNodeId } from '../../custom-node-id';
 import { CustomNodeEntity, type CustomNodeIconMimeType } from '../entities/custom-node.entity';
 
 class CustomNodeTable extends BaseRepository<CustomNodeEntity> {
@@ -36,7 +37,7 @@ export class CustomNodeRepository {
 
 	async insertNode(node: NewCustomNode, ctx: OperationContext): Promise<CustomNodeEntity> {
 		const manager = this.table.managerFor(ctx);
-		const id = generateNanoId();
+		const id = generateCustomNodeId();
 		await manager.insert(CustomNodeEntity, {
 			id,
 			displayName: node.displayName,
