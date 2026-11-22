@@ -3,7 +3,8 @@
 Status: draft for approval. Author: Jason Schell. Date: 2026-11-22.
 
 Reference implementation: branch `feat/custom-nodes-mockup` (a demo, not a base
-to merge). Its docs are in `docs/custom-nodes-mockup/` on that branch.
+to merge; removed from GitHub on 2026-11-23, kept locally). Its docs are in
+`docs/custom-nodes-mockup/` on that branch.
 
 ## 1. Intent
 
@@ -449,7 +450,7 @@ Do not build the tool in project 1.
   that use custom actions or custom nodes then fail, as they do after the
   removal of a community package. Document this.
 - **One feature branch, on by default (decided 2026-11-23).** The branch
-  `custom-nodes-and-actions` has one commit that adds `custom-nodes` to
+  `feat/custom-nodes-and-actions` has one commit that adds `custom-nodes` to
   `defaultModules`. A colleague checks out the branch, builds, and starts n8n
   with no environment variable. `N8N_DISABLED_MODULES=custom-nodes` turns it
   off. Remove that commit before a pull request to `master`, where the
@@ -507,7 +508,7 @@ The order and size are the builder's call. Use the `n8n:gh-stack` skill.
 ## 15. Open items for Jason
 
 - Linear ticket and branch name. `AGENTS.md` asks for the branch name from
-  Linear. The working branch is `custom-nodes-and-actions` until a ticket
+  Linear. The working branch is `feat/custom-nodes-and-actions` until a ticket
   exists.
 - A sponsor in `@n8n-io/core-application` for the changes in `node-types.ts`
   (three lookup paths) and `load-nodes-and-credentials.ts` (post-processor
@@ -544,7 +545,7 @@ and are open to correction:
 ## 18. Plan 1 record
 
 Plan 1 (backend foundation and custom nodes) ended on 2026-11-22. The work is
-on the local branch `custom-nodes-and-actions`. The module is off unless
+on the local branch `feat/custom-nodes-and-actions`. The module is off unless
 `N8N_ENABLED_MODULES` contains `custom-nodes`.
 
 ### What exists
@@ -669,7 +670,7 @@ on the local branch `custom-nodes-and-actions`. The module is off unless
 ## 19. Plan 2 record
 
 Plan 2 (custom actions in parent nodes) ended on 2026-11-22. The work is on
-the local branch `custom-nodes-and-actions`. The module is off unless
+the local branch `feat/custom-nodes-and-actions`. The module is off unless
 `N8N_ENABLED_MODULES` contains `custom-nodes`.
 
 ### What exists
@@ -761,7 +762,7 @@ the local branch `custom-nodes-and-actions`. The module is off unless
 ## 20. Plan 3 record
 
 Plan 3 (frontend) ended on 2026-11-23 on the local branch
-`custom-nodes-and-actions`. It also fixed the AWS limit of section 19: the
+`feat/custom-nodes-and-actions`. It also fixed the AWS limit of section 19: the
 run-time request of a parent custom action sends the origin of its URL as
 `baseURL`, so credentials that build the endpoint themselves (AWS signing)
 work. An AWS SNS custom action ran and was signed on a real instance.
