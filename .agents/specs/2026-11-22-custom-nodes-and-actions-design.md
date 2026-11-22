@@ -304,13 +304,17 @@ definition like the right to install a community package.
 - Every route has a `@GlobalScope`. Use the `n8n:protect-endpoints` skill.
 - The service enforces the same permission, so that a later Assistant tool
   cannot bypass the controller.
-- Templates accept only the documented placeholders for inputs. The service
-  rejects any other expression at save time. A definition cannot read
+- Templates accept only placeholders of the form `{inputName}` in the URL
+  path. The service rejects any value that contains `{{` or starts with `=`
+  at save time. The generator percent-encodes URL input values. A definition cannot read
   `$credentials`, `$env`, `$vars`, or other workflow data.
 - For a custom action on a parent node, the request host is fixed in the
   definition and shown to the administrator at save time. A user of the action
   cannot change the host through an input.
-- Icons: accept PNG and SVG up to a size limit. Sanitize SVG on upload. Serve
+- Icons: accept PNG and SVG up to a size limit. Reject an SVG that contains
+  script elements, event handler attributes, `javascript:` URLs, or
+  `foreignObject`. `packages/cli` has no sanitizer dependency, and a new
+  dependency is not justified for this. Serve
   with a restrictive `Content-Security-Policy`, `X-Content-Type-Options:
   nosniff`, and no script execution. Apply the same validation on every route
   that accepts an icon.
@@ -387,28 +391,26 @@ Do not build the tool in project 1.
 
 ## 12. Rollout
 
-- An opt-in PostHog flag gates backend and frontend, as described in
-  `.github/DEVELOPING_V3.md`: flag key in `@n8n/api-types`, an env toggle in a
-  config class, and the override in `PostHogClient.applyEnvOverrides()`.
-- **One switch for an instance.** The env toggle of the module turns the
-  feature on. It decides if routes, node loaders, and the `NodeTypes` provider
-  exist. It is per process and needs no user. It also force-enables the
-  PostHog flag for the UI, through `PostHogClient.applyEnvOverrides()`. Set it
-  to the same value on main, worker, and webhook instances.
+- **One switch for an instance.** The module `custom-nodes` is not a default
+  module. `N8N_ENABLED_MODULES=custom-nodes` turns it on. This is the standard
+  switch for a backend module. It decides if routes, node loaders, and the
+  `NodeTypes` provider exist. It is per process and needs no user. Set it to
+  the same value on main, worker, and webhook instances.
+- The editor shows the feature when the module is active
+  (`settingsStore.isModuleActive('custom-nodes')`).
 - Do not use a remote PostHog evaluation to gate the registry or execution. It
   is cached, it can differ between instances, and it is off when diagnostics
   are disabled.
-- The PostHog flag without the env toggle is only for a gradual rollout by
-  the n8n team after the merge. It controls which users see the UI on an
-  instance where the feature is on.
+- A PostHog flag for a gradual rollout of the UI is a later step for the n8n
+  team. It is not part of the first version.
 - Switch off: no routes, no node types, no extended parents, no UI. Workflows
   that use custom actions or custom nodes then fail, as they do after the
   removal of a community package. Document this.
 - **Preview branch (decided).** A colleague who wants to test the feature
   checks out one branch, builds, and starts n8n. No environment variable and
   no flag.
-  - The preview branch holds the complete stack plus one commit that sets the
-    default of the env toggle to on. That commit never merges to `master`.
+  - The preview branch holds the complete stack plus one commit that adds
+    `custom-nodes` to `defaultModules`. That commit never merges to `master`.
   - Pull requests to `master` are cut without that commit. Their default is
     off.
   - The same commit seeds the demo definitions on first start, so that a
@@ -453,10 +455,11 @@ The order and size are the builder's call. Use the `n8n:gh-stack` skill.
 ## 14. Left to the builder
 
 - Exact column types and names.
-- Whether the backend module can live in `packages/modules/custom-nodes/backend`
-  or must stay in `packages/cli/src/modules/` because it needs
-  `LoadNodesAndCredentials` and `NodeTypes`. `mcp-registry` still lives in
-  `packages/cli`. Record the choice in this spec.
+- ~~Whether the backend module can live in `packages/modules/`~~ Decided
+  2026-11-22: the backend module lives in `packages/cli/src/modules/custom-nodes/`.
+  It needs `LoadNodesAndCredentials`, `NodeTypes`, and `Push`. The module guide
+  allows this location for a module that depends on code in `packages/cli`.
+  `mcp-registry` is the precedent. Confirm in `#team-backend`.
 - The version pin mechanism, after the spike in section 6.
 - The shape of the shell extension surface for the nodes panel.
 - Names of scopes, routes, and i18n keys.
@@ -474,7 +477,14 @@ The order and size are the builder's call. Use the `n8n:gh-stack` skill.
   order), and in `@n8n-io/core-execution` if `RoutingNode` needs the signal
   from section 5.1. Get agreement before pull request 5.
 
-## 16. Review record
+## 16. Plans
+
+- Plan 1, backend foundation and custom nodes:
+  `.agents/specs/2026-11-22-custom-nodes-and-actions-plan-1-backend-foundation.md`
+- Plans 2 to 4 are listed at the end of plan 1. Each is written when the plan
+  before it is done.
+
+## 17. Review record
 
 A builder check on 2026-11-22 found one factual error and six open points.
 Jason's decisions are marked "decided". These points are the author's calls
@@ -486,6 +496,6 @@ and are open to correction:
 - Parent eligibility follows `supportsProxyAuth` (5.3).
 - Authentication of a custom node is fixed after creation; base URL edits
   apply in place with history (5.5).
-- One env toggle turns the feature on; PostHog is only for gradual rollout after the merge (12).
+- `N8N_ENABLED_MODULES` turns the feature on; a PostHog flag is a later step (12).
 - The missing-definition error comes from the run-time copy, and the node
   stores the action name (5.3, 6, 9).
