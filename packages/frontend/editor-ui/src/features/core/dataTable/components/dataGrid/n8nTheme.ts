@@ -1,6 +1,10 @@
 import { iconSetAlpine, themeQuartz } from 'ag-grid-community';
 
 export const n8nTheme = themeQuartz.withPart(iconSetAlpine).withParams({
+	// AG Grid defaults this to "light", which sets `color-scheme: light` on `.ag-root-wrapper`
+	// and overrides the app theme, breaking `light-dark()` consumers inside the grid.
+	// "inherit" keeps the grid on the app's resolved color-scheme.
+	browserColorScheme: 'inherit',
 	columnBorder: true,
 	rowBorder: true,
 	rowVerticalPaddingScale: 0.8,
