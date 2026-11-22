@@ -1,5 +1,6 @@
 import {
 	CreateCustomNodeDto,
+	CreateParentCustomActionDto,
 	SetCustomNodeIconDto,
 	UpdateCustomNodeDto,
 } from '../../dto/custom-nodes/custom-nodes.dto';
@@ -154,5 +155,27 @@ describe('custom-nodes.schema', () => {
 			expect(node({ actions: Array.from({ length: 100 }, () => minimalDraft) })).toBe(true);
 			expect(node({ actions: Array.from({ length: 101 }, () => minimalDraft) })).toBe(false);
 		});
+	});
+});
+
+describe('CreateParentCustomActionDto', () => {
+	const dto = (value: object) => CreateParentCustomActionDto.safeParse(value).success;
+
+	it('accepts a parent node type with a draft and an optional change note', () => {
+		expect(dto({ parentNodeType: 'n8n-nodes-base.stripe', draft: minimalDraft })).toBe(true);
+		expect(
+			dto({ parentNodeType: 'n8n-nodes-base.stripe', draft: minimalDraft, changeNote: 'x' }),
+		).toBe(true);
+	});
+
+	it('limits the parent node type to 1 to 256 characters', () => {
+		expect(dto({ parentNodeType: '', draft: minimalDraft })).toBe(false);
+		expect(dto({ parentNodeType: 'a'.repeat(256), draft: minimalDraft })).toBe(true);
+		expect(dto({ parentNodeType: 'a'.repeat(257), draft: minimalDraft })).toBe(false);
+	});
+
+	it('limits the change note to 500 characters', () => {
+		const parentNodeType = 'n8n-nodes-base.stripe';
+		expect(dto({ parentNodeType, draft: minimalDraft, changeNote: 'n'.repeat(501) })).toBe(false);
 	});
 });

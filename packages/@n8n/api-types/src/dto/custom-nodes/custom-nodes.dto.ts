@@ -22,6 +22,12 @@ export class SaveCustomActionDto extends Z.class({
 	changeNote: z.string().max(500).optional(),
 }) {}
 
+export class CreateParentCustomActionDto extends Z.class({
+	parentNodeType: z.string().min(1).max(256),
+	draft: customActionDraftSchema,
+	changeNote: z.string().max(500).optional(),
+}) {}
+
 export class RollbackCustomActionRevisionDto extends Z.class({
 	revision: z.number().int().min(1),
 }) {}

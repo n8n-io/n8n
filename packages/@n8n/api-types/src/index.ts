@@ -1138,5 +1138,7 @@ export {
 	type CustomActionDraftIssue,
 	type CustomActionVersionSummary,
 	type CustomActionResponse,
+	type ParentCustomActionResponse,
+	type CustomActionParent,
 	type CustomNodeResponse,
 } from './schemas/custom-nodes.schema';

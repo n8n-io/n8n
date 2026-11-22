@@ -85,6 +85,17 @@ export interface CustomActionResponse {
 	draft: CustomActionDraft;
 }
 
+/** A custom action of a parent node. `parentAvailable` is false when the parent is not eligible on this instance. */
+export interface ParentCustomActionResponse extends CustomActionResponse {
+	parentAvailable: boolean;
+}
+
+/** A node type that can have custom actions. `shape` tells how the node selects an action. */
+export interface CustomActionParent {
+	nodeType: string;
+	shape: 'resource' | 'operation';
+}
+
 export interface CustomNodeResponse {
 	id: string;
 	nodeType: string;

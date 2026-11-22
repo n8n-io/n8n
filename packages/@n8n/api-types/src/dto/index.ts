@@ -918,6 +918,7 @@ export {
 	CreateCustomNodeDto,
 	UpdateCustomNodeDto,
 	SaveCustomActionDto,
+	CreateParentCustomActionDto,
 	RollbackCustomActionRevisionDto,
 	SetCustomNodeIconDto,
 	PreviewCustomActionDto,

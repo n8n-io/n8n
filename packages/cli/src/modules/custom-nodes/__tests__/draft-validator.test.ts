@@ -463,3 +463,25 @@ describe('InvalidCustomActionError', () => {
 		expect(error.issues).toEqual(issues);
 	});
 });
+
+describe('validateDraft with the absoluteUrl option', () => {
+	const relative = withUrl('/invoices/{invoiceId}', [urlInput('invoiceId')]);
+
+	it('accepts a path that starts with / without the absoluteUrl option', () => {
+		expect(validateDraft(relative)).toEqual([]);
+	});
+
+	it('rejects a path that starts with / with the absoluteUrl option', () => {
+		expect(validateDraft(relative, { absoluteUrl: true })).toEqual([
+			{
+				path: 'request.url',
+				code: 'absolute_url_required',
+				message: 'The URL of a custom action in a node must be an absolute http or https URL.',
+			},
+		]);
+	});
+
+	it('accepts an absolute https URL with the absoluteUrl option', () => {
+		expect(validateDraft(valid, { absoluteUrl: true })).toEqual([]);
+	});
+});

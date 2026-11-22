@@ -1,5 +1,6 @@
 import {
 	CreateCustomNodeDto,
+	CreateParentCustomActionDto,
 	PreviewCustomActionDto,
 	RollbackCustomActionRevisionDto,
 	SaveCustomActionDto,
@@ -143,6 +144,31 @@ export class CustomNodesController {
 		@Body dto: SaveCustomActionDto,
 	) {
 		return await withErrorMapping(res, async () => await this.service.addAction(req.user, id, dto));
+	}
+
+	@Post('/actions')
+	@GlobalScope('customNode:create')
+	async addParentAction(
+		req: AuthenticatedRequest,
+		res: Response,
+		@Body dto: CreateParentCustomActionDto,
+	) {
+		return await withErrorMapping(
+			res,
+			async () => await this.service.addParentAction(req.user, dto),
+		);
+	}
+
+	@Get('/actions')
+	@GlobalScope('customNode:list')
+	async listParentActions(req: AuthenticatedRequest) {
+		return await this.service.listParentActions(req.user);
+	}
+
+	@Get('/parents')
+	@GlobalScope('customNode:list')
+	listParents(req: AuthenticatedRequest) {
+		return this.service.listParents(req.user);
 	}
 
 	@Patch('/actions/:id')

@@ -84,7 +84,15 @@ function placeholderNames(text: string): string[] {
 	return [...text.matchAll(PLACEHOLDER_PATTERN)].map((match) => match[1]);
 }
 
-export function validateDraft(draft: CustomActionDraft): CustomActionDraftIssue[] {
+export interface ValidateDraftOptions {
+	/** A custom action in a parent node has no base URL, so its URL must be absolute. */
+	absoluteUrl?: boolean;
+}
+
+export function validateDraft(
+	draft: CustomActionDraft,
+	options: ValidateDraftOptions = {},
+): CustomActionDraftIssue[] {
 	const issues: CustomActionDraftIssue[] = [];
 	const add = (path: string, code: string, message: string) => issues.push({ path, code, message });
 
@@ -160,7 +168,15 @@ export function validateDraft(draft: CustomActionDraft): CustomActionDraftIssue[
 				rest = remainder;
 			}
 		} else if (request.url.startsWith('/') && !request.url.startsWith('//')) {
-			rest = request.url;
+			if (options.absoluteUrl) {
+				add(
+					'request.url',
+					'absolute_url_required',
+					'The URL of a custom action in a node must be an absolute http or https URL.',
+				);
+			} else {
+				rest = request.url;
+			}
 		} else {
 			add(
 				'request.url',

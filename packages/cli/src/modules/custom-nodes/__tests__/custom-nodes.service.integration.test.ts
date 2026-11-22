@@ -5,6 +5,7 @@ import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { ForbiddenError, NotFoundError, UserError } from '@n8n/errors';
 import { DataSource, In } from '@n8n/typeorm';
+import type { MockInstance } from 'vitest';
 
 import { CredentialTypes } from '@/credential-types';
 import { createMember, createOwner } from '@test-integration/db/users';
@@ -12,6 +13,8 @@ import { createMember, createOwner } from '@test-integration/db/users';
 import { CustomNodeConflictError } from '../custom-nodes.errors';
 import { CustomNodesRegistry } from '../custom-nodes.registry';
 import { CustomNodesService } from '../custom-nodes.service';
+import { ParentActionsProvider } from '../parent-actions.provider';
+import { parentPinValues } from '../parent-action.generator';
 import { CustomActionRevisionEntity } from '../database/entities/custom-action-revision.entity';
 import { CustomActionVersionEntity } from '../database/entities/custom-action-version.entity';
 import { CustomActionEntity } from '../database/entities/custom-action.entity';
@@ -700,5 +703,226 @@ describe('CustomNodesService', () => {
 		expect(rejected[0]).toBeInstanceOf(UserError);
 		expect(rejected[0]).not.toBeInstanceOf(NotFoundError);
 		expect(await countRows()).toMatchObject({ nodes: 1, actions: 1 });
+	});
+});
+
+describe('parent actions', () => {
+	const RESOURCE_PARENT = 'n8n-nodes-base.stripe';
+	const OPERATION_PARENT = 'n8n-nodes-base.acmeParent';
+	const UNKNOWN_PARENT = 'n8n-nodes-base.notEligible';
+
+	const parentInvoice = (): CustomActionDraft => {
+		const draft = getInvoice();
+		return {
+			...draft,
+			request: { ...draft.request, url: 'https://billing.acme.test/api/invoices/{invoiceId}' },
+		};
+	};
+
+	let provider: ParentActionsProvider;
+	let shapeOf: MockInstance<ParentActionsProvider['shapeOf']>;
+	let eligibleParents: MockInstance<ParentActionsProvider['eligibleParents']>;
+	let available: Set<string>;
+
+	beforeEach(() => {
+		provider = Container.get(ParentActionsProvider);
+		available = new Set([RESOURCE_PARENT, OPERATION_PARENT]);
+		shapeOf = vi.spyOn(provider, 'shapeOf').mockImplementation((name) => {
+			if (!available.has(name)) return undefined;
+			return name === RESOURCE_PARENT ? 'resource' : 'operation';
+		});
+		eligibleParents = vi.spyOn(provider, 'eligibleParents').mockReturnValue([
+			{ nodeType: RESOURCE_PARENT, shape: 'resource' },
+			{ nodeType: OPERATION_PARENT, shape: 'operation' },
+		]);
+	});
+
+	afterEach(() => {
+		shapeOf.mockRestore();
+		eligibleParents.mockRestore();
+	});
+
+	const addParent = async (parentNodeType = RESOURCE_PARENT, draft = parentInvoice()) => {
+		const action = await service.addParentAction(owner, { parentNodeType, draft });
+		registry.refresh.mockClear();
+		return action;
+	};
+
+	it('creates an action for an eligible parent and returns pin values with the resource', async () => {
+		const action = await service.addParentAction(owner, {
+			parentNodeType: RESOURCE_PARENT,
+			draft: parentInvoice(),
+			changeNote: 'First version',
+		});
+
+		expect(action).toMatchObject({
+			name: 'Get Invoice',
+			parentNodeType: RESOURCE_PARENT,
+			customNodeId: null,
+			newestVersion: 1,
+			parentAvailable: true,
+		});
+		const ref = { actionId: action.id, actionName: 'Get Invoice', version: 1 };
+		expect(action.versions[0].pinValues).toEqual(parentPinValues('resource', ref));
+		expect(action.versions[0].pinValues).toHaveProperty('resource');
+	});
+
+	it('returns pin values without a resource for a parent without resource', async () => {
+		const action = await service.addParentAction(owner, {
+			parentNodeType: OPERATION_PARENT,
+			draft: parentInvoice(),
+		});
+
+		const ref = { actionId: action.id, actionName: 'Get Invoice', version: 1 };
+		expect(action.versions[0].pinValues).toEqual(parentPinValues('operation', ref));
+		expect(action.versions[0].pinValues).not.toHaveProperty('resource');
+	});
+
+	it('rejects a node type that is not eligible', async () => {
+		const error = await service
+			.addParentAction(owner, { parentNodeType: UNKNOWN_PARENT, draft: parentInvoice() })
+			.catch((e: unknown) => e);
+
+		expect(error).toBeInstanceOf(UserError);
+		expect((error as Error).message).toBe(
+			`Custom actions are not available for the node type "${UNKNOWN_PARENT}".`,
+		);
+		expect(await countRows()).toMatchObject({ actions: 0 });
+		expect(registry.refresh).not.toHaveBeenCalled();
+	});
+
+	it('rejects a draft with a relative URL', async () => {
+		const error = await service
+			.addParentAction(owner, { parentNodeType: RESOURCE_PARENT, draft: getInvoice() })
+			.catch((e: unknown) => e);
+
+		expect(error).toBeInstanceOf(InvalidCustomActionError);
+		expect((error as InvalidCustomActionError).issues).toEqual([
+			expect.objectContaining({ path: 'request.url', code: 'absolute_url_required' }),
+		]);
+		expect(await countRows()).toMatchObject({ actions: 0 });
+	});
+
+	it('rejects a draft with an expression', async () => {
+		const draft = parentInvoice();
+		const withExpression: CustomActionDraft = {
+			...draft,
+			request: { ...draft.request, query: { q: '{{ $json.x }}' } },
+		};
+
+		await expect(
+			service.addParentAction(owner, { parentNodeType: RESOURCE_PARENT, draft: withExpression }),
+		).rejects.toBeInstanceOf(InvalidCustomActionError);
+		expect(await countRows()).toMatchObject({ actions: 0 });
+	});
+
+	it('rejects a save that makes the URL of a parent action relative', async () => {
+		const action = await addParent();
+
+		const error = await service
+			.saveAction(owner, action.id, { draft: getInvoice() })
+			.catch((e: unknown) => e);
+
+		expect(error).toBeInstanceOf(InvalidCustomActionError);
+		expect((error as InvalidCustomActionError).issues).toEqual([
+			expect.objectContaining({ code: 'absolute_url_required' }),
+		]);
+		expect(registry.refresh).not.toHaveBeenCalled();
+	});
+
+	it('saves a change of the inputs as a new version', async () => {
+		const action = await addParent();
+
+		const { action: saved, kind } = await service.saveAction(owner, action.id, {
+			draft: withQueryInput(parentInvoice(), 'expand'),
+		});
+
+		expect(kind).toBe('version');
+		expect(saved.newestVersion).toBe(2);
+		expect(saved.versions).toHaveLength(2);
+		const ref = { actionId: action.id, actionName: 'Get Invoice', version: 2 };
+		expect(saved.versions[1].pinValues).toEqual(parentPinValues('resource', ref));
+		expect(registry.refresh).toHaveBeenCalledTimes(1);
+	});
+
+	it('uses the pin values of the parent in the result of a rollback', async () => {
+		const action = await addParent();
+
+		const rolled = await service.rollbackRevision(owner, action.id, 1, 1);
+
+		const ref = { actionId: action.id, actionName: 'Get Invoice', version: 1 };
+		expect(rolled.versions[0].pinValues).toEqual(parentPinValues('resource', ref));
+	});
+
+	it('deletes the only action of a parent', async () => {
+		const action = await addParent();
+
+		await service.deleteAction(owner, action.id);
+
+		expect(await countRows()).toMatchObject({ actions: 0 });
+		expect(registry.refresh).toHaveBeenCalledTimes(1);
+	});
+
+	it('lists parent actions and marks a parent that is not available', async () => {
+		const first = await addParent(RESOURCE_PARENT);
+		const second = await addParent(OPERATION_PARENT, { ...parentInvoice(), name: 'Other' });
+		available.delete(OPERATION_PARENT);
+
+		const list = await service.listParentActions(member);
+
+		expect(list.map((a) => [a.id, a.parentAvailable])).toEqual(
+			expect.arrayContaining([
+				[first.id, true],
+				[second.id, false],
+			]),
+		);
+		expect(list).toHaveLength(2);
+		const unavailable = list.find((a) => a.id === second.id);
+		const ref = { actionId: second.id, actionName: 'Other', version: 1 };
+		expect(unavailable?.versions[0].pinValues).toEqual(parentPinValues('operation', ref));
+	});
+
+	it('does not list a parent action in the response for custom nodes', async () => {
+		const { actionId } = await createNodeWithAction();
+		const parentAction = await addParent();
+
+		const nodes = await service.list(owner);
+		const parentActions = await service.listParentActions(owner);
+
+		expect(nodes).toHaveLength(1);
+		expect(nodes[0].actions.map((a) => a.id)).toEqual([actionId]);
+		expect(parentActions.map((a) => a.id)).toEqual([parentAction.id]);
+	});
+
+	it('lists the eligible parents', () => {
+		expect(service.listParents(member)).toEqual([
+			{ nodeType: RESOURCE_PARENT, shape: 'resource' },
+			{ nodeType: OPERATION_PARENT, shape: 'operation' },
+		]);
+	});
+
+	it('refreshes the registry one time for each write', async () => {
+		const action = await service.addParentAction(owner, {
+			parentNodeType: RESOURCE_PARENT,
+			draft: parentInvoice(),
+		});
+		expect(registry.refresh).toHaveBeenCalledTimes(1);
+
+		await service.saveAction(owner, action.id, { draft: withQueryInput(parentInvoice(), 'a') });
+		expect(registry.refresh).toHaveBeenCalledTimes(2);
+
+		await service.deleteAction(owner, action.id);
+		expect(registry.refresh).toHaveBeenCalledTimes(3);
+	});
+
+	it('needs the scope customNode:create to create and customNode:list to list', async () => {
+		await expect(
+			service.addParentAction(member, { parentNodeType: RESOURCE_PARENT, draft: parentInvoice() }),
+		).rejects.toBeInstanceOf(ForbiddenError);
+		const noScopes = { ...member, role: { ...member.role, scopes: [] } } as unknown as User;
+		await expect(service.listParentActions(noScopes)).rejects.toBeInstanceOf(ForbiddenError);
+		expect(() => service.listParents(noScopes)).toThrow(ForbiddenError);
+		await expect(service.listParentActions(member)).resolves.toEqual([]);
+		expect(await countRows()).toMatchObject({ actions: 0 });
 	});
 });

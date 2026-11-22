@@ -26,6 +26,9 @@ const routes: Array<['get' | 'post' | 'patch' | 'put' | 'delete', string]> = [
 	['patch', '/custom-nodes/actions/act_x'],
 	['post', '/custom-nodes/actions/act_x/versions/1/rollback'],
 	['delete', '/custom-nodes/actions/act_x'],
+	['post', '/custom-nodes/actions'],
+	['get', '/custom-nodes/actions'],
+	['get', '/custom-nodes/parents'],
 ];
 
 describe('CustomNodesController with the module not enabled', () => {

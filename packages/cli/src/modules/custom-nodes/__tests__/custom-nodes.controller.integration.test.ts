@@ -16,6 +16,7 @@ import { setupTestServer } from '@test-integration/utils';
 import { CustomNodeConflictError } from '../custom-nodes.errors';
 import { CustomNodesRegistry } from '../custom-nodes.registry';
 import { CustomNodesService } from '../custom-nodes.service';
+import { ParentActionsProvider } from '../parent-actions.provider';
 import { CustomActionEntity } from '../database/entities/custom-action.entity';
 import { CustomNodeEntity } from '../database/entities/custom-node.entity';
 import { listenOnLoopback } from './loopback-server';
@@ -141,6 +142,9 @@ describe('CustomNodesController', () => {
 			'PATCH /actions/:id': 'customNode:update',
 			'POST /actions/:id/versions/:version/rollback': 'customNode:update',
 			'DELETE /actions/:id': 'customNode:delete',
+			'POST /actions': 'customNode:create',
+			'GET /actions': 'customNode:list',
+			'GET /parents': 'customNode:list',
 		});
 	});
 
@@ -444,5 +448,91 @@ describe('CustomNodesController', () => {
 				.send({ iconDataUri: 'data:text/html;base64,PGgxPg==' })
 				.expect(400);
 		});
+	});
+});
+
+describe('parent action routes', () => {
+	const PARENT = 'n8n-nodes-base.stripe';
+
+	const parentDraft = (): CustomActionDraft => ({
+		...listInvoices(),
+		request: {
+			method: 'GET',
+			url: 'https://billing.acme.test/api/invoices',
+			headers: {},
+			query: {},
+			bodyType: 'none',
+			body: {},
+		},
+	});
+
+	beforeEach(() => {
+		const provider = Container.get(ParentActionsProvider);
+		vi.spyOn(provider, 'shapeOf').mockImplementation((name) =>
+			name === PARENT ? 'resource' : undefined,
+		);
+		vi.spyOn(provider, 'eligibleParents').mockReturnValue([
+			{ nodeType: PARENT, shape: 'resource' },
+		]);
+	});
+
+	it('POST /custom-nodes/actions returns 200 for an owner and 403 for a member', async () => {
+		const body = { parentNodeType: PARENT, draft: parentDraft() };
+
+		const res = await ownerAgent.post('/custom-nodes/actions').send(body).expect(200);
+		expect(res.body.data).toMatchObject({
+			name: 'List Invoices',
+			parentNodeType: PARENT,
+			customNodeId: null,
+			parentAvailable: true,
+		});
+		expect(res.body.data.versions[0].pinValues).toHaveProperty('resource');
+
+		await memberAgent.post('/custom-nodes/actions').send(body).expect(403);
+		expect(await Container.get(DataSource).getRepository(CustomActionEntity).count()).toBe(1);
+	});
+
+	it('POST /custom-nodes/actions returns 400 with the issues of an invalid draft', async () => {
+		const res = await ownerAgent
+			.post('/custom-nodes/actions')
+			.send({ parentNodeType: PARENT, draft: listInvoices() })
+			.expect(400);
+
+		expect(res.body.issues).toEqual([
+			expect.objectContaining({ path: 'request.url', code: 'absolute_url_required' }),
+		]);
+	});
+
+	it('POST /custom-nodes/actions returns 400 for a node type that is not eligible', async () => {
+		const res = await ownerAgent
+			.post('/custom-nodes/actions')
+			.send({ parentNodeType: 'n8n-nodes-base.notEligible', draft: parentDraft() })
+			.expect(400);
+
+		expect(res.body.message).toBe(
+			'Custom actions are not available for the node type "n8n-nodes-base.notEligible".',
+		);
+	});
+
+	it('GET /custom-nodes/actions and GET /custom-nodes/parents return 200 for a member', async () => {
+		await ownerAgent
+			.post('/custom-nodes/actions')
+			.send({ parentNodeType: PARENT, draft: parentDraft() })
+			.expect(200);
+
+		const actions = await memberAgent.get('/custom-nodes/actions').expect(200);
+		const parents = await memberAgent.get('/custom-nodes/parents').expect(200);
+
+		expect(actions.body.data).toHaveLength(1);
+		expect(actions.body.data[0]).toMatchObject({ parentNodeType: PARENT, parentAvailable: true });
+		expect(parents.body.data).toEqual([{ nodeType: PARENT, shape: 'resource' }]);
+	});
+
+	it('returns 401 without a session for each new route', async () => {
+		const agent = testServer.authlessAgent;
+
+		await agent.post('/custom-nodes/actions').send({}).expect(401);
+		await agent.get('/custom-nodes/actions').expect(401);
+		await agent.get('/custom-nodes/parents').expect(401);
 	});
 });

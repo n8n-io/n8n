@@ -3,11 +3,14 @@ import {
 	type CreateCustomNodeDto,
 	type CustomActionDraft,
 	type CustomActionDraftIssue,
+	type CustomActionParent,
 	type CustomActionEditKind,
 	type CustomActionResponse,
 	type CustomActionVersionSummary,
 	type CustomNodeAuth,
 	type CustomNodeResponse,
+	type ParentCustomActionResponse,
+	type CreateParentCustomActionDto,
 	type SaveCustomActionDto,
 	type UpdateCustomNodeDto,
 } from '@n8n/api-types';
@@ -33,10 +36,16 @@ import {
 	CustomNodeRepository,
 	type CustomNodePatch,
 } from './database/repositories/custom-node.repository';
-import { InvalidCustomActionError, validateDraft } from './draft-validator';
+import {
+	InvalidCustomActionError,
+	validateDraft,
+	type ValidateDraftOptions,
+} from './draft-validator';
 import { classifyEdit, joinDraft, splitDraft } from './edit-classifier';
 import { validateIcon } from './icon-validator';
 import { buildInputProperties } from './node-description.generator';
+import { parentPinValues, type ParentShape } from './parent-action.generator';
+import { ParentActionsProvider } from './parent-actions.provider';
 import { pinValues } from './version-pin';
 
 const REFRESH_AFTER_WRITE = { notifyEditors: true, notifyInstances: true };
@@ -55,7 +64,10 @@ const issuePath = (path: Array<string | number>) =>
  * Checks a draft against the draft schema and then against the save rules.
  * The service checks the schema again, so that a caller without the controller gets the same checks.
  */
-function checkDraft(input: CustomActionDraft): {
+function checkDraft(
+	input: CustomActionDraft,
+	options?: ValidateDraftOptions,
+): {
 	draft?: CustomActionDraft;
 	issues: CustomActionDraftIssue[];
 } {
@@ -69,12 +81,16 @@ function checkDraft(input: CustomActionDraft): {
 			})),
 		};
 	}
-	return { draft: parsed.data, issues: validateDraft(parsed.data) };
+	return { draft: parsed.data, issues: validateDraft(parsed.data, options) };
 }
 
 /** Returns the parsed draft. Throws with every issue of the draft. */
-function assertValidDraft(input: CustomActionDraft, pathPrefix = ''): CustomActionDraft {
-	const { draft, issues } = checkDraft(input);
+function assertValidDraft(
+	input: CustomActionDraft,
+	pathPrefix = '',
+	options?: ValidateDraftOptions,
+): CustomActionDraft {
+	const { draft, issues } = checkDraft(input, options);
 	if (!draft || issues.length > 0) {
 		throw new InvalidCustomActionError(
 			issues.map((issue) => ({ ...issue, path: `${pathPrefix}${issue.path}` })),
@@ -100,8 +116,18 @@ function newestVersionOf(aggregate: ActionAggregate) {
 	return newest;
 }
 
-function toActionResponse(aggregate: ActionAggregate): CustomActionResponse {
+/**
+ * `shapeOf` gives the shape of the parent. A parent action needs it for the pin values.
+ * Without a shape, the parent is not available and the shape `operation` stands in.
+ */
+function toActionResponse(
+	aggregate: ActionAggregate,
+	shapeOf?: (nodeType: string) => ParentShape | undefined,
+): CustomActionResponse {
 	const { action } = aggregate;
+	const shape = action.parentNodeType === null ? undefined : shapeOf?.(action.parentNodeType);
+	const pinsOf = (ref: { actionId: string; actionName: string; version: number }) =>
+		action.parentNodeType === null ? pinValues(ref) : parentPinValues(shape ?? 'operation', ref);
 	const newest = newestVersionOf(aggregate);
 	const versions = aggregate.versions.map(
 		(version): CustomActionVersionSummary => ({
@@ -109,7 +135,7 @@ function toActionResponse(aggregate: ActionAggregate): CustomActionResponse {
 			currentRevision: version.currentRevision,
 			revisionCount: version.revisionCount,
 			createdAt: version.createdAt.toISOString(),
-			pinValues: pinValues({
+			pinValues: pinsOf({
 				actionId: action.id,
 				actionName: action.name,
 				version: version.version,
@@ -137,7 +163,9 @@ function toNodeResponse(node: CustomNodeEntity, actions: ActionAggregate[]): Cus
 		baseUrl: node.baseUrl,
 		auth: node.auth,
 		hasIcon: node.iconMimeType !== null,
-		actions: actions.filter((a) => a.action.customNodeId === node.id).map(toActionResponse),
+		actions: actions
+			.filter((a) => a.action.customNodeId === node.id)
+			.map((a) => toActionResponse(a)),
 		createdAt: node.createdAt.toISOString(),
 		updatedAt: node.updatedAt.toISOString(),
 	};
@@ -178,6 +206,7 @@ export class CustomNodesService {
 		private readonly actionRepository: CustomActionRepository,
 		private readonly registry: CustomNodesRegistry,
 		private readonly credentialTypes: CredentialTypes,
+		private readonly parentActions: ParentActionsProvider,
 	) {
 		this.logger = logger.scoped('custom-nodes');
 	}
@@ -214,7 +243,7 @@ export class CustomNodesService {
 					ctx,
 				);
 				for (const draft of drafts) {
-					await this.insertAction(user, node.id, draft, undefined, ctx);
+					await this.insertAction(user, node.id, null, draft, undefined, ctx);
 				}
 				return node.id;
 			},
@@ -290,12 +319,56 @@ export class CustomNodesService {
 		const actionId = await this.write(
 			async (ctx) => {
 				await this.lockNodeOrFail(nodeId, ctx);
-				return await this.insertAction(user, nodeId, draft, dto.changeNote, ctx);
+				return await this.insertAction(user, nodeId, null, draft, dto.changeNote, ctx);
 			},
 			(id) => ({ nodeId, actionId: id }),
 		);
 		this.logger.debug('Custom action added', { nodeId, actionId });
 		return await this.getActionResponse(actionId);
+	}
+
+	/**
+	 * Adds an action to a built-in parent node, for example Stripe.
+	 * The parent must be eligible on this instance. The URL of the action must be absolute.
+	 */
+	async addParentAction(
+		user: User,
+		dto: CreateParentCustomActionDto,
+	): Promise<ParentCustomActionResponse> {
+		this.assertScope(user, 'customNode:create');
+		if (this.parentActions.shapeOf(dto.parentNodeType) === undefined) {
+			throw new UserError(
+				`Custom actions are not available for the node type "${dto.parentNodeType}".`,
+			);
+		}
+		const draft = assertValidDraft(dto.draft, '', { absoluteUrl: true });
+		const actionId = await this.write(
+			async (ctx) =>
+				await this.insertAction(user, null, dto.parentNodeType, draft, dto.changeNote, ctx),
+			(id) => ({ actionId: id }),
+		);
+		this.logger.debug('Custom action added to a parent node', {
+			parentNodeType: dto.parentNodeType,
+			actionId,
+		});
+		return this.toParentResponse(await this.findActionOrFail(actionId, {}));
+	}
+
+	/** Lists the actions of all parent nodes, also those of a parent that is not available. */
+	async listParentActions(user: User): Promise<ParentCustomActionResponse[]> {
+		this.assertScope(user, 'customNode:list');
+		const actions = await this.actionRepository.findAllActions({});
+		return actions
+			.filter((a) => a.action.parentNodeType !== null)
+			.map((a) => this.toParentResponse(a));
+	}
+
+	/** Lists the node types that can have custom actions on this instance. */
+	listParents(user: User): CustomActionParent[] {
+		this.assertScope(user, 'customNode:list');
+		return this.parentActions
+			.eligibleParents()
+			.map(({ nodeType, shape }): CustomActionParent => ({ nodeType, shape }));
 	}
 
 	/** The server decides the kind of the edit. See `classifyEdit`. */
@@ -305,7 +378,11 @@ export class CustomNodesService {
 		dto: SaveCustomActionDto,
 	): Promise<{ action: CustomActionResponse; kind: CustomActionEditKind }> {
 		this.assertScope(user, 'customNode:update');
-		const draft = assertValidDraft(dto.draft);
+		// A parent action has no base URL, so its URL must be absolute.
+		const { action: existing } = await this.findActionOrFail(actionId, {});
+		const draft = assertValidDraft(dto.draft, '', {
+			absoluteUrl: existing.parentNodeType !== null,
+		});
 
 		const kind = await this.txRunner.run({}, async (ctx) => {
 			// Classify against the state that the write builds on. A concurrent save waits here.
@@ -445,7 +522,8 @@ export class CustomNodesService {
 
 	private async insertAction(
 		user: User,
-		customNodeId: string,
+		customNodeId: string | null,
+		parentNodeType: string | null,
 		draft: CustomActionDraft,
 		changeNote: string | undefined,
 		ctx: OperationContext,
@@ -455,7 +533,7 @@ export class CustomNodesService {
 			{
 				name: draft.name,
 				description: draft.description,
-				parentNodeType: null,
+				parentNodeType,
 				customNodeId,
 				createdById: user.id,
 			},
@@ -498,6 +576,17 @@ export class CustomNodesService {
 	}
 
 	private async getActionResponse(id: string): Promise<CustomActionResponse> {
-		return toActionResponse(await this.findActionOrFail(id, {}));
+		return toActionResponse(await this.findActionOrFail(id, {}), (name) =>
+			this.parentActions.shapeOf(name),
+		);
+	}
+
+	private toParentResponse(aggregate: ActionAggregate): ParentCustomActionResponse {
+		const { parentNodeType } = aggregate.action;
+		const shape = parentNodeType === null ? undefined : this.parentActions.shapeOf(parentNodeType);
+		return {
+			...toActionResponse(aggregate, (name) => this.parentActions.shapeOf(name)),
+			parentAvailable: shape !== undefined,
+		};
 	}
 }
