@@ -1,5 +1,6 @@
 import { UnexpectedError } from '@n8n/errors';
 import type {
+	DeclarativeRestApiSettings,
 	INode,
 	INodeCredentialDescription,
 	INodeParameters,
@@ -285,6 +286,30 @@ export function blocksCustomActions(
 	return false;
 }
 
+/**
+ * Moves the origin of an absolute URL into `baseURL`. Some credentials build the endpoint from
+ * `baseURL` and `url` themselves (AWS signing), so a request with only an absolute `url` fails
+ * there. The origin is plain text: the generator allows placeholders only in the path.
+ */
+function splitOrigin(
+	request: DeclarativeRestApiSettings.HttpRequestOptions,
+): DeclarativeRestApiSettings.HttpRequestOptions {
+	const { url } = request;
+	if (typeof url !== 'string') return request;
+	const isExpression = url.startsWith('=');
+	const match = /^([^:/?#]*:\/\/[^/?#]*)(.*)$/s.exec(isExpression ? url.slice(1) : url);
+	if (!match) return request;
+	return { ...request, baseURL: match[1], url: `${isExpression ? '=' : ''}${match[2]}` };
+}
+
+function withSplitOrigin(options: INodePropertyOptions[]): INodePropertyOptions[] {
+	return options.map((option) =>
+		option.routing?.request
+			? { ...option, routing: { ...option.routing, request: splitOrigin(option.routing.request) } }
+			: option,
+	);
+}
+
 /** Description that `RoutingNode` runs for a custom action. Holds only the custom action properties. */
 export function buildParentRuntimeDescription(
 	description: INodeTypeDescription,
@@ -317,7 +342,7 @@ export function buildParentRuntimeDescription(
 				type: 'options',
 				noDataExpression: true,
 				default: '',
-				options,
+				options: withSplitOrigin(options),
 			},
 			...pinProperties(refs),
 			...inputProperties,

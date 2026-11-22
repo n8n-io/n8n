@@ -409,10 +409,10 @@ describe('ParentActionsProvider', () => {
 
 		expect(routed.descriptions).toHaveLength(2);
 		const [oldRouting, newRouting] = routed.descriptions.map((d) => JSON.stringify(d));
-		expect(oldRouting).toContain('api.acme.test/v1/payments/');
+		expect(oldRouting).toContain('"url":"=/v1/payments/');
 		expect(oldRouting).not.toContain('/v3/refund');
 		expect(newRouting).toContain('/v3/refund');
-		expect(newRouting).not.toContain('api.acme.test/v1/payments/');
+		expect(newRouting).not.toContain('"url":"=/v1/payments/');
 		expect(loaded.execute).not.toHaveBeenCalled();
 	});
 

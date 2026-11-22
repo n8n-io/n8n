@@ -444,7 +444,7 @@ describe('buildParentRuntimeDescription', () => {
 		expect(runtime.properties[0]).toMatchObject({ default: '', noDataExpression: true });
 	});
 
-	it('puts the absolute URL and the encoded URL inputs in the request of each option', () => {
+	it('puts the origin in baseURL and the encoded path in url for each option', () => {
 		const options = optionsOf(runtime.properties[0]);
 		expect(options.map((option) => option.value)).toEqual(
 			operationOptions(refs).map((option) => option.value),
@@ -452,16 +452,21 @@ describe('buildParentRuntimeDescription', () => {
 		for (const action of actions) {
 			for (const version of action.versions) {
 				const option = options.find((o) => o.value === valueOf(action.id, version.version));
-				expect(option?.routing).toEqual({
-					request: buildRequest(version, paramPathFor(version, PARENT_NAMING)),
-				});
+				const { url, ...rest } = buildRequest(version, paramPathFor(version, PARENT_NAMING));
+				expect(option?.routing?.request).toMatchObject(rest);
+				expect(option?.routing?.request?.baseURL).toBe('https://api.acme.test');
+				expect(url).toContain(option?.routing?.request?.url?.replace(/^=/, '') ?? 'missing');
 			}
 		}
 		const refund = options.find((o) => o.value === valueOf('act_refund', 1));
-		expect(refund?.routing?.request?.url).toMatch(/^=https:\/\/api\.acme\.test\/v1\/payments\//);
+		expect(refund?.routing?.request?.url).toMatch(/^=\/v1\/payments\//);
 		expect(refund?.routing?.request?.url).toContain('$parameter["customAction_paymentId"]');
 		const payouts = options.find((o) => o.value === valueOf('act_payouts', 1));
-		expect(payouts?.routing?.request?.url).toBe('https://api.acme.test/v1/payouts');
+		expect(payouts?.routing?.request?.url).toBe('/v1/payouts');
+	});
+
+	it('keeps the request defaults of the run-time description without a base URL', () => {
+		expect(runtime.requestDefaults).toEqual({ json: true });
 	});
 
 	it('throws when no action has a version', () => {
