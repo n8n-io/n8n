@@ -40,7 +40,7 @@ These points refine the spec. Task 6 records them in the spec. Jason can change 
 3. **Eligibility is stricter than `supportsProxyAuth`.** A parent is eligible only if each of its credentials passes the check, not one of them. With one failing credential, a custom action would send a request without authentication when the user selects that credential.
 4. **One shape for each node type.** The newest version of a node type decides the shape (`resource` or `operation`). An older version with another shape is not extended. This keeps `pinValues` the same for all nodes of one type.
 5. **The URL of a custom action in a parent node is absolute.** The base URL, headers and other request defaults of the parent are not used. The run-time description of the action has `userDefinedEndpoint: true`.
-6. **A parent with no action is wrapped at run time, but its served description is unchanged.** The wrapper gives the error for a missing definition. The editor shows no empty "Custom" resource.
+6. **A parent with no action is wrapped at run time.** The wrapper gives the error for a missing definition. The editor shows no empty "Custom" resource. Changed after the final review: every eligible parent also gets the pin skeleton in its served description, so that a stored pin survives (spec section 19).
 
 ## Review Focus
 
@@ -560,9 +560,9 @@ Run `/security-review` on the commits of this plan. Fix or record each finding.
 ## Known limits that this plan accepts
 
 - A credential in the mode `none` cannot run a custom action. The editor sets this mode by default when it creates an OAuth credential or a quick-connect credential. A user of such a credential must allow the host of the action in the credential first. Plan 3 must explain this in the editor.
-- A parent parameter that has no display condition stays visible when the "Custom" resource is selected.
+- A parent parameter that has no display condition stays visible when the "Custom" resource is selected. Changed after the final review: a parent whose required parameter would block the custom selection is not eligible.
 - The Instance AI adapter reads loaded nodes without `NodeTypes` in one place. It does not see custom actions.
-- A node of a parent that stops being eligible (for example after an upgrade of the node) runs the original `execute`, which reports its own error for the unknown resource.
+- A node of a parent that stops being eligible (for example after an upgrade of the node) runs the original `execute`. Corrected after the final review: a declarative or operation-shape parent then sends its own request to its own host (spec section 19).
 - The editor does not write the full pin values yet (Plan 3). The instance check of Task 6 sets the parameters through the workflow API or by hand.
 
 ## Next plans

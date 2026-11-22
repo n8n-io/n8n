@@ -166,16 +166,17 @@ actions are options of one `operation` parameter.
 
 ### 5.3 Custom actions in a parent node (approach A)
 
-Four places need the extended description. All four must give the same
-result for the same definitions.
+Five places need the extended description. All five must give the same
+result for the same definitions. Plan 2 found the fifth:
+`NodeTypes.getNodeTypeDescriptions`, which feeds the task runner.
 
 1. **Type files** (`types/nodes.json`). A post-processor of
    `LoadNodesAndCredentials` adds the "Custom" resource, the operation options,
    and the input properties to copies of the parent descriptions. It must run
    before the post-processors of `FrontendService`, `NodeCatalogService`,
    `AiWorkflowBuilderService`, and the Instance AI adapter, which read the
-   same `types`. `addPostProcessor` only appends today, so it needs an ordering
-   option.
+   same `types`. `addPostProcessor` now takes a phase: `transform`
+   processors run before `consume` processors (the default).
 2. **Single-node descriptions** (`POST /rest/node-types` and
    `/by-identifier`). These call `NodeTypes.getWithSourcePath`, which reads the
    loaded node directly. The editor replaces its stored description with this
@@ -191,7 +192,7 @@ result for the same definitions.
      with an error that names the action (section 9);
    - any other operation: call the original `execute` unchanged.
 
-Put the extension in one private method of `NodeTypes` that all three lookup
+Put the extension in one private method of `NodeTypes` that all lookup
 paths use.
 
 Rules:
@@ -206,8 +207,13 @@ Rules:
   Parents with only `operation` get the options appended. Trigger nodes and
   nodes with `supplyData` cannot be parents.
 - A parent needs a credential that the declarative engine can apply. Reuse the
-  existing `supportsProxyAuth` check. Exclude parents whose credential
-  selector is not the `authentication` parameter.
+  existing `supportsProxyAuth` check for each credential of the parent, not
+  for one of them. Exclude parents whose credential selector is not the
+  `authentication` parameter.
+- A parent is not eligible when one of its own parameters would block every
+  custom action: a required parameter that shows for the custom selection, or
+  a second `operation` property. The check normalizes a placeholder custom
+  selection as the engine does (changed during plan 2).
 - The run-time copy wraps every eligible parent when the module is on, not
   only parents that have actions on this instance. This is what makes the
   "missing definition" error possible.
@@ -466,7 +472,7 @@ Do not build the tool in project 1.
 3. Description generator with tests. Done in plan 1.
 4. Custom nodes: loader, service, controller, reload. Done in plan 1.
 5. Custom actions: provider hook in `NodeTypes`, served descriptions, version
-   pin.
+   pin. Done in plan 2.
 6. Frontend module: settings page.
 7. Frontend: wizard and canvas entry points.
 8. Dependency index, version usage view, delete guard, upgrade notice.
@@ -662,3 +668,95 @@ on the local branch `custom-nodes-and-actions`. The module is off unless
 - Plan 4: duplicate action names inside one node are possible today. Export
   and import must keep ids, because the node type name contains the id. A
   request of an old version can only be rolled back, not edited.
+
+## 19. Plan 2 record
+
+Plan 2 (custom actions in parent nodes) ended on 2026-11-22. The work is on
+the local branch `custom-nodes-and-actions`. The module is off unless
+`N8N_ENABLED_MODULES` contains `custom-nodes`.
+
+### What exists
+
+- `NodeTypes` asks an optional `NodeTypeExtensionProvider` in every lookup
+  path. `LoadNodesAndCredentials.addPostProcessor` has the phases `transform`
+  and `consume`. Neither file imports the module.
+- A pure generator for parent descriptions, a run-time copy of the parent
+  (function-style and class-style `Node` parents), and the provider that
+  serves both.
+- REST routes `POST /custom-nodes/actions`, `GET /custom-nodes/actions`, and
+  `GET /custom-nodes/parents`.
+- A check on a real instance with a local echo server. Stripe (resource
+  shape), Okta (declarative), and AWS SNS (operation shape) were tested. A
+  custom action ran with the credential of the parent, a node on version 1
+  stayed on version 1, credential mode `none` and a domain list without the
+  host blocked the request, and a deleted action failed with its name and sent
+  no request. Built-in operations gave the same result with the module on and
+  off.
+
+### Decisions made during the work
+
+- **Stored values.** Resource value `__CUSTOM_ACTION__` (display name
+  `Custom`). Input prefix `customAction_`. Optional inputs in
+  `customAction_additionalFields`. These values are permanent.
+- **Pin skeleton.** Every eligible parent gets the hidden pin parameters, and
+  in the resource shape an Action property that shows only for the Custom
+  resource. This applies also to a parent without actions, in the served
+  description and at run time. Without it, the engine and the editor remove
+  the stored pin, and a missing action cannot be named. A parent without
+  actions has no "Custom" option in its resource list. In the resource shape
+  the pins show only for the Custom resource. In the operation shape the pins
+  have no condition, so built-in nodes of such a parent get two empty
+  parameters at run time.
+- **Custom selection.** Resource shape: the resource is `__CUSTOM_ACTION__`.
+  Operation shape: the `operation` value reads as a pin. Eligibility makes
+  sure that no built-in option value reads as a pin.
+- **Absolute URL.** The URL of a custom action in a parent is absolute. The
+  base URL and the request defaults of the parent are not used. The run-time
+  description sets `userDefinedEndpoint`.
+- **Eligibility.** Every credential must pass `supportsProxyAuth`. The newest
+  version decides the shape; versions with another shape are not extended.
+  A parent whose own parameters block a custom selection is excluded. On the
+  current node set, 145 parents are eligible on a real instance; Peekalink,
+  DHL, GitLab, and Harvest are excluded. No `Tool` or `HitlTool` variant is
+  eligible.
+- **One bad stored action.** The provider checks each action alone, skips an
+  action that fails, and logs its id and parent type one time. A node that
+  uses it fails with the error that names the action.
+- **Class-style parents.** A `Node` subclass gets a class-style `execute`
+  (the engine calls it without `this`).
+- **Copies and reloads.** A node run keeps the copy that it looked up. Each
+  node run looks the type up again, so a revision edit can apply between two
+  nodes of one execution. This matches section 6 (revisions apply in place).
+
+### Known limits and open items
+
+- **AWS-signed parents.** Lambda, SNS, SQS, and Textract are eligible, but a
+  custom action fails with "Invalid URL" before any request. The AWS
+  credential builds its endpoint from `baseURL` plus `url`, and the run-time
+  request has no `baseURL`. Proposed fix: put the origin of the action URL in
+  `routing.request.baseURL` and the path in `url`, or exclude credential types
+  whose `authenticate` is a function. Open for Jason.
+- A credential in mode `none` cannot run a custom action. The editor creates
+  OAuth and quick-connect credentials in this mode. Plan 3 must explain this.
+- A parent parameter without a display condition that is not required stays
+  visible under the Custom resource. A follow-up can hide parent properties
+  for the custom selection.
+- A parent that stops being eligible (for example after a node upgrade) runs
+  its original `execute` for a node with a custom selection. A declarative or
+  operation-shape parent then sends its own request to its own host. Plan 4
+  should log stored actions on a parent that is not eligible.
+- The Instance AI adapter reads loaded nodes without `NodeTypes` in one place
+  and does not see custom actions.
+- A save or a rollback of an action whose parent is not available returns
+  operation-shape pin values. The editor must check `parentAvailable` from
+  `GET /custom-nodes/actions` first.
+- `extendDescription` is not cached, and `getByName` wraps each versioned
+  node in a new object when the module is on. Both are small costs.
+
+### Findings for the next plans
+
+- Plan 3: the editor must write the full pin values, filter options by their
+  option-level display conditions, and explain a blocked credential. The
+  canvas subtitle shows the raw value of a custom selection.
+- Plan 3: offer only parents from `GET /custom-nodes/parents`.
+- Plan 4: the dependency index needs the parent node type and the pin.
