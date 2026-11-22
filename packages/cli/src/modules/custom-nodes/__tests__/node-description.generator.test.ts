@@ -8,7 +8,7 @@ import type {
 	INodeTypes,
 	INodeParameters,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, Workflow } from 'n8n-workflow';
+import { Expression, NodeConnectionTypes, Workflow } from 'n8n-workflow';
 
 import {
 	ADDITIONAL_FIELDS,
@@ -151,6 +151,11 @@ const formVersion: ActionVersionView = {
 
 const p = (name: string) => `$parameter["${name}"]`;
 
+/** The URL segment expression that the generator builds for one input. */
+const segment = (path: string) =>
+	`{{ ((v) => (v === "." || v === ".." ? v.replaceAll(".", "%252E") : encodeURIComponent(v)))(String(${path})) }}`;
+const invoiceUrl = `=/invoices/${segment('$parameter["invoiceId"]')}`;
+
 const withRequest = (patch: Partial<ActionVersionView['request']>): ActionVersionView => ({
 	...getInvoice.versions[0],
 	request: { ...getInvoice.versions[0].request, ...patch },
@@ -203,6 +208,47 @@ function stringsIn(root: unknown): string[] {
 	}
 	return out;
 }
+
+const NODE_NAME = 'Acme Billing';
+
+function makeWorkflow(description: INodeTypeDescription, parameters: INodeParameters) {
+	const nodeType: INodeType = { description };
+	const nodeTypes: INodeTypes = {
+		getByName: () => nodeType,
+		getByNameAndVersion: () => nodeType,
+		getKnownTypes: () => ({}),
+	};
+	const workflow = new Workflow({
+		id: 'wf',
+		nodes: [
+			{
+				id: 'node-1',
+				name: NODE_NAME,
+				type: `n8n-custom.${description.name}`,
+				typeVersion: 1,
+				position: [0, 0],
+				parameters,
+			},
+		],
+		connections: {},
+		active: false,
+		nodeTypes,
+	});
+	return { workflow, nodeName: NODE_NAME };
+}
+
+/** Values of the URL input and the path that the legacy engine resolves for them. */
+const URL_VALUE_CASES: Array<[string, string]> = [
+	['inv_1', '/invoices/inv_1'],
+	['..', '/invoices/%252E%252E'],
+	['.', '/invoices/%252E'],
+	['../../admin?x=1#y', '/invoices/..%2F..%2Fadmin%3Fx%3D1%23y'],
+	['...', '/invoices/...'],
+	['a..b', '/invoices/a..b'],
+	['..a', '/invoices/..a'],
+	['./', '/invoices/.%2F'],
+	['%2e%2e', '/invoices/%252e%252e'],
+];
 
 const d = generateCustomNodeDescription(node, [getInvoice, createInvoice]);
 
@@ -294,7 +340,7 @@ describe('generateCustomNodeDescription', () => {
 		expect(optionFor(d, 'act_get', 1).routing).toEqual({
 			request: {
 				method: 'GET',
-				url: '=/invoices/{{ encodeURIComponent($parameter["invoiceId"]) }}',
+				url: invoiceUrl,
 				qs: { expand: 'customer' },
 			},
 		});
@@ -363,7 +409,7 @@ describe('generateCustomNodeDescription', () => {
 		};
 		const generated = generateCustomNodeDescription(node, [optionalUrl]);
 		expect(optionFor(generated, 'act_list', 1).routing?.request?.url).toBe(
-			`=/folders/{{ encodeURIComponent(($parameter["${ADDITIONAL_FIELDS}"]?.["folder"] ?? "")) }}/items`,
+			`=/folders/${segment(`($parameter["${ADDITIONAL_FIELDS}"]?.["folder"] ?? "")`)}/items`,
 		);
 	});
 
@@ -405,7 +451,7 @@ describe('generateCustomNodeDescription', () => {
 		const allowed = [
 			/^=\{\{ \$value \}\}$/,
 			/^=\{\{ typeof \$value === "string" \? JSON\.parse\(\$value\) : \$value \}\}$/,
-			/^=\/invoices\/\{\{ encodeURIComponent\(\$parameter\["invoiceId"\]\) \}\}$/,
+			new RegExp(`^${invoiceUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`),
 		];
 		const expressions = stringsIn(d).filter(
 			(s) => s.trimStart().startsWith('=') || s.includes('{{'),
@@ -460,7 +506,7 @@ describe('buildRequest', () => {
 	it('builds the fixed GET request with an encoded URL placeholder', () => {
 		const req = buildRequest(getInvoice.versions[0], (n) => `$parameter["${n}"]`);
 		expect(req.method).toBe('GET');
-		expect(req.url).toBe('=/invoices/{{ encodeURIComponent($parameter["invoiceId"]) }}');
+		expect(req.url).toBe(invoiceUrl);
 		expect(req.qs).toEqual({ expand: 'customer' });
 		expect(req.headers).toBeUndefined();
 		expect(req.body).toBeUndefined();
@@ -489,7 +535,7 @@ describe('buildRequest', () => {
 			},
 		};
 		expect(buildRequest(version, p).url).toBe(
-			'=https://other.acme.test/c/{{ encodeURIComponent($parameter["customerId"]) }}/i/{{ encodeURIComponent($parameter["invoiceId"]) }}?x=1',
+			`=https://other.acme.test/c/${segment('$parameter["customerId"]')}/i/${segment('$parameter["invoiceId"]')}?x=1`,
 		);
 	});
 
@@ -680,29 +726,7 @@ describe('buildInputProperties', () => {
 
 describe('URL encoding (Review Focus 1)', () => {
 	function resolveUrl(description: INodeTypeDescription, url: string, parameters: INodeParameters) {
-		const nodeType: INodeType = { description };
-		const nodeTypes: INodeTypes = {
-			getByName: () => nodeType,
-			getByNameAndVersion: () => nodeType,
-			getKnownTypes: () => ({}),
-		};
-		const nodeName = 'Acme Billing';
-		const workflow = new Workflow({
-			id: 'wf',
-			nodes: [
-				{
-					id: 'node-1',
-					name: nodeName,
-					type: `n8n-custom.${description.name}`,
-					typeVersion: 1,
-					position: [0, 0],
-					parameters,
-				},
-			],
-			connections: {},
-			active: false,
-			nodeTypes,
-		});
+		const { workflow, nodeName } = makeWorkflow(description, parameters);
 		return workflow.expression.getParameterValue(url, null, 0, 0, nodeName, [], 'manual', {});
 	}
 
@@ -730,6 +754,73 @@ describe('URL encoding (Review Focus 1)', () => {
 		});
 
 		expect(resolved).toBe('/invoices/%7B%7B%201%20%2B%201%20%7D%7D');
+	});
+
+	describe('dot segments', () => {
+		const option = optionFor(d, 'act_get', 1);
+		const url = option.routing?.request?.url;
+		const resolveInvoice = (invoiceId: string) => {
+			if (typeof url !== 'string') throw new Error('no url');
+			return resolveUrl(d, url, { operation: option.value, invoiceId });
+		};
+
+		/** Joins like axios does with `baseURL` and `url`. */
+		const pathnameOf = (resolved: unknown) =>
+			new URL(`${node.baseUrl.replace(/\/+$/, '')}/${String(resolved).replace(/^\/+/, '')}`)
+				.pathname;
+
+		it.each([
+			['..', '/invoices/%252E%252E'],
+			['.', '/invoices/%252E'],
+		])('encodes the dots of %j twice', (value, expected) => {
+			const resolved = resolveInvoice(value);
+			expect(resolved).toBe(expected);
+			const pathname = pathnameOf(resolved);
+			expect(pathname).toBe(`/api${expected}`);
+			expect(pathname.split('/')).toHaveLength(
+				pathnameOf(resolveInvoice('inv_1')).split('/').length,
+			);
+		});
+
+		it.each(URL_VALUE_CASES.filter(([value]) => value !== '.' && value !== '..'))(
+			'encodes the value %j',
+			(value, expected) => {
+				expect(resolveInvoice(value)).toBe(expected);
+			},
+		);
+
+		it('encodes the dots of an optional URL input twice', () => {
+			const generated = generateCustomNodeDescription(node, [
+				{
+					id: 'act_list',
+					name: 'List',
+					versions: [
+						{
+							version: 1,
+							inputs: [{ name: 'folder', displayName: 'Folder', type: 'string', required: false }],
+							request: {
+								method: 'GET',
+								url: '/folders/{folder}/items',
+								headers: {},
+								query: {},
+								bodyType: 'none',
+								body: {},
+								inputTargets: { folder: { target: 'url', key: 'folder' } },
+							},
+						},
+					],
+				},
+			]);
+			const listOption = optionFor(generated, 'act_list', 1);
+			const listUrl = listOption.routing?.request?.url;
+			if (typeof listUrl !== 'string') throw new Error('no url');
+			expect(
+				resolveUrl(generated, listUrl, {
+					operation: listOption.value,
+					[ADDITIONAL_FIELDS]: { folder: '..' },
+				}),
+			).toBe('/folders/%252E%252E/items');
+		});
 	});
 
 	it('resolves an optional URL input from the collection, and an empty string without it', () => {
@@ -760,5 +851,35 @@ describe('URL encoding (Review Focus 1)', () => {
 			}),
 		).toBe('/folders/a%2Fb/items');
 		expect(resolveUrl(generated, url, { operation: option.value })).toBe('/folders//items');
+	});
+});
+
+describe('URL encoding in the vm expression engine', () => {
+	beforeAll(async () => {
+		await Expression.initExpressionEngine({
+			engine: 'vm',
+			bridgeTimeout: 5000,
+			bridgeMemoryLimit: 128,
+			poolSize: 1,
+			maxCodeCacheSize: 64,
+		});
+		expect(Expression.getActiveImplementation()).toBe('vm');
+	});
+
+	afterAll(async () => {
+		await Expression.disposeExpressionEngine();
+	});
+
+	it.each(URL_VALUE_CASES)('resolves %j as the legacy engine does', async (invoiceId, expected) => {
+		const option = optionFor(d, 'act_get', 1);
+		const url = option.routing?.request?.url;
+		if (typeof url !== 'string') throw new Error('no url');
+		const { workflow, nodeName } = makeWorkflow(d, { operation: option.value, invoiceId });
+
+		const resolved = await workflow.expression.withIsolate(async () =>
+			workflow.expression.getParameterValue(url, null, 0, 0, nodeName, [], 'manual', {}),
+		);
+
+		expect(resolved).toBe(expected);
 	});
 });

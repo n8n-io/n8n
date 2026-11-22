@@ -124,6 +124,16 @@ function copyStringRecord(source: Record<string, string>, where: string): IDataO
 }
 
 /**
+ * Expression for one URL segment. Encoding keeps `/`, `?`, and `#` out of the path.
+ * The URL parser treats `.` and `..` (also when encoded once) as dot segments, so their dots
+ * are encoded twice. The remote API then gets a segment that it cannot match.
+ * The expression must not throw: the legacy engine ignores an error from expression code.
+ */
+function segmentExpression(paramPath: string): string {
+	return `{{ ((v) => (v === "." || v === ".." ? v.replaceAll(".", "%252E") : encodeURIComponent(v)))(String(${paramPath})) }}`;
+}
+
+/**
  * Turns the stored URL into a plain string or an expression. Each placeholder `{name}` becomes
  * an encoded value, so an input value cannot change the host or the path structure.
  */
@@ -155,7 +165,7 @@ function buildUrl(
 		if (placement?.target !== 'url' || placement.key !== name) {
 			throw new UnexpectedError(`The URL placeholder {${name}} has no URL input`);
 		}
-		return `{{ encodeURIComponent(${param(name)}) }}`;
+		return segmentExpression(param(name));
 	});
 	return `=${origin}${expressionPath}${tail}`;
 }
