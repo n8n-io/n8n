@@ -53,6 +53,8 @@ export class ModuleRegistry {
 		'insights',
 		'external-secrets',
 		'community-packages',
+		// Feature branch only: remove this line before a pull request to master.
+		'custom-nodes',
 		'data-table',
 		// oauth-server precedes mcp: the mcp module registers its protected
 		// resource with the oauth-server module's registry on init.
