@@ -413,14 +413,23 @@ describe('OauthService', () => {
 	});
 
 	describe('getAdditionalData', () => {
-		it('should return workflow execute additional data', async () => {
+		it('should evaluate credential policy in the owning project, not a shared project', async () => {
+			const credential = mock<CredentialsEntity>({
+				shared: [
+					{ role: 'credential:user', projectId: 'shared-project' },
+					{ role: 'credential:owner', projectId: 'owner-project' },
+				] as any,
+			});
 			const mockAdditionalData = mock<IWorkflowExecuteAdditionalData>();
 			vi.mocked(WorkflowExecuteAdditionalData.getBase).mockResolvedValue(mockAdditionalData);
 
-			const result = await (service as any).getAdditionalData();
+			const result = await (service as any).getAdditionalData('user-id', credential);
 
 			expect(result).toBe(mockAdditionalData);
-			expect(WorkflowExecuteAdditionalData.getBase).toHaveBeenCalled();
+			expect(WorkflowExecuteAdditionalData.getBase).toHaveBeenCalledWith({
+				userId: 'user-id',
+				projectId: 'owner-project',
+			});
 		});
 	});
 
@@ -548,18 +557,21 @@ describe('OauthService', () => {
 	});
 
 	describe('getCredentialWithoutUser', () => {
-		it('should return credential from repository', async () => {
-			const mockCredential = mock<ICredentialsDb>({ id: '1' });
-			credentialsRepository.findOneBy.mockResolvedValue(mockCredential as any);
+		it('should load sharing relations so callback decryption can use the owner project', async () => {
+			const mockCredential = mock<CredentialsEntity>({ id: '1' });
+			credentialsFinderService.findById.mockResolvedValue(mockCredential);
 
 			const result = await (service as any).getCredentialWithoutUser('1');
 
 			expect(result).toBe(mockCredential);
-			expect(credentialsRepository.findOneBy).toHaveBeenCalledWith({ id: '1' });
+			expect(credentialsFinderService.findById).toHaveBeenCalledWith('1', {
+				includeInstanceCredentials: true,
+				includeSharedProject: true,
+			});
 		});
 
 		it('should return null when credential not found', async () => {
-			credentialsRepository.findOneBy.mockResolvedValue(null);
+			credentialsFinderService.findById.mockResolvedValue(null);
 
 			const result = await (service as any).getCredentialWithoutUser('1');
 
@@ -567,16 +579,16 @@ describe('OauthService', () => {
 		});
 
 		it('should restrict the lookup to project credentials when requested', async () => {
-			credentialsRepository.findOneBy.mockResolvedValue(null);
+			credentialsFinderService.findById.mockResolvedValue(null);
 
 			const result = await (service as any).getCredentialWithoutUser('1', {
 				onlyProjectCredentials: true,
 			});
 
 			expect(result).toBeNull();
-			expect(credentialsRepository.findOneBy).toHaveBeenCalledWith({
-				id: '1',
-				usageScope: 'project',
+			expect(credentialsFinderService.findById).toHaveBeenCalledWith('1', {
+				includeInstanceCredentials: false,
+				includeSharedProject: true,
 			});
 		});
 	});
@@ -1359,7 +1371,13 @@ describe('OauthService', () => {
 			};
 			const encodedState = Buffer.from(JSON.stringify(state)).toString('base64');
 
-			const mockCredential = mock<CredentialsEntity>({ id: 'credential-id' });
+			const mockCredential = mock<CredentialsEntity>({
+				id: 'credential-id',
+				shared: [
+					{ role: 'credential:user', projectId: 'shared-project' },
+					{ role: 'credential:owner', projectId: 'owner-project' },
+				] as any,
+			});
 			const mockDecryptedData = { someField: 'value' };
 			const mockOAuthCredentials = { clientId: 'client-id' };
 			const mockAdditionalData = mock<IWorkflowExecuteAdditionalData>();
@@ -1397,7 +1415,10 @@ describe('OauthService', () => {
 			expect(result[4]).toEqual({ csrfSecret: 'csrf-secret', codeVerifier: 'code-verifier' });
 			expect(cacheService.delete).toHaveBeenCalledWith(`oauth:flow:${stateToken}`);
 			// Names the user on a policy block while the credential is decrypted.
-			expect(WorkflowExecuteAdditionalData.getBase).toHaveBeenCalledWith({ userId: 'user-id' });
+			expect(WorkflowExecuteAdditionalData.getBase).toHaveBeenCalledWith({
+				userId: 'user-id',
+				projectId: 'owner-project',
+			});
 		});
 
 		it('should reject the callback when the flow state is missing (replay / unknown state)', async () => {
@@ -1848,6 +1869,7 @@ describe('OauthService', () => {
 			const credential = mock<CredentialsEntity>({
 				id: '1',
 				type: 'testOAuth2Api',
+				shared: [{ role: 'credential:owner', projectId: 'owner-project' }] as any,
 			});
 			const mockDecryptedData = { clientId: 'client-id' };
 			const mockOAuthCredentials = { clientId: 'client-id', clientSecret: 'secret' };
@@ -1860,10 +1882,18 @@ describe('OauthService', () => {
 			const result = await service.getOAuthCredentials(credential);
 
 			expect(result).toBe(mockOAuthCredentials);
+			expect(WorkflowExecuteAdditionalData.getBase).toHaveBeenCalledWith({
+				userId: undefined,
+				projectId: 'owner-project',
+			});
 		});
 
 		describe('managed app version', () => {
-			const credential = mock<CredentialsEntity>({ id: '1', type: 'testOAuth2Api' });
+			const credential = mock<CredentialsEntity>({
+				id: '1',
+				type: 'testOAuth2Api',
+				shared: [{ role: 'credential:owner', projectId: 'owner-project' }] as any,
+			});
 			const mockAdditionalData = mock<IWorkflowExecuteAdditionalData>();
 
 			beforeEach(() => {
@@ -1878,6 +1908,10 @@ describe('OauthService', () => {
 				const result = await service.getNewConnectionCredentials(credential, 'user-id');
 
 				expect(result).toEqual({ oauthCredentials: { clientId: 'client-id' }, managedVersion: 2 });
+				expect(WorkflowExecuteAdditionalData.getBase).toHaveBeenCalledWith({
+					userId: 'user-id',
+					projectId: 'owner-project',
+				});
 				expect(credentialsHelper.getNewConnectionVersion).toHaveBeenCalledWith(credential.type, {
 					clientId: '',
 				});
