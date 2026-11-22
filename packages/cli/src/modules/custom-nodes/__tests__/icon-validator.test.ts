@@ -1,6 +1,8 @@
+import { createRequire } from 'node:module';
+
 import { UserError } from '@n8n/errors';
 
-import { MAX_ICON_BYTES, validateIcon } from '../icon-validator';
+import { MAX_ICON_BYTES, SAX_EVENTS, validateIcon } from '../icon-validator';
 
 const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
@@ -169,10 +171,72 @@ describe('validateIcon', () => {
 		await expect(validateIcon(svgUri(text))).resolves.toMatchObject({ mimeType: 'image/svg+xml' });
 	});
 
-	it('accepts a comment and CDATA text inside the root element', async () => {
-		const text = svg('<!-- inner --><title><![CDATA[Acme & Co]]></title><path d="M0 0"/>');
+	it('accepts text inside title and desc', async () => {
+		const text = svg('<title>Acme &amp; Co</title><desc>Logo</desc><path d="M0 0"/>');
 
 		await expect(validateIcon(svgUri(text))).resolves.toMatchObject({ mimeType: 'image/svg+xml' });
+	});
+
+	describe('markup outside the drawing', () => {
+		const note = '<!-- Generator: Example 1.0 -->';
+
+		it.each([
+			['before the root element', `${note}\n${svg('<path d="M0 0"/>')}`],
+			['inside the root element', svg(`${note}<g>${note}<path d="M0 0"/></g>`)],
+			['after the root element', `${svg('<path d="M0 0"/>')}\n${note}\n`],
+		])('accepts a plain comment %s', async (_, text) => {
+			await expect(validateIcon(svgUri(text))).resolves.toMatchObject({
+				mimeType: 'image/svg+xml',
+			});
+		});
+
+		it.each([
+			['before the root element', `<!FOO>${svg('')}`],
+			['inside the root element', svg('<!FOO bar>')],
+			['after the root element', `${svg('')}<!FOO>`],
+		])('rejects an SGML declaration %s', async (_, text) => {
+			await expectRejected(svgUri(text), /well-formed/);
+		});
+
+		it.each([
+			['element-like text', svg('<!-- <script>x()</script> --><path d="M0 0"/>')],
+			['element-like text before the root element', `<!-- <img> -->${svg('')}`],
+			['element-like text after the root element', `${svg('')}<!-- <svg onload="x()"> -->`],
+			['text that starts with >', svg('<!-->x--><path d="M0 0"/>')],
+			['text that starts with ->', svg('<!--->x--><path d="M0 0"/>')],
+		])('rejects a comment with %s', async (_, text) => {
+			await expectRejected(svgUri(text));
+		});
+
+		it.each([
+			['inside title', svg('<title><![CDATA[Acme]]></title>')],
+			['inside g', svg('<g><![CDATA[x]]></g>')],
+			['after the root element', `${svg('')}<![CDATA[x]]>`],
+		])('rejects a CDATA section %s', async (_, text) => {
+			await expectRejected(svgUri(text));
+		});
+
+		it.each([
+			['directly inside g', svg('<g>Acme</g>')],
+			['directly inside svg', svg('Acme<path d="M0 0"/>')],
+		])('rejects text %s', async (_, text) => {
+			await expectRejected(svgUri(text), /text inside/);
+		});
+
+		it('rejects whitespace before the XML declaration', async () => {
+			await expectRejected(svgUri(`\n<?xml version="1.0"?>${svg('')}`));
+			await expectRejected(svgUri(` <?xml version="1.0"?>${svg('')}`));
+		});
+	});
+
+	it('handles every event that the installed XML parser can emit', () => {
+		// `sax` is not a direct dependency of packages/cli. Load the copy that xml2js uses.
+		const requireFromHere = createRequire(__filename);
+		const requireFromXml2js = createRequire(requireFromHere.resolve('xml2js'));
+		const sax = requireFromXml2js('sax') as { EVENTS: string[] };
+
+		expect(sax.EVENTS.length).toBeGreaterThan(0);
+		expect([...SAX_EVENTS].sort()).toEqual([...sax.EVENTS].sort());
 	});
 
 	it('names the element that is not allowed in the error', async () => {
