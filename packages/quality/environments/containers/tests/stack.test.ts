@@ -214,6 +214,11 @@ test.each([
 	expect(caddyfile?.content).toContain('health_uri /healthz');
 	expect(caddyfile?.content).toContain('\n  handle {\n    respond 404\n  }');
 	expect(baseUrl).toBe('http://docker-host.test:8080/n8n/');
+	expect(built.get(main)?.environment).toMatchObject({
+		N8N_PATH: '/n8n/',
+		N8N_EDITOR_BASE_URL: baseUrl,
+		WEBHOOK_URL: baseUrl,
+	});
 	expect(containerUtils.pollContainerHttpEndpoint).toHaveBeenCalledWith(
 		started.get(caddy),
 		'/n8n/healthz/readiness',
