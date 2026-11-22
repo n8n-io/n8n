@@ -219,7 +219,12 @@ class WebhookRequestHandler {
 			const { allowedOrigins } = options ?? {};
 
 			if (allowedOrigins && allowedOrigins !== '*' && allowedOrigins !== req.headers.origin) {
-				const originsList = allowedOrigins.split(',');
+				// Users write the list as `a.com, b.com`, so an entry can carry the separator's
+				// whitespace — trim it, or every origin after the first never matches.
+				const originsList = allowedOrigins
+					.split(',')
+					.map((origin) => origin.trim())
+					.filter((origin) => origin.length > 0);
 				const defaultOrigin = originsList[0];
 
 				if (originsList.length === 1) {

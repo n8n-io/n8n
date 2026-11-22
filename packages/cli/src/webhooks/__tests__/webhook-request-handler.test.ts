@@ -172,6 +172,48 @@ describe('WebhookRequestHandler', () => {
 			);
 			expect(res.header).toHaveBeenCalledWith('Access-Control-Allow-Origin', 'https://test.com');
 		});
+
+		it('should match an origin listed with whitespace after the separator on a preflight', async () => {
+			const req = mock<WebhookRequest | WebhookOptionsRequest>({
+				path: '/',
+				method: 'OPTIONS',
+				headers: {
+					origin: 'https://b.com',
+					'access-control-request-method': 'GET',
+				},
+				params: { path: 'test' },
+			});
+			const res = mock<Response>();
+			res.status.mockReturnValue(res);
+
+			webhookManager.getWebhookMethods.mockResolvedValue(['GET']);
+			webhookManager.findAccessControlOptions.mockResolvedValue({
+				allowedOrigins: 'https://a.com, https://b.com',
+			});
+
+			await handler(req, res);
+
+			expect(res.header).toHaveBeenCalledWith('Access-Control-Allow-Origin', 'https://b.com');
+		});
+
+		it('should match an origin listed with whitespace after the separator on a regular request', async () => {
+			const req = mock<WebhookRequest>({
+				path: '/',
+				method: 'GET',
+				headers: { origin: 'https://b.com' },
+				params: { path: 'test' },
+			});
+			const res = mock<Response>();
+			res.status.mockReturnValue(res);
+			webhookManager.executeWebhook.mockResolvedValueOnce({ responseCode: 200, data: {} });
+			webhookManager.findAccessControlOptions.mockResolvedValue({
+				allowedOrigins: 'https://a.com, https://b.com',
+			});
+
+			await handler(req, res);
+
+			expect(res.header).toHaveBeenCalledWith('Access-Control-Allow-Origin', 'https://b.com');
+		});
 	});
 
 	describe('webhook requests', () => {
