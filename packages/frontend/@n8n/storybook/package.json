@@ -14,6 +14,7 @@
     "chromatic": "^11.27.0",
     "eslint-plugin-storybook": "9.1.7",
     "storybook": "9.1.7",
-    "storybook-dark-mode": "^4.0.2"
+    "storybook-dark-mode": "^4.0.2",
+    "vite": "7.3.8"
   }
 }

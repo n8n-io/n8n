@@ -102,6 +102,8 @@
       "@opentelemetry/instrumentation-mongoose": "0.67.0",
       "@opentelemetry/instrumentation-mysql": "0.67.0",
       "@opentelemetry/instrumentation-mysql2": "0.67.0",
+      "@opentelemetry/instrumentation-pg": "0.73.0",
+      "@opentelemetry/instrumentation-tedious": "0.40.0",
       "bundle-name": "4.1.1",
       "@types/node": "^20.17.50",
       "chokidar": "4.0.3",
