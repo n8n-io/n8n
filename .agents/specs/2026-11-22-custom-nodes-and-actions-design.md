@@ -283,6 +283,16 @@ Rules for later work:
   default of the parent, or an empty string in a custom node. If the default
   is the newest version, a save strips the value and the node moves to the
   next new version.
+- The `operation` property has `noDataExpression: true`. An expression in
+  `operation` would show the options and inputs of every version.
+- **One owner of the value format.** `version-pin.ts` in the backend module
+  is the only code that builds or parses the `operation` value. The editor
+  cannot import it, and it must not copy the format. The backend sends
+  ready-made values instead: each version in an API response carries its
+  `pinValues` (the parameter values that select that version). The editor
+  writes those values as they are. To find out if a node is on an older
+  version, the editor compares the `operation` value of the node with the
+  `pinValues.operation` of the newest version.
 - Editor change, nodes panel: `operationsCategory` and `resourceCategories`
   in `useActionsGeneration.ts` list all options. They must skip an option
   whose option-level `displayOptions` do not match the default parameters of
