@@ -113,7 +113,11 @@ afterEach(() => {
 
 it.each([
 	{ user: 'a project role outside the owner project', ownerScopes: [], allowed: false },
-	{ user: 'an instance admin', ownerScopes: ['credential:create'], allowed: true },
+	{
+		user: 'an instance admin',
+		ownerScopes: ['credential:create', 'projectVariable:create'],
+		allowed: true,
+	},
 ] as const)('lets $user add a missing binding only when the role can create it', (testCase) => {
 	if (!testCase.allowed) rbac.denied.add('variable:create');
 	capabilityRegistry.provide(
@@ -126,6 +130,12 @@ it.each([
 
 	expect(adapter.canCreate(credential)).toBe(testCase.allowed);
 	expect(adapter.canCreate(variable)).toBe(testCase.allowed);
+	expect(
+		adapter.canCreate({
+			...variable,
+			scope: { kind: 'project', project: credential.ownerProject },
+		}),
+	).toBe(testCase.allowed);
 });
 
 it('keeps a created project after a failed credential save and resolves on closure', async () => {

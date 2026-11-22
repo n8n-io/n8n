@@ -978,7 +978,11 @@ describe('resources in the preview', () => {
 					.post(`/promotions/projects/${project.id}/apply`)
 					.send({
 						workflowIds: [workflow.id],
-						expectedSource: { ...preview.source, commitSha: preview.commitSha },
+						expectedSource: {
+							environmentId: preview.source.environmentId,
+							branchName: preview.source.branchName,
+							commitSha: preview.commitSha,
+						},
 						expectedPreviewRevision: preview.revision,
 					})
 					.expect(200)
