@@ -1453,4 +1453,78 @@ describe('LoadNodesAndCredentials', () => {
 			expect(types.credentials).toHaveLength(1);
 		});
 	});
+
+	describe('post-processor phases', () => {
+		let instance: LoadNodesAndCredentials;
+
+		beforeEach(() => {
+			Container.set(Logger, mock<Logger>());
+			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock(), mock());
+			instance.excludeNodes = [];
+			instance.loaders = {};
+		});
+
+		it('runs transform post-processors before consume post-processors', async () => {
+			const calls: string[] = [];
+			instance.addPostProcessor(
+				async () => {
+					calls.push('A');
+				},
+				{ phase: 'consume' },
+			);
+			instance.addPostProcessor(
+				async () => {
+					calls.push('B');
+				},
+				{ phase: 'transform' },
+			);
+			instance.addPostProcessor(
+				async () => {
+					calls.push('C');
+				},
+				{ phase: 'consume' },
+			);
+
+			await instance.postProcessLoaders();
+
+			expect(calls).toEqual(['B', 'A', 'C']);
+		});
+
+		it('uses the consume phase by default', async () => {
+			const calls: string[] = [];
+			instance.addPostProcessor(async () => {
+				calls.push('default');
+			});
+			instance.addPostProcessor(
+				async () => {
+					calls.push('transform');
+				},
+				{ phase: 'transform' },
+			);
+
+			await instance.postProcessLoaders();
+
+			expect(calls).toEqual(['transform', 'default']);
+		});
+
+		it('lets a transform post-processor replace an entry of types.nodes before a consume post-processor reads it', async () => {
+			const original = { name: 'testNode', properties: [] } as unknown as INodeTypeDescription;
+			const replacement = { ...original, displayName: 'Replaced' };
+			instance.types.nodes = [original];
+			let seen: INodeTypeDescription[] = [];
+			instance.addPostProcessor(async () => {
+				seen = [...instance.types.nodes];
+			});
+			instance.addPostProcessor(
+				async () => {
+					instance.types.nodes = [replacement];
+				},
+				{ phase: 'transform' },
+			);
+
+			await instance.postProcessLoaders();
+
+			expect(seen).toEqual([replacement]);
+		});
+	});
 });

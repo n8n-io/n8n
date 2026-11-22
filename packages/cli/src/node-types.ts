@@ -12,6 +12,7 @@ import { UnexpectedError, UserError } from '@n8n/errors';
 import { join, dirname } from 'path';
 
 import { LoadNodesAndCredentials } from './load-nodes-and-credentials';
+import type { NodeTypeExtensionProvider } from './node-type-extension-provider';
 import { convertNodeToAiTool, convertNodeToHitlTool } from './tool-generation';
 import { satisfiesToolCapability, shouldAssignExecuteMethod, stripToolSuffix } from './utils';
 
@@ -21,6 +22,41 @@ export class NodeTypes implements INodeTypes {
 		private readonly logger: Logger,
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
 	) {}
+
+	private extensionProvider?: NodeTypeExtensionProvider;
+
+	/** At most one provider. Throws `UnexpectedError` when another provider is already set. `undefined` removes it. */
+	setExtensionProvider(provider: NodeTypeExtensionProvider | undefined) {
+		if (provider && this.extensionProvider) {
+			throw new UnexpectedError('A node type extension provider is already set');
+		}
+		this.extensionProvider = provider;
+	}
+
+	private extendDescription(nodeTypeName: string, description: INodeTypeDescription) {
+		return this.extensionProvider?.extendDescription(nodeTypeName, description) ?? description;
+	}
+
+	private extendNodeType(nodeTypeName: string, nodeType: INodeType) {
+		return this.extensionProvider?.extendNodeType(nodeTypeName, nodeType) ?? nodeType;
+	}
+
+	/** A versioned type stays unchanged. The copy extends each version that `getNodeType` returns. */
+	private extendLoadedType(
+		nodeTypeName: string,
+		loaded: INodeType | IVersionedNodeType,
+	): INodeType | IVersionedNodeType {
+		const provider = this.extensionProvider;
+		if (!provider) return loaded;
+		if (!('nodeVersions' in loaded)) return provider.extendNodeType(nodeTypeName, loaded);
+
+		return Object.create(loaded, {
+			getNodeType: {
+				value: (version?: number) =>
+					provider.extendNodeType(nodeTypeName, loaded.getNodeType(version)),
+			},
+		}) as IVersionedNodeType;
+	}
 
 	/**
 	 * Resolves a tool-variant name (`…Tool`/`…HitlTool`) to the base node type it
@@ -54,8 +90,11 @@ export class NodeTypes implements INodeTypes {
 		const nodeType = this.loadNodesAndCredentials.getNode(nodeTypeName);
 		const { description } = NodeHelpers.getVersionedNodeType(nodeType.type, version);
 
+		const extended = this.extendDescription(nodeTypeName, description);
+
 		return {
-			description: { ...description },
+			// Copy, so a caller can change the result without changing the loaded node
+			description: { ...extended },
 			sourcePath: this.loadNodesAndCredentials.resolveNodeSourcePath(
 				nodeTypeName,
 				nodeType.sourcePath,
@@ -95,7 +134,7 @@ export class NodeTypes implements INodeTypes {
 	}
 
 	getByName(nodeType: string): INodeType | IVersionedNodeType {
-		return this.loadNodesAndCredentials.getNode(nodeType).type;
+		return this.extendLoadedType(nodeType, this.loadNodesAndCredentials.getNode(nodeType).type);
 	}
 
 	getByNameAndVersion(nodeType: string, version?: number): INodeType {
@@ -106,7 +145,7 @@ export class NodeTypes implements INodeTypes {
 		// If an existing node name ends in `Tool`, then return that node, instead of creating a fake Tool node
 		if (nodeType.endsWith('Tool') && !isSyntheticTool) {
 			const node = this.loadNodesAndCredentials.getNode(nodeType);
-			return NodeHelpers.getVersionedNodeType(node.type, version);
+			return this.extendNodeType(nodeType, NodeHelpers.getVersionedNodeType(node.type, version));
 		}
 
 		const node = this.loadNodesAndCredentials.getNode(baseName);
@@ -125,7 +164,7 @@ export class NodeTypes implements INodeTypes {
 			};
 		}
 
-		if (!isSyntheticTool) return versionedNodeType;
+		if (!isSyntheticTool) return this.extendNodeType(nodeType, versionedNodeType);
 
 		// Cache key must include the version: a base node can be usable as a tool
 		// at several versions (e.g. Notion v2 vs v3), and they must not collide.
@@ -257,7 +296,7 @@ export class NodeTypes implements INodeTypes {
 
 			const descriptionCopy = isSyntheticTool
 				? this.buildSyntheticToolDescription(nodeTypeName, description)
-				: { ...description };
+				: { ...this.extendDescription(nodeTypeName, description) };
 
 			// TODO: do we still need this?
 			descriptionCopy.name = descriptionCopy.name.startsWith('n8n-nodes')

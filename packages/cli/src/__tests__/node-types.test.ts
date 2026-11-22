@@ -8,9 +8,11 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { NodeVersionNotFoundError, VersionedNodeType } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import type { NodeTypeExtensionProvider } from '@/node-type-extension-provider';
 import { NodeTypes } from '@/node-types';
 
 describe('NodeTypes', () => {
@@ -631,6 +633,135 @@ describe('NodeTypes', () => {
 
 			expect(result.name).toBe('n8n-nodes-base.realTool');
 			expect(result.outputs).toBeUndefined();
+		});
+	});
+
+	describe('extension provider', () => {
+		const marked = (description: INodeTypeDescription) =>
+			({ ...description, marker: true }) as INodeTypeDescription;
+		const isMarked = (description: INodeTypeDescription) => 'marker' in description;
+
+		let seenByProvider: INodeType[];
+		const provider: NodeTypeExtensionProvider = {
+			extendDescription: (_name, description) => marked(description),
+			extendNodeType: (_name, nodeType) => {
+				seenByProvider.push(nodeType);
+				return Object.create(nodeType, {
+					description: { value: marked(nodeType.description) },
+				}) as INodeType;
+			},
+		};
+
+		beforeEach(() => {
+			seenByProvider = [];
+		});
+
+		afterEach(() => {
+			nodeTypes.setExtensionProvider(undefined);
+		});
+
+		it('returns the same objects as before when no provider is set', () => {
+			expect(nodeTypes.getByName('n8n-nodes-base.nonVersioned')).toBe(nonVersionedNode.type);
+			expect(nodeTypes.getByName('n8n-nodes-base.versioned')).toBe(versionedNode.type);
+			expect(nodeTypes.getByNameAndVersion('n8n-nodes-base.nonVersioned', 1)).toBe(
+				nonVersionedNode.type,
+			);
+			expect(nodeTypes.getByNameAndVersion('n8n-nodes-base.versioned', 1)).toBe(v1Node);
+			const { description } = nodeTypes.getWithSourcePath('n8n-nodes-base.nonVersioned', 1);
+			const [described] = nodeTypes.getNodeTypeDescriptions([
+				{ name: 'n8n-nodes-base.nonVersioned', version: 1 },
+			]);
+			for (const result of [description, described]) {
+				expect(result.name).toBe('n8n-nodes-base.nonVersioned');
+				expect(isMarked(result)).toBe(false);
+			}
+		});
+
+		it('returns the provider result from getByNameAndVersion', () => {
+			nodeTypes.setExtensionProvider(provider);
+
+			const result = nodeTypes.getByNameAndVersion('n8n-nodes-base.nonVersioned', 1);
+
+			expect(result).not.toBe(nonVersionedNode.type);
+			expect(isMarked(result.description)).toBe(true);
+			expect(isMarked(nonVersionedNode.type.description)).toBe(false);
+		});
+
+		it('gives the provider a declarative node type that already has execute', () => {
+			nodeTypes.setExtensionProvider(provider);
+
+			nodeTypes.getByNameAndVersion('n8n-nodes-base.declarativeNode', 1);
+
+			expect(seenByProvider).toHaveLength(1);
+			expect(typeof seenByProvider[0].execute).toBe('function');
+		});
+
+		it('does not call the provider for a Tool variant or a HitlTool variant', () => {
+			nodeTypes.setExtensionProvider(provider);
+
+			const tool = nodeTypes.getByNameAndVersion('n8n-nodes-base.testNodeTool', 1);
+			const hitlTool = nodeTypes.getByNameAndVersion('n8n-nodes-base.hitlNodeHitlTool', 1);
+			const [toolDescription, hitlDescription] = nodeTypes.getNodeTypeDescriptions([
+				{ name: 'n8n-nodes-base.plainToolNodeTool', version: 1 },
+				{ name: 'n8n-nodes-base.hitlNodeHitlTool', version: 1 },
+			]);
+
+			expect(seenByProvider).toHaveLength(0);
+			expect(isMarked(tool.description)).toBe(false);
+			expect(isMarked(hitlTool.description)).toBe(false);
+			expect(isMarked(toolDescription)).toBe(false);
+			expect(isMarked(hitlDescription)).toBe(false);
+		});
+
+		it('returns the extended description from getWithSourcePath', () => {
+			nodeTypes.setExtensionProvider(provider);
+
+			const { description } = nodeTypes.getWithSourcePath('n8n-nodes-base.nonVersioned', 1);
+
+			expect(isMarked(description)).toBe(true);
+			expect(isMarked(nonVersionedNode.type.description)).toBe(false);
+		});
+
+		it('returns the extended description from getNodeTypeDescriptions for a base node', () => {
+			nodeTypes.setExtensionProvider(provider);
+
+			const [description] = nodeTypes.getNodeTypeDescriptions([
+				{ name: 'n8n-nodes-base.nonVersioned', version: 1 },
+			]);
+
+			expect(isMarked(description)).toBe(true);
+		});
+
+		it('extends a non-versioned node type in getByName', () => {
+			nodeTypes.setExtensionProvider(provider);
+
+			const result = nodeTypes.getByName('n8n-nodes-base.nonVersioned') as INodeType;
+
+			expect(isMarked(result.description)).toBe(true);
+			expect(isMarked(nonVersionedNode.type.description)).toBe(false);
+		});
+
+		it('extends each version of a versioned node type in getByName and keeps the loaded object unchanged', () => {
+			nodeTypes.setExtensionProvider(provider);
+			const loaded = versionedNode.type;
+
+			const result = nodeTypes.getByName('n8n-nodes-base.versioned') as IVersionedNodeType;
+
+			expect(result).not.toBe(loaded);
+			expect(result.currentVersion).toBe(2);
+			for (const version of [1, 2]) {
+				expect(result.getNodeType(version)).not.toBe(loaded.getNodeType(version));
+				expect(isMarked(result.getNodeType(version).description)).toBe(true);
+			}
+			expect(loaded.getNodeType(1)).toBe(v1Node);
+			expect(loaded.getNodeType(2)).toBe(v2Node);
+			expect(isMarked(v1Node.description)).toBe(false);
+		});
+
+		it('rejects a second provider', () => {
+			nodeTypes.setExtensionProvider(provider);
+
+			expect(() => nodeTypes.setExtensionProvider({ ...provider })).toThrow(UnexpectedError);
 		});
 	});
 });

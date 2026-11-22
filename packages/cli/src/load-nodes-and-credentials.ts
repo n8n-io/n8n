@@ -49,6 +49,8 @@ import { CUSTOM_API_CALL_KEY, CUSTOM_API_CALL_NAME, CLI_DIR, inE2ETests } from '
 import { defaultDiscriminators, getParameterDefaults } from '@/output-schema-parameter-defaults';
 import { createAiTools, createHitlTools } from '@/tool-generation';
 
+export type PostProcessorPhase = 'transform' | 'consume';
+
 @Service()
 export class LoadNodesAndCredentials {
 	private known: KnownNodesAndCredentials = { nodes: {}, credentials: {} };
@@ -66,7 +68,7 @@ export class LoadNodesAndCredentials {
 
 	includeNodes = this.globalConfig.nodes.include;
 
-	private postProcessors: Array<() => Promise<void>> = [];
+	private postProcessors: Array<{ fn: () => Promise<void>; phase: PostProcessorPhase }> = [];
 
 	constructor(
 		private readonly logger: Logger,
@@ -138,8 +140,9 @@ export class LoadNodesAndCredentials {
 		await this.postProcessLoaders();
 	}
 
-	addPostProcessor(fn: () => Promise<void>) {
-		this.postProcessors.push(fn);
+	/** `transform` processors change `types` and run before all `consume` processors. Default: `consume`. */
+	addPostProcessor(fn: () => Promise<void>, options?: { phase?: PostProcessorPhase }) {
+		this.postProcessors.push({ fn, phase: options?.phase ?? 'consume' });
 	}
 
 	releaseTypes() {
@@ -394,8 +397,9 @@ export class LoadNodesAndCredentials {
 	/**
 	 * Whether any of the node's credential types may be used to
 	 * make a request from a node other than itself.
+	 * Needs the credential types in memory, so call it inside a post-processor.
 	 */
-	private supportsProxyAuth(description: INodeTypeDescription) {
+	supportsProxyAuth(description: INodeTypeDescription) {
 		if (!description.credentials) return false;
 
 		return description.credentials.some(({ name }) => {
@@ -701,8 +705,10 @@ export class LoadNodesAndCredentials {
 
 		this.injectContextEstablishmentHooks();
 
-		for (const postProcessor of this.postProcessors) {
-			await postProcessor();
+		for (const phase of ['transform', 'consume'] as const) {
+			for (const postProcessor of this.postProcessors) {
+				if (postProcessor.phase === phase) await postProcessor.fn();
+			}
 		}
 	}
 
