@@ -37,6 +37,7 @@ const label = computed(() =>
 		data-attr="custom-action-add-entry"
 		@click="emit('select')"
 		@keydown.enter.prevent="emit('select')"
+		@keydown.space.prevent="emit('select')"
 	>
 		<N8nIcon icon="plus" :class="$style.icon" />
 		<N8nText size="small" bold color="primary">{{ label }}</N8nText>

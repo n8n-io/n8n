@@ -196,6 +196,62 @@ describe('useCustomActionSelection', () => {
 		});
 	});
 
+	describe('parent not available', () => {
+		const unavailablePin = {
+			resource: CUSTOM_ACTION_RESOURCE_VALUE,
+			operation: 'parent-action-2@1',
+			customActionId: 'parent-action-2',
+			customActionName: 'Unavailable action',
+		};
+
+		beforeEach(() => {
+			listParentActions.mockResolvedValue([
+				parentAction,
+				createParentAction({
+					id: 'parent-action-2',
+					name: 'Unavailable action',
+					parentAvailable: false,
+					newestVersion: 2,
+					versions: [
+						version(1, unavailablePin),
+						version(2, { ...unavailablePin, operation: 'parent-action-2@2' }),
+					],
+				}),
+			]);
+		});
+
+		it('ignores a parent action whose parent node is not available', async () => {
+			const selection = setup();
+			selection.pinValuesFor('n8n-nodes-base.slack', {});
+			await flushPromises();
+
+			const parameters = { resource: CUSTOM_ACTION_RESOURCE_VALUE, operation: 'parent-action-2@1' };
+			expect(selection.pinValuesFor('n8n-nodes-base.slack', parameters)).toBe(undefined);
+			expect(selection.newestPinValuesFor('n8n-nodes-base.slack', parameters)).toBe(undefined);
+			expect(selection.actionNameFor(parameters)).toBe(undefined);
+			expect(
+				selection.pinValuesFor('n8n-nodes-base.slack', {
+					resource: CUSTOM_ACTION_RESOURCE_VALUE,
+					operation: 'parent-action-1@1',
+				}),
+			).toEqual(parentPin(1));
+		});
+
+		it('still returns the name that the node stored', async () => {
+			const selection = setup();
+			selection.actionNameFor({});
+			await flushPromises();
+
+			expect(
+				selection.actionNameFor({
+					resource: CUSTOM_ACTION_RESOURCE_VALUE,
+					operation: 'parent-action-2@1',
+					customActionName: 'Unavailable action',
+				}),
+			).toBe('Unavailable action');
+		});
+	});
+
 	describe('loading', () => {
 		it('loads the custom actions once', async () => {
 			const selection = setup();

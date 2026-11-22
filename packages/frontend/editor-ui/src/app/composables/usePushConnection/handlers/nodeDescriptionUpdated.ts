@@ -17,7 +17,8 @@ export async function nodeDescriptionUpdated(_event: NodeDescriptionUpdated) {
 	await credentialsStore.fetchCredentialTypes(true);
 
 	// A saved custom action changes the node descriptions. Its pin values must follow.
+	// Do not wait: the push queue is serial, and refresh() catches its own errors.
 	if (useSettingsStore().isModuleActive(CUSTOM_NODES_MODULE_ID)) {
-		await useCustomNodesStore().refresh();
+		void useCustomNodesStore().refresh();
 	}
 }

@@ -12,6 +12,13 @@ import { useKeybindings } from '@/app/composables/useKeybindings';
 import CustomActionWizardHost from './CustomActionWizardHost.vue';
 import { useCustomActionWizard } from './useCustomActionWizard';
 
+const loadWizard = vi.hoisted(() => ({ spy: vi.fn() }));
+vi.mock('@n8n/frontend-module-custom-nodes', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@n8n/frontend-module-custom-nodes')>();
+	loadWizard.spy.mockImplementation(actual.loadCustomActionWizardModal);
+	return { ...actual, loadCustomActionWizardModal: loadWizard.spy };
+});
+
 const renderHost = createComponentRenderer(CustomActionWizardHost);
 
 const setup = (moduleActive: boolean) => {
@@ -42,6 +49,7 @@ const mountCanvas = (onDelete: () => void, onPaste: (text: string) => void) =>
 
 describe('CustomActionWizardHost', () => {
 	beforeEach(() => {
+		loadWizard.spy.mockClear();
 		capabilityRegistry.provide(capabilities.typeDescriptions, {
 			load: async () => {},
 			nodeTypes: () => [],
@@ -66,6 +74,18 @@ describe('CustomActionWizardHost', () => {
 		});
 	});
 
+	it('loads the wizard only when it opens', async () => {
+		setup(true);
+		await nextTick();
+
+		expect(loadWizard.spy).not.toHaveBeenCalled();
+
+		useCustomActionWizard().open({ mode: 'create' });
+
+		expect(await wizardDialog()).toBeInTheDocument();
+		expect(loadWizard.spy).toHaveBeenCalledTimes(1);
+	});
+
 	it('renders no wizard with the module off', async () => {
 		setup(false);
 
@@ -73,6 +93,7 @@ describe('CustomActionWizardHost', () => {
 		await nextTick();
 
 		expect(document.querySelector('[data-test-id="custom-action-wizard"]')).toBeNull();
+		expect(loadWizard.spy).not.toHaveBeenCalled();
 	});
 
 	it('keeps canvas shortcuts and the canvas paste away from the open wizard', async () => {

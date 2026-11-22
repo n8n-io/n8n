@@ -21,7 +21,7 @@ describe('useCustomNodeEntryPoints', () => {
 
 	const setup = ({
 		active = true,
-		scopes = ['customNode:list', 'customNode:create'],
+		scopes = ['customNode:list', 'customNode:create', 'customNode:update'],
 	}: { active?: boolean; scopes?: Scope[] } = {}) => {
 		useSettingsStore().settings.activeModules = active ? ['custom-nodes'] : [];
 		useRBACStore().setGlobalScopes(scopes);
@@ -95,10 +95,35 @@ describe('useCustomNodeEntryPoints', () => {
 			expect(listNodes).toHaveBeenCalledTimes(1);
 		});
 
+		it('returns undefined for a custom node without the update scope', async () => {
+			const entryPoints = setup({ scopes: ['customNode:list', 'customNode:create'] });
+			entryPoints.addActionDataFor('n8n-custom.acme');
+			await flushPromises();
+
+			expect(entryPoints.addActionDataFor('n8n-custom.acme')).toBeUndefined();
+			expect(entryPoints.addActionDataFor('n8n-nodes-base.slack')).toEqual({
+				mode: 'create',
+				parentNodeType: 'n8n-nodes-base.slack',
+			});
+		});
+
+		it('returns the custom node id with the update scope and no create scope', async () => {
+			const entryPoints = setup({ scopes: ['customNode:list', 'customNode:update'] });
+			entryPoints.addActionDataFor('n8n-custom.acme');
+			await flushPromises();
+
+			expect(entryPoints.addActionDataFor('n8n-custom.acme')).toEqual({
+				mode: 'create',
+				customNodeId: 'node-1',
+			});
+			expect(entryPoints.addActionDataFor('n8n-nodes-base.slack')).toBeUndefined();
+			expect(listParents).not.toHaveBeenCalled();
+		});
+
 		it.each<[string, { active?: boolean; scopes?: Scope[] }]>([
 			['the module is off', { active: false }],
-			['the user has no create scope', { scopes: ['customNode:list'] }],
-			['the user has no list scope', { scopes: ['customNode:create'] }],
+			['the user has no create or update scope', { scopes: ['customNode:list'] }],
+			['the user has no list scope', { scopes: ['customNode:create', 'customNode:update'] }],
 		])('returns undefined and loads nothing when %s', async (_name, options) => {
 			const entryPoints = setup(options);
 

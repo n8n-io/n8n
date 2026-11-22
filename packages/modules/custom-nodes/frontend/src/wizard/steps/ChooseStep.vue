@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import type { CustomNodeAuth } from '@n8n/api-types';
 import {
+	N8nCombobox2,
 	N8nInput,
 	N8nInputLabel,
 	N8nRadioGroup,
 	N8nRadioGroupItem,
 	N8nSelect2,
 	N8nText,
+	type ComboboxOptionBase,
 	type SelectItem,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -18,7 +20,7 @@ import IssueList from './IssueList.vue';
 const props = defineProps<{
 	mode: 'create' | 'edit';
 	/** Custom nodes (`node:<id>`) and parent nodes (`parent:<type>`). */
-	targetItems: SelectItem[];
+	targetItems: ComboboxOptionBase[];
 	/** The node of the action in the edit mode. */
 	editTargetLabel?: string;
 	/** The display name of the predefined credential type, when it is known. */
@@ -131,10 +133,14 @@ function onCredentialType(credentialType: string) {
 				:label="i18n.baseText('customNodes.wizard.choose.node')"
 				color="text-dark"
 			>
-				<N8nSelect2
+				<!-- The list can have more than a hundred nodes, so the user can search it. -->
+				<N8nCombobox2
 					:model-value="targetValue"
 					:items="targetItems"
 					:placeholder="i18n.baseText('customNodes.wizard.choose.node.placeholder')"
+					:aria-label="i18n.baseText('customNodes.wizard.choose.node')"
+					icon="search"
+					open-on-click
 					data-test-id="custom-action-wizard-target-select"
 					@update:model-value="onTarget"
 				/>

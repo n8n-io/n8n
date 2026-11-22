@@ -43,8 +43,11 @@ export function useCustomActionSelection() {
 		const nodeActions = store.nodes
 			.filter((node) => nodeTypeName === undefined || node.nodeType === nodeTypeName)
 			.flatMap((node) => node.actions ?? []);
+		// The node description has no options for an action whose parent is not available.
 		const parentActions = store.parentActions.filter(
-			(action) => nodeTypeName === undefined || action.parentNodeType === nodeTypeName,
+			(action) =>
+				action.parentAvailable &&
+				(nodeTypeName === undefined || action.parentNodeType === nodeTypeName),
 		);
 		return [...nodeActions, ...parentActions];
 	}

@@ -36,6 +36,20 @@ describe('nodeDescriptionUpdated', () => {
 		expect(customNodesStore.refresh).toHaveBeenCalledTimes(1);
 	});
 
+	it('does not wait for the reload of the custom actions', async () => {
+		vi.mocked(useSettingsStore().isModuleActive).mockImplementation(
+			(name: string) => name === 'custom-nodes',
+		);
+		customNodesStore.refresh.mockReturnValue(new Promise(() => {}));
+
+		const handled = nodeDescriptionUpdated(event).then(() => 'done');
+
+		await expect(
+			Promise.race([handled, new Promise((resolve) => setTimeout(() => resolve('waiting'), 50))]),
+		).resolves.toBe('done');
+		expect(customNodesStore.refresh).toHaveBeenCalledTimes(1);
+	});
+
 	it('does not reload the custom actions when the module is off', async () => {
 		vi.mocked(useSettingsStore().isModuleActive).mockReturnValue(false);
 

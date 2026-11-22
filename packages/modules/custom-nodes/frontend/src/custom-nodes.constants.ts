@@ -11,5 +11,7 @@ export const CUSTOM_NODE_CREATE_SCOPE = 'customNode:create';
 
 export const CUSTOM_NODE_UPDATE_SCOPE = 'customNode:update';
 
+export const CUSTOM_NODE_DELETE_SCOPE = 'customNode:delete';
+
 /** The hidden node parameter that keeps the name of the selected custom action. */
 export const PIN_ACTION_NAME_PARAMETER = 'customActionName';

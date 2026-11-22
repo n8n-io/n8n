@@ -1,5 +1,7 @@
 import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
 import { createComponentRenderer, mockedStore, waitAllPromises } from '@n8n/frontend-test-utils';
+import type { Scope } from '@n8n/permissions';
+import { useRBACStore } from '@n8n/stores/rbac.store';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import type { INodeTypeDescription } from 'n8n-workflow';
@@ -20,8 +22,15 @@ vi.mock('@n8n/composables/useToast', () => ({ useToast: () => ({ showMessage, sh
 
 vi.mock('@n8n/design-system', async () => {
 	const actual = await vi.importActual<typeof import('@n8n/design-system')>('@n8n/design-system');
-	const { N8nDialogStub, N8nSelect2Stub } = await import('../__tests__/designSystemStubs');
-	return { ...actual, N8nDialog: N8nDialogStub, N8nSelect2: N8nSelect2Stub };
+	const { N8nCombobox2Stub, N8nDialogStub, N8nSelect2Stub } = await import(
+		'../__tests__/designSystemStubs'
+	);
+	return {
+		...actual,
+		N8nCombobox2: N8nCombobox2Stub,
+		N8nDialog: N8nDialogStub,
+		N8nSelect2: N8nSelect2Stub,
+	};
 });
 
 const SLACK = {
@@ -32,8 +41,14 @@ const SLACK = {
 
 const renderModal = createComponentRenderer(CustomActionWizardModal);
 
-const setup = async (data: CustomActionWizardData = { mode: 'create' }) => {
+const setup = async (
+	data: CustomActionWizardData = { mode: 'create' },
+	scopes: Scope[] = ['customNode:list', 'customNode:create', 'customNode:update'],
+) => {
 	const pinia = createTestingPinia();
+	mockedStore(useRBACStore).hasScope.mockImplementation(
+		(scope: Scope | Scope[]) => typeof scope === 'string' && scopes.includes(scope),
+	);
 	const store = mockedStore(useCustomNodesStore);
 	store.nodes = [createNode()];
 	store.parentActions = [
@@ -157,6 +172,23 @@ describe('CustomActionWizardModal', () => {
 			expect.objectContaining({ parentNodeType: 'n8n-nodes-base.slack' }),
 		);
 		expect(showMessage).toHaveBeenCalledWith(expect.objectContaining({ title: 'Action added' }));
+	});
+
+	it.each<[string, Scope[], string[]]>([
+		[
+			'customNode:create',
+			['customNode:list', 'customNode:create'],
+			['parent:n8n-nodes-base.slack'],
+		],
+		['customNode:update', ['customNode:list', 'customNode:update'], ['node:node-1']],
+	])('offers only the nodes that %s allows as the target', async (_name, scopes, values) => {
+		const view = await setup({ mode: 'create' }, scopes);
+		await userEvent.click(view.getByTestId('custom-action-wizard-choice-existing'));
+
+		const options = view
+			.getByTestId('custom-action-wizard-target-select')
+			.querySelectorAll('option:not([disabled])');
+		expect([...options].map((option) => option.getAttribute('value'))).toEqual(values);
 	});
 
 	it('adds an action to a custom node', async () => {

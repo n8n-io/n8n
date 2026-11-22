@@ -7,12 +7,14 @@ import {
 	N8nDialogFooter,
 	N8nSpinner,
 	N8nText,
-	type SelectItem,
+	type ComboboxOptionBase,
 } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { useRBACStore } from '@n8n/stores/rbac.store';
 import { computed, onMounted, ref } from 'vue';
 
 import { useTypeNames } from '../composables/useTypeNames';
+import { CUSTOM_NODE_CREATE_SCOPE, CUSTOM_NODE_UPDATE_SCOPE } from '../custom-nodes.constants';
 import { useCustomNodesStore } from '../custom-nodes.store';
 import ChooseStep from './steps/ChooseStep.vue';
 import FieldsStep from './steps/FieldsStep.vue';
@@ -39,6 +41,7 @@ const SAVED_MESSAGES: Record<CustomActionEditKind, BaseTextKey> = {
 const i18n = useI18n();
 const toast = useToast();
 const store = useCustomNodesStore();
+const rbacStore = useRBACStore();
 const typeNames = useTypeNames();
 const wizard = useCustomActionDraft();
 const { target, node, name, description, request, inputs, changeNote } = wizard;
@@ -62,10 +65,14 @@ const stepIndicator = computed(() =>
 	}),
 );
 
-const targetItems = computed((): SelectItem[] =>
+// An action of a custom node needs `customNode:update`, an action of a parent `customNode:create`.
+const targetItems = computed((): ComboboxOptionBase[] =>
 	[
-		...store.nodes.map((custom) => ({ value: `node:${custom.id}`, label: custom.displayName })),
-		...store.parents.map((parent) => ({
+		...(rbacStore.hasScope(CUSTOM_NODE_UPDATE_SCOPE) ? store.nodes : []).map((custom) => ({
+			value: `node:${custom.id}`,
+			label: custom.displayName,
+		})),
+		...(rbacStore.hasScope(CUSTOM_NODE_CREATE_SCOPE) ? store.parents : []).map((parent) => ({
 			value: `parent:${parent.nodeType}`,
 			label: typeNames.nodeDisplayName(parent.nodeType),
 		})),

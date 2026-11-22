@@ -3,6 +3,7 @@ import { ref } from 'vue';
 import { N8nButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
+import { escapeXmlText } from '@n8n/utils/string/escape-xml';
 
 import { useCustomNodesStore } from '../custom-nodes.store';
 
@@ -60,10 +61,11 @@ async function onChange(event: Event) {
 		toast.showMessage({ title: i18n.baseText('customNodes.icon.success'), type: 'success' });
 	} catch (error) {
 		if (serverStatus(error) === 400) {
+			// The toast renders HTML, so escape the reason: it can name an element such as <script>.
+			const reason = escapeXmlText(error instanceof Error ? error.message : '');
 			toast.showMessage({
 				title: i18n.baseText('customNodes.icon.error'),
-				message:
-					`${error instanceof Error ? error.message : ''} ${i18n.baseText('customNodes.icon.svgHint')}`.trim(),
+				message: `${reason} ${i18n.baseText('customNodes.icon.svgHint')}`.trim(),
 				type: 'error',
 			});
 		} else {

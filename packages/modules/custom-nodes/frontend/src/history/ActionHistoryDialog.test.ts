@@ -1,5 +1,6 @@
 import { createComponentRenderer, mockedStore, waitAllPromises } from '@n8n/frontend-test-utils';
 import { createTestingPinia } from '@pinia/testing';
+import { useRBACStore } from '@n8n/stores/rbac.store';
 import userEvent from '@testing-library/user-event';
 
 import { useCustomNodesStore } from '../custom-nodes.store';
@@ -47,8 +48,11 @@ const detail = {
 	],
 };
 
-const setup = async () => {
+const setup = async ({ canUpdate = true }: { canUpdate?: boolean } = {}) => {
 	const pinia = createTestingPinia();
+	mockedStore(useRBACStore).hasScope.mockImplementation(
+		(scope) => canUpdate && scope === 'customNode:update',
+	);
 	const store = mockedStore(useCustomNodesStore);
 	store.fetchActionVersion.mockResolvedValue(detail);
 	store.rollbackRevision.mockResolvedValue(action);
@@ -105,5 +109,12 @@ describe('ActionHistoryDialog', () => {
 		await userEvent.click(getByTestId('custom-nodes-history-cancel'));
 
 		expect(store.rollbackRevision).not.toHaveBeenCalled();
+	});
+
+	it('hides the rollback without customNode:update, but still lists the revisions', async () => {
+		const { getAllByTestId, queryByTestId } = await setup({ canUpdate: false });
+
+		expect(getAllByTestId('custom-nodes-history-revision')).toHaveLength(2);
+		expect(queryByTestId('custom-nodes-history-rollback')).not.toBeInTheDocument();
 	});
 });

@@ -1,5 +1,6 @@
 import { createComponentRenderer } from '@n8n/frontend-test-utils';
 import userEvent from '@testing-library/user-event';
+import { screen, waitFor } from '@testing-library/vue';
 
 import type { NewNodeFields, WizardIssue, WizardTarget } from '../wizard.types';
 import ChooseStep from './ChooseStep.vue';
@@ -11,6 +12,11 @@ vi.mock('@n8n/design-system', async () => {
 });
 
 const renderStep = createComponentRenderer(ChooseStep);
+
+beforeAll(() => {
+	// The combobox list scrolls the highlighted option into view. jsdom has no layout.
+	Element.prototype.scrollIntoView = vi.fn();
+});
 
 const node = (): NewNodeFields => ({
 	displayName: '',
@@ -38,6 +44,7 @@ const setup = (
 			editTargetLabel: props.editTargetLabel,
 			targetItems: [
 				{ value: 'node:node-1', label: 'Acme' },
+				{ value: 'parent:n8n-nodes-base.github', label: 'GitHub' },
 				{ value: 'parent:n8n-nodes-base.slack', label: 'Slack' },
 			],
 			issues: props.issues ?? [],
@@ -72,19 +79,30 @@ describe('ChooseStep', () => {
 	});
 
 	it('emits an existing node as the target', async () => {
-		const { getByTestId, queryByTestId, emitted } = setup();
+		const { getByTestId, queryByTestId, getByRole, emitted } = setup();
 
 		await userEvent.click(getByTestId('custom-action-wizard-choice-existing'));
 		expect(queryByTestId('custom-action-wizard-node-name')).not.toBeInTheDocument();
-		await userEvent.selectOptions(
-			getByTestId('custom-action-wizard-target-select'),
-			'parent:n8n-nodes-base.slack',
-		);
+		await userEvent.type(getByRole('combobox', { name: 'Node' }), 'Sla');
+		await userEvent.click(await screen.findByRole('option', { name: 'Slack' }));
 
 		expect(emitted('update:target')).toEqual([
 			[null],
 			[{ kind: 'parent', parentNodeType: 'n8n-nodes-base.slack' }],
 		]);
+	});
+
+	it('filters the list of nodes as the user types', async () => {
+		const { getByTestId, getByRole } = setup();
+
+		await userEvent.click(getByTestId('custom-action-wizard-choice-existing'));
+		await userEvent.type(getByRole('combobox', { name: 'Node' }), 'git');
+
+		await waitFor(() => {
+			expect(screen.getAllByRole('option').map((option) => option.textContent?.trim())).toEqual([
+				'GitHub',
+			]);
+		});
 	});
 
 	it('emits the name and description of the action', async () => {

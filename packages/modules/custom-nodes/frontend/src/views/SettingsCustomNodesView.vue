@@ -5,6 +5,7 @@ import { useDocumentTitle } from '@n8n/composables/useDocumentTitle';
 import { useToast } from '@n8n/composables/useToast';
 import {
 	N8nAlertDialog,
+	N8nBadge,
 	N8nButton,
 	N8nNodeIcon,
 	N8nSettingsLayout,
@@ -21,7 +22,11 @@ import type {
 } from '@n8n/api-types';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 import { useTypeNames } from '../composables/useTypeNames';
-import { CUSTOM_NODE_UPDATE_SCOPE } from '../custom-nodes.constants';
+import {
+	CUSTOM_NODE_CREATE_SCOPE,
+	CUSTOM_NODE_DELETE_SCOPE,
+	CUSTOM_NODE_UPDATE_SCOPE,
+} from '../custom-nodes.constants';
 import { useCustomNodesStore } from '../custom-nodes.store';
 import ActionHistoryDialog from '../history/ActionHistoryDialog.vue';
 import NodeIconUpload from '../icon/NodeIconUpload.vue';
@@ -56,7 +61,10 @@ const isEmpty = computed(
 
 const dialogOpen = computed(() => pendingDelete.value !== null);
 
+// Each button needs the scope of its route.
+const canCreate = computed(() => rbacStore.hasScope(CUSTOM_NODE_CREATE_SCOPE));
 const canEdit = computed(() => rbacStore.hasScope(CUSTOM_NODE_UPDATE_SCOPE));
+const canDelete = computed(() => rbacStore.hasScope(CUSTOM_NODE_DELETE_SCOPE));
 
 // The icon URL stays the same after an upload, so a query param busts the image cache.
 const iconNonce = ref(0);
@@ -159,6 +167,7 @@ onMounted(async () => {
 		>
 			<template #titleTrailing>
 				<N8nButton
+					v-if="canCreate"
 					variant="solid"
 					icon="plus"
 					:label="i18n.baseText('customNodes.settings.create')"
@@ -172,7 +181,7 @@ onMounted(async () => {
 			<N8nText color="text-light">
 				{{ i18n.baseText('customNodes.settings.empty') }}
 			</N8nText>
-			<div>
+			<div v-if="canCreate">
 				<N8nButton
 					variant="outline"
 					icon="plus"
@@ -202,6 +211,7 @@ onMounted(async () => {
 						<div :class="$style.actions">
 							<NodeIconUpload v-if="canEdit" :node-id="node.id" @uploaded="iconNonce += 1" />
 							<N8nButton
+								v-if="canEdit"
 								variant="ghost"
 								icon="plus"
 								:label="i18n.baseText('customNodes.settings.addAction')"
@@ -209,6 +219,7 @@ onMounted(async () => {
 								@click="openAddAction(node)"
 							/>
 							<N8nButton
+								v-if="canDelete"
 								variant="ghost"
 								icon="trash-2"
 								icon-only
@@ -269,6 +280,13 @@ onMounted(async () => {
 				>
 					<template #action>
 						<div :class="$style.actions">
+							<N8nBadge
+								v-if="!action.parentAvailable"
+								variant="warning"
+								data-test-id="custom-nodes-parent-unavailable"
+							>
+								{{ i18n.baseText('customNodes.settings.parent.unavailable') }}
+							</N8nBadge>
 							<N8nButton
 								variant="ghost"
 								icon="history"
@@ -285,6 +303,7 @@ onMounted(async () => {
 								@click="openEdit(action.id)"
 							/>
 							<N8nButton
+								v-if="canDelete"
 								variant="ghost"
 								icon="trash-2"
 								icon-only

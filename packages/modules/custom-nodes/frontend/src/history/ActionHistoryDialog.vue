@@ -8,7 +8,9 @@ import type {
 	CustomActionRevisionSummary,
 	CustomActionVersionDetailResponse,
 } from '@n8n/api-types';
+import { useRBACStore } from '@n8n/stores/rbac.store';
 
+import { CUSTOM_NODE_UPDATE_SCOPE } from '../custom-nodes.constants';
 import { useCustomNodesStore } from '../custom-nodes.store';
 
 const props = defineProps<{ action?: CustomActionResponse }>();
@@ -18,6 +20,10 @@ const open = defineModel<boolean>('open', { default: false });
 const i18n = useI18n();
 const toast = useToast();
 const store = useCustomNodesStore();
+const rbacStore = useRBACStore();
+
+/** A rollback calls a route that needs `customNode:update`. */
+const canRollBack = computed(() => rbacStore.hasScope(CUSTOM_NODE_UPDATE_SCOPE));
 
 const selectedVersion = ref<number | null>(null);
 const detail = ref<CustomActionVersionDetailResponse | null>(null);
@@ -157,7 +163,7 @@ async function rollBack(revision: CustomActionRevisionSummary) {
 								{{ revision.changeNote }}
 							</N8nText>
 						</div>
-						<div v-if="!revision.current" :class="$style.rowActions">
+						<div v-if="!revision.current && canRollBack" :class="$style.rowActions">
 							<template v-if="confirmRevision === revision.revision">
 								<N8nText size="small" data-test-id="custom-nodes-history-confirm-text">
 									{{ i18n.baseText('customNodes.history.rollback.confirm') }}

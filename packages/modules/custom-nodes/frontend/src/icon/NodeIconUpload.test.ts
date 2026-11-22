@@ -62,4 +62,19 @@ describe('NodeIconUpload', () => {
 		expect(call.message).toContain('Use PNG instead.');
 		expect(showError).not.toHaveBeenCalled();
 	});
+
+	it('escapes the server reason, so the toast keeps the element name', async () => {
+		const { store, getByTestId } = setup();
+		store.setNodeIcon.mockRejectedValue(
+			Object.assign(new Error('The SVG icon has the element <script>.'), { httpStatusCode: 400 }),
+		);
+		const file = new File(['<svg/>'], 'icon.svg', { type: 'image/svg+xml' });
+
+		await userEvent.upload(getByTestId('custom-nodes-icon-input'), file);
+		await waitAllPromises();
+
+		const call = showMessage.mock.calls[0][0];
+		expect(call.message).toContain('The SVG icon has the element &lt;script&gt;.');
+		expect(call.message).not.toContain('<script>');
+	});
 });

@@ -1,7 +1,7 @@
 /**
  * Test stand-ins for design-system components that render into a portal. `N8nDialog` renders
- * inline, and `N8nSelect2` is a native select with the same props and events. The design system
- * tests cover the real components.
+ * inline, and `N8nSelect2` and `N8nCombobox2` are native selects with the same props and events.
+ * The design system tests cover the real components.
  */
 export const N8nDialogStub = {
 	name: 'N8nDialog',
@@ -33,3 +33,5 @@ export const N8nSelect2Stub = {
 		</select>
 	`,
 };
+
+export const N8nCombobox2Stub = { ...N8nSelect2Stub, name: 'N8nCombobox2' };

@@ -1,4 +1,5 @@
 import type { CustomNodeResponse, ParentCustomActionResponse } from '@n8n/api-types';
+import type { Scope } from '@n8n/permissions';
 import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer, mockedStore, waitAllPromises } from '@n8n/frontend-test-utils';
@@ -31,13 +32,23 @@ const renderView = createComponentRenderer(SettingsCustomNodesView, {
 	},
 });
 
+const ALL_SCOPES: Scope[] = [
+	'customNode:list',
+	'customNode:create',
+	'customNode:update',
+	'customNode:delete',
+];
+
 const setup = (data: {
 	nodes?: CustomNodeResponse[];
 	parentActions?: ParentCustomActionResponse[];
-	canUpdate?: boolean;
+	scopes?: Scope[];
 }) => {
 	const pinia = createTestingPinia();
-	mockedStore(useRBACStore).hasScope.mockReturnValue(data.canUpdate ?? true);
+	const scopes = data.scopes ?? ALL_SCOPES;
+	mockedStore(useRBACStore).hasScope.mockImplementation(
+		(scope: Scope | Scope[]) => typeof scope === 'string' && scopes.includes(scope),
+	);
 	const store = mockedStore(useCustomNodesStore);
 	store.nodes = data.nodes ?? [];
 	store.parentActions = data.parentActions ?? [];
@@ -108,6 +119,24 @@ describe('SettingsCustomNodesView', () => {
 		expect(within(sections[0]).getAllByTestId('custom-nodes-parent-action-row')).toHaveLength(2);
 		expect(sections[1]).toHaveTextContent('Actions for n8n-nodes-base.googleSheets');
 		expect(sections[1]).toHaveTextContent('Add row');
+	});
+
+	it('marks a parent action whose parent node is not available', async () => {
+		const { getAllByTestId } = setup({
+			parentActions: [
+				createParentAction({ id: 'p1', name: 'Archive channel' }),
+				createParentAction({ id: 'p2', name: 'Pin message', parentAvailable: false }),
+			],
+		});
+		await waitAllPromises();
+
+		const rows = getAllByTestId('custom-nodes-parent-action-row');
+		expect(
+			within(rows[0]).queryByTestId('custom-nodes-parent-unavailable'),
+		).not.toBeInTheDocument();
+		expect(within(rows[1]).getByTestId('custom-nodes-parent-unavailable')).toHaveTextContent(
+			'Not available for this node',
+		);
 	});
 
 	it('asks for confirmation and then deletes a node', async () => {
@@ -216,16 +245,54 @@ describe('SettingsCustomNodesView', () => {
 			expect(openedWith(view)).toEqual({ mode: 'edit', actionId: 'parent-action-1' });
 		});
 
-		it('hides the edit buttons without customNode:update', async () => {
-			const { queryByTestId } = setup({
+		it('hides the edit, add action, and icon buttons without customNode:update', async () => {
+			const { queryByTestId, getByTestId } = setup({
 				nodes: [createNode()],
 				parentActions: [createParentAction()],
-				canUpdate: false,
+				scopes: ['customNode:list', 'customNode:create', 'customNode:delete'],
 			});
 			await waitAllPromises();
 
 			expect(queryByTestId('custom-nodes-edit-node-action')).not.toBeInTheDocument();
 			expect(queryByTestId('custom-nodes-edit-action')).not.toBeInTheDocument();
+			expect(queryByTestId('custom-nodes-add-action')).not.toBeInTheDocument();
+			expect(queryByTestId('custom-nodes-icon-upload')).not.toBeInTheDocument();
+			expect(getByTestId('custom-nodes-create')).toBeInTheDocument();
+			expect(getByTestId('custom-nodes-delete-node')).toBeInTheDocument();
+		});
+
+		it('hides the create buttons without customNode:create', async () => {
+			const { queryByTestId, getByTestId } = setup({
+				nodes: [createNode()],
+				scopes: ['customNode:list', 'customNode:update', 'customNode:delete'],
+			});
+			await waitAllPromises();
+
+			expect(queryByTestId('custom-nodes-create')).not.toBeInTheDocument();
+			expect(getByTestId('custom-nodes-add-action')).toBeInTheDocument();
+		});
+
+		it('hides the create button of the empty state without customNode:create', async () => {
+			const { queryByTestId, getByTestId } = setup({
+				scopes: ['customNode:list', 'customNode:update'],
+			});
+			await waitAllPromises();
+
+			expect(getByTestId('custom-nodes-empty-state')).toBeInTheDocument();
+			expect(queryByTestId('custom-nodes-empty-create')).not.toBeInTheDocument();
+		});
+
+		it('hides the delete buttons without customNode:delete', async () => {
+			const { queryByTestId, getByTestId } = setup({
+				nodes: [createNode()],
+				parentActions: [createParentAction()],
+				scopes: ['customNode:list', 'customNode:create', 'customNode:update'],
+			});
+			await waitAllPromises();
+
+			expect(queryByTestId('custom-nodes-delete-node')).not.toBeInTheDocument();
+			expect(queryByTestId('custom-nodes-delete-action')).not.toBeInTheDocument();
+			expect(getByTestId('custom-nodes-edit-action')).toBeInTheDocument();
 		});
 	});
 });

@@ -37,6 +37,18 @@ describe('AddCustomActionEntry', () => {
 		expect(emitted('select')).toHaveLength(1);
 	});
 
+	it.each([
+		['Enter', '{Enter}'],
+		['Space', ' '],
+	])('emits select on the %s key', async (_name, key) => {
+		const { getByTestId, emitted } = renderAdd({ props: { nodeDisplayName: 'Slack' } });
+
+		getByTestId('custom-action-add-entry').focus();
+		await userEvent.keyboard(key);
+
+		expect(emitted('select')).toHaveLength(1);
+	});
+
 	it('says "Add action" for a custom node', () => {
 		const { getByTestId } = renderAdd({ props: { nodeDisplayName: 'Acme', customNode: true } });
 

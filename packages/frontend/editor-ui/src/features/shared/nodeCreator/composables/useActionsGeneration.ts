@@ -13,6 +13,7 @@ import {
 	checkConditions,
 	EVALUATION_NODE_TYPE,
 	EVALUATION_TRIGGER_NODE_TYPE,
+	isINodePropertyOptions,
 	NodeHelpers,
 	type ICredentialType,
 	type INodeParameters,
@@ -130,7 +131,7 @@ function createNewNodeOptionFilter(
 	property: INodeProperties,
 	initialValues: INodeParameters = {},
 ): (option: INodePropertyOptions) => boolean {
-	const options = (property.options ?? []) as INodePropertyOptions[];
+	const options = (property.options ?? []).filter(isINodePropertyOptions);
 	// Most nodes have no option-level conditions. They skip the defaults computation.
 	if (!options.some((option) => option.displayOptions)) return () => true;
 

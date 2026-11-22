@@ -4,7 +4,9 @@
 export { CUSTOM_NODES_MODULE_ID } from './custom-nodes.constants';
 export { CustomNodesModule } from './custom-nodes.module';
 export { useCustomNodesStore } from './custom-nodes.store';
-export { default as CustomActionWizardModal } from './wizard/CustomActionWizardModal.vue';
+/** Loads the wizard dialog when the editor first opens it, so it stays out of the main bundle. */
+export const loadCustomActionWizardModal = async () =>
+	(await import('./wizard/CustomActionWizardModal.vue')).default;
 export type { CustomActionWizardData } from './wizard/wizard.types';
 export {
 	useCustomActionSelection,
