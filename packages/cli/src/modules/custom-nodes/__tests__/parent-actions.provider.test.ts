@@ -1,3 +1,4 @@
+import type { Logger } from '@n8n/backend-common';
 import type { ExecuteContext } from 'n8n-core';
 import type { INode, INodeParameters, INodeType, INodeTypeDescription } from 'n8n-workflow';
 import { NodeOperationError, deepCopy } from 'n8n-workflow';
@@ -45,8 +46,9 @@ function createProvider(nodes: INodeTypeDescription[], supported = ALL_CREDENTIA
 	loadNodesAndCredentials.supportsProxyAuth.mockImplementation((description) =>
 		(description.credentials ?? []).some(({ name }) => supported.includes(name)),
 	);
-	const provider = new ParentActionsProvider(loadNodesAndCredentials);
-	return { provider, loadNodesAndCredentials };
+	const logger = mock<Logger>({ scoped: vi.fn().mockReturnThis() });
+	const provider = new ParentActionsProvider(loadNodesAndCredentials, logger);
+	return { provider, loadNodesAndCredentials, logger };
 }
 
 const builtInResult = [[{ json: { builtIn: true } }]];
@@ -192,6 +194,84 @@ describe('ParentActionsProvider', () => {
 		);
 		expect(routed.descriptions).toEqual([]);
 		expect(loaded.execute).toHaveBeenCalledTimes(1);
+	});
+
+	describe('a stored action that cannot be built', () => {
+		const [payoutsV1] = listPayouts.versions;
+		// The request has no target for the input `limit`.
+		const broken: ActionView = {
+			id: 'act_broken',
+			name: 'Broken Action',
+			versions: [{ ...payoutsV1, request: { ...payoutsV1.request, inputTargets: {} } }],
+		};
+		const brokenPin = parentPinValues('resource', {
+			actionId: 'act_broken',
+			actionName: 'Broken Action',
+			version: 1,
+		});
+
+		it('is skipped and logged once, and the other actions and the built-in operations still work', async () => {
+			const { provider, loadNodesAndCredentials, logger } = createProvider([
+				served(resourceParent),
+			]);
+			provider.setActions(actionsOf([[BILLING, [broken, refundPayment]]]));
+
+			expect(() => provider.transformTypes()).not.toThrow();
+
+			const [servedEntry] = loadNodesAndCredentials.types.nodes;
+			const servedText = JSON.stringify(servedEntry.properties);
+			expect(servedText).toContain('act_refund');
+			expect(servedText).not.toContain('act_broken');
+
+			const loaded = loadedType(resourceParent);
+			const copy = provider.extendNodeType(BILLING, loaded);
+			expect(await run(copy, { resource: 'invoice', operation: 'get' })).toBe(builtInResult);
+			expect(await run(copy, { ...refundV1, customAction_paymentId: 'pay_1' })).toEqual([
+				[{ json: { routed: true } }],
+			]);
+			await expect(run(copy, brokenPin)).rejects.toThrow(
+				/^The action "Broken Action" does not exist any more/,
+			);
+			provider.extendDescription(BILLING, resourceParent);
+
+			expect(logger.error).toHaveBeenCalledTimes(1);
+			expect(logger.error).toHaveBeenCalledWith(
+				'Skipped a custom action of a parent node with an invalid definition',
+				expect.objectContaining({ actionId: 'act_broken', parentNodeType: BILLING }),
+			);
+			// The log holds no request template.
+			expect(JSON.stringify(vi.mocked(logger.error).mock.calls)).not.toContain('api.acme.test');
+		});
+	});
+
+	it('serves a parent without its actions when the extension fails, and logs it once', async () => {
+		const { provider, loadNodesAndCredentials, logger } = createProvider([served(resourceParent)]);
+		const refund = structuredClone(refundPayment);
+		provider.setActions(actionsOf([[BILLING, [refund]]]));
+		// Simulates data that `setActions` accepted and that the generator rejects later.
+		refund.versions[0].request.inputTargets = {};
+
+		expect(() => provider.transformTypes()).not.toThrow();
+
+		const [servedEntry] = loadNodesAndCredentials.types.nodes;
+		expect(JSON.stringify(servedEntry.properties)).not.toContain('act_refund');
+		expect(servedEntry.properties.map((property) => property.name)).toContain('customActionId');
+
+		const loaded = loadedType(resourceParent);
+		const copy = provider.extendNodeType(BILLING, loaded);
+		expect(copy).not.toBe(loaded);
+		expect(copy.description.properties).toEqual(servedEntry.properties);
+		expect(await run(copy, { resource: 'invoice', operation: 'get' })).toBe(builtInResult);
+		await expect(run(copy, refundV1)).rejects.toThrow(
+			/^The action "Refund Payment" does not exist any more/,
+		);
+		expect(routed.descriptions).toEqual([]);
+
+		expect(logger.error).toHaveBeenCalledTimes(1);
+		expect(logger.error).toHaveBeenCalledWith(
+			'Served a parent node without its custom actions',
+			expect.objectContaining({ parentNodeType: BILLING }),
+		);
 	});
 
 	it('returns the node type itself for a node that is not eligible', () => {

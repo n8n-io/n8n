@@ -1,4 +1,6 @@
+import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
@@ -7,6 +9,7 @@ import type { NodeTypeExtensionProvider } from '@/node-type-extension-provider';
 import { servedVersions } from './custom-node-type';
 import { actionVersionRefs, type ActionView } from './node-description.generator';
 import {
+	assertParentActionValid,
 	buildParentRuntimeDescription,
 	extendParentDescription,
 	parentShape,
@@ -40,11 +43,32 @@ export class ParentActionsProvider implements NodeTypeExtensionProvider {
 	/** A running execution keeps its copy. A new lookup after a change gets a new copy. */
 	private copies = new WeakMap<INodeType, INodeType>();
 
-	constructor(private readonly loadNodesAndCredentials: LoadNodesAndCredentials) {}
+	/** Parents whose extension failed and was logged, so that a lookup does not log it again. */
+	private reportedParents = new Set<string>();
 
-	/** Replaces all parent actions and drops every cached copy. Keys are full node type names. */
+	private readonly logger: Logger;
+
+	constructor(
+		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
+		logger: Logger,
+	) {
+		this.logger = logger.scoped('custom-nodes');
+	}
+
+	/**
+	 * Replaces all parent actions and drops every cached copy. Keys are full node type names.
+	 * Skips and logs an action that cannot be built. A node that selects it fails with its name.
+	 */
 	setActions(actionsByParent: ReadonlyMap<string, ActionView[]>): void {
-		this.actionsByParent = actionsByParent;
+		const valid = new Map<string, ActionView[]>();
+		for (const [parentNodeType, actions] of actionsByParent) {
+			valid.set(
+				parentNodeType,
+				actions.filter((action) => this.isValidAction(parentNodeType, action)),
+			);
+		}
+		this.actionsByParent = valid;
+		this.reportedParents = new Set();
 		this.copies = new WeakMap();
 	}
 
@@ -60,7 +84,11 @@ export class ParentActionsProvider implements NodeTypeExtensionProvider {
 	extendDescription(nodeTypeName: string, description: INodeTypeDescription): INodeTypeDescription {
 		const parent = this.eligibleVersion(nodeTypeName, description);
 		if (!parent) return description;
-		return extendParentDescription(description, parent.shape, this.actionsOf(nodeTypeName));
+		return this.withFallback(
+			nodeTypeName,
+			(actions) => extendParentDescription(description, parent.shape, actions),
+			description,
+		);
 	}
 
 	extendNodeType(nodeTypeName: string, nodeType: INodeType): INodeType {
@@ -71,17 +99,21 @@ export class ParentActionsProvider implements NodeTypeExtensionProvider {
 		if (cached) return cached;
 
 		// A parent without actions is wrapped too: a saved workflow can select a deleted action.
-		const actions = this.actionsOf(nodeTypeName);
 		const { description } = nodeType;
-		const copy = createParentNodeType(nodeType, {
-			shape: parent.shape,
-			extendedDescription: extendParentDescription(description, parent.shape, actions),
-			runtimeDescription:
-				actionVersionRefs(actions).length > 0
-					? buildParentRuntimeDescription(description, actions)
-					: undefined,
-			served: servedVersions(actions),
-		});
+		const copy = this.withFallback(
+			nodeTypeName,
+			(actions) =>
+				createParentNodeType(nodeType, {
+					shape: parent.shape,
+					extendedDescription: extendParentDescription(description, parent.shape, actions),
+					runtimeDescription:
+						actionVersionRefs(actions).length > 0
+							? buildParentRuntimeDescription(description, actions)
+							: undefined,
+					served: servedVersions(actions),
+				}),
+			nodeType,
+		);
 		this.copies.set(nodeType, copy);
 		return copy;
 	}
@@ -97,6 +129,54 @@ export class ParentActionsProvider implements NodeTypeExtensionProvider {
 
 	private actionsOf(nodeTypeName: string): ActionView[] {
 		return this.actionsByParent.get(nodeTypeName) ?? [];
+	}
+
+	private isValidAction(parentNodeType: string, action: ActionView): boolean {
+		try {
+			assertParentActionValid(action);
+			return true;
+		} catch (error) {
+			// Logs only the ids and the error. The action holds request templates.
+			this.logger.error('Skipped a custom action of a parent node with an invalid definition', {
+				actionId: action.id,
+				parentNodeType,
+				error: ensureError(error),
+			});
+			return false;
+		}
+	}
+
+	/**
+	 * Backstop: `setActions` skips each action that cannot be built, so `build` should not throw.
+	 * If it does, the parent gets the extension without actions, so served and run-time
+	 * descriptions agree and a node that selects an action fails with its name.
+	 * The built-in operations must keep working, so the last fallback is `original`.
+	 */
+	private withFallback<T>(
+		nodeTypeName: string,
+		build: (actions: ActionView[]) => T,
+		original: T,
+	): T {
+		try {
+			return build(this.actionsOf(nodeTypeName));
+		} catch (error) {
+			this.reportParent(nodeTypeName, error);
+		}
+		try {
+			return build([]);
+		} catch (error) {
+			this.reportParent(nodeTypeName, error);
+			return original;
+		}
+	}
+
+	private reportParent(parentNodeType: string, error: unknown) {
+		if (this.reportedParents.has(parentNodeType)) return;
+		this.reportedParents.add(parentNodeType);
+		this.logger.error('Served a parent node without its custom actions', {
+			parentNodeType,
+			error: ensureError(error),
+		});
 	}
 
 	private eligibleVersion(

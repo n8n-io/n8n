@@ -170,7 +170,10 @@ describe('NodeTypes with custom actions in a parent node', () => {
 		};
 		loadNodesAndCredentials.supportsProxyAuth.mockReturnValue(true);
 
-		provider = new ParentActionsProvider(loadNodesAndCredentials);
+		provider = new ParentActionsProvider(
+			loadNodesAndCredentials,
+			mock<Logger>({ scoped: vi.fn().mockReturnThis() }),
+		);
 		provider.setActions(new Map([[NAME, [refundPayment]]]));
 		provider.transformTypes();
 

@@ -10,11 +10,13 @@ import { NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
 import { CUSTOM_API_CALL_KEY } from '@/constants';
 
 import { buildRequest, paramPathFor } from '../node-description.generator';
+import type { ActionView } from '../node-description.generator';
 import {
 	CUSTOM_RESOURCE_NAME,
 	CUSTOM_RESOURCE_VALUE,
 	PARENT_INPUT_PREFIX,
 	PARENT_NAMING,
+	assertParentActionValid,
 	buildParentRuntimeDescription,
 	extendParentDescription,
 	isCustomActionSelected,
@@ -511,5 +513,62 @@ describe('isCustomActionSelected', () => {
 		],
 	])('%s', (_label, shape, parameters, expected) => {
 		expect(isCustomActionSelected(shape, parameters)).toBe(expected);
+	});
+});
+
+describe('assertParentActionValid', () => {
+	it('accepts a valid action', () => {
+		expect(() => assertParentActionValid(refundPayment)).not.toThrow();
+	});
+
+	it.each<[string, ActionView]>([
+		[
+			'an input without a request target',
+			{
+				...listPayouts,
+				versions: [
+					{
+						...listPayouts.versions[0],
+						request: { ...listPayouts.versions[0].request, inputTargets: {} },
+					},
+				],
+			},
+		],
+		[
+			'a reserved input name',
+			{
+				...listPayouts,
+				versions: [
+					{
+						...listPayouts.versions[0],
+						inputs: [{ name: 'resource', displayName: 'Resource', type: 'string', required: true }],
+						request: {
+							...listPayouts.versions[0].request,
+							inputTargets: { resource: { target: 'query', key: 'resource' } },
+						},
+					},
+				],
+			},
+		],
+		[
+			'a reserved body key',
+			{
+				...listPayouts,
+				versions: [
+					{
+						...listPayouts.versions[0],
+						inputs: [],
+						request: {
+							...listPayouts.versions[0].request,
+							inputTargets: {},
+							bodyType: 'json',
+							body: JSON.parse('{"__proto__": {"x": 1}}') as Record<string, unknown>,
+						},
+					},
+				],
+			},
+		],
+	])('throws for %s', (_label, action) => {
+		expect(() => assertParentActionValid(action)).toThrow(UnexpectedError);
 	});
 });

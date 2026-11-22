@@ -200,6 +200,14 @@ export function extendParentDescription(
 	};
 }
 
+/**
+ * Builds what the descriptions of a parent build for one action. Throws `UnexpectedError`
+ * for stored data that the generator does not accept.
+ */
+export function assertParentActionValid(action: ActionView): void {
+	buildRoutedActionProperties([action], PARENT_NAMING);
+}
+
 /** Description that `RoutingNode` runs for a custom action. Holds only the custom action properties. */
 export function buildParentRuntimeDescription(
 	description: INodeTypeDescription,
