@@ -112,8 +112,11 @@ export function readPin(parameters: INodeParameters): ActionVersionRef | undefin
 	return { actionId: parsed.actionId, actionName, version: parsed.version };
 }
 
-/** Parameter values that pin a node to a version. The upgrade button and the nodes panel write these. */
-export function pinValues(ref: ActionVersionRef): INodeParameters {
+/**
+ * Parameter values that pin a node to a version. The upgrade button and the nodes panel write these.
+ * All values are strings, so an API response can carry them as they are.
+ */
+export function pinValues(ref: ActionVersionRef): Record<string, string> {
 	return {
 		[OPERATION_PARAMETER]: optionValue(ref.actionId, ref.version),
 		[PIN_ACTION_ID_PARAMETER]: ref.actionId,

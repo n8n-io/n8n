@@ -63,6 +63,22 @@ export class CustomNodeRepository {
 		return await this.table.managerFor(ctx).findOneBy(CustomNodeEntity, { id });
 	}
 
+	/**
+	 * Locks the custom node row until the transaction ends. Call it inside a transaction, before a
+	 * read that decides a write. Postgres takes a row lock. SQLite needs no lock: it runs one
+	 * write transaction at a time (`BEGIN IMMEDIATE`). Returns false when the row does not exist.
+	 */
+	async lockNode(id: string, ctx: OperationContext): Promise<boolean> {
+		const manager = this.table.managerFor(ctx);
+		const row = await manager.findOne(CustomNodeEntity, {
+			select: { id: true },
+			where: { id },
+			lock:
+				manager.connection.options.type === 'postgres' ? { mode: 'pessimistic_write' } : undefined,
+		});
+		return row !== null;
+	}
+
 	async updateNode(id: string, patch: CustomNodePatch, ctx: OperationContext): Promise<void> {
 		await this.table.managerFor(ctx).update(CustomNodeEntity, { id }, patch);
 	}

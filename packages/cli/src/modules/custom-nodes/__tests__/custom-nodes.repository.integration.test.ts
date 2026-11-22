@@ -168,6 +168,18 @@ describe('CustomActionRepository', () => {
 		expect(await countRows()).toMatchObject({ versions: 1, revisions: 1 });
 	});
 
+	it('locks an action or a node row and reports whether it exists', async () => {
+		const node = await nodes.insertNode(newNode(), {});
+		const id = await actions.insertAction(parentAction(), { inputs }, revision(), {});
+
+		await txRunner.run({}, async (ctx) => {
+			expect(await actions.lockAction(id, ctx)).toBe(true);
+			expect(await actions.lockAction('missing', ctx)).toBe(false);
+			expect(await nodes.lockNode(node.id, ctx)).toBe(true);
+			expect(await nodes.lockNode('missing', ctx)).toBe(false);
+		});
+	});
+
 	it('counts the actions of a custom node', async () => {
 		const node = await nodes.insertNode(newNode(), {});
 		const own = { ...parentAction(), parentNodeType: null, customNodeId: node.id };

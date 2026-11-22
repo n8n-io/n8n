@@ -6,85 +6,142 @@ const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0
 
 const pngUri = (data: Buffer) => `data:image/png;base64,${data.toString('base64')}`;
 const svgUri = (svg: string) => `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
+const svg = (body: string, attributes = '') =>
+	`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"${attributes}>${body}</svg>`;
 
-const plainSvg =
-	'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M0 0h24v24H0z" fill="#ff6d5a"/></svg>';
+const plainIcon = `<?xml version="1.0" encoding="UTF-8"?>
+<!-- An icon with a path, a group and a gradient -->
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 24 24" width="24" height="24">
+	<title>Acme</title>
+	<defs>
+		<linearGradient id="fade" x1="0" y1="0" x2="1" y2="1" gradientUnits="objectBoundingBox">
+			<stop offset="0" stop-color="#ff6d5a"/>
+			<stop offset="1" stop-color="#ea4b71" stop-opacity="0.8"/>
+		</linearGradient>
+		<clipPath id="clip"><rect width="24" height="24" rx="4"/></clipPath>
+	</defs>
+	<g clip-path="url(#clip)" transform="translate(0 0)">
+		<path id="shape" d="M0 0h24v24H0z" fill="url(#fade)" fill-rule="evenodd"/>
+		<use href="#shape" opacity="0.5"/>
+		<circle cx="12" cy="12" r="4" stroke="#fff" stroke-width="2" fill="none"/>
+	</g>
+</svg>`;
+
+const expectRejected = async (uri: string, message?: RegExp) => {
+	const promise = validateIcon(uri);
+	await expect(promise).rejects.toThrow(UserError);
+	if (message) await expect(promise).rejects.toThrow(message);
+};
 
 describe('validateIcon', () => {
-	it('accepts a PNG', () => {
+	it('accepts a PNG', async () => {
 		const data = Buffer.concat([PNG_SIGNATURE, Buffer.from('rest of the image')]);
 
-		expect(validateIcon(pngUri(data))).toEqual({ mimeType: 'image/png', data });
+		await expect(validateIcon(pngUri(data))).resolves.toEqual({ mimeType: 'image/png', data });
 	});
 
-	it('accepts a plain SVG', () => {
-		expect(validateIcon(svgUri(plainSvg))).toEqual({
+	it('accepts a plain icon with path, group and gradient', async () => {
+		await expect(validateIcon(svgUri(plainIcon))).resolves.toEqual({
 			mimeType: 'image/svg+xml',
-			data: Buffer.from(plainSvg),
+			data: Buffer.from(plainIcon),
 		});
 	});
 
-	it('accepts an icon of exactly 256 KiB', () => {
+	it('accepts an icon of exactly 256 KiB', async () => {
 		const data = Buffer.concat([
 			PNG_SIGNATURE,
 			Buffer.alloc(MAX_ICON_BYTES - PNG_SIGNATURE.length),
 		]);
 
-		expect(validateIcon(pngUri(data)).data).toHaveLength(256 * 1024);
+		expect((await validateIcon(pngUri(data))).data).toHaveLength(256 * 1024);
 	});
 
-	it('rejects an icon of 257 KiB', () => {
+	it('rejects an icon of 257 KiB', async () => {
 		const data = Buffer.concat([PNG_SIGNATURE, Buffer.alloc(257 * 1024 - PNG_SIGNATURE.length)]);
 
-		expect(() => validateIcon(pngUri(data))).toThrow(UserError);
+		await expectRejected(pngUri(data));
 	});
 
-	it('rejects a PNG without the PNG signature', () => {
-		expect(() => validateIcon(pngUri(Buffer.from('GIF89a not a png')))).toThrow(UserError);
+	it('rejects a PNG without the PNG signature', async () => {
+		await expectRejected(pngUri(Buffer.from('GIF89a not a png')));
 	});
 
 	it.each([
 		['a JPEG data URI', 'data:image/jpeg;base64,/9j/4AAQ'],
-		['a data URI that is not base64', `data:image/svg+xml,${plainSvg}`],
+		['a data URI that is not base64', `data:image/svg+xml,${svg('')}`],
 		['a URL', 'https://example.com/icon.svg'],
 		['invalid base64', 'data:image/png;base64,***'],
 		['an empty image', 'data:image/png;base64,'],
-	])('rejects %s', (_, uri) => {
-		expect(() => validateIcon(uri)).toThrow(UserError);
+	])('rejects %s', async (_, uri) => {
+		await expectRejected(uri);
 	});
 
 	it.each([
-		['a script element', '<svg xmlns="http://www.w3.org/2000/svg"><script>x()</script></svg>'],
-		[
-			'a script element in upper case',
-			'<svg xmlns="http://www.w3.org/2000/svg"><SCRIPT>x()</SCRIPT></svg>',
-		],
-		['an onload attribute', '<svg xmlns="http://www.w3.org/2000/svg" onload="x()"></svg>'],
-		[
-			'an event attribute after a line break',
-			'<svg xmlns="http://www.w3.org/2000/svg"\nOnClick="x()"></svg>',
-		],
-		[
-			'a javascript: link',
-			'<svg xmlns="http://www.w3.org/2000/svg"><a href="javascript:x()"><path d="M0 0"/></a></svg>',
-		],
+		['a script element', svg('<script>x()</script>'), /<script>/],
 		[
 			'a foreignObject element',
-			'<svg xmlns="http://www.w3.org/2000/svg"><foreignObject><div>x</div></foreignObject></svg>',
+			svg('<foreignObject><div>x</div></foreignObject>'),
+			/foreignObject/,
 		],
-	])('rejects an SVG with %s', (_, svg) => {
-		expect(() => validateIcon(svgUri(svg))).toThrow(UserError);
+		['a style element', svg('<style>path { fill: red; }</style>'), /<style>/],
+		['an image element', svg('<image href="#a" width="1" height="1"/>'), /<image>/],
+		['an anchor element', svg('<a href="#shape"><path d="M0 0"/></a>'), /<a>/],
+		['a text element', svg('<text x="0" y="10">Acme</text>'), /<text>/],
+		['an unknown element', svg('<blink/>'), /<blink>/],
+		['an event attribute', svg('<path d="M0 0" onclick="x()"/>'), /"onclick"/],
+		['an event attribute on the root', svg('', ' onload="x()"'), /"onload"/],
+		['a style attribute', svg('<path d="M0 0" style="fill:red"/>'), /"style"/],
+		['an href with a scheme', svg('<use href="https://example.com/a.svg#x"/>'), /"href"/],
+		[
+			'an xlink:href with a scheme',
+			svg(
+				'<use xlink:href="data:image/svg+xml;base64,AAAA"/>',
+				' xmlns:xlink="http://www.w3.org/1999/xlink"',
+			),
+			/"xlink:href"/,
+		],
+		[
+			'an href written with character references',
+			svg('<use href="&#106;&#97;vascript:x()"/>'),
+			/"href"/,
+		],
+		[
+			'a url() that points outside the document',
+			svg('<path d="M0 0" fill="url(https://example.com/a.svg#g)"/>'),
+			/url\(\)/,
+		],
+		[
+			'a url() with a CSS escape',
+			svg('<path d="M0 0" fill="\\75 rl(https://example.com)"/>'),
+			/backslash/,
+		],
+		['a document type declaration', `<!DOCTYPE svg>${svg('')}`, /document type/],
+		[
+			'an entity declaration',
+			`<?xml version="1.0"?><!DOCTYPE svg [<!ENTITY x "y">]>${svg('')}`,
+			/document type|entities/,
+		],
+		['a processing instruction', `<?xml-stylesheet href="a.css"?>${svg('')}`, /processing/],
+		[
+			'a root element that is not svg',
+			'<g xmlns="http://www.w3.org/2000/svg"><path d="M0 0"/></g>',
+			/root element/,
+		],
+		['text that is not well-formed XML', '<svg><g></svg>', /well-formed/],
+		['an undefined entity', svg('<title>&x;</title>'), /well-formed/],
+	])('rejects an SVG with %s', async (_, text, message) => {
+		await expectRejected(svgUri(text), message);
 	});
 
-	it('rejects an SVG that is not text', () => {
-		const data = Buffer.from([0x3c, 0x73, 0x76, 0x67, 0xff, 0xfe, 0x3e]);
-
-		expect(() => validateIcon(`data:image/svg+xml;base64,${data.toString('base64')}`)).toThrow(
-			UserError,
+	it('names the element that is not allowed in the error', async () => {
+		await expect(validateIcon(svgUri(svg('<script>x()</script>')))).rejects.toThrow(
+			'The SVG icon has the element <script>, which is not allowed.',
 		);
 	});
 
-	it('rejects an SVG without an svg element', () => {
-		expect(() => validateIcon(svgUri('<html></html>'))).toThrow(UserError);
+	it('rejects an SVG that is not UTF-8 text', async () => {
+		const data = Buffer.from([0x3c, 0x73, 0x76, 0x67, 0xff, 0xfe, 0x3e]);
+
+		await expectRejected(`data:image/svg+xml;base64,${data.toString('base64')}`);
 	});
 });

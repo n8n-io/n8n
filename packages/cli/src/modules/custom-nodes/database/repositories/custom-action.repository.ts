@@ -185,6 +185,22 @@ export class CustomActionRepository {
 			.update(CustomActionVersionEntity, { id: versionId }, { currentRevision: revision });
 	}
 
+	/**
+	 * Locks the action row until the transaction ends. Call it inside a transaction, before a
+	 * read that decides a write. Postgres takes a row lock. SQLite needs no lock: it runs one
+	 * write transaction at a time (`BEGIN IMMEDIATE`). Returns false when the row does not exist.
+	 */
+	async lockAction(id: string, ctx: OperationContext): Promise<boolean> {
+		const manager = this.table.managerFor(ctx);
+		const row = await manager.findOne(CustomActionEntity, {
+			select: { id: true },
+			where: { id },
+			lock:
+				manager.connection.options.type === 'postgres' ? { mode: 'pessimistic_write' } : undefined,
+		});
+		return row !== null;
+	}
+
 	async countActionsOfNode(customNodeId: string, ctx: OperationContext): Promise<number> {
 		return await this.table.managerFor(ctx).countBy(CustomActionEntity, { customNodeId });
 	}

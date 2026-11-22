@@ -3,7 +3,7 @@ import { mockInstance, testDb, testModules } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { ForbiddenError, NotFoundError, UserError } from '@n8n/errors';
-import { DataSource } from '@n8n/typeorm';
+import { DataSource, In } from '@n8n/typeorm';
 
 import { createMember, createOwner } from '@test-integration/db/users';
 
@@ -202,6 +202,32 @@ describe('CustomNodesService', () => {
 		}
 		expect(await countRows()).toEqual({ nodes: 1, actions: 1, versions: 1, revisions: 1 });
 		expect(registry.refresh).not.toHaveBeenCalled();
+	});
+
+	it('throws ForbiddenError, not NotFoundError, for a member and an id that does not exist', async () => {
+		const draft = { draft: getInvoice() };
+		const writes = [
+			async () => await service.updateNode(member, 'missing', { displayName: 'Renamed' }),
+			async () => await service.deleteNode(member, 'missing'),
+			async () => await service.setIcon(member, 'missing', pngUri),
+			async () => await service.addAction(member, 'missing', draft),
+			async () => await service.saveAction(member, 'missing', draft),
+			async () => await service.rollbackRevision(member, 'missing', 1, 1),
+			async () => await service.deleteAction(member, 'missing'),
+		];
+		for (const write of writes) {
+			await expect(write()).rejects.toThrow(ForbiddenError);
+		}
+	});
+
+	it('stores an empty description as no description on create', async () => {
+		const node = await service.createNode(owner, { ...newNode(), description: '' });
+
+		expect(node).not.toHaveProperty('description');
+		const row = await Container.get(DataSource)
+			.getRepository(CustomNodeEntity)
+			.findOneByOrFail({ id: node.id });
+		expect(row.description).toBeNull();
 	});
 
 	it('lets a member list', async () => {
@@ -460,5 +486,68 @@ describe('CustomNodesService', () => {
 		// Each edit created its own version. The response reads the state after both commits.
 		const addedInputs = rows.slice(1).map((r) => r.inputs.at(-1)?.name);
 		if (rejected.length === 0) expect(addedInputs.sort()).toEqual(['expand', 'limit']);
+	});
+
+	it('classifies a concurrent request change against the newest state', async () => {
+		const { actionId } = await createNodeWithAction();
+		const inputChange = { draft: withQueryInput(getInvoice(), 'expand') };
+		const requestDraft = getInvoice();
+		requestDraft.request.headers = { Accept: 'application/json' };
+
+		const results = await Promise.allSettled([
+			service.saveAction(owner, actionId, inputChange),
+			service.saveAction(owner, actionId, { draft: requestDraft }),
+		]);
+
+		for (const result of results) {
+			if (result.status === 'rejected')
+				expect(result.reason).toBeInstanceOf(CustomNodeConflictError);
+		}
+		const dataSource = Container.get(DataSource);
+		const versions = await dataSource
+			.getRepository(CustomActionVersionEntity)
+			.find({ where: { actionId }, order: { version: 'ASC' } });
+		const revisions = await dataSource
+			.getRepository(CustomActionRevisionEntity)
+			.find({ where: { versionId: In(versions.map((v) => v.id)) }, order: { id: 'ASC' } });
+		const [v1, v2] = versions;
+		const v1Revision2 = revisions.find((r) => r.versionId === v1.id && r.revision === 2);
+		const v2Revision1 = revisions.find((r) => r.versionId === v2?.id && r.revision === 1);
+
+		if (results[1].status === 'fulfilled') {
+			if (v1Revision2) {
+				// The request change ran first, so the input change was classified after it.
+				expect(v2Revision1 && v1Revision2.id < v2Revision1.id).toBe(true);
+			} else {
+				// The input change ran first. The request change then made the newest version.
+				const newest = versions.at(-1)!;
+				const newestRequest = revisions.find(
+					(r) => r.versionId === newest.id && r.revision === newest.currentRevision,
+				);
+				expect(newest.version).toBeGreaterThan(1);
+				expect(newestRequest?.request.headers).toEqual({ Accept: 'application/json' });
+			}
+		} else {
+			expect(v1Revision2).toBeUndefined();
+		}
+	});
+
+	it('keeps one action when the last two actions are deleted at the same time', async () => {
+		const { nodeId, actionId } = await createNodeWithAction();
+		const second = await service.addAction(owner, nodeId, {
+			draft: { ...getInvoice(), name: 'Get Invoice PDF' },
+		});
+
+		const results = await Promise.allSettled([
+			service.deleteAction(owner, actionId),
+			service.deleteAction(owner, second.id),
+		]);
+
+		expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
+		const rejected = results.flatMap((r) => (r.status === 'rejected' ? [r.reason] : []));
+		expect(rejected).toHaveLength(1);
+		expect(rejected[0]).toBeInstanceOf(UserError);
+		expect(rejected[0]).not.toBeInstanceOf(NotFoundError);
+		expect(await countRows()).toMatchObject({ nodes: 1, actions: 1 });
 	});
 });

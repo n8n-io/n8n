@@ -45,15 +45,6 @@ function assertValidDraft(draft: CustomActionDraft, pathPrefix = ''): void {
 	}
 }
 
-/** The pin values are all strings. The response type says so. */
-function stringValues(values: Record<string, unknown>): Record<string, string> {
-	return Object.fromEntries(
-		Object.entries(values).filter(
-			(entry): entry is [string, string] => typeof entry[1] === 'string',
-		),
-	);
-}
-
 function actionMeta(action: ActionAggregate['action']): { name: string; description?: string } {
 	return {
 		name: action.name,
@@ -80,9 +71,11 @@ function toActionResponse(aggregate: ActionAggregate): CustomActionResponse {
 			currentRevision: version.currentRevision,
 			revisionCount: version.revisionCount,
 			createdAt: version.createdAt.toISOString(),
-			pinValues: stringValues(
-				pinValues({ actionId: action.id, actionName: action.name, version: version.version }),
-			),
+			pinValues: pinValues({
+				actionId: action.id,
+				actionName: action.name,
+				version: version.version,
+			}),
 		}),
 	);
 	return {
@@ -168,7 +161,8 @@ export class CustomNodesService {
 			const node = await this.nodeRepository.insertNode(
 				{
 					displayName: dto.displayName,
-					description: dto.description,
+					// An empty description is stored as no description, as in `updateNode`.
+					description: dto.description === '' ? undefined : dto.description,
 					baseUrl: dto.baseUrl,
 					auth: dto.auth,
 					createdById: user.id,
@@ -189,6 +183,8 @@ export class CustomNodesService {
 		if (dto.baseUrl !== undefined) validateBaseUrl(dto.baseUrl);
 
 		const changedFields = await this.txRunner.run({}, async (ctx) => {
+			// The lock keeps the base URL history complete when two updates run at the same time.
+			await this.lockNodeOrFail(id, ctx);
 			const current = await this.findNodeOrFail(id, ctx);
 			const patch = nodePatch(current, dto, user.id);
 			if (Object.keys(patch).length === 0) return [];
@@ -216,7 +212,7 @@ export class CustomNodesService {
 
 	async setIcon(user: User, id: string, iconDataUri: string): Promise<void> {
 		this.assertScope(user, 'customNode:update');
-		const icon = validateIcon(iconDataUri);
+		const icon = await validateIcon(iconDataUri);
 		await this.write(async (ctx) => {
 			await this.findNodeOrFail(id, ctx);
 			await this.nodeRepository.setIcon(id, icon, ctx);
@@ -239,7 +235,7 @@ export class CustomNodesService {
 		this.assertScope(user, 'customNode:update');
 		assertValidDraft(dto.draft);
 		const actionId = await this.write(async (ctx) => {
-			await this.findNodeOrFail(nodeId, ctx);
+			await this.lockNodeOrFail(nodeId, ctx);
 			return await this.insertAction(user, nodeId, dto.draft, dto.changeNote, ctx);
 		});
 		this.logger.debug('Custom action added', { nodeId, actionId });
@@ -257,6 +253,8 @@ export class CustomNodesService {
 		const { draft } = dto;
 
 		const kind = await this.txRunner.run({}, async (ctx) => {
+			// Classify against the state that the write builds on. A concurrent save waits here.
+			await this.lockActionOrFail(actionId, ctx);
 			const aggregate = await this.findActionOrFail(actionId, ctx);
 			const newest = newestVersionOf(aggregate);
 			const current = joinDraft(actionMeta(aggregate.action), newest.inputs, newest.request);
@@ -296,6 +294,7 @@ export class CustomNodesService {
 	): Promise<CustomActionResponse> {
 		this.assertScope(user, 'customNode:update');
 		await this.write(async (ctx) => {
+			await this.lockActionOrFail(actionId, ctx);
 			const aggregate = await this.findActionOrFail(actionId, ctx);
 			const target = aggregate.versions.find((v) => v.version === version);
 			if (!target)
@@ -313,10 +312,14 @@ export class CustomNodesService {
 	async deleteAction(user: User, actionId: string): Promise<void> {
 		this.assertScope(user, 'customNode:delete');
 		await this.write(async (ctx) => {
-			const { action } = await this.findActionOrFail(actionId, ctx);
+			const { customNodeId } = (await this.findActionOrFail(actionId, ctx)).action;
+			// Lock the node first, as a node delete does, and then count. Two concurrent deletes
+			// of the last two actions then see each other's result.
+			if (customNodeId !== null) await this.lockNodeOrFail(customNodeId, ctx);
+			await this.lockActionOrFail(actionId, ctx);
 			if (
-				action.customNodeId !== null &&
-				(await this.actionRepository.countActionsOfNode(action.customNodeId, ctx)) <= 1
+				customNodeId !== null &&
+				(await this.actionRepository.countActionsOfNode(customNodeId, ctx)) <= 1
 			) {
 				throw new UserError(
 					'A custom node needs at least one action. Delete the custom node instead.',
@@ -374,6 +377,18 @@ export class CustomNodesService {
 			{ request, changeNote, createdById: user.id },
 			ctx,
 		);
+	}
+
+	private async lockNodeOrFail(id: string, ctx: OperationContext): Promise<void> {
+		if (!(await this.nodeRepository.lockNode(id, ctx))) {
+			throw new NotFoundError('The custom node does not exist');
+		}
+	}
+
+	private async lockActionOrFail(id: string, ctx: OperationContext): Promise<void> {
+		if (!(await this.actionRepository.lockAction(id, ctx))) {
+			throw new NotFoundError('The custom action does not exist');
+		}
 	}
 
 	private async findNodeOrFail(id: string, ctx: OperationContext): Promise<CustomNodeEntity> {
