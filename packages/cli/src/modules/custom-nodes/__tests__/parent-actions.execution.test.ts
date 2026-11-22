@@ -4,8 +4,10 @@ import { SsrfProtectionConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { ExecuteContext, RoutingNode } from 'n8n-core';
 import type {
+	EngineResponse,
 	ICredentialDataDecryptedObject,
 	ICredentialsHelper,
+	IExecuteFunctions,
 	IExecuteData,
 	IHttpRequestOptions,
 	INode,
@@ -17,7 +19,13 @@ import type {
 	INodeTypes,
 	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
-import { NodeOperationError, Workflow, createEmptyRunExecutionData } from 'n8n-workflow';
+import {
+	Node,
+	NodeOperationError,
+	Workflow,
+	createEmptyRunExecutionData,
+	isNodeClassInstance,
+} from 'n8n-workflow';
 import nock from 'nock';
 import { mock } from 'vitest-mock-extended';
 
@@ -154,9 +162,13 @@ function createContext(
 	);
 }
 
-async function execute(type: INodeType, context: ExecuteContext) {
+/** Calls `execute` as the engine does: a `Node` subclass gets the context as an argument. */
+async function execute(type: INodeType, context: ExecuteContext, response?: EngineResponse) {
 	if (!type.execute) throw new Error('The node type has no execute');
-	return (await type.execute.call(context)) as INodeExecutionData[][];
+	const data = isNodeClassInstance(type)
+		? await type.execute(context, response)
+		: await type.execute.call(context, response);
+	return data as INodeExecutionData[][];
 }
 
 const builtInResult: INodeExecutionData[][] = [[{ json: { builtIn: true } }]];
@@ -459,6 +471,76 @@ describe('parent node type', () => {
 			expect(original.execute).toHaveBeenCalledTimes(1);
 			expect(original.execute.mock.contexts[0]).toBe(context);
 			expect(scope.isDone()).toBe(false);
+		});
+	});
+
+	describe('custom action in a class-style parent', () => {
+		/** A `Node` subclass parent. It records the receiver and the arguments of each call. */
+		class AcmeLedgerNode extends Node {
+			description = operationParent;
+
+			calls: Array<{ self: unknown; context: unknown; response: unknown }> = [];
+
+			async execute(context: IExecuteFunctions, response?: EngineResponse) {
+				this.calls.push({ self: this, context, response });
+				return builtInResult;
+			}
+		}
+
+		const ledgerCredentials: INodeCredentials = {
+			acmeLedgerApi: { id: 'cred-3', name: 'Ledger Key' },
+		};
+
+		/** The node loader hands a `Node` subclass instance to `NodeTypes` as an `INodeType`. */
+		const asLoaded = (instance: Node) => instance as unknown as INodeType;
+
+		it('runs the original class execute on the original instance for a built-in operation, and sends no request', async () => {
+			const scope = nock(HOST).get(/.*/).query(true).reply(200, {});
+			const original = new AcmeLedgerNode();
+			const type = createParentNodeType(asLoaded(original), extensionOf(operationParent, actions));
+			const context = createContext(
+				type,
+				{ authentication: 'apiKey', operation: 'export' },
+				ledgerCredentials,
+				keyOf('acmeLedgerApi'),
+			);
+			const response = mock<EngineResponse>();
+
+			expect(isNodeClassInstance(type)).toBe(true);
+			expect(await execute(type, context, response)).toBe(builtInResult);
+			expect(original.calls).toHaveLength(1);
+			expect(original.calls[0].self).toBe(original);
+			expect(original.calls[0].context).toBe(context);
+			expect(original.calls[0].response).toBe(response);
+			expect(scope.isDone()).toBe(false);
+		});
+
+		it('sends the request of the action with the credential of the parent', async () => {
+			const scope = nock(HOST)
+				.get('/v1/payouts')
+				.query({ limit: '5' })
+				.matchHeader(KEY_HEADER, 'acmeLedgerApi-key')
+				.reply(200, { data: ['po_1'] });
+			const original = new AcmeLedgerNode();
+			const type = createParentNodeType(asLoaded(original), extensionOf(operationParent, actions));
+
+			const result = await execute(
+				type,
+				createContext(
+					type,
+					{
+						authentication: 'apiKey',
+						...pinValues({ actionId: 'act_payouts', actionName: 'List Payouts', version: 1 }),
+						customAction_limit: 5,
+					},
+					ledgerCredentials,
+					keyOf('acmeLedgerApi'),
+				),
+			);
+
+			expect(scope.isDone()).toBe(true);
+			expect(result[0][0].json).toEqual({ data: ['po_1'] });
+			expect(original.calls).toHaveLength(0);
 		});
 	});
 
