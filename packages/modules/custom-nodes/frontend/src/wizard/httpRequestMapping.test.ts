@@ -130,6 +130,20 @@ describe('mapHttpRequestParameters', () => {
 		expect(mapped.dropped).toEqual(['client_secret']);
 	});
 
+	it('drops a secret field from a JSON body that is an array', () => {
+		const mapped = mapHttpRequestParameters({
+			method: 'POST',
+			url: 'https://api.acme.test/events',
+			sendBody: true,
+			specifyBody: 'json',
+			jsonBody: '[{"api_key": "abc123", "event": "signup"}]',
+		});
+
+		expect(JSON.parse(mapped.request.bodyText)).toEqual([{ event: 'signup' }]);
+		expect(mapped.request.bodyText).not.toContain('abc123');
+		expect(mapped.dropped).toEqual(['[0].api_key']);
+	});
+
 	it('drops a nested fixed JSON body field with a secret name and reports its path', () => {
 		const mapped = mapHttpRequestParameters({
 			method: 'POST',

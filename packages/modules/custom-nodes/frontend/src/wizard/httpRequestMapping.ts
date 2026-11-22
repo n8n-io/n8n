@@ -198,7 +198,8 @@ function mapBody(params: Record<string, unknown>, request: EditableRequest, mapp
 			return;
 		}
 		const body = mapper.mapBodyValue(parsed, '');
-		request.bodyText = isRecord(body) ? JSON.stringify(body, null, 2) : text;
+		// Write the cleaned value back, also for an array body: the original text can hold a dropped field.
+		request.bodyText = isRecord(body) || Array.isArray(body) ? JSON.stringify(body, null, 2) : text;
 		return;
 	}
 
