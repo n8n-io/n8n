@@ -15,7 +15,12 @@ import {
 	N8nText,
 } from '@n8n/design-system';
 import type { CustomNodeResponse, ParentCustomActionResponse } from '@n8n/api-types';
+import { useRBACStore } from '@n8n/stores/rbac.store';
+import { useTypeNames } from '../composables/useTypeNames';
+import { CUSTOM_NODE_UPDATE_SCOPE } from '../custom-nodes.constants';
 import { useCustomNodesStore } from '../custom-nodes.store';
+import CustomActionWizardModal from '../wizard/CustomActionWizardModal.vue';
+import type { CustomActionWizardData } from '../wizard/wizard.types';
 
 type PendingDelete = { kind: 'node' | 'action'; id: string; name: string };
 
@@ -23,6 +28,8 @@ const i18n = useI18n();
 const toast = useToast();
 const documentTitle = useDocumentTitle();
 const store = useCustomNodesStore();
+const typeNames = useTypeNames();
+const rbacStore = useRBACStore();
 
 const loaded = ref(false);
 const pendingDelete = ref<PendingDelete | null>(null);
@@ -42,6 +49,28 @@ const isEmpty = computed(
 );
 
 const dialogOpen = computed(() => pendingDelete.value !== null);
+
+const canEdit = computed(() => rbacStore.hasScope(CUSTOM_NODE_UPDATE_SCOPE));
+
+const wizardOpen = ref(false);
+const wizardData = ref<CustomActionWizardData>({ mode: 'create' });
+
+function openWizard(data: CustomActionWizardData) {
+	wizardData.value = data;
+	wizardOpen.value = true;
+}
+
+function openCreate() {
+	openWizard({ mode: 'create' });
+}
+
+function openAddAction(node: CustomNodeResponse) {
+	openWizard({ mode: 'create', customNodeId: node.id });
+}
+
+function openEdit(actionId: string) {
+	openWizard({ mode: 'edit', actionId });
+}
 
 function nodeDescription(node: CustomNodeResponse) {
 	return i18n.baseText('customNodes.settings.node.actionCount', {
@@ -79,6 +108,7 @@ async function confirmDelete() {
 
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('customNodes.settings.title'));
+	void typeNames.load();
 	try {
 		await store.fetchAll();
 	} catch (error) {
@@ -96,21 +126,40 @@ onMounted(async () => {
 			:description="i18n.baseText('customNodes.settings.description')"
 			:show-docs-link="false"
 			data-test-id="custom-nodes-header"
-		/>
+		>
+			<template #titleTrailing>
+				<N8nButton
+					variant="solid"
+					icon="plus"
+					:label="i18n.baseText('customNodes.settings.create')"
+					data-test-id="custom-nodes-create"
+					@click="openCreate"
+				/>
+			</template>
+		</N8nSettingsPageHeader>
 
-		<N8nText v-if="isEmpty" color="text-light" data-test-id="custom-nodes-empty-state">
-			{{ i18n.baseText('customNodes.settings.empty') }}
-		</N8nText>
+		<div v-if="isEmpty" :class="$style.empty" data-test-id="custom-nodes-empty-state">
+			<N8nText color="text-light">
+				{{ i18n.baseText('customNodes.settings.empty') }}
+			</N8nText>
+			<div>
+				<N8nButton
+					variant="outline"
+					icon="plus"
+					:label="i18n.baseText('customNodes.settings.create')"
+					data-test-id="custom-nodes-empty-create"
+					@click="openCreate"
+				/>
+			</div>
+		</div>
 
 		<N8nSettingsSection
 			v-if="store.nodes.length > 0"
 			:title="i18n.baseText('customNodes.settings.nodes.title')"
 			data-test-id="custom-nodes-nodes-section"
 		>
-			<N8nSettingsRowGroup>
+			<N8nSettingsRowGroup v-for="node in store.nodes" :key="node.id">
 				<N8nSettingsRow
-					v-for="node in store.nodes"
-					:key="node.id"
 					:title="node.displayName"
 					:description="node.description || nodeDescription(node)"
 					data-test-id="custom-nodes-node-row"
@@ -120,13 +169,39 @@ onMounted(async () => {
 						<N8nNodeIcon v-else type="icon" name="blocks" :size="24" />
 					</template>
 					<template #action>
+						<div :class="$style.actions">
+							<N8nButton
+								variant="ghost"
+								icon="plus"
+								:label="i18n.baseText('customNodes.settings.addAction')"
+								data-test-id="custom-nodes-add-action"
+								@click="openAddAction(node)"
+							/>
+							<N8nButton
+								variant="ghost"
+								icon="trash-2"
+								icon-only
+								:aria-label="i18n.baseText('customNodes.settings.delete.button')"
+								data-test-id="custom-nodes-delete-node"
+								@click="askDelete({ kind: 'node', id: node.id, name: node.displayName })"
+							/>
+						</div>
+					</template>
+				</N8nSettingsRow>
+				<N8nSettingsRow
+					v-for="action in node.actions"
+					:key="action.id"
+					:title="action.name"
+					:description="action.description"
+					data-test-id="custom-nodes-node-action-row"
+				>
+					<template v-if="canEdit" #action>
 						<N8nButton
 							variant="ghost"
-							icon="trash-2"
-							icon-only
-							:aria-label="i18n.baseText('customNodes.settings.delete.button')"
-							data-test-id="custom-nodes-delete-node"
-							@click="askDelete({ kind: 'node', id: node.id, name: node.displayName })"
+							icon="pencil"
+							:label="i18n.baseText('customNodes.settings.edit')"
+							data-test-id="custom-nodes-edit-node-action"
+							@click="openEdit(action.id)"
 						/>
 					</template>
 				</N8nSettingsRow>
@@ -138,7 +213,7 @@ onMounted(async () => {
 			:key="group.parentNodeType"
 			:title="
 				i18n.baseText('customNodes.settings.parent.title', {
-					interpolate: { parent: group.parentNodeType },
+					interpolate: { parent: typeNames.nodeDisplayName(group.parentNodeType) },
 				})
 			"
 			data-test-id="custom-nodes-parent-section"
@@ -152,18 +227,30 @@ onMounted(async () => {
 					data-test-id="custom-nodes-parent-action-row"
 				>
 					<template #action>
-						<N8nButton
-							variant="ghost"
-							icon="trash-2"
-							icon-only
-							:aria-label="i18n.baseText('customNodes.settings.delete.button')"
-							data-test-id="custom-nodes-delete-action"
-							@click="askDelete({ kind: 'action', id: action.id, name: action.name })"
-						/>
+						<div :class="$style.actions">
+							<N8nButton
+								v-if="canEdit"
+								variant="ghost"
+								icon="pencil"
+								:label="i18n.baseText('customNodes.settings.edit')"
+								data-test-id="custom-nodes-edit-action"
+								@click="openEdit(action.id)"
+							/>
+							<N8nButton
+								variant="ghost"
+								icon="trash-2"
+								icon-only
+								:aria-label="i18n.baseText('customNodes.settings.delete.button')"
+								data-test-id="custom-nodes-delete-action"
+								@click="askDelete({ kind: 'action', id: action.id, name: action.name })"
+							/>
+						</div>
 					</template>
 				</N8nSettingsRow>
 			</N8nSettingsRowGroup>
 		</N8nSettingsSection>
+
+		<CustomActionWizardModal v-model:open="wizardOpen" :data="wizardData" />
 
 		<N8nAlertDialog
 			:open="dialogOpen"
@@ -187,3 +274,17 @@ onMounted(async () => {
 		/>
 	</N8nSettingsLayout>
 </template>
+
+<style module lang="scss">
+.empty {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--sm);
+}
+
+.actions {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+}
+</style>

@@ -96,4 +96,8 @@ describe('CustomNodesModule', () => {
 			expect(meta.middlewareOptions.custom()).toBe(true);
 		});
 	});
+
+	it('registers no modals: the wizard belongs to the view that opens it', () => {
+		expect(CustomNodesModule).not.toHaveProperty('modals');
+	});
 });

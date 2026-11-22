@@ -3,3 +3,5 @@
 // here too — deep paths into `src/` are not part of the contract.
 export { CustomNodesModule } from './custom-nodes.module';
 export { useCustomNodesStore } from './custom-nodes.store';
+export { default as CustomActionWizardModal } from './wizard/CustomActionWizardModal.vue';
+export type { CustomActionWizardData } from './wizard/wizard.types';

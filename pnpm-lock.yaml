@@ -7808,6 +7808,9 @@ importers:
       '@n8n/stores':
         specifier: workspace:*
         version: link:../../../frontend/@n8n/stores
+      '@n8n/utils':
+        specifier: workspace:*
+        version: link:../../../@n8n/utils
       n8n-workflow:
         specifier: workspace:*
         version: link:../../../workflow

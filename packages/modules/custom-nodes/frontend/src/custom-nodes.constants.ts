@@ -6,3 +6,5 @@ export const CUSTOM_NODES_STORE_ID = 'customNodes';
 export const CUSTOM_NODES_SETTINGS_VIEW = 'CustomNodesSettings';
 
 export const CUSTOM_NODE_CREATE_SCOPE = 'customNode:create';
+
+export const CUSTOM_NODE_UPDATE_SCOPE = 'customNode:update';

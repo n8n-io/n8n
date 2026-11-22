@@ -1,0 +1,123 @@
+import { createComponentRenderer } from '@n8n/frontend-test-utils';
+import userEvent from '@testing-library/user-event';
+
+import type { NewNodeFields, WizardIssue, WizardTarget } from '../wizard.types';
+import ChooseStep from './ChooseStep.vue';
+
+vi.mock('@n8n/design-system', async () => {
+	const actual = await vi.importActual<typeof import('@n8n/design-system')>('@n8n/design-system');
+	const { N8nSelect2Stub } = await import('../../__tests__/designSystemStubs');
+	return { ...actual, N8nSelect2: N8nSelect2Stub };
+});
+
+const renderStep = createComponentRenderer(ChooseStep);
+
+const node = (): NewNodeFields => ({
+	displayName: '',
+	description: '',
+	baseUrl: '',
+	auth: { kind: 'none' },
+});
+
+const setup = (
+	props: {
+		mode?: 'create' | 'edit';
+		target?: WizardTarget | null;
+		issues?: WizardIssue[];
+		editTargetLabel?: string;
+		node?: NewNodeFields;
+	} = {},
+) =>
+	renderStep({
+		props: {
+			mode: props.mode ?? 'create',
+			target: props.target === undefined ? { kind: 'newNode' } : props.target,
+			node: props.node ?? node(),
+			name: '',
+			description: '',
+			editTargetLabel: props.editTargetLabel,
+			targetItems: [
+				{ value: 'node:node-1', label: 'Acme' },
+				{ value: 'parent:n8n-nodes-base.slack', label: 'Slack' },
+			],
+			issues: props.issues ?? [],
+		},
+	});
+
+describe('ChooseStep', () => {
+	it('emits the fields of a new custom node', async () => {
+		const { getByTestId, emitted } = setup();
+
+		await userEvent.type(getByTestId('custom-action-wizard-node-name'), 'A');
+		await userEvent.type(getByTestId('custom-action-wizard-node-base-url'), 'h');
+		await userEvent.selectOptions(getByTestId('custom-action-wizard-node-auth'), 'httpBearerAuth');
+
+		expect(emitted('update:node')).toEqual([
+			[expect.objectContaining({ displayName: 'A' })],
+			[expect.objectContaining({ baseUrl: 'h' })],
+			[expect.objectContaining({ auth: { kind: 'generic', type: 'httpBearerAuth' } })],
+		]);
+	});
+
+	it('asks for the credential type of a predefined credential', async () => {
+		const { getByTestId, emitted } = setup({
+			node: { ...node(), auth: { kind: 'predefined', credentialType: '' } },
+		});
+
+		await userEvent.type(getByTestId('custom-action-wizard-node-credential-type'), 'g');
+
+		expect(emitted('update:node')).toEqual([
+			[expect.objectContaining({ auth: { kind: 'predefined', credentialType: 'g' } })],
+		]);
+	});
+
+	it('emits an existing node as the target', async () => {
+		const { getByTestId, queryByTestId, emitted } = setup();
+
+		await userEvent.click(getByTestId('custom-action-wizard-choice-existing'));
+		expect(queryByTestId('custom-action-wizard-node-name')).not.toBeInTheDocument();
+		await userEvent.selectOptions(
+			getByTestId('custom-action-wizard-target-select'),
+			'parent:n8n-nodes-base.slack',
+		);
+
+		expect(emitted('update:target')).toEqual([
+			[null],
+			[{ kind: 'parent', parentNodeType: 'n8n-nodes-base.slack' }],
+		]);
+	});
+
+	it('emits the name and description of the action', async () => {
+		const { getByTestId, emitted } = setup();
+
+		await userEvent.type(getByTestId('custom-action-wizard-action-name'), 'G');
+		await userEvent.type(getByTestId('custom-action-wizard-action-description'), 'D');
+
+		expect(emitted('update:name')).toEqual([['G']]);
+		expect(emitted('update:description')).toEqual([['D']]);
+	});
+
+	it('shows the node of the action in the edit mode', () => {
+		const { getByTestId, queryByTestId } = setup({
+			mode: 'edit',
+			target: { kind: 'parent', parentNodeType: 'n8n-nodes-base.slack' },
+			editTargetLabel: 'Slack',
+		});
+
+		expect(getByTestId('custom-action-wizard-edit-target')).toHaveTextContent('Action of Slack');
+		expect(queryByTestId('custom-action-wizard-choice-new')).not.toBeInTheDocument();
+	});
+
+	it('shows the issues at their fields', () => {
+		const { getAllByTestId } = setup({
+			issues: [
+				{ path: 'node.baseUrl', code: 'invalid_base_url', message: 'Bad base URL' },
+				{ path: 'name', code: 'required', message: 'Enter a name' },
+			],
+		});
+
+		expect(
+			getAllByTestId('custom-action-wizard-field-issues').map((list) => list.textContent),
+		).toEqual(['Bad base URL', 'Enter a name']);
+	});
+});

@@ -1,6 +1,9 @@
 import type { CustomNodeResponse, ParentCustomActionResponse } from '@n8n/api-types';
+import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer, mockedStore, waitAllPromises } from '@n8n/frontend-test-utils';
+import { useRBACStore } from '@n8n/stores/rbac.store';
+import type { INodeTypeDescription } from 'n8n-workflow';
 import userEvent from '@testing-library/user-event';
 import { screen, within } from '@testing-library/vue';
 
@@ -15,13 +18,26 @@ vi.mock('@n8n/composables/useDocumentTitle', () => ({
 	useDocumentTitle: () => ({ set: vi.fn() }),
 }));
 
-const renderView = createComponentRenderer(SettingsCustomNodesView);
+// The wizard has its own tests. Here it only shows whether it is open and with which data.
+const renderView = createComponentRenderer(SettingsCustomNodesView, {
+	global: {
+		stubs: {
+			CustomActionWizardModal: {
+				props: ['open', 'data'],
+				template:
+					'<div v-if="open" data-test-id="custom-action-wizard-stub">{{ JSON.stringify(data) }}</div>',
+			},
+		},
+	},
+});
 
 const setup = (data: {
 	nodes?: CustomNodeResponse[];
 	parentActions?: ParentCustomActionResponse[];
+	canUpdate?: boolean;
 }) => {
 	const pinia = createTestingPinia();
+	mockedStore(useRBACStore).hasScope.mockReturnValue(data.canUpdate ?? true);
 	const store = mockedStore(useCustomNodesStore);
 	store.nodes = data.nodes ?? [];
 	store.parentActions = data.parentActions ?? [];
@@ -35,6 +51,17 @@ const setup = (data: {
 describe('SettingsCustomNodesView', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		capabilityRegistry.provide(capabilities.typeDescriptions, {
+			load: vi.fn(async () => {}),
+			nodeTypes: () => [
+				{ name: 'n8n-nodes-base.slack', displayName: 'Slack' } as INodeTypeDescription,
+			],
+			credentialTypeDisplayName: () => undefined,
+		});
+	});
+
+	afterEach(() => {
+		capabilityRegistry.clear();
 	});
 
 	it('fetches the lists on mount', async () => {
@@ -77,8 +104,9 @@ describe('SettingsCustomNodesView', () => {
 		);
 		const sections = getAllByTestId('custom-nodes-parent-section');
 		expect(sections).toHaveLength(2);
-		expect(sections[0]).toHaveTextContent('n8n-nodes-base.slack');
+		expect(sections[0]).toHaveTextContent('Actions for Slack');
 		expect(within(sections[0]).getAllByTestId('custom-nodes-parent-action-row')).toHaveLength(2);
+		expect(sections[1]).toHaveTextContent('Actions for n8n-nodes-base.googleSheets');
 		expect(sections[1]).toHaveTextContent('Add row');
 	});
 
@@ -133,5 +161,71 @@ describe('SettingsCustomNodesView', () => {
 		await waitAllPromises();
 
 		expect(showError).toHaveBeenCalled();
+	});
+
+	describe('wizard', () => {
+		const openedWith = (view: { getByTestId: (id: string) => HTMLElement }) =>
+			JSON.parse(view.getByTestId('custom-action-wizard-stub').textContent ?? '');
+
+		it('opens the wizard to create from the header', async () => {
+			const view = setup({ nodes: [createNode()] });
+			await waitAllPromises();
+			expect(view.queryByTestId('custom-action-wizard-stub')).not.toBeInTheDocument();
+
+			await userEvent.click(view.getByTestId('custom-nodes-create'));
+
+			expect(openedWith(view)).toEqual({ mode: 'create' });
+		});
+
+		it('opens the wizard to create from the empty state', async () => {
+			const view = setup({});
+			await waitAllPromises();
+
+			await userEvent.click(view.getByTestId('custom-nodes-empty-create'));
+
+			expect(openedWith(view)).toEqual({ mode: 'create' });
+		});
+
+		it('opens the wizard to add an action to a custom node', async () => {
+			const view = setup({ nodes: [createNode()] });
+			await waitAllPromises();
+
+			await userEvent.click(view.getByTestId('custom-nodes-add-action'));
+
+			expect(openedWith(view)).toEqual({ mode: 'create', customNodeId: 'node-1' });
+		});
+
+		it('opens the wizard to edit an action of a custom node', async () => {
+			const view = setup({ nodes: [createNode()] });
+			await waitAllPromises();
+
+			expect(view.getAllByTestId('custom-nodes-node-action-row')[0]).toHaveTextContent(
+				'Send message',
+			);
+			await userEvent.click(view.getByTestId('custom-nodes-edit-node-action'));
+
+			expect(openedWith(view)).toEqual({ mode: 'edit', actionId: 'action-1' });
+		});
+
+		it('opens the wizard to edit an action of a parent node', async () => {
+			const view = setup({ parentActions: [createParentAction()] });
+			await waitAllPromises();
+
+			await userEvent.click(view.getByTestId('custom-nodes-edit-action'));
+
+			expect(openedWith(view)).toEqual({ mode: 'edit', actionId: 'parent-action-1' });
+		});
+
+		it('hides the edit buttons without customNode:update', async () => {
+			const { queryByTestId } = setup({
+				nodes: [createNode()],
+				parentActions: [createParentAction()],
+				canUpdate: false,
+			});
+			await waitAllPromises();
+
+			expect(queryByTestId('custom-nodes-edit-node-action')).not.toBeInTheDocument();
+			expect(queryByTestId('custom-nodes-edit-action')).not.toBeInTheDocument();
+		});
 	});
 });
