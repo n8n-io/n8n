@@ -192,6 +192,26 @@ describe('SettingsCustomNodesView', () => {
 		expect(showError).toHaveBeenCalled();
 	});
 
+	describe('create buttons', () => {
+		it('shows only the empty state button when the list is empty', async () => {
+			const view = setup({});
+			await waitAllPromises();
+
+			expect(view.queryByTestId('custom-nodes-create')).not.toBeInTheDocument();
+			expect(view.getAllByRole('button', { name: 'Create' })).toHaveLength(1);
+			expect(view.getByTestId('custom-nodes-empty-create')).toBeInTheDocument();
+		});
+
+		it('shows only the header button when the list has entries', async () => {
+			const view = setup({ nodes: [createNode()] });
+			await waitAllPromises();
+
+			expect(view.queryByTestId('custom-nodes-empty-create')).not.toBeInTheDocument();
+			expect(view.getAllByRole('button', { name: 'Create' })).toHaveLength(1);
+			expect(view.getByTestId('custom-nodes-create')).toBeInTheDocument();
+		});
+	});
+
 	describe('wizard', () => {
 		const openedWith = (view: { getByTestId: (id: string) => HTMLElement }) =>
 			JSON.parse(view.getByTestId('custom-action-wizard-stub').textContent ?? '');

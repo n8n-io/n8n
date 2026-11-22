@@ -59,6 +59,9 @@ const isEmpty = computed(
 	() => loaded.value && store.nodes.length === 0 && store.parentActions.length === 0,
 );
 
+// The empty state has its own create button, so the header shows one only for a filled list.
+const showHeaderCreate = computed(() => canCreate.value && loaded.value && !isEmpty.value);
+
 const dialogOpen = computed(() => pendingDelete.value !== null);
 
 // Each button needs the scope of its route.
@@ -167,7 +170,7 @@ onMounted(async () => {
 		>
 			<template #titleTrailing>
 				<N8nButton
-					v-if="canCreate"
+					v-if="showHeaderCreate"
 					variant="solid"
 					icon="plus"
 					:label="i18n.baseText('customNodes.settings.create')"
