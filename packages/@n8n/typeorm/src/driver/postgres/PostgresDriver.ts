@@ -1060,10 +1060,10 @@ export class PostgresDriver implements Driver {
 		const connection = await this.master.connect();
 		try {
 			// Apply per-connection session settings (schema creation moved to afterConnect).
-			// With applySessionSettingsOnce, skip them on later checkouts of the same client:
+			// In `per-connection` mode, skip them on later checkouts of the same client:
 			// they persist on a direct connection, but not behind a transaction-mode pooler.
-			const { applySessionSettingsOnce } = this.options;
-			if (!applySessionSettingsOnce || !this.sessionInitializedClients.has(connection)) {
+			const perConnection = this.options.sessionSettingsMode === 'per-connection';
+			if (!perConnection || !this.sessionInitializedClients.has(connection)) {
 				const { schema, statementTimeout } = this.options;
 				if (schema && schema !== 'public') {
 					await connection.query(`SET search_path TO "${schema}",public`);
@@ -1073,7 +1073,7 @@ export class PostgresDriver implements Driver {
 				if (statementTimeout) {
 					await connection.query(`SET statement_timeout = ${statementTimeout}`);
 				}
-				if (applySessionSettingsOnce) this.sessionInitializedClients.add(connection);
+				if (perConnection) this.sessionInitializedClients.add(connection);
 			}
 		} catch (error) {
 			connection.release(error);

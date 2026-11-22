@@ -45,10 +45,10 @@ describe('PostgresDriver session settings', () => {
 		]);
 	});
 
-	it('applies session settings once per pooled client with applySessionSettingsOnce', async () => {
+	it('applies session settings once per pooled client in per-connection mode', async () => {
 		const first = new FakeClient();
 		const second = new FakeClient();
-		const driver = createDriver({ statementTimeout: 5000, applySessionSettingsOnce: true }, [
+		const driver = createDriver({ statementTimeout: 5000, sessionSettingsMode: 'per-connection' }, [
 			first,
 			first,
 			second,
@@ -84,7 +84,7 @@ describe('PostgresDriver session settings', () => {
 	it('releases the client with the error and retries when a SET fails', async () => {
 		const client = new FakeClient();
 		client.failOn = 'SET statement_timeout';
-		const driver = createDriver({ statementTimeout: 5000, applySessionSettingsOnce: true }, [
+		const driver = createDriver({ statementTimeout: 5000, sessionSettingsMode: 'per-connection' }, [
 			client,
 			client,
 			client,

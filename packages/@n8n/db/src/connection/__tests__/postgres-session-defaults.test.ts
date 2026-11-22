@@ -86,7 +86,7 @@ describe('getMissingRoleDefaultsWarning', () => {
 			{ schema: 'public', statementTimeout: '0' },
 		);
 
-		expect(warning).toContain('DB_POSTGRESDB_APPLY_SESSION_SETTINGS_ONCE');
+		expect(warning).toContain('DB_POSTGRESDB_SESSION_SETTINGS_MODE');
 		expect(warning).toContain(
 			'ALTER ROLE CURRENT_USER IN DATABASE "n8n" SET statement_timeout = 300000;',
 		);

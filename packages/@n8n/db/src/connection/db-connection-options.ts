@@ -109,7 +109,7 @@ export class DbConnectionOptions {
 			migrations: postgresMigrations,
 			connectTimeoutMS: postgresConfig.connectionTimeoutMs,
 			statementTimeout: postgresConfig.statementTimeoutMs,
-			applySessionSettingsOnce: postgresConfig.applySessionSettingsOnce,
+			sessionSettingsMode: postgresConfig.sessionSettingsMode,
 			ssl,
 			extra: {
 				idleTimeoutMillis: postgresConfig.idleTimeoutMs,

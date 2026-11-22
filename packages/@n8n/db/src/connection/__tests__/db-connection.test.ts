@@ -190,7 +190,7 @@ describe('DbConnection', () => {
 				dataSource.initialize.mockResolvedValue(dataSource);
 			});
 
-			it('should not check the role defaults when the setting is off', async () => {
+			it('should not check the role defaults in per-query mode', async () => {
 				await createConnection({ statementTimeout: 300_000 }).init();
 
 				expect(dataSource.transaction).not.toHaveBeenCalled();
@@ -199,7 +199,7 @@ describe('DbConnection', () => {
 			it('should read the schema under the role default search_path', async () => {
 				mockRoleDefaults({ schema: 'n8n', statement_timeout: '300000' });
 
-				await createConnection({ schema: 'n8n', applySessionSettingsOnce: true }).init();
+				await createConnection({ schema: 'n8n', sessionSettingsMode: 'per-connection' }).init();
 
 				expect(manager.query).toHaveBeenNthCalledWith(1, 'SET LOCAL search_path TO DEFAULT');
 				expect(manager.query).toHaveBeenNthCalledWith(
@@ -208,13 +208,13 @@ describe('DbConnection', () => {
 				);
 			});
 
-			it('should warn with the missing statements when the setting is on', async () => {
+			it('should warn with the missing statements in per-connection mode', async () => {
 				mockRoleDefaults({ schema: 'public', statement_timeout: '0' });
 
 				await createConnection({
 					schema: 'n8n',
 					statementTimeout: 300_000,
-					applySessionSettingsOnce: true,
+					sessionSettingsMode: 'per-connection',
 				}).init();
 
 				expect(logger.warn).toHaveBeenCalledWith(
@@ -231,7 +231,7 @@ describe('DbConnection', () => {
 				await createConnection({
 					schema: 'n8n',
 					statementTimeout: 300_000,
-					applySessionSettingsOnce: true,
+					sessionSettingsMode: 'per-connection',
 				}).init();
 
 				expect(logger.warn).not.toHaveBeenCalled();
@@ -239,7 +239,7 @@ describe('DbConnection', () => {
 
 			it('should complete startup when the check fails', async () => {
 				(dataSource.transaction as unknown as Mock).mockRejectedValue(new Error('boom'));
-				const connection = createConnection({ applySessionSettingsOnce: true });
+				const connection = createConnection({ sessionSettingsMode: 'per-connection' });
 
 				await connection.init();
 

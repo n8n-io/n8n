@@ -179,7 +179,7 @@ export class DbConnection {
 	 */
 	private async warnOnMissingRoleDefaults() {
 		const { options } = this;
-		if (options.type !== 'postgres' || !options.applySessionSettingsOnce) return;
+		if (options.type !== 'postgres' || options.sessionSettingsMode !== 'per-connection') return;
 
 		try {
 			// Go back to the role's search_path for this transaction only, and let Postgres

@@ -6,6 +6,9 @@ import { Config, Env, Nested } from '../decorators';
 const dbLoggingOptionsSchema = z.enum(['query', 'error', 'schema', 'warn', 'info', 'log', 'all']);
 type DbLoggingOptions = z.infer<typeof dbLoggingOptionsSchema>;
 
+const postgresSessionSettingsModeSchema = z.enum(['per-query', 'per-connection']);
+type PostgresSessionSettingsMode = z.infer<typeof postgresSessionSettingsModeSchema>;
+
 const DEFAULT_STATEMENT_TIMEOUT_MS = 5 * Time.minutes.toMilliseconds;
 
 @Config
@@ -103,13 +106,12 @@ class PostgresConfig {
 	statementTimeoutMs: number = DEFAULT_STATEMENT_TIMEOUT_MS;
 
 	/**
-	 * Whether n8n sends the schema and statement timeout settings once for each pooled Postgres
-	 * connection, instead of before every query. This removes two round trips from every query.
-	 * If n8n connects through a pooler in transaction mode, such as PgBouncer, first set
-	 * `search_path` and `statement_timeout` as defaults on the database role, then reconnect the pooler.
+	 * When n8n sends Postgres session settings (`search_path` and `statement_timeout`).
+	 * One of `per-query`, `per-connection`.
+	 * Set to `per-connection` to send them once for each pooled connection instead of before every query; behind a pooler in transaction mode, such as PgBouncer, first set them as defaults on the database role and reconnect the pooler.
 	 */
-	@Env('DB_POSTGRESDB_APPLY_SESSION_SETTINGS_ONCE')
-	applySessionSettingsOnce: boolean = false;
+	@Env('DB_POSTGRESDB_SESSION_SETTINGS_MODE', postgresSessionSettingsModeSchema)
+	sessionSettingsMode: PostgresSessionSettingsMode = 'per-query';
 
 	/** Maximum lifetime in milliseconds of a pooled Postgres connection before it is recycled. Set to 0 to disable. */
 	@Env('DB_POSTGRESDB_MAX_CONNECTION_LIFETIME_MS')
