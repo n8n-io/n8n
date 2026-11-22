@@ -46,6 +46,42 @@ describe('custom-nodes.store', () => {
 		expect(store.parents).toEqual(parents);
 	});
 
+	describe('ensureParentsLoaded', () => {
+		const parents = [{ nodeType: 'n8n-nodes-base.slack', shape: 'resource' as const }];
+		const flushPromises = async () => await new Promise((resolve) => setTimeout(resolve, 0));
+
+		it('loads the parents once, after the call', async () => {
+			const spy = vi.spyOn(api, 'listCustomActionParents').mockResolvedValue(parents);
+
+			store.ensureParentsLoaded();
+			store.ensureParentsLoaded();
+			expect(spy).not.toHaveBeenCalled();
+			await flushPromises();
+			store.ensureParentsLoaded();
+			await flushPromises();
+
+			expect(spy).toHaveBeenCalledTimes(1);
+			expect(store.parents).toEqual(parents);
+		});
+
+		it('tries again on the next call after a failed load', async () => {
+			const spy = vi
+				.spyOn(api, 'listCustomActionParents')
+				.mockRejectedValueOnce(new Error('offline'))
+				.mockResolvedValue(parents);
+
+			store.ensureParentsLoaded();
+			await flushPromises();
+			expect(store.parents).toEqual([]);
+
+			store.ensureParentsLoaded();
+			await flushPromises();
+
+			expect(spy).toHaveBeenCalledTimes(2);
+			expect(store.parents).toEqual(parents);
+		});
+	});
+
 	it('fetchNode, fetchActionVersion and preview call their routes without refetching', async () => {
 		const getNode = vi.spyOn(api, 'getCustomNode').mockResolvedValue(node);
 		const getVersion = vi.spyOn(api, 'getCustomActionVersion').mockResolvedValue({

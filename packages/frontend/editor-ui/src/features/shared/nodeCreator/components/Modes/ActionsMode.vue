@@ -41,6 +41,13 @@ import { useGatewayCreditsPromotion } from '@/features/credentials/gatewayCredit
 import GatewayCreditsPromotion from '@/features/credentials/gatewayCreditsPromotion/GatewayCreditsPromotion.vue';
 
 import { N8nCallout, N8nInfoTip } from '@n8n/design-system';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import {
+	AddCustomActionEntry,
+	CUSTOM_NODES_MODULE_ID,
+	useCustomNodeEntryPoints,
+} from '@n8n/frontend-module-custom-nodes';
+import { useCustomActionWizard } from '@/features/shared/customNodes/useCustomActionWizard';
 const emit = defineEmits<{
 	nodeTypeSelected: [value: NodeTypeSelectedPayload[]];
 }>();
@@ -108,6 +115,33 @@ const rootView = computed(() => useViewStacks().activeViewStack.rootView);
 const communityNodeDetails = computed(() => useViewStacks().activeViewStack?.communityNodeDetails);
 
 const placeholderTriggerActions = getPlaceholderTriggerActions(subcategory.value || '');
+
+const settingsStore = useSettingsStore();
+let customNodeEntryPoints: ReturnType<typeof useCustomNodeEntryPoints> | undefined;
+
+// The list can merge the actions of a node and of its trigger. The first node type that can get
+// custom actions decides the entry.
+const addCustomActionEntry = computed(() => {
+	if (!settingsStore.isModuleActive(CUSTOM_NODES_MODULE_ID) || communityNodeDetails.value) {
+		return undefined;
+	}
+	customNodeEntryPoints ??= useCustomNodeEntryPoints();
+	const stack = useViewStacks().activeViewStack;
+	const nodeTypeNames = new Set((stack.baselineItems ?? stack.items ?? []).map((item) => item.key));
+	for (const nodeTypeName of nodeTypeNames) {
+		const data = customNodeEntryPoints.addActionDataFor(nodeTypeName);
+		if (data) return { data, customNode: data.customNodeId !== undefined };
+	}
+	return undefined;
+});
+
+function onAddCustomAction() {
+	const entry = addCustomActionEntry.value;
+	if (!entry) return;
+	// The wizard is a dialog over the canvas. Close the panel, which would close on the outside click.
+	useViewStacks().resetViewStacks();
+	useCustomActionWizard().open(entry.data);
+}
 
 const { getQuickConnectOptionByPackageName } = useQuickConnect();
 const quickConnect = computed(() => {
@@ -371,6 +405,12 @@ const callouts = computed<INodeCreateElement[]>(() => []);
 						/>
 					</template>
 				</CategorizedItemsRenderer>
+				<AddCustomActionEntry
+					v-if="addCustomActionEntry"
+					:node-display-name="subcategory ?? ''"
+					:custom-node="addCustomActionEntry.customNode"
+					@select="onAddCustomAction"
+				/>
 			</template>
 		</OrderSwitcher>
 		<div v-if="containsAPIAction && !communityNodeDetails" :class="$style.apiHint">

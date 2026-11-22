@@ -6,6 +6,8 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { createTestNode } from '@/__tests__/mocks';
 import { createComponentRenderer } from '@/__tests__/render';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useCustomActionWizard } from '@/features/shared/customNodes/useCustomActionWizard';
+import userEvent from '@testing-library/user-event';
 import NodeActionsList from './NodeActionsList.vue';
 
 const customActionSelection = vi.hoisted(() => ({
@@ -15,9 +17,14 @@ const customActionSelection = vi.hoisted(() => ({
 	preload: vi.fn(),
 	whenLoaded: vi.fn(async () => {}),
 }));
+const entryPoints = vi.hoisted(() => ({
+	canCreate: vi.fn(() => true),
+	addActionDataFor: vi.fn(),
+}));
 vi.mock('@n8n/frontend-module-custom-nodes', async (importOriginal) => ({
 	...(await importOriginal<object>()),
 	useCustomActionSelection: () => customActionSelection,
+	useCustomNodeEntryPoints: () => entryPoints,
 }));
 
 const NODE_TYPE = 'n8n-custom.acme';
@@ -105,5 +112,54 @@ describe('NodeActionsList', () => {
 
 		expect(selectedNames(container)).toEqual(['Get weather']);
 		expect(customActionSelection.pinValuesFor).not.toHaveBeenCalled();
+	});
+	describe('add an action', () => {
+		beforeEach(() => {
+			entryPoints.addActionDataFor.mockReset();
+		});
+
+		afterEach(() => {
+			useCustomActionWizard().isOpen.value = false;
+		});
+
+		it('ends the list with an entry that opens the wizard for this node', async () => {
+			entryPoints.addActionDataFor.mockReturnValue({ mode: 'create', customNodeId: 'node-1' });
+			const { getByTestId, container } = renderComponent({ operation: 'forecast' }, true);
+
+			const entry = getByTestId('custom-action-add-entry');
+			expect(entry).toHaveTextContent('Add action to Acme');
+			expect(container.firstElementChild?.lastElementChild).toBe(entry);
+			expect(entryPoints.addActionDataFor).toHaveBeenCalledWith(NODE_TYPE);
+
+			await userEvent.click(entry);
+
+			expect(useCustomActionWizard().isOpen.value).toBe(true);
+			expect(useCustomActionWizard().data.value).toEqual({
+				mode: 'create',
+				customNodeId: 'node-1',
+			});
+		});
+
+		it('names a parent node in the entry', () => {
+			entryPoints.addActionDataFor.mockReturnValue({ mode: 'create', parentNodeType: NODE_TYPE });
+			const { getByTestId } = renderComponent({ operation: 'forecast' }, true);
+
+			expect(getByTestId('custom-action-add-entry')).toHaveTextContent('Add custom action to Acme');
+		});
+
+		it('shows no entry for a node that cannot get custom actions', () => {
+			entryPoints.addActionDataFor.mockReturnValue(undefined);
+			const { queryByTestId } = renderComponent({ operation: 'forecast' }, true);
+
+			expect(queryByTestId('custom-action-add-entry')).not.toBeInTheDocument();
+		});
+
+		it('shows no entry and asks for nothing with the module off', () => {
+			entryPoints.addActionDataFor.mockReturnValue({ mode: 'create', customNodeId: 'node-1' });
+			const { queryByTestId } = renderComponent({ operation: 'forecast' }, false);
+
+			expect(queryByTestId('custom-action-add-entry')).not.toBeInTheDocument();
+			expect(entryPoints.addActionDataFor).not.toHaveBeenCalled();
+		});
 	});
 });

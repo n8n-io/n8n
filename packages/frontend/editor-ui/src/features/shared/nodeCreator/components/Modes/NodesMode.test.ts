@@ -26,6 +26,8 @@ import { mockRestrictedNodeTypes } from '@n8n/frontend-module-type-availability-
 import { mockSimplifiedNodeType } from '../../__tests__/utils';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useRBACStore } from '@n8n/stores/rbac.store';
+import { useCustomActionWizard } from '@/features/shared/customNodes/useCustomActionWizard';
 import NodesMode from './NodesMode.vue';
 
 const mockIsFeatureEnabled = vi.hoisted(() => vi.fn(() => true));
@@ -36,7 +38,7 @@ const mockDocumentStoreState = {
 	workflowTriggerNodes: [],
 	aiNodes: [],
 	getExpressionHandler: () => null,
-	onNodesChange: vi.fn(() => ({ off: vi.fn() })),
+	onNodesChange: vi.fn((_listener: unknown) => ({ off: vi.fn() })),
 	setLastNodeParameters: mockSetLastNodeParameters,
 	getNodeById: vi.fn(),
 	setNodeParameters: vi.fn(),
@@ -552,5 +554,98 @@ describe('NodesMode', () => {
 			'href',
 			REQUEST_NODE_FORM_URL,
 		);
+	});
+	describe('create custom node', () => {
+		const setNodeList = (overrides: { search?: string; rootView?: string } = {}) => {
+			useViewStacks().pushViewStack({
+				title: 'What happens next?',
+				mode: 'nodes',
+				rootView: REGULAR_NODE_CREATOR_VIEW,
+				hasSearch: true,
+				items: overrides.search
+					? []
+					: [
+							{
+								key: 'n8n-nodes-base.set',
+								type: 'node',
+								subcategory: '*',
+								properties: mockSimplifiedNodeType({
+									name: 'n8n-nodes-base.set',
+									displayName: 'Edit Fields',
+									group: ['transform'],
+								}),
+							},
+						],
+				...overrides,
+			} as Parameters<ReturnType<typeof useViewStacks>['pushViewStack']>[0]);
+		};
+
+		const enable = ({ active = true, canCreate = true } = {}) => {
+			useSettingsStore().settings.activeModules = active ? ['custom-nodes'] : [];
+			useRBACStore().setGlobalScopes(
+				canCreate ? ['customNode:list', 'customNode:create'] : ['customNode:list'],
+			);
+		};
+
+		afterEach(() => {
+			useCustomActionWizard().isOpen.value = false;
+		});
+
+		it('shows the entry as the last item and opens the wizard in place of the panel', async () => {
+			enable();
+			setNodeList();
+
+			const { container } = render({ pinia });
+			await nextTick();
+
+			const entry = screen.getByTestId('custom-node-create-entry');
+			expect(entry).not.toHaveAttribute('data-highlighted');
+			const lastElement = Array.from(container.querySelectorAll('[data-test-id]')).at(-1);
+			expect(entry.contains(lastElement ?? null)).toBe(true);
+
+			await userEvent.click(screen.getByTestId('custom-node-create-button'));
+
+			expect(useCustomActionWizard().isOpen.value).toBe(true);
+			expect(useCustomActionWizard().data.value).toEqual({ mode: 'create' });
+			expect(useViewStacks().viewStacks).toHaveLength(0);
+		});
+
+		it('highlights the entry in the no-results state of a search', async () => {
+			enable();
+			setNodeList({ search: 'acme weather' });
+
+			render({ pinia });
+			await nextTick();
+
+			const entry = screen.getByTestId('custom-node-create-entry');
+			expect(entry).toHaveAttribute('data-highlighted', 'true');
+			expect(screen.getByTestId('node-creator-no-results')).toContainElement(entry);
+		});
+
+		it.each([
+			['without the create scope', { canCreate: false }],
+			['with the module off', { active: false }],
+		])('shows no entry %s', async (_name, options) => {
+			enable(options);
+			setNodeList();
+			render({ pinia });
+			await nextTick();
+			expect(screen.queryByTestId('custom-node-create-entry')).not.toBeInTheDocument();
+
+			useViewStacks().updateCurrentViewStack({ search: 'acme weather', items: [] });
+			await nextTick();
+			expect(screen.getByTestId('node-creator-no-results')).toBeInTheDocument();
+			expect(screen.queryByTestId('custom-node-create-entry')).not.toBeInTheDocument();
+		});
+
+		it('shows no entry in the trigger view', async () => {
+			enable();
+			setNodeList({ rootView: TRIGGER_NODE_CREATOR_VIEW });
+
+			render({ pinia });
+			await nextTick();
+
+			expect(screen.queryByTestId('custom-node-create-entry')).not.toBeInTheDocument();
+		});
 	});
 });

@@ -10,3 +10,6 @@ export {
 	useCustomActionSelection,
 	type CustomActionPinValues,
 } from './selection/useCustomActionSelection';
+export { useCustomNodeEntryPoints } from './entry-points/useCustomNodeEntryPoints';
+export { default as CreateCustomNodeEntry } from './entry-points/CreateCustomNodeEntry.vue';
+export { default as AddCustomActionEntry } from './entry-points/AddCustomActionEntry.vue';

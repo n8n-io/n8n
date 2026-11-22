@@ -14,7 +14,7 @@ import type {
 import { NodeConnectionTypes, NodeHelpers, deepCopy, isCommunityPackageName } from 'n8n-workflow';
 import { computed, inject, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 
-import { BASE_NODE_SURVEY_URL, VIEWS } from '@/app/constants';
+import { BASE_NODE_SURVEY_URL, HTTP_REQUEST_NODE_TYPE, VIEWS } from '@/app/constants';
 
 import NDVSubConnections from '@/features/ndv/panel/components/NDVSubConnections.vue';
 import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
@@ -71,7 +71,7 @@ import { useGatewayCreditsPromotion } from '@/features/credentials/gatewayCredit
 import GatewayCreditsPromotion from '@/features/credentials/gatewayCreditsPromotion/GatewayCreditsPromotion.vue';
 import { useQuickConnect } from '@/features/credentials/quickConnect/composables/useQuickConnect';
 
-import { N8nBlockUi, N8nCallout, N8nIcon, N8nNotice, N8nText } from '@n8n/design-system';
+import { N8nBlockUi, N8nButton, N8nCallout, N8nIcon, N8nNotice, N8nText } from '@n8n/design-system';
 import { useRoute } from 'vue-router';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
@@ -80,7 +80,9 @@ import { useEditorContext } from '@/app/composables/useEditorContext';
 import {
 	CUSTOM_NODES_MODULE_ID,
 	useCustomActionSelection,
+	useCustomNodeEntryPoints,
 } from '@n8n/frontend-module-custom-nodes';
+import { useCustomActionWizard } from '@/features/shared/customNodes/useCustomActionWizard';
 
 const props = withDefaults(
 	defineProps<{
@@ -371,6 +373,24 @@ const getCustomActionSelection = () => {
 	customActionSelection ??= useCustomActionSelection();
 	return customActionSelection;
 };
+
+let customNodeEntryPoints: ReturnType<typeof useCustomNodeEntryPoints> | undefined;
+
+const showSaveAsCustomAction = computed(() => {
+	if (node.value?.type !== HTTP_REQUEST_NODE_TYPE) return false;
+	if (!settingsStore.isModuleActive(CUSTOM_NODES_MODULE_ID)) return false;
+	customNodeEntryPoints ??= useCustomNodeEntryPoints();
+	return customNodeEntryPoints.canCreate();
+});
+
+/** Opens the wizard with a copy of this request. The wizard drops secret headers and query values. */
+function openSaveAsCustomAction() {
+	if (!node.value) return;
+	useCustomActionWizard().open({
+		mode: 'create',
+		httpRequestParameters: deepCopy(node.value.parameters),
+	});
+}
 
 /** Writes all pin values of the custom action that `operation` selects, in one `parameters` update. */
 const writePinValuesForOperation = (nodeName: string, operation: NodeParameterValue) => {
@@ -945,6 +965,18 @@ function handleSelectAction(params: INodeParameters) {
 							})
 						"
 					/>
+				</div>
+				<div v-if="showSaveAsCustomAction" class="parameter-item">
+					<N8nButton
+						variant="ghost"
+						size="small"
+						data-test-id="save-as-custom-action"
+						data-attr="save-as-custom-action"
+						@click="openSaveAsCustomAction"
+					>
+						<template #icon><N8nIcon icon="blocks" /></template>
+						{{ i18n.baseText('customNodes.entry.saveAsAction') }}
+					</N8nButton>
 				</div>
 			</div>
 			<div v-show="openPanel === 'settings'">

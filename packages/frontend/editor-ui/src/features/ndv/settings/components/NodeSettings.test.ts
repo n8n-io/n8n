@@ -18,6 +18,8 @@ import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useRBACStore } from '@n8n/stores/rbac.store';
+import { useCustomActionWizard } from '@/features/shared/customNodes/useCustomActionWizard';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import {
@@ -783,6 +785,44 @@ describe('NodeSettings', () => {
 			expect(workflowDocumentStore.getNodeByName('Acme')?.parameters).toMatchObject(customPins);
 		});
 
+		it('writes all newest pin values of an upgrade in one update', async () => {
+			const upgradeButton = defineComponent({
+				emits: ['valueChanged'],
+				setup(_props, { emit }) {
+					return () =>
+						h('button', {
+							'data-test-id': 'upgrade',
+							onClick: () =>
+								emit('valueChanged', {
+									node: 'Acme',
+									name: 'parameters',
+									value: {
+										'parameters.operation': 'action-1@2',
+										'parameters.customActionId': 'action-1',
+										'parameters.customActionName': 'Get weather',
+									},
+								}),
+						});
+				},
+			});
+			const { findAllByTestId, workflowDocumentStore } = renderNodeSettings({
+				node: { ...customNode, parameters: { operation: 'action-1@1' } },
+				nodeType: customNodeType,
+				props: { readOnly: false },
+				stubs: { ParameterInputList: upgradeButton },
+				beforeMount: () => {
+					useSettingsStore().settings.activeModules = ['custom-nodes'];
+				},
+			});
+			const setNodeParameters = vi.spyOn(workflowDocumentStore, 'setNodeParameters');
+
+			const buttons = await findAllByTestId('upgrade');
+			await fireEvent.click(buttons[0]);
+
+			expect(setNodeParameters).toHaveBeenCalledTimes(1);
+			expect(workflowDocumentStore.getNodeByName('Acme')?.parameters).toMatchObject(customPins);
+		});
+
 		it('writes only the operation when the user selects a built-in operation', async () => {
 			const { findAllByTestId, workflowDocumentStore } = render(true);
 
@@ -835,6 +875,72 @@ describe('NodeSettings', () => {
 				customActionId: '',
 				customActionName: '',
 			});
+		});
+	});
+	describe('save as custom action', () => {
+		const httpParameters = { url: 'https://api.example.com/v1/items', method: 'GET' };
+
+		const render = ({
+			moduleActive = true,
+			canCreate = true,
+			node = { ...httpNode, parameters: httpParameters },
+			nodeType = httpNodeType,
+		}: {
+			moduleActive?: boolean;
+			canCreate?: boolean;
+			node?: typeof httpNode;
+			nodeType?: INodeTypeDescription;
+		} = {}) =>
+			renderNodeSettings({
+				node,
+				nodeType,
+				props: { readOnly: false },
+				beforeMount: () => {
+					useSettingsStore().settings.activeModules = moduleActive ? ['custom-nodes'] : [];
+					useRBACStore().setGlobalScopes(
+						canCreate ? ['customNode:list', 'customNode:create'] : ['customNode:list'],
+					);
+				},
+			});
+
+		afterEach(() => {
+			useCustomActionWizard().isOpen.value = false;
+		});
+
+		it('opens the wizard with a copy of the HTTP Request parameters', async () => {
+			const { findByTestId, workflowDocumentStore } = render();
+
+			await fireEvent.click(await findByTestId('save-as-custom-action'));
+
+			const { isOpen, data } = useCustomActionWizard();
+			expect(isOpen.value).toBe(true);
+			expect(data.value).toEqual({
+				mode: 'create',
+				httpRequestParameters: expect.objectContaining(httpParameters),
+			});
+			expect(data.value.httpRequestParameters).not.toBe(
+				workflowDocumentStore.getNodeByName('HTTP Request')?.parameters,
+			);
+		});
+
+		it.each([
+			['without the create scope', { canCreate: false }],
+			['with the module off', { moduleActive: false }],
+		])('shows no button %s', async (_name, options) => {
+			const { findByTestId, queryByTestId } = render(options);
+			await findByTestId('node-parameters');
+
+			expect(queryByTestId('save-as-custom-action')).not.toBeInTheDocument();
+		});
+
+		it('shows no button for another node', async () => {
+			const { findByTestId, queryByTestId } = render({
+				node: { ...agentNode, parameters: {} },
+				nodeType: agentNodeType,
+			});
+			await findByTestId('node-parameters');
+
+			expect(queryByTestId('save-as-custom-action')).not.toBeInTheDocument();
 		});
 	});
 });

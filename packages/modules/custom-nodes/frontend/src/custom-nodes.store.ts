@@ -114,6 +114,32 @@ export const useCustomNodesStore = defineStore(CUSTOM_NODES_STORE_ID, () => {
 		parents.value = await listCustomActionParents(rootStore.restApiContext);
 	}
 
+	// Not reactive, for the same reason as `loaded`.
+	let parentsLoaded = false;
+	let parentsLoad: Promise<void> | undefined;
+
+	/**
+	 * Starts a load of the parents in the background when they are not loaded and no load runs.
+	 * A computed or a render can call it. After a failed load, the next call tries again.
+	 */
+	function ensureParentsLoaded() {
+		if (parentsLoaded || parentsLoad) return;
+		const load = Promise.resolve()
+			.then(fetchParents)
+			.then(
+				() => {
+					parentsLoaded = true;
+				},
+				() => {
+					// The parents stay empty. The next call tries again.
+				},
+			)
+			.finally(() => {
+				parentsLoad = undefined;
+			});
+		parentsLoad = load;
+	}
+
 	/** Runs a write, then reloads the lists so they show the new state. */
 	async function write<T>(operation: () => Promise<T>): Promise<T> {
 		const result = await operation();
@@ -192,6 +218,7 @@ export const useCustomNodesStore = defineStore(CUSTOM_NODES_STORE_ID, () => {
 		whenLoaded,
 		refresh,
 		fetchParents,
+		ensureParentsLoaded,
 		fetchNode,
 		fetchActionVersion,
 		preview,

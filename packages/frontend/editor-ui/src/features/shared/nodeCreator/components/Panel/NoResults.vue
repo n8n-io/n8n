@@ -61,6 +61,7 @@ const showHttpRequest = computed(
 			</N8nLink>
 			{{ i18n.baseText('nodeCreator.noResults.node') }}
 		</p>
+		<slot />
 	</div>
 </template>
 

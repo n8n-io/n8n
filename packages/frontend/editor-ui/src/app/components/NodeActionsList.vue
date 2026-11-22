@@ -12,9 +12,12 @@ import NodeIcon from '@/app/components/NodeIcon.vue';
 import { N8nIcon, N8nText } from '@n8n/design-system';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import {
+	AddCustomActionEntry,
 	CUSTOM_NODES_MODULE_ID,
 	useCustomActionSelection,
+	useCustomNodeEntryPoints,
 } from '@n8n/frontend-module-custom-nodes';
+import { useCustomActionWizard } from '@/features/shared/customNodes/useCustomActionWizard';
 const { node } = defineProps<{
 	node: INodeUi;
 }>();
@@ -35,6 +38,19 @@ function isCustomAction(data: INodeParameters) {
 	if (!settingsStore.isModuleActive(CUSTOM_NODES_MODULE_ID)) return false;
 	customActionSelection ??= useCustomActionSelection();
 	return customActionSelection.pinValuesFor(node.type, data) !== undefined;
+}
+
+let customNodeEntryPoints: ReturnType<typeof useCustomNodeEntryPoints> | undefined;
+
+/** The wizard data of the "Add custom action" row, when this node can get custom actions. */
+const addCustomActionData = computed(() => {
+	if (!settingsStore.isModuleActive(CUSTOM_NODES_MODULE_ID)) return undefined;
+	customNodeEntryPoints ??= useCustomNodeEntryPoints();
+	return customNodeEntryPoints.addActionDataFor(node.type);
+});
+
+function onAddCustomAction() {
+	if (addCustomActionData.value) useCustomActionWizard().open(addCustomActionData.value);
 }
 
 const selectedActionRef = ref<HTMLElement>();
@@ -129,6 +145,12 @@ watch(
 				<N8nIcon v-if="option.isSelected" icon="check" color="primary" />
 			</div>
 		</template>
+		<AddCustomActionEntry
+			v-if="addCustomActionData"
+			:node-display-name="nodeType?.displayName ?? node.type"
+			:custom-node="addCustomActionData.customNodeId !== undefined"
+			@select="onAddCustomAction"
+		/>
 	</div>
 </template>
 

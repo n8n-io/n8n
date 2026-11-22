@@ -9,6 +9,7 @@ import {
 	AI_CATEGORY_MCP_NODES,
 	ADD_EMPTY_GROUP_NODE_CREATOR_ITEM,
 	REQUEST_NODE_FORM_URL,
+	REGULAR_NODE_CREATOR_VIEW,
 } from '@/app/constants';
 
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
@@ -42,6 +43,13 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useEmptyCanvasGroupsFlag } from '@/features/workflows/canvas/composables/useEmptyCanvasGroupsFlag';
+import { useCustomActionWizard } from '@/features/shared/customNodes/useCustomActionWizard';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import {
+	CUSTOM_NODES_MODULE_ID,
+	CreateCustomNodeEntry,
+	useCustomNodeEntryPoints,
+} from '@n8n/frontend-module-custom-nodes';
 
 export interface Props {
 	rootView: 'trigger' | 'action';
@@ -122,6 +130,26 @@ const isSearchResultEmpty = computed(() => {
 	);
 });
 const showSuggestionFooter = computed(() => isMcpCategory.value || isSearchResultEmpty.value);
+
+const settingsStore = useSettingsStore();
+let customNodeEntryPoints: ReturnType<typeof useCustomNodeEntryPoints> | undefined;
+
+// Custom nodes are action nodes: the entry shows in the regular view, not for a connection.
+const showCreateCustomNode = computed(() => {
+	if (!settingsStore.isModuleActive(CUSTOM_NODES_MODULE_ID)) return false;
+	const stack = activeViewStack.value;
+	if (stack.rootView !== REGULAR_NODE_CREATOR_VIEW || stack.connectionType || isMcpCategory.value) {
+		return false;
+	}
+	customNodeEntryPoints ??= useCustomNodeEntryPoints();
+	return customNodeEntryPoints.canCreate();
+});
+
+function onCreateCustomNode() {
+	// The wizard is a dialog over the canvas. Close the panel, which would close on the outside click.
+	useViewStacks().resetViewStacks();
+	useCustomActionWizard().open({ mode: 'create' });
+}
 
 function onSelected(item: INodeCreateElement) {
 	if (item.key === ADD_EMPTY_GROUP_NODE_CREATOR_ITEM && shouldHideEmptyGroupCommand.value) return;
@@ -307,7 +335,7 @@ registerKeyHook('MainViewArrowLeft', {
 
 		<!-- Main Node Items -->
 		<ItemsRenderer
-			v-memo="[activeViewStack.search, emptyCanvasGroupsEnabled]"
+			v-memo="[activeViewStack.search, emptyCanvasGroupsEnabled, showCreateCustomNode]"
 			:elements="visibleItems"
 			:class="[$style.items, { [$style.emptyItems]: isSearchResultEmpty && !isMcpCategory }]"
 			@selected="onSelected"
@@ -326,7 +354,13 @@ registerKeyHook('MainViewArrowLeft', {
 					"
 					@add-webhook-node="emit('nodeTypeSelected', [{ type: WEBHOOK_NODE_TYPE }])"
 					@add-http-node="emit('nodeTypeSelected', [{ type: HTTP_REQUEST_NODE_TYPE }])"
-				/>
+				>
+					<CreateCustomNodeEntry
+						v-if="showCreateCustomNode"
+						highlighted
+						@select="onCreateCustomNode"
+					/>
+				</NoResults>
 			</template>
 		</ItemsRenderer>
 
@@ -362,6 +396,11 @@ registerKeyHook('MainViewArrowLeft', {
 			@selected="onSelected"
 		>
 		</CategorizedItemsRenderer>
+
+		<CreateCustomNodeEntry
+			v-if="showCreateCustomNode && !isSearchResultEmpty"
+			@select="onCreateCustomNode"
+		/>
 
 		<McpRegistrySuggestionFooter
 			v-if="isMcpCategory"

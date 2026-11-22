@@ -66,6 +66,19 @@ import type { INodeUi } from '@/Interface';
 import type { MockInstance } from 'vitest';
 import { WAIT_NODE_TYPE, AGENT_NODE_TYPE } from '@/app/constants';
 import { useAiGateway } from '@/app/composables/useAiGateway';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+
+const customActionSelection = vi.hoisted(() => ({
+	pinValuesFor: vi.fn(),
+	newestPinValuesFor: vi.fn(),
+	actionNameFor: vi.fn(),
+	preload: vi.fn(),
+	whenLoaded: vi.fn(async () => {}),
+}));
+vi.mock('@n8n/frontend-module-custom-nodes', async (importOriginal) => ({
+	...(await importOriginal<object>()),
+	useCustomActionSelection: () => customActionSelection,
+}));
 
 const mockConfirm = vi.fn();
 vi.mock('@/app/composables/useMessage', () => ({
@@ -2443,6 +2456,112 @@ describe('ParameterInputList', () => {
 				// Note: actual parameters rendered depend on node-type specific transformations
 				expect(container.querySelector('.parameter-input-list-wrapper')).toBeInTheDocument();
 			});
+		});
+	});
+	describe('custom action upgrade notice', () => {
+		const customNode: INodeUi = {
+			...TEST_NODE_NO_ISSUES,
+			name: 'Acme',
+			type: 'n8n-custom.acme',
+			parameters: { operation: 'action-1@1' },
+		};
+		const operationParameter: INodeProperties = {
+			displayName: 'Action',
+			name: 'operation',
+			type: 'options',
+			noDataExpression: true,
+			default: '',
+			options: [
+				{ name: 'Get weather', value: 'action-1@1' },
+				{ name: 'Get weather', value: 'action-1@2' },
+			],
+		};
+		const urlParameter: INodeProperties = {
+			displayName: 'City',
+			name: 'city',
+			type: 'string',
+			default: '',
+		};
+		const newestPins = {
+			operation: 'action-1@2',
+			customActionId: 'action-1',
+			customActionName: 'Get weather',
+		};
+
+		const render = ({ moduleActive = true, isReadOnly = false } = {}) => {
+			vi.spyOn(useSettingsStore(), 'isModuleActive').mockReturnValue(moduleActive);
+			ndvStore.activeNode = customNode;
+			return renderComponent({
+				props: {
+					parameters: [operationParameter, urlParameter],
+					nodeValues: { parameters: { operation: 'action-1@1', city: '' } },
+					path: 'parameters',
+					isReadOnly,
+				},
+			});
+		};
+
+		beforeEach(() => {
+			customActionSelection.newestPinValuesFor.mockReset();
+		});
+
+		it('shows the notice after the action of an older version and writes the newest pin values', async () => {
+			customActionSelection.newestPinValuesFor.mockReturnValue(newestPins);
+			const { findByTestId, emitted, container } = render();
+			await flushPromises();
+
+			const notice = await findByTestId('custom-action-upgrade-notice');
+			const inputs = container.querySelectorAll('[data-test-id="parameter-input"]');
+			expect(
+				inputs[0].compareDocumentPosition(notice) & Node.DOCUMENT_POSITION_FOLLOWING,
+			).toBeTruthy();
+			expect(
+				notice.compareDocumentPosition(inputs[1]) & Node.DOCUMENT_POSITION_FOLLOWING,
+			).toBeTruthy();
+			expect(customActionSelection.newestPinValuesFor).toHaveBeenCalledWith('n8n-custom.acme', {
+				operation: 'action-1@1',
+			});
+
+			await fireEvent.click(await findByTestId('custom-action-upgrade-button'));
+
+			expect(emitted('valueChanged')).toEqual([
+				[
+					{
+						node: 'Acme',
+						name: 'parameters',
+						value: {
+							'parameters.operation': 'action-1@2',
+							'parameters.customActionId': 'action-1',
+							'parameters.customActionName': 'Get weather',
+						},
+					},
+				],
+			]);
+		});
+
+		it('shows no notice for the newest version', async () => {
+			customActionSelection.newestPinValuesFor.mockReturnValue(undefined);
+			const { queryByTestId } = render();
+			await flushPromises();
+
+			expect(queryByTestId('custom-action-upgrade-notice')).not.toBeInTheDocument();
+		});
+
+		it('shows no notice when the user cannot edit the workflow', async () => {
+			customActionSelection.newestPinValuesFor.mockReturnValue(newestPins);
+			const { queryByTestId } = render({ isReadOnly: true });
+			await flushPromises();
+
+			expect(queryByTestId('custom-action-upgrade-notice')).not.toBeInTheDocument();
+		});
+
+		it('shows no notice and asks for nothing with the module off', async () => {
+			customActionSelection.newestPinValuesFor.mockReturnValue(newestPins);
+			const { queryByTestId } = render({ moduleActive: false });
+			await flushPromises();
+
+			expect(queryByTestId('custom-action-upgrade-notice')).not.toBeInTheDocument();
+			expect(customActionSelection.newestPinValuesFor).not.toHaveBeenCalled();
 		});
 	});
 });

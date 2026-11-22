@@ -11719,5 +11719,13 @@
 	"customNodes.wizard.issue.invalidBaseUrl": "Enter a URL that starts with http:// or https://.",
 	"customNodes.wizard.node.baseUrl.placeholder": "https://api.example.com/v1",
 	"customNodes.wizard.request.url.placeholder.parent": "https://api.example.com/v1/items/{'{'}id{'}'}",
-	"customNodes.wizard.request.url.placeholder.node": "/items/{'{'}id{'}'}"
+	"customNodes.wizard.request.url.placeholder.node": "/items/{'{'}id{'}'}",
+	"customNodes.entry.createNode.title": "Create custom node",
+	"customNodes.entry.createNode.description": "Turn an HTTP API into a node with its own actions",
+	"customNodes.entry.createNode.button": "Create",
+	"customNodes.entry.addAction.parent": "Add custom action to {node}",
+	"customNodes.entry.addAction.node": "Add action to {node}",
+	"customNodes.entry.saveAsAction": "Save as custom action",
+	"customNodes.upgradeNotice.text": "A newer version of this action is available.",
+	"customNodes.upgradeNotice.button": "Upgrade"
 }

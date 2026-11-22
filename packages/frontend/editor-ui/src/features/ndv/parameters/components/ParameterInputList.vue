@@ -53,6 +53,7 @@ import { throttledWatch } from '@vueuse/core';
 import get from 'lodash/get';
 
 import {
+	N8nButton,
 	N8nCallout,
 	N8nIcon,
 	N8nIconButton,
@@ -64,6 +65,11 @@ import {
 	N8nTooltip,
 } from '@n8n/design-system';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import {
+	CUSTOM_NODES_MODULE_ID,
+	useCustomActionSelection,
+} from '@n8n/frontend-module-custom-nodes';
 const LazyFixedCollectionParameter = defineAsyncComponent(
 	async () => await import('./FixedCollection/FixedCollectionParameter.vue'),
 );
@@ -667,6 +673,46 @@ const aiGatewayUnsupportedNoticeIndex = computed(() => {
 		: items.findIndex((item) => item.parameter.name === 'operation');
 });
 
+const settingsStore = useSettingsStore();
+let customActionSelection: ReturnType<typeof useCustomActionSelection> | undefined;
+
+const operationSelectorIndex = computed(() =>
+	parameterItems.value.findIndex(
+		(item) => item.parameter.name === 'operation' && item.parameter.type === 'options',
+	),
+);
+
+/** The pin values of the newest version, when the node uses an older version of a custom action. */
+const customActionUpgradePinValues = computed(() => {
+	if (!node.value || props.isReadOnly || operationSelectorIndex.value === -1) return undefined;
+	if (!settingsStore.isModuleActive(CUSTOM_NODES_MODULE_ID)) return undefined;
+	// The version is found by the `operation` value alone.
+	const operation: unknown = get(
+		props.nodeValues,
+		props.path ? `${props.path}.operation` : 'operation',
+	);
+	if (typeof operation !== 'string') return undefined;
+	customActionSelection ??= useCustomActionSelection();
+	return customActionSelection.newestPinValuesFor(node.value.type, { operation });
+});
+
+const customActionUpgradeNoticeIndex = computed(() =>
+	customActionUpgradePinValues.value ? operationSelectorIndex.value : -1,
+);
+
+/** Writes all pin values of the newest version in one `parameters` update. */
+function upgradeCustomAction() {
+	const pinValues = customActionUpgradePinValues.value;
+	if (!pinValues || !node.value) return;
+	emit('valueChanged', {
+		node: node.value.name,
+		name: 'parameters',
+		value: Object.fromEntries(
+			Object.entries(pinValues).map(([name, value]) => [`parameters.${name}`, value]),
+		),
+	});
+}
+
 const aiGatewayOperationDisplayName = computed(() => {
 	const params = props.path
 		? (get(props.nodeValues, props.path) as INodeParameters | undefined)
@@ -1064,6 +1110,25 @@ watch(
 					})
 				}}
 			</N8nNotice>
+			<N8nNotice
+				v-if="index === customActionUpgradeNoticeIndex"
+				theme="info"
+				:class="$style.unsupportedActionNotice"
+				data-test-id="custom-action-upgrade-notice"
+			>
+				<span :class="$style.customActionUpgrade">
+					{{ i18n.baseText('customNodes.upgradeNotice.text') }}
+					<N8nButton
+						variant="outline"
+						size="small"
+						data-test-id="custom-action-upgrade-button"
+						data-attr="custom-action-upgrade-button"
+						@click="upgradeCustomAction"
+					>
+						{{ i18n.baseText('customNodes.upgradeNotice.button') }}
+					</N8nButton>
+				</span>
+			</N8nNotice>
 		</div>
 		<div v-if="parameterItems.length === 0" :class="{ indent }">
 			<slot />
@@ -1167,6 +1232,13 @@ watch(
 .unsupportedActionNotice {
 	margin-top: var(--spacing--2xs);
 	margin-bottom: 0;
+}
+
+.customActionUpgrade {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--xs);
 }
 
 .inlineLayout {
