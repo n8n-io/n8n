@@ -108,8 +108,12 @@ export interface StackConfig {
 	/** When set, the Docker network uses this exact name instead of a random UUID. */
 	networkName?: string;
 	/**
-	 * Caddy load-balancer upstream-selection policy. Only applies when `mains > 1`
-	 * or `webhooks > 0` (anything that triggers the LB to start).
+	 * Start Caddy and serve n8n under an absolute subpath, such as `/n8n/`.
+	 * Use with `n8n-playwright/containers` and relative paths; root-relative requests receive HTTP 404.
+	 */
+	pathPrefix?: string;
+	/**
+	 * Caddy upstream-selection policy. Applies when the stack starts Caddy.
 	 * Defaults to `'first'` — sticky to main #1, useful for UI debuggability.
 	 * Benchmarks should set `'round_robin'` to actually distribute load.
 	 */

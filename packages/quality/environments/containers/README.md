@@ -173,6 +173,20 @@ test.use({
 });
 ```
 
+### Path Prefix
+
+Set `pathPrefix` to serve n8n under an absolute subpath such as `/n8n/`.
+Caddy strips the prefix before it forwards requests to n8n.
+The stack includes the prefix and a trailing slash in `baseUrl`.
+Use relative paths to resolve URLs against `baseUrl`.
+Use `n8n-playwright/containers` for prefixed tests. The standard `n8n-playwright` fixture sends root-relative requests, which Caddy rejects with HTTP 404.
+
+```typescript
+import { test } from 'n8n-playwright/containers';
+
+test.use({ capability: { pathPrefix: '/n8n/' } });
+```
+
 ## Architecture
 
 ```
@@ -419,7 +433,7 @@ Now usable as `test.use({ capability: 'my-capability' })`.
 | `proxy` | - | HTTP proxy (MockServer) |
 | `taskRunner` | - | External task runner |
 | `engineTaskRunner` | - | External task runner for the engine container (auto-starts with `engine: 'container'`) |
-| `loadBalancer` | - | Caddy for multi-main |
+| `loadBalancer` | - | Caddy for multi-main, webhook processors, or a path prefix |
 | `cloudflared` | - | Cloudflare Tunnel for public webhook URLs |
 | `litellm` | - | OpenAI-compatible AI gateway (LiteLLM) with four logins |
 
