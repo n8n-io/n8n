@@ -50,12 +50,13 @@ export class NodeTypes implements INodeTypes {
 		if (!provider) return loaded;
 		if (!('nodeVersions' in loaded)) return provider.extendNodeType(nodeTypeName, loaded);
 
-		return Object.create(loaded, {
+		const copy: IVersionedNodeType = Object.create(loaded, {
 			getNodeType: {
 				value: (version?: number) =>
 					provider.extendNodeType(nodeTypeName, loaded.getNodeType(version)),
 			},
-		}) as IVersionedNodeType;
+		});
+		return copy;
 	}
 
 	/**

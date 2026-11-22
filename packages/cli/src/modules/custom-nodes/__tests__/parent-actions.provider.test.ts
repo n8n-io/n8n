@@ -98,13 +98,14 @@ describe('ParentActionsProvider', () => {
 		const { provider, loadNodesAndCredentials } = createProvider([served(resourceParent)]);
 		provider.setActions(actionsOf([[BILLING, [refundPayment]]]));
 		const before = loadNodesAndCredentials.types.nodes;
+		const snapshot = structuredClone(before);
 
 		provider.transformTypes();
 
 		const [servedEntry] = loadNodesAndCredentials.types.nodes;
 		expect(loadNodesAndCredentials.types.nodes).not.toBe(before);
 		expect(servedEntry.name).toBe(BILLING);
-		expect(before[0].properties).toEqual(resourceParent.properties);
+		expect(before).toEqual(snapshot);
 
 		const extended = provider.extendDescription(BILLING, resourceParent);
 		const copy = provider.extendNodeType(BILLING, loadedType(resourceParent));
@@ -383,7 +384,7 @@ describe('ParentActionsProvider', () => {
 		expect(provider.extendNodeType(BILLING, loaded)).not.toBe(second);
 	});
 
-	it('lets a running execution keep its copy after the actions change', async () => {
+	it('lets a node run keep the copy that it looked up after the actions change', async () => {
 		const { provider } = createProvider([served(resourceParent)]);
 		provider.setActions(actionsOf([[BILLING, [refundPayment]]]));
 		provider.transformTypes();

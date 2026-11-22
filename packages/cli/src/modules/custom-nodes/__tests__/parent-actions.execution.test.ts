@@ -731,6 +731,35 @@ describe('parent node type', () => {
 		});
 	});
 
+	describe('request options in the node parameters', () => {
+		it('ignores a stored proxy and certificate option for a parent without request options', async () => {
+			expect(resourceParent.properties.some((p) => p.name === 'requestOptions')).toBe(false);
+			const scope = nock(HOST)
+				.post('/v1/payments/pay_1/refund')
+				.matchHeader(KEY_HEADER, 'acmeBillingApi-key')
+				.reply(200, { id: 're_1' });
+			const original = programmaticParent(resourceParent);
+			const type = createParentNodeType(original, extensionOf(resourceParent, actions));
+			const context = createContext(
+				type,
+				{
+					...refundV1,
+					customAction_paymentId: 'pay_1',
+					requestOptions: { proxy: 'http://127.0.0.1:9', allowUnauthorizedCerts: true },
+				},
+				billingCredentials,
+				keyOf('acmeBillingApi'),
+			);
+
+			const result = await execute(type, context);
+
+			expect(result[0][0].json).toEqual({ id: 're_1' });
+			// With a proxy, the request would go to 127.0.0.1:9, and nock would refuse it.
+			expect(scope.isDone()).toBe(true);
+			expect(context.getNode().parameters).not.toHaveProperty('requestOptions');
+		});
+	});
+
 	describe('credential domain restrictions', () => {
 		it.each([
 			['all', undefined, 'sends'],

@@ -41,7 +41,11 @@ export class ParentActionsProvider implements NodeTypeExtensionProvider {
 	/** Found by `transformTypes`. Kept when the types are released from memory. */
 	private eligible: ReadonlyMap<string, EligibleParent> = new Map();
 
-	/** A running execution keeps its copy. A new lookup after a change gets a new copy. */
+	/**
+	 * Copies by loaded node type. A lookup after a change gets a new copy. A node run that has
+	 * its copy keeps it: `RoutingNode` gets the run-time description of that copy. Each node run
+	 * looks the node type up again.
+	 */
 	private copies = new WeakMap<INodeType, INodeType>();
 
 	/** Parents whose extension failed and was logged, so that a lookup does not log it again. */
