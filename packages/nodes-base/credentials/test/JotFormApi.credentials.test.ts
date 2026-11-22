@@ -44,6 +44,9 @@ describe('JotFormApi credential test', () => {
 	});
 
 	it.each<[ICredentialDataDecryptedObject, string]>([
+		[{}, 'https://api.jotform.com'],
+		[{ apiDomain: '' }, 'https://api.jotform.com'],
+		[{ apiDomain: '   ' }, 'https://api.jotform.com'],
 		[{ apiDomain: 'api.jotform.com' }, 'https://api.jotform.com'],
 		[{ apiDomain: 'eu-api.jotform.com' }, 'https://eu-api.jotform.com'],
 		[
@@ -83,6 +86,8 @@ describe('JotFormApi credential test', () => {
 	});
 
 	it.each<[ICredentialDataDecryptedObject]>([
+		[{}],
+		[{ apiDomain: '' }],
 		[{ apiDomain: 'api.jotform.com' }],
 		[{ apiDomain: 'eu-api.jotform.com' }],
 		[{ apiDomain: 'custom', customApiDomain: 'subdomain.jotform.com/API' }],

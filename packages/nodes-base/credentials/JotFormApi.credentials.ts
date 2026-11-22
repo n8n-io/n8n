@@ -63,7 +63,7 @@ export class JotFormApi implements ICredentialType {
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL:
-				'={{ (() => { const raw = String(($credentials.apiDomain === "custom" ? $credentials.customApiDomain : $credentials.apiDomain) || "").trim(); const scheme = new RegExp("^([a-z][a-z0-9+.-]*)://", "i").exec(raw); const domain = raw.replace(new RegExp("^https?://", "i"), "").replace(new RegExp("/{2,}", "g"), "/").replace(new RegExp("/+$"), ""); if ((scheme && !new RegExp("^https?$", "i").test(scheme[1])) || !domain || new RegExp("[@?#]").test(domain)) return ""; return "https://" + domain; })() }}',
+				'={{ (() => { const isCustom = $credentials.apiDomain === "custom"; const selected = String((isCustom ? $credentials.customApiDomain : $credentials.apiDomain) || "").trim(); const raw = !isCustom && selected === "" ? "api.jotform.com" : selected; const scheme = new RegExp("^([a-z][a-z0-9+.-]*)://", "i").exec(raw); const domain = raw.replace(new RegExp("^https?://", "i"), "").replace(new RegExp("/{2,}", "g"), "/").replace(new RegExp("/+$"), ""); if ((scheme && !new RegExp("^https?$", "i").test(scheme[1])) || !domain || new RegExp("[@?#]").test(domain)) return ""; return "https://" + domain; })() }}',
 			url: '/user',
 			method: 'GET',
 			headers: {
