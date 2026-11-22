@@ -2,8 +2,8 @@ import { mkdtemp, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
+	GenericContainer,
 	Network,
-	type GenericContainer,
 	type StartedNetwork,
 	type StartedTestContainer,
 } from 'testcontainers';
@@ -18,6 +18,11 @@ const queue = { workers: 1, webhooks: 1 };
 const queueNames = [main, `${projectName}-n8n-worker-1`, `${projectName}-n8n-webhook-1`];
 const serviceFile = { target: '/tmp/service-ca.pem', content: 'service certificate' };
 const keyFile = { target: '/tmp/encryption-key', content: 'key-from-file' };
+const hardeningOptions = {
+	readOnlyRootfs: true,
+	tmpfs: { '/tmp': 'rw,nosuid,nodev' },
+	platform: 'linux/arm64',
+};
 
 type BindMounts = Parameters<GenericContainer['withBindMounts']>[0];
 
@@ -27,11 +32,13 @@ const built = new Map<
 		environment: Record<string, string>;
 		files: Parameters<GenericContainer['withCopyContentToContainer']>[0];
 		bindMounts: BindMounts;
+		n8nContainer: NonNullable<N8NConfig['n8nContainer']>;
 		reuse: boolean;
 	}
 >();
 let stack: N8NStack | undefined;
 const started = new Map<string, StartedTestContainer>();
+const imageExists = vi.fn();
 
 function startedContainer(name: string): StartedTestContainer {
 	const container = {
@@ -61,12 +68,21 @@ vi.mock('testcontainers', async (importOriginal) => {
 				environment: this.environment,
 				files: this.contentsToCopy,
 				bindMounts: this.bindMounts,
+				n8nContainer: {
+					readOnlyRootfs: this.hostConfig.ReadonlyRootfs,
+					tmpfs: this.hostConfig.Tmpfs,
+					platform: this.createOpts.platform,
+				},
 				reuse: this.reuse,
 			});
 			return startedContainer(name);
 		}
 	}
-	return { ...actual, GenericContainer };
+	return {
+		...actual,
+		GenericContainer,
+		getContainerRuntimeClient: async () => ({ image: { exists: imageExists } }),
+	};
 });
 
 vi.mock('get-port', () => ({ default: vi.fn().mockResolvedValue(5678) }));
@@ -92,6 +108,7 @@ vi.mock('../services/registry', () => ({
 beforeEach(() => {
 	built.clear();
 	started.clear();
+	imageExists.mockReset().mockResolvedValue(true);
 	vi.stubEnv('QA_METRICS_WEBHOOK_URL', '');
 	vi.stubEnv('CONTAINER_TELEMETRY_VERBOSE', '0');
 	vi.stubEnv('N8N_CONTAINERS_KEEPALIVE', 'false');
@@ -148,18 +165,125 @@ test('copies stack and service files into the main, worker, and webhook', async 
 	}
 });
 
-test('keeps the default env and service files when the new options are absent', async () => {
+test('keeps the defaults when the stack sets no overrides', async () => {
 	await startStack(queue);
 
 	for (const name of queueNames) {
-		const { environment, files, bindMounts, reuse } = built.get(name)!;
+		const { environment, files, bindMounts, n8nContainer, reuse } = built.get(name)!;
 		expect(Object.hasOwn(environment, 'N8N_ENCRYPTION_KEY')).toBe(true);
 		expect(environment.N8N_STORAGE_PATH).toBeUndefined();
 		expect(environment.N8N_DEFAULT_BINARY_DATA_MODE).toBeUndefined();
 		expect(files).toEqual([serviceFile]);
 		expect(bindMounts).toEqual([]);
+		expect(n8nContainer).toEqual({});
 		expect(reuse).toBe(true);
 	}
+	expect(imageExists).not.toHaveBeenCalled();
+});
+
+test.each([
+	{ scenario: 'all options', n8nContainer: hardeningOptions, reuse: false },
+	{ scenario: 'read-only root filesystem', n8nContainer: { readOnlyRootfs: true }, reuse: false },
+	{ scenario: 'tmpfs mounts', n8nContainer: { tmpfs: hardeningOptions.tmpfs }, reuse: false },
+	{
+		scenario: 'platform with a writable root filesystem',
+		n8nContainer: { readOnlyRootfs: false, platform: hardeningOptions.platform },
+		reuse: true,
+	},
+])('applies container settings to every queue role: $scenario', async ({ n8nContainer, reuse }) => {
+	await startStack({ ...queue, services: [], n8nContainer });
+
+	for (const name of queueNames) {
+		expect(built.get(name)).toMatchObject({ n8nContainer, reuse });
+	}
+});
+
+test('keeps the container settings when replacing the main', async () => {
+	const { replaceN8N } = await startStack({ services: [], n8nContainer: hardeningOptions });
+	built.clear();
+
+	await replaceN8N({ image: 'n8nio/n8n:next' });
+
+	expect(built.get(main)).toMatchObject({ n8nContainer: hardeningOptions, reuse: false });
+});
+
+test.each([
+	{ source: 'stack', config: { services: [], files: [keyFile] }, target: keyFile.target },
+	{ source: 'service', config: {}, target: serviceFile.target },
+])('rejects copied $source files with a read-only root filesystem', async ({ config, target }) => {
+	await expect(startStack({ ...config, n8nContainer: { readOnlyRootfs: true } })).rejects.toThrow(
+		`cannot copy "${target}" with n8nContainer.readOnlyRootfs enabled`,
+	);
+	expect(built.size).toBe(0);
+});
+
+test.each([
+	{
+		source: 'stack file below the mount',
+		config: { services: [], files: [keyFile] },
+		target: keyFile.target,
+		mountPath: '/tmp/./',
+	},
+	{
+		source: 'service file at the mount',
+		config: {},
+		target: serviceFile.target,
+		mountPath: serviceFile.target,
+	},
+])('rejects a tmpfs mount that hides a $source', async ({ config, target, mountPath }) => {
+	await expect(
+		startStack({ ...config, n8nContainer: { tmpfs: { [mountPath]: 'rw' } } }),
+	).rejects.toThrow(`cannot copy "${target}": the tmpfs mount at "${mountPath}" hides this path`);
+	expect(built.size).toBe(0);
+});
+
+test.each([
+	['/run', '/var/run/secrets/key'],
+	['/var/run', '/run/secrets/key'],
+	['/var', '/var/run/secrets/key'],
+])('rejects a tmpfs mount at %s that hides a copied file at %s', async (mountPath, target) => {
+	const startup = startStack({
+		services: [],
+		files: [{ ...keyFile, target }],
+		n8nContainer: { tmpfs: { [mountPath]: 'rw' } },
+	}).then(({ baseUrl }) => baseUrl);
+
+	await expect(startup).rejects.toThrow(
+		`cannot copy "${target}": the tmpfs mount at "${mountPath}" hides this path`,
+	);
+	expect(built.size).toBe(0);
+});
+
+test.each([
+	['/tmp', '/tmp-config/encryption-key'],
+	['/run-config', '/var/run-config/encryption-key'],
+])('copies files outside the tmpfs mount at %s: %s', async (mountPath, target) => {
+	const file = { ...keyFile, target };
+	await startStack({ services: [], files: [file], n8nContainer: { tmpfs: { [mountPath]: 'rw' } } });
+
+	expect(built.get(main)?.files).toEqual([file]);
+});
+
+test('requires a local image before starting a container with a platform', async () => {
+	const image = 'ghcr.io/n8n-io/n8n:missing-platform';
+	const { platform } = hardeningOptions;
+	imageExists.mockResolvedValue(false);
+
+	await expect(startStack({ image, n8nContainer: { platform } })).rejects.toThrow(
+		`Docker image '${image}' must be present locally for n8nContainer.platform '${platform}'`,
+	);
+	expect(built.size).toBe(0);
+});
+
+test('preserves the Docker error when the local image platform does not match', async () => {
+	const message =
+		'image platform (linux/amd64) does not match the requested platform (linux/arm64)';
+	const error = Object.assign(new Error(message), { statusCode: 404 });
+	vi.spyOn(GenericContainer.prototype, 'start').mockRejectedValueOnce(error);
+
+	await expect(
+		startStack({ n8nContainer: { platform: hardeningOptions.platform } }),
+	).rejects.toMatchObject({ message, cause: error });
 });
 
 test.each([

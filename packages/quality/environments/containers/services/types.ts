@@ -136,6 +136,15 @@ export interface StackConfig {
 	userHomeHostDir?: string;
 	/** Run the n8n containers as this uid:gid (e.g. the host user for bind mounts). */
 	user?: string;
+	/** Container settings for the main, worker, and webhook processes. */
+	n8nContainer?: {
+		/** Make the root filesystem read-only. Incompatible with copied files. */
+		readOnlyRootfs?: boolean;
+		/** Map from container paths to Docker tmpfs options. Keep copied files outside these paths. */
+		tmpfs?: Record<string, string>;
+		/** Docker platform, for example `linux/arm64`. Requires a matching local image. */
+		platform?: string;
+	};
 }
 
 export interface Service<TResult extends ServiceResult = ServiceResult> {

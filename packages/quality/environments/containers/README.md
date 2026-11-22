@@ -142,6 +142,37 @@ In queue mode, set `N8N_DEFAULT_BINARY_DATA_MODE` in `env` to override the `file
 test.use({ capability: { workers: 1, sharedStorage: true } });
 ```
 
+### Container Hardening
+
+Use `n8nContainer` to configure the main, worker, and webhook containers.
+Set `readOnlyRootfs` to make the root filesystem read-only.
+Use `tmpfs` to give the runtime user writable paths.
+Mount `/home/node` so n8n can write its settings and editor asset cache.
+
+Use a writable root filesystem if the stack copies files through `files`, a service such as Keycloak, or `engine: 'container'`.
+Keep copied files outside tmpfs mount paths. Docker mounts tmpfs after Testcontainers copies the files, so the mount hides files at or below its path.
+The stack treats `/var/run` and `/run` as the same path. Use resolved paths for other symlinks in the image.
+
+Set `platform` to select a Docker image platform, such as `linux/arm64`.
+Set `image` to a platform-specific tag or digest that is available on the Docker daemon.
+The stack does not pull the image when `platform` is set, because that pull can change a tag that other stacks use.
+
+```typescript
+test.use({
+  capability: {
+    user: '12345:0',
+    env: { N8N_USER_FOLDER: '/home/node' },
+    n8nContainer: {
+      readOnlyRootfs: true,
+      tmpfs: {
+        '/home/node': 'rw,uid=12345,gid=0,mode=0700',
+        '/tmp': 'rw,mode=1777',
+      },
+    },
+  },
+});
+```
+
 ## Architecture
 
 ```
