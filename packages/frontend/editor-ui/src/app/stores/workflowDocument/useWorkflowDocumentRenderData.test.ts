@@ -22,6 +22,7 @@ import {
 	type CanvasNodeDirtinessType,
 } from '@/features/workflows/canvas/canvas.types';
 import { useWorkflowDocumentRenderData } from './useWorkflowDocumentRenderData';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 
 const TEST_TRIGGER_NODE_TYPE = 'n8n-nodes-base.testTrigger';
 
@@ -32,6 +33,17 @@ const TEST_TRIGGER_NODE_TYPE = 'n8n-nodes-base.testTrigger';
 // Both consts below are only dereferenced when the mocked composables are
 // *called* (inside tests, after this module's body has initialized), so the
 // references are safe under vi.mock hoisting.
+const SUBTITLE_NODE_TYPE = 'n8n-nodes-base.subtitleTest';
+const customActionSelection = vi.hoisted(() => ({
+	pinValuesFor: vi.fn(),
+	newestPinValuesFor: vi.fn(),
+	actionNameFor: vi.fn(),
+}));
+vi.mock('@n8n/frontend-module-custom-nodes', async (importOriginal) => ({
+	...(await importOriginal<object>()),
+	useCustomActionSelection: () => customActionSelection,
+}));
+
 const dirtinessByNameOverride = ref<Record<string, CanvasNodeDirtinessType | undefined>>({});
 const isConfigNodeSpy = vi.fn((..._args: unknown[]) => false);
 
@@ -47,19 +59,32 @@ vi.mock('@/app/stores/nodeTypes.store', () => ({
 		isConfigurableNode: () => false,
 		isTriggerNode: (type: string) => type === 'n8n-nodes-base.testTrigger',
 		getNodeType: (type: string) =>
-			type === 'n8n-nodes-base.testTrigger'
+			type === 'n8n-nodes-base.subtitleTest'
 				? {
-						name: 'n8n-nodes-base.testTrigger',
-						displayName: 'Test Trigger',
+						name: 'n8n-nodes-base.subtitleTest',
+						displayName: 'Subtitle Test',
 						description: '',
 						version: 1,
 						defaults: {},
-						group: ['trigger'],
-						inputs: [],
+						group: ['transform'],
+						inputs: ['main'],
 						outputs: ['main'],
+						subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 						properties: [],
 					}
-				: null,
+				: type === 'n8n-nodes-base.testTrigger'
+					? {
+							name: 'n8n-nodes-base.testTrigger',
+							displayName: 'Test Trigger',
+							description: '',
+							version: 1,
+							defaults: {},
+							group: ['trigger'],
+							inputs: [],
+							outputs: ['main'],
+							properties: [],
+						}
+					: null,
 		communityNodeType: () => undefined,
 		getAllNodeTypes: () => [],
 	})),
@@ -139,6 +164,72 @@ describe('useWorkflowDocumentRenderData — passthroughs', () => {
 		expect(renderData.isTriggerByNodeId.has('a')).toBe(true);
 		expect(renderData.subtitleByNodeId.has('a')).toBe(true);
 		expect(renderData.simulatedNodeTypeDescriptionByNodeId.has('a')).toBe(true);
+	});
+});
+
+describe('useWorkflowDocumentRenderData — custom action subtitle', () => {
+	const subtitleFor = (parameters: Record<string, string>, moduleActive = true) => {
+		useSettingsStore().settings.activeModules = moduleActive ? ['custom-nodes'] : [];
+		const { docId } = setupWorkflow('wf-subtitle', [
+			{ id: 'a', name: 'Alpha', type: SUBTITLE_NODE_TYPE, parameters },
+		]);
+		const { renderData } = createRenderData(docId);
+		return renderData.subtitleByNodeId.get('a')?.value;
+	};
+
+	beforeEach(() => {
+		setActivePinia(createPinia());
+		customActionSelection.actionNameFor.mockReset();
+	});
+
+	it('shows the action name for a custom selection', () => {
+		customActionSelection.actionNameFor.mockReturnValue('Archive channel');
+
+		expect(
+			subtitleFor({ resource: '__CUSTOM_ACTION__', operation: 'action-1@1', customActionId: 'x' }),
+		).toBe('Archive channel');
+		expect(customActionSelection.actionNameFor).toHaveBeenCalledWith(
+			expect.objectContaining({ resource: '__CUSTOM_ACTION__', operation: 'action-1@1' }),
+		);
+	});
+
+	it('does not change the subtitle of a built-in selection', () => {
+		customActionSelection.actionNameFor.mockReturnValue(undefined);
+
+		expect(subtitleFor({ resource: 'channel', operation: 'archive' })).toBe('archive: channel');
+	});
+
+	it('never shows the custom resource value', () => {
+		customActionSelection.actionNameFor.mockReturnValue(undefined);
+
+		expect(subtitleFor({ resource: '__CUSTOM_ACTION__', operation: 'gone@1' })).toBe('');
+	});
+
+	it('keeps the notes of a node that shows them', () => {
+		customActionSelection.actionNameFor.mockReturnValue('Archive channel');
+		useSettingsStore().settings.activeModules = ['custom-nodes'];
+		const { docId } = setupWorkflow('wf-subtitle-notes', [
+			{
+				id: 'a',
+				name: 'Alpha',
+				type: SUBTITLE_NODE_TYPE,
+				parameters: { resource: '__CUSTOM_ACTION__', operation: 'action-1@1' },
+				notes: 'My note',
+				notesInFlow: true,
+			},
+		]);
+		const { renderData } = createRenderData(docId);
+
+		expect(renderData.subtitleByNodeId.get('a')?.value).toBe('My note');
+	});
+
+	it('returns the same subtitle as before with the module off', () => {
+		customActionSelection.actionNameFor.mockReturnValue('Archive channel');
+
+		expect(subtitleFor({ resource: '__CUSTOM_ACTION__', operation: 'action-1@1' }, false)).toBe(
+			'action-1@1: __CUSTOM_ACTION__',
+		);
+		expect(customActionSelection.actionNameFor).not.toHaveBeenCalled();
 	});
 });
 

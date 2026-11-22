@@ -2,6 +2,12 @@ import { computed, effectScope, onScopeDispose, shallowReactive, type ComputedRe
 import isEqual from 'lodash/isEqual';
 import { structuralComputed } from '@n8n/composables/structuralComputed';
 import { useI18n } from '@n8n/i18n';
+import { CUSTOM_ACTION_RESOURCE_VALUE } from '@n8n/api-types';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import {
+	CUSTOM_NODES_MODULE_ID,
+	useCustomActionSelection,
+} from '@n8n/frontend-module-custom-nodes';
 import {
 	isEmptyGroupAnchor,
 	type INodeParameterResourceLocator,
@@ -81,8 +87,10 @@ export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocume
 	const workflowDocumentStore = useWorkflowDocumentStore(workflowDocumentId);
 	const executionStateStore = useWorkflowExecutionStateStore(workflowDocumentId);
 	const nodeTypesStore = useNodeTypesStore();
+	const settingsStore = useSettingsStore();
 	const i18n = useI18n();
 	const { dirtinessByName } = useNodeDirtiness(workflowDocumentId);
+	let customActionSelection: ReturnType<typeof useCustomActionSelection> | undefined;
 
 	// -------------------------------------------------------------------------
 	// Per-entry maps reconciled off the document store's `onNodesChange`.
@@ -143,10 +151,21 @@ export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocume
 			if (subtitle === undefined) return '';
 			// Subtitles that resolve to the "custom API call" placeholder are noise — hide them.
 			if (subtitle.includes(CUSTOM_API_CALL_KEY)) return '';
+			if (!node.notesInFlow && settingsStore.isModuleActive(CUSTOM_NODES_MODULE_ID)) {
+				return computeCustomActionSubtitle(node, subtitle);
+			}
 			return subtitle;
 		} catch {
 			return '';
 		}
+	}
+
+	// A custom action shows its name. Its `operation` and `resource` values are internal.
+	function computeCustomActionSubtitle(node: INodeUi, subtitle: string): string {
+		customActionSelection ??= useCustomActionSelection();
+		const actionName = customActionSelection.actionNameFor(node.parameters);
+		if (actionName !== undefined) return actionName;
+		return subtitle.includes(CUSTOM_ACTION_RESOURCE_VALUE) ? '' : subtitle;
 	}
 
 	function computeSimulatedNodeTypeDescription(nodeId: string): INodeTypeDescription | null {

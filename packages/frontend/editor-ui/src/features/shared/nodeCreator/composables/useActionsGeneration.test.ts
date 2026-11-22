@@ -570,6 +570,181 @@ describe('useActionsGenerator', () => {
 		});
 	});
 
+	describe('Option-level display conditions', () => {
+		// An older version of a custom action shows only for its own value. The newest version
+		// hides for the older values, so a node on an older version sees one entry.
+		const versionedOptions = [
+			{
+				name: 'Get Weather',
+				value: 'weather@1',
+				action: 'Get weather',
+				displayOptions: { show: { operation: ['weather@1'] } },
+			},
+			{
+				name: 'Get Weather',
+				value: 'weather@2',
+				action: 'Get weather',
+				displayOptions: { hide: { operation: ['weather@1'] } },
+			},
+			{ name: 'Get Forecast', value: 'forecast@1', action: 'Get forecast' },
+		];
+
+		it('lists only the newest version of an action in the operation shape', () => {
+			const node: INodeTypeDescription = {
+				...baseV2NodeWoProps,
+				properties: [
+					{
+						displayName: 'Action',
+						name: 'operation',
+						type: 'options',
+						noDataExpression: true,
+						default: '',
+						options: versionedOptions,
+					},
+				],
+			};
+
+			const { actions } = generateMergedNodesAndActions([node], []);
+
+			expect(actions[NODE_NAME].map((action) => action.actionKey)).toEqual([
+				'weather@2',
+				'forecast@1',
+			]);
+		});
+
+		it('lists only the newest version of an action in the resource shape', () => {
+			const node: INodeTypeDescription = {
+				...baseV2NodeWoProps,
+				properties: [
+					{
+						displayName: 'Resource',
+						name: 'resource',
+						type: 'options',
+						noDataExpression: true,
+						options: [
+							{ name: 'Channel', value: 'channel' },
+							{ name: 'Custom', value: '__CUSTOM_ACTION__' },
+						],
+						default: 'channel',
+					},
+					{
+						displayName: 'Operation',
+						name: 'operation',
+						type: 'options',
+						noDataExpression: true,
+						displayOptions: { show: { resource: ['channel'] } },
+						options: [{ name: 'Archive', value: 'archive', action: 'Archive a channel' }],
+						default: 'archive',
+					},
+					{
+						displayName: 'Action',
+						name: 'operation',
+						type: 'options',
+						noDataExpression: true,
+						displayOptions: { show: { resource: ['__CUSTOM_ACTION__'] } },
+						options: versionedOptions,
+						default: '',
+					},
+				],
+			};
+
+			const { actions } = generateMergedNodesAndActions([node], []);
+
+			expect(actions[NODE_NAME].map((action) => action.actionKey)).toEqual([
+				'archive',
+				'weather@2',
+				'forecast@1',
+			]);
+		});
+
+		it('gives the same actions as before for a node without option-level conditions, with the custom nodes module off', () => {
+			settingsStore.isModuleActive = vi.fn().mockReturnValue(false);
+			const node: INodeTypeDescription = {
+				...baseV2NodeWoProps,
+				properties: [
+					{
+						displayName: 'Resource',
+						name: 'resource',
+						type: 'options',
+						noDataExpression: true,
+						options: [
+							{ name: 'User', value: 'user' },
+							{ name: 'Page', value: 'page' },
+						],
+						default: 'user',
+					},
+					{
+						displayName: 'Operation',
+						name: 'operation',
+						type: 'options',
+						noDataExpression: true,
+						displayOptions: { show: { resource: ['user'] } },
+						options: [
+							{
+								name: 'Create',
+								value: 'create',
+								description: 'Create a user',
+								action: 'Create a user',
+							},
+							{ name: 'Get', value: 'get', action: 'Get a user' },
+						],
+						default: 'create',
+					},
+					{
+						displayName: 'Operation',
+						name: 'operation',
+						type: 'options',
+						noDataExpression: true,
+						displayOptions: { show: { resource: ['page'] } },
+						options: [{ name: 'Delete', value: 'delete' }],
+						default: 'delete',
+					},
+				],
+			};
+
+			const { actions } = generateMergedNodesAndActions([node], []);
+
+			const base = {
+				name: NODE_NAME,
+				group: ['trigger'],
+				iconUrl: undefined,
+				iconColor: undefined,
+				icon: undefined,
+				outputs: [NodeConnectionTypes.Main],
+				defaults: { name: 'Test' },
+			};
+			expect(actions[NODE_NAME]).toEqual([
+				{
+					...base,
+					codex: { label: 'User Actions', categories: ['Actions'] },
+					actionKey: 'create',
+					description: 'Create a user',
+					displayOptions: { show: { resource: ['user'] } },
+					values: { operation: 'create' },
+					displayName: 'Create a user',
+				},
+				{
+					...base,
+					codex: { label: 'User Actions', categories: ['Actions'] },
+					actionKey: 'get',
+					description: '',
+					displayOptions: { show: { resource: ['user'] } },
+					values: { operation: 'get' },
+					displayName: 'Get a user',
+				},
+				{
+					...base,
+					codex: { label: 'Page Actions', categories: ['Actions'] },
+					actionKey: 'delete',
+					description: '',
+					displayOptions: { show: { resource: ['page'] } },
+					values: { operation: 'delete' },
+					displayName: 'Page Delete',
+				},
+			]);
+		});
+	});
+
 	describe('Simple Memory node filtering', () => {
 		const simpleMemoryNode: INodeTypeDescription = {
 			name: SIMPLE_MEMORY_NODE_TYPE,

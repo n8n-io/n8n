@@ -39,8 +39,11 @@ export const useCustomNodesStore = defineStore(CUSTOM_NODES_STORE_ID, () => {
 	const parentActions = ref<ParentCustomActionResponse[]>([]);
 	const parents = ref<CustomActionParent[]>([]);
 	const loading = ref(false);
+	// Not reactive: a computed that calls `ensureLoaded` must not re-run when a load starts or fails.
+	let loadRequested = false;
 
 	async function fetchAll() {
+		loadRequested = true;
 		loading.value = true;
 		try {
 			const context = rootStore.restApiContext;
@@ -50,6 +53,28 @@ export const useCustomNodesStore = defineStore(CUSTOM_NODES_STORE_ID, () => {
 			]);
 		} finally {
 			loading.value = false;
+		}
+	}
+
+	/** Starts one load in the background. Later calls do nothing. */
+	function ensureLoaded() {
+		if (loadRequested) return;
+		loadRequested = true;
+		// A computed or a render can call this. The load starts after it, so no state changes during it.
+		queueMicrotask(() => {
+			fetchAll().catch(() => {
+				// `refresh` tries again. The lists stay empty until then.
+			});
+		});
+	}
+
+	/** Reloads the lists when a load happened before. A failure keeps the old lists. */
+	async function refresh() {
+		if (!loadRequested) return;
+		try {
+			await fetchAll();
+		} catch {
+			// The old lists stay. The next refresh tries again.
 		}
 	}
 
@@ -131,6 +156,8 @@ export const useCustomNodesStore = defineStore(CUSTOM_NODES_STORE_ID, () => {
 		parents,
 		loading,
 		fetchAll,
+		ensureLoaded,
+		refresh,
 		fetchParents,
 		fetchNode,
 		fetchActionVersion,

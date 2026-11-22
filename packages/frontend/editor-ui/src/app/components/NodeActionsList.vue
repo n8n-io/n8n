@@ -10,6 +10,11 @@ import { computed, ref, watch } from 'vue';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 
 import { N8nIcon, N8nText } from '@n8n/design-system';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import {
+	CUSTOM_NODES_MODULE_ID,
+	useCustomActionSelection,
+} from '@n8n/frontend-module-custom-nodes';
 const { node } = defineProps<{
 	node: INodeUi;
 }>();
@@ -22,6 +27,15 @@ const nodeTypesStore = useNodeTypesStore();
 const { generateMergedNodesAndActions } = useActionsGenerator();
 const { parseCategoryActions, getActionData } = useActions();
 const i18n = useI18n();
+const settingsStore = useSettingsStore();
+let customActionSelection: ReturnType<typeof useCustomActionSelection> | undefined;
+
+// The id and the name of a custom action are stored copies. Only `operation` selects the action.
+function isCustomAction(data: INodeParameters) {
+	if (!settingsStore.isModuleActive(CUSTOM_NODES_MODULE_ID)) return false;
+	customActionSelection ??= useCustomActionSelection();
+	return customActionSelection.pinValuesFor(node.type, data) !== undefined;
+}
 
 const selectedActionRef = ref<HTMLElement>();
 
@@ -48,6 +62,10 @@ const options = computed(() => {
 		}
 
 		const data = getActionData(action.properties).value;
+		if (isCustomAction(data)) {
+			return { action, isSelected: node.parameters.operation === data.operation };
+		}
+
 		let isSelected = true;
 
 		for (const [key, value] of Object.entries(data)) {

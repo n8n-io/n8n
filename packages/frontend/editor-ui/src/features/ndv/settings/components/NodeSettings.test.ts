@@ -35,6 +35,16 @@ vi.mock('@/app/stores/workflowDocument.store', async () => {
 	return { ...actual, injectWorkflowDocumentStore: vi.fn() };
 });
 
+const customActionSelection = vi.hoisted(() => ({
+	pinValuesFor: vi.fn(),
+	newestPinValuesFor: vi.fn(),
+	actionNameFor: vi.fn(),
+}));
+vi.mock('@n8n/frontend-module-custom-nodes', async (importOriginal) => ({
+	...(await importOriginal<object>()),
+	useCustomActionSelection: () => customActionSelection,
+}));
+
 vi.mock('@/features/credentials/credentials.api', async () => {
 	const actual = await vi.importActual('@/features/credentials/credentials.api');
 	return { ...actual, getUsableCredentials: vi.fn().mockResolvedValue([]) };
@@ -679,6 +689,121 @@ describe('NodeSettings', () => {
 				new Set(['true']),
 			);
 			expect(await readOnlyStates(findAllByTestId, 'credentials-stub')).toEqual(['true']);
+		});
+	});
+
+	describe('custom action selection', () => {
+		const customPins = {
+			operation: 'action-1@2',
+			customActionId: 'action-1',
+			customActionName: 'Get weather',
+		};
+		const customNode = createTestNode({
+			name: 'Acme',
+			type: 'n8n-custom.acme',
+			typeVersion: 1,
+			parameters: {},
+		});
+		const customNodeType = {
+			displayName: 'Acme',
+			name: 'n8n-custom.acme',
+			group: ['transform'],
+			description: 'A custom node',
+			version: 1,
+			defaults: { name: 'Acme' },
+			inputs: ['main'],
+			outputs: ['main'],
+			properties: [
+				{
+					displayName: 'Action',
+					name: 'operation',
+					type: 'options',
+					noDataExpression: true,
+					default: '',
+					options: [
+						{ name: 'Get Weather', value: 'action-1@2', action: 'Get weather' },
+						{ name: 'Plain', value: 'plain', action: 'Plain' },
+					],
+				},
+				{ displayName: 'Custom Action ID', name: 'customActionId', type: 'hidden', default: '' },
+				{
+					displayName: 'Custom Action Name',
+					name: 'customActionName',
+					type: 'hidden',
+					default: '',
+				},
+			],
+		} as unknown as INodeTypeDescription;
+		const operationSelect = defineComponent({
+			emits: ['valueChanged'],
+			setup(_props, { emit }) {
+				return () =>
+					['action-1@2', 'plain'].map((value) =>
+						h('button', {
+							'data-test-id': `select-${value}`,
+							onClick: () => emit('valueChanged', { name: 'parameters.operation', value }),
+						}),
+					);
+			},
+		});
+
+		const render = (moduleActive: boolean) =>
+			renderNodeSettings({
+				node: { ...customNode, parameters: {} },
+				nodeType: customNodeType,
+				props: { readOnly: false },
+				stubs: { ParameterInputList: operationSelect },
+				beforeMount: () => {
+					useSettingsStore().settings.activeModules = moduleActive ? ['custom-nodes'] : [];
+				},
+			});
+
+		beforeEach(() => {
+			customActionSelection.pinValuesFor.mockReset();
+			customActionSelection.pinValuesFor.mockImplementation(
+				(_type: string, parameters: { operation?: string }) =>
+					parameters.operation === customPins.operation ? { ...customPins } : undefined,
+			);
+		});
+
+		it('writes all pin values when the user selects a custom action', async () => {
+			const { findAllByTestId, workflowDocumentStore } = render(true);
+
+			const buttons = await findAllByTestId('select-action-1@2');
+			await fireEvent.click(buttons[0]);
+
+			expect(customActionSelection.pinValuesFor).toHaveBeenCalledWith(
+				'n8n-custom.acme',
+				expect.objectContaining({ operation: 'action-1@2' }),
+			);
+			expect(workflowDocumentStore.getNodeByName('Acme')?.parameters).toMatchObject(customPins);
+		});
+
+		it('writes only the operation when the user selects a built-in operation', async () => {
+			const { findAllByTestId, workflowDocumentStore } = render(true);
+
+			const buttons = await findAllByTestId('select-plain');
+			await fireEvent.click(buttons[0]);
+
+			expect(workflowDocumentStore.getNodeByName('Acme')?.parameters).toEqual({
+				operation: 'plain',
+				customActionId: '',
+				customActionName: '',
+			});
+		});
+
+		it('writes only the operation and asks for no pin values with the module off', async () => {
+			const { findAllByTestId, workflowDocumentStore } = render(false);
+
+			const buttons = await findAllByTestId('select-action-1@2');
+			await fireEvent.click(buttons[0]);
+
+			expect(customActionSelection.pinValuesFor).not.toHaveBeenCalled();
+			expect(workflowDocumentStore.getNodeByName('Acme')?.parameters).toEqual({
+				operation: 'action-1@2',
+				customActionId: '',
+				customActionName: '',
+			});
 		});
 	});
 });

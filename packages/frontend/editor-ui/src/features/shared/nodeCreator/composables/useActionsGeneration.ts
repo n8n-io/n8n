@@ -13,7 +13,9 @@ import {
 	checkConditions,
 	EVALUATION_NODE_TYPE,
 	EVALUATION_TRIGGER_NODE_TYPE,
+	NodeHelpers,
 	type ICredentialType,
+	type INodeParameters,
 	type INodeProperties,
 	type INodePropertyCollection,
 	type INodePropertyOptions,
@@ -117,6 +119,42 @@ function isPropertyForVersion(property: INodeProperties, version: number): boole
 	return checkConditions(versionConditions, [version]);
 }
 
+/**
+ * Returns a filter for the options of `property` by their own `displayOptions`, checked against the
+ * parameters of a new node that starts with `initialValues`. The option value is never part of
+ * the check: an option that shows only for its own value (an old version of a custom action)
+ * would always pass.
+ */
+function createNewNodeOptionFilter(
+	nodeTypeDescription: INodeTypeDescription,
+	property: INodeProperties,
+	initialValues: INodeParameters = {},
+): (option: INodePropertyOptions) => boolean {
+	const options = (property.options ?? []) as INodePropertyOptions[];
+	// Most nodes have no option-level conditions. They skip the defaults computation.
+	if (!options.some((option) => option.displayOptions)) return () => true;
+
+	const node = { typeVersion: getDefaultNodeVersion(nodeTypeDescription) };
+	let newNodeParameters: INodeParameters;
+	try {
+		newNodeParameters =
+			NodeHelpers.getNodeParameters(
+				nodeTypeDescription.properties,
+				initialValues,
+				true,
+				false,
+				node,
+				nodeTypeDescription,
+			) ?? initialValues;
+	} catch {
+		return () => true;
+	}
+
+	return (option) =>
+		!option.displayOptions ||
+		NodeHelpers.displayParameter(newNodeParameters, option, node, nodeTypeDescription);
+}
+
 function operationsCategory(nodeTypeDescription: INodeTypeDescription): ActionTypeDescription[] {
 	const defaultVersion = getDefaultNodeVersion(nodeTypeDescription);
 
@@ -154,8 +192,10 @@ function operationsCategory(nodeTypeDescription: INodeTypeDescription): ActionTy
 
 	if (!matchedProperty?.options) return [];
 
+	const isShownForNewNode = createNewNodeOptionFilter(nodeTypeDescription, matchedProperty);
 	const filteredOutItems = (matchedProperty.options as INodePropertyOptions[]).filter(
-		(categoryItem: INodePropertyOptions) => !['*', '', ' '].includes(categoryItem.name),
+		(categoryItem: INodePropertyOptions) =>
+			!['*', '', ' '].includes(categoryItem.name) && isShownForNewNode(categoryItem),
 	);
 
 	const items = filteredOutItems.map((item: INodePropertyOptions) => ({
@@ -288,8 +328,12 @@ function resourceCategories(nodeTypeDescription: INodeTypeDescription): ActionTy
 
 				if (!operations?.options) return;
 
-				const items = ((operations.options as INodePropertyOptions[]) || []).map(
-					(operationOption) => {
+				const isShownForNewNode = createNewNodeOptionFilter(nodeTypeDescription, operations, {
+					resource: resourceOption.value,
+				});
+				const items = ((operations.options as INodePropertyOptions[]) || [])
+					.filter(isShownForNewNode)
+					.map((operationOption) => {
 						const displayName =
 							operationOption.action ?? `${resourceOption.name} ${startCase(operationOption.name)}`;
 
@@ -316,8 +360,7 @@ function resourceCategories(nodeTypeDescription: INodeTypeDescription): ActionTy
 							displayName,
 							group: ['trigger'],
 						} as ActionTypeDescription;
-					},
-				);
+					});
 
 				transformedNodes.push(...items);
 			});

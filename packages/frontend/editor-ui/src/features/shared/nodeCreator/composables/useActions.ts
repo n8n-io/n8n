@@ -54,13 +54,20 @@ import {
 import { useI18n } from '@n8n/i18n';
 import { PUSH_NODES_OFFSET } from '@/app/utils/nodeViewUtils';
 import { CHANGE_ACTION } from '@/app/stores/workflowDocument/types';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import {
+	CUSTOM_NODES_MODULE_ID,
+	useCustomActionSelection,
+} from '@n8n/frontend-module-custom-nodes';
 
 export const useActions = () => {
 	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const nodeCreatorStore = useNodeCreatorStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const uiStore = useUIStore();
+	const settingsStore = useSettingsStore();
 	const i18n = useI18n();
+	let customActionSelection: ReturnType<typeof useCustomActionSelection> | undefined;
 
 	const actionsCategoryLocales = computed(() => {
 		return {
@@ -167,6 +174,13 @@ export const useActions = () => {
 		value: INodeParameters;
 	};
 
+	/** The pin values of the custom action that `parameters` select. Only with the module on. */
+	function customActionPinValues(nodeTypeName: string, parameters: INodeParameters) {
+		if (!settingsStore.isModuleActive(CUSTOM_NODES_MODULE_ID)) return undefined;
+		customActionSelection ??= useCustomActionSelection();
+		return customActionSelection.pinValuesFor(nodeTypeName, parameters);
+	}
+
 	function getActionData(actionItem: ActionTypeDescription): ActionData {
 		const displayOptions = actionItem.displayOptions;
 
@@ -178,10 +192,14 @@ export const useActions = () => {
 			{},
 		);
 
+		const value = { ...actionItem.values, ...displayConditions } as INodeParameters;
+		// A custom action also stores its id and name, so the node keeps them with the version.
+		const pinValues = customActionPinValues(actionItem.name, value);
+
 		return {
 			name: actionItem.displayName,
 			key: actionItem.name,
-			value: { ...actionItem.values, ...displayConditions } as INodeParameters,
+			value: pinValues ? { ...value, ...pinValues } : value,
 		};
 	}
 
@@ -209,6 +227,9 @@ export const useActions = () => {
 			if (typeof actionData.value.operation === 'string') {
 				result.parameters.operation = actionData.value.operation;
 			}
+
+			const pinValues = customActionPinValues(actionData.key, actionData.value);
+			if (pinValues) Object.assign(result.parameters, pinValues);
 		}
 
 		return result;

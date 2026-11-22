@@ -28,7 +28,18 @@ import {
 	NodeConnectionTypes,
 	type INodeTypeDescription,
 } from 'n8n-workflow';
-import type { INodeUi } from '@/Interface';
+import type { ActionTypeDescription, INodeUi } from '@/Interface';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+
+const customActionSelection = vi.hoisted(() => ({
+	pinValuesFor: vi.fn(),
+	newestPinValuesFor: vi.fn(),
+	actionNameFor: vi.fn(),
+}));
+vi.mock('@n8n/frontend-module-custom-nodes', async (importOriginal) => ({
+	...(await importOriginal<object>()),
+	useCustomActionSelection: () => customActionSelection,
+}));
 
 const mockTriggerNodeType = (type: string): Record<number, INodeTypeDescription> => ({
 	1: {
@@ -622,6 +633,90 @@ describe('useActions', () => {
 					operation: 'update',
 				},
 			});
+		});
+	});
+
+	describe('custom action pin values', () => {
+		const customPins = {
+			resource: '__CUSTOM_ACTION__',
+			operation: 'action-1@2',
+			customActionId: 'action-1',
+			customActionName: 'Archive channel',
+		};
+		const actionItem = (operation: string, resource: string) =>
+			({
+				name: SLACK_NODE_TYPE,
+				displayName: 'An action',
+				actionKey: operation,
+				values: { operation },
+				displayOptions: { show: { resource: [resource] } },
+			}) as unknown as ActionTypeDescription;
+
+		const setModuleActive = (active: boolean) => {
+			vi.mocked(useSettingsStore().isModuleActive).mockReturnValue(active);
+		};
+
+		beforeEach(() => {
+			customActionSelection.pinValuesFor.mockImplementation(
+				(_type: string, parameters: { operation?: string }) =>
+					parameters.operation === customPins.operation ? { ...customPins } : undefined,
+			);
+		});
+
+		test('getActionData adds the id and the name of a custom action', () => {
+			setModuleActive(true);
+			const { getActionData } = useActions();
+
+			const data = getActionData(actionItem('action-1@2', '__CUSTOM_ACTION__'));
+
+			expect(customActionSelection.pinValuesFor).toHaveBeenCalledWith(SLACK_NODE_TYPE, {
+				operation: 'action-1@2',
+				resource: '__CUSTOM_ACTION__',
+			});
+			expect(data.value).toEqual(customPins);
+		});
+
+		test('getActionData does not change a built-in action', () => {
+			setModuleActive(true);
+			const { getActionData } = useActions();
+
+			expect(getActionData(actionItem('archive', 'channel'))).toEqual({
+				name: 'An action',
+				key: SLACK_NODE_TYPE,
+				value: { operation: 'archive', resource: 'channel' },
+			});
+		});
+
+		test('actionDataToNodeTypeSelectedPayload writes all pin values of a custom action', () => {
+			setModuleActive(true);
+			const { actionDataToNodeTypeSelectedPayload } = useActions();
+
+			const result = actionDataToNodeTypeSelectedPayload({
+				name: 'Archive channel',
+				key: SLACK_NODE_TYPE,
+				value: { operation: 'action-1@2', resource: '__CUSTOM_ACTION__' },
+			});
+
+			expect(result).toEqual({
+				type: SLACK_NODE_TYPE,
+				actionName: 'Archive channel',
+				parameters: customPins,
+			});
+		});
+
+		test('with the module off, both functions return the same result as before', () => {
+			setModuleActive(false);
+			const { getActionData, actionDataToNodeTypeSelectedPayload } = useActions();
+
+			const data = getActionData(actionItem('action-1@2', '__CUSTOM_ACTION__'));
+			const payload = actionDataToNodeTypeSelectedPayload(data);
+
+			expect(data.value).toEqual({ operation: 'action-1@2', resource: '__CUSTOM_ACTION__' });
+			expect(payload.parameters).toEqual({
+				operation: 'action-1@2',
+				resource: '__CUSTOM_ACTION__',
+			});
+			expect(customActionSelection.pinValuesFor).not.toHaveBeenCalled();
 		});
 	});
 

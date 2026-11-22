@@ -77,6 +77,10 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import { useEditorContext } from '@/app/composables/useEditorContext';
+import {
+	CUSTOM_NODES_MODULE_ID,
+	useCustomActionSelection,
+} from '@n8n/frontend-module-custom-nodes';
 
 const props = withDefaults(
 	defineProps<{
@@ -360,6 +364,37 @@ const hasOutputConnection = computed(() => {
 	return (Object.values(outgoingConnections)?.[0]?.[0] ?? []).length > 0;
 });
 
+let customActionSelection: ReturnType<typeof useCustomActionSelection> | undefined;
+
+/**
+ * A custom action keeps its id and name next to the `operation` value.
+ * When the user selects one, all of its pin values go to the node in one `parameters` update.
+ */
+const writeCustomActionPinValues = (
+	nodeName: string,
+	parameterName: string,
+	value: NodeParameterValue,
+) => {
+	if (parameterName !== 'parameters.operation') return;
+	if (!settingsStore.isModuleActive(CUSTOM_NODES_MODULE_ID)) return;
+
+	const updatedNode = workflowDocumentStore?.value?.getNodeByName(nodeName);
+	if (!updatedNode) return;
+
+	customActionSelection ??= useCustomActionSelection();
+	const pinValues = customActionSelection.pinValuesFor(updatedNode.type, {
+		...updatedNode.parameters,
+		operation: value,
+	});
+	if (!pinValues) return;
+
+	// The `parameters` update takes parameter paths, like the cURL import.
+	const pinPaths = Object.fromEntries(
+		Object.entries(pinValues).map(([name, pinValue]) => [`parameters.${name}`, pinValue]),
+	);
+	valueChanged({ node: nodeName, name: 'parameters', value: pinPaths });
+};
+
 const valueChanged = (parameterData: IUpdateInformation) => {
 	// The event bus and the curl import write here too, so hidden inputs alone do not lock the node.
 	if (isRestricted.value || isDeprecated.value) {
@@ -484,6 +519,7 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 			_node,
 			isToolNode.value,
 		);
+		writeCustomActionPinValues(nodeNameBefore, parameterData.name, newValue);
 	} else if (parameterData.name.includes('.') || parameterData.name.includes('[')) {
 		// A nested property on the node itself changed (e.g. a fixedCollection setting
 		// like `customTelemetryTags.tag`). Update the nested path in `nodeValues`,

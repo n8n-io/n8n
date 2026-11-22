@@ -682,6 +682,8 @@ export type NodeTypeSelectedPayload = {
 		resource?: string;
 		operation?: string;
 		language?: string;
+		// The other pin values of a custom action, for example `customActionId`.
+		[pinParameter: string]: string | undefined;
 	};
 	actionName?: string;
 };
