@@ -47,6 +47,14 @@ export interface ActionView {
 	versions: ActionVersionView[];
 }
 
+/** An action with the numbers of its versions, as `version-pin.ts` takes it. */
+export interface ActionVersionsRef {
+	id: string;
+	name: string;
+	description?: string;
+	versions: number[];
+}
+
 export interface CustomNodeView {
 	id: string;
 	displayName: string;
@@ -57,6 +65,19 @@ export interface CustomNodeView {
 }
 
 export const ADDITIONAL_FIELDS = 'additionalFields';
+
+/** Parameter names of the inputs. A parent node needs names that differ from its own parameters. */
+export interface InputNaming {
+	/** Node parameter name of a required input. */
+	parameterName(inputName: string): string;
+	/** Name of the collection that holds the optional inputs. */
+	additionalFields: string;
+}
+
+export const PLAIN_NAMING: InputNaming = {
+	parameterName: (inputName) => inputName,
+	additionalFields: ADDITIONAL_FIELDS,
+};
 
 /** Input names that would collide with a parameter of the generated node or of a parent node. */
 export const RESERVED_INPUT_NAMES: readonly string[] = [
@@ -305,6 +326,7 @@ function inputProperty(
 export function buildInputProperties(
 	version: ActionVersionView,
 	show: NonNullable<IDisplayOptions['show']>,
+	naming: InputNaming = PLAIN_NAMING,
 ): INodeProperties[] {
 	const required: INodeProperties[] = [];
 	const optional: INodeProperties[] = [];
@@ -317,7 +339,11 @@ export function buildInputProperties(
 		}
 		const property = inputProperty(input, placement);
 		if (input.required) {
-			required.push({ ...property, displayOptions: { show } });
+			required.push({
+				...property,
+				name: naming.parameterName(input.name),
+				displayOptions: { show },
+			});
 		} else {
 			optional.push(property);
 		}
@@ -328,7 +354,7 @@ export function buildInputProperties(
 		...required,
 		{
 			displayName: 'Additional Fields',
-			name: ADDITIONAL_FIELDS,
+			name: naming.additionalFields,
 			type: 'collection',
 			placeholder: 'Add Field',
 			default: {},
@@ -338,14 +364,18 @@ export function buildInputProperties(
 	];
 }
 
-function paramPathFor(version: ActionVersionView) {
+/** Expression path of an input, for `buildRequest`. */
+export function paramPathFor(
+	version: ActionVersionView,
+	naming: InputNaming = PLAIN_NAMING,
+): (inputName: string) => string {
 	const requiredByName = new Map(version.inputs.map((input) => [input.name, input.required]));
 	return (name: string) => {
 		assertInputName(name);
 		if (requiredByName.get(name) === false) {
-			return `($parameter["${ADDITIONAL_FIELDS}"]?.["${name}"] ?? "")`;
+			return `($parameter["${naming.additionalFields}"]?.["${name}"] ?? "")`;
 		}
-		return `$parameter["${name}"]`;
+		return `$parameter["${naming.parameterName(name)}"]`;
 	};
 }
 
@@ -360,31 +390,37 @@ function credentialsFor(auth: CustomNodeAuth): INodeCredentialDescription[] {
 	}
 }
 
-export function generateCustomNodeDescription(
-	node: CustomNodeView,
-	actions: ActionView[],
-): INodeTypeDescription {
-	// `RoutingNode` evaluates the values of `requestDefaults`, so the base URL must be plain.
-	assertNoExpression(node.baseUrl, 'base URL');
+/** Version refs of the actions that have a version. Throws for an action id that is not plain. */
+export function actionVersionRefs(actions: ActionView[]): ActionVersionsRef[] {
 	// An action id is part of the `operation` value, and parameter values are evaluated.
 	for (const action of actions) assertNoExpression(action.id, 'action id');
+	return actions
+		.filter((action) => action.versions.length > 0)
+		.map((action) => ({
+			id: action.id,
+			name: action.name,
+			...(action.description !== undefined && { description: action.description }),
+			versions: action.versions.map((v) => v.version),
+		}));
+}
 
-	const withVersions = actions.filter((action) => action.versions.length > 0);
-	// The loader skips a node that throws here. Other code reads the last `operation` option.
-	if (withVersions.length === 0) {
-		throw new UnexpectedError('A custom node has no action with a version');
-	}
-	const refs = withVersions.map((action) => ({
-		id: action.id,
-		name: action.name,
-		...(action.description !== undefined && { description: action.description }),
-		versions: action.versions.map((v) => v.version),
-	}));
-
+/**
+ * The `operation` options with the fixed request of each version, and the input properties
+ * of each version. `RoutingNode` runs the result.
+ */
+export function buildRoutedActionProperties(
+	actions: ActionView[],
+	naming: InputNaming = PLAIN_NAMING,
+): {
+	refs: ActionVersionsRef[];
+	options: INodePropertyOptions[];
+	inputProperties: INodeProperties[];
+} {
+	const refs = actionVersionRefs(actions);
 	const options = operationOptions(refs);
 	const inputProperties: INodeProperties[] = [];
 
-	for (const action of withVersions) {
+	for (const action of actions) {
 		for (const version of action.versions) {
 			const show = showFor(action.id, version.version);
 			// Match options by the values that `version-pin.ts` builds. Never parse them here.
@@ -394,9 +430,24 @@ export function generateCustomNodeDescription(
 					`No operation option for version ${version.version} of action "${action.id}"`,
 				);
 			}
-			option.routing = { request: buildRequest(version, paramPathFor(version)) };
-			inputProperties.push(...buildInputProperties(version, show));
+			option.routing = { request: buildRequest(version, paramPathFor(version, naming)) };
+			inputProperties.push(...buildInputProperties(version, show, naming));
 		}
+	}
+	return { refs, options, inputProperties };
+}
+
+export function generateCustomNodeDescription(
+	node: CustomNodeView,
+	actions: ActionView[],
+): INodeTypeDescription {
+	// `RoutingNode` evaluates the values of `requestDefaults`, so the base URL must be plain.
+	assertNoExpression(node.baseUrl, 'base URL');
+
+	const { refs, options, inputProperties } = buildRoutedActionProperties(actions);
+	// The loader skips a node that throws here. Other code reads the last `operation` option.
+	if (refs.length === 0) {
+		throw new UnexpectedError('A custom node has no action with a version');
 	}
 
 	const operationProperty: INodeProperties = {

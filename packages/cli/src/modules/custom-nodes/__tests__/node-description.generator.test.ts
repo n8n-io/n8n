@@ -13,11 +13,13 @@ import { Expression, NodeConnectionTypes, Workflow, jsonParse } from 'n8n-workfl
 
 import {
 	ADDITIONAL_FIELDS,
+	PLAIN_NAMING,
 	RESERVED_BODY_KEYS,
 	RESERVED_INPUT_NAMES,
 	buildInputProperties,
 	buildRequest,
 	generateCustomNodeDescription,
+	paramPathFor,
 	type ActionVersionView,
 	type ActionView,
 } from '../node-description.generator';
@@ -640,6 +642,24 @@ describe('buildInputProperties', () => {
 		expect(() =>
 			generateCustomNodeDescription(node, [{ ...createInvoice, versions: [version] }]),
 		).toThrow(UnexpectedError);
+	});
+
+	it('gives the same result with PLAIN_NAMING as without a naming', () => {
+		for (const version of [getInvoice.versions[0], createV1, createV2]) {
+			const show = showFor('act_create', version.version);
+			expect(buildInputProperties(version, show, PLAIN_NAMING)).toEqual(
+				buildInputProperties(version, show),
+			);
+			const plain = paramPathFor(version, PLAIN_NAMING);
+			const fallback = paramPathFor(version);
+			for (const input of version.inputs) {
+				expect(plain(input.name)).toBe(fallback(input.name));
+			}
+		}
+		expect(paramPathFor(createV2)('amount')).toBe(p('amount'));
+		expect(paramPathFor(createV2)('currency')).toBe(
+			`($parameter["${ADDITIONAL_FIELDS}"]?.["currency"] ?? "")`,
+		);
 	});
 
 	it('throws when an input has no target', () => {
