@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** An administrator sees which workflows use each version of a custom action, cannot delete an action or node that workflows use, and the n8n team gets telemetry, a module README, an end-to-end test, and a preview branch that colleagues can check out and run with no setup.
+**Goal:** An administrator sees which workflows use each version of a custom action, cannot delete an action or node that workflows use, and the n8n team gets telemetry, a module README, an end-to-end test, and a feature branch that colleagues can check out and run with no setup.
 
-**Architecture:** The workflow dependency index records one new dependency type, `customAction`, for each node that stores a `customActionId`. The custom-nodes service reads those rows (scoped to the workflows the user can read), turns the stored `operation` into a version with `readPin`, and serves a usage view and a delete guard. The preview branch is a separate local branch with one extra commit that turns the module on by default and seeds demo definitions.
+**Architecture:** The workflow dependency index records one new dependency type, `customAction`, for each node that stores a `customActionId`. The custom-nodes service reads those rows (scoped to the workflows the user can read), turns the stored `operation` into a version with `readPin`, and serves a usage view and a delete guard. The feature branch already turns the module on by default (spec §12).
 
 **Tech Stack:** TypeScript, TypeORM through `@n8n/db`, Vue 3 module, Vitest, Playwright (`packages/quality/testing/playwright`).
 
@@ -20,7 +20,7 @@
 - `version-pin.ts` stays the only code that parses the `operation` value. The index stores the raw `operation` string; it never parses it.
 - The usage view and the delete guard show only workflows the user can read. For other workflows they show a count, never a name.
 - The index change bumps `WORKFLOW_DEPENDENCY_INDEX_VERSION` from 2 to 3. Every workflow is reindexed once on the next start.
-- The preview commit never merges to `master`. Pull requests are cut without it.
+- The default-on commit never merges to `master`. Pull requests are cut without it.
 - Telemetry follows the `n8n:telemetry` skill. No definition content (URLs, headers, names of inputs) in telemetry.
 
 ## Decisions in this plan
@@ -105,12 +105,9 @@ Commit: `docs: Add a README for the custom nodes module (no-changelog)`.
 **Produces:** one test for the main flow with the module on: create a workflow with a Webhook trigger in the same instance as the mock target; add an HTTP Request node pointing to that webhook URL; save it as a custom action on a custom node through the wizard; add the custom action from the nodes panel in a new workflow; execute; check the output. If the test container setup cannot turn on a module, report it and ask before changing shared fixtures.
 Commit: `test: Add an end-to-end test for custom actions (no-changelog)`.
 
-### Task 7: Preview branch (controller)
+### Task 7: Demo seed (controller, optional)
 
-1. Create the local branch `custom-nodes-preview` from the head of `custom-nodes-and-actions`.
-2. One commit `chore: Turn on custom nodes and seed demo definitions for the preview (no-changelog)`: add `custom-nodes` to `defaultModules` in `packages/@n8n/backend-common/src/modules/module-registry.ts`, and a seed that runs once on start when no definitions exist: one custom node for a public API without authentication, and one custom action each on two eligible parent nodes. The seed code lives only in this commit.
-3. Build, start a fresh instance with no environment variables, and check that the feature shows and the seed works.
-4. Push only after Jason says so.
+Done instead on the feature branch: the module is on by default there (spec §12). Optional: a seed of demo definitions on first start, in a commit that is removed with the default-on commit before a pull request.
 
 ### Task 8: Close-out (controller)
 Whole-plan review, one fix wave, spec update (section 21), final report.

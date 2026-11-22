@@ -448,18 +448,13 @@ Do not build the tool in project 1.
 - Switch off: no routes, no node types, no extended parents, no UI. Workflows
   that use custom actions or custom nodes then fail, as they do after the
   removal of a community package. Document this.
-- **Preview branch (decided).** A colleague who wants to test the feature
-  checks out one branch, builds, and starts n8n. No environment variable and
-  no flag.
-  - The preview branch holds the complete stack plus one commit that adds
-    `custom-nodes` to `defaultModules`. That commit never merges to `master`.
-  - Pull requests to `master` are cut without that commit. Their default is
-    off.
-  - The same commit seeds the demo definitions on first start, so that a
-    tester sees working examples at once.
-  - Keep the preview branch current with the top of the stack.
-  - The demo branch `feat/custom-nodes-mockup` stays as it is until the
-    preview branch is usable.
+- **One feature branch, on by default (decided 2026-11-23).** The branch
+  `custom-nodes-and-actions` has one commit that adds `custom-nodes` to
+  `defaultModules`. A colleague checks out the branch, builds, and starts n8n
+  with no environment variable. `N8N_DISABLED_MODULES=custom-nodes` turns it
+  off. Remove that commit before a pull request to `master`, where the
+  feature stays off by default and `N8N_ENABLED_MODULES=custom-nodes` turns it
+  on.
 - No demo data in the code that merges. Demo seeds live in a test fixture and
   in the preview commit.
 - Telemetry: creation, edit, and execution counts for each parent node type.
