@@ -62,8 +62,24 @@ describe('JotFormApi credential test', () => {
 			{ apiDomain: 'custom', customApiDomain: 'subdomain.jotform.com//API' },
 			'https://subdomain.jotform.com/API',
 		],
+		[
+			{ apiDomain: 'custom', customApiDomain: '  https://subdomain.jotform.com/API  ' },
+			'https://subdomain.jotform.com/API',
+		],
 	])('should resolve the base URL for %j', (data, expected) => {
 		expect(evaluateBaseUrl(data)).toBe(expected);
+	});
+
+	it.each<[ICredentialDataDecryptedObject]>([
+		[{ apiDomain: 'custom', customApiDomain: '' }],
+		[{ apiDomain: 'custom', customApiDomain: '   ' }],
+		[{ apiDomain: 'custom', customApiDomain: 'subdomain.jotform.com@attacker.example' }],
+		[{ apiDomain: 'custom', customApiDomain: 'subdomain.jotform.com/API?x=1' }],
+		[{ apiDomain: 'custom', customApiDomain: 'subdomain.jotform.com/API#x' }],
+		[{ apiDomain: 'custom', customApiDomain: 'ftp://subdomain.jotform.com/API' }],
+	])('should reject the invalid domain %j with no base URL', (data) => {
+		// An empty base URL makes the request fail, like getJotFormBaseUrl.
+		expect(evaluateBaseUrl(data)).toBe('');
 	});
 
 	it.each<[ICredentialDataDecryptedObject]>([
@@ -73,13 +89,8 @@ describe('JotFormApi credential test', () => {
 		[{ apiDomain: 'custom', customApiDomain: 'https://subdomain.jotform.com/API' }],
 		[{ apiDomain: 'custom', customApiDomain: 'subdomain.jotform.com/API/' }],
 		[{ apiDomain: 'custom', customApiDomain: 'subdomain.jotform.com//API' }],
+		[{ apiDomain: 'custom', customApiDomain: '  https://subdomain.jotform.com/API  ' }],
 	])('should hit the same URL as the node for %j', async (data) => {
 		expect(`${evaluateBaseUrl(data)}/user`).toBe(await nodeUri(data));
-	});
-
-	it('should not fall back to the public host for an empty custom domain', () => {
-		// getJotFormBaseUrl rejects this before any request; the test expression must
-		// not silently target api.jotform.com instead.
-		expect(evaluateBaseUrl({ apiDomain: 'custom', customApiDomain: '' })).toBe('https://');
 	});
 });

@@ -57,14 +57,15 @@ export class JotFormApi implements ICredentialType {
 		},
 	];
 
-	// Credential `test` requests are declarative expressions and cannot call the
-	// node's `getJotFormBaseUrl`, so this mirrors its normalization: strip the
-	// protocol, collapse repeated slashes, and drop a trailing slash. Keep it in
-	// step with `getJotFormBaseUrl` in the node.
+	// Declarative credential tests cannot call `getJotFormBaseUrl`, so this mirrors
+	// its validation: trim, allow only http(s), normalize the slashes, and reject an
+	// empty domain, userinfo, and a query or fragment. An invalid domain returns an
+	// empty base URL, so the request fails instead of sending the API key to an
+	// unintended host.
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL:
-				'={{ "https://" + ($credentials.apiDomain === "custom" ? $credentials.customApiDomain : $credentials.apiDomain).replace(new RegExp("^https?://", "i"), "").replace(new RegExp("/{2,}", "g"), "/").replace(new RegExp("/+$"), "") }}',
+				'={{ (() => { const raw = String(($credentials.apiDomain === "custom" ? $credentials.customApiDomain : $credentials.apiDomain) || "").trim(); const scheme = new RegExp("^([a-z][a-z0-9+.-]*)://", "i").exec(raw); const domain = raw.replace(new RegExp("^https?://", "i"), "").replace(new RegExp("/{2,}", "g"), "/").replace(new RegExp("/+$"), ""); if ((scheme && !new RegExp("^https?$", "i").test(scheme[1])) || !domain || new RegExp("[@?#]").test(domain)) return ""; return "https://" + domain; })() }}',
 			url: '/user',
 			method: 'GET',
 			headers: {
