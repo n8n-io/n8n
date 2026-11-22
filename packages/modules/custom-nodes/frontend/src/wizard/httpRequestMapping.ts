@@ -11,10 +11,14 @@ import {
 } from './draftMapping';
 import type { EditableEntry, EditableInput, EditableRequest } from './wizard.types';
 
-/** Headers that carry a secret. The wizard never copies them (decision 6 of the plan). */
+/** Standard headers that carry a secret. The wizard never copies them (decision 6 of the plan). */
 const SECRET_HEADERS = ['authorization', 'cookie', 'proxy-authorization'];
-/** A query parameter whose name contains one of these parts likely carries a secret. */
-const SECRET_QUERY_PARTS = ['key', 'token', 'secret'];
+/**
+ * A header, query parameter, or body field whose name contains one of these parts likely carries
+ * a secret. The check is broad on purpose: the wizard reports each dropped name, and the user can
+ * add a harmless value again.
+ */
+const SECRET_NAME_PARTS = ['key', 'token', 'secret', 'auth', 'password', 'signature', 'session'];
 
 const METHODS: ReadonlyArray<CustomActionRequest['method']> = [
 	'GET',
@@ -32,15 +36,18 @@ const GENERIC_AUTH_TYPES = [
 
 const EXPRESSION_PATTERN = /\{\{([\s\S]*?)\}\}/g;
 
-export const isSecretHeader = (name: string) => SECRET_HEADERS.includes(name.trim().toLowerCase());
-export const isSecretQueryParameter = (name: string) =>
-	SECRET_QUERY_PARTS.some((part) => name.toLowerCase().includes(part));
+export const isSecretName = (name: string) => {
+	const lower = name.toLowerCase();
+	return SECRET_NAME_PARTS.some((part) => lower.includes(part));
+};
+export const isSecretHeader = (name: string) =>
+	SECRET_HEADERS.includes(name.trim().toLowerCase()) || isSecretName(name);
 
 export interface HttpRequestMapping {
 	request: EditableRequest;
 	inputs: EditableInput[];
 	auth: CustomNodeAuth;
-	/** The names of the headers and query parameters that the wizard did not copy. */
+	/** The names of the headers, query parameters, and body fields that the wizard did not copy. */
 	dropped: string[];
 }
 
@@ -137,10 +144,17 @@ class Mapper {
 		return entries;
 	}
 
-	/** Removes the expression values from a JSON body and adds an input for each. */
+	/**
+	 * Removes the expression values from a JSON body and adds an input for each. Drops a fixed
+	 * value whose path has a secret name.
+	 */
 	mapBodyValue(value: unknown, path: string): unknown {
 		if (isExpression(value) || (typeof value === 'string' && value.includes('{{'))) {
 			this.addInput('body', path, value);
+			return undefined;
+		}
+		if (!isRecord(value) && !Array.isArray(value) && isSecretName(path)) {
+			this.dropped.push(path);
 			return undefined;
 		}
 		if (Array.isArray(value)) {
@@ -172,8 +186,15 @@ function mapBody(params: Record<string, unknown>, request: EditableRequest, mapp
 		try {
 			parsed = JSON.parse(text);
 		} catch {
-			// The user sees the text and fixes it. The wizard reports the invalid JSON.
-			request.bodyText = text;
+			// The wizard cannot remove one field from text that does not parse. If a field has a
+			// secret name, it copies no body. Else the user sees the text and fixes it.
+			const secretKeys = jsonKeysOf(text).filter(isSecretName);
+			if (secretKeys.length > 0) {
+				mapper.dropped.push(...secretKeys);
+				request.bodyText = '';
+			} else {
+				request.bodyText = text;
+			}
 			return;
 		}
 		const body = mapper.mapBodyValue(parsed, '');
@@ -184,6 +205,7 @@ function mapBody(params: Record<string, unknown>, request: EditableRequest, mapp
 	const body: Record<string, unknown> = {};
 	for (const { name, value } of readPairs(params.bodyParameters)) {
 		if (isExpression(value)) mapper.addInput('body', name, value);
+		else if (isSecretName(name)) mapper.dropped.push(name);
 		else body[name] = literal(value);
 	}
 	request.bodyText = Object.keys(body).length > 0 ? JSON.stringify(body, null, 2) : '';
@@ -203,10 +225,16 @@ function mapAuth(params: Record<string, unknown>): CustomNodeAuth {
 	return { kind: 'none' };
 }
 
+/** The quoted keys of JSON text, also when the text does not parse. */
+function jsonKeysOf(text: string): string[] {
+	return [...text.matchAll(/"((?:[^"\\]|\\.)*)"\s*:/g)].map((match) => match[1]);
+}
+
 /**
  * Maps the parameters of an HTTP Request node to a request of the wizard. A value with an
- * expression becomes a required input. A header or query parameter that likely carries a secret
- * is not copied: its name is in `dropped`, so the wizard can tell the user to use a credential.
+ * expression becomes a required input. A header, query parameter, or fixed body value that likely
+ * carries a secret is not copied: its name is in `dropped`, so the wizard can tell the user to use
+ * a credential.
  */
 export function mapHttpRequestParameters(params: Record<string, unknown>): HttpRequestMapping {
 	const mapper = new Mapper();
@@ -249,7 +277,7 @@ export function mapHttpRequestParameters(params: Record<string, unknown>): HttpR
 				? readJsonPairs(params.jsonQuery)
 				: readPairs(params.queryParameters)
 			: [];
-	request.query = mapper.mapPairs([...urlQuery, ...query], 'query', isSecretQueryParameter);
+	request.query = mapper.mapPairs([...urlQuery, ...query], 'query', isSecretName);
 
 	mapBody(params, request, mapper);
 
