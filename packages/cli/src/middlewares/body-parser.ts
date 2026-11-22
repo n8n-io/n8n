@@ -25,6 +25,20 @@ const createXmlParser = () =>
 
 const payloadSizeMax = Container.get(GlobalConfig).endpoints.payloadSizeMax;
 
+const rawBodyLimits: Array<{ matches: (path: string) => boolean; bytes: number }> = [];
+
+/**
+ * Set a smaller body limit for the requests whose path `matches`.
+ * The reader stops at the limit and the request fails with 413, so a public
+ * route does not hold a large body in memory before its handler rejects it.
+ */
+export function limitRawBodySize(matches: (path: string) => boolean, bytes: number) {
+	rawBodyLimits.push({ matches, bytes });
+}
+
+const rawBodyLimitFor = (path: string): number | string =>
+	rawBodyLimits.find((limit) => limit.matches(path))?.bytes ?? `${String(payloadSizeMax)}mb`;
+
 /**
  * A leading byte order mark is not valid JSON, but RFC 8259 §8.1 permits
  * implementations to ignore it rather than treating it as an error. Both the
@@ -106,7 +120,7 @@ export const rawBodyReader: RequestHandler = (req, _res, next) => {
 			try {
 				req.rawBody = await getRawBody(stream, {
 					length: contentLength,
-					limit: `${String(payloadSizeMax)}mb`,
+					limit: rawBodyLimitFor(req.path ?? ''),
 				});
 			} catch (error) {
 				if (isClientAbortError(error)) {

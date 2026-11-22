@@ -8,6 +8,10 @@ export interface LoadBalancerConfig {
 	mainCount: number;
 	/** When > 0, Caddy path-routes `WEBHOOK_PROC_PATHS` to webhook procs. */
 	webhookCount: number;
+	/** Also route the public agent paths to webhook procs. They serve them only in agent queue mode. */
+	agentIngress: boolean;
+	/** Hostname from `N8N_APPS_BASE_URL`. With agent ingress, its subdomains (app hosts) go to webhook procs. */
+	appsHost?: string;
 	hostPort?: number;
 	policy: LoadBalancerPolicy;
 }
@@ -25,6 +29,8 @@ export type LoadBalancerResult = ServiceResult<LoadBalancerMeta>;
 // served the chat webhook, so it must route to the webhook procs too — same as
 // production setups where WEBHOOK_URL points at the dedicated webhook server.
 const WEBHOOK_PROC_PATHS = ['/webhook/*', '/form/*', '/chat'] as const;
+// Public agent routes: the Responses API and chat platform webhooks.
+const AGENT_INGRESS_PATHS = ['/agent-webhook/*', '/agent-hook/*'] as const;
 
 // NOTE: Caddy silently drops request headers whose NAME contains an underscore
 // (verified against caddy:2). Tests running through this LB must not generate
@@ -33,6 +39,8 @@ function buildCaddyConfig(
 	mainUpstreams: string[],
 	webhookUpstreams: string[],
 	policy: LoadBalancerPolicy,
+	agentIngress: boolean,
+	appsHost?: string,
 ): string {
 	const mainBackends = mainUpstreams.join(' ');
 	const webhookBackends = webhookUpstreams.join(' ');
@@ -43,11 +51,11 @@ function buildCaddyConfig(
     health_uri /healthz
     health_interval 500ms
 
-    # Timeouts
+    # Timeouts. Agent turns that do not stream answer only at the end, which can take minutes under load.
     transport http {
       dial_timeout 60s
-      read_timeout 60s
-      write_timeout 60s
+      read_timeout 300s
+      write_timeout 300s
     }`;
 
 	if (webhookUpstreams.length === 0) {
@@ -65,13 +73,26 @@ ${sharedReverseProxyBlock}
 }`;
 	}
 
-	const webhookMatcher = WEBHOOK_PROC_PATHS.join(' ');
+	const webhookMatcher = [...WEBHOOK_PROC_PATHS, ...(agentIngress ? AGENT_INGRESS_PATHS : [])].join(
+		' ',
+	);
+	const appHostBlock =
+		agentIngress && appsHost
+			? `
+  @appHosts host *.${appsHost}
+  handle @appHosts {
+    reverse_proxy ${webhookBackends} {
+${sharedReverseProxyBlock}
+    }
+  }
+`
+			: '';
 	return `
 :80 {
   request_body {
     max_size 50MB
   }
-
+${appHostBlock}
   @webhooks path ${webhookMatcher}
   handle @webhooks {
     reverse_proxy ${webhookBackends} {
@@ -87,6 +108,15 @@ ${sharedReverseProxyBlock}
 }`;
 }
 
+function appsHostname(appsBaseUrl: string | undefined): string | undefined {
+	if (!appsBaseUrl) return undefined;
+	try {
+		return new URL(appsBaseUrl).hostname;
+	} catch {
+		return undefined;
+	}
+}
+
 export const loadBalancer: Service<LoadBalancerResult> = {
 	description: 'Caddy load balancer',
 	shouldStart: (ctx) => ctx.needsLoadBalancer,
@@ -95,6 +125,8 @@ export const loadBalancer: Service<LoadBalancerResult> = {
 		return {
 			mainCount: ctx.mains,
 			webhookCount: ctx.webhooks,
+			agentIngress: ctx.config.env?.N8N_AGENTS_QUEUE_MODE_ENABLED === 'true',
+			appsHost: appsHostname(ctx.config.env?.N8N_APPS_BASE_URL),
 			hostPort: ctx.allocatedPorts.loadBalancer,
 			policy: ctx.config.lbPolicy ?? 'first',
 		};
@@ -108,7 +140,8 @@ export const loadBalancer: Service<LoadBalancerResult> = {
 	},
 
 	async start(network, projectName, config?: unknown): Promise<LoadBalancerResult> {
-		const { mainCount, webhookCount, hostPort, policy } = config as LoadBalancerConfig;
+		const { mainCount, webhookCount, agentIngress, appsHost, hostPort, policy } =
+			config as LoadBalancerConfig;
 		const { consumer, throwWithLogs } = createSilentLogConsumer();
 
 		// Single-main containers are named `${projectName}-n8n`, not `-n8n-main-1`.
@@ -120,7 +153,13 @@ export const loadBalancer: Service<LoadBalancerResult> = {
 			(_, index) => `${projectName}-n8n-webhook-${index + 1}:5678`,
 		);
 
-		const caddyConfig = buildCaddyConfig(mainUpstreams, webhookUpstreams, policy);
+		const caddyConfig = buildCaddyConfig(
+			mainUpstreams,
+			webhookUpstreams,
+			policy,
+			agentIngress,
+			appsHost,
+		);
 
 		try {
 			const container = await new GenericContainer(TEST_CONTAINER_IMAGES.caddy)

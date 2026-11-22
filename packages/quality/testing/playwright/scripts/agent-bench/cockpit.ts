@@ -54,6 +54,7 @@ export interface Sample {
 export interface RunConfig {
 	mains: number;
 	workers: number;
+	webhooks?: number;
 	agentQueue: boolean;
 	slotsPerWorker?: number;
 	turns: number;

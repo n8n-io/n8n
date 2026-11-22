@@ -6,9 +6,11 @@ import {
 } from '@n8n/agents';
 import type { ApprovalSuspendPayload } from '@n8n/agents/tool';
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
+import { Time } from '@n8n/constants';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ForbiddenError, UnexpectedError, UserError } from '@n8n/errors';
+import { LruCache } from '@n8n/utils/lru-cache';
 import { z } from 'zod';
 
 import { userHasScopes } from '@/permissions.ee/check-access';
@@ -38,7 +40,17 @@ interface PrepareDraftRunInput {
 	 * leaves it to the queue consumer, which checks again before the turn.
 	 */
 	credentialProvider?: CredentialProvider;
+	/**
+	 * Reuse a recent pass of the runnable check for the same user and agent. Only
+	 * for a fail-fast check that a later check repeats, such as the main's check
+	 * before the queue consumer runs the turn.
+	 */
+	reuseRecentPass?: boolean;
 }
+
+/** How long a passed runnable check is reused when the caller allows it. */
+const RUNNABLE_PASS_TTL_MS = 15 * Time.seconds.toMilliseconds;
+const RUNNABLE_PASS_CACHE_SIZE = 1000;
 
 export type PrepareDraftRunResult =
 	| { status: 'ready'; sessionId: string; sessionMode: AgentSessionMode }
@@ -159,6 +171,9 @@ export function collectStandardApprovals(
 
 @Service()
 export class AgentTestRunService {
+	/** Expiry time of a passed runnable check, by project, agent and user. */
+	private readonly runnablePasses = new LruCache<string, number>(RUNNABLE_PASS_CACHE_SIZE);
+
 	constructor(
 		private readonly agentExecutionService: AgentExecutionService,
 		private readonly agentValidationService: AgentValidationService,
@@ -174,6 +189,7 @@ export class AgentTestRunService {
 		previewChat,
 		newSession,
 		credentialProvider,
+		reuseRecentPass = false,
 	}: PrepareDraftRunInput): Promise<PrepareDraftRunResult> {
 		await this.assertCanRunDraft(user, projectId);
 		const sessionMode: AgentSessionMode = !sessionId || newSession ? 'new' : 'existing';
@@ -192,12 +208,18 @@ export class AgentTestRunService {
 		}
 
 		if (credentialProvider) {
-			const { missing } = await this.agentValidationService.validateAgentIsRunnable(
-				agentId,
-				projectId,
-				credentialProvider,
-			);
-			if (missing.length > 0) return { status: 'agent_misconfigured', missing };
+			const passKey = `${projectId}:${agentId}:${user.id}`;
+			const passExpiresAt = reuseRecentPass ? this.runnablePasses.get(passKey) : undefined;
+			if (passExpiresAt === undefined || passExpiresAt <= Date.now()) {
+				const { missing } = await this.agentValidationService.validateAgentIsRunnable(
+					agentId,
+					projectId,
+					credentialProvider,
+				);
+				// Only a pass is kept, so a user who fixes the agent sees it run at once.
+				if (missing.length > 0) return { status: 'agent_misconfigured', missing };
+				if (reuseRecentPass) this.runnablePasses.set(passKey, Date.now() + RUNNABLE_PASS_TTL_MS);
+			}
 		}
 
 		return {

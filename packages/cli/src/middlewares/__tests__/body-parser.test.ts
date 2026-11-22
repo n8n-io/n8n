@@ -4,7 +4,7 @@ import { Readable } from 'stream';
 
 import { BadRequestError, UnprocessableRequestError } from '@n8n/errors';
 
-import { parseBody, rawBodyReader } from '../body-parser';
+import { limitRawBodySize, parseBody, rawBodyReader } from '../body-parser';
 
 /** Build a request backed by a real readable stream carrying `payload`. */
 const mockRequest = (payload = '', headers: Record<string, string> = {}) => {
@@ -42,6 +42,19 @@ describe('rawBodyReader', () => {
 		let reads = 0;
 		Object.defineProperty(req, 'readable', { get: () => ++reads === 1 });
 		await expect(readRawBody(req)).rejects.toThrow(BadRequestError);
+	});
+
+	it('stops reading at the limit of a matching path', async () => {
+		limitRawBodySize((path) => path.startsWith('/limited/'), 4);
+
+		const limited = mockRequest('hello');
+		Object.assign(limited, { path: '/limited/x' });
+		await expect(readRawBody(limited)).rejects.toMatchObject({ status: 413 });
+
+		const other = mockRequest('hello');
+		Object.assign(other, { path: '/other/x' });
+		await readRawBody(other);
+		expect(other.rawBody.toString()).toBe('hello');
 	});
 
 	it('maps a raw-body "request.aborted" rejection to BadRequestError', async () => {

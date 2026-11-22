@@ -67,7 +67,13 @@ export interface GroupSummary {
 
 export interface TopologyResult {
 	topology: string;
-	stack: { mains: number; workers: number; agentQueue: boolean; slotsPerWorker?: number };
+	stack: {
+		mains: number;
+		workers: number;
+		webhooks?: number;
+		agentQueue: boolean;
+		slotsPerWorker?: number;
+	};
 	/** Turns in flight during the measured run. */
 	concurrency?: number;
 	wallMs: number;

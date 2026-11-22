@@ -1,0 +1,26 @@
+{
+	"topologies": [
+		{
+			"name": "ingress-limits-on",
+			"mains": 1,
+			"webhooks": 1,
+			"workers": 2,
+			"agentQueue": true,
+			"workerConcurrency": 20
+		}
+	],
+	"phases": [
+		{ "concurrency": 40, "seconds": 60 },
+		{ "concurrency": 80, "seconds": 90 },
+		{ "concurrency": 200, "seconds": 90 },
+		{ "concurrency": 400, "seconds": 60 },
+		{ "concurrency": 20, "seconds": 60 }
+	],
+	"workload": "real",
+	"model": "anthropic/claude-haiku-4-5",
+	"warmup": 4,
+	"probeMs": 1000,
+	"scheduleEverySec": 30,
+	"resourceQuota": { "memory": 1, "cpu": 1 },
+	"workerResourceQuota": { "memory": 1, "cpu": 1 }
+}

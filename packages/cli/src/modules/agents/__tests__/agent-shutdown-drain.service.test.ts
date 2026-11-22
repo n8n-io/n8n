@@ -16,6 +16,7 @@ describe('AgentShutdownDrain', () => {
 		localIds: () => string[],
 		backgroundRuns: () => number = () => 0,
 		requestTurns: () => number = () => 0,
+		followedTurns: () => number = () => 0,
 	) => {
 		const executionService = mock<AgentExecutionService>();
 		executionService.localExecutionIds.mockImplementation(localIds);
@@ -27,6 +28,7 @@ describe('AgentShutdownDrain', () => {
 		Object.defineProperty(inProcessTurns, 'runningCount', { get: requestTurns });
 		const queuedTurns = mock<QueuedTurnRunner>();
 		Object.defineProperty(queuedTurns, 'runningCount', { get: () => 0 });
+		Object.defineProperty(queuedTurns, 'followedCount', { get: followedTurns });
 		const drain = new AgentShutdownDrain(
 			mockLogger(),
 			globalConfig,
@@ -91,6 +93,28 @@ describe('AgentShutdownDrain', () => {
 		await vi.advanceTimersByTimeAsync(1_000);
 		expect(finished).toBe(false);
 		requestTurns = 0;
+		await vi.advanceTimersByTimeAsync(AgentShutdownDrain.POLL_INTERVAL_MS);
+		await done;
+
+		expect(executionService.interruptLocalExecutions).not.toHaveBeenCalled();
+	});
+
+	it('waits for turns that run on a worker while a caller of this process waits', async () => {
+		let followed = 1;
+		const { drain, executionService } = setup(
+			() => [],
+			() => 0,
+			() => 0,
+			() => followed,
+		);
+
+		let finished = false;
+		const done = drain.drain().then(() => {
+			finished = true;
+		});
+		await vi.advanceTimersByTimeAsync(1_000);
+		expect(finished).toBe(false);
+		followed = 0;
 		await vi.advanceTimersByTimeAsync(AgentShutdownDrain.POLL_INTERVAL_MS);
 		await done;
 

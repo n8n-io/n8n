@@ -45,6 +45,8 @@ export class AgentShutdownDrain {
 			// A request turn can run before its execution starts, for example while it loads the agent.
 			requestTurns: this.inProcessTurns.runningCount + this.queuedTurns.runningCount,
 			backgroundJobs: this.backgroundJobs.localRunCount,
+			// Turns that run on a worker while a caller of this process waits for the answer.
+			followedTurns: this.queuedTurns.followedCount,
 		};
 	}
 
@@ -62,7 +64,10 @@ export class AgentShutdownDrain {
 
 		let remaining = this.remaining();
 		const busy = () =>
-			remaining.turns > 0 || remaining.requestTurns > 0 || remaining.backgroundJobs > 0;
+			remaining.turns > 0 ||
+			remaining.requestTurns > 0 ||
+			remaining.backgroundJobs > 0 ||
+			remaining.followedTurns > 0;
 		if (busy()) {
 			this.logger.info('Waiting for running agent turns to finish before shutdown', {
 				...remaining,

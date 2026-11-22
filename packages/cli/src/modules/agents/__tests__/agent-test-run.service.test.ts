@@ -165,6 +165,46 @@ describe('AgentTestRunService', () => {
 		expect(agentValidationService.validateAgentIsRunnable).not.toHaveBeenCalled();
 	});
 
+	describe('reuseRecentPass', () => {
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		const input = { agentId, projectId, user, credentialProvider, reuseRecentPass: true };
+
+		it('reuses a pass until it expires', async () => {
+			vi.useFakeTimers();
+			const { service, agentValidationService } = makeService();
+
+			await service.prepareDraftRun(input);
+			await service.prepareDraftRun(input);
+			expect(agentValidationService.validateAgentIsRunnable).toHaveBeenCalledTimes(1);
+
+			vi.advanceTimersByTime(15_001);
+			await service.prepareDraftRun(input);
+			expect(agentValidationService.validateAgentIsRunnable).toHaveBeenCalledTimes(2);
+		});
+
+		it('does not keep a failed check', async () => {
+			const { service, agentValidationService } = makeService();
+			agentValidationService.validateAgentIsRunnable.mockResolvedValueOnce({ missing: ['model'] });
+
+			await expect(service.prepareDraftRun(input)).resolves.toMatchObject({
+				status: 'agent_misconfigured',
+			});
+			await expect(service.prepareDraftRun(input)).resolves.toMatchObject({ status: 'ready' });
+			expect(agentValidationService.validateAgentIsRunnable).toHaveBeenCalledTimes(2);
+		});
+
+		it('always checks again when the caller does not allow reuse', async () => {
+			const { service, agentValidationService } = makeService();
+
+			await service.prepareDraftRun(input);
+			await service.prepareDraftRun({ ...input, reuseRecentPass: false });
+			expect(agentValidationService.validateAgentIsRunnable).toHaveBeenCalledTimes(2);
+		});
+	});
+
 	it('flags a run that stopped on the iteration cap', async () => {
 		const { service, agentExecutionOrchestratorService } = makeService();
 		agentExecutionOrchestratorService.executeForChat.mockImplementation(async function* (config) {

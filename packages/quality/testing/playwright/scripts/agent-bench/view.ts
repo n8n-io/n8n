@@ -1,7 +1,7 @@
 /**
  * Opens the cockpit on a saved result file, after the run and its stacks are gone.
  *
- *   pnpm bench:agents:view agent-bench-results/<file>.json [--port 4791]
+ *   pnpm --filter n8n-playwright bench:agents:view agent-bench-results/<file>.json [--port 4791]
  *
  * The result file keeps no finish time for each turn, so the latency chart
  * spreads the turns evenly over the run. The CPU and memory charts are exact.
@@ -10,11 +10,12 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 
-import { Cockpit, type RunConfig, type Sample, type Scenario } from './cockpit';
-import type { BenchConfig, TurnKind, TurnMix } from './config';
+import { Cockpit, type RunConfig, type Sample } from './cockpit';
+import { scenarios } from './cockpit-config';
+import type { BenchConfig } from './config';
 import { OWNER } from './n8n-client';
 import type { TopologyResult } from './report';
-import { AGENT_INSTRUCTIONS, AGENT_NAME, KIND_PATHS, PROMPTS, TOOLS } from './workload';
+import { AGENT_INSTRUCTIONS, AGENT_NAME, TOOLS } from './workload';
 
 const { values, positionals } = parseArgs({
 	allowPositionals: true,
@@ -28,18 +29,6 @@ const saved = JSON.parse(readFileSync(resolve(file), 'utf8')) as {
 	results: TopologyResult[];
 };
 const { config } = saved;
-
-function scenarios(mix: TurnMix): Scenario[] {
-	const total = Object.values(mix).reduce<number>((sum, w) => sum + (w ?? 0), 0);
-	return (Object.entries(mix) as Array<[TurnKind, number]>)
-		.filter(([, weight]) => weight > 0)
-		.map(([kind, weight]) => ({
-			kind,
-			share: weight / total,
-			path: KIND_PATHS[kind],
-			prompts: PROMPTS[kind],
-		}));
-}
 
 // Samples are saved relative to the start of measuring. Put each run on its own clock.
 const BASE = Date.now() - saved.results.length * 3_600_000;
@@ -61,6 +50,7 @@ const cockpit = new Cockpit({
 		const runConfig: RunConfig = {
 			mains: r.stack.mains,
 			workers: r.stack.workers,
+			...(r.stack.webhooks ? { webhooks: r.stack.webhooks } : {}),
 			agentQueue: r.stack.agentQueue,
 			...(r.stack.slotsPerWorker ? { slotsPerWorker: r.stack.slotsPerWorker } : {}),
 			turns: r.turns.length,

@@ -33,6 +33,11 @@ export class AgentsModule implements ModuleInterface {
 		// class-decoration time — nothing else references this service.
 		await import('./agent-workflow-tool-resume.service.js');
 
+		const { limitChannelInboundBodySize } = await import(
+			'./integrations/channel-inbound/channel-inbound-route-options.js'
+		);
+		limitChannelInboundBodySize();
+
 		await import('./agents-catalog.controller.js');
 		await import('./agent-threads.controller.js');
 		await import('./agents.controller.js');
@@ -46,6 +51,7 @@ export class AgentsModule implements ModuleInterface {
 		await import('./system-agents/system-agent-chat.controller.js');
 		await import('./agent-integrations.controller.js');
 		await import('./integrations/platforms/webhook/webhook-channel.controller.js');
+		await import('./integrations/channel-inbound/channel-inbound.controller.js');
 		await import('./agent-slack-integrations.controller.js');
 		await import('./agent-teams-integrations.controller.js');
 		await import('./agent-whatsapp-integrations.controller.js');
@@ -215,10 +221,24 @@ export class AgentsModule implements ModuleInterface {
 				});
 		}
 
-		// Only mains receive inbound platform events. The agent webhook route lives on
-		// an agents controller, and webhook processes do not mount controllers, so
-		// neither workers nor webhook processes can serve a channel. Holding channels
-		// there would connect adapters nothing reads and publish misleading status rows.
+		// A webhook process in agent queue mode only takes public turns in. It sends
+		// them to agent workers and never runs a turn itself.
+		if (instanceSettings.instanceType === 'webhook') {
+			const { AgentQueueLifecycle } = await import('./queue/agent-queue-lifecycle.service.js');
+			try {
+				await Container.get(AgentQueueLifecycle).startOnIngress();
+			} catch (error) {
+				logger.error(
+					'[Agents] Failed to open the agent queue. This webhook process rejects public agent turns.',
+					{ error },
+				);
+			}
+		}
+
+		// Only mains hold the platform channels. Webhook processes mount only the
+		// `agent-ingress` routes, which take platform events in and hand them on.
+		// Workers mount no routes. Holding channels there would connect adapters that
+		// nothing reads and publish incorrect status rows.
 		if (instanceSettings.instanceType === 'main') {
 			channelReconciler.init();
 		}

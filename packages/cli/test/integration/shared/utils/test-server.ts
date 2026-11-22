@@ -476,6 +476,9 @@ export const setupTestServer = ({
 			);
 			registerSkillSourceCredentials();
 			Container.get(ControllerRegistry).activate(app);
+			// As `start` does in regular mode: the main serves the public agent routes too.
+			const { mountAgentIngress } = await import('@/services/agent-ingress-mount.js');
+			mountAgentIngress(app, Container.get(GlobalConfig));
 
 			await Container.get(AuthHandlerRegistry).init();
 		}
