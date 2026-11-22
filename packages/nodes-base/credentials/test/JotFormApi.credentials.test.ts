@@ -88,14 +88,35 @@ describe('JotFormApi credential test', () => {
 		});
 	});
 
-	it.each<[ICredentialDataDecryptedObject]>([
-		[{ apiKey: 'x', apiDomain: 'custom', customApiDomain: '' }],
-		[{ apiKey: 'x', apiDomain: 'custom', customApiDomain: 'subdomain.jotform.com/API?x=1' }],
-		[{ apiKey: 'x', apiDomain: 'custom', customApiDomain: 'subdomain.jotform.com/API#x' }],
-	])('should reject an invalid custom domain before making a request for %j', async (data) => {
-		const result = await testCredentials(data);
+	it.each<[ICredentialDataDecryptedObject, string]>([
+		[
+			{ apiKey: 'x', apiDomain: 'custom', customApiDomain: '' },
+			'JotForm Enterprise requires a custom API domain.',
+		],
+		[
+			{ apiKey: 'x', apiDomain: 'custom', customApiDomain: 'subdomain.jotform.com/API?x=1' },
+			'Do not include a query string or fragment.',
+		],
+		[
+			{ apiKey: 'x', apiDomain: 'custom', customApiDomain: 'subdomain.jotform.com/API#x' },
+			'Do not include a query string or fragment.',
+		],
+		[
+			{
+				apiKey: 'x',
+				apiDomain: 'custom',
+				customApiDomain: 'subdomain.jotform.com@attacker.example',
+			},
+			'Do not include credentials in the domain.',
+		],
+	])(
+		'should reject an invalid custom domain before making a request for %j',
+		async (data, expectedMessage) => {
+			const result = await testCredentials(data);
 
-		expect(result.status).toBe('Error');
-		expect(context.helpers.request).not.toHaveBeenCalled();
-	});
+			expect(result.status).toBe('Error');
+			expect(result.message).toContain(expectedMessage);
+			expect(context.helpers.request).not.toHaveBeenCalled();
+		},
+	);
 });

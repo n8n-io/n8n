@@ -15,6 +15,12 @@ import { NodeApiError, NodeOperationError, requestPath, requestUrl } from 'n8n-w
 
 const DEFAULT_API_DOMAIN = 'api.jotform.com';
 
+// A custom domain is `host[:port]` with an optional `/path` prefix. These guard
+// the value before it reaches requestUrl's base-URL slot: a non-http scheme or
+// userinfo (`host@attacker`) would otherwise change the request destination.
+const SCHEME = /^([a-z][a-z0-9+.-]*):\/\//i;
+const HOST = /^[A-Za-z0-9.-]+(?::\d{1,5})?$/;
+
 /**
  * Resolve the effective API domain from the credential.
  *
@@ -79,9 +85,20 @@ export function getJotFormBaseUrl(
 	credentials: { apiDomain?: unknown; customApiDomain?: unknown },
 	node: INode,
 ): string {
-	const domain = normalizeApiDomain(
-		resolveApiDomain(credentials.apiDomain, credentials.customApiDomain),
-	);
+	const raw = resolveApiDomain(credentials.apiDomain, credentials.customApiDomain).trim();
+
+	// Only http(s) is supported. A pasted `ftp://host/API` must fail here: the
+	// normalization below strips only `http(s)://`, so it would otherwise rewrite
+	// the value into a different host.
+	const scheme = SCHEME.exec(raw)?.[1];
+	if (scheme && !/^https?$/i.test(scheme)) {
+		throw new NodeOperationError(
+			node,
+			`Invalid JotForm API domain "${raw}". Use an http:// or https:// URL, or a bare host such as "your-subdomain.jotform.com/API".`,
+		);
+	}
+
+	const domain = normalizeApiDomain(raw);
 
 	if (domain === '') {
 		throw new NodeOperationError(
@@ -99,9 +116,18 @@ export function getJotFormBaseUrl(
 		);
 	}
 
+	// Userinfo (`host@attacker`) makes everything after "@" the request host, so
+	// the APIKEY header would go to that host. Reject it.
+	if (domain.includes('@')) {
+		throw new NodeOperationError(
+			node,
+			`Invalid JotForm API domain "${domain}". Do not include credentials in the domain.`,
+		);
+	}
+
 	const { host, basePath } = splitApiDomain(domain);
 
-	if (host === '') {
+	if (!HOST.test(host)) {
 		throw new NodeOperationError(
 			node,
 			`Invalid JotForm API domain "${domain}". Enter a host such as "your-subdomain.jotform.com/API".`,

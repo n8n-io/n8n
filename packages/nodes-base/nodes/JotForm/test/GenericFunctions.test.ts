@@ -90,6 +90,8 @@ describe('jotformApiRequest', () => {
 		['/API'],
 		['subdomain.jotform.com/API?x=1'],
 		['subdomain.jotform.com/API#x'],
+		['subdomain.jotform.com@attacker.example'],
+		['ftp://enterprise.jotform.com/API'],
 	])('should reject the invalid custom domain "%s"', async (customApiDomain) => {
 		const context = buildContext({ apiDomain: 'custom', customApiDomain });
 
