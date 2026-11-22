@@ -342,13 +342,18 @@ definition like the right to install a community package.
 - For a custom action on a parent node, the request host is fixed in the
   definition and shown to the administrator at save time. A user of the action
   cannot change the host through an input.
-- Icons: accept PNG and SVG up to a size limit. Reject an SVG that contains
-  script elements, event handler attributes, `javascript:` URLs, or
-  `foreignObject`. `packages/cli` has no sanitizer dependency, and a new
-  dependency is not justified for this. Serve
-  with a restrictive `Content-Security-Policy`, `X-Content-Type-Options:
-  nosniff`, and no script execution. Apply the same validation on every route
-  that accepts an icon.
+- Icons: accept PNG and SVG up to 256 KiB. The SVG check is a strict
+  allow-list, not a pattern search (changed during plan 1). The service parses
+  the whole document and accepts it only if each element and each attribute is
+  on a fixed list of drawing elements and attributes. A link is valid only as a
+  reference inside the same document. The service rejects the file and does
+  not clean it. Many design-tool exports contain a `style` element, text, or a
+  document type declaration, and are refused; PNG is the fallback. The parser
+  is `xml2js`, which `packages/cli` already uses, so there is no new
+  dependency. Serve the icon with a restrictive `Content-Security-Policy`,
+  `X-Content-Type-Options: nosniff`, and no script execution. Apply the same
+  validation on every route that accepts an icon. The editor shows an icon
+  only through an image element and never puts the stored SVG into the page.
 - The icon route stays on the browser-id skip list, because image requests
   cannot send that header.
 - Record the creator and the last editor of each definition.
@@ -456,10 +461,10 @@ Do not build the tool in project 1.
 
 ### Proposed pull request stack
 
-1. Types and schemas in `@n8n/api-types`, flag, scopes.
-2. Tables, entities, repositories.
-3. Description generator with tests.
-4. Custom nodes: loader, service, controller, reload.
+1. Types and schemas in `@n8n/api-types`, flag, scopes. Done in plan 1.
+2. Tables, entities, repositories. Done in plan 1.
+3. Description generator with tests. Done in plan 1.
+4. Custom nodes: loader, service, controller, reload. Done in plan 1.
 5. Custom actions: provider hook in `NodeTypes`, served descriptions, version
    pin.
 6. Frontend module: settings page.
@@ -530,3 +535,71 @@ and are open to correction:
 - `N8N_ENABLED_MODULES` turns the feature on; a PostHog flag is a later step (12).
 - The missing-definition error comes from the run-time copy, and the node
   stores the action name (5.3, 6, 9).
+
+## 18. Plan 1 record
+
+Plan 1 (backend foundation and custom nodes) ended on 2026-11-22. The work is
+on the local branch `custom-nodes-and-actions`. The module is off unless
+`N8N_ENABLED_MODULES` contains `custom-nodes`.
+
+### What exists
+
+- Scopes `customNode:list|create|update|delete`, the module shell, the API
+  types and DTOs.
+- Four tables with entities and repositories.
+- Draft validator, edit classifier, version pin, description generator.
+- Node loader and registry with reload across instances.
+- Service with versioned actions, and the REST controller.
+- A check on a real instance: a custom node for a public weather API was
+  created through the API, ran in the editor, and stayed on version 1 after
+  version 2 was added. Without the module switch, the routes return 404 and
+  the node type is unknown.
+
+### Decisions made during the work
+
+- **Version pin.** The `operation` value is `<actionId>@<version>`. The node
+  also stores `customActionId` and `customActionName` in hidden parameters.
+  The backend is the only owner of this format. The API returns ready-made
+  `pinValues` for each version, and the editor writes them as they are. An
+  option of an old version is visible only on a node that is pinned to it.
+- **Default action.** `operation` has the default `''`. A new node has no
+  action until the user selects one.
+- **URL inputs.** A URL input must be required. The generator percent-encodes
+  the value. It encodes the values `.` and `..` and the empty value a second
+  time, so that a value cannot change the path structure.
+- **JSON inputs.** A JSON input that is not valid JSON fails the item with an
+  error. No request is sent.
+- **Reserved names.** An input cannot use the name of a generated parameter
+  (`operation`, `resource`, `authentication`, `requestOptions`,
+  `additionalFields`, `customActionId`, `customActionName`). A body key
+  cannot be `__proto__`, `constructor`, or `prototype`.
+- **Credential restrictions.** A generated node sets `userDefinedEndpoint` in
+  its description. `RoutingNode` then never adds the node's own host to the
+  allowed domains of a credential. This is a change in `packages/core` and
+  `packages/workflow` and needs agreement from the owning team.
+- **One bad definition.** The loader skips a definition that it cannot build,
+  logs the id, and serves the others.
+- **Base URL.** The service accepts only `http` and `https`, and rejects a
+  value with an expression, a backslash, or a control character.
+- **Write order.** A save or a rollback locks the action row before it reads.
+  A delete locks the node row before it counts. A clash on a unique key
+  becomes a conflict error (HTTP 409).
+- **Refresh.** An edit that changes nothing, and an empty update, do not
+  refresh the registry.
+- **Ids.** A custom node id never ends with `Tool`, because the node type
+  lookup handles such names differently.
+- **Icon path.** The icon URL uses the configured REST prefix.
+
+### Findings for the next plans
+
+- Plan 2: the flag `userDefinedEndpoint` must be on the run-time description
+  of a custom action, not on the parent node.
+- Plan 3: the editor alone writes only `operation` when a user selects an
+  action. The frontend must write the full `pinValues`.
+- Plan 3: the nodes panel must filter options by their option-level display
+  conditions, the same as the parameter panel does.
+- Plan 3: show the request host with the WHATWG URL parser. Tell the
+  administrator why an SVG was refused, and offer PNG.
+- Plan 3 or 4: `LoadNodesAndCredentials` adds a "Custom API Call" option to a
+  custom node that uses a predefined credential. Decide if that is wanted.
+- Plan 4: duplicate action names inside one node are possible today.
