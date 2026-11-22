@@ -527,7 +527,8 @@ The order and size are the builder's call. Use the `n8n:gh-stack` skill.
   `.agents/specs/2026-11-22-custom-nodes-and-actions-plan-2-custom-actions-in-parent-nodes.md`
 - Plan 3, frontend:
   `.agents/specs/2026-11-22-custom-nodes-and-actions-plan-3-frontend.md`
-- Plan 4 is listed at the end of plan 3. It is written when plan 3 is done.
+- Plan 4, usage and rollout:
+  `.agents/specs/2026-11-22-custom-nodes-and-actions-plan-4-usage-and-rollout.md`
 
 ## 17. Review record
 
