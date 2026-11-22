@@ -267,13 +267,34 @@ Jason chose "split by kind of change" on 2026-11-22.
     (section 9).
   - No bulk upgrade of all workflows in the first version.
 
-**Risk, resolve first.** n8n drops parameter values that equal their default
-when it saves a workflow. A hidden parameter whose default is the newest
-version would lose the pin. Two candidate mechanisms: a hidden parameter with
-a sentinel default that the editor replaces on selection, or the version as
-part of the operation option value, with option-level `displayOptions` to hide
-old versions from new nodes. The first task of the plan is a spike that proves
-one mechanism against the list above.
+**Version pin (decided, 2026-11-22).** The `operation` value carries the
+action id and the version: `<actionId>@<version>`. Each version of an action is
+one option of `operation`. An older version has option-level `displayOptions`
+that show it only to a node that already uses it. The newest version hides
+when the node uses an older version of the same action. The input properties
+of a version show only for its option value. Two hidden parameters,
+`customActionId` and `customActionName`, store the action name for an error
+about an action that no longer exists. They have no `displayOptions`, and
+their default is empty. Example of stored parameters:
+`{ "operation": "a1@1", "customActionId": "a1", "customActionName": "Get Invoice", "invoiceId": "inv_1" }`.
+Rules for later work:
+
+- The default of `operation` must never be a custom action value. Use the
+  default of the parent, or an empty string in a custom node. If the default
+  is the newest version, a save strips the value and the node moves to the
+  next new version.
+- Editor change, nodes panel: `operationsCategory` and `resourceCategories`
+  in `useActionsGeneration.ts` list all options. They must skip an option
+  whose option-level `displayOptions` do not match the default parameters of
+  a new node, as `getParameterDisplayableOptions` does. Without this change,
+  old versions show as separate actions.
+- Editor change, nodes panel and parameter panel: when the user selects a
+  custom action, the editor writes `pinValues` (the operation value, the id
+  and the name). If the name is missing, or belongs to another action, the
+  run-time code uses the action id in its place.
+- The module `version-pin.ts` owns the value format. Other code calls
+  `operationOptions`, `showFor`, `pinProperties`, `readPin`, and `pinValues`,
+  and does not parse the value.
 
 ## 7. Data model
 
