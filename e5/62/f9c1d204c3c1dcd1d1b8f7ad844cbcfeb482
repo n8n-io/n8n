@@ -1,0 +1,89 @@
+packages/frontend/editor-ui/src/features/workflows/templates/views/TemplatesWorkflowView.vue
+  s_a4582b2c2dc7cb::t_88593ea91b050f 142-143
+packages/frontend/editor-ui/src/app/components/WorkflowPreviewHost.test.ts
+  s_a4582b2c2dc7cb::t_e8f6792fdc442c 4,10-14,46-111
+packages/frontend/editor-ui/src/features/workflows/workflowDiff/WorkflowDiffView.test.ts
+  s_a4582b2c2dc7cb::t_5de4f183407369 2,6,56,59,129-161
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/modals/__tests__/InstanceAiToolsConnectionModalWrapper.test.ts
+  s_a4582b2c2dc7cb::t_7cc681193abdf3 157,361-362,395-415,417,419-420
+  s_a4582b2c2dc7cb::t_0836309d6bd709 416,418,421
+packages/frontend/editor-ui/src/app/stores/nodeTypes.store.ts
+  s_a4582b2c2dc7cb::t_0714ed05ba9c5b 409-411,430-433,435-436,438-442
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChannelSetup.ts
+  s_a4582b2c2dc7cb::t_1419c8643dbd7a 101-107,113
+  s_a4582b2c2dc7cb::t_d37a68a02ae31b 108-112
+packages/frontend/editor-ui/src/app/init/index.test.ts
+  s_a4582b2c2dc7cb::t_d616e36e6f4af7 476,479-480,482,484,487,490-491,493,495
+  s_a4582b2c2dc7cb::t_e8d7f61540cf3a 97-98
+packages/frontend/editor-ui/src/features/ai/chatHub/composables/useChatCredentials.ts
+  s_a4582b2c2dc7cb::t_4864f6793d5928 43-44,46-49,109-110,114-118
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.test.ts
+  s_a4582b2c2dc7cb::t_668e8f336dce0e 691
+  s_a4582b2c2dc7cb::t_9dba0138b8f68c 659-661
+  s_a4582b2c2dc7cb::t_ed2f04139292b3 637-658,662-690,692-703
+packages/frontend/editor-ui/src/features/workflows/workflowDiff/useWorkflowDiff.ts
+  s_a4582b2c2dc7cb::t_fc87ee75746490 127,153-155,187-193,196,205,211
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/modals/InstanceAiToolsConnectionModalWrapper.vue
+  s_a4582b2c2dc7cb::t_dd538af3cb9283 191-207,212,546
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChannelSetup.test.ts
+  s_a4582b2c2dc7cb::t_ef3e213202cae4 5-12,14-15,44-45,77-117
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.vue
+  s_a4582b2c2dc7cb::t_024d895a68955c 477-479,505-512
+packages/frontend/editor-ui/src/features/ai/chatHub/composables/useChatCredentials.test.ts
+  s_a4582b2c2dc7cb::t_02f7c5b1560661 1-85
+packages/frontend/editor-ui/src/features/workflows/workflowDiff/useWorkflowDiff.test.ts
+  s_a4582b2c2dc7cb::t_5de4f183407369 463-477
+packages/frontend/editor-ui/src/features/agents/components/AgentToolsConnectionModalWrapper.vue
+  s_a4582b2c2dc7cb::t_668917c546a28d 348-364,370,1283
+packages/frontend/editor-ui/src/app/composables/useWorkflowInitialization.test.ts
+  s_a4582b2c2dc7cb::t_60340603dd5c2c 6,14,235-258
+  s_a4582b2c2dc7cb::t_d642a0554b2791 259-261
+packages/frontend/editor-ui/src/app/init/index.ts
+  s_a4582b2c2dc7cb::t_25cc97f4de93ad 280-285,291
+packages/frontend/editor-ui/src/app/capabilities.manifest.ts
+  s_a4582b2c2dc7cb::t_0c2e31120d50cf 165
+packages/frontend/editor-ui/src/features/credentials/credentials.test.ts
+  s_a4582b2c2dc7cb::t_181a7d28bf2ad7 5-6,32-103
+  s_a4582b2c2dc7cb::t_95fe0628337c49 104
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentToolsConnectionModalWrapper.test.ts
+  s_a4582b2c2dc7cb::t_4cf0a2ccd26eac 341-343,505-530
+  s_a4582b2c2dc7cb::t_5fb8a0b505fe74 531
+packages/frontend/editor-ui/src/features/shared/toolConfig/NodeToolSettingsContent.vue
+  s_a4582b2c2dc7cb::t_f457da79eff5e2 38,354-399,410-413,425-440
+  s_a4582b2c2dc7cb::t_dac873420efc63 441
+packages/frontend/editor-ui/src/app/components/WorkflowPreviewHost.vue
+  s_a4582b2c2dc7cb::t_97dec7ac7ebb46 27,44,83-85,87-99,148
+packages/frontend/editor-ui/src/features/shared/toolConfig/__tests__/NodeToolSettingsContent.test.ts
+  s_a4582b2c2dc7cb::t_d37a68a02ae31b 795
+  s_a4582b2c2dc7cb::t_88e11647ee714f 18,796-805,807-813,816-817
+  s_a4582b2c2dc7cb::t_6f112da1835e68 771-794,806,814-815,818-837
+packages/frontend/editor-ui/src/features/credentials/credentials.store.ts
+  s_a4582b2c2dc7cb::t_0714ed05ba9c5b 327-330,332-339,341-353
+packages/frontend/editor-ui/src/app/composables/useWorkflowInitialization.ts
+  s_a4582b2c2dc7cb::t_f9561092229385 250-251
+packages/frontend/editor-ui/src/features/workflows/workflowDiff/WorkflowDiffView.vue
+  s_a4582b2c2dc7cb::t_fc87ee75746490 96-98,103,144-145
+packages/frontend/editor-ui/src/app/stores/nodeTypes.store.test.ts
+  s_a4582b2c2dc7cb::t_b49a122fda796b 16,18,29,325,352-380,404-470
+  s_a4582b2c2dc7cb::t_22c6c44cb266b1 471-472
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentVectorStoresModal.test.ts
+  s_a4582b2c2dc7cb::t_ea01324e592101 11-12,57-58,180-203
+packages/frontend/editor-ui/src/features/agents/components/AgentVectorStoresModal.vue
+  s_a4582b2c2dc7cb::t_1419c8643dbd7a 247-257
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e562f9c1d204c3c1dcd1d1b8f7ad844cbcfeb482",
+  "prompts": {},
+  "sessions": {
+    "s_a4582b2c2dc7cb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f3c062cc-7222-4901-9fcc-2bc8c0d86ff4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}
