@@ -17,6 +17,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [agent_chat_subscriptions](agent_chat_subscriptions.md) | 6 |  | table |
 | [agent_checkpoints](agent_checkpoints.md) | 7 |  | table |
 | [agent_credential_dependency](agent_credential_dependency.md) | 3 |  | table |
+| [agent_determinism_source](agent_determinism_source.md) | 13 |  | table |
 | [agent_eval_dataset](agent_eval_dataset.md) | 10 |  | table |
 | [agent_eval_rating](agent_eval_rating.md) | 8 |  | table |
 | [agent_eval_result](agent_eval_result.md) | 16 |  | table |
@@ -612,6 +613,21 @@ erDiagram
   varchar_36_ agentId PK
   datetime_3_ createdAt
   varchar_36_ credentialId PK
+}
+"agent_determinism_source" {
+  varchar_16_ analysisStatus
+  varchar_64_ analyzedVersionHash
+  datetime_3_ createdAt
+  datetime_3_ dismissedAt
+  varchar_36_ draftWorkflowId
+  varchar_36_ id PK
+  varchar_36_ projectId
+  TEXT result
+  INTEGER runsSinceAnalysis
+  varchar_36_ sourceId
+  varchar_16_ sourceType
+  datetime_3_ updatedAt
+  varchar_64_ versionHash
 }
 "agent_eval_dataset" {
   varchar_36_ agentId FK

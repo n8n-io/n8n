@@ -1,3 +1,4 @@
+import type { EventService } from '@n8n/backend-services';
 import type { FolderRepository } from '@n8n/db';
 import { AgentProjectDeletionRepository } from '@/modules/agents/repositories/agent-project-deletion.repository';
 import type {
@@ -235,6 +236,7 @@ describe('AgentExecutionRepository', () => {
 			messageRepository,
 			systemAgents,
 			Container.get(AgentProjectDeletionRepository),
+			mock<EventService>(),
 			new IntegrationMessageContextService(
 				new AgentThreadRepository(connection ?? repository.manager.connection, txRunner),
 				new AgentResourceRepository(connection ?? repository.manager.connection),

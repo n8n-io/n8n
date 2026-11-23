@@ -52,6 +52,7 @@ import {
 	CanvasNodeRenderType,
 } from '@/features/workflows/canvas/canvas.types';
 import {
+	AGENT_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
 	DRAG_EVENT_DATA_KEY,
 	FROM_AI_PARAMETERS_MODAL_KEY,
@@ -104,6 +105,10 @@ import { useNpsSurveyStore } from '@/app/stores/npsSurvey.store';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useTypeAvailability } from '@n8n/frontend-module-type-availability-policies';
+import {
+	loadDeterminismCallout,
+	loadGeneratedDraftBanner,
+} from '@n8n/frontend-module-agent-determinism';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useUsersStore } from '@n8n/stores/users.store';
 
@@ -170,6 +175,9 @@ import { findTriggerNodeToAutoSelect } from '@/features/execution/executions/exe
 defineOptions({
 	name: 'NodeView',
 });
+
+const LazyDeterminismCallout = defineAsyncComponent(loadDeterminismCallout);
+const LazyGeneratedDraftBanner = defineAsyncComponent(loadGeneratedDraftBanner);
 
 const LazyNodeCreation = defineAsyncComponent(
 	async () => await import('@/features/shared/nodeCreator/views/NodeCreation.vue'),
@@ -1889,6 +1897,23 @@ const workflowProjectId = computed(
 
 useTypeAvailability(workflowProjectId);
 
+const generatedFrom = computed(() =>
+	settingsStore.isModuleActive('agent-determinism')
+		? (workflowDocumentStore?.value?.meta?.generatedFrom ?? null)
+		: null,
+);
+
+const determinismSource = computed(() => {
+	const doc = workflowDocumentStore?.value;
+	const projectId = workflowProjectId.value;
+	if (!settingsStore.isModuleActive('agent-determinism') || !doc || !projectId) return null;
+	if (doc.meta?.generatedFrom) return null;
+	const agentNodes = doc.allNodes.filter((node) => node.type === AGENT_NODE_TYPE);
+	return agentNodes.length === 1
+		? { projectId, sourceType: 'workflow' as const, sourceId: workflowId.value }
+		: null;
+});
+
 watch(
 	() => {
 		return (
@@ -2291,6 +2316,19 @@ onBeforeUnmount(() => {
 				{{ i18n.baseText('readOnlyEnv.cantEditOrRun') }}
 			</N8nCallout>
 
+			<LazyGeneratedDraftBanner
+				v-if="generatedFrom && workflowProjectId"
+				:generated-from="generatedFrom"
+				:project-id="workflowProjectId"
+				:class="$style.determinismCallout"
+			/>
+
+			<LazyDeterminismCallout
+				v-if="determinismSource"
+				v-bind="determinismSource"
+				:class="$style.determinismCallout"
+			/>
+
 			<N8nCanvasCollaborationPill
 				v-if="collaborationStore.currentWriter && !collaborationStore.isCurrentTabWriter"
 				:class="$style.canvasCenterPill"
@@ -2415,6 +2453,14 @@ onBeforeUnmount(() => {
 	left: var(--spacing--lg);
 	bottom: var(--spacing--lg);
 	z-index: var.$index-popper;
+}
+
+.determinismCallout {
+	position: absolute;
+	top: var(--spacing--sm);
+	left: 50%;
+	transform: translateX(-50%);
+	z-index: 1;
 }
 
 .readOnlyEnvironmentNotification {

@@ -1,3 +1,4 @@
+import type { ModelConfig } from '@n8n/agents';
 import type { AgentEvalVerdict } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
@@ -18,7 +19,7 @@ type JudgeDependencies = {
 	logger: Logger;
 };
 
-type JudgeSubject = {
+export type JudgeSubject = {
 	/** The message the agent received. */
 	input: string;
 	/** The agent's answer. */
@@ -48,11 +49,14 @@ type JudgeSubject = {
  */
 export async function judgeAgentAnswer(
 	{ agentConfigService, credentialsService, logger }: JudgeDependencies,
-	{ input, output, criteria, expectedOutput }: JudgeSubject,
+	subject: JudgeSubject,
 	ctx: { agentId: string; projectId: string; user: User },
 ): Promise<AgentEvalVerdict> {
-	if (!criteria && !expectedOutput) return { status: 'skipped', outcome: null, reasoning: null };
+	if (!subject.criteria && !subject.expectedOutput) {
+		return { status: 'skipped', outcome: null, reasoning: null };
+	}
 
+	let modelConfig: ModelConfig;
 	try {
 		const config = await agentConfigService.getConfig(ctx.agentId, ctx.projectId);
 		if (!config.model || !config.credential) {
@@ -67,12 +71,27 @@ export async function judgeAgentAnswer(
 			ctx.user,
 			ctx.agentId,
 		);
-		const modelConfig = await resolveCredentialAwareModelConfig(
+		modelConfig = await resolveCredentialAwareModelConfig(
 			config.model,
 			config.credential,
 			credentialProvider,
 		);
+	} catch (error) {
+		return judgingFailed(logger, error);
+	}
 
+	return await judgeWithModel(modelConfig, subject, logger, { agentId: ctx.agentId });
+}
+
+export async function judgeWithModel(
+	modelConfig: ModelConfig,
+	{ input, output, criteria, expectedOutput }: JudgeSubject,
+	logger: Logger,
+	logContext: Record<string, string> = {},
+): Promise<AgentEvalVerdict> {
+	if (!criteria && !expectedOutput) return { status: 'skipped', outcome: null, reasoning: null };
+
+	try {
 		// Lazy-loaded: `@n8n/agents` is heavy, and judging only runs for cases that
 		// have something to grade against.
 		const { evals } = await import('@n8n/agents');
@@ -85,9 +104,7 @@ export async function judgeAgentAnswer(
 
 		if (score.inconclusive) {
 			// The reply can quote the agent's answer, so it stays out of the log.
-			logger.warn('[AgentEvalJudge] The judge gave no readable verdict', {
-				agentId: ctx.agentId,
-			});
+			logger.warn('[AgentEvalJudge] The judge gave no readable verdict', logContext);
 			return { status: 'error', outcome: null, reasoning: INCONCLUSIVE_REASONING };
 		}
 
@@ -97,8 +114,12 @@ export async function judgeAgentAnswer(
 			reasoning: score.reasoning,
 		};
 	} catch (error) {
-		const message = error instanceof Error ? error.message : String(error);
-		logger.error('[AgentEvalJudge] Judging failed', { error: message });
-		return { status: 'error', outcome: null, reasoning: message };
+		return judgingFailed(logger, error);
 	}
+}
+
+function judgingFailed(logger: Logger, error: unknown): AgentEvalVerdict {
+	const message = error instanceof Error ? error.message : String(error);
+	logger.error('[AgentEvalJudge] Judging failed', { error: message });
+	return { status: 'error', outcome: null, reasoning: message };
 }

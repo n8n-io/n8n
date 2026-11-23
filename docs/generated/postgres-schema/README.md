@@ -17,6 +17,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.agent_chat_subscriptions](public.agent_chat_subscriptions.md) | 6 |  | BASE TABLE |
 | [public.agent_checkpoints](public.agent_checkpoints.md) | 7 |  | BASE TABLE |
 | [public.agent_credential_dependency](public.agent_credential_dependency.md) | 3 |  | BASE TABLE |
+| [public.agent_determinism_source](public.agent_determinism_source.md) | 13 |  | BASE TABLE |
 | [public.agent_eval_dataset](public.agent_eval_dataset.md) | 10 |  | BASE TABLE |
 | [public.agent_eval_rating](public.agent_eval_rating.md) | 8 |  | BASE TABLE |
 | [public.agent_eval_result](public.agent_eval_result.md) | 16 |  | BASE TABLE |
@@ -626,6 +627,21 @@ erDiagram
   varchar_36_ agentId FK
   timestamp_3__with_time_zone createdAt
   varchar_36_ credentialId FK
+}
+"public.agent_determinism_source" {
+  varchar_16_ analysisStatus
+  varchar_64_ analyzedVersionHash
+  timestamp_3__with_time_zone createdAt
+  timestamp_3__with_time_zone dismissedAt
+  varchar_36_ draftWorkflowId
+  varchar_36_ id
+  varchar_36_ projectId
+  json result
+  integer runsSinceAnalysis
+  varchar_36_ sourceId
+  varchar_16_ sourceType
+  timestamp_3__with_time_zone updatedAt
+  varchar_64_ versionHash
 }
 "public.agent_eval_dataset" {
   varchar_36_ agentId FK

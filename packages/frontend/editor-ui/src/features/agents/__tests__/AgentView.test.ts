@@ -40,6 +40,9 @@ const returnContextStore = reactive<{
 vi.mock('../agentReturnContext.store', () => ({
 	useAgentReturnContextStore: () => returnContextStore,
 }));
+vi.mock('@n8n/stores/settings.store', () => ({
+	useSettingsStore: () => ({ isModuleActive: () => false }),
+}));
 
 const renderComponent = createComponentRenderer(AgentView, {
 	global: { stubs: { RouterView: true } },

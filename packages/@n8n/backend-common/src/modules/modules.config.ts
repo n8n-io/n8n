@@ -6,6 +6,7 @@ export const MODULE_NAMES = [
 	'inbox',
 	'agents',
 	'agent-evals',
+	'agent-determinism',
 	'insights',
 	'external-secrets',
 	'community-packages',
