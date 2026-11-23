@@ -1,4 +1,5 @@
 import {
+	EXTENDED_PROMPT_MAX_LENGTH,
 	WORKFLOW_BUILDER_TOOL_NAMES,
 	type AssistantAgentTargetsState,
 	type AssistantThreadTabsState,
@@ -8,7 +9,7 @@ import {
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
-import { fireEvent } from '@testing-library/vue';
+import { fireEvent, within } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
 import { setActivePinia } from 'pinia';
 import { defineComponent, h, inject, ref, type Ref } from 'vue';
@@ -116,6 +117,13 @@ vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError, showMessage: vi.fn() }),
 }));
 
+const { postFeedback } = vi.hoisted(() => ({
+	postFeedback: vi.fn(async () => ({ ok: true })),
+}));
+vi.mock('../assistantAgentFeedback.api', () => ({
+	postAssistantAgentFeedback: postFeedback,
+}));
+
 // The test view has no layout, so the tests set the width of the thread area.
 const { threadArea } = vi.hoisted(() => ({
 	threadArea: { width: undefined as Ref<number> | undefined },
@@ -173,7 +181,14 @@ vi.mock('@/features/agents/components/AgentChatPanel.vue', () => ({
 			return () => {
 				panelProps.current = { ...attrs };
 				panelSlots.current = Object.keys(slots);
+				// The real list shows the message actions under each finished answer.
+				const answers = chatMessages.value.filter((message) => message.role === 'assistant');
 				return h('div', { 'data-test-id': 'agent-chat-panel-stub' }, [
+					...answers.map((message) =>
+						h('div', { 'data-test-id': `message-actions-${message.id}` }, [
+							slots['message-actions']?.({ message, executionId: message.executionId }),
+						]),
+					),
 					slots['inline-offers']?.(),
 					slots['above-input']?.(),
 					slots['composer-attachments']?.(),
@@ -592,6 +607,7 @@ describe('AssistantAgentThreadView', () => {
 		expect(panelProps.current['interaction-extensions']).toEqual([
 			expect.objectContaining({ key: 'assistant_confirmation' }),
 			expect.objectContaining({ key: 'assistant_auto_approval' }),
+			expect.objectContaining({ key: 'assistant_preference_card' }),
 			expect.objectContaining({ key: 'assistant_instance_context' }),
 			expect.objectContaining({ key: 'assistant_status' }),
 			expect.objectContaining({ key: 'assistant_tool_result_table' }),
@@ -599,6 +615,13 @@ describe('AssistantAgentThreadView', () => {
 			expect.objectContaining({ key: 'assistant_shared_files' }),
 		]);
 		expect(sendMessageFromOutside).not.toHaveBeenCalled();
+	});
+
+	it('lets the composer take a message up to the Assistant limit', async () => {
+		renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+		await flushPromises();
+
+		expect(panelProps.current['max-length']).toBe(EXTENDED_PROMPT_MAX_LENGTH);
 	});
 
 	it('replaces the attach button with the Assistant "+" menu, which opens the file picker', async () => {
@@ -1346,6 +1369,33 @@ describe('AssistantAgentThreadView', () => {
 
 			expect(getByTestId('assistant-agent-trace-button')).toBeInTheDocument();
 			expect(panelProps.current.onStreamEvent).toEqual(expect.any(Function));
+		});
+	});
+
+	describe('answer rating', () => {
+		it('shows the thumbs under the latest answer and sends the rating of its turn', async () => {
+			chatMessages.value = [
+				{ id: 'u1', role: 'user', content: 'Hi' },
+				{ id: 'a1', role: 'assistant', content: 'Hello', executionId: 'exec-1' },
+				{ id: 'u2', role: 'user', content: 'Build it' },
+				{ id: 'a2', role: 'assistant', content: 'Done', executionId: 'exec-2' },
+			];
+			const { getByTestId } = renderView({
+				props: { threadId: 'thread-1', projectId: 'project-1' },
+			});
+			await flushPromises();
+
+			expect(
+				within(getByTestId('message-actions-a1')).queryByTestId('message-thumbs-up-button'),
+			).not.toBeInTheDocument();
+			const latest = within(getByTestId('message-actions-a2'));
+			await fireEvent.click(latest.getByTestId('message-thumbs-up-button'));
+
+			expect(postFeedback).toHaveBeenCalledWith(expect.anything(), 'thread-1', {
+				executionId: 'exec-2',
+				rating: 'up',
+			});
+			expect(latest.getByTestId('message-rating-success')).toBeInTheDocument();
 		});
 	});
 

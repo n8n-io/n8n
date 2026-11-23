@@ -7,7 +7,8 @@ import {
 } from '@/__tests__/mocks';
 import { createTestLogEntry } from '../__test__/mocks';
 import { fireEvent, render, waitFor } from '@testing-library/vue';
-import { computed, shallowRef } from 'vue';
+import { computed, defineComponent, h, shallowRef } from 'vue';
+import { runDataDisplayModeRegistry } from '@n8n/frontend-module-sdk';
 import { WorkflowDocumentStoreKey, WorkflowIdKey } from '@/app/constants/injectionKeys';
 import {
 	createWorkflowDocumentId,
@@ -65,6 +66,7 @@ describe('LogsViewRunData', () => {
 		// so they cannot continue after the test environment is torn down.
 		await flushPromises();
 		await vi.dynamicImportSettled();
+		runDataDisplayModeRegistry.clear();
 	});
 
 	it('shows the credential cause without a sharing action', () => {
@@ -102,6 +104,39 @@ describe('LogsViewRunData', () => {
 		);
 		expect(rendered.queryByTestId('redacted-data-share-credential')).not.toBeInTheDocument();
 		expect(rendered.queryByTestId('ndv-reveal-redacted-data')).not.toBeInTheDocument();
+	});
+
+	it('falls back to a built-in view when the selected registered mode is unregistered', async () => {
+		runDataDisplayModeRegistry.register({
+			id: 'map',
+			label: () => 'Map',
+			icon: 'globe',
+			component: defineComponent({ render: () => h('div', { 'data-test-id': 'fake-map-view' }) }),
+			canRender: () => true,
+		});
+		const rendered = render(LogsViewRunData, {
+			global: {
+				provide: {
+					[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+					[WorkflowDocumentStoreKey as symbol]: shallowRef(
+						useWorkflowDocumentStore(createWorkflowDocumentId('test-workflow-id')),
+					),
+				},
+				plugins: [pinia, i18nInstance],
+			},
+			props: { title: '', logEntry, collapsingTableColumnName: null, paneType: 'output' },
+		});
+
+		await fireEvent.click(await rendered.findByTestId('radio-button-map'));
+		expect(await rendered.findByTestId('fake-map-view')).toBeInTheDocument();
+
+		runDataDisplayModeRegistry.unregister('map');
+
+		await waitFor(() =>
+			expect(rendered.getByTestId('radio-button-table')).toHaveAttribute('aria-checked', 'true'),
+		);
+		expect(rendered.queryByTestId('fake-map-view')).not.toBeInTheDocument();
+		expect(rendered.queryByTestId('radio-button-map')).not.toBeInTheDocument();
 	});
 
 	it('should display item count', async () => {

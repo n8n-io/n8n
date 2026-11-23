@@ -108,6 +108,8 @@ export interface WorkflowSettings {
 	saveExecutionProgress?: boolean;
 	executionTimeout?: number;
 	executionOrder?: 'v0' | 'v1';
+	/** The engine that runs the workflow. A workflow without an engine runs on `v1`. */
+	engineType?: 'v1' | 'v2';
 	callerPolicy?: 'any' | 'none' | 'workflowsFromAList' | 'workflowsFromSameOwner';
 	callerIds?: string;
 	/** Allow additional settings fields */

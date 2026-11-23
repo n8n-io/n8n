@@ -29,7 +29,7 @@ import {
 	threadTargetsAgent,
 } from './instanceAi.threadRuntime';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
-import { isArtifactTab, useCanvasPreview } from './useCanvasPreview';
+import { isArtifactTab, isSavedArtifactTab, useCanvasPreview } from './useCanvasPreview';
 import { useAssistantAwayTelemetry } from './composables/useAssistantAwayTelemetry';
 import { getCurrentTurn } from './assistantTurn';
 import { CloudBrowserTasksKey, useCloudBrowserTasks } from './composables/useCloudBrowserTasks';
@@ -73,6 +73,16 @@ import InstanceAiDataTablePreview from './components/InstanceAiDataTablePreview.
 import InstanceAiAgentPreview from './components/InstanceAiAgentPreview.vue';
 import InstanceAiBrowserPreview from './components/InstanceAiBrowserPreview.vue';
 import InstanceAiCloudBrowserUserActionPanel from './components/InstanceAiCloudBrowserUserActionPanel.vue';
+import InstanceAiWorkflowDraftPreview from './components/InstanceAiWorkflowDraftPreview.vue';
+import AgentBuildingIndicator from './components/AgentBuildingIndicator.vue';
+import { useDraftWorkflowPreviewTelemetry } from '@/experiments/instanceAiDraftWorkflowPreview/useDraftWorkflowPreviewTelemetry';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useDraftWorkflowPreviewEnabled } from '@/experiments/instanceAiDraftWorkflowPreview/useDraftWorkflowPreviewEnabled';
+import { useWorkflowStaging } from './composables/useWorkflowStaging';
+import { ThinkingWordKey, useThinkingWordRotation } from './composables/useThinkingWords';
+import { collectActiveBuilderAgents } from './builderAgents';
+import { isStagingDraft, toStagingNodeTypeInfo } from './instanceAi.workflowStaging';
+import { getDraftWorkflowId } from './instanceAi.workflowDrafts';
 import InstanceAiSkillPreview from './components/InstanceAiSkillPreview.vue';
 import InstanceAiAppPreview from './components/InstanceAiAppPreview.vue';
 import { useAgentEvalsFlag } from '@/features/ai/evaluation.ee/composables/useAgentEvalsFlag';
@@ -263,6 +273,28 @@ watch(
 	{ immediate: true },
 );
 
+// Experiment cleanup (137_instance_ai_draft_workflow_preview)
+const draftWorkflowPreviewEnabled = useDraftWorkflowPreviewEnabled();
+const nodeTypesStore = useNodeTypesStore();
+const describeStagingNodeType = (nodeType: string) =>
+	toStagingNodeTypeInfo(nodeTypesStore.getNodeType(nodeType));
+const workflowStaging = useWorkflowStaging({
+	messages: () => thread.messages,
+	workflowDrafts: () => thread.workflowDrafts,
+	enabled: () => draftWorkflowPreviewEnabled.value,
+	describeType: describeStagingNodeType,
+});
+// Replaces the generic "Thinking" in the chat while the thread runs.
+const thinkingWord = useThinkingWordRotation({
+	active: () =>
+		draftWorkflowPreviewEnabled.value &&
+		(thread.isStreaming || collectActiveBuilderAgents(thread.messages).length > 0),
+	building: () => workflowStaging.building.value,
+	threadId: () => props.threadId,
+});
+provide(ThinkingWordKey, thinkingWord);
+// EOF Experiment cleanup
+
 // --- Canvas / data table preview ---
 const appTargets = computed(() =>
 	getAppTargetsFromThreadMetadata(store.getThreadMetadata(props.threadId)),
@@ -287,6 +319,11 @@ const preview = useCanvasPreview({
 			await saveThreadTabs(rootStore.restApiContext, props.threadId, state);
 		},
 	},
+	workflowDrafts: () => thread.workflowDrafts,
+	stagingDraft: () => workflowStaging.stagingDraft.value,
+	buildTarget: () => workflowStaging.buildTarget.value,
+	dismissWorkflowDrafts: (workflowId) => thread.dismissWorkflowDrafts(workflowId),
+	isAwaitingUser: () => thread.isAwaitingUserInput,
 });
 const openSkillTabs = computed(() => preview.openTabs.value.filter((tab) => tab.type === 'skill'));
 watch(
@@ -296,11 +333,50 @@ watch(
 	},
 	{ immediate: true },
 );
+
+// A build on a saved workflow shows the building wave over the saved canvas, until a draft
+// covers it. While the run waits on the user, nothing builds.
+const isSavedCanvasBuilding = computed(
+	() =>
+		isAgentWorking.value &&
+		!thread.isAwaitingUserInput &&
+		preview.isPreviewVisible.value &&
+		!preview.activeWorkflowDraft.value &&
+		preview.activeWorkflowId.value !== null &&
+		preview.activeWorkflowId.value === workflowStaging.buildTarget.value?.workflowId,
+);
+
+// Experiment cleanup (137_instance_ai_draft_workflow_preview)
+const draftPreviewTelemetry = useDraftWorkflowPreviewTelemetry(thread);
+watch(
+	() => {
+		const draft = preview.activeWorkflowDraft.value;
+		if (!preview.isPreviewVisible.value || !draft) return undefined;
+		return isStagingDraft(draft) ? 'staging' : 'draft';
+	},
+	(kind) => {
+		if (kind) draftPreviewTelemetry.trackCanvasRendered(kind);
+	},
+	{ immediate: true },
+);
+// EOF Experiment cleanup
+
+// The saved canvas loaded under its draft, so the draft has nothing left to cover.
+function handleSavedWorkflowLoaded(workflowId: string) {
+	// Only the workflow that the build works on counts, not one the user opens.
+	const isBuiltWorkflow =
+		workflowStaging.buildTarget.value?.workflowId === workflowId ||
+		Object.values(thread.workflowDrafts).some((draft) => getDraftWorkflowId(draft) === workflowId);
+	if (isBuiltWorkflow) draftPreviewTelemetry.trackCanvasRendered('saved');
+	thread.dismissWorkflowDrafts(workflowId);
+}
 watch(
 	[() => preview.activeTabId.value, () => preview.isPreviewVisible.value],
 	([tabId, previewVisible]) => {
-		// The agent only hears about artifacts, not browser tabs.
-		const isArtifact = preview.openTabs.value.some((tab) => tab.id === tabId && isArtifactTab(tab));
+		// The agent knows saved artifacts only. A browser or draft tab has no id that it can use.
+		const isArtifact = preview.openTabs.value.some(
+			(tab) => tab.id === tabId && isSavedArtifactTab(tab),
+		);
 		thread.setActiveArtifactId(previewVisible && isArtifact ? tabId : undefined);
 	},
 	{ immediate: true },
@@ -309,7 +385,7 @@ watch(
 // stored tabs load, the default tabs can still hold closed ones, so send none.
 watch(
 	[() => preview.openTabs.value, () => preview.tabsLoaded.value],
-	([tabs, loaded]) => thread.setOpenTabs(loaded ? tabs.filter(isArtifactTab) : null),
+	([tabs, loaded]) => thread.setOpenTabs(loaded ? tabs.filter(isSavedArtifactTab) : null),
 	{ immediate: true },
 );
 // --- Setup panel (checklist docked above the composer) ---
@@ -1071,6 +1147,20 @@ function handleNewThreadClick() {
 								:execution-result="preview.activeWorkflowExecutionResult.value"
 								@initial-node-id-consumed="consumeAgentReturnNodeId"
 								@workflow-failures="handleWorkflowFailures"
+								@workflow-loaded="handleSavedWorkflowLoaded"
+							/>
+							<AgentBuildingIndicator
+								v-if="isSavedCanvasBuilding"
+								:show-label="false"
+								data-test-id="instance-ai-draft-building-wave"
+							/>
+							<InstanceAiWorkflowDraftPreview
+								v-if="preview.isPreviewVisible.value && preview.activeWorkflowDraft.value"
+								:key="preview.activeWorkflowDraft.value.filePath"
+								:class="$style.previewSlot"
+								:draft="preview.activeWorkflowDraft.value"
+								:building="isAgentWorking"
+								:waiting="thread.isAwaitingUserInput"
 							/>
 							<InstanceAiDataTablePreview
 								v-if="preview.isPreviewVisible.value && preview.activeDataTableId.value"

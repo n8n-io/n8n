@@ -638,6 +638,16 @@ describe('ExecutionPersistence', () => {
 				);
 			});
 
+			it.each([
+				['the owner project of the caller', 'project-1', 'project-1'],
+				['no project for an empty id', '', undefined],
+			])('passes %s to the ledger', async (_case, projectId, expected) => {
+				await persistence.create(createPayload, {}, { projectId });
+
+				const [facts] = executionLedger.recordCreated.mock.calls[0];
+				expect(facts.started.projectId).toBe(expected);
+			});
+
 			it('passes the reclaimed tombstone to the ledger', async () => {
 				mockTx.findOne.mockResolvedValue({
 					id: 'exec-old',
