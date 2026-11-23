@@ -62,23 +62,36 @@ function markers(resource: PromotionResource) {
 	return { blocked, meta: blocked ? undefined : meta };
 }
 
-function hintText(resource: PromotionResource): string | undefined {
+/**
+ * What the row says about its dependencies, as an icon and a number. The text goes in a tooltip,
+ * so a row stays short however many workflows need a resource.
+ */
+function hintOf(resource: PromotionResource) {
 	// A list that users only read has no selection to explain.
 	if (!props.selectable) return undefined;
 	const hint = rowHint(props.graph, props.inclusion, resource);
 	if (!hint) return undefined;
 	if (hint.kind === 'uses') {
-		return i18n.baseText('promotions.preview.tree.hint.uses', {
-			adjustToNumber: hint.count,
-			interpolate: { count: String(hint.count) },
-		});
+		return {
+			icon: 'link' as const,
+			count: hint.count,
+			text: i18n.baseText('promotions.preview.tree.hint.uses', {
+				adjustToNumber: hint.count,
+				interpolate: { count: String(hint.count) },
+			}),
+		};
 	}
 	const names = hint.names.join(', ');
-	return hint.more > 0
-		? i18n.baseText('promotions.preview.tree.hint.requiredByMore', {
-				interpolate: { names, count: String(hint.more) },
-			})
-		: i18n.baseText('promotions.preview.tree.hint.requiredBy', { interpolate: { names } });
+	return {
+		icon: 'lock' as const,
+		count: hint.names.length + hint.more,
+		text:
+			hint.more > 0
+				? i18n.baseText('promotions.preview.tree.hint.requiredByMore', {
+						interpolate: { names, count: String(hint.more) },
+					})
+				: i18n.baseText('promotions.preview.tree.hint.requiredBy', { interpolate: { names } }),
+	};
 }
 
 const rows = computed(() =>
@@ -90,7 +103,7 @@ const rows = computed(() =>
 			group: item.memberKeys
 				? groupCheck(props.graph, props.inclusion, item.memberKeys, props.disabled)
 				: undefined,
-			hint: resource ? hintText(resource) : undefined,
+			hint: resource ? hintOf(resource) : undefined,
 			resource,
 			check: resource
 				? selectionCheck(props.graph, resource, {
@@ -227,15 +240,19 @@ function onToggle(resource: PromotionResource) {
 								{{ marker.meta }}
 							</N8nText>
 						</span>
-						<N8nText
-							v-if="hint && !marker.blocked"
-							step="2xs"
-							color="text-light"
-							:class="$style.hint"
-							data-test-id="promotion-preview-tree-hint"
-						>
-							{{ hint }}
-						</N8nText>
+						<!-- Plain text: a workflow name is not HTML. -->
+						<N8nTooltip v-if="hint && !marker.blocked" placement="right" as-child>
+							<template #content>{{ hint.text }}</template>
+							<span
+								role="img"
+								:aria-label="hint.text"
+								:class="$style.hint"
+								data-test-id="promotion-preview-tree-hint"
+							>
+								<N8nIcon :icon="hint.icon" size="xsmall" />
+								<N8nText step="2xs" color="text-light">{{ hint.count }}</N8nText>
+							</span>
+						</N8nTooltip>
 					</button>
 					<!-- Only Apply has a Blockers tab to open, so Promote shows a plain marker. As the
 					trigger itself, each one opens the tooltip on keyboard focus. -->
@@ -334,8 +351,12 @@ function onToggle(resource: PromotionResource) {
 }
 
 .hint {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
 	flex-shrink: 0;
 	margin-left: auto;
+	color: var(--text-color--subtler);
 	white-space: nowrap;
 }
 

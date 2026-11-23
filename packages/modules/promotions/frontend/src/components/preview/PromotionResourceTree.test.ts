@@ -204,12 +204,15 @@ describe('PromotionResourceTree', () => {
 		it('should say what needs a locked resource and how many dependencies a workflow uses', () => {
 			const { getAllByTestId } = render(['workflow:w1']);
 
-			expect(
-				row(getAllByTestId, 'dataTable:t1').getByTestId('promotion-preview-tree-hint'),
-			).toHaveTextContent('Required by Invoice reconciliation');
-			expect(
-				row(getAllByTestId, 'workflow:w1').getByTestId('promotion-preview-tree-hint'),
-			).toHaveTextContent('Uses 3 dependencies');
+			// The row shows an icon and a number. The text is the label, and the tooltip.
+			const locked = row(getAllByTestId, 'dataTable:t1').getByTestId('promotion-preview-tree-hint');
+			expect(locked).toHaveAccessibleName('Required by Invoice reconciliation');
+			expect(locked).toHaveTextContent('1');
+			const workflow = row(getAllByTestId, 'workflow:w1').getByTestId(
+				'promotion-preview-tree-hint',
+			);
+			expect(workflow).toHaveAccessibleName('Uses 3 dependencies');
+			expect(workflow).toHaveTextContent('3');
 			expect(
 				row(getAllByTestId, 'workflow:w9').queryByTestId('promotion-preview-tree-hint'),
 			).toBeNull();
