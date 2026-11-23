@@ -81,7 +81,7 @@ function requestedKeys(data: unknown): string[] {
 const INBOX_LIST = /\/inbox$/;
 const INBOX_SUMMARY = /\/inbox\/summary$/;
 const REVIEW_CHANGES = /\/promotions\/reviews\/[^/]+\/changes$/;
-const REVIEW_DETAILS = /\/promotions\/reviews\/[^/]+\/details$/;
+const REVIEW_DETAILS = /\/promotions\/reviews\/[^/]+\/changes\/details$/;
 
 let remove: (() => void) | undefined;
 
