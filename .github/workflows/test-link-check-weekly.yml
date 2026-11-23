@@ -11,6 +11,7 @@ permissions:
 jobs:
   check:
     name: Check links in packages/
+    if: github.repository == 'n8n-io/n8n'
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-2vcpu-ubuntu-2204' }}
     timeout-minutes: 20
     env:

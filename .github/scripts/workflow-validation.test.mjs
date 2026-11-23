@@ -462,3 +462,16 @@ describe('unpublished package handling', () => {
 		);
 	});
 });
+
+describe('test-link-check-weekly.yml', () => {
+	const workflow = workflowFile('test-link-check-weekly.yml');
+
+	it('restricts the check job to n8n-io/n8n and notifies only on check failure', () => {
+		const check = workflow.jobs.check;
+		const notify = workflow.jobs['notify-on-failure'];
+
+		assert.equal(check.if, "github.repository == 'n8n-io/n8n'");
+		assert.deepEqual(notify.needs, ['check']);
+		assert.equal(notify.if, "${{ always() && contains(needs.*.result, 'failure') }}");
+	});
+});
