@@ -1,0 +1,24 @@
+packages/frontend/editor-ui/src/features/shared/nodeCreator/composables/useActions.test.ts
+  s_5e5f3ce1c6da16::t_b8d3912d7b755b 575
+  s_5e5f3ce1c6da16::t_a461566fae5880 76,566,570-574,576-583,585-592,594-599
+  s_5e5f3ce1c6da16::t_4a769c84da1ab1 567-569,584,593
+  s_5e5f3ce1c6da16::t_e0604c3c3d731f 600-601
+packages/frontend/editor-ui/src/features/shared/nodeCreator/composables/useActions.ts
+  s_5e5f3ce1c6da16::t_6dee9fff29f629 432-437
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cff8310f14a4bf6800647a22fa1139f83e654b08",
+  "prompts": {},
+  "sessions": {
+    "s_5e5f3ce1c6da16": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "512d7f4b-1d3a-4776-9de2-8862e7f307bc",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}
