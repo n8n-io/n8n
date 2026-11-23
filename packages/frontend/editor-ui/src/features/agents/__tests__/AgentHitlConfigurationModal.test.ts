@@ -1,3 +1,8 @@
+import type { INodeUi } from '@/Interface';
+import {
+	buildNodeGroupLayoutComponents,
+	computeNodeGroupLayoutPushes,
+} from '@/features/workflows/canvas/composables/useCanvasNodeGroupLayout';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { LOCAL_STORAGE_CANVAS_GROUP_EXPANDED } from '@/app/constants/localStorage';
 import { useCanvasGroupIdStorage } from '@/features/workflows/canvas/composables/useCanvasGroupIdStorage';
@@ -258,11 +263,26 @@ it('names a new workflow from the Agent and the next available number', async ()
 	);
 	const created = mocks.create.mock.calls[0][0] as Pick<IWorkflowBase, 'nodes' | 'nodeGroups'>;
 	const verification = created.nodes.find((node) => node.type === 'n8n-nodes-base.noOp');
+	const uiNodes = created.nodes as INodeUi[];
+	const components = buildNodeGroupLayoutComponents({
+		allGroups: created.nodeGroups ?? [],
+		nodes: uiNodes,
+		getNodeById: (id) => uiNodes.find((node) => node.id === id),
+		isGroupCollapsed: () => false,
+	});
+	expect(created.nodes.map((node) => node.position[1])).toEqual([0, 0, 0]);
+	expect(
+		computeNodeGroupLayoutPushes({
+			components,
+			expandedGroupIds: new Set(created.nodeGroups?.map((group) => group.id)),
+		}).filter(({ axis }) => axis === 'y'),
+	).toEqual([]);
 	expect(created.nodes.some((node) => node.type === 'n8n-nodes-base.stickyNote')).toBe(false);
 	expect(created.nodeGroups).toEqual([
 		{
 			id: expect.any(String),
-			name: 'Replace this with your logic to verify the agent request',
+			name: 'Replace with your logic',
+			description: "Add nodes here to verify or request approval based on the agent's request",
 			nodeIds: [verification?.id],
 		},
 	]);

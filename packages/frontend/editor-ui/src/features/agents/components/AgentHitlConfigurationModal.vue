@@ -382,7 +382,8 @@ async function createWorkflow() {
 					name: responseName,
 					type: 'n8n-nodes-base.agentDecisionResponse',
 					typeVersion: 1,
-					position: [480, 0],
+					// Leave space for the expanded verification section.
+					position: [720, 0],
 					parameters: { approved: false },
 				},
 			],
@@ -398,6 +399,7 @@ async function createWorkflow() {
 				{
 					id: sectionId,
 					name: i18n.baseText('agents.hitl.workflowVerificationSectionName'),
+					description: i18n.baseText('agents.hitl.workflowVerificationSectionDescription'),
 					nodeIds: [verificationId],
 				},
 			],
