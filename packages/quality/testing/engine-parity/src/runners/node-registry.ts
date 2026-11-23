@@ -1,5 +1,6 @@
 import { UnrecognizedNodeTypeError } from 'n8n-core';
 // The node sources predate strict mode or use path aliases, so all nodes come from dist.
+import { Code } from 'n8n-nodes-base/dist/nodes/Code/Code.node';
 import { Filter } from 'n8n-nodes-base/dist/nodes/Filter/Filter.node';
 import { If } from 'n8n-nodes-base/dist/nodes/If/If.node';
 import { ManualTrigger } from 'n8n-nodes-base/dist/nodes/ManualTrigger/ManualTrigger.node';
@@ -30,6 +31,7 @@ const registry = new Map<string, INodeType | IVersionedNodeType>([
 	['n8n-nodes-base.limit', new Limit()],
 	['n8n-nodes-base.noOp', new NoOp()],
 	['n8n-nodes-base.splitInBatches', new SplitInBatches()],
+	['n8n-nodes-base.code', new Code()],
 ]);
 
 for (const { type } of catalogNodeTypes()) {

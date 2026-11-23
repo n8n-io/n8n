@@ -70,8 +70,8 @@ export TESTCONTAINERS_RYUK_DISABLED=true
    harness discards a case that the check refuses, and counts
    the reason.
 4. **Runners** (`src/runners`). Both runners use one node registry, one
-   expression evaluator, and one set of additional data, so a difference comes
-   from the engine.
+   expression evaluator, one set of additional data, and one in-process stand-in
+   for the JavaScript task runner, so a difference comes from the engine.
    - v1: `WorkflowExecute` in `trigger` mode. The fired trigger passes the
      trigger items through.
    - v2: one Postgres container and one engine runtime for each worker. The

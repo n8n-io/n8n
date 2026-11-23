@@ -58,7 +58,7 @@ describe('grammar', () => {
 		expect(second).toEqual(first);
 	});
 
-	it.each(['smoke', 'branching', 'loops'])(
+	it.each(['smoke', 'branching', 'loops', 'code'])(
 		'makes eligible workflows with valid ports for the "%s" rule set',
 		(name) => {
 			const cases = sample(name);
@@ -142,7 +142,7 @@ describe('grammar', () => {
 	});
 
 	it('makes cases that the SDK can print as code', () => {
-		for (const parityCase of sample('loops', 3, 20)) {
+		for (const parityCase of sample('code', 3, 20)) {
 			expect(toSdkCode(parityCase.ir)).toContain("workflow('parity'");
 		}
 	});

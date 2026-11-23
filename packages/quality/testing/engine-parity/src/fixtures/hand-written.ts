@@ -155,4 +155,22 @@ export const handWrittenCases: Record<string, ParityCase> = {
 		],
 		[{ json: { n: 1 } }, { json: { n: 2 } }, { json: { n: 3 } }],
 	),
+
+	'code node, each item': build(
+		[
+			{
+				key: 'Code',
+				catalogId: 'code.eachItem',
+				via: 'chain',
+				params: {
+					mode: 'runOnceForEachItem',
+					language: 'javaScript',
+					jsCode:
+						"return { json: { ...$json, doubled: $json.n * 2, first: $('Trigger').first().json.n } };",
+				},
+			},
+		],
+		chain('Trigger', 'Code'),
+		[{ json: { n: 1 } }, { json: { n: 2 } }],
+	),
 };

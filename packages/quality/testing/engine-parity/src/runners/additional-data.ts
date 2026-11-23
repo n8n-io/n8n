@@ -1,5 +1,7 @@
 import type { IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 
+import { startRunnerTask } from './code-runner';
+
 /**
  * The additional data that both runners give to nodes. Only the fields that the
  * catalog nodes read are set. It is the same for both engines, so a difference
@@ -21,6 +23,8 @@ export function parityAdditionalData(
 		currentNodeExecutionIndex: 0,
 		// No run data of another execution, as the engine v2 data plane answers.
 		getRunExecutionData: async () => await Promise.resolve(undefined),
+		startRunnerTask,
+		getRunnerStatus: () => ({ available: true }),
 		...extra,
 	};
 	// A partial object: the nodes in the catalog read no other field.

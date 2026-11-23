@@ -81,6 +81,11 @@ export const ruleSets: Record<string, ParityRules> = {
 		features: { ...base.features, errorOutputs: true },
 		expressions: { ghostRate: 0.3 },
 	},
+	code: {
+		...base,
+		name: 'code',
+		nodes: [...base.nodes, 'code.allItems', 'code.eachItem'],
+	},
 };
 
 /** The rule sets that `PARITY_RULES` names. The default is `smoke`. */

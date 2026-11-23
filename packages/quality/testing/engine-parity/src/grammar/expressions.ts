@@ -35,6 +35,8 @@ export interface ExprScope {
 	upstream: string[];
 	/** Names of nodes that did not run before the current node. */
 	elsewhere: string[];
+	/** Inside a Code node in "run once for all items" mode, `$json` is `item.json`. */
+	json?: string;
 }
 
 // Not fc.double: most doubles in [0, 1) are near 0, so almost every pick would select the trigger.
@@ -144,7 +146,7 @@ function renderPath(path: FieldPath): string {
 function renderSource(source: ItemSource, scope: ExprScope): string {
 	switch (source.kind) {
 		case 'json':
-			return '$json';
+			return scope.json ?? '$json';
 		case 'input':
 			return `$input.${source.accessor}().json`;
 		case 'node': {
