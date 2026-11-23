@@ -120,12 +120,24 @@ describe('DatabaseLeaseProvider', () => {
 		await vi.advanceTimersByTimeAsync(20 * 1000);
 		await registering;
 
-		const stopping = provider.stop();
+		let finishDelete!: () => void;
+		sessions.deleteSession.mockImplementationOnce(
+			async () => await new Promise<void>((resolve) => (finishDelete = resolve)),
+		);
+		let stopped = false;
+		const stopping = provider.stop().then(() => {
+			stopped = true;
+		});
 		finishInsert();
-		await stopping;
+		await vi.advanceTimersByTimeAsync(0);
 
 		const [inserted] = insertedSessions();
 		expect(sessions.deleteSession).toHaveBeenCalledWith(inserted.id, {});
+		expect(stopped).toBe(false);
+
+		finishDelete();
+		await stopping;
+		expect(stopped).toBe(true);
 	});
 
 	it('starts no session for a kind that registers after stop', async () => {
