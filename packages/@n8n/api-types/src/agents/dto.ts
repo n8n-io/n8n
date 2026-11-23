@@ -807,6 +807,15 @@ const agentChatMessageShape = {
 	 */
 	clientContext: z.record(z.unknown()).optional(),
 	/**
+	 * Only the preview chat has test runs. Every other surface accepts `live` and rejects
+	 * `test`, so a message that asked for a test run fails instead of running live.
+	 */
+	mode: z.literal('live').optional(),
+};
+
+const agentPreviewChatMessageShape = {
+	...agentChatMessageShape,
+	/**
 	 * `test` starts a test run (safe testing flag on). A chat that is already a test run
 	 * stays one. Absent or `live` runs the draft against real services.
 	 */
@@ -827,6 +836,11 @@ const hasSessionForMessageId = {
 
 const agentChatMessageSchema = z
 	.object(agentChatMessageShape)
+	.refine(hasMessageContent.check, hasMessageContent.options)
+	.refine(hasSessionForMessageId.check, hasSessionForMessageId.options);
+
+const agentPreviewChatMessageSchema = z
+	.object(agentPreviewChatMessageShape)
 	.refine(hasMessageContent.check, hasMessageContent.options)
 	.refine(hasSessionForMessageId.check, hasSessionForMessageId.options);
 
@@ -871,6 +885,25 @@ export class AgentChatMessageDto extends Z.class(agentChatMessageShape) {
 
 	static override parse(data: unknown) {
 		return agentChatMessageSchema.parse(data);
+	}
+}
+
+/**
+ * A message in the agent preview chat, the only surface with test runs. Same as
+ * {@link AgentChatMessageDto}, but `mode` can be `test`. Validate via `parse`/`safeParse`,
+ * for the same reason as `AgentChatMessageDto`.
+ */
+export class AgentPreviewChatMessageDto extends Z.class(agentPreviewChatMessageShape) {
+	constructor(data: z.infer<typeof agentPreviewChatMessageSchema>) {
+		super(agentPreviewChatMessageSchema.parse(data));
+	}
+
+	static override safeParse(data: unknown) {
+		return agentPreviewChatMessageSchema.safeParse(data);
+	}
+
+	static override parse(data: unknown) {
+		return agentPreviewChatMessageSchema.parse(data);
 	}
 }
 
