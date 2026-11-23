@@ -5,7 +5,9 @@
 // captures InstanceAi events into the CapturedEvent[] shape that
 // extractOutcomeFromEvents consumes, then runs the discovery check. No
 // Docker, no n8n server — the orchestrator runs in-process against
-// stubbed services.
+// stubbed services. The agent is the one that both Assistant runtimes build.
+// The runner reads its stream itself (see ./stream-turn.ts), so it needs no
+// runtime.
 //
 // What's tested: the orchestrator's first dispatch decision. Most tools are
 // NOT stubbed — when the orchestrator loads a skill or reaches for a
@@ -50,6 +52,7 @@ import {
 import { credentialAutoSetupResponder } from './credential-approval';
 import { evaluateDiscoveryTrial } from './expected-tools-invoked';
 import { resolveStreamStatus } from './stream-status';
+import { streamTurn } from './stream-turn';
 import {
 	buildTurnMessage,
 	createSeededThread,
@@ -76,10 +79,6 @@ import {
 import { createInstanceAgent } from '../../src/agent/instance-agent';
 import type { InstanceAiEventBus } from '../../src/event-bus';
 import type { Logger } from '../../src/logger';
-import {
-	executeResumableStream,
-	normalizeStreamSource,
-} from '../../src/runtime/resumable-stream-executor';
 import { loadInstanceAiSkills } from '../../src/skills/skills';
 import { AGENT_BUILDER_ORCHESTRATOR_TOOL_NAMES } from '../../src/tools/tool-ids';
 import type {
@@ -91,7 +90,7 @@ import type {
 	TaskStorage,
 } from '../../src/types';
 import { buildKnowledgeBaseWorkspaceBundle } from '../../src/knowledge-base/materialize-knowledge-base';
-import { asResumable, type SuspensionInfo } from '../../src/utils/stream-helpers';
+import type { SuspensionInfo } from '../../src/utils/stream-helpers';
 import { createInMemoryEventBus, wrapEventBusWithObserver } from '../harness/in-memory-event-bus';
 import { createStubServices, defaultNodesJsonPath } from '../harness/stub-services';
 import { createStubWorkspace, stubWorkspaceRoot } from '../harness/stub-workspace';
@@ -292,45 +291,28 @@ export async function runOrchestratorTurn(
 				},
 			],
 		};
-		const streamSource = normalizeStreamSource(
-			await agent.stream(buildTurnMessage(options.scenario), {
+		const run = streamTurn({
+			agent,
+			input: buildTurnMessage(options.scenario),
+			executionOptions: {
 				maxIterations: maxSteps,
-				...(thread ? { persistence: { threadId, resourceId: context.userId } } : {}),
-				abortSignal: abortController.signal,
 				providerOptions: {
 					anthropic: { cacheControl: { type: 'ephemeral' as const } },
 				},
 				...(guardrails ? { guardrails } : {}),
-			}),
-		);
-
-		const run = executeResumableStream({
-			agent: asResumable(agent),
-			stream: streamSource,
-			context: {
-				threadId,
-				runId,
-				agentId: ORCHESTRATOR_AGENT_ID,
-				eventBus,
-				signal: abortController.signal,
-				logger: silentLogger(),
 			},
-			control: {
-				mode: 'auto',
-				onSuspension: (suspension) => suspensions.set(suspension.requestId, suspension),
-				// A resumed stream runs without the stream options, so the route check goes along.
-				buildResumeOptions: ({ agentRunId, suspension }) => ({
-					runId: agentRunId,
-					toolCallId: suspension.toolCallId,
-					...(guardrails ? { guardrails } : {}),
-				}),
-				waitForConfirmation: async (requestId: string): Promise<Record<string, unknown>> => {
-					const suspension = suspensions.get(requestId);
-					if (answerQuestions && suspension?.suspendPayload.inputType === 'questions') {
-						return await answerQuestions(suspension, events);
-					}
-					return resolveConfirmation(suspension, confirmationPolicy, approvalResponders);
-				},
+			...(thread ? { persistence: { threadId, resourceId: context.userId } } : {}),
+			runId,
+			agentId: ORCHESTRATOR_AGENT_ID,
+			signal: abortController.signal,
+			// The tools publish their events on the bus, so the stream events go there too.
+			onEvent: (event) => eventBus.publish(threadId, event),
+			answerSuspension: async (suspension) => {
+				suspensions.set(suspension.requestId, suspension);
+				if (answerQuestions && suspension.suspendPayload.inputType === 'questions') {
+					return await answerQuestions(suspension, events);
+				}
+				return resolveConfirmation(suspension, confirmationPolicy, approvalResponders);
 			},
 		});
 		void run.catch(() => {});
