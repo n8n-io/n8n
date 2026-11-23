@@ -72,7 +72,7 @@ try {
 					}));
 					b.onLoad({ filter: /.*/, namespace: 'fixture-stub' }, () => ({
 						contents:
-							'module.exports = {Logger:class {},Container:{get:()=>({info:()=>{},warn:()=>{}})},Service:()=>()=>{},OnShutdown:()=>()=>{},AgentsCredentialProvider:class {},isCredentialAgentIntegration:()=>false,userHasScopes:()=>true,getIntegrationToolConnectionDescriptors:()=>[],InstrumentedRunUnsupportedError:class extends Error {},buildMcpClientForServer:(_server,options)=>options.proxyFetch};',
+							'module.exports = {Logger:class {},Container:{get:()=>({info:()=>{},warn:()=>{}})},Service:()=>()=>{},OnShutdown:()=>()=>{},AgentsCredentialProvider:class {},isCredentialAgentIntegration:()=>false,userHasScopes:()=>true,getIntegrationToolConnectionDescriptors:()=>[],InstrumentedRunUnsupportedError:class extends Error {},buildMcpClientForServer:(_server,options)=>options.proxyFetch,isMcpGuardActive:()=>false,withMcpGuard:(fetch)=>fetch,GUARDED_CALL_TIMEOUT_MS:0,resolveModelConfig:async(config)=>config.model,createAiProxyFetch:()=>fetch};',
 					}));
 				},
 			},
