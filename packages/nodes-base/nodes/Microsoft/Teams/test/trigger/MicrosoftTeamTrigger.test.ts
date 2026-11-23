@@ -484,6 +484,8 @@ describe('Microsoft Teams Trigger Node', () => {
 					teamId: 't1',
 					channelId: 'c1',
 					filters: { mentionsMe: true },
+					// The dotted name as well, so a read of the single option also sees it.
+					'filters.mentionsMe': true,
 				});
 				(microsoftApiRequestAllItems.call as Mock).mockResolvedValue([]);
 				(microsoftApiRequest.call as Mock).mockResolvedValue({ id: 'new' });
@@ -2063,6 +2065,19 @@ describe('Microsoft Teams Trigger Node', () => {
 			new NodeApiError(mock<INode>(), { message: 'Forbidden', httpCode: '403' });
 		const webhook = async (ctx: TriggerContext) =>
 			await new MicrosoftTeamsTrigger().webhook.call(ctx);
+		// A stored keyword expression that fails when evaluated. The raw read does not evaluate it.
+		const failFilters = (ctx: TriggerContext, error: Error) =>
+			ctx.getNodeParameter.mockImplementation(((
+				name: string,
+				fallback?: unknown,
+				options?: { rawExpressions?: boolean },
+			) => {
+				if (name === 'filters') {
+					if (options?.rawExpressions) return { keyword: '={{ $("Missing").item }}' };
+					throw error;
+				}
+				return name === 'event' ? 'newChannelMessage' : fallback;
+			}) as never);
 
 		beforeEach(() => {
 			(microsoftApiRequestAllItems.call as Mock).mockResolvedValue([]);
@@ -2258,10 +2273,7 @@ describe('Microsoft Teams Trigger Node', () => {
 		it('throws after the ack when the filters cannot be read', async () => {
 			const filtersError = new Error('cannot resolve the keyword');
 			const { ctx, res } = arrange({ value: [channelItem('m1')], params: skipBot() });
-			ctx.getNodeParameter.mockImplementation(((name: string, fallback?: unknown) => {
-				if (name === 'filters') throw filtersError;
-				return name === 'event' ? 'newChannelMessage' : fallback;
-			}) as never);
+			failFilters(ctx, filtersError);
 
 			await expect(webhook(ctx)).rejects.toBe(filtersError);
 			expect(res.status).toHaveBeenCalledWith(202);
@@ -2274,10 +2286,7 @@ describe('Microsoft Teams Trigger Node', () => {
 				value: [channelItem('m1'), reauthorization],
 				params: skipBot(),
 			});
-			ctx.getNodeParameter.mockImplementation(((name: string, fallback?: unknown) => {
-				if (name === 'filters') throw new Error(`cannot resolve ${'x'.repeat(300)}`);
-				return name === 'event' ? 'newChannelMessage' : fallback;
-			}) as never);
+			failFilters(ctx, new Error(`cannot resolve ${'x'.repeat(300)}`));
 
 			const result = await webhook(ctx);
 
@@ -2296,28 +2305,26 @@ describe('Microsoft Teams Trigger Node', () => {
 				params: skipBot(),
 				mode: 'manual',
 			});
-			ctx.getNodeParameter.mockImplementation(((name: string, fallback?: unknown) => {
-				if (name === 'filters') throw filtersError;
-				return name === 'event' ? 'newChannelMessage' : fallback;
-			}) as never);
+			failFilters(ctx, filtersError);
 
 			await expect(webhook(ctx)).rejects.toBe(filtersError);
 			expect(res.status).toHaveBeenCalledWith(202);
-			expect(calls('PATCH')).toHaveLength(0);
+			expect(res.end).toHaveBeenCalledTimes(1);
+			expect(microsoftApiRequest.call).not.toHaveBeenCalled();
+			expect(microsoftApiRequestAllItems.call).not.toHaveBeenCalled();
 		});
 
 		it('handles a lifecycle-only batch without reading the filters or a message', async () => {
 			const { ctx } = arrange({ value: [reauthorization], params: skipBot() });
-			ctx.getNodeParameter.mockImplementation(((name: string, fallback?: unknown) => {
-				if (name === 'filters') throw new Error('cannot resolve the keyword');
-				return name === 'event' ? 'newChannelMessage' : fallback;
-			}) as never);
 			routeMessages({});
 
 			const result = await webhook(ctx);
 
+			const filterReads = ctx.getNodeParameter.mock.calls.filter(([name]) => name === 'filters');
+			expect(filterReads).toEqual([]);
 			expect(calls('PATCH').map((call) => call[2])).toEqual(['/v1.0/subscriptions/sub1']);
 			expect(messageReads()).toEqual([]);
+			expect(ctx.logger.warn).not.toHaveBeenCalled();
 			expect(result).toEqual({ noWebhookResponse: true });
 		});
 
@@ -2336,6 +2343,7 @@ describe('Microsoft Teams Trigger Node', () => {
 				});
 				const { ctx } = arrange({
 					value: [channelItem('m1'), channelItem('m2')],
+					// A stale stored id that message 2 mentions. It must not pass.
 					staticData: {
 						subscriptionIds: ['sub1'],
 						webhookSecret: 'secret',
@@ -2362,6 +2370,7 @@ describe('Microsoft Teams Trigger Node', () => {
 
 				const result = await webhook(ctx);
 
+				expect(messageReads()).toEqual([messagePath('m1'), messagePath('m2')]);
 				expect(result.workflowData?.[0].map((item) => item.json.id)).toEqual(['m1']);
 			});
 
@@ -2394,6 +2403,7 @@ describe('Microsoft Teams Trigger Node', () => {
 				params: skipBot(),
 			});
 
+			expect(revoked.httpCode).toBeNull();
 			await expect(webhook(ctx)).rejects.toBe(revoked);
 			expect(messageReads()).toEqual([messagePath('m1')]);
 		});

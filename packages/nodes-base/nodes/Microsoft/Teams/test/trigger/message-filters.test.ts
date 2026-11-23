@@ -56,7 +56,8 @@ const off: MessageFilters = {
 const apiError = (httpCode: string) =>
 	new NodeApiError(mock<INode>(), { message: `status ${httpCode}`, httpCode });
 
-// The shape `microsoftApiRequest` throws when core cannot refresh a revoked OAuth2 token.
+// The shape `microsoftApiRequest` throws when core cannot refresh a revoked OAuth2 token: it has
+// no HTTP status.
 const reconnectError = () =>
 	new NodeApiError(
 		mock<INode>(),
@@ -166,6 +167,13 @@ describe('message filters', () => {
 			['repeated spaces in the subject', { subject: 'please   review' }, 'please review', true],
 			['an emoji', html('<p>ok <emoji id="1f600_grinning" alt="😀"></emoji></p>'), '😀', true],
 			['a custom emoji', html('<customemoji alt="party"></customemoji>'), 'party', true],
+			[
+				'text after a self-closed emoji',
+				html('<p>ok <emoji alt="😀" /> deploy now</p>'),
+				'deploy now',
+				true,
+			],
+			['repeated spaces in the keyword', { subject: 'ann please' }, 'ann   please', true],
 		])('matches the keyword for %s', async (_label, message, keyword, expected) => {
 			expect(await messagePassesFilters(message, { ...off, keyword }, undefined)).toBe(expected);
 		});
@@ -244,6 +252,24 @@ describe('message filters', () => {
 				if (name !== 'filters') throw new Error(`unexpected read of ${name}`);
 				return fallback as NodeParameterValueType;
 			});
+
+			expect(getMessageFilters.call(ctx)).toBeUndefined();
+		});
+
+		it('evaluates no filter expression for an event without messages', () => {
+			const ctx = ctxWith({
+				event: 'newChannel',
+				filters: { keyword: '={{ $("Missing").item }}' },
+			});
+			const baseline = ctx.getNodeParameter.getMockImplementation();
+			ctx.getNodeParameter.mockImplementation(((
+				name: string,
+				fallback?: unknown,
+				options?: { rawExpressions?: boolean },
+			) => {
+				if (name === 'filters' && !options?.rawExpressions) throw new Error('cannot resolve');
+				return baseline?.(name, fallback as never);
+			}) as never);
 
 			expect(getMessageFilters.call(ctx)).toBeUndefined();
 		});
@@ -337,9 +363,10 @@ describe('message filters', () => {
 
 	describe('filterChangeNotifications', () => {
 		const skipBot = { ...off, skipBotMessages: true };
+		// A path that is not in the table gets a 404, so a wrong path cannot pass a filter.
 		const routeMessages = (answers: Record<string, unknown>) =>
 			request.mockImplementation(async (_ctx: unknown, _method: string, path: RequestPath) => {
-				const answer = answers[String(path)];
+				const answer = answers[String(path)] ?? apiError('404');
 				if (answer instanceof Error) throw answer;
 				return answer;
 			});
@@ -456,6 +483,7 @@ describe('message filters', () => {
 			);
 
 			expect(denied).toBe(revoked);
+			expect(denied?.httpCode).toBeNull();
 			expect(denied?.message).toContain('needs to be reconnected');
 			expect(passed).toEqual([]);
 			expect(readPaths()).toEqual([messagePath('1')]);
@@ -474,6 +502,19 @@ describe('message filters', () => {
 			const { denied } = await filterChangeNotifications.call(
 				ctxWith(),
 				[notification('1')],
+				skipBot,
+			);
+
+			expect(denied).toBe(revoked);
+		});
+
+		it('returns a revoked credential as denied after an earlier 403', async () => {
+			const revoked = reconnectError();
+			routeMessages({ [messagePath('1')]: apiError('403'), [messagePath('2')]: revoked });
+
+			const { denied } = await filterChangeNotifications.call(
+				ctxWith(),
+				[notification('1'), notification('2')],
 				skipBot,
 			);
 
@@ -554,6 +595,7 @@ describe('message filters', () => {
 				});
 				const items = [notification('1'), notification('2')];
 
+				// `old` is a stale stored id. Message 2 mentions it and must not pass.
 				const { passed } = await filterChangeNotifications.call(
 					ctxWith({}, { mentionUserId: 'old' }),
 					items,
@@ -565,26 +607,58 @@ describe('message filters', () => {
 				expect(request.mock.calls[0][4]).toEqual({ $select: 'id' });
 			});
 
-			it.each(['401', '403'])(
-				'returns a %s from /me as denied without reading messages',
-				async (status) => {
-					routeMessages({ '/v1.0/me': apiError(status) });
+			it('follows a change of the signed-in user between batches', async () => {
+				const ctx = ctxWith();
+				const items = [notification('1'), notification('2')];
+				routeMessages({
+					'/v1.0/me': { id: 'alice' },
+					[messagePath('1')]: mentioning('alice'),
+					[messagePath('2')]: mentioning('bob'),
+				});
+				const first = await filterChangeNotifications.call(ctx, items, mentionsMe);
+				routeMessages({
+					'/v1.0/me': { id: 'bob' },
+					[messagePath('1')]: mentioning('alice'),
+					[messagePath('2')]: mentioning('bob'),
+				});
 
-					const result = await filterChangeNotifications.call(
-						ctxWith(),
-						[notification('1')],
-						mentionsMe,
-					);
+				const second = await filterChangeNotifications.call(ctx, items, mentionsMe);
 
-					expect(result.passed).toEqual([]);
-					expect(result.denied?.httpCode).toBe(status);
-					expect(result.denied?.message).toBe(
-						'Microsoft Teams Trigger could not read the signed-in user',
-					);
-					expect(result.denied?.description).toContain('User.Read');
-					expect(readPaths()).toEqual(['/v1.0/me']);
-				},
-			);
+				expect(first.passed).toEqual([items[0]]);
+				expect(second.passed).toEqual([items[1]]);
+				expect(readPaths().filter((path) => path === '/v1.0/me')).toHaveLength(2);
+			});
+
+			it('returns a 403 from /me as denied with a User.Read hint, without reading messages', async () => {
+				routeMessages({ '/v1.0/me': apiError('403') });
+
+				const result = await filterChangeNotifications.call(
+					ctxWith(),
+					[notification('1')],
+					mentionsMe,
+				);
+
+				expect(result.passed).toEqual([]);
+				expect(result.denied?.httpCode).toBe('403');
+				expect(result.denied?.message).toBe(
+					'Microsoft Teams Trigger could not read the signed-in user',
+				);
+				expect(result.denied?.description).toContain('User.Read');
+				expect(readPaths()).toEqual(['/v1.0/me']);
+			});
+
+			it('returns a 401 from /me as denied with its own text', async () => {
+				const unauthorized = apiError('401');
+				routeMessages({ '/v1.0/me': unauthorized });
+
+				const result = await filterChangeNotifications.call(
+					ctxWith(),
+					[notification('1')],
+					mentionsMe,
+				);
+
+				expect(result).toEqual({ passed: [], denied: unauthorized });
+			});
 
 			it('returns a revoked credential on /me as denied', async () => {
 				const revoked = reconnectError();

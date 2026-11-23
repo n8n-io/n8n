@@ -51,39 +51,44 @@ function deniedError(
 	what: string,
 ): NodeApiError | undefined {
 	if (!(error instanceof NodeApiError)) return undefined;
-	if (isRevokedCredential(error)) return error;
 	const status = httpStatus(error);
-	if (status !== '401' && status !== '403') return undefined;
+	// A 401 keeps its own text: under Service Principal it names the rejected client secret.
+	if (isRevokedCredential(error) || status === '401') return error;
+	if (status !== '403') return undefined;
 	const message = `Microsoft Teams Trigger could not read ${what}`;
 	const description = `Grant the ${permission} permission to the credential and try again.`;
 	return new NodeApiError(
 		this.getNode(),
 		{ message, description },
-		{ message, description, httpCode: status },
+		{ message, description, httpCode: '403' },
 	);
 }
 
+// An expression counts as set: it is not evaluated before the event check.
+const isSet = (value: unknown) =>
+	value === true || (typeof value === 'string' && value.trim() !== '');
+
 /** The enabled filters, or `undefined` when no filter is on. */
 export function getMessageFilters(this: IWebhookFunctions): MessageFilters | undefined {
-	// Read the filters first: with no filter on, the node must not read other parameters.
+	// The raw read evaluates nothing, so it cannot throw. With no filter set, the node reads no
+	// other parameter, and a filter expression is only evaluated for a message event.
+	const stored: unknown = this.getNodeParameter('filters', {}, { rawExpressions: true });
+	if (!isRecord(stored) || !Object.values(stored).some(isSet)) return undefined;
+	if (!isMessageEvent(this.getNodeParameter('event', ''))) return undefined;
 	const raw: unknown = this.getNodeParameter('filters', {});
 	const options = isRecord(raw) ? raw : {};
-	const keyword = typeof options.keyword === 'string' ? options.keyword.trim() : '';
-	const skipSystemMessages = options.skipSystemMessages === true;
-	const skipBotMessages = options.skipBotMessages === true;
-	if (options.mentionsMe !== true && keyword === '' && !skipSystemMessages && !skipBotMessages) {
-		return undefined;
-	}
-	if (!isMessageEvent(this.getNodeParameter('event', ''))) return undefined;
 	const filters: MessageFilters = {
 		// Service Principal has no signed-in user.
 		mentionsMe:
 			options.mentionsMe === true && getTeamsCredentialType.call(this) !== SERVICE_PRINCIPAL_AUTH,
-		keyword,
-		skipSystemMessages,
-		skipBotMessages,
+		keyword: typeof options.keyword === 'string' ? options.keyword.trim() : '',
+		skipSystemMessages: options.skipSystemMessages === true,
+		skipBotMessages: options.skipBotMessages === true,
 	};
-	return filters.mentionsMe || keyword !== '' || skipSystemMessages || skipBotMessages
+	return filters.mentionsMe ||
+		filters.keyword !== '' ||
+		filters.skipSystemMessages ||
+		filters.skipBotMessages
 		? filters
 		: undefined;
 }
@@ -143,10 +148,12 @@ export function getMessagePath(
 	return undefined;
 }
 
-// Teams sends an emoji as `<emoji alt="😀">` with no text inside, so the keyword matches the alt text.
-const emojiAlt: FormatCallback = (elem, _walk, builder) => {
+// Teams sends an emoji as `<emoji alt="😀">` with no text inside, so the keyword matches the alt
+// text. The parser puts the text after a self-closed `<emoji />` inside it, so walk the children too.
+const emojiAlt: FormatCallback = (elem, walk, builder) => {
 	const alt: unknown = elem.attribs?.alt;
 	if (typeof alt === 'string') builder.addInline(alt);
+	walk(elem.children, builder);
 };
 
 async function plainBody(body: unknown): Promise<string> {
@@ -269,9 +276,13 @@ export async function filterChangeNotifications(
 			const status = httpStatus(error);
 			const deniedRead = deniedError.call(this, error, target.permission, 'the message');
 			if (deniedRead) {
+				// Every later read fails the same way and starts its own token refresh. The revoked
+				// credential is the error to show, even after an earlier 403.
+				if (isRevokedCredential(deniedRead)) {
+					denied = deniedRead;
+					break;
+				}
 				denied ??= deniedRead;
-				// Every later read fails the same way and starts its own token refresh.
-				if (isRevokedCredential(deniedRead)) break;
 			} else if (status === '404') {
 				logTrigger.call(this, 'debug', 'message gone, notification skipped', fields);
 			} else {
