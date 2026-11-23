@@ -6,6 +6,7 @@ import {
 	INSTANCE_AI_CLOUD_BROWSER_FLAG,
 	KNOWLEDGE_COLLECTIONS_FLAG,
 	SELF_HEALING_FLAG,
+	WORKFLOWS_IN_SKILLS_FLAG,
 } from '@n8n/api-types';
 import { setN8nVersion } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
@@ -275,6 +276,7 @@ describe('PostHog', () => {
 						INSTANCE_AI_CLOUD_BROWSER_FLAG,
 						KNOWLEDGE_COLLECTIONS_FLAG,
 						SELF_HEALING_FLAG,
+						WORKFLOWS_IN_SKILLS_FLAG,
 					],
 				});
 			},
@@ -339,6 +341,7 @@ describe('PostHog', () => {
 					[INSTANCE_AI_CLOUD_BROWSER_FLAG]: false,
 					[KNOWLEDGE_COLLECTIONS_FLAG]: false,
 					[SELF_HEALING_FLAG]: false,
+					[WORKFLOWS_IN_SKILLS_FLAG]: false,
 				},
 				featureFlagPayloads: payloads,
 			};
@@ -370,6 +373,7 @@ describe('PostHog', () => {
 				[INSTANCE_AI_CLOUD_BROWSER_FLAG]: false,
 				[KNOWLEDGE_COLLECTIONS_FLAG]: false,
 				[SELF_HEALING_FLAG]: false,
+				[WORKFLOWS_IN_SKILLS_FLAG]: false,
 			});
 			expect(second).toEqual({
 				...flags,
@@ -379,6 +383,7 @@ describe('PostHog', () => {
 				[INSTANCE_AI_CLOUD_BROWSER_FLAG]: false,
 				[KNOWLEDGE_COLLECTIONS_FLAG]: false,
 				[SELF_HEALING_FLAG]: false,
+				[WORKFLOWS_IN_SKILLS_FLAG]: false,
 			});
 			expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledTimes(2);
 		});
@@ -540,6 +545,7 @@ describe('PostHog', () => {
 					[INSTANCE_AI_CLOUD_BROWSER_FLAG]: false,
 					[KNOWLEDGE_COLLECTIONS_FLAG]: false,
 					[SELF_HEALING_FLAG]: false,
+					[WORKFLOWS_IN_SKILLS_FLAG]: false,
 					'some-other-flag': true,
 					'multivariate-flag': 'variant',
 					'boolean-flag': true,
@@ -564,6 +570,7 @@ describe('PostHog', () => {
 					[INSTANCE_AI_CLOUD_BROWSER_FLAG]: false,
 					[KNOWLEDGE_COLLECTIONS_FLAG]: false,
 					[SELF_HEALING_FLAG]: false,
+					[WORKFLOWS_IN_SKILLS_FLAG]: false,
 					'contested-flag': 'variant',
 				});
 			});
@@ -604,6 +611,7 @@ describe('PostHog', () => {
 						[INSTANCE_AI_CLOUD_BROWSER_FLAG]: false,
 						[KNOWLEDGE_COLLECTIONS_FLAG]: false,
 						[SELF_HEALING_FLAG]: false,
+						[WORKFLOWS_IN_SKILLS_FLAG]: false,
 						'value-only-flag': 'variant',
 						'payload-flag': 'variant',
 						'untouched-flag': true,
@@ -635,6 +643,7 @@ describe('PostHog', () => {
 					[INSTANCE_AI_CLOUD_BROWSER_FLAG]: false,
 					[KNOWLEDGE_COLLECTIONS_FLAG]: false,
 					[SELF_HEALING_FLAG]: false,
+					[WORKFLOWS_IN_SKILLS_FLAG]: false,
 					'live-flag': false,
 				});
 			});
@@ -671,6 +680,7 @@ describe('PostHog', () => {
 					[INSTANCE_AI_CLOUD_BROWSER_FLAG]: false,
 					[KNOWLEDGE_COLLECTIONS_FLAG]: false,
 					[SELF_HEALING_FLAG]: false,
+					[WORKFLOWS_IN_SKILLS_FLAG]: false,
 					'some-other-flag': true,
 				});
 			});
@@ -691,6 +701,7 @@ describe('PostHog', () => {
 					[INSTANCE_AI_CLOUD_BROWSER_FLAG]: false,
 					[KNOWLEDGE_COLLECTIONS_FLAG]: false,
 					[SELF_HEALING_FLAG]: false,
+					[WORKFLOWS_IN_SKILLS_FLAG]: false,
 					'084_eval_collections': true,
 				});
 			});
@@ -723,6 +734,7 @@ describe('PostHog', () => {
 					[INSTANCE_AI_CLOUD_BROWSER_FLAG]: false,
 					[KNOWLEDGE_COLLECTIONS_FLAG]: false,
 					[SELF_HEALING_FLAG]: false,
+					[WORKFLOWS_IN_SKILLS_FLAG]: false,
 					'101_agent_evals': true,
 				});
 			});
@@ -759,6 +771,7 @@ describe('PostHog', () => {
 					[INSTANCE_AI_CLOUD_BROWSER_FLAG]: false,
 					[KNOWLEDGE_COLLECTIONS_FLAG]: false,
 					[SELF_HEALING_FLAG]: false,
+					[WORKFLOWS_IN_SKILLS_FLAG]: false,
 					'104_canvas_aia_node_context': true,
 				});
 			});
@@ -783,6 +796,7 @@ describe('PostHog', () => {
 					[INSTANCE_AI_CLOUD_BROWSER_FLAG]: false,
 					[KNOWLEDGE_COLLECTIONS_FLAG]: false,
 					[SELF_HEALING_FLAG]: false,
+					[WORKFLOWS_IN_SKILLS_FLAG]: false,
 					'084_eval_collections': true,
 					'088_config_evaluations': 'variant',
 					'101_agent_evals': true,
