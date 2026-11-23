@@ -723,6 +723,7 @@ export class InstanceAiAdapterService {
 			workspaceService: this.createWorkspaceAdapter(user, projectId),
 			workflowTemplateService: this.createWorkflowTemplateAdapter(),
 			licenseHints: this.buildLicenseHints(),
+			engineSetup: Container.get(WorkflowEngineDefaults).getSetup(),
 			logger: this.logger,
 			nodeTypesProvider: this.nodeTypes,
 			// Optional call for the same reason as addPostProcessor?.() above:
