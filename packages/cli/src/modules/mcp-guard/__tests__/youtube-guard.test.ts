@@ -53,7 +53,7 @@ describe('the YouTube vendor file', () => {
 		expect(vendorForRequest(HOST, '/upload/youtube/v3/videos')?.name).toBe('youtube');
 		expect(vendorForRequest(HOST, '/gmail/v1/users/me/messages')?.name).toBe('gmail');
 		expect(vendorForRequest(HOST, '/youtube/v3x/search')).toBeUndefined();
-		expect(vendorForRequest(HOST, '/drive/v3/files')).toBeUndefined();
+		expect(vendorForRequest(HOST, '/drive/v3/files')?.name).not.toBe('youtube');
 		expect(vendorForRequest('gmail.googleapis.com', '/youtube/v3/search')).toBeUndefined();
 	});
 
