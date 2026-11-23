@@ -58,6 +58,7 @@ const alreadyAttachedNotes = computed(() => {
 				interpolate: {
 					workflows: attached.map(({ name, workflowId }) => name || workflowId).join(', '),
 				},
+				adjustToNumber: attached.length,
 			}),
 		);
 	}
@@ -76,7 +77,7 @@ const alreadyAttachedNotes = computed(() => {
 		@add="emit('add-skill')"
 	>
 		<div v-for="{ id, skill } in skills" :key="id" :class="$style.chipGroup">
-			<N8nTooltip :disabled="!alreadyAttachedNotes.has(id)" placement="top" as-child>
+			<N8nTooltip :disabled="!alreadyAttachedNotes.has(id)" placement="bottom" as-child>
 				<AgentItemContextMenu :disabled="props.disabled" @remove="emit('remove-skill', id)">
 					<AgentChipButton
 						icon="book-open"

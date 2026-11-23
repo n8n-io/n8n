@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { AgentSkill } from '../../types';
-import { useSkillWorkflowMentionNames } from '../useSkillWorkflowMentionNames';
+import type { AgentSkill } from '@/features/agents/types';
+import { useSkillWorkflowMentionNames } from '@/features/agents/composables/useSkillWorkflowMentionNames';
 
 const searchWorkflows = vi.hoisted(() => vi.fn());
 vi.mock('@/app/stores/workflowsList.store', () => ({
@@ -41,6 +41,23 @@ describe('useSkillWorkflowMentionNames', () => {
 				{ path: 'references/steps.md', content: 'Then [Weekly report](n8n://workflow/wf1).' },
 			],
 		});
+	});
+
+	it('asks for at most 50 workflows in one request', async () => {
+		const mentions = Array.from({ length: 51 }, (_, index) => `[Old](n8n://workflow/wf${index})`);
+		searchWorkflows.mockImplementation(async ({ ids }: { ids: string[] }) =>
+			ids.map((id) => ({ id, name: 'New' })),
+		);
+		const { refreshWorkflowMentionNames } = useSkillWorkflowMentionNames();
+
+		const refreshed = await refreshWorkflowMentionNames({
+			...SKILL,
+			instructions: mentions.join(' '),
+			references: undefined,
+		});
+
+		expect(searchWorkflows.mock.calls.map(([{ ids }]) => ids.length)).toEqual([50, 1]);
+		expect(refreshed.instructions).not.toContain('[Old]');
 	});
 
 	it('returns the same skill when no name changed', async () => {

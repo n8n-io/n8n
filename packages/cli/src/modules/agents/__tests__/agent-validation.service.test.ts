@@ -1750,6 +1750,17 @@ describe('AgentValidationService — structured issues', () => {
 			expect(result.issues.map((item) => item.path)).toEqual(['tools.0.workflow']);
 		});
 
+		it('reports no issue for a workflow that a disabled legacy direct tool attaches', async () => {
+			const { service, workflowRepository } = mentionSetup({
+				tools: [{ type: 'workflow', workflow: 'Get code', enabled: false }],
+			});
+			workflowRepository.findManyByAgentToolReferences.mockResolvedValue([draftWorkflow] as never);
+
+			const result = await service.validateAgentConfiguration(agentId, projectId, credentials);
+
+			expect(result.issues).toEqual([]);
+		});
+
 		it('reports a workflow that is also attached directly only on the direct tool', async () => {
 			const { service, workflowRepository } = mentionSetup({
 				tools: [{ type: 'workflow', workflowId: 'wf-mentioned', workflow: 'Get code' }],

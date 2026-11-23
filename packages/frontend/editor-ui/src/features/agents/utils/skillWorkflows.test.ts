@@ -61,6 +61,28 @@ describe('findSkillWorkflows', () => {
 			expect.objectContaining({ workflowId: 'wf2' }),
 		]);
 	});
+
+	it('skips skill text that is not a string', () => {
+		const malformed = {
+			name: 'Malformed',
+			description: 'Stored in node parameters',
+			references: 'not a list',
+		} as unknown as AgentSkill;
+		const badReference = {
+			...skill('Bad reference', '[One](n8n://workflow/wf1)'),
+			references: [{ path: 'references/a.md' }],
+		} as unknown as AgentSkill;
+
+		expect(
+			findSkillWorkflows(
+				[
+					{ id: 'malformed', skill: malformed },
+					{ id: 'bad-reference', skill: badReference },
+				],
+				[],
+			),
+		).toEqual([expect.objectContaining({ workflowId: 'wf1', skillId: 'bad-reference' })]);
+	});
 });
 
 describe('findDirectlyAttachedMentions', () => {

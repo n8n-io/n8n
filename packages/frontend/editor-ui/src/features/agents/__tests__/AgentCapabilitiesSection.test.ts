@@ -99,9 +99,10 @@ vi.mock('@/app/stores/posthog.store', () => ({
 	usePostHog: () => ({ isFeatureEnabled: () => workflowsInSkillsEnabled.value }),
 }));
 
+const baseTextSpy = vi.hoisted(() => vi.fn((key: string) => key));
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
-		baseText: (key: string) => key,
+		baseText: baseTextSpy,
 	}),
 }));
 
@@ -1898,10 +1899,13 @@ describe('AgentCapabilitiesSection workflows from skills', () => {
 		const wrapper = mountWithSkills([]);
 
 		const chips = wrapper.findAll('[data-testid="agent-capabilities-skill-workflow-row"]');
-		expect(chips.map((chip) => chip.text())).toEqual([
+		expect(chips.map((chip) => chip.text().replace(/\s+/g, ' '))).toEqual([
 			'Send report agents.builder.tools.workflow.fromSkill',
 			'Notify agents.builder.tools.workflow.fromSkill',
 		]);
+		expect(baseTextSpy).toHaveBeenCalledWith('agents.builder.tools.workflow.fromSkill', {
+			interpolate: { skill: 'Weekly ops' },
+		});
 	});
 
 	it('opens the skill when the user clicks a workflow from a skill', async () => {
@@ -1913,13 +1917,15 @@ describe('AgentCapabilitiesSection workflows from skills', () => {
 		expect(wrapper.emitted('open-tool')).toBeUndefined();
 	});
 
-	it('does not offer to remove a workflow from a skill', () => {
-		const wrapper = mountWithSkills([]);
+	it('does not offer to remove a workflow from a skill', async () => {
+		const wrapper = mountSection([], {}, null, [], [], { skills }, document.body);
+		const chips = wrapper.findAll('[data-testid="agent-capabilities-skill-workflow-row"]');
+		expect(chips).toHaveLength(2);
 
-		const chipGroups = wrapper
-			.findAll('[data-testid="agent-capabilities-skill-workflow-row"]')
-			.map((chip) => chip.element.parentElement);
-		expect(chipGroups.every((group) => group?.querySelector('[data-state]') === null)).toBe(true);
+		await chips[0].trigger('contextmenu');
+		await flushPromises();
+
+		expect(screen.queryAllByRole('menuitem')).toHaveLength(0);
 	});
 
 	it('shows a workflow that is attached directly only once, as the direct tool', () => {
@@ -1929,7 +1935,7 @@ describe('AgentCapabilitiesSection workflows from skills', () => {
 
 		expect(wrapper.findAll('[data-testid="agent-capabilities-workflow-row"]')).toHaveLength(1);
 		const skillChips = wrapper.findAll('[data-testid="agent-capabilities-skill-workflow-row"]');
-		expect(skillChips.map((chip) => chip.text())).toEqual([
+		expect(skillChips.map((chip) => chip.text().replace(/\s+/g, ' '))).toEqual([
 			'Notify agents.builder.tools.workflow.fromSkill',
 		]);
 	});
@@ -1970,7 +1976,7 @@ describe('AgentCapabilitiesSection workflows from skills', () => {
 		const [report] = wrapper.findAll('[data-testid="agent-capabilities-skill-workflow-row"]');
 		expect(report.find('[data-testid="agent-chip-invalid-icon"]').exists()).toBe(true);
 		expect(report.find('[data-testid="stub-tooltip-content"]').text()).toContain(
-			'agents.builder.validation.issue.tool.workflow.missingReference',
+			'agents.builder.validation.issue.skillWorkflow.missingReference',
 		);
 	});
 

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { parseSkillWorkflowMentions, type SkillWorkflowMention } from '@n8n/api-types';
+import { parseAgentSkillWorkflowMentions, type SkillWorkflowMention } from '@n8n/api-types';
 import { N8nButton, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 
@@ -58,14 +58,7 @@ const workflowMentionsEnabled = computed(() =>
 	posthog.isFeatureEnabled(WORKFLOWS_IN_SKILLS_EXPERIMENT.name),
 );
 const addWorkflowOpen = ref(false);
-const mentionedWorkflows = computed(() => {
-	const texts = [props.skill.instructions, ...references.value.map(({ content }) => content)];
-	const workflows = new Map<string, SkillWorkflowMention>();
-	for (const mention of texts.flatMap(parseSkillWorkflowMentions)) {
-		if (!workflows.has(mention.workflowId)) workflows.set(mention.workflowId, mention);
-	}
-	return [...workflows.values()];
-});
+const mentionedWorkflows = computed(() => parseAgentSkillWorkflowMentions(props.skill));
 const mentionedWorkflowIds = computed(() =>
 	mentionedWorkflows.value.map(({ workflowId }) => workflowId),
 );

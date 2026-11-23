@@ -420,9 +420,14 @@ const workflowRows = computed<SingleToolRow[]>(() =>
 	).filter((row): row is SingleToolRow => !row.isGrouped),
 );
 
-const skillWorkflowRows = computed(() => {
-	if (!posthogStore.isFeatureEnabled(WORKFLOWS_IN_SKILLS_EXPERIMENT.name)) return [];
-	return findSkillWorkflows(props.skills, props.tools).map((workflow) => {
+const skillWorkflows = computed(() =>
+	posthogStore.isFeatureEnabled(WORKFLOWS_IN_SKILLS_EXPERIMENT.name)
+		? findSkillWorkflows(props.skills, props.tools)
+		: [],
+);
+
+const skillWorkflowRows = computed(() =>
+	skillWorkflows.value.map((workflow) => {
 		const invalidReasons = skillWorkflowIssueMessages.value.get(workflow.workflowId) ?? [];
 		const warningReasons = skillWorkflowWarningMessages.value.get(workflow.workflowId) ?? [];
 		return {
@@ -431,8 +436,8 @@ const skillWorkflowRows = computed(() => {
 			invalidReasons,
 			warningReasons,
 		};
-	});
-});
+	}),
+);
 
 const workflowRowCount = computed(() => workflowRows.value.length + skillWorkflowRows.value.length);
 
@@ -832,13 +837,16 @@ function openExistingSubAgentModal(subAgent: {
 							data-attr="agent-capabilities-skill-workflow-row"
 							@click="emit('open-skill', workflow.skillId)"
 						>
-							{{ workflow.label }}
-							<span :class="$style.skillNote">
-								{{
-									i18n.baseText('agents.builder.tools.workflow.fromSkill', {
-										interpolate: { skill: workflow.skillName },
-									})
-								}}
+							<span :class="$style.skillWorkflowLabel">
+								<span :class="$style.skillWorkflowName">{{ workflow.label }}</span>
+								{{ ' ' }}
+								<span :class="$style.skillNote">
+									{{
+										i18n.baseText('agents.builder.tools.workflow.fromSkill', {
+											interpolate: { skill: workflow.skillName },
+										})
+									}}
+								</span>
 							</span>
 						</AgentChipButton>
 					</div>
@@ -936,8 +944,19 @@ function openExistingSubAgentModal(subAgent: {
 	max-width: 100%;
 }
 
+.skillWorkflowLabel {
+	display: grid;
+	grid-template-columns: minmax(0, max-content) minmax(0, max-content);
+	column-gap: var(--spacing--4xs);
+}
+
+.skillWorkflowName,
 .skillNote {
-	margin-inline-start: var(--spacing--4xs);
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.skillNote {
 	color: var(--text-color--subtle);
 }
 

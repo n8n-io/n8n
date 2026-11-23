@@ -13,7 +13,10 @@ vi.mock('@/app/stores/posthog.store', () => ({
 	usePostHog: () => ({ isFeatureEnabled: () => flag.enabled }),
 }));
 
-const handleExternalKeydown = vi.fn(() => true);
+const handleExternalKeydown = vi.fn((event: KeyboardEvent) => {
+	if (event.key !== 'Tab') event.preventDefault();
+	return true;
+});
 const PickerStub = defineComponent({
 	name: 'SkillWorkflowMentionPicker',
 	props: ['open', 'mode', 'query', 'projectId', 'projectName', 'reference', 'focusTarget'],
@@ -122,11 +125,43 @@ describe('AgentSkillMarkdownEditor', () => {
 		const { editor } = await mountEditor();
 		await typeMentionTrigger(editor);
 
-		const event = new KeyboardEvent('keydown', { key: 'ArrowDown' });
+		const event = new KeyboardEvent('keydown', { key: 'ArrowDown', cancelable: true });
 		const handled = editor.view.someProp('handleKeyDown', (handler) => handler(editor.view, event));
 
 		expect(handled).toBe(true);
 		expect(handleExternalKeydown).toHaveBeenCalledWith(event);
+	});
+
+	it('lets Tab move the focus out of the editor', async () => {
+		const { editor } = await mountEditor();
+		await typeMentionTrigger(editor);
+
+		const event = new KeyboardEvent('keydown', { key: 'Tab', cancelable: true });
+		const handled = editor.view.someProp('handleKeyDown', (handler) => handler(editor.view, event));
+
+		expect(handleExternalKeydown).toHaveBeenCalledWith(event);
+		expect(handled).toBeFalsy();
+	});
+
+	it('closes the picker when the cursor moves without typing', async () => {
+		const { editor, picker } = await mountEditor();
+		await typeMentionTrigger(editor);
+
+		editor.commands.setTextSelection(1);
+		await flushPromises();
+
+		expect(picker().props('open')).toBe(false);
+	});
+
+	it('does not open the picker for @ in inline code', async () => {
+		const { editor, picker } = await mountEditor({ modelValue: 'Run `code`' });
+		editor.commands.setTextSelection(editor.state.doc.content.size - 2);
+
+		typeText(editor, ' ');
+		typeText(editor, '@');
+		await flushPromises();
+
+		expect(picker().props('open')).toBe(false);
 	});
 
 	it('closes the picker when the user deletes the @', async () => {

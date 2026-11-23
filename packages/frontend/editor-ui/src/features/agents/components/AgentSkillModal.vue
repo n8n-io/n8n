@@ -66,7 +66,7 @@ import type {
 } from '@/features/shared/toolsConnection/types';
 import { getSkillDetail, listAttachableSkills } from '../composables/useAgentApi';
 import { useSkillVersions } from '../composables/useSkillVersions';
-import { useSkillWorkflowMentionNames } from '../composables/useSkillWorkflowMentionNames';
+import { useSkillWorkflowMentionNames } from '@/features/agents/composables/useSkillWorkflowMentionNames';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 import type { AgentSkill } from '../types';
 import {
