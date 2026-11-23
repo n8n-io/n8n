@@ -2264,13 +2264,16 @@ importers:
 
   packages/@n8n/cli:
     dependencies:
-      '@n8n/api-types':
+      '@n8n/constants':
         specifier: workspace:*
-        version: link:../api-types
+        version: link:../constants
       '@oclif/core':
         specifier: ^4.5.2
         version: 4.5.2
     devDependencies:
+      '@n8n/api-types':
+        specifier: workspace:*
+        version: link:../api-types
       '@n8n/oxlint-config':
         specifier: workspace:*
         version: link:../oxlint-config
@@ -9384,6 +9387,9 @@ importers:
       '@n8n/config':
         specifier: workspace:*
         version: link:../@n8n/config
+      '@n8n/constants':
+        specifier: workspace:*
+        version: link:../@n8n/constants
       '@n8n/di':
         specifier: workspace:*
         version: link:../@n8n/di

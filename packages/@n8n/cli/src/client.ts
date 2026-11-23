@@ -11,7 +11,7 @@ import type {
 	PromotionPreview,
 } from '@n8n/api-types/dist/dto/promotions/promotion-preview.dto';
 import type { CreateProjectPublicDto } from '@n8n/api-types/dist/dto/project/project-public.dto';
-import { N8N_CLIENT_HEADER, N8N_CLIENT_N8N_CLI } from '@n8n/api-types/dist/constants/client';
+import { N8N_CLIENT_HEADER, N8N_CLIENT_N8N_CLI } from '@n8n/constants';
 
 export interface PaginatedResponse<T> {
 	data: T[];
