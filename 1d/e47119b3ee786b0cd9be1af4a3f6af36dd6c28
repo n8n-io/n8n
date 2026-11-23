@@ -35,6 +35,7 @@ packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.
   s_4a494bfdece475::t_fc418d2251e1cb 833,875,945,973,1014,1051,1537,1569,1594,1639,4901,5421,5461,5529,5606
   s_4a494bfdece475::t_c528b9b947b806 3636-3641,3644-3645,3650,3664,3667,3669-3672
   s_4a494bfdece475::t_af2c418aef87d7 3194-3204,3206-3216,3218,3221-3228,3728-3730,3732-3736,3739
+  s_4a494bfdece475::t_fd562a597b4cf8 3180,3219
 packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-importer.test.ts
   s_4a494bfdece475::t_7bf524a274b5bb 3,124-125,186-272
   s_4a494bfdece475::t_4147ffd3b26d14 273-276
@@ -49,9 +50,11 @@ packages/cli/src/modules/promotions.ee/apply-preview.ts
   s_4a494bfdece475::t_7075399856b531 204-205,233-234
   s_4a494bfdece475::t_4b79450aa5b854 286-317,319-326
   s_4a494bfdece475::t_db989c1d254627 327,656
+  s_4a494bfdece475::t_c8e277468f7ed0 597
 packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
   s_4a494bfdece475::t_7ab8d20f365285 569,597,813
   s_4a494bfdece475::t_495ffd63907edd 653,876
+  s_4a494bfdece475::t_bc9fff25cfa6ea 620,748,844
 packages/cli/src/modules/promotions.ee/promotions.service.ts
   s_4a494bfdece475::t_fe11a3da5f00a2 306-325,341,343-348,366-371,377,381,391-423,445
   s_4a494bfdece475::t_4a14d82e320728 17,35,46,67-68,70,121-122,125,127-128
@@ -108,6 +111,7 @@ packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
 packages/cli/src/modules/promotions.ee/__tests__/apply-preview.test.ts
   s_4a494bfdece475::t_336cdd8c3c3379 20,942,966
   s_4a494bfdece475::t_8b6c105650120d 1-5,93,326,330-331,341,400,464-503,659-941,943-965,967-992
+  s_4a494bfdece475::t_539ad067011332 372
 packages/cli/src/modules/promotions.ee/__tests__/promote-dependency-check.integration.test.ts
   s_4a494bfdece475::t_ab333c51349bd6 396
   s_4a494bfdece475::t_6f2f85fd8f01a0 1,16,127-139,141,143-147,151-162,215-222,226-228,232-234,246-249,282-286,289-292,294,299,305-395,397-445,448,452,454,458-459,461,463-471,478,480,482,486-496,512,543,578,588-612,615,634,662-677,684-685,687,702,704,706-738,742-781,785,798-806,808,821-837
@@ -133,6 +137,7 @@ packages/cli/src/modules/promotions.ee/__tests__/working-copy-updater.test.ts
 packages/cli/src/modules/promotions.ee/__tests__/apply-dependency-check.service.test.ts
   s_4a494bfdece475::t_cd9a68f0664bfe 12,18,38,43,58,66,102,170-190
   s_4a494bfdece475::t_68af108e622d87 191-192
+  s_4a494bfdece475::t_539ad067011332 75
 packages/cli/src/events/relays/telemetry.event-relay.ts
   s_4a494bfdece475::t_fc14f980ae5cd7 3230,3249,3265,3279
 packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential-importer.test.ts
