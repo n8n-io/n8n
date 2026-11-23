@@ -33,8 +33,8 @@ contract on database storage.
 2. **A module that only switches on a service in the core cli.** We rejected it because the module
    would turn on code that lives outside it, instead of the lease feature as a whole.
 3. **A service always in DI that the module gives its provider when the module initialises.** We
-   rejected it because a call before that point finds no provider, and a second call can replace the
-   provider.
+   rejected it because a call before that point would find no provider, and a second call could
+   replace the provider.
 
 ## Consequences
 
