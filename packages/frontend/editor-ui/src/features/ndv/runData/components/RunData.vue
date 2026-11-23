@@ -33,7 +33,6 @@ import {
 	CORE_NODES_CATEGORY,
 	DATA_EDITING_DOCS_URL,
 	DATA_PINNING_DOCS_URL,
-	HTML_NODE_TYPE,
 	LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG,
 	LOCAL_STORAGE_PIN_DATA_DISCOVERY_NDV_FLAG,
 	MAX_DISPLAY_DATA_SIZE,
@@ -92,7 +91,6 @@ import {
 	N8nBlockUi,
 	N8nButton,
 	N8nCallout,
-	N8nHtmlPreview,
 	N8nIconButton,
 	N8nInfoTip,
 	N8nLink,
@@ -583,7 +581,6 @@ const binaryData = computed(() => {
 		.getBinaryData(runDataOfNode, currentOutputIndex.value)
 		.filter((data) => Boolean(data && Object.keys(data).length));
 });
-const inputHtml = computed(() => String(inputData.value[0]?.json?.html ?? ''));
 
 const { availableDisplayModes, displayModeToAutoSelect, getAvailableDisplayMode } =
 	useRunDataDisplayModes({ node, pane: () => props.paneType, data: unfilteredInputData });
@@ -1535,16 +1532,8 @@ function enableNode() {
 	}
 }
 
-const shouldDisplayHtml = computed(
-	() =>
-		node.value?.type === HTML_NODE_TYPE &&
-		node.value.parameters.operation === 'generateHtmlTemplate',
-);
-
 function setDisplayMode() {
-	if (shouldDisplayHtml.value) {
-		emit('displayModeChange', 'html');
-	} else if (displayModeToAutoSelect.value) {
+	if (displayModeToAutoSelect.value) {
 		emit('displayModeChange', displayModeToAutoSelect.value.id);
 	}
 }
@@ -1667,8 +1656,6 @@ defineExpose({ enterEditMode });
 					:compact="props.compact"
 					:value="activeDisplayMode"
 					:has-binary-data="binaryData.length > 0"
-					:pane-type="paneType"
-					:node-generates-html="shouldDisplayHtml"
 					:has-renderable-data="hasParsedAiContent"
 					:registered-display-modes="availableDisplayModes"
 					@change="onDisplayModeChange"
@@ -2287,11 +2274,6 @@ defineExpose({ enterEditMode });
 				/>
 			</Suspense>
 
-			<N8nHtmlPreview
-				v-else-if="hasNodeRun && isPaneTypeOutput && activeDisplayMode === 'html'"
-				:html="inputHtml"
-			/>
-
 			<Suspense v-else-if="hasNodeRun && activeDisplayMode === 'ai'">
 				<LazyRunDataAi
 					render-type="rendered"
@@ -2336,7 +2318,6 @@ defineExpose({ enterEditMode });
 				hasNodeRun &&
 				!hasRunError &&
 				activeDisplayMode !== 'binary' &&
-				activeDisplayMode !== 'html' &&
 				!activeRenderer &&
 				dataCount > pageSize &&
 				!isSchemaView &&
