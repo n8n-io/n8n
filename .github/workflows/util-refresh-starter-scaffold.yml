@@ -110,10 +110,13 @@ jobs:
             exit 1
           fi
 
+      # The job only generates files; it never runs a node. Skipping install
+      # scripts avoids compiling native modules such as isolated-vm, which has
+      # no prebuilt binary for every Node version the runner may pin.
       - name: Install n8n-nodes-starter dependencies
         if: steps.gate.outputs.skip != 'true'
         working-directory: starter
-        run: npm ci --no-audit --no-fund
+        run: npm ci --ignore-scripts --no-audit --no-fund
 
       # The CLI detects the package manager from `npm_config_user_agent` and
       # writes it into the generated CI workflows, so pin it to npm. The git
