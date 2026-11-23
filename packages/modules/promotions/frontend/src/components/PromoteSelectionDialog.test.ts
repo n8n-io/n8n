@@ -2,6 +2,7 @@ import { createComponentRenderer } from '@n8n/frontend-test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 
+import { outsideAccess } from '../__tests__/unresolved.fixtures';
 import PromoteSelectionDialog from './PromoteSelectionDialog.vue';
 
 const renderComponent = createComponentRenderer(PromoteSelectionDialog, {
@@ -73,5 +74,38 @@ describe('PromoteSelectionDialog', () => {
 
 		expect(emitted('update:open')).toEqual([[false]]);
 		expect(emitted('confirm')).toBeUndefined();
+	});
+
+	describe('with dependencies that the Promote leaves out', () => {
+		it('should say so in the same dialog, above the commit message, and keep the commit message field', async () => {
+			const { findByTestId, getByTestId } = renderComponent({
+				props: { unresolved: outsideAccess },
+			});
+
+			const dialog = await findByTestId('promote-selection-dialog');
+			expect(dialog).toHaveTextContent('Promote without 2 dependencies?');
+			expect(dialog).toHaveTextContent(
+				'These are outside your access, so you cannot promote them.',
+			);
+			expect(dialog).toHaveTextContent('Billing database');
+			expect(getByTestId('promote-commit-message')).toBeInTheDocument();
+		});
+
+		it('should repeat the label of the button that opened the dialog', async () => {
+			const { findByTestId } = renderComponent({ props: { unresolved: outsideAccess } });
+
+			expect(await findByTestId('promote-confirm-button')).toHaveTextContent('Promote 3 changes');
+		});
+
+		it('should still confirm with the commit message', async () => {
+			const { findByTestId, getByTestId, emitted } = renderComponent({
+				props: { unresolved: outsideAccess },
+			});
+
+			await userEvent.type(await findByTestId('promote-commit-message'), 'Ship it');
+			await userEvent.click(getByTestId('promote-confirm-button'));
+
+			expect(emitted('confirm')).toEqual([['Ship it']]);
+		});
 	});
 });

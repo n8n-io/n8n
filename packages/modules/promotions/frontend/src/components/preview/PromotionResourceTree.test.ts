@@ -243,4 +243,56 @@ describe('PromotionResourceTree', () => {
 			expect(queryAllByTestId('promotion-preview-tree-hint')).toHaveLength(0);
 		});
 	});
+
+	describe('dependencies outside the access of the user', () => {
+		const withBlockers = (blockers: Parameters<typeof indexBlockers>[0]) => {
+			const selected = new Set(['workflow:w1']);
+			return renderComponent({
+				pinia: createTestingPinia(),
+				props: {
+					tree,
+					graph,
+					selected,
+					inclusion: resolveInclusion(graph, selected),
+					includedChanges: 0,
+					totalChanges: 0,
+					disabled: new Set(),
+					locked: false,
+					direction: 'promote',
+					blockers: indexBlockers(blockers),
+				},
+			});
+		};
+
+		it('should give the workflow a quiet marker that opens the issues, and no blocked row', async () => {
+			const { getAllByTestId, emitted } = withBlockers([
+				{ kind: 'outside', resourceKey: null, workflowKeys: ['workflow:w1', 'workflow:w1'] },
+			]);
+
+			const marker = row(getAllByTestId, 'workflow:w1').getByTestId(
+				'promotion-preview-tree-outside',
+			);
+			expect(marker).toHaveAccessibleName('1 dependency is outside your access.');
+			expect(
+				row(getAllByTestId, 'workflow:w1').queryByTestId('promotion-preview-tree-blocker'),
+			).toBeNull();
+
+			await userEvent.click(marker);
+			expect(emitted('showBlockers')).toHaveLength(1);
+		});
+
+		it('should count them in the marker of a workflow that also has an issue to resolve', () => {
+			const { getAllByTestId } = withBlockers([
+				{ kind: 'conflict', resourceKey: null, workflowKeys: ['workflow:w1'] },
+				{ kind: 'outside', resourceKey: null, workflowKeys: ['workflow:w1'] },
+				{ kind: 'outside', resourceKey: null, workflowKeys: ['workflow:w1'] },
+			]);
+
+			const workflow = row(getAllByTestId, 'workflow:w1');
+			expect(workflow.getByTestId('promotion-preview-tree-blocker')).toHaveAccessibleName(
+				'1 issue needs your action. 2 are outside your access.',
+			);
+			expect(workflow.queryByTestId('promotion-preview-tree-outside')).toBeNull();
+		});
+	});
 });

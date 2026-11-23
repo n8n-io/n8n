@@ -2,7 +2,8 @@ import type { PromotionDirection, PromotionPreview } from '@n8n/api-types';
 import { ResponseError } from '@n8n/rest-api-client';
 import { ref } from 'vue';
 
-import type { ApplyCheckResult } from '../promotions.types';
+import { outsideAccess } from '../__tests__/unresolved.fixtures';
+import type { ApplyCheckResult, PromotionOutsideAccessDependency } from '../promotions.types';
 import { applyProjectSelection } from '../promotions.api';
 import { usePromotionOperation } from './usePromotionOperation';
 
@@ -32,14 +33,18 @@ const check = {
 	git: { branchName: 'main', commitSha: 'a'.repeat(40) },
 } as ApplyCheckResult;
 
-function setup() {
+function setup(
+	unresolved?: PromotionOutsideAccessDependency[],
+	confirmUnresolved = vi.fn(async () => true),
+) {
 	const refresh = vi.fn(async () => {});
 	const operation = usePromotionOperation(ref('project-1'), ref<PromotionDirection>('apply'), {
 		preview: ref<PromotionPreview | null>(null),
 		check: ref<ApplyCheckResult | null>(check),
 		refresh,
+		...(unresolved ? { unresolved: ref(unresolved), confirmUnresolved } : {}),
 	});
-	return { operation, refresh };
+	return { operation, refresh, confirmUnresolved };
 }
 
 beforeEach(() => {
@@ -73,4 +78,60 @@ it.each([
 		kind,
 	});
 	expect(refresh).toHaveBeenCalledTimes(refreshes ? 1 : 0);
+});
+
+describe('unresolved dependencies', () => {
+	const request = {
+		workflowIds: ['wf-1'],
+		folderIds: [],
+		credentialIds: [],
+		confirmDestructiveChanges: false,
+	};
+
+	beforeEach(() => {
+		vi.mocked(applyProjectSelection).mockResolvedValue({
+			status: 'source-changed',
+			environmentId: 'env-1',
+			git: check.git,
+		});
+	});
+
+	it('should ask the unresolved question in place of the generic one', async () => {
+		const { operation, confirmUnresolved } = setup(outsideAccess);
+
+		await operation.submit(request);
+
+		expect(confirmUnresolved).toHaveBeenCalledTimes(1);
+		expect(confirm).not.toHaveBeenCalled();
+		expect(applyProjectSelection).toHaveBeenCalledTimes(1);
+	});
+
+	it('should apply nothing when the user declines', async () => {
+		const { operation } = setup(
+			outsideAccess,
+			vi.fn(async () => false),
+		);
+
+		await operation.submit(request);
+
+		expect(applyProjectSelection).not.toHaveBeenCalled();
+	});
+
+	it('should keep the generic question when nothing is left out', async () => {
+		const { operation, confirmUnresolved } = setup([]);
+
+		await operation.submit(request);
+
+		expect(confirmUnresolved).not.toHaveBeenCalled();
+		expect(confirm).toHaveBeenCalledTimes(1);
+	});
+
+	it('should ask both questions when the Apply also changes data tables', async () => {
+		const { operation, confirmUnresolved } = setup(outsideAccess);
+
+		await operation.submit({ ...request, confirmDestructiveChanges: true });
+
+		expect(confirmUnresolved).toHaveBeenCalledTimes(1);
+		expect(confirm).toHaveBeenCalledTimes(1);
+	});
 });

@@ -11615,6 +11615,7 @@
 	"promotions.unresolved.usedBy": "Used by {names}.",
 	"promotions.unresolved.usedByMore": "Used by {names} and {count} more.",
 	"promotions.review.issues.intro": "These dependencies are not part of this promotion. Workflows that use them cannot be published until they exist where this is applied.",
+	"promotions.review.issues.outsideDescription": "The promotion does not carry them. Where it is applied, they must exist before the workflows that use them can be published.",
 	"promotions.review.issues.error": "Couldn't load the issues of this review",
 	"promotions.preview.blockers.section.blockers": "Needs your action ({count})",
 	"promotions.preview.blockers.section.blockers.description": "Create these dependencies or use a placeholder before you apply.",

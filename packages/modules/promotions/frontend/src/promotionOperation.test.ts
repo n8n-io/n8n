@@ -4,6 +4,7 @@ import { credential, destructiveChange, variable } from './__tests__/bindings.fi
 import { billingPreview, billingResources, resource } from './__tests__/preview.fixtures';
 import {
 	indexBlockers,
+	isBlocking,
 	listBlockers,
 	crossProjectMoveBlockers,
 	scopeCheck,
@@ -200,5 +201,38 @@ describe('promotion operation', () => {
 
 		expect(scoped.accessRequirements).toEqual([]);
 		expect(scoped.missingBindings[0].consumers[0].workflows).toEqual([{ id: 'w1', name: 'w1' }]);
+	});
+});
+
+describe('dependencies outside the access of the user', () => {
+	const listed = ['workflow:w1', 'workflow:w2'];
+	const outside = (...ids: string[]) =>
+		check({
+			outsideAccess: [
+				{ kind: 'credential', name: 'Billing database', consumers: consumer(...ids) },
+			],
+		});
+
+	it('should mark the workflows that use them, and never block', () => {
+		const blockers = listBlockers(outside('w1'), listed);
+
+		expect(blockers).toEqual([
+			{ kind: 'outside', resourceKey: null, workflowKeys: ['workflow:w1'] },
+		]);
+		expect(blockers.some(isBlocking)).toBe(false);
+		expect(indexBlockers(blockers).blocked.size).toBe(0);
+	});
+
+	it('should keep the blocking ones blocking next to them', () => {
+		const blockers = listBlockers(
+			check({
+				...outside('w1'),
+				missingBindings: [{ ...credential, sourceId: 'c1', consumers: consumer('w1') }],
+			}),
+			listed,
+		);
+
+		expect(blockers.filter(isBlocking)).toHaveLength(1);
+		expect([...indexBlockers(blockers).blocked]).toEqual(['workflow:w1']);
 	});
 });

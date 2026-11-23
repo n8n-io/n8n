@@ -37,8 +37,10 @@ const props = withDefaults(
 		direction?: PromotionDirection;
 		/** Replaces the intro, for a page that has its own, such as a review. */
 		intro?: string;
+		/** Replaces the description of the "Outside your access" section, as the intro does. */
+		outsideDescription?: string;
 	}>(),
-	{ direction: 'apply', intro: undefined },
+	{ direction: 'apply', intro: undefined, outsideDescription: undefined },
 );
 
 const emit = defineEmits<{
@@ -281,11 +283,14 @@ const sections = computed(() =>
 				adjustToNumber: rows.length,
 				interpolate: { count: String(rows.length) },
 			}),
-			description: i18n.baseText(
-				props.direction === 'promote' && id === 'outsideAccess'
-					? 'promotions.preview.blockers.section.outsideAccess.description.promote'
-					: `promotions.preview.blockers.section.${id}.description`,
-			),
+			description:
+				id === 'outsideAccess' && props.outsideDescription
+					? props.outsideDescription
+					: i18n.baseText(
+							props.direction === 'promote' && id === 'outsideAccess'
+								? 'promotions.preview.blockers.section.outsideAccess.description.promote'
+								: `promotions.preview.blockers.section.${id}.description`,
+						),
 		})),
 );
 

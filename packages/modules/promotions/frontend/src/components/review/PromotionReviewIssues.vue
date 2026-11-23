@@ -73,6 +73,7 @@ const check = computed<ApplyCheckResult | undefined>(() =>
 		:busy="false"
 		direction="promote"
 		:intro="i18n.baseText('promotions.review.issues.intro')"
+		:outside-description="i18n.baseText('promotions.review.issues.outsideDescription')"
 		data-test-id="promotion-review-issues"
 	/>
 </template>

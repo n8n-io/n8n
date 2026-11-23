@@ -115,6 +115,11 @@ the Issues tab. Group by type. Show the first 5, and scroll for more.
 The confirm button repeats the label of the button that opened the dialog.
 **?** The Promote consequence is a guess.
 
+**Built (Playground).** The confirmation is not a separate dialog. On Promote it is the existing
+commit message dialog, which shows the unresolved dependencies above the message field. On Apply it
+is one dialog that replaces the generic question. A credential in a personal project gets its own
+sentence in the same dialog.
+
 ## 6. The result
 
 > Applied 2 workflows. 2 dependencies are still missing.
