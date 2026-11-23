@@ -118,4 +118,99 @@ describe('Postgres upsert match-column values', () => {
 		).rejects.toThrow('Column to match on not found in input item');
 		expect(runQueries).not.toHaveBeenCalled();
 	});
+
+	it('should reject an undefined match-column value before running queries', async () => {
+		db.any.mockResolvedValue([
+			{ column_name: 'external_id', data_type: 'text', is_nullable: 'YES' },
+			{ column_name: 'name', data_type: 'text', is_nullable: 'NO' },
+		]);
+
+		await expect(
+			execute.call(
+				context,
+				runQueries,
+				[{ json: { external_id: undefined, name: 'record' } }],
+				{ nodeVersion: 2.6 },
+				db,
+			),
+		).rejects.toThrow('Column to match on not found in input item');
+		expect(runQueries).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		{ label: 'null', value: null, dataType: 'text' },
+		{ label: 'zero', value: 0, dataType: 'integer' },
+		{ label: 'false', value: false, dataType: 'boolean' },
+		{ label: 'empty string', value: '', dataType: 'text' },
+	])(
+		'should reject item with only a $label match-column value and no values to update or insert',
+		async ({ value, dataType }) => {
+			db.any.mockResolvedValue([
+				{ column_name: 'external_id', data_type: dataType, is_nullable: 'YES' },
+				{ column_name: 'name', data_type: 'text', is_nullable: 'NO' },
+			]);
+
+			await expect(
+				execute.call(
+					context,
+					runQueries,
+					[{ json: { external_id: value } }],
+					{ nodeVersion: 2.6 },
+					db,
+				),
+			).rejects.toThrow('Add values to update or insert to the input item');
+			expect(runQueries).not.toHaveBeenCalled();
+		},
+	);
+
+	it.each([
+		{ label: 'null', value: null, dataType: 'text' },
+		{ label: 'zero', value: 0, dataType: 'integer' },
+		{ label: 'false', value: false, dataType: 'boolean' },
+		{ label: 'empty string', value: '', dataType: 'text' },
+	])(
+		'should pass $label match-column value in defineBelow mode to the query runner',
+		async ({ value, dataType }) => {
+			const defineBelowParameters: IDataObject = {
+				schema: { value: 'public' },
+				table: { value: 'records' },
+				columns: {
+					mappingMode: 'defineBelow',
+					matchingColumns: ['external_id'],
+					value: { external_id: value, name: 'record' },
+				},
+			};
+			context.getNodeParameter.mockImplementation((name, _index, fallbackValue, options) => {
+				const parameter = options?.extractValue ? `${name}.value` : name;
+				return get(defineBelowParameters, parameter, fallbackValue);
+			});
+			db.any.mockResolvedValue([
+				{ column_name: 'external_id', data_type: dataType, is_nullable: 'YES' },
+				{ column_name: 'name', data_type: 'text', is_nullable: 'NO' },
+			]);
+			const nodeOptions: PostgresNodeOptions = { nodeVersion: 2.6 };
+
+			await expect(
+				execute.call(context, runQueries, [{ json: {} }], nodeOptions, db),
+			).resolves.toEqual([]);
+
+			expect(runQueries).toHaveBeenCalledExactlyOnceWith(
+				[
+					{
+						query:
+							'INSERT INTO $1:name.$2:name($4:name) VALUES($4:csv) ON CONFLICT ($3:name) DO UPDATE  SET $5:name = $6 RETURNING *',
+						values: [
+							'public',
+							'records',
+							'external_id',
+							{ external_id: value, name: 'record' },
+							'name',
+							'record',
+						],
+					},
+				],
+				nodeOptions,
+			);
+		},
+	);
 });
