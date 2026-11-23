@@ -18,7 +18,7 @@ export function resolveToolCatalogCall(
 }
 
 /** The `tool` key first, as the call_tool schema orders it, with its complete value. */
-const LEADING_TOOL_NAME = /^\s*\{\s*"tool"\s*:\s*"([^"\\]+)"/;
+const LEADING_TOOL_NAME = /^\s*\{\s*"tool"\s*:\s*"([\w.:-]+)"/;
 /** Past this length, the start of the input will not name the tool any more. */
 const MAX_TOOL_NAME_PREFIX_LENGTH = 256;
 

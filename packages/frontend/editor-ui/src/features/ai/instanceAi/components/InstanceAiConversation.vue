@@ -478,12 +478,14 @@ watch([chatInputRef, () => props.autofocus], ([input, autofocus], [, previousAut
 
 const inlineConfirmationsRef = useTemplateRef<HTMLElement>('inlineConfirmations');
 const floatingConfirmationRef = useTemplateRef<HTMLElement>('floatingConfirmation');
-// A text field first, so the user can type the answer at once.
+// A text field first, so the user can type the answer at once. Then the actions of a card,
+// before a focusable region such as the details of an approval.
 const CONFIRMATION_CONTROLS = [
 	'textarea',
 	'input:not([type="hidden"])',
+	'[role="toolbar"] button:not([disabled])',
 	'[tabindex="0"]',
-	'button',
+	'button:not([disabled])',
 ];
 
 /** Moves focus to the card that the run waits on. The browser scrolls it into view. */

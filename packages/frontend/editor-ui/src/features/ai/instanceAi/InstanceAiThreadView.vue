@@ -75,6 +75,7 @@ import InstanceAiBrowserPreview from './components/InstanceAiBrowserPreview.vue'
 import InstanceAiCloudBrowserUserActionPanel from './components/InstanceAiCloudBrowserUserActionPanel.vue';
 import InstanceAiWorkflowDraftPreview from './components/InstanceAiWorkflowDraftPreview.vue';
 import InstanceAiCanvasRunOverlay from './components/InstanceAiCanvasRunOverlay.vue';
+import { isPendingItemFloating } from './confirmationKinds';
 import { useDraftWorkflowPreviewTelemetry } from '@/experiments/instanceAiDraftWorkflowPreview/useDraftWorkflowPreviewTelemetry';
 import { collectActiveBuilderAgents } from './builderAgents';
 import { isStagingDraft } from './instanceAi.workflowStaging';
@@ -273,7 +274,11 @@ watch(
 // A reload can restore the open question from history and not the run, for example after a
 // restart. The chat still asks the question, so the canvas waits too.
 const isAwaitingUser = () => thread.isAwaitingUserInput || thread.pendingConfirmations.length > 0;
-const ANSWER_INPUT_TYPES = new Set<InstanceAiConfirmationInputType>(['questions', 'text']);
+const ANSWER_INPUT_TYPES = new Set<InstanceAiConfirmationInputType>([
+	'questions',
+	'text',
+	'continue',
+]);
 const draftPreview = useDraftWorkflowPreview({
 	threadId: () => props.threadId,
 	turns: () => thread.artifactTurns,
@@ -282,11 +287,13 @@ const draftPreview = useDraftWorkflowPreview({
 	// A builder can still work in the background after the orchestrator run ended.
 	isRunning: () => thread.isStreaming || collectActiveBuilderAgents(thread.messages).length > 0,
 	isAwaitingUser,
-	// A question card asks for an answer. Any other card asks for an approval.
-	isAwaitingApproval: () =>
-		!thread.pendingConfirmations.some(({ toolCall }) =>
-			ANSWER_INPUT_TYPES.has(toolCall.confirmation.inputType ?? 'approval'),
-		),
+	// The card in the chat input slot comes first, as the pill focuses it. A card that waits for
+	// user input asks for an answer. Any other card asks for an approval.
+	isAwaitingApproval: () => {
+		const pending = thread.pendingConfirmations;
+		const shown = pending.find(isPendingItemFloating) ?? pending[0];
+		return !ANSWER_INPUT_TYPES.has(shown?.toolCall.confirmation.inputType ?? 'approval');
+	},
 });
 // EOF Experiment cleanup
 

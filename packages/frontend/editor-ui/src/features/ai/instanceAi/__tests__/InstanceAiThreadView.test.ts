@@ -342,7 +342,15 @@ const InstanceAiConfirmationPanelStub = defineComponent({
 	setup(props) {
 		return () =>
 			h('div', { 'data-test-id': `instance-ai-confirmation-panel-${props.kind}` }, [
-				h('button', { 'data-test-id': `instance-ai-confirmation-control-${props.kind}` }, 'Answer'),
+				// Like the approval card: a focusable details region before its actions.
+				h('div', { tabindex: 0 }, 'Details'),
+				h('div', { role: 'toolbar' }, [
+					h(
+						'button',
+						{ 'data-test-id': `instance-ai-confirmation-control-${props.kind}` },
+						'Answer',
+					),
+				]),
 			]);
 	},
 });
@@ -2916,6 +2924,43 @@ describe('InstanceAiThreadView', () => {
 			await user.click(await findByTestId('instance-ai-canvas-waiting-pill'));
 
 			expect(getByTestId('instance-ai-confirmation-control-floating')).toHaveFocus();
+		});
+
+		it('asks for the answer while a continue card waits for the user', async () => {
+			mockedStore(usePostHog).getVariant.mockImplementation((name) =>
+				name === INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.name ? 'variant' : undefined,
+			);
+			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
+			thread.isStreaming = true;
+			stageNewWorkflow();
+
+			thread.pendingConfirmations = [
+				pendingConfirmation({ requestId: 'req-continue', inputType: 'continue' }),
+			] as unknown as ThreadRuntime['pendingConfirmations'];
+			thread.isAwaitingUserInput = true;
+
+			expect(await findByTestId('instance-ai-canvas-waiting-pill')).toHaveTextContent(
+				'Waiting for your answer in the chat',
+			);
+		});
+
+		it('names the card that takes the chat input when more than one card waits', async () => {
+			mockedStore(usePostHog).getVariant.mockImplementation((name) =>
+				name === INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.name ? 'variant' : undefined,
+			);
+			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
+			thread.isStreaming = true;
+			stageNewWorkflow();
+
+			thread.pendingConfirmations = [
+				pendingConfirmation({ requestId: 'req-text', inputType: 'text' }),
+				pendingConfirmation({ requestId: 'req-run' }),
+			] as unknown as ThreadRuntime['pendingConfirmations'];
+			thread.isAwaitingUserInput = true;
+
+			expect(await findByTestId('instance-ai-canvas-waiting-pill')).toHaveTextContent(
+				'Waiting for your approval in the chat',
+			);
 		});
 
 		it('shows the building wave over a saved workflow that the run does not build', async () => {

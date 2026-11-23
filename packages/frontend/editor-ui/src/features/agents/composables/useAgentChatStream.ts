@@ -781,6 +781,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		minted: Set<ChatMessage>;
 		reasoningStartedAt: Map<string, number>;
 		openReasoning: Map<string, ThinkingSegment>;
+		/** The streamed input of each call_tool call, until it names the tool that the call runs. */
+		toolCatalogInputPrefixes: Map<string, string>;
 	}
 
 	/**
@@ -972,19 +974,21 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	 * iterations after the tool-call message has been closed by `finish-step`,
 	 * so we cannot rely on the cursor — only the natural id.
 	 */
-	/** The streamed input of each call_tool call, until it names the tool that the call runs. */
-	const toolCatalogInputPrefixes = new Map<string, string>();
-
-	function nameStreamedToolCatalogCall(toolCallId: string, delta: string): void {
+	function nameStreamedToolCatalogCall(
+		session: StreamSession,
+		toolCallId: string,
+		delta: string,
+	): void {
 		const found = findToolCallById(toolCallId);
 		if (!found) return;
-		const prefix = (toolCatalogInputPrefixes.get(toolCallId) ?? '') + delta;
+		const prefixes = session.toolCatalogInputPrefixes;
+		const prefix = (prefixes.get(toolCallId) ?? '') + delta;
 		const target = readStreamedToolCatalogTarget(found.tc.tool, prefix);
 		if (target === undefined) {
-			toolCatalogInputPrefixes.set(toolCallId, prefix);
+			prefixes.set(toolCallId, prefix);
 			return;
 		}
-		toolCatalogInputPrefixes.delete(toolCallId);
+		prefixes.delete(toolCallId);
 		if (target) found.tc.tool = target;
 	}
 
@@ -1308,7 +1312,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			case 'tool-input-delta':
 				// Streaming tool input isn't rendered incrementally; the full
 				// input arrives on `tool-call`. Only a call_tool call reads it, for its tool name.
-				nameStreamedToolCatalogCall(event.toolCallId, event.delta);
+				nameStreamedToolCatalogCall(session, event.toolCallId, event.delta);
 				break;
 			case 'tool-call': {
 				// LLM finalized the call. Update input on the existing entry,
@@ -1316,7 +1320,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				const msg = ensureCurrent(session);
 				msg.toolCalls = msg.toolCalls ?? [];
 				// `tool-input-start` names a tool catalog call `call_tool`. The full input names the real tool.
-				toolCatalogInputPrefixes.delete(event.toolCallId);
+				session.toolCatalogInputPrefixes.delete(event.toolCallId);
 				const call = resolveToolCatalogCall(event.toolName, event.input);
 				const existing = msg.toolCalls.find((t) => t.toolCallId === event.toolCallId);
 				if (!existing) {
@@ -1721,6 +1725,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			minted: new Set(),
 			reasoningStartedAt: new Map(),
 			openReasoning: new Map(),
+			toolCatalogInputPrefixes: new Map(),
 		};
 		streams.set(controller, session);
 
