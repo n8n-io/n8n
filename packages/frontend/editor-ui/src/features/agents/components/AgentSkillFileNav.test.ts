@@ -7,7 +7,10 @@ import AgentSkillFileNav from './AgentSkillFileNav.vue';
 
 const flag = vi.hoisted(() => ({ enabled: false }));
 vi.mock('@/app/stores/posthog.store', () => ({
-	usePostHog: () => ({ isFeatureEnabled: () => flag.enabled }),
+	usePostHog: () => ({
+		isVariantEnabled: (name: string, variant: string) =>
+			name === '152_workflows_in_skills' && variant === (flag.enabled ? 'variant' : 'control'),
+	}),
 }));
 
 const PickerStub = defineComponent({

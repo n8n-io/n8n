@@ -108,19 +108,20 @@ describe('skills gates', () => {
 
 	it('keeps workflow mentions off while skills are off, whatever the flag says', async () => {
 		const { postHog, mentionsGate } = createGates();
-		postHog.getFeatureFlagForInstance.mockResolvedValue(true);
+		postHog.getFeatureFlagForInstance.mockResolvedValue('variant');
 
 		expect(await mentionsGate.isEnabled()).toBe(false);
 		expect(postHog.getFeatureFlagForInstance).not.toHaveBeenCalled();
 	});
 
 	it.each([
-		{ flag: true, expected: true },
+		{ flag: 'variant', expected: true },
+		{ flag: 'control', expected: false },
+		{ flag: true, expected: false },
 		{ flag: false, expected: false },
-		{ flag: 'test', expected: false },
 		{ flag: undefined, expected: false },
 	])(
-		'turns workflow mentions on only for the flag value true (flag: $flag)',
+		'turns workflow mentions on only for the flag value variant (flag: $flag)',
 		async ({ flag, expected }) => {
 			const { proxy, postHog, mentionsGate } = createGates();
 			postHog.getFeatureFlagForInstance.mockResolvedValue(flag);

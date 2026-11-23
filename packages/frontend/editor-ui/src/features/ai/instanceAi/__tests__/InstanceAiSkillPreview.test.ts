@@ -112,7 +112,10 @@ describe('InstanceAiSkillPreview', () => {
 			projectId: 'project-1',
 			projectName: 'Ops',
 		});
-		usePostHog().isFeatureEnabled = vi.fn(() => true);
+		usePostHog().isVariantEnabled = vi.fn(
+			(name: string, variant: string) =>
+				name === '152_workflows_in_skills' && variant === 'variant',
+		);
 		const workflowsListStore = useWorkflowsListStore();
 		workflowsListStore.searchWorkflows = vi.fn().mockResolvedValue([]);
 		const { findByTestId } = renderComponent({ pinia });
