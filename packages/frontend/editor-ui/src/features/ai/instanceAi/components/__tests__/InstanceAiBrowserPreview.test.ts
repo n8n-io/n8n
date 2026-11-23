@@ -559,18 +559,23 @@ describe('InstanceAiBrowserPreview', () => {
 			);
 		});
 
-		it('asks to save the login for the site of the session when the server check fails', async () => {
+		it('returns control without asking when the server check fails', async () => {
 			vi.mocked(fetchCloudBrowserLoginToSave).mockRejectedValue(new Error('Request failed'));
 
-			const { getByTestId } = await takeOverAndFinish(liveWithLogin, loginRequest);
+			const { queryByTestId } = await takeOverAndFinish(liveWithLogin, loginRequest);
 
-			expect(getByTestId('instance-ai-browser-preview-save-login-dialog')).toHaveTextContent(
-				'n8n Assistant can reuse your login for shop.example.com.',
+			expect(
+				queryByTestId('instance-ai-browser-preview-save-login-dialog'),
+			).not.toBeInTheDocument();
+			expect(postCloudBrowserReturnControl).toHaveBeenCalledExactlyOnceWith(
+				{},
+				'thread-1',
+				'task-1',
+				{ note: undefined, shouldSaveLogin: false },
 			);
-			expect(postCloudBrowserReturnControl).not.toHaveBeenCalled();
 		});
 
-		it('asks to save the login for the site of the session when the server is too slow', async () => {
+		it('returns control without asking when the server is too slow', async () => {
 			vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
 			try {
 				vi.mocked(fetchCloudBrowserLoginToSave).mockReturnValue(new Promise(() => {}));
@@ -586,8 +591,14 @@ describe('InstanceAiBrowserPreview', () => {
 				await vi.advanceTimersByTimeAsync(CLOUD_BROWSER_LOGIN_TO_SAVE_TIMEOUT);
 				await flushPromises();
 
-				expect(getByTestId('instance-ai-browser-preview-save-login-dialog')).toHaveTextContent(
-					'n8n Assistant can reuse your login for shop.example.com.',
+				expect(
+					queryByTestId('instance-ai-browser-preview-save-login-dialog'),
+				).not.toBeInTheDocument();
+				expect(postCloudBrowserReturnControl).toHaveBeenCalledExactlyOnceWith(
+					{},
+					'thread-1',
+					'task-1',
+					{ note: undefined, shouldSaveLogin: false },
 				);
 			} finally {
 				vi.useRealTimers();

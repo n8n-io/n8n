@@ -185,8 +185,7 @@ async function onDone() {
 
 /** Asks the server which login the user can save now. Nothing when they cannot save one. */
 async function findLoginDomainToSave(): Promise<string | undefined> {
-	const profile = loginProfile.value;
-	if (!canMaybeSaveLogin.value || !profile) return undefined;
+	if (!canMaybeSaveLogin.value) return undefined;
 	isBusy.value = true;
 	try {
 		const { domain } = await withTimeout(
@@ -196,9 +195,8 @@ async function findLoginDomainToSave(): Promise<string | undefined> {
 		);
 		return domain;
 	} catch {
-		// Still offer the save. The server checks again when the user saves, and the toast tells
-		// them when it cannot save the login.
-		return profile.domain;
+		// Only the server knows the site of the current page, so without its answer we offer no save.
+		return undefined;
 	} finally {
 		isBusy.value = false;
 	}
