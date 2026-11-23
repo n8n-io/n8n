@@ -663,7 +663,7 @@ export class AgentRuntimeReconstructionService {
 
 		const workflow = await findWorkflowToolWorkflow(this.workflowRepository, ref, projectId);
 		// Missing workflows stay in the list so the tool factory can return a stub.
-		if (!workflow) return undefined;
+		if (!workflow) return { credentialIds: [], workflowIds: [] };
 		const accessibleWorkflow = await this.workflowFinderService.findWorkflowForUser(
 			workflow.id,
 			user,
@@ -733,7 +733,10 @@ export class AgentRuntimeReconstructionService {
 	async reconstructFromResolvedSource(
 		params: ReconstructAgentRuntimeParams,
 	): Promise<ReconstructedAgentRuntime> {
-		let config = await this.withSkillWorkflowTools(params.config, params.skills, params.projectId);
+		let config =
+			params.runtimeProfile === 'inline'
+				? params.config
+				: await this.withSkillWorkflowTools(params.config, params.skills, params.projectId);
 		let unavailableTools: UnavailableTool[] = [];
 		if (params.user && config.tools?.length) {
 			// Sub-agent runtimes are built per delegation and never cached, so the

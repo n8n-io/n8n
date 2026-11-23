@@ -1139,6 +1139,27 @@ describe('AgentRuntimeReconstructionService — workflows that skills mention', 
 		expect(resolveWorkflowToolMock).toHaveBeenCalledWith(mentionedTool, expect.anything());
 	});
 
+	it('adds no tool for a mention in an inline agent', async () => {
+		const { service, workflowsInSkillsFlagGate } = makeService({});
+		workflowsInSkillsFlagGate.isEnabled.mockResolvedValue(true);
+		buildFromJsonResolvingTools([]);
+		const { agent, skills } = makeSkillAgentEntity();
+
+		await service.reconstructFromResolvedSource({
+			config: { ...agent.schema!, skills: [{ type: 'skill', id: 'skill-1' }] },
+			memoryOwnerAgentId: 'agent-1',
+			projectId,
+			credentialProvider: mock<CredentialProvider>(),
+			toolDescriptors: {},
+			toolCodeByName: {},
+			skills,
+			runtimeProfile: 'inline',
+			runType: 'production',
+		});
+
+		expect(toolNamesPassedToBuildFromJson()).toEqual([]);
+	});
+
 	it('uses the direct tool when the workflow is also attached directly', async () => {
 		const { service, workflowsInSkillsFlagGate } = makeService({});
 		workflowsInSkillsFlagGate.isEnabled.mockResolvedValue(true);
@@ -1219,6 +1240,25 @@ describe('AgentRuntimeReconstructionService — workflows that skills mention', 
 			['workflow:execute'],
 		);
 		expect(toolNamesPassedToBuildFromJson()).toEqual([]);
+	});
+
+	it('keeps a missing mentioned workflow and rechecks project access later', async () => {
+		vi.mocked(userHasScopes).mockResolvedValue(true);
+		const workflowRepository = mock<WorkflowRepository>();
+		workflowRepository.findOneByAgentToolReference.mockResolvedValue(null);
+		const { service, workflowsInSkillsFlagGate } = makeService({ workflowRepository });
+		workflowsInSkillsFlagGate.isEnabled.mockResolvedValue(true);
+
+		const result = await service.reconstructFromAgentEntity(
+			makeSkillAgentEntity(),
+			mock<CredentialProvider>(),
+			'test',
+			undefined,
+			testUser,
+		);
+
+		expect(toolNamesPassedToBuildFromJson()).toEqual(['Get code']);
+		expect(result.userToolAccessSnapshot).toEqual({ credentialIds: [], workflowIds: [] });
 	});
 
 	it('adds no tool while the flag is off', async () => {
