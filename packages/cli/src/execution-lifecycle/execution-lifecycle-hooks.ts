@@ -24,6 +24,7 @@ import type {
 	IRunExecutionData,
 	IWorkflowBase,
 	IWorkflowExecutionDataProcess,
+	RelatedAgentRun,
 	RelatedExecution,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
@@ -176,6 +177,7 @@ function hookFunctionsWorkflowEvents(
 	projectName?: string,
 	source?: IWorkflowExecutionDataProcess['source'],
 	telemetryMetadata?: IWorkflowExecutionDataProcess['telemetryMetadata'],
+	parentAgentRun?: RelatedAgentRun,
 ) {
 	const eventService = Container.get(EventService);
 	hooks.addHandler('workflowExecuteBefore', function () {
@@ -187,6 +189,7 @@ function hookFunctionsWorkflowEvents(
 			mode,
 			projectId,
 			projectName,
+			...(parentAgentRun ? { parentAgentRun } : {}),
 		});
 	});
 	hooks.addHandler('workflowExecuteAfter', function (runData) {
@@ -227,6 +230,7 @@ function hookFunctionsWorkflowEvents(
 			projectName,
 			...(source ? { source } : {}),
 			...(telemetryMetadata ? { telemetryMetadata } : {}),
+			...(parentAgentRun ? { parentAgentRun } : {}),
 		});
 	});
 }
@@ -959,6 +963,7 @@ export function getLifecycleHooksForSubExecutions(
 	const hooks = new ExecutionLifecycleHooks(mode, executionId, workflowData);
 	const saveSettings = toSaveSettings(workflowData.settings);
 	hookFunctionsMemoryGuard(hooks);
+	// No `parentAgentRun`: only the execution that an agent's workflow tool starts names the agent.
 	hookFunctionsWorkflowEvents(hooks, userId, projectId, projectName, undefined, telemetryMetadata);
 	hookFunctionsNodeEvents(hooks);
 	hookFunctionsFinalizeExecutionStatus(hooks);
@@ -1071,7 +1076,16 @@ export function getLifecycleHooksForScalingMain(
 	const executionPersistence = Container.get(ExecutionPersistence);
 	const unsavedManualExecutionService = Container.get(UnsavedManualExecutionService);
 
-	hookFunctionsWorkflowEvents(hooks, userId, projectId, projectName, source, telemetryMetadata);
+	// Read the marker here: the run that main gets back from a worker can be a slim summary without it.
+	hookFunctionsWorkflowEvents(
+		hooks,
+		userId,
+		projectId,
+		projectName,
+		source,
+		telemetryMetadata,
+		data.executionData?.parentAgentRun,
+	);
 	hookFunctionsSaveProgress(hooks, optionalParameters);
 	hookFunctionsPreExecute(hooks, source);
 	hookFunctionsPostExecute(hooks);
@@ -1182,7 +1196,16 @@ export function getLifecycleHooksForRegularMain(
 		suppressErrorWorkflow,
 	};
 	hookFunctionsMemoryGuard(hooks);
-	hookFunctionsWorkflowEvents(hooks, userId, projectId, projectName, source, telemetryMetadata);
+	// Read the marker here, so that a failed run without run data still names the agent.
+	hookFunctionsWorkflowEvents(
+		hooks,
+		userId,
+		projectId,
+		projectName,
+		source,
+		telemetryMetadata,
+		data.executionData?.parentAgentRun,
+	);
 	hookFunctionsNodeEvents(hooks);
 	hookFunctionsFinalizeExecutionStatus(hooks);
 	hookFunctionsSave(hooks, optionalParameters);

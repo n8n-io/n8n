@@ -1,0 +1,12 @@
+{
+	"properties": {
+		"code": {
+			"type": "string"
+		},
+		"msg": {
+			"type": "string"
+		},
+		"params": {}
+	},
+	"type": "object"
+}

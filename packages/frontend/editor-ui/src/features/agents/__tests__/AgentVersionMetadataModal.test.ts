@@ -1,5 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { enableAutoUnmount, mount, flushPromises } from '@vue/test-utils';
+import { i18nInstance } from '@n8n/i18n';
+import { defineComponent } from 'vue';
+import { createMemoryHistory, createRouter } from 'vue-router';
+import { AGENT_N8N_CHAT_VIEW } from '../constants';
 import AgentVersionMetadataModal, {
 	type AgentVersionMetadataModalData,
 } from '../components/AgentVersionMetadataModal.vue';
@@ -12,6 +16,23 @@ vi.mock('@/app/stores/ui.store', () => ({
 }));
 
 enableAutoUnmount(afterEach);
+
+function createTestRouter() {
+	const page = defineComponent({ template: '<div />' });
+	return createRouter({
+		history: createMemoryHistory(),
+		routes: [
+			{ path: '/', component: page },
+			{
+				name: AGENT_N8N_CHAT_VIEW,
+				path: '/assistant/agents/:agentId/:agentThreadId?',
+				component: page,
+			},
+		],
+	});
+}
+
+const n8nChatAgentId = 'agent-1';
 
 function render(data: Partial<AgentVersionMetadataModalData> = {}, stubModal = true) {
 	const onSubmit = vi.fn().mockResolvedValue(true);
@@ -28,7 +49,10 @@ function render(data: Partial<AgentVersionMetadataModalData> = {}, stubModal = t
 				...data,
 			},
 		},
-		global: { stubs: { AgentModal: stubModal ? AgentModalTestStub : false } },
+		global: {
+			plugins: [i18nInstance, createTestRouter()],
+			stubs: { AgentModal: stubModal ? AgentModalTestStub : false },
+		},
 	});
 
 	return { wrapper, onSubmit, onClose };
@@ -37,6 +61,121 @@ function render(data: Partial<AgentVersionMetadataModalData> = {}, stubModal = t
 beforeEach(() => vi.clearAllMocks());
 
 describe('AgentVersionMetadataModal', () => {
+	const PUBLISH_CALLOUT = '[data-testid="agent-version-metadata-publish-callout"]';
+	const PUBLISH_AND_TALK = '[data-testid="agent-version-metadata-publish-and-talk"]';
+	const SUBMIT = '[data-testid="agent-version-metadata-submit"]';
+
+	it.each([undefined, n8nChatAgentId])(
+		'tells the user that later changes need another publish (n8nChatAgentId %s)',
+		(agentId) => {
+			const { wrapper } = render({ mode: 'publish', n8nChatAgentId: agentId });
+
+			expect(wrapper.get(PUBLISH_CALLOUT).text()).toBe(
+				'Any changes you make to this agent will not be published until you publish it again.',
+			);
+		},
+	);
+
+	it('shows no publish callout when the user only names a version', () => {
+		const { wrapper } = render({ mode: 'edit', n8nChatAgentId });
+
+		expect(wrapper.find(PUBLISH_CALLOUT).exists()).toBe(false);
+	});
+
+	it.each([
+		{ mode: 'publish' as const, n8nChatAgentId: undefined },
+		{ mode: 'edit' as const, n8nChatAgentId },
+	])(
+		'shows no "Publish and talk to agent" in $mode mode with n8nChatAgentId $n8nChatAgentId',
+		({ mode, n8nChatAgentId: agentId }) => {
+			const { wrapper } = render({ mode, n8nChatAgentId: agentId });
+
+			expect(wrapper.find(PUBLISH_AND_TALK).exists()).toBe(false);
+		},
+	);
+
+	describe('"Publish and talk to agent"', () => {
+		function stubWindowOpen() {
+			const tab = { opener: {}, location: { href: '' }, close: vi.fn() };
+			const open = vi.spyOn(window, 'open').mockReturnValue(tab as unknown as Window);
+			return { tab, open };
+		}
+
+		afterEach(() => vi.restoreAllMocks());
+
+		it('moves Cancel to the left of the footer', async () => {
+			const { wrapper, onClose } = render({ mode: 'publish', n8nChatAgentId }, false);
+			await flushPromises();
+
+			const footerActions = document.querySelector('[data-testid="agent-modal-footer-actions"]');
+			const cancel = document.querySelector<HTMLButtonElement>(
+				'[data-testid="agent-version-metadata-cancel"]',
+			);
+			expect(cancel).not.toBeNull();
+			expect(footerActions?.contains(cancel)).toBe(false);
+			expect(document.querySelector('[data-testid="agent-modal-cancel"]')).toBeNull();
+
+			cancel?.click();
+			await flushPromises();
+			expect(onClose).toHaveBeenCalledWith(false);
+			wrapper.unmount();
+		});
+
+		it('keeps Cancel on the right without n8n Chat', async () => {
+			render({ mode: 'publish' }, false);
+			await flushPromises();
+
+			expect(document.querySelector('[data-testid="agent-version-metadata-cancel"]')).toBeNull();
+			expect(document.querySelector('[data-testid="agent-modal-cancel"]')).not.toBeNull();
+		});
+
+		it('demotes Publish to a secondary button', () => {
+			const { wrapper } = render({ mode: 'publish', n8nChatAgentId });
+
+			expect(wrapper.get(PUBLISH_AND_TALK).text()).toBe('Publish and talk to agent');
+			expect(wrapper.get(SUBMIT).attributes('class')).toContain('outline');
+		});
+
+		it('publishes, then opens the agent in n8n Chat in a new tab', async () => {
+			const { tab, open } = stubWindowOpen();
+			const { wrapper, onSubmit, onClose } = render({ mode: 'publish', n8nChatAgentId });
+
+			await wrapper.get(PUBLISH_AND_TALK).trigger('click');
+			await flushPromises();
+
+			expect(open).toHaveBeenCalledWith('', '_blank');
+			expect(tab.opener).toBeNull();
+			expect(onSubmit).toHaveBeenCalledOnce();
+			expect(onClose).toHaveBeenCalledWith(true);
+			expect(tab.location.href).toBe('/assistant/agents/agent-1');
+			expect(tab.close).not.toHaveBeenCalled();
+		});
+
+		it('closes the new tab when the publish fails', async () => {
+			const { tab } = stubWindowOpen();
+			const { wrapper, onSubmit, onClose } = render({ mode: 'publish', n8nChatAgentId });
+			onSubmit.mockResolvedValueOnce(false);
+
+			await wrapper.get(PUBLISH_AND_TALK).trigger('click');
+			await flushPromises();
+
+			expect(onClose).not.toHaveBeenCalled();
+			expect(tab.location.href).toBe('');
+			expect(tab.close).toHaveBeenCalledOnce();
+		});
+
+		it('opens no tab when Publish is used', async () => {
+			const { open } = stubWindowOpen();
+			const { wrapper, onSubmit } = render({ mode: 'publish', n8nChatAgentId });
+
+			await wrapper.get(SUBMIT).trigger('click');
+			await flushPromises();
+
+			expect(onSubmit).toHaveBeenCalledOnce();
+			expect(open).not.toHaveBeenCalled();
+		});
+	});
+
 	it('requires the workflow name field and keeps the character limits', () => {
 		const { wrapper } = render({ name: 'Release', description: 'First line\nSecond line' });
 		expect(wrapper.findComponent(WorkflowVersionForm).props('nameRequired')).toBe(true);

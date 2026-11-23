@@ -1,3 +1,4 @@
+import type { FailedBeforeStartMarker } from './execution-blocked-reason';
 import type { IExecutionContext } from './execution-context';
 import type {
 	IRunData,
@@ -35,7 +36,7 @@ export interface CreateFullRunExecutionDataOptions {
 		pinData?: IPinData;
 		lastNodeExecuted?: string;
 		metadata?: Record<string, string>;
-		failedBeforeStart?: true;
+		failedBeforeStart?: FailedBeforeStartMarker;
 	};
 	executionData?: {
 		contextData?: IExecuteContextData;
@@ -65,7 +66,7 @@ function buildResultData(
 		pinData: resultData?.pinData,
 		lastNodeExecuted: resultData?.lastNodeExecuted,
 		metadata: resultData?.metadata,
-		...(resultData?.failedBeforeStart && { failedBeforeStart: true }),
+		...(resultData?.failedBeforeStart && { failedBeforeStart: resultData.failedBeforeStart }),
 	};
 }
 

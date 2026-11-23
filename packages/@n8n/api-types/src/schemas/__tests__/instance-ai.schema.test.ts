@@ -1,3 +1,4 @@
+import { DATA_TABLE_TOOL_ACTIONS } from '../../builder-tool-names';
 import {
 	AI_GATEWAY_MANAGED_TAG,
 	base64EncodedSize,
@@ -13,6 +14,7 @@ import {
 	appBlueprintSchema,
 	buildCredentialDestinationGrantKey,
 	buildDataTablesSessionGrantKey,
+	buildOwnedDataTableGrantKey,
 	buildExecuteNodeSessionGrantKey,
 	buildUpdateWorkflowSessionGrantKey,
 	buildSetupSkipGrantKey,
@@ -292,6 +294,11 @@ describe('instanceAiEventSchema', () => {
 		// A live-only frame would leave the plus menu blank for every turn a client
 		// missed, and a week-old thread could never answer the question at all.
 		expect(INSTANCE_AI_EPHEMERAL_EVENT_TYPES.has('preferences-applied')).toBe(false);
+	});
+
+	it('keeps cloud-browser-window-changed durable, so a reconnect still moves the live view', () => {
+		// A live-only frame missed during a reconnect would leave the live view on the old window.
+		expect(INSTANCE_AI_EPHEMERAL_EVENT_TYPES.has('cloud-browser-window-changed')).toBe(false);
 	});
 
 	it('drops malformed or unknown-kind items individually instead of failing the event', () => {
@@ -804,6 +811,15 @@ describe('data-tables session grant keys', () => {
 		expect(buildDataTablesSessionGrantKey('create')).toBe('data-tables:create');
 		expect(buildDataTablesSessionGrantKey('insert-rows')).toBe('data-tables:insert-rows');
 	});
+
+	it('builds an owned-table key that differs from every action key', () => {
+		const actionKeys = DATA_TABLE_TOOL_ACTIONS.map(buildDataTablesSessionGrantKey);
+		expect(actionKeys).not.toContain(buildOwnedDataTableGrantKey('x'));
+	});
+
+	it('encodes the table id in the owned-table key', () => {
+		expect(buildOwnedDataTableGrantKey('a/b:c')).toBe('data-tables:owned:a%2Fb%3Ac');
+	});
 });
 
 describe('node execution session grant keys', () => {
@@ -917,7 +933,7 @@ describe('domain-access grant keys', () => {
 describe('instanceAiEvalSeedAgentSchema resource references', () => {
 	const config = {
 		name: 'Support Triage',
-		model: 'anthropic/claude-sonnet-4-5',
+		model: 'anthropic/claude-sonnet-5-5',
 		instructions: 'Triage inbound tickets.',
 	};
 	const agent = (over: Record<string, unknown> = {}) => ({

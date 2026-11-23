@@ -52,6 +52,7 @@ vi.mock('@n8n/i18n', () => ({
 				'instanceAi.tools.load_skill.templateFallback': 'template',
 				'instanceAi.tools.data_tables.query': 'Querying data table',
 				'instanceAi.tools.data_tables.insert-rows': 'Inserting rows',
+				'instanceAi.tools.change_data_tables': 'Changing data tables',
 				'instanceAi.stepTimeline.showData': 'Show data',
 				'instanceAi.stepTimeline.hideData': 'Hide data',
 				'instanceAi.stepTimeline.showBrief': 'Show brief',
@@ -89,6 +90,7 @@ describe('getToolIcon', () => {
 		expect(getToolIcon('data_tables')).toBe('table');
 		expect(getToolIcon('list_data_tables')).toBe('table');
 		expect(getToolIcon('insert_data_table_rows')).toBe('table');
+		expect(getToolIcon('change_data_tables')).toBe('table');
 	});
 
 	test('returns workflow for workflow-related tools', () => {
@@ -287,6 +289,13 @@ describe('useToolLabel', () => {
 		expect(getToolLabel('query_data_table')).toBe('Querying data table');
 		expect(getToolLabel('insert_data_table_rows')).toBe('Inserting rows');
 		expect(getToolLabel('data_tables', { action: 'insert-rows' })).toBe('Inserting rows');
+	});
+
+	test('getToolLabel gives the batch data table tool its own label', () => {
+		const { getToolLabel } = useToolLabel();
+		expect(
+			getToolLabel('change_data_tables', { changes: [{ action: 'insert-rows', table: 'Leads' }] }),
+		).toBe('Changing data tables');
 	});
 
 	test('getToolLabel returns action-specific n8n docs labels', () => {

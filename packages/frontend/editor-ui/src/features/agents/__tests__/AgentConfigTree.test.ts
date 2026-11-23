@@ -25,7 +25,7 @@ function makeConfig(overrides: Record<string, unknown> = {}): AgentJsonConfig {
 	return {
 		name: 'Template agent',
 		description: 'Built from a template',
-		model: 'anthropic/claude-sonnet-4-5',
+		model: 'anthropic/claude-sonnet-5-5',
 		credential: 'credential',
 		instructions: 'Help with the requested task.',
 		memory: { enabled: true, storage: 'n8n' },

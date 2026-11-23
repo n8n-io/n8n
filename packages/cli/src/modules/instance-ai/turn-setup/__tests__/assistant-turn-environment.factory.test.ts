@@ -52,10 +52,15 @@ function createSetupFactory() {
 				approvalModesEnabled: false,
 				instanceContextEnabled: false,
 				nodeUsageEnabled: false,
+				preferencesNoteVariant: undefined as string | undefined,
+				skillSourcesEnabled: undefined as boolean | undefined,
 			})),
 		},
 		settingsService: {
-			getAdminSettings: vi.fn(async () => ({ browserUseEnabled: false })),
+			getAdminSettings: vi.fn(async () => ({
+				browserUseEnabled: false,
+				cloudBrowserEnabled: false,
+			})),
 			getPermissions: vi.fn(() => ({})),
 			getSandboxStatus: vi.fn(() => ({ workflowBuilderAvailable: true })),
 			isMcpAccessEnabled: vi.fn(() => false),
@@ -243,6 +248,46 @@ describe('AssistantTurnEnvironmentFactory', () => {
 			);
 		});
 
+		it.each([
+			{ cloudBrowserEnabled: true, isAvailable: true, wired: true },
+			{ cloudBrowserEnabled: true, isAvailable: false, wired: false },
+			{ cloudBrowserEnabled: false, isAvailable: true, wired: false },
+		])(
+			'sets startCloudBrowserTask only when the cloud browser is enabled and available (%j)',
+			async ({ cloudBrowserEnabled, isAvailable, wired }) => {
+				const { factory, fields } = createSetupFactory();
+				fields.settingsService.getAdminSettings.mockResolvedValue({
+					browserUseEnabled: false,
+					cloudBrowserEnabled,
+				});
+				const cloudBrowser = {
+					isAvailable: vi.fn(async () => isAvailable),
+					startTask: vi.fn(async () => ({ status: 'started' as const, taskId: 'task-1' })),
+				};
+
+				const { orchestrationContext } = await factory.create(
+					params,
+					createRuntime({ cloudBrowser }),
+				);
+
+				if (cloudBrowserEnabled) expect(cloudBrowser.isAvailable).toHaveBeenCalled();
+				else expect(cloudBrowser.isAvailable).not.toHaveBeenCalled();
+				if (!wired) {
+					expect(orchestrationContext.startCloudBrowserTask).toBeUndefined();
+					return;
+				}
+				const input = { title: 'Find the price', goal: 'Find the price of the Pro plan' };
+				await expect(orchestrationContext.startCloudBrowserTask?.(input)).resolves.toEqual({
+					status: 'started',
+					taskId: 'task-1',
+				});
+				expect(cloudBrowser.startTask).toHaveBeenCalledWith(
+					input,
+					expect.objectContaining({ runId: 'run-1', user, threadId: 'thread-1' }),
+				);
+			},
+		);
+
 		it('leaves out the optional hooks that a runtime does not supply', async () => {
 			const { factory } = createSetupFactory();
 
@@ -328,9 +373,41 @@ describe('AssistantTurnEnvironmentFactory', () => {
 
 			const { context } = await factory.create(params, createRuntime());
 
+			// The context is a deep mock, so check that the mode was never set.
+			expect(Object.keys(context)).not.toContain('approvalMode');
 			expect(context.enforceAdminMcpPermissions).toBe(false);
 			expect(fields.approvalModeService.resolveMode).toHaveBeenCalledWith(user, false);
 			expect(fields.approvalReviewerFactory.create).not.toHaveBeenCalled();
+		});
+
+		it.each(['control', 'variant'])(
+			'passes the preferences note variant %s to the turn',
+			async (variant) => {
+				const { factory, fields } = createSetupFactory();
+				fields.adapterService.resolveExperimentGates.mockResolvedValue({
+					...(await fields.adapterService.resolveExperimentGates()),
+					preferencesNoteVariant: variant,
+				});
+
+				const environment = await factory.create(params, createRuntime());
+
+				expect(environment.preferencesNoteVariant).toBe(variant);
+			},
+		);
+
+		it('passes the skill sources gate of the turn to the tool context', async () => {
+			const { factory, fields } = createSetupFactory();
+			fields.adapterService.resolveExperimentGates.mockResolvedValue({
+				...(await fields.adapterService.resolveExperimentGates()),
+				skillSourcesEnabled: true,
+			});
+
+			await factory.create(params, createRuntime());
+
+			expect(fields.adapterService.createContext).toHaveBeenCalledWith(
+				user,
+				expect.objectContaining({ skillSourcesEnabled: true }),
+			);
 		});
 
 		it('keeps the MCP settings of a user who picked Manual', async () => {
@@ -344,6 +421,7 @@ describe('AssistantTurnEnvironmentFactory', () => {
 			const { context } = await factory.create(params, createRuntime());
 
 			expect(fields.approvalModeService.resolveMode).toHaveBeenCalledWith(user, true);
+			expect(context.approvalMode).toBe('manual');
 			expect(context.enforceAdminMcpPermissions).toBe(false);
 			expect(fields.approvalReviewerFactory.create).not.toHaveBeenCalled();
 		});
@@ -359,6 +437,7 @@ describe('AssistantTurnEnvironmentFactory', () => {
 
 			const { context, orchestrationContext } = await factory.create(params, runtime);
 
+			expect(context.approvalMode).toBe('auto');
 			expect(context.enforceAdminMcpPermissions).toBe(true);
 			expect(context.approvalReviewer).toBe(
 				fields.approvalReviewerFactory.create.mock.results[0].value,
@@ -420,6 +499,7 @@ describe('AssistantTurnEnvironmentFactory', () => {
 
 				const { context } = await factory.create(params, runtime);
 
+				expect(context.approvalMode).toBe('manual');
 				expect(context.enforceAdminMcpPermissions).toBe(false);
 				expect(fields.approvalReviewerFactory.create).not.toHaveBeenCalled();
 			});
@@ -451,6 +531,44 @@ describe('AssistantTurnEnvironmentFactory', () => {
 			expect(
 				(fields.adapterService as { createContext: unknown }).createContext,
 			).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('createProxyRunConfig', () => {
+		function createProxyFactory(isModelTrainingAllowed: () => Promise<boolean>) {
+			return createFactory({
+				aiService: {
+					isProxyEnabled: vi.fn(() => true),
+					getClient: vi.fn(async () => ({ getApiProxyBaseUrl: () => 'https://proxy.test' })),
+				},
+				aiUsageService: { isModelTrainingAllowed: vi.fn(isModelTrainingAllowed) },
+			});
+		}
+
+		it('tags traces when the instance opted out of model training', async () => {
+			const { tracingProxyConfig, searchProxyConfig } = await createProxyFactory(
+				async () => false,
+			).createProxyRunConfig(user);
+
+			expect(tracingProxyConfig?.traceTags).toEqual(['model-training-opt-out']);
+			expect(searchProxyConfig?.traceTags).toBeUndefined();
+		});
+
+		it('does not tag traces when the instance allows model training', async () => {
+			const { tracingProxyConfig } = await createProxyFactory(
+				async () => true,
+			).createProxyRunConfig(user);
+
+			expect(tracingProxyConfig?.apiUrl).toBe('https://proxy.test/langsmith');
+			expect(tracingProxyConfig?.traceTags).toBeUndefined();
+		});
+
+		it('tags traces when the model training setting cannot be read', async () => {
+			const { tracingProxyConfig } = await createProxyFactory(async () => {
+				throw new Error('db down');
+			}).createProxyRunConfig(user);
+
+			expect(tracingProxyConfig?.traceTags).toEqual(['model-training-opt-out']);
 		});
 	});
 

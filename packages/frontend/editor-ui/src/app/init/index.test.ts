@@ -12,6 +12,8 @@ import { useUsersStore } from '@n8n/stores/users.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useVersionsStore } from '@n8n/stores/versions.store';
 import { useBannersStore } from '@/features/shared/banners/banners.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useRolesStore } from '@n8n/stores/roles.store';
 import type { Cloud, CurrentUserResponse } from '@n8n/rest-api-client';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 import { STORES } from '@n8n/stores';
@@ -49,6 +51,7 @@ vi.mock('@/app/moduleInitializer/moduleInitializer', async (importOriginal) => {
 		registerModulePushHandlers: vi.fn(actual.registerModulePushHandlers),
 		registerModuleCommands: vi.fn(actual.registerModuleCommands),
 		registerModuleParameterInputs: vi.fn(actual.registerModuleParameterInputs),
+		registerModuleRunDataDisplayModes: vi.fn(actual.registerModuleRunDataDisplayModes),
 	};
 });
 
@@ -251,6 +254,15 @@ describe('Init', () => {
 				versionCli: '1.102.0',
 				userRole: 'global:member',
 			});
+		});
+
+		// Preview mode shows run data to a visitor who is not logged in.
+		it('should register module display modes when no user is logged in', async () => {
+			usersStore.currentUser = null;
+
+			await initializeCore();
+
+			expect(moduleInitializer.registerModuleRunDataDisplayModes).toHaveBeenCalledTimes(1);
 		});
 
 		it('should start the expression engine from the settings payload', async () => {
@@ -688,6 +700,91 @@ describe('Init', () => {
 				'Failed to initialize source control store',
 				expect.anything(),
 			);
+		});
+
+		it('loads source control preferences together with projects and roles', async () => {
+			settingsStore.isCloudDeployment = false;
+			usersStore.currentUser = mock<IUser>({ id: '123', globalScopes: ['user:list'] });
+			const projectsStore = mockedStore(useProjectsStore);
+			const rolesStore = mockedStore(useRolesStore);
+			const { promise, resolve } = Promise.withResolvers<void>();
+			sourceControlStore.getPreferences.mockReturnValueOnce(promise);
+			let initialized = false;
+			const initializing = initializeAuthenticatedFeatures(false).then(() => {
+				initialized = true;
+			});
+
+			await flushPromises();
+			expect(sourceControlStore.getPreferences).toHaveBeenCalledTimes(1);
+			expect(projectsStore.getMyProjects).toHaveBeenCalledTimes(1);
+			expect(projectsStore.getPersonalProject).toHaveBeenCalledTimes(1);
+			expect(projectsStore.getProjectsCount).toHaveBeenCalledTimes(1);
+			expect(rolesStore.fetchRoles).toHaveBeenCalledTimes(1);
+			// Pages still render with the preferences in place, for example a read-only branch.
+			expect(projectsStore.refreshCurrentProject).not.toHaveBeenCalled();
+			expect(initialized).toBe(false);
+
+			resolve();
+			await initializing;
+			expect(projectsStore.refreshCurrentProject).toHaveBeenCalledTimes(1);
+			expect(initialized).toBe(true);
+		});
+
+		it('shows a toast and finishes init when the source control preferences request fails', async () => {
+			settingsStore.isCloudDeployment = false;
+			usersStore.currentUser = mock<IUser>({ id: '123', globalScopes: ['user:list'] });
+			const projectsStore = mockedStore(useProjectsStore);
+			const rolesStore = mockedStore(useRolesStore);
+			const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+			const error = new AxiosError('Something went wrong', '500');
+			const { promise, reject } = Promise.withResolvers<void>();
+			sourceControlStore.getPreferences.mockReturnValueOnce(promise);
+			const initializing = initializeAuthenticatedFeatures(false);
+
+			await flushPromises();
+			reject(error);
+
+			await expect(initializing).resolves.toBeUndefined();
+			expect(showMessage).toHaveBeenCalledTimes(1);
+			expect(showMessage).toHaveBeenCalledWith(
+				expect.objectContaining({
+					title: 'Source control failed to connect',
+					type: 'error',
+					duration: 0,
+				}),
+			);
+			expect(consoleErrorSpy).toHaveBeenCalledWith(
+				'Failed to initialize source control store',
+				error,
+			);
+			expect(projectsStore.getMyProjects).toHaveBeenCalledTimes(1);
+			expect(rolesStore.fetchRoles).toHaveBeenCalledTimes(1);
+			expect(projectsStore.refreshCurrentProject).toHaveBeenCalledTimes(1);
+			expect(nodeTypesStore.loadNodeTypesIfNotLoaded).toHaveBeenCalledTimes(1);
+		});
+
+		it('requests source control preferences when the node translation headers request fails', async () => {
+			settingsStore.isCloudDeployment = false;
+			usersStore.currentUser = mock<IUser>({ id: '123', globalScopes: ['user:list'] });
+			const error = new Error('translation headers');
+			nodeTypesStore.getNodeTranslationHeaders.mockRejectedValueOnce(error);
+
+			await expect(initializeAuthenticatedFeatures(false)).rejects.toBe(error);
+
+			expect(sourceControlStore.getPreferences).toHaveBeenCalledTimes(1);
+		});
+
+		it('does not request source control preferences when source control is not enabled', async () => {
+			settingsStore.isCloudDeployment = false;
+			sourceControlStore.isEnterpriseSourceControlEnabled = false;
+			usersStore.currentUser = mock<IUser>({ id: '123', globalScopes: ['user:list'] });
+			const projectsStore = mockedStore(useProjectsStore);
+
+			await initializeAuthenticatedFeatures(false);
+
+			expect(sourceControlStore.getPreferences).not.toHaveBeenCalled();
+			expect(showMessage).not.toHaveBeenCalled();
+			expect(projectsStore.refreshCurrentProject).toHaveBeenCalledTimes(1);
 		});
 
 		it('should push banners based on settings', async () => {

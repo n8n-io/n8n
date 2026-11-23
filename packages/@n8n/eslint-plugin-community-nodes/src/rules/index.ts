@@ -1,12 +1,14 @@
 import type { AnyRuleModule } from '@typescript-eslint/utils/ts-eslint';
 
 import { AiNodePackageJsonRule } from './ai-node-package-json.js';
+import { ClassNameMatchesFilenameRule } from './class-name-matches-filename.js';
 import { CredClassFieldIconMissingRule } from './cred-class-field-icon-missing.js';
 import { CredClassOAuth2NamingRule } from './cred-class-oauth2-naming.js';
 import { CredentialDocumentationUrlRule } from './credential-documentation-url.js';
 import { CredentialPasswordFieldRule } from './credential-password-field.js';
 import { CredentialTestRequiredRule } from './credential-test-required.js';
 import { CredentialUnnecessaryPasswordRule } from './credential-unnecessary-password.js';
+import { HintMaxLengthRule } from './hint-max-length.js';
 import { IconContrastRule } from './icon-contrast.js';
 import { IconPreferThemedVariantsRule } from './icon-prefer-themed-variants.js';
 import { IconValidationRule } from './icon-validation.js';
@@ -54,11 +56,13 @@ import { WebhookLifecycleCompleteRule } from './webhook-lifecycle-complete.js';
 
 export const rules = {
 	'ai-node-package-json': AiNodePackageJsonRule,
+	'class-name-matches-filename': ClassNameMatchesFilenameRule,
 	'no-restricted-globals': NoRestrictedGlobalsRule,
 	'no-restricted-imports': NoRestrictedImportsRule,
 	'credential-password-field': CredentialPasswordFieldRule,
 	'no-deprecated-workflow-functions': NoDeprecatedWorkflowFunctionsRule,
 	'no-emoji-in-options': NoEmojiInOptionsRule,
+	'hint-max-length': HintMaxLengthRule,
 	'node-usable-as-tool': NodeUsableAsToolRule,
 	'open-ended-node-fields': OpenEndedNodeFieldsRule,
 	'package-name-convention': PackageNameConventionRule,

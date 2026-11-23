@@ -37,10 +37,21 @@ import {
 	WorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { Cipher, InstanceSettings } from 'n8n-core';
 import { jsonParse, type INode } from 'n8n-workflow';
 import assert from 'node:assert';
-import { mkdir, mkdtemp, readdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
+import {
+	mkdir,
+	mkdtemp,
+	readdir,
+	readFile,
+	rename,
+	rm,
+	stat,
+	utimes,
+	writeFile,
+} from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { SimpleGit } from 'simple-git';
@@ -62,6 +73,7 @@ import {
 	entityFilePath,
 	type ManifestEntityCollection,
 } from '@/modules/n8n-packages/io/manifest-entry';
+import { createAgent } from '@test-integration/db/agents';
 import { saveCredential } from '@test-integration/db/credentials';
 import { createTag } from '@test-integration/db/tags';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
@@ -91,17 +103,18 @@ import { PromotionRunRepository } from '../database/repositories/promotion-run.r
 import { PromotionProviderRepository } from '../database/repositories/promotion-provider.repository';
 import type { GitHostClients } from '../git-hosts/git-host-clients';
 import { ApplyPreviewService } from '../apply-preview.service';
+import { PromotePreviewService } from '../promote-preview.service';
 import { LocalPackageEntities } from '../local-package-entities.service';
 import { PromotionChangeService } from '../promotion-change.service';
 import { PromotionEnvironmentResolver } from '../promotion-environment.resolver';
 import { PromotionProvidersService } from '../promotion-providers.service';
-import { PromotionReviewGateService } from '../promotion-review-gate.service';
 import { PromotionReviewsService } from '../promotion-reviews.service';
 import { PromotionCheckoutCleanupService } from '../promotion-checkout-cleanup.service';
 import { PromotionWorkingDirectoryService } from '../promotion-working-directory.service';
 import { PromotionsGitService } from '../promotions-git.service';
 import { PromotionEnvironmentLockService } from '../promotion-environment-lock.service';
 import { PromotionsService } from '../promotions.service';
+import { STALE_GIT_LOCK_AGE_MS } from '../constants';
 import { WorkingCopyUpdater } from '../working-copy-updater';
 import { storedAgentConfig } from '@/modules/agents/__tests__/test-utils/stored-agent-config';
 
@@ -111,7 +124,7 @@ import {
 	createGitRemoteSeed,
 	type TestRemote,
 } from './utils/git-remote-fixture';
-import { writeInstancePromotionPackage } from './utils/promotion-fixtures';
+import { expectPushed, writeInstancePromotionPackage } from './utils/promotion-fixtures';
 
 beforeAll(async () => await testModules.loadModules(['agents']));
 const testServer = setupTestServer({
@@ -233,6 +246,7 @@ beforeEach(async () => {
 		Container.get(FolderService),
 		packagesService,
 		Container.get(ApplyPreviewService),
+		Container.get(PromotePreviewService),
 		Container.get(PackageDirectoryInventoryReader),
 		Container.get(PackageImportConfig),
 		Container.get(PromotionRunRepository),
@@ -515,10 +529,10 @@ function changeService() {
 		service,
 		packagesService,
 		Container.get(ApplyPreviewService),
-		Container.get(SharedWorkflowRepository),
+		Container.get(PromotePreviewService),
 		Container.get(LocalPackageEntities),
 		Container.get(PromotionEnvironmentResolver),
-		Container.get(PromotionReviewGateService),
+		Container.get(ProjectRepository),
 	);
 }
 
@@ -780,16 +794,14 @@ describe('Promote and Apply', () => {
 		await createTeamProject('Orders', owner);
 
 		// Pause the first Promote inside the lock, so the second one overlaps it.
-		let exportStarted!: () => void;
-		const started = new Promise<void>((resolve) => (exportStarted = resolve));
-		let resume!: () => void;
-		const paused = new Promise<void>((resolve) => (resume = resolve));
+		const started = createDeferredPromise();
+		const paused = createDeferredPromise();
 		const exportPackage = packagesService.exportPackageToDirectory.bind(packagesService);
 		const exportSpy = vi
 			.spyOn(packagesService, 'exportPackageToDirectory')
 			.mockImplementationOnce(async (...args) => {
-				exportStarted();
-				await paused;
+				started.resolve();
+				await paused.promise;
 				return await exportPackage(...args);
 			});
 
@@ -798,7 +810,7 @@ describe('Promote and Apply', () => {
 				canExportVariableValues: false,
 				commitMessage: 'First promote',
 			});
-			await started;
+			await started.promise;
 
 			const second = service.promote(environments.promote.id, owner, {
 				canExportVariableValues: false,
@@ -807,7 +819,7 @@ describe('Promote and Apply', () => {
 			await expect(second).rejects.toThrow(LockedError);
 			await expect(second).rejects.toMatchObject({ httpStatusCode: 423 });
 
-			resume();
+			paused.resolve();
 			const result = await first;
 
 			const remoteGit = createFixtureGit(remote.bareDir);
@@ -817,7 +829,7 @@ describe('Promote and Apply', () => {
 			);
 			expect(exportSpy).toHaveBeenCalledOnce();
 		} finally {
-			resume();
+			paused.resolve();
 			exportSpy.mockRestore();
 		}
 	});
@@ -828,7 +840,7 @@ describe('Promote and Apply', () => {
 		await service.clone(environments.promote.id, owner);
 
 		const project = await createTeamProject('Orders', owner);
-		await Container.get(AgentRepository).save({
+		await createAgent({
 			id: 'local-agent',
 			name: 'Local Agent',
 			projectId: project.id,
@@ -995,7 +1007,7 @@ describe('Promote and Apply', () => {
 		).toEqual([result.git.commitSha, movedCommit]);
 	});
 
-	it('requires a clone after a branched promotion cannot restore its checkout', async () => {
+	it('clones again after a branched promotion cannot restore its checkout', async () => {
 		const remote = await createRemote();
 		const environments = await createInstanceEnvironments(
 			remote.bareDir,
@@ -1037,23 +1049,12 @@ describe('Promote and Apply', () => {
 		await environmentRepository.update(environmentId, {
 			settings: { schemaVersion: 1, baseBranchName: 'main', createBranchOnPromotion: false },
 		});
-		const exportSpy = vi.spyOn(packagesService, 'exportPackageToDirectory');
-		try {
-			await expect(service.promote(environments.promote.id, owner, request)).rejects.toThrow(
-				'not connected',
-			);
-			expect(exportSpy).not.toHaveBeenCalled();
-			await service.clone(environments.promote.id, owner);
-			await expect(service.promote(environments.promote.id, owner, request)).resolves.toMatchObject(
-				{
-					git: { branchName: 'main' },
-				},
-			);
-			const remoteGit = createFixtureGit(remote.bareDir);
-			expect((await remoteGit.revparse(['main^'])).trim()).toBe(baseCommit);
-		} finally {
-			exportSpy.mockRestore();
-		}
+		// No Connect: the next Promote replaces the untrusted checkout by itself.
+		await expect(service.promote(environments.promote.id, owner, request)).resolves.toMatchObject({
+			git: { branchName: 'main' },
+		});
+		const remoteGit = createFixtureGit(remote.bareDir);
+		expect((await remoteGit.revparse(['main^'])).trim()).toBe(baseCommit);
 	});
 
 	it('requires the configured base branch for a branched promotion', async () => {
@@ -1075,7 +1076,7 @@ describe('Promote and Apply', () => {
 		await expect(createFixtureGit(bareDir).raw(['show-ref', '--heads'])).resolves.toBe('');
 	});
 
-	it('applies the package and matches the managed target scope', async () => {
+	it('previews the whole-instance Apply and applies only the reviewed state', async () => {
 		const remote = await createRemote();
 		const environments = await createInstanceEnvironments(remote.bareDir);
 		await service.clone(environments.apply.id, owner);
@@ -1113,8 +1114,54 @@ describe('Promote and Apply', () => {
 			targetProject,
 		);
 		const removedProject = await createTeamProject('Removed from Git', owner);
+		const removedWorkflow = await createWorkflow(
+			{ name: 'Old report', nodes: [], connections: {} },
+			removedProject,
+		);
+		// No workflow uses it, so only the project deletion removes it.
+		const unusedCredential = await saveCredential(
+			{ name: 'Old report token', type: 'httpHeaderAuth', data: {} },
+			{ project: removedProject, role: 'credential:owner' },
+		);
 
-		const blocked = await service.apply(environments.apply.id, owner);
+		const reviewed = await changeService().getInstanceApplyPreview(owner, environments.apply.id);
+		expect(reviewed.commitSha).toBe(remoteHead);
+		expect(
+			reviewed.resources
+				.filter(({ change }) => change === 'deleted')
+				.map(({ key }) => key)
+				.sort(),
+		).toEqual(
+			[
+				`project:${removedProject.id}`,
+				`workflow:${removedWorkflow.id}`,
+				`credential:${unusedCredential.id}`,
+				`folder:${targetOnlyFolder.id}`,
+				`workflow:${targetOnlyWorkflow.id}`,
+			].sort(),
+		);
+		const expectedSource = {
+			environmentId: reviewed.source.environmentId,
+			commitSha: remoteHead,
+			branchName: 'main',
+		};
+
+		// A project created after the review would be deleted too, so the reviewed confirmation stops.
+		const lateProject = await createTeamProject('Created after review', owner);
+		const stale = await service.continueApply(environments.apply.id, owner, {
+			expectedSource,
+			expectedPreviewRevision: reviewed.revision,
+			confirmDestructiveChanges: true,
+		});
+		expect(stale.status).toBe('preview-changed');
+		expect(await projectRepository.findOneBy({ id: removedProject.id })).not.toBeNull();
+		await projectService.deleteProject(owner, lateProject.id);
+
+		const fresh = await changeService().getInstanceApplyPreview(owner, environments.apply.id);
+		const blocked = await service.apply(environments.apply.id, owner, {
+			expectedSource,
+			expectedPreviewRevision: fresh.revision,
+		});
 		assert(blocked.status === 'blocked');
 		expect(blocked.check.conflicts).toEqual([
 			{
@@ -1125,12 +1172,14 @@ describe('Promote and Apply', () => {
 		]);
 		expect(await projectRepository.findOneBy({ id: removedProject.id })).not.toBeNull();
 
+		// The confirmed policy plans differently, but the unconfirmed preview revision still matches.
 		const deleteProject = vi.spyOn(projectService, 'deleteProject');
 		const result = await service.continueApply(
 			environments.apply.id,
 			owner,
 			{
-				expectedSource: { environmentId: blocked.environmentId, ...blocked.git },
+				expectedSource,
+				expectedPreviewRevision: fresh.revision,
 				confirmDestructiveChanges: true,
 			},
 			'editor_ui',
@@ -1431,7 +1480,7 @@ describe('Promote and Apply', () => {
 		await commitAndPushRemote(remote, 'Update description');
 		const source = { environmentId: reviewed.environmentId, ...reviewed.git };
 
-		const moved = await service.apply(environments.apply.id, owner, source);
+		const moved = await service.apply(environments.apply.id, owner, { expectedSource: source });
 		expect(moved).toEqual({
 			status: 'source-changed',
 			environmentId: reviewed.environmentId,
@@ -1439,7 +1488,9 @@ describe('Promote and Apply', () => {
 		});
 		expect(await snapshotApplyState()).toEqual(before);
 
-		const current = await service.apply(environments.apply.id, owner, { ...source, ...moved.git });
+		const current = await service.apply(environments.apply.id, owner, {
+			expectedSource: { ...source, ...moved.git },
+		});
 		expect(current.status).toBe('blocked');
 		expect(await snapshotApplyState()).toEqual(before);
 	});
@@ -1453,6 +1504,56 @@ describe('Promote and Apply', () => {
 		const before = await snapshotApplyState();
 		await expect(service.apply(environments.apply.id, owner)).rejects.toThrow(/manifest/i);
 		expect(await snapshotApplyState()).toEqual(before);
+	});
+
+	it('promotes and applies on a main that never ran Connect', async () => {
+		const remote = await createRemote();
+		const environments = await createInstanceEnvironments(remote.bareDir);
+		const project = await createTeamProject('Orders', owner);
+		const workflow = await createWorkflow(
+			{ name: 'Process order', nodes: [], connections: {} },
+			project,
+		);
+
+		const promoteResult = await service.promote(environments.promote.id, owner, {
+			canExportVariableValues: true,
+			commitMessage: 'Promote from a main without a checkout',
+		});
+		await Container.get(WorkflowRepository).delete({ id: workflow.id });
+		const applyResult = await service.apply(environments.apply.id, owner);
+
+		expect((await createFixtureGit(remote.bareDir).revparse(['main'])).trim()).toBe(
+			promoteResult.git.commitSha,
+		);
+		assert(applyResult.status === 'applied');
+		expect(applyResult.git.commitSha).toBe(promoteResult.git.commitSha);
+		expect(await Container.get(WorkflowRepository).findOneBy({ id: workflow.id })).toMatchObject({
+			name: 'Process order',
+		});
+		for (const environment of [environments.promote, environments.apply]) {
+			await expect(workingDirectory.readDescriptor(environment.id)).resolves.not.toBeNull();
+		}
+	});
+
+	it('promotes after a restart removed the checkout', async () => {
+		const remote = await createRemote();
+		const environments = await createInstanceEnvironments(remote.bareDir);
+		await service.clone(environments.promote.id, owner);
+		await createTeamProject('Orders', owner);
+		// A main without a persistent volume starts with an empty n8n folder.
+		await rm(workingDirectory.paths(environments.promote.id).rootFolder, {
+			recursive: true,
+			force: true,
+		});
+
+		const result = await service.promote(environments.promote.id, owner, {
+			canExportVariableValues: true,
+			commitMessage: 'Promote after a restart',
+		});
+
+		expect((await createFixtureGit(remote.bareDir).revparse(['main'])).trim()).toBe(
+			result.git.commitSha,
+		);
 	});
 
 	it('promotes an archived workflow and archives it on apply instead of removing it', async () => {
@@ -3198,6 +3299,7 @@ describe('Promote a project selection — branch effects', () => {
 			commitMessage: 'Add w1',
 			canExportVariableValues: true,
 		});
+		expectPushed(result);
 
 		const remoteGit = createFixtureGit(remote.bareDir);
 		expect((await remoteGit.revparse([`${result.git.branchName}^`])).trim()).toBe(baseCommit);
@@ -3219,7 +3321,7 @@ describe('Promote a project selection — branch effects', () => {
 		const { project, workflows } = await setupProjectWithWorkflows('Orders', ['w1', 'w2', 'w3']);
 		await exportPackageToRemote(remote);
 
-		await Container.get(AgentRepository).save({
+		await createAgent({
 			id: 'uT9LdQx7rK2MvB4f',
 			name: 'Local Agent',
 			projectId: project.id,
@@ -3231,6 +3333,7 @@ describe('Promote a project selection — branch effects', () => {
 			commitMessage: 'Add w4',
 			canExportVariableValues: true,
 		});
+		expectPushed(result);
 
 		const { dir } = await inspectBranch(remote.bareDir);
 		const onBranch = await readBranchEntities(dir, 'workflow.json');
@@ -3277,6 +3380,7 @@ describe('Promote a project selection — branch effects', () => {
 			commitMessage: 'Add w3',
 			canExportVariableValues: true,
 		});
+		expectPushed(result);
 
 		const remoteGit = createFixtureGit(remote.bareDir);
 		expect(result.git.branchName).toMatch(
@@ -3536,6 +3640,7 @@ describe('Promote a project selection', () => {
 			workflowIds: [w3.id],
 			canExportVariableValues: true,
 		});
+		expectPushed(result);
 
 		const remoteHead = (await createFixtureGit(remote.bareDir).revparse(['main'])).trim();
 		expect(result.git).toEqual({ commitSha: remoteHead, branchName: 'main' });
@@ -3657,28 +3762,29 @@ describe('Promote a project selection', () => {
 describe('Promote from a clean checkout', () => {
 	/** Pauses the next export after it starts, then runs or fails it. */
 	const pauseNextExport = (outcome: 'run' | 'fail') => {
-		let exportStarted!: () => void;
-		const started = new Promise<void>((resolve) => (exportStarted = resolve));
-		let resume!: () => void;
-		const paused = new Promise<void>((resolve) => (resume = resolve));
+		const started = createDeferredPromise();
+		const paused = createDeferredPromise();
 		const exportPackage = packagesService.exportPackageToDirectory.bind(packagesService);
 		const spy = vi
 			.spyOn(packagesService, 'exportPackageToDirectory')
 			.mockImplementationOnce(async (...args) => {
-				exportStarted();
-				await paused;
+				started.resolve();
+				await paused.promise;
 				if (outcome === 'fail') throw new Error('The export failed');
 				return await exportPackage(...args);
 			});
-		return { started, resume, spy };
+		return { started: started.promise, resume: () => paused.resolve(), spy };
 	};
 
-	const promoteSelection = async (projectId: string, workflowId: string, commitMessage: string) =>
-		await service.promoteProjectSelection(projectId, owner, {
+	const promoteSelection = async (projectId: string, workflowId: string, commitMessage: string) => {
+		const result = await service.promoteProjectSelection(projectId, owner, {
 			workflowIds: [workflowId],
 			commitMessage,
 			canExportVariableValues: true,
 		});
+		expectPushed(result);
+		return result;
+	};
 
 	const committedPaths = async (bareDir: string, commitSha: string) =>
 		(await createFixtureGit(bareDir).raw(['show', '--name-only', '--format=', commitSha]))
@@ -3734,7 +3840,7 @@ describe('Promote from a clean checkout', () => {
 		);
 	});
 
-	it('keeps the commit of an interrupted branched promote off the base branch of a later direct promote', async () => {
+	it('restores the base branch after a refused branched promote, so a later direct promote starts from it', async () => {
 		const remote = await createRemote();
 		const environments = await createInstanceEnvironments(
 			remote.bareDir,
@@ -3789,6 +3895,44 @@ describe('Promote from a clean checkout', () => {
 		expect((await remoteGit.raw(['rev-list', 'main'])).split('\n')).not.toContain(refusedCommit);
 		expect((await remoteGit.raw(['log', '--format=%s', 'main'])).split('\n')).not.toContain(
 			'Interrupted promotion',
+		);
+	});
+
+	it('keeps the unpushed commit of an interrupted direct promote off the remote branch', async () => {
+		const remote = await createRemote();
+		const environments = await createInstanceEnvironments(remote.bareDir);
+		const { environmentId } = await service.clone(environments.promote.id, owner);
+		const project = await createTeamProject('Orders', owner);
+		await createWorkflow({ name: 'Process order', nodes: [], connections: {} }, project);
+		const remoteGit = createFixtureGit(remote.bareDir);
+		const baseCommit = (await remoteGit.revparse(['main'])).trim();
+		const { repositoryFolder } = workingDirectory.paths(environmentId);
+		const checkoutGit = createFixtureGit(repositoryFolder);
+		await checkoutGit.addConfig('user.name', 'Earlier attempt');
+		await checkoutGit.addConfig('user.email', 'earlier@example.com');
+
+		// A direct promote that stops after its commit, before the push and the rollback, leaves
+		// this commit on the local base branch. A direct promote keeps the checkout trusted.
+		const leftover = path.join(repositoryFolder, 'n8n', 'projects', 'old', 'workflow.json');
+		await mkdir(path.dirname(leftover), { recursive: true });
+		await writeFile(leftover, '{"id":"committed-leftover"}');
+		await checkoutGit.add(['--all', '--', 'n8n']);
+		await checkoutGit.commit('Unpushed promotion');
+		expect((await checkoutGit.revparse(['main'])).trim()).not.toBe(baseCommit);
+		await expect(workingDirectory.readDescriptor(environmentId)).resolves.not.toBeNull();
+
+		const result = await service.promote(environments.promote.id, owner, {
+			canExportVariableValues: false,
+			commitMessage: 'Direct promotion',
+		});
+
+		expect(result.git.branchName).toBe('main');
+		expect((await remoteGit.raw(['rev-list', 'main'])).trim().split('\n')).toEqual([
+			result.git.commitSha,
+			baseCommit,
+		]);
+		expect(await committedPaths(remote.bareDir, result.git.commitSha)).not.toContain(
+			'n8n/projects/old/workflow.json',
 		);
 	});
 
@@ -3916,6 +4060,9 @@ describe('Promote from a clean checkout', () => {
 			'index.lock',
 		);
 		await writeFile(indexLock, '');
+		// Only a lock file older than the stale age is removed, because a running Git command can hold a new one.
+		const modified = new Date(Date.now() - STALE_GIT_LOCK_AGE_MS - 60_000);
+		await utimes(indexLock, modified, modified);
 
 		const result = await service.promote(environments.promote.id, owner, {
 			canExportVariableValues: false,
@@ -4258,7 +4405,7 @@ describe('Promotion base branch listing', () => {
 		await expect(listBaseBranchFiles(project.id)).rejects.toThrow(BadRequestError);
 	});
 
-	it('requires a fresh clone after a base-branch change and reports a deleted branch', async () => {
+	it('clones again after a base-branch change and reports a deleted branch', async () => {
 		const remote = await createRemote();
 		const environments = await createInstanceEnvironments(remote.bareDir);
 		await service.clone(environments.promote.id, owner);
@@ -4271,9 +4418,8 @@ describe('Promotion base branch listing', () => {
 		await environmentRepository.update(environments.promote.id, {
 			settings: { schemaVersion: 1, baseBranchName: 'production', createBranchOnPromotion: false },
 		});
-		await expect(listBaseBranchFiles(project.id)).rejects.toThrow('not connected');
-		await service.clone(environments.promote.id, owner);
 
+		// No Connect: the listing replaces the checkout of the old branch by itself.
 		const files = await listBaseBranchFiles(project.id);
 
 		expect(files).toEqual([

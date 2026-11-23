@@ -34,6 +34,10 @@ workspace source file and the `workflow_builder_build_workflow` tool
   smallest edit with `workspace_str_replace_file`, then build with the same
   `filePath` (no `workflowId` needed; the build remembers it). Never re-emit the
   whole source, and do not fetch the same unchanged workflow again.
+- **Several files:** when one step writes or changes two or more files (for
+  example the sources of several supporting workflows), put them all in one
+  `workspace_edit_files` call, not one call for each file. Read two or more
+  files with one `workspace_read_files` call.
 
 When the needed node types are already obvious from the request, make one
 `find_tools` call for every tool catalog tool the build will need (for example
@@ -102,9 +106,8 @@ topology. Never solicit secrets through `ask_user`.
 **Prefer n8n sources over guessing.** Consult, in this order:
 
 1. The knowledge base in the sandbox workspace, read with the workspace tools (not `load_skill`):
-   `knowledge-base/index.json` (technique guides and reference docs),
-   `knowledge-base/templates/` (search it; never load `templates/index.json`
-   wholesale), and `node-types/index.txt` (searchable node catalog)
+   `knowledge-base/index.json` (technique guides and reference docs) and
+   `node-types/index.txt` (searchable node catalog)
 2. A matching runtime skill (`data-table-manager`, `debugging-executions`, …).
 3. Official n8n docs: load `n8n-docs-assistant` and call `n8n-docs`.
 

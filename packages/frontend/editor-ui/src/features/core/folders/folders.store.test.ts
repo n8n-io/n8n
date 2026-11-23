@@ -71,6 +71,7 @@ describe('folders.store', () => {
 				{
 					skip: 0,
 					take: 100,
+					resourceType: 'workflow',
 					sortBy: 'updatedAt:desc',
 				},
 				{
@@ -98,6 +99,7 @@ describe('folders.store', () => {
 				{
 					skip: 0,
 					take: 100,
+					resourceType: 'workflow',
 					sortBy: 'updatedAt:desc',
 				},
 				{
@@ -135,6 +137,7 @@ describe('folders.store', () => {
 				{
 					skip: 0,
 					take: 100,
+					resourceType: 'workflow',
 					sortBy: 'updatedAt:desc',
 				},
 				{
@@ -150,6 +153,7 @@ describe('folders.store', () => {
 				{
 					skip: 100,
 					take: 100,
+					resourceType: 'workflow',
 					sortBy: 'updatedAt:desc',
 				},
 				{
@@ -176,6 +180,37 @@ describe('folders.store', () => {
 					parentFolder: folder.parentFolder?.id,
 				},
 			});
+		});
+
+		it('fetches Agent destinations with the same name and subtree filters', async () => {
+			const folder = createFolder();
+			vi.spyOn(foldersApi, 'getProjectFolders').mockResolvedValue({ count: 1, data: [folder] });
+
+			const available = await foldersStore.fetchFoldersAvailableForMove(
+				projectId,
+				folderId,
+				{ name: 'Support' },
+				'agent',
+			);
+
+			expect(available).toEqual([{ ...folder, resource: 'folder' }]);
+			expect(foldersApi.getProjectFolders).toHaveBeenCalledWith(
+				rootStore.restApiContext,
+				projectId,
+				{ resourceType: 'agent', skip: 0, take: 100, sortBy: 'updatedAt:desc' },
+				{ excludeFolderIdAndDescendants: folderId, name: 'Support' },
+				selectFields,
+			);
+		});
+
+		it('stops paging if concurrent changes leave a page empty', async () => {
+			vi.spyOn(foldersApi, 'getProjectFolders').mockResolvedValue({ count: 1, data: [] });
+
+			await expect(
+				foldersStore.fetchFoldersAvailableForMove(projectId, folderId, {}, 'agent'),
+			).resolves.toEqual([]);
+
+			expect(foldersApi.getProjectFolders).toHaveBeenCalledOnce();
 		});
 	});
 

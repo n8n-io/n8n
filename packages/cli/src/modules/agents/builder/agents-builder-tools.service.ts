@@ -50,7 +50,7 @@ import { z } from 'zod';
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks/credentials-permission-checker';
 import { ConflictError, LockedError, UnexpectedError, UserError } from '@n8n/errors';
-import { CredentialsFinderService, NodeTypesProxy } from '@n8n/backend-services';
+import { CredentialsFinderService, NodeTypesProxy, TelemetryProxy } from '@n8n/backend-services';
 import { findUsableMcpCredential } from '@/modules/mcp-registry/mcp-credential-access';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import { OauthService } from '@/oauth/oauth.service';
@@ -58,7 +58,6 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import { AiService } from '@/services/ai.service';
 import { FreeAiCreditsService } from '@/services/free-ai-credits.service';
-import { Telemetry } from '@/telemetry';
 import { createAiMcpFetch } from '@/utils/ai-proxy-fetch';
 
 import { AgentConfigService } from '../agent-config.service';
@@ -529,7 +528,7 @@ export class AgentsBuilderToolsService {
 		private readonly outboundHttp: OutboundHttp,
 		private readonly nodeTypes: NodeTypesProxy,
 		private readonly freeAiCreditsService: FreeAiCreditsService,
-		private readonly telemetry: Telemetry,
+		private readonly telemetry: TelemetryProxy,
 		private readonly agentWriteLockService: AgentWriteLockService,
 		private readonly agentSkillRefs: AgentSkillRefsService,
 		private readonly credentialsFinderService: CredentialsFinderService,

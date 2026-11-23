@@ -1,14 +1,16 @@
 import { beforeEach, describe, it, mock } from 'node:test';
 import assert from 'node:assert/strict';
 
+import * as owners from './owners.mjs';
+
 /**
  * Run these tests by running
  *
  * node --test --experimental-test-module-mocks ./.github/scripts/owners/assign-reviewers.test.mjs
  * */
 
-/** @type {() => string[]} */
-let readPrLabelsImpl = () => [];
+/** @type {string[]} */
+let labels = [];
 /** @type {(pullRequestNumber: number) => Promise<Set<string>>} */
 let getChangedFilesImpl = async () => new Set();
 /** @type {(pullRequestNumber: number, teamSlugs: string[]) => Promise<void>} */
@@ -21,7 +23,8 @@ let removeLabelImpl = async () => {};
 mock.module('../github-helpers.mjs', {
 	namedExports: {
 		ensureEnvVar: () => {}, // no-op in tests
-		readPrLabels: () => readPrLabelsImpl(),
+		getPullRequestById: async () => ({ labels }),
+		readPrLabels: (pr) => pr.labels,
 		getChangedFiles: (n) => getChangedFilesImpl(n),
 		requestTeamReviewers: (pullRequestNumber, teamSlugs) =>
 			requestTeamReviewersImpl(pullRequestNumber, teamSlugs),
@@ -30,28 +33,26 @@ mock.module('../github-helpers.mjs', {
 	},
 });
 
-/** @type {() => Array<import('./owners.mjs').OwnersEntry>} */
-let parseOwnersFileImpl = () => [];
-/** @type {(files: Set<string>, entries: Array<import('./owners.mjs').OwnersEntry>) => Map<string, string[]>} */
-let assignOwnershipImpl = () => new Map();
-/** @type {(ownerships: Map<string, string[]>) => Array<{ team: string, fileCount: number }>} */
-let ownershipsToAllocationsImpl = () => [];
+const ownersContent = `
+src/ @n8n-io/catalysts required
+src/optional/ @n8n-io/qa-dx
+tests/ @n8n-io/test-owners required
+`;
+const changedFiles = new Set(['src/a.ts', 'src/b.ts', 'src/optional/a.ts', 'tests/a.test.ts']);
+const allTeamSlugs = ['catalysts', 'qa-dx', 'test-owners'];
 
 mock.module('./owners.mjs', {
 	namedExports: {
-		parseOwnersFile: () => parseOwnersFileImpl(),
-		assignOwnership: (files, entries) => assignOwnershipImpl(files, entries),
-		ownershipsToAllocations: (ownerships) => ownershipsToAllocationsImpl(ownerships),
-		// Mirrors the real implementation; the mock replaces the whole module.
-		teamHandleToSlug: (team) => team.replace(/^@[^/]+\//, ''),
+		...owners,
+		parseOwnersFile: () => owners.parseOwnersContent(ownersContent),
 	},
 });
 
 const {
 	AUTO_ASSIGN_LABEL,
+	AUTO_ASSIGN_REQUIRED_LABEL,
 	ASSIGNED_LABEL,
 	teamHandleToSlug,
-	hasAutoAssignLabel,
 	resolveOwnerTeamSlugs,
 	run,
 } = await import('./assign-reviewers.mjs');
@@ -70,34 +71,9 @@ describe('teamHandleToSlug', () => {
 	});
 });
 
-describe('hasAutoAssignLabel', () => {
-	it('returns true when the label is present', () => {
-		assert.equal(hasAutoAssignLabel(['bug', AUTO_ASSIGN_LABEL]), true);
-	});
-
-	it('returns false when the label is absent', () => {
-		assert.equal(hasAutoAssignLabel(['bug', 'enhancement']), false);
-	});
-
-	it('returns false for an empty label set', () => {
-		assert.equal(hasAutoAssignLabel([]), false);
-	});
-});
-
 describe('resolveOwnerTeamSlugs', () => {
-	beforeEach(() => {
-		parseOwnersFileImpl = () => [];
-		assignOwnershipImpl = () => new Map();
-		ownershipsToAllocationsImpl = () => [];
-	});
-
-	it('maps allocations to team slugs in allocation order', () => {
-		ownershipsToAllocationsImpl = () => [
-			{ team: '@n8n-io/catalysts', fileCount: 3 },
-			{ team: '@n8n-io/qa-dx', fileCount: 1 },
-		];
-
-		assert.deepEqual(resolveOwnerTeamSlugs(new Set(['a.ts'])), ['catalysts', 'qa-dx']);
+	it('returns each owning team once', () => {
+		assert.deepEqual(resolveOwnerTeamSlugs(changedFiles), allTeamSlugs);
 	});
 
 	it('returns an empty array when no team owns a file', () => {
@@ -111,11 +87,8 @@ describe('run', () => {
 	let removeLabel;
 
 	beforeEach(() => {
-		readPrLabelsImpl = () => [AUTO_ASSIGN_LABEL];
-		getChangedFilesImpl = async () => new Set(['a.ts']);
-		parseOwnersFileImpl = () => [];
-		assignOwnershipImpl = () => new Map();
-		ownershipsToAllocationsImpl = () => [{ team: '@n8n-io/catalysts', fileCount: 1 }];
+		labels = [AUTO_ASSIGN_LABEL];
+		getChangedFilesImpl = async () => changedFiles;
 		requestTeamReviewers = mock.fn(async () => {});
 		requestTeamReviewersImpl = requestTeamReviewers;
 		addLabel = mock.fn(async () => {});
@@ -125,16 +98,37 @@ describe('run', () => {
 	});
 
 	it('requests review from the owning team slugs when the label is present', async () => {
-		ownershipsToAllocationsImpl = () => [
-			{ team: '@n8n-io/catalysts', fileCount: 2 },
-			{ team: '@n8n-io/qa-dx', fileCount: 1 },
-		];
+		await run(42);
+
+		assert.equal(requestTeamReviewers.mock.calls.length, 1);
+		assert.deepEqual(requestTeamReviewers.mock.calls[0].arguments, [42, allTeamSlugs]);
+	});
+
+	it('requests only required teams for changed non-test files', async () => {
+		labels = [AUTO_ASSIGN_REQUIRED_LABEL];
 
 		await run(42);
 
 		assert.equal(requestTeamReviewers.mock.calls.length, 1);
-		assert.equal(requestTeamReviewers.mock.calls[0].arguments[0], 42);
-		assert.deepEqual(requestTeamReviewers.mock.calls[0].arguments[1], ['catalysts', 'qa-dx']);
+		assert.deepEqual(requestTeamReviewers.mock.calls[0].arguments, [42, ['catalysts']]);
+		assert.deepEqual(addLabel.mock.calls[0].arguments, [42, ASSIGNED_LABEL]);
+		assert.deepEqual(removeLabel.mock.calls[0].arguments, [42, AUTO_ASSIGN_REQUIRED_LABEL]);
+	});
+
+	it('requests all owning teams once when both trigger labels are present', async () => {
+		labels = [AUTO_ASSIGN_REQUIRED_LABEL, AUTO_ASSIGN_LABEL];
+
+		await run(42);
+
+		assert.equal(requestTeamReviewers.mock.calls.length, 1);
+		assert.deepEqual(requestTeamReviewers.mock.calls[0].arguments, [42, allTeamSlugs]);
+		assert.deepEqual(
+			removeLabel.mock.calls.map(({ arguments: args }) => args),
+			[
+				[42, AUTO_ASSIGN_LABEL],
+				[42, AUTO_ASSIGN_REQUIRED_LABEL],
+			],
+		);
 	});
 
 	it('swaps the trigger label for the done-marker after assigning', async () => {
@@ -145,7 +139,7 @@ describe('run', () => {
 	});
 
 	it('is a no-op when the trigger label is absent', async () => {
-		readPrLabelsImpl = () => ['bug'];
+		labels = ['bug'];
 
 		await run(42);
 
@@ -154,18 +148,44 @@ describe('run', () => {
 		assert.equal(removeLabel.mock.calls.length, 0);
 	});
 
-	it('is a no-op when the done-marker label is already present', async () => {
-		readPrLabelsImpl = () => [AUTO_ASSIGN_LABEL, ASSIGNED_LABEL];
+	it('clears a trigger added during assignment without requesting reviews again', async () => {
+		labels = [AUTO_ASSIGN_REQUIRED_LABEL];
+		requestTeamReviewersImpl = async (...args) => {
+			await requestTeamReviewers(...args);
+			labels.push(AUTO_ASSIGN_LABEL);
+		};
+		addLabelImpl = async (pr, label) => {
+			await addLabel(pr, label);
+			labels.push(label);
+		};
+		removeLabelImpl = async (pr, label) => {
+			await removeLabel(pr, label);
+			labels = labels.filter((current) => current !== label);
+		};
 
 		await run(42);
+		assert.deepEqual(labels, [AUTO_ASSIGN_LABEL, ASSIGNED_LABEL]);
+		await run(42);
 
-		assert.equal(requestTeamReviewers.mock.calls.length, 0);
-		assert.equal(addLabel.mock.calls.length, 0);
-		assert.equal(removeLabel.mock.calls.length, 0);
+		assert.equal(requestTeamReviewers.mock.calls.length, 1);
+		assert.deepEqual(requestTeamReviewers.mock.calls[0].arguments, [42, ['catalysts']]);
+		assert.equal(addLabel.mock.calls.length, 1);
+		assert.deepEqual(labels, [ASSIGNED_LABEL]);
 	});
 
 	it('does not request reviewers or relabel when no team owns a changed file', async () => {
-		ownershipsToAllocationsImpl = () => [];
+		getChangedFilesImpl = async () => new Set(['a.ts']);
+
+		await run(42);
+
+		assert.equal(requestTeamReviewers.mock.calls.length, 0);
+		assert.equal(addLabel.mock.calls.length, 0);
+		assert.equal(removeLabel.mock.calls.length, 0);
+	});
+
+	it('keeps the required-only trigger label when no changed file needs approval', async () => {
+		labels = [AUTO_ASSIGN_REQUIRED_LABEL];
+		getChangedFilesImpl = async () => new Set(['src/optional/a.ts', 'tests/a.test.ts']);
 
 		await run(42);
 

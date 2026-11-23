@@ -1,0 +1,24 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"_rowsLeft": {
+			"type": "number"
+		},
+		"createdAt": {
+			"type": "string"
+		},
+		"id": {
+			"type": "number"
+		},
+		"row_id": {
+			"type": "number"
+		},
+		"row_number": {
+			"type": "number"
+		},
+		"updatedAt": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

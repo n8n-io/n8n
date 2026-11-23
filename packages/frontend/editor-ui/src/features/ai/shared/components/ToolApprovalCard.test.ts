@@ -96,6 +96,18 @@ describe('ToolApprovalCard', () => {
 	it('falls back to the tool name when display metadata is missing', () => {
 		const wrapper = mountCard({ type: 'approval', toolName: 'calculator', args: {} });
 		expect(wrapper.text().replace(/\s+/g, ' ')).toContain('Agent wants to use calculator');
+		expect(wrapper.find('[data-test-id="approval-ask-reason"]').exists()).toBe(false);
+	});
+
+	it('shows why the "Approve for me" mode asks, from the suspend payload', () => {
+		const input = parseApprovalInput({
+			...approvalInput,
+			askReason: { kind: 'judge', text: 'The request does not name this issue.' },
+		});
+		const wrapper = mountCard(input!);
+		expect(wrapper.get('[data-test-id="approval-ask-reason"]').text()).toBe(
+			'The request does not name this issue.',
+		);
 	});
 
 	it('renders approval args as provided by the backend', () => {

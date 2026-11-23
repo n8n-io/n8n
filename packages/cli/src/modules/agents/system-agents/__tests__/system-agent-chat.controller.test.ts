@@ -239,6 +239,40 @@ describe('SystemAgentChatController', () => {
 		);
 	});
 
+	it('reports a stop of a running turn to the provider', async () => {
+		const { controller, systemAgents, chatExecutionService } = setup();
+		chatExecutionService.requestCancel.mockResolvedValue(true);
+
+		await controller.cancelChatExecution(
+			request({}),
+			mock<Response>(),
+			AGENT_ID,
+			'thread-1',
+			'exec-1',
+		);
+
+		expect(systemAgents.reportUserStoppedTurn).toHaveBeenCalledWith({
+			agentId: AGENT_ID,
+			threadId: 'thread-1',
+			userId: 'user-1',
+		});
+	});
+
+	it('does not report a stop when no turn was running', async () => {
+		const { controller, systemAgents, chatExecutionService } = setup();
+		chatExecutionService.requestCancel.mockResolvedValue(false);
+
+		await controller.cancelChatExecution(
+			request({}),
+			mock<Response>(),
+			AGENT_ID,
+			'thread-1',
+			'exec-1',
+		);
+
+		expect(systemAgents.reportUserStoppedTurn).not.toHaveBeenCalled();
+	});
+
 	describe('listThreads', () => {
 		const listed = (id: string, updatedAt: string) =>
 			({
@@ -420,7 +454,7 @@ describe('SystemAgentChatController', () => {
 	});
 
 	describe('attachments', () => {
-		it('looks up the attachment in the memory resource of the user and the system chat source', async () => {
+		it('looks up the file in the memory resource of the user, from the system chat sources', async () => {
 			const { controller, attachments } = setup();
 			attachments.getForSystemAgent.mockResolvedValue(mock<AgentChatAttachment>());
 
@@ -432,7 +466,8 @@ describe('SystemAgentChatController', () => {
 			expect(attachments.getForSystemAgent).toHaveBeenCalledWith('att-1', {
 				agentId: AGENT_ID,
 				resourceId: 'system-chat:user-1',
-				source: 'system_chat',
+				// Uploads, and the files that the sandbox stored for the chat.
+				sources: ['system_chat', 'sandbox'],
 			});
 		});
 
@@ -466,6 +501,57 @@ describe('SystemAgentChatController', () => {
 
 			expect(systemAgents.getUsableThread).toHaveBeenCalledWith(AGENT_ID, user, 'thread-1');
 			expect(chatRelay.streamAttachment).toHaveBeenCalledWith(attachment, expect.anything());
+		});
+	});
+
+	describe('session files', () => {
+		it('lists the files of a usable thread in the scope of the download route', async () => {
+			const { controller, attachments, systemAgents } = setup();
+			const files = [
+				{
+					fileId: 'file-1',
+					fileName: 'report.csv',
+					mimeType: 'text/csv',
+					sizeBytes: 3,
+					source: 'sandbox',
+					createdAt: '2026-11-18T10:00:00.000Z',
+				},
+			];
+			attachments.listForSystemAgentThread.mockResolvedValue(files);
+
+			const result = await controller.getSessionFiles(
+				request({ agentId: AGENT_ID, threadId: 'thread-1' }),
+			);
+
+			expect(result).toEqual({ files });
+			expect(systemAgents.findUsableThread).toHaveBeenCalledWith(AGENT_ID, user, 'thread-1');
+			expect(attachments.listForSystemAgentThread).toHaveBeenCalledWith('thread-1', {
+				agentId: AGENT_ID,
+				resourceId: 'system-chat:user-1',
+				sources: ['system_chat', 'sandbox'],
+			});
+		});
+
+		it('gives no files for a new session that has no thread yet', async () => {
+			const { controller, attachments, systemAgents } = setup();
+			systemAgents.findUsableThread.mockResolvedValue(null);
+
+			const result = await controller.getSessionFiles(
+				request({ agentId: AGENT_ID, threadId: 'new-thread' }),
+			);
+
+			expect(result).toEqual({ files: [] });
+			expect(attachments.listForSystemAgentThread).not.toHaveBeenCalled();
+		});
+
+		it('refuses a thread that the user cannot use', async () => {
+			const { controller, attachments, systemAgents } = setup();
+			systemAgents.findUsableThread.mockRejectedValue(new NotFoundError('Session not found'));
+
+			await expect(
+				controller.getSessionFiles(request({ agentId: AGENT_ID, threadId: 'thread-1' })),
+			).rejects.toThrow(NotFoundError);
+			expect(attachments.listForSystemAgentThread).not.toHaveBeenCalled();
 		});
 	});
 	it('resumes a run through the execution service and closes the stream', async () => {
@@ -544,9 +630,61 @@ describe('SystemAgentChatController', () => {
 		systemAgents.getUsableThread.mockRejectedValue(new NotFoundError('Session not found'));
 
 		await expect(
-			controller.getChatMessages(request({ agentId: AGENT_ID, threadId: 'thread-1' })),
+			controller.getChatMessages(
+				request({ agentId: AGENT_ID, threadId: 'thread-1' }),
+				mock<Response>(),
+			),
 		).rejects.toThrow(NotFoundError);
 		expect(orchestrator.getConversationHistory).not.toHaveBeenCalled();
+	});
+
+	it('reads one page of older turns without the open suspensions', async () => {
+		const { controller, orchestrator, checkpointStorage } = setup();
+		orchestrator.getConversationHistory.mockResolvedValue({
+			messages: [],
+			activeExecutionId: null,
+			nextCursor: null,
+		});
+		checkpointStorage.findSuspendedForThread.mockResolvedValue({
+			persistence: { threadId: thread.id, resourceId: 'system-chat:user-1' },
+			pendingToolCalls: { 'tc-1': { toolCallId: 'tc-1', runId: 'run-1', suspended: true } },
+			messageList: { messages: [] },
+		} as never);
+
+		const result = await controller.getChatMessages(
+			request({ agentId: AGENT_ID, threadId: 'thread-1' }),
+			mock<Response>(),
+			{ limit: 20, cursor: '2026-05-07T10:00:00.000Z|execution-1' },
+		);
+
+		expect(orchestrator.getConversationHistory).toHaveBeenCalledWith(
+			expect.objectContaining({
+				page: {
+					limit: 20,
+					before: { createdAt: new Date('2026-05-07T10:00:00.000Z'), id: 'execution-1' },
+				},
+			}),
+		);
+		expect(checkpointStorage.findSuspendedForThread).not.toHaveBeenCalled();
+		expect(result).toEqual({
+			messages: [],
+			openSuspensions: [],
+			activeExecutionId: null,
+			nextCursor: null,
+		});
+	});
+
+	it('rejects an invalid history cursor before it reads the thread', async () => {
+		const { controller, systemAgents } = setup();
+
+		await expect(
+			controller.getChatMessages(
+				request({ agentId: AGENT_ID, threadId: 'thread-1' }),
+				mock<Response>(),
+				{ limit: 20, cursor: 'invalid' },
+			),
+		).rejects.toThrow(BadRequestError);
+		expect(systemAgents.getUsableThread).not.toHaveBeenCalled();
 	});
 
 	it('returns the usage of a usable thread', async () => {
@@ -610,5 +748,30 @@ describe('SystemAgentChatController', () => {
 			resourceId: 'system-chat:user-1',
 			cancelBackgroundJobs: false,
 		});
+	});
+
+	it('reports a cancelled suspended run with the thread of its checkpoint', async () => {
+		const { controller, systemAgents, orchestrator } = setup();
+		systemAgents.findThreadIdOfRun.mockResolvedValue('thread-1');
+		orchestrator.cancelChatRun.mockResolvedValue(true);
+
+		await controller.cancelChatRun(request({}), mock<Response>(), AGENT_ID, 'run-1');
+
+		expect(systemAgents.findThreadIdOfRun).toHaveBeenCalledWith(AGENT_ID, user, 'run-1');
+		expect(systemAgents.reportUserStoppedTurn).toHaveBeenCalledWith({
+			agentId: AGENT_ID,
+			threadId: 'thread-1',
+			userId: 'user-1',
+		});
+	});
+
+	it('does not report a suspended run that was not cancelled', async () => {
+		const { controller, systemAgents, orchestrator } = setup();
+		systemAgents.findThreadIdOfRun.mockResolvedValue('thread-1');
+		orchestrator.cancelChatRun.mockResolvedValue(false);
+
+		await controller.cancelChatRun(request({}), mock<Response>(), AGENT_ID, 'run-1');
+
+		expect(systemAgents.reportUserStoppedTurn).not.toHaveBeenCalled();
 	});
 });

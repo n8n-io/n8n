@@ -11,7 +11,7 @@ vi.mock('@n8n/instance-ai', async (importOriginal) => ({
 	judgeApproval,
 }));
 
-import type { Telemetry } from '@/telemetry';
+import type { TelemetryProxy } from '@n8n/backend-services';
 
 import type { InstanceAiCreditService } from '../../instance-ai-credit.service';
 import { InstanceAiApprovalReviewerFactory } from '../approval-reviewer.factory';
@@ -30,7 +30,7 @@ describe('InstanceAiApprovalReviewerFactory', () => {
 	const logger = mock<Logger>();
 	logger.scoped.mockReturnValue(logger);
 	const creditService = mock<InstanceAiCreditService>();
-	const telemetry = mock<Telemetry>();
+	const telemetry = mock<TelemetryProxy>();
 	const factory = new InstanceAiApprovalReviewerFactory(logger, creditService, telemetry);
 
 	const eventBus = mock<InstanceAiEventBus>();
@@ -85,7 +85,7 @@ describe('InstanceAiApprovalReviewerFactory', () => {
 				decision: 'approve',
 				reason: 'The user asked to publish it.',
 			});
-			expect(getMessages).toHaveBeenCalledWith('thread-1', { limit: 30, resourceId: 'user-1' });
+			expect(getMessages).toHaveBeenCalledWith('thread-1', { limit: 200, resourceId: 'user-1' });
 			expect(judgeApproval).toHaveBeenCalledWith(
 				{
 					conversation: [{ role: 'user', text: 'Publish Lead router' }],
@@ -175,7 +175,7 @@ describe('InstanceAiApprovalReviewerFactory', () => {
 
 		it('tells the judge when it read only the newest messages of the thread', async () => {
 			getMessages.mockResolvedValue(
-				Array.from({ length: 30 }, () => ({
+				Array.from({ length: 200 }, () => ({
 					role: 'user',
 					content: [{ type: 'text', text: 'Publish Lead router' }],
 				})),
@@ -325,6 +325,7 @@ describe('InstanceAiApprovalReviewerFactory', () => {
 					user_id: 'user-1',
 					thread_id: 'thread-1',
 					run_id: 'run-1',
+					tool_call_id: 'call-1',
 					tool_name: 'publish_workflow',
 					is_mcp_tool: false,
 					severity: 'warning',
@@ -333,8 +334,89 @@ describe('InstanceAiApprovalReviewerFactory', () => {
 					decided_by: 'judge',
 					judge_failed: false,
 					judge_duration_ms: 420,
+					review_duration_ms: expect.any(Number),
 					judge_model: 'claude-haiku',
 				},
+			);
+		});
+
+		it('times the whole review, including the thread read', async () => {
+			getMessages.mockImplementation(
+				async () => await new Promise((resolve) => setTimeout(() => resolve([]), 30)),
+			);
+			judgeApproval.mockResolvedValue({
+				ok: true,
+				verdict: { decision: 'ask', reason: 'Not asked for.' },
+				durationMs: 5,
+			});
+			const reviewer = createReviewer();
+			await reviewer.judge(approval);
+
+			await reviewer.onReviewed(approval, {
+				decision: 'ask',
+				decidedBy: 'judge',
+				reason: 'Not asked for.',
+				route: 'judge',
+			});
+
+			const [, properties] = telemetry.track.mock.calls[0];
+			expect(properties).toMatchObject({ judge_duration_ms: 5 });
+			expect(properties?.review_duration_ms).toBeGreaterThanOrEqual(25);
+		});
+
+		it('records the decision in the trace that the run has when it reviews', async () => {
+			const startChildRun = vi.fn(async () => ({ id: 'review-run' }));
+			let tracing: InstanceAiTraceContext | undefined;
+			const reviewer = createReviewer({ getTracing: () => tracing });
+			// A resumed run has a new trace. The host attaches it after it builds the reviewer.
+			tracing = {
+				actorRun: { id: 'actor-run' },
+				startChildRun,
+				finishRun: vi.fn(async () => {}),
+			} as unknown as InstanceAiTraceContext;
+
+			await reviewer.onReviewed(approval, {
+				decision: 'ask',
+				decidedBy: 'rule',
+				reason: 'Auto mode always asks you to confirm this action.',
+				route: 'always-ask',
+			});
+
+			expect(startChildRun).toHaveBeenCalledWith(
+				{ id: 'actor-run' },
+				expect.objectContaining({
+					name: 'approval: review',
+					metadata: {
+						tool_name: 'publish_workflow',
+						tool_call_id: 'call-1',
+						approval_route: 'always-ask',
+						approval_decision: 'ask',
+						approval_decided_by: 'rule',
+						approval_judge_failed: false,
+					},
+				}),
+			);
+		});
+
+		it('keeps the review when the trace fails', async () => {
+			const tracing = {
+				actorRun: { id: 'actor-run' },
+				startChildRun: vi.fn(async () => await Promise.reject(new Error('trace down'))),
+			} as unknown as InstanceAiTraceContext;
+			const reviewer = createReviewer({ getTracing: () => tracing });
+
+			await expect(
+				reviewer.onReviewed(approval, {
+					decision: 'approve',
+					decidedBy: 'rule',
+					reason: 'Low-risk action that is easy to undo.',
+					route: 'low-risk',
+				}),
+			).resolves.toBeUndefined();
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.INSTANCE_AI.APPROVAL_DECIDED_IN_AUTO_MODE,
+				expect.objectContaining({ route: 'low-risk', decision: 'approve' }),
 			);
 		});
 
@@ -358,6 +440,7 @@ describe('InstanceAiApprovalReviewerFactory', () => {
 					decided_by: 'judge',
 					judge_failed: true,
 					judge_duration_ms: 10_000,
+					judge_model: 'anthropic/claude-haiku',
 				}),
 			);
 		});

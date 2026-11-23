@@ -12,21 +12,21 @@ import { unlink } from 'node:fs/promises';
 import path from 'node:path';
 import type { Readable } from 'node:stream';
 
-import type { KnowledgeFile } from '../entities/knowledge-file.entity';
+import type { AgentFile } from '../entities';
 import { KnowledgeConfig } from '../knowledge.config';
 import type { KnowledgeConsumerScope } from '../knowledge-consumer-scope';
-import { KnowledgeSandboxProviderRegistry } from '../knowledge-sandbox-provider-registry';
+import { KnowledgeSandboxProviderProxy } from '../knowledge-sandbox-provider-proxy';
 import { createKnowledgeTelemetryHmac } from '../telemetry/helpers';
 import { KnowledgeFileRepository } from '../repositories/knowledge-file.repository';
 import { KnowledgeMirrorService } from '../retrieval/mirror.service';
-import { KnowledgeFileStore, type StoredKnowledgeFile } from './knowledge-file-store';
+import { KnowledgeFileStore, type KnowledgeFileStorageReference } from './knowledge-file-store';
 import { KnowledgeUploadError, type KnowledgeUploadFailureReason } from './knowledge-upload.error';
 import { extractPdfText } from './pdf-text';
-import { storageFileNameForOriginalFileName, toAgentFileDto } from './storage-naming';
+import { toKnowledgeContentFileName, toAgentFileDto } from './storage-naming';
 
 const MAX_FILE_METADATA_LENGTH = 255;
 
-export interface UploadedKnowledgeFile {
+export interface KnowledgeFileUploadResult {
 	file: AgentFileDto;
 	contentHash?: string;
 }
@@ -57,7 +57,7 @@ export class KnowledgeFileService {
 		private readonly fileRepository: KnowledgeFileRepository,
 		private readonly fileStore: KnowledgeFileStore,
 		private readonly mirrorService: KnowledgeMirrorService,
-		private readonly sandboxProvider: KnowledgeSandboxProviderRegistry,
+		private readonly sandboxProviderProxy: KnowledgeSandboxProviderProxy,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly globalConfig: GlobalConfig,
 		private readonly config: KnowledgeConfig,
@@ -71,26 +71,26 @@ export class KnowledgeFileService {
 		scope: KnowledgeConsumerScope,
 		files: Express.Multer.File[],
 		writeFence: KnowledgeWriteRunner,
-	): Promise<UploadedKnowledgeFile[]> {
+	): Promise<KnowledgeFileUploadResult[]> {
 		try {
 			this.validateUploadMetadata(files);
 			await this.validateUploadBatch(scope, files);
 
-			const uploadedFiles: KnowledgeFile[] = [];
-			const results: UploadedKnowledgeFile[] = [];
+			const uploadedFiles: AgentFile[] = [];
+			const results: KnowledgeFileUploadResult[] = [];
 			try {
 				for (const file of files) {
-					const contentHash = await this.hashUploadedFile(file.path);
+					const contentHash = await this.hashUploadForTelemetry(file.path);
 					const storedFile = await this.storeFile(scope, file, writeFence);
 					uploadedFiles.push(storedFile);
 					results.push({ file: toAgentFileDto(storedFile), contentHash });
 				}
 			} catch (error) {
-				await this.cleanupUploadedFiles(uploadedFiles);
+				await this.cleanupFailedUploadBatch(uploadedFiles);
 				throw error;
 			}
 
-			this.prewarmMirror(scope, writeFence);
+			this.scheduleMirrorSync(scope, writeFence);
 
 			return results;
 		} finally {
@@ -129,9 +129,9 @@ export class KnowledgeFileService {
 			});
 
 		if (await this.fileRepository.hasFilesForAgent(scope.agentId, {})) {
-			this.prewarmMirror(scope, writeFence);
+			this.scheduleMirrorSync(scope, writeFence);
 		} else {
-			await this.sandboxProvider.destroy(scope);
+			await this.sandboxProviderProxy.destroy(scope);
 		}
 
 		return true;
@@ -158,15 +158,15 @@ export class KnowledgeFileService {
 		}
 	}
 
-	private prewarmMirror(scope: KnowledgeConsumerScope, writeFence: KnowledgeWriteRunner): void {
+	private scheduleMirrorSync(
+		scope: KnowledgeConsumerScope,
+		writeFence: KnowledgeWriteRunner,
+	): void {
 		// An empty write through the fence rejects when the consumer no longer accepts writes.
-		this.mirrorService.prewarmMirrorInBackground(
-			scope,
-			async () => await writeFence(async () => {}),
-		);
+		this.mirrorService.syncMirrorInBackground(scope, async () => await writeFence(async () => {}));
 	}
 
-	private async hashUploadedFile(filePath: string): Promise<string | undefined> {
+	private async hashUploadForTelemetry(filePath: string): Promise<string | undefined> {
 		// The hash exists only for telemetry, so skip the extra read when telemetry is off.
 		if (!this.globalConfig.diagnostics.enabled) {
 			return undefined;
@@ -191,22 +191,26 @@ export class KnowledgeFileService {
 		scope: KnowledgeConsumerScope,
 		file: Express.Multer.File,
 		writeFence: KnowledgeWriteRunner,
-	): Promise<KnowledgeFile> {
+	): Promise<AgentFile> {
 		const fileId = generateNanoId();
-		const storageFileName = storageFileNameForOriginalFileName(file.originalname);
+		const contentFileName = toKnowledgeContentFileName(file.originalname);
 		const content = await this.prepareUploadContent(file);
 
-		const stored = await this.fileStore.write({ agentId: scope.agentId, fileId }, content, {
-			fileName: storageFileName,
-			mimeType: file.mimetype,
-		});
+		const storageReference = await this.fileStore.write(
+			{ agentId: scope.agentId, fileId },
+			content,
+			{
+				fileName: contentFileName,
+				mimeType: file.mimetype,
+			},
+		);
 
 		try {
 			return await writeFence(
-				async (ctx) => await this.saveFileRow(scope, fileId, file, stored, ctx),
+				async (ctx) => await this.saveFileRow(scope, fileId, file, storageReference, ctx),
 			);
 		} catch (error) {
-			await this.fileStore.delete([stored]).catch(() => {});
+			await this.fileStore.delete([storageReference]).catch(() => {});
 			if (isUniqueConstraintError(error)) {
 				throw this.duplicateFileNameError(file.originalname);
 			}
@@ -218,15 +222,15 @@ export class KnowledgeFileService {
 		scope: KnowledgeConsumerScope,
 		fileId: string,
 		file: Express.Multer.File,
-		stored: StoredKnowledgeFile,
+		storageReference: KnowledgeFileStorageReference,
 		ctx: OperationContext,
-	): Promise<KnowledgeFile> {
+	): Promise<AgentFile> {
 		return await this.fileRepository.saveUploadedFile(
 			{
 				id: fileId,
 				agentId: scope.agentId,
-				storedAt: stored.storedAt,
-				storageKey: stored.storageKey,
+				storedAt: storageReference.storedAt,
+				storageKey: storageReference.storageKey,
 				fileName: file.originalname,
 				mimeType: file.mimetype,
 				fileSizeBytes: file.size,
@@ -256,7 +260,7 @@ export class KnowledgeFileService {
 		return createReadStream(file.path);
 	}
 
-	private async cleanupUploadedFiles(files: KnowledgeFile[]): Promise<void> {
+	private async cleanupFailedUploadBatch(files: AgentFile[]): Promise<void> {
 		for (const file of files) {
 			await this.fileStore
 				.delete([{ storedAt: file.storedAt, storageKey: file.storageKey }])
@@ -288,12 +292,12 @@ export class KnowledgeFileService {
 		}
 
 		const existingFileNames = new Set(existingFiles.map((file) => file.fileName));
-		const existingStorageNames = new Set(
-			existingFiles.map((file) => storageFileNameForOriginalFileName(file.fileName)),
+		const existingContentFileNames = new Set(
+			existingFiles.map((file) => toKnowledgeContentFileName(file.fileName)),
 		);
 
 		const batchFileNames = new Set<string>();
-		const batchStorageNames = new Set<string>();
+		const batchContentFileNames = new Set<string>();
 
 		for (const file of files) {
 			if (batchFileNames.has(file.originalname)) {
@@ -305,13 +309,13 @@ export class KnowledgeFileService {
 				throw this.duplicateFileNameError(file.originalname);
 			}
 
-			const storageFileName = storageFileNameForOriginalFileName(file.originalname);
-			if (batchStorageNames.has(storageFileName)) {
+			const contentFileName = toKnowledgeContentFileName(file.originalname);
+			if (batchContentFileNames.has(contentFileName)) {
 				throw this.duplicateFileNameError(file.originalname);
 			}
-			batchStorageNames.add(storageFileName);
+			batchContentFileNames.add(contentFileName);
 
-			if (existingStorageNames.has(storageFileName)) {
+			if (existingContentFileNames.has(contentFileName)) {
 				throw this.duplicateFileNameError(file.originalname);
 			}
 		}

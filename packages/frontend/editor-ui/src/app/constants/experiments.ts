@@ -3,6 +3,7 @@ import {
 	ASSISTANT_SKILLS_FLAG,
 	AI_ASSISTANT_AT_MENTIONS_FLAG,
 	CREDENTIAL_DESCRIPTIONS_FLAG,
+	INSTANCE_AI_CLOUD_BROWSER_FLAG,
 	INSTANCE_AI_CONCISE_STYLE_FLAG,
 	INSTANCE_AI_SETUP_PANEL_FLAG,
 } from '@n8n/api-types';
@@ -154,11 +155,18 @@ export const ASSISTANT_SKILLS_EXPERIMENT = createExperiment(ASSISTANT_SKILLS_FLA
 /** Boolean flag. New threads of the user run on the Assistant agent, if the instance runs it. */
 export const INSTANCE_AI_ASSISTANT_AGENT_EXPERIMENT = createExperiment('141_assistant_agent');
 
+/** Boolean flag. Shows the model training opt-out until the announcement goes out. */
+export const MODEL_TRAINING_OPT_OUT_EXPERIMENT = createExperiment('149_model_training_opt_out');
+
 // Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 export const MCP_DISCOVERY_EXPERIMENT = createExperiment('123_surface_mcp_to_claude_trial_users');
 // EOF Experiment cleanup
 export const ENABLE_POSTHOG_AUTOCAPTURE_EXPERIMENT = createExperiment(
 	'139_enable_posthog_autocapture',
+);
+
+export const INSTANCE_AI_CLOUD_BROWSER_EXPERIMENT = createExperiment(
+	INSTANCE_AI_CLOUD_BROWSER_FLAG,
 );
 
 export const SURFACE_ASSISTANT_ON_WORKFLOW_ERROR_EXPERIMENT = createExperiment(
@@ -196,6 +204,12 @@ export const PREFERENCES_EMPTY_STATE_EXPERIMENT = createExperiment('127_preferen
 	examples: 'examples',
 	assistant: 'assistant',
 });
+
+export const RECOMMENDED_SKILLS_EXPERIMENT = createExperiment('143_recommended_skills');
+
+export const TEST_BUTTON_PRIMARY_COLOR_EXPERIMENT = createExperiment(
+	'148_test_button_primary_color',
+);
 
 export const AGENT_BUILDER_EXPERIMENT_COHORT = createExperiment(
 	'133_agent_builder_experiment_cohort',
@@ -259,6 +273,7 @@ export const EXPERIMENTS_TO_TRACK = [
 	EXPOSE_ALL_WORKFLOWS_TO_MCP_EXPERIMENT.name,
 	TRIAL_INTRO_MODAL_EXPERIMENT.name,
 	PREFERENCES_EMPTY_STATE_EXPERIMENT.name,
+	RECOMMENDED_SKILLS_EXPERIMENT.name,
 	INLINE_AGENTS_EXPERIMENT.name,
 	INSTANCE_AI_FREE_NUDGE_EXPERIMENT.name,
 	OPEN_WORKFLOW_IN_ASSISTANT_EXPERIMENT.name,
@@ -268,8 +283,10 @@ export const EXPERIMENTS_TO_TRACK = [
 	CREDENTIAL_DESCRIPTIONS_EXPERIMENT.name,
 	ASSISTANT_SKILLS_EXPERIMENT.name,
 	INSTANCE_AI_ASSISTANT_AGENT_EXPERIMENT.name,
+	INSTANCE_AI_CLOUD_BROWSER_EXPERIMENT.name,
 	WORKFLOW_PREVIEWS_ABOVE_ASSISTANT_EXPERIMENT.name,
 	AGENTS_LIST_EMPTY_STATE_TEMPLATES_EXPERIMENT.name,
 	AGENTS_N8N_CHAT_EXPERIMENT.name,
 	QUICKJS_EXPRESSION_SHADOW_EXPERIMENT.name,
+	TEST_BUTTON_PRIMARY_COLOR_EXPERIMENT.name,
 ];

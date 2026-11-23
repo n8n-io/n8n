@@ -1,4 +1,4 @@
-import type { AiPreferenceSortOption, AiPreferenceTarget } from '@n8n/api-types';
+import type { AiPreferenceScope, AiPreferenceSortOption, AiPreferenceTarget } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { DataSource, In, IsNull, Not, Raw } from '@n8n/typeorm';
 import type { FindOptionsOrder, FindOptionsWhere } from '@n8n/typeorm';
@@ -29,6 +29,7 @@ export type AiPreferencePageQuery = VisibleAiPreferencesQuery & {
 	/** Case-insensitive substring of the content. Never widens what the caller may see. */
 	search?: string;
 	sortBy?: AiPreferenceSortOption;
+	scope?: AiPreferenceScope;
 };
 
 @Service()
@@ -44,7 +45,8 @@ export class AiPreferenceRepository extends BaseRepository<AiPreference> {
 
 	/** Wider than `findApplicable`: an admin sees rows that never reach their own prompts. */
 	async findPageVisible(query: AiPreferencePageQuery): Promise<[AiPreference[], number]> {
-		const visible = visibleTo(query, query.allUsers);
+		const visible = visibleTo(query, query.allUsers, query.scope);
+		if (visible.length === 0) return [[], 0];
 		const { ids, search } = query;
 		// Each filter narrows every visibility branch, so it cannot reach past them.
 		const narrowing: FindOptionsWhere<AiPreference> = {
@@ -58,6 +60,10 @@ export class AiPreferenceRepository extends BaseRepository<AiPreference> {
 			skip: query.skip,
 			take: query.take,
 		});
+	}
+
+	async hasAny(): Promise<boolean> {
+		return await this.exists();
 	}
 
 	async countVisible(query: VisibleAiPreferencesQuery): Promise<number> {
@@ -131,15 +137,19 @@ function containsIgnoringCase(term: string) {
 function visibleTo(
 	query: ApplicableAiPreferencesQuery,
 	allUsers: boolean,
+	scope?: AiPreferenceScope,
 ): Array<FindOptionsWhere<AiPreference>> {
-	const where: Array<FindOptionsWhere<AiPreference>> = [
-		{ userId: IsNull(), projectId: IsNull() },
-		allUsers ? { userId: Not(IsNull()) } : { userId: query.userId },
-	];
+	const where: Array<FindOptionsWhere<AiPreference>> = [];
 
-	if (query.projectIds === 'all') where.push({ projectId: Not(IsNull()) });
-	// `In([])` is not valid SQL on every driver.
-	else if (query.projectIds.length > 0) where.push({ projectId: In(query.projectIds) });
+	if (!scope || scope === 'instance') where.push({ userId: IsNull(), projectId: IsNull() });
+	if (!scope || scope === 'user') {
+		where.push(allUsers ? { userId: Not(IsNull()) } : { userId: query.userId });
+	}
+	if (!scope || scope === 'project') {
+		if (query.projectIds === 'all') where.push({ projectId: Not(IsNull()) });
+		// `In([])` is not valid SQL on every driver.
+		else if (query.projectIds.length > 0) where.push({ projectId: In(query.projectIds) });
+	}
 
 	return where;
 }
