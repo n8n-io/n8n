@@ -34,6 +34,12 @@ export function hasBlockingIssues(issues: AgentConfigValidationIssue[]): boolean
 	return issues.some((issue) => !isWarningIssue(issue));
 }
 
+const SKILL_WORKFLOW_ISSUE_PATH = /^skills\..+\.workflows\.([A-Za-z0-9_-]+)$/;
+
+export function skillWorkflowIdOfIssue(issue: AgentConfigValidationIssue): string | undefined {
+	return SKILL_WORKFLOW_ISSUE_PATH.exec(issue.path)?.[1];
+}
+
 /**
  * The unpublished workflow tools behind a config validation, for the modal the
  * builder shows instead of a failing publish request. The issue's
@@ -51,7 +57,7 @@ export function unpublishedWorkflowTools(
 			const workflowTool = tool?.type === 'workflow' ? tool : undefined;
 			return {
 				name: workflowTool?.workflow ?? issue.capability.id ?? '',
-				workflowId: workflowTool?.workflowId,
+				workflowId: workflowTool?.workflowId ?? skillWorkflowIdOfIssue(issue),
 			};
 		})
 		.filter((workflow) => workflow.name !== '');

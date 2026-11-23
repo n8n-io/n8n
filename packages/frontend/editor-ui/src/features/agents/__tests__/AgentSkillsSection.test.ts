@@ -1,4 +1,5 @@
 import { enableAutoUnmount, mount } from '@vue/test-utils';
+import { ref } from 'vue';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import AgentChipButton from '../components/AgentChipButton.vue';
@@ -8,6 +9,11 @@ enableAutoUnmount(afterEach);
 
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({ baseText: (key: string) => key }),
+}));
+
+const workflowsInSkillsEnabled = ref(false);
+vi.mock('@/app/stores/posthog.store', () => ({
+	usePostHog: () => ({ isFeatureEnabled: () => workflowsInSkillsEnabled.value }),
 }));
 
 const skill = { name: 'Skill', description: 'A skill', instructions: 'Do it.' };
@@ -48,5 +54,47 @@ describe('AgentSkillsSection', () => {
 		await current.trigger('click');
 
 		expect(wrapper.emitted('open-skill')).toEqual([['outdated'], ['current']]);
+	});
+
+	describe('workflows that are attached directly', () => {
+		const weeklyOps = {
+			...skill,
+			name: 'Weekly ops',
+			instructions: 'Run [Send report](n8n://workflow/wf-1) and [Notify](n8n://workflow/wf-2).',
+		};
+		const tools = [{ type: 'workflow' as const, workflow: 'Send report', workflowId: 'wf-1' }];
+
+		function mountWithTools() {
+			return mount(AgentSkillsSection, {
+				props: { skills: [{ id: 'weekly-ops', skill: weeklyOps }], tools },
+				global: {
+					stubs: {
+						N8nTooltip: {
+							props: ['disabled'],
+							template:
+								'<span><slot /><span v-if="!disabled" data-testid="stub-tooltip-content"><slot name="content" /></span></span>',
+						},
+					},
+				},
+			});
+		}
+
+		afterEach(() => {
+			workflowsInSkillsEnabled.value = false;
+		});
+
+		it('notes on the skill that a workflow it mentions is already attached as a tool', () => {
+			workflowsInSkillsEnabled.value = true;
+
+			const wrapper = mountWithTools();
+
+			expect(wrapper.text()).toContain('agents.builder.skills.workflowsAlreadyAttached');
+		});
+
+		it('shows no note when the feature flag is off', () => {
+			const wrapper = mountWithTools();
+
+			expect(wrapper.text()).not.toContain('agents.builder.skills.workflowsAlreadyAttached');
+		});
 	});
 });

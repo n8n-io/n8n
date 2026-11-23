@@ -271,6 +271,16 @@ Disable the menu under edit locks and read-only access. Check this state again
 when the user selects an action. Configuration errors must not block removal
 or deactivation.
 
+## Workflows from skills
+
+Show each workflow that an attached skill mentions in the Workflows row, after
+the direct workflow tools. Put a muted `From skill <name>` note in the chip. A
+click opens the skill. Do not give these chips a context menu: the user removes
+them by detaching the skill. Show the same not published and not found notes
+as on a direct workflow tool. Show a workflow that is also attached directly
+only once, as the direct tool. The skill chip then names it in an
+`Already attached as a tool` tooltip.
+
 ## Modal patterns
 
 ### Channel behavior settings

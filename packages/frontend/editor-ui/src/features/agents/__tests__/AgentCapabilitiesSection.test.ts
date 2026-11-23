@@ -94,6 +94,11 @@ vi.mock('../composables/useAgentIntegrationsCatalog', () => ({
 	}),
 }));
 
+const workflowsInSkillsEnabled = ref(false);
+vi.mock('@/app/stores/posthog.store', () => ({
+	usePostHog: () => ({ isFeatureEnabled: () => workflowsInSkillsEnabled.value }),
+}));
+
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
 		baseText: (key: string) => key,
@@ -1866,6 +1871,116 @@ describe('AgentCapabilitiesSection — restricted node types', () => {
 		expect(wrapper.find('[data-test-id="node-restricted-icon"]').exists()).toBe(true);
 		expect(lockText(wrapper)).toContain(
 			'typeAvailabilityPolicies.restrictedNode.agentTool.project',
+		);
+	});
+});
+
+describe('AgentCapabilitiesSection workflows from skills', () => {
+	const skillBody = {
+		description: 'Weekly operations',
+		instructions: 'Run [Send report](n8n://workflow/wf-1), then [Notify](n8n://workflow/wf-2).',
+	};
+	const skills = [{ id: 'skill-1', skill: { ...skillBody, name: 'Weekly ops' } }];
+
+	function mountWithSkills(tools: AgentJsonToolRef[], extraProps: Record<string, unknown> = {}) {
+		return mountSection(tools, {}, null, [], [], { skills, ...extraProps });
+	}
+
+	beforeEach(() => {
+		workflowsInSkillsEnabled.value = true;
+	});
+
+	afterEach(() => {
+		workflowsInSkillsEnabled.value = false;
+	});
+
+	it('shows each workflow that an attached skill mentions, with a note that names the skill', () => {
+		const wrapper = mountWithSkills([]);
+
+		const chips = wrapper.findAll('[data-testid="agent-capabilities-skill-workflow-row"]');
+		expect(chips.map((chip) => chip.text())).toEqual([
+			'Send report agents.builder.tools.workflow.fromSkill',
+			'Notify agents.builder.tools.workflow.fromSkill',
+		]);
+	});
+
+	it('opens the skill when the user clicks a workflow from a skill', async () => {
+		const wrapper = mountWithSkills([]);
+
+		await wrapper.find('[data-testid="agent-capabilities-skill-workflow-row"]').trigger('click');
+
+		expect(wrapper.emitted('open-skill')).toEqual([['skill-1']]);
+		expect(wrapper.emitted('open-tool')).toBeUndefined();
+	});
+
+	it('does not offer to remove a workflow from a skill', () => {
+		const wrapper = mountWithSkills([]);
+
+		const chipGroups = wrapper
+			.findAll('[data-testid="agent-capabilities-skill-workflow-row"]')
+			.map((chip) => chip.element.parentElement);
+		expect(chipGroups.every((group) => group?.querySelector('[data-state]') === null)).toBe(true);
+	});
+
+	it('shows a workflow that is attached directly only once, as the direct tool', () => {
+		const wrapper = mountWithSkills([
+			{ type: 'workflow', workflowId: 'wf-1', workflow: 'Send report', name: 'send_report' },
+		]);
+
+		expect(wrapper.findAll('[data-testid="agent-capabilities-workflow-row"]')).toHaveLength(1);
+		const skillChips = wrapper.findAll('[data-testid="agent-capabilities-skill-workflow-row"]');
+		expect(skillChips.map((chip) => chip.text())).toEqual([
+			'Notify agents.builder.tools.workflow.fromSkill',
+		]);
+	});
+
+	it('shows the not published note on a workflow from a skill', () => {
+		const wrapper = mountWithSkills([], {
+			validationIssues: [
+				{
+					code: 'incompatible_reference',
+					path: 'skills.skill-1.workflows.wf-2',
+					capability: { kind: 'tool', id: 'Notify', toolType: 'workflow' },
+					reason: 'not_published',
+				},
+			],
+		});
+
+		const [report, notify] = wrapper.findAll(
+			'[data-testid="agent-capabilities-skill-workflow-row"]',
+		);
+		expect(report.find('[data-testid="agent-chip-warning-icon"]').exists()).toBe(false);
+		expect(notify.find('[data-testid="agent-chip-warning-icon"]').exists()).toBe(true);
+		expect(notify.find('[data-testid="stub-tooltip-content"]').text()).toContain(
+			'agents.builder.validation.issue.tool.workflow.notPublished',
+		);
+	});
+
+	it('shows the not found note on a workflow from a skill', () => {
+		const wrapper = mountWithSkills([], {
+			validationIssues: [
+				{
+					code: 'missing_reference',
+					path: 'skills.skill-1.workflows.wf-1',
+					capability: { kind: 'tool', id: 'Send report', toolType: 'workflow' },
+				},
+			],
+		});
+
+		const [report] = wrapper.findAll('[data-testid="agent-capabilities-skill-workflow-row"]');
+		expect(report.find('[data-testid="agent-chip-invalid-icon"]').exists()).toBe(true);
+		expect(report.find('[data-testid="stub-tooltip-content"]').text()).toContain(
+			'agents.builder.validation.issue.tool.workflow.missingReference',
+		);
+	});
+
+	it('shows no workflows from skills when the feature flag is off', () => {
+		workflowsInSkillsEnabled.value = false;
+
+		const wrapper = mountWithSkills([]);
+
+		expect(wrapper.find('[data-testid="agent-capabilities-skill-workflow-row"]').exists()).toBe(
+			false,
 		);
 	});
 });
