@@ -675,6 +675,11 @@ const isCreateDisabled = computed(() => props.busy || bindings.isBusy.value);
 	td {
 		border-top: var(--border);
 	}
+
+	/* The actions sit at the right edge. This rule needs the weight of the cell rule above. */
+	td.action {
+		text-align: right;
+	}
 }
 
 /* Fixed widths keep the columns in place when the last action button goes away. */
@@ -686,9 +691,13 @@ const isCreateDisabled = computed(() => props.busy || bindings.isBusy.value);
 	width: 36%;
 }
 
-.typeColumn,
+.typeColumn {
+	width: 10%;
+}
+
+/* Wide enough for the longest status, so it never runs into the action. */
 .statusColumn {
-	width: 12%;
+	width: 16%;
 }
 
 .actionColumn {
@@ -734,7 +743,6 @@ const isCreateDisabled = computed(() => props.busy || bindings.isBusy.value);
 }
 
 .action {
-	text-align: right;
 	white-space: nowrap;
 }
 
