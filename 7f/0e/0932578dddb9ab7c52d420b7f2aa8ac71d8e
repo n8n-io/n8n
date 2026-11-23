@@ -1,0 +1,23 @@
+packages/workflow/test/native-evaluation-corpus.ts
+  s_71544f09cab110::t_b9aa912eae83f3 255-259
+  s_71544f09cab110::t_08272a8f736ca4 260,262-263
+  s_71544f09cab110::t_3b66f8cd082b1f 261,264-265
+packages/workflow/src/expressions/native-evaluation/grammar.ts
+  s_71544f09cab110::t_4446133b56756d 280
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7f0e0932578dddb9ab7c52d420b7f2aa8ac71d8e",
+  "prompts": {},
+  "sessions": {
+    "s_71544f09cab110": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d98a1987-5656-4ee3-a348-fadd160ccf7f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
