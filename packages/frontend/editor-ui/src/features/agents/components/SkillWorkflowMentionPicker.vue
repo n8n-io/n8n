@@ -14,9 +14,10 @@ import {
 import { DEBOUNCE_TIME } from '@n8n/frontend-constants/durations';
 import { useI18n } from '@n8n/i18n';
 import { useDebounceFn } from '@vueuse/core';
-import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, useTemplateRef, watch } from 'vue';
 
-import { useSkillWorkflowMentionSearch } from '../composables/useSkillWorkflowMentionSearch';
+import { splitTextBySearch } from '@/app/utils/stringUtils';
+import { useSkillWorkflowMentionSearch } from '@/features/agents/composables/useSkillWorkflowMentionSearch';
 
 const GROUP_LABEL_ITEM_ID = 'group-label';
 const SHOW_MORE_ITEM_ID = 'show-more';
@@ -31,7 +32,6 @@ const props = withDefaults(
 		reference?: DropdownMenuProps['reference'];
 		focusTarget?: HTMLElement | null;
 		mentionedWorkflowIds?: string[];
-		disabled?: boolean;
 	}>(),
 	{
 		query: '',
@@ -40,7 +40,6 @@ const props = withDefaults(
 		reference: undefined,
 		focusTarget: null,
 		mentionedWorkflowIds: () => [],
-		disabled: false,
 	},
 );
 
@@ -51,10 +50,8 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const dropdown = useTemplateRef<DropdownMenuExposed>('dropdown');
-const { workflows, isLoading, hasMore, hasError, search, loadMore } = useSkillWorkflowMentionSearch(
-	() => props.projectId,
-);
-const searchTerm = ref('');
+const { workflows, query, isLoading, hasMore, hasError, startNewSearch, search, loadMore } =
+	useSkillWorkflowMentionSearch(() => props.projectId);
 const mentionedIds = computed(() => new Set(props.mentionedWorkflowIds));
 const isButtonMode = computed(() => props.mode === 'button');
 const addLabel = computed(() => i18n.baseText('agents.builder.skills.workflowMentions.add'));
@@ -98,16 +95,30 @@ const emptyText = computed(() =>
 		: i18n.baseText('agents.builder.skills.workflowMentions.noResults'),
 );
 
+let isMenuOpen = props.open;
+
 async function runSearch(term: string) {
-	searchTerm.value = term.trim();
+	if (!isMenuOpen) return;
 	await search(term);
 }
 
-const debouncedSearch = useDebounceFn(runSearch, getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH));
+const debouncedTypedSearch = useDebounceFn(async (typedQuery: string) => {
+	if (typedQuery === props.query) await runSearch(typedQuery);
+}, getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH));
+
+onBeforeUnmount(() => {
+	isMenuOpen = false;
+});
+
+function onOpenChange(open: boolean) {
+	isMenuOpen = open;
+	emit('update:open', open);
+}
 
 watch(
 	() => props.open,
 	(open) => {
+		isMenuOpen = open;
 		if (open) void runSearch(isButtonMode.value ? '' : props.query);
 	},
 	{ immediate: true },
@@ -115,8 +126,10 @@ watch(
 
 watch(
 	() => props.query,
-	(query) => {
-		if (props.open && !isButtonMode.value) void debouncedSearch(query);
+	(typedQuery) => {
+		if (!props.open || isButtonMode.value) return;
+		startNewSearch();
+		void debouncedTypedSearch(typedQuery);
 	},
 );
 
@@ -126,13 +139,6 @@ watch(
 		if (props.open && firstWorkflowId) void nextTick(() => dropdown.value?.highlightFirstItem());
 	},
 );
-
-function labelParts(label: string) {
-	const index = searchTerm.value ? label.toLowerCase().indexOf(searchTerm.value.toLowerCase()) : -1;
-	if (index < 0) return { before: label, match: '', after: '' };
-	const end = index + searchTerm.value.length;
-	return { before: label.slice(0, index), match: label.slice(index, end), after: label.slice(end) };
-}
 
 function onSelect(itemId: string) {
 	if (itemId === SHOW_MORE_ITEM_ID) {
@@ -156,7 +162,6 @@ defineExpose({ handleExternalKeydown });
 		:model-value="props.open"
 		:items="items"
 		:reference="props.reference"
-		:disabled="props.disabled"
 		:loading="isLoading && workflows.length === 0"
 		:empty-text="emptyText"
 		:search-mode="isButtonMode ? 'internal' : 'external'"
@@ -167,9 +172,9 @@ defineExpose({ handleExternalKeydown });
 		placement="bottom-start"
 		max-height="320px"
 		searchable
-		suppress-close-auto-focus
+		:suppress-close-auto-focus="!isButtonMode"
 		content-test-id="skill-workflow-mention-menu"
-		@update:model-value="emit('update:open', $event)"
+		@update:model-value="onOpenChange"
 		@search="runSearch"
 		@select="onSelect"
 	>
@@ -180,7 +185,6 @@ defineExpose({ handleExternalKeydown });
 					variant="ghost"
 					size="xsmall"
 					:class="$style.addButton"
-					:disabled="props.disabled"
 					:aria-label="addLabel"
 					data-testid="skill-workflow-mention-button"
 					data-attr="skill-workflow-mention-button"
@@ -193,8 +197,10 @@ defineExpose({ handleExternalKeydown });
 		</template>
 		<template #item-label="{ item, ui }">
 			<span v-if="item.data" :class="[ui.class, $style.label]"
-				>{{ labelParts(item.label).before }}<strong>{{ labelParts(item.label).match }}</strong
-				>{{ labelParts(item.label).after }}</span
+				><template v-for="(part, index) in splitTextBySearch(item.label, query)" :key="index"
+					><strong v-if="part.isMatched">{{ part.content }}</strong
+					><template v-else>{{ part.content }}</template></template
+				></span
 			>
 			<template v-else>{{ item.label }}</template>
 		</template>

@@ -571,12 +571,11 @@ export class AgentRuntimeReconstructionService {
 				continue;
 			}
 			const access = await this.checkToolAccess(ref, projectId, user, canExecute, loadUsableIds);
-			if (access && 'reason' in access) {
+			if ('reason' in access) {
 				unavailable.push(access);
 				continue;
 			}
 			filtered.push(ref);
-			if (!access) continue;
 			keptGatedTool = true;
 			for (const id of access.credentialIds) grantedCredentialIds.add(id);
 			for (const id of access.workflowIds) grantedWorkflowIds.add(id);
@@ -630,7 +629,7 @@ export class AgentRuntimeReconstructionService {
 		user: User,
 		canExecute: boolean,
 		loadUsableIds: () => Promise<Set<string>>,
-	): Promise<UserToolAccessSnapshot | UnavailableTool | undefined> {
+	): Promise<UserToolAccessSnapshot | UnavailableTool> {
 		const denied = (message: string): UnavailableTool => ({
 			toolName: toolRefName(ref),
 			toolType: ref.type,
@@ -663,7 +662,7 @@ export class AgentRuntimeReconstructionService {
 
 		const workflow = await findWorkflowToolWorkflow(this.workflowRepository, ref, projectId);
 		// Missing workflows stay in the list so the tool factory can return a stub.
-		if (!workflow) return undefined;
+		if (!workflow) return { credentialIds: [], workflowIds: [] };
 		const accessibleWorkflow = await this.workflowFinderService.findWorkflowForUser(
 			workflow.id,
 			user,
@@ -733,7 +732,10 @@ export class AgentRuntimeReconstructionService {
 	async reconstructFromResolvedSource(
 		params: ReconstructAgentRuntimeParams,
 	): Promise<ReconstructedAgentRuntime> {
-		let config = await this.withSkillWorkflowTools(params.config, params.skills, params.projectId);
+		let config =
+			params.runtimeProfile === 'inline'
+				? params.config
+				: await this.withSkillWorkflowTools(params.config, params.skills, params.projectId);
 		let unavailableTools: UnavailableTool[] = [];
 		if (params.user && config.tools?.length) {
 			// Sub-agent runtimes are built per delegation and never cached, so the
@@ -778,13 +780,7 @@ export class AgentRuntimeReconstructionService {
 			legacyRefs,
 			projectId,
 		);
-		const legacyWorkflowIds = new Map(
-			legacyRefs.flatMap((ref) => {
-				const workflow = legacyWorkflows.get(ref.workflow);
-				return workflow ? [[ref.workflow, workflow.id] as const] : [];
-			}),
-		);
-		return withSkillWorkflowTools(config, skills, legacyWorkflowIds);
+		return withSkillWorkflowTools(config, skills, legacyWorkflows);
 	}
 
 	private async reconstructRuntime(
