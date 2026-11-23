@@ -1093,12 +1093,16 @@ export class AgentsBuilderToolsService {
 					{ versionId }: { versionId?: string },
 					ctx: InterruptibleToolContext<PublishConfirmation, ApprovalResumePayload>,
 				) => {
-					// A cancel never publishes, so report it before any check that could fail.
+					// A cancel never publishes, so report it before any check that could fail. The
+					// result says outright not to retry: a plain "cancelled" reads like a failure,
+					// and models then show the card again.
 					if (ctx.resumeData?.approved === false) {
 						return {
 							ok: false,
 							denied: true,
-							reason: 'The user cancelled. Nothing was published.',
+							reason:
+								'The user declined to publish. Nothing was published. Do not call this tool ' +
+								'again unless the user asks.',
 						};
 					}
 					if (!(await userHasScopes(user, ['agent:publish'], false, { projectId }))) {

@@ -3844,7 +3844,8 @@ describe('AgentsBuilderToolsService', () => {
 			expect(result).toEqual({
 				ok: false,
 				denied: true,
-				reason: 'The user cancelled. Nothing was published.',
+				reason:
+					'The user declined to publish. Nothing was published. Do not call this tool again unless the user asks.',
 			});
 			expect(agentPublishService.publishAgent).not.toHaveBeenCalled();
 		});
