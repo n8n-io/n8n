@@ -27,7 +27,7 @@ import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import ProjectHeader from '../components/ProjectHeader.vue';
 import { isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system';
 import type { TableOptions } from '@n8n/design-system';
-import type { UserAction } from '@n8n/design-system';
+import type { SelectOptionBase, SelectValue, UserAction } from '@n8n/design-system';
 import { isProjectRole } from '@/app/utils/typeGuards';
 import ProjectExternalSecrets from '../components/ProjectExternalSecrets.vue';
 import ProjectSettingsCustomTelemetryTags from '../components/ProjectSettingsCustomTelemetryTags.vue';
@@ -43,9 +43,12 @@ import {
 	N8nIcon,
 	N8nIconPicker,
 	N8nInput,
-	N8nSettingsEnableRow,
+	N8nPreviewBadge,
+	N8nSelect2,
+	N8nSettingsRow,
 	N8nSettingsRowGroup,
 	N8nText,
+	N8nTooltip,
 	N8nUserSelect,
 } from '@n8n/design-system';
 type FormDataDiff = {
@@ -524,8 +527,25 @@ function hasWorkflowReviewChanges(): boolean {
 	);
 }
 
-const onRequireApprovalUpdate = (value: boolean) => {
-	formData.value.requiredByProject = value;
+type RequireApprovalOption = 'perWorkflow' | 'always';
+
+const requireApprovalOptions = computed<Array<SelectOptionBase<RequireApprovalOption>>>(() => [
+	{
+		value: 'perWorkflow',
+		label: i18n.baseText('projects.settings.workflowReviews.requireApproval.option.perWorkflow'),
+	},
+	{
+		value: 'always',
+		label: i18n.baseText('projects.settings.workflowReviews.requireApproval.option.always'),
+	},
+]);
+
+const requireApproval = computed<RequireApprovalOption>(() =>
+	isInstanceApprovalRequired.value || formData.value.requiredByProject ? 'always' : 'perWorkflow',
+);
+
+const onRequireApprovalUpdate = (value: SelectValue | undefined) => {
+	formData.value.requiredByProject = value === 'always';
 	onTextInput();
 };
 
@@ -956,20 +976,44 @@ onMounted(async () => {
 				<div v-if="showWorkflowReviewSettings" :class="$style.workflowReviews">
 					<h3>{{ i18n.baseText('projects.settings.workflowReviews.title') }}</h3>
 					<N8nSettingsRowGroup>
-						<N8nSettingsEnableRow
+						<N8nSettingsRow>
+							<template #info>
+								<N8nText :bold="true">
+									{{ i18n.baseText('projects.settings.workflowReviews.publishReviews.title') }}
+									<N8nPreviewBadge class="ml-4xs" />
+								</N8nText>
+								<N8nText size="small" color="text-light">
+									{{
+										i18n.baseText('projects.settings.workflowReviews.publishReviews.description')
+									}}
+								</N8nText>
+							</template>
+						</N8nSettingsRow>
+						<N8nSettingsRow
 							:title="i18n.baseText('projects.settings.workflowReviews.requireApproval.title')"
-							:description="
-								isInstanceApprovalRequired
-									? i18n.baseText(
-											'projects.settings.workflowReviews.requireApproval.lockedByInstance',
-										)
-									: i18n.baseText('projects.settings.workflowReviews.requireApproval.description')
-							"
-							:enabled="isInstanceApprovalRequired || formData.requiredByProject"
-							:disabled="isInstanceApprovalRequired"
-							switch-test-id="project-settings-require-approval-switch"
-							@update:enabled="onRequireApprovalUpdate"
-						/>
+						>
+							<template #action>
+								<N8nTooltip :disabled="!isInstanceApprovalRequired" placement="top">
+									<template #content>
+										{{ i18n.baseText('workflowReviews.enforcement.lockedByInstance') }}
+									</template>
+									<!-- A disabled select gets no hover events, so the wrapper takes them. -->
+									<span :class="{ [$style.lockedControl]: isInstanceApprovalRequired }">
+										<N8nSelect2
+											:model-value="requireApproval"
+											:items="requireApprovalOptions"
+											size="medium"
+											:disabled="isInstanceApprovalRequired"
+											:aria-label="
+												i18n.baseText('projects.settings.workflowReviews.requireApproval.title')
+											"
+											data-test-id="project-settings-require-approval-select"
+											@update:model-value="onRequireApprovalUpdate"
+										/>
+									</span>
+								</N8nTooltip>
+							</template>
+						</N8nSettingsRow>
 					</N8nSettingsRowGroup>
 				</div>
 
@@ -1069,6 +1113,14 @@ onMounted(async () => {
 	h3 {
 		margin-bottom: var(--spacing--xs);
 		font-size: var(--font-size--lg);
+	}
+}
+
+.lockedControl {
+	display: inline-flex;
+
+	> * {
+		pointer-events: none;
 	}
 }
 

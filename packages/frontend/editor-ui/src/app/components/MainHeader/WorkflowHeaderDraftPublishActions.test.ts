@@ -1661,13 +1661,14 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 				activeVersion: createMockActiveVersion('version-1'),
 			});
 
-			const { getByTestId, findByRole, getByText } = renderComponent();
+			const { getByTestId, findByRole, findByText } = renderComponent();
 			await userEvent.click(getByTestId('version-menu-button'));
 
 			const reviewItem = await findByRole('menuitemcheckbox', { name: /Review required/ });
 			expect(reviewItem).toHaveAttribute('aria-checked', 'true');
 			expect(reviewItem).toHaveAttribute('aria-disabled', 'true');
-			expect(getByText('Required by this project.')).toBeInTheDocument();
+			await userEvent.hover(reviewItem.parentElement!);
+			expect(await findByText('This policy is set by your project admin.')).toBeInTheDocument();
 		});
 
 		it('refetches the requirement on Publish and opens the submit dialog when the project now requires approval', async () => {

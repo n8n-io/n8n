@@ -106,20 +106,21 @@ describe('WorkflowReviewRequiredToggle', () => {
 	});
 
 	it.each([
-		['instance', 'Required by the instance.'],
-		['project', 'Required by this project.'],
+		['instance', 'This policy is set by your instance admin.'],
+		['project', 'This policy is set by your project admin.'],
 	])(
 		'shows review as required and locked with the reason when the %s requires approval',
 		async (lockedBy, reason) => {
 			const pinia = createPinia();
 			const store = useReviewRequiredStore(pinia);
-			const { getByRole, getByText } = renderComponent({ pinia, props: { lockedBy } });
+			const { getByRole, findAllByText } = renderComponent({ pinia, props: { lockedBy } });
 			await userEvent.click(getByRole('button'));
 
 			const reviewItem = getByRole('menuitemcheckbox', { name: /Review required/ });
 			expect(reviewItem).toHaveAttribute('aria-checked', 'true');
 			expect(reviewItem).toHaveAttribute('aria-disabled', 'true');
-			expect(getByText(reason)).toBeInTheDocument();
+			await userEvent.hover(reviewItem.parentElement!);
+			expect(await findAllByText(reason)).not.toHaveLength(0);
 
 			await userEvent.click(reviewItem);
 

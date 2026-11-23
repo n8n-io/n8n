@@ -1275,18 +1275,14 @@ describe('ProjectSettings', () => {
 		});
 
 		it('shows Require approval and saves a changed value', async () => {
-			const { getByTestId, getByText } = renderComponent();
+			const { getByTestId, findByRole } = renderComponent();
 			await nextTick();
 
-			const requireApproval = getByTestId('project-settings-require-approval-switch');
-			expect(requireApproval).toHaveAttribute('aria-checked', 'false');
-			expect(
-				getByText(
-					'New workflow versions in this project need an approved review before they are published.',
-				),
-			).toBeInTheDocument();
+			const requireApproval = getByTestId('project-settings-require-approval-select');
+			expect(requireApproval).toHaveTextContent('Set per workflow');
 
 			await userEvent.click(requireApproval);
+			await userEvent.click(await findByRole('option', { name: 'Always required' }));
 			await userEvent.click(getByTestId('project-settings-save-button'));
 
 			expect(projectsStore.updateCurrentProjectWorkflowReviewSettings).toHaveBeenCalledWith('123', {
@@ -1317,7 +1313,7 @@ describe('ProjectSettings', () => {
 			await userEvent.type(getInput(getByTestId('project-settings-name-input')), ' Renamed');
 			await userEvent.click(getByTestId('project-settings-save-button'));
 
-			expect(queryByTestId('project-settings-require-approval-switch')).not.toBeInTheDocument();
+			expect(queryByTestId('project-settings-require-approval-select')).not.toBeInTheDocument();
 			expect(projectsStore.updateProject).toHaveBeenCalled();
 			expect(projectsStore.updateCurrentProjectWorkflowReviewSettings).not.toHaveBeenCalled();
 		});
@@ -1330,9 +1326,8 @@ describe('ProjectSettings', () => {
 			const { getByTestId } = renderComponent();
 
 			await vi.waitFor(() =>
-				expect(getByTestId('project-settings-require-approval-switch')).toHaveAttribute(
-					'aria-checked',
-					'true',
+				expect(getByTestId('project-settings-require-approval-select')).toHaveTextContent(
+					'Always required',
 				),
 			);
 		});
@@ -1362,20 +1357,20 @@ describe('ProjectSettings', () => {
 			const { queryByTestId } = renderComponent();
 			await nextTick();
 
-			expect(queryByTestId('project-settings-require-approval-switch')).not.toBeInTheDocument();
+			expect(queryByTestId('project-settings-require-approval-select')).not.toBeInTheDocument();
 		});
 
 		it('shows Require approval on and locked when the instance requires approval', async () => {
 			setWorkflowReviewsPolicy({ enabled: true, alwaysRequired: true });
-			const { getByTestId, getByText } = renderComponent();
+			const { getByTestId, findAllByText } = renderComponent();
 			await nextTick();
 
-			const requireApproval = getByTestId('project-settings-require-approval-switch');
-			expect(requireApproval).toHaveAttribute('aria-checked', 'true');
-			expect(requireApproval).toBeDisabled();
-			expect(
-				getByText('Required by the instance. An instance admin can change this.'),
-			).toBeInTheDocument();
+			const requireApproval = getByTestId('project-settings-require-approval-select');
+			expect(requireApproval).toHaveTextContent('Always required');
+			expect(requireApproval).toHaveAttribute('data-disabled');
+
+			await userEvent.hover(requireApproval.parentElement!);
+			expect(await findAllByText('This policy is set by your instance admin.')).not.toHaveLength(0);
 		});
 	});
 
