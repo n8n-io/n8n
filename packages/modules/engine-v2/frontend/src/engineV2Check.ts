@@ -4,6 +4,7 @@ import {
 	type EngineV2EligibilityWorkflow,
 	type EngineV2Reason,
 	type EngineV2ReasonCode,
+	type EngineV2ReasonKind,
 } from '@n8n/workflow-engine-check';
 
 /*
@@ -14,6 +15,8 @@ import {
 export type EngineCompatibilityWorkflow = EngineV2EligibilityWorkflow;
 export type EngineCompatibilityReason = EngineV2Reason;
 export type EngineCompatibility = EngineV2Eligibility;
+export type EngineCompatibilityReasonCode = EngineV2ReasonCode;
+export type EngineCompatibilityReasonKind = EngineV2ReasonKind;
 
 /**
  * The codes that the package gives for a node type, wherever the node is in the workflow

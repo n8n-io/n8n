@@ -45,21 +45,20 @@ const OWN_TEXT: Array<[Code, Kind, BaseTextKey]> = [
 		'engineV2Compatibility.reason.triggerExternalIdentity',
 	],
 	['AI_NODE', 'temporary', 'engineV2Compatibility.reason.aiNode'],
-	['CHAT_NODE', 'temporary', 'engineV2Compatibility.reason.chatNode'],
+	['CHAT_NODE', 'temporary', 'engineV2Compatibility.reason.unsupportedNode'],
 	['COMMUNITY_NODE', 'temporary', 'engineV2Compatibility.reason.communityNode'],
-	['EVALUATION_NODE', 'temporary', 'engineV2Compatibility.reason.evaluationNode'],
-	['EXECUTION_DATA_NODE', 'temporary', 'engineV2Compatibility.reason.executionDataNode'],
-	['FORM_NODE', 'temporary', 'engineV2Compatibility.reason.formNode'],
-	['MCP_SERVER_TRIGGER', 'temporary', 'engineV2Compatibility.reason.mcpServerTrigger'],
-	['MESSAGE_AN_AGENT_NODE', 'temporary', 'engineV2Compatibility.reason.messageAnAgentNode'],
-	[
-		'MICROSOFT_AGENT365_TRIGGER',
-		'temporary',
-		'engineV2Compatibility.reason.microsoftAgent365Trigger',
-	],
-	['TIME_SAVED_NODE', 'temporary', 'engineV2Compatibility.reason.timeSavedNode'],
-	['TRIGGER_WAITS_FOR_RUN', 'temporary', 'engineV2Compatibility.reason.triggerWaitsForRun'],
+	['EVALUATION_NODE', 'temporary', 'engineV2Compatibility.reason.unsupportedNode'],
+	['EXECUTION_DATA_NODE', 'temporary', 'engineV2Compatibility.reason.unsupportedNode'],
+	['FORM_NODE', 'temporary', 'engineV2Compatibility.reason.unsupportedNode'],
+	['MCP_SERVER_TRIGGER', 'temporary', 'engineV2Compatibility.reason.unsupportedNode'],
+	['MESSAGE_AN_AGENT_NODE', 'temporary', 'engineV2Compatibility.reason.unsupportedNode'],
+	['MICROSOFT_AGENT365_TRIGGER', 'temporary', 'engineV2Compatibility.reason.unsupportedNode'],
+	['TIME_SAVED_NODE', 'temporary', 'engineV2Compatibility.reason.unsupportedNode'],
+	['TRIGGER_WAITS_FOR_RUN', 'temporary', 'engineV2Compatibility.reason.unsupportedNode'],
 	['CONTINUE_ERROR_OUTPUT', 'temporary', 'engineV2Compatibility.reason.continueErrorOutput'],
+	['RETRY_ON_FAIL', 'temporary', 'engineV2Compatibility.reason.retryOnFail'],
+	['ALWAYS_OUTPUT_DATA', 'temporary', 'engineV2Compatibility.reason.alwaysOutputData'],
+	['EXECUTE_ONCE', 'temporary', 'engineV2Compatibility.reason.executeOnce'],
 	['MERGE_CHOOSE_BRANCH', 'temporary', 'engineV2Compatibility.reason.mergeChooseBranch'],
 	['MERGE_MODE_EXPRESSION', 'permanent', 'engineV2Compatibility.reason.mergeModeExpression'],
 	[
@@ -149,13 +148,6 @@ describe('EngineV2CompatibilityDialog', () => {
 		]);
 	});
 
-	it('covers each code once', () => {
-		const codes = [...OWN_TEXT.map(([code]) => code), ...PACKAGE_MESSAGE];
-
-		expect(new Set(codes).size).toBe(37);
-		expect(OWN_TEXT).toHaveLength(31);
-	});
-
 	it.each(OWN_TEXT)('shows its own text for %s (%s)', async (code, kind, key) => {
 		const { getAllByTestId } = await renderDialog([reason(code, kind)]);
 
@@ -181,6 +173,27 @@ describe('EngineV2CompatibilityDialog', () => {
 		const { getAllByTestId } = await renderDialog([reason(code, 'temporary', { message })]);
 
 		expect(reasonTexts(getAllByTestId)).toEqual([message]);
+	});
+
+	it('shows no node name before a package message that already names the node', async () => {
+		const { getAllByTestId } = await renderDialog([
+			reason('NESTED_LOOP', 'temporary', {
+				nodeName: 'Inner',
+				message: 'The loop of "Inner" is inside the loop of "Outer".',
+			}),
+		]);
+
+		expect(reasonTexts(getAllByTestId)).toEqual([
+			'The loop of "Inner" is inside the loop of "Outer".',
+		]);
+	});
+
+	it('shows the node name before a package message that does not name the node', async () => {
+		const { getAllByTestId } = await renderDialog([
+			reason('NESTED_LOOP', 'temporary', { nodeName: 'Inner', message: "Loops can't nest yet." }),
+		]);
+
+		expect(reasonTexts(getAllByTestId)).toEqual(["Inner: Loops can't nest yet."]);
 	});
 
 	it('shows the package message for an unknown code', async () => {

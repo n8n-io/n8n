@@ -23,18 +23,22 @@ The module tells the editor if the open workflow can run on engine v2. Every ans
   workflow, because the document store belongs to the shell. It returns the reasons, the blocking
   reasons and `isNodeTypeIncompatible`.
 - `EngineV2CompatibilityButton` shows the number of reasons, with a red icon when one blocks and a
-  yellow icon when all are warnings. The shell puts it above the node creator toolbar on editable canvases, and at the top right on read-only canvases. A click opens
+  yellow icon when all are warnings. The shell puts it above the node creator toolbar on editable
+  canvases, and at the top right on read-only canvases. A click opens
   `EngineV2CompatibilityDialog`, which lists the blocking reasons first, then the warnings. The
   list scrolls inside the dialog. Each entry's icon depends on its severity only, so a new reason
   code needs no icon.
 - `src/engineV2ReasonText.ts` gives the text of each reason:
-  - A code in `REASON_TEXT_KEYS` shows its own string from `en.json`. A `temporary` reason adds
-    "Run this workflow on Engine v1 for now." A code with two meanings uses `CODE.kind` keys.
-  - Any other code shows the English `message` of the package. That covers a new code, and a code
-    whose `message` holds details that a fixed string can't, such as a second node or a count.
-  - To give a new code its own string, add one entry to `REASON_TEXT_KEYS` and one key to
-    `en.json`. When a package rule changes what its `message` says, change the string in the same
-    PR, or remove the entry.
+  - `REASON_TEXT_KEYS` has an entry for every code of the package, so the typecheck fails when
+    the package adds a code. An entry is a key in `en.json`, one key for each `kind` when a code
+    has two meanings, or `null`. A `temporary` reason adds "Run this workflow on Engine v1 for
+    now." Codes with the same text share a key.
+  - A `null` code shows the English `message` of the package. Use `null` when the `message` holds
+    details that a fixed string can't, such as a second node or a count. The dialog then shows no
+    node name before the `message` when the `message` already names the node.
+  - When the package adds a code, add its entry, and its key to `en.json` unless the entry is
+    `null`. When a package rule changes what its `message` says, change the string in the same
+    PR, or set the entry to `null`.
 - Tests replace the check with `mockEngineV2Compatibility` from
   `@n8n/frontend-module-engine-v2/__tests__/mocks`.
 

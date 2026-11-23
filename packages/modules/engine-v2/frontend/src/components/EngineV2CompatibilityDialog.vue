@@ -41,8 +41,7 @@ const items = computed(() =>
 	].map((reason, index) => ({
 		id: `${index}-${reason.code}`,
 		...severityIcon(reason.severity),
-		nodeName: reason.nodeName,
-		text: describeCompatibilityReason(reason),
+		...describeCompatibilityReason(reason),
 	})),
 );
 </script>

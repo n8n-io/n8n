@@ -17,6 +17,8 @@ import {
 	MANUAL_TRIGGER_NODE_TYPE,
 	MESSAGE_AN_AGENT_NODE_TYPE,
 	NODE_CREATOR_OPEN_SOURCES,
+	OPEN_AI_NODE_MESSAGE_ASSISTANT_TYPE,
+	OPEN_AI_NODE_TYPE,
 	NO_OP_NODE_TYPE,
 	OPEN_AI_CHAT_MODEL_NODE_TYPE,
 	SCHEDULE_TRIGGER_NODE_TYPE,
@@ -123,6 +125,37 @@ describe('useActions', () => {
 					nodes: [],
 					connections: [],
 				});
+			});
+
+			it('adds nothing when a node it adds on its own is not supported on engine v2', () => {
+				vi.mocked(useSettingsStore().isModuleActive).mockReturnValue(true);
+				mockDocumentStoreState.settings = { engineType: 'v2' };
+				mockDocumentStoreState.workflowTriggerNodes = [];
+				mockEngineV2Compatibility({ unsupportedNodeTypes: [MANUAL_TRIGGER_NODE_TYPE] });
+				const nodeCreatorStore = useNodeCreatorStore();
+				vi.spyOn(nodeCreatorStore, 'openSource', 'get').mockReturnValue(
+					NODE_CREATOR_OPEN_SOURCES.ADD_NODE_BUTTON,
+				);
+				vi.spyOn(nodeCreatorStore, 'selectedView', 'get').mockReturnValue(
+					TRIGGER_NODE_CREATOR_VIEW,
+				);
+				const { getAddedNodesAndConnections } = useActions();
+
+				expect(getAddedNodesAndConnections([{ type: HTTP_REQUEST_NODE_TYPE }])).toEqual({
+					nodes: [],
+					connections: [],
+				});
+			});
+
+			it('adds nothing when the renamed type is not supported on engine v2', () => {
+				vi.mocked(useSettingsStore().isModuleActive).mockReturnValue(true);
+				mockDocumentStoreState.settings = { engineType: 'v2' };
+				mockEngineV2Compatibility({ unsupportedNodeTypes: [OPEN_AI_NODE_TYPE] });
+				const { getAddedNodesAndConnections } = useActions();
+
+				expect(
+					getAddedNodesAndConnections([{ type: OPEN_AI_NODE_MESSAGE_ASSISTANT_TYPE }]),
+				).toEqual({ nodes: [], connections: [] });
 			});
 
 			it.each([

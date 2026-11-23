@@ -408,8 +408,13 @@ export const useActions = () => {
 		const keptIndexes = nodes.flatMap((node, index) =>
 			node.isAutoAdd && nodeTypesStore.isNodeTypeUnavailable(node.type) ? [] : [index],
 		);
+		const keptNodes = keptIndexes.map((index) => nodes[index]);
+		// The alias rename and the auto-added nodes can bring in a type that engine v2 doesn't run.
+		if (keptNodes.some((node) => isNodeTypeIncompatible(node.type))) {
+			return { nodes: [], connections: [] };
+		}
 		return {
-			nodes: keptIndexes.map((index) => nodes[index]),
+			nodes: keptNodes,
 			connections: connections.flatMap(({ from, to }) => {
 				const fromIndex = keptIndexes.indexOf(from.nodeIndex);
 				const toIndex = keptIndexes.indexOf(to.nodeIndex);

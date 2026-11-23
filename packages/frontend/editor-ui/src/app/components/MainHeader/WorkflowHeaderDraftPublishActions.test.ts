@@ -1419,7 +1419,10 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 
 			const { getByTestId, getByText } = renderComponent();
 
-			expect(getByTestId('workflow-open-publish-modal-button')).toBeDisabled();
+			expect(getByTestId('workflow-open-publish-modal-button')).toHaveAttribute(
+				'aria-disabled',
+				'true',
+			);
 			expect(getByText(describeEngineV2Block())).toBeInTheDocument();
 		});
 
@@ -1434,7 +1437,10 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 
 			const { getByTestId, getByText } = renderComponent();
 
-			expect(getByTestId('workflow-open-publish-modal-button')).toBeDisabled();
+			expect(getByTestId('workflow-open-publish-modal-button')).toHaveAttribute(
+				'aria-disabled',
+				'true',
+			);
 			expect(getByText(describeEngineV2Block())).toBeInTheDocument();
 		});
 
@@ -1466,7 +1472,10 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 
 			const { getByTestId, queryByText } = renderComponent();
 
-			expect(getByTestId('workflow-open-publish-modal-button')).not.toBeDisabled();
+			expect(getByTestId('workflow-open-publish-modal-button')).not.toHaveAttribute(
+				'aria-disabled',
+				'true',
+			);
 			expect(queryByText(describeEngineV2Block())).not.toBeInTheDocument();
 
 			nodeViewEventBus.emit('publishWorkflow');
@@ -1488,7 +1497,10 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 
 			const { getByTestId, queryByText } = renderComponent();
 
-			expect(getByTestId('workflow-open-publish-modal-button')).not.toBeDisabled();
+			expect(getByTestId('workflow-open-publish-modal-button')).not.toHaveAttribute(
+				'aria-disabled',
+				'true',
+			);
 			expect(queryByText(describeEngineV2Block())).not.toBeInTheDocument();
 			expect(checkWorkflow).not.toHaveBeenCalled();
 
@@ -1508,8 +1520,14 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			const { findByTestId, getByTestId } = renderComponent();
 			await userEvent.click(await findByTestId('workflow-review-status-pill'));
 
-			expect(getByTestId('workflow-open-publish-modal-button')).toBeDisabled();
-			expect(getByTestId('workflow-review-submit-changes-button')).toBeDisabled();
+			expect(getByTestId('workflow-open-publish-modal-button')).toHaveAttribute(
+				'aria-disabled',
+				'true',
+			);
+			expect(getByTestId('workflow-review-submit-changes-button')).toHaveAttribute(
+				'aria-disabled',
+				'true',
+			);
 		});
 
 		it('should keep Submit changes enabled for a warning only', async () => {
@@ -1520,7 +1538,10 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			const { findByTestId, getByTestId } = renderComponent();
 			await userEvent.click(await findByTestId('workflow-review-status-pill'));
 
-			expect(getByTestId('workflow-review-submit-changes-button')).toBeEnabled();
+			expect(getByTestId('workflow-review-submit-changes-button')).not.toHaveAttribute(
+				'aria-disabled',
+				'true',
+			);
 		});
 	});
 
