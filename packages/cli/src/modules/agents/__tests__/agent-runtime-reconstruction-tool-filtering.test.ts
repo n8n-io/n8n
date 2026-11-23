@@ -1118,6 +1118,27 @@ describe('AgentRuntimeReconstructionService — workflows that skills mention', 
 		expect(resolveWorkflowToolMock).toHaveBeenCalledWith(mentionedTool, expect.anything());
 	});
 
+	it('builds a workflow tool for a mention in a resolved sub-agent source', async () => {
+		const { service, workflowsInSkillsFlagGate } = makeService({});
+		workflowsInSkillsFlagGate.isEnabled.mockResolvedValue(true);
+		buildFromJsonResolvingTools([]);
+		const { agent, skills } = makeSkillAgentEntity();
+
+		await service.reconstructFromResolvedSource({
+			config: { ...agent.schema!, skills: [{ type: 'skill', id: 'skill-1' }] },
+			memoryOwnerAgentId: 'agent-1',
+			projectId,
+			credentialProvider: mock<CredentialProvider>(),
+			toolDescriptors: {},
+			toolCodeByName: {},
+			skills,
+			runtimeProfile: 'sub-agent',
+			runType: 'production',
+		});
+
+		expect(resolveWorkflowToolMock).toHaveBeenCalledWith(mentionedTool, expect.anything());
+	});
+
 	it('uses the direct tool when the workflow is also attached directly', async () => {
 		const { service, workflowsInSkillsFlagGate } = makeService({});
 		workflowsInSkillsFlagGate.isEnabled.mockResolvedValue(true);

@@ -6,7 +6,7 @@ export type SkillWorkflowMention = {
 const SKILL_WORKFLOW_MENTION_PATTERN =
 	/\[((?:\\.|[^\\[\]\n])*)\]\(n8n:\/\/workflow\/([A-Za-z0-9_-]+)(?:\?[^)\s]*)?\)/g;
 
-const unescapeLinkText = (text: string) => text.replace(/\\(.)/g, '$1');
+const unescapeLinkText = (text: string) => text.replace(/\\([\\[\]])/g, '$1');
 
 const escapeLinkText = (text: string) => text.replace(/[\\[\]]/g, '\\$&');
 

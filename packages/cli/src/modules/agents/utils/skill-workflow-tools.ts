@@ -10,6 +10,8 @@ export type SkillWorkflowTool = {
 	tool: AgentJsonWorkflowToolConfig & { workflowId: string };
 };
 
+type MentionedWorkflows = Map<string, { name: string; skillId: string; skillName: string }>;
+
 function directWorkflowId(
 	tool: AgentJsonWorkflowToolConfig,
 	legacyWorkflowIds: ReadonlyMap<string, string>,
@@ -24,8 +26,8 @@ function workflowIdSentence(workflowId: string): string {
 function findMentionedWorkflows(
 	config: AgentJsonConfig,
 	skills: Record<string, AgentSkill>,
-): Map<string, { name: string; skillId: string; skillName: string }> {
-	const mentioned = new Map<string, { name: string; skillId: string; skillName: string }>();
+): MentionedWorkflows {
+	const mentioned: MentionedWorkflows = new Map();
 	for (const ref of config.skills ?? []) {
 		if (!Object.hasOwn(skills, ref.id)) continue;
 		const skill = skills[ref.id];
@@ -51,13 +53,11 @@ function directWorkflowIds(
 	);
 }
 
-export function findSkillWorkflowTools(
-	config: AgentJsonConfig,
-	skills: Record<string, AgentSkill>,
-	legacyWorkflowIds: ReadonlyMap<string, string> = new Map(),
+function toSkillWorkflowTools(
+	mentioned: MentionedWorkflows,
+	attached: Set<string | undefined>,
 ): SkillWorkflowTool[] {
-	const attached = directWorkflowIds(config, legacyWorkflowIds);
-	return [...findMentionedWorkflows(config, skills)]
+	return [...mentioned]
 		.filter(([workflowId]) => !attached.has(workflowId))
 		.map(([workflowId, { name, skillId, skillName }]) => ({
 			skillId,
@@ -69,6 +69,17 @@ export function findSkillWorkflowTools(
 				description: `Run the workflow "${name || workflowId}" that the skill "${skillName}" mentions. ${workflowIdSentence(workflowId)}`,
 			},
 		}));
+}
+
+export function findSkillWorkflowTools(
+	config: AgentJsonConfig,
+	skills: Record<string, AgentSkill>,
+	legacyWorkflowIds: ReadonlyMap<string, string> = new Map(),
+): SkillWorkflowTool[] {
+	return toSkillWorkflowTools(
+		findMentionedWorkflows(config, skills),
+		directWorkflowIds(config, legacyWorkflowIds),
+	);
 }
 
 export function withSkillWorkflowTools(
@@ -88,8 +99,9 @@ export function withSkillWorkflowTools(
 			description: `${tool.description ?? `Execute the "${tool.workflow}" workflow.`} ${workflowIdSentence(workflowId)}`,
 		};
 	});
-	const skillTools = findSkillWorkflowTools(config, skills, legacyWorkflowIds).map(
-		({ tool }) => tool,
-	);
+	const skillTools = toSkillWorkflowTools(
+		mentioned,
+		directWorkflowIds(config, legacyWorkflowIds),
+	).map(({ tool }) => tool);
 	return { ...config, tools: [...directTools, ...skillTools] };
 }

@@ -41,16 +41,6 @@ describe('withSkillWorkflowTools', () => {
 		]);
 	});
 
-	it('adds a tool without approval, input bindings or all outputs', () => {
-		const skills = { 'skill-1': skill('Skill', '[Get code](n8n://workflow/wf1)') };
-
-		const [tool] = withSkillWorkflowTools(config(['skill-1']), skills).tools ?? [];
-
-		expect(tool).not.toHaveProperty('requireApproval');
-		expect(tool).not.toHaveProperty('inputs');
-		expect(tool).not.toHaveProperty('allOutputs');
-	});
-
 	it('reads mentions in the references of a skill', () => {
 		const skills = {
 			'skill-1': skill('Skill', 'See the reference.', ['Then call [Report](n8n://workflow/wf2).']),

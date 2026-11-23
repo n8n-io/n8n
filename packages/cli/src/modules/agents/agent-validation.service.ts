@@ -469,7 +469,7 @@ export class AgentValidationService {
 		const subAgentIds = new Set<string>();
 		const workflowRefs = [
 			...extractAgentWorkflowRefs(ctx.config).filter(
-				(ref) => ref.enabled !== false && ref.workflow,
+				(ref) => (ref.enabled !== false || skillWorkflowTools.length > 0) && ref.workflow,
 			),
 			...skillWorkflowTools.map(({ tool }) => tool),
 		];
