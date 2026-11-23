@@ -1,0 +1,19 @@
+.github/workflows/util-bump-migration.yml
+  s_ee09121db36145::t_1fcc104fbd57c5 26,28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5460e0490878d345753f3b4bb06460994349919b",
+  "prompts": {},
+  "sessions": {
+    "s_ee09121db36145": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ccf088c3-9596-4a0b-a5f9-3a0121cac9b0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,22 @@
+packages/@n8n/cli/src/__tests__/client.test.ts
+  s_c47d78ced69afc::t_5c7e6f26eda1fa 59-60,62,67-71,73
+  s_c47d78ced69afc::t_99fd9d324d5a8b 63
+  s_c47d78ced69afc::t_8e2be7894fddd0 66
+  s_c47d78ced69afc::t_162c39ad503c1b 74
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fdc3f1dfd13a4750eff938a467d02c5b6ab178a9",
+  "prompts": {},
+  "sessions": {
+    "s_c47d78ced69afc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc67a676-57cc-48ad-b828-b08bc7b6efc9",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

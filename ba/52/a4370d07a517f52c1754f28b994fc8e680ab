@@ -1,0 +1,19 @@
+packages/@n8n/expression-runtime/src/runtime/lazy-proxy.ts
+  s_59238bd2df20ad::t_161d90ee5a5866 18-26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ba52a4370d07a517f52c1754f28b994fc8e680ab",
+  "prompts": {},
+  "sessions": {
+    "s_59238bd2df20ad": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "35368858-0032-41cc-bfa9-161358300b64",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
