@@ -627,19 +627,20 @@ export class MicrosoftTeamsTrigger implements INodeType {
 		};
 
 		let filters: MessageFilters | undefined;
-		let filtersFailed = false;
+		let filtersError: unknown;
 		try {
 			filters = changeNotifications.length > 0 ? getMessageFilters.call(this) : undefined;
 		} catch (error) {
-			// A throw here answers 5xx and Graph re-delivers, so the change items are skipped instead.
-			filtersFailed = true;
-			logTrigger.call(this, 'warn', 'failed to read the filters, notifications skipped', {
-				error: errorText(error),
-			});
+			// A throw before the ack answers 5xx and Graph re-delivers, so it waits for the ack.
+			filtersError = error;
 		}
 		// `workflowData` has one array for each output. The node has one output, so all change
 		// notifications go in one array.
-		if (lifecycleNotifications.length === 0 && filters === undefined && !filtersFailed) {
+		if (
+			lifecycleNotifications.length === 0 &&
+			filters === undefined &&
+			filtersError === undefined
+		) {
 			return { workflowData: [changeNotifications.map(toItem)] };
 		}
 
@@ -653,13 +654,24 @@ export class MicrosoftTeamsTrigger implements INodeType {
 			await handleLifecycleNotifications.call(this, lifecycleNotifications, rejected);
 		}
 
-		let passed = filtersFailed ? [] : changeNotifications;
+		// A throw after the ack is a failed execution, but it skips the static-data save, so a batch
+		// whose lifecycle handler ran only warns.
+		if (filtersError !== undefined) {
+			if (!ranLifecycle) throw ensureError(filtersError);
+			logTrigger.call(this, 'warn', 'failed to read the filters, notifications skipped', {
+				error: errorText(filtersError),
+			});
+			return { noWebhookResponse: true };
+		}
+
+		let passed = changeNotifications;
 		if (filters) {
 			const result = await filterChangeNotifications.call(this, changeNotifications, filters);
 			passed = result.passed;
 			if (result.denied) {
-				// A throw skips the static-data save and drops the passed items, so either one only warns.
-				if (!ranLifecycle && passed.length === 0) throw result.denied;
+				// The passed items of this batch are lost with the throw: a denied read must not hide
+				// behind a warning while other channels still pass.
+				if (!ranLifecycle) throw result.denied;
 				logTrigger.call(this, 'warn', `${result.denied.message}. ${result.denied.description}`);
 			}
 		}
