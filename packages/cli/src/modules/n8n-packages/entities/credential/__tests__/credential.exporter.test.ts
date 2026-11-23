@@ -166,7 +166,7 @@ describe('CredentialExporter', () => {
 					credentialExportPolicy: 'no-values',
 					additionalCredentialIds: ['cred_1'],
 				}),
-			).rejects.toThrow('cannot be read');
+			).rejects.toThrow('You cannot read the credential');
 			expect(writer.files).toEqual([]);
 		});
 	});

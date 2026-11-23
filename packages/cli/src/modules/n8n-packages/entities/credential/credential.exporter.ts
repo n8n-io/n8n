@@ -1,7 +1,7 @@
 import type { SerializedCredentialData } from '@n8n/api-types';
 import type { CredentialsEntity, User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { UserError } from '@n8n/errors';
+import { ForbiddenError } from '@n8n/errors';
 import { Credentials } from 'n8n-core';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import isEqual from 'lodash/isEqual';
@@ -100,10 +100,10 @@ export class CredentialExporter {
 				request.user,
 				['credential:read'],
 			);
-			// A selected credential that the user cannot read, or that no longer exists, must not drop out
-			// of the package without a trace.
+			// A selected credential must not drop out of the package without a trace. A missing credential
+			// looks the same as an unreadable one, so the response does not reveal that it exists.
 			if (!credential) {
-				throw new UserError(`The credential "${credentialId}" does not exist or cannot be read`);
+				throw new ForbiddenError(`You cannot read the credential "${credentialId}"`);
 			}
 			entries.push(await this.writeCredential(credential, request, includeDescription));
 		}
