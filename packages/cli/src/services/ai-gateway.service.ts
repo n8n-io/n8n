@@ -31,7 +31,7 @@ import {
 } from '@/modules/mcp-registry/registry/mcp-registry.types';
 import { checkAiGatewayEligibility } from '@/services/ai-gateway-eligibility';
 import { OwnershipService } from '@/services/ownership.service';
-import { UrlService } from '@n8n/backend-services';
+import { JwtService, UrlService } from '@n8n/backend-services';
 
 interface GatewayTokenResponse {
 	token: string;
@@ -142,6 +142,7 @@ export class AiGatewayService {
 		private readonly urlService: UrlService,
 		private readonly outboundHttp: OutboundHttp,
 		private readonly credentialTypes: CredentialTypes,
+		private readonly jwtService: JwtService,
 	) {}
 
 	/**
@@ -760,30 +761,44 @@ export class AiGatewayService {
 	}
 
 	/**
+	 * Issues a token for a client outside n8n, such as Nod, billed to this user's
+	 * Gateway credits. The gateway mints a separate, short-lived token for each
+	 * call. It is never the token that workflow executions use, and n8n does not cache it.
+	 */
+	async issueExternalClientToken(
+		userId: string,
+	): Promise<{ gatewayUrl: string; token: string; expiresAt: string }> {
+		this.assertEnabled();
+		const gatewayUrl = this.requireBaseUrl();
+		const { token, expiresIn } = await this.requestGatewayToken(userId, {
+			tokenUse: 'external-client',
+		});
+		// A gateway that ignores `tokenUse` returns the execution token. Never hand that out.
+		// The claim is read without verification: the gateway signs it, n8n only refuses on it.
+		const claims = this.decodeClaims(token);
+		if (claims?.tokenUse !== 'external-client') {
+			throw new UnexpectedError('The AI Gateway does not support tokens for external clients.');
+		}
+		return {
+			gatewayUrl,
+			token,
+			expiresAt: new Date(Date.now() + expiresIn * 1000).toISOString(),
+		};
+	}
+
+	private decodeClaims(token: string): { tokenUse?: unknown } | null {
+		try {
+			return this.jwtService.decodeUnverified<{ tokenUse?: unknown } | null>(token);
+		} catch {
+			return null;
+		}
+	}
+
+	/**
 	 * Returns a cached JWT for `instanceId:userId`, fetching a fresh one from the gateway
 	 * if missing or past 90% of its lifetime. Deduplicates concurrent requests for the
 	 * same user so only one fetch is in-flight at a time.
 	 */
-	/**
-	 * Gives a signed-in user direct access to the AI Gateway from a client outside
-	 * n8n, such as Nod: the gateway URL and a token billed to this user.
-	 */
-	async getUserGatewayAccess(
-		userId: string,
-	): Promise<{ gatewayUrl: string; token: string; expiresAt: string }> {
-		if (!this.isEnabled()) {
-			throw new UserError('Gateway credits are not enabled on this instance.');
-		}
-		const gatewayUrl = this.requireBaseUrl();
-		const token = await this.getOrFetchToken(userId);
-		const cached = this.tokenCache.get(`${this.instanceSettings.instanceId}:${userId}`);
-		return {
-			gatewayUrl,
-			token,
-			expiresAt: new Date(cached?.expiresAt ?? Date.now()).toISOString(),
-		};
-	}
-
 	private async getOrFetchToken(userId: string, timeoutMs?: number): Promise<string> {
 		const key = `${this.instanceSettings.instanceId}:${userId}`;
 		const cached = this.tokenCache.get(key);
@@ -809,6 +824,27 @@ export class AiGatewayService {
 		key: string,
 		timeoutMs?: number,
 	): Promise<string> {
+		const { token, expiresIn } = await this.requestGatewayToken(userId, { timeoutMs });
+		if (this.tokenCache.size >= this.TOKEN_CACHE_MAX_SIZE) {
+			this.tokenCache.delete(this.tokenCache.keys().next().value as string);
+		}
+		const lifetimeMs = expiresIn * 1000;
+		this.tokenCache.set(key, {
+			token,
+			expiresAt: Date.now() + lifetimeMs,
+			refreshAt: Date.now() + lifetimeMs * 0.9,
+		});
+		return token;
+	}
+
+	/**
+	 * Asks the gateway for a token for this user. `tokenUse: 'external-client'` asks
+	 * for a token for a client outside n8n instead of one for workflow executions.
+	 */
+	private async requestGatewayToken(
+		userId: string,
+		{ timeoutMs, tokenUse }: { timeoutMs?: number; tokenUse?: 'external-client' },
+	): Promise<{ token: string; expiresIn: number }> {
 		const baseUrl = this.requireBaseUrl();
 		// A service account has no email or name, so the gateway gets neither.
 		const [licenseCert, person] = await Promise.all([
@@ -828,6 +864,7 @@ export class AiGatewayService {
 						userName: [person.firstName, person.lastName].filter(Boolean).join(' ') || undefined,
 					}),
 					instanceUrl: this.urlService.getInstanceBaseUrl(),
+					...(tokenUse && { tokenUse }),
 				},
 				timeoutMs,
 			},
@@ -836,15 +873,6 @@ export class AiGatewayService {
 		if (!token || typeof expiresIn !== 'number') {
 			throw new UserError('Gateway credits returned an invalid token response.');
 		}
-		if (this.tokenCache.size >= this.TOKEN_CACHE_MAX_SIZE) {
-			this.tokenCache.delete(this.tokenCache.keys().next().value as string);
-		}
-		const lifetimeMs = expiresIn * 1000;
-		this.tokenCache.set(key, {
-			token,
-			expiresAt: Date.now() + lifetimeMs,
-			refreshAt: Date.now() + lifetimeMs * 0.9,
-		});
-		return token;
+		return { token, expiresIn };
 	}
 }

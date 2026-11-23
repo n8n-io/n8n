@@ -39,9 +39,17 @@ export const MCP_INSTANCE_SCOPES = [
 	'aiPreference:write',
 	'breakingChanges:list',
 	'breakingChanges:migrate',
+	'aiGateway:token',
 ] as const;
 
 export type McpScope = (typeof MCP_INSTANCE_SCOPES)[number];
+
+/**
+ * Scopes the consent screen offers only when the client names them in its
+ * authorization request. A client that asks for no scopes never gets them.
+ * `aiGateway:token` lets a client spend the user's Gateway credits from outside n8n.
+ */
+export const MCP_REQUEST_ONLY_SCOPES = ['aiGateway:token'] as const satisfies readonly McpScope[];
 
 export type McpClientType = 'cli' | 'ide' | 'editor' | 'assistant';
 

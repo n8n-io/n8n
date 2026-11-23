@@ -26,6 +26,7 @@ import { Container } from '@n8n/di';
 
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 import { SkillsGate } from '@/modules/skills';
+import { AiGatewayService } from '@/services/ai-gateway.service';
 
 import { ACTIVITY_LOG_TOOLS, INSTANCE_CONTEXT_TOOLS } from '../mcp-scopes';
 import { McpProtectedResource } from '../mcp-protected-resource';
@@ -71,6 +72,25 @@ describe('McpProtectedResource', () => {
 			mock<CommunityPackagesConfig>({ enabled: true, verifiedEnabled: true }),
 		);
 		Container.set(SkillsGate, mock<SkillsGate>({ isEnabled: true }));
+		Container.set(AiGatewayService, mock<AiGatewayService>({ isEnabled: () => true }));
+	});
+
+	describe('aiGateway:token', () => {
+		it('is a request-only scope, so no default grant includes it', () => {
+			expect(resource.requestOnlyScopes).toEqual(['aiGateway:token']);
+		});
+
+		it('is supported while Gateway credits are enabled, and unlocks no tool', async () => {
+			expect(resource.scopes).toContain('aiGateway:token');
+			expect((await resource.getScopeTools())['aiGateway:token']).toEqual([]);
+		});
+
+		it('is withheld while Gateway credits are disabled', async () => {
+			Container.set(AiGatewayService, mock<AiGatewayService>({ isEnabled: () => false }));
+
+			expect(resource.scopes).not.toContain('aiGateway:token');
+			expect(await resource.getScopeTools()).not.toHaveProperty('aiGateway:token');
+		});
 	});
 
 	describe('getScopeTools', () => {

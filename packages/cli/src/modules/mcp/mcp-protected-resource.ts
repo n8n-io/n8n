@@ -4,6 +4,7 @@ import {
 	MCP_AGENT_SCOPES,
 	MCP_SKILL_SCOPES,
 	MCP_INSTANCE_SCOPES,
+	MCP_REQUEST_ONLY_SCOPES,
 } from '@n8n/api-types';
 import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
@@ -13,6 +14,7 @@ import { Container, Service } from '@n8n/di';
 import type { ProtectedResource, ResourcePrincipal, ResourceUser } from '@n8n/inbound-auth';
 import { UrlService, PostHogClient } from '@n8n/backend-services';
 import { SkillsGate } from '@/modules/skills';
+import { AiGatewayService } from '@/services/ai-gateway.service';
 
 import {
 	ACTIVITY_LOG_TOOLS,
@@ -42,6 +44,7 @@ const MIGRATION_REPORT_SCOPES = new Set<string>([
 	'breakingChanges:migrate',
 ]);
 
+const GATEWAY_TOKEN_SCOPE = 'aiGateway:token';
 const MCP_RESOURCE_PATH = '/mcp-server/http';
 
 // Pre-RFC-8707 audience value. Do not modify — existing tokens were signed with this string
@@ -70,6 +73,9 @@ export class McpProtectedResource implements ProtectedResource {
 	 */
 	readonly isDefault = true;
 
+	/** Spending Gateway credits from outside n8n is never part of a default grant. */
+	readonly requestOnlyScopes = MCP_REQUEST_ONLY_SCOPES;
+
 	constructor(
 		private readonly urlService: UrlService,
 		private readonly mcpSettingsService: McpSettingsService,
@@ -84,11 +90,14 @@ export class McpProtectedResource implements ProtectedResource {
 		const agentsAvailable = areAgentToolsAvailable(this.globalConfig, this.moduleRegistry);
 		const skillsAvailable = Container.get(SkillsGate).isEnabled;
 		const migrationReportAvailable = isMigrationReportAvailable(this.moduleRegistry);
+		// Same predicate as the endpoint, so a grant is never recorded for a token n8n cannot issue.
+		const gatewayCreditsEnabled = Container.get(AiGatewayService).isEnabled();
 		return SUPPORTED_SCOPES.filter(
 			(scope) =>
 				(agentsAvailable || !AGENT_SCOPES.has(scope)) &&
 				(skillsAvailable || !SKILL_SCOPES.has(scope)) &&
-				(migrationReportAvailable || !MIGRATION_REPORT_SCOPES.has(scope)),
+				(migrationReportAvailable || !MIGRATION_REPORT_SCOPES.has(scope)) &&
+				(gatewayCreditsEnabled || scope !== GATEWAY_TOKEN_SCOPE),
 		);
 	}
 

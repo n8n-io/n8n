@@ -100,12 +100,7 @@ export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 	'skill:write': ['create_skill', 'update_skill', 'delete_skill', 'search_n8n_skills', 'get_skill'],
 	// explore_node_resources queries external services with stored credentials,
 	// so it must sit behind the credential scope rather than a workflow one.
-	'credential:read': [
-		'list_credentials',
-		'list_n8n_gateway_services',
-		'get_n8n_gateway_access',
-		'explore_node_resources',
-	],
+	'credential:read': ['list_credentials', 'list_n8n_gateway_services', 'explore_node_resources'],
 	'credential:update': ['update_credential_description'],
 	'dataTable:read': ['search_data_tables', 'get_data_table_rows'],
 	// Writing requires finding tables, so search rides along.
@@ -154,6 +149,9 @@ export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 		MCP_MIGRATE_WORKFLOW_TOOL_NAME,
 		MCP_SET_MIGRATION_FINDING_STATUS_TOOL_NAME,
 	],
+	// Unlocks no tool. It lets a client's server fetch a Gateway credits token from
+	// `POST /mcp-server/gateway-token`, so the token never reaches a model.
+	'aiGateway:token': [],
 };
 
 /**
@@ -242,6 +240,15 @@ export const SKILL_TOOLS: ReadonlySet<string> = new Set([
 	...TOOLS_BY_SCOPE['skill:read'],
 	...TOOLS_BY_SCOPE['skill:write'],
 ]);
+
+/**
+ * Whether a caller may fetch a Gateway credits token from `POST /mcp-server/gateway-token`.
+ * An OAuth grant needs `aiGateway:token`. A credential that is not scope-bearing (an MCP
+ * API key) has full access, as it has for every tool.
+ */
+export function canIssueGatewayToken(grantedScopes: string[] | undefined): boolean {
+	return grantedScopes === undefined || grantedScopes.includes('aiGateway:token');
+}
 
 function isMcpScope(scope: string): scope is McpScope {
 	return (MCP_INSTANCE_SCOPES as readonly string[]).includes(scope);

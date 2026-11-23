@@ -70,6 +70,12 @@ export interface ProtectedResource {
 	 */
 	getGrantableScopes?(user: ResourceUser): Promise<string[]>;
 
+	/**
+	 * Scopes offered on the consent screen only when the client requests them by
+	 * name. A client that requests no scopes is offered everything else.
+	 */
+	requestOnlyScopes?: readonly string[];
+
 	/** Tool names unlocked by each grantable scope, for display on the consent screen. */
 	getScopeTools?(): Record<string, string[]> | Promise<Record<string, string[]>>;
 

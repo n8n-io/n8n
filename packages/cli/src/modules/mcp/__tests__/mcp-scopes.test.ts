@@ -35,6 +35,7 @@ import {
 	ACTIVITY_LOG_TOOLS,
 	AGENT_TOOLS,
 	BUILDER_TOOLS,
+	canIssueGatewayToken,
 	COMMUNITY_PACKAGE_TOOLS,
 	getAllowedToolNames,
 	INSTANCE_CONTEXT_TOOLS,
@@ -184,6 +185,27 @@ describe('getAllowedToolNames', () => {
 
 	it('exposes the renamed list_n8n_gateway_services tool via credential:read', () => {
 		expect(getAllowedToolNames(['credential:read'])).toContain('list_n8n_gateway_services');
+	});
+
+	it('maps aiGateway:token to no tool, so no MCP tool can hand a token to a model', () => {
+		expect(getAllowedToolNames(['aiGateway:token'])).toEqual(new Set());
+	});
+
+	describe('canIssueGatewayToken', () => {
+		it('allows a grant that includes aiGateway:token', () => {
+			expect(canIssueGatewayToken(['workflow:read', 'aiGateway:token'])).toBe(true);
+		});
+
+		it('refuses a grant without aiGateway:token, even with every other scope', () => {
+			expect(canIssueGatewayToken(['credential:read', 'workflow:execute', 'workflow:write'])).toBe(
+				false,
+			);
+			expect(canIssueGatewayToken([])).toBe(false);
+		});
+
+		it('allows a credential that is not scope-bearing, such as an MCP API key', () => {
+			expect(canIssueGatewayToken(undefined)).toBe(true);
+		});
 	});
 
 	it('resolves the migration report read scope to the two read tools', () => {

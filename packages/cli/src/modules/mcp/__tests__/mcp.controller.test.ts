@@ -9,6 +9,8 @@ import { ErrorReporter } from 'n8n-core';
 import type { Mock } from 'vitest';
 import { mock, mockDeep } from 'vitest-mock-extended';
 
+import { AiGatewayService } from '@/services/ai-gateway.service';
+
 import { McpProtectedResource } from '../mcp-protected-resource';
 import { McpServerMiddlewareService } from '../mcp-server-middleware.service';
 
@@ -111,6 +113,7 @@ describe('McpController', () => {
 				'https://n8n.example.com/.well-known/oauth-protected-resource/mcp-server/http',
 			),
 	} as unknown as McpProtectedResource;
+	const aiGatewayService = mock<AiGatewayService>();
 
 	beforeEach(async () => {
 		vi.clearAllMocks();
@@ -129,6 +132,7 @@ describe('McpController', () => {
 		Container.set(McpService, mcpService);
 		Container.set(McpSettingsService, mcpSettingsService);
 		Container.set(McpProtectedResource, mcpProtectedResource);
+		Container.set(AiGatewayService, aiGatewayService);
 		// Real repositories can't be auto-constructed by DI without a DataSource.
 		Container.set(ApiKeyRepository, mock<ApiKeyRepository>());
 
@@ -560,7 +564,7 @@ describe('McpController', () => {
 	});
 
 	describe('MCP access gate', () => {
-		test.each(['discoverAuthSchemeHead', 'handleGet', 'build'])(
+		test.each(['discoverAuthSchemeHead', 'handleGet', 'build', 'issueGatewayToken'])(
 			'runs before authentication on %s',
 			(handlerName) => {
 				const { middlewares } = Container.get(ControllerRegistryMetadata).getRouteMetadata(
@@ -583,7 +587,7 @@ describe('McpController', () => {
 				handlerName,
 			).ipRateLimit;
 
-		test.each(['handleGet', 'build'])(
+		test.each(['handleGet', 'build', 'issueGatewayToken'])(
 			'applies the configured server limit to %s',
 			(handlerName) => {
 				const limit = Container.get(McpConfig).rateLimitServer;
@@ -591,6 +595,106 @@ describe('McpController', () => {
 				expect(getRouteIpRateLimit(handlerName)).toEqual({ limit });
 			},
 		);
+	});
+
+	describe('POST /gateway-token', () => {
+		const access = {
+			gatewayUrl: 'https://gateway.example.com',
+			token: 'external-jwt',
+			expiresAt: '2026-11-23T10:15:00.000Z',
+		};
+
+		const createTokenRes = () => {
+			const res = createRes();
+			res.header = vi.fn().mockReturnThis();
+			return res;
+		};
+
+		beforeEach(() => {
+			aiGatewayService.isEnabled.mockReturnValue(true);
+			aiGatewayService.issueExternalClientToken.mockResolvedValue(access);
+		});
+
+		test('requires authentication on the route', () => {
+			const { middlewares, skipAuth } = Container.get(ControllerRegistryMetadata).getRouteMetadata(
+				McpController as unknown as Controller,
+				'issueGatewayToken',
+			);
+
+			expect(skipAuth).toBe(true);
+			expect(middlewares).toEqual([mockEnabledMiddleware, mockAuthMiddleware]);
+		});
+
+		test('issues a token to an OAuth client granted aiGateway:token', async () => {
+			const res = createTokenRes();
+
+			await controller.issueGatewayToken(
+				createReq({
+					mcpScopes: ['workflow:read', 'aiGateway:token'],
+					mcpCaller: { authType: 'oauth', clientId: 'client-1' },
+				}),
+				res,
+			);
+
+			expect(aiGatewayService.issueExternalClientToken).toHaveBeenCalledWith('user-1');
+			expect(res.json).toHaveBeenCalledWith({ available: true, ...access });
+			expect(res.header).toHaveBeenCalledWith('Cache-Control', 'no-store');
+			expect(res.header).not.toHaveBeenCalledWith('Access-Control-Allow-Origin', '*');
+			expect(logger.info).toHaveBeenCalledWith(
+				'Issued a Gateway credits token to an external client',
+				{ userId: 'user-1', authType: 'oauth', clientId: 'client-1' },
+			);
+		});
+
+		test('refuses an OAuth client without aiGateway:token', async () => {
+			const res = createTokenRes();
+
+			await controller.issueGatewayToken(
+				createReq({ mcpScopes: ['credential:read', 'workflow:execute'] }),
+				res,
+			);
+
+			expect(res.status).toHaveBeenCalledWith(403);
+			expect(res.header).toHaveBeenCalledWith(
+				'WWW-Authenticate',
+				'Bearer error="insufficient_scope", scope="aiGateway:token"',
+			);
+			expect(aiGatewayService.issueExternalClientToken).not.toHaveBeenCalled();
+		});
+
+		test('issues a token to an MCP API key, which has full access', async () => {
+			const res = createTokenRes();
+
+			await controller.issueGatewayToken(
+				createReq({ mcpScopes: undefined, mcpCaller: { authType: 'api_key' } }),
+				res,
+			);
+
+			expect(res.json).toHaveBeenCalledWith({ available: true, ...access });
+		});
+
+		test('reports unavailable without asking the gateway when Gateway credits are off', async () => {
+			aiGatewayService.isEnabled.mockReturnValue(false);
+			const res = createTokenRes();
+
+			await controller.issueGatewayToken(createReq({ mcpScopes: ['aiGateway:token'] }), res);
+
+			expect(res.json).toHaveBeenCalledWith({ available: false });
+			expect(aiGatewayService.issueExternalClientToken).not.toHaveBeenCalled();
+		});
+
+		test('answers 502 without details when the gateway fails', async () => {
+			aiGatewayService.issueExternalClientToken.mockRejectedValue(new Error('HTTP 403'));
+			const res = createTokenRes();
+
+			await controller.issueGatewayToken(createReq({ mcpScopes: ['aiGateway:token'] }), res);
+
+			expect(res.status).toHaveBeenCalledWith(502);
+			expect(res.json).toHaveBeenCalledWith({
+				message: 'Could not get a token from Gateway credits',
+			});
+			expect(errorReporter.error).toHaveBeenCalled();
+		});
 	});
 
 	describe('GET /http', () => {

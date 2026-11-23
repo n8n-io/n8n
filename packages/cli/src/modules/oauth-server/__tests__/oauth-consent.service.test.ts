@@ -221,6 +221,7 @@ describe('OAuthConsentService', () => {
 					// Explicit: consent narrows per user through this when present, and
 					// the deep mock would otherwise auto-create one returning undefined.
 					getGrantableScopes: async () => [...INSTANCE_SCOPES],
+					requestOnlyScopes: [],
 					getScopeTools: async () => scopeTools,
 				});
 				protectedResourceRegistry.getDefaultResource.mockReturnValue(resource);
@@ -1070,6 +1071,61 @@ describe('OAuthConsentService', () => {
 				authorizationCodeService.createAuthorizationCode.mock.calls[0]?.[6] ?? [];
 			expect(grantedScopes).toEqual(INSTANCE_SCOPES);
 			expect(grantedScopes).not.toContain(ADMIN_ONLY);
+		});
+	});
+
+	describe('request-only scopes', () => {
+		// A scope such as `aiGateway:token` lets a client spend the user's credits from
+		// outside n8n, so it must never ride along on a grant the client did not ask for.
+		const REQUEST_ONLY = 'aiGateway:token';
+		const resource = {
+			scopes: [...INSTANCE_SCOPES, REQUEST_ONLY],
+			requestOnlyScopes: [REQUEST_ONLY],
+			authorize: async () => true,
+		} as unknown as ProtectedResource;
+
+		const sessionPayload = {
+			clientId: 'client-123',
+			redirectUri: 'https://example.com/callback',
+			codeChallenge: 'challenge',
+			state: 'state',
+		};
+
+		beforeEach(() => {
+			protectedResourceRegistry.getDefaultResource.mockReturnValue(resource);
+			oauthClientRepository.findById.mockResolvedValue(
+				mock<OAuthClient>({ id: 'client-123', name: 'Test Client', isFirstParty: false }),
+			);
+		});
+
+		it('does not offer a request-only scope to a client that requested no scopes', async () => {
+			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
+
+			const result = await service.getConsentDetails('t', mock<User>({ id: 'user-1' }));
+
+			expect(result).toMatchObject({ ok: true, scopes: INSTANCE_SCOPES });
+		});
+
+		it('rejects an approval for a request-only scope the client did not request', async () => {
+			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
+
+			await expect(
+				service.handleConsentDecision('t', mock<User>({ id: 'user-1' }), true, [
+					'workflow:read',
+					REQUEST_ONLY,
+				]),
+			).rejects.toThrow(`Scopes cannot be granted: ${REQUEST_ONLY}`);
+		});
+
+		it('offers a request-only scope to a client that requested it', async () => {
+			oauthSessionService.verifySession.mockReturnValue({
+				...sessionPayload,
+				requestedScopes: ['workflow:read', REQUEST_ONLY],
+			});
+
+			const result = await service.getConsentDetails('t', mock<User>({ id: 'user-1' }));
+
+			expect(result).toMatchObject({ ok: true, scopes: ['workflow:read', REQUEST_ONLY] });
 		});
 	});
 });

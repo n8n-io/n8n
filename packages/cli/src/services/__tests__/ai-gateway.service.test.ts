@@ -9,12 +9,12 @@ import { mock } from 'vitest-mock-extended';
 import { N8N_VERSION, AI_ASSISTANT_SDK_VERSION } from '@/constants';
 import type { CredentialTypes } from '@/credential-types';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
-import { BadRequestError, UserError } from '@n8n/errors';
+import { BadRequestError, UnexpectedError, UserError } from '@n8n/errors';
 import type { License } from '@/license';
 import { parseMcpRegistryServer } from '@/modules/mcp-registry/registry/mcp-registry.types';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import type { OwnershipService } from '@/services/ownership.service';
-import type { UrlService } from '@n8n/backend-services';
+import type { JwtService, UrlService } from '@n8n/backend-services';
 
 const INSTANCE_BASE_URL = 'https://my-n8n.example.com';
 
@@ -82,8 +82,19 @@ function makeService({
 		urlService,
 		outboundHttp,
 		credentialTypes,
+		jwtService,
 	);
 }
+
+/** An unsigned JWT-shaped string. The service only reads its claims, never verifies them. */
+function fakeJwt(claims: Record<string, unknown>) {
+	return ['e30', Buffer.from(JSON.stringify(claims)).toString('base64url'), 'sig'].join('.');
+}
+
+const jwtService = mock<JwtService>({
+	decodeUnverified: ((token: string) =>
+		JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString())) as never,
+});
 
 /** Mock: config fetch succeeds, then credentials fetch returns a token. */
 function mockConfigThenToken(token = 'mock-jwt-token') {
@@ -1131,6 +1142,76 @@ describe('AiGatewayService', () => {
 				.mockResolvedValueOnce(ok({ budget: 'not-a-number' }));
 			const service = makeService();
 			await expect(service.getWallet(USER_ID)).rejects.toThrow(UserError);
+		});
+	});
+
+	describe('issueExternalClientToken()', () => {
+		const externalToken = fakeJwt({ userId: USER_ID, tokenUse: 'external-client' });
+
+		it('throws BadRequestError when Gateway credits are not enabled', async () => {
+			const service = makeService({ aiGatewayEnabled: false });
+			await expect(service.issueExternalClientToken(USER_ID)).rejects.toThrow(BadRequestError);
+			expect(requestMock).not.toHaveBeenCalled();
+		});
+
+		it('asks the gateway for an external client token and returns it with its expiry', async () => {
+			vi.useFakeTimers({ now: new Date('2026-11-23T10:00:00.000Z') });
+			requestMock.mockResolvedValueOnce(ok({ token: externalToken, expiresIn: 900 }));
+			const service = makeService();
+
+			const result = await service.issueExternalClientToken(USER_ID);
+
+			expect(result).toEqual({
+				gatewayUrl: BASE_URL,
+				token: externalToken,
+				expiresAt: '2026-11-23T10:15:00.000Z',
+			});
+			expect(requestMock).toHaveBeenCalledWith(
+				expect.objectContaining({
+					method: 'POST',
+					url: `${BASE_URL}/v1/gateway/credentials`,
+					body: {
+						licenseCert: LICENSE_CERT,
+						instanceUrl: INSTANCE_BASE_URL,
+						tokenUse: 'external-client',
+					},
+				}),
+			);
+			vi.useRealTimers();
+		});
+
+		it('never returns the cached execution token and never caches the external one', async () => {
+			requestMock
+				.mockResolvedValueOnce(ok({ token: 'execution-jwt', expiresIn: 3600 }))
+				.mockResolvedValueOnce(ok({ budget: 10, balance: 7 }))
+				.mockResolvedValueOnce(ok({ token: externalToken, expiresIn: 900 }))
+				.mockResolvedValueOnce(ok({ budget: 10, balance: 7 }));
+			const service = makeService();
+
+			await service.getWallet(USER_ID);
+			const { token } = await service.issueExternalClientToken(USER_ID);
+			await service.getWallet(USER_ID);
+
+			expect(token).toBe(externalToken);
+			// The second wallet call reuses the cached execution token, not the external one.
+			expect(requestMock).toHaveBeenLastCalledWith(
+				expect.objectContaining({ headers: { Authorization: 'Bearer execution-jwt' } }),
+			);
+		});
+
+		it('refuses a token that is not marked for external clients', async () => {
+			const executionToken = fakeJwt({ userId: USER_ID });
+			requestMock.mockResolvedValueOnce(ok({ token: executionToken, expiresIn: 3600 }));
+			const service = makeService();
+
+			await expect(service.issueExternalClientToken(USER_ID)).rejects.toThrow(UnexpectedError);
+		});
+
+		it('refuses a token that is not a JWT', async () => {
+			requestMock.mockResolvedValueOnce(ok({ token: 'opaque-token', expiresIn: 900 }));
+			const service = makeService();
+
+			await expect(service.issueExternalClientToken(USER_ID)).rejects.toThrow(UnexpectedError);
 		});
 	});
 

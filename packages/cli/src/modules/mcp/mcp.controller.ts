@@ -7,7 +7,10 @@ import { lazyImport } from '@n8n/utils/lazy-import';
 import type { Request, Response } from 'express';
 import { ErrorReporter } from 'n8n-core';
 
+import { AiGatewayService } from '@/services/ai-gateway.service';
+
 import { McpProtectedResource } from './mcp-protected-resource';
+import { canIssueGatewayToken } from './mcp-scopes';
 import { McpServerMiddlewareService } from './mcp-server-middleware.service';
 import { McpConfig } from './mcp.config';
 import {
@@ -42,6 +45,7 @@ export class McpController {
 		private readonly telemetry: TelemetryProxy,
 		private readonly logger: Logger,
 		private readonly mcpProtectedResource: McpProtectedResource,
+		private readonly aiGatewayService: AiGatewayService,
 	) {}
 
 	// Add CORS headers helper
@@ -210,6 +214,51 @@ export class McpController {
 					id: null,
 				});
 			}
+		}
+	}
+
+	/**
+	 * Gives the server of an MCP client, such as Nod, a short-lived token to call the AI
+	 * Gateway directly, billed to the signed-in user's Gateway credits.
+	 *
+	 * This is a plain endpoint and not an MCP tool on purpose: a tool result goes into a
+	 * model's context, and a model can be told to leak it. An OAuth grant needs the
+	 * `aiGateway:token` scope, which the consent screen offers only when the client asks for it.
+	 * The route sends no CORS headers, so a web page cannot read the token.
+	 */
+	@Post('/gateway-token', {
+		ipRateLimit: createIpRateLimit(mcpConfig.rateLimitServer),
+		middlewares: [getEnabledMiddleware(), getAuthMiddleware()],
+		skipAuth: true,
+		usesTemplates: true,
+	})
+	async issueGatewayToken(req: AuthenticatedRequest, res: Response) {
+		res.header('Cache-Control', 'no-store');
+		const { mcpScopes, mcpCaller } = req as McpAuthenticatedRequest;
+
+		if (!canIssueGatewayToken(mcpScopes)) {
+			res.header('WWW-Authenticate', 'Bearer error="insufficient_scope", scope="aiGateway:token"');
+			res.status(403).json({ message: 'The aiGateway:token scope is required' });
+			return;
+		}
+
+		if (!this.aiGatewayService.isEnabled()) {
+			res.json({ available: false });
+			return;
+		}
+
+		try {
+			const access = await this.aiGatewayService.issueExternalClientToken(req.user.id);
+			// An audit trail: who took a token out of n8n, and through which client.
+			this.logger.info('Issued a Gateway credits token to an external client', {
+				userId: req.user.id,
+				authType: mcpCaller?.authType,
+				clientId: mcpCaller?.clientId,
+			});
+			res.json({ available: true, ...access });
+		} catch (error) {
+			this.errorReporter.error(error);
+			res.status(502).json({ message: 'Could not get a token from Gateway credits' });
 		}
 	}
 

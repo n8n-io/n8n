@@ -109,6 +109,7 @@ export class OAuthConsentService {
 				const scopes = this.grantableScopes(
 					await this.supportedScopesFor(resource, user),
 					sessionPayload.requestedScopes,
+					resource.requestOnlyScopes,
 				);
 
 				return {
@@ -135,6 +136,7 @@ export class OAuthConsentService {
 			const scopes = this.grantableScopes(
 				await this.supportedScopesFor(defaultResource, user),
 				sessionPayload.requestedScopes,
+				defaultResource?.requestOnlyScopes,
 			);
 
 			return {
@@ -171,8 +173,15 @@ export class OAuthConsentService {
 		return resource.getGrantableScopes ? await resource.getGrantableScopes(user) : resource.scopes;
 	}
 
-	private grantableScopes(supportedScopes: string[], requestedScopes?: string[]): string[] {
-		if (!requestedScopes || requestedScopes.length === 0) return supportedScopes;
+	private grantableScopes(
+		supportedScopes: string[],
+		requestedScopes?: string[],
+		requestOnlyScopes: readonly string[] = [],
+	): string[] {
+		// A client that names no scopes is offered everything except the scopes it must ask for.
+		if (!requestedScopes || requestedScopes.length === 0) {
+			return supportedScopes.filter((scope) => !requestOnlyScopes.includes(scope));
+		}
 		return supportedScopes.filter((scope) => requestedScopes.includes(scope));
 	}
 
@@ -346,7 +355,11 @@ export class OAuthConsentService {
 			throw new UserError('At least one scope must be granted');
 		}
 
-		const grantable = this.grantableScopes(supportedScopes, sessionPayload.requestedScopes);
+		const grantable = this.grantableScopes(
+			supportedScopes,
+			sessionPayload.requestedScopes,
+			resource?.requestOnlyScopes,
+		);
 		const ungrantable = scopes.filter((scope) => !grantable.includes(scope));
 		if (ungrantable.length > 0) {
 			throw new UserError(`Scopes cannot be granted: ${ungrantable.join(', ')}`);
@@ -384,6 +397,7 @@ export class OAuthConsentService {
 		const grantable = this.grantableScopes(
 			await this.supportedScopesFor(resource, user),
 			sessionPayload.requestedScopes,
+			resource.requestOnlyScopes,
 		);
 
 		const requestedScopes = sessionPayload.requestedScopes ?? [];
