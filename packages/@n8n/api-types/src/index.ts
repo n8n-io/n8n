@@ -614,10 +614,14 @@ export {
 	INSTANCE_AI_PREFILL_TYPE_FALLBACK,
 	instanceAiPromptConfigurationSchema,
 	INSTANCE_AI_RUN_LIMIT_REASONS,
+	INSTANCE_AI_AGENT_FEEDBACK_CATEGORIES,
+	INSTANCE_AI_AGENT_FEEDBACK_SEVERITIES,
 } from './schemas/instance-ai.schema';
 
 export type {
 	InstanceAiPromptConfiguration,
+	InstanceAiAgentFeedbackCategory,
+	InstanceAiAgentFeedbackSeverity,
 	InstanceAiPrefillType,
 	InstanceAiPrefillTypeReported,
 	InstanceAiPrefillPayload,

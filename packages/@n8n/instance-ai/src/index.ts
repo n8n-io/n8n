@@ -788,6 +788,8 @@ export type {
 	InstanceAiActivityExpansion,
 	InstanceAiActivityService,
 	InstanceAiPreferenceService,
+	InstanceAiAgentFeedback,
+	InstanceAiAgentFeedbackService,
 	InstanceAiPreferenceWriteResult,
 	InstanceAiPreferenceWriteRejection,
 	InstanceAiSavedPreference,

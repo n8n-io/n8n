@@ -3757,3 +3757,22 @@ export class InstanceAiEvalSeedDataTableRowsRequest extends Z.class({
 		.array(z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()])))
 		.max(1000),
 }) {}
+
+/**
+ * Categories of the feedback that the n8n Assistant sends with `send_feedback`.
+ * The tool input, the telemetry event and the host adapter share this list.
+ */
+export const INSTANCE_AI_AGENT_FEEDBACK_CATEGORIES = [
+	'unsure',
+	'bug',
+	'missing_capability',
+	'confusing_tool',
+	'other',
+] as const;
+export type InstanceAiAgentFeedbackCategory =
+	(typeof INSTANCE_AI_AGENT_FEEDBACK_CATEGORIES)[number];
+
+/** How much the problem in a `send_feedback` report affected the task. */
+export const INSTANCE_AI_AGENT_FEEDBACK_SEVERITIES = ['blocked', 'workaround', 'minor'] as const;
+export type InstanceAiAgentFeedbackSeverity =
+	(typeof INSTANCE_AI_AGENT_FEEDBACK_SEVERITIES)[number];
