@@ -5006,6 +5006,9 @@ importers:
       '@n8n/utils':
         specifier: workspace:*
         version: link:../utils
+      '@n8n/workflow-engine-check':
+        specifier: workspace:*
+        version: link:../workflow-engine-check
       acorn:
         specifier: 8.14.0
         version: 8.14.0
