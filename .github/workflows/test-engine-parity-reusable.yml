@@ -26,7 +26,7 @@ on:
         description: 'Rule sets, separated by commas'
         required: false
         type: string
-        default: 'smoke,branching,loops,code,subWorkflows'
+        default: 'smoke,branching,loops,code,subWorkflows,multiTrigger'
   workflow_dispatch:
     inputs:
       ref:
@@ -48,7 +48,7 @@ on:
         description: 'Rule sets, separated by commas'
         required: false
         type: string
-        default: 'smoke,branching,loops,code,subWorkflows'
+        default: 'smoke,branching,loops,code,subWorkflows,multiTrigger'
 
 permissions:
   contents: read
