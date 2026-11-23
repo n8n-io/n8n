@@ -286,6 +286,7 @@ describe('N8nChatActions', () => {
 
 		expect(onRating).toHaveBeenCalledWith({ rating: 'down' });
 		expect(wrapper.find('[data-test-id="message-thumbs-up-button"]').exists()).toBe(false);
+		expect(wrapper.find('[data-test-id="message-thumbs-down-button"]').exists()).toBe(false);
 		expect(wrapper.get('[data-test-id="message-rating-success"]').text()).toBe(
 			'Thanks for your feedback!',
 		);

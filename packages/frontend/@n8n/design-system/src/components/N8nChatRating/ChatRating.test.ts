@@ -38,6 +38,7 @@ describe('N8nChatRating', () => {
 	it('shows a thank-you note instead of the thumbs once rated', () => {
 		const wrapper = mount(N8nChatRating, { props: { rating: 'down' }, global });
 
+		expect(wrapper.find('[data-test-id="message-thumbs-up-button"]').exists()).toBe(false);
 		expect(wrapper.find('[data-test-id="message-thumbs-down-button"]').exists()).toBe(false);
 		expect(wrapper.get('[data-test-id="message-rating-success"]').text()).toBe(
 			'Thanks for your feedback!',
