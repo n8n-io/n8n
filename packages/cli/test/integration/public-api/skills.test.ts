@@ -3,6 +3,7 @@ import { createTeamProject, linkUserToProject, testModules } from '@n8n/backend-
 import type { Project, User } from '@n8n/db';
 import { ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { randomUUID } from 'node:crypto';
 
 import { SkillService } from '@/modules/skills';
 
@@ -11,8 +12,13 @@ import {
 	deleteAllSkills,
 	findLatestSkillVersion,
 	findSkill,
+	linkSkill,
 } from '@/modules/skills/testing';
 
+import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
+import { AgentSkillRepository } from '@/modules/agents/repositories/agent-skill.repository';
+
+import { createAgent } from '../shared/db/agents';
 import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
 import { createCustomRoleWithScopeSlugs } from '../shared/db/roles';
 import { setupTestServer } from '../shared/utils/';
@@ -412,6 +418,33 @@ describe('PUT /skills/:skillId', () => {
 			.expect(200);
 
 		expect(response.body).toMatchObject({ availableToMCP: true, latestVersion: 1 });
+		expect(response.body.skillHash).not.toBe(skill.skillHash);
+	});
+
+	test('turns the Assistant availability off while the Assistant flag is off', async () => {
+		const { id } = await createSkill();
+		await Container.get(SkillService).setAssistantAvailability(id, true, { projectId: null });
+		const skill = await readSkill(id);
+
+		await api(owner)
+			.put(`/skills/${id}`)
+			.send({ ...skill, availableToAssistant: false })
+			.expect(200);
+
+		expect(await findSkill(id)).toMatchObject({ availableToAssistant: false });
+	});
+
+	test('answers 400 for a content change to a synced skill and saves nothing', async () => {
+		const { id } = await createSkill({ source: 'github' });
+		await linkSkill(id, { projectId: null, createdById: owner.id });
+		const skill = await readSkill(id);
+
+		await api(owner)
+			.put(`/skills/${id}`)
+			.send({ ...skill, instructions: 'Changed.' })
+			.expect(400);
+
+		expect(await findLatestSkillVersion(id)).toMatchObject({ version: 1 });
 	});
 
 	test('moves a project skill to the instance', async () => {
@@ -510,6 +543,26 @@ describe('PUT /skills/:skillId', () => {
 	});
 
 	test.each([
+		['an availability change', () => ({ availableToMCP: true })],
+		['a move', () => ({ scope: 'project', projectId: teamProject.id })],
+	])('answers 409 for a body read before %s', async (_change, toOtherChange) => {
+		const { id } = await createSkill();
+		const skill = await readSkill(id);
+		const otherChange = toOtherChange();
+		await api(owner)
+			.put(`/skills/${id}`)
+			.send({ ...skill, ...otherChange })
+			.expect(200);
+
+		await api(owner)
+			.put(`/skills/${id}`)
+			.send({ ...skill, instructions: 'Changed.' })
+			.expect(409);
+
+		expect(await readSkill(id)).toMatchObject({ ...otherChange, latestVersion: 1 });
+	});
+
+	test.each([
 		[
 			'for a partial body',
 			(skill: Record<string, unknown>) => ({
@@ -558,6 +611,24 @@ describe('DELETE /skills/:skillId', () => {
 		await api(user()).delete(`/skills/${id}`).expect(status);
 
 		expect(await findSkill(id)).toEqual(status === 204 ? null : expect.anything());
+	});
+
+	test('answers 409 for a skill that an agent uses and keeps it', async () => {
+		const { id } = await createSkill({ projectId: teamProject.id });
+		const agent = await createAgent({
+			id: randomUUID(),
+			name: 'Support bot',
+			projectId: teamProject.id,
+			integrations: [],
+			tools: {},
+			versionId: randomUUID(),
+		});
+		await Container.get(AgentSkillRepository).replaceDependencies(agent.id, [{ skillId: id }]);
+
+		await api(owner).delete(`/skills/${id}`).expect(409);
+
+		expect(await findSkill(id)).not.toBeNull();
+		await Container.get(AgentRepository).delete({ id: agent.id });
 	});
 
 	test('reports the public API as the source of the delete', async () => {

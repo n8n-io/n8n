@@ -785,6 +785,19 @@ describe('SkillService user actions', () => {
 			expect(setAssistantAvailability).not.toHaveBeenCalled();
 		});
 
+		it('turns the Assistant availability off when the Assistant flag is off', async () => {
+			rollout.isEnabled.mockResolvedValue(false);
+			saveTrusted.mockResolvedValue({ ...saved, created: false });
+
+			await service.update(
+				user,
+				'skill_a',
+				update({ availableToAssistant: false, baseSkillHash: 'base' }),
+			);
+
+			expect(setAssistantAvailability).toHaveBeenCalledWith('skill_a', false, visible[0], TX_CTX);
+		});
+
 		it('saves the update for a user who may edit the skill', async () => {
 			saveTrusted.mockResolvedValue(saved);
 

@@ -26,8 +26,9 @@ import {
 	Put,
 	Query,
 } from '@n8n/decorators';
-import { ForbiddenError } from '@n8n/errors';
+import { ConflictError, ForbiddenError } from '@n8n/errors';
 import type { NextFunction, Request, Response } from 'express';
+import { createHash } from 'node:crypto';
 
 import { SkillService, SkillsGate } from '@/modules/skills';
 import {
@@ -101,7 +102,7 @@ export class SkillsPublicController {
 	@ApiSummary('Create a skill')
 	@ApiDescription(
 		'Create an instance skill, or a skill in a project you have access to. ' +
-			'A project skill needs projectId.',
+			'A project skill needs projectId. A name that another skill in the same scope uses fails with 409.',
 	)
 	@ApiTags(['Skill'])
 	@ApiResponse(201, SkillPublicDto)
@@ -130,8 +131,9 @@ export class SkillsPublicController {
 	@ApiSummary('Update a skill')
 	@ApiDescription(
 		'Replace the skill and save it as the next version. Send the whole skill: ' +
-			'the body of the retrieve endpoint is a valid body. Keep the skillHash you read: ' +
-			'a save based on an older version fails with 409. The server ignores id, latestVersion, ' +
+			'the body of the retrieve endpoint is a valid body. Send back the skillHash you read: ' +
+			'if the content, the place or the availability of the skill changed since then, ' +
+			'the save fails with 409. The server ignores id, latestVersion, ' +
 			'createdAt and updatedAt. Change scope and projectId to move the skill: ' +
 			'a move needs the skill:create and skill:delete scopes too.',
 	)
@@ -146,6 +148,11 @@ export class SkillsPublicController {
 		@Body body: UpdateSkillPublicDto,
 	): Promise<SkillPublicDto> {
 		const current = await this.skillService.get(req.user, skillId);
+		if (body.skillHash !== toPublicSkillHash(current)) {
+			throw new ConflictError(
+				'The skill was changed somewhere else. Get it again and send your changes on top.',
+			);
+		}
 		const moves = body.scope !== current.scope || body.projectId !== current.projectId;
 		const keyScopes = req.tokenGrant?.apiKeyScopes ?? [];
 		if (moves && !(keyScopes.includes('skill:create') && keyScopes.includes('skill:delete'))) {
@@ -155,7 +162,7 @@ export class SkillsPublicController {
 			req.user,
 			skillId,
 			{
-				baseSkillHash: body.skillHash,
+				baseSkillHash: current.skillHash,
 				name: body.name,
 				description: body.description,
 				instructions: body.instructions,
@@ -212,6 +219,13 @@ function toSkillPublicDto(detail: SkillDetail): SkillPublicDto {
 		...toSkillListPublicItem(detail),
 		instructions: detail.skill.instructions,
 		references: detail.skill.references ?? [],
-		skillHash: detail.skillHash,
+		skillHash: toPublicSkillHash(detail),
 	};
+}
+
+function toPublicSkillHash(detail: SkillDetail): string {
+	const { skillHash, scope, projectId, availableToAssistant, availableToMCP } = detail;
+	return createHash('sha256')
+		.update(JSON.stringify([skillHash, scope, projectId, availableToAssistant, availableToMCP]))
+		.digest('hex');
 }

@@ -446,10 +446,7 @@ export class SkillService {
 		payload: SaveSkillDto,
 		source: SkillTelemetrySource = 'ui',
 	): Promise<SkillSaveResponse> {
-		if (
-			payload.availableToAssistant !== undefined &&
-			!(await this.assistantSkillsFlagGate.isEnabled())
-		) {
+		if (payload.availableToAssistant && !(await this.assistantSkillsFlagGate.isEnabled())) {
 			throw new NotFoundError('Skill not found');
 		}
 		const skill = await this.skillAccess.requireAccess(user, skillId, 'update');

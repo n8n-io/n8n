@@ -3,7 +3,7 @@ tags:
   - Skill
 summary: Create a skill
 description: |-
-  Create an instance skill, or a skill in a project you have access to. A project skill needs projectId.
+  Create an instance skill, or a skill in a project you have access to. A project skill needs projectId. A name that another skill in the same scope uses fails with 409.
 
   Requires the `skill:create` API key scope.
 x-required-scope: skill:create
