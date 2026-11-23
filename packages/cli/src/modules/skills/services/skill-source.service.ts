@@ -450,7 +450,7 @@ export class SkillSourceService {
 			this.skillAccess.accessCheck(user, 'delete'),
 			includeSkills
 				? this.sourceRepository.findInstalledSkills(shown.map(({ source }) => source.id))
-				: [],
+				: undefined,
 		]);
 		const missingLinks = await this.sourceRepository.findMissingLinks(
 			shown.map(({ source }) => source.id),
@@ -472,7 +472,7 @@ export class SkillSourceService {
 				projectIcon: project?.icon ?? null,
 				...(includeSkills && {
 					skills: installed
-						.filter((link) => link.sourceId === source.id)
+						?.filter((link) => link.sourceId === source.id)
 						.map((link) => ({
 							id: link.skillId,
 							webUrl: client.webUrl(source.locator, link.remoteRef),
