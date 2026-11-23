@@ -27,6 +27,7 @@ import {
 	redactLangSmithTelemetrySpan,
 	releaseTraceClient,
 	shutdownProductTelemetryProviders,
+	setTraceApprovalMode,
 	setTraceModelId,
 	setTracePromptVersion,
 	submitLangsmithUserFeedback,
@@ -680,6 +681,32 @@ describe('createInstanceAiTraceContext', () => {
 
 		await telemetry.provider?.shutdown();
 	});
+
+	it.each([
+		{ approvalMode: 'auto', recorded: 'auto' },
+		// The run has no mode when the approval modes are not available.
+		{ approvalMode: undefined, recorded: 'unavailable' },
+	] as const)(
+		'stamps approval_mode "$recorded" on root and actor runs',
+		async ({ approvalMode, recorded }) => {
+			const tracing = await createInstanceAiTraceContext({
+				threadId: 'thread-1',
+				messageId: 'message-1',
+				runId: 'run-1',
+				userId: 'user-1',
+				input: { message: 'Publish my workflow' },
+			});
+			const actorRun = await startForegroundActor(tracing!);
+
+			setTraceApprovalMode(tracing, approvalMode);
+
+			for (const run of [tracing!.rootRun, actorRun]) {
+				expect(run.metadata).toHaveProperty('approval_mode', recorded);
+				const span = agentsMock.getSpans().find((entry) => entry.id === run.otelSpanId);
+				expect(span?.attributes).toHaveProperty('langsmith.metadata.approval_mode', recorded);
+			}
+		},
+	);
 
 	it('redacts secret-bearing native telemetry span attributes', () => {
 		const span = {

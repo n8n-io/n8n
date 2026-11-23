@@ -37,6 +37,7 @@ import {
 	buildAgentTraceInputs,
 	mergeTraceRunInputs,
 	modelIdTraceMetadata,
+	setTraceApprovalMode,
 	setTraceModelId,
 	setTracePromptVersion,
 } from '../tracing/langsmith-tracing';
@@ -241,6 +242,7 @@ export async function createInstanceAgent(
 		orchestrationContext?.promptConfiguration?.version,
 	);
 	setTraceModelId(orchestrationContext?.tracing, modelId);
+	setTraceApprovalMode(orchestrationContext?.tracing, context.approvalMode);
 	const functionId = 'instance-ai.orchestrator';
 	const telemetry = orchestrationContext?.tracing?.getTelemetry?.({
 		agentRole: 'orchestrator',
