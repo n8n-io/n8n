@@ -2,7 +2,7 @@ import { parseAgentSkillWorkflowMentions, type AgentSkill } from '@n8n/api-types
 
 type SkillTexts = Pick<AgentSkill, 'instructions' | 'references'>;
 
-export function mentionedWorkflowIds(skill: SkillTexts): string[] {
+function mentionedWorkflowIds(skill: SkillTexts): string[] {
 	return parseAgentSkillWorkflowMentions(skill).map(({ workflowId }) => workflowId);
 }
 
