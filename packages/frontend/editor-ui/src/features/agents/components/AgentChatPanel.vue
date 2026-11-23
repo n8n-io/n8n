@@ -168,6 +168,8 @@ const props = withDefaults(
 		placeholder?: string;
 		placeholderPreview?: Readonly<Ref<string | undefined>>;
 		composerHeight?: string;
+		/** The most characters the composer accepts. Without it, the composer default applies. */
+		maxLength?: number;
 		/**
 		 * Shows the attach button of the composer. A host that opens the file
 		 * picker from its own `footer-start` menu sets this to false and calls
@@ -2019,6 +2021,7 @@ onBeforeUnmount(() => {
 								: undefined
 						"
 						:composer-height="composerHeight"
+						:max-length="maxLength"
 						:is-streaming="false"
 						:show-stop-button="showStop"
 						show-voice

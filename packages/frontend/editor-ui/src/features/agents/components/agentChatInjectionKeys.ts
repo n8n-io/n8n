@@ -20,3 +20,10 @@ export type AgentToolStepLabeler = (toolName: string, input: unknown) => string 
 /** Provided by a host, such as the Assistant, that has more specific tool labels. */
 export const AGENT_TOOL_STEP_LABEL_KEY: InjectionKey<AgentToolStepLabeler> =
 	Symbol('agentToolStepLabel');
+
+/**
+ * Whether the session timeline shows the cost of a turn in dollars. The Assistant
+ * hides it when the instance pays with Assistant credits. Without it, the cost shows.
+ */
+export const SESSION_TIMELINE_SHOW_COST_KEY: InjectionKey<() => boolean> =
+	Symbol('sessionTimelineShowCost');

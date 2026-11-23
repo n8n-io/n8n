@@ -1,4 +1,5 @@
 import {
+	EXTENDED_PROMPT_MAX_LENGTH,
 	WORKFLOW_BUILDER_TOOL_NAMES,
 	type AssistantAgentTargetsState,
 	type AssistantThreadTabsState,
@@ -23,7 +24,7 @@ import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
 import type { ArtifactAgentTargets } from '../../artifactAgentTargets';
 import type { ArtifactThread } from '../../artifactThread';
 import type { WorkflowFailuresReport } from '../../components/InstanceAiWorkflowPreview.vue';
-import { INSTANCE_AI_VIEW } from '../../constants';
+import { INSTANCE_AI_THREAD_SESSION_VIEW, INSTANCE_AI_VIEW } from '../../constants';
 import { useAssistantCreditsStore } from '../../assistantCredits.store';
 import { useInstanceAiStore } from '../../instanceAi.store';
 import { USER_TYPED_MESSAGE } from '../../prefills';
@@ -845,6 +846,13 @@ describe('AssistantAgentThreadView', () => {
 		expect(sendMessageFromOutside).not.toHaveBeenCalled();
 	});
 
+	it('lets the composer take a message up to the Assistant limit', async () => {
+		renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+		await flushPromises();
+
+		expect(panelProps.current['max-length']).toBe(EXTENDED_PROMPT_MAX_LENGTH);
+	});
+
 	it('replaces the attach button with the Assistant "+" menu, which opens the file picker', async () => {
 		const { getByTestId } = renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
 		await flushPromises();
@@ -1565,6 +1573,18 @@ describe('AssistantAgentThreadView', () => {
 		await fireEvent.click(getByTestId('assistant-agent-new-thread'));
 
 		expect(routerPush).toHaveBeenCalledWith({ name: INSTANCE_AI_VIEW });
+	});
+
+	it('opens the session timeline of the thread from the header', async () => {
+		const { getByTestId } = renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+		await flushPromises();
+
+		await fireEvent.click(getByTestId('assistant-agent-view-session'));
+
+		expect(routerPush).toHaveBeenCalledWith({
+			name: INSTANCE_AI_THREAD_SESSION_VIEW,
+			params: { threadId: 'thread-1' },
+		});
 	});
 
 	describe('trace export', () => {

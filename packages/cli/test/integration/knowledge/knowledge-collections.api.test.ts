@@ -8,9 +8,15 @@ import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 
-import { KnowledgeCollection, SharedKnowledgeCollection } from '@/modules/knowledge/entities';
+import {
+	AgentKnowledgeDependency,
+	KnowledgeCollection,
+	KnowledgeFile,
+	SharedKnowledgeCollection,
+} from '@/modules/knowledge/entities';
 import { KnowledgeConfig } from '@/modules/knowledge/knowledge.config';
 
+import { createAgent } from '../shared/db/agents';
 import { createMember, createOwner } from '../shared/db/users';
 import { setupTestServer } from '../shared/utils';
 
@@ -159,6 +165,157 @@ describe('knowledge collection routes', () => {
 			Container.get(KnowledgeConfig).collectionsEnabled = false;
 
 			expect((await create(editor, input())).status).toBe(404);
+		});
+	});
+
+	describe('GET /knowledge/collections', () => {
+		async function list(user: User) {
+			return await server.authAgentFor(user).get('/knowledge/collections');
+		}
+
+		async function createOrFail(user: User, name: string, projectId = project.id) {
+			const response = await create(user, input({ name }), projectId);
+			expect(response.status).toBe(200);
+			return response.body.data as { id: string };
+		}
+
+		function names(response: { body: { data: { data: Array<{ name: string }> } } }) {
+			return response.body.data.data.map((collection) => collection.name);
+		}
+
+		beforeEach(async () => {
+			// Other tests leave collections behind, and the instance owner sees all of them.
+			const dataSource = Container.get(DataSource);
+			for (const entity of [
+				AgentKnowledgeDependency,
+				KnowledgeFile,
+				SharedKnowledgeCollection,
+				KnowledgeCollection,
+			]) {
+				await dataSource.createQueryBuilder().delete().from(entity).execute();
+			}
+		});
+
+		it('lists the collections of the team and personal projects of the member, and no others', async () => {
+			const otherTeam = await createTeamProject('Sales', owner);
+			const editorPersonal = await getPersonalProject(editor);
+			const outsiderPersonal = await getPersonalProject(outsider);
+			await createOrFail(editor, 'Docs collection');
+			await createOrFail(editor, 'Editor notes', editorPersonal.id);
+			await createOrFail(owner, 'Sales collection', otherTeam.id);
+			await createOrFail(outsider, 'Outsider notes', outsiderPersonal.id);
+
+			const response = await list(editor);
+
+			expect(response.status).toBe(200);
+			expect(response.body.data.count).toBe(2);
+			expect(names(response).sort()).toEqual(['Docs collection', 'Editor notes']);
+		});
+
+		it('lists the collections of a project for a user who can only read its agents', async () => {
+			await createOrFail(editor, 'Docs collection');
+
+			const response = await list(viewer);
+
+			expect(response.status).toBe(200);
+			expect(names(response)).toEqual(['Docs collection']);
+		});
+
+		it('lists the collections of every project for the instance owner', async () => {
+			const outsiderPersonal = await getPersonalProject(outsider);
+			await createOrFail(editor, 'Docs collection');
+			await createOrFail(outsider, 'Outsider notes', outsiderPersonal.id);
+
+			const response = await list(owner);
+
+			expect(response.status).toBe(200);
+			expect(names(response).sort()).toEqual(['Docs collection', 'Outsider notes']);
+		});
+
+		it('answers an empty list to a user without collections', async () => {
+			await createOrFail(editor, 'Docs collection');
+
+			const response = await list(outsider);
+
+			expect(response.status).toBe(200);
+			expect(response.body.data).toEqual({ count: 0, data: [] });
+		});
+
+		it('lists the newest collection first', async () => {
+			const older = await createOrFail(editor, 'Older');
+			await createOrFail(editor, 'Newer');
+			// Two creates can share a timestamp, so move one back in time.
+			await Container.get(DataSource)
+				.getRepository(KnowledgeCollection)
+				.update({ id: older.id }, { createdAt: new Date('2026-01-01T00:00:00.000Z') });
+
+			const response = await list(editor);
+
+			expect(names(response)).toEqual(['Newer', 'Older']);
+		});
+
+		it('gives the file and agent totals of each collection', async () => {
+			const collection = await createOrFail(editor, 'Docs collection');
+			const dataSource = Container.get(DataSource);
+			const files = dataSource.getRepository(KnowledgeFile);
+			for (const [name, fileSizeBytes] of [
+				['refunds.md', 1000],
+				['pricing.pdf', 2500],
+			] as const) {
+				// `save` runs the hook that generates the id. `insert` does not.
+				await files.save(
+					files.create({
+						knowledgeCollectionId: collection.id,
+						name,
+						storageKey: `test/${name}`,
+						mimeType: 'text/plain',
+						fileSizeBytes,
+					}),
+				);
+			}
+
+			const agent = await createAgent({ projectId: project.id });
+			await dataSource
+				.getRepository(AgentKnowledgeDependency)
+				.insert({ agentId: agent.id, knowledgeCollectionId: collection.id });
+
+			const response = await list(editor);
+
+			expect(response.body.data.data).toEqual([
+				{
+					id: collection.id,
+					name: 'Docs collection',
+					description: 'How we handle returns and refunds',
+					slug: 'docs_collection',
+					homeProject: { id: project.id, name: 'Docs', type: 'team' },
+					fileCount: 2,
+					totalFileSizeBytes: 3500,
+					agentCount: 1,
+					createdAt: expect.any(String),
+					updatedAt: expect.any(String),
+				},
+			]);
+		});
+
+		it('lists a collection once when it is shared with two projects of the user', async () => {
+			const collection = await createOrFail(editor, 'Docs collection');
+			const editorPersonal = await getPersonalProject(editor);
+			await Container.get(DataSource).getRepository(SharedKnowledgeCollection).insert({
+				knowledgeCollectionId: collection.id,
+				projectId: editorPersonal.id,
+				role: 'knowledgeCollection:user',
+			});
+
+			const response = await list(editor);
+
+			expect(response.body.data.count).toBe(1);
+			expect(names(response)).toEqual(['Docs collection']);
+		});
+
+		it('answers 404 when collections are off', async () => {
+			Container.get(KnowledgeConfig).collectionsEnabled = false;
+
+			expect((await list(editor)).status).toBe(404);
 		});
 	});
 });

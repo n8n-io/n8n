@@ -28,6 +28,7 @@ const OTHER_INSTANCE_AI_TOOL_NAMES = [
 	'conversation-history',
 	'activity',
 	'save_user_preference',
+	'send_feedback',
 	'get-session',
 	'write-file',
 	'materialize-node-type',
