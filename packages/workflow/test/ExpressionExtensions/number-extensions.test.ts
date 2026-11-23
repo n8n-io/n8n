@@ -11,6 +11,14 @@ describe('Data Transformation Functions', () => {
 			);
 		});
 
+		test.each([
+			"(1234.5).format('en-US', { style: 'currency' })",
+			"(1234.5).format('en-US', { minimumFractionDigits: 101 })",
+			"(1234.5).format('')",
+		])('.format() should give no value for invalid options in %s', (expression) => {
+			expect(evaluate(`={{ ${expression} }}`)).toBeUndefined();
+		});
+
 		test('.ceil() should work on a number', () => {
 			expect(evaluate('={{ (1.2).ceil() }}')).toEqual(2);
 			expect(evaluate('={{ (1.9).ceil() }}')).toEqual(2);
