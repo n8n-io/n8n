@@ -139,7 +139,9 @@ async function listNames(this: IExecuteFunctions, folder: RequestPath) {
 			Depth: '1',
 		}),
 	);
+	// The first response is the listed folder itself. Subfolders stay in, because their names are taken too.
 	return responses
+		.slice(1)
 		.map((response) => response['d:href'])
 		.filter((href) => typeof href === 'string')
 		.map((href) => decodePathValue(posix.basename(href)));

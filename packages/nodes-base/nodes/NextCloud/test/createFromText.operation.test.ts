@@ -292,6 +292,27 @@ describe('NextCloud Node: file createFromText', () => {
 		);
 	});
 
+	it("does not count the listed folder's own name as a copy", async () => {
+		const { files, request } = fakeNextcloud();
+		files.set(`${webDavUrl}//notes%20(5).txt/notes.txt`, { id: '1', content: '' });
+
+		const result = await run(
+			buildExecuteFunctions(
+				[
+					{
+						content: 'x',
+						fileName: 'notes.txt',
+						parentFolder: '/notes (5).txt',
+						ifFileExists: 'addSuffix',
+					},
+				],
+				request,
+			),
+		);
+
+		expect(result[0][0].json.path).toBe('/notes (5).txt/notes (2).txt');
+	});
+
 	it('tries the next number when another writer takes the chosen name first', async () => {
 		const { files, request } = fakeNextcloud();
 		files.set(notesUri, { id: '1', content: '' });
