@@ -319,7 +319,7 @@ describe('LeaseSessionManager', () => {
 		expect(sessions.deleteSession).not.toHaveBeenCalledWith(second.id, expect.anything());
 	});
 
-	it('leaves the row alone when a renewal finishes after stop', async () => {
+	it('deletes no row when a renewal of a lost session succeeds after stop', async () => {
 		vi.spyOn(Math, 'random').mockReturnValue(0.5);
 		let finishRenewal: (renewed: boolean) => void = () => {};
 		sessions.renewLive.mockImplementationOnce(
@@ -330,13 +330,18 @@ describe('LeaseSessionManager', () => {
 		);
 		await session.start();
 		await vi.advanceTimersByTimeAsync(RENEW_SECONDS * 1000);
+		now.mono += DEADLINE_MS + 1;
+		await vi.advanceTimersByTimeAsync(100);
+		await vi.advanceTimersByTimeAsync(RENEW_SECONDS * 1000);
+		const [, second] = insertedSessions();
 		await session.stop();
-		expect(sessions.deleteSession).toHaveBeenCalledTimes(1);
+		expect(sessions.deleteSession).toHaveBeenCalledWith(second.id, expect.anything());
+		sessions.deleteSession.mockClear();
 
 		finishRenewal(true);
 		await vi.advanceTimersByTimeAsync(0);
 
-		expect(sessions.deleteSession).toHaveBeenCalledTimes(1);
+		expect(sessions.deleteSession).not.toHaveBeenCalled();
 	});
 
 	it('resolves a second stop only after the first has deleted the row', async () => {
