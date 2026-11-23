@@ -29,7 +29,7 @@ import {
 	threadTargetsAgent,
 } from './instanceAi.threadRuntime';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
-import { isArtifactTab, useCanvasPreview } from './useCanvasPreview';
+import { isArtifactTab, isSavedArtifactTab, useCanvasPreview } from './useCanvasPreview';
 import { useAssistantAwayTelemetry } from './composables/useAssistantAwayTelemetry';
 import { getCurrentTurn } from './assistantTurn';
 import { CloudBrowserTasksKey, useCloudBrowserTasks } from './composables/useCloudBrowserTasks';
@@ -73,6 +73,7 @@ import InstanceAiDataTablePreview from './components/InstanceAiDataTablePreview.
 import InstanceAiAgentPreview from './components/InstanceAiAgentPreview.vue';
 import InstanceAiBrowserPreview from './components/InstanceAiBrowserPreview.vue';
 import InstanceAiCloudBrowserUserActionPanel from './components/InstanceAiCloudBrowserUserActionPanel.vue';
+import InstanceAiWorkflowDraftPreview from './components/InstanceAiWorkflowDraftPreview.vue';
 import InstanceAiSkillPreview from './components/InstanceAiSkillPreview.vue';
 import InstanceAiAppPreview from './components/InstanceAiAppPreview.vue';
 import { useAgentEvalsFlag } from '@/features/ai/evaluation.ee/composables/useAgentEvalsFlag';
@@ -287,6 +288,8 @@ const preview = useCanvasPreview({
 			await saveThreadTabs(rootStore.restApiContext, props.threadId, state);
 		},
 	},
+	workflowDrafts: () => thread.workflowDrafts,
+	dismissWorkflowDrafts: (workflowId) => thread.dismissWorkflowDrafts(workflowId),
 });
 const openSkillTabs = computed(() => preview.openTabs.value.filter((tab) => tab.type === 'skill'));
 watch(
@@ -296,11 +299,18 @@ watch(
 	},
 	{ immediate: true },
 );
+
+// The saved canvas loaded under its draft, so the draft has nothing left to cover.
+function handleSavedWorkflowLoaded(workflowId: string) {
+	thread.dismissWorkflowDrafts(workflowId);
+}
 watch(
 	[() => preview.activeTabId.value, () => preview.isPreviewVisible.value],
 	([tabId, previewVisible]) => {
-		// The agent only hears about artifacts, not browser tabs.
-		const isArtifact = preview.openTabs.value.some((tab) => tab.id === tabId && isArtifactTab(tab));
+		// The agent knows saved artifacts only. A browser or draft tab has no id that it can use.
+		const isArtifact = preview.openTabs.value.some(
+			(tab) => tab.id === tabId && isSavedArtifactTab(tab),
+		);
 		thread.setActiveArtifactId(previewVisible && isArtifact ? tabId : undefined);
 	},
 	{ immediate: true },
@@ -309,7 +319,7 @@ watch(
 // stored tabs load, the default tabs can still hold closed ones, so send none.
 watch(
 	[() => preview.openTabs.value, () => preview.tabsLoaded.value],
-	([tabs, loaded]) => thread.setOpenTabs(loaded ? tabs.filter(isArtifactTab) : null),
+	([tabs, loaded]) => thread.setOpenTabs(loaded ? tabs.filter(isSavedArtifactTab) : null),
 	{ immediate: true },
 );
 // --- Setup panel (checklist docked above the composer) ---
@@ -1071,6 +1081,14 @@ function handleNewThreadClick() {
 								:execution-result="preview.activeWorkflowExecutionResult.value"
 								@initial-node-id-consumed="consumeAgentReturnNodeId"
 								@workflow-failures="handleWorkflowFailures"
+								@workflow-loaded="handleSavedWorkflowLoaded"
+							/>
+							<InstanceAiWorkflowDraftPreview
+								v-if="preview.isPreviewVisible.value && preview.activeWorkflowDraft.value"
+								:key="preview.activeWorkflowDraft.value.filePath"
+								:class="$style.previewSlot"
+								:draft="preview.activeWorkflowDraft.value"
+								:building="isAgentWorking"
 							/>
 							<InstanceAiDataTablePreview
 								v-if="preview.isPreviewVisible.value && preview.activeDataTableId.value"

@@ -33,6 +33,8 @@ export function makeThread(): ThreadRuntime {
 		producedArtifacts: new Map(),
 		producedArtifactOrigins: new Map(),
 		setupItemsByWorkflowId: {},
+		workflowDrafts: {},
+		dismissWorkflowDrafts: vi.fn(),
 		projectId: 'thread-project',
 		resourceNameIndex: new Map(),
 		linkableResourceNameIndex: new Map(),
