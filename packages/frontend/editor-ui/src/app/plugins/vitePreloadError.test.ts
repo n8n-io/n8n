@@ -1,9 +1,18 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { registerVitePreloadErrorHandler } from '@/app/plugins/vitePreloadError';
+import {
+	registerVitePreloadErrorHandler,
+	reloadAfterPreloadError,
+} from '@/app/plugins/vitePreloadError';
 import { isModalPrefetchRunning } from '@/app/composables/usePrefetchModals';
+import { awaitRoutePreload, isRoutePreloadPending } from '@/app/utils/routePreload';
 
 vi.mock('@/app/composables/usePrefetchModals', () => ({
 	isModalPrefetchRunning: vi.fn(() => false),
+}));
+
+vi.mock('@/app/utils/routePreload', () => ({
+	isRoutePreloadPending: vi.fn(() => false),
+	awaitRoutePreload: vi.fn(async () => true),
 }));
 
 const STORAGE_KEY = 'n8n:vite-preload-reloaded-at';
@@ -27,6 +36,7 @@ describe('registerVitePreloadErrorHandler', () => {
 		originalLocation = window.location;
 		reloadSpy = vi.fn();
 		vi.mocked(isModalPrefetchRunning).mockReturnValue(false);
+		vi.mocked(isRoutePreloadPending).mockReturnValue(false);
 		Object.defineProperty(window, 'location', {
 			configurable: true,
 			value: { ...originalLocation, reload: reloadSpy },
@@ -78,5 +88,64 @@ describe('registerVitePreloadErrorHandler', () => {
 		expect(reloadSpy).not.toHaveBeenCalled();
 		expect(event.defaultPrevented).toBe(false);
 		expect(sessionStorage.getItem(STORAGE_KEY)).toBeNull();
+	});
+
+	describe('while the early load of the first route is pending', () => {
+		function holdRoutePreload() {
+			let settle: (loaded: boolean) => void = () => {};
+			vi.mocked(isRoutePreloadPending).mockReturnValue(true);
+			vi.mocked(awaitRoutePreload).mockReturnValue(
+				new Promise((resolve) => {
+					settle = resolve;
+				}),
+			);
+			return (loaded: boolean) => {
+				vi.mocked(isRoutePreloadPending).mockReturnValue(false);
+				settle(loaded);
+			};
+		}
+
+		it('does not reload and does not prevent the default', () => {
+			holdRoutePreload();
+
+			const event = dispatchPreloadError();
+
+			expect(reloadSpy).not.toHaveBeenCalled();
+			expect(event.defaultPrevented).toBe(false);
+			expect(sessionStorage.getItem(STORAGE_KEY)).toBeNull();
+		});
+
+		it('reloads once when the early load then succeeds', async () => {
+			const settle = holdRoutePreload();
+
+			dispatchPreloadError();
+			dispatchPreloadError();
+			settle(true);
+			await vi.waitFor(() => expect(reloadSpy).toHaveBeenCalledTimes(1));
+			await Promise.resolve();
+
+			expect(reloadSpy).toHaveBeenCalledTimes(1);
+		});
+
+		it('does not reload when the early load then fails', async () => {
+			const settle = holdRoutePreload();
+
+			dispatchPreloadError();
+			settle(false);
+			await vi.mocked(awaitRoutePreload).mock.results[0]?.value;
+			await Promise.resolve();
+
+			expect(reloadSpy).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('reloadAfterPreloadError', () => {
+		it('reloads and returns true, then returns false within the throttle window', () => {
+			expect(reloadAfterPreloadError()).toBe(true);
+			vi.advanceTimersByTime(5_000);
+			expect(reloadAfterPreloadError()).toBe(false);
+
+			expect(reloadSpy).toHaveBeenCalledTimes(1);
+		});
 	});
 });

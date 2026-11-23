@@ -5,7 +5,13 @@ import type {
 	RouteLocationRaw,
 	RouteLocationNormalized,
 } from 'vue-router';
-import { createRouter, createWebHistory, isNavigationFailure, RouterView } from 'vue-router';
+import {
+	createRouter,
+	createWebHistory,
+	isNavigationFailure,
+	RouterView,
+	START_LOCATION,
+} from 'vue-router';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useSettingsStore } from '@n8n/stores/settings.store';
@@ -18,6 +24,12 @@ import { middleware } from '@/app/utils/rbac/middleware';
 import type { RouterMiddleware } from '@/app/types/router';
 import { initializeAuthenticatedFeatures, initializeCore } from '@/app/init';
 import { tryToParseNumber } from '@/app/utils/typesUtils';
+import {
+	awaitRoutePreload,
+	isPreloadedLocation,
+	startRoutePreload,
+} from '@/app/utils/routePreload';
+import { reloadAfterPreloadError } from '@/app/plugins/vitePreloadError';
 import { getSanitizedCurrentPath } from '@/app/utils/urlUtils';
 import { projectsRoutes } from '@/features/collaboration/projects/projects.routes';
 import { MfaRequiredError, setUnauthorizedHandler } from '@n8n/rest-api-client';
@@ -1228,7 +1240,24 @@ setUnauthorizedHandler((baseURL) => {
 });
 
 router.beforeEach(async (to: RouteLocationNormalized, from, next) => {
+	/**
+	 * Allows `to`. On the first navigation, the guard first waits for the early load of `to`.
+	 * If it failed, the guard reloads the page, as the router does when it fails to load a route.
+	 */
+	const allow = async () => {
+		if (from === START_LOCATION && isPreloadedLocation(to)) {
+			const loaded = await awaitRoutePreload();
+			if (!loaded) reloadAfterPreloadError();
+		}
+		return next();
+	};
+
 	try {
+		// Load the first route's components while the startup requests run, not after the guard.
+		if (from === START_LOCATION) {
+			startRoutePreload(to);
+		}
+
 		try {
 			/**
 			 * Initialize application core
@@ -1253,7 +1282,7 @@ router.beforeEach(async (to: RouteLocationNormalized, from, next) => {
 		const settingsStore = useSettingsStore();
 		if (settingsStore.showSetupPage) {
 			if (to.name === VIEWS.SETUP) {
-				return next();
+				return await allow();
 			}
 
 			return next({ name: VIEWS.SETUP });
@@ -1281,14 +1310,14 @@ router.beforeEach(async (to: RouteLocationNormalized, from, next) => {
 			}
 		}
 
-		return next();
+		return await allow();
 	} catch (failure) {
 		const settingsStore = useSettingsStore();
 		if (failure instanceof MfaRequiredError && settingsStore.isMFAEnforced) {
 			if (to.name !== VIEWS.PERSONAL_SETTINGS) {
 				return next({ name: VIEWS.PERSONAL_SETTINGS });
 			} else {
-				return next();
+				return await allow();
 			}
 		}
 		if (isNavigationFailure(failure)) {
