@@ -36,7 +36,8 @@ A new component in `@n8n/design-system` that stores a value the user can change 
 - Controlled mode: the parent passes the value prop. Render that prop. Emit the change. Keep the stored value in the parent.
 - Uncontrolled mode: the parent omits the value prop. Store the value in the component. The `default*` prop sets the first value. A later change to the `default*` prop does not reset the stored value.
 - Treat the value prop as omitted only when it is `undefined`. The values `0`, `false`, and `''` stay controlled.
-- Do not give the value prop a default in `withDefaults`. A default makes the prop defined, so uncontrolled mode never runs. Put the fallback on the `default*` prop.
+- Do not give the value prop a fallback value in `withDefaults`. A fallback such as `''` or `0` makes the prop defined, so uncontrolled mode never runs. Put that fallback on the `default*` prop.
+- For a Boolean value prop, set the default to `undefined` in `withDefaults`. Vue casts an omitted Boolean prop to `false`. `false` is a controlled value, so the `!== undefined` check then ignores the `default*` prop. `N8nHoverCard` sets `open: undefined`. `defineModel` with `{ default: undefined }` does the same thing. `N8nSwitch` does this.
 - A passed value prop replaces the `default*` prop.
 - Emit the change in both modes.
 - Name the value `modelValue` and the first value `defaultValue` when callers bind `v-model`.
@@ -76,6 +77,25 @@ function setValue(next: string) {
 	}
 	emit('update:modelValue', next);
 }
+</script>
+```
+
+For a Boolean value, keep the omitted prop as `undefined`:
+
+```vue
+<script setup lang="ts">
+const props = withDefaults(
+	defineProps<{
+		/** The value when the parent owns it. Omit it and the component keeps the value. */
+		pressed?: boolean;
+		/** The first value when the parent omits `pressed`. */
+		defaultPressed?: boolean;
+	}>(),
+	{
+		// Vue casts an omitted Boolean prop to `false`. Keep the omission.
+		pressed: undefined,
+	},
+);
 </script>
 ```
 
