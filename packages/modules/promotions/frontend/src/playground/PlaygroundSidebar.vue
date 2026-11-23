@@ -82,7 +82,10 @@ const sizeOptions = computed(() =>
 			</nav>
 		</N8nScrollArea>
 		<div :class="$style.controls">
-			<N8nText size="small" color="text-light">
+			<N8nText size="small" color="text-light" data-test-id="promotions-playground-description">
+				{{ i18n.baseText(`promotions.playground.scenario.${scenarioId}.description`) }}
+			</N8nText>
+			<N8nText size="small" bold color="text-light" :class="$style.sizeLabel">
 				{{ i18n.baseText('promotions.playground.size.label') }}
 			</N8nText>
 			<N8nSegmentControl
@@ -168,5 +171,9 @@ const sizeOptions = computed(() =>
 	gap: var(--spacing--4xs);
 	padding: var(--spacing--xs) var(--spacing--xs) var(--spacing--xl);
 	border-top: var(--border);
+}
+
+.sizeLabel {
+	margin-top: var(--spacing--2xs);
 }
 </style>
