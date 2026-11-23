@@ -870,10 +870,31 @@ describe('buildMcpClientForServer — simulated fetch', () => {
 		expect(credentialProvider.resolve).not.toHaveBeenCalled();
 		expect(credentialProvider.list).not.toHaveBeenCalled();
 		expect(credentialProvider.resolveAiGatewayMcpCredential).not.toHaveBeenCalled();
-		expect(resolveRegistryConnection).not.toHaveBeenCalled();
+		// Looked up only for the attribution label; nothing is minted from it.
+		expect(resolveRegistryConnection).toHaveBeenCalledWith('@n8n/mcp-registry.linear');
 		expect(oauthService.refreshOAuth2CredentialById).not.toHaveBeenCalled();
 		expect(simulatedFetchMock).toHaveBeenCalledTimes(1);
 		expect(proxyFetchMock).not.toHaveBeenCalled();
+	});
+
+	it('still connects when the registry lookup for the attribution fails', async () => {
+		simulatedFetchMock.mockResolvedValue(makeOk());
+		const credentialProvider = mock<CredentialProvider & AiGatewayMcpCredentialResolver>();
+		await buildMcpClientForServer(
+			makeServer({ metadata: { nodeTypeName: '@n8n/mcp-registry.linear' } }),
+			{
+				credentialProvider,
+				oauthService: mock<OauthService>(),
+				projectId: 'proj-1',
+				proxyFetch,
+				simulatedFetch,
+				resolveRegistryConnection: vi.fn().mockRejectedValue(new Error('registry down')),
+			},
+		);
+		const [configs] = mcpClientCtor.mock.calls[0] as [Array<{ url: string; fetch: typeof fetch }>];
+
+		await expect(configs[0].fetch(configs[0].url)).resolves.toHaveProperty('status', 200);
+		expect(credentialProvider.resolve).not.toHaveBeenCalled();
 	});
 
 	it('sends no auth header to the simulated fetch', async () => {

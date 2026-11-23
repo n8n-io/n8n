@@ -142,6 +142,15 @@ export async function buildMcpClientForServer(
 	const { McpClient } = await import('@n8n/agents');
 
 	if (deps.simulatedFetch) {
+		// The registry lookup reads no credential. It keeps the server's attribution on replies.
+		const registryNodeName = server.metadata?.nodeTypeName;
+		if (registryNodeName) {
+			try {
+				await deps.resolveRegistryConnection?.(registryNodeName);
+			} catch {
+				// The attribution is only a label. A simulated run does not need the connection.
+			}
+		}
 		// Keep a parseable URL: a mock can tell servers apart by it, and the SDK rejects a templated
 		// registry URL before it calls fetch. `.invalid` never resolves (RFC 2606).
 		const url = URL.canParse(server.url) ? server.url : SIMULATED_UNPARSEABLE_URL;

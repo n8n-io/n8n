@@ -360,8 +360,12 @@ export class SimulationSession {
 		};
 	}
 
-	private readonly webSearch = async (args: WebSearchArgs) => {
-		const reply = await this.ask(redactOutboundRequest({ protocol: 'web_search', args }));
+	private readonly webSearch = async (args: WebSearchArgs, options?: { signal?: AbortSignal }) => {
+		const reply = await this.ask(
+			redactOutboundRequest({ protocol: 'web_search', args }),
+			undefined,
+			options?.signal,
+		);
 		return reply.body;
 	};
 }
