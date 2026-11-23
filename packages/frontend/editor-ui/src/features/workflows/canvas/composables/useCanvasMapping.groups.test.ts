@@ -220,6 +220,24 @@ describe('aggregateGroupExecution', () => {
 		).toBe('issues');
 	});
 
+	it('validation issues beat setup', () => {
+		expect(
+			statusOf(['a', 'b'], {
+				a: { hasValidationError: true, needsCredentialSetup: true },
+				b: { hasValidationError: true },
+			}),
+		).toBe('issues');
+	});
+
+	it('setup (missing credentials only) beats warning (dirty) and success', () => {
+		expect(
+			statusOf(['a', 'b'], {
+				a: { hasValidationError: true, needsCredentialSetup: true },
+				b: { status: 'success', dirty: true },
+			}),
+		).toBe('setup');
+	});
+
 	it('ignores canceled / new for the success-success rollup (treated as idle, mirroring single-node)', () => {
 		expect(statusOf(['a', 'b'], { a: { status: 'success' }, b: { status: 'canceled' } })).toBe(
 			'success',

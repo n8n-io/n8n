@@ -74,9 +74,9 @@ import {
 	CredentialsFinderService,
 	NodeTypesProxy,
 	ProjectScopeService,
+	TelemetryProxy,
 	UrlService,
 } from '@n8n/backend-services';
-import { Telemetry } from '@/telemetry';
 import { createAiMcpFetch, createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 
 import { McpAgentSlackSetup, SLACK_INTEGRATION_TYPE } from './agent-slack-setup';
@@ -253,6 +253,7 @@ const getAgentSessionInput = {
 } satisfies z.ZodRawShape;
 
 const searchAgentsInput = {
+	parentFolderId: z.string().min(1).max(36).nullable().optional(),
 	projectId: z.string().min(1).optional().describe('Restrict results to one project'),
 	query: z.string().optional().describe('Filter by Agent name'),
 	publishedOnly: z.boolean().optional().default(false),
@@ -286,6 +287,7 @@ const initialAgentConfigSchema = AgentJsonConfigBaseSchema.omit({
 });
 
 const createAgentInput = {
+	parentFolderId: z.string().min(1).max(36).nullable().optional(),
 	projectId: z.string().min(1),
 	name: z.string().trim().min(1).max(128),
 	config: initialAgentConfigSchema
@@ -293,6 +295,16 @@ const createAgentInput = {
 		.describe(
 			'Optional initial Agent config without name, skills, tasks, or custom tools. The top-level name is injected into the config.',
 		),
+} satisfies z.ZodRawShape;
+
+const moveAgentInput = {
+	...agentIdentityShape,
+	parentFolderId: z
+		.string()
+		.min(1)
+		.max(36)
+		.nullable()
+		.describe('Agent folder in the same project, or null for the project root'),
 } satisfies z.ZodRawShape;
 
 const jsonPatchValueSchema = z.union([
@@ -490,7 +502,7 @@ type MutationResource = {
 @Service()
 export class McpAgentToolsService {
 	constructor(
-		private readonly telemetry: Telemetry,
+		private readonly telemetry: TelemetryProxy,
 		private readonly credentialsService: CredentialsService,
 		private readonly agentsService: AgentsService,
 		private readonly agentConfigService: AgentConfigService,
@@ -541,6 +553,7 @@ export class McpAgentToolsService {
 		registerIfAllowed(this.searchAgentsTool(user));
 		registerIfAllowed(this.getAgentTool(user));
 		registerIfAllowed(this.createAgentTool(user));
+		registerIfAllowed(this.moveAgentTool(user));
 		registerIfAllowed(this.mutateAgentTool(user));
 		registerIfAllowed(this.validateAgentTool(user, isCallAgentAvailable));
 		registerIfAllowed(this.callAgentTool(user));
@@ -602,6 +615,7 @@ export class McpAgentToolsService {
 					}
 					const agents = await this.agentsService.findSummariesInProjects(projectIds, {
 						query: input.query?.trim() || undefined,
+						parentFolderId: input.parentFolderId,
 						publishedOnly: input.publishedOnly,
 						excludeAgentId: input.excludeAgentId,
 						limit: input.limit,
@@ -610,6 +624,7 @@ export class McpAgentToolsService {
 						id: agent.id,
 						name: agent.name,
 						projectId: agent.projectId,
+						parentFolderId: agent.parentFolderId,
 						published: agent.activeVersionId !== null,
 						availableInMCP: agent.availableInMCP,
 						updatedAt: agent.updatedAt.toISOString(),
@@ -666,7 +681,7 @@ export class McpAgentToolsService {
 					openWorldHint: false,
 				},
 			},
-			handler: async ({ projectId, name, config }: CreateAgentInput) =>
+			handler: async ({ projectId, name, config, parentFolderId }: CreateAgentInput) =>
 				await this.run(user, 'create_agent', { projectId }, async () => {
 					await this.assertScope(user, projectId, 'agent:create');
 					const initialConfig = config ? { ...config, name } : undefined;
@@ -681,6 +696,7 @@ export class McpAgentToolsService {
 						createdBy: 'mcp',
 						config: initialConfig,
 						availableInMCP: true,
+						parentFolderId,
 					});
 
 					return {
@@ -696,6 +712,36 @@ export class McpAgentToolsService {
 						configHash,
 						url: this.getAgentUrl(projectId, agent.id),
 					};
+				}),
+		};
+	}
+
+	private moveAgentTool(user: User): ToolDefinition<typeof moveAgentInput> {
+		return {
+			name: 'move_agent',
+			config: {
+				description:
+					'Move an Agent to an Agent folder in its project, or to the project root. Keeps its saved versions and publication state.',
+				inputSchema: moveAgentInput,
+				annotations: {
+					title: 'Move Agent',
+					readOnlyHint: false,
+					destructiveHint: false,
+					idempotentHint: true,
+					openWorldHint: false,
+				},
+			},
+			handler: async ({ agentId, parentFolderId }) =>
+				await this.run(user, 'move_agent', { agentId, parentFolderId }, async () => {
+					const agent = await this.resolveAgent(user, agentId);
+					await this.assertScope(user, agent.projectId, 'agent:update');
+					const moved = await this.agentsService.move(agentId, agent.projectId, parentFolderId);
+
+					if (!moved) {
+						throw new UserError('Agent not found');
+					}
+
+					return { ok: true, agentId, parentFolderId };
 				}),
 		};
 	}

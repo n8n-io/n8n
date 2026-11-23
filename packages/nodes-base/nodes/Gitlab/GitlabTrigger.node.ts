@@ -89,6 +89,7 @@ export class GitlabTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'GitLab Trigger',
 		name: 'gitlabTrigger',
+		schemaPath: 'Gitlab',
 		icon: 'file:gitlab.svg',
 		group: ['trigger'],
 		version: [1, 1.1],

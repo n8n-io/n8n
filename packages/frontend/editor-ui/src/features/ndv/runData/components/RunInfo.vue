@@ -61,6 +61,7 @@ const runMetadata = computed(() => {
 		<N8nInfoTip
 			type="tooltip"
 			theme="info"
+			:class="$style.infoTooltip"
 			:data-test-id="`node-run-info`"
 			tooltip-placement="right"
 		>
@@ -88,6 +89,11 @@ const runMetadata = computed(() => {
 <style lang="scss" module>
 .tooltipRow {
 	display: flex;
+	align-items: center;
 	column-gap: var(--spacing--4xs);
+}
+
+.infoTooltip > span {
+	display: flex;
 }
 </style>

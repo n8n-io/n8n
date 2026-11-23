@@ -3,10 +3,12 @@ import {
 	ReviewSkillSourceUpdateQueryDto,
 	SkillSourceCommitQueryDto,
 	ConnectSkillSourceDto,
+	MoveSkillSourceDto,
 	DiscoverSkillSourceDto,
 	ListSkillSourceCredentialsQueryDto,
 	ListSkillSourceRepositoriesQueryDto,
 	ReplaceSkillSourceCredentialDto,
+	DeleteSkillSourceQueryDto,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Body, Delete, Get, Middleware, Param, Post, Query, RestController } from '@n8n/decorators';
@@ -75,8 +77,7 @@ export class SkillSourceController {
 	}
 
 	/**
-	 * Stop syncing one skill: it becomes a normal skill that n8n can edit, and keeps its
-	 * versions. It cannot be undone.
+	 * Stop syncing one skill: it becomes a normal skill that n8n can edit and keeps its versions.
 	 */
 	@Post('/skills/:skillId/stop-syncing')
 	async stopSyncing(req: AuthenticatedRequest, _res: Response, @Param('skillId') skillId: string) {
@@ -90,10 +91,36 @@ export class SkillSourceController {
 		return await this.skillSourceService.list(req.user);
 	}
 
+	// Resource-dependent scope checks run in the service. GlobalScope would exclude project roles.
+	@Post('/:sourceId/move/preview')
+	async previewMove(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('sourceId') sourceId: string,
+		@Body payload: MoveSkillSourceDto,
+	) {
+		return await this.skillSourceService.previewMove(req.user, sourceId, payload);
+	}
+
+	@Post('/:sourceId/move')
+	async move(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('sourceId') sourceId: string,
+		@Body payload: MoveSkillSourceDto,
+	) {
+		return await this.skillSourceService.move(req.user, sourceId, payload);
+	}
+
 	/** The source's scope decides access. The service checks its delete permission. */
 	@Delete('/:sourceId')
-	async delete(req: AuthenticatedRequest, _res: Response, @Param('sourceId') sourceId: string) {
-		await this.skillSourceService.delete(req.user, sourceId);
+	async delete(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('sourceId') sourceId: string,
+		@Query query: DeleteSkillSourceQueryDto,
+	) {
+		await this.skillSourceService.delete(req.user, sourceId, query);
 		return { ok: true };
 	}
 

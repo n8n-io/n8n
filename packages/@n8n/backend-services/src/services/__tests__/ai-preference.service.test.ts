@@ -2,7 +2,6 @@ import type {
 	AiPreference,
 	AiPreferenceRepository,
 	Project,
-	ProjectRelation,
 	ProjectRelationRepository,
 	ProjectRepository,
 	User,
@@ -24,6 +23,8 @@ import {
 	renderAiPreferences,
 	renderAiPreferencesBlock,
 } from '../ai-preference.service';
+import { ProjectScopeService } from '../project-scope.service';
+import type { RoleService } from '../role.service';
 
 /**
  * A saved preference now carries its id. Rendering ignores the id, so these fixtures derive one
@@ -54,13 +55,32 @@ describe('AiPreferenceService', () => {
 	const aiPreferenceRepository = mock<AiPreferenceRepository>();
 	const projectRepository = mock<ProjectRepository>();
 	const projectRelationRepository = mock<ProjectRelationRepository>();
+	const roleService = mock<RoleService>();
 	const userRepository = mock<UserRepository>();
 	const service = new AiPreferenceService(
 		aiPreferenceRepository,
 		projectRepository,
-		projectRelationRepository,
+		new ProjectScopeService(roleService, projectRelationRepository),
 		userRepository,
 	);
+
+	type Membership = { projectId: string; scopes: string[] };
+
+	function grantMemberships(memberships: Membership[]) {
+		const roleOf = (membership: Membership) => `role-${membership.projectId}`;
+		roleService.rolesWithScope.mockImplementation(async (_namespace, scopes) => {
+			const required = [scopes].flat();
+			return memberships
+				.filter((membership) => required.every((scope) => membership.scopes.includes(scope)))
+				.map(roleOf);
+		});
+		projectRelationRepository.getAccessibleProjectsByRoles.mockImplementation(
+			async (_userId, roles) =>
+				memberships
+					.filter((membership) => roles.includes(roleOf(membership)))
+					.map((membership) => membership.projectId),
+		);
+	}
 
 	beforeEach(() => {
 		vi.resetAllMocks();
@@ -76,26 +96,19 @@ describe('AiPreferenceService', () => {
 			type: 'personal' as const,
 		};
 
-		const relation = (projectId: string, scopes: string[]) =>
-			({
-				projectId,
-				role: { scopes: scopes.map((slug) => ({ slug })) },
-			}) as unknown as ProjectRelation;
+		const relation = (projectId: string, scopes: string[]): Membership => ({ projectId, scopes });
 		const reader = (projectId: string) => relation(projectId, ['projectAiPreference:read']);
 
 		it('queries the readable projects and groups the rows', async () => {
-			const user = mock<User>({ id: 'user-1', role: GLOBAL_MEMBER_ROLE });
-			projectRelationRepository.findAllByUser.mockResolvedValue([
-				reader('team-1'),
-				reader('team-2'),
-			]);
+			const person = makePerson({ id: 'user-1', role: GLOBAL_MEMBER_ROLE });
+			grantMemberships([reader('team-1'), reader('team-2')]);
 			aiPreferenceRepository.findApplicable.mockResolvedValue([
 				row({ content: 'Global', userId: null, projectId: null }),
 				row({ content: 'Mine', userId: 'user-1' }),
 				row({ content: 'Marketing rule', projectId: 'team-1' }),
 			]);
 
-			const result = await service.getApplicable(user, [marketing, sales]);
+			const result = await service.getApplicable(person, [marketing, sales]);
 
 			expect(aiPreferenceRepository.findApplicable).toHaveBeenCalledWith({
 				userId: 'user-1',
@@ -109,13 +122,11 @@ describe('AiPreferenceService', () => {
 		});
 
 		it('leaves out a project whose role carries project:read but no projectAiPreference:read', async () => {
-			const user = mock<User>({ id: 'user-1', role: GLOBAL_MEMBER_ROLE });
-			projectRelationRepository.findAllByUser.mockResolvedValue([
-				relation('team-1', ['project:read']),
-			]);
+			const person = makePerson({ id: 'user-1', role: GLOBAL_MEMBER_ROLE });
+			grantMemberships([relation('team-1', ['project:read'])]);
 			aiPreferenceRepository.findApplicable.mockResolvedValue([]);
 
-			await service.getApplicable(user, [marketing]);
+			await service.getApplicable(person, [marketing]);
 
 			expect(aiPreferenceRepository.findApplicable).toHaveBeenCalledWith({
 				userId: 'user-1',
@@ -124,11 +135,11 @@ describe('AiPreferenceService', () => {
 		});
 
 		it("keeps the caller's own personal project", async () => {
-			const user = mock<User>({ id: 'user-1', role: GLOBAL_MEMBER_ROLE });
-			projectRelationRepository.findAllByUser.mockResolvedValue([reader('personal-1')]);
+			const person = makePerson({ id: 'user-1', role: GLOBAL_MEMBER_ROLE });
+			grantMemberships([reader('personal-1')]);
 			aiPreferenceRepository.findApplicable.mockResolvedValue([]);
 
-			await service.getApplicable(user, [ownPersonal]);
+			await service.getApplicable(person, [ownPersonal]);
 
 			expect(aiPreferenceRepository.findApplicable).toHaveBeenCalledWith({
 				userId: 'user-1',
@@ -137,12 +148,12 @@ describe('AiPreferenceService', () => {
 		});
 
 		it('keeps every team project for an owner', async () => {
-			const owner = mock<User>({ id: 'owner-1', role: GLOBAL_OWNER_ROLE });
+			const owner = makePerson({ id: 'owner-1', role: GLOBAL_OWNER_ROLE });
 			aiPreferenceRepository.findApplicable.mockResolvedValue([]);
 
 			await service.getApplicable(owner, [marketing, sales]);
 
-			expect(projectRelationRepository.findAllByUser).not.toHaveBeenCalled();
+			expect(projectRelationRepository.getAccessibleProjectsByRoles).not.toHaveBeenCalled();
 			expect(aiPreferenceRepository.findApplicable).toHaveBeenCalledWith({
 				userId: 'owner-1',
 				projectIds: ['team-1', 'team-2'],
@@ -150,7 +161,7 @@ describe('AiPreferenceService', () => {
 		});
 
 		it("keeps another user's personal project for an owner", async () => {
-			const owner = mock<User>({ id: 'owner-1', role: GLOBAL_OWNER_ROLE });
+			const owner = makePerson({ id: 'owner-1', role: GLOBAL_OWNER_ROLE });
 			aiPreferenceRepository.findApplicable.mockResolvedValue([]);
 
 			await service.getApplicable(owner, [othersPersonal]);
@@ -172,20 +183,13 @@ describe('AiPreferenceService', () => {
 		const otherTeam = mock<Project>({ id: 'team-2', name: 'Marketing', type: 'team' });
 
 		/** A membership whose role carries the given scopes. */
-		const relation = (projectId: string, scopes: string[]) =>
-			({
-				projectId,
-				role: { scopes: scopes.map((slug) => ({ slug })) },
-			}) as unknown as ProjectRelation;
+		const relation = (projectId: string, scopes: string[]): Membership => ({ projectId, scopes });
 		const reader = (projectId: string) => relation(projectId, ['projectAiPreference:read']);
 
 		it('gives a member their personal project and the team projects they belong to', async () => {
 			const person = makePerson({ id: 'user-1', role: GLOBAL_MEMBER_ROLE });
 			projectRepository.getAccessibleProjects.mockResolvedValue([ownPersonal, joinedTeam]);
-			projectRelationRepository.findAllByUser.mockResolvedValue([
-				reader('personal-1'),
-				reader('team-1'),
-			]);
+			grantMemberships([reader('personal-1'), reader('team-1')]);
 			aiPreferenceRepository.findApplicable.mockResolvedValue([
 				row({ content: 'Sales rule', projectId: 'team-1' }),
 			]);
@@ -206,10 +210,7 @@ describe('AiPreferenceService', () => {
 		it("keeps the caller's personal project typed, so the renderer can fold it into theirs", async () => {
 			const person = makePerson({ id: 'user-1', role: GLOBAL_MEMBER_ROLE });
 			projectRepository.getAccessibleProjects.mockResolvedValue([ownPersonal, joinedTeam]);
-			projectRelationRepository.findAllByUser.mockResolvedValue([
-				reader('personal-1'),
-				reader('team-1'),
-			]);
+			grantMemberships([reader('personal-1'), reader('team-1')]);
 			aiPreferenceRepository.findApplicable.mockResolvedValue([
 				row({ content: 'Mine', projectId: 'personal-1' }),
 				row({ content: 'Sales rule', projectId: 'team-1' }),
@@ -228,7 +229,7 @@ describe('AiPreferenceService', () => {
 		it('leaves out a project whose membership carries no projectAiPreference:read', async () => {
 			const person = makePerson({ id: 'user-1', role: GLOBAL_MEMBER_ROLE });
 			projectRepository.getAccessibleProjects.mockResolvedValue([ownPersonal, joinedTeam]);
-			projectRelationRepository.findAllByUser.mockResolvedValue([
+			grantMemberships([
 				reader('personal-1'),
 				relation('team-1', ['agent:execute', 'workflow:execute-chat']),
 			]);
@@ -278,7 +279,7 @@ describe('AiPreferenceService', () => {
 		it('queries only the instance and personal rows when the user has no projects', async () => {
 			const person = makePerson({ id: 'user-1', role: GLOBAL_MEMBER_ROLE });
 			projectRepository.getAccessibleProjects.mockResolvedValue([]);
-			projectRelationRepository.findAllByUser.mockResolvedValue([]);
+			grantMemberships([]);
 			aiPreferenceRepository.findApplicable.mockResolvedValue([]);
 
 			const result = await service.getApplicableAcrossProjects(person);
@@ -299,18 +300,12 @@ describe('AiPreferenceService', () => {
 		});
 		const joinedTeam = mock<Project>({ id: 'team-1', name: 'Sales', type: 'team' });
 
-		const relation = (projectId: string, scopes: string[]) =>
-			({
-				projectId,
-				role: { scopes: scopes.map((slug) => ({ slug })) },
-			}) as unknown as ProjectRelation;
+		const relation = (projectId: string, scopes: string[]): Membership => ({ projectId, scopes });
 		const reader = (projectId: string) => relation(projectId, ['projectAiPreference:read']);
 
 		it('rejects a project the caller may not read, instead of answering empty', async () => {
 			const person = makePerson({ id: 'user-1', role: GLOBAL_MEMBER_ROLE });
-			projectRelationRepository.findAllByUser.mockResolvedValue([
-				relation('team-1', ['agent:execute', 'workflow:execute-chat']),
-			]);
+			grantMemberships([relation('team-1', ['agent:execute', 'workflow:execute-chat'])]);
 
 			await expect(service.getApplicableForProject(person, 'team-1')).rejects.toThrow(
 				NotFoundError,
@@ -343,7 +338,7 @@ describe('AiPreferenceService', () => {
 
 		it("serves the caller's own personal project, typed so it folds into their personal rows", async () => {
 			const person = makePerson({ id: 'user-1', role: GLOBAL_MEMBER_ROLE });
-			projectRelationRepository.findAllByUser.mockResolvedValue([reader('personal-1')]);
+			grantMemberships([reader('personal-1')]);
 			projectRepository.findOneBy.mockResolvedValue(ownPersonal);
 			projectRepository.getPersonalProjectForUser.mockResolvedValue(ownPersonal);
 			aiPreferenceRepository.findApplicable.mockResolvedValue([
@@ -359,7 +354,7 @@ describe('AiPreferenceService', () => {
 
 		it('queries the one project only, for a member whose role reads it', async () => {
 			const person = makePerson({ id: 'user-1', role: GLOBAL_MEMBER_ROLE });
-			projectRelationRepository.findAllByUser.mockResolvedValue([reader('team-1')]);
+			grantMemberships([reader('team-1')]);
 			projectRepository.findOneBy.mockResolvedValue(joinedTeam);
 			aiPreferenceRepository.findApplicable.mockResolvedValue([
 				row({ content: 'Sales rule', projectId: 'team-1' }),
@@ -384,12 +379,7 @@ describe('AiPreferenceService', () => {
 
 		/** Gives the member one role in the project that grants the named scopes only. */
 		function allowProjectOperations(...allowed: string[]) {
-			projectRelationRepository.findAllByUser.mockResolvedValue([
-				{
-					projectId: 'p-1',
-					role: { slug: 'project:custom', scopes: allowed.map((slug) => ({ slug })) },
-				} as unknown as ProjectRelation,
-			]);
+			grantMemberships([{ projectId: 'p-1', scopes: allowed }]);
 			projectRepository.findOneBy.mockResolvedValue(teamProject);
 		}
 
@@ -411,7 +401,7 @@ describe('AiPreferenceService', () => {
 			expect(created.scopes).toEqual(['aiPreference:read']);
 		});
 
-		it("reads the caller's project relations once per request", async () => {
+		it('resolves each project operation once per request', async () => {
 			allowProjectOperations(
 				'projectAiPreference:create',
 				'projectAiPreference:update',
@@ -425,7 +415,7 @@ describe('AiPreferenceService', () => {
 			await service.create(member, { content: 'Rule.', scope: 'project', projectId: 'p-1' }, 'ui');
 
 			// Three operations were checked: create, then update and delete for the scopes.
-			expect(projectRelationRepository.findAllByUser).toHaveBeenCalledTimes(1);
+			expect(projectRelationRepository.getAccessibleProjectsByRoles).toHaveBeenCalledTimes(3);
 		});
 
 		it('reports update and delete when the project role grants them', async () => {
@@ -902,7 +892,7 @@ describe('AiPreferenceService', () => {
 		const member = makePerson({ id: 'user-1', role: GLOBAL_MEMBER_ROLE });
 
 		beforeEach(() => {
-			projectRelationRepository.findAllByUser.mockResolvedValue([]);
+			grantMemberships([]);
 		});
 
 		it('returns a visible row as a dto with its scopes', async () => {

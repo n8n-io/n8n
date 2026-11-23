@@ -1,0 +1,9 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"ticket.id": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

@@ -1,12 +1,8 @@
 name: 'CI: Owners Review Recommendations'
 
-# Posts (or updates) a PR comment with recommended reviewer teams (based on
-# file ownership in OWNERS), a breakdown of changed lines by category
-# (source code, test files, misc), and the required team reviews with a
-# prompt to request review from those teams.
-#
-# Advisory only — does not gate merging. Enforcement of required reviews
-# lives in ci-owners-required-reviews.yml.
+# Posts or updates the PR review overview comment through DevHub: owning
+# teams, changed lines, and required teams. DevHub writes the comment as its
+# own GitHub App. See n8n-io/github-actions ownership-checks/README.md.
 
 on:
   pull_request:
@@ -17,38 +13,15 @@ on:
     branches:
       - master
 
+permissions: {}
+
 jobs:
-  recommend-reviewers:
-    name: Recommend reviewers
-    # Skipped for:
-    #  - PRs from forks (no token to comment with)
-    #  - Bot-authored PRs (Dependabot, etc. — noise, not useful)
-    if: |
-      github.event.pull_request.head.repo.full_name == github.repository &&
-      github.event.pull_request.user.type != 'Bot'
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
+  ownership-comment:
+    uses: n8n-io/github-actions/.github/workflows/ownership-checks.yml@be626e7b43cf88fe6d1404a29ed4e2b4f9cbb294 # ownership-checks/v1.0.0
     permissions:
-      contents: read
-      pull-requests: write
-    steps:
-      - name: Generate App Token
-        id: app-token
-        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
-        with:
-          app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
-          private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
-
-      # The script reads only `.github/` and the root OWNERS file, which cone
-      # mode always includes.
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          sparse-checkout: .github
-
-      - name: Post review recommendations
-        uses: ./.github/actions/run-workflow-script
-        env:
-          PULL_REQUEST_NUMBER: ${{ github.event.pull_request.number }}
-        with:
-          script: .github/scripts/owners/review-recommendations.mjs
-          github-token: ${{ steps.app-token.outputs.token }}
+      id-token: write
+      # The shared workflow's single job declares both permissions, also when only the comment step runs.
+      pull-requests: read
+    with:
+      required-reviews: false
+      devhub-url: https://devhub.services.n8n.cloud

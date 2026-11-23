@@ -1,0 +1,99 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"_links": {
+			"properties": {
+				"base": {
+					"type": "string"
+				},
+				"editui": {
+					"type": "string"
+				},
+				"edituiv2": {
+					"type": "string"
+				},
+				"tinyui": {
+					"type": "string"
+				},
+				"webui": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"authorId": {
+			"type": "string"
+		},
+		"body": {
+			"additionalProperties": true,
+			"properties": {
+				"storage": {
+					"properties": {
+						"representation": {
+							"type": "string"
+						},
+						"value": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				}
+			},
+			"type": "object"
+		},
+		"createdAt": {
+			"type": "string"
+		},
+		"id": {
+			"type": "string"
+		},
+		"lastOwnerId": {
+			"type": ["null", "string"]
+		},
+		"ownerId": {
+			"type": "string"
+		},
+		"parentId": {
+			"type": "string"
+		},
+		"parentType": {
+			"type": "string"
+		},
+		"position": {
+			"type": ["null", "number"]
+		},
+		"spaceId": {
+			"type": "string"
+		},
+		"status": {
+			"type": "string"
+		},
+		"title": {
+			"type": "string"
+		},
+		"version": {
+			"properties": {
+				"authorId": {
+					"type": "string"
+				},
+				"createdAt": {
+					"type": "string"
+				},
+				"message": {
+					"type": "string"
+				},
+				"minorEdit": {
+					"type": "boolean"
+				},
+				"ncsStepVersion": {
+					"type": "string"
+				},
+				"number": {
+					"type": "number"
+				}
+			},
+			"type": "object"
+		}
+	},
+	"type": "object"
+}

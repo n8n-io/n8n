@@ -52,6 +52,7 @@ export interface GetAllCredentialsOptions {
 	includeScopes?: boolean;
 	onlySharedWithMe?: boolean;
 	includeGlobal?: boolean;
+	includeRestrictions?: boolean;
 	/**
 	 * The implementation of the externalSecretsStore filter option is not optimized for performance.
 	 * Don't expose it via the filter selection component. It shall only be provided when clicking on
@@ -67,7 +68,14 @@ export async function getAllCredentials(
 	context: IRestApiContext,
 	options: GetAllCredentialsOptions = {},
 ): Promise<ICredentialsResponse[]> {
-	const { filter, includeScopes, onlySharedWithMe, includeGlobal, externalSecretsStore } = options;
+	const {
+		filter,
+		includeScopes,
+		onlySharedWithMe,
+		includeGlobal,
+		includeRestrictions,
+		externalSecretsStore,
+	} = options;
 
 	return await makeRestApiRequest(context, 'GET', '/credentials', {
 		...(includeScopes ? { includeScopes } : {}),
@@ -76,6 +84,7 @@ export async function getAllCredentials(
 		...(onlySharedWithMe ? { onlySharedWithMe } : {}),
 		...(typeof includeGlobal === 'boolean' ? { includeGlobal } : {}),
 		...(externalSecretsStore ? { externalSecretsStore } : {}),
+		...(includeRestrictions ? { includeRestrictions } : {}),
 	});
 }
 

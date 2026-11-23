@@ -10,7 +10,7 @@ import { KnowledgeUploadError, type KnowledgeUploadFailureReason } from './knowl
 
 const allowedKnowledgeFileExtensions = new Set<string>(ALLOWED_AGENT_FILE_EXTENSIONS);
 
-export function isAllowedKnowledgeFile(file: Pick<Express.Multer.File, 'originalname'>) {
+export function hasAllowedKnowledgeFileExtension(file: Pick<Express.Multer.File, 'originalname'>) {
 	const extension = path.extname(file.originalname).toLowerCase();
 
 	return allowedKnowledgeFileExtensions.has(extension);
@@ -56,7 +56,7 @@ export class KnowledgeUploadMiddleware {
 			storage: multer.diskStorage({}),
 			limits: { fileSize: config.maxFileSizeBytes },
 			fileFilter: (_req, file, done) => {
-				if (!isAllowedKnowledgeFile(file)) {
+				if (!hasAllowedKnowledgeFileExtension(file)) {
 					done(
 						new KnowledgeUploadError(
 							'Only CSV, PDF, Markdown, and TXT files are allowed',

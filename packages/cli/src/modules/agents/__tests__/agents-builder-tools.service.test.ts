@@ -17,7 +17,11 @@ import {
 	type AgentJsonConfig,
 	type AgentTaskDto,
 } from '@n8n/api-types';
-import type { CredentialsFinderService, NodeTypesProxy } from '@n8n/backend-services';
+import type {
+	CredentialsFinderService,
+	NodeTypesProxy,
+	TelemetryProxy,
+} from '@n8n/backend-services';
 import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-network';
 import { GLOBAL_MEMBER_ROLE, type User } from '@n8n/db';
 import { convertArrayToReadableStream, MockLanguageModelV3 } from 'ai/test';
@@ -31,9 +35,8 @@ import { ConflictError, LockedError, UserError } from '@n8n/errors';
 import type { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { AiService } from '@/services/ai.service';
-import type { CollaborationService } from '@/collaboration/collaboration.service';
+import type { AgentWriteLockService } from '../agent-write-lock.service';
 import type { FreeAiCreditsService } from '@/services/free-ai-credits.service';
-import type { Telemetry } from '@/telemetry';
 
 import type { AgentConfigService } from '../agent-config.service';
 import type { AgentCustomToolsService } from '../agent-custom-tools.service';
@@ -102,7 +105,7 @@ function makeService() {
 	const agentTaskService = mock<AgentTaskService>();
 	const agentPublishService = mock<AgentPublishService>();
 	const agentTestRunService = mock<AgentTestRunService>();
-	const telemetry = mock<Telemetry>();
+	const telemetry = mock<TelemetryProxy>();
 	const aiService = mock<AiService>();
 	aiService.isProxyEnabled.mockReturnValue(false);
 	const nodeTypes = mock<NodeTypesProxy>();
@@ -113,7 +116,7 @@ function makeService() {
 	transport.asCustomFetch.mockReturnValue(vi.fn() as unknown as CustomFetch);
 	const outboundHttp = mock<OutboundHttp>();
 	outboundHttp.transport.mockReturnValue(transport);
-	const collaborationService = mock<CollaborationService>();
+	const agentWriteLockService = mock<AgentWriteLockService>();
 	const credentialsFinderService = mock<CredentialsFinderService>();
 	credentialsFinderService.findCredentialForUser.mockImplementation(
 		async (id) => ({ id, isGlobal: false, isResolvable: false }) as never,
@@ -140,7 +143,7 @@ function makeService() {
 		nodeTypes,
 		mock<FreeAiCreditsService>(),
 		telemetry,
-		collaborationService,
+		agentWriteLockService,
 		createAgentSkillRefsService(),
 		credentialsFinderService,
 		credentialsPermissionChecker,
@@ -149,7 +152,7 @@ function makeService() {
 	return {
 		service,
 		credentialsFinderService,
-		collaborationService,
+		agentWriteLockService,
 		credentialsPermissionChecker,
 		builderModelLiveLookupService,
 		agentsService: purposeServices,
@@ -165,7 +168,7 @@ function makeService() {
 
 const baseConfig: AgentJsonConfig = {
 	name: 'Agent One',
-	model: 'anthropic/claude-sonnet-4-5',
+	model: 'anthropic/claude-sonnet-5-5',
 	credential: 'Anthropic Key',
 	instructions: 'Help the user.',
 	tools: [],
@@ -336,8 +339,8 @@ describe('AgentsBuilderToolsService', () => {
 				});
 
 				it('leaves a lock failure without a stage to its error message', async () => {
-					const { service, collaborationService } = makeService();
-					collaborationService.ensureAgentEditable.mockRejectedValue(new LockedError('locked'));
+					const { service, agentWriteLockService } = makeService();
+					agentWriteLockService.ensureAgentEditable.mockRejectedValue(new LockedError('locked'));
 					const tool = getJsonTool(service, toolName);
 
 					const result = await tool.handler!(
@@ -668,9 +671,9 @@ describe('AgentsBuilderToolsService', () => {
 		});
 
 		it('agent_builder_write_config returns a locked failure while a user holds the builder write lock', async () => {
-			const { service, agentsService, collaborationService } = makeService();
+			const { service, agentsService, agentWriteLockService } = makeService();
 			agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
-			collaborationService.ensureAgentEditable.mockRejectedValue(new LockedError('locked'));
+			agentWriteLockService.ensureAgentEditable.mockRejectedValue(new LockedError('locked'));
 
 			const result = await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
 				{
@@ -688,9 +691,9 @@ describe('AgentsBuilderToolsService', () => {
 		});
 
 		it('agent_builder_patch_config reports stage "locked" while a user holds the builder write lock', async () => {
-			const { service, agentsService, collaborationService } = makeService();
+			const { service, agentsService, agentWriteLockService } = makeService();
 			agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
-			collaborationService.ensureAgentEditable.mockRejectedValue(new LockedError('locked'));
+			agentWriteLockService.ensureAgentEditable.mockRejectedValue(new LockedError('locked'));
 
 			const result = await getJsonTool(service, BUILDER_TOOLS.PATCH_CONFIG).handler!(
 				{
@@ -1872,9 +1875,9 @@ describe('AgentsBuilderToolsService', () => {
 
 		describe('prompt caching defaults', () => {
 			it.each([
-				'anthropic/claude-sonnet-4-5',
-				'openrouter/anthropic/claude-sonnet-4.5',
-				'google-vertex/claude-sonnet-4-5',
+				'anthropic/claude-sonnet-5-5',
+				'openrouter/anthropic/claude-sonnet-5.5',
+				'google-vertex/claude-sonnet-5-5',
 			])('agent_builder_write_config enables caching for %s when omitted', async (model) => {
 				const { service, agentsService } = makeService();
 				const currentConfig = { ...baseConfig, model, integrations: [] };
@@ -1974,13 +1977,13 @@ describe('AgentsBuilderToolsService', () => {
 				const currentConfig = { ...baseAgent };
 				const updatedConfig: AgentJsonConfig = {
 					...currentConfig,
-					model: 'anthropic/claude-sonnet-4-5',
+					model: 'anthropic/claude-sonnet-5-5',
 					credential: 'Anthropic Key',
 					config: { webSearch: { enabled: false }, promptCaching: { enabled: false } },
 				};
 				const normalizedConfig = {
 					...currentConfig,
-					model: 'anthropic/claude-sonnet-4-5',
+					model: 'anthropic/claude-sonnet-5-5',
 					credential: 'Anthropic Key',
 					config: { webSearch: { enabled: false }, promptCaching: { enabled: false } },
 				};
@@ -2054,9 +2057,9 @@ describe('AgentsBuilderToolsService', () => {
 			});
 
 			it.each([
-				'anthropic/claude-sonnet-4-5',
-				'openrouter/anthropic/claude-sonnet-4.5',
-				'google-vertex/claude-sonnet-4-5',
+				'anthropic/claude-sonnet-5-5',
+				'openrouter/anthropic/claude-sonnet-5.5',
+				'google-vertex/claude-sonnet-5-5',
 			])('agent_builder_write_config preserves the cache TTL for %s', async (model) => {
 				const { service, agentsService } = makeService();
 				const baseAgent = {
@@ -3447,9 +3450,9 @@ describe('AgentsBuilderToolsService', () => {
 		});
 
 		it('returns a locked failure on publish while a user holds the builder write lock', async () => {
-			const { service, agentPublishService, collaborationService } = makeService();
+			const { service, agentPublishService, agentWriteLockService } = makeService();
 			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
-			collaborationService.ensureAgentEditable.mockRejectedValue(new LockedError('locked'));
+			agentWriteLockService.ensureAgentEditable.mockRejectedValue(new LockedError('locked'));
 
 			const result = await getPublishTool(service).handler!({}, ctx);
 
@@ -3530,8 +3533,8 @@ describe('AgentsBuilderToolsService', () => {
 
 	describe('MCP credential apply path', () => {
 		it('returns { applied: false } when a user holds the builder write lock', async () => {
-			const { service, collaborationService } = makeService();
-			collaborationService.ensureAgentEditable.mockRejectedValue(new LockedError('locked'));
+			const { service, agentWriteLockService } = makeService();
+			agentWriteLockService.ensureAgentEditable.mockRejectedValue(new LockedError('locked'));
 
 			// applyCredentialToMcpServer is private but called from the
 			// agent_builder_verify_mcp_server tool context; invoke it directly to test the

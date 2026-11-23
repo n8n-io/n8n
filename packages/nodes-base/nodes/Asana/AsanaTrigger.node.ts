@@ -17,6 +17,7 @@ export class AsanaTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Asana Trigger',
 		name: 'asanaTrigger',
+		schemaPath: 'Asana',
 		icon: 'file:asana.svg',
 		group: ['trigger'],
 		version: 1,

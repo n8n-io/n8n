@@ -21,6 +21,7 @@ export class AgentChannelMediaRetentionTask implements SystemTask {
 	// Deleting media that is already gone does nothing, so a retry is safe.
 	readonly target = clusterTarget({
 		scheduler: { retryOnFailure: true },
+		// oxlint-disable-next-line typescript/no-deprecated -- Keep timer scheduling while the durable scheduler is disabled.
 		leaderTimer: { runOnTakeover: true, retryDelaySeconds: 60 },
 	});
 
