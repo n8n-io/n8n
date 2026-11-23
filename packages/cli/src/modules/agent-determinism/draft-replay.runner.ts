@@ -82,7 +82,7 @@ export class DraftReplayRunner {
 		}
 		const pinData: Record<string, Array<{ json: IDataObject }>> = {
 			// `runAt` is the run's own time: time rules must not read the replay's clock.
-			[trigger.name]: [{ json: { ...asItemJson(run.input), runAt: run.startedAt ?? null } }],
+			[trigger.name]: [{ json: { runAt: run.startedAt ?? null, ...asItemJson(run.input) } }],
 			[FALLBACK_NODE_NAME]: [{ json: {} }],
 		};
 		const toolNodes = new Set<string>();

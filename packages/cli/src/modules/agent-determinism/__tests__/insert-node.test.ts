@@ -1,5 +1,6 @@
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
+import { hashDraft } from '../determinism-analysis.service';
 import { insertNode } from '../trace-workflow-translator';
 
 const draft = (): WorkflowJSON =>
@@ -53,13 +54,17 @@ describe('insertNode', () => {
 		});
 	});
 
-	it('skips an unknown anchor, a taken name or bad JSON', () => {
-		for (const bad of [
-			{ ...split, after: 'Nope' },
-			{ ...split, name: 'Pick items' },
-			{ ...split, parameters_json: '{' },
-		]) {
+	it('skips an unknown anchor, a taken name, bad JSON, non-object parameters or a fan-out anchor', () => {
+		for (const [bad, fanOut] of [
+			[{ ...split, after: 'Nope' }, false],
+			[{ ...split, name: 'Pick items' }, false],
+			[{ ...split, parameters_json: '{' }, false],
+			[{ ...split, parameters_json: '[1]' }, false],
+			[{ ...split, parameters_json: '"text"' }, false],
+			[split, true],
+		] as const) {
 			const workflow = draft();
+			if (fanOut) workflow.connections['Shopify Products'].main.push([]);
 			insertNode(workflow, bad);
 			expect(workflow.nodes).toHaveLength(2);
 		}
@@ -67,8 +72,7 @@ describe('insertNode', () => {
 });
 
 describe('hashDraft', () => {
-	it('ignores layout but sees a changed parameter', async () => {
-		const { hashDraft } = await import('../determinism-analysis.service');
+	it('ignores layout but sees a changed parameter', () => {
 		const base = draft();
 		const moved = draft();
 		moved.nodes[0].position = [999, 999];

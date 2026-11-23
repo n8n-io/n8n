@@ -1,12 +1,14 @@
 import { Logger } from '@n8n/backend-common';
 import { CredentialsRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
 import type { NodeJSON, WorkflowJSON } from '@n8n/workflow-sdk';
 import { randomUUID } from 'node:crypto';
 import {
 	AGENT_LANGCHAIN_NODE_TYPE,
 	NodeConnectionTypes,
 	getParentNodes,
+	jsonParse,
 	mapConnectionsByDestination,
 	type IDataObject,
 } from 'n8n-workflow';
@@ -137,12 +139,14 @@ function fillTodo(value: unknown, id: string, fill: string): unknown {
 export function insertNode(workflow: WorkflowJSON, insert: Refinement['insert_nodes'][number]) {
 	const anchor = workflow.nodes.find((node) => node.name === insert.after);
 	if (!anchor || workflow.nodes.some((node) => node.name === insert.name)) return;
+	if ((workflow.connections[insert.after]?.main?.length ?? 0) > 1) return;
 	let parameters: IDataObject;
 	try {
-		parameters = JSON.parse(insert.parameters_json) as IDataObject;
+		parameters = jsonParse<IDataObject>(insert.parameters_json);
 	} catch {
 		return;
 	}
+	if (!isRecord(parameters)) return;
 	const [x, y] = anchor.position ?? [0, 0];
 	workflow.nodes.push({
 		id: randomUUID(),
@@ -151,7 +155,7 @@ export function insertNode(workflow: WorkflowJSON, insert: Refinement['insert_no
 		position: [x + 120, y + 160],
 		parameters,
 		notes: insert.why,
-	} as NodeJSON);
+	});
 	const outputs = (workflow.connections[insert.after] ??= {});
 	workflow.connections[insert.name] = { main: outputs.main ?? [[]] };
 	outputs.main = [[{ node: insert.name, type: 'main', index: 0 }]];

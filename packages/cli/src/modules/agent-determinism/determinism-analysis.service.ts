@@ -147,6 +147,7 @@ export class DeterminismAnalysisService {
 					fallback,
 				),
 			);
+		const firstDraft = await draftFor();
 		// One draft per source: a new analysis overwrites the last one, unless a person edited it.
 		const row = await this.sourceRepository.findBySource(source.type, source.id);
 		const previous = row?.draftWorkflowId
@@ -161,8 +162,8 @@ export class DeterminismAnalysisService {
 		}
 		let saved =
 			previous && !edited
-				? await this.draftWriter.update(actor, previous, await draftFor())
-				: await this.draftWriter.write(actor, source, await draftFor());
+				? await this.draftWriter.update(actor, previous, firstDraft)
+				: await this.draftWriter.write(actor, source, firstDraft);
 
 		// Feedback: replay a few train runs and redraft with the ones the draft got wrong,
 		// as the lab script's `convert --feedback` does. The holdout stays unseen.
@@ -194,6 +195,13 @@ export class DeterminismAnalysisService {
 			});
 			if (failures.length === 0) break;
 			const redrafted = await draftFor(failures);
+			if (!(await this.isUnchanged(saved))) {
+				this.logger.info('Determinism draft was edited during analysis: keeping the edit', {
+					sourceId: source.id,
+					draftWorkflowId: saved.id,
+				});
+				break;
+			}
 			saved = await this.draftWriter.update(actor, saved, redrafted);
 		}
 
@@ -225,6 +233,11 @@ export class DeterminismAnalysisService {
 			...result,
 		});
 		await this.sourceRepository.saveResult(source, saved.id, result);
+	}
+
+	private async isUnchanged(draft: WorkflowEntity) {
+		const current = await this.workflowRepository.findById(draft.id);
+		return current !== null && hashDraft(current) === hashDraft(draft);
 	}
 
 	/** Scheduled runs have no reader, so only their tool calls count; other runs also need the answer. */
@@ -260,10 +273,13 @@ export class DeterminismAnalysisService {
 		const workflowCalls = Object.entries(runData)
 			.filter(([name]) => isTool(name))
 			.map(([name, tasks]) => {
-				const from = tasks.at(-1)?.source?.[0];
+				const task = tasks.at(-1);
+				const from = task?.source?.[0];
 				const sent = from
-					? (runData[from.previousNode]?.at(-1)?.data?.main?.[from.previousNodeOutput ?? 0] ?? [])
-					: [];
+					? (runData[from.previousNode]?.[from.previousNodeRun ?? 0]?.data?.main?.[
+							from.previousNodeOutput ?? 0
+						] ?? [])
+					: (task?.inputOverride?.ai_tool?.[0] ?? []);
 				const items = sent
 					.slice(0, 30)
 					.map((item) => `    ${JSON.stringify(item.json).slice(0, 300)}`);

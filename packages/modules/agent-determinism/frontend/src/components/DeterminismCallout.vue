@@ -21,6 +21,7 @@ const rootStore = useRootStore();
 const suggestion = ref<DeterminismSuggestion | null>(null);
 const analysing = ref(false);
 let poll: ReturnType<typeof setTimeout> | undefined;
+let unmounted = false;
 
 async function load() {
 	try {
@@ -32,7 +33,7 @@ async function load() {
 		analysing.value = false;
 	}
 	clearTimeout(poll);
-	if (analysing.value) poll = setTimeout(load, 5000);
+	if (analysing.value && !unmounted) poll = setTimeout(load, 5000);
 }
 
 async function onReview() {
@@ -47,7 +48,10 @@ async function onDismiss() {
 }
 
 onMounted(load);
-onBeforeUnmount(() => clearTimeout(poll));
+onBeforeUnmount(() => {
+	unmounted = true;
+	clearTimeout(poll);
+});
 watch(() => props.sourceId, load);
 </script>
 
