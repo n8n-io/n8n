@@ -1,17 +1,14 @@
 <script lang="ts" setup>
-import { registerCharts } from '@n8n/composables/registerCharts';
+import { Line } from '@n8n/design-system/charts';
 import { useI18n } from '@n8n/i18n';
 import { smartDecimal } from '@n8n/utils/number/smart-decimal';
 import { type ChartData, Filler, type ScriptableContext } from 'chart.js';
 import { computed } from 'vue';
-import { Line } from 'vue-chartjs';
 
 import type { ChartProps } from './insightChartProps';
 import { generateLinearGradient, generateLineChartOptions } from '../../chartjs.utils';
 import { GRANULARITY_DATE_FORMAT_MASK, INSIGHTS_UNIT_MAPPING } from '../../insights.constants';
 import { transformInsightsAverageRunTime } from '../../insights.utils';
-
-registerCharts();
 
 const props = defineProps<ChartProps>();
 const i18n = useI18n();

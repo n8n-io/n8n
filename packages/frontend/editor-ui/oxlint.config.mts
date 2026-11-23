@@ -43,6 +43,18 @@ const prettierImport = {
 		'Use loadPrettier() from @/features/shared/editors/utils/loadPrettier. A static import puts prettier back in the startup bundle.',
 };
 
+/**
+ * The chart components of `@n8n/design-system/charts` register the Chart.js parts that n8n
+ * charts use. The components of `vue-chartjs` register only their own controller, and the
+ * editor does not register Chart.js at startup. Spread into every block that sets
+ * `no-restricted-imports`, like `extractedFeatures`.
+ */
+const chartImport = {
+	group: ['vue-chartjs', 'vue-chartjs/*'],
+	message:
+		'Import chart components from @n8n/design-system/charts. They register the Chart.js parts that the chart needs.',
+};
+
 export default defineConfig({
 	extends: [frontendConfig],
 	options: { typeAware: true },
@@ -75,7 +87,10 @@ export default defineConfig({
 		'typescript/no-base-to-string': 'warn',
 		'typescript/restrict-template-expressions': 'warn',
 
-		'no-restricted-imports': ['error', { patterns: [...extractedFeatures, prettierImport] }],
+		'no-restricted-imports': [
+			'error',
+			{ patterns: [...extractedFeatures, prettierImport, chartImport] },
+		],
 
 		// Vite bundles everything this package imports and nothing resolves it from
 		// node_modules at runtime, so every dependency is a devDependency. That keeps
@@ -97,6 +112,7 @@ export default defineConfig({
 						patterns: [
 							...extractedFeatures,
 							prettierImport,
+							chartImport,
 							{
 								group: ['**/ndv/runData/components/RunData.vue'],
 								message:
@@ -116,7 +132,7 @@ export default defineConfig({
 				'src/features/shared/editors/plugins/codemirror/format.test.ts',
 			],
 			rules: {
-				'no-restricted-imports': ['error', { patterns: extractedFeatures }],
+				'no-restricted-imports': ['error', { patterns: [...extractedFeatures, chartImport] }],
 			},
 		},
 		{

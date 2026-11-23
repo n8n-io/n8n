@@ -39,7 +39,6 @@
     "lodash": "catalog:",
     "pinia": "catalog:frontend",
     "vue": "catalog:frontend",
-    "vue-chartjs": "catalog:frontend",
     "vue-i18n": "catalog:frontend",
     "vue-router": "catalog:frontend"
   },

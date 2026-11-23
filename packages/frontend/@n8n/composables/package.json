@@ -33,7 +33,6 @@
     "@n8n/frontend-utils": "workspace:*",
     "@n8n/i18n": "workspace:*",
     "@vueuse/core": "catalog:frontend",
-    "chart.js": "catalog:frontend",
     "lodash": "catalog:",
     "n8n-workflow": "workspace:*",
     "vue": "catalog:frontend",
