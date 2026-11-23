@@ -16,7 +16,7 @@ import type { DeterminismAnalysisService } from '../determinism-analysis.service
 
 type Handlers = {
 	'workflow-post-execute': (event: EventMap['workflow-post-execute']) => Promise<void>;
-	'agent-execution-finished': (event: EventMap['agent-execution-finished']) => Promise<void>;
+	'agent-execution-recorded': (event: EventMap['agent-execution-recorded']) => Promise<void>;
 };
 
 const agentNode = { name: 'Agent', type: '@n8n/n8n-nodes-langchain.agent' } as INode;
@@ -41,8 +41,8 @@ function workflowEvent(
 }
 
 function agentEvent(
-	overrides: Partial<EventMap['agent-execution-finished']> = {},
-): EventMap['agent-execution-finished'] {
+	overrides: Partial<EventMap['agent-execution-recorded']> = {},
+): EventMap['agent-execution-recorded'] {
 	return {
 		agentId: 'agent-1',
 		projectId: 'project-1',
@@ -114,7 +114,7 @@ describe('AgentDeterminismListener', () => {
 
 	it('queues an analysis when an analysed source gets a new version', async () => {
 		counted({ runsSinceAnalysis: 1, versionChanged: true, analyzedVersionHash: 'old' });
-		await handlers['agent-execution-finished'](agentEvent());
+		await handlers['agent-execution-recorded'](agentEvent());
 		expect(analysis.enqueue).toHaveBeenCalledWith(
 			expect.objectContaining({ type: 'agent', id: 'agent-1', versionHash: 'av1' }),
 			'user-1',
@@ -149,7 +149,7 @@ describe('AgentDeterminismListener', () => {
 		['a run without a run type', agentEvent({ runType: null })],
 		['a failed run', agentEvent({ status: 'error' })],
 	])('skips an agent %s', async (_, event) => {
-		await handlers['agent-execution-finished'](event);
+		await handlers['agent-execution-recorded'](event);
 		expect(sourceRepository.recordSuccessfulRun).not.toHaveBeenCalled();
 	});
 

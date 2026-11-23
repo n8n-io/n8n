@@ -1487,7 +1487,7 @@ export type RelayEventMap = ModuleEventMap & {
 		projectId: string;
 	};
 
-	'agent-execution-finished': {
+	'agent-execution-recorded': {
 		agentId: string;
 		projectId: string;
 		executionId: string;

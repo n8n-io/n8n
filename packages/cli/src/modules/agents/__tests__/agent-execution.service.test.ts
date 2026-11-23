@@ -1380,7 +1380,7 @@ describe('AgentExecutionService', () => {
 			});
 
 			expect(eventService.emit).toHaveBeenCalledWith(
-				'agent-execution-finished',
+				'agent-execution-recorded',
 				expect.objectContaining({ agentId: 'agent-1', status: 'success', runType: 'test' }),
 			);
 			expect(telemetry.trackAgentTurnFinished).toHaveBeenCalledWith({
@@ -1695,7 +1695,7 @@ describe('AgentExecutionService', () => {
 			);
 			expect(telemetry.trackAgentTurnFinished).not.toHaveBeenCalled();
 			expect(eventService.emit).not.toHaveBeenCalledWith(
-				'agent-execution-finished',
+				'agent-execution-recorded',
 				expect.anything(),
 			);
 		});

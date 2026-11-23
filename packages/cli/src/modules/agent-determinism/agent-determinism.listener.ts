@@ -30,7 +30,7 @@ export class AgentDeterminismListener {
 		this.eventService.on('workflow-post-execute', async (event) => {
 			await this.guard(async () => await this.onWorkflowRun(event));
 		});
-		this.eventService.on('agent-execution-finished', async (event) => {
+		this.eventService.on('agent-execution-recorded', async (event) => {
 			await this.guard(async () => await this.onAgentRun(event));
 		});
 	}
@@ -64,7 +64,7 @@ export class AgentDeterminismListener {
 		status,
 		runType,
 		userId,
-	}: EventMap['agent-execution-finished']) {
+	}: EventMap['agent-execution-recorded']) {
 		if (status !== 'success' || runType !== 'production') return;
 		const agent = await this.agentRepository.findById(agentId);
 		const versionHash = agent?.activeVersionId ?? agent?.versionId;

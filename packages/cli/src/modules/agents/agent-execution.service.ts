@@ -1556,7 +1556,7 @@ export class AgentExecutionService {
 		status: AgentExecutionStatus,
 	): void {
 		if (status === 'awaiting') return;
-		this.eventService.emit('agent-execution-finished', {
+		this.eventService.emit('agent-execution-recorded', {
 			agentId: params.agentId,
 			projectId: params.projectId,
 			executionId,
