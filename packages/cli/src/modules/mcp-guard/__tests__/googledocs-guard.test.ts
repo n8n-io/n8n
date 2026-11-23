@@ -8,7 +8,7 @@ import type { GymAdmin } from '../gym-admin';
 import { HttpGuardRouter } from '../http-router';
 import { HttpRunRegistry } from '../http-runs';
 import { createHttpToolCaller } from '../http-tool-caller';
-import { enrichGoogleDocs, GOOGLE_DOCS_PROFILE, withPlainDocuments } from '../http-profiles';
+import { enrichGoogleDocs, GOOGLE_DOCS_PROFILE, withPlainDocuments } from '../google-docs-profile';
 import type { HydrationModel } from '../hydration-llm';
 import type { McpCaller } from '../mcp-upstream';
 import { sendToNetwork } from '../network';
