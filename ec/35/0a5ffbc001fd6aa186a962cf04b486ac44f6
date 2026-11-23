@@ -1,0 +1,51 @@
+spike/ligo-1159/spec/index.html
+  s_3dd47ea0104342::t_b7f422c89f6b49 178
+spike/ligo-1159/spec/apply-credentials.feature
+  s_3dd47ea0104342::t_5659475536a565 12,74-75,82,85-86,88,111,130,377
+spike/ligo-1159/spec/permissions.feature
+  s_3dd47ea0104342::t_5659475536a565 96,102,111,131,137
+spike/ligo-1159/spec/allow-incomplete.feature
+  s_3dd47ea0104342::t_5659475536a565 1,117,131,139,144-146,148,154,156,164-166,168,173,176,181,201-202,208-209,219-222,224
+spike/ligo-1159/review/final/solution.md
+  s_3dd47ea0104342::t_5659475536a565 33-34,47,112,140,183,185-188,190,202,207,214,223,233,258,299,302,314-315,332,367-369,381,384,391,393-394
+  s_3dd47ea0104342::t_f79b73967a5779 366
+  s_3dd47ea0104342::t_b7f422c89f6b49 189
+spike/ligo-1159/poc/decisions.md
+  s_3dd47ea0104342::t_fed5413d4a1034 123,142-146,191,263,265-271,327,329-331,378,457,461,464-465,476-478,496,569,572,631,791,881,906,945,971,974,976-980,982,986,989-990,1080,1111,1113,1115-1116
+  s_3dd47ea0104342::t_4d3c5f5af50992 1146-1150,1153-1206,1208-1219,1221,1235,1242-1245
+  s_3dd47ea0104342::t_347a8d4b40d45c 1207,1220,1222-1234,1236-1241
+  s_3dd47ea0104342::t_89c09f6a6dacc8 1151-1152
+spike/ligo-1159/visual/solution.html
+  s_3dd47ea0104342::t_f79b73967a5779 1058
+  s_3dd47ea0104342::t_5659475536a565 296,347,372,404,444,468,473,729,837-838,840,844-845,848,850,865,871,976,999,1004,1006-1007,1009,1016,1035,1037-1038,1046-1047,1049-1050,1059-1061
+spike/ligo-1159/poc/README.md
+  s_3dd47ea0104342::t_2296b02e65aa25 27-30,111,130-136,138-139,141-142,154,198-199,217
+spike/ligo-1159/spec/promote-credentials.feature
+  s_3dd47ea0104342::t_5659475536a565 124,127-128,134-135
+spike/ligo-1159/poc/dependency-check-selfcheck.ts
+  s_b7f7b0fdeb2e43::t_7679964ef2436a 178,526,530,532,583,611,613,615,619-622,643,645-646,671,673,851,855,861-862,866-867,871,894,900,939
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ec350a5ffbc001fd6aa186a962cf04b486ac44f6",
+  "prompts": {},
+  "sessions": {
+    "s_3dd47ea0104342": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c1a45d57-85a1-465a-839a-d3b98e3073fc",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_b7f7b0fdeb2e43": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a93c7d62768a54a34",
+        "model": "unknown"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,48 @@
+packages/@n8n/api-types/src/dto/composite-nodes/expand-composite-node-request.dto.ts
+  h_8fb27e0cdf6d1e 1-23
+packages/@n8n/api-types/src/dto/composite-nodes/expanded-composite-node.ts
+  h_8fb27e0cdf6d1e 1-7
+packages/@n8n/api-types/src/dto/index.ts
+  h_8fb27e0cdf6d1e 2-3
+packages/cli/src/controllers/__tests__/composite-nodes.controller.test.ts
+  h_8fb27e0cdf6d1e 1-94
+packages/cli/src/controllers/composite-nodes.controller.ts
+  h_8fb27e0cdf6d1e 1-61
+packages/cli/src/server.ts
+  h_8fb27e0cdf6d1e 43
+packages/frontend/@n8n/i18n/src/locales/en.json
+  h_8fb27e0cdf6d1e 7738-7742
+packages/frontend/editor-ui/src/app/components/WorkflowPreview.vue
+  h_8fb27e0cdf6d1e 7-8,29-35,52-53,118-130
+packages/frontend/editor-ui/src/features/ndv/settings/components/NodeSettingsHeader.vue
+  h_8fb27e0cdf6d1e 12,52
+packages/frontend/editor-ui/src/features/workflows/canvas/components/WorkflowCanvas.vue
+  h_8fb27e0cdf6d1e 37,82-86,90-97
+packages/frontend/editor-ui/src/features/workflows/compositeNodes/CompositeNodeLookInside.vue
+  h_8fb27e0cdf6d1e 1-164
+packages/frontend/editor-ui/src/features/workflows/compositeNodes/compositeNodes.api.ts
+  h_8fb27e0cdf6d1e 1-16
+packages/frontend/editor-ui/src/features/workflows/compositeNodes/compositeNodes.utils.test.ts
+  h_8fb27e0cdf6d1e 1-54
+packages/frontend/editor-ui/src/features/workflows/compositeNodes/compositeNodes.utils.ts
+  h_8fb27e0cdf6d1e 1-33
+packages/nodes-base/nodes/PollUntilDone/PollUntilDone.node.ts
+  h_8fb27e0cdf6d1e 73,79,96,119
+packages/workflow/src/composite-node.ts
+  h_8fb27e0cdf6d1e 39-41,70-80,225-228,238,296,334-380,402,471,503-515
+packages/workflow/src/interfaces.ts
+  h_8fb27e0cdf6d1e 3293-3294
+packages/workflow/test/composite-node.test.ts
+  h_8fb27e0cdf6d1e 4,223-296
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a4ac6a54c66802db2d5169d3d4cf7c25941ac8b5",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

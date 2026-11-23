@@ -1,0 +1,26 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_5d7834813eed3a::t_30437dfd8a7b5a 2008
+  s_5d7834813eed3a::t_9a887264c3cb01 171-172
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/AssistantAgentThreadView.vue
+  s_5d7834813eed3a::t_6bab1c2bf02db1 924
+  s_5d7834813eed3a::t_d8ff16ca9ba325 2-11
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/__tests__/AssistantAgentThreadView.test.ts
+  s_5d7834813eed3a::t_bdea696ab9ed66 2
+  s_5d7834813eed3a::t_8b03d15b6051f4 605-611
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b463b3ed35fd1453fe87be9f26094fdddc8e2cde",
+  "prompts": {},
+  "sessions": {
+    "s_5d7834813eed3a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f62f663e-f534-4582-8dd5-6cc581318eaf",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,39 @@
+packages/frontend/@n8n/design-system/src/components/N8nTabs/component-tabs.md
+  s_4ee7e4a7a1e652::t_c9949701eb6913 43-44
+packages/frontend/@n8n/design-system/src/components/N8nTabs/Tabs.vue
+  s_4ee7e4a7a1e652::t_869a93478664e1 200,205,209,213,449
+packages/frontend/@n8n/design-system/src/types/tabs.ts
+  s_4ee7e4a7a1e652::t_9b2ef73ec74ccb 3,11-12
+packages/frontend/@n8n/design-system/src/components/N8nTabs/Tabs.stories.ts
+  s_d1070eccae1acc::t_f3336dec5a2e4b 149,187-259
+  s_d1070eccae1acc::t_431fe0fceee86b 88-148,150-186
+packages/frontend/editor-ui/src/features/ndv/settings/components/NodeSettingsTabs.vue
+  s_4ee7e4a7a1e652::t_8ab3c3ebc63cce 76,78,93,99
+packages/frontend/editor-ui/src/Interface.ts
+  s_4ee7e4a7a1e652::t_42f1b93be8a989 19
+  s_4ee7e4a7a1e652::t_9a8aa5eae4ae3e 881,884-885
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2eaa947730ac5ddcabe50ce32bce97efa5bb78a6",
+  "prompts": {},
+  "sessions": {
+    "s_4ee7e4a7a1e652": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1f4ae-4c17-72de-9e34-934249348b4c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_d1070eccae1acc": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1f4ac-0bbf-72de-9e34-934091f4fb60",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

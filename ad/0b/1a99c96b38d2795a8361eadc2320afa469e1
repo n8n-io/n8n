@@ -1,0 +1,28 @@
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectNavigation.vue
+  s_f27bda1bd0c713::t_b07dac8be4046b 20,170,179
+  s_f27bda1bd0c713::t_f9d351f1233dd7 73
+packages/frontend/editor-ui/src/features/pages/composables/useProjectHomeLocation.test.ts
+  s_f27bda1bd0c713::t_b07dac8be4046b 1-32
+packages/modules/page/demo/seed-undocumented.mjs
+  s_f27bda1bd0c713::t_bb036e4ea57fba 459
+packages/frontend/editor-ui/src/features/pages/composables/useProjectHomeLocation.ts
+  s_f27bda1bd0c713::t_b07dac8be4046b 1-22
+packages/frontend/editor-ui/src/features/collaboration/projects/composables/useFavoriteNavItems.ts
+  s_f27bda1bd0c713::t_b07dac8be4046b 11,27,54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ad0b1a99c96b38d2795a8361eadc2320afa469e1",
+  "prompts": {},
+  "sessions": {
+    "s_f27bda1bd0c713": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e884d7e-3c84-4428-98db-a0c5cff39be6",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

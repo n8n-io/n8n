@@ -1,0 +1,21 @@
+packages/@n8n/db/src/repositories/workflow.repository.ts
+  s_dfe3f914c8bb46::t_47a313b09da314 448
+packages/cli/src/services/__tests__/project.service.ee.test.ts
+  s_dfe3f914c8bb46::t_0dbdf7f2cea3ca 7-11,61,73,94,99-101,978-991,1463
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d96e6139c88ba629fdc0decfb639e2ba7df984ef",
+  "prompts": {},
+  "sessions": {
+    "s_dfe3f914c8bb46": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a177de-1655-75e1-b502-74f6cb945148",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

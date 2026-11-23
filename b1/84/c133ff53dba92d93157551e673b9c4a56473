@@ -1,0 +1,44 @@
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-close.controller.integration.test.ts
+  s_419bed5e9fbd75::t_9ed2dd53e44de5 1-350
+packages/cli/src/modules/workflow-reviews.ee/workflow-review.mapper.ts
+  s_419bed5e9fbd75::t_1a71754f444e91 132-133
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-activity.integration.test.ts
+  s_419bed5e9fbd75::t_a8fc67c54b03b8 504-518
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-inbox.detail.service.test.ts
+  s_419bed5e9fbd75::t_75a9c59d0e566b 109,228,251
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-authorization.service.ts
+  s_419bed5e9fbd75::t_08c5256a99a22a 40,262-263,290,313-314
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-request-decision.service.ts
+  s_419bed5e9fbd75::t_55e65b2bde9641 279-352
+  s_419bed5e9fbd75::t_38b0a05f80aa2c 5
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-inbox.service.ts
+  s_419bed5e9fbd75::t_08c5256a99a22a 116
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-detail.controller.integration.test.ts
+  s_419bed5e9fbd75::t_a8fc67c54b03b8 11,481-502
+packages/cli/src/events/maps/relay.event-map.ts
+  s_419bed5e9fbd75::t_38b0a05f80aa2c 1570-1571,1589-1595
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-requests.controller.ts
+  s_419bed5e9fbd75::t_38b0a05f80aa2c 96-105
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-requests.controller.test.ts
+  s_419bed5e9fbd75::t_38b0a05f80aa2c 17
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-publish-guard.integration.test.ts
+  s_419bed5e9fbd75::t_a8fc67c54b03b8 252-265,310-321
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-authorization.capabilities.service.test.ts
+  s_419bed5e9fbd75::t_75a9c59d0e566b 79,92,108,129,144,162,180
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b184c133ff53dba92d93157551e673b9c4a56473",
+  "prompts": {},
+  "sessions": {
+    "s_419bed5e9fbd75": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "152a2e1a-fb2a-4e99-b693-ebe21d600421",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

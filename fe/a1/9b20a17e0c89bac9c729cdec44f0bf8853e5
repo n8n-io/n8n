@@ -1,0 +1,18 @@
+.code-health-baseline.json
+  h_8fb27e0cdf6d1e 182-187,1881-1888
+packages/quality/environments/rig/package.json
+  h_8fb27e0cdf6d1e 29-31,41-42
+pnpm-lock.yaml
+  h_8fb27e0cdf6d1e 9748-9750
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fea19b20a17e0c89bac9c729cdec44f0bf8853e5",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

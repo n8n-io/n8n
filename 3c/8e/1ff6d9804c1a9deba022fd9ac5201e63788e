@@ -1,0 +1,27 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_1f72d857ffd270::t_f5d43712139e10 1625-1627
+packages/frontend/editor-ui/src/features/credentials/components/CredentialCard.vue
+  s_1f72d857ffd270::t_d55c1a83d1c4f3 249-261
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.vue
+  s_1f72d857ffd270::t_81fd00bc28bb6e 68,81,323-325,1702-1713,1817-1824
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.vue
+  s_1f72d857ffd270::t_fa25162857e582 1974-1984
+packages/frontend/editor-ui/src/features/credentials/views/CredentialsView.vue
+  s_1f72d857ffd270::t_c5808db39ded98 112
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3c8e1ff6d9804c1a9deba022fd9ac5201e63788e",
+  "prompts": {},
+  "sessions": {
+    "s_1f72d857ffd270": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a341a53502b181928",
+        "model": "unknown"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

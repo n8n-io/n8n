@@ -1,0 +1,54 @@
+packages/frontend/editor-ui/src/features/settings/context/components/SkillSourceUpdatesDialog.test.ts
+  s_3d598469e16764::t_79aa4abf3a59b6 236-240
+  s_3d598469e16764::t_6aa4e08a3b5da9 472
+  s_3d598469e16764::t_57770dc3617380 233-235,242-245,247-254,261,263
+packages/cli/src/modules/skills/utils/skill-security-rules.ts
+  s_3d598469e16764::t_def2287259186d 31
+  s_3d598469e16764::t_0ff5e5d6bb1e48 3,32,38-39,44-45,47-51,56,58-60,63-67,72
+  s_3d598469e16764::t_8dbe1ec48699c2 43,46,52-55,57,61-62
+  s_3d598469e16764::t_66de662acda861 42
+packages/frontend/editor-ui/src/features/settings/context/components/SkillSourceFilesView.test.ts
+  s_3d598469e16764::t_0ff5e5d6bb1e48 2,73-76,106,126
+  s_3d598469e16764::t_79aa4abf3a59b6 107-125,127-134
+packages/cli/src/modules/skills/__tests__/integration/skill-source-check.integration.test.ts
+  s_3d598469e16764::t_08b4b1ac5f5f7e 755-771,774-776
+  s_3d598469e16764::t_66de662acda861 2,752-753,785
+  s_3d598469e16764::t_79aa4abf3a59b6 780-783,786-788
+  s_3d598469e16764::t_6aa4e08a3b5da9 754,772-773,778-779,784
+  s_3d598469e16764::t_def2287259186d 777
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_3d598469e16764::t_c5e24038dbedb4 4237-4238,4240
+packages/frontend/editor-ui/src/features/settings/context/components/SkillSourceFilesView.vue
+  s_3d598469e16764::t_0beb632bfccf40 27,29,31-32,34,57-62,187-194,217-223,235-236,299,335-336
+  s_3d598469e16764::t_5472472fb71afe 30,33,224-234,340-342
+  s_3d598469e16764::t_0296920d38cc54 35
+packages/frontend/editor-ui/src/features/settings/context/components/SkillsTable.vue
+  s_3d598469e16764::t_c5e24038dbedb4 635-636,640-644
+packages/frontend/editor-ui/src/features/settings/context/components/SkillSourceUpdatesDialog.vue
+  s_3d598469e16764::t_0ff5e5d6bb1e48 459
+  s_3d598469e16764::t_c5e24038dbedb4 46,337,346-348,359,482,528
+  s_3d598469e16764::t_5472472fb71afe 349-352
+packages/cli/src/modules/skills/services/skill-sync.service.ts
+  s_3d598469e16764::t_def2287259186d 59,145-149,154
+  s_3d598469e16764::t_08b4b1ac5f5f7e 150-153
+  s_3d598469e16764::t_6aa4e08a3b5da9 200
+packages/cli/src/modules/skills/__tests__/skill-security-scanner.test.ts
+  s_3d598469e16764::t_79aa4abf3a59b6 127-132
+  s_3d598469e16764::t_0ff5e5d6bb1e48 79,83,94,107,118,122
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6e38ac68ae130e8db0f41094fed1b7b2186fae25",
+  "prompts": {},
+  "sessions": {
+    "s_3d598469e16764": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1f323-0b07-76e2-9e16-ded6407e36ad",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}
