@@ -22,7 +22,7 @@ import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.
 
 import { resolveV2Statuses, toModeFilter, toV1Mode, toV1Status } from './engine-v2-mapping';
 import type { ExecutionPosition } from './execution-cursor';
-import { isExecutionIdV2, type ExecutionIdV2 } from './execution-id';
+import type { ExecutionIdV2 } from './execution-id';
 
 /**
  * Workflow visibility scope for engine v2. Marks which workflows can be
@@ -57,9 +57,6 @@ export type EngineV2LatestQuery = Pick<
  * now; splitting it across several searches can come later.
  */
 const MAX_SCOPE_SIZE = 10_000;
-
-/** The most sub-executions one read notes. A step starts one sub-execution, so a run rarely has many. */
-const MAX_SUB_EXECUTIONS = 100;
 
 /**
  * Reads an engine v2 execution. The data plane is its only store:
@@ -120,7 +117,6 @@ export class EngineV2ExecutionReader {
 		);
 		if (!snapshot) return undefined;
 
-		// No links: this read seeds the editor with run data, which shows none.
 		return await this.fromSnapshot(snapshot);
 	}
 
@@ -233,7 +229,7 @@ export class EngineV2ExecutionReader {
 		if (!sharedWorkflowIds.includes(snapshot.workflowId)) return undefined;
 
 		if (includeData) {
-			return await this.fromSnapshot(snapshot, await this.findLinks(snapshot, sharedWorkflowIds));
+			return await this.fromSnapshot(snapshot);
 		}
 
 		// Checked in both modes, so a metadata read and a data read agree on
@@ -248,10 +244,7 @@ export class EngineV2ExecutionReader {
 	 * when the run's document lacks what the v1 paths read. It checks no workflow
 	 * access, so the caller must authorize the read.
 	 */
-	async fromSnapshot(
-		snapshot: ExecutionSnapshot,
-		links?: ExecutionLinks,
-	): Promise<IExecutionResponse | undefined> {
+	async fromSnapshot(snapshot: ExecutionSnapshot): Promise<IExecutionResponse | undefined> {
 		const workflow = asWorkflowSnapshot(snapshot.workflow);
 		if (!workflow) return undefined;
 
@@ -262,52 +255,13 @@ export class EngineV2ExecutionReader {
 		return this.toExecutionResponse(
 			snapshot,
 			workflow,
-			toV1RunExecutionData(snapshot.graph, snapshot.steps ?? [], workflow.pinData, links),
-		);
-	}
-
-	/**
-	 * The parent and the sub-executions of the execution, for the links the editor
-	 * shows, limited to the workflows the caller can read.
-	 */
-	private async findLinks(
-		snapshot: ExecutionSnapshot,
-		sharedWorkflowIds: string[],
-	): Promise<ExecutionLinks> {
-		const parentId = snapshot.parent?.executionId;
-		const readable = [...new Set(sharedWorkflowIds)];
-		const [parent, subExecutions] = await Promise.all([
-			// Only the engine sets the link, with an id it minted.
-			parentId !== undefined && isExecutionIdV2(parentId)
-				? this.dataPlane.getExecution(parentId, { includeSteps: false })
-				: undefined,
-			// A scope one search cannot hold yields no links rather than an error.
-			readable.length <= MAX_SCOPE_SIZE
-				? this.dataPlane.searchExecutions({
-						workflowIds: readable,
-						parentExecutionId: snapshot.id,
-						limit: MAX_SUB_EXECUTIONS,
-					})
-				: undefined,
-		]);
-
-		return {
-			parent:
-				parent && readable.includes(parent.workflowId)
-					? { executionId: parent.id, workflowId: parent.workflowId }
-					: undefined,
-			subExecutions: (subExecutions?.items ?? []).flatMap((subExecution) =>
-				subExecution.parent
-					? [
-							{
-								stepId: subExecution.parent.stepId,
-								executionId: subExecution.id,
-								workflowId: subExecution.workflowId,
-							},
-						]
-					: [],
+			toV1RunExecutionData(
+				snapshot.graph,
+				snapshot.steps ?? [],
+				workflow.pinData,
+				toExecutionLinks(snapshot),
 			),
-		};
+		);
 	}
 
 	private toExecutionBase(snapshot: ExecutionSnapshot): IExecutionBase {
@@ -357,4 +311,19 @@ export function asWorkflowSnapshot(document: unknown): WorkflowRunDocument | und
 	if (!Array.isArray((document as { nodes?: unknown }).nodes)) return undefined;
 
 	return document as unknown as WorkflowRunDocument;
+}
+
+/** The links the editor offers, from what the snapshot reports. */
+function toExecutionLinks({
+	parent,
+	parentWorkflowId,
+	subExecutions = [],
+}: ExecutionSnapshot): ExecutionLinks {
+	return {
+		parent:
+			parent && parentWorkflowId
+				? { executionId: parent.executionId, workflowId: parentWorkflowId }
+				: undefined,
+		subExecutions,
+	};
 }

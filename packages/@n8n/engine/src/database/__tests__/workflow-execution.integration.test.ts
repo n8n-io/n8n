@@ -195,6 +195,43 @@ describe('workflow_execution table (integration)', () => {
 		},
 	);
 
+	it('TypeOrmExecutionViewStore.loadExecutionWithStepsView reports the parent workflow and the sub-executions', async () => {
+		const store = new TypeOrmExecutionStore(dataSource.getRepository(WorkflowExecution));
+		const viewStore = new TypeOrmExecutionViewStore(
+			dataSource.getRepository(WorkflowExecution),
+			dataSource.getRepository(WorkflowStepExecution),
+		);
+		const parentId = generateId();
+		await store.createExecution({
+			...newRecord(parentId),
+			workflowId: 'wf-parent',
+			status: 'running',
+		});
+		const [first, second] = [generateId(), generateId()];
+		const [firstStepId, secondStepId] = [generateId(), generateId()];
+		await store.createExecution({
+			...newRecord(first),
+			workflowId: 'wf-sub-1',
+			parent: { executionId: parentId, stepId: firstStepId, awaited: true },
+		});
+		await store.createExecution({
+			...newRecord(second),
+			workflowId: 'wf-sub-2',
+			parent: { executionId: parentId, stepId: secondStepId, awaited: false },
+		});
+
+		const parent = await viewStore.loadExecutionWithStepsView(parentId);
+		const child = await viewStore.loadExecutionWithStepsView(first);
+
+		expect(parent.parentWorkflowId).toBeNull();
+		expect(parent.subExecutions).toEqual([
+			{ executionId: first, workflowId: 'wf-sub-1', stepId: firstStepId },
+			{ executionId: second, workflowId: 'wf-sub-2', stepId: secondStepId },
+		]);
+		expect(child.parentWorkflowId).toBe('wf-parent');
+		expect(child.subExecutions).toEqual([]);
+	});
+
 	it('counts rows by workflowId and status (admittance support)', async () => {
 		const repo = dataSource.getRepository(WorkflowExecution);
 

@@ -28,6 +28,7 @@ export type {
 	EngineErrorResponse,
 	ExecutionSnapshot,
 	StepDetail,
+	SubExecutionDetail,
 } from './server';
 export type {
 	FindLatestExecutionRequest,
