@@ -43,6 +43,12 @@ describe('parseSkillWorkflowMentions', () => {
 		]);
 	});
 
+	it('keeps a backslash that does not escape a bracket or a backslash', () => {
+		expect(parseSkillWorkflowMentions('[Path\\folder](n8n://workflow/abc)')).toEqual([
+			{ workflowId: 'abc', name: 'Path\\folder' },
+		]);
+	});
+
 	it('starts the link text after the last unescaped opening bracket', () => {
 		expect(parseSkillWorkflowMentions('a [b and [Create](n8n://workflow/abc)')).toEqual([
 			{ workflowId: 'abc', name: 'Create' },
