@@ -7,8 +7,15 @@ import {
 
 export type SkillWorkflowTool = {
 	skillId: string;
-	tool: AgentJsonWorkflowToolConfig;
+	tool: AgentJsonWorkflowToolConfig & { workflowId: string };
 };
+
+function directWorkflowId(
+	tool: AgentJsonWorkflowToolConfig,
+	legacyWorkflowIds: ReadonlyMap<string, string>,
+): string | undefined {
+	return tool.workflowId ?? legacyWorkflowIds.get(tool.workflow);
+}
 
 function workflowIdSentence(workflowId: string): string {
 	return `Workflow ID: ${workflowId}.`;
@@ -33,10 +40,13 @@ function findMentionedWorkflows(
 	return mentioned;
 }
 
-function directWorkflowIds(config: AgentJsonConfig): Set<string> {
+function directWorkflowIds(
+	config: AgentJsonConfig,
+	legacyWorkflowIds: ReadonlyMap<string, string>,
+): Set<string | undefined> {
 	return new Set(
-		(config.tools ?? []).flatMap((tool) =>
-			tool.type === 'workflow' && tool.workflowId !== undefined ? [tool.workflowId] : [],
+		(config.tools ?? []).map((tool) =>
+			tool.type === 'workflow' ? directWorkflowId(tool, legacyWorkflowIds) : undefined,
 		),
 	);
 }
@@ -44,8 +54,9 @@ function directWorkflowIds(config: AgentJsonConfig): Set<string> {
 export function findSkillWorkflowTools(
 	config: AgentJsonConfig,
 	skills: Record<string, AgentSkill>,
+	legacyWorkflowIds: ReadonlyMap<string, string> = new Map(),
 ): SkillWorkflowTool[] {
-	const attached = directWorkflowIds(config);
+	const attached = directWorkflowIds(config, legacyWorkflowIds);
 	return [...findMentionedWorkflows(config, skills)]
 		.filter(([workflowId]) => !attached.has(workflowId))
 		.map(([workflowId, { name, skillId, skillName }]) => ({
@@ -63,18 +74,22 @@ export function findSkillWorkflowTools(
 export function withSkillWorkflowTools(
 	config: AgentJsonConfig,
 	skills: Record<string, AgentSkill>,
+	legacyWorkflowIds: ReadonlyMap<string, string> = new Map(),
 ): AgentJsonConfig {
 	const mentioned = findMentionedWorkflows(config, skills);
 	if (mentioned.size === 0) return config;
 
-	const directTools = (config.tools ?? []).map((tool) =>
-		tool.type === 'workflow' && tool.workflowId !== undefined && mentioned.has(tool.workflowId)
-			? {
-					...tool,
-					description: `${tool.description ?? `Execute the "${tool.workflow}" workflow.`} ${workflowIdSentence(tool.workflowId)}`,
-				}
-			: tool,
+	const directTools = (config.tools ?? []).map((tool) => {
+		if (tool.type !== 'workflow') return tool;
+		const workflowId = directWorkflowId(tool, legacyWorkflowIds);
+		if (workflowId === undefined || !mentioned.has(workflowId)) return tool;
+		return {
+			...tool,
+			description: `${tool.description ?? `Execute the "${tool.workflow}" workflow.`} ${workflowIdSentence(workflowId)}`,
+		};
+	});
+	const skillTools = findSkillWorkflowTools(config, skills, legacyWorkflowIds).map(
+		({ tool }) => tool,
 	);
-	const skillTools = findSkillWorkflowTools(config, skills).map(({ tool }) => tool);
 	return { ...config, tools: [...directTools, ...skillTools] };
 }

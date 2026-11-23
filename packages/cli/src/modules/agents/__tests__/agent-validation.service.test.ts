@@ -1693,11 +1693,6 @@ describe('AgentValidationService — structured issues', () => {
 			);
 			const runtimeResult = await service.validateAgentIsRunnable(agentId, projectId, credentials);
 
-			expect(workflowRepository.findManyByAgentToolReferences).toHaveBeenCalledWith(
-				projectId,
-				['wf-mentioned'],
-				[],
-			);
 			expect(publishResult).toEqual({
 				status: 'invalid',
 				issues: [
@@ -1712,12 +1707,47 @@ describe('AgentValidationService — structured issues', () => {
 			expect(runtimeResult).toEqual({ missing: [] });
 		});
 
-		it('flags a mentioned workflow that is not found', async () => {
+		it('blocks publish when a mentioned workflow is not found, but not a run', async () => {
 			const { service } = mentionSetup();
 
-			const result = await service.validateAgentIsRunnable(agentId, projectId, credentials);
+			const publishResult = await service.validateAgentConfiguration(
+				agentId,
+				projectId,
+				credentials,
+				'publish',
+			);
+			const runtimeResult = await service.validateAgentIsRunnable(agentId, projectId, credentials);
 
-			expect(result).toEqual({ missing: ['skills.lucky.workflows.wf-mentioned'] });
+			expect(publishResult.issues).toEqual([
+				{
+					code: 'missing_reference',
+					path: 'skills.lucky.workflows.wf-mentioned',
+					capability: { kind: 'tool', id: 'Get code', toolType: 'workflow' },
+				},
+			]);
+			expect(runtimeResult).toEqual({ missing: [] });
+		});
+
+		it('does not report a published mentioned workflow without a supported trigger', async () => {
+			const { service, workflowRepository } = mentionSetup();
+			workflowRepository.findManyByAgentToolReferences.mockResolvedValue([
+				{ ...draftWorkflow, activeVersionId: 'version-1', nodes: [] },
+			] as never);
+
+			const result = await service.validateAgentConfiguration(agentId, projectId, credentials);
+
+			expect(result.status).toBe('valid');
+		});
+
+		it('reports a workflow that a legacy direct tool attaches by name only on that tool', async () => {
+			const { service, workflowRepository } = mentionSetup({
+				tools: [{ type: 'workflow', workflow: 'Get code' }],
+			});
+			workflowRepository.findManyByAgentToolReferences.mockResolvedValue([draftWorkflow] as never);
+
+			const result = await service.validateAgentConfiguration(agentId, projectId, credentials);
+
+			expect(result.issues.map((item) => item.path)).toEqual(['tools.0.workflow']);
 		});
 
 		it('reports a workflow that is also attached directly only on the direct tool', async () => {

@@ -372,7 +372,7 @@ export class AgentValidationService {
 			return credentialList.find((credential) => credential.id === credentialId);
 		};
 
-		const skillWorkflowTools = await this.findSkillWorkflowTools(ctx);
+		const skillWorkflowTools = await this.findSkillWorkflowTools(ctx, scope);
 		const { agentsById, workflowsByReference } = await this.prefetchReferenceLookups(
 			ctx,
 			skillWorkflowTools,
@@ -411,16 +411,7 @@ export class AgentValidationService {
 			await this.collectChannelIssues(ctx.integrations, findCredential, issues);
 		}
 		await this.collectToolIssues(ctx, findCredential, workflowsByReference, issues, scope);
-		for (const { skillId, tool } of skillWorkflowTools) {
-			this.collectWorkflowReferenceIssues(
-				tool,
-				`skills.${skillId}.workflows.${tool.workflowId}`,
-				{ kind: 'tool', id: tool.workflow, toolType: 'workflow' },
-				workflowsByReference,
-				issues,
-				scope,
-			);
-		}
+		this.collectSkillWorkflowIssues(config, skillWorkflowTools, workflowsByReference, issues);
 		await this.collectMcpServerIssues(config, findCredential, issues);
 
 		return this.dedupe(withoutIssuesOfLockedEntries(issues));
@@ -428,11 +419,44 @@ export class AgentValidationService {
 
 	private async findSkillWorkflowTools(
 		ctx: ConfigurationValidationContext,
+		scope: AgentValidationScope,
 	): Promise<SkillWorkflowTool[]> {
-		if (!ctx.config.skills?.length || !(await this.workflowsInSkillsFlagGate.isEnabled())) {
+		if (
+			scope !== 'publish' ||
+			!ctx.config.skills?.length ||
+			!(await this.workflowsInSkillsFlagGate.isEnabled())
+		) {
 			return [];
 		}
 		return findSkillWorkflowTools(ctx.config, ctx.skills);
+	}
+
+	private collectSkillWorkflowIssues(
+		config: AgentJsonConfig,
+		skillWorkflowTools: SkillWorkflowTool[],
+		workflowsByReference: Map<string, WorkflowEntity>,
+		issues: AgentConfigValidationIssue[],
+	) {
+		const directWorkflowIds = new Set(
+			extractAgentWorkflowRefs(config).map(
+				(ref) => workflowsByReference.get(ref.workflowId ?? ref.workflow)?.id,
+			),
+		);
+		for (const { skillId, tool } of skillWorkflowTools) {
+			if (directWorkflowIds.has(tool.workflowId)) continue;
+			const path = `skills.${skillId}.workflows.${tool.workflowId}`;
+			const capability: AgentConfigValidationIssue['capability'] = {
+				kind: 'tool',
+				id: tool.workflow,
+				toolType: 'workflow',
+			};
+			const workflow = workflowsByReference.get(tool.workflowId);
+			if (!workflow) {
+				issues.push(issue('missing_reference', path, capability));
+			} else if (!workflow.activeVersionId) {
+				issues.push(issue('incompatible_reference', path, capability, 'not_published'));
+			}
+		}
 	}
 
 	private async prefetchReferenceLookups(
@@ -826,24 +850,14 @@ export class AgentValidationService {
 		issues: AgentConfigValidationIssue[],
 		scope: AgentValidationScope,
 	) {
-		this.collectWorkflowReferenceIssues(
-			tool,
-			`tools.${index}.${tool.workflowId === undefined ? 'workflow' : 'workflowId'}`,
-			{ kind: 'tool', id: tool.workflow, index, toolType: 'workflow' },
-			workflowsByReference,
-			issues,
-			scope,
-		);
-	}
+		const path = `tools.${index}.${tool.workflowId === undefined ? 'workflow' : 'workflowId'}`;
+		const capability: AgentConfigValidationIssue['capability'] = {
+			kind: 'tool',
+			id: tool.workflow,
+			index,
+			toolType: 'workflow',
+		};
 
-	private collectWorkflowReferenceIssues(
-		tool: AgentJsonWorkflowToolConfig,
-		path: string,
-		capability: AgentConfigValidationIssue['capability'],
-		workflowsByReference: Map<string, WorkflowEntity>,
-		issues: AgentConfigValidationIssue[],
-		scope: AgentValidationScope,
-	) {
 		const workflow = workflowsByReference.get(tool.workflowId ?? tool.workflow);
 
 		if (!workflow) {

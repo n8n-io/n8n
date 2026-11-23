@@ -119,8 +119,12 @@ import {
 	READ_BINARY_DATA_TOOL_NAME,
 } from './tools/read-binary-data.tool';
 import type { WorkflowToolExecutionMode } from './tools/workflow-tool-factory';
-import { findWorkflowToolWorkflow } from './tools/workflow-tool-workflow-resolver';
+import {
+	findWorkflowToolWorkflow,
+	findWorkflowToolWorkflows,
+} from './tools/workflow-tool-workflow-resolver';
 import type { AgentRunSource } from './utils/agent-published-snapshot';
+import { extractAgentWorkflowRefs } from './utils/extract-agent-workflow-refs';
 import { getAgentRuntimeAssets, type AgentRuntimeAssets } from './utils/agent-runtime-assets';
 import { withSkillWorkflowTools } from './utils/skill-workflow-tools';
 import { resolveUniqueSubAgents } from './utils/sub-agent-resolver';
@@ -457,6 +461,7 @@ export class AgentRuntimeReconstructionService {
 		let config = await this.withSkillWorkflowTools(
 			toAgentDocument(agentEntity.schema, skillRefs),
 			skills,
+			agentEntity.projectId,
 		);
 
 		// Published/integration runs have no interactive n8n user and keep
@@ -728,7 +733,7 @@ export class AgentRuntimeReconstructionService {
 	async reconstructFromResolvedSource(
 		params: ReconstructAgentRuntimeParams,
 	): Promise<ReconstructedAgentRuntime> {
-		let config = await this.withSkillWorkflowTools(params.config, params.skills);
+		let config = await this.withSkillWorkflowTools(params.config, params.skills, params.projectId);
 		let unavailableTools: UnavailableTool[] = [];
 		if (params.user && config.tools?.length) {
 			// Sub-agent runtimes are built per delegation and never cached, so the
@@ -760,10 +765,26 @@ export class AgentRuntimeReconstructionService {
 	private async withSkillWorkflowTools(
 		config: AgentJsonConfig,
 		skills: Record<string, AgentSkill>,
+		projectId: string,
 	): Promise<AgentJsonConfig> {
-		if (!config.skills?.length || !(await this.workflowsInSkillsFlagGate.isEnabled()))
+		if (!config.skills?.length || !(await this.workflowsInSkillsFlagGate.isEnabled())) {
 			return config;
-		return withSkillWorkflowTools(config, skills);
+		}
+		const legacyRefs = extractAgentWorkflowRefs(config).filter(
+			(ref) => ref.workflowId === undefined,
+		);
+		const legacyWorkflows = await findWorkflowToolWorkflows(
+			this.workflowRepository,
+			legacyRefs,
+			projectId,
+		);
+		const legacyWorkflowIds = new Map(
+			legacyRefs.flatMap((ref) => {
+				const workflow = legacyWorkflows.get(ref.workflow);
+				return workflow ? [[ref.workflow, workflow.id] as const] : [];
+			}),
+		);
+		return withSkillWorkflowTools(config, skills, legacyWorkflowIds);
 	}
 
 	private async reconstructRuntime(

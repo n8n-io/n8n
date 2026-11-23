@@ -1142,6 +1142,34 @@ describe('AgentRuntimeReconstructionService — workflows that skills mention', 
 		);
 	});
 
+	it('uses a legacy direct tool that names the mentioned workflow', async () => {
+		const workflowRepository = mock<WorkflowRepository>();
+		workflowRepository.findManyByAgentToolReferences.mockResolvedValue([
+			mock<WorkflowEntity>({ id: 'wf-mentioned', name: 'Get code' }),
+		]);
+		const { service, workflowsInSkillsFlagGate } = makeService({ workflowRepository });
+		workflowsInSkillsFlagGate.isEnabled.mockResolvedValue(true);
+		buildFromJsonResolvingTools([]);
+		const direct: AgentJsonToolConfig = { type: 'workflow', workflow: 'Get code' };
+
+		await service.reconstructFromAgentEntity(
+			makeSkillAgentEntity([direct]),
+			mock<CredentialProvider>(),
+			'production',
+		);
+
+		expect(workflowRepository.findManyByAgentToolReferences).toHaveBeenCalledWith(
+			projectId,
+			[],
+			['Get code'],
+		);
+		expect(resolveWorkflowToolMock).toHaveBeenCalledTimes(1);
+		expect(resolveWorkflowToolMock).toHaveBeenCalledWith(
+			{ ...direct, description: 'Execute the "Get code" workflow. Workflow ID: wf-mentioned.' },
+			expect.anything(),
+		);
+	});
+
 	it('checks that the user can run a mentioned workflow', async () => {
 		vi.mocked(userHasScopes).mockResolvedValue(true);
 		const workflowRepository = mock<WorkflowRepository>();

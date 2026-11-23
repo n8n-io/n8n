@@ -108,6 +108,21 @@ describe('withSkillWorkflowTools', () => {
 		]);
 	});
 
+	it('matches a legacy direct tool by its resolved workflow ID', () => {
+		const direct: AgentJsonToolConfig = { type: 'workflow', workflow: 'Get code' };
+		const skills = { 'skill-1': skill('Skill', '[Get code](n8n://workflow/wf1)') };
+
+		const result = withSkillWorkflowTools(
+			config(['skill-1'], [direct]),
+			skills,
+			new Map([['Get code', 'wf1']]),
+		);
+
+		expect(result.tools).toEqual([
+			{ ...direct, description: 'Execute the "Get code" workflow. Workflow ID: wf1.' },
+		]);
+	});
+
 	it('uses the workflow ID as the name when the link text is empty', () => {
 		const skills = { 'skill-1': skill('Skill', '[](n8n://workflow/wf1)') };
 
