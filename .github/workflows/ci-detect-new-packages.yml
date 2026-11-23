@@ -2,7 +2,7 @@ name: 'CI: Check Unpublished Packages'
 
 on:
   schedule:
-    - cron: '0 8 * * 1'
+    - cron: '15 */2 * * 1-2'
   workflow_dispatch:
 
 permissions:
@@ -43,7 +43,7 @@ jobs:
           MESSAGE=$(cat <<EOF
           *Unpublished npm packages need manual setup*
 
-          The weekly check found these public packages on \`master\`:
+          The check found these public packages on \`master\`:
 
           $PACKAGE_LIST
 

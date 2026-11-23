@@ -173,10 +173,17 @@ function computeEnvironment(options: N8NInstancesOptions): ComputedEnvironment {
 	// Before `applyEngineEnv`: it removes the dedicated engine URL from the main.
 	const engineEnvironment =
 		engine === 'container'
-			? engineContainerEnv(env, { projectName, authSecret: engineAuthSecret ?? '' })
+			? engineContainerEnv(env, { projectName, mains, authSecret: engineAuthSecret ?? '' })
 			: undefined;
 
-	applyEngineEnv(env, { engine, authSecret: engineAuthSecret, mains, isQueueMode, projectName });
+	applyEngineEnv(env, {
+		engine,
+		authSecret: engineAuthSecret,
+		mains,
+		workers,
+		webhooks,
+		projectName,
+	});
 
 	if (binaryDataHostDir && engine !== 'container') {
 		applySharedStorageEnv(env, env.N8N_DEFAULT_BINARY_DATA_MODE);

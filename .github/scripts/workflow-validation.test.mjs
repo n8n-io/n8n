@@ -439,11 +439,11 @@ describe('unpublished package handling', () => {
 	const scheduledCheck = workflowFile('ci-detect-new-packages.yml');
 	const releasePublish = workflowFile('release-publish.yml');
 
-	it('checks unpublished packages every Monday and notifies Developer Platform', () => {
+	it('checks unpublished packages every two hours on Mondays and Tuesdays', () => {
 		const check = stepNamed(scheduledCheck, 'detect-new-packages', 'Check unpublished packages');
 		const notify = stepNamed(scheduledCheck, 'detect-new-packages', 'Notify Developer Platform');
 
-		assert.deepEqual(triggersOf(scheduledCheck).schedule, [{ cron: '0 8 * * 1' }]);
+		assert.deepEqual(triggersOf(scheduledCheck).schedule, [{ cron: '15 */2 * * 1-2' }]);
 		assert.match(check.run, /detect-new-packages\.mjs --report-only --strict/);
 		assert.equal(notify.if, "steps.detect.outputs.packages != ''");
 		assert.match(notify.run, /--channel '#team-developer-platform'/);

@@ -453,6 +453,29 @@ describe('ProjectsNavigation', () => {
 			);
 		});
 
+		it('offsets the sidebar hint popover past the sidebar border in expanded and collapsed states', async () => {
+			setupInstanceAiMember();
+			enableFlag();
+
+			const { getByTestId, rerender } = renderComponent({
+				props: { collapsed: false },
+				global: {
+					stubs: {
+						N8nChatHintPopover: {
+							props: ['sideOffset'],
+							template:
+								'<div data-test-id="sidebar-hint-popover" :data-side-offset="sideOffset"><slot /></div>',
+						},
+					},
+				},
+			});
+
+			expect(getByTestId('sidebar-hint-popover')).toHaveAttribute('data-side-offset', '13');
+
+			await rerender({ collapsed: true });
+			expect(getByTestId('sidebar-hint-popover')).toHaveAttribute('data-side-offset', '11');
+		});
+
 		it('tracks a telemetry event when a chat item is clicked', async () => {
 			setupInstanceAiMember();
 			enableFlag();
