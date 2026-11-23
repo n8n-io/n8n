@@ -2072,4 +2072,198 @@ describe('Microsoft Teams Trigger Node', () => {
 			});
 		});
 	});
+
+	describe('webhook: message filters', () => {
+		const channelItem = (id: string, clientState = 'secret') => ({
+			subscriptionId: 'sub1',
+			clientState,
+			changeType: 'created',
+			resource: `teams('t1')/channels('c1')/messages('${id}')`,
+			tenantId: 'x',
+			resourceData: { id },
+		});
+		const reauthorization = {
+			subscriptionId: 'sub1',
+			subscriptionExpirationDateTime: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+			tenantId: 'x',
+			clientState: 'secret',
+			lifecycleEvent: 'reauthorizationRequired',
+		};
+		const userMessage = { messageType: 'message', from: { user: { id: 'u1' }, application: null } };
+		const botMessage = { messageType: 'message', from: { user: null, application: { id: 'b' } } };
+		const messagePath = (id: string) => `/v1.0/teams/t1/channels/c1/messages/${id}`;
+		// Answers a message GET by path: an Error in the table is thrown. Every other call answers `{}`.
+		const routeMessages = (answers: Record<string, unknown>) =>
+			(microsoftApiRequest.call as Mock).mockImplementation(
+				async (_ctx: unknown, _method: string, path: RequestPath) => {
+					const answer = answers[String(path)] ?? {};
+					if (answer instanceof Error) throw answer;
+					return answer;
+				},
+			);
+		const messageReads = () => calls('GET').map((call) => call[2]);
+		const skipBot = (extra: Record<string, unknown> = {}) => ({
+			event: 'newChannelMessage',
+			authentication: 'microsoftTeamsOAuth2Api',
+			filters: { skipBotMessages: true },
+			...extra,
+		});
+		const forbidden = () =>
+			new NodeApiError(mock<INode>(), { message: 'Forbidden', httpCode: '403' });
+		const webhook = async (ctx: TriggerContext) =>
+			await new MicrosoftTeamsTrigger().webhook.call(ctx);
+
+		beforeEach(() => {
+			(microsoftApiRequestAllItems.call as Mock).mockResolvedValue([]);
+		});
+
+		it.each([
+			['no filters are stored', {}],
+			['the stored filters are all off', { filters: { keyword: '  ', skipBotMessages: false } }],
+		])('emits the items without a Graph call when %s', async (_label, extra) => {
+			const { ctx, res } = arrange({
+				value: [channelItem('m1')],
+				params: { event: 'newChannelMessage', ...extra },
+			});
+
+			const result = await webhook(ctx);
+
+			expect(res.status).not.toHaveBeenCalled();
+			expect(microsoftApiRequest.call).not.toHaveBeenCalled();
+			expect(result).toEqual({
+				workflowData: [
+					[
+						{
+							json: {
+								changeType: 'created',
+								resource: channelItem('m1').resource,
+								teamId: 't1',
+								channelId: 'c1',
+								messageId: 'm1',
+								id: 'm1',
+							},
+						},
+					],
+				],
+			});
+		});
+
+		it('emits the same item JSON with and without filters', async () => {
+			const unfiltered = await webhook(
+				arrange({ value: [channelItem('m1')], params: { event: 'newChannelMessage' } }).ctx,
+			);
+			routeMessages({ [messagePath('m1')]: userMessage });
+
+			const filtered = await webhook(
+				arrange({ value: [channelItem('m1')], params: skipBot() }).ctx,
+			);
+
+			expect(filtered.workflowData).toStrictEqual(unfiltered.workflowData);
+		});
+
+		it('acks first and emits only the items that pass', async () => {
+			routeMessages({ [messagePath('m1')]: userMessage, [messagePath('m2')]: botMessage });
+			const { ctx, res } = arrange({
+				value: [channelItem('m1'), channelItem('m2')],
+				params: skipBot(),
+			});
+
+			const result = await webhook(ctx);
+
+			expect(res.status).toHaveBeenCalledWith(202);
+			expect(res.status.mock.invocationCallOrder[0]).toBeLessThan(
+				(microsoftApiRequest.call as Mock).mock.invocationCallOrder[0],
+			);
+			expect(messageReads()).toEqual([messagePath('m1'), messagePath('m2')]);
+			expect(result.noWebhookResponse).toBe(true);
+			expect(result.workflowData?.[0].map((item) => item.json.id)).toEqual(['m1']);
+		});
+
+		it('reads only the items with the stored clientState', async () => {
+			routeMessages({ [messagePath('m1')]: userMessage });
+			const { ctx } = arrange({
+				value: [channelItem('m1'), channelItem('m2', 'wrong')],
+				params: skipBot(),
+			});
+
+			await webhook(ctx);
+
+			expect(messageReads()).toEqual([messagePath('m1')]);
+		});
+
+		it.each(['webhook', 'manual'] as const)(
+			'starts no execution in %s mode when every item is filtered out',
+			async (mode) => {
+				routeMessages({ [messagePath('m1')]: botMessage });
+				const { ctx } = arrange({ value: [channelItem('m1')], params: skipBot(), mode });
+
+				const result = await webhook(ctx);
+
+				expect(result).toEqual({ noWebhookResponse: true });
+			},
+		);
+
+		it('emits a passing item in a manual run', async () => {
+			routeMessages({ [messagePath('m1')]: userMessage });
+			const { ctx } = arrange({ value: [channelItem('m1')], params: skipBot(), mode: 'manual' });
+
+			const result = await webhook(ctx);
+
+			expect(result.workflowData?.[0]).toHaveLength(1);
+		});
+
+		it('throws the permission error after the ack when a message read is forbidden', async () => {
+			routeMessages({ [messagePath('m1')]: forbidden() });
+			const { ctx, res } = arrange({ value: [channelItem('m1')], params: skipBot() });
+
+			const error = await webhook(ctx).catch((caught: unknown) => caught);
+
+			expect(error).toBeInstanceOf(NodeApiError);
+			expect((error as NodeApiError).httpCode).toBe('403');
+			expect((error as NodeApiError).description).toContain('ChannelMessage.Read.All');
+			expect(res.status).toHaveBeenCalledWith(202);
+		});
+
+		it('warns instead of throwing on a forbidden read when the lifecycle handler ran', async () => {
+			routeMessages({ [messagePath('m1')]: forbidden(), [messagePath('m2')]: userMessage });
+			const { ctx } = arrange({
+				value: [channelItem('m1'), reauthorization, channelItem('m2')],
+				params: skipBot(),
+			});
+
+			const result = await webhook(ctx);
+
+			expect(calls('PATCH').map((call) => call[2])).toEqual(['/v1.0/subscriptions/sub1']);
+			expect(ctx.logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('ChannelMessage.Read.All'),
+				expect.anything(),
+			);
+			expect(result.workflowData?.[0].map((item) => item.json.id)).toEqual(['m2']);
+		});
+
+		it('throws on a forbidden read in a manual run with a lifecycle item', async () => {
+			routeMessages({ [messagePath('m1')]: forbidden() });
+			const { ctx } = arrange({
+				value: [channelItem('m1'), reauthorization],
+				params: skipBot(),
+				mode: 'manual',
+			});
+
+			await expect(webhook(ctx)).rejects.toBeInstanceOf(NodeApiError);
+			expect(calls('PATCH')).toHaveLength(0);
+		});
+
+		it('ignores the filters for an event without messages', async () => {
+			const { ctx, res } = arrange({
+				value: [channelItem('m1')],
+				params: skipBot({ event: 'newChannel' }),
+			});
+
+			const result = await webhook(ctx);
+
+			expect(res.status).not.toHaveBeenCalled();
+			expect(microsoftApiRequest.call).not.toHaveBeenCalled();
+			expect(result.workflowData?.[0]).toHaveLength(1);
+		});
+	});
 });

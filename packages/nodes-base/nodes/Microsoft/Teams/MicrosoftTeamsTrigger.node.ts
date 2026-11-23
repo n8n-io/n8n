@@ -10,7 +10,11 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeConnectionTypes } from 'n8n-workflow';
 
-import { storeMentionUserId } from './v2/helpers/message-filters';
+import {
+	filterChangeNotifications,
+	getMessageFilters,
+	storeMentionUserId,
+} from './v2/helpers/message-filters';
 import type { SubscriptionResponse, WebhookNotification } from './v2/helpers/types';
 import {
 	createSubscriptions,
@@ -606,39 +610,51 @@ export class MicrosoftTeamsTrigger implements INodeType {
 		const changeNotifications = accepted.filter(
 			(item) => isRecord(item) && !isLifecycleNotification(item),
 		) as WebhookNotification[];
-		// `workflowData` has one array for each output. The node has one output, so all change
-		// notifications go in one array. `clientState` is the stored secret. The items do not
-		// include it.
-		const workflowData = [
-			changeNotifications.map(({ clientState, ...notification }) => {
-				// The added fields go first. On a name clash the resourceData (or notification) value wins.
-				const json: IDataObject = {
-					...(typeof notification.changeType === 'string' && {
-						changeType: notification.changeType,
-					}),
-					...(typeof notification.resource === 'string' && { resource: notification.resource }),
-					...parseResourceIds(notification.resource),
-					...(isRecord(notification.resourceData) ? notification.resourceData : notification),
-				};
-				return { json };
-			}),
-		];
+		// `clientState` is the stored secret. The items do not include it.
+		const toItem = ({ clientState, ...notification }: WebhookNotification) => {
+			// The added fields go first. On a name clash the resourceData (or notification) value wins.
+			const json: IDataObject = {
+				...(typeof notification.changeType === 'string' && {
+					changeType: notification.changeType,
+				}),
+				...(typeof notification.resource === 'string' && { resource: notification.resource }),
+				...parseResourceIds(notification.resource),
+				...(isRecord(notification.resourceData) ? notification.resourceData : notification),
+			};
+			return { json };
+		};
 
-		if (lifecycleNotifications.length === 0) {
-			return { workflowData };
+		const filters = changeNotifications.length > 0 ? getMessageFilters.call(this) : undefined;
+		// `workflowData` has one array for each output. The node has one output, so all change
+		// notifications go in one array.
+		if (lifecycleNotifications.length === 0 && filters === undefined) {
+			return { workflowData: [changeNotifications.map(toItem)] };
 		}
 
 		// Ack before any Graph call: a slow answer makes Graph re-deliver.
 		res.status(202).end();
 		// A test run would list by the production URL and write production ids into the
 		// test static data.
-		if (this.getMode() !== 'manual') {
+		const ranLifecycle = lifecycleNotifications.length > 0 && this.getMode() !== 'manual';
+		if (ranLifecycle) {
 			await handleLifecycleNotifications.call(this, lifecycleNotifications, rejected);
 		}
 
-		// A lifecycle-only batch must leave `workflowData` undefined: any value starts an execution.
-		return changeNotifications.length > 0
-			? { noWebhookResponse: true, workflowData }
+		let passed = changeNotifications;
+		if (filters) {
+			const result = await filterChangeNotifications.call(this, changeNotifications, filters);
+			passed = result.passed;
+			if (result.denied) {
+				// A throw skips the static-data save, so a batch whose lifecycle handler ran only warns.
+				if (!ranLifecycle) throw result.denied;
+				logTrigger.call(this, 'warn', `${result.denied.message}. ${result.denied.description}`);
+			}
+		}
+
+		// A lifecycle-only or all-filtered batch must leave `workflowData` undefined: any value
+		// starts an execution.
+		return passed.length > 0
+			? { noWebhookResponse: true, workflowData: [passed.map(toItem)] }
 			: { noWebhookResponse: true };
 	}
 }
