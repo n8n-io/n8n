@@ -397,7 +397,7 @@ describe('PUT /workflows/:workflowId/transfer', () => {
 		expect(requestDrain).toHaveBeenCalledTimes(1);
 	});
 
-	test('emits no workflow-deactivated event when the unpublish after a refused move fails', async () => {
+	test('reports no unpublish when the unpublish after a refused move fails', async () => {
 		const workflow = await createActiveWorkflow({}, sourceProject);
 		refusePublish(targetProject.id, workflow.id);
 		vi.spyOn(Container.get(WorkflowPublishHistoryRepository), 'addRecord').mockRejectedValue(
@@ -409,16 +409,16 @@ describe('PUT /workflows/:workflowId/transfer', () => {
 			.send({ destinationProjectId: targetProject.id })
 			.expect(200);
 
-		const REPORTED_WITH_A_PENDING_TRANSFER = {
+		const NOT_REPORTED_WITH_A_PENDING_TRANSFER = {
 			events: [],
-			data: { unpublishReasons: [expect.objectContaining({ checkId: CHECK_ID })] },
+			body: {},
 			records: [pendingTransfer(workflow.versionId)],
 		};
 		expect({
 			events: deactivatedEvents,
-			data: response.body.data,
+			body: response.body,
 			records: await outboxRecordsOf(workflow.id),
-		}).toEqual(REPORTED_WITH_A_PENDING_TRANSFER);
+		}).toEqual(NOT_REPORTED_WITH_A_PENDING_TRANSFER);
 	});
 
 	test('refuses a move on a node type that is only in the published version', async () => {

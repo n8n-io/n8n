@@ -1720,7 +1720,7 @@ export class WorkflowService {
 		});
 	}
 
-	/** Returns only the workflows that the transfer could not republish in the destination. */
+	/** Returns only the workflows that the transfer unpublished because the destination refused them. */
 	async republishAroundTransfer(
 		user: User,
 		workflowIds: string[],
@@ -1877,7 +1877,7 @@ export class WorkflowService {
 			if (failure) {
 				const unpublished = await this._unpublishAfterTransfer(user, workflow, publicApi);
 				unpublishedAny ||= unpublished;
-				results.set(workflow.id, toTransferResult(failure));
+				if (unpublished) results.set(workflow.id, toTransferResult(failure));
 			}
 		}
 
