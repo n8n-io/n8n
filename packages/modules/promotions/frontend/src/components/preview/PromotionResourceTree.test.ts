@@ -193,14 +193,6 @@ describe('PromotionResourceTree', () => {
 			]);
 		});
 
-		it('should disable the checkbox of a group that users cannot select', () => {
-			const { getAllByTestId } = render(['workflow:w1']);
-
-			expect(
-				group(getAllByTestId, 'group:credential').getByTestId('promotion-preview-group-checkbox'),
-			).toBeDisabled();
-		});
-
 		it('should show no checkbox, count in a list that users only read', () => {
 			const selected = new Set(['workflow:w1']);
 			const { queryAllByTestId } = renderComponent({

@@ -1,8 +1,9 @@
 import type { SerializedCredentialData } from '@n8n/api-types';
 import type { CredentialsEntity, User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { UserError } from '@n8n/errors';
 import { Credentials } from 'n8n-core';
-import { UserError, type ICredentialDataDecryptedObject } from 'n8n-workflow';
+import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import isEqual from 'lodash/isEqual';
 
 import { CredentialsFinderService } from '@n8n/backend-services';

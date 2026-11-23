@@ -2,9 +2,10 @@ import { CredentialsFinderService } from '@n8n/backend-services';
 import { SharedCredentialsRepository, type CredentialsEntity, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
+import { LruCache } from '@n8n/utils/lru-cache';
 import { Credentials } from 'n8n-core';
 
-const NO_VALUES_CACHE_LIMIT = 1000;
+const NO_VALUES_CACHE_SIZE = 1000;
 
 /** A value is empty when it is unset, a blank string, or an object or array that holds only empty values. `false` and `0` are values. */
 function isEmptyValue(value: unknown): boolean {
@@ -31,6 +32,8 @@ async function hasNoValues(credential: CredentialsEntity): Promise<boolean> {
  */
 @Service()
 export class PromotionCredentialSelectionService {
+	private readonly noValuesCache = new LruCache<string, boolean>(NO_VALUES_CACHE_SIZE);
+
 	constructor(
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly credentialsFinder: CredentialsFinderService,
@@ -44,13 +47,12 @@ export class PromotionCredentialSelectionService {
 			user,
 			['credential:read'],
 		);
-		const selectable: string[] = [];
-		for (const credential of owned) {
-			if (readable.has(credential.id) && !(await this.hasNoValues(credential))) {
-				selectable.push(credential.id);
-			}
-		}
-		return selectable.sort();
+		const candidates = owned.filter(({ id }) => readable.has(id));
+		const empty = await Promise.all(candidates.map(async (entry) => await this.isEmpty(entry)));
+		return candidates
+			.filter((_, index) => !empty[index])
+			.map(({ id }) => id)
+			.sort();
 	}
 
 	/**
@@ -77,32 +79,23 @@ export class PromotionCredentialSelectionService {
 			throw new ForbiddenError('You cannot read one of the selected credentials');
 		}
 
-		for (const id of credentialIds) {
-			const credential = owned.get(id);
-			if (credential && (await this.hasNoValues(credential))) {
-				throw new BadRequestError(`The credential "${id}" has no values and cannot be promoted`);
-			}
+		const empty = await Promise.all(
+			credentialIds.map(async (id) => await this.isEmpty(owned.get(id)!)),
+		);
+		const emptyId = credentialIds.find((_, index) => empty[index]);
+		if (emptyId !== undefined) {
+			throw new BadRequestError(`The credential "${emptyId}" has no values and cannot be promoted`);
 		}
 	}
 
-	/**
-	 * Decrypting every owned credential on each preview is costly. A credential keeps its answer
-	 * until it changes, so the answer is cached by id and update time.
-	 */
-	private readonly noValuesCache = new Map<string, boolean>();
-
-	private async hasNoValues(credential: CredentialsEntity): Promise<boolean> {
+	/** A credential keeps its "no values" answer until it changes, so decrypting once per update is enough. */
+	private async isEmpty(credential: CredentialsEntity): Promise<boolean> {
 		const stamp = credential.updatedAt?.getTime();
 		if (stamp === undefined) return await hasNoValues(credential);
 		const key = `${credential.id}:${stamp}`;
 		const cached = this.noValuesCache.get(key);
 		if (cached !== undefined) return cached;
 		const result = await hasNoValues(credential);
-		// Drop the oldest answers first, so the cache does not grow without a bound.
-		if (this.noValuesCache.size >= NO_VALUES_CACHE_LIMIT) {
-			const oldest = this.noValuesCache.keys().next().value;
-			if (oldest !== undefined) this.noValuesCache.delete(oldest);
-		}
 		this.noValuesCache.set(key, result);
 		return result;
 	}

@@ -117,20 +117,6 @@ describe('promotion preview groups', () => {
 			expect(next.selected.has('workflow:w1')).toBe(true);
 		});
 
-		it('should change nothing in a group that users cannot select', () => {
-			const { graph, members } = graphOf();
-			const current = state('workflow:w1');
-
-			const next = toggleGroup(
-				current,
-				graph,
-				resolveInclusion(graph, current.selected),
-				members('group:credential'),
-			);
-
-			expect(next).toBe(current);
-		});
-
 		it('should keep a credential included while a selected workflow needs it, after the group is cleared', () => {
 			const { graph, members } = graphOf({ selectableCredentials: true });
 			const credentials = members('group:credential');

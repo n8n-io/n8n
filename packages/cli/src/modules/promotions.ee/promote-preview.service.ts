@@ -69,13 +69,12 @@ export class PromotePreviewService {
 				revision: previewRevision({ source, resources: [], blocker }),
 			};
 		}
-		const branch = await readBranch();
+		const [branch, selectableCredentialIds] = await Promise.all([
+			readBranch(),
+			this.credentialSelection.findSelectableIds(user, projectId),
+		]);
 		// The project's own credentials are listed even when no workflow uses them, so the user can
 		// select them. The export keeps the name and type of each credential file to compare them.
-		const selectableCredentialIds = await this.credentialSelection.findSelectableIds(
-			user,
-			projectId,
-		);
 		const visibleCredentialIds = new Set(selectableCredentialIds);
 		const instance = await exportInstancePackage(this.packagesService, user, [projectId], {
 			credentialIds: selectableCredentialIds,

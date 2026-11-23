@@ -11263,7 +11263,6 @@
 	"promotions.preview.tree.selectedOfTotal": "{selected} of {total} selected",
 	"promotions.preview.tree.section.workflows": "Workflows",
 	"promotions.preview.tree.group.select": "Select {group}",
-	"promotions.preview.tree.group.count": "{included} of {total} selected",
 	"promotions.preview.tree.group.credential": "Credentials",
 	"promotions.preview.tree.group.dataTable": "Data tables",
 	"promotions.preview.tree.group.variable": "Variables",

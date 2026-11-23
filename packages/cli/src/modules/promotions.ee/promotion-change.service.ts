@@ -168,7 +168,8 @@ export class PromotionChangeService {
 					requestedIds.has(entityIdOfPath(path)) ||
 					path.includes(`/${PACKAGE_ENTITY_LAYOUT.variables.directory}/`),
 				// Promote lists the project's own credentials, so their details need them in the export.
-				...(direction === 'promote' ? { credentialIds: selectableCredentialIds } : {}),
+				// Only the requested credentials need an export, because the content of the others is dropped.
+				credentialIds: selectableCredentialIds.filter((id) => requestedIds.has(id)),
 			}),
 		]);
 		const branchManifest = parseBranchManifest(branchFiles.get(manifestPath), projectId);

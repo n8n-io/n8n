@@ -167,8 +167,8 @@ function onToggle(resource: PromotionResource) {
 						data-test-id="promotion-preview-group-count"
 					>
 						{{
-							i18n.baseText('promotions.preview.tree.group.count', {
-								interpolate: { included: String(group.included), total: String(group.total) },
+							i18n.baseText('promotions.preview.tree.selectedOfTotal', {
+								interpolate: { selected: String(group.included), total: String(group.total) },
 							})
 						}}
 					</N8nText>
@@ -297,10 +297,6 @@ function onToggle(resource: PromotionResource) {
 .groupLabel {
 	flex: 1;
 	font-weight: var(--font-weight--bold);
-}
-
-.summary {
-	padding: 0 var(--spacing--2xs) var(--spacing--3xs);
 }
 
 .selectAllLabel {

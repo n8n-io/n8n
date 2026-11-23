@@ -117,9 +117,6 @@ describe('CredentialExporter', () => {
 	);
 
 	describe('additional credentials', () => {
-		const ownedBy = (projectId: string) =>
-			[{ role: 'credential:owner', projectId }] as unknown as CredentialsEntity['shared'];
-
 		it('writes a credential that no requirement covers, without a requirement row', async () => {
 			const { exporter, finder } = makeExporter();
 			finder.findCredentialForUser.mockResolvedValue(makeCredential());

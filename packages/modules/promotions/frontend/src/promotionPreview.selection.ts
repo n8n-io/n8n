@@ -287,6 +287,18 @@ export function toggleContainer(
 	return { mode: 'custom', selected };
 }
 
+/** The members of a group that a header click can add or clear. A locked resource is left out. */
+function availableMembers(
+	graph: SelectionGraph,
+	inclusion: Inclusion,
+	members: readonly ResourceKey[],
+	disabled: DisabledKeys,
+): ResourceKey[] {
+	return members.filter(
+		(key) => canSelect(graph, key) && !disabled.has(key) && !inclusion.requiredBy.has(key),
+	);
+}
+
 export type GroupCheck = {
 	state: CheckState;
 	/** The resources of the group that the operation includes, out of `total`. */
@@ -309,9 +321,7 @@ export function groupCheck(
 	const included = members.filter((key) => inclusion.included.has(key)).length;
 	const state: CheckState =
 		included === 0 ? 'unchecked' : included === members.length ? 'checked' : 'indeterminate';
-	const canToggle = members.some(
-		(key) => canSelect(graph, key) && !disabled.has(key) && !inclusion.requiredBy.has(key),
-	);
+	const canToggle = availableMembers(graph, inclusion, members, disabled).length > 0;
 	return { state, included, total: members.length, canToggle };
 }
 
@@ -327,9 +337,7 @@ export function toggleGroup(
 	members: readonly ResourceKey[],
 	disabled: DisabledKeys = noKeys,
 ): SelectionState {
-	const available = members.filter(
-		(key) => canSelect(graph, key) && !disabled.has(key) && !inclusion.requiredBy.has(key),
-	);
+	const available = availableMembers(graph, inclusion, members, disabled);
 	if (available.length === 0) return state;
 	const selected = new Set(state.selected);
 	if (available.every((key) => inclusion.included.has(key))) {
