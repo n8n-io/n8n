@@ -399,6 +399,22 @@ describe('LeaseSessionManager', () => {
 		await expectHeld(second.id);
 	});
 
+	it('keeps the insert of a beat one millisecond before the lease length passes', async () => {
+		vi.spyOn(Math, 'random').mockReturnValue(0.5);
+		sessions.insertSession.mockImplementationOnce(async () => await new Promise<void>(() => {}));
+		void session.start().catch(() => {});
+		await vi.advanceTimersByTimeAsync(0);
+
+		now.mono += LEASE_SECONDS * 1000 - 1;
+		await vi.advanceTimersByTimeAsync(RENEW_SECONDS * 1000);
+
+		expect(sessions.insertSession).toHaveBeenCalledTimes(1);
+		expect(logger.warn).not.toHaveBeenCalledWith(
+			'Abandoned a lease session insert that did not finish',
+			expect.anything(),
+		);
+	});
+
 	it('logs no failed start once a newer session holds after beats waited on a hung insert', async () => {
 		vi.spyOn(Math, 'random').mockReturnValue(0.5);
 		sessions.insertSession.mockImplementationOnce(async () => await new Promise<void>(() => {}));
