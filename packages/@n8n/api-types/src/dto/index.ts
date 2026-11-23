@@ -457,6 +457,11 @@ export {
 } from './type-availability-policies/update-policy-document.dto';
 export { ReplaceAttachmentsDto } from './type-availability-policies/replace-attachments.dto';
 export {
+	SetInstanceTypeAccessDto,
+	SetProjectTypeAccessDto,
+	type TypeAccessChange,
+} from './type-availability-policies/set-type-access.dto';
+export {
 	CredentialTypePolicyAttachmentsPublicDto,
 	CredentialTypePolicyDocumentListPublicDto,
 	CredentialTypePolicyDocumentPublicDto,

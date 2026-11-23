@@ -2,6 +2,7 @@ import {
 	CreatePolicyDocumentDto,
 	PutInstancePolicyDto,
 	ReplaceAttachmentsDto,
+	SetInstanceTypeAccessDto,
 	UpdatePolicyDocumentDto,
 	type InstanceTypeAccessResponse,
 	type NodeTypeUsageResponse,
@@ -78,6 +79,31 @@ export class TypeAvailabilityPolicyInstanceController {
 		});
 
 		return { ...access, types };
+	}
+
+	@Patch('/instance/access')
+	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
+	@GlobalScope('nodeTypePolicy:manage')
+	async setInstanceAccess(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body dto: SetInstanceTypeAccessDto,
+	) {
+		const result = await this.service.setTypeAccess(
+			NODE_TYPES_KIND,
+			null,
+			dto.changes,
+			dto.version,
+			req.user.id,
+		);
+
+		return {
+			scopeId: result.scopeId,
+			rules: result.rules,
+			defaultAction: result.defaultAction,
+			version: result.version,
+			warnings: result.warnings,
+		};
 	}
 
 	@Get('/usage')
