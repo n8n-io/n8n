@@ -206,7 +206,8 @@ A workflow that the app runs gets the visitor's user ID from the expression
 the app sends in the run input, because the visitor can change it. Use the
 values from `n8n.me()` only for display. A data table that you bind to the app
 shows all its rows to every visitor. When each visitor must see only their own
-rows, read the table in a workflow that filters by `appVisitor`.
+rows, do not bind the table. Read it in a bound workflow that filters the
+`userId` column by the `appVisitor` expression. `appVisitor` is not a column.
 
 ## Several apps
 
