@@ -304,6 +304,7 @@ export class TelemetryEventRelay extends EventRelay {
 			'public-api-key-created': (event) => this.publicApiKeyCreated(event),
 			'public-api-key-deleted': (event) => this.publicApiKeyDeleted(event),
 			'public-api-key-rotated': (event) => this.publicApiKeyRotated(event),
+			'internal-api-invoked': (event) => this.internalApiInvoked(event),
 			'community-package-installed': (event) => this.communityPackageInstalled(event),
 			'community-package-updated': (event) => this.communityPackageUpdated(event),
 			'community-package-deleted': (event) => this.communityPackageDeleted(event),
@@ -1215,6 +1216,24 @@ export class TelemetryEventRelay extends EventRelay {
 		this.telemetry.track('API key rotated', {
 			user_id: user.id,
 			...toPublicApiProperties(publicApi),
+		});
+	}
+
+	// #endregion
+
+	// #region Internal API
+
+	private internalApiInvoked({
+		userId,
+		route,
+		result,
+		client,
+	}: RelayEventMap['internal-api-invoked']) {
+		this.telemetry.trackInternalApiInvocation({
+			user_id: userId,
+			route,
+			result,
+			client,
 		});
 	}
 

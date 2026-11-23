@@ -10,6 +10,7 @@ export type {
 } from './define';
 export { ASSISTANT_MENTION_QUERY_TEXT_MAX_LENGTH, ASSISTANT_RUNTIMES } from './events/instance-ai';
 export type { AssistantRuntime } from './events/instance-ai';
+export { INTERNAL_API_USAGE_JSON_FIELDS } from './events/internal-api';
 export { PUBLIC_API_USAGE_JSON_FIELDS } from './events/public-api';
 export { POLICY_KINDS } from './events/type-availability-policies';
 export type { PolicyKind } from './events/type-availability-policies';

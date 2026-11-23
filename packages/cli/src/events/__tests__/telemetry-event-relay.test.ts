@@ -2052,6 +2052,24 @@ describe('TelemetryEventRelay', () => {
 			});
 		});
 
+		it('should buffer on `internal-api-invoked` event', () => {
+			const event: RelayEventMap['internal-api-invoked'] = {
+				userId: 'user123',
+				route: 'GET /rest/workflows/{workflowId}',
+				result: '2xx',
+				client: 'n8n_node',
+			};
+
+			eventService.emit('internal-api-invoked', event);
+
+			expect(telemetry.trackInternalApiInvocation).toHaveBeenCalledWith({
+				user_id: 'user123',
+				route: 'GET /rest/workflows/{workflowId}',
+				result: '2xx',
+				client: 'n8n_node',
+			});
+		});
+
 		it('should track on `public-api-key-created` event', () => {
 			const event: RelayEventMap['public-api-key-created'] = {
 				user: {

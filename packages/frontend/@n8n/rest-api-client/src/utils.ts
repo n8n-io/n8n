@@ -1,3 +1,4 @@
+import { N8N_CLIENT_EDITOR_UI, N8N_CLIENT_HEADER } from '@n8n/api-types';
 import { getBrowserId } from '@n8n/constants';
 import { assert } from '@n8n/utils/assert';
 import type {
@@ -158,10 +159,12 @@ export async function requestResponse<T = unknown>(
 		method,
 		url: endpoint,
 		baseURL,
-		headers: headers ?? {},
+		headers: { ...headers },
 		responseType,
 	};
+	// Same-origin n8n calls only. External hosts get no extra header and no CORS preflight.
 	if (baseURL.startsWith('/')) {
+		options.headers![N8N_CLIENT_HEADER] = N8N_CLIENT_EDITOR_UI;
 		options.headers!['browser-id'] = getBrowserId();
 	}
 	if (
@@ -320,6 +323,7 @@ export async function streamRequest<T extends object>(
 		onError?.(e);
 	};
 	const headers: Record<string, string> = {
+		[N8N_CLIENT_HEADER]: N8N_CLIENT_EDITOR_UI,
 		'browser-id': getBrowserId(),
 		'Content-Type': 'application/json',
 	};

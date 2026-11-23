@@ -566,6 +566,17 @@ export type RelayEventMap = ModuleEventMap & {
 
 	// #endregion
 
+	// #region Internal API
+
+	'internal-api-invoked': {
+		userId: string;
+		route: string;
+		result: PublicApiResult;
+		client: PublicApiClient;
+	};
+
+	// #endregion
+
 	// #region Email
 
 	'email-failed': {

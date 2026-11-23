@@ -11,6 +11,7 @@ import { ProjectRelationRepository, ProjectRepository, UserRepository } from '@n
 import type { WorkflowRepository } from '@n8n/db';
 import {
 	defineTelemetryEvents,
+	INTERNAL_API_USAGE_JSON_FIELDS,
 	PUBLIC_API_USAGE_JSON_FIELDS,
 	TELEMETRY_EVENT,
 } from '@n8n/telemetry';
@@ -763,6 +764,128 @@ describe('Telemetry', () => {
 		});
 	});
 
+	describe('trackInternalApiInvocation', () => {
+		beforeEach(() => {
+			vi.setSystemTime(testDateTime);
+		});
+
+		test('should count calls per user and per client', () => {
+			telemetry.trackInternalApiInvocation({
+				user_id: 'user1',
+				route: 'GET /rest/workflows',
+				result: '2xx',
+				client: 'other',
+			});
+
+			telemetry.trackInternalApiInvocation({
+				user_id: 'user1',
+				route: 'GET /rest/workflows',
+				result: '2xx',
+				client: 'editor_ui',
+			});
+
+			telemetry.trackInternalApiInvocation({
+				user_id: 'user2',
+				route: 'GET /rest/credentials',
+				result: '2xx',
+				client: 'n8n_node',
+			});
+
+			const buffer = telemetry.getInternalApiInvocationsBuffer();
+
+			expect(buffer.get('user1')).toMatchObject({
+				total_calls: 2,
+				clients: { editor_ui: 1, n8n_node: 0, other: 1 },
+			});
+			expect(buffer.get('user2')).toMatchObject({
+				total_calls: 1,
+				clients: { editor_ui: 0, n8n_node: 1, other: 0 },
+			});
+		});
+
+		test('should add route rows for non-editor callers only', () => {
+			telemetry.trackInternalApiInvocation({
+				user_id: 'user1',
+				route: 'GET /rest/workflows',
+				result: '2xx',
+				client: 'editor_ui',
+			});
+
+			telemetry.trackInternalApiInvocation({
+				user_id: 'user1',
+				route: 'GET /rest/workflows',
+				result: '2xx',
+				client: 'n8n_node',
+			});
+
+			telemetry.trackInternalApiInvocation({
+				user_id: 'user1',
+				route: 'GET /rest/workflows',
+				result: '2xx',
+				client: 'other',
+			});
+
+			const buffer = telemetry.getInternalApiInvocationsBuffer();
+
+			expect([...buffer.get('user1')!.routeCalls.values()]).toStrictEqual([
+				{ route: 'GET /rest/workflows', result: '2xx', caller: 'n8n_node', calls: 1 },
+				{ route: 'GET /rest/workflows', result: '2xx', caller: 'other', calls: 1 },
+			]);
+		});
+
+		test('should group route rows by route, result and caller', () => {
+			telemetry.trackInternalApiInvocation({
+				user_id: 'user1',
+				route: 'GET /rest/workflows/{workflowId}',
+				result: '2xx',
+				client: 'other',
+			});
+
+			telemetry.trackInternalApiInvocation({
+				user_id: 'user1',
+				route: 'GET /rest/workflows/{workflowId}',
+				result: '4xx',
+				client: 'other',
+			});
+
+			telemetry.trackInternalApiInvocation({
+				user_id: 'user1',
+				route: 'GET /rest/workflows/{workflowId}',
+				result: '2xx',
+				client: 'n8n_node',
+			});
+
+			telemetry.trackInternalApiInvocation({
+				user_id: 'user1',
+				route: 'GET /rest/workflows/{workflowId}',
+				result: '2xx',
+				client: 'other',
+			});
+
+			const buffer = telemetry.getInternalApiInvocationsBuffer();
+
+			expect([...buffer.get('user1')!.routeCalls.values()]).toStrictEqual([
+				{ route: 'GET /rest/workflows/{workflowId}', result: '2xx', caller: 'other', calls: 2 },
+				{ route: 'GET /rest/workflows/{workflowId}', result: '4xx', caller: 'other', calls: 1 },
+				{ route: 'GET /rest/workflows/{workflowId}', result: '2xx', caller: 'n8n_node', calls: 1 },
+			]);
+		});
+
+		test('should not buffer when rudderStack is not initialized', () => {
+			// @ts-expect-error Assigning to private property
+			telemetry.rudderStack = undefined;
+
+			telemetry.trackInternalApiInvocation({
+				user_id: 'user1',
+				route: 'GET /rest/workflows',
+				result: '2xx',
+				client: 'other',
+			});
+
+			expect(telemetry.getInternalApiInvocationsBuffer().size).toBe(0);
+		});
+	});
+
 	describe('Rudderstack', () => {
 		test('should fall back to instanceId for rudderStack.identify() when no userId is provided', () => {
 			const traits = {
@@ -1320,6 +1443,41 @@ describe('Telemetry', () => {
 			for (const [field, schema] of Object.entries(PUBLIC_API_USAGE_JSON_FIELDS)) {
 				expect(schema.safeParse(jsonParse(report[field] as string)).success).toBe(true);
 			}
+		});
+
+		test('should send an Internal API usage report that passes its registry schema', () => {
+			telemetry.trackInternalApiInvocation({
+				user_id: 'user1',
+				route: 'GET /rest/workflows/{workflowId}',
+				result: '4xx',
+				client: 'other',
+			});
+
+			telemetry.trackInternalApiInvocation({
+				user_id: 'user1',
+				route: 'GET /rest/workflows',
+				result: '2xx',
+				client: 'editor_ui',
+			});
+
+			telemetry.flushBuffers();
+
+			const [event, report] = spyTrack.mock.calls.find(
+				([e]) => e === TELEMETRY_EVENT.INTERNAL_API.INTERNAL_API_USAGE,
+			)!;
+			expect(event.getValidationError(report)).toBeNull();
+			for (const [field, schema] of Object.entries(INTERNAL_API_USAGE_JSON_FIELDS)) {
+				expect(schema.safeParse(jsonParse(report[field] as string)).success).toBe(true);
+			}
+			expect(report).toMatchObject({
+				user_id: 'user1',
+				total_calls: 2,
+				clients: JSON.stringify({ editor_ui: 1, n8n_node: 0, other: 1 }),
+				routes: JSON.stringify([
+					{ route: 'GET /rest/workflows/{workflowId}', result: '4xx', caller: 'other', calls: 1 },
+				]),
+			});
+			expect(telemetry.getInternalApiInvocationsBuffer().size).toBe(0);
 		});
 
 		test('should send nothing when RudderStack is not initialized', () => {

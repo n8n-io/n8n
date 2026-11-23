@@ -1,5 +1,6 @@
-import type { ZodClass } from '@n8n/api-types';
+import { N8N_CLIENT_HEADER, type ZodClass } from '@n8n/api-types';
 import { inProduction } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { type BooleanLicenseFeature } from '@n8n/constants';
 import { isAuthenticatedRequest } from '@n8n/db';
@@ -23,6 +24,8 @@ import { AuthService } from '@/auth/auth.service';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { License } from '@/license';
 import { userHasScopes } from '@/permissions.ee/check-access';
+import { resolvePublicApiClient } from '@/public-api/public-api-client';
+import { toPublicApiResult, toRouteName } from '@/public-api/public-api-controller.utils';
 import { reportError, send, sendErrorResponse } from '@/response-helper';
 
 import { AbstractServer } from './abstract-server';
@@ -40,6 +43,7 @@ export class ControllerRegistry {
 		private readonly metadata: ControllerRegistryMetadata,
 		private readonly lastActiveAtService: LastActiveAtService,
 		private readonly rateLimitService: RateLimitService,
+		private readonly eventService: EventService,
 	) {}
 
 	activate(app: Pick<Router, 'use'>, options: { surface?: 'main' | 'apps' } = {}) {
@@ -141,7 +145,13 @@ export class ControllerRegistry {
 			const bodyArgIdx = route.args.findIndex((arg) => arg?.type === 'body');
 			const bodyArgType = bodyArgIdx !== -1 ? (argTypes[bodyArgIdx] as ZodClass) : undefined;
 
-			const middlewares = this.buildMiddlewares(route, controllerMiddlewares, bodyArgType);
+			const routeName = toRouteName(route.method, prefix, route.path);
+			const middlewares = this.buildMiddlewares(
+				route,
+				controllerMiddlewares,
+				bodyArgType,
+				routeName,
+			);
 			const finalHandler = route.usesTemplates
 				? async (req: Request, res: Response) => {
 						try {
@@ -191,6 +201,7 @@ export class ControllerRegistry {
 		},
 		controllerMiddlewares: RequestHandler[],
 		bodyDtoClass?: ZodClass,
+		routeName?: string,
 	): RequestHandler[] {
 		const middlewares: RequestHandler[] = [];
 
@@ -223,6 +234,11 @@ export class ControllerRegistry {
 				}),
 				this.lastActiveAtService.middleware.bind(this.lastActiveAtService),
 			);
+
+			// Only regular routes have a route template to name the event with.
+			if (routeName) {
+				middlewares.push(this.createApiInvocationMiddleware(routeName));
+			}
 		}
 
 		// LAYER 2b: User-based rate limiting with user source (AFTER auth)
@@ -255,6 +271,27 @@ export class ControllerRegistry {
 		}
 
 		return middlewares;
+	}
+
+	private createApiInvocationMiddleware(routeName: string): RequestHandler {
+		return (req, res, next) => {
+			const userId = isAuthenticatedRequest(req) ? req.user?.id : undefined;
+			if (userId) {
+				const client = resolvePublicApiClient(req.headers[N8N_CLIENT_HEADER]);
+
+				// Emit after the response, so the result matches the status that was sent.
+				res.once('finish', () => {
+					this.eventService.emit('internal-api-invoked', {
+						userId,
+						route: routeName,
+						result: toPublicApiResult(res.statusCode),
+						client,
+					});
+				});
+			}
+
+			next();
+		};
 	}
 
 	private createLicenseMiddleware(feature: BooleanLicenseFeature): RequestHandler {

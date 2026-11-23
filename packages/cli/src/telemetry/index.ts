@@ -89,6 +89,28 @@ interface IApiInvocationsBuffer {
 	[userId: string]: IApiInvocationsBufferEntry;
 }
 
+interface IInternalApiInvocationProperties {
+	user_id: string;
+	route: string;
+	result: PublicApiResult;
+	client: PublicApiClient;
+}
+
+/** Route rows leave out the editor, which makes most Internal API calls. */
+interface IInternalApiRouteCalls {
+	route: string;
+	result: PublicApiResult;
+	caller: Exclude<PublicApiClient, 'editor_ui'>;
+	calls: number;
+}
+
+interface IInternalApiInvocationsBufferEntry {
+	total_calls: number;
+	first: Date;
+	clients: Record<PublicApiClient, number>;
+	routeCalls: Map<string, IInternalApiRouteCalls>;
+}
+
 @Service()
 export class Telemetry implements TelemetryTracker {
 	private rudderStack?: RudderStack;
@@ -99,6 +121,8 @@ export class Telemetry implements TelemetryTracker {
 	private executionCountsBuffer: IExecutionsBuffer = Object.create(null);
 
 	private apiInvocationsBuffer: IApiInvocationsBuffer = {};
+
+	private internalApiInvocationsBuffer = new Map<string, IInternalApiInvocationsBufferEntry>();
 
 	private readonly bufferFlushers: (() => void)[] = [];
 
@@ -213,6 +237,7 @@ export class Telemetry implements TelemetryTracker {
 		this.flushWorkflowExecutionCounts();
 		for (const flush of this.bufferFlushers) flush();
 		this.flushApiInvocations();
+		this.flushInternalApiInvocations();
 	}
 
 	/**
@@ -263,6 +288,19 @@ export class Telemetry implements TelemetryTracker {
 			}
 		}
 		this.apiInvocationsBuffer = {};
+	}
+
+	private flushInternalApiInvocations() {
+		for (const [userId, entry] of this.internalApiInvocationsBuffer) {
+			this.track(TELEMETRY_EVENT.INTERNAL_API.INTERNAL_API_USAGE, {
+				user_id: userId,
+				total_calls: entry.total_calls,
+				first: entry.first.toISOString(),
+				routes: JSON.stringify([...entry.routeCalls.values()]),
+				clients: JSON.stringify(entry.clients),
+			});
+		}
+		this.internalApiInvocationsBuffer = new Map();
 	}
 
 	private flushWorkflowExecutionCounts() {
@@ -391,6 +429,36 @@ export class Telemetry implements TelemetryTracker {
 
 		if (user_agent) {
 			entry.user_agents[user_agent] = (entry.user_agents[user_agent] ?? 0) + 1;
+		}
+	}
+
+	trackInternalApiInvocation(properties: IInternalApiInvocationProperties) {
+		if (!this.rudderStack) return;
+
+		const { user_id, route, result, client } = properties;
+
+		let entry = this.internalApiInvocationsBuffer.get(user_id);
+		if (!entry) {
+			entry = {
+				total_calls: 0,
+				first: new Date(),
+				clients: { editor_ui: 0, n8n_node: 0, other: 0 },
+				routeCalls: new Map(),
+			};
+			this.internalApiInvocationsBuffer.set(user_id, entry);
+		}
+		entry.total_calls++;
+		entry.clients[client]++;
+
+		// The editor makes most Internal API calls. Only its total is kept, to bound the payload.
+		if (client === 'editor_ui') return;
+
+		const rowKey = `${route}|${result}|${client}`;
+		const existingRow = entry.routeCalls.get(rowKey);
+		if (existingRow) {
+			existingRow.calls++;
+		} else {
+			entry.routeCalls.set(rowKey, { route, result, caller: client, calls: 1 });
 		}
 	}
 
@@ -589,5 +657,9 @@ export class Telemetry implements TelemetryTracker {
 
 	getApiInvocationsBuffer(): IApiInvocationsBuffer {
 		return this.apiInvocationsBuffer;
+	}
+
+	getInternalApiInvocationsBuffer(): Map<string, IInternalApiInvocationsBufferEntry> {
+		return this.internalApiInvocationsBuffer;
 	}
 }

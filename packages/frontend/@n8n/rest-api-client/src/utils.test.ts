@@ -5,6 +5,8 @@ import {
 	MfaRequiredError,
 	ResponseError,
 	STREAM_SEPARATOR,
+	get,
+	getFullApiResponse,
 	makePublicApiRequest,
 	makeRestApiRequest,
 	request,
@@ -109,7 +111,21 @@ describe('makePublicApiRequest', () => {
 });
 
 describe('makeRestApiRequest', () => {
-	it('does not send the editor UI client header on a REST API request', async () => {
+	it('sends the editor UI client header on a same-origin REST API request', async () => {
+		axiosRequest.mockResolvedValueOnce({ data: { data: [] } });
+
+		await makeRestApiRequest({ baseUrl: '/rest', pushRef: 'push-ref' }, 'GET', '/workflows');
+
+		const sentHeaders = axiosRequest.mock.lastCall?.[0].headers;
+		expect(sentHeaders).toEqual(
+			expect.objectContaining({
+				'push-ref': 'push-ref',
+				[N8N_CLIENT_HEADER]: N8N_CLIENT_EDITOR_UI,
+			}),
+		);
+	});
+
+	it('does not send the editor UI client header to an external host', async () => {
 		axiosRequest.mockResolvedValueOnce({ data: { data: [] } });
 
 		await makeRestApiRequest(
@@ -120,7 +136,37 @@ describe('makeRestApiRequest', () => {
 
 		const sentHeaders = axiosRequest.mock.lastCall?.[0].headers;
 		expect(sentHeaders).toEqual({ 'push-ref': 'push-ref' });
-		expect(sentHeaders).not.toHaveProperty(N8N_CLIENT_HEADER);
+	});
+});
+
+describe('same-origin client header', () => {
+	it('sends the editor UI client header on a full API response request', async () => {
+		axiosRequest.mockResolvedValueOnce({ data: { count: 0, data: [] } });
+
+		await getFullApiResponse({ baseUrl: '/rest', pushRef: 'push-ref' }, 'GET', '/workflows');
+
+		expect(axiosRequest.mock.lastCall?.[0].headers).toEqual(
+			expect.objectContaining({ [N8N_CLIENT_HEADER]: N8N_CLIENT_EDITOR_UI }),
+		);
+	});
+
+	it('sends the editor UI client header on a direct get call with a relative base URL', async () => {
+		axiosRequest.mockResolvedValueOnce({ data: {} });
+
+		await get('/rest', '/settings');
+
+		expect(axiosRequest.mock.lastCall?.[0].headers).toEqual(
+			expect.objectContaining({ [N8N_CLIENT_HEADER]: N8N_CLIENT_EDITOR_UI }),
+		);
+	});
+
+	it('does not mutate the headers object that the caller passed', async () => {
+		axiosRequest.mockResolvedValueOnce({ data: {} });
+		const headers = { 'push-ref': 'push-ref' };
+
+		await request({ method: 'GET', baseURL: '/rest', endpoint: '/settings', headers });
+
+		expect(headers).toEqual({ 'push-ref': 'push-ref' });
 	});
 });
 
@@ -220,6 +266,7 @@ describe('streamRequest', () => {
 			body: JSON.stringify({ key: 'value' }),
 			credentials: 'include',
 			headers: {
+				[N8N_CLIENT_HEADER]: N8N_CLIENT_EDITOR_UI,
 				'Content-Type': 'application/json',
 				'browser-id': expect.stringContaining('-'),
 			},
@@ -274,6 +321,7 @@ describe('streamRequest', () => {
 			body: JSON.stringify({ key: 'value' }),
 			credentials: 'include',
 			headers: {
+				[N8N_CLIENT_HEADER]: N8N_CLIENT_EDITOR_UI,
 				'Content-Type': 'application/json',
 				'browser-id': expect.stringContaining('-'),
 			},
@@ -451,6 +499,7 @@ describe('streamRequest', () => {
 			body: JSON.stringify({ key: 'value' }),
 			credentials: 'include',
 			headers: {
+				[N8N_CLIENT_HEADER]: N8N_CLIENT_EDITOR_UI,
 				'Content-Type': 'application/json',
 				'browser-id': expect.stringContaining('-'),
 			},

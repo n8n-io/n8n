@@ -1,3 +1,4 @@
+import type { EventService } from '@n8n/backend-services';
 import type { GlobalConfig } from '@n8n/config';
 import { Body, ControllerRegistryMetadata, Post, RestController } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -29,6 +30,7 @@ describe('ControllerRegistry - @Body media guard', () => {
 			Container.get(ControllerRegistryMetadata),
 			lastActiveAtService,
 			new RateLimitService(),
+			mock<EventService>(),
 		).activate(express());
 	}
 
