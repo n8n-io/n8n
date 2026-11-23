@@ -665,6 +665,18 @@ describe('AgentSessionTimelinePanel', () => {
 		expect(table.props('approval')).toBeUndefined();
 	});
 
+	it('shows no approval card for a chat turn, which takes its approval in the chat', async () => {
+		const detail = awaitingDetail();
+		getThreadDetail.mockResolvedValue({
+			...detail,
+			executions: detail.executions.map((execution) => ({ ...execution, source: 'chat' })),
+		});
+		const table = await openAwaitingApproval(mountPanel());
+
+		expect(table.props('approvalItem')).toBeNull();
+		expect(table.props('approval')).toBeUndefined();
+	});
+
 	it('re-enables the card when the approval request fails', async () => {
 		getThreadDetail.mockResolvedValue(awaitingDetail());
 		resumeTaskApproval.mockRejectedValue(new Error('nope'));

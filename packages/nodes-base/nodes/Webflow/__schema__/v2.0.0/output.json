@@ -1,0 +1,63 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"payload": {
+			"additionalProperties": true,
+			"properties": {
+				"data": {
+					"type": "object"
+				},
+				"formElementId": {
+					"type": "string"
+				},
+				"formId": {
+					"type": "string"
+				},
+				"id": {
+					"type": "string"
+				},
+				"localeId": {},
+				"name": {
+					"type": "string"
+				},
+				"pageId": {
+					"type": "string"
+				},
+				"pageUrl": {
+					"type": "string"
+				},
+				"publishedPath": {
+					"type": "string"
+				},
+				"schema": {
+					"items": {
+						"properties": {
+							"fieldElementId": {
+								"type": "string"
+							},
+							"fieldName": {
+								"type": "string"
+							},
+							"fieldType": {
+								"type": "string"
+							}
+						},
+						"type": "object"
+					},
+					"type": "array"
+				},
+				"siteId": {
+					"type": "string"
+				},
+				"submittedAt": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"triggerType": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

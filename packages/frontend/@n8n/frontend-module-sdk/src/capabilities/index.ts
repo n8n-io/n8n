@@ -5,6 +5,7 @@ export { mcpExposeAllOffer } from './mcpExposeAllOffer';
 // Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 export { mcpDiscoverySettings } from './mcpDiscoverySettings';
 // EOF Experiment cleanup
+export { mcpPreferencesEntryPoints } from './mcpPreferencesEntryPoints';
 export { modalOpeners } from './modalOpeners';
 export { projectContext } from './projectContext';
 export { projectPermissions } from './projectPermissions';

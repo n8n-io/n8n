@@ -15,7 +15,9 @@ import {
 
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { VIEWS } from '@/app/constants';
+import { useIsCollectionsEnabled } from '@/features/shared/knowledge/useIsCollectionsEnabled';
 
+import { useCollectionsStore } from '../collections.store';
 import { useContextStore } from '../context.store';
 import {
 	canManageContextPreferences,
@@ -29,9 +31,11 @@ const router = useRouter();
 const documentTitle = useDocumentTitle();
 const contextStore = useContextStore();
 const skillsStore = useSkillsStore();
+const collectionsStore = useCollectionsStore();
 const skillsEnabled = isContextSkillsEnabled();
 const preferencesEnabled = isContextPreferencesEnabled();
 const canManagePreferences = canManageContextPreferences();
+const collectionsEnabled = useIsCollectionsEnabled();
 const { showError } = useToast();
 
 const preferenceCount = computed(() =>
@@ -48,12 +52,23 @@ const skillCount = computed(() =>
 	}),
 );
 
+const collectionCount = computed(() =>
+	i18n.baseText('settings.context.collections.count', {
+		interpolate: { count: collectionsStore.count },
+		adjustToNumber: collectionsStore.count,
+	}),
+);
+
 async function openSkills() {
 	await router.push({ name: VIEWS.SETTINGS_CONTEXT_SKILLS });
 }
 
 async function openPreferences() {
 	await router.push({ name: VIEWS.SETTINGS_CONTEXT_PREFERENCES });
+}
+
+async function openCollections() {
+	await router.push({ name: VIEWS.SETTINGS_CONTEXT_COLLECTIONS });
 }
 
 /** Each row reports its own failure: it would otherwise show a zero as though it were real. */
@@ -77,6 +92,11 @@ onMounted(async () => {
 			loadCount(
 				async () => await skillsStore.fetchSkillCount(),
 				'settings.context.skills.error.load',
+			),
+		collectionsEnabled.value &&
+			loadCount(
+				async () => await collectionsStore.fetchCollections(),
+				'settings.context.collections.error.load',
 			),
 	]);
 });
@@ -136,6 +156,19 @@ onMounted(async () => {
 					<N8nText size="small" color="text-light">
 						{{ i18n.baseText('settings.context.skills.disabled.status') }}
 					</N8nText>
+				</template>
+			</N8nSettingsRow>
+
+			<N8nSettingsRow
+				v-if="collectionsEnabled"
+				clickable
+				:title="i18n.baseText('settings.context.collections.title')"
+				:description="i18n.baseText('settings.context.collections.subtitle')"
+				data-test-id="settings-context-collections-row"
+				@click="openCollections"
+			>
+				<template #action>
+					<N8nSettingsRowConfigure :value="collectionCount" />
 				</template>
 			</N8nSettingsRow>
 		</N8nSettingsRowGroup>

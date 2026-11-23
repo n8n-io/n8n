@@ -40,12 +40,12 @@ export const gpt52 = async (config: LLMProviderConfig) => {
 	});
 };
 
-export const anthropicClaudeSonnet45 = async (config: LLMProviderConfig) => {
+export const anthropicClaudeSonnet46 = async (config: LLMProviderConfig) => {
 	const { ChatAnthropic } = await lazyImport<typeof LangchainAnthropic>(
 		async () => await import('@langchain/anthropic'),
 	);
 	const model = new ChatAnthropic({
-		model: 'claude-sonnet-4-5-20250929',
+		model: 'claude-sonnet-4-6',
 		apiKey: config.apiKey,
 		temperature: 0,
 		maxTokens: MAX_OUTPUT_TOKENS,
@@ -56,17 +56,18 @@ export const anthropicClaudeSonnet45 = async (config: LLMProviderConfig) => {
 		},
 	});
 
-	// Remove Langchain default topP parameter since Sonnet 4.5 doesn't allow setting both temperature and topP
+	// Remove Langchain default topP parameter since Sonnet 4.6 doesn't allow setting both temperature and topP
 	delete model.topP;
 
 	return model;
 };
-export const anthropicClaudeSonnet45Think = async (config: LLMProviderConfig) => {
+
+export const anthropicClaudeSonnet46Think = async (config: LLMProviderConfig) => {
 	const { ChatAnthropic } = await lazyImport<typeof LangchainAnthropic>(
 		async () => await import('@langchain/anthropic'),
 	);
 	const model = new ChatAnthropic({
-		model: 'claude-sonnet-4-5-20250929',
+		model: 'claude-sonnet-4-6',
 		apiKey: config.apiKey,
 		maxTokens: MAX_OUTPUT_TOKENS,
 		anthropicApiUrl: config.baseUrl,
@@ -80,7 +81,7 @@ export const anthropicClaudeSonnet45Think = async (config: LLMProviderConfig) =>
 		},
 	});
 
-	// Remove Langchain default topP parameter since Sonnet 4.5 doesn't allow setting both temperature and topP
+	// Remove Langchain default topP parameter since Sonnet 4.6 doesn't allow setting both temperature and topP
 	delete model.topP;
 	delete model.temperature;
 
@@ -103,7 +104,7 @@ export const anthropicHaiku45 = async (config: LLMProviderConfig) => {
 		},
 	});
 
-	// Remove Langchain default topP parameter since Sonnet 4.5 doesn't allow setting both temperature and topP
+	// Remove Langchain default topP parameter since Haiku 4.5 doesn't allow setting both temperature and topP
 	delete model.topP;
 
 	return model;
@@ -196,8 +197,8 @@ export const devstral = createOpenRouterModel('mistralai/devstral-small');
 export type ModelId =
 	// Native models
 	| 'claude-opus-4.5'
-	| 'claude-sonnet-4.5'
-	| 'claude-sonnet-4.5-think'
+	| 'claude-sonnet-4.6'
+	| 'claude-sonnet-4.6-think'
 	| 'claude-haiku-4.5'
 	| 'gpt-5.2'
 	// OpenRouter models
@@ -216,8 +217,8 @@ export const MODEL_FACTORIES: Record<
 > = {
 	// Native models
 	'claude-opus-4.5': anthropicClaudeOpus45,
-	'claude-sonnet-4.5': anthropicClaudeSonnet45,
-	'claude-sonnet-4.5-think': anthropicClaudeSonnet45Think,
+	'claude-sonnet-4.6': anthropicClaudeSonnet46,
+	'claude-sonnet-4.6-think': anthropicClaudeSonnet46Think,
 	'claude-haiku-4.5': anthropicHaiku45,
 	'gpt-5.2': gpt52,
 	// OpenRouter models
@@ -257,7 +258,7 @@ export function getApiKeyEnvVar(modelId: ModelId): string {
 export const AVAILABLE_MODELS: readonly ModelId[] = [
 	// Native models
 	'claude-opus-4.5',
-	'claude-sonnet-4.5',
+	'claude-sonnet-4.6',
 	'claude-haiku-4.5',
 	'gpt-5.2',
 	// OpenRouter models
@@ -271,4 +272,4 @@ export const AVAILABLE_MODELS: readonly ModelId[] = [
 /**
  * Default model used when no model is specified.
  */
-export const DEFAULT_MODEL: ModelId = 'claude-sonnet-4.5';
+export const DEFAULT_MODEL: ModelId = 'claude-sonnet-4.6';

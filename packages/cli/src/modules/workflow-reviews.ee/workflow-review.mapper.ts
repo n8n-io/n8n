@@ -129,6 +129,8 @@ export function toActivityEntry(
 				type: row.type,
 				data: parsePayload(workflowReviewClosedActivityDataSchema, row, logger),
 			};
+		case 'review.closed_by_user':
+			return { ...base, type: row.type, data: null };
 		case 'workflow.archived':
 		case 'workflow.deleted':
 		case 'workflow.moved':

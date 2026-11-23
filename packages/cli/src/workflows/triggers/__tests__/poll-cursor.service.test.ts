@@ -200,6 +200,7 @@ describe('PollCursorService', () => {
 				nodeId: 'node-1',
 				cursor: { lastItemId: 'b' },
 				payload: createPayload,
+				projectId: 'project-1',
 			});
 
 			expect(result).toEqual({ executionId: 'exec-1' });
@@ -213,7 +214,9 @@ describe('PollCursorService', () => {
 				ctx,
 				undefined,
 			);
-			expect(executionPersistence.create).toHaveBeenCalledWith(createPayload, ctx);
+			expect(executionPersistence.create).toHaveBeenCalledWith(createPayload, ctx, {
+				projectId: 'project-1',
+			});
 		});
 
 		it('advances the cursor and creates the execution as two separate writes when the flag is off', async () => {
@@ -227,6 +230,7 @@ describe('PollCursorService', () => {
 				nodeId: 'node-1',
 				cursor: { lastItemId: 'b' },
 				payload: createPayload,
+				projectId: 'project-1',
 			});
 
 			expect(result).toEqual({ executionId: 'exec-1' });
@@ -238,7 +242,11 @@ describe('PollCursorService', () => {
 				{},
 				undefined,
 			);
-			expect(executionPersistence.create).toHaveBeenCalledWith(createPayload, {});
+			expect(executionPersistence.create).toHaveBeenCalledWith(
+				createPayload,
+				{},
+				{ projectId: 'project-1' },
+			);
 		});
 
 		// The transaction runner is a pass-through here, so this only pins that the insert

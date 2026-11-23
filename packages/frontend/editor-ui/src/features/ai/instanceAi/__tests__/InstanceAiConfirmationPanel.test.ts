@@ -453,6 +453,33 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 			expect(getByText(message)).toBeVisible();
 		});
 
+		it('shows why the "Approve for me" mode asks, below the description', () => {
+			injectPendingConfirmation(thread, {
+				requestId: 'auto-ask',
+				severity: 'destructive',
+				message: 'Delete rows where name is Eve',
+				askReason: { kind: 'judge', text: 'The delete comes from a row, not from your request.' },
+			});
+			const { getByText, getByTestId } = renderComponent({ props: { kind: 'floating' } });
+
+			expect(getByText('Delete rows where name is Eve')).toBeVisible();
+			expect(getByTestId('approval-ask-reason')).toHaveTextContent(
+				'The delete comes from a row, not from your request.',
+			);
+		});
+
+		it('shows no reason without one, as in the "Ask for approval" mode', () => {
+			injectPendingConfirmation(thread, {
+				requestId: 'manual-ask',
+				severity: 'destructive',
+				message: 'Delete rows where name is Eve',
+			});
+			const { getByText, queryByTestId } = renderComponent({ props: { kind: 'floating' } });
+
+			expect(getByText('Delete rows where name is Eve')).toBeVisible();
+			expect(queryByTestId('approval-ask-reason')).not.toBeInTheDocument();
+		});
+
 		it('renders a saved approval without a description', () => {
 			injectPendingConfirmation(thread, {
 				requestId: 'saved-empty',

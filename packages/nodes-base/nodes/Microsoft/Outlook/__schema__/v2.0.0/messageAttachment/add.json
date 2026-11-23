@@ -1,0 +1,9 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"success": {
+			"type": "boolean"
+		}
+	},
+	"type": "object"
+}

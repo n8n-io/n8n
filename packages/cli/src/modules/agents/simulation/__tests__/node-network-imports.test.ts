@@ -40,6 +40,7 @@ const NETWORK_MODULES = [
 	'node:tls',
 	'nodemailer',
 	'oracledb',
+	'pg-copy-streams',
 	'pg-promise',
 	'promise-ftp',
 	'redis',

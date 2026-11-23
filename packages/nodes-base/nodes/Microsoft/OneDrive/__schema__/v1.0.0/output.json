@@ -1,0 +1,29 @@
+{
+	"properties": {
+		"createdDateTime": {
+			"type": "string"
+		},
+		"id": {
+			"type": "string"
+		},
+		"lastModifiedDateTime": {
+			"type": "string"
+		},
+		"mimeType": {
+			"type": "string"
+		},
+		"name": {
+			"type": "string"
+		},
+		"path": {
+			"type": "string"
+		},
+		"size": {
+			"type": "number"
+		},
+		"webUrl": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

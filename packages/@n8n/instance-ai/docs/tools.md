@@ -45,7 +45,13 @@ tool with a probe `suspend()` and, when the review approves, again with
 `{ approved: true }`. Cards that need input (setup, credentials, questions,
 resource decisions) always show. An approved call emits `auto-approval`, its
 judge tokens are claimed from the user's credits, and a tool keeps the grant
-that its approval gives, as "Allow once" does in Manual mode. Telemetry that
+that its approval gives, as "Allow once" does in Manual mode. A call that the
+review sends to the user suspends with the tool's payload and `askReason`, and
+the card shows the reason below the description. `askReason.kind` is `judge`
+with the judge's sentence in `text`, or a fixed cause that the frontend
+translates (`instanceAi.approvalAskReason.*`): `always-ask`, `too-long` or
+`judge-failed`. The wrapper adds `askReason` to the tool's suspend schema, so
+the stored suspension keeps it. Telemetry that
 the probe tracks is sent only when the card shows. `approval-judge.ts`
 describes what the judge reads and how it cuts long input.
 
@@ -54,7 +60,18 @@ the Assistant's text. In a long thread it sees the newest messages. From the
 part before them it sees only what the user wrote, up to a budget of messages
 and characters. A limit that the user set there stays in view while it fits
 the budget. A note tells the judge when older messages are left out. Of a long
-message it sees only the end.
+message it sees only the end. `pnpm eval:approval-judge` measures the judge on
+a directory of cases (see the evaluations README).
+
+The trace of a run shows the mode as `approval_mode` in the metadata of its
+root run and its `agent: orchestrator` run: `manual`, `auto`, or `unavailable`
+when the flag is off. In Auto, each reviewed approval adds an `approval: review`
+run to the trace, with the tag `approval-review`. Its metadata has `tool_name`,
+`approval_route` (`always-ask`, `low-risk` or `judge`), `approval_decision`
+(`approve` or `ask`), `approval_decided_by` (`rule` or `judge`),
+`approval_judge_failed`, and `tool_call_id` when the call has one. Its output
+adds `approval_reason`. A decision that the judge model made also has its
+`llm: approval-judge` run. A review that failed before the model call has none.
 
 ### Approval copy
 
@@ -102,9 +119,9 @@ keep their explicit pattern. `like` matches case; `ilike` ignores case.
 | `eval-config` | 6 |
 | `n8n-docs` | 3 |
 | `agent-context` | 13 lookup types |
-| `skills` | 5 |
+| `skills` | 5 (8 when Skill Sync is on) |
 | `apps` | 6 |
-| `workflow_builder_build_workflow`, `ask_user`, `parse-file`, `search_models`, `search_nodes`, `get_node_types`, `get_node_parameter_options`, `execute_node` | single-purpose |
+| `workflow_builder_build_workflow`, `ask_user`, `parse-file`, `import-files`, `search_models`, `search_nodes`, `get_node_types`, `get_node_parameter_options`, `execute_node` | single-purpose |
 
 ## Orchestration Tools
 
@@ -433,6 +450,9 @@ Archive a workflow (soft delete, deactivates if needed). Reverse it with
 |-------|------|----------|-------------|
 | `workflowId` | string | yes | Workflow to archive |
 
+"Always allow" on the approval card saves one thread grant for the action. The
+Assistant then archives other workflows in the thread without a card.
+
 **Returns**: `{ success: boolean }`
 
 ### `unarchive_workflow`
@@ -516,6 +536,9 @@ Stop a workflow from running in production. The draft is preserved.
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `workflowId` | string | yes | Workflow ID |
+
+"Always allow" on the approval card saves one thread grant for the action, as
+it does for `archive_workflow`.
 
 **Returns**: `{ success: boolean }`
 
@@ -1084,7 +1107,7 @@ so the agent can pass a node it is building verbatim:
 | `config.parameters` | object | yes | Same shape as workflow-sdk `NodeConfig.parameters` |
 | `config.credentials` | object | no | Resolved credential references `{ id, name }` by credential type; n8n Connect managed credentials use `{ id: null, name, __aiGatewayManaged: true }` |
 | `input` | array | no | Input items `{ json }` (defaults to one empty item) |
-| `timeoutMs` | number | no | Max execution time, capped at 60s |
+| `timeoutMs` | number | no | Max execution time (default 30s, max 10 min). `EXECUTIONS_TIMEOUT_MAX` can lower the max |
 
 **Returns**: `{ status: 'success', output }` or
 `{ status: 'error', error: { message, description?, nodeErrorType? } }`. The
@@ -1318,6 +1341,107 @@ pagination, truncation state, and warnings. Text-like results contain extracted
 content and can include a title or page count. All results identify the source
 attachment and can contain an error.
 
+## `import-files`
+
+Copy stored files of the thread into `inputs/` of the sandbox workspace, so the
+agent can work on them with the workspace tools. The registry adds the tool only
+when the host sets `storedFiles` and `sandboxFiles` on the context and the
+turn has a workspace. Only the Assistant on the Agents runtime sets them. It
+sets `sandboxFiles` only when the instance flag `137_agent_sandbox_files`
+is on, and takes its byte cap from `N8N_AGENTS_FILES_MAX_IMPORT_MB`, like the
+`import_files` tool of project agents. When the tool is present, the
+`## Sandbox workspace` prompt section tells the model when to use it.
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `files` | array | yes | — | 1 to 20 items with `fileId` and an optional `path` |
+| `files[].fileId` | string | yes | — | Id of a stored file of the thread |
+| `files[].path` | string | no | file name | Path relative to `inputs/`. A leading `inputs/` is dropped. A folder path (`inputs`, or a path that ends with `/`) gets the file name |
+
+The tool reads the name of each file and picks its path in `inputs/`. Then
+`sandboxFiles.importFiles` of the host copies the files. On the Agents runtime,
+this is the same code as `import_files` of project agents
+(`AgentSandboxFilesService.importFilesFrom`), but the files come from the system
+chat of the user. The host checks every file, path and the total size before
+the first write, so a failed check copies nothing. The host then writes one
+file at a time. A cancelled turn stops the copy.
+
+The result lists each copied file under `imported`, with its absolute
+workspace path. When a check or the copy fails, the result has no files and an
+`error` for the model. A write can fail after other files were copied. These
+files stay in `inputs/`, and the `error` names them. The list is not named
+`files`, because the chat shows the `files` of a tool result as new files.
+
+The sandbox of a thread can be reset between turns. The prompt section tells the
+model to check that a file in `inputs/` from an earlier turn is there, and to
+import it again when it is missing.
+
+## `list-files`
+
+List the stored files of the thread, newest first: the uploads of every turn
+and the files from `outputs/` of the sandbox. The model learns a `fileId` from
+the label of the message that carried the file, and memory drops these labels
+when it compacts older messages. With this tool, the model can still find the
+files of earlier turns. The registry adds the tool only when the host sets
+`list` on `storedFiles`. The Assistant on the Agents runtime sets it only when
+the instance flag `137_agent_sandbox_files` is on. The host lists the files in
+the same scope as `read`, so `parse-file` and `import-files` can read each
+listed file. The chat files list of the Assistant uses the same query. When the
+tool is present, the `## Sandbox workspace` prompt section names it.
+
+The tool takes no input. The result lists up to 50 files under
+`conversationFiles`, with `fileId`, `fileName`, `mimeType`, `sizeBytes`,
+`origin` (`upload` or `sandbox`) and `createdAt`. `omitted` counts the older
+files that the list leaves out. The list is not named `files`, because the chat
+shows the `files` of a tool result as new files.
+
+## `share-files`
+
+Store files of `outputs/` in the sandbox workspace as conversation files, so
+the chat shows them in the reply and the user can download them. The registry
+adds the tool when the host sets `sandboxFiles` on the context and the turn has
+a workspace. The host stores each file with `storeOutput`. A file whose name and
+bytes did not change keeps its `fileId`. When the tool is present, the
+`## Sandbox workspace` prompt section tells the model to put the files for the
+user in `outputs/` and to share them.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `paths` | string[] | yes | 1 to 10 paths relative to `outputs/`. A leading `outputs/` is dropped |
+
+The result lists the stored files under `files`, with `fileId`, `fileName`,
+`mimeType` and `sizeBytes`, and lists each path that failed under `errors`.
+
+When a turn that used a workspace tool ends, the Agents runtime also stores
+the new files of `outputs/`. For the Assistant, these files belong to the
+system chat of the user, so `parse-file`, `import-files` and the chat download
+route can read them.
+
+## `view-file`
+
+Attach an image or a PDF of the thread for the model to see. The model cannot
+see a file that it makes in the sandbox. With this tool, it can share an image
+with `share-files` and then look at it, or look again at an upload of an
+earlier turn that is no longer attached. The registry adds the tool only when
+the host sets `list` and `canView` on `storedFiles`. When the tool
+is present, the `## Sandbox workspace` prompt section tells the model to check
+the images that it makes.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `fileId` | string | yes | A file of this conversation |
+
+The tool reads the metadata through `storedFiles.read`, so it finds the same
+files as `parse-file`. It accepts only the file types for which `canView` is
+true. The runtime attaches only the images and PDFs that the provider of the
+model supports, so the host decides from that provider. The file must also be
+smaller than the chat attachment cap (`MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES`),
+and storage must still have its bytes (`hasContent`). For any other file, the
+tool returns an `error`. The result has the file under `viewedFile`, not
+`files`, so the chat does not show the file again. The model output adds a file
+reference, and the runtime loads the bytes before each model call, the same as
+for an attached file.
+
 ## `ask_user`
 
 Suspend the run for one or more human decisions.
@@ -1363,6 +1487,40 @@ those cases. The model relays a rejection in its own words and never says
 The system prompt carries the judgment of *when* to call it (see
 `getPreferenceSavingSection` in `agent/system-prompt.ts`); the description
 carries *what* it does.
+
+---
+
+## `send_feedback` *(conditional)*
+
+Send a short report to the n8n team when the agent is not sure how to do
+something, a tool or n8n behaves wrong, or n8n cannot do what the user needs.
+Present when the adapter wires `agentFeedbackService` and the instance shares
+data (`allowSendingParameterValues` is not `false`). The CLI adapter wires the
+service only when telemetry is on (`N8N_DIAGNOSTICS_ENABLED`), because the report
+goes out only as a telemetry event. The report is agent-written text, so the
+tool is not registered when data sharing is off. When the tool is absent, the
+system prompt omits the feedback section too.
+Always loaded, because the agent needs it at the moment it is stuck.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `category` | `'unsure' \| 'bug' \| 'missing_capability' \| 'confusing_tool' \| 'other'` | yes | What kind of problem it is |
+| `severity` | `'blocked' \| 'workaround' \| 'minor'` | yes | How much the problem affected the task |
+| `summary` | string | yes | The goal, what the agent tried, and where it got stuck. The CLI adapter redacts it, then cuts it to 1,000 characters |
+| `toolName` | string | no | The tool that the report is about |
+
+The tool does not suspend and nothing replies. It always returns
+`{ ok: true, message }`, and the message tells the agent to continue. A run
+sends at most 3 reports. Later calls return the same result and send nothing.
+A resume rebuilds the agent and starts a new count.
+
+The CLI adapter tracks the `AI Assistant sent feedback` telemetry event. It
+removes secrets and personal data from the summary and the tool name before it
+cuts them, so a secret that crosses the cut is still found. LangSmith records the
+call as a normal tool span, so traces show the reports too.
+
+The system prompt carries the judgment of *when* to call it (see
+`getFeedbackSection` in `agent/system-prompt.ts`).
 
 ---
 
@@ -1553,6 +1711,15 @@ a `delete` that the user has no permission for, before it asks for approval.
 For `update`, pass the `skillHash` that `get` returns as `baseSkillHash`. The
 tool marks its output as untrusted data, because other users can write skill
 content. The tool does not attach a skill to an Agent.
+
+When Skill Sync is on, `list-sources` lists visible sources and their update
+counts. `discover-source` previews a public GitHub link and reports the check
+verdict for each skill. `import-from-source` connects the source and imports the
+selected skills that pass. The result lists the other selected skills in
+`failed`. The backend checks the selection first, so the approval card names the
+skills that come in. A selection with no skill that can come in is refused
+before the card. The import checks the source revision again before writing. Use **Settings > Context > Skills** for
+private repositories, warning review, and update acceptance.
 
 ## MCP Registry Tool
 
