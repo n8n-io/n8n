@@ -431,7 +431,8 @@ export const useActions = () => {
 	) {
 		// getAddedNodesAndConnections adds nothing for these types. A watcher would wait for
 		// the next node of the type, and give that node the parameters of this action.
-		if (isNodeItemRestricted(action.key) || isNodeTypeIncompatible(action.key)) {
+		const { key } = action;
+		if (key && (isNodeItemRestricted(key) || isNodeTypeIncompatible(key))) {
 			return () => {};
 		}
 
