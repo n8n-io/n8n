@@ -635,6 +635,18 @@ describe('CredentialEdit', () => {
 	});
 
 	describe('credential types in edit mode', () => {
+		// createTestingPinia makes its pinia the active one; the tests after these ones
+		// read stores from the renderer's pinia, so hand it back afterwards.
+		let rendererPinia: ReturnType<typeof getActivePinia>;
+
+		beforeEach(() => {
+			rendererPinia = getActivePinia();
+		});
+
+		afterEach(() => {
+			if (rendererPinia) setActivePinia(rendererPinia);
+		});
+
 		const typeWithDefault = {
 			name: 'defaultsApi',
 			displayName: 'Defaults API',
