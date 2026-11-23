@@ -1,18 +1,15 @@
-import { isRecord } from '@n8n/utils/is-record';
 import type { IDataObject, IExecuteFunctions, INodeProperties, RequestPath } from 'n8n-workflow';
-import {
-	NodeApiError,
-	NodeOperationError,
-	decodePathValue,
-	requestPath,
-	sanitizeXmlName,
-} from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, decodePathValue, requestPath } from 'n8n-workflow';
 import { posix } from 'path';
-import { parseStringPromise } from 'xml2js';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
-import { nextCloudApiRequest, webDavPath } from '../../GenericFunctions';
+import {
+	nextCloudApiRequest,
+	readMultistatus,
+	readProps,
+	webDavPath,
+} from '../../GenericFunctions';
 
 const properties: INodeProperties[] = [
 	{
@@ -88,22 +85,6 @@ const LIST_BODY = `<?xml version="1.0"?>
   <d:prop><d:resourcetype/></d:prop>
 </d:propfind>`;
 
-async function readResponses(xml: string): Promise<Array<Record<string, unknown>>> {
-	const data: unknown = await parseStringPromise(xml, {
-		explicitArray: false,
-		tagNameProcessors: [sanitizeXmlName],
-		attrNameProcessors: [sanitizeXmlName],
-	});
-	const multistatus = isRecord(data) ? data['d:multistatus'] : undefined;
-	return isRecord(multistatus) ? [multistatus['d:response']].flat().filter(isRecord) : [];
-}
-
-function readProps(response: Record<string, unknown> | undefined): Record<string, unknown> {
-	const propstat = response ? [response['d:propstat']].flat()[0] : undefined;
-	const prop = isRecord(propstat) ? propstat['d:prop'] : undefined;
-	return isRecord(prop) ? prop : {};
-}
-
 // Another writer can take the chosen name between the folder listing and the PUT
 const MAX_TRIES = 5;
 
@@ -133,7 +114,7 @@ export function nextSuffix(fileName: string, names: string[]) {
 }
 
 async function listNames(this: IExecuteFunctions, folder: RequestPath) {
-	const responses = await readResponses(
+	const responses = await readMultistatus(
 		await nextCloudApiRequest.call(this, 'PROPFIND', folder, LIST_BODY, {
 			'Content-Type': 'application/xml',
 			Depth: '1',
@@ -235,7 +216,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<IData
 	const path = `${parentFolder}/${writtenName}`;
 
 	// A PUT response has no body, so read the new file's metadata separately
-	const [response] = await readResponses(
+	const [response] = await readMultistatus(
 		await nextCloudApiRequest.call(
 			this,
 			'PROPFIND',
