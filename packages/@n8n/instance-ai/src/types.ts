@@ -51,6 +51,7 @@ import type {
 	McpToolPermissions,
 	McpToolCallRequest,
 	McpToolCallResult,
+	WorkflowReviewBlockedDetails,
 } from '@n8n/api-types';
 import type { NodeJSON, OutputSchemaLookup, WorkflowJSON } from '@n8n/workflow-sdk';
 import type {
@@ -630,6 +631,14 @@ export interface InstanceAiWorkflowService {
 		options?: { versionId?: string; name?: string; description?: string },
 	): Promise<{ activeVersionId: string }>;
 	unpublish(workflowId: string): Promise<void>;
+	/**
+	 * The workflow review rule that blocks publishing this version (the draft when omitted), or
+	 * undefined when the version may go live. Absent when the host has no review rules.
+	 */
+	getPublishReviewBlock?(
+		workflowId: string,
+		versionId?: string,
+	): Promise<WorkflowReviewBlockedDetails['reason'] | undefined>;
 	/** List version history for a workflow (metadata only, no nodes/connections). */
 	listVersions?(
 		workflowId: string,
