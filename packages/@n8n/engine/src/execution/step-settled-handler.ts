@@ -7,6 +7,7 @@ import {
 	type GraphNode,
 } from '../graph';
 import type { LifecycleEventPublisherFactory } from '../lifecycle-events';
+import type { EngineLogger } from '../logging';
 import type { ExecutionResponseSender } from '../response-channel';
 import type { OrchestrationMessage, StepMessage, StepSettledEvent, WorkQueue } from '../queue';
 import type { CancelExecutionService } from './cancel-execution.service';
@@ -52,6 +53,7 @@ export class StepSettledHandler {
 		private readonly lifecycleEventPublisherFactory: LifecycleEventPublisherFactory,
 		private readonly responseSender: ExecutionResponseSender,
 		private readonly cancelExecution: CancelExecutionService,
+		private readonly logger: EngineLogger,
 	) {}
 
 	async handle(event: StepSettledEvent): Promise<void> {
@@ -81,7 +83,16 @@ export class StepSettledHandler {
 		// Last, so an error before this line leaves the `stale_after` time on the
 		// step. The reconciliation sweeper then publishes `step:settled` to the
 		// orchestration queue again.
-		await this.stepStore.acknowledgeSettledStep(step.id);
+		//
+		// Not awaited, so the next message does not wait for this write. A write
+		// that fails has the same result as an error before this line.
+		void this.stepStore.acknowledgeSettledStep(step.id).catch((error: unknown) => {
+			this.logger.warn('Acknowledgement of a settled step failed', {
+				executionId: execution.id,
+				stepId: step.id,
+				error,
+			});
+		});
 	}
 
 	/** Applies the consequences of the settled step to its execution. */

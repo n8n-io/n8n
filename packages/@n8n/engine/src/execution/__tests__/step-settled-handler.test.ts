@@ -5,6 +5,7 @@ import {
 	LifecycleEventPublisherFactory,
 	type LifecycleEventPublisher,
 } from '../../lifecycle-events';
+import type { EngineLogger } from '../../logging';
 import type { OrchestrationMessage, StepMessage, WorkQueue } from '../../queue';
 import type { ExecutionResponseSender } from '../../response-channel';
 import type { CancelExecutionService } from '../cancel-execution.service';
@@ -135,7 +136,7 @@ function makeStepStore(
 		failStaleRunningStep: vi.fn(),
 		findStaleSettledSteps: vi.fn().mockResolvedValue([]),
 		renewSettledStep: vi.fn(),
-		acknowledgeSettledStep: vi.fn(),
+		acknowledgeSettledStep: vi.fn().mockResolvedValue(undefined),
 		failStep: vi.fn(),
 		failWaitingStep: vi.fn(),
 		cancelStep: vi.fn(),
@@ -176,6 +177,11 @@ function makeLifecycleEventPublisher(): LifecycleEventPublisher {
 	return { publish: vi.fn(), stop: vi.fn() };
 }
 
+/** A logger fake; tests that care assert on `warn`. */
+function makeLogger(): EngineLogger {
+	return { error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn() };
+}
+
 /** A response sender fake; tests that care assert on `send`. */
 function makeResponseSender() {
 	return { send: vi.fn() } as unknown as ExecutionResponseSender;
@@ -193,6 +199,7 @@ function makeHandler(
 		lifecycleEventPublisher = makeLifecycleEventPublisher(),
 		responseSender = makeResponseSender(),
 		subExecutionCanceller = { cancelSubExecutions: vi.fn() } as SubExecutionCanceller,
+		logger = makeLogger(),
 	} = {},
 ) {
 	return {
@@ -204,6 +211,7 @@ function makeHandler(
 			new LifecycleEventPublisherFactory(lifecycleEventPublisher),
 			responseSender,
 			subExecutionCanceller as CancelExecutionService,
+			logger,
 		),
 		executionStore,
 		stepQueue,
@@ -211,6 +219,7 @@ function makeHandler(
 		lifecycleEventPublisher,
 		responseSender,
 		subExecutionCanceller,
+		logger,
 	};
 }
 
@@ -726,6 +735,37 @@ describe('StepSettledHandler', () => {
 
 			expect(stepStore.createSteps).not.toHaveBeenCalled();
 			expect(stepStore.acknowledgeSettledStep).toHaveBeenCalledExactlyOnceWith('step-a');
+		});
+
+		it('does not wait for the acknowledgement', async () => {
+			const stepStore = makeStepStore(
+				{},
+				// Never settles, so `handle` can only return if it does not wait.
+				{ acknowledgeSettledStep: vi.fn().mockReturnValue(new Promise<void>(() => {})) },
+			);
+			const { handler } = makeHandler(stepStore);
+
+			await expect(handler.handle(event)).resolves.toBeUndefined();
+
+			expect(stepStore.acknowledgeSettledStep).toHaveBeenCalledExactlyOnceWith('step-a');
+		});
+
+		it('logs a warning and does not throw when the acknowledgement fails', async () => {
+			const error = new Error('db down');
+			const stepStore = makeStepStore(
+				{},
+				{ acknowledgeSettledStep: vi.fn().mockRejectedValue(error) },
+			);
+			const { handler, logger } = makeHandler(stepStore);
+
+			await expect(handler.handle(event)).resolves.toBeUndefined();
+
+			await vi.waitFor(() =>
+				expect(logger.warn).toHaveBeenCalledExactlyOnceWith(
+					'Acknowledgement of a settled step failed',
+					{ executionId: 'exec-1', stepId: 'step-a', error },
+				),
+			);
 		});
 
 		it('does not acknowledge the step when the settlement throws', async () => {

@@ -214,6 +214,7 @@ export function createEngineRuntime({
 			lifecycleEventPublisherFactory,
 			responseSender,
 			cancelExecution,
+			logger,
 		),
 	);
 	const waitSweeper = new WaitSweeper(stepStore, stepQueue, logger, waitSweepIntervalMs);
