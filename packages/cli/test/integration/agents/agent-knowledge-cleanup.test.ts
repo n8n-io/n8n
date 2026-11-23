@@ -3,6 +3,10 @@ import { BinaryDataRepository, ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
+import { FsByteStoreService, StorageConfig } from 'n8n-core';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { v4 as uuid } from 'uuid';
 
 import { createAgent as createTestAgent } from '@test-integration/db/agents';
@@ -21,8 +25,13 @@ describe('Knowledge cleanup with the module disabled', () => {
 	let fileTable: string;
 	let agents: AgentRepository;
 	let binaryData: BinaryDataRepository;
+	let fsByteStore: FsByteStoreService;
+	let storagePath: string;
 
 	beforeAll(async () => {
+		storagePath = await mkdtemp(join(tmpdir(), 'knowledge-cleanup-'));
+		Container.get(StorageConfig).storagePath = storagePath;
+		fsByteStore = Container.get(FsByteStoreService);
 		await testModules.loadModules(['agents']);
 		await testDb.init();
 		dataSource = Container.get(DataSource);
@@ -45,9 +54,10 @@ describe('Knowledge cleanup with the module disabled', () => {
 
 	afterAll(async () => {
 		await testDb.terminate();
+		await rm(storagePath, { recursive: true, force: true });
 	});
 
-	async function createAgentWithFile(projectId: string) {
+	async function createAgentWithFile(projectId: string, storedAt: 'db' | 'fs') {
 		const agent = await createTestAgent({
 			name: 'Knowledge agent',
 			projectId,
@@ -55,17 +65,22 @@ describe('Knowledge cleanup with the module disabled', () => {
 			integrations: [],
 		});
 		const fileId = generateNanoId();
-		const storageKey = uuid();
+		const storageKey =
+			storedAt === 'db' ? uuid() : `agents/${agent.id}/knowledge-files/${fileId}/content`;
 		const content = Buffer.from('Stored knowledge');
-		await binaryData.insert({
-			fileId: storageKey,
-			sourceType: 'agent_file',
-			sourceId: fileId,
-			data: content,
-			mimeType: 'text/plain',
-			fileName: 'notes.txt',
-			fileSize: content.length,
-		});
+		if (storedAt === 'db') {
+			await binaryData.insert({
+				fileId: storageKey,
+				sourceType: 'agent_file',
+				sourceId: fileId,
+				data: content,
+				mimeType: 'text/plain',
+				fileName: 'notes.txt',
+				fileSize: content.length,
+			});
+		} else {
+			await fsByteStore.write(storageKey, content);
+		}
 		await dataSource
 			.createQueryBuilder()
 			.insert()
@@ -73,14 +88,20 @@ describe('Knowledge cleanup with the module disabled', () => {
 			.values({
 				id: fileId,
 				agentId: agent.id,
-				storedAt: 'db',
+				storedAt,
 				storageKey,
 				fileName: 'notes.txt',
 				mimeType: 'text/plain',
 				fileSizeBytes: content.length,
 			})
 			.execute();
-		return { agentId: agent.id, storageKey, content };
+		return { agentId: agent.id, storedAt, storageKey, content };
+	}
+
+	async function storedContent(file: { storedAt: 'db' | 'fs'; storageKey: string }) {
+		return file.storedAt === 'db'
+			? await binaryData.findContentByFileId(file.storageKey)
+			: await fsByteStore.read(file.storageKey);
 	}
 
 	async function fileRowsForAgent(agentId: string) {
@@ -92,37 +113,52 @@ describe('Knowledge cleanup with the module disabled', () => {
 			.getRawMany<{ id: string }>();
 	}
 
-	it('deletes the agent and its stored bytes while preserving another agent in the same project', async () => {
-		const owner = await createOwner();
-		const project = await createTeamProject('Agent deletion', owner);
-		const deleted = await createAgentWithFile(project.id);
-		const kept = await createAgentWithFile(project.id);
+	it.each(['db', 'fs'] as const)(
+		'deletes the agent and its %s bytes while preserving another agent in the same project',
+		async (storedAt) => {
+			const owner = await createOwner();
+			const project = await createTeamProject('Agent deletion', owner);
+			const deleted = await createAgentWithFile(project.id, storedAt);
+			const kept = await createAgentWithFile(project.id, storedAt);
 
-		await Container.get(AgentsService).delete(deleted.agentId, owner, project.id);
+			expect(await storedContent(deleted)).toEqual(deleted.content);
 
-		expect(await agents.findById(deleted.agentId)).toBeNull();
-		expect(await fileRowsForAgent(deleted.agentId)).toEqual([]);
-		expect(await binaryData.findContentByFileId(deleted.storageKey)).toBeNull();
-		expect(await fileRowsForAgent(kept.agentId)).toHaveLength(1);
-		expect(await binaryData.findContentByFileId(kept.storageKey)).toEqual(kept.content);
-	});
+			await Container.get(AgentsService).delete(deleted.agentId, owner, project.id);
 
-	it('deletes every agent file in a project while preserving files in another project', async () => {
-		const owner = await createOwner();
-		const project = await createTeamProject('Deleted project', owner);
-		const otherProject = await createTeamProject('Kept project', owner);
-		const deleted = [await createAgentWithFile(project.id), await createAgentWithFile(project.id)];
-		const kept = await createAgentWithFile(otherProject.id);
+			expect(await agents.findById(deleted.agentId)).toBeNull();
+			expect(await fileRowsForAgent(deleted.agentId)).toEqual([]);
+			expect(await storedContent(deleted)).toBeNull();
+			expect(await fileRowsForAgent(kept.agentId)).toHaveLength(1);
+			expect(await storedContent(kept)).toEqual(kept.content);
+		},
+	);
 
-		await Container.get(ProjectService).deleteProject(owner, project.id);
+	it.each(['db', 'fs'] as const)(
+		'deletes every %s agent file in a project while preserving files in another project',
+		async (storedAt) => {
+			const owner = await createOwner();
+			const project = await createTeamProject('Deleted project', owner);
+			const otherProject = await createTeamProject('Kept project', owner);
+			const deleted = [
+				await createAgentWithFile(project.id, storedAt),
+				await createAgentWithFile(project.id, storedAt),
+			];
+			const kept = await createAgentWithFile(otherProject.id, storedAt);
 
-		expect(await Container.get(ProjectRepository).findOneBy({ id: project.id })).toBeNull();
-		for (const file of deleted) {
-			expect(await agents.findById(file.agentId)).toBeNull();
-			expect(await fileRowsForAgent(file.agentId)).toEqual([]);
-			expect(await binaryData.findContentByFileId(file.storageKey)).toBeNull();
-		}
-		expect(await fileRowsForAgent(kept.agentId)).toHaveLength(1);
-		expect(await binaryData.findContentByFileId(kept.storageKey)).toEqual(kept.content);
-	});
+			for (const file of deleted) {
+				expect(await storedContent(file)).toEqual(file.content);
+			}
+
+			await Container.get(ProjectService).deleteProject(owner, project.id);
+
+			expect(await Container.get(ProjectRepository).findOneBy({ id: project.id })).toBeNull();
+			for (const file of deleted) {
+				expect(await agents.findById(file.agentId)).toBeNull();
+				expect(await fileRowsForAgent(file.agentId)).toEqual([]);
+				expect(await storedContent(file)).toBeNull();
+			}
+			expect(await fileRowsForAgent(kept.agentId)).toHaveLength(1);
+			expect(await storedContent(kept)).toEqual(kept.content);
+		},
+	);
 });
