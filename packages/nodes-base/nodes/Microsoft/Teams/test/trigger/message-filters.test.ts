@@ -144,6 +144,7 @@ describe('message filters', () => {
 			['the subject only', { subject: 'Release now', ...html('<p>x</p>') }, 'now', true],
 			['tags in a text body', { body: { contentType: 'text', content: 'a <b> b' } }, '<b>', true],
 			['a link target', html('<a href="https://x/deploy">docs</a>'), 'deploy', false],
+			['an image', html('<img alt="deploy" src="https://x/deploy.png">'), 'deploy', false],
 			['across subject and body (newline)', { subject: 'foo', ...html('bar') }, 'foo\nbar', false],
 			['across subject and body (join)', { subject: 'foo', ...html('bar') }, 'ob', false],
 		])('matches the keyword for %s', async (_label, message, keyword, expected) => {
@@ -209,6 +210,13 @@ describe('message filters', () => {
 
 		it('is off for an event without messages', () => {
 			expect(read({ event: 'newChannel', filters: { skipBotMessages: true } })).toBeUndefined();
+		});
+
+		it('reads the filters for a chat message event', () => {
+			expect(read({ event: 'newChatMessage', filters: { skipBotMessages: true } })).toEqual({
+				...off,
+				skipBotMessages: true,
+			});
 		});
 
 		it('trims the keyword', () => {
@@ -527,6 +535,33 @@ describe('message filters', () => {
 			expect(staticData).toEqual({ mentionUserId: 'me' });
 			expect(readPaths()).toEqual(['/v1.0/me']);
 			expect(request.mock.calls[0][4]).toEqual({ $select: 'id' });
+		});
+
+		it('stores the signed-in user id for a chat message event', async () => {
+			request.mockResolvedValue({ id: 'me' });
+			const staticData: IDataObject = {};
+
+			await storeMentionUserId.call(ctxWith({ ...on, event: 'newChatMessage' }, staticData));
+
+			expect(staticData).toEqual({ mentionUserId: 'me' });
+		});
+
+		it('warns and removes the stored id when the Mentions Me option cannot be read', async () => {
+			const staticData: IDataObject = { mentionUserId: 'old' };
+			const ctx = ctxWith(on, staticData);
+			ctx.getNodeParameter.mockImplementation((name: string) => {
+				if (name === 'filters.mentionsMe') throw new Error('cannot resolve');
+				return 'newChannelMessage';
+			});
+
+			await expect(storeMentionUserId.call(ctx)).resolves.toBeUndefined();
+
+			expect(staticData).toEqual({});
+			expect(request).not.toHaveBeenCalled();
+			expect(ctx.logger.warn).toHaveBeenCalledWith(
+				'Microsoft Teams Trigger: could not read the Mentions Me option',
+				expect.anything(),
+			);
 		});
 
 		it('writes nothing when the id is the same', async () => {

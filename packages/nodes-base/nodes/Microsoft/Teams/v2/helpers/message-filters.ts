@@ -71,18 +71,31 @@ async function readUserId(this: IHookFunctions | IWebhookFunctions): Promise<str
  */
 export async function storeMentionUserId(this: IHookFunctions): Promise<void> {
 	const webhookData = this.getWorkflowStaticData('node');
-	let id: string | undefined;
-	let failure: Record<string, unknown> = {};
+	// A stale id can belong to another user, so every path without a fresh id removes it.
+	const dropStoredId = () => {
+		if ('mentionUserId' in webhookData) delete webhookData.mentionUserId;
+	};
+	let wanted: boolean;
 	try {
 		// Read only this option: an unresolvable expression in another filter must not fail the activation.
-		const wanted =
+		wanted =
 			isMessageEvent(this.getNodeParameter('event', '')) &&
 			getTeamsCredentialType.call(this) !== SERVICE_PRINCIPAL_AUTH &&
 			this.getNodeParameter('filters.mentionsMe', false) === true;
-		if (!wanted) {
-			if ('mentionUserId' in webhookData) delete webhookData.mentionUserId;
-			return;
-		}
+	} catch (error) {
+		logTrigger.call(this, 'warn', 'could not read the Mentions Me option', {
+			error: errorText(error),
+		});
+		dropStoredId();
+		return;
+	}
+	if (!wanted) {
+		dropStoredId();
+		return;
+	}
+	let id: string | undefined;
+	let failure: Record<string, unknown> = {};
+	try {
 		id = await readUserId.call(this);
 	} catch (error) {
 		failure = { status: httpStatus(error), error: errorText(error) };
@@ -94,8 +107,7 @@ export async function storeMentionUserId(this: IHookFunctions): Promise<void> {
 			'could not read the signed-in user; Mentions Me needs the User.Read permission',
 			failure,
 		);
-		// A stale id can belong to another user.
-		if ('mentionUserId' in webhookData) delete webhookData.mentionUserId;
+		dropStoredId();
 		return;
 	}
 	// Each static-data write is a database save.
