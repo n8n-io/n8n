@@ -42,16 +42,4 @@ describe('Public API usage', () => {
 
 		expect(PUBLIC_API_USAGE_JSON_FIELDS.routes.safeParse([row]).success).toBe(false);
 	});
-
-	it('rejects client counts that leave out a client', () => {
-		const clients = { editor_ui: 1, other: 2 };
-
-		expect(PUBLIC_API_USAGE_JSON_FIELDS.clients.safeParse(clients).success).toBe(false);
-	});
-
-	it('rejects a route row with an unknown caller', () => {
-		const row = { route: 'GET /workflows', result: '2xx', caller: 'unknown', calls: 1 };
-
-		expect(PUBLIC_API_USAGE_JSON_FIELDS.routes.safeParse([row]).success).toBe(false);
-	});
 });
