@@ -1,0 +1,18 @@
+.github/WORKFLOWS.md
+  h_52a137d26d774c 685
+.github/scripts/workflow-validation.test.mjs
+  h_52a137d26d774c 442,446
+.github/workflows/ci-detect-new-packages.yml
+  h_52a137d26d774c 5,46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f4a53ce38e0b01e8ecd4480e10dc8bcf74968792",
+  "prompts": {},
+  "humans": {
+    "h_52a137d26d774c": {
+      "author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

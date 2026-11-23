@@ -1,0 +1,24 @@
+packages/quality/environments/containers/n8n-start-stack.ts
+  h_8fb27e0cdf6d1e 74,223
+packages/quality/environments/containers/services/engine.ts
+  h_8fb27e0cdf6d1e 174-177,185-187,189
+packages/quality/environments/containers/services/n8n.ts
+  h_8fb27e0cdf6d1e 556
+packages/quality/environments/containers/tests/engine.test.ts
+  h_8fb27e0cdf6d1e 232-246,250-251,265,301
+packages/quality/testing/playwright/README.md
+  h_8fb27e0cdf6d1e 264,266-267,304
+packages/quality/testing/playwright/playwright-projects.ts
+  h_8fb27e0cdf6d1e 259-261
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "098766426384c4fb81c42c374f5381572b183ddd",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}
