@@ -1,0 +1,190 @@
+packages/cli/src/modules/n8n-packages/entities/credential/credential-importer.ts
+  s_4a494bfdece475::t_73d257c02409fb 25,64-74,93-115
+  s_4a494bfdece475::t_dad51a838d9ed7 116-118
+packages/cli/src/modules/promotions.ee/promote-dependency-check.ts
+  s_4a494bfdece475::t_5f61194b43259a 10-13,56-57,85,103,121,131-133,154,158-173,176-205
+  s_4a494bfdece475::t_4a14d82e320728 174-175
+  s_4a494bfdece475::t_9a773908f0542c 206
+packages/cli/src/modules/n8n-packages/entities/credential/credential-missing-mode.ts
+  s_4a494bfdece475::t_73d257c02409fb 16-29
+  s_4a494bfdece475::t_1964563a242cc8 15
+packages/cli/src/workflows/workflow.service.ts
+  s_4a494bfdece475::t_77c68428c8f47d 172-176,640,680-685,722
+packages/cli/src/modules/promotions.ee/promotion-review-changes.service.ts
+  s_4a494bfdece475::t_1448b4fd37f8e6 131-133
+  s_4a494bfdece475::t_b2cb2c3ea4a963 3,31-32,70,74,101,114-116,125-130,134-150
+packages/cli/src/modules/promotions.ee/promote-preview.service.ts
+  s_4a494bfdece475::t_c0e4282a6843aa 156-170
+packages/cli/test/integration/public-api/promotions.test.ts
+  s_4a494bfdece475::t_59d53fac781473 1958-1972,1974-1981,1983-1989,2443,2543-2554,2556-2565,2567
+  s_4a494bfdece475::t_2e5e3fdea937eb 2568-2569,2667-2696,2714-2733,2737,2765,2801,2921-2957,2978-2997,3001,3029,3062
+  s_4a494bfdece475::t_8bef79fbc2b902 61-74
+  s_4a494bfdece475::t_44bf871ae5d48b 75,1973,1982,2555,2566
+  s_4a494bfdece475::t_6b275cf3fa6ceb 2570-2573
+packages/cli/src/modules/promotions.ee/__tests__/promotion-review-changes.integration.test.ts
+  s_4a494bfdece475::t_fc418d2251e1cb 41,144-154
+  s_4a494bfdece475::t_f134746f692eaa 1,20-23,25-26,35,258-262,303-400,492,589
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-import.types.ts
+  s_4a494bfdece475::t_90c18b4073e8b0 16-20
+  s_4a494bfdece475::t_411a9a674c651e 21
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_4a494bfdece475::t_c7fd796b98f170 5686-5687,5720-5721
+  s_4a494bfdece475::t_31d653bdb3c59c 2934-2944,3576-3635,3642-3643,3646-3649,3651-3663,3665-3666,3668,3673-3727,3740-4059
+  s_4a494bfdece475::t_22cdadbf3777fe 2783-2784,2819-2855,2857-2861,2873-2876,2879-2885,2888,2967,2969,2982,2984,3015,3143,3167,3336,3343,3354,3370,3381,3397,3408
+  s_4a494bfdece475::t_f77403d82d9715 3453-3454,3527,3544-3575
+  s_4a494bfdece475::t_fc418d2251e1cb 833,875,945,973,1014,1051,1537,1569,1594,1639,4901,5421,5461,5529,5606
+  s_4a494bfdece475::t_c528b9b947b806 3636-3641,3644-3645,3650,3664,3667,3669-3672
+  s_4a494bfdece475::t_af2c418aef87d7 3194-3204,3206-3216,3218,3221-3228,3728-3730,3732-3736,3739
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-importer.test.ts
+  s_4a494bfdece475::t_7bf524a274b5bb 3,124-125,186-272
+  s_4a494bfdece475::t_4147ffd3b26d14 273-276
+packages/cli/src/__tests__/workflow-helpers.test.ts
+  s_4a494bfdece475::t_ba15383498b152 305-339
+packages/cli/src/modules/promotions.ee/apply-dependency-check.ts
+  s_4a494bfdece475::t_51bdb119dea853 6,14,36-40
+  s_4a494bfdece475::t_b0576ebed86f23 1-5,258-278
+packages/cli/src/modules/promotions.ee/apply-preview.ts
+  s_4a494bfdece475::t_864196094b65ed 27,31,184,203,206-212,507-508,514-515,522,528,531,553,580-593,595-596,598-600,629-634,648-655
+  s_4a494bfdece475::t_336cdd8c3c3379 318
+  s_4a494bfdece475::t_7075399856b531 204-205,233-234
+  s_4a494bfdece475::t_4b79450aa5b854 286-317,319-326
+  s_4a494bfdece475::t_db989c1d254627 327,656
+packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
+  s_4a494bfdece475::t_7ab8d20f365285 569,597,813
+  s_4a494bfdece475::t_495ffd63907edd 653,876
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_4a494bfdece475::t_fe11a3da5f00a2 306-325,341,343-348,366-371,377,381,391-423,445
+  s_4a494bfdece475::t_4a14d82e320728 17,35,46,67-68,70,121-122,125,127-128
+  s_4a494bfdece475::t_87b9911a84efff 533-537,541,601,617-618,623-634,655,657-659,678,733,788,803,2056,2060-2061,2066
+  s_4a494bfdece475::t_336cdd8c3c3379 1492
+  s_4a494bfdece475::t_cb736b8c599fbc 47,950-954,1034,1127,1133,1154-1157,1173,1206-1211,1220,1225,1228-1239,1246-1247,1260-1261,1269,1295-1296,1318-1319,1321,1324-1328,1331-1341,1346,1367-1368,1482-1491,1493-1505,1508,1511,2042-2047,2080,2095
+  s_4a494bfdece475::t_8c7d71d5d2126a 75
+packages/cli/src/modules/promotions.ee/apply-dependency-check.service.ts
+  s_4a494bfdece475::t_888f66d1895c4e 6,24,61,64-65,71,157,159-165
+  s_4a494bfdece475::t_336cdd8c3c3379 66,158
+  s_4a494bfdece475::t_b05fb915685226 166-167
+packages/cli/src/modules/n8n-packages/entities/credential/credential.exporter.ts
+  s_4a494bfdece475::t_61e94702b76c29 46-50,88,178-182
+  s_4a494bfdece475::t_7267e10161ec25 183-184
+packages/cli/src/modules/promotions.ee/__tests__/apply-dependency-check.test.ts
+  s_4a494bfdece475::t_cd9a68f0664bfe 12,15,94,635-668
+  s_4a494bfdece475::t_6b6de8a9b8b3f3 669-670
+packages/cli/src/modules/promotions.ee/__tests__/promote-dependency-check.test.ts
+  s_4a494bfdece475::t_494e3d426ea6c3 7-8,363-371,374-384,453-543
+packages/cli/BREAKING-CHANGES.md
+  s_4a494bfdece475::t_fdab69a1913382 82-93
+  s_4a494bfdece475::t_4f7e221a82bb26 65-74
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  s_4a494bfdece475::t_482c7af71d09c1 389-391
+packages/cli/src/modules/promotions.ee/promotion-preview.ts
+  s_4a494bfdece475::t_f071853da3ba78 582
+packages/cli/src/modules/promotions.ee/promotion-reviews.controller.ts
+  s_4a494bfdece475::t_b2cb2c3ea4a963 50,54
+packages/cli/src/events/maps/relay.event-map.ts
+  s_4a494bfdece475::t_fc14f980ae5cd7 1750-1755,1773-1774,1794
+  s_4a494bfdece475::t_25600fee577b1f 1793
+packages/cli/src/modules/promotions.ee/promotion-commit-message.ts
+  s_4a494bfdece475::t_7ce56b5978c3ba 38
+  s_4a494bfdece475::t_b84d529661d90a 1-2,10-14,16-18,25-37
+  s_4a494bfdece475::t_7a45b85a6ea0d1 39-40
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_4a494bfdece475::t_9f4553fee2368c 6254,6267
+  s_4a494bfdece475::t_86fae20c61aec3 6169,6188,6199-6217
+  s_4a494bfdece475::t_1950515a12679b 6218-6223
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_4a494bfdece475::t_61e94702b76c29 286-291
+  s_4a494bfdece475::t_a299118807b51f 426
+  s_4a494bfdece475::t_ff0bbd9a75bbf8 420-425
+packages/cli/src/workflows/workflow-creation.service.ts
+  s_4a494bfdece475::t_77c68428c8f47d 94-98,141-151
+  s_4a494bfdece475::t_7d26a76a3f8140 51-52,152,158,242
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential.exporter.test.ts
+  s_4a494bfdece475::t_4428726d623f51 174-227
+packages/cli/src/modules/promotions.ee/instance-package.ts
+  s_4a494bfdece475::t_029af3c890df11 42-44,46,76-77
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_4a494bfdece475::t_90c18b4073e8b0 575-579
+  s_4a494bfdece475::t_bc107a75462a34 805-814
+packages/cli/src/modules/promotions.ee/__tests__/apply-preview.test.ts
+  s_4a494bfdece475::t_336cdd8c3c3379 20,942,966
+  s_4a494bfdece475::t_8b6c105650120d 1-5,93,326,330-331,341,400,464-503,659-941,943-965,967-992
+packages/cli/src/modules/promotions.ee/__tests__/promote-dependency-check.integration.test.ts
+  s_4a494bfdece475::t_ab333c51349bd6 396
+  s_4a494bfdece475::t_6f2f85fd8f01a0 1,16,127-139,141,143-147,151-162,215-222,226-228,232-234,246-249,282-286,289-292,294,299,305-395,397-445,448,452,454,458-459,461,463-471,478,480,482,486-496,512,543,578,588-612,615,634,662-677,684-685,687,702,704,706-738,742-781,785,798-806,808,821-837
+  s_4a494bfdece475::t_9b311f8e03a142 224-225
+  s_4a494bfdece475::t_77cb8733846575 223
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_4a494bfdece475::t_482c7af71d09c1 752-753
+  s_4a494bfdece475::t_61e94702b76c29 358
+  s_4a494bfdece475::t_47f02405d148c8 754
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_4a494bfdece475::t_d6b38a040990fd 249-254
+  s_4a494bfdece475::t_84aa11fd76f6a8 975,1026,1053,1200,2305,2714,2725,3326,3338,3388-3391,3399,3402,3411-3413,3543,3549-3557,3559-3577,3579-3656,3664-3676,4110-4112,4114-4122
+  s_4a494bfdece475::t_9ad37127067f9a 951,1044,1069,1074-1075,1080,1087,1100-1101,1107-1108,1113,1117,1122,1126-1127,1132-1133,1139-1140,1147,1152,1158,1161-1162,1167,1169,1177-1178,1183,1185,1189,1195,1199,2177,2183,2188,2194-2195,2202,2209,2216,2231-2232,2239-2240,2247,2250,2254-2255,2261,2267-2268,2279-2280,2287,2293,2300,2303-2304,2708,2715,2724,3578,3657-3663,3995-4019
+  s_4a494bfdece475::t_848ae668297e72 1402,1441,1484,1505,1528,1547,2242,2270,2295
+  s_4a494bfdece475::t_32f0f9c4dd750f 1-5,21,96-135,939,941,945-950,963,1040-1043,1045-1052,1054-1068,1070-1073,1076-1079,1081-1086,1088-1099,1102-1106,1109-1112,1114-1116,1118-1121,1123-1125,1128-1131,1134-1138,1141-1146,1148-1151,1153-1157,1159-1160,1163-1166,1168,1170-1176,1179-1182,1184,1186-1188,1190-1194,1196-1198,1201,1808,2170-2176,2178-2182,2184-2187,2189-2193,2196-2201,2203-2208,2210-2215,2217-2230,2233-2238,2241,2243-2246,2248-2249,2251-2253,2256-2260,2262-2266,2269,2271-2278,2281-2286,2288-2292,2294,2296-2299,2301-2302,2306,2626-2627,2670,2705-2707,2709-2713,2716-2723,2726,2731,2761,2792,4020
+packages/cli/src/workflows/workflow.service.ee.ts
+  s_4a494bfdece475::t_77c68428c8f47d 104-109,316-322,330-335,374-382
+  s_4a494bfdece475::t_a19994ae9ec7fe 383-384
+packages/cli/src/modules/n8n-packages/entities/credential/credential.types.ts
+  s_4a494bfdece475::t_482c7af71d09c1 163-164
+packages/cli/src/modules/promotions.ee/__tests__/working-copy-updater.test.ts
+  s_4a494bfdece475::t_e5f2df7bbbcc73 881-998
+packages/cli/src/modules/promotions.ee/__tests__/apply-dependency-check.service.test.ts
+  s_4a494bfdece475::t_cd9a68f0664bfe 12,18,38,43,58,66,102,170-190
+  s_4a494bfdece475::t_68af108e622d87 191-192
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_4a494bfdece475::t_fc14f980ae5cd7 3230,3249,3265,3279
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential-importer.test.ts
+  s_4a494bfdece475::t_af92fb89239e90 78,88,273-383
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential-missing-mode.test.ts
+  s_4a494bfdece475::t_9b6c62b86fbdef 1-5,174-198
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-importer.ts
+  s_4a494bfdece475::t_08f4611fccbb39 246,289,306-307,325,390,398,403-413,417,423-429
+packages/cli/src/modules/n8n-packages/spec/requirements.schema.ts
+  s_4a494bfdece475::t_7c0f26d5ffb364 8-15,21,49,152
+packages/cli/src/modules/promotions.ee/__tests__/promotion-commit-message.test.ts
+  s_4a494bfdece475::t_3d0ec1754a486e 2,89-132
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/applyPackage.generated.yml
+  s_4a494bfdece475::t_60c28959c782a5 8
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/applyProjectSelection.generated.yml
+  s_4a494bfdece475::t_abb47b94306881 8
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/continueApplyPackage.generated.yml
+  s_4a494bfdece475::t_261bd95ac2e869 8,53-55
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/continueApplyProjectSelection.generated.yml
+  s_4a494bfdece475::t_cafe3598b6d17e 8,65-67
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromoteCheck.generated.yml
+  s_4a494bfdece475::t_17da372c815df5 8
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionChanges.generated.yml
+  s_4a494bfdece475::t_82a1fdbdbf7ad9 8
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/promotePackage.generated.yml
+  s_4a494bfdece475::t_6d2317f187808d 8,34-40,48-49,51-127,129-134,136,138-140,142-143,145-147,149-153,157-165,167-171
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/promoteProjectSelection.generated.yml
+  s_4a494bfdece475::t_42e99d1d228728 8,55-57,136-140,149,164-187
+packages/cli/src/public-api/v1/shared/spec/schemas/applyPackageResultDto.generated.yml
+  s_4a494bfdece475::t_e6c1fa76d04205 221-222,227-246,249-273,275-289,296
+packages/cli/src/public-api/v1/shared/spec/schemas/promotionApplyCheck.generated.yml
+  s_4a494bfdece475::t_203f5c355396d7 1207-1208,1213-1232,1235-1259,1261-1270
+packages/cli/src/workflow-helpers.ts
+  s_4a494bfdece475::t_6f56577de35cde 279-283,376-379
+packages/cli/src/workflows/__tests__/workflow-creation.service.test.ts
+  s_4a494bfdece475::t_f443602404d0d1 182-214
+packages/cli/src/workflows/__tests__/workflow.service.ee.test.ts
+  s_4a494bfdece475::t_125fc6235734e7 1272-1318
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1de47119b3ee786b0cd9be1af4a3f6af36dd6c28",
+  "prompts": {},
+  "sessions": {
+    "s_4a494bfdece475": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "64240406-7a90-4cf7-9a1d-31fa1cac357e",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}
