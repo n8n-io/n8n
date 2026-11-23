@@ -1,0 +1,32 @@
+packages/cli/src/webhooks/webhook-helpers.ts
+  h_8fb27e0cdf6d1e 1372-1374
+packages/quality/environments/containers/n8n-start-stack.ts
+  h_8fb27e0cdf6d1e 74,223-224
+packages/quality/environments/containers/services/engine.ts
+  h_8fb27e0cdf6d1e 60,65-66,90-94,96,138-139,144-145,150-157,168-169,171,174-178,182-190,228,232-238,257,279-283,298,306
+packages/quality/environments/containers/services/n8n.ts
+  h_8fb27e0cdf6d1e 176,179-186
+packages/quality/environments/containers/stack.ts
+  h_8fb27e0cdf6d1e 236,247
+packages/quality/environments/containers/tests/engine.test.ts
+  h_8fb27e0cdf6d1e 31,42,51,59,67,77,85,93,106-112,133-139,153-159,191-197,206,217,226,232-246,250-257,264-293,299,306,311,315-317,323,331,336-338,342,347-359,361,371-372,376-378,391-392,396,405,415,428-434,453,490-498
+packages/quality/testing/playwright/README.md
+  h_8fb27e0cdf6d1e 264-269,272,302
+packages/quality/testing/playwright/playwright-projects.ts
+  h_8fb27e0cdf6d1e 255,258-260
+packages/quality/environments/containers/services/task-runner.ts
+  h_8fb27e0cdf6d1e 19-21,30-31
+packages/quality/environments/containers/tests/task-runner.test.ts
+  h_8fb27e0cdf6d1e 1-5,10-14,16-18,30-46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f98d528639ec0a29e3957fe41bf4ba306ebafcde",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}
