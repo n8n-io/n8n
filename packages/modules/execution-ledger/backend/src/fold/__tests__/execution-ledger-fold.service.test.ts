@@ -14,16 +14,14 @@ import {
 import type { ErrorReporter } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import { fakeFailureStreaks } from '../../__tests__/fake-failure-streaks';
 import type { RawLedgerRow } from '../../database/ledger-row.parser';
 import type { ExecutionLedgerParkedRepository } from '../../database/repositories/execution-ledger-parked.repository';
 import type { ExecutionLedgerRepository } from '../../database/repositories/execution-ledger.repository';
 import {
 	ExecutionLedgerFoldService,
 	FOLD_BATCH_SIZE,
-	FOLD_FAILURE_ALERT_THRESHOLD,
+	FOLD_STEP_ATTEMPTS,
 } from '../execution-ledger-fold.service';
-import type { FoldFailureStreaks } from '../fold-failure-streaks';
 import { FoldStepFailedError } from '../fold-step-failed.error';
 
 vi.mock('@n8n/db', async (importOriginal) => ({
@@ -51,7 +49,6 @@ describe('ExecutionLedgerFoldService', () => {
 	let repository: ReturnType<typeof mock<ExecutionLedgerRepository>>;
 	let eventService: ReturnType<typeof mock<EventService>>;
 	let parkedRepository: ReturnType<typeof mock<ExecutionLedgerParkedRepository>>;
-	let streaks: ReturnType<typeof mock<FoldFailureStreaks>>;
 	let registry: FoldStepRegistry;
 	let service: ExecutionLedgerFoldService;
 	let tryWithLockContext: typeof dbLockService.tryWithLockContext;
@@ -81,7 +78,6 @@ describe('ExecutionLedgerFoldService', () => {
 			registry,
 			eventService,
 			parkedRepository,
-			streaks,
 		);
 
 	const failingStep = (name: string, message = `${name} broke`) =>
@@ -89,11 +85,21 @@ describe('ExecutionLedgerFoldService', () => {
 			throw new Error(message);
 		});
 
-	const foldError = async (target: ExecutionLedgerFoldService = service) =>
-		await target.foldBatch().then(
-			() => undefined,
-			(e: unknown) => e as FoldStepFailedError,
-		);
+	const stepFailingOnce = (
+		name: string,
+		work?: AfterFoldCommit,
+		message = `${name} broke once`,
+	) => {
+		let calls = 0;
+		return addStep(name, async () => {
+			calls++;
+			if (calls === 1) throw new Error(message);
+			return await Promise.resolve(work);
+		});
+	};
+
+	const stepEvents = () =>
+		eventService.emit.mock.calls.filter(([name]) => name === 'execution-ledger-fold-step-failed');
 
 	beforeEach(() => {
 		vi.mocked(withSavepoint).mockClear();
@@ -103,7 +109,6 @@ describe('ExecutionLedgerFoldService', () => {
 		repository = mock<ExecutionLedgerRepository>();
 		eventService = mock<EventService>();
 		parkedRepository = mock<ExecutionLedgerParkedRepository>();
-		streaks = fakeFailureStreaks();
 		tryWithLockContext = dbLockService.tryWithLockContext;
 		claimBatch = repository.claimBatch;
 		tryWithLockContext.mockImplementation(async (_key, fn) => await fn(ctx));
@@ -220,168 +225,161 @@ describe('ExecutionLedgerFoldService', () => {
 			expect(scopedLogger.warn).not.toHaveBeenCalled();
 		});
 
-		it('throws FoldStepFailedError with step and cause, and skips later steps and after-commit work', async () => {
-			const cause = new Error('step broke');
-			const work = vi.fn().mockResolvedValue(undefined);
-			addStep('good', async () => await Promise.resolve(work));
-			addStep('bad', async () => {
-				throw cause;
-			});
-			const later = addStep('later');
-
-			const error = await service.foldBatch().catch((e: unknown) => e);
-
-			expect(error).toBeInstanceOf(FoldStepFailedError);
-			expect(error).toMatchObject({ step: 'bad', attempt: 1, cause });
-			expect(later.fold).not.toHaveBeenCalled();
-			expect(work).not.toHaveBeenCalled();
-		});
-
 		describe('when a step fails', () => {
-			it.each([1, 2])('throws attempt %i, saves the streak and does not park', async (attempt) => {
-				failingStep('bad');
-				for (let i = 1; i < attempt; i++) await foldError();
-
-				const error = await foldError();
-
-				expect(error).toBeInstanceOf(FoldStepFailedError);
-				expect(error).toMatchObject({ step: 'bad', attempt, firstLedgerId: '1' });
-				expect(streaks.set).toHaveBeenLastCalledWith('bad', '1', attempt);
-				expect(parkedRepository.park).not.toHaveBeenCalled();
+			it('has two runs for each step', () => {
+				expect(FOLD_STEP_ATTEMPTS).toBe(2);
 			});
 
-			it('skips later steps and after-commit work on a failure that throws', async () => {
-				const work = vi.fn().mockResolvedValue(undefined);
-				addStep('good', async () => await Promise.resolve(work));
-				failingStep('bad');
-				const later = addStep('later');
+			describe('and succeeds on the second run', () => {
+				it('keeps the step work, runs its after-commit work and parks nothing', async () => {
+					const work = vi.fn().mockResolvedValue(undefined);
+					const step = stepFailingOnce('flaky', work);
 
-				await foldError();
+					await expect(service.foldBatch()).resolves.toBe(2);
 
-				expect(later.fold).not.toHaveBeenCalled();
-				expect(work).not.toHaveBeenCalled();
+					expect(step.fold).toHaveBeenCalledTimes(2);
+					expect(work).toHaveBeenCalledTimes(1);
+					expect(parkedRepository.park).not.toHaveBeenCalled();
+				});
+
+				it('emits one step-failed metric and logs one warning', async () => {
+					stepFailingOnce('flaky', undefined, 'deadlock');
+
+					await service.foldBatch();
+
+					expect(stepEvents()).toHaveLength(1);
+					expect(eventService.emit).toHaveBeenCalledWith('execution-ledger-fold-step-failed', {
+						step: 'flaky',
+					});
+					expect(scopedLogger.warn).toHaveBeenCalledTimes(1);
+					expect(scopedLogger.warn).toHaveBeenCalledWith(
+						'Execution ledger fold step failed, the fold runs it again',
+						{ step: 'flaky', error: 'deadlock' },
+					);
+				});
+
+				it('logs and reports no error', async () => {
+					stepFailingOnce('flaky');
+
+					await service.foldBatch();
+
+					expect(scopedLogger.error).not.toHaveBeenCalled();
+					expect(errorReporter.error).not.toHaveBeenCalled();
+				});
 			});
 
-			it('parks the claimed rows on the third failure and does not throw', async () => {
-				const rows = rowsOf(3);
-				claims(rows);
-				failingStep('bad', 'upsert failed');
-				await foldError();
-				await foldError();
+			describe('and fails again', () => {
+				it('parks the claimed rows once with the message of the second failure', async () => {
+					const rows = rowsOf(3);
+					claims(rows);
+					let calls = 0;
+					const step = addStep('bad', async () => {
+						calls++;
+						throw new Error(calls === 1 ? 'first failure' : 'second failure');
+					});
 
-				await expect(service.foldBatch()).resolves.toBe(3);
+					await expect(service.foldBatch()).resolves.toBe(3);
 
-				expect(FOLD_FAILURE_ALERT_THRESHOLD).toBe(3);
-				expect(parkedRepository.park).toHaveBeenCalledTimes(1);
-				expect(parkedRepository.park).toHaveBeenCalledWith('bad', rows, 'upsert failed', ctx);
+					expect(step.fold).toHaveBeenCalledTimes(2);
+					expect(parkedRepository.park).toHaveBeenCalledTimes(1);
+					expect(parkedRepository.park).toHaveBeenCalledWith('bad', rows, 'second failure', ctx);
+				});
+
+				it('parks with the string form of a cause that is not an Error', async () => {
+					registry.register({ name: 'bad', fold: vi.fn().mockRejectedValue('plain text') });
+
+					await service.foldBatch();
+
+					expect(parkedRepository.park).toHaveBeenCalledWith(
+						'bad',
+						expect.anything(),
+						'plain text',
+						ctx,
+					);
+				});
+
+				it('emits step-failed twice, warns once and then emits succeeded', async () => {
+					failingStep('bad');
+
+					await service.foldBatch();
+
+					expect(eventService.emit.mock.calls.map(([name]) => name)).toEqual([
+						'execution-ledger-fold-step-failed',
+						'execution-ledger-fold-step-failed',
+						'execution-ledger-fold-succeeded',
+					]);
+					expect(scopedLogger.warn).toHaveBeenCalledTimes(1);
+				});
+
+				it('runs the later steps and the after-commit work of the other steps, not of the parked step', async () => {
+					const goodWork = vi.fn().mockResolvedValue(undefined);
+					const laterWork = vi.fn().mockResolvedValue(undefined);
+					const badWork = vi.fn().mockResolvedValue(undefined);
+					addStep('good', async () => await Promise.resolve(goodWork));
+					let calls = 0;
+					addStep('bad', async () => {
+						calls++;
+						if (calls < 3) throw new Error('bad broke');
+						return await Promise.resolve(badWork);
+					});
+					const later = addStep('later', async () => await Promise.resolve(laterWork));
+
+					await service.foldBatch();
+
+					expect(later.fold).toHaveBeenCalledTimes(1);
+					expect(goodWork).toHaveBeenCalledTimes(1);
+					expect(laterWork).toHaveBeenCalledTimes(1);
+					expect(badWork).not.toHaveBeenCalled();
+				});
+
+				it('parks each of two failing steps in the same run', async () => {
+					const rows = rowsOf(2);
+					claims(rows);
+					failingStep('first', 'first broke');
+					failingStep('second', 'second broke');
+
+					await expect(service.foldBatch()).resolves.toBe(2);
+
+					expect(parkedRepository.park.mock.calls).toEqual([
+						['first', rows, 'first broke', ctx],
+						['second', rows, 'second broke', ctx],
+					]);
+				});
+
+				it('rejects when parking fails', async () => {
+					const parkFailure = new Error('insert failed');
+					parkedRepository.park.mockRejectedValue(parkFailure);
+					failingStep('bad');
+
+					await expect(service.foldBatch()).rejects.toBe(parkFailure);
+				});
+
+				it('does not report the park when parking fails', async () => {
+					parkedRepository.park.mockRejectedValue(new Error('insert failed'));
+					failingStep('bad');
+
+					await service.foldBatch().catch(() => undefined);
+
+					expect(scopedLogger.error).not.toHaveBeenCalled();
+					expect(errorReporter.error).not.toHaveBeenCalled();
+				});
 			});
 
-			it('parks with the string form of a cause that is not an Error', async () => {
-				registry.register({ name: 'bad', fold: vi.fn().mockRejectedValue('plain text') });
-				await foldError();
-				await foldError();
+			describe('and the transaction is lost', () => {
+				it('rethrows the error on the first run, with no retry and no park', async () => {
+					const step = addStep('bad');
+					const later = addStep('later');
+					const lost = new FoldTransactionLostError('ROLLBACK TO', new Error('a'), new Error('b'));
+					vi.mocked(withSavepoint).mockRejectedValueOnce(lost);
 
-				await service.foldBatch();
+					await expect(service.foldBatch()).rejects.toBe(lost);
 
-				expect(parkedRepository.park).toHaveBeenCalledWith(
-					'bad',
-					expect.anything(),
-					'plain text',
-					ctx,
-				);
-			});
-
-			it('runs the next step after parking and does not save the streak', async () => {
-				failingStep('bad');
-				const later = addStep('later');
-				await foldError();
-				await foldError();
-				vi.mocked(streaks.set).mockClear();
-				later.fold.mockClear();
-
-				await service.foldBatch();
-
-				expect(later.fold).toHaveBeenCalledTimes(1);
-				expect(streaks.set).not.toHaveBeenCalled();
-			});
-
-			it('runs the after-commit work of a step that did not fail when another step parks', async () => {
-				const otherWork = vi.fn().mockResolvedValue(undefined);
-				failingStep('bad');
-				addStep('other', async () => await Promise.resolve(otherWork));
-				await foldError();
-				await foldError();
-
-				await service.foldBatch();
-
-				expect(otherWork).toHaveBeenCalledTimes(1);
-			});
-
-			it('parks each of two failing steps when its own count reaches three', async () => {
-				failingStep('first');
-				failingStep('second');
-
-				await expect(foldError()).resolves.toMatchObject({ step: 'first', attempt: 1 });
-				await expect(foldError()).resolves.toMatchObject({ step: 'first', attempt: 2 });
-				// The first step parks and the second one fails for the first time.
-				await expect(foldError()).resolves.toMatchObject({ step: 'second', attempt: 1 });
-				expect(parkedRepository.park).toHaveBeenCalledTimes(1);
-				await expect(foldError()).resolves.toMatchObject({ step: 'second', attempt: 2 });
-
-				await expect(service.foldBatch()).resolves.toBe(2);
-
-				expect(parkedRepository.park.mock.calls.map((c) => c[0])).toEqual([
-					'first',
-					'first',
-					'first',
-					'second',
-				]);
-			});
-
-			it('counts the failures of one batch and starts at 1 for another first row id', async () => {
-				failingStep('bad');
-				await foldError();
-				await foldError();
-				claims(rowsOf(2, '100'));
-
-				const error = await foldError();
-
-				expect(error).toMatchObject({ attempt: 1, firstLedgerId: '100' });
-				expect(parkedRepository.park).not.toHaveBeenCalled();
-			});
-
-			it('reaches the threshold on a second service that shares the streak store', async () => {
-				failingStep('bad');
-				const otherMain = buildService();
-				await foldError();
-				await foldError(otherMain);
-
-				await expect(service.foldBatch()).resolves.toBe(2);
-
-				expect(parkedRepository.park).toHaveBeenCalledTimes(1);
-			});
-
-			it('rethrows a lost transaction as is when the count is already 2', async () => {
-				addStep('bad');
-				const later = addStep('later');
-				await streaks.set('bad', '1', 2);
-				const lost = new FoldTransactionLostError('ROLLBACK TO', new Error('a'), new Error('b'));
-				vi.mocked(withSavepoint).mockRejectedValueOnce(lost);
-
-				await expect(service.foldBatch()).rejects.toBe(lost);
-
-				expect(parkedRepository.park).not.toHaveBeenCalled();
-				expect(later.fold).not.toHaveBeenCalled();
-			});
-
-			it('rejects when parking fails', async () => {
-				const parkFailure = new Error('insert failed');
-				parkedRepository.park.mockRejectedValue(parkFailure);
-				failingStep('bad');
-				await foldError();
-				await foldError();
-
-				await expect(service.foldBatch()).rejects.toBe(parkFailure);
+					expect(withSavepoint).toHaveBeenCalledTimes(1);
+					expect(step.fold).not.toHaveBeenCalled();
+					expect(later.fold).not.toHaveBeenCalled();
+					expect(parkedRepository.park).not.toHaveBeenCalled();
+					expect(stepEvents()).toHaveLength(0);
+				});
 			});
 		});
 
@@ -429,88 +427,74 @@ describe('ExecutionLedgerFoldService', () => {
 
 			it('does not log them when the batch rolls back', async () => {
 				claims(rowsOf(1), unreadableOf('9'));
-				failingStep('bad');
+				addStep('first');
+				vi.mocked(withSavepoint).mockRejectedValueOnce(
+					new FoldTransactionLostError('ROLLBACK TO', new Error('a'), new Error('b')),
+				);
 
-				await foldError();
+				await service.foldBatch().catch(() => undefined);
 
 				expect(scopedLogger.error).not.toHaveBeenCalled();
 			});
 		});
 
 		describe('after a park', () => {
-			const parkAfterTwoFailures = async () => {
+			it('logs one error with the step, first ledger id and row count', async () => {
 				claims(rowsOf(3, '5'));
 				failingStep('bad', 'upsert failed');
-				await foldError();
-				await foldError();
-				scopedLogger.error.mockClear();
-				errorReporter.error.mockClear();
-				await service.foldBatch();
-			};
 
-			it('logs one error with the step, attempt, first ledger id and row count', async () => {
-				await parkAfterTwoFailures();
+				await service.foldBatch();
 
 				expect(scopedLogger.error).toHaveBeenCalledTimes(1);
-				expect(scopedLogger.error).toHaveBeenCalledWith(expect.any(String), {
-					step: 'bad',
-					attempt: 3,
-					firstLedgerId: '5',
-					rows: 3,
-				});
+				expect(scopedLogger.error).toHaveBeenCalledWith(
+					'Execution ledger fold parked a batch for a failing step',
+					{ step: 'bad', firstLedgerId: '5', rows: 3 },
+				);
 			});
 
 			it('counts only the readable rows in the log', async () => {
 				claims(rowsOf(3), unreadableOf('9'));
 				failingStep('bad');
-				await foldError();
-				await foldError();
-				scopedLogger.error.mockClear();
 
 				await service.foldBatch();
 
 				expect(scopedLogger.error).toHaveBeenCalledWith(expect.any(String), {
 					step: 'bad',
-					attempt: 3,
 					firstLedgerId: '1',
 					rows: 3,
 				});
 			});
 
-			it('reports one FoldStepFailedError without logging it again', async () => {
-				await parkAfterTwoFailures();
+			it('reports one FoldStepFailedError, with the second failure as cause, without logging it again', async () => {
+				claims(rowsOf(3, '5'));
+				failingStep('bad', 'upsert failed');
+
+				await service.foldBatch();
 
 				expect(errorReporter.error).toHaveBeenCalledTimes(1);
 				expect(errorReporter.error).toHaveBeenCalledWith(expect.any(FoldStepFailedError), {
 					shouldBeLogged: false,
 				});
-				expect(errorReporter.error.mock.calls[0][0]).toMatchObject({ step: 'bad', attempt: 3 });
+				const reported = errorReporter.error.mock.calls[0][0] as FoldStepFailedError;
+				expect(reported).toMatchObject({
+					step: 'bad',
+					firstLedgerId: '5',
+					message: 'Fold step "bad" failed twice, the batch was parked',
+				});
+				expect(reported.cause).toMatchObject({ message: 'upsert failed' });
+				expect(reported.tags).toMatchObject({ foldStep: 'bad' });
 			});
 
-			it('logs and reports nothing on the failures that throw', async () => {
-				failingStep('bad');
+			it('logs and reports each of two parked steps once', async () => {
+				failingStep('first');
+				failingStep('second');
 
-				await foldError();
-				await foldError();
-
-				expect(scopedLogger.error).not.toHaveBeenCalled();
-				expect(errorReporter.error).not.toHaveBeenCalled();
-			});
-
-			it('emits step-failed on every failure and succeeded on the parking run', async () => {
-				failingStep('bad');
-
-				await foldError();
-				await foldError();
 				await service.foldBatch();
 
-				const names = eventService.emit.mock.calls.map(([name]) => name);
-				expect(names).toEqual([
-					'execution-ledger-fold-step-failed',
-					'execution-ledger-fold-step-failed',
-					'execution-ledger-fold-step-failed',
-					'execution-ledger-fold-succeeded',
-				]);
+				expect(
+					scopedLogger.error.mock.calls.map(([, meta]) => (meta as { step: string }).step),
+				).toEqual(['first', 'second']);
+				expect(errorReporter.error).toHaveBeenCalledTimes(2);
 			});
 		});
 
@@ -562,25 +546,27 @@ describe('ExecutionLedgerFoldService', () => {
 			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 
-		it('emits step-failed with the step, and not succeeded', async () => {
-			failingStep('bad', 'step broke');
+		it('emits step-failed with the step, and not succeeded, when the transaction is lost', async () => {
+			addStep('bad');
+			vi.mocked(withSavepoint).mockRejectedValueOnce(
+				new FoldTransactionLostError('ROLLBACK TO', new Error('a'), new Error('b')),
+			);
 
-			await foldError();
+			await service.foldBatch().catch(() => undefined);
 
-			expect(eventService.emit).toHaveBeenCalledWith('execution-ledger-fold-step-failed', {
-				step: 'bad',
-			});
+			expect(emitted('execution-ledger-fold-step-failed')).toHaveLength(0);
 			expect(emitted('execution-ledger-fold-succeeded')).toHaveLength(0);
 		});
 
-		it('carries firstLedgerId and the fold step tag on the thrown error', async () => {
-			failingStep('bad');
-			claims(rowsOf(2, '42'));
+		it('emits step-failed with the step on each failed run', async () => {
+			failingStep('bad', 'step broke');
 
-			const error = await foldError();
+			await service.foldBatch();
 
-			expect(error?.firstLedgerId).toBe('42');
-			expect(error?.tags).toMatchObject({ foldStep: 'bad' });
+			expect(emitted('execution-ledger-fold-step-failed')).toEqual([
+				['execution-ledger-fold-step-failed', { step: 'bad' }],
+				['execution-ledger-fold-step-failed', { step: 'bad' }],
+			]);
 		});
 
 		it('still resolves with the row count when emit throws after a commit', async () => {

@@ -34,7 +34,10 @@ export class ExecutionLedgerParkedRepository {
 		await this.park(UNREADABLE_ROWS_STEP, rows, 'Ledger row has an unexpected value', ctx);
 	}
 
-	/** Pass the fold transaction in `ctx`, so the rows are parked only if the claim commits. */
+	/**
+	 * Pass the fold transaction in `ctx`, so the rows are parked only if the claim commits.
+	 * A row already parked for the step keeps its first park, so a repeat park cannot block the fold.
+	 */
 	async park(
 		step: string,
 		rows: readonly RawLedgerRow[],
@@ -57,6 +60,8 @@ export class ExecutionLedgerParkedRepository {
 				.insert()
 				.into(ExecutionLedgerParkedEntity)
 				.values(values)
+				// Both drivers render ON CONFLICT DO NOTHING, which skips unique conflicts only.
+				.orIgnore()
 				.updateEntity(false)
 				.execute();
 		}

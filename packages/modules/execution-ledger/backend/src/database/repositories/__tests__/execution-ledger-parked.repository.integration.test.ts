@@ -139,6 +139,18 @@ describe('ExecutionLedgerParkedRepository', () => {
 		expect(await parkedRows()).toEqual([]);
 	});
 
+	it('keeps the first park of a row that is parked again for the same step', async () => {
+		await park('first', [rawRow(1)], 'first error');
+
+		await park('first', [rawRow(1), rawRow(2)], 'second error');
+
+		const saved = await parkedRows();
+		expect(saved.map((r) => [r.ledgerId, r.error])).toEqual([
+			['1', 'first error'],
+			['2', 'second error'],
+		]);
+	});
+
 	it('parks the same rows for two different steps', async () => {
 		const rows = [rawRow(1), rawRow(2)];
 

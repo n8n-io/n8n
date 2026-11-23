@@ -17,23 +17,19 @@ import { mock } from 'vitest-mock-extended';
 
 import type { ErrorReporter } from 'n8n-core';
 
-import { fakeFailureStreaks } from '../../__tests__/fake-failure-streaks';
 import { LedgerCheckBypass, unknownOutcomeRow } from '../../__tests__/ledger-check-bypass';
 import { ledgerRow } from '../../__tests__/ledger-rows';
 import { ExecutionLedgerParkedEntity } from '../../database/entities/execution-ledger-parked.entity';
 import { ExecutionLedgerEntity } from '../../database/entities/execution-ledger.entity';
 import { ExecutionLedgerParkedRepository } from '../../database/repositories/execution-ledger-parked.repository';
 import { ExecutionLedgerRepository } from '../../database/repositories/execution-ledger.repository';
-import type { FoldFailureStreaks } from '../fold-failure-streaks';
 import { ExecutionLedgerFoldService } from '../execution-ledger-fold.service';
-import { FoldStepFailedError } from '../fold-step-failed.error';
 
 describe('ExecutionLedgerFoldService', () => {
 	let repository: ExecutionLedgerRepository;
 	let txRunner: TransactionRunner;
 	let registry: FoldStepRegistry;
 	let service: ExecutionLedgerFoldService;
-	let streaks: ReturnType<typeof fakeFailureStreaks>;
 	let bypass: LedgerCheckBypass;
 
 	/** A step that records what it saw by appending marker rows in the fold transaction. */
@@ -81,8 +77,6 @@ describe('ExecutionLedgerFoldService', () => {
 			throw new Error(message);
 		});
 
-	const foldError = async () => await service.foldBatch().catch((e: unknown) => e);
-
 	beforeAll(async () => {
 		await testModules.loadModules(['execution-ledger'], {
 			'execution-ledger': async () => await import('../../execution-ledger.module.js'),
@@ -96,7 +90,6 @@ describe('ExecutionLedgerFoldService', () => {
 	beforeEach(async () => {
 		await testDb.truncate(['ExecutionLedgerEntity', 'ExecutionLedgerParkedEntity']);
 		registry = new FoldStepRegistry();
-		streaks = fakeFailureStreaks();
 		service = new ExecutionLedgerFoldService(
 			mockLogger(),
 			mock<ErrorReporter>(),
@@ -105,7 +98,6 @@ describe('ExecutionLedgerFoldService', () => {
 			registry,
 			mock<EventService>(),
 			Container.get(ExecutionLedgerParkedRepository),
-			streaks as FoldFailureStreaks,
 		);
 	});
 
@@ -151,20 +143,15 @@ describe('ExecutionLedgerFoldService', () => {
 		expect(await ledgerExecutionIds()).toEqual(['run-1']);
 	});
 
-	it('rolls the whole batch back into the ledger when a step fails', async () => {
+	it('commits the batch and parks it for a step that fails, keeping the other step writes', async () => {
 		registry.register(markerStep('first'));
-		registry.register(
-			markerStep('failing', async () => {
-				throw new Error('upsert failed');
-			}),
-		);
+		registry.register(failingStep('failing', 'upsert failed'));
 		await appendRows('run-1', 'run-2');
 
-		const error = await service.foldBatch().catch((e: unknown) => e);
+		await expect(service.foldBatch()).resolves.toBe(2);
 
-		expect(error).toBeInstanceOf(FoldStepFailedError);
-		expect(error).toMatchObject({ step: 'failing', attempt: 1 });
-		expect(await ledgerExecutionIds()).toEqual(['run-1', 'run-2']);
+		expect(await ledgerExecutionIds()).toEqual(['first:2']);
+		expect(await parkedRows()).toHaveLength(2);
 	});
 
 	it('runs the after-commit work once the fold committed', async () => {
@@ -199,25 +186,44 @@ describe('ExecutionLedgerFoldService', () => {
 		expect(await ledgerExecutionIds()).toEqual(['run-1']);
 	});
 
-	describe('when a step keeps failing', () => {
-		it('leaves all rows in the ledger and parks nothing on the first failure', async () => {
+	describe('when a step fails twice', () => {
+		it('parks the batch on the first foldBatch call and removes the rows from the ledger', async () => {
 			registry.register(failingStep('failing'));
 			await appendRows('run-1', 'run-2');
 
-			expect(await foldError()).toBeInstanceOf(FoldStepFailedError);
+			await expect(service.foldBatch()).resolves.toBe(2);
 
-			expect((await ledgerRowsInOrder()).map((r) => r.executionId)).toEqual(['run-1', 'run-2']);
+			expect(await ledgerRowsInOrder()).toEqual([]);
+			expect((await parkedRows()).map((r) => r.executionId)).toEqual(['run-1', 'run-2']);
+		});
+
+		it('keeps the work of a step that throws on its first call only and parks nothing', async () => {
+			let calls = 0;
+			registry.register(
+				markerStep('flaky', async (rows, ctx) => {
+					calls++;
+					if (calls === 1) {
+						await repository.append(ledgerRow({ executionId: 'discarded' }), ctx);
+						throw new Error('deadlock detected');
+					}
+					await repository.append(ledgerRow({ executionId: `flaky:${rows.length}` }), ctx);
+				}),
+			);
+			await appendRows('run-1', 'run-2');
+
+			await expect(service.foldBatch()).resolves.toBe(2);
+
+			expect(calls).toBe(2);
+			expect(await ledgerExecutionIds()).toEqual(['flaky:2']);
 			expect(await parkedRows()).toEqual([]);
 		});
 
-		it('parks the batch for the failing step on the third failure and saves the other steps', async () => {
+		it('parks the batch for the failing step and saves the other steps', async () => {
 			registry.register(markerStep('before'));
 			registry.register(failingStep('failing', 'upsert failed'));
 			registry.register(markerStep('after'));
 			await appendRows('run-1', 'run-2');
 			const original = await ledgerRowsInOrder();
-			await foldError();
-			await foldError();
 
 			expect(await service.foldBatch()).toBe(2);
 
@@ -251,24 +257,16 @@ describe('ExecutionLedgerFoldService', () => {
 		it('parks a row with no project for the failing step', async () => {
 			registry.register(failingStep('failing'));
 			await repository.append(ledgerRow({ projectId: null }), {});
-			await foldError();
-			await foldError();
 
 			expect(await service.foldBatch()).toBe(1);
 
 			expect(await parkedRows()).toMatchObject([{ step: 'failing', projectId: null }]);
 		});
 
-		it('parks each row once for each of two failing steps after the batch commits', async () => {
+		it('parks each row once for each of two failing steps in one run', async () => {
 			registry.register(failingStep('first'));
 			registry.register(failingStep('second'));
 			await appendRows('run-1', 'run-2');
-			// The first step parks on run 3, the second one on run 5.
-			for (let run = 1; run <= 4; run++) {
-				expect(await foldError()).toBeInstanceOf(FoldStepFailedError);
-				expect(await parkedRows()).toEqual([]);
-			}
-
 			expect(await service.foldBatch()).toBe(2);
 
 			expect(await ledgerExecutionIds()).toEqual([]);
@@ -281,7 +279,7 @@ describe('ExecutionLedgerFoldService', () => {
 			]);
 		});
 
-		it('parks nothing and keeps the rows when the transaction ends inside the step at count 2', async () => {
+		it('parks nothing and keeps the rows when the transaction ends inside the step', async () => {
 			registry.register(
 				markerStep('lost', async (_rows, ctx) => {
 					const manager: EntityManager = repository['table'].managerFor(ctx);
@@ -290,10 +288,8 @@ describe('ExecutionLedgerFoldService', () => {
 				}),
 			);
 			await appendRows('run-1');
-			const [first] = await ledgerRowsInOrder();
-			await streaks.set('lost', first.id, 2);
 
-			const error = await foldError();
+			const error = await service.foldBatch().catch((e: unknown) => e);
 
 			expect(error).toBeInstanceOf(FoldTransactionLostError);
 			expect(await parkedRows()).toEqual([]);
@@ -331,12 +327,18 @@ describe('ExecutionLedgerFoldService', () => {
 			expect(await parkedRows()).toHaveLength(1);
 		});
 
-		it('keeps it in the ledger when a step fails and the batch rolls back', async () => {
-			registry.register(failingStep('failing'));
+		it('keeps it in the ledger when the transaction is lost and the batch rolls back', async () => {
+			registry.register(
+				markerStep('lost', async (_rows, ctx) => {
+					const manager: EntityManager = repository['table'].managerFor(ctx);
+					await manager.query('ROLLBACK');
+					throw new Error('database or disk is full');
+				}),
+			);
 			await appendRows('run-1');
 			await bypass.insert(unknownOutcomeRow({ executionId: 'run-2' }));
 
-			await foldError();
+			await service.foldBatch().catch(() => undefined);
 
 			expect(await parkedRows()).toEqual([]);
 			expect((await ledgerRowsInOrder()).map((r) => r.executionId)).toEqual(['run-1', 'run-2']);

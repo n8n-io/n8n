@@ -20,28 +20,41 @@ registered, the fold does not claim rows.
 
 ## When a fold step fails
 
-- Failures 1 and 2 of a step on the same batch: the whole batch rolls back and stays in the
-  ledger. The next run tries again.
-- Failure 3: the fold copies the batch to `execution_ledger_parked` with the name of the step,
-  and commits the other steps. The parked step does not run its after-commit work.
-- The park commits only if the rest of the batch commits. If a later step then fails for the
-  first or second time, the batch rolls back and the park with it. The step parks the batch
-  again on the next run.
-- If two steps fail on the same batch, the batch is parked once for each step. This takes 5
-  runs, not 3.
+- The fold runs the failing step again at once, in the same transaction. A deadlock or a
+  short lock wait does not park rows.
+- If the step fails again, the fold copies the batch to `execution_ledger_parked` with the
+  name of the step, and commits the other steps. The parked step does not run its
+  after-commit work. A failing step thus never stops the other steps.
+- If two steps fail on the same batch, the batch is parked one time for each step, in the
+  same run.
+- A row that is already parked for a step is not parked again for it.
 - A row with a value that this version does not know (for example, a new `outcome` from a newer
   main during a rolling upgrade) is parked with the step name `_unreadable`. The other rows of
   the batch are folded.
-- The park is in the fold transaction. If the transaction is lost, nothing is parked and the
-  rows stay in the ledger.
-
-The failure count is in the n8n cache, one entry for each step. In queue mode the cache is
-Redis, so each main sees the count. With the memory cache (`N8N_CACHE_BACKEND=memory`), each
-main has its own count, and a restart resets it: the fold then needs more runs before it parks.
-If the cache is not available, the fold retries the batch and does not park it.
+- The park is in the fold transaction. If the transaction is lost, or the park fails, nothing
+  is parked and the rows stay in the ledger.
 
 Parked rows stay in the table until a replay gives them to the step again. Do not delete them
 by hand: no step has counted them.
+
+## Writing a fold step
+
+A throw parks the full batch for the step, up to 5,000 rows. Most bad data affects one row
+only, so the step must handle it. Obey these rules:
+
+- Do not throw for one bad row. Skip the row, count it, and log it.
+- Do not add a foreign key from a fold table to a workflow or a project. The workflow or
+  the project can be deleted before the fold runs, or before a replay.
+- Group the rows by key before an upsert. On Postgres, one `INSERT ... ON CONFLICT DO UPDATE`
+  cannot change the same row two times.
+- Sort the keys before you write them. Two writers that lock rows in the same order cannot
+  deadlock.
+- Read and write only through `ctx`. A query outside the fold transaction can wait for a
+  connection that the fold holds.
+- Do not fill an in-memory cache in `fold()`. A rollback can undo the rows that the cache
+  points to. Fill the cache in the after-commit work.
+- Keep values in the range of their columns. Round values for integer columns, and use
+  `bigint` for sums.
 
 The n8n runtime loads the module through the lazy import in
 `packages/cli/src/modules/modules.manifest.ts`.
@@ -79,7 +92,7 @@ is cached for 60 seconds and shared by all mains, so it can lag behind new rows.
 Any main can run the fold, so a main that stopped folding keeps its old fold metrics. Aggregate across mains: `max()` for the timestamp, `sum()` for counters.
 
 When the fold parks a batch for a failing step, it logs one error in the `execution-ledger`
-scope with `step`, `attempt`, `firstLedgerId` and `rows`, and reports the step error to Sentry.
+scope with `step`, `firstLedgerId` and `rows`, and reports the step error to Sentry.
 Errors that go to Sentry have a `foldStep` tag. When the fold parks rows that it cannot read,
 it logs one error with `rows` only.
 
@@ -90,8 +103,8 @@ Suggested alert rules:
 time() - max(n8n_execution_ledger_fold_last_success_timestamp_seconds) > 120
 # Same signal from the database. It still works after a restart or when another main takes over.
 max(n8n_execution_ledger_backlog_oldest_row_age_seconds) > 300
-# A step keeps failing. The fold retries every 5 seconds, so it parks the batch after about 15 seconds.
-sum by (step) (increase(n8n_execution_ledger_fold_step_failures_total[1m])) >= 3
+# A step failed. Each park adds 2 failures, a retry that worked adds 1.
+sum by (step) (increase(n8n_execution_ledger_fold_step_failures_total[5m])) >= 2
 ```
 
 When the module is on but no fold step is registered, the fold claims nothing and the lag
