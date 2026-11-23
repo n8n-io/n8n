@@ -576,7 +576,7 @@ describe('Microsoft Teams Helpers Functions', () => {
 		it.each<[string, unknown, Record<string, string>]>([
 			['new chat', "chats('19:abc@unq.gbl.spaces')", { chatId: '19:abc@unq.gbl.spaces' }],
 			[
-				'chat message',
+				'chat message, also from Watch All (/me/chats/getAllMessages)',
 				"chats('19:abc@unq.gbl.spaces')/messages('1612289765949')",
 				{ chatId: '19:abc@unq.gbl.spaces', messageId: '1612289765949' },
 			],
@@ -586,7 +586,7 @@ describe('Microsoft Teams Helpers Functions', () => {
 				{ teamId: 'fbe2bf47-16c8-47cf-b4a5-4b9b187c508b', channelId: '19:4a95f7d8@thread.tacv2' },
 			],
 			[
-				'channel message',
+				'channel message, also from Watch All (one subscription per channel)',
 				"teams('fbe2bf47-16c8-47cf-b4a5-4b9b187c508b')/channels('19:4a95f7d8@thread.tacv2')/messages('1612293113399')",
 				{
 					teamId: 'fbe2bf47-16c8-47cf-b4a5-4b9b187c508b',
