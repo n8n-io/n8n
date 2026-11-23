@@ -1,13 +1,14 @@
 <script setup lang="ts">
-import type {
-	AgentJsonConfig,
-	AgentSseEvent,
-	AssistantAgentTargetsState,
-	InstanceAiAttachment,
-	InstanceAiHandoffContext,
-	InstanceAiNodesAttachment,
-	InstanceAiResourceAttachment,
-	InstanceAiWorkflowAttachment,
+import {
+	EXTENDED_PROMPT_MAX_LENGTH,
+	type AgentJsonConfig,
+	type AgentSseEvent,
+	type AssistantAgentTargetsState,
+	type InstanceAiAttachment,
+	type InstanceAiHandoffContext,
+	type InstanceAiNodesAttachment,
+	type InstanceAiResourceAttachment,
+	type InstanceAiWorkflowAttachment,
 } from '@n8n/api-types';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@n8n/composables/useToast';
@@ -920,6 +921,7 @@ function updateStagedNodes(attachment: InstanceAiNodesAttachment): void {
 						:input-draft="mentions.draft.value"
 						:interaction-extensions="interactionExtensions"
 						:show-attach-button="false"
+						:max-length="EXTENDED_PROMPT_MAX_LENGTH"
 						:disabled="creditsStore.isOutOfCredits"
 						:before-send="assertCreditsAvailable"
 						@stream-event="onStreamEvent"
