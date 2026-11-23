@@ -112,9 +112,11 @@ const OUTSIDE_ACCESS = {
 	reason: 'not-on-instance',
 	accessible: false,
 };
+const OUTSIDE_ACCESS_ON_APPLY =
+	'You cannot add these dependencies from here: they are in a project that you cannot access, or the branch does not hold them.';
 const APPLY_LISTS = [
 	'Outside your access (1)',
-	'You do not have access to these dependencies.',
+	OUTSIDE_ACCESS_ON_APPLY,
 	'  Credential "Shared CRM" (hubspotApi): not on this instance; used by Weekly report',
 ];
 const EMPTY_CHECK = {
@@ -492,7 +494,8 @@ describe.each([
 					'  Missing variables:   0',
 					'  Access requirements: 0',
 					'  Conflicts:           0',
-					'  Outside your access: 1',
+					// The line counts only the entries that stop the Apply.
+					'  Outside your access: 0',
 					'',
 					...APPLY_LISTS,
 					'',
@@ -515,10 +518,10 @@ describe.each([
 					'  Missing variables:   0',
 					'  Access requirements: 0',
 					'  Conflicts:           0',
-					'  Outside your access: 1',
+					'  Outside your access: 0',
 					'',
 					'Needs your action (1)',
-					'Create these dependencies before you apply.',
+					'Resolve these dependencies on this instance. An entry that stops the Apply must be resolved before you apply.',
 					'  Credential "Billing API" (httpHeaderAuth): not on this instance; stops the Apply; used by Weekly report',
 					'',
 					...APPLY_LISTS,
@@ -530,6 +533,69 @@ describe.each([
 			]);
 			expect(exit).toHaveBeenCalledTimes(1);
 			expect(exit).toHaveBeenCalledWith(4);
+		});
+
+		it('asks for the confirmation of a credential that the branch does not hold', async () => {
+			const { stderr, exit } = await run({
+				...NEEDS_CONFIRMATION,
+				check: {
+					...EMPTY_CHECK,
+					missingDependencies: [{ ...OUTSIDE_ACCESS, reason: 'not-on-branch' }],
+				},
+			});
+
+			expect(stderr).toEqual([
+				[
+					'Apply needs a confirmation. Nothing was imported.',
+					'  Missing projects:    0',
+					'  Missing credentials: 0',
+					'  Missing variables:   0',
+					'  Access requirements: 0',
+					'  Conflicts:           0',
+					'  Outside your access: 0',
+					'',
+					'Outside your access (1)',
+					OUTSIDE_ACCESS_ON_APPLY,
+					'  Credential "Shared CRM" (hubspotApi): not on this instance and not on the branch; used by Weekly report',
+					'',
+					'Run with --json for the details. To apply without these dependencies, run:',
+					`  ${continueCommand} --confirm-missing-dependencies`,
+				].join('\n'),
+			]);
+			expect(exit).toHaveBeenCalledWith(4);
+		});
+
+		it('stays blocked on a credential outside the access of the caller that stops the Apply, and counts it', async () => {
+			const { stderr } = await run(
+				{
+					...BLOCKED,
+					check: {
+						...EMPTY_CHECK,
+						// The credential exists on this instance, and the project cannot use it.
+						missingDependencies: [{ ...OUTSIDE_ACCESS, reason: 'not-shared', blocking: true }],
+					},
+				},
+				{ confirmMissingDependencies: true },
+			);
+
+			expect(stderr).toEqual([
+				[
+					'Apply is blocked. Nothing was imported.',
+					'  Missing projects:    0',
+					'  Missing credentials: 0',
+					'  Missing variables:   0',
+					'  Access requirements: 0',
+					'  Conflicts:           0',
+					'  Outside your access: 1',
+					'',
+					'Outside your access (1)',
+					OUTSIDE_ACCESS_ON_APPLY,
+					'  Credential "Shared CRM" (hubspotApi): this project cannot use it; stops the Apply; used by Weekly report',
+					'',
+					'Run with --json for the details. After you resolve them, run:',
+					`  ${continueCommand}`,
+				].join('\n'),
+			]);
 		});
 
 		it('does not ask for a confirmation when every entry stops the Apply', async () => {

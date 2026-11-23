@@ -143,10 +143,14 @@ describe('promotion-environment promote-check command', () => {
 			},
 		);
 
+		// An entry of any group needs the confirmation.
 		expect(stdout).toEqual([
 			[
 				'Other (1)',
 				'  Credential "My token" (httpHeaderAuth): used by Weekly report, Invoices',
+				'',
+				'The Promote needs --confirm-missing-dependencies. To confirm exactly this list, run:',
+				`  n8n-cli promotion-environment promote env-1 --expected-preview-revision=${CHECK.revision} --confirm-missing-dependencies`,
 			].join('\n'),
 		]);
 	});
