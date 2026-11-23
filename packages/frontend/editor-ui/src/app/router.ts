@@ -1254,9 +1254,8 @@ router.beforeEach(async (to: RouteLocationNormalized, from, next) => {
 
 	try {
 		// Load the first route's components while the startup requests run, not after the guard.
-		if (from === START_LOCATION) {
-			startRoutePreload(to);
-		}
+		// Only the first call loads, so a redirect target and later navigations load as before.
+		startRoutePreload(to);
 
 		try {
 			/**

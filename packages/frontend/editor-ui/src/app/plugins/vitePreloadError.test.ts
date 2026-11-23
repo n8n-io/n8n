@@ -147,5 +147,13 @@ describe('registerVitePreloadErrorHandler', () => {
 
 			expect(reloadSpy).toHaveBeenCalledTimes(1);
 		});
+
+		it('reloads again when exactly the throttle window has elapsed', () => {
+			reloadAfterPreloadError();
+			vi.advanceTimersByTime(10_000);
+
+			expect(reloadAfterPreloadError()).toBe(true);
+			expect(reloadSpy).toHaveBeenCalledTimes(2);
+		});
 	});
 });

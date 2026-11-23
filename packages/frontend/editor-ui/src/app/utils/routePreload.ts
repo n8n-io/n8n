@@ -37,7 +37,7 @@ export function isRoutePreloadPending(): boolean {
 
 /** Tells if `to` is the location that `startRoutePreload` loads. */
 export function isPreloadedLocation(to: RouteLocationNormalized): boolean {
-	return preloadedFullPath !== undefined && to.fullPath === preloadedFullPath;
+	return to.fullPath === preloadedFullPath;
 }
 
 /** Resolves `true` when the preload loaded, or when no preload started, and `false` when it failed. */
