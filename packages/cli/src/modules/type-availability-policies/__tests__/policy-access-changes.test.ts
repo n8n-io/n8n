@@ -214,6 +214,7 @@ describe('applyAccessChanges', () => {
 
 				const after = applyAccessChanges(withDeadVariantRule, changes, nodeResolvers());
 
+				if (access !== 'inherit') expect(accessOf(after, GMAIL)).toBe(access);
 				expect(accessOf(after, GMAIL_TOOL)).toBe(accessOf(after, GMAIL));
 				expectOnlyChangedTypesMoved(withDeadVariantRule, after, changes, [CODE]);
 			},
