@@ -1,9 +1,9 @@
+import { UserError } from '@n8n/errors';
 import {
 	type IDataObject,
 	type IExecuteFunctions,
 	type INodeProperties,
 	NodeOperationError,
-	UserError,
 } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
