@@ -7,6 +7,7 @@ import type {
 	UpdateWorkflowReviewRequestVersionDto,
 	WorkflowReviewEligibleReviewersList,
 	WorkflowReviewProjectList,
+	WorkflowReviewProjectUpdateResponse,
 	WorkflowReviewRequestList,
 	WorkflowReviewRequestState,
 	WorkflowReviewRequestSummary,
@@ -103,8 +104,8 @@ export async function updateWorkflowReviewProject(
 	context: IRestApiContext,
 	projectId: string,
 	payload: UpdateWorkflowReviewProjectDto,
-): Promise<UpdateWorkflowReviewProjectDto> {
-	return await makeRestApiRequest<UpdateWorkflowReviewProjectDto>(
+): Promise<WorkflowReviewProjectUpdateResponse> {
+	return await makeRestApiRequest<WorkflowReviewProjectUpdateResponse>(
 		context,
 		'PATCH',
 		`/settings/security/workflow-reviews/projects/${encodeURIComponent(projectId)}`,

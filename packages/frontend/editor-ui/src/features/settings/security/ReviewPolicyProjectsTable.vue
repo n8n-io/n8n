@@ -33,6 +33,8 @@ const props = defineProps<{
 	savingIds: ReadonlySet<string>;
 }>();
 
+defineSlots<{ empty?: () => unknown }>();
+
 const emit = defineEmits<{
 	'update:options': [payload: TableOptions];
 	'update:required': [projectId: string, required: boolean];
@@ -46,7 +48,7 @@ const headers = computed<Array<TableHeader<ReviewPolicyProject>>>(() => [
 	{ title: i18n.baseText('generic.project'), key: 'name', disableSort: true },
 	{
 		title: i18n.baseText('settings.reviewPolicy.projects.column.approval'),
-		key: 'approval',
+		key: 'requiredByInstance',
 		disableSort: true,
 	},
 ]);
@@ -96,7 +98,10 @@ function onApproval(project: ReviewPolicyProject, value: SelectValue | undefined
 				<N8nText>{{ item.name }}</N8nText>
 			</div>
 		</template>
-		<template #[`item.approval`]="{ item }">
+		<template v-if="$slots.empty" #cover>
+			<slot name="empty" />
+		</template>
+		<template #[`item.requiredByInstance`]="{ item }">
 			<div :class="$style.approval">
 				<N8nTooltip :disabled="lockedReason === undefined" placement="top">
 					<template #content>{{ lockedReason }}</template>

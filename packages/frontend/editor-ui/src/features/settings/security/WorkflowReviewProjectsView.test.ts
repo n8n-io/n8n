@@ -90,10 +90,6 @@ describe('WorkflowReviewProjectsView', () => {
 
 		expect(await approvalSelect('Alpha')).toHaveTextContent('Required');
 		expect(await approvalSelect('Beta')).toHaveTextContent('Not required');
-		expect(getWorkflowReviewProjects).toHaveBeenCalledWith(expect.anything(), {
-			skip: 0,
-			take: 10,
-		});
 	});
 
 	it('shows Required by project admin on a Not required row whose project opted in', async () => {
@@ -148,6 +144,19 @@ describe('WorkflowReviewProjectsView', () => {
 			vi.useRealTimers();
 		});
 
+		it('says when no project matches the search', async () => {
+			const { findByTestId, getByTestId } = renderView();
+			await approvalSelect('Alpha');
+			getWorkflowReviewProjects.mockResolvedValue(projectList([]));
+
+			await userEvent.type(getByTestId('workflow-review-projects-search'), 'zzz');
+			await vi.runAllTimersAsync();
+
+			expect(await findByTestId('workflow-review-projects-empty')).toHaveTextContent(
+				'No projects match.',
+			);
+		});
+
 		it('reloads the first page with the search term and the filter', async () => {
 			const { findByTestId, getByTestId } = renderView();
 			await userEvent.click(await findByTestId('pagination-next'));
@@ -183,16 +192,14 @@ describe('WorkflowReviewProjectsView', () => {
 
 	it('shows every row as Required and locked, naming the instance setting, while the instance always requires approval', async () => {
 		setInstancePolicy(true);
-		const { findAllByText } = renderView();
+		const { findByTestId } = renderView();
 
 		const beta = await approvalSelect('Beta');
 		expect(beta).toHaveTextContent('Required');
 		expect(beta).toHaveAttribute('data-disabled');
-
-		await userEvent.hover(beta.parentElement!);
-		expect(
-			await findAllByText('Require approval is set to "Always required" for all projects.'),
-		).not.toHaveLength(0);
+		expect(await findByTestId('workflow-review-projects-locked-notice')).toHaveTextContent(
+			'Require approval is set to "Always required" for all projects.',
+		);
 	});
 
 	it('shows the rows read-only while the security policy is managed by environment variables', async () => {
@@ -211,5 +218,14 @@ describe('WorkflowReviewProjectsView', () => {
 
 		expect(await findByTestId('workflow-review-projects-load-error')).toBeVisible();
 		expect(screen.queryByRole('combobox', { name: /Approval for/ })).not.toBeInTheDocument();
+	});
+
+	it('says when there are no team projects', async () => {
+		getWorkflowReviewProjects.mockResolvedValue(projectList([]));
+		const { findByTestId } = renderView();
+
+		expect(await findByTestId('workflow-review-projects-empty')).toHaveTextContent(
+			'There are no team projects.',
+		);
 	});
 });

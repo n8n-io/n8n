@@ -52,7 +52,9 @@ const savingIds = ref<ReadonlySet<string>>(new Set());
 
 const search = ref('');
 const filters = ref<{ approval: ApprovalFilter }>({ approval: '' });
-const tableOptions = ref<TableOptions>({ page: 0, itemsPerPage: PAGE_SIZE });
+const tableOptions = ref<TableOptions>({ page: 0, itemsPerPage: PAGE_SIZE, sortBy: [] });
+/** Whether the shown page was loaded with a search term or a filter. */
+const loadedFiltered = ref(false);
 
 const lockedReason = computed(() =>
 	isInstanceApprovalRequired.value
@@ -87,6 +89,7 @@ async function load() {
 		projects.value = result.data;
 		count.value = result.count;
 		managedByEnv.value = result.managedByEnv;
+		loadedFiltered.value = term !== '' || filters.value.approval !== '';
 		loadFailed.value = false;
 	} catch {
 		if (isLatest()) loadFailed.value = true;
@@ -184,6 +187,11 @@ onMounted(load);
 			:content="i18n.baseText('settings.security.managedByEnv')"
 			data-test-id="workflow-review-projects-managed-by-env-notice"
 		/>
+		<N8nNotice
+			v-if="lockedReason"
+			:content="lockedReason"
+			data-test-id="workflow-review-projects-locked-notice"
+		/>
 
 		<div :class="$style.toolbar">
 			<N8nInput
@@ -251,14 +259,19 @@ onMounted(load);
 				:saving-ids="savingIds"
 				@update:options="onOptionsUpdate"
 				@update:required="onRequired"
-			/>
-			<N8nText
-				v-if="!loading && count === 0"
-				color="text-light"
-				data-test-id="workflow-review-projects-empty"
 			>
-				{{ i18n.baseText('settings.security.workflowReviews.projects.empty') }}
-			</N8nText>
+				<template v-if="!loading && count === 0" #empty>
+					<N8nText color="text-light" data-test-id="workflow-review-projects-empty">
+						{{
+							i18n.baseText(
+								loadedFiltered
+									? 'settings.security.workflowReviews.projects.noMatch'
+									: 'settings.security.workflowReviews.projects.empty',
+							)
+						}}
+					</N8nText>
+				</template>
+			</ReviewPolicyProjectsTable>
 		</template>
 	</N8nSettingsLayout>
 </template>
