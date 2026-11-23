@@ -320,6 +320,50 @@ moved to another team project is also refused while its old project still
 exists, because Apply can't move it between projects. This command works on an
 `instance` Promote environment only.
 
+Run [`promote-check`](#promotion-environment-promote-check) first to see what
+the Promote does not include.
+
+## `promotion-environment promote-check`
+
+List what a Promote of all team projects does not include. The command changes
+nothing.
+
+```bash
+n8n-cli promotion-environment promote-check env-1
+n8n-cli promotion-environment promote-check env-1 --json
+```
+
+```text
+Cannot be promoted (2)
+These dependencies are in a personal project. Move them to a team project to promote them.
+  Credential "My token" (httpHeaderAuth): used by Invoices
+  Workflow "Notify owner": stops the Promote; used by Weekly report
+
+Warnings (1)
+These references point to something that does not exist on the source instance.
+  Variable "API_URL": used by Weekly report
+```
+
+The output has the groups and the lines that
+[Missing dependencies](#missing-dependencies) describes. It never names the
+project or the owner of a dependency. When nothing is missing, the command
+prints `No missing dependencies and no warnings.`
+
+The command only shows the lists. It exits `0` with or without entries, also
+when an entry stops the Promote.
+
+Use `--json` to get the full check:
+
+- `missingDependencies`: the credentials, sub-workflows, and error workflows of
+  personal projects that the workflows of the team projects use.
+- `warnings`: the references to a credential, workflow, or variable that does
+  not exist on this instance.
+- `revision`: a hash of the two lists. It changes when one of them changes.
+
+This command works on an `instance` Promote environment only. The API key needs
+`promotions:promote`. For a project, use
+[`list-changes <projectId> promote`](#promotion-environment-list-changes).
+
 ## `promotion-environment list-changes`
 
 Preview what Promote or Apply changes in a project: its projects, folders,
@@ -357,6 +401,36 @@ When an open review holds the changes of the project, the command names the
 review and lists nothing. You can promote again when the review is merged or
 closed.
 
+After the table, the command lists the
+[missing dependencies](#missing-dependencies) of the workflows by group. For
+`promote`, it also lists the warnings, and the lists cover every workflow of
+the project. Use the `used by` names to find the entries of a selection. The
+command prints the lists on stderr, so stdout holds only the table. When
+nothing is missing, the command prints only the table.
+
+```text
+TYPE      ID    NAME           CHANGE    FOLDER  USEDBY  SELECTABLE
+--------  ----  -------------  --------  ------  ------  ----------
+workflow  wf-1  Weekly report  modified  -       -       true
+workflow  wf-2  Invoices       added     -       -       true
+
+In another project (1)
+These dependencies are in other projects that you can access. This Promote does not include them.
+  Credential "CRM" (hubspotApi): used by Weekly report, Invoices
+
+Outside your access (1)
+You do not have access to these dependencies.
+  Workflow "Send alert": used by Weekly report
+
+Cannot be promoted (1)
+These dependencies are in a personal project. Move them to a team project to promote them.
+  Credential "My token" (httpHeaderAuth): used by Invoices
+
+Warnings (1)
+These references point to something that does not exist on the source instance.
+  Variable "API_URL": used by Weekly report
+```
+
 Use `--json` to get the full preview:
 
 - `commitSha` and `source`: the commit and branch that the preview read. Pass
@@ -366,7 +440,10 @@ Use `--json` to get the full preview:
 - `dependencies`: the resources that each workflow uses. `included: true` means
   that selecting the workflow sends the resource.
 - `blocker`: the open review that holds the changes, if there is one.
-- `check`, for `apply` only: what blocks the Apply.
+- `check`, for `apply` only: what blocks the Apply. `check.missingDependencies`
+  holds the missing dependencies of the Apply.
+- `missingDependencies` and `warnings`, for `promote` only: the missing
+  dependencies and the warnings of the Promote.
 - `revision`: the value to pass to `--expected-preview-revision` of
   `promote-selection` or `apply-selection`.
 
@@ -394,6 +471,12 @@ The table has the same columns as
 Apply deletes each team project that the package does not hold. The table lists
 such a project as `deleted`, together with everything in it.
 
+After the table, the command lists the
+[missing dependencies](#missing-dependencies) of the workflows by group, as
+`list-changes` does for `apply`. The command prints them on stderr, so stdout
+holds only the table. When nothing is missing, the command prints only the
+table.
+
 Use `--json` to get the full preview:
 
 - `commitSha` and `source`: the commit and branch that the preview read. Pass
@@ -403,7 +486,70 @@ Use `--json` to get the full preview:
   `project-deletion` conflict. `movedWorkflows` and `movedFolders` list the
   workflows and folders that the branch and this instance hold in different
   projects. Apply can't move them between projects, so it refuses them.
+  `missingDependencies` holds the missing dependencies of the Apply.
 - `revision`: the value to pass to `--expected-preview-revision`.
+
+## Missing dependencies
+
+A missing dependency is a credential, variable, sub-workflow, or error workflow
+that a workflow uses and that is not there after the operation. For Promote, the
+branch does not hold it after the Promote. For Apply, the workflow can't use it
+on this instance after the Apply. A warning is a reference to something that
+does not exist on the source instance. References in expressions are not
+checked.
+
+These commands list the missing dependencies and the warnings:
+
+| Command | What it lists |
+|---------|---------------|
+| `list-changes <projectId> promote` | The missing dependencies and the warnings of a project Promote. |
+| `promote-check <id>` | The missing dependencies and the warnings of a Promote of all team projects. |
+| `list-changes <projectId> apply` | The missing dependencies of a project Apply. |
+| `list-apply-changes <id>` | The missing dependencies of a whole-instance Apply. |
+| `apply`, `apply-continue`, `apply-selection`, `apply-selection-continue` | The missing dependencies of an Apply that is `blocked`. |
+
+The output never names the project or the owner of a dependency. It shows the
+name, the type, and the workflows that use the dependency.
+
+The groups are the same as in the n8n UI. Each group shows its count. A group
+without entries is not printed.
+
+| Group | Operation | Meaning |
+|-------|-----------|---------|
+| `In another project` | Promote | The dependency is in another project that you can access. This Promote does not include it. |
+| `Outside your access` | Promote, Apply | You do not have access to the dependency. |
+| `Cannot be promoted` | Promote | The dependency is in a personal project. Move it to a team project to promote it. |
+| `Needs your action` | Apply | Create the dependency before you apply. |
+| `Warnings` | Promote | The reference points to something that does not exist on the source instance. |
+
+Each line shows one entry:
+
+```text
+  Credential "Billing API" (httpHeaderAuth): not on this instance; stops the Apply; used by Weekly report, Invoices
+```
+
+- The type: `Credential`, `Variable`, or `Workflow`. A sub-workflow and an error
+  workflow are both `Workflow`.
+- The name, and for a credential its credential type.
+- For Apply, the reason. See the table below.
+- `stops the Promote` or `stops the Apply` when the operation stops on the
+  entry. Without it, the operation continues without the dependency.
+- `used by`: the workflows that use the dependency. A line names up to five
+  workflows and counts the rest, for example `(+2 more)`.
+
+| Reason | Meaning |
+|--------|---------|
+| `not on this instance` | The dependency does not exist on this instance. |
+| `this project cannot use it` | The credential exists, but it is not shared with the project of the workflow. |
+| `has another type on this instance` | A credential with this ID exists, but its type is different. |
+| `its type is not installed on this instance` | This instance does not know the credential type. |
+| `this project cannot use an instance credential` | The credential on this instance has a usage scope that the project can't use. |
+| `archived on this instance` | The sub-workflow or error workflow is archived. |
+| `its caller policy refuses the workflow` | The sub-workflow or error workflow does not let this workflow call it. |
+
+`--quiet` hides the lists. With `--json`, each command prints the API response
+and no list. The response holds the same entries: `missingDependencies` and
+`warnings` for Promote, and `check.missingDependencies` for Apply.
 
 ## `promotion-environment promote-selection`
 
@@ -474,11 +620,40 @@ instance still matches the preview that you reviewed.
 | `applied` | `0` | The package was imported. JSON output includes `counts` and `warnings`. |
 | `source-changed` | `3` | The environment, branch, or commit is not the one you reviewed. Nothing was imported. Review the changes again. |
 | `preview-changed` | `3` | Only with `--expected-preview-revision`: the Apply preview changed since you reviewed it, because this instance or the branch changed. Nothing was imported. Review the changes again. |
-| `blocked` | `4` | The Apply check found missing bindings, access requirements, or conflicts. A conflict can be a destructive data table change or a project deletion. Nothing was imported. The output shows the `apply-continue` command to run after you resolve them. |
+| `blocked` | `4` | The Apply check found missing bindings, access requirements, conflicts, or dependencies outside your access. A conflict can be a destructive data table change or a project deletion. Nothing was imported. The output shows the `apply-continue` command to run after you resolve them. |
+
+A `blocked` Apply prints the count of each cause, and then the
+[missing dependencies](#missing-dependencies) by group. `Outside your access`
+counts the dependencies that you do not have access to. Such a dependency is in
+no other count, so it can be the only cause. Someone with access must add it to
+this instance.
+
+```text
+Apply is blocked. Nothing was imported.
+  Missing projects:    0
+  Missing credentials: 1
+  Missing variables:   0
+  Access requirements: 0
+  Conflicts:           0
+  Outside your access: 1
+
+Needs your action (2)
+Create these dependencies before you apply.
+  Credential "Billing API" (httpHeaderAuth): not on this instance; stops the Apply; used by Weekly report, Invoices
+  Workflow "Send alert": archived on this instance; used by Weekly report
+
+Outside your access (1)
+You do not have access to these dependencies.
+  Credential "Shared CRM" (hubspotApi): not on this instance; stops the Apply; used by Invoices
+
+Run with --json for the details. After you resolve them, run:
+  n8n-cli promotion-environment apply-continue env-2 --expected-environment-id=env-2 --expected-branch=main --expected-commit-sha=<full sha>
+```
 
 With `--json`, the output is the full result for each status. For `blocked`, the
 `check` object lists each missing project, missing binding, access
-requirement, and conflict. Existing variable values on this instance are kept.
+requirement, conflict, and missing dependency. Existing variable values on this
+instance are kept.
 
 Apply makes the team projects on this instance match the package. It deletes
 each team project that the package does not hold, with all its workflows,
@@ -592,8 +767,9 @@ instance still matches the preview that you reviewed.
 The results and exit codes are the same as for `apply`: `applied` (`0`),
 `source-changed` (`3`), `preview-changed` (`3`), and `blocked` (`4`). When it exits `4`, the output shows
 the `apply-selection-continue` command to run after you resolve the bindings; it
-resends the same selection. With `--json`, the output is the full result for
-each status.
+resends the same selection. It also shows the
+[missing dependencies](#missing-dependencies) by group, as `apply` does. With
+`--json`, the output is the full result for each status.
 
 The API key needs `promotions:apply`. The environment is the project's own
 Apply environment when it has one, otherwise the instance Apply environment.

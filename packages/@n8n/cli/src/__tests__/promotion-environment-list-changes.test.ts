@@ -1,7 +1,12 @@
 import type { Config } from '@oclif/core';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 
-import type { N8nClient, PromotionInstanceApplyPreview, PromotionPreview } from '../client';
+import type {
+	N8nClient,
+	PromotionInstanceApplyPreview,
+	PromotionMissingDependency,
+	PromotionPreview,
+} from '../client';
 import PromotionEnvironmentListApplyChanges from '../commands/promotion-environment/list-apply-changes';
 import PromotionEnvironmentListChanges from '../commands/promotion-environment/list-changes';
 
@@ -9,6 +14,8 @@ interface ListChangesFlags {
 	format?: string;
 	json?: boolean;
 	jq?: string;
+	quiet?: boolean;
+	noHeader?: boolean;
 }
 
 /** The command methods we stub to isolate behaviour from oclif/networking. */
@@ -19,6 +26,7 @@ interface ListChangesInternals {
 	}>;
 	getClient: () => N8nClient;
 	output: (data: unknown, flags: unknown, options?: unknown) => void;
+	log: (message: string) => void;
 	logToStderr: (message: string) => void;
 }
 
@@ -91,6 +99,93 @@ const ROWS = [
 	},
 ];
 
+/** What the table of `PREVIEW` printed before the command listed missing dependencies. */
+const TABLE = [
+	'TYPE        ID      NAME           CHANGE    FOLDER   USEDBY  SELECTABLE',
+	'----------  ------  -------------  --------  -------  ------  ----------',
+	'workflow    wf-1    Weekly report  modified  Reports  -       true      ',
+	'credential  cred-1  Billing API    modified  -        wf-2    false     ',
+].join('\n');
+
+const consumers = [
+	{
+		project: { id: 'proj-finance', name: 'Finance' },
+		workflows: [{ id: 'wf-1', name: 'Weekly report' }],
+	},
+];
+
+const OTHER_PROJECT: PromotionMissingDependency = {
+	kind: 'credential',
+	id: 'cred-9',
+	name: 'CRM',
+	credentialType: 'hubspotApi',
+	group: 'other-project',
+	reason: 'not-on-branch',
+	accessible: true,
+	blocking: false,
+	consumers,
+};
+
+const NEEDS_ACTION: PromotionMissingDependency = {
+	...OTHER_PROJECT,
+	group: 'needs-action',
+	reason: 'not-on-instance',
+	blocking: true,
+};
+
+const PROMOTE_LISTS = [
+	'',
+	'In another project (1)',
+	'These dependencies are in other projects that you can access. This Promote does not include them.',
+	'  Credential "CRM" (hubspotApi): used by Weekly report',
+	'',
+	'Warnings (1)',
+	'These references point to something that does not exist on the source instance.',
+	'  Variable "API_URL": used by Weekly report',
+].join('\n');
+
+const APPLY_LISTS = [
+	'',
+	'Needs your action (1)',
+	'Create these dependencies before you apply.',
+	'  Credential "CRM" (hubspotApi): not on this instance; stops the Apply; used by Weekly report',
+].join('\n');
+
+const PROMOTE_PREVIEW_WITH_LISTS: PromotionPreview = {
+	...PREVIEW,
+	missingDependencies: [OTHER_PROJECT],
+	warnings: [
+		{ kind: 'variable', code: 'missing-on-source', name: 'API_URL', blocking: false, consumers },
+	],
+};
+
+const applyPreview = (missingDependencies: PromotionMissingDependency[]) =>
+	({ ...PREVIEW, check: { missingDependencies } }) as unknown as PromotionPreview;
+
+/** Runs the command with the real rendering, and catches what goes to stdout and to stderr. */
+async function runListChanges(
+	flags: ListChangesFlags,
+	preview: PromotionPreview,
+	direction: 'promote' | 'apply' = 'promote',
+) {
+	const command = new PromotionEnvironmentListChanges([], {} as Config);
+	const internals = command as unknown as ListChangesInternals;
+
+	vi.spyOn(internals, 'parse').mockResolvedValue({
+		args: { projectId: 'proj-1', direction },
+		flags,
+	});
+	vi.spyOn(internals, 'getClient').mockReturnValue({
+		listProjectPromotionChanges: vi.fn().mockResolvedValue(preview),
+	} as unknown as N8nClient);
+	const log = vi.spyOn(internals, 'log').mockImplementation(() => {});
+	const logToStderr = vi.spyOn(internals, 'logToStderr').mockImplementation(() => {});
+
+	await command.run();
+
+	return { stdout: log.mock.calls.map(([line]) => line), stderr: logToStderr.mock.calls };
+}
+
 function stubCommand(flags: ListChangesFlags, preview: PromotionPreview = PREVIEW) {
 	const command = new PromotionEnvironmentListChanges([], {} as Config);
 	const internals = command as unknown as ListChangesInternals;
@@ -147,6 +242,88 @@ describe('promotion-environment list-changes command', () => {
 		await command.run();
 
 		expect(logToStderr).toHaveBeenCalledWith(expect.stringContaining('review-1'));
+	});
+
+	it.each([
+		{ title: 'the preview has no lists', preview: PREVIEW },
+		{
+			title: 'the lists are empty',
+			preview: { ...PREVIEW, missingDependencies: [], warnings: [] },
+		},
+	])('prints only the table of a Promote when $title', async ({ preview }) => {
+		const { stdout, stderr } = await runListChanges({ format: 'table' }, preview);
+
+		expect(stdout).toEqual([TABLE]);
+		expect(stderr).toEqual([]);
+	});
+
+	it('prints the groups and the warnings of a Promote on stderr, after the same table', async () => {
+		const { stdout, stderr } = await runListChanges(
+			{ format: 'table' },
+			PROMOTE_PREVIEW_WITH_LISTS,
+		);
+
+		expect(stdout).toEqual([TABLE]);
+		expect(stderr).toEqual([[PROMOTE_LISTS]]);
+	});
+
+	it('prints only the table of an Apply when its check lists nothing', async () => {
+		const { stdout, stderr } = await runListChanges({ format: 'table' }, applyPreview([]), 'apply');
+
+		expect(stdout).toEqual([TABLE]);
+		expect(stderr).toEqual([]);
+	});
+
+	it('prints the groups of an Apply from its check on stderr, after the same table', async () => {
+		const { stdout, stderr } = await runListChanges(
+			{ format: 'table' },
+			applyPreview([NEEDS_ACTION]),
+			'apply',
+		);
+
+		expect(stdout).toEqual([TABLE]);
+		expect(stderr).toEqual([[APPLY_LISTS]]);
+	});
+
+	it('does not name the project of a consumer', async () => {
+		const { stderr } = await runListChanges({ format: 'table' }, PROMOTE_PREVIEW_WITH_LISTS);
+
+		expect(stderr.join('\n')).not.toContain('Finance');
+		expect(stderr.join('\n')).not.toContain('proj-finance');
+	});
+
+	it('keeps the lists out of the IDs and out of a table without header', async () => {
+		const ids = await runListChanges({ format: 'id-only' }, PROMOTE_PREVIEW_WITH_LISTS);
+		const rows = await runListChanges(
+			{ format: 'table', noHeader: true },
+			PROMOTE_PREVIEW_WITH_LISTS,
+		);
+
+		expect(ids.stdout).toEqual(['wf-1\ncred-1']);
+		expect(rows.stdout).toEqual([TABLE.split('\n').slice(2).join('\n')]);
+		expect(ids.stderr).toEqual([[PROMOTE_LISTS]]);
+	});
+
+	it.each([{ json: true }, { jq: '.revision' }])(
+		'prints only the API response with %o',
+		async (flags) => {
+			const { stdout, stderr } = await runListChanges(flags, PROMOTE_PREVIEW_WITH_LISTS);
+
+			expect(stdout).toEqual([
+				JSON.stringify(flags.jq ? PREVIEW.revision : PROMOTE_PREVIEW_WITH_LISTS, null, 2),
+			]);
+			expect(stderr).toEqual([]);
+		},
+	);
+
+	it('prints nothing when quiet', async () => {
+		const { stdout, stderr } = await runListChanges(
+			{ format: 'table', quiet: true },
+			PROMOTE_PREVIEW_WITH_LISTS,
+		);
+
+		expect(stdout).toEqual([]);
+		expect(stderr).toEqual([]);
 	});
 });
 
@@ -228,5 +405,60 @@ describe('promotion-environment list-apply-changes command', () => {
 			expect.anything(),
 			{ columns: ['type', 'id', 'name', 'project', 'change', 'folder', 'usedBy'] },
 		);
+	});
+
+	async function runListApplyChanges(missingDependencies: PromotionMissingDependency[]) {
+		const command = new PromotionEnvironmentListApplyChanges([], {} as Config);
+		const internals = command as unknown as ListChangesInternals;
+		vi.spyOn(internals, 'parse').mockResolvedValue({
+			args: { id: 'env-1' },
+			flags: { format: 'table' },
+		} as unknown as Awaited<ReturnType<ListChangesInternals['parse']>>);
+		vi.spyOn(internals, 'getClient').mockReturnValue({
+			listInstanceApplyChanges: vi
+				.fn()
+				.mockResolvedValue({ ...PREVIEW, check: { missingDependencies } }),
+		} as unknown as N8nClient);
+		const log = vi.spyOn(internals, 'log').mockImplementation(() => {});
+		const logToStderr = vi.spyOn(internals, 'logToStderr').mockImplementation(() => {});
+
+		await command.run();
+
+		return { stdout: log.mock.calls.map(([line]) => line), stderr: logToStderr.mock.calls };
+	}
+
+	/** What the table of `PREVIEW` printed before the command listed missing dependencies. */
+	const INSTANCE_TABLE = [
+		'TYPE        ID      NAME           PROJECT         CHANGE    FOLDER   USEDBY',
+		'----------  ------  -------------  --------------  --------  -------  ------',
+		'workflow    wf-1    Weekly report  project:proj-1  modified  Reports  -     ',
+		'credential  cred-1  Billing API    -               modified  -        wf-2  ',
+	].join('\n');
+
+	it('prints only the table when the check lists nothing', async () => {
+		const { stdout, stderr } = await runListApplyChanges([]);
+
+		expect(stdout).toEqual([INSTANCE_TABLE]);
+		expect(stderr).toEqual([]);
+	});
+
+	it('prints the groups of the check on stderr, after the same table', async () => {
+		const { stdout, stderr } = await runListApplyChanges([
+			NEEDS_ACTION,
+			{ ...NEEDS_ACTION, name: 'Shared CRM', group: 'outside-access', accessible: false },
+		]);
+
+		expect(stdout).toEqual([INSTANCE_TABLE]);
+		expect(stderr).toEqual([
+			[
+				[
+					APPLY_LISTS,
+					'',
+					'Outside your access (1)',
+					'You do not have access to these dependencies.',
+					'  Credential "Shared CRM" (hubspotApi): not on this instance; stops the Apply; used by Weekly report',
+				].join('\n'),
+			],
+		]);
 	});
 });

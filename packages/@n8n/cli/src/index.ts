@@ -52,6 +52,7 @@ import PromotionEnvironmentListChanges from './commands/promotion-environment/li
 import PromotionEnvironmentListMissingProjects from './commands/promotion-environment/list-missing-projects';
 import PromotionEnvironmentListProjects from './commands/promotion-environment/list-projects';
 import PromotionEnvironmentPromote from './commands/promotion-environment/promote';
+import PromotionEnvironmentPromoteCheck from './commands/promotion-environment/promote-check';
 import PromotionEnvironmentPromoteSelection from './commands/promotion-environment/promote-selection';
 import PromotionEnvironmentRemoveProject from './commands/promotion-environment/remove-project';
 import PromotionEnvironmentUpdate from './commands/promotion-environment/update';
@@ -132,6 +133,7 @@ export const commands = {
 	'promotion-environment:list-apply-changes': PromotionEnvironmentListApplyChanges,
 	'promotion-environment:add-project': PromotionEnvironmentAddProject,
 	'promotion-environment:remove-project': PromotionEnvironmentRemoveProject,
+	'promotion-environment:promote-check': PromotionEnvironmentPromoteCheck,
 	'promotion-environment:promote': PromotionEnvironmentPromote,
 	'promotion-environment:promote-selection': PromotionEnvironmentPromoteSelection,
 	'promotion-environment:apply': PromotionEnvironmentApply,

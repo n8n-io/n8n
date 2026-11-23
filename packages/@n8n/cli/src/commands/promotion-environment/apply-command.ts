@@ -1,3 +1,4 @@
+import { applyDependencyLines, countOutsideAccess } from './missing-dependencies';
 import { BaseCommand, EXIT_BLOCKED, EXIT_SOURCE_CHANGED, EXIT_SUCCESS } from '../../base-command';
 import type {
 	ApplyPackageResult,
@@ -83,6 +84,7 @@ function blockedMessage(
 	const bindings = (kind: 'credential' | 'variable') =>
 		check.missingBindings.filter((binding) => binding.kind === kind).length;
 	const projectDeletions = check.conflicts.filter(isProjectDeletion);
+	const dependencies = applyDependencyLines(check.missingDependencies);
 
 	return [
 		'Apply is blocked. Nothing was imported.',
@@ -91,12 +93,15 @@ function blockedMessage(
 		`  Missing variables:   ${bindings('variable')}`,
 		`  Access requirements: ${check.accessRequirements.length}`,
 		`  Conflicts:           ${check.conflicts.length}`,
+		// These entries are in no other list, so an Apply can stop on them alone.
+		`  Outside your access: ${countOutsideAccess(check.missingDependencies)}`,
 		...(projectDeletions.length > 0
 			? [
 					'Apply deletes these projects with everything in them:',
 					...projectDeletions.map(({ project }) => `  ${project.name} (${project.id})`),
 				]
 			: []),
+		...(dependencies.length > 0 ? ['', ...dependencies, ''] : []),
 		'Run with --json for the details. After you resolve them, run:',
 		`  ${continueCommand(result)}`,
 		...(check.conflicts.some(({ code }) => code === 'destructive-change')

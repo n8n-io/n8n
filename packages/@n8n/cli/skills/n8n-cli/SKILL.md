@@ -208,7 +208,9 @@ jq -r '.publicKey' provider.json   # add to the repository as a deploy key
 n8n-cli promotion-environment create --file=promote.json
 n8n-cli promotion-environment create --file=apply.json
 
-# 3. Promote from this instance, or apply to it.
+# 3. Promote from this instance, or apply to it. promote-check lists what the
+#    Promote does not include. It changes nothing, and entries do not change its exit code.
+n8n-cli promotion-environment promote-check <promoteId>
 n8n-cli promotion-environment promote <promoteId>
 n8n-cli promotion-environment apply <applyId>
 
@@ -245,7 +247,8 @@ n8n-cli promotion-environment apply <applyId> \
   --expected-environment-id=<source.environmentId> --expected-branch=<source.branchName> \
   --expected-commit-sha=<commitSha> --expected-preview-revision=<revision>
 # Exit 3: the source or this instance changed since the review. Review again.
-# Exit 4: the Apply check found missing bindings, access requirements, or conflicts. Resolve them,
+# Exit 4: the Apply check found missing bindings, access requirements, conflicts, or dependencies
+# outside your access. The output lists the missing dependencies by group. Resolve them,
 # then run the apply-continue command that apply printed:
 n8n-cli promotion-environment apply-continue <applyId> \
   --expected-environment-id=<applyId> --expected-branch=<branch> --expected-commit-sha=<full sha>
@@ -355,6 +358,18 @@ Key points:
   with `promote-selection`, `apply`, `apply-continue`, `apply-selection`, and
   `apply-selection-continue`. Take it from `list-apply-changes` for a whole-instance
   Apply and from `list-changes <projectId> <promote|apply>` for a selection.
+- A missing dependency is a credential, variable, sub-workflow, or error workflow
+  that a workflow uses and that is not there after the operation. `list-changes`,
+  `list-apply-changes`, `promote-check`, and a `blocked` Apply list them by
+  group, with the workflows that use them: `In another project`,
+  `Outside your access`, and `Cannot be promoted` for Promote, `Needs your action`
+  and `Outside your access` for Apply. Promote also lists `Warnings`: references
+  to something that does not exist on the source instance. The output never names
+  the project of a dependency. `list-changes` and `list-apply-changes` print the
+  lists on stderr, after the table. With `--json`, read `missingDependencies` and
+  `warnings` (Promote) or `check.missingDependencies` (Apply) instead.
+- An entry outside your access can be the only cause of a `blocked` Apply. Someone
+  with access must add the dependency to the instance.
 - API key scopes for this group are named `promotions:*`:
   - `promotion-provider create`, `update`, `delete`, `list-repositories` and
     `list-branches` need `manageProviders`. `promotion-provider list` and `get`

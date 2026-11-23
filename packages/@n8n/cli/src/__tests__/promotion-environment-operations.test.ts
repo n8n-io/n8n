@@ -59,6 +59,44 @@ const BLOCKED_RESULT = {
 		warnings: [],
 	},
 };
+const consumers = [
+	{
+		project: { id: 'proj-finance', name: 'Finance' },
+		workflows: [{ id: 'wf-1', name: 'Weekly report' }],
+	},
+];
+const NEEDS_ACTION_DEPENDENCY = {
+	kind: 'credential',
+	id: 'c-1',
+	name: 'Billing API',
+	credentialType: 'httpHeaderAuth',
+	group: 'needs-action',
+	reason: 'not-on-instance',
+	accessible: true,
+	blocking: true,
+	consumers,
+};
+const OUTSIDE_ACCESS_DEPENDENCY = {
+	...NEEDS_ACTION_DEPENDENCY,
+	id: 'c-9',
+	name: 'Shared CRM',
+	credentialType: 'hubspotApi',
+	group: 'outside-access',
+	accessible: false,
+};
+/** Only entries outside the access of the caller stop this Apply. No other list has an entry. */
+const BLOCKED_BY_DEPENDENCIES_RESULT = {
+	...IDENTITY,
+	status: 'blocked',
+	check: {
+		missingProjects: [],
+		missingBindings: [],
+		accessRequirements: [],
+		conflicts: [],
+		warnings: [],
+		missingDependencies: [OUTSIDE_ACCESS_DEPENDENCY],
+	},
+};
 const PINNED_FLAGS = {
 	expectedEnvironmentId: 'env-1',
 	expectedBranch: 'release',
@@ -322,6 +360,220 @@ describe('promotion-environment apply command', () => {
 
 		expect(logToStderr).not.toHaveBeenCalled();
 		expect(exit).toHaveBeenCalledWith(3);
+	});
+});
+
+describe('missing dependencies of a blocked Apply', () => {
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	const CONTINUE = `  n8n-cli promotion-environment apply-continue env-1 --expected-environment-id=env-1 --expected-branch=release --expected-commit-sha=${SHA}`;
+
+	async function blockedMessageOf(result: unknown) {
+		const command = new PromotionEnvironmentApply([], {} as Config);
+		const { logToStderr, exit } = stubApplyCommand(command, { format: 'table' }, {
+			applyPackage: vi.fn().mockResolvedValue(result),
+		} as unknown as Partial<N8nClient>);
+
+		await command.run();
+
+		expect(logToStderr).toHaveBeenCalledTimes(1);
+		expect(exit).toHaveBeenCalledWith(4);
+		return logToStderr.mock.calls[0][0];
+	}
+
+	it('counts and lists the entries when nothing else stops the Apply', async () => {
+		expect(await blockedMessageOf(BLOCKED_BY_DEPENDENCIES_RESULT)).toBe(
+			[
+				'Apply is blocked. Nothing was imported.',
+				'  Missing projects:    0',
+				'  Missing credentials: 0',
+				'  Missing variables:   0',
+				'  Access requirements: 0',
+				'  Conflicts:           0',
+				'  Outside your access: 1',
+				'',
+				'Outside your access (1)',
+				'You do not have access to these dependencies.',
+				'  Credential "Shared CRM" (hubspotApi): not on this instance; stops the Apply; used by Weekly report',
+				'',
+				'Run with --json for the details. After you resolve them, run:',
+				CONTINUE,
+			].join('\n'),
+		);
+	});
+
+	it('lists the entries by group after the counts when other lists have entries too', async () => {
+		const message = await blockedMessageOf({
+			...BLOCKED_RESULT,
+			check: {
+				...BLOCKED_RESULT.check,
+				missingDependencies: [
+					OUTSIDE_ACCESS_DEPENDENCY,
+					NEEDS_ACTION_DEPENDENCY,
+					{
+						kind: 'workflow',
+						id: 'wf-9',
+						name: 'Send alert',
+						group: 'needs-action',
+						reason: 'archived',
+						accessible: true,
+						blocking: false,
+						consumers,
+					},
+				],
+			},
+		});
+
+		expect(message).toBe(
+			[
+				'Apply is blocked. Nothing was imported.',
+				'  Missing projects:    1',
+				'  Missing credentials: 2',
+				'  Missing variables:   1',
+				'  Access requirements: 0',
+				'  Conflicts:           1',
+				'  Outside your access: 1',
+				'',
+				'Needs your action (2)',
+				'Create these dependencies before you apply.',
+				'  Credential "Billing API" (httpHeaderAuth): not on this instance; stops the Apply; used by Weekly report',
+				'  Workflow "Send alert": archived on this instance; used by Weekly report',
+				'',
+				'Outside your access (1)',
+				'You do not have access to these dependencies.',
+				'  Credential "Shared CRM" (hubspotApi): not on this instance; stops the Apply; used by Weekly report',
+				'',
+				'Run with --json for the details. After you resolve them, run:',
+				CONTINUE,
+			].join('\n'),
+		);
+		expect(message).not.toContain('Finance');
+		expect(message).not.toContain('proj-finance');
+	});
+
+	it.each([
+		{ title: 'the check has an empty list', missingDependencies: [] },
+		// A server that does not know the list.
+		{ title: 'the check has no list', missingDependencies: undefined },
+	])('adds only a zero count when $title', async ({ missingDependencies }) => {
+		const message = await blockedMessageOf({
+			...BLOCKED_RESULT,
+			check: { ...BLOCKED_RESULT.check, missingDependencies },
+		});
+
+		expect(message).toBe(
+			[
+				'Apply is blocked. Nothing was imported.',
+				'  Missing projects:    1',
+				'  Missing credentials: 2',
+				'  Missing variables:   1',
+				'  Access requirements: 0',
+				'  Conflicts:           1',
+				'  Outside your access: 0',
+				'Run with --json for the details. After you resolve them, run:',
+				CONTINUE,
+			].join('\n'),
+		);
+	});
+});
+
+describe.each([
+	{
+		name: 'apply',
+		commandClass: PromotionEnvironmentApply,
+		method: 'applyPackage',
+		args: { id: 'env-1' },
+	},
+	{
+		name: 'apply-continue',
+		commandClass: PromotionEnvironmentApplyContinue,
+		method: 'continueApplyPackage',
+		args: { id: 'env-1' },
+	},
+	{
+		name: 'apply-selection',
+		commandClass: PromotionEnvironmentApplySelection,
+		method: 'applyProjectSelection',
+		args: { projectId: 'proj-1' },
+	},
+	{
+		name: 'apply-selection-continue',
+		commandClass: PromotionEnvironmentApplySelectionContinue,
+		method: 'continueApplyProjectSelection',
+		args: { projectId: 'proj-1' },
+	},
+])('promotion-environment $name result reporting', ({ commandClass, method, args }) => {
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	const RESULTS = [
+		{ result: APPLY_RESULT, code: 0 },
+		{ result: BLOCKED_BY_DEPENDENCIES_RESULT, code: 4 },
+		{ result: SOURCE_CHANGED_RESULT, code: 3 },
+		{ result: PREVIEW_CHANGED_RESULT, code: 3 },
+	];
+
+	/** Runs the command with the real reporting, and catches the two streams and the exit code. */
+	async function report(result: unknown, flags: Record<string, unknown>) {
+		const command = new commandClass([], {} as Config);
+		const internals = command as unknown as ApplyInternals & {
+			parse: () => Promise<{ args: typeof args; flags: Record<string, unknown> }>;
+			log: (message: string) => void;
+		};
+		vi.spyOn(internals, 'parse').mockResolvedValue({
+			args,
+			flags: { workflow: ['wf-1'], ...PINNED_FLAGS, ...flags },
+		});
+		vi.spyOn(internals, 'getClient').mockReturnValue({
+			[method]: vi.fn().mockResolvedValue(result),
+		} as unknown as N8nClient);
+		const log = vi.spyOn(internals, 'log').mockImplementation(() => {});
+		const logToStderr = vi.spyOn(internals, 'logToStderr').mockImplementation(() => {});
+		const exit = vi.spyOn(internals, 'exit').mockImplementation(() => undefined as never);
+
+		await command.run();
+
+		return { stdout: log.mock.calls.map(([line]) => line), logToStderr, exit };
+	}
+
+	it.each(RESULTS)('exits $code for the status $result.status', async ({ result, code }) => {
+		const { exit } = await report(result, { format: 'table' });
+
+		expect(exit).toHaveBeenCalledTimes(1);
+		expect(exit).toHaveBeenCalledWith(code);
+	});
+
+	it.each(RESULTS)(
+		'prints only the API response as JSON and exits $code for the status $result.status',
+		async ({ result, code }) => {
+			const { stdout, logToStderr, exit } = await report(result, { json: true });
+
+			expect(stdout).toEqual([JSON.stringify(result, null, 2)]);
+			expect(logToStderr).not.toHaveBeenCalled();
+			expect(exit).toHaveBeenCalledWith(code);
+		},
+	);
+
+	it('lists the entries of a blocked Apply by group on stderr', async () => {
+		const { stdout, logToStderr } = await report(BLOCKED_BY_DEPENDENCIES_RESULT, {
+			format: 'table',
+		});
+
+		expect(stdout).toEqual([]);
+		expect(logToStderr.mock.calls[0][0]).toContain(
+			[
+				'  Outside your access: 1',
+				'',
+				'Outside your access (1)',
+				'You do not have access to these dependencies.',
+				'  Credential "Shared CRM" (hubspotApi): not on this instance; stops the Apply; used by Weekly report',
+				'',
+				'Run with --json for the details.',
+			].join('\n'),
+		);
 	});
 });
 

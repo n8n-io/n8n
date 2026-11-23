@@ -10,6 +10,7 @@ import PromotionEnvironmentDisconnect from '../commands/promotion-environment/di
 import PromotionEnvironmentGet from '../commands/promotion-environment/get';
 import PromotionEnvironmentListChanges from '../commands/promotion-environment/list-changes';
 import PromotionEnvironmentListProjects from '../commands/promotion-environment/list-projects';
+import PromotionEnvironmentPromoteCheck from '../commands/promotion-environment/promote-check';
 import PromotionEnvironmentRemoveProject from '../commands/promotion-environment/remove-project';
 import PromotionEnvironmentUpdate from '../commands/promotion-environment/update';
 import PromotionProviderDelete from '../commands/promotion-provider/delete';
@@ -149,6 +150,13 @@ const CASES: WiringCase[] = [
 		args: { projectId: 'proj-1', direction: 'promote' },
 		method: 'listProjectPromotionChanges',
 		callArgs: ['proj-1', 'promote'],
+	},
+	{
+		title: 'promotion-environment promote-check',
+		commandClass: PromotionEnvironmentPromoteCheck,
+		args: { id: 'env-1' },
+		method: 'getPromoteCheck',
+		callArgs: ['env-1'],
 	},
 	{
 		title: 'promotion-environment add-project',

@@ -1,6 +1,7 @@
 import { Args } from '@oclif/core';
 
 import { directionArg, toDirection } from './direction';
+import { applyDependencyLines, promoteDependencyLines } from './missing-dependencies';
 import { BaseCommand } from '../../base-command';
 import type { PromotionPreview } from '../../client';
 
@@ -9,7 +10,7 @@ const MAX_LISTED_WORKFLOWS = 3;
 
 export default class PromotionEnvironmentListChanges extends BaseCommand {
 	static override description =
-		'Preview what Promote or Apply changes in a project: its projects, folders, workflows, credentials, data tables, variables and tags. The table lists each changed resource with its ID, so you can select it. Select workflows with --workflow and folders with --folder. Credentials, data tables and variables come with the workflows in USEDBY. Use --json for the full preview, including the revision for --expected-preview-revision.';
+		'Preview what Promote or Apply changes in a project: its projects, folders, workflows, credentials, data tables, variables and tags. The table lists each changed resource with its ID, so you can select it. Select workflows with --workflow and folders with --folder. Credentials, data tables and variables come with the workflows in USEDBY. After the table, the command lists the missing dependencies of the workflows by group, and for Promote the warnings. It never names the project of a dependency. Use --json for the full preview, including the revision for --expected-preview-revision.';
 
 	static override examples = [
 		'<%= config.bin %> promotion-environment list-changes proj-abc promote',
@@ -28,9 +29,10 @@ export default class PromotionEnvironmentListChanges extends BaseCommand {
 	async run() {
 		const { args, flags } = await this.parse(PromotionEnvironmentListChanges);
 		await this.execute(async () => {
+			const direction = toDirection(args.direction);
 			const preview = await this.getClient(flags).listProjectPromotionChanges(
 				args.projectId,
-				toDirection(args.direction),
+				direction,
 			);
 			if (this.isJsonMode(flags)) {
 				this.output(preview, flags);
@@ -44,6 +46,14 @@ export default class PromotionEnvironmentListChanges extends BaseCommand {
 			this.output(changedRows(preview), flags, {
 				columns: ['type', 'id', 'name', 'change', 'folder', 'usedBy', 'selectable'],
 			});
+			const dependencies =
+				direction === 'promote'
+					? promoteDependencyLines(preview.missingDependencies, preview.warnings)
+					: applyDependencyLines(preview.check?.missingDependencies);
+			// On stderr, so stdout holds only the table or the IDs.
+			if (dependencies.length > 0 && !flags.quiet) {
+				this.logToStderr(['', ...dependencies].join('\n'));
+			}
 		});
 	}
 }

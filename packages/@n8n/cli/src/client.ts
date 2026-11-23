@@ -5,10 +5,15 @@ import type {
 	ImportPackageSelectionRequestDto,
 } from '@n8n/api-types/dist/dto/packages/import-package-request.dto';
 import type { ImportResultDto } from '@n8n/api-types/dist/dto/packages/import-result.dto';
-import type { PromotionMissingProject } from '@n8n/api-types/dist/dto/promotions/promotion-apply-check.dto';
+import type {
+	PromotionDependencyWarning,
+	PromotionMissingDependency,
+	PromotionMissingProject,
+} from '@n8n/api-types/dist/dto/promotions/promotion-apply-check.dto';
 import type {
 	PromotionInstanceApplyPreview,
 	PromotionPreview,
+	PromotionPromoteCheck,
 } from '@n8n/api-types/dist/dto/promotions/promotion-preview.dto';
 import type { CreateProjectPublicDto } from '@n8n/api-types/dist/dto/project/project-public.dto';
 import { N8N_CLIENT_HEADER, N8N_CLIENT_N8N_CLI } from '@n8n/constants';
@@ -145,6 +150,8 @@ export interface PromotionApplyCheck {
 	accessRequirements: Array<Record<string, unknown>>;
 	conflicts: Array<Record<string, unknown>>;
 	warnings: Array<Record<string, unknown>>;
+	/** What the applied workflows use and this instance cannot give them after the Apply. */
+	missingDependencies: PromotionMissingDependency[];
 }
 
 /** A team project that a full Apply deletes, because the package does not hold it. */
@@ -170,7 +177,13 @@ export type ApplyPackageResult =
 	| (ApplyPackageIdentity & { status: 'source-changed' })
 	| (ApplyPackageIdentity & { status: 'preview-changed' });
 
-export type { PromotionInstanceApplyPreview, PromotionPreview };
+export type {
+	PromotionDependencyWarning,
+	PromotionInstanceApplyPreview,
+	PromotionMissingDependency,
+	PromotionPreview,
+	PromotionPromoteCheck,
+};
 
 /** A repository that the token of a Git host provider can access. */
 export interface PromotionRepository {
@@ -473,6 +486,10 @@ export class N8nClient {
 
 	async promotePackage(id: string, body: { commitMessage?: string; force?: boolean }) {
 		return await this.post<PromotePackageResult>(`/promotions/environments/${id}/promote`, body);
+	}
+
+	async getPromoteCheck(id: string) {
+		return await this.get<PromotionPromoteCheck>(`/promotions/environments/${id}/promote/check`);
 	}
 
 	async listInstanceApplyChanges(id: string) {
