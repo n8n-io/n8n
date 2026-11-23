@@ -67,7 +67,13 @@ export async function checkCase(
 	rules: ParityRules,
 	report?: CoverageReport,
 ): Promise<CaseResult> {
-	const blocking = blockingCodes(parityCase.workflow);
+	// The check does not follow sub-workflows, so each one is checked on its own.
+	const blocking = [
+		...blockingCodes(parityCase.workflow),
+		...Object.values(parityCase.subWorkflows).flatMap((subWorkflow) =>
+			blockingCodes(subWorkflow).map((code) => `SUB_WORKFLOW:${code}`),
+		),
+	];
 	const isNew = report?.recordCase(parityCase, blocking) ?? false;
 	const result: CaseResult = {
 		verdict: 'discarded',

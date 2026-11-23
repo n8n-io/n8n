@@ -58,13 +58,14 @@ describe('grammar', () => {
 		expect(second).toEqual(first);
 	});
 
-	it.each(['smoke', 'branching', 'loops', 'code'])(
+	it.each(['smoke', 'branching', 'loops', 'code', 'subWorkflows'])(
 		'makes eligible workflows with valid ports for the "%s" rule set',
 		(name) => {
 			const cases = sample(name);
 			// The combinators make every shape eligible, so one rejected case is a bug.
 			const rejected = cases
-				.map((parityCase) => checkEngineV2Eligibility(parityCase.workflow))
+				.flatMap((parityCase) => [parityCase.workflow, ...Object.values(parityCase.subWorkflows)])
+				.map((workflow) => checkEngineV2Eligibility(workflow))
 				.filter((result) => !result.eligible);
 
 			expect(cases.every(portsInRange)).toBe(true);
@@ -142,8 +143,23 @@ describe('grammar', () => {
 	});
 
 	it('makes cases that the SDK can print as code', () => {
-		for (const parityCase of sample('code', 3, 20)) {
+		for (const parityCase of sample('subWorkflows', 3, 20)) {
 			expect(toSdkCode(parityCase.ir)).toContain("workflow('parity'");
+		}
+	});
+
+	it('gives each Execute Workflow node its own sub-workflow', () => {
+		const cases = sample('subWorkflows').filter((parityCase) =>
+			parityCase.ir.nodes.some((irNode) => irNode.catalogId === 'executeWorkflow'),
+		);
+
+		expect(cases.length).toBeGreaterThan(0);
+		for (const parityCase of cases) {
+			for (const irNode of parityCase.ir.nodes.filter(
+				(node) => node.catalogId === 'executeWorkflow',
+			)) {
+				expect(parityCase.subWorkflows[String(irNode.params.workflowId)]).toBeDefined();
+			}
 		}
 	});
 });

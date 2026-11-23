@@ -4,11 +4,15 @@ import {
 	toV1RunExecutionData,
 	V1WorkflowConverter,
 } from '@n8n/node-engine-compatibility';
+import type {
+	SubWorkflowResolveRequest,
+	SubWorkflowResolveResult,
+} from '@n8n/node-engine-compatibility';
 import { EngineTestRuntime, ExecutionStalledError } from '@n8n/node-engine-compatibility/testing';
 import { PostgreSqlContainer } from '@testcontainers/postgresql';
 import type { StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import type { IWorkflowBase } from 'n8n-workflow';
-import { getChildNodes, NodeConnectionTypes } from 'n8n-workflow';
+import { getChildNodes, isTriggerNodeType, NodeConnectionTypes } from 'n8n-workflow';
 
 import type { ParityCase } from '../grammar/ir';
 import { parityAdditionalData } from './additional-data';
@@ -100,6 +104,8 @@ export class V2Runner implements EngineRunner {
 			triggerOutputs: toStepOutputs([toExecutionData(parityCase.ir.triggerItems)]),
 			mode: 'production',
 			callerContext: { hostMode: 'trigger' },
+			resolveSubWorkflow: async (request) =>
+				await Promise.resolve(this.resolveSubWorkflow(parityCase, request)),
 		});
 		if (!start.started) {
 			return { kind: 'refused', reason: `engine: ${start.status} ${JSON.stringify(start.body)}` };
@@ -128,6 +134,22 @@ export class V2Runner implements EngineRunner {
 			lastNodeExecuted: resultData.lastNodeExecuted,
 			error: resultData.error,
 			...(notes.length > 0 ? { notes } : {}),
+		};
+	}
+
+	/** What the control plane answers for a sub-workflow from the database. */
+	private resolveSubWorkflow(
+		parityCase: ParityCase,
+		request: SubWorkflowResolveRequest,
+	): SubWorkflowResolveResult {
+		const subWorkflow = parityCase.subWorkflows[request.workflowId];
+		if (!subWorkflow) throw new Error(`The case has no sub-workflow "${request.workflowId}"`);
+		const trigger = subWorkflow.nodes.find((node) => isTriggerNodeType(node.type));
+		return {
+			workflowId: request.workflowId,
+			graph: this.converter.convert(subWorkflow, trigger?.name),
+			workflow: { id: request.workflowId, name: subWorkflow.name },
+			triggerOutputs: toStepOutputs([request.items]),
 		};
 	}
 }

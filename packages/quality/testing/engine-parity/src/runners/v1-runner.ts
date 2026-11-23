@@ -1,6 +1,12 @@
 import { ExecutionLifecycleHooks, WorkflowExecute } from 'n8n-core';
-import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
-import { createRunExecutionData, jsonParse, Workflow } from 'n8n-workflow';
+import type {
+	ExecuteWorkflowData,
+	IDataObject,
+	INodeExecutionData,
+	IWorkflowBase,
+	WorkflowExecuteMode,
+} from 'n8n-workflow';
+import { createRunExecutionData, isTriggerNodeType, jsonParse, Workflow } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import type { IrItem, ParityCase } from '../grammar/ir';
@@ -40,8 +46,11 @@ export class V1Runner implements EngineRunner {
 		const progress: string[] = [];
 		const { workflowExecute, workflow } = this.prepare(
 			parityCase,
+			parityCase.workflow,
+			parityCase.ir.firedTrigger,
 			// A node can change its input items in place. Each engine gets its own copy.
 			toExecutionData(parityCase.ir.triggerItems),
+			'trigger',
 			progress,
 		);
 		const execution = workflowExecute.processRunExecutionData(workflow);
@@ -62,12 +71,12 @@ export class V1Runner implements EngineRunner {
 
 	private prepare(
 		parityCase: ParityCase,
+		workflowData: IWorkflowBase,
+		startNodeName: string,
 		items: INodeExecutionData[],
+		mode: WorkflowExecuteMode,
 		progress: string[],
 	): { workflowExecute: WorkflowExecute; workflow: Workflow } {
-		const { workflow: workflowData } = parityCase;
-		const startNodeName = parityCase.ir.firedTrigger;
-		const mode = 'trigger';
 		const workflow = new Workflow({
 			id: workflowData.id,
 			name: workflowData.name,
@@ -86,7 +95,16 @@ export class V1Runner implements EngineRunner {
 		hooks.addHandler('nodeExecuteAfter', (nodeName) => {
 			progress.push(nodeName);
 		});
-		const additionalData = parityAdditionalData(executionId, { hooks });
+		const additionalData = parityAdditionalData(executionId, {
+			hooks,
+			executeWorkflow: async (workflowInfo, _parentData, options) =>
+				await this.executeSubWorkflow(
+					parityCase,
+					workflowInfo.id,
+					options.inputData ?? [],
+					progress,
+				),
+		});
 
 		const runExecutionData = createRunExecutionData({
 			executionData: {
@@ -95,5 +113,37 @@ export class V1Runner implements EngineRunner {
 		});
 		const workflowExecute = new WorkflowExecute(additionalData, mode, runExecutionData);
 		return { workflowExecute, workflow };
+	}
+
+	/**
+	 * Runs the sub-workflow as the control plane does for a sub-workflow from the
+	 * database: in `integrated` mode, and it returns the last run of the last node.
+	 * The trigger of the generated sub-workflows is version 1, which returns the
+	 * last run only.
+	 */
+	private async executeSubWorkflow(
+		parityCase: ParityCase,
+		workflowId: string | undefined,
+		items: INodeExecutionData[],
+		progress: string[],
+	): Promise<ExecuteWorkflowData> {
+		const subWorkflow = workflowId === undefined ? undefined : parityCase.subWorkflows[workflowId];
+		if (!subWorkflow) throw new Error(`The case has no sub-workflow "${String(workflowId)}"`);
+		const trigger = subWorkflow.nodes.find((node) => isTriggerNodeType(node.type));
+		if (!trigger) throw new Error(`The sub-workflow "${String(workflowId)}" has no trigger`);
+
+		const { workflowExecute, workflow } = this.prepare(
+			parityCase,
+			subWorkflow,
+			trigger.name,
+			items,
+			'integrated',
+			progress,
+		);
+		const run = await workflowExecute.processRunExecutionData(workflow);
+		const { error, lastNodeExecuted, runData } = run.data.resultData;
+		if (error) throw error;
+		const lastRun = lastNodeExecuted === undefined ? undefined : runData[lastNodeExecuted]?.at(-1);
+		return { executionId: uuid(), data: lastRun?.data?.main ?? [null] };
 	}
 }

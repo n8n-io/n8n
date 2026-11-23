@@ -55,4 +55,10 @@ describe('V1Runner', () => {
 			{ n: 2, doubled: 4, first: 1 },
 		]);
 	});
+
+	it('runs sub-workflows from the case', async () => {
+		const outcome = await run('sub-workflow');
+
+		expect(outcome?.nodes.Call[0].outputs).toEqual([[{ fromSubWorkflow: 'ada' }]]);
+	});
 });
