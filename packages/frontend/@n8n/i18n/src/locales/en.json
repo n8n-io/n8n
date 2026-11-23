@@ -8879,7 +8879,6 @@
 	"instanceAi.cloudBrowser.savedLogins.open": "Open saved browser logins",
 	"instanceAi.cloudBrowser.savedLogins.search": "Search",
 	"instanceAi.cloudBrowser.savedLogins.sort.label": "Sort saved logins",
-	"instanceAi.cloudBrowser.savedLogins.sort.savedAt": "Sort by last updated",
 	"instanceAi.cloudBrowser.savedLogins.sort.lastUsedAt": "Sort by last used",
 	"instanceAi.cloudBrowser.savedLogins.sort.domain": "Sort by site",
 	"instanceAi.cloudBrowser.savedLogins.column.site": "Site",

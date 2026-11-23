@@ -208,12 +208,17 @@ describe('SavedLoginsDialog', () => {
 			expect(rowDomains()).toEqual(['github.com', 'amazon.com', 'linkedin.com']);
 		});
 
-		it('sorts by last updated, newest first', async () => {
+		it('offers only the sorts that match the shown columns', async () => {
 			await render();
 
-			await chooseSort('Sort by last updated');
+			await userEvent.click(screen.getByTestId('saved-logins-sort'));
+			const listbox = await screen.findByRole('listbox');
 
-			expect(rowDomains()).toEqual(['linkedin.com', 'amazon.com', 'github.com']);
+			expect(
+				within(listbox)
+					.getAllByRole('option')
+					.map((option) => option.textContent),
+			).toEqual(['Sort by last used', 'Sort by site']);
 		});
 
 		it('sorts by site name', async () => {

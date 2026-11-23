@@ -23,7 +23,7 @@ import { computed, ref, watch } from 'vue';
 
 import { deleteSavedLogin, fetchSavedLogins } from '../instanceAi.api';
 
-type SortBy = 'savedAt' | 'lastUsedAt' | 'domain';
+type SortBy = 'lastUsedAt' | 'domain';
 
 const open = defineModel<boolean>('open', { required: true });
 
@@ -44,7 +44,6 @@ const sortItems = computed(
 			value: 'lastUsedAt',
 			label: i18n.baseText('instanceAi.cloudBrowser.savedLogins.sort.lastUsedAt'),
 		},
-		{ value: 'savedAt', label: i18n.baseText('instanceAi.cloudBrowser.savedLogins.sort.savedAt') },
 		{ value: 'domain', label: i18n.baseText('instanceAi.cloudBrowser.savedLogins.sort.domain') },
 	],
 );
@@ -58,8 +57,7 @@ const shownLogins = computed(() => {
 		return matching.sort((a, b) => a.domain.localeCompare(b.domain));
 	}
 	// ISO dates sort as strings. Newest first.
-	const key = sortBy.value;
-	return matching.sort((a, b) => b[key].localeCompare(a[key]));
+	return matching.sort((a, b) => b.lastUsedAt.localeCompare(a.lastUsedAt));
 });
 
 let pendingSavedLoginsLoad: Promise<void> | undefined;
