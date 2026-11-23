@@ -196,6 +196,40 @@ describe('workflow statistics fold step', () => {
 			expect(await findWorkflowStatistics(workflow.id)).toEqual([]);
 		});
 
+		it('counts a run of a workflow with no owner project', async () => {
+			const unowned = await createWorkflow({
+				name: 'Unowned workflow',
+				...createSimpleWorkflowFixture(),
+				settings: { saveDataSuccessExecution: 'all' },
+			});
+			const executionId = await Container.get(ExecutionPersistence).create({
+				workflowId: unowned.id,
+				data: createEmptyRunExecutionData(),
+				workflowData: unowned,
+				mode: 'trigger',
+				status: 'running',
+				finished: false,
+				startedAt: new Date(),
+			});
+			await getLifecycleHooksForRegularMain(
+				{ executionMode: 'trigger', workflowData: unowned },
+				executionId,
+			).runHook('workflowExecuteAfter', [finishedRun('success', 'trigger'), {}]);
+
+			await vi.waitFor(
+				async () => {
+					await foldAllLedgerRows();
+					const counters = await Container.get(WorkflowStatisticsRepository).findBy({
+						workflowId: unowned.id,
+					});
+					expect(toCounters(counters)).toEqual({
+						[StatisticsNames.productionSuccess]: { count: 1, rootCount: 1 },
+					});
+				},
+				{ timeout: 10_000, interval: 50 },
+			);
+		});
+
 		it('gives exact totals when folds overlap', async () => {
 			for (let index = 0; index < 5; index++) await finish('trigger', 'success');
 			const expected = { [StatisticsNames.productionSuccess]: { count: 5, rootCount: 5 } };

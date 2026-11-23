@@ -38,6 +38,12 @@ describe('toStatisticsIncrements', () => {
 		expect(toStatisticsIncrements([row({ origin: 'v2' })])).toEqual([]);
 	});
 
+	test('counts a row with no project', () => {
+		expect(toStatisticsIncrements([row({ projectId: null })])).toEqual([
+			expect.objectContaining({ workflowId: 'wf-1', count: 1, rootCount: 1 }),
+		]);
+	});
+
 	test('ignores a row with a mode the rules do not know', () => {
 		expect(toStatisticsIncrements([row({ mode: 'futureMode' })])).toEqual([]);
 	});
