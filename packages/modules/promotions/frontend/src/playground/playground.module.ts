@@ -16,7 +16,7 @@ export const playgroundSettingsPages = import.meta.env.DEV
 			{
 				id: 'settings-promotions-playground',
 				order: 21,
-				section: 'operations',
+				section: 'operations' as const,
 				icon: 'flask-conical',
 				get label() {
 					return useI18n().baseText('settings.promotions.playground.title');

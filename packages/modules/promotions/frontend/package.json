@@ -58,6 +58,7 @@
     "@types/lodash": "catalog:",
     "@vitejs/plugin-vue": "catalog:frontend",
     "@vue/test-utils": "catalog:frontend",
+    "axios": "catalog:",
     "oxlint": "catalog:",
     "oxlint-tsgolint": "catalog:",
     "stylelint": "catalog:",

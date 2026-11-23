@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { VIEWS } from '@n8n/frontend-constants/views';
 import { useI18n } from '@n8n/i18n';
+import { makeRestApiRequest } from '@n8n/rest-api-client';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { N8nText } from '@n8n/design-system';
-import { computed, defineAsyncComponent, onBeforeUnmount, onMounted } from 'vue';
+import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import PlaygroundSidebar from './PlaygroundSidebar.vue';
-import { PLAYGROUND_PROJECT_ID, buildPlaygroundPreview } from './playground.data';
+import { buildPlaygroundPreview, type PlaygroundProject } from './playground.data';
 import { installMockPromotionApi } from './playground.mock-api';
 import {
 	DEFAULT_PLAYGROUND_SCENARIO,
@@ -23,6 +25,7 @@ import {
  * takes the place of the Settings links, so the page reads as a part of Settings.
  */
 const i18n = useI18n();
+const rootStore = useRootStore();
 const route = useRoute();
 const router = useRouter();
 
@@ -40,6 +43,19 @@ const PreviewPage = defineAsyncComponent(
 );
 const scenario = computed(() => PLAYGROUND_SCENARIOS.find(({ id }) => id === scenarioId.value));
 let removeMockApi: (() => void) | undefined;
+
+// The create actions of the page use the real editors, which save to a project that exists. So
+// the sample data belongs to a real project of the user: a team project, else the personal one.
+const project = ref<PlaygroundProject>();
+async function loadProject() {
+	const projects = await makeRestApiRequest<Array<{ id: string; name: string; type: string }>>(
+		rootStore.restApiContext,
+		'GET',
+		'/projects/my-projects',
+	);
+	const chosen = projects.find(({ type }) => type === 'team') ?? projects[0];
+	if (chosen) project.value = { id: chosen.id, name: chosen.name };
+}
 
 async function show(next: { scenario?: PlaygroundScenarioId; size?: PlaygroundSize }) {
 	await router.replace({
@@ -60,16 +76,20 @@ async function back() {
 const SIDEBAR = '#sidebar';
 // Installed during setup, before the preview page below can send its first request.
 removeMockApi = installMockPromotionApi(
-	(changed) =>
+	(state) =>
 		buildPlaygroundPreview(
 			scenarioId.value,
 			scenario.value?.direction ?? 'promote',
 			size.value,
-			changed,
+			project.value ?? { id: 'playground-project', name: 'Sales' },
+			state,
 		),
 	() => `${scenarioId.value}-${size.value}`,
 );
-onMounted(() => document.querySelector(SIDEBAR)?.setAttribute('data-playground', ''));
+onMounted(() => {
+	document.querySelector(SIDEBAR)?.setAttribute('data-playground', '');
+	void loadProject();
+});
 onBeforeUnmount(() => {
 	document.querySelector(SIDEBAR)?.removeAttribute('data-playground');
 	removeMockApi?.();
@@ -90,9 +110,9 @@ onBeforeUnmount(() => {
 		<div :class="$style.stage" data-test-id="promotions-playground-stage">
 			<!-- The key reloads the page when the scenario or the amount changes. -->
 			<PreviewPage
-				v-if="scenario?.built && scenario.direction"
-				:key="`${scenarioId}-${size}`"
-				:project-id="PLAYGROUND_PROJECT_ID"
+				v-if="scenario?.built && scenario.direction && project"
+				:key="`${scenarioId}-${size}-${project.id}`"
+				:project-id="project.id"
 				:direction="scenario.direction"
 			/>
 			<N8nText

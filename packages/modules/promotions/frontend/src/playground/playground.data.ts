@@ -11,7 +11,10 @@ import type { PromotionOutsideAccessDependency } from '../promotions.types';
 import type { PlaygroundScenarioId, PlaygroundSize } from './playground.scenarios';
 
 /** Development only. Sample data for the Playground. Nothing here reaches a server. */
-export const PLAYGROUND_PROJECT_ID = 'playground-project';
+export interface PlaygroundProject {
+	id: string;
+	name: string;
+}
 
 const COMMIT_SHA = 'c'.repeat(40);
 const PREVIEW_REVISION = 'a'.repeat(64);
@@ -76,12 +79,16 @@ const PERSONAL_SCENARIOS: readonly PlaygroundScenarioId[] = ['p3'];
 const PERSONAL_NAMES = ['Personal Gmail', 'My Notion token', 'Test Slack bot', 'Sandbox API key'];
 
 /** The workflows that use the dependency at `index`, so the row can link to them. */
-function consumersOf(index: number, workflows: number): PromotionBindingConsumer[] {
+function consumersOf(
+	index: number,
+	workflows: number,
+	project: PlaygroundProject,
+): PromotionBindingConsumer[] {
 	const used = Array.from({ length: Math.min(3, workflows) }, (_, step) => {
 		const workflow = (index + step) % workflows;
 		return { id: `playground-workflow-${workflow}`, name: workflowNameOf(workflow) };
 	});
-	return [{ project: { id: PLAYGROUND_PROJECT_ID, name: 'Sales' }, workflows: used }];
+	return [{ project: { id: project.id, name: project.name }, workflows: used }];
 }
 
 const resource = (
@@ -114,6 +121,14 @@ const workflowNameOf = (index: number) => {
 
 export const workflowKey = (index: number) => `workflow:playground-workflow-${index}`;
 
+/** What the user did in this scenario, so that the next preview shows it. */
+export interface PlaygroundState {
+	/** True after a Promote found that the list had changed. */
+	changed?: boolean;
+	/** The names of the credentials and variables that the user created. */
+	resolved?: ReadonlySet<string>;
+}
+
 /**
  * A project whose changes have no missing dependencies: every credential, variable and data table
  * that a workflow uses is part of the preview. `changed` is true after the list changed under
@@ -123,11 +138,12 @@ export function buildPlaygroundPreview(
 	scenario: PlaygroundScenarioId,
 	direction: PromotionDirection,
 	size: PlaygroundSize,
-	changed = false,
+	project: PlaygroundProject,
+	{ changed = false, resolved = new Set<string>() }: PlaygroundState = {},
 ): PromotionPreview {
 	const amount = AMOUNTS[size];
-	const projectKey = `project:${PLAYGROUND_PROJECT_ID}`;
-	const resources: PromotionResource[] = [resource(projectKey, 'Sales')];
+	const projectKey = `project:${project.id}`;
+	const resources: PromotionResource[] = [resource(projectKey, project.name)];
 	const dependencies: PromotionResourceDependency[] = [];
 
 	const folderKeys = FOLDER_NAMES.slice(0, amount.folders).map((name, index) => {
@@ -196,7 +212,7 @@ export function buildPlaygroundPreview(
 		// Apply always carries a check. Promote carries one only when something is outside the access
 		// of the user, which is the only issue that a Promote can have.
 		...(direction === 'apply' || hasPromoteIssues(scenario, changed)
-			? { check: buildCheck(scenario, size, amount.workflows, changed) }
+			? { check: buildCheck(scenario, size, amount.workflows, project, { changed, resolved }) }
 			: {}),
 		revision: PREVIEW_REVISION,
 	};
@@ -215,12 +231,13 @@ function buildCheck(
 	scenario: PlaygroundScenarioId,
 	size: PlaygroundSize,
 	workflows: number,
-	changed: boolean,
+	project: PlaygroundProject,
+	{ changed = false, resolved = new Set<string>() }: PlaygroundState,
 ) {
 	const count = ISSUE_AMOUNTS[size];
-	const missingBindings = NEEDS_ACTION_SCENARIOS.includes(scenario)
+	const allMissing = NEEDS_ACTION_SCENARIOS.includes(scenario)
 		? Array.from({ length: count }, (_, index) => {
-				const consumers = consumersOf(index, workflows);
+				const consumers = consumersOf(index, workflows, project);
 				// Credentials and variables alternate, as in a real branch.
 				if (index % 2 === 0) {
 					const credential = Math.floor(index / 2);
@@ -230,7 +247,7 @@ function buildCheck(
 						name: nameAt(MISSING_CREDENTIAL_NAMES, credential),
 						credentialType: 'httpHeaderAuth',
 						consumers,
-						ownerProject: { id: PLAYGROUND_PROJECT_ID, name: 'Sales' },
+						ownerProject: { id: project.id, name: project.name },
 					};
 				}
 				return {
@@ -242,11 +259,13 @@ function buildCheck(
 				};
 			})
 		: [];
+	// A credential or variable that the user created is no longer missing.
+	const missingBindings = allMissing.filter(({ name }) => !resolved.has(name));
 	const outside: PromotionOutsideAccessDependency[] =
 		OUTSIDE_ACCESS_SCENARIOS.includes(scenario) || (scenario === 'p4' && changed)
 			? Array.from({ length: count }, (_, index) => ({
 					...outsideNameAt(index),
-					consumers: consumersOf(index + 1, workflows),
+					consumers: consumersOf(index + 1, workflows, project),
 				}))
 			: [];
 	const personal: PromotionOutsideAccessDependency[] = PERSONAL_SCENARIOS.includes(scenario)
@@ -257,7 +276,7 @@ function buildCheck(
 						? `${nameAt(PERSONAL_NAMES, index)} ${index + 1}`
 						: nameAt(PERSONAL_NAMES, index),
 				reason: 'personal' as const,
-				consumers: consumersOf(index, workflows),
+				consumers: consumersOf(index, workflows, project),
 			}))
 		: [];
 	const outsideAccess = [...outside, ...personal];
