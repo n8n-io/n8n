@@ -12,12 +12,21 @@ export type OAuth2FlowRequest = Pick<Inbound['request'], 'method' | 'url' | 'ip'
  * with a per-trigger virtual client, or an external issuer with a registered client.
  * `refresh` rotates the grant at the same source. A registered (DCR) client of the
  * internal server cannot use these methods — it goes through the public `/oauth/token`
- * endpoint instead. `issue` skips the redirect for a user who is already signed in to n8n.
+ * endpoint instead. `issue` skips the redirect and consent for a user whom the caller has
+ * already authenticated (see `issue`).
  */
 export interface N8nOAuth2Flow {
 	begin(resourceUrl: string, metadata?: Record<string, string>): Promise<string>;
 	complete(code: string, state: string, request?: OAuth2FlowRequest): Promise<N8nOAuth2FlowResult>;
 	refresh(refreshToken: string, resourceUrl: string): Promise<N8nOAuth2RefreshResult>;
+	/**
+	 * Issues an access token for `userId` without a redirect or a consent screen.
+	 * Neither this proxy nor the provider authenticates the user. The caller must
+	 * authenticate `userId` first, for example from the user's n8n session or from a
+	 * single-use code that an authenticated request created.
+	 * Do not pass a user id that comes from request input. Do not expose this method
+	 * through an HTTP endpoint.
+	 */
 	issue(resourceUrl: string, userId: string): Promise<N8nOAuth2FlowResult>;
 }
 
