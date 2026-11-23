@@ -420,7 +420,10 @@ describe('AgentSkillModal', () => {
 	});
 
 	it('shows the current names of mentioned workflows without a change to save', async () => {
-		mockedStore(usePostHog).isFeatureEnabled = vi.fn(() => true);
+		mockedStore(usePostHog).isVariantEnabled = vi.fn(
+			(name: string, variant: string) =>
+				name === '152_workflows_in_skills' && variant === 'variant',
+		);
 		mockedStore(useWorkflowsListStore).searchWorkflows = vi
 			.fn()
 			.mockResolvedValue([{ id: 'wf1', name: 'Weekly report' }]);
@@ -442,7 +445,10 @@ describe('AgentSkillModal', () => {
 	});
 
 	it('adds a workflow from the sidebar on a new line at the end of SKILL.md', async () => {
-		mockedStore(usePostHog).isFeatureEnabled = vi.fn(() => true);
+		mockedStore(usePostHog).isVariantEnabled = vi.fn(
+			(name: string, variant: string) =>
+				name === '152_workflows_in_skills' && variant === 'variant',
+		);
 		mockedStore(useWorkflowsListStore).searchWorkflows = vi
 			.fn()
 			.mockResolvedValue([{ id: 'wf2', name: 'Archive' }]);

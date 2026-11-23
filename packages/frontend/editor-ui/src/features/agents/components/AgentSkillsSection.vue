@@ -48,7 +48,13 @@ const outdatedWarning = computed(() => [i18n.baseText('agents.builder.skills.out
 const posthogStore = usePostHog();
 const alreadyAttachedNotes = computed(() => {
 	const notes = new Map<string, string>();
-	if (!posthogStore.isFeatureEnabled(WORKFLOWS_IN_SKILLS_EXPERIMENT.name)) return notes;
+	if (
+		!posthogStore.isVariantEnabled(
+			WORKFLOWS_IN_SKILLS_EXPERIMENT.name,
+			WORKFLOWS_IN_SKILLS_EXPERIMENT.variant,
+		)
+	)
+		return notes;
 	for (const { id, skill } of props.skills) {
 		const attached = findDirectlyAttachedMentions(skill, props.tools);
 		if (attached.length === 0) continue;

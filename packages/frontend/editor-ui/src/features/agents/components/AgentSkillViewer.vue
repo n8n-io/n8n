@@ -61,7 +61,10 @@ const telemetry = useTelemetry();
 const router = useRouter();
 const posthog = usePostHog();
 const workflowMentionsEnabled = computed(() =>
-	posthog.isFeatureEnabled(WORKFLOWS_IN_SKILLS_EXPERIMENT.name),
+	posthog.isVariantEnabled(
+		WORKFLOWS_IN_SKILLS_EXPERIMENT.name,
+		WORKFLOWS_IN_SKILLS_EXPERIMENT.variant,
+	),
 );
 const description = ref(props.skill.description);
 const referenceFileName = ref('');
