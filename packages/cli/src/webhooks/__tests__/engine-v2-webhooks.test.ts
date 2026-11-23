@@ -1,6 +1,6 @@
 import type { StepSlots } from '@n8n/engine';
 import type { INode, WebhookResponseMode } from 'n8n-workflow';
-import { FORM_NODE_TYPE, WorkflowOperationError } from 'n8n-workflow';
+import { FORM_NODE_TYPE, FORM_TRIGGER_NODE_TYPE, WorkflowOperationError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
@@ -40,6 +40,30 @@ describe('EngineV2Webhooks.assertSupported', () => {
 			expect(() => assertSupported(responseMode)).not.toThrow();
 		},
 	);
+
+	// The form trigger runs control-plane-side like the webhook node; only its
+	// multi-page response mode is refused, by the mode check.
+	it('allows the form trigger', () => {
+		const proxy = mock<EngineDataPlaneProxyService>();
+		proxy.isAvailable.mockReturnValue(true);
+		const webhooks = new EngineV2Webhooks(mock<EngineV2Dispatcher>(), proxy);
+
+		expect(() =>
+			webhooks.assertSupported({
+				workflowStartNode: mock<INode>({
+					name: 'On form submission',
+					type: FORM_TRIGGER_NODE_TYPE,
+					parameters: {},
+				}),
+				responseMode: 'onReceived',
+				executionId: undefined,
+			}),
+		).not.toThrow();
+	});
+
+	it('refuses the next-page response mode of a multi-page form', () => {
+		expect(() => assertSupported('formPage')).toThrow("'formPage' response mode");
+	});
 
 	// The streaming node sends its headers before it outputs the raw body, so a
 	// later refusal could not answer with a 400.

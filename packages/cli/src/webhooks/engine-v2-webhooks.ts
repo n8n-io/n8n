@@ -12,8 +12,6 @@ import {
 	CHAT_TRIGGER_NODE_TYPE,
 	classifyTriggerIdentity,
 	createRunExecutionData,
-	FORM_NODE_TYPE,
-	FORM_TRIGGER_NODE_TYPE,
 	MICROSOFT_AGENT365_TRIGGER_NODE_TYPE,
 	WorkflowOperationError,
 } from 'n8n-workflow';
@@ -26,13 +24,10 @@ import type { WebhookRunOutcome } from '@/modules/engine-v2/webhook-response/web
 
 /**
  * Trigger types the v2 path cannot serve. Each carries machinery the engine
- * path does not: a seeded execution stack, MCP relay fields, or multi-page
- * forms.
+ * path does not: a seeded execution stack or MCP relay fields.
  */
 const UNSUPPORTED_TRIGGERS = new Set<string>([
 	CHAT_TRIGGER_NODE_TYPE,
-	FORM_NODE_TYPE,
-	FORM_TRIGGER_NODE_TYPE,
 	MCP_TRIGGER_NODE_TYPE,
 	MICROSOFT_AGENT365_TRIGGER_NODE_TYPE,
 ]);
