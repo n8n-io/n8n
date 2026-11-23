@@ -10,6 +10,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
+import { WorkflowStartPolicyGate } from '@/policy/workflow-start-policy-gate';
 import { OwnershipService } from '@/services/ownership.service';
 
 import { PolicyCheckFailedError } from '../policy-check-failed.error';
@@ -43,7 +44,9 @@ describe('PolicyLifecycleHandler', () => {
 	const policyEnforcementService = mock<PolicyEnforcementService>();
 	const ownershipService = mock<OwnershipService>();
 
-	const handler = new PolicyLifecycleHandler(policyEnforcementService, ownershipService);
+	const handler = new PolicyLifecycleHandler(
+		new WorkflowStartPolicyGate(policyEnforcementService, ownershipService),
+	);
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -153,7 +156,7 @@ describe('workflowExecuteBefore wiring', () => {
 			const enforcement = new PolicyEnforcementService();
 			enforcement.setImplementation(Container.get(PolicyDecisionService));
 
-			return new PolicyLifecycleHandler(enforcement, ownership);
+			return new PolicyLifecycleHandler(new WorkflowStartPolicyGate(enforcement, ownership));
 		};
 
 		beforeEach(() => {

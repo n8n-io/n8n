@@ -23,6 +23,7 @@ import {
 	type EngineDataPlaneProxyService,
 } from '@/services/engine-data-plane-proxy.service';
 import { createExecutionIdV2 } from '@/executions/execution-id';
+import type { WorkflowStartPolicyGate } from '@/policy/workflow-start-policy-gate';
 import { EngineV2Dispatcher } from '@/services/engine-v2-dispatcher.service';
 import type {
 	EngineV2ManualRunPlanner,
@@ -138,6 +139,7 @@ describe('EngineV2Dispatcher', () => {
 	const pushRegistry = mock<EngineV2PushRegistry>();
 	const payloadFiles = mock<EngineV2PayloadFiles>();
 	const manualRunPlanner = mock<EngineV2ManualRunPlanner>();
+	const workflowStartPolicyGate = mock<WorkflowStartPolicyGate>();
 	const lifecycleSubscriptions = mockInstance(EngineV2LifecycleSubscriptions);
 
 	let dispatcher: EngineV2Dispatcher;
@@ -156,6 +158,7 @@ describe('EngineV2Dispatcher', () => {
 			pushRegistry,
 			payloadFiles,
 			manualRunPlanner,
+			workflowStartPolicyGate,
 		);
 	});
 

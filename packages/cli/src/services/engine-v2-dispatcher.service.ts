@@ -26,6 +26,7 @@ import {
 } from '@/executions/execution-id';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import type { ResumableExecution } from '@/interfaces';
+import { WorkflowStartPolicyGate } from '@/policy/workflow-start-policy-gate';
 import {
 	EngineDataPlaneProxyService,
 	isStartRefusedBeforeSave,
@@ -91,6 +92,7 @@ export class EngineV2Dispatcher {
 		private readonly pushRegistry: EngineV2PushRegistry,
 		private readonly payloadFiles: EngineV2PayloadFiles,
 		private readonly manualRunPlanner: EngineV2ManualRunPlanner,
+		private readonly workflowStartPolicyGate: WorkflowStartPolicyGate,
 	) {}
 
 	/**
@@ -240,6 +242,7 @@ export class EngineV2Dispatcher {
 		const { workflowData } = data;
 
 		await this.credentialsPermissionChecker.check(workflowData.id, workflowData.nodes, data.userId);
+		await this.workflowStartPolicyGate.enforce(workflowData);
 
 		// A planned run may root at a non-trigger: v1 starts from the nearest node
 		// with run data when no trigger has any, and the plan supplies its outputs.
