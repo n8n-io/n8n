@@ -259,6 +259,35 @@ describe('InstanceAiCloudBrowserService', () => {
 		});
 	});
 
+	describe('getLoginDomainToSave', () => {
+		it("passes on the server's answer to its owner", async () => {
+			const server = await service.createServer('user-1', 'thread-1', 'task-1', domainGate);
+			const getLoginDomainToSave = vi
+				.spyOn(server, 'getLoginDomainToSave')
+				.mockResolvedValue('example.com');
+
+			expect(await service.getLoginDomainToSave('user-1', 'thread-1', 'task-1')).toBe(
+				'example.com',
+			);
+			expect(getLoginDomainToSave).toHaveBeenCalledTimes(1);
+		});
+
+		it.each([
+			['another user', 'user-2', 'thread-1'],
+			['another thread', 'user-1', 'thread-2'],
+		])('returns nothing for %s', async (_, userId, threadId) => {
+			const server = await service.createServer('user-1', 'thread-1', 'task-1', domainGate);
+			const getLoginDomainToSave = vi.spyOn(server, 'getLoginDomainToSave');
+
+			expect(await service.getLoginDomainToSave(userId, threadId, 'task-1')).toBeUndefined();
+			expect(getLoginDomainToSave).not.toHaveBeenCalled();
+		});
+
+		it('returns nothing for a task with no server', async () => {
+			expect(await service.getLoginDomainToSave('user-1', 'thread-1', 'task-1')).toBeUndefined();
+		});
+	});
+
 	describe('returnControlToAgent', () => {
 		it('passes the note to the server of its owner', async () => {
 			const server = await service.createServer('user-1', 'thread-1', 'task-1', domainGate);

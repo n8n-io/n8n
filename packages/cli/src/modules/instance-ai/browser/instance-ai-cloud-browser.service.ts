@@ -172,6 +172,20 @@ export class InstanceAiCloudBrowserService {
 	}
 
 	/**
+	 * The site of the login the user can save in the task's browser, for its owner only. Nothing
+	 * when they cannot save one.
+	 */
+	async getLoginDomainToSave(
+		userId: string,
+		threadId: string,
+		taskId: string,
+	): Promise<string | undefined> {
+		const entry = this.serversByTaskId.get(taskId);
+		if (entry?.userId !== userId || entry.threadId !== threadId) return undefined;
+		return await entry.server.getLoginDomainToSave();
+	}
+
+	/**
 	 * Gives control of the task's browser back to its agent, for its owner only. With
 	 * `shouldSaveLogin`, first saves the login the user made.
 	 */

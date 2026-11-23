@@ -2031,6 +2031,15 @@ export interface InstanceAiCloudBrowserReturnControlResponse {
 }
 
 /**
+ * The login the user can save now, before they give control back. `domain` is the site of the
+ * login. It is not set when the user cannot save a login, for example when the current page is on
+ * another site.
+ */
+export interface InstanceAiCloudBrowserLoginToSaveResponse {
+	domain?: string;
+}
+
+/**
  * Entry-point taxonomy for Instance AI thread creation. Every new entry point
  * must register a value here — `InstanceAiEnsureThreadRequest.source` requires
  * it, so missing values fail at the API boundary.

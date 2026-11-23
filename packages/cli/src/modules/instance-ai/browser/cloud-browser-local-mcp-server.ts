@@ -451,6 +451,13 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 		return (await userControl?.result.promise) ?? { returned: true };
 	}
 
+	/** The site of the login the user can save now, or nothing when they cannot save one. */
+	async getLoginDomainToSave(): Promise<string | undefined> {
+		const session = this.activeSession;
+		if (!session?.loginProfile || !(await this.canSaveLogin(session))) return undefined;
+		return session.loginProfile.domain;
+	}
+
 	/** Whether the user can save the login they just made in the session. */
 	private async canSaveLogin(session: ActiveSession): Promise<boolean> {
 		const { loginProfile } = session;

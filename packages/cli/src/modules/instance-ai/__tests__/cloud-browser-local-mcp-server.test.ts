@@ -2430,6 +2430,54 @@ describe('CloudBrowserLocalMcpServer', () => {
 			});
 		});
 
+		describe('getLoginDomainToSave', () => {
+			it('returns the site of the login after a sign-in request on that site', async () => {
+				const { server } = await setupSignIn();
+				await askToSignIn(server);
+
+				expect(await server.getLoginDomainToSave()).toBe('example.com');
+			});
+
+			it('returns nothing when the current page is on another site', async () => {
+				const { server, pageUrl } = await setupSignIn();
+				await askToSignIn(server);
+				pageUrl.mockReturnValue('https://other.example.org/');
+
+				expect(await server.getLoginDomainToSave()).toBeUndefined();
+			});
+
+			it('returns nothing when the agent did not ask the user to sign in', async () => {
+				const { server } = await setupSignIn();
+				server.giveControlToUser();
+
+				expect(await server.getLoginDomainToSave()).toBeUndefined();
+			});
+
+			it('returns nothing when the login is already marked to be saved', async () => {
+				const { server } = await setupSavedLogin();
+				await askToSignIn(server);
+
+				expect(await server.getLoginDomainToSave()).toBeUndefined();
+			});
+
+			it('returns nothing when no session is open', async () => {
+				const { server } = setup();
+
+				expect(await server.getLoginDomainToSave()).toBeUndefined();
+			});
+
+			it('does not mark the login to be saved', async () => {
+				const { server } = await setupSignIn();
+				await askToSignIn(server);
+
+				await server.getLoginDomainToSave();
+
+				expect(await server.getLiveView()).not.toMatchObject({
+					loginProfile: { willBeSavedOnSessionEnd: true },
+				});
+			});
+		});
+
 		describe('ending a session', () => {
 			const dropConnection = (toolkit: ReturnType<typeof fakeToolkit>) =>
 				toolkit.adapter.onDisconnect?.('browser_closed');
