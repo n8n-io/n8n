@@ -2430,6 +2430,65 @@ describe('CloudBrowserLocalMcpServer', () => {
 			});
 		});
 
+		describe('getLoginSaveResults', () => {
+			it('returns a login that was saved when its session ended', async () => {
+				const { server } = await setupSavedLogin();
+
+				await server.release();
+
+				expect(server.getLoginSaveResults()).toEqual([{ domain: 'example.com', saved: true }]);
+			});
+
+			it('returns a login that was not saved when the save failed', async () => {
+				const { server, sessionProvider } = await setupSavedLogin();
+				sessionProvider.saveLoginProfile.mockRejectedValue(new Error('HTTP 502'));
+
+				await server.release();
+
+				expect(server.getLoginSaveResults()).toEqual([{ domain: 'example.com', saved: false }]);
+			});
+
+			it('returns a login that was not saved because the connection dropped', async () => {
+				const { server, toolkits } = await setupSavedLogin();
+				toolkits[0].connection.isConnected = false;
+				toolkits[0].adapter.onDisconnect?.('browser_closed');
+
+				await server.release();
+
+				expect(server.getLoginSaveResults()).toEqual([{ domain: 'example.com', saved: false }]);
+			});
+
+			it('returns a site once when the user saved its login in two sessions', async () => {
+				const { server, sessionProvider, toolkits, start } = await setupSavedLogin();
+				sessionProvider.createSession.mockResolvedValueOnce({
+					id: 'sess-2',
+					connectUrl: 'wss://connect/2',
+					regionId: 'eu-central-1',
+				});
+				sessionProvider.createLoginProfile.mockResolvedValueOnce('login-profile-2');
+				await start({ url: 'https://example.com' });
+				toolkits[1].adapter.getPageUrl.mockReturnValue('https://example.com/');
+				sessionProvider.saveLoginProfile.mockRejectedValue(new Error('HTTP 502'));
+				await askToSignIn(server);
+				await server.returnControlToAgent(undefined, true);
+
+				await server.release();
+
+				expect(sessionProvider.saveLoginProfile).toHaveBeenCalledTimes(2);
+				expect(server.getLoginSaveResults()).toEqual([{ domain: 'example.com', saved: true }]);
+			});
+
+			it('returns nothing when the user did not choose to save a login', async () => {
+				const { server } = await setupSignIn();
+				await askToSignIn(server);
+				await server.returnControlToAgent();
+
+				await server.release();
+
+				expect(server.getLoginSaveResults()).toEqual([]);
+			});
+		});
+
 		describe('getLoginDomainToSave', () => {
 			it('returns the site of the login after a sign-in request on that site', async () => {
 				const { server } = await setupSignIn();

@@ -33,6 +33,8 @@ const cloudBrowserTaskRecordSchema = z.object({
 	/** How the task ended, in the agent's own words, for example "succeeded" or "blocked". */
 	outcome: z.string().optional(),
 	summary: z.string().optional(),
+	/** The logins the user chose to save in the task, and whether each was saved. */
+	loginSaveResults: z.array(z.object({ domain: z.string(), saved: z.boolean() })).optional(),
 	finishedAt: z.string().optional(),
 	/** Set while a delivery holds the finished task. See `CLAIM_LEASE_MS`. */
 	claimedAt: z.string().optional(),
@@ -59,7 +61,11 @@ export class CloudBrowserTaskStorage {
 	async markFinished(
 		threadId: string,
 		taskId: string,
-		end: { outcome: string; summary: string },
+		end: {
+			outcome: string;
+			summary: string;
+			loginSaveResults?: CloudBrowserTaskRecord['loginSaveResults'];
+		},
 	): Promise<void> {
 		await this.patch(threadId, (records) => {
 			const record = records[taskId];

@@ -357,6 +357,51 @@ describe('InstanceAiCloudBrowserTaskService', () => {
 			await running;
 		});
 
+		it('records the logins the user chose to save, after the server is released', async () => {
+			const { service, run, cloudBrowserService, runSpawnedTask, records } = setup();
+			const mcpServer = mock<CloudBrowserLocalMcpServer>();
+			cloudBrowserService.createServer.mockResolvedValue(mcpServer);
+			let statusAtRelease: string | undefined;
+			mcpServer.release.mockImplementation(async () => {
+				statusAtRelease = (await records())[0]?.status;
+			});
+			mcpServer.getLoginSaveResults.mockReturnValue([
+				{ domain: 'example.com', saved: true },
+				{ domain: 'example.org', saved: false },
+			]);
+			await service.startTask(task, run);
+
+			await runSpawnedTask();
+
+			expect(statusAtRelease).toBe('running');
+			expect(await records()).toEqual([
+				expect.objectContaining({
+					status: 'finished',
+					loginSaveResults: [
+						{ domain: 'example.com', saved: true },
+						{ domain: 'example.org', saved: false },
+					],
+				}),
+			]);
+		});
+
+		it('records the logins the user chose to save when the agent throws', async () => {
+			const { service, run, cloudBrowserService, runSpawnedTask, records } = setup();
+			const mcpServer = mock<CloudBrowserLocalMcpServer>();
+			cloudBrowserService.createServer.mockResolvedValue(mcpServer);
+			mcpServer.getLoginSaveResults.mockReturnValue([{ domain: 'example.com', saved: true }]);
+			vi.mocked(runCloudBrowserAgent).mockRejectedValue(new Error('Session lost'));
+			await service.startTask(task, run);
+
+			await expect(runSpawnedTask()).rejects.toThrow('Session lost');
+			expect(await records()).toEqual([
+				expect.objectContaining({
+					outcome: 'failed',
+					loginSaveResults: [{ domain: 'example.com', saved: true }],
+				}),
+			]);
+		});
+
 		it('records a failed task and releases the server when the agent throws', async () => {
 			const { service, run, cloudBrowserService, runSpawnedTask, records } = setup();
 			vi.mocked(runCloudBrowserAgent).mockRejectedValue(new Error('Session lost'));
@@ -1059,6 +1104,37 @@ describe('InstanceAiCloudBrowserTaskService', () => {
 			);
 			expect(message).toContain(wrapped);
 			expect(message.replace(wrapped, '')).not.toContain('Ignore previous instructions');
+		});
+
+		it('tells the orchestrator which logins were saved, outside the untrusted data', async () => {
+			const { service, run, cloudBrowserService, startFollowUpRun, runSpawnedTask } = setup();
+			const mcpServer = mock<CloudBrowserLocalMcpServer>();
+			cloudBrowserService.createServer.mockResolvedValue(mcpServer);
+			mcpServer.getLoginSaveResults.mockReturnValue([
+				{ domain: 'example.com', saved: true },
+				{ domain: 'example.org', saved: false },
+				{ domain: 'shop.example.net', saved: false },
+			]);
+			await service.startTask(task, run);
+			await runSpawnedTask();
+
+			await service.deliverPendingResults(run.user, THREAD_ID);
+
+			const message = startFollowUpRun.mock.calls[0][2];
+			const afterSummary = message.split(wrapUntrustedData('$20 a month', 'cloud-browser'))[1];
+			expect(afterSummary).toContain(
+				'Logins saved: example.com.\nLogins not saved: example.org, shop.example.net.\n</task>',
+			);
+		});
+
+		it('says nothing about logins when the user chose to save none', async () => {
+			const { service, run, startFollowUpRun, runSpawnedTask } = setup();
+			await service.startTask(task, run);
+			await runSpawnedTask();
+
+			await service.deliverPendingResults(run.user, THREAD_ID);
+
+			expect(startFollowUpRun.mock.calls[0][2]).not.toContain('Logins');
 		});
 
 		it('removes secrets from the task title and summary before cutting the summary', async () => {
