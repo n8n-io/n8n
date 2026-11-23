@@ -22,7 +22,11 @@ const uiStore = reactive({ appliedTheme: 'light' });
 vi.mock('@/app/stores/ui.store', () => ({ useUIStore: () => uiStore }));
 const workflowMentionsFlag = vi.hoisted(() => ({ enabled: false }));
 vi.mock('@/app/stores/posthog.store', () => ({
-	usePostHog: () => ({ isFeatureEnabled: () => workflowMentionsFlag.enabled }),
+	usePostHog: () => ({
+		isVariantEnabled: (name: string, variant: string) =>
+			name === '152_workflows_in_skills' &&
+			variant === (workflowMentionsFlag.enabled ? 'variant' : 'control'),
+	}),
 }));
 vi.mock('vue-router', () => ({
 	useRouter: () => ({

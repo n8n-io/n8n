@@ -10,7 +10,10 @@ type Editor = N8nMarkdownEditorEmits['ready'][0];
 
 const flag = vi.hoisted(() => ({ enabled: true }));
 vi.mock('@/app/stores/posthog.store', () => ({
-	usePostHog: () => ({ isFeatureEnabled: () => flag.enabled }),
+	usePostHog: () => ({
+		isVariantEnabled: (name: string, variant: string) =>
+			name === '152_workflows_in_skills' && variant === (flag.enabled ? 'variant' : 'control'),
+	}),
 }));
 
 const handleExternalKeydown = vi.fn((event: KeyboardEvent) => {

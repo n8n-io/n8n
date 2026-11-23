@@ -31,7 +31,10 @@ const props = withDefaults(
 
 const posthog = usePostHog();
 const mentionsEnabled = computed(() =>
-	posthog.isFeatureEnabled(WORKFLOWS_IN_SKILLS_EXPERIMENT.name),
+	posthog.isVariantEnabled(
+		WORKFLOWS_IN_SKILLS_EXPERIMENT.name,
+		WORKFLOWS_IN_SKILLS_EXPERIMENT.variant,
+	),
 );
 const editor = shallowRef<MarkdownEditor>();
 const picker = useTemplateRef<InstanceType<typeof SkillWorkflowMentionPicker>>('picker');

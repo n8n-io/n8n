@@ -1041,7 +1041,13 @@ onMounted(() => {
 		if (showRecommendedSkills.value) trackRecommendedSkillsShown('agent_skill_modal');
 	}
 	if (props.data.skillId && props.data.skillRefsEnabled) void loadSkillAccess(props.data.skillId);
-	if (isEditing.value && posthog.isFeatureEnabled(WORKFLOWS_IN_SKILLS_EXPERIMENT.name)) {
+	if (
+		isEditing.value &&
+		posthog.isVariantEnabled(
+			WORKFLOWS_IN_SKILLS_EXPERIMENT.name,
+			WORKFLOWS_IN_SKILLS_EXPERIMENT.variant,
+		)
+	) {
 		void refreshMentionNames();
 	}
 });
