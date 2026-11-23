@@ -245,8 +245,10 @@ function testIdForPath(path: string) {
 				data-testid="agent-skill-workflow-item"
 			>
 				<N8nIcon icon="workflow" :size="16" :class="$style.icon" />
-				<N8nText size="medium" :class="$style.path">{{ workflow.name }}</N8nText>
-				<N8nTooltip v-if="workflowNotes.has(workflow.workflowId)" placement="right">
+				<N8nText size="medium" :class="[$style.path, $style.workflowName]">{{
+					workflow.name
+				}}</N8nText>
+				<N8nTooltip v-if="workflowNotes.has(workflow.workflowId)" as-child placement="right">
 					<template #content>
 						<p
 							v-for="note in workflowNotes.get(workflow.workflowId)"
@@ -377,11 +379,19 @@ function testIdForPath(path: string) {
 	}
 }
 
+.workflowName {
+	flex: 1;
+}
+
 .noteIcon {
 	display: inline-flex;
 	flex-shrink: 0;
-	margin-left: auto;
 	color: var(--color--text--tint-1);
+
+	&:focus-visible {
+		outline: var(--focus--border-width) solid var(--focus--border-color);
+		border-radius: var(--border-radius-base);
+	}
 }
 
 .note {
