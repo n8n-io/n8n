@@ -643,24 +643,27 @@ describe('runExpectedToolsInvokedCheck', () => {
 });
 
 describe('requiredCallsMade', () => {
-	const expectedToolInvocations = {
-		allOfToolCalls: [{ toolName: 'load_skill' }],
-		noneOf: ['browser_navigate'],
-	};
-	const scenario: DiscoveryTestCase = { id: 'test', userMessage: 'Hi', expectedToolInvocations };
+	const scenario = (
+		expectedToolInvocations: DiscoveryTestCase['expectedToolInvocations'],
+	): DiscoveryTestCase => ({ id: 'test', userMessage: 'Hi', expectedToolInvocations });
 
-	it('waits for each required call and ignores the forbidden calls', () => {
+	it.each([
+		['anyOf', { anyOf: ['load_skill'] }],
+		['anyOfToolCalls', { anyOfToolCalls: [{ toolName: 'load_skill' }] }],
+		['allOfToolCalls', { allOfToolCalls: [{ toolName: 'load_skill' }] }],
+	])('waits for the call that %s requires and ignores the forbidden calls', (_rule, required) => {
+		const withForbidden = scenario({ ...required, noneOf: ['browser_navigate'] });
 		const forbidden = makeOutcome({ toolCalls: [{ toolName: 'browser_navigate' }] });
 		const both = makeOutcome({
 			toolCalls: [{ toolName: 'load_skill' }, { toolName: 'browser_navigate' }],
 		});
 
-		expect(requiredCallsMade(scenario, forbidden)).toBe(false);
-		expect(requiredCallsMade(scenario, both)).toBe(true);
+		expect(requiredCallsMade(withForbidden, forbidden)).toBe(false);
+		expect(requiredCallsMade(withForbidden, both)).toBe(true);
 	});
 
 	it('has nothing to wait for when the scenario only forbids calls', () => {
-		const forbidOnly = { ...scenario, expectedToolInvocations: { noneOf: ['browser_navigate'] } };
+		const forbidOnly = scenario({ noneOf: ['browser_navigate'] });
 
 		expect(requiredCallsMade(forbidOnly, makeOutcome({}))).toBe(true);
 	});
