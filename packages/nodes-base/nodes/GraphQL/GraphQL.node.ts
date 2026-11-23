@@ -73,6 +73,15 @@ export class GraphQL implements INodeType {
 				},
 			},
 			{
+				name: 'httpMultipleHeadersAuth',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['multipleHeadersAuth'],
+					},
+				},
+			},
+			{
 				name: 'httpQueryAuth',
 				required: true,
 				displayOptions: {
@@ -129,6 +138,10 @@ export class GraphQL implements INodeType {
 					{
 						name: 'Header Auth',
 						value: 'headerAuth',
+					},
+					{
+						name: 'Multiple Headers Auth',
+						value: 'multipleHeadersAuth',
 					},
 					{
 						name: 'None',
@@ -378,6 +391,9 @@ export class GraphQL implements INodeType {
 				httpDigestAuth = await this.getCredentials('httpDigestAuth');
 			} else if (authentication === 'headerAuth') {
 				httpHeaderAuth = await this.getCredentials('httpHeaderAuth');
+			} else if (authentication === 'multipleHeadersAuth') {
+				nodeCredentialType = 'httpMultipleHeadersAuth';
+				predefinedCredentialData = await this.getCredentials(nodeCredentialType);
 			} else if (authentication === 'queryAuth') {
 				httpQueryAuth = await this.getCredentials('httpQueryAuth');
 			} else if (authentication === 'oAuth1') {

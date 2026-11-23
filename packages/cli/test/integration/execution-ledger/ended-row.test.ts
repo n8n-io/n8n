@@ -14,6 +14,7 @@ import {
 	getLifecycleHooksForScalingWorker,
 	getLifecycleHooksForSubExecutions,
 } from '@/execution-lifecycle/execution-lifecycle-hooks';
+import { ExecutionCancelService } from '@/executions/execution-cancel.service';
 import { ExecutionCrashService } from '@/executions/execution-crash.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { packagedModules } from '@/modules/modules.manifest';
@@ -68,11 +69,14 @@ describe('execution ledger ended rows', () => {
 		await testDb.terminate();
 	});
 
-	const createRunningExecution = async (mode: WorkflowExecuteMode = 'trigger') =>
+	const createRunningExecution = async (
+		mode: WorkflowExecuteMode = 'trigger',
+		ofWorkflow: WorkflowEntity = workflow,
+	) =>
 		await Container.get(ExecutionPersistence).create({
-			workflowId: workflow.id,
+			workflowId: ofWorkflow.id,
 			data: createEmptyRunExecutionData(),
-			workflowData: workflow,
+			workflowData: ofWorkflow,
 			mode,
 			status: 'running',
 			finished: false,
@@ -178,17 +182,6 @@ describe('execution ledger ended rows', () => {
 			});
 		});
 
-		it('writes no row for a canceled run', async () => {
-			const executionId = await createRunningExecution();
-
-			await getLifecycleHooksForRegularMain(
-				{ executionMode: 'trigger', workflowData: workflow },
-				executionId,
-			).runHook('workflowExecuteAfter', [finishedRun('canceled'), {}]);
-
-			expect(await collectEndedRows(0)).toEqual([]);
-		});
-
 		it('writes one row for each run when a crash sweep races the final saves', async () => {
 			const executionIds = await Promise.all(
 				Array.from({ length: 10 }, async () => await createRunningExecution()),
@@ -201,6 +194,107 @@ describe('execution ledger ended rows', () => {
 						{ executionMode: 'trigger', workflowData: workflow },
 						executionId,
 					).runHook('workflowExecuteAfter', [finishedRun('success'), {}]),
+				]),
+			);
+
+			const rows = await collectEndedRows(executionIds.length);
+			expect(rows.map((row) => row.executionId).sort()).toEqual([...executionIds].sort());
+		});
+	});
+
+	describe('a workflow with no owner project', () => {
+		let unowned: WorkflowEntity;
+
+		beforeEach(async () => {
+			unowned = await createWorkflow({
+				name: 'Unowned',
+				...createSimpleWorkflowFixture(),
+				settings: {},
+			});
+		});
+
+		it('writes an ended row with no project for a finished run', async () => {
+			const executionId = await createRunningExecution('trigger', unowned);
+
+			await getLifecycleHooksForRegularMain(
+				{ executionMode: 'trigger', workflowData: unowned },
+				executionId,
+			).runHook('workflowExecuteAfter', [finishedRun('success'), {}]);
+
+			const rows = await collectEndedRows(1);
+			expect(rows).toHaveLength(1);
+			expect(rows[0]).toMatchObject({ executionId, outcome: 'success', projectId: null });
+		});
+
+		it('writes an ended row with no project for a canceled run', async () => {
+			const executionId = await createRunningExecution('trigger', unowned);
+
+			const { recorded } = await Container.get(ExecutionCancelService).markAsCanceled([
+				executionId,
+			]);
+			await recorded;
+
+			const rows = await collectEndedRows(1);
+			expect(rows).toHaveLength(1);
+			expect(rows[0]).toMatchObject({ executionId, outcome: 'canceled', projectId: null });
+		});
+
+		it('writes an ended row with no project for a crashed run', async () => {
+			const executionId = await createRunningExecution('trigger', unowned);
+
+			await Container.get(ExecutionCrashService).markAsCrashed(executionId, 'queue-recovery');
+
+			const rows = await collectEndedRows(1);
+			expect(rows).toHaveLength(1);
+			expect(rows[0]).toMatchObject({ executionId, outcome: 'crashed', projectId: null });
+		});
+	});
+
+	describe('canceled runs', () => {
+		it('writes one canceled row from the hook run that finished the run', async () => {
+			const executionId = await createRunningExecution();
+
+			await getLifecycleHooksForRegularMain(
+				{ executionMode: 'trigger', workflowData: workflow },
+				executionId,
+			).runHook('workflowExecuteAfter', [finishedRun('canceled'), {}]);
+
+			const rows = await collectEndedRows(1);
+			expect(rows).toHaveLength(1);
+			expect(rows[0]).toMatchObject({ executionId, outcome: 'canceled', projectId: project.id });
+		});
+
+		it('writes one row for each run a cancel moved, and none for a finished run', async () => {
+			const runningIds = await Promise.all([createRunningExecution(), createRunningExecution()]);
+			const finishedId = await createRunningExecution();
+			await getLifecycleHooksForRegularMain(
+				{ executionMode: 'trigger', workflowData: workflow },
+				finishedId,
+			).runHook('workflowExecuteAfter', [finishedRun('success'), {}]);
+			await collectEndedRows(1);
+
+			const cancelService = Container.get(ExecutionCancelService);
+			const { recorded } = await cancelService.markAsCanceled([...runningIds, finishedId]);
+			await recorded;
+			await (await cancelService.markAsCanceled(runningIds)).recorded;
+
+			const rows = (await claimAllLedgerRows()).filter((row) => row.event === 'ended');
+			expect(rows.map((row) => row.executionId).sort()).toEqual([...runningIds].sort());
+			expect(rows.every((row) => row.outcome === 'canceled')).toBe(true);
+		});
+
+		it('writes one row for each run when a cancel races the engine cancel hook', async () => {
+			const executionIds = await Promise.all(
+				Array.from({ length: 10 }, async () => await createRunningExecution()),
+			);
+
+			await Promise.all(
+				executionIds.flatMap((executionId) => [
+					Container.get(ExecutionCancelService).markAsCanceled([executionId]),
+					getLifecycleHooksForRegularMain(
+						{ executionMode: 'trigger', workflowData: workflow },
+						executionId,
+					).runHook('workflowExecuteAfter', [finishedRun('canceled'), {}]),
 				]),
 			);
 

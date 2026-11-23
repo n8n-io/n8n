@@ -27,6 +27,7 @@ import {
 	redactLangSmithTelemetrySpan,
 	releaseTraceClient,
 	shutdownProductTelemetryProviders,
+	setTraceApprovalMode,
 	setTraceModelId,
 	setTracePromptVersion,
 	submitLangsmithUserFeedback,
@@ -61,6 +62,7 @@ vi.mock('@n8n/agents', async () => {
 
 	let spanCounter = 0;
 	let buildError: Error | undefined;
+	let lastTransformExportedSpan: ((span: unknown) => unknown) | undefined;
 	let startSpanError: Error | undefined;
 	const contextStorage = new AsyncLocalStorage<Context>();
 	const contextManager: ContextManager = {
@@ -154,6 +156,10 @@ vi.mock('@n8n/agents', async () => {
 	};
 
 	class MockLangSmithTelemetry {
+		constructor(config?: { transformExportedSpan?: (span: unknown) => unknown }) {
+			lastTransformExportedSpan = config?.transformExportedSpan;
+		}
+
 		private functionIdValue?: string;
 		private metadataValue?: Record<string, unknown>;
 		private recordInputsValue = true;
@@ -225,6 +231,7 @@ vi.mock('@n8n/agents', async () => {
 			},
 			getSpans: () => spans,
 			getProvider: () => provider,
+			getLastTransformExportedSpan: () => lastTransformExportedSpan,
 		},
 	};
 });
@@ -318,6 +325,7 @@ type AgentsMockModule = {
 			forceFlush: Mock<(...args: []) => Promise<void>>;
 			shutdown: Mock<(...args: []) => Promise<void>>;
 		};
+		getLastTransformExportedSpan: () => ((span: unknown) => unknown) | undefined;
 	};
 };
 
@@ -673,6 +681,32 @@ describe('createInstanceAiTraceContext', () => {
 
 		await telemetry.provider?.shutdown();
 	});
+
+	it.each([
+		{ approvalMode: 'auto', recorded: 'auto' },
+		// The run has no mode when the approval modes are not available.
+		{ approvalMode: undefined, recorded: 'unavailable' },
+	] as const)(
+		'stamps approval_mode "$recorded" on root and actor runs',
+		async ({ approvalMode, recorded }) => {
+			const tracing = await createInstanceAiTraceContext({
+				threadId: 'thread-1',
+				messageId: 'message-1',
+				runId: 'run-1',
+				userId: 'user-1',
+				input: { message: 'Publish my workflow' },
+			});
+			const actorRun = await startForegroundActor(tracing!);
+
+			setTraceApprovalMode(tracing, approvalMode);
+
+			for (const run of [tracing!.rootRun, actorRun]) {
+				expect(run.metadata).toHaveProperty('approval_mode', recorded);
+				const span = agentsMock.getSpans().find((entry) => entry.id === run.otelSpanId);
+				expect(span?.attributes).toHaveProperty('langsmith.metadata.approval_mode', recorded);
+			}
+		},
+	);
 
 	it('redacts secret-bearing native telemetry span attributes', () => {
 		const span = {
@@ -2331,6 +2365,38 @@ describe('createInstanceAiTraceContext', () => {
 		expect(tracing).toBeDefined();
 		expect(tracing?.messageRun).toBeDefined();
 		expect(tracing?.orchestratorRun).toBeDefined();
+	});
+
+	it.each([
+		[undefined, 'instance-ai'],
+		[['model-training-opt-out'], 'instance-ai, model-training-opt-out'],
+	])('adds proxy trace tags %j to every exported span', async (traceTags, expectedTags) => {
+		await createInstanceAiTraceContext({
+			threadId: 'thread-tags',
+			messageId: 'message-tags',
+			runId: 'run-tags',
+			userId: 'user-tags',
+			input: { message: 'tag test' },
+			proxyConfig: {
+				apiUrl: 'https://proxy.example.com/langsmith',
+				getAuthHeaders: async () => ({ Authorization: 'Bearer proxy-token' }),
+				traceTags,
+			},
+		});
+		const transform = agentsMock.getLastTransformExportedSpan();
+
+		const productSpan = transform?.({
+			name: 'turn',
+			attributes: { 'langsmith.span.tags': 'instance-ai' },
+		}) as { attributes: Record<string, unknown> };
+		expect(productSpan.attributes['langsmith.span.tags']).toBe(expectedTags);
+
+		const llmSpan = transform?.({ name: 'llm', attributes: {} }) as {
+			attributes: Record<string, unknown>;
+		};
+		expect(llmSpan.attributes['langsmith.span.tags']).toBe(
+			traceTags ? 'model-training-opt-out' : undefined,
+		);
 	});
 
 	it('respects diagnostics opt-out before proxy auto-enable', async () => {

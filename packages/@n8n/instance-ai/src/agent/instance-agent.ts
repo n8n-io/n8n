@@ -27,6 +27,7 @@ import {
 import { createToolsFromLocalMcpServer } from '../tools/create-tools-from-mcp-server';
 import {
 	ALWAYS_LOADED_TOOL_NAMES,
+	DOMAIN_TOOL_IDS,
 	getMcpToolGroup,
 	getToolGroup,
 	getToolGroupDescription,
@@ -36,6 +37,7 @@ import {
 	buildAgentTraceInputs,
 	mergeTraceRunInputs,
 	modelIdTraceMetadata,
+	setTraceApprovalMode,
 	setTraceModelId,
 	setTracePromptVersion,
 } from '../tracing/langsmith-tracing';
@@ -223,6 +225,11 @@ export async function createInstanceAgent(
 			// The host only sets `startCloudBrowserTask` when the cloud browser is enabled for the instance.
 			cloudBrowserEnabled: Boolean(orchestrationContext?.startCloudBrowserTask),
 			setupPanelEnabled: isSetupPanelEnabled(context),
+			// After the skill filter, so a disabled tool is not named in the prompt.
+			fileImportEnabled: allOrchestratorTools.has(DOMAIN_TOOL_IDS.IMPORT_FILES),
+			fileListingEnabled: allOrchestratorTools.has(DOMAIN_TOOL_IDS.LIST_FILES),
+			fileSharingEnabled: allOrchestratorTools.has(DOMAIN_TOOL_IDS.SHARE_FILES),
+			fileViewingEnabled: allOrchestratorTools.has(DOMAIN_TOOL_IDS.VIEW_FILE),
 			workspaceRoot:
 				orchestrationContext?.workspace && orchestrationContext.workspaceRoot
 					? orchestrationContext.workspaceRoot
@@ -235,6 +242,7 @@ export async function createInstanceAgent(
 		orchestrationContext?.promptConfiguration?.version,
 	);
 	setTraceModelId(orchestrationContext?.tracing, modelId);
+	setTraceApprovalMode(orchestrationContext?.tracing, context.approvalMode);
 	const functionId = 'instance-ai.orchestrator';
 	const telemetry = orchestrationContext?.tracing?.getTelemetry?.({
 		agentRole: 'orchestrator',
