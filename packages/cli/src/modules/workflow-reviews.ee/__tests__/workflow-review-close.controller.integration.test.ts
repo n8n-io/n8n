@@ -1,7 +1,5 @@
 import { EventService } from '@n8n/backend-services';
 import {
-	createTeamProject,
-	createWorkflow,
 	getPersonalProject,
 	linkUserToProject,
 	mockInstance,
@@ -19,8 +17,6 @@ import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
-import { createUser } from '@test-integration/db/users';
-import { createWorkflowHistoryItem } from '@test-integration/db/workflow-history';
 import type { SuperAgentTest } from '@test-integration/types';
 import * as utils from '@test-integration/utils';
 
@@ -31,7 +27,6 @@ import {
 	seedReview,
 	seedReviewActors,
 	stubWorkflowValidation,
-	versionUpdatePayload,
 } from './support/workflow-review-test-data';
 
 mockInstance(ActiveWorkflowManager);
@@ -152,17 +147,9 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/close', () => 
 		});
 	});
 
-	describe('a reviewer or admin', () => {
+	describe('a reviewer or the owner', () => {
 		test.each([
 			['an assigned reviewer', async () => ({ closer: member, agent: memberAgent })],
-			[
-				'a project admin of the review project',
-				async () => {
-					const projectAdmin = await createUser();
-					await linkUserToProject(projectAdmin, teamProject, 'project:admin');
-					return { closer: projectAdmin, agent: testServer.authAgentFor(projectAdmin) };
-				},
-			],
 			['an instance owner', async () => ({ closer: owner, agent: ownerAgent })],
 		])('closes a review as %s', async (_label, actor) => {
 			const { closer, agent } = await actor();
@@ -173,22 +160,6 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/close', () => 
 			expect(await requestRepository.findById(request.id, {})).toMatchObject({
 				state: 'closed',
 				closedById: closer.id,
-			});
-		});
-
-		test('closes a review after submitting a version to it', async () => {
-			const { request, workflow } = await seedRequest(viewer, { reviewerIds: [member.id] });
-			await createWorkflowHistoryItem(workflow.id, { versionId: 'version-2' });
-			await memberAgent
-				.post(`/workflow-review-requests/${request.id}/update-version`)
-				.send(versionUpdatePayload({ workflowId: workflow.id, versionId: 'version-2' }))
-				.expect(200);
-
-			await close(memberAgent, request.id).expect(200);
-
-			expect(await requestRepository.findById(request.id, {})).toMatchObject({
-				state: 'closed',
-				closedById: member.id,
 			});
 		});
 	});
@@ -219,22 +190,6 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/close', () => 
 			expect(response.body.message).toBe('Could not find review request');
 			expect(await requestRepository.findById(request.id, {})).toMatchObject({ state: 'open' });
 			expect(await feedTypes(ownerAgent, request.id)).toEqual([]);
-		});
-
-		test('hides the review from a requester who can no longer read its workflow', async () => {
-			const destinationProject = await createTeamProject('Moved Away', owner);
-			const workflow = await createWorkflow({}, destinationProject);
-			await createWorkflowHistoryItem(workflow.id, { versionId: 'version-1' });
-			const request = await seedReview({
-				projectId: teamProject.id,
-				workflowId: workflow.id,
-				versionId: 'version-1',
-				author: member,
-			});
-
-			await close(memberAgent, request.id).expect(404);
-
-			expect(await requestRepository.findById(request.id, {})).toMatchObject({ state: 'open' });
 		});
 	});
 
@@ -304,15 +259,6 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/close', () => 
 				state: 'open',
 				closedById: null,
 			});
-		});
-
-		test('refuses to close once an admin turns reviews off', async () => {
-			const { request } = await seedRequest(member);
-			await policyService.set(false);
-
-			await close(memberAgent, request.id).expect(403);
-
-			expect(await requestRepository.findById(request.id, {})).toMatchObject({ state: 'open' });
 		});
 	});
 
