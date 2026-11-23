@@ -1,7 +1,7 @@
 # AGENTS.md
 
 Rules for feature modules in `packages/modules/<name>`.
-Read the root `AGENTS.md` first. This file only tells you which guides to read.
+Read the root `AGENTS.md` first. This file adds module-specific boundaries and points you to the guides to read.
 
 ## Frontend modules: `<name>/frontend`
 
