@@ -85,7 +85,10 @@ const onSubmit = async () => {
 		});
 		isLoading.value = false;
 		toast.showMessage({
-			title: i18n.baseText('executionStopManyModal.success', { interpolate: { count } }),
+			title: i18n.baseText('executionStopManyModal.success', {
+				adjustToNumber: count,
+				interpolate: { count },
+			}),
 			type: count > 0 ? 'success' : 'info',
 		});
 		telemetry.track('User confirmed stop many executions', {

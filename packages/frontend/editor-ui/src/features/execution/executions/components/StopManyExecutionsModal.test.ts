@@ -2,12 +2,13 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { STOP_MANY_EXECUTIONS_MODAL_KEY } from '@/app/constants';
-import StopManyExecutionsModal from './StopManyExecutionsModal.vue';
-import type { RenderResult } from '@testing-library/vue';
-import { flushPromises } from '@vue/test-utils';
+import { useToast } from '@n8n/composables/useToast';
 import { mockedStore } from '@/__tests__/utils';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
+import StopManyExecutionsModal from './StopManyExecutionsModal.vue';
+import type { RenderResult } from '@testing-library/vue';
+import { flushPromises } from '@vue/test-utils';
 
 vi.mock('@n8n/composables/useToast', () => {
 	const showError = vi.fn();
@@ -132,5 +133,19 @@ describe('StopManyExecutionsModal', () => {
 		await flushPromises();
 
 		expect(useUIStore().closeModal).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		[0, 'Stopped 0 executions.', 'info'],
+		[1, 'Stopped 1 execution.', 'success'],
+		[3, 'Stopped 3 executions.', 'success'],
+	])('should show the toast for a stopped count of %i', async (stopped, title, type) => {
+		const executionsStore = mockedStore(useExecutionsStore);
+		executionsStore.stopManyExecutions.mockResolvedValue({ stopped });
+
+		const { getByTestId } = renderModal();
+		await userEvent.click(getByTestId('sme-submit-button'));
+
+		await vi.waitFor(() => expect(useToast().showMessage).toHaveBeenCalledWith({ title, type }));
 	});
 });
