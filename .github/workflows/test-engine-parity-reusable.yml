@@ -1,0 +1,97 @@
+name: 'Test: Engine parity'
+
+# Generates random workflows, runs each one on engine v1 and engine v2 in one
+# process, and compares the results. See packages/quality/testing/engine-parity.
+# A failure uploads one repro file for each failure signature.
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: 'Commit to test'
+        required: false
+        type: string
+        default: ''
+      seed:
+        description: 'fast-check seed. A fixed seed gives the same cases on every run.'
+        required: false
+        type: string
+        default: '1'
+      runs:
+        description: 'Cases for each rule set'
+        required: false
+        type: string
+        default: '100'
+      rules:
+        description: 'Rule sets, separated by commas'
+        required: false
+        type: string
+        default: 'smoke'
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Commit to test'
+        required: false
+        type: string
+        default: ''
+      seed:
+        description: 'fast-check seed. Leave empty for a random seed.'
+        required: false
+        type: string
+        default: ''
+      runs:
+        description: 'Cases for each rule set'
+        required: false
+        type: string
+        default: '500'
+      rules:
+        description: 'Rule sets, separated by commas'
+        required: false
+        type: string
+        default: 'smoke'
+
+permissions:
+  contents: read
+
+jobs:
+  parity:
+    name: Engine parity
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
+    timeout-minutes: 45
+    env:
+      NODE_OPTIONS: '--max-old-space-size=6144'
+    steps:
+      - uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Setup and Build
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: pnpm turbo run build --filter=@n8n/engine-parity...
+
+      - name: Run engine parity
+        working-directory: packages/quality/testing/engine-parity
+        env:
+          PARITY_SEED: ${{ inputs.seed }}
+          PARITY_RUNS: ${{ inputs.runs }}
+          PARITY_RULES: ${{ inputs.rules }}
+        run: pnpm test:parity
+
+      - name: Write the run report
+        if: ${{ !cancelled() }}
+        working-directory: packages/quality/testing/engine-parity
+        run: |
+          shopt -s nullglob
+          for summary in parity-failures/*/summary.md; do
+            cat "$summary" >> "$GITHUB_STEP_SUMMARY"
+          done
+
+      - name: Upload repro files
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: engine-parity-repros
+          path: packages/quality/testing/engine-parity/parity-failures/
+          if-no-files-found: ignore
+          retention-days: 14

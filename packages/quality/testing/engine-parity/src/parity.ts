@@ -1,30 +1,26 @@
 import { checkEngineV2Eligibility } from '@n8n/workflow-engine-check';
 import fc from 'fast-check';
 import type { IWorkflowBase } from 'n8n-workflow';
+import { rmSync } from 'node:fs';
+import { join } from 'node:path';
 
 import { parityCaseArb } from './grammar/arbitrary';
 import type { ParityCase } from './grammar/ir';
 import type { ParityRules } from './grammar/rules';
 import { compare } from './oracle/compare';
 import type { Diff } from './oracle/compare';
+import { matchKnownDivergence } from './oracle/known-divergences';
 import { normalize } from './oracle/normalize';
 import type { Outcome } from './oracle/normalize';
+import { CoverageReport } from './report/coverage';
+import { buildRepro, writeRepro } from './report/repro';
+import { diffSignature, findingSignature } from './report/signature';
+import type { Finding } from './report/signature';
 import type { EngineRunner, RawOutcome } from './runners/runner';
 
 export interface Runners {
 	v1: EngineRunner;
 	v2: EngineRunner;
-}
-
-/**
- * A finding of level E: the eligibility check accepts the case, but an engine
- * does not run it, or the converted graph is not the workflow.
- */
-export interface Finding {
-	kind: 'refused' | 'timeout' | 'droppedEdge';
-	engine: 'v1' | 'v2';
-	message: string;
-	detail?: unknown;
 }
 
 export interface CaseResult {
@@ -35,6 +31,8 @@ export interface CaseResult {
 	failures: Diff[];
 	warnings: Diff[];
 	findings: Finding[];
+	/** The IDs of the known divergences that explain a difference. */
+	known: string[];
 }
 
 function runnerFindings(engine: 'v1' | 'v2', raw: RawOutcome): Finding[] {
@@ -67,8 +65,10 @@ export async function checkCase(
 	parityCase: ParityCase,
 	runners: Runners,
 	rules: ParityRules,
+	report?: CoverageReport,
 ): Promise<CaseResult> {
 	const blocking = blockingCodes(parityCase.workflow);
+	const isNew = report?.recordCase(parityCase, blocking) ?? false;
 	const result: CaseResult = {
 		verdict: 'discarded',
 		raw: {},
@@ -76,6 +76,7 @@ export async function checkCase(
 		failures: [],
 		warnings: [],
 		findings: [],
+		known: [],
 	};
 	if (blocking.length > 0) return result;
 
@@ -90,7 +91,9 @@ export async function checkCase(
 	result.outcomes.v2 = normalize(result.raw.v2, parityCase);
 	if (result.outcomes.v1 && result.outcomes.v2) {
 		for (const diff of compare(result.outcomes.v1, result.outcomes.v2, parityCase, rules)) {
-			if (diff.severity === 'fail') result.failures.push(diff);
+			const known = matchKnownDivergence(diff, parityCase);
+			if (known) result.known.push(known);
+			else if (diff.severity === 'fail') result.failures.push(diff);
 			else result.warnings.push(diff);
 		}
 	}
@@ -98,50 +101,81 @@ export async function checkCase(
 	result.verdict =
 		result.failures.length > 0 ? 'fail' : result.findings.length > 0 ? 'finding' : 'pass';
 
+	if (isNew && report) {
+		for (const diff of result.failures) report.recordFailure(diffSignature(diff, parityCase), diff);
+		for (const diff of result.warnings) report.recordWarning(diffSignature(diff, parityCase), diff);
+		for (const finding of result.findings) {
+			report.recordFinding(findingSignature(finding), finding.message, finding);
+		}
+		for (const id of result.known) report.recordKnown(id);
+	}
 	return result;
 }
 
 export interface ParityOptions {
 	seed: number;
 	numRuns: number;
-	/** Runs only this fast-check path. */
+	outDir: string;
+	/** How long to shrink one failure. */
+	shrinkTimeMs: number;
+	/** Runs only this fast-check path, for example from a repro file. */
 	path?: string;
 }
 
-export function parityOptionsFromEnv(): ParityOptions {
+export function parityOptionsFromEnv(packageDir: string): ParityOptions {
 	const env = process.env;
 	return {
 		seed: env.PARITY_SEED ? Number(env.PARITY_SEED) : Math.floor(Math.random() * 2 ** 31),
 		numRuns: Number(env.PARITY_RUNS || 200),
+		outDir: env.PARITY_OUT_DIR || join(packageDir, 'parity-failures'),
+		shrinkTimeMs: Number(env.PARITY_SHRINK_MS || 120_000),
 		path: env.PARITY_PATH || undefined,
 	};
 }
 
-export interface ParityFailure {
-	/** The fast-check path of the case. Run it again with `PARITY_SEED` and `PARITY_PATH`. */
-	path: string;
-	parityCase: ParityCase;
-	result: CaseResult;
+export interface ParityResult {
+	report: CoverageReport;
+	/** One repro file for each failure signature. */
+	failures: Array<{ signature: string; file: string }>;
+	summaryFile: string;
 }
+
+type FirstSeen = { path: string; parityCase: ParityCase; result: CaseResult };
 
 /**
  * Generates cases from the rules and runs each one on both engines. Nothing
- * stops the run at the first failure, so one run shows every failing case.
+ * stops the run at the first failure: each failure signature keeps the first
+ * case that showed it. Then each signature shrinks on its own, from the
+ * fast-check path of that case, to the smallest case with the same signature.
  */
 export async function runParity(
 	rules: ParityRules,
 	runners: Runners,
 	options: ParityOptions,
-): Promise<ParityFailure[]> {
-	const failures: ParityFailure[] = [];
+): Promise<ParityResult> {
+	const report = new CoverageReport(rules.name, options.seed);
+	// Each rule set writes to its own folder. Files of an earlier run would read as new failures.
+	const outDir = join(options.outDir, rules.name);
+	rmSync(outDir, { recursive: true, force: true });
+	const arbitrary = parityCaseArb(rules);
+	const failing = new Map<string, FirstSeen>();
+	const findings = new Map<string, FirstSeen>();
+
 	let index = 0;
 	// The property returns true for differences, so the run continues. An exception still fails it.
 	await fc.assert(
-		fc.asyncProperty(parityCaseArb(rules), async (parityCase) => {
+		fc.asyncProperty(arbitrary, async (parityCase) => {
 			// The fast-check path of this case. A replayed path runs one case.
 			const path = options.path ?? String(index++);
-			const result = await checkCase(parityCase, runners, rules);
-			if (result.failures.length > 0) failures.push({ path, parityCase, result });
+			const result = await checkCase(parityCase, runners, rules, report);
+			for (const diff of result.failures) {
+				const signature = diffSignature(diff, parityCase);
+				if (!failing.has(signature)) failing.set(signature, { path, parityCase, result });
+			}
+			for (const finding of result.findings) {
+				const signature = findingSignature(finding);
+				if (!findings.has(signature)) findings.set(signature, { path, parityCase, result });
+			}
 			return true;
 		}),
 		{
@@ -150,5 +184,81 @@ export async function runParity(
 			...(options.path ? { path: options.path } : {}),
 		},
 	);
-	return failures;
+
+	const failures: ParityResult['failures'] = [];
+	for (const [signature, first] of failing) {
+		const shrunk = await shrinkSignature(arbitrary, signature, first, runners, rules, options);
+		const file = writeRepro(
+			outDir,
+			buildRepro({
+				signature,
+				rules: rules.name,
+				seed: options.seed,
+				path: shrunk.path,
+				parityCase: shrunk.parityCase,
+				raw: shrunk.result.raw,
+				outcomes: shrunk.result.outcomes,
+				diffs: [...shrunk.result.failures, ...shrunk.result.warnings],
+				findings: shrunk.result.findings,
+			}),
+		);
+		report.repros[signature] = file;
+		failures.push({ signature, file });
+	}
+
+	// Findings do not fail the run. Their repro files are not shrunk.
+	for (const [signature, first] of findings) {
+		report.repros[signature] = writeRepro(
+			outDir,
+			buildRepro({
+				signature,
+				rules: rules.name,
+				seed: options.seed,
+				path: first.path,
+				parityCase: first.parityCase,
+				raw: first.result.raw,
+				outcomes: first.result.outcomes,
+				diffs: [...first.result.failures, ...first.result.warnings],
+				findings: first.result.findings,
+			}),
+		);
+	}
+
+	return { report, failures, summaryFile: report.write(outDir) };
+}
+
+async function shrinkSignature(
+	arbitrary: fc.Arbitrary<ParityCase>,
+	signature: string,
+	first: FirstSeen,
+	runners: Runners,
+	rules: ParityRules,
+	options: ParityOptions,
+): Promise<{ parityCase: ParityCase; result: CaseResult; path: string }> {
+	const hasSignature = (parityCase: ParityCase, result: CaseResult) =>
+		result.failures.some((diff) => diffSignature(diff, parityCase) === signature);
+
+	const details = await fc.check(
+		fc.asyncProperty(arbitrary, async (parityCase) => {
+			const result = await checkCase(parityCase, runners, rules);
+			return !hasSignature(parityCase, result);
+		}),
+		{
+			seed: options.seed,
+			path: first.path,
+			numRuns: 1,
+			interruptAfterTimeLimit: options.shrinkTimeMs,
+			markInterruptAsFailure: false,
+		},
+	);
+
+	if (details.failed && details.counterexample) {
+		const [parityCase] = details.counterexample;
+		const result = await checkCase(parityCase, runners, rules);
+		if (hasSignature(parityCase, result)) {
+			return { parityCase, result, path: details.counterexamplePath ?? first.path };
+		}
+	}
+	// The shrink did not reproduce the failure: keep the case that showed it first.
+	return { parityCase: first.parityCase, result: first.result, path: first.path };
 }

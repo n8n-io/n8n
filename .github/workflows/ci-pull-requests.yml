@@ -42,6 +42,7 @@ jobs:
       db_migrations: ${{ fromJSON(steps.ci-filter.outputs.results)['db-migrations'] == true }}
       e2e_performance: ${{ fromJSON(steps.ci-filter.outputs.results)['e2e-performance'] == true }}
       engine_e2e: ${{ fromJSON(steps.ci-filter.outputs.results)['engine-e2e'] == true }}
+      engine_parity: ${{ fromJSON(steps.ci-filter.outputs.results)['engine-parity'] == true }}
       # The main E2E suite runs. Read by e2e-matrix and e2e.
       run_e2e: >-
         ${{ github.repository == 'n8n-io/n8n' && github.event_name != 'merge_group' &&
@@ -222,6 +223,14 @@ jobs:
               packages/cli/src/workflow-runner.ts
               packages/quality/environments/containers/**
               packages/quality/testing/playwright/**
+            # The code that the engine parity harness runs on both engines.
+            engine-parity:
+              packages/@n8n/engine/**
+              packages/@n8n/node-engine-compatibility/**
+              packages/@n8n/workflow-engine-check/**
+              packages/core/src/execution-engine/**
+              packages/quality/testing/engine-parity/**
+              .github/workflows/test-engine-parity-reusable.yml
             instance-ai-workflow-eval:
               packages/@n8n/instance-ai/src/**
               packages/@n8n/instance-ai/evaluations/**
@@ -565,6 +574,20 @@ jobs:
       workers: '1'
       artifact-prefix: e2e-engine
     secrets: inherit
+
+  # Engine parity: generated workflows run on engine v1 and engine v2 in one
+  # process, with a fixed seed. Runs when engine code changes or when the PR
+  # carries the `force-engine-parity` label. Not in `required-checks` yet: a
+  # failure uploads repro files, and the engine team triages them.
+  engine-parity:
+    name: Engine parity
+    needs: [install-and-build, format-check]
+    if: >-
+      needs.install-and-build.outputs.engine_parity == 'true' ||
+      contains(github.event.pull_request.labels.*.name, 'force-engine-parity')
+    uses: ./.github/workflows/test-engine-parity-reusable.yml
+    with:
+      ref: ${{ needs.install-and-build.outputs.commit_sha }}
 
   # Boots the editor-ui against the Vite dev server and fails on any console
   # or page error during load. Catches regressions in dev-mode module
