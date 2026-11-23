@@ -23,13 +23,14 @@ import type {
 	WhereClause,
 } from '../../helpers/interfaces';
 import {
-	addBindParam,
 	addSortRules,
+	addStartAfterBind,
 	addWhereClauses,
 	checkStartAfterColumn,
 	quoteSqlIdentifier,
 	getColumnMap,
 	getColumnMetaData,
+	getSessionSort,
 	getUniqueKeyColumns,
 } from '../../helpers/utils';
 import {
@@ -102,6 +103,7 @@ export async function execute(
 		async (schema: string, table: string) => await getUniqueKeyColumns(pool, schema, table),
 		(schema, table) => `${schema}.${table}`,
 	);
+	const sessionSort = memoize(async () => await getSessionSort(pool));
 
 	const conn = await pool.getConnection();
 	const isCDBSupported = conn.oracleServerVersion >= 1200000000;
@@ -145,26 +147,32 @@ export async function execute(
 		let rules = sortRules;
 
 		const returnAll = this.getNodeParameter('returnAll', i, false);
-		const startAfter = returnAll ? undefined : getStartAfter(this, i, '');
+		const startAfter = returnAll
+			? undefined
+			: getStartAfter(this, i, 'In Options, turn on Output Numbers As String.');
 		if (startAfter) {
 			const { column, value } = startAfter;
 			assertCursorColumnInOutput(this.getNode(), i, outputColumns, column);
 			rules = getStartAfterSortRules(this.getNode(), i, sortRules, column);
+			const columnInfo = columnMetaDataObject[column];
 			checkStartAfterColumn(
 				this.getNode(),
 				i,
 				table,
 				column,
-				columnMetaDataObject[column],
+				columnInfo,
 				await uniqueColumnsOf(schema, table),
-				value,
+				columnInfo && columnInfo.type !== 'NUMBER' ? await sessionSort() : 'BINARY',
 			);
 
 			if (value !== undefined) {
 				const operator = rules[0].direction === 'DESC' ? '<' : '>';
-				const predicate = `${quoteSqlIdentifier(column)} ${operator} :${values.length}`;
-				innerQuery = addCursorPredicate(base, innerQuery, predicate);
-				addBindParam(columnMetaDataObject[column], value, values);
+				const bind = addStartAfterBind(columnInfo, value, values);
+				innerQuery = addCursorPredicate(
+					base,
+					innerQuery,
+					`${quoteSqlIdentifier(column)} ${operator} ${bind}`,
+				);
 			}
 		}
 

@@ -385,8 +385,9 @@ ORDER BY atc.COLUMN_NAME`;
 	}
 }
 
-// Reads all_indexes, not constraint_types from getColumnMetaData: that field is aggregated per column
+// Reads the catalog, not constraint_types from getColumnMetaData: that field is aggregated per column
 // and marks every member of a composite constraint as unique.
+// A primary key or unique constraint can use a non-unique index, so the constraints are read too.
 export async function getUniqueKeyColumns(
 	pool: oracledb.Pool,
 	schema: string,
@@ -399,12 +400,34 @@ export async function getUniqueKeyColumns(
 			 FROM all_indexes ai
 			 JOIN all_ind_columns aic ON aic.index_owner = ai.owner AND aic.index_name = ai.index_name
 			 WHERE ai.table_owner = :schema_name AND ai.table_name = :table_name
-			   AND ai.uniqueness = 'UNIQUE' AND ai.index_type IN ('NORMAL', 'IOT - TOP')
-			 GROUP BY ai.owner, ai.index_name HAVING COUNT(*) = 1`,
+			   AND ai.uniqueness = 'UNIQUE' AND ai.index_type IN ('NORMAL', 'NORMAL/REV', 'IOT - TOP')
+			 GROUP BY ai.owner, ai.index_name HAVING COUNT(*) = 1
+			 UNION
+			 SELECT MIN(acc.column_name)
+			 FROM all_constraints ac
+			 JOIN all_cons_columns acc ON acc.owner = ac.owner AND acc.constraint_name = ac.constraint_name
+			 WHERE ac.owner = :schema_name AND ac.table_name = :table_name
+			   AND ac.constraint_type IN ('P', 'U') AND ac.status = 'ENABLED' AND ac.validated = 'VALIDATED'
+			 GROUP BY ac.owner, ac.constraint_name HAVING COUNT(*) = 1`,
 			{ schema_name: schema, table_name: table },
 			{ outFormat: oracledb.OUT_FORMAT_OBJECT },
 		);
 		return (result.rows ?? []).map((row) => row.COLUMN_NAME);
+	} finally {
+		await conn.close();
+	}
+}
+
+/** The NLS_SORT of the database session, for example BINARY or GERMAN. */
+export async function getSessionSort(pool: oracledb.Pool): Promise<string> {
+	const conn = await pool.getConnection();
+	try {
+		const result = await conn.execute<{ NLS_SORT: string }>(
+			"SELECT SYS_CONTEXT('USERENV', 'NLS_SORT') AS nls_sort FROM dual",
+			[],
+			{ outFormat: oracledb.OUT_FORMAT_OBJECT },
+		);
+		return result.rows?.[0]?.NLS_SORT ?? 'BINARY';
 	} finally {
 		await conn.close();
 	}
@@ -415,7 +438,7 @@ const START_AFTER_TYPE = /^(NUMBER|N?VARCHAR2|N?CHAR)$/;
 
 /**
  * Throws if Start After cannot page by the column without skipped or repeated rows.
- * `uniqueColumns` comes from getUniqueKeyColumns.
+ * `uniqueColumns` comes from getUniqueKeyColumns, `sessionSort` from getSessionSort.
  */
 export function checkStartAfterColumn(
 	node: INode,
@@ -424,7 +447,7 @@ export function checkStartAfterColumn(
 	column: string,
 	columnInfo: ColumnDefinition | undefined,
 	uniqueColumns: string[],
-	value?: string,
+	sessionSort: string,
 ) {
 	if (!columnInfo) {
 		throw new NodeOperationError(node, `Column "${column}" was not found in table "${table}"`, {
@@ -433,20 +456,42 @@ export function checkStartAfterColumn(
 	}
 	assertUniqueCursorColumn(node, itemIndex, uniqueColumns, column);
 	assertCursorColumnType(node, itemIndex, column, columnInfo.type, START_AFTER_TYPE);
-	assertCursorColumnNotNull(node, itemIndex, column, columnInfo.nullable);
-	// The value of a NUMBER column is bound as a number, which cannot keep all digits of a bigger integer
-	if (
-		columnInfo.type === 'NUMBER' &&
-		value !== undefined &&
-		/^\s*[+-]?\d+\s*$/.test(value) &&
-		!Number.isSafeInteger(Number(value))
-	) {
-		throw new NodeOperationError(node, 'The Start After value is too big to be exact', {
-			itemIndex,
-			description:
-				'n8n cannot keep all digits of a number above 9007199254740991, so the next page can skip rows.',
-		});
+	// ORDER BY follows NLS_SORT, but a comparison and a unique index can use binary order
+	if (columnInfo.type !== 'NUMBER' && sessionSort !== 'BINARY') {
+		throw new NodeOperationError(
+			node,
+			`Start After cannot use the text column "${column}" in this database session`,
+			{
+				itemIndex,
+				description: `The session sorts text with NLS_SORT = ${sessionSort}. Start After needs binary order, or a page can skip rows. Use a NUMBER column, or connect with a session where NLS_SORT is BINARY.`,
+			},
+		);
 	}
+	assertCursorColumnNotNull(node, itemIndex, column, columnInfo.nullable);
+}
+
+/**
+ * Adds the binds of the Start After value and returns the SQL that reads it.
+ * A NUMBER value stays text, so Oracle reads all its digits. The format made from
+ * the value keeps the conversion independent of the session NLS_NUMERIC_CHARACTERS.
+ */
+export function addStartAfterBind(
+	colInfo: ColumnDefinition,
+	value: string,
+	bindParameters: oracledb.BindParameter[],
+): string {
+	const index = bindParameters.length;
+	const text = value.trim();
+	if (colInfo.type === 'NUMBER' && /^-?(\d+(\.\d+)?|\.\d+)$/.test(text)) {
+		const format = text.replace('-', '').replace(/\d/g, '9').replace('.', 'D');
+		bindParameters.push(
+			{ type: oracledb.STRING, val: text },
+			{ type: oracledb.STRING, val: format },
+		);
+		return `TO_NUMBER(:${index}, :${index + 1}, 'NLS_NUMERIC_CHARACTERS=''.,''')`;
+	}
+	addBindParam(colInfo, value, bindParameters);
+	return `:${index}`;
 }
 
 export function prepareErrorItem(

@@ -554,7 +554,7 @@ describe('Test getBindParameters ', () => {
 });
 
 describe('Test getUniqueKeyColumns', () => {
-	it('should read only unique indexes on one column of the table', async () => {
+	it('should read only unique indexes and valid key constraints on one column of the table', async () => {
 		const execute = vi.fn().mockResolvedValue({ rows: [{ COLUMN_NAME: 'ID' }] });
 		const close = vi.fn();
 		const pool = {
@@ -565,8 +565,9 @@ describe('Test getUniqueKeyColumns', () => {
 
 		const [sql, binds] = execute.mock.calls[0];
 		expect(sql).toContain("ai.uniqueness = 'UNIQUE'");
-		expect(sql).toContain("ai.index_type IN ('NORMAL', 'IOT - TOP')");
-		expect(sql).toContain('HAVING COUNT(*) = 1');
+		expect(sql).toContain("ai.index_type IN ('NORMAL', 'NORMAL/REV', 'IOT - TOP')");
+		expect(sql).toContain("ac.status = 'ENABLED' AND ac.validated = 'VALIDATED'");
+		expect(sql.match(/HAVING COUNT\(\*\) = 1/g)).toHaveLength(2);
 		expect(binds).toEqual({ schema_name: 'HR', table_name: 'EMPLOYEES' });
 		expect(close).toHaveBeenCalled();
 	});

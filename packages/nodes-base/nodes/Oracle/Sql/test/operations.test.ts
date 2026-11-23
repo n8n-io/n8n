@@ -1770,11 +1770,12 @@ VALUES (
 				expect(runQueries).toHaveBeenCalledWith(
 					[
 						{
-							query: `SELECT * FROM "${CONFIG.user}"."${table}" WHERE ("ID" >= :0 OR "NAME" = :1) AND "ID" > :2 ORDER BY "ID" ASC FETCH FIRST 5 ROWS ONLY`,
+							query: `SELECT * FROM "${CONFIG.user}"."${table}" WHERE ("ID" >= :0 OR "NAME" = :1) AND "ID" > TO_NUMBER(:2, :3, 'NLS_NUMERIC_CHARACTERS=''.,''') ORDER BY "ID" ASC FETCH FIRST 5 ROWS ONLY`,
 							values: [
 								{ type: oracleDBTypes.NUMBER, val: 2 },
 								{ type: oracleDBTypes.STRING, val: 'Bob' },
-								{ type: oracleDBTypes.NUMBER, val: 7 },
+								{ type: oracleDBTypes.STRING, val: '7' },
+								{ type: oracleDBTypes.STRING, val: '9' },
 							],
 						},
 					],
@@ -1796,8 +1797,11 @@ VALUES (
 				expect(runQueries).toHaveBeenCalledWith(
 					[
 						{
-							query: `SELECT * FROM "${CONFIG.user}"."${table}" WHERE "ID" < :0 ORDER BY "ID" DESC FETCH FIRST 5 ROWS ONLY`,
-							values: [{ type: oracleDBTypes.NUMBER, val: 7 }],
+							query: `SELECT * FROM "${CONFIG.user}"."${table}" WHERE "ID" < TO_NUMBER(:0, :1, 'NLS_NUMERIC_CHARACTERS=''.,''') ORDER BY "ID" DESC FETCH FIRST 5 ROWS ONLY`,
+							values: [
+								{ type: oracleDBTypes.STRING, val: '7' },
+								{ type: oracleDBTypes.STRING, val: '9' },
+							],
 						},
 					],
 					items,
@@ -1848,16 +1852,36 @@ VALUES (
 				).rejects.toThrow('Sort by "ID" first');
 			});
 
-			it('should throw when a text value for a NUMBER column is too big to be exact', async () => {
+			it('should bind a NUMBER value as text with a format made from the value', async () => {
 				const mockThis = createMockExecuteFunction({
 					...baseParameters,
-					startAfter: { values: { column: 'ID', value: '9007199254740993' } },
+					startAfter: { values: { column: 'ID', value: '-123456789012345678.25' } },
+				});
+				const runQueries = getRunQueriesFn(mockThis, pool);
+
+				await select.execute.call(mockThis, runQueries, items, nodeOptions, pool);
+
+				expect(runQueries.mock.calls[0][0][0].values).toEqual([
+					{ type: oracleDBTypes.STRING, val: '-123456789012345678.25' },
+					{ type: oracleDBTypes.STRING, val: '999999999999999999D99' },
+				]);
+			});
+
+			it('should throw for a text column when the session does not sort in binary order', async () => {
+				mockConnection.execute.mockImplementation((sql: string = '') => {
+					if (isCatalogQuery([sql])) return { rows: [{ COLUMN_NAME: 'NAME' }] };
+					if (sql.includes('NLS_SORT')) return { rows: [{ NLS_SORT: 'GERMAN' }] };
+					return defaultImpl(sql);
+				});
+				const mockThis = createMockExecuteFunction({
+					...baseParameters,
+					startAfter: { values: { column: 'NAME', value: 'b' } },
 				});
 				const runQueries = getRunQueriesFn(mockThis, pool);
 
 				await expect(
 					select.execute.call(mockThis, runQueries, items, nodeOptions, pool),
-				).rejects.toThrow('The Start After value is too big to be exact');
+				).rejects.toThrow('Start After cannot use the text column "NAME" in this database session');
 			});
 
 			it('should not duplicate ORDER BY when the cursor column is already sorted', async () => {
@@ -1873,8 +1897,11 @@ VALUES (
 				expect(runQueries).toHaveBeenCalledWith(
 					[
 						{
-							query: `SELECT * FROM "${CONFIG.user}"."${table}" WHERE "ID" > :0 ORDER BY "ID" ASC FETCH FIRST 5 ROWS ONLY`,
-							values: [{ type: oracleDBTypes.NUMBER, val: 7 }],
+							query: `SELECT * FROM "${CONFIG.user}"."${table}" WHERE "ID" > TO_NUMBER(:0, :1, 'NLS_NUMERIC_CHARACTERS=''.,''') ORDER BY "ID" ASC FETCH FIRST 5 ROWS ONLY`,
+							values: [
+								{ type: oracleDBTypes.STRING, val: '7' },
+								{ type: oracleDBTypes.STRING, val: '9' },
+							],
 						},
 					],
 					items,
