@@ -57,11 +57,10 @@ function setup() {
 	const node = mock<INode>({
 		id: 'approval-node',
 		name: 'Request approval',
-		type: 'n8n-nodes-base.slack',
+		type: 'n8n-nodes-base.agentChannelApproval',
 		parameters: {
-			agentApproval: true,
-			select: 'user',
-			user: { __rl: true, mode: 'id', value: 'U1' },
+			channel: 'slack',
+			parameters: { select: 'user', user: { __rl: true, mode: 'id', value: 'U1' } },
 		},
 		credentials: { slackApi: { id: 'credential', name: 'Slack' } },
 	});
@@ -131,7 +130,7 @@ it.each(['slack', 'telegram', 'discord'] as const)(
 	'accepts native %s destination responses',
 	async (type) => {
 		const { service, node, event, tracker } = setup();
-		node.type = `n8n-nodes-base.${type}`;
+		node.parameters.channel = type;
 		node.credentials = {
 			[type === 'slack' ? 'slackApi' : type === 'telegram' ? 'telegramApi' : 'discordBotApi']: {
 				id: 'credential',
@@ -139,12 +138,14 @@ it.each(['slack', 'telegram', 'discord'] as const)(
 			},
 		};
 		node.parameters = {
-			agentApproval: true,
-			...(type === 'telegram'
-				? { chatId: 'U1' }
-				: type === 'discord'
-					? { sendTo: 'user', userId: { __rl: true, mode: 'id', value: 'U1' } }
-					: { select: 'channel', channelId: { __rl: true, mode: 'id', value: 'C1' } }),
+			channel: type,
+			parameters: {
+				...(type === 'telegram'
+					? { chatId: 'U1' }
+					: type === 'discord'
+						? { sendTo: 'user', userId: { __rl: true, mode: 'id', value: 'U1' } }
+						: { select: 'channel', channelId: { __rl: true, mode: 'id', value: 'C1' } }),
+			},
 		};
 		expect(
 			await service.respond('agent', 'project', { type, credentialId: 'credential' }, event),
@@ -184,7 +185,7 @@ it.each([
 	if (reason === 'agent') execution.data.parentAgentRun!.agentId = 'other';
 	if (reason === 'project') execution.data.parentAgentRun!.projectId = 'other';
 	if (reason === 'credential') node.credentials!.slackApi.id = 'other';
-	if (reason === 'node') node.parameters.agentApproval = false;
+	if (reason === 'node') node.parameters.parameters = undefined;
 	if (reason === 'state') execution.status = 'success';
 	if (reason === 'suspended') execution.data.waitReason = 'suspended';
 	if (reason === 'missingExecution') executions.findSingleExecution.mockResolvedValue(undefined);
@@ -204,9 +205,11 @@ it.each([
 	if (reason === 'user') event.user.userId = 'other';
 	if (reason === 'channel')
 		node.parameters = {
-			agentApproval: true,
-			select: 'channel',
-			channelId: { __rl: true, mode: 'id', value: 'another-channel' },
+			channel: 'slack',
+			parameters: {
+				select: 'channel',
+				channelId: { __rl: true, mode: 'id', value: 'another-channel' },
+			},
 		};
 	expect(await respond()).toBe('unavailable');
 	expect(tracker.respond).not.toHaveBeenCalled();

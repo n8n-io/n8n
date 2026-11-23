@@ -24,7 +24,11 @@ import { hasApprovalExpired } from './approval-expiry';
 import { AgentHitlWorkflowRepository } from '../repositories/agent-hitl-workflow.repository';
 import { AgentRepository } from '../repositories/agent.repository';
 import { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
-import type { ChannelHitlAdapter } from '../integrations/channel-hitl';
+import {
+	channelApprovalNode,
+	channelApprovalDelegate,
+	type ChannelHitlAdapter,
+} from '../integrations/channel-hitl';
 import { AgentCredentialLookupService } from '../integrations/agent-credential-lookup.service';
 
 /** Waits between job reads. A fast response can arrive before the job row is saved. */
@@ -60,6 +64,7 @@ export class AgentChannelHitlService {
 			unflattenData: true,
 		});
 		const node = execution?.data.executionData?.nodeExecutionStack[0]?.node;
+		const delegate = node && channelApprovalDelegate(node);
 		const parent = execution?.data.parentAgentRun;
 		const platform = this.registry.get(integration.type);
 		if (
@@ -69,9 +74,9 @@ export class AgentChannelHitlService {
 			parent?.agentId !== agentId ||
 			parent.projectId !== projectId ||
 			!node ||
-			node.parameters.agentApproval !== true ||
+			!delegate ||
 			!platform?.hitl.supported ||
-			node.type !== platform.hitl.nodeType ||
+			delegate.type !== platform.hitl.nodeType ||
 			!('credentialId' in integration) ||
 			node.credentials?.[platform.hitl.credentialType]?.id !== integration.credentialId
 		)
@@ -88,7 +93,7 @@ export class AgentChannelHitlService {
 			hasApprovalExpired(job)
 		)
 			return 'unavailable';
-		if (!platform.hitl.matchesResponse(node, event)) return 'unavailable';
+		if (!platform.hitl.matchesResponse(delegate, event)) return 'unavailable';
 
 		const approved = reference.decision === 'a';
 		const { ResponseWaitTracker } = await import('@/executions/response-wait-tracker.service.js');
@@ -211,7 +216,7 @@ export class AgentChannelHitlService {
 			configuration.credentialId,
 			integrations,
 		);
-		const node = hitl.createNode(configuration);
+		const node = channelApprovalNode(hitl.createNode(configuration), configuration.channel);
 		const now = new Date();
 		// The execution stores the generated graph. Its private owner has no editable graph.
 		return {

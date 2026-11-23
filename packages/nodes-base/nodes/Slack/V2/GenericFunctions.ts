@@ -543,7 +543,6 @@ export function createSendAndWaitMessageBody(context: IExecuteFunctions) {
 	const captureResponder =
 		context.getNodeParameter('captureResponder', 0, false) === true && responseType === 'approval';
 
-	const agentApproval = context.getNode().parameters.agentApproval === true;
 	const body: SendAndWaitMessageBody = {
 		channel: target,
 		blocks: [
@@ -578,21 +577,16 @@ export function createSendAndWaitMessageBody(context: IExecuteFunctions) {
 						text: option.label,
 						emoji: true,
 					},
-					// Agent callbacks go to the channel bridge. Workflow callbacks use the fixed interaction route.
-					...(agentApproval
+					// A button with a `url` is a plain link. In capture-responder mode we drop
+					// the url so Slack treats it as interactive and POSTs the click to us instead.
+					...(captureResponder
 						? {
-								action_id: context.getApprovalCallbackReference(
+								action_id: option.approved ? HITL_APPROVE_ACTION_ID : HITL_DECLINE_ACTION_ID,
+								value: context.getApprovalCallbackReference(
 									option.approved ? 'approve' : 'decline',
 								),
 							}
-						: captureResponder
-							? {
-									action_id: option.approved ? HITL_APPROVE_ACTION_ID : HITL_DECLINE_ACTION_ID,
-									value: context.getApprovalCallbackReference(
-										option.approved ? 'approve' : 'decline',
-									),
-								}
-							: { url: option.url }),
+						: { url: option.url }),
 				})),
 			},
 		],

@@ -12,11 +12,7 @@ describe('Slack Utility Functions', () => {
 
 	beforeEach(() => {
 		mockExecuteFunctions = mock<IExecuteFunctions>();
-		mockExecuteFunctions.getNode.mockReturnValue({
-			name: 'Slack',
-			typeVersion: 1,
-			parameters: {},
-		} as any);
+		mockExecuteFunctions.getNode.mockReturnValue({ name: 'Slack', typeVersion: 1 } as any);
 		mockExecuteFunctions.getSignedResumeUrl.mockReturnValueOnce(
 			'http://localhost/waiting-webhook/nodeID?approved=true&signature=abc',
 		);
@@ -198,11 +194,7 @@ describe('Slack Utility Functions', () => {
 			mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('message');
 			mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('subject');
 			mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({});
-			mockExecuteFunctions.getNode.mockReturnValue({
-				name: 'Slack',
-				typeVersion: 2.3,
-				parameters: {},
-			} as any);
+			mockExecuteFunctions.getNode.mockReturnValue({ name: 'Slack', typeVersion: 2.3 } as any);
 
 			expect(createSendAndWaitMessageBody(mockExecuteFunctions)).toEqual({
 				blocks: [
@@ -254,11 +246,7 @@ describe('Slack Utility Functions', () => {
 			mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('subject');
 			mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({ approvalType: 'double' });
 
-			mockExecuteFunctions.getNode.mockReturnValue({
-				name: 'Slack',
-				typeVersion: 2.3,
-				parameters: {},
-			} as any);
+			mockExecuteFunctions.getNode.mockReturnValue({ name: 'Slack', typeVersion: 2.3 } as any);
 
 			expect(createSendAndWaitMessageBody(mockExecuteFunctions)).toEqual({
 				blocks: [

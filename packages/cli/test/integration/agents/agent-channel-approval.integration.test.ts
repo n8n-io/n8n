@@ -18,19 +18,25 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
+import { createCredentials } from '../shared/db/credentials';
 import { OperationalError } from '@n8n/errors';
 import { WaitTracker } from '@/wait-tracker';
 import { MockLanguageModelV3, convertArrayToReadableStream } from 'ai/test';
 import type { ActionEvent } from 'chat';
 import { InstanceSettings } from 'n8n-core';
 import type { IExecuteFunctions, INodeType, INodeTypeData } from 'n8n-workflow';
-import { NodeConnectionTypes, WAIT_INDEFINITELY } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
+import { AgentChannelApproval } from 'n8n-nodes-base/nodes/AgentChannelApproval/AgentChannelApproval.node';
 import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
 
 import { ActiveExecutions } from '@/active-executions';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
-import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
+import {
+	SubworkflowPolicyChecker,
+	CredentialsPermissionChecker,
+} from '@/executions/pre-execution-checks';
+import { channelApprovalNode } from '@/modules/agents/integrations/channel-hitl';
 import {
 	encodeAgentSandboxHostMetadata,
 	hashAgentSandboxPrincipal,
@@ -88,52 +94,47 @@ async function drain(stream: AsyncIterable<StreamChunk>) {
 	const chunks: StreamChunk[] = [];
 	for await (const chunk of stream) chunks.push(chunk);
 	expect(chunks.filter(({ type }) => type === 'error')).toEqual([]);
-	expect(chunks.filter((chunk) => chunk.type === 'tool-execution-end' && chunk.isError)).toEqual(
-		[],
-	);
+
+	expect(
+		chunks.filter((chunk) => chunk.type === 'tool-execution-end' && chunk.isError),
+		JSON.stringify(chunks),
+	).toEqual([]);
 	return chunks;
 }
 
 // Only delivery is replaced. The engine still parks and resumes the channel node.
 const send = vi.fn<(request: { message: unknown; approve: string; reject: string }) => void>();
+const deliveryBody = z.object({
+	blocks: z.array(
+		z.object({
+			text: z.object({ text: z.string() }).optional(),
+			elements: z
+				.array(z.object({ action_id: z.string(), text: z.object({ text: z.string() }) }))
+				.optional(),
+		}),
+	),
+});
 const channel: INodeType = {
-	description: {
-		name: 'slack',
-		displayName: 'Test approval delivery',
-		group: ['output'],
-		version: 2.2,
-		defaults: { name: 'Request approval' },
-		description: 'Deliver an approval through the test adapter',
-		inputs: [NodeConnectionTypes.Main],
-		outputs: [NodeConnectionTypes.Main],
-		properties: [
-			{ displayName: 'Message', name: 'message', type: 'string', default: '' },
-			{ displayName: 'Agent approval', name: 'agentApproval', type: 'hidden', default: false },
-			{ displayName: 'Select', name: 'select', type: 'string', default: 'user' },
-			{
-				displayName: 'User',
-				name: 'user',
-				type: 'resourceLocator',
-				default: { mode: 'id', value: '' },
-				modes: [{ displayName: 'ID', name: 'id', type: 'string' }],
-			},
-			{
-				displayName: 'Channel',
-				name: 'channelId',
-				type: 'resourceLocator',
-				default: { mode: 'id', value: '' },
-				modes: [{ displayName: 'ID', name: 'id', type: 'string' }],
-			},
-		],
-	},
+	description: new AgentChannelApproval().description,
 	async execute(this: IExecuteFunctions) {
-		send({
-			message: this.getNodeParameter('message', 0),
-			approve: this.getApprovalCallbackReference('approve'),
-			reject: this.getApprovalCallbackReference('decline'),
+		const request: IExecuteFunctions['helpers']['requestWithAuthentication'] = async (
+			_credential,
+			options,
+		) => {
+			const { blocks } = deliveryBody.parse(options.body);
+			const buttons = blocks.flatMap((block) => block.elements ?? []);
+			send({
+				message: blocks.find((block) => block.text)?.text?.text,
+				approve: buttons.find((button) => button.text.text === 'Approve')!.action_id,
+				reject: buttons.find((button) => button.text.text === 'Deny')!.action_id,
+			});
+			return { ok: true };
+		};
+		const helpers = { ...this.helpers, requestWithAuthentication: request };
+		const context = new Proxy(this, {
+			get: (target, property) => (property === 'helpers' ? helpers : Reflect.get(target, property)),
 		});
-		await this.putExecutionToWait(WAIT_INDEFINITELY);
-		return [this.getInputData()];
+		return await new AgentChannelApproval().execute.call(context);
 	},
 };
 const trigger: INodeType = {
@@ -153,7 +154,7 @@ const trigger: INodeType = {
 	},
 };
 const nodes: INodeTypeData = {
-	'n8n-nodes-base.slack': { type: channel, sourcePath: '' },
+	'n8n-nodes-base.agentChannelApproval': { type: channel, sourcePath: '' },
 	'n8n-nodes-base.agentDecisionTrigger': { type: trigger, sourcePath: '' },
 };
 
@@ -168,6 +169,34 @@ describe('Durable channel approval lifecycle', () => {
 	afterAll(async () => await testDb.terminate());
 	beforeEach(() => send.mockClear());
 	afterEach(() => vi.restoreAllMocks());
+
+	it('rejects a credential outside the private execution owner project', async () => {
+		const project = await createTeamProject();
+		const otherProject = await createTeamProject();
+		const agent = await createAgent({ name: 'Reviewer', projectId: project.id });
+		const credential = await createCredentials(
+			{ type: 'slackApi', name: 'Other channel', data: '' },
+			otherProject,
+		);
+		const ownerId = await Container.get(AgentHitlWorkflowRepository).ensureExecutionOwner(
+			project.id,
+			agent.id,
+		);
+		const node = channelApprovalNode(
+			slackHitl.createNode({
+				id: generateNanoId(),
+				name: 'Review',
+				method: 'channel',
+				channel: 'slack',
+				credentialId: credential.id,
+				recipient: { kind: 'user', id: 'U1' },
+			}),
+			'slack',
+		);
+		await expect(
+			Container.get(CredentialsPermissionChecker).check(ownerId, [node]),
+		).rejects.toThrow('does not have access');
+	});
 
 	it.each([
 		{ label: 'single review', approved: true, destination: 'user', method: 'channel' },
@@ -217,6 +246,10 @@ describe('Durable channel approval lifecycle', () => {
 			const { approved, destination, method } = scenario;
 			const sequence = 'sequence' in scenario;
 			const project = await createTeamProject();
+			const credential = await createCredentials(
+				{ type: 'slackApi', name: 'Review channel', data: '' },
+				project,
+			);
 			const agents = Container.get(AgentRepository);
 			const agent = await createAgent({ name: 'Reviewer', projectId: project.id });
 			const caller = await createWorkflowWithHistory({ name: 'Approval caller' }, project);
@@ -261,7 +294,7 @@ describe('Durable channel approval lifecycle', () => {
 						name: 'Review',
 						method: 'channel',
 						channel: 'slack',
-						credentialId: 'credential',
+						credentialId: credential.id,
 						recipient: {
 							kind: destination,
 							id: destination === 'user' ? 'U_REVIEWER' : 'C_REVIEW',
@@ -275,11 +308,13 @@ describe('Durable channel approval lifecycle', () => {
 					throw new Error('Expected a channel destination');
 				const graph = channels.buildWorkflow(
 					channelConfiguration,
-					[{ type: 'slack', credentialId: 'credential' }],
+					[{ type: 'slack', credentialId: credential.id }],
 					generateNanoId(),
 				);
-				graph.nodes[1].parameters.message =
-					'={{ $json.toolName + " requested by " + $json.requester.name }}';
+				graph.nodes[1].parameters.parameters = {
+					...(graph.nodes[1].parameters.parameters as object),
+					message: '={{ $json.toolName + " requested by " + $json.requester.name }}',
+				};
 				const workflow = await createWorkflowWithHistory(
 					{
 						id: graph.id,
@@ -327,14 +362,14 @@ describe('Durable channel approval lifecycle', () => {
 					projectId: project.id,
 					published: true,
 					integrationType: 'slack',
-					integrations: [{ type: 'slack', credentialId: 'credential' }],
+					integrations: [{ type: 'slack', credentialId: credential.id }],
 				},
 			);
 			const input = { title: 'A record' };
 			const checkpoints = Container.get(N8NCheckpointStorage);
 			const model = scriptedModel(input);
 			const definitionHash = getAgentRuntimeDefinitionHash(config, {}, [
-				{ type: 'slack', credentialId: 'credential' },
+				{ type: 'slack', credentialId: credential.id },
 			]);
 			const buildAgent = () =>
 				new RuntimeAgent('Reviewer')
@@ -454,7 +489,7 @@ describe('Durable channel approval lifecycle', () => {
 					await channels.respond(
 						agent.id,
 						project.id,
-						{ type: 'slack', credentialId: 'credential' },
+						{ type: 'slack', credentialId: credential.id },
 						event,
 					),
 				).toBe('unavailable');
@@ -477,7 +512,7 @@ describe('Durable channel approval lifecycle', () => {
 				await channels.respond(
 					agent.id,
 					project.id,
-					{ type: 'slack', credentialId: 'credential' },
+					{ type: 'slack', credentialId: credential.id },
 					event,
 				),
 			).toBe(approved || sequence);
@@ -497,7 +532,7 @@ describe('Durable channel approval lifecycle', () => {
 					await channels.respond(
 						agent.id,
 						project.id,
-						{ type: 'slack', credentialId: 'credential' },
+						{ type: 'slack', credentialId: credential.id },
 						opposite,
 					),
 				).toBe('unavailable');
@@ -527,7 +562,7 @@ describe('Durable channel approval lifecycle', () => {
 					await channels.respond(
 						agent.id,
 						project.id,
-						{ type: 'slack', credentialId: 'credential' },
+						{ type: 'slack', credentialId: credential.id },
 						secondEvent,
 					),
 				).toBe(approved);
@@ -547,7 +582,7 @@ describe('Durable channel approval lifecycle', () => {
 				await channels.respond(
 					agent.id,
 					project.id,
-					{ type: 'slack', credentialId: 'credential' },
+					{ type: 'slack', credentialId: credential.id },
 					event,
 				),
 			).toBe('unavailable');
