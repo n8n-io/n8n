@@ -396,6 +396,7 @@ export class SkillService {
 			throw new UserError("The n8n Assistant can't use skills on this instance.");
 		}
 		const target = await this.skillAccess.resolveCreateTarget(user, payload);
+		await this.skillAccess.assertCanReadMentionedWorkflows(user, payload.skill);
 		const input = {
 			checkNameTaken: true,
 			target,
@@ -449,6 +450,20 @@ export class SkillService {
 		const moves = target !== undefined && target.projectId !== skill.projectId;
 
 		const checkedSource = moves ? await this.skillAccess.assertCanMove(user, skillId) : undefined;
+
+		if (update.instructions !== undefined || update.references !== undefined) {
+			const latest = (await this.findLatest([skillId])).get(skillId);
+			if (latest) {
+				await this.skillAccess.assertCanReadMentionedWorkflows(
+					user,
+					{
+						instructions: update.instructions ?? latest.skill.instructions,
+						references: update.references ?? latest.skill.references,
+					},
+					latest.skill,
+				);
+			}
+		}
 
 		if (!moves && availableToAssistant === undefined && availableToMCP === undefined) {
 			const { followingAgentIds: _following, ...saved } = await this.saveTrusted(

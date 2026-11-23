@@ -155,6 +155,9 @@ export class AgentSkillsService {
 		await this.skillAccess.assertCanCreate(context.user, {
 			projectId: availableTo === 'project' ? entity.projectId : null,
 		});
+		for (const body of bodies) {
+			await this.skillAccess.assertCanReadMentionedWorkflows(context.user, body);
+		}
 
 		const previous = await this.agentSkillRefs.readDraft(entity, {});
 		this.assertNoNameClashes(previous.skills, bodies);
@@ -298,6 +301,7 @@ export class AgentSkillsService {
 			}
 		}
 		await this.skillAccess.assertCanEdit(context.user, [skillId]);
+		await this.skillAccess.assertCanReadMentionedWorkflows(context.user, updated, existing);
 
 		if (pinned) markAgentDraftDirty(entity);
 		const saved = await this.transactionRunner.run({}, async (ctx) => {

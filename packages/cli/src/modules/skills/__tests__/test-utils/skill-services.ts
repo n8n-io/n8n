@@ -1,6 +1,11 @@
 import type { Logger } from '@n8n/backend-common';
-import type { ProjectScopeService } from '@n8n/backend-services';
-import type { OperationContext, TransactionRunner, UserRepository } from '@n8n/db';
+import type { ProjectScopeService, WorkflowSharingService } from '@n8n/backend-services';
+import type {
+	OperationContext,
+	SharedWorkflowRepository,
+	TransactionRunner,
+	UserRepository,
+} from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import type { SkillFile } from '../../database/entities/skill-file.entity';
@@ -15,6 +20,7 @@ import type { SkillsTelemetry } from '../../services/skills-telemetry.service';
 import type { AssistantSkillsFlagGate } from '../../services/assistant-skills-flag-gate';
 import type { SkillSyncedFromService } from '../../services/skill-synced-from.service';
 import type { SkillSyncFlagGate } from '../../services/skill-sync-flag-gate';
+import type { WorkflowsInSkillsFlagGate } from '../../services/workflows-in-skills-flag-gate';
 import type { SkillSourceRepository } from '../../database/repositories/skill-source.repository';
 import type { SkillSourceClientRegistry } from '../../sources/skill-source-client-registry.service';
 import type { ResolvedSkillRow } from '../../utils/skill-content';
@@ -96,7 +102,16 @@ export function createSkillServices() {
 	const links = mock<SkillSourceRepository>();
 	const skillSyncGate = mock<SkillSyncFlagGate>();
 	const sourceClients = mock<SkillSourceClientRegistry>();
-	const access = new SkillAccessService(skills, projectScope);
+	const workflowSharing = mock<WorkflowSharingService>();
+	const sharedWorkflows = mock<SharedWorkflowRepository>();
+	const workflowsInSkillsGate = mock<WorkflowsInSkillsFlagGate>();
+	const access = new SkillAccessService(
+		skills,
+		projectScope,
+		workflowSharing,
+		sharedWorkflows,
+		workflowsInSkillsGate,
+	);
 	const runtime = new SkillRuntimeService(skills, projectScope, access);
 	const service = new SkillService(
 		logger,
@@ -127,6 +142,9 @@ export function createSkillServices() {
 		syncedFrom,
 		links,
 		skillSyncGate,
+		workflowSharing,
+		sharedWorkflows,
+		workflowsInSkillsGate,
 		access,
 		runtime,
 		service,

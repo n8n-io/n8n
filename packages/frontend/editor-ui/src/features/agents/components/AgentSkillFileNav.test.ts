@@ -1,4 +1,5 @@
-import { fireEvent } from '@testing-library/vue';
+import { fireEvent, waitFor } from '@testing-library/vue';
+import { EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, SCHEDULE_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import { defineComponent } from 'vue';
 
 import { createComponentRenderer } from '@/__tests__/render';
@@ -8,6 +9,11 @@ import AgentSkillFileNav from './AgentSkillFileNav.vue';
 const flag = vi.hoisted(() => ({ enabled: false }));
 vi.mock('@/app/stores/posthog.store', () => ({
 	usePostHog: () => ({ isFeatureEnabled: () => flag.enabled }),
+}));
+
+const searchWorkflows = vi.hoisted(() => vi.fn());
+vi.mock('@/app/stores/workflowsList.store', () => ({
+	useWorkflowsListStore: () => ({ searchWorkflows }),
 }));
 
 const PickerStub = defineComponent({
@@ -35,6 +41,82 @@ const byTestId = (root: Element, id: string) => root.querySelector(`[data-testid
 describe('AgentSkillFileNav', () => {
 	beforeEach(() => {
 		flag.enabled = false;
+		searchWorkflows.mockReset();
+		searchWorkflows.mockResolvedValue([]);
+	});
+
+	it('loads the note data of all mentioned workflows in one request and notes what each caller misses', async () => {
+		flag.enabled = true;
+		searchWorkflows.mockResolvedValue([
+			{
+				id: 'wf1',
+				nodes: [{ type: SCHEDULE_TRIGGER_NODE_TYPE, name: 'Schedule' }],
+				activeVersionId: null,
+				settings: {},
+			},
+			{
+				id: 'wf2',
+				nodes: [{ type: EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, name: 'Start' }],
+				activeVersionId: 'v1',
+				settings: {},
+			},
+		]);
+		const { container } = renderComponent({
+			props: { skill: MENTIONING_SKILL, selectedPath: 'SKILL.md', mentionProjectId: 'p1' },
+		});
+
+		await waitFor(() =>
+			expect(container.querySelectorAll('[data-testid="agent-skill-workflow-notes"]')).toHaveLength(
+				1,
+			),
+		);
+		expect(searchWorkflows).toHaveBeenCalledTimes(1);
+		expect(searchWorkflows).toHaveBeenCalledWith({
+			ids: ['wf1', 'wf2'],
+			select: ['id', 'nodes', 'activeVersionId', 'settings'],
+			options: { take: 2, includeScopes: false },
+		});
+		const [weeklyRow, archiveRow] = container.querySelectorAll(
+			'[data-testid="agent-skill-workflow-item"]',
+		);
+		expect(byTestId(weeklyRow, 'agent-skill-workflow-notes')).toHaveAttribute(
+			'aria-label',
+			"To use this workflow in agents, add the 'When Executed by Another Workflow' trigger. To use this workflow in a published agent, publish the workflow.",
+		);
+		expect(byTestId(archiveRow, 'agent-skill-workflow-notes')).toBeNull();
+	});
+
+	it('adds the MCP notes for a skill available to MCP and the access note for an instance skill', async () => {
+		flag.enabled = true;
+		searchWorkflows.mockResolvedValue([
+			{
+				id: 'wf1',
+				nodes: [{ type: EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, name: 'Start' }],
+				activeVersionId: 'v1',
+				settings: { availableInMCP: false },
+			},
+		]);
+		const { container } = renderComponent({
+			props: {
+				skill: { ...MENTIONING_SKILL, references: [] },
+				selectedPath: 'SKILL.md',
+				instanceSkill: true,
+				availableToMcp: true,
+			},
+		});
+
+		await waitFor(() =>
+			expect(byTestId(container, 'agent-skill-workflow-notes')).toHaveAttribute(
+				'aria-label',
+				"To run this workflow from MCP, add a Schedule, Webhook, Form, or Chat trigger. To run this workflow from MCP, turn on 'Available in MCP' in the workflow settings. Agents can use this workflow only in its own project. To use it in other projects, share it with them and set 'This workflow can be called by' to 'Any workflow'.",
+			),
+		);
+	});
+
+	it('sends no request for notes while the flag is off', () => {
+		renderComponent({ props: { skill: MENTIONING_SKILL, selectedPath: 'SKILL.md' } });
+
+		expect(searchWorkflows).not.toHaveBeenCalled();
 	});
 
 	it('lists each mentioned workflow once, from SKILL.md and the references', () => {

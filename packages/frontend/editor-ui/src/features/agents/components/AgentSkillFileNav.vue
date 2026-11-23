@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { parseSkillWorkflowMentions, type SkillWorkflowMention } from '@n8n/api-types';
-import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 
 import { WORKFLOWS_IN_SKILLS_EXPERIMENT } from '@/app/constants/experiments';
 import { usePostHog } from '@/app/stores/posthog.store';
 import type { AgentSkill } from '../types';
+import { useSkillWorkflowNoteData } from '../composables/useSkillWorkflowNoteData';
+import { getSkillWorkflowNotes, type SkillWorkflowNote } from '../utils/skillWorkflowNotes';
 import SkillWorkflowMentionPicker from './SkillWorkflowMentionPicker.vue';
 import SkillDiffCount from './skillVersions/SkillDiffCount.vue';
 import type { FileChange } from './skillVersions/skillVersionDiff';
@@ -25,6 +27,8 @@ const props = withDefaults(
 		changeCounts?: Record<string, FileChange>;
 		mentionProjectId?: string;
 		mentionProjectName?: string;
+		instanceSkill?: boolean;
+		availableToMcp?: boolean;
 	}>(),
 	{
 		addReferenceDisabled: false,
@@ -32,6 +36,8 @@ const props = withDefaults(
 		invalidPaths: () => [],
 		mentionProjectId: undefined,
 		mentionProjectName: undefined,
+		instanceSkill: false,
+		availableToMcp: false,
 	},
 );
 
@@ -60,6 +66,25 @@ const mentionedWorkflows = computed(() => {
 const mentionedWorkflowIds = computed(() =>
 	mentionedWorkflows.value.map(({ workflowId }) => workflowId),
 );
+const { noteData } = useSkillWorkflowNoteData(mentionedWorkflowIds, workflowMentionsEnabled);
+const NOTE_TEXT_KEYS: Record<SkillWorkflowNote, BaseTextKey> = {
+	agentTrigger: 'agents.builder.skills.workflowMentions.note.agentTrigger',
+	mcpTrigger: 'agents.builder.skills.workflowMentions.note.mcpTrigger',
+	mcpUnavailable: 'agents.builder.skills.workflowMentions.note.mcpUnavailable',
+	unpublished: 'agents.builder.skills.workflowMentions.note.unpublished',
+	instanceAccess: 'agents.builder.skills.workflowMentions.note.instanceAccess',
+};
+const workflowNotes = computed(() => {
+	const notes = new Map<string, string[]>();
+	for (const [workflowId, workflow] of noteData.value) {
+		const texts = getSkillWorkflowNotes(workflow, {
+			instanceSkill: props.instanceSkill,
+			availableToMCP: props.availableToMcp,
+		}).map((note) => i18n.baseText(NOTE_TEXT_KEYS[note]));
+		if (texts.length > 0) notes.set(workflowId, texts);
+	}
+	return notes;
+});
 
 function isInvalid(path: string) {
 	return props.invalidPaths.includes(path);
@@ -221,6 +246,27 @@ function testIdForPath(path: string) {
 			>
 				<N8nIcon icon="workflow" :size="16" :class="$style.icon" />
 				<N8nText size="medium" :class="$style.path">{{ workflow.name }}</N8nText>
+				<N8nTooltip v-if="workflowNotes.has(workflow.workflowId)" placement="right">
+					<template #content>
+						<p
+							v-for="note in workflowNotes.get(workflow.workflowId)"
+							:key="note"
+							:class="$style.note"
+						>
+							{{ note }}
+						</p>
+					</template>
+					<span
+						:class="$style.noteIcon"
+						tabindex="0"
+						role="img"
+						:aria-label="workflowNotes.get(workflow.workflowId)?.join(' ')"
+						data-testid="agent-skill-workflow-notes"
+						data-attr="agent-skill-workflow-notes"
+					>
+						<N8nIcon icon="info" :size="16" />
+					</span>
+				</N8nTooltip>
 			</div>
 		</div>
 	</nav>
@@ -328,6 +374,21 @@ function testIdForPath(path: string) {
 
 	&:hover {
 		background: transparent;
+	}
+}
+
+.noteIcon {
+	display: inline-flex;
+	flex-shrink: 0;
+	margin-left: auto;
+	color: var(--color--text--tint-1);
+}
+
+.note {
+	margin: 0;
+
+	& + & {
+		margin-top: var(--spacing--2xs);
 	}
 }
 

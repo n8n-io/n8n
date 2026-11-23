@@ -1764,6 +1764,8 @@ function onRemove() {
 						:invalid-paths="visibleInvalidReferencePaths"
 						:mention-project-id="mentionProjectId"
 						:mention-project-name="mentionProjectName"
+						:instance-skill="selectedScopeSkill.scope === 'instance'"
+						:available-to-mcp="showAvailableToMCP && availableToMCP"
 						@add-workflow="onAddWorkflow"
 						@add-reference="onAddReference"
 						@remove-reference="onRemoveReference"
