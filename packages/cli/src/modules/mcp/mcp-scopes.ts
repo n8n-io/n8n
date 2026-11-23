@@ -44,6 +44,8 @@ export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 		// Lists credentials, data tables and agents too. The tool withholds the ones whose
 		// scope the grant lacks, and refuses a credential or data table as the requested resource.
 		'get_dependencies',
+		// AI Gym workflow simulation capability & readiness check.
+		'get_workflow_simulation_support',
 	],
 	'workflow:write': [
 		'create_workflow_from_code',
@@ -61,7 +63,13 @@ export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 		'validate_workflow',
 		'validate_node_config',
 	],
-	'workflow:execute': ['execute_workflow', 'test_workflow', 'prepare_workflow_pin_data'],
+	'workflow:execute': [
+		'execute_workflow',
+		'test_workflow',
+		'prepare_workflow_pin_data',
+		'simulate_workflow',
+		'get_workflow_simulation_support',
+	],
 	'execution:read': ['get_workflow_execution', 'search_workflow_executions'],
 	'agent:read': [
 		'search_agents',
@@ -252,6 +260,14 @@ export const SKILL_SOURCE_TOOLS: ReadonlySet<string> = new Set([
 	'list_skill_sources',
 	'discover_skill_source',
 	'import_skills_from_source',
+]);
+
+/**
+ * Tools that require the `ai-gym` module to be active.
+ */
+export const AI_GYM_SIMULATION_TOOLS: ReadonlySet<string> = new Set([
+	'simulate_workflow',
+	'get_workflow_simulation_support',
 ]);
 
 function isMcpScope(scope: string): scope is McpScope {

@@ -18,6 +18,13 @@ import FocusSidebar from '@/app/components/FocusSidebar.vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import CanvasRunWorkflowButton from '@/features/workflows/canvas/components/elements/buttons/CanvasRunWorkflowButton.vue';
+import CanvasSimulateWorkflowButton from '@/features/workflows/canvas/simulation/CanvasSimulateWorkflowButton.vue';
+import {
+	isSimulatedExecutionId,
+	SIMULATED_EXECUTION_ID_PREFIX,
+	useWorkflowSimulationStore,
+} from '@/features/workflows/canvas/simulation/workflowSimulation.store';
+import { useAiSimulatedExecutionsStore } from '@/app/stores/aiSimulatedExecutions.store';
 import { useI18n } from '@n8n/i18n';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
@@ -158,9 +165,11 @@ import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store
 import { useUnusableWorkflowCredentials } from '@/features/credentials/composables/useUnusableWorkflowCredentials';
 
 import {
+	N8nButton,
 	N8nCallout,
 	N8nCanvasThinkingPill,
 	N8nCanvasCollaborationPill,
+	N8nIcon,
 	N8nLogo,
 } from '@n8n/design-system';
 import { useWorkflowHelpers } from '../composables/useWorkflowHelpers';
@@ -238,6 +247,7 @@ const experimentalNdvStore = useExperimentalNdvStore();
 const collaborationStore = useCollaborationStore();
 const chatHubPanelStore = useChatHubPanelStore();
 const workflowHelpers = useWorkflowHelpers();
+const aiSimulatedExecutionsStore = useAiSimulatedExecutionsStore();
 const emptyCanvasGroupsEnabled = useEmptyCanvasGroupsFlag();
 
 // Initialize activity detection for collaboration
@@ -1291,6 +1301,119 @@ const projectPermissions = computed(() => {
  */
 
 const isStoppingExecution = ref(false);
+const workflowSimulationStore = useWorkflowSimulationStore();
+
+const simulationNodesFingerprint = computed(() =>
+	workflowDocumentStore.value.allNodes
+		.map(
+			(node) =>
+				`${node.name}:${node.type}:${Boolean(node.disabled)}:${String(node.parameters?.url ?? '')}:${JSON.stringify(node.credentials ?? {})}`,
+		)
+		.join('|'),
+);
+
+watch(
+	[() => workflowDocumentStore.value.workflowId, simulationNodesFingerprint],
+	([workflowId]) => {
+		if (!workflowId || workflowId === 'new') return;
+		void workflowSimulationStore.refreshSupport(workflowId, workflowDocumentStore.value.allNodes);
+	},
+	{ immediate: true },
+);
+
+const isDisplayingSimulatedExecution = computed(() =>
+	isSimulatedExecutionId(workflowExecutionState.value.activeExecution?.id),
+);
+
+const simulatedExecutionBannerDetails = computed(() => {
+	const result = workflowSimulationStore.lastResult;
+	if (result) {
+		return i18n.baseText('nodeView.simulate.canvasBanner.details', {
+			interpolate: {
+				durationMs: String(result.durationMs),
+				events: String(result.events.length),
+			},
+		});
+	}
+	return i18n.baseText('nodeView.simulate.canvasBanner.detailsGeneric');
+});
+
+function onOpenSimulationTab() {
+	if (!workflowId.value || workflowId.value === 'new') return;
+	void router.push({ name: VIEWS.WORKFLOW_SIMULATION, params: { workflowId: workflowId.value } });
+}
+
+function onClearSimulatedExecution() {
+	workflowExecutionState.value.setActiveExecutionId(undefined);
+	workflowExecutionState.value.setWorkflowExecutionData(null);
+}
+
+async function onSimulateWorkflow() {
+	const workflowId = workflowDocumentStore.value.workflowId;
+	if (!workflowId || workflowId === 'new') {
+		toast.showMessage({
+			title: i18n.baseText('nodeView.simulate.errorToastTitle'),
+			message: 'Save the workflow before running a simulation.',
+			type: 'warning',
+		});
+		return;
+	}
+
+	try {
+		const snapshot = workflowDocumentStore.value.serialize();
+		const result = await workflowSimulationStore.simulate(workflowId, {
+			startNode: workflowExecutionState.value.selectedTriggerNodeName,
+			workflowData: {
+				nodes: snapshot.nodes,
+				connections: snapshot.connections,
+				pinData: snapshot.pinData,
+				settings: snapshot.settings,
+				staticData: snapshot.staticData,
+			},
+		});
+
+		const executionId = `${SIMULATED_EXECUTION_ID_PREFIX}${Date.now()}`;
+		const simulatedExecution: IExecutionResponse = {
+			id: executionId,
+			data: result.runData.data,
+			workflowData: workflowDocumentStore.value.getSnapshot(),
+			finished: result.status === 'success',
+			mode: 'manual',
+			status: result.status,
+			startedAt: result.runData.startedAt ?? new Date(),
+			stoppedAt: result.runData.stoppedAt ?? new Date(),
+			createdAt: new Date(),
+		};
+
+		workflowExecutionState.value.setActiveExecutionId(undefined);
+		workflowExecutionState.value.setWorkflowExecutionData(simulatedExecution);
+		aiSimulatedExecutionsStore.markSimulatedNodes(
+			executionId,
+			Object.keys(result.runData.data?.resultData?.runData ?? {}),
+		);
+
+		if (result.status === 'success') {
+			toast.showMessage({
+				title: i18n.baseText('nodeView.simulate.successToastTitle'),
+				message: i18n.baseText('nodeView.simulate.successToastMessage', {
+					interpolate: {
+						durationMs: String(result.durationMs),
+						events: String(result.events.length),
+					},
+				}),
+				type: 'success',
+			});
+		} else {
+			toast.showMessage({
+				title: i18n.baseText('nodeView.simulate.errorToastTitle'),
+				message: result.error ?? 'Simulation ended with an error.',
+				type: 'error',
+			});
+		}
+	} catch (error) {
+		toast.showError(error, i18n.baseText('nodeView.simulate.errorToastTitle'));
+	}
+}
 
 const isWorkflowRunning = computed(() => workflowExecutionState.value.isWorkflowRunning);
 const isExecutionWaitingForWebhook = computed(
@@ -2059,6 +2182,7 @@ onBeforeRouteLeave(async (to, from, next) => {
 	const shouldSkipPrompt =
 		toNodeViewTab === MAIN_HEADER_TABS.EXECUTIONS ||
 		toNodeViewTab === MAIN_HEADER_TABS.EVALUATION ||
+		toNodeViewTab === MAIN_HEADER_TABS.SIMULATION ||
 		from.name === VIEWS.TEMPLATE_IMPORT ||
 		(toNodeViewTab === MAIN_HEADER_TABS.WORKFLOW && from.name === VIEWS.EXECUTION_DEBUG);
 
@@ -2211,6 +2335,45 @@ onBeforeUnmount(() => {
 			@extract-workflow="onExtractWorkflow"
 			@start-chat="onToggleChat"
 		>
+			<div v-if="isDisplayingSimulatedExecution" :class="$style.simulatedExecutionBannerContainer">
+				<div
+					:class="$style.simulatedExecutionBanner"
+					role="status"
+					data-test-id="canvas-simulated-execution-banner"
+				>
+					<div :class="$style.simulatedExecutionBannerInfo">
+						<N8nIcon
+							icon="flask-conical"
+							size="medium"
+							:class="$style.simulatedExecutionBannerIcon"
+						/>
+						<span :class="$style.simulatedExecutionBannerTitle">
+							{{ i18n.baseText('nodeView.simulate.canvasBanner.title') }}
+						</span>
+						<span :class="$style.simulatedExecutionBannerDetails">
+							{{ simulatedExecutionBannerDetails }}
+						</span>
+					</div>
+					<div :class="$style.simulatedExecutionBannerActions">
+						<N8nButton
+							size="xsmall"
+							type="tertiary"
+							data-test-id="canvas-simulated-banner-open-tab"
+							@click="onOpenSimulationTab"
+						>
+							{{ i18n.baseText('nodeView.simulate.canvasBanner.configure') }}
+						</N8nButton>
+						<N8nButton
+							size="xsmall"
+							type="tertiary"
+							data-test-id="canvas-simulated-banner-clear"
+							@click="onClearSimulatedExecution"
+						>
+							{{ i18n.baseText('nodeView.simulate.canvasBanner.clear') }}
+						</N8nButton>
+					</div>
+				</div>
+			</div>
 			<div :class="$style.canvasTopLeftContainer">
 				<div :class="$style.canvasTopLeft">
 					<N8nLogo
@@ -2248,6 +2411,13 @@ onBeforeUnmount(() => {
 						@mouseleave="onRunWorkflowButtonMouseLeave"
 						@execute="runEntireWorkflow('main')"
 						@select-trigger-node="workflowExecutionState.setSelectedTriggerNodeName"
+					/>
+					<CanvasSimulateWorkflowButton
+						v-if="isRunWorkflowButtonVisible && !isCanvasReadOnly && workflowId !== 'new'"
+						:simulating="workflowSimulationStore.isSimulating"
+						:disabled="isWorkflowRunning || !containsTriggerNodes || allTriggerNodesDisabled"
+						:unsupported-count="workflowSimulationStore.unsupportedNodes.length"
+						@simulate="onSimulateWorkflow"
 					/>
 					<template v-if="containsChatTriggerNodes">
 						<CanvasChatButton
@@ -2430,5 +2600,61 @@ onBeforeUnmount(() => {
 	top: 50%;
 	transform: translate(-50%, -50%);
 	z-index: 10;
+}
+
+.simulatedExecutionBannerContainer {
+	position: absolute;
+	top: var(--spacing--sm);
+	left: 50%;
+	transform: translateX(-50%);
+	z-index: 10;
+	pointer-events: none;
+	max-width: calc(100% - var(--spacing--2xl));
+}
+
+.simulatedExecutionBanner {
+	pointer-events: auto;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--sm);
+	padding: var(--spacing--2xs) var(--spacing--sm);
+	border-radius: var(--radius--lg);
+	background-color: var(--color--warning--tint-2);
+	border: 1px solid var(--color--warning);
+	color: var(--color--text--shade-1);
+	box-shadow: var(--shadow--light);
+	font-size: var(--font-size--xs);
+}
+
+.simulatedExecutionBannerInfo {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	min-width: 0;
+}
+
+.simulatedExecutionBannerIcon {
+	color: var(--color--warning--shade-1);
+	flex-shrink: 0;
+}
+
+.simulatedExecutionBannerTitle {
+	font-weight: var(--font-weight--bold);
+	white-space: nowrap;
+}
+
+.simulatedExecutionBannerDetails {
+	color: var(--color--text);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.simulatedExecutionBannerActions {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+	flex-shrink: 0;
 }
 </style>

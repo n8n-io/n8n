@@ -28,4 +28,10 @@ export const packagedModules: PackagedModules = {
 	},
 	'execution-limits': async () => await import('@n8n/backend-module-execution-limits/module'),
 	'execution-ledger': async () => await import('@n8n/backend-module-execution-ledger/module'),
+	'ai-gym': async () => {
+		const { AiGymExecutionHostPort } = await import('@n8n/backend-module-ai-gym');
+		const { AiGymExecutionHostAdapter } = await import('./ai-gym/ai-gym-execution-host.adapter.js');
+		Container.set(AiGymExecutionHostPort, Container.get(AiGymExecutionHostAdapter));
+		return await import('@n8n/backend-module-ai-gym/module');
+	},
 };

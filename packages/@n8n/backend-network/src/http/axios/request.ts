@@ -10,6 +10,7 @@ import { stringify } from 'qs';
 
 import { invokeAxios } from './invoke';
 import { followSsrfRedirects, shouldFollowRedirectsManually } from './redirect';
+import { invokeScopedInterceptor } from './scoped-intercept';
 import { applyDefaultOutboundUserAgent } from './user-agent';
 import {
 	buildAgentOptions,
@@ -26,6 +27,7 @@ import {
 } from './utils';
 import type { SsrfBridge } from '../../ssrf';
 import type { NodeAgents } from '../node-agents';
+import { getScopedHttpInterceptor } from '../scoped-interceptor';
 
 export function convertN8nRequestToAxios(
 	n8nRequest: IHttpRequestOptions,
@@ -214,6 +216,36 @@ async function sendHttpRequest(
 	removeEmptyBody(requestOptions);
 
 	const url = buildTargetUrl(requestOptions.url, requestOptions.baseURL) ?? requestOptions.url;
+
+	const interceptor = getScopedHttpInterceptor();
+	if (interceptor && url) {
+		let parsed: URL | undefined;
+		try {
+			parsed = new URL(url);
+		} catch {
+			// Fall through to standard validation for malformed URLs.
+		}
+		if (parsed && interceptor.matches(parsed)) {
+			const axiosRequest = convertN8nRequestToAxios(requestOptions, undefined, undefined);
+			if (axiosRequest.data === undefined || axiosRequest.method?.toUpperCase() === 'GET') {
+				delete axiosRequest.data;
+			}
+			throwIfDomainNotAllowed(axiosRequest, requestOptions.allowedDomains);
+			const result = await invokeScopedInterceptor(interceptor, axiosRequest, requestOptions, url);
+			if (requestOptions.returnFullResponse) {
+				return {
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+					body: result.data,
+					headers: result.headers,
+					statusCode: result.status,
+					statusMessage: result.statusText,
+				};
+			}
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+			return result.data;
+		}
+	}
+
 	await validateUrlSsrf(url, ssrfBridge);
 	await validateProxySsrf(requestOptions.proxy, ssrfBridge);
 

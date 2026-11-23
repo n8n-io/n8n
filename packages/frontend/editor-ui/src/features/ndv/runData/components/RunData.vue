@@ -62,6 +62,7 @@ import { dataPinningEventBus } from '@/app/event-bus';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useAiSimulatedDataGuard } from '@/app/composables/useAiSimulatedDataGuard';
+import { isSimulatedExecutionId } from '@/features/workflows/canvas/simulation/workflowSimulation.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
@@ -418,6 +419,10 @@ const isAiSimulatedOutput = computed(
 		hasNodeRun.value &&
 		!pinnedData.hasData.value &&
 		aiSimulatedDataGuard.isSimulatedNodeOutput(currentExecution.value?.id, node.value?.name),
+);
+
+const isAiGymSimulatedOutput = computed(
+	() => isAiSimulatedOutput.value && isSimulatedExecutionId(currentExecution.value?.id),
 );
 
 const isArtificialRecoveredEventItem = computed(
@@ -1594,11 +1599,15 @@ defineExpose({ enterEditMode });
 		<N8nCallout
 			v-if="isAiSimulatedOutput && !editMode.enabled"
 			theme="warning"
-			icon="triangle-alert"
+			:icon="isAiGymSimulatedOutput ? 'flask-conical' : 'triangle-alert'"
 			:class="$style.pinnedDataCallout"
 			data-test-id="ndv-ai-simulated-data-callout"
 		>
-			{{ i18n.baseText('runData.aiSimulatedData.callout') }}
+			{{
+				isAiGymSimulatedOutput
+					? i18n.baseText('runData.aiGymSimulatedData.callout')
+					: i18n.baseText('runData.aiSimulatedData.callout')
+			}}
 		</N8nCallout>
 
 		<div :class="$style.header">

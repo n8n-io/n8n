@@ -716,6 +716,33 @@ export class McpService {
 		);
 		registerIfAllowed(testWorkflowTool);
 
+		if (this.moduleRegistry.isActive('ai-gym')) {
+			const [
+				{ WorkflowSimulationService },
+				{ createGetWorkflowSimulationSupportTool, createSimulateWorkflowTool },
+			] = await Promise.all([
+				import('@n8n/backend-module-ai-gym'),
+				import('./tools/simulate-workflow.tool.js'),
+			]);
+			const simulationService = Container.get(WorkflowSimulationService);
+			registerIfAllowed(
+				createGetWorkflowSimulationSupportTool(
+					user,
+					this.workflowFinderService,
+					simulationService,
+					this.telemetry,
+				),
+			);
+			registerIfAllowed(
+				createSimulateWorkflowTool(
+					user,
+					this.workflowFinderService,
+					simulationService,
+					this.telemetry,
+				),
+			);
+		}
+
 		const listCredentialsTool = createListCredentialsTool(
 			user,
 			this.credentialsService,

@@ -34,6 +34,7 @@ import { McpPostSaveMetricsService } from '../mcp-post-save-metrics.service';
 import {
 	ACTIVITY_LOG_TOOLS,
 	AGENT_TOOLS,
+	AI_GYM_SIMULATION_TOOLS,
 	BUILDER_TOOLS,
 	COMMUNITY_PACKAGE_TOOLS,
 	getAllowedToolNames,
@@ -61,6 +62,7 @@ import { MigrationFindingSyncService } from '@/modules/breaking-changes/sync/mig
 import { MigrationFindingTriageService } from '@/modules/breaking-changes/triage/migration-finding-triage.service';
 import { SkillService, SkillSourceService, SkillsGate, SkillSyncFlagGate } from '@/modules/skills';
 import { AiPreferenceSettingsService } from '@/services/ai-preference-settings.service';
+import { WorkflowSimulationService } from '@n8n/backend-module-ai-gym';
 import { DataTableProxyService } from '@n8n/backend-module-data-table';
 import { InstanceContextService } from '@/modules/instance-ai/instance-context.service';
 import {
@@ -238,6 +240,7 @@ describe('McpService scope enforcement', () => {
 		instanceAiActive = false,
 		breakingChangesActive = false,
 		agentsActive = false,
+		aiGymActive = false,
 		postHogClient = mockInstance(PostHogClient),
 	}: {
 		builderEnabled?: boolean;
@@ -245,6 +248,7 @@ describe('McpService scope enforcement', () => {
 		instanceAiActive?: boolean;
 		breakingChangesActive?: boolean;
 		agentsActive?: boolean;
+		aiGymActive?: boolean;
 		postHogClient?: PostHogClient;
 	} = {}) =>
 		new McpService(
@@ -303,7 +307,8 @@ describe('McpService scope enforcement', () => {
 						(name: string) =>
 							(instanceAiActive && name === 'instance-ai') ||
 							(agentsActive && name === 'agents') ||
-							(breakingChangesActive && name === 'breaking-changes'),
+							(breakingChangesActive && name === 'breaking-changes') ||
+							(aiGymActive && name === 'ai-gym'),
 					),
 				settings: {
 					get: (name: string) => (name === 'mcp' ? { preferencesEnabled: true } : undefined),
@@ -438,7 +443,8 @@ describe('McpService scope enforcement', () => {
 				!SKILL_TOOLS.has(name) &&
 				!COMMUNITY_PACKAGE_TOOLS.has(name) &&
 				!INSTANCE_CONTEXT_TOOLS.has(name) &&
-				!MIGRATION_REPORT_TOOLS.has(name),
+				!MIGRATION_REPORT_TOOLS.has(name) &&
+				!AI_GYM_SIMULATION_TOOLS.has(name),
 		);
 		expect(unregistered).toEqual([]);
 	});
@@ -827,10 +833,14 @@ describe('McpService scope enforcement', () => {
 			grantedScopes: ['workflow:read'],
 		});
 
-		// Instance-context tools ride on this scope but need their own flag and the `instance-ai`
-		// module, neither of which is on here.
+		// Instance-context and ai-gym tools ride on this scope but need their own modules,
+		// neither of which is active here.
 		expect(getRegisteredToolNames(server)).toEqual(
-			new Set(TOOLS_BY_SCOPE['workflow:read'].filter((name) => !INSTANCE_CONTEXT_TOOLS.has(name))),
+			new Set(
+				TOOLS_BY_SCOPE['workflow:read'].filter(
+					(name) => !INSTANCE_CONTEXT_TOOLS.has(name) && !AI_GYM_SIMULATION_TOOLS.has(name),
+				),
+			),
 		);
 	});
 
@@ -1001,6 +1011,48 @@ describe('McpService scope enforcement', () => {
 
 			const registered = getRegisteredToolNames(server);
 			for (const name of MIGRATION_REPORT_TOOLS) expect(registered).toContain(name);
+		});
+	});
+
+	describe('ai-gym simulation tools registration', () => {
+		it('registers simulate_workflow and get_workflow_simulation_support when ai-gym is active', async () => {
+			mockInstance(WorkflowSimulationService);
+			const server = await buildService({ aiGymActive: true }).getServer(user, mcpFeatureFlags());
+			const registered = getRegisteredToolNames(server);
+
+			expect(registered).toContain('simulate_workflow');
+			expect(registered).toContain('get_workflow_simulation_support');
+		});
+
+		it('omits simulation tools when ai-gym is inactive', async () => {
+			const server = await buildService({ aiGymActive: false }).getServer(user, mcpFeatureFlags());
+			const registered = getRegisteredToolNames(server);
+
+			expect(registered).not.toContain('simulate_workflow');
+			expect(registered).not.toContain('get_workflow_simulation_support');
+		});
+
+		it('gates simulate_workflow behind workflow:execute and allows support check with workflow:read', async () => {
+			mockInstance(WorkflowSimulationService);
+			const readOnlyServer = await buildService({ aiGymActive: true }).getServer(
+				user,
+				mcpFeatureFlags(),
+				undefined,
+				{ grantedScopes: ['workflow:read'] },
+			);
+			const readRegistered = getRegisteredToolNames(readOnlyServer);
+			expect(readRegistered).toContain('get_workflow_simulation_support');
+			expect(readRegistered).not.toContain('simulate_workflow');
+
+			const execServer = await buildService({ aiGymActive: true }).getServer(
+				user,
+				mcpFeatureFlags(),
+				undefined,
+				{ grantedScopes: ['workflow:execute'] },
+			);
+			const execRegistered = getRegisteredToolNames(execServer);
+			expect(execRegistered).toContain('get_workflow_simulation_support');
+			expect(execRegistered).toContain('simulate_workflow');
 		});
 	});
 

@@ -68,6 +68,12 @@ declare module 'n8n-workflow' {
 		 * production sends. Never present in normal executions.
 		 */
 		evalEgressProxy?: string;
+		/**
+		 * Simulation-only flag: allows nodes without configured credentials to
+		 * request credentials from `credentialsHelper` (which synthesizes tenant-minted
+		 * credentials inside an ai-gym simulation). Never set in normal executions.
+		 */
+		synthesizeUnconfiguredCredentials?: boolean;
 		'data-table'?: { dataTableProxyProvider: DataTableProxyProvider };
 		'dynamic-credentials'?: { credentialCheckProxy: DynamicCredentialCheckProxyProvider };
 		'oauth-jwe'?: { oauthJweProxyProvider: OauthJweProxyProvider };

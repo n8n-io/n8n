@@ -322,6 +322,20 @@ describe('McpProtectedResource', () => {
 			expect(await resource.getScopeTools()).not.toHaveProperty('agent:read');
 			expect(await resource.getScopeTools()).not.toHaveProperty('agent:write');
 		});
+
+		it('advertises simulation tools only while the ai-gym module is active', async () => {
+			moduleRegistry.isActive.mockReturnValue(true);
+			const activeTools = await resource.getScopeTools();
+			expect(activeTools['workflow:execute']).toContain('simulate_workflow');
+			expect(activeTools['workflow:execute']).toContain('get_workflow_simulation_support');
+			expect(activeTools['workflow:read']).toContain('get_workflow_simulation_support');
+
+			moduleRegistry.isActive.mockImplementation((name) => name !== 'ai-gym');
+			const inactiveTools = await resource.getScopeTools();
+			expect(inactiveTools['workflow:execute']).not.toContain('simulate_workflow');
+			expect(inactiveTools['workflow:execute']).not.toContain('get_workflow_simulation_support');
+			expect(inactiveTools['workflow:read']).not.toContain('get_workflow_simulation_support');
+		});
 	});
 
 	describe('getResourceUrl', () => {

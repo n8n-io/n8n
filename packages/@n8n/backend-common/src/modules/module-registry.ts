@@ -90,6 +90,7 @@ export class ModuleRegistry {
 		// skills precedes instance-ai and agents: agents keeps its skills in the
 		// skills module, so skills must start first. See `eligibleModules`.
 		'skills',
+		'ai-gym',
 		'instance-ai',
 		// knowledge precedes agents: a module counts as active only after its own
 		// init, and the agents module reads `isActive('knowledge')` in `settings()`.

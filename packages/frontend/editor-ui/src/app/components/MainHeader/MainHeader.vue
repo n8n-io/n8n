@@ -42,6 +42,8 @@ const dirtyState = ref(false);
 // This would allow us to specify it just once on the root route, and then have the tabs be determined for children
 const evaluationRoutes: VIEWS[] = [VIEWS.EVALUATION_EDIT, VIEWS.EVALUATION_RUNS_DETAIL];
 
+const simulationRoutes: VIEWS[] = [VIEWS.WORKFLOW_SIMULATION];
+
 const workflowRoutes: VIEWS[] = [VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW, VIEWS.EXECUTION_DEBUG];
 
 const executionRoutes: VIEWS[] = [
@@ -54,6 +56,7 @@ const tabBarItems = computed(() => {
 		{ value: MAIN_HEADER_TABS.WORKFLOW, label: locale.baseText('generic.editor') },
 		{ value: MAIN_HEADER_TABS.EXECUTIONS, label: locale.baseText('generic.executions') },
 		{ value: MAIN_HEADER_TABS.EVALUATION, label: locale.baseText('generic.tests') },
+		{ value: MAIN_HEADER_TABS.SIMULATION, label: locale.baseText('nodeView.simulate.tab') },
 	];
 });
 
@@ -99,7 +102,9 @@ onMounted(async () => {
 function isViewRoute(name: unknown): name is VIEWS {
 	return (
 		typeof name === 'string' &&
-		[evaluationRoutes, workflowRoutes, executionRoutes].flat().includes(name as VIEWS)
+		[evaluationRoutes, simulationRoutes, workflowRoutes, executionRoutes]
+			.flat()
+			.includes(name as VIEWS)
 	);
 }
 
@@ -107,6 +112,7 @@ function syncTabsWithRoute(to: RouteLocation, from?: RouteLocation): void {
 	// Map route types to their corresponding tab in the header
 	const routeTabMapping = [
 		{ routes: evaluationRoutes, tab: MAIN_HEADER_TABS.EVALUATION },
+		{ routes: simulationRoutes, tab: MAIN_HEADER_TABS.SIMULATION },
 		{ routes: executionRoutes, tab: MAIN_HEADER_TABS.EXECUTIONS },
 		{ routes: workflowRoutes, tab: MAIN_HEADER_TABS.WORKFLOW },
 	];
@@ -147,6 +153,10 @@ function onTabSelected(tab: MAIN_HEADER_TABS, event: MouseEvent) {
 
 		case MAIN_HEADER_TABS.EVALUATION:
 			void navigateToEvaluationsView(openInNewTab);
+			break;
+
+		case MAIN_HEADER_TABS.SIMULATION:
+			void navigateToSimulationView(openInNewTab);
 			break;
 
 		default:
@@ -225,6 +235,24 @@ async function navigateToEvaluationsView(openInNewTab: boolean) {
 		dirtyState.value = uiStore.stateIsDirty;
 		workflowToReturnTo.value = workflowId.value;
 		activeHeaderTab.value = MAIN_HEADER_TABS.EVALUATION;
+		await router.push(routeToNavigateTo);
+	}
+}
+
+async function navigateToSimulationView(openInNewTab: boolean) {
+	const routeToNavigateTo: RouteLocationRaw = {
+		name: VIEWS.WORKFLOW_SIMULATION,
+		params: { workflowId: workflowId.value },
+		query: route.query,
+	};
+
+	if (openInNewTab) {
+		const { href } = router.resolve(routeToNavigateTo);
+		window.open(href, '_blank');
+	} else if (route.name !== routeToNavigateTo.name) {
+		dirtyState.value = uiStore.stateIsDirty;
+		workflowToReturnTo.value = workflowId.value;
+		activeHeaderTab.value = MAIN_HEADER_TABS.SIMULATION;
 		await router.push(routeToNavigateTo);
 	}
 }

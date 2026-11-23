@@ -5,16 +5,42 @@ import { useI18n } from '@n8n/i18n';
 
 import { N8nIcon, N8nTooltip } from '@n8n/design-system';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useWorkflowSimulationStore } from '@/features/workflows/canvas/simulation/workflowSimulation.store';
+
 const { name } = useCanvasNode();
 const i18n = useI18n();
 const workflowDocumentStore = injectWorkflowDocumentStore();
+const simulationStore = useWorkflowSimulationStore();
 
 const node = computed(() => workflowDocumentStore.value.getNodeByName(name.value));
+const unsupportedSimulationInfo = computed(() =>
+	simulationStore.getUnsupportedReasonForNode(name.value),
+);
 const size = 'small';
 </script>
 
 <template>
 	<div :class="$style.settingsIcons">
+		<N8nTooltip v-if="unsupportedSimulationInfo">
+			<template #content>
+				<div :class="$style.tooltipHeader">
+					<N8nIcon icon="ban" :size="size" />
+					<strong :class="$style.tooltipTitle">{{
+						i18n.baseText('nodeView.simulate.nodeUnsupportedTitle')
+					}}</strong>
+				</div>
+				<div>
+					{{ unsupportedSimulationInfo.reason }}
+				</div>
+			</template>
+			<div
+				data-test-id="canvas-node-status-simulation-unsupported"
+				:class="[$style.icon, $style.unsupportedSimulation]"
+			>
+				<N8nIcon icon="ban" :size="size" />
+			</div>
+		</N8nTooltip>
+
 		<N8nTooltip v-if="node?.alwaysOutputData">
 			<template #content>
 				<div :class="$style.tooltipHeader">
@@ -112,5 +138,9 @@ const size = 'small';
 	height: var(--spacing--md);
 	display: grid;
 	place-items: center;
+}
+
+.unsupportedSimulation {
+	color: var(--color--warning);
 }
 </style>

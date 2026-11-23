@@ -30,4 +30,9 @@ export {
 	isTransportFailure,
 	markHttpRequestError,
 } from './client-request-error';
+export {
+	getScopedHttpInterceptor,
+	runWithScopedHttpInterceptor,
+	type ScopedFetchInterceptor,
+} from './scoped-interceptor';
 export type { HttpConnectionPoolOptions, HttpRequestClientOptions } from './client-options';

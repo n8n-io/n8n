@@ -163,6 +163,7 @@
     "@n8n/ai-workflow-builder": "workspace:*",
     "@n8n/api-types": "workspace:*",
     "@n8n/backend-common": "workspace:*",
+    "@n8n/backend-module-ai-gym": "workspace:*",
     "@n8n/backend-module-apps": "workspace:*",
     "@n8n/backend-module-code-sandbox": "workspace:*",
     "@n8n/backend-module-data-table": "workspace:*",
