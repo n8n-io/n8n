@@ -68,11 +68,14 @@ derives inputs.
   the engine overwrites `wait_declaration` and `resume_cause` on each round.
 - **Store the whole conversation in one value that grows with each round.** Rejected. Each tool
   result would be stored twice, and the stored data would grow faster than the conversation.
-- **Write the round row first, and let reconciliation finish the round.** Rejected. The round row
-  would be the commit point, and the rest could be derived from it. But this would need three
-  detectors in place of one short transaction on one database: for a round row whose step is
-  still `running`, for a waiting step whose spawned steps are missing, and for an unsettled step
-  in an execution that has ended.
+- **Write the rows of a round in a fixed order, without one transaction.** Rejected. The order
+  would be: recorded steps, round row, status, spawned steps. A crash before the status change
+  would need no new repair, because the step would still be `running` and reconciliation would
+  fail it. A crash between the status change and the spawned steps would need a new detector, and
+  the wake repair would have to compare the spawned steps with the actions of the round. The
+  status change and the insert of the spawned steps would each need the lock on the execution
+  row, so each would be a transaction in any case. One transaction for all writes costs no more
+  and has no state in between.
 - **Tell spawned steps apart by a null declaring step id.** Rejected. An explicit `kind` makes each
   filter visible in the code.
 
