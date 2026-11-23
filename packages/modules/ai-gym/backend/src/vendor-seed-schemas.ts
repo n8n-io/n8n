@@ -468,16 +468,16 @@ export async function applyVendorSeed(params: {
 	const { tenant, vendor, payload, nextSeq } = params;
 	const schema = VENDOR_SEED_SCHEMAS[vendor];
 
-	// If the payload isn't in structured schema format (e.g. raw API caller sent a native
-	// seed payload directly), forward it straight to tenant.seed().
-	if (!schema || !isStructuredSeedPayload(payload)) {
+	// Structured schema payloads can be sent either explicitly (`{ __structured: true, settings, collections }`)
+	// or as flat schema-keyed objects (`{ "workspace.name": "...", channels: [...], users: [...] }`).
+	const structured = normalizeStructuredSeedPayload(schema, payload);
+	if (!schema || !structured) {
 		const sanitized = sanitizeNativeSeedPayload(vendor, payload, nextSeq);
 		await tenant.seed(vendor, sanitized);
 		return [];
 	}
 
-	const settings = (payload.settings ?? {}) as Record<string, unknown>;
-	const collections = (payload.collections ?? {}) as Record<string, unknown>;
+	const { settings, collections } = structured;
 	const pendingActions: PendingApiSeedAction[] = [];
 
 	// Build base native seed body from settings + seed-array / seed-nested-array collections.
@@ -649,8 +649,49 @@ export async function executePendingApiSeedActions(
 	}
 }
 
-function isStructuredSeedPayload(payload: Record<string, unknown>): boolean {
-	return payload.__structured === true;
+interface NormalizedStructuredSeed {
+	settings: Record<string, unknown>;
+	collections: Record<string, unknown>;
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+	return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function normalizeStructuredSeedPayload(
+	schema: SimulationSeedSchema | undefined,
+	payload: Record<string, unknown>,
+): NormalizedStructuredSeed | null {
+	if (!schema) return null;
+
+	if (payload.__structured === true) {
+		return {
+			settings: isPlainObject(payload.settings) ? payload.settings : {},
+			collections: isPlainObject(payload.collections) ? payload.collections : {},
+		};
+	}
+
+	const settingKeys = new Set(schema.settings.map((f) => f.key));
+	const collectionKeys = new Set(schema.collections.map((c) => c.key));
+	const hasSchemaKey = Object.keys(payload).some((key) => {
+		if (settingKeys.has(key)) return true;
+		if (collectionKeys.has(key) && Array.isArray(payload[key])) return true;
+		return false;
+	});
+	if (!hasSchemaKey) return null;
+
+	// Avoid hijacking native single-entity Slack payloads like `{ channel: {...}, user: {...} }`.
+	const settings: Record<string, unknown> = {};
+	const collections: Record<string, unknown> = {};
+	for (const [key, value] of Object.entries(payload)) {
+		if (settingKeys.has(key)) {
+			settings[key] = value;
+		} else if (collectionKeys.has(key) && Array.isArray(value)) {
+			collections[key] = value;
+		}
+	}
+
+	return { settings, collections };
 }
 
 function setDottedPath(target: Record<string, unknown>, dottedKey: string, value: unknown): void {

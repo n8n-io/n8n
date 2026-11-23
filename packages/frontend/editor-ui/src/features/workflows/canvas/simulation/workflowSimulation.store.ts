@@ -53,7 +53,7 @@ export const SIMULATION_PRESETS: SimulationPreset[] = [
 		descriptionKey: 'nodeView.simulate.presets.sev1.description',
 		vendors: {
 			slack: {
-				settings: { workspace_name: 'Acme Corp' },
+				settings: { 'workspace.name': 'Acme Corp' },
 				collections: {
 					channels: [
 						{ id: 'C01ALERTS01', name: 'alerts', is_private: false, topic: 'Production alerts' },
@@ -143,7 +143,7 @@ export const SIMULATION_PRESETS: SimulationPreset[] = [
 		descriptionKey: 'nodeView.simulate.presets.normal.description',
 		vendors: {
 			slack: {
-				settings: { workspace_name: 'Acme Corp' },
+				settings: { 'workspace.name': 'Acme Corp' },
 				collections: {
 					channels: [
 						{ id: 'C01ALERTS01', name: 'alerts', is_private: false, topic: 'Production alerts' },
@@ -199,7 +199,7 @@ export const SIMULATION_PRESETS: SimulationPreset[] = [
 		descriptionKey: 'nodeView.simulate.presets.clean.description',
 		vendors: {
 			slack: {
-				settings: { workspace_name: 'Test Workspace' },
+				settings: { 'workspace.name': 'Test Workspace' },
 				collections: { channels: [], users: [], messages: [] },
 			},
 			github: {
@@ -642,21 +642,26 @@ export const useWorkflowSimulationStore = defineStore('workflowSimulation', () =
 				schema && (schema.settings.length > 0 || schema.collections.length > 0);
 
 			if (hasStructuredSchema) {
-				const payload: Record<string, unknown> = {};
+				const settingsPayload: Record<string, unknown> = {};
 				for (const field of schema.settings) {
 					const val = state.settings[field.key];
 					if (val !== undefined && val !== '') {
-						payload[field.key] = val;
+						settingsPayload[field.key] = val;
 					}
 				}
+				const collectionsPayload: Record<string, Array<Record<string, unknown>>> = {};
 				for (const col of schema.collections) {
 					const items = state.collections[col.key] ?? [];
 					if (items.length > 0) {
-						payload[col.key] = items.map(cloneRecord);
+						collectionsPayload[col.key] = items.map(cloneRecord);
 					}
 				}
-				if (Object.keys(payload).length > 0) {
-					seeds[slug] = payload;
+				if (Object.keys(settingsPayload).length > 0 || Object.keys(collectionsPayload).length > 0) {
+					seeds[slug] = {
+						__structured: true,
+						settings: settingsPayload,
+						collections: collectionsPayload,
+					};
 				}
 			} else {
 				const raw = (state.rawJson ?? '').trim();
