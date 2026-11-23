@@ -504,6 +504,41 @@ describe('createInstanceAiTraceContext', () => {
 		);
 	});
 
+	it('counts every dropped character when a long unbroken run fills the scan window', async () => {
+		const tail = ' word'.repeat(10_000);
+		const message = `${'x'.repeat(150_000)}${tail}.`;
+
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-1',
+			messageId: 'message-1',
+			runId: 'run-1',
+			userId: 'user-1',
+			input: { message },
+		});
+
+		expect(tracing?.rootRun.inputs?.message).toBe(
+			`${'x'.repeat(2_000)} [truncated 148000 chars]${tail}.`,
+		);
+	});
+
+	it('marks the unscanned tail of a message that stays long after the runs are cut', async () => {
+		const keptRun = `${'x'.repeat(2_000)} [truncated 148000 chars]`;
+		const words = ` ${'word '.repeat(30_000)}`;
+
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-1',
+			messageId: 'message-1',
+			runId: 'run-1',
+			userId: 'user-1',
+			input: { message: `${'x'.repeat(150_000)}${words}` },
+		});
+
+		const afterCut = `${keptRun}${words}`;
+		expect(tracing?.rootRun.inputs?.message).toBe(
+			`${afterCut.slice(0, 100_000)}[truncated ${afterCut.length - 100_000} chars]`,
+		);
+	});
+
 	it('keeps the 2,000-character cap on a message in a child run', async () => {
 		const tracing = await createInstanceAiTraceContext({
 			threadId: 'thread-1',

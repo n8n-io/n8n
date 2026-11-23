@@ -44,7 +44,11 @@ const CONVERSATION_TEXT_SCRUB_MARGIN = 10_000;
  * characters of base64 take ~1 s), so a pasted blob keeps only its start.
  */
 const MAX_TRACE_UNBROKEN_RUN_LENGTH = 2_000;
-const LONG_UNBROKEN_RUN_PATTERN = new RegExp(`\\S{${MAX_TRACE_UNBROKEN_RUN_LENGTH + 1},}`, 'g');
+/** The lookbehind tries a match only at the start of a run, which keeps the scan linear. */
+const LONG_UNBROKEN_RUN_PATTERN = new RegExp(
+	`(?<!\\S)\\S{${MAX_TRACE_UNBROKEN_RUN_LENGTH + 1},}`,
+	'g',
+);
 const MAX_TOOL_ACTION_DISPLAY_LENGTH = 64;
 const MAX_TRACE_ARRAY_ITEMS = 20;
 const MAX_TRACE_OBJECT_KEYS = 30;
@@ -1426,14 +1430,18 @@ function capConversationText(value: string): string {
 	if (TRUNCATED_MARKER_PATTERN.test(value.slice(MAX_TRACE_CONVERSATION_TEXT_LENGTH))) {
 		return value;
 	}
+	// Cut runs over the whole text first, so a run that crosses the scan window
+	// is counted once and the text after it is still scanned.
+	const cut = cutLongUnbrokenRuns(value);
 	const scanLength = MAX_TRACE_CONVERSATION_TEXT_LENGTH + CONVERSATION_TEXT_SCRUB_MARGIN;
-	const scrubbed = scrubTelemetryText(cutLongUnbrokenRuns(value.slice(0, scanLength)));
-	const unscanned = Math.max(value.length - scanLength, 0);
-	const dropped = scrubbed.length - MAX_TRACE_CONVERSATION_TEXT_LENGTH + unscanned;
-	if (dropped <= 0) {
+	const scrubbed = scrubTelemetryText(cut.slice(0, scanLength));
+	const kept = scrubbed.slice(0, MAX_TRACE_CONVERSATION_TEXT_LENGTH);
+	const unscanned = Math.max(cut.length - scanLength, 0);
+	const dropped = scrubbed.length - kept.length + unscanned;
+	if (dropped === 0) {
 		return scrubbed;
 	}
-	return `${scrubbed.slice(0, MAX_TRACE_CONVERSATION_TEXT_LENGTH)}[truncated ${dropped} chars]`;
+	return `${kept}[truncated ${dropped} chars]`;
 }
 
 /** The space before the marker keeps the kept run at the limit, so a second pass leaves it unchanged. */
