@@ -130,6 +130,7 @@ import {
 } from '@n8n/instance-ai';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
 import { LessThan } from '@n8n/typeorm';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { InstanceSettings } from 'n8n-core';
 import {
@@ -788,7 +789,7 @@ export class InstanceAiAdapterService {
 			);
 		} catch (error) {
 			this.logger.warn('Failed to resolve the skills adapter; skill tools disabled', {
-				error: error instanceof Error ? error.message : String(error),
+				error: ensureError(error).message,
 			});
 			return undefined;
 		}
@@ -808,7 +809,7 @@ export class InstanceAiAdapterService {
 			return Container.get(InstanceAiBuilderDelegateAdapterService);
 		} catch (error) {
 			this.logger.warn('Failed to resolve builder delegate adapter; agent building disabled', {
-				error: error instanceof Error ? error.message : String(error),
+				error: ensureError(error).message,
 			});
 			return null;
 		}
@@ -1378,7 +1379,7 @@ export class InstanceAiAdapterService {
 				logger.warn('Failed to notify open editors of an AI workflow update', {
 					threadId,
 					workflowId,
-					error: error instanceof Error ? error.message : String(error),
+					error: ensureError(error).message,
 				});
 			}
 		};
@@ -1828,7 +1829,7 @@ export class InstanceAiAdapterService {
 					loadLatestEngineV2ExecutionForViewer(workflowId, user).catch((error: unknown) => {
 						logger.warn('Failed to read the latest engine v2 execution', {
 							workflowId,
-							error: error instanceof Error ? error.message : String(error),
+							error: ensureError(error).message,
 						});
 						return undefined;
 					}),
@@ -1978,7 +1979,7 @@ export class InstanceAiAdapterService {
 					logger.warn('AI-builder workflow save failed', {
 						threadId,
 						workflowId: saved.id,
-						error: error instanceof Error ? error.message : String(error),
+						error: ensureError(error).message,
 					});
 					try {
 						const archived = await workflowService.archive(user, saved.id, { skipArchived: true });
@@ -1989,7 +1990,7 @@ export class InstanceAiAdapterService {
 						logger.warn('Failed to clean up AI-builder workflow shell after create failure', {
 							threadId,
 							workflowId: saved.id,
-							error: cleanupError instanceof Error ? cleanupError.message : String(cleanupError),
+							error: ensureError(cleanupError).message,
 						});
 					}
 					throw error;
@@ -2105,7 +2106,7 @@ export class InstanceAiAdapterService {
 					logger.warn('AI-builder workflow save failed', {
 						threadId,
 						workflowId,
-						error: error instanceof Error ? error.message : String(error),
+						error: ensureError(error).message,
 					});
 					throw error;
 				}
@@ -2634,7 +2635,7 @@ export class InstanceAiAdapterService {
 						} catch (error) {
 							logger.warn('Failed to prune verification pin data from execution', {
 								executionId,
-								error: error instanceof Error ? error.message : String(error),
+								error: ensureError(error).message,
 							});
 						}
 					};
@@ -2689,10 +2690,7 @@ export class InstanceAiAdapterService {
 					// A failure to launch (or any other unsettled error) is still an
 					// errored builder run — track it before rethrowing so it isn't
 					// silently dropped from telemetry.
-					trackBuilderExecutedWorkflow(
-						'error',
-						error instanceof Error ? error.message : String(error),
-					);
+					trackBuilderExecutedWorkflow('error', ensureError(error).message);
 					throw error;
 				}
 			},
@@ -3035,7 +3033,7 @@ export class InstanceAiAdapterService {
 					trackStepRun(result.status, telemetryError);
 					return describe(result);
 				} catch (error) {
-					trackStepRun('error', error instanceof Error ? error.message : String(error));
+					trackStepRun('error', ensureError(error).message);
 					throw error;
 				}
 			},
@@ -4696,7 +4694,7 @@ export class InstanceAiAdapterService {
 						return {
 							ok: false,
 							code: 'lookup_failed',
-							message: error instanceof Error ? error.message : String(error),
+							message: ensureError(error).message,
 						};
 					}
 					return { ok: false, code: 'lookup_failed', message: RESOURCE_EXPLORATION_UNAVAILABLE };
