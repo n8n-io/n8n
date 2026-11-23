@@ -6,28 +6,39 @@ import type { ExecutionChannelPublisher, RedisWorkQueues } from '@n8n/engine';
 import { BinaryDataConfig, BinaryDataService, ErrorReporter } from 'n8n-core';
 import { Expression } from 'n8n-workflow';
 import { UserError } from '@n8n/errors';
+import { z } from 'zod';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { EngineV2Runtime } from '@/modules/engine-v2/engine-v2.runtime';
 
 import { BaseCommand } from './base-command';
 
+const flagsSchema = z.object({
+	roles: z
+		.string()
+		.optional()
+		.describe(
+			'Comma-separated list, without spaces, of the engine roles to run: api, orchestrator, step-worker. Runs every role when unset.',
+		),
+});
+
 @Command({
 	name: 'engine',
 	description:
-		'Starts the engine v2 data plane. Needs a control plane (`n8n start` with N8N_ENGINE_MODE=remote) to resolve credentials from, and Redis for its work queues, execution responses and lifecycle events.',
+		'Starts the engine v2 data plane. Needs a control plane (`n8n start` with N8N_ENGINE_MODE=remote) to resolve credentials from, and Redis for its work queues, execution responses and lifecycle events. The `api` role serves the engine API, the `orchestrator` role plans executions, and the `step-worker` role runs the nodes.',
+	examples: [
+		'',
+		'--roles=api',
+		'--roles=orchestrator',
+		'--roles=step-worker',
+		'--roles=api,orchestrator',
+	],
+	flagsSchema,
 })
-export class Engine extends BaseCommand {
+export class Engine extends BaseCommand<z.infer<typeof flagsSchema>> {
 	// The data plane has no control plane database. Its own database is the
 	// engine's, opened by the runtime from N8N_ENGINE_DATABASE_URL.
 	override needsDb = false;
-
-	// The data plane runs the nodes, so it hosts the task broker the Code node's
-	// runners connect to. Same module and env as `n8n start`.
-	// TODO(CET-332): remove once Code nodes run on the sandbox service.
-	override needsCodeExecution = true;
-
-	override needsExpressionEngine = true;
 
 	private runtime?: EngineV2Runtime;
 
@@ -39,6 +50,8 @@ export class Engine extends BaseCommand {
 		// The guards below run before `super.init()` wires the reporter, and the
 		// crash path reports through it.
 		this.errorReporter = Container.get(ErrorReporter);
+		const { parseEngineRoles } = await import('@/modules/engine-v2/engine-roles.js');
+		const roles = parseEngineRoles(this.flags.roles);
 		assertControlPlaneIsolated(process.env);
 		const engineConfig = Container.get(EngineConfig);
 		assertRemoteControlPlane(engineConfig);
@@ -47,7 +60,13 @@ export class Engine extends BaseCommand {
 			N8N_ENGINE_CONTROL_PLANE_BASE_URL: engineConfig.controlPlaneBaseUrl,
 		});
 
-		this.logger.info('Starting engine v2 data plane...');
+		// Only the step worker runs nodes, so only it evaluates expressions and Code nodes.
+		const runsSteps = roles.includes('step-worker');
+		this.needsExpressionEngine = runsSteps;
+		// TODO(CET-332): remove once Code nodes run on the sandbox service.
+		this.needsCodeExecution = runsSteps;
+
+		this.logger.info(`Starting engine v2 data plane with roles ${roles.join(', ')}...`);
 		this.logger.debug(`Host ID: ${this.instanceSettings.hostId}`);
 
 		await super.init();
@@ -91,6 +110,7 @@ export class Engine extends BaseCommand {
 			responseSender: new ExecutionChannelSender(publisher, createExecutionResponseCodec(logger)),
 			lifecycleEventSender: new LifecycleEventChannelSender(publisher, logger),
 			queues: this.workQueues.queues,
+			roles,
 		});
 
 		await Container.get(LoadNodesAndCredentials).postProcessLoaders();

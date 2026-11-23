@@ -3,6 +3,7 @@ import { Logger } from '@n8n/backend-common';
 import { EngineConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type {
+	EngineRole,
 	EngineRuntime,
 	EngineWorkQueues,
 	ExecutionResponseSender,
@@ -44,6 +45,8 @@ export interface EngineV2RuntimeOptions {
 	lifecycleEventSender?: { send: LifecycleEventCallback };
 	/** The queues the engine runs on. The caller closes their connections. */
 	queues: EngineWorkQueues;
+	/** The engine roles this process runs. Without it, the process runs every role. */
+	roles?: readonly EngineRole[];
 }
 
 /**
@@ -130,6 +133,7 @@ export class EngineV2Runtime {
 		responseSender,
 		lifecycleEventSender,
 		queues,
+		roles,
 	}: EngineV2RuntimeOptions): void {
 		assert(this.dataSource, 'Engine v2 cannot start without a data source');
 
@@ -137,6 +141,7 @@ export class EngineV2Runtime {
 		this.stopping = stopping;
 
 		this.engine = createEngineRuntime({
+			roles,
 			dataSource: this.dataSource,
 			// TODO(CAT-2909): placeholder policy — every execution is admitted and no
 			// limits are applied.

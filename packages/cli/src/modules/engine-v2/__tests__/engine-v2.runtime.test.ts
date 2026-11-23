@@ -247,6 +247,21 @@ describe('EngineV2Runtime', () => {
 			);
 		});
 
+		it('passes the roles it is given to the engine', async () => {
+			await newRuntime().init({ ...initOptions(), roles: ['orchestrator'] });
+
+			expect(mocks.createEngineRuntime).toHaveBeenCalledWith(
+				expect.objectContaining({ roles: ['orchestrator'] }),
+			);
+		});
+
+		it('leaves the roles to the engine default when it is given none', async () => {
+			await newRuntime().init(initOptions());
+
+			const [options] = mocks.createEngineRuntime.mock.calls[0] as [{ roles?: unknown }];
+			expect(options.roles).toBeUndefined();
+		});
+
 		it('starts the engine', async () => {
 			await newRuntime().init(initOptions());
 

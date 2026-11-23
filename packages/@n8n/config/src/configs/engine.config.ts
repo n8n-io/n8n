@@ -58,7 +58,8 @@ export class EngineConfig {
 	 *
 	 * Set this whenever the engine does not answer on `http://127.0.0.1:<port>`,
 	 * for example when `N8N_ENGINE_HOST` names a specific interface, or once the
-	 * engine runs out of process.
+	 * engine runs out of process. The URL must reach an engine process that runs
+	 * the `api` role.
 	 */
 	@Env('N8N_ENGINE_BASE_URL')
 	baseUrl: string = '';
@@ -76,7 +77,8 @@ export class EngineConfig {
 	/**
 	 * How many workflow steps one engine process runs at the same time, where
 	 * each step is one run of one node. In `in-process` mode, the engine process
-	 * is the n8n main process. A higher value uses more memory.
+	 * is the n8n main process. A higher value uses more memory. An `n8n engine`
+	 * process uses it only when it runs the `step-worker` role.
 	 *
 	 * This is in development and not ready for use.
 	 */
@@ -84,9 +86,11 @@ export class EngineConfig {
 	stepConcurrency: number = 1;
 
 	/**
-	 * How many planning tasks one engine process runs at the same time. A planning
-	 * task starts an execution, or decides what runs next after a step finishes.
-	 * In `in-process` mode, the engine process is the n8n main process.
+	 * How many planning tasks one engine process runs at the same time. A
+	 * planning task starts an execution, or decides what runs next after a step
+	 * finishes. In `in-process` mode, the engine process is the n8n main
+	 * process. An `n8n engine` process uses it only when it runs the
+	 * `orchestrator` role.
 	 *
 	 * This is in development and not ready for use.
 	 */
