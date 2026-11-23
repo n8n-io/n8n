@@ -148,9 +148,12 @@ export class KnowledgeCollectionRepository {
 			.update(KnowledgeCollection, { id, kind: 'shared' }, { ...changes, updatedAt: new Date() });
 	}
 
-	/** The database cascade deletes the file, vector store, share and agent link rows too. */
-	async deleteShared(id: string, ctx: OperationContext): Promise<void> {
-		await this.table.managerFor(ctx).delete(KnowledgeCollection, { id, kind: 'shared' });
+	/**
+	 * Deletes nothing when the project has no shared collection with this id.
+	 * The database cascade deletes the file, vector store, share and agent link rows too.
+	 */
+	async deleteSharedInProject(id: string, projectId: string, ctx: OperationContext): Promise<void> {
+		await this.table.managerFor(ctx).delete(KnowledgeCollection, { id, projectId, kind: 'shared' });
 	}
 
 	/**

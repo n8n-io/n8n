@@ -110,7 +110,7 @@ export class KnowledgeCollectionCatalogService {
 		collectionId: string,
 		{ name, description }: UpdateKnowledgeCollectionDto,
 	): Promise<KnowledgeCollectionDto> {
-		const collection = await this.findEditableOrThrow(user, projectId, collectionId, 'change');
+		const collection = await this.findEditableOrThrow(user, projectId, collectionId);
 
 		const trimmedName = name?.trim();
 		const trimmedDescription = description?.trim();
@@ -153,12 +153,16 @@ export class KnowledgeCollectionCatalogService {
 		return await this.getDtoOrThrow(collection.id);
 	}
 
+	/**
+	 * A missing collection, or one of another project, also answers success and
+	 * nothing is deleted, as the delete of a missing knowledge file does.
+	 */
 	async delete(user: User, projectId: string, collectionId: string): Promise<{ success: true }> {
-		const collection = await this.findEditableOrThrow(user, projectId, collectionId, 'delete');
+		await this.assertCanChangeCollections(user, projectId, 'delete');
 
 		// The stored file bytes stay: no code writes a collection file yet, and the upload
 		// brings their cleanup (see the module AGENTS.md).
-		await this.collectionRepository.deleteShared(collection.id, {});
+		await this.collectionRepository.deleteSharedInProject(collectionId, projectId, {});
 
 		return { success: true };
 	}
@@ -186,27 +190,15 @@ export class KnowledgeCollectionCatalogService {
 	}
 
 	/**
-	 * Collections have no scopes of their own yet (TBD), so a change or a delete
-	 * needs `agent:update` on the home project. The lookup also uses the project
-	 * of the URL, so a collection of another project answers like a missing one.
+	 * The lookup uses the project of the URL, so a collection of another project
+	 * answers like a missing one.
 	 */
 	private async findEditableOrThrow(
 		user: User,
 		projectId: string,
 		collectionId: string,
-		action: 'change' | 'delete',
 	): Promise<KnowledgeCollection> {
-		const collectionsEnabled = await this.availabilityService.isCollectionsEnabled();
-		if (!collectionsEnabled) {
-			throw new NotFoundError('Knowledge collections are not enabled');
-		}
-
-		const canUpdateAgents = await userHasScopes(user, ['agent:update'], false, { projectId });
-		if (!canUpdateAgents) {
-			throw new ForbiddenError(
-				`You do not have permission to ${action} a knowledge collection in this project.`,
-			);
-		}
+		await this.assertCanChangeCollections(user, projectId, 'change');
 
 		const collection = await this.collectionRepository.findSharedInProject(
 			collectionId,
@@ -218,6 +210,28 @@ export class KnowledgeCollectionCatalogService {
 		}
 
 		return collection;
+	}
+
+	/**
+	 * Collections have no scopes of their own yet (TBD), so a change or a delete
+	 * needs `agent:update` on the home project.
+	 */
+	private async assertCanChangeCollections(
+		user: User,
+		projectId: string,
+		action: 'change' | 'delete',
+	): Promise<void> {
+		const collectionsEnabled = await this.availabilityService.isCollectionsEnabled();
+		if (!collectionsEnabled) {
+			throw new NotFoundError('Knowledge collections are not enabled');
+		}
+
+		const canUpdateAgents = await userHasScopes(user, ['agent:update'], false, { projectId });
+		if (!canUpdateAgents) {
+			throw new ForbiddenError(
+				`You do not have permission to ${action} a knowledge collection in this project.`,
+			);
+		}
 	}
 
 	private async findFreeSlug(name: string): Promise<string> {

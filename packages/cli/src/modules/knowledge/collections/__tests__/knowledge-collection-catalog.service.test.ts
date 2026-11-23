@@ -476,15 +476,20 @@ describe('KnowledgeCollectionCatalogService', () => {
 			await expect(service.delete(user, projectId, 'collection-1')).resolves.toEqual({
 				success: true,
 			});
-			expect(collectionRepository.deleteShared).toHaveBeenCalledWith('collection-1', {});
+			expect(collectionRepository.deleteSharedInProject).toHaveBeenCalledWith(
+				'collection-1',
+				projectId,
+				{},
+			);
 		});
 
-		it('returns not found for a collection that is not in the project', async () => {
+		it('does not look the collection up, so a missing one also answers success', async () => {
 			const { service, collectionRepository } = makeService();
-			collectionRepository.findSharedInProject.mockResolvedValue(null);
 
-			await expect(service.delete(user, projectId, 'collection-1')).rejects.toThrow(NotFoundError);
-			expect(collectionRepository.deleteShared).not.toHaveBeenCalled();
+			await expect(service.delete(user, projectId, 'missing')).resolves.toEqual({
+				success: true,
+			});
+			expect(collectionRepository.findSharedInProject).not.toHaveBeenCalled();
 		});
 
 		it('returns forbidden for a user who cannot update agents in the project', async () => {
@@ -492,14 +497,14 @@ describe('KnowledgeCollectionCatalogService', () => {
 			const { service, collectionRepository } = makeService();
 
 			await expect(service.delete(user, projectId, 'collection-1')).rejects.toThrow(ForbiddenError);
-			expect(collectionRepository.deleteShared).not.toHaveBeenCalled();
+			expect(collectionRepository.deleteSharedInProject).not.toHaveBeenCalled();
 		});
 
 		it('returns not found when collections are off', async () => {
 			const { service, collectionRepository } = makeService({ collectionsFlag: false });
 
 			await expect(service.delete(user, projectId, 'collection-1')).rejects.toThrow(NotFoundError);
-			expect(collectionRepository.deleteShared).not.toHaveBeenCalled();
+			expect(collectionRepository.deleteSharedInProject).not.toHaveBeenCalled();
 		});
 	});
 });

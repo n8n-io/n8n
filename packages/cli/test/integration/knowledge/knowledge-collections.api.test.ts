@@ -514,12 +514,12 @@ describe('knowledge collection routes', () => {
 			);
 		});
 
-		it('answers 404 for a collection of another project and for a missing one', async () => {
+		it('answers 200 and deletes nothing for a collection of another project and for a missing one', async () => {
 			const personalProject = await getPersonalProject(editor);
 			const elsewhere = await createCollection('Pricing', personalProject.id);
 
-			expect((await remove(editor, elsewhere.id)).status).toBe(404);
-			expect((await remove(editor, 'missing')).status).toBe(404);
+			expect((await remove(editor, elsewhere.id)).status).toBe(200);
+			expect((await remove(editor, 'missing')).status).toBe(200);
 			expect(
 				await Container.get(DataSource)
 					.getRepository(KnowledgeCollection)
