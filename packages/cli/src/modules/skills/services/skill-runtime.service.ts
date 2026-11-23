@@ -61,7 +61,7 @@ export class SkillRuntimeService {
 			versionId: version.id,
 			version: version.version,
 			instructions: (await this.workflowsInSkillsFlagGate.isEnabled())
-				? withSkillWorkflowMentionHint(version.instructions)
+				? withSkillWorkflowMentionHint({ instructions: version.instructions }).instructions
 				: version.instructions,
 			frontmatter: version.frontmatter,
 			files: files.map(({ path }) => ({ path })),

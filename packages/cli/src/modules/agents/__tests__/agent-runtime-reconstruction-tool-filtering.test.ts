@@ -1238,6 +1238,26 @@ describe('AgentRuntimeReconstructionService — workflows that skills mention', 
 		);
 	});
 
+	it('adds the workflow hint when only a reference of the skill mentions a workflow', async () => {
+		const { service, workflowsInSkillsFlagGate } = makeService({});
+		workflowsInSkillsFlagGate.isEnabled.mockResolvedValue(true);
+		buildFromJsonResolvingTools([]);
+		const source = makeSkillAgentEntity();
+		source.skills['skill-1'] = {
+			...source.skills['skill-1'],
+			instructions: 'Read the reference.',
+			references: [
+				{ path: 'references/run.md', content: 'Call [Get code](n8n://workflow/wf-mentioned).' },
+			],
+		};
+
+		await service.reconstructFromAgentEntity(source, mock<CredentialProvider>(), 'production');
+
+		expect(skillInstructionsPassedToBuildFromJson()).toMatch(
+			/^Read the reference\.\n\n.*If you cannot find or run the workflow, stop and tell the user\.$/,
+		);
+	});
+
 	it('keeps the skill instructions while the flag is off', async () => {
 		const { service, workflowsInSkillsFlagGate } = makeService({});
 		workflowsInSkillsFlagGate.isEnabled.mockResolvedValue(false);

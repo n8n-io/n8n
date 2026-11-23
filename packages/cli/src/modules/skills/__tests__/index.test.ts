@@ -35,6 +35,7 @@ describe('public API', () => {
 			'skillScopeOf',
 			'skillSourceReasonOf',
 			'toSkillToolRefusal',
+			'withSkillWorkflowMentionHint',
 			'withTrimmedName',
 		]);
 		// The import loads every skills service, which takes seconds under a full test run.

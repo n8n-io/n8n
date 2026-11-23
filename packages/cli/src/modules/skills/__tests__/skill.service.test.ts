@@ -1169,6 +1169,7 @@ describe('SkillService', () => {
 
 			afterEach(() => {
 				projectSkill.version.instructions = 'Use short sentences.';
+				projectSkill.files = [];
 			});
 
 			it('adds the workflow hint to the instructions when the flag is on', async () => {
@@ -1186,6 +1187,17 @@ describe('SkillService', () => {
 				expect((await service.listForMcp(user, 0, 50)).skills[0].skill.instructions).toBe(
 					mentioning,
 				);
+			});
+
+			it('adds the workflow hint to the instructions when only a reference mentions a workflow', async () => {
+				workflowsInSkillsGate.isEnabled.mockResolvedValue(true);
+				projectSkill.version.instructions = 'Use short sentences.';
+				projectSkill.files = [mock({ path: 'references/run.md', content: mentioning })];
+
+				const { skill } = (await service.listForMcp(user, 0, 50)).skills[0];
+
+				expect(skill.instructions).toBe(`Use short sentences.\n\n${SKILL_WORKFLOW_MENTION_HINT}`);
+				expect(skill.references).toEqual([{ path: 'references/run.md', content: mentioning }]);
 			});
 		});
 

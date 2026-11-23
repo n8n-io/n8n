@@ -794,10 +794,7 @@ export class AgentRuntimeReconstructionService {
 		return {
 			config: withSkillWorkflowTools(config, skills, legacyWorkflowIds),
 			skills: Object.fromEntries(
-				Object.entries(skills).map(([id, skill]) => [
-					id,
-					{ ...skill, instructions: withSkillWorkflowMentionHint(skill.instructions) },
-				]),
+				Object.entries(skills).map(([id, skill]) => [id, withSkillWorkflowMentionHint(skill)]),
 			),
 		};
 	}

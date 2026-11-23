@@ -103,9 +103,7 @@ function toMcpSkillContent(row: ResolvedSkillRow, withMentionHint: boolean): Mcp
 	return {
 		id: row.skill.id,
 		projectId: row.skill.projectId,
-		skill: withMentionHint
-			? { ...skill, instructions: withSkillWorkflowMentionHint(skill.instructions) }
-			: skill,
+		skill: withMentionHint ? withSkillWorkflowMentionHint(skill) : skill,
 	};
 }
 
