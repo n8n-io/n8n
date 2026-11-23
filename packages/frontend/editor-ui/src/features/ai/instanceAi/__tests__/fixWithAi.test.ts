@@ -73,13 +73,15 @@ describe('buildFixWithAiPrompt', () => {
 
 	it('keeps the prompt under the message limit when many nodes fail with long errors', () => {
 		const errors = Array.from({ length: 60 }, (_, index) => ({
-			nodeName: `Node ${index}`,
+			nodeName: `Node ${String(index).padStart(2, '0')}`,
 			errorMessage: 'x'.repeat(30_000),
 		}));
 
 		const prompt = buildFixWithAiPrompt({ errors });
 
 		expect(prompt.length).toBeLessThanOrEqual(EXTENDED_PROMPT_MAX_LENGTH);
-		expect(prompt).toContain('Node 59');
+		for (const { nodeName } of errors) {
+			expect(prompt).toContain(nodeName);
+		}
 	});
 });
