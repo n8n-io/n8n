@@ -338,6 +338,8 @@ catalogs:
     '@vue/test-utils': ^2.4.6
     '@vue/tsconfig': ^0.7.0
     '@vueuse/core': ^14.3.0
+    ag-grid-community: ^34.1.1
+    ag-grid-vue3: ^34.1.1
     autoprefixer: ^10.4.19
     element-plus: 2.4.3
     highlight.js: 11.12.0

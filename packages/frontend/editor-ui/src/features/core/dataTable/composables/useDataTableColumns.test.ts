@@ -1,15 +1,16 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { ref } from 'vue';
-import type { EditableCallbackParams, ICellRendererParams } from 'ag-grid-community';
-import { useDataTableColumns } from './useDataTableColumns';
-import type { DataTableColumn } from '@/features/core/dataTable/dataTable.types';
-import { ADD_ROW_ROW_ID } from '@/features/core/dataTable/constants';
-
-vi.mock('@/features/core/dataTable/composables/useDataTableTypes', () => ({
-	useDataTableTypes: () => ({
-		mapToAGCellType: (type: string) => (type === 'string' ? 'text' : type),
-	}),
-}));
+import type { DataGridColumn } from '@n8n/design-system';
+import {
+	DELETE_COLUMN_ACTION,
+	useDataTableColumns,
+} from '@/features/core/dataTable/composables/useDataTableColumns';
+import type { DataTableColumn, DataTableRow } from '@/features/core/dataTable/dataTable.types';
+import {
+	DATA_TABLE_ID_COLUMN_WIDTH,
+	DEFAULT_COLUMN_WIDTH,
+	MAX_CELL_DISPLAY_LENGTH,
+} from '@/features/core/dataTable/constants';
 
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
@@ -17,658 +18,135 @@ vi.mock('@n8n/i18n', () => ({
 	}),
 }));
 
-vi.mock('@/features/core/dataTable/components/dataGrid/ColumnHeader.vue', () => ({
-	default: {},
-}));
+const nameColumn: DataTableColumn = { id: 'col-name', name: 'name', type: 'string', index: 0 };
+const ageColumn: DataTableColumn = { id: 'col-age', name: 'age', type: 'number', index: 1 };
 
-vi.mock('@/features/core/dataTable/components/dataGrid/ElDatePickerCellEditor.vue', () => ({
-	default: {},
-}));
+const oversizedText = 'a'.repeat(MAX_CELL_DISPLAY_LENGTH + 1);
 
-vi.mock('@/features/core/dataTable/components/dataGrid/ElDatePickerFilter.vue', () => ({
-	default: {},
-}));
+const createGridColumns = (columns: DataTableColumn[]) => useDataTableColumns(ref(columns)).value;
 
-vi.mock('@/features/core/dataTable/components/dataGrid/AddColumnButton.vue', () => ({
-	default: {},
-}));
+const findGridColumn = (gridColumns: Array<DataGridColumn<DataTableRow>>, id: string) => {
+	const gridColumn = gridColumns.find((column) => column.id === id);
+	if (!gridColumn) throw new Error(`Column ${id} not found`);
+	return gridColumn;
+};
 
-vi.mock('@/features/core/dataTable/components/dataGrid/AddRowButton.vue', () => ({
-	default: {},
-}));
-
-vi.mock('@/features/core/dataTable/utils/columnUtils', () => ({
-	createCellClass: vi.fn(),
-	createValueGetter: vi.fn(),
-	createCellRendererSelector: vi.fn(),
-	createStringValueSetter: vi.fn(),
-	stringCellEditorParams: {},
-	dateValueFormatter: vi.fn(),
-	numberValueFormatter: vi.fn(),
-	getStringColumnFilterOptions: vi.fn(() => []),
-	getDateColumnFilterOptions: vi.fn(() => []),
-	getNumberColumnFilterOptions: vi.fn(() => []),
-	getBooleanColumnFilterOptions: vi.fn(() => []),
-	isOversizedValue: vi.fn(() => false),
-}));
+const callRowRule = <T>(rule: T | ((row: DataTableRow) => T) | undefined, row: DataTableRow) =>
+	typeof rule === 'function' ? (rule as (row: DataTableRow) => T)(row) : rule;
 
 describe('useDataTableColumns', () => {
-	const mockOnDeleteColumn = vi.fn();
-	const mockOnRenameColumn = vi.fn();
-	const mockOnAddRowClick = vi.fn();
-	const mockOnAddColumn = vi.fn();
-	const isTextEditorOpen = ref(false);
+	it('should place the id column first, user columns next and system date columns last', () => {
+		const gridColumns = createGridColumns([nameColumn, ageColumn]);
 
-	beforeEach(() => {
-		vi.clearAllMocks();
+		expect(gridColumns.map((column) => column.id)).toEqual([
+			'id',
+			'col-name',
+			'col-age',
+			'createdAt',
+			'updatedAt',
+		]);
 	});
 
-	const createComposable = () => {
-		return useDataTableColumns({
-			onDeleteColumn: mockOnDeleteColumn,
-			onRenameColumn: mockOnRenameColumn,
-			onAddRowClick: mockOnAddRowClick,
-			onAddColumn: mockOnAddColumn,
-			isTextEditorOpen,
+	it('should order user columns by index', () => {
+		const gridColumns = createGridColumns([
+			{ ...ageColumn, index: 0 },
+			{ ...nameColumn, index: 2 },
+			{ id: 'col-active', name: 'active', type: 'boolean', index: 1 },
+		]);
+
+		expect(gridColumns.slice(1, 4).map((column) => column.id)).toEqual([
+			'col-age',
+			'col-active',
+			'col-name',
+		]);
+	});
+
+	it('should lock the id column to the left with a fixed width and no editing', () => {
+		const idColumn = findGridColumn(createGridColumns([]), 'id');
+
+		expect(idColumn).toMatchObject({
+			field: 'id',
+			label: 'id',
+			type: 'string',
+			width: DATA_TABLE_ID_COLUMN_WIDTH,
+			minWidth: DATA_TABLE_ID_COLUMN_WIDTH,
+			maxWidth: DATA_TABLE_ID_COLUMN_WIDTH,
+			resizable: false,
+			filterable: false,
+			editable: false,
+			lock: 'left',
 		});
-	};
+	});
 
-	describe('createColumnDef', () => {
-		it('should create basic column definition', () => {
-			const { createColumnDef } = createComposable();
-			const column: DataTableColumn = {
-				id: 'col1',
-				name: 'Column 1',
-				type: 'string',
-				index: 0,
-			};
+	it('should lock the system date columns to the right and make them read-only', () => {
+		const gridColumns = createGridColumns([]);
 
-			const colDef = createColumnDef(column);
-
-			expect(colDef.colId).toBe('col1');
-			expect(colDef.field).toBe('Column 1');
-			expect(colDef.headerName).toBe('Column 1');
-			expect(colDef.sortable).toBe(true);
-			expect(colDef.resizable).toBe(true);
-		});
-
-		it('should create string column with text editor', () => {
-			const { createColumnDef } = createComposable();
-			const column: DataTableColumn = {
-				id: 'col1',
-				name: 'Text Column',
-				type: 'string',
-				index: 0,
-			};
-
-			const colDef = createColumnDef(column);
-
-			expect(colDef.cellEditor).toBe('agLargeTextCellEditor');
-			expect(colDef.cellEditorPopup).toBe(true);
-			expect(colDef.cellEditorPopupPosition).toBe('over');
-		});
-
-		it('should create date column with custom editor', () => {
-			const { createColumnDef } = createComposable();
-			const column: DataTableColumn = {
-				id: 'col1',
-				name: 'Date Column',
+		for (const name of ['createdAt', 'updatedAt']) {
+			expect(findGridColumn(gridColumns, name)).toMatchObject({
+				field: name,
+				label: name,
 				type: 'date',
-				index: 0,
-			};
+				icon: 'calendar',
+				width: DEFAULT_COLUMN_WIDTH,
+				editable: false,
+				lock: 'right',
+			});
+		}
+	});
 
-			const colDef = createColumnDef(column);
+	it('should map a user column to a renameable grid column with a delete action', () => {
+		const gridColumn = findGridColumn(createGridColumns([ageColumn]), 'col-age');
 
-			expect(colDef.cellEditorPopup).toBe(true);
-			expect(colDef.cellEditorSelector).toBeDefined();
-		});
-
-		it('should create number column with formatter', () => {
-			const { createColumnDef } = createComposable();
-			const column: DataTableColumn = {
-				id: 'col1',
-				name: 'Number Column',
-				type: 'number',
-				index: 0,
-			};
-
-			const colDef = createColumnDef(column);
-
-			expect(colDef.valueFormatter).toBeDefined();
-		});
-
-		it('should create boolean column', () => {
-			const { createColumnDef } = createComposable();
-			const column: DataTableColumn = {
-				id: 'col1',
-				name: 'Boolean Column',
-				type: 'boolean',
-				index: 0,
-			};
-
-			const colDef = createColumnDef(column);
-
-			expect(colDef.colId).toBe('col1');
-			expect(colDef.field).toBe('Boolean Column');
-		});
-
-		it('should merge extra props', () => {
-			const { createColumnDef } = createComposable();
-			const column: DataTableColumn = {
-				id: 'col1',
-				name: 'Column 1',
-				type: 'string',
-				index: 0,
-			};
-
-			const colDef = createColumnDef(column, { editable: false, width: 100 });
-
-			expect(colDef.editable).toBe(false);
-			expect(colDef.width).toBe(100);
+		expect(gridColumn).toEqual({
+			id: 'col-age',
+			field: 'age',
+			label: 'age',
+			type: 'number',
+			icon: 'hash',
+			width: DEFAULT_COLUMN_WIDTH,
+			renameable: true,
+			actions: [
+				{
+					id: DELETE_COLUMN_ACTION,
+					label: 'dataTable.deleteColumn.confirm.title',
+					icon: 'trash-2',
+				},
+			],
 		});
 	});
 
-	describe('loadColumns', () => {
-		it('should load columns and create column definitions', () => {
-			const { loadColumns, colDefs } = createComposable();
-			const columns: DataTableColumn[] = [
-				{ id: 'col1', name: 'Column 1', type: 'string', index: 0 },
-				{ id: 'col2', name: 'Column 2', type: 'number', index: 1 },
-			];
+	it('should keep string cells with regular values editable without the cell slot', () => {
+		const gridColumn = findGridColumn(createGridColumns([nameColumn]), 'col-name');
+		const row: DataTableRow = { id: 1, name: 'short' };
 
-			loadColumns(columns);
-
-			expect(colDefs.value.length).toBeGreaterThan(2);
-			const userColumns = colDefs.value.filter(
-				(col) =>
-					col.colId !== 'id' &&
-					col.colId !== 'createdAt' &&
-					col.colId !== 'updatedAt' &&
-					col.colId !== 'add-column',
-			);
-			expect(userColumns).toHaveLength(2);
-		});
-
-		it('should include ID column as first column', () => {
-			const { loadColumns, colDefs } = createComposable();
-			const columns: DataTableColumn[] = [
-				{ id: 'col1', name: 'Column 1', type: 'string', index: 0 },
-			];
-
-			loadColumns(columns);
-
-			expect(colDefs.value[0]?.colId).toBe('id');
-		});
-
-		it('should include system columns (createdAt, updatedAt)', () => {
-			const { loadColumns, colDefs } = createComposable();
-			const columns: DataTableColumn[] = [
-				{ id: 'col1', name: 'Column 1', type: 'string', index: 0 },
-			];
-
-			loadColumns(columns);
-
-			const systemColumns = colDefs.value.filter(
-				(col) => col.colId === 'createdAt' || col.colId === 'updatedAt',
-			);
-			expect(systemColumns).toHaveLength(2);
-		});
-
-		it('should include add-column button as last column', () => {
-			const { loadColumns, colDefs } = createComposable();
-			const columns: DataTableColumn[] = [
-				{ id: 'col1', name: 'Column 1', type: 'string', index: 0 },
-			];
-
-			loadColumns(columns);
-
-			expect(colDefs.value[colDefs.value.length - 1]?.colId).toBe('add-column');
-		});
-
-		it('should order columns by index', () => {
-			const { loadColumns, colDefs } = createComposable();
-			const columns: DataTableColumn[] = [
-				{ id: 'col2', name: 'Column 2', type: 'string', index: 2 },
-				{ id: 'col1', name: 'Column 1', type: 'string', index: 1 },
-				{ id: 'col3', name: 'Column 3', type: 'string', index: 3 },
-			];
-
-			loadColumns(columns);
-
-			const userColumns = colDefs.value.filter(
-				(col) =>
-					col.colId !== 'id' &&
-					col.colId !== 'createdAt' &&
-					col.colId !== 'updatedAt' &&
-					col.colId !== 'add-column',
-			);
-			expect(userColumns[0]?.colId).toBe('col1');
-			expect(userColumns[1]?.colId).toBe('col2');
-			expect(userColumns[2]?.colId).toBe('col3');
-		});
+		expect(callRowRule(gridColumn.editable, row)).toBe(true);
+		expect(callRowRule(gridColumn.cellSlot, row)).toBe(false);
+		expect(callRowRule(gridColumn.cellClass, row)).toBeUndefined();
 	});
 
-	describe('deleteColumn', () => {
-		it('should remove column by id', () => {
-			const { loadColumns, deleteColumn, colDefs } = createComposable();
-			const columns: DataTableColumn[] = [
-				{ id: 'col1', name: 'Column 1', type: 'string', index: 0 },
-				{ id: 'col2', name: 'Column 2', type: 'string', index: 1 },
-			];
+	it('should make string cells with oversized values read-only and render them with the cell slot', () => {
+		const gridColumn = findGridColumn(createGridColumns([nameColumn]), 'col-name');
+		const row: DataTableRow = { id: 1, name: oversizedText };
 
-			loadColumns(columns);
-			const initialLength = colDefs.value.length;
-
-			deleteColumn('col1');
-
-			expect(colDefs.value.length).toBe(initialLength - 1);
-			expect(colDefs.value.find((col) => col.colId === 'col1')).toBeUndefined();
-		});
-
-		it('should not affect other columns', () => {
-			const { loadColumns, deleteColumn, colDefs } = createComposable();
-			const columns: DataTableColumn[] = [
-				{ id: 'col1', name: 'Column 1', type: 'string', index: 0 },
-				{ id: 'col2', name: 'Column 2', type: 'string', index: 1 },
-			];
-
-			loadColumns(columns);
-			deleteColumn('col1');
-
-			expect(colDefs.value.find((col) => col.colId === 'col2')).toBeDefined();
-		});
+		expect(callRowRule(gridColumn.editable, row)).toBe(false);
+		expect(callRowRule(gridColumn.cellSlot, row)).toBe(true);
+		expect(callRowRule(gridColumn.cellClass, row)).toBe('oversized-cell');
 	});
 
-	describe('insertColumnAtIndex', () => {
-		it('should insert column at specified index', () => {
-			const { loadColumns, insertColumnAtIndex, colDefs } = createComposable();
-			const columns: DataTableColumn[] = [
-				{ id: 'col1', name: 'Column 1', type: 'string', index: 0 },
-			];
+	it('should not add oversized value rules to non-string columns', () => {
+		const gridColumn = findGridColumn(createGridColumns([ageColumn]), 'col-age');
 
-			loadColumns(columns);
-			const newColDef = { colId: 'new-col', field: 'New Column' };
-			insertColumnAtIndex(newColDef, 0);
-
-			expect(colDefs.value[0]).toEqual(newColDef);
-		});
+		expect(gridColumn.editable).toBeUndefined();
+		expect(gridColumn.cellSlot).toBeUndefined();
+		expect(gridColumn.cellClass).toBeUndefined();
 	});
 
-	describe('addColumn', () => {
-		it('should add column before the last column', () => {
-			const { loadColumns, addColumn, colDefs } = createComposable();
-			const columns: DataTableColumn[] = [
-				{ id: 'col1', name: 'Column 1', type: 'string', index: 0 },
-			];
+	it('should update the grid columns when the data table columns change', () => {
+		const columns = ref<DataTableColumn[]>([nameColumn]);
+		const gridColumns = useDataTableColumns(columns);
 
-			loadColumns(columns);
-			const newColumn: DataTableColumn = {
-				id: 'col2',
-				name: 'Column 2',
-				type: 'number',
-				index: 1,
-			};
-			addColumn(newColumn);
+		columns.value = [nameColumn, ageColumn];
 
-			expect(colDefs.value[colDefs.value.length - 1]?.colId).toBe('add-column');
-			expect(colDefs.value[colDefs.value.length - 2]?.colId).toBe('col2');
-		});
-	});
-
-	describe('moveColumn', () => {
-		it('should reorder columns correctly', () => {
-			const { loadColumns, moveColumn, colDefs } = createComposable();
-			const columns: DataTableColumn[] = [
-				{ id: 'col1', name: 'Column 1', type: 'string', index: 0 },
-				{ id: 'col2', name: 'Column 2', type: 'string', index: 1 },
-				{ id: 'col3', name: 'Column 3', type: 'string', index: 2 },
-			];
-
-			loadColumns(columns);
-			moveColumn(1, 2);
-
-			const userColumns = colDefs.value.filter(
-				(col) =>
-					col.colId !== 'id' &&
-					col.colId !== 'createdAt' &&
-					col.colId !== 'updatedAt' &&
-					col.colId !== 'add-column',
-			);
-
-			expect(userColumns[0]?.colId).toBe('col2');
-			expect(userColumns[1]?.colId).toBe('col3');
-			expect(userColumns[2]?.colId).toBe('col1');
-		});
-
-		it('should preserve ID column at first position', () => {
-			const { loadColumns, moveColumn, colDefs } = createComposable();
-			const columns: DataTableColumn[] = [
-				{ id: 'col1', name: 'Column 1', type: 'string', index: 0 },
-				{ id: 'col2', name: 'Column 2', type: 'string', index: 1 },
-			];
-
-			loadColumns(columns);
-			moveColumn(1, 2);
-
-			expect(colDefs.value[0]?.colId).toBe('id');
-		});
-
-		it('should preserve add-column button at last position', () => {
-			const { loadColumns, moveColumn, colDefs } = createComposable();
-			const columns: DataTableColumn[] = [
-				{ id: 'col1', name: 'Column 1', type: 'string', index: 0 },
-				{ id: 'col2', name: 'Column 2', type: 'string', index: 1 },
-			];
-
-			loadColumns(columns);
-			moveColumn(1, 2);
-
-			expect(colDefs.value[colDefs.value.length - 1]?.colId).toBe('add-column');
-		});
-
-		it('should handle invalid index gracefully', () => {
-			const { loadColumns, moveColumn, colDefs } = createComposable();
-			const columns: DataTableColumn[] = [
-				{ id: 'col1', name: 'Column 1', type: 'string', index: 0 },
-			];
-
-			loadColumns(columns);
-			const initialColDefs = [...colDefs.value];
-
-			moveColumn(999, 1);
-
-			expect(colDefs.value).toEqual(initialColDefs);
-		});
-	});
-
-	describe('readOnly mode', () => {
-		it('should disable editing on cells when readOnly is true', () => {
-			const readOnly = ref(true);
-			const { createColumnDef } = useDataTableColumns({
-				onDeleteColumn: mockOnDeleteColumn,
-				onRenameColumn: mockOnRenameColumn,
-				onAddRowClick: mockOnAddRowClick,
-				onAddColumn: mockOnAddColumn,
-				isTextEditorOpen,
-				readOnly,
-			});
-
-			const column: DataTableColumn = {
-				id: 'col1',
-				name: 'Column 1',
-				type: 'string',
-				index: 0,
-			};
-
-			const colDef = createColumnDef(column);
-
-			// Test the editable function with normal row data
-			const normalParams = { data: { id: 'row1' } };
-			expect(typeof colDef.editable).toBe('function');
-			if (typeof colDef.editable === 'function') {
-				expect(colDef.editable(normalParams as EditableCallbackParams)).toBe(false);
-			}
-		});
-
-		it('should enable editing on cells when readOnly is false', () => {
-			const readOnly = ref(false);
-			const { createColumnDef } = useDataTableColumns({
-				onDeleteColumn: mockOnDeleteColumn,
-				onRenameColumn: mockOnRenameColumn,
-				onAddRowClick: mockOnAddRowClick,
-				onAddColumn: mockOnAddColumn,
-				isTextEditorOpen,
-				readOnly,
-			});
-
-			const column: DataTableColumn = {
-				id: 'col1',
-				name: 'Column 1',
-				type: 'string',
-				index: 0,
-			};
-
-			const colDef = createColumnDef(column);
-
-			// Test the editable function with normal row data
-			const normalParams = { data: { id: 'row1' } };
-			expect(typeof colDef.editable).toBe('function');
-			if (typeof colDef.editable === 'function') {
-				expect(colDef.editable(normalParams as EditableCallbackParams)).toBe(true);
-			}
-		});
-
-		it('should pass the current lock to column menus', () => {
-			const readOnly = ref(true);
-			const { createColumnDef } = useDataTableColumns({
-				onDeleteColumn: mockOnDeleteColumn,
-				onRenameColumn: mockOnRenameColumn,
-				onAddRowClick: mockOnAddRowClick,
-				onAddColumn: mockOnAddColumn,
-				isTextEditorOpen,
-				readOnly,
-			});
-
-			const column: DataTableColumn = {
-				id: 'col1',
-				name: 'Column 1',
-				type: 'string',
-				index: 0,
-			};
-
-			const colDef = createColumnDef(column);
-
-			expect(colDef.headerComponentParams).toMatchObject({
-				allowMenuActions: true,
-			});
-			expect(colDef.headerComponentParams.readOnly()).toBe(true);
-			readOnly.value = false;
-			expect(colDef.headerComponentParams.readOnly()).toBe(false);
-		});
-
-		it('should enable column menu actions when readOnly is false', () => {
-			const readOnly = ref(false);
-			const { createColumnDef } = useDataTableColumns({
-				onDeleteColumn: mockOnDeleteColumn,
-				onRenameColumn: mockOnRenameColumn,
-				onAddRowClick: mockOnAddRowClick,
-				onAddColumn: mockOnAddColumn,
-				isTextEditorOpen,
-				readOnly,
-			});
-
-			const column: DataTableColumn = {
-				id: 'col1',
-				name: 'Column 1',
-				type: 'string',
-				index: 0,
-			};
-
-			const colDef = createColumnDef(column);
-
-			expect(colDef.headerComponentParams).toMatchObject({
-				allowMenuActions: true,
-			});
-		});
-
-		it('should disable AddRow button when readOnly is true', () => {
-			const readOnly = ref(true);
-			const { loadColumns, colDefs } = useDataTableColumns({
-				onDeleteColumn: mockOnDeleteColumn,
-				onRenameColumn: mockOnRenameColumn,
-				onAddRowClick: mockOnAddRowClick,
-				onAddColumn: mockOnAddColumn,
-				isTextEditorOpen,
-				readOnly,
-			});
-
-			const columns: DataTableColumn[] = [
-				{ id: 'col1', name: 'Column 1', type: 'string', index: 0 },
-			];
-
-			loadColumns(columns);
-
-			const idColumn = colDefs.value.find((col) => col.colId === 'id');
-			expect(idColumn).toBeDefined();
-
-			if (idColumn?.cellRendererSelector) {
-				const addRowParams = { value: ADD_ROW_ROW_ID } as ICellRendererParams;
-				const result = idColumn.cellRendererSelector(addRowParams);
-				expect(result).toBeDefined();
-				if (result && 'params' in result) {
-					expect(result.params.disabled()).toBe(true);
-				}
-			}
-		});
-
-		it('should enable AddRow button when readOnly is false', () => {
-			const readOnly = ref(false);
-			const { loadColumns, colDefs } = useDataTableColumns({
-				onDeleteColumn: mockOnDeleteColumn,
-				onRenameColumn: mockOnRenameColumn,
-				onAddRowClick: mockOnAddRowClick,
-				onAddColumn: mockOnAddColumn,
-				isTextEditorOpen,
-				readOnly,
-			});
-
-			const columns: DataTableColumn[] = [
-				{ id: 'col1', name: 'Column 1', type: 'string', index: 0 },
-			];
-
-			loadColumns(columns);
-
-			const idColumn = colDefs.value.find((col) => col.colId === 'id');
-			expect(idColumn).toBeDefined();
-
-			if (idColumn?.cellRendererSelector) {
-				const addRowParams = { value: ADD_ROW_ROW_ID } as ICellRendererParams;
-				const result = idColumn.cellRendererSelector(addRowParams);
-				expect(result).toBeDefined();
-				if (result && 'params' in result) {
-					expect(result.params.disabled()).toBe(false);
-				}
-			}
-		});
-
-		it('should disable AddColumn button when readOnly is true', () => {
-			const readOnly = ref(true);
-			const { loadColumns, colDefs } = useDataTableColumns({
-				onDeleteColumn: mockOnDeleteColumn,
-				onRenameColumn: mockOnRenameColumn,
-				onAddRowClick: mockOnAddRowClick,
-				onAddColumn: mockOnAddColumn,
-				isTextEditorOpen,
-				readOnly,
-			});
-
-			const columns: DataTableColumn[] = [
-				{ id: 'col1', name: 'Column 1', type: 'string', index: 0 },
-			];
-
-			loadColumns(columns);
-
-			const addColumnCol = colDefs.value.find((col) => col.colId === 'add-column');
-			expect(addColumnCol).toBeDefined();
-			expect(addColumnCol?.headerComponentParams.disabled()).toBe(true);
-		});
-
-		it('should enable AddColumn button when readOnly is false', () => {
-			const readOnly = ref(false);
-			const { loadColumns, colDefs } = useDataTableColumns({
-				onDeleteColumn: mockOnDeleteColumn,
-				onRenameColumn: mockOnRenameColumn,
-				onAddRowClick: mockOnAddRowClick,
-				onAddColumn: mockOnAddColumn,
-				isTextEditorOpen,
-				readOnly,
-			});
-
-			const columns: DataTableColumn[] = [
-				{ id: 'col1', name: 'Column 1', type: 'string', index: 0 },
-			];
-
-			loadColumns(columns);
-
-			const addColumnCol = colDefs.value.find((col) => col.colId === 'add-column');
-			expect(addColumnCol).toBeDefined();
-			expect(addColumnCol?.headerComponentParams.disabled()).toBe(false);
-		});
-
-		it('should work without readOnly parameter (defaults to false)', () => {
-			const { createColumnDef } = createComposable();
-			const column: DataTableColumn = {
-				id: 'col1',
-				name: 'Column 1',
-				type: 'string',
-				index: 0,
-			};
-
-			const colDef = createColumnDef(column);
-
-			// Test the editable function with normal row data
-			const normalParams = { data: { id: 'row1' } };
-			expect(typeof colDef.editable).toBe('function');
-			if (typeof colDef.editable === 'function') {
-				expect(colDef.editable(normalParams as EditableCallbackParams)).toBe(true);
-			}
-
-			// Menu actions should be enabled by default
-			expect(colDef.headerComponentParams).toMatchObject({
-				allowMenuActions: true,
-			});
-		});
-	});
-
-	describe('schemaReadOnly mode', () => {
-		const createWithLocks = (readOnly: boolean, schemaReadOnly: boolean) => {
-			const composable = useDataTableColumns({
-				onDeleteColumn: mockOnDeleteColumn,
-				onRenameColumn: mockOnRenameColumn,
-				onAddRowClick: mockOnAddRowClick,
-				onAddColumn: mockOnAddColumn,
-				isTextEditorOpen,
-				readOnly: ref(readOnly),
-				schemaReadOnly: ref(schemaReadOnly),
-				schemaReadOnlyTooltip: ref('Protected instance'),
-			});
-			composable.loadColumns([{ id: 'col1', name: 'Column 1', type: 'string', index: 0 }]);
-			return composable.colDefs.value;
-		};
-
-		it('should keep cells and the AddRow button editable', () => {
-			const colDefs = createWithLocks(false, true);
-
-			const column = colDefs.find((col) => col.colId === 'col1');
-			expect(typeof column?.editable).toBe('function');
-			if (typeof column?.editable === 'function') {
-				expect(column.editable({ data: { id: 'row1' } } as EditableCallbackParams)).toBe(true);
-			}
-
-			const idColumn = colDefs.find((col) => col.colId === 'id');
-			const result = idColumn?.cellRendererSelector?.({
-				value: ADD_ROW_ROW_ID,
-			} as ICellRendererParams);
-			expect(result && 'params' in result && result.params.disabled()).toBe(false);
-		});
-
-		it('should lock column menus and the AddColumn button with a tooltip', () => {
-			const colDefs = createWithLocks(false, true);
-
-			const column = colDefs.find((col) => col.colId === 'col1');
-			expect(column?.headerComponentParams.readOnly()).toBe(true);
-
-			const addColumnCol = colDefs.find((col) => col.colId === 'add-column');
-			expect(addColumnCol?.headerComponentParams.disabled()).toBe(true);
-			expect(addColumnCol?.headerComponentParams.disabledTooltip()).toBe('Protected instance');
-		});
-
-		it('should not show the protected instance tooltip when the whole grid is locked', () => {
-			const colDefs = createWithLocks(true, true);
-
-			const addColumnCol = colDefs.find((col) => col.colId === 'add-column');
-			expect(addColumnCol?.headerComponentParams.disabled()).toBe(true);
-			expect(addColumnCol?.headerComponentParams.disabledTooltip()).toBeUndefined();
-		});
+		expect(gridColumns.value.map((column) => column.id)).toContain('col-age');
 	});
 });

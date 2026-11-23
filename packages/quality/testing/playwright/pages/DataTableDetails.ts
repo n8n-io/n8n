@@ -34,11 +34,11 @@ export class DataTableDetails extends BasePage {
 	}
 
 	getVisibleColumns() {
-		return this.page.getByTestId('data-table-column-header');
+		return this.page.getByTestId('data-grid-column-header');
 	}
 
 	getNoRowsMessage() {
-		return this.page.getByTestId('data-table-no-rows-overlay');
+		return this.page.getByTestId('data-grid-no-rows');
 	}
 
 	getAddColumnHeaderButton() {
@@ -59,15 +59,15 @@ export class DataTableDetails extends BasePage {
 
 	getColumnHeaderByName(name: string) {
 		return this.page
-			.getByTestId('data-table-column-header')
-			.filter({ has: this.page.getByTestId('data-table-column-header-text').getByText(name) });
+			.getByTestId('data-grid-column-header')
+			.filter({ has: this.page.getByTestId('data-grid-column-header-text').getByText(name) });
 	}
 
 	/** The AG Grid header cell (`.ag-header-cell`) that holds the column with this name. */
 	getColumnHeaderCellByName(name: string) {
 		return this.page
 			.getByRole('columnheader')
-			.filter({ has: this.page.getByTestId('data-table-column-header-text').getByText(name) });
+			.filter({ has: this.page.getByTestId('data-grid-column-header-text').getByText(name) });
 	}
 
 	async getColumnIdByName(name: string): Promise<string> {
@@ -117,7 +117,9 @@ export class DataTableDetails extends BasePage {
 	}
 
 	getAddRowTableButton() {
-		return this.page.locator('[data-test-id="data-table-grid"] .add-row-cell button');
+		return this.page.locator(
+			'[data-test-id="data-table-grid"] [data-test-id="data-grid-footer-row"] button',
+		);
 	}
 
 	async addRow() {
@@ -169,14 +171,14 @@ export class DataTableDetails extends BasePage {
 
 	getColumnHeaderActions(columnName: string) {
 		const columnHeader = this.page.getByRole('columnheader').filter({
-			has: this.page.getByTestId('data-table-column-header-text').getByText(columnName),
+			has: this.page.getByTestId('data-grid-column-header-text').getByText(columnName),
 		});
-		return columnHeader.getByTestId('data-table-column-header-actions');
+		return columnHeader.getByTestId('data-grid-column-header-actions');
 	}
 
 	async deleteColumn(columnName: string) {
-		const columnHeader = this.page.getByTestId('data-table-column-header').filter({
-			has: this.page.getByTestId('data-table-column-header-text').getByText(columnName),
+		const columnHeader = this.page.getByTestId('data-grid-column-header').filter({
+			has: this.page.getByTestId('data-grid-column-header-text').getByText(columnName),
 		});
 		await columnHeader.hover();
 
@@ -184,7 +186,7 @@ export class DataTableDetails extends BasePage {
 		await actionsButton.click();
 
 		await this.page
-			.getByTestId('data-table-column-header-actions-item-delete')
+			.getByTestId('data-grid-column-header-actions-item-delete')
 			.filter({ visible: true })
 			.click();
 
@@ -194,11 +196,11 @@ export class DataTableDetails extends BasePage {
 
 	async openColumnFilter(columnName: string) {
 		const columnHeader = this.page.getByRole('columnheader').filter({
-			has: this.page.getByTestId('data-table-column-header-text').getByText(columnName),
+			has: this.page.getByTestId('data-grid-column-header-text').getByText(columnName),
 		});
 		await columnHeader.hover();
 
-		const filterButton = columnHeader.getByTestId('data-table-column-header-filter-button');
+		const filterButton = columnHeader.getByTestId('data-grid-column-header-filter-button');
 		await filterButton.click();
 	}
 
@@ -285,7 +287,7 @@ export class DataTableDetails extends BasePage {
 	}
 
 	getPagination() {
-		return this.page.getByTestId('data-table-content-pagination');
+		return this.page.getByTestId('data-grid-pagination');
 	}
 
 	async setPageSize(size: '10' | '20' | '50') {
@@ -336,7 +338,9 @@ export class DataTableDetails extends BasePage {
 			await input.fill(value);
 			await input.press('Enter');
 		} else if (type === 'date') {
-			const input = this.page.locator('#data-table-datepicker');
+			const input = this.page.locator(
+				'[data-test-id="data-grid-date-editor"] .el-date-editor input',
+			);
 			await input.fill(value);
 			await input.press('Enter');
 		} else if (type === 'boolean') {
@@ -364,7 +368,7 @@ export class DataTableDetails extends BasePage {
 		for (let i = 0; i < count; i++) {
 			const header = headers.nth(i);
 			const ariaColIndex = await header.getAttribute('aria-colindex');
-			const textElement = header.getByTestId('data-table-column-header-text');
+			const textElement = header.getByTestId('data-grid-column-header-text');
 			const textCount = await textElement.count();
 
 			if (textCount > 0 && ariaColIndex) {

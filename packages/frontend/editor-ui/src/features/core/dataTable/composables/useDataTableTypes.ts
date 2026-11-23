@@ -2,7 +2,6 @@ import type {
 	AGGridCellType,
 	DataTableColumnType,
 } from '@/features/core/dataTable/dataTable.types';
-import { isAGGridCellType } from '@/features/core/dataTable/typeGuards';
 import { DATA_TYPE_ICON_MAP } from '@/app/constants';
 
 export const useDataTableTypes = () => {
@@ -22,19 +21,8 @@ export const useDataTableTypes = () => {
 		return colType;
 	};
 
-	const mapToDataTableColumnType = (colType: AGGridCellType): DataTableColumnType => {
-		if (!isAGGridCellType(colType)) {
-			return 'string';
-		}
-		if (colType === 'text') {
-			return 'string';
-		}
-		return colType as DataTableColumnType;
-	};
-
 	return {
 		getIconForType,
 		mapToAGCellType,
-		mapToDataTableColumnType,
 	};
 };

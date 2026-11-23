@@ -1,36 +1,31 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue';
+import {
+	N8nDataGrid,
+	N8nSelectedItemsInfo,
+	type DataGridColumnActionSelect,
+	type DataGridColumnRename,
+	type DataGridExposed,
+	type DataGridFilter,
+	type DataGridSort,
+} from '@n8n/design-system';
+import { useDebounce } from '@n8n/composables/useDebounce';
 import type {
 	DataTable,
-	DataTableColumnCreatePayload,
+	DataTableColumn,
 	DataTableRow,
 } from '@/features/core/dataTable/dataTable.types';
-import { AgGridVue } from 'ag-grid-vue3';
-import type { GetRowIdParams, GridReadyEvent, SortChangedEvent } from 'ag-grid-community';
-import { n8nTheme } from '@/features/core/dataTable/components/dataGrid/n8nTheme';
-import { registerAgGridModulesOnce } from '@/features/core/dataTable/components/dataGrid/registerAgGridModulesOnce';
+import { DEFAULT_ID_COLUMN_NAME } from '@/features/core/dataTable/constants';
+import { useDataTablePagination } from '@/features/core/dataTable/composables/useDataTablePagination';
 import {
-	DATA_TABLE_HEADER_HEIGHT,
-	DATA_TABLE_ROW_HEIGHT,
-	DEFAULT_ID_COLUMN_NAME,
-	ADD_ROW_ROW_ID,
-} from '@/features/core/dataTable/constants';
-import {
-	useDataTablePagination,
-	type PageSize,
-} from '@/features/core/dataTable/composables/useDataTablePagination';
-import { useAgGrid } from '@/features/core/dataTable/composables/useAgGrid';
-import { useDataTableColumns } from '@/features/core/dataTable/composables/useDataTableColumns';
-import { useDataTableSelection } from '@/features/core/dataTable/composables/useDataTableSelection';
+	DELETE_COLUMN_ACTION,
+	useDataTableColumns,
+} from '@/features/core/dataTable/composables/useDataTableColumns';
 import { useDataTableOperations } from '@/features/core/dataTable/composables/useDataTableOperations';
-import { useDataTableColumnFilters } from '@/features/core/dataTable/composables/useDataTableColumnFilters';
-import { useI18n } from '@n8n/i18n';
-import { GRID_FILTER_CONFIG } from '@/features/core/dataTable/utils/filterMappings';
-import { useDebounce } from '@n8n/composables/useDebounce';
-import DataTableLoadingIndicator from './DataTableLoadingIndicator.vue';
-
-import { N8nPagination, N8nSelectedItemsInfo } from '@n8n/design-system';
-registerAgGridModulesOnce();
+import { toBackendFilter } from '@/features/core/dataTable/utils/filterProcessors';
+import AddColumnButton from './AddColumnButton.vue';
+import AddRowButton from './AddRowButton.vue';
+import OversizedCellRenderer from './OversizedCellRenderer.vue';
 
 type Props = {
 	dataTable: DataTable;
@@ -44,48 +39,31 @@ type Props = {
 
 const props = defineProps<Props>();
 
-const isSchemaReadOnly = computed(() => !!props.readOnly || !!props.schemaReadOnly);
-
 const emit = defineEmits<{
 	toggleSave: [value: boolean];
 	ready: [];
 	loadError: [];
 }>();
 
-const gridContainerRef = useTemplateRef<HTMLDivElement>('gridContainerRef');
-
-const i18n = useI18n();
+const grid = useTemplateRef<DataGridExposed>('grid');
 const { debounce } = useDebounce();
-const rowData = ref<DataTableRow[]>([]);
-const hasRecords = computed(() => rowData.value.length > 0);
-let isGridReady = false;
 
-const defaultColDef = computed(() => ({
-	...GRID_FILTER_CONFIG.defaultColDef,
-	editable: !props.readOnly,
-}));
+const rows = ref<DataTableRow[]>([]);
+const columns = ref<DataTableColumn[]>([...props.dataTable.columns]);
+const sort = ref<DataGridSort>(null);
+const filters = ref<DataGridFilter[]>([]);
+const selectedKeys = ref<string[]>([]);
 
-const agGrid = useAgGrid<DataTableRow>({
-	gridContainerRef,
-	defaultSortColumn: DEFAULT_ID_COLUMN_NAME,
-	pinnedBottomRowId: ADD_ROW_ROW_ID,
-	defaultColDef: defaultColDef.value,
-});
+const isReadOnly = computed(() => !!props.readOnly);
+const isSchemaReadOnly = computed(() => isReadOnly.value || !!props.schemaReadOnly);
+const gridColumns = useDataTableColumns(columns);
 
-const dataTableColumns = useDataTableColumns({
-	onDeleteColumn: onDeleteColumnFunction,
-	onRenameColumn: onRenameColumnFunction,
-	onAddRowClick: onAddRowClickFunction,
-	onAddColumn: onAddColumnFunction,
-	isTextEditorOpen: agGrid.isTextEditorOpen,
-	readOnly: computed(() => props.readOnly ?? false),
-	schemaReadOnly: computed(() => props.schemaReadOnly ?? false),
-	schemaReadOnlyTooltip: computed(() => props.schemaReadOnlyTooltip),
-});
-
-const { onFilterChanged, currentFilterJSON } = useDataTableColumnFilters({
-	gridApi: agGrid.gridApi,
-	colDefs: dataTableColumns.colDefs,
+const sortBy = computed(() =>
+	sort.value ? `${sort.value.field}:${sort.value.direction}` : `${DEFAULT_ID_COLUMN_NAME}:asc`,
+);
+const filterJSON = computed(() => {
+	const backendFilter = toBackendFilter(filters.value);
+	return backendFilter ? JSON.stringify(backendFilter) : undefined;
 });
 
 const {
@@ -97,109 +75,80 @@ const {
 	setTotalItems,
 	setCurrentPage,
 	setPageSize,
-} = useDataTablePagination({ onChange: fetchDataTableRowsFunction });
+} = useDataTablePagination({ onChange: fetchRows });
 
-const selection = useDataTableSelection({
-	gridApi: agGrid.gridApi,
-	readOnly: computed(() => props.readOnly ?? false),
-});
+const clearSelection = () => {
+	selectedKeys.value = [];
+};
 
-const dataTableOperations = useDataTableOperations({
-	colDefs: dataTableColumns.colDefs,
-	rowData,
-	deleteGridColumn: dataTableColumns.deleteColumn,
-	setGridData: agGrid.setGridData,
-	insertGridColumnAtIndex: dataTableColumns.insertColumnAtIndex,
+const focusRow = (rowId: number) => {
+	void nextTick(() => grid.value?.focusCell(String(rowId), undefined, { edit: true }));
+};
+
+const {
+	contentLoading,
+	onDeleteColumn,
+	onRenameColumn,
+	onAddColumn,
+	onColumnMove,
+	onAddRowClick,
+	onCellEdit,
+	fetchDataTableRows,
+	handleDeleteSelected,
+} = useDataTableOperations({
 	dataTableId: props.dataTable.id,
 	projectId: props.dataTable.projectId,
-	addGridColumn: dataTableColumns.addColumn,
-	moveGridColumn: dataTableColumns.moveColumn,
-	gridApi: agGrid.gridApi,
+	rows,
+	columns,
 	totalItems,
 	setTotalItems,
 	ensureItemOnPage,
-	focusFirstEditableCell: agGrid.focusFirstEditableCell,
-	toggleSave: (value) => emit('toggleSave', value),
 	currentPage,
 	pageSize,
-	currentSortBy: agGrid.currentSortBy,
-	currentSortOrder: agGrid.currentSortOrder,
-	handleClearSelection: selection.handleClearSelection,
-	selectedRowIds: selection.selectedRowIds,
-	handleCopyFocusedCell: agGrid.handleCopyFocusedCell,
-	currentFilterJSON,
+	sortBy,
+	filterJSON,
 	searchQuery: computed(() => props.search),
 	schemaReadOnly: isSchemaReadOnly,
+	clearSelection,
+	focusRow,
+	toggleSave: (value) => emit('toggleSave', value),
 });
 
-async function onDeleteColumnFunction(columnId: string) {
-	await dataTableOperations.onDeleteColumn(columnId);
+async function fetchRows() {
+	await fetchDataTableRows();
 }
 
-async function onRenameColumnFunction(columnId: string, columnName: string) {
-	await dataTableOperations.onRenameColumn(columnId, columnName);
-}
+const addColumnParams = computed(() => ({
+	onAddColumn,
+	disabled: isSchemaReadOnly.value,
+	disabledTooltip:
+		!isReadOnly.value && props.schemaReadOnly ? props.schemaReadOnlyTooltip : undefined,
+}));
 
-async function onAddColumnFunction(column: DataTableColumnCreatePayload) {
-	return await dataTableOperations.onAddColumn(column);
-}
+const onSort = async (value: DataGridSort) => {
+	sort.value = value;
+	await setCurrentPage(1);
+};
 
-async function onAddRowClickFunction() {
-	await dataTableOperations.onAddRowClick();
-}
+const onFilters = async (value: DataGridFilter[]) => {
+	filters.value = value;
+	await setCurrentPage(1);
+};
 
-async function fetchDataTableRowsFunction() {
-	await dataTableOperations.fetchDataTableRows();
-}
-
-const initialize = async (params: GridReadyEvent) => {
-	agGrid.onGridReady(params);
-	isGridReady = true;
-	dataTableColumns.loadColumns(props.dataTable.columns);
-	agGrid.setGridData({ colDefs: dataTableColumns.colDefs.value });
-	const loaded = await dataTableOperations.fetchDataTableRows();
-	if (!loaded) {
-		emit('loadError');
-		return;
-	}
-
-	// Empty tables do not emit AG Grid's first-data-rendered event.
-	if (!hasRecords.value) {
-		await nextTick();
-		emit('ready');
+const onColumnAction = async ({ columnId, actionId }: DataGridColumnActionSelect) => {
+	if (actionId === DELETE_COLUMN_ACTION) {
+		await onDeleteColumn(columnId);
 	}
 };
 
-const customNoRowsOverlay = `<div class="no-rows-overlay ag-overlay-no-rows-center" data-test-id="data-table-no-rows-overlay">${i18n.baseText('dataTable.noRows')}</div>`;
-
-// Keep the loading state to suppress "No rows", without showing a loading pill.
-const customLoadingOverlay = '<span aria-hidden="true"></span>';
-
-watch(
-	() => props.readOnly,
-	(readOnly) => {
-		if (!isGridReady) return;
-		if (readOnly) {
-			agGrid.gridApi.value.stopEditing(true);
-			selection.handleClearSelection();
-		}
-		// Checkbox renderers cache whether their cells are editable.
-		agGrid.gridApi.value.refreshCells({ force: true });
-	},
-);
-
-watch([agGrid.currentSortBy, agGrid.currentSortOrder], async () => {
-	await setCurrentPage(1);
-});
-
-watch(currentFilterJSON, async () => {
-	await setCurrentPage(1);
-});
-
-const onSearchChange = async () => {
-	await setCurrentPage(1);
+const onColumnRename = async ({ columnId, label }: DataGridColumnRename) => {
+	await onRenameColumn(columnId, label);
 };
-const debouncedOnSearchChange = debounce(onSearchChange, { debounceTime: 250, trailing: true });
+
+const debouncedOnSearchChange = debounce(async () => await setCurrentPage(1), {
+	debounceTime: 250,
+	trailing: true,
+});
 
 watch(
 	() => props.search,
@@ -208,158 +157,99 @@ watch(
 	},
 );
 
+watch(isReadOnly, (readOnly) => {
+	if (readOnly) clearSelection();
+});
+
+const isGridReady = ref(false);
+const isFirstPageLoaded = ref(false);
+
+// The grid does not report rendered rows for an empty table.
+const emitReadyWhenEmpty = async () => {
+	if (isGridReady.value && isFirstPageLoaded.value && rows.value.length === 0) {
+		await nextTick();
+		emit('ready');
+	}
+};
+
+const onGridReady = async () => {
+	isGridReady.value = true;
+	await emitReadyWhenEmpty();
+};
+
+onMounted(async () => {
+	const loaded = await fetchDataTableRows();
+	if (!loaded) {
+		emit('loadError');
+		return;
+	}
+	isFirstPageLoaded.value = true;
+	await emitReadyWhenEmpty();
+});
+
 defineExpose({
-	addRow: dataTableOperations.onAddRowClick,
-	addColumn: dataTableOperations.onAddColumn,
-	fetchDataTableRows: dataTableOperations.fetchDataTableRows,
+	addRow: onAddRowClick,
+	addColumn: onAddColumn,
+	fetchDataTableRows,
 });
 </script>
 
 <template>
-	<div :class="$style.wrapper">
-		<div
-			ref="gridContainerRef"
-			:class="[$style['grid-container'], { [$style['has-records']]: hasRecords }]"
-			:aria-busy="dataTableOperations.contentLoading.value"
-			data-test-id="data-table-grid"
+	<div :class="$style.wrapper" :aria-busy="contentLoading" data-test-id="data-table-grid">
+		<N8nDataGrid
+			ref="grid"
+			:rows="rows"
+			:columns="gridColumns"
+			row-key="id"
+			:loading="contentLoading"
+			:editable="!isReadOnly"
+			:columns-editable="!isSchemaReadOnly"
+			selectable
+			:selection-disabled="isReadOnly"
+			:selected-keys="selectedKeys"
+			sort-mode="server"
+			:sort="sort"
+			filter-mode="server"
+			:filters="filters"
+			pagination-mode="server"
+			:page="currentPage"
+			:items-per-page="pageSize"
+			:total="totalItems"
+			:page-sizes="pageSizeOptions"
+			@update:selected-keys="selectedKeys = $event"
+			@update:sort="onSort"
+			@update:filters="onFilters"
+			@update:page="setCurrentPage"
+			@update:items-per-page="setPageSize"
+			@cell-edit="onCellEdit"
+			@column-move="onColumnMove"
+			@column-rename="onColumnRename"
+			@column-action="onColumnAction"
+			@delete-selected="handleDeleteSelected"
+			@grid-ready="onGridReady"
+			@first-data-rendered="emit('ready')"
 		>
-			<AgGridVue
-				style="width: 100%"
-				:dom-layout="'autoHeight'"
-				:row-height="DATA_TABLE_ROW_HEIGHT"
-				:header-height="DATA_TABLE_HEADER_HEIGHT"
-				:animate-rows="false"
-				:theme="n8nTheme"
-				:suppress-drag-leave-hides-columns="true"
-				:suppress-movable-columns="isSchemaReadOnly"
-				:loading="dataTableOperations.contentLoading.value"
-				:row-selection="selection.rowSelection.value"
-				:get-row-id="(params: GetRowIdParams) => String(params.data.id)"
-				:stop-editing-when-cells-lose-focus="true"
-				:undo-redo-cell-editing="true"
-				:suppress-multi-sort="true"
-				:overlay-loading-template="customLoadingOverlay"
-				:overlay-no-rows-template="customNoRowsOverlay"
-				@grid-ready="initialize"
-				@first-data-rendered="emit('ready')"
-				@cell-value-changed="dataTableOperations.onCellValueChanged"
-				@column-moved="dataTableOperations.onColumnMoved"
-				@cell-clicked="agGrid.onCellClicked"
-				@cell-editing-started="agGrid.onCellEditingStarted"
-				@cell-editing-stopped="agGrid.onCellEditingStopped"
-				@column-header-clicked="agGrid.resetLastFocusedCell"
-				@selection-changed="selection.onSelectionChanged"
-				@sort-changed="
-					(e: SortChangedEvent) => agGrid.onSortChanged(e, dataTableColumns.colDefs.value)
-				"
-				@cell-key-down="dataTableOperations.onCellKeyDown"
-				@filter-changed="onFilterChanged"
-			/>
-			<DataTableLoadingIndicator v-if="dataTableOperations.contentLoading.value" />
-			<div :class="$style.footer">
-				<N8nPagination
-					:page="currentPage"
-					:items-per-page="pageSize"
-					data-test-id="data-table-content-pagination"
-					:total="totalItems"
-					:page-sizes="pageSizeOptions"
-					@update:page="setCurrentPage"
-					@update:items-per-page="(val: number) => setPageSize(val as PageSize)"
-				/>
-			</div>
-		</div>
+			<template #cell>
+				<OversizedCellRenderer />
+			</template>
+			<template #header-append>
+				<AddColumnButton :params="addColumnParams" />
+			</template>
+			<template #footer-row>
+				<AddRowButton :params="{ onClick: onAddRowClick, disabled: isReadOnly }" />
+			</template>
+		</N8nDataGrid>
 		<N8nSelectedItemsInfo
-			:selected-count="selection.selectedCount.value"
-			@delete-selected="dataTableOperations.handleDeleteSelected"
-			@clear-selection="selection.handleClearSelection"
+			:selected-count="selectedKeys.length"
+			@delete-selected="handleDeleteSelected(selectedKeys)"
+			@clear-selection="clearSelection"
 		/>
 	</div>
 </template>
 
 <style module lang="scss">
 .wrapper {
-	// AG Grid style overrides
-	--ag-foreground-color: var(--color--text);
-	--ag-cell-text-color: var(--color--text--shade-1);
-	--ag-accent-color: var(--color--purple-600);
-	--ag-row-hover-color: var(--color--background--light-1);
-	--ag-background-color: var(--color--background--light-2);
-	--ag-border-color: var(--border-color);
-	--ag-border-radius: var(--radius);
-	--ag-wrapper-border-radius: 0;
-	--ag-font-family: var(--font-family);
-	--ag-font-size: var(--font-size--xs);
-	--ag-font-color: var(--color--text);
-	--ag-row-height: calc(var(--ag-grid-size) * 0.8 + 32px);
-	--ag-header-background-color: var(--color--foreground--tint-1);
-	--ag-header-font-size: var(--font-size--xs);
-	--ag-header-font-weight: var(--font-weight--medium);
-	--ag-header-foreground-color: var(--color--text--shade-1);
-	--ag-cell-horizontal-padding: var(--spacing--2xs);
-	--ag-header-height: calc(var(--ag-grid-size) * 0.8 + 32px);
-	--ag-header-column-border-height: 100%;
-	--ag-range-selection-border-color: var(--color--purple-600);
-	--ag-input-padding-start: var(--spacing--2xs);
-	--ag-input-background-color: var(--color--background--light-2);
-	--ag-focus-shadow: none;
-
-	// Theme-aware scrollbar styling (dark mode support)
-	:global(.ag-body-horizontal-scroll-viewport),
-	:global(.ag-body-vertical-scroll-viewport) {
-		scrollbar-color: var(--color--foreground--shade-1) transparent;
-
-		@supports selector(::-webkit-scrollbar) {
-			&::-webkit-scrollbar {
-				height: var(--spacing--2xs);
-				width: var(--spacing--2xs);
-			}
-
-			&::-webkit-scrollbar-track {
-				background: transparent;
-			}
-
-			&::-webkit-scrollbar-thumb {
-				border-radius: var(--radius);
-				background: var(--color--foreground--shade-1);
-			}
-		}
-	}
-
-	:global(.ag-cell) {
-		display: flex;
-		align-items: center;
-	}
-
-	:global(.ag-header-cell-resize) {
-		width: var(--spacing--xs);
-		// this is needed so that we compensate for the width
-		right: -7px;
-	}
-
-	:global(.ag-cell[col-id='ag-Grid-SelectionColumn']) {
-		border: none;
-		padding-left: var(--spacing--lg);
-	}
-
-	:global(.ag-header-cell[col-id='ag-Grid-SelectionColumn']) {
-		padding-left: var(--spacing--lg);
-		&:after {
-			display: none;
-		}
-	}
-
-	:global(.ag-cell[col-id='ag-Grid-SelectionColumn'].ag-cell-focus) {
-		outline: none;
-	}
-
-	:global(.ag-root-wrapper) {
-		border-left: none;
-	}
-
-	:global(.id-column) {
-		color: var(--color--text--tint-1);
-	}
-
+	:global(.id-column),
 	:global(.system-column),
 	:global(.system-cell) {
 		color: var(--color--text--tint-1);
@@ -373,131 +263,8 @@ defineExpose({
 		text-align: center;
 	}
 
-	:global(.add-row-cell) {
-		border: none !important;
-		background-color: transparent !important;
-		padding: 0;
+	:global(.ag-cell[col-id='id']) {
+		border-right: var(--border-width) var(--border-style) var(--ag-border-color);
 	}
-
-	:global(.ag-header-cell[col-id='add-column']) {
-		&:after {
-			display: none;
-		}
-	}
-
-	:global(.ag-cell-value[col-id='add-column']),
-	:global(.ag-cell-value[col-id='id']),
-	:global(.ag-cell[col-id='ag-Grid-SelectionColumn']) {
-		border: none;
-		background-color: transparent;
-	}
-
-	:global(.ag-cell-value[col-id='id']) {
-		border-right: 1px solid var(--ag-border-color);
-	}
-
-	:global(.ag-large-text-input) {
-		position: absolute;
-		min-width: 420px;
-		padding: 0;
-
-		textarea {
-			padding-top: var(--spacing--3xs);
-
-			&:where(:focus-within, :active) {
-				border: var(--grid--cell--border-color--editing);
-			}
-		}
-	}
-
-	:global(.ag-center-cols-viewport) {
-		min-height: auto;
-	}
-
-	:global(.ag-checkbox-input-wrapper) {
-		&:where(:focus-within, :active) {
-			box-shadow: none;
-		}
-	}
-
-	:global(.ag-text-field-input-wrapper),
-	:global(.ag-number-field-input-wrapper) {
-		&:before {
-			display: none;
-		}
-
-		:global(.ag-input-field-input) {
-			padding-left: var(--ag-spacing);
-		}
-	}
-
-	:global(.ag-picker-field-wrapper) {
-		border-radius: var(--radius);
-		padding-left: var(--ag-spacing);
-	}
-
-	:global(.ag-cell-inline-editing) {
-		box-shadow: none;
-
-		&:global(.boolean-cell) {
-			border: var(--grid--cell--border-color--editing) !important;
-		}
-	}
-
-	:global(.ag-cell-focus) {
-		background-color: var(--grid--row--color--background--selected);
-	}
-
-	&.has-records {
-		:global(.ag-floating-bottom) {
-			border-top: var(--border-width) var(--border-style) var(--ag-border-color);
-		}
-	}
-
-	:global(.ag-row[row-id='__n8n_add_row__']) {
-		border-bottom: none;
-	}
-
-	:global(.ag-row-last) {
-		border-bottom-color: var(--ag-border-color);
-	}
-
-	:global(.ag-filter-body-wrapper) {
-		min-width: 200px;
-	}
-
-	// we should make this look like the text button as we can't use the component directly
-	:global(.ag-filter-apply-panel) {
-		padding-top: 0;
-
-		:global(.ag-filter-apply-panel-button) {
-			background: transparent;
-			border: none;
-			padding: 0;
-
-			&:hover {
-				color: var(--color--primary);
-				background: transparent;
-			}
-		}
-	}
-}
-
-.grid-container {
-	position: relative;
-	display: flex;
-	width: 100%;
-	min-height: 500px;
-	flex-direction: column;
-	gap: var(--spacing--md);
-	align-items: center;
-}
-
-.footer {
-	display: flex;
-	width: 100%;
-	justify-content: flex-end;
-	margin-bottom: var(--spacing--lg);
-	padding-right: var(--spacing--xl);
 }
 </style>

@@ -1,23 +1,25 @@
 <script setup lang="ts">
-import { ref } from 'vue';
 import { useTimeoutFn } from '@vueuse/core';
-import { N8nSpinner, N8nText } from '@n8n/design-system';
-import { useI18n } from '@n8n/i18n';
-import { TIME } from '@/app/constants/durations';
+import { ref } from 'vue';
 
-const i18n = useI18n();
+import { useI18n } from '../../composables/useI18n';
+import N8nSpinner from '../N8nSpinner';
+import N8nText from '../N8nText';
+
+const SHOW_DELAY_MS = 1000;
+
+const { t } = useI18n();
 const isVisible = ref(false);
 
-// Mount only during loading. Unmounting cancels the delay for fast requests.
 useTimeoutFn(() => {
 	isVisible.value = true;
-}, TIME.SECOND);
+}, SHOW_DELAY_MS);
 </script>
 
 <template>
-	<div v-if="isVisible" :class="$style.indicator" role="status" data-test-id="data-table-loading">
+	<div v-if="isVisible" :class="$style.indicator" role="status" data-test-id="data-grid-loading">
 		<N8nSpinner size="small" />
-		<N8nText size="small">{{ i18n.baseText('generic.loadingEllipsis') }}</N8nText>
+		<N8nText size="small">{{ t('dataGrid.loading') }}</N8nText>
 	</div>
 </template>
 
@@ -26,7 +28,6 @@ useTimeoutFn(() => {
 	position: absolute;
 	top: var(--spacing--xs);
 	right: var(--spacing--xs);
-	// Keep the indicator above AG Grid's loading overlay.
 	z-index: 3;
 	display: flex;
 	align-items: center;

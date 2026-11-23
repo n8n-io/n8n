@@ -1,270 +1,90 @@
-import { computed, ref, type Ref } from 'vue';
-import type { ColDef, ICellRendererParams } from 'ag-grid-community';
-import type {
-	AddColumnResponse,
-	DataTableColumn,
-	DataTableColumnCreatePayload,
-} from '@/features/core/dataTable/dataTable.types';
+import { computed, type Ref } from 'vue';
+import orderBy from 'lodash/orderBy';
+import type { DataGridColumn, DataGridColumnAction } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
+import type { DataTableColumn, DataTableRow } from '@/features/core/dataTable/dataTable.types';
 import {
-	ADD_ROW_ROW_ID,
 	DATA_TABLE_ID_COLUMN_WIDTH,
 	DEFAULT_COLUMN_WIDTH,
 	DEFAULT_ID_COLUMN_NAME,
-	MIN_ADD_COLUMN_BUTTON_COLUMN_WIDTH,
 } from '@/features/core/dataTable/constants';
 import { useDataTableTypes } from '@/features/core/dataTable/composables/useDataTableTypes';
-import ColumnHeader from '@/features/core/dataTable/components/dataGrid/ColumnHeader.vue';
-import ElDatePickerCellEditor from '@/features/core/dataTable/components/dataGrid/ElDatePickerCellEditor.vue';
-import ElDatePickerFilter from '@/features/core/dataTable/components/dataGrid/ElDatePickerFilter.vue';
-import orderBy from 'lodash/orderBy';
-import AddColumnButton from '@/features/core/dataTable/components/dataGrid/AddColumnButton.vue';
-import AddRowButton from '@/features/core/dataTable/components/dataGrid/AddRowButton.vue';
-import { reorderItem } from '@/features/core/dataTable/utils';
-import {
-	createCellClass,
-	createValueGetter,
-	createCellRendererSelector,
-	createStringValueSetter,
-	stringCellEditorParams,
-	dateValueFormatter,
-	numberValueFormatter,
-	getStringColumnFilterOptions,
-	getDateColumnFilterOptions,
-	getNumberColumnFilterOptions,
-	getBooleanColumnFilterOptions,
-	isOversizedValue,
-} from '@/features/core/dataTable/utils/columnUtils';
-import { useI18n } from '@n8n/i18n';
-import { GRID_FILTER_CONFIG } from '@/features/core/dataTable/utils/filterMappings';
+import { isOversizedValue } from '@/features/core/dataTable/utils/columnUtils';
 
-export const useDataTableColumns = ({
-	onDeleteColumn,
-	onRenameColumn,
-	onAddRowClick,
-	onAddColumn,
-	isTextEditorOpen,
-	readOnly = computed(() => false),
-	schemaReadOnly = computed(() => false),
-	schemaReadOnlyTooltip = computed(() => undefined),
-}: {
-	onDeleteColumn: (columnId: string) => void;
-	onRenameColumn: (columnId: string, columnName: string) => void;
-	onAddRowClick: () => void;
-	onAddColumn: (column: DataTableColumnCreatePayload) => Promise<AddColumnResponse>;
-	isTextEditorOpen: Ref<boolean>;
-	/** Locks the whole grid: rows and columns. */
-	readOnly?: Ref<boolean>;
-	/** Locks only the columns, for example on a protected instance. Rows stay editable. */
-	schemaReadOnly?: Ref<boolean>;
-	schemaReadOnlyTooltip?: Ref<string | undefined>;
-}) => {
-	const colDefs = ref<ColDef[]>([]);
-	const isSchemaReadOnly = () => readOnly.value || schemaReadOnly.value;
-	const { mapToAGCellType } = useDataTableTypes();
+export const DELETE_COLUMN_ACTION = 'delete';
+
+const SYSTEM_DATE_COLUMNS = ['createdAt', 'updatedAt'] as const;
+
+const isOversizedCell = (field: string) => (row: DataTableRow) => isOversizedValue(row[field]);
+
+export const useDataTableColumns = (columns: Ref<DataTableColumn[]>) => {
 	const i18n = useI18n();
+	const { getIconForType } = useDataTableTypes();
 
-	const createColumnDef = (col: DataTableColumn, extraProps: Partial<ColDef> = {}) => {
-		const columnDef: ColDef = {
-			colId: col.id,
-			field: col.name,
-			filter: !GRID_FILTER_CONFIG.excludedColumns.includes(col.id),
-			headerName: col.name,
-			sortable: true,
-			editable: (params) =>
-				!readOnly.value &&
-				params.data?.id !== ADD_ROW_ROW_ID &&
-				!isOversizedValue(params.data?.[col.name]),
-			resizable: true,
-			lockPinned: true,
-			headerComponent: ColumnHeader,
-			headerComponentParams: {
-				onDelete: onDeleteColumn,
-				onRename: onRenameColumn,
-				allowMenuActions: true,
-				readOnly: isSchemaReadOnly,
-			},
-			cellEditorPopup: false,
-			cellDataType: mapToAGCellType(col.type),
-			cellClass: createCellClass(col),
-			valueGetter: createValueGetter(col),
-			cellRendererSelector: createCellRendererSelector(col),
-			width: DEFAULT_COLUMN_WIDTH,
-		};
+	const columnActions: DataGridColumnAction[] = [
+		{
+			id: DELETE_COLUMN_ACTION,
+			label: i18n.baseText('dataTable.deleteColumn.confirm.title'),
+			icon: 'trash-2',
+		},
+	];
 
-		if (col.type === 'string') {
-			columnDef.cellEditor = 'agLargeTextCellEditor';
-			columnDef.cellEditorPopup = true;
-			columnDef.cellEditorPopupPosition = 'over';
-			columnDef.cellEditorParams = stringCellEditorParams;
-			columnDef.valueSetter = createStringValueSetter(col, isTextEditorOpen);
-			columnDef.filterParams = {
-				filterOptions: getStringColumnFilterOptions(i18n),
-			};
-		} else if (col.type === 'date') {
-			columnDef.cellEditorSelector = () => ({
-				component: ElDatePickerCellEditor,
-			});
-			columnDef.valueFormatter = dateValueFormatter;
-			columnDef.cellEditorPopup = true;
-			columnDef.dateComponent = ElDatePickerFilter;
-			columnDef.filterParams = {
-				filterOptions: getDateColumnFilterOptions(i18n),
-			};
-		} else if (col.type === 'number') {
-			columnDef.valueFormatter = numberValueFormatter;
-			columnDef.filterParams = {
-				filterOptions: getNumberColumnFilterOptions(i18n),
-			};
-		} else if (col.type === 'boolean') {
-			columnDef.filterParams = {
-				filterOptions: getBooleanColumnFilterOptions(i18n),
-			};
-		}
-
-		return {
-			...columnDef,
-			...extraProps,
-		};
+	const idColumn: DataGridColumn<DataTableRow> = {
+		id: DEFAULT_ID_COLUMN_NAME,
+		field: DEFAULT_ID_COLUMN_NAME,
+		label: DEFAULT_ID_COLUMN_NAME,
+		type: 'string',
+		width: DATA_TABLE_ID_COLUMN_WIDTH,
+		minWidth: DATA_TABLE_ID_COLUMN_WIDTH,
+		maxWidth: DATA_TABLE_ID_COLUMN_WIDTH,
+		resizable: false,
+		filterable: false,
+		editable: false,
+		lock: 'left',
+		headerClass: 'system-column',
+		cellClass: 'id-column',
 	};
 
-	const getColumnDefinitions = (dataTableColumns: DataTableColumn[]) => {
-		const systemDateColumnOptions: Partial<ColDef> = {
+	const systemDateColumns = SYSTEM_DATE_COLUMNS.map(
+		(name): DataGridColumn<DataTableRow> => ({
+			id: name,
+			field: name,
+			label: name,
+			type: 'date',
+			icon: getIconForType('date'),
+			width: DEFAULT_COLUMN_WIDTH,
 			editable: false,
-			suppressMovable: true,
-			lockPinned: true,
-			lockPosition: 'right',
-			headerComponentParams: {
-				allowMenuActions: false,
-			},
-			cellClass: (params) => (params.data?.id === ADD_ROW_ROW_ID ? 'add-row-cell' : 'system-cell'),
+			lock: 'right',
 			headerClass: 'system-column',
+			cellClass: 'system-cell',
+		}),
+	);
+
+	const toGridColumn = (column: DataTableColumn): DataGridColumn<DataTableRow> => {
+		const gridColumn: DataGridColumn<DataTableRow> = {
+			id: column.id,
+			field: column.name,
+			label: column.name,
+			type: column.type,
+			icon: getIconForType(column.type),
 			width: DEFAULT_COLUMN_WIDTH,
+			renameable: true,
+			actions: columnActions,
 		};
-		return [
-			// Always add the ID column, it's not returned by the back-end but all data tables have it
-			// We use it as a placeholder for new data tables
-			createColumnDef(
-				{
-					index: 0,
-					id: DEFAULT_ID_COLUMN_NAME,
-					name: DEFAULT_ID_COLUMN_NAME,
-					type: 'string',
-				},
-				{
-					editable: false,
-					sortable: true,
-					suppressMovable: true,
-					lockPosition: true,
-					minWidth: DATA_TABLE_ID_COLUMN_WIDTH,
-					maxWidth: DATA_TABLE_ID_COLUMN_WIDTH,
-					resizable: false,
-					headerClass: 'system-column',
-					headerComponentParams: {
-						allowMenuActions: false,
-						showTypeIcon: false,
-					},
-					cellClass: (params) =>
-						params.data?.id === ADD_ROW_ROW_ID ? 'add-row-cell' : 'id-column',
-					cellRendererSelector: (params: ICellRendererParams) => {
-						if (params.value === ADD_ROW_ROW_ID) {
-							return {
-								component: AddRowButton,
-								params: { onClick: onAddRowClick, disabled: () => readOnly.value },
-							};
-						}
-						return undefined;
-					},
-				},
-			),
-			// Append other columns
-			...orderBy(dataTableColumns, 'index').map((col) => createColumnDef(col)),
-			createColumnDef(
-				{
-					index: dataTableColumns.length + 1,
-					id: 'createdAt',
-					name: 'createdAt',
-					type: 'date',
-				},
-				systemDateColumnOptions,
-			),
-			createColumnDef(
-				{
-					index: dataTableColumns.length + 2,
-					id: 'updatedAt',
-					name: 'updatedAt',
-					type: 'date',
-				},
-				systemDateColumnOptions,
-			),
-			createColumnDef(
-				{
-					index: dataTableColumns.length + 3,
-					id: 'add-column',
-					name: 'Add Column',
-					type: 'string',
-				},
-				{
-					editable: false,
-					suppressMovable: true,
-					lockPinned: true,
-					lockPosition: 'right',
-					resizable: false,
-					minWidth: MIN_ADD_COLUMN_BUTTON_COLUMN_WIDTH,
-					flex: 1,
-					headerComponent: AddColumnButton,
-					headerComponentParams: {
-						onAddColumn,
-						disabled: isSchemaReadOnly,
-						disabledTooltip: () =>
-							!readOnly.value && schemaReadOnly.value ? schemaReadOnlyTooltip.value : undefined,
-					},
-				},
-			),
-		];
+		if (column.type !== 'string') return gridColumn;
+
+		const isOversized = isOversizedCell(column.name);
+		return {
+			...gridColumn,
+			editable: (row) => !isOversized(row),
+			cellSlot: isOversized,
+			cellClass: (row) => (isOversized(row) ? 'oversized-cell' : undefined),
+		};
 	};
 
-	const loadColumns = (dataTableColumns: DataTableColumn[]) => {
-		colDefs.value = getColumnDefinitions(dataTableColumns);
-	};
-
-	const deleteColumn = (columnId: string) => {
-		colDefs.value = colDefs.value.filter((col) => col.colId !== columnId);
-	};
-
-	const insertColumnAtIndex = (column: ColDef, index: number) => {
-		colDefs.value.splice(index, 0, column);
-	};
-
-	const addColumn = (column: DataTableColumn) => {
-		colDefs.value = [
-			...colDefs.value.slice(0, -1),
-			createColumnDef(column),
-			...colDefs.value.slice(-1),
-		];
-	};
-
-	const moveColumn = (oldIndex: number, newIndex: number) => {
-		const fromIndex = oldIndex - 1; // exclude ID column
-		const columnToBeMoved = colDefs.value[fromIndex];
-		if (!columnToBeMoved) {
-			return;
-		}
-		const middleWithIndex = colDefs.value
-			.slice(1, -1)
-			.map((col, idx) => ({ column: col, index: idx }));
-		const reorderedMiddle = reorderItem(middleWithIndex, fromIndex, newIndex)
-			.sort((a, b) => a.index - b.index)
-			.map(({ column }) => column);
-		colDefs.value = [colDefs.value[0], ...reorderedMiddle, colDefs.value[colDefs.value.length - 1]];
-	};
-
-	return {
-		colDefs,
-		createColumnDef,
-		loadColumns,
-		deleteColumn,
-		insertColumnAtIndex,
-		addColumn,
-		moveColumn,
-	};
+	return computed(() => [
+		idColumn,
+		...orderBy(columns.value, 'index').map(toGridColumn),
+		...systemDateColumns,
+	]);
 };

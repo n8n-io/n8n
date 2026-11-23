@@ -1,1358 +1,643 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { ref } from 'vue';
+import { ResponseError } from '@n8n/rest-api-client';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import {
 	useDataTableOperations,
 	type UseDataTableOperationsParams,
 } from '@/features/core/dataTable/composables/useDataTableOperations';
-import { ref } from 'vue';
-import type {
-	GridApi,
-	ColumnMovedEvent,
-	CellValueChangedEvent,
-	CellKeyDownEvent,
-} from 'ag-grid-community';
-import { setActivePinia } from 'pinia';
-import { createTestingPinia } from '@pinia/testing';
-import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
-import { ResponseError } from '@n8n/rest-api-client';
-import { useMessage } from '@/app/composables/useMessage';
-import { useToast } from '@n8n/composables/useToast';
-import { useTelemetry } from '@n8n/composables/useTelemetry';
+import type { DataTableColumn, DataTableRow } from '@/features/core/dataTable/dataTable.types';
 import { MODAL_CONFIRM } from '@/app/constants';
-import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
-import type { DataTableRow } from '@/features/core/dataTable/dataTable.types';
+
+const { store, confirm, showError, showMessage, track } = vi.hoisted(() => ({
+	store: {
+		addDataTableColumn: vi.fn(),
+		deleteDataTableColumn: vi.fn(),
+		moveDataTableColumn: vi.fn(),
+		renameDataTableColumn: vi.fn(),
+		insertEmptyRow: vi.fn(),
+		updateRow: vi.fn(),
+		fetchDataTableContent: vi.fn(),
+		deleteRows: vi.fn(),
+	},
+	confirm: vi.fn(),
+	showError: vi.fn(),
+	showMessage: vi.fn(),
+	track: vi.fn(),
+}));
 
 vi.mock('@/features/core/dataTable/dataTable.store', () => ({
-	useDataTableStore: vi.fn(() => ({})),
+	useDataTableStore: () => store,
 }));
 
 vi.mock('@/app/composables/useMessage', () => ({
-	useMessage: vi.fn(() => ({
-		confirm: vi.fn(),
-	})),
+	useMessage: () => ({ confirm }),
 }));
 
 vi.mock('@n8n/composables/useToast', () => ({
-	useToast: vi.fn(() => ({
-		showError: vi.fn(),
-		showMessage: vi.fn(),
-	})),
+	useToast: () => ({ showError, showMessage }),
 }));
 
 vi.mock('@n8n/composables/useTelemetry', () => ({
-	useTelemetry: vi.fn(() => ({
-		track: vi.fn(),
-	})),
+	useTelemetry: () => ({ track }),
 }));
 
 vi.mock('@n8n/i18n', () => ({
-	useI18n: vi.fn(() => ({
-		baseText: vi.fn((key: string) => key),
-	})),
+	useI18n: () => ({
+		baseText: (key: string) => key,
+	}),
 }));
 
-vi.mock('@/features/core/dataTable/composables/useDataTableTypes', () => ({
-	useDataTableTypes: vi.fn(() => ({
-		mapToDataTableColumnType: vi.fn(),
-	})),
-}));
+const DATA_TABLE_ID = 'data-table-1';
+const PROJECT_ID = 'project-1';
 
-vi.mock('@/features/core/dataTable/typeGuards', () => ({
-	isDataTableValue: vi.fn((value: unknown) => value !== undefined && value !== null),
-	isAGGridCellType: vi.fn(() => true),
-}));
+const createColumns = (): DataTableColumn[] => [
+	{ id: 'col-name', name: 'name', type: 'string', index: 0 },
+	{ id: 'col-age', name: 'age', type: 'number', index: 1 },
+	{ id: 'col-active', name: 'active', type: 'boolean', index: 2 },
+];
+
+const createRows = (): DataTableRow[] => [
+	{ id: 1, name: 'John', age: 30, active: true },
+	{ id: 2, name: 'Jane', age: 25, active: false },
+];
+
+const createParams = (
+	overrides: Partial<UseDataTableOperationsParams> = {},
+): UseDataTableOperationsParams => ({
+	dataTableId: DATA_TABLE_ID,
+	projectId: PROJECT_ID,
+	rows: ref(createRows()),
+	columns: ref(createColumns()),
+	totalItems: ref(2),
+	setTotalItems: vi.fn(),
+	ensureItemOnPage: vi.fn(),
+	currentPage: ref(1),
+	pageSize: ref(10),
+	sortBy: ref(''),
+	filterJSON: ref(undefined),
+	searchQuery: ref(undefined),
+	schemaReadOnly: ref(false),
+	clearSelection: vi.fn(),
+	focusRow: vi.fn(),
+	toggleSave: vi.fn(),
+	...overrides,
+});
+
+const setup = (overrides: Partial<UseDataTableOperationsParams> = {}) => {
+	const params = createParams(overrides);
+	return { params, ...useDataTableOperations(params) };
+};
+
+const columnOrder = (columns: DataTableColumn[]) =>
+	[...columns].sort((a, b) => a.index - b.index).map((column) => column.id);
+
+const expectSaveToggled = (params: UseDataTableOperationsParams) => {
+	expect(params.toggleSave).toHaveBeenNthCalledWith(1, true);
+	expect(params.toggleSave).toHaveBeenLastCalledWith(false);
+};
 
 describe('useDataTableOperations', () => {
-	let params: UseDataTableOperationsParams;
-	let dataTableStore: ReturnType<typeof useDataTableStore>;
-	let confirmMock: ReturnType<typeof vi.fn>;
-	let showErrorMock: ReturnType<typeof vi.fn>;
-	let showMessageMock: ReturnType<typeof vi.fn>;
-	let telemetryTrackMock: ReturnType<typeof vi.fn>;
-
 	beforeEach(() => {
-		setActivePinia(createTestingPinia());
-
-		dataTableStore = {
-			addDataTableColumn: vi.fn(),
-			deleteDataTableColumn: vi.fn(),
-			moveDataTableColumn: vi.fn(),
-			renameDataTableColumn: vi.fn(),
-			deleteRows: vi.fn(),
-			insertEmptyRow: vi.fn(),
-		} as unknown as ReturnType<typeof useDataTableStore>;
-
-		vi.mocked(useDataTableStore).mockReturnValue(dataTableStore);
-
-		confirmMock = vi.fn();
-		vi.mocked(useMessage).mockReturnValue({
-			confirm: confirmMock,
-		} as unknown as ReturnType<typeof useMessage>);
-
-		showErrorMock = vi.fn();
-		showMessageMock = vi.fn();
-		vi.mocked(useToast).mockReturnValue({
-			showError: showErrorMock,
-			showMessage: showMessageMock,
-		} as unknown as ReturnType<typeof useToast>);
-
-		telemetryTrackMock = vi.fn();
-		vi.mocked(useTelemetry).mockReturnValue({
-			track: telemetryTrackMock,
-		} as unknown as ReturnType<typeof useTelemetry>);
-
-		params = {
-			colDefs: ref([]),
-			rowData: ref([]),
-			deleteGridColumn: vi.fn(),
-			addGridColumn: vi.fn(),
-			setGridData: vi.fn(),
-			insertGridColumnAtIndex: vi.fn(),
-			moveGridColumn: vi.fn(),
-			dataTableId: 'test',
-			projectId: 'test',
-			gridApi: ref(null as unknown as GridApi),
-			totalItems: ref(0),
-			setTotalItems: vi.fn(),
-			ensureItemOnPage: vi.fn(),
-			focusFirstEditableCell: vi.fn(),
-			toggleSave: vi.fn(),
-			currentPage: ref(1),
-			pageSize: ref(10),
-			currentSortBy: ref(''),
-			currentSortOrder: ref(null),
-			currentFilterJSON: ref(undefined),
-			handleClearSelection: vi.fn(),
-			selectedRowIds: ref(new Set()),
-			handleCopyFocusedCell: vi.fn(),
-		};
-	});
-
-	afterEach(() => {
 		vi.clearAllMocks();
+		confirm.mockResolvedValue(MODAL_CONFIRM);
 	});
 
-	describe('column editing lock', () => {
-		it('blocks column mutations after editing is locked', async () => {
-			const schemaReadOnly = ref(false);
-			params.colDefs.value = [{ colId: 'name-column', field: 'name', headerName: 'name' }];
-			const operations = useDataTableOperations({ ...params, schemaReadOnly });
-			schemaReadOnly.value = true;
+	describe('read-only schema', () => {
+		it('should not change columns when the schema is read-only', async () => {
+			const { params, onAddColumn, onRenameColumn, onDeleteColumn, onColumnMove } = setup({
+				schemaReadOnly: ref(true),
+			});
 
-			expect(await operations.onAddColumn({ name: 'description', type: 'string' })).toEqual({
+			expect(await onAddColumn({ name: 'description', type: 'string' })).toEqual({
 				success: false,
 			});
-			await operations.onRenameColumn('name-column', 'title');
-			await operations.onDeleteColumn('name-column');
+			await onRenameColumn('col-name', 'title');
+			await onDeleteColumn('col-name');
+			await onColumnMove({ columnId: 'col-name', toIndex: 3 });
 
-			expect(dataTableStore.addDataTableColumn).not.toHaveBeenCalled();
-			expect(dataTableStore.renameDataTableColumn).not.toHaveBeenCalled();
-			expect(dataTableStore.deleteDataTableColumn).not.toHaveBeenCalled();
-			expect(confirmMock).not.toHaveBeenCalled();
-			expect(params.setGridData).not.toHaveBeenCalled();
+			expect(store.addDataTableColumn).not.toHaveBeenCalled();
+			expect(store.renameDataTableColumn).not.toHaveBeenCalled();
+			expect(store.deleteDataTableColumn).not.toHaveBeenCalled();
+			expect(store.moveDataTableColumn).not.toHaveBeenCalled();
+			expect(confirm).not.toHaveBeenCalled();
+			expect(params.columns.value).toEqual(createColumns());
+			expect(params.rows.value).toEqual(createRows());
 		});
 
-		it('blocks column deletion when editing is locked during confirmation', async () => {
-			const schemaReadOnly = ref(false);
-			params.colDefs.value = [{ colId: 'name-column', field: 'name', headerName: 'name' }];
+		it('should not delete the column when the schema becomes read-only during confirmation', async () => {
 			const confirmation = createDeferredPromise<typeof MODAL_CONFIRM>();
-			confirmMock.mockReturnValue(confirmation.promise);
-			const operations = useDataTableOperations({ ...params, schemaReadOnly });
+			confirm.mockReturnValue(confirmation.promise);
+			const { params, onDeleteColumn } = setup();
 
-			const deletion = operations.onDeleteColumn('name-column');
-			expect(confirmMock).toHaveBeenCalled();
-			schemaReadOnly.value = true;
+			const deletion = onDeleteColumn('col-name');
+			params.schemaReadOnly.value = true;
 			confirmation.resolve(MODAL_CONFIRM);
 			await deletion;
 
-			expect(dataTableStore.deleteDataTableColumn).not.toHaveBeenCalled();
-			expect(params.deleteGridColumn).not.toHaveBeenCalled();
-		});
-	});
-
-	describe('onAddColumn', () => {
-		it('should add column when column is added successfully', async () => {
-			const returnedColumn = { name: 'test', type: 'string' } as const;
-			vi.mocked(useDataTableStore).mockReturnValue({
-				...dataTableStore,
-				addDataTableColumn: vi.fn().mockResolvedValue(returnedColumn),
-			});
-			const rowData = ref([{ id: 1 }]);
-			const { onAddColumn } = useDataTableOperations({ ...params, rowData });
-			const result = await onAddColumn({ name: returnedColumn.name, type: returnedColumn.type });
-			expect(result.success).toBe(true);
-			expect(result.httpStatus).toBe(200);
-			expect(params.setGridData).toHaveBeenCalledWith({
-				rowData: [{ id: 1, test: null }],
-				colDefs: [],
-			});
-			expect(params.addGridColumn).toHaveBeenCalledWith(returnedColumn);
+			expect(store.deleteDataTableColumn).not.toHaveBeenCalled();
+			expect(params.columns.value).toEqual(createColumns());
 		});
 
-		describe('error handling', () => {
-			it('should handle ResponseError with httpStatusCode', async () => {
-				const responseError = new ResponseError('Conflict error', { httpStatusCode: 409 });
-				vi.mocked(useDataTableStore).mockReturnValue({
-					...dataTableStore,
-					addDataTableColumn: vi.fn().mockRejectedValue(responseError),
-				});
-				const { onAddColumn } = useDataTableOperations(params);
-				const result = await onAddColumn({ name: 'test', type: 'string' });
-				expect(result.success).toBe(false);
-				expect(result.httpStatus).toBe(409);
-				expect(result.errorMessage).toBe('Conflict error');
-			});
+		it('should still allow row changes when the schema is read-only', async () => {
+			store.insertEmptyRow.mockResolvedValue({ id: 3 });
+			const { onAddRowClick, onCellEdit } = setup({ schemaReadOnly: ref(true) });
 
-			it('should handle ResponseError without httpStatusCode', async () => {
-				const responseError = new ResponseError('Unknown response error');
-				vi.mocked(useDataTableStore).mockReturnValue({
-					...dataTableStore,
-					addDataTableColumn: vi.fn().mockRejectedValue(responseError),
-				});
-				const { onAddColumn } = useDataTableOperations(params);
-				const result = await onAddColumn({ name: 'test', type: 'string' });
-				expect(result.success).toBe(false);
-				expect(result.httpStatus).toBe(500);
-				expect(result.errorMessage).toBe('Unknown response error');
-			});
+			await onAddRowClick();
+			await onCellEdit({ rowKey: '1', field: 'name', oldValue: 'John', newValue: 'Jim' });
 
-			it('should handle regular Error', async () => {
-				const error = new Error('Regular error message');
-				vi.mocked(useDataTableStore).mockReturnValue({
-					...dataTableStore,
-					addDataTableColumn: vi.fn().mockRejectedValue(error),
-				});
-				const { onAddColumn } = useDataTableOperations(params);
-				const result = await onAddColumn({ name: 'test', type: 'string' });
-				expect(result.success).toBe(false);
-				expect(result.httpStatus).toBe(500);
-				expect(result.errorMessage).toBe('Regular error message');
-			});
-
-			it('should handle unknown error type', async () => {
-				const unknownError = 'string error';
-				vi.mocked(useDataTableStore).mockReturnValue({
-					...dataTableStore,
-					addDataTableColumn: vi.fn().mockRejectedValue(unknownError),
-				});
-				const { onAddColumn } = useDataTableOperations(params);
-				const result = await onAddColumn({ name: 'test', type: 'string' });
-				expect(result.success).toBe(false);
-				expect(result.httpStatus).toBe(500);
-				expect(result.errorMessage).toBe('generic.unknownError');
-			});
+			expect(store.insertEmptyRow).toHaveBeenCalled();
+			expect(store.updateRow).toHaveBeenCalled();
 		});
 	});
 
 	describe('onDeleteColumn', () => {
-		it('should return early when column is not found', async () => {
-			const colDefs = ref([]);
-			const { onDeleteColumn } = useDataTableOperations({ ...params, colDefs });
-			await onDeleteColumn('non-existent-column');
+		it('should not ask for confirmation when the column does not exist', async () => {
+			const { onDeleteColumn } = setup();
 
-			expect(confirmMock).not.toHaveBeenCalled();
+			await onDeleteColumn('missing');
+
+			expect(confirm).not.toHaveBeenCalled();
+			expect(store.deleteDataTableColumn).not.toHaveBeenCalled();
 		});
 
-		it('should return early when user cancels confirmation', async () => {
-			confirmMock.mockResolvedValue('cancel');
+		it('should keep the column when the user cancels the confirmation', async () => {
+			confirm.mockResolvedValue('cancel');
+			const { params, onDeleteColumn } = setup();
 
-			const colDefs = ref([
-				{ colId: 'col1', field: 'name', headerName: 'Name', cellDataType: 'text' },
-			]);
+			await onDeleteColumn('col-name');
 
-			const { onDeleteColumn } = useDataTableOperations({ ...params, colDefs });
-			await onDeleteColumn('col1');
-
-			expect(confirmMock).toHaveBeenCalled();
-			expect(params.deleteGridColumn).not.toHaveBeenCalled();
+			expect(confirm).toHaveBeenCalledWith(
+				'dataTable.deleteColumn.confirm.message',
+				'dataTable.deleteColumn.confirm.title',
+				{ confirmButtonText: 'generic.delete', cancelButtonText: 'generic.cancel' },
+			);
+			expect(store.deleteDataTableColumn).not.toHaveBeenCalled();
+			expect(params.columns.value).toEqual(createColumns());
 		});
 
-		it('should delete column successfully when user confirms', async () => {
-			confirmMock.mockResolvedValue(MODAL_CONFIRM);
+		it('should remove the column and its row values when the deletion succeeds', async () => {
+			store.deleteDataTableColumn.mockResolvedValue(undefined);
+			const { params, onDeleteColumn } = setup();
 
-			const deleteDataTableColumnMock = vi.fn().mockResolvedValue(undefined);
-			vi.mocked(useDataTableStore).mockReturnValue({
-				...dataTableStore,
-				deleteDataTableColumn: deleteDataTableColumnMock,
-			});
+			await onDeleteColumn('col-name');
 
-			const colDefs = ref([
-				{ colId: 'col1', field: 'name', headerName: 'Name', cellDataType: 'text' },
+			expect(store.deleteDataTableColumn).toHaveBeenCalledWith(
+				DATA_TABLE_ID,
+				PROJECT_ID,
+				'col-name',
+			);
+			expect(params.columns.value.map((column) => column.id)).toEqual(['col-age', 'col-active']);
+			expect(params.rows.value).toEqual([
+				{ id: 1, age: 30, active: true },
+				{ id: 2, age: 25, active: false },
 			]);
-			const rowData = ref([
-				{ id: 1, name: 'John' },
-				{ id: 2, name: 'Jane' },
-			]);
-
-			const { onDeleteColumn } = useDataTableOperations({ ...params, colDefs, rowData });
-			await onDeleteColumn('col1');
-
-			expect(confirmMock).toHaveBeenCalled();
-			expect(params.deleteGridColumn).toHaveBeenCalledWith('col1');
-			expect(params.setGridData).toHaveBeenCalledWith({
-				colDefs: colDefs.value,
-				rowData: [{ id: 1 }, { id: 2 }],
-			});
-			expect(deleteDataTableColumnMock).toHaveBeenCalledWith('test', 'test', 'col1');
-			expect(telemetryTrackMock).toHaveBeenCalledWith('User deleted data table column', {
-				column_id: 'col1',
+			expect(track).toHaveBeenCalledWith('User deleted data table column', {
+				column_id: 'col-name',
 				column_type: 'text',
-				data_table_id: 'test',
+				data_table_id: DATA_TABLE_ID,
 			});
 		});
 
-		it('should rollback changes when deletion fails', async () => {
-			confirmMock.mockResolvedValue(MODAL_CONFIRM);
+		it('should restore the column and its row values when the deletion fails', async () => {
+			const error = new Error('Delete failed');
+			store.deleteDataTableColumn.mockRejectedValue(error);
+			const { params, onDeleteColumn } = setup();
 
-			const deleteError = new Error('Delete failed');
-			vi.mocked(useDataTableStore).mockReturnValue({
-				...dataTableStore,
-				deleteDataTableColumn: vi.fn().mockRejectedValue(deleteError),
-			});
+			await onDeleteColumn('col-name');
 
-			const colDefToDelete = {
-				colId: 'col1',
-				field: 'name',
-				headerName: 'Name',
-				cellDataType: 'text',
-			};
-			const colDefs = ref([colDefToDelete]);
-			const rowData = ref([
-				{ id: 1, name: 'John' },
-				{ id: 2, name: 'Jane' },
-			]);
-
-			const { onDeleteColumn } = useDataTableOperations({ ...params, colDefs, rowData });
-			await onDeleteColumn('col1');
-
-			expect(params.deleteGridColumn).toHaveBeenCalledWith('col1');
-			expect(showErrorMock).toHaveBeenCalledWith(deleteError, 'dataTable.deleteColumn.error');
-			expect(params.insertGridColumnAtIndex).toHaveBeenCalledWith(colDefToDelete, 0);
-			expect(rowData.value).toEqual([
-				{ id: 1, name: 'John' },
-				{ id: 2, name: 'Jane' },
-			]);
-			expect(params.setGridData).toHaveBeenCalledTimes(2);
+			expect(showError).toHaveBeenCalledWith(error, 'dataTable.deleteColumn.error');
+			expect(params.columns.value).toEqual(createColumns());
+			expect(params.rows.value).toEqual(createRows());
+			expect(track).not.toHaveBeenCalled();
 		});
 	});
 
-	describe('onColumnMoved', () => {
-		const createMockColumn = (colId: string) => ({
-			getColId: () => colId,
+	describe('onRenameColumn', () => {
+		it('should rename the column and the field in each row', async () => {
+			store.renameDataTableColumn.mockResolvedValue(undefined);
+			const { params, onRenameColumn } = setup();
+
+			await onRenameColumn('col-name', 'title');
+
+			expect(store.renameDataTableColumn).toHaveBeenCalledWith(
+				DATA_TABLE_ID,
+				PROJECT_ID,
+				'col-name',
+				'title',
+			);
+			expect(params.columns.value[0]).toEqual({
+				id: 'col-name',
+				name: 'title',
+				type: 'string',
+				index: 0,
+			});
+			expect(params.rows.value).toEqual([
+				{ id: 1, title: 'John', age: 30, active: true },
+				{ id: 2, title: 'Jane', age: 25, active: false },
+			]);
+			expect(track).toHaveBeenCalledWith('User renamed data table column', {
+				column_id: 'col-name',
+				column_type: 'text',
+				data_table_id: DATA_TABLE_ID,
+			});
+			expectSaveToggled(params);
 		});
 
-		it('ignores queued move events after editing is locked', async () => {
-			const schemaReadOnly = ref(false);
-			const { onColumnMoved } = useDataTableOperations({ ...params, schemaReadOnly });
-			schemaReadOnly.value = true;
+		it('should set the renamed field to null in rows that do not have it', async () => {
+			const { params, onRenameColumn } = setup({ rows: ref([{ id: 1 }]) });
 
-			await onColumnMoved({
-				finished: true,
-				source: 'uiColumnMoved',
-				toIndex: 4,
-				column: createMockColumn('col1'),
-			} as unknown as ColumnMovedEvent);
+			await onRenameColumn('col-name', 'title');
 
-			expect(dataTableStore.moveDataTableColumn).not.toHaveBeenCalled();
-			expect(params.moveGridColumn).not.toHaveBeenCalled();
+			expect(params.rows.value).toEqual([{ id: 1, title: null }]);
 		});
 
-		it.each(['success', 'failure'])(
-			'reconciles a move started before editing was locked: %s',
-			async (result) => {
-				const schemaReadOnly = ref(false);
-				const response = createDeferredPromise<boolean>();
-				vi.mocked(dataTableStore.moveDataTableColumn).mockReturnValue(response.promise);
-				const moveColumnByIndex = vi.fn();
-				params.gridApi.value = { moveColumnByIndex } as unknown as GridApi;
-				params.colDefs.value = [{ colId: 'col1', field: 'name' }];
-				const { onColumnMoved } = useDataTableOperations({ ...params, schemaReadOnly });
+		it('should keep each rename when several columns are renamed in sequence', async () => {
+			const { params, onRenameColumn } = setup();
 
-				const move = onColumnMoved({
-					finished: true,
-					source: 'uiColumnMoved',
-					toIndex: 4,
-					column: createMockColumn('col1'),
-				} as unknown as ColumnMovedEvent);
-				expect(dataTableStore.moveDataTableColumn).toHaveBeenCalled();
-				schemaReadOnly.value = true;
-				if (result === 'success') {
-					response.resolve(true);
-				} else {
-					response.reject(new Error('Move failed'));
-				}
-				await move;
+			await onRenameColumn('col-name', 'title');
+			await onRenameColumn('col-age', 'years');
 
-				if (result === 'success') {
-					expect(params.moveGridColumn).toHaveBeenCalledWith(0, 2);
-					expect(moveColumnByIndex).not.toHaveBeenCalled();
-				} else {
-					expect(params.moveGridColumn).not.toHaveBeenCalled();
-					expect(moveColumnByIndex).toHaveBeenCalledWith(4, 1);
-					expect(showErrorMock).toHaveBeenCalledWith(
-						expect.any(Error),
-						'dataTable.moveColumn.error',
-					);
-				}
+			expect(params.columns.value.map((column) => column.name)).toEqual([
+				'title',
+				'years',
+				'active',
+			]);
+			expect(params.rows.value[0]).toEqual({ id: 1, title: 'John', years: 30, active: true });
+		});
+
+		it.each([
+			['the column does not exist', 'missing', 'title'],
+			['the name does not change', 'col-name', 'name'],
+		])('should not call the store when %s', async (_, columnId, newName) => {
+			const { params, onRenameColumn } = setup();
+
+			await onRenameColumn(columnId, newName);
+
+			expect(store.renameDataTableColumn).not.toHaveBeenCalled();
+			expect(params.columns.value).toEqual(createColumns());
+		});
+
+		it('should restore the column and rows when the rename fails', async () => {
+			const error = new Error('Rename failed');
+			store.renameDataTableColumn.mockRejectedValue(error);
+			const { params, onRenameColumn } = setup();
+
+			await onRenameColumn('col-name', 'title');
+
+			expect(params.columns.value).toEqual(createColumns());
+			expect(params.rows.value).toEqual(createRows());
+			expect(showError).toHaveBeenCalledWith(error, 'dataTable.renameColumn.error');
+			expect(track).not.toHaveBeenCalled();
+			expectSaveToggled(params);
+		});
+
+		it('should show the duplicate name message when the rename conflicts with an existing column', async () => {
+			store.renameDataTableColumn.mockRejectedValue(
+				new ResponseError('Column already exists', { httpStatusCode: 409 }),
+			);
+			const { onRenameColumn } = setup();
+
+			await onRenameColumn('col-name', 'age');
+
+			expect(showError).toHaveBeenCalledWith(
+				new Error('Column already exists'),
+				'dataTable.column.alreadyExistsError',
+			);
+		});
+
+		it('should show the generic rename message when a response error has no status code', async () => {
+			const error = new ResponseError('Unknown response error');
+			store.renameDataTableColumn.mockRejectedValue(error);
+			const { onRenameColumn } = setup();
+
+			await onRenameColumn('col-name', 'title');
+
+			expect(showError).toHaveBeenCalledWith(error, 'dataTable.renameColumn.error');
+		});
+	});
+
+	describe('onAddColumn', () => {
+		it('should append the column and add an empty value to each row', async () => {
+			const newColumn: DataTableColumn = {
+				id: 'col-notes',
+				name: 'notes',
+				type: 'string',
+				index: 3,
+			};
+			store.addDataTableColumn.mockResolvedValue(newColumn);
+			const { params, onAddColumn } = setup({ rows: ref([{ id: 1 }]) });
+
+			const result = await onAddColumn({ name: 'notes', type: 'string' });
+
+			expect(result).toEqual({ success: true, httpStatus: 200 });
+			expect(store.addDataTableColumn).toHaveBeenCalledWith(DATA_TABLE_ID, PROJECT_ID, {
+				name: 'notes',
+				type: 'string',
+			});
+			expect(params.columns.value.at(-1)).toEqual(newColumn);
+			expect(params.rows.value).toEqual([{ id: 1, notes: null }]);
+			expect(track).toHaveBeenCalledWith('User added data table column', {
+				column_id: 'col-notes',
+				column_type: 'string',
+				data_table_id: DATA_TABLE_ID,
+			});
+		});
+
+		it.each([
+			[
+				'a response error with a status code',
+				new ResponseError('Conflict error', { httpStatusCode: 409 }),
+				409,
+				'Conflict error',
+			],
+			[
+				'a response error without a status code',
+				new ResponseError('Unknown response error'),
+				500,
+				'Unknown response error',
+			],
+			['a regular error', new Error('Regular error message'), 500, 'Regular error message'],
+			['an unknown error', 'string error', 500, 'generic.unknownError'],
+		])('should return the error details for %s', async (_, error, httpStatus, errorMessage) => {
+			store.addDataTableColumn.mockRejectedValue(error);
+			const { params, onAddColumn } = setup();
+
+			const result = await onAddColumn({ name: 'notes', type: 'string' });
+
+			expect(result).toEqual({ success: false, httpStatus, errorMessage });
+			expect(params.columns.value).toEqual(createColumns());
+		});
+	});
+
+	describe('onColumnMove', () => {
+		it('should move the column to the user column index after the id column', async () => {
+			const { params, onColumnMove } = setup();
+
+			await onColumnMove({ columnId: 'col-name', toIndex: 3 });
+
+			expect(store.moveDataTableColumn).toHaveBeenCalledWith(
+				DATA_TABLE_ID,
+				PROJECT_ID,
+				'col-name',
+				2,
+			);
+			expect(columnOrder(params.columns.value)).toEqual(['col-age', 'col-active', 'col-name']);
+		});
+
+		it.each([
+			['before the first user column', 'col-active', 0, 0, ['col-active', 'col-name', 'col-age']],
+			['after the last user column', 'col-name', 10, 2, ['col-age', 'col-active', 'col-name']],
+		])(
+			'should clamp the target index when the column is dropped %s',
+			async (_, columnId, toIndex, expectedIndex, expectedOrder) => {
+				const { params, onColumnMove } = setup();
+
+				await onColumnMove({ columnId, toIndex });
+
+				expect(store.moveDataTableColumn).toHaveBeenCalledWith(
+					DATA_TABLE_ID,
+					PROJECT_ID,
+					columnId,
+					expectedIndex,
+				);
+				expect(columnOrder(params.columns.value)).toEqual(expectedOrder);
 			},
 		);
 
-		it('should return early when event is not finished', async () => {
-			const { onColumnMoved } = useDataTableOperations(params);
-			const moveEvent = {
-				finished: false,
-				source: 'uiColumnMoved',
-				toIndex: 2,
-				column: createMockColumn('col1'),
-			} as unknown as ColumnMovedEvent;
+		it.each([
+			['the column does not exist', 'missing', 1],
+			['the column stays at the same position', 'col-age', 2],
+		])('should not move the column when %s', async (_, columnId, toIndex) => {
+			const { params, onColumnMove } = setup();
 
-			await onColumnMoved(moveEvent);
+			await onColumnMove({ columnId, toIndex });
 
-			expect(params.moveGridColumn).not.toHaveBeenCalled();
+			expect(store.moveDataTableColumn).not.toHaveBeenCalled();
+			expect(params.columns.value).toEqual(createColumns());
 		});
 
-		it('should return early when source is not uiColumnMoved', async () => {
-			const { onColumnMoved } = useDataTableOperations(params);
-			const moveEvent = {
-				finished: true,
-				source: 'api',
-				toIndex: 2,
-				column: createMockColumn('col1'),
-			} as unknown as ColumnMovedEvent;
+		it('should restore the column order when the move fails', async () => {
+			const error = new Error('Move failed');
+			store.moveDataTableColumn.mockRejectedValue(error);
+			const { params, onColumnMove } = setup();
 
-			await onColumnMoved(moveEvent);
+			await onColumnMove({ columnId: 'col-name', toIndex: 3 });
 
-			expect(params.moveGridColumn).not.toHaveBeenCalled();
-		});
-
-		it('should return early when toIndex is undefined', async () => {
-			const { onColumnMoved } = useDataTableOperations(params);
-			const moveEvent = {
-				finished: true,
-				source: 'uiColumnMoved',
-				toIndex: undefined,
-				column: createMockColumn('col1'),
-			} as unknown as ColumnMovedEvent;
-
-			await onColumnMoved(moveEvent);
-
-			expect(params.moveGridColumn).not.toHaveBeenCalled();
-		});
-
-		it('should return early when column is not provided', async () => {
-			const { onColumnMoved } = useDataTableOperations(params);
-			const moveEvent = {
-				finished: true,
-				source: 'uiColumnMoved',
-				toIndex: 2,
-				column: null,
-			} as unknown as ColumnMovedEvent;
-
-			await onColumnMoved(moveEvent);
-
-			expect(params.moveGridColumn).not.toHaveBeenCalled();
-		});
-
-		it('should move column successfully', async () => {
-			const moveDataTableColumnMock = vi.fn().mockResolvedValue(undefined);
-			vi.mocked(useDataTableStore).mockReturnValue({
-				...dataTableStore,
-				moveDataTableColumn: moveDataTableColumnMock,
-			});
-
-			const colDefs = ref([
-				{ colId: 'col1', field: 'name' },
-				{ colId: 'col2', field: 'age' },
-				{ colId: 'col3', field: 'email' },
-			]);
-
-			const { onColumnMoved } = useDataTableOperations({ ...params, colDefs });
-			const moveEvent = {
-				finished: true,
-				source: 'uiColumnMoved',
-				toIndex: 4, // AG Grid includes selection and id columns, so actual index is 4-2=2
-				column: createMockColumn('col1'),
-			} as unknown as ColumnMovedEvent;
-
-			await onColumnMoved(moveEvent);
-
-			expect(moveDataTableColumnMock).toHaveBeenCalledWith('test', 'test', 'col1', 2);
-			expect(params.moveGridColumn).toHaveBeenCalledWith(0, 2);
-		});
-
-		it('should rollback move when API call fails', async () => {
-			const moveError = new Error('Move failed');
-			vi.mocked(useDataTableStore).mockReturnValue({
-				...dataTableStore,
-				moveDataTableColumn: vi.fn().mockRejectedValue(moveError),
-			});
-
-			const moveColumnByIndex = vi.fn();
-			const gridApi = ref({
-				moveColumnByIndex,
-			} as unknown as GridApi);
-
-			const colDefs = ref([
-				{ colId: 'col1', field: 'name' },
-				{ colId: 'col2', field: 'age' },
-			]);
-
-			const { onColumnMoved } = useDataTableOperations({ ...params, colDefs, gridApi });
-			const moveEvent = {
-				finished: true,
-				source: 'uiColumnMoved',
-				toIndex: 3,
-				column: createMockColumn('col1'),
-			} as unknown as ColumnMovedEvent;
-
-			await onColumnMoved(moveEvent);
-
-			expect(showErrorMock).toHaveBeenCalledWith(moveError, 'dataTable.moveColumn.error');
-			expect(moveColumnByIndex).toHaveBeenCalledWith(3, 1); // oldIndex (0) + 1
-			expect(params.moveGridColumn).not.toHaveBeenCalled();
+			expect(showError).toHaveBeenCalledWith(error, 'dataTable.moveColumn.error');
+			expect(params.columns.value).toEqual(createColumns());
 		});
 	});
 
 	describe('onAddRowClick', () => {
-		it('should add row successfully', async () => {
-			const insertEmptyRowMock = vi.fn().mockResolvedValue({ id: 123, name: null });
-			vi.mocked(useDataTableStore).mockReturnValue({
-				...dataTableStore,
-				insertEmptyRow: insertEmptyRowMock,
-			});
-
-			const rowData = ref([{ id: 1 }, { id: 2 }]);
-			const totalItems = ref(2);
-
-			const { onAddRowClick, contentLoading } = useDataTableOperations({
-				...params,
-				rowData,
-				totalItems,
-			});
+		it('should add an empty row on the last page and focus it', async () => {
+			const insertedRow = { id: 3, name: null, age: null, active: null };
+			store.insertEmptyRow.mockResolvedValue(insertedRow);
+			const { params, onAddRowClick, contentLoading } = setup();
 
 			await onAddRowClick();
 
 			expect(params.ensureItemOnPage).toHaveBeenCalledWith(3);
-			expect(params.toggleSave).toHaveBeenCalledWith(true);
-			expect(insertEmptyRowMock).toHaveBeenCalledWith('test', 'test');
-			expect(rowData.value).toHaveLength(3);
-			expect(rowData.value[2]).toEqual({ id: 123, name: null });
+			expect(store.insertEmptyRow).toHaveBeenCalledWith(DATA_TABLE_ID, PROJECT_ID);
+			expect(params.rows.value).toEqual([...createRows(), insertedRow]);
 			expect(params.setTotalItems).toHaveBeenCalledWith(3);
-			expect(params.setGridData).toHaveBeenCalledWith({ rowData: rowData.value });
-			expect(params.focusFirstEditableCell).toHaveBeenCalledWith(123);
-			expect(telemetryTrackMock).toHaveBeenCalledWith('User added row to data table', {
-				data_table_id: 'test',
+			expect(params.focusRow).toHaveBeenCalledWith(3);
+			expect(track).toHaveBeenCalledWith('User added row to data table', {
+				data_table_id: DATA_TABLE_ID,
 			});
-			expect(params.toggleSave).toHaveBeenCalledWith(false);
+			expectSaveToggled(params);
 			expect(contentLoading.value).toBe(false);
 		});
 
-		it('should handle error and show toast', async () => {
-			const addRowError = new Error('Failed to add row');
-			vi.mocked(useDataTableStore).mockReturnValue({
-				...dataTableStore,
-				insertEmptyRow: vi.fn().mockRejectedValue(addRowError),
-			});
-
-			const rowData = ref([{ id: 1 }]);
-			const totalItems = ref(1);
-
-			const { onAddRowClick } = useDataTableOperations({
-				...params,
-				rowData,
-				totalItems,
-			});
+		it('should not focus the row when the inserted row has no numeric id', async () => {
+			store.insertEmptyRow.mockResolvedValue({ id: 'unknown' });
+			const { params, onAddRowClick } = setup();
 
 			await onAddRowClick();
 
-			expect(showErrorMock).toHaveBeenCalledWith(addRowError, 'dataTable.addRow.error');
-			expect(rowData.value).toHaveLength(1);
-			expect(params.setTotalItems).not.toHaveBeenCalled();
-			expect(params.focusFirstEditableCell).not.toHaveBeenCalled();
+			expect(params.focusRow).not.toHaveBeenCalled();
 		});
 
-		it('should always reset loading state in finally block', async () => {
-			const addRowError = new Error('Failed to add row');
-			vi.mocked(useDataTableStore).mockReturnValue({
-				...dataTableStore,
-				insertEmptyRow: vi.fn().mockRejectedValue(addRowError),
-			});
-
-			const { onAddRowClick, contentLoading } = useDataTableOperations(params);
+		it('should show an error and keep the rows when the row cannot be added', async () => {
+			const error = new Error('Failed to add row');
+			store.insertEmptyRow.mockRejectedValue(error);
+			const { params, onAddRowClick, contentLoading } = setup();
 
 			await onAddRowClick();
 
-			expect(params.toggleSave).toHaveBeenCalledWith(true);
-			expect(params.toggleSave).toHaveBeenCalledWith(false);
+			expect(showError).toHaveBeenCalledWith(error, 'dataTable.addRow.error');
+			expect(params.rows.value).toEqual(createRows());
+			expect(params.setTotalItems).not.toHaveBeenCalled();
+			expect(params.focusRow).not.toHaveBeenCalled();
+			expectSaveToggled(params);
 			expect(contentLoading.value).toBe(false);
 		});
 	});
 
-	describe('onCellValueChanged', () => {
-		it('should return early when field name is empty', async () => {
-			const { onCellValueChanged } = useDataTableOperations(params);
-			const event = {
-				data: { id: 1 },
-				api: { applyTransaction: vi.fn() },
-				oldValue: 'old',
-				colDef: { field: '', cellDataType: 'text' },
-			} as unknown as CellValueChangedEvent<DataTableRow>;
+	describe('onCellEdit', () => {
+		it('should update the row and save the new value', async () => {
+			store.updateRow.mockResolvedValue(true);
+			const { params, onCellEdit } = setup();
 
-			await onCellValueChanged(event);
+			await onCellEdit({ rowKey: '1', field: 'name', oldValue: 'John', newValue: 'Jim' });
 
-			expect(params.toggleSave).not.toHaveBeenCalled();
-		});
-
-		it('should return early when value is undefined', async () => {
-			const { onCellValueChanged } = useDataTableOperations(params);
-			const event = {
-				data: { id: 1 },
-				api: { applyTransaction: vi.fn() },
-				oldValue: 'old',
-				colDef: { field: 'name', cellDataType: 'text' },
-			} as unknown as CellValueChangedEvent<DataTableRow>;
-
-			await onCellValueChanged(event);
-
-			expect(params.toggleSave).not.toHaveBeenCalled();
-		});
-
-		it('should return early when values are equal', async () => {
-			const { onCellValueChanged } = useDataTableOperations(params);
-			const event = {
-				data: { id: 1, name: 'John' },
-				api: { applyTransaction: vi.fn() },
-				oldValue: 'John',
-				colDef: { field: 'name', cellDataType: 'text' },
-			} as unknown as CellValueChangedEvent<DataTableRow>;
-
-			await onCellValueChanged(event);
-
-			expect(params.toggleSave).not.toHaveBeenCalled();
-		});
-
-		it('should throw error when row id is not a number', async () => {
-			const { onCellValueChanged } = useDataTableOperations(params);
-			const event = {
-				data: { id: 'not-a-number', name: 'Jane' },
-				api: { applyTransaction: vi.fn() },
-				oldValue: 'John',
-				colDef: { field: 'name', cellDataType: 'text' },
-			} as unknown as CellValueChangedEvent<DataTableRow>;
-
-			await expect(onCellValueChanged(event)).rejects.toThrow('Expected row id to be a number');
-		});
-
-		it('should update cell value successfully', async () => {
-			const updateRowMock = vi.fn().mockResolvedValue(undefined);
-			vi.mocked(useDataTableStore).mockReturnValue({
-				...dataTableStore,
-				updateRow: updateRowMock,
-			});
-
-			const { onCellValueChanged } = useDataTableOperations(params);
-			const event = {
-				data: { id: 1, name: 'Jane' },
-				api: { applyTransaction: vi.fn() },
-				oldValue: 'John',
-				colDef: { field: 'name', cellDataType: 'text', colId: 'col1' },
-			} as unknown as CellValueChangedEvent<DataTableRow>;
-
-			await onCellValueChanged(event);
-
-			expect(params.toggleSave).toHaveBeenCalledWith(true);
-			expect(updateRowMock).toHaveBeenCalledWith('test', 'test', 1, { name: 'Jane' });
-			expect(telemetryTrackMock).toHaveBeenCalledWith('User edited data table content', {
-				data_table_id: 'test',
-				column_id: 'col1',
+			expect(params.rows.value[0]).toEqual({ id: 1, name: 'Jim', age: 30, active: true });
+			expect(params.rows.value[1]).toEqual(createRows()[1]);
+			expect(store.updateRow).toHaveBeenCalledWith(DATA_TABLE_ID, PROJECT_ID, 1, { name: 'Jim' });
+			expect(track).toHaveBeenCalledWith('User edited data table content', {
+				data_table_id: DATA_TABLE_ID,
+				column_id: 'col-name',
 				column_type: 'text',
 			});
-			expect(params.toggleSave).toHaveBeenCalledWith(false);
+			expect(showMessage).not.toHaveBeenCalled();
+			expectSaveToggled(params);
 		});
 
-		it('should revert cell value when update fails', async () => {
-			const isDataTableValue = await import('@/features/core/dataTable/typeGuards').then(
-				(m) => m.isDataTableValue,
-			);
-			vi.mocked(isDataTableValue).mockReturnValue(true);
+		it('should ignore values that a data table cannot store', async () => {
+			const { params, onCellEdit } = setup();
 
-			const updateError = new Error('Update failed');
-			vi.mocked(useDataTableStore).mockReturnValue({
-				...dataTableStore,
-				updateRow: vi.fn().mockRejectedValue(updateError),
-			});
+			await onCellEdit({ rowKey: '1', field: 'name', oldValue: 'John', newValue: { a: 1 } });
 
-			const applyTransaction = vi.fn();
-			const { onCellValueChanged } = useDataTableOperations(params);
-			const event = {
-				data: { id: 1, name: 'Jane' },
-				api: { applyTransaction },
-				oldValue: 'John',
-				colDef: { field: 'name', cellDataType: 'text', colId: 'col1' },
-			} as unknown as CellValueChangedEvent<DataTableRow>;
-
-			await onCellValueChanged(event);
-
-			expect(applyTransaction).toHaveBeenCalledWith({
-				update: [{ id: 1, name: 'John' }],
-			});
-			expect(showErrorMock).toHaveBeenCalledWith(updateError, 'dataTable.updateRow.error');
-			expect(params.toggleSave).toHaveBeenCalledWith(false);
+			expect(store.updateRow).not.toHaveBeenCalled();
+			expect(params.rows.value).toEqual(createRows());
 		});
 
-		it('should show a precision warning when the new number exceeds MAX_SAFE_INTEGER', async () => {
-			vi.mocked(useDataTableStore).mockReturnValue({
-				...dataTableStore,
-				updateRow: vi.fn().mockResolvedValue(undefined),
-			});
+		it('should revert the cell to the old value when the save fails', async () => {
+			const error = new Error('Update failed');
+			store.updateRow.mockRejectedValue(error);
+			const { params, onCellEdit } = setup();
 
-			const { onCellValueChanged } = useDataTableOperations(params);
-			const unsafeValue = Number.MAX_SAFE_INTEGER + 10;
-			const event = {
-				data: { id: 1, amount: unsafeValue },
-				api: { applyTransaction: vi.fn() },
-				oldValue: 0,
-				colDef: { field: 'amount', cellDataType: 'number', colId: 'col1' },
-			} as unknown as CellValueChangedEvent<DataTableRow>;
+			await onCellEdit({ rowKey: '1', field: 'name', oldValue: 'John', newValue: 'Jim' });
 
-			await onCellValueChanged(event);
-
-			expect(showMessageMock).toHaveBeenCalledWith(
-				expect.objectContaining({
-					title: 'dataTable.updateRow.numberPrecisionWarning.title',
-					message: 'dataTable.updateRow.numberPrecisionWarning.message',
-					type: 'warning',
-				}),
-			);
+			expect(params.rows.value).toEqual(createRows());
+			expect(showError).toHaveBeenCalledWith(error, 'dataTable.updateRow.error');
+			expect(track).not.toHaveBeenCalled();
+			expectSaveToggled(params);
 		});
 
-		it('should not show a precision warning for safe numbers', async () => {
-			vi.mocked(useDataTableStore).mockReturnValue({
-				...dataTableStore,
-				updateRow: vi.fn().mockResolvedValue(undefined),
-			});
+		it('should revert the cell to null when the old value is not a valid value', async () => {
+			store.updateRow.mockRejectedValue(new Error('Update failed'));
+			const { params, onCellEdit } = setup();
 
-			const { onCellValueChanged } = useDataTableOperations(params);
-			const event = {
-				data: { id: 1, amount: 42 },
-				api: { applyTransaction: vi.fn() },
-				oldValue: 0,
-				colDef: { field: 'amount', cellDataType: 'number', colId: 'col1' },
-			} as unknown as CellValueChangedEvent<DataTableRow>;
+			await onCellEdit({ rowKey: '1', field: 'name', oldValue: undefined, newValue: 'Jim' });
 
-			await onCellValueChanged(event);
-
-			expect(showMessageMock).not.toHaveBeenCalled();
+			expect(params.rows.value[0].name).toBeNull();
 		});
 
-		it('should revert cell value to null when old value is invalid', async () => {
-			const isDataTableValue = await import('@/features/core/dataTable/typeGuards').then(
-				(m) => m.isDataTableValue,
-			);
-			vi.mocked(isDataTableValue).mockReturnValue(false);
+		it('should show a precision warning when the new number exceeds the safe integer range', async () => {
+			store.updateRow.mockResolvedValue(true);
+			const { onCellEdit } = setup();
 
-			const updateError = new Error('Update failed');
-			vi.mocked(useDataTableStore).mockReturnValue({
-				...dataTableStore,
-				updateRow: vi.fn().mockRejectedValue(updateError),
+			await onCellEdit({
+				rowKey: '1',
+				field: 'age',
+				oldValue: 30,
+				newValue: Number.MAX_SAFE_INTEGER + 2,
 			});
 
-			const applyTransaction = vi.fn();
-			const { onCellValueChanged } = useDataTableOperations(params);
-			const event = {
-				data: { id: 1, name: 'Jane' },
-				api: { applyTransaction },
-				oldValue: undefined,
-				colDef: { field: 'name', cellDataType: 'text', colId: 'col1' },
-			} as unknown as CellValueChangedEvent<DataTableRow>;
-
-			await onCellValueChanged(event);
-
-			expect(applyTransaction).toHaveBeenCalledWith({
-				update: [{ id: 1, name: null }],
+			expect(showMessage).toHaveBeenCalledWith({
+				title: 'dataTable.updateRow.numberPrecisionWarning.title',
+				message: 'dataTable.updateRow.numberPrecisionWarning.message',
+				type: 'warning',
 			});
-			expect(showErrorMock).toHaveBeenCalledWith(updateError, 'dataTable.updateRow.error');
 		});
 	});
 
 	describe('fetchDataTableRows', () => {
-		it('should fetch rows successfully', async () => {
-			const fetchedData = {
-				data: [
-					{ id: 1, name: 'John' },
-					{ id: 2, name: 'Jane' },
-				],
-				count: 10,
-			};
-
-			const fetchDataTableContentMock = vi.fn().mockResolvedValue(fetchedData);
-			vi.mocked(useDataTableStore).mockReturnValue({
-				...dataTableStore,
-				fetchDataTableContent: fetchDataTableContentMock,
-			});
-
-			const rowData = ref([]);
-			const currentPage = ref(2);
-			const pageSize = ref(20);
-			const currentSortBy = ref('name');
-			const currentSortOrder = ref('asc');
-			const currentFilterJSON = ref('{"status":"active"}');
-
-			const { fetchDataTableRows, contentLoading } = useDataTableOperations({
-				...params,
-				rowData,
-				currentPage,
-				pageSize,
-				currentSortBy,
-				currentSortOrder,
-				currentFilterJSON,
+		it('should fetch rows with the current page, sort, filter and search', async () => {
+			const fetchedRows = [{ id: 5, name: 'Max', age: 40, active: true }];
+			store.fetchDataTableContent.mockResolvedValue({ data: fetchedRows, count: 10 });
+			const { params, fetchDataTableRows, contentLoading } = setup({
+				currentPage: ref(2),
+				pageSize: ref(20),
+				sortBy: ref('name:asc'),
+				filterJSON: ref('{"status":"active"}'),
+				searchQuery: ref('Max'),
 			});
 
 			expect(await fetchDataTableRows()).toBe(true);
 
-			expect(fetchDataTableContentMock).toHaveBeenCalledWith(
-				'test',
-				'test',
+			expect(store.fetchDataTableContent).toHaveBeenCalledWith(
+				DATA_TABLE_ID,
+				PROJECT_ID,
 				2,
 				20,
 				'name:asc',
 				'{"status":"active"}',
-				undefined,
+				'Max',
 			);
-			expect(rowData.value).toEqual(fetchedData.data);
+			expect(params.rows.value).toEqual(fetchedRows);
 			expect(params.setTotalItems).toHaveBeenCalledWith(10);
-			expect(params.setGridData).toHaveBeenCalledWith({ rowData: fetchedData.data });
-			expect(params.handleClearSelection).toHaveBeenCalled();
+			expect(params.clearSelection).toHaveBeenCalled();
 			expect(contentLoading.value).toBe(false);
 		});
 
-		it('should handle undefined currentFilterJSON', async () => {
-			const fetchedData = {
-				data: [{ id: 1 }],
-				count: 1,
-			};
-
-			const fetchDataTableContentMock = vi.fn().mockResolvedValue(fetchedData);
-			vi.mocked(useDataTableStore).mockReturnValue({
-				...dataTableStore,
-				fetchDataTableContent: fetchDataTableContentMock,
-			});
-
-			const currentPage = ref(1);
-			const pageSize = ref(10);
-			const currentSortBy = ref('id');
-			const currentSortOrder = ref('desc');
-
-			const { fetchDataTableRows } = useDataTableOperations({
-				...params,
-				currentPage,
-				pageSize,
-				currentSortBy,
-				currentSortOrder,
-			});
-
-			await fetchDataTableRows();
-
-			expect(fetchDataTableContentMock).toHaveBeenCalledWith(
-				'test',
-				'test',
-				1,
-				10,
-				'id:desc',
-				undefined,
-				undefined,
-			);
-		});
-
-		it('should handle error and show toast', async () => {
-			const fetchError = new Error('Failed to fetch');
-			vi.mocked(useDataTableStore).mockReturnValue({
-				...dataTableStore,
-				fetchDataTableContent: vi.fn().mockRejectedValue(fetchError),
-			});
-
-			const rowData = ref([{ id: 1 }]);
-
-			const { fetchDataTableRows } = useDataTableOperations({ ...params, rowData });
+		it('should show an error and keep the rows when the fetch fails', async () => {
+			const error = new Error('Fetch failed');
+			store.fetchDataTableContent.mockRejectedValue(error);
+			const { params, fetchDataTableRows, contentLoading } = setup();
 
 			expect(await fetchDataTableRows()).toBe(false);
 
-			expect(showErrorMock).toHaveBeenCalledWith(fetchError, 'dataTable.fetchContent.error');
-			expect(rowData.value).toEqual([{ id: 1 }]);
-			expect(params.setTotalItems).not.toHaveBeenCalled();
-			expect(params.handleClearSelection).not.toHaveBeenCalled();
-		});
-
-		it('should always reset loading state in finally block', async () => {
-			const fetchError = new Error('Failed to fetch');
-			vi.mocked(useDataTableStore).mockReturnValue({
-				...dataTableStore,
-				fetchDataTableContent: vi.fn().mockRejectedValue(fetchError),
-			});
-
-			const { fetchDataTableRows, contentLoading } = useDataTableOperations(params);
-
-			await fetchDataTableRows();
-
+			expect(showError).toHaveBeenCalledWith(error, 'dataTable.fetchContent.error');
+			expect(params.rows.value).toEqual(createRows());
+			expect(params.clearSelection).not.toHaveBeenCalled();
 			expect(contentLoading.value).toBe(false);
 		});
 	});
 
 	describe('handleDeleteSelected', () => {
-		it('should return early when no rows are selected', async () => {
-			const selectedRowIds = ref(new Set<number>());
-			const { handleDeleteSelected } = useDataTableOperations({ ...params, selectedRowIds });
+		it('should not ask for confirmation when no rows are selected', async () => {
+			const { handleDeleteSelected } = setup();
 
-			await handleDeleteSelected();
+			await handleDeleteSelected([]);
 
-			expect(confirmMock).not.toHaveBeenCalled();
+			expect(confirm).not.toHaveBeenCalled();
+			expect(store.deleteRows).not.toHaveBeenCalled();
 		});
 
-		it('should return early when user cancels confirmation', async () => {
-			confirmMock.mockResolvedValue('cancel');
+		it('should keep the rows when the user cancels the confirmation', async () => {
+			confirm.mockResolvedValue('cancel');
+			const { handleDeleteSelected } = setup();
 
-			const selectedRowIds = ref(new Set([1, 2, 3]));
-			const { handleDeleteSelected } = useDataTableOperations({ ...params, selectedRowIds });
+			await handleDeleteSelected(['1']);
 
-			await handleDeleteSelected();
-
-			expect(confirmMock).toHaveBeenCalled();
-			expect(params.toggleSave).not.toHaveBeenCalled();
-		});
-
-		it('should delete selected rows successfully', async () => {
-			confirmMock.mockResolvedValue(MODAL_CONFIRM);
-
-			const deleteRowsMock = vi.fn().mockResolvedValue(undefined);
-			const fetchDataTableContentMock = vi.fn().mockResolvedValue({
-				data: [],
-				count: 0,
-			});
-			vi.mocked(useDataTableStore).mockReturnValue({
-				...dataTableStore,
-				deleteRows: deleteRowsMock,
-				fetchDataTableContent: fetchDataTableContentMock,
-			});
-
-			const selectedRowIds = ref(new Set([1, 2, 3]));
-			const { handleDeleteSelected } = useDataTableOperations({ ...params, selectedRowIds });
-
-			await handleDeleteSelected();
-
-			expect(params.toggleSave).toHaveBeenCalledWith(true);
-			expect(deleteRowsMock).toHaveBeenCalledWith('test', 'test', [1, 2, 3]);
-			expect(fetchDataTableContentMock).toHaveBeenCalled();
-			expect(telemetryTrackMock).toHaveBeenCalledWith('User deleted rows in data table', {
-				data_table_id: 'test',
-				deleted_row_count: 3,
-			});
-			expect(params.toggleSave).toHaveBeenCalledWith(false);
-		});
-
-		it('should handle error and show toast', async () => {
-			confirmMock.mockResolvedValue(MODAL_CONFIRM);
-
-			const deleteError = new Error('Delete failed');
-			vi.mocked(useDataTableStore).mockReturnValue({
-				...dataTableStore,
-				deleteRows: vi.fn().mockRejectedValue(deleteError),
-			});
-
-			const selectedRowIds = ref(new Set([1, 2]));
-			const { handleDeleteSelected } = useDataTableOperations({ ...params, selectedRowIds });
-
-			await handleDeleteSelected();
-
-			expect(showErrorMock).toHaveBeenCalledWith(deleteError, 'dataTable.deleteRows.error');
-			expect(params.toggleSave).toHaveBeenCalledWith(false);
-		});
-
-		it('should always reset save state in finally block', async () => {
-			confirmMock.mockResolvedValue(MODAL_CONFIRM);
-
-			const deleteError = new Error('Delete failed');
-			vi.mocked(useDataTableStore).mockReturnValue({
-				...dataTableStore,
-				deleteRows: vi.fn().mockRejectedValue(deleteError),
-			});
-
-			const selectedRowIds = ref(new Set([1]));
-			const { handleDeleteSelected } = useDataTableOperations({ ...params, selectedRowIds });
-
-			await handleDeleteSelected();
-
-			expect(params.toggleSave).toHaveBeenCalledWith(true);
-			expect(params.toggleSave).toHaveBeenCalledWith(false);
-		});
-	});
-
-	describe('onRenameColumn', () => {
-		it('should retain each column rename when applied from left to right', async () => {
-			const colDefs = ref([
-				{ colId: 'col1', field: 'field2', headerName: 'field2', cellDataType: 'text' },
-				{ colId: 'col2', field: 'field3', headerName: 'field3', cellDataType: 'text' },
-				{ colId: 'col3', field: 'field4', headerName: 'field4', cellDataType: 'text' },
-			]);
-			const rowData = ref([{ id: 1, field2: 'a', field3: 'b', field4: 'c' }]);
-			const { onRenameColumn } = useDataTableOperations({ ...params, colDefs, rowData });
-
-			await onRenameColumn('col1', 'first');
-			const gridUpdates = vi.mocked(params.setGridData).mock.calls;
-			const firstGridUpdate = gridUpdates.at(-1)?.[0].colDefs;
-			await onRenameColumn('col2', 'second');
-			const secondGridUpdate = gridUpdates.at(-1)?.[0].colDefs;
-			await onRenameColumn('col3', 'third');
-
-			expect(vi.mocked(dataTableStore.renameDataTableColumn).mock.calls).toEqual([
-				['test', 'test', 'col1', 'first'],
-				['test', 'test', 'col2', 'second'],
-				['test', 'test', 'col3', 'third'],
-			]);
-			expect(firstGridUpdate?.map(({ field }) => field)).toEqual(['first', 'field3', 'field4']);
-			expect(secondGridUpdate?.map(({ field }) => field)).toEqual(['first', 'second', 'field4']);
-			expect(colDefs.value.map(({ field }) => field)).toEqual(['first', 'second', 'third']);
-			expect(rowData.value).toEqual([{ id: 1, first: 'a', second: 'b', third: 'c' }]);
-		});
-
-		it('should return early when column is not found', async () => {
-			const colDefs = ref([]);
-			const { onRenameColumn } = useDataTableOperations({ ...params, colDefs });
-
-			await onRenameColumn('non-existent-column', 'newName');
-
-			expect(dataTableStore.renameDataTableColumn).not.toHaveBeenCalled();
-		});
-
-		it('should return early when column has no field', async () => {
-			const colDefs = ref([{ colId: 'col1', headerName: 'Name', cellDataType: 'text' }]);
-			const { onRenameColumn } = useDataTableOperations({ ...params, colDefs });
-
-			await onRenameColumn('col1', 'newName');
-
-			expect(dataTableStore.renameDataTableColumn).not.toHaveBeenCalled();
-		});
-
-		it('should rename column successfully', async () => {
-			const renameDataTableColumnMock = vi.fn().mockResolvedValue(undefined);
-			vi.mocked(useDataTableStore).mockReturnValue({
-				...dataTableStore,
-				renameDataTableColumn: renameDataTableColumnMock,
-			});
-
-			const colDefs = ref([
-				{ colId: 'col1', field: 'oldName', headerName: 'Old Name', cellDataType: 'text' },
-			]);
-			const rowData = ref([
-				{ id: 1, oldName: 'value1' },
-				{ id: 2, oldName: 'value2' },
-			]);
-
-			const { onRenameColumn } = useDataTableOperations({ ...params, colDefs, rowData });
-
-			await onRenameColumn('col1', 'newName');
-
-			expect(colDefs.value[0].headerName).toBe('newName');
-			expect(colDefs.value[0].field).toBe('newName');
-			expect(rowData.value).toEqual([
-				{ id: 1, newName: 'value1' },
-				{ id: 2, newName: 'value2' },
-			]);
-			expect(params.setGridData).toHaveBeenCalledWith({
-				colDefs: colDefs.value,
-				rowData: rowData.value,
-			});
-			expect(renameDataTableColumnMock).toHaveBeenCalledWith('test', 'test', 'col1', 'newName');
-			expect(telemetryTrackMock).toHaveBeenCalledWith('User renamed data table column', {
-				column_id: 'col1',
-				column_type: 'text',
-				data_table_id: 'test',
-			});
-		});
-
-		it('should handle when new name equals old field name', async () => {
-			const renameDataTableColumnMock = vi.fn().mockResolvedValue(undefined);
-			vi.mocked(useDataTableStore).mockReturnValue({
-				...dataTableStore,
-				renameDataTableColumn: renameDataTableColumnMock,
-			});
-
-			const colDefs = ref([
-				{ colId: 'col1', field: 'sameName', headerName: 'Old Header', cellDataType: 'text' },
-			]);
-			const rowData = ref([{ id: 1, sameName: 'value1' }]);
-
-			const { onRenameColumn } = useDataTableOperations({ ...params, colDefs, rowData });
-
-			await onRenameColumn('col1', 'sameName');
-
-			expect(colDefs.value[0].headerName).toBe('sameName');
-			expect(colDefs.value[0].field).toBe('sameName');
-			expect(rowData.value).toEqual([{ id: 1, sameName: 'value1' }]);
-			expect(renameDataTableColumnMock).toHaveBeenCalledWith('test', 'test', 'col1', 'sameName');
-		});
-
-		it('should rollback header name when API call fails', async () => {
-			const renameError = new Error('Rename failed');
-			vi.mocked(useDataTableStore).mockReturnValue({
-				...dataTableStore,
-				renameDataTableColumn: vi.fn().mockRejectedValue(renameError),
-			});
-
-			const colDefs = ref([
-				{ colId: 'col1', field: 'oldName', headerName: 'Old Name', cellDataType: 'text' },
-			]);
-			const rowData = ref([{ id: 1, oldName: 'value1' }]);
-
-			const { onRenameColumn } = useDataTableOperations({ ...params, colDefs, rowData });
-
-			await onRenameColumn('col1', 'newName');
-
-			expect(colDefs.value[0].headerName).toBe('Old Name');
-			expect(colDefs.value[0].field).toBe('oldName');
-			expect(rowData.value).toEqual([{ id: 1, oldName: 'value1' }]);
-			expect(showErrorMock).toHaveBeenCalledWith(renameError, 'dataTable.renameColumn.error');
-			expect(params.setGridData).toHaveBeenCalledTimes(2);
-		});
-
-		it('should show specific error message for 409 conflict', async () => {
-			const responseError = new ResponseError('Column name already exists', {
-				httpStatusCode: 409,
-			});
-			vi.mocked(useDataTableStore).mockReturnValue({
-				...dataTableStore,
-				renameDataTableColumn: vi.fn().mockRejectedValue(responseError),
-			});
-
-			const colDefs = ref([
-				{ colId: 'col1', field: 'oldName', headerName: 'Old Name', cellDataType: 'text' },
-			]);
-
-			const { onRenameColumn } = useDataTableOperations({ ...params, colDefs });
-
-			await onRenameColumn('col1', 'existingName');
-
-			expect(colDefs.value[0].headerName).toBe('Old Name');
-			expect(showErrorMock).toHaveBeenCalledWith(
-				new Error('Column name already exists'),
-				'dataTable.column.alreadyExistsError',
+			expect(confirm).toHaveBeenCalledWith(
+				'dataTable.deleteRows.confirmation',
+				'dataTable.deleteRows.title',
+				{ confirmButtonText: 'generic.delete', cancelButtonText: 'generic.cancel' },
 			);
+			expect(store.deleteRows).not.toHaveBeenCalled();
 		});
 
-		it('should handle ResponseError without httpStatusCode', async () => {
-			const responseError = new ResponseError('Unknown response error');
-			vi.mocked(useDataTableStore).mockReturnValue({
-				...dataTableStore,
-				renameDataTableColumn: vi.fn().mockRejectedValue(responseError),
+		it('should delete the selected rows and fetch the rows again', async () => {
+			store.deleteRows.mockResolvedValue(true);
+			store.fetchDataTableContent.mockResolvedValue({ data: [], count: 0 });
+			const { params, handleDeleteSelected } = setup();
+
+			await handleDeleteSelected(['1', '2']);
+
+			expect(store.deleteRows).toHaveBeenCalledWith(DATA_TABLE_ID, PROJECT_ID, [1, 2]);
+			expect(store.fetchDataTableContent).toHaveBeenCalled();
+			expect(params.rows.value).toEqual([]);
+			expect(track).toHaveBeenCalledWith('User deleted rows in data table', {
+				data_table_id: DATA_TABLE_ID,
+				deleted_row_count: 2,
 			});
-
-			const colDefs = ref([
-				{ colId: 'col1', field: 'oldName', headerName: 'Old Name', cellDataType: 'text' },
-			]);
-
-			const { onRenameColumn } = useDataTableOperations({ ...params, colDefs });
-
-			await onRenameColumn('col1', 'newName');
-
-			expect(colDefs.value[0].headerName).toBe('Old Name');
-			expect(showErrorMock).toHaveBeenCalledWith(responseError, 'dataTable.renameColumn.error');
+			expectSaveToggled(params);
 		});
 
-		it('should handle regular Error', async () => {
-			const error = new Error('Regular error message');
-			vi.mocked(useDataTableStore).mockReturnValue({
-				...dataTableStore,
-				renameDataTableColumn: vi.fn().mockRejectedValue(error),
-			});
+		it('should show an error when the rows cannot be deleted', async () => {
+			const error = new Error('Delete failed');
+			store.deleteRows.mockRejectedValue(error);
+			const { params, handleDeleteSelected } = setup();
 
-			const colDefs = ref([
-				{ colId: 'col1', field: 'oldName', headerName: 'Old Name', cellDataType: 'text' },
-			]);
+			await handleDeleteSelected(['1']);
 
-			const { onRenameColumn } = useDataTableOperations({ ...params, colDefs });
-
-			await onRenameColumn('col1', 'newName');
-
-			expect(colDefs.value[0].headerName).toBe('Old Name');
-			expect(showErrorMock).toHaveBeenCalledWith(error, 'dataTable.renameColumn.error');
-		});
-
-		it('should update row data correctly with multiple columns', async () => {
-			const renameDataTableColumnMock = vi.fn().mockResolvedValue(undefined);
-			vi.mocked(useDataTableStore).mockReturnValue({
-				...dataTableStore,
-				renameDataTableColumn: renameDataTableColumnMock,
-			});
-
-			const colDefs = ref([
-				{ colId: 'col1', field: 'name', headerName: 'Name', cellDataType: 'text' },
-				{ colId: 'col2', field: 'age', headerName: 'Age', cellDataType: 'number' },
-			]);
-			const rowData = ref([
-				{ id: 1, name: 'John', age: 30 },
-				{ id: 2, name: 'Jane', age: 25 },
-			]);
-
-			const { onRenameColumn } = useDataTableOperations({ ...params, colDefs, rowData });
-
-			await onRenameColumn('col1', 'fullName');
-
-			expect(colDefs.value[0].field).toBe('fullName');
-			expect(rowData.value).toEqual([
-				{ id: 1, fullName: 'John', age: 30 },
-				{ id: 2, fullName: 'Jane', age: 25 },
-			]);
-		});
-
-		it('should handle empty row data', async () => {
-			const renameDataTableColumnMock = vi.fn().mockResolvedValue(undefined);
-			vi.mocked(useDataTableStore).mockReturnValue({
-				...dataTableStore,
-				renameDataTableColumn: renameDataTableColumnMock,
-			});
-
-			const colDefs = ref([
-				{ colId: 'col1', field: 'oldName', headerName: 'Old Name', cellDataType: 'text' },
-			]);
-			const rowData = ref([]);
-
-			const { onRenameColumn } = useDataTableOperations({ ...params, colDefs, rowData });
-
-			await onRenameColumn('col1', 'newName');
-
-			expect(colDefs.value[0].field).toBe('newName');
-			expect(rowData.value).toEqual([]);
-			expect(renameDataTableColumnMock).toHaveBeenCalledWith('test', 'test', 'col1', 'newName');
-		});
-	});
-
-	describe('onCellKeyDown', () => {
-		const createKeyDownEvent = (
-			key: string,
-			options: { metaKey?: boolean; ctrlKey?: boolean; target?: HTMLElement } = {},
-		): CellKeyDownEvent<DataTableRow> => {
-			const preventDefault = vi.fn();
-			return {
-				event: {
-					key,
-					metaKey: options.metaKey || false,
-					ctrlKey: options.ctrlKey || false,
-					target: options.target || document.createElement('div'),
-					preventDefault,
-				} as unknown as KeyboardEvent,
-				column: { getColId: () => 'col1' },
-				api: { getEditingCells: () => [] },
-			} as unknown as CellKeyDownEvent<DataTableRow>;
-		};
-
-		it('should return early when cells are being edited', async () => {
-			const { onCellKeyDown } = useDataTableOperations(params);
-			const event = createKeyDownEvent('Delete');
-			event.api.getEditingCells = () => [
-				{
-					rowIndex: 0,
-					column: {},
-				} as unknown as ReturnType<GridApi['getEditingCells']>[0],
-			];
-
-			await onCellKeyDown(event);
-
-			expect(params.handleCopyFocusedCell).not.toHaveBeenCalled();
-			expect(params.handleClearSelection).not.toHaveBeenCalled();
-		});
-
-		it('should return early when target is input element in non-selection column', async () => {
-			const { onCellKeyDown } = useDataTableOperations(params);
-			const input = document.createElement('input');
-			const event = createKeyDownEvent('Delete', { target: input });
-
-			await onCellKeyDown(event);
-
-			expect(params.handleClearSelection).not.toHaveBeenCalled();
-		});
-
-		it('should handle Cmd+C copy shortcut', async () => {
-			const { onCellKeyDown } = useDataTableOperations(params);
-			const event = createKeyDownEvent('c', { metaKey: true });
-
-			await onCellKeyDown(event);
-
-			expect(event.event?.preventDefault).toHaveBeenCalled();
-			expect(params.handleCopyFocusedCell).toHaveBeenCalledWith(event);
-		});
-
-		it('should handle Ctrl+C copy shortcut', async () => {
-			const { onCellKeyDown } = useDataTableOperations(params);
-			const event = createKeyDownEvent('c', { ctrlKey: true });
-
-			await onCellKeyDown(event);
-
-			expect(event.event?.preventDefault).toHaveBeenCalled();
-			expect(params.handleCopyFocusedCell).toHaveBeenCalledWith(event);
-		});
-
-		it('should handle Escape key', async () => {
-			const { onCellKeyDown } = useDataTableOperations(params);
-			const event = createKeyDownEvent('Escape');
-
-			await onCellKeyDown(event);
-
-			expect(params.handleClearSelection).toHaveBeenCalled();
-		});
-
-		it('should handle Delete key when rows are selected', async () => {
-			confirmMock.mockResolvedValue(MODAL_CONFIRM);
-			vi.mocked(useDataTableStore).mockReturnValue({
-				...dataTableStore,
-				deleteRows: vi.fn().mockResolvedValue(undefined),
-				fetchDataTableContent: vi.fn().mockResolvedValue({ data: [], count: 0 }),
-			});
-
-			const selectedRowIds = ref(new Set([1, 2]));
-			const { onCellKeyDown } = useDataTableOperations({ ...params, selectedRowIds });
-			const event = createKeyDownEvent('Delete');
-
-			await onCellKeyDown(event);
-
-			expect(event.event?.preventDefault).toHaveBeenCalled();
-			expect(confirmMock).toHaveBeenCalled();
-		});
-
-		it('should handle Backspace key when rows are selected', async () => {
-			confirmMock.mockResolvedValue(MODAL_CONFIRM);
-			vi.mocked(useDataTableStore).mockReturnValue({
-				...dataTableStore,
-				deleteRows: vi.fn().mockResolvedValue(undefined),
-				fetchDataTableContent: vi.fn().mockResolvedValue({ data: [], count: 0 }),
-			});
-
-			const selectedRowIds = ref(new Set([3]));
-			const { onCellKeyDown } = useDataTableOperations({ ...params, selectedRowIds });
-			const event = createKeyDownEvent('Backspace');
-
-			await onCellKeyDown(event);
-
-			expect(event.event?.preventDefault).toHaveBeenCalled();
-			expect(confirmMock).toHaveBeenCalled();
-		});
-
-		it('should not handle Delete key when no rows are selected', async () => {
-			const selectedRowIds = ref(new Set<number>());
-			const { onCellKeyDown } = useDataTableOperations({ ...params, selectedRowIds });
-			const event = createKeyDownEvent('Delete');
-
-			await onCellKeyDown(event);
-
-			expect(event.event?.preventDefault).not.toHaveBeenCalled();
-			expect(confirmMock).not.toHaveBeenCalled();
-		});
-
-		it('should not handle other keys', async () => {
-			const { onCellKeyDown } = useDataTableOperations(params);
-			const event = createKeyDownEvent('a');
-
-			await onCellKeyDown(event);
-
-			expect(params.handleCopyFocusedCell).not.toHaveBeenCalled();
-			expect(params.handleClearSelection).not.toHaveBeenCalled();
-			expect(confirmMock).not.toHaveBeenCalled();
+			expect(showError).toHaveBeenCalledWith(error, 'dataTable.deleteRows.error');
+			expect(store.fetchDataTableContent).not.toHaveBeenCalled();
+			expect(track).not.toHaveBeenCalled();
+			expectSaveToggled(params);
 		});
 	});
 });
