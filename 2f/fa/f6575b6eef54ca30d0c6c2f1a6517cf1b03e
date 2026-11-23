@@ -1,0 +1,99 @@
+packages/cli/src/modules/agents/simulation/__tests__/simulation-session.test.ts
+  s_450cf68b0d8430::t_dd6b113023c0ba 2,598-607,611-735
+  s_450cf68b0d8430::t_66310c9f918edb 608-610
+  s_450cf68b0d8430::t_24bd3d7ab71d18 736
+packages/cli/src/modules/agents/simulation/tool-simulation.contracts.ts
+  s_450cf68b0d8430::t_78f37fa8e47961 1,83-84
+  s_11ad25b66a6e8f::t_3d892cccb704a8 30
+  s_11ad25b66a6e8f::t_94d2ba18273b7b 18-24,31
+  s_eacb2e80382e6a::t_480e6f0c4c7d89 5-8
+packages/cli/src/modules/agents/simulation/simulation-session.ts
+  s_450cf68b0d8430::t_277d362dfd6f0b 89-90,274-276
+  s_450cf68b0d8430::t_78f37fa8e47961 10-15,183,197,206,362-365,367-374
+packages/@n8n/api-types/src/index.ts
+  s_450cf68b0d8430::t_78f37fa8e47961 1126,1136
+packages/@n8n/api-types/src/schemas/__tests__/agent-safe-testing.schema.test.ts
+  s_450cf68b0d8430::t_277d362dfd6f0b 1-5,12-13,26-27,32-41,45-61
+  s_450cf68b0d8430::t_66310c9f918edb 28-31
+packages/cli/src/modules/agents/__tests__/agent-test-run.service.test.ts
+  s_450cf68b0d8430::t_66310c9f918edb 8,696-698,700
+  s_450cf68b0d8430::t_dd6b113023c0ba 674-695,699,701-714
+packages/@n8n/api-types/src/schemas/agent-safe-testing.schema.ts
+  s_450cf68b0d8430::t_78f37fa8e47961 45-58,72,91-94
+packages/cli/src/modules/agents/simulation/__tests__/simulation-session-binding.test.ts
+  s_11ad25b66a6e8f::t_8dbc6ea6945d1a 92-97
+  s_11ad25b66a6e8f::t_08c41b8f581faa 1-91,98-345,373-439
+packages/cli/src/modules/instance-ai/eval/__tests__/llm-mock-simulation-backend.test.ts
+  s_11ad25b66a6e8f::t_72df48500b2da0 82,128-133,146-151,169-174,198-203,231-236
+packages/cli/src/modules/agents/simulation/simulation-session.service.ts
+  s_11ad25b66a6e8f::t_94d2ba18273b7b 1-2,50,68-69,71,74,77,83-84,89-91,96-119,122-123,142-144,146-151,154,165,192,203,283,384-391,393,404-409,420-421
+  s_11ad25b66a6e8f::t_3d892cccb704a8 195-200,202,410-419
+  s_11ad25b66a6e8f::t_ee96b26663fa63 422
+packages/cli/src/modules/mcp-guard/plan-template.ts
+  s_eacb2e80382e6a::t_3f42d4c7716b75 1-217
+packages/cli/src/modules/mcp-guard/router.ts
+  s_eacb2e80382e6a::t_3f42d4c7716b75 1-164
+packages/cli/src/modules/agents/simulation/simulation-backend-registry.ts
+  s_eacb2e80382e6a::t_480e6f0c4c7d89 3,6-9,12-13,21
+packages/cli/test/linear-consumer/run.mjs
+  s_eacb2e80382e6a::t_00f2c9ef1a381d 2,9-21
+  s_eacb2e80382e6a::t_4f69494664095c 46-49,92-100,102
+  s_eacb2e80382e6a::t_480e6f0c4c7d89 1,3-8,22-42,51-91,101,103-107
+  s_eacb2e80382e6a::t_6ae1a6d1559886 43-45,50
+packages/cli/test/linear-consumer/turns.mjs
+  s_eacb2e80382e6a::t_480e6f0c4c7d89 1-200,204-211,223-243,247-248,250-257,259-261,263-264,273-281,283-286,295-319,321-323,325-330
+  s_eacb2e80382e6a::t_6ae1a6d1559886 201-203,244-245,258,265-272,282,320
+  s_eacb2e80382e6a::t_4f69494664095c 214-219,246,249,262
+  s_eacb2e80382e6a::t_208b3adcae9e1d 212-213,220-222,287-294,324
+packages/cli/src/modules/mcp-guard/once-by-key.ts
+  s_eacb2e80382e6a::t_3f42d4c7716b75 1-20
+packages/cli/src/modules/mcp-guard/gym-admin.ts
+  s_eacb2e80382e6a::t_3f42d4c7716b75 1-6
+packages/cli/src/modules/mcp-guard/plan-hydrator.ts
+  s_eacb2e80382e6a::t_3f42d4c7716b75 1-480
+packages/cli/src/modules/agents/simulation/__tests__/linear-gym-backend.test.ts
+  s_eacb2e80382e6a::t_480e6f0c4c7d89 4-6,13,15,19-30,74-79,81,86-87,108-110,177,189,195-196,198,200,202,258,266-267,270,281,319
+  s_eacb2e80382e6a::t_1ae16f5df09dbe 1-3,7-12,14,16-18,31-73,80,82-85,88-107,111-176,178-188,190-194,197,199,201,203-257,259-265,268-269,271-280,282-318,320-374
+packages/cli/src/modules/agents/simulation/linear-gym-backend.ts
+  s_eacb2e80382e6a::t_480e6f0c4c7d89 1-301,304-310,312-315,319-328
+  s_eacb2e80382e6a::t_cf7bd60b07ecb4 316-318
+  s_eacb2e80382e6a::t_0edc26d8cf0262 302-303,311
+packages/cli/test/linear-consumer/tsconfig.json
+  s_eacb2e80382e6a::t_480e6f0c4c7d89 1-9
+packages/cli/src/modules/mcp-guard/seeded-entities.ts
+  s_eacb2e80382e6a::t_3f42d4c7716b75 1-159
+packages/cli/src/modules/mcp-guard/mcp-upstream.ts
+  s_eacb2e80382e6a::t_3f42d4c7716b75 1-6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2ffaf6575b6eef54ca30d0c6c2f1a6517cf1b03e",
+  "prompts": {},
+  "sessions": {
+    "s_11ad25b66a6e8f": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1fa3b-0644-7569-8d36-8acba50c5bb4",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    },
+    "s_450cf68b0d8430": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1fa3b-0658-74e5-b539-af145efc13b8",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    },
+    "s_eacb2e80382e6a": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1fa41-7f04-760a-b837-bab536c3659e",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

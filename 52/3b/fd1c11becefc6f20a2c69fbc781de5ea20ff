@@ -1,0 +1,24 @@
+packages/@n8n/expression-runtime/src/bridge/__tests__/batch-read.test.ts
+  s_ba17ba4d77580e::t_4cd2b439560281 169
+  s_ba17ba4d77580e::t_8c3c02039704a0 164
+  s_ba17ba4d77580e::t_eebb222532f354 204-211
+packages/@n8n/expression-runtime/src/bridge/batch-read.ts
+  s_ba17ba4d77580e::t_46ffd3e4210037 159-161
+  s_ba17ba4d77580e::t_bda29c676b7457 141-142
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "523bfd1c11becefc6f20a2c69fbc781de5ea20ff",
+  "prompts": {},
+  "sessions": {
+    "s_ba17ba4d77580e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b1e2bc5d-a5c3-4904-ac3b-63070d26ca33",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

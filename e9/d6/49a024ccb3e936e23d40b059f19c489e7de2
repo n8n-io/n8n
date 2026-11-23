@@ -1,0 +1,26 @@
+packages/nodes-base/nodes/Baserow/GenericFunctions.ts
+  s_713061dee7a167::t_f0f63b5092d0a2 79,82
+packages/nodes-base/nodes/Baserow/__tests__/GenericFunctions.test.ts
+  s_713061dee7a167::t_7da6d9c4717cf1 208-215
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e9d649a024ccb3e936e23d40b059f19c489e7de2",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_713061dee7a167": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1dabdd8a-0708-42e9-8f79-f6cac7c49344",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

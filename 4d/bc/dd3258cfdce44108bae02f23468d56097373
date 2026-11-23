@@ -1,0 +1,20 @@
+packages/cli/src/services/__tests__/export.service.test.ts
+  s_fa4157c6078c9b::t_65b5108addeece 167
+  s_fa4157c6078c9b::t_d49e834bd05545 164,170-172,180,182
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4dbcdd3258cfdce44108bae02f23468d56097373",
+  "prompts": {},
+  "sessions": {
+    "s_fa4157c6078c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6b40ffc9-a4f4-4c7a-8bc6-797ab5344f03",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

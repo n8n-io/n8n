@@ -1,0 +1,21 @@
+packages/cli/src/modules/agents/simulation/__tests__/simulation-session-binding.test.ts
+  s_302a7aee7c064c::t_192f408110f09d 346-372
+packages/cli/src/modules/agents/simulation/simulation-session.service.ts
+  s_302a7aee7c064c::t_f893d9d50cbddd 120-121,145,152-153,201
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f66a3b1612392b9c9a31bb05599b40a95ae09826",
+  "prompts": {},
+  "sessions": {
+    "s_302a7aee7c064c": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1f96b-4338-7048-8058-0b4f17a2ed9c",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}
