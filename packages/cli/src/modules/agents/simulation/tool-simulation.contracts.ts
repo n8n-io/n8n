@@ -62,6 +62,8 @@ export interface ToolCallContext {
 	toolName: string;
 	/** For example `n8n-nodes-base.slack`. */
 	nodeType?: string;
+	/** Aborts when the run stops, so a backend can stop waiting on (and paying for) a reply. */
+	signal?: AbortSignal;
 }
 
 export type SimulatedReply =
