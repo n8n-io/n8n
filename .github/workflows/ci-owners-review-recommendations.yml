@@ -5,7 +5,7 @@ name: 'CI: Owners Review Recommendations'
 # own GitHub App. See n8n-io/github-actions ownership-checks/README.md.
 
 on:
-  pull_request:
+  pull_request_target:
     types:
       - opened
       - synchronize
