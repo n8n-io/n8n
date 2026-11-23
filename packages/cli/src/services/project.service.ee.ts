@@ -1,6 +1,11 @@
 import type { CreateProjectDto, ProjectType, UpdateProjectDto } from '@n8n/api-types';
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
-import { EventService, ProjectNotFoundError, RoleService } from '@n8n/backend-services';
+import {
+	EventService,
+	ProjectMutationHooksProxy,
+	ProjectNotFoundError,
+	RoleService,
+} from '@n8n/backend-services';
 import {
 	type User,
 	FolderRepository,
@@ -109,6 +114,7 @@ export class ProjectService {
 		private readonly txRunner: TransactionRunner,
 		private readonly agentsConfig: AgentsConfig,
 		private readonly serviceAccountProjects: ServiceAccountProjects,
+		private readonly projectMutationHooks: ProjectMutationHooksProxy,
 	) {}
 
 	private get workflowService() {
@@ -391,10 +397,18 @@ export class ProjectService {
 		});
 	}
 
+	/**
+	 * Every agent has a service account. With the flag off, its personal project
+	 * stays out of project lists, pickers and the Assistant.
+	 */
+	private serviceAccountListOptions(): { serviceAccountIds?: string[] } {
+		return this.agentsConfig.serviceAccountsEnabled ? {} : { serviceAccountIds: [] };
+	}
+
 	async getAccessibleProjects(user: User): Promise<Project[]> {
 		// This user is probably an admin, show them everything
 		if (hasGlobalScope(user, 'project:read')) {
-			return await this.projectRepository.find();
+			return await this.projectRepository.findAllProjects(this.serviceAccountListOptions());
 		}
 		return await this.projectRepository.getAccessibleProjects(user.id);
 	}
@@ -403,9 +417,10 @@ export class ProjectService {
 		user: User,
 		options: ProjectListOptions,
 	): Promise<{ projects: ProjectWithAccountKind[]; count: number }> {
+		const listOptions = { ...options, ...this.serviceAccountListOptions() };
 		const [projects, count] = hasGlobalScope(user, 'project:read')
-			? await this.projectRepository.findAllProjectsAndCount(options)
-			: await this.projectRepository.getAccessibleProjectsAndCount(user.id, options);
+			? await this.projectRepository.findAllProjectsAndCount(listOptions)
+			: await this.projectRepository.getAccessibleProjectsAndCount(user.id, listOptions);
 		await this.ownershipService.addAccountKinds<ProjectWithAccountKind>(projects);
 		return { projects, count };
 	}
@@ -551,6 +566,8 @@ export class ProjectService {
 			throw error;
 		}
 		if (!project) throw new TeamProjectOverQuotaError(limit);
+
+		await this.projectMutationHooks.afterTeamProjectCreated(project.id);
 
 		this.eventService.emit('team-project-created', {
 			userId: adminUser.id,

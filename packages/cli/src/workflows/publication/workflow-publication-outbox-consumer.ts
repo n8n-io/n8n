@@ -2,7 +2,11 @@ import { Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import { WorkflowsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import { WorkflowPublicationOutbox, WorkflowPublicationOutboxRepository } from '@n8n/db';
+import {
+	WorkflowPublicationOutbox,
+	WorkflowPublicationOutboxRepository,
+	WorkflowPublicationReason,
+} from '@n8n/db';
 import { OnLeaderTakeover, OnPubSubEvent, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { ErrorReporter, InstanceSettings, SpanStatus, Tracing } from 'n8n-core';
@@ -32,6 +36,9 @@ const TIMED_OUT = Symbol('timed-out');
  * moves on — the same drain could otherwise claim it straight back.
  */
 const ABORT_AFTER_LEASE_FRACTION = 0.7;
+
+/** How many leases an aborted transfer record returns to the queue before it fails. */
+const TRANSFER_WAIT_LEASES = 3;
 
 /**
  * How long an aborted record may take to unwind before it is abandoned, capped
@@ -336,6 +343,21 @@ export class WorkflowPublicationOutboxConsumer {
 							workflowId: record.workflowId,
 						});
 						return;
+					}
+
+					// Failing an aborted transfer record would leave the old triggers in the old project.
+					if (signal.aborted && record.reason === WorkflowPublicationReason.Transfer) {
+						const requeued = await this.outboxRepository.returnToPendingWhileYoungerThan(
+							record.id,
+							TRANSFER_WAIT_LEASES * this.workflowsConfig.publicationOutboxLeaseSeconds,
+						);
+						if (requeued) {
+							this.logger.debug(
+								'Returned publication outbox record to queue: aborted before applying',
+								{ outboxId: record.id, workflowId: record.workflowId },
+							);
+							return;
+						}
 					}
 
 					let result: PublicationResult;

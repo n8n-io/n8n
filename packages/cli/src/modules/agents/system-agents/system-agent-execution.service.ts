@@ -21,8 +21,10 @@ import { AgentExecutionService, type StartExecutionParams } from '../agent-execu
 import { AgentFormattedTurnError } from '../agent-formatted-turn.error';
 import type { ClaimedAgentMessage } from '../agent-message-queue.service';
 import { AgentMessageQueueService } from '../agent-message-queue.service';
+import { AgentSandboxFilesService } from '../agent-sandbox-files.service';
 import { chatErrorCode, emitChunkEvents } from '../agent-sse-stream';
 import { AgentTurnExecutionService, type AgentTurnRequest } from '../agent-turn-execution.service';
+import type { AgentChatAttachment } from '../entities/agent-chat-attachment.entity';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 import { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import { N8nMemory } from '../integrations/n8n-memory';
@@ -41,13 +43,18 @@ import type { AgentExecutionAdmission } from '../types/agent-queued-message';
 import type { FormattedTurnError } from '../types/agent-turn-outcome';
 import { systemChatMemoryResourceId } from '../utils/agent-memory-scope';
 import { buildInboundUserMessage } from '../utils/inbound-attachments';
-import { SYSTEM_CHAT_SOURCE } from '../utils/agent-thread-access';
+import {
+	SANDBOX_FILE_SOURCE,
+	SYSTEM_CHAT_SOURCE,
+	systemChatFileScope,
+} from '../utils/agent-thread-access';
 import { canUseSystemAgent } from './system-agent-access';
 import { SystemAgentHostEventChannel } from './system-agent-host-events';
 import { SystemAgentRegistry } from './system-agent-registry';
 import type {
 	SystemAgentAfterThreadDeletion,
 	SystemAgentFile,
+	SystemAgentListedFile,
 	SystemAgentProvider,
 	SystemAgentStartTurn,
 	SystemAgentTurnHandle,
@@ -144,6 +151,7 @@ export class SystemAgentExecutionService {
 		private readonly conversationState: AgentConversationStateService,
 		private readonly n8nMemory: N8nMemory,
 		private readonly threadGrants: AgentThreadGrantRepository,
+		private readonly sandboxFiles: AgentSandboxFilesService,
 	) {}
 
 	resourceIdFor(user: Pick<User, 'id'>): string {
@@ -691,6 +699,7 @@ export class SystemAgentExecutionService {
 						...this.turnStateOf(thread),
 						emitHostEvent: hostEvents.emit,
 						readFile: async (fileId) => await this.readThreadFile(thread, resourceId, fileId),
+						...(await this.sandboxFilesOf(thread, resourceId)),
 						executionId: admission.executionId,
 						message: payload.message,
 						attachments,
@@ -710,6 +719,7 @@ export class SystemAgentExecutionService {
 				: text;
 		await this.runTurn({
 			thread,
+			resourceId,
 			handle,
 			workspace,
 			hostEvents,
@@ -787,6 +797,7 @@ export class SystemAgentExecutionService {
 					...this.turnStateOf(thread),
 					emitHostEvent: hostEvents.emit,
 					readFile: async (fileId) => await this.readThreadFile(thread, resourceId, fileId),
+					...(await this.sandboxFilesOf(thread, resourceId)),
 					runId,
 					toolCallId: pending.toolCallId,
 					checkpointHostMetadata,
@@ -811,6 +822,7 @@ export class SystemAgentExecutionService {
 		};
 		const done = this.runTurn({
 			thread,
+			resourceId,
 			handle,
 			workspace,
 			hostEvents,
@@ -955,6 +967,81 @@ export class SystemAgentExecutionService {
 		};
 	}
 
+	/** The sandbox files of project agents, with the same flag and caps. Set only when the flag is on. */
+	private async sandboxFilesOf(
+		thread: AgentExecutionThread,
+		resourceId: string,
+	): Promise<Pick<SystemAgentStartTurn, 'sandboxFiles'>> {
+		if (!(await this.sandboxFiles.isEnabled())) return {};
+		return {
+			sandboxFiles: {
+				maxImportBytes: this.sandboxFiles.maxImportBytes,
+				importFiles: async (workspace, files, abortSignal) =>
+					await this.sandboxFiles
+						.importFilesFrom(
+							workspace,
+							files,
+							async (fileId) => await this.findThreadAttachment(thread, resourceId, fileId),
+							abortSignal,
+						)
+						.catch((error: unknown) => {
+							// A check error is for the model. A raw storage or sandbox error is not.
+							if (error instanceof UserError || abortSignal?.aborted) throw error;
+							this.logger.warn('Failed to import files into the sandbox of a system agent', {
+								threadId: thread.id,
+								error: error instanceof Error ? error.message : String(error),
+							});
+							throw new UserError('The files could not be copied to inputs/', { cause: error });
+						}),
+				storeOutput: async (workspace, path, abortSignal) => {
+					const file = await this.sandboxFiles
+						.store(
+							workspace,
+							path,
+							{
+								agentId: thread.agentId,
+								projectId: thread.projectId,
+								threadId: thread.id,
+								// The reads and the downloads of the system chat find its files by resource.
+								resourceId,
+							},
+							abortSignal,
+						)
+						.catch((error: unknown) => {
+							// A cap or path error is for the model. A raw sandbox error, such as a missing file, is not.
+							if (error instanceof UserError || abortSignal?.aborted) throw error;
+							this.logger.warn('Failed to store a sandbox file of a system agent', {
+								threadId: thread.id,
+								path,
+								error: error instanceof Error ? error.message : String(error),
+							});
+							throw new UserError(`"${path}" could not be read from outputs/`, { cause: error });
+						});
+					return {
+						fileId: file.id,
+						fileName: file.fileName,
+						mimeType: file.mimeType,
+						sizeBytes: file.fileSizeBytes,
+					};
+				},
+				listFiles: async () => await this.listThreadFiles(thread, resourceId),
+			},
+		};
+	}
+
+	/** A file of the thread, from the system chat of the thread's owner. `null` for a file of another thread. */
+	private async findThreadAttachment(
+		thread: AgentExecutionThread,
+		resourceId: string,
+		fileId: string,
+	): Promise<AgentChatAttachment | null> {
+		const attachment = await this.attachmentService.getForSystemAgent(
+			fileId,
+			systemChatFileScope(thread.agentId, resourceId),
+		);
+		return attachment?.threadId === thread.id ? attachment : null;
+	}
+
 	/** Read an attachment of the turn, from the system chat of the thread's owner. */
 	private async readTurnAttachment(
 		thread: AgentExecutionThread,
@@ -966,22 +1053,38 @@ export class SystemAgentExecutionService {
 		return await (await this.readThreadFile(thread, resourceId, ref.id))?.readContent();
 	}
 
+	/** The files of the thread, in the scope that `readThreadFile` reads them. */
+	private async listThreadFiles(
+		thread: AgentExecutionThread,
+		resourceId: string,
+	): Promise<SystemAgentListedFile[]> {
+		const files = await this.attachmentService.listForSystemAgentThread(
+			thread.id,
+			systemChatFileScope(thread.agentId, resourceId),
+		);
+		return files.map((file) => ({
+			fileId: file.fileId,
+			fileName: file.fileName,
+			mimeType: file.mimeType,
+			sizeBytes: file.sizeBytes,
+			origin: file.source === SANDBOX_FILE_SOURCE ? 'sandbox' : 'upload',
+			createdAt: file.createdAt,
+		}));
+	}
+
 	private async readThreadFile(
 		thread: AgentExecutionThread,
 		resourceId: string,
 		fileId: string,
 	): Promise<SystemAgentFile | undefined> {
-		const attachment = await this.attachmentService.getForSystemAgent(fileId, {
-			agentId: thread.agentId,
-			resourceId,
-			source: SYSTEM_CHAT_SOURCE,
-		});
-		if (attachment?.threadId !== thread.id) return undefined;
+		const attachment = await this.findThreadAttachment(thread, resourceId, fileId);
+		if (!attachment) return undefined;
 		// The bytes load only on request, so a caller can check the size first.
 		return {
 			fileName: attachment.fileName,
 			mimeType: attachment.mimeType,
 			sizeBytes: attachment.fileSizeBytes,
+			hasContent: async () => await this.attachmentService.hasStoredData(attachment),
 			readContent: async () => {
 				try {
 					return await streamToBuffer(await this.attachmentService.getStream(attachment));
@@ -1116,6 +1219,7 @@ export class SystemAgentExecutionService {
 	 */
 	private async runTurn({
 		thread,
+		resourceId,
 		handle,
 		workspace,
 		hostEvents,
@@ -1126,6 +1230,8 @@ export class SystemAgentExecutionService {
 		prepare,
 	}: {
 		thread: AgentExecutionThread;
+		/** The system chat memory resource of the thread owner. */
+		resourceId: string;
 		handle: SystemAgentTurnHandle;
 		workspace?: TurnWorkspace;
 		hostEvents: SystemAgentHostEventChannel;
@@ -1163,6 +1269,8 @@ export class SystemAgentExecutionService {
 				toolRegistry: handle.toolRegistry ?? new Map(),
 				mcpServerAttributions: new Map(),
 				context: { projectId: thread.projectId, agentId: thread.agentId, threadId: thread.id },
+				// The reads of the system chat find the sandbox files of the turn by this resource.
+				fileResourceId: resourceId,
 				chatSurface: 'system',
 				chatController: controller,
 				...(handle.onCompletingBoundary

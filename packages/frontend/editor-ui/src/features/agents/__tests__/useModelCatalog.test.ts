@@ -61,10 +61,7 @@ describe('useModelCatalog', () => {
 				'cohere-command-a': model('cohere-command-a', 'Command A'),
 			}),
 			'aws-bedrock': provider('aws-bedrock', {
-				'anthropic.claude-sonnet-4-5-v1:0': model(
-					'anthropic.claude-sonnet-4-5-v1:0',
-					'Claude Sonnet 4.5',
-				),
+				'anthropic.claude-sonnet-5-5': model('anthropic.claude-sonnet-5-5', 'Claude Sonnet 5.5'),
 			}),
 			nvidia: provider('nvidia', {
 				'nvidia/llama-3.3-nemotron-super-49b-v1': model(

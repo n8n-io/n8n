@@ -78,6 +78,7 @@ import {
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
 	HTTP_REQUEST_NODE_TYPE,
+	IF_NODE_TYPE,
 	MCP_TRIGGER_NODE_TYPE,
 	MERGE_NODE_TYPE,
 	MESSAGE_AN_AGENT_NODE_TYPE,
@@ -86,6 +87,7 @@ import {
 	SET_NODE_TYPE,
 	SLACK_NODE_TYPE,
 	STICKY_NODE_TYPE,
+	SWITCH_NODE_TYPE,
 	UPDATE_WEBHOOK_ID_NODE_TYPES,
 	VIEWS,
 	WEBHOOK_NODE_TYPE,
@@ -883,38 +885,171 @@ describe('useCanvasOperations', () => {
 			},
 		);
 
-		it('should place the node below the last interacted with node if it has non-main outputs', () => {
+		it('should place the node one gap past the rendered width of a node with non-main inputs', () => {
 			const uiStore = mockedStore(useUIStore);
 			const nodeTypesStore = mockedStore(useNodeTypesStore);
 
 			const node = createTestNode({ id: '0' });
 			const nodeTypeDescription = mockNodeTypeDescription();
+			const lastInteractedTypeDescription = mockNodeTypeDescription({
+				name: 'test',
+				inputs: [NodeConnectionTypes.Main, NodeConnectionTypes.AiTool],
+			});
 
 			const lastInteracted = createTestNode({
 				position: [96, 96],
 				type: 'test',
 				typeVersion: 1,
 			});
-			uiStore.lastInteractedWithNodeId = lastInteracted.id;
-			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockReturnValue(
-				lastInteracted as INodeUi,
+			vi.mocked(workflowDocumentStoreInstance.getExpressionHandler).mockReturnValue(
+				createWorkflowObjectKeepingParameters([lastInteracted]).expression,
 			);
-			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeTypeDescription);
+			uiStore.lastInteractedWithNodeId = lastInteracted.id;
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockImplementation((id) =>
+				id === lastInteracted.id ? (lastInteracted as INodeUi) : undefined,
+			);
+			nodeTypesStore.getNodeType = vi.fn((type: string) =>
+				type === 'test' ? lastInteractedTypeDescription : nodeTypeDescription,
+			);
 			vi.spyOn(workflowDocumentStoreInstance, 'getNodeByName').mockReturnValue(
 				lastInteracted as INodeUi,
 			);
 
-			vi.spyOn(NodeHelpers, 'getNodeOutputs').mockReturnValueOnce([
-				{ type: NodeConnectionTypes.AiTool },
-			]);
-			vi.spyOn(NodeHelpers, 'getConnectionTypes')
-				.mockReturnValueOnce([NodeConnectionTypes.AiTool])
-				.mockReturnValueOnce([NodeConnectionTypes.AiTool]);
-
 			const { resolveNodePosition } = useCanvasOperations();
 			const position = resolveNodePosition({ ...node, position: undefined }, nodeTypeDescription);
 
-			expect(position).toEqual([464, 96]);
+			// 96 + 224 (configurable width) + NODE_X_SPACING (128)
+			expect(position).toEqual([448, 96]);
+		});
+
+		describe('next-node slot', () => {
+			const setNodeType = mockNodeTypeDescription({ name: SET_NODE_TYPE });
+
+			function resolvePositionAfter(
+				sourceTypeDescription: INodeTypeDescription,
+				newNodeTypeDescription: INodeTypeDescription,
+				{ handle, typeVersion = 1 }: { handle?: string; typeVersion?: number } = {},
+			) {
+				const uiStore = mockedStore(useUIStore);
+				const nodeTypesStore = mockedStore(useNodeTypesStore);
+				const source = createTestNode({
+					id: 'source',
+					name: 'Source',
+					type: sourceTypeDescription.name,
+					typeVersion,
+					position: [0, 0],
+				}) as INodeUi;
+
+				vi.mocked(workflowDocumentStoreInstance.getExpressionHandler).mockReturnValue(
+					createWorkflowObjectKeepingParameters([source]).expression,
+				);
+				uiStore.lastInteractedWithNodeId = source.id;
+				uiStore.lastInteractedWithNodeHandle = handle ?? null;
+				vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockImplementation((id) =>
+					id === source.id ? source : undefined,
+				);
+				vi.spyOn(workflowDocumentStoreInstance, 'getNodeByName').mockReturnValue(source);
+				nodeTypesStore.getNodeType = vi.fn((type: string) =>
+					type === source.type ? sourceTypeDescription : newNodeTypeDescription,
+				);
+
+				const { resolveNodePosition } = useCanvasOperations();
+				return resolveNodePosition(
+					{
+						...createTestNode({ id: 'new', name: 'New', type: newNodeTypeDescription.name }),
+						position: undefined,
+					},
+					newNodeTypeDescription,
+				);
+			}
+
+			it.each([
+				['4 ports', 3, [352, 0]],
+				['5 ports', 5, [400, 0]],
+			])(
+				'should place a node after an AI Agent v1 with %s from its rendered width',
+				(_description, nonMainInputCount, expected) => {
+					const agentV1Type = mockNodeTypeDescription({
+						name: AGENT_NODE_TYPE,
+						inputs: [
+							NodeConnectionTypes.Main,
+							...Array.from({ length: nonMainInputCount }, () => NodeConnectionTypes.AiTool),
+						],
+					});
+
+					expect(resolvePositionAfter(agentV1Type, setNodeType)).toEqual(expected);
+				},
+			);
+
+			it('should line up the main handles after a 4-input Merge node', () => {
+				const mergeType = mockNodeTypeDescription({
+					name: MERGE_NODE_TYPE,
+					inputs: Array.from({ length: 4 }, () => NodeConnectionTypes.Main),
+				});
+
+				// The Merge node is 160 high, so its output handle is at 80. The Set handle is at 48.
+				expect(resolvePositionAfter(mergeType, setNodeType)).toEqual([224, 32]);
+			});
+
+			it('should line up the main handles of a new Sentiment Analysis node', () => {
+				const sentimentType = mockNodeTypeDescription({
+					name: '@n8n/n8n-nodes-langchain.sentimentAnalysis',
+					inputs: [NodeConnectionTypes.Main, NodeConnectionTypes.AiLanguageModel],
+					outputs: Array.from({ length: 3 }, () => NodeConnectionTypes.Main),
+				});
+
+				// The new node is 128 high, so its input handle is at 64. The source handle is at 48.
+				expect(resolvePositionAfter(setNodeType, sentimentType)).toEqual([224, -16]);
+			});
+
+			it('should fan the nodes after a Switch node with 3 outputs one node and one NODE_Y_SPACING apart', () => {
+				const switchType = mockNodeTypeDescription({
+					name: SWITCH_NODE_TYPE,
+					outputs: Array.from({ length: 3 }, () => NodeConnectionTypes.Main),
+				});
+
+				const positions = [0, 1, 2].map((index) =>
+					resolvePositionAfter(switchType, setNodeType, { handle: `outputs/main/${index}` }),
+				);
+
+				expect(positions).toEqual([
+					[224, -176],
+					[224, 16],
+					[224, 208],
+				]);
+			});
+
+			it('should keep a node inserted on an edge of a Switch node on its handle line', () => {
+				const switchType = mockNodeTypeDescription({
+					name: SWITCH_NODE_TYPE,
+					outputs: Array.from({ length: 3 }, () => NodeConnectionTypes.Main),
+				});
+				mockedStore(useUIStore).lastInteractedWithNodeConnection = {
+					source: 'source',
+					sourceHandle: 'outputs/main/2',
+					target: 'target',
+					targetHandle: 'inputs/main/0',
+				};
+
+				// No fan offset: the Switch handle line is at 64 and the Set handle is at 48
+				expect(resolvePositionAfter(switchType, setNodeType)).toEqual([224, 16]);
+			});
+
+			it('should keep the nodes after an IF node 96 above and below its handle line', () => {
+				const ifType = mockNodeTypeDescription({
+					name: IF_NODE_TYPE,
+					outputs: [NodeConnectionTypes.Main, NodeConnectionTypes.Main],
+				});
+
+				const positions = [0, 1].map((index) =>
+					resolvePositionAfter(ifType, setNodeType, { handle: `outputs/main/${index}` }),
+				);
+
+				expect(positions).toEqual([
+					[224, -96],
+					[224, 96],
+				]);
+			});
 		});
 
 		it('should place the node at the last clicked position if no other position is set', () => {
@@ -1964,6 +2099,39 @@ describe('useCanvasOperations', () => {
 
 			// 96 (two main inputs) + NODE_X_SPACING (128)
 			expect(addNodeSpy.mock.calls[1][0].position).toEqual([224, 0]);
+		});
+		it('should line up the main handle of an agent card added after a Chat Trigger', async () => {
+			const nodeTypesStore = useNodeTypesStore();
+			const geometryStore = mockedStore(useAgentNodeCanvasGeometryStore);
+			nodeTypesStore.nodeTypes = {
+				[CHAT_TRIGGER_NODE_TYPE]: {
+					1: mockNodeTypeDescription({ name: CHAT_TRIGGER_NODE_TYPE, inputs: [] }),
+				},
+				[MESSAGE_AN_AGENT_NODE_TYPE]: {
+					2: mockNodeTypeDescription({ name: MESSAGE_AN_AGENT_NODE_TYPE, version: 2 }),
+				},
+			};
+			geometryStore.getNodeHeight.mockReturnValue(undefined);
+
+			const addNodeSpy = vi.spyOn(workflowDocumentStoreInstance, 'addNode');
+
+			const { addNodes } = useCanvasOperations();
+			await addNodes(
+				[
+					{ name: 'Chat Trigger', type: CHAT_TRIGGER_NODE_TYPE, typeVersion: 1 },
+					{ name: 'Message an Agent', type: MESSAGE_AN_AGENT_NODE_TYPE, typeVersion: 2 },
+				],
+				{ position: [0, 0] },
+			);
+
+			// 96 + NODE_X_SPACING, and the card handle (64) on the trigger handle line (48)
+			const card = addNodeSpy.mock.calls[1][0];
+			expect(card.position).toEqual([224, -16]);
+			expect(geometryStore.setPendingCenterY).toHaveBeenCalledWith(
+				workflowDocumentStoreInstance.workflowId,
+				card.id,
+				-16 + DEFAULT_AGENT_HEIGHT / 2,
+			);
 		});
 	});
 

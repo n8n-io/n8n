@@ -73,6 +73,7 @@ import {
 	entityFilePath,
 	type ManifestEntityCollection,
 } from '@/modules/n8n-packages/io/manifest-entry';
+import { createAgent } from '@test-integration/db/agents';
 import { saveCredential } from '@test-integration/db/credentials';
 import { createTag } from '@test-integration/db/tags';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
@@ -839,7 +840,7 @@ describe('Promote and Apply', () => {
 		await service.clone(environments.promote.id, owner);
 
 		const project = await createTeamProject('Orders', owner);
-		await Container.get(AgentRepository).save({
+		await createAgent({
 			id: 'local-agent',
 			name: 'Local Agent',
 			projectId: project.id,
@@ -3320,7 +3321,7 @@ describe('Promote a project selection — branch effects', () => {
 		const { project, workflows } = await setupProjectWithWorkflows('Orders', ['w1', 'w2', 'w3']);
 		await exportPackageToRemote(remote);
 
-		await Container.get(AgentRepository).save({
+		await createAgent({
 			id: 'uT9LdQx7rK2MvB4f',
 			name: 'Local Agent',
 			projectId: project.id,

@@ -4,7 +4,8 @@ import { Container } from '@n8n/di';
 import { DataSource, EntityManager, type Repository } from '@n8n/typeorm';
 import { v4 as uuid } from 'uuid';
 
-import type { Agent } from '@/modules/agents/entities/agent.entity';
+import { createAgent } from '@test-integration/db/agents';
+
 import { AgentMemoryEntryCandidateEntity } from '@/modules/agents/entities/agent-memory-entry-candidate.entity';
 import { AgentMessageEntity } from '@/modules/agents/entities/agent-message.entity';
 import { AgentMemoryEntryCandidateRepository } from '@/modules/agents/repositories/agent-memory-entry-candidate.repository';
@@ -34,15 +35,14 @@ describe('AgentMemoryEntryCandidateRepository', () => {
 
 	beforeEach(async () => {
 		const project = await createTeamProject();
-		const agent = agentRepository.create({
+		const agent = await createAgent({
 			id: uuid(),
 			name: 'Test Agent',
 			projectId: project.id,
 			integrations: [],
 			tools: {},
 			skills: {},
-		} as Partial<Agent>);
-		await agentRepository.save(agent);
+		});
 		agentId = agent.id;
 		resourceId = uuid();
 		threadId = uuid();

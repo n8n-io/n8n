@@ -2071,7 +2071,10 @@ describe('WorkflowService', () => {
 				versionId: TARGET_VERSION_ID,
 			});
 
-			expect(workflowPublishGuardMock.assertCanPublish).toHaveBeenCalledWith(WORKFLOW_ID);
+			expect(workflowPublishGuardMock.assertCanPublish).toHaveBeenCalledWith(WORKFLOW_ID, {
+				versionId: TARGET_VERSION_ID,
+				fromSourceControlPull: false,
+			});
 			expect(externalHooksMock.run).toHaveBeenCalledTimes(1);
 			const [hookName, hookArgs] = externalHooksMock.run.mock.calls[0] as [
 				string,
