@@ -137,7 +137,11 @@ const displayName = computed<string>(() => {
 
 	return i18n.headerText({
 		key: `headers.${shortNodeType.value}.displayName`,
-		fallback: hasActions.value ? trimmedDisplayName.replace('Trigger', '') : trimmedDisplayName,
+		// A restricted row keeps its full name, so it is not mistaken for an allowed node of the same app.
+		fallback:
+			hasActions.value && !restriction.value
+				? trimmedDisplayName.replace('Trigger', '')
+				: trimmedDisplayName,
 	});
 });
 

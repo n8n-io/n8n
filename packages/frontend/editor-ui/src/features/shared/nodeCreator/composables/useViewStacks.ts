@@ -586,7 +586,8 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		const hasTriggerGroup = item.properties.group.includes('trigger');
 		const hasActions = getFilteredActions(stack, item, nodeCreatorStore.actions).length > 0;
 
-		if (!hasTriggerGroup || !hasActions) return item;
+		// Restricted rows keep their full name, as in NodeItem.
+		if (!hasTriggerGroup || !hasActions || isNodeItemRestricted(item.key)) return item;
 
 		// Items are cached and share `codex` with the node types, so copy before changing them
 		const { properties } = item;
