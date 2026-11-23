@@ -6149,7 +6149,7 @@
 	"workflowSettings.engineType": "Engine Type",
 	"workflowSettings.engineType.v1": "v1",
 	"workflowSettings.engineType.v2": "v2 (Beta)",
-	"workflowSettings.engineType.appliesOnPublish": "Production executions use the published engine until you publish this change. Manual executions use the new engine right away.",
+	"workflowSettings.engineType.appliesOnPublish": "Applies to production executions only after you publish. Manual executions use the new engine immediately.",
 	"workflowSettings.engineType.appliesOnPublish.badge": "Applies on publish",
 	"workflowSettings.errorWorkflow": "Error Workflow (to notify when this one errors)",
 	"workflowSettings.errorWorkflow.placeholder": "Select workflow",
