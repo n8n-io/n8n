@@ -1,0 +1,23 @@
+packages/cli/test/integration/workflows/workflows.controller.ee.test.ts
+  s_bc361d9d6c0744::t_ead7c086b7bf11 2515,2517-2543,2639,2641-2680,3013,3015-3018,3020,3022,3024-3031,3033-3040,3042
+  s_bc361d9d6c0744::t_fd61feb277497d 2344-2350,2516,2640,3014
+packages/cli/test/integration/folder/folder.controller.test.ts
+  s_bc361d9d6c0744::t_fd61feb277497d 15,1847-1853,2720
+  s_bc361d9d6c0744::t_ead7c086b7bf11 2719,2721-2791
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "608fa22e2b30d82dfdd7cb4800e82984fdab0696",
+  "prompts": {},
+  "sessions": {
+    "s_bc361d9d6c0744": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6480b4a0-d3d2-4d24-a9bd-2dc7e311dd31",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}
