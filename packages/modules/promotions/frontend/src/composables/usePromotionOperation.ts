@@ -21,7 +21,7 @@ import {
 	PROMOTIONS_SETTINGS_VIEW,
 } from '../promotions.constants';
 import { applyPromotion, continueApplyPromotion } from '../promotionsSettings.api';
-import type { ApplyCheckResult } from '../promotions.types';
+import type { ApplyCheckResult, PromotionOutsideAccessDependency } from '../promotions.types';
 import { usePromotionOutcome } from './usePromotionOutcome';
 
 export type OperationRequest = OperationSelection & {
@@ -66,10 +66,16 @@ export function usePromotionOperation(
 		preview,
 		check,
 		refresh,
+		unresolved,
+		confirmUnresolved,
 	}: {
 		preview: Ref<PromotionPreview | null>;
 		check: Ref<ApplyCheckResult | null>;
 		refresh: () => Promise<void>;
+		/** What the Apply leaves out, which the user can only accept. */
+		unresolved?: Ref<PromotionOutsideAccessDependency[]>;
+		/** Asks the user to accept the unresolved dependencies. It replaces the generic question. */
+		confirmUnresolved?: () => Promise<boolean>;
 	},
 ) {
 	const i18n = useI18n();
@@ -88,6 +94,11 @@ export function usePromotionOperation(
 		confirmDestructiveChanges,
 		deletedProjects = [],
 	}: OperationRequest) {
+		const askUnresolved = unresolved?.value.length ? confirmUnresolved : undefined;
+		const otherQuestion = deletedProjects.length > 0 || confirmDestructiveChanges;
+		// One dialog answers both questions when nothing else needs asking.
+		if (askUnresolved && !otherQuestion) return await askUnresolved();
+		if (askUnresolved && !(await askUnresolved())) return false;
 		if (deletedProjects.length > 0) {
 			const deletion = i18n.baseText('promotions.preview.confirmProjectDeletion.message', {
 				adjustToNumber: deletedProjects.length,

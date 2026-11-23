@@ -50,7 +50,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
-const { blockerMessage, selectLabel } = usePromotionPreviewLabels();
+const { blockerMessage, outsideMessage, selectLabel } = usePromotionPreviewLabels();
 
 function markers(resource: PromotionResource) {
 	const blockers = blockersOf(props.blockers, resource);
@@ -59,7 +59,7 @@ function markers(resource: PromotionResource) {
 		resource.type !== 'workflow' && blockers?.some(({ kind }) => kind === 'warning')
 			? i18n.baseText('promotions.preview.marker.warning')
 			: undefined;
-	return { blocked, meta: blocked ? undefined : meta };
+	return { blocked, meta: blocked ? undefined : meta, outside: outsideMessage(resource, blockers) };
 }
 
 /**
@@ -296,6 +296,23 @@ function onToggle(resource: PromotionResource) {
 						>
 							<N8nIcon icon="circle-alert" size="small" color="warning" />
 						</span>
+					</N8nTooltip>
+					<!-- A dependency outside the access of the user does not stop the workflow, so the row
+					keeps its colors and gets a quiet marker. It opens the Issues tab like the other one. -->
+					<N8nTooltip v-else-if="marker.outside" placement="right" as-child>
+						<template #content>{{ marker.outside }}</template>
+						<N8nButton
+							variant="ghost"
+							size="xsmall"
+							icon-only
+							:aria-label="marker.outside"
+							data-test-id="promotion-preview-tree-outside"
+							@click="emit('showBlockers')"
+						>
+							<template #icon>
+								<N8nIcon icon="lock" size="small" color="text-light" />
+							</template>
+						</N8nButton>
 					</N8nTooltip>
 				</li>
 			</template>

@@ -47,9 +47,17 @@ export function toOperationRequest(
 /**
  * `missing`, `access`, `conflict` and `moved` (between projects) stop the operation for their
  * workflows. A moved folder stops Apply for every workflow. A `destructive` data table change
- * needs a confirmation. A `warning` only informs.
+ * needs a confirmation. A `warning` only informs. `outside` marks a dependency outside the access
+ * of the user: it never stops the operation, and the user accepts it in the confirmation.
  */
-export type BlockerKind = 'missing' | 'access' | 'conflict' | 'moved' | 'destructive' | 'warning';
+export type BlockerKind =
+	| 'missing'
+	| 'access'
+	| 'conflict'
+	| 'moved'
+	| 'destructive'
+	| 'warning'
+	| 'outside';
 
 export type Blocker = {
 	kind: BlockerKind;
@@ -58,7 +66,8 @@ export type Blocker = {
 	workflowKeys: ResourceKey[];
 };
 
-export const isBlocking = ({ kind }: Blocker) => kind !== 'destructive' && kind !== 'warning';
+export const isBlocking = ({ kind }: Blocker) =>
+	kind !== 'destructive' && kind !== 'warning' && kind !== 'outside';
 
 const workflowKey = (id: string) => `workflow:${id}`;
 
@@ -114,6 +123,7 @@ export function listBlockers(
 		warnings,
 		movedWorkflows,
 		movedFolders,
+		outsideAccess = [],
 	}: ApplyCheckResult,
 	listedKeys: ResourceKey[],
 ): Blocker[] {
@@ -183,6 +193,14 @@ export function listBlockers(
 			kind: 'warning',
 			resourceKey: variableKey(warning.name, warning.scope),
 			workflowKeys: consumerKeys(warning.consumers),
+		});
+	}
+	for (const dependency of outsideAccess) {
+		// No preview row matches these, so the marker sits on the workflows that use them.
+		blockers.push({
+			kind: 'outside',
+			resourceKey: null,
+			workflowKeys: consumerKeys(dependency.consumers),
 		});
 	}
 	for (const { id } of movedWorkflows) {

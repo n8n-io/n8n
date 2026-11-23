@@ -28,6 +28,7 @@ import PromotionChangeCards from '../components/preview/PromotionChangeCards.vue
 import PromotionResourceTree from '../components/preview/PromotionResourceTree.vue';
 import PromotionReviewBlocker from '../components/preview/PromotionReviewBlocker.vue';
 import PromoteSelectionDialog from '../components/PromoteSelectionDialog.vue';
+import PromotionUnresolvedDialog from '../components/PromotionUnresolvedDialog.vue';
 import { usePromotionOperation, type OperationRequest } from '../composables/usePromotionOperation';
 import { usePromotionResourceDetails } from '../composables/usePromotionResourceDetails';
 import { usePromotionPreview } from '../composables/usePromotionPreview';
@@ -85,7 +86,25 @@ const blockerList = computed(() => [
 	...(props.direction === 'promote' && graph.value ? crossProjectMoveBlockers(graph.value) : []),
 ]);
 const blockers = computed(() => indexBlockers(blockerList.value));
-const operation = usePromotionOperation(projectId, direction, { preview, check, refresh });
+// What the operation leaves out, and the user can only accept. Promote shows it in its own dialog.
+// Apply asks through the dialog below, in place of the generic question.
+const unresolved = computed(() => scopedCheck.value?.outsideAccess ?? []);
+const unresolvedAnswer = ref<((accepted: boolean) => void) | null>(null);
+async function confirmUnresolved() {
+	return await new Promise<boolean>((resolve) => {
+		unresolvedAnswer.value = (accepted) => {
+			unresolvedAnswer.value = null;
+			resolve(accepted);
+		};
+	});
+}
+const operation = usePromotionOperation(projectId, direction, {
+	preview,
+	check,
+	refresh,
+	unresolved,
+	confirmUnresolved,
+});
 const selection = usePromotionSelection(graph, {
 	disabled: computed(() => blockers.value.blocked),
 	locked: operation.isBusy,
@@ -574,7 +593,15 @@ const treeResizer = useResizablePanel({
 			:base-branch-name="source.branchName"
 			:create-branch-on-promotion="environment.createBranchOnPromotion ?? false"
 			:provider-type="environment.providerType"
+			:unresolved="unresolved"
 			@confirm="onPromoteConfirm"
+		/>
+		<PromotionUnresolvedDialog
+			:open="!!unresolvedAnswer"
+			:change-count="actionableChanges"
+			:dependencies="unresolved"
+			@confirm="unresolvedAnswer?.(true)"
+			@cancel="unresolvedAnswer?.(false)"
 		/>
 	</div>
 </template>

@@ -74,10 +74,17 @@ export function usePromotionPreviewLabels() {
 					interpolate: { project: resource.movedFromProject.name },
 				});
 			}
-			return i18n.baseText('promotions.preview.marker.workflow', {
+			const needsAction = i18n.baseText('promotions.preview.marker.workflow', {
 				adjustToNumber: blocking.length,
 				interpolate: { count: String(blocking.length) },
 			});
+			const outside = blockers.filter(({ kind }) => kind === 'outside').length;
+			return outside > 0
+				? `${needsAction} ${i18n.baseText('promotions.preview.marker.outsideAlso', {
+						adjustToNumber: outside,
+						interpolate: { count: String(outside) },
+					})}`
+				: needsAction;
 		}
 		const [first] = blocking;
 		if (first.kind === 'moved' && resource.type === 'folder') {
@@ -94,6 +101,26 @@ export function usePromotionPreviewLabels() {
 		}
 		return i18n.baseText('promotions.preview.marker.conflict', options);
 	}
+
+	/**
+	 * What a workflow says about the dependencies outside the access of the user, when nothing
+	 * else stops it. `undefined` when it has none, or when `blockerMessage` already says it.
+	 */
+	function outsideMessage(
+		resource: PromotionResource,
+		blockers: readonly Blocker[] = [],
+	): string | undefined {
+		if (resource.type !== 'workflow' || blockers.some(isBlocking)) return undefined;
+		const outside = blockers.filter(({ kind }) => kind === 'outside').length;
+		return outside > 0
+			? i18n.baseText('promotions.preview.marker.outside', {
+					adjustToNumber: outside,
+					interpolate: { count: String(outside) },
+				})
+			: undefined;
+	}
+
+	/** The checkbox of a project or folder selects it and everything inside it. */
 
 	/** The checkbox of a project or folder selects it and everything inside it. */
 	function selectLabel(resource: PromotionResource): string {
@@ -117,5 +144,5 @@ export function usePromotionPreviewLabels() {
 		});
 	}
 
-	return { changeLabel, blockerMessage, selectLabel, moveDetail };
+	return { changeLabel, blockerMessage, outsideMessage, selectLabel, moveDetail };
 }

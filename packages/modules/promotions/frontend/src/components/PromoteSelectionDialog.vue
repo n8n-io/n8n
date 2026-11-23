@@ -12,15 +12,22 @@ import {
 import { useI18n } from '@n8n/i18n';
 import { computed, nextTick, useTemplateRef } from 'vue';
 
+import type { PromotionOutsideAccessDependency } from '../promotions.types';
 import PromotionCommitMessageField from './PromotionCommitMessageField.vue';
+import PromotionUnresolvedSummary from './PromotionUnresolvedSummary.vue';
 
-const props = defineProps<{
-	open: boolean;
-	changeCount: number;
-	baseBranchName: string;
-	createBranchOnPromotion: boolean;
-	providerType: PromotionProviderType;
-}>();
+const props = withDefaults(
+	defineProps<{
+		open: boolean;
+		changeCount: number;
+		baseBranchName: string;
+		createBranchOnPromotion: boolean;
+		providerType: PromotionProviderType;
+		/** What the Promote leaves out. The dialog then says so, in place of a second dialog. */
+		unresolved?: PromotionOutsideAccessDependency[];
+	}>(),
+	{ unresolved: () => [] },
+);
 
 const emit = defineEmits<{
 	'update:open': [value: boolean];
@@ -34,11 +41,29 @@ const commitMessage = defineModel<string>('commitMessage', { default: '' });
 const i18n = useI18n();
 const messageField = useTemplateRef('messageField');
 
+const hasUnresolved = computed(() => props.unresolved.length > 0);
+
 const title = computed(() =>
-	i18n.baseText('promotions.preview.promote.dialog.title', {
-		adjustToNumber: props.changeCount,
-		interpolate: { count: String(props.changeCount) },
-	}),
+	hasUnresolved.value
+		? i18n.baseText('promotions.unresolved.title.promote', {
+				adjustToNumber: props.unresolved.length,
+				interpolate: { count: String(props.unresolved.length) },
+			})
+		: i18n.baseText('promotions.preview.promote.dialog.title', {
+				adjustToNumber: props.changeCount,
+				interpolate: { count: String(props.changeCount) },
+			}),
+);
+
+// The button repeats the label of the button that opened the dialog, so no new word appears
+// at the moment of the decision.
+const confirmLabel = computed(() =>
+	hasUnresolved.value
+		? i18n.baseText('promotions.preview.submit.promote', {
+				adjustToNumber: props.changeCount,
+				interpolate: { count: String(props.changeCount) },
+			})
+		: i18n.baseText('promotions.preview.promote.dialog.confirm'),
 );
 
 const bodyText = computed(() => {
@@ -78,7 +103,12 @@ function submit() {
 		</N8nDialogHeader>
 		<N8nDialogBody>
 			<form id="promote-selection-form" :class="$style.body" @submit.prevent="submit">
-				<N8nText color="text-base">{{ bodyText }}</N8nText>
+				<PromotionUnresolvedSummary
+					v-if="hasUnresolved"
+					:dependencies="unresolved"
+					direction="promote"
+				/>
+				<N8nText v-else color="text-base">{{ bodyText }}</N8nText>
 				<PromotionCommitMessageField ref="messageField" v-model="commitMessage" />
 			</form>
 		</N8nDialogBody>
@@ -92,7 +122,7 @@ function submit() {
 				{{ i18n.baseText('generic.cancel') }}
 			</N8nButton>
 			<N8nButton type="submit" form="promote-selection-form" data-test-id="promote-confirm-button">
-				{{ i18n.baseText('promotions.preview.promote.dialog.confirm') }}
+				{{ confirmLabel }}
 			</N8nButton>
 		</N8nDialogFooter>
 	</N8nDialog>

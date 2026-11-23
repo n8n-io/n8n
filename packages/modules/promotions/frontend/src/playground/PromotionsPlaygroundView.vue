@@ -86,6 +86,7 @@ removeMockApi = installMockPromotionApi(
 			state,
 		),
 	() => `${scenarioId.value}-${size.value}`,
+	() => scenarioId.value === 'p4',
 );
 onMounted(() => {
 	document.querySelector(SIDEBAR)?.setAttribute('data-playground', '');

@@ -9,6 +9,7 @@ import { buildPlaygroundDetail, type PlaygroundState } from './playground.data';
  * Remove it with the rest of the Playground.
  */
 const PROMOTE_PATH = /\/promotions\/projects\/[^/]+\/promote$/;
+const APPLY_PATH = /\/promotions\/projects\/[^/]+\/apply(\/continue)?$/;
 const CHANGES_PATH = /\/promotions\/projects\/[^/]+\/changes\/(promote|apply)$/;
 const DETAILS_PATH = /\/promotions\/projects\/[^/]+\/changes\/(promote|apply)\/details$/;
 
@@ -22,6 +23,24 @@ export const respond = (config: InternalAxiosRequestConfig, data: unknown): Axio
 	headers: {},
 	config,
 });
+
+/** The ids of the workflows that an operation request names. */
+function requestedWorkflowIds(data: unknown): string[] {
+	if (typeof data !== 'string') return [];
+	const body: unknown = JSON.parse(data);
+	if (
+		typeof body !== 'object' ||
+		body === null ||
+		!('workflowIds' in body) ||
+		!Array.isArray(body.workflowIds)
+	) {
+		return [];
+	}
+	return body.workflowIds.filter((id): id is string => typeof id === 'string');
+}
+
+const zeros = <Keys extends string>(...keys: Keys[]) =>
+	Object.fromEntries(keys.map((key) => [key, 0])) as Record<Keys, number>;
 
 /** The keys that a details request asks for. */
 function requestedKeys(data: unknown): string[] {
@@ -53,6 +72,8 @@ export function installMockPromotionApi(
 	getPreview: (state: Required<PlaygroundState>) => PromotionPreview,
 	/** Names the scenario and the amount, so a change of either starts over. */
 	getKey: () => string,
+	/** True when the first Promote finds that the list changed since the preview. */
+	changesOnPromote: () => boolean = () => false,
 ): () => void {
 	let key = getKey();
 	let changed = false;
@@ -77,14 +98,46 @@ export function installMockPromotionApi(
 			}
 			if (CHANGES_PATH.test(url)) return respond(adapterConfig, preview);
 			if (PROMOTE_PATH.test(url)) {
-				// Each Promote finds that the list changed since the preview. The next preview shows it.
-				changed = true;
+				const environmentId = preview.source.environmentId;
+				// The scenario "The list changes before you promote": the first Promote finds a new list.
+				// The next preview shows it, and the next Promote goes through.
+				if (changesOnPromote() && !changed) {
+					changed = true;
+					return respond(adapterConfig, { status: 'preview-changed', environmentId });
+				}
+				const workflows = requestedWorkflowIds(adapterConfig.data).length;
 				return respond(adapterConfig, {
-					status: 'preview-changed',
-					environmentId: preview.source.environmentId,
+					status: 'promoted',
+					environmentId,
+					counts: {
+						...zeros('folders', 'credentials', 'dataTables', 'variables', 'tags'),
+						workflows,
+					},
+					git: { commitSha: 'c'.repeat(40), branchName: preview.source.branchName },
 				});
 			}
-
+			if (APPLY_PATH.test(url)) {
+				const workflows = requestedWorkflowIds(adapterConfig.data).length;
+				return respond(adapterConfig, {
+					status: 'applied',
+					environmentId: preview.source.environmentId,
+					git: { commitSha: 'c'.repeat(40), branchName: preview.source.branchName },
+					warnings: [],
+					counts: {
+						projects: zeros('created', 'updated', 'skipped', 'deleted'),
+						folders: zeros('created', 'updated', 'skipped', 'moved', 'renamed', 'removed'),
+						workflows: {
+							...zeros('created', 'updated', 'skipped', 'moved', 'archived', 'deleted'),
+							updated: workflows,
+							publishing: zeros('published', 'unpublished', 'unchanged', 'blocked', 'failed'),
+						},
+						credentials: zeros('matched', 'stubbed', 'updated'),
+						dataTables: zeros('matched', 'created', 'updated'),
+						variables: zeros('matched', 'created', 'updated', 'stubbed', 'missing'),
+						tags: zeros('matched', 'created', 'renamed', 'reconciled', 'skipped'),
+					},
+				});
+			}
 			throw new AxiosError(`The Playground has no sample data for ${url}`);
 		};
 		return config;
