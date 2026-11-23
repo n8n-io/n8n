@@ -5,6 +5,7 @@ import FormData from 'form-data';
 import type {
 	IAllExecuteFunctions,
 	ICredentialDataDecryptedObject,
+	IExecuteFunctions,
 	IHttpRequestOptions,
 	INode,
 	IWorkflowExecuteAdditionalData,
@@ -230,6 +231,71 @@ describe('httpRequestWithAuthentication', () => {
 
 		expect(result).toEqual({ ok: true });
 		expect(request).toHaveBeenCalledTimes(2);
+	});
+
+	describe('abort signals', () => {
+		const sentSignal = async (
+			callerSignal: AbortSignal | undefined,
+			executionSignal: AbortSignal | undefined,
+		) => {
+			mockAdditionalData.credentialsHelper.getParentTypes.mockReturnValue([]);
+			const context = mockDeep<IExecuteFunctions>();
+			context.getCredentials.mockResolvedValue({ apiKey: 'key' });
+			context.getExecutionCancelSignal.mockReturnValue(executionSignal);
+			mockAdditionalData.credentialsHelper.authenticate.mockImplementation(
+				async (_credentials, _type, options) => options as IHttpRequestOptions,
+			);
+			request.mockResolvedValue({ ok: true });
+
+			await httpRequestWithAuthentication.call(
+				context,
+				'testApi',
+				{ method: 'GET', url: `${baseUrl}/items`, abortSignal: callerSignal },
+				mockWorkflow,
+				mockNode,
+				mockAdditionalData,
+			);
+
+			const options: IHttpRequestOptions = request.mock.calls[0][0];
+			return options.abortSignal;
+		};
+
+		test('keeps the signal of the caller when the execution has no cancel signal', async () => {
+			const caller = new AbortController();
+
+			const signal = await sentSignal(caller.signal, undefined);
+			caller.abort();
+
+			expect(signal?.aborted).toBe(true);
+		});
+
+		test('cancels the request when the caller aborts during an execution', async () => {
+			const caller = new AbortController();
+			const execution = new AbortController();
+
+			const signal = await sentSignal(caller.signal, execution.signal);
+			caller.abort();
+
+			expect(signal?.aborted).toBe(true);
+		});
+
+		test('cancels the request when the execution is canceled', async () => {
+			const caller = new AbortController();
+			const execution = new AbortController();
+
+			const signal = await sentSignal(caller.signal, execution.signal);
+			execution.abort();
+
+			expect(signal?.aborted).toBe(true);
+		});
+
+		test('uses the execution cancel signal when the caller passes none', async () => {
+			const execution = new AbortController();
+
+			const signal = await sentSignal(undefined, execution.signal);
+
+			expect(signal).toBe(execution.signal);
+		});
 	});
 
 	// `skipPreAuthenticationRetryWhileTokenIsFresh`: a 403/404 also means "does not exist", so

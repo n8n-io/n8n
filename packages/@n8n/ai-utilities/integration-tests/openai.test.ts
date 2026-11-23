@@ -1,5 +1,7 @@
 import nock from 'nock';
 import assert from 'node:assert';
+import { once } from 'node:events';
+import { createServer, type Server } from 'node:http';
 import { Readable } from 'node:stream';
 
 import { OpenAIChatModel } from './fixtures/openai';
@@ -50,6 +52,72 @@ describe('OpenAIChatModel', () => {
 			controller.abort();
 
 			await expect(iterator.next()).rejects.toThrow('canceled');
+		});
+
+		describe('with a silent server', () => {
+			let server: Server;
+			let closed: Promise<void>;
+			let model: OpenAIChatModel;
+
+			const listen = async (sendHeaders: boolean) => {
+				let onClose = () => {};
+				closed = new Promise((resolve) => (onClose = resolve));
+				server = createServer((_request, response) => {
+					response.on('close', onClose);
+					if (sendHeaders) {
+						response.writeHead(200, { 'Content-Type': 'text/event-stream' });
+						response.flushHeaders();
+					}
+				});
+				server.listen(0, '127.0.0.1');
+				await once(server, 'listening');
+				const address = server.address();
+				assert(address !== null && typeof address === 'object');
+				model = new OpenAIChatModel('gpt-4o', createMockHttpRequests(), {
+					baseURL: `http://127.0.0.1:${address.port}`,
+				});
+			};
+
+			const closedWithin = async (ms: number) =>
+				await Promise.race([
+					closed.then(() => true),
+					new Promise<boolean>((resolve) => setTimeout(() => resolve(false), ms)),
+				]);
+
+			afterEach(() => {
+				server.closeAllConnections();
+				server.close();
+			});
+
+			it.each([
+				['after the headers arrive', true],
+				['before the headers arrive', false],
+			])('should close the connection when a silent stream is aborted %s', async (_, headers) => {
+				await listen(headers);
+				const controller = new AbortController();
+				const stream = model.stream([userMessage], { abortSignal: controller.signal });
+				const next = stream[Symbol.asyncIterator]().next();
+				await new Promise((resolve) => setTimeout(resolve, 100));
+
+				controller.abort();
+
+				const rejected = expect(next).rejects.toThrow();
+				await expect(closedWithin(500)).resolves.toBe(true);
+				await rejected;
+			});
+
+			it('should close the connection when a generate request is aborted', async () => {
+				await listen(false);
+				const controller = new AbortController();
+				const result = model.generate([userMessage], { abortSignal: controller.signal });
+				await new Promise((resolve) => setTimeout(resolve, 100));
+
+				controller.abort();
+
+				const rejected = expect(result).rejects.toThrow();
+				await expect(closedWithin(500)).resolves.toBe(true);
+				await rejected;
+			});
 		});
 	});
 

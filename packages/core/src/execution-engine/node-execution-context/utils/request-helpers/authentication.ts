@@ -71,9 +71,12 @@ export async function httpRequestWithAuthentication(
 	requestOptions = toHttpRequestOptions(requestOptions);
 	removeEmptyBody(requestOptions);
 
-	// Cancel this request on execution cancellation
+	// Cancel this request on execution cancellation, and keep the caller's own signal
 	if ('getExecutionCancelSignal' in this) {
-		requestOptions.abortSignal = this.getExecutionCancelSignal();
+		const signals = [requestOptions.abortSignal, this.getExecutionCancelSignal()].filter(
+			(signal) => signal instanceof AbortSignal,
+		);
+		requestOptions.abortSignal = signals.length > 1 ? AbortSignal.any(signals) : signals[0];
 	}
 
 	let credentialsDecrypted: ICredentialDataDecryptedObject | undefined;
