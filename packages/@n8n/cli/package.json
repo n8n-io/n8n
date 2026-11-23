@@ -81,10 +81,10 @@
     }
   },
   "dependencies": {
+    "@n8n/api-types": "workspace:*",
     "@oclif/core": "^4.5.2"
   },
   "devDependencies": {
-    "@n8n/api-types": "workspace:*",
     "@n8n/oxlint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
