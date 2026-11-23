@@ -170,8 +170,8 @@ const creditsFormatter = new Intl.NumberFormat('en-US', {
 							data-testid="agent-session-timeline-credits"
 							>({{
 								i18n.baseText('agentSessions.timeline.credits', {
-									// Only exactly one credit is singular, not a fraction such as 0.5.
-									adjustToNumber: metadata.totalCredits === 1 ? 1 : 2,
+									// Only a total shown as exactly 1 is singular, not 0.5 or 1.01.
+									adjustToNumber: Math.round(metadata.totalCredits * 100) === 100 ? 1 : 2,
 									interpolate: { count: creditsFormatter.format(metadata.totalCredits) },
 								})
 							}})</span

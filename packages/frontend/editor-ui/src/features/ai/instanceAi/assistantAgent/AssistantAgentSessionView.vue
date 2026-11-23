@@ -96,19 +96,35 @@ const {
 	() => ({}),
 );
 useAgentExecutionUpdates({ projectId, agentId, threadId }, () => {}, onExecutionUpdated);
-// The credit push of the module keeps the total current after this load.
-watch(() => props.threadId, threadsStore.loadThreadCredits, { immediate: true });
+// The thread whose credit total loaded. The credit push of the module keeps the
+// total current after this load.
+const creditsLoadedFor = ref<string | null>(null);
+watch(
+	() => props.threadId,
+	async (threadId) => {
+		if (await threadsStore.loadThreadCredits(threadId)) creditsLoadedFor.value = threadId;
+	},
+	{ immediate: true },
+);
 
 /**
  * Assistant credits pay for the turns when the instance uses them: the thread has a
  * credit total, or the quota is limited. With its own model key, the instance has an
  * unlimited quota and no thread total, so the header shows the cost in dollars.
  */
+const usesCredits = computed(() => {
+	if (threadsStore.threadCreditsUsed(props.threadId) !== undefined) return true;
+	const quota = creditsStore.creditsQuota;
+	return quota !== undefined && quota !== UNLIMITED_CREDITS;
+});
+/**
+ * A thread without a credit total spent no credits, but only once the load has
+ * succeeded. Until then, and after a failed load, the header shows no total.
+ */
 const totalCredits = computed(() => {
 	const used = threadsStore.threadCreditsUsed(props.threadId);
 	if (used !== undefined) return used;
-	const quota = creditsStore.creditsQuota;
-	return quota !== undefined && quota !== UNLIMITED_CREDITS ? 0 : undefined;
+	return usesCredits.value && creditsLoadedFor.value === props.threadId ? 0 : undefined;
 });
 
 const sessionMetadata = computed<SessionTimelineMetadata>(() => ({
@@ -118,7 +134,8 @@ const sessionMetadata = computed<SessionTimelineMetadata>(() => ({
 		label: i18n.baseText('agentSessions.origin.instanceAi'),
 	},
 	totalTokens: sessionUsage.value.totalTokens,
-	totalCost: sessionUsage.value.cost,
+	// A credit instance never shows dollars, even while the credit total loads.
+	totalCost: usesCredits.value ? null : sessionUsage.value.cost,
 	totalCredits: totalCredits.value,
 	durationLabel: formatDuration(duration.value),
 }));

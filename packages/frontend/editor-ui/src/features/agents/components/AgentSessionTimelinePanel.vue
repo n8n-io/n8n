@@ -300,10 +300,11 @@ const approvalDisabled = computed(() => pendingApprovalIdentity.value === thread
 
 // The approval suspension parked on the latest execution, if that execution is
 // still awaiting a decision. Independent of the selected row: the card sits
-// inline in the timeline table.
+// inline in the timeline table. Only task runs resume from here; a chat turn,
+// such as an Assistant turn, takes its approval in the chat.
 const openApprovalItem = computed((): TimelineItem | null => {
 	const latest = executions.value.at(-1);
-	if (!latest || latest.status !== 'awaiting') return null;
+	if (!latest || latest.status !== 'awaiting' || latest.source !== 'task') return null;
 	return (
 		items.value.find(
 			(item) =>
