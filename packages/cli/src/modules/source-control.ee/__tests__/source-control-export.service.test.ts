@@ -753,7 +753,11 @@ describe('SourceControlExportService', () => {
 				[teamProject],
 				[],
 			);
-			const outOfScopeFolder = { id: 'folder2', name: 'Other project folder', homeProjectId: 'other-project' };
+			const outOfScopeFolder = {
+				id: 'folder2',
+				name: 'Other project folder',
+				homeProjectId: 'other-project',
+			};
 			folderRepository.find.mockResolvedValue([]);
 			fsReadFile.mockResolvedValueOnce(JSON.stringify({ folders: [outOfScopeFolder] }));
 
