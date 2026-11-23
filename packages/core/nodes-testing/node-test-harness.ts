@@ -14,7 +14,7 @@ import type {
 import { createRunExecutionData, Workflow } from 'n8n-workflow';
 import { UnexpectedError } from '@n8n/errors';
 import nock from 'nock';
-import { readFileSync, mkdtempSync, existsSync, rmSync } from 'node:fs';
+import { readFileSync, mkdtempSync, existsSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { expect } from 'vitest';
@@ -93,7 +93,10 @@ export class NodeTestHarness {
 
 	@Memoized
 	get temporaryDir() {
-		const dir = mkdtempSync(path.join(tmpdir(), 'n8n-'));
+		// Resolve symlinks in the OS temp dir. On macOS it lives under `/var`, a symlink to
+		// `/private/var`, and file-writing nodes refuse paths with a symlinked component, so
+		// tests that stub `fs.realpath` would otherwise fail to write there.
+		const dir = mkdtempSync(path.join(realpathSync(tmpdir()), 'n8n-'));
 		afterAll(() => rmSync(dir, { recursive: true }));
 		return dir;
 	}
