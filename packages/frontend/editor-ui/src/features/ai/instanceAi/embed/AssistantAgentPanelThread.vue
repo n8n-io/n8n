@@ -14,6 +14,7 @@ import type {
 	InstanceAiHandoffContext,
 	InstanceAiPrefillPayload,
 } from '@n8n/api-types';
+import { N8nChatRating } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, provide, ref, useTemplateRef, watch, type Ref } from 'vue';
@@ -36,7 +37,6 @@ import {
 	useAssistantPreferenceCards,
 } from '../assistantAgent/assistantPreferenceCards';
 import { assistantSharedFilesExtension } from '../assistantAgent/assistantSharedFiles';
-import AssistantAgentResponseRating from '../assistantAgent/AssistantAgentResponseRating.vue';
 import { useAssistantAgentFeedback } from '../assistantAgent/useAssistantAgentFeedback';
 import {
 	useAssistantAgentMessageTelemetry,
@@ -328,7 +328,7 @@ defineExpose({
 			</div>
 		</template>
 		<template #message-actions="{ executionId }">
-			<AssistantAgentResponseRating
+			<N8nChatRating
 				v-if="feedback.isRateable(executionId)"
 				:rating="feedback.ratingOf(executionId)"
 				@rate="feedback.rate(executionId, $event)"

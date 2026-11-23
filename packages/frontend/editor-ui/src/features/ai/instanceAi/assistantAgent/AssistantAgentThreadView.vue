@@ -15,6 +15,7 @@ import { useAssistantAwayTelemetry } from '../composables/useAssistantAwayTeleme
 import { getCurrentTurn } from '../assistantTurn';
 import {
 	N8nActionDropdown,
+	N8nChatRating,
 	N8nIconButton,
 	N8nResizeWrapper,
 	N8nTabsRoot,
@@ -136,7 +137,6 @@ import {
 import { useAssistantAgentMentions } from './useAssistantAgentMentions';
 import { useAssistantAgentTargets } from './useAssistantAgentTargets';
 import { useAssistantAgentTrace } from './useAssistantAgentTrace';
-import AssistantAgentResponseRating from './AssistantAgentResponseRating.vue';
 import { useAssistantAgentFeedback } from './useAssistantAgentFeedback';
 import { useAssistantArtifactThread } from './useAssistantArtifactThread';
 
@@ -979,7 +979,7 @@ function updateStagedNodes(attachment: InstanceAiNodesAttachment): void {
 							/>
 						</template>
 						<template #message-actions="{ executionId }">
-							<AssistantAgentResponseRating
+							<N8nChatRating
 								v-if="feedback.isRateable(executionId)"
 								:rating="feedback.ratingOf(executionId)"
 								@rate="feedback.rate(executionId, $event)"

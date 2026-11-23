@@ -1378,16 +1378,16 @@ describe('AssistantAgentThreadView', () => {
 			await flushPromises();
 
 			expect(
-				within(getByTestId('message-actions-a1')).queryByTestId('assistant-agent-rating-up'),
+				within(getByTestId('message-actions-a1')).queryByTestId('message-thumbs-up-button'),
 			).not.toBeInTheDocument();
 			const latest = within(getByTestId('message-actions-a2'));
-			await fireEvent.click(latest.getByTestId('assistant-agent-rating-up'));
+			await fireEvent.click(latest.getByTestId('message-thumbs-up-button'));
 
 			expect(postFeedback).toHaveBeenCalledWith(expect.anything(), 'thread-1', {
 				executionId: 'exec-2',
 				rating: 'up',
 			});
-			expect(latest.getByTestId('assistant-agent-rating-thanks')).toBeInTheDocument();
+			expect(latest.getByTestId('message-rating-success')).toBeInTheDocument();
 		});
 	});
 
