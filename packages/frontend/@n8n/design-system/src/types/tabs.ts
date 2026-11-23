@@ -7,15 +7,34 @@ export interface TabOptions<Value extends string | number> {
 	value: Value;
 	label: string;
 	icon?: IconName | (string & {});
+	/**
+	 * Side of the icon.
+	 * @default 'left'
+	 */
 	iconPosition?: 'left' | 'right';
 	/** Colors only the icon, for example `danger` to flag a problem. */
 	iconColor?: IconColor;
-	/** Prevents selecting the tab (greyed out); combine with `tooltip` to explain why. */
+	/**
+	 * Prevents selecting the tab (greyed out). Combine with `tooltip` to explain why.
+	 * @default false
+	 */
 	disabled?: boolean;
 	tooltip?: string;
+	/**
+	 * `'right'` groups the tab at the right end of the list.
+	 * @default 'left'
+	 */
 	align?: 'left' | 'right';
 	to?: RouteLocationRaw;
+	/**
+	 * Shows a notification dot.
+	 * @default false
+	 */
 	notification?: boolean;
 	tag?: string;
+	/**
+	 * Shows a preview badge after the label.
+	 * @default false
+	 */
 	preview?: boolean;
 }

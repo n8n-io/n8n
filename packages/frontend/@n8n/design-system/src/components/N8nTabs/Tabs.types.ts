@@ -11,18 +11,32 @@ export type {
 
 /** Extracted from the SFC so the generic props are nameable in the emitted declaration (TS4082). */
 export interface TabsProps<Value extends string | number = string | number> {
+	/** The selected tab. Bind with `v-model` when the parent owns the selection. */
 	modelValue?: Value;
-	/** Base generic. Callers can narrow `Value` outside the component. */
+	/**
+	 * The tabs to render. Callers can narrow `Value` outside the component.
+	 * @default []
+	 */
 	options?: Array<TabOptions<Value>>;
-	/** These sizes align with the UI sizes of Select and Input. */
+	/**
+	 * These sizes align with the UI sizes of Select and Input.
+	 * @default 'medium'
+	 */
 	size?: 'small' | 'medium' | 'large';
 	/**
 	 * Spread the tabs over the full width in equal slots. Keeps every tab in
 	 * place when a label changes width, at the cost of truncating long ones.
+	 * @default false
 	 */
 	justified?: boolean;
-	/** Determines the layout and the arrow keys for keyboard navigation. */
+	/**
+	 * Determines the layout and the arrow keys for keyboard navigation.
+	 * @default 'horizontal'
+	 */
 	orientation?: 'horizontal' | 'vertical';
-	/** Visual style. `underline` marks the active tab with a bar, `filled` with a background. */
+	/**
+	 * Visual style. `underline` marks the active tab with a bar, `filled` with a background.
+	 * @default 'underline'
+	 */
 	variant?: 'underline' | 'filled';
 }

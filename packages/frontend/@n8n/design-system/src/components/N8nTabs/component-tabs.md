@@ -15,38 +15,68 @@ interface TabOptions<Value extends string | number> {
   /** Visible text. Required, because icon-only tabs are not supported. */
   label: string;
   icon?: IconName | (string & {});
-  /** Side of the icon. Default 'left'. */
+  /**
+   * Side of the icon.
+   * @default 'left'
+   */
   iconPosition?: 'left' | 'right';
   /** Colors only the icon, for example 'danger' to flag a problem. */
   iconColor?: IconColor;
-  /** Prevents selection. Combine with `tooltip` to explain why. */
+  /**
+   * Prevents selection. Combine with `tooltip` to explain why.
+   * @default false
+   */
   disabled?: boolean;
   /** HTML content of the tooltip on the tab. */
   tooltip?: string;
-  /** 'right' groups the tab at the right end of the list. */
+  /**
+   * 'right' groups the tab at the right end of the list.
+   * @default 'left'
+   */
   align?: 'left' | 'right';
   /** Makes the tab a route link. It does not emit `update:modelValue`. */
   to?: RouteLocationRaw;
-  /** Shows a notification dot. */
+  /**
+   * Shows a notification dot.
+   * @default false
+   */
   notification?: boolean;
   /** Shows the text in a badge after the label. */
   tag?: string;
-  /** Shows a preview badge after the label. */
+  /**
+   * Shows a preview badge after the label.
+   * @default false
+   */
   preview?: boolean;
 }
 
 interface TabsProps<Value extends string | number = string | number> {
   /** The selected tab. Bind with `v-model`. */
   modelValue?: Value;
-  /** The tabs to render. Default []. */
+  /**
+   * The tabs to render.
+   * @default []
+   */
   options?: Array<TabOptions<Value>>;
-  /** Tab height. Aligns with the sizes of Select and Input. Default 'medium'. */
+  /**
+   * Tab height. Aligns with the sizes of Select and Input.
+   * @default 'medium'
+   */
   size?: 'small' | 'medium' | 'large';
-  /** Equal-width tabs over the full width, so a label change does not move other tabs. Default false. */
+  /**
+   * Equal-width tabs over the full width, so a label change does not move other tabs.
+   * @default false
+   */
   justified?: boolean;
-  /** Layout and arrow keys for keyboard navigation. Default 'horizontal'. */
+  /**
+   * Layout and arrow keys for keyboard navigation.
+   * @default 'horizontal'
+   */
   orientation?: 'horizontal' | 'vertical';
-  /** Marks the active tab with a bar or a background. Default 'underline'. */
+  /**
+   * Marks the active tab with a bar or a background.
+   * @default 'underline'
+   */
   variant?: 'underline' | 'filled';
 }
 
