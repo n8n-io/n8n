@@ -43,6 +43,8 @@ const EDITOR_INSTANCE_FLAGS = [
 	WORKFLOWS_IN_SKILLS_FLAG,
 ];
 
+const MULTIVARIATE_EDITOR_INSTANCE_FLAGS = [WORKFLOWS_IN_SKILLS_FLAG];
+
 const SESSION_ID_MAX_LENGTH = 1000;
 
 function sanitizeSessionId(value: string | undefined): string | undefined {
@@ -219,7 +221,12 @@ export class PostHogClient {
 			featureFlags: {
 				...overridden.featureFlags,
 				...Object.fromEntries(
-					EDITOR_INSTANCE_FLAGS.map((flag) => [flag, instanceFlags[flag] === true]),
+					EDITOR_INSTANCE_FLAGS.map((flag) => [
+						flag,
+						MULTIVARIATE_EDITOR_INSTANCE_FLAGS.includes(flag)
+							? (instanceFlags[flag] ?? false)
+							: instanceFlags[flag] === true,
+					]),
 				),
 			},
 		};
