@@ -73,6 +73,7 @@ const mockDocumentStoreState = vi.hoisted(() => ({
 	connectionsBySourceNode: {},
 	getPinDataSnapshot: () => ({}),
 	getNodeById: (_id: string) => undefined as INodeUi | undefined,
+	onNodesChange: vi.fn(() => ({ off: vi.fn() })),
 }));
 vi.mock('@/app/stores/workflowDocument.store', () => ({
 	useWorkflowDocumentStore: () => mockDocumentStoreState,
@@ -559,6 +560,42 @@ describe('useActions', () => {
 				connections: [{ from: { nodeIndex: 0 }, to: { nodeIndex: 1 } }],
 				nodes: [{ type: WEBHOOK_NODE_TYPE, openDetail: true }, { type: SLACK_NODE_TYPE }],
 			});
+		});
+	});
+
+	describe('setAddedNodeActionParameters', () => {
+		// Gmail, like the restricted case above: the policy store mock outlives the test.
+		const GMAIL = 'n8n-nodes-base.gmail';
+		const action = { name: 'Send a message', key: GMAIL, value: {} };
+
+		it('waits for the node of a type that the node creator adds', () => {
+			mockEngineV2Compatibility();
+			const { setAddedNodeActionParameters } = useActions();
+
+			setAddedNodeActionParameters({ ...action, key: NO_OP_NODE_TYPE });
+
+			expect(mockDocumentStoreState.onNodesChange).toHaveBeenCalledTimes(1);
+		});
+
+		// The node creator adds nothing for these types, so a watcher would wait for a later node.
+		it('does not wait for a type that engine v2 does not support', () => {
+			vi.mocked(useSettingsStore().isModuleActive).mockReturnValue(true);
+			mockDocumentStoreState.settings = { engineType: 'v2' };
+			mockEngineV2Compatibility({ unsupportedNodeTypes: [GMAIL] });
+			const { setAddedNodeActionParameters } = useActions();
+
+			setAddedNodeActionParameters(action);
+
+			expect(mockDocumentStoreState.onNodesChange).not.toHaveBeenCalled();
+		});
+
+		it('does not wait for a type that a policy restricts', () => {
+			mockRestrictedNodeTypes({ [GMAIL]: 'instance' });
+			const { setAddedNodeActionParameters } = useActions();
+
+			setAddedNodeActionParameters(action);
+
+			expect(mockDocumentStoreState.onNodesChange).not.toHaveBeenCalled();
 		});
 	});
 

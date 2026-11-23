@@ -429,6 +429,12 @@ export const useActions = () => {
 		telemetry?: Telemetry,
 		rootView = '',
 	) {
+		// getAddedNodesAndConnections adds nothing for these types. A watcher would wait for
+		// the next node of the type, and give that node the parameters of this action.
+		if (isNodeItemRestricted(action.key) || isNodeTypeIncompatible(action.key)) {
+			return () => {};
+		}
+
 		const { off } = workflowDocumentStore.value.onNodesChange((event) => {
 			if (event.action !== CHANGE_ACTION.ADD) return;
 			if (!('node' in event.payload) || event.payload.node.type !== action.key) return;
