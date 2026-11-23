@@ -275,8 +275,9 @@ or deactivation.
 
 Show each workflow that an attached skill mentions in the Workflows row, after
 the direct workflow tools. Put a muted `From skill <name>` note in the chip.
-Let these chips use the full row width, so the note stays readable. A
-click opens the skill. Do not give these chips a context menu: the user removes
+Let these chips use the full row width, so the note stays readable.
+Truncate the workflow name and the note apart, so a long name does not hide
+the note. A click opens the skill. Do not give these chips a context menu: the user removes
 them by detaching the skill. Show the same not published and not found notes
 as on a direct workflow tool. Show a workflow that is also attached directly
 only once, as the direct tool. The skill chip then names it in an
