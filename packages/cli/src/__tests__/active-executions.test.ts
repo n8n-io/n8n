@@ -229,6 +229,15 @@ describe('ActiveExecutions', () => {
 		);
 	});
 
+	test.each([
+		['passes the owner project', 'trigger', 'project-1'],
+		['passes no project for an error workflow run', 'error', undefined],
+	] as const)('%s to executionPersistence.create', async (_case, executionMode, expected) => {
+		await activeExecutions.add({ ...executionData, executionMode, projectId: 'project-1' });
+
+		expect(executionPersistence.create.mock.calls[0][2]?.projectId).toBe(expected);
+	});
+
 	test('Should record the starter of a new execution', async () => {
 		await activeExecutions.add(executionData);
 

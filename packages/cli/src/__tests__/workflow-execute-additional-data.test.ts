@@ -286,6 +286,36 @@ describe('WorkflowExecuteAdditionalData', () => {
 			},
 		);
 
+		it('passes the owner project of the sub-workflow to the active execution', async () => {
+			activeExecutions.add.mockImplementationOnce(async () => {
+				throw new Error('Stop after persistence check');
+			});
+
+			await expect(
+				executeWorkflow(mock<IExecuteWorkflowInfo>(), mock<IWorkflowExecuteAdditionalData>(), {
+					...mock<ExecuteWorkflowOptions>(),
+					loadedWorkflowData: mock<IWorkflowBase>({
+						nodes: [
+							{
+								id: 'trigger',
+								name: 'Start',
+								type: 'n8n-nodes-base.executeWorkflowTrigger',
+								typeVersion: 1.3,
+								position: [0, 0],
+								parameters: {},
+							},
+						],
+						connections: {},
+					}),
+					loadedRunData: undefined,
+				}),
+			).rejects.toThrow('Stop after persistence check');
+
+			expect(activeExecutions.add).toHaveBeenCalledWith(
+				expect.objectContaining({ projectId: 'project-id-1' }),
+			);
+		});
+
 		it('keeps the saved output policy when supplied run data is reused', async () => {
 			const executionData = createRunExecutionData({ subWorkflowOutput: { lastRunOnly: true } });
 			activeExecutions.add.mockImplementationOnce(async (runData) => {
@@ -300,6 +330,17 @@ describe('WorkflowExecuteAdditionalData', () => {
 					returnLastRunOnly: false,
 				}),
 			).rejects.toThrow('Stop after persistence check');
+		});
+
+		it("sends a simulated-services eval run's sub-workflow requests through its egress proxy", async () => {
+			await executeWorkflow(
+				mock<IExecuteWorkflowInfo>(),
+				mock<IWorkflowExecuteAdditionalData>({ evalEgressProxy: 'http://127.0.0.1:4567' }),
+				mock<ExecuteWorkflowOptions>({ loadedWorkflowData: undefined, doNotWaitToFinish: false }),
+			);
+
+			const subExecutionData = vi.mocked(WorkflowExecute).mock.calls.at(-1)?.[0];
+			expect(subExecutionData?.evalEgressProxy).toBe('http://127.0.0.1:4567');
 		});
 
 		it.each<{ parentRootMode: WorkflowExecuteMode | undefined; parentMode: WorkflowExecuteMode }>([

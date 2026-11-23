@@ -7,7 +7,7 @@ import type {
 	OutboundHttp,
 } from '@n8n/backend-network';
 import { Time } from '@n8n/constants';
-import type { LicenseMetricsRepository } from '@n8n/db';
+import type { AgentExecutionStatisticsRepository, LicenseMetricsRepository } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
 import type { IHttpRequestOptions } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
@@ -79,6 +79,7 @@ function makeReport(overrides: Partial<InstanceMonitoringReport> = {}): Instance
 }
 
 interface Harness {
+	agentExecutionStatisticsRepository: Mocked<AgentExecutionStatisticsRepository>;
 	service: InstanceReportingService;
 	reportRepository: Mocked<InstanceMonitoringReportRepository>;
 	settingsService: Mocked<InstanceReportingSettingsService>;
@@ -120,6 +121,9 @@ function makeHarness(config: InstanceReportingConfig = makeConfig()): Harness {
 
 	const licenseMetricsRepository = mock<LicenseMetricsRepository>();
 	licenseMetricsRepository.getLicenseRenewalMetrics.mockResolvedValue(LICENSE_METRICS_MOCK);
+	const agentExecutionStatisticsRepository = mock<AgentExecutionStatisticsRepository>();
+	agentExecutionStatisticsRepository.getDailyAgentExecutions.mockResolvedValue(new Map());
+	agentExecutionStatisticsRepository.getFirstAgentExecutionDate.mockResolvedValue(null);
 
 	const license = mock<License>();
 	license.loadCertStr.mockResolvedValue(LICENSE_CERT);
@@ -149,9 +153,11 @@ function makeHarness(config: InstanceReportingConfig = makeConfig()): Harness {
 		mockLogger(),
 		eventService,
 		outboundHttp,
+		agentExecutionStatisticsRepository,
 	);
 
 	return {
+		agentExecutionStatisticsRepository,
 		service,
 		reportRepository,
 		settingsService,
@@ -528,6 +534,83 @@ describe('InstanceReportingService', () => {
 				],
 			});
 		});
+
+		test.each([null, '2026-03-01'])(
+			'adds agent turns to daily counts with first billable day %s',
+			async (firstBillableDay) => {
+				const { service, http, insightsService, agentExecutionStatisticsRepository } =
+					makeHarness();
+				insightsService.getFirstBillableDay.mockResolvedValue(firstBillableDay);
+				insightsService.getDailyBillableExecutions.mockResolvedValue(new Map([[REPORT_DATE, 42]]));
+				agentExecutionStatisticsRepository.getDailyAgentExecutions.mockResolvedValue(
+					new Map([[REPORT_DATE, 3]]),
+				);
+
+				await service.sendReport(new Date());
+
+				expect(body(http).dataPoints).toEqual([
+					{ kind: 'cumulative', name: 'billableExecutions', value: 815 },
+					{ kind: 'daily', name: 'billableExecutions', value: 45, date: REPORT_DATE },
+				]);
+			},
+		);
+
+		test('reports agent history when the instance has no workflow insights', async () => {
+			const {
+				service,
+				http,
+				reportRepository,
+				insightsService,
+				agentExecutionStatisticsRepository,
+			} = makeHarness();
+			reportRepository.findLastCoveredDay.mockResolvedValue(null);
+			insightsService.getDailyExecutionTotals.mockResolvedValue(new Map());
+			agentExecutionStatisticsRepository.getFirstAgentExecutionDate.mockResolvedValue(
+				new Date('2026-03-24T00:00:00.000Z'),
+			);
+			agentExecutionStatisticsRepository.getDailyAgentExecutions.mockResolvedValue(
+				new Map([['2026-03-24', 2]]),
+			);
+
+			await service.sendReport(new Date());
+
+			expect(body(http).dataPoints).toEqual([
+				{ kind: 'cumulative', name: 'billableExecutions', value: 815 },
+				{ kind: 'daily', name: 'billableExecutions', value: 2, date: '2026-03-24' },
+				{ kind: 'daily', name: 'billableExecutions', value: 0, date: REPORT_DATE },
+			]);
+		});
+
+		test.each([
+			{ insightsStart: '2026-03-23', agentStart: '2026-03-24' },
+			{ insightsStart: '2026-03-24', agentStart: '2026-03-23' },
+		])(
+			'reports from the earlier date when insights start at $insightsStart and agents start at $agentStart',
+			async ({ insightsStart, agentStart }) => {
+				const {
+					service,
+					http,
+					reportRepository,
+					insightsService,
+					agentExecutionStatisticsRepository,
+				} = makeHarness();
+				reportRepository.findLastCoveredDay.mockResolvedValue(null);
+				insightsService.getEarliestDataDate.mockResolvedValue(
+					new Date(`${insightsStart}T00:00:00.000Z`),
+				);
+				agentExecutionStatisticsRepository.getFirstAgentExecutionDate.mockResolvedValue(
+					new Date(`${agentStart}T00:00:00.000Z`),
+				);
+
+				await service.sendReport(new Date());
+
+				expect(
+					body(http)
+						.dataPoints.filter(({ kind }) => kind === 'daily')
+						.map(({ date }) => date),
+				).toEqual(['2026-03-23', '2026-03-24', REPORT_DATE]);
+			},
+		);
 
 		test('omits label when no label is configured', async () => {
 			const { service, http } = makeHarness(makeConfig({ instanceReportingLabel: '' }));

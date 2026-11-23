@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import type { AssistantMentionItem } from '../assistantAtMentions.types';
+import type { AssistantWorkflowMentionItem } from '../assistantAtMentions.types';
 import { projectWorkflowArtifact } from '../composables/useArtifactMentionIndex';
 import { buildMentionAttachment } from './buildMentionAttachment';
+import { buildAgentMentionItem } from './buildMentionItems';
 
-function mention(overrides: Partial<AssistantMentionItem> = {}): AssistantMentionItem {
+function mention(
+	overrides: Partial<AssistantWorkflowMentionItem> = {},
+): AssistantWorkflowMentionItem {
 	return {
 		key: 'workflow:w1:w1',
 		kind: 'workflow',
@@ -19,6 +22,17 @@ function mention(overrides: Partial<AssistantMentionItem> = {}): AssistantMentio
 }
 
 describe('buildMentionAttachment', () => {
+	it('builds an agent attachment with the project of the agent', () => {
+		const item = buildAgentMentionItem({ id: 'a1', name: 'Support agent', projectId: 'p1' });
+
+		expect(item).toMatchObject({ key: 'agent:a1', kind: 'agent', source: 'agents' });
+		expect(buildMentionAttachment(item)).toEqual({
+			item,
+			attachment: { type: 'agent', id: 'a1', name: 'Support agent', projectId: 'p1' },
+			truncated: false,
+		});
+	});
+
 	it('builds a workflow attachment', () => {
 		expect(buildMentionAttachment(mention())?.attachment).toEqual({
 			type: 'workflow',

@@ -6,9 +6,10 @@ import { Container } from '@n8n/di';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { NodeTypes } from '@/node-types';
-import { stripToolSuffix } from '@/utils';
 import { createMember, createOwner } from '@test-integration/db/users';
 import * as utils from '@test-integration/utils';
+
+import { fakeResolveBaseName } from './shared/workflow-index';
 
 const nodeTypes = mockInstance(NodeTypes);
 
@@ -107,13 +108,8 @@ describe('GET /instance/access gating', () => {
 
 describe('GET /node-type-policies/instance/access', () => {
 	const mockNodeTypes = (loaded: string[], generated: string[]) => {
-		const recognized = new Set(loaded);
 		nodeTypes.getKnownTypes.mockReturnValue(knownTypes([...loaded, ...generated]));
-		nodeTypes.resolveBaseName.mockImplementation((name) =>
-			name.endsWith('Tool') && !recognized.has(name)
-				? { baseName: stripToolSuffix(name), isSyntheticTool: true }
-				: { baseName: name, isSyntheticTool: false },
-		);
+		nodeTypes.resolveBaseName.mockImplementation(fakeResolveBaseName(loaded));
 	};
 
 	test('leaves out the tool variants that n8n generates, and keeps a trigger and the real tool nodes', async () => {

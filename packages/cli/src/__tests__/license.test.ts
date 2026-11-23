@@ -73,6 +73,7 @@ describe('License', () => {
 	let license: License;
 	const instanceSettings = mock<InstanceSettings>({
 		instanceId: MOCK_INSTANCE_ID,
+		installId: 'test-install-id',
 		instanceType: 'main',
 		isLeader: true,
 	});
@@ -95,6 +96,7 @@ describe('License', () => {
 				offlineMode: false,
 				renewOnInit: true,
 				deviceFingerprint: expect.any(Function),
+				installId: 'test-install-id',
 				productIdentifier: `n8n-${N8N_VERSION}`,
 				loadCertStr: expect.any(Function),
 				saveCertStr: expect.any(Function),

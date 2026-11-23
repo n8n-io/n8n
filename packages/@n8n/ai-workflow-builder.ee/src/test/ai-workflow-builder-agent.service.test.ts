@@ -10,7 +10,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { AiWorkflowBuilderService } from '@/ai-workflow-builder-agent.service';
 import { LLMServiceError } from '@/errors';
-import { anthropicClaudeSonnet45 } from '@/llm-config';
+import { anthropicClaudeSonnet46 } from '@/llm-config';
 import { SessionManagerService } from '@/session-manager.service';
 import { formatMessages } from '@/utils/stream-processor';
 import { WorkflowBuilderAgent, type ChatPayload } from '@/workflow-builder-agent';
@@ -40,7 +40,7 @@ vi.mock('langsmith');
 vi.mock('@/workflow-builder-agent');
 vi.mock('@/session-manager.service');
 vi.mock('@/llm-config', () => ({
-	anthropicClaudeSonnet45: vi.fn(),
+	anthropicClaudeSonnet46: vi.fn(),
 }));
 vi.mock('@/utils/stream-processor', () => ({
 	formatMessages: vi.fn(),
@@ -54,8 +54,8 @@ const MockedSessionManagerService = SessionManagerService as MockedClass<
 	typeof SessionManagerService
 >;
 
-const anthropicClaudeSonnet45Mock = anthropicClaudeSonnet45 as MockedFunction<
-	typeof anthropicClaudeSonnet45
+const anthropicClaudeSonnet46Mock = anthropicClaudeSonnet46 as MockedFunction<
+	typeof anthropicClaudeSonnet46
 >;
 const formatMessagesMock = formatMessages as MockedFunction<typeof formatMessages>;
 
@@ -221,7 +221,7 @@ describe('AiWorkflowBuilderService', () => {
 			return mockAgent;
 		});
 
-		anthropicClaudeSonnet45Mock.mockResolvedValue(mockChatAnthropic);
+		anthropicClaudeSonnet46Mock.mockResolvedValue(mockChatAnthropic);
 
 		// Mock onCreditsUpdated callback
 		mockOnCreditsUpdated = vi.fn();
@@ -423,7 +423,7 @@ describe('AiWorkflowBuilderService', () => {
 
 		it('should throw LLMServiceError when model setup fails', async () => {
 			const testError = new Error('Model setup failed');
-			anthropicClaudeSonnet45Mock.mockRejectedValue(testError);
+			anthropicClaudeSonnet46Mock.mockRejectedValue(testError);
 
 			const generator = service.chat(mockPayload, mockUser);
 
@@ -432,7 +432,7 @@ describe('AiWorkflowBuilderService', () => {
 
 		it('should include error details in LLMServiceError', async () => {
 			const testError = new Error('Specific error message');
-			anthropicClaudeSonnet45Mock.mockRejectedValue(testError);
+			anthropicClaudeSonnet46Mock.mockRejectedValue(testError);
 
 			const generator = service.chat(mockPayload, mockUser);
 
@@ -455,7 +455,7 @@ describe('AiWorkflowBuilderService', () => {
 			const generator = serviceWithoutClient.chat(mockPayload, mockUser);
 			await generator.next();
 
-			expect(anthropicClaudeSonnet45Mock).toHaveBeenCalledWith({
+			expect(anthropicClaudeSonnet46Mock).toHaveBeenCalledWith({
 				baseUrl: undefined,
 				apiKey: 'test-env-key',
 				headers: {
@@ -486,7 +486,7 @@ describe('AiWorkflowBuilderService', () => {
 			const generator = service.chat(mockPayload, mockUser);
 			await generator.next();
 
-			expect(anthropicClaudeSonnet45Mock).toHaveBeenCalledWith({
+			expect(anthropicClaudeSonnet46Mock).toHaveBeenCalledWith({
 				baseUrl: 'https://api.example.com/anthropic',
 				apiKey: '-',
 				headers: expect.objectContaining({

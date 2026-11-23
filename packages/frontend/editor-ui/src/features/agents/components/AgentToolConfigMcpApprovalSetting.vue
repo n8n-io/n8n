@@ -160,6 +160,7 @@ function toToolPermissions(approval: AgentApproval | undefined): McpToolPermissi
 		<template #controls="{ mode }">
 			<N8nTooltip
 				v-if="mode === 'selected'"
+				:as-child="!isLoadingTools"
 				:content="i18n.baseText('agents.toolConfig.mcpApproval.refresh.hint')"
 			>
 				<N8nButton
@@ -167,6 +168,7 @@ function toToolPermissions(approval: AgentApproval | undefined): McpToolPermissi
 					size="small"
 					icon-only
 					:disabled="props.disabled"
+					focusable-when-disabled
 					:loading="isLoadingTools"
 					:aria-label="i18n.baseText('agents.toolConfig.mcpApproval.refresh')"
 					data-test-id="agent-mcp-approval-refresh"

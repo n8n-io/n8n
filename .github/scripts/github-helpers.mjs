@@ -415,26 +415,6 @@ export async function getPullRequestById(pullRequestId) {
 }
 
 /**
- * Open PRs whose head is `headOwner:headBranch`, newest first.
- *
- * @param { string } headOwner Owner of the head repository (a fork owner or this org).
- * @param { string } headBranch
- * @returns { Promise<any[]> }
- */
-export async function listOpenPullRequestsByHead(headOwner, headBranch) {
-	const { octokit, owner, repo } = initGithub();
-
-	const pullRequests = await octokit.rest.pulls.list({
-		owner,
-		repo,
-		state: 'open',
-		head: `${headOwner}:${headBranch}`,
-	});
-
-	return pullRequests.data;
-}
-
-/**
  * Returns the set of files changed in a PR, including previous filenames for renames.
  *
  * @param { number } pullRequestNumber
@@ -454,107 +434,6 @@ export async function getChangedFiles(pullRequestNumber) {
 		...files.map((file) => file.filename),
 		...files.map((file) => file.previous_filename).filter((filename) => filename !== undefined),
 	]);
-}
-
-/**
- * Returns all files changed in a PR with full metadata including line counts.
- *
- * @param { number } pullRequestNumber
- * @returns { Promise<Array<{ filename: string, additions: number, deletions: number, previous_filename?: string }>> }
- * */
-export async function getPrFiles(pullRequestNumber) {
-	const { octokit, owner, repo } = initGithub();
-
-	return await octokit.paginate(octokit.rest.pulls.listFiles, {
-		owner,
-		repo,
-		pull_number: pullRequestNumber,
-		per_page: 100,
-	});
-}
-
-/**
- * Returns all reviews submitted on a PR, in submission order.
- *
- * @param { number } pullRequestNumber
- * @returns { Promise<Array<{ user: { login: string } | null, state: string, submitted_at?: string }>> }
- * */
-export async function getPrReviews(pullRequestNumber) {
-	const { octokit, owner, repo } = initGithub();
-
-	return await octokit.paginate(octokit.rest.pulls.listReviews, {
-		owner,
-		repo,
-		pull_number: pullRequestNumber,
-		per_page: 100,
-	});
-}
-
-/**
- * Returns all events for a PR, including label changes and their actors.
- *
- * @param { number } pullRequestNumber
- * @returns { Promise<Array<{ event: string, actor: { login: string } | null, label?: { name?: string } | null, created_at?: string }>> }
- * */
-export async function getPrEvents(pullRequestNumber) {
-	const { octokit, owner, repo } = initGithub();
-
-	return await octokit.paginate(octokit.rest.issues.listEvents, {
-		owner,
-		repo,
-		issue_number: pullRequestNumber,
-		per_page: 100,
-	});
-}
-
-/**
- * Test whether a user is an active member of an org team.
- *
- * Team slugs are the part after the org, e.g. `catalysts` for
- * `@n8n-io/catalysts`. Requires a token with org members read access
- * (the plain GITHUB_TOKEN cannot read team membership). Returns false
- * for pending invitations and for teams that do not exist.
- *
- * @param { string } teamSlug
- * @param { string } username
- * @returns { Promise<boolean> }
- * */
-export async function isTeamMember(teamSlug, username) {
-	const { octokit, owner } = initGithub();
-
-	try {
-		const { data } = await octokit.rest.teams.getMembershipForUserInOrg({
-			org: owner,
-			team_slug: teamSlug,
-			username,
-		});
-		return data.state === 'active';
-	} catch (ex) {
-		if (ex?.status === 404) return false;
-		throw ex;
-	}
-}
-
-/**
- * Create (or overwrite) a commit status on the given SHA. A ruleset can list
- * the status context as a required check to gate merges on it.
- *
- * @param { string } sha
- * @param {{ state: 'success' | 'failure' | 'pending' | 'error', context: string, description: string, targetUrl?: string }} status
- */
-export async function setCommitStatus(sha, { state, context, description, targetUrl }) {
-	const { octokit, owner, repo } = initGithub();
-
-	await octokit.rest.repos.createCommitStatus({
-		owner,
-		repo,
-		sha,
-		state,
-		context,
-		// The API rejects descriptions longer than 140 characters.
-		description: description.length > 140 ? `${description.slice(0, 139)}…` : description,
-		target_url: targetUrl,
-	});
 }
 
 /**

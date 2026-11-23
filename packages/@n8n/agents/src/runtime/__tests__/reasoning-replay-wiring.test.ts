@@ -2,6 +2,7 @@ import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 
 import type { AgentMessage } from '../../types/sdk/message';
+import type { OpenAIThinkingConfig } from '../../types/sdk/provider';
 import { AgentRuntime } from '../loop/agent-runtime';
 import { AgentEventBus } from '../state/event-bus';
 
@@ -85,12 +86,17 @@ describe('reasoning replay on the wire', () => {
 
 	beforeEach(() => (bodies.length = 0));
 
-	async function sentAssistantMessages(id: string, path: 'generate' | 'stream') {
+	async function sentAssistantMessages(
+		id: string,
+		path: 'generate' | 'stream',
+		thinking?: OpenAIThinkingConfig,
+	) {
 		const agent = new AgentRuntime({
 			name: 'replay-test',
 			model: { id, url: baseUrl, apiKey: 'k' } as never,
 			instructions: 'test',
 			eventBus: new AgentEventBus(),
+			...(thinking ? { thinking } : {}),
 		});
 		if (path === 'generate') {
 			await agent.generate(history);
@@ -112,6 +118,19 @@ describe('reasoning replay on the wire', () => {
 			expect(current.reasoning_content).toBe('Current chain of thought');
 			expect(finished.content).toBe('First answer');
 			expect(finished.reasoning_content).toBeUndefined();
+		},
+	);
+
+	it.each(['generate', 'stream'] as const)(
+		'%s: sends the reasoning of earlier turns too when asked for the whole conversation',
+		async (path) => {
+			const [finished, current] = await sentAssistantMessages('custom/test-model', path, {
+				replayReasoning: 'conversation',
+			});
+
+			expect(current.reasoning_content).toBe('Current chain of thought');
+			expect(finished.content).toBe('First answer');
+			expect(finished.reasoning_content).toBe('Earlier chain of thought');
 		},
 	);
 });
