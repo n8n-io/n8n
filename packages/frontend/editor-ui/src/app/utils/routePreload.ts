@@ -1,8 +1,13 @@
-import { loadRouteLocation, type RouteLocationNormalized } from 'vue-router';
+import type { RouteLocationNormalized } from 'vue-router';
 
 /**
  * Loads the lazy components of the first route while the startup requests run.
  * Without this, the router loads them only after its guards finish.
+ *
+ * The early load only starts the downloads. It does not store the components on the route
+ * records: a loader can choose its module from state that the startup sets, so the router
+ * must call it again after the guards. A loader that only imports a module then resolves
+ * from the module cache, without a request.
  */
 
 let preloadedFullPath: string | undefined;
@@ -24,12 +29,7 @@ async function loadComponents(to: RouteLocationNormalized): Promise<boolean> {
 	// Wait for every loader, not only until the first one fails: a loader that fails later
 	// dispatches `vite:preloadError` too, and the handler must still treat it as part of this load.
 	const results = await Promise.allSettled(loads);
-	if (results.some((result) => result.status === 'rejected')) return false;
-
-	// Store the components on the route records, so that the router does not load them again.
-	// The modules are loaded, so the loaders resolve without a request.
-	if (loads.length > 0) await loadRouteLocation(to);
-	return true;
+	return results.every((result) => result.status === 'fulfilled');
 }
 
 /**
@@ -42,7 +42,7 @@ export function startRoutePreload(to: RouteLocationNormalized): void {
 
 	preloadedFullPath = to.fullPath;
 	pending = true;
-	preload = loadComponents(to).catch(() => false);
+	preload = loadComponents(to);
 	void preload.then(() => {
 		pending = false;
 	});

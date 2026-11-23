@@ -33,7 +33,7 @@ describe('routePreload', () => {
 		await expect(routePreload.awaitRoutePreload()).resolves.toBe(true);
 	});
 
-	it('loads the components of the location and stores them on the route record', async () => {
+	it('loads the components of the location and leaves the loaders on the route record', async () => {
 		const loader = vi.fn(async () => Stub);
 		const { a, router } = createLocations({ a: loader, b: vi.fn() });
 
@@ -43,7 +43,22 @@ describe('routePreload', () => {
 		expect(routePreload.isRoutePreloadPending()).toBe(true);
 		await expect(routePreload.awaitRoutePreload()).resolves.toBe(true);
 		expect(routePreload.isRoutePreloadPending()).toBe(false);
-		expect(router.getRoutes().find((r) => r.path === '/a')?.components?.default).toBe(Stub);
+		// A loader can choose its module from startup state, so the router must call it again.
+		expect(router.getRoutes().find((r) => r.path === '/a')?.components?.default).toBe(loader);
+	});
+
+	it('lets the router call a state-dependent loader again with the later state', async () => {
+		const Early = { name: 'Early', template: '<div />' };
+		const Late = { name: 'Late', template: '<div />' };
+		let ready = false;
+		const { a, router } = createLocations({ a: async () => (ready ? Late : Early), b: vi.fn() });
+
+		routePreload.startRoutePreload(a);
+		await routePreload.awaitRoutePreload();
+		ready = true;
+		await router.push('/a');
+
+		expect(router.currentRoute.value.matched[0]?.components?.default).toBe(Late);
 	});
 
 	it('loads only the first location', async () => {
@@ -55,8 +70,7 @@ describe('routePreload', () => {
 		routePreload.startRoutePreload(b);
 		await routePreload.awaitRoutePreload();
 
-		// The early load calls the loader, then once more to store the loaded component.
-		expect(loaderA).toHaveBeenCalledTimes(2);
+		expect(loaderA).toHaveBeenCalledTimes(1);
 		expect(loaderB).not.toHaveBeenCalled();
 		expect(routePreload.isPreloadedLocation(a)).toBe(true);
 		expect(routePreload.isPreloadedLocation(b)).toBe(false);
@@ -125,14 +139,6 @@ describe('routePreload', () => {
 		routePreload.startRoutePreload(router.resolve('/a') as unknown as RouteLocationNormalized);
 
 		await expect(routePreload.awaitRoutePreload()).resolves.toBe(true);
-	});
-
-	it('resolves false and does not reject when a loader resolves no component', async () => {
-		const { a } = createLocations({ a: vi.fn(async () => undefined), b: vi.fn() });
-
-		routePreload.startRoutePreload(a);
-
-		await expect(routePreload.awaitRoutePreload()).resolves.toBe(false);
 	});
 
 	it('stays pending while a loader is pending', async () => {

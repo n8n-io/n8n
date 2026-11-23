@@ -9,10 +9,15 @@ vi.mock('@/app/plugins/vitePreloadError', () => ({
 	reloadAfterPreloadError: vi.fn(() => false),
 }));
 
-vi.mock('vue-router', async (importOriginal) => {
-	const actual = await importOriginal<typeof import('vue-router')>();
-	return { ...actual, loadRouteLocation: vi.fn(actual.loadRouteLocation) };
-});
+vi.mock(
+	'@/features/integrations/secretsProviders.ee/views/SettingsSecretsProviders.ee.vue',
+	() => ({
+		default: { name: 'SecretsProvidersView', template: '<div />' },
+	}),
+);
+vi.mock('@/features/integrations/externalSecrets.ee/views/SettingsExternalSecrets.vue', () => ({
+	default: { name: 'ExternalSecretsView', template: '<div />' },
+}));
 
 const Stub = { template: '<div />' };
 
@@ -23,7 +28,6 @@ describe('router: early load of the first route', () => {
 	let VIEWS: typeof import('@/app/constants').VIEWS;
 	let initializeAuthenticatedFeatures: Mock;
 	let reloadAfterPreloadError: Mock;
-	let loadRouteLocation: Mock;
 	let signIn: () => void;
 	let resolveInitialization: () => void;
 
@@ -74,7 +78,6 @@ describe('router: early load of the first route', () => {
 		reloadAfterPreloadError = vi.mocked(
 			(await import('@/app/plugins/vitePreloadError')).reloadAfterPreloadError,
 		);
-		loadRouteLocation = vi.mocked((await import('vue-router')).loadRouteLocation);
 
 		const { useUsersStore } = await import('@n8n/stores/users.store');
 		const { createUser } = await import('@/__tests__/data/users');
@@ -106,8 +109,7 @@ describe('router: early load of the first route', () => {
 		await navigation;
 
 		expect(router.currentRoute.value.name).toBe(VIEWS.WORKFLOW);
-		// The early load calls it, then once more to store the loaded component.
-		// The router uses the stored component and does not call it.
+		// The early load, then the router's own call after the guards.
 		expect(loader).toHaveBeenCalledTimes(2);
 		expect(reloadAfterPreloadError).not.toHaveBeenCalled();
 	});
@@ -217,14 +219,40 @@ describe('router: early load of the first route', () => {
 		await router.push('/settings/personal');
 
 		expect(router.currentRoute.value.name).toBe(VIEWS.PERSONAL_SETTINGS);
-		expect(loadRouteLocation).toHaveBeenCalledTimes(1);
-		expect(loadRouteLocation).toHaveBeenCalledWith(
-			expect.objectContaining({ fullPath: '/workflow/abc' }),
-		);
-		// The early load only: it calls the loader, then once more to store the loaded component.
+		// The early load and the router's own call, both on the first navigation.
 		expect(firstLoader).toHaveBeenCalledTimes(2);
-		// The router calls each loader of the second route once.
+		// Only the router calls the loaders of the second route: no early load on later navigations.
 		expect(secondLoaderSlots).toBeGreaterThan(0);
 		expect(secondLoader).toHaveBeenCalledTimes(secondLoaderSlots);
+	});
+
+	it('lets a loader that depends on the startup state choose with that state', async () => {
+		signIn();
+		const { useRBACStore } = await import('@n8n/stores/rbac.store');
+		useRBACStore().setGlobalScopes([
+			'externalSecretsProvider:list',
+			'externalSecretsProvider:update',
+		]);
+		// The settings layout loads a stub. The view's own loader reads the module settings.
+		const path = '/settings/external-secrets';
+		const viewRecord = router.resolve(path).matched.at(-1);
+		const viewLoader = vi.fn(viewRecord?.components?.default as () => Promise<unknown>);
+		setLoader(path, async () => Stub);
+		if (viewRecord?.components) viewRecord.components.default = viewLoader as never;
+
+		const navigation = router.push(path);
+		await expectEarlyLoadStarted(viewLoader);
+		// The login hook loads the module settings during the startup.
+		const { useSettingsStore } = await import('@n8n/stores/settings.store');
+		useSettingsStore().moduleSettings = {
+			'external-secrets': { multipleConnections: true },
+		} as never;
+		resolveInitialization();
+		await navigation;
+
+		expect(router.currentRoute.value.name).toBe(VIEWS.EXTERNAL_SECRETS_SETTINGS);
+		expect(router.currentRoute.value.matched.at(-1)?.components?.default).toEqual(
+			expect.objectContaining({ name: 'SecretsProvidersView' }),
+		);
 	});
 });
