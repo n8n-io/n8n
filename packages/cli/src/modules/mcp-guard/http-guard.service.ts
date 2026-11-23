@@ -47,6 +47,7 @@ export class HttpGuardService {
 					admin,
 					gymUrl,
 					send,
+					stateFor: (tenant) => admin.stateFor(tenant),
 				}),
 			]),
 		);

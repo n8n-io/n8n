@@ -5,6 +5,7 @@ import { createGymSender, createHttpToolCaller, isReadToolName } from './http-to
 import { createPlanLlm, type HydrationModel } from './hydration-llm';
 import { PLAN_INSTRUCTIONS } from './hydration-prompts';
 import { sendToNetwork, type CapturedRequest } from './network';
+import type { TenantState } from './shared-tenants';
 import { fillPathSecret } from './path-secret';
 import { PlanHydrator } from './plan-hydrator';
 import { isReadShaped } from './request-classifier';
@@ -25,6 +26,8 @@ export interface HttpRunConfig {
 	gymUrl: string;
 	// Sends a real read. It defaults to the global `fetch`.
 	send?: (req: CapturedRequest) => Promise<Response>;
+	// What the vendors of one tenant share, see SharedTenantAdmin.
+	stateFor?: (tenant: string) => TenantState;
 }
 
 // One request to the gym or to the real service.
@@ -59,10 +62,11 @@ export class HttpRunRegistry {
 	}
 
 	private async create(runId: string, model: HydrationModel): Promise<HttpRun> {
-		const { admin, profile, vendor, gymUrl } = this.cfg;
+		const { admin, profile, vendor, gymUrl, stateFor } = this.cfg;
 		await this.deleteIdle();
 		// All vendors of a chat share one tenant, so an object of one vendor is there for the others.
 		const tenant = `guard-${runId}`.toLowerCase().replace(/[^a-z0-9-]/g, '-');
+		const state = stateFor?.(tenant);
 		await admin.createTenant(tenant);
 		// The gym issues a credential only for a tenant with an account. Seed one placeholder account.
 		await admin.seed(tenant, profile.placeholderSeed);
@@ -117,12 +121,14 @@ export class HttpRunRegistry {
 			lookups: profile.lookups,
 			finalize: profile.finalize,
 			opaqueIds: profile.opaqueIds,
+			seeded: state?.seeded,
 		});
 		const router = new HttpGuardRouter({
 			upstream,
 			gym,
 			hydrator,
 			profile,
+			gymIds: state?.gymIds,
 		});
 		const run: HttpRun = { tenant, lastUsed: Date.now(), router };
 		this.runs.set(runId, run);

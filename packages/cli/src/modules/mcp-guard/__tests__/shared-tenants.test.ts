@@ -71,4 +71,20 @@ describe('SharedTenantAdmin', () => {
 
 		expect(remove).toHaveBeenCalledTimes(1);
 	});
+
+	it('gives the vendors of a tenant one state, and drops it with the tenant', async () => {
+		const { admin } = setup();
+		await admin.createTenant('guard-a');
+		await admin.createTenant('guard-a');
+
+		const first = admin.stateFor('guard-a');
+		first.gymIds.add('made-1');
+		expect(admin.stateFor('guard-a').gymIds.has('made-1')).toBe(true);
+		expect(admin.stateFor('guard-b')).not.toBe(first);
+
+		await admin.deleteTenant('guard-a');
+		expect(admin.stateFor('guard-a').gymIds.has('made-1')).toBe(true);
+		await admin.deleteTenant('guard-a');
+		expect(admin.stateFor('guard-a').gymIds.has('made-1')).toBe(false);
+	});
 });

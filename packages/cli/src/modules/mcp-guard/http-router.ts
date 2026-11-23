@@ -22,6 +22,8 @@ export interface HttpGuardRouterDeps {
 	gym: McpCaller;
 	hydrator: Hydrator;
 	profile: HttpVendorProfile;
+	// The ids that the gym made. Vendors of one tenant share them. Without this, the router keeps its own.
+	gymIds?: Set<string>;
 }
 
 const refusal = (status: number, text: string): Response => new Response(text, { status });
@@ -63,9 +65,11 @@ const decodeSegment = (segment: string): string => {
  */
 export class HttpGuardRouter {
 	// Ids that the gym made. The real service does not know them.
-	private readonly gymIds = new Set<string>();
+	private readonly gymIds: Set<string>;
 
-	constructor(private readonly deps: HttpGuardRouterDeps) {}
+	constructor(private readonly deps: HttpGuardRouterDeps) {
+		this.gymIds = deps.gymIds ?? new Set<string>();
+	}
 
 	async handle(incoming: CapturedRequest, signal?: AbortSignal): Promise<Response> {
 		// Take a secret out of the path first. Nothing below, not a log, an error or the gym, sees it.

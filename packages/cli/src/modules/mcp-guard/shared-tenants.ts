@@ -1,4 +1,11 @@
 import { GymAdmin } from './gym-admin';
+import { SeededEntities } from './seeded-entities';
+
+/** What the vendors of a chat know about the tenant: the ids that the gym made, and what a plan seeded. */
+export interface TenantState {
+	gymIds: Set<string>;
+	seeded: SeededEntities;
+}
 
 /**
  * A gym admin for the HTTP vendors of one chat, which share one tenant. The gym keeps one world for all
@@ -9,6 +16,18 @@ export class SharedTenantAdmin extends GymAdmin {
 	private readonly holders = new Map<string, number>();
 
 	private readonly creating = new Map<string, Promise<void>>();
+
+	private readonly states = new Map<string, TenantState>();
+
+	/** One state for the tenant, so a vendor knows an object that another vendor made. */
+	stateFor(tenant: string): TenantState {
+		let state = this.states.get(tenant);
+		if (!state) {
+			state = { gymIds: new Set(), seeded: new SeededEntities() };
+			this.states.set(tenant, state);
+		}
+		return state;
+	}
 
 	override async createTenant(tenant: string): Promise<void> {
 		this.holders.set(tenant, (this.holders.get(tenant) ?? 0) + 1);
@@ -30,6 +49,7 @@ export class SharedTenantAdmin extends GymAdmin {
 		this.creating.delete(tenant);
 		try {
 			await super.deleteTenant(tenant);
+			this.states.delete(tenant);
 		} catch (error) {
 			this.holders.set(tenant, 1);
 			throw error;

@@ -327,6 +327,28 @@ describe('HttpGuardRouter', () => {
 	});
 });
 
+describe('HttpGuardRouter with ids of another vendor', () => {
+	it('skips the real read for an id that a router of the same tenant made', async () => {
+		const gymIds = new Set<string>(['1gymMade0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2xyz']);
+		const { router, upstream, gym } = setup({ gymIds });
+
+		await router.handle(request('GET', `${LIST}/1gymMade0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2xyz`));
+
+		expect(upstream.callTool).not.toHaveBeenCalled();
+		expect(gym.callTool).toHaveBeenCalledTimes(1);
+	});
+
+	it('writes the ids that it made into the shared set', async () => {
+		const gymIds = new Set<string>();
+		const { router, gym } = setup({ gymIds });
+		gym.callTool.mockResolvedValueOnce(result({ id: 'newGymObject123456' }));
+
+		await router.handle(request('POST', `${LIST}/send`, { raw: 'abc' }));
+
+		expect(gymIds.has('newGymObject123456')).toBe(true);
+	});
+});
+
 describe('HttpGuardRouter real read failures', () => {
 	it.each([403, 500, 503])('returns a %i of the real read to the node', async (status) => {
 		const { router, upstream, gym, hydrator } = setup();

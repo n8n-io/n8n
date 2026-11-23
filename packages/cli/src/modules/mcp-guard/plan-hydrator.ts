@@ -47,6 +47,8 @@ export interface PlanHydratorDeps {
 	keepParents?: boolean;
 	// Ids are no UUIDs. An id that the real data shows word for word stays in the plan.
 	opaqueIds?: boolean;
+	// What a seed already holds. Vendors of one tenant share it.
+	seeded?: SeededEntities;
 }
 
 interface Verify {
@@ -190,7 +192,7 @@ export class PlanHydrator implements Hydrator {
 	private readonly seeded: SeededEntities;
 
 	constructor(private readonly deps: PlanHydratorDeps) {
-		this.seeded = new SeededEntities({ keepParents: deps.keepParents });
+		this.seeded = deps.seeded ?? new SeededEntities({ keepParents: deps.keepParents });
 	}
 
 	async hydrate(
