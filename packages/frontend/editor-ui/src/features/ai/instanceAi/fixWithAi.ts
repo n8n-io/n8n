@@ -21,7 +21,7 @@ export function isFixWithAiError(value: unknown): value is FixWithAiError {
  */
 export function buildFixWithAiPrompt(context: {
 	workflowName?: string;
-	errors: Array<Pick<FixWithAiError, 'nodeName'>>;
+	errors: FixWithAiError[];
 }): string {
 	const i18n = useI18n();
 
