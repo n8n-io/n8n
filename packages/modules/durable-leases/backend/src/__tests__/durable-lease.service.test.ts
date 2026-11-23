@@ -32,6 +32,25 @@ describe('DurableLeaseService', () => {
 		await expect(service.status('test-kind', ['a'])).rejects.toThrow(UnknownLeaseKindError);
 	});
 
+	it('rejects a change to a kind that never registered', async () => {
+		const service = build();
+
+		await expect(service.changed('test-kind')).rejects.toThrow(UnknownLeaseKindError);
+		await expect(service.changed('test-kind', ['a'])).rejects.toThrow(UnknownLeaseKindError);
+	});
+
+	it('syncs no kind when every registration was rejected', async () => {
+		const service = build();
+		const kind: LeaseKind<LeaseTransaction> = {
+			name: 'test-kind',
+			handler: { hold: vi.fn() },
+			source: { listDesired: vi.fn(), pageDesired: vi.fn() },
+		};
+		await expect(service.registerKind(kind)).rejects.toThrow(UnexpectedError);
+
+		await expect(service.syncAll()).resolves.toBeUndefined();
+	});
+
 	it.each([
 		{
 			rule: 'lease shorter than 8 seconds',
