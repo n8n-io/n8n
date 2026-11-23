@@ -2739,6 +2739,7 @@ describe('InstanceAiThreadView', () => {
 				['wf-1', { type: 'workflow', id: 'wf-1', name: 'Demo' }],
 			]) as typeof thread.producedArtifacts;
 			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
+			thread.isStreaming = true;
 
 			thread.workflowDrafts = { [filePath]: draft({ workflowId: 'wf-1' }) };
 			await findByTestId('instance-ai-workflow-draft-preview-stub');

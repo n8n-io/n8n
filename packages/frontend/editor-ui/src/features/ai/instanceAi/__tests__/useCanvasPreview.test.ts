@@ -280,6 +280,7 @@ describe('useCanvasPreview', () => {
 
 		test('shows the draft of a saved workflow on that workflow tab', async () => {
 			const ctx = setup();
+			ctx.thread.isStreaming = true;
 			registerWorkflow(ctx.thread, 'wf-1');
 
 			ctx.drafts.value = { [fileA]: makeDraft(fileA, { workflowId: 'wf-1' }) };
@@ -287,6 +288,49 @@ describe('useCanvasPreview', () => {
 
 			expect(ctx.openTabs.value.map((t) => t.id)).toEqual(['wf-1']);
 			expect(ctx.activeWorkflowId.value).toBe('wf-1');
+			expect(ctx.activeWorkflowDraft.value?.filePath).toBe(fileA);
+		});
+
+		test('shows the saved workflow again when an edit run stops before it saves', async () => {
+			const ctx = setup();
+			ctx.thread.isStreaming = true;
+			registerWorkflow(ctx.thread, 'wf-1');
+			ctx.drafts.value = { [fileA]: makeDraft(fileA, { workflowId: 'wf-1' }) };
+			await nextTick();
+
+			ctx.thread.isStreaming = false;
+			await nextTick();
+
+			expect(ctx.activeWorkflowId.value).toBe('wf-1');
+			expect(ctx.activeWorkflowDraft.value).toBeUndefined();
+		});
+
+		test('does not show an unsaved edit draft when its workflow tab opens again', async () => {
+			const ctx = setup();
+			ctx.thread.isStreaming = true;
+			registerWorkflow(ctx.thread, 'wf-1');
+			ctx.drafts.value = { [fileA]: makeDraft(fileA, { workflowId: 'wf-1' }) };
+			await nextTick();
+			ctx.thread.isStreaming = false;
+			ctx.closeTab('wf-1');
+			await nextTick();
+
+			ctx.openTab({ type: 'workflow', id: 'wf-1', name: 'wf-1', icon: 'workflow' });
+			await nextTick();
+
+			expect(ctx.activeWorkflowId.value).toBe('wf-1');
+			expect(ctx.activeWorkflowDraft.value).toBeUndefined();
+		});
+
+		test('keeps the draft of a new workflow after its run stops', async () => {
+			const ctx = setup();
+			ctx.thread.isStreaming = true;
+			ctx.drafts.value = { [fileA]: makeDraft(fileA) };
+			await nextTick();
+
+			ctx.thread.isStreaming = false;
+			await nextTick();
+
 			expect(ctx.activeWorkflowDraft.value?.filePath).toBe(fileA);
 		});
 

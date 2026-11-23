@@ -280,13 +280,22 @@ export function useCanvasPreview({
 		return getDraftWorkflowId(draft) ?? draftTabId(draft.filePath);
 	}
 
+	/**
+	 * An edit of a saved workflow that its run stopped or failed to save. The saved
+	 * workflow did not change, so its canvas shows again.
+	 */
+	function isAbandonedEdit(draft: WorkflowDraft): boolean {
+		if (!draft.workflowId || draft.savedWorkflowId) return false;
+		return !isAgentWorking.value && !buildingArtifactIds.value.has(draft.workflowId);
+	}
+
 	/** The newest draft for the tab on screen. It covers the saved canvas until that loads. */
 	const activeWorkflowDraft = computed((): WorkflowDraft | undefined => {
 		const tabId = activeTabId.value;
 		if (tabId === undefined) return undefined;
 		let latest: WorkflowDraft | undefined;
 		for (const draft of Object.values(workflowDrafts())) {
-			if (draftTargetTabId(draft) !== tabId) continue;
+			if (draftTargetTabId(draft) !== tabId || isAbandonedEdit(draft)) continue;
 			if (!latest || draft.revision > latest.revision) latest = draft;
 		}
 		return latest;
