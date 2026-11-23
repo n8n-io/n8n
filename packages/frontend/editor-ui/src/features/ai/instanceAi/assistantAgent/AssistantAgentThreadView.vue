@@ -136,6 +136,8 @@ import {
 import { useAssistantAgentMentions } from './useAssistantAgentMentions';
 import { useAssistantAgentTargets } from './useAssistantAgentTargets';
 import { useAssistantAgentTrace } from './useAssistantAgentTrace';
+import AssistantAgentResponseRating from './AssistantAgentResponseRating.vue';
+import { useAssistantAgentFeedback } from './useAssistantAgentFeedback';
 import { useAssistantArtifactThread } from './useAssistantArtifactThread';
 
 const props = defineProps<{ threadId: string; projectId: string }>();
@@ -322,6 +324,11 @@ function assertCreditsAvailable(): void {
 }
 
 const trace = useAssistantAgentTrace({
+	threadId: props.threadId,
+	messages: () => panel.value?.messages ?? [],
+});
+
+const feedback = useAssistantAgentFeedback({
 	threadId: props.threadId,
 	messages: () => panel.value?.messages ?? [],
 });
@@ -969,6 +976,13 @@ function updateStagedNodes(attachment: InstanceAiNodesAttachment): void {
 								:dismissible="!creditsStore.isOutOfCredits"
 								@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
 								@dismiss="creditBanner.dismiss()"
+							/>
+						</template>
+						<template #message-actions="{ executionId }">
+							<AssistantAgentResponseRating
+								v-if="feedback.isRateable(executionId)"
+								:rating="feedback.ratingOf(executionId)"
+								@rate="feedback.rate(executionId, $event)"
 							/>
 						</template>
 						<!-- Nodes chips can drop single nodes. The other chips look as the panel draws them. -->

@@ -36,6 +36,8 @@ import {
 	useAssistantPreferenceCards,
 } from '../assistantAgent/assistantPreferenceCards';
 import { assistantSharedFilesExtension } from '../assistantAgent/assistantSharedFiles';
+import AssistantAgentResponseRating from '../assistantAgent/AssistantAgentResponseRating.vue';
+import { useAssistantAgentFeedback } from '../assistantAgent/useAssistantAgentFeedback';
 import {
 	useAssistantAgentMessageTelemetry,
 	type AssistantAgentSendingMessage,
@@ -170,6 +172,11 @@ const handoffChip = computed(() => {
 });
 
 const panel = useTemplateRef<InstanceType<typeof AgentChatPanel>>('panel');
+
+const feedback = useAssistantAgentFeedback({
+	threadId: props.threadId,
+	messages: () => panel.value?.messages ?? [],
+});
 
 const turnTelemetry = useAssistantAgentTurnTelemetry({
 	threadId: props.threadId,
@@ -319,6 +326,13 @@ defineExpose({
 			<div :class="$style.emptyState">
 				<slot name="empty" />
 			</div>
+		</template>
+		<template #message-actions="{ executionId }">
+			<AssistantAgentResponseRating
+				v-if="feedback.isRateable(executionId)"
+				:rating="feedback.ratingOf(executionId)"
+				@rate="feedback.rate(executionId, $event)"
+			/>
 		</template>
 		<template v-if="handoffChip" #composer-attachments="{ chips, removeChip }">
 			<InstanceAiResourceChip
