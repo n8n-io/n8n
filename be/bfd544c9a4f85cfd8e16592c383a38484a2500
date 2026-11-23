@@ -1,0 +1,30 @@
+packages/nodes-base/nodes/Webhook/test/hidden-auth-headers.test.ts
+  s_d7d0a81b33d5c6::t_ffa5fe076ca704 1-230
+packages/nodes-base/nodes/Webhook/Webhook.node.ts
+  s_d7d0a81b33d5c6::t_cc3525c912519a 46
+  s_d7d0a81b33d5c6::t_c3ac437c3621d2 405
+  s_d7d0a81b33d5c6::t_0cf290584d05cc 62-63
+  s_d7d0a81b33d5c6::t_27182f075a2f96 345
+packages/nodes-base/nodes/Webhook/utils.ts
+  s_d7d0a81b33d5c6::t_bea1720b89acd0 5-10
+  s_d7d0a81b33d5c6::t_4c1745106e4b98 428
+  s_d7d0a81b33d5c6::t_8df831bee7198a 43-61
+packages/nodes-base/nodes/Webhook/test/utils.test.ts
+  s_d7d0a81b33d5c6::t_4696985fd52907 931
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bebfd544c9a4f85cfd8e16592c383a38484a2500",
+  "prompts": {},
+  "sessions": {
+    "s_d7d0a81b33d5c6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e2fb3262-6ea3-4416-83c3-76f9f4cd7d8b",
+        "model": "unknown"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}
