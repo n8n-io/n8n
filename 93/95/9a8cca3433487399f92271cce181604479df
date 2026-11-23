@@ -1,0 +1,19 @@
+packages/cli/src/modules/agents/__tests__/agents-service-reconstruct-gating.test.ts
+  s_302a7aee7c064c::t_3ef272f1054755 278-322
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "93959a8cca3433487399f92271cce181604479df",
+  "prompts": {},
+  "sessions": {
+    "s_302a7aee7c064c": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1f96b-4338-7048-8058-0b4f17a2ed9c",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

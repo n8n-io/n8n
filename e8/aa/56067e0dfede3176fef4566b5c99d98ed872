@@ -1,0 +1,27 @@
+packages/frontend/@n8n/design-system/src/components/N8nTabs/Tabs.stories.ts
+  s_430392d632ba5a::t_fab726a9b33c3d 11-15,27
+  s_430392d632ba5a::t_a7eb1d8742eead 3,24-26,46,49-50,52-53,56-64,82
+  s_430392d632ba5a::t_fb272ac688a19d 16-23,83-86
+packages/frontend/@n8n/design-system/src/components/N8nTabs/Tabs.types.ts
+  s_430392d632ba5a::t_33ab3d14eee6d2 26-27
+packages/frontend/@n8n/design-system/src/components/N8nTabs/Tabs.vue
+  s_430392d632ba5a::t_5839870b292c5d 22,109-116,171,444-453,459-487
+  s_430392d632ba5a::t_166d24ebef0efe 454-458
+  s_430392d632ba5a::t_46f8f67a47c1e0 488-490
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e8aa56067e0dfede3176fef4566b5c99d98ed872",
+  "prompts": {},
+  "sessions": {
+    "s_430392d632ba5a": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1f4a6-270b-72de-9e34-933e420f4477",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

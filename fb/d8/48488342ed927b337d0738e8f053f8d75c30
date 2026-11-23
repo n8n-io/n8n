@@ -1,0 +1,25 @@
+packages/cli/src/modules/agents/simulation/__tests__/linear-gym-capabilities.test.ts
+  s_dca017e0140c66::t_7cf668612aecc9 80,112-123,141,151-196,278,309-310
+packages/cli/src/modules/agents/simulation/linear-gym-backend.ts
+  s_dca017e0140c66::t_62f0437cbcbc42 66-67,104,110-111,113
+packages/cli/src/modules/agents/simulation/linear-gym-manifest.ts
+  s_dca017e0140c66::t_3b430fbd6dfced 16,25,27-29,32-35,37,40,43,46,50
+packages/cli/test/linear-consumer/turns.mjs
+  s_dca017e0140c66::t_20c09f738b9653 11-93,424-429
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fbd848488342ed927b337d0738e8f053f8d75c30",
+  "prompts": {},
+  "sessions": {
+    "s_dca017e0140c66": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1fa82-05c5-71ef-bd04-2bc00a00ab74",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}
