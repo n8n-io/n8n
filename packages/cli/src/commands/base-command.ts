@@ -597,7 +597,7 @@ export abstract class BaseCommand<F = never> {
 	 * server refuses. Call after `initLicense()`: the module is license-gated. Call it once per
 	 * process: a second init of the module throws.
 	 */
-	async initWorkflowReviewRules() {
+	async initWorkflowReviews() {
 		await this.moduleRegistry.initModules(this.instanceSettings.instanceType, ['workflow-reviews']);
 	}
 
