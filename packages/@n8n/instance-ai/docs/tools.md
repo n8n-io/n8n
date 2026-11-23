@@ -60,7 +60,18 @@ the Assistant's text. In a long thread it sees the newest messages. From the
 part before them it sees only what the user wrote, up to a budget of messages
 and characters. A limit that the user set there stays in view while it fits
 the budget. A note tells the judge when older messages are left out. Of a long
-message it sees only the end.
+message it sees only the end. `pnpm eval:approval-judge` measures the judge on
+a directory of cases (see the evaluations README).
+
+The trace of a run shows the mode as `approval_mode` in the metadata of its
+root run and its `agent: orchestrator` run: `manual`, `auto`, or `unavailable`
+when the flag is off. In Auto, each reviewed approval adds an `approval: review`
+run to the trace, with the tag `approval-review`. Its metadata has `tool_name`,
+`approval_route` (`always-ask`, `low-risk` or `judge`), `approval_decision`
+(`approve` or `ask`), `approval_decided_by` (`rule` or `judge`),
+`approval_judge_failed`, and `tool_call_id` when the call has one. Its output
+adds `approval_reason`. A decision that the judge model made also has its
+`llm: approval-judge` run. A review that failed before the model call has none.
 
 ### Approval copy
 
