@@ -2,6 +2,7 @@ import { v4 as uuid } from 'uuid';
 import { skillNavigationSourceSchema, type SkillTelemetryContext } from '@n8n/api-types';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { TELEMETRY_EVENT, type InferTelemetryProps, type TelemetryEventDef } from '@n8n/telemetry';
+import type { ITelemetryTrackProperties } from 'n8n-workflow';
 import { RECOMMENDED_SKILLS_EXPERIMENT } from '@/app/constants/experiments';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { getExperimentTelemetryPayload } from '@/experiments/utils';
@@ -24,7 +25,10 @@ export function useSkillTelemetry(source: unknown) {
 		flow_id: uuid(),
 	};
 
-	function track<T extends TelemetryEventDef>(event: T, properties: InferTelemetryProps<T>) {
+	function track<T extends TelemetryEventDef>(
+		event: T,
+		properties: InferTelemetryProps<T> & ITelemetryTrackProperties,
+	) {
 		try {
 			if (!isEnabled()) return;
 			telemetry.track(
