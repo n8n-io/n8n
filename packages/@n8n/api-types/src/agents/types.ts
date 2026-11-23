@@ -425,6 +425,11 @@ export interface AgentVersionListItemDto {
 	description?: string | null;
 	isCurrent?: boolean;
 	lastPublished?: Pick<AgentPublishHistoryItemDto, 'author' | 'createdAt' | 'isLegacy'>;
+	/**
+	 * Whether this version's config adds the agent to n8n Chat. Only the
+	 * single-version endpoint sets it, so the publish modal can say so before it publishes.
+	 */
+	includesN8nChat?: boolean;
 }
 
 export interface AgentPublishHistoryItemDto {
@@ -446,7 +451,7 @@ export interface AgentPublishHistoryItemDto {
 export interface AgentCapabilityModel {
 	/** Provider prefix of the model id, e.g. 'anthropic'. Empty when the id has no prefix. */
 	provider: string;
-	/** Model name, e.g. 'claude-sonnet-4-5'. */
+	/** Model name, e.g. 'claude-sonnet-5-5'. */
 	model: string;
 }
 

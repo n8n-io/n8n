@@ -84,7 +84,12 @@ import { WorkflowPublicationStatusService } from './publication/workflow-publica
 import { NodeGroupRulesFlagGate } from './node-group-rules-flag-gate';
 
 import { getEnabledTriggerNodes } from './triggers/enabled-trigger-nodes';
-import { getErrorDescription, getErrorNodeId, getRequiredRedactionScopes } from './utils';
+import {
+	getErrorDescription,
+	getErrorNodeId,
+	getRequiredRedactionScopes,
+	getWorkflowProjectDetailsSafe,
+} from './utils';
 import { WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowHistoryService } from './workflow-history/workflow-history.service';
 
@@ -119,6 +124,7 @@ import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 
 import { TagService } from '@/services/tag.service';
+import { toUserLike } from '@/utils/to-user-like';
 import { WEBHOOK_CONFLICT_MESSAGE } from '@/webhooks/constants';
 import { WebhookService } from '@/webhooks/webhook.service';
 import { getBase as getWorkflowExecutionData } from '@/workflow-execute-additional-data';
@@ -175,6 +181,16 @@ type WorkflowUpdateOptions = {
 	unsentNodeFields?: readonly string[];
 	/** The version-scoped settings of a restored version, such as its engine. */
 	restoredVersionSettings?: VersionedWorkflowSettings;
+};
+
+type ActivateWorkflowOptions = {
+	versionId?: string;
+	name?: string;
+	description?: string;
+	expectedChecksum?: string;
+	source?: WorkflowActionSource;
+	publicApi?: PublicApiCaller;
+	publishHistory?: PublishHistoryScope;
 };
 
 export type PreparedWorkflowUpdate = {
@@ -1281,23 +1297,45 @@ export class WorkflowService {
 	 * @param options - Optional versionId, name and description updates
 	 * @returns The activated workflow
 	 */
-	// eslint-disable-next-line complexity
 	async activateWorkflow(
 		user: User,
 		workflowId: string,
-		options?: {
-			versionId?: string;
-			name?: string;
-			description?: string;
-			expectedChecksum?: string;
-			source?: WorkflowActionSource;
-			publicApi?: PublicApiCaller;
-			publishHistory?: PublishHistoryScope;
-		},
+		options?: ActivateWorkflowOptions,
 		ctx: OperationContext = {},
 	): Promise<WorkflowEntity> {
-		const source = options?.source ?? 'ui';
-		const publicApi = options?.publicApi ?? false;
+		return await this._activateWorkflow(
+			user,
+			workflowId,
+			{ ...options, fromSourceControlPull: false },
+			ctx,
+		);
+	}
+
+	/**
+	 * Publishes a version that a source control pull imported. A publish guard can relax its
+	 * checks for it.
+	 * `SourceControlImportService` is the single caller.
+	 */
+	async activateWorkflowFromSourceControlPull(
+		user: User,
+		workflowId: string,
+		versionId: string,
+	): Promise<WorkflowEntity> {
+		return await this._activateWorkflow(user, workflowId, {
+			versionId,
+			fromSourceControlPull: true,
+		});
+	}
+
+	// eslint-disable-next-line complexity
+	private async _activateWorkflow(
+		user: User,
+		workflowId: string,
+		options: ActivateWorkflowOptions & { fromSourceControlPull: boolean },
+		ctx: OperationContext = {},
+	): Promise<WorkflowEntity> {
+		const source = options.source ?? 'ui';
+		const publicApi = options.publicApi ?? false;
 		const loginId = loginIdOf(ctx);
 
 		let workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
@@ -1330,7 +1368,7 @@ export class WorkflowService {
 			throw new BadRequestError('Cannot activate an archived workflow.');
 		}
 
-		const versionIdToActivate = options?.versionId ?? workflow.versionId;
+		const versionIdToActivate = options.versionId ?? workflow.versionId;
 		const previousActiveVersionId = workflow.activeVersionId;
 
 		// Reached with access to the workflow but not the right to release a version, so there is no
@@ -1362,7 +1400,7 @@ export class WorkflowService {
 			throw error;
 		}
 
-		if (options?.expectedChecksum) {
+		if (options.expectedChecksum) {
 			await this._detectConflicts(workflow, options.expectedChecksum);
 		}
 
@@ -1426,7 +1464,10 @@ export class WorkflowService {
 		// races — accepted, because both outcomes degrade gracefully (the approval
 		// stands and auto-publish reports `failed`).`.
 		if (versionIdToActivate !== previousActiveVersionId) {
-			await this.workflowPublishGuard.assertCanPublish(workflowId);
+			await this.workflowPublishGuard.assertCanPublish(workflowId, {
+				versionId: versionIdToActivate,
+				fromSourceControlPull: options.fromSourceControlPull,
+			});
 		}
 
 		if (this.globalConfig.workflows.useWorkflowPublicationService) {
@@ -1528,7 +1569,7 @@ export class WorkflowService {
 			userId: user.id,
 		});
 
-		if (options?.name !== undefined || options?.description !== undefined) {
+		if (options.name !== undefined || options.description !== undefined) {
 			const updateFields: UpdateWorkflowHistoryVersionDto = {};
 			if (options.name !== undefined) updateFields.name = options.name;
 			if (options.description !== undefined) updateFields.description = options.description;
@@ -1549,7 +1590,7 @@ export class WorkflowService {
 			throw new NotFoundError(`Workflow with ID "${workflowId}" could not be found.`);
 		}
 
-		const publishHistory = options?.publishHistory ?? 'all';
+		const publishHistory = options.publishHistory ?? 'all';
 		if (updatedWorkflow.activeVersion && publishHistory !== 'none') {
 			updatedWorkflow.activeVersion.workflowPublishHistory =
 				await this.workflowPublishHistoryRepository.findByVersion(
@@ -1684,7 +1725,7 @@ export class WorkflowService {
 		user: User,
 		workflowIds: string[],
 		destinationProjectId: string,
-		transfer: () => Promise<void>,
+		move: (ctx: OperationContext) => Promise<string[]>,
 		{ publicApi }: { publicApi: PublicApiCaller },
 	): Promise<Map<string, WorkflowTransferResult>> {
 		const publishedBeforeTransfer = await this._findPublished(workflowIds);
@@ -1698,31 +1739,44 @@ export class WorkflowService {
 			}
 		}
 
+		// The destination's decrypt policy can block the removal, so it runs in the source project.
+		const removals = await Promise.allSettled(
+			[...refusals.keys()].map(
+				async (workflowId) => await this.activeWorkflowManager.remove(workflowId),
+			),
+		);
+		const failedRemoval = removals.find((removal) => removal.status === 'rejected');
+
+		let movedIds: string[] = [];
 		try {
-			const removals = await Promise.allSettled(
-				[...refusals.keys()].map(
-					async (workflowId) => await this.activeWorkflowManager.remove(workflowId),
-				),
-			);
-			const failedRemoval = removals.find((removal) => removal.status === 'rejected');
 			if (failedRemoval) throw ensureError(failedRemoval.reason);
-			await transfer();
-		} catch (error) {
-			const movedIds = await this._ownedByProject(workflowIds, destinationProjectId);
+			movedIds = await this.workflowRepository.runInTransaction({}, async (_trx, ctx) => {
+				const moved = await move(ctx);
+				await this.outboxRepository.enqueueByWorkflowIds(
+					moved,
+					WorkflowPublicationReason.Transfer,
+					ctx,
+				);
+				return moved;
+			});
+		} finally {
 			await this._restoreTriggersOfUntransferred(
 				[...refusals.keys()].filter((workflowId) => !movedIds.includes(workflowId)),
 			);
-			await this._finishTransfer(user, movedIds, refusals, publishedBeforeTransfer, publicApi);
-			throw error;
 		}
 
-		return await this._finishTransfer(
+		await this.ownershipService.invalidateWorkflowProjectCacheByIds(movedIds);
+		const hookFailure = await this._afterWorkflowsTransferredFailure(movedIds, user);
+		const results = await this._finishTransfer(
 			user,
-			workflowIds,
+			movedIds,
 			refusals,
 			publishedBeforeTransfer,
 			publicApi,
 		);
+		if (hookFailure) throw hookFailure;
+
+		return results;
 	}
 
 	private async _enforcePublishInProject(
@@ -1769,67 +1823,43 @@ export class WorkflowService {
 		}
 	}
 
-	/** Never throws, and counts every workflow as moved if the owners cannot be read. */
-	private async _ownedByProject(workflowIds: string[], projectId: string): Promise<string[]> {
-		let owned = workflowIds;
-		try {
-			const owners =
-				await this.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds(workflowIds);
-			owned = workflowIds.filter((workflowId) => owners.get(workflowId)?.id === projectId);
-		} catch (error) {
-			this.logger.error('Failed to read which workflows a failed transfer moved', {
-				workflowIds,
-				error,
-			});
+	private async _afterWorkflowsTransferredFailure(
+		movedIds: string[],
+		user: User,
+	): Promise<Error | null> {
+		let failure: Error | null = null;
+		if (movedIds.length > 0) {
+			try {
+				await this.workflowMutationHooks.afterWorkflowsTransferred(movedIds, user.id);
+			} catch (error) {
+				failure = ensureError(error);
+			}
 		}
-		return owned;
+		return failure;
 	}
 
-	/** Never throws, so a transfer that failed half-way still reports its original error. */
+	/** Never throws, so the error of `afterWorkflowsTransferred` is still thrown after it. */
 	private async _finishTransfer(
 		user: User,
-		workflowIds: string[],
+		movedIds: string[],
 		refusals: Map<string, unknown>,
 		publishedBeforeTransfer: PublishedWorkflow[],
 		publicApi: PublicApiCaller,
 	): Promise<Map<string, WorkflowTransferResult>> {
-		const workflows = await this._publishedAfterTransfer(workflowIds, publishedBeforeTransfer);
-		const failures = new Map<string, unknown>();
-		for (const workflow of workflows) {
-			if (refusals.has(workflow.id)) {
-				failures.set(workflow.id, refusals.get(workflow.id));
-			} else {
-				const checkFailure = await this._triggerCredentialCheckFailure(workflow);
-				if (checkFailure) failures.set(workflow.id, checkFailure);
-			}
-		}
-
-		const republishIds = workflowIds.filter(
-			(workflowId) => !refusals.has(workflowId) && !failures.has(workflowId),
-		);
-		if (republishIds.length > 0) {
-			try {
-				await this.outboxRepository.enqueueByWorkflowIds(
-					republishIds,
-					WorkflowPublicationReason.Transfer,
-				);
-				this.workflowPublicationNotifier.requestDrain();
-			} catch (error) {
-				this.logger.error('Failed to republish the transferred workflows', {
-					workflowIds: republishIds,
-					error,
-				});
-				for (const workflowId of republishIds) failures.set(workflowId, error);
-			}
-		}
-
+		const workflows = await this._publishedAfterTransfer(movedIds, publishedBeforeTransfer);
 		const results = new Map<string, WorkflowTransferResult>();
 		for (const workflow of workflows) {
-			if (failures.has(workflow.id)) {
+			const failure = refusals.has(workflow.id)
+				? refusals.get(workflow.id)
+				: await this._triggerCredentialCheckFailure(workflow);
+			if (failure) {
 				await this._unpublishAfterTransfer(user, workflow, publicApi);
-				results.set(workflow.id, toTransferResult(failures.get(workflow.id)));
+				results.set(workflow.id, toTransferResult(failure));
 			}
 		}
+
+		// Each unpublish wakes the leader, and that drain also takes the `transfer` records.
+		if (movedIds.length > 0 && results.size === 0) this.workflowPublicationNotifier.requestDrain();
 
 		return results;
 	}
@@ -2341,6 +2371,23 @@ export class WorkflowService {
 			},
 		});
 		return this.roleService.combineResourceScopes('workflow', user, shared, userProjectRelations);
+	}
+
+	async emitWorkflowExecuted(user: User, workflow: WorkflowEntity, executionId: string) {
+		const { projectId, projectName } = await getWorkflowProjectDetailsSafe(
+			this.ownershipService,
+			workflow.id,
+		);
+
+		this.eventService.emit('workflow-executed', {
+			user: toUserLike(user),
+			workflowId: workflow.id,
+			workflowName: workflow.name,
+			executionId,
+			projectId,
+			projectName,
+			source: 'user-manual',
+		});
 	}
 
 	/**

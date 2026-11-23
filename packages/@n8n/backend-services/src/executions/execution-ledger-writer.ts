@@ -8,6 +8,8 @@ type RunFacts = {
 	mode: WorkflowExecuteMode;
 	/** Unset for a regular run. The writer stores `none`. */
 	source?: WorkflowExecutionSource;
+	/** The owner project, when the caller already has it. The writer looks it up when unset. */
+	projectId?: string;
 	occurredAt: Date;
 };
 

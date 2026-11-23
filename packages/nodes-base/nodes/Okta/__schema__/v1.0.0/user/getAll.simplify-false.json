@@ -1,0 +1,116 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"_links": {
+			"properties": {
+				"self": {
+					"properties": {
+						"href": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				}
+			},
+			"type": "object"
+		},
+		"activated": {
+			"type": ["null", "string"]
+		},
+		"created": {
+			"type": "string"
+		},
+		"credentials": {
+			"additionalProperties": true,
+			"properties": {
+				"password": {
+					"type": "object"
+				},
+				"provider": {
+					"properties": {
+						"name": {
+							"type": "string"
+						},
+						"type": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				}
+			},
+			"type": "object"
+		},
+		"id": {
+			"type": "string"
+		},
+		"lastLogin": {
+			"type": ["null", "string"]
+		},
+		"lastUpdated": {
+			"type": "string"
+		},
+		"passwordChanged": {
+			"type": ["null", "string"]
+		},
+		"profile": {
+			"additionalProperties": true,
+			"properties": {
+				"department": {
+					"type": "string"
+				},
+				"displayName": {
+					"type": "string"
+				},
+				"email": {
+					"type": "string"
+				},
+				"employeeNumber": {
+					"type": "string"
+				},
+				"firstName": {
+					"type": "string"
+				},
+				"lastName": {
+					"type": "string"
+				},
+				"login": {
+					"type": "string"
+				},
+				"manager": {
+					"type": "string"
+				},
+				"managerId": {
+					"type": "string"
+				},
+				"mobilePhone": {
+					"type": ["null", "string"]
+				},
+				"secondEmail": {
+					"type": ["null", "string"]
+				},
+				"title": {
+					"type": "string"
+				},
+				"userType": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"status": {
+			"type": "string"
+		},
+		"statusChanged": {
+			"type": ["null", "string"]
+		},
+		"type": {
+			"properties": {
+				"id": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		}
+	},
+	"type": "object"
+}

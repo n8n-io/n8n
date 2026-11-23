@@ -9,8 +9,8 @@ import { IntegrationMessageContextService } from '@/modules/agents/integrations/
 import { AgentExecutionRepository } from '@/modules/agents/repositories/agent-execution.repository';
 import { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
 import { AgentThreadRepository } from '@/modules/agents/repositories/agent-thread.repository';
-import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 
+import { createAgent } from '../shared/db/agents';
 import { createOwner } from '../shared/db/users';
 
 describe('Session bindings of a deleted task session', () => {
@@ -24,7 +24,7 @@ describe('Session bindings of a deleted task session', () => {
 		userId = (await createOwner()).id;
 		projectId = (await createTeamProject()).id;
 		agentId = randomUUID();
-		await Container.get(AgentRepository).save({
+		await createAgent({
 			id: agentId,
 			name: 'Agent',
 			projectId,

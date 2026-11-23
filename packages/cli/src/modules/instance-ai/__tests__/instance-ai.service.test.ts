@@ -7280,6 +7280,7 @@ describe('InstanceAiService — instance-context turn event', () => {
 		expect(trackedRows(service)).toEqual([
 			expect.objectContaining({
 				surface: 'aia',
+				runtime: 'instance-ai',
 				instance_context_enabled: false,
 				block_state: 'absent',
 				absence_reason: 'disabled',

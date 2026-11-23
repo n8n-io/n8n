@@ -53,6 +53,11 @@ export type ScopeAttachments = {
 /** One type's composed verdict, as `evaluateComposedTypes` reports it. */
 export type ComposedTypeVerdict = ComposedVerdict & { readonly name: string };
 
+export type AllProjectsEvaluation = {
+	withoutProjectPolicy: ComposedTypeVerdict[];
+	byProject: Array<{ projectId: string; verdicts: ComposedTypeVerdict[] }>;
+};
+
 /**
  * Composed verdicts plus the version of every scope that was read.
  *
@@ -923,10 +928,7 @@ export class TypeAvailabilityPolicyService {
 	async evaluateComposedTypesForAllProjects(
 		kind: string,
 		typeNames: readonly string[],
-	): Promise<{
-		withoutProjectPolicy: ComposedTypeVerdict[];
-		byProject: Array<{ projectId: string; verdicts: ComposedTypeVerdict[] }>;
-	}> {
+	): Promise<AllProjectsEvaluation> {
 		const [instance, projects] = await Promise.all([
 			this.readEnforcedScope(kind, null),
 			this.snapshot.projectScopes(kind) ?? this.readProjectScopes(kind),

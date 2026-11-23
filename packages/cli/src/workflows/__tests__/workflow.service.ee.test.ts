@@ -1528,8 +1528,6 @@ describe('EnterpriseWorkflowService', () => {
 
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		let transferOwnershipSpy: ReturnType<typeof vi.spyOn<any, any>>;
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		let moveFoldersSpy: ReturnType<typeof vi.spyOn<any, any>>;
 
 		beforeEach(() => {
 			folderRepository.getAllFolderIdsInHierarchy.mockResolvedValue([]);
@@ -1543,13 +1541,9 @@ describe('EnterpriseWorkflowService', () => {
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			transferOwnershipSpy = vi
 				.spyOn(service as any, 'transferWorkflowOwnership')
-				.mockResolvedValue(undefined);
+				.mockResolvedValue([]);
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			vi.spyOn(service as any, 'shareCredentialsWithProject').mockResolvedValue(undefined);
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			moveFoldersSpy = vi
-				.spyOn(service as any, 'moveFoldersToDestination')
-				.mockResolvedValue(undefined);
 		});
 
 		it('rejects a transfer when the source folder is not found', async () => {
@@ -1568,7 +1562,7 @@ describe('EnterpriseWorkflowService', () => {
 			);
 
 			expect(transferOwnershipSpy).not.toHaveBeenCalled();
-			expect(moveFoldersSpy).not.toHaveBeenCalled();
+			expect(folderRepository.moveTreeToProject).not.toHaveBeenCalled();
 		});
 
 		it('moves the folder without asking the transfer policy', async () => {
@@ -1579,7 +1573,7 @@ describe('EnterpriseWorkflowService', () => {
 			});
 			expect(policyEnforcementService.enforceWorkflowTransfer).not.toHaveBeenCalled();
 			expect(transferOwnershipSpy).toHaveBeenCalledTimes(1);
-			expect(moveFoldersSpy).toHaveBeenCalledTimes(1);
+			expect(folderRepository.moveTreeToProject).toHaveBeenCalledTimes(1);
 		});
 
 		it('reports the workflows whose republish the destination policy refuses', async () => {
@@ -1666,7 +1660,7 @@ describe('EnterpriseWorkflowService', () => {
 
 			expect(activeWorkflowManager.remove).not.toHaveBeenCalled();
 			expect(transferOwnershipSpy).not.toHaveBeenCalled();
-			expect(moveFoldersSpy).not.toHaveBeenCalled();
+			expect(folderRepository.moveTreeToProject).not.toHaveBeenCalled();
 		});
 	});
 
@@ -1813,7 +1807,7 @@ describe('EnterpriseWorkflowService', () => {
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			transferOwnershipSpy = vi
 				.spyOn(service as any, 'transferWorkflowOwnership')
-				.mockResolvedValue(undefined);
+				.mockResolvedValue([]);
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			shareCredentialsSpy = vi
 				.spyOn(service as any, 'shareCredentialsWithProject')
@@ -1865,25 +1859,34 @@ describe('EnterpriseWorkflowService', () => {
 			});
 
 		beforeEach(() => {
-			const entityManager = mock<EntityManager>();
-			entityManager.transaction.mockImplementation(
-				// @ts-expect-error transaction() has multiple overloads; tests use the single-callback one
-				async (cb: (trx: EntityManager) => Promise<void>) => await cb(mock<EntityManager>()),
+			workflowRepository.runInTransaction.mockImplementation(
+				async (_ctx, fn) => await fn(mock<EntityManager>(), {}),
 			);
-			Object.defineProperty(workflowRepository, 'manager', {
-				value: entityManager,
-				configurable: true,
-			});
 		});
 
-		it('notifies the mutation hook only for workflows whose owning project changed', async () => {
+		it('returns only the workflows whose owning project changes', async () => {
 			const moved = makeWorkflow('wf-moved', 'proj-source');
 			const folderMoveOnly = makeWorkflow('wf-same-project', 'proj-dest');
 
-			await service['transferWorkflowOwnership'](
-				mock<User>({ id: 'user-1' }),
+			const movedIds = await service['transferWorkflowOwnership'](
 				[moved, folderMoveOnly],
 				destinationProject,
+				{},
+			);
+
+			expect(movedIds).toEqual(['wf-moved']);
+		});
+	});
+
+	describe('afterOwnershipTransferred', () => {
+		const destinationProject = mock<Project>({ id: 'proj-dest' });
+
+		it('notifies the mutation hook with the moved workflows', async () => {
+			await service['afterOwnershipTransferred'](
+				mock<User>({ id: 'user-1' }),
+				[],
+				destinationProject,
+				['wf-moved'],
 			);
 
 			expect(workflowMutationHooks.afterWorkflowsTransferred).toHaveBeenCalledExactlyOnceWith(
@@ -1892,14 +1895,8 @@ describe('EnterpriseWorkflowService', () => {
 			);
 		});
 
-		it('does not notify the mutation hook for a same-project folder move', async () => {
-			const folderMoveOnly = makeWorkflow('wf-same-project', 'proj-dest');
-
-			await service['transferWorkflowOwnership'](
-				mock<User>(),
-				[folderMoveOnly],
-				destinationProject,
-			);
+		it('does not notify the mutation hook when no workflow moved', async () => {
+			await service['afterOwnershipTransferred'](mock<User>(), [], destinationProject, []);
 
 			expect(workflowMutationHooks.afterWorkflowsTransferred).not.toHaveBeenCalled();
 		});

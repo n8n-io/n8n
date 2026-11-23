@@ -74,7 +74,7 @@ export type PublicationResult =
 	 */
 	| { type: 'unpublished'; teardownFailures?: TriggerTeardownFailure[] }
 	/** No trigger work was required; the record is completed without changes. */
-	| { type: 'skipped'; reason: PublicationSkipReason }
+	| { type: 'skipped'; reason: PublicationSkipReason; teardownFailures?: TriggerTeardownFailure[] }
 	/** The history row for the published version is gone; the record is failed. */
 	| { type: 'version-missing' }
 	/**
@@ -87,6 +87,8 @@ export type PublicationResult =
 	| {
 			type: 'partial';
 			triggerStatuses: TriggerPublicationStatus[];
+			/** The failures of the failed triggers, combined as on `failed`. */
+			error: Error;
 			teardownFailures?: TriggerTeardownFailure[];
 	  }
 	/**

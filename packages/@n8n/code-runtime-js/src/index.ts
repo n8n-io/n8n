@@ -8,3 +8,4 @@ export {
 	type TaskConsole,
 } from './task-console';
 export { createTaskData, type TaskData } from './task-data';
+export { runTask } from './run-task';

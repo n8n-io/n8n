@@ -11,18 +11,18 @@ import { WorkflowsConfig } from '@n8n/config';
 import type {
 	CredentialUsedByWorkflow,
 	ListQueryDb,
+	OperationContext,
 	User,
-	WorkflowEntity,
 	WorkflowWithSharingsAndCredentials,
 	WorkflowWithSharingsMetaDataAndCredentials,
 } from '@n8n/db';
 import {
-	Folder,
 	Project,
 	SharedWorkflow,
 	CredentialsRepository,
 	FolderRepository,
 	SharedWorkflowRepository,
+	WorkflowEntity,
 	WorkflowRepository,
 	WorkflowHistoryRepository,
 	WorkflowPublishHistoryRepository,
@@ -890,34 +890,53 @@ export class EnterpriseWorkflowService {
 			}
 		}
 
-		const transfer = async (): Promise<void> => {
+		const move = async (ctx: OperationContext): Promise<string[]> => {
 			// 7. transfer the workflow
-			await this.transferWorkflowOwnership(user, [workflow], destinationProject);
+			const movedWorkflowIds = await this.transferWorkflowOwnership(
+				[workflow],
+				destinationProject,
+				ctx,
+			);
 
 			// 8. share credentials into the destination project
-			await this.shareCredentialsWithProject(user, shareCredentials, destinationProject.id);
+			await this.shareCredentialsWithProject(user, shareCredentials, destinationProject.id, ctx);
 
 			// 9. Move workflow to the right folder if any
+			await this.workflowRepository.runInTransaction(ctx, async (trx) => {
+				await trx.update(WorkflowEntity, { id: workflow.id }, { parentFolder });
+			});
+
+			return movedWorkflowIds;
+		};
+
+		const legacyTransfer = async (): Promise<void> => {
+			const movedWorkflowIds = await this.transferWorkflowOwnership(
+				[workflow],
+				destinationProject,
+				{},
+			);
+			await this.afterOwnershipTransferred(user, [workflow], destinationProject, movedWorkflowIds);
+			await this.shareCredentialsWithProject(user, shareCredentials, destinationProject.id, {});
 			await this.workflowRepository.update({ id: workflow.id }, { parentFolder });
 		};
 
 		let result: WorkflowTransferResult | undefined;
-		if (!this.isActiveWorkflow(workflow)) {
-			await transfer();
-		} else if (this.workflowsConfig.useWorkflowPublicationService) {
+		if (this.workflowsConfig.useWorkflowPublicationService) {
 			const failures = await this.workflowService.republishAroundTransfer(
 				user,
 				[workflowId],
 				destinationProject.id,
-				transfer,
+				move,
 				{ publicApi: options.publicApi ?? false },
 			);
 			result = failures.get(workflowId);
+		} else if (!this.isActiveWorkflow(workflow)) {
+			await legacyTransfer();
 		} else {
 			// 6. deactivate the workflow
 			await this.activeWorkflowManager.remove(workflowId);
 
-			await transfer();
+			await legacyTransfer();
 
 			// 10. activate it again. The destination's policy can refuse the republish, and then the
 			// move unpublishes the workflow.
@@ -1170,32 +1189,39 @@ export class EnterpriseWorkflowService {
 		await this.assertCanMoveAll(user, workflows);
 		assertNoneOwnedBy(workflows, destinationProject);
 
-		const transfer = async (): Promise<void> => {
+		const move = async (ctx: OperationContext): Promise<string[]> => {
 			// 6. transfer the workflows
-			await this.transferWorkflowOwnership(user, workflows, destinationProject);
+			const movedWorkflowIds = await this.transferWorkflowOwnership(
+				workflows,
+				destinationProject,
+				ctx,
+			);
 
 			// 7. share credentials into the destination project
-			await this.shareCredentialsWithProject(user, shareCredentials, destinationProject.id);
+			await this.shareCredentialsWithProject(user, shareCredentials, destinationProject.id, ctx);
 
 			// 8. Move all children folder to the destination project
-			await this.moveFoldersToDestination(
+			await this.folderRepository.moveTreeToProject(
 				sourceFolderId,
 				childrenFolderIds,
 				destinationProjectId,
 				destinationParentFolderId,
+				ctx,
 			);
+
+			return movedWorkflowIds;
 		};
 
 		const unpublishedWorkflows: UnpublishedWorkflow[] = [];
 		if (this.workflowsConfig.useWorkflowPublicationService) {
 			const failures = await this.workflowService.republishAroundTransfer(
 				user,
-				activeWorkflows.map((workflow) => workflow.id),
+				workflows.map((workflow) => workflow.id),
 				destinationProject.id,
-				transfer,
+				move,
 				{ publicApi: false },
 			);
-			for (const workflow of activeWorkflows) {
+			for (const workflow of workflows) {
 				const result = failures.get(workflow.id);
 				if (result) unpublishedWorkflows.push({ id: workflow.id, name: workflow.name, ...result });
 			}
@@ -1207,7 +1233,20 @@ export class EnterpriseWorkflowService {
 				),
 			);
 
-			await transfer();
+			const movedWorkflowIds = await this.transferWorkflowOwnership(
+				workflows,
+				destinationProject,
+				{},
+			);
+			await this.afterOwnershipTransferred(user, workflows, destinationProject, movedWorkflowIds);
+			await this.shareCredentialsWithProject(user, shareCredentials, destinationProject.id, {});
+			await this.folderRepository.moveTreeToProject(
+				sourceFolderId,
+				childrenFolderIds,
+				destinationProjectId,
+				destinationParentFolderId,
+				{},
+			);
 
 			// 9. activate the workflows again
 			for (const workflow of activeWorkflows) {
@@ -1287,11 +1326,12 @@ export class EnterpriseWorkflowService {
 		}
 	}
 
+	/** Returns the ids of the workflows whose owner project changes. */
 	private async transferWorkflowOwnership(
-		user: User,
 		workflows: WorkflowEntity[],
 		destinationProject: Project,
-	) {
+		ctx: OperationContext,
+	): Promise<string[]> {
 		// Resolved before the transaction rewrites the sharings. Workflows already
 		// owned by the destination are folder moves, not project transfers.
 		const movedWorkflowIds = workflows
@@ -1302,7 +1342,7 @@ export class EnterpriseWorkflowService {
 			)
 			.map((workflow) => workflow.id);
 
-		await this.workflowRepository.manager.transaction(async (trx) => {
+		await this.workflowRepository.runInTransaction(ctx, async (trx) => {
 			for (const workflow of workflows) {
 				// Remove all sharings
 				await trx.remove(workflow.shared);
@@ -1318,6 +1358,15 @@ export class EnterpriseWorkflowService {
 			}
 		});
 
+		return movedWorkflowIds;
+	}
+
+	private async afterOwnershipTransferred(
+		user: User,
+		workflows: WorkflowEntity[],
+		destinationProject: Project,
+		movedWorkflowIds: string[],
+	): Promise<void> {
 		// Update workflow project cache entries
 		for (const workflow of workflows) {
 			await this.ownershipService.setWorkflowProjectCacheEntry(workflow.id, destinationProject);
@@ -1332,8 +1381,9 @@ export class EnterpriseWorkflowService {
 		user: User,
 		credentialIds: string[],
 		projectId: string,
+		ctx: OperationContext,
 	) {
-		await this.workflowRepository.runInTransaction({}, async (trx, ctx) => {
+		await this.workflowRepository.runInTransaction(ctx, async (trx, transactionCtx) => {
 			let credentialIdsToShare: string[];
 
 			if (hasGlobalScope(user, ['credential:share'], { mode: 'allOf' })) {
@@ -1343,7 +1393,7 @@ export class EnterpriseWorkflowService {
 					await this.credentialsFinderService.getCredentialIdsByUserAndRole(
 						[user.id],
 						{ scopes: ['credential:share'] },
-						ctx,
+						transactionCtx,
 					),
 				);
 				credentialIdsToShare = credentialIds.filter((id) => accessibleIds.has(id));
@@ -1357,33 +1407,6 @@ export class EnterpriseWorkflowService {
 					trx,
 				);
 			}
-		});
-	}
-
-	private async moveFoldersToDestination(
-		sourceFolderId: string,
-		childrenFolderIds: string[],
-		destinationProjectId: string,
-		destinationParentFolderId: string,
-	) {
-		await this.folderRepository.manager.transaction(async (trx) => {
-			// Move all children folders to the destination project
-			await trx.update(
-				Folder,
-				{ id: In(childrenFolderIds) },
-				{ homeProject: { id: destinationProjectId } },
-			);
-
-			// Move source folder to destination project and under destination folder if specified
-			await trx.update(
-				Folder,
-				{ id: sourceFolderId },
-				{
-					homeProject: { id: destinationProjectId },
-					parentFolder:
-						destinationParentFolderId === PROJECT_ROOT ? null : { id: destinationParentFolderId },
-				},
-			);
 		});
 	}
 

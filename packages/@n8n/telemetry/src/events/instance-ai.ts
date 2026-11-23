@@ -204,6 +204,7 @@ const instanceContextTurnSchema = z.object({
 			'Cumulative failed tool calls by operation and bounded reason. Contains no error text.',
 		),
 	surface: assistantSurfaceSchema,
+	runtime: assistantRuntime,
 	user_id: z.string(),
 	thread_id: z.string().optional(),
 	run_id: z.string().describe('Turn ID shared by all segments'),

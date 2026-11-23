@@ -300,7 +300,6 @@ export {
 	saveAgentBuilderTarget,
 	threadAuthorizesAgentAdoption,
 	threadTargetsAgent,
-	withAttachedAgentTarget,
 	withBoundAgentTarget,
 } from './tools/orchestration/agent-target-binding';
 export type {
@@ -857,6 +856,9 @@ export type {
 	AgentSessionSummary,
 	AgentContextLookup,
 	InstanceAiAgentContextReader,
+	InstanceAiConversationFile,
+	InstanceAiImportedFile,
+	InstanceAiSandboxFiles,
 	InstanceAiStoredFile,
 	InstanceAiStoredFileReader,
 	InstanceAiSkillService,

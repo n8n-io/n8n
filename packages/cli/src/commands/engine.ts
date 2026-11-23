@@ -15,7 +15,7 @@ import { BaseCommand } from './base-command';
 @Command({
 	name: 'engine',
 	description:
-		'Starts the engine v2 data plane. Needs a control plane (`n8n start` with N8N_ENGINE_MODE=remote) to resolve credentials from, and Redis for its work queues and to send execution responses and lifecycle events over.',
+		'Starts the engine v2 data plane. Needs a control plane (`n8n start` with N8N_ENGINE_MODE=remote) to resolve credentials from, and Redis for its work queues, execution responses and lifecycle events.',
 })
 export class Engine extends BaseCommand {
 	// The data plane has no control plane database. Its own database is the
@@ -150,7 +150,7 @@ export class Engine extends BaseCommand {
 			async () => await this.runtime?.shutdown(),
 			// Before the publisher, so a late fetch fails instead of taking a message it can no longer give back.
 			async () => this.workQueues?.close(),
-			// After the engine and the queues, so a final response still has somewhere to go.
+			// After the engine, so a final response still has somewhere to go.
 			async () => await this.channelPublisher?.stop(),
 			async () => await Expression.disposeExpressionEngine(),
 		];

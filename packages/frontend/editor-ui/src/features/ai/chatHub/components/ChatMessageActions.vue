@@ -85,24 +85,26 @@ function handleReadAloud() {
 					: i18n.baseText('chatHub.message.actions.readAloud')
 			}}</template>
 		</N8nTooltip>
-		<N8nTooltip v-if="canEdit" placement="bottom" :show-after="300">
+		<N8nTooltip v-if="canEdit" as-child placement="bottom" :show-after="300">
 			<N8nIconButton
 				variant="ghost"
 				icon="pen"
 				size="medium"
 				data-test-id="chat-message-edit"
 				:disabled="hasSessionStreaming"
+				focusable-when-disabled
 				@click="handleEdit"
 			/>
 			<template #content>{{ i18n.baseText('chatHub.message.actions.edit') }}</template>
 		</N8nTooltip>
-		<N8nTooltip v-if="canRegenerate" placement="bottom" :show-after="300">
+		<N8nTooltip v-if="canRegenerate" as-child placement="bottom" :show-after="300">
 			<N8nIconButton
 				variant="ghost"
 				icon="refresh-cw"
 				size="medium"
 				data-test-id="chat-message-regenerate"
 				:disabled="hasSessionStreaming"
+				focusable-when-disabled
 				@click="handleRegenerate"
 			/>
 			<template #content>{{ i18n.baseText('chatHub.message.actions.regenerate') }}</template>

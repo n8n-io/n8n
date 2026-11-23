@@ -330,6 +330,7 @@ export class TelemetryEventRelay extends EventRelay {
 			'sso-user-project-access-updated': (event) => this.ssoUserProjectAccessUpdated(event),
 			'sso-user-instance-role-updated': (event) => this.ssoUserInstanceRoleUpdated(event),
 			'sso-settings-updated': (event) => this.ssoSettingsUpdated(event),
+			'provisioning-settings-updated': (event) => this.provisioningSettingsUpdated(event),
 			'scim-settings-updated': (event) => this.scimSettingsUpdated(event),
 			'scim-request-rejected': (event) => this.scimRequestRejected(event),
 			'workflow-created': (event) => this.workflowCreated(event),
@@ -1550,6 +1551,24 @@ export class TelemetryEventRelay extends EventRelay {
 			is_active: loginEnabled,
 			fields_changed: fieldsChanged,
 			public_api: publicApi,
+		});
+	}
+
+	private provisioningSettingsUpdated({
+		user,
+		authenticationMethod,
+		assignmentMethod,
+		roleMappingMethod,
+		instanceRuleCount,
+		projectRuleCount,
+	}: RelayEventMap['provisioning-settings-updated']) {
+		this.telemetry.track(TELEMETRY_EVENT.PROVISIONING.USER_UPDATED_PROVISIONING_SETTINGS, {
+			user_id: user.id,
+			authentication_method: authenticationMethod,
+			assignment_method: assignmentMethod,
+			role_mapping_method: roleMappingMethod,
+			instance_rule_count: instanceRuleCount,
+			project_rule_count: projectRuleCount,
 		});
 	}
 

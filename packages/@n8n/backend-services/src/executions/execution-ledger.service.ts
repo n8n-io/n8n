@@ -155,6 +155,22 @@ export class ExecutionLedger {
 		}
 	}
 
+	/** Chained, so sweeps insert one row at a time and do not take the whole pool. */
+	private queuedWrites = Promise.resolve();
+
+	/**
+	 * For a sweep that ends many runs at once. Settles when these rows are written, for a
+	 * caller that is about to exit. Never rejects.
+	 */
+	async recordEndedInSequence(facts: ExecutionLedgerEndedFacts[]): Promise<void> {
+		if (!this.writer || facts.length === 0) return;
+
+		this.queuedWrites = this.queuedWrites.then(async () => {
+			for (const fact of facts) await this.recordEnded(fact);
+		});
+		await this.queuedWrites;
+	}
+
 	private reportNoOwnerProject({ executionId, workflowId }: ExecutionLedgerStartedFacts) {
 		this.logger.error(
 			`Execution ${executionId} of workflow ${workflowId} is not in the execution ledger: the workflow has no owner project`,
