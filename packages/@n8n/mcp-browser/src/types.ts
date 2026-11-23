@@ -158,8 +158,8 @@ export interface Adapter {
 	// Credential capture
 	getElementValue(pageId: string, target: ElementTarget): Promise<string>;
 	/**
-	 * Deletes the cookies and site storage of every site except `domain` and its subdomains.
-	 * Playwright adapter only.
+	 * Deletes the cookies and site storage of every site except `domain` and its subdomains. Closes
+	 * every page first, so call it only before the browser closes. Playwright adapter only.
 	 */
 	clearSiteDataExcept?(domain: string): Promise<void>;
 }
