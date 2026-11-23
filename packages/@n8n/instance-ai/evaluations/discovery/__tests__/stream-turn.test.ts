@@ -34,7 +34,9 @@ function setup(first: StreamChunk[], resumed: StreamChunk[] = []) {
 		stream: vi.fn(async () => await Promise.resolve(streamOf('agent-run', first, cancelStream))),
 		resume: vi.fn(async () => await Promise.resolve(streamOf('agent-run', resumed))),
 	};
-	const answerSuspension = vi.fn(async () => await Promise.resolve({ approved: true }));
+	const answerSuspension = vi.fn<StreamTurnOptions['answerSuspension']>(
+		async () => await Promise.resolve({ approved: true }),
+	);
 	const options: StreamTurnOptions = {
 		agent: agent as unknown as StreamTurnOptions['agent'],
 		input: 'Hi',
@@ -96,6 +98,16 @@ describe('streamTurn', () => {
 			{ ...executionOptions, runId: 'agent-run', toolCallId: 'call-1' },
 		);
 		expect(events.map((event) => event.type)).toEqual(['confirmation-request', 'tool-call']);
+	});
+
+	it('ends the turn at a suspended tool call that gets no answer', async () => {
+		const { agent, answerSuspension, options } = setup([suspended('call-1'), finish('paused')]);
+		answerSuspension.mockResolvedValue(undefined);
+
+		const result = await streamTurn(options);
+
+		expect(result).toEqual({ status: 'suspended', finishReason: 'paused' });
+		expect(agent.resume).not.toHaveBeenCalled();
 	});
 
 	it('acknowledges an input boundary', async () => {

@@ -1,5 +1,9 @@
 import type { AgentActivity, CapturedToolCall, EventOutcome } from '../../types';
-import { evaluateDiscoveryTrial, runExpectedToolsInvokedCheck } from '../expected-tools-invoked';
+import {
+	evaluateDiscoveryTrial,
+	requiredCallsMade,
+	runExpectedToolsInvokedCheck,
+} from '../expected-tools-invoked';
 import type { DiscoveryTestCase, DiscoveryTrialFacts } from '../types';
 
 type ToolCallInput = Pick<CapturedToolCall, 'toolName'> &
@@ -638,6 +642,30 @@ describe('runExpectedToolsInvokedCheck', () => {
 	});
 });
 
+describe('requiredCallsMade', () => {
+	const expectedToolInvocations = {
+		allOfToolCalls: [{ toolName: 'load_skill' }],
+		noneOf: ['browser_navigate'],
+	};
+	const scenario: DiscoveryTestCase = { id: 'test', userMessage: 'Hi', expectedToolInvocations };
+
+	it('waits for each required call and ignores the forbidden calls', () => {
+		const forbidden = makeOutcome({ toolCalls: [{ toolName: 'browser_navigate' }] });
+		const both = makeOutcome({
+			toolCalls: [{ toolName: 'load_skill' }, { toolName: 'browser_navigate' }],
+		});
+
+		expect(requiredCallsMade(scenario, forbidden)).toBe(false);
+		expect(requiredCallsMade(scenario, both)).toBe(true);
+	});
+
+	it('has nothing to wait for when the scenario only forbids calls', () => {
+		const forbidOnly = { ...scenario, expectedToolInvocations: { noneOf: ['browser_navigate'] } };
+
+		expect(requiredCallsMade(forbidOnly, makeOutcome({}))).toBe(true);
+	});
+});
+
 describe('evaluateDiscoveryTrial', () => {
 	const trial = (overrides: Partial<DiscoveryTrialFacts> = {}): DiscoveryTrialFacts => ({
 		streamStatus: 'completed',
@@ -663,6 +691,13 @@ describe('evaluateDiscoveryTrial', () => {
 	it('passes a satisfied expectation on a completed run', () => {
 		expect(evaluateDiscoveryTrial(negativeOnly, makeOutcome({}), trial()).pass).toBe(true);
 		expect(evaluateDiscoveryTrial(positiveOnly, satisfied, trial()).pass).toBe(true);
+	});
+
+	it('passes a satisfied expectation on a turn that ended at a question to the user', () => {
+		const waiting = trial({ streamStatus: 'waiting-for-user' });
+
+		expect(evaluateDiscoveryTrial(negativeOnly, makeOutcome({}), waiting).pass).toBe(true);
+		expect(evaluateDiscoveryTrial(positiveOnly, satisfied, waiting).pass).toBe(true);
 	});
 
 	it.each([
