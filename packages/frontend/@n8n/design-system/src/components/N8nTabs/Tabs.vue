@@ -45,6 +45,7 @@ const hasOverflow = ref(false);
 const root = ref<HTMLDivElement>();
 const suffix = ref<HTMLDivElement>();
 const tabsList = ref<InstanceType<typeof TabsList>>();
+const indicator = ref<InstanceType<typeof TabsIndicator>>();
 let resizeObserver: ResizeObserver | null = null;
 
 /** Route options render as links, but keep their place and focus order in the tab list. */
@@ -60,6 +61,18 @@ function getTabsElement(): HTMLElement | undefined {
 /** The shared indicator cannot read the colour of the active tab, so it gets the state here. */
 const activeOption = computed(() =>
 	props.options.find((option) => option.value === selectedValue.value),
+);
+
+/**
+ * Reka measures the indicator only on selection or resize. A label change in an
+ * earlier tab moves the active tab without either, so remount the indicator.
+ */
+const indicatorKey = computed(() =>
+	props.options
+		.map((option) =>
+			[option.value, option.label, option.tag, option.icon, option.preview].join(':'),
+		)
+		.join('|'),
 );
 
 function updateScrollState() {
@@ -135,7 +148,8 @@ function scroll(direction: 'left' | 'right') {
 	if (!container) return;
 
 	const viewport = container.getBoundingClientRect();
-	const items = Array.from(container.children);
+	/** The indicator is also a child of the list, but it is not a tab. */
+	const items = Array.from(container.children).filter((item) => item !== indicator.value?.$el);
 	if (direction === 'left') items.reverse();
 
 	for (const item of items) {
@@ -157,6 +171,7 @@ function scroll(direction: 'left' | 'right') {
 
 <template>
 	<TabsRoot
+		:class="['n8n-tabs', $style.root]"
 		:model-value="selectedValue"
 		:orientation="orientation"
 		activation-mode="manual"
@@ -165,7 +180,6 @@ function scroll(direction: 'left' | 'right') {
 		<div
 			ref="root"
 			:class="{
-				'n8n-tabs': true,
 				[$style.container]: true,
 				[$style.small]: size === 'small',
 				[$style.large]: size === 'large',
@@ -233,6 +247,8 @@ function scroll(direction: 'left' | 'right') {
 					</N8nTooltip>
 				</div>
 				<TabsIndicator
+					ref="indicator"
+					:key="indicatorKey"
 					:class="{
 						[$style.indicator]: true,
 						[$style.indicatorHidden]: !activeOption || !!activeOption.disabled,
@@ -266,6 +282,12 @@ function scroll(direction: 'left' | 'right') {
 @use '../../css/mixins/focus';
 @use '../../css/mixins/motion';
 @use '../../css/mixins/utils';
+
+/** Let the root shrink in a flex row, so the tab list overflows and shows the arrows. */
+.root {
+	width: 100%;
+	min-width: 0;
+}
 
 .container {
 	--n8n-tabs--height: var(--height--md);
