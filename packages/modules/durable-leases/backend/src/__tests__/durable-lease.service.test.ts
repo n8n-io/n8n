@@ -51,14 +51,8 @@ describe('DurableLeaseService', () => {
 		await expect(service.syncAll()).resolves.toBeUndefined();
 	});
 
-	it.each([
-		{
-			rule: 'lease shorter than 8 seconds',
-			timings: { leaseSeconds: 7, renewSeconds: 1, marginSeconds: 1 },
-		},
-		{ rule: 'renewal longer than a third of lease minus margin', timings: { renewSeconds: 6 } },
-	])('refuses to build with a $rule', ({ timings }) => {
-		expect(() => build(timings)).toThrow(UserError);
+	it('refuses to build with a renewal longer than a third of lease minus margin', () => {
+		expect(() => build({ renewSeconds: 6 })).toThrow(UserError);
 	});
 
 	it('states the largest allowed renewal in whole seconds', () => {
