@@ -208,14 +208,12 @@ const InstanceAiWorkflowDraftPreviewStub = defineComponent({
 	props: {
 		draft: { type: Object, required: true },
 		building: Boolean,
-		waiting: Boolean,
 	},
 	setup: (props) => () =>
 		h('div', {
 			'data-test-id': 'instance-ai-workflow-draft-preview-stub',
 			'data-file-path': (props.draft as { filePath: string }).filePath,
 			'data-building': String(props.building),
-			'data-waiting': String(props.waiting),
 		}),
 });
 
@@ -342,7 +340,18 @@ const InstanceAiConfirmationPanelStub = defineComponent({
 		kind: { type: String, required: true },
 	},
 	setup(props) {
-		return () => h('div', { 'data-test-id': `instance-ai-confirmation-panel-${props.kind}` });
+		return () =>
+			h('div', { 'data-test-id': `instance-ai-confirmation-panel-${props.kind}` }, [
+				// Like the approval card: a focusable details region before its actions.
+				h('div', { tabindex: 0 }, 'Details'),
+				h('div', { role: 'toolbar' }, [
+					h(
+						'button',
+						{ 'data-test-id': `instance-ai-confirmation-control-${props.kind}` },
+						'Answer',
+					),
+				]),
+			]);
 	},
 });
 
@@ -2711,6 +2720,13 @@ describe('InstanceAiThreadView', () => {
 	});
 
 	describe('workflow drafts', () => {
+		// The drafts belong to the variant of the draft workflow preview experiment.
+		beforeEach(() => {
+			mockedStore(usePostHog).getVariant.mockImplementation((name) =>
+				name === INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.name ? 'variant' : undefined,
+			);
+		});
+
 		const filePath = 'src/workflows/demo.workflow.ts';
 		const draft = (overrides: Record<string, unknown> = {}) => ({
 			filePath,
@@ -2810,6 +2826,21 @@ describe('InstanceAiThreadView', () => {
 			] as typeof thread.messages;
 		}
 
+		function pendingConfirmation(confirmation: { requestId: string; inputType?: string }) {
+			return {
+				messageId: 'msg-run',
+				agentNode: { agentId: 'agent-root', role: 'orchestrator' },
+				toolCall: {
+					toolCallId: `tc-${confirmation.requestId}`,
+					toolName: 'ask_user',
+					args: {},
+					isLoading: true,
+					confirmationStatus: 'pending',
+					confirmation: { severity: 'info', message: 'Which sheet?', ...confirmation },
+				},
+			};
+		}
+
 		it('shows the staging canvas of a new workflow', async () => {
 			trackCanvasRendered.mockClear();
 			mockedStore(usePostHog).getVariant.mockImplementation((name) =>
@@ -2821,21 +2852,163 @@ describe('InstanceAiThreadView', () => {
 
 			const preview = await findByTestId('instance-ai-workflow-draft-preview-stub');
 			expect(preview).toHaveAttribute('data-file-path', 'staging:run-1');
-			expect(preview).toHaveAttribute('data-waiting', 'false');
 			expect(trackCanvasRendered).toHaveBeenCalledWith('staging');
 		});
 
-		it('shows on the staging canvas that the run waits on the user', async () => {
+		it('shows the building wave over the staging canvas while the agent works', async () => {
+			mockedStore(usePostHog).getVariant.mockImplementation((name) =>
+				name === INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.name ? 'variant' : undefined,
+			);
+			const { findByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
+			thread.isStreaming = true;
+
+			stageNewWorkflow();
+
+			await findByTestId('instance-ai-draft-building-wave');
+			expect(queryByTestId('instance-ai-canvas-waiting-pill')).toBeNull();
+		});
+
+		it('shows a waiting pill instead of the wave while the run waits for an answer', async () => {
+			mockedStore(usePostHog).getVariant.mockImplementation((name) =>
+				name === INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.name ? 'variant' : undefined,
+			);
+			const { findByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
+			thread.isStreaming = true;
+			stageNewWorkflow();
+			await findByTestId('instance-ai-draft-building-wave');
+
+			thread.pendingConfirmations = [
+				pendingConfirmation({ requestId: 'req-ask', inputType: 'questions' }),
+			] as unknown as ThreadRuntime['pendingConfirmations'];
+			thread.isAwaitingUserInput = true;
+
+			expect(await findByTestId('instance-ai-canvas-waiting-pill')).toHaveTextContent(
+				'Waiting for your answer in the chat',
+			);
+			expect(queryByTestId('instance-ai-draft-building-wave')).toBeNull();
+		});
+
+		it('keeps the waiting pill after a reload that restores the question but not the run', async () => {
 			mockedStore(usePostHog).getVariant.mockImplementation((name) =>
 				name === INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.name ? 'variant' : undefined,
 			);
 			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
-			stageNewWorkflow();
 
+			stageNewWorkflow();
+			thread.pendingConfirmations = [
+				pendingConfirmation({ requestId: 'req-ask', inputType: 'questions' }),
+			] as unknown as ThreadRuntime['pendingConfirmations'];
+
+			expect(await findByTestId('instance-ai-canvas-waiting-pill')).toHaveTextContent(
+				'Waiting for your answer in the chat',
+			);
+			expect(await findByTestId('instance-ai-workflow-draft-preview-stub')).toHaveAttribute(
+				'data-building',
+				'true',
+			);
+		});
+
+		it('focuses the question in the chat when the user clicks the waiting pill', async () => {
+			mockedStore(usePostHog).getVariant.mockImplementation((name) =>
+				name === INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.name ? 'variant' : undefined,
+			);
+			const user = userEvent.setup();
+			const { findByTestId, getByTestId } = renderView({ props: { threadId: 'thread-1' } });
+			thread.isStreaming = true;
+			stageNewWorkflow();
+			thread.pendingConfirmations = [
+				pendingConfirmation({ requestId: 'req-ask', inputType: 'questions' }),
+			] as unknown as ThreadRuntime['pendingConfirmations'];
 			thread.isAwaitingUserInput = true;
 
-			const preview = await findByTestId('instance-ai-workflow-draft-preview-stub');
-			await vi.waitFor(() => expect(preview).toHaveAttribute('data-waiting', 'true'));
+			await user.click(await findByTestId('instance-ai-canvas-waiting-pill'));
+
+			expect(getByTestId('instance-ai-confirmation-control-floating')).toHaveFocus();
+		});
+
+		it('asks for the answer while a continue card waits for the user', async () => {
+			mockedStore(usePostHog).getVariant.mockImplementation((name) =>
+				name === INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.name ? 'variant' : undefined,
+			);
+			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
+			thread.isStreaming = true;
+			stageNewWorkflow();
+
+			thread.pendingConfirmations = [
+				pendingConfirmation({ requestId: 'req-continue', inputType: 'continue' }),
+			] as unknown as ThreadRuntime['pendingConfirmations'];
+			thread.isAwaitingUserInput = true;
+
+			expect(await findByTestId('instance-ai-canvas-waiting-pill')).toHaveTextContent(
+				'Waiting for your answer in the chat',
+			);
+		});
+
+		it('names the card that takes the chat input when more than one card waits', async () => {
+			mockedStore(usePostHog).getVariant.mockImplementation((name) =>
+				name === INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.name ? 'variant' : undefined,
+			);
+			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
+			thread.isStreaming = true;
+			stageNewWorkflow();
+
+			thread.pendingConfirmations = [
+				pendingConfirmation({ requestId: 'req-text', inputType: 'text' }),
+				pendingConfirmation({ requestId: 'req-run' }),
+			] as unknown as ThreadRuntime['pendingConfirmations'];
+			thread.isAwaitingUserInput = true;
+
+			expect(await findByTestId('instance-ai-canvas-waiting-pill')).toHaveTextContent(
+				'Waiting for your approval in the chat',
+			);
+		});
+
+		it('shows the building wave over a saved workflow that the run does not build', async () => {
+			mockedStore(usePostHog).getVariant.mockImplementation((name) =>
+				name === INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.name ? 'variant' : undefined,
+			);
+			seedWorkflowArtifact();
+			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
+			await findByTestId('instance-ai-workflow-preview-stub');
+
+			thread.isStreaming = true;
+
+			await findByTestId('instance-ai-draft-building-wave');
+		});
+
+		it('asks for the approval over a saved workflow while the run waits for one', async () => {
+			mockedStore(usePostHog).getVariant.mockImplementation((name) =>
+				name === INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.name ? 'variant' : undefined,
+			);
+			seedWorkflowArtifact();
+			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
+			await findByTestId('instance-ai-workflow-preview-stub');
+
+			thread.isStreaming = true;
+			thread.pendingConfirmations = [
+				pendingConfirmation({ requestId: 'req-run' }),
+			] as unknown as ThreadRuntime['pendingConfirmations'];
+			thread.isAwaitingUserInput = true;
+
+			expect(await findByTestId('instance-ai-canvas-waiting-pill')).toHaveTextContent(
+				'Waiting for your approval in the chat',
+			);
+		});
+
+		it('shows no wave and no pill in the control arm', async () => {
+			mockedStore(usePostHog).getVariant.mockImplementation((name) =>
+				name === INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.name ? 'control' : undefined,
+			);
+			seedWorkflowArtifact();
+			const { findByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
+			await findByTestId('instance-ai-workflow-preview-stub');
+
+			thread.isStreaming = true;
+			thread.isAwaitingUserInput = true;
+			await flushPromises();
+
+			expect(queryByTestId('instance-ai-draft-building-wave')).toBeNull();
+			expect(queryByTestId('instance-ai-canvas-waiting-pill')).toBeNull();
 		});
 
 		it('hides the building wave over the saved workflow while the run waits on the user', async () => {
@@ -2944,6 +3117,9 @@ describe('InstanceAiThreadView', () => {
 
 		it('reports the first draft and saved canvas renders', async () => {
 			trackCanvasRendered.mockClear();
+			mockedStore(usePostHog).getVariant.mockImplementation((name) =>
+				name === INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.name ? 'variant' : undefined,
+			);
 			thread.producedArtifacts = new Map([
 				['wf-1', { type: 'workflow', id: 'wf-1', name: 'Demo' }],
 			]) as typeof thread.producedArtifacts;
