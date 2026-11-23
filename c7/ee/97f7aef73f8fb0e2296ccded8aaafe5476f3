@@ -1,0 +1,26 @@
+packages/cli/src/modules/agents/simulation/simulation-backend-registry.ts
+  s_dca017e0140c66::t_4e9f0f264a0615 3-21,26-35,43,52-54
+  s_dca017e0140c66::t_1d2e56603c9711 22-25
+packages/cli/src/modules/agents/simulation/__tests__/linear-gym-backend.test.ts
+  s_dca017e0140c66::t_4e9f0f264a0615 107-112
+packages/cli/src/modules/agents/simulation/__tests__/simulation-backend-registry.lazy.test.ts
+  s_dca017e0140c66::t_4e9f0f264a0615 1-75,77,79-83
+  s_dca017e0140c66::t_0226e01fdd0256 76
+  s_dca017e0140c66::t_1d2e56603c9711 78
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c7ee97f7aef73f8fb0e2296ccded8aaafe5476f3",
+  "prompts": {},
+  "sessions": {
+    "s_dca017e0140c66": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1fa82-05c5-71ef-bd04-2bc00a00ab74",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

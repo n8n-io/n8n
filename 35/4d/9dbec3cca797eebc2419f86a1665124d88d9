@@ -1,0 +1,25 @@
+packages/cli/test/linear-consumer/turns.mjs
+  s_db28953cb8b0e3::t_77cf8d0586f5ba 22-27,35,182-197,223-229,232-238,243-248,252-258,262-268,278-281,285,287-290,295-302,305
+  s_db28953cb8b0e3::t_b92d10669a481f 19-21,28-34,36-37,178-181,198-204,219-222,230-231,239,276
+  s_db28953cb8b0e3::t_b74ab540a43944 38-49,165,205-218
+  s_db28953cb8b0e3::t_2b5a0bf96761ac 240-242,275,277,306-311,314
+packages/cli/test/linear-consumer/run.mjs
+  s_db28953cb8b0e3::t_2aeb2ea02f6b60 14-15,36,54,60-61,67-70
+  s_db28953cb8b0e3::t_77cf8d0586f5ba 62-66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "354d9dbec3cca797eebc2419f86a1665124d88d9",
+  "prompts": {},
+  "sessions": {
+    "s_db28953cb8b0e3": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1f9bc-2521-7494-aae8-16497195acf0",
+        "model": "gpt-6.2-astra"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}
