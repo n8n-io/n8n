@@ -345,11 +345,29 @@ async function loadCredentials() {
 	}
 }
 
+const isLoadingNodeTypes = ref(false);
+
+/**
+ * Block until the node types are in the store, so the list shows the built-in tools.
+ * Startup does not wait for them.
+ */
+async function loadNodeTypes() {
+	isLoadingNodeTypes.value = nodeTypesStore.allNodeTypes.length === 0;
+	try {
+		await nodeTypesStore.loadNodeTypesIfNotLoaded();
+	} catch (error) {
+		console.error('Failed to load node types', error);
+	} finally {
+		isLoadingNodeTypes.value = false;
+	}
+}
+
 onMounted(() => {
 	if (isWorkflow.value) void loadWorkflows(props.data.projectId);
 	if (!isWorkflow.value) {
 		void loadRegistryCatalog();
 		void loadCredentials();
+		void loadNodeTypes();
 	}
 	// The builder loads the policy once and keeps it, so a policy that changed since then would
 	// still offer a blocked type here and the save would be refused. Refetch on open: this is the
@@ -1262,7 +1280,7 @@ function handleRowActivate(item: ToolConnectionItem) {
 					: undefined
 			"
 			:create-action-loading="isCreatingWorkflow"
-			:loading="isLoadingCredentials"
+			:loading="isLoadingCredentials || isLoadingNodeTypes"
 			:empty-message="isWorkflow ? i18n.baseText('agents.tools.workflow.empty.title') : undefined"
 			:no-results-message="
 				isWorkflow ? i18n.baseText('agents.tools.workflow.empty.noResults') : undefined

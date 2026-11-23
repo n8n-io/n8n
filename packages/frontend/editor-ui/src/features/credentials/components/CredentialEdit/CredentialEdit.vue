@@ -474,7 +474,9 @@ watch(showAiGatewayErrorNudge, (isVisible) => {
 });
 
 onMounted(async () => {
-	loading.value = !!modalOptions.value?.createCredential;
+	// Startup does not wait for the credential types, so edit mode can wait for them too.
+	loading.value =
+		!!modalOptions.value?.createCredential || credentialsStore.allCredentialTypes.length === 0;
 	if (modalOptions.value?.initialTab) activeTab.value = modalOptions.value.initialTab;
 	void aiGateway.fetchConfig();
 	void aiGateway.fetchWallet();
@@ -500,6 +502,14 @@ onMounted(async () => {
 		if (modalOptions.value?.createCredential) {
 			await credentialsStore.fetchCredentialTypes(false);
 			if (!credentialType.value) throw new Error(i18n.baseText('credentialEdit.typeUnavailable'));
+		} else {
+			// `initialize()` reads the credential type one time, to fill the property defaults and to
+			// find a custom OAuth app. If the types fail to load, still load the credential.
+			try {
+				await credentialsStore.fetchCredentialTypes(false);
+			} catch (error) {
+				console.error('[CredentialEdit] Failed to load credential types', error);
+			}
 		}
 
 		try {

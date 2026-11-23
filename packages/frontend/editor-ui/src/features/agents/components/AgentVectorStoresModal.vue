@@ -244,10 +244,17 @@ function onEmbeddingModelUpdate(model: string) {
 async function loadCredentials() {
 	credentialsLoading.value = true;
 	try {
-		const allCredentials = await credentialsStore.fetchUsableCredentials({
-			projectId: props.data.projectId,
-			forAgent: true,
-		});
+		const [allCredentials] = await Promise.all([
+			credentialsStore.fetchUsableCredentials({
+				projectId: props.data.projectId,
+				forAgent: true,
+			}),
+			// The type labels below need the credential types, and startup does not wait for them.
+			// A failure only removes the labels.
+			credentialsStore.fetchCredentialTypes(false).catch((error: unknown) => {
+				console.error('Failed to fetch credential types', error);
+			}),
+		]);
 		const types = new Set<string>();
 		for (const definition of Object.values(AGENT_VECTOR_STORE_PROVIDER_DEFINITIONS)) {
 			types.add(definition.credentialType);

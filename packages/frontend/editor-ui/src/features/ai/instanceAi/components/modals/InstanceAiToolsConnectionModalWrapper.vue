@@ -188,11 +188,28 @@ async function loadCredentials() {
 	}
 }
 
+const isLoadingCredentialTypes = ref(false);
+
+/**
+ * App startup does not wait for the credential types either. The credential setup of a
+ * connector needs them, so block until they are in the store.
+ */
+async function loadCredentialTypes() {
+	isLoadingCredentialTypes.value = credentialsStore.allCredentialTypes.length === 0;
+	try {
+		await credentialsStore.fetchCredentialTypes(false);
+	} catch (error) {
+		console.error('Failed to fetch credential types', error);
+	} finally {
+		isLoadingCredentialTypes.value = false;
+	}
+}
+
 if (settingsStore.isMcpAvailable) {
 	void mcpStore.fetchCatalogLazy();
 	void mcpStore.fetchConnectionsLazy();
 	void loadCredentials();
-	void credentialsStore.fetchCredentialTypes(false);
+	void loadCredentialTypes();
 }
 
 // Clear the state on close so the next open starts
@@ -526,7 +543,7 @@ function retryConnection(item: McpServerConnectionItem): void {
 		:detail-mode="detailMode"
 		:hide-back-button="isDirectConnectionOpen"
 		:show-suggestion-footer="true"
-		:loading="isLoadingCredentials"
+		:loading="isLoadingCredentials || isLoadingCredentialTypes"
 		@update:detail-item="handleDetailItemUpdate"
 		@select-credential="handleSelectCredential"
 		@credential-dropdown-open="handleCredentialDropdownOpen"

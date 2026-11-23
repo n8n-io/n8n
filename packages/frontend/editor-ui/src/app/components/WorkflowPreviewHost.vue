@@ -24,6 +24,7 @@ import {
 } from '@/app/stores/workflowExecutionState.store';
 import { disposeNDVStore, useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 
 const props = withDefaults(
 	defineProps<{
@@ -40,6 +41,7 @@ const props = withDefaults(
 );
 
 const { normalizeWorkflowData } = useWorkflowNormalization();
+const nodeTypesStore = useNodeTypesStore();
 
 const documentStore = shallowRef<WorkflowDocumentStore | null>(null);
 
@@ -78,7 +80,23 @@ function disposePreviewStores() {
 	disposeWorkflowDocumentStore(scopedDocumentStore);
 }
 
+// Increases on each hydration and on unmount, so a hydration that waited can see that it is stale.
+let hydrationRun = 0;
+
 async function hydratePreview() {
+	const run = ++hydrationRun;
+
+	// Normalization fills the node default parameters only for node types that are loaded.
+	// Startup does not wait for the node types, so wait for them here. On failure, hydrate anyway.
+	try {
+		await nodeTypesStore.loadNodeTypesIfNotLoaded();
+	} catch (error) {
+		console.error('Failed to load node types for the workflow preview', error);
+	}
+	if (run !== hydrationRun) {
+		return;
+	}
+
 	// Tear down any previously hydrated scope before (re)hydrating, so a new
 	// workflow never renders over a prior preview's NDV/execution-state stores —
 	// including when the document id is unchanged.
@@ -127,6 +145,7 @@ async function hydratePreview() {
 watch(() => [props.documentId, props.workflow] as const, hydratePreview, { immediate: true });
 
 onBeforeUnmount(() => {
+	hydrationRun++;
 	disposePreviewStores();
 });
 

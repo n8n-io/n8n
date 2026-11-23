@@ -40,8 +40,13 @@ export function useChatCredentials(userId: string) {
 		},
 	);
 
+	// The credentials by type come from the credential types too, and startup does not wait for
+	// them. Without them, the auto-selection would give no credential for each provider.
 	const isCredentialsReady = computed(
-		() => isInitialized.value || credentialsStore.allCredentials.length > 0,
+		() =>
+			isInitialized.value ||
+			(credentialsStore.allCredentials.length > 0 &&
+				credentialsStore.allCredentialTypes.length > 0),
 	);
 
 	const autoSelectCredentials = computed<CredentialsMap>(() =>
@@ -101,10 +106,16 @@ export function useChatCredentials(userId: string) {
 		() => projectStore.personalProject,
 		async (personalProject) => {
 			if (personalProject) {
-				await Promise.all([
+				// Continue after a failed request, so the chat does not wait for credentials forever.
+				const results = await Promise.allSettled([
 					credentialsStore.fetchCredentialTypes(false),
 					credentialsStore.fetchUsableCredentials({ projectId: personalProject.id }),
 				]);
+				for (const result of results) {
+					if (result.status === 'rejected') {
+						console.error('Failed to load chat credentials', result.reason);
+					}
+				}
 
 				isInitialized.value = true;
 			}

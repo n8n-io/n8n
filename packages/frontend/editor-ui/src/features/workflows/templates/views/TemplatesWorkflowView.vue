@@ -139,9 +139,8 @@ onMounted(async () => {
 
 	// The native preview canvas renders node icons/shapes from the node types
 	// store; community nodes used by templates resolve through previews.
-	if (nodeTypesStore.allNodeTypes.length === 0) {
-		void nodeTypesStore.getNodeTypes();
-	}
+	// Joins the load that startup began, so the page sends no second request.
+	void nodeTypesStore.loadNodeTypesIfNotLoaded();
 	void nodeTypesStore.fetchCommunityNodePreviews();
 
 	if (template.value?.full) {

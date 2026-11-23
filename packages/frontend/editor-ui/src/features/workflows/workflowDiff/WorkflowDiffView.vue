@@ -93,10 +93,14 @@ const rootStore = useRootStore();
 const i18n = useI18n();
 const toast = useToast();
 
+// Startup does not wait for the node types. The two sides hydrate after the load ends.
+const nodeTypesReady = ref(false);
+
 const { source, target, sourceRenderData, targetRenderData, nodesDiff, connectionsDiff } =
 	useWorkflowDiff(
 		computed(() => removeWorkflowExecutionData(props.sourceWorkflow)),
 		computed(() => removeWorkflowExecutionData(props.targetWorkflow)),
+		{ nodeTypesReady },
 	);
 
 // Use shared composable for UI logic
@@ -137,6 +141,8 @@ onMounted(async () => {
 		await nodeTypesStore.loadNodeTypesIfNotLoaded();
 	} catch (error) {
 		toast.showError(error, i18n.baseText('workflowDiff.error.loadNodeTypes'));
+	} finally {
+		nodeTypesReady.value = true;
 	}
 });
 

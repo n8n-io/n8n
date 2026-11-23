@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { defineComponent, h, ref, computed } from 'vue';
+import { defineComponent, h, ref, computed, toValue } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { fireEvent, render, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
+import { flushPromises } from '@vue/test-utils';
 import { NodeDiffStatus } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -52,9 +53,10 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 }));
 
 // Mock stores
+const loadNodeTypesIfNotLoaded = vi.hoisted(() => vi.fn());
 vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: () => ({
-		loadNodeTypesIfNotLoaded: vi.fn().mockResolvedValue(undefined),
+		loadNodeTypesIfNotLoaded,
 		getNodeType: vi.fn().mockReturnValue({ name: 'Test', version: 1 }),
 		getAllNodeTypes: vi.fn().mockReturnValue({
 			nodeTypes: {},
@@ -124,6 +126,39 @@ describe('WorkflowDiffView', () => {
 		capturedApplyLayoutProps = { top: undefined, bottom: undefined };
 		createTestingPinia();
 		vi.mocked(useWorkflowDiff).mockReturnValue(defaultWorkflowDiffMock());
+		loadNodeTypesIfNotLoaded.mockResolvedValue(undefined);
+	});
+
+	describe('node types', () => {
+		function nodeTypesReady() {
+			const options = vi.mocked(useWorkflowDiff).mock.calls[0][2];
+			return toValue(options?.nodeTypesReady);
+		}
+
+		it('hydrates the two sides only after the node types load', async () => {
+			const { promise, resolve } = Promise.withResolvers<void>();
+			loadNodeTypesIfNotLoaded.mockReturnValueOnce(promise);
+
+			render(WorkflowDiffView);
+			await flushPromises();
+
+			expect(loadNodeTypesIfNotLoaded).toHaveBeenCalled();
+			expect(nodeTypesReady()).toBe(false);
+
+			resolve();
+			await flushPromises();
+
+			expect(nodeTypesReady()).toBe(true);
+		});
+
+		it('hydrates the two sides when the node types fail to load', async () => {
+			loadNodeTypesIfNotLoaded.mockRejectedValueOnce(new Error('node types'));
+
+			render(WorkflowDiffView);
+			await flushPromises();
+
+			expect(nodeTypesReady()).toBe(true);
+		});
 	});
 
 	it('names the navigation actions for assistive technology', () => {

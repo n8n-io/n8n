@@ -324,12 +324,33 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		}
 	};
 
+	// The request that runs now, if there is one. A call without `forceFetch` joins it, so the
+	// editor sends one request when many callers start together.
+	let credentialTypesLoad: Promise<void> | undefined;
+
 	const fetchCredentialTypes = async (forceFetch: boolean) => {
-		if (allCredentialTypes.value.length > 0 && !forceFetch) {
-			return;
+		if (!forceFetch) {
+			if (allCredentialTypes.value.length > 0) {
+				return;
+			}
+			if (credentialTypesLoad) {
+				await credentialTypesLoad;
+				return;
+			}
 		}
-		const credentialTypes = await credentialsApi.getCredentialTypes(rootStore.baseUrl);
-		setCredentialTypes(credentialTypes);
+
+		const load = credentialsApi
+			.getCredentialTypes(rootStore.baseUrl)
+			.then((credentialTypes) => {
+				setCredentialTypes(credentialTypes);
+			})
+			.finally(() => {
+				if (credentialTypesLoad === load) {
+					credentialTypesLoad = undefined;
+				}
+			});
+		credentialTypesLoad = load;
+		await load;
 	};
 
 	const fetchAllCredentials = async (

@@ -247,9 +247,8 @@ export function useWorkflowInitialization(
 			return promises;
 		})();
 
-		if (nodeTypesStore.allNodeTypes.length === 0) {
-			loadPromises.push(nodeTypesStore.getNodeTypes());
-		}
+		// Joins the node types load that startup began, so the canvas sends no second request.
+		loadPromises.push(nodeTypesStore.loadNodeTypesIfNotLoaded());
 
 		try {
 			// important to load community nodes to render them correctly

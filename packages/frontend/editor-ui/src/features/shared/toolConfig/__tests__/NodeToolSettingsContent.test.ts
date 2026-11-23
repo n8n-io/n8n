@@ -15,7 +15,7 @@ import NodeToolSettingsContent from '../NodeToolSettingsContent.vue';
 import { NodeHelpers, type INode, type INodeTypeDescription } from 'n8n-workflow';
 import { waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
-import { defineComponent, inject, type PropType } from 'vue';
+import { defineComponent, h, inject, type PropType } from 'vue';
 
 vi.mock('@n8n/i18n', () => {
 	const i18n = {
@@ -765,6 +765,73 @@ describe('NodeToolSettingsContent', () => {
 				const lastEmission = nameEmissions[nameEmissions.length - 1];
 				expect(lastEmission[0]).toBe('Second Tool');
 			});
+		});
+	});
+
+	describe('node type that loads after the initial node', () => {
+		const lastNode = (emitted: () => Record<string, unknown[]>) =>
+			(emitted()['update:node'] as INode[][]).at(-1)?.[0];
+
+		it('fills the default parameters once the node type arrives', async () => {
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(null);
+			const { emitted } = renderComponent({
+				props: { initialNode: createMockNode({ parameters: {} }) },
+			});
+			expect(lastNode(emitted)?.parameters).toEqual({});
+
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(MOCK_NODE_TYPE);
+
+			await waitFor(() =>
+				expect(lastNode(emitted)?.parameters).toEqual({
+					resource: 'contact',
+					operation: 'create',
+					nameField: '',
+				}),
+			);
+		});
+
+		it('keeps a name that the user changed before the node type arrived', async () => {
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(null);
+			let content: { node: INode | null; handleChangeName: (name: string) => void } | null = null;
+			const Host = defineComponent({
+				setup() {
+					return () =>
+						h(NodeToolSettingsContent, {
+							initialNode: createMockNode({ parameters: {} }),
+							ref: (instance: unknown) => {
+								content = instance as typeof content;
+							},
+						});
+				},
+			});
+			createComponentRenderer(Host, {
+				global: { stubs: { ParameterInputList: true, NodeCredentials: true } },
+			})();
+			if (!content) throw new Error('The component did not mount');
+			const mounted: { node: INode | null; handleChangeName: (name: string) => void } = content;
+
+			mounted.handleChangeName('My CRM tool');
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(MOCK_NODE_TYPE);
+
+			await waitFor(() => expect(mounted.node?.parameters?.resource).toBe('contact'));
+			expect(mounted.node?.name).toBe('My CRM tool');
+		});
+
+		it('does not fill the defaults again when the node type changes later', async () => {
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(null);
+			const getNodeParametersSpy = vi.spyOn(NodeHelpers, 'getNodeParameters');
+			renderComponent({
+				props: { initialNode: createMockNode({ parameters: {} }) },
+			});
+
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(MOCK_NODE_TYPE);
+			await waitFor(() => expect(getNodeParametersSpy).toHaveBeenCalledTimes(1));
+
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue({ ...MOCK_NODE_TYPE });
+			await new Promise((resolve) => setTimeout(resolve, 0));
+
+			expect(getNodeParametersSpy).toHaveBeenCalledTimes(1);
+			vi.restoreAllMocks();
 		});
 	});
 

@@ -124,6 +124,7 @@ function createDiffRenderData(
 	workflowRef: ComputedRef<IWorkflowDb | undefined>,
 	workflowNodes: Ref<INodeUi[]>,
 	side: string,
+	ready: ComputedRef<boolean>,
 ) {
 	const renderData = shallowRef<CanvasRenderData>(createEmptyCanvasRenderData());
 	let workflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore> | null = null;
@@ -149,9 +150,9 @@ function createDiffRenderData(
 	}
 
 	watch(
-		[workflowRef, workflowNodes],
-		([wf]) => {
-			if (!wf?.id) return;
+		[workflowRef, workflowNodes, ready],
+		([wf, , isReady]) => {
+			if (!wf?.id || !isReady) return;
 
 			disposeStores();
 
@@ -183,8 +184,16 @@ function createDiffRenderData(
 export const useWorkflowDiff = (
 	sourceWorkflow: MaybeRefOrGetter<IWorkflowDb | undefined>,
 	targetWorkflow: MaybeRefOrGetter<IWorkflowDb | undefined>,
+	options: {
+		/**
+		 * The document stores hydrate only when this is true. The workflow object reads the node
+		 * types once, when it hydrates. Set it to false while the node types load.
+		 */
+		nodeTypesReady?: MaybeRefOrGetter<boolean>;
+	} = {},
 ) => {
 	const nodeTypesStore = useNodeTypesStore();
+	const nodeTypesReady = computed(() => toValue(options.nodeTypesReady ?? true));
 
 	const sourceRefs = createWorkflowRefs(sourceWorkflow);
 	const targetRefs = createWorkflowRefs(targetWorkflow);
@@ -193,11 +202,13 @@ export const useWorkflowDiff = (
 		sourceRefs.workflowRef,
 		sourceRefs.workflowNodes,
 		'source',
+		nodeTypesReady,
 	);
 	const { renderData: targetRenderData, dispose: disposeTarget } = createDiffRenderData(
 		targetRefs.workflowRef,
 		targetRefs.workflowNodes,
 		'target',
+		nodeTypesReady,
 	);
 
 	const sourceDiff = createWorkflowDiff(

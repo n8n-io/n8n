@@ -98,10 +98,19 @@ export function useAgentChannelSetup(options: UseAgentChannelSetupOptions) {
 		credentialsLoading.value = true;
 		try {
 			credentialsStore.setCredentials([]);
-			const allCredentials = await credentialsStore.fetchUsableCredentials({
-				projectId: projectId.value,
-				forAgent: true,
-			});
+			const [allCredentials] = await Promise.all([
+				credentialsStore.fetchUsableCredentials({
+					projectId: projectId.value,
+					forAgent: true,
+				}),
+				// The type labels below need the credential types, and startup does not wait for them.
+				// A failure only removes the labels.
+				credentialsStore
+					.fetchCredentialTypes(false)
+					.catch((error: unknown) => {
+						console.error('Failed to fetch credential types', error);
+					}),
+			]);
 
 			for (const integration of integrations) {
 				credentialsByType.value[integration.type] = allCredentials

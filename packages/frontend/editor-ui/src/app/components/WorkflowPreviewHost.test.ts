@@ -1,12 +1,17 @@
 import { defineComponent, h, inject, type Ref } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
 import { waitFor } from '@testing-library/vue';
+import { flushPromises } from '@vue/test-utils';
 import { createComponentRenderer } from '@/__tests__/render';
 import {
 	EditorEnabledFeaturesKey,
 	type EditorEnabledFeatures,
 } from '@/app/constants/injectionKeys';
-import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { IWorkflowDb } from '@/Interface';
 import WorkflowPreviewHost from './WorkflowPreviewHost.vue';
 
@@ -38,6 +43,72 @@ describe('WorkflowPreviewHost', () => {
 		pinia = createPinia();
 		setActivePinia(pinia);
 		injected.enabledFeatures = undefined;
+		vi.spyOn(useNodeTypesStore(), 'loadNodeTypesIfNotLoaded').mockResolvedValue();
+	});
+
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	describe('node types', () => {
+		const workflowWithNode = {
+			id: 'preview-workflow',
+			nodes: [{ name: 'Set', type: 'n8n-nodes-base.set', typeVersion: 1, position: [0, 0] }],
+			connections: {},
+		} as unknown as IWorkflowDb;
+
+		it('waits for the node types before it hydrates the preview', async () => {
+			const { promise, resolve } = Promise.withResolvers<void>();
+			vi.mocked(useNodeTypesStore().loadNodeTypesIfNotLoaded).mockReturnValueOnce(promise);
+			const { queryByTestId, getByTestId } = renderComponent({
+				pinia,
+				props: { documentId, workflow: workflowWithNode },
+			});
+
+			await flushPromises();
+			expect(queryByTestId('node-view-stub')).not.toBeInTheDocument();
+			expect(useWorkflowDocumentStore(documentId).allNodes).toHaveLength(0);
+
+			resolve();
+			await waitFor(() => expect(getByTestId('node-view-stub')).toBeInTheDocument());
+			expect(useWorkflowDocumentStore(documentId).allNodes).toHaveLength(1);
+		});
+
+		it('hydrates the preview when the node types fail to load', async () => {
+			vi.spyOn(console, 'error').mockImplementation(() => {});
+			vi.mocked(useNodeTypesStore().loadNodeTypesIfNotLoaded).mockRejectedValueOnce(
+				new Error('node types'),
+			);
+			const { getByTestId } = renderComponent({
+				pinia,
+				props: { documentId, workflow: workflowWithNode },
+			});
+
+			await waitFor(() => expect(getByTestId('node-view-stub')).toBeInTheDocument());
+			expect(useWorkflowDocumentStore(documentId).allNodes).toHaveLength(1);
+		});
+
+		it('hydrates only the latest workflow when the props change while it waits', async () => {
+			const first = Promise.withResolvers<void>();
+			const second = Promise.withResolvers<void>();
+			vi.mocked(useNodeTypesStore().loadNodeTypesIfNotLoaded)
+				.mockReturnValueOnce(first.promise)
+				.mockReturnValueOnce(second.promise);
+			const otherDocumentId = createWorkflowDocumentId('preview-workflow', 'other');
+			const { rerender, getByTestId } = renderComponent({
+				pinia,
+				props: { documentId, workflow: workflowWithNode },
+			});
+			await rerender({ documentId: otherDocumentId, workflow: workflowWithNode });
+
+			second.resolve();
+			await waitFor(() => expect(getByTestId('node-view-stub')).toBeInTheDocument());
+			first.resolve();
+			await flushPromises();
+
+			expect(useWorkflowDocumentStore(otherDocumentId).allNodes).toHaveLength(1);
+			expect(useWorkflowDocumentStore(documentId).allNodes).toHaveLength(0);
+		});
 	});
 
 	it('provides read-only preview features and shows node issues by default', async () => {

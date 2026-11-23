@@ -460,6 +460,21 @@ describe('useWorkflowDiff', () => {
 			expect(hydratedNodes[0].id).toBe(canvasNodes[0].id);
 		});
 
+		it('hydrates the document stores only once the node types are ready', async () => {
+			const nodeTypesReady = ref(false);
+
+			useWorkflowDiff(createMockWorkflow('source'), createMockWorkflow('target'), {
+				nodeTypesReady,
+			});
+
+			expect(mockDocumentStore.hydrate).not.toHaveBeenCalled();
+
+			nodeTypesReady.value = true;
+			await nextTick();
+
+			expect(mockDocumentStore.hydrate).toHaveBeenCalledTimes(2);
+		});
+
 		it('disposes the execution-state store of the previous document when the diffed workflow changes', async () => {
 			const sourceWorkflowRef = ref<IWorkflowDb | undefined>(createMockWorkflow('source'));
 
