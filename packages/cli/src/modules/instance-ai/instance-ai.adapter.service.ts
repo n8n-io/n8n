@@ -1818,12 +1818,11 @@ export class InstanceAiAdapterService {
 
 				// A workflow can have runs on both engines, for example after a switch
 				// of its engine. The newer run wins.
-				const [[latest], latestV2] = await Promise.all([
-					executionRepository.find({
+				const [latest, latestV2] = await Promise.all([
+					executionRepository.findOne({
 						select: ['id', 'startedAt'],
 						where: { workflowId },
 						order: { startedAt: 'DESC' },
-						take: 1,
 					}),
 					// A data plane failure must not hide the v1 run data from validation.
 					loadLatestEngineV2ExecutionForViewer(workflowId, user).catch((error: unknown) => {

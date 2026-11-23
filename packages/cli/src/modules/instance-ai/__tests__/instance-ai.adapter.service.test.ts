@@ -2908,7 +2908,7 @@ function createWorkflowAdapterForTests(overrides?: {
 	// Mirrors `EXECUTIONS_TIMEOUT_MAX`, in seconds.
 	maxExecutionTimeout?: number;
 	temporaryWorkflowMarkers?: TemporaryWorkflowMarkers;
-	executionRepository?: { find: Mock };
+	executionRepository?: { findOne: Mock };
 }) {
 	const mockProjectRepository = {
 		getPersonalProjectForUserOrFail: vi.fn().mockResolvedValue({ id: 'personal-project-id' }),
@@ -3539,10 +3539,10 @@ describe('createWorkflowAdapter', () => {
 		 */
 		function setup(options: { v1StartedAt?: Date; v2StartedAt?: Date; v2Error?: Error }) {
 			const executionRepository = {
-				find: vi
+				findOne: vi
 					.fn()
 					.mockResolvedValue(
-						options.v1StartedAt ? [{ id: 'exec-v1', startedAt: options.v1StartedAt }] : [],
+						options.v1StartedAt ? { id: 'exec-v1', startedAt: options.v1StartedAt } : null,
 					),
 			};
 			const harness = createWorkflowAdapterForTests({ executionRepository });
