@@ -1,0 +1,25 @@
+docs/generated/postgres-schema/public.agent_background_job.md
+  s_dfe3f914c8bb46::t_af57ce758bc941 63
+docs/generated/sqlite-schema/agent_background_job.md
+  s_dfe3f914c8bb46::t_5b3aa81642c17a 65
+packages/@n8n/db/src/migrations/common/1795188950328-AddAgentApprovalJobKind.ts
+  s_dfe3f914c8bb46::t_45fd4fe12d10fd 36,51-53
+packages/cli/src/modules/agents/entities/agent-background-job.entity.ts
+  s_dfe3f914c8bb46::t_e1a4bf17f2555a 30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ee711bd1568b873dd19eda6585fe1f3054ce4546",
+  "prompts": {},
+  "sessions": {
+    "s_dfe3f914c8bb46": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a177de-1655-75e1-b502-74f6cb945148",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,84 @@
+packages/cli/src/services/__tests__/export.service.test.ts
+  s_fa4157c6078c9b::t_1100606ac99942 133-141,143-156
+  s_fa4157c6078c9b::t_7d5f19b9fa72a3 185,187
+  s_fa4157c6078c9b::t_4701b631c69e0b 142
+  s_fa4157c6078c9b::t_191fdd4a50fccd 157-184,186,188-192
+packages/cli/src/commands/export/entities.ts
+  s_fa4157c6078c9b::t_cd751a0033f044 6
+  s_fa4157c6078c9b::t_db4602f0378dd1 32
+  s_fa4157c6078c9b::t_19453f9a9a758a 27-31
+  s_fa4157c6078c9b::t_ea6a60cf09e831 48
+  s_fa4157c6078c9b::t_a6e152f7dccc74 70
+packages/@n8n/db/src/index.ts
+  s_fa4157c6078c9b::t_5bb9eee5ecce52 8
+packages/cli/src/services/__tests__/import.service.test.ts
+  s_fa4157c6078c9b::t_a01beb7828464c 636,653
+  s_fa4157c6078c9b::t_7084a2994fedaa 1292
+  s_fa4157c6078c9b::t_84ad7598aa02c4 1339
+  s_fa4157c6078c9b::t_dd99fb5d1a4c42 11,13
+  s_fa4157c6078c9b::t_4103c1d579e79d 1075
+  s_fa4157c6078c9b::t_7d65b3e4a42a5c 33,36-51
+  s_fa4157c6078c9b::t_6306b84c15dbf9 615-619
+  s_fa4157c6078c9b::t_ed564762da49f8 528,542,554,566,575,606,666,693
+  s_fa4157c6078c9b::t_4e1d1fa7e1bb2a 675
+  s_fa4157c6078c9b::t_affdadcef235f9 707-711
+  s_fa4157c6078c9b::t_964b52de275173 1112
+  s_fa4157c6078c9b::t_adfa6c895333dc 583
+  s_fa4157c6078c9b::t_604f79f5bc3fa3 52
+packages/@n8n/db/src/entities/abstract-entity.ts
+  s_fa4157c6078c9b::t_76bc7c6a996640 28
+packages/cli/test/integration/export-import-entities.test.ts
+  s_fa4157c6078c9b::t_6f4fedb4fca400 11
+  s_fa4157c6078c9b::t_01556162d64098 133-183,187-190
+  s_fa4157c6078c9b::t_3ce393f2957cc8 204
+  s_fa4157c6078c9b::t_ee631277dfe3ab 9
+  s_fa4157c6078c9b::t_afccf3e371a578 50,184-186
+  s_fa4157c6078c9b::t_8bb344624c946d 57
+  s_fa4157c6078c9b::t_84323002abf245 2-7,10,12-13,23-49,51-56,58-62,71
+  s_fa4157c6078c9b::t_f423f0f4553d2b 191-203,205
+packages/cli/src/services/export.service.ts
+  s_fa4157c6078c9b::t_fcf42d844da98f 271-272
+  s_fa4157c6078c9b::t_5f9c6b92004734 291,294
+  s_fa4157c6078c9b::t_efb92202804150 489
+  s_fa4157c6078c9b::t_c3dfa36428dbaf 500-501,503
+  s_fa4157c6078c9b::t_afccf3e371a578 48-51
+  s_fa4157c6078c9b::t_957feed775a68f 381,383
+  s_fa4157c6078c9b::t_1135c99eed1c76 521,524
+  s_fa4157c6078c9b::t_e7346cc9b86b6a 243-249
+  s_fa4157c6078c9b::t_1e099c1901d9d9 471-478
+  s_fa4157c6078c9b::t_f9addfa182bb34 324-376
+  s_fa4157c6078c9b::t_ffee0b333cc1bf 408-415
+  s_fa4157c6078c9b::t_84397271299c6a 2,4,16-47,52-98,101-119
+  s_fa4157c6078c9b::t_1b4bbb03e5a0bc 405-407
+  s_fa4157c6078c9b::t_d53941bbe39ea4 99-100
+  s_fa4157c6078c9b::t_8964521db56e30 120
+packages/cli/src/commands/export/__tests__/entities.test.ts
+  s_fa4157c6078c9b::t_e574a76691b587 116-137
+  s_fa4157c6078c9b::t_721b523bcd0197 140-145
+  s_fa4157c6078c9b::t_50b51b349deb18 10-12
+  s_fa4157c6078c9b::t_768ae9db1c2c5c 2-3
+  s_fa4157c6078c9b::t_d86654fb1d37b7 138-139
+packages/cli/src/services/import.service.ts
+  s_fa4157c6078c9b::t_6c41c822f41674 821-822
+  s_fa4157c6078c9b::t_9055d21e84d325 794-795,797,802-805
+  s_fa4157c6078c9b::t_3b3cefbb32f9f6 19,23-24
+  s_fa4157c6078c9b::t_2fb7e2a72808d5 4
+  s_fa4157c6078c9b::t_c78ea854d999cd 77-96
+  s_fa4157c6078c9b::t_401692692aa7ea 581-582,585,587-593,596,615-616,618,620-627
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3c69262e7ded8db7f9bee25144f8b548ebd1e63b",
+  "prompts": {},
+  "sessions": {
+    "s_fa4157c6078c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6b40ffc9-a4f4-4c7a-8bc6-797ab5344f03",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}
