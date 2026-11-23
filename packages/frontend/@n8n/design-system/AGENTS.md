@@ -81,6 +81,7 @@ const settingsStore = useSettingsStore();
 <template>
 	<N8nSettingsEnableRow
 		:title="i18n.baseText('settings.security.mfa.enforce')"
+		:description="i18n.baseText('settings.security.mfa.enforce.description')"
 		:enabled="settingsStore.isMfaEnforced"
 		@update:enabled="settingsStore.setMfaEnforced"
 	/>
@@ -208,7 +209,7 @@ defineSlots<PickerSlots<T>>();
 </script>
 ```
 
-- **Do** use `generic="T"` when the component passes caller data back through emits or scoped slots. See `v2/components/Select` and `v2/components/Tree`.
+- **Do** use `generic="T"` when the component passes caller data back through emits or scoped slots. See `N8nContextMenu` and `N8nDropdownMenu`.
 - **Do** emit an intent (`loadMore`, `select`) and let the caller do the work. Do not accept an async callback that fetches data.
 - **Do** put shared prop, emit, and slot interfaces in `<Component>.types.ts` when other files need them.
 - **Don't** import from `editor-ui`, `@n8n/stores`, `@n8n/rest-api-client`, or `n8n-workflow` in the design system.
@@ -239,7 +240,9 @@ Write your own behavior only when Reka has no primitive. In that case, follow th
 ```vue
 <script setup lang="ts">
 import { reactivePick } from '@vueuse/core';
-import { RadioGroupRoot, useForwardProps } from 'reka-ui';
+
+import type { RadioGroupProps } from './RadioGroup.types';
+import { RadioGroupRoot, useForwardProps } from './reka-ui';
 
 const props = withDefaults(defineProps<Omit<RadioGroupProps, 'modelValue'>>(), {
 	orientation: 'vertical',
