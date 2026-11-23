@@ -2,6 +2,7 @@ packages/nodes-base/nodes/Microsoft/Teams/test/trigger/MicrosoftTeamTrigger.test
   s_a1606af512b4c5::t_5f0144faedaa44 2075-2268
 packages/nodes-base/nodes/Microsoft/Teams/MicrosoftTeamsTrigger.node.ts
   s_a1606af512b4c5::t_49ecd1f670b338 13-17,613,615,617-621,627-631,638-639,643-657
+  s_a1606af512b4c5::t_5e1b04449089ae 614,616,622-625
 ---
 {
   "schema_version": "authorship/3.0.0",
