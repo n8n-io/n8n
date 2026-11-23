@@ -221,6 +221,50 @@ describe('AgentValidationTooltip', () => {
 		);
 	});
 
+	const skillWorkflowIssues: AgentConfigValidationIssue[] = [
+		{
+			code: 'missing_reference',
+			path: 'skills.skill-1.workflows.wf-1',
+			capability: { kind: 'tool', toolType: 'workflow', id: 'Send report' },
+		},
+		{
+			code: 'incompatible_reference',
+			path: 'skills.skill-1.workflows.wf-2',
+			capability: { kind: 'tool', toolType: 'workflow', id: 'Notify' },
+			reason: 'not_published',
+		},
+	];
+
+	it('does not list workflows that a skill mentions as preview blockers', () => {
+		const wrapper = mountTooltip({
+			action: 'preview',
+			issues: [
+				{ code: 'missing_required', path: 'instructions', capability: { kind: 'agent' } },
+				...skillWorkflowIssues,
+			],
+		});
+
+		const content = wrapper.get('[data-testid="stub-tooltip-content"]').text();
+
+		expect(content).toContain('agents.chat.misconfigured.missing.instructions');
+		expect(content).not.toContain('agents.builder.preview.issue.tool.workflow');
+		expect(content).not.toContain('agents.builder.validation.issue');
+	});
+
+	it('lists workflows that a skill mentions as publish blockers, with skill copy', () => {
+		const wrapper = mountTooltip({
+			action: 'publish',
+			issues: skillWorkflowIssues,
+			fallback: 'agents.publish.button.invalidConfigTooltip',
+		});
+
+		const content = wrapper.get('[data-testid="stub-tooltip-content"]').text();
+
+		expect(content).toContain('agents.builder.validation.issue.skillWorkflow.missingReference');
+		expect(content).not.toContain('agents.publish.issue.tool.workflow.missingReference');
+		expect(content).toContain('agents.publish.issue.tool.workflow.notPublished');
+	});
+
 	it('attributes a dangling tool guardrail ref to the guardrail capability', () => {
 		const wrapper = mountTooltip({
 			action: 'publish',

@@ -1,9 +1,7 @@
-import {
-	SUPPORTED_PRODUCTION_MCP_TRIGGERS,
-	SUPPORTED_WORKFLOW_TOOL_TRIGGERS,
-} from '@n8n/api-types';
+import { SUPPORTED_PRODUCTION_MCP_TRIGGERS } from '@n8n/api-types';
 
 import type { IWorkflowDb } from '@/Interface';
+import { detectWorkflowToolTrigger } from '@/features/agents/utils/workflowToolInputFields';
 
 export type SkillWorkflowNote =
 	| 'agentTrigger'
@@ -14,7 +12,6 @@ export type SkillWorkflowNote =
 
 export type SkillWorkflowNoteData = Pick<IWorkflowDb, 'nodes' | 'activeVersionId' | 'settings'>;
 
-const AGENT_TRIGGER_TYPES = new Set<string>(SUPPORTED_WORKFLOW_TOOL_TRIGGERS);
 const MCP_TRIGGER_TYPES = new Set(Object.keys(SUPPORTED_PRODUCTION_MCP_TRIGGERS));
 
 export function getSkillWorkflowNotes(
@@ -23,7 +20,7 @@ export function getSkillWorkflowNotes(
 ): SkillWorkflowNote[] {
 	const nodes = workflow.nodes ?? [];
 	const notes: SkillWorkflowNote[] = [];
-	if (!nodes.some(({ type }) => AGENT_TRIGGER_TYPES.has(type))) notes.push('agentTrigger');
+	if (!detectWorkflowToolTrigger(workflow)) notes.push('agentTrigger');
 	if (availableToMCP) {
 		if (!nodes.some(({ type, disabled }) => !disabled && MCP_TRIGGER_TYPES.has(type))) {
 			notes.push('mcpTrigger');

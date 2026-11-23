@@ -1,7 +1,10 @@
+import chunk from 'lodash/chunk';
 import { ref, watch, type Ref } from 'vue';
 
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
-import type { SkillWorkflowNoteData } from '../utils/skillWorkflowNotes';
+import type { SkillWorkflowNoteData } from '@/features/agents/utils/skillWorkflowNotes';
+
+const MAX_IDS_PER_REQUEST = 50;
 
 export function useSkillWorkflowNoteData(workflowIds: Ref<string[]>, enabled: Ref<boolean>) {
 	const workflowsListStore = useWorkflowsListStore();
@@ -14,17 +17,20 @@ export function useSkillWorkflowNoteData(workflowIds: Ref<string[]>, enabled: Re
 			noteData.value = new Map();
 			return;
 		}
-		try {
-			const workflows = await workflowsListStore.searchWorkflows({
-				ids,
-				select: ['id', 'nodes', 'activeVersionId', 'settings'],
-				options: { take: ids.length, includeScopes: false },
-			});
-			if (request !== latestRequest) return;
-			noteData.value = new Map(workflows.map((workflow) => [workflow.id, workflow]));
-		} catch {
-			if (request === latestRequest) noteData.value = new Map();
-		}
+		const pages = await Promise.all(
+			chunk(ids, MAX_IDS_PER_REQUEST).map(
+				async (page) =>
+					await workflowsListStore
+						.searchWorkflows({
+							ids: page,
+							select: ['id', 'nodes', 'activeVersionId', 'settings'],
+							options: { take: page.length, includeScopes: false },
+						})
+						.catch(() => []),
+			),
+		);
+		if (request !== latestRequest) return;
+		noteData.value = new Map(pages.flat().map((workflow) => [workflow.id, workflow]));
 	}
 
 	watch(

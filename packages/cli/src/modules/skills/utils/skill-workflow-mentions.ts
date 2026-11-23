@@ -1,13 +1,9 @@
-import { parseSkillWorkflowMentions, type AgentSkill } from '@n8n/api-types';
+import { parseAgentSkillWorkflowMentions, type AgentSkill } from '@n8n/api-types';
 
 type SkillTexts = Pick<AgentSkill, 'instructions' | 'references'>;
 
-export function mentionedWorkflowIds({ instructions, references }: SkillTexts): string[] {
-	const texts = [instructions, ...(references ?? []).map(({ content }) => content)];
-	const ids = texts.flatMap((text) =>
-		parseSkillWorkflowMentions(text).map(({ workflowId }) => workflowId),
-	);
-	return [...new Set(ids)];
+export function mentionedWorkflowIds(skill: SkillTexts): string[] {
+	return parseAgentSkillWorkflowMentions(skill).map(({ workflowId }) => workflowId);
 }
 
 export function addedWorkflowMentionIds(next: SkillTexts, previous?: SkillTexts): string[] {

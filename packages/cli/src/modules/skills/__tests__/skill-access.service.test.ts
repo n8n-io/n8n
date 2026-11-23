@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests reference unbound methods */
-import type { SharedWorkflow, User } from '@n8n/db';
+import type { User, WorkflowEntity } from '@n8n/db';
 import { ForbiddenError, NotFoundError, UserError } from '@n8n/errors';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
 import { mock } from 'vitest-mock-extended';
@@ -25,7 +25,7 @@ describe('SkillAccessService', () => {
 		txRunner,
 		projectScope,
 		workflowSharing,
-		sharedWorkflows,
+		workflows,
 		workflowsInSkillsGate,
 		access,
 	} = createSkillServices();
@@ -156,9 +156,7 @@ describe('SkillAccessService', () => {
 
 		function givenWorkflows(existing: string[], readable: string[]) {
 			workflowsInSkillsGate.isEnabled.mockResolvedValue(true);
-			sharedWorkflows.getAllRelationsForWorkflows.mockResolvedValue(
-				existing.map((workflowId) => mock<SharedWorkflow>({ workflowId })),
-			);
+			workflows.findByIds.mockResolvedValue(existing.map((id) => mock<WorkflowEntity>({ id })));
 			workflowSharing.getSharedWorkflowScopes.mockImplementation(async (ids) =>
 				ids.map((id): [string, Scope[]] => [id, readable.includes(id) ? ['workflow:read'] : []]),
 			);
@@ -184,6 +182,16 @@ describe('SkillAccessService', () => {
 				}),
 				UserError,
 				'Can\'t save the skill. Workflows "wf2", "wf3" don\'t exist or you don\'t have access to them. Remove the mentions, or ask the workflow owners to share them with you.',
+			);
+		});
+
+		it('names one refused workflow in the singular', async () => {
+			givenWorkflows([], []);
+
+			await expectError(
+				access.assertCanReadMentionedWorkflows(user, { instructions: mention('wf1') }),
+				UserError,
+				"Can't save the skill. Workflow \"wf1\" doesn't exist or you don't have access to it. Remove the mention, or ask the workflow owner to share it with you.",
 			);
 		});
 

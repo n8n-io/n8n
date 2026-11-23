@@ -9,7 +9,7 @@ import {
 	getAgentValidationIssueInterpolation,
 	resolveAgentValidationIssueMessageKey,
 } from '../utils/agentValidationIssueMessages';
-import { isWarningIssue } from '../utils/validationIssues';
+import { isWarningIssue, skillWorkflowIdOfIssue } from '../utils/validationIssues';
 
 const props = withDefaults(
 	defineProps<{
@@ -156,7 +156,7 @@ const CAPABILITY_KEYS: Record<AgentCapabilityKind, BaseTextKey> = {
 
 function isPreviewIssue(issue: AgentConfigValidationIssue): boolean {
 	if (issue.capability.kind === 'channel' || issue.capability.kind === 'task') return false;
-	if (isWarningIssue(issue)) return false;
+	if (isWarningIssue(issue) || skillWorkflowIdOfIssue(issue)) return false;
 
 	// Fixed URLs are required for publishing, but the draft preview can still run.
 	return !(issue.code === 'invalid_value' && issue.path.endsWith('.node.nodeParameters.url'));
@@ -223,6 +223,7 @@ function actionIssueMessage(
 	pathSpecificKeys: Record<string, BaseTextKey>,
 	specificIssueKeys: Record<string, BaseTextKey>,
 ): string {
+	if (skillWorkflowIdOfIssue(issue) && !issue.reason) return issueMessage(issue);
 	const { kind, toolType } = issue.capability;
 	const pathKey = previewPathKey(issue);
 	const key =

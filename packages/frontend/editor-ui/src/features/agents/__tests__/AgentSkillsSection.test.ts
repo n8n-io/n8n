@@ -8,7 +8,10 @@ import AgentSkillsSection from '../components/AgentSkillsSection.vue';
 enableAutoUnmount(afterEach);
 
 vi.mock('@n8n/i18n', () => ({
-	useI18n: () => ({ baseText: (key: string) => key }),
+	useI18n: () => ({
+		baseText: (key: string, options?: { interpolate?: Record<string, string> }) =>
+			[key, ...Object.values(options?.interpolate ?? {})].join(' '),
+	}),
 }));
 
 const workflowsInSkillsEnabled = ref(false);
@@ -64,9 +67,21 @@ describe('AgentSkillsSection', () => {
 		};
 		const tools = [{ type: 'workflow' as const, workflow: 'Send report', workflowId: 'wf-1' }];
 
+		const noDirectTools = {
+			...skill,
+			name: 'Other',
+			instructions: 'Run [Notify](n8n://workflow/wf-2).',
+		};
+
 		function mountWithTools() {
 			return mount(AgentSkillsSection, {
-				props: { skills: [{ id: 'weekly-ops', skill: weeklyOps }], tools },
+				props: {
+					skills: [
+						{ id: 'weekly-ops', skill: weeklyOps },
+						{ id: 'other', skill: noDirectTools },
+					],
+					tools,
+				},
 				global: {
 					stubs: {
 						N8nTooltip: {
@@ -88,7 +103,11 @@ describe('AgentSkillsSection', () => {
 
 			const wrapper = mountWithTools();
 
-			expect(wrapper.text()).toContain('agents.builder.skills.workflowsAlreadyAttached');
+			const notes = wrapper
+				.findAll('[data-testid="stub-tooltip-content"]')
+				.map((note) => note.text())
+				.filter((text) => text.startsWith('agents.builder.skills.workflowsAlreadyAttached'));
+			expect(notes).toEqual(['agents.builder.skills.workflowsAlreadyAttached Send report']);
 		});
 
 		it('shows no note when the feature flag is off', () => {

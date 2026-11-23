@@ -1030,11 +1030,12 @@ describe('SkillService', () => {
 			expect(save).not.toHaveBeenCalled();
 		});
 
-		it('leaves a stale base to the save, so the editor gets the conflict and not the mention check', async () => {
+		it('refuses a stale base with the conflict before the mention check and the save', async () => {
 			const skill = skillRow('skill_a', { projectId: PROJECT });
 			skills.findLatestSaved.mockResolvedValue(new Map([['skill_a', versionRow(skill, 2)]]));
 			vi.spyOn(access, 'requireAccess').mockResolvedValue(skill);
 			const checkMentions = vi.spyOn(access, 'assertCanReadMentionedWorkflows');
+			const save = vi.spyOn(service, 'saveTrusted');
 
 			await expect(
 				service.update(user, 'skill_a', {
@@ -1044,6 +1045,7 @@ describe('SkillService', () => {
 			).rejects.toThrow(ConflictError);
 
 			expect(checkMentions).not.toHaveBeenCalled();
+			expect(save).not.toHaveBeenCalled();
 		});
 
 		it('does not check workflow mentions when the content stays the same', async () => {

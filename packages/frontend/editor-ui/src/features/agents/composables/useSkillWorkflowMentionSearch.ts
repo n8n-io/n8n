@@ -1,4 +1,5 @@
 import type { SkillWorkflowMention } from '@n8n/api-types';
+import { useLatestFetch } from '@n8n/composables/useLatestFetch';
 import { ref, toValue, type MaybeRefOrGetter } from 'vue';
 
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
@@ -7,15 +8,15 @@ export const SKILL_WORKFLOW_MENTION_PAGE_SIZE = 20;
 
 export function useSkillWorkflowMentionSearch(projectId: MaybeRefOrGetter<string | undefined>) {
 	const workflowsListStore = useWorkflowsListStore();
+	const { invalidate, next } = useLatestFetch();
 	const workflows = ref<SkillWorkflowMention[]>([]);
+	const query = ref('');
 	const isLoading = ref(false);
 	const hasMore = ref(false);
 	const hasError = ref(false);
-	let currentQuery = '';
-	let latestRequest = 0;
 
 	async function loadPage(skip: number) {
-		const request = ++latestRequest;
+		const isLatest = next();
 		isLoading.value = true;
 		hasError.value = false;
 		try {
@@ -23,7 +24,7 @@ export function useSkillWorkflowMentionSearch(projectId: MaybeRefOrGetter<string
 			const page = await workflowsListStore.searchWorkflows({
 				projectId: scopeProjectId,
 				excludePersonalProjectsOfOthers: scopeProjectId ? undefined : true,
-				query: currentQuery || undefined,
+				query: query.value || undefined,
 				isArchived: false,
 				select: ['id', 'name'],
 				options: {
@@ -33,21 +34,29 @@ export function useSkillWorkflowMentionSearch(projectId: MaybeRefOrGetter<string
 					includeScopes: false,
 				},
 			});
-			if (request !== latestRequest) return;
+			if (!isLatest()) return;
 			const mentions = page.map(({ id, name }) => ({ workflowId: id, name }));
 			workflows.value = skip === 0 ? mentions : [...workflows.value, ...mentions];
 			hasMore.value = page.length === SKILL_WORKFLOW_MENTION_PAGE_SIZE;
 		} catch {
-			if (request !== latestRequest) return;
+			if (!isLatest()) return;
 			hasError.value = true;
-			hasMore.value = false;
+			if (skip === 0) hasMore.value = false;
 		} finally {
-			if (request === latestRequest) isLoading.value = false;
+			if (isLatest()) isLoading.value = false;
 		}
 	}
 
-	async function search(query: string) {
-		currentQuery = query.trim();
+	function startNewSearch() {
+		invalidate();
+		workflows.value = [];
+		hasMore.value = false;
+		hasError.value = false;
+		isLoading.value = true;
+	}
+
+	async function search(term: string) {
+		query.value = term.trim();
 		workflows.value = [];
 		await loadPage(0);
 	}
@@ -56,5 +65,5 @@ export function useSkillWorkflowMentionSearch(projectId: MaybeRefOrGetter<string
 		await loadPage(workflows.value.length);
 	}
 
-	return { workflows, isLoading, hasMore, hasError, search, loadMore };
+	return { workflows, query, isLoading, hasMore, hasError, startNewSearch, search, loadMore };
 }

@@ -1,3 +1,5 @@
+import type { AgentSkill } from '../agents/types';
+
 export type SkillWorkflowMention = {
 	workflowId: string;
 	name: string;
@@ -6,9 +8,10 @@ export type SkillWorkflowMention = {
 const SKILL_WORKFLOW_MENTION_PATTERN =
 	/\[((?:\\.|[^\\[\]\n])*)\]\(n8n:\/\/workflow\/([A-Za-z0-9_-]+)(?:\?[^)\s]*)?\)/g;
 
-const unescapeLinkText = (text: string) => text.replace(/\\(.)/g, '$1');
+const unescapeLinkText = (text: string) => text.replace(/\\([\\[\]])/g, '$1');
 
-const escapeLinkText = (text: string) => text.replace(/[\\[\]]/g, '\\$&');
+const escapeLinkText = (text: string) =>
+	text.replace(/\s*[\r\n]+\s*/g, ' ').replace(/[\\[\]]/g, '\\$&');
 
 export function parseSkillWorkflowMentions(body: string): SkillWorkflowMention[] {
 	const mentions = new Map<string, SkillWorkflowMention>();
@@ -18,6 +21,13 @@ export function parseSkillWorkflowMentions(body: string): SkillWorkflowMention[]
 		}
 	}
 	return [...mentions.values()];
+}
+
+export function parseAgentSkillWorkflowMentions(
+	skill: Pick<AgentSkill, 'instructions' | 'references'>,
+): SkillWorkflowMention[] {
+	const files = [skill.instructions, ...(skill.references ?? []).map(({ content }) => content)];
+	return parseSkillWorkflowMentions(files.join('\n'));
 }
 
 export function getSkillWorkflowMentionUrl(workflowId: string): string {
@@ -37,4 +47,14 @@ export function renameSkillWorkflowMentions(
 		if (name === undefined) return link;
 		return `[${escapeLinkText(name)}]${link.slice(text.length + 2)}`;
 	});
+}
+
+export function replaceSkillWorkflowMentionUrls(
+	body: string,
+	urlForWorkflow: (workflowId: string) => string,
+): string {
+	return body.replace(
+		SKILL_WORKFLOW_MENTION_PATTERN,
+		(_link, text: string, workflowId: string) => `[${text}](${urlForWorkflow(workflowId)})`,
+	);
 }

@@ -15,6 +15,7 @@ import { isMentionTrigger } from '@/features/ai/assistant-at-mentions/composable
 import SkillWorkflowMentionPicker from './SkillWorkflowMentionPicker.vue';
 
 type MarkdownEditor = N8nMarkdownEditorEmits['ready'][0];
+type Transaction = MarkdownEditor['state']['tr'];
 type EditorProps = NonNullable<N8nMarkdownEditorProps['editorProps']>;
 
 defineOptions({ inheritAttrs: false });
@@ -66,7 +67,8 @@ const editorProps: EditorProps = {
 	},
 	handleKeyDown(_view, event) {
 		if (!pickerOpen.value) return false;
-		return picker.value?.handleExternalKeydown(event) ?? false;
+		picker.value?.handleExternalKeydown(event);
+		return event.defaultPrevented;
 	},
 };
 
@@ -76,10 +78,14 @@ function closePicker() {
 	typedQuery.value = '';
 }
 
-function syncTypedQuery() {
+function syncTypedQuery({ transaction }: { transaction: Transaction }) {
 	const target = editor.value;
 	const position = typedTriggerPosition.value;
 	if (!target || position === undefined) return;
+	if (!transaction.docChanged && transaction.selectionSet) {
+		closePicker();
+		return;
+	}
 	const { doc, selection } = target.state;
 	const query =
 		selection.empty && selection.from > position
@@ -116,9 +122,7 @@ function onSelect(mention: SkillWorkflowMention) {
 }
 
 function onPickerOpenChange(open: boolean) {
-	if (open) return;
-	closePicker();
-	editor.value?.commands.focus();
+	if (!open) closePicker();
 }
 </script>
 
@@ -148,30 +152,14 @@ function onPickerOpenChange(open: boolean) {
 </template>
 
 <style lang="scss" module>
+@use './workflowMentionChip' as *;
+
 .root {
 	display: contents;
 }
 
 .workflowChips :global(.n8n-markdown a[href^='n8n://workflow/'])
 {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-	padding: 0 var(--spacing--3xs);
-	border-radius: var(--radius--3xs);
-	background: color-mix(in oklch, var(--color--secondary) 14%, transparent);
-	color: var(--color--secondary);
-	font-weight: var(--font-weight--medium);
-	text-decoration: none;
-
-	&::before {
-		content: '';
-		width: var(--spacing--xs);
-		height: var(--spacing--xs);
-		flex-shrink: 0;
-		background: currentColor;
-		mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 7h6a4 4 0 0 1 4 4v2a4 4 0 0 0 4 4h4'/%3E%3Cpath d='M3 17h5'/%3E%3Cpath d='M16 7h5'/%3E%3C/svg%3E")
-			center / contain no-repeat;
-	}
+	@include workflow-mention-chip;
 }
 </style>

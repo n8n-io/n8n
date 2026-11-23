@@ -113,6 +113,33 @@ describe('AgentSkillFileNav', () => {
 		);
 	});
 
+	it('loads the note data in pages of 50 workflows and keeps the pages that load', async () => {
+		flag.enabled = true;
+		const ids = Array.from({ length: 51 }, (_, index) => `wf${index}`);
+		searchWorkflows.mockImplementation(async ({ ids: page }: { ids: string[] }) => {
+			if (page.length === 1)
+				return [{ id: page[0], nodes: [], activeVersionId: null, settings: {} }];
+			throw new Error('Failed');
+		});
+		const { container } = renderComponent({
+			props: {
+				skill: {
+					...MENTIONING_SKILL,
+					instructions: ids.map((id) => `[${id}](n8n://workflow/${id})`).join(' '),
+					references: [],
+				},
+				selectedPath: 'SKILL.md',
+			},
+		});
+
+		await waitFor(() =>
+			expect(container.querySelectorAll('[data-testid="agent-skill-workflow-notes"]')).toHaveLength(
+				1,
+			),
+		);
+		expect(searchWorkflows.mock.calls.map(([{ ids: page }]) => page.length)).toEqual([50, 1]);
+	});
+
 	it('sends no request for notes while the flag is off', () => {
 		renderComponent({ props: { skill: MENTIONING_SKILL, selectedPath: 'SKILL.md' } });
 

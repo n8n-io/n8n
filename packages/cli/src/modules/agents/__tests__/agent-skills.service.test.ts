@@ -275,11 +275,12 @@ describe('AgentSkillsService', () => {
 		it('refuses a batch that mentions a workflow the user cannot read', async () => {
 			givenAgent({ schema: baseConfig });
 			skillAccess.assertCanReadMentionedWorkflows.mockRejectedValue(new UserError('No access'));
+			const mentioning = { ...skill, instructions: 'Run [Report](n8n://workflow/wf1).' };
 
 			await expect(
-				service.createAndAttachSkills(agentId, projectId, [skill], context),
+				service.createAndAttachSkills(agentId, projectId, [mentioning], context),
 			).rejects.toThrow('No access');
-			expect(skillAccess.assertCanReadMentionedWorkflows).toHaveBeenCalledWith(user, skill);
+			expect(skillAccess.assertCanReadMentionedWorkflows).toHaveBeenCalledWith(user, mentioning);
 			expect(skillRefs.createSkills).not.toHaveBeenCalled();
 		});
 

@@ -1,6 +1,6 @@
 import type { AgentSkill, CreateSkillDto } from '@n8n/api-types';
 import { ProjectScopeService, WorkflowSharingService } from '@n8n/backend-services';
-import { SharedWorkflowRepository, type OperationContext, type User } from '@n8n/db';
+import { WorkflowRepository, type OperationContext, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ForbiddenError, NotFoundError, UserError } from '@n8n/errors';
 import { hasGlobalScope } from '@n8n/permissions';
@@ -28,7 +28,7 @@ export class SkillAccessService {
 		private readonly skillRepository: SkillRepository,
 		private readonly projectScopeService: ProjectScopeService,
 		private readonly workflowSharingService: WorkflowSharingService,
-		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
+		private readonly workflowRepository: WorkflowRepository,
 		private readonly workflowsInSkillsFlagGate: WorkflowsInSkillsFlagGate,
 	) {}
 
@@ -200,15 +200,15 @@ export class SkillAccessService {
 	): Promise<void> {
 		const addedIds = addedWorkflowMentionIds(skill, previous);
 		if (addedIds.length === 0 || !(await this.workflowsInSkillsFlagGate.isEnabled())) return;
-		const [shares, scopes] = await Promise.all([
-			this.sharedWorkflowRepository.getAllRelationsForWorkflows(addedIds),
+		const [workflows, scopes] = await Promise.all([
+			this.workflowRepository.findByIds(addedIds, { fields: ['id'] }),
 			this.workflowSharingService.getSharedWorkflowScopes(addedIds, user),
 		]);
-		const existing = new Set(shares.map(({ workflowId }) => workflowId));
+		const existing = new Set(workflows.map(({ id }) => id));
 		const readable = new Set(
-			scopes.flatMap(([id, workflowScopes]) =>
-				workflowScopes.includes('workflow:read') ? [id] : [],
-			),
+			scopes
+				.filter(([, workflowScopes]) => workflowScopes.includes('workflow:read'))
+				.map(([id]) => id),
 		);
 		const unreadable = addedIds.filter((id) => !existing.has(id) || !readable.has(id));
 		if (unreadable.length > 0) throw new UserError(unreadableWorkflowMentionsMessage(unreadable));

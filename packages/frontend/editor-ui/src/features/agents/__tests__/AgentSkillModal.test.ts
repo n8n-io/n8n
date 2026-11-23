@@ -1542,6 +1542,38 @@ describe('AgentSkillModal', () => {
 			expect(await findByTestId('agent-skill-instructions-text')).toHaveTextContent('Write SQL');
 		});
 
+		it('notes the MCP needs of mentioned workflows for a skill that the agent builder opens', async () => {
+			mockedStore(usePostHog).isFeatureEnabled = vi.fn(() => true);
+			mockedStore(useWorkflowsListStore).searchWorkflows = vi.fn().mockResolvedValue([
+				{
+					id: 'wf1',
+					name: 'Report',
+					nodes: [{ type: 'n8n-nodes-base.executeWorkflowTrigger', name: 'Start' }],
+					activeVersionId: 'v1',
+					settings: { availableInMCP: false },
+				},
+			]);
+			getSkillDetail.mockResolvedValue(
+				makeDetail({ id: 'sql', name: 'SQL helper', scope: 'project', availableToMCP: true }),
+			);
+			const { findByTestId } = renderModal({
+				skillRefsEnabled: true,
+				skillId: 'sql',
+				skill: {
+					name: 'SQL helper',
+					description: 'Use for SQL',
+					instructions: 'Run [Report](n8n://workflow/wf1).',
+				},
+			});
+
+			await waitFor(async () =>
+				expect(await findByTestId('agent-skill-workflow-notes')).toHaveAttribute(
+					'aria-label',
+					expect.stringContaining('note.mcpUnavailable'),
+				),
+			);
+		});
+
 		it('shows a skill that the user cannot edit as read-only', async () => {
 			getSkillDetail.mockResolvedValue(
 				makeDetail({ id: 'sql', name: 'SQL helper', scope: 'instance', canEdit: false }),

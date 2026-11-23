@@ -1,4 +1,4 @@
-import { parseSkillWorkflowMentions, type SkillWorkflowMention } from '@n8n/api-types';
+import { parseAgentSkillWorkflowMentions, type SkillWorkflowMention } from '@n8n/api-types';
 
 import type { AgentJsonToolRef, AgentSkill } from '@/features/agents/types';
 
@@ -10,14 +10,10 @@ export type SkillWorkflow = SkillWorkflowMention & {
 type AppliedSkill = { id: string; skill: AgentSkill };
 
 function skillMentions(skill: AgentSkill): SkillWorkflowMention[] {
-	const texts = [skill.instructions, ...(skill.references ?? []).map((file) => file.content)];
-	const mentions = new Map<string, SkillWorkflowMention>();
-	for (const text of texts) {
-		for (const mention of parseSkillWorkflowMentions(text)) {
-			if (!mentions.has(mention.workflowId)) mentions.set(mention.workflowId, mention);
-		}
-	}
-	return [...mentions.values()];
+	return parseAgentSkillWorkflowMentions({
+		instructions: skill.instructions,
+		references: Array.isArray(skill.references) ? skill.references : [],
+	});
 }
 
 function directWorkflowIds(tools: AgentJsonToolRef[]): Set<string> {

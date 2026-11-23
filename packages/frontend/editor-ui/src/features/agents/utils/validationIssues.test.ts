@@ -39,4 +39,14 @@ describe('unpublishedWorkflowTools', () => {
 
 		expect(unpublishedWorkflowTools(issues, [])).toEqual([{ name: 'Notify', workflowId: 'wf2' }]);
 	});
+
+	it('leaves the workflow ID empty for a tool that only has a name', () => {
+		const issues = [
+			notPublished('tools[0]', { kind: 'tool', id: 'Report', toolType: 'workflow', index: 0 }),
+		];
+
+		expect(unpublishedWorkflowTools(issues, [{ type: 'workflow', workflow: 'Report' }])).toEqual([
+			{ name: 'Report', workflowId: undefined },
+		]);
+	});
 });

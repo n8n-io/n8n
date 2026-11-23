@@ -1,35 +1,35 @@
-import { parseSkillWorkflowMentions, renameSkillWorkflowMentions } from '@n8n/api-types';
+import { parseAgentSkillWorkflowMentions, renameSkillWorkflowMentions } from '@n8n/api-types';
+import chunk from 'lodash/chunk';
 import isEqual from 'lodash/isEqual';
 
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
-import type { AgentSkill } from '../types';
+import type { AgentSkill } from '@/features/agents/types';
 
-function mentionedWorkflowIds(skill: AgentSkill): string[] {
-	const texts = [skill.instructions, ...(skill.references ?? []).map(({ content }) => content)];
-	const ids = texts.flatMap((text) =>
-		parseSkillWorkflowMentions(text).map(({ workflowId }) => workflowId),
-	);
-	return [...new Set(ids)];
-}
+const WORKFLOW_IDS_PER_REQUEST = 50;
 
 export function useSkillWorkflowMentionNames() {
 	const workflowsListStore = useWorkflowsListStore();
 
 	async function fetchNames(workflowIds: string[]): Promise<Map<string, string> | undefined> {
 		try {
-			const workflows = await workflowsListStore.searchWorkflows({
-				ids: workflowIds,
-				select: ['id', 'name'],
-				options: { take: workflowIds.length, includeScopes: false },
-			});
-			return new Map(workflows.map(({ id, name }) => [id, name]));
+			const batches = await Promise.all(
+				chunk(workflowIds, WORKFLOW_IDS_PER_REQUEST).map(
+					async (ids) =>
+						await workflowsListStore.searchWorkflows({
+							ids,
+							select: ['id', 'name'],
+							options: { take: ids.length, includeScopes: false },
+						}),
+				),
+			);
+			return new Map(batches.flat().map(({ id, name }) => [id, name]));
 		} catch {
 			return undefined;
 		}
 	}
 
 	async function refreshWorkflowMentionNames(skill: AgentSkill): Promise<AgentSkill> {
-		const workflowIds = mentionedWorkflowIds(skill);
+		const workflowIds = parseAgentSkillWorkflowMentions(skill).map(({ workflowId }) => workflowId);
 		if (workflowIds.length === 0) return skill;
 
 		const namesByWorkflowId = await fetchNames(workflowIds);

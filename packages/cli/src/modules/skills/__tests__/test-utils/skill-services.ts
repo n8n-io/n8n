@@ -2,7 +2,7 @@ import type { Logger } from '@n8n/backend-common';
 import type { ProjectScopeService, WorkflowSharingService } from '@n8n/backend-services';
 import type {
 	OperationContext,
-	SharedWorkflowRepository,
+	WorkflowRepository,
 	TransactionRunner,
 	UserRepository,
 } from '@n8n/db';
@@ -103,13 +103,13 @@ export function createSkillServices() {
 	const skillSyncGate = mock<SkillSyncFlagGate>();
 	const sourceClients = mock<SkillSourceClientRegistry>();
 	const workflowSharing = mock<WorkflowSharingService>();
-	const sharedWorkflows = mock<SharedWorkflowRepository>();
+	const workflows = mock<WorkflowRepository>();
 	const workflowsInSkillsGate = mock<WorkflowsInSkillsFlagGate>();
 	const access = new SkillAccessService(
 		skills,
 		projectScope,
 		workflowSharing,
-		sharedWorkflows,
+		workflows,
 		workflowsInSkillsGate,
 	);
 	const runtime = new SkillRuntimeService(skills, projectScope, access, workflowsInSkillsGate);
@@ -143,7 +143,7 @@ export function createSkillServices() {
 		links,
 		skillSyncGate,
 		workflowSharing,
-		sharedWorkflows,
+		workflows,
 		workflowsInSkillsGate,
 		access,
 		runtime,

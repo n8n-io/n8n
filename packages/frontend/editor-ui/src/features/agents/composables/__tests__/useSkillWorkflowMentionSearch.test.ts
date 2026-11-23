@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
 	SKILL_WORKFLOW_MENTION_PAGE_SIZE,
 	useSkillWorkflowMentionSearch,
-} from '../useSkillWorkflowMentionSearch';
+} from '@/features/agents/composables/useSkillWorkflowMentionSearch';
 
 const searchWorkflows = vi.hoisted(() => vi.fn());
 vi.mock('@/app/stores/workflowsList.store', () => ({
@@ -98,6 +98,40 @@ describe('useSkillWorkflowMentionSearch', () => {
 
 		expect(workflows.value).toEqual([{ workflowId: 'new', name: 'New' }]);
 		expect(isLoading.value).toBe(false);
+	});
+
+	it('keeps the show more option when a next page fails', async () => {
+		searchWorkflows
+			.mockResolvedValueOnce(workflowPage(SKILL_WORKFLOW_MENTION_PAGE_SIZE))
+			.mockRejectedValueOnce(new Error('offline'));
+		const { search, loadMore, workflows, hasMore, hasError } = useSkillWorkflowMentionSearch(
+			() => 'p1',
+		);
+		await search('');
+
+		await loadMore();
+
+		expect(workflows.value).toHaveLength(SKILL_WORKFLOW_MENTION_PAGE_SIZE);
+		expect(hasMore.value).toBe(true);
+		expect(hasError.value).toBe(true);
+	});
+
+	it('drops the old results and ignores a running request when a new search starts', async () => {
+		let resolveRunning: (value: unknown) => void = () => {};
+		searchWorkflows
+			.mockResolvedValueOnce([{ id: 'old', name: 'Old' }])
+			.mockReturnValueOnce(new Promise((resolve) => (resolveRunning = resolve)));
+		const { search, loadMore, startNewSearch, workflows, isLoading } =
+			useSkillWorkflowMentionSearch(() => 'p1');
+		await search('');
+		const running = loadMore();
+
+		startNewSearch();
+		resolveRunning([{ id: 'late', name: 'Late' }]);
+		await running;
+
+		expect(workflows.value).toEqual([]);
+		expect(isLoading.value).toBe(true);
 	});
 
 	it('shows an error state when the search fails', async () => {
