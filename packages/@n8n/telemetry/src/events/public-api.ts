@@ -5,7 +5,6 @@ import { publicApiClientSchema } from '../schemas';
 
 const callCounts = z.record(z.string(), z.number().int().positive());
 
-// "other" has no per-route counts here, because `routes` already counts it.
 const clientWithEndpointCountsSchema = publicApiClientSchema.exclude(['other']);
 
 export const PUBLIC_API_USAGE_JSON_FIELDS = {
