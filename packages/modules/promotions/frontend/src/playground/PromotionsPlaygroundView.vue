@@ -60,7 +60,7 @@ async function back() {
 const SIDEBAR = '#sidebar';
 // Installed during setup, before the preview page below can send its first request.
 removeMockApi = installMockPromotionApi(() =>
-	buildPlaygroundPreview(scenario.value?.direction ?? 'promote', size.value),
+	buildPlaygroundPreview(scenarioId.value, scenario.value?.direction ?? 'promote', size.value),
 );
 onMounted(() => document.querySelector(SIDEBAR)?.setAttribute('data-playground', ''));
 onBeforeUnmount(() => {

@@ -33,7 +33,7 @@ export interface PlaygroundScenario {
 
 export const PLAYGROUND_SCENARIOS: readonly PlaygroundScenario[] = [
 	{ id: 'p1', group: 'promote', direction: 'promote', built: true },
-	{ id: 'p2', group: 'promote', direction: 'promote', built: false },
+	{ id: 'p2', group: 'promote', direction: 'promote', built: true },
 	{ id: 'p3', group: 'promote', direction: 'promote', built: false },
 	{ id: 'p4', group: 'promote', direction: 'promote', built: false },
 	{ id: 'p5', group: 'promote', direction: 'promote', built: false },

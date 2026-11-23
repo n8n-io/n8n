@@ -6,10 +6,12 @@ import type {
 	PromotionResourceDependency,
 } from '@n8n/api-types';
 
-import type { PlaygroundSize } from './playground.scenarios';
+import type { PlaygroundScenarioId, PlaygroundSize } from './playground.scenarios';
 
 /** Development only. Sample data for the Playground. Nothing here reaches a server. */
 export const PLAYGROUND_PROJECT_ID = 'playground-project';
+/** A second project that the signed-in user administers, which owns some dependencies. */
+const OTHER_PROJECT_KEY = 'project:playground-platform';
 
 const COMMIT_SHA = 'c'.repeat(40);
 const PREVIEW_REVISION = 'a'.repeat(64);
@@ -71,14 +73,20 @@ const nameAt = (names: readonly string[], index: number, long?: string) =>
 
 export const workflowKey = (index: number) => `workflow:playground-workflow-${index}`;
 
+/** Scenarios whose credentials come from another project that the user administers. */
+const OTHER_PROJECT_SCENARIOS: readonly PlaygroundScenarioId[] = ['p2'];
+
 /**
  * A project whose changes have no missing dependencies: every credential, variable and data table
- * that a workflow uses is part of the preview.
+ * that a workflow uses is part of the preview. In some scenarios, half of the credentials belong
+ * to another project that the user administers.
  */
 export function buildPlaygroundPreview(
+	scenario: PlaygroundScenarioId,
 	direction: PromotionDirection,
 	size: PlaygroundSize,
 ): PromotionPreview {
+	const fromOtherProject = OTHER_PROJECT_SCENARIOS.includes(scenario);
 	const amount = AMOUNTS[size];
 	const projectKey = `project:${PLAYGROUND_PROJECT_ID}`;
 	const resources: PromotionResource[] = [resource(projectKey, 'Sales')];
@@ -96,7 +104,7 @@ export function buildPlaygroundPreview(
 		const name = nameAt(CREDENTIAL_NAMES, index);
 		resources.push(
 			resource(key, index >= CREDENTIAL_NAMES.length ? `${name} ${index + 1}` : name, {
-				parentKey: projectKey,
+				parentKey: fromOtherProject && index % 2 === 1 ? OTHER_PROJECT_KEY : projectKey,
 			}),
 		);
 		return key;
