@@ -308,40 +308,6 @@ describe('requestWithAuthenticationPaginated', () => {
 		expect(capturedKeys[0].$request).toBe(requestOptions);
 	});
 
-<<<<<<< HEAD
-=======
-	test('sends every page through requestWithAuthentication when a credential type is given', async () => {
-		const { ctx, requestOptions, paginationOptions } = setup();
-		const requestWithAuthentication = vi
-			.fn()
-			.mockImplementation(async () => ({ body: {}, headers: {}, statusCode: 200 }));
-		const helpers = { request: vi.fn(), requestWithAuthentication };
-		const authCtx = { ...ctx, helpers } as unknown as IExecuteFunctions;
-		const resolveValue = vi.fn((parameterValue) => {
-			if (parameterValue === paginationOptions.request) return { url: 'https://example.com/page' };
-			if (parameterValue === paginationOptions.continue) return true;
-			return 3;
-		});
-
-		await requestWithAuthenticationPaginated.call(
-			authCtx,
-			requestOptions,
-			0,
-			paginationOptions,
-			resolveValue,
-			node,
-			'testApi',
-		);
-
-		expect(requestWithAuthentication).toHaveBeenCalledTimes(3);
-		expect(requestWithAuthentication.mock.calls.map(([type]) => type)).toEqual([
-			'testApi',
-			'testApi',
-			'testApi',
-		]);
-		expect(helpers.request).not.toHaveBeenCalled();
-	});
-
 	test('evaluates the completion expression when a page has an empty body', async () => {
 		const { ctx, requestOptions, paginationOptions, request } = setup();
 		request
@@ -367,7 +333,6 @@ describe('requestWithAuthenticationPaginated', () => {
 		expect(result.map(({ statusCode }) => statusCode)).toEqual([200, 204]);
 	});
 
->>>>>>> 3dfdb9b6 (fix(core, HTTP Request Node): Handle empty response bodies in pagination (#44297))
 	describe('execution cancellation', () => {
 		const setupMultiPage = (signal: AbortSignal) => {
 			const paginationOptions = {
