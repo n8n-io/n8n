@@ -3,6 +3,12 @@ import { Container } from '@n8n/di';
 import { UnexpectedError } from '@n8n/errors';
 import type { Readable } from 'stream';
 
+function toStreamError(cause: Error & { code?: string }): Error {
+	return cause.code === 'Z_DATA_ERROR'
+		? new UnexpectedError('Failed to decompress response', { cause })
+		: cause;
+}
+
 /**
  * Converts a readable stream to a buffer, rejecting if the stream stalls.
  *
@@ -14,6 +20,24 @@ import type { Readable } from 'stream';
  * `HttpRequestConfig.responseBodyReadTimeout`.
  */
 export async function streamToBuffer(stream: Readable, idleTimeoutMs?: number): Promise<Buffer> {
+	// A stream can arrive already ended, errored, or closed. Late listeners do
+	// not fire on a settled stream, so reject or resolve immediately from its
+	// current state instead of waiting for the idle timer.
+	if (stream.errored) {
+		// destroy(err) emits 'error' on the next tick. Attach a listener if none
+		// exists so throwing here does not leave an unhandled error event.
+		if (stream.listenerCount('error') === 0) {
+			stream.once('error', () => {});
+		}
+		throw toStreamError(stream.errored);
+	}
+	if (stream.readableEnded) {
+		return Buffer.alloc(0);
+	}
+	if (stream.destroyed || stream.closed) {
+		throw new UnexpectedError('Stream closed before completing');
+	}
+
 	const timeout = idleTimeoutMs ?? Container.get(HttpRequestConfig).responseBodyReadTimeout;
 	const useTimer = Number.isFinite(timeout) && timeout > 0;
 
@@ -45,13 +69,7 @@ export async function streamToBuffer(stream: Readable, idleTimeoutMs?: number): 
 		};
 		const onEnd = () => settle(() => resolve(Buffer.concat(chunks)));
 		const onError = (cause: Error & { code?: string }) =>
-			settle(() =>
-				reject(
-					cause.code === 'Z_DATA_ERROR'
-						? new UnexpectedError('Failed to decompress response', { cause })
-						: cause,
-				),
-			);
+			settle(() => reject(toStreamError(cause)));
 		// A stream that closes without a clean 'end' (half-open socket, truncated
 		// body) emits 'close' but neither 'end' nor 'error'. Without this exit the
 		// promise would never settle and the caller would hang indefinitely.

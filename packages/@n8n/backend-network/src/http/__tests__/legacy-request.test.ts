@@ -461,6 +461,7 @@ describe('OutboundHttp.requests requestLegacy', () => {
 	describe('body drain', () => {
 		let server: Server;
 		let port: number;
+		let dropTruncatedSocket: (() => void) | undefined;
 
 		beforeAll(async () => {
 			nock.enableNetConnect('127.0.0.1');
@@ -472,6 +473,12 @@ describe('OutboundHttp.requests requestLegacy', () => {
 			// path, drained internally), `/stall-200` returns 200 (success path,
 			// drained by the caller).
 			server = createServer((req, res) => {
+				if (req.url === '/truncated-200') {
+					res.writeHead(200, { 'content-type': 'text/plain', 'content-length': '100' });
+					res.write('half');
+					dropTruncatedSocket = () => res.socket?.destroy();
+					return;
+				}
 				const status = (req.url ?? '').startsWith('/stall-200') ? 200 : 403;
 				res.writeHead(status, { 'content-type': 'text/plain', 'content-length': '1000' });
 				res.write('partial body');
@@ -500,16 +507,17 @@ describe('OutboundHttp.requests requestLegacy', () => {
 		});
 
 		it(
-			'rejects instead of hanging when the error-response body never terminates',
+			'rejects with the HTTP status instead of hanging when the error-response body never terminates',
 			{ timeout: 5000 },
 			async () => {
 				// No per-request `timeout`: axios then sets no socket timeout, so nothing
-				// tears the stalled body stream down — without the guard it hangs forever.
+				// tears the stalled body stream down. The body-read guard aborts the
+				// drain and requestLegacy still surfaces the original 403 status.
 				const client = makeFacade().requests({ useDefaultSsrfPolicy: 'unsafe' });
 
 				await expect(
 					client.requestLegacy({ url: `http://127.0.0.1:${port}/stall`, useStream: true }),
-				).rejects.toThrow(/timed out/i);
+				).rejects.toMatchObject({ statusCode: 403, status: 403 });
 			},
 		);
 
@@ -519,7 +527,7 @@ describe('OutboundHttp.requests requestLegacy', () => {
 			async () => {
 				// The HTTP Request node always sets a per-request timeout (default 300_000ms).
 				// The configured guard must still apply, so the read aborts at ~500ms here,
-				// not at the 30s request timeout.
+				// not at the 30s request timeout, and still surfaces the original 403.
 				const client = makeFacade().requests({ useDefaultSsrfPolicy: 'unsafe' });
 				const start = Date.now();
 
@@ -529,7 +537,7 @@ describe('OutboundHttp.requests requestLegacy', () => {
 						useStream: true,
 						timeout: 30_000,
 					}),
-				).rejects.toThrow(/timed out/i);
+				).rejects.toMatchObject({ statusCode: 403, status: 403 });
 				expect(Date.now() - start).toBeLessThan(3000);
 			},
 		);
@@ -551,6 +559,32 @@ describe('OutboundHttp.requests requestLegacy', () => {
 
 				await expect(binaryToString(body)).rejects.toThrow(/timed out/i);
 				expect(Date.now() - start).toBeLessThan(3000);
+			},
+		);
+
+		it(
+			'rejects a truncated success-response (2xx) body instead of returning partial bytes',
+			{ timeout: 5000 },
+			async () => {
+				const client = makeFacade().requests({ useDefaultSsrfPolicy: 'unsafe' });
+
+				const body = (await client.requestLegacy({
+					url: `http://127.0.0.1:${port}/truncated-200`,
+					useStream: true,
+					timeout: 30_000,
+				})) as Readable;
+
+				// Drop the server socket after headers arrived so the IncomingMessage is
+				// already destroyed with partial bytes still buffered before draining.
+				const closed = new Promise<void>((resolve) => {
+					body.once('error', () => {});
+					body.once('close', resolve);
+				});
+				dropTruncatedSocket?.();
+				await closed;
+
+				expect(body.destroyed).toBe(true);
+				await expect(binaryToString(body)).rejects.toThrow(/aborted|closed before completing/i);
 			},
 		);
 	});
@@ -728,7 +762,25 @@ describe('OutboundHttp.requests requestLegacy', () => {
 				openSockets.add(socket);
 				socket.once('close', () => openSockets.delete(socket));
 				socket.setNoDelay(true);
-				socket.once('data', () => {
+				socket.once('data', (chunk) => {
+					const requestLine = chunk.toString('ascii').split('\r\n')[0] ?? '';
+					if (requestLine.includes('partial-body.example.com')) {
+						// Headers and a partial HTML body arrive in the same TCP segment,
+						// with a larger Content-Length that is never satisfied.
+						socket.write(
+							'HTTP/1.1 403 Forbidden\r\n' +
+								'Server: squid/5.7\r\n' +
+								'Content-Type: text/html;charset=utf-8\r\n' +
+								'Content-Length: 100000\r\n' +
+								'\r\n' +
+								'<html><body><h1>Access Denied.</h1></body></html>\n',
+						);
+						return;
+					}
+					if (requestLine.includes('empty-body.example.com')) {
+						socket.end('HTTP/1.1 403 Forbidden\r\nContent-Length: 0\r\n\r\n');
+						return;
+					}
 					socket.write(
 						'HTTP/1.1 403 Forbidden\r\n' +
 							'Server: squid/5.7\r\n' +
@@ -816,6 +868,62 @@ describe('OutboundHttp.requests requestLegacy', () => {
 						timeout: 300_000,
 					}),
 				).rejects.toMatchObject({ statusCode: 403 });
+
+				expect(Date.now() - start).toBeLessThan(1000);
+			},
+		);
+
+		it(
+			'surfaces buffered partial error body when proxy CONNECT 403 arrives with truncated Content-Length',
+			{ timeout: 5000 },
+			async () => {
+				const client = makeFacade().requests({ useDefaultSsrfPolicy: 'unsafe' });
+				const start = Date.now();
+
+				await expect(
+					client.requestLegacy({
+						url: 'https://partial-body.example.com/',
+						method: 'GET',
+						proxy: proxyUrl,
+						encoding: null,
+						json: false,
+						useStream: true,
+						resolveWithFullResponse: true,
+						timeout: 300_000,
+					}),
+				).rejects.toMatchObject({
+					statusCode: 403,
+					status: 403,
+					error: expect.stringContaining('Access Denied.'),
+				});
+
+				expect(Date.now() - start).toBeLessThan(1000);
+			},
+		);
+
+		it(
+			'fails fast with 403 when proxy CONNECT denial has empty body and no Content-Type',
+			{ timeout: 5000 },
+			async () => {
+				const client = makeFacade().requests({ useDefaultSsrfPolicy: 'unsafe' });
+				const start = Date.now();
+
+				await expect(
+					client.requestLegacy({
+						url: 'https://empty-body.example.com/',
+						method: 'GET',
+						proxy: proxyUrl,
+						encoding: null,
+						json: false,
+						useStream: true,
+						resolveWithFullResponse: true,
+						timeout: 300_000,
+					}),
+				).rejects.toMatchObject({
+					statusCode: 403,
+					status: 403,
+					error: '',
+				});
 
 				expect(Date.now() - start).toBeLessThan(1000);
 			},

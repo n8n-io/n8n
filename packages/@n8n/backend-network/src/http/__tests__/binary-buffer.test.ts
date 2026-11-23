@@ -106,4 +106,70 @@ describe('streamToBuffer inactivity timeout', () => {
 			Container.set(HttpRequestConfig, new HttpRequestConfig());
 		}
 	});
+
+	it(
+		'resolves empty buffer immediately when the stream has already ended',
+		{ timeout: 1000 },
+		async () => {
+			const stream = Readable.from(Buffer.from('done'));
+			expect((await streamToBuffer(stream, 60_000)).toString()).toBe('done');
+			expect(stream.readableEnded).toBe(true);
+
+			await expect(streamToBuffer(stream, 60_000)).resolves.toEqual(Buffer.alloc(0));
+		},
+	);
+
+	it(
+		'rejects immediately without returning partial bytes when the stream is already destroyed',
+		{ timeout: 1000 },
+		async () => {
+			// A truncated 200 download that drops its socket before draining starts
+			// must reject rather than resolve partial bytes as complete.
+			const stream = new Readable({ read() {} });
+			stream.push(Buffer.from('half'));
+			stream.destroy();
+
+			const promise = streamToBuffer(stream, 60_000);
+			await expect(promise).rejects.toThrow(UnexpectedError);
+			await expect(promise).rejects.toThrow('closed before completing');
+		},
+	);
+
+	it(
+		'rejects with the stream error without leaving an uncaught error on same-tick destroy(err)',
+		{ timeout: 1000 },
+		async () => {
+			const uncaught: Error[] = [];
+			const onUncaught = (error: Error) => uncaught.push(error);
+			process.on('uncaughtException', onUncaught);
+
+			try {
+				const stream = new Readable({ read() {} });
+				stream.push(Buffer.from('partial'));
+				stream.destroy(new Error('aborted'));
+
+				await expect(streamToBuffer(stream, 60_000)).rejects.toThrow('aborted');
+				// Flush nextTick where destroy(err) schedules its 'error' emission.
+				await new Promise((resolve) => setImmediate(resolve));
+
+				expect(uncaught).toEqual([]);
+			} finally {
+				process.off('uncaughtException', onUncaught);
+			}
+		},
+	);
+
+	it(
+		'maps an already-errored Z_DATA_ERROR stream to UnexpectedError',
+		{ timeout: 1000 },
+		async () => {
+			const stream = new Readable({ read() {} });
+			const cause = Object.assign(new Error('incorrect header check'), { code: 'Z_DATA_ERROR' });
+			stream.destroy(cause);
+
+			const promise = streamToBuffer(stream, 60_000);
+			await expect(promise).rejects.toThrow(UnexpectedError);
+			await expect(promise).rejects.toThrow('Failed to decompress response');
+		},
+	);
 });

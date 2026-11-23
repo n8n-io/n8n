@@ -62,6 +62,55 @@ export async function executeLegacyRequest(
 	}
 }
 
+/**
+ * Collects bytes still buffered on a Readable stream without waiting on events.
+ */
+function flushBufferedChunks(stream: Readable): Buffer {
+	const chunks: Buffer[] = [];
+	try {
+		let chunk: unknown;
+		while ((chunk = stream.read()) !== null) {
+			if (Buffer.isBuffer(chunk)) {
+				chunks.push(chunk);
+			} else if (typeof chunk === 'string') {
+				chunks.push(Buffer.from(chunk));
+			} else if (chunk instanceof Uint8Array) {
+				chunks.push(Buffer.from(chunk));
+			}
+		}
+	} catch {
+		// Return whatever chunks we already collected.
+	}
+	return Buffer.concat(chunks);
+}
+
+/**
+ * Drains an Axios error-response body into a string.
+ * If the stream is already destroyed or fails to finish (for example a denied
+ * proxy CONNECT response or a stalled error body), return any buffered bytes
+ * so the caller still receives the HTTP error status.
+ */
+async function readErrorResponseBody(body: Buffer | Readable): Promise<string> {
+	if (Buffer.isBuffer(body)) {
+		return await binaryToString(body);
+	}
+
+	try {
+		return await binaryToString(body);
+	} catch {
+		const buffered = flushBufferedChunks(body);
+		if (buffered.length === 0) {
+			return '';
+		}
+		const encoding = body instanceof IncomingMessage ? body.encoding : undefined;
+		try {
+			return await binaryToString(buffered, encoding);
+		} catch {
+			return buffered.toString('utf-8');
+		}
+	}
+}
+
 async function sendLegacyRequest(
 	requestObject: IRequestOptions,
 	ssrfBridge: SsrfBridge | undefined,
@@ -138,7 +187,7 @@ async function sendLegacyRequest(
 				let responseData = response.data;
 
 				if (Buffer.isBuffer(responseData) || responseData instanceof Readable) {
-					responseData = await binaryToString(responseData);
+					responseData = await readErrorResponseBody(responseData);
 				}
 
 				if (requestObject.simple === false) {
