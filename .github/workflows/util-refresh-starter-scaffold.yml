@@ -94,16 +94,18 @@ jobs:
             echo "skip=true" >> "$GITHUB_OUTPUT"
           fi
 
-      # `npm update` keeps the `"*"` range in package.json and only moves the
+      # `npm update` keeps the `"*"` ranges in package.json and only moves the
       # lockfile. `npm install @n8n/node-cli@latest` would rewrite the range.
+      # `n8n-workflow` is the peer dependency every community node declares as
+      # `*`; refreshing it keeps the starter on the current `latest` build.
       # The assertion guards against a pre-release tag winning the resolution.
-      - name: Refresh the @n8n/node-cli pin in the starter lockfile
+      - name: Refresh the @n8n/node-cli and n8n-workflow pins in the starter lockfile
         if: steps.gate.outputs.skip != 'true'
         working-directory: starter
         env:
           LATEST: ${{ steps.gate.outputs.latest }}
         run: |
-          npm update @n8n/node-cli --package-lock-only --no-audit --no-fund
+          npm update @n8n/node-cli n8n-workflow --package-lock-only --no-audit --no-fund
           LOCKED="$(node -p "require('./package-lock.json').packages['node_modules/@n8n/node-cli'].version")"
           if [ "$LOCKED" != "$LATEST" ]; then
             echo "::error::Lockfile resolved @n8n/node-cli@$LOCKED, expected $LATEST"
