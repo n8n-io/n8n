@@ -1,4 +1,5 @@
 import type { INodeProperties, INodePropertyOptions, PostReceiveAction } from 'n8n-workflow';
+import { titleCase } from 'title-case';
 
 import type {
 	ApiParameter,
@@ -15,6 +16,24 @@ export const operationLabel = ({ summary, deprecated }: SpecOperation) =>
 	deprecated ? `${summary} (deprecated)` : summary;
 
 const PARSED_JSON = '={{ typeof $value === "string" ? $value.parseJson() : $value }}';
+
+const LIMIT_DESCRIPTION = 'Max number of results to return';
+
+const withUpperCaseId = (text: string) => text.replace(/\b[iI]d(s?)\b/g, 'ID$1');
+
+const titleOf = (text: string) => withUpperCaseId(titleCase(text));
+
+const displayNameOf = (name: string) =>
+	titleOf(name.replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/[_-]+/g, ' '));
+
+function descriptionOf(text: string | undefined): string | undefined {
+	if (text === undefined) return undefined;
+	const description = withUpperCaseId(text);
+	const sentences = description.replace('e.g.', '').split('. ').length;
+	if (sentences === 1 && description.endsWith('.')) return description.slice(0, -1);
+	if (sentences === 2 && !description.endsWith('.')) return `${description}.`;
+	return description;
+}
 
 type Field = Pick<INodeProperties, 'type' | 'default' | 'options' | 'typeOptions'> & {
 	value?: string;
@@ -73,14 +92,32 @@ function routingOf(
 	return { send: { type: location, property, value } };
 }
 
-function propertyOf(parameter: ApiParameter): INodeProperties {
+const pathLocator = ({ operation, fields }: OperationRow) =>
+	operation.parameters.find(
+		({ name, location }) => location === 'path' && fields[name]?.type === 'resourceLocator',
+	);
+
+function urlOf(apiPath: string, locator?: string): string {
+	const url = apiPath.replace(/\{(\w+)\}/g, (_, name: string) => {
+		const value = name === locator ? '$value' : `$parameter[${JSON.stringify(name)}]`;
+		return `{{ toPathSegment(${value}) }}`;
+	});
+	return url === apiPath ? url : `=${url}`;
+}
+
+function propertyOf(
+	parameter: ApiParameter,
+	override?: Partial<INodeProperties>,
+	url?: string,
+): INodeProperties {
 	const { value, ...field } = fieldOf(parameter);
 	return {
-		displayName: parameter.name,
+		displayName: displayNameOf(parameter.name),
 		name: parameter.name,
 		...field,
-		description: parameter.description,
-		routing: routingOf(parameter, value),
+		description: descriptionOf(parameter.description),
+		...override,
+		routing: url === undefined ? routingOf(parameter, value) : { request: { url } },
 	};
 }
 
@@ -97,19 +134,17 @@ function postReceiveOf(
 	return undefined;
 }
 
-function operationOption(operation: SpecOperation, options: SpecOptions): INodePropertyOptions {
-	const url = operation.apiPath.replace(
-		/\{(\w+)\}/g,
-		(_, name: string) => `{{ toPathSegment($parameter[${JSON.stringify(name)}]) }}`,
-	);
+function operationOption(row: OperationRow, options: SpecOptions): INodePropertyOptions {
+	const { operation } = row;
 	const label = operationLabel(operation);
 	const postReceive = postReceiveOf(operation, options);
+	const { method, apiPath } = operation;
 	return {
-		name: label,
+		name: titleOf(label),
 		value: operation.operationId,
 		action: label,
 		routing: {
-			request: { method: operation.method, url: url === operation.apiPath ? url : `=${url}` },
+			request: pathLocator(row) ? { method } : { method, url: urlOf(apiPath) },
 			output: postReceive && { postReceive },
 		},
 	};
@@ -143,11 +178,16 @@ function returnAllProperty(operation: SpecOperation, options: SpecOptions): INod
 	};
 }
 
-function operationProperties(
-	{ operation, resource }: OperationRow,
-	options: SpecOptions,
-): INodeProperties[] {
+function operationProperties(row: OperationRow, options: SpecOptions): INodeProperties[] {
+	const { operation, resource, fields } = row;
 	const show = { resource: [resource.id], operation: [operation.operationId] };
+	const locator = pathLocator(row);
+	const build = (parameter: ApiParameter, standard: Partial<INodeProperties> = {}) =>
+		propertyOf(
+			parameter,
+			{ ...standard, ...fields[parameter.name] },
+			parameter === locator ? urlOf(operation.apiPath, locator.name) : undefined,
+		);
 	const isLimit = (parameter: ApiParameter) =>
 		operation.paginated && parameter.name === options.limitParameter;
 	const required = operation.parameters.filter(
@@ -159,7 +199,7 @@ function operationProperties(
 	const limit = operation.parameters.find(isLimit);
 
 	const properties: INodeProperties[] = required.map((parameter) => ({
-		...propertyOf(parameter),
+		...build(parameter),
 		required: true,
 		displayOptions: { show },
 	}));
@@ -168,7 +208,10 @@ function operationProperties(
 	}
 	if (limit) {
 		properties.push({
-			...propertyOf(limit),
+			...build(limit, {
+				description: LIMIT_DESCRIPTION,
+				typeOptions: { minValue: 1, maxValue: limit.schema.maximum },
+			}),
 			...(limit.required ? { required: true } : {}),
 			displayOptions: { show: { ...show, returnAll: [false] } },
 		});
@@ -181,7 +224,9 @@ function operationProperties(
 			placeholder: 'Add Option',
 			default: {},
 			displayOptions: { show },
-			options: optional.map(propertyOf).sort((a, b) => a.name.localeCompare(b.name, 'en')),
+			options: optional
+				.map((parameter) => build(parameter))
+				.sort((a, b) => a.name.localeCompare(b.name, 'en')),
 		});
 	}
 	return properties;
@@ -190,6 +235,7 @@ function operationProperties(
 function selector(
 	name: 'resource' | 'operation',
 	options: INodePropertyOptions[],
+	defaultValue: string | undefined,
 	show?: { resource: string[] },
 ): INodeProperties {
 	const sorted = options.sort((a, b) => a.name.localeCompare(b.name, 'en'));
@@ -200,11 +246,15 @@ function selector(
 		noDataExpression: true,
 		displayOptions: show && { show },
 		options: sorted,
-		default: sorted[0].value,
+		default: defaultValue ?? sorted[0].value,
 	};
 }
 
-export function buildProperties(rows: OperationRow[], options: SpecOptions): INodeProperties[] {
+export function buildProperties(
+	rows: OperationRow[],
+	options: SpecOptions,
+	defaultResource?: string,
+): INodeProperties[] {
 	const rowsByResource = new Map<string, { resource: Resource; rows: OperationRow[] }>();
 	for (const row of rows) {
 		const group = rowsByResource.get(row.resource.id) ?? { resource: row.resource, rows: [] };
@@ -216,12 +266,14 @@ export function buildProperties(rows: OperationRow[], options: SpecOptions): INo
 	return [
 		selector(
 			'resource',
-			groups.map(({ resource }) => ({ name: resource.displayName, value: resource.id })),
+			groups.map(({ resource }) => ({ name: titleOf(resource.displayName), value: resource.id })),
+			defaultResource,
 		),
 		...groups.flatMap(({ resource, rows: resourceRows }) => [
 			selector(
 				'operation',
-				resourceRows.map((row) => operationOption(row.operation, options)),
+				resourceRows.map((row) => operationOption(row, options)),
+				resourceRows.find((row) => row.isDefault)?.operation.operationId,
 				{ resource: [resource.id] },
 			),
 			...resourceRows.flatMap((row) => operationProperties(row, options)),
@@ -229,5 +281,10 @@ export function buildProperties(rows: OperationRow[], options: SpecOptions): INo
 	];
 }
 
-export const renderProperties = (properties: INodeProperties[]) =>
-	`import type { INodeProperties } from 'n8n-workflow';\n\nexport const properties: INodeProperties[] = ${JSON.stringify(properties, null, '\t')};\n`;
+export function renderProperties(properties: INodeProperties[]): string {
+	const literal = JSON.stringify(properties, null, '\t').replace(
+		/^(\t*)"([A-Za-z_$][\w$]*)":/gm,
+		'$1$2:',
+	);
+	return `import type { INodeProperties } from 'n8n-workflow';\n\nexport const properties: INodeProperties[] = ${literal};\n`;
+}

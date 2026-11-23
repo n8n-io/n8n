@@ -156,6 +156,7 @@ function readParameters(operation: Operation, options: SpecOptions) {
 			continue;
 		}
 		if (name === options.cursorParameter) continue;
+		if (paginated && name === options.offsetParameter) continue;
 		const { schema } = parameter;
 		parameters.push({
 			name,
