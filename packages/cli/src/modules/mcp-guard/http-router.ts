@@ -3,7 +3,7 @@ import { Container } from '@n8n/di';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 
 import type { HttpVendorProfile } from './http-profiles';
-import { looksLikeId, toToolCall, type HttpToolArgs } from './http-tool-caller';
+import { looksLikeId, NO_BODY_STATUS, toToolCall, type HttpToolArgs } from './http-tool-caller';
 import type { McpCaller } from './mcp-upstream';
 import type { CapturedRequest } from './network';
 import {

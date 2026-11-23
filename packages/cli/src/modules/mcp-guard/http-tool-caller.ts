@@ -196,7 +196,7 @@ const NOT_FORWARDED: ReadonlySet<string> = new Set([
 	'transfer-encoding',
 	'accept-encoding',
 ]);
-const NO_BODY_STATUS: ReadonlySet<number> = new Set([204, 205, 304]);
+export const NO_BODY_STATUS: ReadonlySet<number> = new Set([204, 205, 304]);
 
 /**
  * Sends a captured request to the gym. The gym finds the vendor by the Host header, so the request

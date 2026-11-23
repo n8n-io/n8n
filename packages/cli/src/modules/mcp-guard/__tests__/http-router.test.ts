@@ -83,6 +83,22 @@ describe('HttpGuardRouter', () => {
 		expect(hydrator.noteWrite).toHaveBeenCalledTimes(1);
 	});
 
+	it.each([204, 205, 304])(
+		'answers a write of the gym with status %i and no body',
+		async (status) => {
+			const { router, gym } = setup();
+			gym.callTool.mockResolvedValueOnce({
+				content: [{ type: 'text', text: '' }],
+				_meta: { status, contentType: 'application/json' },
+			});
+
+			const res = await router.handle(request('DELETE', `${LIST}/${ID}`));
+
+			expect(res.status).toBe(status);
+			expect(await res.text()).toBe('');
+		},
+	);
+
 	it.each(['PUT', 'PATCH', 'DELETE', 'POST'])(
 		'never lets a %s reach the real service',
 		async (method) => {
