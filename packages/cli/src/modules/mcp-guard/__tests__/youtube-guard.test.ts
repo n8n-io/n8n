@@ -8,7 +8,7 @@ import type { GymAdmin } from '../gym-admin';
 import { HttpGuardService } from '../http-guard.service';
 import { HttpRunRegistry } from '../http-runs';
 import { toToolCall } from '../http-tool-caller';
-import { withYoutubeOwner, YOUTUBE_PROFILE } from '../http-profiles';
+import { withYoutubeOwner, YOUTUBE_PROFILE } from '../youtube-profile';
 import type { HydrationModel } from '../hydration-llm';
 import { sendToNetwork } from '../network';
 import { isReadShaped } from '../request-classifier';
