@@ -295,7 +295,7 @@ function onRemove() {
 		size="medium"
 		:title="name"
 		:title-placeholder="i18n.baseText('agents.builder.guardrails.name.placeholder')"
-		editable-title
+		:editable-title="!disabled"
 		data-testid="agent-guardrail-modal"
 		@update:open="emit('update:open', $event)"
 		@update:title="name = $event"

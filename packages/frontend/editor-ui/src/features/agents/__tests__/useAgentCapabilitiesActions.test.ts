@@ -79,6 +79,7 @@ function setup(
 		agent?: Ref<AgentResource | null>;
 		agentId?: Ref<string>;
 		projectId?: Ref<string>;
+		canEditAgent?: Ref<boolean>;
 	} = {},
 ) {
 	setActivePinia(createTestingPinia({ stubActions: false }));
@@ -270,6 +271,60 @@ describe('useAgentCapabilitiesActions — tools modal host seam', () => {
 			guardrails?: unknown;
 		};
 		expect(data.guardrails).toBeDefined();
+	});
+
+	it('locks the guardrails wiring when the user has no write access', () => {
+		const { uiStore, actions, localConfig } = setup({ canEditAgent: ref(false) });
+		const nodeTool = {
+			type: 'node',
+			name: 'HTTP Request',
+			node: {
+				nodeType: 'n8n-nodes-base.httpRequest',
+				nodeTypeVersion: 4.2,
+				nodeParameters: { url: 'https://api.example.com' },
+			},
+		} as AgentJsonToolConfig;
+		localConfig.value = makeConfig({ tools: [nodeTool] });
+
+		actions.onOpenToolFromList({ kind: 'tool', toolType: 'node', id: 'HTTP Request' });
+
+		const data = uiStore.modalsById[AGENT_TOOL_CONFIG_MODAL_KEY].data as unknown as {
+			guardrails?: { disabled?: () => boolean };
+		};
+		expect(data.guardrails?.disabled?.()).toBe(true);
+	});
+
+	it('keeps the guardrail lock live and drops the write when access is lost mid-modal', () => {
+		const canEditAgent = ref(true);
+		const { uiStore, actions, localConfig, scheduleConfigUpdate } = setup({ canEditAgent });
+		const nodeTool = {
+			type: 'node',
+			name: 'HTTP Request',
+			node: {
+				nodeType: 'n8n-nodes-base.httpRequest',
+				nodeTypeVersion: 4.2,
+				nodeParameters: { url: 'https://api.example.com' },
+			},
+		} as AgentJsonToolConfig;
+		localConfig.value = makeConfig({ tools: [nodeTool] });
+
+		actions.onOpenToolFromList({ kind: 'tool', toolType: 'node', id: 'HTTP Request' });
+
+		const data = uiStore.modalsById[AGENT_TOOL_CONFIG_MODAL_KEY].data as unknown as {
+			guardrails?: { disabled?: () => boolean; onUpdateGuardrails: (tools: never[]) => void };
+		};
+		// Writable when the modal opens: the section stays enabled and a write goes through.
+		expect(data.guardrails?.disabled?.()).toBe(false);
+		data.guardrails?.onUpdateGuardrails([]);
+		expect(scheduleConfigUpdate).toHaveBeenCalledTimes(1);
+
+		// A lock, archive, or in-flight write that starts after the modal opened
+		// locks the chips and stops the save, not only the UI.
+		scheduleConfigUpdate.mockClear();
+		canEditAgent.value = false;
+		expect(data.guardrails?.disabled?.()).toBe(true);
+		data.guardrails?.onUpdateGuardrails([]);
+		expect(scheduleConfigUpdate).not.toHaveBeenCalled();
 	});
 
 	it('gives inline agents no guardrails wiring: their config carries no guardrails', () => {

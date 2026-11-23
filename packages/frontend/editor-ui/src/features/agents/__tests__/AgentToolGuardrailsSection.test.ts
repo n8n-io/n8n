@@ -104,6 +104,7 @@ function mountSection(
 		toolRef: AgentJsonToolRef;
 		guardrails: Array<Record<string, unknown>>;
 		validationIssues: AgentConfigValidationIssue[];
+		disabled: boolean;
 	}> = {},
 ) {
 	const guardrails = overrides.guardrails ?? guardrailsFor();
@@ -121,6 +122,7 @@ function mountSection(
 			getTools: () => agentTools(),
 			onUpdateGuardrails: onUpdateGuardrails as never,
 			...(issueList ? { validationIssues: () => issueList } : {}),
+			disabled: () => overrides.disabled ?? false,
 		},
 	});
 	mountedSections.push(wrapper);
@@ -216,6 +218,22 @@ describe('AgentToolGuardrailsSection', () => {
 
 		await wrapper.get('[data-testid="agent-tool-guardrails-wildcard-chip"]').trigger('click');
 		expect(wrapper.emitted('open-guardrail')?.at(-1)).toEqual([{ guardrail: WILDCARD_GUARDRAIL }]);
+	});
+
+	it('disables the chips and the add menu when the user has no write access', async () => {
+		const { wrapper } = mountSection({ disabled: true });
+
+		const chips = wrapper.findAllComponents({ name: 'AgentChipButton' });
+		expect(chips[0].props('disabled')).toBe(true);
+		expect(chips[1].props('disabled')).toBe(true);
+		expect(wrapper.get('[data-testid="agent-tool-guardrails-add"]').attributes('disabled')).toBe(
+			'',
+		);
+
+		// jsdom fires listeners on disabled buttons, so the handlers must guard too.
+		await wrapper.get('[data-testid="agent-tool-guardrails-chip"]').trigger('click');
+		await wrapper.get('[data-testid="agent-tool-guardrails-wildcard-chip"]').trigger('click');
+		expect(wrapper.emitted('open-guardrail')).toBeUndefined();
 	});
 
 	it('emits a create request with the picked kind and no guardrail', async () => {

@@ -2225,6 +2225,7 @@ const caps = useAgentCapabilitiesActions({
 	beforeAgentMutation: flushAutosaveIgnoringResult,
 	refreshAgentAfterMutation: onConfigUpdated,
 	validationIssues: computed(() => configValidation.value?.issues ?? []),
+	canEditAgent: effectiveCanEditAgent,
 	scheduleConfigUpdate: onConfigFieldUpdate,
 	scheduleSkillSave: ({ skillId, skill, availableTo }) => {
 		// Acquire the write lock before persisting any change.

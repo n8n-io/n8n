@@ -449,6 +449,8 @@ describe('AgentGuardrailModal', () => {
 		expect(
 			wrapper.find('[data-testid="agent-guardrail-remove"]').attributes('disabled'),
 		).toBeDefined();
+		// The read-only modal renders the name as static text, not as an input.
+		expect(wrapper.find('[data-testid="agent-guardrail-name-input"]').exists()).toBe(false);
 
 		await saveButton(wrapper).trigger('click');
 		expect(wrapper.emitted('save')).toBeUndefined();

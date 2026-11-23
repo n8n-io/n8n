@@ -6,7 +6,7 @@ import type {
 } from '@n8n/api-types';
 import { N8nButton, N8nDropdownMenu, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed, toValue, type MaybeRefOrGetter } from 'vue';
+import { computed, toValue, withDefaults, type MaybeRefOrGetter } from 'vue';
 
 import { useAgentCapabilityIssueMessages } from '../composables/useAgentCapabilityIssueMessages';
 import type { AgentJsonToolRef } from '../types';
@@ -36,21 +36,31 @@ export interface ToolGuardrailsWiring {
 	getTools: () => AgentJsonToolRef[];
 	onUpdateGuardrails: (tools: AgentToolGuardrailConfig[]) => void;
 	validationIssues?: MaybeRefOrGetter<AgentConfigValidationIssue[]>;
+	disabled?: MaybeRefOrGetter<boolean>;
 }
 
-const props = defineProps<{
-	toolRef: AgentJsonToolRef;
-	getGuardrails: () => AgentToolGuardrailConfig[];
-	getTools: () => AgentJsonToolRef[];
-	onUpdateGuardrails: (tools: AgentToolGuardrailConfig[]) => void;
-	validationIssues?: MaybeRefOrGetter<AgentConfigValidationIssue[]>;
-}>();
+const props = withDefaults(
+	defineProps<{
+		toolRef: AgentJsonToolRef;
+		getGuardrails: () => AgentToolGuardrailConfig[];
+		getTools: () => AgentJsonToolRef[];
+		onUpdateGuardrails: (tools: AgentToolGuardrailConfig[]) => void;
+		validationIssues?: MaybeRefOrGetter<AgentConfigValidationIssue[]>;
+		disabled?: MaybeRefOrGetter<boolean>;
+	}>(),
+	{
+		disabled: false,
+	},
+);
 
 const emit = defineEmits<{
 	'open-guardrail': [request: OpenGuardrailRequest];
 }>();
 
 const i18n = useI18n();
+
+/** Live, so a lock that starts while the modal is open still locks the section. */
+const isDisabled = computed(() => toValue(props.disabled));
 
 const guardrails = computed(() => props.getGuardrails());
 /** Guardrails that name this tool in their `tools` list. */
@@ -83,10 +93,12 @@ function issueReasons(guardrail: AgentToolGuardrailConfig): string[] {
 }
 
 function onAddSelect(kind: string) {
+	if (isDisabled.value) return;
 	emit('open-guardrail', { guardrail: null, kind: kind as AgentToolGuardrailKind });
 }
 
 function onOpenGuardrail(guardrail: AgentToolGuardrailConfig) {
+	if (isDisabled.value) return;
 	emit('open-guardrail', { guardrail });
 }
 </script>
@@ -103,6 +115,7 @@ function onOpenGuardrail(guardrail: AgentToolGuardrailConfig) {
 			<div :class="$style.chips">
 				<div v-for="guardrail in toolGuardrails" :key="guardrail.id" :class="$style.chipGroup">
 					<AgentChipButton
+						:disabled="isDisabled"
 						:invalid="issueReasons(guardrail).length > 0"
 						:invalid-reasons="issueReasons(guardrail)"
 						data-testid="agent-tool-guardrails-chip"
@@ -115,6 +128,7 @@ function onOpenGuardrail(guardrail: AgentToolGuardrailConfig) {
 				</div>
 				<div v-for="guardrail in wildcardGuardrails" :key="guardrail.id" :class="$style.chipGroup">
 					<AgentChipButton
+						:disabled="isDisabled"
 						:invalid="issueReasons(guardrail).length > 0"
 						:invalid-reasons="issueReasons(guardrail)"
 						data-testid="agent-tool-guardrails-wildcard-chip"
@@ -141,6 +155,7 @@ function onOpenGuardrail(guardrail: AgentToolGuardrailConfig) {
 								variant="ghost"
 								size="medium"
 								icon-only
+								:disabled="isDisabled"
 								:aria-label="addLabel"
 								data-testid="agent-tool-guardrails-add"
 							>
@@ -154,6 +169,7 @@ function onOpenGuardrail(guardrail: AgentToolGuardrailConfig) {
 							:class="$style.emptyAddButton"
 							variant="ghost"
 							size="medium"
+							:disabled="isDisabled"
 							:aria-label="addLabel"
 							data-testid="agent-tool-guardrails-add"
 						>

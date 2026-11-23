@@ -122,6 +122,12 @@ export interface UseAgentCapabilitiesActionsDeps {
 	 */
 	refreshAgentAfterMutation?: (projectId: string, agentId: string) => Promise<boolean>;
 	validationIssues?: Ref<AgentConfigValidationIssue[]> | ComputedRef<AgentConfigValidationIssue[]>;
+	/**
+	 * Whether the user may edit this agent. Tool modals lock their guardrails
+	 * section without it: creating, changing, or deleting a guardrail is a
+	 * config write. Hosts without guardrails wiring omit it.
+	 */
+	canEditAgent?: Ref<boolean> | ComputedRef<boolean>;
 	telemetry?: AgentCapabilitiesTelemetry;
 }
 
@@ -148,6 +154,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		beforeAgentMutation,
 		refreshAgentAfterMutation,
 		validationIssues,
+		canEditAgent,
 		telemetry,
 	} = deps;
 
@@ -177,10 +184,13 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 			getTools: () => localConfig.value?.tools ?? [],
 			onUpdateGuardrails: (tools: AgentToolGuardrailConfig[]) => {
 				if (agentId.value !== targetAgentId) return;
+				if (canEditAgent && !canEditAgent.value) return;
 				scheduleConfigUpdate(withToolGuardrails(localConfig.value, tools));
 			},
 			validationIssues: () =>
 				validationIssues?.value.filter((issue) => issue.capability.kind === 'guardrail') ?? [],
+			// Live check
+			disabled: () => (canEditAgent ? !canEditAgent.value : false),
 		};
 	}
 
