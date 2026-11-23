@@ -28,9 +28,13 @@ export interface LeaseSessionManagerDeps {
 	logger: Logger;
 }
 
-interface ClockReading {
-	mono: number;
-	wall: number;
+interface InsertInFlight {
+	id: string;
+	startedMono: number;
+	done: Promise<void>;
+	// False when the lease length passes or the manager gives up the wait before the insert finishes.
+	finished: Promise<boolean>;
+	giveUp: () => void;
 }
 
 const WATCHDOG_INTERVAL_MS = 100;
@@ -54,7 +58,7 @@ export class LeaseSessionManager {
 
 	private inFlightRenewal: { id: string; done: Promise<void> } | undefined;
 
-	private inFlightInsert: { id: string; startedMono: number; done: Promise<void> } | undefined;
+	private inFlightInsert: InsertInFlight | undefined;
 
 	private readonly pendingDeletes = new Set<Promise<void>>();
 
@@ -74,23 +78,33 @@ export class LeaseSessionManager {
 
 	private async ensureSession(): Promise<void> {
 		if (this.stopped || this.currentId !== undefined) return;
-		if (this.inFlightInsert === undefined) {
-			const id = randomUUID();
-			const insert = {
-				id,
-				startedMono: this.deps.clock.monotonicMs(),
-				done: this.insertSession(id).finally(() => {
-					if (this.inFlightInsert === insert) this.inFlightInsert = undefined;
-				}),
-			};
-			this.inFlightInsert = insert;
-		}
-		const finished = await this.waitAtMostOneLease(this.inFlightInsert.done);
-		if (!finished) {
+		this.inFlightInsert ??= this.startInsert();
+		const finished = await this.inFlightInsert.finished;
+		if (!finished && !this.stopped) {
 			throw new OperationalError(
 				`Lease session insert for kind "${this.deps.kind}" did not finish within the lease length`,
 			);
 		}
+	}
+
+	private startInsert(): InsertInFlight {
+		const id = randomUUID();
+		let timer: NodeJS.Timeout | undefined;
+		let giveUp: () => void = () => {};
+		const outOfTime = new Promise<false>((resolve) => {
+			giveUp = () => {
+				clearTimeout(timer);
+				resolve(false);
+			};
+			timer = setTimeout(giveUp, this.deps.leaseSeconds * 1000);
+		});
+		const startedMono = this.deps.clock.monotonicMs();
+		const done = this.insertSession(id).finally(() => {
+			clearTimeout(timer);
+			if (this.inFlightInsert?.id === id) this.inFlightInsert = undefined;
+		});
+		const finished = Promise.race([done.then(() => true), outOfTime]);
+		return { id, startedMono, done, finished, giveUp };
 	}
 
 	async stop(): Promise<void> {
@@ -104,6 +118,7 @@ export class LeaseSessionManager {
 		clearInterval(this.watchdogTimer);
 		this.beatTimer = undefined;
 		this.watchdogTimer = undefined;
+		this.inFlightInsert?.giveUp();
 
 		await this.waitForInsert();
 
@@ -228,6 +243,7 @@ export class LeaseSessionManager {
 			sessionId: insert.id,
 		});
 		this.inFlightInsert = undefined;
+		insert.giveUp();
 		const abandoned = insert.done
 			.catch(() => {})
 			.finally(() => this.abandonedInserts.delete(abandoned));

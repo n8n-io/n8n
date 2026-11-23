@@ -371,7 +371,7 @@ describe('LeaseSessionManager', () => {
 					finishInsert = resolve;
 				}),
 		);
-		const starting = expect(session.start()).rejects.toThrow(OperationalError);
+		const starting = session.start();
 		await vi.advanceTimersByTimeAsync(0);
 		const stopping = session.stop();
 		await vi.advanceTimersByTimeAsync(LEASE_SECONDS * 1000);
@@ -397,6 +397,44 @@ describe('LeaseSessionManager', () => {
 		const [first, second] = insertedSessions();
 		expect(second.id).not.toBe(first.id);
 		await expectHeld(second.id);
+	});
+
+	it('logs no failed start once a newer session holds after beats waited on a hung insert', async () => {
+		vi.spyOn(Math, 'random').mockReturnValue(0.5);
+		sessions.insertSession.mockImplementationOnce(async () => await new Promise<void>(() => {}));
+		void session.start().catch(() => {});
+		for (let beat = 0; beat < LEASE_SECONDS / RENEW_SECONDS; beat++) {
+			now.mono += RENEW_SECONDS * 1000;
+			await vi.advanceTimersByTimeAsync(RENEW_SECONDS * 1000);
+		}
+		const [, second] = insertedSessions();
+		logger.warn.mockClear();
+
+		await vi.advanceTimersByTimeAsync(LEASE_SECONDS * 1000);
+
+		expect(logger.warn).not.toHaveBeenCalledWith(
+			'Failed to start lease session',
+			expect.anything(),
+		);
+		await expectHeld(second.id);
+	});
+
+	it('logs no failed start and leaves no timers after stop while beats wait on a hung insert', async () => {
+		vi.spyOn(Math, 'random').mockReturnValue(0.5);
+		sessions.insertSession.mockImplementationOnce(async () => await new Promise<void>(() => {}));
+		void session.start().catch(() => {});
+		await vi.advanceTimersByTimeAsync(RENEW_SECONDS * 1000 * 2);
+
+		const stopping = session.stop();
+		await vi.advanceTimersByTimeAsync(LEASE_SECONDS * 1000);
+		await stopping;
+
+		expect(vi.getTimerCount()).toBe(0);
+		await vi.advanceTimersByTimeAsync(LEASE_SECONDS * 1000);
+		expect(logger.warn).not.toHaveBeenCalledWith(
+			'Failed to start lease session',
+			expect.anything(),
+		);
 	});
 
 	it('deletes the row of an abandoned insert that finishes later', async () => {
