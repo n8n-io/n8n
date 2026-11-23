@@ -10,13 +10,13 @@ import { Logger } from '@n8n/backend-common';
 import type {
 	CredentialUsedByWorkflow,
 	ListQueryDb,
+	OperationContext,
 	User,
 	WorkflowEntity,
 	WorkflowWithSharingsAndCredentials,
 	WorkflowWithSharingsMetaDataAndCredentials,
 } from '@n8n/db';
 import {
-	Folder,
 	Project,
 	SharedWorkflow,
 	CredentialsRepository,
@@ -892,10 +892,15 @@ export class EnterpriseWorkflowService {
 		}
 
 		// 7. transfer the workflow
-		await this.transferWorkflowOwnership(user, [workflow], destinationProject);
+		const movedWorkflowIds = await this.transferWorkflowOwnership(
+			[workflow],
+			destinationProject,
+			{},
+		);
+		await this.afterOwnershipTransferred(user, [workflow], destinationProject, movedWorkflowIds);
 
 		// 8. share credentials into the destination project
-		await this.shareCredentialsWithProject(user, shareCredentials, destinationProject.id);
+		await this.shareCredentialsWithProject(user, shareCredentials, destinationProject.id, {});
 
 		// 9. Move workflow to the right folder if any
 		await this.workflowRepository.update({ id: workflow.id }, { parentFolder });
@@ -1156,17 +1161,23 @@ export class EnterpriseWorkflowService {
 		await Promise.all(deactivateWorkflowsPromises);
 
 		// 6. transfer the workflows
-		await this.transferWorkflowOwnership(user, workflows, destinationProject);
+		const movedWorkflowIds = await this.transferWorkflowOwnership(
+			workflows,
+			destinationProject,
+			{},
+		);
+		await this.afterOwnershipTransferred(user, workflows, destinationProject, movedWorkflowIds);
 
 		// 7. share credentials into the destination project
-		await this.shareCredentialsWithProject(user, shareCredentials, destinationProject.id);
+		await this.shareCredentialsWithProject(user, shareCredentials, destinationProject.id, {});
 
 		// 8. Move all children folder to the destination project
-		await this.moveFoldersToDestination(
+		await this.folderRepository.moveTreeToProject(
 			sourceFolderId,
 			childrenFolderIds,
 			destinationProjectId,
 			destinationParentFolderId,
+			{},
 		);
 
 		// 9. try to activate workflows again if they were active
@@ -1248,11 +1259,12 @@ export class EnterpriseWorkflowService {
 		}
 	}
 
+	/** Returns the ids of the workflows whose owner project changes. */
 	private async transferWorkflowOwnership(
-		user: User,
 		workflows: WorkflowEntity[],
 		destinationProject: Project,
-	) {
+		ctx: OperationContext,
+	): Promise<string[]> {
 		// Resolved before the transaction rewrites the sharings. Workflows already
 		// owned by the destination are folder moves, not project transfers.
 		const movedWorkflowIds = workflows
@@ -1263,7 +1275,7 @@ export class EnterpriseWorkflowService {
 			)
 			.map((workflow) => workflow.id);
 
-		await this.workflowRepository.manager.transaction(async (trx) => {
+		await this.workflowRepository.runInTransaction(ctx, async (trx) => {
 			for (const workflow of workflows) {
 				// Remove all sharings
 				await trx.remove(workflow.shared);
@@ -1279,6 +1291,15 @@ export class EnterpriseWorkflowService {
 			}
 		});
 
+		return movedWorkflowIds;
+	}
+
+	private async afterOwnershipTransferred(
+		user: User,
+		workflows: WorkflowEntity[],
+		destinationProject: Project,
+		movedWorkflowIds: string[],
+	): Promise<void> {
 		// Update workflow project cache entries
 		for (const workflow of workflows) {
 			await this.ownershipService.setWorkflowProjectCacheEntry(workflow.id, destinationProject);
@@ -1293,8 +1314,9 @@ export class EnterpriseWorkflowService {
 		user: User,
 		credentialIds: string[],
 		projectId: string,
+		ctx: OperationContext,
 	) {
-		await this.workflowRepository.runInTransaction({}, async (trx, ctx) => {
+		await this.workflowRepository.runInTransaction(ctx, async (trx, transactionCtx) => {
 			let credentialIdsToShare: string[];
 
 			if (hasGlobalScope(user, ['credential:share'], { mode: 'allOf' })) {
@@ -1304,7 +1326,7 @@ export class EnterpriseWorkflowService {
 					await this.credentialsFinderService.getCredentialIdsByUserAndRole(
 						[user.id],
 						{ scopes: ['credential:share'] },
-						ctx,
+						transactionCtx,
 					),
 				);
 				credentialIdsToShare = credentialIds.filter((id) => accessibleIds.has(id));
@@ -1318,33 +1340,6 @@ export class EnterpriseWorkflowService {
 					trx,
 				);
 			}
-		});
-	}
-
-	private async moveFoldersToDestination(
-		sourceFolderId: string,
-		childrenFolderIds: string[],
-		destinationProjectId: string,
-		destinationParentFolderId: string,
-	) {
-		await this.folderRepository.manager.transaction(async (trx) => {
-			// Move all children folders to the destination project
-			await trx.update(
-				Folder,
-				{ id: In(childrenFolderIds) },
-				{ homeProject: { id: destinationProjectId } },
-			);
-
-			// Move source folder to destination project and under destination folder if specified
-			await trx.update(
-				Folder,
-				{ id: sourceFolderId },
-				{
-					homeProject: { id: destinationProjectId },
-					parentFolder:
-						destinationParentFolderId === PROJECT_ROOT ? null : { id: destinationParentFolderId },
-				},
-			);
 		});
 	}
 
