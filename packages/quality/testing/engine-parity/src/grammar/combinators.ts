@@ -1,4 +1,4 @@
-import { getEntry } from './catalog';
+import { getEntry, outputCount } from './catalog';
 import type { ParamDraft } from './catalog';
 import type { CombinatorId, IrEdge } from './ir';
 
@@ -18,6 +18,8 @@ export type Block =
 	| { kind: 'chain'; blocks: Block[] }
 	/** If: output 0 (true) continues, output 1 (false) ends. */
 	| { kind: 'branch'; node: NodeDraft; onTrue: Block | null; onFalse: Block | null }
+	/** Switch: output 0 continues, the other outputs end. */
+	| { kind: 'switch'; node: NodeDraft; cases: Array<Block | null> }
 	/** One output into many blocks. The first block continues. */
 	| { kind: 'fanOut'; targets: Block[] }
 	/** Two branches into the two inputs of a Merge node. */
@@ -100,6 +102,20 @@ export function lowerBlock(block: Block, flow: Flow, state: LowerState): Flow {
 			return block.onTrue ? lowerBlock(block.onTrue, onTrue, state) : onTrue;
 		}
 
+		case 'switch': {
+			const key = place(state, block.node, 'switch', flow.upstream);
+			connect(state, flow.ends, key, 0);
+			const outputs = outputCount(getEntry(block.node.catalogId), block.node.params);
+			let continued = after(key, 0, flow.upstream);
+			for (let out = 0; out < outputs; out++) {
+				const arm = block.cases[out];
+				if (!arm) continue;
+				const result = lowerBlock(arm, after(key, out, flow.upstream), state);
+				if (out === 0) continued = result;
+			}
+			return continued;
+		}
+
 		case 'fanOut': {
 			const results = block.targets.map((target) => lowerBlock(target, flow, state));
 			return results[0] ?? flow;
@@ -126,6 +142,8 @@ export function blockSize(block: Block): number {
 			return block.blocks.reduce((sum, next) => sum + blockSize(next), 0);
 		case 'branch':
 			return 1 + sizeOf(block.onTrue) + sizeOf(block.onFalse);
+		case 'switch':
+			return 1 + block.cases.reduce((sum, arm) => sum + sizeOf(arm), 0);
 		case 'fanOut':
 			return block.targets.reduce((sum, target) => sum + blockSize(target), 0);
 		case 'merge':

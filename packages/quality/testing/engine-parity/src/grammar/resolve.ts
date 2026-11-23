@@ -22,6 +22,12 @@ export function resolveDraft(value: unknown, ctx: ResolveContext): unknown {
 	if ('$jsonTemplate' in value && isRecord(value.$jsonTemplate)) {
 		return renderJsonTemplate(value.$jsonTemplate, ctx.scope);
 	}
+	if ('$outputIndex' in value && isRecord(value.$outputIndex)) {
+		const { value: expr, numberOutputs } = value.$outputIndex;
+		if (isValueExpr(expr) && typeof numberOutputs === 'number') {
+			return `={{ (Math.abs(Math.trunc(Number(${renderValue(expr, ctx.scope)}))) || 0) % ${numberOutputs} }}`;
+		}
+	}
 
 	return Object.fromEntries(
 		Object.entries(value).map(([key, entry]) => [key, resolveDraft(entry, ctx)]),

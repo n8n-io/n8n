@@ -47,22 +47,29 @@ function referencedNodes(params: unknown): string[] {
 
 describe('grammar', () => {
 	it('gives the same workflow JSON for the same seed', () => {
-		const first = sample('smoke', 7, 20).map((parityCase) => JSON.stringify(parityCase.workflow));
-		const second = sample('smoke', 7, 20).map((parityCase) => JSON.stringify(parityCase.workflow));
+		const first = sample('branching', 7, 20).map((parityCase) =>
+			JSON.stringify(parityCase.workflow),
+		);
+		const second = sample('branching', 7, 20).map((parityCase) =>
+			JSON.stringify(parityCase.workflow),
+		);
 
 		expect(second).toEqual(first);
 	});
 
-	it.each(['smoke'])('makes eligible workflows with valid ports for the "%s" rule set', (name) => {
-		const cases = sample(name);
-		// The combinators make every shape eligible, so one rejected case is a bug.
-		const rejected = cases
-			.map((parityCase) => checkEngineV2Eligibility(parityCase.workflow))
-			.filter((result) => !result.eligible);
+	it.each(['smoke', 'branching'])(
+		'makes eligible workflows with valid ports for the "%s" rule set',
+		(name) => {
+			const cases = sample(name);
+			// The combinators make every shape eligible, so one rejected case is a bug.
+			const rejected = cases
+				.map((parityCase) => checkEngineV2Eligibility(parityCase.workflow))
+				.filter((result) => !result.eligible);
 
-		expect(cases.every(portsInRange)).toBe(true);
-		expect(rejected).toEqual([]);
-	});
+			expect(cases.every(portsInRange)).toBe(true);
+			expect(rejected).toEqual([]);
+		},
+	);
 
 	it('keeps each case within the node limit', () => {
 		const { limits } = ruleSets.smoke;
@@ -134,7 +141,7 @@ describe('grammar', () => {
 	});
 
 	it('makes cases that the SDK can print as code', () => {
-		for (const parityCase of sample('smoke', 3, 20)) {
+		for (const parityCase of sample('branching', 3, 20)) {
 			expect(toSdkCode(parityCase.ir)).toContain("workflow('parity'");
 		}
 	});
