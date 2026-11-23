@@ -72,7 +72,7 @@ type BlockerRow = {
 	name: string;
 	type: PromotionResourceType;
 	usedBy: Array<{ key: string; name: string }>;
-	status: { label: string; tone: 'warning' | 'success' };
+	status: { label: string; tone: 'warning' | 'success' | 'neutral' };
 	/** The next step for blockers that users resolve outside this page. */
 	detail?: string;
 	/** The button that adds a missing binding. */
@@ -84,11 +84,17 @@ const usedBy = (consumers: PromotionBindingConsumer[]) =>
 		workflows.map(({ id, name }) => ({ key: `workflow:${id}`, name })),
 	);
 
-type StatusKey = 'missing' | 'resolved' | 'access' | 'conflict' | 'moved';
+type StatusKey = 'missing' | 'resolved' | 'access' | 'conflict' | 'moved' | 'outside';
 
 const status = (key: StatusKey) => ({
 	label: i18n.baseText(`promotions.preview.blockers.status.${key}`),
-	tone: key === 'resolved' ? ('success' as const) : ('warning' as const),
+	// A dependency outside the access of the user does not stop Apply, so it is not a warning.
+	tone:
+		key === 'resolved'
+			? ('success' as const)
+			: key === 'outside'
+				? ('neutral' as const)
+				: ('warning' as const),
 });
 
 type HardConflict = Exclude<
@@ -195,6 +201,37 @@ const blockerRows = computed<BlockerRow[]>(() => {
 	];
 });
 
+const outsideRows = computed<BlockerRow[]>(() =>
+	(props.check.outsideAccess ?? []).map((dependency, index) => ({
+		key: `outside:${index}`,
+		icon: resourceIcon(dependency.kind),
+		name: dependency.name,
+		type: dependency.kind,
+		usedBy: usedBy(dependency.consumers),
+		status: status('outside'),
+	})),
+);
+
+// The two kinds of issue, in the order that users act on them. Only the first one stops Apply.
+const sections = computed(() =>
+	(
+		[
+			{ id: 'blockers', rows: blockerRows.value },
+			{ id: 'outsideAccess', rows: outsideRows.value },
+		] as const
+	)
+		.filter(({ rows }) => rows.length > 0)
+		.map(({ id, rows }) => ({
+			id,
+			rows,
+			title: i18n.baseText(`promotions.preview.blockers.section.${id}`, {
+				adjustToNumber: rows.length,
+				interpolate: { count: String(rows.length) },
+			}),
+			description: i18n.baseText(`promotions.preview.blockers.section.${id}.description`),
+		})),
+);
+
 const unresolvedCount = computed(
 	() => blockerRows.value.filter((row) => row.status.tone === 'warning').length,
 );
@@ -215,7 +252,7 @@ const warnings = computed(() => props.check.warnings);
 const warningCount = computed(
 	() => bindings.destructiveChanges.value.length + warnings.value.length,
 );
-const open = ref({ blockers: true, warnings: true });
+const open = ref({ blockers: true, outsideAccess: true, warnings: true });
 
 async function create(key: string) {
 	await bindings.createBinding(key, creation.createBinding);
@@ -235,7 +272,7 @@ const isCreateDisabled = computed(() => props.busy || bindings.isBusy.value);
 		</N8nText>
 
 		<N8nCallout
-			v-if="unresolvedCount === 0"
+			v-if="unresolvedCount === 0 && outsideRows.length === 0"
 			theme="success"
 			slim
 			role="status"
@@ -248,24 +285,20 @@ const isCreateDisabled = computed(() => props.busy || bindings.isBusy.value);
 			{{ i18n.baseText('promotions.bindings.error.creationMismatch') }}
 		</N8nCallout>
 
-		<section v-if="blockerRows.length > 0" :class="$style.section">
+		<section v-for="section in sections" :key="section.id" :class="$style.section">
 			<button
 				type="button"
 				:class="$style.sectionHeader"
-				:aria-expanded="open.blockers"
-				@click="open.blockers = !open.blockers"
+				:aria-expanded="open[section.id]"
+				@click="open[section.id] = !open[section.id]"
 			>
-				<N8nIcon :icon="open.blockers ? 'chevron-down' : 'chevron-right'" size="small" />
-				<N8nHeading tag="h2" size="medium">
-					{{
-						i18n.baseText('promotions.preview.blockers.section.blockers', {
-							adjustToNumber: blockerRows.length,
-							interpolate: { count: String(blockerRows.length) },
-						})
-					}}
-				</N8nHeading>
+				<N8nIcon :icon="open[section.id] ? 'chevron-down' : 'chevron-right'" size="small" />
+				<N8nHeading tag="h2" size="medium">{{ section.title }}</N8nHeading>
 			</button>
-			<div v-show="open.blockers">
+			<div v-show="open[section.id]">
+				<N8nText tag="p" color="text-base" :class="$style.description">
+					{{ section.description }}
+				</N8nText>
 				<table
 					:class="[$style.table, $style.fixedColumns]"
 					data-test-id="promotion-preview-blockers-table"
@@ -291,7 +324,7 @@ const isCreateDisabled = computed(() => props.busy || bindings.isBusy.value);
 					</thead>
 					<tbody>
 						<tr
-							v-for="row in blockerRows"
+							v-for="row in section.rows"
 							:key="row.key"
 							data-test-id="promotion-preview-blocker-row"
 							:data-blocker-key="row.key"
@@ -328,7 +361,13 @@ const isCreateDisabled = computed(() => props.busy || bindings.isBusy.value);
 							<td aria-live="polite">
 								<N8nText size="medium" :class="[$style.status, $style[row.status.tone]]">
 									<N8nIcon
-										:icon="row.status.tone === 'success' ? 'circle-check' : 'circle-alert'"
+										:icon="
+											row.status.tone === 'success'
+												? 'circle-check'
+												: row.status.tone === 'neutral'
+													? 'lock'
+													: 'circle-alert'
+										"
 										size="small"
 									/>
 									{{ row.status.label }}
@@ -600,6 +639,14 @@ const isCreateDisabled = computed(() => props.busy || bindings.isBusy.value);
 	align-items: center;
 	gap: var(--spacing--4xs);
 	white-space: nowrap;
+}
+
+.description {
+	margin: 0 0 var(--spacing--2xs);
+}
+
+.neutral {
+	color: var(--text-color--subtler);
 }
 
 .warning {

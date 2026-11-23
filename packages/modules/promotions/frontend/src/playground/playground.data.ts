@@ -1,4 +1,5 @@
 import type {
+	PromotionBindingConsumer,
 	PromotionDirection,
 	PromotionPreview,
 	PromotionResource,
@@ -6,6 +7,7 @@ import type {
 	PromotionResourceDependency,
 } from '@n8n/api-types';
 
+import type { PromotionOutsideAccessDependency } from '../promotions.types';
 import type { PlaygroundScenarioId, PlaygroundSize } from './playground.scenarios';
 
 /** Development only. Sample data for the Playground. Nothing here reaches a server. */
@@ -48,6 +50,40 @@ const CREDENTIAL_NAMES = [
 ];
 const FOLDER_NAMES = ['Leads', 'Reports', 'Support', 'Finance'];
 
+/** Dependencies that the destination lacks, by scenario. Few, some or many at each amount. */
+const ISSUE_AMOUNTS: Record<PlaygroundSize, number> = { few: 2, some: 4, many: 12 };
+const MISSING_CREDENTIAL_NAMES = [
+	'Salesforce OAuth',
+	'Zendesk API',
+	'Mailchimp',
+	'Airtable token',
+	'Jira Cloud',
+	'Twilio',
+];
+const MISSING_VARIABLE_NAMES = ['SLACK_CHANNEL', 'API_BASE_URL', 'TIMEZONE', 'SUPPORT_EMAIL'];
+const OUTSIDE_NAMES = [
+	{ kind: 'credential', name: 'Billing database' },
+	{ kind: 'workflow', name: 'Normalize contact data' },
+	{ kind: 'credential', name: 'Finance Stripe key' },
+	{ kind: 'workflow', name: 'Send audit log' },
+	{ kind: 'credential', name: 'Payroll API' },
+	{
+		kind: 'workflow',
+		name: 'Quarterly revenue reconciliation shared by the billing, finance and data teams',
+	},
+] as const;
+const NEEDS_ACTION_SCENARIOS: readonly PlaygroundScenarioId[] = ['a2', 'a4'];
+const OUTSIDE_ACCESS_SCENARIOS: readonly PlaygroundScenarioId[] = ['a3', 'a4'];
+
+/** The workflows that use the dependency at `index`, so the row can link to them. */
+function consumersOf(index: number, workflows: number): PromotionBindingConsumer[] {
+	const used = Array.from({ length: Math.min(3, workflows) }, (_, step) => {
+		const workflow = (index + step) % workflows;
+		return { id: `playground-workflow-${workflow}`, name: workflowNameOf(workflow) };
+	});
+	return [{ project: { id: PLAYGROUND_PROJECT_ID, name: 'Sales' }, workflows: used }];
+}
+
 const resource = (
 	key: string,
 	name: string,
@@ -70,6 +106,11 @@ const resource = (
 
 const nameAt = (names: readonly string[], index: number, long?: string) =>
 	index === 5 && long ? long : (names[index % names.length] ?? `Item ${index}`);
+
+const workflowNameOf = (index: number) => {
+	const name = nameAt(WORKFLOW_NAMES, index, LONG_WORKFLOW_NAME);
+	return index >= WORKFLOW_NAMES.length ? `${name} ${index + 1}` : name;
+};
 
 export const workflowKey = (index: number) => `workflow:playground-workflow-${index}`;
 
@@ -118,10 +159,9 @@ export function buildPlaygroundPreview(
 
 	for (let index = 0; index < amount.workflows; index++) {
 		const key = workflowKey(index);
-		const name = nameAt(WORKFLOW_NAMES, index, LONG_WORKFLOW_NAME);
 		const added = index % 3 === 2;
 		resources.push(
-			resource(key, index >= WORKFLOW_NAMES.length ? `${name} ${index + 1}` : name, {
+			resource(key, workflowNameOf(index), {
 				parentKey: folderKeys.length > 0 ? folderKeys[index % folderKeys.length] : projectKey,
 				change: added ? 'added' : 'modified',
 				revision: { before: added ? null : `${key}-before`, after: `${key}-after` },
@@ -156,23 +196,66 @@ export function buildPlaygroundPreview(
 		},
 		resources,
 		dependencies,
-		// An Apply preview carries the check. Nothing is missing, so each list is empty.
-		...(direction === 'apply'
-			? {
-					check: {
-						missingProjects: [],
-						missingBindings: [],
-						accessRequirements: [],
-						conflicts: [],
-						warnings: [],
-						movedWorkflows: [],
-						movedFolders: [],
-					},
-				}
-			: {}),
+		// An Apply preview carries the check. The scenario decides what is in it.
+		...(direction === 'apply' ? { check: buildCheck(scenario, size, amount.workflows) } : {}),
 		revision: PREVIEW_REVISION,
 	};
 }
+
+/** The Apply check: what the destination lacks, and who can resolve it. */
+function buildCheck(scenario: PlaygroundScenarioId, size: PlaygroundSize, workflows: number) {
+	const count = ISSUE_AMOUNTS[size];
+	const missingBindings = NEEDS_ACTION_SCENARIOS.includes(scenario)
+		? Array.from({ length: count }, (_, index) => {
+				const consumers = consumersOf(index, workflows);
+				// Credentials and variables alternate, as in a real branch.
+				if (index % 2 === 0) {
+					const credential = Math.floor(index / 2);
+					return {
+						kind: 'credential' as const,
+						sourceId: `playground-missing-credential-${credential}`,
+						name: nameAt(MISSING_CREDENTIAL_NAMES, credential),
+						credentialType: 'httpHeaderAuth',
+						consumers,
+						ownerProject: { id: PLAYGROUND_PROJECT_ID, name: 'Sales' },
+					};
+				}
+				return {
+					kind: 'variable' as const,
+					name: nameAt(MISSING_VARIABLE_NAMES, Math.floor(index / 2)),
+					variableType: 'string' as const,
+					scope: { kind: 'global' as const },
+					consumers,
+				};
+			})
+		: [];
+	const outsideAccess: PromotionOutsideAccessDependency[] = OUTSIDE_ACCESS_SCENARIOS.includes(
+		scenario,
+	)
+		? Array.from({ length: count }, (_, index) => ({
+				...nameAt2(index),
+				consumers: consumersOf(index + 1, workflows),
+			}))
+		: [];
+	return {
+		missingProjects: [],
+		missingBindings,
+		accessRequirements: [],
+		conflicts: [],
+		warnings: [],
+		movedWorkflows: [],
+		movedFolders: [],
+		outsideAccess,
+	};
+}
+
+const nameAt2 = (index: number) => {
+	const entry = OUTSIDE_NAMES[index % OUTSIDE_NAMES.length] ?? OUTSIDE_NAMES[0];
+	return {
+		kind: entry.kind,
+		name: index >= OUTSIDE_NAMES.length ? `${entry.name} ${index + 1}` : entry.name,
+	};
+};
 
 /** The content of a workflow on each side, so that its diff has something to show. */
 export function buildPlaygroundDetail(

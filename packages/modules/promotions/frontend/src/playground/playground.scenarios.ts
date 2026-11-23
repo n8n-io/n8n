@@ -1,7 +1,7 @@
 import type { PromotionDirection } from '@n8n/api-types';
 
 /** Development only. The scenarios of the Environments Playground. */
-export const PLAYGROUND_GROUPS = ['promote', 'apply', 'review'] as const;
+export const PLAYGROUND_GROUPS = ['apply', 'promote', 'review'] as const;
 export type PlaygroundGroup = (typeof PLAYGROUND_GROUPS)[number];
 
 /** How many dependencies a scenario holds, so a design can be checked at each amount. */
@@ -38,9 +38,9 @@ export const PLAYGROUND_SCENARIOS: readonly PlaygroundScenario[] = [
 	{ id: 'p4', group: 'promote', direction: 'promote', built: false },
 	{ id: 'p5', group: 'promote', direction: 'promote', built: false },
 	{ id: 'a1', group: 'apply', direction: 'apply', built: true },
-	{ id: 'a2', group: 'apply', direction: 'apply', built: false },
-	{ id: 'a3', group: 'apply', direction: 'apply', built: false },
-	{ id: 'a4', group: 'apply', direction: 'apply', built: false },
+	{ id: 'a2', group: 'apply', direction: 'apply', built: true },
+	{ id: 'a3', group: 'apply', direction: 'apply', built: true },
+	{ id: 'a4', group: 'apply', direction: 'apply', built: true },
 	{ id: 'b1', group: 'review', built: false },
 ];
 

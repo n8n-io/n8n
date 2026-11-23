@@ -309,7 +309,11 @@ async function onPromoteConfirm(commitMessage: string | undefined) {
 
 type PreviewTab = 'changes' | 'blockers';
 const activeTab = ref<PreviewTab>('changes');
-const blockerCount = computed(() => blockerList.value.filter(isBlocking).length);
+// The tab counts every issue. Only the ones that block stop the operation.
+const blockerCount = computed(
+	() =>
+		blockerList.value.filter(isBlocking).length + (scopedCheck.value?.outsideAccess?.length ?? 0),
+);
 const showBlockersTab = computed(
 	() => props.direction === 'apply' && !!scopedCheck.value && state.value === 'ready',
 );

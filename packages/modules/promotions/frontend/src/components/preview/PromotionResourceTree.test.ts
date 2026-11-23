@@ -167,7 +167,8 @@ describe('PromotionResourceTree', () => {
 			});
 
 			expect(getByText('Select all')).toBeInTheDocument();
-			expect(getByTestId('promotion-preview-counts')).toHaveTextContent('3 of 17 selected');
+			expect(getByTestId('promotion-preview-counts')).toHaveTextContent('3/17');
+			expect(getByTestId('promotion-preview-counts')).toHaveAccessibleName('3 of 17 selected');
 		});
 
 		it('should show each group with how many of its resources the operation includes', () => {
@@ -175,10 +176,10 @@ describe('PromotionResourceTree', () => {
 
 			expect(
 				group(getAllByTestId, 'section:workflows').getByTestId('promotion-preview-group-count'),
-			).toHaveTextContent(/^1 of 4 selected$/);
+			).toHaveTextContent(/^1\/4$/);
 			expect(
 				group(getAllByTestId, 'group:credential').getByTestId('promotion-preview-group-count'),
-			).toHaveTextContent('1 of 2 selected');
+			).toHaveTextContent('1/2');
 		});
 
 		it('should send the workflows of the group when users click its checkbox', async () => {

@@ -146,13 +146,21 @@ function onToggle(resource: PromotionResource) {
 				<N8nText step="xs" bold color="text-dark" :class="$style.selectAllLabel">
 					{{ i18n.baseText('promotions.preview.tree.selectAll') }}
 				</N8nText>
-				<N8nText step="xs" color="text-light" data-test-id="promotion-preview-counts">
-					{{
+				<!-- Short on screen, in full for screen readers. -->
+				<N8nText
+					step="xs"
+					color="text-light"
+					role="img"
+					:aria-label="
 						i18n.baseText('promotions.preview.tree.selectedOfTotal', {
-							interpolate: {
-								selected: String(includedChanges),
-								total: String(totalChanges),
-							},
+							interpolate: { selected: String(includedChanges), total: String(totalChanges) },
+						})
+					"
+					data-test-id="promotion-preview-counts"
+				>
+					{{
+						i18n.baseText('promotions.preview.tree.count', {
+							interpolate: { selected: String(includedChanges), total: String(totalChanges) },
 						})
 					}}
 				</N8nText>
@@ -198,11 +206,17 @@ function onToggle(resource: PromotionResource) {
 						v-if="selectable && group"
 						step="2xs"
 						color="text-light"
+						role="img"
+						:aria-label="
+							i18n.baseText('promotions.preview.tree.group.count', {
+								interpolate: { included: String(group.included), total: String(group.total) },
+							})
+						"
 						data-test-id="promotion-preview-group-count"
 					>
 						{{
-							i18n.baseText('promotions.preview.tree.group.count', {
-								interpolate: { included: String(group.included), total: String(group.total) },
+							i18n.baseText('promotions.preview.tree.count', {
+								interpolate: { selected: String(group.included), total: String(group.total) },
 							})
 						}}
 					</N8nText>

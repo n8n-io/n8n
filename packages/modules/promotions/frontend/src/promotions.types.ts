@@ -1,11 +1,27 @@
 import type {
 	ApplyPackageResultDto,
+	PromotionBindingConsumer,
 	PromotionPreviewCheck,
 	PromotionVariableScope,
 } from '@n8n/api-types';
 
+/**
+ * A dependency that the destination lacks and the user cannot create, because it belongs to a
+ * project that the user cannot access. It never blocks the operation. The backend does not send
+ * these yet: design previews fill them in.
+ */
+export type PromotionOutsideAccessDependency = {
+	kind: 'credential' | 'variable' | 'workflow';
+	name: string;
+	/** The workflows that use it, so the row can link to them. */
+	consumers: PromotionBindingConsumer[];
+};
+
 export type ApplyCheckResult = Pick<ApplyPackageResultDto, 'environmentId' | 'git'> &
-	PromotionPreviewCheck;
+	PromotionPreviewCheck & {
+		/** Dependencies outside the access of the user. Empty or absent when there are none. */
+		outsideAccess?: PromotionOutsideAccessDependency[];
+	};
 
 export type BlockedApplyResult = Extract<ApplyPackageResultDto, { status: 'blocked' }>;
 export type AppliedResult = Extract<ApplyPackageResultDto, { status: 'applied' }>;
