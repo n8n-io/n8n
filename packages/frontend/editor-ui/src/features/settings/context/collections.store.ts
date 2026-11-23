@@ -27,6 +27,13 @@ export const useCollectionsStore = defineStore('contextCollections', () => {
 			}
 
 			return response;
+		} catch (error) {
+			// A newer read owns the result, so an older failure reports nothing.
+			if (read === latestRead) {
+				throw error;
+			}
+
+			return undefined;
 		} finally {
 			if (read === latestRead) {
 				loading.value = false;

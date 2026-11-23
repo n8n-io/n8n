@@ -58,17 +58,28 @@ describe('CollectionsTable', () => {
 	});
 
 	it('shows the name and the description of each collection in the order it gets them', () => {
+		// A sort by name or by update time would put the second row first.
 		const { getAllByTestId } = render([
-			collection({ id: 'b', name: 'Newest', description: 'Added last' }),
-			collection({ id: 'a', name: 'Oldest', description: 'Added first' }),
+			collection({
+				id: 'b',
+				name: 'Zeta guide',
+				description: 'First from the server',
+				updatedAt: '2026-01-01T00:00:00.000Z',
+			}),
+			collection({
+				id: 'a',
+				name: 'Alpha guide',
+				description: 'Second from the server',
+				updatedAt: '2026-06-01T00:00:00.000Z',
+			}),
 		]);
 
 		const names = getAllByTestId('collection-name').map((cell) => cell.textContent?.trim());
 		const descriptions = getAllByTestId('collection-description').map((cell) =>
 			cell.textContent?.trim(),
 		);
-		expect(names).toEqual(['Newest', 'Oldest']);
-		expect(descriptions).toEqual(['Added last', 'Added first']);
+		expect(names).toEqual(['Zeta guide', 'Alpha guide']);
+		expect(descriptions).toEqual(['First from the server', 'Second from the server']);
 	});
 
 	it('names the project of each collection', () => {

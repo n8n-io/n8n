@@ -54,9 +54,8 @@ function openCreateModal() {
 	modalOpen.value = true;
 }
 
-async function onCreated() {
+function onCreated() {
 	modalOpen.value = false;
-	await load();
 }
 
 async function goBack() {
@@ -114,7 +113,7 @@ onMounted(async () => {
 			</template>
 		</CollectionsTable>
 
-		<CollectionModal v-model:open="modalOpen" @created="onCreated" />
+		<CollectionModal v-model:open="modalOpen" @saved="load" @created="onCreated" />
 	</N8nSettingsLayout>
 </template>
 

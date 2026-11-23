@@ -86,6 +86,25 @@ describe('useCollectionsStore', () => {
 		expect(store.count).toBe(1);
 	});
 
+	it('reports no failure of an earlier read once a newer read has started', async () => {
+		let rejectFirst: (reason: unknown) => void = () => {};
+		fetchCollections
+			.mockReturnValueOnce(
+				new Promise((_resolve, reject) => {
+					rejectFirst = reject;
+				}),
+			)
+			.mockResolvedValueOnce({ count: 1, data: [collection('new')] });
+		const store = useCollectionsStore();
+
+		const first = store.fetchCollections();
+		await store.fetchCollections();
+		rejectFirst(new Error('offline'));
+
+		await expect(first).resolves.toBeUndefined();
+		expect(store.collections.map((row) => row.id)).toEqual(['new']);
+	});
+
 	it('passes a failed read on to the caller and stops loading', async () => {
 		const error = new Error('offline');
 		fetchCollections.mockRejectedValue(error);

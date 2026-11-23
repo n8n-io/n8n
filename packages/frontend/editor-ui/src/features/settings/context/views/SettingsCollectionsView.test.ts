@@ -22,14 +22,18 @@ vi.mock('@n8n/composables/useToast', () => ({
 }));
 
 /**
- * The dialog is a page-local child. The stub shows its open state and a button that plays
- * the dialog's `created` event back to the page.
+ * The dialog is a page-local child. The stub shows its open state and buttons that play
+ * the dialog's `saved` and `created` events back to the page.
  */
 const CollectionModalStub = {
 	props: ['open'],
-	emits: ['created', 'update:open'],
+	emits: ['saved', 'created', 'update:open'],
 	template: `
 		<div data-test-id="collection-modal-stub" :data-open="String(open)">
+			<button
+				data-test-id="collection-modal-stub-saved"
+				@click="$emit('saved', { id: 'c1', name: 'Customer support' })"
+			/>
 			<button
 				data-test-id="collection-modal-stub-created"
 				@click="$emit('created', { id: 'c1', name: 'Customer support' })"
@@ -176,7 +180,7 @@ describe('SettingsCollectionsView', () => {
 		expect(queryByTestId('collections-empty-state')).toBeNull();
 	});
 
-	it('loads the list again after a create, so the new collection shows first', async () => {
+	it('loads the list again after every save, so the new collection shows first', async () => {
 		const collectionsStore = mockedStore(useCollectionsStore);
 		collectionsStore.collections = [collection('c1', 'Oldest')];
 		collectionsStore.count = 1;
@@ -194,7 +198,7 @@ describe('SettingsCollectionsView', () => {
 			return { count: 2, data: collectionsStore.collections };
 		});
 		await userEvent.click(getByTestId('collections-create-button'));
-		await userEvent.click(getByTestId('collection-modal-stub-created'));
+		await userEvent.click(getByTestId('collection-modal-stub-saved'));
 
 		expect(collectionsStore.fetchCollections).toHaveBeenCalledTimes(2);
 		await waitFor(() => expect(rowNames(getAllByTestId)).toEqual(['Customer support', 'Oldest']));
