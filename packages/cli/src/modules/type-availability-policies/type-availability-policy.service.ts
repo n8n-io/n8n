@@ -1,4 +1,9 @@
-import type { InstanceTypeAccessResponse, NodeTypeAvailabilityScope } from '@n8n/api-types';
+import type {
+	InstanceTypeAccessResponse,
+	NodeTypeAvailabilityScope,
+	ProjectPolicyEffectiveCounts,
+	ProjectPolicyKindSummary,
+} from '@n8n/api-types';
 import { EventService, loginIdOf } from '@n8n/backend-services';
 import { TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -25,6 +30,8 @@ import {
 	type EffectivePolicy,
 	type ProjectEffectivePolicy,
 } from './effective-policy';
+import { HiddenNodeTypes } from './hidden-node-types';
+import { listedNodeTypes } from './listed-node-types';
 import { loadedCheckFor, packageResolverFor, policedTypeFor } from './package-resolver';
 import {
 	evaluateComposedType,
@@ -52,6 +59,12 @@ export type ScopeAttachments = {
 
 /** One type's composed verdict, as `evaluateComposedTypes` reports it. */
 export type ComposedTypeVerdict = ComposedVerdict & { readonly name: string };
+
+/** One kind's counts for the project policy list. Projects without a scope row are absent. */
+export type ProjectPolicyKindSummaries = {
+	withoutProjectPolicy: ProjectPolicyEffectiveCounts;
+	byProject: Map<string, { updatedAt: Date; summary: ProjectPolicyKindSummary }>;
+};
 
 export type AllProjectsEvaluation = {
 	withoutProjectPolicy: ComposedTypeVerdict[];
@@ -185,6 +198,7 @@ export class TypeAvailabilityPolicyService {
 		private readonly snapshot: TypeAvailabilityPolicySnapshot,
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
 		private readonly nodeTypes: NodeTypes,
+		private readonly hiddenNodeTypes: HiddenNodeTypes,
 	) {}
 
 	/**
@@ -979,7 +993,73 @@ export class TypeAvailabilityPolicyService {
 		return this.snapshot.read(kind, projectId) ?? (await this.getEffectivePolicy(kind, projectId));
 	}
 
-	private async readProjectScopes(kind: string): Promise<ProjectEffectivePolicy[]> {
+	/**
+	 * Counts for the project policy list, over the types the instance policy page lists. Reads the
+	 * database, not the snapshot, so the counts and `updatedAt` come from one source.
+	 */
+	async summarizeProjectPolicies(
+		kind: string,
+		typeNames: readonly string[],
+	): Promise<ProjectPolicyKindSummaries> {
+		const [instance, projects] = await Promise.all([
+			this.getEffectivePolicy(kind, null),
+			this.readProjectScopes(kind),
+		]);
+
+		const allVerdicts = this.verdictComposer(kind, typeNames)(
+			instance,
+			unconfiguredScope(kind, null),
+		);
+		const withoutProjectPolicy =
+			kind === NODE_TYPES_KIND
+				? listedNodeTypes(allVerdicts, {
+						resolveBaseName: (name) => this.nodeTypes.resolveBaseName(name),
+						hiddenTypes: await this.hiddenNodeTypes.get(),
+						instanceRules: instance.rules,
+					})
+				: allVerdicts;
+		const composeVerdicts = this.verdictComposer(
+			kind,
+			withoutProjectPolicy.map((verdict) => verdict.name),
+		);
+
+		const countAllowed = (verdicts: readonly ComposedTypeVerdict[]) =>
+			verdicts.filter((verdict) => verdict.action === 'allow').length;
+		const effectiveCounts = (verdicts: readonly ComposedTypeVerdict[]) => {
+			const allowed = countAllowed(verdicts);
+			return { allowed, restricted: verdicts.length - allowed };
+		};
+
+		return {
+			withoutProjectPolicy: effectiveCounts(withoutProjectPolicy),
+			byProject: new Map(
+				projects.map((project) => {
+					// Same type order as `withoutProjectPolicy`, so index `i` names the same type. Only a
+					// satisfied `delegate` turns a deny into an allow.
+					const verdicts = composeVerdicts(instance, project);
+					let restricted = 0;
+					let optedIn = 0;
+					verdicts.forEach((verdict, i) => {
+						const before = withoutProjectPolicy[i].action;
+						if (before === 'allow' && verdict.action === 'deny') restricted++;
+						if (before === 'deny' && verdict.action === 'allow') optedIn++;
+					});
+
+					return [
+						project.projectId,
+						{
+							updatedAt: project.updatedAt,
+							summary: { restricted, optedIn, effective: effectiveCounts(verdicts) },
+						},
+					];
+				}),
+			),
+		};
+	}
+
+	private async readProjectScopes(
+		kind: string,
+	): Promise<Array<ProjectEffectivePolicy & { updatedAt: Date }>> {
 		const scopes = await this.scopeRepository.findProjectScopes(kind, {});
 		const attachmentsByScope = await this.attachmentRepository.listAttachmentsForScopes(
 			scopes.map((scope) => scope.id),
@@ -989,6 +1069,7 @@ export class TypeAvailabilityPolicyService {
 		return scopes.map((scope) => ({
 			...toEffectivePolicy(scope, attachmentsByScope.get(scope.id) ?? []),
 			projectId: scope.projectId,
+			updatedAt: scope.updatedAt,
 		}));
 	}
 }

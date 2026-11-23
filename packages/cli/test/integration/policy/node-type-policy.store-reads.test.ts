@@ -12,6 +12,7 @@ import { TypeAvailabilityPolicyScopeRepository } from '@/modules/type-availabili
 import { TypeAvailabilityPolicyRepository } from '@/modules/type-availability-policies/database/repositories/type-availability-policy.repository';
 import type { PolicyRule } from '@/modules/type-availability-policies/policy-rule.types';
 import { TypeAvailabilityPolicySnapshot } from '@/modules/type-availability-policies/type-availability-policy-snapshot';
+import { HiddenNodeTypes } from '@/modules/type-availability-policies/hidden-node-types';
 import { TypeAvailabilityPolicyService } from '@/modules/type-availability-policies/type-availability-policy.service';
 
 import { reloadPolicySnapshot } from './shared/policy-snapshot';
@@ -209,6 +210,7 @@ describe('node type policy store reads', () => {
 				unloaded,
 				Container.get(LoadNodesAndCredentials),
 				Container.get(NodeTypes),
+				Container.get(HiddenNodeTypes),
 			);
 
 			let action: string | undefined;

@@ -27,6 +27,7 @@ import { NotFoundError } from '@n8n/errors';
 import { NodeTypes } from '@/node-types';
 
 import { NODE_TYPES_KIND } from './constants';
+import { withoutFollowingToolVariants } from './listed-node-types';
 import { NodeTypeUsageService } from './node-type-usage.service';
 import { TypeAvailabilityPolicyService } from './type-availability-policy.service';
 
@@ -66,16 +67,9 @@ export class TypeAvailabilityPolicyInstanceController {
 			NODE_TYPES_KIND,
 			Object.keys(this.nodeTypes.getKnownTypes()),
 		);
-		const matchedRuleIdByName = new Map(
-			access.types.map((type) => [type.name, type.matchedRuleId]),
+		const types = withoutFollowingToolVariants(access.types, (name) =>
+			this.nodeTypes.resolveBaseName(name),
 		);
-
-		// A generated tool variant usually follows its base type, so it gets no row. A rule can name
-		// the variant itself, and then the variant keeps its row: the admin must see that rule.
-		const types = access.types.filter((type) => {
-			const { baseName, isSyntheticTool } = this.nodeTypes.resolveBaseName(type.name);
-			return !isSyntheticTool || type.matchedRuleId !== matchedRuleIdByName.get(baseName);
-		});
 
 		return { ...access, types };
 	}
