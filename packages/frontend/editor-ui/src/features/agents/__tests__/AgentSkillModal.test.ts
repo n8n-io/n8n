@@ -5,6 +5,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
 import { VIEWS } from '@/app/constants';
+import { WORKFLOWS_IN_SKILLS_EXPERIMENT } from '@/app/constants/experiments';
 import { useUIStore } from '@/app/stores/ui.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
@@ -1544,6 +1545,11 @@ describe('AgentSkillModal', () => {
 
 		it('notes the MCP needs of mentioned workflows for a skill that the agent builder opens', async () => {
 			mockedStore(usePostHog).isFeatureEnabled = vi.fn(() => true);
+			mockedStore(usePostHog).isVariantEnabled = vi.fn(
+				(name: string, variant: string) =>
+					name === WORKFLOWS_IN_SKILLS_EXPERIMENT.name &&
+					variant === WORKFLOWS_IN_SKILLS_EXPERIMENT.variant,
+			);
 			mockedStore(useWorkflowsListStore).searchWorkflows = vi.fn().mockResolvedValue([
 				{
 					id: 'wf1',
