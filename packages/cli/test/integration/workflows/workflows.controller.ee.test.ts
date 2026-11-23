@@ -2341,6 +2341,13 @@ describe('PATCH /workflows/:workflowId', () => {
 });
 
 describe('PUT /:workflowId/transfer', () => {
+	const workflowsConfig = Container.get(GlobalConfig).workflows;
+	const publicationServiceDefault = workflowsConfig.useWorkflowPublicationService;
+
+	afterEach(() => {
+		workflowsConfig.useWorkflowPublicationService = publicationServiceDefault;
+	});
+
 	test('cannot transfer into the same project', async () => {
 		const destinationProject = await createTeamProject('Team Project', member);
 
@@ -2505,6 +2512,35 @@ describe('PUT /:workflowId/transfer', () => {
 		},
 	);
 
+	test('removes and re-adds the workflow from the active workflow manager during the transfer', async () => {
+		workflowsConfig.useWorkflowPublicationService = false;
+		//
+		// ARRANGE
+		//
+		const destinationProject = await createTeamProject('Team Project', member);
+
+		const workflow = await createActiveWorkflow({}, member);
+
+		//
+		// ACT
+		//
+		const response = await testServer
+			.authAgentFor(member)
+			.put(`/workflows/${workflow.id}/transfer`)
+			.send({ destinationProjectId: destinationProject.id })
+			.expect(200);
+
+		//
+		// ASSERT
+		//
+		expect(response.body).toEqual({});
+
+		expect(activeWorkflowManager.remove).toHaveBeenCalledWith(workflow.id);
+		expect(activeWorkflowManager.add).toHaveBeenCalledWith(workflow.id, 'update', undefined, {
+			actor: { kind: 'user', user: { id: member.id } },
+		});
+	});
+
 	test('should move workflow to project root if `destinationParentFolderId` is not provided', async () => {
 		//
 		// ARRANGE
@@ -2598,6 +2634,48 @@ describe('PUT /:workflowId/transfer', () => {
 				destinationParentFolderId: anotherFolder.id,
 			})
 			.expect(400);
+	});
+
+	test('deactivates the workflow if it cannot be added to the active workflow manager again and returns the WorkflowActivationError as data', async () => {
+		workflowsConfig.useWorkflowPublicationService = false;
+		//
+		// ARRANGE
+		//
+		const destinationProject = await createTeamProject('Team Project', member);
+
+		const workflow = await createActiveWorkflow({}, member);
+
+		activeWorkflowManager.add.mockRejectedValue(new WorkflowActivationError('Failed'));
+
+		//
+		// ACT
+		//
+		const response = await testServer
+			.authAgentFor(member)
+			.put(`/workflows/${workflow.id}/transfer`)
+			.send({ destinationProjectId: destinationProject.id })
+			.expect(200);
+
+		//
+		// ASSERT
+		//
+		expect(response.body).toMatchObject({
+			data: {
+				error: {
+					message: 'Failed',
+					name: 'WorkflowActivationError',
+				},
+			},
+		});
+
+		expect(activeWorkflowManager.remove).toHaveBeenCalledWith(workflow.id);
+		expect(activeWorkflowManager.add).toHaveBeenCalledWith(workflow.id, 'update', undefined, {
+			actor: { kind: 'user', user: { id: member.id } },
+		});
+
+		const workflowFromDB = await workflowRepository.findOneByOrFail({ id: workflow.id });
+		expect(workflowFromDB.active).toBe(false);
+		expect(workflowFromDB.activeVersionId).toBeNull();
 	});
 
 	test('owner transfers workflow from project they are not part of, e.g. test global cred sharing scope', async () => {
@@ -2932,117 +3010,36 @@ describe('PUT /:workflowId/transfer', () => {
 		]);
 	});
 
-	describe('with the workflow publication service off', () => {
-		const globalConfig = Container.get(GlobalConfig);
-		const original = globalConfig.workflows.useWorkflowPublicationService;
+	test('moves and unpublishes the workflow when its republish fails for an unknown reason', async () => {
+		workflowsConfig.useWorkflowPublicationService = false;
+		//
+		// ARRANGE
+		//
+		const destinationProject = await createTeamProject('Team Project', member);
 
-		beforeAll(() => {
-			globalConfig.workflows.useWorkflowPublicationService = false;
+		const workflow = await createActiveWorkflow({}, member);
+
+		activeWorkflowManager.add.mockRejectedValue(new UnexpectedError('Oh no!'));
+
+		//
+		// ACT
+		//
+		const response = await testServer
+			.authAgentFor(member)
+			.put(`/workflows/${workflow.id}/transfer`)
+			.send({ destinationProjectId: destinationProject.id })
+			.expect(200);
+
+		//
+		// ASSERT
+		//
+		expect(response.body.data).toEqual({ error: { name: 'UnexpectedError', message: 'Oh no!' } });
+		const [sharing] = await getWorkflowSharing(workflow);
+		expect(sharing.projectId).toBe(destinationProject.id);
+		const workflowInDb = await Container.get(WorkflowRepository).findOneByOrFail({
+			id: workflow.id,
 		});
-
-		afterAll(() => {
-			globalConfig.workflows.useWorkflowPublicationService = original;
-		});
-
-		test('removes and re-adds the workflow from the active workflow manager during the transfer', async () => {
-			//
-			// ARRANGE
-			//
-			const destinationProject = await createTeamProject('Team Project', member);
-
-			const workflow = await createActiveWorkflow({}, member);
-
-			//
-			// ACT
-			//
-			const response = await testServer
-				.authAgentFor(member)
-				.put(`/workflows/${workflow.id}/transfer`)
-				.send({ destinationProjectId: destinationProject.id })
-				.expect(200);
-
-			//
-			// ASSERT
-			//
-			expect(response.body).toEqual({});
-
-			expect(activeWorkflowManager.remove).toHaveBeenCalledWith(workflow.id);
-			expect(activeWorkflowManager.add).toHaveBeenCalledWith(workflow.id, 'update', undefined, {
-				actor: { kind: 'user', user: { id: member.id } },
-			});
-		});
-
-		test('deactivates the workflow if it cannot be added to the active workflow manager again and returns the WorkflowActivationError as data', async () => {
-			//
-			// ARRANGE
-			//
-			const destinationProject = await createTeamProject('Team Project', member);
-
-			const workflow = await createActiveWorkflow({}, member);
-
-			activeWorkflowManager.add.mockRejectedValue(new WorkflowActivationError('Failed'));
-
-			//
-			// ACT
-			//
-			const response = await testServer
-				.authAgentFor(member)
-				.put(`/workflows/${workflow.id}/transfer`)
-				.send({ destinationProjectId: destinationProject.id })
-				.expect(200);
-
-			//
-			// ASSERT
-			//
-			expect(response.body).toMatchObject({
-				data: {
-					error: {
-						message: 'Failed',
-						name: 'WorkflowActivationError',
-					},
-				},
-			});
-
-			expect(activeWorkflowManager.remove).toHaveBeenCalledWith(workflow.id);
-			expect(activeWorkflowManager.add).toHaveBeenCalledWith(workflow.id, 'update', undefined, {
-				actor: { kind: 'user', user: { id: member.id } },
-			});
-
-			const workflowFromDB = await workflowRepository.findOneByOrFail({ id: workflow.id });
-			expect(workflowFromDB.active).toBe(false);
-			expect(workflowFromDB.activeVersionId).toBeNull();
-		});
-
-		test('moves and unpublishes the workflow when its republish fails for an unknown reason', async () => {
-			//
-			// ARRANGE
-			//
-			const destinationProject = await createTeamProject('Team Project', member);
-
-			const workflow = await createActiveWorkflow({}, member);
-
-			activeWorkflowManager.add.mockRejectedValue(new UnexpectedError('Oh no!'));
-
-			//
-			// ACT
-			//
-			const response = await testServer
-				.authAgentFor(member)
-				.put(`/workflows/${workflow.id}/transfer`)
-				.send({ destinationProjectId: destinationProject.id })
-				.expect(200);
-
-			//
-			// ASSERT
-			//
-			expect(response.body.data).toEqual({ error: { name: 'UnexpectedError', message: 'Oh no!' } });
-			const [sharing] = await getWorkflowSharing(workflow);
-			expect(sharing.projectId).toBe(destinationProject.id);
-			const workflowInDb = await Container.get(WorkflowRepository).findOneByOrFail({
-				id: workflow.id,
-			});
-			expect(workflowInDb.activeVersionId).toBeNull();
-		});
+		expect(workflowInDb.activeVersionId).toBeNull();
 	});
 });
 
