@@ -133,7 +133,7 @@ export class LeaseSessionManager {
 		const inserts = [...this.abandonedInserts];
 		if (this.inFlightInsert !== undefined) inserts.push(this.inFlightInsert.done);
 		if (inserts.length === 0) return;
-		// A row that lands after this wait expires on its own within the lease length.
+		// The manager deletes a row that lands after this wait; the row expires only if that delete fails.
 		await this.waitAtMostOneLease(
 			Promise.all(inserts.map(async (insert) => await insert.catch(() => {}))).then(() => {}),
 		);
