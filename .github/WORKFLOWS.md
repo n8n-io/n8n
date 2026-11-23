@@ -543,6 +543,16 @@ test-workflows-nightly.yml  (manual dispatch only — nightly schedule disabled,
 └────────────────────────────────────────────────────────────────────────────┘
 ```
 
+### npm `latest` promotion
+
+`release-set-stable-npm-packages-to-latest.yml` sets npm `latest` from the Git
+`stable` tag for public `@n8n/*` packages, `n8n-core`, `n8n-editor-ui`,
+`n8n-nodes-base`, and `n8n-workflow`. The three standalone packages
+`@n8n/create-node`, `@n8n/eslint-plugin-community-nodes`, and
+`@n8n/scan-community-package` follow npm `beta` when available and do not
+downgrade a newer `latest`. The channel promotion workflow manages `n8n@latest`
+separately.
+
 ### Release PR verification
 
 When the selected ref contains `packages/quality/policy/code-health`,
