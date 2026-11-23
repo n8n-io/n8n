@@ -516,6 +516,39 @@ describe('AgentSkillRefsService', () => {
 		});
 	});
 
+	describe('assertCanReadNewSkillMentions', () => {
+		const body = { name: 'New', description: 'New description', instructions: 'Do it.' };
+		const user = mock<User>({ id: 'user-1' });
+
+		it('checks only the bodies that become new skills, outside a transaction', async () => {
+			skillRuntime.findTargets.mockResolvedValueOnce(new Map([['shared', { projectId: null }]]));
+
+			await service.assertCanReadNewSkillMentions(
+				[
+					{ type: 'skill', id: 'shared' },
+					{ type: 'skill', id: 'seed_skill' },
+				],
+				{ shared: { ...body, name: 'Shared' }, seed_skill: body },
+				user,
+			);
+
+			expect(skillRuntime.findTargets).toHaveBeenCalledWith(['shared', 'seed_skill'], {});
+			expect(skillAccess.assertCanReadMentionedWorkflows).toHaveBeenCalledTimes(1);
+			expect(skillAccess.assertCanReadMentionedWorkflows).toHaveBeenCalledWith(user, body);
+		});
+
+		it('checks nothing without a user who creates the skills', async () => {
+			await service.assertCanReadNewSkillMentions(
+				[{ type: 'skill', id: 'seed_skill' }],
+				{ seed_skill: body },
+				null,
+			);
+
+			expect(skillRuntime.findTargets).not.toHaveBeenCalled();
+			expect(skillAccess.assertCanReadMentionedWorkflows).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('createDraftRefs', () => {
 		const body = { name: 'New', description: 'New description', instructions: 'Do it.' };
 		const user = mock<User>({ id: 'user-1' });
@@ -578,23 +611,6 @@ describe('AgentSkillRefsService', () => {
 				),
 			).rejects.toThrow(ForbiddenError);
 			expect(skillAccess.assertCanCreate).toHaveBeenCalledWith(user, { projectId: 'project-1' });
-			expect(skillService.createTrusted).not.toHaveBeenCalled();
-		});
-
-		it('refuses a body that mentions a workflow the user cannot read', async () => {
-			skillRuntime.findTargets.mockResolvedValueOnce(new Map());
-			skillAccess.assertCanReadMentionedWorkflows.mockRejectedValue(new UserError('No access'));
-
-			await expect(
-				service.createDraftRefs(
-					agent,
-					[{ type: 'skill', id: 'seed_skill' }],
-					{ seed_skill: body },
-					user,
-					ctx,
-				),
-			).rejects.toThrow('No access');
-			expect(skillAccess.assertCanReadMentionedWorkflows).toHaveBeenCalledWith(user, body);
 			expect(skillService.createTrusted).not.toHaveBeenCalled();
 		});
 
