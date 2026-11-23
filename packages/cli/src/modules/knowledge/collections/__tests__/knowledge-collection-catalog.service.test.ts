@@ -326,6 +326,11 @@ describe('KnowledgeCollectionCatalogService', () => {
 
 		it('returns the updated collection', async () => {
 			const { service, collectionRepository } = makeService();
+			const updatedSummary: KnowledgeCollectionSummary = {
+				...summary,
+				collection: mock<KnowledgeCollection>({ ...summary.collection, ...changes }),
+			};
+			collectionRepository.findSharedSummaryById.mockResolvedValue(updatedSummary);
 
 			const result = await service.update(user, projectId, 'collection-1', changes);
 
@@ -334,7 +339,13 @@ describe('KnowledgeCollectionCatalogService', () => {
 				changes,
 				{},
 			);
-			expect(result.id).toBe('collection-1');
+			expect(collectionRepository.findSharedSummaryById).toHaveBeenCalledWith('collection-1', {});
+			expect(result).toMatchObject({
+				id: 'collection-1',
+				name: 'Refunds playbook',
+				description: 'How we refund',
+				slug: 'returns_playbook',
+			});
 		});
 
 		it('changes only the fields in the body', async () => {
