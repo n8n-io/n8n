@@ -1,0 +1,38 @@
+packages/quality/environments/rig/README.md
+  h_8fb27e0cdf6d1e 5-6,16,111,150-177,222
+packages/quality/environments/rig/src/commands/doctor.ts
+  h_8fb27e0cdf6d1e 7,146,327-330
+packages/quality/environments/rig/src/commands/lifecycle.ts
+  h_8fb27e0cdf6d1e 98,140,221-224,245
+packages/quality/environments/rig/src/commands/running.ts
+  h_8fb27e0cdf6d1e 388,392-403
+packages/quality/environments/rig/src/commands/wizard.ts
+  h_8fb27e0cdf6d1e 147-155
+packages/quality/environments/rig/src/config/env-yaml.ts
+  h_8fb27e0cdf6d1e 57-79,104,156,164,168-171,173-187,210
+packages/quality/environments/rig/src/config/global-config.ts
+  h_8fb27e0cdf6d1e 36
+packages/quality/environments/rig/src/env/managed.ts
+  h_8fb27e0cdf6d1e 70-82,150-151
+packages/quality/environments/rig/src/environment.ts
+  h_8fb27e0cdf6d1e 33,186-190
+packages/quality/environments/rig/src/runtime/session.ts
+  h_8fb27e0cdf6d1e 290,295,369-377,426
+packages/quality/environments/rig/src/services/compose.ts
+  h_8fb27e0cdf6d1e 8-16,131-157,377-381,384-386
+packages/quality/environments/rig/src/services/runtime.ts
+  h_8fb27e0cdf6d1e 72
+packages/quality/environments/rig/test/mail.test.ts
+  h_8fb27e0cdf6d1e 1-97
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6ff495f8764f8c524159f0fb5619acddbd35fd3a",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

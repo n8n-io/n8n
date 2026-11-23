@@ -1,0 +1,50 @@
+packages/frontend/@n8n/design-system/src/components/N8nTabs/Tabs.stories.ts
+  s_372e04dc3ab387::t_14aa0aaad1fecd 41-46,52,55,59-60,62-64,66-68,70-74
+  s_372e04dc3ab387::t_5d02af83abac66 47-51,53-54,56-58,75-76,95
+  s_372e04dc3ab387::t_6dc6213692129b 61,65,69
+  s_372e04dc3ab387::t_fe86829a5d282c 105,143-144,203
+  s_372e04dc3ab387::t_13713e04b8ca17 202
+packages/frontend/@n8n/design-system/src/components/N8nTabs/Tabs.types.ts
+  s_372e04dc3ab387::t_5600c3ec0951c2 14
+  s_372e04dc3ab387::t_a98c31fa5372b4 16-17,23-24
+packages/frontend/@n8n/design-system/src/components/N8nTabs/Tabs.vue
+  s_372e04dc3ab387::t_1d42cdeef9fdb5 56,103
+  s_372e04dc3ab387::t_4605e9eec5f5d3 196,237,288-289,291-296,300,303-312,318,323-324,327,338-343,346-348,351-353,355-359,361-362,365-366,369-371,374-377,380-383,386-391,407,427,435,438,441-443,447-450,454,457-458,486
+  s_372e04dc3ab387::t_caa825fe6d8355 3,12-13,20,23-32,39,42-55,57-58,60,66-79,83,94,112-119,125,150-154,156-165,167-174,176-195,197-208,210-212,217-236,238-265,267-276,278-284,349-350,425-426,428,431-433,436-437
+packages/frontend/@n8n/design-system/src/components/N8nTabs/component-tabs.md
+  s_11d17566c74203::t_83b2ca70e1d3de 1-16,18-39,42-43,47-59,62-80,82-192
+  s_11d17566c74203::t_aee4c3437161ea 17
+  s_11d17566c74203::t_f3d7ffe5bcb5da 40-41
+  s_11d17566c74203::t_c553781bad8e38 44-46
+  s_11d17566c74203::t_537ccc7a35e290 60-61
+  s_11d17566c74203::t_8b0777b1bf1201 81
+packages/frontend/@n8n/design-system/src/types/tabs.ts
+  s_372e04dc3ab387::t_0342377d614808 7
+  s_372e04dc3ab387::t_c1d00fabd89246 10-11
+packages/frontend/@n8n/design-system/src/components/N8nTabs/Tabs.test.ts
+  s_372e04dc3ab387::t_133b89a75d5662 175,180-182,202
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bb495b147aacc5a4264c14c2ea0e0fda71f2ce3e",
+  "prompts": {},
+  "sessions": {
+    "s_11d17566c74203": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1f46e-dcc9-72de-9e34-93305b70b7aa",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_372e04dc3ab387": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1f480-cbfe-72de-9e34-9333b75573c0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

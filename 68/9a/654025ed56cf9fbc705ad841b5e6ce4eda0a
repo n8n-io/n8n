@@ -1,0 +1,15 @@
+packages/core/src/execution-engine/node-execution-context/__tests__/shared-tests.ts
+  ai_agent 19-24,389-419
+packages/cli/test/integration/sub-workflow-paired-item.test.ts
+  ai_agent 1-185
+packages/core/src/execution-engine/node-execution-context/base-execute-context.ts
+  ai_agent 45,58,98-99,261-262,454-457
+packages/cli/src/workflow-execute-additional-data.ts
+  ai_agent 64,887-901
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "689a654025ed56cf9fbc705ad841b5e6ce4eda0a",
+  "prompts": {}
+}

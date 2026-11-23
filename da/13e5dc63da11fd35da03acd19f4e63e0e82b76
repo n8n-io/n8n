@@ -1,0 +1,25 @@
+packages/cli/src/modules/agents/simulation/linear-gym-backend.ts
+  s_a36fc74b80cd35::t_05ff419ba9e991 101-103
+  s_a36fc74b80cd35::t_8a66f66fcad7cc 13,79-100,104-106,133-136,179-189,196
+packages/cli/src/modules/agents/simulation/read-capability.ts
+  s_a36fc74b80cd35::t_8a66f66fcad7cc 1-27
+packages/cli/src/modules/agents/simulation/__tests__/linear-gym-read-capability.test.ts
+  s_a36fc74b80cd35::t_4fc449477e9f1a 322,324,363
+  s_a36fc74b80cd35::t_05ff419ba9e991 1-321,323,325-362,364-416
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "da13e5dc63da11fd35da03acd19f4e63e0e82b76",
+  "prompts": {},
+  "sessions": {
+    "s_a36fc74b80cd35": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1fa49-ae11-7543-b5c5-bfec02997fc5",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}
