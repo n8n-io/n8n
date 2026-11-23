@@ -1745,6 +1745,8 @@ function onRemove() {
 						:skill="comparedSkill"
 						:selected-path="selectedPath"
 						:change-counts="diffCounts"
+						:instance-skill="selectedScopeSkill.scope === 'instance'"
+						:available-to-mcp="showAvailableToMCP && availableToMCP"
 						read-only
 						@select="selectedPath = $event"
 					/>

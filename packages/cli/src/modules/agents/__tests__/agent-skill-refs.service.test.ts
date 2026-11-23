@@ -517,7 +517,11 @@ describe('AgentSkillRefsService', () => {
 	});
 
 	describe('assertCanReadNewSkillMentions', () => {
-		const body = { name: 'New', description: 'New description', instructions: 'Do it.' };
+		const body = {
+			name: 'New',
+			description: 'New description',
+			instructions: 'Run [Report](n8n://workflow/wf1).',
+		};
 		const user = mock<User>({ id: 'user-1' });
 
 		it('checks only the bodies that become new skills, outside a transaction', async () => {
