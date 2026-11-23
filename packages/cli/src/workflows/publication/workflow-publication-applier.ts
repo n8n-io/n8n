@@ -245,7 +245,10 @@ export class WorkflowPublicationApplier {
 		oldRunnable: WorkflowTriggerVersion | null,
 	): PublicationResult {
 		return result.type === 'failed' && result.triggerState === undefined
-			? { ...result, triggerState: this.allTriggersFailed(oldVersionId, oldRunnable, result.error) }
+			? {
+					...result,
+					triggerState: this.failedTriggerState(oldVersionId, oldRunnable, result.error),
+				}
 			: result;
 	}
 
@@ -732,11 +735,12 @@ export class WorkflowPublicationApplier {
 		return {
 			type: 'failed',
 			error,
-			triggerState: this.allTriggersFailed(newVersion.versionId, newVersion, error),
+			triggerState: this.failedTriggerState(newVersion.versionId, newVersion, error),
 		};
 	}
 
-	private allTriggersFailed(
+	/** The trigger state of `version` with every enabled trigger `failed` on `error`. */
+	private failedTriggerState(
 		versionId: string,
 		version: WorkflowTriggerVersion | null,
 		error: Error,
