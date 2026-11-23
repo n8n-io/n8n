@@ -79,7 +79,7 @@ export class SchemaRegistryApi implements ICredentialType {
 			},
 			default: '',
 			description:
-				'PEM-encoded CA certificate(s) used to verify the registry. This replaces the system CAs rather than adding to them, so include every CA the registry chain needs. Leave empty to use the system CAs. Applies to an https registry URL only, and not to the credential test below.',
+				'PEM-encoded CA certificate(s) used to verify the registry. This replaces the certificate authorities that n8n trusts by default rather than adding to them, so include every CA the registry chain needs. Leave empty to use the default authorities. Applies to an https registry URL only, and not to the credential test below.',
 		},
 		{
 			displayName: 'Client Certificate',
@@ -130,9 +130,9 @@ export class SchemaRegistryApi implements ICredentialType {
 		return requestOptions;
 	}
 
-	// This goes through n8n's HTTP helper, which carries no TLS material, so the test
-	// uses the system CAs and sends no client certificate. A registry that needs either
-	// fails here and still works on the node. See ENT-842.
+	// This goes through n8n's HTTP helper, which carries no TLS material, so the test uses
+	// the default certificate authorities and sends no client certificate. A registry that
+	// needs either fails here and still works on the node. See ENT-842.
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: '={{$credentials.url}}',
