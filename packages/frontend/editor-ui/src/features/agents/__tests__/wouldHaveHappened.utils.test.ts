@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
 	clampText,
 	formatPreviewDate,
+	formatPreviewList,
 	formatPreviewValue,
 	presentList,
 	presentText,
@@ -14,6 +15,7 @@ describe('wouldHaveHappened utils', () => {
 		expect(presentText('  ')).toBeUndefined();
 		expect(presentText(undefined)).toBeUndefined();
 		expect(presentText('Hi')).toBe('Hi');
+		expect(presentText('  Hi \n')).toBe('Hi');
 		expect(presentList(['a@example.com', ' ', '', ' b@example.com '])).toEqual([
 			'a@example.com',
 			'b@example.com',
@@ -26,6 +28,7 @@ describe('wouldHaveHappened utils', () => {
 		[null, undefined],
 		['', undefined],
 		[{}, undefined],
+		[{ a: undefined }, undefined],
 		[[], undefined],
 		[0, '0'],
 		[false, 'false'],
@@ -37,6 +40,13 @@ describe('wouldHaveHappened utils', () => {
 		[[{ a: 1 }], '[\n  {\n    "a": 1\n  }\n]'],
 	])('formats %j as %j', (value, expected) => {
 		expect(formatPreviewValue(value)).toBe(expected);
+	});
+
+	it('picks the list format from the full list, not the visible items', () => {
+		expect(formatPreviewList(['Ana', 'Bob', 'Doe, Chris'], 2)).toBe('["Ana","Bob"]');
+		expect(formatPreviewList(['Ana', 'Bob', 'Doe, Chris'])).toBe('["Ana","Bob","Doe, Chris"]');
+		expect(formatPreviewList(['Ana', 'Bob', 'Chris'], 2)).toBe('Ana, Bob');
+		expect(formatPreviewList([])).toBeUndefined();
 	});
 
 	it('handles values that cannot be serialized', () => {
@@ -51,7 +61,9 @@ describe('wouldHaveHappened utils', () => {
 			{ key: 'b', value: 'two' },
 			{ key: 'c', value: '3' },
 		]);
-		expect(previewEntries({ a: null, b: '', c: [], d: {}, e: undefined })).toEqual([
+		expect(
+			previewEntries({ a: null, b: '', c: [], d: {}, e: undefined, f: { g: undefined } }),
+		).toEqual([
 			{ key: 'a', value: 'null' },
 			{ key: 'b', value: '""' },
 			{ key: 'c', value: '[]' },

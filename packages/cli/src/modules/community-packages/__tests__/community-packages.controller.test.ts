@@ -111,6 +111,7 @@ describe('CommunityPackagesController', () => {
 				'n8n-nodes-test',
 				'1.0.0',
 				'checksum',
+				{ rejectCredentialTypeConflicts: true },
 			);
 			expect(eventService.emit).toHaveBeenCalledWith(
 				'community-package-installed',
@@ -198,6 +199,7 @@ describe('CommunityPackagesController', () => {
 				previouslyInstalledPackage,
 				'2.0.0',
 				undefined,
+				{ rejectCredentialTypeConflicts: true },
 			);
 
 			expect(result).toBe(newInstalledPackage);
@@ -234,6 +236,7 @@ describe('CommunityPackagesController', () => {
 				previouslyInstalledPackage,
 				'2.0.0',
 				'vetted-checksum',
+				{ rejectCredentialTypeConflicts: true },
 			);
 		});
 

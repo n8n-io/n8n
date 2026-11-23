@@ -3,7 +3,7 @@ import { N8nButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, ref, useId } from 'vue';
 
-import { formatPreviewValue } from './wouldHaveHappened.utils';
+import { formatPreviewList } from './wouldHaveHappened.utils';
 
 /** A comma-separated list, such as recipients, that collapses after a few items. */
 const props = withDefaults(
@@ -19,15 +19,18 @@ const expanded = ref(false);
 const contentId = useId();
 
 const hiddenCount = computed(() => Math.max(props.items.length - props.maxVisible, 0));
-const visibleItems = computed(() =>
-	expanded.value || hiddenCount.value === 0 ? props.items : props.items.slice(0, props.maxVisible),
+const text = computed(() =>
+	formatPreviewList(
+		props.items,
+		expanded.value || hiddenCount.value === 0 ? props.items.length : props.maxVisible,
+	),
 );
 </script>
 
 <template>
 	<span :class="$style.list">
 		<span :id="contentId" :class="$style.items" data-test-id="would-have-happened-list">{{
-			formatPreviewValue(visibleItems)
+			text
 		}}</span>
 		<N8nButton
 			v-if="hiddenCount > 0"

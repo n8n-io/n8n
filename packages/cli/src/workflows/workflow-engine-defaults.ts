@@ -1,7 +1,15 @@
 import { ModuleRegistry } from '@n8n/backend-common';
 import { EngineConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import type { IWorkflowSettings } from 'n8n-workflow';
+import type { IWorkflowSettings, WorkflowEngineType } from 'n8n-workflow';
+
+/** The workflow engine setup of the instance. */
+export interface WorkflowEngineSetup {
+	/** True when the `engine-v2` module is active. */
+	engineV2Available: boolean;
+	/** The engine that a new workflow gets when its creator does not choose one. */
+	newWorkflowEngine: WorkflowEngineType;
+}
 
 /**
  * Puts a new workflow on engine v2 when the instance runs new workflows on v2 and the
@@ -24,7 +32,15 @@ export class WorkflowEngineDefaults {
 	}
 
 	// Read at call time: modules become active after services are constructed.
+	getSetup(): WorkflowEngineSetup {
+		const engineV2Available = this.moduleRegistry.isActive('engine-v2');
+		return {
+			engineV2Available,
+			newWorkflowEngine: engineV2Available && this.engineConfig.defaultType === 'v2' ? 'v2' : 'v1',
+		};
+	}
+
 	private runsNewWorkflowsOnV2() {
-		return this.engineConfig.defaultType === 'v2' && this.moduleRegistry.isActive('engine-v2');
+		return this.getSetup().newWorkflowEngine === 'v2';
 	}
 }

@@ -59,7 +59,7 @@ const parentAgentId = 'parent-agent-1';
 
 const runnableConfig: RunnableAgentJsonConfig = {
 	name: 'Helper Agent',
-	model: 'anthropic/claude-sonnet-4-5',
+	model: 'anthropic/claude-sonnet-5-5',
 	credential: 'credential-1',
 	instructions: 'Help with delegated work.',
 };
@@ -126,7 +126,7 @@ const defaultStreamChunks: StreamChunk[] = [
 	{
 		type: 'finish',
 		finishReason: 'stop',
-		model: 'anthropic/claude-sonnet-4-5',
+		model: 'anthropic/claude-sonnet-5-5',
 		usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15, cost: 0.01 },
 	},
 ];
@@ -505,7 +505,7 @@ describe('SubAgentRunner', () => {
 				telemetry: {
 					runType: 'production',
 					configuration: expect.objectContaining({
-						model: 'anthropic/claude-sonnet-4-5',
+						model: 'anthropic/claude-sonnet-5-5',
 					}),
 				},
 			}),
@@ -640,6 +640,27 @@ describe('SubAgentRunner', () => {
 
 		expect(reconstructionService.reconstructFromResolvedSource).toHaveBeenCalledWith(
 			expect.objectContaining({ user }),
+		);
+	});
+
+	it('passes the service account of the sub-agent to its runtime for log attribution', async () => {
+		sourceResolver.resolveForRuntime.mockResolvedValue({
+			...runtimeSource,
+			agentServiceAccountId: 'sa-child',
+		});
+
+		await runner.run(spawnRequest, {
+			parentAgentId,
+			projectId,
+			credentialProvider,
+			runType: 'production',
+		});
+
+		expect(reconstructionService.reconstructFromResolvedSource).toHaveBeenCalledWith(
+			expect.objectContaining({
+				agentServiceAccountId: 'sa-child',
+				parentAgentIdForDelegation: parentAgentId,
+			}),
 		);
 	});
 
@@ -1274,7 +1295,7 @@ describe('SubAgentRunner', () => {
 			subAgents: {
 				modelsByDifficulty: {
 					high: {
-						model: 'anthropic/claude-sonnet-4-5',
+						model: 'anthropic/claude-sonnet-5-5',
 						credential: 'high-credential',
 					},
 				},
@@ -1300,7 +1321,7 @@ describe('SubAgentRunner', () => {
 			expect.objectContaining({
 				config: {
 					...parentConfig,
-					model: 'anthropic/claude-sonnet-4-5',
+					model: 'anthropic/claude-sonnet-5-5',
 					credential: 'high-credential',
 					providerTools: {
 						'anthropic.web_search_20250305': { maxUses: 3 },

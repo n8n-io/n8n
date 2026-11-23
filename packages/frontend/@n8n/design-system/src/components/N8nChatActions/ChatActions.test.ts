@@ -273,4 +273,22 @@ describe('N8nChatActions', () => {
 		expect(wrapper.findAll('button')).toHaveLength(2);
 		expect(wrapper.get('[role="group"]').attributes('aria-label')).toBe('Message actions');
 	});
+
+	it('reports a rating and keeps the thank-you note when the rating is turned off', async () => {
+		const onRating = vi.fn();
+		const wrapper = mount(N8nChatActions, {
+			props: { content: 'Message content', showRating: true, onRating },
+			global,
+		});
+
+		await wrapper.get('[data-test-id="message-thumbs-down-button"]').trigger('click');
+		await wrapper.setProps({ showRating: false });
+
+		expect(onRating).toHaveBeenCalledWith({ rating: 'down' });
+		expect(wrapper.find('[data-test-id="message-thumbs-up-button"]').exists()).toBe(false);
+		expect(wrapper.find('[data-test-id="message-thumbs-down-button"]').exists()).toBe(false);
+		expect(wrapper.get('[data-test-id="message-rating-success"]').text()).toBe(
+			'Thanks for your feedback!',
+		);
+	});
 });

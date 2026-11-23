@@ -100,6 +100,86 @@ const BUNDLE_RELATIVE_PATH = ['dist', 'bundle', 'runtime.iife.js'].join('/');
 // even if the global is later replaced.
 const safeStringify = JSON.stringify;
 
+/** A C string ends at its first NUL, so only a string without NUL survives vm.newString(). */
+function fitsInCString(value: string): boolean {
+	return !value.includes('\0');
+}
+
+const LONE_SURROGATE = /[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/;
+
+/** vm.newString() encodes a string as UTF-8, which has no form for a lone surrogate. */
+function fitsInUtf8(value: string): boolean {
+	return !LONE_SURROGATE.test(value);
+}
+
+/** True when the guest string that vm.newString() builds has the same code units as `value`. */
+function survivesNewString(value: string): boolean {
+	return fitsInCString(value) && fitsInUtf8(value);
+}
+
+/** A guest value read on the host, or the guest error that stopped the read. The caller owns `error`. */
+type GuestRead = { value: unknown } | { error: QuickJSHandle };
+
+/**
+ * Read a guest value on the host. A top-level string that vm.dump() changed is
+ * read again as JSON text through `guestStringify`. The guest can stop that
+ * read, for example at its memory limit.
+ */
+function readGuestValue(
+	vm: QuickJSContext,
+	handle: QuickJSHandle,
+	guestStringify: QuickJSHandle,
+): GuestRead {
+	const dump: unknown = vm.dump(handle);
+	// vm.dump() also gives a string for an object with a toJSON() that returns one.
+	if (
+		typeof dump === 'string' &&
+		vm.typeof(handle) === 'string' &&
+		isChangedStringDump(vm, handle, dump)
+	) {
+		return readGuestString(vm, handle, guestStringify);
+	}
+	return { value: dump };
+}
+
+/**
+ * vm.dump() reads a string as a C string. It stops at the first NUL and turns
+ * a lone surrogate into U+FFFD, so a changed dump has a different length or a U+FFFD.
+ */
+function isChangedStringDump(vm: QuickJSContext, handle: QuickJSHandle, dump: string): boolean {
+	return dump.length !== guestStringLength(vm, handle) || dump.includes('\uFFFD');
+}
+
+/** vm.getLength() reads only object lengths, so a string length is read as a property. */
+function guestStringLength(vm: QuickJSContext, handle: QuickJSHandle): number {
+	const length = vm.getProp(handle, 'length');
+	try {
+		return vm.getNumber(length);
+	} finally {
+		length.dispose();
+	}
+}
+
+/**
+ * Read a guest string as JSON text, which has an escape for NUL and for a lone surrogate.
+ * A string has no toJSON() hook, so guest code cannot change the text.
+ */
+function readGuestString(
+	vm: QuickJSContext,
+	handle: QuickJSHandle,
+	guestStringify: QuickJSHandle,
+): GuestRead {
+	const result = vm.callFunction(guestStringify, vm.undefined, handle);
+	if (!result.error) {
+		try {
+			return { value: JSON.parse(vm.getString(result.value)) as unknown };
+		} finally {
+			result.value.dispose();
+		}
+	}
+	return { error: result.error };
+}
+
 // ============================================================================
 // Sentinel helpers
 //
@@ -371,9 +451,9 @@ function loadRuntimeBundle(): string {
  * into QuickJS via evalCode. Handles undefined (not valid JSON) by returning
  * the string "undefined".
  *
- * Only objects/arrays reach this — primitives (including top-level NaN via
- * newNumber) and Date are handled directly by the caller. Everything else
- * (lazy-proxy metadata, Intl outputs, typed-RPC results, error-sentinel
+ * Only objects/arrays and strings with NUL or a lone surrogate reach this — other primitives
+ * (including top-level NaN via newNumber) and Date are handled directly by
+ * the caller. Everything else (lazy-proxy metadata, Intl outputs, typed-RPC results, error-sentinel
  * extras) is sentinel-wrapped first so nested Date/NaN/Map/Set survive the
  * JSON round-trip and rebuild in the guest via __unwrapFromHost — matching
  * what isolated-vm's structured clone delivers.
@@ -564,6 +644,13 @@ export class QuickJsBridge implements RuntimeBridge {
 	// Long-lived host-callback handles (Intl polyfill, character map) — disposed on dispose()
 	private hostFunctionHandles: QuickJSHandle[] = [];
 
+	// The guest JSON.stringify from context setup. An expression can replace the global one.
+	private guestStringify?: QuickJSHandle;
+
+	// The guest error that stopped a string read in a host callback of the current
+	// guest call. It replaces the outcome of the call, because the guest can catch it.
+	private stoppedRead?: GuestOutcome;
+
 	// Memoized host Intl formatters keyed by ctor + locales + options.
 	// Construction dominates per-call cost (~39µs for a DateTimeFormat vs ~1µs
 	// for format on an existing one). Capped because locales/options are
@@ -666,6 +753,8 @@ export class QuickJsBridge implements RuntimeBridge {
 		// Wrap __prepareForTransfer to mark Date/NaN/Map/Set/Error so they survive vm.dump()
 		this.injectTransferWrapper();
 
+		this.captureGuestStringify();
+
 		// Inject E() error handler matching IsolatedVmBridge's E() semantics
 		this.injectErrorHandler();
 
@@ -725,7 +814,7 @@ export class QuickJsBridge implements RuntimeBridge {
 		const vm = this.vm;
 
 		const intlFn = vm.newFunction('__intl', (...handles) => {
-			const args = handles.map((h) => vm.dump(h));
+			const args = handles.map((h) => this.dumpGuestArgument(vm, h));
 			try {
 				return this.hostValueToQuickJSHandle(
 					this.dispatchIntl(
@@ -1168,9 +1257,58 @@ export class QuickJsBridge implements RuntimeBridge {
 		this.logger.debug('[QuickJsBridge] Transfer wrapper injected');
 	}
 
+	/** Keep a handle to the guest JSON.stringify for string reads. */
+	private captureGuestStringify(): void {
+		if (!this.vm) {
+			throw new Error('Context not initialized');
+		}
+
+		const result = this.vm.evalCode('JSON.stringify');
+		if (result.error) {
+			result.error.dispose();
+			throw new Error('Failed to capture the string reader');
+		}
+		this.guestStringify = result.value;
+		this.hostFunctionHandles.push(result.value);
+	}
+
+	private readGuestValue(vm: QuickJSContext, handle: QuickJSHandle): GuestRead {
+		if (!this.guestStringify) {
+			throw new Error('Context not initialized');
+		}
+		return readGuestValue(vm, handle, this.guestStringify);
+	}
+
+	/** Dump a guest value to the host with every string intact. */
+	private dumpGuestValue(vm: QuickJSContext, handle: QuickJSHandle): GuestOutcome {
+		const read = this.readGuestValue(vm, handle);
+		if ('error' in read) {
+			const dump: unknown = vm.dump(read.error);
+			read.error.dispose();
+			return { kind: 'error', dump };
+		}
+		return { kind: 'value', dump: read.value };
+	}
+
+	/**
+	 * Dump a host-callback argument with every string intact.
+	 * @throws {QuickJSHandle} the guest error that stopped the read. It also becomes
+	 * the stopped read of the current guest call.
+	 */
+	private dumpGuestArgument(vm: QuickJSContext, handle: QuickJSHandle): unknown {
+		const read = this.readGuestValue(vm, handle);
+		if ('error' in read) {
+			this.stoppedRead ??= { kind: 'error', dump: vm.dump(read.error) };
+			throw read.error;
+		}
+		return read.value;
+	}
+
 	/**
 	 * Inject the E() error handler matching IsolatedVmBridge semantics:
 	 * - Re-throw ExpressionError / ExpressionExtensionError
+	 * - Re-throw the out of memory error. isolated-vm stops the isolate at
+	 *   its memory limit, so guest code cannot catch that error there.
 	 * - Swallow everything else (TypeErrors, generic Errors, etc.)
 	 *
 	 * Errors from host callbacks arrive as sentinel objects (not class
@@ -1184,6 +1322,9 @@ export class QuickJsBridge implements RuntimeBridge {
 				globalThis.E = function(error, _context) {
 					var name = error && error.name;
 					if (name === 'ExpressionError' || name === 'ExpressionExtensionError') {
+						throw error;
+					}
+					if (name === 'InternalError' && error.message === 'out of memory') {
 						throw error;
 					}
 					return undefined;
@@ -1333,7 +1474,7 @@ export class QuickJsBridge implements RuntimeBridge {
 		if (typeof value === 'number') {
 			return this.vm.newNumber(value);
 		}
-		if (typeof value === 'string') return this.vm.newString(value);
+		if (typeof value === 'string' && survivesNewString(value)) return this.vm.newString(value);
 		if (typeof value === 'boolean') {
 			return value ? this.vm.true : this.vm.false;
 		}
@@ -1551,6 +1692,21 @@ export class QuickJsBridge implements RuntimeBridge {
 		wrappedCode: string,
 		callbackHandles: QuickJSHandle[],
 	): GuestOutcome {
+		const outerStoppedRead = this.stoppedRead;
+		this.stoppedRead = undefined;
+		try {
+			const outcome = this.runWrappedCode(vm, wrappedCode, callbackHandles);
+			return this.stoppedRead ?? outcome;
+		} finally {
+			this.stoppedRead = outerStoppedRead;
+		}
+	}
+
+	private runWrappedCode(
+		vm: QuickJSContext,
+		wrappedCode: string,
+		callbackHandles: QuickJSHandle[],
+	): GuestOutcome {
 		const wrapperResult = vm.evalCode(wrappedCode);
 		if (wrapperResult.error) {
 			const dump: unknown = vm.dump(wrapperResult.error);
@@ -1568,9 +1724,9 @@ export class QuickJsBridge implements RuntimeBridge {
 			execResult.error.dispose();
 			return { kind: 'error', dump };
 		}
-		const dump: unknown = vm.dump(execResult.value);
+		const outcome = this.dumpGuestValue(vm, execResult.value);
 		execResult.value.dispose();
-		return { kind: 'value', dump };
+		return outcome;
 	}
 
 	/**
@@ -1616,6 +1772,7 @@ export class QuickJsBridge implements RuntimeBridge {
 			if (this.wasm) retireQuickJSWasm(this.wasm, this.logger);
 		} finally {
 			this.hostFunctionHandles = [];
+			this.guestStringify = undefined;
 			this.vm = undefined;
 			this.runtime = undefined;
 			this.wasm = undefined;
@@ -1633,6 +1790,7 @@ export class QuickJsBridge implements RuntimeBridge {
 		this.vm = undefined;
 		this.runtime = undefined;
 		this.hostFunctionHandles = [];
+		this.guestStringify = undefined;
 		this.initialized = false;
 		this.logger.warn('[QuickJsBridge] Discarded the runtime after a host error in a guest call');
 	}
@@ -1672,6 +1830,7 @@ export class QuickJsBridge implements RuntimeBridge {
 			handle.dispose();
 		}
 		this.hostFunctionHandles = [];
+		this.guestStringify = undefined;
 
 		if (this.vm) {
 			this.vm.dispose();

@@ -1,6 +1,6 @@
 # Component specification
 
-Displays contextual information when users hover over, focus on, or tap an element. Tooltips help users understand the purpose or state of UI elements without cluttering the interface.
+Displays contextual information when users hover over or focus on an element. Tooltips help users understand the purpose or state of UI elements without cluttering the interface.
 
 - **Component Name:** N8nTooltip
 - **Figma Component:** [Figma](https://www.figma.com/design/8zib7Trf2D2CHYXrEGPHkg/n8n-Design-System-V3?node-id=252-3284&m=dev)
@@ -63,6 +63,53 @@ import { N8nTooltip, N8nButton } from '@n8n/design-system'
   </N8nTooltip>
 </template>
 ```
+
+### Explain an unavailable button
+
+Use `N8nButton` with `disabled` and `focusableWhenDisabled` inside `N8nTooltip as-child`.
+The button stays in the tab order and exposes `aria-disabled="true"`.
+It blocks click, Enter, and Space activation, including form submission.
+The tooltip opens on hover or keyboard focus. Press Escape to dismiss it.
+
+Keep the explanation visible next to the button for touch users.
+Tooltips do not reliably open on touch.
+Link the visible text with `aria-describedby` to expose the explanation even when the tooltip is closed.
+Keep the action label separate from the explanation.
+Pass localized text from the consuming feature.
+
+```vue
+<script setup lang="ts">
+import { N8nButton, N8nTooltip } from '@n8n/design-system';
+import { useId } from 'vue';
+
+defineProps<{
+  disabled: boolean;
+  label: string;
+  reason: string;
+}>();
+
+const reasonId = useId();
+</script>
+
+<template>
+  <N8nTooltip as-child :content="reason" :disabled="!disabled">
+    <N8nButton
+      :disabled="disabled"
+      focusable-when-disabled
+      :aria-describedby="disabled ? reasonId : undefined"
+    >
+      {{ label }}
+    </N8nButton>
+  </N8nTooltip>
+  <p v-if="disabled" :id="reasonId">{{ reason }}</p>
+</template>
+```
+
+This opt-in applies to buttons without `href`.
+Loading buttons keep native disabled behavior.
+Without this opt-in, disabled buttons keep their current behavior.
+
+### Other tooltip examples
 
 **Delayed tooltip:**
 ```typescript

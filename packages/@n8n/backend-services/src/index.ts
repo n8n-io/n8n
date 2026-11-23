@@ -50,6 +50,10 @@ export {
 	type RoleDeletionChecker,
 } from './services/role-deletion-check-proxy.service';
 export { RoleService } from './services/role.service';
+export {
+	ProjectMutationHooksProxy,
+	type ProjectMutationHooks,
+} from './services/project-mutation-hooks-proxy.service';
 export { ProjectScopeService } from './services/project-scope.service';
 export { UserDeactivationHooks } from './services/user-deactivation-hooks.service';
 export { PasswordUtility } from './services/password.utility';

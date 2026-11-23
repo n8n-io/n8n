@@ -93,6 +93,7 @@ describe('onBeforeFinalize', () => {
 			streamError?: Error;
 			expectedError?: Error;
 			workspace?: Workspace;
+			fileResourceId?: string;
 		} = {},
 	) {
 		const executions = mock<AgentExecutionService>();
@@ -133,6 +134,7 @@ describe('onBeforeFinalize', () => {
 				toolRegistry: new Map(),
 				mcpServerAttributions: new Map(),
 				context: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
+				...(options.fileResourceId ? { fileResourceId: options.fileResourceId } : {}),
 				onBeforeFinalize,
 				onRecorderCreated: options.onRecorderCreated,
 				prepare: async () => turn,
@@ -169,6 +171,21 @@ describe('onBeforeFinalize', () => {
 			expect(sandboxFiles.syncOutputs.mock.invocationCallOrder[0]).toBeLessThan(
 				onBeforeFinalize.mock.invocationCallOrder[0],
 			);
+		});
+
+		it('stores the outputs under the file resource of the turn', async () => {
+			const workspace = mock<Workspace>();
+			const { sandboxFiles } = await runTurn(toolChunks('workspace_write_file'), {
+				workspace,
+				fileResourceId: 'system-chat:user-1',
+			});
+
+			expect(sandboxFiles.syncOutputs).toHaveBeenCalledWith(workspace, {
+				projectId: 'project-1',
+				agentId: 'agent-1',
+				threadId: 'thread-1',
+				resourceId: 'system-chat:user-1',
+			});
 		});
 
 		it('does not sync a turn that did not use the workspace', async () => {

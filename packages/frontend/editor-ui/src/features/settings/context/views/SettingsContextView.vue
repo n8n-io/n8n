@@ -15,6 +15,7 @@ import {
 
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { VIEWS } from '@/app/constants';
+import { useIsCollectionsEnabled } from '@/features/shared/knowledge/useIsCollectionsEnabled';
 
 import { useContextStore } from '../context.store';
 import {
@@ -32,6 +33,7 @@ const skillsStore = useSkillsStore();
 const skillsEnabled = isContextSkillsEnabled();
 const preferencesEnabled = isContextPreferencesEnabled();
 const canManagePreferences = canManageContextPreferences();
+const collectionsEnabled = useIsCollectionsEnabled();
 const { showError } = useToast();
 
 const preferenceCount = computed(() =>
@@ -54,6 +56,10 @@ async function openSkills() {
 
 async function openPreferences() {
 	await router.push({ name: VIEWS.SETTINGS_CONTEXT_PREFERENCES });
+}
+
+async function openCollections() {
+	await router.push({ name: VIEWS.SETTINGS_CONTEXT_COLLECTIONS });
 }
 
 /** Each row reports its own failure: it would otherwise show a zero as though it were real. */
@@ -136,6 +142,20 @@ onMounted(async () => {
 					<N8nText size="small" color="text-light">
 						{{ i18n.baseText('settings.context.skills.disabled.status') }}
 					</N8nText>
+				</template>
+			</N8nSettingsRow>
+
+			<N8nSettingsRow
+				v-if="collectionsEnabled"
+				clickable
+				:title="i18n.baseText('settings.context.collections.title')"
+				:description="i18n.baseText('settings.context.collections.subtitle')"
+				data-test-id="settings-context-collections-row"
+				@click="openCollections"
+			>
+				<template #action>
+					<!-- No count: there is no endpoint that lists collections yet. -->
+					<N8nSettingsRowConfigure value="" />
 				</template>
 			</N8nSettingsRow>
 		</N8nSettingsRowGroup>

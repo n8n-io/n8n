@@ -1495,6 +1495,7 @@ describe('AgentSkillModal', () => {
 				expect(showError).toHaveBeenCalledWith(error, 'agents.builder.skills.accessError'),
 			);
 			expect(queryByTestId('agent-skill-create-save')).not.toBeInTheDocument();
+			expect(await findByTestId('agent-skill-instructions-text')).toHaveTextContent('Write SQL');
 		});
 
 		it('shows a skill that the user cannot edit as read-only', async () => {
@@ -3156,7 +3157,7 @@ describe('Versions in the agent builder', () => {
 	});
 
 	it('shows a pinned skill read-only and goes back to the latest version from the bar', async () => {
-		const { findByTestId, getByTestId, onUseLatestVersion } = renderBuilder({
+		const { findByTestId, getByTestId, queryByTestId, onUseLatestVersion } = renderBuilder({
 			draft: 1,
 			published: 1,
 			pinned: true,
@@ -3170,11 +3171,8 @@ describe('Versions in the agent builder', () => {
 		);
 		// The line over the form takes the color of the warning strip.
 		expect(getByTestId('agent-skill-modal')).toHaveAttribute('data-header-divider-tone', 'warning');
-		// The fields stay in the form, disabled, and Save skill is disabled.
-		expect(await findByTestId('agent-skill-name-input')).toBeInTheDocument();
-		expect(
-			getByTestId('agent-skill-description-input').querySelector('input, textarea'),
-		).toBeDisabled();
+		expect(await findByTestId('agent-skill-instructions-text')).toHaveTextContent('Be brief.');
+		expect(queryByTestId('agent-skill-instructions-editor')).not.toBeInTheDocument();
 		expect(getByTestId('agent-skill-create-save')).toBeDisabled();
 
 		await userEvent.click(await findByTestId('agent-skill-pinned-use-latest'));

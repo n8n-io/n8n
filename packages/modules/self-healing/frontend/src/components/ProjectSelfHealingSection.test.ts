@@ -61,10 +61,10 @@ async function renderSection(saved: Partial<SelfHealingConfigurationDto> = {}) {
 
 beforeEach(() => vi.clearAllMocks());
 
-it('shows the Preview badge next to the heading', async () => {
+it('shows the Preview and enterprise readiness badges next to the heading', async () => {
 	const { view } = await renderSection();
 	expect(view.getByTestId('self-healing-preview-badge')).toBeInTheDocument();
-	expect(view.queryByTestId('self-healing-enterprise-readiness-badge')).not.toBeInTheDocument();
+	expect(view.getByTestId('self-healing-enterprise-readiness-badge')).toBeInTheDocument();
 });
 
 it('keeps the active switch unchanged when saving fails and allows another attempt', async () => {

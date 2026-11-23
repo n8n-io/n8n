@@ -375,13 +375,13 @@ export async function executeWorkflow(
 		throw PreExecuteBlockedError.unwrap(error);
 	}
 
-	const executionId = await activeExecutions.add(runData);
-
 	const { OwnershipService } = await import('@/services/ownership.service.js');
 	const { projectId, projectName } = await getWorkflowProjectDetailsSafe(
 		Container.get(OwnershipService),
 		workflowData.id,
 	);
+
+	const executionId = await activeExecutions.add({ ...runData, projectId });
 
 	Container.get(EventService).emit('workflow-executed', {
 		user: additionalData.userId ? { id: additionalData.userId } : undefined,
@@ -759,6 +759,8 @@ async function startExecution(
 			additionalData.rootExecutionMode ?? options.executionMode;
 		// Propagate the eval run id so sub-workflows of an eval run expose `$evaluation.runId`
 		additionalDataIntegrated.evaluationRunId = additionalData.evaluationRunId;
+		// A simulated-services eval run sends its sub-workflows' requests to the sim server too
+		additionalDataIntegrated.evalEgressProxy = additionalData.evalEgressProxy;
 		if (additionalData.httpResponse) {
 			additionalDataIntegrated.httpResponse = additionalData.httpResponse;
 		}

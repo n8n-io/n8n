@@ -1,7 +1,8 @@
 /** Returns the trimmed text, or `undefined` when it is missing or blank. */
 export function presentText(value: string | undefined | null): string | undefined {
 	if (typeof value !== 'string') return undefined;
-	return value.trim().length > 0 ? value : undefined;
+	const text = value.trim();
+	return text.length > 0 ? text : undefined;
 }
 
 /** Drops missing and blank entries. */
@@ -12,10 +13,6 @@ export function presentList(values: Array<string | undefined | null> | undefined
 		.filter((value) => value.length > 0);
 }
 
-/**
- * Formats any input value as plain text. Returns `undefined` for missing or
- * blank values, so the caller can omit them.
- */
 /** JSON for display. Values JSON can't hold, such as bigints, show as strings. */
 function safeJson(value: unknown, indent?: number): string | undefined {
 	try {
@@ -29,6 +26,10 @@ function safeJson(value: unknown, indent?: number): string | undefined {
 	}
 }
 
+/**
+ * Formats any input value as plain text. Returns `undefined` for missing or
+ * blank values, so the caller can omit them.
+ */
 export function formatPreviewValue(value: unknown): string | undefined {
 	if (value === undefined || value === null) return undefined;
 	if (typeof value === 'string') return presentText(value);
@@ -49,8 +50,24 @@ export function formatPreviewValue(value: unknown): string | undefined {
 		if (items.some((item) => item.includes(','))) return safeJson(value);
 		return items.length > 0 ? items.join(', ') : undefined;
 	}
-	if (typeof value === 'object' && Object.keys(value).length === 0) return undefined;
+	// `{ a: undefined }` serializes as `{}`, which would look like a deliberate empty object.
+	if (typeof value === 'object' && Object.values(value).every((item) => item === undefined)) {
+		return undefined;
+	}
 	return safeJson(value, 2);
+}
+
+/**
+ * Formats the first `visibleCount` items of a list. The format (comma-separated text or
+ * JSON) comes from the full list, so showing more items never switches between them.
+ */
+export function formatPreviewList(
+	items: string[],
+	visibleCount = items.length,
+): string | undefined {
+	const visible = items.slice(0, visibleCount);
+	const asJson = items.some((item) => item.trim() === '' || item.includes(','));
+	return asJson ? safeJson(visible) : formatPreviewValue(visible);
 }
 
 export interface PreviewEntry {
@@ -58,15 +75,16 @@ export interface PreviewEntry {
 	value: string;
 }
 
-/**
- * Input values that are set but empty, such as `null` or `''`. They can clear real data
- * (unassign an issue, blank a field), so they are shown rather than dropped.
- */
 function isPlainRecord(value: unknown): value is Record<string, unknown> {
 	if (typeof value !== 'object' || value === null) return false;
 	const proto: unknown = Object.getPrototypeOf(value);
 	return proto === Object.prototype || proto === null;
 }
+
+/**
+ * Input values that are set but empty, such as `null` or `''`. They can clear real data
+ * (unassign an issue, blank a field), so they are shown rather than dropped.
+ */
 
 export function formatExplicitEmpty(value: unknown): string | undefined {
 	if (value === null) return 'null';
@@ -94,7 +112,7 @@ const ISO_DATE_PATTERN =
  * other text unchanged.
  */
 export function formatPreviewDate(value: string | undefined, locale?: string): string | undefined {
-	const text = presentText(value)?.trim();
+	const text = presentText(value);
 	if (!text || !ISO_DATE_PATTERN.test(text)) return text;
 
 	// `new Date` rolls invalid days over (2026-02-30 becomes March 2), so check the parts first.

@@ -135,6 +135,7 @@ export class License implements LicenseProvider {
 				loadCertStr: async () => await this.loadCertStr(),
 				saveCertStr,
 				deviceFingerprint: () => this.deviceFingerprint(),
+				installId: this.instanceSettings.installId,
 				collectUsageMetrics,
 				collectPassthroughData,
 				onFeatureChange,
