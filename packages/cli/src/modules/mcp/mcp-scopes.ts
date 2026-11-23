@@ -150,7 +150,7 @@ export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 		MCP_SET_MIGRATION_FINDING_STATUS_TOOL_NAME,
 	],
 	// Unlocks no tool. It lets a client's server fetch a Gateway credits token from
-	// `POST /mcp-server/gateway-token`, so the token never reaches a model.
+	// `POST /mcp-server/gateway-token`, so the token never reaches a model. OAuth only.
 	'aiGateway:token': [],
 };
 
@@ -243,11 +243,12 @@ export const SKILL_TOOLS: ReadonlySet<string> = new Set([
 
 /**
  * Whether a caller may fetch a Gateway credits token from `POST /mcp-server/gateway-token`.
- * An OAuth grant needs `aiGateway:token`. A credential that is not scope-bearing (an MCP
- * API key) has full access, as it has for every tool.
+ * Only an OAuth grant that includes `aiGateway:token`. A credential that is not
+ * scope-bearing, such as an MCP API key, is refused: the user never consented to spending
+ * credits from outside n8n, and API keys live long and are often stored in client config files.
  */
 export function canIssueGatewayToken(grantedScopes: string[] | undefined): boolean {
-	return grantedScopes === undefined || grantedScopes.includes('aiGateway:token');
+	return grantedScopes?.includes('aiGateway:token') ?? false;
 }
 
 function isMcpScope(scope: string): scope is McpScope {

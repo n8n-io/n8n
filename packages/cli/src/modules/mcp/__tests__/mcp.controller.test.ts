@@ -662,7 +662,7 @@ describe('McpController', () => {
 			expect(aiGatewayService.issueExternalClientToken).not.toHaveBeenCalled();
 		});
 
-		test('issues a token to an MCP API key, which has full access', async () => {
+		test('refuses an MCP API key, even though it has full tool access', async () => {
 			const res = createTokenRes();
 
 			await controller.issueGatewayToken(
@@ -670,7 +670,8 @@ describe('McpController', () => {
 				res,
 			);
 
-			expect(res.json).toHaveBeenCalledWith({ available: true, ...access });
+			expect(res.status).toHaveBeenCalledWith(403);
+			expect(aiGatewayService.issueExternalClientToken).not.toHaveBeenCalled();
 		});
 
 		test('reports unavailable without asking the gateway when Gateway credits are off', async () => {

@@ -203,8 +203,8 @@ describe('getAllowedToolNames', () => {
 			expect(canIssueGatewayToken([])).toBe(false);
 		});
 
-		it('allows a credential that is not scope-bearing, such as an MCP API key', () => {
-			expect(canIssueGatewayToken(undefined)).toBe(true);
+		it('refuses a credential that is not scope-bearing, such as an MCP API key', () => {
+			expect(canIssueGatewayToken(undefined)).toBe(false);
 		});
 	});
 

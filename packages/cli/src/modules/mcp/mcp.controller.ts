@@ -224,7 +224,7 @@ export class McpController {
 	 * This is a plain endpoint and not an MCP tool on purpose: a tool result goes into a
 	 * model's context, and a model can be told to leak it. An OAuth grant needs the
 	 * `aiGateway:token` scope, which the consent screen offers only when the client asks for it.
-	 * The route sends no CORS headers, so a web page cannot read the token.
+	 * An MCP API key is refused. The route sends no CORS headers, so a web page cannot read the token.
 	 */
 	@Post('/gateway-token', {
 		ipRateLimit: createIpRateLimit(mcpConfig.rateLimitServer),
@@ -238,7 +238,9 @@ export class McpController {
 
 		if (!canIssueGatewayToken(mcpScopes)) {
 			res.header('WWW-Authenticate', 'Bearer error="insufficient_scope", scope="aiGateway:token"');
-			res.status(403).json({ message: 'The aiGateway:token scope is required' });
+			res
+				.status(403)
+				.json({ message: 'An OAuth connection that grants the aiGateway:token scope is required' });
 			return;
 		}
 
