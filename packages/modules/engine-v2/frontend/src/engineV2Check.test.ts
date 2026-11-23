@@ -1,13 +1,6 @@
-import * as workflowEngineCheck from '@n8n/workflow-engine-check';
 import type { INode } from 'n8n-workflow';
 
 import { engineV2Check } from './engineV2Check';
-
-// Runs the real package, and counts its calls for the cache case.
-vi.mock('@n8n/workflow-engine-check', async (importOriginal) => {
-	const actual = await importOriginal<typeof import('@n8n/workflow-engine-check')>();
-	return { ...actual, checkEngineV2Eligibility: vi.fn(actual.checkEngineV2Eligibility) };
-});
 
 function node(type: string, overrides: Partial<INode> = {}): INode {
 	return {
@@ -65,21 +58,10 @@ describe('engineV2Check.isNodeTypeSupported', () => {
 		expect(engineV2Check.isNodeTypeSupported(type)).toBe(false);
 	});
 
-	// Loop Over Items alone gets graph and version reasons, which say nothing about its type.
 	it.each(['n8n-nodes-base.set', 'n8n-nodes-base.webhook', 'n8n-nodes-base.splitInBatches'])(
 		'reports %s as supported',
 		(type) => {
 			expect(engineV2Check.isNodeTypeSupported(type)).toBe(true);
 		},
 	);
-
-	it('checks each node type once', () => {
-		const check = vi.mocked(workflowEngineCheck.checkEngineV2Eligibility);
-		check.mockClear();
-
-		engineV2Check.isNodeTypeSupported('n8n-nodes-base.noOp');
-		engineV2Check.isNodeTypeSupported('n8n-nodes-base.noOp');
-
-		expect(check).toHaveBeenCalledTimes(1);
-	});
 });

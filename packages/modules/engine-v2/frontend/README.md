@@ -15,10 +15,8 @@ The module tells the editor if the open workflow can run on engine v2. Every ans
 
 - `src/engineV2Check.ts` is the only file that imports `@n8n/workflow-engine-check`. The rest of
   the module uses its names, so a change to the package contract changes this file only.
-- The package can't say if engine v2 runs a node type. So `isNodeTypeSupported` checks a workflow
-  that holds only one node of that type, and counts only the codes in `NODE_TYPE_REASON_CODES`.
-  It keeps each answer. When the package adds a reason code for a node type, add the code to that
-  set. Until then, the node creator shows that type as supported, and the canvas still reports it.
+- `isNodeTypeSupported` asks the package's `isNodeTypeSupported`, which applies the same
+  node-type rule as the workflow check. The node creator uses it before the node exists.
 - `useEngineV2Compatibility` takes getters for the nodes, the connections and the settings of the
   workflow, because the document store belongs to the shell. It returns the reasons, the blocking
   reasons and `isNodeTypeIncompatible`.
