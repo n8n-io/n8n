@@ -203,24 +203,29 @@ export class WorkflowExecutionService {
 			await this.workflowRunner.prepareNewExecution(runData, true);
 		} catch (error) {
 			if (error instanceof PreExecuteBlockedError) {
+				this.logger.error('Blocked a polled execution before its row was committed', {
+					workflowId: workflowData.id,
+					nodeName: node.name,
+					pollIsBounded,
+					error: error.cause,
+				});
+
 				responsePromise?.reject(error.cause);
 
-				let cursorAdvanced = false;
 				if (!pollIsBounded) {
-					cursorAdvanced = await this.pollCursorService.commitCursorOnly({
+					const committed = await this.pollCursorService.commitCursorOnly({
 						workflowId: workflowData.id,
 						nodeId: node.id,
 						cursor,
 						fence,
 					});
+					if (!committed) {
+						this.logger.warn(
+							'Poll cursor commit skipped after a blocked execution: the poll no longer holds its lease',
+							{ workflowId: workflowData.id, nodeId: node.id, nodeName: node.name },
+						);
+					}
 				}
-
-				this.logger.error('Blocked a polled execution before its row was committed', {
-					workflowId: workflowData.id,
-					nodeName: node.name,
-					cursorAdvanced,
-					error: error.cause,
-				});
 
 				return undefined;
 			}
