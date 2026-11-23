@@ -314,6 +314,19 @@ export function useToolLabel() {
 			: undefined;
 	}
 
+	/**
+	 * The label that names what a node lookup or a workflow source write works on, for
+	 * the variant of the experiment. Undefined for other tools and without details.
+	 */
+	function getSpecificToolLabel(
+		rawToolName: string,
+		args?: Record<string, unknown>,
+	): string | undefined {
+		if (!specificLabels.value) return undefined;
+		const toolName = resolveBuilderToolName(rawToolName, args?.action);
+		return getWorkflowSourceLabel(toolName, args) ?? getNodeLookupLabel(toolName, args);
+	}
+
 	function getToolLabel(rawToolName: string, args?: Record<string, unknown>): string {
 		const toolName = resolveBuilderToolName(rawToolName, args?.action);
 		const sourceLabel = specificLabels.value ? getWorkflowSourceLabel(toolName, args) : undefined;
@@ -405,5 +418,5 @@ export function useToolLabel() {
 		return i18n.baseText('instanceAi.stepTimeline.hideData');
 	}
 
-	return { getToolLabel, getToggleLabel, getHideLabel };
+	return { getToolLabel, getSpecificToolLabel, getToggleLabel, getHideLabel };
 }

@@ -29,6 +29,10 @@ import { useInstanceAiStore } from '../../instanceAi.store';
 import { USER_TYPED_MESSAGE } from '../../prefills';
 
 import { createComponentRenderer } from '@/__tests__/render';
+import {
+	AGENT_TOOL_STEP_LABEL_KEY,
+	type AgentToolStepLabeler,
+} from '@/features/agents/components/agentChatInjectionKeys';
 import { mockedStore } from '@/__tests__/utils';
 import { INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT } from '@/app/constants/experiments';
 import { usePostHog } from '@/app/stores/posthog.store';
@@ -143,6 +147,8 @@ const chatMessages = ref<ChatMessage[]>([]);
 const isLoadingHistory = ref(true);
 const isBusy = ref(false);
 const isPanelStreaming = ref(false);
+// The tool step labeler that the view gives the chat.
+const panelToolStepLabel: { current?: AgentToolStepLabeler } = {};
 const composerAttachments = ref<AgentChatComposerAttachment[]>([]);
 // The user message whose references the stub panel renders through its slot.
 const referencedMessage = ref<ChatMessage>();
@@ -151,6 +157,7 @@ vi.mock('@/features/agents/components/AgentChatPanel.vue', () => ({
 	default: defineComponent({
 		inheritAttrs: false,
 		setup(_props, { attrs, expose, slots }) {
+			panelToolStepLabel.current = inject(AGENT_TOOL_STEP_LABEL_KEY, undefined);
 			// A chip with the same id replaces the old one, as in the real panel.
 			const addComposerAttachment = (
 				chip: AgentChatComposerAttachment['chip'],
@@ -709,6 +716,23 @@ describe('AssistantAgentThreadView', () => {
 			await flushPromises();
 
 			expect(panelProps.current['thinking-label']).toEqual(expect.any(String));
+		});
+
+		it('gives the chat the specific tool labels of the experiment', async () => {
+			setVariant(INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.variant);
+			await renderLoadedThread();
+
+			expect(panelToolStepLabel.current?.('search_nodes', { queries: ['gmail'] })).toBe(
+				'Searching for gmail',
+			);
+			expect(panelToolStepLabel.current?.('list_credentials', {})).toBeUndefined();
+		});
+
+		it('gives the chat no specific tool label in the control arm', async () => {
+			setVariant(INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.control);
+			await renderLoadedThread();
+
+			expect(panelToolStepLabel.current?.('search_nodes', { queries: ['gmail'] })).toBeUndefined();
 		});
 
 		it('gives the chat no thinking word in the control arm', async () => {

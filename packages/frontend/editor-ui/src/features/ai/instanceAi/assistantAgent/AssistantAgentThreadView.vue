@@ -57,6 +57,9 @@ import InstanceAiSkillPreview from '../components/InstanceAiSkillPreview.vue';
 import InstanceAiViewHeader from '../components/InstanceAiViewHeader.vue';
 import InstanceAiWorkflowDraftPreview from '../components/InstanceAiWorkflowDraftPreview.vue';
 import { useDraftWorkflowPreview } from '../composables/useDraftWorkflowPreview';
+import { useToolLabel } from '../toolLabels';
+import { AGENT_TOOL_STEP_LABEL_KEY } from '@/features/agents/components/agentChatInjectionKeys';
+import { isRecord } from '@n8n/utils/is-record';
 import LimitedModeNotice from '../components/LimitedModeNotice.vue';
 import InstanceAiWorkflowPreview, {
 	type WorkflowFailuresReport,
@@ -499,6 +502,11 @@ const draftPreview = useDraftWorkflowPreview({
 	isRunning: isAgentRunning,
 	isAwaitingUser,
 });
+// The tool steps of the chat name what a node lookup or a workflow source write works on.
+const { getSpecificToolLabel } = useToolLabel();
+provide(AGENT_TOOL_STEP_LABEL_KEY, (toolName, input) =>
+	getSpecificToolLabel(toolName, isRecord(input) ? input : undefined),
+);
 // EOF Experiment cleanup
 
 const preview = useCanvasPreview({
