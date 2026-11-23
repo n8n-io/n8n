@@ -106,7 +106,7 @@ import {
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { resolveContributedComponent } from '@/app/utils/resolveContributedComponent';
 import { isBuiltInDisplayMode, PANE_DEFAULT_DISPLAY_MODE } from '@/features/ndv/shared/ndv.utils';
-import { useRunDataDisplayModes } from '../composables/useRunDataDisplayModes';
+import { useRunDataDisplayModes } from '@/features/ndv/runData/composables/useRunDataDisplayModes';
 
 const LazyRunDataTable = defineAsyncComponent(async () => await import('./RunDataTable.vue'));
 const LazyRunDataJson = defineAsyncComponent(async () => await import('./RunDataJson.vue'));
@@ -1575,7 +1575,7 @@ defineExpose({ enterEditMode });
 			$style.container,
 			{
 				[$style.compact]: compact,
-				[$style.showActionsOnHover]: showActionsOnHover && !search,
+				[$style.showActionsOnHover]: showActionsOnHover && !activeSearch,
 			},
 		]"
 		@mouseover="activatePane"
