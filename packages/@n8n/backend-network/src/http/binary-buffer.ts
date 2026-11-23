@@ -21,8 +21,8 @@ function toStreamError(cause: Error & { code?: string }): Error {
  */
 export async function streamToBuffer(stream: Readable, idleTimeoutMs?: number): Promise<Buffer> {
 	// A stream can arrive already ended, errored, or closed. Late listeners do
-	// not fire on a settled stream, so reject or resolve immediately from its
-	// current state instead of waiting for the idle timer.
+	// not fire on a settled stream, so reject immediately from its current
+	// state instead of waiting for the idle timer.
 	if (stream.errored) {
 		// destroy(err) emits 'error' on the next tick. Attach a listener if none
 		// exists so throwing here does not leave an unhandled error event.
@@ -32,7 +32,7 @@ export async function streamToBuffer(stream: Readable, idleTimeoutMs?: number): 
 		throw toStreamError(stream.errored);
 	}
 	if (stream.readableEnded) {
-		return Buffer.alloc(0);
+		throw new UnexpectedError('Stream already consumed');
 	}
 	if (stream.destroyed || stream.closed) {
 		throw new UnexpectedError('Stream closed before completing');

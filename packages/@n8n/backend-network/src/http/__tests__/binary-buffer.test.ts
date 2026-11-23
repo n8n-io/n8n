@@ -108,16 +108,23 @@ describe('streamToBuffer inactivity timeout', () => {
 	});
 
 	it(
-		'resolves empty buffer immediately when the stream has already ended',
+		'rejects immediately when the stream has already been consumed',
 		{ timeout: 1000 },
 		async () => {
 			const stream = Readable.from(Buffer.from('done'));
 			expect((await streamToBuffer(stream, 60_000)).toString()).toBe('done');
 			expect(stream.readableEnded).toBe(true);
 
-			await expect(streamToBuffer(stream, 60_000)).resolves.toEqual(Buffer.alloc(0));
+			const promise = streamToBuffer(stream, 60_000);
+			await expect(promise).rejects.toThrow(UnexpectedError);
+			await expect(promise).rejects.toThrow('Stream already consumed');
 		},
 	);
+
+	it('resolves empty buffer for an unconsumed empty stream', { timeout: 1000 }, async () => {
+		const stream = Readable.from([]);
+		await expect(streamToBuffer(stream, 60_000)).resolves.toEqual(Buffer.alloc(0));
+	});
 
 	it(
 		'rejects immediately without returning partial bytes when the stream is already destroyed',

@@ -23,6 +23,7 @@ import {
 	validateProxySsrf,
 	validateUrlSsrf,
 } from './axios/utils';
+import { binaryToBuffer } from './binary-buffer';
 import { binaryToString } from './binary-string';
 import { parseIncomingMessage } from './parse-incoming-message';
 
@@ -91,23 +92,31 @@ function flushBufferedChunks(stream: Readable): Buffer {
  * so the caller still receives the HTTP error status.
  */
 async function readErrorResponseBody(body: Buffer | Readable): Promise<string> {
+	let encoding: string | undefined;
+	if (body instanceof IncomingMessage) {
+		parseIncomingMessage(body);
+		encoding = body.encoding;
+	}
+
+	let buffer: Buffer;
 	if (Buffer.isBuffer(body)) {
-		return await binaryToString(body);
+		buffer = body;
+	} else {
+		try {
+			buffer = await binaryToBuffer(body);
+		} catch {
+			buffer = flushBufferedChunks(body);
+		}
+	}
+
+	if (buffer.length === 0) {
+		return '';
 	}
 
 	try {
-		return await binaryToString(body);
+		return await binaryToString(buffer, encoding);
 	} catch {
-		const buffered = flushBufferedChunks(body);
-		if (buffered.length === 0) {
-			return '';
-		}
-		const encoding = body instanceof IncomingMessage ? body.encoding : undefined;
-		try {
-			return await binaryToString(buffered, encoding);
-		} catch {
-			return buffered.toString('utf-8');
-		}
+		return buffer.toString('utf-8');
 	}
 }
 

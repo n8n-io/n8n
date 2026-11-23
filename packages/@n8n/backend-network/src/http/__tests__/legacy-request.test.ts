@@ -479,6 +479,11 @@ describe('OutboundHttp.requests requestLegacy', () => {
 					dropTruncatedSocket = () => res.socket?.destroy();
 					return;
 				}
+				if (req.url === '/invalid-charset-403') {
+					res.writeHead(403, { 'content-type': 'text/plain; charset=invalid-charset' });
+					res.end('Access Denied by proxy');
+					return;
+				}
 				const status = (req.url ?? '').startsWith('/stall-200') ? 200 : 403;
 				res.writeHead(status, { 'content-type': 'text/plain', 'content-length': '1000' });
 				res.write('partial body');
@@ -585,6 +590,25 @@ describe('OutboundHttp.requests requestLegacy', () => {
 
 				expect(body.destroyed).toBe(true);
 				await expect(binaryToString(body)).rejects.toThrow(/aborted|closed before completing/i);
+			},
+		);
+
+		it(
+			'preserves the error body via UTF-8 fallback when the response charset cannot be decoded',
+			{ timeout: 5000 },
+			async () => {
+				const client = makeFacade().requests({ useDefaultSsrfPolicy: 'unsafe' });
+
+				await expect(
+					client.requestLegacy({
+						url: `http://127.0.0.1:${port}/invalid-charset-403`,
+						useStream: true,
+					}),
+				).rejects.toMatchObject({
+					statusCode: 403,
+					status: 403,
+					error: 'Access Denied by proxy',
+				});
 			},
 		);
 	});
