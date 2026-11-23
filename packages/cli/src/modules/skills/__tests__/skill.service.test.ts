@@ -1028,6 +1028,22 @@ describe('SkillService', () => {
 			expect(save).not.toHaveBeenCalled();
 		});
 
+		it('leaves a stale base to the save, so the editor gets the conflict and not the mention check', async () => {
+			const skill = skillRow('skill_a', { projectId: PROJECT });
+			skills.findLatestSaved.mockResolvedValue(new Map([['skill_a', versionRow(skill, 2)]]));
+			vi.spyOn(access, 'requireAccess').mockResolvedValue(skill);
+			const checkMentions = vi.spyOn(access, 'assertCanReadMentionedWorkflows');
+
+			await expect(
+				service.update(user, 'skill_a', {
+					instructions: 'Use [B](n8n://workflow/b).',
+					baseSkillHash: 'stale',
+				}),
+			).rejects.toThrow(ConflictError);
+
+			expect(checkMentions).not.toHaveBeenCalled();
+		});
+
 		it('does not check workflow mentions when the content stays the same', async () => {
 			const skill = skillRow('skill_a', { projectId: PROJECT });
 			vi.spyOn(access, 'requireAccess').mockResolvedValue(skill);

@@ -453,7 +453,7 @@ export class SkillService {
 
 		if (update.instructions !== undefined || update.references !== undefined) {
 			const latest = (await this.findLatest([skillId])).get(skillId);
-			if (latest) {
+			if (latest && getSkillHash(latest.skill) === update.baseSkillHash) {
 				await this.skillAccess.assertCanReadMentionedWorkflows(
 					user,
 					{

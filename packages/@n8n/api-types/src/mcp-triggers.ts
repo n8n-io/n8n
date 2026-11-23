@@ -5,9 +5,6 @@ import {
 	WEBHOOK_NODE_TYPE,
 } from 'n8n-workflow';
 
-/**
- * Triggers supported in production mode for MCP execution
- */
 export const SUPPORTED_PRODUCTION_MCP_TRIGGERS = {
 	[SCHEDULE_TRIGGER_NODE_TYPE]: 'Schedule Trigger',
 	[WEBHOOK_NODE_TYPE]: 'Webhook Trigger',

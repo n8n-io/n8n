@@ -282,6 +282,12 @@ as on a direct workflow tool. Show a workflow that is also attached directly
 only once, as the direct tool. The skill chip then names it in an
 `Already attached as a tool` tooltip.
 
+In the skill editor, the Workflows section of the file list shows a note icon
+at the end of a mentioned workflow when a caller cannot run it, or when the
+skill is an instance skill. The icon opens a tooltip on hover and on keyboard
+focus, with one line for each note. Notes are information, not errors: they
+never block a save.
+
 ## Modal patterns
 
 ### Channel behavior settings

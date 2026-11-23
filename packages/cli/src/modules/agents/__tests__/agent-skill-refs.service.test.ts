@@ -581,6 +581,23 @@ describe('AgentSkillRefsService', () => {
 			expect(skillService.createTrusted).not.toHaveBeenCalled();
 		});
 
+		it('refuses a body that mentions a workflow the user cannot read', async () => {
+			skillRuntime.findTargets.mockResolvedValueOnce(new Map());
+			skillAccess.assertCanReadMentionedWorkflows.mockRejectedValue(new UserError('No access'));
+
+			await expect(
+				service.createDraftRefs(
+					agent,
+					[{ type: 'skill', id: 'seed_skill' }],
+					{ seed_skill: body },
+					user,
+					ctx,
+				),
+			).rejects.toThrow('No access');
+			expect(skillAccess.assertCanReadMentionedWorkflows).toHaveBeenCalledWith(user, body);
+			expect(skillService.createTrusted).not.toHaveBeenCalled();
+		});
+
 		it('needs no skill permission for refs to skills', async () => {
 			skillRuntime.findTargets.mockResolvedValueOnce(new Map([['shared', { projectId: null }]]));
 
