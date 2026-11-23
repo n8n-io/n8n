@@ -349,6 +349,57 @@ export class MicrosoftTeamsTrigger implements INodeType {
 					},
 				},
 			},
+			{
+				displayName: 'Filters',
+				name: 'filters',
+				type: 'collection',
+				placeholder: 'Add Filter',
+				default: {},
+				description:
+					'Each filter reads the message from Microsoft Graph once for each notification',
+				displayOptions: {
+					show: {
+						event: ['newChannelMessage', 'newChatMessage'],
+					},
+				},
+				options: [
+					{
+						displayName: 'Keyword',
+						name: 'keyword',
+						type: 'string',
+						default: '',
+						description:
+							'Only trigger when the message text or subject contains this text. The match ignores case.',
+					},
+					{
+						displayName: 'Mentions Me',
+						name: 'mentionsMe',
+						type: 'boolean',
+						default: false,
+						description:
+							'Whether to trigger only when the message mentions you by name. @channel, @team and tag mentions do not count.',
+						displayOptions: {
+							hide: {
+								...SP_HIDE,
+							},
+						},
+					},
+					{
+						displayName: 'Skip Bot Messages',
+						name: 'skipBotMessages',
+						type: 'boolean',
+						default: false,
+						description: 'Whether to ignore messages that a bot or app sent',
+					},
+					{
+						displayName: 'Skip System Messages',
+						name: 'skipSystemMessages',
+						type: 'boolean',
+						default: false,
+						description: 'Whether to ignore system messages, for example "member added"',
+					},
+				],
+			},
 		],
 	};
 
