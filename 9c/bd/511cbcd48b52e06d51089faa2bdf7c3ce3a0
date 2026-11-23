@@ -1,0 +1,54 @@
+packages/cli/src/modules/mcp-guard/plan-template.ts
+  s_eacb2e80382e6a::t_3f42d4c7716b75 1-217
+packages/cli/src/modules/mcp-guard/router.ts
+  s_eacb2e80382e6a::t_3f42d4c7716b75 1-164
+packages/cli/src/modules/agents/simulation/simulation-backend-registry.ts
+  s_eacb2e80382e6a::t_480e6f0c4c7d89 3,6-9,12-13,21
+packages/cli/test/linear-consumer/run.mjs
+  s_eacb2e80382e6a::t_00f2c9ef1a381d 2,9-21
+  s_eacb2e80382e6a::t_4f69494664095c 46-49,92-100,102
+  s_eacb2e80382e6a::t_480e6f0c4c7d89 1,3-8,22-42,51-91,101,103-107
+  s_eacb2e80382e6a::t_6ae1a6d1559886 43-45,50
+packages/cli/test/linear-consumer/turns.mjs
+  s_eacb2e80382e6a::t_480e6f0c4c7d89 1-200,204-211,223-243,247-248,250-257,259-261,263-264,273-281,283-286,295-319,321-323,325-330
+  s_eacb2e80382e6a::t_6ae1a6d1559886 201-203,244-245,258,265-272,282,320
+  s_eacb2e80382e6a::t_4f69494664095c 214-219,246,249,262
+  s_eacb2e80382e6a::t_208b3adcae9e1d 212-213,220-222,287-294,324
+packages/cli/src/modules/mcp-guard/once-by-key.ts
+  s_eacb2e80382e6a::t_3f42d4c7716b75 1-20
+packages/cli/src/modules/mcp-guard/gym-admin.ts
+  s_eacb2e80382e6a::t_3f42d4c7716b75 1-6
+packages/cli/src/modules/mcp-guard/plan-hydrator.ts
+  s_eacb2e80382e6a::t_3f42d4c7716b75 1-480
+packages/cli/src/modules/agents/simulation/__tests__/linear-gym-backend.test.ts
+  s_eacb2e80382e6a::t_480e6f0c4c7d89 4-6,13,15,19-30,74-79,81,86-87,108-110,177,189,195-196,198,200,202,258,266-267,270,281,319
+  s_eacb2e80382e6a::t_1ae16f5df09dbe 1-3,7-12,14,16-18,31-73,80,82-85,88-107,111-176,178-188,190-194,197,199,201,203-257,259-265,268-269,271-280,282-318,320-374
+packages/cli/src/modules/agents/simulation/linear-gym-backend.ts
+  s_eacb2e80382e6a::t_480e6f0c4c7d89 1-301,304-310,312-315,319-328
+  s_eacb2e80382e6a::t_cf7bd60b07ecb4 316-318
+  s_eacb2e80382e6a::t_0edc26d8cf0262 302-303,311
+packages/cli/test/linear-consumer/tsconfig.json
+  s_eacb2e80382e6a::t_480e6f0c4c7d89 1-9
+packages/cli/src/modules/mcp-guard/seeded-entities.ts
+  s_eacb2e80382e6a::t_3f42d4c7716b75 1-159
+packages/cli/src/modules/mcp-guard/mcp-upstream.ts
+  s_eacb2e80382e6a::t_3f42d4c7716b75 1-6
+packages/cli/src/modules/agents/simulation/tool-simulation.contracts.ts
+  s_eacb2e80382e6a::t_480e6f0c4c7d89 5-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9cbd511cbcd48b52e06d51089faa2bdf7c3ce3a0",
+  "prompts": {},
+  "sessions": {
+    "s_eacb2e80382e6a": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1fa41-7f04-760a-b837-bab536c3659e",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

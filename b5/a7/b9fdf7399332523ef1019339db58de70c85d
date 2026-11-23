@@ -1,0 +1,23 @@
+packages/cli/src/modules/source-control.ee/source-control-preferences.service.ee.ts
+  s_37ef7547c3b88e::t_e8df86aa357374 315-317,321-360
+packages/cli/src/modules/source-control.ee/source-control.service.ee.ts
+  s_37ef7547c3b88e::t_e8df86aa357374 786,791
+packages/cli/src/modules/source-control.ee/__tests__/source-control-preferences.service.ee.test.ts
+  s_37ef7547c3b88e::t_98f944b0243963 633-634,639-655,659-661,665-702
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b5a7b9fdf7399332523ef1019339db58de70c85d",
+  "prompts": {},
+  "sessions": {
+    "s_37ef7547c3b88e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b495f5fc-a42e-4c56-a429-2c7612c8a238",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

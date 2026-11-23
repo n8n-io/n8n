@@ -1,0 +1,29 @@
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-request-decision.service.ts
+  s_419bed5e9fbd75::t_85fa2274f70433 292-294
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_419bed5e9fbd75::t_d67dc877897668 6530
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-close.controller.integration.test.ts
+  s_419bed5e9fbd75::t_52cfcc27b6184e 134,203-207,279
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-authorization.service.ts
+  s_419bed5e9fbd75::t_85fa2274f70433 267,280-281
+packages/@n8n/telemetry/src/events/workflow-reviews.ts
+  s_419bed5e9fbd75::t_039448b247846a 56,74
+packages/@n8n/api-types/src/dto/workflow-reviews/get-workflow-review-request-detail.dto.ts
+  s_419bed5e9fbd75::t_85fa2274f70433 64-66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "bfc5ce33ad3cc685db2bdeb547de6fb030163c8c",
+  "prompts": {},
+  "sessions": {
+    "s_419bed5e9fbd75": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "152a2e1a-fb2a-4e99-b693-ebe21d600421",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

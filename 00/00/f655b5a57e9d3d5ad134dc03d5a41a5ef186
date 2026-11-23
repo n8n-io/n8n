@@ -1,0 +1,34 @@
+packages/frontend/editor-ui/src/features/ai/skills/SkillBundledTools.vue
+  s_126e90b504d18d::t_9167aa1a1b5d92 1-103
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasMapping.ts
+  s_126e90b504d18d::t_df5277608cd28d 169
+packages/frontend/editor-ui/src/app/views/NodeView.vue
+  s_126e90b504d18d::t_ac3e7b98771e76 1844-1847,1886,1923-1932
+  s_126e90b504d18d::t_78c07555fb388c 26,1848,1852,1858-1885,1887-1897
+packages/frontend/editor-ui/src/features/ai/skills/skillDependencies.ts
+  s_126e90b504d18d::t_78c07555fb388c 123-168
+packages/frontend/editor-ui/src/features/ai/skills/useSkillDependencies.ts
+  s_126e90b504d18d::t_9167aa1a1b5d92 47-50
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeDefault.vue
+  s_126e90b504d18d::t_9167aa1a1b5d92 18,272-273
+packages/frontend/editor-ui/src/features/ai/skills/skillDependencyState.test.ts
+  s_126e90b504d18d::t_9167aa1a1b5d92 8-11
+packages/frontend/editor-ui/src/features/ai/skills/skillDependencyState.ts
+  s_126e90b504d18d::t_9167aa1a1b5d92 9,11,15-16,18-23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0000f655b5a57e9d3d5ad134dc03d5a41a5ef186",
+  "prompts": {},
+  "sessions": {
+    "s_126e90b504d18d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "53d0ed1b-1ddd-4373-8a47-d0ff0bb754c7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

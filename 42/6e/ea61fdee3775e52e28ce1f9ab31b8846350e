@@ -1,0 +1,19 @@
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_358ce32a49c6c8::t_efcb6c900ea0b3 457
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "426eea61fdee3775e52e28ce1f9ab31b8846350e",
+  "prompts": {},
+  "sessions": {
+    "s_358ce32a49c6c8": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1ef62-36ee-775e-b63e-756320e855b4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

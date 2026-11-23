@@ -1,0 +1,53 @@
+packages/cli/src/modules/source-control.ee/source-control-preferences.service.ee.ts
+  ai_agent 17,27-29,331-367
+packages/cli/src/modules/source-control.ee/constants.ts
+  ai_agent 2
+packages/cli/src/modules/source-control.ee/source-control.service.ee.ts
+  ai_agent 40,49,51-52,203,296-297,408-417,420,534-537,541-543,751-752,759-792
+packages/frontend/editor-ui/src/features/integrations/sourceControl.ee/components/SourceControlPushModal.vue
+  ai_agent 27,630,641-649
+packages/frontend/editor-ui/src/features/integrations/sourceControl.ee/components/SourceControlPushModal.test.ts
+  ai_agent 7,9,66-73,75,574,579-649,1301,1389
+packages/cli/src/modules/source-control.ee/__tests__/source-control.service.test.ts
+  ai_agent 14,81-82,90-93,655-926,966-1001,1577,1606,1924,1939-1940
+packages/frontend/editor-ui/src/features/integrations/sourceControl.ee/sourceControl.utils.test.ts
+  ai_agent 2,16-21,492-523
+packages/@n8n/api-types/src/dto/index.ts
+  ai_agent 181-184
+packages/cli/src/public-api/v1/controllers/source-control.public.controller.ts
+  ai_agent 95-98
+packages/cli/src/modules/source-control.ee/__tests__/source-control-git.service.integration.test.ts
+  ai_agent 108-180
+packages/@n8n/api-types/src/dto/source-control/push-work-folder-request.dto.ts
+  ai_agent 8-9,13-15
+packages/cli/src/public-api/v1/handlers/source-control/spec/paths/pushSourceControl.generated.yml
+  ai_agent 220
+packages/cli/test/integration/public-api/source-control.test.ts
+  ai_agent 9,605-618
+packages/frontend/editor-ui/src/features/integrations/sourceControl.ee/sourceControl.store.test.ts
+  ai_agent 240-254
+packages/@n8n/api-types/src/dto/source-control/source-control-push-conflict-error-public.dto.ts
+  ai_agent 8-9
+packages/frontend/@n8n/i18n/src/locales/en.json
+  ai_agent 5504-5505
+packages/cli/src/modules/source-control.ee/source-control-remote-ahead.error.ts
+  ai_agent 1-12
+packages/cli/src/modules/source-control.ee/__tests__/source-control-preferences.service.ee.test.ts
+  ai_agent 555-688
+packages/cli/src/modules/source-control.ee/source-control-git.service.ee.ts
+  ai_agent 405-437
+packages/cli/src/modules/source-control.ee/__tests__/source-control.controller.ee.test.ts
+  ai_agent 1-5,18,165-176
+packages/frontend/editor-ui/src/features/integrations/sourceControl.ee/sourceControl.utils.ts
+  ai_agent 4-9,23-27
+packages/frontend/editor-ui/src/features/integrations/sourceControl.ee/sourceControl.store.ts
+  ai_agent 48-49,54
+packages/cli/src/modules/source-control.ee/source-control.controller.ee.ts
+  ai_agent 19,243
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6844e93567490f2bf1981e86288306063fff2b7f",
+  "prompts": {}
+}

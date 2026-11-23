@@ -1,0 +1,52 @@
+packages/cli/src/modules/agents/simulation/__tests__/linear-gym-backend.test.ts
+  s_d65f0175585e58::t_ac663f4933de91 81
+  s_8fd5a62d253fcd::t_1b515a18abdf26 83-86
+packages/cli/src/modules/agents/simulation/simulation-session.ts
+  s_d65f0175585e58::t_bd8289eb12b783 88,181,195,204,272,280
+  s_8fd5a62d253fcd::t_1b515a18abdf26 273-279,366-369,372-376
+packages/@n8n/api-types/src/schemas/__tests__/agent-safe-testing.schema.test.ts
+  s_d65f0175585e58::t_9217c908add62e 6,18-19
+packages/@n8n/api-types/src/schemas/agent-safe-testing.schema.ts
+  s_d65f0175585e58::t_d9945b27300cfa 55
+  s_d65f0175585e58::t_9c9e4743e1e745 60-63
+packages/cli/src/modules/agents/__tests__/agent-test-run.service.test.ts
+  s_d65f0175585e58::t_f2c36288193102 10-12,732-736,742-744,746
+  s_d65f0175585e58::t_29877783dd4cc5 23,693
+  s_8fd5a62d253fcd::t_1b515a18abdf26 679-692,694-710,713-723,726-731
+  s_d65f0175585e58::t_4c041d65d00f76 737-741,745
+  s_d65f0175585e58::t_bbe33525be2d58 19,724-725
+  s_d65f0175585e58::t_8f538fd81ae467 677-678,711-712
+  s_d65f0175585e58::t_7f69fbd3654416 747-748
+packages/cli/src/modules/agents/simulation/linear-gym-backend.ts
+  s_8fd5a62d253fcd::t_1b515a18abdf26 198-201
+  s_d65f0175585e58::t_c1c7a7114b0a6d 71-72,75,152-153
+packages/cli/src/modules/agents/simulation/__tests__/simulation-session.test.ts
+  s_8fd5a62d253fcd::t_1b515a18abdf26 137-146,150-154
+  s_d65f0175585e58::t_ae1ce0695ecf67 134-136,147-149,155-156
+packages/cli/src/modules/agents/simulation/tool-simulation.contracts.ts
+  s_d65f0175585e58::t_03f1b8f77c5d6b 1,73
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a7eea9e5e30ccca15c9d2745e81f88b7b1d970b5",
+  "prompts": {},
+  "sessions": {
+    "s_8fd5a62d253fcd": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1f985-67db-71e6-9514-556f1d78f305",
+        "model": "gpt-6.2-astra"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    },
+    "s_d65f0175585e58": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1f985-a7a2-779b-82bc-99cfebdebc03",
+        "model": "gpt-6.2-astra"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

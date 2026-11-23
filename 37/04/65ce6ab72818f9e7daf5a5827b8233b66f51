@@ -1,0 +1,29 @@
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  s_67ceb9173fafe7::t_4a7f8be2d739df 3366,3407,3447,3453,3483,3505-3509,3556,3561-3655,3750,3783-3786
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_8725b63cabf6ee::t_3a280ada3b4f3f 366-371,1118-1120,1124-1125,1178,1185,1197,1262-1265
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "370465ce6ab72818f9e7daf5a5827b8233b66f51",
+  "prompts": {},
+  "sessions": {
+    "s_67ceb9173fafe7": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1f434-61c8-7540-bfea-4d6f94c2166b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    },
+    "s_8725b63cabf6ee": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1f4a7-8f54-7475-a1c1-6d99e1b698fb",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}
