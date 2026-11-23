@@ -51,7 +51,7 @@ export const description: INodeProperties[] = [
 			{
 				name: 'List Schemas',
 				value: 'listSchemas',
-				description: 'List the schemas, the same ones the Schema list offers',
+				description: 'List the schemas in the connected database',
 				action: 'List schemas',
 				annotations: READ_ONLY_ANNOTATIONS,
 			},
