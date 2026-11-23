@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "project_workflow_review_settings" ("projectId" varchar(36) PRIMARY KEY NOT NULL, "requiredByProject" boolean NOT NULL DEFAULT (false), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "FK_project_workflow_review_settings_projectId" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE)
+CREATE TABLE "project_workflow_review_settings" ("projectId" varchar(36) PRIMARY KEY NOT NULL, "requiredByProject" boolean NOT NULL DEFAULT (false), "requiredByInstance" boolean NOT NULL DEFAULT (false), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "FK_project_workflow_review_settings_projectId" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE)
 ```
 
 </details>
@@ -17,6 +17,7 @@ CREATE TABLE "project_workflow_review_settings" ("projectId" varchar(36) PRIMARY
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | projectId | varchar(36) |  | false |  | [project](project.md) |  |
+| requiredByInstance | boolean | false | false |  |  |  |
 | requiredByProject | boolean | false | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
@@ -44,6 +45,7 @@ erDiagram
 "project_workflow_review_settings" {
   datetime_3_ createdAt
   varchar_36_ projectId PK
+  boolean requiredByInstance
   boolean requiredByProject
   datetime_3_ updatedAt
 }
