@@ -175,7 +175,6 @@ export const promotionBindingConflictSchema = z.discriminatedUnion('code', [
 	credentialConflictSchema.extend({ code: z.literal('missing-id') }),
 	credentialConflictSchema.extend({ code: z.literal('conflicting-types') }),
 	credentialConflictSchema.extend({ code: z.literal('unknown-type') }),
-	credentialConflictSchema.extend({ code: z.literal('unknown-owner') }),
 	credentialConflictSchema.extend({
 		code: z.literal('type-mismatch'),
 		targetType: z.string(),
@@ -258,6 +257,14 @@ export const promotionBindingConflictSchema = z.discriminatedUnion('code', [
 	}),
 ]);
 
+export const promotionBindingWarningSchema = z.object({
+	kind: z.literal('variable'),
+	code: z.literal('variable-shadowed'),
+	name: z.string().min(1),
+	scope: z.object({ kind: z.literal('global') }),
+	consumers: consumersSchema,
+});
+
 export const promotionMissingDependencyKindSchema = z.enum(['credential', 'variable', 'workflow']);
 
 /**
@@ -339,14 +346,6 @@ export const promotionDependencyWarningSchema = z
 	})
 	.openapi('PromotionDependencyWarning');
 
-export const promotionBindingWarningSchema = z.object({
-	kind: z.literal('variable'),
-	code: z.literal('variable-shadowed'),
-	name: z.string().min(1),
-	scope: z.object({ kind: z.literal('global') }),
-	consumers: consumersSchema,
-});
-
 /**
  * What stops an Apply. Source IDs define creation scope.
  * This result does not certify a complete mirror or authorize later writes.
@@ -369,6 +368,12 @@ export const promotionApplyCheckSchema = z
 		accessRequirements: z.array(promotionBindingAccessRequirementSchema),
 		conflicts: z.array(promotionBindingConflictSchema),
 		warnings: z.array(promotionBindingWarningSchema),
+		missingDependencies: z.array(promotionMissingDependencySchema).openapi({
+			description:
+				'Every credential, variable, sub-workflow and error workflow that the applied workflows use, and that is not usable on this instance after the Apply. ' +
+				'An entry of the group `needs-action` can also be in `missingBindings`, `accessRequirements` or `conflicts`, which hold the details to resolve it. ' +
+				'An entry of the group `outside-access` is only in this list.',
+		}),
 	})
 	// One component for the Apply results and the Apply preview.
 	.openapi('PromotionApplyCheck');
