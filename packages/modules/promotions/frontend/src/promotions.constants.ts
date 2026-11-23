@@ -1,6 +1,8 @@
 export const PROMOTIONS_SETTINGS_VIEW = 'PromotionsSettings';
 export const PROMOTIONS_ENVIRONMENT_ADD_VIEW = 'PromotionsEnvironmentAdd';
 export const PROMOTIONS_ENVIRONMENT_EDIT_VIEW = 'PromotionsEnvironmentEdit';
+/** Development builds only: triggers each promotion scenario with sample data. */
+export const PROMOTIONS_PLAYGROUND_VIEW = 'PromotionsPlayground';
 
 export const ENVIRONMENTS_DOCS_URL = 'https://docs.n8n.io/administer/environments';
 export const ENVIRONMENTS_PLAN_DOCS_URL = `${ENVIRONMENTS_DOCS_URL}/plan-your-environments`;

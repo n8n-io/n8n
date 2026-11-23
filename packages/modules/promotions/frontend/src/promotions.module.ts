@@ -13,6 +13,7 @@ import {
 	PROMOTIONS_SETTINGS_SCOPES,
 	PROMOTIONS_SETTINGS_VIEW,
 } from './promotions.constants';
+import { playgroundRoutes, playgroundSettingsPages } from './playground/playground.module';
 
 const SettingsView = async () => await import('./views/PromotionsSettingsView.vue');
 const EnvironmentView = async () => await import('./views/PromotionEnvironmentView.vue');
@@ -85,6 +86,8 @@ export const PromotionsModule = defineFrontendModule({
 				);
 			},
 		},
+		// Prototype only. Empty in a production build.
+		...playgroundSettingsPages,
 	],
 	routes: [
 		{
@@ -116,6 +119,8 @@ export const PromotionsModule = defineFrontendModule({
 					component: EnvironmentView,
 					props: true,
 				},
+				// Prototype only. Empty in a production build.
+				...playgroundRoutes,
 			],
 		},
 		previewRoute('promote'),
