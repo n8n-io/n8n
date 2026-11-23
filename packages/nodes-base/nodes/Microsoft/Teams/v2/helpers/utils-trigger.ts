@@ -572,15 +572,15 @@ const RESOURCE_PATH = new RegExp(`^\\/?${SEGMENT}(?:\\/${SEGMENT})*$`);
 const RESOURCE_SEGMENT = new RegExp(SEGMENT, 'g');
 // Graph paths are short. A very long string makes the regex throw a RangeError.
 const MAX_RESOURCE_LENGTH = 2048;
-// The item key for the id in each segment of a known path. `null` drops the id.
-// A Map, so names such as `constructor` do not resolve to prototype members.
-const RESOURCE_ID_KEYS = new Map<string, Array<string | null>>([
+// The item key for the id in each segment of a known path. A shorter list drops the ids
+// at the end. A Map, so names such as `constructor` do not resolve to prototype members.
+const RESOURCE_ID_KEYS = new Map<string, string[]>([
 	['chats', ['chatId']],
 	['chats/messages', ['chatId', 'messageId']],
 	['teams/channels', ['teamId', 'channelId']],
 	['teams/channels/messages', ['teamId', 'channelId', 'messageId']],
 	['teams/channels/messages/replies', ['teamId', 'channelId', 'parentMessageId', 'messageId']],
-	['teams/members', ['teamId', null]],
+	['teams/members', ['teamId']],
 ]);
 
 /** Returns the ids in a notification `resource` path. An unknown path gives no ids. */
@@ -596,7 +596,7 @@ export function parseResourceIds(resource: unknown): IDataObject {
 	if (!keys) return {};
 	const ids: IDataObject = {};
 	keys.forEach((key, index) => {
-		if (key) ids[key] = segments[index][2].replace(/''/g, "'");
+		ids[key] = segments[index][2].replace(/''/g, "'");
 	});
 	return ids;
 }

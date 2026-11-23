@@ -11,7 +11,8 @@ export interface ChannelResponse {
 export interface WebhookNotification {
 	subscriptionId: string;
 	changeType?: string;
-	// Nothing checks the webhook payload, so the code checks these fields before use.
+	// Nothing checks the field types of the payload, so the trigger checks changeType,
+	// resource and resourceData before use.
 	resource: string;
 	resourceData?: ResourceData;
 	tenantId: string;

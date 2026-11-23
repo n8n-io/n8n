@@ -635,7 +635,9 @@ describe('Microsoft Teams Helpers Functions', () => {
 			['undefined', undefined, {}],
 			['null', null, {}],
 			['a number', 42, {}],
-			['a path over the length limit', `chats('${'a'.repeat(1e7)}')`, {}],
+			// `chats('` and `')` add 9 characters to the path.
+			['a path at the length limit', `chats('${'a'.repeat(2039)}')`, { chatId: 'a'.repeat(2039) }],
+			['a path over the length limit', `chats('${'a'.repeat(2040)}')`, {}],
 		])('parses %s', (_name, resource, expected) => {
 			expect(parseResourceIds(resource)).toStrictEqual(expected);
 		});

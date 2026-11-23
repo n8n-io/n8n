@@ -556,17 +556,18 @@ export class MicrosoftTeamsTrigger implements INodeType {
 		// notifications go in one array. `clientState` is the stored secret. The items do not
 		// include it.
 		const workflowData = [
-			changeNotifications.map(({ clientState, ...notification }) => ({
+			changeNotifications.map(({ clientState, ...notification }) => {
 				// The added fields go first. On a name clash the resourceData (or notification) value wins.
-				json: {
+				const json: IDataObject = {
 					...(typeof notification.changeType === 'string' && {
 						changeType: notification.changeType,
 					}),
 					...(typeof notification.resource === 'string' && { resource: notification.resource }),
 					...parseResourceIds(notification.resource),
-					...(notification.resourceData ?? notification),
-				} as IDataObject,
-			})),
+					...(isRecord(notification.resourceData) ? notification.resourceData : notification),
+				};
+				return { json };
+			}),
 		];
 
 		if (lifecycleNotifications.length === 0) {
