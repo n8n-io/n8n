@@ -29,7 +29,7 @@ import {
 	threadTargetsAgent,
 } from './instanceAi.threadRuntime';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
-import { isArtifactTab, useCanvasPreview } from './useCanvasPreview';
+import { isArtifactTab, isSavedArtifactTab, useCanvasPreview } from './useCanvasPreview';
 import { useAssistantAwayTelemetry } from './composables/useAssistantAwayTelemetry';
 import { getCurrentTurn } from './assistantTurn';
 import { CloudBrowserTasksKey, useCloudBrowserTasks } from './composables/useCloudBrowserTasks';
@@ -73,6 +73,7 @@ import InstanceAiDataTablePreview from './components/InstanceAiDataTablePreview.
 import InstanceAiAgentPreview from './components/InstanceAiAgentPreview.vue';
 import InstanceAiBrowserPreview from './components/InstanceAiBrowserPreview.vue';
 import InstanceAiCloudBrowserUserActionPanel from './components/InstanceAiCloudBrowserUserActionPanel.vue';
+import InstanceAiWorkflowDraftPreview from './components/InstanceAiWorkflowDraftPreview.vue';
 import InstanceAiSkillPreview from './components/InstanceAiSkillPreview.vue';
 import InstanceAiAppPreview from './components/InstanceAiAppPreview.vue';
 import { useAgentEvalsFlag } from '@/features/ai/evaluation.ee/composables/useAgentEvalsFlag';
@@ -287,6 +288,8 @@ const preview = useCanvasPreview({
 			await saveThreadTabs(rootStore.restApiContext, props.threadId, state);
 		},
 	},
+	workflowDrafts: () => thread.workflowDrafts,
+	dismissWorkflowDrafts: (workflowId) => thread.dismissWorkflowDrafts(workflowId),
 });
 const openSkillTabs = computed(() => preview.openTabs.value.filter((tab) => tab.type === 'skill'));
 watch(
@@ -296,11 +299,18 @@ watch(
 	},
 	{ immediate: true },
 );
+
+// The saved canvas loaded under its draft, so the draft has nothing left to cover.
+function handleSavedWorkflowLoaded(workflowId: string) {
+	thread.dismissWorkflowDrafts(workflowId);
+}
 watch(
 	[() => preview.activeTabId.value, () => preview.isPreviewVisible.value],
 	([tabId, previewVisible]) => {
-		// The agent only hears about artifacts, not browser tabs.
-		const isArtifact = preview.openTabs.value.some((tab) => tab.id === tabId && isArtifactTab(tab));
+		// The agent knows saved artifacts only. A browser or draft tab has no id that it can use.
+		const isArtifact = preview.openTabs.value.some(
+			(tab) => tab.id === tabId && isSavedArtifactTab(tab),
+		);
 		thread.setActiveArtifactId(previewVisible && isArtifact ? tabId : undefined);
 	},
 	{ immediate: true },
@@ -309,7 +319,7 @@ watch(
 // stored tabs load, the default tabs can still hold closed ones, so send none.
 watch(
 	[() => preview.openTabs.value, () => preview.tabsLoaded.value],
-	([tabs, loaded]) => thread.setOpenTabs(loaded ? tabs.filter(isArtifactTab) : null),
+	([tabs, loaded]) => thread.setOpenTabs(loaded ? tabs.filter(isSavedArtifactTab) : null),
 	{ immediate: true },
 );
 // --- Setup panel (checklist docked above the composer) ---
@@ -830,26 +840,29 @@ function handleNewThreadClick() {
 								store.debugMode = showDebugPanel;
 							"
 						/>
-						<N8nTooltip
-							:content="artifactsPanelToggleLabel"
-							placement="bottom"
-							:show-after="TOOLTIP_DELAY_MS"
-						>
-							<Transition name="preview-toggle-opacity" :css="isArtifactsPanelTransitionEnabled">
-								<N8nIconButton
-									v-if="showArtifactsPanelToggle"
-									icon="list"
-									variant="ghost"
-									size="small"
-									icon-size="large"
-									data-test-id="instance-ai-artifacts-panel-toggle"
-									:aria-label="artifactsPanelToggleLabel"
-									:aria-pressed="showArtifactsPanel"
-									:disabled="!canShowArtifactsPanel"
-									@click="toggleArtifactsPanel"
-								/>
-							</Transition>
-						</N8nTooltip>
+						<Transition name="preview-toggle-opacity" :css="isArtifactsPanelTransitionEnabled">
+							<span v-if="showArtifactsPanelToggle">
+								<N8nTooltip
+									as-child
+									:content="artifactsPanelToggleLabel"
+									placement="bottom"
+									:show-after="TOOLTIP_DELAY_MS"
+								>
+									<N8nIconButton
+										icon="list"
+										variant="ghost"
+										size="small"
+										icon-size="large"
+										data-test-id="instance-ai-artifacts-panel-toggle"
+										:aria-label="artifactsPanelToggleLabel"
+										:aria-pressed="showArtifactsPanel"
+										:disabled="!canShowArtifactsPanel"
+										focusable-when-disabled
+										@click="toggleArtifactsPanel"
+									/>
+								</N8nTooltip>
+							</span>
+						</Transition>
 						<!-- With no tabs to show, the toggle opens a resource in a new tab. -->
 						<InstanceAiResourcePicker
 							v-if="showOpenResourcePicker && thread.projectId"
@@ -877,27 +890,29 @@ function handleNewThreadClick() {
 								</N8nTooltip>
 							</template>
 						</InstanceAiResourcePicker>
-						<N8nTooltip
-							v-else
-							:content="artifactsPreviewToggleLabel"
-							placement="bottom"
-							:show-after="TOOLTIP_DELAY_MS"
-						>
-							<Transition name="preview-toggle-opacity" :css="isPreviewPanelTransitionEnabled">
-								<N8nIconButton
-									v-if="!preview.isPreviewVisible.value"
-									icon="panel-right"
-									variant="ghost"
-									size="small"
-									icon-size="large"
-									data-test-id="instance-ai-artifacts-preview-toggle"
-									:aria-label="artifactsPreviewToggleLabel"
-									:aria-pressed="preview.isPreviewVisible.value"
-									:disabled="!hasPreviewTabs"
-									@click="toggleArtifactsPreview"
-								/>
-							</Transition>
-						</N8nTooltip>
+						<Transition v-else name="preview-toggle-opacity" :css="isPreviewPanelTransitionEnabled">
+							<span v-if="!preview.isPreviewVisible.value">
+								<N8nTooltip
+									as-child
+									:content="artifactsPreviewToggleLabel"
+									placement="bottom"
+									:show-after="TOOLTIP_DELAY_MS"
+								>
+									<N8nIconButton
+										icon="panel-right"
+										variant="ghost"
+										size="small"
+										icon-size="large"
+										data-test-id="instance-ai-artifacts-preview-toggle"
+										:aria-label="artifactsPreviewToggleLabel"
+										:aria-pressed="preview.isPreviewVisible.value"
+										:disabled="!hasPreviewTabs"
+										focusable-when-disabled
+										@click="toggleArtifactsPreview"
+									/>
+								</N8nTooltip>
+							</span>
+						</Transition>
 					</template>
 				</InstanceAiViewHeader>
 			</div>
@@ -1066,6 +1081,14 @@ function handleNewThreadClick() {
 								:execution-result="preview.activeWorkflowExecutionResult.value"
 								@initial-node-id-consumed="consumeAgentReturnNodeId"
 								@workflow-failures="handleWorkflowFailures"
+								@workflow-loaded="handleSavedWorkflowLoaded"
+							/>
+							<InstanceAiWorkflowDraftPreview
+								v-if="preview.isPreviewVisible.value && preview.activeWorkflowDraft.value"
+								:key="preview.activeWorkflowDraft.value.filePath"
+								:class="$style.previewSlot"
+								:draft="preview.activeWorkflowDraft.value"
+								:building="isAgentWorking"
 							/>
 							<InstanceAiDataTablePreview
 								v-if="preview.isPreviewVisible.value && preview.activeDataTableId.value"

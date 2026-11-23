@@ -19,6 +19,7 @@ import {
 	describePromptProfile,
 	createDomainAccessTracker,
 	createSetupItemsEmitter,
+	createWorkflowDraftPublisher,
 	isSetupPanelEnabled,
 	orchestratorAgentId,
 	threadTargetsAgent,
@@ -100,6 +101,7 @@ export interface AssistantTurnEnvironment {
 	instanceContextEnabled: boolean;
 	nodeUsageEnabled: boolean;
 	skillScope: InstanceAiSkillScope;
+	preferencesNoteVariant?: string;
 }
 
 export interface AssistantTurnEnvironmentParams {
@@ -293,12 +295,15 @@ export class AssistantTurnEnvironmentFactory {
 		const {
 			configEvalsEnabled,
 			conversationHistoryEnabled,
+			draftWorkflowPreviewEnabled,
 			conciseStyleEnabled,
 			setupPanelEnabled,
 			setupPanelVariant,
 			folderExplorationEnabled,
 			credentialDescriptionsEnabled,
 			assistantSkillsEnabled,
+			skillSourcesEnabled,
+			preferencesNoteVariant,
 		} = gates;
 		runtime.turnState.setSetupPanelEnabled(setupPanelEnabled);
 		// Resumed segments use the gates bound to the original turn.
@@ -342,6 +347,7 @@ export class AssistantTurnEnvironmentFactory {
 			onboardingThread,
 			credentialDescriptionsEnabled,
 			assistantSkillsEnabled,
+			skillSourcesEnabled,
 			modelId,
 			utilityModelId,
 			onHelperUsage: this.creditService.helperUsageClaimer(user, threadId, runId),
@@ -614,6 +620,15 @@ export class AssistantTurnEnvironmentFactory {
 			nodeDefinitionDirs: nodeDefDirs.length > 0 ? nodeDefDirs : undefined,
 			domainContext: context,
 		};
+		if (draftWorkflowPreviewEnabled) {
+			context.workflowDraftPublisher = createWorkflowDraftPublisher({
+				eventBus: runtime.eventBus,
+				threadId,
+				runId,
+				agentId: orchestratorAgentId(runId),
+				context,
+			});
+		}
 
 		const { cloudBrowser } = runtime;
 		if (adminSettings.cloudBrowserEnabled && cloudBrowser && (await cloudBrowser.isAvailable())) {
@@ -649,6 +664,7 @@ export class AssistantTurnEnvironmentFactory {
 			instanceContextEnabled,
 			nodeUsageEnabled,
 			skillScope,
+			preferencesNoteVariant,
 		};
 	}
 

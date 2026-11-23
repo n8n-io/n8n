@@ -70,7 +70,7 @@ const freeNudgeVariant = z.enum(['control', 'variant-1', 'variant-2']);
 const freeNudgeTreatmentVariant = z.enum(['variant-1', 'variant-2']);
 const workflowPreviewsAboveAssistantVariant = z.enum(['control', 'variant']);
 const taxonomyInspirationVariant = z.enum(['control', 'variant']);
-const assistantMentionKind = z.enum(['workflow', 'node', 'group']);
+const assistantMentionKind = z.enum(['workflow', 'node', 'group', 'agent']);
 const assistantMentionTriggerSource = z.enum(['typed', 'button']);
 /** Cap on the query text the empty-search event carries; the emitter cuts to it after redaction. */
 export const ASSISTANT_MENTION_QUERY_TEXT_MAX_LENGTH = 100;
@@ -90,6 +90,7 @@ const assistantMentionCounts = z
 		workflow: mentionCount,
 		node: mentionCount,
 		group: mentionCount,
+		agent: mentionCount,
 	})
 	.describe('Picker mentions attached to the message, by kind');
 // Shared by the send and response events so context cuts use the same columns.
@@ -822,18 +823,18 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 	USER_SELECTED_AI_ASSISTANT_MENTION: {
 		name: 'User selected AI Assistant mention',
 		description:
-			'The user selected a workflow, node, or canvas group from the n8n Assistant mention picker. A pick of a mention that is already staged also counts, so every open ends in this event or in "User dismissed AI Assistant mention picker". The event contains interaction metadata but no resource names or IDs.',
+			'The user selected a workflow, node, canvas group, or agent from the n8n Assistant mention picker. A pick of a mention that is already staged also counts, so every open ends in this event or in "User dismissed AI Assistant mention picker". The event contains interaction metadata but no resource names or IDs.',
 		properties: z.object({
 			thread_id: assistantMentionThreadId,
 			kind: assistantMentionKind,
 			mode: z.enum(['browse', 'search']),
-			source: z.enum(['artifacts', 'workflows']),
+			source: z.enum(['artifacts', 'workflows', 'agents']),
 			result_position: z
 				.number()
 				.int()
 				.positive()
 				.describe(
-					'One-based position in the list the user picked from: search results, the browse list (open workflow tabs first, then recent workflows), or a submenu',
+					'One-based position in the list the user picked from: search results, the browse list (open workflow tabs first, then recent workflows, then agents), or a submenu',
 				),
 			query_length: z.number().int().nonnegative(),
 			already_artifact: z.boolean(),
@@ -848,7 +849,7 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 	USER_REMOVED_AI_ASSISTANT_MENTION: {
 		name: 'User removed AI Assistant mention',
 		description:
-			'The user removed workflow, node, or canvas group context that they added through the n8n Assistant mention picker.',
+			'The user removed workflow, node, canvas group, or agent context that they added through the n8n Assistant mention picker.',
 		properties: z.object({
 			thread_id: assistantMentionThreadId,
 			kind: assistantMentionKind,

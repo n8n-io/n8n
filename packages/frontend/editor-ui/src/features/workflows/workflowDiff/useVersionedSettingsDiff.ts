@@ -3,11 +3,11 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import isEqual from 'lodash/isEqual';
 import {
 	pickVersionedSettings,
-	VERSIONED_WORKFLOW_SETTING_KEYS,
 	type IWorkflowSettings,
 	type VersionedWorkflowSettingKey,
 	type VersionedWorkflowSettings,
 } from 'n8n-workflow';
+import { getObjectKeys } from '@/app/utils/typesUtils';
 import type { SettingsChange } from './useWorkflowDiffUI';
 
 type VersionedSettingDisplay = {
@@ -40,12 +40,12 @@ export function useVersionedSettingsDiff() {
 		const source = pickVersionedSettings(sourceSettings);
 		const target = pickVersionedSettings(targetSettings);
 
-		return VERSIONED_WORKFLOW_SETTING_KEYS.filter(
-			(key) => display[key].isEnabled() && !isEqual(source[key], target[key]),
-		).map((key) => ({
-			name: key,
-			before: display[key].format(source),
-			after: display[key].format(target),
-		}));
+		return getObjectKeys(display)
+			.filter((key) => display[key].isEnabled() && !isEqual(source[key], target[key]))
+			.map((key) => ({
+				name: key,
+				before: display[key].format(source),
+				after: display[key].format(target),
+			}));
 	};
 }

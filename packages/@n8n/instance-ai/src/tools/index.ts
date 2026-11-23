@@ -24,6 +24,20 @@ const lazyMod = <T>(loader: () => T): (() => T) => {
 const loadParseFileTool = lazyMod(
 	() => require('./attachments/parse-file.tool') as typeof import('./attachments/parse-file.tool'),
 );
+const loadImportFilesTool = lazyMod(
+	() =>
+		require('./attachments/import-files.tool') as typeof import('./attachments/import-files.tool'),
+);
+const loadListFilesTool = lazyMod(
+	() => require('./attachments/list-files.tool') as typeof import('./attachments/list-files.tool'),
+);
+const loadShareFilesTool = lazyMod(
+	() =>
+		require('./attachments/share-files.tool') as typeof import('./attachments/share-files.tool'),
+);
+const loadViewFileTool = lazyMod(
+	() => require('./attachments/view-file.tool') as typeof import('./attachments/view-file.tool'),
+);
 const loadCredentialsTool = lazyMod(
 	() => require('./credentials.tool') as typeof import('./credentials.tool'),
 );
@@ -273,6 +287,40 @@ function getOrchestratorDomainToolFactories(
 			? () => loadParseFileTool().createParseStoredFileTool(storedFiles)
 			: () => loadParseFileTool().createParseFileTool(context),
 	]);
+
+	// The host sets `list` only when the sandbox files feature is on, so it stays the same for the thread.
+	const listFiles = storedFiles?.list?.bind(storedFiles);
+	if (storedFiles && listFiles) {
+		tools.push([
+			DOMAIN_TOOL_IDS.LIST_FILES,
+			() => loadListFilesTool().createListFilesTool(listFiles),
+		]);
+	}
+	// The tool cannot tell the model whether it sees a file without the model's file types.
+	const canView = storedFiles?.canView?.bind(storedFiles);
+	if (storedFiles && listFiles && canView) {
+		const read = storedFiles.read.bind(storedFiles);
+		tools.push([
+			DOMAIN_TOOL_IDS.VIEW_FILE,
+			() => loadViewFileTool().createViewFileTool({ read, canView }),
+		]);
+	}
+
+	// The host sets `sandboxFiles` only when the sandbox files feature is on. With
+	// stored files and the sandbox, it stays the same for the thread, so the tool list does too.
+	const { workspace, sandboxFiles } = context;
+	if (storedFiles && workspace && sandboxFiles) {
+		tools.push([
+			DOMAIN_TOOL_IDS.IMPORT_FILES,
+			() => loadImportFilesTool().createImportFilesTool(context, storedFiles, sandboxFiles),
+		]);
+	}
+	if (workspace && sandboxFiles) {
+		tools.push([
+			DOMAIN_TOOL_IDS.SHARE_FILES,
+			() => loadShareFilesTool().createShareFilesTool(context, sandboxFiles),
+		]);
+	}
 
 	return tools;
 }

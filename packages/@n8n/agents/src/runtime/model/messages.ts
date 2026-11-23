@@ -26,6 +26,7 @@ import type {
 	MessageContent,
 } from '../../types/sdk/message';
 import { isFileRefPart, toolOutputFileParts } from '../../types/sdk/message';
+import type { ReasoningReplayScope } from '../../types/sdk/provider';
 import type { JSONObject, JSONValue } from '../../types/utils/json';
 
 // Used across all message roles; AssistantContent omits user images and tool approval responses.
@@ -635,14 +636,24 @@ function toAiMessageList(
  * `providerId` is the provider the request targets; it enables replay quirks
  * that cannot be derived from the blocks themselves (see
  * `PROVIDER_QUIRKS[provider].replayReasoningText` and `keepsToolCallIds`).
+ * For providers that replay reasoning text, `replayReasoning` widens the replay
+ * from the current tool chain to the whole conversation.
  */
-export function toAiMessages(messages: Message[], providerId?: string): ModelMessage[] {
+export function toAiMessages(
+	messages: Message[],
+	providerId?: string,
+	replayReasoning: ReasoningReplayScope = 'tool-chain',
+): ModelMessage[] {
 	const replayReasoningText =
 		providerId !== undefined && (getProviderQuirks(providerId).replayReasoningText ?? false);
 	const keepToolCallIds =
 		providerId !== undefined && (getProviderQuirks(providerId).keepsToolCallIds ?? false);
-	// Text replay covers only the current tool chain: the messages after the last user message.
-	const lastUserIndex = messages.map((message) => message.role).lastIndexOf('user');
+	// Text replay covers only the current tool chain (the messages after the last
+	// user message) unless the caller asked for the whole conversation.
+	const lastUserIndex =
+		replayReasoning === 'conversation'
+			? -1
+			: messages.map((message) => message.role).lastIndexOf('user');
 	const modelMessages = messages.flatMap((message, index) =>
 		toAiMessageList(message, index, replayReasoningText && index > lastUserIndex, keepToolCallIds),
 	);

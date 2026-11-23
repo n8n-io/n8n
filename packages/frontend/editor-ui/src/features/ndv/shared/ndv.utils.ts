@@ -869,6 +869,10 @@ export const PANE_DEFAULT_DISPLAY_MODE = {
 	output: 'table',
 } as const satisfies Record<RunDataDisplayModePane, BuiltInDisplayMode>;
 
+export function isBuiltInDisplayMode(mode: DisplayMode): mode is BuiltInDisplayMode {
+	return BUILT_IN_DISPLAY_MODES.some((builtIn) => builtIn === mode);
+}
+
 /**
  * Returns the stored mode if it is built in or registered, otherwise the pane
  * default. A stored id can be unknown after a rollback, an uninstall or a
@@ -879,8 +883,7 @@ export const PANE_DEFAULT_DISPLAY_MODE = {
  * `getAvailableDisplayMode` finds nothing for the current data.
  */
 export function resolveDisplayMode(stored: DisplayMode, pane: RunDataDisplayModePane): DisplayMode {
-	const isBuiltIn = BUILT_IN_DISPLAY_MODES.some((mode) => mode === stored);
-	return isBuiltIn || runDataDisplayModeRegistry.has(stored)
+	return isBuiltInDisplayMode(stored) || runDataDisplayModeRegistry.has(stored)
 		? stored
 		: PANE_DEFAULT_DISPLAY_MODE[pane];
 }

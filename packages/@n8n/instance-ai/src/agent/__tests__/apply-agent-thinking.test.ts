@@ -140,6 +140,26 @@ describe('applyAgentThinking', () => {
 		expect(mockAgentInstances[0]?.thinking).not.toHaveBeenCalled();
 	});
 
+	it('asks for whole-conversation reasoning replay when N8N_INSTANCE_AI_REPLAY_REASONING is conversation', () => {
+		const previous = process.env.N8N_INSTANCE_AI_REPLAY_REASONING;
+		process.env.N8N_INSTANCE_AI_REPLAY_REASONING = 'conversation';
+		try {
+			applyAgentThinking(new Agent('test'), 'custom/unknown-model');
+			expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('custom', {
+				replayReasoning: 'conversation',
+			});
+
+			applyAgentThinking(new Agent('test'), 'custom/Kimi-K3');
+			expect(mockAgentInstances[1]?.thinking).toHaveBeenCalledWith('custom', {
+				reasoningEffort: 'low',
+				replayReasoning: 'conversation',
+			});
+		} finally {
+			if (previous === undefined) delete process.env.N8N_INSTANCE_AI_REPLAY_REASONING;
+			else process.env.N8N_INSTANCE_AI_REPLAY_REASONING = previous;
+		}
+	});
+
 	it('prefers N8N_INSTANCE_AI_REASONING_EFFORT over the known-model map', () => {
 		const previous = process.env.N8N_INSTANCE_AI_REASONING_EFFORT;
 		process.env.N8N_INSTANCE_AI_REASONING_EFFORT = 'high';
