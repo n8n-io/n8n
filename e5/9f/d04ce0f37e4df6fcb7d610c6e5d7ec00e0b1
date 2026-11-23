@@ -1,0 +1,23 @@
+packages/workflow/test/ExpressionExtensions/number-extensions.test.ts
+  s_5da602dd997b45::t_16ea85d8911ebe 14-21
+packages/workflow/test/expression-compatibility.test.ts
+  s_5da602dd997b45::t_c75cd0e44b653d 835
+packages/@n8n/expression-runtime/src/extensions/number-extensions.ts
+  s_5da602dd997b45::t_a7c71891ba1419 16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e59fd04ce0f37e4df6fcb7d610c6e5d7ec00e0b1",
+  "prompts": {},
+  "sessions": {
+    "s_5da602dd997b45": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b5c5be00-3f6c-4460-9fd6-bc776375ffce",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
