@@ -432,6 +432,11 @@ onBeforeUnmount(() => {
 	min-height: 0;
 	padding: 0 var(--spacing--xs) var(--spacing--xs);
 	overflow: auto;
+
+	// The feedback footer holds the bottom spacing when it shows.
+	&:not(:last-child) {
+		padding-bottom: 0;
+	}
 }
 
 .frame {

@@ -46,14 +46,14 @@ describe('AppFeedbackLink', () => {
 	it('stays hidden when no form URL is provided', () => {
 		renderComponent();
 
-		expect(screen.queryByTestId('app-feedback-link')).not.toBeInTheDocument();
+		expect(screen.queryByTestId('app-preview-feedback')).not.toBeInTheDocument();
 	});
 
 	it('stays hidden when the form URL does not use HTTPS', () => {
 		provideFormUrl('http://forms.example.com/apps-feedback');
 		renderComponent();
 
-		expect(screen.queryByTestId('app-feedback-link')).not.toBeInTheDocument();
+		expect(screen.queryByTestId('app-preview-feedback')).not.toBeInTheDocument();
 	});
 
 	it('opens the form with the user, instance and app connections', async () => {
@@ -65,7 +65,7 @@ describe('AppFeedbackLink', () => {
 		renderComponent();
 		signIn();
 
-		await userEvent.click(screen.getByTestId('app-feedback-link'));
+		await userEvent.click(screen.getByTestId('app-preview-feedback'));
 
 		await waitFor(() => expect(tab.location.href).not.toBe(''));
 		expect(window.open).toHaveBeenCalledWith('about:blank', '_blank');
@@ -91,7 +91,7 @@ describe('AppFeedbackLink', () => {
 		const tab = stubWindowOpen();
 		renderComponent();
 
-		await userEvent.click(screen.getByTestId('app-feedback-link'));
+		await userEvent.click(screen.getByTestId('app-preview-feedback'));
 
 		await waitFor(() => expect(tab.location.href).not.toBe(''));
 		const params = new URL(tab.location.href).searchParams;

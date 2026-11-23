@@ -100,6 +100,7 @@ export {
 	updatedIconSet,
 } from './N8nIcon';
 export { default as N8nIconButton } from './N8nIconButton';
+export { default as N8nIconTextButton } from './IconTextButton';
 export { default as N8nInlineAskAssistantButton } from './InlineAskAssistantButton';
 export { default as N8nInfoAccordion } from './N8nInfoAccordion';
 export type { IAccordionItem } from './N8nInfoAccordion';

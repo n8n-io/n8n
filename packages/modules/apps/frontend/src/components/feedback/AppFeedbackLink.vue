@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { AppDescribedBinding, AppResponse } from '@n8n/api-types';
-import { N8nButton } from '@n8n/design-system';
+import { N8nIconTextButton } from '@n8n/design-system';
 import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -68,15 +68,15 @@ async function openForm() {
 
 <template>
 	<div v-if="formUrl" :class="$style.footer">
-		<N8nButton
-			variant="ghost"
-			size="xsmall"
-			icon="message-circle"
-			:label="i18n.baseText('apps.feedback.give')"
-			data-test-id="app-feedback-link"
-			data-attr="app-feedback-link"
+		<N8nIconTextButton
+			icon="message-square"
+			:aria-label="i18n.baseText('apps.preview.feedback.ariaLabel')"
+			data-test-id="app-preview-feedback"
+			data-attr="app-preview-feedback"
 			@click="openForm"
-		/>
+		>
+			{{ i18n.baseText('apps.preview.feedback') }}
+		</N8nIconTextButton>
 	</div>
 </template>
 
@@ -84,6 +84,8 @@ async function openForm() {
 .footer {
 	display: flex;
 	justify-content: flex-end;
-	padding: 0 var(--spacing--xs) var(--spacing--2xs);
+	flex-shrink: 0;
+	// The top padding matches the toolbar's, so the button sits as far from the frame as the toolbar buttons do.
+	padding: var(--spacing--2xs) var(--spacing--xs) var(--spacing--xs);
 }
 </style>
