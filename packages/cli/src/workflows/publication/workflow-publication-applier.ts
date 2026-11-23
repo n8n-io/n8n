@@ -147,8 +147,10 @@ export class WorkflowPublicationApplier {
 		record: WorkflowPublicationOutbox,
 		abort: TriggerOperationAbort,
 	): Promise<PublicationResult> {
-		// A transfer changes the owner project, so the checks below read it from the database.
-		await this.ownershipService.invalidateWorkflowProjectCacheByIds([record.workflowId]);
+		// The checks below read the owner project from the database, because a transfer changes it.
+		const cacheFailure = await this.ownerCacheInvalidationFailure(record.workflowId);
+		// A transfer record fails on a failed delete only after its teardown.
+		if (cacheFailure && record.reason !== WorkflowPublicationReason.Transfer) throw cacheFailure;
 
 		const { workflow, oldVersion, newVersion } = await this.resolveVersions(record);
 
@@ -164,7 +166,15 @@ export class WorkflowPublicationApplier {
 		const activationMode = this.resolveActivationMode(record, oldVersion);
 
 		if (record.reason === WorkflowPublicationReason.Transfer) {
-			return await this.transfer(workflow, oldVersion, newVersion, record, activationMode, abort);
+			return await this.transfer(
+				workflow,
+				oldVersion,
+				newVersion,
+				record,
+				activationMode,
+				cacheFailure,
+				abort,
+			);
 		}
 
 		if (!newVersion) return { type: 'version-missing' };
@@ -182,6 +192,7 @@ export class WorkflowPublicationApplier {
 		newVersion: WorkflowHistory | null,
 		record: WorkflowPublicationOutbox,
 		activationMode: WorkflowActivateMode,
+		cacheFailure: Error | null,
 		abort: TriggerOperationAbort,
 	): Promise<PublicationResult> {
 		const { old, oldTriggerCandidates } = this.resolveOldTriggerCandidates(oldVersion);
@@ -190,10 +201,13 @@ export class WorkflowPublicationApplier {
 
 		let result: PublicationResult;
 		try {
-			result =
-				newVersion === null
-					? { type: 'failed', error: new UserError('Published version not found') }
-					: await this.publish(workflow, null, newVersion, record, activationMode, abort);
+			if (cacheFailure) {
+				result = { type: 'failed', error: cacheFailure };
+			} else if (newVersion === null) {
+				result = { type: 'failed', error: new UserError('Published version not found') };
+			} else {
+				result = await this.publish(workflow, null, newVersion, record, activationMode, abort);
+			}
 		} catch (e) {
 			result = { type: 'failed', error: ensureError(e) };
 		}
@@ -206,6 +220,16 @@ export class WorkflowPublicationApplier {
 			),
 			teardownFailures,
 		);
+	}
+
+	private async ownerCacheInvalidationFailure(workflowId: string): Promise<Error | null> {
+		let failure: Error | null = null;
+		try {
+			await this.ownershipService.invalidateWorkflowProjectCacheByIds([workflowId]);
+		} catch (error) {
+			failure = ensureError(error);
+		}
+		return failure;
 	}
 
 	/** Marks every trigger of the old version `failed` on a failed result that has no trigger state. */
