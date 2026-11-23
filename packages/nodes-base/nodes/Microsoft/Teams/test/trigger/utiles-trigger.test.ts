@@ -617,7 +617,7 @@ describe('Microsoft Teams Helpers Functions', () => {
 			],
 			['leading slash', "/teams('t1')/channels('c1')", { teamId: 't1', channelId: 'c1' }],
 			['mixed-case names', "Teams('t1')/Channels('c1')", { teamId: 't1', channelId: 'c1' }],
-			['escaped quote', "chats('a''b')", { chatId: "a'b" }],
+			['escaped quotes', "chats('a''b''c')", { chatId: "a'b'c" }],
 			['slash form', '/teams/t1/channels/c1/messages/m1', {}],
 			['unknown hierarchy', "users('u1')/messages('m1')", {}],
 			['prototype name', "constructor('x')", {}],
@@ -635,6 +635,7 @@ describe('Microsoft Teams Helpers Functions', () => {
 			['undefined', undefined, {}],
 			['null', null, {}],
 			['a number', 42, {}],
+			['a path over the length limit', `chats('${'a'.repeat(1e7)}')`, {}],
 		])('parses %s', (_name, resource, expected) => {
 			expect(parseResourceIds(resource)).toStrictEqual(expected);
 		});

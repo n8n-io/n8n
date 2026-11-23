@@ -570,6 +570,8 @@ const SEGMENT = "(\\w+)\\('((?:[^']|'')+)'\\)";
 // A key can contain '/', so the path is checked as a whole and not split on '/'.
 const RESOURCE_PATH = new RegExp(`^\\/?${SEGMENT}(?:\\/${SEGMENT})*$`);
 const RESOURCE_SEGMENT = new RegExp(SEGMENT, 'g');
+// Graph paths are short. A very long string makes the regex throw a RangeError.
+const MAX_RESOURCE_LENGTH = 2048;
 // The item key for the id in each segment of a known path. `null` drops the id.
 // A Map, so names such as `constructor` do not resolve to prototype members.
 const RESOURCE_ID_KEYS = new Map<string, Array<string | null>>([
@@ -583,7 +585,12 @@ const RESOURCE_ID_KEYS = new Map<string, Array<string | null>>([
 
 /** Returns the ids in a notification `resource` path. An unknown path gives no ids. */
 export function parseResourceIds(resource: unknown): IDataObject {
-	if (typeof resource !== 'string' || !RESOURCE_PATH.test(resource)) return {};
+	if (
+		typeof resource !== 'string' ||
+		resource.length > MAX_RESOURCE_LENGTH ||
+		!RESOURCE_PATH.test(resource)
+	)
+		return {};
 	const segments = [...resource.matchAll(RESOURCE_SEGMENT)];
 	const keys = RESOURCE_ID_KEYS.get(segments.map(([, name]) => name.toLowerCase()).join('/'));
 	if (!keys) return {};

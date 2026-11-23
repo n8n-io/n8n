@@ -559,8 +559,10 @@ export class MicrosoftTeamsTrigger implements INodeType {
 			changeNotifications.map(({ clientState, ...notification }) => ({
 				// The added fields go first. On a name clash the resourceData (or notification) value wins.
 				json: {
-					...(notification.changeType !== undefined && { changeType: notification.changeType }),
-					...(notification.resource !== undefined && { resource: notification.resource }),
+					...(typeof notification.changeType === 'string' && {
+						changeType: notification.changeType,
+					}),
+					...(typeof notification.resource === 'string' && { resource: notification.resource }),
 					...parseResourceIds(notification.resource),
 					...(notification.resourceData ?? notification),
 				} as IDataObject,
