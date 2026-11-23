@@ -206,8 +206,8 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 	}
 
 	identity(locator: SkillSourceLocator): SkillSourceIdentity {
-		const { owner, repository } = readLocator(locator);
-		return { type: this.type, host: GITHUB_HOST, owner, repository };
+		const { owner, repository, path } = readLocator(locator);
+		return { type: this.type, host: GITHUB_HOST, owner, repository, path };
 	}
 
 	describe(locator: SkillSourceLocator): { label: string; ref: string | null; path: string } {
