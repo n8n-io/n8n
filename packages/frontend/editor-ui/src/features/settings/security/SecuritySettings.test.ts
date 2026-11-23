@@ -1069,7 +1069,7 @@ describe('SecuritySettings', () => {
 			expect(settingsStore.getSettings).not.toHaveBeenCalled();
 		});
 
-		it('hides Require approval while workflow reviews are off', async () => {
+		it('hides Require approval and the projects link while workflow reviews are off', async () => {
 			const { findByTestId, queryByTestId } = renderView();
 
 			await findByTestId('security-workflow-reviews-toggle');
@@ -1077,6 +1077,19 @@ describe('SecuritySettings', () => {
 			expect(
 				queryByTestId('security-workflow-reviews-require-approval-select'),
 			).not.toBeInTheDocument();
+			expect(queryByTestId('security-workflow-reviews-projects-row')).not.toBeInTheDocument();
+		});
+
+		it('links the Reviews card to the projects page', async () => {
+			getSecuritySettings.mockResolvedValue({
+				...defaultSettings,
+				workflowReviews: { enabled: true },
+			});
+			const { findByTestId } = renderView();
+
+			await userEvent.click(await findByTestId('security-workflow-reviews-projects-row'));
+
+			expect(routerPush).toHaveBeenCalledWith({ name: 'SecurityWorkflowReviewProjects' });
 		});
 
 		it('shows Require approval and saves Always required', async () => {

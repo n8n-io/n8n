@@ -1,0 +1,292 @@
+<script lang="ts" setup>
+import { computed, onMounted, ref } from 'vue';
+import { useRouter } from 'vue-router';
+import { useDebounceFn } from '@vueuse/core';
+import type { WorkflowReviewProject } from '@n8n/api-types';
+import {
+	N8nIcon,
+	N8nInput,
+	N8nInputLabel,
+	N8nNotice,
+	N8nOption,
+	N8nSelect,
+	N8nSettingsLayout,
+	N8nSettingsPageHeader,
+	N8nText,
+} from '@n8n/design-system';
+import type { TableOptions } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
+import { useToast } from '@n8n/composables/useToast';
+import { getDebounceTime } from '@n8n/composables/useDebounce';
+import { useLatestFetch } from '@n8n/composables/useLatestFetch';
+import { DEBOUNCE_TIME } from '@n8n/frontend-constants/durations';
+import { useRootStore } from '@n8n/stores/useRootStore';
+
+import ResourceFiltersDropdown from '@/app/components/forms/ResourceFiltersDropdown.vue';
+import { VIEWS } from '@/app/constants';
+import { useWorkflowReviewsFeature } from '@/features/workflow-reviews/composables/useWorkflowReviewsFeature';
+import {
+	getWorkflowReviewProjects,
+	updateWorkflowReviewProject,
+} from '@/features/workflow-reviews/workflowReviews.api';
+import ReviewPolicyProjectsTable from './ReviewPolicyProjectsTable.vue';
+
+/** Empty means no filter, so the filters dropdown counts only a set one. */
+type ApprovalFilter = '' | 'required' | 'notRequired';
+
+const FILTER_KEYS = ['approval'];
+const PAGE_SIZE = 10;
+
+const i18n = useI18n();
+const router = useRouter();
+const rootStore = useRootStore();
+const { showToast, showError } = useToast();
+const { isInstanceApprovalRequired } = useWorkflowReviewsFeature();
+
+const projects = ref<WorkflowReviewProject[]>([]);
+const count = ref(0);
+const managedByEnv = ref(false);
+const loading = ref(true);
+const loadFailed = ref(false);
+const savingIds = ref<ReadonlySet<string>>(new Set());
+
+const search = ref('');
+const filters = ref<{ approval: ApprovalFilter }>({ approval: '' });
+const tableOptions = ref<TableOptions>({ page: 0, itemsPerPage: PAGE_SIZE });
+
+const lockedReason = computed(() =>
+	isInstanceApprovalRequired.value
+		? i18n.baseText('settings.security.workflowReviews.projects.lockedByAlwaysRequired', {
+				interpolate: {
+					option: i18n.baseText('settings.security.workflowReviews.requireApproval.option.always'),
+				},
+			})
+		: undefined,
+);
+
+function requiredByInstanceQuery(approval: ApprovalFilter): { requiredByInstance?: boolean } {
+	return approval === '' ? {} : { requiredByInstance: approval === 'required' };
+}
+
+// Only the newest load updates the page, so a slow earlier search cannot win.
+const { next: nextLoad } = useLatestFetch();
+
+async function load() {
+	const isLatest = nextLoad();
+	const { page = 0, itemsPerPage = PAGE_SIZE } = tableOptions.value;
+	const term = search.value.trim();
+	loading.value = true;
+	try {
+		const result = await getWorkflowReviewProjects(rootStore.restApiContext, {
+			skip: page * itemsPerPage,
+			take: itemsPerPage,
+			...(term ? { search: term } : {}),
+			...requiredByInstanceQuery(filters.value.approval),
+		});
+		if (!isLatest()) return;
+		projects.value = result.data;
+		count.value = result.count;
+		managedByEnv.value = result.managedByEnv;
+		loadFailed.value = false;
+	} catch {
+		if (isLatest()) loadFailed.value = true;
+	} finally {
+		if (isLatest()) loading.value = false;
+	}
+}
+
+async function onOptionsUpdate(options: TableOptions) {
+	tableOptions.value = options;
+	await load();
+}
+
+/** A new search or filter starts at the first page. */
+async function resetPage() {
+	tableOptions.value = { ...tableOptions.value, page: 0 };
+	await load();
+}
+
+const onSearch = useDebounceFn(resetPage, getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH));
+
+async function onApprovalFilter(value: unknown) {
+	filters.value = {
+		approval: value === 'required' || value === 'notRequired' ? value : '',
+	};
+	await resetPage();
+}
+
+async function resetFilters() {
+	filters.value = { approval: '' };
+	await resetPage();
+}
+
+function setRequiredByInstance(projectId: string, requiredByInstance: boolean) {
+	projects.value = projects.value.map((project) =>
+		project.id === projectId ? { ...project, requiredByInstance } : project,
+	);
+}
+
+function setSaving(projectId: string, saving: boolean) {
+	const next = new Set(savingIds.value);
+	if (saving) next.add(projectId);
+	else next.delete(projectId);
+	savingIds.value = next;
+}
+
+async function onRequired(projectId: string, required: boolean) {
+	const previous = projects.value.find((project) => project.id === projectId)?.requiredByInstance;
+	if (previous === undefined) return;
+
+	setRequiredByInstance(projectId, required);
+	setSaving(projectId, true);
+	try {
+		const response = await updateWorkflowReviewProject(rootStore.restApiContext, projectId, {
+			requiredByInstance: required,
+		});
+		setRequiredByInstance(projectId, response.requiredByInstance);
+		showToast({
+			type: 'success',
+			title: i18n.baseText('settings.security.workflowReviews.requireApproval.success'),
+			message: '',
+		});
+	} catch (error) {
+		setRequiredByInstance(projectId, previous);
+		showError(error, i18n.baseText('settings.security.workflowReviews.error'));
+	} finally {
+		setSaving(projectId, false);
+	}
+}
+
+function goBack() {
+	void router.push({ name: VIEWS.SECURITY_SETTINGS });
+}
+
+onMounted(load);
+</script>
+
+<template>
+	<N8nSettingsLayout
+		:class="$style.layout"
+		full-width
+		show-back
+		:back-label="i18n.baseText('settings.security')"
+		data-test-id="workflow-review-projects-view"
+		@back="goBack"
+	>
+		<N8nSettingsPageHeader
+			:title="i18n.baseText('settings.security.workflowReviews.projects.page.title')"
+			:description="i18n.baseText('settings.security.workflowReviews.projects.page.description')"
+			:show-docs-link="false"
+		/>
+
+		<N8nNotice
+			v-if="managedByEnv"
+			:content="i18n.baseText('settings.security.managedByEnv')"
+			data-test-id="workflow-review-projects-managed-by-env-notice"
+		/>
+
+		<div :class="$style.toolbar">
+			<N8nInput
+				v-model="search"
+				:class="$style.search"
+				:placeholder="i18n.baseText('settings.security.workflowReviews.projects.search')"
+				clearable
+				data-test-id="workflow-review-projects-search"
+				@update:model-value="onSearch"
+			>
+				<template #prefix>
+					<N8nIcon icon="search" />
+				</template>
+			</N8nInput>
+			<ResourceFiltersDropdown
+				:model-value="filters"
+				:keys="FILTER_KEYS"
+				:reset="resetFilters"
+				:shareable="false"
+				just-icon
+			>
+				<div :class="$style.filter">
+					<N8nInputLabel
+						:label="i18n.baseText('settings.reviewPolicy.projects.column.approval')"
+						:bold="false"
+						size="small"
+						color="text-base"
+					/>
+					<N8nSelect
+						:model-value="filters.approval"
+						size="medium"
+						clearable
+						:placeholder="i18n.baseText('settings.security.workflowReviews.projects.filter.all')"
+						data-test-id="workflow-review-projects-filter-approval"
+						@update:model-value="onApprovalFilter"
+					>
+						<N8nOption
+							value="required"
+							:label="i18n.baseText('settings.reviewPolicy.projects.option.required')"
+						/>
+						<N8nOption
+							value="notRequired"
+							:label="i18n.baseText('settings.reviewPolicy.projects.option.notRequired')"
+						/>
+					</N8nSelect>
+				</div>
+			</ResourceFiltersDropdown>
+		</div>
+
+		<N8nText
+			v-if="loadFailed"
+			color="text-light"
+			data-test-id="workflow-review-projects-load-error"
+		>
+			{{ i18n.baseText('settings.security.workflowReviews.projects.loadError') }}
+		</N8nText>
+		<template v-else>
+			<ReviewPolicyProjectsTable
+				v-model:table-options="tableOptions"
+				:projects="projects"
+				:items-length="count"
+				:loading="loading"
+				:read-only="managedByEnv"
+				:locked-reason="lockedReason"
+				:saving-ids="savingIds"
+				@update:options="onOptionsUpdate"
+				@update:required="onRequired"
+			/>
+			<N8nText
+				v-if="!loading && count === 0"
+				color="text-light"
+				data-test-id="workflow-review-projects-empty"
+			>
+				{{ i18n.baseText('settings.security.workflowReviews.projects.empty') }}
+			</N8nText>
+		</template>
+	</N8nSettingsLayout>
+</template>
+
+<style module>
+.layout {
+	padding: 0;
+
+	header {
+		margin-inline: 0 auto;
+	}
+}
+
+.toolbar {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--xs);
+	width: 100%;
+}
+
+/* Same width as the other settings search fields. No width token exists for it. */
+.search {
+	max-width: 20rem;
+}
+
+.filter {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--3xs);
+}
+</style>

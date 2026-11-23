@@ -1,10 +1,12 @@
 <script lang="ts" setup>
 import { computed, ref } from 'vue';
+import { useRouter } from 'vue-router';
 import {
 	N8nAlertDialog,
 	N8nPreviewBadge,
 	N8nSelect2,
 	N8nSettingsRow,
+	N8nSettingsRowConfigure,
 	N8nSettingsRowGroup,
 	N8nSwitch,
 	N8nText,
@@ -15,6 +17,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import * as securitySettingsApi from '@n8n/rest-api-client/api/security-settings';
 import { useToast } from '@n8n/composables/useToast';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import { VIEWS } from '@/app/constants';
 
 const props = defineProps<{
 	initialEnabled: boolean;
@@ -22,6 +25,7 @@ const props = defineProps<{
 	managedByEnv: boolean;
 }>();
 
+const router = useRouter();
 const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
 const i18n = useI18n();
@@ -117,6 +121,10 @@ async function persistAlwaysRequired(selected: SelectValue | undefined): Promise
 	}
 }
 
+function openProjects() {
+	void router.push({ name: VIEWS.SECURITY_WORKFLOW_REVIEW_PROJECTS });
+}
+
 function confirmDisable() {
 	showDisableDialog.value = false;
 	void persist(false);
@@ -166,6 +174,23 @@ function confirmDisable() {
 						data-attr="security-workflow-reviews-require-approval-select"
 						@update:model-value="persistAlwaysRequired"
 					/>
+				</template>
+			</N8nSettingsRow>
+			<N8nSettingsRow
+				v-if="enabled"
+				clickable
+				data-test-id="security-workflow-reviews-projects-row"
+				data-attr="security-workflow-reviews-projects-row"
+				@click="openProjects"
+			>
+				<template #info>
+					<N8nText :bold="true">{{ i18n.baseText('generic.projects') }}</N8nText>
+					<N8nText size="small" color="text-light">
+						{{ i18n.baseText('settings.security.workflowReviews.projects.description') }}
+					</N8nText>
+				</template>
+				<template #action>
+					<N8nSettingsRowConfigure :value="i18n.baseText('generic.configure')" />
 				</template>
 			</N8nSettingsRow>
 		</N8nSettingsRowGroup>
