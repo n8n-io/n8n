@@ -33,7 +33,7 @@ const httpStatus = (error: unknown) =>
 /** The enabled filters, or `undefined` when no filter is on. */
 export function getMessageFilters(this: IWebhookFunctions): MessageFilters | undefined {
 	if (!isMessageEvent(this.getNodeParameter('event', ''))) return undefined;
-	const raw = this.getNodeParameter('filters', {});
+	const raw: unknown = this.getNodeParameter('filters', {});
 	const options = isRecord(raw) ? raw : {};
 	const filters: MessageFilters = {
 		// Service Principal has no signed-in user.
