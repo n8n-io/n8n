@@ -2,6 +2,7 @@ import type {
 	CreateKnowledgeCollectionDto,
 	KnowledgeCollectionDto,
 	KnowledgeCollectionListResponse,
+	UpdateKnowledgeCollectionDto,
 } from '@n8n/api-types';
 import { ProjectScopeService } from '@n8n/backend-services';
 import { isUniqueConstraintError, ProjectRepository, type User } from '@n8n/db';
@@ -11,6 +12,7 @@ import { customAlphabet } from 'nanoid';
 
 import { userHasScopes } from '@/permissions.ee/check-access';
 
+import type { KnowledgeCollection } from '../entities';
 import { KnowledgeAvailabilityService } from '../knowledge-availability.service';
 import {
 	KnowledgeCollectionRepository,
@@ -23,8 +25,8 @@ const MAX_INSERT_ATTEMPTS = 2;
 const randomSlugSuffix = customAlphabet('abcdefghijklmnopqrstuvwxyz0123456789', SLUG_SUFFIX_LENGTH);
 
 /**
- * Creates and lists shared knowledge collections, in the shape that the
- * collection list shows.
+ * Creates, lists, changes and deletes shared knowledge collections, in the
+ * shape that the collection list shows.
  */
 @Service()
 export class KnowledgeCollectionCatalogService {
@@ -40,6 +42,9 @@ export class KnowledgeCollectionCatalogService {
 		projectId: string,
 		{ name, description }: CreateKnowledgeCollectionDto,
 	): Promise<KnowledgeCollectionDto> {
+		const trimmedName = name.trim();
+		const trimmedDescription = description.trim();
+
 		if (!(await this.availabilityService.isCollectionsEnabled())) {
 			throw new NotFoundError('Knowledge collections are not enabled');
 		}
@@ -61,16 +66,22 @@ export class KnowledgeCollectionCatalogService {
 		}
 
 		// The unique index also holds this rule. The check gives a clear error first.
-		if (await this.collectionRepository.existsByProjectIdAndName(projectId, name, {})) {
+		if (await this.collectionRepository.existsByProjectIdAndName(projectId, trimmedName, {})) {
 			throw this.nameTakenError();
 		}
 
 		for (let attempt = 1; ; attempt++) {
-			const slug = await this.findFreeSlug(name);
+			const slug = await this.findFreeSlug(trimmedName);
 
 			try {
 				const collection = await this.collectionRepository.insertShared(
-					{ name, description, slug, projectId, createdById: user.id },
+					{
+						name: trimmedName,
+						description: trimmedDescription,
+						slug,
+						projectId,
+						createdById: user.id,
+					},
 					{},
 				);
 
@@ -81,7 +92,7 @@ export class KnowledgeCollectionCatalogService {
 				}
 
 				// Make sure a create that loses the race for the name gets the same error.
-				if (await this.collectionRepository.existsByProjectIdAndName(projectId, name, {})) {
+				if (await this.collectionRepository.existsByProjectIdAndName(projectId, trimmedName, {})) {
 					throw this.nameTakenError();
 				}
 
@@ -91,6 +102,65 @@ export class KnowledgeCollectionCatalogService {
 				}
 			}
 		}
+	}
+
+	async update(
+		user: User,
+		projectId: string,
+		collectionId: string,
+		{ name, description }: UpdateKnowledgeCollectionDto,
+	): Promise<KnowledgeCollectionDto> {
+		const collection = await this.findEditableOrThrow(user, projectId, collectionId, 'change');
+
+		const trimmedName = name?.trim();
+		const trimmedDescription = description?.trim();
+
+		const inputNameIsDefined = trimmedName !== undefined && trimmedName !== '';
+		const inputDescriptionIsDefined = trimmedDescription !== undefined;
+
+		// The current name of the same collection is not a conflict.
+		const isNameTakenWithinProject =
+			inputNameIsDefined &&
+			(await this.collectionRepository.isNameTakenInProject(
+				projectId,
+				trimmedName,
+				collection.id,
+				{},
+			));
+
+		if (isNameTakenWithinProject) {
+			throw this.nameTakenError();
+		}
+
+		const changes: { name?: string; description?: string } = {
+			...(inputNameIsDefined ? { name: trimmedName } : {}),
+			...(inputDescriptionIsDefined ? { description: trimmedDescription } : {}),
+		};
+
+		if (Object.keys(changes).length > 0) {
+			try {
+				await this.collectionRepository.updateNameAndDescription(collection.id, changes, {});
+			} catch (error) {
+				// Make sure a rename that loses the race for the name gets the same error.
+				if (isUniqueConstraintError(error)) {
+					throw this.nameTakenError();
+				}
+
+				throw error;
+			}
+		}
+
+		return await this.getDtoOrThrow(collection.id);
+	}
+
+	async delete(user: User, projectId: string, collectionId: string): Promise<{ success: true }> {
+		const collection = await this.findEditableOrThrow(user, projectId, collectionId, 'delete');
+
+		// The stored file bytes stay: no code writes a collection file yet, and the upload
+		// brings their cleanup (see the module AGENTS.md).
+		await this.collectionRepository.deleteShared(collection.id, {});
+
+		return { success: true };
 	}
 
 	/**
@@ -113,6 +183,41 @@ export class KnowledgeCollectionCatalogService {
 		const data = summaries.map(toDto);
 
 		return { count: data.length, data };
+	}
+
+	/**
+	 * Collections have no scopes of their own yet (TBD), so a change or a delete
+	 * needs `agent:update` on the home project. The lookup also uses the project
+	 * of the URL, so a collection of another project answers like a missing one.
+	 */
+	private async findEditableOrThrow(
+		user: User,
+		projectId: string,
+		collectionId: string,
+		action: 'change' | 'delete',
+	): Promise<KnowledgeCollection> {
+		const collectionsEnabled = await this.availabilityService.isCollectionsEnabled();
+		if (!collectionsEnabled) {
+			throw new NotFoundError('Knowledge collections are not enabled');
+		}
+
+		const canUpdateAgents = await userHasScopes(user, ['agent:update'], false, { projectId });
+		if (!canUpdateAgents) {
+			throw new ForbiddenError(
+				`You do not have permission to ${action} a knowledge collection in this project.`,
+			);
+		}
+
+		const collection = await this.collectionRepository.findSharedInProject(
+			collectionId,
+			projectId,
+			{},
+		);
+		if (!collection) {
+			throw new NotFoundError('Knowledge collection not found');
+		}
+
+		return collection;
 	}
 
 	private async findFreeSlug(name: string): Promise<string> {
