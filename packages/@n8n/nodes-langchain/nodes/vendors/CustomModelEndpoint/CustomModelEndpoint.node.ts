@@ -188,11 +188,19 @@ export class CustomModelEndpoint implements INodeType {
 				? n8nContextHeaders(this)
 				: {};
 
-		// The transport below is rebuilt for each item, and the OAuth2 token lives in the
-		// source, so one built per transport would sign in once for every item. A run of
-		// 500 items would then make 500 token requests and can trip the login server's
-		// rate limit. This one is shared by all of them.
-		const tokenSource = createRunTokenSource(this, credential, credentialType);
+		/**
+		 * The transport below is rebuilt for each item, and the OAuth2 token lives in the
+		 * source, so one built per transport signs in once for every item: a run of 500
+		 * items would make 500 token requests and can trip the login server's rate limit.
+		 * Every transport takes this one instead.
+		 *
+		 * Built on first use rather than here, because it reads the credential and can
+		 * reject the Base URL. Before the loop that throw would escape the per-item catch
+		 * and end the run, where Continue On Fail asks for an error item.
+		 */
+		let signIn: { source: ReturnType<typeof createRunTokenSource> } | undefined;
+		const tokenSource = () =>
+			(signIn ??= { source: createRunTokenSource(this, credential, credentialType) }).source;
 
 		/**
 		 * One transport for each item, because the headers belong to the item. Sharing one
@@ -207,7 +215,7 @@ export class CustomModelEndpoint implements INodeType {
 				credentialType,
 				timeout,
 				requestHeaders,
-				tokenSource,
+				tokenSource: tokenSource(),
 			});
 
 			return new OpenAI({

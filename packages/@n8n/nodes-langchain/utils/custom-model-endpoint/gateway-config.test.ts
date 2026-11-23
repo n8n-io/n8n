@@ -324,9 +324,10 @@ describe('createRunTokenSource', () => {
 		expect(tokenRequests()).toBe(1);
 	});
 
-	// Without the shared source the token cache dies with the transport, which is the
-	// defect this guards: a run of 500 items would make 500 token requests.
-	it('signs in for every item when each transport builds its own source', async () => {
+	// The default when nobody passes a source: the cache dies with the transport. The
+	// sub-node builds one transport for a run, so this costs it nothing; the action node
+	// builds one for each item, which is why it passes a source in.
+	it('signs in for every transport that builds its own source', async () => {
 		await runOverItems(3);
 
 		expect(tokenRequests()).toBe(3);

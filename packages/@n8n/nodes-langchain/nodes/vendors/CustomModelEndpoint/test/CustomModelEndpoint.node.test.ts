@@ -304,6 +304,20 @@ describe('CustomModelEndpoint', () => {
 		expect(succeeded.json).toMatchObject({ text: 'hello' });
 	});
 
+	// The shared token source reads the credential, so it has to be built inside the
+	// per-item try, not before the loop where the throw would end the run
+	it('carries a credential the run cannot use on as an error item', async () => {
+		const ctx = contextWith({}, 2);
+		ctx.getCredentials = vi.fn().mockResolvedValue({ url: 'my-gateway' });
+		ctx.continueOnFail = vi.fn().mockReturnValue(true);
+
+		const items = (await new CustomModelEndpoint().execute.call(ctx))[0];
+
+		expect(items).toHaveLength(2);
+		expect(items.map((item) => item.pairedItem)).toEqual([{ item: 0 }, { item: 1 }]);
+		expect(String(items[0].json.error)).toContain('no usable Base URL');
+	});
+
 	it('sends the model and every sampling option the user set', async () => {
 		await run({
 			model: 'llama-3.1-70b',
@@ -456,6 +470,19 @@ describe('CustomModelEndpoint, through the real transport', () => {
 
 		return ctx;
 	};
+
+	it.each([2, 5])('signs in one time for a run of %i items', async (items) => {
+		gateway.reply = (url) =>
+			new Response(
+				JSON.stringify(url === TOKEN_URL ? { access_token: 'token', expires_in: 3600 } : answer()),
+				{ status: 200, headers: { 'content-type': 'application/json' } },
+			);
+
+		await new CustomModelEndpoint().execute.call(contextSignedInWithOAuth2(items));
+
+		expect(gateway.calls.filter((call) => call.url === CHAT_URL)).toHaveLength(items);
+		expect(gateway.calls.filter((call) => call.url === TOKEN_URL)).toHaveLength(1);
+	});
 
 	it("keeps an earlier item's header out of a later item's retry after a 401", async () => {
 		let minted = 0;
