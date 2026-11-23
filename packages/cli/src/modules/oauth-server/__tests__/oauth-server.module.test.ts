@@ -5,8 +5,6 @@ import { ModuleMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 
-import { UserDeactivationHooks } from '@/services/user-deactivation-hooks.service';
-
 import { OAuthGrantRepository } from '../database/repositories/oauth-grant.repository';
 import { OAuth2FlowService } from '../oauth-flow.service';
 import { OAuthServerLocalAuthorizationServer } from '../oauth-local-authorization-server';
@@ -14,7 +12,12 @@ import { OAuthServerModule } from '../oauth-server.module';
 import { OAuthSigningJwksProvider } from '../oauth-signing-jwks.provider';
 import { OAuthSigningKeyService } from '../oauth-signing-key.service';
 import { OAuthTokenService } from '../oauth-token.service';
-import { JwksRegistry, OAuth2FlowProxy, OAuthTokenVerifierProxy } from '@n8n/backend-services';
+import {
+	JwksRegistry,
+	OAuth2FlowProxy,
+	OAuthTokenVerifierProxy,
+	UserDeactivationHooks,
+} from '@n8n/backend-services';
 
 vi.mock('../oauth.controller', () => ({}));
 vi.mock('../oauth-consent.controller', () => ({}));

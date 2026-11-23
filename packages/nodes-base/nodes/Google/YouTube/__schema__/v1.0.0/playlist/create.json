@@ -1,0 +1,93 @@
+{
+	"properties": {
+		"etag": {
+			"type": "string"
+		},
+		"id": {
+			"type": "string"
+		},
+		"kind": {
+			"type": "string"
+		},
+		"snippet": {
+			"additionalProperties": true,
+			"properties": {
+				"channelId": {
+					"type": "string"
+				},
+				"channelTitle": {
+					"type": "string"
+				},
+				"description": {
+					"type": "string"
+				},
+				"localized": {
+					"properties": {
+						"description": {
+							"type": "string"
+						},
+						"title": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
+				"publishedAt": {
+					"type": "string"
+				},
+				"thumbnails": {
+					"properties": {
+						"default": {
+							"properties": {
+								"height": {
+									"type": "number"
+								},
+								"url": {
+									"type": "string"
+								},
+								"width": {
+									"type": "number"
+								}
+							},
+							"type": "object"
+						},
+						"high": {
+							"properties": {
+								"height": {
+									"type": "number"
+								},
+								"url": {
+									"type": "string"
+								},
+								"width": {
+									"type": "number"
+								}
+							},
+							"type": "object"
+						},
+						"medium": {
+							"properties": {
+								"height": {
+									"type": "number"
+								},
+								"url": {
+									"type": "string"
+								},
+								"width": {
+									"type": "number"
+								}
+							},
+							"type": "object"
+						}
+					},
+					"type": "object"
+				},
+				"title": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		}
+	},
+	"type": "object"
+}

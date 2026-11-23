@@ -3,7 +3,11 @@
 The existing `Instance AI instance-context turn completed` event carries optional
 `hub_skill_*` properties. It fires when an Assistant segment completes, fails,
 is cancelled, or pauses for input. A failed skill call still records attempted
-use. A pause reports attempts even if the user never returns.
+use. A pause reports attempts even if the user never returns. Both Assistant
+runtimes send the event. The `runtime` property tells them apart: `instance-ai`
+for the current runtime, and `agents` for the Agents runtime. The Agents runtime
+sends no event for a turn that fails in setup after the input build. The current
+runtime sends an `errored` segment for this turn.
 
 ## Aggregation
 

@@ -2,6 +2,7 @@ import {
 	type AgentMessageAuthor,
 	type APPROVAL_TOOL_NAME,
 	type AgentBackgroundJobSignal,
+	type InstanceAiApprovalAskReason,
 	type N8N_CHAT_ACTION_TOOL_NAME,
 	type WAIT_TOOL_NAME,
 } from '@n8n/api-types';
@@ -81,6 +82,8 @@ export interface ApprovalInput {
 	displayName?: string;
 	supportsSessionApproval?: boolean;
 	args: unknown;
+	/** Why the "Approve for me" mode of the n8n Assistant showed the card. */
+	askReason?: InstanceAiApprovalAskReason;
 }
 
 export interface ApprovalResume {
@@ -176,6 +179,12 @@ export interface AgentsChatMessage {
 	interactives?: InteractivePayload[];
 	interactive?: InteractivePayload;
 	attachments?: ChatMessageAttachment[];
+	/**
+	 * Resources that a user turn sent, for example mentioned workflows. The chat
+	 * host gives them for a message it sends, and a system agent gives them in
+	 * the history. The chat host owns the shape and shows them.
+	 */
+	references?: unknown[];
 	/** Persisted agent execution id for this turn (history parse or live SSE `done`). */
 	executionId?: string;
 	/** Epoch ms when this turn was sent. Drives the chat's timestamp dividers. */

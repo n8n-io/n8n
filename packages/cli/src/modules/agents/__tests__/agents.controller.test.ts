@@ -249,7 +249,7 @@ describe('AgentsController create', () => {
 		const tools = { tool1: { code: 'return []', descriptor: { name: 'Lookup' } } };
 		const schema = {
 			name: 'Source Agent',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			instructions: 'Triage tickets.',
 			integrations: [{ type: 'slack', credentialId: 'cred-slack-1' }],
 		};
@@ -270,7 +270,7 @@ describe('AgentsController create', () => {
 			'project-1',
 			'Source Agent Copy',
 			expect.objectContaining({
-				schema: expect.objectContaining({ model: 'anthropic/claude-sonnet-4-5' }),
+				schema: expect.objectContaining({ model: 'anthropic/claude-sonnet-5-5' }),
 				skills,
 				tools,
 				user: { id: 'user-1' },
@@ -289,7 +289,7 @@ describe('AgentsController create', () => {
 		const { controller, agentsService } = makeCreateController('agent-copy');
 		const schema = {
 			name: 'Source Agent',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			instructions: 'Triage tickets.',
 		};
 

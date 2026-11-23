@@ -469,6 +469,40 @@ describe('AgentChatAttachmentService', () => {
 		});
 	});
 
+	describe('listForSystemAgentThread', () => {
+		it('lists the files of the resource with one file for each name and hash', async () => {
+			const row = (id: string, source: string, minute: number) =>
+				({
+					id,
+					contentHash: 'h1',
+					fileName: 'report.csv',
+					mimeType: 'text/csv',
+					fileSizeBytes: 3,
+					source,
+					createdAt: new Date(Date.UTC(2026, 9, 29, 10, minute)),
+				}) as AgentChatAttachment;
+			repository.findInSystemThreadNewestFirst.mockResolvedValue([
+				row('new', 'sandbox', 2),
+				row('old', 'sandbox', 1),
+			]);
+			const scope = { agentId: 'assistant', resourceId: 'user-1', sources: ['system_chat'] };
+
+			const files = await service.listForSystemAgentThread('thread-1', scope);
+
+			expect(files).toEqual([
+				{
+					fileId: 'new',
+					fileName: 'report.csv',
+					mimeType: 'text/csv',
+					sizeBytes: 3,
+					source: 'sandbox',
+					createdAt: '2026-10-29T10:02:00.000Z',
+				},
+			]);
+			expect(repository.findInSystemThreadNewestFirst).toHaveBeenCalledWith('thread-1', scope, {});
+		});
+	});
+
 	describe('findReadableByHashes', () => {
 		const file = (id: string, contentHash: string, createdByThreadId: string) =>
 			({ id, contentHash, createdByThreadId, threadId: 'root' }) as AgentChatAttachment;

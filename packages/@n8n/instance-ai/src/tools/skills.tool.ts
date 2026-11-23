@@ -1,5 +1,7 @@
 import {
 	agentSkillShape,
+	connectPublicSkillSourceSchema,
+	discoverPublicSkillSourceSchema,
 	instanceAiApprovalResumeSchema,
 	instanceAiConfirmationSeveritySchema,
 	SKILLS_MAX_PAGE_SIZE,
@@ -34,18 +36,13 @@ interface ConfirmationToolContext {
 
 const skillIdField = z.string().describe('The skill ID from the list action');
 
-const projectIdField = z
-	.string()
-	.optional()
-	.describe(
-		'A project ID. list: only skills of this project. create and update: required when scope is project, absent otherwise',
-	);
+const projectIdDescription =
+	'A project ID. For list, filters by project. For other actions, required when scope is project and absent otherwise';
+const projectIdField = z.string().optional().describe(projectIdDescription);
+const scopeDescription =
+	'project: one project can use the skill. instance: every project can use it. On update, a new scope moves the skill. The move is refused if an agent that uses the skill cannot use it in the new scope';
 
-const scopeField = z
-	.enum(['project', 'instance'])
-	.describe(
-		'project: one project can use the skill. instance: every project can use it. On update, a new scope moves the skill. The move is refused if an agent that uses the skill cannot use it in the new scope',
-	);
+const scopeField = skillScopeSchema.describe(scopeDescription);
 
 const availableToAssistantField = z
 	.boolean()
@@ -121,7 +118,22 @@ const deleteAction = z.object({
 
 const allActions = [listAction, getAction, createAction, updateAction, deleteAction] as const;
 
-type FullInput = z.infer<z.ZodDiscriminatedUnion<'action', typeof allActions>>;
+const sourceTargetFields = {
+	projectId: discoverPublicSkillSourceSchema.shape.projectId.describe(projectIdDescription),
+	scope: scopeField,
+};
+const listSourcesAction = z.object({ action: z.literal('list-sources') });
+const discoverSourceAction = discoverPublicSkillSourceSchema.extend({
+	...sourceTargetFields,
+	action: z.literal('discover-source'),
+});
+const importSourceAction = connectPublicSkillSourceSchema.extend({
+	...sourceTargetFields,
+	action: z.literal('import-from-source'),
+});
+const sourceActions = [listSourcesAction, discoverSourceAction, importSourceAction] as const;
+
+type FullInput = z.infer<(typeof allActions)[number] | (typeof sourceActions)[number]>;
 
 type WriteAction = 'create' | 'update' | 'delete';
 
@@ -155,6 +167,8 @@ function summary(item: SkillListItem, assistantSkillsEnabled: boolean) {
 		usedByAgents: item.usedByAgents,
 		canEdit: item.canEdit,
 		canDelete: item.canDelete,
+		sourceId: item.sourceId,
+		syncState: item.syncState,
 	};
 }
 
@@ -164,6 +178,7 @@ function details(detail: SkillDetail, assistantSkillsEnabled: boolean) {
 		skill: detail.skill,
 		skillHash: detail.skillHash,
 		usedBy: detail.usedBy,
+		syncedFrom: detail.syncedFrom,
 	};
 }
 
@@ -356,6 +371,46 @@ async function handleDelete(
 	);
 }
 
+async function handleImportFromSource(
+	context: InstanceAiContext,
+	sources: NonNullable<InstanceAiSkillService['sources']>,
+	{ action: _action, ...input }: z.infer<typeof importSourceAction>,
+	ctx: ConfirmationToolContext,
+) {
+	if (permissionFor(context, 'create') === 'blocked') return BLOCKED_RESULT;
+	const refusal = scopeRefusal(input.scope, input.projectId);
+	if (refusal) return refusal;
+	if (!ctx.resumeData) {
+		// The service applies the import rules, so the card names what the import takes.
+		const { source, importable, failed } = await sources.checkImport(input);
+		const target = await audience(context, input.scope, input.projectId);
+		const { label, ref, path } = source;
+		const names = importable.map(({ name }) => name).join(', ');
+		const selection =
+			importable.length === 1 ? '1 synced skill' : `${importable.length} synced skills`;
+		const leftOut =
+			failed.length === 0
+				? ''
+				: failed.length === 1
+					? ' 1 selected skill cannot come in.'
+					: ` ${failed.length} selected skills cannot come in.`;
+		return await ctx.suspend({
+			requestId: nanoid(),
+			resourceName: `${label}${ref ? ` · ${ref}` : ''}${path ? ` · ${path}` : ''}`,
+			message: `Connect this source and import ${selection} ${target}: ${names}.${leftOut}`,
+			severity: 'warning',
+		});
+	}
+	if (!ctx.resumeData.approved) {
+		return { success: false, denied: true, reason: 'User denied the action' };
+	}
+	const result = await sources.connect(input);
+	for (const { skillId, name } of result.imported) {
+		await reportChangedSkill(context, { id: skillId, name });
+	}
+	return { success: true, ...result };
+}
+
 export function createSkillsTool(context: InstanceAiContext) {
 	const actions =
 		context.skillService?.assistantSkillsEnabled === true
@@ -367,12 +422,18 @@ export function createSkillsTool(context: InstanceAiContext) {
 					updateAction.omit({ availableToAssistant: true }),
 					deleteAction,
 				] as const);
-	const inputSchema = sanitizeInputSchema(z.discriminatedUnion('action', [...actions]));
+	const sources = context.skillService?.sources;
+	const inputSchema = sanitizeInputSchema(
+		z.discriminatedUnion('action', sources ? [...actions, ...sourceActions] : [...actions]),
+	);
 
 	return new Tool(DOMAIN_TOOL_IDS.SKILLS)
 		.description(
 			'Manage skills: list, get, create, update and delete. A skill is reusable instructions. ' +
-				'This tool does not attach a skill to an agent.',
+				'This tool does not attach a skill to an agent.' +
+				(sources
+					? ' List connected sources or preview a public GitHub link with discover-source. Show the check verdicts to the user. To connect the source, use import-from-source with the same URL, scope and revision, and the selected skills. Only skills that passed come in, and the result lists the others in failed. Review warnings and accept updates in Settings > Context > Skills.'
+					: ''),
 		)
 		.input(inputSchema)
 		.untrustedOutput()
@@ -403,7 +464,19 @@ export function createSkillsTool(context: InstanceAiContext) {
 					return await handleUpdate(context, service, input, ctx);
 				case 'delete':
 					return await handleDelete(context, service, input, ctx);
+				case 'list-sources':
+					if (sources) return { sources: await sources.list() };
+					break;
+				case 'discover-source': {
+					const { action: _action, ...target } = input;
+					if (sources) return await sources.discover(target);
+					break;
+				}
+				case 'import-from-source':
+					if (sources) return await handleImportFromSource(context, sources, input, ctx);
+					break;
 			}
+			throw new Error('Skill Sync is not available.');
 		})
 		.build();
 }

@@ -1,4 +1,5 @@
 import type { SamlAcsDto, SamlPreferences } from '@n8n/api-types';
+import { PasswordUtility } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type { Person } from '@n8n/db';
 import { AuthIdentity, AuthIdentityRepository, PersonRepository, UserRepository } from '@n8n/db';
@@ -7,7 +8,6 @@ import { randomString } from 'n8n-workflow';
 import type { FlowResult } from 'samlify/types/src/flow';
 
 import { AuthError } from '@n8n/errors';
-import { PasswordUtility } from '@/services/password.utility';
 import {
 	assertAuthenticationMethodCanBeEnabled,
 	emitSsoLoginDisabled,

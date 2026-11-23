@@ -5,7 +5,6 @@ import type { SqliteConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { SelectQueryBuilder } from '@n8n/typeorm';
 import { In, LessThan, LessThanOrEqual, MoreThanOrEqual, And, Not } from '@n8n/typeorm';
-import { DateUtils } from '@n8n/typeorm/util/DateUtils';
 import { ErrorReporter } from 'n8n-core';
 import type { IRunExecutionData, IWorkflowBase } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
@@ -38,6 +37,7 @@ describe('ExecutionRepository', () => {
 
 	beforeEach(() => {
 		vi.resetAllMocks();
+		globalConfig.database.type = 'sqlite';
 		transactionRunner.run.mockImplementation(async (ctx, fn) => await fn(ctx));
 		sharedWorkflowRepository.findOwnerProjectsByWorkflowIds.mockResolvedValue(new Map());
 	});
@@ -164,15 +164,19 @@ describe('ExecutionRepository', () => {
 			});
 		});
 
-		describe('with startedAfter and startedBefore filters', () => {
+		describe.each(['sqlite', 'postgresdb'] as const)('with start-time filters on %s', (dbType) => {
 			const startedAfter = '2024-01-01T00:00:00.000Z';
 			const startedBefore = '2024-12-31T23:59:59.999Z';
 			const startedAfterCondition = MoreThanOrEqual(
-				DateUtils.mixedDateToUtcDatetimeString(new Date(startedAfter)),
+				dbType === 'sqlite' ? '2024-01-01 00:00:00.000' : new Date(startedAfter),
 			);
 			const startedBeforeCondition = LessThanOrEqual(
-				DateUtils.mixedDateToUtcDatetimeString(new Date(startedBefore)),
+				dbType === 'sqlite' ? '2024-12-31 23:59:59.999' : new Date(startedBefore),
 			);
+
+			beforeEach(() => {
+				globalConfig.database.type = dbType;
+			});
 
 			test('should filter executions started after a given time', async () => {
 				const limit = 10;
@@ -322,6 +326,20 @@ describe('ExecutionRepository', () => {
 				where: { status: In(['running', 'unknown']) },
 			});
 			expect(result).toEqual(['1', '2']);
+		});
+	});
+
+	describe('findRunningIds', () => {
+		test('should select the ids among the given ones of running executions', async () => {
+			entityManager.find.mockResolvedValueOnce([{ id: '1' }]);
+
+			const result = await executionRepository.findRunningIds(['1', '2']);
+
+			expect(entityManager.find).toHaveBeenCalledWith(ExecutionEntity, {
+				select: ['id'],
+				where: { id: In(['1', '2']), status: 'running' },
+			});
+			expect(result).toEqual(['1']);
 		});
 	});
 

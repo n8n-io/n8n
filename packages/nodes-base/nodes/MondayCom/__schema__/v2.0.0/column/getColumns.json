@@ -1,0 +1,38 @@
+{
+	"properties": {
+		"description": {
+			"type": ["null", "string"]
+		},
+		"id": {
+			"type": "string"
+		},
+		"rollup": {},
+		"settings": {
+			"additionalProperties": true,
+			"properties": {
+				"labels": {
+					"items": {
+						"properties": {
+							"id": {
+								"type": "number"
+							},
+							"name": {
+								"type": "string"
+							}
+						},
+						"type": "object"
+					},
+					"type": ["array", "object"]
+				}
+			},
+			"type": "object"
+		},
+		"title": {
+			"type": "string"
+		},
+		"type": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

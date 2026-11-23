@@ -57,6 +57,7 @@ import type { ChatMessage, ThinkingSegment, ToolCall } from '@/features/ai/share
 import { CHAT_MESSAGE_ROLE, CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from '../constants';
 import { summariseToolCall } from '@/features/ai/shared/agentsChat/interactiveSummary';
 import { isPolicyRefusedToolOutput } from '@/features/ai/shared/agentsChat/toolPolicyRefusal';
+import { resolveToolCatalogCall } from '@/features/ai/shared/agentsChat/toolCatalogCall';
 import { addReplyAttachments } from '@/features/ai/shared/agentsChat/replyFiles';
 import { isBudgetStopCode, type BudgetNoticeCode } from '../utils/budget-config';
 import { isFailedDelegateOutput } from '../utils/delegate-tool';
@@ -102,6 +103,11 @@ export interface UseAgentChatStreamParams {
 	interactionExtensions?: readonly AgentsChatInteractionExtension[];
 	/** Called with each event of the chat stream, as received. */
 	onStreamEvent?: (event: AgentSseEvent) => void;
+	/**
+	 * The `references` of a sent message, from the client context that it sends.
+	 * The history gives the same references after a reload.
+	 */
+	messageReferences?: (clientContext: Record<string, unknown> | undefined) => unknown[];
 }
 
 type ResumePayload =
@@ -1289,17 +1295,20 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				// or push one if `tool-input-start` was missing.
 				const msg = ensureCurrent(session);
 				msg.toolCalls = msg.toolCalls ?? [];
+				// `tool-input-start` names a tool catalog call `call_tool`. The full input names the real tool.
+				const call = resolveToolCatalogCall(event.toolName, event.input);
 				const existing = msg.toolCalls.find((t) => t.toolCallId === event.toolCallId);
 				if (!existing) {
 					msg.toolCalls.push({
-						tool: event.toolName,
+						tool: call.tool,
 						toolCallId: event.toolCallId,
-						input: event.input,
+						input: call.input,
 						state: TOOL_CALL_STATE.PENDING,
-						displaySummary: summariseToolCall(event.toolName, undefined, event.input),
+						displaySummary: summariseToolCall(call.tool, undefined, call.input),
 					});
 				} else {
-					existing.input = event.input;
+					existing.tool = call.tool;
+					existing.input = call.input;
 					existing.displaySummary = summariseToolCall(
 						existing.tool,
 						existing.output,
@@ -2002,6 +2011,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		isSubmitting.value = true;
 		const submission = ++submissionVersion;
 		const target = targetKey();
+		const references = params.messageReferences?.(clientContext);
 		const userMessage: ChatMessage = {
 			id: crypto.randomUUID(),
 			role: 'user',
@@ -2014,6 +2024,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				sizeBytes: file.size,
 				file,
 			})),
+			...(references?.length ? { references } : {}),
 		};
 		// Nothing waits ahead of the first message of a new session, so its run starts
 		// right away. The message shows now, not when the run starts.

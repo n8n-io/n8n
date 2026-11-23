@@ -178,6 +178,12 @@ describe('parseCodeTaskInput', () => {
 
 		expect(parsed.ok).toBe(false);
 	});
+
+	it('should reject empty code', () => {
+		const parsed = parseCodeTaskInput({ ...createTaskInput(), code: '' });
+
+		expect(parsed.ok).toBe(false);
+	});
 });
 
 describe('parseCodeTaskResult', () => {

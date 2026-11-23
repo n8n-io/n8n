@@ -9,7 +9,7 @@ import { GEN_AI_COMPLETION, redactLangSmithTelemetrySpan } from '../trace-payloa
 function deepAgentConfig() {
 	return {
 		name: 'Support Triage',
-		model: 'anthropic/claude-sonnet-4-5',
+		model: 'anthropic/claude-sonnet-5-5',
 		credential: 'cred-anthropic-1',
 		instructions:
 			'Escalate anything a customer marks as production-down to the ops rota before replying. Older key sk-ant-api03-aaaaaaaaaaaaaaaa was rotated.',

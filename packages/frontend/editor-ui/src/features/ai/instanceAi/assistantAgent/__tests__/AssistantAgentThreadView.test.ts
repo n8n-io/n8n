@@ -13,7 +13,10 @@ import { flushPromises } from '@vue/test-utils';
 import { setActivePinia } from 'pinia';
 import { defineComponent, h, inject, ref, type Ref } from 'vue';
 
-import type { AgentChatComposerAttachment } from '@/features/agents/utils/composer-attachments';
+import {
+	mergeClientContextPatches,
+	type AgentChatComposerAttachment,
+} from '@/features/agents/utils/composer-attachments';
 import { EMPTY_ASSISTANT_MENTION_COUNTS } from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
 import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
 
@@ -21,6 +24,7 @@ import type { ArtifactAgentTargets } from '../../artifactAgentTargets';
 import type { ArtifactThread } from '../../artifactThread';
 import type { WorkflowFailuresReport } from '../../components/InstanceAiWorkflowPreview.vue';
 import { INSTANCE_AI_VIEW } from '../../constants';
+import { useAssistantCreditsStore } from '../../assistantCredits.store';
 import { useInstanceAiStore } from '../../instanceAi.store';
 import { USER_TYPED_MESSAGE } from '../../prefills';
 
@@ -81,6 +85,8 @@ const {
 	},
 }));
 
+const { routeQuery } = vi.hoisted(() => ({ routeQuery: {} as Record<string, string> }));
+
 const { fetchTabs, saveTabs } = vi.hoisted(() => ({
 	fetchTabs: vi.fn(),
 	saveTabs: vi.fn(),
@@ -105,6 +111,11 @@ vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: telemetryTrack }),
 }));
 
+const { showError } = vi.hoisted(() => ({ showError: vi.fn() }));
+vi.mock('@n8n/composables/useToast', () => ({
+	useToast: () => ({ showError, showMessage: vi.fn() }),
+}));
+
 // The test view has no layout, so the tests set the width of the thread area.
 const { threadArea } = vi.hoisted(() => ({
 	threadArea: { width: undefined as Ref<number> | undefined },
@@ -122,6 +133,8 @@ const chatMessages = ref<ChatMessage[]>([]);
 const isLoadingHistory = ref(true);
 const isBusy = ref(false);
 const composerAttachments = ref<AgentChatComposerAttachment[]>([]);
+// The user message whose references the stub panel renders through its slot.
+const referencedMessage = ref<ChatMessage>();
 
 vi.mock('@/features/agents/components/AgentChatPanel.vue', () => ({
 	default: defineComponent({
@@ -152,16 +165,23 @@ vi.mock('@/features/agents/components/AgentChatPanel.vue', () => ({
 				composerAttachments,
 				messages: chatMessages,
 				isStreaming: ref(false),
+				isSubmitting: ref(false),
 				isBusy,
 				isLoadingHistory,
+				getInputElement: () => undefined,
 			});
 			return () => {
 				panelProps.current = { ...attrs };
 				panelSlots.current = Object.keys(slots);
 				return h('div', { 'data-test-id': 'agent-chat-panel-stub' }, [
 					slots['inline-offers']?.(),
+					slots['above-input']?.(),
 					slots['composer-attachments']?.(),
 					slots['footer-start']?.({ disabled: composerBlocked.current }),
+					slots['composer-actions']?.(),
+					referencedMessage.value
+						? slots['user-message-references']?.({ message: referencedMessage.value })
+						: undefined,
 				]);
 			};
 		},
@@ -321,6 +341,41 @@ vi.mock('../../components/ApprovalModeSelector.vue', () => ({
 	}),
 }));
 
+// The real notice reads the settings and users stores, and has its own tests.
+vi.mock('../../components/LimitedModeNotice.vue', () => ({
+	default: defineComponent({
+		setup: () => () => h('div', { 'data-test-id': 'limited-mode-notice-stub' }),
+	}),
+}));
+
+// The real banner reads the cloud plan stores, and has its own tests. Like the real
+// banner, the stub shows the dismiss button only when the banner is dismissible.
+vi.mock('@/features/ai/assistant/components/Agent/CreditWarningBanner.vue', () => ({
+	default: defineComponent({
+		props: {
+			message: { type: String, default: undefined },
+			dismissible: { type: Boolean, default: true },
+		},
+		emits: ['dismiss', 'upgrade-click'],
+		setup:
+			(props, { emit }) =>
+			() =>
+				h(
+					'div',
+					{ 'data-test-id': 'credit-warning-banner-stub', 'data-dismissible': props.dismissible },
+					[
+						props.message,
+						props.dismissible
+							? h('button', {
+									'data-test-id': 'credit-warning-banner-dismiss',
+									onClick: () => emit('dismiss'),
+								})
+							: null,
+					],
+				),
+	}),
+}));
+
 // The real chips resolve the nodes from the workflow document, which has its own tests.
 vi.mock('../../components/NodesAttachmentChips.vue', () => ({
 	default: defineComponent({
@@ -377,9 +432,54 @@ vi.mock('../../components/InstanceAiViewHeader.vue', () => ({
 	}),
 }));
 
+// The real picker searches the project, which its own tests cover. The stub emits the
+// selection that a test sets, and shows the props that the view passes.
+const { mentionsEnabled, mentionSelection, mentionPickerProps } = vi.hoisted(() => ({
+	mentionsEnabled: { current: true },
+	mentionSelection: { current: undefined as unknown },
+	mentionPickerProps: { current: undefined as Record<string, unknown> | undefined },
+}));
+vi.mock('@/features/ai/assistant-at-mentions/AssistantAtMentionPicker.vue', () => ({
+	default: defineComponent({
+		inheritAttrs: false,
+		emits: ['select'],
+		setup(_props, { attrs, emit, expose }) {
+			expose({
+				handleExternalKeydown: () => false,
+				getOpenMetrics: () => ({}),
+				flushEmptySearch: () => {},
+			});
+			return () => {
+				mentionPickerProps.current = { ...attrs };
+				return h('button', {
+					'data-test-id': 'mention-picker-stub',
+					onClick: () => emit('select', mentionSelection.current),
+				});
+			};
+		},
+	}),
+}));
+vi.mock(
+	'@/features/ai/assistant-at-mentions/composables/useIsAssistantAtMentionsEnabled',
+	async () => {
+		const { computed } = await import('vue');
+		return { useIsAssistantAtMentionsEnabled: () => computed(() => mentionsEnabled.current) };
+	},
+);
+vi.mock(
+	'@/features/ai/assistant-at-mentions/composables/useAssistantMentionAvailability',
+	async () => {
+		const { computed } = await import('vue');
+		return {
+			useAssistantMentionAvailability: () => ({ isAvailable: computed(() => true) }),
+		};
+	},
+);
+
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal<typeof import('vue-router')>()),
 	useRouter: () => ({ push: routerPush, currentRoute: { value: { params: {} } } }),
+	useRoute: () => ({ query: routeQuery }),
 }));
 
 const renderView = createComponentRenderer(AssistantAgentThreadView);
@@ -449,12 +549,18 @@ describe('AssistantAgentThreadView', () => {
 		previewThread.current = undefined;
 		appPreviewProps.current = undefined;
 		routerPush.mockReset();
+		for (const key of Object.keys(routeQuery)) delete routeQuery[key];
 		focusInput.mockReset();
 		openFilePicker.mockReset();
 		composerBlocked.current = false;
 		setDraft.mockReset();
 		localStorage.clear();
 		composerAttachments.value = [];
+		referencedMessage.value = undefined;
+		mentionsEnabled.current = true;
+		mentionSelection.current = undefined;
+		mentionPickerProps.current = undefined;
+		showError.mockReset();
 		chatMessages.value = [];
 		isLoadingHistory.value = true;
 		isBusy.value = false;
@@ -488,6 +594,9 @@ describe('AssistantAgentThreadView', () => {
 			expect.objectContaining({ key: 'assistant_auto_approval' }),
 			expect.objectContaining({ key: 'assistant_instance_context' }),
 			expect.objectContaining({ key: 'assistant_status' }),
+			expect.objectContaining({ key: 'assistant_tool_result_table' }),
+			expect.objectContaining({ key: 'assistant_tool_result_code' }),
+			expect.objectContaining({ key: 'assistant_shared_files' }),
 		]);
 		expect(sendMessageFromOutside).not.toHaveBeenCalled();
 	});
@@ -741,6 +850,84 @@ describe('AssistantAgentThreadView', () => {
 		expect(appPreviewProps.current?.['refresh-key']).toBe(Number(firstKey) + 1);
 	});
 
+	describe('credits and limited mode', () => {
+		function setCredits(quota: number, claimed: number): void {
+			const creditsStore = useAssistantCreditsStore();
+			creditsStore.creditsQuota = quota;
+			creditsStore.creditsClaimed = claimed;
+		}
+
+		async function beforeSend(): Promise<void> {
+			const hook = panelProps.current['before-send'];
+			if (typeof hook !== 'function') throw new Error('The panel has no before-send hook');
+			await hook();
+		}
+
+		it('shows the limited mode notice above the composer', async () => {
+			const { getByTestId } = renderView({
+				props: { threadId: 'thread-1', projectId: 'project-1' },
+			});
+			await flushPromises();
+
+			expect(getByTestId('limited-mode-notice-stub')).toBeInTheDocument();
+		});
+
+		it('shows no credit banner while enough credits are left', async () => {
+			setCredits(100, 50);
+			const { queryByTestId } = renderView({
+				props: { threadId: 'thread-1', projectId: 'project-1' },
+			});
+			await flushPromises();
+
+			expect(queryByTestId('credit-warning-banner-stub')).not.toBeInTheDocument();
+			expect(panelProps.current.disabled).toBe(false);
+			await expect(beforeSend()).resolves.toBeUndefined();
+		});
+
+		it('shows a dismissible warning when credits are low, and still sends', async () => {
+			setCredits(100, 95);
+			const { getByTestId, queryByTestId } = renderView({
+				props: { threadId: 'thread-1', projectId: 'project-1' },
+			});
+			await flushPromises();
+
+			expect(getByTestId('credit-warning-banner-stub')).toHaveAttribute('data-dismissible', 'true');
+			await expect(beforeSend()).resolves.toBeUndefined();
+
+			await userEvent.click(getByTestId('credit-warning-banner-dismiss'));
+
+			expect(queryByTestId('credit-warning-banner-stub')).not.toBeInTheDocument();
+		});
+
+		it('disables the composer, refuses host sends and shows a banner that cannot be dismissed when no credits are left', async () => {
+			setCredits(100, 100);
+			const { getByTestId, queryByTestId } = renderView({
+				props: { threadId: 'thread-1', projectId: 'project-1' },
+			});
+			await flushPromises();
+
+			const banner = getByTestId('credit-warning-banner-stub');
+			expect(banner).toHaveAttribute('data-dismissible', 'false');
+			expect(queryByTestId('credit-warning-banner-dismiss')).not.toBeInTheDocument();
+			expect(banner).toHaveTextContent("You've run out of Assistant credits");
+			expect(panelProps.current.disabled).toBe(true);
+			await expect(beforeSend()).rejects.toThrow();
+		});
+
+		it('sends again once credits come back', async () => {
+			setCredits(100, 100);
+			renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+			await flushPromises();
+			await expect(beforeSend()).rejects.toThrow();
+
+			setCredits(200, 100);
+			await flushPromises();
+
+			expect(panelProps.current.disabled).toBe(false);
+			await expect(beforeSend()).resolves.toBeUndefined();
+		});
+	});
+
 	describe('skill artifacts', () => {
 		async function renderWithSkill() {
 			const result = renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
@@ -806,6 +993,97 @@ describe('AssistantAgentThreadView', () => {
 			await flushPromises();
 
 			expect(getByTestId('skill-preview-stub')).toHaveAttribute('data-skill-id', 'skill-1');
+		});
+	});
+
+	describe('app chats', () => {
+		const APP_ID = '019a4012-272c-7313-91af-5c94a3d819a9';
+		const OTHER_APP_ID = '019a4012-272c-7313-91af-5c94a3d819aa';
+
+		function clientContext(): Record<string, unknown> {
+			return (panelProps.current['client-context'] as () => Record<string, unknown>)();
+		}
+
+		it('opens the app of a new thread and binds it with the first message', async () => {
+			routeQuery.appId = APP_ID;
+			stashAssistantAgentLaunch('thread-new', {
+				projectId: 'project-1',
+				source: 'app_builder_page',
+				origin: 'internal',
+				subject: { type: 'app', id: APP_ID, projectId: 'project-1', name: 'Portal' },
+			});
+
+			const { getByTestId } = renderView({
+				props: { threadId: 'thread-new', projectId: 'project-1' },
+			});
+			await flushPromises();
+
+			expect(getByTestId('assistant-agent-preview-panel')).toBeVisible();
+			expect(appPreviewProps.current).toMatchObject({
+				'project-id': 'project-1',
+				'app-id': APP_ID,
+			});
+			const subject = { type: 'app', id: APP_ID, projectId: 'project-1', name: 'Portal' };
+			expect(clientContext()).toMatchObject({ subject });
+
+			// A refused send keeps the app for the retry.
+			const onMessageAccepted = panelProps.current.onMessageAccepted as AcceptMessage;
+			onMessageAccepted({ clientContext: clientContext() });
+			expect(clientContext()).toMatchObject({ subject });
+
+			const onSessionCreated = panelProps.current.onSessionCreated as () => void;
+			onSessionCreated();
+			expect(clientContext()).not.toHaveProperty('subject');
+		});
+
+		it('sends a pending app without opening a preview', async () => {
+			stashAssistantAgentLaunch('thread-new', {
+				projectId: 'project-1',
+				source: 'app_builder_page',
+				origin: 'internal',
+				subject: { type: 'app', id: APP_ID, projectId: 'project-1', pending: true },
+			});
+
+			renderView({ props: { threadId: 'thread-new', projectId: 'project-1' } });
+			await flushPromises();
+
+			expect(appPreviewProps.current).toBeUndefined();
+			expect(clientContext()).toMatchObject({
+				subject: { type: 'app', id: APP_ID, projectId: 'project-1', pending: true },
+			});
+		});
+
+		it('opens the app from the URL among the apps of the thread metadata', async () => {
+			routeQuery.appId = OTHER_APP_ID;
+			useAssistantAgentThreadsStore().openedThreads = [
+				{
+					id: 'thread-1',
+					title: 'Apps',
+					updatedAt: '2026-11-02T10:00:00.000Z',
+					projectId: 'project-1',
+					metadata: {
+						instanceAiAppTargets: [
+							{ appId: APP_ID, projectId: 'project-1' },
+							{ appId: OTHER_APP_ID, projectId: 'project-1', name: 'Other' },
+						],
+					},
+				},
+			];
+
+			renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+			await flushPromises();
+
+			expect(appPreviewProps.current).toMatchObject({ 'app-id': OTHER_APP_ID });
+			expect(clientContext()).not.toHaveProperty('subject');
+		});
+
+		it('ignores an app in the URL that the thread does not have', async () => {
+			routeQuery.appId = OTHER_APP_ID;
+
+			renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+			await flushPromises();
+
+			expect(appPreviewProps.current).toBeUndefined();
 		});
 	});
 
@@ -987,6 +1265,20 @@ describe('AssistantAgentThreadView', () => {
 			expect(queryByTestId('instance-ai-fix-with-ai-panel')).not.toBeInTheDocument();
 		});
 
+		it('hides the offer while no credits are left, and offers it again once they come back', async () => {
+			const { queryByTestId } = await renderWithFailedRun();
+			const creditsStore = useAssistantCreditsStore();
+
+			creditsStore.creditsQuota = 100;
+			creditsStore.creditsClaimed = 100;
+			await flushPromises();
+			expect(queryByTestId('instance-ai-fix-with-ai-panel')).not.toBeInTheDocument();
+
+			creditsStore.creditsQuota = 200;
+			await flushPromises();
+			expect(queryByTestId('instance-ai-fix-with-ai-panel')).toBeInTheDocument();
+		});
+
 		it('clears the offer when a later run of the same workflow succeeds', async () => {
 			const { queryByTestId } = await renderWithFailedRun();
 
@@ -1129,6 +1421,25 @@ describe('AssistantAgentThreadView', () => {
 			const clientContext = panelProps.current['client-context'] as () => Record<string, unknown>;
 			expect(clientContext().threadArtifacts).toEqual({
 				artifacts: [{ type: 'workflow', id: 'wf-9', name: 'Opened by hand' }],
+				activeId: 'wf-9',
+			});
+		});
+
+		it('names the run that the user started in the preview of a tab', async () => {
+			fetchTabs.mockResolvedValue({ state: storedState });
+			renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+			await flushPromises();
+			isLoadingHistory.value = false;
+			await flushPromises();
+
+			// The preview remembers the run on the thread when the run starts.
+			previewThread.current?.rememberManualExecution('wf-9', 'exec-1', undefined);
+
+			const clientContext = panelProps.current['client-context'] as () => Record<string, unknown>;
+			expect(clientContext().threadArtifacts).toEqual({
+				artifacts: [
+					{ type: 'workflow', id: 'wf-9', name: 'Opened by hand', executionId: 'exec-1' },
+				],
 				activeId: 'wf-9',
 			});
 		});
@@ -1602,6 +1913,82 @@ describe('AssistantAgentThreadView', () => {
 		});
 	});
 
+	describe('agent subject of a new thread', () => {
+		function launchWith(subject: Record<string, unknown>) {
+			stashAssistantAgentLaunch('thread-new', {
+				projectId: 'project-1',
+				source: 'agent_builder_page',
+				origin: 'internal',
+				subject: { type: 'agent', id: 'agent-1', projectId: 'project-1', ...subject } as never,
+			});
+		}
+
+		async function renderNewThread() {
+			const view = renderView({ props: { threadId: 'thread-new', projectId: 'project-1' } });
+			await flushPromises();
+			isLoadingHistory.value = false;
+			await flushPromises();
+			return view;
+		}
+
+		function clientContext(): Record<string, unknown> {
+			return (panelProps.current['client-context'] as () => Record<string, unknown>)();
+		}
+
+		it('opens a saved agent before the first message and binds it with that message', async () => {
+			launchWith({ name: 'Triage' });
+
+			const { getByTestId } = await renderNewThread();
+
+			expect(getByTestId('agent-preview-stub')).toBeInTheDocument();
+			expect(agentPreview.props).toMatchObject({
+				'agent-id': 'agent-1',
+				'project-id': 'project-1',
+			});
+			expect(fetchTargets).not.toHaveBeenCalled();
+			expect(clientContext()).toMatchObject({
+				subject: { type: 'agent', id: 'agent-1', projectId: 'project-1', name: 'Triage' },
+			});
+		});
+
+		it('binds a change from the preview once the server accepts the first message', async () => {
+			launchWith({ name: 'Triage' });
+			await renderNewThread();
+			const renamed = { agentId: 'agent-1', projectId: 'project-1', name: 'Refund triage' };
+
+			expect(agentPreview.targets).toBeDefined();
+			await agentPreview.targets?.bind(renamed);
+			expect(bindTarget).not.toHaveBeenCalled();
+
+			// The first turn bound the subject under its old name.
+			fetchTargets.mockResolvedValue({
+				targets: {
+					bound: { agentId: 'agent-1', projectId: 'project-1', name: 'Triage' },
+					pending: null,
+					targets: [],
+					previewSession: null,
+				},
+			});
+			bindTarget.mockResolvedValue({ targets: noTargets() });
+			const onSessionCreated = panelProps.current.onSessionCreated as () => void;
+			onSessionCreated();
+			await flushPromises();
+
+			expect(bindTarget).toHaveBeenCalledExactlyOnceWith(expect.anything(), 'thread-new', renamed);
+		});
+
+		it('sends a pending agent without a preview before the first message', async () => {
+			launchWith({ pending: true });
+
+			const { queryByTestId } = await renderNewThread();
+
+			expect(queryByTestId('agent-preview-stub')).not.toBeInTheDocument();
+			expect(clientContext()).toMatchObject({
+				subject: { type: 'agent', id: 'agent-1', projectId: 'project-1', pending: true },
+			});
+		});
+	});
+
 	describe('agent preview', () => {
 		const agentTabs: AssistantThreadTabsState = {
 			tabs: [{ type: 'agent', id: 'agent-1', name: 'Triage', projectId: 'project-1' }],
@@ -1882,6 +2269,255 @@ describe('AssistantAgentThreadView', () => {
 			await flushPromises();
 
 			expect(composerAttachments.value).toEqual([]);
+		});
+	});
+
+	describe('mentions', () => {
+		const workflowMention = {
+			item: {
+				key: 'workflow:wf-1:wf-1',
+				kind: 'workflow',
+				source: 'workflows',
+				label: 'Uptime monitor',
+				breadcrumbs: ['Uptime monitor'],
+				workflowId: 'wf-1',
+				entityId: 'wf-1',
+				workflowName: 'Uptime monitor',
+			},
+			attachment: { type: 'workflow', id: 'wf-1', name: 'Uptime monitor' },
+			truncated: false,
+			telemetry: { mode: 'browse', resultPosition: 1, queryLength: 0 },
+		};
+		const agentMention = {
+			item: {
+				key: 'agent:agent-1',
+				kind: 'agent',
+				source: 'agents',
+				label: 'Support agent',
+				breadcrumbs: ['Support agent'],
+				entityId: 'agent-1',
+				projectId: 'project-1',
+			},
+			attachment: { type: 'agent', id: 'agent-1', name: 'Support agent', projectId: 'project-1' },
+			truncated: false,
+		};
+		const nodeMention = {
+			item: {
+				key: 'node:wf-1:id-Slack',
+				kind: 'node',
+				source: 'artifacts',
+				label: 'Slack',
+				breadcrumbs: ['Uptime monitor', 'Slack'],
+				workflowId: 'wf-1',
+				entityId: 'id-Slack',
+				workflowName: 'Uptime monitor',
+			},
+			attachment: {
+				type: 'nodes',
+				workflowId: 'wf-1',
+				workflowName: 'Uptime monitor',
+				sets: [{ nodes: [{ id: 'id-Slack', name: 'Slack' }] }],
+			},
+			truncated: false,
+		};
+
+		async function pick(selection: unknown, getByTestId: (id: string) => HTMLElement) {
+			mentionSelection.current = selection;
+			await userEvent.click(getByTestId('mention-picker-stub'));
+			await flushPromises();
+		}
+
+		it('hides the picker when mentions are off', async () => {
+			mentionsEnabled.current = false;
+			const { queryByTestId } = renderView({
+				props: { threadId: 'thread-1', projectId: 'project-1' },
+			});
+			await flushPromises();
+
+			expect(queryByTestId('mention-picker-stub')).not.toBeInTheDocument();
+		});
+
+		it('stages a mentioned workflow or agent as a chip that sends it in the client context', async () => {
+			const { getByTestId, getAllByTestId } = renderView({
+				props: { threadId: 'thread-1', projectId: 'project-1' },
+			});
+			await flushPromises();
+
+			await pick(workflowMention, getByTestId);
+			await pick(agentMention, getByTestId);
+
+			expect(stagedNodes()).toEqual([
+				{ id: 'mention:workflow:wf-1', attachments: [workflowMention.attachment] },
+				{ id: 'mention:agent:agent-1', attachments: [agentMention.attachment] },
+			]);
+			expect(getAllByTestId('agent-chat-composer-chip').map((chip) => chip.textContent)).toEqual([
+				'Uptime monitor',
+				'Support agent',
+			]);
+			expect(mentionPickerProps.current?.['excluded-keys']).toEqual([
+				'workflow:wf-1:wf-1',
+				'agent:agent-1',
+			]);
+			expect(telemetryTrack).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.INSTANCE_AI.USER_SELECTED_AI_ASSISTANT_MENTION,
+				expect.objectContaining({ thread_id: 'thread-1', kind: 'workflow', source: 'workflows' }),
+			);
+		});
+
+		it('adds a mentioned node to the nodes chip of its workflow', async () => {
+			// The canvas staged a node of the same workflow.
+			composerAttachments.value = [
+				{
+					chip: { id: 'nodes:wf-1', label: '1 node', icon: 'layers' },
+					clientContextPatch: {
+						attachments: [{ type: 'nodes', workflowId: 'wf-1', sets: [nodeSet('Webhook')] }],
+					},
+				},
+			];
+			const { getByTestId } = renderView({
+				props: { threadId: 'thread-1', projectId: 'project-1' },
+			});
+			await flushPromises();
+
+			await pick(nodeMention, getByTestId);
+
+			expect(stagedNodes()).toEqual([
+				{
+					id: 'nodes:wf-1',
+					attachments: [
+						{
+							type: 'nodes',
+							workflowId: 'wf-1',
+							sets: [nodeSet('Webhook'), nodeSet('Slack')],
+						},
+					],
+				},
+			]);
+		});
+
+		it('refuses a mention past the attachment limit of a message', async () => {
+			composerAttachments.value = Array.from({ length: 10 }, (_, index) => ({
+				chip: { id: `mention:workflow:wf-${index}`, label: `Workflow ${index}` },
+				clientContextPatch: { attachments: [{ type: 'workflow', id: `wf-${index}` }] },
+			}));
+			const { getByTestId } = renderView({
+				props: { threadId: 'thread-1', projectId: 'project-1' },
+			});
+			await flushPromises();
+
+			await pick(agentMention, getByTestId);
+
+			expect(composerAttachments.value).toHaveLength(10);
+			expect(showError).toHaveBeenCalled();
+		});
+
+		it('reports the staged mentions with the sent message, and opens the mentioned workflow', async () => {
+			const { getByTestId } = renderView({
+				props: { threadId: 'thread-1', projectId: 'project-1' },
+			});
+			await flushPromises();
+			await pick(workflowMention, getByTestId);
+			await pick(agentMention, getByTestId);
+			// The context that the panel sends: the host context with the staged chip patches.
+			const hostContext = panelProps.current['client-context'] as () => Record<string, unknown>;
+			const clientContext = mergeClientContextPatches(composerAttachments.value, hostContext());
+			expect(clientContext?.attachments).toEqual([
+				workflowMention.attachment,
+				agentMention.attachment,
+			]);
+
+			const onMessageSending = panelProps.current.onMessageSending as (payload: {
+				text: string;
+				files: File[];
+				clientContext?: Record<string, unknown>;
+				isFirstMessage: boolean;
+			}) => void;
+			onMessageSending({ text: 'Compare them', files: [], clientContext, isFirstMessage: false });
+			(panelProps.current.onMessageAccepted as AcceptMessage)({ clientContext });
+			await flushPromises();
+
+			expect(telemetryTrack).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
+				expect.objectContaining({
+					mention_counts: { total: 2, workflow: 1, node: 0, group: 0, agent: 1 },
+				}),
+			);
+			expect(getByTestId('workflow-preview-stub')).toBeInTheDocument();
+			expect(previewProps.current?.['workflow-id']).toBe('wf-1');
+		});
+
+		it('reports no mentions for a send that leaves the staged chips in the composer', async () => {
+			const { getByTestId } = renderView({
+				props: { threadId: 'thread-1', projectId: 'project-1' },
+			});
+			await flushPromises();
+			await pick(agentMention, getByTestId);
+
+			// The answer to a question card sends the text without the client context.
+			const onMessageSending = panelProps.current.onMessageSending as (payload: unknown) => void;
+			onMessageSending({ text: 'Yes', files: [], isFirstMessage: false });
+
+			expect(telemetryTrack).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
+				expect.objectContaining({ mention_counts: EMPTY_ASSISTANT_MENTION_COUNTS }),
+			);
+		});
+
+		it('gives a sent message the resources of its client context, and shows them', async () => {
+			const { getAllByTestId } = renderView({
+				props: { threadId: 'thread-1', projectId: 'project-1' },
+			});
+			await flushPromises();
+
+			const messageReferences = panelProps.current['message-references'] as (
+				context: Record<string, unknown> | undefined,
+			) => unknown[];
+			expect(
+				messageReferences({
+					timeZone: 'Europe/Helsinki',
+					attachments: [workflowMention.attachment, { type: 'unknown' }],
+				}),
+			).toEqual([workflowMention.attachment]);
+
+			referencedMessage.value = {
+				id: 'u-1',
+				role: 'user',
+				content: 'Compare them',
+				references: [workflowMention.attachment, agentMention.attachment],
+			};
+			await flushPromises();
+
+			expect(getAllByTestId('attachment-preview-resource').map((chip) => chip.textContent)).toEqual(
+				['Uptime monitor', 'Support agent'],
+			);
+		});
+
+		it('does not show the agent that the thread builds as a reference', async () => {
+			// The Agent Builder panel attaches its agent to each message.
+			fetchTargets.mockResolvedValue({
+				targets: {
+					bound: { agentId: 'agent-1', projectId: 'project-1', name: 'Support agent' },
+					pending: null,
+					targets: [],
+					previewSession: null,
+				},
+			});
+			const { getAllByTestId } = renderView({
+				props: { threadId: 'thread-1', projectId: 'project-1' },
+			});
+			await flushPromises();
+
+			referencedMessage.value = {
+				id: 'u-1',
+				role: 'user',
+				content: 'Add a tool',
+				references: [workflowMention.attachment, agentMention.attachment],
+			};
+			await flushPromises();
+
+			expect(getAllByTestId('attachment-preview-resource').map((chip) => chip.textContent)).toEqual(
+				['Uptime monitor'],
+			);
 		});
 	});
 });

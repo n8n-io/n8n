@@ -189,6 +189,10 @@ export interface WorkflowToolContext {
 	previewChat?: boolean;
 	publishedN8nChat?: boolean;
 	userId?: string;
+	/** See `RelatedAgentRun.agentServiceAccountId`. */
+	agentServiceAccountId?: string;
+	/** See `RelatedAgentRun.delegatingAgentId`. */
+	delegatingAgentId?: string;
 	/** Whether a suspension can be resumed at all. Defaults to true. */
 	supportsHitl?: boolean;
 	/** When true, an execution parked at a Wait node becomes a background job instead of polling or suspending. */
@@ -570,6 +574,10 @@ function agentRunOf(
 		...(context.userId ? { userId: context.userId } : {}),
 		...(context.previewChat ? { previewChat: true } : {}),
 		...(context.publishedN8nChat ? { publishedN8nChat: true } : {}),
+		...(context.agentServiceAccountId
+			? { agentServiceAccountId: context.agentServiceAccountId }
+			: {}),
+		...(context.delegatingAgentId ? { delegatingAgentId: context.delegatingAgentId } : {}),
 	};
 }
 
