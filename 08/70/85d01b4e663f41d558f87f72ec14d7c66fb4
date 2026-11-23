@@ -1,0 +1,102 @@
+packages/@n8n/n8n-node-codegen/src/types.ts
+  s_09a09ad2cc1d95::t_2107c0822ea22c 1-2
+  s_09a09ad2cc1d95::t_8f70aba0c3a13e 65,88
+  s_09a09ad2cc1d95::t_240bdd0a2379ac 89
+packages/@n8n/n8n-node-codegen/package.json
+  s_09a09ad2cc1d95::t_f77629d37ad8e0 19
+packages/@n8n/n8n-node-codegen/src/build-properties.ts
+  s_09a09ad2cc1d95::t_4cca4e0beb5f66 2,20-37,115,118,143,185,188,211-214,238,249,253-257,269-270,276,284-290
+  s_09a09ad2cc1d95::t_5d49087d9a7cf7 97-109,111-112,119-120
+  s_09a09ad2cc1d95::t_27d48defcf4136 202
+  s_09a09ad2cc1d95::t_a82b491ab05859 275
+  s_09a09ad2cc1d95::t_5b2a71939026ee 137-138,141
+  s_09a09ad2cc1d95::t_8723a5e3ba473b 181-182,186-187,189-190
+  s_09a09ad2cc1d95::t_240bdd0a2379ac 95-96,110,147,184
+  s_09a09ad2cc1d95::t_b08c136fb6120b 227-229
+packages/workflow/package.json
+  s_09a09ad2cc1d95::t_f77629d37ad8e0 102
+packages/nodes-base/nodes/N8n/v2/overrides.ts
+  s_09a09ad2cc1d95::t_252a1a931c49ec 3
+  s_09a09ad2cc1d95::t_335d5ce42d709f 8,14-15,17
+  s_09a09ad2cc1d95::t_77eaa573644400 164
+  s_09a09ad2cc1d95::t_e63f2ee8db29b9 1-2,4,18-136,139-163,165-201
+  s_09a09ad2cc1d95::t_48c1f786ec81ea 9-11
+  s_09a09ad2cc1d95::t_1b2d9c58a3d8b2 5-6
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/getWorkflows.generated.yml
+  ai_agent 52
+packages/@n8n/n8n-node-codegen/src/__tests__/read-spec.test.ts
+  s_09a09ad2cc1d95::t_b08c136fb6120b 258,260-263,267-279
+packages/nodes-base/nodes/N8n/test/v2/N8nV2.node.test.ts
+  s_09a09ad2cc1d95::t_33db0f50af947f 1-2,5-10,12-17,19,22-28
+packages/@n8n/api-types/src/dto/workflows/workflow-public.openapi.ts
+  s_09a09ad2cc1d95::t_cf2c04bdeb54ff 333
+packages/@n8n/n8n-node-codegen/src/__tests__/resolve-operations.test.ts
+  s_09a09ad2cc1d95::t_335d5ce42d709f 272-275,291
+  s_09a09ad2cc1d95::t_de04589b6048a9 304,316,322
+  s_09a09ad2cc1d95::t_f9081641709b9a 70,78,84
+  s_09a09ad2cc1d95::t_1ff9f8c03fcc9a 305-310,312-313,315,317-321
+  s_09a09ad2cc1d95::t_e30e332070c6ec 105
+  s_09a09ad2cc1d95::t_b08c136fb6120b 271,276-280,282-289,292-297,299-301
+  s_09a09ad2cc1d95::t_f441e30a4001f4 36
+  s_09a09ad2cc1d95::t_a4705c46ec08d1 52-53,62-63,71-75,93-94,124-125,154-155,196-197,212-213,227-228,240-244,262-266,281,290,298,302,311,314
+packages/@n8n/n8n-node-codegen/src/overrides.ts
+  s_09a09ad2cc1d95::t_335d5ce42d709f 18-25,31,33
+  s_09a09ad2cc1d95::t_f8b93e388f1b5d 14,26
+  s_09a09ad2cc1d95::t_240bdd0a2379ac 7
+  s_09a09ad2cc1d95::t_eab76eb19d547d 1,8-13,15,27
+packages/@n8n/n8n-node-codegen/src/__tests__/build-properties.test.ts
+  s_09a09ad2cc1d95::t_1ff9f8c03fcc9a 21
+  s_09a09ad2cc1d95::t_74723dfa44c295 380-464
+  s_09a09ad2cc1d95::t_fddd78d8562ff4 18-20,22,25
+  s_09a09ad2cc1d95::t_b08c136fb6120b 24,189,225-226,318,323-374
+packages/nodes-base/nodes/N8n/v2/N8nV2.node.ts
+  s_09a09ad2cc1d95::t_1b3adfa3ff95e4 9,15
+packages/@n8n/n8n-node-codegen/src/spec/read-spec.ts
+  s_09a09ad2cc1d95::t_8f70aba0c3a13e 159
+packages/@n8n/n8n-node-codegen/src/resolve-operations.ts
+  s_09a09ad2cc1d95::t_153d2fc236f98a 121,144-148,164,166
+  s_09a09ad2cc1d95::t_ebf7116b39f1f8 122-128,130-134,136,138-143,151,156
+  s_09a09ad2cc1d95::t_335d5ce42d709f 129
+  s_09a09ad2cc1d95::t_a297b7190f151b 60-62,149,157
+  s_09a09ad2cc1d95::t_b08c136fb6120b 135,137
+  s_09a09ad2cc1d95::t_a62c24883934ef 153
+  s_09a09ad2cc1d95::t_6d4a887bf754bf 4,49-57,63-66,68-72,150,152,155,158-159
+packages/@n8n/n8n-node-codegen/src/generate.ts
+  s_09a09ad2cc1d95::t_335d5ce42d709f 26
+  s_09a09ad2cc1d95::t_cd02c8334a7c36 35
+  s_09a09ad2cc1d95::t_153d2fc236f98a 30
+pnpm-workspace.yaml
+  s_09a09ad2cc1d95::t_f77629d37ad8e0 288
+packages/@n8n/n8n-node-codegen/src/n8n-node.config.ts
+  s_09a09ad2cc1d95::t_8f70aba0c3a13e 18
+packages/@n8n/n8n-node-codegen/README.md
+  s_09a09ad2cc1d95::t_3c146d0046788d 38-41,43-44,46-47
+  s_09a09ad2cc1d95::t_017f469621c8ed 87,95,103-121,124-126
+  s_09a09ad2cc1d95::t_9f218471c6dee8 122-123
+  s_09a09ad2cc1d95::t_aa5ef130bf72d1 173
+  s_09a09ad2cc1d95::t_c4e0708ff7f583 75-77,81
+  s_09a09ad2cc1d95::t_5266792f83cc0f 100-101
+  s_09a09ad2cc1d95::t_a9356fd9792df5 210-211
+  s_09a09ad2cc1d95::t_5a6ea13474a6d3 195-201
+  s_09a09ad2cc1d95::t_ffb2f0b232a21f 45,48-49,57-60,63,94,96-99,102,172
+packages/@n8n/expression-runtime/package.json
+  s_09a09ad2cc1d95::t_f77629d37ad8e0 50
+pnpm-lock.yaml
+  ai_agent 791-793,3217,3819-3821,10167
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "087085d01b4e663f41d558f87f72ec14d7c66fb4",
+  "prompts": {},
+  "sessions": {
+    "s_09a09ad2cc1d95": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e8a88936-e27f-4171-9770-6c94c3f8f3cb",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dmitrii Kulikov <dmitrii.kulikov@n8n.io>"
+    }
+  }
+}

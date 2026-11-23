@@ -1,0 +1,22 @@
+packages/frontend/@n8n/design-system/src/components/N8nTabs/component-tabs.md
+  s_f378750f17d239::t_c7007cc815f98f 5,70
+  s_f378750f17d239::t_853191460116e0 1,3,7,9,13,15,18,20,22,24,26,28,30,32,34,39,41,43-45,47,49-50,53-58,60-67,73-79,85
+  s_f378750f17d239::t_576788c68197dd 72,80-81
+  s_f378750f17d239::t_283999df09e325 11,83-84,87,89-91
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a71bba1ce6ee12eb64cbda438cd590d1f196ee9d",
+  "prompts": {},
+  "sessions": {
+    "s_f378750f17d239": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1f9d1-f3a7-710a-a421-c76775df68d7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

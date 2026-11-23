@@ -1,0 +1,29 @@
+packages/cli/src/events/relays/log-streaming.event-relay.ts
+  s_419bed5e9fbd75::t_b6cbc64d7645b2 200,1708-1717
+packages/cli/src/events/__tests__/log-streaming-event-relay.test.ts
+  ai_agent 3798-3816
+packages/@n8n/telemetry/src/events/workflow-reviews.ts
+  s_419bed5e9fbd75::t_b6cbc64d7645b2 56,71-82
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  ai_agent 6530-6552
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_419bed5e9fbd75::t_b6cbc64d7645b2 390,3089-3099
+packages/cli/src/eventbus/event-message-classes/index.ts
+  s_419bed5e9fbd75::t_b6cbc64d7645b2 181
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "560e0d437c092558030ff6f655258a890a6f99a3",
+  "prompts": {},
+  "sessions": {
+    "s_419bed5e9fbd75": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "152a2e1a-fb2a-4e99-b693-ebe21d600421",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

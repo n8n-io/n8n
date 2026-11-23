@@ -1,0 +1,31 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_ff8c46ba9682d2::t_b27e10f9bc93f6 11-14,20,31
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentHitlConfigurationModal.test.ts
+  s_dfe3f914c8bb46::t_55fe01505d3edb 1-3,29-31,50,148-151,233,237-241,247-251,256-271
+packages/frontend/editor-ui/src/features/agents/components/AgentHitlConfigurationModal.vue
+  s_ff8c46ba9682d2::t_9d8540c2db0674 29-30,343-347,366,372-379,382,390-394,397-403,405,410
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5c56ffb8a79326351692d2df5269002275c82b9e",
+  "prompts": {},
+  "sessions": {
+    "s_dfe3f914c8bb46": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a177de-1655-75e1-b502-74f6cb945148",
+        "model": "unknown"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    },
+    "s_ff8c46ba9682d2": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1f99e-99c5-79e0-84c9-300f331ce394",
+        "model": "unknown"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

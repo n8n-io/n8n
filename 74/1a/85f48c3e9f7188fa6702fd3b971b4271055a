@@ -1,0 +1,39 @@
+.github/scripts/migration-bump/handle-bump-migration.test.mjs
+  s_ee09121db36145::t_575a8cd6ae36df 137
+  s_ee09121db36145::t_79eaf8c5f28cf3 145
+  s_ee09121db36145::t_e30abe810afb85 117-118,121-123
+  s_ee09121db36145::t_8e35b2407e4c70 210-232
+  s_ee09121db36145::t_50d6de8a3f33d2 4-12
+packages/@n8n/db/scripts/bump-migrations.mjs
+  s_ee09121db36145::t_f9f8a876045b7d 59-62
+  s_ee09121db36145::t_ab494eb95138bb 28-35
+  s_ee09121db36145::t_a2e21daa5db303 5
+  s_ee09121db36145::t_50632d6307bb97 91
+  s_ee09121db36145::t_e4475e66162e71 27
+.github/scripts/migration-bump/handle-bump-migration.mjs
+  s_ee09121db36145::t_4515dec231f3ac 7
+  s_ee09121db36145::t_2197cd14996676 80-96,109
+  s_ee09121db36145::t_6b9dfc27b15bf6 79
+packages/@n8n/db/scripts/bump-migrations.test.mjs
+  s_ee09121db36145::t_b83b97e0690194 129-144,146-150
+  s_ee09121db36145::t_d3f99d4a74d07b 145
+  s_ee09121db36145::t_2cf5d0f31abbd3 2-11
+.github/workflows/util-bump-migration.yml
+  s_ee09121db36145::t_ea36eddfe6ff6d 48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "741a85f48c3e9f7188fa6702fd3b971b4271055a",
+  "prompts": {},
+  "sessions": {
+    "s_ee09121db36145": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ccf088c3-9596-4a0b-a5f9-3a0121cac9b0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}
