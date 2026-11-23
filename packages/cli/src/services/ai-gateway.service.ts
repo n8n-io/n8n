@@ -764,6 +764,26 @@ export class AiGatewayService {
 	 * if missing or past 90% of its lifetime. Deduplicates concurrent requests for the
 	 * same user so only one fetch is in-flight at a time.
 	 */
+	/**
+	 * Gives a signed-in user direct access to the AI Gateway from a client outside
+	 * n8n, such as Nod: the gateway URL and a token billed to this user.
+	 */
+	async getUserGatewayAccess(
+		userId: string,
+	): Promise<{ gatewayUrl: string; token: string; expiresAt: string }> {
+		if (!this.isEnabled()) {
+			throw new UserError('Gateway credits are not enabled on this instance.');
+		}
+		const gatewayUrl = this.requireBaseUrl();
+		const token = await this.getOrFetchToken(userId);
+		const cached = this.tokenCache.get(`${this.instanceSettings.instanceId}:${userId}`);
+		return {
+			gatewayUrl,
+			token,
+			expiresAt: new Date(cached?.expiresAt ?? Date.now()).toISOString(),
+		};
+	}
+
 	private async getOrFetchToken(userId: string, timeoutMs?: number): Promise<string> {
 		const key = `${this.instanceSettings.instanceId}:${userId}`;
 		const cached = this.tokenCache.get(key);
