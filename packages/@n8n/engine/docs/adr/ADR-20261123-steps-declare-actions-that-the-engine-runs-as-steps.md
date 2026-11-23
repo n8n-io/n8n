@@ -1,6 +1,6 @@
 # Steps declare actions that the engine runs as steps
 
-Date: 2026-11-17
+Date: 2026-11-23
 
 Status: Active
 
@@ -37,10 +37,10 @@ shim refuses an `EngineRequest`, so an agent with tools fails.
    a sub-execution. Each action names a target node, its position in the round, the input item it
    belongs to, opaque arguments and opaque metadata. It can carry a call id, which the engine hands
    back to the node and never reads. It can name the node that its target attaches to, which the
-   engine reads to check the target (ADR-20261117-attach-sub-nodes-to-the-graph-outside-its-edges,
+   engine reads to check the target (ADR-20261123-attach-sub-nodes-to-the-graph-outside-its-edges,
    decision 5). The declaration also carries an opaque round payload. The engine never reads what an
    action or a payload means. Only a node that accepts action targets can declare actions
-   (ADR-20261117-attach-sub-nodes-to-the-graph-outside-its-edges, decision 5). Any other node that
+   (ADR-20261123-attach-sub-nodes-to-the-graph-outside-its-edges, decision 5). Any other node that
    declares actions fails its step. The shim turns a v1 `EngineRequest` into actions.
 2. **The engine runs each action as a spawned step in the same execution.** A spawned step has the
    full step lifecycle. It can complete, fail, wait for a deadline or a resume request, declare its
@@ -62,7 +62,7 @@ shim refuses an `EngineRequest`, so an agent with tools fails.
 5. **A failed action is data, unless its error is marked fatal.** Its error goes into the
    continuation, with its name and details. It does not fail the declaring step or the execution.
    The node decides what the error means. A fatal error fails the declaring step, and so the
-   execution, and the engine cancels the other actions of the round. The engine reads only the
+   execution, and the engine cancels the pending actions of the round. The engine reads only the
    flag. The shim marks an error fatal when the target node has an explicit on-error setting of
    "stop workflow", and for its own "not supported on engine v2" errors.
 6. **A continue runs node code. A resume after a deadline or a resume request does not.** The rule
@@ -79,10 +79,10 @@ shim refuses an `EngineRequest`, so an agent with tools fails.
    counts its own rounds (for example `maxIterations`). The engine caps the number of rounds and
    spawned steps in one execution. A step that goes over the cap fails. The engine checks a cap
    with a count, so the caps are soft: rounds that run at the same time can exceed a cap slightly.
-9. **A round can have no actions.** The engine records the round and continues the node at once,
-   because no spawned step exists to wake it. The continuation shows that round without outcomes,
-   and the node decides what it means. The shim hands a v1 node an empty response, as engine v1
-   does.
+9. **A round can have no actions.** The engine records the round, suspends the step and continues
+   the node at once, because no spawned step exists to wake it. The continuation shows that round
+   without outcomes, and the node decides what it means. The shim hands a v1 node an empty
+   response, as engine v1 does.
 10. **A step that has declared actions cannot declare a wait or a sub-execution.** Such a step
     fails. A spawned step can still wait or call a sub-workflow.
 
@@ -148,18 +148,26 @@ sequenceDiagram
 - A `waiting` step does not always wait for something outside the execution. The `step:waiting`
   event already tells the two apart. Other code that reacts to a waiting step, for example to
   close a chat stream, must read its wait declaration.
-- A crash during a round repeats one LLM call. The answer can differ, and stream chunks can repeat.
+- A worker that stops during a round leaves the declaring step `running`. Reconciliation fails a
+  stale running step and does not run it again, as for a graph step. So a crash during a round
+  fails the declaring step.
 - Two open approvals in one execution need step-bound resume tokens
   (ADR-20260904-a-derived-token-authorizes-a-resume-request).
 - The actions of one round can run in any order. The continuation lists their outcomes in the
   order that the node declared them.
 - The wake must see every settlement of the round. Two actions that settle at the same time must
-  not both miss it, because nothing from outside can end the wait. The engine wakes the declaring
-  step before it refreshes the live status of the execution.
+  not both miss it, because nothing from outside can end the wait. So each action checks for the
+  wake after its own settlement has committed, and not in the same transaction. Before the engine
+  wakes a declaring step, it checks the round for a fatal error. So a fatal error cannot lose
+  against the last action that settles. The engine wakes the declaring step before it refreshes
+  the live status of the execution.
 - A crash can leave a round stuck in two windows: after the round commits and before its spawned
   steps are announced, and after the last action settles and before the wake. Reconciliation
   repairs both, not a wider transaction. It announces stale queued spawned steps again, and it
   wakes a waiting declaring step whose round's actions have all settled.
+- A crash after a fatal error fails a declaring step, and before the engine cancels the pending
+  actions of the round, leaves those actions unsettled. Reconciliation cancels an unsettled
+  spawned step whose declaring step has settled.
 - An engine error before the run leaves a spawned step `running`, as it does a graph step.
   Reconciliation fails a stale running spawned step, and that failure wakes the declaring step.
 - A tool that calls a stored workflow fails until a record allows its node type to call a
@@ -176,4 +184,4 @@ RFC: -
 
 Documentation: https://github.com/n8n-io/n8n/pull/43694
 
-Related ADRs: ADR-20260902-steps-declare-waits, ADR-20261020-run-a-sub-workflow-as-its-own-execution, ADR-20260904-a-derived-token-authorizes-a-resume-request, ADR-20261117-attach-sub-nodes-to-the-graph-outside-its-edges
+Related ADRs: ADR-20260902-steps-declare-waits, ADR-20261020-run-a-sub-workflow-as-its-own-execution, ADR-20260904-a-derived-token-authorizes-a-resume-request, ADR-20261123-attach-sub-nodes-to-the-graph-outside-its-edges

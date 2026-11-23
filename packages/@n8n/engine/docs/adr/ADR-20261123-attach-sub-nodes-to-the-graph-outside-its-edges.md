@@ -1,6 +1,6 @@
 # Attach sub-nodes to the graph outside its edges
 
-Date: 2026-11-17
+Date: 2026-11-23
 
 Status: Active
 
@@ -19,7 +19,7 @@ an AI Agent, over typed connections (`ai_languageModel`, `ai_tool` and others). 
 pulls them while it runs. The converter keeps only the nodes that the trigger reaches over `main`
 connections, so it drops all sub-nodes, and the agent step fails at run time.
 
-With ADR-20261117-steps-declare-actions-that-the-engine-runs-as-steps, a tool node runs as a
+With ADR-20261123-steps-declare-actions-that-the-engine-runs-as-steps, a tool node runs as a
 spawned step, so it must be a node of the graph.
 
 ## Decision
@@ -96,7 +96,7 @@ Solid arrows are edges. Dashed arrows are attachments.
   and the declaring node, such as an approval, is shown under that node's run for the same call.
   Live updates and the read build this view with the same code.
 - A sub-node that runs inside its root's step, such as a chat model, records its runs and token
-  usage in engine v1. ADR-20261117-record-sub-node-runs-as-settled-steps decides where they go.
+  usage in engine v1. ADR-20261123-record-sub-node-runs-as-settled-steps decides where they go.
 - The target check allows any node on a path of allowed kinds. A tool of a nested agent is on such
   a path too, so the check alone cannot stop the outer agent from calling it.
 
@@ -106,4 +106,4 @@ RFC: -
 
 Documentation: https://github.com/n8n-io/n8n/pull/43694
 
-Related ADRs: ADR-20261117-steps-declare-actions-that-the-engine-runs-as-steps, ADR-20261117-store-rounds-in-their-own-table-and-spawned-steps-with-the-graph-steps, ADR-20261117-record-sub-node-runs-as-settled-steps
+Related ADRs: ADR-20261123-steps-declare-actions-that-the-engine-runs-as-steps, ADR-20261123-store-rounds-in-their-own-table-and-spawned-steps-with-the-graph-steps, ADR-20261123-record-sub-node-runs-as-settled-steps

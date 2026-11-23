@@ -1,6 +1,6 @@
 # Store rounds in their own table and spawned steps with the graph steps
 
-Date: 2026-11-17
+Date: 2026-11-23
 
 Status: Active
 
@@ -10,7 +10,7 @@ Source: https://linear.app/n8n/issue/CET-648
 
 ## Context
 
-With ADR-20261117-steps-declare-actions-that-the-engine-runs-as-steps, one step row runs many
+With ADR-20261123-steps-declare-actions-that-the-engine-runs-as-steps, one step row runs many
 rounds, and each round can spawn steps. The terms in this record come from that record.
 
 The table `workflow_step_execution` holds one row for each node and iteration of an execution, with
@@ -26,9 +26,12 @@ derives inputs.
    and the round number. The row holds the execution id, the actions (which the engine reads) and
    the round payload (which the engine does not read). For a round with actions, one transaction
    writes the row, suspends the step and creates one queued spawned step for each action. So the
-   execution never shows a round without its spawned steps. A round that ends with outputs settles
-   the step as any step does. A round without actions is written with an empty list of actions,
-   and no spawned step. A duplicate write does nothing.
+   execution never shows a round without its spawned steps. The transaction also locks the
+   execution row, so a round never adds spawned steps to an execution that has ended. A round
+   that ends with
+   outputs settles the step as any step does. A round without actions is written in the same way,
+   with an empty list of actions and no spawned step. So a crash before the continue leaves a
+   waiting step, which reconciliation wakes. A duplicate write does nothing.
 2. **A round row should hold only what is new in that round.** The engine builds the continuation
    from all round rows and their spawned steps: each action's outcome is its spawned step's outputs
    or error. A round without actions has no outcomes. The node rebuilds its whole conversation from
@@ -37,7 +40,7 @@ derives inputs.
    the earlier rounds.
 3. **Spawned steps live in `workflow_step_execution`.** A `kind` column tells a graph step, a
    spawned step and a recorded step apart
-   (ADR-20261117-record-sub-node-runs-as-settled-steps). A spawned step also has its declaring
+   (ADR-20261123-record-sub-node-runs-as-settled-steps). A spawned step also has its declaring
    step's id, the round and its position in the round. These three are its key. A recorded step
    has its key in the same three columns. The call id is optional data of the action, in the round
    row. A check constraint ties these columns to `kind`. The unique index on node and iteration
@@ -65,6 +68,11 @@ derives inputs.
   the engine overwrites `wait_declaration` and `resume_cause` on each round.
 - **Store the whole conversation in one value that grows with each round.** Rejected. Each tool
   result would be stored twice, and the stored data would grow faster than the conversation.
+- **Write the round row first, and let reconciliation finish the round.** Rejected. The round row
+  would be the commit point, and the rest could be derived from it. But this would need three
+  detectors in place of one short transaction on one database: for a round row whose step is
+  still `running`, for a waiting step whose spawned steps are missing, and for an unsettled step
+  in an execution that has ended.
 - **Tell spawned steps apart by a null declaring step id.** Rejected. An explicit `kind` makes each
   filter visible in the code.
 
@@ -93,4 +101,4 @@ RFC: -
 
 Documentation: https://github.com/n8n-io/n8n/pull/43694
 
-Related ADRs: ADR-20261117-steps-declare-actions-that-the-engine-runs-as-steps, ADR-20261117-attach-sub-nodes-to-the-graph-outside-its-edges, ADR-20261117-record-sub-node-runs-as-settled-steps
+Related ADRs: ADR-20261123-steps-declare-actions-that-the-engine-runs-as-steps, ADR-20261123-attach-sub-nodes-to-the-graph-outside-its-edges, ADR-20261123-record-sub-node-runs-as-settled-steps

@@ -1,6 +1,6 @@
 # Record sub-node runs as settled steps
 
-Date: 2026-11-17
+Date: 2026-11-23
 
 Status: Active
 
@@ -11,14 +11,14 @@ Source: https://linear.app/n8n/issue/CET-649
 ## Context
 
 Some sub-nodes run inside their root node's step, for example the chat model and the memory of an
-AI Agent (ADR-20261117-attach-sub-nodes-to-the-graph-outside-its-edges, decision 2). In engine v1,
+AI Agent (ADR-20261123-attach-sub-nodes-to-the-graph-outside-its-edges, decision 2). In engine v1,
 each call of such a sub-node is a run of its node, with its output and its token usage. The logs
 show these runs under the agent.
 
 In engine v2, these sub-nodes are graph nodes, but no step runs them, so nothing stores their
 runs. The step table `workflow_step_execution` holds graph steps and spawned steps, and a `kind`
 column tells them apart
-(ADR-20261117-store-rounds-in-their-own-table-and-spawned-steps-with-the-graph-steps). The engine
+(ADR-20261123-store-rounds-in-their-own-table-and-spawned-steps-with-the-graph-steps). The engine
 stores outputs and derives inputs.
 
 ## Decision
@@ -28,13 +28,14 @@ stores outputs and derives inputs.
    step that made the call.
 2. **A recorded step is inserted already settled.** The engine never queues, claims or runs it.
    The executor returns the recorded runs with each step result, and the engine writes them with
-   that result. Recorded runs are not a kind of step result. A result of any kind can carry them:
-   outputs, a wait, a sub-execution or actions. The key of a recorded step is its declaring step,
-   the round in which the call ran, and its position among the recorded steps of that round. A
-   run that ends with outputs has a round number too, although it writes no round row. The engine
-   sets the position from the order of the recorded runs in the step result. These are the columns
-   that key a spawned step
-   (ADR-20261117-store-rounds-in-their-own-table-and-spawned-steps-with-the-graph-steps, decision
+   that result in one transaction. The recorded runs exist only in the worker's memory, so
+   reconciliation could not write them later. Recorded runs are not a kind of step result. A
+   result of any kind can carry them: outputs, a wait, a sub-execution or actions. The key of a
+   recorded step is its declaring step, the round in which the call ran, and its position among
+   the recorded steps of that round. A run that ends with outputs has a round number too,
+   although it writes no round row. The engine sets the position from the order of the recorded
+   runs in the step result. These are the columns that key a spawned step
+   (ADR-20261123-store-rounds-in-their-own-table-and-spawned-steps-with-the-graph-steps, decision
    3). So the step table has no column that only a recorded step uses.
 3. **A recorded step stores outputs only.** For a chat model, that is the LLM response with its
    token usage. The input, such as the prompt, is not stored.
@@ -77,4 +78,4 @@ RFC: -
 
 Documentation: https://github.com/n8n-io/n8n/pull/43694
 
-Related ADRs: ADR-20261117-attach-sub-nodes-to-the-graph-outside-its-edges, ADR-20261117-store-rounds-in-their-own-table-and-spawned-steps-with-the-graph-steps, ADR-20261117-steps-declare-actions-that-the-engine-runs-as-steps, ADR-20261020-run-a-sub-workflow-as-its-own-execution
+Related ADRs: ADR-20261123-attach-sub-nodes-to-the-graph-outside-its-edges, ADR-20261123-store-rounds-in-their-own-table-and-spawned-steps-with-the-graph-steps, ADR-20261123-steps-declare-actions-that-the-engine-runs-as-steps, ADR-20261020-run-a-sub-workflow-as-its-own-execution
