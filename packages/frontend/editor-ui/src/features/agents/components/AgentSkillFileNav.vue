@@ -77,17 +77,18 @@ const NOTE_TEXT_KEYS: Record<SkillWorkflowNote, BaseTextKey> = {
 	unpublished: 'agents.builder.skills.workflowMentions.note.unpublished',
 	instanceAccess: 'agents.builder.skills.workflowMentions.note.instanceAccess',
 };
-const workflowNotes = computed(() => {
-	const notes = new Map<string, string[]>();
-	for (const [workflowId, workflow] of noteData.value) {
-		const texts = getSkillWorkflowNotes(workflow, {
-			instanceSkill: props.instanceSkill,
-			availableToMCP: props.availableToMcp,
-		}).map((note) => i18n.baseText(NOTE_TEXT_KEYS[note]));
-		if (texts.length > 0) notes.set(workflowId, texts);
-	}
-	return notes;
-});
+const workflowRows = computed(() =>
+	mentionedWorkflows.value.map((workflow) => {
+		const data = noteData.value.get(workflow.workflowId);
+		const notes = data
+			? getSkillWorkflowNotes(data, {
+					instanceSkill: props.instanceSkill,
+					availableToMCP: props.availableToMcp,
+				}).map((note) => i18n.baseText(NOTE_TEXT_KEYS[note]))
+			: [];
+		return { ...workflow, notes };
+	}),
+);
 
 function isInvalid(path: string) {
 	return props.invalidPaths.includes(path);
@@ -242,7 +243,7 @@ function testIdForPath(path: string) {
 				{{ i18n.baseText('agents.builder.skills.workflowMentions.empty') }}
 			</N8nText>
 			<div
-				v-for="workflow in mentionedWorkflows"
+				v-for="workflow in workflowRows"
 				:key="workflow.workflowId"
 				:class="[$style.item, $style.workflow]"
 				data-testid="agent-skill-workflow-item"
@@ -251,13 +252,9 @@ function testIdForPath(path: string) {
 				<N8nText size="medium" :class="[$style.path, $style.workflowName]">{{
 					workflow.name
 				}}</N8nText>
-				<N8nTooltip v-if="workflowNotes.has(workflow.workflowId)" as-child placement="right">
+				<N8nTooltip v-if="workflow.notes.length > 0" as-child placement="right">
 					<template #content>
-						<p
-							v-for="note in workflowNotes.get(workflow.workflowId)"
-							:key="note"
-							:class="$style.note"
-						>
+						<p v-for="note in workflow.notes" :key="note" :class="$style.note">
 							{{ note }}
 						</p>
 					</template>
@@ -265,7 +262,7 @@ function testIdForPath(path: string) {
 						:class="$style.noteIcon"
 						tabindex="0"
 						role="img"
-						:aria-label="workflowNotes.get(workflow.workflowId)?.join(' ')"
+						:aria-label="workflow.notes.join(' ')"
 						data-testid="agent-skill-workflow-notes"
 						data-attr="agent-skill-workflow-notes"
 					>

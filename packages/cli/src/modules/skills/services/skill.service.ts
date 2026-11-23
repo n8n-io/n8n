@@ -67,6 +67,7 @@ import {
 import { compareSkillFilePaths, skillContentHash } from '../utils/skill-content-hash';
 import { skillGroupPage } from '../utils/skill-group-page';
 import { getSkillHash } from '../utils/skill-hash';
+import { addedWorkflowMentionIds } from '../utils/skill-workflow-mentions';
 import { AssistantSkillsFlagGate } from './assistant-skills-flag-gate';
 import { SkillAccessService } from './skill-access.service';
 import { SkillRuntimeService } from './skill-runtime.service';
@@ -454,7 +455,12 @@ export class SkillService {
 
 		const checkedSource = moves ? await this.skillAccess.assertCanMove(user, skillId) : undefined;
 
-		if (update.instructions !== undefined || update.references !== undefined) {
+		if (
+			addedWorkflowMentionIds({
+				instructions: update.instructions ?? '',
+				references: update.references,
+			}).length > 0
+		) {
 			const latest = (await this.findLatest([skillId])).get(skillId);
 			if (latest) {
 				if (getSkillHash(latest.skill) !== update.baseSkillHash) {

@@ -206,9 +206,9 @@ export class SkillAccessService {
 		]);
 		const existing = new Set(workflows.map(({ id }) => id));
 		const readable = new Set(
-			scopes.flatMap(([id, workflowScopes]) =>
-				workflowScopes.includes('workflow:read') ? [id] : [],
-			),
+			scopes
+				.filter(([, workflowScopes]) => workflowScopes.includes('workflow:read'))
+				.map(([id]) => id),
 		);
 		const unreadable = addedIds.filter((id) => !existing.has(id) || !readable.has(id));
 		if (unreadable.length > 0) throw new UserError(unreadableWorkflowMentionsMessage(unreadable));
