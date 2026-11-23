@@ -96,7 +96,10 @@ vi.mock('../composables/useAgentIntegrationsCatalog', () => ({
 
 const workflowsInSkillsEnabled = ref(false);
 vi.mock('@/app/stores/posthog.store', () => ({
-	usePostHog: () => ({ isFeatureEnabled: () => workflowsInSkillsEnabled.value }),
+	usePostHog: () => ({
+		isVariantEnabled: (name: string, variant: string) =>
+			workflowsInSkillsEnabled.value && name === '152_workflows_in_skills' && variant === 'variant',
+	}),
 }));
 
 const baseTextSpy = vi.hoisted(() => vi.fn((key: string) => key));
