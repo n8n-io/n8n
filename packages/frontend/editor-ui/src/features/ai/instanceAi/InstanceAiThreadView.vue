@@ -74,10 +74,13 @@ import InstanceAiAgentPreview from './components/InstanceAiAgentPreview.vue';
 import InstanceAiBrowserPreview from './components/InstanceAiBrowserPreview.vue';
 import InstanceAiCloudBrowserUserActionPanel from './components/InstanceAiCloudBrowserUserActionPanel.vue';
 import InstanceAiWorkflowDraftPreview from './components/InstanceAiWorkflowDraftPreview.vue';
+import AgentBuildingIndicator from './components/AgentBuildingIndicator.vue';
 import { useDraftWorkflowPreviewTelemetry } from '@/experiments/instanceAiDraftWorkflowPreview/useDraftWorkflowPreviewTelemetry';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useDraftWorkflowPreviewEnabled } from '@/experiments/instanceAiDraftWorkflowPreview/useDraftWorkflowPreviewEnabled';
 import { useWorkflowStaging } from './composables/useWorkflowStaging';
+import { ThinkingWordKey, useThinkingWordRotation } from './composables/useThinkingWords';
+import { collectActiveBuilderAgents } from './builderAgents';
 import { isStagingDraft, toStagingNodeTypeInfo } from './instanceAi.workflowStaging';
 import { getDraftWorkflowId } from './instanceAi.workflowDrafts';
 import InstanceAiSkillPreview from './components/InstanceAiSkillPreview.vue';
@@ -281,6 +284,15 @@ const workflowStaging = useWorkflowStaging({
 	enabled: () => draftWorkflowPreviewEnabled.value,
 	describeType: describeStagingNodeType,
 });
+// Replaces the generic "Thinking" in the chat while the thread runs.
+const thinkingWord = useThinkingWordRotation({
+	active: () =>
+		draftWorkflowPreviewEnabled.value &&
+		(thread.isStreaming || collectActiveBuilderAgents(thread.messages).length > 0),
+	building: () => workflowStaging.building.value,
+	threadId: () => props.threadId,
+});
+provide(ThinkingWordKey, thinkingWord);
 // EOF Experiment cleanup
 
 // --- Canvas / data table preview ---
@@ -311,6 +323,7 @@ const preview = useCanvasPreview({
 	stagingDraft: () => workflowStaging.stagingDraft.value,
 	buildTarget: () => workflowStaging.buildTarget.value,
 	dismissWorkflowDrafts: (workflowId) => thread.dismissWorkflowDrafts(workflowId),
+	isAwaitingUser: () => thread.isAwaitingUserInput,
 });
 const openSkillTabs = computed(() => preview.openTabs.value.filter((tab) => tab.type === 'skill'));
 watch(
@@ -319,6 +332,18 @@ watch(
 		if (appId && tabsLoaded) preview.openAppPreview(appId);
 	},
 	{ immediate: true },
+);
+
+// A build on a saved workflow shows the building wave over the saved canvas, until a draft
+// covers it. While the run waits on the user, nothing builds.
+const isSavedCanvasBuilding = computed(
+	() =>
+		isAgentWorking.value &&
+		!thread.isAwaitingUserInput &&
+		preview.isPreviewVisible.value &&
+		!preview.activeWorkflowDraft.value &&
+		preview.activeWorkflowId.value !== null &&
+		preview.activeWorkflowId.value === workflowStaging.buildTarget.value?.workflowId,
 );
 
 // Experiment cleanup (137_instance_ai_draft_workflow_preview)
@@ -1124,12 +1149,18 @@ function handleNewThreadClick() {
 								@workflow-failures="handleWorkflowFailures"
 								@workflow-loaded="handleSavedWorkflowLoaded"
 							/>
+							<AgentBuildingIndicator
+								v-if="isSavedCanvasBuilding"
+								:show-label="false"
+								data-test-id="instance-ai-draft-building-wave"
+							/>
 							<InstanceAiWorkflowDraftPreview
 								v-if="preview.isPreviewVisible.value && preview.activeWorkflowDraft.value"
 								:key="preview.activeWorkflowDraft.value.filePath"
 								:class="$style.previewSlot"
 								:draft="preview.activeWorkflowDraft.value"
 								:building="isAgentWorking"
+								:waiting="thread.isAwaitingUserInput"
 							/>
 							<InstanceAiDataTablePreview
 								v-if="preview.isPreviewVisible.value && preview.activeDataTableId.value"

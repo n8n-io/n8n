@@ -164,6 +164,7 @@ function setup(options?: {
 	initialAppId?: () => string | undefined;
 	tabsStorage?: ThreadTabsStorage;
 	staging?: WorkflowDraft;
+	isAwaitingUser?: () => boolean;
 }) {
 	const thread = createMockThread();
 	const drafts = ref<WorkflowDraftsByFilePath>({});
@@ -188,6 +189,7 @@ function setup(options?: {
 		stagingDraft: () => staging.value,
 		buildTarget: () => buildTarget.value,
 		dismissWorkflowDrafts,
+		isAwaitingUser: options?.isAwaitingUser,
 	});
 
 	return { ...result, thread, route, drafts, staging, buildTarget, dismissWorkflowDrafts };
@@ -414,6 +416,23 @@ describe('useCanvasPreview', () => {
 			const tab = ctx.openTabs.value.filter(isArtifactTab).find((t) => t.draft);
 			expect(tab).toBeDefined();
 			expect(tab?.building).toBeFalsy();
+		});
+
+		test('marks the building draft tab while the run waits on the user', async () => {
+			const awaiting = ref(false);
+			const ctx = setup({ isAwaitingUser: () => awaiting.value });
+			ctx.thread.isStreaming = true;
+			ctx.drafts.value = { [fileA]: makeDraft(fileA) };
+			await nextTick();
+			expect(ctx.openTabs.value.filter(isArtifactTab).find((t) => t.draft)?.waiting).toBeFalsy();
+
+			awaiting.value = true;
+			await nextTick();
+
+			expect(ctx.openTabs.value.filter(isArtifactTab).find((t) => t.draft)).toMatchObject({
+				building: true,
+				waiting: true,
+			});
 		});
 
 		test('shows the first draft of another file, even with a lower revision', async () => {
