@@ -3,7 +3,7 @@ import type { InstanceAiEvent } from '@n8n/api-types';
 
 import { streamTurn, type StreamTurnOptions } from '../stream-turn';
 
-function streamOf(runId: string, chunks: StreamChunk[]): StreamResult {
+function streamOf(runId: string, chunks: StreamChunk[], cancel?: () => void): StreamResult {
 	return {
 		runId,
 		stream: new ReadableStream<StreamChunk>({
@@ -11,6 +11,7 @@ function streamOf(runId: string, chunks: StreamChunk[]): StreamResult {
 				for (const chunk of chunks) controller.enqueue(chunk);
 				controller.close();
 			},
+			cancel,
 		}),
 		getState: () => ({}) as ReturnType<StreamResult['getState']>,
 	};
@@ -28,22 +29,23 @@ const suspended = (toolCallId: string): StreamChunk => ({
 
 function setup(first: StreamChunk[], resumed: StreamChunk[] = []) {
 	const events: InstanceAiEvent[] = [];
+	const cancelStream = vi.fn();
 	const agent = {
-		stream: vi.fn(async () => await Promise.resolve(streamOf('agent-run', first))),
+		stream: vi.fn(async () => await Promise.resolve(streamOf('agent-run', first, cancelStream))),
 		resume: vi.fn(async () => await Promise.resolve(streamOf('agent-run', resumed))),
 	};
 	const answerSuspension = vi.fn(async () => await Promise.resolve({ approved: true }));
 	const options: StreamTurnOptions = {
 		agent: agent as unknown as StreamTurnOptions['agent'],
 		input: 'Hi',
-		streamOptions: { maxIterations: 5 },
+		executionOptions: { maxIterations: 5 },
 		runId: 'run-1',
 		agentId: 'orchestrator',
 		signal: new AbortController().signal,
 		onEvent: (event) => events.push(event),
 		answerSuspension,
 	};
-	return { agent, answerSuspension, events, options };
+	return { agent, answerSuspension, cancelStream, events, options };
 }
 
 describe('streamTurn', () => {
@@ -71,13 +73,13 @@ describe('streamTurn', () => {
 	});
 
 	it('answers a suspended tool call and continues with the resumed stream', async () => {
-		const guardrails = { hooks: [] };
+		const persistence = { threadId: 'thread-1', resourceId: 'user-1' };
 		const { agent, answerSuspension, events, options } = setup(
 			[suspended('call-1'), suspended('call-2'), finish('paused')],
 			[{ type: 'tool-call', toolCallId: 'call-3', toolName: 'list_workflows', input: {} }],
 		);
 
-		const result = await streamTurn({ ...options, resumeOptions: { guardrails } });
+		const result = await streamTurn({ ...options, persistence });
 
 		// The resumed stream ended without a finish chunk.
 		expect(result).toEqual({ status: 'completed', finishReason: undefined });
@@ -85,10 +87,13 @@ describe('streamTurn', () => {
 		expect(answerSuspension).toHaveBeenCalledWith(
 			expect.objectContaining({ toolCallId: 'call-1', requestId: 'request-call-1' }),
 		);
+		// The resume gets the same options again, except the thread, which the run keeps.
+		const executionOptions = { maxIterations: 5, abortSignal: options.signal };
+		expect(agent.stream).toHaveBeenCalledWith('Hi', { ...executionOptions, persistence });
 		expect(agent.resume).toHaveBeenCalledWith(
 			'stream',
 			{ approved: true },
-			{ guardrails, abortSignal: options.signal, runId: 'agent-run', toolCallId: 'call-1' },
+			{ ...executionOptions, runId: 'agent-run', toolCallId: 'call-1' },
 		);
 		expect(events.map((event) => event.type)).toEqual(['confirmation-request', 'tool-call']);
 	});
@@ -108,9 +113,9 @@ describe('streamTurn', () => {
 		expect((await streamTurn(options)).status).toBe('errored');
 	});
 
-	it('stops reading when the signal aborts', async () => {
+	it('stops reading and cancels the stream when the signal aborts', async () => {
 		const controller = new AbortController();
-		const { events, options } = setup([
+		const { cancelStream, events, options } = setup([
 			{ type: 'tool-call', toolCallId: 'call-1', toolName: 'load_skill', input: {} },
 			finish('stop'),
 		]);
@@ -120,5 +125,6 @@ describe('streamTurn', () => {
 
 		expect(result).toEqual({ status: 'cancelled' });
 		expect(events).toEqual([]);
+		expect(cancelStream).toHaveBeenCalledTimes(1);
 	});
 });

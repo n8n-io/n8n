@@ -8,7 +8,7 @@
 // in the e2e harness.
 // ---------------------------------------------------------------------------
 
-import type { Agent, ExecutionOptions, FinishReason } from '@n8n/agents';
+import type { Agent, ExecutionOptions, FinishReason, RunOptions } from '@n8n/agents';
 import type { InstanceAiEvent } from '@n8n/api-types';
 
 import { mapAgentChunkToEvent } from '../../src/stream/map-chunk';
@@ -17,10 +17,13 @@ import { parseSuspension, type SuspensionInfo } from '../../src/utils/stream-hel
 export interface StreamTurnOptions {
 	agent: Pick<Agent, 'stream' | 'resume'>;
 	input: string;
-	/** Options of the first stream. A resume does not inherit them. */
-	streamOptions: NonNullable<Parameters<Agent['stream']>[1]>;
-	/** Options of each resumed stream, without the run and the tool call. */
-	resumeOptions?: ExecutionOptions;
+	/**
+	 * Options of the first stream and of each resumed stream. A suspended run
+	 * keeps only its iteration limit, so a resume needs the other options again.
+	 */
+	executionOptions?: ExecutionOptions;
+	/** The thread of the run. A suspended run keeps it. */
+	persistence?: RunOptions['persistence'];
 	/** Run id and agent id on the events. */
 	runId: string;
 	agentId: string;
@@ -40,9 +43,10 @@ export interface StreamTurnResult {
 /** Runs one turn to its end. Each suspended tool call is answered and resumed. */
 export async function streamTurn(options: StreamTurnOptions): Promise<StreamTurnResult> {
 	const { agent, signal } = options;
+	const executionOptions = { ...options.executionOptions, abortSignal: signal };
 	let { stream, runId: agentRunId } = await agent.stream(options.input, {
-		...options.streamOptions,
-		abortSignal: signal,
+		...executionOptions,
+		...(options.persistence ? { persistence: options.persistence } : {}),
 	});
 
 	for (;;) {
@@ -56,7 +60,11 @@ export async function streamTurn(options: StreamTurnOptions): Promise<StreamTurn
 			for (;;) {
 				const { done, value: chunk } = await reader.read();
 				if (done) break;
-				if (signal.aborted) return { status: 'cancelled' };
+				if (signal.aborted) {
+					// The agent disposes the runtime of a stream when the stream ends or is cancelled.
+					await reader.cancel().catch(() => {});
+					return { status: 'cancelled' };
+				}
 				// The agent waits at each input boundary until the reader acknowledges it.
 				if (chunk.type === 'input-boundary') {
 					chunk.acknowledge();
@@ -88,8 +96,7 @@ export async function streamTurn(options: StreamTurnOptions): Promise<StreamTurn
 		}
 
 		const resumed = await agent.resume('stream', await resumeData, {
-			...options.resumeOptions,
-			abortSignal: signal,
+			...executionOptions,
 			runId: agentRunId,
 			toolCallId: suspension.toolCallId,
 		});

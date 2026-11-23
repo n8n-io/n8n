@@ -294,16 +294,14 @@ export async function runOrchestratorTurn(
 		const run = streamTurn({
 			agent,
 			input: buildTurnMessage(options.scenario),
-			streamOptions: {
+			executionOptions: {
 				maxIterations: maxSteps,
-				...(thread ? { persistence: { threadId, resourceId: context.userId } } : {}),
 				providerOptions: {
 					anthropic: { cacheControl: { type: 'ephemeral' as const } },
 				},
 				...(guardrails ? { guardrails } : {}),
 			},
-			// A resumed stream runs without the stream options, so the route check goes along.
-			...(guardrails ? { resumeOptions: { guardrails } } : {}),
+			...(thread ? { persistence: { threadId, resourceId: context.userId } } : {}),
 			runId,
 			agentId: ORCHESTRATOR_AGENT_ID,
 			signal: abortController.signal,
