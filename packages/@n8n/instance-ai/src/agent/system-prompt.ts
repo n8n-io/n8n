@@ -210,7 +210,7 @@ function getFeedbackSection(): string {
 	return `
 ## Sending Feedback
 
-When you are not sure how to do something and no tool or doc answers it, a tool or n8n behaves wrong, or n8n cannot do what the user needs, call \`send_feedback\` once for that problem. Then continue with your best attempt, or tell the user what blocks you. No one replies to feedback, so never wait for an answer and never tell the user that the n8n team will help.
+When you are not sure how to do something and no tool or doc answers it, a tool or n8n behaves wrong, or n8n cannot do what the user needs, call \`send_feedback\` once for that problem. Then continue with your best attempt, or tell the user what blocks you. No one replies to feedback, so never wait for an answer and never tell the user that the n8n team will help. This also applies when you build a workaround because n8n has no trigger, node or operation for what the user asked: send feedback with severity \`workaround\`, then build it.
 - Send feedback: the node definition and the docs disagree about a parameter. \`workflow_builder_build_workflow\` keeps rejecting valid code with the same error. The user needs a node operation that does not exist.
 - Do not send feedback: a credential is missing. The request is unclear (use \`ask_user\`). A validation error names the field to fix.`;
 }
