@@ -164,6 +164,7 @@ export { passwordSchema, createPasswordSchema } from './schemas/password.schema'
 export { n8nIdSchema } from './schemas/id.schema';
 export {
 	agentIdParamSchema,
+	aiPreferenceIdParamSchema,
 	columnIdParamSchema,
 	communityPackageNameParamSchema,
 	credentialIdParamSchema,
@@ -481,6 +482,12 @@ export {
 	workflowSetupNodeSchema,
 	setupItemSchema,
 	setupItemsPayloadSchema,
+	workflowDraftPayloadSchema,
+	instanceAiWorkflowDraftSchema,
+	workflowDraftIssueSchema,
+	workflowDraftIssuesPayloadSchema,
+	WORKFLOW_DRAFT_ISSUES_MAX,
+	WORKFLOW_DRAFT_ISSUE_MESSAGE_MAX_LENGTH,
 	aiPreferencesAppliedPayloadSchema,
 	skillUpdatePayloadSchema,
 	errorPayloadSchema,
@@ -499,12 +506,15 @@ export {
 	AI_ASSISTANT_AT_MENTIONS_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
+	INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_FLAG,
+	INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_ENABLED_VARIANT,
 	INSTANCE_AI_SETUP_PANEL_FLAG,
 	INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT,
 	INSTANCE_AI_CONCISE_STYLE_FLAG,
 	INSTANCE_AI_CONCISE_STYLE_ENABLED_VARIANT,
 	INSTANCE_AI_NODE_USAGE_FLAG,
 	INSTANCE_AI_APPROVAL_MODES_FLAG,
+	INSTANCE_AI_EMPTY_PREFERENCES_NOTE_FLAG,
 	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
 	INSTANCE_ACTIVITY_CONTEXT_FLAG,
 	INSTANCE_AI_CLOUD_BROWSER_FLAG,
@@ -669,6 +679,12 @@ export type {
 	InstanceAiAutoApprovalEvent,
 	InstanceAiSetupItem,
 	InstanceAiSetupItemsEvent,
+	InstanceAiWorkflowDraftEvent,
+	InstanceAiWorkflowDraft,
+	InstanceAiWorkflowDraftPayload,
+	InstanceAiWorkflowDraftIssue,
+	InstanceAiWorkflowDraftIssuesEvent,
+	InstanceAiWorkflowDraftIssuesPayload,
 	InstanceAiPreferencesAppliedEvent,
 	InstanceAiPreferenceCardEvent,
 	InstanceAiPreferenceCardUndoResponse,
@@ -795,6 +811,20 @@ export type {
 	AssistantThreadTabsState,
 	AssistantThreadTabsResponse,
 } from './schemas/assistant-thread-tabs.schema';
+
+export {
+	assistantPreferenceCardSchema,
+	assistantPreferenceCardsStateSchema,
+	mergeAssistantPreferenceCard,
+	MAX_ASSISTANT_PREFERENCE_CARDS,
+} from './schemas/assistant-preference-cards.schema';
+export type {
+	AssistantPreferenceCard,
+	AssistantPreferenceCardsState,
+	AssistantPreferenceCardsResponse,
+	AssistantPreferenceCardUndoResponse,
+	AssistantPreferenceCardEditResponse,
+} from './schemas/assistant-preference-cards.schema';
 
 export {
 	assistantAgentTargetSchema,

@@ -66,7 +66,7 @@ The [WAI-ARIA](https://www.w3.org/TR/wai-aria-1.1/) spec is deliberately not dup
 
 ## Accessibility
 
-- Disabled buttons should not have tooltips, they are not accessible [^6]
+- Explain unavailable actions with `N8nButton disabled focusableWhenDisabled` inside `N8nTooltip as-child`. Show the same explanation as nearby text and link it with `aria-describedby`. Do not use hover-only explanations on native disabled buttons [^6]
 - Focusable elements in a sequential list should be navigable with <kbd>↑</kbd> <kbd>↓</kbd>
 - Focusable elements in a sequential list should be deletable with <kbd>⌘</kbd> <kbd>Backspace</kbd>
 - To open immediately on press, dropdown menus should trigger on `mousedown`, not `click`
@@ -94,5 +94,5 @@ The [WAI-ARIA](https://www.w3.org/TR/wai-aria-1.1/) spec is deliberately not dup
 [^3]: Most touch devices on press will temporarily flash the hover state, unless explicitly only defined for pointer devices with [`@media (hover: hover)`](https://developer.mozilla.org/en-US/docs/Web/CSS/@media/hover).
 [^4]: Use [`will-change`](https://developer.mozilla.org/en-US/docs/Web/CSS/will-change) as a last resort to improve performance. Pre-emptively throwing it on elements for better performance may have the opposite effect.
 [^5]: This might be controversial but sometimes it can be beneficial to manipulate the DOM directly. For example, instead of relying on React re-rendering on every wheel event, we can track the delta in a ref and update relevant elements directly in the callback.
-[^6]: Disabled buttons do not appear in tab order in the DOM so the tooltip will never be announced for keyboard users and they won't know why the button is disabled.
+[^6]: Native disabled buttons cannot receive keyboard focus. The opt-in `focusableWhenDisabled` pattern uses `aria-disabled` and blocks click, Enter, and Space activation, including form submission. `N8nTooltip as-child` puts the tooltip trigger on the button. It opens on hover or keyboard focus and closes with Escape. Keep the reason visible for touch users because tooltips do not reliably open on touch. Link that text with `aria-describedby` so the explanation remains available when the tooltip is closed. Preserve the action label. Use localized text. This pattern applies to buttons without `href`. Loading buttons keep native disabled behavior.
 [^7]: As of 2023, Safari will not take the border radius of an element into account when defining custom outline styles. [Safari 16.4](https://developer.apple.com/documentation/safari-release-notes/safari-16_4-release-notes) has added support for `outline` following the curve of border radius. However, keep in mind that not everyone updates their OS immediately.

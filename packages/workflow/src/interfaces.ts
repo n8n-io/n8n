@@ -4746,6 +4746,10 @@ export interface IUserSettings {
 		impressions: number;
 		lastShownAt?: number;
 	};
+	assistantPreferencesNote?: {
+		impressions: number;
+		lastShownAt: number;
+	};
 }
 
 export interface IProcessedDataConfig {

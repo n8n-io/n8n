@@ -6,7 +6,9 @@ import type { CacheService } from '@n8n/backend-services';
 import type { AgentsConfig } from '@n8n/config';
 import type { WhatsAppAdapter } from '@chat-adapter/whatsapp';
 import { createHmac } from 'crypto';
+import type { IncomingMessage } from 'http';
 import type { InstanceSettings } from 'n8n-core';
+import { Readable } from 'stream';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -256,22 +258,11 @@ function installWhatsAppApiStub(
 		onRequest: ({ httpMethod, url, body }) => {
 			const path = url.split('?')[0];
 
-			// `downloadMedia(mediaId)` (used for every inbound attachment) makes two
-			// plain GETs with no JSON body — a metadata lookup, then the CDN url it
-			// returns — so they need to be branched on method+path before the
-			// send-message logic below, which assumes a POST with a JSON body.
+			// `downloadMedia(mediaId)` (used for every inbound attachment) first GETs
+			// the media metadata with `fetch`. `serveWhatsAppMedia` answers the
+			// download itself. Branch on the method before the send-message logic
+			// below, which assumes a POST with a JSON body.
 			if (httpMethod === 'GET') {
-				if (path.includes('/media-download/')) {
-					const mediaId = path.slice(path.lastIndexOf('/') + 1);
-					// Fixtures' media ids embed their kind (e.g. `media-image-1`), so
-					// real magic-byte content can be matched to whichever media the
-					// test's fixture actually declared.
-					const kind = Object.keys(WHATSAPP_MEDIA_CONTENT).find((key) => mediaId.includes(key));
-					return {
-						apiCall: { method: 'media-download', body: {} },
-						rawResponseBody: kind ? WHATSAPP_MEDIA_CONTENT[kind] : Buffer.from('unknown-media'),
-					};
-				}
 				const mediaId = path.slice(path.lastIndexOf('/') + 1);
 				return {
 					apiCall: { method: 'media-metadata', body: {} },
@@ -311,6 +302,27 @@ function installWhatsAppApiStub(
 		},
 	});
 }
+
+/**
+ * The adapter downloads media over `https.request`, not `fetch`. The `fetch`
+ * stub cannot see that request, and nock cannot patch the ESM import of
+ * `https` in the adapter. `downloadMedia` accepts a transport, so this one
+ * serves the fixture bytes for the media URL.
+ */
+const serveWhatsAppMedia: NonNullable<Parameters<WhatsAppAdapter['downloadMedia']>[1]> = async (
+	url,
+) => {
+	const mediaId = url.pathname.slice(url.pathname.lastIndexOf('/') + 1);
+	// Fixtures' media ids embed their kind (e.g. `media-image-1`), so real
+	// magic-byte content can be matched to whichever media the test's fixture
+	// actually declared.
+	const kind = Object.keys(WHATSAPP_MEDIA_CONTENT).find((key) => mediaId.includes(key));
+	const content = kind ? WHATSAPP_MEDIA_CONTENT[kind] : Buffer.from('unknown-media');
+	const response = Readable.from([content]) as IncomingMessage;
+	response.statusCode = 200;
+	response.headers = { 'content-length': String(content.length) };
+	return await Promise.resolve(response);
+};
 
 export async function createWhatsAppReplayContext(
 	fixtures: WhatsAppReplayFixtures,
@@ -375,6 +387,10 @@ export async function createWhatsAppReplayContext(
 	// real — that guard is implemented as part of `createAdapter`, not the
 	// adapter itself.
 	const adapter = (await integrationImpl.createAdapter(ctx)) as WhatsAppAdapter;
+	const downloadMedia = adapter.downloadMedia.bind(adapter);
+	vi.spyOn(adapter, 'downloadMedia').mockImplementation(
+		async (mediaId) => await downloadMedia(mediaId, serveWhatsAppMedia),
+	);
 
 	// Dynamic imports — the chat packages are ESM-only. Vitest loads ESM
 	// natively, so the tests use the real Chat/state directly, same as the

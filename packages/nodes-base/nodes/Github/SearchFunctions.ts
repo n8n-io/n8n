@@ -31,9 +31,9 @@ type RefItem = {
 	ref: string;
 };
 
-export async function getUsers(
+async function searchAccounts(
 	this: ILoadOptionsFunctions,
-	filter?: string,
+	query: string | undefined,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
 	const page = paginationToken ? +paginationToken : 1;
@@ -50,7 +50,7 @@ export async function getUsers(
 			'GET',
 			requestPath`/search/users`,
 			{},
-			{ q: filter, page, per_page },
+			{ q: query, page, per_page },
 		);
 	} catch {
 		// will fail if the owner does not have any users
@@ -65,6 +65,23 @@ export async function getUsers(
 	const nextPaginationToken =
 		page * per_page < responseData.total_count ? String(page + 1) : undefined;
 	return { results, paginationToken: nextPaginationToken };
+}
+
+export async function getUsers(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	return await searchAccounts.call(this, filter, paginationToken);
+}
+
+/** Organizations only: user search also returns personal accounts, which have no organization webhooks. */
+export async function getOrganizations(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	return await searchAccounts.call(this, `${filter ?? ''} type:org`.trim(), paginationToken);
 }
 
 export async function getRepositories(

@@ -71,17 +71,17 @@ test.describe(
 
 		test('composer: createFromApi creates credential (then NDV picks it up)', async ({ n8n }) => {
 			const name = `credential-${nanoid()}`;
-			const projectId = await n8n.start.fromNewProjectBlankCanvas();
-			await n8n.credentialsComposer.createFromApi({
+			const userN8n = await n8n.start.withNewUser();
+			await userN8n.credentialsComposer.createFromApi({
 				name,
 				type: 'notionApi',
 				data: { apiKey: '1234567890' },
-				projectId,
 			});
 
-			await n8n.canvas.addNode('Manual Trigger');
-			await n8n.canvas.addNode('Notion', { action: 'Append a block' });
-			await expect(n8n.ndv.getCredentialSelect()).toHaveValue(name);
+			await userN8n.start.fromBlankCanvas();
+			await userN8n.canvas.addNode('Manual Trigger');
+			await userN8n.canvas.addNode('Notion', { action: 'Append a block' });
+			await expect(userN8n.ndv.getCredentialSelect()).toHaveValue(name);
 		});
 
 		test('create a new credential from empty state using the credential chooser list', async ({
@@ -122,20 +122,20 @@ test.describe(
 
 		test('add an existing credential from the NDV', async ({ n8n }) => {
 			const uniqueCredentialName = `credential-${nanoid()}`;
-			const projectId = await n8n.start.fromNewProjectBlankCanvas();
+			const userN8n = await n8n.start.withNewUser();
 
-			await n8n.api.credentials.createCredential({
+			await userN8n.api.credentials.createCredential({
 				name: uniqueCredentialName,
 				type: 'notionApi',
 				data: {
 					apiKey: '1234567890',
 				},
-				projectId,
 			});
 
-			await n8n.canvas.addNode('Manual Trigger');
-			await n8n.canvas.addNode('Notion', { action: 'Append a block' });
-			await expect(n8n.ndv.getCredentialSelect()).toHaveValue(uniqueCredentialName);
+			await userN8n.start.fromBlankCanvas();
+			await userN8n.canvas.addNode('Manual Trigger');
+			await userN8n.canvas.addNode('Notion', { action: 'Append a block' });
+			await expect(userN8n.ndv.getCredentialSelect()).toHaveValue(uniqueCredentialName);
 		});
 	},
 );

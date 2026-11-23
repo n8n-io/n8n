@@ -12,6 +12,7 @@ import type {
 	WorkflowPublishHistory,
 } from '../../entities';
 import { SharedWorkflow } from '../../entities';
+import { TransactionRunner } from '../../services/transaction';
 import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
 import { mockInstance } from '../../utils/test-utils/mock-instance';
 import { getWithWorkflowCollections } from '../../utils/workflow-collections';
@@ -23,6 +24,8 @@ vi.mock('../../utils/workflow-collections', () => ({ getWithWorkflowCollections:
 describe('SharedWorkflowRepository', () => {
 	const entityManager = mockEntityManager(SharedWorkflow);
 	const workflowPublishHistoryRepository = mockInstance(WorkflowPublishHistoryRepository);
+	const transactionRunner = mock<TransactionRunner>();
+	Container.set(TransactionRunner, transactionRunner);
 	const sharedWorkflowRepository = Container.get(SharedWorkflowRepository);
 
 	let queryBuilder: Mocked<SelectQueryBuilder<SharedWorkflow>>;
@@ -682,6 +685,56 @@ describe('SharedWorkflowRepository', () => {
 				where: { projectId: In(['proj-1']), role: 'workflow:owner' },
 			});
 			expect(result).toEqual(['wf-1', 'wf-2']);
+		});
+	});
+
+	describe('syncImportedWorkflowOwner', () => {
+		const ownerRow = { workflowId: 'wf-1', projectId: 'target', role: 'workflow:owner' };
+
+		beforeEach(() => {
+			transactionRunner.run.mockImplementation(async (ctx, fn) => await fn(ctx));
+		});
+
+		it('assigns a new workflow without reporting a transfer', async () => {
+			entityManager.findOne.mockResolvedValueOnce(null);
+
+			const moved = await sharedWorkflowRepository.syncImportedWorkflowOwner('wf-1', 'target');
+
+			expect(moved).toBe(false);
+			expect(entityManager.delete).not.toHaveBeenCalled();
+			expect(entityManager.upsert).toHaveBeenCalledWith(
+				SharedWorkflow,
+				[ownerRow],
+				['projectId', 'workflowId'],
+			);
+		});
+
+		it('writes nothing when the workflow already belongs to the target project', async () => {
+			entityManager.findOne.mockResolvedValueOnce(mock<SharedWorkflow>({ projectId: 'target' }));
+
+			const moved = await sharedWorkflowRepository.syncImportedWorkflowOwner('wf-1', 'target');
+
+			expect(moved).toBe(false);
+			expect(entityManager.delete).not.toHaveBeenCalled();
+			expect(entityManager.upsert).not.toHaveBeenCalled();
+		});
+
+		it('moves the owner from another project in one transaction', async () => {
+			entityManager.findOne.mockResolvedValueOnce(mock<SharedWorkflow>({ projectId: 'source' }));
+
+			const moved = await sharedWorkflowRepository.syncImportedWorkflowOwner('wf-1', 'target');
+
+			expect(moved).toBe(true);
+			expect(transactionRunner.run).toHaveBeenCalledTimes(1);
+			expect(entityManager.delete).toHaveBeenCalledWith(SharedWorkflow, {
+				projectId: 'source',
+				workflowId: In(['wf-1']),
+			});
+			expect(entityManager.upsert).toHaveBeenCalledWith(
+				SharedWorkflow,
+				[ownerRow],
+				['projectId', 'workflowId'],
+			);
 		});
 	});
 });

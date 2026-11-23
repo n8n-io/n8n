@@ -8,12 +8,15 @@ import { FALLBACK_NODE_TYPE_ICON, nodeTypeIcon } from './nodeTypeIcon';
 import { useInstancePolicy } from './useInstancePolicy';
 import { useInstanceTypeAccess } from './useInstanceTypeAccess';
 import { useTypeUsage } from './useTypeUsage';
+import { visibleNodeTypes } from './visibleNodeTypes';
 import { useAppliedTheme } from '../composables/useAppliedTheme';
 import {
 	fetchNodeTypeSummaries,
 	fetchNodeTypeUsage,
 	type NodeTypeSummary,
 } from '../type-availability-policies.api';
+
+const emit = defineEmits<{ open: [name: string] }>();
 
 const i18n = useI18n();
 const rootStore = useRootStore();
@@ -37,30 +40,12 @@ const decorations = computed(() => {
 	return byName;
 });
 
-// The access list reloads after a save, so it can name a rule that the policy no longer has. Only
-// a known broader rule hides a row, so such a rule keeps the row until the reload.
-const broaderRuleIds = computed(
-	() =>
-		new Set(
-			(instancePolicy.policies.node?.rules ?? []).flatMap((rule) =>
-				rule.selector.kind === 'name' ? [] : [rule.id],
-			),
-		),
-);
-
 const rows = computed<InstancePolicyTableRow[]>(() => {
 	const summaries = typeSummaries.value;
 	if (!summaries) return [];
 
-	// A hidden node type gets no row, unless a `name` rule decides it: the admin must see that rule
-	// to undo it. The default action or a broader rule, such as one for its package, keeps it hidden.
 	return (
-		types.value
-			.filter(
-				(type) =>
-					!summaries.get(type.name)?.hidden ||
-					(type.matchedRuleId !== null && !broaderRuleIds.value.has(type.matchedRuleId)),
-			)
+		visibleNodeTypes(types.value, summaries, instancePolicy.policies.node?.rules ?? [])
 			// An unknown one shows its name, as the Credential types tab does.
 			.map((type) => ({
 				...type,
@@ -95,6 +80,7 @@ onMounted(async () => {
 		:search-placeholder="i18n.baseText('typeAvailabilityPolicies.instancePolicy.table.search.node')"
 		data-test-id="node-types-tab"
 		@change="changeAccess"
+		@open="(name) => emit('open', name)"
 	>
 		<template #toolbar-start>
 			<slot name="toolbar-start" />

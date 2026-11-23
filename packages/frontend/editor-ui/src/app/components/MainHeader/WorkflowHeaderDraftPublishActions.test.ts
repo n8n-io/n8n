@@ -424,7 +424,10 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			});
 
 			expect(getByTestId('workflow-open-publish-modal-button')).toBeInTheDocument();
-			expect(getByTestId('workflow-open-publish-modal-button')).toBeDisabled();
+			expect(getByTestId('workflow-open-publish-modal-button')).toHaveAttribute(
+				'aria-disabled',
+				'true',
+			);
 		});
 
 		it('should be visible when user has only workflow:publish permission', () => {
@@ -883,7 +886,10 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			});
 
 			expect(getByTestId('workflow-open-publish-modal-button')).toBeInTheDocument();
-			expect(getByTestId('workflow-open-publish-modal-button')).toBeDisabled();
+			expect(getByTestId('workflow-open-publish-modal-button')).toHaveAttribute(
+				'aria-disabled',
+				'true',
+			);
 		});
 	});
 
@@ -899,7 +905,10 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 
 			const { queryByTestId } = renderComponent();
 
-			expect(queryByTestId('workflow-open-publish-modal-button')).toBeDisabled();
+			expect(queryByTestId('workflow-open-publish-modal-button')).toHaveAttribute(
+				'aria-disabled',
+				'true',
+			);
 		});
 
 		it('should show publish button disabled when trigger node is disabled', () => {
@@ -913,7 +922,10 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 
 			const { getByTestId } = renderComponent();
 
-			expect(getByTestId('workflow-open-publish-modal-button')).toBeDisabled();
+			expect(getByTestId('workflow-open-publish-modal-button')).toHaveAttribute(
+				'aria-disabled',
+				'true',
+			);
 		});
 
 		it('should name the restricted node before its parameter issues', () => {
@@ -943,7 +955,10 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 
 			const { getByTestId, getByText, queryByText } = renderComponent();
 
-			expect(getByTestId('workflow-open-publish-modal-button')).toBeDisabled();
+			expect(getByTestId('workflow-open-publish-modal-button')).toHaveAttribute(
+				'aria-disabled',
+				'true',
+			);
 			expect(
 				getByText(/An administrator blocked 'HTTP Request' on this instance/),
 			).toBeInTheDocument();
@@ -975,7 +990,10 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 
 			const { getByTestId, getByText } = renderComponent();
 
-			expect(getByTestId('workflow-open-publish-modal-button')).toBeDisabled();
+			expect(getByTestId('workflow-open-publish-modal-button')).toHaveAttribute(
+				'aria-disabled',
+				'true',
+			);
 			expect(getByText(restrictionText)).toBeInTheDocument();
 		});
 
@@ -989,7 +1007,10 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 
 			const { getByTestId } = renderComponent();
 
-			expect(getByTestId('workflow-open-publish-modal-button')).toBeDisabled();
+			expect(getByTestId('workflow-open-publish-modal-button')).toHaveAttribute(
+				'aria-disabled',
+				'true',
+			);
 		});
 
 		it('should disable publish when the restricted node is disabled', () => {
@@ -997,7 +1018,10 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 
 			const { getByTestId, getByText } = renderComponent();
 
-			expect(getByTestId('workflow-open-publish-modal-button')).toBeDisabled();
+			expect(getByTestId('workflow-open-publish-modal-button')).toHaveAttribute(
+				'aria-disabled',
+				'true',
+			);
 			expect(getByText(restrictionText)).toBeInTheDocument();
 		});
 
@@ -1027,7 +1051,10 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 
 			const { getByTestId, getByText } = renderComponent();
 
-			expect(getByTestId('workflow-open-publish-modal-button')).toBeDisabled();
+			expect(getByTestId('workflow-open-publish-modal-button')).toHaveAttribute(
+				'aria-disabled',
+				'true',
+			);
 			expect(getByText(/Restricted on this instance: 'Slack'\./)).toBeInTheDocument();
 			expect(getByText(/Restricted in this project: 'Jira'\./)).toBeInTheDocument();
 		});
@@ -1236,7 +1263,10 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 
 			const { getByTestId, getByText } = renderComponent();
 
-			expect(getByTestId('workflow-open-publish-modal-button')).toBeDisabled();
+			expect(getByTestId('workflow-open-publish-modal-button')).toHaveAttribute(
+				'aria-disabled',
+				'true',
+			);
 			expect(getByText(/Only Alice Chen can run or publish with it/)).toBeInTheDocument();
 		});
 
@@ -1279,7 +1309,10 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 				global: { stubs: tooltipStubs },
 			});
 
-			expect(getByTestId('workflow-open-publish-modal-button')).toBeDisabled();
+			expect(getByTestId('workflow-open-publish-modal-button')).toHaveAttribute(
+				'aria-disabled',
+				'true',
+			);
 			expect(getByText(/Only Alice Chen can run or publish with it/)).toBeInTheDocument();
 		});
 
@@ -1857,8 +1890,14 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			const { findByTestId, getByTestId } = renderComponent({ props: defaultWorkflowProps });
 			await userEvent.click(await findByTestId('workflow-review-status-pill'));
 
-			expect(getByTestId('workflow-open-publish-modal-button')).toBeDisabled();
-			expect(getByTestId('workflow-review-submit-changes-button')).toBeDisabled();
+			expect(getByTestId('workflow-open-publish-modal-button')).toHaveAttribute(
+				'aria-disabled',
+				'true',
+			);
+			expect(getByTestId('workflow-review-submit-changes-button')).toHaveAttribute(
+				'aria-disabled',
+				'true',
+			);
 		});
 
 		it('disables Submit changes with Publish for a restricted node type', async () => {
@@ -1884,8 +1923,14 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			const { findByTestId, getByTestId } = renderComponent({ props: defaultWorkflowProps });
 			await userEvent.click(await findByTestId('workflow-review-status-pill'));
 
-			expect(getByTestId('workflow-open-publish-modal-button')).toBeDisabled();
-			expect(getByTestId('workflow-review-submit-changes-button')).toBeDisabled();
+			expect(getByTestId('workflow-open-publish-modal-button')).toHaveAttribute(
+				'aria-disabled',
+				'true',
+			);
+			expect(getByTestId('workflow-review-submit-changes-button')).toHaveAttribute(
+				'aria-disabled',
+				'true',
+			);
 		});
 
 		// The parity has to hold in the enabled direction too, or the assertions above
@@ -2006,7 +2051,10 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 
 				const { getByTestId } = renderComponent();
 
-				expect(getByTestId('workflow-open-publish-modal-button')).toBeDisabled();
+				expect(getByTestId('workflow-open-publish-modal-button')).toHaveAttribute(
+					'aria-disabled',
+					'true',
+				);
 			},
 		);
 

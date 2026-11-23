@@ -53,7 +53,10 @@ context.
    `data_transformation`, `data_extraction`, `document_processing`,
    `form_input`, `content_generation`, `triage`, `scraping_and_research`). Call
    `search_nodes` with `query`/`queries` and short service names ("Gmail") for
-   service-specific nodes.
+   service-specific nodes. When the workflow reacts to events in an app or
+   service, check for and prefer its app-specific trigger node (for example
+   Slack Trigger, Microsoft Outlook Trigger, or Gmail Trigger) over a generic
+   Webhook or Schedule Trigger polling loop.
 2. **Read definitions.** Call `get_node_types` once with every node the
    workflow could need, not only the service nodes. Include utility nodes
    (Set, IF, Switch, Code, Wait, Sort, Filter) in that first call. There is no

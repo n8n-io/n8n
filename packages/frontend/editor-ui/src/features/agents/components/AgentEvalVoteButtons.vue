@@ -8,7 +8,7 @@ import { useI18n } from '@n8n/i18n';
 
 import type { AgentEvalVote } from '../agentEvals.types';
 
-const props = defineProps<{
+defineProps<{
 	vote: AgentEvalVote | null;
 	disabled?: boolean;
 	/** Shown instead of the vote label when the buttons are disabled. */
@@ -22,37 +22,43 @@ const emit = defineEmits<{
 const i18n = useI18n();
 
 const labelFor = (vote: AgentEvalVote) =>
-	props.disabled && props.disabledReason
-		? props.disabledReason
-		: i18n.baseText(
-				vote === 'up'
-					? 'agents.builder.agentEvals.review.row.thumbsUp'
-					: 'agents.builder.agentEvals.review.row.thumbsDown',
-			);
+	i18n.baseText(
+		vote === 'up'
+			? 'agents.builder.agentEvals.review.row.thumbsUp'
+			: 'agents.builder.agentEvals.review.row.thumbsDown',
+	);
 </script>
 
 <template>
 	<div :class="$style.votes">
-		<N8nTooltip :content="labelFor('up')" placement="top">
+		<N8nTooltip as-child placement="top">
+			<template #content>{{
+				disabled && disabledReason ? disabledReason : labelFor('up')
+			}}</template>
 			<N8nIconButton
 				icon="thumbs-up"
 				size="small"
 				variant="outline"
 				:class="{ [$style.selectedUp]: vote === 'up' }"
 				:disabled="disabled"
+				:focusable-when-disabled="!!disabledReason"
 				:aria-label="labelFor('up')"
 				:aria-pressed="vote === 'up'"
 				data-testid="agent-eval-vote-up"
 				@click="emit('vote', 'up')"
 			/>
 		</N8nTooltip>
-		<N8nTooltip :content="labelFor('down')" placement="top">
+		<N8nTooltip as-child placement="top">
+			<template #content>{{
+				disabled && disabledReason ? disabledReason : labelFor('down')
+			}}</template>
 			<N8nIconButton
 				icon="thumbs-down"
 				size="small"
 				variant="outline"
 				:class="{ [$style.selectedDown]: vote === 'down' }"
 				:disabled="disabled"
+				:focusable-when-disabled="!!disabledReason"
 				:aria-label="labelFor('down')"
 				:aria-pressed="vote === 'down'"
 				data-testid="agent-eval-vote-down"

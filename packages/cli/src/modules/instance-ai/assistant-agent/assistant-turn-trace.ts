@@ -77,13 +77,35 @@ interface AssistantTraceAnchor {
 	actorSpanId?: string;
 	/** The message group of the trace turn. A steering message gives the run a new one. */
 	messageGroupId?: string;
+	/** The root of the turn. A resume root differs from it. Older anchors do not have it. */
+	turnRoot?: AssistantTurnRoot;
+}
+
+/** The `turn` root of a trace turn, which gets the feedback on its answer. */
+interface AssistantTurnRoot {
+	langsmithTraceId: string;
+	runId: string;
+}
+
+function readTurnRoot(value: unknown): AssistantTurnRoot | undefined {
+	if (!isRecord(value)) return undefined;
+	const { langsmithTraceId, runId } = value;
+	if (typeof langsmithTraceId !== 'string' || typeof runId !== 'string') return undefined;
+	return { langsmithTraceId, runId };
 }
 
 /** Read a stored trace anchor. Returns `undefined` when the value is not one. */
 function readAssistantTraceAnchor(value: unknown): AssistantTraceAnchor | undefined {
 	if (!isRecord(value)) return undefined;
-	const { langsmithTraceId, rootRunId, actorRunId, otelTraceId, actorSpanId, messageGroupId } =
-		value;
+	const {
+		langsmithTraceId,
+		rootRunId,
+		actorRunId,
+		otelTraceId,
+		actorSpanId,
+		messageGroupId,
+		turnRoot: storedTurnRoot,
+	} = value;
 	if (
 		typeof langsmithTraceId !== 'string' ||
 		typeof rootRunId !== 'string' ||
@@ -91,6 +113,7 @@ function readAssistantTraceAnchor(value: unknown): AssistantTraceAnchor | undefi
 	) {
 		return undefined;
 	}
+	const turnRoot = readTurnRoot(storedTurnRoot);
 	return {
 		langsmithTraceId,
 		rootRunId,
@@ -98,7 +121,17 @@ function readAssistantTraceAnchor(value: unknown): AssistantTraceAnchor | undefi
 		...(typeof otelTraceId === 'string' ? { otelTraceId } : {}),
 		...(typeof actorSpanId === 'string' ? { actorSpanId } : {}),
 		...(typeof messageGroupId === 'string' ? { messageGroupId } : {}),
+		...(turnRoot ? { turnRoot } : {}),
 	};
+}
+
+/**
+ * The turn root that a resume of the anchored beat belongs to. An older anchor
+ * has no turn root, so its own root stands in for it.
+ */
+function turnRootOf(anchor: AssistantTraceAnchor | undefined): AssistantTurnRoot | undefined {
+	if (!anchor) return undefined;
+	return anchor.turnRoot ?? { langsmithTraceId: anchor.langsmithTraceId, runId: anchor.rootRunId };
 }
 
 /** The `continued_from_*` metadata that links a resume beat to the beat it continues. */
@@ -203,15 +236,30 @@ export class AssistantTurnTrace {
 		private readonly orchestratorInputs: Record<string, unknown> = {},
 		/** Called once, after the trace finished. */
 		private readonly onFinished?: () => void,
+		/** The root of the turn that this trace resumes. Unset for a new turn. */
+		private readonly resumedTurnRoot?: AssistantTurnRoot,
 	) {}
+
+	/** The root of the turn: the root that this trace resumes, or its own root. */
+	private get turnRoot(): AssistantTurnRoot {
+		const { rootRun } = this.context;
+		return this.resumedTurnRoot ?? { langsmithTraceId: rootRun.traceId, runId: rootRun.id };
+	}
 
 	/** The ids that the client and the feedback use to find the trace. */
 	get payload(): AssistantTracePayload {
 		const { rootRun } = this.context;
+		const { resumedTurnRoot } = this;
 		return {
 			...(rootRun.otelTraceId ? { traceId: rootRun.otelTraceId } : {}),
 			langsmithTraceId: rootRun.traceId,
 			langsmithRunId: rootRun.id,
+			...(resumedTurnRoot
+				? {
+						turnLangsmithTraceId: resumedTurnRoot.langsmithTraceId,
+						turnLangsmithRunId: resumedTurnRoot.runId,
+					}
+				: {}),
 		};
 	}
 
@@ -231,6 +279,7 @@ export class AssistantTurnTrace {
 			...(rootRun.otelTraceId ? { otelTraceId: rootRun.otelTraceId } : {}),
 			...(actorRun.otelSpanId ? { actorSpanId: actorRun.otelSpanId } : {}),
 			...(typeof messageGroupId === 'string' ? { messageGroupId } : {}),
+			turnRoot: { ...this.turnRoot },
 		};
 	}
 
@@ -637,20 +686,25 @@ export class AssistantTurnTracer {
 		anchor: AssistantTraceAnchor | undefined,
 		{ input, orchestratorInputs, metadata }: AssistantTraceInputs,
 	): Promise<AssistantTurnTrace | undefined> {
-		return await this.create(scope, orchestratorInputs, async () => {
-			return await continueInstanceAiTraceContext(undefined, {
-				...this.commonOptions(scope),
-				input,
-				metadata: {
-					resume_reason: 'approval',
-					agent_id: orchestratorAgentId(scope.runId),
-					...continuedFromMetadata(anchor),
-					...scope.threadProvenance,
-					...metadata,
-					...RUNTIME_TRACE_METADATA,
-				},
-			});
-		});
+		return await this.create(
+			scope,
+			orchestratorInputs,
+			async () => {
+				return await continueInstanceAiTraceContext(undefined, {
+					...this.commonOptions(scope),
+					input,
+					metadata: {
+						resume_reason: 'approval',
+						agent_id: orchestratorAgentId(scope.runId),
+						...continuedFromMetadata(anchor),
+						...scope.threadProvenance,
+						...metadata,
+						...RUNTIME_TRACE_METADATA,
+					},
+				});
+			},
+			turnRootOf(anchor),
+		);
 	}
 
 	/**
@@ -685,6 +739,7 @@ export class AssistantTurnTracer {
 		scope: AssistantTraceScope,
 		orchestratorInputs: Record<string, unknown>,
 		createContext: () => Promise<InstanceAiTraceContext | undefined>,
+		resumedTurnRoot?: AssistantTurnRoot,
 	): Promise<AssistantTurnTrace | undefined> {
 		try {
 			const context = await createContext();
@@ -695,6 +750,7 @@ export class AssistantTurnTracer {
 				this.logger,
 				orchestratorInputs,
 				() => this.openTraces.delete(trace),
+				resumedTurnRoot,
 			);
 			// Shutdown started while the trace was created, after the open traces were
 			// closed. Close this one too, and run the turn without a trace.
