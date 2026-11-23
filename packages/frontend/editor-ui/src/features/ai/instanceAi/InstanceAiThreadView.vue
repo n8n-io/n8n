@@ -11,7 +11,7 @@ import {
 } from '@n8n/design-system';
 import { useDebounceFn, useElementSize, useWindowSize } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
-import type { InstanceAiAgentAttachment } from '@n8n/api-types';
+import type { InstanceAiAgentAttachment, InstanceAiConfirmationInputType } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { DEBOUNCE_TIME } from '@/app/constants';
@@ -74,7 +74,7 @@ import InstanceAiAgentPreview from './components/InstanceAiAgentPreview.vue';
 import InstanceAiBrowserPreview from './components/InstanceAiBrowserPreview.vue';
 import InstanceAiCloudBrowserUserActionPanel from './components/InstanceAiCloudBrowserUserActionPanel.vue';
 import InstanceAiWorkflowDraftPreview from './components/InstanceAiWorkflowDraftPreview.vue';
-import AgentBuildingIndicator from './components/AgentBuildingIndicator.vue';
+import InstanceAiCanvasRunOverlay from './components/InstanceAiCanvasRunOverlay.vue';
 import { useDraftWorkflowPreviewTelemetry } from '@/experiments/instanceAiDraftWorkflowPreview/useDraftWorkflowPreviewTelemetry';
 import { collectActiveBuilderAgents } from './builderAgents';
 import { isStagingDraft } from './instanceAi.workflowStaging';
@@ -270,6 +270,7 @@ watch(
 );
 
 // Experiment cleanup (137_instance_ai_draft_workflow_preview)
+const ANSWER_INPUT_TYPES = new Set<InstanceAiConfirmationInputType>(['questions', 'text']);
 const draftPreview = useDraftWorkflowPreview({
 	threadId: () => props.threadId,
 	turns: () => thread.artifactTurns,
@@ -278,6 +279,11 @@ const draftPreview = useDraftWorkflowPreview({
 	// A builder can still work in the background after the orchestrator run ended.
 	isRunning: () => thread.isStreaming || collectActiveBuilderAgents(thread.messages).length > 0,
 	isAwaitingUser: () => thread.isAwaitingUserInput,
+	// A question card asks for an answer. Any other card asks for an approval.
+	isAwaitingApproval: () =>
+		!thread.pendingConfirmations.some(({ toolCall }) =>
+			ANSWER_INPUT_TYPES.has(toolCall.confirmation.inputType ?? 'approval'),
+		),
 });
 // EOF Experiment cleanup
 
@@ -316,17 +322,7 @@ watch(
 	{ immediate: true },
 );
 
-// A build on a saved workflow shows the building wave over the saved canvas, until a draft
-// covers it. While the run waits on the user, nothing builds.
-const isSavedCanvasBuilding = computed(
-	() =>
-		isAgentWorking.value &&
-		!thread.isAwaitingUserInput &&
-		preview.isPreviewVisible.value &&
-		!preview.activeWorkflowDraft.value &&
-		preview.activeWorkflowId.value !== null &&
-		preview.activeWorkflowId.value === draftPreview.buildTarget.value?.workflowId,
-);
+const canvasRunState = draftPreview.useCanvasRunState(preview);
 
 // Experiment cleanup (137_instance_ai_draft_workflow_preview)
 const draftPreviewTelemetry = useDraftWorkflowPreviewTelemetry(thread);
@@ -1128,18 +1124,17 @@ function handleNewThreadClick() {
 								@workflow-failures="handleWorkflowFailures"
 								@workflow-loaded="handleSavedWorkflowLoaded"
 							/>
-							<AgentBuildingIndicator
-								v-if="isSavedCanvasBuilding"
-								:show-label="false"
-								data-test-id="instance-ai-draft-building-wave"
-							/>
 							<InstanceAiWorkflowDraftPreview
 								v-if="preview.isPreviewVisible.value && preview.activeWorkflowDraft.value"
 								:key="preview.activeWorkflowDraft.value.filePath"
 								:class="$style.previewSlot"
 								:draft="preview.activeWorkflowDraft.value"
 								:building="isAgentWorking"
-								:waiting="thread.isAwaitingUserInput"
+							/>
+							<InstanceAiCanvasRunOverlay
+								v-if="canvasRunState"
+								:state="canvasRunState"
+								@focus-chat="conversationRef?.focusPendingConfirmation()"
 							/>
 							<InstanceAiDataTablePreview
 								v-if="preview.isPreviewVisible.value && preview.activeDataTableId.value"

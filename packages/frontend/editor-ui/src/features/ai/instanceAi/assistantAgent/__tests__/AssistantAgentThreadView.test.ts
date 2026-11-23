@@ -147,6 +147,9 @@ const chatMessages = ref<ChatMessage[]>([]);
 const isLoadingHistory = ref(true);
 const isBusy = ref(false);
 const isPanelStreaming = ref(false);
+const isAwaitingUserAnswer = ref(false);
+const isAwaitingUserApproval = ref(false);
+const focusOpenInteraction = vi.fn();
 // The tool step labeler that the view gives the chat.
 const panelToolStepLabel: { current?: AgentToolStepLabeler } = {};
 const composerAttachments = ref<AgentChatComposerAttachment[]>([]);
@@ -183,6 +186,9 @@ vi.mock('@/features/agents/components/AgentChatPanel.vue', () => ({
 				composerAttachments,
 				messages: chatMessages,
 				isStreaming: isPanelStreaming,
+				isAwaitingUserAnswer,
+				isAwaitingUserApproval,
+				focusOpenInteraction,
 				isSubmitting: ref(false),
 				isBusy,
 				isLoadingHistory,
@@ -233,7 +239,7 @@ vi.mock('../../components/InstanceAiWorkflowPreview.vue', async () => {
 // The real draft preview renders a canvas, which has its own tests.
 vi.mock('../../components/InstanceAiWorkflowDraftPreview.vue', () => ({
 	default: defineComponent({
-		props: { draft: { type: Object, required: true }, building: Boolean, waiting: Boolean },
+		props: { draft: { type: Object, required: true }, building: Boolean },
 		setup: (props) => () =>
 			h('div', {
 				'data-test-id': 'workflow-draft-preview-stub',
@@ -602,6 +608,9 @@ describe('AssistantAgentThreadView', () => {
 		isLoadingHistory.value = true;
 		isBusy.value = false;
 		isPanelStreaming.value = false;
+		isAwaitingUserAnswer.value = false;
+		isAwaitingUserApproval.value = false;
+		focusOpenInteraction.mockReset();
 		panelSlots.current = [];
 		if (threadArea.width) threadArea.width.value = 0;
 		fetchTabs.mockReset().mockResolvedValue({ state: null });
@@ -694,6 +703,57 @@ describe('AssistantAgentThreadView', () => {
 
 			const preview = await findByTestId('workflow-draft-preview-stub');
 			expect(preview).toHaveAttribute('data-file-path', 'staging:a-build');
+		});
+
+		it('shows the building wave over the staging canvas while the agent works', async () => {
+			setVariant(INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.variant);
+			const { findByTestId, queryByTestId } = await renderLoadedThread();
+
+			chatMessages.value = [{ id: 'u-1', role: 'user', content: 'Build it' }, buildingTurn];
+			isPanelStreaming.value = true;
+
+			await findByTestId('instance-ai-draft-building-wave');
+			expect(queryByTestId('instance-ai-canvas-waiting-pill')).toBeNull();
+		});
+
+		it('shows a waiting pill instead of the wave while the run waits for an answer', async () => {
+			setVariant(INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.variant);
+			const { findByTestId, queryByTestId } = await renderLoadedThread();
+			chatMessages.value = [{ id: 'u-1', role: 'user', content: 'Build it' }, buildingTurn];
+			isPanelStreaming.value = true;
+
+			isAwaitingUserAnswer.value = true;
+
+			expect(await findByTestId('instance-ai-canvas-waiting-pill')).toHaveTextContent(
+				'Waiting for your answer in the chat',
+			);
+			expect(queryByTestId('instance-ai-draft-building-wave')).toBeNull();
+		});
+
+		it('asks for the approval while the run waits for one', async () => {
+			setVariant(INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.variant);
+			const { findByTestId } = await renderLoadedThread();
+			chatMessages.value = [{ id: 'u-1', role: 'user', content: 'Build it' }, buildingTurn];
+			isPanelStreaming.value = true;
+
+			isAwaitingUserAnswer.value = true;
+			isAwaitingUserApproval.value = true;
+
+			expect(await findByTestId('instance-ai-canvas-waiting-pill')).toHaveTextContent(
+				'Waiting for your approval in the chat',
+			);
+		});
+
+		it('focuses the open card of the chat when the user clicks the waiting pill', async () => {
+			setVariant(INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.variant);
+			const { findByTestId } = await renderLoadedThread();
+			chatMessages.value = [{ id: 'u-1', role: 'user', content: 'Build it' }, buildingTurn];
+			isPanelStreaming.value = true;
+			isAwaitingUserAnswer.value = true;
+
+			await userEvent.click(await findByTestId('instance-ai-canvas-waiting-pill'));
+
+			expect(focusOpenInteraction).toHaveBeenCalledOnce();
 		});
 
 		it('shows no draft in the control arm', async () => {

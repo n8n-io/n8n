@@ -8753,6 +8753,8 @@
 	"instanceAi.workflowDraft.newWorkflow": "New workflow",
 	"instanceAi.workflowDraft.unsaved": "Draft · not saved",
 	"instanceAi.workflowDraft.ariaLabel": "Unsaved workflow preview",
+	"instanceAi.workflowDraft.waitingForAnswer": "Waiting for your answer in the chat",
+	"instanceAi.workflowDraft.waitingForApproval": "Waiting for your approval in the chat",
 	"instanceAi.agentPreview.building.imagining": "Imagining…",
 	"instanceAi.agentPreview.building.tinkering": "Tinkering…",
 	"instanceAi.agentPreview.building.pondering": "Pondering…",

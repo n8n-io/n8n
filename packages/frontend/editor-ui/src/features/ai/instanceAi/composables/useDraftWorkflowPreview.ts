@@ -1,5 +1,5 @@
 // Experiment cleanup (137_instance_ai_draft_workflow_preview)
-import { provide } from 'vue';
+import { computed, provide, type Ref } from 'vue';
 
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useDraftWorkflowPreviewEnabled } from '@/experiments/instanceAiDraftWorkflowPreview/useDraftWorkflowPreviewEnabled';
@@ -9,6 +9,16 @@ import { getDraftWorkflowId, type WorkflowDraftsByFilePath } from '../instanceAi
 import { toStagingNodeTypeInfo } from '../instanceAi.workflowStaging';
 import { ThinkingWordKey, useThinkingWordRotation } from './useThinkingWords';
 import { useWorkflowStaging } from './useWorkflowStaging';
+
+/** What the run shows on a workflow canvas: the building wave, or a pill that asks for the chat. */
+export type CanvasRunState = 'building' | 'answer' | 'approval';
+
+/** The parts of `useCanvasPreview` that tell if a workflow canvas shows. */
+interface WorkflowCanvasView {
+	isPreviewVisible: Ref<boolean>;
+	activeWorkflowId: Ref<string | null>;
+	activeWorkflowDraft: Ref<unknown>;
+}
 
 /**
  * The parts of the draft workflow preview experiment that a thread view sets
@@ -23,6 +33,8 @@ export function useDraftWorkflowPreview(options: {
 	/** The agent works. A run that waits on the user still counts. */
 	isRunning: () => boolean;
 	isAwaitingUser: () => boolean;
+	/** The run waits for an approval, not for an answer. */
+	isAwaitingApproval: () => boolean;
 }) {
 	const enabled = useDraftWorkflowPreviewEnabled();
 	// The backend sends drafts to the variant only. The control arm ignores any that come.
@@ -52,9 +64,22 @@ export function useDraftWorkflowPreview(options: {
 		);
 	}
 
+	/** The run state over any workflow canvas: a saved workflow, a draft or the staging canvas. */
+	function useCanvasRunState(canvas: WorkflowCanvasView) {
+		return computed((): CanvasRunState | undefined => {
+			if (!enabled.value || !options.isRunning() || !canvas.isPreviewVisible.value)
+				return undefined;
+			if (canvas.activeWorkflowId.value === null && !canvas.activeWorkflowDraft.value) {
+				return undefined;
+			}
+			if (!options.isAwaitingUser()) return 'building';
+			return options.isAwaitingApproval() ? 'approval' : 'answer';
+		});
+	}
+
 	return {
 		thinkingWord,
-		buildTarget: staging.buildTarget,
+		useCanvasRunState,
 		isBuiltWorkflow,
 		canvasOptions: {
 			workflowDrafts,

@@ -43,7 +43,7 @@ import { provideArtifactThread } from '../artifactThread';
 import { useAssistantCreditsStore } from '../assistantCredits.store';
 import ApprovalModeSelector from '../components/ApprovalModeSelector.vue';
 import AttachmentPreview from '../components/AttachmentPreview.vue';
-import AgentBuildingIndicator from '../components/AgentBuildingIndicator.vue';
+import InstanceAiCanvasRunOverlay from '../components/InstanceAiCanvasRunOverlay.vue';
 import InstanceAiAgentPreview from '../components/InstanceAiAgentPreview.vue';
 import InstanceAiArtifactsPanel from '../components/InstanceAiArtifactsPanel.vue';
 import InstanceAiAppPreview from '../components/InstanceAiAppPreview.vue';
@@ -501,6 +501,7 @@ const draftPreview = useDraftWorkflowPreview({
 	dismissWorkflowDrafts: workflowDrafts.dismiss,
 	isRunning: isAgentRunning,
 	isAwaitingUser,
+	isAwaitingApproval: () => panel.value?.isAwaitingUserApproval ?? false,
 });
 // The tool steps of the chat name what a node lookup or a workflow source write works on.
 const { getSpecificToolLabel } = useToolLabel();
@@ -527,17 +528,7 @@ const preview = useCanvasPreview({
 	...draftPreview.canvasOptions,
 });
 
-// A build on a saved workflow shows the building wave over the saved canvas, until a draft
-// covers it. While the run waits on the user, nothing builds.
-const isSavedCanvasBuilding = computed(
-	() =>
-		isAgentRunning() &&
-		!isAwaitingUser() &&
-		preview.isPreviewVisible.value &&
-		!preview.activeWorkflowDraft.value &&
-		preview.activeWorkflowId.value !== null &&
-		preview.activeWorkflowId.value === draftPreview.buildTarget.value?.workflowId,
-);
+const canvasRunState = draftPreview.useCanvasRunState(preview);
 provide('openWorkflowPreview', preview.openWorkflowPreview);
 provide('openDataTablePreview', preview.openDataTablePreview);
 provide('openAppPreview', preview.openAppPreview);
@@ -1158,18 +1149,17 @@ function updateStagedNodes(attachment: InstanceAiNodesAttachment): void {
 							@workflow-succeeded="handleWorkflowSucceeded"
 							@workflow-loaded="workflowDrafts.dismiss"
 						/>
-						<AgentBuildingIndicator
-							v-if="isSavedCanvasBuilding"
-							:show-label="false"
-							data-test-id="assistant-agent-draft-building-wave"
-						/>
 						<InstanceAiWorkflowDraftPreview
 							v-if="preview.isPreviewVisible.value && preview.activeWorkflowDraft.value"
 							:key="preview.activeWorkflowDraft.value.filePath"
 							:class="$style.previewSlot"
 							:draft="preview.activeWorkflowDraft.value"
 							:building="isAgentRunning()"
-							:waiting="isAwaitingUser()"
+						/>
+						<InstanceAiCanvasRunOverlay
+							v-if="canvasRunState"
+							:state="canvasRunState"
+							@focus-chat="panel?.focusOpenInteraction()"
 						/>
 						<InstanceAiDataTablePreview
 							v-if="preview.isPreviewVisible.value && preview.activeDataTableId.value"

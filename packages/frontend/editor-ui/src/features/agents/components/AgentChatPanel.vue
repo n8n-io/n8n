@@ -818,6 +818,17 @@ function focusInput(options?: FocusOptions) {
 	if (props.visible) chatInput.value?.focus(options);
 }
 
+/** Moves focus to the card that the run waits on, for a host that points the user to it. */
+function focusOpenInteraction() {
+	if (hasOpenApproval.value) {
+		approvalCards.value?.querySelector<HTMLElement>('button')?.focus();
+		return;
+	}
+	// An open question is the last card of the transcript, and the composer answers it.
+	scrollArea.value?.scrollToBottom();
+	focusInput();
+}
+
 let forceFocusPending = true;
 watch(
 	[chatInput, () => props.autofocus, () => props.visible],
@@ -1823,6 +1834,9 @@ defineExpose({
 	isSubmitting: computed(() => isSubmitting.value),
 	/** The chat waits for the user to answer a card, such as an approval or a question. A waiting card does not count, because the workflow resumes the run. */
 	isAwaitingUserAnswer: computed(() => hasOpenInteraction.value && !hasOpenWaitCard.value),
+	/** The card that the chat waits on is an approval. */
+	isAwaitingUserApproval: computed(() => hasOpenApproval.value),
+	focusOpenInteraction,
 	/** The chat shows a card that the run waits on, including a waiting card. */
 	hasOpenInteraction: computed(() => hasOpenInteraction.value),
 	/** The chat streams, cannot take a send, or waits for the user to answer a card. */
