@@ -84,6 +84,17 @@ describe('WouldHaveHappenedList', () => {
 		expect(queryByRole('button')).toBeNull();
 	});
 
+	it('keeps one format when a hidden item contains a comma', async () => {
+		const { getByTestId } = renderList({
+			props: { items: ['Ana', 'Bob', 'Doe, Chris'], maxVisible: 2 },
+		});
+		const content = getByTestId('would-have-happened-list');
+
+		expect(content.textContent).toBe('["Ana","Bob"]');
+		await userEvent.click(getByTestId('would-have-happened-list-toggle'));
+		expect(content.textContent).toBe('["Ana","Bob","Doe, Chris"]');
+	});
+
 	it('expands and collapses the list with an associated control', async () => {
 		const { getByTestId } = renderList({
 			props: { items: ['Ana', 'Bob', 'Chris'], maxVisible: 1 },
