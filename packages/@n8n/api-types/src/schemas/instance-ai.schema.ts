@@ -1273,6 +1273,12 @@ export const assistantTracePayloadSchema = z.object({
 	traceId: z.string().optional(),
 	langsmithTraceId: z.string(),
 	langsmithRunId: z.string(),
+	/**
+	 * The root of the turn that a resume continues. Feedback on the answer goes
+	 * to this root, like on the current Assistant runtime. Only a resume sets it.
+	 */
+	turnLangsmithTraceId: z.string().optional(),
+	turnLangsmithRunId: z.string().optional(),
 });
 
 export type AssistantTracePayload = z.infer<typeof assistantTracePayloadSchema>;

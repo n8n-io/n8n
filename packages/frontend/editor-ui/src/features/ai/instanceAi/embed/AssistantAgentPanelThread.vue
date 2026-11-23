@@ -14,6 +14,7 @@ import type {
 	InstanceAiHandoffContext,
 	InstanceAiPrefillPayload,
 } from '@n8n/api-types';
+import { N8nChatRating } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, provide, ref, useTemplateRef, watch, type Ref } from 'vue';
@@ -36,6 +37,7 @@ import {
 	useAssistantPreferenceCards,
 } from '../assistantAgent/assistantPreferenceCards';
 import { assistantSharedFilesExtension } from '../assistantAgent/assistantSharedFiles';
+import { useAssistantAgentFeedback } from '../assistantAgent/useAssistantAgentFeedback';
 import {
 	useAssistantAgentMessageTelemetry,
 	type AssistantAgentSendingMessage,
@@ -170,6 +172,11 @@ const handoffChip = computed(() => {
 });
 
 const panel = useTemplateRef<InstanceType<typeof AgentChatPanel>>('panel');
+
+const feedback = useAssistantAgentFeedback({
+	threadId: props.threadId,
+	messages: () => panel.value?.messages ?? [],
+});
 
 const turnTelemetry = useAssistantAgentTurnTelemetry({
 	threadId: props.threadId,
@@ -319,6 +326,13 @@ defineExpose({
 			<div :class="$style.emptyState">
 				<slot name="empty" />
 			</div>
+		</template>
+		<template #message-actions="{ executionId }">
+			<N8nChatRating
+				v-if="feedback.isRateable(executionId)"
+				:rating="feedback.ratingOf(executionId)"
+				@rate="feedback.rate(executionId, $event)"
+			/>
 		</template>
 		<template v-if="handoffChip" #composer-attachments="{ chips, removeChip }">
 			<InstanceAiResourceChip

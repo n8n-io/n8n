@@ -2463,6 +2463,71 @@ describe('AgentExecutionService', () => {
 		});
 	});
 
+	describe('findExecutionTimeline', () => {
+		const hostEvent = {
+			type: 'host-event' as const,
+			name: 'assistant-trace',
+			key: 'turn',
+			payload: { langsmithRunId: 'root-1' },
+			timestamp: 1,
+		};
+
+		it('returns the inline timeline of an execution of the thread', async () => {
+			agentExecutionRepository.findExecution.mockResolvedValue({
+				id: 'execution-1',
+				threadId: 'thread-1',
+				storedAt: 'db',
+				timeline: [hostEvent],
+			} as AgentExecution);
+
+			await expect(
+				service.findExecutionTimeline('agent-1', 'thread-1', 'execution-1'),
+			).resolves.toEqual([hostEvent]);
+			expect(agentExecutionLogStore.readMany).not.toHaveBeenCalled();
+		});
+
+		it('reads a timeline that moved to blob storage', async () => {
+			agentExecutionRepository.findExecution.mockResolvedValue({
+				id: 'execution-1',
+				threadId: 'thread-1',
+				storedAt: 'fs',
+				timeline: null,
+			} as AgentExecution);
+			agentExecutionLogStore.hasLocation.mockReturnValue(true);
+			agentExecutionLogStore.readMany.mockResolvedValue(
+				new Map([['execution-1', { timeline: [hostEvent], version: 1 }]]),
+			);
+
+			await expect(
+				service.findExecutionTimeline('agent-1', 'thread-1', 'execution-1'),
+			).resolves.toEqual([hostEvent]);
+			expect(agentExecutionLogStore.readMany).toHaveBeenCalledWith([
+				{ agentId: 'agent-1', threadId: 'thread-1', executionId: 'execution-1', storedAt: 'fs' },
+			]);
+		});
+
+		it('returns null for an execution of another thread', async () => {
+			agentExecutionRepository.findExecution.mockResolvedValue({
+				id: 'execution-1',
+				threadId: 'other-thread',
+				storedAt: 'db',
+				timeline: [hostEvent],
+			} as AgentExecution);
+
+			await expect(
+				service.findExecutionTimeline('agent-1', 'thread-1', 'execution-1'),
+			).resolves.toBeNull();
+		});
+
+		it('returns null for an unknown execution', async () => {
+			agentExecutionRepository.findExecution.mockResolvedValue(null);
+
+			await expect(
+				service.findExecutionTimeline('agent-1', 'thread-1', 'execution-1'),
+			).resolves.toBeNull();
+		});
+	});
+
 	describe('getThreadDetailPage', () => {
 		const execution = (id: string, minute: number) =>
 			({
