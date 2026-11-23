@@ -230,6 +230,7 @@ export async function createInstanceAgent(
 			fileListingEnabled: allOrchestratorTools.has(DOMAIN_TOOL_IDS.LIST_FILES),
 			fileSharingEnabled: allOrchestratorTools.has(DOMAIN_TOOL_IDS.SHARE_FILES),
 			fileViewingEnabled: allOrchestratorTools.has(DOMAIN_TOOL_IDS.VIEW_FILE),
+			engineSetup: context.engineSetup,
 			workspaceRoot:
 				orchestrationContext?.workspace && orchestrationContext.workspaceRoot
 					? orchestrationContext.workspaceRoot
@@ -311,7 +312,7 @@ export async function createInstanceAgent(
 	if (orchestrationContext?.workspace) agent.workspace(orchestrationContext.workspace);
 	if (skills) {
 		agent.skills(skills);
-		agent.contextCueProvider(createInstanceAiContextCueProvider());
+		agent.contextCueProvider(createInstanceAiContextCueProvider(context.engineSetup));
 	}
 
 	if (options.memory) {

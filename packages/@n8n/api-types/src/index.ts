@@ -799,6 +799,20 @@ export type {
 } from './schemas/assistant-thread-tabs.schema';
 
 export {
+	assistantPreferenceCardSchema,
+	assistantPreferenceCardsStateSchema,
+	mergeAssistantPreferenceCard,
+	MAX_ASSISTANT_PREFERENCE_CARDS,
+} from './schemas/assistant-preference-cards.schema';
+export type {
+	AssistantPreferenceCard,
+	AssistantPreferenceCardsState,
+	AssistantPreferenceCardsResponse,
+	AssistantPreferenceCardUndoResponse,
+	AssistantPreferenceCardEditResponse,
+} from './schemas/assistant-preference-cards.schema';
+
+export {
 	assistantAgentTargetSchema,
 	assistantAgentPreviewSessionSchema,
 } from './schemas/assistant-agent-targets.schema';
