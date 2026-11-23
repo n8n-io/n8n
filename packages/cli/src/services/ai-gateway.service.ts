@@ -346,15 +346,15 @@ export class AiGatewayService {
 		apiKeyField: string,
 		jwt: string,
 	): ICredentialDataDecryptedObject {
-		if (this.credentialTypes.getParentTypes(credentialType).includes('oAuth2Api')) {
-			return {
-				oauthTokenData: { access_token: jwt, token_type: 'Bearer' },
-				// No status counts as an expired token, so `requestOAuth2` never refreshes on a
-				// response. A refresh would fail on this credential, which has no ID, and hide the
-				// gateway's own error, such as a 401 for a rejected token, behind "Found credential
-				// with no ID". A node that calls `refreshOAuth2Token` itself still hits that error.
-				tokenExpiredStatusCode: [],
-			};
+		const isOAuth2 =
+			credentialType === 'oAuth2Api' ||
+			this.credentialTypes.getParentTypes(credentialType).includes('oAuth2Api');
+		if (isOAuth2) {
+			// Only `access_token` is set. The credential type's `preAuthentication` still runs on
+			// it, so one that decodes or rewrites the token would break, and nodes that read other
+			// token fields (such as Salesforce's `instance_url`) get `undefined`. Check both before
+			// serving another OAuth2 credential type through the gateway.
+			return { oauthTokenData: { access_token: jwt, token_type: 'Bearer' } };
 		}
 
 		return { [apiKeyField]: jwt };

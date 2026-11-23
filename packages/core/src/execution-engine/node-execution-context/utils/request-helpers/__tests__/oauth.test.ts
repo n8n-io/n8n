@@ -896,7 +896,7 @@ describe('requestOAuth2 - tokenExpiredStatusCode', () => {
 		expect(mockThis.helpers.httpRequest).toHaveBeenCalledTimes(1);
 	});
 
-	test('should surface a 401 without refreshing when tokenExpiredStatusCode is empty (n8n Connect credential)', async () => {
+	test('should surface a 401 without refreshing an n8n Connect credential', async () => {
 		// The shape AiGatewayService builds for a gateway-managed OAuth2 credential: only the
 		// gateway token, no client or token URL, and no credential ID to refresh against.
 		mockNode.credentials = {
@@ -904,7 +904,6 @@ describe('requestOAuth2 - tokenExpiredStatusCode', () => {
 		} as unknown as INode['credentials'];
 		mockThis.getCredentials.mockResolvedValue({
 			oauthTokenData: { access_token: 'gateway-jwt', token_type: 'Bearer' },
-			tokenExpiredStatusCode: [],
 			baseUrl: 'http://gateway.test/v1/gateway/zoominfo',
 		});
 
@@ -930,6 +929,24 @@ describe('requestOAuth2 - tokenExpiredStatusCode', () => {
 			}),
 		);
 		expect(mockAdditionalData.credentialsHelper.getDecrypted).not.toHaveBeenCalled();
+	});
+
+	test('refreshOAuth2Token should return the token of an n8n Connect credential without refreshing it', async () => {
+		mockNode.credentials = {
+			testOAuth2: { id: null, name: 'n8n Connect', __aiGatewayManaged: true },
+		} as unknown as INode['credentials'];
+		mockThis.getCredentials.mockResolvedValue({
+			oauthTokenData: { access_token: 'gateway-jwt', token_type: 'Bearer' },
+		});
+
+		await expect(
+			refreshOAuth2Token.call(mockThis, 'testOAuth2', mockNode, mockAdditionalData),
+		).resolves.toEqual({ access_token: 'gateway-jwt', token_type: 'Bearer' });
+
+		expect(mockThis.helpers.httpRequest).not.toHaveBeenCalled();
+		expect(
+			mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData,
+		).not.toHaveBeenCalled();
 	});
 
 	test('credential-level tokenExpiredStatusCode should take priority over oAuth2Options', async () => {

@@ -148,6 +148,14 @@ function buildOAuth2ReconnectError(node: INode, credentialsType: string): NodeOp
 
 const inFlightRefreshes = new SingleFlightLease<ClientOAuth2Token>();
 
+/**
+ * Whether the node's credential is n8n Connect's: its token comes from the AI gateway for
+ * each execution, and it has no stored credential to refresh it on.
+ */
+function isAiGatewayManaged(node: INode, credentialsType: string): boolean {
+	return node.credentials?.[credentialsType]?.__aiGatewayManaged === true;
+}
+
 async function refreshOrFetchToken(ctx: RefreshOAuth2TokenContext): Promise<ClientOAuth2Token> {
 	const nodeCredentials = ctx.node.credentials?.[ctx.credentialsType];
 	const credentialId = nodeCredentials?.id;
@@ -509,7 +517,7 @@ export async function requestOAuth2(
 	 * expiry to be checked first, instead of paying a refresh per missing item.
 	 */
 	const shouldRefreshToken = (status: unknown): boolean => {
-		if (shouldSkipTokenRefresh) return false;
+		if (shouldSkipTokenRefresh || isAiGatewayManaged(node, credentialsType)) return false;
 		if (!isTokenExpiredStatusCode(status, tokenExpiredStatusCode)) return false;
 		if (status === 401 || oAuth2Options?.skipRefreshWhileTokenIsFresh !== true) return true;
 		return !isTokenExpiryInFuture(credentials.oauthTokenData?.n8n_expires_at);
@@ -683,6 +691,10 @@ export async function refreshOAuth2Token(
 	const credentials = (await this.getCredentials(
 		credentialsType,
 	)) as unknown as OAuth2CredentialData;
+	// Nothing to refresh: the node's next request surfaces the gateway's own error.
+	if (isAiGatewayManaged(node, credentialsType)) {
+		return credentials.oauthTokenData as ClientOAuth2TokenData;
+	}
 	if (credentials.grantType === 'authorizationCode' && credentials.oauthTokenData === undefined) {
 		throw new UserError('OAuth credentials not connected');
 	}
