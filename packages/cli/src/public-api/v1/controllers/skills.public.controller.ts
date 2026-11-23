@@ -58,7 +58,8 @@ export class SkillsPublicController {
 	@ApiDescription(
 		'List the skills you can read: instance skills and the skills of your projects. ' +
 			'The response is one cursor page: read the next page with the cursor query parameter. ' +
-			'Narrow the list to one project with projectId.',
+			'Narrow the list to one project with projectId. ' +
+			'The source field tells how a skill was created. A synced skill has the source github.',
 	)
 	@ApiTags(['Skill'])
 	@ApiResponse(200, SkillListPublicDto)
@@ -85,7 +86,10 @@ export class SkillsPublicController {
 	@Get('/:skillId')
 	@ApiKeyScope('skill:read')
 	@ApiSummary('Retrieve a skill')
-	@ApiDescription('Retrieve one skill by ID with the content of its latest version.')
+	@ApiDescription(
+		'Retrieve one skill by ID with the content of its latest version. ' +
+			'The source field tells how the skill was created. A synced skill has the source github.',
+	)
 	@ApiTags(['Skill'])
 	@ApiResponse(200, SkillPublicDto)
 	@ApiErrorResponse(404)
@@ -133,8 +137,8 @@ export class SkillsPublicController {
 		'Replace the skill and save it as the next version. Send the whole skill: ' +
 			'the body of the retrieve endpoint is a valid body. Send back the skillHash you read: ' +
 			'if the content, the place or the availability of the skill changed since then, ' +
-			'the save fails with 409. The server ignores id, latestVersion, ' +
-			'createdAt and updatedAt. Change scope and projectId to move the skill: ' +
+			'the save fails with 409. The server ignores id, source, latestVersion, ' +
+			'createdAt and updatedAt. The content of a synced skill is read-only: a change to it fails with 400. Change scope and projectId to move the skill: ' +
 			'a move needs the skill:create and skill:delete scopes too.',
 	)
 	@ApiTags(['Skill'])
@@ -206,6 +210,7 @@ function toSkillListPublicItem(skill: SkillListItem) {
 		description: skill.description,
 		scope: skill.scope,
 		projectId: skill.projectId,
+		source: skill.source,
 		latestVersion: skill.latestVersion,
 		availableToAssistant: skill.availableToAssistant,
 		availableToMCP: skill.availableToMCP,

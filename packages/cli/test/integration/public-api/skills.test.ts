@@ -159,6 +159,7 @@ describe('GET /skills', () => {
 					description: 'Write in our voice',
 					scope: 'project',
 					projectId: teamProject.id,
+					source: 'ui',
 					latestVersion: 1,
 					availableToAssistant: false,
 					availableToMCP: false,
@@ -229,6 +230,7 @@ describe('GET /skills/:skillId', () => {
 			references: [{ path: 'references/style.md', content: 'Short words.' }],
 			scope: 'project',
 			projectId: teamProject.id,
+			source: 'ui',
 			latestVersion: 1,
 			availableToAssistant: false,
 			availableToMCP: false,
@@ -271,6 +273,7 @@ describe('POST /skills', () => {
 			...skillContent,
 			scope: 'instance',
 			projectId: null,
+			source: 'api',
 			latestVersion: 1,
 			availableToMCP: true,
 			references: [],
@@ -370,6 +373,7 @@ describe('PUT /skills/:skillId', () => {
 			.send({
 				...skill,
 				id: 'other-id',
+				source: 'mcp',
 				latestVersion: 7,
 				createdAt: '2000-01-01T00:00:00.000Z',
 				updatedAt: '2000-01-01T00:00:00.000Z',
@@ -438,6 +442,7 @@ describe('PUT /skills/:skillId', () => {
 		const { id } = await createSkill({ source: 'github' });
 		await linkSkill(id, { projectId: null, createdById: owner.id });
 		const skill = await readSkill(id);
+		expect(skill.source).toBe('github');
 
 		await api(owner)
 			.put(`/skills/${id}`)

@@ -3,7 +3,7 @@ tags:
   - Skill
 summary: Update a skill
 description: |-
-  Replace the skill and save it as the next version. Send the whole skill: the body of the retrieve endpoint is a valid body. Send back the skillHash you read: if the content, the place or the availability of the skill changed since then, the save fails with 409. The server ignores id, latestVersion, createdAt and updatedAt. Change scope and projectId to move the skill: a move needs the skill:create and skill:delete scopes too.
+  Replace the skill and save it as the next version. Send the whole skill: the body of the retrieve endpoint is a valid body. Send back the skillHash you read: if the content, the place or the availability of the skill changed since then, the save fails with 409. The server ignores id, source, latestVersion, createdAt and updatedAt. The content of a synced skill is read-only: a change to it fails with 400. Change scope and projectId to move the skill: a move needs the skill:create and skill:delete scopes too.
 
   Requires the `skill:update` API key scope.
 x-required-scope: skill:update
@@ -69,6 +69,16 @@ requestBody:
             minLength: 1
           id:
             type: string
+          source:
+            type: string
+            enum:
+              - ui
+              - agent
+              - mcp
+              - assistant
+              - import
+              - github
+              - api
           latestVersion:
             type: number
           createdAt:

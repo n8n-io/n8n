@@ -14,6 +14,16 @@ properties:
   projectId:
     type: string
     nullable: true
+  source:
+    type: string
+    enum:
+      - ui
+      - agent
+      - mcp
+      - assistant
+      - import
+      - github
+      - api
   latestVersion:
     type: number
   availableToAssistant:
@@ -46,6 +56,7 @@ required:
   - description
   - scope
   - projectId
+  - source
   - latestVersion
   - availableToAssistant
   - availableToMCP

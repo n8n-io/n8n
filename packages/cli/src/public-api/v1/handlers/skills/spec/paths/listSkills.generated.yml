@@ -3,7 +3,7 @@ tags:
   - Skill
 summary: List skills
 description: |-
-  List the skills you can read: instance skills and the skills of your projects. The response is one cursor page: read the next page with the cursor query parameter. Narrow the list to one project with projectId.
+  List the skills you can read: instance skills and the skills of your projects. The response is one cursor page: read the next page with the cursor query parameter. Narrow the list to one project with projectId. The source field tells how a skill was created. A synced skill has the source github.
 
   Requires the `skill:list` API key scope.
 x-required-scope: skill:list
@@ -43,6 +43,16 @@ responses:
                   projectId:
                     type: string
                     nullable: true
+                  source:
+                    type: string
+                    enum:
+                      - ui
+                      - agent
+                      - mcp
+                      - assistant
+                      - import
+                      - github
+                      - api
                   latestVersion:
                     type: number
                   availableToAssistant:
@@ -59,6 +69,7 @@ responses:
                   - description
                   - scope
                   - projectId
+                  - source
                   - latestVersion
                   - availableToAssistant
                   - availableToMCP

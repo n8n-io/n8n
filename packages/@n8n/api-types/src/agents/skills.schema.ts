@@ -40,7 +40,9 @@ export type SkillScope = z.infer<typeof skillScopeSchema>;
  * n8n package import, `github` by Skill Sync from a GitHub source, `api` from the public API.
  * A synced skill is read-only.
  */
-export type SkillSource = 'ui' | 'agent' | 'mcp' | 'assistant' | 'import' | 'github' | 'api';
+const skillSourceSchema = z.enum(['ui', 'agent', 'mcp', 'assistant', 'import', 'github', 'api']);
+
+export type SkillSource = z.infer<typeof skillSourceSchema>;
 
 /** The user who created a skill, as the settings list names them. */
 export type SkillUserDto = {
@@ -338,6 +340,7 @@ export class UpdateSkillPublicDto extends Z.class(
 		availableToMCP: z.boolean(),
 		skillHash: z.string().min(1),
 		id: z.string().optional(),
+		source: skillSourceSchema.optional(),
 		latestVersion: z.number().optional(),
 		createdAt: z.string().optional(),
 		updatedAt: z.string().optional(),
@@ -357,6 +360,7 @@ const skillListPublicItemShape = {
 	description: z.string(),
 	scope: skillScopeSchema,
 	projectId: z.string().nullable(),
+	source: skillSourceSchema,
 	latestVersion: z.number(),
 	availableToAssistant: z.boolean(),
 	availableToMCP: z.boolean(),

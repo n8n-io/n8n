@@ -3,7 +3,7 @@ tags:
   - Skill
 summary: Retrieve a skill
 description: |-
-  Retrieve one skill by ID with the content of its latest version.
+  Retrieve one skill by ID with the content of its latest version. The source field tells how the skill was created. A synced skill has the source github.
 
   Requires the `skill:read` API key scope.
 x-required-scope: skill:read
