@@ -1,3 +1,5 @@
+import type { PromotionDirection } from '@n8n/api-types';
+
 /** Development only. The scenarios of the Environments Playground. */
 export const PLAYGROUND_GROUPS = ['promote', 'apply', 'review'] as const;
 export type PlaygroundGroup = (typeof PLAYGROUND_GROUPS)[number];
@@ -23,19 +25,23 @@ export type PlaygroundScenarioId = (typeof PLAYGROUND_SCENARIO_IDS)[number];
 export interface PlaygroundScenario {
 	id: PlaygroundScenarioId;
 	group: PlaygroundGroup;
+	/** The page that the scenario shows. A review has none yet. */
+	direction?: PromotionDirection;
+	/** False until the scenario has sample data and a screen. */
+	built: boolean;
 }
 
 export const PLAYGROUND_SCENARIOS: readonly PlaygroundScenario[] = [
-	{ id: 'p1', group: 'promote' },
-	{ id: 'p2', group: 'promote' },
-	{ id: 'p3', group: 'promote' },
-	{ id: 'p4', group: 'promote' },
-	{ id: 'p5', group: 'promote' },
-	{ id: 'a1', group: 'apply' },
-	{ id: 'a2', group: 'apply' },
-	{ id: 'a3', group: 'apply' },
-	{ id: 'a4', group: 'apply' },
-	{ id: 'b1', group: 'review' },
+	{ id: 'p1', group: 'promote', direction: 'promote', built: true },
+	{ id: 'p2', group: 'promote', direction: 'promote', built: false },
+	{ id: 'p3', group: 'promote', direction: 'promote', built: false },
+	{ id: 'p4', group: 'promote', direction: 'promote', built: false },
+	{ id: 'p5', group: 'promote', direction: 'promote', built: false },
+	{ id: 'a1', group: 'apply', direction: 'apply', built: true },
+	{ id: 'a2', group: 'apply', direction: 'apply', built: false },
+	{ id: 'a3', group: 'apply', direction: 'apply', built: false },
+	{ id: 'a4', group: 'apply', direction: 'apply', built: false },
+	{ id: 'b1', group: 'review', built: false },
 ];
 
 export const DEFAULT_PLAYGROUND_SCENARIO: PlaygroundScenarioId = 'a4';

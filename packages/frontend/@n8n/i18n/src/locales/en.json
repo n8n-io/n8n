@@ -4992,6 +4992,7 @@
 	"settings.promotions.playground.title": "Environments Playground",
 	"promotions.playground.description": "Trigger each promotion and apply scenario with sample data. Development builds only.",
 	"promotions.playground.scenarios": "Scenarios",
+	"promotions.playground.stage.pending": "This scenario has no screen yet.",
 	"promotions.playground.group.promote": "Promote",
 	"promotions.playground.group.apply": "Apply",
 	"promotions.playground.group.review": "Review",
