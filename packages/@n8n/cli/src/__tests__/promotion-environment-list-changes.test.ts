@@ -285,6 +285,38 @@ describe('promotion-environment list-changes command', () => {
 		expect(stderr).toEqual([[APPLY_LISTS]]);
 	});
 
+	it('names the workflow and the condition of an Apply entry that depends on the selection', async () => {
+		const { stdout, stderr } = await runListChanges(
+			{ format: 'table' },
+			applyPreview([
+				{
+					kind: 'workflow',
+					id: 'wf-9',
+					name: 'Send alert',
+					group: 'needs-action',
+					reason: 'not-on-instance',
+					accessible: true,
+					blocking: false,
+					condition: 'target-not-selected',
+					consumers,
+				},
+			]),
+			'apply',
+		);
+
+		expect(stdout).toEqual([TABLE]);
+		expect(stderr).toEqual([
+			[
+				[
+					'',
+					'Needs your action (1)',
+					'Create these dependencies before you apply.',
+					'  Workflow "Send alert" (id wf-9): not on this instance; used by Weekly report; only when the Apply does not include this workflow',
+				].join('\n'),
+			],
+		]);
+	});
+
 	it('does not name the project of a consumer', async () => {
 		const { stderr } = await runListChanges({ format: 'table' }, PROMOTE_PREVIEW_WITH_LISTS);
 
@@ -455,7 +487,7 @@ describe('promotion-environment list-apply-changes command', () => {
 					APPLY_LISTS,
 					'',
 					'Outside your access (1)',
-					'You do not have access to these dependencies.',
+					'You cannot add these dependencies from here: they are in a project that you cannot access, or the branch does not hold them.',
 					'  Credential "Shared CRM" (hubspotApi): not on this instance; stops the Apply; used by Weekly report',
 				].join('\n'),
 			],

@@ -517,7 +517,8 @@ without entries is not printed.
 | Group | Operation | Meaning |
 |-------|-----------|---------|
 | `In another project` | Promote | The dependency is in another project that you can access. This Promote does not include it. |
-| `Outside your access` | Promote, Apply | You do not have access to the dependency. |
+| `Outside your access` | Promote | You do not have access to the dependency. |
+| `Outside your access` | Apply | You can't add the dependency from here. It is in a project that you can't access, or the branch does not hold it. |
 | `Cannot be promoted` | Promote | The dependency is in a personal project. Move it to a team project to promote it. |
 | `Needs your action` | Apply | Create the dependency before you apply. |
 | `Warnings` | Promote | The reference points to something that does not exist on the source instance. |
@@ -536,9 +537,12 @@ Each line shows one entry:
   entry. Without it, the operation continues without the dependency.
 - `used by`: the workflows that use the dependency. A line names up to five
   workflows and counts the rest, for example `(+2 more)`.
+- For a conditional entry, the ID of the workflow and the condition. See
+  [Conditional entries](#conditional-entries).
 
 | Reason | Meaning |
 |--------|---------|
+| `not on this instance and not on the branch` | This instance does not have the dependency, and Apply can't add it. The branch holds the credential without an owner project, or the branch does not hold the workflow. |
 | `not on this instance` | The dependency does not exist on this instance. |
 | `this project cannot use it` | The credential exists, but it is not shared with the project of the workflow. |
 | `has another type on this instance` | A credential with this ID exists, but its type is different. |
@@ -546,6 +550,27 @@ Each line shows one entry:
 | `this project cannot use an instance credential` | The credential on this instance has a usage scope that the project can't use. |
 | `archived on this instance` | The sub-workflow or error workflow is archived. |
 | `its caller policy refuses the workflow` | The sub-workflow or error workflow does not let this workflow call it. |
+
+### Conditional entries
+
+`list-changes <projectId> apply` covers every workflow of the project on the
+branch, before you select workflows. Some entries for a sub-workflow or an error
+workflow depend on the selection. Such a line shows the ID of that workflow
+after its name, and the condition at the end:
+
+```text
+  Workflow "Send alert" (id wf-9): not on this instance; used by Weekly report; only when the Apply does not include this workflow
+```
+
+| Condition | Meaning |
+|-----------|---------|
+| `only when the Apply includes this workflow` | The entry applies only when the selection of `apply-selection` includes the workflow with this ID. |
+| `only when the Apply does not include this workflow` | The entry applies only when the selection of `apply-selection` does not include the workflow with this ID. |
+
+In the example, the entry does not apply when the selection includes `wf-9`. An
+entry without a condition applies to every selection. The result of an Apply
+has no conditional entries. With `--json`, the entry has the field `condition`:
+`target-selected` or `target-not-selected`.
 
 `--quiet` hides the lists. With `--json`, each command prints the API response
 and no list. The response holds the same entries: `missingDependencies` and
@@ -624,9 +649,10 @@ instance still matches the preview that you reviewed.
 
 A `blocked` Apply prints the count of each cause, and then the
 [missing dependencies](#missing-dependencies) by group. `Outside your access`
-counts the dependencies that you do not have access to. Such a dependency is in
+counts the dependencies that you can't add from here: they are in a project
+that you can't access, or the branch does not hold them. Such a dependency is in
 no other count, so it can be the only cause. Someone with access must add it to
-this instance.
+this instance or to the branch.
 
 ```text
 Apply is blocked. Nothing was imported.
@@ -643,7 +669,7 @@ Create these dependencies before you apply.
   Workflow "Send alert": archived on this instance; used by Weekly report
 
 Outside your access (1)
-You do not have access to these dependencies.
+You cannot add these dependencies from here: they are in a project that you cannot access, or the branch does not hold them.
   Credential "Shared CRM" (hubspotApi): not on this instance; stops the Apply; used by Invoices
 
 Run with --json for the details. After you resolve them, run:

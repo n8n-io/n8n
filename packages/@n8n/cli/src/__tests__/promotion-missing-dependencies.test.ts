@@ -146,12 +146,13 @@ describe('applyDependencyLines', () => {
 			'  Variable "API_URL": not on this instance; stops the Apply; used by Weekly report',
 			'',
 			'Outside your access (1)',
-			'You do not have access to these dependencies.',
+			'You cannot add these dependencies from here: they are in a project that you cannot access, or the branch does not hold them.',
 			'  Credential "Send alert": not on this instance; stops the Apply; used by Weekly report',
 		]);
 	});
 
 	it.each([
+		['not-on-branch', 'not on this instance and not on the branch'],
 		['not-on-instance', 'not on this instance'],
 		['not-shared', 'this project cannot use it'],
 		['type-mismatch', 'has another type on this instance'],
@@ -164,6 +165,92 @@ describe('applyDependencyLines', () => {
 
 		expect(lines[2]).toBe(
 			`  Credential "Billing API" (httpHeaderAuth): ${text}; used by Weekly report`,
+		);
+	});
+
+	it('explains an entry that this instance lacks and that the branch does not hold', () => {
+		const lines = applyDependencyLines([OUTSIDE_ACCESS]);
+
+		expect(lines).toEqual([
+			'Outside your access (1)',
+			'You cannot add these dependencies from here: they are in a project that you cannot access, or the branch does not hold them.',
+			'  Workflow "Send alert": not on this instance and not on the branch; used by Weekly report',
+		]);
+	});
+
+	it('prints no reason for a reason that it does not know', () => {
+		const lines = applyDependencyLines([
+			{
+				...NEEDS_ACTION,
+				reason: 'future-reason' as PromotionMissingDependency['reason'],
+			},
+		]);
+
+		expect(lines[2]).toBe(
+			'  Credential "Billing API" (httpHeaderAuth): stops the Apply; used by Weekly report',
+		);
+		expect(lines.join('\n')).not.toContain('undefined');
+	});
+
+	it.each([
+		[
+			'target-selected',
+			'archived',
+			'archived on this instance; used by Weekly report; only when the Apply includes this workflow',
+		],
+		[
+			'target-not-selected',
+			'not-on-instance',
+			'not on this instance; used by Weekly report; only when the Apply does not include this workflow',
+		],
+	] as const)('names the workflow of the condition %s by its id', (condition, reason, facts) => {
+		const lines = applyDependencyLines([
+			dependency({
+				kind: 'workflow',
+				id: 'wf-9',
+				credentialType: undefined,
+				name: 'Send alert',
+				group: 'needs-action',
+				reason,
+				condition,
+			}),
+		]);
+
+		expect(lines[2]).toBe(`  Workflow "Send alert" (id wf-9): ${facts}`);
+	});
+
+	it('prints no id and no condition for an entry without a condition', () => {
+		const lines = applyDependencyLines([
+			dependency({
+				kind: 'workflow',
+				id: 'wf-9',
+				credentialType: undefined,
+				name: 'Send alert',
+				group: 'needs-action',
+				reason: 'archived',
+			}),
+		]);
+
+		expect(lines[2]).toBe(
+			'  Workflow "Send alert": archived on this instance; used by Weekly report',
+		);
+	});
+
+	it('prints no id and no condition for a condition that it does not know', () => {
+		const lines = applyDependencyLines([
+			dependency({
+				kind: 'workflow',
+				id: 'wf-9',
+				credentialType: undefined,
+				name: 'Send alert',
+				group: 'needs-action',
+				reason: 'archived',
+				condition: 'future-condition' as PromotionMissingDependency['condition'],
+			}),
+		]);
+
+		expect(lines[2]).toBe(
+			'  Workflow "Send alert": archived on this instance; used by Weekly report',
 		);
 	});
 

@@ -13,8 +13,12 @@ const MAX_LISTED_WORKFLOWS = 5;
 
 const KINDS = { credential: 'Credential', variable: 'Variable', workflow: 'Workflow' };
 
-/** Only Apply gives a reason. On Promote, the group is the reason. */
+/**
+ * Only Apply gives a reason. On Promote, the group is the reason.
+ * A reason that this version does not know has no text, so the line leaves it out.
+ */
 const APPLY_REASONS: Partial<Record<PromotionMissingDependency['reason'], string>> = {
+	'not-on-branch': 'not on this instance and not on the branch',
 	'not-on-instance': 'not on this instance',
 	'not-shared': 'this project cannot use it',
 	'type-mismatch': 'has another type on this instance',
@@ -22,6 +26,15 @@ const APPLY_REASONS: Partial<Record<PromotionMissingDependency['reason'], string
 	'incompatible-usage-scope': 'this project cannot use an instance credential',
 	archived: 'archived on this instance',
 	'caller-policy': 'its caller policy refuses the workflow',
+};
+
+/**
+ * An entry of a project Apply preview can depend on the selection. The preview has no selection,
+ * so the line states the condition.
+ */
+const APPLY_CONDITIONS: Record<NonNullable<PromotionMissingDependency['condition']>, string> = {
+	'target-selected': 'only when the Apply includes this workflow',
+	'target-not-selected': 'only when the Apply does not include this workflow',
 };
 
 /**
@@ -39,7 +52,7 @@ export function promoteDependencyLines(
 				'These dependencies are in other projects that you can access. This Promote does not include them.',
 			entries: inGroup(missingDependencies, 'other-project'),
 		},
-		outsideAccessSection(missingDependencies),
+		outsideAccessSection(missingDependencies, 'You do not have access to these dependencies.'),
 		{
 			title: 'Cannot be promoted',
 			description:
@@ -65,7 +78,10 @@ export function applyDependencyLines(
 			description: 'Create these dependencies before you apply.',
 			entries: inGroup(missingDependencies, 'needs-action'),
 		},
-		outsideAccessSection(missingDependencies),
+		outsideAccessSection(
+			missingDependencies,
+			'You cannot add these dependencies from here: they are in a project that you cannot access, or the branch does not hold them.',
+		),
 	]);
 }
 
@@ -81,10 +97,13 @@ function inGroup(
 	return missingDependencies.filter((dependency) => dependency.group === group);
 }
 
-function outsideAccessSection(missingDependencies: PromotionMissingDependency[]): Section {
+function outsideAccessSection(
+	missingDependencies: PromotionMissingDependency[],
+	description: string,
+): Section {
 	return {
 		title: 'Outside your access',
-		description: 'You do not have access to these dependencies.',
+		description,
 		entries: inGroup(missingDependencies, 'outside-access'),
 	};
 }
@@ -111,16 +130,21 @@ function entryLine(
 ): string {
 	const credentialType =
 		'credentialType' in entry && entry.credentialType ? ` (${entry.credentialType})` : '';
+	const dependency = operation === 'Apply' && 'reason' in entry ? entry : undefined;
+	const condition = dependency?.condition ? APPLY_CONDITIONS[dependency.condition] : undefined;
+	// The condition names "this workflow", so the line must say which workflow that is.
+	const id = condition && entry.id ? ` (id ${entry.id})` : '';
 	const workflowNames = entry.consumers.flatMap(({ workflows }) =>
 		workflows.map(({ name }) => name),
 	);
 	const facts = [
-		'reason' in entry ? APPLY_REASONS[entry.reason] : undefined,
+		dependency ? APPLY_REASONS[dependency.reason] : undefined,
 		entry.blocking ? `stops the ${operation}` : undefined,
 		`used by ${listNames(workflowNames)}`,
+		condition,
 	].filter((fact) => fact !== undefined);
 
-	return `  ${KINDS[entry.kind]} "${entry.name}"${credentialType}: ${facts.join('; ')}`;
+	return `  ${KINDS[entry.kind]} "${entry.name}"${id}${credentialType}: ${facts.join('; ')}`;
 }
 
 function listNames(names: string[]): string {
