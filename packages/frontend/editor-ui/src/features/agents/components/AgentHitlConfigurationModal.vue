@@ -26,6 +26,8 @@ import {
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@n8n/composables/useToast';
 import { VIEWS } from '@/app/constants';
+import { LOCAL_STORAGE_CANVAS_GROUP_EXPANDED } from '@/app/constants/localStorage';
+import { useCanvasGroupIdStorage } from '@/features/workflows/canvas/composables/useCanvasGroupIdStorage';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { getAgentHitlChannels, getAgentHitlChannelOptions } from '../composables/useAgentApi';
@@ -338,6 +340,11 @@ async function createWorkflow() {
 	const tab = window.open('', '_blank');
 	try {
 		const triggerId = uuid();
+		const verificationId = uuid();
+		const sectionId = uuid();
+		const triggerName = i18n.baseText('agents.hitl.workflowRequestNodeName');
+		const verificationName = i18n.baseText('agents.hitl.workflowVerificationNodeName');
+		const responseName = i18n.baseText('agents.hitl.workflowResponseNodeName');
 		const agentName = props.context.getConfig()?.name ?? i18n.baseText('agents.hitl.unnamedAgent');
 		const existing = await workflowList.searchWorkflows({
 			projectId: props.projectId,
@@ -356,15 +363,23 @@ async function createWorkflow() {
 			nodes: [
 				{
 					id: triggerId,
-					name: 'Agent review',
+					name: triggerName,
 					type: AGENT_DECISION_TRIGGER_NODE_TYPE,
 					typeVersion: 1,
 					position: [0, 0],
 					parameters: {},
 				},
 				{
+					id: verificationId,
+					name: verificationName,
+					type: 'n8n-nodes-base.noOp',
+					typeVersion: 1,
+					position: [240, 0],
+					parameters: {},
+				},
+				{
 					id: uuid(),
-					name: 'Respond to agent review',
+					name: responseName,
 					type: 'n8n-nodes-base.agentDecisionResponse',
 					typeVersion: 1,
 					position: [480, 0],
@@ -372,16 +387,27 @@ async function createWorkflow() {
 				},
 			],
 			connections: {
-				'Agent review': {
-					main: [[{ node: 'Respond to agent review', type: 'main', index: 0 }]],
+				[triggerName]: {
+					main: [[{ node: verificationName, type: 'main', index: 0 }]],
+				},
+				[verificationName]: {
+					main: [[{ node: responseName, type: 'main', index: 0 }]],
 				},
 			},
+			nodeGroups: [
+				{
+					id: sectionId,
+					name: i18n.baseText('agents.hitl.workflowVerificationSectionName'),
+					nodeIds: [verificationId],
+				},
+			],
 		});
+		useCanvasGroupIdStorage(LOCAL_STORAGE_CANVAS_GROUP_EXPANDED).write(workflow.id, [sectionId]);
 		workflows.value = [...workflows.value, { id: workflow.id, name: workflow.name }];
 		workflowId.value = workflow.id;
 		const { href } = router.resolve({
 			name: VIEWS.WORKFLOW,
-			params: { workflowId: workflow.id, nodeId: triggerId },
+			params: { workflowId: workflow.id },
 		});
 		if (tab) {
 			tab.opener = null;

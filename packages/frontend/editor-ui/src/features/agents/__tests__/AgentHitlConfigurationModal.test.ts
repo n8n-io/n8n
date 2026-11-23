@@ -1,3 +1,6 @@
+import type { IWorkflowBase } from 'n8n-workflow';
+import { LOCAL_STORAGE_CANVAS_GROUP_EXPANDED } from '@/app/constants/localStorage';
+import { useCanvasGroupIdStorage } from '@/features/workflows/canvas/composables/useCanvasGroupIdStorage';
 import { mount, flushPromises, type VueWrapper } from '@vue/test-utils';
 import { defineComponent, type ComponentPublicInstance } from 'vue';
 import {
@@ -23,6 +26,9 @@ const mocks = vi.hoisted(() => ({
 	options: vi.fn(),
 	showError: vi.fn(),
 	open: vi.fn(),
+	resolve: vi.fn(({ params }: { params: { workflowId: string } }) => ({
+		href: `/workflow/${params.workflowId}`,
+	})),
 }));
 vi.mock('@/app/stores/workflows.store', () => ({
 	useWorkflowsStore: () => ({ createNewWorkflow: mocks.create }),
@@ -41,9 +47,7 @@ vi.mock('@/app/stores/nodeTypes.store', () => ({
 }));
 vi.mock('vue-router', () => ({
 	useRouter: () => ({
-		resolve: ({ params }: { params: { workflowId: string } }) => ({
-			href: `/workflow/${params.workflowId}`,
-		}),
+		resolve: mocks.resolve,
 	}),
 }));
 vi.mock('@n8n/design-system', async (importOriginal) => {
@@ -141,7 +145,10 @@ beforeEach(() => {
 	]);
 	vi.spyOn(window, 'open').mockImplementation(mocks.open);
 });
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => {
+	vi.restoreAllMocks();
+	localStorage.removeItem(LOCAL_STORAGE_CANVAS_GROUP_EXPANDED);
+});
 it('searches workflows in a select and offers workflow creation', async () => {
 	const wrapper = render();
 	await flushPromises();
@@ -223,21 +230,44 @@ it('names a new workflow from the Agent and the next available number', async ()
 			projectId: 'project',
 			nodes: [
 				expect.objectContaining({
-					name: 'Agent review',
+					name: 'Request from agent',
 					type: 'n8n-nodes-base.agentDecisionTrigger',
 				}),
 				expect.objectContaining({
-					name: 'Respond to agent review',
+					name: 'Verify/Approve',
+					type: 'n8n-nodes-base.noOp',
+				}),
+				expect.objectContaining({
+					name: 'Respond to agent',
 					type: 'n8n-nodes-base.agentDecisionResponse',
 					parameters: { approved: false },
 				}),
 			],
 			connections: {
-				'Agent review': {
-					main: [[{ node: 'Respond to agent review', type: 'main', index: 0 }]],
+				'Request from agent': {
+					main: [[{ node: 'Verify/Approve', type: 'main', index: 0 }]],
+				},
+				'Verify/Approve': {
+					main: [[{ node: 'Respond to agent', type: 'main', index: 0 }]],
 				},
 			},
 		}),
+	);
+	expect(mocks.resolve).toHaveBeenCalledWith(
+		expect.objectContaining({ params: { workflowId: 'new' } }),
+	);
+	const created = mocks.create.mock.calls[0][0] as Pick<IWorkflowBase, 'nodes' | 'nodeGroups'>;
+	const verification = created.nodes.find((node) => node.type === 'n8n-nodes-base.noOp');
+	expect(created.nodes.some((node) => node.type === 'n8n-nodes-base.stickyNote')).toBe(false);
+	expect(created.nodeGroups).toEqual([
+		{
+			id: expect.any(String),
+			name: 'Replace this with your logic to verify the agent request',
+			nodeIds: [verification?.id],
+		},
+	]);
+	expect(useCanvasGroupIdStorage(LOCAL_STORAGE_CANVAS_GROUP_EXPANDED).read('new')).toEqual(
+		created.nodeGroups?.map((group) => group.id),
 	);
 	await wrapper.get('[data-testid="agent-hitl-save"]').trigger('click');
 	expect(wrapper.emitted('save')?.[0]).toEqual([
