@@ -66,7 +66,11 @@ async function load() {
 			'state',
 			result.warnings.length > 0
 				? { status: 'unavailable' }
-				: { status: 'ready', headCommitSha: result.headCommitSha },
+				: {
+						status: 'ready',
+						headCommitSha: result.headCommitSha,
+						issueCount: result.outsideAccess?.length ?? 0,
+					},
 		);
 	} catch (error) {
 		if (current !== generation) return;

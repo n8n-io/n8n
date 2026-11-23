@@ -392,3 +392,37 @@ describe('close', () => {
 		expect(getByTestId('inbox-promotion-review-close')).toBeDisabled();
 	});
 });
+
+describe('issues tab', () => {
+	const IssuesStub = defineComponent({
+		props: { reviewId: { type: String, required: true } },
+		template: '<div data-test-id="promotion-issues-stub">{{ reviewId }}</div>',
+	});
+
+	beforeEach(() => {
+		componentRegistry.register('promotion-issues', IssuesStub);
+		onTestFinished(() => componentRegistry.unregister('promotion-issues'));
+	});
+
+	it('should show no Issues tab when the review has no issues', async () => {
+		const { getByTestId, queryByRole } = renderComponent({ props: { item: item(), onItemChange } });
+
+		await waitFor(() => expect(getByTestId('promotion-changes-stub')).toBeInTheDocument());
+
+		expect(queryByRole('tab', { name: /Issues/ })).not.toBeInTheDocument();
+	});
+
+	it('should show the Issues tab with its count and open the issues of the review', async () => {
+		shownChanges = { status: 'ready', headCommitSha, issueCount: 3 };
+		const { getByRole, getByTestId, queryByTestId } = renderComponent({
+			props: { item: item(), onItemChange },
+		});
+
+		await userEvent.click(await waitFor(() => getByRole('tab', { name: /Issues/ })));
+
+		expect(getByRole('tab', { name: /Issues/ })).toHaveTextContent('3');
+		expect(getByTestId('promotion-issues-stub')).toHaveTextContent('rev-1');
+		// The changes stay mounted, so approving keeps the head that the reviewer saw.
+		expect(queryByTestId('promotion-changes-stub')).toBeInTheDocument();
+	});
+});

@@ -9,11 +9,12 @@ import type {
 	PromotionPreview,
 	PromotionResourceDetails,
 	PromotionResourceDetailsRequestDto,
-	PromotionReviewChanges,
 	PromotionReviewDetailsRequestDto,
 } from '@n8n/api-types';
 import type { IRestApiContext, PublicApiContext } from '@n8n/rest-api-client';
 import { makePublicApiRequest, makeRestApiRequest } from '@n8n/rest-api-client';
+
+import type { PromotionReviewChangesWithIssues } from './promotions.types';
 
 export async function getPromotionPreview(
 	context: PublicApiContext,
@@ -69,7 +70,7 @@ export async function getPromotionEnvironmentDetails(
 export async function getPromotionReviewChanges(
 	context: IRestApiContext,
 	reviewId: string,
-): Promise<PromotionReviewChanges> {
+): Promise<PromotionReviewChangesWithIssues> {
 	return await makeRestApiRequest(context, 'GET', `/promotions/reviews/${reviewId}/changes`);
 }
 

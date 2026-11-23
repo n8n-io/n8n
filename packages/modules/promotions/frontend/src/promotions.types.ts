@@ -2,6 +2,7 @@ import type {
 	ApplyPackageResultDto,
 	PromotionBindingConsumer,
 	PromotionPreviewCheck,
+	PromotionReviewChanges,
 	PromotionVariableScope,
 } from '@n8n/api-types';
 
@@ -56,3 +57,11 @@ export type CreatedPromotionProject = { id: string; name: string };
 export type CreatePromotionBinding = (
 	binding: MissingPromotionBinding,
 ) => Promise<CreatedPromotionBinding | null>;
+
+/**
+ * The changes of a promotion review, with what the promotion leaves out. The backend does not
+ * send `outsideAccess` yet: design previews fill it in.
+ */
+export type PromotionReviewChangesWithIssues = PromotionReviewChanges & {
+	outsideAccess?: PromotionOutsideAccessDependency[];
+};

@@ -21,6 +21,8 @@ import type { INodeTypeDescription, IWorkflowSettings } from 'n8n-workflow';
  * `promotion-changes` lists what a promotion review changes. It loads the changes itself, so
  * the module needs no knowledge of the promotion types. The promotions module provides it, and
  * the shell registers it for the inbox module.
+ * `promotion-issues` lists what a promotion review leaves out, such as dependencies that the
+ * promotion does not carry. It loads its data itself, like `promotion-changes`.
  * `project-header` is the overview/project page header with the project tabs, which a
  * resource list page renders above its list.
  * `insights-summary` is the weekly insights summary of the overview pages. It loads the summary
@@ -36,6 +38,7 @@ export type ModuleComponentSlot =
 	| 'workflow-diff-placeholder'
 	| 'code-diff'
 	| 'promotion-changes'
+	| 'promotion-issues'
 	| 'project-header'
 	| 'insights-summary'
 	| 'resources-list-layout'
@@ -91,6 +94,9 @@ export type SlotPromotionChangesProps = {
 	reviewId: string;
 };
 
+/** The `promotion-issues` slot takes the same review as `promotion-changes`. */
+export type SlotPromotionIssuesProps = SlotPromotionChangesProps;
+
 export type SlotNodeTypeIconProps = {
 	nodeType: INodeTypeDescription | null;
 	size?: number;
@@ -107,7 +113,12 @@ export type SlotCredentialTypeIconProps = {
  */
 export type PromotionChangesState =
 	| { status: 'loading' }
-	| { status: 'ready'; headCommitSha: string }
+	| {
+			status: 'ready';
+			headCommitSha: string;
+			/** How many issues the review has. The inbox shows the Issues tab only when this is above 0. */
+			issueCount?: number;
+	  }
 	| { status: 'unavailable' };
 
 /** The create action shown as the main button of the `project-header` slot. */
