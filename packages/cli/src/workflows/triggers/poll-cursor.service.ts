@@ -131,6 +131,7 @@ export class PollCursorService {
 	 * @param args.nodeId - Poll trigger node whose cursor is advancing.
 	 * @param args.cursor - New cursor value to store.
 	 * @param args.payload - Execution row to insert for the poll's result.
+	 * @param args.projectId - Owner project of the workflow, when the caller has it.
 	 * @param args.fence - Lease to check before writing; see `advanceCursor`.
 	 * @returns The new execution's id, or `null` if the cursor didn't advance.
 	 * @remarks A `null` result doesn't mean someone else already did this work, only that someone else now owns it.
@@ -140,9 +141,10 @@ export class PollCursorService {
 		nodeId: string;
 		cursor: PollCursor;
 		payload: CreateExecutionPayload;
+		projectId?: string;
 		fence?: PollLeaseFence;
 	}): Promise<{ executionId: string } | null> {
-		const { workflowId, nodeId, cursor, payload, fence } = args;
+		const { workflowId, nodeId, cursor, payload, projectId, fence } = args;
 
 		return await this.measureCommit('with_execution', async () => {
 			if (this.enabled) {
@@ -155,7 +157,7 @@ export class PollCursorService {
 						fence,
 					);
 					if (advanced) {
-						const executionId = await this.executionPersistence.create(payload, ctx);
+						const executionId = await this.executionPersistence.create(payload, ctx, { projectId });
 						return { value: { executionId }, advanced };
 					}
 					return { value: null, advanced };
@@ -170,7 +172,7 @@ export class PollCursorService {
 				fence,
 			);
 			if (advanced) {
-				const executionId = await this.executionPersistence.create(payload, {});
+				const executionId = await this.executionPersistence.create(payload, {}, { projectId });
 				return { value: { executionId }, advanced };
 			}
 			return { value: null, advanced };
