@@ -33,6 +33,12 @@ import type {
 	SkillListResponse,
 	SkillSaveResponse,
 	SkillScope,
+	ConnectPublicSkillSource,
+	DiscoverPublicSkillSource,
+	PublicSkillSourceDiscovery,
+	PublicSkillSourceImportCheck,
+	SkillSourceConnectResponse,
+	SkillSourceListItem,
 	EvaluationMetric,
 	TaskList,
 	InstanceAiApprovalMode,
@@ -54,6 +60,7 @@ import type {
 	INodeTypes,
 	ITaskData,
 	NodeConnectionType,
+	WorkflowEngineType,
 } from 'n8n-workflow';
 import type { z } from 'zod';
 
@@ -1243,6 +1250,13 @@ export interface InstanceAiPreferenceService {
 
 export interface InstanceAiSkillService {
 	assistantSkillsEnabled: boolean;
+	sources?: {
+		list(): Promise<SkillSourceListItem[]>;
+		discover(input: DiscoverPublicSkillSource): Promise<PublicSkillSourceDiscovery>;
+		/** What an import of the selection does, before the user approves it. Stores nothing. */
+		checkImport(input: ConnectPublicSkillSource): Promise<PublicSkillSourceImportCheck>;
+		connect(input: ConnectPublicSkillSource): Promise<SkillSourceConnectResponse>;
+	};
 	list(options: {
 		query?: string;
 		scope?: SkillScope;
@@ -1777,6 +1791,14 @@ export type InstanceAiChangedArtifact = Pick<
 	'type' | 'id' | 'name' | 'projectId'
 >;
 
+/** The workflow engine setup of the instance. */
+export interface InstanceAiEngineSetup {
+	/** True when the `engine-v2` module is active, so the instance can run workflows on engine v2. */
+	engineV2Available: boolean;
+	/** The engine that a new workflow gets when it is saved without `settings.engineType`. */
+	newWorkflowEngine: WorkflowEngineType;
+}
+
 export interface InstanceAiContext {
 	/** Instance-wide gate for credential description output and guidance. */
 	credentialDescriptionsEnabled?: boolean;
@@ -1898,6 +1920,11 @@ export interface InstanceAiContext {
 	/** Human-readable hints about licensed features that are NOT available on this instance.
 	 *  Injected into the system prompt so the agent can explain why certain capabilities are missing. */
 	licenseHints?: string[];
+	/**
+	 * The workflow engine setup of the instance. The host resolves it when it builds the
+	 * context. Absent means that new workflows run on engine v1.
+	 */
+	engineSetup?: InstanceAiEngineSetup;
 	/** Domain access tracker for HITL gating of fetch-url and similar tools. */
 	domainAccessTracker?: DomainAccessTracker;
 	/** Current run ID — used for transient (allow_once) domain approvals. */

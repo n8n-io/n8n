@@ -12,6 +12,7 @@ import type {
 	ContentToolCall,
 	ToolCallSuspensionInfo,
 } from '../../types/sdk/message';
+import type { ReasoningReplayScope } from '../../types/sdk/provider';
 import type { JSONValue } from '../../types/utils/json';
 import { stringifyError } from '../loop/runtime-helpers';
 import { compareKeyset } from '../memory/memory-store';
@@ -372,14 +373,14 @@ export class AgentMessageList {
 		volatileInstructions?: string,
 		splitSystemMessages = true,
 		providerId?: string,
+		replayReasoning?: ReasoningReplayScope,
 		targetModelId?: string,
 	): LlmContext {
 		const llmMessages = filterLlmMessages(stripOrphanedToolMessages(this.llmVisibleMessages()));
 		const sanitized = targetModelId
 			? sanitizeForeignModelMessages(llmMessages, targetModelId)
 			: llmMessages;
-		const messages = toAiMessages(sanitized, providerId);
-
+		const messages = toAiMessages(sanitized, providerId, replayReasoning);
 		// A masked window may be empty or start mid-exchange; anchor it with a
 		// synthetic user message so the model call stays valid.
 		if (this.observationMaskBoundary && messages[0]?.role !== 'user') {

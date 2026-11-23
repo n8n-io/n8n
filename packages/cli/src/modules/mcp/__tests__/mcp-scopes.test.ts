@@ -59,7 +59,7 @@ import { RuleRegistry } from '@/modules/breaking-changes/breaking-changes.rule-r
 import { MigrationFindingQueryService } from '@/modules/breaking-changes/query/migration-finding-query.service';
 import { MigrationFindingSyncService } from '@/modules/breaking-changes/sync/migration-finding-sync.service';
 import { MigrationFindingTriageService } from '@/modules/breaking-changes/triage/migration-finding-triage.service';
-import { SkillService, SkillsGate } from '@/modules/skills';
+import { SkillService, SkillSourceService, SkillsGate, SkillSyncFlagGate } from '@/modules/skills';
 import { AiPreferenceSettingsService } from '@/services/ai-preference-settings.service';
 import { DataTableProxyService } from '@n8n/backend-module-data-table';
 import { InstanceContextService } from '@/modules/instance-ai/instance-context.service';
@@ -169,13 +169,22 @@ describe('getAllowedToolNames', () => {
 
 	it('grants only the read skill tools with skill:read', () => {
 		expect(getAllowedToolNames(['skill:read'])).toEqual(
-			new Set(['search_n8n_skills', 'get_skill']),
+			new Set(['search_n8n_skills', 'get_skill', 'list_skill_sources']),
 		);
 	});
 
 	it('grants the read skill tools with skill:write too', () => {
 		expect(getAllowedToolNames(['skill:write'])).toEqual(
-			new Set(['create_skill', 'update_skill', 'delete_skill', 'search_n8n_skills', 'get_skill']),
+			new Set([
+				'create_skill',
+				'update_skill',
+				'delete_skill',
+				'search_n8n_skills',
+				'get_skill',
+				'list_skill_sources',
+				'discover_skill_source',
+				'import_skills_from_source',
+			]),
 		);
 	});
 
@@ -438,7 +447,9 @@ describe('McpService scope enforcement', () => {
 		'registers the skill tools only while the skills gate is on: %s',
 		async (skillsEnabled) => {
 			mockInstance(SkillService);
+			mockInstance(SkillSourceService);
 			mockInstance(SkillsGate, { isEnabled: skillsEnabled });
+			mockInstance(SkillSyncFlagGate).isEnabled.mockResolvedValue(true);
 			const server = await buildService({
 				builderEnabled: false,
 				agentsActive: true,
@@ -463,6 +474,8 @@ describe('McpService scope enforcement', () => {
 		'declares the skills extension with %s',
 		async (_, skillsEnabled, skillsExtensionEnabled, grantedScopes, declared) => {
 			mockInstance(SkillService);
+			mockInstance(SkillSourceService);
+			mockInstance(SkillSyncFlagGate).isEnabled.mockResolvedValue(false);
 			mockInstance(SkillsGate, { isEnabled: skillsEnabled });
 			const server = await buildService({ builderEnabled: false }).getServer(
 				user,

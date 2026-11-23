@@ -17,6 +17,7 @@ import {
 	DropdownMenuPortalTargetKey,
 	DropdownMenuSubMaxHeightKey,
 	DropdownMenuWidthKey,
+	DropdownMenuExtraPopperClassKey,
 	DropdownMenuExternalNavigationKey,
 	type DropdownMenuItemProps,
 	type DropdownMenuItemSlots,
@@ -57,6 +58,7 @@ const $style = useCssModule();
 const portalTarget = inject(DropdownMenuPortalTargetKey, ref(undefined));
 const subMenuMaxHeight = inject(DropdownMenuSubMaxHeightKey, ref(undefined));
 const menuWidth = inject(DropdownMenuWidthKey, ref('24rem'));
+const extraPopperClass = inject(DropdownMenuExtraPopperClassKey, ref(undefined));
 const externalNavigation = inject(DropdownMenuExternalNavigationKey, null);
 
 const internalSubMenuOpen = ref(false);
@@ -355,7 +357,7 @@ onBeforeUnmount(() => {
 
 			<DropdownMenuPortal v-bind="portalTarget ? { to: portalTarget } : {}">
 				<DropdownMenuSubContent
-					:class="$style['sub-content']"
+					:class="[$style['sub-content'], extraPopperClass]"
 					:style="[
 						subContentMaxHeight ? { maxHeight: subContentMaxHeight } : {},
 						subMenuMaxHeight ? { '--n8n-dropdown-sub-max-height': subMenuMaxHeight } : {},

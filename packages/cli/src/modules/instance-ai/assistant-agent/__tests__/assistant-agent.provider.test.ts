@@ -18,6 +18,7 @@ import type { TelemetryProxy } from '@n8n/backend-services';
 
 import type { InstanceAiCreditService } from '../../instance-ai-credit.service';
 import { InstanceAiErrorReporterService } from '../../instance-ai-error-reporter.service';
+import { buildThreadArtifactsBlock, buildThreadContextBlock } from '../../internal-messages';
 import type { InstanceAiSettingsService } from '../../instance-ai-settings.service';
 import type { InstanceAiAdapterService } from '../../instance-ai.adapter.service';
 import type { AssistantAgentFactory } from '../../turn-setup/assistant-agent.factory';
@@ -232,6 +233,37 @@ describe('AssistantAgentProvider', () => {
 			runId: expect.stringMatching(/^run_/),
 			messageGroupId: expect.stringMatching(/^mg_/),
 			request: { timeZone: 'UTC' },
+		});
+	});
+
+	describe('readMessageReferences', () => {
+		it('reads the resources that the stored model input of a user turn attached', () => {
+			const { provider } = setup();
+			const attachments = [
+				{ type: 'workflow' as const, id: 'wf-1', name: 'Uptime monitor' },
+				{ type: 'agent' as const, id: 'agent-1', name: 'Support agent', projectId: 'project-1' },
+			];
+			const threadContext = buildThreadContextBlock([
+				buildThreadArtifactsBlock(undefined, attachments),
+			]);
+
+			expect(
+				provider.readMessageReferences({
+					role: 'user',
+					content: [{ type: 'text', text: `${threadContext}\n\nCompare them` }],
+				}),
+			).toEqual(attachments);
+		});
+
+		it('reads nothing from a message without attached resources', () => {
+			const { provider } = setup();
+
+			expect(
+				provider.readMessageReferences({
+					role: 'user',
+					content: [{ type: 'text', text: 'Compare them' }],
+				}),
+			).toEqual([]);
 		});
 	});
 
