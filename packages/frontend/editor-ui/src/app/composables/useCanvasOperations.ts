@@ -2198,11 +2198,12 @@ export function useCanvasOperations() {
 
 		// Step 1: Find initial candidates - nodes that overlap with or are to the right of insertion
 		// A node overlaps if its right edge extends into the insertion area. A tall node can
-		// block the new node from outside the similar-Y band, so it moves too.
+		// block the new node from outside the similar-Y band, so it moves too. A node that
+		// ends left of the insertion stays, because a shift would move it into the new node.
 		const initialCandidates = allNodes.filter((node) => {
 			if (node.type === STICKY_NODE_TYPE) return false;
 			if (node.name === sourceNodeName) return false;
-			return (isSimilarY(node) && overlapsInsertX(node)) || blocksInsert(node);
+			return (isSimilarY(node) || blocksInsert(node)) && overlapsInsertX(node);
 		});
 
 		// Step 2: Add all downstream connected nodes from initial candidates

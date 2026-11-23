@@ -10203,6 +10203,37 @@ describe('useCanvasOperations', () => {
 			expect(target.position).toEqual([672, 0]);
 		});
 
+		it('should not move a node left of the new node into its slot', () => {
+			const ifNode = createTestNode({ id: 'if', name: 'If', type: IF_NODE_TYPE, position: [0, 0] });
+			const t0 = createTestNode({
+				id: 't0',
+				name: 'T0',
+				type: SET_NODE_TYPE,
+				position: [224, -96],
+			});
+			const t1 = createTestNode({ id: 't1', name: 'T1', type: SET_NODE_TYPE, position: [224, 96] });
+			// The AI Agent under the If ends at x 224, where the slot starts. It touches only the
+			// grid-cell gap around the slot.
+			const agent = createTestNode({
+				id: 'agent',
+				name: 'AI Agent',
+				type: configurableNodeType.name,
+				position: [0, 192],
+			});
+
+			const position = insertOnConnection(ifNode, t1, [ifNode, t0, t1, agent], {
+				sourceIndex: 1,
+				connections: createConnectionsBySource(
+					workflowConnection(ifNode, t0),
+					workflowConnection(ifNode, t1, { sourceIndex: 1 }),
+				),
+			});
+
+			expect(agent.position).toEqual([0, 192]);
+			// The final collision check moves the new node clear of the grid-cell gap
+			expect(position).toEqual([272, 144]);
+		});
+
 		it('should keep the nodes inserted on two branches into one node on the rows of the branches', () => {
 			const ifNode = createTestNode({ id: 'if', name: 'If', type: IF_NODE_TYPE, position: [0, 0] });
 			const t0 = createTestNode({
