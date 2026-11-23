@@ -111,11 +111,13 @@ watch(
  * Assistant credits pay for the turns when the instance uses them: the thread has a
  * credit total, or the quota is limited. With its own model key, the instance has an
  * unlimited quota and no thread total, so the header shows the cost in dollars.
+ * Until the quota loads, the unit is unknown and the header shows neither.
  */
-const usesCredits = computed(() => {
-	if (threadsStore.threadCreditsUsed(props.threadId) !== undefined) return true;
+const costUnit = computed((): 'credits' | 'dollars' | undefined => {
+	if (threadsStore.threadCreditsUsed(props.threadId) !== undefined) return 'credits';
 	const quota = creditsStore.creditsQuota;
-	return quota !== undefined && quota !== UNLIMITED_CREDITS;
+	if (quota === undefined) return undefined;
+	return quota === UNLIMITED_CREDITS ? 'dollars' : 'credits';
 });
 /**
  * A thread without a credit total spent no credits, but only once the load has
@@ -124,7 +126,7 @@ const usesCredits = computed(() => {
 const totalCredits = computed(() => {
 	const used = threadsStore.threadCreditsUsed(props.threadId);
 	if (used !== undefined) return used;
-	return usesCredits.value && creditsLoadedFor.value === props.threadId ? 0 : undefined;
+	return costUnit.value === 'credits' && creditsLoadedFor.value === props.threadId ? 0 : undefined;
 });
 
 const sessionMetadata = computed<SessionTimelineMetadata>(() => ({
@@ -134,8 +136,7 @@ const sessionMetadata = computed<SessionTimelineMetadata>(() => ({
 		label: i18n.baseText('agentSessions.origin.instanceAi'),
 	},
 	totalTokens: sessionUsage.value.totalTokens,
-	// A credit instance never shows dollars, even while the credit total loads.
-	totalCost: usesCredits.value ? null : sessionUsage.value.cost,
+	totalCost: costUnit.value === 'dollars' ? sessionUsage.value.cost : null,
 	totalCredits: totalCredits.value,
 	durationLabel: formatDuration(duration.value),
 }));

@@ -144,6 +144,13 @@ describe('AssistantAgentSessionView', () => {
 		expect(metadata).toMatchObject({ totalCredits: 0, totalCost: null });
 	});
 
+	it('shows neither credits nor cost until the credit quota loads', async () => {
+		const metadata = await renderLoaded(setUp({}));
+
+		expect(metadata?.totalCredits).toBeUndefined();
+		expect(metadata?.totalCost).toBeNull();
+	});
+
 	it('shows neither credits nor cost when the credit total fails to load', async () => {
 		const metadata = await renderLoaded(setUp({ quota: 100, creditsLoad: false }));
 
