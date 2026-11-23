@@ -15,11 +15,10 @@ import {
 } from '@/features/agents/constants';
 import { useAgentSessionLangSmithExport } from '@/features/agents/composables/useAgentSessionLangSmithExport';
 import { useAgentSessionUsage } from '@/features/agents/composables/useAgentSessionUsage';
-import { threadTokenBreakdownOf } from '@/features/agents/session-timeline.utils';
 import { useAgentExecutionUpdates } from '@/features/agents/composables/useAgentExecutionUpdates';
 import { useThreadTitle } from '@/features/agents/utils/thread-title';
 import { formatSessionDateTime } from '@/features/agents/utils/timeline-time';
-import { formatDuration } from '@/features/agents/session-timeline.utils';
+import { formatDuration, threadTokenBreakdownOf } from '@/features/agents/session-timeline.utils';
 import {
 	defaultAgentSessionFilters,
 	type AgentExecution,
