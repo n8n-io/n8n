@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/ndv/runData/components/RunData.vue
+  s_979554fc502def::t_28500c8ee2fee0 2434
+packages/frontend/editor-ui/src/features/ndv/settings/components/NodeSettingsHeader.vue
+  s_979554fc502def::t_28500c8ee2fee0 79
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "17364f029d0c56703cd2a33d61b13491f0d2b435",
+  "prompts": {},
+  "sessions": {
+    "s_979554fc502def": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1f89b-3797-72de-9e34-9349f3d75bc1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

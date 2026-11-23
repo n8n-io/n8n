@@ -1,0 +1,56 @@
+packages/cli/src/modules/agents/simulation/simulation-session.service.ts
+  s_4ffded8a2a29ce::t_61849279e7ee9f 119,336
+packages/cli/src/modules/agents/simulation/tool-simulation.contracts.ts
+  s_4ffded8a2a29ce::t_596bf29bdce1e9 21
+packages/cli/src/modules/agents/simulation/linear-gym-backend.ts
+  s_4ffded8a2a29ce::t_88eb3cc6817b2b 1-10,12-19,21-26,28-44,46-51,53-57,60-62,64-68,70-74,76-97,99,107-109,111-115,122-126,128-130,132-154,156-158,160-167,169,173-180,182-185,187-191,193-198,200-205
+  s_4ffded8a2a29ce::t_d39cf74942bc02 117
+  s_4ffded8a2a29ce::t_246c18290bd2e9 100-103,105-106,116
+  s_4ffded8a2a29ce::t_83378e97e9256e 110
+  s_4ffded8a2a29ce::t_db5aedfc08dc04 11
+  s_4ffded8a2a29ce::t_8b28c1af0aa643 20
+  s_4ffded8a2a29ce::t_dd943f7bb36412 27
+  s_4ffded8a2a29ce::t_f43fdd3e4d1373 45
+  s_4ffded8a2a29ce::t_023edf9e9d0012 52
+  s_4ffded8a2a29ce::t_e649f9a7cdd093 58-59
+  s_4ffded8a2a29ce::t_ad3068e090bae0 63
+  s_4ffded8a2a29ce::t_d03b73c2aabbc1 69
+  s_4ffded8a2a29ce::t_07edfdec138561 75
+  s_4ffded8a2a29ce::t_4b227978a1e987 98
+  s_4ffded8a2a29ce::t_47e3098d96611c 104
+  s_4ffded8a2a29ce::t_0d372b53c67a81 118-121
+  s_4ffded8a2a29ce::t_a9a13e192cec43 127
+  s_4ffded8a2a29ce::t_9c2451a9217f30 131
+  s_4ffded8a2a29ce::t_e0c18fd884e261 155
+  s_4ffded8a2a29ce::t_6f82cf75bcc806 159
+  s_4ffded8a2a29ce::t_281db43d516934 168
+  s_4ffded8a2a29ce::t_86220b31120870 170-172
+  s_4ffded8a2a29ce::t_aa7d4bf2728c86 181
+  s_4ffded8a2a29ce::t_2fea6756b32ea0 186
+  s_4ffded8a2a29ce::t_dfdcb179d54878 192
+  s_4ffded8a2a29ce::t_b6834295882087 199
+packages/cli/src/modules/agents/simulation/__tests__/linear-gym-backend.test.ts
+  s_4ffded8a2a29ce::t_6180158980ea32 51-63
+  s_4ffded8a2a29ce::t_f285554db19e23 92-93
+  s_4ffded8a2a29ce::t_0a8b7228a828c6 4,41-50,82,101-105,107-109,111-114
+  s_4ffded8a2a29ce::t_d8a3928d944955 1-3,5-15,18-26,29-30,32-40,64-67,69-74,76,78-81,83,85-91,94-97,99-100,115
+  s_4ffded8a2a29ce::t_ce6797588cdc7b 16-17,27-28,31,68,75,77,84,98,106,110
+packages/cli/src/modules/agents/simulation/simulation-backend-registry.ts
+  s_4ffded8a2a29ce::t_eccee6a81a67d6 3,9-10,18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6091537155492dc4f06bf4629bec1768304884ee",
+  "prompts": {},
+  "sessions": {
+    "s_4ffded8a2a29ce": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1f96b-edbd-73d4-adf5-fd85c83ab05a",
+        "model": "gpt-6.2-astra"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}
