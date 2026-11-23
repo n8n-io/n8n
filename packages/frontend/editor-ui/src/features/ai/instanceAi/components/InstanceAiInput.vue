@@ -26,7 +26,10 @@ import type {
 	AssistantMentionSelection,
 	WorkflowArtifactReference,
 } from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
-import { buildMentionKey } from '@/features/ai/assistant-at-mentions/utils/buildMentionItems';
+import {
+	buildAgentMentionKey,
+	buildMentionKey,
+} from '@/features/ai/assistant-at-mentions/utils/buildMentionItems';
 import { INSTANCE_AI_EMPTY_STATE_SUGGESTIONS_VERSION } from '../emptyStateSuggestions';
 import { useInstanceAiPromptSuggestionsTelemetry } from '../instanceAiPromptSuggestions.telemetry';
 import { instanceAiResponseNow } from '../instanceAi.responseTiming';
@@ -311,12 +314,22 @@ const excludedMentionContext = computed(() => {
 			buildMentionKey('workflow', props.contextChip.workflowId, props.contextChip.workflowId),
 		);
 		workflowIds.add(props.contextChip.workflowId);
+	} else if (
+		props.contextChip?.type === 'agent-artifact' ||
+		props.contextChip?.type === 'agent-preview-session'
+	) {
+		// The hand-off chip already gives the agent as context.
+		keys.add(buildAgentMentionKey(props.contextChip.agentId));
 	}
 
 	for (const attachment of attachedResources.value) {
 		if (attachment.type === 'workflow') {
 			keys.add(buildMentionKey('workflow', attachment.id, attachment.id));
 			workflowIds.add(attachment.id);
+			continue;
+		}
+		if (attachment.type === 'agent') {
+			keys.add(buildAgentMentionKey(attachment.id));
 			continue;
 		}
 		if (attachment.type !== 'nodes') continue;
@@ -401,9 +414,11 @@ const mentionAttachments = useAssistantMentionAttachments({
  * picking it does not move the thread's tabs or preview around.
  */
 async function handleMentionSelection(selection: AssistantMentionSelection): Promise<void> {
-	const existingArtifact = props.mentionArtifacts.find(
-		(artifact) => artifact.id === selection.item.workflowId,
-	);
+	const { item } = selection;
+	const existingArtifact =
+		item.kind === 'agent'
+			? undefined
+			: props.mentionArtifacts.find((artifact) => artifact.id === item.workflowId);
 	const result = mentionAttachments.select(selection);
 	if (result.status === 'limit') {
 		toast.showError(

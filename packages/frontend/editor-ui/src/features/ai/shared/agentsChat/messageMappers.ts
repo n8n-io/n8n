@@ -422,6 +422,9 @@ export function convertDbMessages(
 			...(thinkingSegments.length > 0 && { thinkingSegments }),
 			toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
 			...(attachments.length > 0 && { attachments }),
+			...(role === CHAT_MESSAGE_ROLE.USER && msg.references?.length
+				? { references: msg.references }
+				: {}),
 			...(role === CHAT_MESSAGE_ROLE.ASSISTANT && hostEvents.length > 0 && { hostEvents }),
 			...(status && { status }),
 			...(msg.executionId ? { executionId: msg.executionId } : {}),
