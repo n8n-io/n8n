@@ -3,6 +3,7 @@ import {
 	ASSISTANT_SKILLS_FLAG,
 	CREDENTIAL_DESCRIPTIONS_FLAG,
 	INSTANCE_ACTIVITY_CONTEXT_FLAG,
+	SELF_HEALING_FLAG,
 } from '@n8n/api-types';
 import { setN8nVersion } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
@@ -259,7 +260,12 @@ describe('PostHog', () => {
 				expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledTimes(3);
 				expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledWith(`company_${instanceId}`, {
 					groups: { company: instanceId },
-					flagKeys: [CREDENTIAL_DESCRIPTIONS_FLAG, ASSISTANT_SKILLS_FLAG, AGENT_SANDBOX_FILES_FLAG],
+					flagKeys: [
+						CREDENTIAL_DESCRIPTIONS_FLAG,
+						ASSISTANT_SKILLS_FLAG,
+						AGENT_SANDBOX_FILES_FLAG,
+						SELF_HEALING_FLAG,
+					],
 				});
 			},
 		);
@@ -320,6 +326,7 @@ describe('PostHog', () => {
 					[CREDENTIAL_DESCRIPTIONS_FLAG]: false,
 					[ASSISTANT_SKILLS_FLAG]: false,
 					[AGENT_SANDBOX_FILES_FLAG]: false,
+					[SELF_HEALING_FLAG]: false,
 				},
 				featureFlagPayloads: payloads,
 			};
@@ -348,12 +355,14 @@ describe('PostHog', () => {
 				[CREDENTIAL_DESCRIPTIONS_FLAG]: false,
 				[ASSISTANT_SKILLS_FLAG]: false,
 				[AGENT_SANDBOX_FILES_FLAG]: false,
+				[SELF_HEALING_FLAG]: false,
 			});
 			expect(second).toEqual({
 				...flags,
 				[CREDENTIAL_DESCRIPTIONS_FLAG]: false,
 				[ASSISTANT_SKILLS_FLAG]: false,
 				[AGENT_SANDBOX_FILES_FLAG]: false,
+				[SELF_HEALING_FLAG]: false,
 			});
 			expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledTimes(2);
 		});
@@ -512,6 +521,7 @@ describe('PostHog', () => {
 					[CREDENTIAL_DESCRIPTIONS_FLAG]: false,
 					[ASSISTANT_SKILLS_FLAG]: false,
 					[AGENT_SANDBOX_FILES_FLAG]: false,
+					[SELF_HEALING_FLAG]: false,
 					'some-other-flag': true,
 					'multivariate-flag': 'variant',
 					'boolean-flag': true,
@@ -533,6 +543,7 @@ describe('PostHog', () => {
 					[CREDENTIAL_DESCRIPTIONS_FLAG]: false,
 					[ASSISTANT_SKILLS_FLAG]: false,
 					[AGENT_SANDBOX_FILES_FLAG]: false,
+					[SELF_HEALING_FLAG]: false,
 					'contested-flag': 'variant',
 				});
 			});
@@ -570,6 +581,7 @@ describe('PostHog', () => {
 						[CREDENTIAL_DESCRIPTIONS_FLAG]: false,
 						[ASSISTANT_SKILLS_FLAG]: false,
 						[AGENT_SANDBOX_FILES_FLAG]: false,
+						[SELF_HEALING_FLAG]: false,
 						'value-only-flag': 'variant',
 						'payload-flag': 'variant',
 						'untouched-flag': true,
@@ -598,6 +610,7 @@ describe('PostHog', () => {
 					[CREDENTIAL_DESCRIPTIONS_FLAG]: false,
 					[ASSISTANT_SKILLS_FLAG]: false,
 					[AGENT_SANDBOX_FILES_FLAG]: false,
+					[SELF_HEALING_FLAG]: false,
 					'live-flag': false,
 				});
 			});
@@ -631,6 +644,7 @@ describe('PostHog', () => {
 					[CREDENTIAL_DESCRIPTIONS_FLAG]: false,
 					[ASSISTANT_SKILLS_FLAG]: false,
 					[AGENT_SANDBOX_FILES_FLAG]: false,
+					[SELF_HEALING_FLAG]: false,
 					'some-other-flag': true,
 				});
 			});
@@ -648,6 +662,7 @@ describe('PostHog', () => {
 					[CREDENTIAL_DESCRIPTIONS_FLAG]: false,
 					[ASSISTANT_SKILLS_FLAG]: false,
 					[AGENT_SANDBOX_FILES_FLAG]: false,
+					[SELF_HEALING_FLAG]: false,
 					'084_eval_collections': true,
 				});
 			});
@@ -677,6 +692,7 @@ describe('PostHog', () => {
 					[CREDENTIAL_DESCRIPTIONS_FLAG]: false,
 					[ASSISTANT_SKILLS_FLAG]: false,
 					[AGENT_SANDBOX_FILES_FLAG]: false,
+					[SELF_HEALING_FLAG]: false,
 					'101_agent_evals': true,
 				});
 			});
@@ -710,6 +726,7 @@ describe('PostHog', () => {
 					[CREDENTIAL_DESCRIPTIONS_FLAG]: false,
 					[ASSISTANT_SKILLS_FLAG]: false,
 					[AGENT_SANDBOX_FILES_FLAG]: false,
+					[SELF_HEALING_FLAG]: false,
 					'104_canvas_aia_node_context': true,
 				});
 			});
@@ -731,6 +748,7 @@ describe('PostHog', () => {
 					[CREDENTIAL_DESCRIPTIONS_FLAG]: false,
 					[ASSISTANT_SKILLS_FLAG]: false,
 					[AGENT_SANDBOX_FILES_FLAG]: false,
+					[SELF_HEALING_FLAG]: false,
 					'084_eval_collections': true,
 					'088_config_evaluations': 'variant',
 					'101_agent_evals': true,
