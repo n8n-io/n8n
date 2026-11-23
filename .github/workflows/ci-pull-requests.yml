@@ -16,7 +16,7 @@ jobs:
     name: Install & Build
     needs: pr-policy
     if: needs.pr-policy.outputs.skip-ci != 'true'
-    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-8vcpu-ubuntu-2204' }}
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-8vcpu-bmi-n8n' }}
     env:
       NODE_OPTIONS: '--max-old-space-size=7168'
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
@@ -305,7 +305,7 @@ jobs:
     name: Format check
     needs: pr-policy
     if: needs.pr-policy.outputs.skip-ci != 'true'
-    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-2vcpu-ubuntu-2204' }}
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-2vcpu-bmi-n8n' }}
     permissions:
       contents: read
     steps:
@@ -433,7 +433,7 @@ jobs:
     name: Prepare E2E / Shard matrix
     needs: install-and-build
     if: needs.install-and-build.outputs.run_e2e == 'true'
-    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-2vcpu-ubuntu-2204' }}
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-2vcpu-bmi-n8n' }}
     outputs:
       matrix: ${{ steps.generate-matrix.outputs.matrix }}
       skip_tests: ${{ steps.generate-matrix.outputs.skip-tests }}
@@ -709,7 +709,7 @@ jobs:
       needs.prepare-docker.result == 'success' &&
       needs.required-checks.result == 'success' &&
       (needs.e2e-performance.result == 'success' || needs.e2e-performance.result == 'skipped')
-    runs-on: blacksmith-2vcpu-ubuntu-2204
+    runs-on: blacksmith-2vcpu-bmi-n8n
     steps:
       # Not `gh api --method DELETE`: written on Blacksmith runners, where
       # actions/cache is transparently intercepted, so GitHub's cache has no
