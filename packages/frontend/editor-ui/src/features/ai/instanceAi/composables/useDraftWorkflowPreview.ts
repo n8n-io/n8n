@@ -67,13 +67,13 @@ export function useDraftWorkflowPreview(options: {
 	/** The run state over any workflow canvas: a saved workflow, a draft or the staging canvas. */
 	function useCanvasRunState(canvas: WorkflowCanvasView) {
 		return computed((): CanvasRunState | undefined => {
-			if (!enabled.value || !options.isRunning() || !canvas.isPreviewVisible.value)
-				return undefined;
+			if (!enabled.value || !canvas.isPreviewVisible.value) return undefined;
 			if (canvas.activeWorkflowId.value === null && !canvas.activeWorkflowDraft.value) {
 				return undefined;
 			}
-			if (!options.isAwaitingUser()) return 'building';
-			return options.isAwaitingApproval() ? 'approval' : 'answer';
+			// After a reload, the chat can show the question before the run state comes back.
+			if (options.isAwaitingUser()) return options.isAwaitingApproval() ? 'approval' : 'answer';
+			return options.isRunning() ? 'building' : undefined;
 		});
 	}
 

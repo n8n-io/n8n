@@ -2880,6 +2880,26 @@ describe('InstanceAiThreadView', () => {
 			expect(queryByTestId('instance-ai-draft-building-wave')).toBeNull();
 		});
 
+		it('keeps the waiting pill after a reload that restores the question but not the run', async () => {
+			mockedStore(usePostHog).getVariant.mockImplementation((name) =>
+				name === INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.name ? 'variant' : undefined,
+			);
+			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+			stageNewWorkflow();
+			thread.pendingConfirmations = [
+				pendingConfirmation({ requestId: 'req-ask', inputType: 'questions' }),
+			] as unknown as ThreadRuntime['pendingConfirmations'];
+
+			expect(await findByTestId('instance-ai-canvas-waiting-pill')).toHaveTextContent(
+				'Waiting for your answer in the chat',
+			);
+			expect(await findByTestId('instance-ai-workflow-draft-preview-stub')).toHaveAttribute(
+				'data-building',
+				'true',
+			);
+		});
+
 		it('focuses the question in the chat when the user clicks the waiting pill', async () => {
 			mockedStore(usePostHog).getVariant.mockImplementation((name) =>
 				name === INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.name ? 'variant' : undefined,

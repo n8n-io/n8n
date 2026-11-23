@@ -270,6 +270,9 @@ watch(
 );
 
 // Experiment cleanup (137_instance_ai_draft_workflow_preview)
+// A reload can restore the open question from history and not the run, for example after a
+// restart. The chat still asks the question, so the canvas waits too.
+const isAwaitingUser = () => thread.isAwaitingUserInput || thread.pendingConfirmations.length > 0;
 const ANSWER_INPUT_TYPES = new Set<InstanceAiConfirmationInputType>(['questions', 'text']);
 const draftPreview = useDraftWorkflowPreview({
 	threadId: () => props.threadId,
@@ -278,7 +281,7 @@ const draftPreview = useDraftWorkflowPreview({
 	dismissWorkflowDrafts: (workflowId) => thread.dismissWorkflowDrafts(workflowId),
 	// A builder can still work in the background after the orchestrator run ended.
 	isRunning: () => thread.isStreaming || collectActiveBuilderAgents(thread.messages).length > 0,
-	isAwaitingUser: () => thread.isAwaitingUserInput,
+	isAwaitingUser,
 	// A question card asks for an answer. Any other card asks for an approval.
 	isAwaitingApproval: () =>
 		!thread.pendingConfirmations.some(({ toolCall }) =>
@@ -1129,7 +1132,7 @@ function handleNewThreadClick() {
 								:key="preview.activeWorkflowDraft.value.filePath"
 								:class="$style.previewSlot"
 								:draft="preview.activeWorkflowDraft.value"
-								:building="isAgentWorking"
+								:building="isAgentWorking || isAwaitingUser()"
 							/>
 							<InstanceAiCanvasRunOverlay
 								v-if="canvasRunState"
