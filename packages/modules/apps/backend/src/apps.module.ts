@@ -62,7 +62,6 @@ export class AppsModule implements ModuleInterface {
 	}
 
 	async settings() {
-		const { AppsConfig } = await import('./apps.config.js');
-		return { enabled: true, feedbackEnabled: Container.get(AppsConfig).feedbackUrl !== '' };
+		return { enabled: true };
 	}
 }

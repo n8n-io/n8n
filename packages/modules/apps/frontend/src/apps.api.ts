@@ -11,7 +11,6 @@ import {
 	type AppVersionResponse,
 	type PublishAppDto,
 	type RestoreAppVersionDto,
-	type SendAppFeedbackDto,
 	type UpdateAppDto,
 } from '@n8n/api-types';
 import { getFullApiResponse, makeRestApiRequest, type IRestApiContext } from '@n8n/rest-api-client';
@@ -242,19 +241,5 @@ export async function unpublishApp(
 		context,
 		'POST',
 		`/projects/${projectId}/apps/${appId}/unpublish`,
-	);
-}
-
-export async function sendAppFeedback(
-	context: IRestApiContext,
-	projectId: string,
-	appId: string,
-	feedback: SendAppFeedbackDto,
-): Promise<{ submissionId: string }> {
-	return await makeRestApiRequest(
-		context,
-		'POST',
-		`/projects/${projectId}/apps/${appId}/feedback`,
-		feedback,
 	);
 }

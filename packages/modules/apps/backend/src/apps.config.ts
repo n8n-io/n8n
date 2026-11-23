@@ -69,8 +69,4 @@ export class AppsConfig {
 	/** Maximum archive entries in one source snapshot or built bundle. Counts both files and directories. */
 	@Env('N8N_APPS_MAX_ARTIFACT_ENTRIES', positiveInteger)
 	maxArtifactEntries: number = 20_000;
-
-	/** HTTPS address that receives the feedback users send about apps. Each report includes the user's email address, the instance URL and the app's connections. Set to an empty value to hide the feedback button. */
-	@Env('N8N_APPS_FEEDBACK_URL', z.union([z.literal(''), z.string().url().startsWith('https://')]))
-	feedbackUrl: string = 'https://internal.users.n8n.cloud/webhook/n8n-apps/feedback';
 }

@@ -44,7 +44,6 @@
     "@n8n/api-types": "workspace:*",
     "@n8n/app-sdk": "workspace:*",
     "@n8n/backend-common": "workspace:*",
-    "@n8n/backend-network": "workspace:*",
     "@n8n/backend-services": "workspace:*",
     "@n8n/blob-storage": "workspace:*",
     "@n8n/config": "workspace:*",

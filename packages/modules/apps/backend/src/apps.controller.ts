@@ -1,8 +1,7 @@
-import { CreateAppDto, ListAppsQueryDto, SendAppFeedbackDto, UpdateAppDto } from '@n8n/api-types';
-import { isPerson, type AuthenticatedRequest } from '@n8n/db';
+import { CreateAppDto, ListAppsQueryDto, UpdateAppDto } from '@n8n/api-types';
+import type { AuthenticatedRequest } from '@n8n/db';
 import {
 	Body,
-	createUserKeyedRateLimiter,
 	Delete,
 	Get,
 	Patch,
@@ -11,20 +10,15 @@ import {
 	Query,
 	RestController,
 } from '@n8n/decorators';
-import { ForbiddenError } from '@n8n/errors';
 import type { Response } from 'express';
 
 import { AppsService } from './apps.service';
-import { AppFeedbackService } from './feedback/app-feedback.service';
 
 type AppRequest = AuthenticatedRequest<{ projectId: string; appId: string }>;
 
 @RestController('/projects/:projectId/apps')
 export class AppsController {
-	constructor(
-		private readonly appsService: AppsService,
-		private readonly feedbackService: AppFeedbackService,
-	) {}
+	constructor(private readonly appsService: AppsService) {}
 
 	// TODO: remove direct endpoint for app creation once it's implemented via AIA
 	@Post('/')
@@ -61,14 +55,5 @@ export class AppsController {
 		await this.appsService.deleteApp(req.params.projectId, req.params.appId, {
 			userId: req.user.id,
 		});
-	}
-
-	@Post('/:appId/feedback', {
-		keyedRateLimit: createUserKeyedRateLimiter({ limit: 5, windowMs: 60_000 }),
-	})
-	@ProjectScope('app:read')
-	async sendFeedback(req: AppRequest, _res: Response, @Body dto: SendAppFeedbackDto) {
-		if (!isPerson(req.user)) throw new ForbiddenError('Only people can send app feedback.');
-		return await this.feedbackService.send(req.user, req.params.projectId, req.params.appId, dto);
 	}
 }

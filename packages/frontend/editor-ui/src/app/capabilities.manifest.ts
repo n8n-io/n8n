@@ -8,6 +8,7 @@ import type {
 
 import type { IWorkflowSettings, ModalKey } from '@/Interface';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { usePostHog } from '@/app/stores/posthog.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import {
 	createWorkflowDocumentId,
@@ -74,6 +75,14 @@ const mcpExposeAllOffer = {
 		);
 		return await useExposeAllWorkflowsToMcpOffer().offerToExposeAllWorkflows(onExposed);
 	},
+};
+
+// The flag payload holds the form address, so the form can change without a release.
+const APPS_FEEDBACK_FORM_URL_REMOTE_CONFIG_KEY = 'config_apps_feedback_form_url';
+
+const appsFeedbackFormUrl = () => {
+	const payload = usePostHog().getFeatureFlagPayload(APPS_FEEDBACK_FORM_URL_REMOTE_CONFIG_KEY);
+	return typeof payload === 'string' ? payload : undefined;
 };
 
 const projectPermissions = {
@@ -199,6 +208,7 @@ export const registerShellCapabilities = () => {
 	capabilityRegistry.provide(capabilities.tagNames, tagNames);
 	capabilityRegistry.provide(capabilities.typeDescriptions, typeDescriptions);
 	capabilityRegistry.provide(capabilities.createAppAssistantHandoff, useAppAssistantHandoff);
+	capabilityRegistry.provide(capabilities.appsFeedbackFormUrl, appsFeedbackFormUrl);
 	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 	capabilityRegistry.provide(capabilities.mcpDiscoverySettings, mcpDiscoverySettings);
 	// EOF Experiment cleanup
