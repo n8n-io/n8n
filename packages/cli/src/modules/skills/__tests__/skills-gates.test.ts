@@ -147,6 +147,26 @@ describe('skills gates', () => {
 		},
 	);
 
+	// n8n Assistant reads the flags of a turn once and asks the gate with them.
+	it.each([
+		{ name: 'everything on', flag: true, skillsOn: true, switchOn: true, expected: true },
+		{ name: 'skills off', flag: true, skillsOn: false, switchOn: true, expected: false },
+		{ name: 'the switch off', flag: true, skillsOn: true, switchOn: false, expected: false },
+		{ name: 'the flag off', flag: false, skillsOn: true, switchOn: true, expected: false },
+		{ name: 'a flag variant', flag: 'test', skillsOn: true, switchOn: true, expected: false },
+		{ name: 'no flag', flag: undefined, skillsOn: true, switchOn: true, expected: false },
+	])(
+		'answers $expected for flags that the caller already has, with $name',
+		({ flag, skillsOn, switchOn, expected }) => {
+			const { proxy, postHog, syncGate, skillSyncSettings } = createGates();
+			skillSyncSettings.isEnabled.mockReturnValue(switchOn);
+			if (skillsOn) proxy.register(mock<SkillUsage>());
+
+			expect(syncGate.isEnabledForFlags({ [SKILL_SYNC_FLAG]: flag })).toBe(expected);
+			expect(postHog.getFeatureFlags).not.toHaveBeenCalled();
+		},
+	);
+
 	it('answers 404 while the Skill Sync switch is off', async () => {
 		const { proxy, postHog, syncGate, skillSyncSettings } = createGates();
 		postHog.getFeatureFlags.mockResolvedValue({ [SKILL_SYNC_FLAG]: true });

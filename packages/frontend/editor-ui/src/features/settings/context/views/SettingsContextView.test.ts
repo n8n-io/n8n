@@ -8,13 +8,23 @@ import { useContextStore } from '../context.store';
 import { useSkillsStore } from '../skills.store';
 
 const push = vi.fn();
-const flags = vi.hoisted(() => ({ skills: false, preferences: true, managePreferences: false }));
+const flags = vi.hoisted(() => ({
+	skills: false,
+	preferences: true,
+	managePreferences: false,
+	collections: false,
+}));
 
 vi.mock('../context.utils', () => ({
 	isContextSkillsEnabled: () => flags.skills,
 	isContextPreferencesEnabled: () => flags.preferences,
 	canManageContextPreferences: () => flags.managePreferences,
 }));
+
+vi.mock('@/features/shared/knowledge/useIsCollectionsEnabled', async () => {
+	const { computed } = await import('vue');
+	return { useIsCollectionsEnabled: () => computed(() => flags.collections) };
+});
 const showErrorMock = vi.fn();
 
 vi.mock('@n8n/composables/useToast', () => ({
@@ -35,6 +45,7 @@ describe('SettingsContextView', () => {
 		flags.skills = false;
 		flags.preferences = true;
 		flags.managePreferences = false;
+		flags.collections = false;
 		push.mockClear();
 		showErrorMock.mockClear();
 	});
@@ -126,6 +137,27 @@ describe('SettingsContextView', () => {
 
 			await userEvent.click(row);
 			expect(push).toHaveBeenCalledWith({ name: 'SettingsContextPreferences' });
+		});
+	});
+
+	describe('collections', () => {
+		it('hides the collections row while collections are off', () => {
+			const { queryByTestId } = renderView();
+
+			expect(queryByTestId('settings-context-collections-row')).toBeNull();
+		});
+
+		it('shows the collections row and opens the collections page', async () => {
+			flags.collections = true;
+			const { getByTestId } = renderView();
+			const row = getByTestId('settings-context-collections-row');
+
+			expect(row).toHaveTextContent('Collections');
+			expect(row).toHaveTextContent('Reusable sets of knowledge any agent can use');
+
+			await userEvent.click(row);
+
+			expect(push).toHaveBeenCalledWith({ name: 'SettingsContextCollections' });
 		});
 	});
 

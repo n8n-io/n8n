@@ -4,6 +4,7 @@ import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
 	conversationForApprovalJudge,
+	emitApprovalReviewTraceEvent,
 	judgeApproval,
 	modelConfigId,
 	modelIdTraceMetadata,
@@ -147,7 +148,7 @@ export class InstanceAiApprovalReviewerFactory {
 				return { decision: result.verdict.decision, reason: result.verdict.reason };
 			},
 
-			onReviewed: (approval, outcome) => {
+			onReviewed: async (approval, outcome) => {
 				if (outcome.decision === 'approve' && approval.toolCallId) {
 					params.eventBus.publish(params.threadId, {
 						type: 'auto-approval',
@@ -162,6 +163,8 @@ export class InstanceAiApprovalReviewerFactory {
 					});
 				}
 				this.trackReview(params, approval, outcome, judgeReviews.get(approval));
+				// A decision of the fixed rules makes no model call, so the trace shows it only here.
+				await emitApprovalReviewTraceEvent(params.getTracing?.(), approval, outcome);
 			},
 		};
 	}

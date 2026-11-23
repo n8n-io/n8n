@@ -188,9 +188,9 @@ function makeCatalog(): ProviderCatalog {
 			id: 'aws-bedrock',
 			name: 'AWS Bedrock',
 			models: {
-				'anthropic.claude-sonnet-4-5-v1:0': {
-					id: 'anthropic.claude-sonnet-4-5-v1:0',
-					name: 'Claude Sonnet 4.5',
+				'anthropic.claude-sonnet-5-5': {
+					id: 'anthropic.claude-sonnet-5-5',
+					name: 'Claude Sonnet 5.5',
 					reasoning: true,
 					toolCall: true,
 				},
@@ -274,7 +274,7 @@ describe('AgentAdvancedPanel', () => {
 
 	it('shows the reasoning toggle when the selected model supports reasoning', () => {
 		const config = makeConfig({
-			model: 'aws-bedrock/anthropic.claude-sonnet-4-5-v1:0',
+			model: 'aws-bedrock/anthropic.claude-sonnet-5-5',
 		});
 		const wrapper = mount(AgentAdvancedPanel, {
 			props: { config, projectId: 'project-1' },
@@ -488,9 +488,9 @@ describe('AgentAdvancedPanel', () => {
 	});
 
 	it.each([
-		'anthropic/claude-sonnet-4-5',
-		'openrouter/anthropic/claude-sonnet-4.5',
-		'google-vertex/claude-sonnet-4-5',
+		'anthropic/claude-sonnet-5-5',
+		'openrouter/anthropic/claude-sonnet-5.5',
+		'google-vertex/claude-sonnet-5-5',
 	])('shows a default 1h cache duration for %s', async (model) => {
 		const config = makeConfig({ model });
 		const wrapper = mount(AgentAdvancedPanel, {
@@ -534,7 +534,7 @@ describe('AgentAdvancedPanel', () => {
 
 	it('shows prompt caching as off and hides the cache duration when the config turned it off', () => {
 		const config = makeConfig({
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			config: { promptCaching: { enabled: false, anthropic: { ttl: '5m' } } },
 		});
 		const wrapper = mount(AgentAdvancedPanel, {
@@ -549,7 +549,7 @@ describe('AgentAdvancedPanel', () => {
 
 	it('keeps the Anthropic cache duration when the user turns prompt caching back on', async () => {
 		const config = makeConfig({
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			config: { promptCaching: { enabled: false, anthropic: { ttl: '5m' } } },
 		});
 		const wrapper = mount(AgentAdvancedPanel, {
@@ -576,9 +576,9 @@ describe('AgentAdvancedPanel', () => {
 	});
 
 	it.each([
-		'anthropic/claude-sonnet-4-5',
-		'openrouter/anthropic/claude-sonnet-4.5',
-		'google-vertex/claude-sonnet-4-5',
+		'anthropic/claude-sonnet-5-5',
+		'openrouter/anthropic/claude-sonnet-5.5',
+		'google-vertex/claude-sonnet-5-5',
 	])('saves the selected cache duration for %s', (model) => {
 		const config = makeConfig({ model });
 		const wrapper = mount(AgentAdvancedPanel, {

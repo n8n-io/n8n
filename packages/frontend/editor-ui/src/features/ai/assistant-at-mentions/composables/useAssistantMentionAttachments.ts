@@ -9,6 +9,7 @@ import {
 	type AssistantMentionCounts,
 	type AssistantMentionItem,
 	type AssistantMentionSelection,
+	type AssistantWorkflowMentionItem,
 } from '../assistantAtMentions.types';
 import { mergeNodeSets } from '@/features/ai/instanceAi/utils/buildNodesAttachment';
 
@@ -55,7 +56,10 @@ export function useAssistantMentionAttachments(options: {
 		recordsById.delete(record.recordId);
 	}
 
-	function setMatchesMention(set: NodesAttachment['sets'][number], item: AssistantMentionItem) {
+	function setMatchesMention(
+		set: NodesAttachment['sets'][number],
+		item: AssistantWorkflowMentionItem,
+	) {
 		if (item.kind === 'node') {
 			return set.nodes.length === 1 && set.nodes[0]?.id === item.entityId;
 		}
@@ -63,6 +67,11 @@ export function useAssistantMentionAttachments(options: {
 	}
 
 	function attachmentContainsMention(item: AssistantMentionItem): boolean {
+		if (item.kind === 'agent') {
+			return options.resources.value.some(
+				(attachment) => attachment.type === 'agent' && attachment.id === item.entityId,
+			);
+		}
 		if (item.kind === 'workflow') {
 			return options.resources.value.some(
 				(attachment) => attachment.type === 'workflow' && attachment.id === item.workflowId,
@@ -96,17 +105,17 @@ export function useAssistantMentionAttachments(options: {
 				(current) => current.type === 'nodes' && current.workflowId === attachment.workflowId,
 			);
 		}
+		if (attachment.type === 'agent') {
+			return !options.resources.value.some(
+				(current) => current.type === 'agent' && current.id === attachment.id,
+			);
+		}
 		return true;
 	}
 
 	function addAttachment(attachment: InstanceAiResourceAttachment): void {
-		if (attachment.type === 'workflow') {
-			if (
-				options.resources.value.some(
-					(current) => current.type === 'workflow' && current.id === attachment.id,
-				)
-			)
-				return;
+		if (attachment.type === 'workflow' || attachment.type === 'agent') {
+			if (!attachmentAddsResource(attachment)) return;
 			options.resources.value = [...options.resources.value, attachment];
 			return;
 		}
@@ -170,6 +179,12 @@ export function useAssistantMentionAttachments(options: {
 
 		const nextResources: InstanceAiResourceAttachment[] = [];
 		for (const attachment of options.resources.value) {
+			if (attachment.type === 'agent') {
+				if (!records.some(({ item }) => item.kind === 'agent' && item.entityId === attachment.id)) {
+					nextResources.push(attachment);
+				}
+				continue;
+			}
 			if (attachment.type === 'workflow') {
 				if (
 					!records.some(({ item }) => item.kind === 'workflow' && item.workflowId === attachment.id)
@@ -183,11 +198,13 @@ export function useAssistantMentionAttachments(options: {
 				continue;
 			}
 
-			const matchingRecords = records.filter(
-				({ item }) => item.workflowId === attachment.workflowId && item.kind !== 'workflow',
+			const matchingItems = records.flatMap(({ item }) =>
+				(item.kind === 'node' || item.kind === 'group') && item.workflowId === attachment.workflowId
+					? [item]
+					: [],
 			);
 			const sets = attachment.sets.filter(
-				(set) => !matchingRecords.some(({ item }) => setMatchesMention(set, item)),
+				(set) => !matchingItems.some((item) => setMatchesMention(set, item)),
 			);
 			if (sets.length > 0) nextResources.push({ ...attachment, sets });
 		}
@@ -211,7 +228,13 @@ export function useAssistantMentionAttachments(options: {
 	}
 
 	function snapshotMentionedWorkflowIds(): string[] {
-		return [...new Set([...selectedRecords.values()].map(({ item }) => item.workflowId))];
+		return [
+			...new Set(
+				[...selectedRecords.values()].flatMap(({ item }) =>
+					item.kind === 'agent' ? [] : [item.workflowId],
+				),
+			),
+		];
 	}
 
 	/**

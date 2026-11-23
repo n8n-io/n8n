@@ -2716,6 +2716,35 @@ describe('TelemetryEventRelay', () => {
 				public_api: false,
 			});
 		});
+
+		it('should track on `provisioning-settings-updated` event', () => {
+			eventService.emit('provisioning-settings-updated', {
+				user: { id: 'user123', email: 'user@example.com', role: { slug: GLOBAL_OWNER_ROLE.slug } },
+				authenticationMethod: 'saml',
+				assignmentMethod: 'instance_and_project_roles',
+				roleMappingMethod: 'n8n_rule_mapping',
+				instanceRuleCount: 2,
+				projectRuleCount: 1,
+			});
+
+			const [, properties] = telemetry.track.mock.calls.find(
+				([event]) =>
+					(event as unknown) === TELEMETRY_EVENT.PROVISIONING.USER_UPDATED_PROVISIONING_SETTINGS,
+			)!;
+			expect(properties).toEqual({
+				user_id: 'user123',
+				authentication_method: 'saml',
+				assignment_method: 'instance_and_project_roles',
+				role_mapping_method: 'n8n_rule_mapping',
+				instance_rule_count: 2,
+				project_rule_count: 1,
+			});
+			expect(
+				TELEMETRY_EVENT.PROVISIONING.USER_UPDATED_PROVISIONING_SETTINGS.getValidationError(
+					properties,
+				),
+			).toBeNull();
+		});
 	});
 
 	describe('workflow events', () => {
@@ -6864,6 +6893,8 @@ describe('TelemetryEventRelay', () => {
 					projectId: 'project-1',
 					versionId: 'v-2',
 					userId: 'user-1',
+					threadId: 'thread-1',
+					source: 'assistant',
 					workflowCount: 1,
 					dataTableCount: 2,
 					agentCount: 0,
@@ -6876,6 +6907,8 @@ describe('TelemetryEventRelay', () => {
 					project_id: 'project-1',
 					version_id: 'v-2',
 					user_id: 'user-1',
+					thread_id: 'thread-1',
+					source: 'assistant',
 					workflow_count: 1,
 					data_table_count: 2,
 					agent_count: 0,

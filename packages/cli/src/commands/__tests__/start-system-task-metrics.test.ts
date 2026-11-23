@@ -16,6 +16,7 @@ import { AuthService } from '@/auth/auth.service';
 import { ControllerRegistry } from '@/controller.registry';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
+import { CrashLoopRecovery } from '@/crash-loop/crash-loop-recovery';
 import { EnqueuedExecutionRecoveryService } from '@/executions/enqueued-execution-recovery.service';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { DatabaseMetricQueryService } from '@/metrics/prometheus/database-metric-query.service';
@@ -86,6 +87,7 @@ describe('Start system task metrics', () => {
 		mockInstance(WorkflowHistoryCompactionService);
 		mockInstance(EnqueuedExecutionRecoveryService);
 		mockInstance(DurableScheduler);
+		mockInstance(CrashLoopRecovery);
 		mockInstance(SystemTaskJobRegistrar);
 		mockInstance(SystemTaskScheduledJobOwner);
 		mockInstance(SettingsRepository, { findBy: async () => [] });
