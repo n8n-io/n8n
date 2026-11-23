@@ -2,6 +2,8 @@ import type {
 	PromotionApplyCheck,
 	PromotionBindingConflict,
 	PromotionBindingConsumer,
+	PromotionMissingDependency,
+	PromotionMissingDependencyReason,
 	PromotionPreviewCheck,
 	PromotionResourceChange,
 	PromotionVariableScope,
@@ -22,6 +24,12 @@ import type { PackageManifest } from '@/modules/n8n-packages/spec/manifest.schem
 import type { PackageRequirementConsumer } from '@/modules/n8n-packages/spec/requirements.schema';
 
 import {
+	missingWorkflowDependencies,
+	placementOf,
+	sortDependencies,
+	type ApplyDependencyFacts,
+} from './apply-dependency-check';
+import {
 	compare,
 	consumersOf,
 	referenceFiles,
@@ -29,6 +37,7 @@ import {
 	type CredentialReference,
 	type ProjectLookup,
 	type VariableReference,
+	type WorkflowReference,
 } from './package-references';
 import type { CrossProjectMoves } from './cross-project-moves';
 import { canonicalJson, resourceKey, variableResourceKey } from './promotion-preview';
@@ -156,7 +165,9 @@ export type ApplyCheckInput = {
 	/** References of the planned workflows, from a scan of their nodes. */
 	credentials: CredentialReference[];
 	variables: VariableReference[];
+	workflows: WorkflowReference[];
 	moves: CrossProjectMoves;
+	dependencies: ApplyDependencyFacts;
 };
 
 /**
@@ -165,6 +176,9 @@ export type ApplyCheckInput = {
  * - a reference without a credential id, or with two credential types, blocks;
  * - a variable must exist in the scope that the branch declares, not only in a fallback scope;
  * - a variable without a file in the package blocks.
+ *
+ * `missingDependencies` lists what the planned workflows cannot use after the Apply. It repeats
+ * the entries of the other lists that are a dependency, and it adds the ones that only it shows.
  */
 export function toPreviewCheck(input: ApplyCheckInput): PromotionPreviewCheck {
 	const { plan, inventory, moves } = input;
@@ -204,6 +218,13 @@ export function toPreviewCheck(input: ApplyCheckInput): PromotionPreviewCheck {
 		accessRequirements: [],
 		conflicts: [],
 		warnings: [],
+		missingDependencies: missingWorkflowDependencies({
+			references: input.workflows,
+			inventory,
+			manifest: plan.manifest,
+			facts: input.dependencies,
+			projectOf,
+		}),
 	};
 
 	const handled = new Set<BlockingIssue>();
@@ -249,6 +270,7 @@ export function toPreviewCheck(input: ApplyCheckInput): PromotionPreviewCheck {
 		accessRequirements: sortedByJson(result.accessRequirements),
 		conflicts: sortedByJson(result.conflicts),
 		warnings: sortedByJson(result.warnings),
+		missingDependencies: sortDependencies(result.missingDependencies),
 		movedWorkflows: moves.workflows,
 		movedFolders: moves.folders,
 	};
@@ -391,7 +413,7 @@ function describeIssue(
  * import cannot see. Every other credential issue comes from the plan.
  */
 function addCredentialRules(
-	{ plan, inventory, credentials }: ApplyCheckInput,
+	{ plan, inventory, credentials, dependencies }: ApplyCheckInput,
 	consumersOfIds: (consumers: readonly PackageRequirementConsumer[]) => PromotionBindingConsumer[],
 	projectOf: ProjectLookup,
 	result: PromotionApplyCheck,
@@ -433,6 +455,30 @@ function addCredentialRules(
 	type Binding = { reference: CredentialReference; consumers: PromotionBindingConsumer[] };
 	const missing = new Map<string, Binding & { file: InventoryCredential; projectId: string }>();
 	const access = new Map<string, Binding>();
+	// A workflow file holds no credential name, so a credential without a file takes the name of
+	// its requirement row.
+	const rowNames = new Map(
+		(plan.manifest.requirements?.credentials ?? []).map(({ id, name }) => [id, name ?? id]),
+	);
+	// The list names a credential once for each reason, also when two projects raise the issue.
+	const listed = new Map<string, PromotionMissingDependency>();
+	const list = (
+		sourceId: string,
+		{ reference, consumers }: Binding,
+		reason: PromotionMissingDependencyReason,
+		accessible = true,
+	) => {
+		const key = JSON.stringify([sourceId, reason]);
+		listed.set(key, {
+			kind: 'credential',
+			id: sourceId,
+			name: reference.file ? reference.name : (rowNames.get(sourceId) ?? sourceId),
+			credentialType: reference.expectedTypes[0],
+			...placementOf(reason, accessible),
+			blocking: true,
+			consumers: mergeConsumers(listed.get(key)?.consumers, consumers),
+		});
+	};
 	for (const [sourceId, issues] of issuesById) {
 		const reference = references.get(sourceId);
 		if (!reference || reference.expectedTypes.length > 1) continue;
@@ -457,25 +503,29 @@ function addCredentialRules(
 			handled.add(issue);
 			if (issue.kind === 'unknown_type') {
 				result.conflicts.push({ ...conflict(issue), code: 'unknown-type' });
+				list(sourceId, { reference, consumers }, 'unknown-type');
 			} else if (issue.kind === 'type_mismatch') {
 				result.conflicts.push({
 					...conflict(issue),
 					code: 'type-mismatch',
 					targetType: issue.actualType ?? '',
 				});
+				list(sourceId, { reference, consumers }, 'type-mismatch');
 			} else if (issue.reason === 'incompatible-usage-scope') {
 				result.conflicts.push({
 					...conflict(issue),
 					code: 'incompatible-usage-scope',
 					usageScope: 'instance',
 				});
+				list(sourceId, { reference, consumers }, 'incompatible-usage-scope');
 			} else if (issue.reason === 'access-required') {
 				access.set(sourceId, {
 					reference,
 					consumers: mergeConsumers(access.get(sourceId)?.consumers, consumers),
 				});
 			} else if (!file || file.projectId === null) {
-				result.conflicts.push({ ...conflict(issue), code: 'unknown-owner' });
+				// Nobody can create a credential that has no owner project on the branch.
+				list(sourceId, { reference, consumers }, 'not-on-instance', false);
 			} else {
 				missing.set(sourceId, {
 					reference,
@@ -497,9 +547,17 @@ function addCredentialRules(
 			credentialType: expectedTypes[0],
 			consumers,
 		});
+		list(sourceId, { reference, consumers }, 'not-shared');
 	}
 	for (const [sourceId, { reference, file, projectId, consumers }] of missing) {
 		const { name, expectedTypes } = reference;
+		const canCreate =
+			consumers.some(({ project }) => project.id === projectId) ||
+			dependencies.credentialProjectIds.has(projectId);
+		list(sourceId, { reference, consumers }, 'not-on-instance', canCreate);
+		// The binding names the owner project and holds the expressions of the credential, so only
+		// a user who can create the credential there gets it.
+		if (!canCreate) continue;
 		result.missingBindings.push({
 			kind: 'credential',
 			sourceId,
@@ -510,6 +568,7 @@ function addCredentialRules(
 			...(file.credential.data !== undefined ? { expressionData: file.credential.data } : {}),
 		});
 	}
+	result.missingDependencies.push(...listed.values());
 }
 
 /**
@@ -564,6 +623,13 @@ function addVariableRules(
 				scope,
 				consumers,
 				...(file.variable.value !== undefined ? { sourceValue: file.variable.value } : {}),
+			});
+			result.missingDependencies.push({
+				kind: 'variable',
+				name,
+				...placementOf('not-on-instance', true),
+				blocking: true,
+				consumers,
 			});
 		}
 		if (declared === 'global') {

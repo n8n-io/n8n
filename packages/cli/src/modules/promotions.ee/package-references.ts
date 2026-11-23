@@ -1,7 +1,9 @@
 import type { PromotionBindingConsumer, PromotionBindingProject } from '@n8n/api-types';
+import { getStaticSubworkflowId } from 'n8n-workflow';
 
 import { visitWorkflowCredentials } from '@/modules/n8n-packages/entities/credential/workflow-credential-references';
 import type { VariableRequirementsExtractor } from '@/modules/n8n-packages/entities/variable/variable-requirements.extractor';
+import { staticErrorWorkflowId } from '@/modules/n8n-packages/entities/workflow/references/error-workflow.reference';
 import type {
 	InventoryCredential,
 	InventoryVariable,
@@ -25,6 +27,15 @@ export interface VariableReference {
 	name: string;
 	file: InventoryVariable | undefined;
 	workflows: InventoryWorkflow[];
+}
+
+/** A workflow that other workflows call from a node, or set as their error workflow. */
+export interface WorkflowReference {
+	id: string;
+	/** The workflows that call it from a node. Its caller policy applies to them. */
+	callers: InventoryWorkflow[];
+	/** The workflows that set it as their error workflow. */
+	errorSources: InventoryWorkflow[];
 }
 
 export type ProjectLookup = (id: string) => PromotionBindingProject;
@@ -96,6 +107,27 @@ export function collectVariableReferences(
 	return [...groups.values()].sort(
 		(a, b) => compare(a.file?.projectId ?? '', b.file?.projectId ?? '') || compare(a.name, b.name),
 	);
+}
+
+/** Reads the references that the export reads. It does not read a reference in an expression. */
+export function collectWorkflowReferences(
+	inventory: PackageDirectoryInventory,
+): WorkflowReference[] {
+	const groups = new Map<string, WorkflowReference>();
+	const groupOf = (id: string) => {
+		const group = groups.get(id) ?? { id, callers: [], errorSources: [] };
+		groups.set(id, group);
+		return group;
+	};
+	for (const workflow of inventory.workflows) {
+		for (const node of workflow.content.nodes ?? []) {
+			const calledId = node?.parameters ? getStaticSubworkflowId(node) : undefined;
+			if (calledId) groupOf(calledId).callers.push(workflow);
+		}
+		const errorWorkflowId = staticErrorWorkflowId(workflow.content);
+		if (errorWorkflowId) groupOf(errorWorkflowId).errorSources.push(workflow);
+	}
+	return [...groups.values()].sort((a, b) => compare(a.id, b.id));
 }
 
 export function consumersOf(

@@ -18,7 +18,9 @@ export const errorWorkflowReference: EntityReference<WorkflowSubWorkflowRequirem
 	},
 };
 
-function staticErrorWorkflowId(workflow: WorkflowEntity): string | undefined {
+export function staticErrorWorkflowId(
+	workflow: Pick<WorkflowEntity, 'settings'>,
+): string | undefined {
 	const errorWorkflow = workflow.settings?.errorWorkflow;
 	if (
 		typeof errorWorkflow !== 'string' ||
