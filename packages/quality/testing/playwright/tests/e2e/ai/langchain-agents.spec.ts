@@ -172,7 +172,7 @@ test.describe(
 				const tools = [
 					{ name: AI_TOOL_CALCULATOR_NODE_NAME, subcategory: TOOL_SUBCATEGORY },
 					{ name: AI_TOOL_CODE_NODE_NAME },
-					{ name: AI_TOOL_CODE_NODE_NAME },
+					{ name: AI_TOOL_CODE_NODE_NAME, canvasName: `${AI_TOOL_CODE_NODE_NAME}1` },
 					{ name: AI_TOOL_WIKIPEDIA_NODE_NAME, subcategory: TOOL_SUBCATEGORY },
 				];
 
@@ -182,7 +182,7 @@ test.describe(
 						subcategory: tool.subcategory,
 					});
 					await expect(
-						n8n.canvas.connectionBetweenNodes(tool.name, AGENT_NODE_NAME),
+						n8n.canvas.connectionBetweenNodes(tool.canvasName ?? tool.name, AGENT_NODE_NAME),
 					).toBeAttached();
 				}
 

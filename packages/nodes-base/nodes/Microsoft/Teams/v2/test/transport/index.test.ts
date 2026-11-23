@@ -4,8 +4,9 @@ import type {
 	ILoadOptionsFunctions,
 	INode,
 	JsonObject,
+	RequestPath,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestPath } from 'n8n-workflow';
 import type { Mock, Mocked } from 'vitest';
 import { mockDeep } from 'vitest-mock-extended';
 
@@ -26,6 +27,7 @@ import {
 	CHANNEL_SUBSCRIPTION_FORBIDDEN,
 	CHAT_ALL_MESSAGES_SUBSCRIPTION_FORBIDDEN,
 	CHAT_SUBSCRIPTION_FORBIDDEN,
+	SUBSCRIPTION_LIMIT_FORBIDDEN,
 	TEAM_MEMBER_SUBSCRIPTION_FORBIDDEN,
 	TEAMS_FORBIDDEN_HINTS,
 } from '../../transport/forbiddenHints';
@@ -69,13 +71,13 @@ describe('Microsoft Teams Transport', () => {
 		it('returns /v1.0/teams under the Service Principal credential', () => {
 			mockExecuteFunctions.getNodeParameter.mockReturnValue(SERVICE_PRINCIPAL_AUTH);
 
-			expect(joinedTeamsEndpoint.call(mockExecuteFunctions)).toBe('/v1.0/teams');
+			expect(joinedTeamsEndpoint.call(mockExecuteFunctions).value).toBe('/v1.0/teams');
 		});
 
 		it('returns /v1.0/me/joinedTeams under OAuth2 (default)', () => {
 			mockExecuteFunctions.getNodeParameter.mockReturnValue(undefined);
 
-			expect(joinedTeamsEndpoint.call(mockExecuteFunctions)).toBe('/v1.0/me/joinedTeams');
+			expect(joinedTeamsEndpoint.call(mockExecuteFunctions).value).toBe('/v1.0/me/joinedTeams');
 		});
 	});
 
@@ -147,9 +149,11 @@ describe('Microsoft Teams Transport', () => {
 			expect(mockLoadOptions.getCredentials).toHaveBeenCalledWith(SERVICE_PRINCIPAL_AUTH);
 			expect(loadOptionsRequestWithAuthentication).toHaveBeenCalledWith(
 				SERVICE_PRINCIPAL_AUTH,
-				expect.objectContaining({ uri: 'https://graph.microsoft.com/v1.0/teams' }),
+				expect.objectContaining({
+					uri: expect.objectContaining({ value: 'https://graph.microsoft.com/v1.0/teams' }),
+				}),
 			);
-			const calledUri = loadOptionsRequestWithAuthentication.mock.calls[0][1].uri as string;
+			const calledUri = loadOptionsRequestWithAuthentication.mock.calls[0][1].uri.value as string;
 			expect(calledUri).not.toContain('/me/joinedTeams');
 			expect(loadOptionsRequestOAuth2).not.toHaveBeenCalled();
 		});
@@ -193,7 +197,7 @@ describe('Microsoft Teams Transport', () => {
 
 			const { results } = await getGroups.call(mockLoadOptions);
 
-			const calledUri = loadOptionsRequestOAuth2.mock.calls[0][1].uri as string;
+			const calledUri = loadOptionsRequestOAuth2.mock.calls[0][1].uri.value as string;
 			expect(calledUri).toContain('/v1.0/me/joinedTeams');
 			expect(calledUri).not.toContain('/v1.0/groups');
 			expect(results.map((r) => r.value)).toEqual(['g1', 'g2']);
@@ -310,6 +314,7 @@ describe('Microsoft Teams Transport', () => {
 			mockHookFunctions.helpers.requestOAuth2 = hookRequestOAuth2;
 			mockHookFunctions.getCredentials.mockResolvedValue({ graphApiBaseUrl: '' });
 			mockHookFunctions.getNode.mockReturnValue(mockNode);
+			mockHookFunctions.getWorkflow.mockReturnValue({ id: 'wf1', active: true });
 			mockHookFunctions.getWorkflowStaticData.mockReturnValue({ subscriptionIds: ['sub-1'] });
 		});
 
@@ -342,6 +347,28 @@ describe('Microsoft Teams Transport', () => {
 				expect.objectContaining({ method: 'DELETE' }),
 			);
 		});
+
+		// The trigger counts a 404 as already removed, which needs the status on the error that the
+		// delegated request path rejects with.
+		it('counts a raw Graph 404 on a subscription delete as already removed', async () => {
+			mockHookFunctions.getNodeParameter.mockReturnValue(undefined);
+			const body = { error: { code: 'ResourceNotFound', message: 'The object was not found.' } };
+			const notFound = Object.assign(new Error(`404 - ${JSON.stringify(body)}`), {
+				statusCode: 404,
+				error: body,
+			});
+			hookRequestOAuth2.mockImplementation(async (_type: string, options: { method: string }) => {
+				if (options.method === 'DELETE') throw notFound;
+				return { value: [] };
+			});
+
+			const result = await new MicrosoftTeamsTrigger().webhookMethods.default.delete.call(
+				mockHookFunctions,
+			);
+
+			expect(result).toBe(true);
+			expect(mockHookFunctions.logger.warn).not.toHaveBeenCalled();
+		});
 	});
 
 	// Drives the real facade with the literal Graph 403 texts of a refused Trigger subscription.
@@ -370,6 +397,12 @@ describe('Microsoft Teams Transport', () => {
 			"Operation: Create; Exception: [Status Code: Forbidden; Reason: Required permissions to access user-scoped chat message subscription ('Chat.Read, Chat.ReadWrite') are missing.]";
 		// Same renderer, a resource no hint covers: an over-broad match such as `' resource` would fire
 		const MAIL_403 = refused(`/users('${USER_ID}')/mailFolders('inbox')/messages`);
+		// Seen live on the QA tenant for a second `/teams/{id}/channels` subscription of one user, with
+		// the resource token in upper case. The app-subject form follows a Microsoft Q&A report.
+		const LIMIT_403 = `Operation: Create; Exception: [Status Code: Forbidden; Reason: User '${USER_ID}' has reached its limit of '1' 'TEAMS/${TEAM_ID.toUpperCase()}/CHANNELS' subscription on tenant '${USER_ID}'.]`;
+		const APP_LIMIT_403 = LIMIT_403.replace(`User '${USER_ID}'`, `App '${USER_ID}'`);
+		// Modeled on LIMIT_403 for the documented quota of ten chat subscriptions per user, not seen live
+		const LIMIT_OF_TEN_403 = `Operation: Create; Exception: [Status Code: Forbidden; Reason: User '${USER_ID}' has reached its limit of '10' 'ME/CHATS' subscription on tenant '${USER_ID}'.]`;
 		// Names the hinted permissions only as granted roles (a listing 403 on GET /v1.0/subscriptions
 		// has this shape too): no hint may fire on it
 		const GRANTED_403 =
@@ -385,7 +418,7 @@ describe('Microsoft Teams Transport', () => {
 		// `requestWithAuthentication` wraps the raw error in a NodeApiError before the kernel sees it
 		const wrapped = (message: string) =>
 			new NodeApiError(mockNode, graphError(message) as unknown as JsonObject);
-		const post = async (resource = '/v1.0/subscriptions') =>
+		const post = async (resource: RequestPath = requestPath`/v1.0/subscriptions`) =>
 			(await microsoftApiRequest
 				.call(mockExecuteFunctions, 'POST', resource, {})
 				.catch((e: Error) => e)) as NodeApiError;
@@ -440,14 +473,15 @@ describe('Microsoft Teams Transport', () => {
 				permission: 'Chat.Read',
 			},
 		];
-		const unhintedRows: Array<{ when: string; graphText: string; resource?: string }> = [
+		const unhintedRows: Array<{ when: string; graphText: string; resource?: RequestPath }> = [
 			{ when: 'the hinted permissions appear only as granted roles', graphText: GRANTED_403 },
 			{ when: 'the refused resource has no hint', graphText: MAIL_403 },
+			{ when: 'the subscription quota is not one', graphText: LIMIT_OF_TEN_403 },
 			// The endpoint gate: the members text on a path other than /subscriptions stays unhinted
 			{
 				when: 'the refused members path is not a subscription',
 				graphText: MEMBERS_403,
-				resource: `/v1.0/teams/${TEAM_ID}/members`,
+				resource: requestPath`/v1.0/teams/${TEAM_ID}/members`,
 			},
 		];
 
@@ -455,8 +489,13 @@ describe('Microsoft Teams Transport', () => {
 			mockExecuteFunctions.getCredentials.mockResolvedValue({ graphApiBaseUrl: '' });
 		});
 
-		// Pins the hint-table comment: each text contains exactly one fragment, so order does not matter
-		it.each([...teamRows, ...chatRows])(
+		const limitRows = [
+			{ label: 'user limit', hint: SUBSCRIPTION_LIMIT_FORBIDDEN, graphText: LIMIT_403 },
+			{ label: 'app limit', hint: SUBSCRIPTION_LIMIT_FORBIDDEN, graphText: APP_LIMIT_403 },
+		];
+
+		// Pins the hint-table comment: each text matches exactly one hint, so order does not matter
+		it.each([...teamRows, ...chatRows, ...limitRows])(
 			'matches exactly one hint for a $label text',
 			({ hint, graphText }) => {
 				expect(TEAMS_FORBIDDEN_HINTS.filter((h) => graphText.includes(h.match))).toEqual([hint]);
@@ -513,6 +552,17 @@ describe('Microsoft Teams Transport', () => {
 					expect(error.messages).toEqual([GENERIC_APP_ONLY_403]);
 				},
 			);
+
+			it('explains the quota of one for an app limit text', async () => {
+				mockRequestWithAuthentication.mockRejectedValue(wrapped(APP_LIMIT_403));
+
+				const error = await post();
+
+				expect(error.httpCode).toBe('403');
+				expect(error.message).toBe(SUBSCRIPTION_LIMIT_FORBIDDEN.message);
+				expect(error.description).toBe(SUBSCRIPTION_LIMIT_FORBIDDEN.description);
+				expectNoGraphIds(error);
+			});
 		});
 
 		describe('under a delegated OAuth2 credential', () => {
@@ -549,6 +599,18 @@ describe('Microsoft Teams Transport', () => {
 				},
 			);
 
+			it('explains the quota of one for a user limit text', async () => {
+				mockRequestOAuth2.mockRejectedValue(graphError(LIMIT_403));
+
+				const error = await post();
+
+				expect(error.httpCode).toBe('403');
+				expect(error.message).toBe(SUBSCRIPTION_LIMIT_FORBIDDEN.delegated.message);
+				expect(error.description).toBe(SUBSCRIPTION_LIMIT_FORBIDDEN.delegated.description);
+				// The raw Graph text stays in the error details
+				expect(error.messages).toContain(LIMIT_403);
+			});
+
 			// The create hook has no catch of its own. Pin that the hint copy reaches the publish
 			// surface unchanged through the real hook.
 			it('surfaces the hint copy through the Trigger create hook', async () => {
@@ -556,6 +618,7 @@ describe('Microsoft Teams Transport', () => {
 				hooks.helpers.requestOAuth2 = vi.fn().mockRejectedValue(graphError(MEMBERS_403));
 				hooks.getCredentials.mockResolvedValue({ graphApiBaseUrl: '' });
 				hooks.getNode.mockReturnValue(mockNode);
+				hooks.getWorkflow.mockReturnValue({ id: 'wf1', active: true });
 				hooks.getNodeWebhookUrl.mockReturnValue('https://n8n.example.com/webhook/teams');
 				hooks.getWorkflowStaticData.mockReturnValue({});
 				const parameters: Partial<Record<string, string>> = {

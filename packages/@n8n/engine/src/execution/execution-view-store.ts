@@ -7,6 +7,7 @@ import type {
 	StepSlots,
 	StepStatus,
 	WorkflowDocument,
+	StepOutputSources,
 } from './execution.types';
 
 /**
@@ -21,7 +22,7 @@ export interface ExecutionListItemView {
 	mode: ExecutionMode;
 	/** The host's finer execution mode. */
 	hostMode: string;
-	/** The execution that started this one, or `null` for a top-level one. */
+	/** The parent link, or `null` for a top-level execution. */
 	parent: ParentLink | null;
 	createdAt: Date;
 	updatedAt: Date;
@@ -33,8 +34,10 @@ export interface ExecutionListFilter {
 	workflowIds: readonly string[] | 'all';
 	status?: ExecutionStatus[];
 	hostMode?: string;
-	/** Only the executions this one started. */
+	/** Only the sub-executions of this execution. */
 	parentExecutionId?: string;
+	/** `true` for sub-executions only, `false` for top-level executions only. */
+	hasParent?: boolean;
 	createdAfter?: string;
 	createdBefore?: string;
 }
@@ -64,7 +67,7 @@ export interface ExecutionView {
 	graph: StoredWorkflowGraph;
 	/** The workflow captured at start, alongside the graph and just as immutable. */
 	workflow: WorkflowDocument;
-	/** The execution that started this one, or `null` for a top-level one. */
+	/** The parent link, or `null` for a top-level execution. */
 	parent: ParentLink | null;
 	createdAt: Date;
 	updatedAt: Date;
@@ -87,6 +90,8 @@ export interface StepView {
 	status: StepStatus;
 	/** Outputs of a completed step, indexed by output slot; `null` until it completes. */
 	outputs: StepSlots | null;
+	/** Where the outputs' items came from. Only a loop node that ran states it. Otherwise `null`. */
+	outputSources: StepOutputSources | null;
 	/** The error that failed the step; `null` unless it failed. */
 	error: StepError | null;
 	createdAt: string;

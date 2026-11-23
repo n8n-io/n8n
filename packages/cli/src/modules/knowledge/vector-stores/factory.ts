@@ -1,7 +1,7 @@
 import type { BuiltVectorStoreBackend, CredentialProvider, ResolvedCredential } from '@n8n/agents';
 import { VectorStore } from '@n8n/agents';
 import type { AgentJsonVectorStoreConfig } from '@n8n/api-types';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { resolveEmbeddingProviderOptionsFromCredential } from './embedding-credential';
 

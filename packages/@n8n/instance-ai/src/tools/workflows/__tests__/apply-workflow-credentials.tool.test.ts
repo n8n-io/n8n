@@ -50,11 +50,10 @@ function makeContext(options: MakeContextOptions = {}): OrchestrationContext {
 
 	return {
 		workflowTaskService: {
-			getBuildOutcome: vi.fn().mockResolvedValue(
-				options.buildOutcome ?? {
-					mockedCredentialsByNode: { Gemini: ['googlePalmApi'] },
-				},
-			),
+			getBuildOutcome: vi.fn().mockResolvedValue({
+				workflowId: 'wf-1',
+				...(options.buildOutcome ?? { mockedCredentialsByNode: { Gemini: ['googlePalmApi'] } }),
+			}),
 			updateBuildOutcome: vi.fn().mockResolvedValue(undefined),
 		},
 		domainContext,
@@ -225,6 +224,54 @@ describe('createApplyWorkflowCredentialsTool', () => {
 		});
 		expect(workflowJson.nodes[1]).not.toHaveProperty('credentials');
 		expect(context.domainContext!.workflowService.updateFromWorkflowJSON).toHaveBeenCalledTimes(1);
+	});
+
+	it.each([
+		{ buildWorkflowId: 'wf-other', label: 'another workflow' },
+		{ buildWorkflowId: undefined, label: 'no workflow' },
+	])('does not save when the work item belongs to $label', async ({ buildWorkflowId }) => {
+		const context = makeContext({
+			buildOutcome: {
+				workflowId: buildWorkflowId,
+				mockedCredentialsByNode: { Gemini: ['googlePalmApi'] },
+			},
+		});
+		const result = await executeTool(createApplyWorkflowCredentialsTool(context), {
+			workItemId: 'wi_test',
+			workflowId: 'wf-1',
+			credentials: { googlePalmApi: 'cred-1' },
+		});
+
+		expect(result.success).toBe(false);
+		expect(result.error).toContain('wf-1');
+		expect(context.domainContext!.workflowService.getAsWorkflowJSON).not.toHaveBeenCalled();
+		expect(context.domainContext!.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
+	});
+
+	it('keeps a credential that is already bound to a mocked node', async () => {
+		const existing = { id: 'cred-existing', name: 'Existing Key' };
+		const workflowJson = {
+			nodes: [
+				{
+					name: 'Gemini',
+					type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+					parameters: {},
+					credentials: { googlePalmApi: existing },
+				},
+			],
+			connections: {},
+		};
+		const context = makeContext({ workflowJson });
+		const result = await executeTool(createApplyWorkflowCredentialsTool(context), {
+			workItemId: 'wi_test',
+			workflowId: 'wf-1',
+			credentials: { googlePalmApi: 'cred-1' },
+		});
+
+		expect(result).toEqual({ success: true, appliedNodes: [] });
+		expect(workflowJson.nodes[0].credentials).toEqual({ googlePalmApi: existing });
+		expect(context.domainContext!.credentialService.get).not.toHaveBeenCalled();
+		expect(context.domainContext!.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
 	});
 
 	it('returns no saved revision when the credential save fails', async () => {

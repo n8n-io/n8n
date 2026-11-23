@@ -12,7 +12,6 @@ import type {
 	ObservationLogObserveFn,
 	ObservationLogReflectFn,
 } from './observation-log';
-import type { RuntimeSkillStateStore } from '../../skills/types';
 import type { JSONObject } from '../utils/json';
 
 /**
@@ -38,8 +37,6 @@ export interface Thread {
 }
 
 export interface BuiltMemory {
-	/** Retains active skills across separate runs, including compacted conversations. */
-	skillState?: RuntimeSkillStateStore;
 	// --- Thread management ---
 	getThread(threadId: string): Promise<Thread | null>;
 	saveThread(thread: Omit<Thread, 'createdAt' | 'updatedAt'>): Promise<Thread>;
@@ -419,7 +416,10 @@ export interface ObservationLogMemoryConfig {
 }
 
 export interface ObservationalMemoryConfig {
-	/** Estimated visible-window tokens at which the Observer is scheduled mid-run and post-turn. */
+	/**
+	 * Fixed token threshold for the Observer. When set, it replaces the default
+	 * window shares. Window shares are used when this is unset.
+	 */
 	observerThresholdTokens?: number;
 	/**
 	 * Run the Observer at tool-loop boundaries inside a turn. Default `true`.
@@ -438,6 +438,77 @@ export interface ObservationalMemoryConfig {
 	observe?: ObservationLogObserveFn;
 	/** Policy callback that returns drop/merge instructions for the active observation log. */
 	reflect?: ObservationLogReflectFn;
+	/**
+	 * Derive thresholds from shares of the context window. Default when
+	 * `observerThresholdTokens` is unset: the default shares with a 200k cap.
+	 */
+	windowShares?: ObservationWindowShares;
+	/**
+	 * Prompt-cache lifetime. A thread idle for longer resumes from its notes.
+	 * Defaults to the provider cache retention from `promptCaching`.
+	 */
+	cacheTtlMs?: number;
+	/**
+	 * `message` (default) sends the observation log as the first conversation
+	 * message, so log updates do not change the cached system prefix.
+	 * `system` renders it into the system prompt.
+	 */
+	logPlacement?: ObservationLogPlacement;
+	/**
+	 * `retry` (default) tries a failed Observer call again at the next step,
+	 * up to `maxConsecutiveObserverFailures` in a row.
+	 * `disableForRun` stops observation for the rest of the run.
+	 */
+	failurePolicy?: ObservationFailurePolicy;
+	/** Failures in a row after which `retry` stops observing for the run. Default 3. */
+	maxConsecutiveObserverFailures?: number;
+	/**
+	 * Maximum Observer calls after one turn. Each call reads one batch. A
+	 * blocking observation has no limit. `0` means no limit. Default 5.
+	 */
+	maxObserverBatchesAfterTurn?: number;
+	/**
+	 * `background` (default) queues the Reflector after every turn.
+	 * `afterObserve` runs it only after an Observer call that advanced the cursor.
+	 */
+	reflectionMode?: ObservationReflectionMode;
+	/** Give the agent a `read_history` tool to read messages the log replaced. Default `true`. */
+	historyRecall?: boolean;
+}
+
+export type ObservationLogPlacement = 'system' | 'message';
+export type ObservationFailurePolicy = 'disableForRun' | 'retry';
+export type ObservationReflectionMode = 'background' | 'afterObserve';
+
+/** Thresholds as shares (0–1) of the model's context window. */
+export interface ObservationWindowShares {
+	/** Context window size. Looked up in the model catalog when unset. */
+	contextWindowTokens?: number;
+	/**
+	 * Upper limit for the window that the shares are taken from. The smaller of
+	 * this and the model's window is used, so memory starts early on very large
+	 * windows. Overrun checks still use the model's real window. No cap when unset.
+	 */
+	maxContextWindowTokens?: number;
+	/** Unobserved size that triggers the first observation. Default 0.2. */
+	observeAt?: number;
+	/** New unobserved size that triggers later observations. Default 0.1. */
+	observeNew?: number;
+	/** Visible window size that starts a background mid-run observation. Default 0.6. */
+	midRunAt?: number;
+	/** Visible window size at which the loop waits for observation. Default 0.9. */
+	waitAt?: number;
+	/** Observation log size that triggers the Reflector. Default 0.15. */
+	reflectAt?: number;
+	/**
+	 * Log size the Reflector rewrites to. Default 0.09. It is below `reflectAt`,
+	 * so the log grows for several observations before the next rewrite.
+	 */
+	reflectTo?: number;
+	/** Largest unobserved batch that one Observer call reads. Default 0.6. */
+	batchAt?: number;
+	/** Largest working set (plan and commands) the Observer can write. Default 0.01. */
+	workingSetAt?: number;
 }
 
 interface MemoryConfigBase {

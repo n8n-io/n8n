@@ -1,5 +1,10 @@
-import { buildHitlCallbackReference, markSlackInteractionRequest } from 'n8n-core';
+import {
+	buildHitlCallbackReference,
+	HITL_CALLBACK_PREFIX_V2,
+	markSlackInteractionRequest,
+} from 'n8n-core';
 import type { IWebhookFunctions } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import * as sendAndWaitUtils from '../../../../../utils/sendAndWait/utils';
@@ -16,11 +21,11 @@ const slackApiRequest = vi.mocked(GenericFunctions.slackApiRequest);
 const verifySignature = vi.mocked(SlackTriggerHelpers.verifySignature);
 const sendAndWaitWebhook = vi.mocked(sendAndWaitUtils.sendAndWaitWebhook);
 
-// The button `value` now carries the shared HITL callback reference (executionId|decision|hmac).
-// The node only parses it for the decision (parseHitlCallbackReference does no HMAC check — the
-// HMAC is verified at the CLI layer), so any secret produces a well-formed reference here.
+// The node reads only the decision; the HMAC is verified before node code runs (v1:
+// `HitlInteractionWebhooks.validate`, v2: `locateResume`). Any secret works here.
 const APPROVE_VALUE = buildHitlCallbackReference('e1', 'a', 'ref-secret');
 const DECLINE_VALUE = buildHitlCallbackReference('e1', 'd', 'ref-secret');
+const STEP_BOUND_APPROVE_VALUE = `${HITL_CALLBACK_PREFIX_V2}AZJqTn9ccACAAAAAAAAAAQ|a|mac`;
 
 interface ContextOptions {
 	method?: string;
@@ -150,6 +155,29 @@ describe('slackSendAndWaitWebhook', () => {
 		expect(sendAndWaitWebhook).not.toHaveBeenCalled();
 		// verifySignature is short-circuited by the missing secret, so no resume data is produced.
 		expect(verifySignature).not.toHaveBeenCalled();
+	});
+
+	it('resumes as approved for a step-bound reference', async () => {
+		const { ctx, httpRequest } = createContext({
+			interaction: true,
+			signatureSecret: 'secret',
+			postDecisionBehavior: 'keepMessage',
+			payload: {
+				user: { id: 'U1', name: 'alice', username: 'alice.w' },
+				actions: [{ action_id: HITL_APPROVE_ACTION_ID, value: STEP_BOUND_APPROVE_VALUE }],
+				channel: { id: 'C1' },
+				message: { ts: '111.222' },
+			},
+		});
+		verifySignature.mockResolvedValue(true);
+		slackApiRequest.mockResolvedValue({ user: { profile: {} } });
+		httpRequest.mockResolvedValue({});
+
+		const result = (await slackSendAndWaitWebhook.call(ctx)) as {
+			workflowData: Array<Array<{ json: { data: Record<string, unknown> } }>>;
+		};
+
+		expect(result.workflowData[0][0].json.data).toMatchObject({ approved: true });
 	});
 
 	it('resumes with the responder, channel and message id, and locks the message via response_url', async () => {
@@ -285,7 +313,7 @@ describe('slackSendAndWaitWebhook', () => {
 		expect(httpRequest).not.toHaveBeenCalled();
 		expect(slackApiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/chat.postEphemeral',
+			requestPath`/chat.postEphemeral`,
 			expect.objectContaining({ channel: 'C1', user: 'U_OTHER' }),
 		);
 		// Must acknowledge with a 200 so Slack doesn't time out and retry the same click.
@@ -313,7 +341,7 @@ describe('slackSendAndWaitWebhook', () => {
 
 		expect(slackApiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/chat.postEphemeral',
+			requestPath`/chat.postEphemeral`,
 			expect.objectContaining({
 				channel: 'C1',
 				user: 'U_OTHER',
@@ -381,7 +409,11 @@ describe('slackSendAndWaitWebhook', () => {
 
 		// No lock attempt (neither response_url nor chat.update), but the execution still resumes.
 		expect(httpRequest).not.toHaveBeenCalled();
-		expect(slackApiRequest).not.toHaveBeenCalledWith('POST', '/chat.update', expect.anything());
+		expect(slackApiRequest).not.toHaveBeenCalledWith(
+			'POST',
+			requestPath`/chat.update`,
+			expect.anything(),
+		);
 		expect(result.workflowData[0][0].json.data.approved).toBe(true);
 	});
 
@@ -427,7 +459,7 @@ describe('slackSendAndWaitWebhook', () => {
 		});
 		verifySignature.mockResolvedValue(true);
 		slackApiRequest.mockImplementation(async (_method, resource) => {
-			if (resource === '/users.info') return { user: { profile: {} } };
+			if (String(resource) === '/users.info') return { user: { profile: {} } };
 			return { ok: true };
 		});
 		httpRequest.mockRejectedValue(new Error('response_url expired'));
@@ -436,7 +468,7 @@ describe('slackSendAndWaitWebhook', () => {
 
 		expect(slackApiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/chat.update',
+			requestPath`/chat.update`,
 			expect.objectContaining({ channel: 'C1', ts: '111.222' }),
 		);
 	});
@@ -556,7 +588,7 @@ describe('slackSendAndWaitWebhook', () => {
 		verifySignature.mockResolvedValue(true);
 		httpRequest.mockRejectedValue(new Error('response_url expired'));
 		slackApiRequest.mockImplementation(async (_method, resource) => {
-			if (resource === '/users.info') return { user: { profile: {} } };
+			if (String(resource) === '/users.info') return { user: { profile: {} } };
 			throw new Error('missing chat:write scope');
 		});
 

@@ -1,11 +1,13 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
+
+import type { SerializableAgentState, Workspace } from '@n8n/agents';
 import type { AgentSseEvent } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { TransactionRunner, User } from '@n8n/db';
-import { ConflictError, NotFoundError } from '@n8n/errors';
+import { ConflictError, NotFoundError, UserError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 import { FileNotFoundError } from 'n8n-core';
 import { Readable } from 'node:stream';
-import { UserError } from 'n8n-workflow';
 
 import { userHasScopes } from '@/permissions.ee/check-access';
 
@@ -14,6 +16,7 @@ import type { AgentChatExecutionService } from '../../agent-chat-execution.servi
 import { AgentConversationStateService } from '../../agent-conversation-state.service';
 import { AgentFormattedTurnError } from '../../agent-formatted-turn.error';
 import type { AgentExecutionService } from '../../agent-execution.service';
+import type { AgentSandboxFilesService } from '../../agent-sandbox-files.service';
 import { toChatErrorEvent } from '../../agent-sse-stream';
 import { AgentTurnAlreadyRunningError } from '../../agent-turn-already-running.error';
 import type {
@@ -24,6 +27,7 @@ import type {
 	AgentTurnExecutionService,
 	AgentTurnRequest,
 } from '../../agent-turn-execution.service';
+import type { AgentChatAttachment } from '../../entities/agent-chat-attachment.entity';
 import type { AgentExecutionThread } from '../../entities/agent-execution-thread.entity';
 import { ExecutionRecorder, type TimelineEvent } from '../../execution-recorder';
 import type { N8NCheckpointStorage } from '../../integrations/n8n-checkpoint-storage';
@@ -36,6 +40,7 @@ import type {
 import type { AgentExecutionThreadRepository } from '../../repositories/agent-execution-thread.repository';
 import type { AgentExecutionStreamChunk } from '../../types/agent-steering';
 import type { AgentTurnFinalizeOutcome, FormattedTurnError } from '../../types/agent-turn-outcome';
+import { systemChatMemoryResourceId } from '../../utils/agent-memory-scope';
 import { executionToMessagesDto } from '../../utils/execution-to-message-mapper';
 import { SystemAgentExecutionService } from '../system-agent-execution.service';
 import { SystemAgentRegistry } from '../system-agent-registry';
@@ -113,6 +118,8 @@ function setup(
 	const agentCheckpointStore = mock<ReturnType<N8NCheckpointStorage['getStorage']>>();
 	checkpointStorage.getStorage.mockReturnValue(agentCheckpointStore);
 	const threadGrants = mock<AgentThreadGrantRepository>();
+	const sandboxFiles = mock<AgentSandboxFilesService>({ maxImportBytes: 200 * 1024 * 1024 });
+	sandboxFiles.isEnabled.mockResolvedValue(false);
 
 	const onChunk = vi.fn();
 	const onSettled = vi.fn(async () => {});
@@ -168,6 +175,7 @@ function setup(
 		new AgentConversationStateService(executionRepository, checkpointStorage),
 		n8nMemory,
 		threadGrants,
+		sandboxFiles,
 	);
 
 	return {
@@ -192,6 +200,7 @@ function setup(
 		agentMemory,
 		agentCheckpointStore,
 		threadGrants,
+		sandboxFiles,
 	};
 }
 
@@ -543,6 +552,8 @@ describe('SystemAgentExecutionService', () => {
 					agentInstance: handle.agent,
 					admittedExecution: expect.objectContaining({ executionId: 'exec-1' }),
 					context: { projectId: 'project-1', agentId: AGENT_ID, threadId: 'thread-1' },
+					// The sandbox files of the turn belong to the system chat of the user.
+					fileResourceId: 'system-chat:user-1',
 				}),
 			);
 			expect(prepared[0]).toMatchObject({
@@ -650,6 +661,50 @@ describe('SystemAgentExecutionService', () => {
 			expect(send).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'done' }));
 		});
 
+		it('runs the whole turn inside the turn context of the handle', async () => {
+			const { service, handle, turnExecutionService, onSettled } = setup([textChunk], {
+				status: 'completed',
+			});
+			const storage = new AsyncLocalStorage<string>();
+			const seen: Array<string | undefined> = [];
+			const withTurnContext = vi.fn(async (run: () => Promise<unknown>) => {
+				return await storage.run('turn-span', run);
+			});
+			handle.withTurnContext = async <T>(run: () => Promise<T>) =>
+				(await withTurnContext(run)) as T;
+			turnExecutionService.execute.mockImplementation(async function* (config) {
+				seen.push(storage.getStore());
+				await config.prepare();
+				yield textChunk;
+				await config.onBeforeFinalize?.({ executionId: 'exec-1', status: 'completed' });
+			});
+			onSettled.mockImplementation(async () => {
+				seen.push(storage.getStore());
+			});
+
+			await service.consume(claimFor(), user, new AbortController().signal, vi.fn());
+
+			expect(withTurnContext).toHaveBeenCalledTimes(1);
+			expect(seen).toEqual(['turn-span', 'turn-span']);
+		});
+
+		it('settles as errored and rethrows when the turn throws through withTurnContext', async () => {
+			const { service, handle, onSettled, turnExecutionService } = setup();
+			handle.withTurnContext = async <T>(run: () => Promise<T>) => await run();
+			const failure = new Error('stream broke');
+			// eslint-disable-next-line require-yield
+			turnExecutionService.execute.mockImplementation(async function* () {
+				throw failure;
+			});
+
+			await expect(
+				service.consume(claimFor(), user, new AbortController().signal, vi.fn()),
+			).rejects.toThrow('stream broke');
+			expect(onSettled).toHaveBeenCalledWith(
+				expect.objectContaining({ status: 'errored', error: failure }),
+			);
+		});
+
 		it('gives the provider the session grants of the thread', async () => {
 			const { service, provider, threadGrants } = setup([textChunk]);
 			threadGrants.findKeys.mockResolvedValue(new Set(['tool:run']));
@@ -663,6 +718,173 @@ describe('SystemAgentExecutionService', () => {
 			expect(threadGrants.findKeys).toHaveBeenCalledWith('thread-1');
 			expect(threadGrants.grant).toHaveBeenCalledWith('thread-1', 'tool:write');
 			expect(threadGrants.revoke).toHaveBeenCalledWith('thread-1', 'tool:run');
+		});
+
+		it('gives the turn the sandbox files of project agents only when their flag is on', async () => {
+			const off = setup([textChunk]);
+			await off.service.consume(claimFor(), user, new AbortController().signal, vi.fn());
+			expect(off.provider.prepareTurn.mock.calls[0][0].sandboxFiles).toBeUndefined();
+
+			const on = setup([textChunk]);
+			on.sandboxFiles.isEnabled.mockResolvedValue(true);
+			await on.service.consume(claimFor(), user, new AbortController().signal, vi.fn());
+			// The import cap of project agents, N8N_AGENTS_FILES_MAX_IMPORT_MB.
+			expect(on.provider.prepareTurn.mock.calls[0][0].sandboxFiles).toEqual({
+				maxImportBytes: 200 * 1024 * 1024,
+				importFiles: expect.any(Function),
+				storeOutput: expect.any(Function),
+				listFiles: expect.any(Function),
+			});
+		});
+
+		describe('sandbox imports', () => {
+			const workspace = mock<Workspace>();
+
+			async function importFilesOfTurn() {
+				const context = setup([textChunk]);
+				context.sandboxFiles.isEnabled.mockResolvedValue(true);
+				await context.service.consume(claimFor(), user, new AbortController().signal, vi.fn());
+				const { sandboxFiles } = context.provider.prepareTurn.mock.calls[0][0];
+				if (!sandboxFiles) throw new Error('expected sandbox files');
+				return { ...context, importFiles: sandboxFiles.importFiles };
+			}
+
+			it('copies only the files of the thread, from the system chat of its owner', async () => {
+				const { importFiles, sandboxFiles, attachmentService } = await importFilesOfTurn();
+				const imported = [
+					{
+						fileId: 'f1',
+						fileName: 'a.csv',
+						mimeType: 'text/csv',
+						sizeBytes: 1,
+						path: 'inputs/a.csv',
+					},
+				];
+				sandboxFiles.importFilesFrom.mockResolvedValue(imported);
+
+				const abortSignal = new AbortController().signal;
+				await expect(importFiles(workspace, { 'a.csv': 'f1' }, abortSignal)).resolves.toEqual(
+					imported,
+				);
+
+				const [, files, findFile, signal] = sandboxFiles.importFilesFrom.mock.calls[0];
+				expect(files).toEqual({ 'a.csv': 'f1' });
+				expect(signal).toBe(abortSignal);
+				attachmentService.getForSystemAgent.mockResolvedValueOnce({
+					id: 'f1',
+					threadId: 'thread-1',
+				} as never);
+				await expect(findFile('f1')).resolves.toMatchObject({ id: 'f1' });
+				expect(attachmentService.getForSystemAgent).toHaveBeenCalledWith('f1', {
+					agentId: AGENT_ID,
+					resourceId: 'system-chat:user-1',
+					sources: ['system_chat', 'sandbox'],
+				});
+				attachmentService.getForSystemAgent.mockResolvedValueOnce({
+					id: 'f2',
+					threadId: 'thread-2',
+				} as never);
+				await expect(findFile('f2')).resolves.toBeNull();
+			});
+
+			it('keeps a check error for the model and hides a raw error', async () => {
+				const { importFiles, sandboxFiles, logger } = await importFilesOfTurn();
+
+				sandboxFiles.importFilesFrom.mockRejectedValueOnce(
+					new UserError('File "x" not found in this conversation'),
+				);
+				await expect(importFiles(workspace, { 'a.csv': 'x' })).rejects.toThrow(
+					'File "x" not found in this conversation',
+				);
+				expect(logger.warn).not.toHaveBeenCalled();
+
+				sandboxFiles.importFilesFrom.mockRejectedValueOnce(new Error('ECONNRESET 10.0.0.3'));
+				await expect(importFiles(workspace, { 'a.csv': 'x' })).rejects.toThrow(
+					'The files could not be copied to inputs/',
+				);
+				// The model does not get the raw error, so the operator gets it in the log.
+				expect(logger.warn).toHaveBeenCalledWith(
+					'Failed to import files into the sandbox of a system agent',
+					{ threadId: 'thread-1', error: 'ECONNRESET 10.0.0.3' },
+				);
+			});
+
+			it('keeps the error of a cancelled import', async () => {
+				const { importFiles, sandboxFiles } = await importFilesOfTurn();
+				const controller = new AbortController();
+				controller.abort();
+				const abortError = new DOMException('aborted', 'AbortError');
+				sandboxFiles.importFilesFrom.mockRejectedValueOnce(abortError);
+
+				await expect(importFiles(workspace, { 'a.csv': 'x' }, controller.signal)).rejects.toBe(
+					abortError,
+				);
+			});
+		});
+
+		describe('storing a file of outputs/', () => {
+			const workspace = mock<Workspace>();
+
+			async function storeOutputOfTurn() {
+				const context = setup([textChunk]);
+				context.sandboxFiles.isEnabled.mockResolvedValue(true);
+				await context.service.consume(claimFor(), user, new AbortController().signal, vi.fn());
+				const sandboxFiles = context.provider.prepareTurn.mock.calls[0][0].sandboxFiles;
+				if (!sandboxFiles) throw new Error('expected the sandbox files of the turn');
+				return { ...context, storeOutput: sandboxFiles.storeOutput };
+			}
+
+			it('stores the file in the system chat of the user and gives the stored file', async () => {
+				const { sandboxFiles, storeOutput } = await storeOutputOfTurn();
+				sandboxFiles.store.mockResolvedValue({
+					id: 'file-1',
+					fileName: 'report.csv',
+					mimeType: 'text/csv',
+					fileSizeBytes: 3,
+				} as AgentChatAttachment);
+				const abortSignal = new AbortController().signal;
+
+				await expect(storeOutput(workspace, 'report.csv', abortSignal)).resolves.toEqual({
+					fileId: 'file-1',
+					fileName: 'report.csv',
+					mimeType: 'text/csv',
+					sizeBytes: 3,
+				});
+				expect(sandboxFiles.store).toHaveBeenCalledWith(
+					workspace,
+					'report.csv',
+					{
+						agentId: thread.agentId,
+						projectId: thread.projectId,
+						threadId: 'thread-1',
+						resourceId: 'system-chat:user-1',
+					},
+					abortSignal,
+				);
+			});
+
+			it('keeps a cap error, which is for the model', async () => {
+				const { sandboxFiles, storeOutput, logger } = await storeOutputOfTurn();
+				const capError = new UserError('File "big.bin" is larger than 50 MB');
+				sandboxFiles.store.mockRejectedValue(capError);
+
+				await expect(storeOutput(workspace, 'big.bin')).rejects.toBe(capError);
+				expect(logger.warn).not.toHaveBeenCalled();
+			});
+
+			it('turns a raw sandbox error into words the model can act on', async () => {
+				const { sandboxFiles, storeOutput, logger } = await storeOutputOfTurn();
+				sandboxFiles.store.mockRejectedValue(new Error('ENOENT: no such file'));
+
+				await expect(storeOutput(workspace, 'gone.csv')).rejects.toThrow(
+					'"gone.csv" could not be read from outputs/',
+				);
+				// The model does not get the raw error, so the operator gets it in the log.
+				expect(logger.warn).toHaveBeenCalledWith(
+					'Failed to store a sandbox file of a system agent',
+					{ threadId: 'thread-1', path: 'gone.csv', error: 'ENOENT: no such file' },
+				);
+			});
 		});
 
 		describe('attachment reads', () => {
@@ -690,7 +912,7 @@ describe('SystemAgentExecutionService', () => {
 				expect(attachmentService.getForSystemAgent).toHaveBeenCalledWith('att-1', {
 					agentId: AGENT_ID,
 					resourceId: 'system-chat:user-1',
-					source: 'system_chat',
+					sources: ['system_chat', 'sandbox'],
 				});
 			});
 
@@ -733,6 +955,91 @@ describe('SystemAgentExecutionService', () => {
 				attachmentService.getStream.mockRejectedValue(error);
 
 				await expect(turn.readAttachment(ref)).rejects.toBe(error);
+			});
+
+			it('reads any stored file of the thread by id, not only the files of the turn', async () => {
+				const { turn, attachmentService } = await startTurnWithAttachment();
+				attachmentService.getForSystemAgent.mockResolvedValue({
+					id: 'att-earlier',
+					threadId: 'thread-1',
+					fileName: 'earlier.csv',
+					mimeType: 'text/csv',
+					fileSizeBytes: 3,
+				} as never);
+				attachmentService.getStream.mockResolvedValue(Readable.from([Buffer.from('a,b')]));
+
+				const file = await turn.readFile('att-earlier');
+
+				expect(file).toMatchObject({ fileName: 'earlier.csv', mimeType: 'text/csv', sizeBytes: 3 });
+				// The bytes load only on request, so a caller can check the size first.
+				expect(attachmentService.getStream).not.toHaveBeenCalled();
+				await expect(file?.readContent()).resolves.toEqual(Buffer.from('a,b'));
+				// Files that the sandbox stored for the thread are readable too.
+				expect(attachmentService.getForSystemAgent).toHaveBeenCalledWith('att-earlier', {
+					agentId: AGENT_ID,
+					resourceId: 'system-chat:user-1',
+					sources: ['system_chat', 'sandbox'],
+				});
+			});
+
+			it('lists the files of the thread in the scope that a read by id uses, with their origin', async () => {
+				const { service, provider, sandboxFiles, attachmentService } = setup([textChunk]);
+				sandboxFiles.isEnabled.mockResolvedValue(true);
+				await service.consume(claimFor(), user, new AbortController().signal, vi.fn());
+				const turnFiles = provider.prepareTurn.mock.calls[0][0].sandboxFiles;
+				const file = {
+					fileName: 'earlier.csv',
+					mimeType: 'text/csv',
+					sizeBytes: 3,
+					createdAt: '2026-11-18T10:00:00.000Z',
+				};
+				attachmentService.listForSystemAgentThread.mockResolvedValue([
+					{ ...file, fileId: 'out-1', source: 'sandbox' },
+					{ ...file, fileId: 'up-1', source: 'system_chat' },
+				]);
+
+				await expect(turnFiles?.listFiles()).resolves.toEqual([
+					{ ...file, fileId: 'out-1', origin: 'sandbox' },
+					{ ...file, fileId: 'up-1', origin: 'upload' },
+				]);
+				expect(attachmentService.listForSystemAgentThread).toHaveBeenCalledWith('thread-1', {
+					agentId: AGENT_ID,
+					resourceId: 'system-chat:user-1',
+					sources: ['system_chat', 'sandbox'],
+				});
+			});
+
+			it('does not read a stored file of another thread by id', async () => {
+				const { turn, attachmentService } = await startTurnWithAttachment();
+				attachmentService.getForSystemAgent.mockResolvedValue({
+					id: 'att-1',
+					threadId: 'thread-2',
+				} as never);
+
+				await expect(turn.readFile('att-1')).resolves.toBeUndefined();
+				expect(attachmentService.getStream).not.toHaveBeenCalled();
+			});
+
+			it('gives no content for a stored file whose bytes are gone', async () => {
+				const { turn, attachmentService } = await startTurnWithAttachment();
+				attachmentService.getForSystemAgent.mockResolvedValue({
+					id: 'att-1',
+					threadId: 'thread-1',
+					fileName: 'gone.csv',
+					mimeType: 'text/csv',
+					fileSizeBytes: 3,
+				} as never);
+				attachmentService.getStream.mockRejectedValue(new FileNotFoundError('file-1'));
+				attachmentService.hasStoredData.mockResolvedValue(false);
+
+				const file = await turn.readFile('att-1');
+
+				await expect(file?.readContent()).resolves.toBeUndefined();
+				// A caller can check the bytes without loading them.
+				await expect(file?.hasContent()).resolves.toBe(false);
+				expect(attachmentService.hasStoredData).toHaveBeenCalledWith(
+					expect.objectContaining({ id: 'att-1' }),
+				);
 			});
 		});
 
@@ -1091,6 +1398,42 @@ describe('SystemAgentExecutionService', () => {
 	});
 
 	describe('resume', () => {
+		it('passes every open suspension of the checkpoint to the resume turn', async () => {
+			const { service, provider, checkpointStorage } = setup([textChunk]);
+			const checkpoint = suspendedCheckpoint();
+			checkpointStorage.findSuspendedForThread.mockResolvedValue({
+				...checkpoint,
+				pendingToolCalls: {
+					...checkpoint.pendingToolCalls,
+					'tc-2': {
+						...checkpoint.pendingToolCalls['tc-1'],
+						toolCallId: 'tc-2',
+						suspendPayload: { requestId: 'req-2' },
+					},
+					'tc-3': { toolCallId: 'tc-3', toolName: 'ask-user', input: {}, suspended: false },
+				},
+			} as never);
+
+			const result = await service.resume({
+				agentId: AGENT_ID,
+				user,
+				threadId: 'thread-1',
+				toolCallId: 'tc-2',
+				resumeData: { approved: true },
+			});
+			await result.done;
+
+			expect(provider.prepareTurn).toHaveBeenCalledWith(
+				expect.objectContaining({
+					toolCallId: 'tc-2',
+					openSuspensions: [
+						{ toolCallId: 'tc-1', toolName: 'ask-user', suspendPayload: { requestId: 'req-1' } },
+						{ toolCallId: 'tc-2', toolName: 'ask-user', suspendPayload: { requestId: 'req-2' } },
+					],
+				}),
+			);
+		});
+
 		it('finds the suspended tool call in the checkpoint and prepares a resume turn', async () => {
 			const { service, provider, checkpointStorage, prepared, agentMemory, agentCheckpointStore } =
 				setup([textChunk]);
@@ -1114,9 +1457,14 @@ describe('SystemAgentExecutionService', () => {
 					runId: 'run-1',
 					toolCallId: 'tc-1',
 					checkpointHostMetadata: { turnOptions: { runId: 'host-run-1' } },
+					openSuspensions: [
+						{ toolCallId: 'tc-1', toolName: 'ask-user', suspendPayload: { requestId: 'req-1' } },
+					],
 					resumeData: { approved: true },
 					memory: agentMemory,
 					checkpointStore: agentCheckpointStore,
+					// A resumed turn can still read the stored files of the thread.
+					readFile: expect.any(Function),
 				}),
 			);
 			expect(prepared[0]).toMatchObject({
@@ -1954,227 +2302,391 @@ describe('SystemAgentExecutionService', () => {
 		});
 	});
 
-	describe('deleteThreadsOfUser', () => {
-		const sessions = [
-			{ id: 'thread-1', agentId: AGENT_ID, projectId: 'project-1' },
-			{ id: 'thread-2', agentId: 'unregistered-agent', projectId: 'project-2' },
-		];
+	describe('stopThreadsOfUser', () => {
+		it.each(['thread-1', 'child-1'])(
+			'stops the root when %s runs and keeps every session',
+			async (runningId) => {
+				const {
+					service,
+					threadRepository,
+					executionRepository,
+					messageQueue,
+					chatExecutionService,
+					executionService,
+				} = setup();
+				threadRepository.findOwnedSystemAgentSessions.mockResolvedValue([
+					{ id: 'thread-1', agentId: AGENT_ID, projectId: 'project-1' },
+				]);
+				threadRepository.findByParentThreadId.mockImplementation(async (parentId) =>
+					parentId === 'thread-1'
+						? [
+								mock<AgentExecutionThread>({
+									id: 'child-1',
+									agentId: 'child-agent',
+									projectId: 'project-1',
+								}),
+							]
+						: [],
+				);
+				messageQueue.prepareSessionStop.mockImplementation(async (id) => ({
+					executionIds: id === runningId ? ['exec-1'] : [],
+					queueIds: [],
+					attachmentIds: [],
+				}));
+				executionRepository.findLatestByThreadId.mockImplementation(async (id) =>
+					id === 'thread-1' ? mock({ id: 'exec-1' }) : mock({ id: 'child-exec-9' }),
+				);
 
-		afterEach(() => {
-			vi.useRealTimers();
-		});
+				await service.stopThreadsOfUser('user-1');
 
-		const setupDeletion = (...args: Parameters<typeof setup>) => {
-			const result = setup(...args);
-			result.threadRepository.findByParentThreadId.mockResolvedValue([]);
-			return result;
-		};
+				expect(chatExecutionService.requestCancel).toHaveBeenCalledExactlyOnceWith({
+					projectId: 'project-1',
+					agentId: AGENT_ID,
+					threadId: 'thread-1',
+					executionId: 'exec-1',
+					userId: 'user-1',
+					surface: 'system',
+				});
+				expect(executionService.deleteThread).not.toHaveBeenCalled();
+			},
+		);
 
-		it('deletes every session with its workspace, also without a provider', async () => {
-			const { source } = workspaceSource();
-			const { service, executionService, executionRepository, threadRepository } = setupDeletion(
-				[],
-				undefined,
-				source,
-			);
-			threadRepository.findOwnedSystemAgentSessions.mockResolvedValue(sessions);
-			executionRepository.existsRunningByThread.mockResolvedValue(false);
-			executionService.deleteThread.mockResolvedValue(true);
-
-			await service.deleteThreadsOfUser('user-1');
-
-			expect(threadRepository.findOwnedSystemAgentSessions).toHaveBeenCalledWith('user-1');
-			// It does not load the thread through the ownership and provider checks.
-			expect(threadRepository.findOwnedById).not.toHaveBeenCalled();
-			expect(executionService.deleteThread.mock.calls).toEqual([
-				['project-1', AGENT_ID, 'thread-1', 'user-1'],
-				['project-2', 'unregistered-agent', 'thread-2', 'user-1'],
+		it('still cancels the root when a descendant disappears during cleanup', async () => {
+			const { service, threadRepository, messageQueue, executionRepository, chatExecutionService } =
+				setup();
+			threadRepository.findOwnedSystemAgentSessions.mockResolvedValue([
+				{ id: 'thread-1', agentId: AGENT_ID, projectId: 'project-1' },
 			]);
-			expect(source.destroy).toHaveBeenCalledExactlyOnceWith({
-				agentId: AGENT_ID,
-				threadId: 'thread-1',
-				userId: 'user-1',
+			threadRepository.findByParentThreadId.mockImplementation(async (id) =>
+				id === 'thread-1'
+					? [
+							mock<AgentExecutionThread>({
+								id: 'child-1',
+								agentId: 'child-agent',
+								projectId: 'project-1',
+							}),
+						]
+					: [],
+			);
+			messageQueue.prepareSessionStop
+				.mockResolvedValueOnce({ executionIds: ['exec-1'], queueIds: [], attachmentIds: [] })
+				.mockRejectedValueOnce(new NotFoundError('Session not found'));
+			executionRepository.findLatestByThreadId.mockResolvedValue(mock({ id: 'exec-1' }));
+
+			await service.stopThreadsOfUser('user-1');
+
+			expect(messageQueue.prepareSessionStop).toHaveBeenCalledWith('child-1', {
+				preserveInput: true,
 			});
-		});
-
-		it('logs a session that fails and deletes the others', async () => {
-			const { service, executionService, executionRepository, threadRepository, logger } =
-				setupDeletion();
-			threadRepository.findOwnedSystemAgentSessions.mockResolvedValue(sessions);
-			executionRepository.existsRunningByThread.mockResolvedValue(false);
-			executionService.deleteThread
-				.mockRejectedValueOnce(new Error('db down'))
-				.mockResolvedValueOnce(true);
-
-			await expect(service.deleteThreadsOfUser('user-1')).resolves.toBeUndefined();
-
-			expect(executionService.deleteThread).toHaveBeenCalledTimes(2);
-			expect(logger.warn).toHaveBeenCalledWith(
-				'Failed to delete a system agent session of a deleted user',
-				expect.objectContaining({ userId: 'user-1', threadId: 'thread-1', error: 'db down' }),
+			expect(chatExecutionService.requestCancel).toHaveBeenCalledWith(
+				expect.objectContaining({ threadId: 'thread-1', executionId: 'exec-1' }),
 			);
 		});
 
-		it('logs a failed lookup and does not throw', async () => {
-			const { service, executionService, threadRepository, logger } = setupDeletion();
-			threadRepository.findOwnedSystemAgentSessions.mockRejectedValue(new Error('db down'));
+		it('keeps idle sessions without requesting cancellation', async () => {
+			const { service, threadRepository, messageQueue, chatExecutionService, executionService } =
+				setup();
+			threadRepository.findOwnedSystemAgentSessions.mockResolvedValue([
+				{ id: 'thread-1', agentId: AGENT_ID, projectId: 'project-1' },
+			]);
+			threadRepository.findByParentThreadId.mockResolvedValue([]);
+			messageQueue.prepareSessionStop.mockResolvedValue({
+				executionIds: [],
+				queueIds: ['pending-1'],
+				attachmentIds: [],
+			});
 
-			await expect(service.deleteThreadsOfUser('user-1')).resolves.toBeUndefined();
+			await service.stopThreadsOfUser('user-1');
 
+			expect(messageQueue.prepareSessionStop).toHaveBeenCalledWith('thread-1', {
+				preserveInput: true,
+			});
+			expect(chatExecutionService.requestCancel).not.toHaveBeenCalled();
 			expect(executionService.deleteThread).not.toHaveBeenCalled();
+		});
+
+		it('logs a lookup failure without preventing memory cleanup', async () => {
+			const { service, threadRepository, logger } = setup();
+			threadRepository.findOwnedSystemAgentSessions.mockRejectedValue(
+				new Error('database unavailable'),
+			);
+
+			await expect(service.stopThreadsOfUser('user-1')).resolves.toBeUndefined();
+
 			expect(logger.warn).toHaveBeenCalledWith(
 				'Failed to find the system agent sessions of a deleted user',
 				expect.objectContaining({ userId: 'user-1' }),
 			);
 		});
-
-		it('stops a running turn and deletes the session when the turn has ended', async () => {
-			vi.useFakeTimers();
+		it('continues to the next session when stopping the first session fails', async () => {
 			const {
 				service,
-				executionService,
-				executionRepository,
 				threadRepository,
+				messageQueue,
+				executionRepository,
 				chatExecutionService,
-			} = setupDeletion();
-			threadRepository.findOwnedSystemAgentSessions.mockResolvedValue([sessions[0]]);
-			executionRepository.existsRunningByThread.mockResolvedValue(true);
-			executionRepository.findLatestByThreadId.mockResolvedValue(mock({ id: 'exec-1' }));
-			chatExecutionService.requestCancel.mockResolvedValue(true);
-			executionService.deleteThread
-				.mockRejectedValueOnce(new ConflictError('busy'))
-				.mockResolvedValueOnce(true);
+				logger,
+			} = setup();
+			threadRepository.findOwnedSystemAgentSessions.mockResolvedValue([
+				{ id: 'thread-1', agentId: AGENT_ID, projectId: 'project-1' },
+				{ id: 'thread-2', agentId: AGENT_ID, projectId: 'project-2' },
+			]);
+			threadRepository.findByParentThreadId.mockResolvedValue([]);
+			messageQueue.prepareSessionStop
+				.mockRejectedValueOnce(new Error('database unavailable'))
+				.mockResolvedValueOnce({ executionIds: ['exec-2'], queueIds: [], attachmentIds: [] });
+			executionRepository.findLatestByThreadId.mockResolvedValue(mock({ id: 'exec-2' }));
 
-			const done = service.deleteThreadsOfUser('user-1');
-			await vi.runAllTimersAsync();
-			await done;
+			await service.stopThreadsOfUser('user-1');
 
-			expect(chatExecutionService.requestCancel).toHaveBeenCalledWith({
-				projectId: 'project-1',
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to stop a system agent session on account deletion',
+				expect.objectContaining({ threadId: 'thread-1', userId: 'user-1' }),
+			);
+			expect(chatExecutionService.requestCancel).toHaveBeenCalledWith(
+				expect.objectContaining({
+					threadId: 'thread-2',
+					executionId: 'exec-2',
+					projectId: 'project-2',
+				}),
+			);
+		});
+	});
+
+	describe('user stops', () => {
+		const stopScope = { agentId: AGENT_ID, threadId: 'thread-1', userId: 'user-1' };
+
+		it('reports a stop to the provider', async () => {
+			const { service, provider } = setup();
+			const onUserStoppedTurn = vi.fn();
+			Object.assign(provider, { onUserStoppedTurn });
+
+			await service.reportUserStoppedTurn(stopScope);
+
+			expect(onUserStoppedTurn).toHaveBeenCalledWith(stopScope);
+		});
+
+		it('logs a failing stop callback', async () => {
+			const { service, provider, logger } = setup();
+			Object.assign(provider, {
+				onUserStoppedTurn: vi.fn(() => {
+					throw new Error('telemetry down');
+				}),
+			});
+
+			await expect(service.reportUserStoppedTurn(stopScope)).resolves.toBeUndefined();
+			expect(logger.warn).toHaveBeenCalledWith(
+				'System agent stop callback failed',
+				expect.objectContaining({ threadId: 'thread-1', error: 'telemetry down' }),
+			);
+		});
+
+		it('ignores a provider without a stop callback', async () => {
+			const { service } = setup();
+
+			await expect(service.reportUserStoppedTurn(stopScope)).resolves.toBeUndefined();
+		});
+
+		it('reads the thread of a run that the user owns', async () => {
+			const { service, checkpointStorage } = setup();
+			checkpointStorage.getStatus.mockResolvedValue({
+				status: 'active',
+				checkpoint: {
+					persistence: { threadId: 'thread-1', resourceId: systemChatMemoryResourceId('user-1') },
+				} as SerializableAgentState,
+			});
+
+			await expect(service.findThreadIdOfRun(AGENT_ID, user, 'run-1')).resolves.toBe('thread-1');
+			expect(checkpointStorage.getStatus).toHaveBeenCalledWith('run-1', AGENT_ID);
+		});
+
+		it('does not read the thread of a run of another user', async () => {
+			const { service, checkpointStorage } = setup();
+			checkpointStorage.getStatus.mockResolvedValue({
+				status: 'active',
+				checkpoint: {
+					persistence: { threadId: 'thread-1', resourceId: systemChatMemoryResourceId('user-2') },
+				} as SerializableAgentState,
+			});
+
+			await expect(service.findThreadIdOfRun(AGENT_ID, user, 'run-1')).resolves.toBeUndefined();
+		});
+
+		it('returns no thread for an unknown run', async () => {
+			const { service, checkpointStorage } = setup();
+			checkpointStorage.getStatus.mockResolvedValue({ status: 'not-found' });
+
+			await expect(service.findThreadIdOfRun(AGENT_ID, user, 'run-1')).resolves.toBeUndefined();
+		});
+	});
+
+	describe('onBeforeThreadDeletion', () => {
+		function setupWithHook() {
+			const context = setup();
+			const afterDeletion = vi.fn(async () => {});
+			const onBeforeThreadDeletion = vi.fn(async () => afterDeletion);
+			Object.assign(context.provider, { onBeforeThreadDeletion });
+			return { ...context, afterDeletion, onBeforeThreadDeletion };
+		}
+
+		it('lets the provider read the thread before the deletion and clean up after it', async () => {
+			const { service, executionService, agentMemory, afterDeletion, onBeforeThreadDeletion } =
+				setupWithHook();
+			executionService.deleteThread.mockResolvedValue(true);
+
+			await service.deleteThread(AGENT_ID, user, 'thread-1');
+
+			expect(onBeforeThreadDeletion).toHaveBeenCalledWith({
 				agentId: AGENT_ID,
 				threadId: 'thread-1',
-				executionId: 'exec-1',
+				projectId: 'project-1',
 				userId: 'user-1',
-				surface: 'system',
+				memory: agentMemory,
 			});
-			expect(chatExecutionService.requestCancel.mock.invocationCallOrder[0]).toBeLessThan(
+			expect(onBeforeThreadDeletion.mock.invocationCallOrder[0]).toBeLessThan(
 				executionService.deleteThread.mock.invocationCallOrder[0],
 			);
-			expect(executionService.deleteThread).toHaveBeenCalledTimes(2);
+			expect(executionService.deleteThread.mock.invocationCallOrder[0]).toBeLessThan(
+				afterDeletion.mock.invocationCallOrder[0],
+			);
 		});
 
-		it('deletes the child sessions of delegated runs before their parent', async () => {
-			const { service, executionService, executionRepository, threadRepository } = setupDeletion();
-			const root = sessions[0];
-			threadRepository.findOwnedSystemAgentSessions.mockResolvedValue([root]);
-			threadRepository.findByParentThreadId.mockImplementation(async (parentThreadId) => {
-				const children: Record<string, string[]> = {
-					'thread-1': ['child-1', 'child-2'],
-					'child-1': ['grandchild-1'],
-				};
-				return (children[parentThreadId] ?? []).map((id) =>
-					mock<AgentExecutionThread>({ id, agentId: 'sub-agent', projectId: root.projectId }),
-				);
-			});
-			executionRepository.existsRunningByThread.mockResolvedValue(false);
+		it('skips the cleanup when the thread is busy', async () => {
+			const { service, executionService, afterDeletion } = setupWithHook();
+			executionService.deleteThread.mockRejectedValue(
+				new ConflictError('The session has active work and cannot be deleted'),
+			);
+
+			await expect(service.deleteThread(AGENT_ID, user, 'thread-1')).rejects.toThrow(ConflictError);
+			expect(afterDeletion).not.toHaveBeenCalled();
+		});
+
+		it('deletes the thread when the provider fails to prepare', async () => {
+			const { service, executionService, onBeforeThreadDeletion, logger } = setupWithHook();
+			onBeforeThreadDeletion.mockRejectedValue(new Error('memory down'));
 			executionService.deleteThread.mockResolvedValue(true);
 
-			await service.deleteThreadsOfUser('user-1');
+			await expect(service.deleteThread(AGENT_ID, user, 'thread-1')).resolves.toBeUndefined();
+			expect(executionService.deleteThread).toHaveBeenCalled();
+			expect(logger.warn).toHaveBeenCalledWith(
+				'System agent preparation for thread deletion failed',
+				expect.objectContaining({ threadId: 'thread-1' }),
+			);
+		});
 
-			expect(threadRepository.findByParentThreadId).toHaveBeenCalledWith('thread-1', 'project-1');
-			expect(executionService.deleteThread.mock.calls.map(([, , threadId]) => threadId)).toEqual([
-				'grandchild-1',
-				'child-2',
-				'child-1',
-				'thread-1',
+		it('keeps the deletion when the cleanup fails', async () => {
+			const { service, executionService, afterDeletion, logger } = setupWithHook();
+			afterDeletion.mockRejectedValue(new Error('archive failed'));
+			executionService.deleteThread.mockResolvedValue(true);
+
+			await expect(service.deleteThread(AGENT_ID, user, 'thread-1')).resolves.toBeUndefined();
+			expect(logger.warn).toHaveBeenCalledWith(
+				'System agent cleanup after thread deletion failed',
+				expect.objectContaining({ threadId: 'thread-1' }),
+			);
+		});
+
+		it('cleans up the threads that account cleanup deletes', async () => {
+			const { service, threadRepository, executionService, afterDeletion, onBeforeThreadDeletion } =
+				setupWithHook();
+			threadRepository.findPrivateSystemAgentSessionsForDeletion.mockResolvedValue([
+				{ id: 'thread-1', agentId: AGENT_ID, projectId: 'project-1' },
 			]);
-		});
-
-		it('stops the root turn when only a child session runs', async () => {
-			const {
-				service,
-				executionService,
-				executionRepository,
-				threadRepository,
-				chatExecutionService,
-			} = setupDeletion();
-			threadRepository.findOwnedSystemAgentSessions.mockResolvedValue([sessions[0]]);
-			threadRepository.findByParentThreadId.mockImplementation(async (parentThreadId) =>
-				parentThreadId === 'thread-1'
-					? [
-							mock<AgentExecutionThread>({
-								id: 'child-1',
-								agentId: 'sub-agent',
-								projectId: 'project-1',
-							}),
-						]
-					: [],
-			);
-			executionRepository.existsRunningByThread.mockImplementation(
-				async (threadId) => threadId === 'child-1',
-			);
-			executionRepository.findLatestByThreadId.mockResolvedValue(mock({ id: 'exec-1' }));
 			executionService.deleteThread.mockResolvedValue(true);
 
 			await service.deleteThreadsOfUser('user-1');
 
-			expect(chatExecutionService.requestCancel).toHaveBeenCalledExactlyOnceWith(
-				expect.objectContaining({ threadId: 'thread-1', executionId: 'exec-1' }),
+			expect(onBeforeThreadDeletion).toHaveBeenCalledWith(
+				expect.objectContaining({ threadId: 'thread-1', userId: 'user-1' }),
 			);
-			expect(executionService.deleteThread).toHaveBeenCalledTimes(2);
+			expect(afterDeletion).toHaveBeenCalledTimes(1);
 		});
+	});
 
-		it('deletes the parent when a child session fails', async () => {
-			const { service, executionService, executionRepository, threadRepository, logger } =
-				setupDeletion();
-			threadRepository.findOwnedSystemAgentSessions.mockResolvedValue([sessions[0]]);
-			threadRepository.findByParentThreadId.mockImplementation(async (parentThreadId) =>
-				parentThreadId === 'thread-1'
-					? [
-							mock<AgentExecutionThread>({
-								id: 'child-1',
-								agentId: 'sub-agent',
-								projectId: 'project-1',
-							}),
-						]
-					: [],
-			);
-			executionRepository.existsRunningByThread.mockResolvedValue(false);
-			executionService.deleteThread
-				.mockRejectedValueOnce(new Error('db down'))
-				.mockResolvedValueOnce(true);
-
+	describe('deleteThreadsOfUser', () => {
+		it('removes all private system chats without requiring a registered provider', async () => {
+			const destroy = vi.fn(async () => {});
+			const { service, threadRepository, executionService } = setup([], undefined, {
+				acquire: async () => undefined,
+				destroy,
+			});
+			threadRepository.findPrivateSystemAgentSessionsForDeletion.mockResolvedValue([
+				{ id: 'child-1', agentId: 'unregistered-agent', projectId: 'project-1' },
+				{ id: 'thread-1', agentId: AGENT_ID, projectId: 'project-1' },
+			]);
+			executionService.deleteThread.mockResolvedValue(true);
 			await service.deleteThreadsOfUser('user-1');
-
-			expect(executionService.deleteThread).toHaveBeenLastCalledWith(
-				'project-1',
-				AGENT_ID,
-				'thread-1',
+			expect(threadRepository.findPrivateSystemAgentSessionsForDeletion).toHaveBeenCalledWith(
 				'user-1',
 			);
-			expect(logger.warn).toHaveBeenCalledWith(
-				'Failed to delete a system agent session of a deleted user',
-				expect.objectContaining({ threadId: 'child-1', error: 'db down' }),
-			);
+			expect(executionService.deleteThread.mock.calls).toEqual([
+				['project-1', 'unregistered-agent', 'child-1', 'user-1'],
+				['project-1', AGENT_ID, 'thread-1', 'user-1'],
+			]);
+			expect(destroy).toHaveBeenCalledExactlyOnceWith({
+				agentId: AGENT_ID,
+				threadId: 'thread-1',
+				userId: 'user-1',
+			});
 		});
 
-		it('gives up on a session that stays busy and logs it', async () => {
+		it('cleans the workspace when another request has already removed the session', async () => {
+			const destroy = vi.fn(async () => {});
+			const { service, threadRepository, executionService } = setup([], undefined, {
+				acquire: async () => undefined,
+				destroy,
+			});
+			threadRepository.findPrivateSystemAgentSessionsForDeletion.mockResolvedValue([
+				{ id: 'thread-1', agentId: AGENT_ID, projectId: 'project-1' },
+			]);
+			executionService.deleteThread.mockResolvedValue(false);
+			executionService.findThreadById.mockResolvedValue(null);
+			await service.deleteThreadsOfUser('user-1');
+			expect(destroy).toHaveBeenCalledExactlyOnceWith({
+				agentId: AGENT_ID,
+				threadId: 'thread-1',
+				userId: 'user-1',
+			});
+		});
+
+		it('waits for a stopped turn to finish before deleting its session', async () => {
 			vi.useFakeTimers();
-			const { service, executionService, executionRepository, threadRepository, logger } =
-				setupDeletion();
-			threadRepository.findOwnedSystemAgentSessions.mockResolvedValue([sessions[0]]);
-			executionRepository.existsRunningByThread.mockResolvedValue(false);
-			executionService.deleteThread.mockRejectedValue(new ConflictError('busy'));
+			try {
+				const { service, threadRepository, executionService } = setup();
+				threadRepository.findPrivateSystemAgentSessionsForDeletion.mockResolvedValue([
+					{ id: 'thread-1', agentId: AGENT_ID, projectId: 'project-1' },
+				]);
+				executionService.deleteThread
+					.mockRejectedValueOnce(new ConflictError('Session has active work'))
+					.mockResolvedValueOnce(true);
+				const deletion = service.deleteThreadsOfUser('user-1');
+				await vi.runAllTimersAsync();
+				await deletion;
+				expect(executionService.deleteThread).toHaveBeenCalledTimes(2);
+			} finally {
+				vi.useRealTimers();
+			}
+		});
 
-			const done = service.deleteThreadsOfUser('user-1');
-			await vi.runAllTimersAsync();
-			await done;
-
-			expect(executionService.deleteThread).toHaveBeenCalledTimes(5);
-			expect(logger.warn).toHaveBeenCalledWith(
-				'Failed to delete a system agent session of a deleted user',
-				expect.objectContaining({ threadId: 'thread-1', error: 'busy' }),
-			);
+		it('fails account cleanup if a session still has active work after all retries', async () => {
+			vi.useFakeTimers();
+			try {
+				const { service, threadRepository, executionService } = setup();
+				threadRepository.findPrivateSystemAgentSessionsForDeletion.mockResolvedValue([
+					{ id: 'thread-1', agentId: AGENT_ID, projectId: 'project-1' },
+				]);
+				executionService.deleteThread.mockRejectedValue(
+					new ConflictError('Session has active work'),
+				);
+				const deletion = expect(service.deleteThreadsOfUser('user-1')).rejects.toThrow(
+					ConflictError,
+				);
+				await vi.runAllTimersAsync();
+				await deletion;
+				expect(executionService.deleteThread).toHaveBeenCalledTimes(5);
+			} finally {
+				vi.useRealTimers();
+			}
 		});
 	});
 
@@ -2288,6 +2800,26 @@ describe('SystemAgentExecutionService', () => {
 				ctx,
 			);
 			expect(updated).toMatchObject({ title: 'Renamed', projectId: 'project-2' });
+		});
+
+		it('refuses to rename a thread that the user can no longer use', async () => {
+			const { service, provider, threadRepository } = setup();
+			provider.authorize.mockResolvedValue(false);
+
+			await expect(
+				service.updateThread(AGENT_ID, user, 'thread-1', { title: 'Renamed' }),
+			).rejects.toThrow(NotFoundError);
+			expect(threadRepository.renameOwned).not.toHaveBeenCalled();
+		});
+
+		it('refuses to rename a thread in a project that the user cannot read', async () => {
+			const { service, threadRepository } = setup();
+			vi.mocked(userHasScopes).mockResolvedValue(false);
+
+			await expect(
+				service.updateThread(AGENT_ID, user, 'thread-1', { title: 'Renamed' }),
+			).rejects.toThrow(NotFoundError);
+			expect(threadRepository.renameOwned).not.toHaveBeenCalled();
 		});
 
 		it('reports a thread that was deleted during the update as not found', async () => {

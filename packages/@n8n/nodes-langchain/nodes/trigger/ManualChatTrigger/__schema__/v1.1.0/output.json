@@ -1,0 +1,8 @@
+{
+	"properties": {
+		"chatInput": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

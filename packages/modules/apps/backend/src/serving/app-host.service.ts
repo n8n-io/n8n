@@ -11,10 +11,12 @@ import { AppsConfig } from '../apps.config';
 const FQDN_MAX_LENGTH = 253;
 const DNS_LABEL_PATTERN = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
 const PREVIEW_MARKER = '--preview';
+const APP_CSP = "base-uri 'self'; object-src 'none'";
 
 @Service()
 export class AppHostService {
 	readonly baseUrl: URL;
+	readonly editorOrigin: string;
 	private readonly hostSuffix: string = '';
 
 	constructor(
@@ -25,6 +27,8 @@ export class AppHostService {
 		if (!config.baseUrl) {
 			throw new BadRequestError('Set N8N_APPS_BASE_URL before enabling the apps module.');
 		}
+		const instanceBaseUrl = urls.getInstanceBaseUrl();
+		this.editorOrigin = new URL(instanceBaseUrl).origin;
 		try {
 			const url = new URL(config.baseUrl);
 			if (
@@ -39,7 +43,7 @@ export class AppHostService {
 				!url.hostname.split('.').every((label) => DNS_LABEL_PATTERN.test(label))
 			)
 				throw new Error('Invalid apps URL');
-			for (const serviceUrl of [urls.getInstanceBaseUrl(), urls.getWebhookBaseUrl()]) {
+			for (const serviceUrl of [instanceBaseUrl, urls.getWebhookBaseUrl()]) {
 				const hostname = new URL(serviceUrl).hostname.toLowerCase();
 				if (hostname === url.hostname || hostname.endsWith(`.${url.hostname}`)) {
 					throw new Error('The apps parent overlaps an n8n service host');
@@ -52,10 +56,13 @@ export class AppHostService {
 			);
 		}
 		if (globalConfig.deployment.type === 'cloud') {
-			const instanceName = globalConfig.host.split('.')[0].toLowerCase();
+			// `globalConfig.sentry.deploymentName` reads from DEPLOYMENT_NAME on Cloud
+			const instanceName = (
+				globalConfig.sentry.deploymentName || new URL(instanceBaseUrl).hostname.split('.')[0]
+			).toLowerCase();
 			if (!DNS_LABEL_PATTERN.test(instanceName) || instanceName.includes('--')) {
 				throw new BadRequestError(
-					'Set N8N_HOST to a valid instance hostname before enabling apps on Cloud.',
+					'Apps require a valid Cloud instance name. Set DEPLOYMENT_NAME to a valid name, or leave it unset and use an instance base URL with a valid first hostname label.',
 				);
 			}
 			this.hostSuffix = `--${instanceName}`;
@@ -64,6 +71,11 @@ export class AppHostService {
 
 	origin(namespace: string): string | null {
 		return this.originForLabel(namespace, '');
+	}
+
+	contentSecurityPolicy(req: IncomingMessage): string {
+		const frameAncestors = this.previewNamespace(req) ? this.editorOrigin : "'none'";
+		return `${APP_CSP}; frame-ancestors ${frameAncestors}`;
 	}
 
 	previewOrigin(namespace: string): string | null {

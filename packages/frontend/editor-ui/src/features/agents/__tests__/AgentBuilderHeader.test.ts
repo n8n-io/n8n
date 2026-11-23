@@ -1,10 +1,20 @@
+vi.mock('@n8n/stores/settings.store', () => ({
+	useSettingsStore: () => ({ isFoldersFeatureEnabled: true }),
+}));
 /* eslint-disable import-x/no-extraneous-dependencies, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- test-only patterns */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount, flushPromises, type VueWrapper } from '@vue/test-utils';
 import { ref } from 'vue';
 
+import type { PathItem } from '@n8n/design-system';
 import type { AgentResource } from '../types';
 import { AGENT_BUILDER_VIEW, PENDING_AGENT_ID_STATE } from '../constants';
+
+const folderBreadcrumbs = ref<PathItem[]>([]);
+
+vi.mock('../composables/useAgentFolderBreadcrumb', () => ({
+	useAgentFolderBreadcrumb: () => folderBreadcrumbs,
+}));
 
 const trackClickedNewAgentMock = vi.fn();
 vi.mock('../composables/useAgentTelemetry', () => ({
@@ -35,15 +45,12 @@ vi.mock('@n8n/i18n', () => ({
 
 vi.mock('vue-router', () => ({
 	useRouter: () => ({ push: routerPush, resolve: routerResolve }),
+	useRoute: () => ({ query: {} }),
 	RouterLink: { template: '<a><slot/></a>' },
 }));
 
-vi.mock('@n8n/design-system', () => ({
-	N8nAssistantIcon: {
-		name: 'N8nAssistantIcon',
-		template: '<i data-testid="stub-assistant-icon" />',
-		props: ['size'],
-	},
+vi.mock('@n8n/design-system', async () => ({
+	...(await import('@n8n/design-system/components/N8nDropdownMenu/composables/useDropdownSearch')),
 	N8nText: { template: '<span><slot /></span>', props: ['step', 'color'] },
 	N8nIcon: { template: '<i v-bind="$attrs"></i>', props: ['icon', 'size'] },
 	N8nButton: {
@@ -85,8 +92,8 @@ vi.mock('@n8n/design-system', () => ({
 	N8nDropdownMenu: {
 		name: 'N8nDropdownMenu',
 		template: '<div v-bind="$attrs"><slot name="trigger" /><slot name="footer" /></div>',
-		props: ['items', 'placement', 'extraPopperClass'],
-		emits: ['select'],
+		props: ['items', 'placement', 'extraPopperClass', 'searchable'],
+		emits: ['select', 'search'],
 	},
 	'n8n-dropdown-menu': {
 		name: 'N8nDropdownMenu',
@@ -108,7 +115,7 @@ type DropdownStubWrapper = VueWrapper<{
 	items: Array<{ id: string; label?: string; disabled?: boolean }>;
 	extraPopperClass?: string;
 	$options: unknown;
-	$emit: (event: 'select', value: string) => void;
+	$emit: (event: 'select' | 'search', value: string) => void;
 }>;
 
 function getDropdown(wrapper: ReturnType<typeof mountHeader>, testId: string) {
@@ -181,6 +188,7 @@ function mountHeader(
 
 describe('AgentBuilderHeader', () => {
 	beforeEach(() => {
+		folderBreadcrumbs.value = [];
 		ensureLoadedMock.mockReset();
 		routerPush.mockReset();
 		routerResolve.mockClear();
@@ -276,6 +284,23 @@ describe('AgentBuilderHeader', () => {
 		expect(items[0].icon).toEqual(projectIcon);
 	});
 
+	it('shows folder breadcrumbs and opens the selected folder', () => {
+		folderBreadcrumbs.value = [
+			{ id: 'folder-1', label: 'Support', href: '/projects/p1/agents?folderId=folder-1' },
+		];
+		const wrapper = mountHeader();
+		const breadcrumbs = wrapper.findComponent({ name: 'N8nBreadcrumbs' });
+
+		expect(breadcrumbs.props('items')).toEqual(expect.arrayContaining(folderBreadcrumbs.value));
+		breadcrumbs.vm.$emit('itemSelected', folderBreadcrumbs.value[0]);
+
+		expect(routerPush).toHaveBeenCalledWith({
+			name: 'ProjectAgents',
+			params: { projectId: 'p1' },
+			query: { folderId: 'folder-1' },
+		});
+	});
+
 	it('links the project breadcrumb to the project agents page', () => {
 		const wrapper = mountHeader();
 		const bc = wrapper.findComponent({ name: 'N8nBreadcrumbs' });
@@ -318,6 +343,31 @@ describe('AgentBuilderHeader', () => {
 		await flushPromises();
 		const options = getSwitcherOptions(wrapper);
 		expect(options.map((option) => option.id)).toEqual(['a2']);
+	});
+
+	it('filters agents by name and keeps agent creation available when no agents match', async () => {
+		agentsListRef.value = [
+			baseAgent,
+			{ ...baseAgent, id: 'a2', name: 'Customer support' },
+			{ ...baseAgent, id: 'a3', name: 'Sales assistant' },
+		];
+		const wrapper = mountHeader();
+		const switcher = getDropdown(wrapper, 'agent-header-switcher');
+
+		switcher.vm.$emit('search', ' SUPPORT ');
+		await flushPromises();
+		expect(getSwitcherOptions(wrapper).map((option) => option.id)).toEqual(['a2']);
+		switcher.vm.$emit('select', 'a2');
+		expect(wrapper.emitted('switch-agent')).toEqual([['a2']]);
+
+		switcher.vm.$emit('search', 'no match');
+		await flushPromises();
+		expect(getSwitcherOptions(wrapper)).toEqual([]);
+		expect(wrapper.find('[data-testid="agent-header-new-agent"]').exists()).toBe(true);
+
+		switcher.vm.$emit('search', '');
+		await flushPromises();
+		expect(getSwitcherOptions(wrapper).map((option) => option.id)).toEqual(['a2', 'a3']);
 	});
 
 	it('shows a disabled "No other agents" entry when the project has only this agent', async () => {

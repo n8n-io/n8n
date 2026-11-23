@@ -1,3 +1,4 @@
+import { TelemetryProxy } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { User } from '@n8n/db';
 import { PROJECT_ROOT } from 'n8n-workflow';
@@ -5,7 +6,6 @@ import { PROJECT_ROOT } from 'n8n-workflow';
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
-import { Telemetry } from '@/telemetry';
 
 import { createCreateFolderTool } from '../tools/create-folder.tool';
 
@@ -33,7 +33,7 @@ describe('create-folder MCP tool', () => {
 				.mockResolvedValue(projectAccessible ? { id: 'proj-1', type: 'team' } : null),
 		});
 
-		const telemetry = mockInstance(Telemetry, { track: vi.fn() });
+		const telemetry = mockInstance(TelemetryProxy, { track: vi.fn() });
 
 		return { folderService, projectService, telemetry };
 	};
@@ -43,11 +43,17 @@ describe('create-folder MCP tool', () => {
 
 	const callHandler = async (
 		tool: ReturnType<typeof createCreateFolderTool>,
-		args: { projectId: string; name: string; parentFolderId?: string },
+		args: {
+			projectId: string;
+			name: string;
+			parentFolderId?: string;
+			resourceType?: 'agent' | 'workflow';
+		},
 	) =>
 		await tool.handler(
 			{
 				projectId: args.projectId,
+				resourceType: args.resourceType ?? 'workflow',
 				name: args.name,
 				parentFolderId: args.parentFolderId as string,
 			},
@@ -64,26 +70,33 @@ describe('create-folder MCP tool', () => {
 		expect(typeof tool.handler).toBe('function');
 	});
 
-	test('creates a folder at the project root', async () => {
-		const mocks = createMocks();
-		const tool = createTool(mocks);
+	test.each([undefined, 'agent'] as const)(
+		'creates a %s folder at the project root',
+		async (resourceType) => {
+			const mocks = createMocks();
+			const tool = createTool(mocks);
 
-		const result = await callHandler(tool, { projectId: 'proj-1', name: 'Marketing' });
+			const result = await callHandler(tool, {
+				projectId: 'proj-1',
+				name: 'Marketing',
+				resourceType,
+			});
 
-		expect(mocks.projectService.getProjectWithScope).toHaveBeenCalledWith(user, 'proj-1', [
-			'folder:create',
-		]);
-		expect(mocks.folderService.createFolder).toHaveBeenCalledWith(
-			{ name: 'Marketing', parentFolderId: undefined },
-			'proj-1',
-		);
-		expect(result.isError).toBeUndefined();
-		expect(result.structuredContent).toEqual({
-			id: 'folder-1',
-			name: 'Marketing',
-			parentFolderId: null,
-		});
-	});
+			expect(mocks.projectService.getProjectWithScope).toHaveBeenCalledWith(user, 'proj-1', [
+				'folder:create',
+			]);
+			expect(mocks.folderService.createFolder).toHaveBeenCalledWith(
+				{ name: 'Marketing', parentFolderId: undefined, resourceType: resourceType ?? 'workflow' },
+				'proj-1',
+			);
+			expect(result.isError).toBeUndefined();
+			expect(result.structuredContent).toEqual({
+				id: 'folder-1',
+				name: 'Marketing',
+				parentFolderId: null,
+			});
+		},
+	);
 
 	test('treats the "0" root sentinel as no parent', async () => {
 		const mocks = createMocks();
@@ -96,7 +109,7 @@ describe('create-folder MCP tool', () => {
 		});
 
 		expect(mocks.folderService.createFolder).toHaveBeenCalledWith(
-			{ name: 'Marketing', parentFolderId: undefined },
+			{ name: 'Marketing', parentFolderId: undefined, resourceType: 'workflow' },
 			'proj-1',
 		);
 		expect(result.isError).toBeUndefined();
@@ -115,7 +128,7 @@ describe('create-folder MCP tool', () => {
 		});
 
 		expect(mocks.folderService.createFolder).toHaveBeenCalledWith(
-			{ name: 'Campaigns', parentFolderId: 'folder-1' },
+			{ name: 'Campaigns', parentFolderId: 'folder-1', resourceType: 'workflow' },
 			'proj-1',
 		);
 		expect(result.structuredContent).toEqual({

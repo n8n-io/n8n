@@ -1,5 +1,5 @@
 import { mock } from 'vitest-mock-extended';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { executeTool } from '../../__tests__/tool-test-utils';
 import type { Logger } from '../../logger';
@@ -61,6 +61,19 @@ describe('agent-context tool', () => {
 			status: 'error',
 			limit: 5,
 		});
+	});
+
+	it('passes session page options to the reader', async () => {
+		const reader = { lookup: vi.fn().mockResolvedValue({ transcript: '', nextCursor: null }) };
+		const tool = makeTool(reader);
+		const input = { type: 'session', threadId: 'thread-1', maxToolValueLength: 0, cursor: 'c' };
+
+		await executeTool(tool, input);
+
+		expect(reader.lookup).toHaveBeenCalledWith({ ...input, agentId: 'agent-1' });
+		await expect(executeTool(tool, { ...input, maxToolValueLength: -1 })).rejects.toThrow();
+		await expect(executeTool(tool, { ...input, cursor: '' })).rejects.toThrow();
+		expect(reader.lookup).toHaveBeenCalledTimes(1);
 	});
 
 	it('wraps returned context as untrusted data', async () => {

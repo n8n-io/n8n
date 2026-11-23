@@ -10,6 +10,7 @@ import {
 	type ScopedMemoryTaskEvent,
 	type ToolContext,
 } from '@n8n/agents';
+import type { InstanceAiApprovalMode } from '@n8n/api-types';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { isRecord } from '@n8n/utils/is-record';
 import {
@@ -814,7 +815,11 @@ function resolveDefaultProjectName(): string {
 	return process.env.LANGSMITH_PROJECT ?? process.env.LANGCHAIN_PROJECT ?? DEFAULT_PROJECT_NAME;
 }
 
-function isLangSmithTracingEnabled(proxyAvailable = false): boolean {
+/**
+ * Whether a trace context is created. Pass `true` when the caller has a
+ * tracing proxy config. Callers use it to skip work that only a trace needs.
+ */
+export function isLangSmithTracingEnabled(proxyAvailable = false): boolean {
 	if (readBooleanEnvFlag(process.env.N8N_DIAGNOSTICS_ENABLED) === false) {
 		return false;
 	}
@@ -849,6 +854,15 @@ function normalizeTags(...tagGroups: Array<string[] | undefined>): string[] | un
 	const merged = tagGroups.flatMap((group) => group ?? []).filter(Boolean);
 	if (merged.length === 0) return undefined;
 	return [...new Set(merged)];
+}
+
+/** Merges tags into a span's comma-separated `langsmith.span.tags` attribute. */
+function addLangSmithSpanTags(span: unknown, tags: string[]): unknown {
+	if (!isRecord(span) || !isRecord(span.attributes)) return span;
+	const current = span.attributes[LANGSMITH_SPAN_TAGS];
+	const existing = typeof current === 'string' ? current.split(',').map((tag) => tag.trim()) : [];
+	span.attributes[LANGSMITH_SPAN_TAGS] = normalizeTags(existing, tags)?.join(', ');
+	return span;
 }
 
 function mergeMetadata(
@@ -971,6 +985,19 @@ export function setTraceModelId(
 	if (!tracing) return;
 	const metadata = modelIdTraceMetadata(modelId);
 	if (!('model_id' in metadata)) return;
+	appendRootRunMetadata(tracing.rootRun, metadata);
+	if (tracing.actorRun.id !== tracing.rootRun.id) {
+		appendRootRunMetadata(tracing.actorRun, metadata);
+	}
+}
+
+/** Without a mode, the approval modes are not available for the run, and the trace says so. */
+export function setTraceApprovalMode(
+	tracing: InstanceAiTraceContext | undefined,
+	approvalMode: InstanceAiApprovalMode | undefined,
+): void {
+	if (!tracing) return;
+	const metadata = { approval_mode: approvalMode ?? 'unavailable' };
 	appendRootRunMetadata(tracing.rootRun, metadata);
 	if (tracing.actorRun.id !== tracing.rootRun.id) {
 		appendRootRunMetadata(tracing.actorRun, metadata);
@@ -1862,9 +1889,12 @@ function createLangSmithTelemetryBuilder(
 	projectName: string,
 	proxyConfig?: ServiceProxyConfig,
 ): LangSmithTelemetry {
+	const traceTags = proxyConfig?.traceTags;
 	return new LangSmithTelemetry({
 		project: projectName,
-		transformExportedSpan: redactLangSmithTelemetrySpan,
+		transformExportedSpan: traceTags?.length
+			? (span) => addLangSmithSpanTags(redactLangSmithTelemetrySpan(span), traceTags)
+			: redactLangSmithTelemetrySpan,
 		...(proxyConfig
 			? {
 					apiKey: '-',

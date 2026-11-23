@@ -8,18 +8,27 @@ import { conversationUserTurnsAsText } from '../utils/conversation-text';
 const NO_AGENT_OUTPUT_REASON =
 	'not judged — the build produced no agent output, so there was nothing to grade';
 
+/** Expectations that grade a tool only Instance AI has. An MCP build cannot call it.
+ *  Matches the wording of `asks-clarifying-question`; a case that names the tool
+ *  another way is graded as usual and fails on MCP. */
+const INSTANCE_AI_ONLY_EXPECTATION = /structured question tool/i;
+const INSTANCE_AI_ONLY_REASON =
+	'not judged — it grades the structured question tool, which only Instance AI has';
+
 export interface SelectAuthorExpectationsArgs {
 	testCase: Pick<
 		WorkflowTestCase,
 		'processExpectations' | 'outcomeExpectations' | 'conversation' | 'seed'
 	>;
-	/** Captured build transcript, if any. Empty/absent for prebuilt/MCP builds. */
+	/** Captured build transcript, if any. Empty/absent for prebuilt builds. */
 	transcript: TranscriptTurn[] | undefined;
 	buildSucceeded: boolean;
-	/** True only on the `--prebuilt-workflows` path. Lets us distinguish an
-	 *  expected no-transcript (prebuilt) build from an unexpected one (a full
-	 *  build whose event capture failed). */
+	/** True on the `--prebuilt-workflows` and `--build-via-mcp` paths. Lets us
+	 *  distinguish a build that may lack a transcript from an unexpected one (a
+	 *  full build whose event capture failed). */
 	isPrebuilt: boolean;
+	/** True for `--build-via-mcp`: expectations on Instance AI–only tools are left ungraded. */
+	mcpBuild?: boolean;
 	logger: EvalLogger;
 }
 
@@ -31,7 +40,7 @@ export interface SelectAuthorExpectationsArgs {
  *   real transcript.
  * - No transcript but the build succeeded → judge only `outcomeExpectations`
  *   against the workflow, with the authored conversation as request context.
- *   This is the prebuilt/MCP path.
+ *   This is the prebuilt path.
  * - Build failed with no transcript → judge nothing.
  *
  * "No transcript" means no AGENT OUTPUT, not an empty array. A run that dies
@@ -52,11 +61,15 @@ export function selectAuthorExpectations(args: SelectAuthorExpectationsArgs): {
 	/** Expectations deliberately left ungraded, already shaped as `incomplete`
 	 *  verdicts. Recording them keeps the case's unit count stable across runs (so
 	 *  baselines stay comparable) while contributing nothing to any pass rate —
-	 *  this repo's scoring and LangTracer's both skip `incomplete` rows. */
+	 *  this repo's scoring and LangTracer's both skip `incomplete` rows. Can be
+	 *  non-empty next to `expectations` (an MCP build). */
 	unjudged: BuildExpectationResult[];
 } {
 	const { testCase, buildSucceeded, isPrebuilt, logger } = args;
-	const hasAgentOutput = (args.transcript ?? []).some((turn) => turn.steps.length > 0);
+	// Seeded turns are history the build was handed, not output it produced.
+	const hasAgentOutput = (args.transcript ?? []).some(
+		(turn) => !turn.seeded && turn.steps.length > 0,
+	);
 	const processCount = testCase.processExpectations?.length ?? 0;
 
 	if (!isPrebuilt && !hasAgentOutput && buildSucceeded && processCount > 0) {
@@ -93,6 +106,17 @@ export function selectAuthorExpectations(args: SelectAuthorExpectationsArgs): {
 	const expectations = hasAgentOutput
 		? collectExpectations(testCase)
 		: (testCase.outcomeExpectations ?? []);
+
+	if (args.mcpBuild) {
+		const instanceAiOnly = expectations.filter((e) => INSTANCE_AI_ONLY_EXPECTATION.test(e));
+		if (instanceAiOnly.length > 0) {
+			return {
+				expectations: expectations.filter((e) => !INSTANCE_AI_ONLY_EXPECTATION.test(e)),
+				transcript,
+				unjudged: allFailVerdicts(instanceAiOnly, INSTANCE_AI_ONLY_REASON),
+			};
+		}
+	}
 
 	return { expectations, transcript, unjudged: [] };
 }

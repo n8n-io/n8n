@@ -11,7 +11,8 @@ import type { ListModelsFn } from '../types';
  * do not, so require that method. Image, TTS and embedding models are dropped
  * by name as well: they return output a chat chain cannot use, and the method
  * check alone does not hold for a proxied list — Gateway credits report
- * `generateContent` for every model they serve, embeddings included.
+ * `generateContent` for every model they serve, embeddings included. Nano
+ * Banana models are image models without `image` in the id.
  */
 export function shouldIncludeGoogleModel(model: {
 	name: string;
@@ -22,6 +23,7 @@ export function shouldIncludeGoogleModel(model: {
 	return (
 		supportsChat &&
 		!model.name.includes('image') &&
+		!model.name.includes('nano-banana') &&
 		!model.name.includes('tts') &&
 		!model.name.includes('embedding')
 	);

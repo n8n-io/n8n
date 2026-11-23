@@ -6,7 +6,8 @@ import {
 	type StorageConfig,
 	WorkflowExecute,
 } from 'n8n-core';
-import { NodeHelpers, UserError } from 'n8n-workflow';
+import { NodeHelpers } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import type {
 	Workflow,
 	IWorkflowExecutionDataProcess,
@@ -289,6 +290,37 @@ describe('ManualExecutionService', () => {
 				triggerToStartFrom: data.triggerToStartFrom,
 				additionalRunFilterNodes: [],
 			});
+		});
+
+		it('should run a full execution with the given resume token', async () => {
+			const data = mock<IWorkflowExecutionDataProcess>({
+				executionMode: 'manual',
+				destinationNode: undefined,
+				pinData: undefined,
+				runData: undefined,
+			});
+			const workflow = mock<Workflow>({
+				getNode: vi.fn().mockReturnValue(null),
+				getTriggerNodes: vi.fn().mockReturnValue([]),
+			});
+			const additionalData = mock<IWorkflowExecuteAdditionalData>();
+
+			await manualExecutionService.runManually(
+				data,
+				workflow,
+				additionalData,
+				'test-execution-id',
+				undefined,
+				'db',
+				'stored-token',
+			);
+
+			expect(WorkflowExecute).toHaveBeenCalledWith(
+				additionalData,
+				data.executionMode,
+				expect.objectContaining({ resumeToken: 'stored-token' }),
+				'db',
+			);
 		});
 
 		it('should use execution start node when available for full execution', async () => {

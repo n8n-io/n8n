@@ -54,11 +54,9 @@ import { listQueryMiddleware } from '@/middlewares';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import * as ResponseHelper from '@/response-helper';
 import { NamingService } from '@/services/naming.service';
-import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { UserManagementMailer } from '@/user-management/email';
 import * as utils from '@/utils';
-import { getWorkflowProjectDetailsSafe } from '@/workflows/utils';
 
 import { CollaborationService } from '../collaboration/collaboration.service';
 import { WorkflowPublicationStatusService } from './publication/workflow-publication-status.service';
@@ -93,7 +91,6 @@ export class WorkflowsController {
 		private readonly collaborationService: CollaborationService,
 		private readonly outboundHttp: OutboundHttp,
 		private readonly workflowPublicationStatusService: WorkflowPublicationStatusService,
-		private readonly ownershipService: OwnershipService,
 	) {}
 
 	@Post('/')
@@ -117,9 +114,6 @@ export class WorkflowsController {
 
 		const savedWorkflowWithMetaData =
 			this.enterpriseWorkflowService.addOwnerAndSharings(savedWorkflow);
-		// @ts-expect-error: This is added as part of addOwnerAndSharings but
-		// shouldn't be returned to the frontend
-		delete savedWorkflowWithMetaData.shared;
 
 		const scopes = await this.workflowService.getWorkflowScopes(req.user, savedWorkflow.id);
 
@@ -244,13 +238,10 @@ export class WorkflowsController {
 
 			const enterpriseWorkflowService = this.enterpriseWorkflowService;
 
-			const workflowWithMetaData = enterpriseWorkflowService.addOwnerAndSharings(workflow);
+			const workflowWithMetaData =
+				await enterpriseWorkflowService.addOwnerSharingsAndAccountKinds(workflow);
 
 			await enterpriseWorkflowService.addCredentialsToWorkflow(workflowWithMetaData, req.user);
-
-			// @ts-expect-error: This is added as part of addOwnerAndSharings but
-			// shouldn't be returned to the frontend
-			delete workflowWithMetaData.shared;
 
 			const scopes = await this.workflowService.getWorkflowScopes(req.user, workflowId);
 			const checksum = await calculateWorkflowChecksum(workflow);
@@ -285,7 +276,9 @@ export class WorkflowsController {
 		const scopes = await this.workflowService.getWorkflowScopes(req.user, workflowId);
 		const checksum = await calculateWorkflowChecksum(workflow);
 
-		return { ...workflow, scopes, checksum };
+		const workflowWithMetaData = this.enterpriseWorkflowService.addOwnerAndSharings(workflow);
+
+		return { ...workflowWithMetaData, scopes, checksum };
 	}
 
 	/**
@@ -544,34 +537,16 @@ export class WorkflowsController {
 
 		const n8nAuthCookie = this.authService.getCookieToken(req);
 
-		const result = await this.workflowExecutionService.executeManually(
-			dbWorkflow,
-			body,
-			req.user,
-			req.headers['push-ref'],
+		const result = await this.workflowExecutionService.executeManually({
+			workflowData: dbWorkflow,
+			payload: body,
+			user: req.user,
+			pushRef: req.headers['push-ref'],
 			n8nAuthCookie,
-		);
+		});
 
 		if ('executionId' in result) {
-			const { projectId, projectName } = await getWorkflowProjectDetailsSafe(
-				this.ownershipService,
-				dbWorkflow.id,
-			);
-			this.eventService.emit('workflow-executed', {
-				user: {
-					id: req.user.id,
-					email: req.user.email,
-					firstName: req.user.firstName,
-					lastName: req.user.lastName,
-					role: req.user.role,
-				},
-				workflowId: dbWorkflow.id,
-				workflowName: dbWorkflow.name,
-				executionId: result.executionId,
-				projectId,
-				projectName,
-				source: 'user-manual',
-			});
+			await this.workflowService.emitWorkflowExecuted(req.user, dbWorkflow, result.executionId);
 		}
 
 		return result;

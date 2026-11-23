@@ -1,3 +1,5 @@
+import { BaseError, OperationalError, UnexpectedError } from '@n8n/errors';
+
 import type { IExecutionContext } from '../src/execution-context';
 import type { WorkflowSettings } from '../src/interfaces';
 import {
@@ -6,9 +8,12 @@ import {
 	effectiveRedactionChannels,
 	escalateSubWorkflowRedaction,
 	mergeRedactionChannels,
+	isExecutionOutputRedacted,
 	policyToChannels,
+	redactErrorReport,
+	redactExecutionError,
 	redactionSettingToChannels,
-	shouldRedactConsoleOutput,
+	shouldRedactExecutionOutput,
 	summarizeSubWorkflowRedaction,
 	takeAttachedSubWorkflowRedaction,
 } from '../src/redaction-channels';
@@ -83,7 +88,7 @@ describe('redaction-channels', () => {
 		});
 	});
 
-	describe('shouldRedactConsoleOutput', () => {
+	describe('shouldRedactExecutionOutput', () => {
 		it.each([
 			[{ version: 2, production: true, manual: false }, 'manual', false],
 			[{ version: 2, production: true, manual: false }, 'trigger', true],
@@ -94,7 +99,7 @@ describe('redaction-channels', () => {
 			[{ version: 2, production: false, manual: true }, 'manual', true],
 			[{ version: 2, production: false, manual: true }, 'trigger', true],
 		] as const)('V2 snapshot %j in mode %s → %s', (redaction, mode, expected) => {
-			expect(shouldRedactConsoleOutput(redaction, undefined, mode)).toBe(expected);
+			expect(shouldRedactExecutionOutput(redaction, undefined, mode)).toBe(expected);
 		});
 
 		it.each([
@@ -107,7 +112,7 @@ describe('redaction-channels', () => {
 			['none', 'manual', false],
 			['none', 'trigger', false],
 		] as const)('V1 snapshot policy %s in mode %s → %s', (policy, mode, expected) => {
-			expect(shouldRedactConsoleOutput({ version: 1, policy }, undefined, mode)).toBe(expected);
+			expect(shouldRedactExecutionOutput({ version: 1, policy }, undefined, mode)).toBe(expected);
 		});
 
 		it.each([
@@ -120,7 +125,7 @@ describe('redaction-channels', () => {
 			'combines the sub-workflow channels %j in mode %s → %s',
 			(subWorkflowRedaction, mode, expected) => {
 				expect(
-					shouldRedactConsoleOutput(
+					shouldRedactExecutionOutput(
 						{ version: 2, production: false, manual: false },
 						undefined,
 						mode,
@@ -132,7 +137,7 @@ describe('redaction-channels', () => {
 
 		it('combines the sub-workflow channels with the workflow-setting fallback', () => {
 			expect(
-				shouldRedactConsoleOutput(undefined, { redactionPolicy: 'none' }, 'trigger', {
+				shouldRedactExecutionOutput(undefined, { redactionPolicy: 'none' }, 'trigger', {
 					production: true,
 					manual: false,
 				}),
@@ -140,15 +145,132 @@ describe('redaction-channels', () => {
 		});
 
 		it('falls back to the workflow setting when the snapshot is absent', () => {
-			expect(shouldRedactConsoleOutput(undefined, { redactionPolicy: 'all' }, 'trigger')).toBe(
+			expect(shouldRedactExecutionOutput(undefined, { redactionPolicy: 'all' }, 'trigger')).toBe(
 				true,
 			);
-			expect(shouldRedactConsoleOutput(undefined, { redactionPolicy: 'all' }, 'manual')).toBe(true);
+			expect(shouldRedactExecutionOutput(undefined, { redactionPolicy: 'all' }, 'manual')).toBe(
+				true,
+			);
 			expect(
-				shouldRedactConsoleOutput(undefined, { redactionPolicy: 'non-manual' }, 'manual'),
+				shouldRedactExecutionOutput(undefined, { redactionPolicy: 'non-manual' }, 'manual'),
 			).toBe(false);
-			expect(shouldRedactConsoleOutput(undefined, {}, 'manual')).toBe(false);
-			expect(shouldRedactConsoleOutput(undefined, undefined, 'trigger')).toBe(false);
+			expect(shouldRedactExecutionOutput(undefined, {}, 'manual')).toBe(false);
+			expect(shouldRedactExecutionOutput(undefined, undefined, 'trigger')).toBe(false);
+		});
+	});
+
+	describe('isExecutionOutputRedacted', () => {
+		it('reads the snapshot and the sub-workflow channels from the run', () => {
+			const run = runWith(
+				context({
+					redaction: { version: 2, production: false, manual: false },
+					subWorkflowRedaction: { production: true, manual: false },
+				}),
+			);
+
+			expect(isExecutionOutputRedacted(run, undefined, 'trigger')).toBe(true);
+			expect(isExecutionOutputRedacted(run, undefined, 'manual')).toBe(false);
+		});
+
+		it('falls back to the workflow setting when the run has no snapshot', () => {
+			expect(
+				isExecutionOutputRedacted(runWith(undefined), { redactionPolicy: 'all' }, 'manual'),
+			).toBe(true);
+			expect(isExecutionOutputRedacted(undefined, { redactionPolicy: 'none' }, 'manual')).toBe(
+				false,
+			);
+			expect(isExecutionOutputRedacted(undefined, undefined, 'trigger')).toBe(false);
+		});
+
+		it('fails closed when reading the run throws', () => {
+			const broken = {
+				get executionData(): never {
+					throw new Error('boom');
+				},
+			} as unknown as IRunExecutionData;
+
+			expect(isExecutionOutputRedacted(broken, undefined, 'manual')).toBe(true);
+		});
+	});
+
+	describe('redactExecutionError', () => {
+		it('keeps only the error type for a non-API error', () => {
+			expect(redactExecutionError({ name: 'NodeOperationError' })).toEqual({
+				type: 'NodeOperationError',
+			});
+		});
+
+		it('keeps the HTTP status code for a NodeApiError', () => {
+			expect(redactExecutionError({ name: 'NodeApiError', httpCode: '500' })).toEqual({
+				type: 'NodeApiError',
+				httpCode: '500',
+			});
+		});
+
+		it('reports a NodeApiError without a status code as null', () => {
+			expect(redactExecutionError({ name: 'NodeApiError' })).toEqual({
+				type: 'NodeApiError',
+				httpCode: null,
+			});
+		});
+
+		it('replaces an error name that is not shaped like a class name', () => {
+			expect(redactExecutionError({ name: 'secret value: 42' })).toEqual({ type: 'Error' });
+			expect(redactExecutionError({ name: '' })).toEqual({ type: 'Error' });
+		});
+
+		it.each(['500 Internal Server Error', 'ECONNRESET', '{"status":"secret"}', '', '42', '600'])(
+			'drops a status code that is not a numeric HTTP status (%j)',
+			(httpCode) => {
+				expect(redactExecutionError({ name: 'NodeApiError', httpCode })).toEqual({
+					type: 'NodeApiError',
+					httpCode: null,
+				});
+			},
+		);
+	});
+
+	describe('redactErrorReport', () => {
+		it('keeps only the class and the call frames of a plain error', () => {
+			const error = new Error('secret value\nsecond secret line');
+
+			const report = redactErrorReport(error);
+
+			expect(report).toBeInstanceOf(Error);
+			expect(report?.name).toBe('Error');
+			expect(report?.message).toBe('Error');
+			expect(report?.stack).not.toContain('secret');
+			expect(report?.stack).toMatch(/^Error\n\s+at /);
+		});
+
+		it('labels the report with the class when the error name was changed', () => {
+			const error = Object.assign(new Error('secret value'), { name: 'secret name' });
+
+			const report = redactErrorReport(error);
+
+			expect(report?.name).toBe('Error');
+			expect(report?.message).toBe('Error');
+			expect(JSON.stringify([report?.name, report?.message, report?.stack])).not.toContain(
+				'secret',
+			);
+		});
+
+		it('keeps the class of an n8n error that Sentry would report', () => {
+			const report = redactErrorReport(new UnexpectedError('secret value'));
+
+			expect(report?.name).toBe('UnexpectedError');
+			expect(report?.message).toBe('UnexpectedError');
+			expect(report?.stack).not.toContain('secret value');
+		});
+
+		class LeveledError extends BaseError {}
+
+		it.each([
+			['shouldReport false', new OperationalError('secret value')],
+			['warning level', new LeveledError('secret value', { level: 'warning', shouldReport: true })],
+			['info level', new LeveledError('secret value', { level: 'info', shouldReport: true })],
+		])('drops an n8n error that Sentry would ignore (%s)', (_case, error) => {
+			expect(redactErrorReport(error)).toBeUndefined();
 		});
 	});
 

@@ -4,6 +4,8 @@ import type { AgentExecutionStatus } from '@n8n/api-types';
 import { createTeamProject, linkUserToProject, testModules } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
 
+import { createAgent } from '@test-integration/db/agents';
+
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
 import { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
@@ -36,32 +38,33 @@ describe('n8n Chat page HTTP routes', () => {
 		} = {},
 	) {
 		const agentRepository = Container.get(AgentRepository);
-		const agent = await agentRepository.save(
-			agentRepository.create({
-				id: randomUUID(),
-				name,
-				projectId,
-				schema: { name, model, instructions: 'Help' },
-				integrations: [chatIntegration],
-				tools: {},
-				versionId: randomUUID(),
-			}),
-		);
-		const versionId = randomUUID();
-		await Container.get(AgentHistoryRepository).saveVersion({
-			versionId,
-			agentId: agent.id,
-			schema: {
-				name,
-				description: 'Answers support questions',
-				model,
-				instructions: 'Help',
-				integrations: withChat ? [chatIntegration] : [],
-				...(subAgents ? { subAgents: { agents: subAgents } } : {}),
-			},
+		const agent = await createAgent({
+			id: randomUUID(),
+			name,
+			projectId,
+			schema: { name, model, instructions: 'Help' },
+			integrations: [chatIntegration],
 			tools: {},
-			publishedBy: 'test',
+			versionId: randomUUID(),
 		});
+		const versionId = randomUUID();
+		await Container.get(AgentHistoryRepository).saveVersion(
+			{
+				versionId,
+				agentId: agent.id,
+				schema: {
+					name,
+					description: 'Answers support questions',
+					model,
+					instructions: 'Help',
+					integrations: withChat ? [chatIntegration] : [],
+					...(subAgents ? { subAgents: { agents: subAgents } } : {}),
+				},
+				tools: {},
+				publishedBy: 'test',
+			},
+			{},
+		);
 		await agentRepository.update({ id: agent.id }, { activeVersionId: versionId });
 		return agent;
 	}

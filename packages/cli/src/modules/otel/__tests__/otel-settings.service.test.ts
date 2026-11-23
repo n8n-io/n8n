@@ -311,6 +311,27 @@ describe('OtelSettingsService', () => {
 		});
 	});
 
+	describe('isOutboundInjectionEnabled', () => {
+		it('is false before loadSettings, rather than throwing', () => {
+			expect(service.isOutboundInjectionEnabled()).toBe(false);
+		});
+
+		it.each([
+			[true, true, true],
+			[true, false, false],
+			[false, true, false],
+			[false, false, false],
+		])('is %s && %s -> %s', async (enabled, injectOutbound, expected) => {
+			settingsRepository.findByKey.mockResolvedValue({
+				value: JSON.stringify({ enabled, injectOutbound }),
+			} as Settings);
+
+			await service.loadSettings();
+
+			expect(service.isOutboundInjectionEnabled()).toBe(expected);
+		});
+	});
+
 	describe('saveSettings', () => {
 		const settings: OtelConfig = {
 			enabled: true,

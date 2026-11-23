@@ -15,13 +15,23 @@ import {
 import { generateId } from '../../database/generate-id';
 import type { IStepExecutor, StepExecutionRequest } from '../../dependencies';
 import type { WorkflowGraph } from '../../graph';
-import { noopLifecycleEventPublisher } from '../../lifecycle-events';
-import type { LifecycleEventCallback, LifecycleEvent } from '../../lifecycle-events';
-import { InMemoryWorkQueue, type OrchestrationMessage } from '../../queue';
+import {
+	LifecycleEventPublisherFactory,
+	noopLifecycleEventPublisher,
+} from '../../lifecycle-events';
+import type {
+	LifecycleEventCallback,
+	LifecycleEvent,
+	LifecycleEventSubscription,
+} from '../../lifecycle-events';
+import {
+	createInMemoryWorkQueues,
+	InMemoryWorkQueue,
+	type OrchestrationMessage,
+} from '../../queue';
 import { noopExecutionResponseSender } from '../../response-channel';
 import { createEngineRuntime } from '../../runtime';
 import type { SeededSteps, TriggerOutputs } from '../execution.types';
-import type { CancelExecutionService } from '../cancel-execution.service';
 import type { StartExecutionResult, StartExecutionService } from '../start-execution.service';
 import { StepReadyHandler } from '../step-ready-handler';
 
@@ -34,6 +44,14 @@ const graph: WorkflowGraph = {
 };
 
 const secret = 'a'.repeat(32);
+
+type Concurrency = { step: number; orchestration: number };
+
+/** Cases with parallel branches or sub-executions run at both limits. */
+const concurrencies: Concurrency[] = [
+	{ step: 1, orchestration: 1 },
+	{ step: 4, orchestration: 4 },
+];
 
 const authHeader = () => ({
 	authorization: `Bearer ${mintIdentityToken(secret, { cpId: 'cp-1', tenantId: 'tenant-1' })}`,
@@ -69,14 +87,19 @@ describe('step execution (integration)', () => {
 			seededSteps,
 			lifecycleEventCallback,
 			waitSweepIntervalMs,
+			concurrency,
 			resolveOn = 'finish',
 			finishCount = 1,
+			lifecycleEventSubscription = { kind: 'all' },
 		}: {
+			/** `null` leaves the subscription out of the start request. */
+			lifecycleEventSubscription?: LifecycleEventSubscription | null;
 			workflowId?: string;
 			graph?: WorkflowGraph;
 			seededSteps?: SeededSteps;
 			lifecycleEventCallback?: LifecycleEventCallback;
 			waitSweepIntervalMs?: number;
+			concurrency?: Concurrency;
 			/**
 			 * Which write means the engine has gone quiet. An execution that
 			 * suspends and stays suspended never finishes, so those cases wait on
@@ -99,6 +122,7 @@ describe('step execution (integration)', () => {
 			identityVerifier: new SharedSecretIdentityVerifier(secret),
 			responseSender: noopExecutionResponseSender,
 			waitSweepIntervalMs,
+			queues: createInMemoryWorkQueues({ concurrency }),
 			// also how the test reaches the stores the runtime owns
 			externalDependencies: ({ executionStore, stepStore }) => {
 				const finishExecution = executionStore.finishExecution.bind(executionStore);
@@ -136,6 +160,7 @@ describe('step execution (integration)', () => {
 				seededSteps,
 				executionId: generateId(),
 				callerContext: { hostMode: 'trigger' },
+				lifecycleEventSubscription: lifecycleEventSubscription ?? undefined,
 			})
 			.expect(201);
 		const { executionId } = response.body as StartExecutionResult;
@@ -213,6 +238,23 @@ describe('step execution (integration)', () => {
 			callerContext: { hostMode: 'trigger' },
 			responseExpectation: { kind: 'none' },
 		});
+	});
+
+	it.each([
+		['leaves the subscription out', null],
+		['subscribes to none', { kind: 'none' as const }],
+	])('announces nothing when the caller %s', async (_name, lifecycleEventSubscription) => {
+		const executor: IStepExecutor = {
+			execute: async () => {
+				await Promise.resolve();
+				return { outputs: [[{ json: { greeting: 'hi' } }]] };
+			},
+		};
+
+		const { execution, events } = await runWorkflow(executor, [{}], { lifecycleEventSubscription });
+
+		expect(execution.status).toBe('completed');
+		expect(events).toEqual([]);
 	});
 
 	it('records the error when a step throws', async () => {
@@ -315,13 +357,24 @@ describe('step execution (integration)', () => {
 			},
 		};
 
-		const { execution, steps } = await runWorkflow(executor, [{}], {
+		const { execution, steps, events } = await runWorkflow(executor, [{}], {
 			workflowId: 'wf-wait-fires',
 			graph: waitGraph,
 			waitSweepIntervalMs: 20,
 		});
 
 		expect(execution.status).toBe('completed');
+		// The subscription is read from the row, so it still applies after the resume.
+		expect(events.map(({ type }) => type)).toEqual([
+			'execution:started',
+			'step:started',
+			'step:waiting',
+			'step:started',
+			'step:completed',
+			'step:started',
+			'step:completed',
+			'execution:completed',
+		]);
 		expect(execution.finishedAt).toBeInstanceOf(Date);
 
 		const nodeA = steps.find(({ nodeId }) => nodeId === 'node-a');
@@ -337,7 +390,11 @@ describe('step execution (integration)', () => {
 		expect(steps.find(({ nodeId }) => nodeId === 'node-b')?.status).toBe('completed');
 	});
 
-	it('cancels a waiting step when a sibling branch fails', async () => {
+	it.each(concurrencies)(
+		'cancels a waiting step when a sibling branch fails (concurrency $step)',
+		cancelsWaitingStepWhenSiblingFails,
+	);
+	async function cancelsWaitingStepWhenSiblingFails(concurrency: Concurrency) {
 		// The trigger fans out. A suspends, then B throws, which fails the whole
 		// execution. A must not survive as a live row: nothing would ever resume a
 		// request-only wait, and the sweep would run a deadline wait inside a
@@ -363,23 +420,36 @@ describe('step execution (integration)', () => {
 			execute: async (request) => {
 				await Promise.resolve();
 				if (request.node.id === 'node-a') return { wait };
+				await vi.waitFor(
+					async () => {
+						const nodeA = await dataSource.getRepository(WorkflowStepExecution).findOne({
+							where: { executionId: request.context.executionId, nodeId: 'node-a' },
+						});
+						expect(nodeA?.status).toBe('waiting');
+					},
+					{ timeout: 5_000 },
+				);
 				throw new Error('node blew up');
 			},
 		};
 
 		const { execution, steps } = await runWorkflow(executor, [{}], {
 			workflowId: 'wf-wait-cancelled',
+			concurrency,
 			graph: forkGraph,
 		});
 
 		expect(execution.status).toBe('failed');
 		expect(steps.find(({ nodeId }) => nodeId === 'node-b')?.status).toBe('failed');
+		expect(steps.find(({ nodeId }) => nodeId === 'node-b')?.error).toMatchObject({
+			message: 'node blew up',
+		});
 
 		const waiting = steps.find(({ nodeId }) => nodeId === 'node-a');
 		expect(waiting?.status).toBe('cancelled');
 		// the declaration stays on the row as a record of what it was waiting for
 		expect(waiting?.waitDeclaration).toEqual(wait);
-	});
+	}
 
 	it('runs the execution to completion even when every status batch is refused', async () => {
 		// A host that cannot be reached costs freshness, never correctness.
@@ -517,7 +587,75 @@ describe('step execution (integration)', () => {
 		expect(b!.createdAt.getTime()).toBeGreaterThanOrEqual(a!.updatedAt.getTime());
 	});
 
-	it('runs a fan-in once, with each input slot fed by its branch', async () => {
+	it('runs what follows a loop seeded whole, and none of the loop itself', async () => {
+		// trigger -> loop(batch) -> x -> loop (back-edge); loop's done slot -> d
+		const loopGraph: WorkflowGraph = {
+			nodes: [
+				{ id: 'trigger', name: 'Webhook', type: 'trigger' },
+				{ id: 'loop', name: 'Loop', type: 'batch', config: { batchSize: 1 } },
+				{ id: 'x', name: 'X', type: 'v1-node' },
+				{ id: 'd', name: 'D', type: 'v1-node' },
+			],
+			edges: [
+				{ from: 'trigger', to: 'loop', outputIndex: 0, inputIndex: 0 },
+				{ from: 'loop', to: 'x', outputIndex: 1, inputIndex: 0 },
+				{ from: 'x', to: 'loop', outputIndex: 0, inputIndex: 0, isBackEdge: true },
+				{ from: 'loop', to: 'd', outputIndex: 0, inputIndex: 0 },
+			],
+		};
+		// Two passes over two items, then the done pass carrying what came back.
+		const seededSteps: SeededSteps = {
+			loop: [
+				[null, [{ json: { item: 1 } }]],
+				[null, [{ json: { item: 2 } }]],
+				[[{ json: { x: 1 } }, { json: { x: 2 } }], null],
+			],
+			x: [[[{ json: { x: 1 } }]], [[{ json: { x: 2 } }]]],
+		};
+		const requests: StepExecutionRequest[] = [];
+		const executor: IStepExecutor = {
+			execute: async (request) => {
+				requests.push(request);
+				await Promise.resolve();
+				return { outputs: [[{ json: { ran: request.node.id } }]] };
+			},
+		};
+
+		const { execution, steps } = await runWorkflow(
+			executor,
+			[[{ json: { item: 1 } }, { json: { item: 2 } }]],
+			{
+				workflowId: 'wf-seeded-loop',
+				graph: loopGraph,
+				seededSteps,
+			},
+		);
+
+		// Only d ran, on the done pass the caller supplied.
+		expect(requests.map(({ node }) => node.id)).toEqual(['d']);
+		expect(requests[0].inputs).toEqual([[{ json: { x: 1 } }, { json: { x: 2 } }]]);
+
+		expect(execution.status).toBe('completed');
+		// The seeded rows are the loop's complete ledger: no pass was planned again.
+		const rows = steps.map(({ nodeId, iteration, status }) => ({ nodeId, iteration, status }));
+		expect(rows).toEqual(
+			expect.arrayContaining([
+				{ nodeId: 'loop', iteration: 0, status: 'completed' },
+				{ nodeId: 'loop', iteration: 1, status: 'completed' },
+				{ nodeId: 'loop', iteration: 2, status: 'completed' },
+				{ nodeId: 'x', iteration: 0, status: 'completed' },
+				{ nodeId: 'x', iteration: 1, status: 'completed' },
+				{ nodeId: 'd', iteration: 0, status: 'completed' },
+			]),
+		);
+		expect(rows).toHaveLength(7);
+	});
+
+	it.each(concurrencies)(
+		'runs a fan-in once, with each input slot fed by its branch (concurrency $step)',
+		runsFanInOnce,
+	);
+	async function runsFanInOnce(concurrency: Concurrency) {
 		const diamondGraph: WorkflowGraph = {
 			nodes: [
 				{ id: 'trigger', name: 'Webhook', type: 'trigger' },
@@ -543,6 +681,7 @@ describe('step execution (integration)', () => {
 
 		const { execution } = await runWorkflow(executor, [{ body: { name: 'ada' } }], {
 			workflowId: 'wf-diamond',
+			concurrency,
 			graph: diamondGraph,
 		});
 
@@ -553,9 +692,13 @@ describe('step execution (integration)', () => {
 
 		expect(execution.status).toBe('completed');
 		expect(execution.finishedAt).toBeInstanceOf(Date);
-	});
+	}
 
-	it('settles a conditional diamond: dead chain skipped, merge runs on the live side', async () => {
+	it.each(concurrencies)(
+		'settles a conditional diamond: dead chain skipped, merge runs on the live side (concurrency $step)',
+		settlesConditionalDiamond,
+	);
+	async function settlesConditionalDiamond(concurrency: Concurrency) {
 		// trigger -> if -> {a (out 0), b (out 1) -> c} -> m: the not-taken branch is
 		// two nodes long, so its skips must cascade through the event loop
 		// before the merge can settle and the execution can finish.
@@ -592,6 +735,7 @@ describe('step execution (integration)', () => {
 
 		const { execution, steps } = await runWorkflow(executor, [{}], {
 			workflowId: 'wf-branch',
+			concurrency,
 			graph: branchingGraph,
 		});
 
@@ -616,9 +760,13 @@ describe('step execution (integration)', () => {
 
 		expect(execution.status).toBe('completed');
 		expect(execution.finishedAt).toBeInstanceOf(Date);
-	});
+	}
 
-	it('starts an awaited sub-execution from a step result and resumes the step with the sub-execution result', async () => {
+	it.each(concurrencies)(
+		'starts an awaited sub-execution from a step result and resumes the step with the sub-execution result (concurrency $step)',
+		resumesStepWithAwaitedSubExecutionResult,
+	);
+	async function resumesStepWithAwaitedSubExecutionResult(concurrency: Concurrency) {
 		const parentGraph: WorkflowGraph = {
 			nodes: [
 				{ id: 'trigger', name: 'Webhook', type: 'trigger' },
@@ -666,6 +814,7 @@ describe('step execution (integration)', () => {
 
 		const { executionId, execution, steps } = await runWorkflow(executor, [{}], {
 			workflowId: 'wf-parent',
+			concurrency,
 			graph: parentGraph,
 			finishCount: 2,
 		});
@@ -706,9 +855,13 @@ describe('step execution (integration)', () => {
 		// What `call` emitted on the resume is what `after` read.
 		const afterRun = requests.find(({ node }) => node.id === 'after');
 		expect(afterRun?.inputs).toEqual([[{ json: { subExecutionResult } }]]);
-	});
+	}
 
-	it('fails the parent step with the sub-execution error when an awaited sub-execution fails', async () => {
+	it.each(concurrencies)(
+		'fails the parent step with the sub-execution error when an awaited sub-execution fails (concurrency $step)',
+		failsParentStepWithSubExecutionError,
+	);
+	async function failsParentStepWithSubExecutionError(concurrency: Concurrency) {
 		const parentGraph: WorkflowGraph = {
 			nodes: [
 				{ id: 'trigger', name: 'Webhook', type: 'trigger' },
@@ -746,6 +899,7 @@ describe('step execution (integration)', () => {
 
 		const { execution, steps } = await runWorkflow(executor, [{}], {
 			workflowId: 'wf-parent-fails',
+			concurrency,
 			graph: parentGraph,
 			finishCount: 2,
 		});
@@ -765,9 +919,13 @@ describe('step execution (integration)', () => {
 			.getRepository(WorkflowExecution)
 			.findOneOrFail({ where: { id: subExecutionId } });
 		expect(subExecution.status).toBe('failed');
-	});
+	}
 
-	it('starts a detached sub-execution from a completed step and does not wait for it', async () => {
+	it.each(concurrencies)(
+		'starts a detached sub-execution from a completed step and does not wait for it (concurrency $step)',
+		startsDetachedSubExecution,
+	);
+	async function startsDetachedSubExecution(concurrency: Concurrency) {
 		const parentGraph: WorkflowGraph = {
 			nodes: [
 				{ id: 'trigger', name: 'Webhook', type: 'trigger' },
@@ -811,6 +969,7 @@ describe('step execution (integration)', () => {
 
 		const { executionId, execution, steps } = await runWorkflow(executor, [{}], {
 			workflowId: 'wf-parent-detached',
+			concurrency,
 			graph: parentGraph,
 			finishCount: 2,
 		});
@@ -832,7 +991,7 @@ describe('step execution (integration)', () => {
 
 		// `fire` ran once: nothing resumed it.
 		expect(requests.filter(({ node }) => node.id === 'fire')).toHaveLength(1);
-	});
+	}
 
 	it('is idempotent across duplicate step:ready deliveries', async () => {
 		const { executionStore, stepStore } = createStores(dataSource);
@@ -843,10 +1002,9 @@ describe('step execution (integration)', () => {
 			stepStore,
 			orchestrationQueue,
 			{ v1StepExecutor: { execute } },
-			noopLifecycleEventPublisher,
+			new LifecycleEventPublisherFactory(noopLifecycleEventPublisher),
 			noopExecutionResponseSender,
 			{ start: vi.fn() } as unknown as StartExecutionService,
-			{ cancelSubExecutions: vi.fn() } as unknown as CancelExecutionService,
 		);
 
 		const executionId = generateId();

@@ -28,7 +28,7 @@ describe('agent telemetry', () => {
 	it('derives safe configuration dimensions from an agent entity', () => {
 		const schema: AgentJsonConfig = {
 			name: 'Test Agent',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			instructions: 'Be helpful',
 			integrations: [{ type: 'slack', credentialId: 'slack-cred' }],
 			tools: [
@@ -67,7 +67,7 @@ describe('agent telemetry', () => {
 				),
 			),
 		).toEqual({
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			channels: ['linear', 'slack'],
 			tool_types: ['custom', 'mcp', 'provider', 'subagent', 'web_search', 'workflow'],
 			tool_count: 6,
@@ -90,7 +90,7 @@ describe('agent telemetry', () => {
 	it('reports the ids of the attached skills on the capability profile', () => {
 		const config: AgentJsonConfig = {
 			name: 'Test Agent',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			instructions: 'Be helpful',
 			skills: [
 				{ type: 'skill', id: 'skill_b' },

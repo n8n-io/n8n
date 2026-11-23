@@ -23,8 +23,16 @@ import {
 	type ParentLink,
 } from '../../execution';
 import type { WorkflowGraph } from '../../graph';
-import type { OrchestrationMessage, StepMessage, WorkQueue } from '../../queue';
-import type { LifecycleEventPublisher } from '../../lifecycle-events';
+import {
+	createInMemoryWorkQueues,
+	type OrchestrationMessage,
+	type StepMessage,
+	type WorkQueue,
+} from '../../queue';
+import {
+	LifecycleEventPublisherFactory,
+	type LifecycleEventPublisher,
+} from '../../lifecycle-events';
 import { noopExecutionResponseSender, type ExecutionResponseSender } from '../../response-channel';
 import { createEngineRuntime } from '../../runtime';
 import { startEngineServer } from '../../testing/start-engine-server';
@@ -148,6 +156,26 @@ describe('POST /api/workflow-executions/search (integration)', () => {
 		]);
 	});
 
+	it('filters sub-executions in or out by whether they have a parent', async () => {
+		const workflowId = generateId();
+		const topLevelId = await start(workflowId);
+		const subId = await startSubExecution({
+			executionId: topLevelId,
+			stepId: generateId(),
+			awaited: true,
+		});
+
+		const subs = await search({ workflowIds: 'all', hasParent: true }).expect(200);
+		const subIds = (subs.body as SearchExecutionsResponse).items.map((item) => item.id);
+		expect(subIds).toContain(subId);
+		expect(subIds).not.toContain(topLevelId);
+
+		const topLevel = await search({ workflowIds: 'all', hasParent: false }).expect(200);
+		const topLevelIds = (topLevel.body as SearchExecutionsResponse).items.map((item) => item.id);
+		expect(topLevelIds).toContain(topLevelId);
+		expect(topLevelIds).not.toContain(subId);
+	});
+
 	it('rejects a parent execution id that is not a uuid', async () => {
 		await search({ workflowIds: 'all', parentExecutionId: 'parent' }).expect(400);
 	});
@@ -229,7 +257,7 @@ describe('POST /api/workflow-executions/search (integration)', () => {
 	});
 });
 
-/** A sub-execution's record, for the store: the route refuses to set a parent. */
+/** A sub-execution's record, for the store: the route drops `parent`. */
 function subExecutionRecord(id: string, parent: ParentLink): NewExecutionRecord {
 	return {
 		id,
@@ -245,10 +273,7 @@ function subExecutionRecord(id: string, parent: ParentLink): NewExecutionRecord 
 	};
 }
 
-/**
- * A sub-execution, written through the store: the engine's own start path
- * is what sets a parent.
- */
+/** Writes through the store, because the route drops `parent`. */
 async function startSubExecution(parent: ParentLink): Promise<string> {
 	const id = generateId();
 	await createStores(dataSource).executionStore.createExecution(subExecutionRecord(id, parent));
@@ -299,7 +324,7 @@ beforeEach(async () => {
 		cancelExecution: new CancelExecutionService(
 			executionStore,
 			stepStore,
-			lifecycleEventPublisher,
+			new LifecycleEventPublisherFactory(lifecycleEventPublisher),
 			responseSender,
 			stepQueue,
 		),
@@ -433,6 +458,61 @@ describe('POST /api/workflow-executions (integration)', () => {
 
 		const { executionStore } = createStores(dataSource);
 		expect((await executionStore.loadExecution(body.executionId)).parent).toBeNull();
+	});
+
+	it('stores the lifecycle event subscription with the row', async () => {
+		const body = startBody({ lifecycleEventSubscription: { kind: 'all' } });
+
+		const response = await request(url)
+			.post('/api/workflow-executions')
+			.set(authHeader())
+			.send(body);
+
+		expect(response.status).toBe(201);
+		const row = await dataSource
+			.getRepository(WorkflowExecution)
+			.findOneOrFail({ where: { id: body.executionId } });
+		expect(row.lifecycleEventSubscription).toEqual({ kind: 'all' });
+	});
+
+	it('stores no subscription when the body has no lifecycle event subscription', async () => {
+		const body = startBody();
+
+		const response = await request(url)
+			.post('/api/workflow-executions')
+			.set(authHeader())
+			.send(body);
+
+		expect(response.status).toBe(201);
+		const row = await dataSource
+			.getRepository(WorkflowExecution)
+			.findOneOrFail({ where: { id: body.executionId } });
+		expect(row.lifecycleEventSubscription).toBeNull();
+	});
+
+	it.each([{ kind: 'some' }, { kind: 'all', extra: true }, 'all'])(
+		'rejects the lifecycle event subscription %j with 400',
+		async (lifecycleEventSubscription) => {
+			const response = await request(url)
+				.post('/api/workflow-executions')
+				.set(authHeader())
+				.send(startBody({ lifecycleEventSubscription }));
+
+			expect(response.status).toBe(400);
+			expect((response.body as { error: string }).error).toBe('invalid_request');
+		},
+	);
+
+	it('cancels without an announcement when the caller did not subscribe', async () => {
+		const body = startBody();
+		await request(url).post('/api/workflow-executions').set(authHeader()).send(body).expect(201);
+
+		await request(url)
+			.post(`/api/workflow-executions/${body.executionId}/cancel`)
+			.set(authHeader())
+			.expect(200);
+
+		expect(lifecycleEventPublisher.publish).not.toHaveBeenCalled();
 	});
 
 	it('rejects a body without a caller context with 400', async () => {
@@ -697,6 +777,23 @@ describe('POST /api/workflow-executions/search/latest (integration)', () => {
 		});
 	});
 
+	it('returns the newest sub-execution of a parent execution', async () => {
+		const parentId = await start(generateId());
+		await startSubExecution({ executionId: parentId, stepId: generateId(), awaited: true });
+		const newest = await startSubExecution({
+			executionId: parentId,
+			stepId: generateId(),
+			awaited: false,
+		});
+		await start(generateId());
+
+		const response = await findLatest({ workflowIds: 'all', parentExecutionId: parentId }).expect(
+			200,
+		);
+
+		expect(response.body).toMatchObject({ id: newest });
+	});
+
 	it('returns 404 not_found when nothing matches', async () => {
 		const workflowId = generateId();
 		await start(workflowId);
@@ -748,7 +845,7 @@ describe('GET /api/workflow-executions/:id (integration)', () => {
 	});
 
 	it('reports the parent link of a sub-execution', async () => {
-		const parent = { executionId: generateId(), stepId: generateId(), awaited: true };
+		const parent = { executionId: await createExecution(), stepId: generateId(), awaited: true };
 		const subExecutionId = await startSubExecution(parent);
 
 		const response = await request(url)
@@ -787,6 +884,7 @@ describe('GET /api/workflow-executions/:id (integration)', () => {
 			admittance: new AllowAllAdmittance(),
 			identityVerifier: new SharedSecretIdentityVerifier(secret),
 			responseSender: noopExecutionResponseSender,
+			queues: createInMemoryWorkQueues(),
 			externalDependencies: ({ executionStore }) => {
 				const finishExecution = executionStore.finishExecution.bind(executionStore);
 				vi.spyOn(executionStore, 'finishExecution').mockImplementation(async (id, status) => {
@@ -879,9 +977,15 @@ describe('GET /api/workflow-executions/:id (integration)', () => {
 describe('POST /api/workflow-executions/:id/cancel (integration)', () => {
 	const cancel = (id: string) =>
 		request(url).post(`/api/workflow-executions/${id}/cancel`).set(authHeader());
-	/** Started expecting the run end, so a cancel owes the caller an `ended` response. */
+	/**
+	 * Started expecting the run end, so a cancel owes the caller an `ended`
+	 * response, and subscribed, so it announces the cancel.
+	 */
 	async function start() {
-		const body = startBody({ responseExpectation: { kind: 'runEnd' } });
+		const body = startBody({
+			responseExpectation: { kind: 'runEnd' },
+			lifecycleEventSubscription: { kind: 'all' },
+		});
 		await request(url).post('/api/workflow-executions').set(authHeader()).send(body).expect(201);
 		return body.executionId;
 	}
@@ -955,6 +1059,8 @@ describe('POST /api/workflow-executions/:id/cancel (integration)', () => {
 		await executionStore.createExecution({
 			...subExecutionRecord(subExecution, { executionId, stepId: generateId(), awaited: false }),
 			status: 'running',
+			// Subscribed, like the parent, so the cascade announces each cancel.
+			lifecycleEventSubscription: { kind: 'all' },
 		});
 		await executionStore.createExecution({
 			...subExecutionRecord(subSubExecution, {
@@ -963,6 +1069,7 @@ describe('POST /api/workflow-executions/:id/cancel (integration)', () => {
 				awaited: true,
 			}),
 			status: 'waiting',
+			lifecycleEventSubscription: { kind: 'all' },
 		});
 		await executionStore.createExecution({
 			...subExecutionRecord(ended, { executionId, stepId: generateId(), awaited: true }),

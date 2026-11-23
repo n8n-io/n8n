@@ -232,6 +232,28 @@ describe('createCasePipeline', () => {
 		expect(vi.mocked(lane.tracedExecute)).not.toHaveBeenCalled();
 	});
 
+	// A full tenant quota says nothing about the agent, so the run is not graded.
+	it('keeps a build that hit the sandbox quota out of the pass rate', async () => {
+		const lane = makeLane();
+		const cached: CachedBuild = {
+			build: { ...okBuild(), success: false, sandboxQuotaExceeded: true },
+			lane,
+			buildDurationMs: 42,
+		};
+		const pipeline = createCasePipeline(makeDeps(makeOrchestrator(cached)));
+
+		const output = await pipeline.runRow(rowInputs('happy-path'));
+
+		expect(output).toMatchObject({
+			passed: false,
+			incomplete: true,
+			failureCategory: 'framework_issue',
+			attribution: 'framework_issue',
+		});
+		expect(String(output.reasoning)).toContain('tenant quota was full');
+		expect(vi.mocked(lane.tracedExecute)).not.toHaveBeenCalled();
+	});
+
 	// Unlike a missing premise, a run that did not start clean still counts, so a leak
 	// shows in the pass rate. The attribution keeps it out of the builder's numbers.
 	it("fails a build that read another build's workflow as framework_issue, and counts it", async () => {
@@ -659,7 +681,7 @@ describe('createCasePipeline', () => {
 				agents: [
 					{
 						id: 'seed-agent',
-						config: { name: 'Support', model: 'anthropic/claude-sonnet-4-5', subAgents },
+						config: { name: 'Support', model: 'anthropic/claude-sonnet-5-5', subAgents },
 					},
 				],
 			},
@@ -705,7 +727,7 @@ describe('createCasePipeline', () => {
 			const { output, lane } = await runWith({
 				testCase: seededCase(),
 				createdAgentIds: ['agent-1'],
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 			});
 
 			expect(output).toMatchObject({ passed: false, attribution: 'framework_issue' });
@@ -717,7 +739,7 @@ describe('createCasePipeline', () => {
 			const { lane } = await runWith({
 				testCase: seededCase([{ type: 'anthropicApi' }]),
 				createdAgentIds: ['agent-1'],
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 			});
 
 			expect(lane.tracedExecuteAgent).toHaveBeenCalledTimes(1);
@@ -728,7 +750,7 @@ describe('createCasePipeline', () => {
 			const { output, lane } = await runWith({
 				testCase: seededCase(),
 				createdAgentIds: ['seed-restored-elsewhere'],
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 			});
 
 			expect(lane.tracedExecuteAgent).toHaveBeenCalledTimes(1);
@@ -739,7 +761,7 @@ describe('createCasePipeline', () => {
 			const { output, lane } = await runWith({
 				testCase: seededCase([{ type: 'anthropicApi' }], lowTier('openai/gpt-4.1-nano')),
 				createdAgentIds: ['agent-1'],
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 				subAgents: lowTier('openai/gpt-4.1-nano'),
 			});
 
@@ -752,7 +774,7 @@ describe('createCasePipeline', () => {
 			const { lane } = await runWith({
 				testCase: seededCase([{ type: 'anthropicApi' }], lowTier('openai/gpt-4.1-nano')),
 				createdAgentIds: ['agent-1'],
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 				subAgents: lowTier('xai/grok-4'),
 			});
 

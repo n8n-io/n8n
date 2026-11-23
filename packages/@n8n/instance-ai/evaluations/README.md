@@ -11,6 +11,7 @@ Five harnesses live here:
 - **`eval:subagent`** — legacy command name for the workflow-build compatibility corpus; it drives the live orchestrator/skill build path, scored by binary checks
 - **`eval:discovery`** — orchestrator in-process, scored against required or forbidden tool/dispatch events (no n8n server)
 - **`eval:pairwise`** — live orchestrator workflow builds, scored by an LLM judge panel against do/don't lists. Intended for head-to-head comparison with `ai-workflow-builder.ee` on the same dataset
+- **`eval:approval-judge`** — the Auto approval mode decision (fixed rules, then the judge model) on recorded and synthetic pending actions. No n8n server. See [Approval judge eval](#approval-judge-eval)
 
 To compare the model context of two commits (tokens for each LLM call, tool list size), use the A/B context benchmark: `eval:ab-bench`. See [ab-bench/README.md](./ab-bench/README.md).
 
@@ -18,6 +19,7 @@ To compare the model context of two commits (tokens for each LLM call, tool list
 
 Sections:
 
+- [Approval judge eval](#approval-judge-eval)
 - [Running e2e + workflow-build evals](#running-evals)
 - [Regression detection](#regression-detection)
 - [Running evals against pre-built workflows](#running-evals-against-pre-built-workflows)
@@ -25,6 +27,40 @@ Sections:
 - [Running pairwise evals](#pairwise-evals)
 - [How the e2e harness works](#how-the-e2e-harness-works)
 - [How the workflow-build harness works](#how-the-workflow-build-harness-works)
+
+## Approval judge eval
+
+Auto approval mode asks a small judge model whether an action set to Ask first
+can run without its card. This eval runs the production decision on each case
+in a cases directory: the fixed rules first, then the judge prompt and model.
+
+```bash
+# Model: --model, else N8N_INSTANCE_AI_APPROVAL_JUDGE_MODEL, else N8N_INSTANCE_AI_UTILITY_MODEL, else anthropic/claude-haiku-5-5
+dotenvx run -f ../../../.env.local -- pnpm eval:approval-judge --cases-dir <dir> --trials 3
+pnpm eval:approval-judge --cases-dir <dir> --filter injection --output-dir .data/approval-judge
+pnpm eval:approval-judge --cases-dir <dir> --judge-only   # skip the fixed rules, judge every case
+```
+
+A case is a JSON file named after its `id`, with the conversation before the
+card (user messages and Assistant text, never tool results), the action as the
+card shows it, the expected decision (`approve` or `ask`), and `critical: true`
+when approving causes harm. The schema is in `approval-judge/cases.ts`. A case
+can name a former multi-action tool with an `action` argument; the loader maps
+it to the tool that owns that action now, and a former data table write to one
+change of `change_data_tables`.
+
+Most cases come from production traces, so they stay out of this repository.
+Scrub names, emails, domains and IDs before you share a case. The label follows
+the request, not the user's click: users approve most cards and also deny for
+reasons the judge cannot see. Synthetic cases cover prompt injection, target
+mismatches, scope creep and data sent out.
+
+The report shows critical approvals (must be 0), unsafe approvals (approved, but
+the case expects ask), over-asks (asked, but the case expects approve), judge
+errors, latency and accuracy by tag. The CLI exits 1 on any critical approval,
+when more than 5% of the judge calls fail (`--max-judge-error-rate`), or when
+`--max-unsafe-rate` is set and exceeded. With `--output-dir`, it writes
+`approval-judge-results.json` with each trial's decision and reason.
 
 ## Running evals
 
@@ -75,7 +111,7 @@ You need an n8n instance running with Instance AI enabled, a seeded owner accoun
 
 3. **Create the owner account**. First time only: open `http://localhost:5678`, sign up with the email/password from your `.env.local`. If you'd rather reset to a known state (useful after deleting the DB or between iterations), start the server with `E2E_TESTS=true` and `curl` the reset endpoint:
    ```bash
-   N8N_INSTANCE_AI_EVAL_INSTANCE=true E2E_TESTS=true dotenvx run -f .env.local -- pnpm dev:ai
+   N8N_INSTANCE_AI_EVAL_INSTANCE=true N8N_INSTANCE_AI_ENABLED=true E2E_TESTS=true dotenvx run -f .env.local -- pnpm dev:ai
    # then in another shell:
    curl -sf -X POST http://localhost:5678/rest/e2e/reset \
      -H "Content-Type: application/json" \
@@ -98,6 +134,7 @@ INCLUDE_TEST_CONTROLLER=true pnpm build:docker
 # Start a container (E2E_TESTS=true exposes /rest/e2e/reset)
 docker run -d --name n8n-eval \
   -e E2E_TESTS=true \
+  -e N8N_INSTANCE_AI_ENABLED=true \
   -e N8N_ENABLED_MODULES=instance-ai,agents \
   -e N8N_AI_ENABLED=true \
   -e N8N_INSTANCE_AI_EVAL_INSTANCE=true \
@@ -158,10 +195,11 @@ dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai --iterations 3
 | `--build-via-mcp` | `false` | Build each workflow by driving the lane's MCP server with `claude -p`, then verify it on that same lane — see [Building via MCP (`--build-via-mcp`)](#building-via-mcp---build-via-mcp). Works across multiple `--base-url` lanes; requires `LANGSMITH_API_KEY`; mutually exclusive with `--prebuilt-workflows` |
 | `--mcp-server` | `n8n-local` | MCP server name for the staged `claude` config + tool allowlist (`--build-via-mcp`) |
 | `ANTHROPIC_MODEL` (env) | `claude-opus-4-8` | Anthropic model for the `claude` MCP build (`--build-via-mcp`); distinct from the verifier model. Not a flag: it rides `claude`'s native env var, and the CLI pins the default when unset so builds never float with claude-code's bundled default |
-| `--build-cwd` | — | Working directory for the `claude` build subprocess (`--build-via-mcp`); loads that project's Claude config/skills |
+| `--build-cwd` | — | Working directory for the `claude` build subprocess (`--build-via-mcp`); loads that project's Claude config/skills. When unset, each build runs isolated (see [Building via MCP](#building-via-mcp---build-via-mcp)) |
 | `--build-max-attempts` | `3` | Retries per workflow when `claude` returns no id (`--build-via-mcp`) |
 | `--build-mcp-timeout-ms` | `120000` | `MCP_TIMEOUT` passed to the `claude` build subprocess — bounds one MCP tool call (`--build-via-mcp`) |
 | `--build-timeout-ms` | `1800000` | Wall-clock cap per build attempt; on expiry the `claude` process is killed so a hung build can't hold its lane. `0` disables. A timed-out build is not retried (`--build-via-mcp`) |
+| `--assistant-runtime` | `instance-ai` | Which Assistant the builds drive: `instance-ai` or `agents` (the Assistant agent on the Agents runtime). See [Running against the Assistant agent](#running-against-the-assistant-agent---assistant-runtime-agents). Not allowed with `--build-via-mcp` or `--prebuilt-workflows` |
 
 ### Eval LLM settings (env)
 
@@ -263,8 +301,8 @@ Operational details:
 
 A test case can declare optional natural-language assertions, split by what they judge:
 
-- **`processExpectations: string[]`** — about *how the build went* (clarifications asked, push-back, ordering). Judged from the **conversation transcript** (plus the workflow and conversation metrics). They require a transcript, so they are **skipped in prebuilt/MCP runs**. e.g. `"Before building, the agent asked which Slack channel to use."`
-- **`outcomeExpectations: string[]`** — about the **resulting workflow**. Judged from the **workflow JSON**, so they **also run in prebuilt/MCP runs** (which have no transcript). e.g. `"The final workflow splits the records envelope before posting."`
+- **`processExpectations: string[]`** — about *how the build went* (clarifications asked, push-back, ordering). Judged from the **conversation transcript** (plus the workflow and conversation metrics). They require a transcript, so they are **skipped in prebuilt runs**. MCP runs capture the `claude` transcript, so they are judged there. e.g. `"Before building, the agent asked which Slack channel to use."`
+- **`outcomeExpectations: string[]`** — about the **resulting artifact**. Judged from the **workflow JSON**, or from the Agent when the build made one, so they **also run in prebuilt runs** (which have no transcript) and MCP runs. e.g. `"The final workflow splits the records envelope before posting."`
 
 Both are graded by the same judge (`build-expectations/verifier.ts`) and **count as units in the pass rate**: evaluated expectations fold into the per-case and headline pass@k/pass^k alongside execution scenarios. They don't flip an individual scenario's pass/fail (each is its own unit), and a judge `incomplete` verdict is excluded from the count. A full build judges the union of both fields against the transcript; a prebuilt build judges only `outcomeExpectations` against the workflow. A case may omit `executionScenarios` entirely — a **build-only** case — and is then graded by these expectations plus the always-on workflow checks.
 
@@ -426,6 +464,47 @@ When both sides captured per-trial `failureCategory` values, the comparison also
 
 Comparison is logged and skipped on any LangSmith failure — it never fails the eval. It is also skipped when no baseline experiment exists yet.
 
+## Running against the Assistant agent (`--assistant-runtime agents`)
+
+With `--assistant-runtime agents`, the harness drives the Assistant agent on the
+Agents runtime instead of the Instance AI runtime (`--assistant-runtime instance-ai`,
+the default). The same cases run on both runtimes,
+except compaction cases (see below).
+Lane setup reads `/rest/module-settings` and stops when
+`assistantAgentEnabled` is not true.
+
+The Agents transport is in `clients/assistant-agents-api.ts` and
+`harness/assistant-agents.ts`. `N8nClient` sends each thread-tied call there when
+the flag is set:
+
+| Step | `instance-ai` | `agents` |
+|------|---------------|----------|
+| Thread create / delete | `/rest/instance-ai/threads` | `/rest/assistant/eval/threads` (no source context) |
+| Mode, prompt version | On each message | Once per thread, `PUT /rest/assistant/eval/threads/:id/overrides`, before the first message |
+| Observer threshold | On each message | None. Memory uses the configured policy |
+| Send | `POST /rest/instance-ai/chat/:id` | `POST /rest/agents/system/assistant/chat` (SSE, closed after `message-queued`) |
+| Wait | SSE event log + status polls | Poll `.../chat/:id/messages` until no active execution and no open card for 3 polls |
+| Cards | `POST /rest/instance-ai/confirm/:requestId` | `POST .../chat/resume` with the same confirmation strategies |
+| Cancel | `POST .../chat/:id/cancel` | `DELETE .../chat/:id/executions/:activeExecutionId` |
+| Tokens and cost | Run debug | `.../chat/:id/usage`, one record per turn |
+| Thread eval routes (credential pin, seeds, executions) | `/rest/instance-ai/eval/...` | `/rest/assistant/eval/...` |
+| Memory read | `GET /rest/instance-ai/eval/threads/:id/memory` | None |
+
+The wait loop rebuilds Instance AI events from the history, so the outcome,
+transcript and metrics code is the same for both runtimes. Some data is not
+available on the Agents runtime:
+
+- Usage has one synthetic step for each turn, so step counts are turn counts.
+  The run-debug report has no prompts and no workflow code.
+- The build trace has no prompt configuration (the Agents runtime has no status route).
+- Delegated sub-agent tool calls are not rebuilt, only the top-level ones.
+- Memory tasks are not visible.
+
+Compaction cases (`requiresMemoryCompaction: true`) are skipped, and the run
+logs a warning that names them. The Assistant agent has no observer threshold
+override, so a case cannot make its short thread compact. The run stops when
+all selected cases are compaction cases.
+
 ## Running evals against pre-built workflows
 
 The eval framework normally builds each workflow with Instance AI and then verifies it. With `--prebuilt-workflows <path>`, the build step is skipped for matched test cases — the harness fetches the existing workflow from the n8n instance and runs verification against it instead. Use this to score workflows authored by other tools (an MCP-driven session, a hand-built reference, an older Instance AI snapshot) on the same dataset and the same verifier.
@@ -509,10 +588,50 @@ How it differs from the manifest flow:
   can't obtain the accept token — eval instances never have SMTP). Build users are
   deleted with the built workflows after the run; under `--keep-workflows` they
   stay, since deleting a user deletes their remaining data.
+- **Same conversation as the Instance AI arm.** `claude` gets only the first user
+  turn, without the `WORKFLOW_ID` trailer (the workflow id comes from the
+  `create_workflow_from_code` tool result). Harness context still goes with it:
+  the project to build in, the note on pre-created scenario tables, and for a
+  seeded case the earlier conversation and the attached resource. After each reply, the same simulated user (`UserProxyLlm`) decides on a
+  follow-up, which is sent with `claude -p --resume`, until it is done or the
+  case's `messageBudget` is spent. Stage directions stay with the simulated user
+  and never reach `claude`. A conversation that ends without a workflow or an
+  Agent is a build failure and is not retried. The `--build-timeout-ms` cap
+  covers the whole conversation.
+- **Seeded cases.** A case `seed` (inline or replay) is restored before `claude`
+  starts, through an owner thread bound to the build user's project
+  (`run/mcp-seed.ts`). Workflows, data tables, folders and Agents land in that
+  project and are exposed to MCP (`availableInMCP`), recorded runs are restored,
+  prior runs execute, and a
+  seeded team project is shared with the build user as a viewer. The opening
+  message names an attached workflow or Agent with its id. `claude` has no n8n
+  thread, so the earlier conversation is sent as text before the opening
+  message. That is the one part that differs from the Instance AI arm, which
+  restores the history as real thread messages. The judge sees the seeded turns
+  ahead of the live ones, as on that arm. A seeded case whose conversation edits
+  a workflow with `update_workflow`, or only inspects one, builds that workflow.
+  An Agent edited with `mutate_agent` is graded the same way.
+- **Agents.** When `claude` creates an n8n Agent with `create_agent`, the build
+  records it as an `agent` artifact. The case then runs its Agent scenarios and
+  judges, like an Instance AI Agent build. Build-user cleanup deletes the Agent
+  with the user's project.
+- **Transcripts.** The build reads `claude`'s `stream-json` output into the
+  harness transcript format (narration plus MCP tool calls), so
+  `processExpectations` are judged and the report shows the conversation. The
+  raw stream of each attempt is kept as a `.jsonl` file in the build log dir.
+  An expectation that grades the structured question tool, which only Instance
+  AI has, is recorded as ungraded and does not count toward the pass rate.
+- **Isolation.** Without `--build-cwd`, every attempt gets a temp
+  `CLAUDE_CONFIG_DIR` and an empty temp cwd, and runs with `--tools Read`. The
+  only file `claude` may read is in that config dir, where it saves a large MCP
+  tool result (for example the SDK reference) and shows the model a preview. So
+  `claude` uses the MCP server and nothing else on the host. Your `~/.claude` settings, skills,
+  memory and login are not loaded, so auth must come from `ANTHROPIC_API_KEY`
+  (or another env-based token). With `--build-cwd`, `claude` keeps the host setup.
 - **Throwaway cleanup.** Built workflows are deleted after the run unless you pass
-  `--keep-workflows`. Known limitation: cleanup keys off the `WORKFLOW_ID` trailer
-  `claude` prints, so a build that times out or never emits the trailer can leave
-  its workflow behind on the lane even though cleanup is on.
+  `--keep-workflows`. Known limitation: cleanup keys off the workflow id the build
+  reports, so a build that times out before the id is known can leave its
+  workflow behind on the lane even though cleanup is on.
 - **Per-case spend reporting.** Each build's `claude` cost/turns (summed across
   attempts — failed attempts cost money too) land as `build_cost_usd` /
   `build_turns` row feedback in LangSmith and as `buildCostUsdPerRun` /
@@ -580,7 +699,7 @@ pnpm eval:discovery --filter data-table-skill-loading --trials 3 --verbose --fai
 
 Verbose output lists each trial's completed tool calls with argument previews.
 For data-table routing, look for `load_skill(skillId="data-table-manager")`
-and `data_tables(action="list")`, and verify there are no planning,
+and `list_data_tables`, and verify there are no planning,
 workflow-builder, or spawned-agent entries in the spawned-agent section.
 
 ### Routing mode
@@ -714,7 +833,7 @@ N8N_AI_ANTHROPIC_KEY=sk-ant-... # or ANTHROPIC_API_KEY for the judge LLM
 | `--dataset` | `instance-ai-builder-from-plans` | LangSmith dataset name |
 | `--examples-jsonl` | — | Load examples from a previous `results.jsonl` instead of LangSmith |
 | `--judges` | `3` | Number of judges in the LLM panel |
-| `--judge-model` | `claude-sonnet-4-5-20250929` | LangChain model id for the judge LLM |
+| `--judge-model` | `claude-sonnet-4-6` | LangChain model id for the judge LLM |
 | `--iterations` | `1` | Run each example N times — for measuring judge / build variance |
 | `--concurrency` | `5` | Parallel example workers (`p-limit`) |
 | `--max-examples` | — | Cap dataset to first N examples |
@@ -757,7 +876,7 @@ The agent is stubbed for non-interactive use. The summary tracks divergence
 from this assumption — investigate any non-zero count:
 
 - `askUserCount` — `ask_user` tool was invoked (eval responds with `{ approved: false }`)
-- `autoApprovedSuspensions` — HITL-gated tool fired (e.g., `data_tables` create); auto-approved
+- `autoApprovedSuspensions` — HITL-gated tool fired (e.g., `change_data_tables`); auto-approved
 - `mockedCredentialTypes` — credential types the agent referenced (auto-mocked since `credentialService.list()` returns `[]`)
 
 ### Comparison report
@@ -892,6 +1011,8 @@ Each orchestrator build runs in its own empty project, named like the lane owner
 
 If the agent still reads a workflow that its build did not create or seed, the run fails as a harness fault: its rows and expectations fail with `framework_issue`. The pass rate shows the leak, builder analyses can filter it out by attribution, and the log names the workflow. A timeout still wins: if the build also timed out, the run stays neutral as `timeout`, like every timed-out run.
 
+A build that the sandbox service refused with `tenant sandbox quota exceeded` is a harness fault too. The harness does not grade its rows and expectations, so they stay out of the pass rate.
+
 ### Credentials
 
 By default a build sees **no credentials**: the harness pins every build thread's credential view to the case's declared set (empty unless declared), so concurrent cases — and whatever happens to live on the instance — can never leak into a build. Every node mocks during verification.
@@ -928,7 +1049,7 @@ a server that drops it after a write.
 "requiresMemoryCompaction": true
 ```
 
-For a case that is only meaningful once observational memory has compacted the thread — the Observer has written its observations and the early turns are masked out of the agent's window. Production compacts at 30k tokens of visible message content (`N8N_INSTANCE_AI_OBSERVER_MESSAGE_TOKENS`), which is a conversation too long to hand-author, so the flag does two things per-thread, leaving every other case in the run alone:
+For a case that is only meaningful once observational memory has compacted the thread — the Observer has written its observations and the early turns are masked out of the agent's window. Production compacts at shares of the model's context window, capped at 200k tokens (`N8N_INSTANCE_AI_OBSERVATION_MAX_WINDOW_TOKENS`), measured on the real request size, which is a conversation too long to hand-author, so the flag does two things per-thread, leaving every other case in the run alone:
 
 1. The harness sends a low `observerThresholdTokens` override with **every** turn of that thread. The flag means "compact as soon as there is anything to compact" — the seed does not have to hit a token number. The Observer's prompt, masking and cursor logic are the production ones at any threshold.
 2. After the build, the harness checks the premise held, and reports every expectation on the case **not judged** if it did not. That is an `incomplete` verdict — excluded from scoring, not a red.
@@ -1289,6 +1410,8 @@ status.
 ## Troubleshooting
 
 **`Wrong username or password` on login.** Your instance has no owner. Run the `rest/e2e/reset` curl from [Quick start](#quick-start) (needs `E2E_TESTS=true` on the server).
+
+**`Instance AI is disabled` (403).** The Assistant is off by default on the Enterprise plan, and a server started with `E2E_TESTS=true` reports that plan. Set `N8N_INSTANCE_AI_ENABLED=true` on the server. Turning it on in Settings > Assistant also works, but the `rest/e2e/reset` call deletes that saved choice.
 
 **`Have reached end of quota` mid-run.** You're hitting the hosted AI proxy's per-tenant quota. Set `N8N_AI_ASSISTANT_BASE_URL=""` to hit Anthropic directly with your `N8N_INSTANCE_AI_MODEL_API_KEY`. Also consider lowering `--concurrency`.
 

@@ -1,13 +1,20 @@
 /* eslint-disable @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports */
 import type { BuiltTool } from '@n8n/agents';
-import { WORKFLOW_TOOL_NAME_BY_ACTION } from '@n8n/api-types';
+import {
+	DATA_TABLE_READ_TOOL_ACTIONS,
+	DATA_TABLE_TOOL_NAME_BY_ACTION,
+	EXECUTION_TOOL_ACTIONS,
+	EXECUTION_TOOL_NAME_BY_ACTION,
+	WORKFLOW_TOOL_NAME_BY_ACTION,
+	INSTANCE_TOOL_NAME_BY_ACTION,
+} from '@n8n/api-types';
 
-import { isParseableAttachment } from '../parsers/structured-file-parser';
 import { createToolRegistry } from '../tool-registry';
 import type { InstanceAiContext, InstanceAiToolRegistry, OrchestrationContext } from '../types';
 import { resolveAgentBuilderTarget } from './orchestration/agent-target-binding';
 import { DOMAIN_TOOL_IDS, ORCHESTRATION_TOOL_IDS } from './tool-ids';
 import { getSupportedWorkflowActions } from './workflows/workflow-tool-actions';
+import { getSupportedWorkspaceActions } from './workspace-tool-actions';
 
 const lazyMod = <T>(loader: () => T): (() => T) => {
 	let cached: T | undefined;
@@ -17,14 +24,35 @@ const lazyMod = <T>(loader: () => T): (() => T) => {
 const loadParseFileTool = lazyMod(
 	() => require('./attachments/parse-file.tool') as typeof import('./attachments/parse-file.tool'),
 );
+const loadImportFilesTool = lazyMod(
+	() =>
+		require('./attachments/import-files.tool') as typeof import('./attachments/import-files.tool'),
+);
+const loadListFilesTool = lazyMod(
+	() => require('./attachments/list-files.tool') as typeof import('./attachments/list-files.tool'),
+);
+const loadShareFilesTool = lazyMod(
+	() =>
+		require('./attachments/share-files.tool') as typeof import('./attachments/share-files.tool'),
+);
+const loadViewFileTool = lazyMod(
+	() => require('./attachments/view-file.tool') as typeof import('./attachments/view-file.tool'),
+);
 const loadCredentialsTool = lazyMod(
 	() => require('./credentials.tool') as typeof import('./credentials.tool'),
 );
 const loadConversationHistoryTool = lazyMod(
 	() => require('./conversation-history.tool') as typeof import('./conversation-history.tool'),
 );
+const loadAppsTool = lazyMod(
+	() => require('./apps/apps.tool') as typeof import('./apps/apps.tool'),
+);
 const loadDataTablesTool = lazyMod(
 	() => require('./data-tables.tool') as typeof import('./data-tables.tool'),
+);
+const loadChangeDataTablesTool = lazyMod(
+	() =>
+		require('./data-tables/change-data-tables.tool') as typeof import('./data-tables/change-data-tables.tool'),
 );
 const loadEvalConfigTool = lazyMod(
 	() => require('./evals/eval-config.tool') as typeof import('./evals/eval-config.tool'),
@@ -62,6 +90,10 @@ const loadAgentBuilderTools = lazyMod(
 const loadGetSessionTool = lazyMod(
 	() =>
 		require('./orchestration/get-session.tool') as typeof import('./orchestration/get-session.tool'),
+);
+const loadStartCloudBrowserTaskTool = lazyMod(
+	() =>
+		require('./orchestration/start-cloud-browser-task.tool') as typeof import('./orchestration/start-cloud-browser-task.tool'),
 );
 const loadReportVerificationVerdictTool = lazyMod(
 	() =>
@@ -109,7 +141,10 @@ function getOrchestratorDomainToolFactories(
 			WORKFLOW_TOOL_NAME_BY_ACTION[action],
 			() => loadWorkflowsTool().createWorkflowTool(context, action),
 		]),
-		[DOMAIN_TOOL_IDS.EXECUTIONS, () => loadExecutionsTool().createExecutionsTool(context)],
+		...EXECUTION_TOOL_ACTIONS.map((action): [string, DomainToolFactory] => [
+			EXECUTION_TOOL_NAME_BY_ACTION[action],
+			() => loadExecutionsTool().createExecutionTool(context, action),
+		]),
 		[
 			DOMAIN_TOOL_IDS.LIST_CREDENTIALS,
 			() => loadCredentialsTool().createListCredentialsTool(context),
@@ -130,8 +165,18 @@ function getOrchestratorDomainToolFactories(
 			DOMAIN_TOOL_IDS.DELETE_CREDENTIAL,
 			() => loadCredentialsTool().createDeleteCredentialTool(context),
 		],
-		[DOMAIN_TOOL_IDS.DATA_TABLES, () => loadDataTablesTool().createDataTablesTool(context)],
-		[DOMAIN_TOOL_IDS.WORKSPACE, () => loadWorkspaceTool().createWorkspaceTool(context)],
+		...DATA_TABLE_READ_TOOL_ACTIONS.map((action): [string, DomainToolFactory] => [
+			DATA_TABLE_TOOL_NAME_BY_ACTION[action],
+			() => loadDataTablesTool().createDataTableTool(context, action),
+		]),
+		[
+			DOMAIN_TOOL_IDS.CHANGE_DATA_TABLES,
+			() => loadChangeDataTablesTool().createChangeDataTablesTool(context),
+		],
+		...getSupportedWorkspaceActions(context).map((action): [string, DomainToolFactory] => [
+			INSTANCE_TOOL_NAME_BY_ACTION[action],
+			() => loadWorkspaceTool().createWorkspaceActionTool(context, action),
+		]),
 		[DOMAIN_TOOL_IDS.RESEARCH, () => loadResearchTool().createResearchTool(context)],
 		[DOMAIN_TOOL_IDS.N8N_DOCS, () => loadN8nDocsTool().createN8nDocsTool(context)],
 		[DOMAIN_TOOL_IDS.SEARCH_NODES, () => loadNodesTool().createSearchNodesTool(context)],
@@ -229,10 +274,51 @@ function getOrchestratorDomainToolFactories(
 		tools.push([DOMAIN_TOOL_IDS.SKILLS, () => loadSkillsTool().createSkillsTool(context)]);
 	}
 
-	if (context.currentUserAttachments?.some(isParseableAttachment)) {
+	if (context.appService) {
+		tools.push([DOMAIN_TOOL_IDS.APPS, () => loadAppsTool().createAppsTool(context)]);
+	}
+
+	// Registered on every turn, with or without files, so the tool list, which
+	// leads the cached prompt prefix, stays the same for the whole thread.
+	const { storedFiles } = context;
+	tools.push([
+		DOMAIN_TOOL_IDS.PARSE_FILE,
+		storedFiles
+			? () => loadParseFileTool().createParseStoredFileTool(storedFiles)
+			: () => loadParseFileTool().createParseFileTool(context),
+	]);
+
+	// The host sets `list` only when the sandbox files feature is on, so it stays the same for the thread.
+	const listFiles = storedFiles?.list?.bind(storedFiles);
+	if (storedFiles && listFiles) {
 		tools.push([
-			DOMAIN_TOOL_IDS.PARSE_FILE,
-			() => loadParseFileTool().createParseFileTool(context),
+			DOMAIN_TOOL_IDS.LIST_FILES,
+			() => loadListFilesTool().createListFilesTool(listFiles),
+		]);
+	}
+	// The tool cannot tell the model whether it sees a file without the model's file types.
+	const canView = storedFiles?.canView?.bind(storedFiles);
+	if (storedFiles && listFiles && canView) {
+		const read = storedFiles.read.bind(storedFiles);
+		tools.push([
+			DOMAIN_TOOL_IDS.VIEW_FILE,
+			() => loadViewFileTool().createViewFileTool({ read, canView }),
+		]);
+	}
+
+	// The host sets `sandboxFiles` only when the sandbox files feature is on. With
+	// stored files and the sandbox, it stays the same for the thread, so the tool list does too.
+	const { workspace, sandboxFiles } = context;
+	if (storedFiles && workspace && sandboxFiles) {
+		tools.push([
+			DOMAIN_TOOL_IDS.IMPORT_FILES,
+			() => loadImportFilesTool().createImportFilesTool(context, storedFiles, sandboxFiles),
+		]);
+	}
+	if (workspace && sandboxFiles) {
+		tools.push([
+			DOMAIN_TOOL_IDS.SHARE_FILES,
+			() => loadShareFilesTool().createShareFilesTool(context, sandboxFiles),
 		]);
 	}
 
@@ -291,6 +377,16 @@ export function createOrchestrationTools(context: OrchestrationContext): Instanc
 		for (const tool of loadAgentBuilderTools().createAgentBuilderTools(context, builderDelegate)) {
 			tools.push([tool.name, tool]);
 		}
+	}
+
+	// Presence is the gate: the host sets it only when this run can use the cloud browser.
+	if (context.startCloudBrowserTask) {
+		tools.push([
+			ORCHESTRATION_TOOL_IDS.START_CLOUD_BROWSER_TASK,
+			loadStartCloudBrowserTaskTool().createStartCloudBrowserTaskTool(
+				context.startCloudBrowserTask,
+			),
+		]);
 	}
 
 	if (context.domainContext?.agentPreviewSession && context.domainContext?.resolvePreviewSession) {

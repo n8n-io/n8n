@@ -57,6 +57,7 @@ function createToolErrorMessage(toolName: string, toolCallId: string, error: unk
 		content: errorContent,
 		tool_call_id: toolCallId,
 		name: toolName,
+		// oxlint-disable-next-line typescript/no-deprecated -- Keep the error marker in the existing message format.
 		additional_kwargs: { error: true },
 	});
 }

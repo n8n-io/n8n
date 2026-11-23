@@ -1,8 +1,9 @@
 import assert from 'node:assert';
 import type { Database as Sqlite3Database } from 'sqlite3';
-import { Pool } from 'tarn';
+import { Pool, TimeoutError } from 'tarn';
 import type { DbLease, DbLeaseHolder, SqliteConnectionPool } from './SqlitePooledTypes';
 import { DriverAlreadyReleasedError } from '../../error/DriverAlreadyReleasedError';
+import { LockAcquireTimeoutError } from '../../error/LockAcquireTimeoutError';
 import { LeasedDbConnection } from './LeasedDbConnection';
 import { SqliteLibrary } from './SqliteLibrary';
 
@@ -69,7 +70,7 @@ export class SqliteReadonlyConnectionPool implements SqliteConnectionPool {
 			throw new DriverAlreadyReleasedError();
 		}
 
-		const dbConnection = await this.pool.acquire().promise;
+		const dbConnection = await this.acquireConnection();
 		const dbLease = new LeasedDbConnection(dbConnection, this, dbLeaseHolder);
 
 		this.dbLeases.add(dbLease);
@@ -86,9 +87,13 @@ export class SqliteReadonlyConnectionPool implements SqliteConnectionPool {
 			throw new DriverAlreadyReleasedError();
 		}
 
-		const dbConnection = await this.pool.acquire().promise;
+		const dbConnection = await this.acquireConnection();
+		const dbLease = new LeasedDbConnection(dbConnection, this, dbLeaseHolder);
 
-		return new LeasedDbConnection(dbConnection, this, dbLeaseHolder);
+		// Track the lease so `close()` can ask its holder to release it.
+		this.dbLeases.add(dbLease);
+
+		return dbLease;
 	}
 
 	public releaseConnection(leasedDbConnection: DbLease) {
@@ -97,6 +102,24 @@ export class SqliteReadonlyConnectionPool implements SqliteConnectionPool {
 		}
 		this.dbLeases.delete(leasedDbConnection);
 		this.pool.release(leasedDbConnection.connection);
+	}
+
+	/**
+	 * Names the pool in the timeout error, as the write side does for its mutex,
+	 * so an exhausted read pool is told apart from a held write lock.
+	 */
+	private async acquireConnection(): Promise<Sqlite3Database> {
+		try {
+			return await this.pool.acquire().promise;
+		} catch (error) {
+			if (error instanceof TimeoutError) {
+				throw new LockAcquireTimeoutError(
+					`SqliteReadonlyConnectionPool (${this.pool.numUsed()}/${this.options.poolSize} leased)`,
+					{ cause: error },
+				);
+			}
+			throw error;
+		}
 	}
 
 	private validateDatabaseConnection(dbConnection: Sqlite3Database) {

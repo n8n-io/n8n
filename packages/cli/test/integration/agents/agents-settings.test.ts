@@ -6,7 +6,7 @@ import { mock } from 'vitest-mock-extended';
 
 import '@/modules/agents/agents-settings.controller';
 import { AgentsSettingsService } from '@/modules/agents/agents-settings.service';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { Publisher } from '@n8n/backend-services';
 import { FrontendService } from '@/services/frontend.service';
 
 import { createAdmin, createMember, createOwner } from '../shared/db/users';

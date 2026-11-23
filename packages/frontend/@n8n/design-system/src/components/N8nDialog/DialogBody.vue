@@ -1,5 +1,11 @@
 <script setup lang="ts">
+import { provide } from 'vue';
+
+import { insideDialogBodyKey } from './dialogContext';
+
 defineOptions({ name: 'DialogBody' });
+
+provide(insideDialogBodyKey, true);
 </script>
 
 <template>

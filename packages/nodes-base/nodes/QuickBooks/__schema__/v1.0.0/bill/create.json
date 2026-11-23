@@ -1,0 +1,145 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"APAccountRef": {
+			"properties": {
+				"name": {
+					"type": "string"
+				},
+				"value": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"Balance": {
+			"type": "number"
+		},
+		"CurrencyRef": {
+			"properties": {
+				"name": {
+					"type": "string"
+				},
+				"value": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"domain": {
+			"type": "string"
+		},
+		"DueDate": {
+			"type": "string"
+		},
+		"Id": {
+			"type": "string"
+		},
+		"Line": {
+			"items": {
+				"additionalProperties": true,
+				"properties": {
+					"AccountBasedExpenseLineDetail": {
+						"properties": {
+							"AccountRef": {
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"BillableStatus": {
+								"type": "string"
+							},
+							"TaxCodeRef": {
+								"properties": {
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							}
+						},
+						"type": "object"
+					},
+					"Amount": {
+						"type": "number"
+					},
+					"CustomExtensions": {
+						"items": {},
+						"type": "array"
+					},
+					"Description": {
+						"type": "string"
+					},
+					"DetailType": {
+						"type": "string"
+					},
+					"Id": {
+						"type": "string"
+					},
+					"LineNum": {
+						"type": "number"
+					},
+					"LinkedTxn": {
+						"items": {},
+						"type": "array"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"LinkedTxn": {
+			"items": {},
+			"type": "array"
+		},
+		"MetaData": {
+			"properties": {
+				"CreateTime": {
+					"type": "string"
+				},
+				"LastModifiedByRef": {
+					"properties": {
+						"value": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
+				"LastUpdatedTime": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"sparse": {
+			"type": "boolean"
+		},
+		"SyncToken": {
+			"type": "string"
+		},
+		"TotalAmt": {
+			"type": "number"
+		},
+		"TxnDate": {
+			"type": "string"
+		},
+		"VendorRef": {
+			"properties": {
+				"name": {
+					"type": "string"
+				},
+				"value": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		}
+	},
+	"type": "object"
+}

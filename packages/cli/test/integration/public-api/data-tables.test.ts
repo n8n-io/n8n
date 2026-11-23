@@ -1,11 +1,10 @@
 import { testDb, createTeamProject, linkUserToProject } from '@n8n/backend-test-utils';
-import type { Project, User } from '@n8n/db';
+import type { Person, Project } from '@n8n/db';
 import { ProjectRelationRepository, ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DATA_TABLE_SYSTEM_COLUMNS } from 'n8n-workflow';
 
-import { DataTableSizeValidator } from '@/modules/data-table/data-table-size-validator.service';
-import type { DataTable } from '@/modules/data-table/data-table.entity';
+import { DataTableSizeValidator, type DataTable } from '@n8n/backend-module-data-table';
 
 import { createDataTable } from '../shared/db/data-tables';
 import { createCustomRoleWithScopeSlugs } from '../shared/db/roles';
@@ -13,8 +12,8 @@ import { createOwnerWithApiKey, createMemberWithApiKey } from '../shared/db/user
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 
-let owner: User;
-let member: User;
+let owner: Person;
+let member: Person;
 let ownerPersonalProject: Project;
 let memberPersonalProject: Project;
 let authOwnerAgent: SuperAgentTest;
@@ -40,7 +39,7 @@ beforeEach(async () => {
 	const projectRepository = Container.get(ProjectRepository);
 	const projectRelationRepository = Container.get(ProjectRelationRepository);
 
-	const createPersonalProject = async (user: User) => {
+	const createPersonalProject = async (user: Person) => {
 		const project = await projectRepository.save(
 			projectRepository.create({
 				type: 'personal',

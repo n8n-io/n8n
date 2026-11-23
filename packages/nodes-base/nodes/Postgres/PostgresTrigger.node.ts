@@ -21,6 +21,7 @@ export class PostgresTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Postgres Trigger',
 		name: 'postgresTrigger',
+		schemaPath: 'Postgres',
 		icon: 'file:postgres.svg',
 		group: ['trigger'],
 		version: 1,

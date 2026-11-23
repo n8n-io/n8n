@@ -34,7 +34,6 @@ import { copyInputItems } from './utils/copy-input-items';
 import { getDataTableHelperFunctions } from './utils/data-table-helper-functions';
 import { getDeduplicationHelperFunctions } from './utils/deduplication-helper-functions';
 import { getFileSystemHelperFunctions } from './utils/file-system-helper-functions';
-// eslint-disable-next-line import-x/no-cycle
 import { getInputConnectionData } from './utils/get-input-connection-data';
 import { normalizeItems } from './utils/normalize-items';
 import { getRequestHelperFunctions } from './utils/request-helper-functions';
@@ -179,6 +178,7 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 	): Promise<unknown> {
 		return await getInputConnectionData.call(
 			this,
+			SupplyDataContext,
 			this.workflow,
 			this.runExecutionData,
 			this.runIndex,
@@ -195,7 +195,7 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 	}
 
 	getInputData(inputIndex = 0, connectionType = this.connectionType) {
-		if (!this.inputData.hasOwnProperty(connectionType)) {
+		if (!Object.hasOwn(this.inputData, connectionType)) {
 			// Return empty array because else it would throw error when nothing is connected to input
 			return [];
 		}
@@ -354,7 +354,7 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 				};
 			}
 
-			if (!runExecutionData.resultData.runData.hasOwnProperty(nodeName)) {
+			if (!Object.hasOwn(runExecutionData.resultData.runData, nodeName)) {
 				runExecutionData.resultData.runData[nodeName] = [];
 			}
 

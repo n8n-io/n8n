@@ -12,9 +12,9 @@ import {
 	type GraphNode,
 	type WorkflowLoop,
 } from '../graph';
-import type { LifecycleEventPublisher } from '../lifecycle-events';
+import type { LifecycleEventPublisherFactory } from '../lifecycle-events';
 import { createResponseEmitter, type ExecutionResponseSender } from '../response-channel';
-import { runBatchStep } from './batch-step';
+import { runBatchStep, type BatchStepResult } from './batch-step';
 import type { OrchestrationMessage, StepReadyEvent, WorkQueue } from '../queue';
 import type { ExecutionRecord, ExecutionStore } from './execution-store';
 import {
@@ -29,11 +29,13 @@ import {
 	type StepKeyId,
 	type StepSlots,
 	type ExecutorWaitDeclaration,
+	type StepOutputSources,
 } from './execution.types';
-import type { CancelExecutionService } from './cancel-execution.service';
 import { classifyEdge, sourceRow } from './iteration-mapping';
 import { exitSourcesInto, loadTerminalIterations } from './loop-ledger';
 import { InvalidParentLinkError, type StartExecutionService } from './start-execution.service';
+import { stepErrorDetails } from './step-error-details';
+import { announceStepFailed, stepEventFields } from './step-events';
 import type { StepRecord, StepStore } from './step-store';
 import { createStoreLoopReader } from './store-loop-reader';
 import { validateStepContext } from './validate-step-context';
@@ -76,10 +78,9 @@ export class StepReadyHandler {
 		private readonly stepStore: StepStore,
 		private readonly orchestrationQueue: WorkQueue<OrchestrationMessage>,
 		private readonly dependencies: ExternalDependencies,
-		private readonly lifecycleEventPublisher: LifecycleEventPublisher,
+		private readonly lifecycleEventPublisherFactory: LifecycleEventPublisherFactory,
 		private readonly responseSender: ExecutionResponseSender,
 		private readonly startExecution: StartExecutionService,
-		private readonly cancelExecution: CancelExecutionService,
 		/** Called once a wait is on the row, so the sweeper can re-arm on its deadline. */
 		private readonly onStepSuspended: () => void = () => {},
 	) {}
@@ -104,7 +105,8 @@ export class StepReadyHandler {
 		}
 
 		// This worker won the claim, so it is the one that announces the start.
-		this.lifecycleEventPublisher.publish({ type: 'step:started', ...stepEventFields(step, node) });
+		const lifecycleEventPublisher = this.lifecycleEventPublisherFactory.create(execution);
+		lifecycleEventPublisher.publish({ type: 'step:started', ...stepEventFields(step, node) });
 
 		// Decided outside the `try` below on purpose. Its errors are the engine's
 		// own bookkeeping, not the node's, so they leave the step `running`
@@ -116,28 +118,28 @@ export class StepReadyHandler {
 		// Only a failure to run the step fails it. A store error propagates instead —
 		// recording `failed` on a step whose side effects happened would be a lie.
 		let run:
-			| { kind: 'outputs'; outputs: StepSlots }
+			| { kind: 'outputs'; outputs: StepSlots; outputSources: StepOutputSources | null }
 			| { kind: 'wait'; wait: ExecutorWaitDeclaration }
 			| { kind: 'subExecution'; subExecution: SubExecutionDeclaration }
-			| { kind: 'error'; error: unknown };
+			| { kind: 'error'; error: StepError };
 		try {
-			let result: StepExecutionResult;
-			if (dispatch.kind === 'replay') {
-				result = { outputs: recordedOutputs(step, dispatch.cause) };
-			} else if (dispatch.kind === 'batch') {
-				result = { outputs: await this.runBatchNode(step, execution, node) };
+			if (dispatch.kind === 'batch') {
+				run = { kind: 'outputs', ...(await this.runBatchNode(step, execution, node)) };
 			} else {
-				result = await this.runStep(step, execution, node, dispatch);
-			}
-			if (result.wait) {
-				run = { kind: 'wait', wait: result.wait };
-			} else if (result.subExecution) {
-				run = { kind: 'subExecution', subExecution: result.subExecution };
-			} else {
-				run = { kind: 'outputs', outputs: result.outputs };
+				const result: StepExecutionResult =
+					dispatch.kind === 'replay'
+						? { outputs: recordedOutputs(step, dispatch.cause) }
+						: await this.runStep(step, execution, node, dispatch);
+				if (result.wait) {
+					run = { kind: 'wait', wait: result.wait };
+				} else if (result.subExecution) {
+					run = { kind: 'subExecution', subExecution: result.subExecution };
+				} else {
+					run = { kind: 'outputs', outputs: result.outputs, outputSources: null };
+				}
 			}
 		} catch (error) {
-			run = { kind: 'error', error };
+			run = { kind: 'error', error: toStepError(error) };
 		}
 
 		if (run.kind === 'subExecution') {
@@ -149,29 +151,31 @@ export class StepReadyHandler {
 			const started = await this.handleDetachedSubExecution(step, execution, subExecution);
 			run =
 				started.kind === 'error'
-					? { kind: 'error', error: started.error }
-					: { kind: 'outputs', outputs: subExecution.outputs };
+					? { kind: 'error', error: toStepError(started.error) }
+					: { kind: 'outputs', outputs: subExecution.outputs, outputSources: null };
 		}
 
 		let recorded: boolean;
 		if (run.kind === 'outputs') {
-			recorded = await this.stepStore.completeStep(event.stepId, run.outputs);
+			recorded = await this.stepStore.completeStep(event.stepId, run.outputs, run.outputSources);
 		} else if (run.kind === 'wait') {
 			recorded = await this.stepStore.suspendStep(event.stepId, run.wait);
 		} else {
-			recorded = await this.stepStore.failStep(event.stepId, toStepError(run.error));
+			recorded = await this.stepStore.failStep(event.stepId, run.error);
 		}
 
 		// Recording is a CAS on `running`, so losing it means something else took the
 		// step over while we ran — announce only outcomes we actually wrote, and let
-		// whoever holds it now announce theirs. TODO(CAT-2938): reconciliation is the
-		// only thing that can take a step over, and it doesn't exist yet.
+		// whoever holds it now announce theirs. The reconciliation sweeper does this
+		// when it fails a step that is `running` past its `stale_after` time.
+		//
+		// A wait in an ended execution is not recorded either: `suspendStep` cancels
+		// the step.
 		if (!recorded) return;
 
-		// A wait is no outcome: nothing settled, so nothing is announced and no
-		// planning follows.
-		// TODO(CAT-2928): publish `step:waiting` so the UI can show it.
+		// A wait is no outcome: nothing settled, so no planning follows.
 		if (run.kind === 'wait') {
+			lifecycleEventPublisher.publish({ type: 'step:waiting', ...stepEventFields(step, node) });
 			// Nudge first, so the sweeper's re-arm read runs beside the status
 			// write rather than after it. Either order is correct.
 			this.onStepSuspended();
@@ -181,10 +185,10 @@ export class StepReadyHandler {
 
 		// Before the settled event, or the execution could announce its end first.
 		// Outputs ride along so a consumer needs no read to render them.
-		this.lifecycleEventPublisher.publish(
+		lifecycleEventPublisher.publish(
 			run.kind === 'outputs'
 				? { type: 'step:completed', ...stepEventFields(step, node), outputs: run.outputs }
-				: { type: 'step:failed', ...stepEventFields(step, node) },
+				: { type: 'step:failed', ...stepEventFields(step, node), error: run.error },
 		);
 
 		await this.orchestrationQueue.publish({
@@ -206,7 +210,8 @@ export class StepReadyHandler {
 		node: GraphNode,
 		subExecution: SubExecutionDeclaration,
 	): Promise<void> {
-		// A CAS on `running`: losing it means something else took the step over.
+		// A CAS on `running`: losing it means something else took the step over, or
+		// the execution has ended.
 		const recorded = await this.stepStore.suspendStep(event.stepId, {
 			subExecutionId: subExecution.executionId,
 		});
@@ -217,14 +222,17 @@ export class StepReadyHandler {
 		const started = await this.startSubExecution(step, execution, subExecution);
 		if (started.kind === 'started') return;
 
-		const failed = await this.stepStore.failWaitingStep(step.id, toStepError(started.error));
+		const error = toStepError(started.error);
+		const failed = await this.stepStore.failWaitingStep(step.id, error);
 		if (!failed) return;
-		this.lifecycleEventPublisher.publish({ type: 'step:failed', ...stepEventFields(step, node) });
-		await this.orchestrationQueue.publish({
-			type: 'step:settled',
-			executionId: event.executionId,
-			stepId: event.stepId,
-		});
+		await announceStepFailed(
+			this.lifecycleEventPublisherFactory,
+			this.orchestrationQueue,
+			execution,
+			step,
+			node,
+			error,
+		);
 	}
 
 	/** Starts a detached sub-execution. */
@@ -237,7 +245,7 @@ export class StepReadyHandler {
 		if (
 			started.kind === 'error' &&
 			started.error instanceof InvalidParentLinkError &&
-			started.error.reason === 'execution-ended'
+			started.error.reason === 'execution-not-live'
 		) {
 			return { kind: 'parent-ended' };
 		}
@@ -265,25 +273,13 @@ export class StepReadyHandler {
 				callerContext: execution.callerContext,
 				parent: { executionId: execution.id, stepId: step.id, awaited: subExecution.awaited },
 			});
+			return { kind: 'started' };
 		} catch (error) {
 			return { kind: 'error', error };
 		}
-
-		// A cancel that ran between the liveness check above and this start
-		// found no sub-execution to cascade to. Read the parent again, so a sub-execution of an
-		// ended parent is cancelled here instead of running on.
-		const parent = await this.executionStore.loadExecution(execution.id);
-		if (!isLiveExecutionStatus(parent.status)) {
-			await this.cancelExecution.cancelSubExecutions(execution.id);
-		}
-		return { kind: 'started' };
 	}
 
-	/**
-	 * How the step produces its result. A replay needs no executor: looking one
-	 * up would fail a step this worker can serve, since a resume is announced to
-	 * every worker, including one that carries no shim.
-	 */
+	/** How the step produces its result. */
 	private async dispatchFor(
 		step: StepRecord,
 		node: GraphNode,
@@ -341,7 +337,7 @@ export class StepReadyHandler {
 		step: StepRecord,
 		execution: ExecutionRecord,
 		node: GraphNode,
-	): Promise<StepSlots> {
+	): Promise<BatchStepResult> {
 		if (!isBatchStepConfig(node.config)) {
 			throw new UnexpectedError(
 				`step ${step.id} runs batch node ${step.nodeId}, whose config has no whole batch size of at least 1`,
@@ -508,21 +504,15 @@ function readEdgeValue(
 	return row.outputs?.[edge.outputIndex] ?? null;
 }
 
-/** The identifiers every step event carries. */
-function stepEventFields(step: StepRecord, node: GraphNode) {
-	return {
-		executionId: step.executionId,
-		stepId: step.id,
-		nodeId: step.nodeId,
-		nodeName: node.name,
-		iteration: step.iteration,
-		at: new Date().toISOString(),
-	};
-}
-
 function toStepError(error: unknown): StepError {
 	if (error instanceof Error) {
-		return { name: error.name, message: error.message, stack: error.stack };
+		const details = stepErrorDetails(error);
+		return {
+			name: error.name,
+			message: error.message,
+			stack: error.stack,
+			...(details === undefined ? {} : { details }),
+		};
 	}
 	return { name: 'Error', message: String(error) };
 }

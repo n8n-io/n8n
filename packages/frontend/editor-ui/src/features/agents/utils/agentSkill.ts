@@ -18,12 +18,12 @@ export function normalizeAgentSkillForSave(skill: AgentSkill): AgentSkill {
 	return rest;
 }
 
-/** Where a move puts a skill. With no project and no agent, the skill goes to the instance. */
-export type SkillMoveTarget = { projectId: string | null; agentId: string | null };
+/** Where a move puts a skill. With no project, the skill goes to the instance. */
+export type SkillMoveTarget = { projectId: string | null };
 
 /**
  * The agents that lose a skill when it moves to `target`, by the rule the backend applies:
- * an agent can add an instance skill, a skill of its own project and its own agent skills.
+ * an agent can add an instance skill and a skill of its own project.
  * The caller does not know the projects of hidden agents, so they lose it unless the
  * target is the instance. Every built-in role that can create skills in a project can
  * also read its agents, so a hidden agent is never in a project the user can pick.
@@ -34,14 +34,11 @@ export function agentsLosingSkill(
 	target: SkillMoveTarget,
 	keepAgentId?: string,
 ): { names: string[]; hidden: number } {
-	if (target.projectId === null && target.agentId === null) return { names: [], hidden: 0 };
+	if (target.projectId === null) return { names: [], hidden: 0 };
 	const names = new Map<string, string>();
 	for (const agent of [...usage.drafts, ...usage.pins]) {
 		if (agent.agentId === keepAgentId) continue;
-		const keeps = target.agentId
-			? agent.agentId === target.agentId
-			: agent.projectId === target.projectId;
-		if (!keeps) names.set(agent.agentId, agent.agentName);
+		if (agent.projectId !== target.projectId) names.set(agent.agentId, agent.agentName);
 	}
 	return { names: [...names.values()], hidden: usage.hiddenAgents };
 }

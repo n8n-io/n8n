@@ -1,0 +1,20 @@
+{
+	"properties": {
+		"createTime": {
+			"type": "string"
+		},
+		"displayName": {
+			"type": "string"
+		},
+		"embeddingModel": {
+			"type": "string"
+		},
+		"name": {
+			"type": "string"
+		},
+		"updateTime": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

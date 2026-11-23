@@ -2,7 +2,10 @@ operationId: getWorkflowDependencies
 tags:
   - Workflow
 summary: List workflow dependencies
-description: List the credentials, data tables, sub-workflows and error workflow that the workflow uses, and the workflows and agents that use the workflow.
+description: |-
+  List the credentials, data tables, sub-workflows and error workflow that the workflow uses, and the workflows and agents that use the workflow.
+
+  Requires the `workflow:read` API key scope.
 x-required-scope: workflow:read
 parameters:
   - $ref: ../../../../shared/spec/parameters/limit.yml
@@ -28,3 +31,5 @@ responses:
     $ref: ../../../../shared/spec/responses/forbidden.yml
   '404':
     $ref: ../../../../shared/spec/responses/notFound.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml

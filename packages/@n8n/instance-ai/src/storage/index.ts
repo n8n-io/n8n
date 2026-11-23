@@ -1,5 +1,7 @@
 export type { AgentTreeSnapshot } from './agent-tree-snapshot';
 export { ThreadTaskStorage } from './thread-task-storage';
+export { CloudBrowserTaskStorage } from './cloud-browser-task-storage';
+export type { CloudBrowserTaskRecord } from './cloud-browser-task-storage';
 export { getThread, patchThread } from './thread-patch';
 export { TerminalOutcomeStorage } from './terminal-outcome-storage';
 export type { TerminalOutcome } from './terminal-outcome-storage';

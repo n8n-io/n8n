@@ -1,8 +1,9 @@
 import { LicenseState } from '@n8n/backend-common';
-import { ExecutionRedactionServiceProxy } from '@n8n/backend-services';
+import { ExecutionRedactionServiceProxy, TelemetryProxy } from '@n8n/backend-services';
 import {
 	createTeamProject,
 	createWorkflowWithHistory,
+	getPersonalProject,
 	linkUserToProject,
 	mockInstance,
 	randomCredentialPayload,
@@ -24,7 +25,6 @@ import { InstanceRedactionEnforcementService } from '@/modules/redaction/instanc
 // Declares the hook that the redaction module loads at startup.
 import '@/modules/redaction/redaction-context-hook';
 import { Push } from '@/push';
-import { Telemetry } from '@/telemetry';
 import { affixRoleToSaveCredential } from '@test-integration/db/credentials';
 import { LicenseMocker } from '@test-integration/license';
 import { createExecution } from '@test-integration/db/executions';
@@ -42,7 +42,7 @@ import { InstanceAiAdapterService } from '../instance-ai.adapter.service';
  */
 describe('Instance AI execution redaction (integration)', () => {
 	mockInstance(ActiveWorkflowManager);
-	mockInstance(Telemetry);
+	mockInstance(TelemetryProxy);
 	mockInstance(Push, new Push(mock(), mock(), mock(), mock(), mock()));
 	const redactionFloor = mockInstance(InstanceRedactionEnforcementService);
 
@@ -384,10 +384,13 @@ describe('Instance AI execution redaction (integration)', () => {
 			expect(JSON.stringify(result)).toContain('tok_secret');
 		});
 
-		it('names the credential the user cannot use in a team project', async () => {
+		it.each([
+			['a team project', async () => teamProject.id],
+			["the owner's personal project", async () => (await getPersonalProject(owner)).id],
+		])('names the credential the user cannot use in %s', async (_, getProjectId) => {
 			redactionFloor.get.mockResolvedValue('off');
 
-			const result = await executeNodeFor(owner, teamProject.id).execute({
+			const result = await executeNodeFor(owner, await getProjectId()).execute({
 				...secretNode,
 				config: {
 					parameters: {},

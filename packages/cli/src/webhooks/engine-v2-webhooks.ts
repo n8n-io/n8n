@@ -15,9 +15,9 @@ import {
 	FORM_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
 	MICROSOFT_AGENT365_TRIGGER_NODE_TYPE,
-	UserError,
 	WorkflowOperationError,
 } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { MCP_TRIGGER_NODE_TYPE } from '@/constants';
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';

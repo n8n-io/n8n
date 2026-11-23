@@ -1,7 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import type { StoredWorkflowGraph, WorkflowGraph } from '../../graph';
-import type { LifecycleEventPublisher } from '../../lifecycle-events';
+import {
+	LifecycleEventPublisherFactory,
+	type LifecycleEventPublisher,
+} from '../../lifecycle-events';
 import type { OrchestrationMessage, StepMessage, WorkQueue } from '../../queue';
 import type { ExecutionResponseSender } from '../../response-channel';
 import type { CancelExecutionService } from '../cancel-execution.service';
@@ -60,6 +63,7 @@ function makeExecutionStore(
 		callerContext: { hostMode: 'trigger' },
 		responseExpectation: { kind: 'none' },
 		parent: null,
+		lifecycleEventSubscription: { kind: 'all' },
 		finishedAt: null,
 		...overrides,
 		graph: { seeded: [], ...(overrides.graph ?? graph) },
@@ -67,12 +71,15 @@ function makeExecutionStore(
 	return {
 		createExecution: vi.fn(),
 		loadExecution: vi.fn().mockResolvedValue(execution),
+		loadExecutionStatus: vi.fn(),
 		transitionStatus: vi.fn().mockResolvedValue(true),
 		finishExecution: vi
 			.fn()
 			.mockResolvedValue({ finishedAt: new Date('2026-09-30T08:00:00.000Z') }),
 		cancelExecution: vi.fn().mockResolvedValue(null),
 		loadSeededOutputs: vi.fn().mockResolvedValue(new Map()),
+		findStaleQueuedExecutions: vi.fn(),
+		renewQueuedExecution: vi.fn(),
 		refreshLiveStatus: vi.fn(),
 		loadLiveSubExecutionIds: vi.fn().mockResolvedValue([]),
 		...storeOverrides,
@@ -91,6 +98,7 @@ function makeStepStore(
 		iteration: 0,
 		status: 'completed',
 		outputs: null,
+		outputSources: null,
 		waitDeclaration: null,
 		resumeCause: null,
 		...step,
@@ -109,6 +117,10 @@ function makeStepStore(
 		resumeStep: vi.fn().mockResolvedValue(true),
 		resumeDueSteps: vi.fn().mockResolvedValue([]),
 		nextWaitDeadline: vi.fn().mockResolvedValue(null),
+		findStaleQueuedSteps: vi.fn().mockResolvedValue([]),
+		renewQueuedStep: vi.fn(),
+		findStaleRunningSteps: vi.fn().mockResolvedValue([]),
+		failStaleRunningStep: vi.fn(),
 		failStep: vi.fn(),
 		failWaitingStep: vi.fn(),
 		cancelStep: vi.fn(),
@@ -131,6 +143,7 @@ function makeStepStore(
 		// far from settled, so finish tests opt in explicitly
 		countSettledSteps: vi.fn().mockResolvedValue(0),
 		hasFailedSteps: vi.fn().mockResolvedValue(false),
+		loadFailedSteps: vi.fn().mockResolvedValue([]),
 		...overrides,
 	} satisfies StepStore;
 }
@@ -173,7 +186,7 @@ function makeHandler(
 			stepStore,
 			stepQueue,
 			orchestrationQueue,
-			lifecycleEventPublisher,
+			new LifecycleEventPublisherFactory(lifecycleEventPublisher),
 			responseSender,
 			subExecutionCanceller as CancelExecutionService,
 		),
@@ -622,6 +635,7 @@ describe('StepSettledHandler sub-executions', () => {
 			iteration,
 			status,
 			outputs,
+			outputSources: null,
 			waitDeclaration: null,
 			resumeCause: null,
 		};
@@ -674,7 +688,7 @@ describe('StepSettledHandler sub-executions', () => {
 		expect(stepStore.cancelPendingSteps).toHaveBeenCalledExactlyOnceWith('exec-1');
 	});
 
-	it('cancels the sub-executions and resumes the awaiting parent with the error the moment a step fails', async () => {
+	it('resumes the awaiting parent with the error the moment a step fails, then cancels the sub-executions', async () => {
 		const error = { name: 'TypeError', message: 'boom' };
 		const stepStore = makeStepStore({ status: 'failed', error });
 		const { handler, stepQueue, subExecutionCanceller } = makeHandler(stepStore, {
@@ -683,7 +697,6 @@ describe('StepSettledHandler sub-executions', () => {
 
 		await handler.handle(event);
 
-		expect(subExecutionCanceller.cancelSubExecutions).toHaveBeenCalledExactlyOnceWith('exec-1');
 		expect(stepStore.resumeStep).toHaveBeenCalledExactlyOnceWith('step-call', {
 			kind: 'subExecution',
 			executionId: 'exec-1',
@@ -695,6 +708,25 @@ describe('StepSettledHandler sub-executions', () => {
 			executionId: 'exec-parent',
 			stepId: 'step-call',
 		});
+		expect(subExecutionCanceller.cancelSubExecutions).toHaveBeenCalledExactlyOnceWith('exec-1');
+		// The parent first: a cascade that throws must not strand it.
+		expect(vi.mocked(stepStore.resumeStep).mock.invocationCallOrder[0]).toBeLessThan(
+			vi.mocked(subExecutionCanceller.cancelSubExecutions).mock.invocationCallOrder[0],
+		);
+	});
+
+	it('still cancels the sub-executions when the parent resume throws', async () => {
+		const stepStore = makeStepStore(
+			{ status: 'failed', error: { name: 'Error', message: 'x' } },
+			{ resumeStep: vi.fn().mockRejectedValue(new Error('resume failed')) },
+		);
+		const { handler, subExecutionCanceller } = makeHandler(stepStore, {
+			executionStore: makeExecutionStore({ parent }),
+		});
+
+		await expect(handler.handle(event)).rejects.toThrow('resume failed');
+
+		expect(subExecutionCanceller.cancelSubExecutions).not.toHaveBeenCalled();
 	});
 
 	it('resumes the awaiting parent with the failed step error when the completion count reveals a failure', async () => {
@@ -705,13 +737,7 @@ describe('StepSettledHandler sub-executions', () => {
 				countSettledSteps: vi.fn().mockResolvedValue(5),
 				// Clean at planning time, failed by the time the count is checked.
 				hasFailedSteps: vi.fn().mockResolvedValueOnce(false).mockResolvedValue(true),
-				loadAllSteps: vi
-					.fn()
-					.mockResolvedValue([
-						row('trigger', 'completed', [[]]),
-						{ ...row('b', 'failed', null), error },
-						row('m', 'completed', [[{ json: { done: true } }]]),
-					]),
+				loadFailedSteps: vi.fn().mockResolvedValue([{ ...row('b', 'failed', null), error }]),
 			},
 		);
 		const { handler, subExecutionCanceller } = makeHandler(stepStore, {
@@ -720,13 +746,16 @@ describe('StepSettledHandler sub-executions', () => {
 
 		await handler.handle({ ...event, stepId: 'step-m' });
 
-		expect(subExecutionCanceller.cancelSubExecutions).toHaveBeenCalledExactlyOnceWith('exec-1');
 		expect(stepStore.resumeStep).toHaveBeenCalledExactlyOnceWith('step-call', {
 			kind: 'subExecution',
 			executionId: 'exec-1',
 			status: 'failed',
 			error,
 		});
+		expect(subExecutionCanceller.cancelSubExecutions).toHaveBeenCalledExactlyOnceWith('exec-1');
+		expect(vi.mocked(stepStore.resumeStep).mock.invocationCallOrder[0]).toBeLessThan(
+			vi.mocked(subExecutionCanceller.cancelSubExecutions).mock.invocationCallOrder[0],
+		);
 	});
 
 	it('cancels no sub-executions and resumes no parent on a redelivered failure event', async () => {
@@ -896,6 +925,61 @@ describe('StepSettledHandler lifecycle events', () => {
 						lastStep: expect.objectContaining({ nodeId: 'm', outputs: null }) as unknown,
 					}),
 				);
+			},
+		);
+	});
+
+	describe('when the caller does not subscribe to lifecycle events', () => {
+		const unsubscribed = [
+			['is missing', { lifecycleEventSubscription: undefined }],
+			['is null', { lifecycleEventSubscription: null }],
+			['is none', { lifecycleEventSubscription: { kind: 'none' as const } }],
+		] as const;
+
+		it.each(unsubscribed)(
+			'announces no completion when the subscription %s',
+			async (_name, overrides) => {
+				const stepStore = makeStepStore(
+					{ id: 'step-m', nodeId: 'm' },
+					{ countSettledSteps: vi.fn().mockResolvedValue(5) },
+				);
+				const { handler, executionStore, lifecycleEventPublisher, responseSender } = makeHandler(
+					stepStore,
+					{
+						executionStore: makeExecutionStore({
+							...overrides,
+							responseExpectation: { kind: 'runEnd' },
+						}),
+					},
+				);
+
+				await handler.handle({ ...event, stepId: 'step-m' });
+
+				expect(lifecycleEventPublisher.publish).not.toHaveBeenCalled();
+				// The run still ends, and the response channel is not affected.
+				expect(executionStore.finishExecution).toHaveBeenCalledWith('exec-1', 'completed');
+				expect(responseSender.send).toHaveBeenCalledOnce();
+			},
+		);
+
+		it.each(unsubscribed)(
+			'announces no failure when the subscription %s',
+			async (_name, overrides) => {
+				const { handler, executionStore, lifecycleEventPublisher, responseSender } = makeHandler(
+					makeStepStore({ status: 'failed' }),
+					{
+						executionStore: makeExecutionStore({
+							...overrides,
+							responseExpectation: { kind: 'runEnd' },
+						}),
+					},
+				);
+
+				await handler.handle(event);
+
+				expect(lifecycleEventPublisher.publish).not.toHaveBeenCalled();
+				expect(executionStore.finishExecution).toHaveBeenCalledWith('exec-1', 'failed');
+				expect(responseSender.send).toHaveBeenCalledOnce();
 			},
 		);
 	});

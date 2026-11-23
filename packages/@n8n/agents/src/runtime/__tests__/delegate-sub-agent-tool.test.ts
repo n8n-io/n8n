@@ -1,5 +1,7 @@
+import { asSchema } from 'ai';
 import type { JSONSchema7 } from 'json-schema';
 import { describe, expect, it, vi } from 'vitest';
+import type { ZodTypeAny } from 'zod';
 
 import { AgentEvent, type AgentEventData } from '../../types/runtime/event';
 import type { GenerateResult } from '../../types/sdk/agent';
@@ -18,6 +20,7 @@ import {
 	type DelegateSubAgentToolOutput,
 } from '../tools/delegate-sub-agent-tool';
 import type { SubAgentTaskPath } from '../tools/sub-agent-task-path';
+import { toAiSdkTools } from '../tools/tool-adapter';
 
 const input = {
 	subAgentId: INLINE_SUB_AGENT_ID,
@@ -187,6 +190,12 @@ describe('createDelegateSubAgentTool', () => {
 		},
 	);
 
+	it('tells the model to pass files in fileIds', () => {
+		expect(createDelegateSubAgentTool().systemInstruction).toContain(
+			'Pass files in fileIds, not in the goal or context text.',
+		);
+	});
+
 	it('uses a host-provided system instruction instead of the built-in guidance', () => {
 		const tool = createDelegateSubAgentTool({
 			name: 'agent',
@@ -299,7 +308,7 @@ describe('createDelegateSubAgentTool', () => {
 	it('preserves inlineSubAgentModelsByDifficulty in delegate tool metadata', () => {
 		const tool = createDelegateSubAgentTool({
 			inlineSubAgentModelsByDifficulty: {
-				high: 'anthropic/claude-sonnet-4-5',
+				high: 'anthropic/claude-sonnet-5-5',
 			},
 			runSubAgent: async () =>
 				await Promise.resolve({
@@ -310,7 +319,7 @@ describe('createDelegateSubAgentTool', () => {
 		});
 
 		expect(getInlineDelegateSubAgentToolOptions(tool)?.inlineSubAgentModelsByDifficulty).toEqual({
-			high: 'anthropic/claude-sonnet-4-5',
+			high: 'anthropic/claude-sonnet-5-5',
 		});
 	});
 
@@ -1150,6 +1159,14 @@ describe('renderDelegateSubAgentPrompt', () => {
 		expect(prompt).toContain('EXPECTED OUTPUT:\na summary');
 	});
 
+	it('lists the file IDs the child can use', () => {
+		expect(renderDelegateSubAgentPrompt({ goal: 'Find it.' })).not.toContain('FILES');
+
+		const prompt = renderDelegateSubAgentPrompt({ goal: 'Find it.', fileIds: ['f1', 'f2'] });
+
+		expect(prompt).toContain('FILES (pass these fileIds to tools):\nf1\nf2');
+	});
+
 	it('uses generic summary guidance for delegated work', () => {
 		const prompt = renderDelegateSubAgentPrompt({ goal: 'Find it.' });
 
@@ -1386,5 +1403,56 @@ describe('generateResultToDelegateSubAgentOutput', () => {
 		expect(
 			generateResultToDelegateSubAgentOutput('/root/x_0', result).pendingSuspend,
 		).toBeUndefined();
+	});
+});
+
+describe('delegate_subagent model-facing schema', () => {
+	// The tool definition that the AI SDK sends to the model.
+	async function modelSchema() {
+		const tool = createDelegateSubAgentTool({ runBackgroundSubAgent: vi.fn() });
+		const definition = toAiSdkTools([tool])[DELEGATE_SUB_AGENT_TOOL_NAME];
+		return { tool, jsonSchema: (await asSchema(definition.inputSchema).jsonSchema) as JSONSchema7 };
+	}
+
+	it('sends the required fields and the nested plan task reference', async () => {
+		const { jsonSchema } = await modelSchema();
+		const planTask = jsonSchema.properties?.planTask as JSONSchema7;
+
+		expect(jsonSchema.required).toEqual(expect.arrayContaining(['subAgentId', 'taskName', 'goal']));
+		expect(planTask.required).toEqual(expect.arrayContaining(['planId', 'planTaskId']));
+	});
+
+	it('names the required fields in the system instruction', async () => {
+		const { tool } = await modelSchema();
+
+		for (const field of ['subAgentId', 'taskName', 'goal']) {
+			expect(tool.systemInstruction).toContain(field);
+		}
+	});
+
+	it('rejects the guessed field names and accepts the schema field names', async () => {
+		const { tool } = await modelSchema();
+		const planId = '00000000-0000-4000-8000-000000000001';
+		const planTaskId = '00000000-0000-4000-8000-000000000002';
+
+		const guessed = (tool.inputSchema as ZodTypeAny).safeParse({
+			subAgentId: INLINE_SUB_AGENT_ID,
+			mode: 'background',
+			planTask: { planId, taskId: planTaskId },
+			task: 'Research suppliers and produce a comparison report.',
+		});
+		expect(guessed.success).toBe(false);
+		expect(guessed.error?.issues.map((issue) => issue.path.join('.'))).toEqual(
+			expect.arrayContaining(['taskName', 'goal', 'planTask.planTaskId']),
+		);
+
+		const corrected = (tool.inputSchema as ZodTypeAny).safeParse({
+			subAgentId: INLINE_SUB_AGENT_ID,
+			mode: 'background',
+			planTask: { planId, planTaskId },
+			taskName: 'Research suppliers',
+			goal: 'Research suppliers and produce a comparison report.',
+		});
+		expect(corrected.success).toBe(true);
 	});
 });

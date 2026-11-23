@@ -8,10 +8,9 @@ import type {
 import { Logger } from '@n8n/backend-common';
 import { TransactionRunner, type OperationContext, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { ConflictError, NotFoundError } from '@n8n/errors';
-import { sleep } from '@n8n/utils/sleep';
+import { ConflictError, NotFoundError, UserError } from '@n8n/errors';
+import { retry } from '@n8n/utils/retry';
 import { FileNotFoundError } from 'n8n-core';
-import { UserError } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 import { buffer as streamToBuffer } from 'node:stream/consumers';
 
@@ -22,8 +21,10 @@ import { AgentExecutionService, type StartExecutionParams } from '../agent-execu
 import { AgentFormattedTurnError } from '../agent-formatted-turn.error';
 import type { ClaimedAgentMessage } from '../agent-message-queue.service';
 import { AgentMessageQueueService } from '../agent-message-queue.service';
+import { AgentSandboxFilesService } from '../agent-sandbox-files.service';
 import { chatErrorCode, emitChunkEvents } from '../agent-sse-stream';
 import { AgentTurnExecutionService, type AgentTurnRequest } from '../agent-turn-execution.service';
+import type { AgentChatAttachment } from '../entities/agent-chat-attachment.entity';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 import { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import { N8nMemory } from '../integrations/n8n-memory';
@@ -42,23 +43,27 @@ import type { AgentExecutionAdmission } from '../types/agent-queued-message';
 import type { FormattedTurnError } from '../types/agent-turn-outcome';
 import { systemChatMemoryResourceId } from '../utils/agent-memory-scope';
 import { buildInboundUserMessage } from '../utils/inbound-attachments';
-import { SYSTEM_CHAT_SOURCE } from '../utils/agent-thread-access';
+import {
+	SANDBOX_FILE_SOURCE,
+	SYSTEM_CHAT_SOURCE,
+	systemChatFileScope,
+} from '../utils/agent-thread-access';
 import { canUseSystemAgent } from './system-agent-access';
 import { SystemAgentHostEventChannel } from './system-agent-host-events';
 import { SystemAgentRegistry } from './system-agent-registry';
 import type {
+	SystemAgentAfterThreadDeletion,
+	SystemAgentFile,
+	SystemAgentListedFile,
 	SystemAgentProvider,
 	SystemAgentStartTurn,
 	SystemAgentTurnHandle,
 	SystemAgentTurnOptions,
 	SystemAgentTurnOutcome,
+	SystemAgentUserStopScope,
 	SystemAgentWorkspaceScope,
+	SuspendedToolCall,
 } from './system-agent.types';
-
-type SuspendedToolCall = Extract<
-	SerializableAgentState['pendingToolCalls'][string],
-	{ suspended: true }
->;
 
 export type SystemAgentThreadStatus = 'running' | 'suspended' | 'idle';
 
@@ -119,13 +124,6 @@ function runOptionsOf(handle: SystemAgentTurnHandle) {
 type SessionRef = Pick<AgentExecutionThread, 'id' | 'agentId' | 'projectId'>;
 
 /**
- * User deletion stops a running turn first. The turn records its end
- * asynchronously, so the delete retries a few times before it gives up.
- */
-const USER_DELETION_DELETE_ATTEMPTS = 5;
-const USER_DELETION_RETRY_DELAY_MS = 1_000;
-
-/**
  * Runs code-defined instance agents on the Agents runtime. A conversation is
  * a private session (`accessScope = 'user'`). Its `projectId` is the working
  * project. The queue, steering, checkpoints, cancel and recording are shared
@@ -153,6 +151,7 @@ export class SystemAgentExecutionService {
 		private readonly conversationState: AgentConversationStateService,
 		private readonly n8nMemory: N8nMemory,
 		private readonly threadGrants: AgentThreadGrantRepository,
+		private readonly sandboxFiles: AgentSandboxFilesService,
 	) {}
 
 	resourceIdFor(user: Pick<User, 'id'>): string {
@@ -311,13 +310,17 @@ export class SystemAgentExecutionService {
 		return thread;
 	}
 
+	/**
+	 * Rename a thread, move it to another project, or both. The user must be able to
+	 * use the thread, and to use the target project of a move.
+	 */
 	async updateThread(
 		agentId: string,
 		user: User,
 		threadId: string,
 		changes: { title?: string; projectId?: string },
 	): Promise<AgentExecutionThread> {
-		const thread = await this.getThread(agentId, user, threadId);
+		const thread = await this.getUsableThread(agentId, user, threadId);
 		const { title, projectId } = changes;
 		const moving = projectId !== undefined && projectId !== thread.projectId;
 		if (moving) await this.assertCanUse(agentId, user, projectId);
@@ -351,18 +354,32 @@ export class SystemAgentExecutionService {
 	}
 
 	/**
-	 * Delete every private system agent session of a user, before the user is
-	 * deleted. The owner column is `ON DELETE SET NULL`, so a session that is
-	 * not deleted here stays without an owner and nobody can open it again.
-	 *
-	 * It does not need a registered provider or the Agents feature toggle:
-	 * sessions created while either was on must go too. The child sessions of
-	 * delegated runs go too: they copy the owner of their parent. A running
-	 * turn is stopped first. The deletion is best effort: a session that fails
-	 * is logged and skipped, so it does not block the others or the user
-	 * deletion.
+	 * The thread of a suspended run that the user owns, from its checkpoint.
+	 * Read it before the cancel, which clears the checkpoint state.
 	 */
-	async deleteThreadsOfUser(userId: string): Promise<void> {
+	async findThreadIdOfRun(agentId: string, user: User, runId: string): Promise<string | undefined> {
+		const status = await this.checkpointStorage.getStatus(runId, agentId);
+		const persistence = status.status === 'not-found' ? undefined : status.checkpoint?.persistence;
+		if (persistence?.resourceId !== this.resourceIdFor(user)) return undefined;
+		return persistence.threadId;
+	}
+
+	/** Tell the provider that the user stopped a turn. A failure is logged. */
+	async reportUserStoppedTurn(scope: SystemAgentUserStopScope): Promise<void> {
+		const provider = this.registry.get(scope.agentId);
+		if (!provider?.onUserStoppedTurn) return;
+		try {
+			await provider.onUserStoppedTurn(scope);
+		} catch (error) {
+			this.logger.warn('System agent stop callback failed', {
+				...scope,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+	}
+
+	/** Stop running system-agent turns and discard queued turns before account cleanup. */
+	async stopThreadsOfUser(userId: string): Promise<void> {
 		let sessions: SessionRef[];
 		try {
 			sessions = await this.threadRepository.findOwnedSystemAgentSessions(userId);
@@ -374,32 +391,50 @@ export class SystemAgentExecutionService {
 			return;
 		}
 		for (const session of sessions) {
-			let descendants: SessionRef[];
 			try {
-				descendants = await this.findDescendantSessions(session);
+				const descendants = await this.findDescendantSessions(session);
 				await this.stopRunningTurn(session, [session, ...descendants], userId);
 			} catch (error) {
-				this.logUserSessionDeletionFailure(userId, session, error);
-				continue;
-			}
-			// Children first, deepest level first: only the parent links to them.
-			for (const thread of [...descendants.reverse(), session]) {
-				try {
-					await this.deleteWithRetry(thread, userId);
-				} catch (error) {
-					this.logUserSessionDeletionFailure(userId, thread, error);
-				}
+				this.logger.warn('Failed to stop a system agent session on account deletion', {
+					userId,
+					threadId: session.id,
+					error: error instanceof Error ? error.message : String(error),
+				});
 			}
 		}
 	}
 
-	private logUserSessionDeletionFailure(userId: string, thread: SessionRef, error: unknown) {
-		this.logger.warn('Failed to delete a system agent session of a deleted user', {
-			userId,
-			agentId: thread.agentId,
-			threadId: thread.id,
-			error: error instanceof Error ? error.message : String(error),
-		});
+	/** Remove private system-agent chats after their turns have been stopped. */
+	async deleteThreadsOfUser(userId: string): Promise<void> {
+		const sessions = await this.threadRepository.findPrivateSystemAgentSessionsForDeletion(userId);
+		for (const session of sessions) {
+			const deleted = await retry(
+				async () => {
+					try {
+						await this.deleteOwnedThread(session, userId);
+						return true;
+					} catch (error) {
+						if (error instanceof ConflictError) return false;
+						if (
+							error instanceof NotFoundError &&
+							!(await this.executionService.findThreadById(session.id))
+						) {
+							await this.destroyThreadWorkspace(session.agentId, session.id, userId);
+							return true;
+						}
+						throw error;
+					}
+				},
+				1_000,
+				5,
+				null,
+			);
+			if (!deleted) {
+				throw new ConflictError(
+					'Stop the running assistant session before you delete the account.',
+				);
+			}
+		}
 	}
 
 	/** Child sessions of delegated runs, level by level. A child stays in the project of its parent. */
@@ -437,9 +472,11 @@ export class SystemAgentExecutionService {
 	): Promise<void> {
 		let running = false;
 		for (const thread of tree) {
-			if (await this.executionRepository.existsRunningByThread(thread.id)) {
-				running = true;
-				break;
+			try {
+				const stop = await this.messageQueue.prepareSessionStop(thread.id, { preserveInput: true });
+				if (stop.executionIds.length > 0) running = true;
+			} catch (error) {
+				if (!(error instanceof NotFoundError)) throw error;
 			}
 		}
 		if (!running) return;
@@ -455,23 +492,9 @@ export class SystemAgentExecutionService {
 		});
 	}
 
-	/** `deleteThread` refuses a session with a running turn. Wait for the stopped turn to end. */
-	private async deleteWithRetry(session: SessionRef, userId: string): Promise<void> {
-		for (let attempt = 1; ; attempt++) {
-			try {
-				await this.deleteOwnedThread(session, userId);
-				return;
-			} catch (error) {
-				if (!(error instanceof ConflictError) || attempt >= USER_DELETION_DELETE_ATTEMPTS) {
-					throw error;
-				}
-				await sleep(USER_DELETION_RETRY_DELAY_MS);
-			}
-		}
-	}
-
 	/** Delete a session with its sandbox. The caller checks ownership. */
 	private async deleteOwnedThread(thread: SessionRef, userId: string): Promise<void> {
+		const afterDeletion = await this.prepareThreadDeletion(thread, userId);
 		const deleted = await this.executionService.deleteThread(
 			thread.projectId,
 			thread.agentId,
@@ -480,6 +503,41 @@ export class SystemAgentExecutionService {
 		);
 		if (!deleted) throw new NotFoundError('Session not found');
 		await this.destroyThreadWorkspace(thread.agentId, thread.id, userId);
+		if (!afterDeletion) return;
+		try {
+			await afterDeletion();
+		} catch (error) {
+			this.logger.warn('System agent cleanup after thread deletion failed', {
+				agentId: thread.agentId,
+				threadId: thread.id,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+	}
+
+	/** Let the provider read the thread state that the deletion removes. A failure is logged. */
+	private async prepareThreadDeletion(
+		thread: SessionRef,
+		userId: string,
+	): Promise<SystemAgentAfterThreadDeletion | undefined> {
+		const provider = this.registry.get(thread.agentId);
+		if (!provider?.onBeforeThreadDeletion) return undefined;
+		try {
+			return await provider.onBeforeThreadDeletion({
+				agentId: thread.agentId,
+				threadId: thread.id,
+				projectId: thread.projectId,
+				userId,
+				memory: this.n8nMemory.getImplementation(thread.agentId),
+			});
+		} catch (error) {
+			this.logger.warn('System agent preparation for thread deletion failed', {
+				agentId: thread.agentId,
+				threadId: thread.id,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return undefined;
+		}
 	}
 
 	/**
@@ -640,6 +698,8 @@ export class SystemAgentExecutionService {
 						...(workspace ? { workspace: workspace.lease } : {}),
 						...this.turnStateOf(thread),
 						emitHostEvent: hostEvents.emit,
+						readFile: async (fileId) => await this.readThreadFile(thread, resourceId, fileId),
+						...(await this.sandboxFilesOf(thread, resourceId)),
 						executionId: admission.executionId,
 						message: payload.message,
 						attachments,
@@ -659,6 +719,7 @@ export class SystemAgentExecutionService {
 				: text;
 		await this.runTurn({
 			thread,
+			resourceId,
 			handle,
 			workspace,
 			hostEvents,
@@ -699,10 +760,11 @@ export class SystemAgentExecutionService {
 			thread.agentId,
 			thread.id,
 		);
-		const pending = Object.values(checkpoint?.pendingToolCalls ?? {}).find(
-			(toolCall): toolCall is SuspendedToolCall =>
-				toolCall.suspended &&
-				(params.toolCallId === undefined || toolCall.toolCallId === params.toolCallId),
+		const openToolCalls = Object.values(checkpoint?.pendingToolCalls ?? {}).filter(
+			(toolCall): toolCall is SuspendedToolCall => toolCall.suspended,
+		);
+		const pending = openToolCalls.find(
+			(toolCall) => params.toolCallId === undefined || toolCall.toolCallId === params.toolCallId,
 		);
 		// A client run id must name the open suspension, not an earlier run.
 		if (!checkpoint || !pending || (params.runId !== undefined && params.runId !== pending.runId)) {
@@ -734,9 +796,16 @@ export class SystemAgentExecutionService {
 					...(workspace ? { workspace: workspace.lease } : {}),
 					...this.turnStateOf(thread),
 					emitHostEvent: hostEvents.emit,
+					readFile: async (fileId) => await this.readThreadFile(thread, resourceId, fileId),
+					...(await this.sandboxFilesOf(thread, resourceId)),
 					runId,
 					toolCallId: pending.toolCallId,
 					checkpointHostMetadata,
+					openSuspensions: openToolCalls.map(({ toolCallId, toolName, suspendPayload }) => ({
+						toolCallId,
+						toolName,
+						suspendPayload,
+					})),
 					resumeData: params.resumeData,
 				}),
 		);
@@ -753,6 +822,7 @@ export class SystemAgentExecutionService {
 		};
 		const done = this.runTurn({
 			thread,
+			resourceId,
 			handle,
 			workspace,
 			hostEvents,
@@ -897,6 +967,81 @@ export class SystemAgentExecutionService {
 		};
 	}
 
+	/** The sandbox files of project agents, with the same flag and caps. Set only when the flag is on. */
+	private async sandboxFilesOf(
+		thread: AgentExecutionThread,
+		resourceId: string,
+	): Promise<Pick<SystemAgentStartTurn, 'sandboxFiles'>> {
+		if (!(await this.sandboxFiles.isEnabled())) return {};
+		return {
+			sandboxFiles: {
+				maxImportBytes: this.sandboxFiles.maxImportBytes,
+				importFiles: async (workspace, files, abortSignal) =>
+					await this.sandboxFiles
+						.importFilesFrom(
+							workspace,
+							files,
+							async (fileId) => await this.findThreadAttachment(thread, resourceId, fileId),
+							abortSignal,
+						)
+						.catch((error: unknown) => {
+							// A check error is for the model. A raw storage or sandbox error is not.
+							if (error instanceof UserError || abortSignal?.aborted) throw error;
+							this.logger.warn('Failed to import files into the sandbox of a system agent', {
+								threadId: thread.id,
+								error: error instanceof Error ? error.message : String(error),
+							});
+							throw new UserError('The files could not be copied to inputs/', { cause: error });
+						}),
+				storeOutput: async (workspace, path, abortSignal) => {
+					const file = await this.sandboxFiles
+						.store(
+							workspace,
+							path,
+							{
+								agentId: thread.agentId,
+								projectId: thread.projectId,
+								threadId: thread.id,
+								// The reads and the downloads of the system chat find its files by resource.
+								resourceId,
+							},
+							abortSignal,
+						)
+						.catch((error: unknown) => {
+							// A cap or path error is for the model. A raw sandbox error, such as a missing file, is not.
+							if (error instanceof UserError || abortSignal?.aborted) throw error;
+							this.logger.warn('Failed to store a sandbox file of a system agent', {
+								threadId: thread.id,
+								path,
+								error: error instanceof Error ? error.message : String(error),
+							});
+							throw new UserError(`"${path}" could not be read from outputs/`, { cause: error });
+						});
+					return {
+						fileId: file.id,
+						fileName: file.fileName,
+						mimeType: file.mimeType,
+						sizeBytes: file.fileSizeBytes,
+					};
+				},
+				listFiles: async () => await this.listThreadFiles(thread, resourceId),
+			},
+		};
+	}
+
+	/** A file of the thread, from the system chat of the thread's owner. `null` for a file of another thread. */
+	private async findThreadAttachment(
+		thread: AgentExecutionThread,
+		resourceId: string,
+		fileId: string,
+	): Promise<AgentChatAttachment | null> {
+		const attachment = await this.attachmentService.getForSystemAgent(
+			fileId,
+			systemChatFileScope(thread.agentId, resourceId),
+		);
+		return attachment?.threadId === thread.id ? attachment : null;
+	}
+
 	/** Read an attachment of the turn, from the system chat of the thread's owner. */
 	private async readTurnAttachment(
 		thread: AgentExecutionThread,
@@ -905,19 +1050,51 @@ export class SystemAgentExecutionService {
 		ref: StoredAttachmentRef,
 	): Promise<Buffer | undefined> {
 		if (!attachments.some((attachment) => attachment.id === ref.id)) return undefined;
-		const attachment = await this.attachmentService.getForSystemAgent(ref.id, {
-			agentId: thread.agentId,
-			resourceId,
-			source: SYSTEM_CHAT_SOURCE,
-		});
-		if (attachment?.threadId !== thread.id) return undefined;
-		try {
-			return await streamToBuffer(await this.attachmentService.getStream(attachment));
-		} catch (error) {
-			// Storage can prune the bytes while the attachment row stays.
-			if (error instanceof FileNotFoundError) return undefined;
-			throw error;
-		}
+		return await (await this.readThreadFile(thread, resourceId, ref.id))?.readContent();
+	}
+
+	/** The files of the thread, in the scope that `readThreadFile` reads them. */
+	private async listThreadFiles(
+		thread: AgentExecutionThread,
+		resourceId: string,
+	): Promise<SystemAgentListedFile[]> {
+		const files = await this.attachmentService.listForSystemAgentThread(
+			thread.id,
+			systemChatFileScope(thread.agentId, resourceId),
+		);
+		return files.map((file) => ({
+			fileId: file.fileId,
+			fileName: file.fileName,
+			mimeType: file.mimeType,
+			sizeBytes: file.sizeBytes,
+			origin: file.source === SANDBOX_FILE_SOURCE ? 'sandbox' : 'upload',
+			createdAt: file.createdAt,
+		}));
+	}
+
+	private async readThreadFile(
+		thread: AgentExecutionThread,
+		resourceId: string,
+		fileId: string,
+	): Promise<SystemAgentFile | undefined> {
+		const attachment = await this.findThreadAttachment(thread, resourceId, fileId);
+		if (!attachment) return undefined;
+		// The bytes load only on request, so a caller can check the size first.
+		return {
+			fileName: attachment.fileName,
+			mimeType: attachment.mimeType,
+			sizeBytes: attachment.fileSizeBytes,
+			hasContent: async () => await this.attachmentService.hasStoredData(attachment),
+			readContent: async () => {
+				try {
+					return await streamToBuffer(await this.attachmentService.getStream(attachment));
+				} catch (error) {
+					// Storage can prune the bytes while the attachment row stays.
+					if (error instanceof FileNotFoundError) return undefined;
+					throw error;
+				}
+			},
+		};
 	}
 
 	/**
@@ -1042,6 +1219,7 @@ export class SystemAgentExecutionService {
 	 */
 	private async runTurn({
 		thread,
+		resourceId,
 		handle,
 		workspace,
 		hostEvents,
@@ -1052,6 +1230,8 @@ export class SystemAgentExecutionService {
 		prepare,
 	}: {
 		thread: AgentExecutionThread;
+		/** The system chat memory resource of the thread owner. */
+		resourceId: string;
 		handle: SystemAgentTurnHandle;
 		workspace?: TurnWorkspace;
 		hostEvents: SystemAgentHostEventChannel;
@@ -1082,15 +1262,20 @@ export class SystemAgentExecutionService {
 		const stopTurn = () => controller.abort(providerSignal?.reason);
 		if (providerSignal?.aborted) stopTurn();
 		else providerSignal?.addEventListener('abort', stopTurn, { once: true });
-		try {
+		const consume = async () => {
 			const stream = this.turnExecutionService.execute({
 				admittedExecution: admission,
 				agentInstance: handle.agent,
 				toolRegistry: handle.toolRegistry ?? new Map(),
 				mcpServerAttributions: new Map(),
 				context: { projectId: thread.projectId, agentId: thread.agentId, threadId: thread.id },
+				// The reads of the system chat find the sandbox files of the turn by this resource.
+				fileResourceId: resourceId,
 				chatSurface: 'system',
 				chatController: controller,
+				...(handle.onCompletingBoundary
+					? { onCompletingBoundary: handle.onCompletingBoundary }
+					: {}),
 				onExecutionStarted: (id, threadId, inputMessageIds) => {
 					executionId = id;
 					onExecutionStarted?.(id, threadId, inputMessageIds);
@@ -1119,6 +1304,10 @@ export class SystemAgentExecutionService {
 				}
 				handle.onChunk?.(chunk);
 			}
+		};
+		try {
+			if (handle.withTurnContext) await handle.withTurnContext(consume);
+			else await consume();
 		} catch (caught) {
 			failure = caught;
 			const formatted = await formatError(caught);

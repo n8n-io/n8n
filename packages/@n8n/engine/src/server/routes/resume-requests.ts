@@ -16,7 +16,13 @@ import { fail } from '../error-response';
 
 const IdParams = z.object({ id: z.string().uuid() });
 
-const ResumeTargetBody = z.object({ token: z.string().min(1) }).strict();
+const ResumeLocateBody = z
+	.object({
+		id: z.string().uuid(),
+		token: z.string().min(1),
+		pathAndQuery: z.string().optional(),
+	})
+	.strict();
 
 const ResolveStepBody = z
 	.object({
@@ -30,6 +36,7 @@ const REJECTION_STATUS: Record<ResumeRejection, number> = {
 	not_found: 404,
 	not_waiting: 409,
 	ambiguous: 409,
+	step_bound_only: 409,
 };
 
 const notConfigured: RequestHandler = (_req, res) => {
@@ -43,27 +50,36 @@ function sendRejection(res: Response, error: unknown): boolean {
 	return true;
 }
 
-/** `POST /workflow-executions/:id/resume-target`: phase one of a resume request. */
-export function createResumeTargetHandler(
+/**
+ * `POST /resume-requests/locate`: phase one of every kind of resume request.
+ * Both an execution id and a step id are UUIDs, and the control plane does
+ * not read the token, so this one route takes either id.
+ */
+export function createResumeRequestsRouter(
 	resumeRequests: ResumeRequestService | undefined,
 	executionQuery: ExecutionQueryService,
-): RequestHandler {
-	if (!resumeRequests) return notConfigured;
+): RouterType {
+	const router = Router();
 
-	return async (req, res) => {
-		const params = IdParams.safeParse(req.params);
-		const body = ResumeTargetBody.safeParse(req.body);
-		if (!params.success || !body.success) {
+	if (!resumeRequests) {
+		router.post('/locate', notConfigured);
+		return router;
+	}
+
+	router.post('/locate', async (req, res) => {
+		const body = ResumeLocateBody.safeParse(req.body);
+		if (!body.success) {
 			fail(res, 400, { error: 'invalid_request' });
 			return;
 		}
 
+		const { id, token, pathAndQuery } = body.data;
 		try {
-			const target = await resumeRequests.locate(params.data.id, body.data.token);
+			const { executionId, target } = await resumeRequests.locateByToken(id, token, pathAndQuery);
 			// Read after the token check, so a bad token learns nothing about the
 			// execution. The response carries every step, because the resume method
 			// can resolve expressions against earlier outputs.
-			const execution = await executionQuery.getExecutionWithSteps(params.data.id);
+			const execution = await executionQuery.getExecutionWithSteps(executionId);
 			const response: ResumeTargetResponse = {
 				execution: toExecutionSnapshot(execution),
 				target,
@@ -76,7 +92,9 @@ export function createResumeTargetHandler(
 			}
 			if (!sendRejection(res, error)) throw error;
 		}
-	};
+	});
+
+	return router;
 }
 
 /** `POST /step-executions/:id/resolve`: phase two of a resume request. */

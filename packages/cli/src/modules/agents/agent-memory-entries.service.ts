@@ -4,7 +4,7 @@ import type {
 	AgentMemorySourceFacetsDto,
 	ListAgentMemoryEntriesQueryDto,
 } from '@n8n/api-types';
-import { UserRepository, type User } from '@n8n/db';
+import { PersonRepository, type Person } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 
@@ -60,8 +60,8 @@ function groupByEntry(
 }
 
 /** A user without a name has no label. The email is not shown to other users. */
-function displayName(user: Pick<User, 'firstName' | 'lastName'>): string | undefined {
-	return [user.firstName, user.lastName].filter(Boolean).join(' ') || undefined;
+function displayName(person: Pick<Person, 'firstName' | 'lastName'>): string | undefined {
+	return [person.firstName, person.lastName].filter(Boolean).join(' ') || undefined;
 }
 
 @Service()
@@ -70,7 +70,7 @@ export class AgentMemoryEntriesService {
 		private readonly agentRepository: AgentRepository,
 		private readonly memoryEntryRepository: AgentMemoryEntryRepository,
 		private readonly n8nMemory: N8nMemory,
-		private readonly userRepository: UserRepository,
+		private readonly personRepository: PersonRepository,
 	) {}
 
 	async list(
@@ -162,11 +162,12 @@ export class AgentMemoryEntriesService {
 			entries.flatMap(({ resourceId }) => chatSourceOwner(resourceId)?.userId ?? []),
 		);
 		if (userIds.size === 0) return new Map();
-		const users = await this.userRepository.findManyByIds([...userIds]);
+		// A service account has no name, so its sources show no label.
+		const people = await this.personRepository.findManyByIds([...userIds]);
 		return new Map(
-			users.flatMap((user) => {
-				const name = displayName(user);
-				return name ? [[user.id, name] as const] : [];
+			people.flatMap((person) => {
+				const name = displayName(person);
+				return name ? [[person.id, name] as const] : [];
 			}),
 		);
 	}

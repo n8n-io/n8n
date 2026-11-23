@@ -215,7 +215,7 @@ function renderModal({
 					template: '<pre data-test-id="agent-custom-tool-viewer">{{ code }}</pre>',
 				},
 				ContactAdminModal: {
-					props: ['open', 'nodeTypeName'],
+					props: ['open', 'typeName'],
 					template: '<div v-if="open" data-test-id="contact-admin-modal" />',
 				},
 			},

@@ -304,8 +304,8 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 		</N8nButton>
 	</div>
 	<div v-else-if="executionUIDetails?.name === 'running'" :class="$style.runningInfo">
-		<div :class="$style.spinner">
-			<N8nSpinner type="ring" />
+		<div>
+			<N8nSpinner type="brand" size="xxlarge" />
 		</div>
 		<N8nText :class="$style.runningMessage" color="text-light">
 			{{ locale.baseText('executionDetails.runningMessage') }}
@@ -340,11 +340,7 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 					/>
 				</div>
 				<div :class="$style.executionDetailsInfo">
-					<N8nSpinner
-						v-if="executionUIDetails?.name === 'running'"
-						size="small"
-						:class="[$style.spinner, 'mr-4xs']"
-					/>
+					<N8nSpinner v-if="executionUIDetails?.name === 'running'" size="small" class="mr-4xs" />
 					<N8nText
 						size="medium"
 						:class="[$style.status, $style[executionUIDetails.name]]"
@@ -424,34 +420,42 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 			</div>
 
 			<div :class="$style.actions">
-				<N8nTooltip
-					:content="locale.baseText('executionsList.debug.button.redacted.tooltip')"
-					:disabled="!pinBlockedByRedaction"
+				<RouterLink
+					v-slot="{ href, navigate }"
+					custom
+					:to="{
+						name: VIEWS.EXECUTION_DEBUG,
+						params: {
+							workflowId: execution.workflowId,
+							executionId: execution.id,
+						},
+					}"
 				>
-					<RouterLink
-						:to="{
-							name: VIEWS.EXECUTION_DEBUG,
-							params: {
-								workflowId: execution.workflowId,
-								executionId: execution.id,
-							},
-						}"
+					<N8nTooltip
+						as-child
+						:content="locale.baseText('executionsList.debug.button.redacted.tooltip')"
+						:disabled="!pinBlockedByRedaction"
 					>
+						<template #content>{{
+							locale.baseText('executionsList.debug.button.redacted.tooltip')
+						}}</template>
 						<N8nButton
 							size="medium"
 							variant="outline"
 							:class="$style.debugLink"
+							:href="workflowPermissions.update && !pinBlockedByRedaction ? href : undefined"
 							:disabled="!workflowPermissions.update || pinBlockedByRedaction"
+							:focusable-when-disabled="pinBlockedByRedaction"
+							data-test-id="execution-debug-button"
+							@click="
+								executionDebugging.handleDebugLinkClick($event);
+								navigate($event);
+							"
 						>
-							<span
-								data-test-id="execution-debug-button"
-								@click="executionDebugging.handleDebugLinkClick"
-							>
-								{{ debugButtonData.text }}
-							</span>
+							{{ debugButtonData.text }}
 						</N8nButton>
-					</RouterLink>
-				</N8nTooltip>
+					</N8nTooltip>
+				</RouterLink>
 
 				<N8nDropdownMenu
 					v-if="isRetriable"
@@ -557,16 +561,7 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 	margin-bottom: 2px;
 }
 
-.spinner {
-	div div {
-		width: 30px;
-		height: 30px;
-		border-width: 2px;
-	}
-}
-
-.running,
-.spinner {
+.running {
 	color: var(--color--warning);
 }
 

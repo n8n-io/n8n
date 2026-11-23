@@ -79,7 +79,7 @@ export class GitLabHostClient implements GitHostClient {
 	async validateAccess(access: GitHostAccess): Promise<void> {
 		const user = await this.get(access, 'user', {});
 		if (!identitySchema.safeParse(user.body).success) throw unexpectedResponse();
-		// /user checks auth, but not read_api access.
+		// /user checks auth, but not API scope access.
 		const projects = await this.get(access, 'projects', {
 			membership: true,
 			simple: true,
@@ -277,11 +277,11 @@ function statusError(status: number, path: string) {
 		);
 	if (status === 403 && path.startsWith('projects/'))
 		return new BadRequestError(
-			"The token can't read this GitLab repository. Check its read_api scope and repository access.",
+			"The token can't read this GitLab repository. Check that it has the api scope and repository access.",
 		);
 	if (status === 403)
 		return new BadRequestError(
-			'The access token cannot read the GitLab API. Use a token with the read_api scope.',
+			'The access token cannot read the GitLab API. Use a token with the api scope.',
 		);
 	if (status === 404 && path.startsWith('projects/'))
 		return new NotFoundError(

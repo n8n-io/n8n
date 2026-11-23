@@ -1,4 +1,13 @@
 import type {
+	MoveSkillSourceDto,
+	DeleteSkillSourceQueryDto,
+	SkillSourceMovePreview,
+	AcceptSkillSourceUpdatesDto,
+	ReviewSkillSourceUpdateQueryDto,
+	SkillSourceUpdates,
+	SkillUpdateReview,
+	SkillUpdateCommit,
+	SkillSourceAcceptResponse,
 	ConnectSkillSourceDto,
 	CreateSkillDto,
 	DiscoverSkillSourceDto,
@@ -9,9 +18,16 @@ import type {
 	SkillNewNameResponse,
 	SkillSaveResponse,
 	SkillSortOption,
+	SkillSourceCheckResponse,
+	SkillSourceListItem,
 	SkillSourceConnectResponse,
+	SkillSourceCredentialOption,
 	SkillSourceDiscovery,
+	SkillSourceRepositoryList,
 	SkillUserDto,
+	ListSkillSourceCredentialsQueryDto,
+	ListSkillSourceRepositoriesQueryDto,
+	SkillSyncSettingsDto,
 } from '@n8n/api-types';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
@@ -28,7 +44,15 @@ export type SkillListQuery = {
 	projectId?: string;
 	agentId?: string;
 	createdById?: string;
+	/** Comma-separated ids of the selected connected sources. */
+	sourceIds?: string;
 	sortBy?: SkillSortOption;
+	/** `source` groups the synced skills under their source. */
+	groupBy?: 'source';
+	page?: number;
+	focusSourceId?: string;
+	/** Comma-separated ids of the sources that the user folded. */
+	collapsedSourceIds?: string;
 };
 
 export async function getSkills(
@@ -101,7 +125,35 @@ export async function deleteSkill(context: IRestApiContext, id: string): Promise
 	await makeRestApiRequest(context, 'DELETE', `${ENDPOINT}/${id}`);
 }
 
-/** Reads a public link and lists the skills in it. Writes nothing. */
+/** The scope of a source, as the credential and repository lists take it. */
+
+/** The credentials that a source in the scope accepts and that the user can use. */
+export async function getSkillSourceCredentials(
+	context: IRestApiContext,
+	query: ListSkillSourceCredentialsQueryDto,
+): Promise<SkillSourceCredentialOption[]> {
+	return await makeRestApiRequest<SkillSourceCredentialOption[]>(
+		context,
+		'GET',
+		`${SOURCES_ENDPOINT}/credentials`,
+		{ ...query },
+	);
+}
+
+/** The repositories that a credential can read, for the owner and repository selects. */
+export async function getSkillSourceRepositories(
+	context: IRestApiContext,
+	query: ListSkillSourceRepositoriesQueryDto,
+): Promise<SkillSourceRepositoryList> {
+	return await makeRestApiRequest<SkillSourceRepositoryList>(
+		context,
+		'GET',
+		`${SOURCES_ENDPOINT}/repositories`,
+		{ ...query },
+	);
+}
+
+/** Reads a link, with a credential for a private one, and lists the skills in it. Writes nothing. */
 export async function discoverSkillSource(
 	context: IRestApiContext,
 	payload: DiscoverSkillSourceDto,
@@ -127,11 +179,149 @@ export async function connectSkillSource(
 	);
 }
 
+/** The sources that the user can see, for their rows in the skills table. */
+export async function listSkillSources(context: IRestApiContext): Promise<SkillSourceListItem[]> {
+	return await makeRestApiRequest<SkillSourceListItem[]>(context, 'GET', SOURCES_ENDPOINT);
+}
+
+/** Removes a source and optionally keeps its skills. */
+export async function deleteSkillSource(
+	context: IRestApiContext,
+	sourceId: string,
+	query?: DeleteSkillSourceQueryDto,
+): Promise<void> {
+	await makeRestApiRequest(
+		context,
+		'DELETE',
+		`${SOURCES_ENDPOINT}/${sourceId}`,
+		query && { ...query },
+	);
+}
+
+function sourceCredentialEndpoint(source: Pick<SkillSourceListItem, 'id' | 'projectId'>) {
+	return `${source.projectId ? `/projects/${source.projectId}` : ''}${SOURCES_ENDPOINT}/${source.id}`;
+}
+
+export async function getSkillSourceReplacementCredentials(
+	context: IRestApiContext,
+	source: Pick<SkillSourceListItem, 'id' | 'projectId'>,
+): Promise<SkillSourceCredentialOption[]> {
+	return await makeRestApiRequest(
+		context,
+		'GET',
+		`${sourceCredentialEndpoint(source)}/credentials`,
+	);
+}
+
+export async function replaceSkillSourceCredential(
+	context: IRestApiContext,
+	source: Pick<SkillSourceListItem, 'id' | 'projectId'>,
+	credentialId: string,
+): Promise<void> {
+	await makeRestApiRequest(context, 'POST', `${sourceCredentialEndpoint(source)}/credential`, {
+		credentialId,
+	});
+}
+
+/** Check for updates on one source. */
+export async function checkSkillSource(
+	context: IRestApiContext,
+	sourceId: string,
+): Promise<SkillSourceCheckResponse> {
+	return await makeRestApiRequest<SkillSourceCheckResponse>(
+		context,
+		'POST',
+		`${SOURCES_ENDPOINT}/${sourceId}/check`,
+	);
+}
+
 /** Stops syncing one skill: it keeps its versions and becomes a normal, editable skill. */
 export async function stopSyncingSkill(context: IRestApiContext, skillId: string): Promise<void> {
 	await makeRestApiRequest<{ ok: true }>(
 		context,
 		'POST',
 		`${SOURCES_ENDPOINT}/skills/${skillId}/stop-syncing`,
+	);
+}
+
+/** Local validation for a source scope change. */
+export async function previewSkillSourceMove(
+	context: IRestApiContext,
+	sourceId: string,
+	payload: MoveSkillSourceDto,
+): Promise<SkillSourceMovePreview> {
+	return await makeRestApiRequest<SkillSourceMovePreview>(
+		context,
+		'POST',
+		`${SOURCES_ENDPOINT}/${sourceId}/move/preview`,
+		payload,
+	);
+}
+
+export async function moveSkillSource(
+	context: IRestApiContext,
+	sourceId: string,
+	payload: MoveSkillSourceDto,
+): Promise<void> {
+	await makeRestApiRequest(context, 'POST', `${SOURCES_ENDPOINT}/${sourceId}/move`, payload);
+}
+
+export async function getSkillSourceUpdates(context: IRestApiContext, sourceId: string) {
+	return await makeRestApiRequest<SkillSourceUpdates>(
+		context,
+		'GET',
+		`${SOURCES_ENDPOINT}/${sourceId}/updates`,
+	);
+}
+
+export async function getSkillSourceUpdate(
+	context: IRestApiContext,
+	sourceId: string,
+	skillId: string,
+	reviewed: ReviewSkillSourceUpdateQueryDto,
+) {
+	return await makeRestApiRequest<SkillUpdateReview>(
+		context,
+		'GET',
+		`${SOURCES_ENDPOINT}/${sourceId}/updates/${skillId}`,
+		{ ...reviewed },
+	);
+}
+
+export async function getSkillSourceCommit(
+	context: IRestApiContext,
+	sourceId: string,
+	revision: string,
+) {
+	return await makeRestApiRequest<SkillUpdateCommit>(
+		context,
+		'GET',
+		`${SOURCES_ENDPOINT}/${sourceId}/commit`,
+		{ revision },
+	);
+}
+
+export async function acceptSkillSourceUpdates(
+	context: IRestApiContext,
+	sourceId: string,
+	payload: AcceptSkillSourceUpdatesDto,
+) {
+	return await makeRestApiRequest<SkillSourceAcceptResponse>(
+		context,
+		'POST',
+		`${SOURCES_ENDPOINT}/${sourceId}/updates/accept`,
+		payload,
+	);
+}
+
+export async function updateSkillSyncSettings(
+	context: IRestApiContext,
+	payload: SkillSyncSettingsDto,
+): Promise<SkillSyncSettingsDto> {
+	return await makeRestApiRequest<SkillSyncSettingsDto>(
+		context,
+		'PUT',
+		'/skill-sync/settings',
+		payload,
 	);
 }

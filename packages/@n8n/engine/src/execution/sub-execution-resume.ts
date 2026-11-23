@@ -29,12 +29,14 @@ export async function resumeAwaitingParent(
 	});
 	if (!resumed) return;
 
-	await deps.stepQueue.publish({
-		type: 'step:ready',
-		executionId: parent.executionId,
-		stepId: parent.stepId,
-	});
-	await deps.executionStore.refreshLiveStatus(parent.executionId);
+	await Promise.all([
+		deps.stepQueue.publish({
+			type: 'step:ready',
+			executionId: parent.executionId,
+			stepId: parent.stepId,
+		}),
+		deps.executionStore.refreshLiveStatus(parent.executionId),
+	]);
 }
 
 /**

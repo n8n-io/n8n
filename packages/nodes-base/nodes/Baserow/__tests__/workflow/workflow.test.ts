@@ -2,6 +2,7 @@ import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import nock from 'nock';
 
 import {
+	batchCreateResponse,
 	createResponse,
 	fieldsResponse,
 	getAllResponse,
@@ -52,6 +53,20 @@ describe('Baserow > Workflows', () => {
 				.reply(200, updateResponse);
 			// Baserow > Delete Row
 			mock.delete('/api/database/rows/table/482710/3/').reply(200, {});
+			// Baserow > Batch Create
+			mock
+				.post('/api/database/rows/table/482710/batch/', {
+					items: [{ field_3799030: 'Nathan' }, { field_3799030: 'Jan' }],
+				})
+				.reply(200, batchCreateResponse);
+			// Baserow > Batch Update
+			mock
+				.patch('/api/database/rows/table/482710/batch/', {
+					items: [{ id: '3', field_3799032: 'true' }],
+				})
+				.reply(200, { items: [updateResponse] });
+			// Baserow > Batch Delete
+			mock.post('/api/database/rows/table/482710/batch-delete/', { items: ['3', '4'] }).reply(204);
 		});
 
 		new NodeTestHarness().setupTests({ credentials });

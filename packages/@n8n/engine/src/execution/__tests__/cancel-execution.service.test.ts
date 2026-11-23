@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import type { LifecycleEventPublisher } from '../../lifecycle-events';
+import {
+	LifecycleEventPublisherFactory,
+	type LifecycleEventPublisher,
+} from '../../lifecycle-events';
 import type { StepMessage, WorkQueue } from '../../queue';
 import type { ExecutionResponseSender } from '../../response-channel';
 import { CancelExecutionService } from '../cancel-execution.service';
@@ -23,6 +26,7 @@ const execution: ExecutionRecord = {
 	callerContext: { hostMode: 'trigger' },
 	responseExpectation: { kind: 'none' },
 	parent: null,
+	lifecycleEventSubscription: { kind: 'all' },
 	finishedAt: null,
 };
 
@@ -32,12 +36,15 @@ function makeExecutionStore(overrides: Partial<ExecutionStore> = {}): ExecutionS
 		loadExecution: vi
 			.fn()
 			.mockResolvedValue({ ...execution, status: 'cancelled', finishedAt: new Date() }),
+		loadExecutionStatus: vi.fn(),
 		transitionStatus: vi.fn(),
 		finishExecution: vi.fn(),
 		cancelExecution: vi
 			.fn()
 			.mockResolvedValue({ finishedAt: new Date('2026-09-30T08:00:00.000Z') }),
 		loadSeededOutputs: vi.fn().mockResolvedValue(new Map()),
+		findStaleQueuedExecutions: vi.fn(),
+		renewQueuedExecution: vi.fn(),
 		refreshLiveStatus: vi.fn(),
 		loadLiveSubExecutionIds: vi.fn().mockResolvedValue([]),
 		...overrides,
@@ -63,7 +70,7 @@ function makeService(executionStore: ExecutionStore) {
 	const service = new CancelExecutionService(
 		executionStore,
 		stepStore,
-		publisher,
+		new LifecycleEventPublisherFactory(publisher),
 		responseSender,
 		stepQueue,
 	);
@@ -116,6 +123,30 @@ describe('CancelExecutionService', () => {
 		expect(responseSender.send).not.toHaveBeenCalled();
 	});
 
+	it.each([
+		['is missing', { lifecycleEventSubscription: undefined }],
+		['is null', { lifecycleEventSubscription: null }],
+		['is none', { lifecycleEventSubscription: { kind: 'none' as const } }],
+	])('announces nothing when the subscription %s', async (_name, overrides) => {
+		const executionStore = makeExecutionStore({
+			loadExecution: vi.fn().mockResolvedValue({
+				...execution,
+				...overrides,
+				status: 'cancelled',
+				finishedAt: new Date(),
+				responseExpectation: { kind: 'runEnd' },
+			}),
+		});
+		const { service, stepStore, publisher, responseSender } = makeService(executionStore);
+
+		await service.cancel('exec-1');
+
+		expect(publisher.publish).not.toHaveBeenCalled();
+		// The run still ends, and the response channel is not affected.
+		expect(stepStore.cancelPendingSteps).toHaveBeenCalledOnce();
+		expect(responseSender.send).toHaveBeenCalledOnce();
+	});
+
 	it.each<ExecutionStatus>(['completed', 'failed', 'cancelled'])(
 		'reports the status of an execution that already ended %s and announces nothing',
 		async (status) => {
@@ -166,6 +197,55 @@ describe('CancelExecutionService', () => {
 			'exec-1',
 			'sub-1',
 			'sub-sub',
+			'sub-2',
+		]);
+	});
+
+	it('resumes the awaiting parent before it cancels the sub-executions', async () => {
+		const parent = { executionId: 'exec-parent', stepId: 'step-call', awaited: true };
+		const executionStore = makeExecutionStore({
+			loadExecution: vi.fn().mockImplementation(async (id: string) => {
+				return await Promise.resolve({
+					...execution,
+					id,
+					parent: id === 'exec-1' ? parent : null,
+					status: 'cancelled',
+					finishedAt: new Date(),
+				});
+			}),
+			loadLiveSubExecutionIds: vi.fn().mockImplementation(async (id: string) => {
+				return await Promise.resolve(id === 'exec-1' ? ['sub-1'] : []);
+			}),
+		});
+		const { service, stepStore } = makeService(executionStore);
+
+		await service.cancel('exec-1');
+
+		// A cascade that throws must not strand the parent.
+		const [, subCancel] = vi.mocked(executionStore.cancelExecution).mock.invocationCallOrder;
+		expect(vi.mocked(stepStore.resumeStep).mock.invocationCallOrder[0]).toBeLessThan(subCancel);
+	});
+
+	it('cancels the other sub-executions when one cancel throws, then throws them together', async () => {
+		const executionStore = makeExecutionStore({
+			cancelExecution: vi.fn().mockImplementation(async (id: string) => {
+				if (id === 'sub-1') throw new Error('sub-1 is locked');
+				return await Promise.resolve({ finishedAt: new Date() });
+			}),
+			loadLiveSubExecutionIds: vi.fn().mockImplementation(async (id: string) => {
+				return await Promise.resolve(id === 'exec-1' ? ['sub-1', 'sub-2'] : []);
+			}),
+		});
+		const { service } = makeService(executionStore);
+
+		await expect(service.cancel('exec-1')).rejects.toSatisfy(
+			(error: unknown) =>
+				error instanceof AggregateError &&
+				error.errors.map((cause: Error) => cause.message).join() === 'sub-1 is locked',
+		);
+		expect(vi.mocked(executionStore.cancelExecution).mock.calls.map(([id]) => id)).toEqual([
+			'exec-1',
+			'sub-1',
 			'sub-2',
 		]);
 	});

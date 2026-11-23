@@ -19,7 +19,9 @@ export async function linkSkill(
 		locator: { owner: 'acme', repository: `skills-${sourceId}`, branch: 'main', path: '' },
 		identityKey: `github:github.com/acme/skills-${sourceId}`,
 		projectId: scope.projectId,
+		credentialId: null,
 		createdById: scope.createdById,
+		probeCursor: null,
 	});
 	await Container.get(SkillSourceRepository).insertImported({
 		skillId,
@@ -30,7 +32,6 @@ export async function linkSkill(
 		skippedFiles: [],
 	});
 	if (pending.pendingContentHash) {
-		// No write path sets a pending update yet: the check task of P2 adds it.
 		await Container.get(DataSource).manager.update(
 			SkillSourceLink,
 			{ skillId },

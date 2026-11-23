@@ -17,7 +17,7 @@ import {
 import type { Logger } from '@n8n/backend-common';
 import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-network';
 import { AgentsConfig } from '@n8n/config';
-import type { UserRepository, WorkflowRepository } from '@n8n/db';
+import type { PersonRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { mock } from 'vitest-mock-extended';
@@ -34,7 +34,7 @@ import type { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge
 import { makeKnowledgeAvailabilityService } from '@/modules/knowledge/__tests__/test-utils/knowledge-availability.service';
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
-import type { AgentKnowledgeMirrorService } from '../agent-knowledge-mirror.service';
+import type { KnowledgeRetrievalService } from '@/modules/knowledge/retrieval/knowledge-retrieval.service';
 import { AgentPlanService } from '../agent-plan.service';
 import { AgentWakeService } from '../background/agent-wake.service';
 import { AgentBackgroundJobService } from '../background/agent-background-job.service';
@@ -60,11 +60,11 @@ import type { N8nMemory } from '../integrations/n8n-memory';
 import { N8nChatIntegration } from '../integrations/platforms/n8n-chat/n8n-chat-integration';
 import type * as FromJsonConfig from '../json-config/from-json-config';
 import type { ToolExecutor } from '../json-config/from-json-config';
-import type { AgentFileRepository } from '../repositories/agent-file.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { SubAgentRunner } from '../sub-agents/sub-agent-runner';
 import { storedRunSource } from './test-utils/stored-agent-config';
+import type { AgentSandboxFilesService } from '../agent-sandbox-files.service';
 
 const { getCachedCatalog } = vi.hoisted(() => ({ getCachedCatalog: vi.fn() }));
 vi.mock('@n8n/agents/catalog', () => ({ getCachedCatalog }));
@@ -110,9 +110,8 @@ function makeReconstructionService(
 		agentRepository?: AgentRepository;
 		agentSandboxRuntimeService?: AgentSandboxRuntimeService;
 		n8nCheckpointStorage?: N8NCheckpointStorage;
-		agentFileRepository?: AgentFileRepository;
 		agentWorkspaceService?: AgentWorkspaceService;
-		agentKnowledgeMirrorService?: AgentKnowledgeMirrorService;
+		knowledgeRetriever?: KnowledgeRetrievalService;
 		knowledgeAvailabilityService?: KnowledgeAvailabilityService;
 	} = {},
 ): AgentRuntimeReconstructionService {
@@ -131,7 +130,6 @@ function makeReconstructionService(
 	return new AgentRuntimeReconstructionService(
 		overrides.logger ?? mock<Logger>(),
 		overrides.agentRepository ?? mock<AgentRepository>(),
-		overrides.agentFileRepository ?? mock<AgentFileRepository>(),
 		mock<ActiveExecutions>(),
 		mock<WorkflowRepository>(),
 		overrides.n8nCheckpointStorage ?? mock<N8NCheckpointStorage>(),
@@ -144,13 +142,14 @@ function makeReconstructionService(
 		mock<AiService>(),
 		outboundHttp,
 		agentWorkspaceService,
-		overrides.agentKnowledgeMirrorService ?? mock<AgentKnowledgeMirrorService>(),
+		overrides.knowledgeRetriever ?? mock<KnowledgeRetrievalService>(),
 		mock<CredentialsFinderService>(),
 		mock<WorkflowFinderService>(),
 		mock<AgentChatAttachmentService>(),
 		mock<CredentialsService>(),
 		mock<AgentKnowledgeUsageTracker>(),
 		overrides.knowledgeAvailabilityService ?? makeKnowledgeAvailabilityService(),
+		mock<AgentSandboxFilesService>(),
 	);
 }
 
@@ -160,7 +159,7 @@ function makeAgentEntity(
 ): ProjectAgent {
 	const schema: AgentJsonConfig = {
 		name: 'Test',
-		model: 'anthropic/claude-sonnet-4-5',
+		model: 'anthropic/claude-sonnet-5-5',
 		instructions: 'Be helpful',
 		...(schemaConfig !== undefined ? { config: schemaConfig } : {}),
 		...(overrides ?? {}),
@@ -249,7 +248,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — MCP w
 			await service.reconstructFromResolvedSource({
 				config: {
 					name: 'Agent',
-					model: 'anthropic/claude-sonnet-4-5',
+					model: 'anthropic/claude-sonnet-5-5',
 					instructions: 'Help',
 					mcpServers: [
 						{
@@ -347,20 +346,20 @@ describe('AgentRuntimeReconstructionService — workspace attachment', () => {
 	});
 
 	it('attaches a workspace when the effective sandbox setting is enabled', async () => {
-		const agentFileRepository = mock<AgentFileRepository>();
+		const knowledgeRetriever = mock<KnowledgeRetrievalService>();
 		const agentSandboxRuntimeService = mock<AgentSandboxRuntimeService>({
 			isEnabled: () => true,
 		});
 		const agentWorkspaceService = mock<AgentWorkspaceService>();
 		const workspace = new Workspace({});
-		agentFileRepository.hasFilesForAgent.mockResolvedValue(false);
+		knowledgeRetriever.hasFiles.mockResolvedValue(false);
 		agentWorkspaceService.getAgentWorkspace.mockResolvedValue({
 			workspace,
 			handle: mock<AgentSandboxRuntime>(),
 		});
 		const service = makeReconstructionService({
 			agentSandboxRuntimeService,
-			agentFileRepository,
+			knowledgeRetriever,
 			agentWorkspaceService,
 		});
 
@@ -376,44 +375,50 @@ describe('AgentRuntimeReconstructionService — workspace attachment', () => {
 	});
 
 	it('keeps knowledge tools gated by uploaded files', async () => {
-		const agentFileRepository = mock<AgentFileRepository>();
+		const knowledgeRetriever = mock<KnowledgeRetrievalService>();
 		const agentSandboxRuntimeService = mock<AgentSandboxRuntimeService>({
 			isEnabled: () => true,
 		});
 		const agentWorkspaceService = mock<AgentWorkspaceService>();
-		agentFileRepository.hasFilesForAgent.mockResolvedValue(true);
+		knowledgeRetriever.hasFiles.mockResolvedValue(true);
 		agentWorkspaceService.getAgentWorkspace.mockResolvedValue({
 			workspace: new Workspace({}),
 			handle: mock<AgentSandboxRuntime>(),
 		});
 		const service = makeReconstructionService({
 			agentSandboxRuntimeService,
-			agentFileRepository,
+			knowledgeRetriever,
 			agentWorkspaceService,
 		});
 
 		await reconstructWithWorkspace(service);
 
+		// The sandbox id is derived from these ids, so the scope must carry them unchanged.
+		expect(knowledgeRetriever.hasFiles).toHaveBeenCalledWith({
+			kind: 'agent',
+			projectId: 'project-1',
+			agentId: 'agent-1',
+		});
 		expect(getInjectedToolNames()).toEqual(
 			expect.arrayContaining(['find_file', 'search_text', 'read_file']),
 		);
 	});
 
 	it('keeps the workspace but skips knowledge tools when the knowledge module is inactive', async () => {
-		const agentFileRepository = mock<AgentFileRepository>();
+		const knowledgeRetriever = mock<KnowledgeRetrievalService>();
 		const agentSandboxRuntimeService = mock<AgentSandboxRuntimeService>({
 			isEnabled: () => true,
 		});
 		const agentWorkspaceService = mock<AgentWorkspaceService>();
 		const workspace = new Workspace({});
-		agentFileRepository.hasFilesForAgent.mockResolvedValue(true);
+		knowledgeRetriever.hasFiles.mockResolvedValue(true);
 		agentWorkspaceService.getAgentWorkspace.mockResolvedValue({
 			workspace,
 			handle: mock<AgentSandboxRuntime>(),
 		});
 		const service = makeReconstructionService({
 			agentSandboxRuntimeService,
-			agentFileRepository,
+			knowledgeRetriever,
 			agentWorkspaceService,
 			knowledgeAvailabilityService: makeKnowledgeAvailabilityService({ isKnowledgeActive: false }),
 		});
@@ -421,8 +426,8 @@ describe('AgentRuntimeReconstructionService — workspace attachment', () => {
 		await reconstructWithWorkspace(service);
 
 		expect(builtAgent.workspace).toHaveBeenCalledWith(workspace);
-		// The file repository is never asked while knowledge is off.
-		expect(agentFileRepository.hasFilesForAgent).not.toHaveBeenCalled();
+		// The knowledge module is never asked while it is off.
+		expect(knowledgeRetriever.hasFiles).not.toHaveBeenCalled();
 		for (const toolName of ['find_file', 'search_text', 'read_file']) {
 			expect(getInjectedToolNames()).not.toContain(toolName);
 		}
@@ -435,7 +440,7 @@ describe('AgentRuntimeReconstructionService — workspace attachment', () => {
 			const construction = createDeferredPromise<agents.Agent>();
 			const acquisition =
 				createDeferredPromise<Awaited<ReturnType<AgentWorkspaceService['getAgentWorkspace']>>>();
-			const agentFileRepository = mock<AgentFileRepository>();
+			const knowledgeRetriever = mock<KnowledgeRetrievalService>();
 			const agentWorkspaceService = mock<AgentWorkspaceService>();
 			agentWorkspaceService.getAgentWorkspace.mockImplementationOnce(async () => {
 				started.resolve();
@@ -452,7 +457,7 @@ describe('AgentRuntimeReconstructionService — workspace attachment', () => {
 			const service = makeReconstructionService({
 				agentSandboxRuntimeService: mock<AgentSandboxRuntimeService>({ isEnabled: () => true }),
 				agentWorkspaceService,
-				agentFileRepository,
+				knowledgeRetriever,
 			});
 			const controller = new AbortController();
 			const reason = new Error('setup cancelled');
@@ -466,7 +471,7 @@ describe('AgentRuntimeReconstructionService — workspace attachment', () => {
 			await vi.waitFor(() => expect(builtAgent.close).toHaveBeenCalledTimes(1));
 
 			expect(builtAgent.workspace).not.toHaveBeenCalled();
-			expect(agentFileRepository.hasFilesForAgent).not.toHaveBeenCalled();
+			expect(knowledgeRetriever.hasFiles).not.toHaveBeenCalled();
 			expect(builtAgent.fileStore).not.toHaveBeenCalled();
 		},
 		1_000,
@@ -485,7 +490,7 @@ describe('AgentRuntimeReconstructionService — workspace attachment', () => {
 		await service.reconstructFromResolvedSource({
 			config: {
 				name: 'Inline',
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 				instructions: 'Help',
 			},
 			memoryOwnerAgentId: 'agent-1',
@@ -775,7 +780,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 		const service = makeReconstructionService({ agentRepository });
 		const config: AgentJsonConfig = {
 			name: 'Test',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			instructions: 'Be helpful',
 			subAgents: { agents: [{ agentId: 'agent-billing' }] },
 		};
@@ -795,7 +800,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 		const service = makeReconstructionService({ agentRepository });
 		const config: AgentJsonConfig = {
 			name: 'Test',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			instructions: 'Be helpful',
 			subAgents: { agents: [{ agentId: 'agent-billing' }] },
 		};
@@ -847,7 +852,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 						model: 'google-vertex/gemini-3-flash-preview',
 						credential: 'vertex-cred',
 					},
-					high: { model: 'anthropic/claude-sonnet-4-5', credential: 'high-cred' },
+					high: { model: 'anthropic/claude-sonnet-5-5', credential: 'high-cred' },
 				},
 			},
 		});
@@ -873,7 +878,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 				privateKey: 'private-key',
 			},
 			high: {
-				id: 'anthropic/claude-sonnet-4-5',
+				id: 'anthropic/claude-sonnet-5-5',
 				apiKey: 'high-key',
 			},
 		});
@@ -894,7 +899,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 				model: 'openai/gpt-4o',
 				subAgents: {
 					modelsByDifficulty: {
-						high: { model: 'anthropic/claude-sonnet-4-5', credential: 'high-cred' },
+						high: { model: 'anthropic/claude-sonnet-5-5', credential: 'high-cred' },
 					},
 				},
 			},
@@ -938,7 +943,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — n8n c
 
 		// Provide real ChatIntegrationRegistry with N8nChatIntegration registered.
 		const registry = new ChatIntegrationRegistry();
-		registry.register(new N8nChatIntegration(mock<UserRepository>()));
+		registry.register(new N8nChatIntegration(mock<PersonRepository>()));
 		Container.set(ChatIntegrationRegistry, registry);
 
 		// Provide mocked integration services required when the integration block runs.
@@ -1044,7 +1049,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromResolvedSource — su
 
 		const config: AgentJsonConfig = {
 			name: 'Child',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			instructions: 'Help',
 		};
 
@@ -1111,8 +1116,10 @@ describe('AgentRuntimeReconstructionService — plan tools gating', () => {
 			);
 			expect(getInjectedToolNames()).toEqual(expect.arrayContaining(planToolNames));
 			expect(getInjectedToolNames()).not.toContain(WRITE_TODOS_TOOL_NAME);
+			const eagerToolNames = builtAgent.nativeToolDeferral.mock.calls[0][0].eagerToolNames;
+			expect(eagerToolNames.includes('background_jobs')).toBe(backgroundTasksEnabled);
 			if (backgroundTasksEnabled) {
-				expect(getInjectedToolNames()).toContain('check_background_jobs');
+				expect(getInjectedToolNames()).toContain('background_jobs');
 				expect(builtAgent.volatileInstructionsProvider).toHaveBeenCalledTimes(1);
 				const provider = builtAgent.volatileInstructionsProvider.mock.calls[0][0];
 				wakeService.getBackgroundUpdates.mockResolvedValue('Background result');
@@ -1148,7 +1155,7 @@ describe('AgentRuntimeReconstructionService — plan tools gating', () => {
 		async (runtimeProfile) => {
 			Container.get(AgentsConfig).planToolsEnabled = true;
 			await makeReconstructionService().reconstructFromResolvedSource({
-				config: { name: 'Child', model: 'anthropic/claude-sonnet-4-5', instructions: 'Help' },
+				config: { name: 'Child', model: 'anthropic/claude-sonnet-5-5', instructions: 'Help' },
 				memoryOwnerAgentId: 'child-agent-1',
 				projectId: 'project-1',
 				credentialProvider: mock<CredentialProvider>(),
@@ -1165,11 +1172,7 @@ describe('AgentRuntimeReconstructionService — plan tools gating', () => {
 });
 
 describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — background job tools gating', () => {
-	const BACKGROUND_TOOL_NAMES = [
-		'resume_background_jobs',
-		'check_background_jobs',
-		'cancel_background_job',
-	];
+	const BACKGROUND_TOOL_NAMES = ['background_jobs'];
 	const subAgents = { agents: [{ agentId: 'agent-2', useWhen: 'Use for research tasks.' }] };
 
 	beforeEach(() => {
@@ -1232,6 +1235,63 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — backg
 			getInjectedToolNames().filter((name) => name === DELEGATE_SUB_AGENT_TOOL_NAME),
 		).toHaveLength(1);
 	});
+
+	it.each([
+		{ previewChat: true, allowPlanTools: true, planToolsEnabled: true, expected: true },
+		{ previewChat: false, allowPlanTools: true, planToolsEnabled: true, expected: true },
+		{ previewChat: true, allowPlanTools: false, planToolsEnabled: true, expected: false },
+		{ previewChat: true, allowPlanTools: true, planToolsEnabled: false, expected: false },
+	])(
+		'validates plan tasks in every run that has plan tools: %j',
+		async ({ previewChat, allowPlanTools, planToolsEnabled, expected }) => {
+			Container.get(AgentsConfig).backgroundTasksEnabled = true;
+			Container.get(AgentsConfig).planToolsEnabled = planToolsEnabled;
+			Container.set(AgentPlanService, mock<AgentPlanService>());
+
+			const backgroundRunner = mock<SubAgentBackgroundRunner>();
+			backgroundRunner.spawn.mockResolvedValue({ status: 'started', jobId: 'job-1' });
+			Container.set(SubAgentBackgroundRunner, backgroundRunner);
+
+			try {
+				await makeReconstructionService().reconstructFromAgentEntity(
+					storedRunSource(makeAgentEntity()),
+					mock<CredentialProvider>(),
+					'test',
+					undefined,
+					undefined,
+					undefined,
+					'manual',
+					undefined,
+					{ previewChat, allowPlanTools },
+				);
+
+				const delegate = getInjectedDelegateTool();
+
+				if (!delegate?.handler) throw new Error('Expected delegation tool');
+
+				await delegate.handler(
+					{ mode: 'background', subAgentId: 'inline', taskName: 'Research', goal: 'Review notes' },
+					{
+						persistence: {
+							threadId: 'thread-1',
+							resourceId: 'resource-1',
+							hostMetadata: encodeAgentSandboxHostMetadata({
+								projectId: 'project-1',
+								principalHash: hashAgentSandboxPrincipal({ type: 'n8n-user', userId: 'user-1' }),
+							}),
+						},
+					},
+				);
+
+				expect(backgroundRunner.spawn).toHaveBeenCalledWith(
+					expect.objectContaining({ validatePlanTask: expected }),
+					expect.any(Object),
+				);
+			} finally {
+				Container.get(AgentsConfig).planToolsEnabled = false;
+			}
+		},
+	);
 
 	it('excludes disabled sub-agents from foreground and background delegation', async () => {
 		Container.get(AgentsConfig).backgroundTasksEnabled = true;

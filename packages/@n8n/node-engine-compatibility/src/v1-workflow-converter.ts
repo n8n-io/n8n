@@ -22,6 +22,15 @@ import {
 import { isRecord } from './guards';
 import type { TriggerStepConfig, V1NodeStepConfig } from './types';
 
+/** Node settings the step executor ignores, with the label the editor shows for each. */
+const UNSUPPORTED_EXECUTION_SETTINGS: Array<
+	[keyof Pick<INode, 'retryOnFail' | 'alwaysOutputData' | 'executeOnce'>, string]
+> = [
+	['retryOnFail', 'Retry On Fail'],
+	['alwaysOutputData', 'Always Output Data'],
+	['executeOnce', 'Execute Once'],
+];
+
 /**
  * Converts a v1 workflow (node-based JSON) into the Engine v2 `WorkflowGraph`.
  *
@@ -77,8 +86,7 @@ export class V1WorkflowConverter {
 		const rooted = trigger === undefined ? workflow : rootAt(workflow, trigger);
 
 		// In canvas order, top to bottom and then left to right, as v1 orders the
-		// branches it runs. A sub-execution's result follows the graph order, so this is
-		// what makes it follow the canvas.
+		// branches it runs. Anything that reads the graph in node order sees the same order.
 		const liveNodes = rooted.nodes
 			.filter((node) => node.disabled !== true)
 			.sort((a, b) => a.position[1] - b.position[1] || a.position[0] - b.position[0]);
@@ -142,6 +150,8 @@ export class V1WorkflowConverter {
 			);
 		}
 
+		this.assertSupportedExecutionSettings(node);
+
 		if (node.type === MERGE_TYPE) this.assertSupportedMergeMode(node);
 
 		if (node.type === SPLIT_IN_BATCHES_TYPE) {
@@ -158,6 +168,19 @@ export class V1WorkflowConverter {
 		if (node.credentials !== undefined) config.credentials = node.credentials;
 
 		return { id: node.id, name: node.name, type: 'v1-node', config };
+	}
+
+	/**
+	 * The step executor does not apply these node settings yet, so a workflow
+	 * that relies on one is refused instead of run with the setting ignored.
+	 */
+	private assertSupportedExecutionSettings(node: INode): void {
+		const unsupported = UNSUPPORTED_EXECUTION_SETTINGS.find(([key]) => node[key] === true);
+		if (unsupported) {
+			throw new UnsupportedWorkflowError(
+				`Node "${node.name}" uses ${unsupported[1]}, which is not supported yet.`,
+			);
+		}
 	}
 
 	/**
@@ -446,7 +469,7 @@ function toBatchConfig(node: INode): BatchStepConfig {
 	const options: unknown = node.parameters?.options;
 	if (typeof options === 'string') {
 		throw new UnsupportedWorkflowError(
-			`Node "${node.name}" sets its options from an expression, which is not supported yet.`,
+			`Node "${node.name}" sets its options from an expression. Engine v2 needs the options before the workflow runs. Use fixed options.`,
 		);
 	}
 
@@ -461,7 +484,7 @@ function toBatchConfig(node: INode): BatchStepConfig {
 
 	if (typeof batchSize === 'string') {
 		throw new UnsupportedWorkflowError(
-			`Node "${node.name}" sets its batch size from an expression, which is not supported yet.`,
+			`Node "${node.name}" sets its batch size from an expression. Engine v2 needs the batch size before the workflow runs. Use a fixed batch size.`,
 		);
 	}
 
