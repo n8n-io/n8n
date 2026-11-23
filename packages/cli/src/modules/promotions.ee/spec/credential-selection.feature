@@ -109,9 +109,10 @@ Feature: Promote and Apply a credential on its own
       And the branch does not hold "Billing key"
 
     Scenario: A selected workflow and a selected credential give one credential file
-      Given "Sync orders" and "CRM key" both belong to the selection of project "Sales"
+      Given workflow "Sync leads" of project "Platform" uses "CRM key"
+      And the selection of project "Platform" holds "Sync leads" and "CRM key"
       When the user promotes the selection
-      Then the branch holds "CRM key" once
+      Then the branch holds "CRM key" once, under the folder of project "Platform"
 
     Scenario: A deleted credential stays on the branch
       Given "CRM key" is on the branch under project "Platform"
@@ -171,13 +172,13 @@ Feature: Promote and Apply a credential on its own
       Then "Sync orders" uses the destination credential "CRM key"
       And "CRM key" stays in project "Platform"
 
-    Scenario: A top-level credential that the destination lacks gives a gap
+    # A gap report and a gap confirmation are out of scope of this slice.
+    Scenario: A top-level credential that the destination lacks is not created
       Given the branch holds "CRM key" at the top level
       And the destination does not hold "CRM key"
       When the user applies workflow "Sync orders" of project "Sales"
-      Then the Apply reports a gap for "CRM key"
-      And the Apply continues
-      And the Apply does not create "CRM key" in any project
+      Then the Apply does not create "CRM key" in any project
+      And the Apply behaves as it does before this change
 
     Scenario: The next Promote of the owner project writes the credential under its folder
       Given the branch holds "CRM key" at the top level
