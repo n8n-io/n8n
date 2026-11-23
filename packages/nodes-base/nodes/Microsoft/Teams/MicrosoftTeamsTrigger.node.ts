@@ -15,7 +15,6 @@ import {
 	errorText,
 	filterChangeNotifications,
 	getMessageFilters,
-	storeMentionUserId,
 } from './v2/helpers/message-filters';
 import type { SubscriptionResponse, WebhookNotification } from './v2/helpers/types';
 import {
@@ -384,7 +383,7 @@ export class MicrosoftTeamsTrigger implements INodeType {
 						type: 'boolean',
 						default: false,
 						description:
-							'Whether to trigger only when the message mentions you by name. @channel, @team and tag mentions do not count.',
+							'Whether to trigger only when the message mentions you by name. @channel, @team and tag mentions do not count. Needs the User.Read permission.',
 						displayOptions: {
 							hide: {
 								...SP_HIDE,
@@ -422,7 +421,6 @@ export class MicrosoftTeamsTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 				// `create()` owns the "Invalid Notification URL" error.
 				if (!webhookUrl?.startsWith('https://')) return false;
-				await storeMentionUserId.call(this);
 
 				const storedIds = getStoredIds(webhookData);
 				const clientState = getStoredSecret(webhookData);
@@ -564,7 +562,6 @@ export class MicrosoftTeamsTrigger implements INodeType {
 				delete webhookData.webhookSecret;
 				delete webhookData.staleSubscriptionIds;
 				delete webhookData.pendingReconcile;
-				delete webhookData.mentionUserId;
 				return refused.length === 0;
 			},
 		},
@@ -654,8 +651,8 @@ export class MicrosoftTeamsTrigger implements INodeType {
 			await handleLifecycleNotifications.call(this, lifecycleNotifications, rejected);
 		}
 
-		// A throw after the ack is a failed execution, but it skips the static-data save, so a batch
-		// whose lifecycle handler ran only warns.
+		// A throw after the ack is a failed execution, but it skips the static-data save. That would
+		// lose the subscription ids the lifecycle handler just wrote, so such a batch only warns.
 		if (filtersError !== undefined) {
 			if (!ranLifecycle) throw ensureError(filtersError);
 			logTrigger.call(this, 'warn', 'failed to read the filters, notifications skipped', {
@@ -670,9 +667,11 @@ export class MicrosoftTeamsTrigger implements INodeType {
 			passed = result.passed;
 			if (result.denied) {
 				// The passed items of this batch are lost with the throw: a denied read must not hide
-				// behind a warning while other channels still pass.
+				// behind a warning while other channels still pass. After the lifecycle handler ran, a
+				// throw would lose its subscription ids, so the batch only warns.
 				if (!ranLifecycle) throw result.denied;
-				logTrigger.call(this, 'warn', `${result.denied.message}. ${result.denied.description}`);
+				const { message, description } = result.denied;
+				logTrigger.call(this, 'warn', description ? `${message}. ${description}` : message);
 			}
 		}
 

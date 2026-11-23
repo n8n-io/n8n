@@ -1,6 +1,7 @@
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { isRecord } from '@n8n/utils/is-record';
-import type { IHookFunctions, IWebhookFunctions, RequestPath } from 'n8n-workflow';
+import type { FormatCallback } from 'html-to-text';
+import type { IWebhookFunctions, RequestPath } from 'n8n-workflow';
 import { NodeApiError, requestPath } from 'n8n-workflow';
 
 import type { WebhookNotification } from './types';
@@ -32,29 +33,63 @@ const httpStatus = (error: unknown) =>
 
 export const errorText = (error: unknown) => ensureError(error).message.slice(0, 200);
 
+/**
+ * Whether core marked the error as a revoked credential. It has no HTTP status. The mark is
+ * read as plain data, also from the wrapped error, so it does not depend on `instanceof`.
+ */
+const isRevokedCredential = (error: NodeApiError) => {
+	const inner: unknown = error.cause;
+	const failure: unknown = error.failure ?? (isRecord(inner) ? inner.failure : undefined);
+	return isRecord(failure) && failure.cause === 'credential-invalid';
+};
+
+/** The error that must fail the execution, or `undefined` when the read can be skipped. */
+function deniedError(
+	this: IWebhookFunctions,
+	error: unknown,
+	permission: string,
+	what: string,
+): NodeApiError | undefined {
+	if (!(error instanceof NodeApiError)) return undefined;
+	if (isRevokedCredential(error)) return error;
+	const status = httpStatus(error);
+	if (status !== '401' && status !== '403') return undefined;
+	const message = `Microsoft Teams Trigger could not read ${what}`;
+	const description = `Grant the ${permission} permission to the credential and try again.`;
+	return new NodeApiError(
+		this.getNode(),
+		{ message, description },
+		{ message, description, httpCode: status },
+	);
+}
+
 /** The enabled filters, or `undefined` when no filter is on. */
 export function getMessageFilters(this: IWebhookFunctions): MessageFilters | undefined {
-	if (!isMessageEvent(this.getNodeParameter('event', ''))) return undefined;
+	// Read the filters first: with no filter on, the node must not read other parameters.
 	const raw: unknown = this.getNodeParameter('filters', {});
 	const options = isRecord(raw) ? raw : {};
+	const keyword = typeof options.keyword === 'string' ? options.keyword.trim() : '';
+	const skipSystemMessages = options.skipSystemMessages === true;
+	const skipBotMessages = options.skipBotMessages === true;
+	if (options.mentionsMe !== true && keyword === '' && !skipSystemMessages && !skipBotMessages) {
+		return undefined;
+	}
+	if (!isMessageEvent(this.getNodeParameter('event', ''))) return undefined;
 	const filters: MessageFilters = {
 		// Service Principal has no signed-in user.
 		mentionsMe:
 			options.mentionsMe === true && getTeamsCredentialType.call(this) !== SERVICE_PRINCIPAL_AUTH,
-		keyword: typeof options.keyword === 'string' ? options.keyword.trim() : '',
-		skipSystemMessages: options.skipSystemMessages === true,
-		skipBotMessages: options.skipBotMessages === true,
+		keyword,
+		skipSystemMessages,
+		skipBotMessages,
 	};
-	return filters.mentionsMe ||
-		filters.keyword !== '' ||
-		filters.skipSystemMessages ||
-		filters.skipBotMessages
+	return filters.mentionsMe || keyword !== '' || skipSystemMessages || skipBotMessages
 		? filters
 		: undefined;
 }
 
 /** The signed-in user id, or `undefined` when the answer has none. */
-async function readUserId(this: IHookFunctions | IWebhookFunctions): Promise<string | undefined> {
+async function readUserId(this: IWebhookFunctions): Promise<string | undefined> {
 	const answer: unknown = await microsoftApiRequest.call(
 		this,
 		'GET',
@@ -63,55 +98,6 @@ async function readUserId(this: IHookFunctions | IWebhookFunctions): Promise<str
 		{ $select: 'id' },
 	);
 	return isRecord(answer) && validId(answer.id) ? answer.id : undefined;
-}
-
-/**
- * Stores the signed-in user id for Mentions Me at activation. Never throws: `webhook()` reads
- * `/me` itself when no id is stored.
- */
-export async function storeMentionUserId(this: IHookFunctions): Promise<void> {
-	const webhookData = this.getWorkflowStaticData('node');
-	// A stale id can belong to another user, so every path without a fresh id removes it.
-	const dropStoredId = () => {
-		if ('mentionUserId' in webhookData) delete webhookData.mentionUserId;
-	};
-	let wanted: boolean;
-	try {
-		// Read only this option: an unresolvable expression in another filter must not fail the activation.
-		wanted =
-			isMessageEvent(this.getNodeParameter('event', '')) &&
-			getTeamsCredentialType.call(this) !== SERVICE_PRINCIPAL_AUTH &&
-			this.getNodeParameter('filters.mentionsMe', false) === true;
-	} catch (error) {
-		logTrigger.call(this, 'warn', 'could not read the Mentions Me option', {
-			error: errorText(error),
-		});
-		dropStoredId();
-		return;
-	}
-	if (!wanted) {
-		dropStoredId();
-		return;
-	}
-	let id: string | undefined;
-	let failure: Record<string, unknown> = {};
-	try {
-		id = await readUserId.call(this);
-	} catch (error) {
-		failure = { status: httpStatus(error), error: errorText(error) };
-	}
-	if (id === undefined) {
-		logTrigger.call(
-			this,
-			'warn',
-			'could not read the signed-in user; Mentions Me needs the User.Read permission',
-			failure,
-		);
-		dropStoredId();
-		return;
-	}
-	// Each static-data write is a database save.
-	if (webhookData.mentionUserId !== id) webhookData.mentionUserId = id;
 }
 
 /** The Graph path of the notified message, or `undefined` when the resource names no message. */
@@ -157,6 +143,12 @@ export function getMessagePath(
 	return undefined;
 }
 
+// Teams sends an emoji as `<emoji alt="😀">` with no text inside, so the keyword matches the alt text.
+const emojiAlt: FormatCallback = (elem, _walk, builder) => {
+	const alt: unknown = elem.attribs?.alt;
+	if (typeof alt === 'string') builder.addInline(alt);
+};
+
 async function plainBody(body: unknown): Promise<string> {
 	if (!isRecord(body) || typeof body.content !== 'string') return '';
 	if (body.contentType !== 'html') return body.content;
@@ -164,12 +156,18 @@ async function plainBody(body: unknown): Promise<string> {
 	const { convert } = await import('html-to-text');
 	return convert(body.content, {
 		wordwrap: false,
+		formatters: { emojiAlt },
 		selectors: [
 			{ selector: 'a', options: { ignoreHref: true } },
 			{ selector: 'img', format: 'skip' },
+			{ selector: 'emoji', format: 'emojiAlt' },
+			{ selector: 'customemoji', format: 'emojiAlt' },
 		],
 	});
 }
+
+// Teams puts `&nbsp;` after a mention, so every run of whitespace counts as one space.
+const normalize = (text: string) => text.replace(/\s+/g, ' ').toLowerCase();
 
 /** Whether a Graph chatMessage passes every enabled filter. */
 export async function messagePassesFilters(
@@ -200,20 +198,21 @@ export async function messagePassesFilters(
 		if (!mentioned) return false;
 	}
 	if (filters.keyword !== '') {
-		const keyword = filters.keyword.toLowerCase();
+		const keyword = normalize(filters.keyword);
 		// Each text is checked alone, so a keyword never matches across subject and body.
 		const texts = [
 			await plainBody(message.body),
 			typeof message.subject === 'string' ? message.subject : '',
 		];
-		if (!texts.some((text) => text.toLowerCase().includes(keyword))) return false;
+		if (!texts.some((text) => normalize(text).includes(keyword))) return false;
 	}
 	return true;
 }
 
 /**
- * Reads each notified message and keeps the notifications that pass the filters. A 401 or 403
- * is returned as `denied` (the first one), so the caller decides whether to throw.
+ * Reads each notified message and keeps the notifications that pass the filters. A denied read
+ * (401, 403 or a revoked credential) is returned as `denied` (the first one), so the caller
+ * decides whether to throw.
  */
 export async function filterChangeNotifications(
 	this: IWebhookFunctions,
@@ -222,35 +221,32 @@ export async function filterChangeNotifications(
 ): Promise<{ passed: WebhookNotification[]; denied?: NodeApiError }> {
 	let userId: string | undefined;
 	if (filters.mentionsMe) {
-		const stored = this.getWorkflowStaticData('node').mentionUserId;
-		if (validId(stored)) {
-			userId = stored;
-		} else {
-			// No static-data write here: a write in `webhook()` can be lost.
-			let failure: Record<string, unknown> = {};
-			try {
-				userId = await readUserId.call(this);
-			} catch (error) {
-				failure = { status: httpStatus(error), error: errorText(error) };
-			}
-			if (userId === undefined) {
-				logTrigger.call(
-					this,
-					'warn',
-					'could not read the signed-in user, Mentions Me notifications skipped; grant User.Read',
-					failure,
-				);
-				return { passed: [] };
-			}
+		// Read for each batch, not stored: a reconnected credential can belong to another user.
+		let failure: Record<string, unknown> = {};
+		try {
+			userId = await readUserId.call(this);
+		} catch (error) {
+			const denied = deniedError.call(this, error, 'User.Read', 'the signed-in user');
+			if (denied) return { passed: [], denied };
+			failure = { status: httpStatus(error), error: errorText(error) };
+		}
+		if (userId === undefined) {
+			logTrigger.call(
+				this,
+				'warn',
+				'could not read the signed-in user, Mentions Me notifications skipped',
+				failure,
+			);
+			return { passed: [] };
 		}
 	}
 
 	const passed: WebhookNotification[] = [];
 	let denied: NodeApiError | undefined;
 	// Graph already has its 202, so a skipped notification is final.
-	// ponytail: no batch cap. GETs run one after another for each request, not for each channel, so a
-	// large batch under throttling holds this handler for its whole length. Add a cap (or a per-channel
-	// queue) if long-running webhook requests show up.
+	// ponytail: no batch cap. The reads run one at a time, so a large batch under throttling holds
+	// this request open for its whole length. Add a cap or a queue for each channel if long webhook
+	// requests show up.
 	for (const notification of notifications) {
 		const fields = {
 			subscriptionId: logId(notification.subscriptionId),
@@ -258,9 +254,11 @@ export async function filterChangeNotifications(
 		};
 		const target = getMessagePath.call(this, notification.resource);
 		if (!target) {
+			const { resource } = notification;
 			logTrigger.call(this, 'warn', 'notification without a message path skipped', {
 				...fields,
-				resource: JSON.stringify(String(notification.resource).slice(0, 120)),
+				resource:
+					typeof resource === 'string' ? JSON.stringify(resource.slice(0, 120)) : typeof resource,
 			});
 			continue;
 		}
@@ -269,18 +267,13 @@ export async function filterChangeNotifications(
 			if (await messagePassesFilters(message, filters, userId)) passed.push(notification);
 		} catch (error) {
 			const status = httpStatus(error);
-			if (status === '404') {
+			const deniedRead = deniedError.call(this, error, target.permission, 'the message');
+			if (deniedRead) {
+				denied ??= deniedRead;
+				// Every later read fails the same way and starts its own token refresh.
+				if (isRevokedCredential(deniedRead)) break;
+			} else if (status === '404') {
 				logTrigger.call(this, 'debug', 'message gone, notification skipped', fields);
-			} else if (status === '401' || status === '403') {
-				if (!denied) {
-					const message = 'Microsoft Teams Trigger could not read the message';
-					const description = `Grant the ${target.permission} permission to the credential and try again.`;
-					denied = new NodeApiError(
-						this.getNode(),
-						{ message, description },
-						{ message, description, httpCode: status },
-					);
-				}
 			} else {
 				logTrigger.call(this, 'warn', 'failed to read message, notification skipped', {
 					...fields,

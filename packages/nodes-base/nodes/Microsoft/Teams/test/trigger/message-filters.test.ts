@@ -1,13 +1,13 @@
 import { mock, mockDeep } from 'vitest-mock-extended';
 import type {
 	IDataObject,
-	IHookFunctions,
 	INode,
 	IWebhookFunctions,
+	JsonObject,
 	NodeParameterValueType,
 	RequestPath,
 } from 'n8n-workflow';
-import { NodeApiError, ObservableObject } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 
 import type { WebhookNotification } from '../../v2/helpers/types';
@@ -16,7 +16,6 @@ import {
 	getMessageFilters,
 	getMessagePath,
 	messagePassesFilters,
-	storeMentionUserId,
 	type MessageFilters,
 } from '../../v2/helpers/message-filters';
 import type * as _transport from '../../v2/transport';
@@ -31,7 +30,7 @@ const request = microsoftApiRequest.call as Mock;
 const readPaths = () => request.mock.calls.map((call) => String(call[2]));
 
 const ctxWith = (params: Record<string, unknown> = {}, staticData: object = {}) => {
-	const ctx = mockDeep<IHookFunctions & IWebhookFunctions>();
+	const ctx = mockDeep<IWebhookFunctions>();
 	ctx.getWorkflow.mockReturnValue({ id: 'wf1', active: true });
 	ctx.getNode.mockReturnValue(mock<INode>({ name: 'Microsoft Teams Trigger' }));
 	ctx.getWorkflowStaticData.mockReturnValue(staticData as IDataObject);
@@ -56,6 +55,16 @@ const off: MessageFilters = {
 
 const apiError = (httpCode: string) =>
 	new NodeApiError(mock<INode>(), { message: `status ${httpCode}`, httpCode });
+
+// The shape `microsoftApiRequest` throws when core cannot refresh a revoked OAuth2 token.
+const reconnectError = () =>
+	new NodeApiError(
+		mock<INode>(),
+		new NodeOperationError(mock<INode>(), 'The credential "Teams" needs to be reconnected.', {
+			description: 'Open the credential and reconnect it to continue.',
+			failure: { cause: 'credential-invalid' },
+		}) as unknown as JsonObject,
+	);
 
 const channelResource = (id: string) => `teams('t1')/channels('c1')/messages('${id}')`;
 const notification = (id: string, resource = channelResource(id)): WebhookNotification => ({
@@ -147,6 +156,16 @@ describe('message filters', () => {
 			['an image', html('<img alt="deploy" src="https://x/deploy.png">'), 'deploy', false],
 			['across subject and body (newline)', { subject: 'foo', ...html('bar') }, 'foo\nbar', false],
 			['across subject and body (join)', { subject: 'foo', ...html('bar') }, 'ob', false],
+			[
+				'a no-break space after a mention',
+				html('<at id="0">Ann</at>&nbsp;please'),
+				'ann please',
+				true,
+			],
+			['a no-break space between words', html('<p>please&nbsp;review</p>'), 'please review', true],
+			['repeated spaces in the subject', { subject: 'please   review' }, 'please review', true],
+			['an emoji', html('<p>ok <emoji id="1f600_grinning" alt="😀"></emoji></p>'), '😀', true],
+			['a custom emoji', html('<customemoji alt="party"></customemoji>'), 'party', true],
 		])('matches the keyword for %s', async (_label, message, keyword, expected) => {
 			expect(await messagePassesFilters(message, { ...off, keyword }, undefined)).toBe(expected);
 		});
@@ -157,6 +176,13 @@ describe('message filters', () => {
 			[
 				'a mention without a user fails Mentions Me',
 				{ mentions: [{ mentioned: { user: null } }] },
+				{ ...off, mentionsMe: true },
+				'me',
+				false,
+			],
+			[
+				'mentions that are not a list fail Mentions Me',
+				{ mentions: { mentioned: { user: { id: 'me' } } } },
 				{ ...off, mentionsMe: true },
 				'me',
 				false,
@@ -206,6 +232,20 @@ describe('message filters', () => {
 			['blank keyword and a false toggle', { keyword: '  ', skipBotMessages: false }],
 		])('is off for %s', (_label, filters) => {
 			expect(read({ filters })).toBeUndefined();
+		});
+
+		it('is off for a filters value that is not an object', () => {
+			expect(read({ filters: 'x' })).toBeUndefined();
+		});
+
+		it('reads no other parameter when no filter is on', () => {
+			const ctx = ctxWith({ filters: {} });
+			ctx.getNodeParameter.mockImplementation((name: string, fallback?: unknown) => {
+				if (name !== 'filters') throw new Error(`unexpected read of ${name}`);
+				return fallback as NodeParameterValueType;
+			});
+
+			expect(getMessageFilters.call(ctx)).toBeUndefined();
 		});
 
 		it('is off for an event without messages', () => {
@@ -323,6 +363,19 @@ describe('message filters', () => {
 			);
 		});
 
+		it('logs the type of a resource that is not a string', async () => {
+			const ctx = ctxWith();
+			const odd = { ...notification('1'), resource: JSON.parse('{"toString":null}') as string };
+
+			const result = await filterChangeNotifications.call(ctx, [odd], skipBot);
+
+			expect(result).toEqual({ passed: [] });
+			expect(ctx.logger.warn).toHaveBeenCalledWith(
+				'Microsoft Teams Trigger: notification without a message path skipped',
+				expect.objectContaining({ resource: 'object' }),
+			);
+		});
+
 		it('reads the messages one after another', async () => {
 			let resolveFirst: (value: unknown) => void = () => {};
 			request.mockImplementationOnce(
@@ -392,6 +445,41 @@ describe('message filters', () => {
 			expect(denied?.httpCode).toBe('401');
 		});
 
+		it('returns a revoked credential as denied and stops reading', async () => {
+			const revoked = reconnectError();
+			routeMessages({ [messagePath('1')]: revoked, [messagePath('2')]: plainMessage });
+
+			const { passed, denied } = await filterChangeNotifications.call(
+				ctxWith(),
+				[notification('1'), notification('2')],
+				skipBot,
+			);
+
+			expect(denied).toBe(revoked);
+			expect(denied?.message).toContain('needs to be reconnected');
+			expect(passed).toEqual([]);
+			expect(readPaths()).toEqual([messagePath('1')]);
+		});
+
+		it('finds the revoked mark on the wrapped error when the classes differ', async () => {
+			// Core and the node can load different copies of n8n-workflow: then the wrapper does not
+			// copy `failure`, and only the wrapped error carries it.
+			const inner = Object.assign(new Error('The credential "Teams" needs to be reconnected.'), {
+				failure: { cause: 'credential-invalid' },
+			});
+			const revoked = new NodeApiError(mock<INode>(), inner as unknown as JsonObject);
+			expect(revoked.failure).toBeUndefined();
+			routeMessages({ [messagePath('1')]: revoked });
+
+			const { denied } = await filterChangeNotifications.call(
+				ctxWith(),
+				[notification('1')],
+				skipBot,
+			);
+
+			expect(denied).toBe(revoked);
+		});
+
 		it('names Chat.Read for a chat message', async () => {
 			request.mockRejectedValue(apiError('403'));
 
@@ -458,43 +546,60 @@ describe('message filters', () => {
 			const mentionsMe = { ...off, mentionsMe: true };
 			const mentioning = (id: string) => ({ mentions: [{ mentioned: { user: { id } } }] });
 
-			it('uses the stored id without reading /me', async () => {
-				routeMessages({ [messagePath('1')]: mentioning('me') });
+			it('reads /me once for each batch and ignores a stored id', async () => {
+				routeMessages({
+					'/v1.0/me': { id: 'me' },
+					[messagePath('1')]: mentioning('me'),
+					[messagePath('2')]: mentioning('old'),
+				});
+				const items = [notification('1'), notification('2')];
 
 				const { passed } = await filterChangeNotifications.call(
-					ctxWith({}, { mentionUserId: 'me' }),
+					ctxWith({}, { mentionUserId: 'old' }),
+					items,
+					mentionsMe,
+				);
+
+				expect(passed).toEqual([items[0]]);
+				expect(readPaths()).toEqual(['/v1.0/me', messagePath('1'), messagePath('2')]);
+				expect(request.mock.calls[0][4]).toEqual({ $select: 'id' });
+			});
+
+			it.each(['401', '403'])(
+				'returns a %s from /me as denied without reading messages',
+				async (status) => {
+					routeMessages({ '/v1.0/me': apiError(status) });
+
+					const result = await filterChangeNotifications.call(
+						ctxWith(),
+						[notification('1')],
+						mentionsMe,
+					);
+
+					expect(result.passed).toEqual([]);
+					expect(result.denied?.httpCode).toBe(status);
+					expect(result.denied?.message).toBe(
+						'Microsoft Teams Trigger could not read the signed-in user',
+					);
+					expect(result.denied?.description).toContain('User.Read');
+					expect(readPaths()).toEqual(['/v1.0/me']);
+				},
+			);
+
+			it('returns a revoked credential on /me as denied', async () => {
+				const revoked = reconnectError();
+				routeMessages({ '/v1.0/me': revoked });
+
+				const result = await filterChangeNotifications.call(
+					ctxWith(),
 					[notification('1')],
 					mentionsMe,
 				);
 
-				expect(passed).toHaveLength(1);
-				expect(readPaths()).toEqual([messagePath('1')]);
+				expect(result).toEqual({ passed: [], denied: revoked });
 			});
 
 			it.each([
-				['no id is stored', {}],
-				['the stored id is empty', { mentionUserId: '' }],
-			])('reads /me once for the batch when %s', async (_label, stored) => {
-				routeMessages({
-					'/v1.0/me': { id: 'me' },
-					[messagePath('1')]: mentioning('me'),
-					[messagePath('2')]: mentioning('me'),
-				});
-				const staticData = ObservableObject.create({ ...stored });
-
-				const { passed } = await filterChangeNotifications.call(
-					ctxWith({}, staticData),
-					[notification('1'), notification('2')],
-					mentionsMe,
-				);
-
-				expect(passed).toHaveLength(2);
-				expect(readPaths()).toEqual(['/v1.0/me', messagePath('1'), messagePath('2')]);
-				expect((staticData as { __dataChanged?: boolean }).__dataChanged).toBe(false);
-			});
-
-			it.each([
-				['a 403', apiError('403')],
 				['a 429', apiError('429')],
 				['an empty id', { id: '' }],
 			])('skips the batch without reading messages after %s from /me', async (_label, answer) => {
@@ -504,11 +609,10 @@ describe('message filters', () => {
 				const result = await filterChangeNotifications.call(ctx, [notification('1')], mentionsMe);
 
 				expect(result).toEqual({ passed: [] });
-				expect(result.denied).toBeUndefined();
 				expect(readPaths()).toEqual(['/v1.0/me']);
 				expect(ctx.logger.warn).toHaveBeenCalledTimes(1);
 				expect(ctx.logger.warn).toHaveBeenCalledWith(
-					expect.stringContaining('User.Read'),
+					'Microsoft Teams Trigger: could not read the signed-in user, Mentions Me notifications skipped',
 					expect.anything(),
 				);
 			});
@@ -520,101 +624,6 @@ describe('message filters', () => {
 
 				expect(readPaths()).toEqual([messagePath('1')]);
 			});
-		});
-	});
-
-	describe('storeMentionUserId', () => {
-		const on = { event: 'newChannelMessage', filters: { mentionsMe: true } };
-
-		it('stores the signed-in user id', async () => {
-			request.mockResolvedValue({ id: 'me' });
-			const staticData: IDataObject = {};
-
-			await storeMentionUserId.call(ctxWith(on, staticData));
-
-			expect(staticData).toEqual({ mentionUserId: 'me' });
-			expect(readPaths()).toEqual(['/v1.0/me']);
-			expect(request.mock.calls[0][4]).toEqual({ $select: 'id' });
-		});
-
-		it('stores the signed-in user id for a chat message event', async () => {
-			request.mockResolvedValue({ id: 'me' });
-			const staticData: IDataObject = {};
-
-			await storeMentionUserId.call(ctxWith({ ...on, event: 'newChatMessage' }, staticData));
-
-			expect(staticData).toEqual({ mentionUserId: 'me' });
-		});
-
-		it('warns and removes the stored id when the Mentions Me option cannot be read', async () => {
-			const staticData: IDataObject = { mentionUserId: 'old' };
-			const ctx = ctxWith(on, staticData);
-			ctx.getNodeParameter.mockImplementation((name: string) => {
-				if (name === 'filters.mentionsMe') throw new Error('cannot resolve');
-				return 'newChannelMessage';
-			});
-
-			await expect(storeMentionUserId.call(ctx)).resolves.toBeUndefined();
-
-			expect(staticData).toEqual({});
-			expect(request).not.toHaveBeenCalled();
-			expect(ctx.logger.warn).toHaveBeenCalledWith(
-				'Microsoft Teams Trigger: could not read the Mentions Me option',
-				expect.anything(),
-			);
-		});
-
-		it('writes nothing when the id is the same', async () => {
-			request.mockResolvedValue({ id: 'me' });
-			const staticData = ObservableObject.create({ mentionUserId: 'me' });
-
-			await storeMentionUserId.call(ctxWith(on, staticData));
-
-			expect((staticData as { __dataChanged?: boolean }).__dataChanged).toBe(false);
-		});
-
-		it.each([
-			['a failed read', apiError('403')],
-			['an empty id', { id: '' }],
-		])('warns and removes the stored id after %s', async (_label, answer) => {
-			if (answer instanceof Error) request.mockRejectedValue(answer);
-			else request.mockResolvedValue(answer);
-			const staticData: IDataObject = { mentionUserId: 'old' };
-			const ctx = ctxWith(on, staticData);
-
-			await expect(storeMentionUserId.call(ctx)).resolves.toBeUndefined();
-
-			expect(staticData).toEqual({});
-			expect(ctx.logger.warn).toHaveBeenCalledWith(
-				expect.stringContaining('User.Read'),
-				expect.anything(),
-			);
-		});
-
-		it.each([
-			['Mentions Me is off', { event: 'newChannelMessage', filters: {} }],
-			['the credential is a Service Principal', { ...on, authentication: SERVICE_PRINCIPAL_AUTH }],
-		])('removes the stored id without a read when %s', async (_label, params) => {
-			const staticData: IDataObject = { mentionUserId: 'old' };
-
-			await storeMentionUserId.call(ctxWith(params, staticData));
-
-			expect(staticData).toEqual({});
-			expect(request).not.toHaveBeenCalled();
-		});
-
-		it('reads only the Mentions Me option', async () => {
-			request.mockResolvedValue({ id: 'me' });
-			const ctx = ctxWith(on, {});
-			const baseline = ctx.getNodeParameter.getMockImplementation();
-			ctx.getNodeParameter.mockImplementation((name: string, fallback?: unknown) => {
-				if (name === 'filters') throw new Error('cannot resolve the keyword');
-				return baseline?.(name, fallback as never) as NodeParameterValueType;
-			});
-
-			await storeMentionUserId.call(ctx);
-
-			expect(ctx.getWorkflowStaticData('node')).toEqual({ mentionUserId: 'me' });
 		});
 	});
 });
