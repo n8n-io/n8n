@@ -117,6 +117,12 @@ export class EngineV2Module implements ModuleInterface {
 		Container.get(EngineDataPlaneProxyService).registerProvider(
 			Container.get(EngineDataPlaneClient),
 		);
+
+		const { InstanceSettings } = await import('n8n-core');
+		if (Container.get(InstanceSettings).instanceType === 'main') {
+			const { EngineV2EndedExecutionFeed } = await import('./ended-feed/ended-execution-feed.js');
+			Container.get(EngineV2EndedExecutionFeed).start();
+		}
 	}
 
 	private async initInMemoryExecutionChannel(logger: Logger) {
@@ -157,6 +163,9 @@ export class EngineV2Module implements ModuleInterface {
 
 	@OnShutdown()
 	async shutdown() {
+		const { EngineV2EndedExecutionFeed } = await import('./ended-feed/ended-execution-feed.js');
+		await Container.get(EngineV2EndedExecutionFeed).stop();
+
 		try {
 			if (Container.get(EngineConfig).mode === 'in-process') {
 				const { EngineV2Runtime } = await import('./engine-v2.runtime.js');

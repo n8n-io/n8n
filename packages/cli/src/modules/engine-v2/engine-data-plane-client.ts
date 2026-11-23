@@ -9,6 +9,8 @@ import type {
 	ExecutionSnapshot,
 	ExecutionStatus,
 	FindLatestExecutionRequest,
+	ListEndedExecutionsRequest,
+	ListEndedExecutionsResponse,
 	ResolveStepRequest,
 	ResolveStepResponse,
 	ResumeLocateRequest,
@@ -140,6 +142,23 @@ export class EngineDataPlaneClient implements EngineDataPlaneProvider {
 		});
 		if (response.statusCode >= 300) throw this.toError(response.statusCode, response.body);
 		return response.body as SearchExecutionsResponse;
+	}
+
+	/** One page of executions that ended after `request.after`, oldest end first. */
+	async listEndedExecutions(
+		request: ListEndedExecutionsRequest,
+	): Promise<ListEndedExecutionsResponse> {
+		const response = await this.http.request<ListEndedExecutionsResponse | EngineErrorResponse>({
+			url: '/api/workflow-executions/ended',
+			method: 'POST',
+			body: request,
+			json: true,
+			returnFullResponse: true,
+			ignoreHttpStatusErrors: true,
+			disableFollowRedirect: true,
+		});
+		if (response.statusCode >= 300) throw this.toError(response.statusCode, response.body);
+		return response.body as ListEndedExecutionsResponse;
 	}
 
 	async findLatestExecution(

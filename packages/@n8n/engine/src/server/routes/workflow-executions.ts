@@ -6,6 +6,7 @@ import {
 	createCancelExecutionHandler,
 	createFindLatestExecutionHandler,
 	createGetExecutionHandler,
+	createListEndedExecutionsHandler,
 	createSearchExecutionsHandler,
 } from './workflow-executions.handlers';
 import { AdmittanceRejectedError } from '../../admittance';
@@ -56,6 +57,7 @@ export function createWorkflowExecutionsRouter(deps: EngineServerDeps): RouterTy
 	const router = Router();
 	router.post('/search', createSearchExecutionsHandler(deps.executionQuery));
 	router.post('/search/latest', createFindLatestExecutionHandler(deps.executionQuery));
+	router.post('/ended', createListEndedExecutionsHandler(deps.executionQuery));
 
 	router.post('/', async (req, res) => {
 		const parsed = StartExecutionBody.safeParse(req.body);

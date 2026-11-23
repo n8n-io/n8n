@@ -51,6 +51,45 @@ export interface ExecutionListQuery extends ExecutionListFilter {
 	order?: { top?: ExecutionStatus; startedAt?: 'DESC' };
 }
 
+/** Where a reader of the ended feed stopped: the last row it took, in `(finishedAt, id)` order. */
+export interface EndedExecutionCursor {
+	finishedAt: string;
+	id: string;
+}
+
+export interface EndedExecutionQuery {
+	after?: EndedExecutionCursor;
+	limit: number;
+	/**
+	 * Only rows that ended at least this long ago. `finished_at` is set before
+	 * the row commits, so a row can commit behind one the reader already passed.
+	 */
+	settleMs: number;
+}
+
+/** An ended execution, with what the control plane needs to announce its end. */
+export interface EndedExecutionView {
+	id: string;
+	workflowId: string;
+	workflowName: string | null;
+	status: ExecutionStatus;
+	mode: ExecutionMode;
+	hostMode: string;
+	userId: string | null;
+	projectId: string | null;
+	parent: ParentLink | null;
+	createdAt: Date;
+	finishedAt: Date;
+	/** The first step that failed, or `null`. */
+	failedStep: {
+		nodeId: string;
+		nodeName: string | null;
+		/** The type from the workflow snapshot, when its node has the same id. */
+		nodeType: string | null;
+		error: StepError;
+	} | null;
+}
+
 /**
  * Read view of an execution: what a caller is shown, which is not what running
  * one needs. It carries the timing the execution path never reads, and omits
@@ -135,4 +174,7 @@ export interface ExecutionViewStore {
 	loadLatestExecutionWithStepsView(
 		filter: ExecutionListFilter,
 	): Promise<ExecutionWithStepsView | undefined>;
+
+	/** Ended executions after `query.after`, oldest end first. */
+	listEndedExecutionViews(query: EndedExecutionQuery): Promise<EndedExecutionView[]>;
 }

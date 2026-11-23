@@ -16,6 +16,7 @@ import { EngineMtls } from '../engine-mtls';
 import { EngineV2LifecycleSubscriptions } from '../engine-lifecycle-event-subscriptions';
 import { EngineV2Module } from '../engine-v2.module';
 import { EngineV2Runtime } from '../engine-v2.runtime';
+import { EngineV2EndedExecutionFeed } from '../ended-feed/ended-execution-feed';
 import { ExecutionChannelReceiver } from '../execution-channel/execution-channel-receiver';
 import { ExecutionChannelSender } from '../execution-channel/execution-channel-sender';
 import { LifecycleEventChannelSender } from '../execution-channel/lifecycle-event-sender';
@@ -65,6 +66,7 @@ describe('EngineV2Module', () => {
 		controlPlaneServer = mockInstance(EngineControlPlaneServer);
 		webhookResponseRegistry = mockInstance(EngineV2WebhookResponseRegistry);
 		lifecycleSubscriptions = mockInstance(EngineV2LifecycleSubscriptions);
+		mockInstance(EngineV2EndedExecutionFeed);
 		subscriber = mock<RedisChannelSubscriber>();
 		inMemoryQueues = mock<EngineWorkQueues>();
 		vi.mocked(createInMemoryWorkQueues).mockReturnValue(inMemoryQueues);

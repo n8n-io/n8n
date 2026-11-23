@@ -3,8 +3,11 @@ import type { Repository, SelectQueryBuilder } from '@n8n/typeorm';
 import type { WorkflowExecution, WorkflowStepExecution } from './entities';
 import { parentLinkSql } from './parent-link-columns';
 import { UnexpectedError } from '../common';
+import { ENDED_EXECUTION_STATUSES } from '../execution/execution.types';
 import { ExecutionNotFoundError } from '../execution/execution-store';
 import type {
+	EndedExecutionQuery,
+	EndedExecutionView,
 	ExecutionViewStore,
 	ExecutionView,
 	ExecutionWithStepsView,
@@ -149,6 +152,53 @@ export class TypeOrmExecutionViewStore implements ExecutionViewStore {
 			qb.where(`execution.id = ${newest.getQuery()}`),
 		).getRawOne();
 		return row;
+	}
+
+	async listEndedExecutionViews(query: EndedExecutionQuery): Promise<EndedExecutionView[]> {
+		// Served by the partial index on `(finished_at, id)` for ended rows.
+		const qb = this.executions
+			.createQueryBuilder('execution')
+			.select('execution.id', 'id')
+			.addSelect('execution.workflow_id', 'workflowId')
+			.addSelect("execution.workflow->>'name'", 'workflowName')
+			.addSelect('execution.status', 'status')
+			.addSelect('execution.mode', 'mode')
+			.addSelect(hostMode('execution'), 'hostMode')
+			.addSelect("execution.caller_context->>'userId'", 'userId')
+			.addSelect("execution.caller_context->>'projectId'", 'projectId')
+			.addSelect(parentLinkSql('execution'), 'parent')
+			.addSelect('execution.created_at', 'createdAt')
+			.addSelect('execution.finished_at', 'finishedAt')
+			.addSelect(
+				`(SELECT json_build_object(
+					'nodeId', failed.node_id,
+					'nodeName', (SELECT node->>'name' FROM jsonb_array_elements(execution.graph->'nodes') node
+						WHERE node->>'id' = failed.node_id),
+					'nodeType', (SELECT node->>'type' FROM jsonb_array_elements(execution.workflow->'nodes') node
+						WHERE node->>'id' = failed.node_id),
+					'error', failed.error)
+					FROM workflow_step_execution failed
+					WHERE failed.execution_id = execution.id AND failed.status = 'failed'
+					ORDER BY failed.updated_at, failed.id
+					LIMIT 1)`,
+				'failedStep',
+			)
+			.where('execution.finished_at IS NOT NULL')
+			.andWhere("execution.finished_at < now() - interval '1 millisecond' * :settleMs", {
+				settleMs: query.settleMs,
+			})
+			.andWhere('execution.status IN (:...ended)', { ended: ENDED_EXECUTION_STATUSES });
+		if (query.after) {
+			qb.andWhere('(execution.finished_at, execution.id) > (:afterFinishedAt, :afterId)', {
+				afterFinishedAt: query.after.finishedAt,
+				afterId: query.after.id,
+			});
+		}
+		return await qb
+			.orderBy('execution.finished_at')
+			.addOrderBy('execution.id')
+			.limit(query.limit)
+			.getRawMany<EndedExecutionView>();
 	}
 
 	private selectExecution(id: string): SelectQueryBuilder<WorkflowExecution> {

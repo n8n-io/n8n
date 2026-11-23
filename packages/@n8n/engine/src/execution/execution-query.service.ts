@@ -1,4 +1,6 @@
 import type {
+	EndedExecutionQuery,
+	EndedExecutionView,
 	ExecutionViewStore,
 	ExecutionView,
 	ExecutionWithStepsView,
@@ -34,6 +36,21 @@ export class ExecutionQueryService {
 		};
 	}
 
+	/**
+	 * One page of the ended feed, oldest end first. The cursor is the last row
+	 * returned, or the one the caller sent when no row is ready: a reader stores
+	 * it only after it has handled the page, so a crash repeats a page and never
+	 * skips one.
+	 */
+	async listEndedExecutions(query: EndedExecutionQuery) {
+		const items = await this.viewStore.listEndedExecutionViews(query);
+		const last = items.at(-1);
+		return {
+			items: items.map((item) => ({ ...item, eventKey: endedEventKey(item) })),
+			cursor: last ? { finishedAt: toIso(last.finishedAt), id: last.id } : (query.after ?? null),
+		};
+	}
+
 	/** @throws {ExecutionNotFoundError} if absent. */
 	async getExecution(id: string): Promise<ExecutionView> {
 		return await this.viewStore.loadExecutionView(id);
@@ -59,4 +76,13 @@ export class ExecutionQueryService {
 	): Promise<ExecutionWithStepsView | undefined> {
 		return await this.viewStore.loadLatestExecutionWithStepsView(filter);
 	}
+}
+
+/** The same execution always gives the same key, so a reader can drop a repeat. */
+function endedEventKey(item: EndedExecutionView): string {
+	return `${item.id}:ended`;
+}
+
+function toIso(value: Date | string): string {
+	return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
 }

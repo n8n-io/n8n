@@ -17,6 +17,7 @@ function makeViewStore(overrides: Partial<ExecutionViewStore> = {}): ExecutionVi
 		loadExecutionView: vi.fn(),
 		loadExecutionWithStepsView: vi.fn(),
 		loadLatestExecutionWithStepsView: vi.fn(),
+		listEndedExecutionViews: vi.fn().mockResolvedValue([]),
 		...overrides,
 	};
 }

@@ -11,6 +11,9 @@ export type {
 	FindLatestExecutionRequest,
 	SearchExecutionsRequest,
 	SearchExecutionsResponse,
+	ListEndedExecutionsRequest,
+	ListEndedExecutionsResponse,
+	EndedExecutionItem,
 	ExecutionListItem,
 } from './api.types';
 export { fail } from './error-response';

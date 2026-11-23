@@ -8,7 +8,11 @@ import type {
 	StepStatus,
 	WorkflowDocument,
 } from '../execution';
-import type { ExecutionListFilter, ExecutionListQuery } from '../execution/execution-view-store';
+import type {
+	EndedExecutionCursor,
+	ExecutionListFilter,
+	ExecutionListQuery,
+} from '../execution/execution-view-store';
 import type { StoredWorkflowGraph } from '../graph';
 
 /** A read-only search. The control plane supplies the visibility decision. */
@@ -19,6 +23,42 @@ export type SearchExecutionsRequest = ExecutionListQuery;
  * response is the newest match as `GET /:id?includeSteps=true` reports it.
  */
 export type FindLatestExecutionRequest = ExecutionListFilter;
+
+/** `POST /ended` body. `settleMs` defaults to 5 seconds. */
+export interface ListEndedExecutionsRequest {
+	after?: EndedExecutionCursor;
+	limit?: number;
+	settleMs?: number;
+}
+
+export interface EndedExecutionItem {
+	/** Stable for each execution: the reader drops a repeat by it. */
+	eventKey: string;
+	id: string;
+	workflowId: string;
+	workflowName: string | null;
+	status: ExecutionStatus;
+	mode: ExecutionMode;
+	hostMode: string;
+	userId: string | null;
+	projectId: string | null;
+	parent: ParentLink | null;
+	createdAt: string;
+	finishedAt: string;
+	failedStep: {
+		nodeId: string;
+		nodeName: string | null;
+		/** The type from the workflow snapshot, when its node has the same id. */
+		nodeType: string | null;
+		error: StepError;
+	} | null;
+}
+
+/** `POST /ended` response. Send `cursor` back as `after` once the page is handled. */
+export interface ListEndedExecutionsResponse {
+	items: EndedExecutionItem[];
+	cursor: EndedExecutionCursor | null;
+}
 
 /**
  * `POST /:id/cancel` response. Only ever `cancelled`: any other status answers
