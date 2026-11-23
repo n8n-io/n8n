@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { InMemoryFilesystem } from '../../__tests__/workspace/test-utils';
 import type { AgentRuntimeConfig } from '../../types/runtime/agent-runtime';
-import type { BuiltTool } from '../../types/sdk/tool';
+import type { BuiltTool, ToolCallInterceptor } from '../../types/sdk/tool';
 import { MemoryOrchestrator } from '../memory/memory-orchestrator';
 import { InMemoryMemory } from '../memory/memory-store';
 import { AgentMessageList } from '../model/message-list';
@@ -243,7 +243,7 @@ describe('ToolCallRunner error budgeting', () => {
 });
 
 describe('ToolCallRunner guardrail after-stage stop', () => {
-	function makeRunner() {
+	function makeRunner(toolCallInterceptor?: ToolCallInterceptor) {
 		const config: AgentRuntimeConfig = {
 			name: 'test-agent',
 			model: 'openai/gpt-5',
@@ -258,6 +258,7 @@ describe('ToolCallRunner guardrail after-stage stop', () => {
 				concurrency: 1,
 				onCancelled: vi.fn(),
 				tokenCounter: vi.fn((text: string) => text.length),
+				...(toolCallInterceptor ? { toolCallInterceptor } : {}),
 			}),
 		};
 	}
@@ -328,5 +329,25 @@ describe('ToolCallRunner guardrail after-stage stop', () => {
 
 		expect(outcome).toMatchObject({ outcome: 'success' });
 		expect(handler).toHaveBeenCalledTimes(1);
+	});
+
+	it('checks the result an interceptor returns', async () => {
+		const handler = vi.fn<NonNullable<BuiltTool['handler']>>().mockResolvedValue('real result');
+		const tool: BuiltTool = { name: 'fetch_page', description: 'Synthetic tool', handler };
+		const afterTool = vi.fn(async () => ({ action: 'stop' as const, code: 'guardrail.urls.g1' }));
+		const { runner } = makeRunner(async () => await Promise.resolve('replaced result'));
+		const { params } = makeCall(tool);
+
+		const outcome = await runner.processToolCall({
+			...params,
+			guardrails: { hooks: [{ afterTool }] },
+		});
+
+		expect(outcome).toMatchObject({
+			outcome: 'error',
+			error: expect.stringContaining('Tool result blocked by guardrail: guardrail.urls.g1'),
+		});
+		expect(afterTool).toHaveBeenCalledWith(expect.anything(), 'replaced result');
+		expect(handler).not.toHaveBeenCalled();
 	});
 });

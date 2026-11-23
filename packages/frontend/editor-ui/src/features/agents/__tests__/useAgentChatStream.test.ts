@@ -237,6 +237,7 @@ function buildHook(
 		channel?: Ref<'chat' | 'n8n-chat' | 'system'>;
 		interactionExtensions?: readonly AgentsChatInteractionExtension[];
 		onStreamEvent?: UseAgentChatStreamParams['onStreamEvent'];
+		messageReferences?: UseAgentChatStreamParams['messageReferences'];
 	} = {},
 ) {
 	const scope = effectScope();
@@ -2122,6 +2123,33 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		expect(assistant.toolCalls?.[0].state).toBe('suspended');
 		expect(assistant.interactive?.runId).toBe('run-9');
 		expect(assistant.status).toBe('awaitingUser');
+	});
+
+	it('shows the tool that a tool catalog call_tool call runs', async () => {
+		const events: AgentSseEvent[] = [
+			{ type: 'start-step' },
+			{ type: 'tool-input-start', toolCallId: 'tc-1', toolName: 'call_tool' },
+			{
+				type: 'tool-call',
+				toolCallId: 'tc-1',
+				toolName: 'call_tool',
+				input: { tool: 'list_workflows', arguments: { limit: 5 } },
+			},
+			{ type: 'tool-result', toolCallId: 'tc-1', toolName: 'call_tool', output: { workflows: [] } },
+			{ type: 'finish-step' },
+			{ type: 'done' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('list my workflows');
+		await flushPromises();
+		await nextTick();
+
+		const toolCall = hook.messages.value[1].toolCalls?.[0];
+		expect(toolCall?.tool).toBe('list_workflows');
+		expect(toolCall?.input).toEqual({ limit: 5 });
+		expect(toolCall?.output).toEqual({ workflows: [] });
 	});
 
 	// -----------------------------------------------------------------------
@@ -6007,6 +6035,20 @@ describe('useAgentChatStream — client context', () => {
 		expect(fetchMock).toHaveBeenCalledTimes(1);
 		expect(sentBody()).toEqual({ message: 'hello' });
 		expect(sentBody()).not.toHaveProperty('clientContext');
+	});
+
+	it('gives the sent message the references that the host reads from its client context', async () => {
+		mockChatFetch();
+		const references = [{ type: 'workflow', id: 'wf-1' }];
+		const messageReferences = vi.fn(() => references);
+		const hook = buildHook('thread-1', { newSession: ref(true), messageReferences });
+		const clientContext = { attachments: references };
+
+		void hook.sendMessage('hello', undefined, undefined, clientContext);
+
+		expect(messageReferences).toHaveBeenCalledWith(clientContext);
+		expect(hook.messages.value[0]).toMatchObject({ role: 'user', content: 'hello', references });
+		await flushPromises();
 	});
 });
 

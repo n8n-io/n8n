@@ -31,8 +31,8 @@ const nodeType = computed(() => {
 	return name ? nodeTypesStore.getNodeType(name) : null;
 });
 
-const appName = computed(() => presentText(props.preview.app?.name)?.trim());
-const toolName = computed(() => presentText(props.preview.toolName)?.trim());
+const appName = computed(() => presentText(props.preview.app?.name));
+const toolName = computed(() => presentText(props.preview.toolName));
 
 const meta = computed(() =>
 	[appName.value, toolName.value !== props.heading ? toolName.value : undefined].filter(

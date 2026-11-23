@@ -1,6 +1,11 @@
 import type { CreateProjectDto, ProjectType, UpdateProjectDto } from '@n8n/api-types';
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
-import { EventService, ProjectNotFoundError, RoleService } from '@n8n/backend-services';
+import {
+	EventService,
+	ProjectMutationHooksProxy,
+	ProjectNotFoundError,
+	RoleService,
+} from '@n8n/backend-services';
 import {
 	type User,
 	FolderRepository,
@@ -109,6 +114,7 @@ export class ProjectService {
 		private readonly txRunner: TransactionRunner,
 		private readonly agentsConfig: AgentsConfig,
 		private readonly serviceAccountProjects: ServiceAccountProjects,
+		private readonly projectMutationHooks: ProjectMutationHooksProxy,
 	) {}
 
 	private get workflowService() {
@@ -560,6 +566,8 @@ export class ProjectService {
 			throw error;
 		}
 		if (!project) throw new TeamProjectOverQuotaError(limit);
+
+		await this.projectMutationHooks.afterTeamProjectCreated(project.id);
 
 		this.eventService.emit('team-project-created', {
 			userId: adminUser.id,

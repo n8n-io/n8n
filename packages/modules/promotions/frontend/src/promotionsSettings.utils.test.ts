@@ -4,7 +4,6 @@ import {
 	buildProviderUpdatePayload,
 	emptyProviderForm,
 	providerFormFrom,
-	repositoryDisplayName,
 } from './promotionsSettings.utils';
 
 const sshProvider = (overrides: Partial<PromotionProvider> = {}): PromotionProvider =>
@@ -104,27 +103,5 @@ describe('buildProviderUpdatePayload', () => {
 			username: 'deploy',
 			password: 'new-secret',
 		});
-	});
-});
-
-describe('repositoryDisplayName', () => {
-	it('uses the stored path of a GitLab target', () => {
-		expect(
-			repositoryDisplayName({
-				schemaVersion: 1,
-				remoteUrl: 'https://gitlab.example.com/forked/repository.git',
-				repositoryPath: 'acme/platform/workflows',
-			}),
-		).toBe('acme/platform/workflows');
-	});
-
-	it.each([
-		['https://github.com/acme/workflows.git', 'acme/workflows'],
-		['git@github.com:acme/workflows.git', 'acme/workflows'],
-		['github.com:acme/workflows.git', 'acme/workflows'],
-		['ssh://git@git.example.com:2222/acme/workflows.git', 'acme/workflows'],
-		['/srv/git/workflows.git', '/srv/git/workflows'],
-	])('shortens %s to %s', (remoteUrl, name) => {
-		expect(repositoryDisplayName({ schemaVersion: 1, remoteUrl })).toBe(name);
 	});
 });

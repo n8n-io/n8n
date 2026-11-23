@@ -7,6 +7,7 @@ import {
 	AppSourceVersionStore,
 	AppBuildResultStore,
 	type AppFiles,
+	type CopiedDraftVersion,
 	type NewSourceVersion,
 } from './app-version-stores';
 import { AppArtifactService } from './app-artifact.service';
@@ -45,6 +46,7 @@ export class SnapshotAppSourceVersionStore extends AppSourceVersionStore {
 							label: version.label,
 							sourceArtifactId: artifact.id,
 							bindings: version.bindings,
+							isScaffold: version.isScaffold,
 						},
 						ctx,
 					);
@@ -67,7 +69,7 @@ export class SnapshotAppSourceVersionStore extends AppSourceVersionStore {
 		}
 	}
 
-	async copyDraft(version: NewSourceVersion & { expectedDraftVersionId: string }): Promise<void> {
+	async copyDraft(version: CopiedDraftVersion): Promise<void> {
 		await this.locks.withLockContext(
 			DbLock.APPS_STORAGE,
 			async (ctx) => {

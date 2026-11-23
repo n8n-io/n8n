@@ -69,11 +69,14 @@ describe('execution ledger ended rows', () => {
 		await testDb.terminate();
 	});
 
-	const createRunningExecution = async (mode: WorkflowExecuteMode = 'trigger') =>
+	const createRunningExecution = async (
+		mode: WorkflowExecuteMode = 'trigger',
+		ofWorkflow: WorkflowEntity = workflow,
+	) =>
 		await Container.get(ExecutionPersistence).create({
-			workflowId: workflow.id,
+			workflowId: ofWorkflow.id,
 			data: createEmptyRunExecutionData(),
-			workflowData: workflow,
+			workflowData: ofWorkflow,
 			mode,
 			status: 'running',
 			finished: false,
@@ -196,6 +199,54 @@ describe('execution ledger ended rows', () => {
 
 			const rows = await collectEndedRows(executionIds.length);
 			expect(rows.map((row) => row.executionId).sort()).toEqual([...executionIds].sort());
+		});
+	});
+
+	describe('a workflow with no owner project', () => {
+		let unowned: WorkflowEntity;
+
+		beforeEach(async () => {
+			unowned = await createWorkflow({
+				name: 'Unowned',
+				...createSimpleWorkflowFixture(),
+				settings: {},
+			});
+		});
+
+		it('writes an ended row with no project for a finished run', async () => {
+			const executionId = await createRunningExecution('trigger', unowned);
+
+			await getLifecycleHooksForRegularMain(
+				{ executionMode: 'trigger', workflowData: unowned },
+				executionId,
+			).runHook('workflowExecuteAfter', [finishedRun('success'), {}]);
+
+			const rows = await collectEndedRows(1);
+			expect(rows).toHaveLength(1);
+			expect(rows[0]).toMatchObject({ executionId, outcome: 'success', projectId: null });
+		});
+
+		it('writes an ended row with no project for a canceled run', async () => {
+			const executionId = await createRunningExecution('trigger', unowned);
+
+			const { recorded } = await Container.get(ExecutionCancelService).markAsCanceled([
+				executionId,
+			]);
+			await recorded;
+
+			const rows = await collectEndedRows(1);
+			expect(rows).toHaveLength(1);
+			expect(rows[0]).toMatchObject({ executionId, outcome: 'canceled', projectId: null });
+		});
+
+		it('writes an ended row with no project for a crashed run', async () => {
+			const executionId = await createRunningExecution('trigger', unowned);
+
+			await Container.get(ExecutionCrashService).markAsCrashed(executionId, 'queue-recovery');
+
+			const rows = await collectEndedRows(1);
+			expect(rows).toHaveLength(1);
+			expect(rows[0]).toMatchObject({ executionId, outcome: 'crashed', projectId: null });
 		});
 	});
 
