@@ -1,3 +1,14 @@
+## [2.49.4](https://github.com/n8n-io/n8n/compare/n8n@2.49.3...n8n@2.49.4) (2026-11-23)
+
+
+### Bug Fixes
+
+* **ai-builder:** Apply "Always allow" on archive and unpublish to all workflows in the thread ([#44629](https://github.com/n8n-io/n8n/issues/44629)) ([e000c7f](https://github.com/n8n-io/n8n/commit/e000c7fa3240dfed39724d1e3ed86edcc0833df4))
+* **core:** Give custom instance roles access to the Migration Report ([#44666](https://github.com/n8n-io/n8n/issues/44666)) ([3cbc4ad](https://github.com/n8n-io/n8n/commit/3cbc4adabf2aa5e47cc572560005f604a63f32dd))
+* **core:** Throw when an expression reaches the memory limit on the quickjs engine ([#44686](https://github.com/n8n-io/n8n/issues/44686)) ([fe05e36](https://github.com/n8n-io/n8n/commit/fe05e3639129c26133280ad7abf19a64aa174778))
+* **editor:** Keep Migration Report controls inside narrow screens ([#44659](https://github.com/n8n-io/n8n/issues/44659)) ([2214317](https://github.com/n8n-io/n8n/commit/2214317ff38d651914868539c9c8ed46dbf5e609))
+
+
 ## [2.49.3](https://github.com/n8n-io/n8n/compare/n8n@2.49.2...n8n@2.49.3) (2026-11-20)
 
 
