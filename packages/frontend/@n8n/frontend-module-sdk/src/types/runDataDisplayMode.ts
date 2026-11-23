@@ -28,7 +28,7 @@ export type RunDataDisplayModeContext = {
 export type RunDataDisplayModeProps = {
 	/**
 	 * Filtered by search only when the mode sets `supports.search`. Never paginated:
-	 * the shell's too-much-data check measures only the first page, so keep the view
+	 * the shell's too-much-data check measures only the current page, so keep the view
 	 * cheap when the run has many items.
 	 */
 	data: INodeExecutionData[];
@@ -81,8 +81,8 @@ export type RunDataDisplayModeContribution = {
 	canRender: (context: RunDataDisplayModeContext) => boolean;
 	/**
 	 * In the output pane, the shell selects this mode when the node opens or
-	 * finishes a run, if `canRender` is true. This selection wins over the
-	 * automatic switch to Binary or Rendered (AI). Default false.
+	 * finishes a run, if `canRender` is true. When the node opens, this selection
+	 * wins over the automatic switch to Binary or Rendered (AI). Default false.
 	 */
 	autoSelect?: boolean;
 	/** Shell features this mode opts into. Default: none. */
