@@ -31,6 +31,7 @@ describe('getSystemPrompt — cloud browser', () => {
 		expect(section).toContain('**Login results:**');
 		expect(section).toContain('n8n writes them, not the browser agent');
 		expect(section).toContain('Your login for example.com is saved, so I can use it next time.');
+		expect(section).toContain('[Saved logins](/settings/personal?savedLogins=open)');
 		expect(section).toContain('Sign in again next time to save it.');
 		expect(section).not.toContain('n8n Assistant can reuse');
 	});
