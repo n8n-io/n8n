@@ -3,6 +3,7 @@ import {
 	INSTANCE_AI_PENDING_APP_TARGET_METADATA_KEY,
 	instanceAiAppTargetSchema,
 	type InstanceAiAppTarget,
+	type InstanceAiAppSubject,
 } from '@n8n/api-types';
 
 import { getThread, patchThread } from '../../storage/thread-patch';
@@ -46,6 +47,23 @@ export function withAppTarget(
 			? targets
 			: [...targets, target],
 	};
+}
+
+/**
+ * The thread metadata that binds an app subject, like the editor writes before
+ * it opens a thread on the current runtime. A pending app gets the
+ * pending marker, so the first build creates the app under its id. Returns
+ * `undefined` when the metadata already has the app or another pending app.
+ */
+export function withAppSubject(
+	metadata: Record<string, unknown>,
+	{ id: appId, projectId, name, pending }: InstanceAiAppSubject,
+): Record<string, unknown> | undefined {
+	if (parseAppTargets(metadata).some((target) => target.appId === appId)) return undefined;
+	const target = { appId, projectId, ...(name ? { name } : {}) };
+	if (!pending) return withAppTarget(metadata, target);
+	if (parsePendingAppTarget(metadata)) return undefined;
+	return { ...metadata, [INSTANCE_AI_PENDING_APP_TARGET_METADATA_KEY]: target };
 }
 
 export async function addAppTarget(

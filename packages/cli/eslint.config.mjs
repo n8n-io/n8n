@@ -91,8 +91,6 @@ const skillsModuleEntryForTests = {
 const skillsModuleIsolation = {
 	group: [
 		'@/*',
-		'!@/posthog',
-		'!@/telemetry',
 		'@/*/**',
 		// Any depth, so files in subfolders of the skills module are covered too.
 		'../**/agents/**',
@@ -283,9 +281,14 @@ export default defineConfig(
 		},
 	},
 	{
-		// Verifies bearer tokens with the JWKS discovered for a trusted source. Only
-		// `decode` and `verify` are admitted; signing stays with JwtService.
-		files: ['./src/modules/inbound-auth-core/oauth2-bearer.driver.ts'],
+		// Verify tokens signed by a key that n8n does not hold. Only `decode` and
+		// `verify` are admitted; signing stays with JwtService.
+		files: [
+			// Bearer tokens, with the JWKS discovered for a trusted source.
+			'./src/modules/inbound-auth-core/oauth2-bearer.driver.ts',
+			// Webhook channel callers, with the secret or public key of the channel's JWT credential.
+			'./src/modules/agents/integrations/platforms/webhook/webhook-auth.ts',
+		],
 		rules: {
 			'@typescript-eslint/no-restricted-imports': [
 				'error',
@@ -480,6 +483,8 @@ export default defineConfig(
 								'!@/events/maps/',
 								'!@/events/maps/system-task-metrics.event-map',
 								'!@/modules/',
+								'!@/modules/agents/',
+								'!@/modules/agents/agent-execution-probe',
 								'!@/modules/instance-ai/',
 								'!@/modules/instance-ai/instance-ai-run-probe',
 								'!@/services/',

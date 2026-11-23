@@ -6,7 +6,12 @@ import type {
 	INodeProperties,
 	ResourceMapperField,
 } from 'n8n-workflow';
-import { NodeOperationError, setSafeObjectProperty } from 'n8n-workflow';
+import {
+	isSafeObjectProperty,
+	NodeOperationError,
+	requestPath,
+	setSafeObjectProperty,
+} from 'n8n-workflow';
 
 import { type CollectionSearchOptions, searchGraphCollection } from '../../helpers/graphSearch';
 import {
@@ -62,12 +67,12 @@ export async function getItems(
 	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
-	let endpoint = '';
+	let endpoint = requestPath``;
 	if (!paginationToken) {
 		// In load-options contexts getNodeParameter's 2nd arg is a fallback, not an item index.
 		const siteId = await resolveSiteId.call(this, 0);
 		const list = String(this.getNodeParameter('list', 0, { extractValue: true }));
-		endpoint = `/v1.0/sites/${encodeURIComponent(siteId)}/lists/${encodeURIComponent(list)}/items`;
+		endpoint = requestPath`/v1.0/sites/${siteId}/lists/${list}/items`;
 	}
 
 	return await searchGraphCollection.call<
@@ -122,7 +127,7 @@ export async function lookupItemIdByColumns(
 			this,
 			'value',
 			'GET',
-			`/v1.0/sites/${encodeURIComponent(siteId)}/lists/${encodeURIComponent(listIdOrTitle)}/items`,
+			requestPath`/v1.0/sites/${siteId}/lists/${listIdOrTitle}/items`,
 			{},
 			{ $filter: filter },
 			2,
@@ -183,8 +188,10 @@ export function resolveItemMapperValues(this: IExecuteFunctions, i: number): IDa
  * Builds the body for a fields write from the resolved column values. The `id`
  * entry identifies the item and is never a field; hyperlink columns arrive as
  * two mapper fields (`{name}.Url`/`{name}.Description`, see list/columns.ts)
- * and are folded back into SharePoint's two-part shape. `hasHyperlink` tells
- * the caller whether the write needs the `Prefer: apiversion=2.1` header.
+ * and are folded back into SharePoint's two-part shape. An array of strings
+ * gets a `{name}@odata.type` entry, which a multi-choice column needs.
+ * `hasHyperlink` tells the caller whether the write needs the
+ * `Prefer: apiversion=2.1` header.
  */
 export function buildItemFieldsPayload(
 	value: IDataObject,
@@ -220,6 +227,18 @@ export function buildItemFieldsPayload(
 			continue;
 		}
 
+		// Graph rejects a multi-choice array that has no collection type. An empty
+		// array is typed too, so that it can clear the column. Number fields are the
+		// lookup and person IDs: their collection type is not confirmed, so they stay
+		// as they are. The key check stops a type entry for a key that the write below drops.
+		if (
+			isSafeObjectProperty(key) &&
+			Array.isArray(fieldValue) &&
+			fieldValue.every((entry) => typeof entry === 'string') &&
+			schema?.find((field) => field.id === key)?.type !== 'number'
+		) {
+			setSafeObjectProperty(fields, `${key}@odata.type`, 'Collection(Edm.String)');
+		}
 		setSafeObjectProperty(fields, key, fieldValue);
 	}
 	return { fields, hasHyperlink };
@@ -243,12 +262,12 @@ export async function updateItemFields(
 	itemId = assertPathSegment(this.getNode(), itemId, 'Item');
 	const { fields, hasHyperlink } = buildItemFieldsPayload(value, schema);
 
-	const itemPath = `/v1.0/sites/${encodeURIComponent(siteId)}/lists/${encodeURIComponent(listIdOrTitle)}/items/${encodeURIComponent(itemId)}`;
+	const itemPath = requestPath`/v1.0/sites/${siteId}/lists/${listIdOrTitle}/items/${itemId}`;
 	try {
 		await microsoftApiRequest.call(
 			this,
 			'PATCH',
-			`${itemPath}/fields`,
+			requestPath`${itemPath}/fields`,
 			fields,
 			{},
 			undefined,

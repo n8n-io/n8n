@@ -1,4 +1,5 @@
 import type { ILoadOptionsFunctions, INodeParameterResourceLocator } from 'n8n-workflow';
+import { requestUrl } from 'n8n-workflow';
 
 import { AzureStorage } from '../../AzureStorage.node';
 import { XMsVersion } from '../../GenericFunctions';
@@ -44,7 +45,7 @@ describe('Azure Storage Node', () => {
 
 			expect(mockRequestWithAuthentication).toHaveBeenCalledWith('azureStorageSharedKeyApi', {
 				method: 'GET',
-				url: `${baseUrl}/mycontainer`,
+				url: requestUrl`${baseUrl}/mycontainer`,
 				headers: {
 					'x-ms-date': 'Wed, 01 Jan 2025 00:00:00 GMT',
 					'x-ms-version': XMsVersion,
@@ -94,7 +95,7 @@ describe('Azure Storage Node', () => {
 
 			expect(mockRequestWithAuthentication).toHaveBeenCalledWith('azureStorageSharedKeyApi', {
 				method: 'GET',
-				url: `${baseUrl}/`,
+				url: requestUrl`${baseUrl}/`,
 				headers: {
 					'x-ms-date': 'Wed, 01 Jan 2025 00:00:00 GMT',
 					'x-ms-version': XMsVersion,
@@ -132,7 +133,30 @@ describe('Azure Storage Node', () => {
 			expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
 				'azureStorageSharedKeyApi',
 				expect.objectContaining({
-					url: 'https://myaccount.blob.core.chinacloudapi.cn/mycontainer',
+					url: requestUrl`https://myaccount.blob.core.chinacloudapi.cn/mycontainer`,
+				}),
+			);
+		});
+
+		it('should encode a container name with a slash as one path segment', async () => {
+			const mockRequestWithAuthentication = vi.fn().mockReturnValue(blobListResponse);
+			const mockContext = {
+				getCredentials: vi.fn(async () => credentials.azureStorageSharedKeyApi),
+				getNodeParameter: vi.fn((parameterName: string) =>
+					parameterName === 'authentication' ? 'sharedKey' : { value: 'mycontainer/other' },
+				),
+				helpers: {
+					requestWithAuthentication: mockRequestWithAuthentication,
+				},
+			} as unknown as ILoadOptionsFunctions;
+			const node = new AzureStorage();
+
+			await node.methods.listSearch.getBlobs.call(mockContext);
+
+			expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
+				'azureStorageSharedKeyApi',
+				expect.objectContaining({
+					url: requestUrl`${baseUrl}/mycontainer%2Fother`,
 				}),
 			);
 		});

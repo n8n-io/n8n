@@ -33,7 +33,6 @@ import { useRouter } from 'vue-router';
 
 import { useLatestFetch } from '@n8n/composables/useLatestFetch';
 import PromotionEnvironmentCard from '../components/PromotionEnvironmentCard.vue';
-import { invalidateInstancePromotionConnection } from '../composables/useInstancePromotionConnection';
 import { useInstanceProtection } from '../composables/useInstanceProtection';
 import { usePromotionCheckout } from '../composables/usePromotionCheckout';
 import {
@@ -74,7 +73,7 @@ const {
 const environments = ref<Partial<Record<PromotionDirection, PromotionEnvironment>>>({});
 const isInitialLoading = ref(true);
 const loadError = ref(false);
-const busy = reactive(new Map<string, 'retry' | 'remove'>());
+const busy = reactive(new Map<string, 'connect' | 'remove'>());
 const addButtons: Partial<Record<PromotionDirection, Element | ComponentPublicInstance | null>> =
 	{};
 
@@ -103,9 +102,16 @@ onMounted(async () => {
 	await Promise.all([load(), loadProtection()]);
 });
 
-async function retry(environment: PromotionEnvironment) {
-	busy.set(environment.id, 'retry');
-	if (await connect(environment.id)) await load();
+async function testConnection(environment: PromotionEnvironment) {
+	busy.set(environment.id, 'connect');
+	if (await connect(environment.id)) {
+		toast.showMessage({
+			title: i18n.baseText('settings.promotions.environment.toast.connected', {
+				interpolate: { name: environment.name },
+			}),
+			type: 'success',
+		});
+	}
 	busy.delete(environment.id);
 }
 
@@ -145,7 +151,6 @@ async function remove(environment: PromotionEnvironment) {
 		toast.showError(error, i18n.baseText('settings.promotions.provider.toast.error.delete'));
 	}
 	connectErrors.delete(environment.id);
-	invalidateInstancePromotionConnection();
 	await load();
 	busy.delete(environment.id);
 	toast.showMessage({
@@ -211,7 +216,7 @@ async function remove(environment: PromotionEnvironment) {
 							:connect-error="connectErrors.get(environments[direction].id)"
 							:can-connect="canConnect"
 							:data-test-id="`promotion-environment-card-${direction}`"
-							@retry="retry(environments[direction])"
+							@connect="testConnection(environments[direction])"
 							@edit="
 								router.push({
 									name: PROMOTIONS_ENVIRONMENT_EDIT_VIEW,

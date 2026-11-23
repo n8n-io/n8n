@@ -101,12 +101,14 @@ describe('InstanceAiConversation — unsent draft during floating confirmations'
 	async function renderWithDraft() {
 		const view = renderConversation();
 		const textbox = view.getByRole<HTMLTextAreaElement>('textbox');
-		await userEvent.type(textbox, 'Testing123 ');
 		await userEvent.click(view.getByTestId('mention-picker-select'));
+		// Set the draft text explicitly. Mention selection can leave the text unchanged.
+		await userEvent.clear(textbox);
+		await userEvent.type(textbox, 'Testing123 "Orders"');
 		await fireEvent.paste(textbox, {
 			clipboardData: { files: [new File(['a,b'], 'orders.csv', { type: 'text/csv' })] },
 		});
-		expect(textbox.value).toContain('Testing123');
+		expectDraft(view, 'Testing123 "Orders"');
 		return { view, draftText: textbox.value };
 	}
 
@@ -118,7 +120,7 @@ describe('InstanceAiConversation — unsent draft during floating confirmations'
 	function expectDraft(view: ReturnType<typeof renderConversation>, draftText: string) {
 		expect(view.getByRole('textbox')).toHaveValue(draftText);
 		expect(view.getByTestId('attachment-preview-resource')).toHaveTextContent('Orders');
-		expect(view.getByText('orders.csv')).toBeInTheDocument();
+		expect(view.getByTitle('orders.csv')).toBeInTheDocument();
 	}
 
 	it('keeps the same composer and its draft through a floating approval', async () => {
@@ -169,6 +171,6 @@ describe('InstanceAiConversation — unsent draft during floating confirmations'
 
 		expect(secondView.getByRole('textbox')).toHaveValue('');
 		expect(secondView.queryByTestId('attachment-preview-resource')).not.toBeInTheDocument();
-		expect(secondView.queryByText('orders.csv')).not.toBeInTheDocument();
+		expect(secondView.queryByTitle('orders.csv')).not.toBeInTheDocument();
 	});
 });

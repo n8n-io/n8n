@@ -280,7 +280,11 @@ describe('MoveToFolderModal', () => {
 		expect(screen.getByTestId('move-modal-description')).toBeInTheDocument();
 	});
 
-	it('should not see the project sharing select without sharing license', async () => {
+	it('should not see the project sharing select without team projects', async () => {
+		settingsStore.settings = {
+			enterprise: { sharing: true, projects: { team: { limit: 0 } } },
+		} as FrontendSettings;
+
 		const { getByTestId, queryByTestId } = renderComponent({
 			props: {
 				data: {
@@ -296,9 +300,7 @@ describe('MoveToFolderModal', () => {
 		expect(queryByTestId('project-sharing-select')).not.toBeInTheDocument();
 	});
 
-	it('should see the project sharing select with sharing license', async () => {
-		settingsStore.settings = enableSharing;
-
+	it('should see the project sharing select with team projects and without sharing license', async () => {
 		const { getByTestId } = renderComponent({
 			props: {
 				data: {
@@ -412,6 +414,48 @@ describe('MoveToFolderModal', () => {
 
 		expect(getByTestId('move-modal-share-credentials-checkbox')).not.toBeChecked();
 		expect(getByTestId('move-modal-used-credentials-warning')).toBeInTheDocument();
+	});
+
+	it('should not offer to share credentials without sharing license', async () => {
+		credentialsStore.fetchAllCredentials = vi.fn().mockResolvedValue([shareableCredential]);
+		foldersStore.fetchFolderUsedCredentials = vi.fn().mockResolvedValue([shareableUsedCredential]);
+
+		const { getByTestId, getByText, queryByTestId } = renderComponent({
+			props: {
+				data: {
+					resource: TEST_FOLDER_RESOURCE,
+					resourceType: 'folder',
+					workflowListEventBus: mockEventBus,
+				},
+			},
+		});
+
+		await waitFor(() => expect(getByTestId('moveFolder-modal')).toBeInTheDocument());
+
+		const projectSelect = getByTestId('project-sharing-select');
+		await userEvent.click(projectSelect);
+		const projectSelectDropdownItems = await getDropdownItems(projectSelect);
+		const teamProject = [...projectSelectDropdownItems].find(
+			(item) => item.querySelector('p')?.textContent?.trim() === teamProjects[0].name,
+		);
+		await userEvent.click(teamProject as Element);
+
+		await waitFor(() => expect(getByText(/can't be shared/)).toBeInTheDocument());
+		expect(queryByTestId('move-modal-share-credentials-checkbox')).not.toBeInTheDocument();
+
+		const submitButton = getByTestId('confirm-move-folder-button');
+		await waitFor(() => expect(submitButton).toBeEnabled());
+		await userEvent.click(submitButton);
+
+		await waitFor(() =>
+			expect(foldersStore.moveFolderToProject).toHaveBeenCalledWith(
+				personalProject.id,
+				TEST_FOLDER_RESOURCE.id,
+				teamProjects[0].id,
+				undefined,
+				undefined,
+			),
+		);
 	});
 
 	it('should select a folder with the picker', async () => {

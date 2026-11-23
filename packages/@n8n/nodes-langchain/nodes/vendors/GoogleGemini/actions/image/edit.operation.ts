@@ -1,9 +1,12 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
-import { NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
+import { NodeOperationError, requestPath, updateDisplayOptions } from 'n8n-workflow';
 
-import type { GenerateContentResponse } from '../../helpers/interfaces';
+import {
+	assertGenerateContentResponse,
+	assertResponseHasCandidates,
+} from '../../helpers/candidates';
 import { getFilenameFromMimeType, uploadFile } from '../../helpers/utils';
-import { apiRequest } from '../../transport';
+import { apiRequest, modelPath } from '../../transport';
 import { modelRLC } from '../descriptions';
 
 interface ImagesParameter {
@@ -39,38 +42,6 @@ function isImagesParameter(param: unknown): param is ImagesParameter {
 		return (
 			typeof itemObj.binaryPropertyName === 'string' || itemObj.binaryPropertyName === undefined
 		);
-	});
-}
-
-function isGenerateContentResponse(response: unknown): response is GenerateContentResponse {
-	if (typeof response !== 'object' || response === null) {
-		return false;
-	}
-
-	const responseObj = response as Record<string, unknown>;
-
-	if (!('candidates' in responseObj) || !Array.isArray(responseObj.candidates)) {
-		return false;
-	}
-
-	return responseObj.candidates.every((candidate: unknown) => {
-		if (typeof candidate !== 'object' || candidate === null) {
-			return false;
-		}
-
-		const candidateObj = candidate as Record<string, unknown>;
-
-		if (
-			!('content' in candidateObj) ||
-			typeof candidateObj.content !== 'object' ||
-			candidateObj.content === null
-		) {
-			return false;
-		}
-
-		const contentObj = candidateObj.content as Record<string, unknown>;
-
-		return 'parts' in contentObj && Array.isArray(contentObj.parts);
 	});
 }
 
@@ -197,18 +168,17 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const response: unknown = await apiRequest.call(
 		this,
 		'POST',
-		`/v1beta/${model}:generateContent`,
+		requestPath`/v1beta${modelPath.call(this, model)}:generateContent`,
 		{
 			body,
 		},
 	);
 
-	if (!isGenerateContentResponse(response)) {
-		throw new Error('Invalid response format from Gemini API');
-	}
+	assertGenerateContentResponse(response);
+	assertResponseHasCandidates(response);
 
 	const promises = response.candidates.map(async (candidate) => {
-		const imagePart = candidate.content.parts.find((part) => 'inlineData' in part);
+		const imagePart = candidate.content?.parts.find((part) => 'inlineData' in part);
 
 		// Check if imagePart exists and has inlineData with actual data
 		if (!imagePart?.inlineData?.data) {

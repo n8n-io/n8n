@@ -109,6 +109,7 @@ onMounted(() => {
 
 	void store.loadThreads();
 	void useAssistantCreditsStore().fetchCredits();
+	void settingsStore.fetchPreferences();
 	void nodeTypesStore.loadNodeTypesIfNotLoaded();
 
 	// Subscribe to push + fetch backend Browser Use state.

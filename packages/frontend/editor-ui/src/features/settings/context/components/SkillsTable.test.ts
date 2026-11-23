@@ -1,12 +1,20 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
-import type { SkillDetail, SkillListItem } from '@n8n/api-types';
+import type {
+	SkillDetail,
+	SkillListCollapsedSource,
+	SkillListItem,
+	SkillListSourceRange,
+	SkillSourceListItem,
+} from '@n8n/api-types';
 import { STORES } from '@n8n/stores';
 import userEvent from '@testing-library/user-event';
 import { waitFor, within } from '@testing-library/vue';
 
 import SkillsTable from './SkillsTable.vue';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
 import { useSkillsStore } from '../skills.store';
 
 const push = vi.fn();
@@ -41,7 +49,7 @@ function skill(overrides: Partial<SkillListItem> = {}): SkillListItem {
 		canDelete: true,
 		canStopSyncing: false,
 		syncState: null,
-		canCheckForUpdates: false,
+		sourceId: null,
 		createdAt: '2026-10-01T00:00:00.000Z',
 		updatedAt: '2026-10-01T00:00:00.000Z',
 		...overrides,
@@ -119,6 +127,36 @@ describe('SkillsTable', () => {
 		expect(getByTestId('skill-scope-badge')).toHaveTextContent(label);
 	});
 
+	it('shows the project icon beside a skill scope', () => {
+		mockedStore(useProjectsStore).myProjects = [
+			{ id: 'team-1', name: 'Marketing', type: 'team', icon: { type: 'emoji', value: '🚀' } },
+		] as ProjectListItem[];
+		const { getByTestId } = render([
+			skill({
+				scope: 'project',
+				projectId: 'team-1',
+				projectName: 'Marketing',
+				projectType: 'team',
+			}),
+		]);
+
+		expect(getByTestId('skill-scope-badge')).toHaveTextContent(/🚀\s*Marketing/);
+	});
+
+	it('shows the project icon from the server when the project is not listed', () => {
+		const { getByTestId } = render([
+			skill({
+				scope: 'project',
+				projectId: 'team-unlisted',
+				projectName: 'Finance',
+				projectType: 'team',
+				projectIcon: { type: 'emoji', value: '💰' },
+			}),
+		]);
+
+		expect(getByTestId('skill-scope-badge')).toHaveTextContent(/💰\s*Finance/);
+	});
+
 	it('shows the creator name and email without an avatar', () => {
 		const { getByTestId } = render([
 			skill({
@@ -154,10 +192,11 @@ describe('SkillsTable', () => {
 		expect(queryByTestId('skill-available-to-mcp-icon')).not.toBeInTheDocument();
 	});
 
-	it('shows a dash for a skill that no agent uses', () => {
+	it('leaves the Agents cell empty for a skill that no agent uses', () => {
 		const { getByTestId, queryByTestId } = render([skill({ usedByAgents: 0 })]);
 
-		expect(getByTestId('skill-agents-none')).toHaveTextContent('—');
+		const row = getByTestId('skill-name').closest('tr');
+		expect(row?.querySelectorAll('td')[2].textContent?.trim()).toBe('');
 		expect(queryByTestId('skill-agents-trigger')).not.toBeInTheDocument();
 	});
 
@@ -335,42 +374,348 @@ describe('SkillsTable', () => {
 		expect(emitted('stopSyncing')).toEqual([[row]]);
 	});
 
-	it('emits checkForUpdates for a synced skill the user may check', async () => {
-		const row = skill({ source: 'github', canEdit: false, canCheckForUpdates: true });
-		const { getByTestId, emitted } = render([row]);
+	describe('sources', () => {
+		const source = (overrides: Partial<SkillSourceListItem> = {}): SkillSourceListItem => ({
+			id: 'src-1',
+			type: 'github',
+			label: 'acme/skills',
+			ref: 'main',
+			path: '',
+			webUrl: 'https://github.com/acme/skills/tree/main',
+			projectId: 'team-1',
+			projectName: 'Marketing',
+			projectType: 'team',
+			projectIcon: null,
+			skillCount: 2,
+			updatesAvailable: 0,
+			updatesBlocked: 0,
+			newSkillsAvailable: 0,
+			health: 'connected',
+			lastCheckedAt: null,
+			missingSkills: [],
+			canReplaceCredential: false,
+			canReview: true,
+			canImport: true,
+			canMove: true,
+			canDelete: true,
+			...overrides,
+		});
 
-		await openActions(getByTestId('skills-table'));
-		await waitFor(() =>
-			expect(document.querySelector('[data-test-id="action-checkForUpdates"]')).toHaveTextContent(
-				'Check for updates',
-			),
+		const synced = (id: string, sourceId = 'src-1') =>
+			skill({ id, name: id, source: 'github', canEdit: false, sourceId });
+
+		function renderGrouped(
+			props: Partial<{
+				skills: SkillListItem[];
+				sources: SkillSourceListItem[];
+				collapsedSourceIds: string[];
+				collapsedSources: SkillListCollapsedSource[];
+				sourceRanges: SkillListSourceRange[];
+				checkingSourceIds: string[];
+			}> = {},
+		) {
+			const skills = props.skills ?? [
+				synced('a'),
+				synced('b'),
+				skill({ id: 'local', name: 'local' }),
+			];
+			return renderTable({
+				props: {
+					skills,
+					itemsLength: skills.length,
+					loading: false,
+					sources: [source()],
+					...props,
+				},
+			});
+		}
+
+		it('heads the synced skills with a row for their source', () => {
+			const { getAllByTestId, getByTestId } = renderGrouped();
+
+			expect(getAllByTestId('data-table-group-row')).toHaveLength(1);
+			expect(getByTestId('skill-group-title')).toHaveTextContent('acme/skills · main');
+			expect(getAllByTestId('skill-scope-badge')[0]).toHaveTextContent('Marketing');
+		});
+
+		it('opens the shared review from the new count', async () => {
+			const current = source({ newSkillsAvailable: 2 });
+			const view = renderGrouped({ sources: [current] });
+			const badge = view.getByTestId('skill-group-review-new');
+			expect(badge).toHaveTextContent('2 new');
+			expect(view.getByTestId('skill-group-new-dot').className).toMatch(/success/);
+			await userEvent.click(badge);
+			expect(view.emitted().reviewSource).toEqual([[current]]);
+		});
+
+		it('offers explicit review without a new count so initial omissions remain reachable', async () => {
+			const current = source();
+			const view = renderGrouped({ sources: [current] });
+			await userEvent.click(within(view.getByTestId('skill-group-actions')).getByRole('button'));
+			await waitFor(() =>
+				expect(document.querySelector('[data-test-id="action-reviewSkills"]')).toBeInTheDocument(),
+			);
+			await userEvent.click(document.querySelector('[data-test-id="action-reviewSkills"]')!);
+			expect(view.emitted().reviewSource).toEqual([[current]]);
+		});
+
+		it('names a source that has not loaded as unknown', () => {
+			const { getByTestId } = renderGrouped({ sources: [] });
+
+			expect(getByTestId('skill-group-title')).toHaveTextContent('Unknown source');
+		});
+
+		it.each([
+			{ start: 1, end: 9, text: '1–9 of 26 skills' },
+			{ start: 10, end: 19, text: '10–19 of 26 skills' },
+			{ start: 20, end: 26, text: '20–26 of 26 skills' },
+			{ start: 26, end: 26, text: '26 of 26 skills' },
+		])('shows the source range $text on an expanded page', ({ start, end, text }) => {
+			const { getByTestId } = renderGrouped({
+				skills: Array.from({ length: end - start + 1 }, (_, index) => synced(`skill-${index}`)),
+				sourceRanges: [{ sourceId: 'src-1', start, end, total: 26 }],
+			});
+			expect(getByTestId('skill-group-count')).toHaveTextContent(text);
+			expect(getByTestId('skill-group-toggle')).toHaveAccessibleDescription(text);
+		});
+
+		it('shows a filtered source count only when its complete group is folded', async () => {
+			const { queryByTestId, getByTestId, rerender } = renderGrouped({
+				sources: [source({ skillCount: 26 })],
+				sourceRanges: [{ sourceId: 'src-1', start: 1, end: 2, total: 2 }],
+			});
+			expect(queryByTestId('skill-group-count')).not.toBeInTheDocument();
+			await rerender({ collapsedSourceIds: ['src-1'] });
+			expect(getByTestId('skill-group-count')).toHaveTextContent('2 skills');
+			await rerender({ collapsedSourceIds: [] });
+			expect(queryByTestId('skill-group-count')).not.toBeInTheDocument();
+		});
+
+		it('names the source menu and keeps health visible without review permission', () => {
+			const { getByRole, queryByTestId } = renderGrouped({
+				sources: [source({ canReview: false, health: 'source_unavailable', updatesAvailable: 2 })],
+			});
+
+			expect(getByRole('button', { name: 'Actions for acme/skills · main' })).toBeInTheDocument();
+			expect(getByRole('button', { name: 'Source unavailable' })).toBeInTheDocument();
+			expect(queryByTestId('skill-group-updates')).toBeNull();
+		});
+
+		it('shows the configured project icon on the source scope badge', () => {
+			const { getAllByTestId } = renderGrouped({
+				sources: [source({ projectIcon: { type: 'emoji', value: '🚀' } })],
+			});
+			expect(getAllByTestId('skill-scope-badge')[0]).toHaveTextContent('🚀');
+			expect(getAllByTestId('skill-scope-badge')[1]).not.toHaveTextContent('🚀');
+		});
+
+		it('folds and unfolds a source from its row', async () => {
+			const { getByTestId, emitted } = renderGrouped();
+
+			await userEvent.click(getByTestId('skill-group-toggle'));
+
+			expect(emitted('toggleSource')).toEqual([['src-1']]);
+			expect(getByTestId('skill-group-toggle')).toHaveAttribute('aria-expanded', 'true');
+		});
+
+		it('hides the skills of a folded source and keeps its row', () => {
+			const { getAllByTestId, queryByText, getByTestId } = renderGrouped({
+				skills: [synced('a'), skill({ id: 'local', name: 'local' })],
+				collapsedSourceIds: ['src-1'],
+			});
+
+			expect(getAllByTestId('data-table-group-row')).toHaveLength(1);
+			expect(getByTestId('skill-group-toggle')).toHaveAttribute('aria-expanded', 'false');
+			expect(queryByText('a')).toBeNull();
+		});
+
+		it('places a folded source before the server-selected row when its skills are absent', () => {
+			const { container, getByTestId } = renderGrouped({
+				skills: [skill({ id: 'local', name: 'local' })],
+				collapsedSourceIds: ['src-1'],
+				collapsedSources: [{ sourceId: 'src-1', index: 0, skillCount: 2 }],
+			});
+
+			const rows = container.querySelectorAll<HTMLTableRowElement>('tbody tr');
+			expect(rows).toHaveLength(2);
+			expect(within(rows[0]).getByTestId('skill-group-title')).toHaveTextContent('acme/skills');
+			expect(within(rows[1]).getByText('local')).toBeInTheDocument();
+			expect(getByTestId('skill-group-toggle')).toHaveAttribute('aria-expanded', 'false');
+		});
+
+		it('keeps a row for a source with no synced skills, with nothing to fold', () => {
+			const empty = source({ id: 'src-2', label: 'acme/empty', skillCount: 0 });
+			const { getByTestId, queryByTestId } = renderGrouped({
+				skills: [],
+				sources: [empty],
+				collapsedSources: [{ sourceId: empty.id, index: 0, skillCount: 0 }],
+			});
+
+			expect(getByTestId('skill-group-title')).toHaveTextContent('acme/empty · main');
+			expect(getByTestId('skill-group-empty')).toHaveTextContent('No synced skills');
+			expect(queryByTestId('skill-group-toggle')).toBeNull();
+		});
+
+		it.each([
+			{ available: 2, blocked: 1, text: '3 updates', red: false },
+			{ available: 0, blocked: 1, text: '1 blocked update', red: true },
+		])(
+			'shows $text, red only when every update is blocked',
+			({ available, blocked, text, red }) => {
+				const { getByTestId } = renderGrouped({
+					sources: [source({ updatesAvailable: available, updatesBlocked: blocked })],
+				});
+
+				expect(getByTestId('skill-group-review-updates')).toHaveAccessibleName(text);
+				expect(getByTestId('skill-group-update-status').className).toMatch(
+					red ? /danger/ : /warning/,
+				);
+			},
 		);
-		await userEvent.click(document.querySelector('[data-test-id="action-checkForUpdates"]')!);
 
-		expect(emitted('checkForUpdates')).toEqual([[row]]);
+		it('opens the source review without folding the source', async () => {
+			const current = source({ updatesAvailable: 1 });
+			const { getByTestId, emitted } = renderGrouped({ sources: [current] });
+			await userEvent.click(getByTestId('skill-group-updates'));
+			expect(emitted('reviewSource')).toEqual([[current]]);
+			expect(emitted('toggleSource')).toBeUndefined();
+		});
+
+		it('shows no update badge to a user who cannot review, and only Open in GitHub', async () => {
+			const { getByTestId, queryByTestId } = renderGrouped({
+				sources: [
+					source({ updatesAvailable: 2, canReview: false, canMove: false, canDelete: false }),
+				],
+			});
+
+			expect(queryByTestId('skill-group-updates')).toBeNull();
+			await userEvent.click(within(getByTestId('skill-group-actions')).getByRole('button'));
+			await waitFor(() =>
+				expect(document.querySelector('[data-test-id="action-openInGitHub"]')).toBeInTheDocument(),
+			);
+			expect(document.querySelector('[data-test-id="action-checkNow"]')).toBeNull();
+			expect(document.querySelector('[data-test-id="action-deleteSource"]')).toBeNull();
+			expect(document.querySelector('[data-test-id="action-changeScope"]')).toBeNull();
+		});
+
+		it('offers Delete source with delete permission even without update permission', async () => {
+			const row = source({ canReview: false });
+			const { getByTestId, emitted } = renderGrouped({ sources: [row] });
+			await userEvent.click(within(getByTestId('skill-group-actions')).getByRole('button'));
+			await waitFor(() =>
+				expect(document.querySelector('[data-test-id="action-deleteSource"]')).toBeInTheDocument(),
+			);
+			await userEvent.click(document.querySelector('[data-test-id="action-deleteSource"]')!);
+			expect(emitted('deleteSource')).toEqual([[row]]);
+		});
+
+		it('hides Delete source from users with update permission but no delete permission', async () => {
+			const { getByTestId } = renderGrouped({ sources: [source({ canDelete: false })] });
+			await userEvent.click(within(getByTestId('skill-group-actions')).getByRole('button'));
+			await waitFor(() =>
+				expect(document.querySelector('[data-test-id="action-checkNow"]')).toBeInTheDocument(),
+			);
+			expect(document.querySelector('[data-test-id="action-deleteSource"]')).toBeNull();
+		});
+
+		it('checks a source for updates from its menu', async () => {
+			const { getByTestId, emitted } = renderGrouped();
+
+			await userEvent.click(within(getByTestId('skill-group-actions')).getByRole('button'));
+			await waitFor(() =>
+				expect(document.querySelector('[data-test-id="action-checkNow"]')).toHaveTextContent(
+					'Check for updates',
+				),
+			);
+			await userEvent.click(document.querySelector('[data-test-id="action-checkNow"]')!);
+
+			expect(emitted('checkSource')).toEqual([[source()]]);
+		});
+
+		it('offers Change scope based on move permission, independently of review permission', async () => {
+			const item = source({ canReview: false, canMove: true });
+			const { getByTestId, emitted } = renderGrouped({ sources: [item] });
+			await userEvent.click(within(getByTestId('skill-group-actions')).getByRole('button'));
+			await waitFor(() =>
+				expect(document.querySelector('[data-test-id="action-changeScope"]')).toBeInTheDocument(),
+			);
+			await userEvent.click(document.querySelector('[data-test-id="action-changeScope"]')!);
+			expect(emitted('moveSource')).toEqual([[item]]);
+		});
+
+		it('hides Change scope when the source cannot be moved', async () => {
+			const { getByTestId } = renderGrouped({ sources: [source({ canMove: false })] });
+			await userEvent.click(within(getByTestId('skill-group-actions')).getByRole('button'));
+			await waitFor(() =>
+				expect(document.querySelector('[data-test-id="action-openInGitHub"]')).toBeInTheDocument(),
+			);
+			expect(document.querySelector('[data-test-id="action-changeScope"]')).not.toBeInTheDocument();
+		});
+
+		it('offers credential replacement only when the source permits it', async () => {
+			const row = source({ canReplaceCredential: true });
+			const { getByTestId, emitted, rerender } = renderGrouped({ sources: [row] });
+			await userEvent.click(within(getByTestId('skill-group-actions')).getByRole('button'));
+			await waitFor(() =>
+				expect(
+					document.querySelector('[data-test-id="action-replaceCredential"]'),
+				).toBeInTheDocument(),
+			);
+			await userEvent.click(document.querySelector('[data-test-id="action-replaceCredential"]')!);
+			expect(emitted('replaceCredential')).toEqual([[row]]);
+			await rerender({ sources: [source({ canReview: true, canReplaceCredential: false })] });
+			await userEvent.click(within(getByTestId('skill-group-actions')).getByRole('button'));
+			await waitFor(() =>
+				expect(document.querySelector('[data-test-id="action-checkNow"]')).toBeInTheDocument(),
+			);
+			expect(document.querySelector('[data-test-id="action-replaceCredential"]')).toBeNull();
+		});
+
+		it('opens the repository in GitHub', async () => {
+			const open = vi.spyOn(window, 'open').mockReturnValue(null);
+			const { getByTestId } = renderGrouped();
+
+			await userEvent.click(within(getByTestId('skill-group-actions')).getByRole('button'));
+			await waitFor(() =>
+				expect(document.querySelector('[data-test-id="action-openInGitHub"]')).toBeInTheDocument(),
+			);
+			await userEvent.click(document.querySelector('[data-test-id="action-openInGitHub"]')!);
+
+			expect(open).toHaveBeenCalledWith(
+				'https://github.com/acme/skills/tree/main',
+				'_blank',
+				'noopener,noreferrer',
+			);
+		});
+
+		it('shows progress on the row of a source that is being checked', () => {
+			const { getByTestId, queryByTestId } = renderGrouped({
+				sources: [source({ updatesAvailable: 1 })],
+				checkingSourceIds: ['src-1'],
+			});
+
+			expect(getByTestId('skill-group-checking')).toBeInTheDocument();
+			expect(queryByTestId('skill-group-updates')).toBeNull();
+		});
+
+		it('offers no Check for updates on the row of a skill', async () => {
+			const { getAllByTestId } = renderGrouped();
+
+			await openActions(getAllByTestId('skill-actions')[0].closest('tr')!);
+			await waitFor(() =>
+				expect(document.querySelector('[data-test-id="action-download"]')).toBeInTheDocument(),
+			);
+			expect(document.querySelector('[data-test-id="action-checkForUpdates"]')).toBeNull();
+		});
 	});
 
-	it('offers no Check for updates for a skill the user may not check', async () => {
-		const { getByTestId } = render([skill({ source: 'github', canEdit: false })]);
-
-		await openActions(getByTestId('skills-table'));
-
-		await waitFor(() =>
-			expect(document.querySelector('[data-test-id="action-download"]')).toBeInTheDocument(),
-		);
-		expect(
-			document.querySelector('[data-test-id="action-checkForUpdates"]'),
-		).not.toBeInTheDocument();
-	});
-
-	it.each([
-		{ syncState: 'update_available' as const, text: 'Update available' },
-		{ syncState: 'update_blocked' as const, text: 'Update blocked' },
-	])('shows $text on a synced skill whose source has an update', ({ syncState, text }) => {
-		const { getByTestId } = render([skill({ source: 'github', syncState })]);
-
-		expect(getByTestId(`skill-sync-badge-${syncState}`)).toHaveTextContent(text);
-	});
+	it.each(['update_available', 'update_blocked'] as const)(
+		'shows no per-skill badge for %s',
+		(syncState) => {
+			const { queryByTestId } = render([skill({ syncState })]);
+			expect(queryByTestId(/skill-sync-badge/)).toBeNull();
+		},
+	);
 
 	it.each([{ syncState: 'up_to_date' as const }, { syncState: null }])(
 		'shows no sync badge for sync state $syncState',

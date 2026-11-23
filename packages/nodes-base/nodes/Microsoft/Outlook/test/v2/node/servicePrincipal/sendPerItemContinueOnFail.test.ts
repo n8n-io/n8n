@@ -20,12 +20,12 @@ describe('Test MicrosoftOutlookV2, Service Principal => message:send fails only 
 	beforeAll(() => {
 		nock('https://graph.microsoft.com')
 			.matchHeader('Authorization', 'Bearer test-access-token')
-			.post('/v1.0/users/alice%40example.com/sendMail')
+			.post('/v1.0/users/alice@example.com/sendMail')
 			.reply(200, {});
 
 		nock('https://graph.microsoft.com')
 			.matchHeader('Authorization', 'Bearer test-access-token')
-			.post('/v1.0/users/bob%40example.com/sendMail')
+			.post('/v1.0/users/bob@example.com/sendMail')
 			.reply(200, {});
 	});
 

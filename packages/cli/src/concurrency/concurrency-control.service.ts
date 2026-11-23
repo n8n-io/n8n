@@ -1,12 +1,12 @@
 import { Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
-import { ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { WorkflowExecuteMode } from 'n8n-workflow';
 
 import { InvalidConcurrencyLimitError } from '@/errors/invalid-concurrency-limit.error';
 import { UnknownExecutionModeError } from '@/errors/unknown-execution-mode.error';
+import { ExecutionCancelService } from '@/executions/execution-cancel.service';
 import { resolveEvaluationConcurrencyLimit } from '@/evaluation.ee/evaluation-concurrency.helper';
 import { License } from '@/license';
 import { ProductionHold } from '@/memory-guard/production-hold';
@@ -45,7 +45,7 @@ export class ConcurrencyControlService {
 
 	constructor(
 		private readonly logger: Logger,
-		private readonly executionRepository: ExecutionRepository,
+		private readonly executionCancelService: ExecutionCancelService,
 		private readonly telemetry: Telemetry,
 		private readonly eventService: EventService,
 		private readonly globalConfig: GlobalConfig,
@@ -229,10 +229,13 @@ export class ConcurrencyControlService {
 
 		if (executionIdsToCancel.length === 0) return;
 
-		await this.executionRepository.cancelMany(executionIdsToCancel);
+		const { canceled, recorded } =
+			await this.executionCancelService.markAsCanceled(executionIdsToCancel);
+		// Only `execute-batch` calls this, right before it exits.
+		await recorded;
 
 		this.logger.info('Canceled enqueued executions with response promises', {
-			executionIds: executionIdsToCancel,
+			executionIds: canceled.map(({ id }) => id),
 		});
 	}
 

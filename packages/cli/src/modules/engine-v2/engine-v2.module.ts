@@ -16,9 +16,9 @@ import { randomBytes } from 'node:crypto';
  * Main-only. In-process mode is regular mode only: the in-process engine uses
  * `InMemoryWorkQueue`, so its work does not survive the process and cannot be
  * shared with other mains or workers. In `remote` mode (`N8N_ENGINE_MODE`) a
- * separate `n8n engine` process hosts the data plane; this module then starts
- * only the control plane server, the client that dials the engine, and the Redis
- * subscriber of the execution channel.
+ * separate `n8n engine` process hosts the data plane, with its work queues in
+ * Redis; this module then starts only the control plane server, the client that
+ * dials the engine, and the Redis subscriber of the execution channel.
  */
 @BackendModule({ name: 'engine-v2', instanceTypes: ['main'] })
 export class EngineV2Module implements ModuleInterface {
@@ -29,8 +29,8 @@ export class EngineV2Module implements ModuleInterface {
 	async init() {
 		const engineConfig = Container.get(EngineConfig);
 		const logger = Container.get(Logger).scoped('engine-v2');
-		const { EngineTlsMaterial } = await import('./engine-tls-material.js');
-		const tlsMaterial = Container.get(EngineTlsMaterial);
+		const { EngineMtls } = await import('./engine-mtls.js');
+		const mtls = Container.get(EngineMtls);
 
 		if (engineConfig.mode === 'in-process' && Container.get(ExecutionsConfig).mode === 'queue') {
 			throw new UserError('The in-process engine does not support queue mode.');
@@ -38,8 +38,8 @@ export class EngineV2Module implements ModuleInterface {
 
 		if (engineConfig.mode === 'remote') {
 			assertRemoteConfig(engineConfig);
-			tlsMaterial.assertSecureTransport({ N8N_ENGINE_BASE_URL: engineConfig.baseUrl }, logger);
-		} else if (tlsMaterial.tls) {
+			mtls.assertSecureTransport({ N8N_ENGINE_BASE_URL: engineConfig.baseUrl });
+		} else if (mtls.enabled) {
 			throw new UserError(
 				'N8N_ENGINE_TLS_* applies only to N8N_ENGINE_MODE=remote. Both planes run in this process and talk over loopback, so remove the TLS settings.',
 			);
@@ -75,8 +75,16 @@ export class EngineV2Module implements ModuleInterface {
 			Container.get(EngineV2WebhookResponseRegistry).useReceiver(responseReceiver);
 			Container.get(EngineV2LifecycleSubscriptions).useReceiver(lifecycleEventReceiver);
 
+			const { createInMemoryWorkQueues } = await import('@n8n/engine');
+			const queues = createInMemoryWorkQueues({
+				concurrency: {
+					orchestration: engineConfig.orchestrationConcurrency,
+					step: engineConfig.stepConcurrency,
+				},
+				logger,
+			});
 			const { EngineV2Runtime } = await import('./engine-v2.runtime.js');
-			await Container.get(EngineV2Runtime).init({ responseSender, lifecycleEventSender });
+			await Container.get(EngineV2Runtime).init({ responseSender, lifecycleEventSender, queues });
 		} else {
 			// The remote data plane publishes over Redis, so only the subscribing end
 			// runs here.
@@ -163,6 +171,9 @@ export class EngineV2Module implements ModuleInterface {
 		// After the engine, so a step that still runs can resolve credentials.
 		const { EngineControlPlaneServer } = await import('./engine-control-plane-server.js');
 		await Container.get(EngineControlPlaneServer).stop();
+
+		const { EngineMtls } = await import('./engine-mtls.js');
+		Container.get(EngineMtls).close();
 	}
 }
 

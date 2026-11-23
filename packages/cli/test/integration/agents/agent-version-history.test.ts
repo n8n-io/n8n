@@ -4,6 +4,8 @@ import { TransactionRunner, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { randomUUID } from 'node:crypto';
 
+import { createAgent } from '@test-integration/db/agents';
+
 import { AgentDefinitionService } from '@/modules/agents/agent-definition.service';
 import { AgentSkillRefsService } from '@/modules/agents/agent-skill-refs.service';
 import { AgentTaskRepository } from '@/modules/agents/repositories/agent-task.repository';
@@ -58,17 +60,15 @@ describe('Agent version history', () => {
 	beforeEach(async () => {
 		agentId = randomUUID();
 		versionId = randomUUID();
-		await agents.save(
-			agents.create({
-				id: agentId,
-				projectId,
-				name: schema.name,
-				schema,
-				tools: {},
-				integrations: [],
-				versionId,
-			}),
-		);
+		await createAgent({
+			id: agentId,
+			projectId,
+			name: schema.name,
+			schema,
+			tools: {},
+			integrations: [],
+			versionId,
+		});
 		await history.saveVersion({ agentId, versionId, schema, tools: {}, savedBy: owner }, {});
 	});
 
@@ -130,10 +130,33 @@ describe('Agent version history', () => {
 			isActive: false,
 		});
 		expect(summary).not.toHaveProperty('schema');
+		expect(summary.includesN8nChat).toBe(false);
 		await service.updateVersionMetadata(agentId, projectId, versionId, { name: null });
 		expect(await history.findByVersionAndAgentId(versionId, agentId, {})).toMatchObject({
 			name: null,
 			description: 'Ready for support',
+		});
+	});
+
+	it('reports whether a version carries n8n Chat', async () => {
+		const chatVersionId = randomUUID();
+		await history.saveVersion(
+			{
+				agentId,
+				versionId: chatVersionId,
+				schema: { ...schema, integrations: [{ type: 'n8n_chat', credentialId: '' }] },
+				tools: {},
+				savedBy: owner,
+			},
+			{},
+		);
+
+		expect(await service.getVersionSummary(agentId, projectId, chatVersionId)).toMatchObject({
+			versionId: chatVersionId,
+			includesN8nChat: true,
+		});
+		expect(await service.getVersionSummary(agentId, projectId, versionId)).toMatchObject({
+			includesN8nChat: false,
 		});
 	});
 

@@ -12,6 +12,7 @@ import {
 import { useI18n } from '@n8n/i18n';
 import { computed, inject, type Ref } from 'vue';
 import { useBuildingArtifactIds } from '../composables/useBuildingArtifactIds';
+import InstanceAiCloudBrowsersCard from './InstanceAiCloudBrowsersCard.vue';
 import { useArtifactThread } from '../artifactThread';
 import { useInstanceAiStore } from '../instanceAi.store';
 import type { ResourceEntry } from '../useResourceRegistry';
@@ -200,12 +201,12 @@ const contextEntries = computed<ContextEntry[]>(() => {
 		entries.push(pendingEntry);
 	}
 
-	for (const message of [...thread.messages].reverse()) {
-		if (message.role !== 'user' || !message.context) continue;
+	for (const turn of [...thread.artifactTurns].reverse()) {
+		if (turn.role !== 'user' || !turn.context) continue;
 
-		const key = handoffContextKey(message.context);
+		const key = handoffContextKey(turn.context);
 		if (seen.has(key) || dismissedKeys.has(key)) continue;
-		const entry = contextEntryFor(message.context);
+		const entry = contextEntryFor(turn.context);
 		if (!entry) continue;
 		seen.add(key);
 		entries.push(entry);
@@ -390,6 +391,7 @@ async function dismissContext(key: string) {
 				</div>
 			</div>
 		</div>
+		<InstanceAiCloudBrowsersCard />
 	</aside>
 </template>
 

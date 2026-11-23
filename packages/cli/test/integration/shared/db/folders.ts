@@ -1,3 +1,4 @@
+import type { FolderResourceType } from '@n8n/api-types';
 import { randomName } from '@n8n/backend-test-utils';
 import type { Folder, Project, TagEntity } from '@n8n/db';
 import { FolderRepository } from '@n8n/db';
@@ -7,6 +8,7 @@ export const createFolder = async (
 	project: Project,
 	options: {
 		name?: string;
+		resourceType?: FolderResourceType;
 		parentFolder?: Folder;
 		tags?: TagEntity[];
 		updatedAt?: Date;
@@ -17,6 +19,7 @@ export const createFolder = async (
 	const folder = await folderRepository.save(
 		folderRepository.create({
 			name: options.name ?? randomName(),
+			resourceType: options.resourceType ?? 'workflow',
 			homeProject: project,
 			parentFolder: options.parentFolder ?? null,
 			tags: options.tags ?? [],

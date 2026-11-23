@@ -102,6 +102,7 @@ export class CredentialsController {
 			includeData: query.includeData,
 			onlySharedWithMe: query.onlySharedWithMe,
 			includeGlobal: query.includeGlobal,
+			includeRestrictions: query.includeRestrictions,
 			filters: {
 				externalSecretsStore: query.externalSecretsStore,
 			},
@@ -140,15 +141,23 @@ export class CredentialsController {
 
 	@Get('/for-workflow')
 	async getProjectCredentials(req: CredentialRequest.ForWorkflow) {
-		const { forAgent, ...scope } = z
+		const { forAgent, forAssistant, ...scope } = z
 			.union([z.object({ workflowId: z.string() }), z.object({ projectId: z.string() })])
-			.and(z.object({ forAgent: z.enum(['true', 'false']).optional() }))
+			.and(
+				z.object({
+					forAgent: z.enum(['true', 'false']).optional(),
+					forAssistant: z.enum(['true', 'false']).optional(),
+				}),
+			)
 			.parse(req.query);
-		return await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(req.user, {
+		const options = {
 			...scope,
 			excludePersonalRoute: forAgent === 'true',
 			excludeResolvable: forAgent === 'true',
-		});
+		};
+		return forAssistant === 'true'
+			? await this.credentialsService.getCredentialsAUserCanUseThemselves(req.user, options)
+			: await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(req.user, options);
 	}
 
 	@Get('/new')

@@ -168,4 +168,25 @@ export class WorkflowReviewRequestRepository extends BaseRepository<WorkflowRevi
 			.orderBy('request.createdAt', 'DESC')
 			.getOne();
 	}
+
+	/** An approval stays valid for its version wherever the workflow lives now. */
+	async hasApprovedReviewForVersion(
+		workflowId: string,
+		workflowVersionId: string,
+		ctx: OperationContext,
+	): Promise<boolean> {
+		const decision: WorkflowReviewRequestDecision = 'approved';
+
+		return await this.managerFor(ctx)
+			.createQueryBuilder(WorkflowReviewRequest, 'request')
+			.innerJoin(
+				WorkflowReviewRequestWorkflow,
+				'requestWorkflow',
+				'requestWorkflow.workflowReviewRequestId = request.id',
+			)
+			.where('requestWorkflow.workflowId = :workflowId', { workflowId })
+			.andWhere('requestWorkflow.workflowVersionId = :workflowVersionId', { workflowVersionId })
+			.andWhere('request.decision = :decision', { decision })
+			.getExists();
+	}
 }

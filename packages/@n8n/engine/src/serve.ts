@@ -5,9 +5,10 @@ import { AllowAllAdmittance } from './admittance';
 import { SharedSecretIdentityVerifier } from './auth';
 import { createDataSource } from './database';
 import { createConsoleLogger } from './logging';
+import { createInMemoryWorkQueues } from './queue';
 import { noopExecutionResponseSender } from './response-channel';
 import { createEngineRuntime } from './runtime';
-import { assertSecureTransport, createEngineHttpServer, loadEngineTls } from './tls';
+import { assertSecureTransport, createEngineHttpServer, openEngineTls } from './tls';
 
 const logger = createConsoleLogger();
 
@@ -25,10 +26,13 @@ async function main(): Promise<void> {
 	}
 
 	// Before the database, so a bad certificate fails the boot in a second.
-	const tls = loadEngineTls(config);
-	assertSecureTransport(config, tls, {}, logger);
+	const tls = openEngineTls(config, logger);
+	assertSecureTransport(config, tls !== undefined, {}, logger);
 
-	const dataSource = createDataSource(config.databaseUrl);
+	const dataSource = createDataSource(config.databaseUrl, {
+		poolSize: config.databasePoolSize,
+		connectTimeoutMS: config.databaseConnectionTimeoutMs,
+	});
 	await dataSource.initialize();
 	await dataSource.runMigrations();
 
@@ -40,6 +44,13 @@ async function main(): Promise<void> {
 		// Nothing in this process waits for a response: the caller reads the run
 		// over the API instead.
 		responseSender: noopExecutionResponseSender,
+		queues: createInMemoryWorkQueues({
+			concurrency: {
+				step: config.stepConcurrency,
+				orchestration: config.orchestrationConcurrency,
+			},
+			logger,
+		}),
 	});
 	runtime.start();
 
@@ -52,6 +63,7 @@ async function main(): Promise<void> {
 		if (shuttingDown) return;
 		shuttingDown = true;
 		logger.info(`received ${signal}, shutting down`);
+		tls?.close();
 		await new Promise<void>((resolve, reject) => {
 			server.close((error) => (error ? reject(error) : resolve()));
 		});

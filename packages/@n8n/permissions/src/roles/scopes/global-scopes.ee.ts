@@ -113,6 +113,7 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'aiPreference:update',
 	'aiPreference:delete',
 	'aiPreference:list',
+	'aiPreference:manage',
 	'projectAiPreference:create',
 	'projectAiPreference:read',
 	'projectAiPreference:update',
@@ -123,6 +124,7 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'skill:update',
 	'skill:delete',
 	'skill:list',
+	'skill:manage',
 	'projectSkill:create',
 	'projectSkill:read',
 	'projectSkill:update',
@@ -192,6 +194,10 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'execution:list',
 	'execution:reveal',
 	'execution:delete',
+	'executionLimit:read',
+	'executionLimit:update',
+	'projectExecutionLimit:read',
+	'projectExecutionLimit:update',
 	'apiKey:manage',
 	'apiKey:create',
 	'apiKey:update',
@@ -262,3 +268,6 @@ export const GLOBAL_CHAT_USER_SCOPES: Scope[] = [
 	'chatHubAgent:delete',
 	'chatHubAgent:list',
 ];
+
+/** An agent gets access only through shares to its personal project, never from its global role. */
+export const GLOBAL_AGENT_SCOPES: Scope[] = [];

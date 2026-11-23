@@ -4,6 +4,10 @@ import { z } from 'zod';
 
 import { dataTableColumnTypeSchema } from '../../schemas/data-table.schema';
 import { projectIconSchema } from '../../schemas/project.schema';
+import {
+	dataTableUnresolvedKindSchema,
+	tagUnresolvedKindSchema,
+} from '../packages/import-blocking-issue.schema';
 import { variableTypeSchema, variableValueSchema } from '../variables/base.dto';
 
 const sourceId = z.string().min(1);
@@ -227,7 +231,8 @@ export const promotionBindingConflictSchema = z.discriminatedUnion('code', [
 		code: z.literal('data-table-conflict'),
 		id: sourceId.optional(),
 		name: z.string().optional(),
-		reason: z.string(),
+		/** The import's cause. The UI shows a message for each cause. */
+		reason: dataTableUnresolvedKindSchema,
 		consumers: consumersSchema,
 	}),
 	z.object({
@@ -235,7 +240,8 @@ export const promotionBindingConflictSchema = z.discriminatedUnion('code', [
 		code: z.literal('tag-conflict'),
 		id: sourceId.optional(),
 		name: z.string().optional(),
-		reason: z.string(),
+		/** The import's cause. The UI shows a message for each cause. */
+		reason: tagUnresolvedKindSchema,
 		consumers: consumersSchema,
 	}),
 	/** Stops every workflow of the project. */

@@ -4,7 +4,7 @@ import { test, expect } from '../../../fixtures/base';
 test.describe(
 	'ADO-5808 Node error reappears on replacing with different node',
 	{
-		annotation: [{ type: 'owner', description: 'Catalysts' }],
+		annotation: [{ type: 'owner', description: 'Core Application' }],
 	},
 	() => {
 		test('should not show the deleted node execution data on a new node reusing its name', async ({

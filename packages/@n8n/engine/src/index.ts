@@ -3,8 +3,8 @@ export type { EngineRuntime, EngineRuntimeOptions } from './runtime';
 
 export type { EngineLogger } from './logging';
 
-export { assertSecureTransport, createEngineHttpServer, loadEngineTls } from './tls';
-export type { EngineTls, EngineTlsFiles } from './tls';
+export { assertSecureTransport, createEngineHttpServer, openEngineTls } from './tls';
+export type { EngineTls, EngineTlsFiles, EngineTlsSource } from './tls';
 
 export {
 	ACTION_TOKEN_SPEC,
@@ -87,7 +87,7 @@ export type {
 export { jsonObjectSchema, UnimplementedError } from './common';
 export type { JsonObject, JsonValue } from './common';
 
-export { deriveLoops, isBatchStepConfig } from './graph';
+export { deriveLoops, isBatchStepConfig, validateExecutableGraph } from './graph';
 export type {
 	BatchStepConfig,
 	GraphEdge,
@@ -119,15 +119,25 @@ export type {
 } from './admittance';
 
 export type {
+	EngineWorkQueues,
 	ExecutionEnqueuedEvent,
 	OrchestrationMessage,
 	StepSettledEvent,
 	StepMessage,
 	StepReadyEvent,
 	WorkQueue,
+	RedisWorkQueues,
+	WorkQueuePublisherClient,
 } from './queue';
+export { createInMemoryWorkQueues, createRedisWorkQueues } from './queue';
 
-export { ExecutionNotFoundError, InvalidParentLinkError, StepNotFoundError } from './execution';
+export {
+	attachStepErrorDetails,
+	ExecutionNotFoundError,
+	InvalidParentLinkError,
+	StepNotFoundError,
+	stepErrorDetails,
+} from './execution';
 export type {
 	CallerContext,
 	SubExecutionOutcome,
@@ -152,6 +162,8 @@ export type {
 	StepRecord,
 	ResumeCause,
 	StepSlots,
+	StepOutputSource,
+	StepOutputSources,
 	StepStatus,
 	StepStore,
 	StepView,

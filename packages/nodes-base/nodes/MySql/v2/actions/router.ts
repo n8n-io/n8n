@@ -38,6 +38,7 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 					items,
 					runQueries,
 					nodeOptions,
+					pool,
 				);
 				break;
 			default:

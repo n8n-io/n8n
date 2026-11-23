@@ -1,0 +1,191 @@
+{
+	"name": "Chargebee Requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "customer",
+				"operation": "create",
+				"properties": {
+					"id": "cus_123",
+					"first_name": "Nathan"
+				}
+			},
+			"id": "node-0",
+			"name": "Customer Create",
+			"type": "n8n-nodes-base.chargebee",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"credentials": {
+				"chargebeeApi": {
+					"id": "1",
+					"name": "Chargebee account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "invoice",
+				"operation": "list",
+				"maxResults": 10,
+				"filters": {}
+			},
+			"id": "node-1",
+			"name": "Invoice List",
+			"type": "n8n-nodes-base.chargebee",
+			"typeVersion": 1,
+			"position": [300, 150],
+			"credentials": {
+				"chargebeeApi": {
+					"id": "1",
+					"name": "Chargebee account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "invoice",
+				"operation": "pdfUrl",
+				"invoiceId": "inv_42"
+			},
+			"id": "node-2",
+			"name": "Invoice PDF URL",
+			"type": "n8n-nodes-base.chargebee",
+			"typeVersion": 1,
+			"position": [300, 300],
+			"credentials": {
+				"chargebeeApi": {
+					"id": "1",
+					"name": "Chargebee account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "subscription",
+				"operation": "cancel",
+				"subscriptionId": "sub_7",
+				"endOfTerm": true
+			},
+			"id": "node-3",
+			"name": "Subscription Cancel",
+			"type": "n8n-nodes-base.chargebee",
+			"typeVersion": 1,
+			"position": [300, 450],
+			"credentials": {
+				"chargebeeApi": {
+					"id": "1",
+					"name": "Chargebee account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "subscription",
+				"operation": "delete",
+				"subscriptionId": "sub_7"
+			},
+			"id": "node-4",
+			"name": "Subscription Delete",
+			"type": "n8n-nodes-base.chargebee",
+			"typeVersion": 1,
+			"position": [300, 600],
+			"credentials": {
+				"chargebeeApi": {
+					"id": "1",
+					"name": "Chargebee account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Customer Create": [
+			{
+				"json": {
+					"customer": {
+						"id": "cus_123",
+						"first_name": "Nathan"
+					}
+				}
+			}
+		],
+		"Invoice List": [
+			{
+				"json": {
+					"id": "inv_42",
+					"status": "paid"
+				}
+			}
+		],
+		"Invoice PDF URL": [
+			{
+				"json": {
+					"pdfUrl": "https://files.example.com/inv_42.pdf"
+				}
+			}
+		],
+		"Subscription Cancel": [
+			{
+				"json": {
+					"subscription": {
+						"id": "sub_7",
+						"status": "cancelled"
+					}
+				}
+			}
+		],
+		"Subscription Delete": [
+			{
+				"json": {
+					"subscription": {
+						"id": "sub_7"
+					}
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Customer Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Invoice List",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Invoice PDF URL",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Subscription Cancel",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Subscription Delete",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

@@ -15,12 +15,13 @@ test.describe(
 		test('should show suggested actions automatically when workflow is first published', async ({
 			n8n,
 		}) => {
-			await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
-
 			await n8n.canvas.clickWorkflowMenu();
+			await expect(n8n.workflowMenu.getSettingsItem()).toBeVisible();
 			await expect(n8n.canvas.getProductionChecklistMenuItem()).toBeHidden();
 			await n8n.page.keyboard.press('Escape');
+			await expect(n8n.workflowMenu.getSettingsItem()).toBeHidden();
 
+			await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
 			await n8n.canvas.publishWorkflow();
 			await expect(n8n.workflowActivationModal.getModal()).toBeVisible();
 			await n8n.workflowActivationModal.close();

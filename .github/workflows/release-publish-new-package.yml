@@ -84,7 +84,7 @@ jobs:
         working-directory: ${{ inputs.package-path }}
         run: |
           npm pkg set version=0.0.0-tp
-          pnpm publish --access public --tag rc --no-git-checks
+          pnpm publish --access public --tag tp-setup --no-git-checks
 
       - name: Check existing trusted publishers
         id: trust

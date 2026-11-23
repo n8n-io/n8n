@@ -29,6 +29,7 @@ export type {
 	ToolApprovalContext,
 	InterruptibleToolContext,
 	ToolSuspendOptions,
+	LegacyCallConverter,
 	CheckpointStore,
 	StreamChunk,
 	Provider,
@@ -106,7 +107,13 @@ export type {
 	BuiltTelemetry,
 	AttributeValue,
 	ObservationCursor,
+	ObservationResumeState,
+	BuiltObservationResumeStore,
 	ObservationalMemoryConfig,
+	ObservationWindowShares,
+	ObservationLogPlacement,
+	ObservationFailurePolicy,
+	ObservationReflectionMode,
 	BuiltObservationLogStore,
 	BuiltObservationLogTaskLockStore,
 	MemoryTaskUsageReport,
@@ -242,7 +249,6 @@ export {
 	renderSkillCatalogPrompt,
 	RUNTIME_SKILL_TOOL_NAMES,
 	RUNTIME_SKILL_FILE_NAME,
-	RUNTIME_SKILL_LIFETIMES,
 	RUNTIME_SKILL_MAX_OUTPUT_BYTES,
 	RUNTIME_SKILL_LINKED_FILE_GROUPS,
 	RUNTIME_SKILL_NAME_PATTERN,
@@ -266,17 +272,12 @@ export type {
 	RuntimeSkillLoader,
 	RuntimeSkillLoadError,
 	RuntimeSkillMcpServerDependency,
-	RuntimeSkillLifetime,
 	RuntimeSkillPolicyContract,
 	RuntimeSkillReferenceContract,
 	RuntimeSkillReferenceLocation,
 	RuntimeSkillRegistry,
 	RuntimeSkillRegistryEntry,
 	RuntimeSkillSource,
-	RuntimeSkillContextUsage,
-	RuntimeSkillState,
-	RuntimeSkillStateScope,
-	RuntimeSkillStateStore,
 	RuntimeSkillValidationError,
 	RuntimeSkillValidationResult,
 } from './skills';
@@ -315,6 +316,7 @@ export type { HandlerExecutor } from './types/sdk/handler-executor';
 export {
 	filterLlmMessages,
 	getCreatedAt,
+	isHostInstruction,
 	isLlmMessage,
 	isRuntimeContextCue,
 } from './sdk/message';
@@ -322,7 +324,7 @@ export {
 	createContextCueProvider,
 	parseAblatedContextCues,
 	whenSkillLoads,
-	whileSkillActive,
+	whileSkillLoaded,
 } from './context-cues';
 export type {
 	ContextCue,
@@ -366,6 +368,11 @@ export {
 	type AzureOpenAiAuthFields,
 } from './runtime/model/provider-credentials';
 export {
+	isSupportedAgentProvider,
+	mapCredentialForProvider,
+	SUPPORTED_AGENT_PROVIDERS,
+} from './runtime/model/credential-field-mapping';
+export {
 	DEFAULT_SUB_AGENT_MAX_CHILDREN,
 	ROOT_SUB_AGENT_TASK_PATH,
 	assertSubAgentTaskPath,
@@ -408,6 +415,7 @@ export { createPlannerTodosTool } from './runtime/tools/planner-todos-tool';
 export type { CreatePlannerTodosToolOptions } from './runtime/tools/planner-todos-tool';
 export type { CreateWriteTodosToolOptions } from './runtime/tools/write-todos-tool';
 export { isAttachmentValidationError } from './runtime/model/attachment-validation-error';
+export { PromptCacheParamsError } from './runtime/model/prompt-cache-params-error';
 export { createEmbeddingModel } from './runtime/model/model-factory';
 export { generateTitleFromMessage } from './runtime/memory/title-generation';
 export {
@@ -462,7 +470,15 @@ export type {
 } from './runtime/memory/memory-lifecycle';
 export { loadReplayedMessages } from './runtime/memory/memory-orchestrator';
 export { settleAbandonedToolCallsInMemory } from './runtime/memory/strip-orphaned-tool-messages';
-export { prepareObservationLogBatchCursor } from './runtime/memory/observation-log-batch';
+export {
+	observationCursorPosition,
+	prepareObservationLogBatchCursor,
+} from './runtime/memory/observation-log-batch';
+export {
+	fromObservationResumeColumns,
+	toObservationResumeColumns,
+	type ObservationResumeColumns,
+} from './runtime/memory/observation-resume-columns';
 export {
 	parseObservationLogMarkdown,
 	renderObserverTranscript,
@@ -567,5 +583,5 @@ export type {
 
 export type { JSONObject, JSONArray, JSONValue } from './types/utils/json';
 
-export { modelConfigToId } from './utils/model';
+export { getCatalogModelId, modelConfigToId } from './utils/model';
 export { isZodSchema, zodToJsonSchema } from './utils/zod';

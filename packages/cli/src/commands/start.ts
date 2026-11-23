@@ -6,6 +6,7 @@ import {
 	RoleCacheService,
 	JwtService,
 	Publisher,
+	PushProxy,
 	Subscriber,
 } from '@n8n/backend-services';
 import { HTML_NONCE_PLACEHOLDER, LICENSE_FEATURES } from '@n8n/constants';
@@ -33,11 +34,13 @@ import { ActiveExecutions } from '@/active-executions';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import config from '@/config';
 import { EDITOR_UI_DIST_DIR, N8N_VERSION } from '@/constants';
+import { CrashLoopRecovery } from '@/crash-loop/crash-loop-recovery';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { DeprecationService } from '@/deprecation/deprecation.service';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { Push } from '@/push';
 import { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
 import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 import { DurableScheduler } from '@/scheduling/durable-scheduler';
@@ -71,7 +74,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 	override needsExpressionEngine = true;
 
-	override needsTaskRunner = true;
+	override needsCodeExecution = true;
 
 	override seedsInstanceIdentity = true;
 
@@ -213,7 +216,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 			scopedLogger.debug(`Host ID: ${this.instanceSettings.hostId}`);
 
 			if (process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true') {
-				this.needsTaskRunner = false;
+				this.needsCodeExecution = false;
 			}
 		}
 
@@ -280,6 +283,11 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 			await this.initInstanceSettingsLoader();
 			this.logger.debug('Instance settings loader init complete');
+
+			const { AiPreferenceSettingsService } = await import(
+				'@/services/ai-preference-settings.service.js'
+			);
+			await Container.get(AiPreferenceSettingsService).init();
 		}
 
 		await this.initBinaryDataService();
@@ -303,6 +311,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 			await this.generateStaticAssets();
 		}
 
+		Container.get(PushProxy).registerProvider(Container.get(Push));
 		await this.moduleRegistry.initModules(this.instanceSettings.instanceType);
 
 		// The skills module reads the credentials of its sources through cli.
@@ -459,6 +468,9 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		// The runner provisions the durable system task jobs, so it must finish
 		// before the scheduler can claim one.
 		await this.initSystemTasks(await mainSystemTasks(this.globalConfig));
+		// After the event bus noted the unfinished executions, and before the scheduler
+		// starts, so that no job of this session is in flight yet.
+		await Container.get(CrashLoopRecovery).recover();
 		Container.get(DurableScheduler).start();
 
 		if (this.globalConfig.executions.mode === 'regular') {
