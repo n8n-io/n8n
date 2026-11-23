@@ -1,0 +1,85 @@
+packages/cli/src/modules/n8n-packages/entities/credential/credential.exporter.ts
+  s_c51b71bedc600f::t_0ea4540619f234 40-44,83,94-106,110-142
+packages/@n8n/api-types/src/dto/promotions/__tests__/promotion-operations.dto.test.ts
+  s_c51b71bedc600f::t_7690e482011db5 10,212-228
+packages/@n8n/api-types/src/dto/promotions/promotable-resource.dto.ts
+  s_c51b71bedc600f::t_6e090cbc45855c 14-15,23-25
+packages/cli/src/modules/promotions.ee/promotion-preview.ts
+  s_c51b71bedc600f::t_2805c8eddcda74 38-44,47-62,76-80,167-169,179-185,337-345,347-349,360,491-496
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_c51b71bedc600f::t_0a8932663b3d5c 280-285
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_c51b71bedc600f::t_0fa8f7d9addb89 63,113
+  s_c51b71bedc600f::t_64a0813670c9fa 2351-2357,2380-2386,2411-2417
+  s_c51b71bedc600f::t_0266d88ab73045 2320
+  s_c51b71bedc600f::t_1b3c70656dde24 241
+packages/cli/src/modules/promotions.ee/__tests__/promotion-commit-message.test.ts
+  s_c51b71bedc600f::t_64a0813670c9fa 83-85
+  s_c51b71bedc600f::t_6301fcd94e4a75 73-82,86
+packages/modules/promotions/frontend/src/promotionOperation.test.ts
+  s_c51b71bedc600f::t_0eef883db1a338 4
+  s_c51b71bedc600f::t_b72ab839fd3401 46-69
+packages/cli/src/modules/promotions.ee/promote-preview.service.ts
+  s_c51b71bedc600f::t_1b78eb4d29db61 79-82,84
+  s_c51b71bedc600f::t_f7482005521f84 7,15,20,39,73-78,83,85,100-107,176-178
+packages/cli/src/modules/promotions.ee/__tests__/working-copy-updater.test.ts
+  s_c51b71bedc600f::t_6301fcd94e4a75 163-168
+packages/cli/src/modules/promotions.ee/promotion-credential-selection.service.ts
+  s_c51b71bedc600f::t_4770d82a7f0b4a 1-13,17-81,85-87
+  s_c51b71bedc600f::t_64a0813670c9fa 14-16,82-84
+packages/@n8n/api-types/src/dto/promotions/promotion-preview.dto.ts
+  s_c51b71bedc600f::t_6e090cbc45855c 76-78,82
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_c51b71bedc600f::t_f6b8314ecc70e9 248
+  s_c51b71bedc600f::t_2dc233b68aad00 457,3192-3221,3225-3246
+  s_c51b71bedc600f::t_1b3c70656dde24 539
+  s_c51b71bedc600f::t_0fa8f7d9addb89 107
+  s_c51b71bedc600f::t_64a0813670c9fa 3222-3224
+packages/modules/promotions/frontend/src/components/preview/PromotionChangeCard.test.ts
+  s_c51b71bedc600f::t_7673100b12a08d 34-56
+packages/cli/src/modules/promotions.ee/promotion-change.service.ts
+  s_c51b71bedc600f::t_f7482005521f84 165-168
+  s_c51b71bedc600f::t_4f22c4b336c20c 49,74
+packages/cli/src/modules/promotions.ee/__tests__/promotion-preview.credentials.test.ts
+  s_c51b71bedc600f::t_64a0813670c9fa 28-31,48-50,86-89,95,101
+  s_c51b71bedc600f::t_d6325bac86629a 1-27,32-47,51-85,90-94,96-100,102-146
+packages/cli/src/public-api/v1/shared/spec/schemas/promotionResource.generated.yml
+  ai_agent 41
+packages/cli/src/modules/promotions.ee/__tests__/promotion-change-gate.test.ts
+  s_c51b71bedc600f::t_ce95b3e1ef5f48 10
+  s_c51b71bedc600f::t_1b3c70656dde24 55,60
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/promoteProjectSelection.generated.yml
+  ai_agent 39-45
+packages/cli/src/modules/promotions.ee/instance-package.ts
+  s_c51b71bedc600f::t_f7482005521f84 53-60,68
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_c51b71bedc600f::t_96803ac972c1e5 73,160,523,656,699,707,1684,1692-1695
+packages/cli/src/modules/promotions.ee/promotion-commit-message.ts
+  s_c51b71bedc600f::t_96803ac972c1e5 38,45,51,62
+packages/cli/src/modules/promotions.ee/working-copy-updater.ts
+  s_c51b71bedc600f::t_96803ac972c1e5 25-26,100-102
+packages/cli/src/modules/promotions.ee/__tests__/promotion-change.service.test.ts
+  s_c51b71bedc600f::t_1b3c70656dde24 157
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential.exporter.test.ts
+  s_c51b71bedc600f::t_f2cc899fcce808 119-176
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_c51b71bedc600f::t_0a8932663b3d5c 357
+packages/cli/src/modules/promotions.ee/__tests__/promotion-credential-selection.service.test.ts
+  s_c51b71bedc600f::t_eb0c02c22e6416 1-106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0f109d76e8d0331e343b435b9ca3a1e05b0e6ac3",
+  "prompts": {},
+  "sessions": {
+    "s_c51b71bedc600f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2399fe73-cf74-480a-bdbb-a1eca36c6f59",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}
