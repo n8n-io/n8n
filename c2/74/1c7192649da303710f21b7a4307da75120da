@@ -1,0 +1,22 @@
+packages/nodes-base/nodes/Microsoft/Teams/test/trigger/message-filters.test.ts
+  s_a1606af512b4c5::t_bb231b8e635bce 147,215-221,540-565
+  s_a1606af512b4c5::t_4d8d7eaa33a4f0 566
+packages/nodes-base/nodes/Microsoft/Teams/v2/helpers/message-filters.ts
+  s_a1606af512b4c5::t_4cac21ea1d03de 74-78,81,85-98,110
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c2741c7192649da303710f21b7a4307da75120da",
+  "prompts": {},
+  "sessions": {
+    "s_a1606af512b4c5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "69a76138-1b70-41be-949e-c341e494dda3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}
