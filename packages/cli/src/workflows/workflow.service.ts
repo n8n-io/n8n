@@ -1730,9 +1730,12 @@ export class WorkflowService {
 	): Promise<Map<string, WorkflowTransferResult>> {
 		const publishedBeforeTransfer = await this._findPublished(workflowIds);
 
-		const leaving = await this._leavingProject(publishedBeforeTransfer, destinationProjectId);
+		const sourceProjects = await this._sourceProjectsOfLeaving(
+			publishedBeforeTransfer,
+			destinationProjectId,
+		);
 		const refusals = new Map<string, unknown>();
-		for (const workflow of leaving) {
+		for (const workflow of publishedBeforeTransfer.filter(({ id }) => sourceProjects.has(id))) {
 			try {
 				await this._enforcePublishInProject(workflow, destinationProjectId, user);
 			} catch (error) {
@@ -1740,24 +1743,20 @@ export class WorkflowService {
 			}
 		}
 
-		await this._clearWebhooksInSourceProject([...refusals.keys()]);
-
-		let transferredIds: string[] = [];
-		try {
-			transferredIds = await this.workflowRepository.runInTransaction({}, async (_trx, ctx) => {
-				const transferred = await transfer(ctx);
-				await this.outboxRepository.enqueueByWorkflowIds(
-					transferred,
-					WorkflowPublicationReason.Transfer,
-					ctx,
-				);
-				return transferred;
-			});
-		} finally {
-			await this._restoreTriggersOfUntransferred(
-				[...refusals.keys()].filter((workflowId) => !transferredIds.includes(workflowId)),
+		const transferredIds = await this.workflowRepository.runInTransaction({}, async (_trx, ctx) => {
+			const transferred = await transfer(ctx);
+			await this.outboxRepository.enqueueByWorkflowIds(
+				transferred,
+				WorkflowPublicationReason.Transfer,
+				ctx,
 			);
-		}
+			return transferred;
+		});
+
+		await this._clearWebhooksInSourceProject(
+			[...refusals.keys()].filter((workflowId) => transferredIds.includes(workflowId)),
+			sourceProjects,
+		);
 
 		const afterCommitFailure = await this._afterCommitFailure(transferredIds, user);
 		const results = await this._finishTransfer(
@@ -1772,15 +1771,19 @@ export class WorkflowService {
 		return results;
 	}
 
-	/** The workflows whose owner project is not `projectId`: only these change project in a move. */
-	private async _leavingProject(
+	/** The owner project of each workflow that leaves it for `destinationProjectId`. */
+	private async _sourceProjectsOfLeaving(
 		workflows: PublishedWorkflow[],
-		projectId: string,
-	): Promise<PublishedWorkflow[]> {
+		destinationProjectId: string,
+	): Promise<Map<string, string>> {
 		const owners = await this.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds(
 			workflows.map((workflow) => workflow.id),
 		);
-		return workflows.filter((workflow) => owners.get(workflow.id)?.id !== projectId);
+		const sourceProjects = new Map<string, string>();
+		for (const [workflowId, project] of owners) {
+			if (project.id !== destinationProjectId) sourceProjects.set(workflowId, project.id);
+		}
+		return sourceProjects;
 	}
 
 	private async _enforcePublishInProject(
@@ -1810,43 +1813,30 @@ export class WorkflowService {
 	}
 
 	/**
-	 * Never throws: a webhook it cannot remove stays for the leader, which removes every trigger of
-	 * the workflow when it applies the transfer record.
+	 * Never throws: if a removal fails, the leader removes the webhook as the destination project,
+	 * unless that project's decrypt policy refuses the credential.
 	 */
-	// TODO: Move this to the leader once it records the project it registered the triggers in. After
-	// the transfer it removes them in the destination project, whose decrypt policy can refuse the
-	// credential and leave the external webhook registered.
-	private async _clearWebhooksInSourceProject(workflowIds: string[]): Promise<void> {
+	// TODO: Delete this method once the decrypt policy allows deregistration.
+	private async _clearWebhooksInSourceProject(
+		workflowIds: string[],
+		sourceProjects: Map<string, string>,
+	): Promise<void> {
 		const removals = await Promise.allSettled(
 			workflowIds.map(
-				async (workflowId) => await this.activeWorkflowManager.clearWebhooks(workflowId),
+				async (workflowId) =>
+					await this.activeWorkflowManager.clearWebhooks(
+						workflowId,
+						sourceProjects.get(workflowId),
+					),
 			),
 		);
 		const failedIds = workflowIds.filter((_, index) => removals[index].status === 'rejected');
 		if (failedIds.length > 0) {
 			const firstFailure = removals.find((removal) => removal.status === 'rejected');
-			this.logger.error('Failed to remove the webhooks of refused workflows before the transfer', {
+			this.logger.error('Failed to remove the webhooks of refused workflows after the transfer', {
 				workflowIds: failedIds,
 				error: firstFailure?.reason,
 			});
-		}
-	}
-
-	/** Never throws, so a transfer that failed half-way still reports its original error. */
-	private async _restoreTriggersOfUntransferred(workflowIds: string[]): Promise<void> {
-		if (workflowIds.length > 0) {
-			try {
-				await this.outboxRepository.enqueueByWorkflowIds(
-					workflowIds,
-					WorkflowPublicationReason.Reconcile,
-				);
-				this.workflowPublicationNotifier.requestDrain();
-			} catch (error) {
-				this.logger.error('Failed to restore the triggers after a failed transfer', {
-					workflowIds,
-					error,
-				});
-			}
 		}
 	}
 

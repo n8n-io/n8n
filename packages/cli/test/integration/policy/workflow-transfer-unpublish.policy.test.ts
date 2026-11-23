@@ -42,6 +42,7 @@ import { v4 as uuid } from 'uuid';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { ExternalHooks, toWorkflowLifecycleHookActor } from '@/external-hooks';
+import { OwnershipService } from '@/services/ownership.service';
 import { Telemetry } from '@/telemetry';
 import { WorkflowPublicationNotifier } from '@/workflows/publication/workflow-publication-notifier';
 import { WorkflowPublicationOutboxConsumer } from '@/workflows/publication/workflow-publication-outbox-consumer';
@@ -180,12 +181,6 @@ const pendingTransfer = (versionId: string) => ({
 	publishedVersionId: versionId,
 });
 
-const pendingReconcile = (versionId: string) => ({
-	status: 'pending',
-	reason: 'reconcile',
-	publishedVersionId: versionId,
-});
-
 const registeredCronOf = (workflowId: string) =>
 	Container.get(ActiveWorkflowTriggers).get(workflowId)?.get(CRON_NODE_ID);
 
@@ -197,7 +192,31 @@ const ownerProjectIdOf = async (workflowId: string) =>
 		})
 	).projectId;
 
-/** Fails only the `transfer` enqueue, so the restore of the refused triggers still runs. */
+/** A published workflow whose credentialed webhook is registered in the source project. */
+const withRegisteredCredentialedWebhook = async () => {
+	const credential = await saveCredential(randomCredentialPayload(), {
+		project: sourceProject,
+		role: 'credential:owner',
+	});
+	const webhookNode: INode = {
+		id: 'credentialed-webhook',
+		name: 'Credentialed Webhook',
+		type: 'n8n-nodes-base.credentialedWebhookTrigger',
+		typeVersion: 1,
+		position: [0, 0],
+		parameters: {},
+		webhookId: uuid(),
+		credentials: { githubApi: { id: credential.id, name: credential.name } },
+	};
+	const workflow = await createActiveWorkflow(
+		{ nodes: [webhookNode], connections: {} },
+		sourceProject,
+	);
+	await Container.get(ActiveWorkflowManager).add(workflow.id, 'activate');
+	return workflow;
+};
+
+/** Fails only the `transfer` enqueue. */
 const failTransferEnqueue = () => {
 	const outbox = Container.get(WorkflowPublicationOutboxRepository);
 	const enqueue = outbox.enqueueByWorkflowIds.bind(outbox);
@@ -415,8 +434,8 @@ describe('PUT /workflows/:workflowId/transfer', () => {
 });
 
 describe('a failed move', () => {
-	test('enqueues a reconcile record for a refused workflow that did not move', async () => {
-		const workflow = await createActiveWorkflow({}, sourceProject);
+	test('leaves the webhook of a refused workflow registered when the transfer fails', async () => {
+		const workflow = await withRegisteredCredentialedWebhook();
 		refusePublish(targetProject.id, workflow.id);
 		vi.spyOn(
 			Container.get(EnterpriseWorkflowService) as unknown as {
@@ -430,19 +449,14 @@ describe('a failed move', () => {
 			.send({ destinationProjectId: targetProject.id })
 			.expect(500);
 
-		const NOT_MOVED_AND_RESTORED = {
-			sharing: [expect.objectContaining({ projectId: sourceProject.id, role: 'workflow:owner' })],
-			activeVersionId: workflow.versionId,
-			records: [pendingReconcile(workflow.versionId)],
-		};
+		const UNTOUCHED = { deregistered: [], records: [] };
 		expect({
-			sharing: await getWorkflowSharing(workflow),
-			activeVersionId: await activeVersionIdOf(workflow.id),
+			deregistered: deregisteredWebhooks,
 			records: await outboxRecordsOf(workflow.id),
-		}).toEqual(NOT_MOVED_AND_RESTORED);
+		}).toEqual(UNTOUCHED);
 	});
 
-	test('rolls back the move and enqueues a reconcile record for a refused workflow when the transfer enqueue fails', async () => {
+	test('rolls back the transfer of a refused workflow when the transfer enqueue fails', async () => {
 		const workflow = await createActiveWorkflow({}, sourceProject);
 		refusePublish(targetProject.id, workflow.id);
 		failTransferEnqueue();
@@ -452,19 +466,19 @@ describe('a failed move', () => {
 			.send({ destinationProjectId: targetProject.id })
 			.expect(500);
 
-		const NOT_MOVED_AND_RESTORED = {
+		const NOT_MOVED = {
 			ownerProjectId: sourceProject.id,
 			activeVersionId: workflow.versionId,
-			records: [pendingReconcile(workflow.versionId)],
+			records: [],
 		};
 		expect({
 			ownerProjectId: await ownerProjectIdOf(workflow.id),
 			activeVersionId: await activeVersionIdOf(workflow.id),
 			records: await outboxRecordsOf(workflow.id),
-		}).toEqual(NOT_MOVED_AND_RESTORED);
+		}).toEqual(NOT_MOVED);
 	});
 
-	test('rolls back the move and enqueues a reconcile record for a refused workflow when the move fails after the ownership change', async () => {
+	test('rolls back the transfer of a refused workflow when it fails after the ownership change', async () => {
 		const owner = await createOwner();
 		const workflow = await createActiveWorkflow({}, sourceProject);
 		refusePublish(targetProject.id, workflow.id);
@@ -475,19 +489,19 @@ describe('a failed move', () => {
 			.send({ destinationProjectId: targetProject.id, shareCredentials: [uuid()] })
 			.expect(404);
 
-		const NOT_MOVED_AND_RESTORED = {
+		const NOT_MOVED = {
 			ownerProjectId: sourceProject.id,
 			activeVersionId: workflow.versionId,
-			records: [pendingReconcile(workflow.versionId)],
+			records: [],
 		};
 		expect({
 			ownerProjectId: await ownerProjectIdOf(workflow.id),
 			activeVersionId: await activeVersionIdOf(workflow.id),
 			records: await outboxRecordsOf(workflow.id),
-		}).toEqual(NOT_MOVED_AND_RESTORED);
+		}).toEqual(NOT_MOVED);
 	});
 
-	test('transfers a refused workflow whose webhooks cannot be removed before the transfer', async () => {
+	test('transfers a refused workflow whose webhooks cannot be removed after the transfer', async () => {
 		const workflow = await createActiveWorkflow({}, sourceProject);
 		refusePublish(targetProject.id, workflow.id);
 		vi.spyOn(Container.get(ActiveWorkflowManager), 'clearWebhooks').mockRejectedValue(
@@ -581,7 +595,7 @@ describe('PUT /projects/:projectId/folders/:folderId/transfer', () => {
 		]);
 	});
 
-	test('a folder move moves nothing and enqueues a reconcile record for the refused workflow when the transfer enqueue fails', async () => {
+	test('a folder move moves nothing when the transfer enqueue fails', async () => {
 		const folder = await createFolder(sourceProject, { name: 'Folder' });
 		const refused = await createActiveWorkflow(
 			{ name: 'Refused', parentFolder: folder },
@@ -602,7 +616,7 @@ describe('PUT /projects/:projectId/folders/:folderId/transfer', () => {
 		const NOT_MOVED = {
 			ownerProjectIds: [sourceProject.id, sourceProject.id],
 			activeVersionIds: [refused.versionId, allowed.versionId],
-			refusedRecords: [pendingReconcile(refused.versionId)],
+			refusedRecords: [],
 			allowedRecords: [],
 		};
 		expect({
@@ -721,7 +735,7 @@ describe('on the leader', () => {
 		}).toEqual(CONVERGED);
 	});
 
-	test('deregisters the external webhook of a refused move while the workflow is in the source project', async () => {
+	test('deregisters the external webhook of a refused transfer in the source project', async () => {
 		const credential = await saveCredential(randomCredentialPayload(), {
 			project: sourceProject,
 			role: 'credential:owner',
@@ -741,6 +755,7 @@ describe('on the leader', () => {
 			sourceProject,
 		);
 		await Container.get(ActiveWorkflowManager).add(workflow.id, 'activate');
+		await Container.get(OwnershipService).invalidateWorkflowProjectCacheByIds([workflow.id]);
 		refusePublish(targetProject.id, workflow.id);
 		refusedDecryptProjects.add(targetProject.id);
 
