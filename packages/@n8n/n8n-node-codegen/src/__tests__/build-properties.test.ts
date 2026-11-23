@@ -229,6 +229,17 @@ describe('buildProperties', () => {
 		expect(collection.options).toEqual([expect.objectContaining({ name: 'name' })]);
 	});
 
+	it('should keep a limit minimum from the spec that is above 1', () => {
+		const [, , , limit] = build(
+			row('getWorkflows', {
+				paginated: true,
+				parameters: [parameter('limit', { schema: { type: 'number', default: 100, minimum: 10 } })],
+			}),
+		);
+
+		expect(limit.typeOptions).toEqual({ minValue: 10 });
+	});
+
 	it('should show a required limit of a paginated operation once, as a required field, when Return All is off', () => {
 		const properties = build(
 			row('getWorkflows', {

@@ -210,7 +210,10 @@ function operationProperties(row: OperationRow, options: SpecOptions): INodeProp
 		properties.push({
 			...build(limit, {
 				description: LIMIT_DESCRIPTION,
-				typeOptions: { minValue: 1, maxValue: limit.schema.maximum },
+				typeOptions: {
+					minValue: Math.max(1, limit.schema.minimum ?? 1),
+					maxValue: limit.schema.maximum,
+				},
 			}),
 			...(limit.required ? { required: true } : {}),
 			displayOptions: { show: { ...show, returnAll: [false] } },

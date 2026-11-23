@@ -193,12 +193,11 @@ new version.
 
 - The generator writes one version of the node.
 - The texts of the node come from the spec: the field names come from the
-  parameter names, and the operation names come from the `summary`. To change
-  a text in the node, change it in the spec.
-- Prefer a change in the spec to an entry in `overrides.ts`. A change in the
-  spec also corrects the API docs, and a text change does not change the API.
-  Use `fields` only when the node needs a different field, for example a
-  resource locator.
+  parameter names, and the operation names come from the `summary`.
+- To change a text in the node, prefer a change in the spec to an entry in
+  `overrides.ts`. A change in the spec also corrects the API docs, and a text
+  change does not change the API. Use `fields` when the node needs a different
+  field, for example a resource locator, or a text that only the node needs.
 
 ### Test version 2 locally
 
