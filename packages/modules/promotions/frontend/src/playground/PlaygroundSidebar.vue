@@ -72,7 +72,12 @@ const sizeOptions = computed(() =>
 					<N8nText tag="div" size="small" bold color="text-light" :class="$style.sectionTitle">
 						{{ title }}
 					</N8nText>
-					<template v-for="item in items" :key="item.id">
+					<!-- The active item and its description share one background. -->
+					<div
+						v-for="item in items"
+						:key="item.id"
+						:class="[$style.item, { [$style.active]: item.id === scenarioId }]"
+					>
 						<!-- The active item shows its description. The others show it on hover. -->
 						<N8nTooltip
 							as-child
@@ -92,13 +97,13 @@ const sizeOptions = computed(() =>
 							v-if="item.id === scenarioId"
 							tag="div"
 							size="small"
-							color="text-light"
+							color="text-base"
 							:class="$style.description"
 							data-test-id="promotions-playground-description"
 						>
 							{{ item.description }}
 						</N8nText>
-					</template>
+					</div>
 				</section>
 			</nav>
 		</N8nScrollArea>
@@ -178,6 +183,15 @@ const sizeOptions = computed(() =>
 	& + & {
 		margin-top: var(--spacing--xs);
 	}
+}
+
+.item {
+	border-radius: var(--radius);
+}
+
+// The same background as the active menu item, so the description sits inside its box.
+.active {
+	background-color: var(--color--background--light-1);
 }
 
 .description {
