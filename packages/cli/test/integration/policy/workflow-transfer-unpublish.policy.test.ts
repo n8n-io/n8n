@@ -39,7 +39,6 @@ import type {
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import { ActivationErrorsService } from '@/activation-errors.service';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { ExternalHooks, toWorkflowLifecycleHookActor } from '@/external-hooks';
@@ -488,65 +487,28 @@ describe('a failed move', () => {
 		}).toEqual(NOT_MOVED_AND_RESTORED);
 	});
 
-	test('enqueues a reconcile record for a refused workflow whose trigger removal fails', async () => {
+	test('transfers a refused workflow whose webhooks cannot be removed before the transfer', async () => {
 		const workflow = await createActiveWorkflow({}, sourceProject);
 		refusePublish(targetProject.id, workflow.id);
-		vi.spyOn(Container.get(ActivationErrorsService), 'deregister').mockRejectedValue(
-			new Error('cache is down'),
+		vi.spyOn(Container.get(ActiveWorkflowManager), 'clearWebhooks').mockRejectedValue(
+			new Error('third party is down'),
 		);
 
 		await authMemberAgent
 			.put(`/workflows/${workflow.id}/transfer`)
 			.send({ destinationProjectId: targetProject.id })
-			.expect(500);
+			.expect(200);
 
-		const NOT_MOVED_AND_RESTORED = {
-			sharing: [expect.objectContaining({ projectId: sourceProject.id, role: 'workflow:owner' })],
-			activeVersionId: workflow.versionId,
-			records: [pendingReconcile(workflow.versionId)],
+		const TRANSFERRED_AND_UNPUBLISHED = {
+			ownerProjectId: targetProject.id,
+			activeVersionId: null,
+			records: [pendingTransfer(workflow.versionId)],
 		};
 		expect({
-			sharing: await getWorkflowSharing(workflow),
+			ownerProjectId: await ownerProjectIdOf(workflow.id),
 			activeVersionId: await activeVersionIdOf(workflow.id),
 			records: await outboxRecordsOf(workflow.id),
-		}).toEqual(NOT_MOVED_AND_RESTORED);
-	});
-
-	test('waits for every trigger removal before it restores the triggers', async () => {
-		const folder = await createFolder(sourceProject, { name: 'Folder' });
-		const failing = await createActiveWorkflow({ parentFolder: folder }, sourceProject);
-		const slow = await createActiveWorkflow({ parentFolder: folder }, sourceProject);
-		refusePublish(targetProject.id, failing.id);
-		refusePublish(targetProject.id, slow.id);
-
-		const manager = Container.get(ActiveWorkflowManager);
-		const removeTriggers = manager.remove.bind(manager);
-		let startRestore = () => {};
-		const restoreStarted = new Promise<void>((resolve) => {
-			startRestore = resolve;
-		});
-		let slowRemoved = false;
-		vi.spyOn(manager, 'remove').mockImplementation(async (workflowId) => {
-			if (workflowId === failing.id) throw new Error('cache is down');
-			await Promise.race([restoreStarted, new Promise((resolve) => setTimeout(resolve, 500))]);
-			await removeTriggers(workflowId);
-			slowRemoved = true;
-		});
-		const outbox = Container.get(WorkflowPublicationOutboxRepository);
-		const enqueue = outbox.enqueueByWorkflowIds.bind(outbox);
-		let slowRemovedBeforeRestore = false;
-		vi.spyOn(outbox, 'enqueueByWorkflowIds').mockImplementation(async (...args) => {
-			slowRemovedBeforeRestore = slowRemoved;
-			startRestore();
-			return await enqueue(...args);
-		});
-
-		await authMemberAgent
-			.put(`/projects/${sourceProject.id}/folders/${folder.id}/transfer`)
-			.send({ destinationProjectId: targetProject.id, destinationParentFolderId: '0' })
-			.expect(500);
-
-		expect(slowRemovedBeforeRestore).toBe(true);
+		}).toEqual(TRANSFERRED_AND_UNPUBLISHED);
 	});
 });
 
@@ -677,6 +639,30 @@ describe('on the leader', () => {
 			.expect(200);
 
 		expect(registeredCronOf(workflow.id)).toBe(registeredBefore);
+	});
+
+	test('removes the in-memory trigger of a refused workflow on the leader, not before the transfer', async () => {
+		const workflow = await createActiveWorkflow({}, sourceProject);
+		await Container.get(ActiveWorkflowManager).add(workflow.id, 'activate');
+		refusePublish(targetProject.id, workflow.id);
+
+		await authMemberAgent
+			.put(`/workflows/${workflow.id}/transfer`)
+			.send({ destinationProjectId: targetProject.id })
+			.expect(200);
+		const registeredAfterRequest = registeredCronOf(workflow.id) !== undefined;
+		const outbox = Container.get(WorkflowPublicationOutboxRepository);
+		const transferRecord = await outbox.claimNextPendingRecord();
+		await Container.get(WorkflowPublicationOutboxConsumer).processRecord(
+			transferRecord!,
+			new AbortController().signal,
+		);
+
+		const REMOVED_BY_THE_LEADER = { afterRequest: true, afterLeader: false };
+		expect({
+			afterRequest: registeredAfterRequest,
+			afterLeader: registeredCronOf(workflow.id) !== undefined,
+		}).toEqual(REMOVED_BY_THE_LEADER);
 	});
 
 	test('checks no policy and keeps the triggers for a move inside one project', async () => {

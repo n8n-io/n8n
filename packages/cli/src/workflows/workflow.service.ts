@@ -1740,17 +1740,10 @@ export class WorkflowService {
 			}
 		}
 
-		// The destination's decrypt policy can block the removal, so it runs in the source project.
-		const removals = await Promise.allSettled(
-			[...refusals.keys()].map(
-				async (workflowId) => await this.activeWorkflowManager.remove(workflowId),
-			),
-		);
-		const failedRemoval = removals.find((removal) => removal.status === 'rejected');
+		await this._clearWebhooksInSourceProject([...refusals.keys()]);
 
 		let transferredIds: string[] = [];
 		try {
-			if (failedRemoval) throw ensureError(failedRemoval.reason);
 			transferredIds = await this.workflowRepository.runInTransaction({}, async (_trx, ctx) => {
 				const transferred = await transfer(ctx);
 				await this.outboxRepository.enqueueByWorkflowIds(
@@ -1813,6 +1806,29 @@ export class WorkflowService {
 				}
 				throw error;
 			}
+		}
+	}
+
+	/**
+	 * Never throws: a webhook it cannot remove stays for the leader, which removes every trigger of
+	 * the workflow when it applies the transfer record.
+	 */
+	// TODO: Move this to the leader once it records the project it registered the triggers in. After
+	// the transfer it removes them in the destination project, whose decrypt policy can refuse the
+	// credential and leave the external webhook registered.
+	private async _clearWebhooksInSourceProject(workflowIds: string[]): Promise<void> {
+		const removals = await Promise.allSettled(
+			workflowIds.map(
+				async (workflowId) => await this.activeWorkflowManager.clearWebhooks(workflowId),
+			),
+		);
+		const failedIds = workflowIds.filter((_, index) => removals[index].status === 'rejected');
+		if (failedIds.length > 0) {
+			const firstFailure = removals.find((removal) => removal.status === 'rejected');
+			this.logger.error('Failed to remove the webhooks of refused workflows before the transfer', {
+				workflowIds: failedIds,
+				error: firstFailure?.reason,
+			});
 		}
 	}
 
