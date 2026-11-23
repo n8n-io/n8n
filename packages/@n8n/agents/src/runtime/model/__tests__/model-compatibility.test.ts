@@ -233,6 +233,32 @@ describe('model-compatibility', () => {
 				false,
 			);
 		});
+
+		it('detects legacy messages without a model stamp when they contain reasoning-file, custom, or provider blocks', () => {
+			expect(
+				hasIncompatibleModelHistory(
+					[
+						{
+							role: 'assistant',
+							content: [{ type: 'reasoning-file', data: 'abc', mediaType: 'image/png' }],
+						},
+					],
+					'anthropic/claude-sonnet-5-5',
+				),
+			).toBe(true);
+			expect(
+				hasIncompatibleModelHistory(
+					[{ role: 'assistant', content: [{ type: 'custom', kind: 'openai.compaction' }] }],
+					'anthropic/claude-sonnet-5-5',
+				),
+			).toBe(true);
+			expect(
+				hasIncompatibleModelHistory(
+					[{ role: 'assistant', content: [{ type: 'provider', value: { raw: 1 } }] }],
+					'anthropic/claude-sonnet-5-5',
+				),
+			).toBe(true);
+		});
 	});
 
 	describe('sanitizeForeignModelMessages', () => {
@@ -309,17 +335,50 @@ describe('model-compatibility', () => {
 			]);
 		});
 
-		it('keeps same-provider regular tool calls while stripping metadata and dropping reasoning', () => {
+		it('keeps metadata-free same-provider regular tool calls while dropping signed reasoning', () => {
+			const messages: Message[] = [
+				{
+					role: 'assistant',
+					model: 'anthropic/claude-sonnet-4-5',
+					content: [
+						{
+							type: 'reasoning',
+							text: 'plan',
+							providerMetadata: { anthropic: { signature: 'sig-r' } },
+						},
+						{
+							type: 'tool-call',
+							toolCallId: 'toolu_1',
+							toolName: 'lookup',
+							input: { id: 42 },
+							state: 'resolved',
+							output: { name: 'Acme' },
+						},
+					],
+				},
+			];
+
+			const sanitized = sanitizeForeignModelMessages(messages, 'anthropic/claude-sonnet-5-5');
+
+			expect(sanitized).toHaveLength(1);
+			expect(sanitized[0].content).toEqual([
+				{
+					type: 'tool-call',
+					toolCallId: 'toolu_1',
+					toolName: 'lookup',
+					input: { id: 42 },
+					state: 'resolved',
+					output: { name: 'Acme' },
+				},
+			]);
+		});
+
+		it('degrades same-provider tool calls carrying provider replay metadata to text', () => {
 			const messages: Message[] = [
 				{
 					role: 'assistant',
 					model: 'google/gemini-2.5-pro',
 					content: [
-						{
-							type: 'reasoning',
-							text: 'plan',
-							providerMetadata: { google: { thoughtSignature: 'sig-r' } },
-						},
 						{
 							type: 'tool-call',
 							toolCallId: 'call_1',
@@ -338,12 +397,8 @@ describe('model-compatibility', () => {
 			expect(sanitized).toHaveLength(1);
 			expect(sanitized[0].content).toEqual([
 				{
-					type: 'tool-call',
-					toolCallId: 'call_1',
-					toolName: 'lookup',
-					input: { id: 42 },
-					state: 'resolved',
-					output: { name: 'Acme' },
+					type: 'text',
+					text: '[Previous tool call lookup input={"id":42} output={"name":"Acme"}]',
 				},
 			]);
 		});

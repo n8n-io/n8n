@@ -72,6 +72,10 @@ function hasForeignProviderSignals(msg: Message, currentNamespace: string): bool
 		if (hasForeignKeys(block.providerMetadata, currentNamespace)) return true;
 		if (hasForeignKeys(block.providerOptions, currentNamespace)) return true;
 
+		if (block.type === 'reasoning-file' || block.type === 'custom' || block.type === 'provider') {
+			return true;
+		}
+
 		if (block.type === 'tool-call' && block.providerExecuted === true) {
 			const toolNamespace = getProviderToolNamespace(block.toolName);
 			if (toolNamespace && toolNamespace !== currentNamespace) return true;
@@ -194,10 +198,18 @@ function sanitizeAssistantContent(
 		if (block.type === 'tool-call') {
 			if (!('state' in block) || block.state === 'pending') continue;
 
-			if (block.providerExecuted === true || isCrossProvider) {
+			// Degrade provider-executed calls, cross-provider calls, and calls carrying
+			// provider replay metadata (such as Gemini thoughtSignature) to text instead
+			// of stripping metadata that the target provider requires on replay.
+			if (
+				block.providerExecuted === true ||
+				isCrossProvider ||
+				hasRecordEntries(block.providerMetadata) ||
+				hasRecordEntries(block.providerOptions)
+			) {
 				sanitized.push({ type: 'text', text: formatDegradedToolCall(block) });
 			} else {
-				sanitized.push(stripBlockMetadata(block));
+				sanitized.push(block);
 			}
 
 			continue;

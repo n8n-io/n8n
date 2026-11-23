@@ -1,11 +1,12 @@
-import type { LanguageModelV2, LanguageModelV2CallOptions } from '@ai-sdk/provider';
+import { MockLanguageModelV3 } from 'ai/test';
 import { describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 
 import { Agent } from '../../sdk/agent';
 import { Memory } from '../../sdk/memory';
 import { Tool } from '../../sdk/tool';
-import type { AgentDbMessage } from '../../types/sdk/message';
+import type { AgentDbMessage, Message } from '../../types/sdk/message';
+import type { ObservationLogObserveFn } from '../../types/sdk/observation-log';
 import { AgentRuntime, type AgentRuntimeConfig } from '../loop/agent-runtime';
 import { MemoryOrchestrator } from '../memory/memory-orchestrator';
 import { InMemoryMemory } from '../memory/memory-store';
@@ -13,6 +14,10 @@ import { AgentMessageList, MODEL_SWITCH_CONTINUATION_REMINDER } from '../model/m
 import { BackgroundTaskTracker } from '../state/background-task-tracker';
 import { AgentEventBus } from '../state/event-bus';
 import { RuntimeTelemetry } from '../telemetry/runtime-telemetry';
+
+type CallOptions = Parameters<MockLanguageModelV3['doGenerate']>[0];
+type GenerateResult = Awaited<ReturnType<MockLanguageModelV3['doGenerate']>>;
+type AssistantDbMessage = { id: string; createdAt: Date } & Message;
 
 const THREAD_ID = 'thread-switch-1';
 const RESOURCE_ID = 'user-1';
@@ -26,15 +31,13 @@ function createMockLanguageModel(
 		reasoning?: { text: string; providerMetadata?: Record<string, Record<string, unknown>> };
 	}>,
 ) {
-	const calls: LanguageModelV2CallOptions[] = [];
+	const calls: CallOptions[] = [];
 	let callIndex = 0;
 
-	const model: LanguageModelV2 = {
-		specificationVersion: 'v2',
+	const model = new MockLanguageModelV3({
 		provider,
 		modelId,
-		supportedUrls: {},
-		doGenerate: vi.fn(async (options: LanguageModelV2CallOptions) => {
+		doGenerate: vi.fn(async (options: CallOptions): Promise<GenerateResult> => {
 			calls.push(options);
 			const next = responses[Math.min(callIndex++, responses.length - 1)];
 			const content: Array<Record<string, unknown>> = [];
@@ -62,15 +65,18 @@ function createMockLanguageModel(
 				});
 			}
 
+			const finish = next.toolCalls?.length ? 'tool-calls' : 'stop';
 			return {
 				content,
-				finishReason: next.toolCalls?.length ? 'tool-calls' : 'stop',
-				usage: { inputTokens: 10, outputTokens: 5, totalTokens: 15 },
+				finishReason: { unified: finish, raw: finish },
+				usage: {
+					inputTokens: { total: 10, noCache: 10, cacheRead: 0, cacheWrite: 0 },
+					outputTokens: { total: 5, text: 5, reasoning: 0 },
+				},
 				warnings: [],
-			} as unknown as Awaited<ReturnType<LanguageModelV2['doGenerate']>>;
+			} as unknown as GenerateResult;
 		}),
-		doStream: vi.fn(),
-	};
+	});
 
 	return { model, calls };
 }
@@ -78,7 +84,7 @@ function createMockLanguageModel(
 function makeForeignAssistantMessage(
 	id: string,
 	createdAt: Date,
-	overrides: Partial<Extract<AgentDbMessage, { role: 'assistant' }>> = {},
+	overrides: Partial<AssistantDbMessage> = {},
 ): AgentDbMessage {
 	return {
 		id,
@@ -126,7 +132,7 @@ describe('Model-switch observational memory compaction and fallback', () => {
 			makeForeignAssistantMessage('m-asst-1', t2),
 		]);
 
-		const observe = vi.fn(
+		const observe = vi.fn<ObservationLogObserveFn>(
 			async () =>
 				'* CRITICAL (10:00) User asked about inline form validation; web search recommended showing errors on blur.',
 		);
@@ -170,8 +176,7 @@ describe('Model-switch observational memory compaction and fallback', () => {
 		expect(cursor?.lastObservedMessageId).toBe('m-asst-1');
 
 		const savedAssistant = result.messages.find(
-			(m): m is Extract<AgentDbMessage, { role: 'assistant' }> =>
-				'role' in m && m.role === 'assistant',
+			(m): m is AssistantDbMessage => 'role' in m && m.role === 'assistant',
 		);
 		expect(savedAssistant?.model).toBe('google/gemini-3-flash');
 	});
@@ -293,7 +298,7 @@ describe('Model-switch observational memory compaction and fallback', () => {
 			},
 		]);
 
-		const observe = vi.fn(
+		const observe = vi.fn<ObservationLogObserveFn>(
 			async () => '* IMPORTANT (10:00) Draft d-9 deletion was interrupted and did not take effect.',
 		);
 		const gemini = createMockLanguageModel('google.generative-ai', 'gemini-3-flash', [
@@ -340,7 +345,9 @@ describe('Model-switch observational memory compaction and fallback', () => {
 			makeForeignAssistantMessage('m-2', new Date('2026-10-01T10:00:01Z')),
 		]);
 
-		const observe = vi.fn(async () => '* INFO (10:00) User uploaded spec.pdf (fileId: file-42).');
+		const observe = vi.fn<ObservationLogObserveFn>(
+			async () => '* INFO (10:00) User uploaded spec.pdf (fileId: file-42).',
+		);
 		const gemini = createMockLanguageModel('google.generative-ai', 'gemini-3-flash', [
 			{ text: 'Got it.' },
 		]);
@@ -378,7 +385,7 @@ describe('Model-switch observational memory compaction and fallback', () => {
 		]);
 
 		const controller = new AbortController();
-		const observe = vi.fn(async (input) => {
+		const observe = vi.fn<ObservationLogObserveFn>(async (input) => {
 			expect(input.abortSignal).toBe(controller.signal);
 			controller.abort();
 			throw new Error('Aborted');
@@ -611,6 +618,7 @@ describe('Model-switch observational memory compaction and fallback', () => {
 			undefined,
 			true,
 			'anthropic',
+			undefined,
 			'anthropic/claude-sonnet-5-5',
 		);
 
