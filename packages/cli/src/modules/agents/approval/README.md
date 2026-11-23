@@ -109,9 +109,11 @@ the immediate wake-up fails. This path does not use webhook handlers.
 
 Responses must match the request's
 Agent, project, run, thread, execution, connected credential, and destination.
-Repeated or late callbacks cannot change a resolved decision. An `agentApproval`
-parameter in user-authored workflow JSON does not create an approval job or grant
-permission to resume an Agent.
+Repeated or late callbacks cannot change a resolved decision. The hidden
+`AgentChannelApproval` node delegates delivery and waiting to the existing channel
+nodes. It converts private approval-link placeholders to native callbacks before delivery. Public channel
+nodes keep their existing parameters and behavior. An internal node in user-authored
+workflow JSON does not create an approval job or grant permission to resume an Agent.
 
 Message an Agent version 4 processes items in order. It retains completed item
 results in node execution context while an item is waiting. The run index keeps

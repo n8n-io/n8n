@@ -30,10 +30,7 @@ import { prepareChatApproval } from './hitl/setup';
 import { telegramSendAndWaitWebhook } from './hitl/webhook';
 import { appendAttributionOption } from '../../utils/descriptions';
 import { configureWaitTillDate } from '../../utils/sendAndWait/configureWaitTillDate.util';
-import {
-	agentApprovalProperty,
-	sendAndWaitWebhooksDescription,
-} from '../../utils/sendAndWait/descriptions';
+import { sendAndWaitWebhooksDescription } from '../../utils/sendAndWait/descriptions';
 import {
 	getSendAndWaitProperties,
 	SEND_AND_WAIT_WAITING_TOOLTIP,
@@ -2060,7 +2057,7 @@ export class Telegram implements INodeType {
 					},
 				],
 				'message',
-				[agentApprovalProperty, ...telegramHitlProperties],
+				telegramHitlProperties,
 				{
 					noButtonStyle: true,
 					defaultApproveLabel: '✅ Approve',

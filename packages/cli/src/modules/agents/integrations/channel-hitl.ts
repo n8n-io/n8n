@@ -10,6 +10,7 @@ import type { HttpRequestClient } from '@n8n/backend-network';
 import type { ActionEvent } from 'chat';
 import {
 	isResourceLocatorValue,
+	isNodeParameters,
 	jsonParse,
 	type INode,
 	type NodeParameterValueType,
@@ -17,6 +18,30 @@ import {
 import { isRecord } from '@n8n/utils/is-record';
 import { UserError } from '@n8n/errors';
 import { z } from 'zod';
+
+export const AGENT_CHANNEL_APPROVAL_NODE_TYPE = 'n8n-nodes-base.agentChannelApproval';
+
+export function channelApprovalNode(node: INode, channel: AgentHitlChannel): INode {
+	return {
+		...node,
+		type: AGENT_CHANNEL_APPROVAL_NODE_TYPE,
+		typeVersion: 1,
+		parameters: { channel, parameters: node.parameters },
+	};
+}
+
+export function channelApprovalDelegate(node: INode): INode | undefined {
+	if (
+		node.type !== AGENT_CHANNEL_APPROVAL_NODE_TYPE ||
+		!isNodeParameters(node.parameters.parameters)
+	)
+		return;
+	return {
+		...node,
+		type: `n8n-nodes-base.${String(node.parameters.channel)}`,
+		parameters: node.parameters.parameters,
+	};
+}
 
 export type ChannelHitlDefinition = { supported: false } | ChannelHitlAdapter;
 
@@ -48,7 +73,6 @@ export function approvalNode(
 			[credentialType]: { id: configuration.credentialId, name: configuration.channel },
 		},
 		parameters: {
-			agentApproval: true,
 			resource: 'message',
 			operation: 'sendAndWait',
 			responseType: 'approval',

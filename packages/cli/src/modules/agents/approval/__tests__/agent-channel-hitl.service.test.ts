@@ -108,18 +108,20 @@ describe('Agent channel approval', () => {
 		const workflow = service.buildWorkflow(configuration, [slack], 'caller');
 		expect(workflow.id).toBe('caller');
 		expect(workflow.nodes[1]).toMatchObject({
-			type: 'n8n-nodes-base.slack',
+			type: 'n8n-nodes-base.agentChannelApproval',
 			credentials: { slackApi: { id: slack.credentialId } },
 			parameters: {
-				operation: 'sendAndWait',
-				responseType: 'approval',
-				select: 'user',
-				user: { mode: 'id', value: 'U1' },
-				approvalOptions: { values: { approvalType: 'double' } },
-				options: { appendAttribution: false },
+				channel: 'slack',
+				parameters: {
+					operation: 'sendAndWait',
+					responseType: 'approval',
+					select: 'user',
+					user: { mode: 'id', value: 'U1' },
+					approvalOptions: { values: { approvalType: 'double' } },
+					options: { appendAttribution: false },
+				},
 			},
 		});
-		expect(workflow.nodes[1].parameters.options).not.toHaveProperty('limitWaitTime');
 		expect(() => service.buildWorkflow(configuration, [], 'caller')).toThrow('no longer connected');
 	});
 	it('uses Telegram numeric IDs and rejects usernames', () => {
@@ -168,7 +170,7 @@ it('gives a conversational channel request a saved execution owner', async () =>
 		const workflow = await service.prepareWorkflow(configuration, [slack], 'project', 'agent');
 		expect(workflow.id).toBe('owner');
 		expect(owners.ensureExecutionOwner).toHaveBeenCalledWith('project', 'agent');
-		expect(workflow.nodes[1].type).toBe('n8n-nodes-base.slack');
+		expect(workflow.nodes[1].type).toBe('n8n-nodes-base.agentChannelApproval');
 	} finally {
 		Container.reset();
 	}

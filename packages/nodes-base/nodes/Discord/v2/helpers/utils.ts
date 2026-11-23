@@ -435,15 +435,9 @@ export function createSendAndWaitMessageBody(context: IExecuteFunctions) {
 				components: config.options.map((option) => {
 					return {
 						type: 2,
+						style: 5,
 						label: option.label,
-						...(context.getNode()?.parameters.agentApproval === true
-							? {
-									style: option.approved ? 1 : 4,
-									custom_id: context.getApprovalCallbackReference(
-										option.approved ? 'approve' : 'decline',
-									),
-								}
-							: { style: 5, url: option.url }),
+						url: option.url,
 					};
 				}),
 			},
