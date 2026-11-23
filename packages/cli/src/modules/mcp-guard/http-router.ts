@@ -11,7 +11,7 @@ import {
 	runWithRequestContext,
 	type RequestContext,
 } from './request-context';
-import { redactPathSecret } from './path-secret';
+import { redactPathSecret, redactQuerySecrets } from './path-secret';
 import { isReadShaped } from './request-classifier';
 import type { Hydrator } from './router';
 import { canonicalHost, vendorForRequest } from './vendor-knowledge';
@@ -24,6 +24,8 @@ export interface HttpGuardRouterDeps {
 	profile: HttpVendorProfile;
 	// The ids that the gym made. Vendors of one tenant share them. Without this, the router keeps its own.
 	gymIds?: Set<string>;
+	// Facts about the gym tenant for `profile.toGym` (the ids that the gym made).
+	gymFacts?: () => Promise<Record<string, string>>;
 }
 
 const refusal = (status: number, text: string): Response => new Response(text, { status });
@@ -71,7 +73,10 @@ export class HttpGuardRouter {
 	async handle(incoming: CapturedRequest, signal?: AbortSignal): Promise<Response> {
 		// Take a secret out of the path first. Nothing below, not a log, an error or the gym, sees it.
 		const { url, secret } = redactPathSecret(incoming.url, this.deps.profile.pathSecret);
-		const req = secret === undefined ? incoming : { ...incoming, url };
+		const afterPath = secret === undefined ? incoming : { ...incoming, url };
+		// A secret in the query goes the same way: nothing below sees it.
+		const query = redactQuerySecrets(afterPath.url, this.deps.profile.querySecrets);
+		const req = query.url === afterPath.url ? afterPath : { ...afterPath, url: query.url };
 		const host = canonicalHost(req.url.hostname);
 		const vendor = vendorForRequest(host, req.url.pathname);
 		if (!vendor) return refusal(403, 'mcp-guard: this host is not available in a preview chat');
@@ -80,6 +85,7 @@ export class HttpGuardRouter {
 		const context: RequestContext = { origin: `${req.url.protocol}//${req.url.host}`, signal };
 		if (req.headers.authorization) context.authorization = req.headers.authorization;
 		if (secret !== undefined) context.pathSecret = secret;
+		if (Object.keys(query.secrets).length > 0) context.querySecrets = query.secrets;
 		return await runWithRequestContext(context, async () => {
 			const readShaped = isReadShaped(req, vendor.readPaths, vendor.graphqlPaths);
 			const { name, args } = toToolCall(req, readShaped);
@@ -151,7 +157,9 @@ export class HttpGuardRouter {
 		remember: boolean,
 	): Promise<CallToolResult | Response> {
 		try {
-			const res = await this.deps.gym.callTool(name, args);
+			const { profile, gymFacts } = this.deps;
+			const sent = profile.toGym && gymFacts ? profile.toGym(args, await gymFacts()) : args;
+			const res = await this.deps.gym.callTool(name, sent);
 			if (remember) {
 				for (const match of textOf(res).matchAll(ID_FIELD)) this.gymIds.add(match[1]);
 			}

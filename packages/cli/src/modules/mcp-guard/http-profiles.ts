@@ -1,4 +1,6 @@
+import { FACEBOOKGRAPH_PROFILE } from './facebook-profile';
 import { isRecord } from '@n8n/utils/is-record';
+import { WHATSAPP_PROFILE } from './whatsapp-profile';
 import { looksLikeId, type HttpToolArgs } from './http-tool-caller';
 import type { PathSecretPattern } from './path-secret';
 
@@ -11,6 +13,17 @@ export interface HttpVendorProfile {
 	// True when the real ids are no UUIDs (Google ids). The hydration then keeps an id that the real
 	// data shows word for word, so the agent can use the real id in the gym.
 	opaqueIds?: boolean;
+	// Facts about the tenant of the gym that a call needs (the ids that the gym made). `data` is the issued
+	// credential. `ask` reads a path from the gym.
+	gymFacts?: (
+		data: Record<string, unknown>,
+		ask: (path: string) => Promise<unknown>,
+	) => Promise<Record<string, string>>;
+	// Changes the args of a call for the gym, for example a real id of the path into the id of the gym.
+	toGym?: (args: HttpToolArgs, facts: Readonly<Record<string, string>>) => HttpToolArgs;
+	// Names of query parameters that hold a secret (`access_token`). The guard removes them at once.
+	// A real read gets them back. The gym gets the token of the tenant in a header.
+	querySecrets?: readonly string[];
 	// How the gym issues a bearer, and where the bearer sits in its answer.
 	credentialKind: string;
 	credentialField: string;
@@ -180,4 +193,8 @@ export const GMAIL_PROFILE: HttpVendorProfile = {
 	},
 };
 
-export const HTTP_PROFILES: readonly HttpVendorProfile[] = [GMAIL_PROFILE];
+export const HTTP_PROFILES: readonly HttpVendorProfile[] = [
+	GMAIL_PROFILE,
+	WHATSAPP_PROFILE,
+	FACEBOOKGRAPH_PROFILE,
+];
