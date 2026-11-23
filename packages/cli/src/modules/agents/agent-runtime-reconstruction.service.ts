@@ -571,12 +571,11 @@ export class AgentRuntimeReconstructionService {
 				continue;
 			}
 			const access = await this.checkToolAccess(ref, projectId, user, canExecute, loadUsableIds);
-			if (access && 'reason' in access) {
+			if ('reason' in access) {
 				unavailable.push(access);
 				continue;
 			}
 			filtered.push(ref);
-			if (!access) continue;
 			keptGatedTool = true;
 			for (const id of access.credentialIds) grantedCredentialIds.add(id);
 			for (const id of access.workflowIds) grantedWorkflowIds.add(id);
@@ -630,7 +629,7 @@ export class AgentRuntimeReconstructionService {
 		user: User,
 		canExecute: boolean,
 		loadUsableIds: () => Promise<Set<string>>,
-	): Promise<UserToolAccessSnapshot | UnavailableTool | undefined> {
+	): Promise<UserToolAccessSnapshot | UnavailableTool> {
 		const denied = (message: string): UnavailableTool => ({
 			toolName: toolRefName(ref),
 			toolType: ref.type,
@@ -781,13 +780,7 @@ export class AgentRuntimeReconstructionService {
 			legacyRefs,
 			projectId,
 		);
-		const legacyWorkflowIds = new Map(
-			legacyRefs.flatMap((ref) => {
-				const workflow = legacyWorkflows.get(ref.workflow);
-				return workflow ? [[ref.workflow, workflow.id] as const] : [];
-			}),
-		);
-		return withSkillWorkflowTools(config, skills, legacyWorkflowIds);
+		return withSkillWorkflowTools(config, skills, legacyWorkflows);
 	}
 
 	private async reconstructRuntime(

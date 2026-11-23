@@ -63,7 +63,11 @@ import { AgentRepository } from './repositories/agent.repository';
 import { findWorkflowToolWorkflows } from './tools/workflow-tool-workflow-resolver';
 import { extractAgentWorkflowRefs } from './utils/extract-agent-workflow-refs';
 import { findHttpRequestToolUrlFromAiViolations } from './utils/node-tool-validation';
-import { findSkillWorkflowTools, type SkillWorkflowTool } from './utils/skill-workflow-tools';
+import {
+	directWorkflowIds,
+	findSkillWorkflowTools,
+	type SkillWorkflowTool,
+} from './utils/skill-workflow-tools';
 import { findNameClashGroups, WorkflowsInSkillsFlagGate } from '@/modules/skills';
 
 type AgentValidationScope = 'runtime' | 'publish';
@@ -437,13 +441,9 @@ export class AgentValidationService {
 		workflowsByReference: Map<string, WorkflowEntity>,
 		issues: AgentConfigValidationIssue[],
 	) {
-		const directWorkflowIds = new Set(
-			extractAgentWorkflowRefs(config).map(
-				(ref) => workflowsByReference.get(ref.workflowId ?? ref.workflow)?.id,
-			),
-		);
+		const attached = directWorkflowIds(config, workflowsByReference);
 		for (const { skillId, tool } of skillWorkflowTools) {
-			if (directWorkflowIds.has(tool.workflowId)) continue;
+			if (attached.has(tool.workflowId)) continue;
 			const path = `skills.${skillId}.workflows.${tool.workflowId}`;
 			const capability: AgentConfigValidationIssue['capability'] = {
 				kind: 'tool',

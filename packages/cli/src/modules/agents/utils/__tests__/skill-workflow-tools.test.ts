@@ -105,7 +105,7 @@ describe('withSkillWorkflowTools', () => {
 		const result = withSkillWorkflowTools(
 			config(['skill-1'], [direct]),
 			skills,
-			new Map([['Get code', 'wf1']]),
+			new Map([['Get code', { id: 'wf1' }]]),
 		);
 
 		expect(result.tools).toEqual([

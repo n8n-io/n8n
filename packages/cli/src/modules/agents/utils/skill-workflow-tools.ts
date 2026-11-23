@@ -5,6 +5,8 @@ import {
 	type AgentSkill,
 } from '@n8n/api-types';
 
+import { extractAgentWorkflowRefs } from './extract-agent-workflow-refs';
+
 export type SkillWorkflowTool = {
 	skillId: string;
 	tool: AgentJsonWorkflowToolConfig & { workflowId: string };
@@ -12,11 +14,24 @@ export type SkillWorkflowTool = {
 
 type MentionedWorkflows = Map<string, { name: string; skillId: string; skillName: string }>;
 
+type WorkflowsByName = ReadonlyMap<string, { id: string }>;
+
 function directWorkflowId(
 	tool: AgentJsonWorkflowToolConfig,
-	legacyWorkflowIds: ReadonlyMap<string, string>,
+	workflowsByName: WorkflowsByName,
 ): string | undefined {
-	return tool.workflowId ?? legacyWorkflowIds.get(tool.workflow);
+	return tool.workflowId ?? workflowsByName.get(tool.workflow)?.id;
+}
+
+export function directWorkflowIds(
+	config: AgentJsonConfig,
+	workflowsByName: WorkflowsByName,
+): Set<string> {
+	return new Set(
+		extractAgentWorkflowRefs(config).flatMap(
+			(tool) => directWorkflowId(tool, workflowsByName) ?? [],
+		),
+	);
 }
 
 function workflowIdSentence(workflowId: string): string {
@@ -42,20 +57,9 @@ function findMentionedWorkflows(
 	return mentioned;
 }
 
-function directWorkflowIds(
-	config: AgentJsonConfig,
-	legacyWorkflowIds: ReadonlyMap<string, string>,
-): Set<string | undefined> {
-	return new Set(
-		(config.tools ?? []).map((tool) =>
-			tool.type === 'workflow' ? directWorkflowId(tool, legacyWorkflowIds) : undefined,
-		),
-	);
-}
-
 function toSkillWorkflowTools(
 	mentioned: MentionedWorkflows,
-	attached: Set<string | undefined>,
+	attached: Set<string>,
 ): SkillWorkflowTool[] {
 	return [...mentioned]
 		.filter(([workflowId]) => !attached.has(workflowId))
@@ -74,25 +78,24 @@ function toSkillWorkflowTools(
 export function findSkillWorkflowTools(
 	config: AgentJsonConfig,
 	skills: Record<string, AgentSkill>,
-	legacyWorkflowIds: ReadonlyMap<string, string> = new Map(),
 ): SkillWorkflowTool[] {
 	return toSkillWorkflowTools(
 		findMentionedWorkflows(config, skills),
-		directWorkflowIds(config, legacyWorkflowIds),
+		directWorkflowIds(config, new Map()),
 	);
 }
 
 export function withSkillWorkflowTools(
 	config: AgentJsonConfig,
 	skills: Record<string, AgentSkill>,
-	legacyWorkflowIds: ReadonlyMap<string, string> = new Map(),
+	workflowsByName: WorkflowsByName = new Map(),
 ): AgentJsonConfig {
 	const mentioned = findMentionedWorkflows(config, skills);
 	if (mentioned.size === 0) return config;
 
 	const directTools = (config.tools ?? []).map((tool) => {
 		if (tool.type !== 'workflow') return tool;
-		const workflowId = directWorkflowId(tool, legacyWorkflowIds);
+		const workflowId = directWorkflowId(tool, workflowsByName);
 		if (workflowId === undefined || !mentioned.has(workflowId)) return tool;
 		return {
 			...tool,
@@ -101,7 +104,7 @@ export function withSkillWorkflowTools(
 	});
 	const skillTools = toSkillWorkflowTools(
 		mentioned,
-		directWorkflowIds(config, legacyWorkflowIds),
+		directWorkflowIds(config, workflowsByName),
 	).map(({ tool }) => tool);
 	return { ...config, tools: [...directTools, ...skillTools] };
 }
