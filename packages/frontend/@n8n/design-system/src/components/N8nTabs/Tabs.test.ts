@@ -82,8 +82,9 @@ describe('N8nTabs', () => {
 		const next = getByRole('button', { name: 'Show next tabs' });
 		expect(previous).toBeDisabled();
 		expect(next).toHaveAttribute('type', 'button');
-		expect(previous.parentElement).toBe(tablist.parentElement);
-		expect(next.parentElement).toBe(tablist.parentElement);
+		expect(previous.parentElement).toBe(tablist.parentElement?.parentElement);
+		expect(next.parentElement).toBe(tablist.parentElement?.parentElement);
+		expect(tablist.parentElement).toHaveAttribute('data-fade', 'right');
 		await userEvent.click(next);
 
 		expect(scrollTo).toHaveBeenCalledWith({ left: 100, behavior: 'smooth' });
@@ -97,6 +98,7 @@ describe('N8nTabs', () => {
 		await fireEvent.scroll(tablist);
 
 		expect(getByRole('button', { name: 'Show next tabs' })).toBeDisabled();
+		expect(tablist.parentElement).toHaveAttribute('data-fade', 'left');
 		await userEvent.click(getByRole('button', { name: 'Show previous tabs' }));
 
 		expect(scrollTo).toHaveBeenCalledWith({ left: 150, behavior: 'smooth' });
@@ -231,6 +233,37 @@ describe('N8nTabs', () => {
 
 		expect(getByRole('tab', { name: 'Second' })).toHaveAttribute('data-state', 'active');
 		expect(emitted('update:modelValue')).toEqual([['second']]);
+	});
+
+	it('fades both edges when the row is scrolled between the ends', async () => {
+		const { getByRole } = render(N8nTabs, { props: { options: overflowOptions } });
+		const tablist = getByRole('tablist');
+		setOverflowLayout(tablist, 100);
+		await fireEvent.scroll(tablist);
+
+		expect(tablist.parentElement).toHaveAttribute('data-fade', 'both');
+	});
+
+	it('hides the focus ring while arrow keys select a tab', async () => {
+		const enabled = [
+			{ value: 'first', label: 'First' },
+			{ value: 'second', label: 'Second' },
+		];
+		const { getByRole } = render(N8nTabs, {
+			props: { defaultValue: 'first', options: enabled },
+		});
+		const bar = getByRole('tablist').parentElement?.parentElement;
+		expect(bar).toBeInstanceOf(HTMLElement);
+
+		getByRole('tab', { name: 'First' }).focus();
+		await userEvent.keyboard('{ArrowRight}');
+
+		expect(bar).toHaveAttribute('data-focus-source', 'arrow');
+		expect(getByRole('tab', { name: 'Second' })).toHaveAttribute('data-state', 'active');
+
+		window.dispatchEvent(new Event('blur'));
+
+		expect(bar).not.toHaveAttribute('data-focus-source');
 	});
 
 	it('renders the suffix slot outside the tab list', () => {

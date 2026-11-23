@@ -28,5 +28,5 @@ export function useHorizontalScrollEdges(
 	useResizeObserver(content, update);
 	watch(container, update, { flush: 'post' });
 
-	return { canScrollLeft, canScrollRight };
+	return { canScrollLeft, canScrollRight, update };
 }
