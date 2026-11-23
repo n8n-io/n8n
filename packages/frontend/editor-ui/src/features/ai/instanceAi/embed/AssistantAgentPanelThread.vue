@@ -30,6 +30,11 @@ import {
 } from '../assistantAgent/assistantAgentThreads';
 import { useAssistantAgentThreadsStore } from '../assistantAgent/assistantAgentThreads.store';
 import { assistantConfirmationExtension } from '../assistantAgent/assistantConfirmation';
+import {
+	ASSISTANT_PREFERENCE_CARDS,
+	assistantPreferenceCardExtension,
+	useAssistantPreferenceCards,
+} from '../assistantAgent/assistantPreferenceCards';
 import { assistantSharedFilesExtension } from '../assistantAgent/assistantSharedFiles';
 import {
 	useAssistantAgentMessageTelemetry,
@@ -240,7 +245,20 @@ watch(
 	{ immediate: true },
 );
 
-const interactionExtensions = [assistantConfirmationExtension, assistantSharedFilesExtension];
+const interactionExtensions = [
+	assistantConfirmationExtension,
+	assistantPreferenceCardExtension,
+	assistantSharedFilesExtension,
+];
+
+provide(
+	ASSISTANT_PREFERENCE_CARDS,
+	useAssistantPreferenceCards({
+		threadId: props.threadId,
+		projectId: props.subject.projectId,
+		messages: () => panel.value?.messages ?? [],
+	}),
+);
 
 defineExpose({
 	focus: () => panel.value?.focusInput(),
