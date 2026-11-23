@@ -29,8 +29,13 @@ stores outputs and derives inputs.
 2. **A recorded step is inserted already settled.** The engine never queues, claims or runs it.
    The executor returns the recorded runs with each step result, and the engine writes them with
    that result. Recorded runs are not a kind of step result. A result of any kind can carry them:
-   outputs, a wait, a sub-execution or actions. The key of a recorded step is its declaring step
-   and a sequence number.
+   outputs, a wait, a sub-execution or actions. The key of a recorded step is its declaring step,
+   the round in which the call ran, and its position among the recorded steps of that round. A
+   run that ends with outputs has a round number too, although it writes no round row. The engine
+   sets the position from the order of the recorded runs in the step result. These are the columns
+   that key a spawned step
+   (ADR-20261117-store-rounds-in-their-own-table-and-spawned-steps-with-the-graph-steps, decision
+   3). So the step table has no column that only a recorded step uses.
 3. **A recorded step stores outputs only.** For a chat model, that is the LLM response with its
    token usage. The input, such as the prompt, is not stored.
 4. **Every query that counts, plans or continues steps filters on an explicit kind.** So these
@@ -42,6 +47,12 @@ stores outputs and derives inputs.
   and its own live events.
 - **A JSON column on the declaring step's row.** Rejected. The engine would write the whole value
   again in every round.
+- **A JSON column on the round row.** Rejected. Every run of a node with sub-nodes would need a
+  round row, also a run that ends with outputs. The read path and the live events would not see
+  these runs as steps.
+- **A sequence number for each declaring step as the key.** Rejected. It would be a column that
+  only recorded steps use, and the engine would have to continue the count from one round to the
+  next.
 - **Store the input too.** Rejected. It breaks the rule that the engine stores outputs only. The
   engine cannot derive the input either, because the node builds the prompt in memory.
 
@@ -52,6 +63,11 @@ stores outputs and derives inputs.
 - The exact prompt of a model call is not shown. The read path can later show what the prompt was
   built from, or the node can build it again on demand.
 - The step table grows with each LLM call and each memory call.
+- The key needs a round number for every run of node code. A step that awaits a sub-execution
+  runs its node again in the same round (ADR-20261020-run-a-sub-workflow-as-its-own-execution).
+  The recorded runs of that second run would repeat the keys of the first run. No node with
+  sub-nodes can call a sub-workflow, so this does not occur. A record that allows such a call must
+  give the second run its own round number.
 - The check constraint on the step table covers the third kind.
 - Recorded steps are deleted with their execution, as all step rows are.
 
@@ -61,4 +77,4 @@ RFC: -
 
 Documentation: https://github.com/n8n-io/n8n/pull/43694
 
-Related ADRs: ADR-20261117-attach-sub-nodes-to-the-graph-outside-its-edges, ADR-20261117-store-rounds-in-their-own-table-and-spawned-steps-with-the-graph-steps, ADR-20261117-steps-declare-actions-that-the-engine-runs-as-steps
+Related ADRs: ADR-20261117-attach-sub-nodes-to-the-graph-outside-its-edges, ADR-20261117-store-rounds-in-their-own-table-and-spawned-steps-with-the-graph-steps, ADR-20261117-steps-declare-actions-that-the-engine-runs-as-steps, ADR-20261020-run-a-sub-workflow-as-its-own-execution

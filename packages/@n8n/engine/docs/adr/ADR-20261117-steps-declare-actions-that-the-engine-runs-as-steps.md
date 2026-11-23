@@ -79,10 +79,10 @@ shim refuses an `EngineRequest`, so an agent with tools fails.
    counts its own rounds (for example `maxIterations`). The engine caps the number of rounds and
    spawned steps in one execution. A step that goes over the cap fails. The engine checks a cap
    with a count, so the caps are soft: rounds that run at the same time can exceed a cap slightly.
-9. **A round can have no actions.** The engine records the round with an error and continues the
-   node at once, because no spawned step exists to wake it. The continuation carries the error
-   with that round, and the node decides what it means. The shim hands a v1 node an empty
-   response, as engine v1 does.
+9. **A round can have no actions.** The engine records the round and continues the node at once,
+   because no spawned step exists to wake it. The continuation shows that round without outcomes,
+   and the node decides what it means. The shim hands a v1 node an empty response, as engine v1
+   does.
 10. **A step that has declared actions cannot declare a wait or a sub-execution.** Such a step
     fails. A spawned step can still wait or call a sub-workflow.
 
@@ -109,10 +109,14 @@ sequenceDiagram
   sub-execution has only its own steps. Also, the sub-execution path starts stored workflows, which
   a tool node is not. An execution for each tool call costs much more than a step, and it shows in
   the executions list. A sub-execution is still right for a tool that calls a stored workflow.
-- **One kind of declaration for actions and sub-executions.** Rejected. A sub-execution is an
-  execution, with its own graph, admittance, retention and cancellation. A failed sub-execution
-  makes the node throw, and a failed action is data. They share only the suspend and continue
-  mechanics.
+- **One mechanism for actions and sub-workflow calls.** Deferred, not rejected. An action would
+  have a kind, which says what runs it: a spawned step, or a sub-execution. A sub-workflow call
+  has the same shape as a round: the step suspends, a sub-execution runs, and the node runs again
+  with the result. This option would need two decisions that this record does not make. The first
+  is where the result of a sub-execution is stored, because a sub-execution has its own retention.
+  The second is how a v1 node that runs again from its start makes more than one call. A
+  sub-workflow call keeps its own declaration
+  (ADR-20261020-run-a-sub-workflow-as-its-own-execution).
 - **Run the whole agent loop inside one step.** Rejected. A HITL tool cannot pause one tool call,
   the step holds a worker for the whole agent run, and tool runs do not appear as steps.
 - **A new step status for waits that only the engine ends.** Rejected. A step that awaits a
