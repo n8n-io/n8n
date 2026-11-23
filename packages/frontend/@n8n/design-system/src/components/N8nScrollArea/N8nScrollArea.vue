@@ -20,14 +20,17 @@ export interface Props {
 	 * - always: always shows scrollbars
 	 * - scroll: shows scrollbars when scrolling
 	 * - hover: shows scrollbars on hover
+	 * @default 'hover'
 	 */
 	type?: 'auto' | 'always' | 'scroll' | 'hover';
 	/**
 	 * Reading direction for RTL support
+	 * @default 'ltr'
 	 */
 	dir?: 'ltr' | 'rtl';
 	/**
 	 * Time in milliseconds before scrollbars auto-hide
+	 * @default 600
 	 */
 	scrollHideDelay?: number;
 	/**
@@ -40,14 +43,17 @@ export interface Props {
 	maxWidth?: string;
 	/**
 	 * Whether to show horizontal scrollbar
+	 * @default false
 	 */
 	enableHorizontalScroll?: boolean;
 	/**
 	 * Whether to show vertical scrollbar
+	 * @default true
 	 */
 	enableVerticalScroll?: boolean;
 	/**
 	 * Change the default rendered element for the one passed as a child, merging their props and behavior.
+	 * @default false
 	 */
 	asChild?: boolean;
 	/**

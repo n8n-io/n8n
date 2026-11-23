@@ -26,16 +26,28 @@ export type UseScrollEdgesOptions = {
 };
 
 export type HorizontalScrollEdges = {
-	/** True after the scroller moves right, so content is hidden on the left. */
+	/**
+	 * True after the scroller moves right, so content is hidden on the left.
+	 * @default false
+	 */
 	canScrollLeft: Ref<boolean>;
-	/** True while content remains past the right edge. */
+	/**
+	 * True while content remains past the right edge.
+	 * @default false
+	 */
 	canScrollRight: Ref<boolean>;
 };
 
 export type VerticalScrollEdges = {
-	/** True after the scroller moves down, so content is hidden above. */
+	/**
+	 * True after the scroller moves down, so content is hidden above.
+	 * @default false
+	 */
 	canScrollTop: Ref<boolean>;
-	/** True while content remains below the bottom edge. */
+	/**
+	 * True while content remains below the bottom edge.
+	 * @default false
+	 */
 	canScrollBottom: Ref<boolean>;
 };
 

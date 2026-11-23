@@ -62,6 +62,8 @@ $E: null;
 	}
 }
 
+// $edge is the viewport edge, or axis, that fades out.
+// $size is the fade depth. @default var(--spacing--sm)
 @mixin scroll-mask($edge, $size: var(--spacing--sm)) {
 	@if $edge == top {
 		mask-image: linear-gradient(to bottom, transparent 0, black $size, black 100%);
@@ -95,6 +97,7 @@ $E: null;
 // Bottom fade while [data-scroll-mask-bottom] is set.
 // Set that attribute from useScrollEdges `canScrollBottom` while more content
 // sits below the viewport, so the last row stays solid at the end of the list.
+// $size is the fade depth. @default var(--spacing--sm)
 @mixin scroll-mask-when-bottom($size: var(--spacing--sm)) {
 	scroll-padding-bottom: $size;
 
