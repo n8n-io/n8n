@@ -65,6 +65,15 @@ async function typeMentionTrigger(editor: Editor) {
 	await flushPromises();
 }
 
+function pressKey(editor: Editor, key: string) {
+	const event = new KeyboardEvent('keydown', { key, cancelable: true });
+	return editor.view.someProp('handleKeyDown', (handler) => handler(editor.view, event));
+}
+
+const MENTION_BODY = 'Run [Weekly report](n8n://workflow/wf1) now';
+const MENTION_START = 5;
+const MENTION_END = MENTION_START + 'Weekly report'.length;
+
 describe('AgentSkillMarkdownEditor', () => {
 	beforeEach(() => {
 		flag.enabled = true;
@@ -196,6 +205,34 @@ describe('AgentSkillMarkdownEditor', () => {
 		await flushPromises();
 
 		expect(editor.getMarkdown()).toBe('Intro @we');
+	});
+
+	it.each([
+		['Backspace after', MENTION_END],
+		['Delete before', MENTION_START],
+	])('removes the whole mention with %s it', async (key, position) => {
+		const { editor } = await mountEditor({ modelValue: MENTION_BODY });
+		editor.commands.setTextSelection(position);
+
+		expect(pressKey(editor, key.split(' ')[0])).toBe(true);
+
+		expect(editor.getMarkdown()).toBe('Run  now');
+	});
+
+	it('removes one letter of a link that is not a workflow mention', async () => {
+		const { editor } = await mountEditor({ modelValue: 'Run [Docs](https://example.com) now' });
+		editor.commands.setTextSelection(MENTION_START + 'Docs'.length);
+
+		expect(pressKey(editor, 'Backspace')).toBeFalsy();
+	});
+
+	it('keeps the default Backspace when the flag is off', async () => {
+		flag.enabled = false;
+		const { editor } = await mountEditor({ modelValue: MENTION_BODY });
+		editor.commands.setTextSelection(MENTION_END);
+
+		expect(pressKey(editor, 'Backspace')).toBeFalsy();
+		expect(editor.getMarkdown()).toBe(MENTION_BODY);
 	});
 
 	it('leaves the editor unchanged when the flag is off', async () => {

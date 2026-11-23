@@ -20,6 +20,8 @@ type EditorProps = NonNullable<N8nMarkdownEditorProps['editorProps']>;
 
 defineOptions({ inheritAttrs: false });
 
+const WORKFLOW_MENTION_URL_PREFIX = getSkillWorkflowMentionUrl('');
+
 const props = withDefaults(
 	defineProps<{
 		disabled?: boolean;
@@ -68,12 +70,41 @@ const editorProps: EditorProps = {
 		});
 		return false;
 	},
-	handleKeyDown(_view, event) {
-		if (!pickerOpen.value) return false;
-		picker.value?.handleExternalKeydown(event);
-		return event.defaultPrevented;
+	handleKeyDown(view, event) {
+		if (pickerOpen.value) {
+			picker.value?.handleExternalKeydown(event);
+			return event.defaultPrevented;
+		}
+		if (!mentionsEnabled.value || (event.key !== 'Backspace' && event.key !== 'Delete')) {
+			return false;
+		}
+		const { selection } = view.state;
+		if (!selection.empty) return false;
+		const mention = workflowMentionRanges(selection.$from).find(({ from, to }) =>
+			event.key === 'Backspace' ? to === selection.from : from === selection.from,
+		);
+		if (!mention) return false;
+		view.dispatch(view.state.tr.delete(mention.from, mention.to));
+		return true;
 	},
 };
+
+function workflowMentionRanges($position: MarkdownEditor['state']['selection']['$from']) {
+	const ranges: Array<{ from: number; to: number; href: string }> = [];
+	const start = $position.start();
+	$position.parent.forEach((node, offset) => {
+		const href: unknown = node.marks.find((mark) => mark.type.name === 'link')?.attrs.href;
+		if (typeof href !== 'string' || !href.startsWith(WORKFLOW_MENTION_URL_PREFIX)) return;
+		const from = start + offset;
+		const previous = ranges.at(-1);
+		if (previous?.to === from && previous.href === href) {
+			previous.to = from + node.nodeSize;
+		} else {
+			ranges.push({ from, to: from + node.nodeSize, href });
+		}
+	});
+	return ranges;
+}
 
 function closePicker() {
 	pickerOpen.value = false;
