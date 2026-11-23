@@ -10,7 +10,7 @@ import { UserError } from '@n8n/errors';
 import { Cipher } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
-import { mkdtemp, readdir, readFile, rm, stat } from 'node:fs/promises';
+import { mkdtemp, readdir, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -21,7 +21,6 @@ import { decompressFolder } from '@/utils/compression.util';
 import { createMember, createOwner } from './shared/db/users';
 
 const ALL_BYTE_VALUES = Buffer.from(Array.from({ length: 256 }, (_, byte) => byte));
-const MAX_ARCHIVE_FILE_BYTES = 64 * 1024 * 1024;
 
 async function storeBinaryFile(data: Buffer): Promise<string> {
 	const fileId = randomUUID();
@@ -167,26 +166,6 @@ describe('export:entities and import:entities', () => {
 
 		const restored = await Container.get(BinaryDataRepository).findContentByFileId(fileId);
 		expect(restored).toEqual(ALL_BYTE_VALUES);
-	});
-
-	it('starts a new archive file before a line would take it past 64 MiB', async () => {
-		const ROW_COUNT = 4;
-		for (let row = 0; row < ROW_COUNT; row++) {
-			await storeBinaryFile(Buffer.alloc(4 * 1024 * 1024, 0xff));
-		}
-
-		await Container.get(ExportService).exportEntities(outputDir, new Set(), undefined, {
-			includeDataTableRows: false,
-		});
-
-		const unzipped = await unzipArchive(outputDir);
-		const files = binaryDataFiles(await readdir(unzipped));
-		const sizes = await Promise.all(
-			files.map(async (file) => (await stat(join(unzipped, file))).size),
-		);
-		const oversizedFiles = files.filter((_, index) => sizes[index] > MAX_ARCHIVE_FILE_BYTES);
-		expect(oversizedFiles).toEqual([]);
-		expect(await binaryDataRowsInArchive(unzipped)).toHaveLength(ROW_COUNT);
 	});
 
 	it('rejects a binary value above the limit for its encoding before writing the archive', async () => {

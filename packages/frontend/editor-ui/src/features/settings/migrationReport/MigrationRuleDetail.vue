@@ -1003,8 +1003,10 @@ watch(
 	margin-bottom: var(--spacing--md);
 }
 
+/* A small flex basis lets the search shrink before the sort and filter wrap to a new line. */
 .search {
-	flex: 0 1 20rem;
+	flex: 1 1 10rem;
+	max-width: 20rem;
 }
 
 .sort {

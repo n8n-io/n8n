@@ -87,42 +87,89 @@ describe('AiPreferenceService', () => {
 	});
 
 	describe('getApplicable', () => {
-		it('queries the given projects and groups the rows', async () => {
+		const marketing = { id: 'team-1', name: 'Marketing', type: 'team' as const };
+		const sales = { id: 'team-2', name: 'Sales', type: 'team' as const };
+		const ownPersonal = { id: 'personal-1', name: 'Me <me@n8n.io>', type: 'personal' as const };
+		const othersPersonal = {
+			id: 'personal-2',
+			name: 'Them <them@n8n.io>',
+			type: 'personal' as const,
+		};
+
+		const relation = (projectId: string, scopes: string[]): Membership => ({ projectId, scopes });
+		const reader = (projectId: string) => relation(projectId, ['projectAiPreference:read']);
+
+		it('queries the readable projects and groups the rows', async () => {
+			const person = makePerson({ id: 'user-1', role: GLOBAL_MEMBER_ROLE });
+			grantMemberships([reader('team-1'), reader('team-2')]);
 			aiPreferenceRepository.findApplicable.mockResolvedValue([
 				row({ content: 'Global', userId: null, projectId: null }),
 				row({ content: 'Mine', userId: 'user-1' }),
-				row({ content: 'Marketing rule', projectId: 'p-1' }),
+				row({ content: 'Marketing rule', projectId: 'team-1' }),
 			]);
 
-			const result = await service.getApplicable('user-1', projects);
+			const result = await service.getApplicable(person, [marketing, sales]);
 
 			expect(aiPreferenceRepository.findApplicable).toHaveBeenCalledWith({
 				userId: 'user-1',
-				projectIds: ['p-1', 'p-2'],
+				projectIds: ['team-1', 'team-2'],
 			});
 			expect(result).toEqual({
 				instance: saved('Global'),
 				user: saved('Mine'),
-				projects: [{ id: 'p-1', name: 'Marketing', items: saved('Marketing rule') }],
+				projects: [{ ...marketing, items: saved('Marketing rule') }],
 			});
 		});
-	});
 
-	describe('getApplicable', () => {
-		it('queries a single project, as the assistant does for its bound project', async () => {
-			aiPreferenceRepository.findApplicable.mockResolvedValue([
-				row({ content: 'Marketing rule', projectId: 'p-1' }),
-			]);
+		it('leaves out a project whose role carries project:read but no projectAiPreference:read', async () => {
+			const person = makePerson({ id: 'user-1', role: GLOBAL_MEMBER_ROLE });
+			grantMemberships([relation('team-1', ['project:read'])]);
+			aiPreferenceRepository.findApplicable.mockResolvedValue([]);
 
-			const result = await service.getApplicable('user-1', [projects[0]]);
+			await service.getApplicable(person, [marketing]);
 
 			expect(aiPreferenceRepository.findApplicable).toHaveBeenCalledWith({
 				userId: 'user-1',
-				projectIds: ['p-1'],
+				projectIds: [],
 			});
-			expect(result.projects).toEqual([
-				{ id: 'p-1', name: 'Marketing', items: saved('Marketing rule') },
-			]);
+		});
+
+		it("keeps the caller's own personal project", async () => {
+			const person = makePerson({ id: 'user-1', role: GLOBAL_MEMBER_ROLE });
+			grantMemberships([reader('personal-1')]);
+			aiPreferenceRepository.findApplicable.mockResolvedValue([]);
+
+			await service.getApplicable(person, [ownPersonal]);
+
+			expect(aiPreferenceRepository.findApplicable).toHaveBeenCalledWith({
+				userId: 'user-1',
+				projectIds: ['personal-1'],
+			});
+		});
+
+		it('keeps every team project for an owner', async () => {
+			const owner = makePerson({ id: 'owner-1', role: GLOBAL_OWNER_ROLE });
+			aiPreferenceRepository.findApplicable.mockResolvedValue([]);
+
+			await service.getApplicable(owner, [marketing, sales]);
+
+			expect(projectRelationRepository.getAccessibleProjectsByRoles).not.toHaveBeenCalled();
+			expect(aiPreferenceRepository.findApplicable).toHaveBeenCalledWith({
+				userId: 'owner-1',
+				projectIds: ['team-1', 'team-2'],
+			});
+		});
+
+		it("keeps another user's personal project for an owner", async () => {
+			const owner = makePerson({ id: 'owner-1', role: GLOBAL_OWNER_ROLE });
+			aiPreferenceRepository.findApplicable.mockResolvedValue([]);
+
+			await service.getApplicable(owner, [othersPersonal]);
+
+			expect(aiPreferenceRepository.findApplicable).toHaveBeenCalledWith({
+				userId: 'owner-1',
+				projectIds: ['personal-2'],
+			});
 		});
 	});
 

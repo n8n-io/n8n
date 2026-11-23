@@ -1399,7 +1399,7 @@ const mockPulsePacketSources = () => {
 	mockInstance(UserRepository, { countUsersByRole: async () => ({ owner: 1 }) });
 	mockInstance(ProjectRepository, { getProjectCounts: async () => ({ personal: 3, team: 2 }) });
 	mockInstance(ProjectRelationRepository, {
-		countUsersByRole: async () => ({
+		countPeopleByRole: async () => ({
 			'project:admin': 4,
 			'project:chatUser': 0,
 			'project:editor': 0,

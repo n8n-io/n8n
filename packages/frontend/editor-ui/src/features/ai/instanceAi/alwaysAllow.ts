@@ -104,6 +104,7 @@ function buildSingleAlwaysAllowKey(
 		return `${REMOVED_BUILDER_TOOL_NAMES.SUBMIT_WORKFLOW}:${isUpdate ? 'update' : 'create'}`;
 	}
 	const action = typeof args.action === 'string' ? args.action : '';
+	if (toolName === 'skills' && action === 'import-from-source') return null;
 	const workflowId = resolveAlwaysAllowWorkflowId(args, confirmationWorkflowId);
 	// Running a workflow grants "always allow" per workflow, so the grant applies only to the
 	// workflow the user approved. Without a workflow ID, refuse to store a key (fail closed).

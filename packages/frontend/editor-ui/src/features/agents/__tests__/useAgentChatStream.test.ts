@@ -237,6 +237,7 @@ function buildHook(
 		channel?: Ref<'chat' | 'n8n-chat' | 'system'>;
 		interactionExtensions?: readonly AgentsChatInteractionExtension[];
 		onStreamEvent?: UseAgentChatStreamParams['onStreamEvent'];
+		messageReferences?: UseAgentChatStreamParams['messageReferences'];
 	} = {},
 ) {
 	const scope = effectScope();
@@ -6034,6 +6035,20 @@ describe('useAgentChatStream — client context', () => {
 		expect(fetchMock).toHaveBeenCalledTimes(1);
 		expect(sentBody()).toEqual({ message: 'hello' });
 		expect(sentBody()).not.toHaveProperty('clientContext');
+	});
+
+	it('gives the sent message the references that the host reads from its client context', async () => {
+		mockChatFetch();
+		const references = [{ type: 'workflow', id: 'wf-1' }];
+		const messageReferences = vi.fn(() => references);
+		const hook = buildHook('thread-1', { newSession: ref(true), messageReferences });
+		const clientContext = { attachments: references };
+
+		void hook.sendMessage('hello', undefined, undefined, clientContext);
+
+		expect(messageReferences).toHaveBeenCalledWith(clientContext);
+		expect(hook.messages.value[0]).toMatchObject({ role: 'user', content: 'hello', references });
+		await flushPromises();
 	});
 });
 

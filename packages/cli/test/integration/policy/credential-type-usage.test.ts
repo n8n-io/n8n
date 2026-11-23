@@ -21,6 +21,8 @@ import { createCredentials } from '@test-integration/db/credentials';
 import { createMember, createOwner } from '@test-integration/db/users';
 import * as utils from '@test-integration/utils';
 
+import { indexVersion } from './shared/workflow-index';
+
 const testServer = utils.setupTestServer({
 	endpointGroups: ['type-availability-policies'],
 	modules: ['type-availability-policies'],
@@ -36,29 +38,6 @@ let projectAdmin: User;
 let projectEditor: User;
 let projectA: Project;
 let projectB: Project;
-
-async function indexVersion(
-	workflow: { id: string; versionCounter: number },
-	publishedVersionId: string | null,
-	credentialIds: string[],
-) {
-	const dependencies = new WorkflowDependencies(
-		workflow.id,
-		workflow.versionCounter + 1,
-		publishedVersionId,
-	);
-	for (const [index, credentialId] of credentialIds.entries()) {
-		dependencies.add({
-			dependencyType: 'credentialId',
-			dependencyKey: credentialId,
-			dependencyInfo: { nodeId: `node-${index}`, nodeVersion: 1 },
-		});
-	}
-	await Container.get(WorkflowDependencyRepository).updateDependenciesForWorkflow(
-		workflow.id,
-		dependencies,
-	);
-}
 
 const credential = async (type: string) =>
 	await createCredentials({ name: type, type, data: '' }, projectA);
@@ -84,12 +63,12 @@ describe('GET /credential-type-policies/usage', () => {
 		const bitlyTwo = await credential('bitlyApi');
 
 		const inactive = await createWorkflow({}, projectA);
-		await indexVersion(inactive, null, [bitlyOne.id, bitlyTwo.id]);
+		await indexVersion(inactive, null, 'credentialId', [bitlyOne.id, bitlyTwo.id]);
 
 		const published = await createActiveWorkflow({}, projectA);
-		await indexVersion(published, published.activeVersionId, [bitlyOne.id]);
+		await indexVersion(published, published.activeVersionId, 'credentialId', [bitlyOne.id]);
 		// An active workflow counts in its published version only, so its draft rows do not count.
-		await indexVersion(published, null, [bitlyOne.id, bitlyOne.id]);
+		await indexVersion(published, null, 'credentialId', [bitlyOne.id, bitlyOne.id]);
 
 		const response = await testServer.authAgentFor(owner).get(INSTANCE_USAGE).expect(200);
 
@@ -161,11 +140,11 @@ describe('GET /credential-type-policies/usage', () => {
 	test('counts each project that owns a workflow once, and not a project it is shared with', async () => {
 		const bitly = await credential('bitlyApi');
 		const inA = await createWorkflow({}, projectA);
-		await indexVersion(inA, null, [bitly.id]);
+		await indexVersion(inA, null, 'credentialId', [bitly.id]);
 		const alsoInA = await createWorkflow({}, projectA);
-		await indexVersion(alsoInA, null, [bitly.id]);
+		await indexVersion(alsoInA, null, 'credentialId', [bitly.id]);
 		const inB = await createWorkflow({}, projectB);
-		await indexVersion(inB, null, [bitly.id]);
+		await indexVersion(inB, null, 'credentialId', [bitly.id]);
 		const sharedOnly = await createTeamProject('Shared only');
 		await shareWorkflowWithProjects(inA, [{ project: sharedOnly }]);
 
@@ -206,9 +185,9 @@ describe('GET /credential-type-policies/usage', () => {
 		const bitly = await credential('bitlyApi');
 
 		const archived = await createWorkflow({ isArchived: true }, projectA);
-		await indexVersion(archived, null, [bitly.id]);
+		await indexVersion(archived, null, 'credentialId', [bitly.id]);
 		const withDeletedCredential = await createWorkflow({}, projectA);
-		await indexVersion(withDeletedCredential, null, ['deleted-credential-id']);
+		await indexVersion(withDeletedCredential, null, 'credentialId', ['deleted-credential-id']);
 
 		const response = await testServer.authAgentFor(owner).get(INSTANCE_USAGE).expect(200);
 
@@ -220,8 +199,8 @@ describe('GET /credential-type-policies/usage', () => {
 		const slack = await credential('slackApi');
 
 		const workflow = await createActiveWorkflow({}, projectA);
-		await indexVersion(workflow, workflow.activeVersionId, [bitly.id]);
-		await indexVersion(workflow, null, [slack.id]);
+		await indexVersion(workflow, workflow.activeVersionId, 'credentialId', [bitly.id]);
+		await indexVersion(workflow, null, 'credentialId', [slack.id]);
 
 		const response = await testServer.authAgentFor(owner).get(INSTANCE_USAGE).expect(200);
 
@@ -233,7 +212,7 @@ describe('GET /credential-type-policies/usage', () => {
 	test('ignores the published rows of a workflow that is no longer active', async () => {
 		const bitly = await credential('bitlyApi');
 		const inactive = await createWorkflow({}, projectA);
-		await indexVersion(inactive, 'unpublished-version-id', [bitly.id]);
+		await indexVersion(inactive, 'unpublished-version-id', 'credentialId', [bitly.id]);
 
 		const response = await testServer.authAgentFor(owner).get(INSTANCE_USAGE).expect(200);
 
@@ -259,7 +238,7 @@ describe('GET /projects/:projectId/credential-type-policies/usage', () => {
 		const bitly = await credential('bitlyApi');
 		const workflow = await createWorkflow({}, projectA);
 		await shareWorkflowWithProjects(workflow, [{ project: projectB }]);
-		await indexVersion(workflow, null, [bitly.id]);
+		await indexVersion(workflow, null, 'credentialId', [bitly.id]);
 
 		const agent = testServer.authAgentFor(owner);
 		const ownerProject = await agent.get(projectUsage(projectA.id)).expect(200);
@@ -274,7 +253,7 @@ describe('GET /projects/:projectId/credential-type-policies/usage', () => {
 	test('counts a credential of another project in the project that owns the workflow', async () => {
 		const bitly = await credential('bitlyApi');
 		const workflow = await createWorkflow({}, projectB);
-		await indexVersion(workflow, null, [bitly.id]);
+		await indexVersion(workflow, null, 'credentialId', [bitly.id]);
 
 		const agent = testServer.authAgentFor(owner);
 		const workflowProject = await agent.get(projectUsage(projectB.id)).expect(200);

@@ -1,8 +1,11 @@
 import type { Locator, Page } from '@playwright/test';
 
 import { BasePage } from './BasePage';
+import { ResourceLocator } from './components/ResourceLocator';
 
 export class AgentBuilderPage extends BasePage {
+	readonly toolResourceLocator = new ResourceLocator(this.getToolModal());
+
 	constructor(page: Page) {
 		super(page);
 	}
@@ -45,7 +48,7 @@ export class AgentBuilderPage extends BasePage {
 	}
 
 	async hoverTestButtonWarning(button: Locator): Promise<void> {
-		await button.locator('..').hover();
+		await button.hover();
 	}
 
 	getPreviewWorkingWarning(): Locator {
@@ -72,6 +75,34 @@ export class AgentBuilderPage extends BasePage {
 
 	getConfiguration(): Locator {
 		return this.page.locator('[data-testid="agent-builder-editor-column"]');
+	}
+
+	private getToolModal(): Locator {
+		return this.page.locator('[data-testid="agent-tools-connection-modal"]');
+	}
+
+	async openToolConfig(toolName: string): Promise<void> {
+		await this.getConfiguration().locator('[data-testid="agent-capabilities-add-tool"]').click();
+		const modal = this.getToolModal();
+		await modal.getByTestId('tools-connection-search').fill(toolName);
+		await modal
+			.getByTestId('tools-connection-row-main')
+			.filter({ has: this.page.getByText(toolName, { exact: true }) })
+			.click();
+	}
+
+	getToolParameterSelect(name: string): Locator {
+		return this.getToolModal().getByTestId(`parameter-input-${name}`).getByRole('combobox');
+	}
+
+	getToolResourceOption(name: string): Locator {
+		return this.toolResourceLocator.getItems().getByText(name, { exact: true });
+	}
+
+	getToolMappingField(name: string): Locator {
+		return this.getToolModal()
+			.getByTestId('mapping-fields-container')
+			.getByText(name, { exact: true });
 	}
 
 	async getConfigurationWidthRatio(): Promise<number> {

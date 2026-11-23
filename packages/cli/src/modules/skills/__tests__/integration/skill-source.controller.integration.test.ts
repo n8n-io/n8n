@@ -1,4 +1,5 @@
 import {
+	connectPublicSkillSourceSchema,
 	SKILL_SYNC_FLAG,
 	type SkillSourceConnectResponse,
 	type SkillSourceDiscovery,
@@ -13,6 +14,7 @@ import {
 } from '@n8n/backend-test-utils';
 import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import { DataSource } from '@n8n/typeorm';
 import nock from 'nock';
 import type { MockInstance } from 'vitest';
@@ -21,10 +23,16 @@ import { createSkill, deleteAllSkills, findLatestSkillVersion, findSkill } from 
 import { SkillSourceConnection } from '../../database/entities/skill-source-connection.entity';
 import { SkillSourceNotFoundError } from '../../errors/skill-source-not-found.error';
 import { SkillSourceReadError } from '../../errors/skill-source-read.error';
+import { SkillSourceBackoff } from '../../services/skill-source-backoff';
+import { SkillSourceService } from '../../services/skill-source.service';
+import { SkillSourceToolBudget } from '../../services/skill-source-tool-budget';
 import { SkillsTelemetry } from '../../services/skills-telemetry.service';
 import { GitHubSkillSourceClient } from '../../sources/github/github-skill-source-client';
+import { SkillSourceClientRegistry } from '../../sources/skill-source-client-registry.service';
 import type { RemoteSkillRef } from '../../sources/skill-source-client';
 import { FakeGitHub } from '../test-utils/fake-github';
+import { InMemoryPagesStore } from '../test-utils/in-memory-pages-store';
+import { InMemorySkillSourceClient } from '../test-utils/in-memory-skill-source-client';
 import { linkSkill } from '../test-utils/skill-source-fixtures';
 
 import { createAdmin, createMember, createOwner } from '@test-integration/db/users';
@@ -69,6 +77,7 @@ describe('SkillSourceController', () => {
 	let team: Project;
 	let otherTeam: Project;
 	let personal: Project;
+	let toolBudget: MockInstance<SkillSourceToolBudget['take']>;
 
 	beforeAll(async () => {
 		ownerUser = await createOwner();
@@ -93,11 +102,14 @@ describe('SkillSourceController', () => {
 		// Deleting a skill deletes its link. A source stays until it is deleted.
 		await Container.get(DataSource).manager.delete(SkillSourceConnection, {});
 		postHog.getFeatureFlags.mockResolvedValue({ [SKILL_SYNC_FLAG]: true });
+		// The budget counts in memory for the whole file, so only its own tests let it count.
+		toolBudget = vi.spyOn(Container.get(SkillSourceToolBudget), 'take').mockReturnValue();
 		github.start();
 		github.push('acme/skills', FILES);
 	});
 
 	afterEach(() => {
+		toolBudget.mockRestore();
 		github.stop();
 	});
 
@@ -201,7 +213,13 @@ describe('SkillSourceController', () => {
 			expect(checkOf('huge')).toEqual({
 				verdict: 'blocked',
 				findings: [
-					{ rule: 'over_limit', severity: 'blocked', file: 'SKILL.md', detail: expect.any(String) },
+					{
+						rule: 'over_limit',
+						severity: 'blocked',
+						file: 'SKILL.md',
+						detail: expect.any(String),
+						limit: { field: 'description', max: 1024, current: 2000 },
+					},
 				],
 			});
 			expect(checkOf('broken')).toEqual({
@@ -656,6 +674,458 @@ describe('SkillSourceController', () => {
 				projectId: team.id,
 			});
 			expect(again.duplicate).toEqual({ kind: 'none' });
+		});
+	});
+
+	describe('public source tools', () => {
+		const target = { url: REPO, scope: 'instance' } as const;
+
+		it('lists the verdicts without file contents and imports only selected passing skills', async () => {
+			github.push('acme/skills', {
+				...FILES,
+				'skills/warning/SKILL.md': skillMd('warning', 'Warning', 'Follow\u200b this.'),
+			});
+			const service = Container.get(SkillSourceService);
+			const telemetry = vi.spyOn(Container.get(SkillsTelemetry), 'importedFromSource');
+			try {
+				const preview = await service.discoverPublic(ownerUser, target, 'mcp');
+				expect(preview.skills).toEqual(
+					expect.arrayContaining([
+						expect.objectContaining({
+							name: 'docx',
+							verdict: 'pass',
+							webUrl: `${REPO}/tree/${preview.revision}/skills/docx`,
+						}),
+						expect.objectContaining({ name: 'warning', verdict: 'needs_review' }),
+						expect.objectContaining({ name: null, verdict: 'blocked' }),
+					]),
+				);
+				expect(preview.skills.every((skill) => !('previewFiles' in skill))).toBe(true);
+				expect(await countSources()).toBe(0);
+
+				const picked = preview.skills.filter(({ name }) => name !== 'pdf');
+				const result = await service.connectPublic(
+					ownerUser,
+					connectPublicSkillSourceSchema.parse({
+						...target,
+						revision: preview.revision,
+						skillKeys: picked.map(({ key }) => key),
+					}),
+					'mcp',
+				);
+
+				expect(result.imported.map(({ name }) => name)).toEqual(['docx']);
+				expect(result.failed.map(({ reason }) => reason).sort()).toEqual([
+					'blocked_by_check',
+					'review_required',
+				]);
+				const { body } = await owner.get(`/skills/${result.imported[0].skillId}`).expect(200);
+				expect(body.data).toMatchObject({ canEdit: false, sourceId: result.sourceId });
+				expect(await service.list(ownerUser)).toMatchObject([
+					{ id: result.sourceId, skillCount: 1 },
+				]);
+				expect(telemetry).toHaveBeenCalledWith(
+					expect.objectContaining({ surface: 'mcp', imported: 1 }),
+					ownerUser.id,
+				);
+			} finally {
+				telemetry.mockRestore();
+			}
+		});
+
+		it('leaves the source disconnected if its revision changed since discovery', async () => {
+			const service = Container.get(SkillSourceService);
+			const preview = await service.discoverPublic(ownerUser, target, 'assistant');
+			github.push('acme/skills', { ...FILES, 'skills/docx/SKILL.md': skillMd('docx', 'New') });
+
+			await expect(
+				service.connectPublic(
+					ownerUser,
+					connectPublicSkillSourceSchema.parse({
+						...target,
+						revision: preview.revision,
+						skillKeys: preview.skills.filter(({ name }) => name === 'docx').map(({ key }) => key),
+					}),
+					'assistant',
+				),
+			).rejects.toMatchObject({ reason: 'stale' });
+			expect(await countSources()).toBe(0);
+		});
+	});
+
+	// MCP and n8n Assistant have no route, so the service call is their only access check.
+	describe('access of the public source tools', () => {
+		const service = () => Container.get(SkillSourceService);
+		const calls = (user: User, scope: { scope: 'instance' | 'project'; projectId?: string }) => {
+			const selection = connectPublicSkillSourceSchema.parse({
+				url: REPO,
+				...scope,
+				skillKeys: ['x'],
+				revision: 'commit',
+			});
+			return [
+				async () => await service().discoverPublic(user, { url: REPO, ...scope }, 'mcp'),
+				async () => await service().checkPublicImport(user, selection, 'assistant'),
+				async () => await service().connectPublic(user, selection, 'mcp'),
+			];
+		};
+		let viewerUser: User;
+
+		beforeAll(async () => {
+			viewerUser = await createMember();
+			await linkUserToProject(viewerUser, team, 'project:viewer');
+		});
+
+		it.each([
+			['a member in Global', () => memberUser, () => ({ scope: 'instance' as const })],
+			[
+				'a viewer in the project',
+				() => viewerUser,
+				() => ({ scope: 'project' as const, projectId: team.id }),
+			],
+			[
+				'a member in a project that is not theirs',
+				() => memberUser,
+				() => ({ scope: 'project' as const, projectId: team.id }),
+			],
+		])('refuses %s', async (_name, user, scope) => {
+			for (const call of calls(user(), scope())) {
+				await expect(call()).rejects.toBeInstanceOf(ForbiddenError);
+			}
+			expect(await countSources()).toBe(0);
+		});
+
+		it('answers not found for a project that does not exist', async () => {
+			for (const call of calls(ownerUser, { scope: 'project', projectId: 'no-such-project' })) {
+				await expect(call()).rejects.toBeInstanceOf(NotFoundError);
+			}
+			expect(await countSources()).toBe(0);
+		});
+
+		it('answers not found when the Skill Sync flag is off for the user', async () => {
+			postHog.getFeatureFlags.mockResolvedValue({});
+
+			for (const call of calls(ownerUser, { scope: 'instance' })) {
+				await expect(call()).rejects.toBeInstanceOf(NotFoundError);
+			}
+			await expect(service().list(ownerUser)).rejects.toBeInstanceOf(NotFoundError);
+			expect(await countSources()).toBe(0);
+		});
+
+		it('lets a project editor preview and import into the project', async () => {
+			const editorUser = await createMember();
+			await linkUserToProject(editorUser, team, 'project:editor');
+			const scope = { scope: 'project' as const, projectId: team.id };
+
+			const preview = await service().discoverPublic(editorUser, { url: REPO, ...scope }, 'mcp');
+			const result = await service().connectPublic(
+				editorUser,
+				connectPublicSkillSourceSchema.parse({
+					url: REPO,
+					...scope,
+					revision: preview.revision,
+					skillKeys: preview.skills.filter(({ name }) => name === 'docx').map(({ key }) => key),
+				}),
+				'mcp',
+			);
+
+			expect(result.imported.map(({ name }) => name)).toEqual(['docx']);
+			expect(await findSkill(result.imported[0].skillId)).toMatchObject({ projectId: team.id });
+		});
+	});
+
+	describe('a source type without revisions in the public source tools', () => {
+		const pages = new InMemoryPagesStore();
+
+		beforeAll(() => {
+			Container.get(SkillSourceClientRegistry).register(new InMemorySkillSourceClient(pages));
+		});
+
+		it('checks an import with the null revision of the preview, and does not call it stale', async () => {
+			const url = pages.publishDatabase([
+				{
+					name: 'brand-voice',
+					description: 'Write in our voice',
+					instructions: 'Use short sentences.',
+					frontmatter: null,
+					files: [],
+				},
+			]);
+			const service = Container.get(SkillSourceService);
+			const target = { url, scope: 'instance' } as const;
+
+			const preview = await service.discoverPublic(ownerUser, target, 'mcp');
+			expect(preview.revision).toBeNull();
+			const selection = connectPublicSkillSourceSchema.parse({
+				...target,
+				revision: preview.revision,
+				skillKeys: preview.skills.map(({ key }) => key),
+			});
+
+			await expect(
+				service.checkPublicImport(ownerUser, selection, 'assistant'),
+			).resolves.toMatchObject({ importable: [{ name: 'brand-voice' }], failed: [] });
+			await expect(
+				service.checkPublicImport(ownerUser, { ...selection, revision: 'commit' }, 'assistant'),
+			).rejects.toMatchObject({ reason: 'stale' });
+		});
+	});
+
+	describe('the request budget of the public source tools', () => {
+		const target = { url: REPO, scope: 'instance' } as const;
+
+		it('refuses the requests of a user over the budget, and reports each as a failed connect', async () => {
+			toolBudget.mockRestore();
+			const service = Container.get(SkillSourceService);
+			const adminUser = await createAdmin();
+			const connectedSource = vi.spyOn(Container.get(SkillsTelemetry), 'connectedSource');
+			let preview = await service.discoverPublic(adminUser, target, 'mcp');
+			for (let request = 1; request < 15; request++) {
+				preview = await service.discoverPublic(adminUser, target, 'mcp');
+			}
+			const selection = connectPublicSkillSourceSchema.parse({
+				...target,
+				revision: preview.revision,
+				skillKeys: preview.skills.filter(({ name }) => name === 'docx').map(({ key }) => key),
+			});
+
+			await expect(service.discoverPublic(adminUser, target, 'mcp')).rejects.toMatchObject({
+				reason: 'rate_limited',
+			});
+			await expect(
+				service.checkPublicImport(adminUser, selection, 'assistant'),
+			).rejects.toMatchObject({ reason: 'rate_limited' });
+			await expect(service.connectPublic(adminUser, selection, 'mcp')).rejects.toMatchObject({
+				reason: 'rate_limited',
+			});
+
+			expect(await countSources()).toBe(0);
+			expect(connectedSource).toHaveBeenCalledTimes(3);
+			expect(connectedSource).toHaveBeenCalledWith(
+				expect.objectContaining({ surface: 'mcp', status: 'failure', reason: 'rate_limited' }),
+				adminUser.id,
+			);
+			connectedSource.mockRestore();
+			// The connect dialog has a person behind each request, so the budget leaves it alone.
+			await discover(server.authAgentFor(adminUser), target);
+			// Another user has a budget of their own.
+			await expect(service.discoverPublic(ownerUser, target, 'mcp')).resolves.toBeDefined();
+		});
+	});
+
+	describe('a rate limit wait of the public access', () => {
+		const target = { url: REPO, scope: 'instance' } as const;
+		const waits = () =>
+			Reflect.get(Container.get(SkillSourceBackoff), 'waits') as Map<
+				string,
+				{ until: number; attempts: number }
+			>;
+
+		afterEach(() => waits().clear());
+
+		it('refuses the public source tools with no read of the source, and leaves the connect dialog alone', async () => {
+			const service = Container.get(SkillSourceService);
+			const preview = await service.discoverPublic(ownerUser, target, 'mcp');
+			const selection = connectPublicSkillSourceSchema.parse({
+				...target,
+				revision: preview.revision,
+				skillKeys: preview.skills.filter(({ name }) => name === 'docx').map(({ key }) => key),
+			});
+			const connectedSource = vi.spyOn(Container.get(SkillsTelemetry), 'connectedSource');
+			const parseLocator = vi.spyOn(Container.get(GitHubSkillSourceClient), 'parseLocator');
+			waits().set('public:github', { until: Date.now() + 3_600_000, attempts: 1 });
+
+			await expect(service.discoverPublic(ownerUser, target, 'mcp')).rejects.toMatchObject({
+				reason: 'rate_limited',
+			});
+			await expect(
+				service.checkPublicImport(ownerUser, selection, 'assistant'),
+			).rejects.toMatchObject({ reason: 'rate_limited' });
+			await expect(service.connectPublic(ownerUser, selection, 'mcp')).rejects.toMatchObject({
+				reason: 'rate_limited',
+			});
+
+			expect(parseLocator).not.toHaveBeenCalled();
+			expect(await countSources()).toBe(0);
+			expect(connectedSource).toHaveBeenCalledTimes(3);
+			expect(connectedSource).toHaveBeenCalledWith(
+				expect.objectContaining({ surface: 'mcp', status: 'failure', reason: 'rate_limited' }),
+				ownerUser.id,
+			);
+			connectedSource.mockRestore();
+			// A person in the connect dialog still reads the source.
+			await discover(owner, target);
+			expect(parseLocator).toHaveBeenCalledTimes(1);
+			parseLocator.mockRestore();
+
+			// The wait is over: the tools read the source again.
+			waits().set('public:github', { until: Date.now() - 1, attempts: 1 });
+			await expect(service.discoverPublic(ownerUser, target, 'mcp')).resolves.toBeDefined();
+		});
+	});
+
+	describe('the import check of the public source tools', () => {
+		const target = { url: REPO, scope: 'instance' } as const;
+		const service = () => Container.get(SkillSourceService);
+		let connectedSource: MockInstance<SkillsTelemetry['connectedSource']>;
+		let flaggedSkill: MockInstance<SkillsTelemetry['flaggedSkill']>;
+
+		beforeEach(() => {
+			github.push('acme/skills', {
+				...FILES,
+				'skills/warning/SKILL.md': skillMd('warning', 'Warning', 'Follow\u200b this.'),
+			});
+			connectedSource = vi.spyOn(Container.get(SkillsTelemetry), 'connectedSource');
+			flaggedSkill = vi.spyOn(Container.get(SkillsTelemetry), 'flaggedSkill');
+		});
+
+		afterEach(() => {
+			connectedSource.mockRestore();
+			flaggedSkill.mockRestore();
+		});
+
+		const previewed = async () => {
+			const preview = await service().discoverPublic(ownerUser, target, 'assistant');
+			connectedSource.mockClear();
+			flaggedSkill.mockClear();
+			const keyOf = (location: string) =>
+				preview.skills.find((skill) => skill.location.endsWith(location))?.key ?? '';
+			const check = async (skillKeys: string[], revision = preview.revision) =>
+				await service().checkPublicImport(
+					ownerUser,
+					connectPublicSkillSourceSchema.parse({ ...target, revision, skillKeys }),
+					'assistant',
+				);
+			return { keyOf, check };
+		};
+
+		it('splits a mixed selection as the import does, and stores and reports nothing', async () => {
+			await createSkill({ projectId: null, content: { name: 'pdf' } });
+			const { keyOf, check } = await previewed();
+
+			const result = await check([
+				keyOf('docx'),
+				keyOf('pdf'),
+				keyOf('warning'),
+				keyOf('broken'),
+				'no-such-key',
+			]);
+
+			expect(result.source).toMatchObject({ type: 'github', label: 'acme/skills' });
+			expect(result.importable).toEqual([{ key: keyOf('docx'), name: 'docx' }]);
+			expect(result.failed.map(({ reason }) => reason).sort()).toEqual([
+				'blocked_by_check',
+				'name_taken',
+				'not_found',
+				'review_required',
+			]);
+			expect(await countSources()).toBe(0);
+			expect(connectedSource).not.toHaveBeenCalled();
+			// The preview reported the flagged skills. The check must not count them again.
+			expect(flaggedSkill).not.toHaveBeenCalled();
+		});
+
+		it('names two selected skills with the same name as the import names them', async () => {
+			github.push('acme/twins', {
+				'one/SKILL.md': skillMd('twin', 'The first'),
+				'two/SKILL.md': skillMd('twin', 'The second'),
+			});
+			const twins = { url: 'https://github.com/acme/twins', scope: 'instance' } as const;
+			const preview = await service().discoverPublic(ownerUser, twins, 'assistant');
+			const selection = connectPublicSkillSourceSchema.parse({
+				...twins,
+				revision: preview.revision,
+				skillKeys: preview.skills.map(({ key }) => key),
+			});
+
+			const checked = await service().checkPublicImport(ownerUser, selection, 'assistant');
+			const imported = await service().connectPublic(ownerUser, selection, 'assistant');
+
+			expect(checked.importable.map(({ name }) => name)).toEqual(['twin', 'twin 2']);
+			expect(imported.imported.map(({ key, name }) => ({ key, name }))).toEqual(checked.importable);
+		});
+
+		it('gives the same split as the import of the same selection', async () => {
+			const { keyOf, check } = await previewed();
+			const skillKeys = [keyOf('docx'), keyOf('warning'), keyOf('broken')];
+
+			const checked = await check(skillKeys);
+			const imported = await service().connectPublic(
+				ownerUser,
+				connectPublicSkillSourceSchema.parse({
+					...target,
+					revision: (await service().discoverPublic(ownerUser, target, 'assistant')).revision,
+					skillKeys,
+				}),
+				'assistant',
+			);
+
+			expect(imported.imported.map(({ key }) => key)).toEqual(
+				checked.importable.map(({ key }) => key),
+			);
+			expect(imported.failed).toEqual(checked.failed);
+		});
+
+		it.each([
+			['a skill that needs review', 'warning', 'review_required'],
+			['a skill that the security check blocks', 'broken', 'blocked_by_check'],
+			['a key that the source does not hold', 'no-such-skill', 'not_found'],
+		])('refuses a selection of only %s', async (_name, location, reason) => {
+			const { keyOf, check } = await previewed();
+
+			await expect(check([keyOf(location) || location])).rejects.toMatchObject({ reason });
+
+			expect(connectedSource).toHaveBeenCalledWith(
+				expect.objectContaining({ surface: 'assistant', status: 'failure', reason }),
+				ownerUser.id,
+			);
+		});
+
+		it('refuses a selection of only a skill whose name is taken', async () => {
+			await createSkill({ projectId: null, content: { name: 'docx' } });
+			const { keyOf, check } = await previewed();
+
+			await expect(check([keyOf('docx')])).rejects.toMatchObject({ reason: 'name_taken' });
+		});
+
+		it('refuses another revision than the previewed one', async () => {
+			const { keyOf, check } = await previewed();
+			github.push('acme/skills', { ...FILES, 'skills/docx/SKILL.md': skillMd('docx', 'New') });
+
+			await expect(check([keyOf('docx')])).rejects.toMatchObject({ reason: 'stale' });
+
+			expect(connectedSource).toHaveBeenCalledWith(
+				expect.objectContaining({ surface: 'assistant', status: 'failure', reason: 'stale' }),
+				ownerUser.id,
+			);
+		});
+
+		it('refuses a source that the scope already has', async () => {
+			const { keyOf, check } = await previewed();
+			await service().connectPublic(
+				ownerUser,
+				connectPublicSkillSourceSchema.parse({
+					...target,
+					revision: (await service().discoverPublic(ownerUser, target, 'assistant')).revision,
+					skillKeys: [keyOf('pdf')],
+				}),
+				'assistant',
+			);
+			connectedSource.mockClear();
+
+			await expect(check([keyOf('docx')])).rejects.toMatchObject({
+				reason: 'duplicate_source',
+			});
+
+			expect(connectedSource).toHaveBeenCalledWith(
+				expect.objectContaining({
+					surface: 'assistant',
+					status: 'failure',
+					reason: 'duplicate_source',
+					duplicate_result: 'blocked',
+				}),
+				ownerUser.id,
+			);
 		});
 	});
 
