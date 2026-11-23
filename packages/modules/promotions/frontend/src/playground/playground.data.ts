@@ -243,7 +243,8 @@ function buildCheck(
 					const credential = Math.floor(index / 2);
 					return {
 						kind: 'credential' as const,
-						sourceId: `playground-missing-credential-${credential}`,
+						// The create action saves the credential under this id, and ids hold at most 16 characters.
+						sourceId: `pg-credential-${credential}`,
 						name: nameAt(MISSING_CREDENTIAL_NAMES, credential),
 						credentialType: 'httpHeaderAuth',
 						consumers,

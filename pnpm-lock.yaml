@@ -8853,6 +8853,9 @@ importers:
       '@vueuse/core':
         specifier: catalog:frontend
         version: 14.3.0(vue@3.5.26(typescript@6.0.2))
+      axios:
+        specifier: 1.20.0
+        version: 1.20.0(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)
       dateformat:
         specifier: ^3.0.3
         version: 3.0.3
@@ -8926,9 +8929,6 @@ importers:
       '@vue/test-utils':
         specifier: catalog:frontend
         version: 2.4.6
-      axios:
-        specifier: 1.20.0
-        version: 1.20.0(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)
       oxlint:
         specifier: 'catalog:'
         version: 1.93.0(oxlint-tsgolint@7.0.2007)
