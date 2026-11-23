@@ -217,21 +217,12 @@ export class CredentialsHelper extends ICredentialsHelper {
 			return undefined;
 		}
 
-		// check if the node is the mockup node used for testing
-		// if so, it means this is a credential test and not normal node execution
-		const isTestingCredentials =
-			node?.parameters?.temp === '' && node?.type === 'n8n-nodes-base.noOp';
-
 		if (credentialType.preAuthentication) {
 			if (typeof credentialType.preAuthentication === 'function') {
-				// if the expirable property is empty in the credentials
-				// or are expired, call pre authentication method
-				// or the credentials are being tested
-				if (
-					credentials[expirableProperty?.name] === '' ||
-					credentialsExpired ||
-					isTestingCredentials
-				) {
+				// Mint a token when the expirable property is empty or the caller reports the
+				// cached one as expired. A request-based credential test always reports it as
+				// expired (see CredentialsTester.runRequestTest), so no node-shape check is needed.
+				if (credentials[expirableProperty?.name] === '' || credentialsExpired) {
 					const output = await credentialType.preAuthentication.call(
 						restrictToCredentialDomains(helpers, credentials),
 						credentials,
@@ -244,6 +235,9 @@ export class CredentialsHelper extends ICredentialsHelper {
 						return undefined;
 					}
 
+					// Cache the token on the stored credential the node points at. A node without
+					// credentials (the credential test) has no stored credential to update: the
+					// token then serves the current request only.
 					if (node.credentials) {
 						const nodeCredentials = node.credentials[credentialType.name];
 						// Cache the freshly-fetched token onto the raw stored credentials, but
@@ -260,8 +254,8 @@ export class CredentialsHelper extends ICredentialsHelper {
 						}
 
 						await this.updateCredentials(nodeCredentials, credentialType.name, dataToPersist);
-						return Object.assign(credentials, output);
 					}
+					return Object.assign(credentials, output);
 				}
 			}
 		}
