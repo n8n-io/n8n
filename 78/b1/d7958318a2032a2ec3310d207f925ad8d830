@@ -1,0 +1,21 @@
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential.exporter.test.ts
+  s_c51b71bedc600f::t_35d776cd61b9e6 169
+packages/cli/src/modules/n8n-packages/entities/credential/credential.exporter.ts
+  s_c51b71bedc600f::t_35d776cd61b9e6 4,103-104,106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "78b1d7958318a2032a2ec3310d207f925ad8d830",
+  "prompts": {},
+  "sessions": {
+    "s_c51b71bedc600f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2399fe73-cf74-480a-bdbb-a1eca36c6f59",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}
