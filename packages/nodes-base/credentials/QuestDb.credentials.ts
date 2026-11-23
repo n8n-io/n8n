@@ -69,7 +69,7 @@ export class QuestDb implements ICredentialType {
 				},
 			},
 			description:
-				'PEM-encoded CA certificate used to verify the server. This replaces the system certificate authorities rather than adding to them, so include every authority in the server chain. Leave empty to use the system CAs.',
+				'PEM-encoded CA certificate used to verify the server. This replaces the certificate authorities that n8n trusts by default rather than adding to them, so include every authority in the server chain. Leave empty to use the default authorities.',
 		},
 		{
 			displayName: 'Ignore SSL Issues (Insecure)',
