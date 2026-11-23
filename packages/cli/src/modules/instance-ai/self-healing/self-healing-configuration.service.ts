@@ -66,11 +66,13 @@ export class SelfHealingConfigurationService {
 	/** Tells whether new self-healing work can start now. */
 	async isEnabled(): Promise<boolean> {
 		if (!this.globalConfig.instanceAi.workflowSuggestionsEnabled) return false;
-		// Self-healing is not available on the Enterprise plan yet.
-		if (this.license.isEnterprisePlan()) return false;
-		// Self-hosted instances have no flag. They use the environment variable only.
-		if (this.globalConfig.deployment.type !== 'cloud') return true;
+		if (this.globalConfig.deployment.type !== 'cloud') {
+			// Self-healing is not available on self-hosted Enterprise yet.
+			// Other self-hosted instances have no PostHog flag and use the env setting only.
+			return !this.license.isEnterprisePlan();
+		}
 
+		// Every Cloud plan requires both the env setting and the PostHog instance flag.
 		// No answer from PostHog means off.
 		return (await this.postHogClient.getFeatureFlagForInstance(SELF_HEALING_FLAG)) === true;
 	}

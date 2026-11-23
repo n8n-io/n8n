@@ -489,13 +489,19 @@ it('reports whether a configuration sends results to the current user', async ()
 });
 
 it.each([
+	{ setting: false, type: 'default', flag: true, enterprise: false, expected: false },
+	{ setting: false, type: 'default', flag: true, enterprise: true, expected: false },
 	{ setting: false, type: 'cloud', flag: true, enterprise: false, expected: false },
+	{ setting: false, type: 'cloud', flag: true, enterprise: true, expected: false },
 	{ setting: true, type: 'default', flag: false, enterprise: false, expected: true },
+	{ setting: true, type: 'default', flag: true, enterprise: true, expected: false },
 	{ setting: true, type: 'default', flag: false, enterprise: true, expected: false },
 	{ setting: true, type: 'cloud', flag: true, enterprise: false, expected: true },
-	{ setting: true, type: 'cloud', flag: true, enterprise: true, expected: false },
 	{ setting: true, type: 'cloud', flag: false, enterprise: false, expected: false },
 	{ setting: true, type: 'cloud', flag: undefined, enterprise: false, expected: false },
+	{ setting: true, type: 'cloud', flag: true, enterprise: true, expected: true },
+	{ setting: true, type: 'cloud', flag: false, enterprise: true, expected: false },
+	{ setting: true, type: 'cloud', flag: undefined, enterprise: true, expected: false },
 ] as const)(
 	'reports enabled $expected for setting $setting, deployment $type, flag $flag, Enterprise $enterprise',
 	async ({ setting, type, flag, enterprise, expected }) => {
@@ -515,10 +521,16 @@ it.each([
 		const plan = vi.spyOn(Container.get(License), 'isEnterprisePlan').mockReturnValue(enterprise);
 
 		try {
+			expect(await configurations.isEnabled()).toBe(expected);
 			expect(await configurations.getStatus(user)).toMatchObject({
 				enabled: expected,
 				setupProjectId: expected ? personalProjectId : null,
 			});
+			if (type !== 'cloud' || !setting) {
+				expect(postHog).not.toHaveBeenCalled();
+			} else {
+				expect(postHog).toHaveBeenCalledWith(SELF_HEALING_FLAG);
+			}
 		} finally {
 			postHog.mockRestore();
 			plan.mockRestore();
