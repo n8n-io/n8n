@@ -108,11 +108,6 @@ export const useInstancePolicyStore = defineStore(INSTANCE_POLICY_STORE_ID, () =
 		node: useTypeUsage(async () => await fetchNodeTypeUsage(rootStore.restApiContext)),
 		credential: useTypeUsage(async () => await fetchCredentialTypeUsage(rootStore.restApiContext)),
 	};
-	// Overlapping calls share one request, so two answers cannot race.
-	const usageReads: Record<RestrictedTypeKind, Promise<void> | null> = {
-		node: null,
-		credential: null,
-	};
 
 	/** Reads the usage counts of a kind. With `ifMissing`, a kind whose counts loaded is not read again. */
 	async function loadUsage(
@@ -120,10 +115,7 @@ export const useInstancePolicyStore = defineStore(INSTANCE_POLICY_STORE_ID, () =
 		{ ifMissing = false }: { ifMissing?: boolean } = {},
 	): Promise<void> {
 		if (ifMissing && usage[kind].isLoaded()) return;
-		usageReads[kind] ??= usage[kind].load().finally(() => {
-			usageReads[kind] = null;
-		});
-		await usageReads[kind];
+		await usage[kind].load();
 	}
 
 	const usageOf = (kind: RestrictedTypeKind, typeName: string) => usage[kind].usageOf(typeName);
