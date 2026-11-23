@@ -601,6 +601,7 @@ export type IHttpRequestMethods =
 	| 'MOVE'
 	| 'COPY'
 	| 'REPORT'
+	| 'SEARCH'
 	| 'HEAD';
 
 export type IgnoreStatusErrorConfig = {
@@ -3657,8 +3658,20 @@ export interface RelatedAgentRun {
 	/**
 	 * The interactive n8n user, when there is one. The preview chat resumes the draft
 	 * agent version, which gates node and workflow tools by this user's access.
+	 * Workflow log events report it as `agentRunUserId`.
 	 */
 	userId?: string;
+	/**
+	 * The agent's service account (`agents.identityId`), for attribution in workflow
+	 * log events only: the execution does not run as this account. Set only when
+	 * agent service accounts are enabled and the agent has one.
+	 */
+	agentServiceAccountId?: string;
+	/**
+	 * For a tool run of a sub-agent, the top-level agent that delegated to it.
+	 * Attribution only. Set only together with `agentServiceAccountId`.
+	 */
+	delegatingAgentId?: string;
 }
 
 type SubNodeExecutionDataAction = {
@@ -4732,6 +4745,10 @@ export interface IUserSettings {
 	mcpPreferencesNote?: {
 		impressions: number;
 		lastShownAt?: number;
+	};
+	assistantPreferencesNote?: {
+		impressions: number;
+		lastShownAt: number;
 	};
 }
 

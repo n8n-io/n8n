@@ -29,6 +29,8 @@ type AgentPackageKeyHandling = {
 	project: 'exclude';
 	projectId: 'exclude';
 	parentFolderId: 'exclude';
+	approvalWorkflowId: 'exclude';
+	approvalWorkflow: 'exclude';
 	scope: 'exclude';
 	createdAt: 'exclude';
 	updatedAt: 'exclude';

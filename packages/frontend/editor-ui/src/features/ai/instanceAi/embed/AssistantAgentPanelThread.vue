@@ -1,9 +1,11 @@
 <script lang="ts" setup>
 /**
  * One thread of the embedded panel on the Assistant agent. It sends the
- * subject agent with each message, so the Assistant knows which agent the
- * user builds. It exposes the same calls as `InstanceAiConversation`, so the
- * panel treats both runtimes the same.
+ * subject agent with each message: as an attachment, so the Assistant knows
+ * which agent the user builds, and as the subject, which binds the thread. A
+ * pending agent that the user saved since then binds as saved. It exposes the
+ * same calls as `InstanceAiConversation`, so the panel treats both runtimes
+ * the same.
  */
 import type {
 	AgentJsonConfig,
@@ -28,6 +30,7 @@ import {
 } from '../assistantAgent/assistantAgentThreads';
 import { useAssistantAgentThreadsStore } from '../assistantAgent/assistantAgentThreads.store';
 import { assistantConfirmationExtension } from '../assistantAgent/assistantConfirmation';
+import { assistantSharedFilesExtension } from '../assistantAgent/assistantSharedFiles';
 import {
 	useAssistantAgentMessageTelemetry,
 	type AssistantAgentSendingMessage,
@@ -122,6 +125,7 @@ function clientContext(): Record<string, unknown> {
 		...(rootStore.pushRef ? { pushRef: rootStore.pushRef } : {}),
 		browserUseAvailable: settingsStore.isBrowserUseAvailable,
 		attachments: [...starterReferences, props.subject],
+		subject: props.subject,
 		...(handoffContext.value ? { context: handoffContext.value } : {}),
 	};
 }
@@ -236,7 +240,7 @@ watch(
 	{ immediate: true },
 );
 
-const interactionExtensions = [assistantConfirmationExtension];
+const interactionExtensions = [assistantConfirmationExtension, assistantSharedFilesExtension];
 
 defineExpose({
 	focus: () => panel.value?.focusInput(),

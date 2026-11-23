@@ -1,15 +1,10 @@
-import type { Themed } from 'n8n-workflow';
-
 import type { TypeIcon } from './instancePolicyTable.types';
+import { typeIcon } from './typeIcon';
 import type { AppliedTheme } from '../composables/useAppliedTheme';
 import type { CredentialTypeSummary } from '../type-availability-policies.api';
 
 /** For a type with no icon this module can resolve, for example one that names a node type. */
 export const FALLBACK_TYPE_ICON: TypeIcon = { type: 'icon', name: 'key-round' };
-
-function themed(value: Themed<string> | undefined, theme: AppliedTheme): string | undefined {
-	return typeof value === 'object' ? value[theme] : value;
-}
 
 /** Follows the editor's `CredentialIcon`, which a module cannot import. */
 export function credentialTypeIcon(
@@ -23,16 +18,8 @@ export function credentialTypeIcon(
 	if (!type || visited.has(name)) return undefined;
 	visited.add(name);
 
-	const iconUrl = themed(type.iconUrl, theme);
-	if (iconUrl) return { type: 'file', src: baseUrl + iconUrl };
-
-	const icon = themed(type.icon, theme);
-	const color = type.iconColor ? `var(--node--icon--color--${type.iconColor})` : undefined;
-	if (icon?.startsWith('fa:')) return { type: 'icon', name: icon.slice('fa:'.length), color };
-	if (icon?.startsWith('node:')) {
-		// `node:<package>.<type>` points at a node type, while `node:<name>` is a built-in icon.
-		return icon.includes('.') ? FALLBACK_TYPE_ICON : { type: 'icon', name: icon, color };
-	}
+	const ownIcon = typeIcon(type, theme, baseUrl, FALLBACK_TYPE_ICON);
+	if (ownIcon) return ownIcon;
 
 	for (const parent of type.extends ?? []) {
 		const parentIcon = credentialTypeIcon(types, parent, theme, baseUrl, visited);

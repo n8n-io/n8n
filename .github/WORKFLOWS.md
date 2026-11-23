@@ -239,7 +239,31 @@ parallelism). See the `--build-via-mcp` section in
 |------------------------------------|--------------------------------|
 | PR closed (any)                    | `util-notify-pr-status.yml`    |
 | PR merged to `release/*`           | `release-publish.yml`          |
+| `release-publish.yml` completed    | `util-refresh-starter-scaffold.yml` (`workflow_run`) |
 | PR closed with `codespace-preview` | `util-codespace-preview.yml`   |
+
+**`util-refresh-starter-scaffold.yml` writes to a different repo.**
+`n8n-io/n8n-nodes-starter` is the committed output of `n8n-node new`. It has
+no scaffold logic of its own. `@n8n/node-cli` reaches npm with each release,
+so this workflow runs after `Release: Publish` succeeds. It checks out the
+starter with the `N8N_ASSISTANT` GitHub App (`contents: write`,
+`pull-requests: write` on `n8n-nodes-starter`), moves the starter lockfile to
+`@n8n/node-cli@latest`, runs `n8n-node new` with that CLI, writes the output
+into the checkout, and opens a PR there. A manifest in the starter
+(`.github/scaffold-manifest.json`) lists the files the templates own, so a
+file a template drops is deleted on the next run while starter-only files
+survive. The run is skipped when `latest` already matches the lockfile; a
+`workflow_dispatch` with `force: true` regenerates anyway.
+
+### On Merge Queue Removal
+
+| Event                              | Workflow                               | Effect |
+|------------------------------------|----------------------------------------|--------|
+| PR dequeued (not merged or manual) | `util-notify-merge-queue-removal.yml`  | Writes one PR comment with the reason. Later removals update the same comment. |
+
+This workflow uses `pull_request_target`. Thus, it runs without approval on
+fork and bot PRs, and it has a write token on them. No step checks out or runs
+PR code. An edit to the comment does not send a new notification.
 
 ### Label Triggers
 
@@ -840,6 +864,12 @@ Scripts in `.github/scripts/`:
 | `docker/bake-inputs-changed.mjs`| Decide whether an image must build: compare its resolved bake inputs and Dockerfile between two commits | `build-base-image.yml`, `build-node-pc-image.yml`|
 | `attest-image-sbom.mjs` | Generate, validate, and optionally attest image SBOMs | `docker-build-push.yml`, `test-sbom-nightly.yml` |
 
+### Node CLI Scripts
+
+| Script                                   | Purpose                                                            | Called By                            |
+|-------------------------------------------|--------------------------------------------------------------------|---------------------------------------|
+| `node-cli/refresh-starter-scaffold.mjs`   | Regenerate n8n-nodes-starter from the `@n8n/node-cli` installed in a given `--starter-root` checkout, and record the template-owned files in a manifest | `util-refresh-starter-scaffold.yml` |
+
 ### Validation Scripts
 
 | Script                  | Purpose           | Called By                 |
@@ -893,23 +923,24 @@ See [Slack Notifications](#slack-notifications) for the calling pattern.
 
 ## Telemetry
 
-CI metrics are collected via webhooks to n8n, then stored in BigQuery for analysis.
+CI metrics are collected via webhooks to n8n, then stored in ClickHouse for analysis.
 
 See **[CI-TELEMETRY.md](CI-TELEMETRY.md)** for:
 - Common data points (git, CI context, runner info)
 - Existing implementations (build stats, container stack)
 - How to add new telemetry
-- BigQuery schema patterns and queries
+- ClickHouse schema patterns and queries
 
 ---
 
 ## OWNERS
 
-Team ownership lives in the top-level `OWNERS` file. The scripts that consume
-it live in `.github/scripts/owners/`. Line format:
+Team ownership lives in the top-level `OWNERS` file. The scripts that validate
+it and assign reviewers live in `.github/scripts/owners/`. DevHub evaluates
+required reviews and writes the review overview comment. Line format:
 
 ```
-<pattern> <@org/team> [required]
+<pattern> <@org/team> [required[(k)] | involved[(k)]]
 ```
 
 Patterns are a catch-all (`*`), a directory prefix (`packages/x/`), or an
@@ -918,8 +949,9 @@ after general rules.
 
 The format is strict, enforced by `node .github/scripts/owners/owners.mjs --check`:
 
-- Tokens on a line come in a fixed order: pattern, one team, then options
-  such as `required`.
+- Tokens on a line come in a fixed order: pattern, one team, then at most
+  one review option (`required` or `involved`).
+- A review count `(k)` is from 1 to 5.
 - Directory patterns end with `/` and must be existing directories; all other
   patterns must be existing files. Duplicate patterns are rejected.
 
@@ -931,15 +963,15 @@ The file drives four workflows:
 | Workflow                          | Purpose                                                                  |
 |-----------------------------------|--------------------------------------------------------------------------|
 | `ci-owners-validation.yml`        | Validates OWNERS (syntax, dead paths) via `owners.mjs --check` |
-| `ci-owners-review-recommendations.yml` | Advisory PR comment: reviewer teams, line stats, required reviews    |
+| `ci-owners-review-recommendations.yml` | Calls DevHub: advisory PR comment with owning teams, line stats, required teams |
 | `ci-owners-assign-reviewers.yml`  | Opt-in reviewer auto-assignment (label-triggered)                        |
-| `ci-owners-required-reviews.yml`  | Enforces `required` entries via the "Required Reviews" commit status     |
+| `ci-owners-required-reviews.yml`  | Calls DevHub: enforces `required` and `involved` entries through the "Required Reviews" commit status |
 
 ### Auto-assign reviewers
 
 On an eligible PR into `master`, apply `Auto-assign reviewers` to request all
 owning teams. Apply `Auto-assign required reviewers` to request only teams whose
-`required` OWNERS entries match changed non-test files. If both labels are
+`required` or `involved` OWNERS entries match changed non-test files. If both labels are
 present, the workflow requests all owning teams.
 
 After it requests reviews, the workflow replaces the trigger labels with
@@ -950,62 +982,74 @@ update can try again.
 
 ### Required reviews
 
-An entry with the `required` option makes team approval mandatory: when a PR
-changes a non-test file whose winning entry carries `required`, a member of each
-listed team must approve the PR. Test files match the shared patterns in
-`test-files.mjs` and do not trigger required reviews.
-`ci-owners-required-reviews.yml` evaluates this on
-PR changes and review events, and reports a commit status
-named **Required Reviews** on the head SHA. A missing approval reports
-`pending` ("Waiting for approval from: …"), not `failure`, so an unreviewed PR
-does not show red CI; any non-success state blocks the merge equally. The
-ruleset for a branch must list that status as a required check for the block
-to take effect. Merge-queue runs report success on the queue head without
-re-evaluating: a PR cannot enter the queue unless the status is green on its
-head, and the queue does not change approvals.
+When a PR changes a non-test file whose winning entry has a review option, the
+team must review the PR. Test files do not trigger required reviews.
+
+| Option | Rule |
+|--------|------|
+| `required(k)` | `k` team members other than the PR author approve |
+| `involved(k)` | `k` team members review. A PR author in the team counts as one, so `involved` needs no approval when the author is a team member |
+
+Without `(k)`, the count is 1. When the files of one team have different
+options, the team must satisfy all of them. An approval from the author never
+counts.
+
+DevHub evaluates this rule. `ci-owners-required-reviews.yml` calls the shared
+`ownership-checks` workflow in `n8n-io/github-actions`, which sends the PR
+number to DevHub. The workflow authenticates with its GitHub Actions OIDC
+token. It uses no secret and checks out no code. DevHub reads OWNERS from
+`master`, checks the approvals and the team membership, and writes a commit
+status named **Required Reviews** on the head SHA as its own GitHub App. See
+the `ownership-checks/README.md` file in `n8n-io/github-actions` and the
+DevHub README.
+
+A missing approval reports `pending` ("Waiting for approval from: …"), not
+`failure`, so an unreviewed PR does not show red CI. Any state other than
+`success` blocks the merge. The ruleset for a branch must require that status
+from DevHub's GitHub App, or the block has no effect. In the merge queue,
+DevHub writes `success` on the queue head and does not evaluate again: a PR
+cannot enter the queue unless the status is green on its head, and the queue
+does not change approvals.
 
 The status is evaluated for a PR into any base branch, from a same-repo head
-or a fork. Both matter because the ruleset that gates a PR is not always the
-one on its base branch: GitHub applies the ruleset of a stack's target branch
-to every PR in the stack, so a stacked PR into a feature branch is gated by
-the `master` ruleset. A required status that no run ever writes leaves the PR
-blocked on "Expected". Routes that skip the evaluation are listed in
-`REQUIRED_REVIEW_EXEMPTIONS` in
-`required-reviews.mjs`. An entry is `<head> -> <base>` or just `<base>`
-(any head); `*` matches any run of characters. An exempt PR reports
-`success` with the route in the description. Only heads in this repository
-can match, so a fork branch with a matching name is still evaluated. Add a
-route only when every commit it carries was already reviewed elsewhere, as
-with `sync/master-to-3x -> 3.x`: its commits landed on `master` first.
+or a fork. Both are necessary because the ruleset that gates a PR is not always
+the ruleset of its base branch: GitHub applies the ruleset of a stack's target
+branch to every PR in the stack, so the `master` ruleset gates a stacked PR into
+a feature branch. When no run writes a required status, the PR stays blocked
+on "Expected". The routes that skip the evaluation are in DevHub, in
+`REQUIRED_REVIEW_EXEMPTIONS` in `server/services/required-reviews.ts`. An
+exempt PR reports `success`. Only heads in this repository can match a route,
+so DevHub still evaluates a fork branch with a matching name. Add a route only
+when somebody already reviewed every commit that it carries, as with
+`sync/master-to-3x -> 3.x`: its commits landed on `master` first.
 
-The workflow reads OWNERS, its scripts and the exemption routes from `master`
-only, never from the base branch or the PR: any writable branch can be a base,
-so only `master` is trusted input. A PR cannot lift its own review
-requirement. A retarget re-evaluates the PR, so a verdict computed against the
-old base does not carry over.
+DevHub reads OWNERS from `master` only, never from the base branch or the PR,
+so a PR cannot lift its own review requirement. A retarget evaluates the PR
+again, so a verdict for the old base does not stay.
 
 Members of the `large-scale-changes` GitHub team can make the **Required
 Reviews** status succeed without required OWNERS team approvals. A team member
-must apply the `large-scale-change` label. The gate checks the actor from the
-label event and verifies their current team membership. The label alone is not
-sufficient. Label changes re-evaluate the status. Removing the label removes
-the exemption.
+must apply the `large-scale-change` label. DevHub checks the actor of the
+label event and their current team membership. The label alone is not
+sufficient. Label changes evaluate the status again. When you remove the
+label, the exemption stops.
 
 An approval from the n8n Release Helper makes the **Required Reviews** status
-succeed without required OWNERS team approvals. The gate uses the latest review
-state from `n8n-release-helper[bot]`. Dismissing its approval removes the skip.
+succeed without required OWNERS team approvals. DevHub uses the latest review
+state from `n8n-release-helper[bot]`. When you dismiss its approval, the skip
+stops.
 
-Every path that writes the status runs in the base repository context, because
-a fork-context run has no secrets and a read-only token. PR changes arrive
-through `pull_request_target`, which is safe here because no step checks out
-or runs PR code. Review events on a same-repo PR arrive through
-`pull_request_review`. Review events on a fork PR arrive through the
-`workflow_run` of `util-notify-pr-status.yml`, which receives every submitted
-or dismissed review; the owners workflow looks the PR up from that run's head
-and skips same-repo heads, which the direct event already covers. A first
-contribution whose runs still wait for approval gets no review-event
-re-evaluation until a maintainer approves the runs; `workflow_dispatch` with
-the PR number is the manual fallback.
+PR changes arrive through `pull_request_target`, which is safe here because
+the workflow checks out and runs no PR code. Review events on a same-repo PR
+arrive through `pull_request_review`. A review event on a fork PR gets no
+OIDC token, so it arrives through the `workflow_run` of
+`util-notify-pr-status.yml`, which receives every submitted or dismissed
+review. The shared workflow finds the PR from the head of that run and skips
+same-repo heads, which the direct event already covers. A first contribution
+whose runs still wait for approval gets no evaluation on review events until a
+maintainer approves the runs. To evaluate a PR again, for example after a team
+membership change, run `ci-owners-required-reviews.yml` with
+`workflow_dispatch` and the PR number.
 
 ---
 

@@ -4,7 +4,11 @@ import type { AgentSessionStopService } from '@/modules/agents/agent-session-sto
 import type { AgentExecutionRepository } from '@/modules/agents/repositories/agent-execution.repository';
 import type { ProjectRelation } from '@n8n/api-types';
 import type { Logger, ModuleRegistry } from '@n8n/backend-common';
-import { type EventService, type RoleService } from '@n8n/backend-services';
+import {
+	type EventService,
+	type ProjectMutationHooksProxy,
+	type RoleService,
+} from '@n8n/backend-services';
 import {
 	type FolderRepository,
 	type Project,
@@ -65,6 +69,7 @@ describe('ProjectService', () => {
 	const userRepository = mock<UserRepository>();
 	const roleRepository = mock<RoleRepository>();
 	const user = mock<User>({ id: 'actor-user', role: mock({ slug: 'global:owner' }) });
+	const projectMutationHooks = mock<ProjectMutationHooksProxy>();
 	const transactions = mock<TransactionRunner>();
 	transactions.run.mockImplementation(async (ctx, fn) => await fn(ctx));
 	const projectService = new ProjectService(
@@ -85,6 +90,7 @@ describe('ProjectService', () => {
 		transactions,
 		mock(), // agentsConfig
 		mock(), // serviceAccountProjects
+		projectMutationHooks,
 	);
 
 	beforeEach(() => {
@@ -965,6 +971,20 @@ describe('ProjectService', () => {
 		});
 	});
 
+	describe('createTeamProject', () => {
+		it('runs the project mutation hooks for the new project', async () => {
+			const project = mock<Project>({ id: 'new-project' });
+			projectRepository.insertTeamProjectWithAdmin.mockResolvedValueOnce(project);
+
+			const created = await projectService.createTeamProject(user, { name: 'Team' });
+
+			expect(created).toBe(project);
+			expect(projectMutationHooks.afterTeamProjectCreated).toHaveBeenCalledExactlyOnceWith(
+				'new-project',
+			);
+		});
+	});
+
 	describe('deleteProject', () => {
 		const user = {
 			id: 'user-1',
@@ -1151,6 +1171,8 @@ describe('ProjectService', () => {
 				user,
 				undefined,
 				{},
+				expect.any(Function),
+				{ source: 'project-deletion' },
 			);
 			expect(agentChatAttachmentService.deleteByProject).toHaveBeenCalledWith(project.id);
 			expect(agentChatAttachmentService.deleteByProject.mock.invocationCallOrder[0]).toBeLessThan(

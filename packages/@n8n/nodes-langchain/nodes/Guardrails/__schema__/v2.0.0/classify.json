@@ -1,0 +1,31 @@
+{
+	"properties": {
+		"checks": {
+			"items": {
+				"properties": {
+					"confidenceScore": {
+						"type": "number"
+					},
+					"executionFailed": {
+						"type": "boolean"
+					},
+					"info": {
+						"type": "object"
+					},
+					"name": {
+						"type": "string"
+					},
+					"triggered": {
+						"type": "boolean"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"guardrailsInput": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

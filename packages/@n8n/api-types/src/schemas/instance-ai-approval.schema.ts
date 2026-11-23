@@ -177,3 +177,19 @@ export const autoApprovalPayloadSchema = z.object({
 	decidedBy: instanceAiAutoApprovalDeciderSchema,
 });
 export type InstanceAiAutoApprovalPayload = z.infer<typeof autoApprovalPayloadSchema>;
+
+/**
+ * Why Auto mode showed the approval card and did not run the action. The judge
+ * writes `text` in the language of the user. Each other kind is a fixed cause,
+ * and the editor has the text for it.
+ */
+export const instanceAiApprovalAskReasonSchema = z.discriminatedUnion('kind', [
+	z.object({ kind: z.literal('judge'), text: z.string() }),
+	/** The action is one that a person always confirms. */
+	z.object({ kind: z.literal('always-ask') }),
+	/** The call is too long for the judge to read in full. */
+	z.object({ kind: z.literal('too-long') }),
+	/** The judge gave no answer. */
+	z.object({ kind: z.literal('judge-failed') }),
+]);
+export type InstanceAiApprovalAskReason = z.infer<typeof instanceAiApprovalAskReasonSchema>;

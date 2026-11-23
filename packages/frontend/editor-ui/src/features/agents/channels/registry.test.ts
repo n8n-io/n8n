@@ -25,6 +25,7 @@ describe('agent channel platform registry', () => {
 		expect(isRegisteredAgentChannelPlatform('slack')).toBe(true);
 		expect(isRegisteredAgentChannelPlatform('future-channel')).toBe(false);
 		expect(isRegisteredAgentChannelPlatform('teams')).toBe(true);
+		expect(isRegisteredAgentChannelPlatform('whatsapp')).toBe(true);
 	});
 
 	it.each([true, false])('uses Connect for Slack when managed setup is %s', (available) => {

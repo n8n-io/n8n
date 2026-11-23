@@ -2,6 +2,8 @@
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { usePrefetchModals } from '@/app/composables/usePrefetchModals';
+import { EXTERNAL_SECRETS_PROVIDER_MODAL_KEY } from '@/app/constants';
 import { useExternalSecretsStore } from '../externalSecrets.ee.store';
 import { computed, onMounted } from 'vue';
 import ExternalSecretsProviderCard from '../components/ExternalSecretsProviderCard.ee.vue';
@@ -15,6 +17,10 @@ const externalSecretsStore = useExternalSecretsStore();
 const toast = useToast();
 const documentTitle = useDocumentTitle();
 const pageRedirectionHelper = usePageRedirectionHelper();
+
+usePrefetchModals([EXTERNAL_SECRETS_PROVIDER_MODAL_KEY], {
+	enabled: () => externalSecretsStore.isEnterpriseExternalSecretsEnabled,
+});
 
 const sortedProviders = computed(() => {
 	return ([...externalSecretsStore.providers] as ExternalSecretsProvider[]).sort((a, b) => {

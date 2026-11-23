@@ -2,6 +2,7 @@
 import type {
 	AgentJsonConfig,
 	AgentSseEvent,
+	AssistantAgentTargetsState,
 	InstanceAiAttachment,
 	InstanceAiHandoffContext,
 	InstanceAiNodesAttachment,
@@ -26,11 +27,14 @@ import { useElementSize } from '@vueuse/core';
 import { computed, onBeforeUnmount, provide, ref, useTemplateRef, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
+import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import AgentChatPanel from '@/features/agents/components/AgentChatPanel.vue';
+import CreditWarningBanner from '@/features/ai/assistant/components/Agent/CreditWarningBanner.vue';
 import { useN8nAssistantIdentity } from '@/features/agents/n8nChatPage/composables/useN8nAssistantIdentity';
 
 import { provideArtifactAgentTargets } from '../artifactAgentTargets';
 import { provideArtifactThread } from '../artifactThread';
+import { useAssistantCreditsStore } from '../assistantCredits.store';
 import ApprovalModeSelector from '../components/ApprovalModeSelector.vue';
 import InstanceAiAgentPreview from '../components/InstanceAiAgentPreview.vue';
 import InstanceAiArtifactsPanel from '../components/InstanceAiArtifactsPanel.vue';
@@ -42,6 +46,7 @@ import InstanceAiPreviewTabBar from '../components/InstanceAiPreviewTabBar.vue';
 import InstanceAiResourcePicker from '../components/InstanceAiResourcePicker.vue';
 import InstanceAiSkillPreview from '../components/InstanceAiSkillPreview.vue';
 import InstanceAiViewHeader from '../components/InstanceAiViewHeader.vue';
+import LimitedModeNotice from '../components/LimitedModeNotice.vue';
 import InstanceAiWorkflowPreview, {
 	type WorkflowFailuresReport,
 } from '../components/InstanceAiWorkflowPreview.vue';
@@ -52,6 +57,7 @@ import {
 	usePreviewPanelWidth,
 	usePreviewToggle,
 } from '../composables/useArtifactsLayout';
+import { useCreditWarningBanner } from '../composables/useCreditWarningBanner';
 import type { AgentTestHandoffParams } from '../composables/useInstanceAiAgentTestHandoff';
 import {
 	buildInstanceAiAgentPreviewHandoffContext,
@@ -75,7 +81,7 @@ import {
 	threadTargetsAgent,
 } from '../instanceAi.threadRuntime';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
-import { buildThreadArtifactsContext } from '../threadArtifacts';
+import { buildThreadArtifactsContext, createDisplayedExecutionReader } from '../threadArtifacts';
 import { isArtifactTab, useCanvasPreview } from '../useCanvasPreview';
 import { toAgentPreviewComposerAttachment } from './assistantAgentPreviewHandoff';
 import {
@@ -95,6 +101,9 @@ import {
 import { assistantAutoApprovalExtension } from './assistantAutoApproval';
 import { assistantConfirmationExtension } from './assistantConfirmation';
 import { assistantHostEventExtensions } from './assistantHostEvents';
+import { assistantCodeToolResultExtension } from './assistantCodeToolResults';
+import { assistantSharedFilesExtension } from './assistantSharedFiles';
+import { assistantToolResultTableExtension } from './assistantToolResultTables';
 import { useAssistantAgentThreadsStore } from './assistantAgentThreads.store';
 import { stagedElementAppId, toElementComposerAttachment } from './assistantElementAttachments';
 import {
@@ -230,6 +239,7 @@ function threadArtifactsContext(): Record<string, unknown> {
 		thread.producedArtifacts.values(),
 		activeId,
 		preview.openTabs.value.filter(isArtifactTab),
+		createDisplayedExecutionReader(thread.artifactTurns, thread.getRememberedManualExecution),
 	);
 	return threadArtifacts ? { threadArtifacts } : {};
 }
@@ -253,9 +263,26 @@ const interactionExtensions = [
 	assistantConfirmationExtension,
 	assistantAutoApprovalExtension,
 	...assistantHostEventExtensions,
+	assistantToolResultTableExtension,
+	assistantCodeToolResultExtension,
+	assistantSharedFilesExtension,
 ];
 
 const panel = useTemplateRef<InstanceType<typeof AgentChatPanel>>('panel');
+
+// --- Credits ---
+// The InstanceAiView parent loads the balance, and a push event keeps it current.
+const creditsStore = useAssistantCreditsStore();
+const creditBanner = useCreditWarningBanner(() => creditsStore.isLowCredits);
+const { goToUpgrade } = usePageRedirectionHelper();
+
+/**
+ * The server refuses a turn when no credits are left. The composer is disabled
+ * then, and this also refuses host sends, such as a hand-off or Fix with AI.
+ */
+function assertCreditsAvailable(): void {
+	if (creditsStore.isOutOfCredits) throw new Error('No Assistant credits are left');
+}
 
 const trace = useAssistantAgentTrace({
 	threadId: props.threadId,
@@ -334,16 +361,33 @@ provideArtifactAgentTargets(agentTargets.agentTargets);
 // Set from the preview tabs below, which need the thread first.
 const activeArtifactId = ref<string>();
 
-// The apps of the thread metadata, and the saved app of a new thread before the server has it.
+// The preview shows the subject of a new thread until the server has its bindings, which the
+// first message writes. Only a saved resource: a pending one needs a thread that the server knows.
+const launchSubject = launch?.subject?.pending ? undefined : launch?.subject;
+const projectAndName = ({ projectId, name }: { projectId: string; name?: string }) => ({
+	projectId,
+	...(name ? { name } : {}),
+});
+
+// The agent of the launch subject. The server state replaces it once it loads.
+const launchAgentTargets: AssistantAgentTargetsState | null =
+	launchSubject?.type === 'agent'
+		? {
+				bound: { agentId: launchSubject.id, ...projectAndName(launchSubject) },
+				pending: null,
+				targets: [],
+				previewSession: null,
+			}
+		: null;
+
+// The apps of the thread metadata, and the app of the launch subject.
 const appTargets = computed(() => {
 	const targets = getAppTargetsFromThreadMetadata(
 		threadsStore.threadsById.get(props.threadId)?.metadata,
 	);
-	const subject = launch?.subject;
-	if (subject?.type !== 'app' || subject.pending) return targets;
-	if (targets.some(({ appId }) => appId === subject.id)) return targets;
-	const { id: appId, projectId, name } = subject;
-	return [...targets, { appId, projectId, ...(name ? { name } : {}) }];
+	if (launchSubject?.type !== 'app') return targets;
+	if (targets.some(({ appId }) => appId === launchSubject.id)) return targets;
+	return [...targets, { appId: launchSubject.id, ...projectAndName(launchSubject) }];
 });
 // An app page opens its chat with `?appId=`. Only an app of this thread opens.
 const requestedAppId = computed(() => {
@@ -370,7 +414,7 @@ const thread = useAssistantArtifactThread({
 		);
 	},
 	pendingWorkflowAttachment: handoff.workflow,
-	agentTargets: () => agentTargets.state.value,
+	agentTargets: () => agentTargets.state.value ?? launchAgentTargets,
 	appTargets: () => appTargets.value,
 	activeArtifactId: () => activeArtifactId.value,
 });
@@ -379,6 +423,7 @@ provideArtifactThread(thread);
 const preview = useCanvasPreview({
 	thread,
 	threadId: () => props.threadId,
+	initialAgentId: () => launchAgentTargets?.bound?.agentId,
 	initialAppId: () => requestedAppId.value ?? appTargets.value[0]?.appId,
 	tabsStorage: {
 		// A new thread has no stored tabs, and the server does not know it before its first message.
@@ -423,6 +468,8 @@ const activeFixWithAiOffer = computed(() => {
 	const run = failedRun.value;
 	if (!run || run.executionId === dismissedExecutionId.value) return null;
 	if (panel.value?.isBusy) return null;
+	// The send would be refused, so the offer comes back once credits do.
+	if (creditsStore.isOutOfCredits) return null;
 	return { ...run, workflowName: thread.producedArtifacts.get(run.workflowId)?.name };
 });
 
@@ -798,6 +845,8 @@ function removeStagedNodes(chipId: string): void {
 						:client-context="clientContext"
 						:interaction-extensions="interactionExtensions"
 						:show-attach-button="false"
+						:disabled="creditsStore.isOutOfCredits"
+						:before-send="assertCreditsAvailable"
 						@stream-event="onStreamEvent"
 						@session-created="onSessionCreated"
 						@message-sending="onMessageSending"
@@ -813,6 +862,22 @@ function removeStagedNodes(chipId: string): void {
 								:failed-count="activeFixWithAiOffer.errors.length"
 								@fix-with-ai="handleFixWithAiFromOffer"
 								@dismiss="dismissFixWithAiOffer"
+							/>
+						</template>
+						<template #above-input>
+							<LimitedModeNotice />
+							<CreditWarningBanner
+								v-if="creditsStore.isOutOfCredits || creditBanner.visible.value"
+								:credits-remaining="creditsStore.creditsRemaining"
+								:credits-quota="creditsStore.creditsQuota"
+								:message="
+									creditsStore.isOutOfCredits
+										? i18n.baseText('instanceAi.error.outOfCredits.title')
+										: undefined
+								"
+								:dismissible="!creditsStore.isOutOfCredits"
+								@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
+								@dismiss="creditBanner.dismiss()"
 							/>
 						</template>
 						<template v-if="stagedNodes.length > 0" #composer-attachments>

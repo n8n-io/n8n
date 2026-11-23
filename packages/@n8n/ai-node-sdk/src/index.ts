@@ -34,4 +34,9 @@ export { WindowedChatMemory, type WindowedChatMemoryConfig } from '@n8n/ai-utili
 
 // Suppliers
 export { supplyMemory, type SupplyMemoryOptions } from '@n8n/ai-utilities';
-export { supplyModel, type SupplyModelOptions, type OpenAiModel } from '@n8n/ai-utilities';
+export {
+	supplyModel,
+	type SupplyModelOptions,
+	type OpenAiModel,
+	type SuppliedModel,
+} from '@n8n/ai-utilities';

@@ -39,7 +39,7 @@ const outputs = (...slots: Array<Array<ReturnType<typeof to>>>) => ({ main: slot
 /** The trigger feeds `first`. */
 const fromTrigger = (
 	first: string,
-	nodes: Array<ReturnType<typeof node>>,
+	nodes: Parameters<typeof v1Workflow>[0],
 	connections: Record<string, ReturnType<typeof outputs>> = {},
 ) => v1Workflow([TRIGGER, ...nodes], { [TRIGGER.name]: mainTo(first), ...connections });
 
@@ -55,6 +55,24 @@ export const engineRefusals: EngineRefusal[] = [
 		}),
 		engineError: 'onError=continueErrorOutput',
 		check: { code: 'CONTINUE_ERROR_OUTPUT' },
+	},
+	{
+		name: 'a node has Retry On Fail on',
+		workflow: fromTrigger('Node', [{ ...noOp('Node'), retryOnFail: true }]),
+		engineError: 'Retry On Fail',
+		check: { code: 'RETRY_ON_FAIL' },
+	},
+	{
+		name: 'a node has Always Output Data on',
+		workflow: fromTrigger('Node', [{ ...noOp('Node'), alwaysOutputData: true }]),
+		engineError: 'Always Output Data',
+		check: { code: 'ALWAYS_OUTPUT_DATA' },
+	},
+	{
+		name: 'a node has Execute Once on',
+		workflow: fromTrigger('Node', [{ ...noOp('Node'), executeOnce: true }]),
+		engineError: 'Execute Once',
+		check: { code: 'EXECUTE_ONCE' },
 	},
 	{
 		name: 'a Merge node uses mode chooseBranch',

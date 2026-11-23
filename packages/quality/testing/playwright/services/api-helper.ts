@@ -33,6 +33,7 @@ import { PromotionsApiHelper } from './promotions-api-helper';
 import { PublicApiHelper } from './public-api-helper';
 import { RoleApiHelper } from './role-api-helper';
 import { SecuritySettingsApiHelper } from './security-settings-api-helper';
+import { SkillsApiHelper } from './skills-api-helper';
 import { SourceControlApiHelper } from './source-control-api-helper';
 import { TagApiHelper } from './tag-api-helper';
 import { TokenExchangeApiHelper } from './token-exchange-api-helper';
@@ -81,6 +82,7 @@ export class ApiHelpers {
 	credentials: CredentialApiHelper;
 	dataTables: DataTableApiHelper;
 	agents: AgentApiHelper;
+	skills: SkillsApiHelper;
 	dynamicCredentials: DynamicCredentialApiHelper;
 	variables: VariablesApiHelper;
 	externalSecrets: ExternalSecretsApiHelper;
@@ -114,6 +116,7 @@ export class ApiHelpers {
 		this.credentials = new CredentialApiHelper(this);
 		this.dataTables = new DataTableApiHelper(this);
 		this.agents = new AgentApiHelper(this);
+		this.skills = new SkillsApiHelper(this);
 		this.dynamicCredentials = new DynamicCredentialApiHelper(this);
 		this.variables = new VariablesApiHelper(this);
 		this.externalSecrets = new ExternalSecretsApiHelper(this);

@@ -64,6 +64,7 @@ import { createSkill, toSkillContent } from '@/modules/skills/testing';
 import { serializedSkillSchema } from '@/modules/n8n-packages/spec/serialized/skill.schema';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import { Telemetry } from '@/telemetry';
+import { createAgent } from '@test-integration/db/agents';
 import { createCredentials } from '@test-integration/db/credentials';
 import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
 import { createMemberWithApiKey, createOwnerWithApiKey } from '@test-integration/db/users';
@@ -128,7 +129,7 @@ beforeEach(async () => {
 			...definition
 		} = serializedAgentSchema.parse(fixture.files[`${entry.target}/agent.json`]);
 		for (const [id, tool] of Object.entries(definition.tools)) tool.descriptor.name = id;
-		const agent = await agents.save({
+		const agent = await createAgent({
 			...definition,
 			projectId: sourceProject.id,
 			versionId: 'source-draft',
@@ -403,7 +404,7 @@ it.each([
 	'missing-workflow',
 	'inaccessible-workflow',
 ] as const)('imports bundled and existing dependencies when references are %s', async (state) => {
-	const existingChild = await agents.save({
+	const existingChild = await createAgent({
 		id: 'existing-child',
 		name: 'Existing child',
 		projectId: destination.id,
