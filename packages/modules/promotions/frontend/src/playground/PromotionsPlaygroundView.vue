@@ -1,7 +1,5 @@
 <script setup lang="ts">
-import { N8nHeading, N8nText } from '@n8n/design-system';
 import { VIEWS } from '@n8n/frontend-constants/views';
-import { useI18n } from '@n8n/i18n';
 import { computed, onBeforeUnmount, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
@@ -19,7 +17,6 @@ import {
  * Development only. Shows one promotion scenario at a time, with sample data. The scenario list
  * takes the place of the Settings links, so the page reads as a part of Settings.
  */
-const i18n = useI18n();
 const route = useRoute();
 const router = useRouter();
 
@@ -63,14 +60,6 @@ onBeforeUnmount(() => document.querySelector(SIDEBAR)?.removeAttribute('data-pla
 				@resize="show({ size: $event })"
 			/>
 		</Teleport>
-		<header :class="$style.header">
-			<N8nHeading tag="h2" size="large">
-				{{ i18n.baseText(`promotions.playground.scenario.${scenarioId}.title`) }}
-			</N8nHeading>
-			<N8nText color="text-light">
-				{{ i18n.baseText(`promotions.playground.scenario.${scenarioId}.description`) }}
-			</N8nText>
-		</header>
 		<div :class="$style.stage" data-test-id="promotions-playground-stage" />
 	</div>
 </template>
@@ -87,12 +76,6 @@ onBeforeUnmount(() => document.querySelector(SIDEBAR)?.removeAttribute('data-pla
 	flex-direction: column;
 	gap: var(--spacing--sm);
 	min-height: 70vh;
-}
-
-.header {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--4xs);
 }
 
 .stage {

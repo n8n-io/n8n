@@ -5,6 +5,7 @@ import {
 	N8nScrollArea,
 	N8nSegmentControl,
 	N8nText,
+	N8nTooltip,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
@@ -35,6 +36,7 @@ const groups = computed(() =>
 		items: PLAYGROUND_SCENARIOS.filter((scenario) => scenario.group === group).map(({ id }) => ({
 			id,
 			label: i18n.baseText(`promotions.playground.scenario.${id}.title`),
+			description: i18n.baseText(`promotions.playground.scenario.${id}.description`),
 		})),
 	})).filter(({ items }) => items.length > 0),
 );
@@ -70,14 +72,33 @@ const sizeOptions = computed(() =>
 					<N8nText tag="div" size="small" bold color="text-light" :class="$style.sectionTitle">
 						{{ title }}
 					</N8nText>
-					<N8nMenuItem
-						v-for="item in items"
-						:key="item.id"
-						:item="{ id: item.id, label: item.label }"
-						:active="item.id === scenarioId"
-						:data-test-id="`promotions-playground-scenario-${item.id}`"
-						@click="emit('select', item.id)"
-					/>
+					<template v-for="item in items" :key="item.id">
+						<!-- The active item shows its description. The others show it on hover. -->
+						<N8nTooltip
+							as-child
+							placement="right"
+							:show-after="300"
+							:content="item.description"
+							:disabled="item.id === scenarioId"
+						>
+							<N8nMenuItem
+								:item="{ id: item.id, label: item.label }"
+								:active="item.id === scenarioId"
+								:data-test-id="`promotions-playground-scenario-${item.id}`"
+								@click="emit('select', item.id)"
+							/>
+						</N8nTooltip>
+						<N8nText
+							v-if="item.id === scenarioId"
+							tag="div"
+							size="small"
+							color="text-light"
+							:class="$style.description"
+							data-test-id="promotions-playground-description"
+						>
+							{{ item.description }}
+						</N8nText>
+					</template>
 				</section>
 			</nav>
 		</N8nScrollArea>
@@ -97,8 +118,10 @@ const sizeOptions = computed(() =>
 
 <style lang="scss" module>
 .container {
-	// The width of the Settings sidebar. The module cannot import the editor styles.
-	min-width: 200px;
+	// A fixed width, so a long description wraps and does not stretch the sidebar. The Settings
+	// sidebar is 200px. The scenario names need more.
+	width: 280px;
+	min-width: 280px;
 	height: 100%;
 	background-color: var(--color--background--light-3);
 	border-right: var(--border);
@@ -155,6 +178,13 @@ const sizeOptions = computed(() =>
 	& + & {
 		margin-top: var(--spacing--xs);
 	}
+}
+
+.description {
+	padding: var(--spacing--4xs) var(--spacing--3xs) var(--spacing--2xs);
+	white-space: normal;
+	overflow-wrap: anywhere;
+	text-wrap: pretty;
 }
 
 .sectionTitle {
