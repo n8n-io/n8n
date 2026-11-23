@@ -70,7 +70,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-	<div :class="$style.playground" data-test-id="promotions-playground">
+	<div data-test-id="promotions-playground">
 		<Teleport defer :to="SIDEBAR">
 			<PlaygroundSidebar
 				:scenario-id="scenarioId"
@@ -88,7 +88,12 @@ onBeforeUnmount(() => {
 				:project-id="PLAYGROUND_PROJECT_ID"
 				:direction="scenario.direction"
 			/>
-			<N8nText v-else color="text-light" data-test-id="promotions-playground-pending">
+			<N8nText
+				v-else
+				color="text-light"
+				:class="$style.pending"
+				data-test-id="promotions-playground-pending"
+			>
 				{{ i18n.baseText('promotions.playground.stage.pending') }}
 			</N8nText>
 		</div>
@@ -102,15 +107,23 @@ onBeforeUnmount(() => {
 </style>
 
 <style lang="scss" module>
-.playground {
+// The Settings layout pads its content and limits its width. The stage fills the whole content
+// area instead, as a project page does in the product, and the page scrolls inside it.
+.stage {
+	position: absolute;
+	inset: 0;
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--sm);
-	min-height: 70vh;
+	overflow: hidden;
+
+	> * {
+		flex: 1;
+		min-height: 0;
+	}
 }
 
-.stage {
-	flex: 1;
-	min-height: 0;
+.pending {
+	flex: none;
+	padding: var(--spacing--lg);
 }
 </style>
