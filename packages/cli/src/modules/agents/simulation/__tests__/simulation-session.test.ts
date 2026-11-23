@@ -696,4 +696,16 @@ describe('SimulationSession', () => {
 		expect(session.takeDecision('tc-1')).toMatchObject({ route: 'blocked' });
 		expect(session.takeDecision('tc-500')).toMatchObject({ route: 'blocked' });
 	});
+	it('passes the run abort signal of a web search to the world', async () => {
+		const world = makeWorld({ outcome: 'served', source: 'made_up', status: 200, body: [] });
+		const session = new SimulationSession({ testChatId: 't', world, capabilities: [] });
+		const controller = new AbortController();
+
+		await session.instrumentation().webSearch!({ query: 'n8n' }, { signal: controller.signal });
+
+		expect(world.handleRequest).toHaveBeenCalledWith(
+			expect.objectContaining({ protocol: 'web_search' }),
+			expect.objectContaining({ signal: controller.signal }),
+		);
+	});
 });
