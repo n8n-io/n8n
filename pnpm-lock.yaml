@@ -10048,6 +10048,12 @@ importers:
 
   packages/quality/testing/engine-parity:
     dependencies:
+      '@n8n/engine':
+        specifier: workspace:*
+        version: link:../../../@n8n/engine
+      '@n8n/node-engine-compatibility':
+        specifier: workspace:*
+        version: link:../../../@n8n/node-engine-compatibility
       '@n8n/utils':
         specifier: workspace:*
         version: link:../../../@n8n/utils
@@ -10057,6 +10063,9 @@ importers:
       '@n8n/workflow-sdk':
         specifier: workspace:*
         version: link:../../../@n8n/workflow-sdk
+      '@testcontainers/postgresql':
+        specifier: 'catalog:'
+        version: 11.13.0(supports-color@8.1.1)
       fast-check:
         specifier: 'catalog:'
         version: 3.23.2

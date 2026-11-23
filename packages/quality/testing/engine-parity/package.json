@@ -12,12 +12,16 @@
     "lint:fix": "oxlint --fix",
     "test": "vitest run",
     "test:unit": "vitest run",
-    "test:dev": "vitest --watch"
+    "test:dev": "vitest --watch",
+    "test:parity": "vitest run --config vitest.parity.config.ts"
   },
   "dependencies": {
+    "@n8n/engine": "workspace:*",
+    "@n8n/node-engine-compatibility": "workspace:*",
     "@n8n/utils": "workspace:*",
     "@n8n/workflow-engine-check": "workspace:*",
     "@n8n/workflow-sdk": "workspace:*",
+    "@testcontainers/postgresql": "catalog:",
     "fast-check": "catalog:",
     "n8n-core": "workspace:*",
     "n8n-nodes-base": "workspace:*",
