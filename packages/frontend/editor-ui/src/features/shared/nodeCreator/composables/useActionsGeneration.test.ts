@@ -6,12 +6,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { SIMPLE_MEMORY_NODE_TYPE } from '@/app/constants';
 import { mockedStore } from '@/__tests__/utils';
-import { isNodeItemRestricted } from '@/features/shared/nodeCreator/nodeCreator.utils';
-
-vi.mock('@/features/shared/nodeCreator/nodeCreator.utils', async (importOriginal) => ({
-	...(await importOriginal()),
-	isNodeItemRestricted: vi.fn(() => false),
-}));
+import { mockRestrictedNodeTypes } from '@n8n/frontend-module-type-availability-policies/__tests__/mocks';
 
 let posthogStore: ReturnType<typeof usePostHog>;
 let settingsStore: ReturnType<typeof mockedStore<typeof useSettingsStore>>;
@@ -672,12 +667,10 @@ describe('useActionsGenerator', () => {
 			inputs: [],
 		};
 
-		afterEach(() => {
-			vi.mocked(isNodeItemRestricted).mockReset();
-		});
-
 		const restrict = (...restricted: string[]) =>
-			vi.mocked(isNodeItemRestricted).mockImplementation((name) => restricted.includes(name));
+			mockRestrictedNodeTypes(
+				Object.fromEntries(restricted.map((name) => [name, 'instance' as const])),
+			);
 
 		it.each([
 			{ case: 'neither type is restricted', restricted: [] },

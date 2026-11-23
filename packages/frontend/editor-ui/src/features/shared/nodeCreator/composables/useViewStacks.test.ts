@@ -28,7 +28,6 @@ describe('useViewStacks', () => {
 	describe('trigger name in a subcategory', () => {
 		beforeEach(() => {
 			setActivePinia(createPinia());
-			useViewStacks().resetViewStacks();
 
 			const nodeCreatorStore = useNodeCreatorStore();
 			nodeCreatorStore.setMergeNodes([
