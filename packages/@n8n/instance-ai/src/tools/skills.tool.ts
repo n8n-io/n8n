@@ -384,7 +384,7 @@ async function handleImportFromSource(
 		// The service applies the import rules, so the card names what the import takes.
 		const { source, importable, failed } = await sources.checkImport(input);
 		const target = await audience(context, input.scope, input.projectId);
-		const { label, ref, path } = source;
+		const { label, ref } = source;
 		const names = importable.map(({ name }) => name).join(', ');
 		const selection =
 			importable.length === 1 ? '1 synced skill' : `${importable.length} synced skills`;
@@ -396,7 +396,7 @@ async function handleImportFromSource(
 					: ` ${failed.length} selected skills cannot come in.`;
 		return await ctx.suspend({
 			requestId: nanoid(),
-			resourceName: `${label}${ref ? ` · ${ref}` : ''}${path ? ` · ${path}` : ''}`,
+			resourceName: `${label}${ref ? ` · ${ref}` : ''}`,
 			message: `Connect this source and import ${selection} ${target}: ${names}.${leftOut}`,
 			severity: 'warning',
 		});

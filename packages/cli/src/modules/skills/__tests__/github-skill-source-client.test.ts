@@ -363,7 +363,7 @@ describe('GitHubSkillSourceClient', () => {
 			const fetched = await client.fetchLatest(locator, items[0]);
 
 			expect(client.describe(locator)).toEqual({
-				label: 'acme/skills',
+				label: 'acme/skills / skills/pdf',
 				ref: 'feature/new-pdf',
 				path: 'skills/pdf',
 			});

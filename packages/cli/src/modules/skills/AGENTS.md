@@ -93,6 +93,9 @@ Sibling folders can have separate sources in the same scope. Equal or overlappin
 folders use the existing duplicate rules: Global and the target scope block the
 import, visible projects give a warning, and hidden projects reveal nothing.
 Branch changes do not make another identity for the same folder.
+Source labels include the saved folder so sibling sources have distinct names.
+The skills table orders source groups by repository and folder before pagination.
+It does not use the stored identity key as a display order.
 
 Root sources keep the repository identity key. New folder keys hash the repository
 identity and the case-sensitive folder path to fit the existing column. Duplicate

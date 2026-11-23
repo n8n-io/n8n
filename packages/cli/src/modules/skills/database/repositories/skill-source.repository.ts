@@ -456,6 +456,25 @@ export class SkillSourceRepository {
 	}
 
 	/** The sources in Global and in these projects, for the skills table. `all` for every source. */
+	async findVisibleSourcesForGrouping(
+		projectIds: string[] | 'all',
+	): Promise<Array<Pick<SkillSourceConnection, 'id' | 'type' | 'locator' | 'projectId'>>> {
+		const scopes =
+			projectIds === 'all'
+				? [{}]
+				: [{ projectId: IsNull() }, ...chunkIds(projectIds).map((ids) => ({ projectId: In(ids) }))];
+		const sources: Array<Pick<SkillSourceConnection, 'id' | 'type' | 'locator' | 'projectId'>> = [];
+		for (const where of scopes) {
+			sources.push(
+				...(await this.sources.managerFor({}).find(SkillSourceConnection, {
+					select: ['id', 'type', 'locator', 'projectId'],
+					where,
+				})),
+			);
+		}
+		return sources;
+	}
+
 	async findVisibleSources(projectIds: string[] | 'all'): Promise<SkillSourceConnection[]> {
 		const manager = this.sources.managerFor({});
 		if (projectIds === 'all') {

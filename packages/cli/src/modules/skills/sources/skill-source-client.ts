@@ -132,7 +132,7 @@ export abstract class SkillSourceClient {
 	abstract identity(locator: SkillSourceLocator): SkillSourceIdentity;
 
 	/**
-	 * How the picker names a source: a label such as `owner/repository`, the branch (null for
+	 * How the picker names a source: a label that includes its folder, the branch (null for
 	 * a source type without branches), and the folder that the link points to.
 	 */
 	abstract describe(locator: SkillSourceLocator): {
