@@ -4,10 +4,8 @@ import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 
 import { FIRECRAWL_PROFILE, HTTP_PROFILES } from '../http-profiles';
 import { HttpGuardRouter } from '../http-router';
-import { toToolCall } from '../http-tool-caller';
 import type { McpCaller } from '../mcp-upstream';
 import type { CapturedRequest } from '../network';
-import { isReadShaped } from '../request-classifier';
 import { isTokenExchange, loadVendorKnowledge, vendorForRequest } from '../vendor-knowledge';
 
 const HOST = 'api.firecrawl.dev';
@@ -27,29 +25,23 @@ const request = (method: string, path: string, body?: unknown): CapturedRequest 
 	body: body === undefined ? undefined : Buffer.from(JSON.stringify(body)),
 });
 
-// Every operation of the Firecrawl API that a node can call, and the policy for it.
-const READS: Array<[string, string, string]> = [
+// Every operation of the Firecrawl API that a node can call. None reaches the real service.
+const OPERATIONS: Array<[string, string, string]> = [
 	['scrape v1', 'POST', '/v1/scrape'],
 	['search v1', 'POST', '/v1/search'],
 	['map v1', 'POST', '/v1/map'],
 	['scrape v2', 'POST', '/v2/scrape'],
 	['search v2', 'POST', '/v2/search'],
 	['map v2', 'POST', '/v2/map'],
-	['crawl status', 'GET', `/v1/crawl/${JOB}`],
-	['extract status', 'GET', `/v1/extract/${JOB}`],
-	['credit usage', 'GET', '/v1/team/credit-usage'],
-];
-const WRITES: Array<[string, string, string]> = [
 	['crawl', 'POST', '/v1/crawl'],
 	['crawl v2', 'POST', '/v2/crawl'],
 	['extract', 'POST', '/v1/extract'],
 	['batch scrape', 'POST', '/v1/batch/scrape'],
 	['agent', 'POST', '/v2/agent'],
+	['crawl status', 'GET', `/v1/crawl/${JOB}`],
+	['extract status', 'GET', `/v1/extract/${JOB}`],
+	['credit usage', 'GET', '/v1/team/credit-usage'],
 	['crawl cancel', 'DELETE', `/v1/crawl/${JOB}`],
-	['scrape with a slash', 'POST', '/v1/scrape/'],
-	['scrape with a suffix', 'POST', '/v1/scrape/batch'],
-	['search lookalike', 'POST', '/v1/searches'],
-	['map with a prefix', 'POST', '/v1/x/map'],
 ];
 
 function setup() {
@@ -84,7 +76,7 @@ describe('the Firecrawl vendor file', () => {
 		expect(vendor.hosts).toEqual([HOST]);
 		expect(vendor.pathPrefixes).toEqual(['/v1', '/v2']);
 		expect(vendor.passthroughHosts).toEqual([]);
-		expect(vendor.readPaths).toHaveLength(3);
+		expect(vendor.readPaths).toHaveLength(0);
 		expect(vendor.instructions).toContain('crawl');
 	});
 
@@ -107,46 +99,31 @@ describe('the Firecrawl vendor file', () => {
 });
 
 describe('Firecrawl policy for each operation', () => {
-	const { readPaths } = loadVendorKnowledge('firecrawl');
-	const shaped = (method: string, path: string) =>
-		isReadShaped(request(method, path, method === 'POST' ? {} : undefined), readPaths);
-
-	it.each(READS)('%s may be a real read', (_label, method, path) => {
-		expect(shaped(method, path)).toBe(true);
+	it('has a profile that keeps every call away from the real service', () => {
+		expect(FIRECRAWL_PROFILE.gymOnly).toBe(true);
 	});
 
-	it.each(WRITES)('%s goes only to the gym', (_label, method, path) => {
-		expect(shaped(method, path)).toBe(false);
-	});
+	it.each(OPERATIONS)('%s goes only to the gym', async (_label, method, path) => {
+		const { router, upstream, gym, hydrator } = setup();
 
-	it.each(READS.filter(([, method]) => method === 'POST'))(
-		'%s is named a read for the tool caller',
-		(_label, method, path) => {
-			expect(toToolCall(request(method, path, {}), true).name).toMatch(/^read_post_/);
-		},
-	);
+		const res = await router.handle(
+			request(method, path, method === 'POST' ? { url: 'https://example.com' } : undefined),
+		);
 
-	it.each(WRITES)('%s reaches the real service never', async (_label, method, path) => {
-		const { router, upstream, gym } = setup();
-
-		await router.handle(request(method, path, method === 'DELETE' ? undefined : { url: 'x' }));
-
+		expect(res.status).toBe(200);
 		expect(upstream.callTool).not.toHaveBeenCalled();
+		expect(hydrator.hydrate).not.toHaveBeenCalled();
+		expect(hydrator.hydrateWrite).not.toHaveBeenCalled();
 		expect(gym.callTool).toHaveBeenCalledTimes(1);
 	});
 
-	it.each(READS.filter(([, method]) => method === 'POST'))(
-		'%s reads the real service, then the gym answers',
-		async (_label, method, path) => {
-			const { router, upstream, gym, hydrator } = setup();
+	it('sends the call to the gym as a write, so the real credential is never asked', async () => {
+		const { router, gym } = setup();
 
-			await router.handle(request(method, path, { url: 'https://example.com' }));
+		await router.handle(request('POST', '/v1/scrape', { url: 'https://example.com' }));
 
-			expect(upstream.callTool).toHaveBeenCalledTimes(1);
-			expect(hydrator.hydrate).toHaveBeenCalledTimes(1);
-			expect(gym.callTool).toHaveBeenCalledTimes(1);
-		},
-	);
+		expect(gym.callTool.mock.calls[0][0]).toMatch(/^write_post_/);
+	});
 });
 
 describe('a crawl job', () => {
@@ -155,7 +132,6 @@ describe('a crawl job', () => {
 
 		const start = await router.handle(request('POST', '/v1/crawl', { url: 'https://example.com' }));
 		expect(await start.json()).toMatchObject({ id: JOB });
-		expect(upstream.callTool).not.toHaveBeenCalled();
 
 		gym.callTool.mockResolvedValueOnce(result({ status: 'completed', total: 1, data: [] }));
 		const status = await router.handle(request('GET', `/v1/crawl/${JOB}`));
@@ -163,28 +139,16 @@ describe('a crawl job', () => {
 		expect(await status.json()).toMatchObject({ status: 'completed' });
 		expect(upstream.callTool).not.toHaveBeenCalled();
 		expect(gym.callTool).toHaveBeenCalledTimes(2);
-		expect(gym.callTool.mock.calls[1][0]).toBe('read_get_crawl');
 	});
 
-	it('tracks the job id of an extract in the same way', async () => {
-		const { router, upstream } = setup();
-
-		await router.handle(request('POST', '/v1/extract', { urls: ['https://example.com'] }));
-		await router.handle(request('GET', `/v1/extract/${JOB}`));
-
-		expect(upstream.callTool).not.toHaveBeenCalled();
-	});
-
-	it('reads the real service for an id that the gym did not make, and falls back to the gym', async () => {
-		const { router, upstream, gym, hydrator } = setup();
-		upstream.callTool.mockResolvedValueOnce(result({ error: 'not found' }, 404));
+	it('does not read the real service for a status read of an id that the gym did not make', async () => {
+		const { router, upstream, gym } = setup();
 
 		const res = await router.handle(request('GET', `/v1/crawl/${JOB}`));
 
-		expect(upstream.callTool).toHaveBeenCalledTimes(1);
-		expect(hydrator.hydrate).not.toHaveBeenCalled();
-		expect(gym.callTool).toHaveBeenCalledTimes(1);
 		expect(res.status).toBe(200);
+		expect(upstream.callTool).not.toHaveBeenCalled();
+		expect(gym.callTool).toHaveBeenCalledTimes(1);
 	});
 });
 

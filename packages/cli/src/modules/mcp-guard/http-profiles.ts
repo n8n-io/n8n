@@ -11,6 +11,9 @@ export interface HttpVendorProfile {
 	// True when the real ids are no UUIDs (Google ids). The hydration then keeps an id that the real
 	// data shows word for word, so the agent can use the real id in the gym.
 	opaqueIds?: boolean;
+	// True when the gym makes up its data (Firecrawl pages). No call reaches the real service, also no read,
+	// so a preview chat never uses the credits or the quota of the user.
+	gymOnly?: boolean;
 	// How the gym issues a bearer, and where the bearer sits in its answer.
 	credentialKind: string;
 	credentialField: string;
@@ -184,6 +187,7 @@ export const GMAIL_PROFILE: HttpVendorProfile = {
 // pattern of the other vendors. See "AI Gym gaps" in the pull request.
 export const FIRECRAWL_PROFILE: HttpVendorProfile = {
 	name: 'firecrawl',
+	gymOnly: true,
 	credentialKind: 'api_key',
 	credentialField: 'api_key',
 	placeholderSeed: {
