@@ -162,7 +162,7 @@ const tagNames = {
 	nameOf: (id: string) => useTagsStore().tagsById[id]?.name,
 };
 
-// The stores share a load that runs, so callers that start together send one request. This promise
+// The stores share a load that runs, so callers that start together send one request per type list. This promise
 // waits for both requests, also after one fails, so a retry does not repeat a request that still runs.
 let typeDescriptionsLoad: Promise<void> | undefined;
 

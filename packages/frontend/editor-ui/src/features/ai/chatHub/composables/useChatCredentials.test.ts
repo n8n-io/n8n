@@ -1,5 +1,5 @@
 import { flushPromises } from '@vue/test-utils';
-import { effectScope, reactive } from 'vue';
+import { effectScope, reactive, type EffectScope } from 'vue';
 import { useChatCredentials } from './useChatCredentials';
 
 const { credentialsStore, projectsStore } = vi.hoisted(() => ({
@@ -49,8 +49,15 @@ describe('useChatCredentials', () => {
 		);
 	});
 
+	let scope: EffectScope | undefined;
+
+	afterEach(() => {
+		scope?.stop();
+		scope = undefined;
+	});
+
 	function setup() {
-		const scope = effectScope();
+		scope = effectScope();
 		const result = scope.run(() => useChatCredentials('user-1'));
 		if (!result) throw new Error('useChatCredentials did not return');
 		return result;

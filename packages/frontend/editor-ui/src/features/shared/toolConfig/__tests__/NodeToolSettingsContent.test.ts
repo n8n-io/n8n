@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
@@ -769,6 +769,10 @@ describe('NodeToolSettingsContent', () => {
 	});
 
 	describe('node type that loads after the initial node', () => {
+		afterEach(() => {
+			vi.restoreAllMocks();
+		});
+
 		const lastNode = (emitted: () => Record<string, unknown[]>) =>
 			(emitted()['update:node'] as INode[][]).at(-1)?.[0];
 
@@ -832,7 +836,6 @@ describe('NodeToolSettingsContent', () => {
 			await new Promise((resolve) => setTimeout(resolve, 0));
 
 			expect(getNodeParametersSpy).toHaveBeenCalledTimes(1);
-			vi.restoreAllMocks();
 		});
 	});
 
