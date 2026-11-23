@@ -13,6 +13,7 @@ import { ContextModule } from '@/features/settings/context/module.descriptor';
 import { LogStreamingModule } from '@/features/integrations/logStreaming.ee/module.descriptor';
 import { TypeAvailabilityPoliciesModule } from '@n8n/frontend-module-type-availability-policies';
 import { AppsModule } from '@n8n/frontend-module-apps';
+import { EngineV2Module } from '@n8n/frontend-module-engine-v2';
 
 /**
  * The static list is the design, not a placeholder (design §9). n8n self-hosted
@@ -45,4 +46,5 @@ export const modules: FrontendModuleDescription[] = [
 	TypeAvailabilityPoliciesModule,
 	LogStreamingModule,
 	AppsModule,
+	EngineV2Module,
 ];

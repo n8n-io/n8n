@@ -5,6 +5,9 @@ export type AppActor = { userId?: string; threadId?: string };
 
 export type AppChangeSource = 'initial' | 'chat' | 'restore' | 'retry' | 'bindings';
 
+/** Who saved a bindings change: the n8n Assistant, or a user in Configure mode or the API. */
+export type AppBindingsChangeSource = 'assistant' | 'user';
+
 /** Data table reads are not counted. */
 export type AppInteractionType = 'workflow_run' | 'data_table_write' | 'agent_message';
 
@@ -39,6 +42,8 @@ export interface AppEventMap {
 		projectId: string;
 		versionId: string;
 		userId: string;
+		threadId?: string;
+		source: AppBindingsChangeSource;
 		workflowCount: number;
 		dataTableCount: number;
 		agentCount: number;

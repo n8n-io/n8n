@@ -543,6 +543,16 @@ test-workflows-nightly.yml  (manual dispatch only — nightly schedule disabled,
 └────────────────────────────────────────────────────────────────────────────┘
 ```
 
+### npm `latest` promotion
+
+`release-set-stable-npm-packages-to-latest.yml` sets npm `latest` from the Git
+`stable` tag for public `@n8n/*` packages, `n8n-core`, `n8n-editor-ui`,
+`n8n-nodes-base`, and `n8n-workflow`. The three standalone packages
+`@n8n/create-node`, `@n8n/eslint-plugin-community-nodes`, and
+`@n8n/scan-community-package` follow npm `beta` when available and do not
+downgrade a newer `latest`. The channel promotion workflow manages `n8n@latest`
+separately.
+
 ### Release PR verification
 
 When the selected ref contains `packages/quality/policy/code-health`,
@@ -622,6 +632,7 @@ out: `npm deprecate n8n@X.Y.Z "Failed release, use X.Y.(Z+1)"`.
 | Workflow                                  | Trigger         | Purpose                                        |
 |-------------------------------------------|-----------------|------------------------------------------------|
 | `release-standalone-package.yml`           | Manual dispatch | Release individual packages (@n8n/codemirror-lang, @n8n/create-node, etc.) |
+| `release-publish-new-package.yml`         | Manual dispatch or workflow call | Publish an initial version if needed and configure npm trusted publishing for one package |
 | `release-create-patch-pr.yml`              | Manual dispatch | Open a patch release PR for one track          |
 | `release-recreate-failed-release.yml`      | Manual dispatch | Re-release a version whose publish failed after it reached npm |
 
@@ -682,7 +693,7 @@ Push to master
 | Monday 00:00              | `util-update-node-popularity.yml` | Node usage stats         |
 | Monday 02:00              | `test-e2e-coverage-weekly.yml`    | Weekly E2E coverage      |
 | Monday 06:00              | `test-link-check-weekly.yml`      | Broken links in `packages/` |
-| Monday 08:00              | `ci-detect-new-packages.yml`      | Report unpublished npm packages to Developer Platform |
+| Mon–Tue every 2 hours at :15 | `ci-detect-new-packages.yml`   | Report unpublished npm packages in `#alerts-developer-platforms` and link the package setup workflow |
 | Wednesday 04:00           | `util-update-get-n8n-versions.yml` | get-n8n stable versions |
 | Saturday 22:00            | `test-evals-ai.yml`               | AI workflow evals        |
 | 1st of month 04:00        | `util-refresh-cubic-schema.yml`   | Refresh vendored cubic schema |
@@ -830,6 +841,7 @@ Workflows with `workflow_call` trigger:
 | `security-trivy-scan-callable.yml` | `image_ref`                                   | Trivy scan            |
 | `sbom-generation-callable.yml`     | `n8n_version`, `release_tag_ref`              | SBOM generation       |
 | `sbom-validation-callable.yml`     | `sha`                                         | Read-only SBOM validation |
+| `release-publish-new-package.yml`  | `package-path`                                | Set up npm trusted publishing for one package |
 | `test-single-instance-npm.yml`     | `scope`, `base-ref`, `base-branch`, `blocking`, `timeout-minutes` | Dependency duplication |
 
 ---
