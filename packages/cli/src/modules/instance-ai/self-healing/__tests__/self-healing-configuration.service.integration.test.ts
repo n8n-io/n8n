@@ -21,16 +21,19 @@ import {
 	sqliteMigrations,
 	wrapMigration,
 } from '@n8n/db';
+import { SELF_HEALING_FLAG } from '@n8n/api-types';
+import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { DataSource } from '@n8n/typeorm';
-import { RoleCacheService, WorkflowMutationHooksProxy } from '@n8n/backend-services';
+import { PostHogClient, RoleCacheService, WorkflowMutationHooksProxy } from '@n8n/backend-services';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { AuthHandlerRegistry } from '@/auth/auth-handler.registry';
 import { ControllerRegistry } from '@/controller.registry';
+import { License } from '@/license';
 import { Telemetry } from '@/telemetry';
 import { UserService } from '@/services/user.service';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
@@ -478,14 +481,52 @@ it('reports whether a configuration sends results to the current user', async ()
 	const status = async (reviewer: User) =>
 		(await server.authAgentFor(reviewer).get('/self-healing/status').expect(200)).body.data;
 
-	const personalProjectId = (await getPersonalProject(user)).id;
-
-	expect(await status(user)).toEqual({ isReviewer: false, setupProjectId: personalProjectId });
+	expect(await status(user)).toMatchObject({ isReviewer: false });
 
 	await server.authAgentFor(user).post(url).send(input).expect(200);
 	expect(await status(user)).toMatchObject({ isReviewer: true });
 	expect(await status(member)).toMatchObject({ isReviewer: false });
 });
+
+it.each([
+	{ setting: false, type: 'cloud', flag: true, enterprise: false, expected: false },
+	{ setting: true, type: 'default', flag: false, enterprise: false, expected: true },
+	{ setting: true, type: 'default', flag: false, enterprise: true, expected: false },
+	{ setting: true, type: 'cloud', flag: true, enterprise: false, expected: true },
+	{ setting: true, type: 'cloud', flag: true, enterprise: true, expected: false },
+	{ setting: true, type: 'cloud', flag: false, enterprise: false, expected: false },
+	{ setting: true, type: 'cloud', flag: undefined, enterprise: false, expected: false },
+] as const)(
+	'reports enabled $expected for setting $setting, deployment $type, flag $flag, Enterprise $enterprise',
+	async ({ setting, type, flag, enterprise, expected }) => {
+		const user = await createUser();
+		const personalProjectId = (await getPersonalProject(user)).id;
+		const globalConfig = Container.get(GlobalConfig);
+		const previous = {
+			setting: globalConfig.instanceAi.workflowSuggestionsEnabled,
+			type: globalConfig.deployment.type,
+		};
+		globalConfig.instanceAi.workflowSuggestionsEnabled = setting;
+		globalConfig.deployment.type = type;
+		const postHog = vi
+			.spyOn(Container.get(PostHogClient), 'getFeatureFlagForInstance')
+			// Only the self-healing flag has an answer.
+			.mockImplementation(async (name) => (name === SELF_HEALING_FLAG ? flag : undefined));
+		const plan = vi.spyOn(Container.get(License), 'isEnterprisePlan').mockReturnValue(enterprise);
+
+		try {
+			expect(await configurations.getStatus(user)).toMatchObject({
+				enabled: expected,
+				setupProjectId: expected ? personalProjectId : null,
+			});
+		} finally {
+			postHog.mockRestore();
+			plan.mockRestore();
+			globalConfig.instanceAi.workflowSuggestionsEnabled = previous.setting;
+			globalConfig.deployment.type = previous.type;
+		}
+	},
+);
 
 it('does not report a reviewer who cannot edit a covered workflow', async () => {
 	const { user, project, url, input } = await fixture();
