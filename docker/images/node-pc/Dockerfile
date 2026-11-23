@@ -16,18 +16,15 @@
 # -n8n.N suffix of the V8 version, and check-v8-patches.js proves that the
 # compiled Node carries the patches and the expected configure flags.
 #
-# Two published targets per image:
-#   runtime (default) - RUNTIME_IMAGE (an n8nio/base) with our compiled Node
-#                       swapped in
-#   dev               - plain Alpine with apk usable, for the n8n builder
-#                       stage, which must compile native addons against this
-#                       Node's headers
+# Publishes the `dev` target per image: plain Alpine with our compiled Node,
+# npm, and headers under /usr/local. The n8n image builds native addons in this
+# image and copies /usr/local/bin and /usr/local/lib onto n8nio/base, so OS base
+# refreshes do not recompile Node.
 #
 # The node-pc and node-patched-* targets in docker/docker-bake.hcl set these.
 # Do not use plain `docker build`.
 ARG NODE_VERSION
 ARG ALPINE_IMAGE
-ARG RUNTIME_IMAGE
 ARG ENABLE_POINTER_COMPRESSION=true
 # Compiling V8 needs 1.5-2 GB of memory per parallel job. Lower this on
 # builders whose memory-to-core ratio cannot cover all cores.
@@ -112,21 +109,3 @@ FROM base AS dev
 # up this build's defines (e.g. pointer compression), never against downloaded
 # stock headers.
 ENV npm_config_nodedir=/usr/local
-
-# ---------------------------------------------------------------------------
-
-# RUNTIME_IMAGE (an `n8nio/base`), with our compiled Node in place of the
-# stock node, npm and npx.
-FROM ${RUNTIME_IMAGE} AS runtime
-ARG ENABLE_POINTER_COMPRESSION
-
-RUN rm -f /usr/bin/node /usr/bin/nodejs /usr/bin/npm /usr/bin/npx /usr/local/bin/node
-COPY --from=builder /node-install/usr/local /usr/local
-COPY docker/images/node-pc/check-v8-patches.js /tmp/check-v8-patches.js
-RUN node --version \
-    && node /tmp/check-v8-patches.js && rm /tmp/check-v8-patches.js
-
-# The compiled build lives at /usr/local/bin, which is what the cloud launch
-# and AppArmor profile expect. Keep the stock /usr/bin path working for
-# anything that references it.
-RUN ln -sf /usr/local/bin/node /usr/bin/node

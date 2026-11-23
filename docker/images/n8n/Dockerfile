@@ -5,9 +5,13 @@ ARG N8N_VERSION=snapshot
 # `docker buildx bake`, not plain `docker build`.
 ARG BUILDER_IMAGE
 ARG RUNTIME_IMAGE
+ARG ENABLE_POINTER_COMPRESSION=false
+
+# Clean source of our compiled Node binaries before build tools are installed.
+FROM ${BUILDER_IMAGE} AS node-source
 
 # The runtime base has no compiler, so this stage supplies one.
-FROM ${BUILDER_IMAGE} AS toolchain
+FROM node-source AS toolchain
 RUN apk add --no-cache python3 make g++
 ENV NODE_GYP=/usr/local/lib/node_modules/npm/node_modules/node-gyp/bin/node-gyp.js
 
@@ -52,11 +56,23 @@ FROM ${RUNTIME_IMAGE}
 ARG N8N_VERSION
 ARG N8N_RELEASE_TYPE=dev
 ARG IMAGE_DESCRIPTION="Workflow Automation Tool"
+ARG ENABLE_POINTER_COMPRESSION
 ENV NODE_ENV=production
 ENV N8N_RELEASE_TYPE=${N8N_RELEASE_TYPE}
 ENV SHELL=/bin/sh
 # Restrict GraphicsMagick to its commonly used coder set.
 ENV MAGICK_CODER_STABILITY=PRIMARY
+
+# Replace the base image's stock Node with our compiled Node from BUILDER_IMAGE.
+# Keeping this above `COPY ./compiled` decouples OS base refreshes from Node
+# source compiles while keeping app-only builds cached on these layers.
+RUN rm -f /usr/bin/node /usr/bin/nodejs /usr/bin/npm /usr/bin/npx /usr/local/bin/node
+COPY --from=node-source /usr/local/bin /usr/local/bin
+COPY --from=node-source /usr/local/lib /usr/local/lib
+RUN --mount=type=bind,source=docker/images/node-pc/check-v8-patches.js,target=/tmp/check-v8-patches.js \
+    node --version \
+    && node /tmp/check-v8-patches.js \
+    && ln -sf /usr/local/bin/node /usr/bin/node
 
 WORKDIR /home/node
 
@@ -74,7 +90,7 @@ COPY --from=native-builder /build/isolated-vm/build/Release/isolated_vm.node \
 # a patch hash. The shell must expand this destination.
 COPY --from=native-builder /build/node_modules/@confluentinc/kafka-javascript/build/Release/confluent-kafka-javascript.node /tmp/
 
-# The base image keeps node in /usr/bin and has no /usr/local/bin.
+# Symlink n8n into /usr/local/bin where cloud launch configs expect it.
 RUN set -e; \
     N8N=/usr/local/lib/node_modules/n8n; \
     for coder in msl mvg pcd svg url; do \
