@@ -30,7 +30,9 @@ const silentLogger: EngineLogger = {
 
 const secret = 'a'.repeat(32);
 const resumeSecret = 'r'.repeat(32);
-const authorization = `Bearer ${mintIdentityToken(secret, { cpId: 'cp-1', tenantId: 'tenant-1' })}`;
+// Minted for each request: the token expires after a minute, and the containers can take longer to start.
+const authorization = () =>
+	`Bearer ${mintIdentityToken(secret, { cpId: 'cp-1', tenantId: 'tenant-1' })}`;
 
 const diamondGraph: WorkflowGraph = {
 	nodes: [
@@ -146,7 +148,7 @@ describe('engine runtimes on shared Redis work queues (integration)', () => {
 		try {
 			await request(engines[0].app)
 				.post('/api/workflow-executions')
-				.set('Authorization', authorization)
+				.set('Authorization', authorization())
 				.send({
 					workflowId: 'wf-scale-out',
 					graph: diamondGraph,
@@ -196,7 +198,7 @@ describe('engine runtimes on shared Redis work queues (integration)', () => {
 		try {
 			await request(engines.api.app)
 				.post('/api/workflow-executions')
-				.set('Authorization', authorization)
+				.set('Authorization', authorization())
 				.send({
 					workflowId: 'wf-roles',
 					graph: {
@@ -272,7 +274,7 @@ describe('engine runtimes on shared Redis work queues (integration)', () => {
 				);
 				await request(api)
 					.post(`/api/step-executions/${waiting.id}/resolve`)
-					.set('Authorization', authorization)
+					.set('Authorization', authorization())
 					.send({
 						token: mintResumeToken(resumeSecret, executionId),
 						outputs: [[{ json: { approved: true } }]],
