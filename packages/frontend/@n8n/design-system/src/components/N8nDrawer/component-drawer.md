@@ -69,7 +69,6 @@ Use this part for another close control, such as a button in the footer. The dra
 
 **N8nDrawerHeader**, **N8nDrawerBody**, and **N8nDrawerFooter**
 
-- No props.
 - `default` The region content.
 
 **Types**
