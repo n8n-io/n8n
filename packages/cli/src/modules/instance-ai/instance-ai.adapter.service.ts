@@ -729,7 +729,10 @@ export class InstanceAiAdapterService {
 			...(this.aiPreferenceService && Container.get(AiPreferenceSettingsService).isEnabled
 				? { aiPreferenceService: this.createPreferenceAdapter(user) }
 				: {}),
-			agentFeedbackService: this.createAgentFeedbackAdapter(user),
+			// Reports go out only as telemetry. Without it the tool would make calls that do nothing.
+			...(this.globalConfig.diagnostics.enabled
+				? { agentFeedbackService: this.createAgentFeedbackAdapter(user) }
+				: {}),
 			skillService: this.getSkillService(
 				user,
 				assistantSkillsEnabled === true,

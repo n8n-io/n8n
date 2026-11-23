@@ -1495,8 +1495,11 @@ carries *what* it does.
 Send a short report to the n8n team when the agent is not sure how to do
 something, a tool or n8n behaves wrong, or n8n cannot do what the user needs.
 Present when the adapter wires `agentFeedbackService` and the instance shares
-data (`allowSendingParameterValues` is not `false`). The report is
-agent-written text, so the tool is not registered when data sharing is off.
+data (`allowSendingParameterValues` is not `false`). The CLI adapter wires the
+service only when telemetry is on (`N8N_DIAGNOSTICS_ENABLED`), because the report
+goes out only as a telemetry event. The report is agent-written text, so the
+tool is not registered when data sharing is off. When the tool is absent, the
+system prompt omits the feedback section too.
 Always loaded, because the agent needs it at the moment it is stuck.
 
 | Field | Type | Required | Description |

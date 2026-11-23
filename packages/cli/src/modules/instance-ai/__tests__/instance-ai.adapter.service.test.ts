@@ -128,10 +128,12 @@ function globalConfigStub(
 		allowSendingParameterValues?: boolean;
 		queueMode?: boolean;
 		maxExecutionTimeout?: number;
+		diagnosticsEnabled?: boolean;
 	} = {},
 ): ConstructorParameters<typeof InstanceAiAdapterService>[1] {
 	return {
 		ai: { allowSendingParameterValues: overrides.allowSendingParameterValues ?? false },
+		diagnostics: { enabled: overrides.diagnosticsEnabled ?? false },
 		executions: {
 			mode: overrides.queueMode ? 'queue' : 'regular',
 			maxTimeout: overrides.maxExecutionTimeout ?? 3600,
@@ -6857,6 +6859,7 @@ function createAdapterWithGatewayMock(
 		instanceContext?: InstanceContextService;
 		aiPreferenceService?: unknown;
 		logger?: unknown;
+		diagnosticsEnabled?: boolean;
 	},
 ): InstanceAiAdapterService {
 	const aiGatewayService = {
@@ -6876,7 +6879,7 @@ function createAdapterWithGatewayMock(
 		warn: vi.fn(),
 		scoped: vi.fn().mockReturnThis(),
 	}) as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[0];
-	args[1] = globalConfigStub();
+	args[1] = globalConfigStub({ diagnosticsEnabled: overrides?.diagnosticsEnabled });
 	if (overrides?.credentialsService) {
 		args[8] = overrides.credentialsService as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
@@ -10345,16 +10348,25 @@ describe('createContext: appService', () => {
 describe('createContext: agentFeedbackService', () => {
 	const user = { id: 'user-1', role: { slug: 'global:member' } } as unknown as User;
 
-	function buildService() {
+	function buildService({ diagnosticsEnabled = true } = {}) {
 		const logger = { error: vi.fn(), warn: vi.fn(), scoped: vi.fn().mockReturnThis() };
 		const telemetry = { track: vi.fn() };
-		const service = createAdapterWithGatewayMock(vi.fn(), { logger, telemetry });
+		const service = createAdapterWithGatewayMock(vi.fn(), {
+			logger,
+			telemetry,
+			diagnosticsEnabled,
+		});
 		return { service, telemetry };
 	}
 
-	it('is always present', () => {
+	it('is present when telemetry is enabled', () => {
 		const { service } = buildService();
 		expect(service.createContext(user, { threadId: 't1' }).agentFeedbackService).toBeDefined();
+	});
+
+	it('is absent when telemetry is disabled', () => {
+		const { service } = buildService({ diagnosticsEnabled: false });
+		expect(service.createContext(user, { threadId: 't1' }).agentFeedbackService).toBeUndefined();
 	});
 
 	it('tracks the feedback as a registered telemetry event', () => {
