@@ -14,7 +14,7 @@ import {
 export class AgentDecisionTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-display-name-unsuffixed-trigger-node -- Use the Human review product name.
-		displayName: 'Agent review',
+		displayName: 'Request from agent',
 		name: 'agentDecisionTrigger',
 		icon: 'node:agent-decision-trigger',
 		iconColor: 'purple',
@@ -23,7 +23,7 @@ export class AgentDecisionTrigger implements INodeType {
 		description: 'Start a workflow when an Agent requests tool approval',
 		eventTriggerDescription: '',
 		mockManualExecution: true,
-		defaults: { name: 'Agent review' },
+		defaults: { name: 'Request from agent' },
 		inputs: [],
 		outputs: [NodeConnectionTypes.Main],
 		properties: [

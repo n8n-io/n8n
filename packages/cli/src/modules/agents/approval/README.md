@@ -18,7 +18,7 @@ wait for an Agent's approval request.
 
 | Destination | Support | Requirements |
 | --- | --- | --- |
-| Decision workflow | Supported | Start with Agent review. Publish the workflow for published Agent runs. |
+| Decision workflow | Supported | Start with Request from agent. Publish the workflow for published Agent runs. |
 | Slack | Supported | Connected credential. Channel and user read scopes for destination search. Invite the bot to the channel. |
 | Telegram | Supported | Connected credential. Numeric user ID. The user must first message the bot. |
 | Discord | Supported | Connected credential. Server and channel or user IDs. Server Members intent for user search. |
@@ -61,7 +61,7 @@ A workflow tool must still have the version that was reviewed when it starts.
 
 ## Decision workflows
 
-The Agent review trigger receives one item with these fields:
+The Request from agent trigger receives one item with these fields:
 
 - `requestId`, `agentId`, and `toolName` identify the request.
 - `description` explains the proposed action.
@@ -75,7 +75,7 @@ The Agent review trigger receives one item with these fields:
 
 Add review steps and return one terminal item with `{ approved: boolean }`.
 `reason` is optional. Existing send-and-wait nodes can return this shape directly.
-The optional Respond to agent review node creates the same result. Its default
+The optional Respond to agent node creates the same result. Its default
 is rejection. An unconditional approval is not a human review step.
 
 ## Runtime and ownership
