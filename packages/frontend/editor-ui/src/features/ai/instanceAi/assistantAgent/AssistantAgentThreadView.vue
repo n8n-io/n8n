@@ -470,6 +470,7 @@ const thread = useAssistantArtifactThread({
 	projectId: props.projectId,
 	messages: () => panel.value?.messages ?? [],
 	isStreaming: () => panel.value?.isStreaming ?? false,
+	isAwaitingUser: () => panel.value?.isAwaitingUserAnswer ?? false,
 	// Until the chat mounts, its history is not known, so a past build does not open the preview.
 	isLoadingHistory: () => panel.value?.isLoadingHistory ?? true,
 	// The hand-off context, for example a credential to set up, goes with this message only.
@@ -489,8 +490,10 @@ const thread = useAssistantArtifactThread({
 provideArtifactThread(thread);
 
 // Experiment cleanup (137_instance_ai_draft_workflow_preview)
-const isAgentRunning = () => (panel.value?.isStreaming || panel.value?.isSubmitting) ?? false;
 const isAwaitingUser = () => panel.value?.isAwaitingUserAnswer ?? false;
+// A run that waits on a card can end its stream, but the build is not over.
+const isAgentRunning = () =>
+	(panel.value?.isStreaming || panel.value?.isSubmitting || isAwaitingUser()) ?? false;
 const workflowDrafts = useAssistantWorkflowDrafts({
 	liveRunId: () => thread.artifactTurns.find((turn) => turn.isLive)?.id,
 });

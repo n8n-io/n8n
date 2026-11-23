@@ -730,6 +730,21 @@ describe('AssistantAgentThreadView', () => {
 			expect(queryByTestId('instance-ai-draft-building-wave')).toBeNull();
 		});
 
+		it('shows the waiting pill when the run ends its stream to wait for the answer', async () => {
+			setVariant(INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.variant);
+			const { findByTestId } = await renderLoadedThread();
+			chatMessages.value = [{ id: 'u-1', role: 'user', content: 'Build it' }, buildingTurn];
+			isPanelStreaming.value = true;
+			await findByTestId('instance-ai-draft-building-wave');
+
+			isPanelStreaming.value = false;
+			isAwaitingUserAnswer.value = true;
+
+			expect(await findByTestId('instance-ai-canvas-waiting-pill')).toHaveTextContent(
+				'Waiting for your answer in the chat',
+			);
+		});
+
 		it('asks for the approval while the run waits for one', async () => {
 			setVariant(INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.variant);
 			const { findByTestId } = await renderLoadedThread();
