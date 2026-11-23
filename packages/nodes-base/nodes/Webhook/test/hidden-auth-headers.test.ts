@@ -5,7 +5,11 @@ import { mock } from 'vitest-mock-extended';
 import { REDACTED, type IDataObject, type IWebhookFunctions, type INode } from 'n8n-workflow';
 
 import { Webhook } from '../Webhook.node';
-import { getOutputHeaders, HIDE_CONSUMED_AUTH_HEADERS_VERSION } from '../utils';
+import {
+	generateBasicAuthToken,
+	getOutputHeaders,
+	HIDE_CONSUMED_AUTH_HEADERS_VERSION,
+} from '../utils';
 
 vi.mock('fs/promises');
 vi.mock('fs', async (importOriginal) => ({
@@ -19,6 +23,8 @@ vi.mock('tmp-promise', () => ({
 
 const WEBHOOK_URL = 'https://n8n.test/webhook/abc';
 const BASIC_AUTH = `Basic ${Buffer.from('admin:password').toString('base64')}`;
+const NODE_ID = 'node-1';
+const WEBHOOK_ID = 'webhook-1';
 
 type SetupOptions = {
 	typeVersion?: number;
@@ -61,6 +67,8 @@ const setup = ({
 	context.getHeaderData.mockReturnValue(headers);
 	context.getChildNodes.mockReturnValue([]);
 	context.getNode.mockReturnValue({
+		id: NODE_ID,
+		webhookId: WEBHOOK_ID,
 		type: 'n8n-nodes-base.webhook',
 		typeVersion,
 		name: 'Webhook',
@@ -148,6 +156,48 @@ describe('Webhook output headers and built-in authentication', () => {
 			});
 		});
 
+		it('should hide the remaining cookies after the n8n User Auth browser flow', async () => {
+			const { context } = setup({
+				authentication: 'n8nOAuth2',
+				options: { oauthClient: 'browser' },
+				headers: {
+					cookie: 'n8n-webhook-oauth=good-token; theme=dark',
+					'x-tenant-id': 'acme',
+				},
+				method: 'GET',
+			});
+			context.validateN8nOAuth2Token.mockResolvedValue({
+				valid: true,
+				user: { id: 'user-1', email: 'a@b.c', firstName: 'A', lastName: 'B' },
+			});
+
+			const headers = await outputHeaders(context);
+
+			expect(context.validateN8nOAuth2Token).toHaveBeenCalledWith(
+				'good-token',
+				`${WEBHOOK_URL}?method=GET`,
+			);
+			expect(headers).toEqual({ cookie: REDACTED, 'x-tenant-id': 'acme' });
+			expect(JSON.stringify(headers)).not.toContain('good-token');
+		});
+
+		it('should hide the form token accepted in place of Basic Auth', async () => {
+			const credentials = { user: 'admin', password: 'password' };
+			const token = generateBasicAuthToken(
+				{ id: NODE_ID, webhookId: WEBHOOK_ID } as INode,
+				credentials,
+			);
+			const { context } = setup({
+				credentials,
+				headers: { 'x-auth-token': token as string, 'x-tenant-id': 'acme' },
+			});
+
+			expect(await outputHeaders(context)).toEqual({
+				'x-auth-token': REDACTED,
+				'x-tenant-id': 'acme',
+			});
+		});
+
 		it('should not hide any header when authentication is none', async () => {
 			const { context } = setup({
 				authentication: 'none',
@@ -173,6 +223,15 @@ describe('Webhook output headers and built-in authentication', () => {
 		});
 
 		it('should hide the header in binary data output', async () => {
+			const { context } = setup({ body: undefined, contentType: 'application/octet-stream' });
+
+			expect(await outputHeaders(context)).toEqual({
+				authorization: REDACTED,
+				'x-tenant-id': 'acme',
+			});
+		});
+
+		it('should hide the header in binary data output with the "binaryData" option', async () => {
 			const { context } = setup({ options: { binaryData: true } });
 
 			expect(await outputHeaders(context)).toEqual({
