@@ -53,6 +53,14 @@ vi.mock('@/app/stores/workflowExecutionState.store', () => ({
 	disposeWorkflowExecutionStateStore: vi.fn(),
 }));
 
+const nodeTypesLoading = await vi.hoisted(async () => {
+	const { ref } = await import('vue');
+	return ref(false);
+});
+vi.mock('@/app/composables/useNodeTypesLoad', () => ({
+	useNodeTypesLoad: () => ({ isLoading: nodeTypesLoading }),
+}));
+
 vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: () => ({
 		getNodeType: vi.fn().mockReturnValue({
@@ -460,19 +468,21 @@ describe('useWorkflowDiff', () => {
 			expect(hydratedNodes[0].id).toBe(canvasNodes[0].id);
 		});
 
-		it('hydrates the document stores only once the node types are ready', async () => {
-			const nodeTypesReady = ref(false);
+		it('hydrates the document stores only once the node types load ends', async () => {
+			nodeTypesLoading.value = true;
 
-			useWorkflowDiff(createMockWorkflow('source'), createMockWorkflow('target'), {
-				nodeTypesReady,
-			});
+			try {
+				useWorkflowDiff(createMockWorkflow('source'), createMockWorkflow('target'));
 
-			expect(mockDocumentStore.hydrate).not.toHaveBeenCalled();
+				expect(mockDocumentStore.hydrate).not.toHaveBeenCalled();
 
-			nodeTypesReady.value = true;
-			await nextTick();
+				nodeTypesLoading.value = false;
+				await nextTick();
 
-			expect(mockDocumentStore.hydrate).toHaveBeenCalledTimes(2);
+				expect(mockDocumentStore.hydrate).toHaveBeenCalledTimes(2);
+			} finally {
+				nodeTypesLoading.value = false;
+			}
 		});
 
 		it('disposes the execution-state store of the previous document when the diffed workflow changes', async () => {

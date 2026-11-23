@@ -18,6 +18,7 @@ import { useCanvasMapping } from '@/features/workflows/canvas/composables/useCan
 import type { IConnections, INodeTypeDescription, NodeDiff } from 'n8n-workflow';
 import { compareWorkflowsNodes, NodeDiffStatus } from 'n8n-workflow';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useNodeTypesLoad } from '@/app/composables/useNodeTypesLoad';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
@@ -124,7 +125,7 @@ function createDiffRenderData(
 	workflowRef: ComputedRef<IWorkflowDb | undefined>,
 	workflowNodes: Ref<INodeUi[]>,
 	side: string,
-	ready: ComputedRef<boolean>,
+	nodeTypesLoading: ComputedRef<boolean>,
 ) {
 	const renderData = shallowRef<CanvasRenderData>(createEmptyCanvasRenderData());
 	let workflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore> | null = null;
@@ -150,9 +151,10 @@ function createDiffRenderData(
 	}
 
 	watch(
-		[workflowRef, workflowNodes, ready],
-		([wf, , isReady]) => {
-			if (!wf?.id || !isReady) return;
+		[workflowRef, workflowNodes, nodeTypesLoading],
+		([wf, , isLoading]) => {
+			// The workflow object reads the node types once, when it hydrates.
+			if (!wf?.id || isLoading) return;
 
 			disposeStores();
 
@@ -184,16 +186,9 @@ function createDiffRenderData(
 export const useWorkflowDiff = (
 	sourceWorkflow: MaybeRefOrGetter<IWorkflowDb | undefined>,
 	targetWorkflow: MaybeRefOrGetter<IWorkflowDb | undefined>,
-	options: {
-		/**
-		 * The document stores hydrate only when this is true. The workflow object reads the node
-		 * types once, when it hydrates. Set it to false while the node types load.
-		 */
-		nodeTypesReady?: MaybeRefOrGetter<boolean>;
-	} = {},
 ) => {
 	const nodeTypesStore = useNodeTypesStore();
-	const nodeTypesReady = computed(() => toValue(options.nodeTypesReady ?? true));
+	const { isLoading: nodeTypesLoading } = useNodeTypesLoad();
 
 	const sourceRefs = createWorkflowRefs(sourceWorkflow);
 	const targetRefs = createWorkflowRefs(targetWorkflow);
@@ -202,13 +197,13 @@ export const useWorkflowDiff = (
 		sourceRefs.workflowRef,
 		sourceRefs.workflowNodes,
 		'source',
-		nodeTypesReady,
+		nodeTypesLoading,
 	);
 	const { renderData: targetRenderData, dispose: disposeTarget } = createDiffRenderData(
 		targetRefs.workflowRef,
 		targetRefs.workflowNodes,
 		'target',
-		nodeTypesReady,
+		nodeTypesLoading,
 	);
 
 	const sourceDiff = createWorkflowDiff(

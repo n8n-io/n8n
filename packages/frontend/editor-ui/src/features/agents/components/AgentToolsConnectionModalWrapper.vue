@@ -36,6 +36,7 @@ import { DEFAULT_NEW_WORKFLOW_NAME } from '@/app/constants/workflows';
 import { AI_MCP_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { useToast } from '@n8n/composables/useToast';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useNodeTypesLoad } from '@/app/composables/useNodeTypesLoad';
 import { useUIStore } from '@/app/stores/ui.store';
 import { stripToolSuffix, useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
@@ -327,6 +328,8 @@ function handleInteractOutside(event: Event) {
 }
 
 const isLoadingCredentials = ref(false);
+// The tool list shows the built-in tools from the node types.
+const { isLoading: nodeTypesLoading } = useNodeTypesLoad();
 
 /**
  * Block until the project's credentials are in the store, so rows do not show as
@@ -345,29 +348,11 @@ async function loadCredentials() {
 	}
 }
 
-const isLoadingNodeTypes = ref(false);
-
-/**
- * Block until the node types are in the store, so the list shows the built-in tools.
- * Startup does not wait for them.
- */
-async function loadNodeTypes() {
-	isLoadingNodeTypes.value = nodeTypesStore.allNodeTypes.length === 0;
-	try {
-		await nodeTypesStore.loadNodeTypesIfNotLoaded();
-	} catch (error) {
-		console.error('Failed to load node types', error);
-	} finally {
-		isLoadingNodeTypes.value = false;
-	}
-}
-
 onMounted(() => {
 	if (isWorkflow.value) void loadWorkflows(props.data.projectId);
 	if (!isWorkflow.value) {
 		void loadRegistryCatalog();
 		void loadCredentials();
-		void loadNodeTypes();
 	}
 	// The builder loads the policy once and keeps it, so a policy that changed since then would
 	// still offer a blocked type here and the save would be refused. Refetch on open: this is the
@@ -1280,7 +1265,7 @@ function handleRowActivate(item: ToolConnectionItem) {
 					: undefined
 			"
 			:create-action-loading="isCreatingWorkflow"
-			:loading="isLoadingCredentials || isLoadingNodeTypes"
+			:loading="isLoadingCredentials || (!isWorkflow && nodeTypesLoading)"
 			:empty-message="isWorkflow ? i18n.baseText('agents.tools.workflow.empty.title') : undefined"
 			:no-results-message="
 				isWorkflow ? i18n.baseText('agents.tools.workflow.empty.noResults') : undefined

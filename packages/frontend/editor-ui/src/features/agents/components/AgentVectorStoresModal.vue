@@ -20,6 +20,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { useCredentialTypesLoad } from '@/features/credentials/composables/useCredentialTypesLoad';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { getProviderCredentialTypes } from '../model-providers';
 import { testAgentVectorStore } from '../composables/useAgentApi';
@@ -64,6 +65,7 @@ const uiStore = useUIStore();
 const { showMessage, showError } = useToast();
 const rootStore = useRootStore();
 const credentialsStore = useCredentialsStore();
+const credentialTypes = useCredentialTypesLoad();
 const projectsStore = useProjectsStore();
 const modalOpen = computed(() => uiStore.modalsById[props.modalName]?.open === true);
 
@@ -249,11 +251,8 @@ async function loadCredentials() {
 				projectId: props.data.projectId,
 				forAgent: true,
 			}),
-			// The type labels below need the credential types, and startup does not wait for them.
-			// A failure only removes the labels.
-			credentialsStore.fetchCredentialTypes(false).catch((error: unknown) => {
-				console.error('Failed to fetch credential types', error);
-			}),
+			// The type labels below need the credential types. A failure only removes the labels.
+			credentialTypes.whenSettled(),
 		]);
 		const types = new Set<string>();
 		for (const definition of Object.values(AGENT_VECTOR_STORE_PROVIDER_DEFINITIONS)) {

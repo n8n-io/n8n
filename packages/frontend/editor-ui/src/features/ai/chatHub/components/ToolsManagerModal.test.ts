@@ -197,7 +197,7 @@ describe('ToolsManagerModal', () => {
 			[NodeConnectionTypes.AiTool]: ['n8n-nodes-base.toolA', 'n8n-nodes-base.toolB'],
 		};
 		// The node types are in the store by default. The node types tests below empty it.
-		nodeTypesStore.allNodeTypes = [TOOL_NODE_TYPE_A, TOOL_NODE_TYPE_B];
+		nodeTypesStore.hasNodeTypes = true;
 		nodeTypesStore.loadNodeTypesIfNotLoaded = vi.fn().mockResolvedValue(undefined);
 
 		chatStore.configuredTools = [];
@@ -286,7 +286,7 @@ describe('ToolsManagerModal', () => {
 
 	describe('node types that load after the modal opens', () => {
 		it('shows the loading state until the node types are loaded, then the configured tools', async () => {
-			nodeTypesStore.allNodeTypes = [];
+			nodeTypesStore.hasNodeTypes = false;
 			const { promise, resolve } = Promise.withResolvers<void>();
 			nodeTypesStore.loadNodeTypesIfNotLoaded = vi.fn().mockReturnValue(promise);
 			chatStore.configuredTools = [createMockToolDto()];
@@ -309,7 +309,7 @@ describe('ToolsManagerModal', () => {
 
 		it('stops loading when the node types fail to load', async () => {
 			vi.spyOn(console, 'error').mockImplementation(() => {});
-			nodeTypesStore.allNodeTypes = [];
+			nodeTypesStore.hasNodeTypes = false;
 			nodeTypesStore.loadNodeTypesIfNotLoaded = vi.fn().mockRejectedValue(new Error('node types'));
 
 			const { queryByTestId } = renderComponent({ props: defaultProps() });

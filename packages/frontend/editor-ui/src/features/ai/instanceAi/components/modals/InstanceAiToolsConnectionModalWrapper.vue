@@ -8,6 +8,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { i18n } from '@n8n/i18n';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { useCredentialTypesLoad } from '@/features/credentials/composables/useCredentialTypesLoad';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import DefaultDetailBody from '@/features/shared/toolsConnection/DefaultDetailBody.vue';
 import McpToolSettingsContent from '@/features/shared/toolsConnection/McpToolSettingsContent.vue';
@@ -172,6 +173,8 @@ async function discoverDraft(
 }
 
 const isLoadingCredentials = ref(false);
+// The credential setup of a connector needs the credential types.
+const { isLoading: credentialTypesLoading } = useCredentialTypesLoad();
 
 /**
  * App startup does not wait for credentials, so the store can still be empty.
@@ -188,28 +191,10 @@ async function loadCredentials() {
 	}
 }
 
-const isLoadingCredentialTypes = ref(false);
-
-/**
- * App startup does not wait for the credential types either. The credential setup of a
- * connector needs them, so block until they are in the store.
- */
-async function loadCredentialTypes() {
-	isLoadingCredentialTypes.value = credentialsStore.allCredentialTypes.length === 0;
-	try {
-		await credentialsStore.fetchCredentialTypes(false);
-	} catch (error) {
-		console.error('Failed to fetch credential types', error);
-	} finally {
-		isLoadingCredentialTypes.value = false;
-	}
-}
-
 if (settingsStore.isMcpAvailable) {
 	void mcpStore.fetchCatalogLazy();
 	void mcpStore.fetchConnectionsLazy();
 	void loadCredentials();
-	void loadCredentialTypes();
 }
 
 // Clear the state on close so the next open starts
@@ -543,7 +528,7 @@ function retryConnection(item: McpServerConnectionItem): void {
 		:detail-mode="detailMode"
 		:hide-back-button="isDirectConnectionOpen"
 		:show-suggestion-footer="true"
-		:loading="isLoadingCredentials || isLoadingCredentialTypes"
+		:loading="isLoadingCredentials || credentialTypesLoading"
 		@update:detail-item="handleDetailItemUpdate"
 		@select-credential="handleSelectCredential"
 		@credential-dropdown-open="handleCredentialDropdownOpen"

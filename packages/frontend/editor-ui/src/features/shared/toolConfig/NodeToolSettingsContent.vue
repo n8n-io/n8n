@@ -16,6 +16,7 @@
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { setParameterValue } from '@/app/utils/parameterUtils';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useNodeTypesLoad } from '@/app/composables/useNodeTypesLoad';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
@@ -28,14 +29,13 @@ import {
 } from '@/features/ndv/shared/ndv.utils';
 import { omitOperationOptions } from '@/features/shared/toolConfig/toolConfig.utils';
 import type { INodeUpdatePropertiesInformation, ITab, IUpdateInformation } from '@/Interface';
-import { N8nTabs, N8nText } from '@n8n/design-system';
+import { N8nIcon, N8nTabs, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import {
 	NodeHelpers,
 	deepCopy,
 	type INode,
 	type INodeParameters,
-	type INodeTypeDescription,
 	type Workflow,
 } from 'n8n-workflow';
 import { computed, onBeforeUnmount, onMounted, provide, ref, shallowRef, watch } from 'vue';
@@ -351,55 +351,13 @@ function handleChangeName(name: string) {
 	}
 }
 
-/**
- * Fill the default parameters of the node type, and give the node an automatic name
- * when the user did not edit its name.
- */
-function fillNodeTypeDefaults(nodeData: INode, description: INodeTypeDescription): INode {
-	const defaultParameters = NodeHelpers.getNodeParameters(
-		description.properties ?? [],
-		nodeData.parameters ?? {},
-		true, // returnDefaults: include all default values
-		false, // returnNoneDisplayed: exclude hidden parameters
-		nodeData,
-		description,
-	);
-
-	let filledNode: INode = {
-		...nodeData,
-		parameters: defaultParameters ?? {},
-	};
-
-	// Determine if the name is still a default (not user-edited).
-	// Check both isDefaultNodeName and displayName since tool variants
-	// set the initial name from displayName ("Airtable Tool")
-	// while defaults.name stays as the base ("Airtable").
-	const nameForCheck = filledNode.name.replace(/ \(\d+\)$/, '');
-	userEditedName.value = !(
-		NodeHelpers.isDefaultNodeName(nameForCheck, description, filledNode.parameters) ||
-		nameForCheck === description.displayName
-	);
-
-	// Generate resource/operation-based automatic name for non-edited names
-	if (!userEditedName.value) {
-		const newName = NodeHelpers.makeNodeName(filledNode.parameters ?? {}, description);
-		if (newName && newName !== nameForCheck) {
-			filledNode = {
-				...filledNode,
-				name: makeUniqueName(newName, existingToolNames.value),
-			};
-		}
-	}
-
-	return filledNode;
-}
-
-// The initial node that has the defaults of its node type.
-let defaultsFilledFor: INode | null = null;
+// The defaults come from the node type. Fill them one time, after the node types load.
+const { isLoading: nodeTypesLoading } = useNodeTypesLoad();
 
 watch(
-	() => props.initialNode,
-	(initialNode) => {
+	() => [props.initialNode, nodeTypesLoading.value] as const,
+	([initialNode, loading]) => {
+		if (loading) return;
 		if (initialNode) {
 			const uniqueName = makeUniqueName(initialNode.name, existingToolNames.value);
 			let nodeData =
@@ -407,10 +365,46 @@ watch(
 
 			// Initialize parameters with defaults if node type is available
 			if (nodeTypeDescription.value) {
-				nodeData = fillNodeTypeDefaults(nodeData, nodeTypeDescription.value);
-				defaultsFilledFor = initialNode;
-			} else {
-				defaultsFilledFor = null;
+				const defaultParameters = NodeHelpers.getNodeParameters(
+					nodeTypeDescription.value.properties ?? [],
+					nodeData.parameters ?? {},
+					true, // returnDefaults: include all default values
+					false, // returnNoneDisplayed: exclude hidden parameters
+					nodeData,
+					nodeTypeDescription.value,
+				);
+
+				nodeData = {
+					...nodeData,
+					parameters: defaultParameters ?? {},
+				};
+
+				// Determine if the name is still a default (not user-edited).
+				// Check both isDefaultNodeName and displayName since tool variants
+				// set the initial name from displayName ("Airtable Tool")
+				// while defaults.name stays as the base ("Airtable").
+				const nameForCheck = nodeData.name.replace(/ \(\d+\)$/, '');
+				userEditedName.value = !(
+					NodeHelpers.isDefaultNodeName(
+						nameForCheck,
+						nodeTypeDescription.value,
+						nodeData.parameters,
+					) || nameForCheck === nodeTypeDescription.value.displayName
+				);
+
+				// Generate resource/operation-based automatic name for non-edited names
+				if (!userEditedName.value) {
+					const newName = NodeHelpers.makeNodeName(
+						nodeData.parameters ?? {},
+						nodeTypeDescription.value,
+					);
+					if (newName && newName !== nameForCheck) {
+						nodeData = {
+							...nodeData,
+							name: makeUniqueName(newName, existingToolNames.value),
+						};
+					}
+				}
 			}
 
 			node.value = nodeData;
@@ -421,23 +415,6 @@ watch(
 	},
 	{ immediate: true },
 );
-
-// Startup does not wait for the node types, so the node type can arrive after the initial node.
-// Fill its defaults one time. Keep a name that the user changed.
-watch(nodeTypeDescription, (description) => {
-	const initialNode = props.initialNode;
-	if (!description || !node.value || !initialNode || defaultsFilledFor === initialNode) return;
-
-	defaultsFilledFor = initialNode;
-	const nameEdited = userEditedName.value;
-	const filledNode = fillNodeTypeDefaults(node.value, description);
-	if (nameEdited) {
-		userEditedName.value = true;
-		node.value = { ...filledNode, name: node.value.name };
-	} else {
-		node.value = filledNode;
-	}
-});
 
 // Auto-rename when resource/operation changes (if user hasn't manually edited)
 watch(
@@ -542,7 +519,10 @@ defineExpose({ node, isValid, nodeTypeDescription, handleChangeName });
 			@update:model-value="activeTab = $event"
 		/>
 
-		<div :class="$style.tabContent">
+		<div v-if="nodeTypesLoading" :class="$style.loading" data-test-id="tool-settings-loading">
+			<N8nIcon icon="loader-circle" size="large" spin />
+		</div>
+		<div v-else :class="$style.tabContent">
 			<!-- Parameters Tab -->
 			<div v-show="activeTab === 'params'">
 				<ParameterInputList
@@ -626,6 +606,13 @@ defineExpose({ node, isValid, nodeTypeDescription, handleChangeName });
 	overflow-y: auto;
 	min-height: 0;
 	padding-right: var(--spacing--lg);
+}
+
+.loading {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: var(--spacing--xl);
 }
 
 .noParameters {

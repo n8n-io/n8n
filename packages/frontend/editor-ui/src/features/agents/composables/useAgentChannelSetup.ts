@@ -5,6 +5,7 @@ import { computed, ref, toValue, watch, type MaybeRefOrGetter } from 'vue';
 import { useUIStore } from '@/app/stores/ui.store';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { useCredentialTypesLoad } from '@/features/credentials/composables/useCredentialTypesLoad';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { Project } from '@/features/collaboration/projects/projects.types';
 
@@ -26,6 +27,7 @@ type UseAgentChannelSetupOptions = {
 export function useAgentChannelSetup(options: UseAgentChannelSetupOptions) {
 	const uiStore = useUIStore();
 	const credentialsStore = useCredentialsStore();
+	const credentialTypes = useCredentialTypesLoad();
 	const projectsStore = useProjectsStore();
 
 	const selectedCredentials = ref<Record<string, string>>({});
@@ -103,13 +105,8 @@ export function useAgentChannelSetup(options: UseAgentChannelSetupOptions) {
 					projectId: projectId.value,
 					forAgent: true,
 				}),
-				// The type labels below need the credential types, and startup does not wait for them.
-				// A failure only removes the labels.
-				credentialsStore
-					.fetchCredentialTypes(false)
-					.catch((error: unknown) => {
-						console.error('Failed to fetch credential types', error);
-					}),
+				// The type labels below need the credential types. A failure only removes the labels.
+				credentialTypes.whenSettled(),
 			]);
 
 			for (const integration of integrations) {

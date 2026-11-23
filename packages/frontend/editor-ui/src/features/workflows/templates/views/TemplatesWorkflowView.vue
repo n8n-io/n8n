@@ -137,10 +137,8 @@ watch(
 onMounted(async () => {
 	scrollToTop();
 
-	// The native preview canvas renders node icons/shapes from the node types
-	// store; community nodes used by templates resolve through previews.
-	// Joins the load that startup began, so the page sends no second request.
-	void nodeTypesStore.loadNodeTypesIfNotLoaded();
+	// The native preview canvas waits for the node types itself. Community nodes used by
+	// templates resolve through previews.
 	void nodeTypesStore.fetchCommunityNodePreviews();
 
 	if (template.value?.full) {

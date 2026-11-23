@@ -14,8 +14,9 @@ import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import NodeToolSettingsContent from '../NodeToolSettingsContent.vue';
 import { NodeHelpers, type INode, type INodeTypeDescription } from 'n8n-workflow';
 import { waitFor } from '@testing-library/vue';
+import { flushPromises } from '@vue/test-utils';
 import userEvent from '@testing-library/user-event';
-import { defineComponent, h, inject, type PropType } from 'vue';
+import { defineComponent, inject, type PropType } from 'vue';
 
 vi.mock('@n8n/i18n', () => {
 	const i18n = {
@@ -161,6 +162,9 @@ describe('NodeToolSettingsContent', () => {
 		settingsStore = mockedStore(useSettingsStore);
 
 		nodeTypesStore.getNodeType = vi.fn().mockReturnValue(MOCK_NODE_TYPE);
+		// The node types are in the store by default. The node types tests below empty it.
+		nodeTypesStore.hasNodeTypes = true;
+		nodeTypesStore.loadNodeTypesIfNotLoaded = vi.fn().mockResolvedValue(undefined);
 		environmentsStore.variablesAsObject = {};
 		credentialsStore.allCredentials = [];
 		credentialsStore.setCredentials = vi.fn();
@@ -768,7 +772,7 @@ describe('NodeToolSettingsContent', () => {
 		});
 	});
 
-	describe('node type that loads after the initial node', () => {
+	describe('node types that load after the component mounts', () => {
 		afterEach(() => {
 			vi.restoreAllMocks();
 		});
@@ -776,66 +780,44 @@ describe('NodeToolSettingsContent', () => {
 		const lastNode = (emitted: () => Record<string, unknown[]>) =>
 			(emitted()['update:node'] as INode[][]).at(-1)?.[0];
 
-		it('fills the default parameters once the node type arrives', async () => {
-			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(null);
-			const { emitted } = renderComponent({
-				props: { initialNode: createMockNode({ parameters: {} }) },
-			});
-			expect(lastNode(emitted)?.parameters).toEqual({});
-
-			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(MOCK_NODE_TYPE);
-
-			await waitFor(() =>
-				expect(lastNode(emitted)?.parameters).toEqual({
-					resource: 'contact',
-					operation: 'create',
-					nameField: '',
-				}),
-			);
-		});
-
-		it('keeps a name that the user changed before the node type arrived', async () => {
-			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(null);
-			let content: { node: INode | null; handleChangeName: (name: string) => void } | null = null;
-			const Host = defineComponent({
-				setup() {
-					return () =>
-						h(NodeToolSettingsContent, {
-							initialNode: createMockNode({ parameters: {} }),
-							ref: (instance: unknown) => {
-								content = instance as typeof content;
-							},
-						});
-				},
-			});
-			createComponentRenderer(Host, {
-				global: { stubs: { ParameterInputList: true, NodeCredentials: true } },
-			})();
-			if (!content) throw new Error('The component did not mount');
-			const mounted: { node: INode | null; handleChangeName: (name: string) => void } = content;
-
-			// A name that looks like a default name, so only the user edit keeps it.
-			mounted.handleChangeName('Test Tool (3)');
-			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(MOCK_NODE_TYPE);
-
-			await waitFor(() => expect(mounted.node?.parameters?.resource).toBe('contact'));
-			expect(mounted.node?.name).toBe('Test Tool (3)');
-		});
-
-		it('does not fill the defaults again when the node type changes later', async () => {
-			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(null);
+		it('shows a loading state, then fills the default parameters once the node types load', async () => {
+			nodeTypesStore.hasNodeTypes = false;
+			const { promise, resolve } = Promise.withResolvers<void>();
+			nodeTypesStore.loadNodeTypesIfNotLoaded = vi.fn().mockReturnValue(promise);
 			const getNodeParametersSpy = vi.spyOn(NodeHelpers, 'getNodeParameters');
-			renderComponent({
+
+			const { emitted, getByTestId, queryByTestId } = renderComponent({
 				props: { initialNode: createMockNode({ parameters: {} }) },
 			});
+			await flushPromises();
 
-			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(MOCK_NODE_TYPE);
-			await waitFor(() => expect(getNodeParametersSpy).toHaveBeenCalledTimes(1));
+			expect(getByTestId('tool-settings-loading')).toBeInTheDocument();
+			expect(queryByTestId('parameter-input-list')).not.toBeInTheDocument();
+			expect(getNodeParametersSpy).not.toHaveBeenCalled();
 
-			nodeTypesStore.getNodeType = vi.fn().mockReturnValue({ ...MOCK_NODE_TYPE });
-			await new Promise((resolve) => setTimeout(resolve, 0));
+			resolve();
+			await flushPromises();
 
+			expect(queryByTestId('tool-settings-loading')).not.toBeInTheDocument();
+			expect(lastNode(emitted)?.parameters).toEqual({
+				resource: 'contact',
+				operation: 'create',
+				nameField: '',
+			});
 			expect(getNodeParametersSpy).toHaveBeenCalledTimes(1);
+		});
+
+		it('shows the form when the node types fail to load', async () => {
+			nodeTypesStore.hasNodeTypes = false;
+			nodeTypesStore.loadNodeTypesIfNotLoaded = vi.fn().mockRejectedValue(new Error('node types'));
+
+			const { queryByTestId, queryAllByTestId } = renderComponent({
+				props: { initialNode: createMockNode() },
+			});
+			await flushPromises();
+
+			expect(queryByTestId('tool-settings-loading')).not.toBeInTheDocument();
+			expect(queryAllByTestId('parameter-input-list').length).toBeGreaterThan(0);
 		});
 	});
 

@@ -90,6 +90,8 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		return actionsGenerator.generateMergedNodesAndActions(unofficialCommunityNodeTypes.value, []);
 	});
 
+	const hasNodeTypes = computed(() => Object.keys(nodeTypes.value).length > 0);
+
 	const allNodeTypes = computed(() => {
 		return Object.values(nodeTypes.value).flatMap((nodeType) =>
 			Object.keys(nodeType).map((version) => nodeType[Number(version)]),
@@ -432,7 +434,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 	let nodeTypesLoad: Promise<void> | undefined;
 
 	const loadNodeTypesIfNotLoaded = async () => {
-		if (Object.keys(nodeTypes.value).length > 0) {
+		if (hasNodeTypes.value) {
 			return;
 		}
 
@@ -564,6 +566,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 
 	return {
 		nodeTypes,
+		hasNodeTypes,
 		allNodeTypes,
 		allLatestNodeTypes,
 		getNodeType,

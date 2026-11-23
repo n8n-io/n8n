@@ -14,6 +14,7 @@ import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionSt
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useNodeTypesLoad } from '@/app/composables/useNodeTypesLoad';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
@@ -248,7 +249,8 @@ export function useWorkflowInitialization(
 		})();
 
 		// Joins the node types load that startup began, so the canvas sends no second request.
-		loadPromises.push(nodeTypesStore.loadNodeTypesIfNotLoaded());
+		// A new instance on each call retries a load that failed.
+		loadPromises.push(useNodeTypesLoad().whenLoaded());
 
 		try {
 			// important to load community nodes to render them correctly

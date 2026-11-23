@@ -63,14 +63,19 @@ describe('useChatCredentials', () => {
 		return result;
 	}
 
-	it('is not ready while the credentials are loaded but the credential types are not', () => {
+	it('is not ready while the credentials are loaded but the credential types are not', async () => {
+		const { promise, resolve } = Promise.withResolvers<void>();
+		credentialsStore.fetchCredentialTypes.mockReturnValueOnce(promise);
 		reactiveCredentialsStore.allCredentials = [openAiCredential];
 
 		const { credentialsByProvider } = setup();
+		await flushPromises();
 
 		expect(credentialsByProvider.value).toBeNull();
 
 		reactiveCredentialsStore.allCredentialTypes = [{ name: 'openAiApi' }];
+		resolve();
+		await flushPromises();
 
 		expect(credentialsByProvider.value?.openai).toBe('openai-1');
 	});

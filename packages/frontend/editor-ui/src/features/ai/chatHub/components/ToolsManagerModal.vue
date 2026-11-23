@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { v4 as uuidv4 } from 'uuid';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useNodeTypesLoad } from '@/app/composables/useNodeTypesLoad';
 import { useUIStore } from '@/app/stores/ui.store';
 import ToolListItem from './ToolListItem.vue';
 import NodeToolSettingsContent from '@/features/shared/toolConfig/NodeToolSettingsContent.vue';
@@ -167,22 +168,11 @@ const availableToolTypes = computed<INodeTypeDescription[]>(() => {
 		});
 });
 
-// Startup does not wait for the node types. The tool list needs them, so wait for them here.
-const isLoadingNodeTypes = ref(nodeTypesStore.allNodeTypes.length === 0);
-
-async function loadNodeTypes() {
-	try {
-		await nodeTypesStore.loadNodeTypesIfNotLoaded();
-	} catch (error) {
-		console.error('Failed to load node types', error);
-	} finally {
-		isLoadingNodeTypes.value = false;
-	}
-}
+// The tool list needs the node types.
+const { isLoading: nodeTypesLoading } = useNodeTypesLoad();
 
 onMounted(() => {
 	void nodeTypesStore.fetchCommunityNodePreviews();
-	void loadNodeTypes();
 });
 
 const filteredConfiguredTools = computed(() => {
@@ -466,7 +456,7 @@ function onDialogOpenUpdate(open: boolean) {
 			<!-- List view: the body padding is reset so this scrollbar sits on the dialog edge. -->
 			<div v-show="currentView === 'list'" data-tools-manager-modal :class="$style.listWrapper">
 				<div
-					v-if="isLoadingNodeTypes"
+					v-if="nodeTypesLoading"
 					:class="$style.emptyState"
 					data-test-id="chat-tools-manager-loading"
 				>

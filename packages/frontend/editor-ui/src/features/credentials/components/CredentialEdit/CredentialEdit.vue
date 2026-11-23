@@ -33,6 +33,7 @@ import { useToast } from '@n8n/composables/useToast';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '../../credentials.constants';
 import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/app/constants';
 import { useCredentialsStore } from '../../credentials.store';
+import { useCredentialTypesLoad } from '@/features/credentials/composables/useCredentialTypesLoad';
 import {
 	getTrustedOAuthOrigins,
 	hasOAuthTokenData,
@@ -473,10 +474,12 @@ watch(showAiGatewayErrorNudge, (isVisible) => {
 	});
 });
 
+// `initialize()` reads the credential type one time, to fill the property defaults and to find
+// a custom OAuth app. Startup does not wait for the credential types, so this modal waits.
+const credentialTypes = useCredentialTypesLoad();
+
 onMounted(async () => {
-	// Startup does not wait for the credential types, so edit mode can wait for them too.
-	loading.value =
-		!!modalOptions.value?.createCredential || credentialsStore.allCredentialTypes.length === 0;
+	loading.value = !!modalOptions.value?.createCredential || credentialTypes.isLoading.value;
 	if (modalOptions.value?.initialTab) activeTab.value = modalOptions.value.initialTab;
 	void aiGateway.fetchConfig();
 	void aiGateway.fetchWallet();
@@ -500,16 +503,11 @@ onMounted(async () => {
 			}
 		}
 		if (modalOptions.value?.createCredential) {
-			await credentialsStore.fetchCredentialTypes(false);
+			await credentialTypes.whenLoaded();
 			if (!credentialType.value) throw new Error(i18n.baseText('credentialEdit.typeUnavailable'));
-		} else {
-			// `initialize()` reads the credential type one time, to fill the property defaults and to
-			// find a custom OAuth app. If the types fail to load, still load the credential.
-			try {
-				await credentialsStore.fetchCredentialTypes(false);
-			} catch (error) {
-				console.error('[CredentialEdit] Failed to load credential types', error);
-			}
+		} else if (credentialTypes.isLoading.value) {
+			// If the types fail to load, still load the credential.
+			await credentialTypes.whenSettled();
 		}
 
 		try {

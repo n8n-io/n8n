@@ -339,7 +339,7 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		aiGatewayStore.isCredentialTypeSupported = vi.fn().mockReturnValue(false);
 		nodeTypesStore.getNodeVersions = vi.fn().mockReturnValue([1]);
 		// The node types are in the store by default. The node types tests below empty it.
-		nodeTypesStore.allNodeTypes = [SLACK];
+		nodeTypesStore.hasNodeTypes = true;
 		nodeTypesStore.loadNodeTypesIfNotLoaded = vi.fn().mockResolvedValue(undefined);
 		const credentialsStore = mockedStore(useCredentialsStore);
 		credentialsStore.fetchCredentialTypes = vi.fn().mockResolvedValue(undefined);
@@ -503,7 +503,7 @@ describe('AgentToolsConnectionModalWrapper', () => {
 	});
 
 	it('shows the loading screen until the node types are loaded', async () => {
-		nodeTypesStore.allNodeTypes = [];
+		nodeTypesStore.hasNodeTypes = false;
 		const { promise, resolve } = Promise.withResolvers<void>();
 		nodeTypesStore.loadNodeTypesIfNotLoaded = vi.fn().mockReturnValue(promise);
 		render();
@@ -520,7 +520,7 @@ describe('AgentToolsConnectionModalWrapper', () => {
 
 	it('stops loading when the node types fail to load', async () => {
 		vi.spyOn(console, 'error').mockImplementation(() => {});
-		nodeTypesStore.allNodeTypes = [];
+		nodeTypesStore.hasNodeTypes = false;
 		nodeTypesStore.loadNodeTypesIfNotLoaded = vi.fn().mockRejectedValue(new Error('node types'));
 		render();
 

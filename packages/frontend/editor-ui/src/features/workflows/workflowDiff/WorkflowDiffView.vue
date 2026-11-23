@@ -11,12 +11,12 @@ import { useProvideViewportSync } from '@/features/workflows/workflowDiff/useVie
 import { useWorkflowDiff } from '@/features/workflows/workflowDiff/useWorkflowDiff';
 import { useWorkflowDiffUI } from '@/features/workflows/workflowDiff/useWorkflowDiffUI';
 import type { IWorkflowDb, INodeUi } from '@/Interface';
-import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useNodeTypesLoad } from '@/app/composables/useNodeTypesLoad';
 import { removeWorkflowExecutionData } from '@/app/utils/workflowUtils';
 import type { BaseTextKey } from '@n8n/i18n';
 import { useI18n } from '@n8n/i18n';
 import { NodeDiffStatus } from 'n8n-workflow';
-import { computed, ref, useCssModule, onMounted } from 'vue';
+import { computed, ref, useCssModule } from 'vue';
 import { telemetry } from '@/app/plugins/telemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
@@ -88,19 +88,14 @@ useEventListener(document, 'keydown', (event: KeyboardEvent) => {
 });
 
 const $style = useCssModule();
-const nodeTypesStore = useNodeTypesStore();
 const rootStore = useRootStore();
 const i18n = useI18n();
 const toast = useToast();
-
-// Startup does not wait for the node types. The two sides hydrate after the load ends.
-const nodeTypesReady = ref(false);
 
 const { source, target, sourceRenderData, targetRenderData, nodesDiff, connectionsDiff } =
 	useWorkflowDiff(
 		computed(() => removeWorkflowExecutionData(props.sourceWorkflow)),
 		computed(() => removeWorkflowExecutionData(props.targetWorkflow)),
-		{ nodeTypesReady },
 	);
 
 // Use shared composable for UI logic
@@ -136,15 +131,12 @@ onNodeClick((nodeId: string) => {
 	}
 });
 
-onMounted(async () => {
-	try {
-		await nodeTypesStore.loadNodeTypesIfNotLoaded();
-	} catch (error) {
+// `useWorkflowDiff` waits for the node types before it hydrates. Show a failed load to the user.
+void useNodeTypesLoad()
+	.whenLoaded()
+	.catch((error: unknown) => {
 		toast.showError(error, i18n.baseText('workflowDiff.error.loadNodeTypes'));
-	} finally {
-		nodeTypesReady.value = true;
-	}
-});
+	});
 
 const onChangesDropdownVisibleChange = (visible: boolean) => {
 	setActiveTab(visible);
