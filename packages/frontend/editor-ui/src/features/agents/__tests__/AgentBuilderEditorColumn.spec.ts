@@ -16,7 +16,7 @@ vi.mock('@n8n/composables/useTelemetry', () => ({
 vi.mock('@/app/stores/posthog.store', () => ({
 	usePostHog: () => ({
 		isFeatureEnabled: () => triggerRedesignEnabled.value,
-		isVariantEnabled: () => false,
+		isVariantEnabled: () => triggerRedesignEnabled.value,
 	}),
 }));
 vi.mock('@n8n/stores/useRootStore', () => ({
