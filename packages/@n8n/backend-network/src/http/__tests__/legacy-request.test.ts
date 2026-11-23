@@ -479,6 +479,17 @@ describe('OutboundHttp.requests requestLegacy', () => {
 					dropTruncatedSocket = () => res.socket?.destroy();
 					return;
 				}
+				if (req.url === '/truncated-403-mid-drain') {
+					res.writeHead(403, { 'content-type': 'text/plain', 'content-length': '1000' });
+					res.write('Access denied ');
+					setTimeout(() => {
+						if (!res.socket?.destroyed) {
+							res.write('mid-drain');
+							setTimeout(() => res.socket?.destroy(), 20).unref();
+						}
+					}, 20).unref();
+					return;
+				}
 				if (req.url === '/invalid-charset-403') {
 					res.writeHead(403, { 'content-type': 'text/plain; charset=invalid-charset' });
 					res.end('Access Denied by proxy');
@@ -522,7 +533,7 @@ describe('OutboundHttp.requests requestLegacy', () => {
 
 				await expect(
 					client.requestLegacy({ url: `http://127.0.0.1:${port}/stall`, useStream: true }),
-				).rejects.toMatchObject({ statusCode: 403, status: 403 });
+				).rejects.toMatchObject({ statusCode: 403, status: 403, error: 'partial body' });
 			},
 		);
 
@@ -542,7 +553,7 @@ describe('OutboundHttp.requests requestLegacy', () => {
 						useStream: true,
 						timeout: 30_000,
 					}),
-				).rejects.toMatchObject({ statusCode: 403, status: 403 });
+				).rejects.toMatchObject({ statusCode: 403, status: 403, error: 'partial body' });
 				expect(Date.now() - start).toBeLessThan(3000);
 			},
 		);
@@ -590,6 +601,26 @@ describe('OutboundHttp.requests requestLegacy', () => {
 
 				expect(body.destroyed).toBe(true);
 				await expect(binaryToString(body)).rejects.toThrow(/aborted|closed before completing/i);
+			},
+		);
+
+		it(
+			'preserves error-body bytes received before the connection drops mid-drain',
+			{ timeout: 5000 },
+			async () => {
+				const client = makeFacade().requests({ useDefaultSsrfPolicy: 'unsafe' });
+
+				await expect(
+					client.requestLegacy({
+						url: `http://127.0.0.1:${port}/truncated-403-mid-drain`,
+						useStream: true,
+						timeout: 30_000,
+					}),
+				).rejects.toMatchObject({
+					statusCode: 403,
+					status: 403,
+					error: 'Access denied mid-drain',
+				});
 			},
 		);
 

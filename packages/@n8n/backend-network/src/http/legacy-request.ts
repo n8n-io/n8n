@@ -23,7 +23,7 @@ import {
 	validateProxySsrf,
 	validateUrlSsrf,
 } from './axios/utils';
-import { binaryToBuffer } from './binary-buffer';
+import { streamToBufferPartial } from './binary-buffer';
 import { binaryToString } from './binary-string';
 import { parseIncomingMessage } from './parse-incoming-message';
 
@@ -64,32 +64,11 @@ export async function executeLegacyRequest(
 }
 
 /**
- * Collects bytes still buffered on a Readable stream without waiting on events.
- */
-function flushBufferedChunks(stream: Readable): Buffer {
-	const chunks: Buffer[] = [];
-	try {
-		let chunk: unknown;
-		while ((chunk = stream.read()) !== null) {
-			if (Buffer.isBuffer(chunk)) {
-				chunks.push(chunk);
-			} else if (typeof chunk === 'string') {
-				chunks.push(Buffer.from(chunk));
-			} else if (chunk instanceof Uint8Array) {
-				chunks.push(Buffer.from(chunk));
-			}
-		}
-	} catch {
-		// Return whatever chunks we already collected.
-	}
-	return Buffer.concat(chunks);
-}
-
-/**
  * Drains an Axios error-response body into a string.
  * If the stream is already destroyed or fails to finish (for example a denied
- * proxy CONNECT response or a stalled error body), return any buffered bytes
- * so the caller still receives the HTTP error status.
+ * proxy CONNECT response, a truncated error response, or a stalled error body),
+ * return any received or buffered bytes so the caller keeps the HTTP error
+ * status and available error text.
  */
 async function readErrorResponseBody(body: Buffer | Readable): Promise<string> {
 	let encoding: string | undefined;
@@ -98,17 +77,7 @@ async function readErrorResponseBody(body: Buffer | Readable): Promise<string> {
 		encoding = body.encoding;
 	}
 
-	let buffer: Buffer;
-	if (Buffer.isBuffer(body)) {
-		buffer = body;
-	} else {
-		try {
-			buffer = await binaryToBuffer(body);
-		} catch {
-			buffer = flushBufferedChunks(body);
-		}
-	}
-
+	const buffer = Buffer.isBuffer(body) ? body : await streamToBufferPartial(body);
 	if (buffer.length === 0) {
 		return '';
 	}

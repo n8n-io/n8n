@@ -4,7 +4,7 @@ import { UnexpectedError } from '@n8n/errors';
 import { Readable } from 'node:stream';
 import { createGunzip } from 'node:zlib';
 
-import { binaryToBuffer, streamToBuffer } from '../binary-buffer';
+import { binaryToBuffer, streamToBuffer, streamToBufferPartial } from '../binary-buffer';
 
 describe('binaryToBuffer', () => {
 	it('should handle buffer objects', async () => {
@@ -179,4 +179,73 @@ describe('streamToBuffer inactivity timeout', () => {
 			await expect(promise).rejects.toThrow('Failed to decompress response');
 		},
 	);
+});
+
+describe('streamToBufferPartial', () => {
+	it('returns the full buffer when a stream completes normally', async () => {
+		const stream = Readable.from([Buffer.from('hello '), Buffer.from('world')]);
+		expect((await streamToBufferPartial(stream, 1000)).toString()).toBe('hello world');
+	});
+
+	it('keeps chunks received before the inactivity timeout fires', { timeout: 1000 }, async () => {
+		const stream = new Readable({ read() {} });
+		stream.push(Buffer.from('partial '));
+		setTimeout(() => stream.push(Buffer.from('body')), 20);
+
+		const result = await streamToBufferPartial(stream, 100);
+		expect(result.toString()).toBe('partial body');
+	});
+
+	it('keeps chunks received before a premature close mid-drain', { timeout: 1000 }, async () => {
+		const stream = new Readable({ read() {} });
+		stream.push(Buffer.from('prefix before close'));
+		setTimeout(() => stream.destroy(), 20);
+
+		const result = await streamToBufferPartial(stream, 1000);
+		expect(result.toString()).toBe('prefix before close');
+	});
+
+	it('keeps chunks received before a mid-drain error', { timeout: 1000 }, async () => {
+		const stream = new Readable({ read() {} });
+		stream.push(Buffer.from('prefix before error'));
+		setTimeout(() => stream.destroy(new Error('reset')), 20);
+
+		const result = await streamToBufferPartial(stream, 1000);
+		expect(result.toString()).toBe('prefix before error');
+	});
+
+	it(
+		'returns unread buffered bytes when the stream is already destroyed before draining',
+		{ timeout: 1000 },
+		async () => {
+			const stream = new Readable({ read() {} });
+			stream.push(Buffer.from('buffered prefix'));
+			stream.destroy();
+
+			const result = await streamToBufferPartial(stream, 60_000);
+			expect(result.toString()).toBe('buffered prefix');
+		},
+	);
+
+	it(
+		'returns empty buffer when the stream has already been consumed',
+		{ timeout: 1000 },
+		async () => {
+			const stream = Readable.from(Buffer.from('done'));
+			await streamToBuffer(stream, 60_000);
+
+			const result = await streamToBufferPartial(stream, 60_000);
+			expect(result).toEqual(Buffer.alloc(0));
+		},
+	);
+
+	it('normalizes string and Uint8Array chunks', async () => {
+		const stream = new Readable({ objectMode: true, read() {} });
+		stream.push('hello ');
+		stream.push(new Uint8Array(Buffer.from('world')));
+		stream.push(null);
+
+		const result = await streamToBufferPartial(stream, 1000);
+		expect(result.toString()).toBe('hello world');
+	});
 });
