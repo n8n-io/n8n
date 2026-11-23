@@ -4006,9 +4006,6 @@ importers:
       '@testcontainers/postgresql':
         specifier: 'catalog:'
         version: 11.13.0(supports-color@8.1.1)
-      '@types/supertest':
-        specifier: ^6.0.3
-        version: 6.0.3
       n8n-nodes-base:
         specifier: workspace:*
         version: link:../../nodes-base
@@ -4018,9 +4015,6 @@ importers:
       oxlint-tsgolint:
         specifier: 'catalog:'
         version: 7.0.2007
-      supertest:
-        specifier: ^7.1.1
-        version: 7.1.1(supports-color@8.1.1)
       typescript:
         specifier: catalog:typescript
         version: 7.0.2

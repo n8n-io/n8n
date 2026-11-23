@@ -1,9 +1,9 @@
-import { createDataSource } from '@n8n/engine';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import type { IPairedItemData, IRunData, ITaskData } from 'n8n-workflow';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
+	acceptanceRuntime,
 	branchyLoopWorkflow,
 	chainedLoopsV1Workflow,
 	chainedLoopsWorkflow,
@@ -23,21 +23,19 @@ import { toV1RunExecutionData } from '../v1-execution-read';
 
 describe('M1 acceptance (integration)', () => {
 	let container: StartedPostgreSqlContainer;
-	let dataSource: ReturnType<typeof createDataSource>;
+	const engine = acceptanceRuntime();
 
 	beforeAll(async () => {
 		container = await new PostgreSqlContainer('postgres:18-alpine').start();
-		dataSource = createDataSource(container.getConnectionUri());
-		await dataSource.initialize();
-		await dataSource.runMigrations();
+		await engine.start(container.getConnectionUri());
 	}, 120_000);
 
 	afterAll(async () => {
-		if (dataSource?.isInitialized) await dataSource.destroy();
+		await engine.stop();
 		if (container) await container.stop();
 	});
 
-	const runWorkflow = makeRunWorkflow(() => dataSource);
+	const runWorkflow = makeRunWorkflow(() => engine);
 
 	it('runs a single v1 node (Set) workflow to completion with correct rows', async () => {
 		const graph = setWorkflow([{ name: 'greeting', value: 'hello', type: 'string' }]);
