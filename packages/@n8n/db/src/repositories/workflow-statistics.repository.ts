@@ -18,6 +18,7 @@ import type { OperationContext } from '../services/transaction';
 import { entityManagerOf } from '../services/typeorm-transaction';
 import { chunkIds } from '../utils/chunk-ids';
 import { toDialectQuery } from '../utils/dialect-sql';
+import { toSqliteDbTime } from '../utils/dialect-time';
 
 type StatisticsInsertResult = 'insert' | 'failed' | 'alreadyExists';
 type StatisticsUpsertResult = StatisticsInsertResult | 'update';
@@ -44,18 +45,22 @@ export type WorkflowStatisticsIncrement = {
 	workflowName: string | null;
 };
 
-/** Six binds for each row keeps a statement far below the bind limit of both databases. */
+const INCREMENT_COLUMNS = [
+	'workflowId',
+	'name',
+	'count',
+	'rootCount',
+	'latestEvent',
+	'workflowName',
+] as const;
+
+/** Keeps a statement far below the bind limit of both databases. */
 const INCREMENT_CHUNK_SIZE = 1000;
 
 const PRODUCTION_NAMES: readonly StatisticsNames[] = [
 	StatisticsNames.productionSuccess,
 	StatisticsNames.productionError,
 ];
-
-/** The text form TypeORM stores a SQLite datetime in, so `MAX` compares like with like. */
-function toSqliteUtcText(date: Date): string {
-	return date.toISOString().replace('T', ' ').replace('Z', '');
-}
 
 const counterKey = (workflowId: string, name: string) => `${workflowId}\u0000${name}`;
 
@@ -284,14 +289,16 @@ export class WorkflowStatisticsRepository extends Repository<WorkflowStatistics>
 			}));
 	}
 
-	private incrementUpsertSql(rowCount: number, latestOf: 'GREATEST' | 'MAX'): string {
+	private incrementUpsertSql(rowCount: number): string {
 		const stats = this.manager.connection.driver.escape(this.metadata.tableName);
+		const width = INCREMENT_COLUMNS.length;
 		const values = Array.from({ length: rowCount }, (_, row) => {
-			const first = row * 6 + 1;
-			return `(${Array.from({ length: 6 }, (__, column) => `$${first + column}`).join(', ')})`;
+			const binds = INCREMENT_COLUMNS.map((__, column) => `$${row * width + column + 1}`);
+			return `(${binds.join(', ')})`;
 		});
+		const latestOf = this.globalConfig.database.type === 'postgresdb' ? 'GREATEST' : 'MAX';
 
-		return `INSERT INTO ${stats} ("workflowId", "name", "count", "rootCount", "latestEvent", "workflowName")
+		return `INSERT INTO ${stats} (${INCREMENT_COLUMNS.map((column) => `"${column}"`).join(', ')})
 			VALUES ${values.join(', ')}
 			ON CONFLICT ("workflowId", "name") DO UPDATE SET
 				"count" = ${stats}."count" + EXCLUDED."count",
@@ -300,26 +307,28 @@ export class WorkflowStatisticsRepository extends Repository<WorkflowStatistics>
 				"workflowName" = EXCLUDED."workflowName"`;
 	}
 
+	private incrementParams(
+		increments: readonly WorkflowStatisticsIncrement[],
+		toDbTime: (date: Date) => Date | string = (date) => date,
+	): unknown[] {
+		return increments.flatMap((increment) =>
+			INCREMENT_COLUMNS.map((column) =>
+				column === 'latestEvent' ? toDbTime(increment.latestEvent) : increment[column],
+			),
+		);
+	}
+
 	/** Returns the keys of the counters the statement created. */
 	private async upsertIncrementsPostgres(
 		manager: EntityManager,
 		increments: readonly WorkflowStatisticsIncrement[],
 	): Promise<string[]> {
-		const params = increments.flatMap((increment) => [
-			increment.workflowId,
-			increment.name,
-			increment.count,
-			increment.rootCount,
-			increment.latestEvent,
-			increment.workflowName,
-		]);
-
 		const rows = await manager.query<
 			Array<{ workflowId: string; name: string; inserted: boolean }>
 		>(
-			`${this.incrementUpsertSql(increments.length, 'GREATEST')}
+			`${this.incrementUpsertSql(increments.length)}
 			RETURNING "workflowId", "name", ("xmax" = 0) AS inserted`,
-			params,
+			this.incrementParams(increments),
 		);
 
 		return rows.filter((row) => row.inserted).map((row) => counterKey(row.workflowId, row.name));
@@ -334,29 +343,22 @@ export class WorkflowStatisticsRepository extends Repository<WorkflowStatistics>
 		increments: readonly WorkflowStatisticsIncrement[],
 	): Promise<string[]> {
 		const production = increments.filter(({ name }) => PRODUCTION_NAMES.includes(name));
-		const existing = new Set<string>();
-		if (production.length > 0) {
-			const rows = await manager.find(WorkflowStatistics, {
-				select: ['workflowId', 'name'],
-				where: {
-					name: In([...PRODUCTION_NAMES]),
-					workflowId: In([...new Set(production.map(({ workflowId }) => workflowId))]),
-				},
-			});
-			for (const row of rows) existing.add(counterKey(row.workflowId, row.name));
-		}
+		const found =
+			production.length === 0
+				? []
+				: await manager.find(WorkflowStatistics, {
+						select: ['workflowId', 'name'],
+						where: {
+							name: In([...PRODUCTION_NAMES]),
+							workflowId: In([...new Set(production.map(({ workflowId }) => workflowId))]),
+						},
+					});
+		const existing = new Set(found.map((row) => counterKey(row.workflowId, row.name)));
 
 		const { sql, params } = toDialectQuery(
 			false,
-			this.incrementUpsertSql(increments.length, 'MAX'),
-			increments.flatMap((increment) => [
-				increment.workflowId,
-				increment.name,
-				increment.count,
-				increment.rootCount,
-				toSqliteUtcText(increment.latestEvent),
-				increment.workflowName,
-			]),
+			this.incrementUpsertSql(increments.length),
+			this.incrementParams(increments, toSqliteDbTime),
 		);
 		await manager.query(sql, params);
 

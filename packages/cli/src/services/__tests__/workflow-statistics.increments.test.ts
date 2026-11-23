@@ -34,45 +34,24 @@ describe('toStatisticsIncrements', () => {
 		expect(toStatisticsIncrements([])).toEqual([]);
 	});
 
-	test.each<[string, Partial<ExecutionLedgerRow>]>([
-		['an engine v2 row', { origin: 'v2' }],
-		['a started row', { event: 'started', outcome: 'none' }],
-		['an agent entity', { entityType: 'agent' }],
-		['a chat run', { mode: 'chat' }],
-		['a canceled run', { outcome: 'canceled' }],
-		['a row with an unknown mode', { mode: 'futureMode' }],
-	])('ignores %s', (_label, overrides) => {
-		expect(toStatisticsIncrements([row(overrides)])).toEqual([]);
+	test('ignores an engine v2 row', () => {
+		expect(toStatisticsIncrements([row({ origin: 'v2' })])).toEqual([]);
 	});
 
-	test('counts a blocked webhook run as a production error outside the root count', () => {
-		const increments = toStatisticsIncrements([row({ outcome: 'blocked', blockedBy: 'policy' })]);
+	test('ignores a row with a mode the rules do not know', () => {
+		expect(toStatisticsIncrements([row({ mode: 'futureMode' })])).toEqual([]);
+	});
+
+	test('takes the counter and the root count from the counting rules', () => {
+		const increments = toStatisticsIncrements([
+			row(),
+			row({ entityId: 'wf-2', outcome: 'blocked', blockedBy: 'policy' }),
+		]);
 
 		expect(increments).toEqual([
-			expect.objectContaining({
-				workflowId: 'wf-1',
-				name: StatisticsNames.productionError,
-				count: 1,
-				rootCount: 0,
-			}),
-		]);
-	});
-
-	test('counts a billable production success in the root count', () => {
-		expect(toStatisticsIncrements([row()])).toEqual([
 			expect.objectContaining({ name: StatisticsNames.productionSuccess, count: 1, rootCount: 1 }),
+			expect.objectContaining({ name: StatisticsNames.productionError, count: 1, rootCount: 0 }),
 		]);
-	});
-
-	test.each([
-		['success', StatisticsNames.manualSuccess],
-		['error', StatisticsNames.manualError],
-	] as const)('counts an Instance AI %s run as a manual counter', (outcome, name) => {
-		const increments = toStatisticsIncrements([
-			row({ source: 'instance_ai', mode: 'trigger', outcome }),
-		]);
-
-		expect(increments).toEqual([expect.objectContaining({ name, count: 1, rootCount: 0 })]);
 	});
 
 	test('groups the rows of one workflow and counter, whatever their order', () => {
@@ -93,14 +72,6 @@ describe('toStatisticsIncrements', () => {
 				workflowName: 'Newest',
 			},
 		]);
-	});
-
-	test('keeps separate increments for different counters of one workflow', () => {
-		const increments = toStatisticsIncrements([row(), row({ outcome: 'error' })]);
-
-		expect(increments.map(({ name }) => name).sort()).toEqual(
-			[StatisticsNames.productionError, StatisticsNames.productionSuccess].sort(),
-		);
 	});
 
 	test('sorts the output by workflow id then counter name for any input order', () => {

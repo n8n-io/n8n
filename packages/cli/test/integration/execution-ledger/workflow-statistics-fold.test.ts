@@ -5,6 +5,7 @@ import type { ExecutionLedgerFoldStep, Project, WorkflowEntity } from '@n8n/db';
 import { FoldStepRegistry, StatisticsNames, WorkflowStatisticsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
+import { sleep } from '@n8n/utils/sleep';
 import type {
 	ExecutionStatus,
 	IRun,
@@ -190,7 +191,7 @@ describe('workflow statistics fold step', () => {
 			await finish('webhook', 'error');
 
 			// Long enough for the old writer to have written, if it still ran.
-			await new Promise((resolve) => setTimeout(resolve, 500));
+			await sleep(500);
 
 			expect(await findWorkflowStatistics(workflow.id)).toEqual([]);
 		});
@@ -285,7 +286,7 @@ describe('workflow statistics fold step', () => {
 				{ timeout: 10_000, interval: 50 },
 			);
 			vi.restoreAllMocks();
-			await new Promise((resolve) => setTimeout(resolve, 300));
+			await sleep(300);
 			await claimAllLedgerRows();
 			await testDb.truncate(['WorkflowStatistics', 'ExecutionEntity']);
 
