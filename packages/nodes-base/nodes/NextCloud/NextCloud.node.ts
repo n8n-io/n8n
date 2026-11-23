@@ -19,7 +19,14 @@ import {
 import { URLSearchParams } from 'url';
 import { parseString } from 'xml2js';
 
-import { nextCloudApiRequest, parseFolderList, webDavPath } from './GenericFunctions';
+import {
+	nextCloudApiRequest,
+	nextCloudCredentialType,
+	nextCloudRootUrl,
+	parseFolderList,
+	webDavPath,
+	type NextCloudEndpointMode,
+} from './GenericFunctions';
 import { wrapData } from '../../utils/utilities';
 import * as createFromText from './actions/file/createFromText.operation';
 
@@ -888,14 +895,9 @@ export class NextCloud implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 		const nodeVersion = this.getNode().typeVersion;
 
-		const authenticationMethod = this.getNodeParameter('authentication', 0);
-		let credentials;
-
-		if (authenticationMethod === 'accessToken') {
-			credentials = await this.getCredentials('nextCloudApi');
-		} else {
-			credentials = await this.getCredentials('nextCloudOAuth2Api');
-		}
+		const credentials = await this.getCredentials<{ webDavUrl: string }>(
+			nextCloudCredentialType.call(this),
+		);
 
 		let resource: string = '';
 		let operation: string = '';
@@ -910,7 +912,7 @@ export class NextCloud implements INodeType {
 			const headers: IDataObject = {};
 			let qs;
 			// Reinitialize per-iteration so state from a previous item never leaks.
-			let useWebDavEndpoint = true;
+			let endpointMode: NextCloudEndpointMode = 'webdav';
 
 			resource = this.getNodeParameter('resource', i);
 			operation = this.getNodeParameter('operation', i);
@@ -1022,11 +1024,10 @@ export class NextCloud implements INodeType {
 <d:propfind xmlns:d="DAV:" xmlns:oc="http://owncloud.org/ns">
   <d:prop><oc:fileid/></d:prop>
 </d:propfind>`;
-							// useWebDavEndpoint stays true (default) for WebDAV PROPFIND.
 						} else {
 							// Regular OCS share.
 							requestMethod = 'POST';
-							useWebDavEndpoint = false;
+							endpointMode = 'ocs';
 							endpoint = requestPath`ocs/v2.php/apps/files_sharing/api/v1/shares`;
 							headers['OCS-APIRequest'] = true;
 							headers['Content-Type'] = 'application/x-www-form-urlencoded';
@@ -1050,7 +1051,7 @@ export class NextCloud implements INodeType {
 						}
 					}
 				} else if (resource === 'user') {
-					useWebDavEndpoint = false;
+					endpointMode = 'ocs';
 					if (operation === 'create') {
 						// ----------------------------------
 						//         user:create
@@ -1144,7 +1145,7 @@ export class NextCloud implements INodeType {
 
 				// Make sure that the webdav URL does never have a trailing slash because
 				// one gets added always automatically
-				let webDavUrl = credentials.webDavUrl as string;
+				let webDavUrl = credentials.webDavUrl;
 				if (webDavUrl.slice(-1) === '/') {
 					webDavUrl = webDavUrl.slice(0, -1);
 				}
@@ -1164,7 +1165,7 @@ export class NextCloud implements INodeType {
 						headers,
 						encoding,
 						qs,
-						useWebDavEndpoint,
+						endpointMode,
 					);
 				} catch (error) {
 					if (this.continueOnFail()) {
@@ -1281,15 +1282,12 @@ export class NextCloud implements INodeType {
 							);
 						}
 
-						const webDavBase = (credentials.webDavUrl as string).replace(
-							/\/remote\.php\/webdav\/?$/,
-							'',
-						);
+						const webDavBase = nextCloudRootUrl(credentials.webDavUrl);
 
 						if (webDavBase === credentials.webDavUrl) {
 							throw new NodeOperationError(
 								this.getNode(),
-								'WebDAV URL must end with /remote.php/webdav for generating an internal link. Please check your Nextcloud credentials.',
+								'WebDAV URL must end with /remote.php/webdav or /remote.php/dav/files/<user> for generating an internal link. Please check your Nextcloud credentials.',
 								{ itemIndex: i },
 							);
 						}
