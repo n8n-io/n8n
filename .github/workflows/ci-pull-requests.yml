@@ -348,7 +348,7 @@ jobs:
   typecheck:
     name: Typecheck
     if: needs.install-and-build.outputs.ci == 'true'
-    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-bmi-n8n' }}
     needs: [install-and-build, format-check]
     env:
       # Inherited by every worker turbo spawns, so the real budget is
@@ -391,7 +391,7 @@ jobs:
   check-packaging:
     name: Check packaging
     if: needs.install-and-build.outputs.ci == 'true'
-    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-bmi-n8n' }}
     needs: [install-and-build, format-check]
     steps:
       - uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0

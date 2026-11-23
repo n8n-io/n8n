@@ -76,7 +76,7 @@ env:
 jobs:
   unit-test-backend:
     name: Backend Unit Tests
-    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-bmi-n8n' }}
     env:
       COVERAGE_ENABLED: ${{ inputs.warmPrCache || inputs.collectCoverage }}
       COVERAGE_SCOPE: ${{ inputs.warmPrCache && 'changed-files' || (inputs.collectCoverage && inputs.changedFiles != '' && 'changed-files' || 'all') }}
@@ -142,7 +142,7 @@ jobs:
 
   unit-test-cli:
     name: CLI Unit Tests (${{ matrix.shard }}/2)
-    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-bmi-n8n' }}
     strategy:
       fail-fast: false
       matrix:
@@ -191,7 +191,7 @@ jobs:
 
   integration-test-backend:
     name: Backend Integration Tests
-    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-bmi-n8n' }}
     env:
       COVERAGE_ENABLED: ${{ inputs.warmPrCache || inputs.collectCoverage }}
       COVERAGE_SCOPE: ${{ inputs.warmPrCache && 'changed-files' || (inputs.collectCoverage && inputs.changedFiles != '' && 'changed-files' || 'all') }}
@@ -247,7 +247,7 @@ jobs:
 
   integration-test-cli:
     name: CLI Integration Tests (${{ matrix.shard }}/2)
-    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-bmi-n8n' }}
     strategy:
       fail-fast: false
       matrix:
@@ -296,7 +296,7 @@ jobs:
 
   unit-test-nodes:
     name: Nodes Unit Tests
-    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-bmi-n8n' }}
     env:
       COVERAGE_ENABLED: ${{ inputs.collectCoverage }} # Coverage collected when true
       AFFECTED_PACKAGES: ${{ inputs.affectedPackages }}
@@ -343,7 +343,7 @@ jobs:
 
   unit-test-frontend:
     name: Frontend (${{ matrix.shard }}/4)
-    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-bmi-n8n' }}
     strategy:
       fail-fast: false
       matrix:

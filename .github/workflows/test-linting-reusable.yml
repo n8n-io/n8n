@@ -29,7 +29,7 @@ env:
 jobs:
   lint:
     name: Lint (${{ matrix.name }})
-    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-bmi-n8n' }}
     strategy:
       fail-fast: false
       matrix:

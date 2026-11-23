@@ -10,12 +10,11 @@ on:
 
 env:
   NODE_OPTIONS: '--max-old-space-size=6144'
-  PLAYWRIGHT_BROWSERS_PATH: packages/quality/testing/playwright/.playwright-browsers
 
 jobs:
   smoke:
     name: Dev-server smoke
-    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-bmi-n8n' }}
     timeout-minutes: 15
     permissions:
       contents: read
@@ -30,11 +29,24 @@ jobs:
       - name: Setup and Build
         uses: ./.github/actions/setup-nodejs
 
+      - name: Resolve Playwright browsers
+        id: preinstalled-browsers
+        run: |
+          EXPECTED="$(tr -d '[:space:]' < packages/quality/testing/playwright/.playwright-version)"
+          BAKED_DIR="/opt/playwright-browsers"
+          if [ -f "$BAKED_DIR/.playwright-version" ] \
+            && [ "$(tr -d '[:space:]' < "$BAKED_DIR/.playwright-version")" = "$EXPECTED" ]; then
+            echo "PLAYWRIGHT_BROWSERS_PATH=$BAKED_DIR" >> "$GITHUB_ENV"
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+            echo "Using preinstalled Playwright browsers (${EXPECTED}) at ${BAKED_DIR}"
+          else
+            echo "PLAYWRIGHT_BROWSERS_PATH=$GITHUB_WORKSPACE/packages/quality/testing/playwright/.playwright-browsers" >> "$GITHUB_ENV"
+          fi
+
       - name: Install Browsers
+        if: steps.preinstalled-browsers.outputs.ready != 'true'
         run: pnpm turbo run install-browsers --filter=n8n-playwright
 
-      # Both steps run from repo root so PLAYWRIGHT_BROWSERS_PATH (relative)
-      # resolves correctly. cd-ing into the playwright package double-nests it.
       - name: Run dev-server smoke spec (non-default ports)
         # Runs FIRST, while nothing has ever listened on 5678, so a regression
         # to the 5678 fallback fails with a connection error instead of being
