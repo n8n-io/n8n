@@ -1,4 +1,4 @@
-import type { JSONObject, SideCallUsageReport, TokenUsage } from '@n8n/agents';
+import type { AgentMessage, JSONObject, SideCallUsageReport, TokenUsage } from '@n8n/agents';
 import {
 	ASSISTANT_WORKFLOWS_ARCHIVED_EVENT,
 	InstanceAiConfirmRequestDto,
@@ -10,11 +10,13 @@ import {
 	type InstanceAiResourceAttachment,
 	type InstanceAiThreadSubject,
 	type InstanceAiWorkflowAttachment,
+	isAttachmentMediaTypeSupported,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig, type AiConfig } from '@n8n/config';
 import { UserRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { UserError } from '@n8n/errors';
 import {
 	MAX_STEPS,
 	modelConfigId,
@@ -54,6 +56,8 @@ import { InstanceAiCreditService } from '../instance-ai-credit.service';
 import { InstanceAiErrorReporterService } from '../instance-ai-error-reporter.service';
 import { InstanceAiAdapterService } from '../instance-ai.adapter.service';
 import { InstanceAiSettingsService } from '../instance-ai-settings.service';
+import { extractEditorContextResourceAttachments } from '../internal-messages';
+import { extractTextFromContent } from '../message-parser';
 import {
 	getUserFacingErrorCode,
 	getUserFacingErrorMessage,
@@ -76,6 +80,11 @@ import type {
 	AssistantTurnRuntime,
 	AssistantTurnState,
 } from '../turn-setup/assistant-turn-runtime';
+import {
+	AssistantContextTurnTelemetry,
+	readSuspendedContextTurn,
+	writeSuspendedContextTurn,
+} from './assistant-context-turn-telemetry';
 import { AssistantEventSink } from './assistant-event-sink';
 import {
 	createSnapshotTemporaryWorkflowMarkers,
@@ -197,6 +206,16 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 	normalizeResumeData(resumeData: unknown): unknown {
 		const parsed = InstanceAiConfirmRequestDto.safeParse(resumeData);
 		return parsed.success ? buildResumeData(toConfirmationData(parsed.data)) : resumeData;
+	}
+
+	/**
+	 * The model input of a user turn keeps its resource attachments, such as
+	 * mentions, in the thread context block. Read them back like the current
+	 * runtime does, so the chat shows them again after a reload.
+	 */
+	readMessageReferences(modelInput: AgentMessage): InstanceAiResourceAttachment[] {
+		const content = 'content' in modelInput ? modelInput.content : undefined;
+		return extractEditorContextResourceAttachments(extractTextFromContent(content));
 	}
 
 	/**
@@ -336,9 +355,35 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 			// and parse-file reads them by id through `storedFiles`.
 			fileAttachments: [],
 		});
+		// The turn has the sandbox files of project agents only when their flag is on.
+		const { sandboxFiles } = turn;
+		// Set when the agent is built, before any tool runs. The tools are built
+		// with the agent, so `canView` must exist before then.
+		const model: { provider?: string } = {};
 		environment.context.storedFiles = {
 			read: async (fileId) => await turn.readFile(fileId),
+			// The files list of the chat has the same flag.
+			...(sandboxFiles ? { list: async () => await sandboxFiles.listFiles() } : {}),
+			// The same check as the file store, which loads only these types for the model.
+			canView: (mimeType) => isAttachmentMediaTypeSupported(model.provider, mimeType),
 		};
+		if (sandboxFiles) {
+			const { context } = environment;
+			// Read the sandbox when a tool runs: it belongs to the turn, not to this setup.
+			const workspaceOf = () => {
+				if (!context.workspace) throw new UserError('This conversation has no sandbox');
+				return context.workspace;
+			};
+			context.sandboxFiles = {
+				maxImportBytes: sandboxFiles.maxImportBytes,
+				importFiles: async (files, abortSignal) =>
+					await sandboxFiles.importFiles(workspaceOf(), files, abortSignal),
+				storeOutput: async (path, abortSignal) =>
+					await sandboxFiles.storeOutput(workspaceOf(), path, abortSignal),
+			};
+		}
+		const contextTurn = await this.createContextTurnTelemetry(turn, runId);
+		contextTurn.bind(environment.orchestrationContext.skills);
 
 		let turnInput: AssistantTurnInput | undefined;
 		if (turn.type === 'start') {
@@ -357,6 +402,12 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 					timeZone: request.timeZone,
 					threadArtifacts: request.threadArtifacts,
 					titledByRuntime: true,
+					onInstanceContextInjection: (injection) =>
+						contextTurn.setContext({
+							injection,
+							instanceContextEnabled: environment.instanceContextEnabled,
+							nodeUsageEnabled: environment.nodeUsageEnabled,
+						}),
 				});
 			turnInput = trace
 				? await trace.tracePromptBuild(
@@ -375,6 +426,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 			generateTitle: true,
 			...(trace ? { tracing: trace.context } : {}),
 		});
+		model.provider = agent.snapshot.model.provider ?? undefined;
 		if (turn.type === 'start') await this.snapshotAttachedAgents(environment, contextAttachments);
 
 		let usage: { model: string; usage: TokenUsage } | undefined;
@@ -423,6 +475,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 			},
 			onChunk: (chunk) => {
 				trace?.observeChunk(chunk);
+				contextTurn.observeChunk(chunk);
 				if (chunk.type === 'error') streamErrors.add(chunk.error);
 				if (chunk.type === 'tool-call-suspended') {
 					setupRoute.observeSuspension(chunk.toolName, chunk.suspendPayload);
@@ -457,6 +510,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 					// Finish before the host events close and the next queued turn reads the cursor.
 					await inputAccepted;
 					await this.claimTurnUsage(user, thread.id, runId, outcome, usage);
+					await this.settleContextTurn(turn, runId, outcome, contextTurn, usage?.usage);
 					// Before the card resumes, so that the resumed turn does not route setup again.
 					await setupRoute.markSuspendedSetupsRouted();
 					// A suspended turn can still be building the workflows it marked.
@@ -489,6 +543,63 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 				await this.claimSideCallUsage(user, thread.id, runId, report),
 			formatError: async (error) => toFormattedTurnError(await shownErrorOf(error)),
 		};
+	}
+
+	/** A resume continues the Hub skill use and the instance context of its suspended segment. */
+	private async createContextTurnTelemetry(
+		turn: SystemAgentTurn<AssistantSandboxLease>,
+		runId: string,
+	): Promise<AssistantContextTurnTelemetry> {
+		const scope = { userId: turn.user.id, threadId: turn.thread.id, runId };
+		if (turn.type === 'start') {
+			return new AssistantContextTurnTelemetry(this.telemetry, { ...scope, resumed: false });
+		}
+		let saved: Awaited<ReturnType<typeof readSuspendedContextTurn>>;
+		try {
+			saved = await readSuspendedContextTurn(turn.memory, turn.thread.id, runId);
+		} catch (error) {
+			this.logger.warn('Failed to read the instance context of a suspended Assistant turn', {
+				threadId: turn.thread.id,
+				runId,
+				error: getErrorMessage(error),
+			});
+		}
+		return new AssistantContextTurnTelemetry(
+			this.telemetry,
+			{
+				...scope,
+				resumed: true,
+				openToolCallIds: new Set(turn.openSuspensions.map(({ toolCallId }) => toolCallId)),
+			},
+			saved,
+		);
+	}
+
+	/**
+	 * Reports the segment. A suspended turn keeps its instance context for the
+	 * resume, and a resumed turn that ends drops it. Best effort.
+	 */
+	private async settleContextTurn(
+		turn: SystemAgentTurn<AssistantSandboxLease>,
+		runId: string,
+		outcome: SystemAgentTurnOutcome,
+		contextTurn: AssistantContextTurnTelemetry,
+		usage: TokenUsage | undefined,
+	): Promise<void> {
+		try {
+			// Report first: the report counts a Hub skill snapshot, and the saved state keeps the count.
+			contextTurn.report(outcome.status, usage);
+			const context = outcome.status === 'suspended' ? contextTurn.save() : undefined;
+			// Only a resume can end a run that stored a context.
+			if (!context && turn.type === 'start') return;
+			await writeSuspendedContextTurn(turn.memory, turn.thread.id, runId, context);
+		} catch (error) {
+			this.logger.warn('Failed to store the instance context of an Assistant turn', {
+				threadId: turn.thread.id,
+				runId,
+				error: getErrorMessage(error),
+			});
+		}
 	}
 
 	/** Sends "Builder asked for input" once for each new Assistant card. */

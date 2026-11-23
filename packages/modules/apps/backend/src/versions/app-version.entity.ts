@@ -36,4 +36,8 @@ export class AppVersion extends WithTimestamps {
 
 	@JsonColumn({ default: '[]' })
 	bindings: AppBinding[];
+
+	/** The source is the empty scaffold, not code that the n8n Assistant or a user wrote. */
+	@Column({ type: 'boolean', default: false })
+	isScaffold: boolean;
 }

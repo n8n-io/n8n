@@ -19,7 +19,7 @@ exports[`components > N8nDatatable > should render correctly 1`] = `
             <td data-v-c73ff18f="" class=""><span data-v-c73ff18f="">Richard Hendricks</span></td>
             <td data-v-c73ff18f="" class=""><span data-v-c73ff18f="">29</span></td>
             <td data-v-c73ff18f="" class="">
-              <n8n-button-stub data-v-c73ff18f="" variant="solid" size="medium" loading="false" icononly="false" disabled="false" class="" column="[object Object]"></n8n-button-stub>
+              <n8n-button-stub data-v-c73ff18f="" variant="solid" size="medium" loading="false" icononly="false" disabled="false" focusablewhendisabled="false" class="" column="[object Object]"></n8n-button-stub>
             </td>
           </tr>
           <tr data-v-c73ff18f="">
@@ -27,7 +27,7 @@ exports[`components > N8nDatatable > should render correctly 1`] = `
             <td data-v-c73ff18f="" class=""><span data-v-c73ff18f="">Bertram Gilfoyle</span></td>
             <td data-v-c73ff18f="" class=""><span data-v-c73ff18f="">44</span></td>
             <td data-v-c73ff18f="" class="">
-              <n8n-button-stub data-v-c73ff18f="" variant="solid" size="medium" loading="false" icononly="false" disabled="false" class="" column="[object Object]"></n8n-button-stub>
+              <n8n-button-stub data-v-c73ff18f="" variant="solid" size="medium" loading="false" icononly="false" disabled="false" focusablewhendisabled="false" class="" column="[object Object]"></n8n-button-stub>
             </td>
           </tr>
           <tr data-v-c73ff18f="">
@@ -35,7 +35,7 @@ exports[`components > N8nDatatable > should render correctly 1`] = `
             <td data-v-c73ff18f="" class=""><span data-v-c73ff18f="">Dinesh Chugtai</span></td>
             <td data-v-c73ff18f="" class=""><span data-v-c73ff18f="">31</span></td>
             <td data-v-c73ff18f="" class="">
-              <n8n-button-stub data-v-c73ff18f="" variant="solid" size="medium" loading="false" icononly="false" disabled="false" class="" column="[object Object]"></n8n-button-stub>
+              <n8n-button-stub data-v-c73ff18f="" variant="solid" size="medium" loading="false" icononly="false" disabled="false" focusablewhendisabled="false" class="" column="[object Object]"></n8n-button-stub>
             </td>
           </tr>
           <tr data-v-c73ff18f="">
@@ -43,7 +43,7 @@ exports[`components > N8nDatatable > should render correctly 1`] = `
             <td data-v-c73ff18f="" class=""><span data-v-c73ff18f="">Jared Dunn </span></td>
             <td data-v-c73ff18f="" class=""><span data-v-c73ff18f="">38</span></td>
             <td data-v-c73ff18f="" class="">
-              <n8n-button-stub data-v-c73ff18f="" variant="solid" size="medium" loading="false" icononly="false" disabled="false" class="" column="[object Object]"></n8n-button-stub>
+              <n8n-button-stub data-v-c73ff18f="" variant="solid" size="medium" loading="false" icononly="false" disabled="false" focusablewhendisabled="false" class="" column="[object Object]"></n8n-button-stub>
             </td>
           </tr>
           <tr data-v-c73ff18f="">
@@ -51,7 +51,7 @@ exports[`components > N8nDatatable > should render correctly 1`] = `
             <td data-v-c73ff18f="" class=""><span data-v-c73ff18f="">Richard Hendricks</span></td>
             <td data-v-c73ff18f="" class=""><span data-v-c73ff18f="">29</span></td>
             <td data-v-c73ff18f="" class="">
-              <n8n-button-stub data-v-c73ff18f="" variant="solid" size="medium" loading="false" icononly="false" disabled="false" class="" column="[object Object]"></n8n-button-stub>
+              <n8n-button-stub data-v-c73ff18f="" variant="solid" size="medium" loading="false" icononly="false" disabled="false" focusablewhendisabled="false" class="" column="[object Object]"></n8n-button-stub>
             </td>
           </tr>
           <tr data-v-c73ff18f="">
@@ -59,7 +59,7 @@ exports[`components > N8nDatatable > should render correctly 1`] = `
             <td data-v-c73ff18f="" class=""><span data-v-c73ff18f="">Bertram Gilfoyle</span></td>
             <td data-v-c73ff18f="" class=""><span data-v-c73ff18f="">44</span></td>
             <td data-v-c73ff18f="" class="">
-              <n8n-button-stub data-v-c73ff18f="" variant="solid" size="medium" loading="false" icononly="false" disabled="false" class="" column="[object Object]"></n8n-button-stub>
+              <n8n-button-stub data-v-c73ff18f="" variant="solid" size="medium" loading="false" icononly="false" disabled="false" focusablewhendisabled="false" class="" column="[object Object]"></n8n-button-stub>
             </td>
           </tr>
           <tr data-v-c73ff18f="">
@@ -67,7 +67,7 @@ exports[`components > N8nDatatable > should render correctly 1`] = `
             <td data-v-c73ff18f="" class=""><span data-v-c73ff18f="">Dinesh Chugtai</span></td>
             <td data-v-c73ff18f="" class=""><span data-v-c73ff18f="">31</span></td>
             <td data-v-c73ff18f="" class="">
-              <n8n-button-stub data-v-c73ff18f="" variant="solid" size="medium" loading="false" icononly="false" disabled="false" class="" column="[object Object]"></n8n-button-stub>
+              <n8n-button-stub data-v-c73ff18f="" variant="solid" size="medium" loading="false" icononly="false" disabled="false" focusablewhendisabled="false" class="" column="[object Object]"></n8n-button-stub>
             </td>
           </tr>
           <tr data-v-c73ff18f="">
@@ -75,7 +75,7 @@ exports[`components > N8nDatatable > should render correctly 1`] = `
             <td data-v-c73ff18f="" class=""><span data-v-c73ff18f="">Jared Dunn </span></td>
             <td data-v-c73ff18f="" class=""><span data-v-c73ff18f="">38</span></td>
             <td data-v-c73ff18f="" class="">
-              <n8n-button-stub data-v-c73ff18f="" variant="solid" size="medium" loading="false" icononly="false" disabled="false" class="" column="[object Object]"></n8n-button-stub>
+              <n8n-button-stub data-v-c73ff18f="" variant="solid" size="medium" loading="false" icononly="false" disabled="false" focusablewhendisabled="false" class="" column="[object Object]"></n8n-button-stub>
             </td>
           </tr>
           <tr data-v-c73ff18f="">
@@ -83,7 +83,7 @@ exports[`components > N8nDatatable > should render correctly 1`] = `
             <td data-v-c73ff18f="" class=""><span data-v-c73ff18f="">Richard Hendricks</span></td>
             <td data-v-c73ff18f="" class=""><span data-v-c73ff18f="">29</span></td>
             <td data-v-c73ff18f="" class="">
-              <n8n-button-stub data-v-c73ff18f="" variant="solid" size="medium" loading="false" icononly="false" disabled="false" class="" column="[object Object]"></n8n-button-stub>
+              <n8n-button-stub data-v-c73ff18f="" variant="solid" size="medium" loading="false" icononly="false" disabled="false" focusablewhendisabled="false" class="" column="[object Object]"></n8n-button-stub>
             </td>
           </tr>
           <tr data-v-c73ff18f="">
@@ -91,7 +91,7 @@ exports[`components > N8nDatatable > should render correctly 1`] = `
             <td data-v-c73ff18f="" class=""><span data-v-c73ff18f="">Bertram Gilfoyle</span></td>
             <td data-v-c73ff18f="" class=""><span data-v-c73ff18f="">44</span></td>
             <td data-v-c73ff18f="" class="">
-              <n8n-button-stub data-v-c73ff18f="" variant="solid" size="medium" loading="false" icononly="false" disabled="false" class="" column="[object Object]"></n8n-button-stub>
+              <n8n-button-stub data-v-c73ff18f="" variant="solid" size="medium" loading="false" icononly="false" disabled="false" focusablewhendisabled="false" class="" column="[object Object]"></n8n-button-stub>
             </td>
           </tr>
         </tbody>
@@ -101,8 +101,8 @@ exports[`components > N8nDatatable > should render correctly 1`] = `
   <div data-v-c73ff18f="" class="n8n-pagination paginationContainer medium pagination" data-test-id="pagination">
     <div class="total" data-test-id="pagination-total">Total 15</div>
     <nav>
-      <div class="paginationList" data-test-id="pagination-list"><span class="disabledTrigger" data-state="closed" data-grace-area-trigger=""><n8n-button-stub icon="chevron-left" variant="ghost" size="medium" loading="false" icononly="true" disabled="true" class="" aria-label="Previous page" type="button" data-test-id="pagination-prev"></n8n-button-stub></span>
-        <!--v-if--><button data-type="page" aria-label="Page 1" aria-current="page" data-selected="true" type="button" class="paginationItem" data-test-id="pagination-item" value="1">1</button><button data-type="page" aria-label="Page 2" type="button" class="paginationItem" data-test-id="pagination-item" value="2">2</button><span class="" data-state="closed" data-grace-area-trigger=""><n8n-button-stub icon="chevron-right" variant="ghost" size="medium" loading="false" icononly="true" disabled="false" class="" aria-label="Next page" type="button" data-test-id="pagination-next"></n8n-button-stub></span>
+      <div class="paginationList" data-test-id="pagination-list"><span class="disabledTrigger" data-state="closed" data-grace-area-trigger=""><n8n-button-stub icon="chevron-left" variant="ghost" size="medium" loading="false" icononly="true" disabled="true" focusablewhendisabled="false" class="" aria-label="Previous page" type="button" data-test-id="pagination-prev"></n8n-button-stub></span>
+        <!--v-if--><button data-type="page" aria-label="Page 1" aria-current="page" data-selected="true" type="button" class="paginationItem" data-test-id="pagination-item" value="1">1</button><button data-type="page" aria-label="Page 2" type="button" class="paginationItem" data-test-id="pagination-item" value="2">2</button><span class="" data-state="closed" data-grace-area-trigger=""><n8n-button-stub icon="chevron-right" variant="ghost" size="medium" loading="false" icononly="true" disabled="false" focusablewhendisabled="false" class="" aria-label="Next page" type="button" data-test-id="pagination-next"></n8n-button-stub></span>
         <!--v-if-->
       </div>
     </nav>

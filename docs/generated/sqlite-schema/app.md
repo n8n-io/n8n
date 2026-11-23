@@ -77,6 +77,7 @@ erDiagram
   datetime_3_ createdAt
   TEXT description
   varchar id PK
+  BOOLEAN isScaffold
   varchar_255_ label
   INTEGER sourceArtifactId FK
   datetime_3_ updatedAt

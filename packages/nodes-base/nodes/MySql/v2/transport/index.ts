@@ -48,8 +48,12 @@ export async function createPool(
 		connectionOptions.connectionLimit = options.connectionLimit as number;
 	}
 
-	if (options?.connectTimeout) {
-		connectionOptions.connectTimeout = options.connectTimeout as number;
+	const optionMs = Number(options?.connectionTimeout ?? 0) * 1000;
+	const connectTimeoutMs =
+		optionMs > 0 && Number.isFinite(optionMs) ? optionMs : credentials.connectTimeout;
+
+	if (connectTimeoutMs) {
+		connectionOptions.connectTimeout = connectTimeoutMs;
 	}
 
 	if (options?.largeNumbersOutput === 'text') {

@@ -1,0 +1,82 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"created": {
+			"type": "number"
+		},
+		"data": {
+			"additionalProperties": true,
+			"properties": {
+				"object": {
+					"additionalProperties": true,
+					"properties": {
+						"currency": {
+							"type": "string"
+						},
+						"customer": {
+							"properties": {
+								"address": {
+									"properties": {
+										"city": {
+											"type": "string"
+										},
+										"country": {
+											"type": "string"
+										},
+										"line1": {
+											"type": "string"
+										},
+										"postal_code": {
+											"type": "string"
+										},
+										"state": {
+											"type": "string"
+										}
+									},
+									"type": "object"
+								},
+								"email": {
+									"type": "string"
+								},
+								"id": {
+									"type": "string"
+								},
+								"name": {
+									"type": "string"
+								}
+							},
+							"type": ["null", "object", "string"]
+						},
+						"id": {
+							"type": "string"
+						},
+						"metadata": {
+							"type": "object"
+						},
+						"object": {
+							"type": "string"
+						},
+						"status": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				}
+			},
+			"type": "object"
+		},
+		"id": {
+			"type": "string"
+		},
+		"livemode": {
+			"type": "boolean"
+		},
+		"object": {
+			"type": "string"
+		},
+		"type": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

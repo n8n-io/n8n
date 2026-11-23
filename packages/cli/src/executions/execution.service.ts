@@ -75,6 +75,7 @@ import { getWorkflowProjectDetailsSafe } from '@/workflows/utils';
 import { EngineV2ExecutionReader } from './engine-v2-execution-reader.service';
 import { MissingExecutionDataError } from './execution-data/missing-execution-data.error';
 import { isExecutionIdV2, type ExecutionIdV2 } from './execution-id';
+import { ExecutionCancelService } from './execution-cancel.service';
 import { ExecutionPersistence } from './execution-persistence';
 
 import type { ExecutionRequest, RetriedExecution, StopResult } from './execution.types';
@@ -145,6 +146,7 @@ export class ExecutionService {
 		private readonly engineV2ExecutionReader: EngineV2ExecutionReader,
 		private readonly engineDataPlane: EngineDataPlaneProxyService,
 		private readonly workflowVersionedSettings: WorkflowVersionedSettingsService,
+		private readonly executionCancelService: ExecutionCancelService,
 	) {}
 
 	/**
@@ -357,7 +359,8 @@ export class ExecutionService {
 		// Start the workflow
 		const data: IWorkflowExecutionDataProcess = {
 			executionMode,
-			executionData: execution.data,
+			// A retry is a new root execution. It must not take the root mode of the original run.
+			executionData: { ...execution.data, rootExecutionMode: undefined },
 			retryOf: executionId,
 			workflowData: execution.workflowData,
 			userId: user.id,
@@ -754,7 +757,9 @@ export class ExecutionService {
 	}
 
 	private async stopBeforeRun(execution: IExecutionResponse): Promise<IExecutionResponse> {
-		const [canceled] = await this.executionRepository.markAsCanceled([execution.id]);
+		const {
+			canceled: [canceled],
+		} = await this.executionCancelService.markAsCanceled([execution.id]);
 		if (canceled) {
 			return { ...execution, status: 'canceled', stoppedAt: canceled.stoppedAt, waitTill: null };
 		}
@@ -785,12 +790,24 @@ export class ExecutionService {
 		execution.waitTill = null;
 		execution.status = 'canceled';
 
-		const stopped = await this.executionPersistence.updateExistingExecution(
+		const { updated, ended } = await this.executionPersistence.saveExecutionOutcome(
 			execution.id,
 			execution,
 			{ requireStatus: expectedStatus },
 		);
-		if (!stopped) {
+		if (ended) {
+			void this.executionCancelService.recordEnded([
+				{
+					id: execution.id,
+					workflowId: execution.workflowId,
+					workflowName: execution.workflowData?.name,
+					mode: execution.mode,
+					startedAt: execution.startedAt ?? null,
+					stoppedAt: execution.stoppedAt,
+				},
+			]);
+		}
+		if (!updated) {
 			const current = await this.findCurrentOrThrow(execution);
 			if (current.status === 'canceled') return current;
 			this.assertStoppable(current);

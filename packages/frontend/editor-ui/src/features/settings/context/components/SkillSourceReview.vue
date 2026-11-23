@@ -198,6 +198,7 @@ function warningLabel(key: string): string {
 <template>
 	<div :class="$style.review" data-test-id="skill-source-review">
 		<N8nTabs
+			:class="$style.tabs"
 			:model-value="activeTab"
 			:options="tabOptions"
 			data-test-id="skill-source-tabs"
@@ -387,6 +388,13 @@ function warningLabel(key: string): string {
 	grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
 	gap: var(--spacing--sm);
 	height: 60vh;
+}
+
+.tabs {
+	width: auto;
+	margin-inline: calc(-1 * var(--n8n-dialog-region--padding, var(--spacing--md)));
+	padding-inline: var(--n8n-dialog-region--padding, var(--spacing--md));
+	border-bottom: var(--border);
 }
 
 .left {

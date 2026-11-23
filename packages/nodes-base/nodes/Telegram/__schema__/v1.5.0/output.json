@@ -1,0 +1,62 @@
+{
+	"properties": {
+		"message": {
+			"additionalProperties": true,
+			"properties": {
+				"chat": {
+					"additionalProperties": true,
+					"properties": {
+						"first_name": {
+							"type": "string"
+						},
+						"id": {
+							"type": "number"
+						},
+						"last_name": {
+							"type": "string"
+						},
+						"type": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
+				"date": {
+					"type": "number"
+				},
+				"from": {
+					"additionalProperties": true,
+					"properties": {
+						"first_name": {
+							"type": "string"
+						},
+						"id": {
+							"type": "number"
+						},
+						"is_bot": {
+							"type": "boolean"
+						},
+						"language_code": {
+							"type": "string"
+						},
+						"last_name": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
+				"message_id": {
+					"type": "number"
+				},
+				"text": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"update_id": {
+			"type": "number"
+		}
+	},
+	"type": "object"
+}

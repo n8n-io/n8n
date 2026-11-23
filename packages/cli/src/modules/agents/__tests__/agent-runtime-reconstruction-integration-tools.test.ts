@@ -19,6 +19,7 @@ import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-netw
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { AiConfig, GlobalConfig } from '@n8n/config';
 import type {
+	AgentExecutionStatisticsRepository,
 	TransactionRunner,
 	Person,
 	UserRepository,
@@ -346,6 +347,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			mock<AgentsSettingsService>(),
 			skillRefs,
 			mock<UserRepository>(),
+			mock<AgentExecutionStatisticsRepository>(),
 		);
 		agentIntegrationPersistenceService = new AgentIntegrationPersistenceService(
 			agentRepository,
@@ -571,7 +573,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 				runtimeProfile: 'top-level',
 				config: {
 					name: 'Test Agent',
-					model: 'anthropic/claude-sonnet-4-5',
+					model: 'anthropic/claude-sonnet-5-5',
 					instructions: 'Be helpful',
 				},
 				parentAgentIdForDelegation: agentId,
@@ -637,7 +639,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 				projectId,
 				credentialProvider: mock(),
 				runtimeProfile: 'top-level',
-				config: { name: 'Test Agent', model: 'anthropic/claude-sonnet-4-5', instructions: 'Hi' },
+				config: { name: 'Test Agent', model: 'anthropic/claude-sonnet-5-5', instructions: 'Hi' },
 				parentAgentIdForDelegation: agentId,
 				subAgentDelegation: { sourcesById: {}, availableSubAgents: [] },
 				credentialIntegrations: [

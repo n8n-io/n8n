@@ -845,6 +845,27 @@ describe('WorkflowSettingsVue', () => {
 	});
 
 	describe('Execution Order & Binary Mode', () => {
+		it('should hide the Execution Logic row when the engine type is v2', async () => {
+			workflowDocumentStore.setSettings({ engineType: 'v2' });
+
+			const { queryByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			expect(queryByTestId('workflow-settings-execution-order')).not.toBeInTheDocument();
+		});
+
+		it('should show the Execution Logic row for a stored engine v2 when the engine-v2 module is inactive', async () => {
+			vi.spyOn(settingsStore, 'isModuleActive').mockImplementation(
+				(name: string) => name !== 'engine-v2',
+			);
+			workflowDocumentStore.setSettings({ engineType: 'v2' });
+
+			const { getByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			expect(getByTestId('workflow-settings-execution-order')).toBeInTheDocument();
+		});
+
 		it('should render execution order dropdown with correct options', async () => {
 			const { getByTestId } = createComponent({ pinia });
 			await flushPromises();
