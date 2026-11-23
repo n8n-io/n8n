@@ -30,6 +30,7 @@ function createService() {
 		label: 'Original',
 		buildStatus: 'queued',
 		bindings: [binding],
+		isScaffold: false,
 	} as AppVersion;
 	apps.findInProject.mockResolvedValue(mock<App>({ id: appId, draftVersionId: versionId }));
 	versions.findVersionById.mockResolvedValue(version);
@@ -194,9 +195,71 @@ describe('AppVersionService', () => {
 				expectedDraftVersionId: versionId,
 				label: 'Original',
 				bindings: [binding],
+				isScaffold: false,
 			},
 			files,
 		);
+	});
+
+	it('keeps the scaffold flag of a restored scaffold version', async () => {
+		const { service, versions, sourceVersions, version } = createService();
+		versions.findVersionById.mockResolvedValue({ ...version, isScaffold: true });
+		sourceVersions.readSource.mockResolvedValue(files);
+
+		await service.restoreSource('project', appId, versionId, versionId);
+
+		expect(sourceVersions.createVersion).toHaveBeenCalledWith(
+			expect.objectContaining({ isScaffold: true }),
+			files,
+		);
+	});
+
+	it.each([true, false])(
+		'stores the scaffold flag %s that the caller passes',
+		async (isScaffold) => {
+			const { service, sourceVersions } = createService();
+
+			await service.saveSource('project', appId, versionId, files, null, undefined, { isScaffold });
+
+			expect(sourceVersions.createVersion).toHaveBeenCalledWith(
+				expect.objectContaining({ isScaffold }),
+				files,
+			);
+		},
+	);
+
+	it('stores a source version as not a scaffold by default', async () => {
+		const { service, sourceVersions } = createService();
+
+		await service.saveSource('project', appId, versionId, files);
+
+		expect(sourceVersions.createVersion).toHaveBeenCalledWith(
+			expect.objectContaining({ isScaffold: false }),
+			files,
+		);
+	});
+
+	describe('isScaffold', () => {
+		it('returns false without a version', async () => {
+			const { service, versions } = createService();
+
+			expect(await service.isScaffold(null)).toBe(false);
+			expect(versions.findVersionById).not.toHaveBeenCalled();
+		});
+
+		it('returns false for a missing version', async () => {
+			const { service, versions } = createService();
+			versions.findVersionById.mockResolvedValue(null);
+
+			expect(await service.isScaffold(versionId)).toBe(false);
+		});
+
+		it('returns the flag of the version', async () => {
+			const { service, versions, version } = createService();
+			versions.findVersionById.mockResolvedValue({ ...version, isScaffold: true });
+
+			expect(await service.isScaffold(versionId)).toBe(true);
+		});
 	});
 
 	it('keeps the bindings of the draft that a new source version replaces', async () => {

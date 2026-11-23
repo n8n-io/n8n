@@ -653,15 +653,13 @@ describe('SecuritySettings', () => {
 	});
 
 	describe('Data redaction section', () => {
-		it('should render toggle and summary', async () => {
+		it('should render toggle and docs link', async () => {
 			const { getByTestId } = renderView();
 
 			await waitFor(() => {
 				expect(getByTestId('enable-redaction-enforcement')).toBeInTheDocument();
 			});
 
-			expect(getByTestId('redaction-enforcement-summary')).toHaveTextContent('Affected scope');
-			expect(getByTestId('redaction-enforcement-summary')).toHaveTextContent('No executions');
 			expect(getByTestId('redaction-enforcement-docs-link').closest('a')).toHaveAttribute(
 				'href',
 				'https://docs.n8n.io/workflows/executions/execution-data-redaction/#instance-level-enforcement',
@@ -690,7 +688,7 @@ describe('SecuritySettings', () => {
 				expect(getByTestId('redaction-enforcement-scope-row')).toBeInTheDocument();
 			});
 
-			expect(getByTestId('redaction-enforcement-summary')).toHaveTextContent(
+			expect(getByTestId('redaction-enforcement-scope-select')).toHaveTextContent(
 				'Production executions',
 			);
 		});
@@ -840,8 +838,19 @@ describe('SecuritySettings', () => {
 			expect(getByTestId('redaction-enforcement-scope-select')).toHaveAttribute('data-disabled');
 			// One badge on the toggle row, one on the scope row.
 			expect(getAllByText('Upgrade').length).toBeGreaterThanOrEqual(2);
-			// Summary reflects stored floor='off' while the disabled dropdown previews 'production'.
-			expect(getByTestId('redaction-enforcement-summary')).toHaveTextContent('No executions');
+		});
+
+		it('should not render a scope summary that repeats the scope dropdown', async () => {
+			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.DataRedaction] = false;
+
+			const { getByTestId, queryByText } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('redaction-enforcement-scope-select')).toBeInTheDocument();
+			});
+
+			expect(queryByText('Affected scope')).not.toBeInTheDocument();
+			expect(queryByText('No executions')).not.toBeInTheDocument();
 		});
 
 		it('should not call updateSecuritySettings when clicking disabled scope dropdown', async () => {
@@ -876,7 +885,7 @@ describe('SecuritySettings', () => {
 			});
 
 			expect(getByTestId('redaction-enforcement-scope-select')).toHaveAttribute('data-disabled');
-			expect(getByTestId('redaction-enforcement-summary')).toHaveTextContent(
+			expect(getByTestId('redaction-enforcement-scope-select')).toHaveTextContent(
 				'Production executions',
 			);
 		});
@@ -895,7 +904,7 @@ describe('SecuritySettings', () => {
 			});
 
 			expect(getByTestId('redaction-enforcement-scope-select')).toHaveAttribute('data-disabled');
-			expect(getByTestId('redaction-enforcement-summary')).toHaveTextContent(
+			expect(getByTestId('redaction-enforcement-scope-select')).toHaveTextContent(
 				'Manual and production executions',
 			);
 		});
@@ -915,7 +924,7 @@ describe('SecuritySettings', () => {
 			expect(getByTestId('enable-redaction-enforcement')).toHaveAttribute('data-disabled');
 		});
 
-		it('should render correct affected-scope summary for floor=all', async () => {
+		it('should preselect the stored floor in the scope dropdown for floor=all', async () => {
 			getSecuritySettings.mockResolvedValue({
 				...defaultSettings,
 				redactionEnforcement: { floor: 'all' },
@@ -924,7 +933,7 @@ describe('SecuritySettings', () => {
 			const { getByTestId } = renderView();
 
 			await waitFor(() => {
-				expect(getByTestId('redaction-enforcement-summary')).toHaveTextContent(
+				expect(getByTestId('redaction-enforcement-scope-select')).toHaveTextContent(
 					'Manual and production executions',
 				);
 			});
@@ -958,8 +967,6 @@ describe('SecuritySettings', () => {
 				expect(getByTestId('redaction-enforcement-scope-select')).toHaveAttribute('data-disabled');
 				// One badge on the toggle row, one on the scope row.
 				expect(getAllByText('Upgrade').length).toBeGreaterThanOrEqual(2);
-				// Defaults to floor 'off' when state never resolves.
-				expect(getByTestId('redaction-enforcement-summary')).toHaveTextContent('No executions');
 			});
 
 			it('should not show an error toast when the endpoint 403s', async () => {

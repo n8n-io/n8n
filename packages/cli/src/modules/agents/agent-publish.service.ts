@@ -54,7 +54,7 @@ import { ChatIntegrationService } from './integrations/chat-integration.service'
 import { toAgentDocument } from './json-config/agent-document';
 import { AgentPublishHistoryRepository } from './repositories/agent-publish-history.repository';
 import { AgentHistoryRepository } from './repositories/agent-history.repository';
-import { AgentRepository } from './repositories/agent.repository';
+import { AgentRepository, hasN8nChatChannel } from './repositories/agent.repository';
 import { getAgentOrThrow } from './utils/get-agent-or-throw';
 import { markAgentDraftDirty, saveAgentDraftFenced } from './utils/agent-draft.utils';
 
@@ -717,7 +717,10 @@ export class AgentPublishService {
 		const version = await this.agentHistoryRepository.findSummary(agentId, versionId, {});
 		if (!version) throw new NotFoundError(`Version "${versionId}" not found`);
 		const publications = await this.publishHistory.findLatestForVersions(agentId, [versionId], {});
-		return await this.versionSummary(agent, version, publications.get(versionId));
+		return {
+			...(await this.versionSummary(agent, version, publications.get(versionId))),
+			includesN8nChat: hasN8nChatChannel(version.schema?.integrations),
+		};
 	}
 
 	async hasVersionHistory(agentId: string): Promise<boolean> {

@@ -29,7 +29,13 @@ import {
 	TelemetryProxy,
 } from '@n8n/backend-services';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
-import { EndpointsConfig, ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
+import {
+	type AgentsConfig,
+	EndpointsConfig,
+	ExecutionsConfig,
+	GlobalConfig,
+	WorkflowsConfig,
+} from '@n8n/config';
 import {
 	GLOBAL_MEMBER_ROLE,
 	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
@@ -1277,6 +1283,7 @@ describe('McpService', () => {
 					eventBus,
 					mock<InstanceSettings>(),
 					mock<UserRepository>(),
+					mock<AgentsConfig>(),
 				).init();
 				vi.mocked(eventService.emit).mockImplementation(relayEvents.emit.bind(relayEvents));
 				const telemetry = mock<TelemetryProxy>();

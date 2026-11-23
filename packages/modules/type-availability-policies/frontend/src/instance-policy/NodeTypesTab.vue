@@ -7,13 +7,22 @@ import InstancePolicyTable, { type InstancePolicyTableRow } from './InstancePoli
 import { FALLBACK_NODE_TYPE_ICON, nodeTypeIcon } from './nodeTypeIcon';
 import { useInstancePolicy } from './useInstancePolicy';
 import { useInstanceTypeAccess } from './useInstanceTypeAccess';
+import { useTypeUsage } from './useTypeUsage';
+import { visibleNodeTypes } from './visibleNodeTypes';
 import { useAppliedTheme } from '../composables/useAppliedTheme';
-import { fetchNodeTypeSummaries, type NodeTypeSummary } from '../type-availability-policies.api';
+import {
+	fetchNodeTypeSummaries,
+	fetchNodeTypeUsage,
+	type NodeTypeSummary,
+} from '../type-availability-policies.api';
+
+const emit = defineEmits<{ open: [name: string] }>();
 
 const i18n = useI18n();
 const rootStore = useRootStore();
 const theme = useAppliedTheme();
 const instancePolicy = useInstancePolicy();
+const typeUsage = useTypeUsage(async () => await fetchNodeTypeUsage(rootStore.restApiContext));
 const { types, loading, changeAccess } = useInstanceTypeAccess('node');
 
 // `null` until the summaries load. Until then the tab cannot tell hidden node types from rows.
@@ -31,30 +40,12 @@ const decorations = computed(() => {
 	return byName;
 });
 
-// The access list reloads after a save, so it can name a rule that the policy no longer has. Only
-// a known broader rule hides a row, so such a rule keeps the row until the reload.
-const broaderRuleIds = computed(
-	() =>
-		new Set(
-			(instancePolicy.policies.node?.rules ?? []).flatMap((rule) =>
-				rule.selector.kind === 'name' ? [] : [rule.id],
-			),
-		),
-);
-
 const rows = computed<InstancePolicyTableRow[]>(() => {
 	const summaries = typeSummaries.value;
 	if (!summaries) return [];
 
-	// A hidden node type gets no row, unless a `name` rule decides it: the admin must see that rule
-	// to undo it. The default action or a broader rule, such as one for its package, keeps it hidden.
 	return (
-		types.value
-			.filter(
-				(type) =>
-					!summaries.get(type.name)?.hidden ||
-					(type.matchedRuleId !== null && !broaderRuleIds.value.has(type.matchedRuleId)),
-			)
+		visibleNodeTypes(types.value, summaries, instancePolicy.policies.node?.rules ?? [])
 			// An unknown one shows its name, as the Credential types tab does.
 			.map((type) => ({
 				...type,
@@ -62,13 +53,12 @@ const rows = computed<InstancePolicyTableRow[]>(() => {
 					displayName: type.name,
 					icon: FALLBACK_NODE_TYPE_ICON,
 				}),
-				// No route counts the node type usage yet, so the usage cells show no value.
-				usage: null,
+				usage: typeUsage.usageOf(type.name),
 			}))
 	);
 });
 
-onMounted(async () => {
+async function loadSummaries() {
 	try {
 		typeSummaries.value = await fetchNodeTypeSummaries(rootStore.baseUrl);
 	} catch {
@@ -76,6 +66,10 @@ onMounted(async () => {
 		// cannot tell which types are hidden, so it shows them too.
 		typeSummaries.value = new Map();
 	}
+}
+
+onMounted(async () => {
+	await Promise.all([loadSummaries(), typeUsage.load()]);
 });
 </script>
 
@@ -86,6 +80,7 @@ onMounted(async () => {
 		:search-placeholder="i18n.baseText('typeAvailabilityPolicies.instancePolicy.table.search.node')"
 		data-test-id="node-types-tab"
 		@change="changeAccess"
+		@open="(name) => emit('open', name)"
 	>
 		<template #toolbar-start>
 			<slot name="toolbar-start" />

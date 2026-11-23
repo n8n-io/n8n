@@ -5,6 +5,7 @@ import {
 	CREDENTIAL_DESCRIPTIONS_FLAG,
 	INSTANCE_AI_CLOUD_BROWSER_FLAG,
 	INSTANCE_AI_CONCISE_STYLE_FLAG,
+	INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_FLAG,
 	INSTANCE_AI_SETUP_PANEL_FLAG,
 } from '@n8n/api-types';
 
@@ -142,6 +143,12 @@ export const INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT = createExperiment
 );
 // EOF Experiment cleanup
 
+// Experiment cleanup (137_instance_ai_draft_workflow_preview)
+export const INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT = createExperiment(
+	INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_FLAG,
+);
+// EOF Experiment cleanup
+
 export const INSTANCE_AI_CONCISE_STYLE_EXPERIMENT = createExperiment(
 	INSTANCE_AI_CONCISE_STYLE_FLAG,
 );
@@ -207,6 +214,15 @@ export const PREFERENCES_EMPTY_STATE_EXPERIMENT = createExperiment('127_preferen
 
 export const RECOMMENDED_SKILLS_EXPERIMENT = createExperiment('143_recommended_skills');
 
+export const MCP_PREFERENCES_ENTRY_POINTS_EXPERIMENT = createExperiment(
+	'150_mcp_preferences_entry_points',
+	{
+		control: 'control',
+		banner: 'banner',
+		connectionRow: 'connection_row',
+	},
+);
+
 export const TEST_BUTTON_PRIMARY_COLOR_EXPERIMENT = createExperiment(
 	'148_test_button_primary_color',
 );
@@ -243,6 +259,7 @@ export const EXPERIMENTS_TO_TRACK = [
 	// EOF Experiment cleanup
 	INSTANCE_AI_SETUP_PANEL_EXPERIMENT.name,
 	AI_ASSISTANT_AT_MENTIONS_EXPERIMENT.name,
+	INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.name,
 	INSTANCE_AI_CONCISE_STYLE_EXPERIMENT.name,
 	EXTRA_TEMPLATE_LINKS_EXPERIMENT.name,
 	TEMPLATE_ONBOARDING_EXPERIMENT.name,
@@ -274,6 +291,7 @@ export const EXPERIMENTS_TO_TRACK = [
 	TRIAL_INTRO_MODAL_EXPERIMENT.name,
 	PREFERENCES_EMPTY_STATE_EXPERIMENT.name,
 	RECOMMENDED_SKILLS_EXPERIMENT.name,
+	MCP_PREFERENCES_ENTRY_POINTS_EXPERIMENT.name,
 	INLINE_AGENTS_EXPERIMENT.name,
 	INSTANCE_AI_FREE_NUDGE_EXPERIMENT.name,
 	OPEN_WORKFLOW_IN_ASSISTANT_EXPERIMENT.name,

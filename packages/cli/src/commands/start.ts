@@ -34,6 +34,7 @@ import { ActiveExecutions } from '@/active-executions';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import config from '@/config';
 import { EDITOR_UI_DIST_DIR, N8N_VERSION } from '@/constants';
+import { CrashLoopRecovery } from '@/crash-loop/crash-loop-recovery';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { DeprecationService } from '@/deprecation/deprecation.service';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
@@ -467,6 +468,9 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		// The runner provisions the durable system task jobs, so it must finish
 		// before the scheduler can claim one.
 		await this.initSystemTasks(await mainSystemTasks(this.globalConfig));
+		// After the event bus noted the unfinished executions, and before the scheduler
+		// starts, so that no job of this session is in flight yet.
+		await Container.get(CrashLoopRecovery).recover();
 		Container.get(DurableScheduler).start();
 
 		if (this.globalConfig.executions.mode === 'regular') {

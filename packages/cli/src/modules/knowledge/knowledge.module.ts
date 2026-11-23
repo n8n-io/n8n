@@ -45,6 +45,8 @@ export class KnowledgeModule implements ModuleInterface {
 			executionDataJsonStore: Container.get(ExecutionDataJsonStore),
 			knowledgeFileStore: Container.get(KnowledgeFileStore),
 		});
+
+		await import('./collections/knowledge-collections.controller.js');
 	}
 
 	async entities(): Promise<EntityClass[]> {

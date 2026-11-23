@@ -255,6 +255,14 @@ describe('InstanceAiWorkflowPreview', () => {
 		});
 	});
 
+	it('reports that the saved workflow loaded, so its draft can go', async () => {
+		const { wrapper } = await mountPreview();
+
+		await wrapper.get('[data-test-id="workflow-loaded"]').trigger('click');
+
+		expect(wrapper.emitted('workflow-loaded')).toEqual([['wf-1']]);
+	});
+
 	it('restores the cached agent execution after the artifact workflow reloads', async () => {
 		const { wrapper, workflowsStore } = await mountPreview();
 		const executionState = useWorkflowExecutionStateStore(createWorkflowDocumentId('wf-1'));
