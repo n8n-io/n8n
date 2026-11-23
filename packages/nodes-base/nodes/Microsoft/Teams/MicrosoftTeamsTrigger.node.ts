@@ -10,6 +10,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeConnectionTypes } from 'n8n-workflow';
 
+import { storeMentionUserId } from './v2/helpers/message-filters';
 import type { SubscriptionResponse, WebhookNotification } from './v2/helpers/types';
 import {
 	createSubscriptions,
@@ -415,6 +416,7 @@ export class MicrosoftTeamsTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 				// `create()` owns the "Invalid Notification URL" error.
 				if (!webhookUrl?.startsWith('https://')) return false;
+				await storeMentionUserId.call(this);
 
 				const storedIds = getStoredIds(webhookData);
 				const clientState = getStoredSecret(webhookData);
@@ -556,6 +558,7 @@ export class MicrosoftTeamsTrigger implements INodeType {
 				delete webhookData.webhookSecret;
 				delete webhookData.staleSubscriptionIds;
 				delete webhookData.pendingReconcile;
+				delete webhookData.mentionUserId;
 				return refused.length === 0;
 			},
 		},

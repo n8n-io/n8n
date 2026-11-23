@@ -10,7 +10,11 @@ import type {
 import { NodeApiError, ObservableObject, requestPath } from 'n8n-workflow';
 
 import { MicrosoftTeamsTrigger } from '../../MicrosoftTeamsTrigger.node';
-import { microsoftApiRequest, microsoftApiRequestAllItems } from '../../v2/transport';
+import {
+	microsoftApiRequest,
+	microsoftApiRequestAllItems,
+	SERVICE_PRINCIPAL_AUTH,
+} from '../../v2/transport';
 import type { Mock } from 'vitest';
 import type * as _transport from '../../v2/transport';
 
@@ -474,6 +478,64 @@ describe('Microsoft Teams Trigger Node', () => {
 				expect(result).toBe(false);
 				expect(microsoftApiRequestAllItems.call).not.toHaveBeenCalled();
 				expect(microsoftApiRequest.call).not.toHaveBeenCalled();
+			});
+
+			describe('Mentions Me user id', () => {
+				const channelParams = { event: 'newChannelMessage', teamId: 't1', channelId: 'c1' };
+				const activate = async (params: Record<string, unknown>) => {
+					const staticData: Record<string, unknown> = { webhookSecret: 'secret' };
+					const ctx = hookCtx(staticData, params);
+					(microsoftApiRequestAllItems.call as Mock).mockResolvedValue([]);
+					(microsoftApiRequest.call as Mock).mockImplementation(async (_ctx, method: string) =>
+						method === 'GET' ? { id: 'me' } : { id: 'new' },
+					);
+					await expect(checkExists(ctx)).resolves.toBe(true);
+					return staticData;
+				};
+				const meCalls = () => graphCalls().filter(([, path]) => path === '/v1.0/me');
+
+				it('stores the signed-in user id when Mentions Me is on', async () => {
+					const staticData = await activate({ ...channelParams, 'filters.mentionsMe': true });
+
+					expect(meCalls()).toHaveLength(1);
+					expect(staticData.mentionUserId).toBe('me');
+				});
+
+				it('does not read the user when Mentions Me is off', async () => {
+					await activate(channelParams);
+
+					expect(meCalls()).toHaveLength(0);
+				});
+
+				it('does not read the user under Service Principal', async () => {
+					await activate({
+						...channelParams,
+						authentication: SERVICE_PRINCIPAL_AUTH,
+						'filters.mentionsMe': true,
+					});
+
+					expect(meCalls()).toHaveLength(0);
+				});
+
+				it('activates when another filter cannot be resolved', async () => {
+					const params: Record<string, unknown> = {
+						...channelParams,
+						'filters.mentionsMe': true,
+					};
+					const staticData: Record<string, unknown> = { webhookSecret: 'secret' };
+					const ctx = hookCtx(staticData, params);
+					ctx.getNodeParameter.mockImplementation(((name: string, fallback?: unknown) => {
+						if (name === 'filters') throw new Error('cannot resolve the keyword');
+						return name in params ? params[name] : fallback;
+					}) as never);
+					(microsoftApiRequestAllItems.call as Mock).mockResolvedValue([]);
+					(microsoftApiRequest.call as Mock).mockImplementation(async (_ctx, method: string) =>
+						method === 'GET' ? { id: 'me' } : { id: 'new' },
+					);
+
+					await expect(checkExists(ctx)).resolves.toBe(true);
+					expect(staticData.mentionUserId).toBe('me');
+				});
 			});
 
 			describe('when the listing fails', () => {
@@ -1126,6 +1188,15 @@ describe('Microsoft Teams Trigger Node', () => {
 
 				expect(result).toBe(true);
 				expect(deleted()).toEqual(['/v1.0/subscriptions/subscription123']);
+				expect(staticData).toEqual({});
+			});
+
+			it('removes the stored Mentions Me user id', async () => {
+				const staticData: Record<string, unknown> = { mentionUserId: 'me' };
+				(microsoftApiRequestAllItems.call as Mock).mockResolvedValue([]);
+
+				await remove(hookCtx(staticData));
+
 				expect(staticData).toEqual({});
 			});
 
