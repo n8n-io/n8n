@@ -1,25 +1,20 @@
 <script setup lang="ts">
-import { N8nButton, N8nIcon, N8nText, type IconName } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { computed, reactive } from 'vue';
+import { computed, ref, useId } from 'vue';
 
-import type {
-	ToolCallReason,
-	ToolTestCapability,
-	ToolTestKind,
-	ToolTestability,
-} from '../testRunTools.types';
-
-type NoticeTestability = Exclude<ToolTestability, 'simulated'>;
+import type { BlockedReason, ToolTestCapability, ToolTestKind } from '../testRunTools.types';
 
 const props = withDefaults(
 	defineProps<{
 		/** Every tool of the Agent with its testability. Simulated tools are not listed. */
 		tools: ToolTestCapability[];
-		/** Rows shown per group before `Show more`. */
+		/** Rows shown before `Show more`. */
 		collapsedLimit?: number;
+		/** Heading level that fits where the notice is mounted. */
+		headingTag?: 'h2' | 'h3' | 'h4';
 	}>(),
-	{ collapsedLimit: 3 },
+	{ collapsedLimit: 3, headingTag: 'h3' },
 );
 
 const i18n = useI18n();
@@ -39,96 +34,66 @@ function kindKey(kind: string): BaseTextKey {
 	return Object.hasOwn(KIND_KEYS, kind) ? KIND_KEYS[kind as ToolTestKind] : KIND_KEYS.other;
 }
 
-const REASON_KEYS: Partial<Record<ToolCallReason, BaseTextKey>> = {
+const REASON_KEYS: Record<BlockedReason, BaseTextKey> = {
 	not_simulatable: 'agents.testRun.tools.reason.notSimulatable',
 	unsupported_by_simulator: 'agents.testRun.tools.reason.unsupportedBySimulator',
 	simulator_unavailable: 'agents.testRun.tools.reason.simulatorUnavailable',
 };
 
-const GROUPS: Array<{
-	testability: NoticeTestability;
-	icon: IconName;
-	title: BaseTextKey;
-	description: BaseTextKey;
-	fallbackReason: BaseTextKey;
-}> = [
-	{
-		testability: 'blocked',
-		icon: 'ban',
-		title: 'agents.testRun.tools.blocked.title',
-		description: 'agents.testRun.tools.blocked.description',
-		fallbackReason: 'agents.testRun.tools.reason.blocked',
-	},
-];
-
-const expanded = reactive<Record<NoticeTestability, boolean>>({
-	blocked: false,
-});
-
-const groups = computed(() =>
-	GROUPS.map((group) => {
-		const tools = props.tools.filter((tool) => noticeGroup(tool) === group.testability);
-		const isExpanded = expanded[group.testability];
-		const visibleTools = isExpanded ? tools : tools.slice(0, props.collapsedLimit);
-		return {
-			...group,
-			tools,
-			visibleTools,
-			hiddenCount: tools.length - visibleTools.length,
-			canCollapse: isExpanded && tools.length > props.collapsedLimit,
-		};
-	}).filter((group) => group.tools.length > 0),
-);
+const expanded = ref(false);
+const listId = useId();
 
 /**
- * A testability this client doesn't know may come from a newer server. List it with the
- * blocked tools so the warning never disappears.
+ * Every tool that is not simulated. A testability this client doesn't know may come from a
+ * newer server, so it is listed here too and the warning never disappears.
  */
-function noticeGroup(tool: ToolTestCapability): NoticeTestability | undefined {
-	return tool.testability === 'simulated' ? undefined : 'blocked';
+const blockedTools = computed(() => props.tools.filter((tool) => tool.testability !== 'simulated'));
+const visibleTools = computed(() =>
+	expanded.value ? blockedTools.value : blockedTools.value.slice(0, props.collapsedLimit),
+);
+const hiddenCount = computed(() => blockedTools.value.length - visibleTools.value.length);
+const canCollapse = computed(
+	() => expanded.value && blockedTools.value.length > props.collapsedLimit,
+);
+
+/** The reason may be missing or newer than this client, so check it at runtime. */
+function reasonText(tool: ToolTestCapability): string {
+	const reason: unknown = 'reason' in tool ? tool.reason : undefined;
+	return i18n.baseText(
+		typeof reason === 'string' && Object.hasOwn(REASON_KEYS, reason)
+			? REASON_KEYS[reason as BlockedReason]
+			: 'agents.testRun.tools.reason.blocked',
+	);
 }
 
-function reasonText(tool: ToolTestCapability, fallback: BaseTextKey): string {
-	const key =
-		tool.reason && Object.hasOwn(REASON_KEYS, tool.reason)
-			? (REASON_KEYS[tool.reason] ?? fallback)
-			: fallback;
-	return i18n.baseText(key);
-}
-
-function toggle(testability: NoticeTestability) {
-	expanded[testability] = !expanded[testability];
+function detailText(tool: ToolTestCapability): string | undefined {
+	return 'detail' in tool ? tool.detail : undefined;
 }
 </script>
 
 <template>
 	<section
-		v-if="groups.length > 0"
+		v-if="blockedTools.length > 0"
 		:class="$style.notice"
 		:aria-label="i18n.baseText('agents.testRun.tools.ariaLabel')"
 		data-testid="agent-test-run-tools"
 	>
-		<div
-			v-for="group in groups"
-			:key="group.testability"
-			:class="$style.group"
-			:data-testid="`agent-test-run-tools-${group.testability}`"
-		>
+		<div :class="$style.group" data-testid="agent-test-run-tools-blocked">
 			<div :class="$style.header">
-				<N8nIcon :icon="group.icon" size="small" :class="$style.headerIcon" aria-hidden="true" />
+				<N8nIcon icon="ban" size="small" :class="$style.headerIcon" aria-hidden="true" />
 				<div :class="$style.headerText">
-					<N8nText tag="h3" size="small" bold :class="$style.title">
-						{{ i18n.baseText(group.title) }}
+					<N8nText :tag="props.headingTag" size="small" bold :class="$style.title">
+						{{ i18n.baseText('agents.testRun.tools.blocked.title') }}
 					</N8nText>
 					<N8nText size="small" color="text-light">
-						{{ i18n.baseText(group.description) }}
+						{{ i18n.baseText('agents.testRun.tools.blocked.description') }}
 					</N8nText>
 				</div>
 			</div>
 
-			<ul :class="$style.list">
+			<ul :id="listId" :class="$style.list">
 				<li
-					v-for="tool in group.visibleTools"
+					v-for="tool in visibleTools"
 					:key="tool.toolName"
 					:class="$style.row"
 					data-testid="agent-test-run-tool"
@@ -143,33 +108,34 @@ function toggle(testability: NoticeTestability) {
 						<span :class="$style.kind">{{ i18n.baseText(kindKey(tool.kind)) }}</span>
 					</div>
 					<N8nText size="small" color="text-light" data-testid="agent-test-run-tool-reason">
-						{{ reasonText(tool, group.fallbackReason) }}
+						{{ reasonText(tool) }}
 					</N8nText>
 					<N8nText
-						v-if="tool.detail"
+						v-if="detailText(tool)"
 						size="xsmall"
 						color="text-light"
 						:class="$style.detail"
 						data-testid="agent-test-run-tool-detail"
 					>
-						{{ tool.detail }}
+						{{ detailText(tool) }}
 					</N8nText>
 				</li>
 			</ul>
 
 			<N8nButton
-				v-if="group.hiddenCount > 0 || group.canCollapse"
+				v-if="hiddenCount > 0 || canCollapse"
 				variant="ghost"
 				size="small"
 				:class="$style.toggle"
-				:aria-expanded="expanded[group.testability]"
+				:aria-expanded="expanded"
+				:aria-controls="listId"
 				data-testid="agent-test-run-tools-toggle"
-				@click="toggle(group.testability)"
+				@click="expanded = !expanded"
 			>
 				{{
-					group.hiddenCount > 0
+					hiddenCount > 0
 						? i18n.baseText('agents.testRun.tools.showMore', {
-								interpolate: { count: String(group.hiddenCount) },
+								interpolate: { count: String(hiddenCount) },
 							})
 						: i18n.baseText('agents.testRun.tools.showLess')
 				}}
@@ -198,11 +164,6 @@ function toggle(testability: NoticeTestability) {
 	flex-direction: column;
 	gap: var(--spacing--2xs);
 	min-width: 0;
-
-	& + & {
-		padding-top: var(--spacing--sm);
-		border-top: var(--border);
-	}
 }
 
 .header {

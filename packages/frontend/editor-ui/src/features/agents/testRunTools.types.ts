@@ -6,8 +6,6 @@
  * `@n8n/api-types` import once that schema lands.
  */
 
-export type ToolTestability = 'simulated' | 'blocked';
-
 export type ToolTestKind =
 	| 'node'
 	| 'workflow'
@@ -17,20 +15,26 @@ export type ToolTestKind =
 	| 'web_search'
 	| 'other';
 
-export type ToolCallReason =
-	| 'served_from_world'
-	| 'invented_by_llm'
+/** Why a tool is blocked. */
+export type BlockedReason =
 	| 'unsupported_by_simulator'
 	| 'simulator_unavailable'
 	| 'not_simulatable';
 
-export interface ToolTestCapability {
+interface ToolTestCapabilityBase {
 	/** The name the model calls. For an MCP server, the server name. */
 	toolName: string;
 	kind: ToolTestKind;
-	testability: ToolTestability;
-	/** Explains why the tool is blocked. */
-	reason?: ToolCallReason;
-	/** Short and safe to show. */
-	detail?: string;
 }
+
+/** A simulated tool has no reason. A blocked tool always says why. */
+export type ToolTestCapability =
+	| (ToolTestCapabilityBase & { testability: 'simulated' })
+	| (ToolTestCapabilityBase & {
+			testability: 'blocked';
+			reason: BlockedReason;
+			/** Short and safe to show. */
+			detail?: string;
+	  });
+
+export type ToolTestability = ToolTestCapability['testability'];

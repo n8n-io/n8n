@@ -1,5 +1,6 @@
-import { configure, fireEvent } from '@testing-library/vue';
+import { configure, fireEvent, waitFor } from '@testing-library/vue';
 import { describe, expect, it } from 'vitest';
+import { defineComponent, h, ref } from 'vue';
 
 import { createComponentRenderer } from '@/__tests__/render';
 
@@ -11,14 +12,50 @@ configure({ testIdAttribute: 'data-testid' });
 
 const global = { stubs: { AgentModal: AgentModalTestStub } };
 
+type ResetMode = 'async' | 'sync' | 'early-return';
+
+/**
+ * Owns `busy` like a real caller. `async` keeps it set until `finish` is clicked, `sync`
+ * sets and clears it in the same tick, and `early-return` never touches it.
+ */
+const ResetHost = defineComponent({
+	props: {
+		mode: { type: String as () => ResetMode, required: true },
+		requireConfirmation: { type: Boolean, default: true },
+	},
+	emits: ['confirm'],
+	setup(props, { emit }) {
+		const busy = ref(false);
+		function onConfirm() {
+			emit('confirm');
+			if (props.mode === 'early-return') return;
+			busy.value = true;
+			if (props.mode === 'sync') busy.value = false;
+		}
+		return () =>
+			h('div', [
+				h(AgentNewTestRunButton, {
+					busy: busy.value,
+					requireConfirmation: props.requireConfirmation,
+					onConfirm,
+				}),
+				h('button', { 'data-testid': 'finish', onClick: () => (busy.value = false) }),
+			]);
+	},
+});
+
 describe('AgentNewTestRunButton', () => {
 	const renderButton = createComponentRenderer(AgentNewTestRunButton, {
 		global,
 		props: { busy: false },
 	});
 
+	const renderHost = createComponentRenderer(ResetHost, { global });
+
 	it('asks for confirmation before it starts a new test run', async () => {
-		const { getByTestId, queryByRole, getByRole, emitted, rerender } = renderButton();
+		const { getByTestId, queryByRole, getByRole, emitted } = renderHost({
+			props: { mode: 'async' },
+		});
 
 		expect(queryByRole('dialog')).not.toBeInTheDocument();
 		const button = getByTestId('agent-new-test-run-button');
@@ -38,11 +75,10 @@ describe('AgentNewTestRunButton', () => {
 		await fireEvent.click(getByTestId('agent-new-test-run-button'));
 		expect(emitted('confirm')).toHaveLength(1);
 
-		await rerender({ busy: true, disabled: true });
 		expect(getByRole('dialog')).toBeInTheDocument();
 		await fireEvent.click(getByTestId('agent-modal-cancel'));
-		expect(emitted('cancel')).toBeUndefined();
-		await rerender({ busy: false, disabled: false });
+		expect(getByRole('dialog')).toBeInTheDocument();
+		await fireEvent.click(getByTestId('finish'));
 		expect(queryByRole('dialog')).not.toBeInTheDocument();
 		await fireEvent.click(getByTestId('agent-new-test-run-button'));
 		await fireEvent.click(getByTestId('agent-new-test-run-confirm'));
@@ -83,8 +119,8 @@ describe('AgentNewTestRunButton', () => {
 	});
 
 	it('starts at once when there is nothing to reset', async () => {
-		const { getByTestId, queryByRole, emitted, rerender } = renderButton({
-			props: { requireConfirmation: false },
+		const { getByTestId, queryByRole, emitted } = renderHost({
+			props: { mode: 'async', requireConfirmation: false },
 		});
 
 		await fireEvent.click(getByTestId('agent-new-test-run-button'));
@@ -92,9 +128,41 @@ describe('AgentNewTestRunButton', () => {
 		expect(queryByRole('dialog')).not.toBeInTheDocument();
 		await fireEvent.click(getByTestId('agent-new-test-run-button'));
 		expect(emitted('confirm')).toHaveLength(1);
-		await rerender({ busy: true });
-		await rerender({ busy: false });
+		await fireEvent.click(getByTestId('finish'));
 		await fireEvent.click(getByTestId('agent-new-test-run-button'));
+		expect(emitted('confirm')).toHaveLength(2);
+	});
+
+	it.each([true, false])(
+		'does not stay stuck when the caller resets in the same tick (confirmation: %s)',
+		async (requireConfirmation) => {
+			const { getByTestId, queryByRole, emitted } = renderHost({
+				props: { mode: 'sync', requireConfirmation },
+			});
+
+			await fireEvent.click(getByTestId('agent-new-test-run-button'));
+			if (requireConfirmation) {
+				await fireEvent.click(getByTestId('agent-new-test-run-confirm'));
+			}
+			expect(emitted('confirm')).toHaveLength(1);
+			await waitFor(() => expect(getByTestId('agent-new-test-run-button')).toBeEnabled());
+			expect(queryByRole('dialog')).not.toBeInTheDocument();
+		},
+	);
+
+	it('does not stay stuck when the caller returns without setting busy', async () => {
+		const { getByTestId, queryByRole, emitted } = renderHost({
+			props: { mode: 'early-return' },
+		});
+
+		await fireEvent.click(getByTestId('agent-new-test-run-button'));
+		await fireEvent.click(getByTestId('agent-new-test-run-confirm'));
+		expect(emitted('confirm')).toHaveLength(1);
+		const button = getByTestId('agent-new-test-run-button');
+		await waitFor(() => expect(button).toBeEnabled());
+		expect(queryByRole('dialog')).not.toBeInTheDocument();
+		await fireEvent.click(button);
+		await fireEvent.click(getByTestId('agent-new-test-run-confirm'));
 		expect(emitted('confirm')).toHaveLength(2);
 	});
 

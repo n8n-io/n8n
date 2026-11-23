@@ -5,7 +5,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 
 import AgentTestRunChangesNote from '../components/AgentTestRunChangesNote.vue';
 import AgentTestRunToolsNotice from '../components/AgentTestRunToolsNotice.vue';
-import type { ToolTestCapability } from '../testRunTools.types';
+import type { BlockedReason, ToolTestCapability } from '../testRunTools.types';
 
 configure({ testIdAttribute: 'data-testid' });
 
@@ -51,7 +51,12 @@ describe('AgentTestRunToolsNotice', () => {
 						reason: 'not_simulatable',
 						detail: 'Runs arbitrary code',
 					},
-					{ toolName: 'mystery', kind: 'other', testability: 'blocked' },
+					// The wire can still send a blocked tool without a reason.
+					{
+						toolName: 'mystery',
+						kind: 'other',
+						testability: 'blocked',
+					} as unknown as ToolTestCapability,
 				],
 			},
 		});
@@ -101,6 +106,23 @@ describe('AgentTestRunToolsNotice', () => {
 		expect(getAllByTestId('agent-test-run-tool')).toHaveLength(3);
 	});
 
+	it('points the toggle at the list it expands', () => {
+		const tools = Array.from({ length: 5 }, (_, index) => blockedTool(index));
+		const { getByTestId, getByRole } = renderNotice({ props: { tools } });
+
+		const list = getByRole('list');
+		expect(list.id).not.toBe('');
+		expect(getByTestId('agent-test-run-tools-toggle')).toHaveAttribute('aria-controls', list.id);
+	});
+
+	it('uses the heading level of the place it is mounted', () => {
+		const tools = [blockedTool(0)];
+		expect(renderNotice({ props: { tools } }).getByRole('heading', { level: 3 })).toBeVisible();
+		expect(
+			renderNotice({ props: { tools, headingTag: 'h4' } }).getByRole('heading', { level: 4 }),
+		).toBeVisible();
+	});
+
 	it('shows no toggle when the list fits', () => {
 		const tools = Array.from({ length: 3 }, (_, index) => blockedTool(index));
 		const { getAllByTestId, queryByTestId } = renderNotice({ props: { tools } });
@@ -112,7 +134,9 @@ describe('AgentTestRunToolsNotice', () => {
 	it('keeps the full name of a long tool available when the row truncates it', () => {
 		const toolName = `mcp_server_${'very_long_segment_'.repeat(12)}end`;
 		const { getByTestId } = renderNotice({
-			props: { tools: [{ toolName, kind: 'mcp', testability: 'blocked' }] },
+			props: {
+				tools: [{ toolName, kind: 'mcp', testability: 'blocked', reason: 'not_simulatable' }],
+			},
 		});
 
 		const name = getByTestId('agent-test-run-tool-name');
@@ -132,7 +156,7 @@ describe('AgentTestRunToolsNotice with newer wire values', () => {
 							toolName: 'odd_tool',
 							kind: 'node',
 							testability: 'blocked',
-							reason: reason as ToolTestCapability['reason'],
+							reason: reason as BlockedReason,
 						},
 					],
 				},
@@ -152,8 +176,8 @@ describe('AgentTestRunToolsNotice with newer wire values', () => {
 					{
 						toolName: 'mystery_tool',
 						kind: 'node',
-						testability: 'partially_simulated' as ToolTestCapability['testability'],
-					},
+						testability: 'partially_simulated',
+					} as unknown as ToolTestCapability,
 				],
 			},
 		});
@@ -171,11 +195,13 @@ describe('AgentTestRunToolsNotice with newer wire values', () => {
 						toolName: 'future_tool',
 						kind: 'hologram' as ToolTestCapability['kind'],
 						testability: 'blocked',
+						reason: 'not_simulatable',
 					},
 					{
 						toolName: 'odd_tool',
 						kind: 'constructor' as ToolTestCapability['kind'],
 						testability: 'blocked',
+						reason: 'not_simulatable',
 					},
 				],
 			},

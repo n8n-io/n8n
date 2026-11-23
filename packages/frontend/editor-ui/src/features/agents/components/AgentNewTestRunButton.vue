@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { N8nButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed, ref, watch } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 
 import AgentNewTestRunModal from './AgentNewTestRunModal.vue';
 
@@ -10,7 +10,11 @@ const props = withDefaults(
 		/** False when the chat has nothing to reset, so the action starts at once. */
 		requireConfirmation?: boolean;
 		disabled?: boolean;
-		/** Set true on confirm, then false when reset settles, including on failure. */
+		/**
+		 * Set true in the `confirm` handler, before any `await`, then false when the reset
+		 * settles, including on failure. The button can't tell a failed reset from a successful
+		 * one and closes the dialog either way, so the caller shows any error (a toast).
+		 */
 		busy: boolean;
 	}>(),
 	{ requireConfirmation: true, disabled: false },
@@ -26,21 +30,34 @@ const confirmationOpen = ref(false);
 const submitted = ref(false);
 const isBusy = computed(() => props.busy || submitted.value);
 
+function release() {
+	submitted.value = false;
+	confirmationOpen.value = false;
+}
+
 watch(
 	() => props.busy,
 	(busy, wasBusy) => {
-		if (wasBusy && !busy) {
-			submitted.value = false;
-			confirmationOpen.value = false;
-		}
+		if (wasBusy && !busy) release();
 	},
 );
+
+/**
+ * Locks before emitting, so a second click can't start another reset before the caller's
+ * `busy` arrives. A caller that returns early, or resets in the same tick, never changes
+ * `busy` as this component sees it, so the button releases itself after one tick.
+ */
+async function submit() {
+	submitted.value = true;
+	emit('confirm');
+	await nextTick();
+	if (!props.busy) release();
+}
 
 function onClick() {
 	if (props.disabled || isBusy.value) return;
 	if (!props.requireConfirmation) {
-		submitted.value = true;
-		emit('confirm');
+		void submit();
 		return;
 	}
 	confirmationOpen.value = true;
@@ -59,9 +76,7 @@ watch(
 
 function onConfirm() {
 	if (props.disabled || isBusy.value) return;
-	// Lock before emitting, so the caller can update busy on the next render.
-	submitted.value = true;
-	emit('confirm');
+	void submit();
 }
 </script>
 
