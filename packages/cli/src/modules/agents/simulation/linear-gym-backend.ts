@@ -6,6 +6,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import { createHash, randomUUID } from 'node:crypto';
 import { z } from 'zod';
 
+import { GymAdmin } from '../../mcp-guard/gym-admin';
 import type { McpCaller } from '../../mcp-guard/mcp-upstream';
 import { GuardRouter } from '../../mcp-guard/router';
 import { PlanHydrator } from '../../mcp-guard/plan-hydrator';
@@ -90,6 +91,22 @@ const served = (body: unknown, status = 200, evidence?: ToolCallEvidence[]): Ser
 	status,
 	body,
 });
+
+/** The Gym admin of the fixture. It seeds one checked overlay and never posts an event. */
+class FixtureGymAdmin extends GymAdmin {
+	constructor(
+		baseUrl: string,
+		private readonly seedOverlay: (overlay: unknown) => Promise<unknown>,
+	) {
+		super(baseUrl);
+	}
+	override async seed(_tenant: string, overlay: unknown): Promise<unknown> {
+		return await this.seedOverlay(overlay);
+	}
+	override async event(): Promise<void> {
+		throw unavailable();
+	}
+}
 
 /**
  * Opt-in fixture backend for one Linear issue. The Gym world holds each write. The only request
@@ -180,40 +197,35 @@ export class LinearGymBackend implements SimulationBackend {
 				readTools,
 				tenant: worldId,
 				instructions: '',
-				admin: {
-					seed: async (_, overlay) => {
-						if (seeded) throw unavailable();
-						// The planner can drop an unresolved pointer. Never seed a partial issue.
-						z.object({
-							native: z.object({
-								linear: z.object({
-									teams: z.tuple([
-										z.object({
-											id: fixtureIssue.shape.teamId,
-											key: z.literal('FIN'),
-											name: z.string(),
-										}),
-									]),
-									issues: z.tuple([
-										z.object({
-											id: z.literal(uuid),
-											title: z.string(),
-											team: z.literal('team:fin'),
-										}),
-									]),
-								}),
+				admin: new FixtureGymAdmin(base, async (overlay) => {
+					if (seeded) throw unavailable();
+					// The planner can drop an unresolved pointer. Never seed a partial issue.
+					z.object({
+						native: z.object({
+							linear: z.object({
+								teams: z.tuple([
+									z.object({
+										id: fixtureIssue.shape.teamId,
+										key: z.literal('FIN'),
+										name: z.string(),
+									}),
+								]),
+								issues: z.tuple([
+									z.object({
+										id: z.literal(uuid),
+										title: z.string(),
+										team: z.literal('team:fin'),
+									}),
+								]),
 							}),
-						}).parse(overlay);
-						const report = await json(`${base}/_sim/v1/tenants/${worldId}/seed`, 'POST', overlay, {
-							authorization: `Bearer ${token}`,
-						});
-						seeded = true;
-						return report;
-					},
-					event: async () => {
-						throw unavailable();
-					},
-				},
+						}),
+					}).parse(overlay);
+					const report = await json(`${base}/_sim/v1/tenants/${worldId}/seed`, 'POST', overlay, {
+						authorization: `Bearer ${token}`,
+					});
+					seeded = true;
+					return report;
+				}),
 				lookups: (name) =>
 					name === 'save_issue' && !seeded ? [{ tool: 'get_issue', args: { id: identifier } }] : [],
 				llm: async ({ prompt }) => {
