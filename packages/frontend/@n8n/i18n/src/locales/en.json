@@ -5894,6 +5894,7 @@
 	"templates.collectionsNotFound": "Collection could not be found",
 	"templates.connectionWarning": "! There was a problem fetching workflow templates. Check your internet connection.",
 	"templates.heading": "Workflow templates",
+	"templates.loadMoreWorkflowsError": "Could not load more workflows",
 	"templates.shareWorkflow": "Share template",
 	"templates.noSearchResults": "Nothing found. Try adjusting your search to see more.",
 	"templates.searchPlaceholder": "Search workflows",
