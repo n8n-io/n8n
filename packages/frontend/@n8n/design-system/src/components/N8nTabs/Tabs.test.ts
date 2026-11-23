@@ -223,10 +223,24 @@ describe('N8nTabs', () => {
 
 		await userEvent.click(getByText('First'));
 
-		/** Automatic activation selects on mouse down and again on focus. */
-		const events = emitted<[string]>('update:modelValue');
-		expect(events.length).toBeGreaterThan(0);
-		expect(events.every(([value]) => value === 'first')).toBe(true);
+		expect(emitted('update:modelValue')).toEqual([['first']]);
+	});
+
+	it('allows another click when the parent rejects the previous update', async () => {
+		const enabled = [
+			{ value: 'first', label: 'First' },
+			{ value: 'second', label: 'Second' },
+		];
+		const { getByRole, emitted } = render(N8nTabs, {
+			props: { modelValue: 'first', options: enabled },
+		});
+
+		await userEvent.click(getByRole('tab', { name: 'Second' }));
+		expect(emitted('update:modelValue')).toEqual([['second']]);
+		expect(getByRole('tab', { name: 'First' })).toHaveAttribute('data-state', 'active');
+
+		await userEvent.click(getByRole('tab', { name: 'Second' }));
+		expect(emitted('update:modelValue')).toEqual([['second'], ['second']]);
 	});
 
 	it('selects a tab when arrow keys move focus to it', async () => {

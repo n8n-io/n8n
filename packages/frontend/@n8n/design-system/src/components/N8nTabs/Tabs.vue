@@ -3,6 +3,7 @@ import { usePreferredReducedMotion } from '@vueuse/core';
 import {
 	computed,
 	getCurrentInstance,
+	nextTick,
 	onMounted,
 	onUnmounted,
 	ref,
@@ -203,11 +204,19 @@ function handleTooltipClick(tab: Value, event: MouseEvent) {
 	emit('tooltipClick', tab, event);
 }
 
+let pendingValue: Value | undefined;
+
 /** Map the Reka value back to the option, so the emitted value keeps the `Value` type. */
 function handleUpdate(value: string | number) {
 	const option = props.options.find((item) => item.value === value);
 	/** The router changes the page for route options, so the consumer does not get a selection. */
 	if (!option || option.disabled || isLinkOption(option)) return;
+	/** Reka can request the same value on mouse down and focus before the parent renders. */
+	if (pendingValue === option.value) return;
+	pendingValue = option.value;
+	void nextTick(() => {
+		pendingValue = undefined;
+	});
 	if (!isModelControlled) internalValue.value = option.value;
 	emit('update:modelValue', option.value);
 }
