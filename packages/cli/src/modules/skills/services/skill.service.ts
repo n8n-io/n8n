@@ -133,6 +133,9 @@ function toVersionSummary(
 	};
 }
 
+const STALE_SKILL_MESSAGE =
+	'The skill was changed somewhere else. Reload to get the latest version.';
+
 /**
  * User actions on skills and the rules of every write: list, read, create, save, move and
  * delete. REST, MCP tools, n8n Assistant tools and the agent builder call the same
@@ -453,7 +456,10 @@ export class SkillService {
 
 		if (update.instructions !== undefined || update.references !== undefined) {
 			const latest = (await this.findLatest([skillId])).get(skillId);
-			if (latest && getSkillHash(latest.skill) === update.baseSkillHash) {
+			if (latest) {
+				if (getSkillHash(latest.skill) !== update.baseSkillHash) {
+					throw new ConflictError(STALE_SKILL_MESSAGE);
+				}
 				await this.skillAccess.assertCanReadMentionedWorkflows(
 					user,
 					{
@@ -642,9 +648,7 @@ export class SkillService {
 			// Only a new name is trimmed, so a save never renames a skill it did not rename.
 			if (changes.name !== undefined) changes.name = trimmedName(changes.name);
 			if (baseSkillHash !== getSkillHash(current)) {
-				throw new ConflictError(
-					'The skill was changed somewhere else. Reload to get the latest version.',
-				);
+				throw new ConflictError(STALE_SKILL_MESSAGE);
 			}
 			const skill: AgentSkill = { ...current, ...changes };
 			// Reads return files sorted by path. Sort here too, so the returned skill hashes the same

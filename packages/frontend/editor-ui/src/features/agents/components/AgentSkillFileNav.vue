@@ -7,8 +7,11 @@ import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { WORKFLOWS_IN_SKILLS_EXPERIMENT } from '@/app/constants/experiments';
 import { usePostHog } from '@/app/stores/posthog.store';
 import type { AgentSkill } from '../types';
-import { useSkillWorkflowNoteData } from '../composables/useSkillWorkflowNoteData';
-import { getSkillWorkflowNotes, type SkillWorkflowNote } from '../utils/skillWorkflowNotes';
+import { useSkillWorkflowNoteData } from '@/features/agents/composables/useSkillWorkflowNoteData';
+import {
+	getSkillWorkflowNotes,
+	type SkillWorkflowNote,
+} from '@/features/agents/utils/skillWorkflowNotes';
 import SkillWorkflowMentionPicker from './SkillWorkflowMentionPicker.vue';
 import SkillDiffCount from './skillVersions/SkillDiffCount.vue';
 import type { FileChange } from './skillVersions/skillVersionDiff';

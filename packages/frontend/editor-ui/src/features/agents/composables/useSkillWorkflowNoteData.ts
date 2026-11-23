@@ -2,7 +2,7 @@ import chunk from 'lodash/chunk';
 import { ref, watch, type Ref } from 'vue';
 
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
-import type { SkillWorkflowNoteData } from '../utils/skillWorkflowNotes';
+import type { SkillWorkflowNoteData } from '@/features/agents/utils/skillWorkflowNotes';
 
 const MAX_IDS_PER_REQUEST = 50;
 
