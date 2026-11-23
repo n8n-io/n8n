@@ -9506,6 +9506,7 @@
 	"instanceAi.tools.find_tools": "Finding tools",
 	"instanceAi.tools.call_tool": "Running tool",
 	"instanceAi.tools.save_user_preference": "Saving preference",
+	"instanceAi.tools.send_feedback": "Sending feedback to n8n",
 	"instanceAi.tools.leave-onboarding": "Leaving onboarding",
 	"instanceAi.tools.updateWorkingMemory": "Updating memory",
 	"instanceAi.tools.workflow_builder_apply_workflow_credentials": "Applying credentials",

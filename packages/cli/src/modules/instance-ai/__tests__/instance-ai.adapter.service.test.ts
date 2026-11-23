@@ -10337,3 +10337,68 @@ describe('createContext: appService', () => {
 		expect(sources.commit).not.toHaveBeenCalled();
 	});
 });
+
+// ---------------------------------------------------------------------------
+// createContext — agentFeedbackService
+// ---------------------------------------------------------------------------
+
+describe('createContext: agentFeedbackService', () => {
+	const user = { id: 'user-1', role: { slug: 'global:member' } } as unknown as User;
+
+	function buildService() {
+		const logger = { error: vi.fn(), warn: vi.fn(), scoped: vi.fn().mockReturnThis() };
+		const telemetry = { track: vi.fn() };
+		const service = createAdapterWithGatewayMock(vi.fn(), { logger, telemetry });
+		return { service, telemetry };
+	}
+
+	it('is always present', () => {
+		const { service } = buildService();
+		expect(service.createContext(user, { threadId: 't1' }).agentFeedbackService).toBeDefined();
+	});
+
+	it('tracks the feedback as a registered telemetry event', () => {
+		const { service, telemetry } = buildService();
+		const context = service.createContext(user, { threadId: 't1' });
+
+		context.agentFeedbackService!.send({
+			category: 'bug',
+			severity: 'blocked',
+			summary: 'build_workflow rejects valid code with the same error.',
+			toolName: 'build-workflow',
+			threadId: 't1',
+			runId: 'r1',
+		});
+
+		expect(telemetry.track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.INSTANCE_AI.ASSISTANT_SENT_FEEDBACK,
+			{
+				user_id: 'user-1',
+				thread_id: 't1',
+				run_id: 'r1',
+				category: 'bug',
+				severity: 'blocked',
+				summary: 'build_workflow rejects valid code with the same error.',
+				tool_name: 'build-workflow',
+			},
+		);
+	});
+
+	it('removes secrets from the summary before it tracks the event', () => {
+		const { service, telemetry } = buildService();
+		const context = service.createContext(user, { threadId: 't1' });
+
+		context.agentFeedbackService!.send({
+			category: 'bug',
+			severity: 'minor',
+			summary: 'The API key sk-ant-api03-abcdefghijklmnopqrstuvwxyz0123456789 failed.',
+			threadId: 't1',
+			runId: 'r1',
+		});
+
+		const [, properties] = telemetry.track.mock.calls[0];
+		expect(JSON.stringify(properties)).not.toContain(
+			'sk-ant-api03-abcdefghijklmnopqrstuvwxyz0123456789',
+		);
+	});
+});

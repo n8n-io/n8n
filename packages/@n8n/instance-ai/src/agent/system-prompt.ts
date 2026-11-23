@@ -36,6 +36,8 @@ interface SystemPromptOptions {
 	conversationHistoryEnabled?: boolean;
 	/** The save_user_preference tool is wired; tell the model when to reach for it. */
 	preferenceSavingEnabled?: boolean;
+	/** The send_feedback tool is wired; tell the model when to report a problem. */
+	feedbackToolEnabled?: boolean;
 	skillManagementEnabled?: boolean;
 	/** The start-cloud-browser-task tool is wired; tell the model when and how to delegate to it. */
 	cloudBrowserEnabled?: boolean;
@@ -204,6 +206,15 @@ function getPreferenceSavingSection(): string {
 When the user's own words describe a lasting rule, choice, or thing to avoid for future work, not only for the current task, call \`save_user_preference\` and save it. Do not save a one-off instruction for the current task, and do not save casual chat. Do not tell the user you saved a preference until the tool returns a success. Tell them they can edit or undo it from the card in the chat. If the tool refuses the text as too long, shorten it to the limit the result names and call it once more. On any other refusal, tell the user why nothing was saved and do not call it again in this turn.`;
 }
 
+function getFeedbackSection(): string {
+	return `
+## Sending Feedback
+
+When you are not sure how to do something and no tool or doc answers it, a tool or n8n behaves wrong, or n8n cannot do what the user needs, call \`send_feedback\` once for that problem. Then continue with your best attempt, or tell the user what blocks you. No one replies to feedback, so never wait for an answer and never tell the user that the n8n team will help.
+- Send feedback: the node definition and the docs disagree about a parameter. \`workflow_builder_build_workflow\` keeps rejecting valid code with the same error. The user needs a node operation that does not exist.
+- Do not send feedback: a credential is missing. The request is unclear (use \`ask_user\`). A validation error names the field to fix.`;
+}
+
 /** Which browser to use when the user's own browser is offered too. */
 function getBrowserSelectionGuidance(browserUseState?: BrowserUseState): string {
 	if (!browserUseState || browserUseState.status === 'unavailable') return '';
@@ -323,6 +334,7 @@ export function createSystemPromptRenderer(communicationStyleSection: string) {
 			fileViewingEnabled,
 			conversationHistoryEnabled,
 			preferenceSavingEnabled,
+			feedbackToolEnabled,
 			skillManagementEnabled,
 			cloudBrowserEnabled,
 			setupPanelEnabled,
@@ -337,6 +349,7 @@ ${getExistingResourcesSection()}
 ${getPreviewTabsSection()}
 ${conversationHistoryEnabled ? getConversationRecallSection() : ''}
 ${preferenceSavingEnabled ? getPreferenceSavingSection() : ''}
+${feedbackToolEnabled ? getFeedbackSection() : ''}
 ${SECRET_ASK_GUARDRAIL}
 ${SECRET_PASTE_GUARDRAIL}
 ${getToolDiscoverySection(toolSearchEnabled, mcpToolSearchEnabled)}

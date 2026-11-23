@@ -1490,6 +1490,35 @@ carries *what* it does.
 
 ---
 
+## `send_feedback` *(conditional)*
+
+Send a short report to the n8n team when the agent is not sure how to do
+something, a tool or n8n behaves wrong, or n8n cannot do what the user needs.
+Present when the adapter wires `agentFeedbackService` and the instance shares
+data (`allowSendingParameterValues` is not `false`). The report is
+agent-written text, so the tool is not registered when data sharing is off.
+Always loaded, because the agent needs it at the moment it is stuck.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `category` | `'unsure' \| 'bug' \| 'missing_capability' \| 'confusing_tool' \| 'other'` | yes | What kind of problem it is |
+| `severity` | `'blocked' \| 'workaround' \| 'minor'` | yes | How much the problem affected the task |
+| `summary` | string | yes | The goal, what the agent tried, and where it got stuck. The tool cuts it to 1,000 characters |
+| `toolName` | string | no | The tool that the report is about |
+
+The tool does not suspend and nothing replies. It always returns
+`{ ok: true, message }`, and the message tells the agent to continue. A run
+sends at most 3 reports. Later calls return the same result and send nothing.
+
+The CLI adapter tracks the `AI Assistant sent feedback` telemetry event. It
+removes secrets and personal data from the summary first. LangSmith records the
+call as a normal tool span, so traces show the reports too.
+
+The system prompt carries the judgment of *when* to call it (see
+`getFeedbackSection` in `agent/system-prompt.ts`).
+
+---
+
 ## `apps` *(conditional)*
 
 Build n8n Apps. Present only when the apps module is active, the run has a

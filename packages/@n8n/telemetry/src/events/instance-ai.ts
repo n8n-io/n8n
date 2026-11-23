@@ -1,4 +1,6 @@
 import {
+	INSTANCE_AI_AGENT_FEEDBACK_CATEGORIES,
+	INSTANCE_AI_AGENT_FEEDBACK_SEVERITIES,
 	INSTANCE_AI_PREFILL_TYPES,
 	instanceAiApprovalModeSchema,
 	instanceAiAutoApprovalDeciderSchema,
@@ -371,6 +373,26 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 			mode: z.enum(instanceAiApprovalModeSchema.options),
 			previous_mode: z.enum(instanceAiApprovalModeSchema.options),
 			thread_id: z.string().optional(),
+		}),
+	},
+	ASSISTANT_SENT_FEEDBACK: {
+		name: 'AI Assistant sent feedback',
+		description:
+			'The n8n Assistant called send_feedback because it was not sure how to do something, a tool or n8n behaved wrong, or n8n could not do what the user needed. Not sent when the instance does not share data.',
+		properties: z.object({
+			user_id: z.string(),
+			thread_id: z.string().optional(),
+			run_id: z.string().optional(),
+			category: z.enum(INSTANCE_AI_AGENT_FEEDBACK_CATEGORIES),
+			severity: z
+				.enum(INSTANCE_AI_AGENT_FEEDBACK_SEVERITIES)
+				.describe(
+					'blocked: the task could not finish. workaround: the agent continued another way',
+				),
+			summary: z
+				.string()
+				.describe('Written by the agent. Secrets and personal data are removed before sending'),
+			tool_name: z.string().optional().describe('The tool that the feedback is about'),
 		}),
 	},
 	BUILDER_ASKED_FOR_INPUT: {
