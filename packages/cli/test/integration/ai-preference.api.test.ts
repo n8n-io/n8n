@@ -1,25 +1,27 @@
 import { AI_PREFERENCE_CONTENT_MAX_LENGTH, AI_PREFERENCE_MAX_PER_SCOPE } from '@n8n/api-types';
 import type { AiPreferenceSource } from '@n8n/api-types';
+import { ModuleRegistry } from '@n8n/backend-common';
 import {
 	createTeamProject,
 	getPersonalProject,
 	linkUserToProject,
 	testDb,
 } from '@n8n/backend-test-utils';
-import type { Project, User } from '@n8n/db';
+import type { Person, Project } from '@n8n/db';
 import { AiPreferenceRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import { AiPreferenceService, renderAiPreferencesBlock } from '@n8n/backend-services';
 
+import { createCustomRoleWithScopeSlugs } from './shared/db/roles';
 import { createAdmin, createMember, createOwner } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils/';
 
-let owner: User;
-let admin: User;
-let member: User;
-let outsider: User;
+let owner: Person;
+let admin: Person;
+let member: Person;
+let outsider: Person;
 
 let ownerAgent: SuperAgentTest;
 let adminAgent: SuperAgentTest;
@@ -34,6 +36,7 @@ let readOnlyProject: Project;
 const testServer = utils.setupTestServer({ endpointGroups: ['ai-preferences'] });
 
 beforeAll(async () => {
+	Container.get(ModuleRegistry).settings.set('mcp', { mcpAccessEnabled: true });
 	owner = await createOwner();
 	admin = await createAdmin();
 	member = await createMember();
@@ -636,6 +639,58 @@ describe('GET /ai-preferences?ids=', () => {
 	});
 });
 
+describe('GET /ai-preferences?search=', () => {
+	test('returns the rows whose text contains the term, ignoring case, and counts only them', async () => {
+		await seed({ content: 'Keep replies SHORT.', userId: member.id });
+		await seed({ content: 'Short names for nodes', projectId: project.id });
+		await seed({ content: 'Use British spelling' });
+
+		const response = await memberAgent.get('/ai-preferences').query({ search: ' short ' });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.count).toBe(2);
+		expect(contentsOf(response).sort()).toEqual(['Keep replies SHORT.', 'Short names for nodes']);
+	});
+
+	test('matches the wildcard characters literally', async () => {
+		await seed({ content: 'Cap retries at 100%', userId: member.id });
+		await seed({ content: 'Cap retries at 1000', userId: member.id });
+		await seed({ content: 'snake_case names', userId: member.id });
+		await seed({ content: 'snakeXcase names', userId: member.id });
+
+		const percent = await memberAgent.get('/ai-preferences').query({ search: '100%' });
+		const underscore = await memberAgent.get('/ai-preferences').query({ search: 'snake_case' });
+
+		expect(contentsOf(percent)).toEqual(['Cap retries at 100%']);
+		expect(contentsOf(underscore)).toEqual(['snake_case names']);
+	});
+
+	test('does not widen what the caller may see', async () => {
+		await seed({ content: 'Short, theirs', userId: outsider.id });
+		await seed({ content: 'Short, mine', userId: member.id });
+
+		const response = await memberAgent.get('/ai-preferences').query({ search: 'short' });
+
+		expect(contentsOf(response)).toEqual(['Short, mine']);
+	});
+
+	test('returns every row for a blank term', async () => {
+		await seed({ content: 'one', userId: member.id });
+		await seed({ content: 'two', userId: member.id });
+
+		const response = await memberAgent.get('/ai-preferences').query({ search: '   ' });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.count).toBe(2);
+	});
+
+	test('refuses a term that is too long', async () => {
+		const response = await memberAgent.get('/ai-preferences').query({ search: 'a'.repeat(201) });
+
+		expect(response.statusCode).toBe(400);
+	});
+});
+
 describe('GET /ai-preferences/count', () => {
 	test('returns the size of the list the caller would see, without rows', async () => {
 		await seed({ content: 'Instance' });
@@ -857,6 +912,64 @@ describe('DELETE /ai-preferences/:id', () => {
 		const row = await seed({ content: 'Someone else', userId: outsider.id });
 
 		expect((await memberAgent.delete(`/ai-preferences/${row.id}`)).statusCode).toBe(404);
+		expect(await repository().count()).toBe(1);
+	});
+});
+
+describe('a custom project role', () => {
+	let customMember: Person;
+	let customMemberAgent: SuperAgentTest;
+	let creatorProject: Project;
+	let unrelatedProject: Project;
+
+	beforeAll(async () => {
+		customMember = await createMember();
+		customMemberAgent = testServer.authAgentFor(customMember);
+
+		creatorProject = await createTeamProject('Support');
+		const creatorRole = await createCustomRoleWithScopeSlugs([
+			'projectAiPreference:list',
+			'projectAiPreference:read',
+			'projectAiPreference:create',
+		]);
+		await linkUserToProject(customMember, creatorProject, creatorRole.slug);
+
+		unrelatedProject = await createTeamProject('Finance');
+		const unrelatedRole = await createCustomRoleWithScopeSlugs(['workflow:read']);
+		await linkUserToProject(customMember, unrelatedProject, unrelatedRole.slug);
+	});
+
+	test('lists only the rows of the project whose role grants it', async () => {
+		await seed({ content: 'Support', projectId: creatorProject.id });
+		const financeRow = await seed({ content: 'Finance', projectId: unrelatedProject.id });
+
+		const list = await customMemberAgent.get('/ai-preferences');
+
+		expect(contentsOf(list)).toEqual(['Support']);
+		expect(list.body.data.data[0].scopes).toEqual(['aiPreference:read']);
+		expect((await customMemberAgent.delete(`/ai-preferences/${financeRow.id}`)).statusCode).toBe(
+			404,
+		);
+	});
+
+	test('allows only the writes the role grants', async () => {
+		const created = await customMemberAgent
+			.post('/ai-preferences')
+			.send({ content: 'Support rule.', scope: 'project', projectId: creatorProject.id });
+		const refused = await customMemberAgent
+			.post('/ai-preferences')
+			.send({ content: 'Finance rule.', scope: 'project', projectId: unrelatedProject.id });
+
+		expect(created.statusCode).toBe(200);
+		expect(refused.statusCode).toBe(403);
+
+		const id: string = created.body.data.id;
+		const update = await customMemberAgent
+			.patch(`/ai-preferences/${id}`)
+			.send({ content: 'Changed.', scope: 'project', projectId: creatorProject.id });
+
+		expect(update.statusCode).toBe(403);
+		expect((await customMemberAgent.delete(`/ai-preferences/${id}`)).statusCode).toBe(403);
 		expect(await repository().count()).toBe(1);
 	});
 });

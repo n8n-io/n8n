@@ -243,6 +243,7 @@ describe('Source Control Helper', () => {
 			expect(getRepoType('git@github.com:n8ntest/n8n_testrepo.git')).toBe('github');
 			expect(getRepoType('git@gitlab.com:n8ntest/n8n_testrepo.git')).toBe('gitlab');
 			expect(getRepoType('git@mygitea.io:n8ntest/n8n_testrepo.git')).toBe('other');
+			expect(getRepoType(undefined)).toBe('other');
 		});
 	});
 
@@ -472,6 +473,23 @@ describe('Source Control Helper', () => {
 			});
 
 			expect(isWorkflowModified(local, remote, direction)).toBe(true);
+		});
+
+		test.each(directions)(
+			'should detect modifications when only a version-scoped setting changes (%s)',
+			(direction) => {
+				const local = createWorkflowVersion({ versionedSettings: { engineType: 'v2' } });
+				const remote = createWorkflowVersion({ versionedSettings: { engineType: 'v1' } });
+
+				expect(isWorkflowModified(local, remote, direction)).toBe(true);
+			},
+		);
+
+		test.each(directions)('should treat a missing engine type as v1 (%s)', (direction) => {
+			const local = createWorkflowVersion({ versionedSettings: { engineType: 'v1' } });
+			const remote = createWorkflowVersion({ versionedSettings: {} });
+
+			expect(isWorkflowModified(local, remote, direction)).toBe(false);
 		});
 	});
 

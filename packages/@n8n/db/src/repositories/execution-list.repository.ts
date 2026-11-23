@@ -7,26 +7,40 @@ import { BaseRepository } from './base-repository';
 import { SharedWorkflowRepository } from './shared-workflow.repository';
 import { User, WorkflowEntity } from '../entities';
 import type { ExecutionSummaries } from '../entities/types-db';
-import { TransactionRunner } from '../services/transaction';
+import { type OperationContext, TransactionRunner } from '../services/transaction';
 import { applyWorkflowBooleanSettingFilter } from '../utils/apply-workflow-boolean-setting-filter';
+
+class ExecutionListWorkflowTable extends BaseRepository<WorkflowEntity> {
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(WorkflowEntity, dataSource.manager, transactionRunner);
+	}
+}
 
 /** Workflow visibility and attributes for the merged (CP + DP) execution list. */
 @Service()
-export class ExecutionListRepository extends BaseRepository<WorkflowEntity> {
+export class ExecutionListRepository {
+	private readonly table: ExecutionListWorkflowTable;
+
 	constructor(
 		dataSource: DataSource,
 		private readonly globalConfig: GlobalConfig,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		transactionRunner: TransactionRunner,
 	) {
-		super(WorkflowEntity, dataSource.manager, transactionRunner);
+		this.table = new ExecutionListWorkflowTable(dataSource, transactionRunner);
 	}
 
 	/** Resolve the same workflow visibility and attributes as the execution list. */
-	async findWorkflowIdsForExecutionList(query: ExecutionSummaries.RangeQuery): Promise<string[]> {
+	async findWorkflowIdsForExecutionList(
+		query: ExecutionSummaries.RangeQuery,
+		ctx: OperationContext,
+	): Promise<string[]> {
 		if (!query.user || !query.sharingOptions) return [];
 
-		const qb = this.createQueryBuilder('workflow').select('workflow.id', 'id');
+		const qb = this.table
+			.managerFor(ctx)
+			.createQueryBuilder(WorkflowEntity, 'workflow')
+			.select('workflow.id', 'id');
 		this.applySharedWithUserFilter(qb, query.user, query.sharingOptions);
 		this.applyExecutionListFilters(qb, query);
 
@@ -68,9 +82,13 @@ export class ExecutionListRepository extends BaseRepository<WorkflowEntity> {
 
 	async findNamesForExecutionList(
 		ids: string[],
+		ctx: OperationContext,
 	): Promise<Array<Pick<WorkflowEntity, 'id' | 'name'>>> {
 		if (ids.length === 0) return [];
 
-		return await this.find({ select: ['id', 'name'], where: { id: In(ids) } });
+		return await this.table.managerFor(ctx).find(WorkflowEntity, {
+			select: ['id', 'name'],
+			where: { id: In(ids) },
+		});
 	}
 }

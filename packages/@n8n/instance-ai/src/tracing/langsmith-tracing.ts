@@ -814,7 +814,11 @@ function resolveDefaultProjectName(): string {
 	return process.env.LANGSMITH_PROJECT ?? process.env.LANGCHAIN_PROJECT ?? DEFAULT_PROJECT_NAME;
 }
 
-function isLangSmithTracingEnabled(proxyAvailable = false): boolean {
+/**
+ * Whether a trace context is created. Pass `true` when the caller has a
+ * tracing proxy config. Callers use it to skip work that only a trace needs.
+ */
+export function isLangSmithTracingEnabled(proxyAvailable = false): boolean {
 	if (readBooleanEnvFlag(process.env.N8N_DIAGNOSTICS_ENABLED) === false) {
 		return false;
 	}
@@ -849,6 +853,15 @@ function normalizeTags(...tagGroups: Array<string[] | undefined>): string[] | un
 	const merged = tagGroups.flatMap((group) => group ?? []).filter(Boolean);
 	if (merged.length === 0) return undefined;
 	return [...new Set(merged)];
+}
+
+/** Merges tags into a span's comma-separated `langsmith.span.tags` attribute. */
+function addLangSmithSpanTags(span: unknown, tags: string[]): unknown {
+	if (!isRecord(span) || !isRecord(span.attributes)) return span;
+	const current = span.attributes[LANGSMITH_SPAN_TAGS];
+	const existing = typeof current === 'string' ? current.split(',').map((tag) => tag.trim()) : [];
+	span.attributes[LANGSMITH_SPAN_TAGS] = normalizeTags(existing, tags)?.join(', ');
+	return span;
 }
 
 function mergeMetadata(
@@ -1862,9 +1875,12 @@ function createLangSmithTelemetryBuilder(
 	projectName: string,
 	proxyConfig?: ServiceProxyConfig,
 ): LangSmithTelemetry {
+	const traceTags = proxyConfig?.traceTags;
 	return new LangSmithTelemetry({
 		project: projectName,
-		transformExportedSpan: redactLangSmithTelemetrySpan,
+		transformExportedSpan: traceTags?.length
+			? (span) => addLangSmithSpanTags(redactLangSmithTelemetrySpan(span), traceTags)
+			: redactLangSmithTelemetrySpan,
 		...(proxyConfig
 			? {
 					apiKey: '-',

@@ -8,6 +8,8 @@ export interface PreferenceListQuery {
 	take?: number;
 	/** Only these rows. The API reads them as one comma-separated parameter. */
 	ids?: string[];
+	/** Case-insensitive substring of the preference text. */
+	search?: string;
 	sortBy?: AiPreferenceSortOption;
 }
 

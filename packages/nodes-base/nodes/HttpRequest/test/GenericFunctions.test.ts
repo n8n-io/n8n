@@ -1,9 +1,12 @@
-import { mock } from 'vitest-mock-extended';
 import type { INode } from 'n8n-workflow';
+import { PassThrough, Readable } from 'node:stream';
+import { mock } from 'vitest-mock-extended';
 
 import {
 	getAllowedDomains,
 	getOAuth2AdditionalParameters,
+	isStream,
+	prepareRequestBody,
 	updadeQueryParameterConfig,
 } from '../GenericFunctions';
 
@@ -128,5 +131,45 @@ describe('getOAuth2AdditionalParameters', () => {
 	it('should return undefined for microsoftDynamicsOAuth2Api so the stored access token is used', () => {
 		const result = getOAuth2AdditionalParameters('microsoftDynamicsOAuth2Api');
 		expect(result).toBeUndefined();
+	});
+});
+
+describe('isStream', () => {
+	it('should detect a Node stream', () => {
+		expect(isStream(Readable.from(['data']))).toBe(true);
+	});
+
+	it('should detect a stream that is not an instance of the Node stream classes', () => {
+		expect(isStream({ pipe: () => {} })).toBe(true);
+	});
+
+	it.each([
+		['a string', 'text'],
+		['a buffer', Buffer.from('text')],
+		['a plain object', { id: 1 }],
+		['an object with a pipe property that is not a function', { pipe: 'value' }],
+		['null', null],
+		['undefined', undefined],
+	])('should not detect %s', (_name, value) => {
+		expect(isStream(value)).toBe(false);
+	});
+});
+
+describe('prepareRequestBody', () => {
+	it('should destroy the binary streams of a multipart body when the form data is destroyed', async () => {
+		const stream = new PassThrough();
+		const reducer = vi.fn().mockResolvedValue({
+			file: { value: stream, options: { filename: 'file.bin' } },
+		});
+
+		const formData = (await prepareRequestBody(
+			[{ parameterType: 'formBinaryData', name: 'File', value: 'data' }],
+			'multipart-form-data',
+			4.2,
+			reducer,
+		)) as { destroy: () => void };
+		formData.destroy();
+
+		expect(stream.destroyed).toBe(true);
 	});
 });

@@ -1,10 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ref } from 'vue';
 import { fireEvent, waitFor } from '@testing-library/vue';
+import { flushPromises } from '@vue/test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { createComponentRenderer } from '@/__tests__/render';
-import { VIEWS } from '@/app/constants';
+import { MODAL_CONFIRM } from '@/app/constants';
 import SettingsInstanceAiView from '../views/SettingsInstanceAiView.vue';
 import ConnectionDialog from '../components/settings/ConnectionDialog.vue';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
@@ -15,6 +16,8 @@ import { fetchSettings } from '../instanceAi.settings.api';
 import type { FrontendModuleSettings } from '@n8n/api-types';
 import type { ICredentialType } from 'n8n-workflow';
 import { defaultModuleSettings } from './createThreadComponentRenderer';
+import { usePostHog } from '@/app/stores/posthog.store';
+import { MODEL_TRAINING_OPT_OUT_EXPERIMENT } from '@/app/constants/experiments';
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -41,21 +44,8 @@ vi.mock('@/app/stores/pushConnection.store', () => ({
 vi.mock('../instanceAi.settings.api', () => ({
 	fetchSettings: vi.fn().mockResolvedValue(null),
 	updateSettings: vi.fn(),
-	fetchPreferences: vi.fn().mockResolvedValue({
-		credentialId: null,
-		credentialType: null,
-		credentialName: null,
-		modelName: 'gpt-4',
-		localGatewayDisabled: false,
-	}),
-	updatePreferences: vi.fn(),
 	fetchServiceCredentials: vi.fn().mockResolvedValue([]),
 	fetchInstanceModelCredentials: vi.fn().mockResolvedValue([]),
-}));
-
-vi.mock('../instanceAi.api', () => ({
-	createGatewayLink: vi.fn(),
-	getGatewayStatus: vi.fn(),
 }));
 
 vi.mock('@/app/utils/rbac/permissions', () => ({
@@ -63,28 +53,40 @@ vi.mock('@/app/utils/rbac/permissions', () => ({
 }));
 
 const {
-	computerUseExperimentMock,
-	contextPreferencesEnabledMock,
+	cloudBrowserExperimentMock,
 	contextSkillsEnabledMock,
-	routerPushMock,
+	confirmMock,
+	testSavedCredentialMock,
+	toastMock,
 } = vi.hoisted(() => ({
-	computerUseExperimentMock: vi.fn(),
-	contextPreferencesEnabledMock: vi.fn(() => true),
+	cloudBrowserExperimentMock: vi.fn(),
 	contextSkillsEnabledMock: vi.fn(() => true),
-	routerPushMock: vi.fn(),
+	confirmMock: vi.fn(),
+	testSavedCredentialMock: vi.fn(),
+	toastMock: { showMessage: vi.fn(), showError: vi.fn() },
 }));
 
-vi.mock('vue-router', async (importOriginal) => ({
-	...(await importOriginal()),
-	useRouter: () => ({ push: routerPushMock }),
+vi.mock('@n8n/composables/useToast', () => ({ useToast: () => toastMock }));
+
+vi.mock('@/experiments/instanceAiCloudBrowser', () => ({
+	useInstanceAiCloudBrowserExperiment: cloudBrowserExperimentMock,
 }));
 
-vi.mock('@/experiments/instanceAiComputerUse', () => ({
-	useInstanceAiComputerUseExperiment: computerUseExperimentMock,
+vi.mock('../composables/useInstanceCredentialTest', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('../composables/useInstanceCredentialTest')>();
+	return {
+		useInstanceCredentialTest: () => ({
+			...actual.useInstanceCredentialTest(),
+			testSavedCredential: testSavedCredentialMock,
+		}),
+	};
+});
+
+vi.mock('@/app/composables/useMessage', () => ({
+	useMessage: () => ({ confirm: confirmMock }),
 }));
 
 vi.mock('@/features/settings/context/context.utils', () => ({
-	isContextPreferencesEnabled: () => contextPreferencesEnabledMock(),
 	isContextSkillsEnabled: () => contextSkillsEnabledMock(),
 }));
 
@@ -105,6 +107,17 @@ async function selectOption(select: HTMLElement, label: string) {
 	await fireEvent.click(option!);
 }
 
+function setPlanName(settingsStore: ReturnType<typeof useSettingsStore>, planName: string) {
+	settingsStore.settings.license = { ...settingsStore.settings.license, planName };
+}
+
+const fullyConfigured = {
+	modelEnvConfigured: true,
+	sandboxEnabled: true,
+	sandboxEnvConfigured: true,
+	searchDisabled: true,
+};
+
 function setModuleSettings(
 	settingsStore: ReturnType<typeof useSettingsStore>,
 	instanceAi: FrontendModuleSettings['instance-ai'],
@@ -121,7 +134,8 @@ describe('SettingsInstanceAiView', () => {
 		vi.clearAllMocks();
 		vi.mocked(fetchSettings).mockResolvedValue(null as never);
 		vi.mocked(hasPermission).mockReturnValue(true);
-		computerUseExperimentMock.mockReturnValue({ isFeatureEnabled: ref(true) });
+		cloudBrowserExperimentMock.mockReturnValue({ isEnabled: ref(true) });
+		testSavedCredentialMock.mockResolvedValue(true);
 		const pinia = createTestingPinia({ stubActions: false });
 		setActivePinia(pinia);
 		fetchCredentialTypesSpy = vi
@@ -185,7 +199,6 @@ describe('SettingsInstanceAiView', () => {
 				modelEnvConfigured: false,
 				sandboxEnvConfigured: false,
 				searchEnvConfigured: false,
-				localGatewayDisabled: false,
 			},
 		});
 	});
@@ -306,84 +319,306 @@ describe('SettingsInstanceAiView', () => {
 		});
 	});
 
-	describe('status row', () => {
-		it('renders the enabled status action', () => {
-			store.$patch({
-				settings: {
-					...store.settings!,
-					modelCredentialId: 'openai-id',
-					modelEnvConfigured: true,
-					sandboxEnabled: true,
-					sandboxEnvConfigured: true,
-					searchDisabled: true,
-				},
-			});
-			const { getByTestId, getByText } = renderComponent();
-			expect(getByTestId('n8n-agent-status-menu')).toBeVisible();
-			expect(getByText('settings.n8nAgent.status.enabled')).toBeVisible();
+	describe('page header', () => {
+		it('shows the limited enterprise readiness badge next to the title on enterprise', () => {
+			setPlanName(settingsStore, 'Enterprise');
+
+			const { getByRole, getByTestId } = renderComponent();
+			const title = getByRole('heading', { name: 'settings.n8nAgent' });
+			expect(title.parentElement).toContainElement(
+				getByTestId('n8n-agent-enterprise-readiness-badge'),
+			);
 		});
 
-		it('renders a pulsing success dot when enabled and fully configured', () => {
-			store.$patch({
-				settings: {
-					...store.settings!,
-					modelCredentialId: 'openai-id',
-					modelEnvConfigured: true,
-					sandboxEnabled: true,
-					sandboxEnvConfigured: true,
-					searchDisabled: true,
-				},
+		it('does not show the limited enterprise readiness badge on other plans', () => {
+			setPlanName(settingsStore, 'Business');
+
+			const { queryByTestId } = renderComponent();
+			expect(queryByTestId('n8n-agent-enterprise-readiness-badge')).toBeNull();
+		});
+
+		it('does not show a Preview badge', () => {
+			const { queryByText } = renderComponent();
+			expect(queryByText('Preview')).toBeNull();
+		});
+	});
+
+	describe('enable switch', () => {
+		const modelSaveDialog = 'n8n-agent-model-dialog-save';
+
+		function mockPersistEnabled() {
+			vi.mocked(store.fetch).mockResolvedValue(true);
+			return vi.mocked(store.persistEnabled).mockImplementation(async (value) => {
+				store.$patch({ settings: { ...store.settings!, enabled: value } });
+				return true;
 			});
+		}
+
+		/** Applies each saved draft to the settings, like the server would. */
+		function mockSave() {
+			return vi.mocked(store.save).mockImplementation(async () => {
+				const draft = { ...store.draft };
+				const next = { ...store.settings! };
+				if (draft.modelConnection) {
+					next.modelCredentialId = 'saved-model';
+					next.modelName = draft.modelName ?? null;
+				}
+				if (draft.sandboxEnabled !== undefined) next.sandboxEnabled = draft.sandboxEnabled;
+				if (draft.searchDisabled !== undefined) next.searchDisabled = draft.searchDisabled;
+				store.$patch({ settings: next });
+				for (const key of Object.keys(store.draft)) Reflect.deleteProperty(store.draft, key);
+				return true;
+			});
+		}
+
+		function disable(overrides: Record<string, unknown> = {}) {
+			store.$patch({ settings: { ...store.settings!, enabled: false, ...overrides } });
+			setModuleSettings(settingsStore, { ...defaultModuleSettings, enabled: false });
+		}
+
+		it('shows the switch on when enabled and fully configured', () => {
+			store.$patch({ settings: { ...store.settings!, ...fullyConfigured } });
+
 			const { getByTestId } = renderComponent();
-			const dot = getByTestId('n8n-agent-status-dot');
-			expect(dot.className).toContain('success');
-			expect(dot.className).toContain('pulse');
+			expect(getByTestId('n8n-agent-enable-toggle')).toHaveAttribute('aria-checked', 'true');
 		});
 
-		it('renders a static warning dot when setup is required', () => {
-			store.$patch({
-				settings: {
-					...store.settings!,
-					modelCredentialId: 'openai-id',
-					modelName: null,
-					sandboxEnvConfigured: true,
-				},
-			});
+		it('keeps the switch on without opening setup when enabled but setup is incomplete', () => {
+			const { getByTestId, queryByTestId } = renderComponent();
+
+			expect(getByTestId('n8n-agent-enable-toggle')).toHaveAttribute('aria-checked', 'true');
+			expect(getByTestId('n8n-agent-model-add')).toBeVisible();
+			expect(queryByTestId(modelSaveDialog)).toBeNull();
+		});
+
+		it('hides the other sections when disabled but configured', () => {
+			disable({ modelCredentialId: 'openai-id', modelName: 'gpt-4o' });
+
+			const { getByTestId, queryByText } = renderComponent();
+			expect(getByTestId('n8n-agent-enable-toggle')).toHaveAttribute('aria-checked', 'false');
+			expect(queryByText('settings.n8nAgent.permissions.title')).toBeNull();
+		});
+
+		it('does not show the switch to members', () => {
+			vi.mocked(hasPermission).mockReturnValue(false);
+
+			const { queryByTestId } = renderComponent();
+			expect(queryByTestId('n8n-agent-enable-toggle')).toBeNull();
+		});
+
+		it('saves enabled and opens nothing when setup is complete', async () => {
+			disable(fullyConfigured);
+			const persistEnabled = mockPersistEnabled();
+			const { getByTestId, queryByTestId } = renderComponent();
+
+			await fireEvent.click(getByTestId('n8n-agent-enable-toggle'));
+
+			await waitFor(() => expect(persistEnabled).toHaveBeenCalledExactlyOnceWith(true));
+			expect(getByTestId('n8n-agent-enable-toggle')).toHaveAttribute('aria-checked', 'true');
+			expect(queryByTestId(modelSaveDialog)).toBeNull();
+			expect(queryByTestId('n8n-agent-sandbox-dialog-save')).toBeNull();
+			expect(queryByTestId('n8n-agent-search-dialog-save')).toBeNull();
+		});
+
+		it('opens the model dialog without saving enabled when the model is missing', async () => {
+			disable({ sandboxEnabled: true, sandboxEnvConfigured: true, searchDisabled: true });
+			const persistEnabled = mockPersistEnabled();
+			const { findByTestId, getByTestId } = renderComponent();
+
+			await fireEvent.click(getByTestId('n8n-agent-enable-toggle'));
+
+			expect(await findByTestId(modelSaveDialog)).toBeVisible();
+			expect(getByTestId('n8n-agent-enable-toggle')).toHaveAttribute('aria-checked', 'true');
+			expect(persistEnabled).not.toHaveBeenCalled();
+		});
+
+		it('turns the switch back off without saving enabled when a setup dialog is cancelled', async () => {
+			disable({ sandboxEnabled: true, sandboxEnvConfigured: true, searchDisabled: true });
+			const persistEnabled = mockPersistEnabled();
+			const { findByTestId, getByTestId, queryByTestId } = renderComponent();
+
+			await fireEvent.click(getByTestId('n8n-agent-enable-toggle'));
+			await fireEvent.click(await findByTestId('n8n-agent-model-dialog-cancel'));
+
+			await waitFor(() => expect(queryByTestId(modelSaveDialog)).toBeNull());
+			expect(getByTestId('n8n-agent-enable-toggle')).toHaveAttribute('aria-checked', 'false');
+			expect(persistEnabled).not.toHaveBeenCalled();
+			expect(store.settings?.enabled).toBe(false);
+		});
+
+		it('continues to the next missing item after the model is saved', async () => {
+			disable({ searchDisabled: true });
+			const persistEnabled = mockPersistEnabled();
+			mockSave();
+			vi.mocked(store.verifyModel).mockResolvedValue({ ok: true });
+			const { findByTestId, getByTestId, queryByTestId } = renderComponent();
+
+			await fireEvent.click(getByTestId('n8n-agent-enable-toggle'));
+			const modelApiKey = await findByTestId('n8n-agent-model-api-key-input');
+			await fireEvent.update(modelApiKey.querySelector('input') ?? modelApiKey, 'model-key');
+			await fireEvent.click(getByTestId(modelSaveDialog));
+
+			expect(await findByTestId('n8n-agent-sandbox-dialog-save')).toBeVisible();
+			await waitFor(() => expect(queryByTestId(modelSaveDialog)).toBeNull());
+			expect(persistEnabled).not.toHaveBeenCalled();
+		});
+
+		it('saves enabled once the last missing item is saved', async () => {
+			disable({ modelEnvConfigured: true, sandboxEnabled: true, sandboxEnvConfigured: true });
+			const persistEnabled = mockPersistEnabled();
+			mockSave();
+			const { findByTestId, getByTestId, queryByTestId } = renderComponent();
+
+			await fireEvent.click(getByTestId('n8n-agent-enable-toggle'));
+			await fireEvent.click(await findByTestId('assistant-search-disabled'));
+			await fireEvent.click(getByTestId('n8n-agent-search-dialog-save'));
+
+			await waitFor(() => expect(persistEnabled).toHaveBeenCalledExactlyOnceWith(true));
+			await waitFor(() => expect(queryByTestId('n8n-agent-search-dialog-save')).toBeNull());
+			expect(getByTestId('n8n-agent-enable-toggle')).toHaveAttribute('aria-checked', 'true');
+		});
+
+		it('switches on an environment-configured sandbox before saving enabled', async () => {
+			disable({ modelEnvConfigured: true, sandboxEnvConfigured: true, searchDisabled: true });
+			const persistEnabled = mockPersistEnabled();
+			const save = mockSave();
 			const { getByTestId } = renderComponent();
-			const dot = getByTestId('n8n-agent-status-dot');
-			expect(dot.className).toContain('warning');
-			expect(dot.className).not.toContain('pulse');
+
+			await fireEvent.click(getByTestId('n8n-agent-enable-toggle'));
+
+			await waitFor(() => expect(persistEnabled).toHaveBeenCalledExactlyOnceWith(true));
+			expect(save).toHaveBeenCalledOnce();
+			expect(store.settings?.sandboxEnabled).toBe(true);
 		});
 
-		it('shows setup required for a credential-only legacy model assignment', () => {
-			store.$patch({
-				settings: {
-					...store.settings!,
-					modelCredentialId: 'openai-id',
-					modelName: null,
-					sandboxEnvConfigured: true,
-				},
+		describe('with a saved model credential', () => {
+			const savedModel = {
+				modelCredentialId: 'openai-id',
+				modelName: 'gpt-4o',
+				sandboxEnabled: true,
+				sandboxEnvConfigured: true,
+				searchDisabled: true,
+			};
+
+			beforeEach(() => {
+				disable(savedModel);
+				store.$patch({
+					instanceModelCredentials: [{ id: 'openai-id', name: 'OpenAI', type: 'openAiApi' }],
+				});
 			});
-			const { getByTestId, getByText } = renderComponent();
-			expect(getByTestId('n8n-agent-status-menu')).toBeVisible();
-			expect(getByText('settings.n8nAgent.status.setupRequired')).toBeVisible();
+
+			it('opens the model dialog without saving enabled when the credential test fails', async () => {
+				testSavedCredentialMock.mockResolvedValue(false);
+				const persistEnabled = mockPersistEnabled();
+				const { findByTestId, getByTestId } = renderComponent();
+
+				await fireEvent.click(getByTestId('n8n-agent-enable-toggle'));
+
+				expect(await findByTestId(modelSaveDialog)).toBeVisible();
+				expect(testSavedCredentialMock).toHaveBeenCalledExactlyOnceWith(
+					'openai-id',
+					'OpenAI',
+					'openAiApi',
+				);
+				expect(persistEnabled).not.toHaveBeenCalled();
+			});
+
+			it('saves enabled when the credential test passes', async () => {
+				const persistEnabled = mockPersistEnabled();
+				const { getByTestId, queryByTestId } = renderComponent();
+
+				await fireEvent.click(getByTestId('n8n-agent-enable-toggle'));
+
+				await waitFor(() => expect(persistEnabled).toHaveBeenCalledExactlyOnceWith(true));
+				expect(testSavedCredentialMock).toHaveBeenCalledOnce();
+				expect(queryByTestId(modelSaveDialog)).toBeNull();
+			});
+
+			it('does not test credentials when the admin cannot manage instance credentials', async () => {
+				vi.mocked(hasPermission).mockImplementation(
+					(_, options) => options?.rbac?.scope !== 'credential:manageInstance',
+				);
+				const persistEnabled = mockPersistEnabled();
+				const { getByTestId } = renderComponent();
+
+				await fireEvent.click(getByTestId('n8n-agent-enable-toggle'));
+
+				await waitFor(() => expect(persistEnabled).toHaveBeenCalledExactlyOnceWith(true));
+				expect(testSavedCredentialMock).not.toHaveBeenCalled();
+			});
 		});
 
-		it('shows an enable button with dimmed sections when disabled but configured', () => {
-			store.$patch({
-				settings: {
-					...store.settings!,
-					enabled: false,
-					modelCredentialId: 'openai-id',
-					modelName: 'gpt-4o',
-				},
-			});
+		it.each([
+			{ missing: 'model', patch: { searchDisabled: true }, dialog: modelSaveDialog },
+			{
+				missing: 'sandbox',
+				patch: { modelEnvConfigured: true, searchDisabled: true },
+				dialog: 'n8n-agent-sandbox-dialog-save',
+			},
+			{
+				missing: 'search',
+				patch: { modelEnvConfigured: true, sandboxEnabled: true, sandboxEnvConfigured: true },
+				dialog: 'n8n-agent-search-dialog-save',
+			},
+		])('resumes setup at the missing $missing', async ({ patch, dialog }) => {
+			disable(patch);
+			const persistEnabled = mockPersistEnabled();
+			const { findByTestId, getByTestId } = renderComponent();
+
+			await fireEvent.click(getByTestId('n8n-agent-enable-toggle'));
+
+			expect(await findByTestId(dialog)).toBeVisible();
+			expect(persistEnabled).not.toHaveBeenCalled();
+		});
+
+		it('asks for confirmation and saves disabled when the admin confirms', async () => {
+			store.$patch({ settings: { ...store.settings!, ...fullyConfigured } });
+			const persistEnabled = mockPersistEnabled();
+			confirmMock.mockResolvedValue(MODAL_CONFIRM);
+			const { getByTestId } = renderComponent();
+
+			await fireEvent.click(getByTestId('n8n-agent-enable-toggle'));
+
+			await waitFor(() => expect(persistEnabled).toHaveBeenCalledExactlyOnceWith(false));
+			expect(confirmMock).toHaveBeenCalledOnce();
+		});
+
+		it('keeps the Assistant on when the admin cancels the confirmation', async () => {
+			store.$patch({ settings: { ...store.settings!, ...fullyConfigured } });
+			const persistEnabled = mockPersistEnabled();
+			confirmMock.mockResolvedValue('cancel');
+			const { getByTestId } = renderComponent();
+
+			await fireEvent.click(getByTestId('n8n-agent-enable-toggle'));
+
+			await waitFor(() => expect(confirmMock).toHaveBeenCalledOnce());
+			expect(persistEnabled).not.toHaveBeenCalled();
+			expect(getByTestId('n8n-agent-enable-toggle')).toHaveAttribute('aria-checked', 'true');
+		});
+	});
+
+	describe('off state', () => {
+		it('hides the other settings while off', () => {
+			store.$patch({ settings: { ...store.settings!, enabled: false, ...fullyConfigured } });
 			setModuleSettings(settingsStore, { ...defaultModuleSettings, enabled: false });
 
-			const { getByTestId, getByText, queryByTestId } = renderComponent();
-			expect(getByTestId('n8n-agent-enable-button')).toBeVisible();
-			expect(queryByTestId('n8n-agent-status-menu')).toBeNull();
-			expect(getByText('settings.n8nAgent.permissions.title')).toBeVisible();
+			const { getByTestId, queryByTestId } = renderComponent();
+			expect(getByTestId('n8n-agent-enable-toggle')).toHaveAttribute('aria-checked', 'false');
+			for (const testId of [
+				'n8n-agent-browser-use-toggle',
+				'n8n-agent-mcp-access-toggle',
+				'n8n-agent-data-sharing-schema-toggle',
+				'n8n-agent-data-sharing-values-toggle',
+				'n8n-agent-model-row',
+			]) {
+				expect(queryByTestId(testId)).toBeNull();
+			}
+			expect(store.settings?.mcpAccessEnabled).toBe(true);
+		});
+
+		it('shows the missing model warning while on', () => {
+			const { getByText } = renderComponent();
+			expect(getByText('settings.n8nAgent.modelCredential.missing.description')).toBeVisible();
 		});
 	});
 
@@ -395,6 +630,45 @@ describe('SettingsInstanceAiView', () => {
 			const { getByText, queryByText } = renderComponent();
 			expect(getByText('settings.n8nAgent.empty.title')).toBeVisible();
 			expect(queryByText('settings.n8nAgent.permissions.title')).toBeNull();
+		});
+
+		it('opens the first missing setup item from the empty state without saving enabled', async () => {
+			store.$patch({ settings: { ...store.settings!, enabled: false } });
+			setModuleSettings(settingsStore, { ...defaultModuleSettings, enabled: false });
+			vi.mocked(store.fetch).mockResolvedValue(true);
+			const persistEnabled = vi.mocked(store.persistEnabled);
+			const { findByTestId, getByText } = renderComponent();
+
+			await fireEvent.click(getByText('settings.n8nAgent.empty.enable'));
+
+			expect(await findByTestId('n8n-agent-model-dialog-save')).toBeVisible();
+			expect(persistEnabled).not.toHaveBeenCalled();
+		});
+
+		it('saves enabled directly from the empty state when the assistant proxy is enabled', async () => {
+			store.$patch({ settings: { ...store.settings!, enabled: false } });
+			setModuleSettings(settingsStore, {
+				...defaultModuleSettings,
+				enabled: false,
+				proxyEnabled: true,
+			});
+			vi.mocked(store.fetch).mockResolvedValue(true);
+			const persistEnabled = vi.mocked(store.persistEnabled).mockResolvedValue(true);
+			const { getByText, queryByTestId } = renderComponent();
+
+			await fireEvent.click(getByText('settings.n8nAgent.empty.enable'));
+
+			await waitFor(() => expect(persistEnabled).toHaveBeenCalledExactlyOnceWith(true));
+			expect(queryByTestId('n8n-agent-sandbox-dialog-save')).toBeNull();
+		});
+
+		it('shows the limited enterprise readiness badge in the empty state', () => {
+			setPlanName(settingsStore, 'Enterprise');
+			store.$patch({ settings: { ...store.settings!, enabled: false } });
+			setModuleSettings(settingsStore, { ...defaultModuleSettings, enabled: false });
+
+			const { getByTestId } = renderComponent();
+			expect(getByTestId('n8n-agent-enterprise-readiness-badge')).toBeVisible();
 		});
 
 		it('hides content when disabled via moduleSettings fallback', () => {
@@ -576,23 +850,180 @@ describe('SettingsInstanceAiView', () => {
 	});
 
 	describe('data sharing', () => {
-		it('links to the AI usage settings instead of duplicating its controls', async () => {
+		const setDataSharing = (allowSendingParameterValues: boolean) => {
+			settingsStore.settings.ai = { allowSendingParameterValues, allowModelTraining: true };
+		};
+
+		it('shows the AI usage controls inline with a docs link', () => {
 			const { getByTestId } = renderComponent();
 
-			await fireEvent.click(getByTestId('n8n-agent-data-sharing-row'));
-
-			expect(routerPushMock).toHaveBeenCalledWith({ name: VIEWS.AI_SETTINGS });
+			expect(getByTestId('n8n-agent-data-sharing-schema-row')).toBeVisible();
+			expect(getByTestId('n8n-agent-data-sharing-values-row')).toBeVisible();
+			expect(getByTestId('n8n-agent-data-sharing-docs-link')).toHaveAttribute(
+				'href',
+				'https://docs.n8n.io/build/ways-of-building-workflows/use-the-ai-assistant#ai-usage-settings',
+			);
 		});
 
-		it('does not link without permission to manage AI usage', async () => {
+		it('keeps the schema switch on and locked', () => {
+			const { getByTestId } = renderComponent();
+
+			const schemaToggle = getByTestId('n8n-agent-data-sharing-schema-toggle');
+			expect(schemaToggle).toHaveAttribute('aria-checked', 'true');
+			expect(schemaToggle).toBeDisabled();
+		});
+
+		it('locks the values switch once data sharing is on and hides the notice', () => {
+			setDataSharing(true);
+
+			const { getByTestId, queryByTestId } = renderComponent();
+
+			const valuesToggle = getByTestId('n8n-agent-data-sharing-values-toggle');
+			expect(valuesToggle).toHaveAttribute('aria-checked', 'true');
+			expect(valuesToggle).toBeDisabled();
+			expect(queryByTestId('n8n-agent-data-sharing-deprecation-notice')).toBeNull();
+		});
+
+		it('turns data sharing on from the values switch', async () => {
+			setDataSharing(false);
+			const updateSpy = vi
+				.spyOn(settingsStore, 'updateAiDataSharingSettings')
+				.mockResolvedValue(undefined);
+
+			const { getByTestId } = renderComponent();
+
+			expect(getByTestId('n8n-agent-data-sharing-deprecation-notice')).toBeVisible();
+			const valuesToggle = getByTestId('n8n-agent-data-sharing-values-toggle');
+			expect(valuesToggle).toHaveAttribute('aria-checked', 'false');
+			expect(valuesToggle).not.toBeDisabled();
+
+			await fireEvent.click(valuesToggle);
+
+			expect(updateSpy).toHaveBeenCalledWith(true);
+
+			await waitFor(() =>
+				expect(toastMock.showMessage).toHaveBeenCalledWith({
+					title: 'settings.ai.updated.success',
+					type: 'success',
+				}),
+			);
+		});
+
+		it('keeps the values switch off and shows an error toast when the save fails', async () => {
+			setDataSharing(false);
+			const error = new Error('boom');
+			vi.spyOn(settingsStore, 'updateAiDataSharingSettings').mockRejectedValue(error);
+
+			const { getByTestId } = renderComponent();
+			const valuesToggle = getByTestId('n8n-agent-data-sharing-values-toggle');
+			await fireEvent.click(valuesToggle);
+
+			await flushPromises();
+
+			expect(toastMock.showError).toHaveBeenCalledWith(error, 'settings.ai.updated.error');
+			expect(toastMock.showMessage).not.toHaveBeenCalled();
+			// The view re-renders after it loads, so query the switch again.
+			const valuesToggleAfter = getByTestId('n8n-agent-data-sharing-values-toggle');
+			expect(valuesToggleAfter).toHaveAttribute('aria-checked', 'false');
+			expect(valuesToggleAfter).not.toBeDisabled();
+		});
+
+		it('locks the values switch without permission to manage AI usage', () => {
+			setDataSharing(false);
 			vi.mocked(hasPermission).mockImplementation(
 				(_permissionNames, options) => options?.rbac?.scope !== 'aiAssistant:manage',
 			);
+
 			const { getByTestId } = renderComponent();
 
-			await fireEvent.click(getByTestId('n8n-agent-data-sharing-row'));
+			expect(getByTestId('n8n-agent-data-sharing-values-toggle')).toBeDisabled();
+		});
+	});
 
-			expect(routerPushMock).not.toHaveBeenCalled();
+	describe('model training', () => {
+		const enableOptOut = () => {
+			setModuleSettings(settingsStore, { ...defaultModuleSettings, proxyEnabled: true });
+			usePostHog().overrides[MODEL_TRAINING_OPT_OUT_EXPERIMENT.name] = { value: true };
+			settingsStore.settings.ai = { allowSendingParameterValues: true, allowModelTraining: true };
+		};
+
+		it('keeps the old section copy and hides the switch while the flag is off', () => {
+			setModuleSettings(settingsStore, { ...defaultModuleSettings, proxyEnabled: true });
+
+			const { getByText, queryByTestId } = renderComponent();
+
+			expect(getByText('settings.n8nAgent.dataSharing.title')).toBeVisible();
+			expect(getByText(/settings\.n8nAgent\.dataSharing\.description$/)).toBeVisible();
+			expect(queryByTestId('n8n-agent-model-training-section')).toBeNull();
+		});
+
+		it('shows the switch in its own section, apart from the data sent to the model', () => {
+			enableOptOut();
+
+			const { getByText, getByTestId, queryByText } = renderComponent();
+
+			expect(getByText('settings.n8nAgent.dataSharing.title')).toBeVisible();
+			expect(
+				getByText(/settings\.n8nAgent\.dataSharing\.description\.withModelTraining/),
+			).toBeVisible();
+			expect(queryByText(/settings\.n8nAgent\.dataSharing\.description$/)).toBeNull();
+
+			const section = getByTestId('n8n-agent-model-training-section');
+			expect(section).toHaveTextContent('settings.n8nAgent.modelTraining.title');
+			expect(section).not.toContainElement(getByTestId('n8n-agent-data-sharing-values-row'));
+			expect(getByTestId('n8n-agent-model-training-toggle')).toHaveAttribute(
+				'aria-checked',
+				'true',
+			);
+		});
+
+		it('turns model training off from the switch', async () => {
+			enableOptOut();
+			const updateSpy = vi
+				.spyOn(settingsStore, 'updateModelTrainingSettings')
+				.mockResolvedValue(undefined);
+
+			const { getByTestId } = renderComponent();
+			await fireEvent.click(getByTestId('n8n-agent-model-training-toggle'));
+
+			expect(updateSpy).toHaveBeenCalledWith(false);
+
+			await waitFor(() =>
+				expect(toastMock.showMessage).toHaveBeenCalledWith({
+					title: 'settings.ai.updated.success',
+					type: 'success',
+				}),
+			);
+		});
+
+		it('keeps the switch on and shows an error toast when the save fails', async () => {
+			enableOptOut();
+			const error = new Error('boom');
+			vi.spyOn(settingsStore, 'updateModelTrainingSettings').mockRejectedValue(error);
+
+			const { getByTestId } = renderComponent();
+			const toggle = getByTestId('n8n-agent-model-training-toggle');
+			await fireEvent.click(toggle);
+
+			await flushPromises();
+
+			expect(toastMock.showError).toHaveBeenCalledWith(error, 'settings.ai.updated.error');
+			expect(toastMock.showMessage).not.toHaveBeenCalled();
+			// The view re-renders after it loads, so query the switch again.
+			const toggleAfter = getByTestId('n8n-agent-model-training-toggle');
+			expect(toggleAfter).toHaveAttribute('aria-checked', 'true');
+			expect(toggleAfter).not.toBeDisabled();
+		});
+
+		it('locks the switch without permission to manage AI usage', () => {
+			enableOptOut();
+			vi.mocked(hasPermission).mockImplementation(
+				(_permissionNames, options) => options?.rbac?.scope !== 'aiAssistant:manage',
+			);
+
+			const { getByTestId } = renderComponent();
+
+			expect(getByTestId('n8n-agent-model-training-toggle')).toBeDisabled();
 		});
 	});
 
@@ -603,18 +1034,64 @@ describe('SettingsInstanceAiView', () => {
 		});
 	});
 
-	describe('Computer use settings', () => {
-		it('shows the computer use toggle when the experiment is enabled', () => {
+	describe('Cloud browser settings', () => {
+		const enableGatewayCredits = ({ cloudUbbEnabled = true } = {}) => {
+			settingsStore.settings = {
+				...settingsStore.settings,
+				aiGateway: { enabled: true, budget: 0, cloudUbbEnabled },
+			};
+		};
+
+		it('shows the cloud browser toggle when the flag is on and Gateway credits are enabled with Cloud usage-based billing', () => {
+			enableGatewayCredits();
+
 			const { getByTestId } = renderComponent();
-			expect(getByTestId('n8n-agent-computer-use-toggle')).toBeVisible();
+
+			expect(getByTestId('n8n-agent-cloud-browser-toggle')).toBeVisible();
 		});
 
-		it('hides the computer use toggle when the experiment is disabled', () => {
-			computerUseExperimentMock.mockReturnValue({ isFeatureEnabled: ref(false) });
+		it('hides the cloud browser toggle when the flag is off', () => {
+			enableGatewayCredits();
+			cloudBrowserExperimentMock.mockReturnValue({ isEnabled: ref(false) });
 
 			const { queryByTestId } = renderComponent();
 
-			expect(queryByTestId('n8n-agent-computer-use-toggle')).toBeNull();
+			expect(queryByTestId('n8n-agent-cloud-browser-toggle')).toBeNull();
+		});
+
+		it('hides the cloud browser toggle when Gateway credits are not enabled', () => {
+			const { queryByTestId } = renderComponent();
+
+			expect(queryByTestId('n8n-agent-cloud-browser-toggle')).toBeNull();
+		});
+
+		it('hides the cloud browser toggle without Cloud usage-based billing', () => {
+			enableGatewayCredits({ cloudUbbEnabled: false });
+
+			const { queryByTestId } = renderComponent();
+
+			expect(queryByTestId('n8n-agent-cloud-browser-toggle')).toBeNull();
+		});
+
+		it('hides the cloud browser toggle on a multi-main instance', () => {
+			enableGatewayCredits();
+			settingsStore.settings = { ...settingsStore.settings, isMultiMain: true };
+
+			const { queryByTestId } = renderComponent();
+
+			expect(queryByTestId('n8n-agent-cloud-browser-toggle')).toBeNull();
+		});
+
+		it('persists turning off the cloud browser, which is on by default', async () => {
+			enableGatewayCredits();
+			const setField = vi.spyOn(store, 'setField');
+			const save = vi.spyOn(store, 'save').mockResolvedValue(true);
+			const { getByTestId } = renderComponent();
+
+			await fireEvent.click(getByTestId('n8n-agent-cloud-browser-toggle'));
+
+			expect(setField).toHaveBeenCalledWith('cloudBrowserEnabled', false);
+			expect(save).toHaveBeenCalled();
 		});
 	});
 
@@ -745,6 +1222,32 @@ describe('SettingsInstanceAiView', () => {
 			}
 		});
 
+		it('shows the Delete data tables permission when the Data tables group is expanded', async () => {
+			const { getByTestId, getByLabelText } = renderComponent();
+
+			await fireEvent.click(
+				getByLabelText('Toggle settings.n8nAgent.permissions.group.dataTables'),
+			);
+
+			await waitFor(() =>
+				expect(getByTestId('n8n-agent-permission-deleteDataTable')).toBeVisible(),
+			);
+		});
+
+		it('explains who confirms Ask first only while approval modes are available', async () => {
+			const first = renderComponent();
+			await first.findByText(/settings.n8nAgent.permissions.description/);
+			expect(first.queryByText(/settings.n8nAgent.permissions.askFirst.description/)).toBeNull();
+			first.unmount();
+
+			store.$patch({ approvalModesAvailable: true });
+			const { findByText } = renderComponent();
+
+			await expect(
+				findByText(/settings.n8nAgent.permissions.askFirst.description/),
+			).resolves.toBeTruthy();
+		});
+
 		it('shows the Execute a node permission when the Nodes group is expanded', async () => {
 			const { getByTestId, getByLabelText } = renderComponent();
 
@@ -770,16 +1273,7 @@ describe('SettingsInstanceAiView', () => {
 			);
 		});
 
-		it('hides the Preferences group while the 111_context_preferences flag is off', () => {
-			contextPreferencesEnabledMock.mockReturnValueOnce(false);
-
-			const { queryByTestId, getByTestId } = renderComponent();
-
-			expect(queryByTestId('n8n-agent-permission-group-preferences')).toBeNull();
-			expect(getByTestId('n8n-agent-permission-group-workflows')).toBeVisible();
-		});
-
-		it('shows the Skills group while the skills hub is on', () => {
+		it('shows the Skills group while context skills are enabled', () => {
 			const { getByTestId } = renderComponent();
 
 			expect(getByTestId('n8n-agent-permission-group-skills').textContent).toContain(
@@ -787,7 +1281,7 @@ describe('SettingsInstanceAiView', () => {
 			);
 		});
 
-		it('hides the Skills group while the skills hub is off', () => {
+		it('hides the Skills group while context skills are disabled', () => {
 			contextSkillsEnabledMock.mockReturnValueOnce(false);
 
 			const { queryByTestId } = renderComponent();

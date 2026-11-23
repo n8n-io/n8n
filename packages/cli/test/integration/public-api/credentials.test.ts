@@ -26,9 +26,8 @@ import { mock } from 'vitest-mock-extended';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
-import { EventService, RoleCacheService } from '@n8n/backend-services';
+import { EventService, RoleCacheService, PostHogClient } from '@n8n/backend-services';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { PostHogClient } from '@/posthog';
 import { CredentialsTester } from '@/services/credentials-tester.service';
 
 import {
@@ -146,6 +145,17 @@ describe('POST /credentials', () => {
 			const response = await authOwnerAgent.post('/credentials').send(invalidPayload);
 			expect(response.statusCode === 400 || response.statusCode === 415).toBe(true);
 		}
+	});
+
+	test('should accept an expression in a number field', async () => {
+		const data = { host: 'ftp.example.com', port: '={{ $vars.PORT }}' };
+
+		const response = await authOwnerAgent
+			.post('/credentials')
+			.send({ name: 'ftp credential', type: 'ftp', data });
+
+		expect(response.statusCode).toBe(200);
+		expect(await getDecryptedCredentialData(response.body.id)).toEqual(data);
 	});
 
 	test('should fail with an unknown credential type', async () => {

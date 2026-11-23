@@ -10,6 +10,7 @@ import {
 	type WorkflowReviewRequestSummary,
 } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
+import { accountSummary } from '@n8n/db';
 import type {
 	User,
 	WorkflowReviewActivity,
@@ -24,12 +25,8 @@ import type { z } from 'zod';
  * inbox and detail payloads cannot drift apart.
  */
 export function toEligibleReviewer(user: User): WorkflowReviewEligibleReviewer {
-	return {
-		id: user.id,
-		email: user.email,
-		firstName: user.firstName ?? null,
-		lastName: user.lastName ?? null,
-	};
+	const { id, email, firstName, lastName } = accountSummary(user);
+	return { id, email: email ?? '', firstName, lastName };
 }
 
 /**

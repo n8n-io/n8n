@@ -1,6 +1,6 @@
 import type { InstanceAiSandboxProvider } from '@n8n/api-types';
 import { normalizeSandboxProvider as normalizeRuntimeSandboxProvider } from '@n8n/agents/sandbox';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 
 /** Coerce a raw config/env value to a supported provider, falling back to the default. */
 export function normalizeSandboxProvider(value: string | undefined): InstanceAiSandboxProvider {

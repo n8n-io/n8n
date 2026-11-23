@@ -10,13 +10,14 @@ import {
 } from './personalSpacePermissions';
 
 describe('personalSpacePermissions', () => {
-	it('lists view and manage over the six resources of the design, in that order', () => {
+	it('lists view and manage over the resources of the design, in that order', () => {
 		expect(PERSONAL_SPACE_GROUPS).toEqual(['view', 'manage']);
 		expect(PERSONAL_SPACE_RESOURCES).toEqual([
 			'workflow',
 			'credential',
 			'dataTable',
 			'agent',
+			'app',
 			'folder',
 			'execution',
 		]);

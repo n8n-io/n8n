@@ -1,3 +1,4 @@
+import { requestPath } from 'n8n-workflow';
 import nock from 'nock';
 
 import * as getLiveView from '../../../actions/window/getLiveView.operation';
@@ -57,7 +58,7 @@ describe('Test Airtop, window getLiveView operation', () => {
 		expect(transport.apiRequest).toHaveBeenCalledTimes(1);
 		expect(transport.apiRequest).toHaveBeenCalledWith(
 			'GET',
-			'/sessions/test-session-123/windows/win-123',
+			requestPath`/sessions/test-session-123/windows/win-123`,
 			undefined,
 			{},
 		);
@@ -89,7 +90,7 @@ describe('Test Airtop, window getLiveView operation', () => {
 		expect(transport.apiRequest).toHaveBeenCalledTimes(1);
 		expect(transport.apiRequest).toHaveBeenCalledWith(
 			'GET',
-			'/sessions/test-session-123/windows/win-123',
+			requestPath`/sessions/test-session-123/windows/win-123`,
 			undefined,
 			{
 				includeNavigationBar: true,

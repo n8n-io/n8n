@@ -7,10 +7,22 @@ import {
 	N8nIcon,
 	N8nMarkdownEditor,
 } from '@n8n/design-system';
+import {
+	getViolationVerdict,
+	SCOPE_LABEL_KEY,
+} from '@n8n/frontend-module-type-availability-policies';
+import { N8N_CHAT_ACTION_TOOL_NAME } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
-import { computed, toRef } from 'vue';
+import { computed, inject, toRef } from 'vue';
+import {
+	AGENTS_CHAT_INTERACTION_EXTENSIONS,
+	findToolOutputRenderer,
+	type AgentsChatHostEventItem,
+} from '@/features/ai/shared/agentsChat/interactionRegistry';
 import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
 import AiReasoningBlock from '@/features/ai/shared/components/AiReasoningBlock.vue';
+import ToolDataBlock from '@/features/ai/shared/components/ToolDataBlock/ToolDataBlock.vue';
+import ToolDataSection from '@/features/ai/shared/components/ToolDataBlock/ToolDataSection.vue';
 import type { AgentFixWithAssistantFailure } from '../types';
 import { useSubAgentNames } from '../composables/useSubAgentNames';
 import { isCompactToolName, resolveToolNameForDisplay } from '../utils/toolDisplayName';
@@ -31,13 +43,19 @@ import {
 import { TOOL_CALL_STATE } from '../constants';
 import { parseToolPolicyRefusal } from '@/features/ai/shared/agentsChat/toolPolicyRefusal';
 import AgentChatToolPolicyRefusal from './AgentChatToolPolicyRefusal.vue';
+import AgentChatHostEvents from './AgentChatHostEvents.vue';
+import AgentChatMessageAttachments from './AgentChatMessageAttachments.vue';
+import { getToolOutputAttachments } from '../utils/tool-output-files';
 
 const props = defineProps<{
 	toolCalls: ToolCall[];
 	projectId?: string;
+	agentId?: string;
 	canFixWithAssistant?: boolean;
 	dismissedToolCallIds?: string[];
 	executionId?: string;
+	/** Host events that show right before the step of their call, by call. */
+	hostEvents?: ReadonlyMap<string, AgentsChatHostEventItem[]>;
 }>();
 
 const emit = defineEmits<{
@@ -50,13 +68,44 @@ const showFix = computed(() => Boolean(props.canFixWithAssistant && props.execut
 
 const dismissedToolCallIds = computed(() => new Set(props.dismissedToolCallIds ?? []));
 
+const outputFilesByToolCallId = computed(
+	() =>
+		new Map(
+			props.toolCalls.map((tc) => [
+				tc.toolCallId,
+				// The reply files of n8n Chat show on the message, not under the step.
+				tc.tool === N8N_CHAT_ACTION_TOOL_NAME ? [] : getToolOutputAttachments(tc.output),
+			]),
+		),
+);
+
+function outputFiles(tc: ToolCall) {
+	return outputFilesByToolCallId.value.get(tc.toolCallId) ?? [];
+}
+
+function hostEventsFor(tc: ToolCall): AgentsChatHostEventItem[] {
+	return props.hostEvents?.get(tc.toolCallId) ?? [];
+}
+
+const interactionExtensions = inject(AGENTS_CHAT_INTERACTION_EXTENSIONS, undefined);
+
+/** The host component that shows the output of a call, when the chat host renders it. */
+function toolOutputComponent(tc: ToolCall) {
+	const extensions = interactionExtensions?.value ?? [];
+	return extensions.length > 0 ? findToolOutputRenderer(tc, extensions) : undefined;
+}
+
 const fixableFailures = computed<AgentFixWithAssistantFailure[]>(() => {
 	if (!showFix.value) return [];
 
 	const dismissed = dismissedToolCallIds.value;
 	const failures: AgentFixWithAssistantFailure[] = [];
+
 	for (const toolCall of props.toolCalls) {
 		if (dismissed.has(toolCall.toolCallId)) continue;
+
+		if (isCanceledToolCall(toolCall)) continue;
+
 		if (toolCall.state !== TOOL_CALL_STATE.ERROR) continue;
 		if (isRecoverablePlanError(toolCall)) continue;
 		// The assistant cannot lift a policy.
@@ -117,6 +166,8 @@ function toolStepLabel(tc: ToolCall, isCompact = false): string {
 }
 
 function toolStepMetadata(tc: ToolCall): string[] {
+	if (isCanceledToolCall(tc)) return [i18n.baseText('agentSessions.status.cancelled')];
+
 	if (isDelegateSubAgentTool(tc.tool)) {
 		return [
 			resolveSubAgentName(tc.input, subAgentNameById.value),
@@ -183,11 +234,25 @@ function toolStepRefusal(tc: ToolCall) {
 	return parseToolPolicyRefusal(tc.output);
 }
 
+function isCanceledToolCall(tc: ToolCall): boolean {
+	return (
+		tc.canceled === true ||
+		tc.state === TOOL_CALL_STATE.CANCELLED ||
+		// Older saved cancellations used the tool-error path.
+		(tc.state === TOOL_CALL_STATE.ERROR &&
+			tc.output === 'Error: Tool call stopped by guardrail: tasks-cancelled')
+	);
+}
+
 function toolStepError(tc: ToolCall): string | undefined {
+	if (isCanceledToolCall(tc)) return undefined;
+
 	if (isRecoverablePlanError(tc)) return i18n.baseText('agents.chat.plan.error.rejected');
 	if (tc.state !== TOOL_CALL_STATE.ERROR) return undefined;
-	if (toolStepRefusal(tc)) {
-		return i18n.baseText('typeAvailabilityPolicies.restrictedNode.scope.instance');
+	const refusal = toolStepRefusal(tc);
+	if (refusal) {
+		const { scope } = getViolationVerdict(refusal.violations[0]);
+		return i18n.baseText(SCOPE_LABEL_KEY[scope ?? 'instance']);
 	}
 	if (isEmptyToolErrorPayload(tc.output)) {
 		return i18n.baseText('agents.chat.toolError.generic');
@@ -235,8 +300,9 @@ function hasActiveToolCall(): boolean {
 <template>
 	<div :class="$style.toolSteps">
 		<template v-if="toolCalls.length > 1">
-			<N8nAiActivityStepGroup :label="groupLabel()" size="small" :loading="hasActiveToolCall()">
+			<N8nAiActivityStepGroup :label="groupLabel()" size="medium" :loading="hasActiveToolCall()">
 				<template v-for="tc in toolCalls" :key="tc.toolCallId">
+					<AgentChatHostEvents :items="hostEventsFor(tc)" />
 					<N8nAiActivityStep
 						v-for="view in [toolStepView(tc)]"
 						:key="`${tc.toolCallId}-${view.label}`"
@@ -289,26 +355,39 @@ function hasActiveToolCall(): boolean {
 							:class="$style.answer"
 						/>
 						<div v-if="view.hasRawData" :class="$style.toolDataList">
-							<div v-if="tc.input !== undefined" :class="$style.toolDataSection">
-								<span :class="$style.toolDataLabel">
-									{{ i18n.baseText('agentSessions.timeline.input') }}
-								</span>
-								<pre :class="$style.toolDataContent">{{ formatToolData(tc.input) }}</pre>
-							</div>
-							<div v-if="showToolOutput(tc)" :class="$style.toolDataSection">
-								<span :class="$style.toolDataLabel">
-									{{ i18n.baseText('agentSessions.timeline.output') }}
-								</span>
-								<pre :class="$style.toolDataContent">{{ formatToolData(tc.output) }}</pre>
-							</div>
+							<ToolDataSection
+								v-if="tc.input !== undefined"
+								:label="i18n.baseText('agentSessions.timeline.input')"
+							>
+								<ToolDataBlock :value="tc.input" />
+							</ToolDataSection>
+							<template v-if="showToolOutput(tc)">
+								<component
+									:is="toolOutputComponent(tc)"
+									v-if="toolOutputComponent(tc)"
+									:tool-call="tc"
+									:label="i18n.baseText('agentSessions.timeline.output')"
+								/>
+								<ToolDataSection v-else :label="i18n.baseText('agentSessions.timeline.output')">
+									<ToolDataBlock :value="tc.output" />
+								</ToolDataSection>
+							</template>
 						</div>
 					</N8nAiActivityStep>
+					<AgentChatMessageAttachments
+						v-if="outputFiles(tc).length && projectId && agentId"
+						:class="$style.outputFiles"
+						:attachments="outputFiles(tc)"
+						:project-id="projectId"
+						:agent-id="agentId"
+					/>
 				</template>
 			</N8nAiActivityStepGroup>
 		</template>
 
 		<template v-else>
 			<template v-for="tc in toolCalls" :key="tc.toolCallId">
+				<AgentChatHostEvents :items="hostEventsFor(tc)" />
 				<N8nAiActivityStep
 					:label="toolStepView(tc).label"
 					:loading="isToolStepLoading(tc)"
@@ -360,21 +439,33 @@ function hasActiveToolCall(): boolean {
 							:class="$style.answer"
 						/>
 						<div v-if="view.hasRawData" :class="$style.toolDataList">
-							<div v-if="tc.input !== undefined" :class="$style.toolDataSection">
-								<span :class="$style.toolDataLabel">
-									{{ i18n.baseText('agentSessions.timeline.input') }}
-								</span>
-								<pre :class="$style.toolDataContent">{{ formatToolData(tc.input) }}</pre>
-							</div>
-							<div v-if="showToolOutput(tc)" :class="$style.toolDataSection">
-								<span :class="$style.toolDataLabel">
-									{{ i18n.baseText('agentSessions.timeline.output') }}
-								</span>
-								<pre :class="$style.toolDataContent">{{ formatToolData(tc.output) }}</pre>
-							</div>
+							<ToolDataSection
+								v-if="tc.input !== undefined"
+								:label="i18n.baseText('agentSessions.timeline.input')"
+							>
+								<ToolDataBlock :value="tc.input" />
+							</ToolDataSection>
+							<template v-if="showToolOutput(tc)">
+								<component
+									:is="toolOutputComponent(tc)"
+									v-if="toolOutputComponent(tc)"
+									:tool-call="tc"
+									:label="i18n.baseText('agentSessions.timeline.output')"
+								/>
+								<ToolDataSection v-else :label="i18n.baseText('agentSessions.timeline.output')">
+									<ToolDataBlock :value="tc.output" />
+								</ToolDataSection>
+							</template>
 						</div>
 					</template>
 				</N8nAiActivityStep>
+				<AgentChatMessageAttachments
+					v-if="outputFiles(tc).length && projectId && agentId"
+					:class="$style.outputFiles"
+					:attachments="outputFiles(tc)"
+					:project-id="projectId"
+					:agent-id="agentId"
+				/>
 			</template>
 		</template>
 
@@ -442,6 +533,10 @@ function hasActiveToolCall(): boolean {
 	margin-top: var(--spacing--4xs);
 }
 
+.outputFiles {
+	margin: var(--spacing--4xs) 0 var(--spacing--2xs);
+}
+
 .childProgress {
 	display: flex;
 	flex-direction: column;
@@ -468,36 +563,9 @@ function hasActiveToolCall(): boolean {
 .toolDataList {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--4xs);
+	gap: var(--spacing--xs);
 	margin-bottom: var(--spacing--xs);
 	max-width: min(520px, calc(100vw - var(--spacing--4xl)));
-}
-
-.toolDataSection {
-	border: var(--border-width) var(--border-style) var(--border-color);
-	border-radius: var(--radius--xs);
-	background-color: var(--background--base);
-	padding: var(--spacing--2xs);
-	user-select: text;
-}
-
-.toolDataLabel {
-	display: block;
-	font-size: var(--font-size--2xs);
-	line-height: var(--line-height--sm);
-	color: var(--text-color--subtle);
-	margin-bottom: var(--spacing--5xs);
-}
-
-.toolDataContent {
-	margin: 0;
-	font-family: monospace;
-	font-size: var(--font-size--xs);
-	line-height: var(--line-height--sm);
-	color: var(--text-color);
-	white-space: pre-wrap;
-	overflow-wrap: anywhere;
-	user-select: text;
 }
 </style>
 

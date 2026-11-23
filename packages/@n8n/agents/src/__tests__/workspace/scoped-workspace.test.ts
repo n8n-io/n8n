@@ -98,3 +98,17 @@ describe('createScopedWorkspace ensureRootExists', () => {
 		expect(filesystem.writeFile).not.toHaveBeenCalled();
 	});
 });
+
+describe('createScopedWorkspace prewarm', () => {
+	it('forwards prewarm to the wrapped workspace', () => {
+		const prewarm = vi.fn();
+		const scoped = createScopedWorkspace(
+			new Workspace({ filesystem: mock<WorkspaceFilesystem>(), prewarm }),
+			root,
+		);
+
+		scoped.prewarm();
+
+		expect(prewarm).toHaveBeenCalledOnce();
+	});
+});

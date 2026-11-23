@@ -9,6 +9,7 @@ export type AuthFailureReason =
 	| 'invalid_token'
 	| 'token_not_found_in_db'
 	| 'user_not_found'
+	| 'user_disabled'
 	| 'user_id_not_in_auth_info'
 	| 'unknown_error'
 	| 'verifier_not_registered'

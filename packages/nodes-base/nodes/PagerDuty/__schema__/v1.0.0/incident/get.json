@@ -1,0 +1,310 @@
+{
+	"properties": {
+		"acknowledgements": {
+			"items": {},
+			"type": "array"
+		},
+		"alert_counts": {
+			"properties": {
+				"all": {
+					"type": "number"
+				},
+				"resolved": {
+					"type": "number"
+				},
+				"triggered": {
+					"type": "number"
+				}
+			},
+			"type": "object"
+		},
+		"alert_grouping": {},
+		"assigned_via": {
+			"type": "string"
+		},
+		"assignments": {
+			"items": {
+				"properties": {
+					"assignee": {
+						"properties": {
+							"html_url": {
+								"type": "string"
+							},
+							"id": {
+								"type": "string"
+							},
+							"self": {
+								"type": "string"
+							},
+							"summary": {
+								"type": "string"
+							},
+							"type": {
+								"type": "string"
+							}
+						},
+						"type": "object"
+					},
+					"at": {
+						"type": "string"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"basic_alert_grouping": {},
+		"created_at": {
+			"type": "string"
+		},
+		"description": {
+			"type": "string"
+		},
+		"escalation_policy": {
+			"properties": {
+				"html_url": {
+					"type": "string"
+				},
+				"id": {
+					"type": "string"
+				},
+				"self": {
+					"type": "string"
+				},
+				"summary": {
+					"type": "string"
+				},
+				"type": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"first_trigger_log_entry": {
+			"properties": {
+				"html_url": {
+					"type": "string"
+				},
+				"id": {
+					"type": "string"
+				},
+				"self": {
+					"type": "string"
+				},
+				"summary": {
+					"type": "string"
+				},
+				"type": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"html_url": {
+			"type": "string"
+		},
+		"id": {
+			"type": "string"
+		},
+		"impacted_services": {
+			"items": {
+				"properties": {
+					"html_url": {
+						"type": "string"
+					},
+					"id": {
+						"type": "string"
+					},
+					"self": {
+						"type": "string"
+					},
+					"summary": {
+						"type": "string"
+					},
+					"type": {
+						"type": "string"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"incident_key": {
+			"type": ["null", "string"]
+		},
+		"incident_number": {
+			"type": "number"
+		},
+		"incident_type": {
+			"properties": {
+				"name": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"incidents_responders": {
+			"items": {},
+			"type": "array"
+		},
+		"is_mergeable": {
+			"type": "boolean"
+		},
+		"last_status_change_at": {
+			"type": "string"
+		},
+		"last_status_change_by": {
+			"properties": {
+				"html_url": {
+					"type": "string"
+				},
+				"id": {
+					"type": "string"
+				},
+				"self": {
+					"type": "string"
+				},
+				"summary": {
+					"type": "string"
+				},
+				"type": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"pending_actions": {
+			"items": {
+				"properties": {
+					"at": {
+						"type": "string"
+					},
+					"type": {
+						"type": "string"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"priority": {
+			"properties": {
+				"account_id": {
+					"type": "string"
+				},
+				"color": {
+					"type": "string"
+				},
+				"created_at": {
+					"type": "string"
+				},
+				"description": {
+					"type": "string"
+				},
+				"html_url": {},
+				"id": {
+					"type": "string"
+				},
+				"name": {
+					"type": "string"
+				},
+				"order": {
+					"type": "number"
+				},
+				"schema_version": {
+					"type": "number"
+				},
+				"self": {
+					"type": "string"
+				},
+				"summary": {
+					"type": "string"
+				},
+				"type": {
+					"type": "string"
+				},
+				"updated_at": {
+					"type": "string"
+				}
+			},
+			"type": ["null", "object"]
+		},
+		"resolve_reason": {},
+		"resolved_at": {
+			"type": ["null", "string"]
+		},
+		"responder_requests": {
+			"items": {},
+			"type": "array"
+		},
+		"self": {
+			"type": "string"
+		},
+		"service": {
+			"properties": {
+				"html_url": {
+					"type": "string"
+				},
+				"id": {
+					"type": "string"
+				},
+				"self": {
+					"type": "string"
+				},
+				"summary": {
+					"type": "string"
+				},
+				"type": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"status": {
+			"type": "string"
+		},
+		"subscriber_requests": {
+			"items": {},
+			"type": "array"
+		},
+		"summary": {
+			"type": "string"
+		},
+		"teams": {
+			"items": {
+				"properties": {
+					"html_url": {
+						"type": "string"
+					},
+					"id": {
+						"type": "string"
+					},
+					"self": {
+						"type": "string"
+					},
+					"summary": {
+						"type": "string"
+					},
+					"type": {
+						"type": "string"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"title": {
+			"type": "string"
+		},
+		"type": {
+			"type": "string"
+		},
+		"updated_at": {
+			"type": "string"
+		},
+		"urgency": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

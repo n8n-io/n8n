@@ -48,8 +48,12 @@ export async function createPool(
 		connectionOptions.connectionLimit = options.connectionLimit as number;
 	}
 
-	if (options?.connectTimeout) {
-		connectionOptions.connectTimeout = options.connectTimeout as number;
+	const optionMs = Number(options?.connectionTimeout ?? 0) * 1000;
+	const connectTimeoutMs =
+		optionMs > 0 && Number.isFinite(optionMs) ? optionMs : credentials.connectTimeout;
+
+	if (connectTimeoutMs) {
+		connectionOptions.connectTimeout = connectTimeoutMs;
 	}
 
 	if (options?.largeNumbersOutput === 'text') {
@@ -66,7 +70,9 @@ export async function createPool(
 		if (credentials.sshAuthenticateWith === 'privateKey' && credentials.privateKey) {
 			credentials.privateKey = formatPemBlock(credentials.privateKey);
 		}
-		const sshClient = await this.helpers.getSSHClient(credentials);
+
+		const abortController = new AbortController();
+		const sshClient = await this.helpers.getSSHClient(credentials, abortController);
 
 		// Find a free TCP port
 		const localPort = await new Promise<number>((resolve) => {
@@ -85,9 +91,13 @@ export async function createPool(
 				credentials.port,
 				(err, clientChannel) => {
 					if (err) return reject(err);
+					clientChannel.on('close', () => abortController.abort());
 					resolve(clientChannel);
 				},
 			);
+		}).catch((error) => {
+			abortController.abort();
+			throw error;
 		});
 
 		return mysql2.createPool({

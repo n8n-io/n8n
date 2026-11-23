@@ -152,6 +152,18 @@ describe('N8nMenuItem', () => {
 	});
 
 	describe('compact prop', () => {
+		it('renders large icons when compact', () => {
+			const { html } = render(N8nMenuItem, {
+				props: {
+					item: createMenuItem({ icon: 'house' }),
+					compact: true,
+				},
+				global: { stubs: { ...stubs, N8nIcon: true } },
+			});
+
+			expect(html()).toContain('size="large"');
+		});
+
 		it('should apply compact class when compact is true', () => {
 			const { getByTestId } = render(N8nMenuItem, {
 				props: {

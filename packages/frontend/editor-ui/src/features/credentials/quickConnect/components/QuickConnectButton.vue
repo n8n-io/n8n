@@ -44,13 +44,14 @@ const buttonLabel = computed(() => {
 </script>
 
 <template>
-	<N8nTooltip :disabled="!disabled || !disabledTooltip" :offset="24">
+	<N8nTooltip as-child :disabled="!disabled || !disabledTooltip" :offset="24">
 		<template #content>{{ disabledTooltip }}</template>
 		<template #default>
 			<GoogleAuthButton
 				v-if="isGoogleOAuthType(credentialTypeName)"
 				v-bind="$attrs"
 				:disabled="disabled"
+				:focusable-when-disabled="!!disabledTooltip"
 				@click="$emit('click')"
 			/>
 			<N8nButton
@@ -60,6 +61,7 @@ const buttonLabel = computed(() => {
 				:size="size"
 				:class="$style.quickConnectButton"
 				:disabled="disabled"
+				:focusable-when-disabled="!!disabledTooltip"
 				@click="$emit('click')"
 			>
 				<CredentialIcon theme="light" :credential-type-name="credentialTypeName" :size="16" />

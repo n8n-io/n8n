@@ -26,13 +26,13 @@ pushes and does not open a review. This layer does not change the editor UI.
 ## Discovery
 
 Discovery uses a saved provider, not an environment. A client can pick a repository
-before it creates an environment. Both routes require the `gitConnection:discover`
+before it creates an environment. Both routes require the `promotions:discover`
 API-key grant and global user scope:
 
 - `GET /api/v1/promotions/providers/{promotionProviderId}/repositories`
 - `GET /api/v1/promotions/providers/{promotionProviderId}/repositories/{repositoryId}/branches`
 
-The `gitConnection:read` scope only grants access to saved configuration. It does
+The `promotions:read` scope only grants access to saved configuration. It does
 not grant discovery access. Existing API keys need an explicit discovery grant.
 
 Both routes accept `search`, `limit`, and an opaque `cursor`. The public query
@@ -67,8 +67,16 @@ before you use it as the `repositoryId` to list branches of a saved environment.
 
 Use the instance base URL and an opaque access token. Recommend a group access
 token for self-managed automation. A personal access token uses the same path.
-Grant `read_api` and `write_repository`. Protected branches can require the
+Grant `api` and `write_repository`. Protected branches can require the
 Maintainer role. API validation does not prove write permission on a repository.
+
+Merge requests need the `api` scope. A branched Promote opens one. Approve in
+n8n approves and merges it as the GitLab user of the token, at the head commit
+that the reviewer saw, and deletes the source branch. A group access token acts
+as its bot user, and a personal access token acts as its owner. That user needs
+permission to merge into the base branch. The same user also opened the merge
+request, so GitLab approval rules can block the merge. Do not require approvals
+on the repository.
 
 GitLab API authentication uses only the access token. Omit `auth.username` for a
 GitLab provider. The service ignores a supplied username and stores `n8n` for Git

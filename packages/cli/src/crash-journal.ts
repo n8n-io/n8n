@@ -29,13 +29,19 @@ const { n8nFolder } = Container.get(InstanceSettings);
  * directory is created if it is missing. Empty (default) keeps
  * `${N8N_USER_FOLDER}/crash.journal`.
  */
-const journalFile = process.env.N8N_CRASH_JOURNAL_PATH || join(n8nFolder, 'crash.journal');
+export const journalFile = process.env.N8N_CRASH_JOURNAL_PATH || join(n8nFolder, 'crash.journal');
+
+let lastSessionCrashed = false;
+
+/** Whether `init()` found the journal of a session that did not shut down cleanly. */
+export const didLastSessionCrash = () => lastSessionCrashed;
 
 export const init = async () => {
 	if (!inProduction || process.env.N8N_DEV_RELOAD === 'true') return;
 
 	if (existsSync(journalFile)) {
 		// Crash detected
+		lastSessionCrashed = true;
 		Container.get(Logger).error('Last session crashed');
 		// add a 10 seconds pause to slow down crash-looping
 		await sleep(10_000);

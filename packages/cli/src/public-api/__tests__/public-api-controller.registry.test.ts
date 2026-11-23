@@ -77,7 +77,7 @@ describe('PublicApiControllerRegistry', () => {
 		// mirrors the real strategies, which set `req.user` on success
 		authStrategyRegistry.authenticate.mockImplementation(async (req: AuthenticatedRequest) => {
 			req.user = authenticatedUser;
-			return true;
+			return { authenticated: true };
 		});
 		lastActiveAtService.updateLastActiveIfStale.mockResolvedValue(undefined);
 		Container.set(ControllerRegistryMetadata, new ControllerRegistryMetadata());
@@ -201,7 +201,7 @@ describe('PublicApiControllerRegistry', () => {
 
 	it('emits the Deprecation header even when authentication fails', async () => {
 		const since = new Date('2026-07-23T00:00:00Z');
-		authStrategyRegistry.authenticate.mockResolvedValue(false);
+		authStrategyRegistry.authenticate.mockResolvedValue({ authenticated: false, challenges: [] });
 
 		@Service()
 		class WidgetsPublicController {
@@ -219,6 +219,49 @@ describe('PublicApiControllerRegistry', () => {
 		expect(response.headers.deprecation).toBe(`@${Math.floor(since.getTime() / 1000)}`);
 	});
 
+	it('sets WWW-Authenticate on the 401 from the collected challenges, comma-separated', async () => {
+		@Service()
+		class WidgetsPublicController {
+			@Get('/')
+			@ApiResponse(200)
+			method() {
+				return { ok: true };
+			}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+		authStrategyRegistry.authenticate.mockResolvedValue({
+			authenticated: false,
+			challenges: ['Bearer resource_metadata="https://n8n.test/.well-known/x"', 'Basic'],
+		});
+
+		const response = await request(activate())
+			.get('/api/v1/widgets')
+			.expect(401, { message: 'Unauthorized' });
+
+		expect(response.headers['www-authenticate']).toBe(
+			'Bearer resource_metadata="https://n8n.test/.well-known/x", Basic',
+		);
+	});
+
+	it('sends the 401 without WWW-Authenticate when no strategy offered a challenge', async () => {
+		@Service()
+		class WidgetsPublicController {
+			@Get('/')
+			@ApiResponse(200)
+			method() {
+				return { ok: true };
+			}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+		authStrategyRegistry.authenticate.mockResolvedValue({ authenticated: false, challenges: [] });
+
+		const response = await request(activate())
+			.get('/api/v1/widgets')
+			.expect(401, { message: 'Unauthorized' });
+
+		expect(response.headers['www-authenticate']).toBeUndefined();
+	});
+
 	it('omits the Deprecation header when @Deprecated is absent', async () => {
 		@Service()
 		class WidgetsPublicController {
@@ -233,13 +276,9 @@ describe('PublicApiControllerRegistry', () => {
 		const response = await request(activate()).get('/api/v1/widgets').expect(200);
 
 		expect(response.headers.deprecation).toBeUndefined();
-		expect(eventService.emit).toHaveBeenCalledWith(
-			'public-api-invoked',
-			expect.objectContaining({ method: 'GET', path: '/widgets' }),
-		);
 	});
 
-	it('reports the version-less route path for a sub-path route', async () => {
+	it('emits public-api-invoked with the full event body for an authenticated call', async () => {
 		@Service()
 		class WidgetsPublicController {
 			@Get('/:widgetId')
@@ -250,12 +289,68 @@ describe('PublicApiControllerRegistry', () => {
 		}
 		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
 
-		await request(activate()).get('/api/v1/widgets/w-1').expect(200);
+		await request(activate())
+			.get('/api/v1/widgets/w-1')
+			.set({ 'x-n8n-client': 'editor-ui', 'user-agent': 'n8n-cli/1.0' })
+			.expect(200);
 
-		expect(eventService.emit).toHaveBeenCalledWith(
-			'public-api-invoked',
-			expect.objectContaining({ method: 'GET', path: '/widgets/w-1' }),
+		// wait for the event to be emitted, since it happens after the response is sent
+		await vi.waitFor(() =>
+			expect(eventService.emit).toHaveBeenCalledWith('public-api-invoked', {
+				userId: 'user-1',
+				route: 'GET /widgets/{widgetId}',
+				result: '2xx',
+				apiVersion: 'v1',
+				userAgent: 'n8n-cli/1.0',
+				client: 'editor_ui',
+			}),
 		);
+	});
+
+	it('names a route by its template, so two ids share one route name', async () => {
+		@Service()
+		class WidgetsPublicController {
+			@Get('/:widgetId')
+			@ApiResponse(200)
+			method() {
+				return { ok: true };
+			}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+		const app = activate();
+		await request(app).get('/api/v1/widgets/w-1').expect(200);
+		await request(app).get('/api/v1/widgets/w-2').expect(200);
+
+		const routeMatcher = expect.objectContaining({ route: 'GET /widgets/{widgetId}' });
+		await vi.waitFor(() =>
+			expect(
+				eventService.emit.mock.calls.filter(([event]) => event === 'public-api-invoked'),
+			).toEqual([
+				['public-api-invoked', routeMatcher],
+				['public-api-invoked', routeMatcher],
+			]),
+		);
+	});
+
+	it('does not emit public-api-invoked for a call that fails authentication', async () => {
+		authStrategyRegistry.authenticate.mockResolvedValue({ authenticated: false, challenges: [] });
+
+		@Service()
+		class WidgetsPublicController {
+			@Get('/')
+			@ApiResponse(200)
+			method() {
+				return { ok: true };
+			}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+		await request(activate()).get('/api/v1/widgets').expect(401);
+
+		expect(
+			eventService.emit.mock.calls.filter(([event]) => event === 'public-api-invoked'),
+		).toHaveLength(0);
 	});
 
 	describe('success response without a DTO', () => {
@@ -429,7 +524,7 @@ describe('PublicApiControllerRegistry', () => {
 		});
 
 		it('keeps 401 ahead of parameter validation for an unauthenticated caller', async () => {
-			authStrategyRegistry.authenticate.mockResolvedValue(false);
+			authStrategyRegistry.authenticate.mockResolvedValue({ authenticated: false, challenges: [] });
 			registerScopedRoute();
 
 			await request(activate()).get('/api/v1/widgets/abc').expect(401);
@@ -450,7 +545,7 @@ describe('PublicApiControllerRegistry', () => {
 		}
 
 		class PackageBodyDto extends Z.class(
-			{ package: publicApiUploadedFileSchema, workflowConflictPolicy: z.string() },
+			{ package: publicApiUploadedFileSchema, conflictPolicy: z.string() },
 			{ strict: true },
 		) {}
 
@@ -487,7 +582,7 @@ describe('PublicApiControllerRegistry', () => {
 					@Body({ mediaType: 'multipart/form-data', uploadLimits: () => ({}) })
 					body: PackageBodyDto,
 				) {
-					return { workflowConflictPolicy: body.workflowConflictPolicy, size: body.package.size };
+					return { conflictPolicy: body.conflictPolicy, size: body.package.size };
 				}
 			}
 			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
@@ -583,18 +678,18 @@ describe('PublicApiControllerRegistry', () => {
 			it('parses a multipart body, merging the uploaded file with text fields', async () => {
 				const response = await request(activate())
 					.post('/api/v1/widgets/upload')
-					.field('workflowConflictPolicy', 'new-version')
+					.field('conflictPolicy', 'new-version')
 					.attach('package', Buffer.from('hello'), 'export.n8np')
 					.expect(200);
 
-				expect(response.body).toEqual({ workflowConflictPolicy: 'new-version', size: 5 });
+				expect(response.body).toEqual({ conflictPolicy: 'new-version', size: 5 });
 			});
 
 			it('rejects a JSON body with 415 for a multipart-only route', async () => {
 				const response = await request(activate())
 					.post('/api/v1/widgets/upload')
 					.set('Content-Type', 'application/json')
-					.send({ workflowConflictPolicy: 'new-version' })
+					.send({ conflictPolicy: 'new-version' })
 					.expect(415);
 
 				expect(response.body.message).toBe('unsupported media type application/json');
@@ -603,7 +698,7 @@ describe('PublicApiControllerRegistry', () => {
 			it('rejects a request missing the required file with 400', async () => {
 				const response = await request(activate())
 					.post('/api/v1/widgets/upload')
-					.field('workflowConflictPolicy', 'new-version')
+					.field('conflictPolicy', 'new-version')
 					.expect(400);
 
 				expect(response.body.message).toBe("request/body must have required property 'package'");
@@ -612,7 +707,7 @@ describe('PublicApiControllerRegistry', () => {
 			it('rejects an unknown form field with 400', async () => {
 				const response = await request(activate())
 					.post('/api/v1/widgets/upload')
-					.field('workflowConflictPolicy', 'new-version')
+					.field('conflictPolicy', 'new-version')
 					.field('evil', 'x')
 					.attach('package', Buffer.from('hello'), 'export.n8np')
 					.expect(400);
@@ -630,7 +725,7 @@ describe('PublicApiControllerRegistry', () => {
 						_res: unknown,
 						@Body({ mediaType: 'multipart/form-data', uploadLimits }) body: PackageBodyDto,
 					) {
-						return { workflowConflictPolicy: body.workflowConflictPolicy, size: body.package.size };
+						return { conflictPolicy: body.conflictPolicy, size: body.package.size };
 					}
 				}
 				markPublicApiController(WidgetsUploadLimitedPublicController as Controller, '/widgets');
@@ -641,7 +736,7 @@ describe('PublicApiControllerRegistry', () => {
 
 				const response = await request(activate())
 					.post('/api/v1/widgets/upload-limited')
-					.field('workflowConflictPolicy', 'new-version')
+					.field('conflictPolicy', 'new-version')
 					.attach('package', Buffer.from('hello'), 'export.n8np')
 					.expect(413);
 
@@ -649,14 +744,17 @@ describe('PublicApiControllerRegistry', () => {
 			});
 
 			it('keeps 401 ahead of multipart parsing for an unauthenticated caller', async () => {
-				authStrategyRegistry.authenticate.mockResolvedValue(false);
+				authStrategyRegistry.authenticate.mockResolvedValue({
+					authenticated: false,
+					challenges: [],
+				});
 				registerUploadLimitedRoute(() => ({ fileSize: 2 }));
 
 				// The file is bigger than the configured limit; a 413 here would mean the body was
 				// parsed before authentication ran.
 				await request(activate())
 					.post('/api/v1/widgets/upload-limited')
-					.field('workflowConflictPolicy', 'new-version')
+					.field('conflictPolicy', 'new-version')
 					.attach('package', Buffer.from('hello'), 'export.n8np')
 					.expect(401);
 			});
@@ -665,7 +763,7 @@ describe('PublicApiControllerRegistry', () => {
 				authStrategyRegistry.authenticate.mockImplementation(async (req: AuthenticatedRequest) => {
 					req.user = authenticatedUser;
 					req.tokenGrant = { scopes: [], apiKeyScopes: [], subject: authenticatedUser };
-					return true;
+					return { authenticated: true };
 				});
 
 				@Service()
@@ -688,7 +786,7 @@ describe('PublicApiControllerRegistry', () => {
 				// scope check ran.
 				const response = await request(activate())
 					.post('/api/v1/widgets/upload-scoped')
-					.field('workflowConflictPolicy', 'new-version')
+					.field('conflictPolicy', 'new-version')
 					.attach('package', Buffer.from('hello'), 'export.n8np')
 					.expect(403);
 
@@ -721,12 +819,12 @@ describe('PublicApiControllerRegistry', () => {
 
 				await request(activate())
 					.post('/api/v1/widgets/upload-middleware')
-					.field('workflowConflictPolicy', 'new-version')
+					.field('conflictPolicy', 'new-version')
 					.attach('package', Buffer.from('hello'), 'export.n8np')
 					.expect(200);
 
 				expect(middlewareSaw).toHaveLength(1);
-				expect(middlewareSaw[0]).toMatchObject({ workflowConflictPolicy: 'new-version' });
+				expect(middlewareSaw[0]).toMatchObject({ conflictPolicy: 'new-version' });
 			});
 		});
 	});
@@ -810,7 +908,7 @@ describe('PublicApiControllerRegistry', () => {
 					apiKeyScopes: ['workflow:read'],
 					subject: authenticatedUser,
 				};
-				return true;
+				return { authenticated: true };
 			});
 
 			@Service()

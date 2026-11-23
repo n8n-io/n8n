@@ -1,5 +1,6 @@
 import { mock } from 'vitest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import {
 	createDatapoint,
@@ -51,11 +52,26 @@ describe('Beeminder Node Functions', () => {
 
 				expect(mockedGenericFunctions.beeminderApiRequest).toHaveBeenCalledWith(
 					'POST',
-					'/users/me/goals/testgoal/datapoints.json',
+					requestPath`/users/me/goals/testgoal/datapoints.json`,
 					data,
 					{},
 				);
 				expect(result).toBe(mockResponse);
+			});
+
+			it('should encode a goal name that contains a slash', async () => {
+				await createDatapoint.call(mockContext, { goalName: 'weight/archived', value: 1 });
+
+				expect(String(mockedGenericFunctions.beeminderApiRequest.mock.calls[0][1])).toBe(
+					'/users/me/goals/weight%2Farchived/datapoints.json',
+				);
+			});
+
+			it('should reject a goal name that is a dot segment', async () => {
+				await expect(
+					createDatapoint.call(mockContext, { goalName: '../x', value: 1 }),
+				).rejects.toThrow('Invalid identifier');
+				expect(mockedGenericFunctions.beeminderApiRequest).not.toHaveBeenCalled();
 			});
 
 			it('should create a datapoint with all optional parameters', async () => {
@@ -74,7 +90,7 @@ describe('Beeminder Node Functions', () => {
 
 				expect(mockedGenericFunctions.beeminderApiRequest).toHaveBeenCalledWith(
 					'POST',
-					'/users/me/goals/testgoal/datapoints.json',
+					requestPath`/users/me/goals/testgoal/datapoints.json`,
 					data,
 					{},
 				);
@@ -93,7 +109,7 @@ describe('Beeminder Node Functions', () => {
 
 				expect(mockedGenericFunctions.beeminderApiRequestAllItems).toHaveBeenCalledWith(
 					'GET',
-					'/users/me/goals/testgoal/datapoints.json',
+					requestPath`/users/me/goals/testgoal/datapoints.json`,
 					{},
 					data,
 				);
@@ -110,7 +126,7 @@ describe('Beeminder Node Functions', () => {
 
 				expect(mockedGenericFunctions.beeminderApiRequest).toHaveBeenCalledWith(
 					'GET',
-					'/users/me/goals/testgoal/datapoints.json',
+					requestPath`/users/me/goals/testgoal/datapoints.json`,
 					{},
 					data,
 				);
@@ -133,7 +149,7 @@ describe('Beeminder Node Functions', () => {
 
 				expect(mockedGenericFunctions.beeminderApiRequest).toHaveBeenCalledWith(
 					'GET',
-					'/users/me/goals/testgoal/datapoints.json',
+					requestPath`/users/me/goals/testgoal/datapoints.json`,
 					{},
 					data,
 				);
@@ -155,7 +171,7 @@ describe('Beeminder Node Functions', () => {
 
 				expect(mockedGenericFunctions.beeminderApiRequest).toHaveBeenCalledWith(
 					'PUT',
-					'/users/me/goals/testgoal/datapoints/123.json',
+					requestPath`/users/me/goals/testgoal/datapoints/123.json`,
 					data,
 					{},
 				);
@@ -178,7 +194,7 @@ describe('Beeminder Node Functions', () => {
 
 				expect(mockedGenericFunctions.beeminderApiRequest).toHaveBeenCalledWith(
 					'PUT',
-					'/users/me/goals/testgoal/datapoints/123.json',
+					requestPath`/users/me/goals/testgoal/datapoints/123.json`,
 					data,
 					{},
 				);
@@ -200,7 +216,7 @@ describe('Beeminder Node Functions', () => {
 
 				expect(mockedGenericFunctions.beeminderApiRequest).toHaveBeenCalledWith(
 					'DELETE',
-					'/users/me/goals/testgoal/datapoints/123.json',
+					requestPath`/users/me/goals/testgoal/datapoints/123.json`,
 				);
 				expect(result).toBe(mockResponse);
 			});
@@ -225,7 +241,7 @@ describe('Beeminder Node Functions', () => {
 
 				expect(mockedGenericFunctions.beeminderApiRequest).toHaveBeenCalledWith(
 					'POST',
-					'/users/me/goals/testgoal/datapoints/create_all.json',
+					requestPath`/users/me/goals/testgoal/datapoints/create_all.json`,
 					{ datapoints },
 					{},
 				);
@@ -247,7 +263,7 @@ describe('Beeminder Node Functions', () => {
 
 				expect(mockedGenericFunctions.beeminderApiRequest).toHaveBeenCalledWith(
 					'GET',
-					'/users/me/goals/testgoal/datapoints/123.json',
+					requestPath`/users/me/goals/testgoal/datapoints/123.json`,
 				);
 				expect(result).toBe(mockResponse);
 			});
@@ -266,7 +282,7 @@ describe('Beeminder Node Functions', () => {
 
 				expect(mockedGenericFunctions.beeminderApiRequest).toHaveBeenCalledWith(
 					'GET',
-					'/users/me/goals/testgoal.json',
+					requestPath`/users/me/goals/testgoal.json`,
 					{},
 					data,
 				);
@@ -287,7 +303,7 @@ describe('Beeminder Node Functions', () => {
 
 				expect(mockedGenericFunctions.beeminderApiRequest).toHaveBeenCalledWith(
 					'GET',
-					'/users/me/goals/testgoal.json',
+					requestPath`/users/me/goals/testgoal.json`,
 					{},
 					data,
 				);
@@ -304,7 +320,7 @@ describe('Beeminder Node Functions', () => {
 
 				expect(mockedGenericFunctions.beeminderApiRequest).toHaveBeenCalledWith(
 					'GET',
-					'/users/me/goals.json',
+					requestPath`/users/me/goals.json`,
 					{},
 					{},
 				);
@@ -321,7 +337,7 @@ describe('Beeminder Node Functions', () => {
 
 				expect(mockedGenericFunctions.beeminderApiRequest).toHaveBeenCalledWith(
 					'GET',
-					'/users/me/goals.json',
+					requestPath`/users/me/goals.json`,
 					{},
 					data,
 				);
@@ -338,7 +354,7 @@ describe('Beeminder Node Functions', () => {
 
 				expect(mockedGenericFunctions.beeminderApiRequest).toHaveBeenCalledWith(
 					'GET',
-					'/users/me/goals/archived.json',
+					requestPath`/users/me/goals/archived.json`,
 					{},
 					{},
 				);
@@ -355,7 +371,7 @@ describe('Beeminder Node Functions', () => {
 
 				expect(mockedGenericFunctions.beeminderApiRequest).toHaveBeenCalledWith(
 					'GET',
-					'/users/me/goals/archived.json',
+					requestPath`/users/me/goals/archived.json`,
 					{},
 					data,
 				);
@@ -379,7 +395,7 @@ describe('Beeminder Node Functions', () => {
 
 				expect(mockedGenericFunctions.beeminderApiRequest).toHaveBeenCalledWith(
 					'POST',
-					'/users/me/goals.json',
+					requestPath`/users/me/goals.json`,
 					data,
 					{},
 				);
@@ -410,7 +426,7 @@ describe('Beeminder Node Functions', () => {
 
 				expect(mockedGenericFunctions.beeminderApiRequest).toHaveBeenCalledWith(
 					'POST',
-					'/users/me/goals.json',
+					requestPath`/users/me/goals.json`,
 					data,
 					{},
 				);
@@ -432,7 +448,7 @@ describe('Beeminder Node Functions', () => {
 
 				expect(mockedGenericFunctions.beeminderApiRequest).toHaveBeenCalledWith(
 					'PUT',
-					'/users/me/goals/testgoal.json',
+					requestPath`/users/me/goals/testgoal.json`,
 					data,
 					{},
 				);
@@ -460,7 +476,7 @@ describe('Beeminder Node Functions', () => {
 
 				expect(mockedGenericFunctions.beeminderApiRequest).toHaveBeenCalledWith(
 					'PUT',
-					'/users/me/goals/testgoal.json',
+					requestPath`/users/me/goals/testgoal.json`,
 					data,
 					{},
 				);
@@ -479,7 +495,7 @@ describe('Beeminder Node Functions', () => {
 
 				expect(mockedGenericFunctions.beeminderApiRequest).toHaveBeenCalledWith(
 					'GET',
-					'/users/me/goals/testgoal/refresh_graph.json',
+					requestPath`/users/me/goals/testgoal/refresh_graph.json`,
 				);
 				expect(result).toBe(mockResponse);
 			});
@@ -496,7 +512,7 @@ describe('Beeminder Node Functions', () => {
 
 				expect(mockedGenericFunctions.beeminderApiRequest).toHaveBeenCalledWith(
 					'POST',
-					'/users/me/goals/testgoal/shortcircuit.json',
+					requestPath`/users/me/goals/testgoal/shortcircuit.json`,
 				);
 				expect(result).toBe(mockResponse);
 			});
@@ -513,7 +529,7 @@ describe('Beeminder Node Functions', () => {
 
 				expect(mockedGenericFunctions.beeminderApiRequest).toHaveBeenCalledWith(
 					'POST',
-					'/users/me/goals/testgoal/stepdown.json',
+					requestPath`/users/me/goals/testgoal/stepdown.json`,
 				);
 				expect(result).toBe(mockResponse);
 			});
@@ -530,7 +546,7 @@ describe('Beeminder Node Functions', () => {
 
 				expect(mockedGenericFunctions.beeminderApiRequest).toHaveBeenCalledWith(
 					'POST',
-					'/users/me/goals/testgoal/cancel_stepdown.json',
+					requestPath`/users/me/goals/testgoal/cancel_stepdown.json`,
 				);
 				expect(result).toBe(mockResponse);
 			});
@@ -549,7 +565,7 @@ describe('Beeminder Node Functions', () => {
 
 				expect(mockedGenericFunctions.beeminderApiRequest).toHaveBeenCalledWith(
 					'POST',
-					'/charges.json',
+					requestPath`/charges.json`,
 					{
 						user_id: 'me',
 						amount: 5,
@@ -573,7 +589,7 @@ describe('Beeminder Node Functions', () => {
 
 				expect(mockedGenericFunctions.beeminderApiRequest).toHaveBeenCalledWith(
 					'POST',
-					'/charges.json',
+					requestPath`/charges.json`,
 					{
 						user_id: 'me',
 						amount: 10,
@@ -599,7 +615,7 @@ describe('Beeminder Node Functions', () => {
 
 				expect(mockedGenericFunctions.beeminderApiRequest).toHaveBeenCalledWith(
 					'POST',
-					'/charges.json',
+					requestPath`/charges.json`,
 					{
 						user_id: 'me',
 						amount: 5,
@@ -621,7 +637,7 @@ describe('Beeminder Node Functions', () => {
 
 				expect(mockedGenericFunctions.beeminderApiRequest).toHaveBeenCalledWith(
 					'POST',
-					'/users/me/goals/testgoal/uncleme.json',
+					requestPath`/users/me/goals/testgoal/uncleme.json`,
 				);
 				expect(result).toBe(mockResponse);
 			});
@@ -646,7 +662,7 @@ describe('Beeminder Node Functions', () => {
 
 				expect(mockedGenericFunctions.beeminderApiRequest).toHaveBeenCalledWith(
 					'GET',
-					'/users/me.json',
+					requestPath`/users/me.json`,
 					{},
 					data,
 				);

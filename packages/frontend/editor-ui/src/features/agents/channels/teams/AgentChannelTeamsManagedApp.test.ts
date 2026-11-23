@@ -38,6 +38,7 @@ const buildRuntime = (overrides: Partial<TeamsChannelRuntime> = {}): TeamsChanne
 			adminConsentUrl: null,
 		}),
 		setupKind: ref('managed'),
+		nextSetupKind: ref(null),
 		managerCredentialId: ref('manager-1'),
 		loading: computed(() => false),
 		load: vi.fn(),

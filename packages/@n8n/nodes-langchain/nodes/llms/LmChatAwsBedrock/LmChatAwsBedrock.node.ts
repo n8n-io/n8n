@@ -4,18 +4,19 @@ import {
 	makeN8nLlmFailedAttemptHandler,
 	N8nLlmTracing,
 	getConnectionHintNoticeField,
+	usageMetadataTokensUsageParser,
 } from '@n8n/ai-utilities';
 import type { DocumentType } from '@smithy/types';
 import { awsNodeAuthOptions, awsNodeCredentials } from 'n8n-nodes-base/dist/nodes/Aws/utils';
 import {
 	jsonParse,
 	NodeConnectionTypes,
-	UserError,
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { createBedrockRuntimeClient } from '@utils/aws/createBedrockRuntimeClient';
 import { resolveAwsCredentials } from '@utils/aws/resolveAwsCredentials';
@@ -366,12 +367,13 @@ export class LmChatAwsBedrock implements INodeType {
 
 		const region = resolveBedrockRegion(modelName, credentialRegion);
 
-		const client = createBedrockRuntimeClient({
+		const client = await createBedrockRuntimeClient({
 			region,
 			credentials,
 			bedrockRuntimeEndpoint,
 			maxRetries: options.maxRetries,
 			timeout: options.timeout,
+			egressFilter: this.helpers.getSecureEgressFilter(),
 		});
 
 		// Forward only user-set options; unset ones are omitted so model defaults are preserved.
@@ -379,7 +381,7 @@ export class LmChatAwsBedrock implements INodeType {
 			client,
 			model: modelName,
 			region,
-			callbacks: [new N8nLlmTracing(this)],
+			callbacks: [new N8nLlmTracing(this, { tokensUsageParser: usageMetadataTokensUsageParser })],
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
 		};
 

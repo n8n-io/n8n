@@ -1,10 +1,12 @@
 import userEvent from '@testing-library/user-event';
 import { render, waitFor } from '@testing-library/vue';
+import { useZIndex } from 'element-plus';
 
 // eslint-disable-next-line import-x/no-duplicates -- ?raw imports the source as a string
 import Tooltip from './Tooltip.vue';
 // eslint-disable-next-line import-x/no-duplicates -- ?raw imports the source as a string
 import tooltipSource from './Tooltip.vue?raw';
+import N8nButton from '../N8nButton/Button.vue';
 
 /**
  * Get tooltip content element from the DOM.
@@ -35,6 +37,64 @@ function hoverTooltipTrigger(element: Element) {
 }
 
 describe('components/N8nTooltip', () => {
+	describe('disabled button explanations', () => {
+		const reason = 'Add a credential before you run this workflow';
+		const renderExplainedButton = () =>
+			render({
+				components: { Tooltip, N8nButton },
+				setup: () => ({ reason }),
+				template: `
+					<Tooltip as-child :content="reason">
+						<N8nButton disabled focusable-when-disabled aria-describedby="disabled-reason">
+							Run workflow
+						</N8nButton>
+					</Tooltip>
+					<p id="disabled-reason">{{ reason }}</p>
+				`,
+			});
+
+		it('shows the explanation on keyboard focus and dismisses it with Escape', async () => {
+			const user = userEvent.setup();
+			const { getByRole, queryByRole } = renderExplainedButton();
+			const button = getByRole('button', { name: 'Run workflow' });
+
+			expect(button).toHaveAttribute('aria-disabled', 'true');
+			expect(button).toHaveAccessibleDescription(reason);
+			expect(queryByRole('tooltip')).not.toBeInTheDocument();
+			await user.tab();
+			expect(button).toHaveFocus();
+			expect(await getTooltip()).toHaveTextContent(reason);
+			expect(button).toHaveAccessibleDescription(reason);
+
+			await user.keyboard('{Escape}');
+			await waitFor(() => expect(queryByRole('tooltip')).not.toBeInTheDocument());
+			expect(button).toHaveFocus();
+			expect(button).toHaveAccessibleDescription(reason);
+		});
+
+		it('shows the explanation on hover and dismisses it with Escape', async () => {
+			const user = userEvent.setup();
+			const { getByRole, queryByRole } = renderExplainedButton();
+			hoverTooltipTrigger(getByRole('button', { name: 'Run workflow' }));
+
+			expect(await getTooltip()).toHaveTextContent(reason);
+			await user.keyboard('{Escape}');
+			await waitFor(() => expect(queryByRole('tooltip')).not.toBeInTheDocument());
+		});
+
+		it('keeps the linked explanation visible for touch users without opening a tooltip', async () => {
+			const user = userEvent.setup();
+			const { getByRole, getByText, queryByRole } = renderExplainedButton();
+			const button = getByRole('button', { name: 'Run workflow' });
+
+			await user.pointer([{ keys: '[TouchA>]', target: button }, { keys: '[/TouchA]' }]);
+
+			expect(queryByRole('tooltip')).not.toBeInTheDocument();
+			expect(getByText(reason)).toBeVisible();
+			expect(button).toHaveAccessibleDescription(reason);
+		});
+	});
+
 	describe('rendering', () => {
 		it('should render trigger element', () => {
 			const wrapper = render(Tooltip, {
@@ -287,6 +347,50 @@ describe('components/N8nTooltip', () => {
 
 			const tooltipContent = await getTooltip();
 			expect(container).toContainElement(tooltipContent);
+		});
+	});
+
+	describe('stacking order', () => {
+		it('should open a hovered tooltip above a menu opened after mount', async () => {
+			const { nextZIndex } = useZIndex();
+			const wrapper = render(Tooltip, {
+				props: { content: 'Test tooltip' },
+				slots: { default: '<button>Hover me</button>' },
+			});
+			const menuZIndex = nextZIndex();
+
+			hoverTooltipTrigger(wrapper.getByText('Hover me'));
+
+			const tooltip = await getTooltip();
+			expect(Number(tooltip.style.getPropertyValue('--tooltip--z'))).toBeGreaterThan(menuZIndex);
+		});
+
+		it('should open a visible tooltip above existing menus', async () => {
+			const { nextZIndex } = useZIndex();
+			const menuZIndex = nextZIndex();
+			render(Tooltip, {
+				props: { content: 'Test tooltip', visible: true },
+				slots: { default: '<button>Hover me</button>' },
+			});
+
+			const tooltip = await getTooltip();
+			expect(Number(tooltip.style.getPropertyValue('--tooltip--z'))).toBeGreaterThan(menuZIndex);
+		});
+
+		it('should update the stacking order each time the tooltip opens', async () => {
+			const { nextZIndex } = useZIndex();
+			const wrapper = render(Tooltip, {
+				props: { content: 'Test tooltip', visible: false },
+				slots: { default: '<button>Hover me</button>' },
+			});
+
+			for (let openCount = 0; openCount < 2; openCount++) {
+				const menuZIndex = nextZIndex();
+				await wrapper.rerender({ visible: true });
+				const tooltip = await getTooltip();
+				expect(Number(tooltip.style.getPropertyValue('--tooltip--z'))).toBeGreaterThan(menuZIndex);
+				await wrapper.rerender({ visible: false });
+			}
 		});
 	});
 

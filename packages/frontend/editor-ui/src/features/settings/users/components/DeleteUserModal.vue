@@ -1,17 +1,28 @@
 <script lang="ts" setup>
 import { ref, computed } from 'vue';
 import { useToast } from '@n8n/composables/useToast';
-import Modal from '@/app/components/Modal.vue';
 import ProjectSharing from '@/features/collaboration/projects/components/ProjectSharing.vue';
 import { useUsersStore } from '@n8n/stores/users.store';
-import { createEventBus } from '@n8n/utils/event-bus';
+import { useUIStore } from '@/app/stores/ui.store';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
 import { useRemoteProjectSearch } from '@/features/collaboration/projects/projects.utils';
 import { useI18n } from '@n8n/i18n';
 
-import { ElRadio } from 'element-plus';
-import { N8nButton, N8nInput, N8nInputLabel, N8nText } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nDialog,
+	N8nDialogBody,
+	N8nDialogFooter,
+	N8nInput,
+	N8nInputLabel,
+	N8nRadioGroup,
+	N8nRadioGroupItem,
+	N8nText,
+} from '@n8n/design-system';
+
+defineOptions({ inheritAttrs: false });
+
 const props = defineProps<{
 	modalName: string;
 	data: {
@@ -20,7 +31,8 @@ const props = defineProps<{
 	};
 }>();
 
-const modalBus = createEventBus();
+const uiStore = useUIStore();
+const modalOpen = computed(() => uiStore.modalsById[props.modalName]?.open === true);
 const loading = ref(false);
 const operation = ref('');
 const deleteConfirmText = ref('');
@@ -69,7 +81,7 @@ const filterFn = (project: ProjectListItem) =>
 const { showMessage, showError } = useToast();
 
 async function onSubmit() {
-	if (!enabled.value) {
+	if (loading.value || !enabled.value) {
 		return;
 	}
 
@@ -97,26 +109,27 @@ async function onSubmit() {
 		});
 
 		await props.data.afterDelete?.();
-		modalBus.emit('close');
+		closeDialog();
 	} catch (error) {
 		showError(error, i18n.baseText('settings.users.userDeletedError'));
 	} finally {
 		loading.value = false;
 	}
 }
+
+async function closeDialog() {
+	uiStore.closeModal(props.modalName);
+}
+
+function onDialogOpenUpdate(open: boolean) {
+	if (!open) void closeDialog();
+}
 </script>
 
 <template>
-	<Modal
-		:name="modalName"
-		:title="title"
-		:center="true"
-		width="520"
-		:event-bus="modalBus"
-		@enter="onSubmit"
-	>
-		<template #content>
-			<div>
+	<N8nDialog :open="modalOpen" size="medium" :header="title" @update:open="onDialogOpenUpdate">
+		<N8nDialogBody>
+			<form id="delete-user-form" data-test-id="delete-user-modal" @submit.prevent="onSubmit">
 				<div v-if="isPending">
 					<N8nText color="text-base">{{
 						i18n.baseText('settings.users.confirmUserDeletion')
@@ -128,66 +141,68 @@ async function onSubmit() {
 							i18n.baseText('settings.users.confirmDataHandlingAfterDeletion')
 						}}</N8nText>
 					</div>
-					<ElRadio
-						v-model="operation"
-						label="transfer"
-						@update:model-value="operation = 'transfer'"
-					>
-						<N8nText color="text-dark">{{
-							i18n.baseText('settings.users.transferWorkflowsAndCredentials')
-						}}</N8nText>
-					</ElRadio>
-					<div v-if="operation === 'transfer'" :class="$style.optionInput">
-						<N8nText color="text-dark">{{
-							i18n.baseText('settings.users.transferWorkflowsAndCredentials.user')
-						}}</N8nText>
-						<ProjectSharing
-							v-model="selectedProject"
-							class="pt-2xs"
-							:search-fn="searchFn"
-							:filter-fn="filterFn"
-							:placeholder="
-								i18n.baseText('settings.users.transferWorkflowsAndCredentials.placeholder')
-							"
-						/>
-					</div>
-					<ElRadio v-model="operation" label="delete" @update:model-value="operation = 'delete'">
-						<N8nText color="text-dark">{{
-							i18n.baseText('settings.users.deleteWorkflowsAndCredentials')
-						}}</N8nText>
-					</ElRadio>
-					<div
-						v-if="operation === 'delete'"
-						:class="$style.optionInput"
-						data-test-id="delete-data-input"
-					>
-						<N8nInputLabel :label="i18n.baseText('settings.users.deleteConfirmationMessage')">
-							<N8nInput
-								v-model="deleteConfirmText"
-								:placeholder="i18n.baseText('settings.users.deleteConfirmationText')"
-							/>
-						</N8nInputLabel>
-					</div>
+					<N8nRadioGroup v-model="operation">
+						<N8nRadioGroupItem value="transfer">
+							<template #label>
+								<N8nText color="text-dark">{{
+									i18n.baseText('settings.users.transferWorkflowsAndCredentials')
+								}}</N8nText>
+							</template>
+							<template #content>
+								<div v-if="operation === 'transfer'" class="pt-2xs">
+									<N8nText color="text-dark">{{
+										i18n.baseText('settings.users.transferWorkflowsAndCredentials.user')
+									}}</N8nText>
+									<ProjectSharing
+										v-model="selectedProject"
+										class="pt-2xs"
+										:search-fn="searchFn"
+										:filter-fn="filterFn"
+										:placeholder="
+											i18n.baseText('settings.users.transferWorkflowsAndCredentials.placeholder')
+										"
+									/>
+								</div>
+							</template>
+						</N8nRadioGroupItem>
+						<N8nRadioGroupItem value="delete">
+							<template #label>
+								<N8nText color="text-dark">{{
+									i18n.baseText('settings.users.deleteWorkflowsAndCredentials')
+								}}</N8nText>
+							</template>
+							<template #content>
+								<div v-if="operation === 'delete'" class="pt-2xs" data-test-id="delete-data-input">
+									<N8nInputLabel :label="i18n.baseText('settings.users.deleteConfirmationMessage')">
+										<N8nInput
+											v-model="deleteConfirmText"
+											:placeholder="i18n.baseText('settings.users.deleteConfirmationText')"
+										/>
+									</N8nInputLabel>
+								</div>
+							</template>
+						</N8nRadioGroupItem>
+					</N8nRadioGroup>
 				</div>
-			</div>
-		</template>
-		<template #footer>
+			</form>
+		</N8nDialogBody>
+		<N8nDialogFooter>
 			<N8nButton
+				type="submit"
+				form="delete-user-form"
+				variant="destructive"
 				:loading="loading"
 				:disabled="!enabled"
 				:label="i18n.baseText('settings.users.delete')"
-				float="right"
 				data-test-id="confirm-delete-user-button"
-				@click="onSubmit"
 			/>
-		</template>
-	</Modal>
+		</N8nDialogFooter>
+	</N8nDialog>
 </template>
 
 <style lang="scss" module>
 .content {
-	padding-bottom: var(--spacing--2xs);
-	> * {
+	> *:not(:last-child) {
 		margin-bottom: var(--spacing--sm);
 	}
 }
@@ -196,9 +211,5 @@ async function onSubmit() {
 	> * {
 		margin-bottom: var(--spacing--2xs);
 	}
-}
-
-.optionInput {
-	padding-left: var(--spacing--lg);
 }
 </style>

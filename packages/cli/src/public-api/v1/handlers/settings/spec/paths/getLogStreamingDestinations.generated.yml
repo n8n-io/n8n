@@ -2,7 +2,10 @@ operationId: getLogStreamingDestinations
 tags:
   - LogStreaming
 summary: List log streaming destinations
-description: List the configured log streaming destinations. Requires the `eventBusDestination:list` scope and the Log Streaming feature to be licensed.
+description: |-
+  List the configured log streaming destinations. Requires the Log Streaming feature to be licensed.
+
+  Requires the `eventBusDestination:list` API key scope.
 x-required-scope: eventBusDestination:list
 responses:
   '200':
@@ -378,3 +381,5 @@ responses:
     $ref: ../../../../shared/spec/responses/unauthorized.yml
   '403':
     $ref: ../../../../shared/spec/responses/forbidden.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml

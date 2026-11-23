@@ -28,6 +28,7 @@ const {
 		homeProject: { id: 'home-project' },
 		parentFolder: null as { id: string } | null,
 		getNodeById: vi.fn(),
+		getNodesByIds: vi.fn().mockReturnValue([]),
 		getNodeByName: vi.fn(),
 		getParentNodes: vi.fn().mockReturnValue([]),
 		getChildNodes: vi.fn().mockReturnValue([]),
@@ -39,6 +40,7 @@ const {
 	},
 	mockNodeTypesStore: {
 		isNodeTypeUnavailable: vi.fn(),
+		isNodeDeprecated: vi.fn(),
 		getNodeType: vi.fn().mockReturnValue({
 			displayName: 'Set',
 			name: 'n8n-nodes-base.set',
@@ -149,6 +151,9 @@ function setWorkflowNodes(nodes: INodeUi[]) {
 	const nodesByName = new Map(nodes.map((node) => [node.name, node]));
 
 	mockWorkflowDocumentStore.getNodeById.mockImplementation((id: string) => nodesById.get(id));
+	mockWorkflowDocumentStore.getNodesByIds.mockImplementation((ids: string[]) =>
+		ids.flatMap((id) => nodesById.get(id) ?? []),
+	);
 	mockWorkflowDocumentStore.getNodeByName.mockImplementation(
 		(name: string) => nodesByName.get(name) ?? null,
 	);
@@ -189,6 +194,7 @@ describe('useWorkflowExtraction', () => {
 		mockWorkflowDocumentStore.deleteGroup.mockReset();
 		mockNodeTypesStore.getNodeType.mockClear();
 		mockNodeTypesStore.isNodeTypeUnavailable.mockReset().mockReturnValue(false);
+		mockNodeTypesStore.isNodeDeprecated.mockReset().mockReturnValue(false);
 		mockHistoryStore.startRecordingUndo.mockClear();
 		mockHistoryStore.stopRecordingUndo.mockClear();
 		mockHistoryStore.pushCommandToUndo.mockClear();
@@ -218,6 +224,17 @@ describe('useWorkflowExtraction', () => {
 				expect(mockUIStore.openModalWithData).not.toHaveBeenCalled();
 			},
 		);
+
+		it('does not start extraction when the selection has a deprecated node', () => {
+			const nodeA = makeNode('A');
+			setWorkflowNodes([nodeA]);
+			mockNodeTypesStore.isNodeDeprecated.mockReturnValue(true);
+
+			const { extractWorkflow } = useWorkflowExtraction();
+			extractWorkflow([nodeA.id]);
+
+			expect(mockUIStore.openModalWithData).not.toHaveBeenCalled();
+		});
 
 		it('includes attached sub-nodes when starting extraction', () => {
 			const nodeA = makeNode('A', [0, 0]);

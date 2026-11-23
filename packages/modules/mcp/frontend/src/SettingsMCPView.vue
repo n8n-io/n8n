@@ -3,20 +3,23 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
-import { ElSwitch } from 'element-plus';
 import type { OAuthClientResponseDto } from '@n8n/api-types';
 import {
 	N8nButton,
 	N8nDialog,
+	N8nDialogBody,
 	N8nDialogClose,
+	N8nDialogDescription,
 	N8nDialogFooter,
 	N8nNotice,
 	N8nSettingsLayout,
+	N8nSettingsEnableRow,
 	N8nSettingsPageHeader,
 	N8nSettingsRow,
 	N8nSettingsRowConfigure,
 	N8nSettingsRowGroup,
 	N8nSettingsSection,
+	N8nSwitch,
 } from '@n8n/design-system';
 
 import { useDocumentTitle } from '@n8n/composables/useDocumentTitle';
@@ -73,6 +76,22 @@ const exposedWorkflowsCount = ref<number | null>(null);
 const autoExposeSaving = ref(false);
 const showCallbackUrlsDialog = ref(false);
 const savingCallbackUrls = ref(false);
+
+const preferencesSaving = ref(false);
+const globalPreferencesEnabled = computed(
+	() => settingsStore.settings.aiPreferences?.enabled === true,
+);
+
+const onTogglePreferences = async (enabled: boolean) => {
+	preferencesSaving.value = true;
+	try {
+		await mcpStore.setPreferencesEnabled(enabled);
+	} catch (error) {
+		toast.showError(error, i18n.baseText('settings.mcp.preferences.error.title'));
+	} finally {
+		preferencesSaving.value = false;
+	}
+};
 
 const onAutoExposeSwitchUpdate = (value: string | number | boolean) => {
 	void onToggleAutoExpose(value === true);
@@ -388,11 +407,11 @@ onBeforeUnmount(() => {
 						:description="i18n.baseText('settings.mcp.autoExpose.description')"
 					>
 						<template #action>
-							<ElSwitch
+							<N8nSwitch
 								data-test-id="mcp-auto-expose-toggle"
+								size="large"
 								:model-value="mcpStore.autoExposeNewWorkflows"
-								:disabled="mcpStore.mcpManagedByEnv"
-								:loading="autoExposeSaving"
+								:disabled="mcpStore.mcpManagedByEnv || autoExposeSaving"
 								@update:model-value="onAutoExposeSwitchUpdate"
 							/>
 						</template>
@@ -423,6 +442,24 @@ onBeforeUnmount(() => {
 							<N8nSettingsRowConfigure :value="callbackUrlsValue" />
 						</template>
 					</N8nSettingsRow>
+				</N8nSettingsRowGroup>
+			</N8nSettingsSection>
+
+			<N8nSettingsSection
+				v-if="canManageMcpInstance"
+				:title="i18n.baseText('settings.mcp.context.title')"
+				data-test-id="mcp-context-section"
+			>
+				<N8nSettingsRowGroup>
+					<N8nSettingsEnableRow
+						:title="i18n.baseText('settings.mcp.preferences.title')"
+						:description="i18n.baseText('settings.mcp.preferences.description')"
+						:enabled="mcpStore.preferencesEnabled && globalPreferencesEnabled"
+						:disabled="!canToggleMCP || preferencesSaving || !globalPreferencesEnabled"
+						:show-enterprise-readiness-badge="settingsStore.isEnterprisePlan"
+						switch-test-id="mcp-preferences-toggle"
+						@update:enabled="onTogglePreferences"
+					/>
 				</N8nSettingsRowGroup>
 			</N8nSettingsSection>
 
@@ -466,9 +503,13 @@ onBeforeUnmount(() => {
 			v-model:open="showDisableDialog"
 			size="small"
 			:header="i18n.baseText('settings.mcp.status.disableDialog.title')"
-			:description="i18n.baseText('settings.mcp.status.disableDialog.description')"
 			data-test-id="mcp-disable-dialog"
 		>
+			<N8nDialogBody>
+				<N8nDialogDescription>
+					{{ i18n.baseText('settings.mcp.status.disableDialog.description') }}
+				</N8nDialogDescription>
+			</N8nDialogBody>
 			<N8nDialogFooter>
 				<N8nDialogClose as-child>
 					<N8nButton variant="outline" :label="i18n.baseText('generic.cancel')" />

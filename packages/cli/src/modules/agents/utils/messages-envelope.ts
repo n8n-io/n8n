@@ -164,3 +164,30 @@ export function withOpenSuspensions(
 
 	return { messages: merged, openSuspensions };
 }
+
+/** The checkpoint if it belongs to the memory resource of the user, otherwise null. */
+export function ownCheckpoint(
+	checkpoint: SerializableAgentState | null,
+	resourceId: string,
+): SerializableAgentState | null {
+	return checkpoint?.persistence?.resourceId === resourceId ? checkpoint : null;
+}
+
+/**
+ * The messages response of a thread. The history already holds the turns,
+ * so inactive checkpoint messages stay out. A thread without history shows
+ * only its open suspensions.
+ */
+export function threadMessagesResponse(
+	history: Pick<AgentChatMessagesResponse, 'messages' | 'activeExecutionId' | 'nextCursor'> | null,
+	checkpoint: SerializableAgentState | null,
+): AgentChatMessagesResponse {
+	if (!history) return { ...withOpenSuspensions([], checkpoint), activeExecutionId: null };
+	return {
+		...withOpenSuspensions(history.messages, checkpoint, {
+			appendInactiveCheckpointMessages: false,
+		}),
+		activeExecutionId: history.activeExecutionId,
+		...(history.nextCursor !== undefined ? { nextCursor: history.nextCursor } : {}),
+	};
+}

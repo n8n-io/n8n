@@ -4,7 +4,7 @@ import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import fs from 'fs';
 import { Credentials } from 'n8n-core';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import path from 'path';
 import z from 'zod';
 

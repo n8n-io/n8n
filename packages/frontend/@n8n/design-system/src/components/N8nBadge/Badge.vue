@@ -59,6 +59,7 @@ const effectiveTextSize = computed(function getEffectiveTextSize() {
 		/>
 		<slot name="leading" />
 		<N8nText
+			v-if="$slots.default"
 			:class="[$style.label, { [$style.hasIcon]: props.leadingIcon || props.trailingIcon }]"
 			:step="effectiveTextSize"
 			bold
@@ -98,7 +99,7 @@ const effectiveTextSize = computed(function getEffectiveTextSize() {
 
 	border-radius: var(--n8n-badge--radius);
 	gap: var(--n8n-badge--gap);
-	background-color: var(--n8n-badge--background);
+	background: var(--n8n-badge--background);
 	border: 1px solid var(--n8n-badge--border-color);
 	height: var(--n8n-badge--height);
 	padding-inline: var(--n8n-badge--padding-inline-start) var(--n8n-badge--padding-inline-end);
@@ -178,7 +179,8 @@ const effectiveTextSize = computed(function getEffectiveTextSize() {
 
 .primary {
 	--n8n-badge--background: var(--background--brand);
-	--n8n-badge--text-color: var(--color--neutral-white);
+	--n8n-badge--text-color: var(--color--neutral-black);
+	box-shadow: var(--shadow--xs);
 }
 
 .secondary {
@@ -237,5 +239,11 @@ const effectiveTextSize = computed(function getEffectiveTextSize() {
 
 .label + .trailingIcon {
 	margin-inline-start: calc(var(--n8n-badge--padding-inline-start) * 0.2);
+}
+
+/* At small sizes the capitals sit above the middle of the icon. A label without an icon stays put. */
+.xxsmall .hasIcon,
+.xsmall .hasIcon {
+	transform: translateY(1px);
 }
 </style>

@@ -94,6 +94,7 @@ erDiagram
   integer id
   integer intervalSeconds
   varchar_16_ kind
+  timestamp_3__with_time_zone lastDispatchedAt
   timestamp_3__with_time_zone lastFiredAt
   integer maxAttempts
   integer misfireGraceSeconds
@@ -102,7 +103,7 @@ erDiagram
   timestamp_3__with_time_zone nextRunAt
   timestamp_3__with_time_zone orphanedAt
   varchar_255_ ownerId
-  varchar_36_ ownerMemberId
+  varchar_64_ ownerMemberId
   varchar_32_ ownerType
   json payload
   integer recurrenceSize

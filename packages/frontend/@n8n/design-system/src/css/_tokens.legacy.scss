@@ -69,9 +69,10 @@
 	--color--danger--tint-4: var(--color-danger-tint-2, var(--color--red-50));
 
 	// Text
-	--color--text--shade-1: var(--color-text-dark, var(--color--neutral-900));
-	--color--text: var(--color-text-base, var(--color--neutral-700));
-	--color--text--tint-1: var(--color-text-light, var(--color--neutral-500));
+	--color--text--shade-1: var(--color-text-dark, var(--text-color));
+	--color--text: var(--color-text-base, var(--text-color--subtle));
+	--color--text--tint-1: var(--color-text-light, var(--text-color--subtler));
+	// TODO: Migrate non-text uses of this token before changing its default colour.
 	--color--text--tint-2: var(--color-text-lighter, var(--color--neutral-200));
 	--color--text--tint-3: var(--color-text-xlight, var(--color--neutral-white));
 	--color--text--danger: var(--color-text-danger, var(--color--red-600));

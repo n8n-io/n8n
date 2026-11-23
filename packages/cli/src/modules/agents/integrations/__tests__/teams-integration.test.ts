@@ -1,10 +1,9 @@
 import type { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { ConflictError } from '@n8n/errors';
+import { ConflictError, UserError } from '@n8n/errors';
 
 import type { ProjectAgent } from '../../entities/agent.entity';
 import type { AgentRepository } from '../../repositories/agent.repository';
@@ -69,10 +68,10 @@ describe('TeamsIntegration', () => {
 	});
 
 	describe('platform capabilities', () => {
-		it('reuses the Entra credential, stays hidden, streams per thread, and targets its cards', () => {
+		it('reuses the Entra credential, is listed, streams per thread, and targets its cards', () => {
 			expect(integration).toMatchObject({
 				credentialTypes: ['microsoftEntraServicePrincipalApi'],
-				internal: true,
+				internal: false,
 				// Streaming is decided for each conversation instead, because Teams
 				// only supports it in 1:1 chats.
 				disableStreaming: false,

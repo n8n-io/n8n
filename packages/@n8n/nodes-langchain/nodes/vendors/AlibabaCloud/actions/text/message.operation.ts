@@ -5,7 +5,12 @@ import type {
 	IExecuteFunctions,
 	INodeExecutionData,
 } from 'n8n-workflow';
-import { accumulateTokenUsage, NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
+import {
+	accumulateTokenUsage,
+	NodeOperationError,
+	requestPath,
+	updateDisplayOptions,
+} from 'n8n-workflow';
 import zodToJsonSchema from 'zod-to-json-schema';
 
 import { getConnectedTools } from '@utils/helpers';
@@ -346,8 +351,8 @@ export async function execute(
 	}
 
 	const endpoint = isMultimodal
-		? '/api/v1/services/aigc/multimodal-generation/generation'
-		: '/api/v1/services/aigc/text-generation/generation';
+		? requestPath`/api/v1/services/aigc/multimodal-generation/generation`
+		: requestPath`/api/v1/services/aigc/text-generation/generation`;
 
 	let response = await apiRequest.call(this, 'POST', endpoint, { body });
 

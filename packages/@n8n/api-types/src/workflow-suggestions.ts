@@ -33,8 +33,6 @@ export type WorkflowSuggestionActivity = {
 	createdAt: string;
 };
 
-export type WorkflowSuggestionAction = WorkflowSuggestionAppliedVersion['action'] | 'discard';
-
 export type WorkflowSuggestionAppliedVersion = {
 	versionId: string;
 	checksum: string;
@@ -55,9 +53,4 @@ export type WorkflowSuggestionProposalDetail = {
 	author: 'assistant';
 	payload: WorkflowSuggestionContent & { proposed: WorkflowSuggestionSnapshot };
 	activity: WorkflowSuggestionActivity[];
-};
-
-export type WorkflowSuggestionActionResult = WorkflowSuggestionProposalDetail & {
-	/** A publish request error does not establish whether the version is live. */
-	publishError?: string;
 };

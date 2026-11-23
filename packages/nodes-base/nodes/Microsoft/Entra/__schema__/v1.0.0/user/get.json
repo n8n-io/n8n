@@ -1,9 +1,6 @@
 {
     "type": "object",
     "properties": {
-        "@odata.context": {
-            "type": "string"
-        },
         "createdDateTime": {
             "type": "string"
         },
@@ -23,5 +20,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

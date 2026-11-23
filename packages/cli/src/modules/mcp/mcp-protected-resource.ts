@@ -1,7 +1,9 @@
 import {
 	INSTANCE_ACTIVITY_CONTEXT_FLAG,
+	CREDENTIAL_DESCRIPTIONS_FLAG,
 	MCP_AGENT_SCOPES,
 	MCP_SKILL_SCOPES,
+	MCP_PREFERENCE_SCOPES,
 	MCP_INSTANCE_SCOPES,
 } from '@n8n/api-types';
 import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
@@ -10,21 +12,23 @@ import { INSTANCE_MCP_RESOURCE_ID } from '@n8n/constants';
 import { Container, Service } from '@n8n/di';
 
 import type { ProtectedResource, ResourcePrincipal, ResourceUser } from '@n8n/inbound-auth';
-import { UrlService } from '@n8n/backend-services';
-import { PostHogClient } from '@/posthog';
+import { UrlService, PostHogClient } from '@n8n/backend-services';
+import { SkillsGate, SkillSyncFlagGate } from '@/modules/skills';
 
 import {
 	ACTIVITY_LOG_TOOLS,
 	BUILDER_TOOLS,
 	FOLDER_FEATURE_TOOLS,
 	INSTANCE_CONTEXT_TOOLS,
+	SKILL_SOURCE_TOOLS,
 	TOOLS_BY_SCOPE,
 } from './mcp-scopes';
 import {
 	areAgentToolsAvailable,
-	arePreferenceToolsEnabled,
-	areSkillToolsAvailable,
+	canReadMigrationReport,
 	isCommunityNodeInstallAvailable,
+	areMcpPreferencesAvailable,
+	isMigrationReportAvailable,
 } from './mcp-tool-availability';
 import { McpConfig } from './mcp.config';
 import { McpSettingsService } from './mcp.settings.service';
@@ -36,7 +40,11 @@ import { McpSettingsService } from './mcp.settings.service';
 export const SUPPORTED_SCOPES: string[] = [...MCP_INSTANCE_SCOPES];
 const AGENT_SCOPES = new Set<string>(MCP_AGENT_SCOPES);
 const SKILL_SCOPES = new Set<string>(MCP_SKILL_SCOPES);
-const PREFERENCE_SCOPES = new Set<string>(['aiPreference:read', 'aiPreference:write']);
+const PREFERENCE_SCOPES = new Set<string>(MCP_PREFERENCE_SCOPES);
+const MIGRATION_REPORT_SCOPES = new Set<string>([
+	'breakingChanges:list',
+	'breakingChanges:migrate',
+]);
 
 const MCP_RESOURCE_PATH = '/mcp-server/http';
 
@@ -78,11 +86,15 @@ export class McpProtectedResource implements ProtectedResource {
 
 	get scopes(): string[] {
 		const agentsAvailable = areAgentToolsAvailable(this.globalConfig, this.moduleRegistry);
-		const skillsAvailable = areSkillToolsAvailable(this.globalConfig, this.moduleRegistry);
+		const skillsAvailable = Container.get(SkillsGate).isEnabled;
+		const preferencesAvailable = areMcpPreferencesAvailable(this.moduleRegistry);
+		const migrationReportAvailable = isMigrationReportAvailable(this.moduleRegistry);
 		return SUPPORTED_SCOPES.filter(
 			(scope) =>
 				(agentsAvailable || !AGENT_SCOPES.has(scope)) &&
-				(skillsAvailable || !SKILL_SCOPES.has(scope)),
+				(skillsAvailable || !SKILL_SCOPES.has(scope)) &&
+				(preferencesAvailable || !PREFERENCE_SCOPES.has(scope)) &&
+				(migrationReportAvailable || !MIGRATION_REPORT_SCOPES.has(scope)),
 		);
 	}
 
@@ -106,6 +118,15 @@ export class McpProtectedResource implements ProtectedResource {
 			// Keep context tools hidden when the gate cannot be read.
 		}
 
+		const credentialDescriptionsEnabled =
+			(await this.postHogClient
+				.getFeatureFlagForInstance(CREDENTIAL_DESCRIPTIONS_FLAG)
+				.catch(() => false)) === true;
+
+		// Consent has no user, so it reads only the instance part of the Skill Sync gate. A user
+		// without the Skill Sync flag still sees the source tools here and gets none of them.
+		const skillSourcesAvailable = Container.get(SkillSyncFlagGate).isAvailable;
+
 		return Object.fromEntries(
 			Object.entries(TOOLS_BY_SCOPE)
 				.filter(([scope]) => supportedScopes.has(scope))
@@ -117,7 +138,9 @@ export class McpProtectedResource implements ProtectedResource {
 							(!tagsDisabled || tool !== 'list_workflow_tags') &&
 							(foldersLicensed || !FOLDER_FEATURE_TOOLS.has(tool)) &&
 							(instanceContextAvailable || !ACTIVITY_LOG_TOOLS.has(tool)) &&
-							(instanceContextEnabled || !INSTANCE_CONTEXT_TOOLS.has(tool)),
+							(skillSourcesAvailable || !SKILL_SOURCE_TOOLS.has(tool)) &&
+							(instanceContextEnabled || !INSTANCE_CONTEXT_TOOLS.has(tool)) &&
+							(credentialDescriptionsEnabled || tool !== 'update_credential_description'),
 					),
 				]),
 		);
@@ -174,9 +197,9 @@ export class McpProtectedResource implements ProtectedResource {
 	 * re-checking one of its conditions: the screen pre-checks every offered
 	 * scope on first consent, so a scope offered here is a scope granted.
 	 *
-	 * `aiPreference:*` is dropped for a user outside the preferences experiment
-	 * arm for the same reason, and one more: showing the scopes to the control
-	 * arm exposes the feature to the users the experiment keeps unaware of it.
+	 * `breakingChanges:list` and `breakingChanges:migrate` are dropped for a user
+	 * whose role cannot read the migration report, for the first reason:
+	 * registration checks the same permission, so the grant could do nothing.
 	 */
 	async getGrantableScopes(user: ResourceUser): Promise<string[]> {
 		const { CommunityPackagesConfig } = await import(
@@ -189,22 +212,13 @@ export class McpProtectedResource implements ProtectedResource {
 			this.mcpConfig,
 			user,
 		);
-		const preferencesEnabled = await this.arePreferencesEnabledFor(user);
+		const migrationReportReadable = canReadMigrationReport(this.moduleRegistry, user);
 
 		return this.scopes.filter(
 			(scope) =>
 				(installAvailable || scope !== 'communityPackage:install') &&
-				(preferencesEnabled || !PREFERENCE_SCOPES.has(scope)),
+				(migrationReportReadable || !MIGRATION_REPORT_SCOPES.has(scope)),
 		);
-	}
-
-	private async arePreferencesEnabledFor(user: ResourceUser): Promise<boolean> {
-		try {
-			return arePreferenceToolsEnabled(await this.postHogClient.getFeatureFlags(user));
-		} catch {
-			// Registration treats an unreadable flag as off; consent must agree.
-			return false;
-		}
 	}
 
 	async isAvailable(): Promise<boolean> {

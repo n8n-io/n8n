@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import {
 	N8nButton,
 	N8nDialog,
+	N8nDialogBody,
 	N8nDialogDescription,
 	N8nDialogFooter,
 	N8nDialogHeader,
@@ -118,8 +119,36 @@ const updateDraftTag = (index: number, field: keyof ICustomTelemetryTag, value: 
 	);
 };
 
-const addTag = () => {
+const addRow = ref<HTMLElement | null>(null);
+
+/** The dialog body that scrolls, when this node sits inside one. */
+function scrollParent(node: HTMLElement): HTMLElement | null {
+	let current = node.parentElement;
+	while (current) {
+		const { overflowY } = getComputedStyle(current);
+		if (overflowY === 'auto' || overflowY === 'scroll') return current;
+		current = current.parentElement;
+	}
+	return null;
+}
+
+// The new row appears after the click. Bring the add button back into view
+// once the list runs past the dialog body.
+function keepAddButtonInView() {
+	const row = addRow.value;
+	if (!row) return;
+	const scroller = scrollParent(row);
+	if (!scroller || scroller.scrollHeight <= scroller.clientHeight) return;
+	const rowRect = row.getBoundingClientRect();
+	const scrollerRect = scroller.getBoundingClientRect();
+	if (rowRect.bottom <= scrollerRect.bottom) return;
+	scroller.scrollTo({ top: scroller.scrollHeight - scroller.clientHeight, behavior: 'smooth' });
+}
+
+const addTag = async () => {
 	draft.value = [...draft.value, createEmptyTag()];
+	await nextTick();
+	keepAddButtonInView();
 };
 
 const deleteTag = (index: number) => {
@@ -231,7 +260,7 @@ const onModalOpenChange = (open: boolean) => {
 						{{ i18n.baseText('workflowSettings.customSpanAttributes.modal.title') }}
 					</N8nDialogTitle>
 				</div>
-				<N8nDialogDescription :class="$style.customTelemetryTagsModalDescription">
+				<N8nDialogDescription>
 					{{ i18n.baseText('workflowSettings.customSpanAttributes.description') }}
 					{{ ' ' }}
 					{{ i18n.baseText('workflowSettings.customSpanAttributes.modal.learnMore') }}
@@ -246,100 +275,101 @@ const onModalOpenChange = (open: boolean) => {
 					</a>
 				</N8nDialogDescription>
 			</N8nDialogHeader>
-			<div
-				:class="$style.customTelemetryTagsModal"
-				data-test-id="workflow-settings-custom-telemetry-tags-modal"
-			>
-				<div
-					v-for="(tag, index) in draft"
-					:key="index"
-					:class="$style.customTelemetryTagsRow"
-					data-test-id="workflow-settings-custom-telemetry-tags-row"
-				>
-					<N8nInputLabel
-						:class="$style.customTelemetryTagsField"
-						:label="
-							index === 0
-								? i18n.baseText('workflowSettings.customSpanAttributes.tag.key.displayName')
-								: undefined
-						"
-						size="small"
-						:input-name="`workflow-custom-telemetry-tag-key-${index}`"
+			<N8nDialogBody :class="$style.body">
+				<div data-test-id="workflow-settings-custom-telemetry-tags-modal">
+					<div
+						v-for="(tag, index) in draft"
+						:key="index"
+						:class="$style.customTelemetryTagsRow"
+						data-test-id="workflow-settings-custom-telemetry-tags-row"
 					>
-						<N8nInput
-							:id="`workflow-custom-telemetry-tag-key-${index}`"
-							:model-value="tag.key"
-							size="medium"
+						<N8nInputLabel
+							:class="$style.customTelemetryTagsField"
+							:label="
+								index === 0
+									? i18n.baseText('workflowSettings.customSpanAttributes.tag.key.displayName')
+									: undefined
+							"
+							size="small"
+							:input-name="`workflow-custom-telemetry-tag-key-${index}`"
+						>
+							<N8nInput
+								:id="`workflow-custom-telemetry-tag-key-${index}`"
+								:model-value="tag.key"
+								size="medium"
+								:disabled="areControlsDisabled"
+								:placeholder="
+									i18n.baseText('workflowSettings.customSpanAttributes.tag.key.placeholder')
+								"
+								:aria-label="
+									i18n.baseText('workflowSettings.customSpanAttributes.tag.key.displayName')
+								"
+								data-test-id="workflow-settings-custom-telemetry-tags-key"
+								@update:model-value="updateDraftTag(index, 'key', String($event))"
+							/>
+						</N8nInputLabel>
+						<N8nInputLabel
+							:class="$style.customTelemetryTagsField"
+							:label="
+								index === 0
+									? i18n.baseText('workflowSettings.customSpanAttributes.tag.value.displayName')
+									: undefined
+							"
+							size="small"
+							:input-name="`workflow-custom-telemetry-tag-value-${index}`"
+						>
+							<N8nInput
+								:id="`workflow-custom-telemetry-tag-value-${index}`"
+								:model-value="tag.value"
+								size="medium"
+								:disabled="areControlsDisabled"
+								:placeholder="
+									i18n.baseText('workflowSettings.customSpanAttributes.tag.value.placeholder')
+								"
+								:aria-label="
+									i18n.baseText('workflowSettings.customSpanAttributes.tag.value.displayName')
+								"
+								data-test-id="workflow-settings-custom-telemetry-tags-value"
+								@update:model-value="updateDraftTag(index, 'value', String($event))"
+							/>
+						</N8nInputLabel>
+						<N8nIconButton
+							icon="trash-2"
+							variant="ghost"
+							size="small"
 							:disabled="areControlsDisabled"
-							:placeholder="
-								i18n.baseText('workflowSettings.customSpanAttributes.tag.key.placeholder')
-							"
-							:aria-label="
-								i18n.baseText('workflowSettings.customSpanAttributes.tag.key.displayName')
-							"
-							data-test-id="workflow-settings-custom-telemetry-tags-key"
-							@update:model-value="updateDraftTag(index, 'key', String($event))"
+							:title="i18n.baseText('workflowSettings.customSpanAttributes.delete')"
+							:aria-label="i18n.baseText('workflowSettings.customSpanAttributes.delete')"
+							data-test-id="workflow-settings-custom-telemetry-tags-delete"
+							@click="deleteTag(index)"
 						/>
-					</N8nInputLabel>
-					<N8nInputLabel
-						:class="$style.customTelemetryTagsField"
-						:label="
-							index === 0
-								? i18n.baseText('workflowSettings.customSpanAttributes.tag.value.displayName')
-								: undefined
-						"
+					</div>
+					<div ref="addRow">
+						<N8nButton
+							icon="plus"
+							variant="outline"
+							size="small"
+							native-type="button"
+							:disabled="areControlsDisabled"
+							:class="$style.customTelemetryTagsAdd"
+							data-test-id="workflow-settings-custom-telemetry-tags-add"
+							@click="addTag"
+						>
+							{{ i18n.baseText('workflowSettings.customSpanAttributes.placeholder') }}
+						</N8nButton>
+					</div>
+					<N8nText
+						v-if="draftValidationError"
 						size="small"
-						:input-name="`workflow-custom-telemetry-tag-value-${index}`"
+						color="danger"
+						tag="p"
+						:class="$style.customTelemetryTagsError"
+						data-test-id="workflow-settings-custom-telemetry-tags-modal-error"
 					>
-						<N8nInput
-							:id="`workflow-custom-telemetry-tag-value-${index}`"
-							:model-value="tag.value"
-							size="medium"
-							:disabled="areControlsDisabled"
-							:placeholder="
-								i18n.baseText('workflowSettings.customSpanAttributes.tag.value.placeholder')
-							"
-							:aria-label="
-								i18n.baseText('workflowSettings.customSpanAttributes.tag.value.displayName')
-							"
-							data-test-id="workflow-settings-custom-telemetry-tags-value"
-							@update:model-value="updateDraftTag(index, 'value', String($event))"
-						/>
-					</N8nInputLabel>
-					<N8nIconButton
-						icon="trash-2"
-						variant="ghost"
-						size="small"
-						:disabled="areControlsDisabled"
-						:title="i18n.baseText('workflowSettings.customSpanAttributes.delete')"
-						:aria-label="i18n.baseText('workflowSettings.customSpanAttributes.delete')"
-						data-test-id="workflow-settings-custom-telemetry-tags-delete"
-						@click="deleteTag(index)"
-					/>
+						{{ draftValidationError }}
+					</N8nText>
 				</div>
-				<N8nButton
-					icon="plus"
-					variant="outline"
-					size="small"
-					native-type="button"
-					:disabled="areControlsDisabled"
-					:class="$style.customTelemetryTagsAdd"
-					data-test-id="workflow-settings-custom-telemetry-tags-add"
-					@click="addTag"
-				>
-					{{ i18n.baseText('workflowSettings.customSpanAttributes.placeholder') }}
-				</N8nButton>
-				<N8nText
-					v-if="draftValidationError"
-					size="small"
-					color="danger"
-					tag="p"
-					:class="$style.customTelemetryTagsError"
-					data-test-id="workflow-settings-custom-telemetry-tags-modal-error"
-				>
-					{{ draftValidationError }}
-				</N8nText>
-			</div>
+			</N8nDialogBody>
 			<N8nDialogFooter>
 				<N8nButton
 					variant="outline"
@@ -362,6 +392,10 @@ const onModalOpenChange = (open: boolean) => {
 </template>
 
 <style module lang="scss">
+.body {
+	max-height: 400px;
+}
+
 .wrapper {
 	display: contents;
 }
@@ -424,10 +458,6 @@ const onModalOpenChange = (open: boolean) => {
 	gap: var(--spacing--4xs);
 }
 
-.customTelemetryTagsModalDescription {
-	margin-top: var(--spacing--3xs);
-}
-
 .customTelemetryTagsDocsLink {
 	color: inherit;
 	text-decoration: underline;
@@ -438,10 +468,6 @@ const onModalOpenChange = (open: boolean) => {
 	&:hover {
 		color: var(--color--primary);
 	}
-}
-
-.customTelemetryTagsModal {
-	margin-top: var(--spacing--sm);
 }
 
 .customTelemetryTagsRow {

@@ -1,0 +1,7 @@
+1. A Gmail Trigger starts the workflow on new emails.
+2. An AI node (with a chat model) classifies each email as urgent or not urgent.
+3. A branch (IF, Switch or Text Classifier outputs) routes urgent and not-urgent emails differently.
+4. Urgent emails: a Slack node posts to #support.
+5. The Slack message contains the email subject and the sender.
+6. Not-urgent emails: a Google Sheets node appends a row to the "Inbox log" sheet.
+7. The Google Sheets row contains the subject, the sender and the date.

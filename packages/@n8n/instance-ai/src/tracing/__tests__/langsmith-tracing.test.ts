@@ -61,6 +61,7 @@ vi.mock('@n8n/agents', async () => {
 
 	let spanCounter = 0;
 	let buildError: Error | undefined;
+	let lastTransformExportedSpan: ((span: unknown) => unknown) | undefined;
 	let startSpanError: Error | undefined;
 	const contextStorage = new AsyncLocalStorage<Context>();
 	const contextManager: ContextManager = {
@@ -154,6 +155,10 @@ vi.mock('@n8n/agents', async () => {
 	};
 
 	class MockLangSmithTelemetry {
+		constructor(config?: { transformExportedSpan?: (span: unknown) => unknown }) {
+			lastTransformExportedSpan = config?.transformExportedSpan;
+		}
+
 		private functionIdValue?: string;
 		private metadataValue?: Record<string, unknown>;
 		private recordInputsValue = true;
@@ -225,6 +230,7 @@ vi.mock('@n8n/agents', async () => {
 			},
 			getSpans: () => spans,
 			getProvider: () => provider,
+			getLastTransformExportedSpan: () => lastTransformExportedSpan,
 		},
 	};
 });
@@ -318,6 +324,7 @@ type AgentsMockModule = {
 			forceFlush: Mock<(...args: []) => Promise<void>>;
 			shutdown: Mock<(...args: []) => Promise<void>>;
 		};
+		getLastTransformExportedSpan: () => ((span: unknown) => unknown) | undefined;
 	};
 };
 
@@ -451,7 +458,13 @@ describe('createInstanceAiTraceContext', () => {
 			runId: 'run-1',
 			userId: 'user-1',
 			input: { message: 'What workflows do I have?' },
-			metadata: { n8n_version: '2.19.0' },
+			metadata: {
+				n8n_version: '2.19.0',
+				self_healing: true,
+				self_healing_workflow_id: 'workflow-1',
+				self_healing_execution_id: 'execution-1',
+				self_healing_project_id: 'project-1',
+			},
 			browserExtension: { connectionState: 'connected', version: '0.0.7' },
 		});
 
@@ -495,6 +508,13 @@ describe('createInstanceAiTraceContext', () => {
 		);
 		expect(typeof telemetry.metadata?.agents_version).toBe('string');
 		expect(typeof telemetry.metadata?.workflow_sdk_version).toBe('string');
+		const rootSpan = agentsMock.getSpans().find((span) => span.id === tracing?.rootRun.otelSpanId);
+		expect(rootSpan?.attributes).toMatchObject({
+			'langsmith.metadata.self_healing': true,
+			'langsmith.metadata.self_healing_workflow_id': 'workflow-1',
+			'langsmith.metadata.self_healing_execution_id': 'execution-1',
+			'langsmith.metadata.self_healing_project_id': 'project-1',
+		});
 
 		await telemetry.provider?.shutdown();
 	});
@@ -1054,7 +1074,7 @@ describe('createInstanceAiTraceContext', () => {
 							{
 								type: 'tool-call',
 								toolCallId: 'toolu-1',
-								toolName: 'workflow_builder_credentials',
+								toolName: 'credentials',
 								input: { action: 'list', name: 'Slack account' },
 								providerOptions: { anthropic: { cacheControl: { type: 'ephemeral' } } },
 							},
@@ -1066,7 +1086,7 @@ describe('createInstanceAiTraceContext', () => {
 							{
 								type: 'tool-result',
 								toolCallId: 'toolu-1',
-								toolName: 'workflow_builder_credentials',
+								toolName: 'credentials',
 								output: {
 									ok: true,
 									items: [{ name: 'Slack account', apiKey: 'sk-secret' }],
@@ -1078,7 +1098,7 @@ describe('createInstanceAiTraceContext', () => {
 				'ai.prompt.tools': [
 					JSON.stringify({
 						type: 'function',
-						name: 'workflow_builder_credentials',
+						name: 'credentials',
 						description: 'List credentials',
 						input_schema: {
 							type: 'object',
@@ -1107,7 +1127,7 @@ describe('createInstanceAiTraceContext', () => {
 					id: 'toolu-1',
 					type: 'function',
 					function: {
-						name: 'workflow_builder_credentials',
+						name: 'credentials',
 						arguments: JSON.stringify({ action: 'list', name: 'Slack account' }),
 					},
 				},
@@ -1116,7 +1136,7 @@ describe('createInstanceAiTraceContext', () => {
 		expect(prompt.input[2]).toEqual({
 			role: 'tool',
 			tool_call_id: 'toolu-1',
-			name: 'workflow_builder_credentials',
+			name: 'credentials',
 			content: JSON.stringify({
 				ok: true,
 				items: [{ name: 'Slack account', apiKey: '[redacted]' }],
@@ -1492,7 +1512,7 @@ describe('createInstanceAiTraceContext', () => {
 		});
 
 		expect(tracing).toBeDefined();
-		setTracePromptVersion(tracing, 'progressive@1');
+		setTracePromptVersion(tracing, 'concise@1');
 
 		const continuedTracing = await continueInstanceAiTraceContext(tracing!, {
 			threadId: 'thread-1',
@@ -1515,7 +1535,7 @@ describe('createInstanceAiTraceContext', () => {
 		expect(continuedTracing.rootRun.metadata).toEqual(
 			expect.objectContaining({
 				'instance_ai.canonical_name': 'instance-ai.orchestrator_resume',
-				prompt_version: 'progressive@1',
+				prompt_version: 'concise@1',
 			}),
 		);
 		expect(continuedTracing.rootRun.metadata).toEqual(
@@ -1535,7 +1555,7 @@ describe('createInstanceAiTraceContext', () => {
 		expect(continuedTracing.orchestratorRun.metadata).toEqual(
 			expect.objectContaining({
 				'instance_ai.canonical_name': 'instance-ai.agent.orchestrator',
-				prompt_version: 'progressive@1',
+				prompt_version: 'concise@1',
 			}),
 		);
 	});
@@ -1646,7 +1666,7 @@ describe('createInstanceAiTraceContext', () => {
 					name: 'data-table-manager',
 					description: 'Manage n8n Data Tables directly.',
 					category: 'data',
-					recommendedTools: ['data_tables'],
+					recommendedToolGroups: ['data_tables'],
 					instructions: 'Full skill instructions must stay out of trace inputs.',
 				},
 			]),
@@ -1781,13 +1801,13 @@ describe('createInstanceAiTraceContext', () => {
 		await startForegroundActor(tracing!);
 
 		const wrappedTools = tracing!.wrapTools(
-			createToolRegistry([['workflow_builder_ask_user', createAskUserTool()]]),
+			createToolRegistry([['ask_user', createAskUserTool()]]),
 			{ agentRole: 'orchestrator', tags: ['orchestrator'] },
 		);
-		const wrappedAskUser = wrappedTools.get('workflow_builder_ask_user');
+		const wrappedAskUser = wrappedTools.get('ask_user');
 		expect(wrappedAskUser).toBeDefined();
 		if (!isExecutableTool(wrappedAskUser)) {
-			throw new Error('Wrapped workflow_builder_ask_user tool is not executable');
+			throw new Error('Wrapped ask_user tool is not executable');
 		}
 
 		await tracing!.withActiveSpan(tracing!.orchestratorRun, async () => {
@@ -1886,8 +1906,8 @@ describe('createInstanceAiTraceContext', () => {
 
 		const suspendPayload = {
 			requestId: 'request-1',
-			inputType: 'plan-review',
-			message: 'Review the plan',
+			inputType: 'questions',
+			message: 'Answer the questions',
 		};
 		const interruptibleTool: BuiltTool = {
 			name: 'plan-tool',
@@ -2066,13 +2086,13 @@ describe('createInstanceAiTraceContext', () => {
 		await startForegroundActor(tracing!);
 
 		const wrappedTools = tracing!.wrapTools(
-			createToolRegistry([['workflow_builder_ask_user', createAskUserTool()]]),
+			createToolRegistry([['ask_user', createAskUserTool()]]),
 			{ agentRole: 'orchestrator', tags: ['orchestrator'] },
 		);
-		const wrappedAskUser = wrappedTools.get('workflow_builder_ask_user');
+		const wrappedAskUser = wrappedTools.get('ask_user');
 		expect(wrappedAskUser).toBeDefined();
 		if (!isExecutableTool(wrappedAskUser)) {
-			throw new Error('Wrapped workflow_builder_ask_user tool is not executable');
+			throw new Error('Wrapped ask_user tool is not executable');
 		}
 
 		const result = await tracing!.withActiveSpan(tracing!.orchestratorRun, async () => {
@@ -2318,6 +2338,38 @@ describe('createInstanceAiTraceContext', () => {
 		expect(tracing).toBeDefined();
 		expect(tracing?.messageRun).toBeDefined();
 		expect(tracing?.orchestratorRun).toBeDefined();
+	});
+
+	it.each([
+		[undefined, 'instance-ai'],
+		[['model-training-opt-out'], 'instance-ai, model-training-opt-out'],
+	])('adds proxy trace tags %j to every exported span', async (traceTags, expectedTags) => {
+		await createInstanceAiTraceContext({
+			threadId: 'thread-tags',
+			messageId: 'message-tags',
+			runId: 'run-tags',
+			userId: 'user-tags',
+			input: { message: 'tag test' },
+			proxyConfig: {
+				apiUrl: 'https://proxy.example.com/langsmith',
+				getAuthHeaders: async () => ({ Authorization: 'Bearer proxy-token' }),
+				traceTags,
+			},
+		});
+		const transform = agentsMock.getLastTransformExportedSpan();
+
+		const productSpan = transform?.({
+			name: 'turn',
+			attributes: { 'langsmith.span.tags': 'instance-ai' },
+		}) as { attributes: Record<string, unknown> };
+		expect(productSpan.attributes['langsmith.span.tags']).toBe(expectedTags);
+
+		const llmSpan = transform?.({ name: 'llm', attributes: {} }) as {
+			attributes: Record<string, unknown>;
+		};
+		expect(llmSpan.attributes['langsmith.span.tags']).toBe(
+			traceTags ? 'model-training-opt-out' : undefined,
+		);
 	});
 
 	it('respects diagnostics opt-out before proxy auto-enable', async () => {

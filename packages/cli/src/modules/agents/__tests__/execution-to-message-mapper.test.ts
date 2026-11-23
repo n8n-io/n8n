@@ -19,6 +19,89 @@ function execution(overrides: Partial<AgentExecution> = {}): AgentExecution {
 }
 
 describe('execution-to-message-mapper', () => {
+	it('keeps the outcome when a stopped execution produced no assistant content', () => {
+		const messages = executionsToMessagesDto([execution({ status: 'cancelled', timeline: [] })]);
+
+		expect(messages.at(-1)).toMatchObject({
+			role: 'assistant',
+			content: [],
+			executionId: 'execution-1',
+			executionStatus: 'cancelled',
+		});
+	});
+
+	it('maps a host event to a host-event content part in its position', () => {
+		const result = executionToMessagesDto(
+			execution({
+				status: 'success',
+				timeline: [
+					{
+						type: 'host-event',
+						name: 'test.notice',
+						payload: { level: 'info' },
+						timestamp: 50,
+					},
+					{ type: 'text', content: 'Done', timestamp: 100, endTime: 120 },
+				],
+			}),
+		);
+
+		expect(result.find(({ role }) => role === 'assistant')?.content).toEqual([
+			{ type: 'host-event', name: 'test.notice', payload: { level: 'info' } },
+			{ type: 'text', text: 'Done' },
+		]);
+	});
+
+	it('passes the key of a keyed host event', () => {
+		const result = executionToMessagesDto(
+			execution({
+				status: 'success',
+				timeline: [
+					{
+						type: 'host-event',
+						name: 'test.progress',
+						key: 'build',
+						payload: { done: 1 },
+						timestamp: 50,
+					},
+				],
+			}),
+		);
+
+		expect(result.find(({ role }) => role === 'assistant')?.content).toEqual([
+			{ type: 'host-event', name: 'test.progress', key: 'build', payload: { done: 1 } },
+		]);
+	});
+
+	it('keeps an assistant message that has only a host event', () => {
+		const result = executionsToMessagesDto([
+			execution({
+				status: 'success',
+				timeline: [{ type: 'host-event', name: 'test.notice', payload: null, timestamp: 50 }],
+			}),
+		]);
+
+		expect(result.map(({ role, content }) => ({ role, content }))).toEqual([
+			{ role: 'user', content: [{ type: 'text', text: 'Hello' }] },
+			{ role: 'assistant', content: [{ type: 'host-event', name: 'test.notice', payload: null }] },
+		]);
+	});
+
+	it.each(['success', 'error', 'cancelled', 'interrupted'] as const)(
+		'keeps an empty Stop reply in history when its execution ends with %s',
+		(status) => {
+			const messages = executionsToMessagesDto([
+				execution({ userMessage: null, inputMessages: [], stopReport: true, status }),
+				execution({ id: 'later', userMessage: 'Continue' }),
+			]);
+
+			expect(messages).toMatchObject([
+				{ role: 'assistant', stopReport: true, content: [], executionId: 'execution-1' },
+				{ role: 'user', content: [{ type: 'text', text: 'Continue' }] },
+			]);
+		},
+	);
+
 	it('splits assistant output around stable additional user messages', () => {
 		const inputD = {
 			id: 'steer-d',
@@ -382,6 +465,49 @@ describe('execution-to-message-mapper', () => {
 			toolCallId: 'call-1',
 			suspendPayload,
 		});
+	});
+
+	it('keeps the files of an interactive card on its tool call after the resume', () => {
+		const suspendPayload = {
+			type: 'integration_action',
+			action: 'respond',
+			integrationConnectionId: 'n8n_chat',
+			files: [
+				{ fileId: 'file-1', fileName: 'report.pdf', mimeType: 'application/pdf', sizeBytes: 1 },
+			],
+		};
+		const cardCall = {
+			type: 'tool-call' as const,
+			kind: 'tool' as const,
+			name: 'chat_action',
+			toolCallId: 'call-1',
+			input: {},
+			startTime: 100,
+		};
+		const messages = executionsToMessagesDto([
+			execution({
+				timeline: [
+					{ ...cardCall, output: undefined, endTime: 0, success: false },
+					{
+						type: 'suspension',
+						toolName: 'chat_action',
+						toolCallId: 'call-1',
+						timestamp: 110,
+						suspendPayload,
+					},
+				],
+			}),
+			execution({
+				id: 'execution-2',
+				userMessage: null,
+				timeline: [{ ...cardCall, output: { value: 'approve' }, endTime: 200, success: true }],
+			}),
+		]);
+
+		const parts = messages.flatMap(({ content }) => content);
+		expect(parts.filter(({ toolCallId }) => toolCallId === 'call-1')).toEqual([
+			expect.objectContaining({ state: 'resolved', output: { value: 'approve' }, suspendPayload }),
+		]);
 	});
 
 	it('maps failed timeline tool calls as rejected content parts', () => {

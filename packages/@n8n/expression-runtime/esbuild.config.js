@@ -5,6 +5,30 @@
 const esbuild = require('esbuild');
 const path = require('path');
 
+// The guest gets the character map of the `transliteration` package from the
+// host, so the map stays out of the runtime bundle.
+const guestToAsciiPlugin = {
+	name: 'guest-to-ascii',
+	setup(build) {
+		build.onResolve({ filter: /\/to-ascii$/ }, () => ({
+			path: path.join(__dirname, 'src/runtime/to-ascii.ts'),
+		}));
+		let charmapIsReplaced = false;
+		build.onResolve({ filter: /\/data\/charmap$/ }, () => {
+			charmapIsReplaced = true;
+			return { path: 'charmap', namespace: 'empty-charmap' };
+		});
+		build.onEnd(() => {
+			if (!charmapIsReplaced) {
+				throw new Error('The character map of `transliteration` is in the runtime bundle');
+			}
+		});
+		build.onLoad({ filter: /.*/, namespace: 'empty-charmap' }, () => ({
+			contents: 'export const charmap = {};',
+		}));
+	},
+};
+
 async function build() {
 	const sharedOptions = {
 		entryPoints: [path.join(__dirname, 'src/runtime/index.ts')],
@@ -15,6 +39,7 @@ async function build() {
 		platform: 'neutral', // Works in both Node.js and browser
 		mainFields: ['module', 'main'], // Needed for neutral platform to resolve packages
 		external: [], // Bundle everything (lodash, luxon)
+		plugins: [guestToAsciiPlugin],
 	};
 
 	// IIFE bundle for isolated-vm

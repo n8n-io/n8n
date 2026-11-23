@@ -1,5 +1,9 @@
 export { AuthStrategyRegistry } from './services/auth-strategy.registry';
-export { type AuthStrategyOptions, type AuthStrategy } from './services/auth-strategy.types';
+export {
+	type AuthStrategyOptions,
+	type AuthStrategy,
+	type AuthStrategyResult,
+} from './services/auth-strategy.types';
 export {
 	type ProtectedResource,
 	type ProtectedResourceResolver,

@@ -65,9 +65,14 @@ export class GuardrailRunner {
 		return undefined;
 	}
 
-	async afterTool(ctx: GuardrailToolCallContext, result: unknown): Promise<void> {
+	async afterTool(
+		ctx: GuardrailToolCallContext,
+		result: unknown,
+	): Promise<GuardrailStop | undefined> {
 		for (const hook of this.hooks) {
-			await hook.afterTool?.(ctx, result);
+			const decision = await hook.afterTool?.(ctx, result);
+			if (decision?.action === 'stop') return { code: decision.code };
 		}
+		return undefined;
 	}
 }

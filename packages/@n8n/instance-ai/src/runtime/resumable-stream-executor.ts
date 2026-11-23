@@ -98,6 +98,10 @@ export interface ExecuteResumableStreamResult {
 	stopReason?: OrchestratorRunHandoffReason;
 	/** Terminal `finish` chunk's reason; `'max-iterations'` means the agent ran out of steps. */
 	finishReason?: FinishReason;
+	/** Parsed SDK output. The caller validates its domain schema. */
+	structuredOutput?: unknown;
+	/** Observed model turns. Absent when the provider emits no step events. */
+	stepCount?: number;
 }
 
 function isAsyncIterable(value: unknown): value is AsyncIterable<unknown> {
@@ -196,11 +200,15 @@ export function normalizeStreamSource(result: unknown): ResumableStreamSource {
 
 	if (isNativeStreamResult(result)) {
 		const [eventStream, textStream] = result.stream.tee();
+		const text = collectNativeStreamText(textStream);
+
+		// Structured-output callers do not need to await the text branch.
+		void text.catch(() => undefined);
 
 		return {
 			runId: result.runId,
 			fullStream: readableStreamToAsyncIterable(eventStream),
-			text: collectNativeStreamText(textStream),
+			text,
 		};
 	}
 
@@ -212,11 +220,13 @@ function buildCancelledResult(
 	text: Promise<string> | undefined,
 	workSummaryAccumulator: WorkSummaryAccumulator,
 	usageAccumulator: UsageAccumulator,
+	nativeStepIndex: number,
 ): ExecuteResumableStreamResult {
 	return {
 		status: 'cancelled',
 		agentRunId,
 		text,
+		stepCount: nativeStepIndex || undefined,
 		workSummary: workSummaryAccumulator.toSummary(),
 		usage: usageAccumulator.hasUsage() ? usageAccumulator.toUsage() : undefined,
 	};
@@ -309,6 +319,7 @@ function publishEvents(
 interface StreamPassResult {
 	cancelled: boolean;
 	finishReason?: FinishReason;
+	structuredOutput?: unknown;
 	stopReason?: OrchestratorRunHandoffReason;
 	suspension?: SuspensionInfo;
 	hasError: boolean;
@@ -357,6 +368,7 @@ async function consumeStreamPass(args: {
 	let confirmationEvent: ConfirmationRequestEvent | undefined;
 	let confirmationEventPublished = false;
 	let finishReason: FinishReason | undefined;
+	let structuredOutput: unknown;
 	const drainedCorrectionsForResume: string[] = [];
 
 	for await (const chunk of activeStream) {
@@ -388,8 +400,14 @@ async function consumeStreamPass(args: {
 
 		options.context.onActivity?.();
 		usageAccumulator.observe(chunk);
-		if (isRecord(chunk) && chunk.type === 'finish' && isFinishReason(chunk.finishReason)) {
-			finishReason = chunk.finishReason;
+		// The agent waits at each input boundary until the reader acknowledges it.
+		if (isInputBoundaryChunk(chunk)) {
+			chunk.acknowledge();
+			continue;
+		}
+		if (isRecord(chunk) && chunk.type === 'finish') {
+			finishReason = isFinishReason(chunk.finishReason) ? chunk.finishReason : undefined;
+			structuredOutput = chunk.structuredOutput;
 		}
 
 		if (isRecord(chunk) && chunk.type === 'start-step') {
@@ -474,6 +492,7 @@ async function consumeStreamPass(args: {
 				cancelled: false,
 				stopReason: stopSignal.reason,
 				finishReason,
+				structuredOutput,
 				suspension,
 				hasError,
 				error,
@@ -487,8 +506,9 @@ async function consumeStreamPass(args: {
 	}
 
 	return {
-		cancelled: false,
+		cancelled: options.context.signal.aborted,
 		finishReason,
+		structuredOutput,
 		suspension,
 		hasError,
 		error,
@@ -526,14 +546,26 @@ export async function executeResumableStream(
 		nativeStepIndex = pass.nativeStepIndex;
 
 		if (pass.cancelled) {
-			return buildCancelledResult(activeAgentRunId, text, workSummaryAccumulator, usageAccumulator);
+			return buildCancelledResult(
+				activeAgentRunId,
+				text,
+				workSummaryAccumulator,
+				usageAccumulator,
+				nativeStepIndex,
+			);
 		}
 
 		const { suspension, hasError, error, pendingConfirmation, confirmationEvent } = pass;
 		const { drainedCorrectionsForResume } = pass;
 
 		if (options.context.signal.aborted) {
-			return buildCancelledResult(activeAgentRunId, text, workSummaryAccumulator, usageAccumulator);
+			return buildCancelledResult(
+				activeAgentRunId,
+				text,
+				workSummaryAccumulator,
+				usageAccumulator,
+				nativeStepIndex,
+			);
 		}
 
 		if (pass.stopReason) {
@@ -543,6 +575,8 @@ export async function executeResumableStream(
 				text,
 				...(error !== undefined ? { error } : {}),
 				finishReason: pass.finishReason,
+				structuredOutput: pass.structuredOutput,
+				stepCount: nativeStepIndex || undefined,
 				workSummary: workSummaryAccumulator.toSummary(),
 				usage: usageAccumulator.hasUsage() ? usageAccumulator.toUsage() : undefined,
 				stopReason: pass.stopReason,
@@ -556,6 +590,8 @@ export async function executeResumableStream(
 				text,
 				...(error !== undefined ? { error } : {}),
 				finishReason: pass.finishReason,
+				structuredOutput: pass.structuredOutput,
+				stepCount: nativeStepIndex || undefined,
 				workSummary: workSummaryAccumulator.toSummary(),
 				usage: usageAccumulator.hasUsage() ? usageAccumulator.toUsage() : undefined,
 			};
@@ -564,6 +600,9 @@ export async function executeResumableStream(
 		if (options.control.mode === 'manual') {
 			return {
 				status: 'suspended',
+				structuredOutput: pass.structuredOutput,
+				finishReason: pass.finishReason,
+				stepCount: nativeStepIndex || undefined,
 				agentRunId: activeAgentRunId,
 				text,
 				suspension,
@@ -624,6 +663,14 @@ function buildCorrectionResumeData(corrections: string[]): Record<string, unknow
 			'The confirmation has been skipped. Apply the correction and continue.',
 		corrections,
 	};
+}
+
+function isInputBoundaryChunk(
+	chunk: unknown,
+): chunk is { type: 'input-boundary'; acknowledge: () => void } {
+	return (
+		isRecord(chunk) && chunk.type === 'input-boundary' && typeof chunk.acknowledge === 'function'
+	);
 }
 
 function isErrorChunk(chunk: unknown): chunk is { type: 'error'; error?: unknown } {

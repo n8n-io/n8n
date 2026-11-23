@@ -9,10 +9,12 @@ import {
 	testDb,
 	testModules,
 } from '@n8n/backend-test-utils';
-import type { User } from '@n8n/db';
+import type { OperationContext, User } from '@n8n/db';
 import { ProjectRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { SecurityContext } from '@n8n/permissions';
 import { jsonParse, type INode } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { createMember, createOwner } from '@test-integration/db/users';
@@ -113,12 +115,12 @@ describe('workflow package export', () => {
 			expect(entries[0].name).toBe('manifest.json');
 			expect(manifest).toMatchObject({
 				packageFormatVersion: FORMAT_VERSION,
-				exportedAt: expect.any(String),
 				sourceN8nVersion: expect.any(String),
 				sourceId: expect.any(String),
 			});
+			expect(manifest).not.toHaveProperty('exportedAt');
 			expect(manifest.workflows).toEqual([
-				{ id: workflow.id, name: 'My Workflow', target: expect.any(String) },
+				{ id: workflow.id, name: 'My Workflow', target: expect.any(String), isArchived: false },
 			]);
 
 			const workflowFile = entries.find(
@@ -178,7 +180,7 @@ describe('workflow package export', () => {
 			const exportedPackage = await readExport(exported.stream);
 
 			expect(exportedPackage.manifest.workflows).toEqual([
-				{ id: workflow.id, name: workflow.name, target: expect.any(String) },
+				{ id: workflow.id, name: workflow.name, target: expect.any(String), isArchived: true },
 			]);
 			const content = workflowJson(
 				exportedPackage.entries,
@@ -614,6 +616,29 @@ describe('workflow package export', () => {
 			]);
 		});
 
+		it('adds the login of the operation context to the export event', async () => {
+			const owner = await createOwner();
+			const workflow = await createWorkflow({ name: 'Login', nodes: [], connections: {} }, owner);
+			const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+			const ctx: OperationContext = {
+				security: mock<SecurityContext>({ subIdentityId: 'login-1' }),
+			};
+
+			try {
+				await service.exportPackage({ user: owner, ctx, workflowIds: [workflow.id] });
+
+				const exportedEvents = emitSpy.mock.calls.filter(
+					([name]) => name === 'n8n-package-exported',
+				);
+				expect(exportedEvents).toHaveLength(1);
+				expect((exportedEvents[0][1] as RelayEventMap['n8n-package-exported']).loginId).toBe(
+					'login-1',
+				);
+			} finally {
+				emitSpy.mockRestore();
+			}
+		});
+
 		it('emits all exported workflow IDs when static sub-workflows are auto-included', async () => {
 			const owner = await createOwner();
 			const project = await createTeamProject('Project A', owner);
@@ -751,7 +776,7 @@ describe('workflow package export', () => {
 			const { manifest, entries } = await exportReferenceOnly(owner, [parent.id]);
 
 			expect(manifest.workflows).toEqual([
-				{ id: parent.id, name: 'Parent', target: expect.any(String) },
+				{ id: parent.id, name: 'Parent', target: expect.any(String), isArchived: false },
 			]);
 			expect(manifest.requirements?.workflows).toEqual([
 				{ id: child.id, name: child.name, usedBy: [{ kind: 'workflow', id: parent.id }] },
@@ -852,7 +877,7 @@ describe('workflow package export', () => {
 			const { manifest, entries } = await exportReferenceOnly(owner, [cheddar.id]);
 
 			expect(manifest.workflows).toEqual([
-				{ id: cheddar.id, name: 'CHEDDAR', target: expect.any(String) },
+				{ id: cheddar.id, name: 'CHEDDAR', target: expect.any(String), isArchived: false },
 			]);
 			expect(manifest.requirements?.workflows).toEqual([
 				{ id: brie.id, name: 'BRIE', usedBy: [{ kind: 'workflow', id: cheddar.id }] },
@@ -949,7 +974,7 @@ describe('workflow package export', () => {
 			const { manifest } = await exportReferenceOnly(owner, [parent.id]);
 
 			expect(manifest.workflows).toEqual([
-				{ id: parent.id, name: 'Parent', target: expect.any(String) },
+				{ id: parent.id, name: 'Parent', target: expect.any(String), isArchived: false },
 			]);
 			expect(manifest.requirements?.workflows).toEqual([
 				{

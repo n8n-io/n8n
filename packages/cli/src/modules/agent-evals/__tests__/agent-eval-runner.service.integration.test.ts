@@ -1,3 +1,4 @@
+import { packagedModules } from '@/modules/modules.manifest';
 import { ModuleRegistry } from '@n8n/backend-common';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
@@ -20,8 +21,9 @@ import { AgentConfigService } from '@/modules/agents/agent-config.service';
 import { AgentsSettingsService } from '@/modules/agents/agents-settings.service';
 import { Agent, type ProjectAgent } from '@/modules/agents/entities/agent.entity';
 import type { AgentRepository } from '@/modules/agents/repositories/agent.repository';
-import { DataTableService } from '@/modules/data-table/data-table.service';
+import { DataTableService } from '@n8n/backend-module-data-table';
 import type { EvalAgentExecutionService } from '@/modules/instance-ai/eval/agent-execution.service';
+import { createAgentIdentity } from '@test-integration/db/agents';
 import { createUserShell } from '@test-integration/db/users';
 
 import { AgentEvalRunnerService } from '../agent-eval-runner.service';
@@ -76,15 +78,24 @@ const buildRunner = () =>
 		Container.get(CredentialsService),
 	);
 
-/** Insert a minimal real agent row so `agent_eval_dataset.agentId`'s FK holds. */
+/**
+ * Insert a minimal real agent row so `agent_eval_dataset.agentId`'s FK holds.
+ * This file mocks `AgentRepository`, so it saves the row through the entity.
+ */
 async function createAgent(projectId: string): Promise<ProjectAgent> {
 	return await Container.get(DataSource)
 		.getRepository(Agent)
-		.save(Object.assign(new Agent(), { name: 'test agent', projectId }));
+		.save(
+			Object.assign(new Agent(), {
+				name: 'test agent',
+				projectId,
+				identityId: await createAgentIdentity(),
+			}),
+		);
 }
 
 beforeAll(async () => {
-	await testModules.loadModules(['data-table', 'agents']);
+	await testModules.loadModules(['data-table', 'agents'], packagedModules);
 	await testDb.init();
 	owner = await createUserShell(GLOBAL_OWNER_ROLE);
 });

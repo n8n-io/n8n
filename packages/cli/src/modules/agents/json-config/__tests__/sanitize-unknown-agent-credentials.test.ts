@@ -14,6 +14,16 @@ describe('sanitizeUnknownAgentCredentials', () => {
 		expect(result).toEqual({ credential: AI_GATEWAY_MANAGED_TAG, model: 'openai/gpt-5' });
 	});
 
+	it('preserves the Gateway credits marker on an MCP server entry', () => {
+		const config = {
+			mcpServers: [
+				{ name: 'Brave Search', authentication: 'none', credential: AI_GATEWAY_MANAGED_TAG },
+			],
+		};
+
+		expect(sanitizeUnknownAgentCredentials(config, accessibleCredentialIds)).toEqual(config);
+	});
+
 	it('preserves the n8n Connect tag on difficulty model credentials', () => {
 		const result = sanitizeUnknownAgentCredentials(
 			{
@@ -115,13 +125,13 @@ describe('sanitizeUnknownAgentCredentials', () => {
 
 	it('preserves known credential fields', () => {
 		const result = sanitizeUnknownAgentCredentials(
-			{ credential: 'known-cred', model: 'anthropic/claude-sonnet-4-5', name: 'Agent' },
+			{ credential: 'known-cred', model: 'anthropic/claude-sonnet-5-5', name: 'Agent' },
 			accessibleCredentialIds,
 		);
 
 		expect(result).toEqual({
 			credential: 'known-cred',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			name: 'Agent',
 		});
 	});
@@ -437,12 +447,12 @@ describe('sanitizeUnknownAgentCredentials', () => {
 
 	it('preserves a top-level credential when model is set', () => {
 		const result = sanitizeUnknownAgentCredentials(
-			{ model: 'anthropic/claude-sonnet-4-5', credential: 'known-cred' },
+			{ model: 'anthropic/claude-sonnet-5-5', credential: 'known-cred' },
 			accessibleCredentialIds,
 		);
 
 		expect(result).toEqual({
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			credential: 'known-cred',
 		});
 	});

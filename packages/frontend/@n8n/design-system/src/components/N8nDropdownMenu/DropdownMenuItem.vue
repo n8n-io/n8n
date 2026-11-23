@@ -17,6 +17,7 @@ import {
 	DropdownMenuPortalTargetKey,
 	DropdownMenuSubMaxHeightKey,
 	DropdownMenuWidthKey,
+	DropdownMenuExtraPopperClassKey,
 	DropdownMenuExternalNavigationKey,
 	type DropdownMenuItemProps,
 	type DropdownMenuItemSlots,
@@ -57,6 +58,7 @@ const $style = useCssModule();
 const portalTarget = inject(DropdownMenuPortalTargetKey, ref(undefined));
 const subMenuMaxHeight = inject(DropdownMenuSubMaxHeightKey, ref(undefined));
 const menuWidth = inject(DropdownMenuWidthKey, ref('24rem'));
+const extraPopperClass = inject(DropdownMenuExtraPopperClassKey, ref(undefined));
 const externalNavigation = inject(DropdownMenuExternalNavigationKey, null);
 
 const internalSubMenuOpen = ref(false);
@@ -355,7 +357,7 @@ onBeforeUnmount(() => {
 
 			<DropdownMenuPortal v-bind="portalTarget ? { to: portalTarget } : {}">
 				<DropdownMenuSubContent
-					:class="$style['sub-content']"
+					:class="[$style['sub-content'], extraPopperClass]"
 					:style="[
 						subContentMaxHeight ? { maxHeight: subContentMaxHeight } : {},
 						subMenuMaxHeight ? { '--n8n-dropdown-sub-max-height': subMenuMaxHeight } : {},
@@ -593,11 +595,11 @@ onBeforeUnmount(() => {
 	color: var(--text-color);
 
 	&:not([data-disabled]) {
-		&:hover,
+		cursor: pointer;
+
 		&[data-highlighted],
 		&[data-virtual-highlighted] {
 			background-color: var(--background--hover);
-			cursor: pointer;
 		}
 	}
 
@@ -607,7 +609,6 @@ onBeforeUnmount(() => {
 	}
 
 	&.destructive.destructive:not([data-disabled]) {
-		&:hover,
 		&[data-highlighted],
 		&[data-virtual-highlighted] {
 			.item-label.item-label {
@@ -622,10 +623,23 @@ onBeforeUnmount(() => {
 		}
 	}
 
+	// Searchable menus keep Reka focus on the row under the pointer.
+	// Hide that highlight when keyboard focus is on a different row.
 	:global([data-menu-items]:has([data-virtual-highlighted])) &:not([data-virtual-highlighted]) {
-		&:hover,
 		&[data-highlighted] {
 			background-color: transparent;
+
+			&.destructive.destructive {
+				.item-label.item-label {
+					color: var(--text-color);
+				}
+
+				.icon.icon,
+				.item-check.item-check,
+				.sub-indicator.sub-indicator {
+					color: var(--color--text--tint-1) !important;
+				}
+			}
 		}
 	}
 }

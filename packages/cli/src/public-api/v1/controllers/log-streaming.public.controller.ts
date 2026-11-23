@@ -60,7 +60,7 @@ export class LogStreamingPublicController {
 	@Licensed(LICENSE_FEATURES.LOG_STREAMING)
 	@ApiSummary('List streamable event types')
 	@ApiDescription(
-		'List the event types that can be streamed to a log streaming destination. Requires the `eventBusDestination:list` scope and the Log Streaming feature to be licensed.',
+		'List the event types that can be streamed to a log streaming destination. Requires the Log Streaming feature to be licensed.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, LogStreamingEventTypesPublicDto)
@@ -73,7 +73,7 @@ export class LogStreamingPublicController {
 	@Licensed(LICENSE_FEATURES.LOG_STREAMING)
 	@ApiSummary('List log streaming destinations')
 	@ApiDescription(
-		'List the configured log streaming destinations. Requires the `eventBusDestination:list` scope and the Log Streaming feature to be licensed.',
+		'List the configured log streaming destinations. Requires the Log Streaming feature to be licensed.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, LogStreamingDestinationListPublicDto)
@@ -88,7 +88,7 @@ export class LogStreamingPublicController {
 	@Licensed(LICENSE_FEATURES.LOG_STREAMING)
 	@ApiSummary('Retrieve a log streaming destination')
 	@ApiDescription(
-		'Retrieve a single log streaming destination by id. Requires the `eventBusDestination:read` scope and the Log Streaming feature to be licensed.',
+		'Retrieve a single log streaming destination by id. Requires the Log Streaming feature to be licensed.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, LogStreamingDestinationPublicDto)
@@ -108,7 +108,7 @@ export class LogStreamingPublicController {
 	@Licensed(LICENSE_FEATURES.LOG_STREAMING)
 	@ApiSummary('Create a log streaming destination')
 	@ApiDescription(
-		'Create a log streaming destination. The destination takes effect exactly as it would from the UI, using the same validation. Requires the `eventBusDestination:create` scope and the Log Streaming feature to be licensed. When destinations are managed via environment variables, the write is rejected with 409 and nothing is created; reads still return the current values.',
+		'Create a log streaming destination. The destination takes effect exactly as it would from the UI, using the same validation. Requires the Log Streaming feature to be licensed. When destinations are managed via environment variables, the write is rejected with 409 and nothing is created; reads still return the current values.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, LogStreamingDestinationPublicDto)
@@ -128,7 +128,7 @@ export class LogStreamingPublicController {
 	@Licensed(LICENSE_FEATURES.LOG_STREAMING)
 	@ApiSummary('Update a log streaming destination')
 	@ApiDescription(
-		'Replace an existing log streaming destination. The update takes effect exactly as it would from the UI, using the same validation. Requires the `eventBusDestination:update` scope and the Log Streaming feature to be licensed. When destinations are managed via environment variables, the write is rejected with 409 and nothing is changed; reads still return the current values.',
+		'Replace an existing log streaming destination. The update takes effect exactly as it would from the UI, using the same validation. Requires the Log Streaming feature to be licensed. When destinations are managed via environment variables, the write is rejected with 409 and nothing is changed; reads still return the current values.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, LogStreamingDestinationPublicDto)
@@ -155,7 +155,7 @@ export class LogStreamingPublicController {
 	@Licensed(LICENSE_FEATURES.LOG_STREAMING)
 	@ApiSummary('Send a test message to a log streaming destination')
 	@ApiDescription(
-		'Send a test message to the destination to verify it is reachable and configured correctly. Requires the `eventBusDestination:test` scope and the Log Streaming feature to be licensed.',
+		'Send a test message to the destination to verify it is reachable and configured correctly. Requires the Log Streaming feature to be licensed.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, LogStreamingTestResultPublicDto)
@@ -187,7 +187,7 @@ export class LogStreamingPublicController {
 	@Licensed(LICENSE_FEATURES.LOG_STREAMING)
 	@ApiSummary('Delete a log streaming destination')
 	@ApiDescription(
-		'Remove a log streaming destination. Requires the `eventBusDestination:delete` scope and the Log Streaming feature to be licensed. When destinations are managed via environment variables, the delete is rejected with 409 and nothing is removed; reads still return the current values.',
+		'Remove a log streaming destination. Requires the Log Streaming feature to be licensed. When destinations are managed via environment variables, the delete is rejected with 409 and nothing is removed; reads still return the current values.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, LogStreamingDestinationPublicDto)

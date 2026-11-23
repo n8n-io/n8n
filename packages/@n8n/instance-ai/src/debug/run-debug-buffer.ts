@@ -154,6 +154,7 @@ export function createRunDebugStepHooks(
 			buffer.recordStepStart(options.runId, stepIndex, event);
 		},
 		onStepEnd,
+		// oxlint-disable-next-line typescript/no-deprecated -- Keep the alias for callers that use the previous hook name.
 		onStepFinish: onStepEnd,
 	};
 }
@@ -164,12 +165,7 @@ export function buildRunDebugLabel(options: {
 }): string {
 	const resumeLabels: Record<string, string> = {
 		approval: 'Resume · approval',
-		background_task_completed: 'Follow-up · background task completed',
-		workflow_verification: 'Follow-up · workflow verification',
 		workflow_setup: 'Follow-up · workflow setup',
-		planned_checkpoint: 'Follow-up · planned checkpoint',
-		replan: 'Follow-up · replan',
-		synthesize: 'Follow-up · synthesize',
 	};
 
 	if (options.resumeReason && resumeLabels[options.resumeReason]) {
