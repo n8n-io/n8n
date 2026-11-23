@@ -279,7 +279,7 @@ const nodeTypesStore = useNodeTypesStore();
 const describeStagingNodeType = (nodeType: string) =>
 	toStagingNodeTypeInfo(nodeTypesStore.getNodeType(nodeType));
 const workflowStaging = useWorkflowStaging({
-	messages: () => thread.messages,
+	turns: () => thread.artifactTurns,
 	workflowDrafts: () => thread.workflowDrafts,
 	enabled: () => draftWorkflowPreviewEnabled.value,
 	describeType: describeStagingNodeType,
