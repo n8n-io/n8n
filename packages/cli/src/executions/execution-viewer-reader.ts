@@ -63,7 +63,7 @@ export async function loadLatestEngineV2ExecutionForViewer(
  * workflow. Use it to check who may read or stop the execution, and to read
  * its status.
  */
-export async function findEngineV2ExecutionForViewer(
+export async function loadEngineV2ExecutionMetadataForViewer(
 	executionId: ExecutionIdV2,
 	viewer: User,
 	scopes: Scope[],

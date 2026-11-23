@@ -14,7 +14,7 @@ import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import {
-	findEngineV2ExecutionForViewer,
+	loadEngineV2ExecutionMetadataForViewer,
 	findUnsavedManualExecutionForViewer,
 	loadExecutionForViewer,
 	loadLatestEngineV2ExecutionForViewer,
@@ -141,11 +141,13 @@ describe('engine v2 executions', () => {
 		});
 	});
 
-	describe('findEngineV2ExecutionForViewer', () => {
+	describe('loadEngineV2ExecutionMetadataForViewer', () => {
 		it('checks the given scopes and reads no steps', async () => {
 			workflowFinderService.findWorkflowForUser.mockResolvedValue(mock<WorkflowEntity>());
 
-			const execution = await findEngineV2ExecutionForViewer(V2_ID, viewer, ['workflow:execute']);
+			const execution = await loadEngineV2ExecutionMetadataForViewer(V2_ID, viewer, [
+				'workflow:execute',
+			]);
 
 			expect(execution).toMatchObject({ id: V2_ID, workflowId: 'wf-1', status: 'running' });
 			expect(dataPlane.getExecution).toHaveBeenCalledWith(V2_ID, { includeSteps: false });
@@ -158,7 +160,7 @@ describe('engine v2 executions', () => {
 			workflowFinderService.findWorkflowForUser.mockResolvedValue(null);
 
 			await expect(
-				findEngineV2ExecutionForViewer(V2_ID, viewer, ['workflow:execute']),
+				loadEngineV2ExecutionMetadataForViewer(V2_ID, viewer, ['workflow:execute']),
 			).resolves.toBeUndefined();
 		});
 	});

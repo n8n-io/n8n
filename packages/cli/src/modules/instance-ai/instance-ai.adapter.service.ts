@@ -190,7 +190,7 @@ import { type ExecutionIdV2, isExecutionIdV2 } from '@/executions/execution-id';
 import { ExecutionListService } from '@/executions/execution-list.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import {
-	findEngineV2ExecutionForViewer,
+	loadEngineV2ExecutionMetadataForViewer,
 	findUnsavedManualExecutionForViewer,
 	getExecutionRedaction,
 	loadExecutionForViewer,
@@ -2266,7 +2266,7 @@ export class InstanceAiAdapterService {
 		) => {
 			// An engine v2 execution has a UUID id and lives only on the data plane.
 			if (isExecutionIdV2(executionId)) {
-				const execution = await findEngineV2ExecutionForViewer(executionId, user, scopes);
+				const execution = await loadEngineV2ExecutionMetadataForViewer(executionId, user, scopes);
 				if (!execution) {
 					throw new Error(`Execution ${executionId} not found`);
 				}
