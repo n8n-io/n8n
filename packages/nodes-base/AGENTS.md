@@ -44,16 +44,13 @@ A relational node that pages a read operation uses a keyset cursor, never `OFFSE
 while it is being paged shifts rows under the reader and a row can be skipped or
 returned twice.
 
-`utils/sql-keyset-paging.ts` holds everything except the queries: reading the
-field, ordering the sort rules, building the predicate, and all four rejections
-with their messages. The node runs the catalogue query its own engine needs and
-passes the answer in. Use the shared helpers, do not write a second copy of a
-rejection message. Postgres predates the shared module and still keeps its own
-copies of several; the parity pass moves it over.
+Use the helpers in `utils/sql-keyset-paging.ts`. MySQL's Select is the reference
+to copy. Postgres still has older copies of its own, so do not copy from it.
 
 - **Start After**, parameter name `startAfter`, a `fixedCollection` holding Column
-  and Value. Shown when Return All is off and the node is at or above the version
-  that introduced it. Put `'@version'` first in `show`: when a show value is an
+  and Value. Shown when Return All is off. Gate on `'@version'` only if an older
+  version outputs a column type differently, as Postgres does for DATE below 2.7.
+  If you gate, put `'@version'` first in `show`: when a show value is an
   expression, n8n displays the field and skips every later key. The existing Limit
   is the page size.
 - An empty Value is the first page: no predicate, Limit rows, ordered by Column.
