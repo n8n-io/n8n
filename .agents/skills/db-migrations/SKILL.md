@@ -94,6 +94,7 @@ Source of truth: `packages/@n8n/db/src/migrations/dsl/column.ts`.
 | `bool` | `boolean` | `boolean` |
 | `double` | `double precision` | `real` |
 | `binary` | `bytea` | `blob` |
+| `date` | `date` | `date` |
 | `timestampTimezone` | `timestamptz` | `datetime` |
 | `timestampNoTimezone` | `timestamp` | `datetime` |
 | `timestamp` *(deprecated)* | `timestamp` | `datetime` |

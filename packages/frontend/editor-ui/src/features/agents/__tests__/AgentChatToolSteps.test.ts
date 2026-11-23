@@ -59,6 +59,10 @@ vi.mock('@n8n/design-system', () => ({
 		template:
 			'<button type="button" @click.stop="$emit(\'click\')"><slot name="icon" /><slot /></button>',
 	},
+	N8nCodeBlock: {
+		props: ['code', 'language'],
+		template: '<pre :data-language="language">{{ code }}</pre>',
+	},
 	N8nCallout: {
 		props: ['theme'],
 		template: '<div><slot /><slot name="trailingContent" /></div>',
@@ -384,6 +388,24 @@ describe('AgentChatToolSteps', () => {
 
 		await wrapper.find('button').trigger('click');
 		expect(wrapper.text()).toContain('Slack');
+	});
+
+	it('shows JSON tool data as JSON and other text as plain text', async () => {
+		const wrapper = mountSteps([
+			{
+				tool: 'workspace_execute_command',
+				toolCallId: 'tc-shell',
+				state: TOOL_CALL_STATE.DONE,
+				input: { command: 'ls' },
+				output: 'README.md\npackage.json',
+			},
+		]);
+
+		await wrapper.get('button').trigger('click');
+		const [input, output] = wrapper.findAll('pre');
+		expect(input.attributes('data-language')).toBe('json');
+		expect(output.attributes('data-language')).toBe('plaintext');
+		expect(output.text()).toBe('README.md\npackage.json');
 	});
 
 	it('does not make generic tool steps without data expandable', () => {

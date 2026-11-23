@@ -14,6 +14,7 @@ import type {
 	RelatedAgentRun,
 	RelatedExecution,
 	StartNodeData,
+	WorkflowExecuteMode,
 } from '..';
 import type { FailedBeforeStartMarker } from '../execution-blocked-reason';
 import type { IRunExecutionDataV0 } from './run-execution-data.v0';
@@ -73,6 +74,8 @@ export interface IRunExecutionDataV1 {
 	parentExecution?: RelatedExecution;
 	/** Keep the caller's output policy when a child execution resumes. */
 	subWorkflowOutput?: SubWorkflowOutputPolicy;
+	/** Keep the mode of the top-level execution when a child execution resumes. */
+	rootExecutionMode?: WorkflowExecuteMode;
 	/** Suspended agent tool call to resume once this execution finishes. */
 	parentAgentRun?: RelatedAgentRun;
 	/**

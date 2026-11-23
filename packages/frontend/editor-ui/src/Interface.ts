@@ -10,7 +10,11 @@ import type {
 } from '@n8n/api-types';
 import type { ILogInStatus } from '@/features/settings/users/users.types';
 import type { NodeViewItemSection } from '@/features/shared/nodeCreator/views/viewsData';
-import type { CredentialPayload, IUsedCredential } from '@/features/credentials/credentials.types';
+import type {
+	CredentialPayload,
+	CredentialTypeUsability,
+	IUsedCredential,
+} from '@/features/credentials/credentials.types';
 import type { Scope, WorkflowSharingRole } from '@n8n/permissions';
 import type { NodeCreatorTag, IconName, BinaryMetadata } from '@n8n/design-system';
 import type { DisplayMode, ModalState, SlotResourcesListFilters } from '@n8n/frontend-module-sdk';
@@ -362,6 +366,10 @@ export type CredentialsResource = BaseResource & {
 	sharedWithProjects?: ProjectSharingData[];
 	readOnly: boolean;
 	needsSetup: boolean;
+	/** Why workflows cannot use this credential, when a policy restricts its type or its nodes. */
+	restriction?: CredentialTypeUsability;
+	/** The project whose policy set the restriction: the listed project, or else the home project. */
+	restrictionProject?: { id: string; type?: ProjectSharingData['type'] };
 	isGlobal?: boolean;
 	isResolvable?: boolean;
 	connectedByMe?: boolean;

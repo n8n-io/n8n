@@ -179,8 +179,12 @@ export class UserRepository extends BaseRepository<User> {
 		return await super.update(...args);
 	}
 
-	async deleteAllExcept(user: User) {
-		await this.delete({ id: Not(user.id) });
+	/**
+	 * Deletes every person except `user`. Service accounts stay, because each
+	 * one is the identity of an agent, and the agent cannot lose it.
+	 */
+	async deleteAllPeopleExcept(user: User) {
+		await this.delete({ id: Not(user.id), kind: 'person' });
 	}
 
 	async getByIds(transaction: EntityManager, ids: string[]) {

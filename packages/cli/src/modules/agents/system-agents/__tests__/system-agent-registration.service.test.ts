@@ -1,6 +1,8 @@
+import type { OperationContext, ServiceAccount, TransactionRunner } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import type { AgentServiceAccountService } from '../../agent-service-account.service';
+import type { ServiceAccountService } from '@/services/service-account.service';
+
 import type { AgentRepository } from '../../repositories/agent.repository';
 import { SystemAgentRegistrationService } from '../system-agent-registration.service';
 import { SystemAgentRegistry } from '../system-agent-registry';
@@ -10,11 +12,19 @@ describe('SystemAgentRegistrationService', () => {
 	function setup() {
 		const registry = new SystemAgentRegistry();
 		const agentRepository = mock<AgentRepository>();
-		const agentServiceAccount = mock<AgentServiceAccountService>();
+		const serviceAccountService = mock<ServiceAccountService>();
+		const transactionRunner = mock<TransactionRunner>();
+		const txCtx: OperationContext = {};
+		transactionRunner.run.mockImplementation(async (_ctx, fn) => await fn(txCtx));
+		serviceAccountService.create.mockResolvedValue({
+			serviceAccount: mock<ServiceAccount>({ id: 'sa-1' }),
+			project: mock(),
+		});
 		const service = new SystemAgentRegistrationService(
 			registry,
 			agentRepository,
-			agentServiceAccount,
+			serviceAccountService,
+			transactionRunner,
 		);
 		const provider = {
 			agentId: 'other-agent',
@@ -22,47 +32,81 @@ describe('SystemAgentRegistrationService', () => {
 			authorize: vi.fn(async () => true),
 			prepareTurn: vi.fn(),
 		} satisfies SystemAgentProvider;
-		return { service, registry, agentRepository, agentServiceAccount, provider };
+		return { service, registry, agentRepository, serviceAccountService, txCtx, provider };
 	}
 
-	it('seeds the instance agent row before it registers the provider', async () => {
-		const { service, agentRepository, registry, provider } = setup();
+	describe('register', () => {
+		it('makes sure the instance agent row exists before it registers the provider', async () => {
+			const { service, agentRepository, registry, provider } = setup();
+			agentRepository.renameInstanceAgentIfExists.mockResolvedValue(true);
 
-		await service.register(provider);
+			await service.register(provider);
 
-		expect(agentRepository.ensureInstanceAgent).toHaveBeenCalledWith('other-agent', 'Other Agent');
-		expect(registry.get('other-agent')).toBe(provider);
+			expect(agentRepository.renameInstanceAgentIfExists).toHaveBeenCalledWith(
+				'other-agent',
+				'Other Agent',
+			);
+			expect(registry.get('other-agent')).toBe(provider);
+		});
+
+		it('does not register a provider whose agent row cannot be seeded', async () => {
+			const { service, agentRepository, registry, provider } = setup();
+			agentRepository.renameInstanceAgentIfExists.mockRejectedValue(new Error('project agent'));
+
+			await expect(service.register(provider)).rejects.toThrow('project agent');
+			expect(registry.has('other-agent')).toBe(false);
+		});
 	});
 
-	it('gives the instance agent an identity before it registers the provider', async () => {
-		const { service, agentServiceAccount, registry, provider } = setup();
-		const registerSpy = vi.spyOn(registry, 'register');
+	describe('ensureInstanceAgent', () => {
+		it('only renames an agent that exists', async () => {
+			const { service, agentRepository, serviceAccountService } = setup();
+			agentRepository.renameInstanceAgentIfExists.mockResolvedValue(true);
 
-		await service.register(provider);
+			await service.ensureInstanceAgent('other-agent', 'Other Agent');
 
-		expect(agentServiceAccount.assignToInstanceAgent).toHaveBeenCalledWith(
-			'other-agent',
-			'Other Agent',
-		);
-		expect(agentServiceAccount.assignToInstanceAgent.mock.invocationCallOrder[0]).toBeLessThan(
-			registerSpy.mock.invocationCallOrder[0],
-		);
-		expect(registry.get('other-agent')).toBe(provider);
-	});
+			expect(serviceAccountService.create).not.toHaveBeenCalled();
+			expect(agentRepository.insertInstanceAgent).not.toHaveBeenCalled();
+		});
 
-	it('does not register a provider whose instance agent cannot get an identity', async () => {
-		const { service, agentServiceAccount, registry, provider } = setup();
-		agentServiceAccount.assignToInstanceAgent.mockRejectedValue(new Error('identity failed'));
+		it('inserts a new agent with a new service account in one transaction', async () => {
+			const { service, agentRepository, serviceAccountService, txCtx } = setup();
+			agentRepository.renameInstanceAgentIfExists.mockResolvedValue(false);
+			agentRepository.insertInstanceAgent.mockResolvedValue(true);
 
-		await expect(service.register(provider)).rejects.toThrow('identity failed');
-		expect(registry.has('other-agent')).toBe(false);
-	});
+			await service.ensureInstanceAgent('other-agent', 'Other Agent');
 
-	it('does not register a provider whose agent row cannot be seeded', async () => {
-		const { service, agentRepository, registry, provider } = setup();
-		agentRepository.ensureInstanceAgent.mockRejectedValue(new Error('project agent'));
+			expect(serviceAccountService.create).toHaveBeenCalledWith('Other Agent', txCtx);
+			expect(agentRepository.insertInstanceAgent).toHaveBeenCalledWith(
+				'other-agent',
+				'Other Agent',
+				'sa-1',
+				txCtx,
+			);
+			expect(agentRepository.renameInstanceAgentIfExists).toHaveBeenCalledTimes(1);
+		});
 
-		await expect(service.register(provider)).rejects.toThrow('project agent');
-		expect(registry.has('other-agent')).toBe(false);
+		it('rolls back and renames when another main inserted the agent first', async () => {
+			const { service, agentRepository } = setup();
+			agentRepository.renameInstanceAgentIfExists.mockResolvedValue(false);
+			agentRepository.insertInstanceAgent.mockResolvedValue(false);
+
+			await expect(
+				service.ensureInstanceAgent('other-agent', 'Other Agent'),
+			).resolves.toBeUndefined();
+
+			expect(agentRepository.renameInstanceAgentIfExists).toHaveBeenCalledTimes(2);
+		});
+
+		it('throws other errors', async () => {
+			const { service, agentRepository } = setup();
+			agentRepository.renameInstanceAgentIfExists.mockResolvedValue(false);
+			agentRepository.insertInstanceAgent.mockRejectedValue(new Error('db down'));
+
+			await expect(service.ensureInstanceAgent('other-agent', 'Other Agent')).rejects.toThrow(
+				'db down',
+			);
+			expect(agentRepository.renameInstanceAgentIfExists).toHaveBeenCalledTimes(1);
+		});
 	});
 });

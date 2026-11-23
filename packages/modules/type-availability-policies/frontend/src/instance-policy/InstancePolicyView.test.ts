@@ -25,6 +25,10 @@ vi.mock('../type-availability-policies.api', () => ({
 	fetchCredentialTypeSummaries: vi.fn(
 		async () => new Map([['bitlyApi', { displayName: 'Bitly API' }]]),
 	),
+	fetchNodeTypeSummaries: vi.fn(
+		async () => new Map([['n8n-nodes-base.notion', { displayName: 'Notion', hidden: false }]]),
+	),
+	fetchCredentialTypeUsage: vi.fn(async () => ({})),
 }));
 
 vi.mock('vue-router', () => ({
@@ -57,7 +61,10 @@ describe('InstancePolicyView', () => {
 			scopeId: null,
 			version: 0,
 			defaultAction: 'allow',
-			types: [{ name: 'bitlyApi', access: 'allow', matchedRuleId: null }],
+			types: [
+				{ name: 'bitlyApi', access: 'allow', matchedRuleId: null },
+				{ name: 'n8n-nodes-base.notion', access: 'allow', matchedRuleId: null },
+			],
 		});
 	});
 
@@ -139,6 +146,13 @@ describe('InstancePolicyView', () => {
 		expect(getByRole('radio', { checked: true })).toHaveTextContent('Credentials');
 	});
 
+	it('shows the node types on the Nodes tab', async () => {
+		const { findByText } = setup();
+
+		expect(await findByText('Notion')).toBeInTheDocument();
+		expect(fetchInstanceAccess).toHaveBeenCalledWith(expect.anything(), 'node');
+	});
+
 	it('shows the credential types on the Credentials tab', async () => {
 		const { findByText } = setup(BOTH_SCOPES, { tab: 'credential' });
 
@@ -149,9 +163,12 @@ describe('InstancePolicyView', () => {
 	it('does not load the credential types for a user with only the node scope', async () => {
 		const { queryByTestId } = setup(['nodeTypePolicy:manage'], { tab: 'credential' });
 
-		await waitFor(() => expect(fetchInstancePolicy).toHaveBeenCalled());
-		expect(queryByTestId('instance-policy-table')).not.toBeInTheDocument();
-		expect(fetchInstanceAccess).not.toHaveBeenCalled();
+		await waitFor(() =>
+			expect(fetchInstanceAccess).toHaveBeenCalledWith(expect.anything(), 'node'),
+		);
+		expect(queryByTestId('credential-types-tab')).not.toBeInTheDocument();
+		expect(queryByTestId('node-types-tab')).toBeInTheDocument();
+		expect(fetchInstanceAccess).not.toHaveBeenCalledWith(expect.anything(), 'credential');
 	});
 
 	it('falls back to the first tab the user can manage when the query names another', () => {
