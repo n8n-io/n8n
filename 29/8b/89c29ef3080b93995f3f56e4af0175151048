@@ -1,0 +1,9 @@
+packages/workflow/test/ExpressionExtensions/string-extensions.test.ts
+  ai_agent 389-411
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "298b89c29ef3080b93995f3f56e4af0175151048",
+  "prompts": {}
+}
