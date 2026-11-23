@@ -62,15 +62,18 @@ describe('LeaseSessionManager', () => {
 		vi.useRealTimers();
 	});
 
-	it('inserts a session on the next beat when the first insert fails', async () => {
+	it('inserts a session with a new id on the next beat after a loss', async () => {
 		vi.spyOn(Math, 'random').mockReturnValue(0.5);
-		sessions.insertSession.mockRejectedValueOnce(new Error('database unavailable'));
+		sessions.renewLive.mockResolvedValueOnce(false);
+		await session.start();
 
-		await expect(session.start()).rejects.toThrow('database unavailable');
+		await vi.advanceTimersByTimeAsync(RENEW_SECONDS * 1000);
+		const [first] = insertedSessions();
+		expect(sessions.deleteSession).toHaveBeenCalledWith(first.id, expect.anything());
 
 		await vi.advanceTimersByTimeAsync(RENEW_SECONDS * 1000);
 
-		const [first, second] = insertedSessions();
+		const [, second] = insertedSessions();
 		expect(sessions.insertSession).toHaveBeenCalledTimes(2);
 		expect(second.id).not.toBe(first.id);
 		await expectHeld(second.id);
@@ -262,18 +265,31 @@ describe('LeaseSessionManager', () => {
 		await expectHeld(first.id);
 	});
 
-	it('rejects start, inserts no session and retries on the next beat when the kind insert fails', async () => {
-		vi.spyOn(Math, 'random').mockReturnValue(0.5);
+	it('rejects start and inserts no session when the kind insert fails', async () => {
 		kinds.insertIfMissing.mockRejectedValueOnce(new Error('database unavailable'));
 
 		await expect(session.start()).rejects.toThrow('database unavailable');
+
 		expect(sessions.insertSession).not.toHaveBeenCalled();
+	});
+
+	it('logs a failed insert after a loss and inserts again on the next beat', async () => {
+		vi.spyOn(Math, 'random').mockReturnValue(0.5);
+		sessions.renewLive.mockResolvedValueOnce(false);
+		await session.start();
+		kinds.insertIfMissing.mockRejectedValueOnce(new Error('database unavailable'));
+
+		await vi.advanceTimersByTimeAsync(RENEW_SECONDS * 1000 * 2);
+		expect(sessions.insertSession).toHaveBeenCalledTimes(1);
+		expect(logger.warn).toHaveBeenCalledWith(
+			'Failed to start lease session',
+			expect.objectContaining({ kind: 'test-kind' }),
+		);
 
 		await vi.advanceTimersByTimeAsync(RENEW_SECONDS * 1000);
 
-		expect(kinds.insertIfMissing).toHaveBeenCalledTimes(2);
-		expect(sessions.insertSession).toHaveBeenCalledTimes(1);
-		const [first] = insertedSessions();
-		await expectHeld(first.id);
+		const [, second] = insertedSessions();
+		expect(sessions.insertSession).toHaveBeenCalledTimes(2);
+		await expectHeld(second.id);
 	});
 });
