@@ -1,0 +1,77 @@
+import { flushPromises } from '@vue/test-utils';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { effectScope, ref } from 'vue';
+
+import { useSkillWorkflowToolNames } from '@/features/agents/composables/useSkillWorkflowToolNames';
+
+const searchWorkflows = vi.hoisted(() => vi.fn());
+vi.mock('@/app/stores/workflowsList.store', () => ({
+	useWorkflowsListStore: () => ({ searchWorkflows }),
+}));
+
+const workflowsInSkillsEnabled = ref(true);
+vi.mock('@/app/stores/posthog.store', () => ({
+	usePostHog: () => ({
+		isVariantEnabled: (name: string, variant: string) =>
+			workflowsInSkillsEnabled.value && name === '152_workflows_in_skills' && variant === 'variant',
+	}),
+}));
+
+function useInScope(toolNames: () => string[]) {
+	return effectScope().run(() => useSkillWorkflowToolNames(toolNames))!;
+}
+
+describe('useSkillWorkflowToolNames', () => {
+	beforeEach(() => {
+		searchWorkflows.mockReset();
+		workflowsInSkillsEnabled.value = true;
+	});
+
+	it('names the workflow tool of a skill after its workflow', async () => {
+		searchWorkflows.mockResolvedValue([{ id: 'wf1', name: 'Lucky code' }]);
+
+		const { skillWorkflowName } = useInScope(() => ['workflow_wf1', 'send_report']);
+		await flushPromises();
+
+		expect(searchWorkflows).toHaveBeenCalledWith({
+			ids: ['wf1'],
+			select: ['id', 'name'],
+			options: { take: 1, includeScopes: false },
+		});
+		expect(skillWorkflowName('workflow_wf1')).toBe('Lucky code');
+		expect(skillWorkflowName('send_report')).toBeUndefined();
+	});
+
+	it('requests each workflow only once', async () => {
+		searchWorkflows.mockResolvedValue([{ id: 'wf2', name: 'Notify team' }]);
+
+		useInScope(() => ['workflow_wf2']);
+		const { skillWorkflowName } = useInScope(() => ['workflow_wf2']);
+		await flushPromises();
+
+		expect(searchWorkflows).toHaveBeenCalledTimes(1);
+		expect(skillWorkflowName('workflow_wf2')).toBe('Notify team');
+	});
+
+	it('keeps the tool name when the workflow cannot be read', async () => {
+		searchWorkflows.mockRejectedValue(new Error('Forbidden'));
+		const toolNames = ref(['workflow_wf3']);
+
+		const { skillWorkflowName } = useInScope(() => toolNames.value);
+		await flushPromises();
+		toolNames.value = ['workflow_wf3', 'send_report'];
+		await flushPromises();
+
+		expect(searchWorkflows).toHaveBeenCalledTimes(1);
+		expect(skillWorkflowName('workflow_wf3')).toBeUndefined();
+	});
+
+	it('requests nothing when the feature flag is off', async () => {
+		workflowsInSkillsEnabled.value = false;
+
+		useInScope(() => ['workflow_wf4']);
+		await flushPromises();
+
+		expect(searchWorkflows).not.toHaveBeenCalled();
+	});
+});
