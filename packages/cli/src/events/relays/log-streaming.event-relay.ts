@@ -210,6 +210,7 @@ export class LogStreamingEventRelay extends EventRelay {
 			'role-mapping-rule-updated': (event) => this.roleMappingRuleUpdated(event),
 			'role-mapping-rule-deleted': (event) => this.roleMappingRuleDeleted(event),
 			'role-mapping-rules-bulk-deleted': (event) => this.roleMappingRulesBulkDeleted(event),
+			'provisioning-settings-updated': (event) => this.provisioningSettingsUpdated(event),
 			'trusted-source-created': (event) => this.trustedSourceCreated(event),
 			'trusted-source-updated': (event) => this.trustedSourceUpdated(event),
 			'trusted-source-deleted': (event) => this.trustedSourceDeleted(event),
@@ -1839,6 +1840,32 @@ export class LogStreamingEventRelay extends EventRelay {
 					count: event.count,
 					reason: event.reason,
 				},
+			},
+		});
+	}
+
+	// #endregion
+
+	// #region Provisioning settings
+
+	@Redactable()
+	private provisioningSettingsUpdated({
+		user,
+		authenticationMethod,
+		assignmentMethod,
+		roleMappingMethod,
+		instanceRuleCount,
+		projectRuleCount,
+	}: RelayEventMap['provisioning-settings-updated']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.provisioning.settings.updated',
+			payload: {
+				...user,
+				authenticationMethod,
+				assignmentMethod,
+				roleMappingMethod,
+				instanceRuleCount,
+				projectRuleCount,
 			},
 		});
 	}

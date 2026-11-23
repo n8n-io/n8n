@@ -102,6 +102,7 @@ import InstanceAiViewHeader from './components/InstanceAiViewHeader.vue';
 import DitherTrailGrid from './components/DitherTrailGrid.vue';
 import WorkflowBuilderUnavailableNotice from './components/WorkflowBuilderUnavailableNotice.vue';
 import LimitedModeNotice from './components/LimitedModeNotice.vue';
+import ModelTrainingNotice from './components/ModelTrainingNotice.vue';
 import CreditWarningBanner from '@/features/ai/assistant/components/Agent/CreditWarningBanner.vue';
 import ProjectSelect from './components/ProjectSelect.vue';
 import { useIsAssistantAtMentionsEnabled } from '@/features/ai/assistant-at-mentions/composables/useIsAssistantAtMentionsEnabled';
@@ -1170,6 +1171,7 @@ async function handleWorkflowPreviewExampleUse(
 			</div>
 		</div>
 
+		<ModelTrainingNotice />
 		<DitherTrailGrid :height="640" />
 	</div>
 </template>

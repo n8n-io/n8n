@@ -46,6 +46,7 @@ export class WhatsAppTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'WhatsApp Trigger',
 		name: 'whatsAppTrigger',
+		schemaPath: 'WhatsApp',
 		icon: 'file:whatsapp.svg',
 		group: ['trigger'],
 		version: 1,

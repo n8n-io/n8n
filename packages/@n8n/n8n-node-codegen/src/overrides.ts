@@ -3,7 +3,9 @@ import { z } from 'zod';
 
 import { parse } from './parse';
 
-const overridesSchema = z.object({ exclude: z.record(z.string()) }).strict();
+const overridesSchema = z
+	.object({ exclude: z.record(z.string()), flatten: z.record(z.string()).optional() })
+	.strict();
 
 const moduleSchema = z.object({ overrides: overridesSchema });
 

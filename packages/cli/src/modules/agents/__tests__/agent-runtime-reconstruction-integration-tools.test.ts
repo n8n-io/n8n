@@ -571,7 +571,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 				runtimeProfile: 'top-level',
 				config: {
 					name: 'Test Agent',
-					model: 'anthropic/claude-sonnet-4-5',
+					model: 'anthropic/claude-sonnet-5-5',
 					instructions: 'Be helpful',
 				},
 				parentAgentIdForDelegation: agentId,
@@ -637,7 +637,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 				projectId,
 				credentialProvider: mock(),
 				runtimeProfile: 'top-level',
-				config: { name: 'Test Agent', model: 'anthropic/claude-sonnet-4-5', instructions: 'Hi' },
+				config: { name: 'Test Agent', model: 'anthropic/claude-sonnet-5-5', instructions: 'Hi' },
 				parentAgentIdForDelegation: agentId,
 				subAgentDelegation: { sourcesById: {}, availableSubAgents: [] },
 				credentialIntegrations: [

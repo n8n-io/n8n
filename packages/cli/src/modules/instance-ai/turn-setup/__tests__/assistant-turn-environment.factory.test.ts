@@ -502,6 +502,44 @@ describe('AssistantTurnEnvironmentFactory', () => {
 		});
 	});
 
+	describe('createProxyRunConfig', () => {
+		function createProxyFactory(isModelTrainingAllowed: () => Promise<boolean>) {
+			return createFactory({
+				aiService: {
+					isProxyEnabled: vi.fn(() => true),
+					getClient: vi.fn(async () => ({ getApiProxyBaseUrl: () => 'https://proxy.test' })),
+				},
+				aiUsageService: { isModelTrainingAllowed: vi.fn(isModelTrainingAllowed) },
+			});
+		}
+
+		it('tags traces when the instance opted out of model training', async () => {
+			const { tracingProxyConfig, searchProxyConfig } = await createProxyFactory(
+				async () => false,
+			).createProxyRunConfig(user);
+
+			expect(tracingProxyConfig?.traceTags).toEqual(['model-training-opt-out']);
+			expect(searchProxyConfig?.traceTags).toBeUndefined();
+		});
+
+		it('does not tag traces when the instance allows model training', async () => {
+			const { tracingProxyConfig } = await createProxyFactory(
+				async () => true,
+			).createProxyRunConfig(user);
+
+			expect(tracingProxyConfig?.apiUrl).toBe('https://proxy.test/langsmith');
+			expect(tracingProxyConfig?.traceTags).toBeUndefined();
+		});
+
+		it('tags traces when the model training setting cannot be read', async () => {
+			const { tracingProxyConfig } = await createProxyFactory(async () => {
+				throw new Error('db down');
+			}).createProxyRunConfig(user);
+
+			expect(tracingProxyConfig?.traceTags).toEqual(['model-training-opt-out']);
+		});
+	});
+
 	describe('areMcpConnectionsAvailable', () => {
 		it.each([
 			{ moduleActive: true, accessEnabled: true, expected: true },

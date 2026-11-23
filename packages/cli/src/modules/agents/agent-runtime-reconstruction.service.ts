@@ -15,6 +15,11 @@ import {
 	ModelConfig,
 	type Workspace,
 } from '@n8n/agents';
+import {
+	GUARDED_CALL_TIMEOUT_MS,
+	isMcpGuardActive,
+	withMcpGuard,
+} from '../mcp-guard/mcp-guard-fetch';
 import { getProviderPrefix } from '@n8n/ai-utilities/agent-config';
 import type { LanguageModel } from 'ai';
 import {
@@ -94,6 +99,7 @@ import { N8nMemory } from './integrations/n8n-memory';
 import {
 	buildFromJson,
 	buildProviderToolsForModel,
+	resolveModelConfig,
 	type MemoryFactory,
 	type ToolResolver,
 } from './json-config/from-json-config';
@@ -955,6 +961,7 @@ export class AgentRuntimeReconstructionService {
 	) {
 		const { credentialProvider, projectId, memoryOwnerAgentId, instrumentation, runtimeProfile } =
 			options;
+		const guardActive = isMcpGuardActive(options.runType, instrumentation?.mcpFetch !== undefined);
 		return async (server: AgentJsonMcpServerConfig) =>
 			await buildMcpClientForServer(server, {
 				credentialProvider,
@@ -962,7 +969,18 @@ export class AgentRuntimeReconstructionService {
 				nonInterrupting: runtimeProfile === 'inline',
 				oauthService: this.oauthService,
 				projectId,
-				proxyFetch: instrumentation?.mcpFetch?.(server.name) ?? aiMcpFetch,
+				// A guarded call can wait for a hydration. Give every call of the chat more time than the MCP SDK default.
+				...(guardActive && { callTimeoutMs: GUARDED_CALL_TIMEOUT_MS }),
+				// An instrumented run brings its own MCP fetch. Otherwise a test chat, when enabled, goes through the read-only guard.
+				proxyFetch:
+					instrumentation?.mcpFetch?.(server.name) ??
+					(guardActive
+						? withMcpGuard(aiMcpFetch, memoryOwnerAgentId, {
+								// The hydration agent uses the model of the agent under test.
+								resolve: async () => await resolveModelConfig(options.config, credentialProvider),
+								fetch: createAiProxyFetch(this.outboundHttp),
+							})
+						: aiMcpFetch),
 				resolveRegistryConnection: async (nodeTypeName) => {
 					const connection = await this.mcpRegistryService.getConnection(nodeTypeName);
 					if (connection?.attribution) {

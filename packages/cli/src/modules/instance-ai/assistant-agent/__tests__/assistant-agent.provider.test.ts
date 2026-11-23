@@ -959,6 +959,103 @@ describe('AssistantAgentProvider', () => {
 			});
 		});
 
+		describe('instance context turn telemetry', () => {
+			const injection = { state: 'absent', reason: 'disabled' } as const;
+
+			function contextRows(telemetry: ReturnType<typeof setup>['telemetry']) {
+				return telemetry.track.mock.calls
+					.filter(
+						([event]) => (event as unknown) === TELEMETRY_EVENT.INSTANCE_AI.INSTANCE_CONTEXT_TURN,
+					)
+					.map(([, properties]) => properties);
+			}
+
+			function resumeOf(
+				start: SystemAgentStartTurn<AssistantSandboxLease>,
+			): SystemAgentResumeTurn<AssistantSandboxLease> {
+				return {
+					type: 'resume',
+					user,
+					thread,
+					resourceId: start.resourceId,
+					abortSignal: start.abortSignal,
+					emitHostEvent: start.emitHostEvent,
+					memory: start.memory,
+					checkpointStore: start.checkpointStore,
+					sessionGrants: start.sessionGrants,
+					readFile: vi.fn(async () => undefined),
+					runId: 'agent-run-1',
+					toolCallId: 'tc-1',
+					checkpointHostMetadata: { assistantTurn: { runId: 'run-1', messageGroupId: 'mg-1' } },
+					openSuspensions: [{ toolCallId: 'tc-1', toolName: 'ask-user', suspendPayload: {} }],
+					resumeData: { approved: true },
+				};
+			}
+
+			it('reports each segment of a suspended turn with the Agents runtime', async () => {
+				const { provider, telemetry, turnInput, input, environment } = setup();
+				environment.instanceContextEnabled = false;
+				environment.nodeUsageEnabled = true;
+				turnInput.buildInput.mockImplementation(async (_environment, _runtime, params) => {
+					params.onInstanceContextInjection?.(injection);
+					return input;
+				});
+				const start = startTurn({ memory: createMemory() });
+
+				const startHandle = await provider.prepareTurn(start);
+				startHandle.onChunk?.({
+					type: 'tool-call',
+					toolCallId: 'tc-1',
+					toolName: 'ask-user',
+					input: {},
+				});
+				startHandle.onChunk?.({
+					type: 'finish',
+					finishReason: 'tool-calls',
+					model: 'anthropic/claude-sonnet',
+					usage: { promptTokens: 10, completionTokens: 2, totalTokens: 12 },
+				});
+				await startHandle.onSettled?.({ executionId: 'exec-1', status: 'suspended' });
+
+				const resumeHandle = await provider.prepareTurn(resumeOf(start));
+				await resumeHandle.onSettled?.({ executionId: 'exec-2', status: 'completed' });
+
+				const rows = contextRows(telemetry);
+				for (const row of rows) {
+					expect(
+						TELEMETRY_EVENT.INSTANCE_AI.INSTANCE_CONTEXT_TURN.getValidationError(row),
+					).toBeNull();
+				}
+				expect(rows).toEqual([
+					expect.objectContaining({
+						runtime: 'agents',
+						run_id: 'run-1',
+						segment: 'suspended',
+						status: 'suspended',
+						instance_context_enabled: false,
+						node_usage_enabled: true,
+						block_state: 'absent',
+						tool_calls: 1,
+						turn_total_tokens: 12,
+						hub_skill_snapshot_sequence: 1,
+					}),
+					expect.objectContaining({
+						runtime: 'agents',
+						run_id: 'run-1',
+						segment: 'resumed',
+						status: 'completed',
+						instance_context_enabled: false,
+						node_usage_enabled: true,
+						block_state: 'absent',
+						tool_calls: 0,
+						hub_skill_snapshot_sequence: 2,
+					}),
+				]);
+				const stored = await start.memory.getThread('thread-1');
+				expect(stored?.metadata).not.toHaveProperty('assistantSuspendedContextTurn');
+			});
+		});
+
 		describe('side-call usage', () => {
 			const usage = { promptTokens: 50, completionTokens: 5, totalTokens: 55 };
 

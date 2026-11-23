@@ -12,6 +12,7 @@ import { MIGRATION_REPORT_TELEMETRY } from './events/migration-report';
 import { PLATFORM_TELEMETRY } from './events/platform';
 import { POLICIES_TELEMETRY } from './events/policies';
 import { PROMOTIONS_TELEMETRY } from './events/promotions';
+import { PROVISIONING_TELEMETRY } from './events/provisioning';
 import { PUBLIC_API_TELEMETRY } from './events/public-api';
 import { SCIM_TELEMETRY } from './events/scim';
 import { SELF_HEALING_TELEMETRY } from './events/self-healing';
@@ -25,6 +26,7 @@ export const TELEMETRY_EVENT = {
 	PLATFORM: PLATFORM_TELEMETRY,
 	POLICIES: POLICIES_TELEMETRY,
 	PROMOTIONS: PROMOTIONS_TELEMETRY,
+	PROVISIONING: PROVISIONING_TELEMETRY,
 	AGENTS: AGENTS_TELEMETRY,
 	APPS: APPS_TELEMETRY,
 	AUTH: AUTH_TELEMETRY,
