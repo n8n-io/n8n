@@ -491,7 +491,7 @@ export function resolveInputReads(
 
 function concatenateSlotValue(
 	current: JsonValue,
-	value: JsonValue,
+	value: Exclude<JsonValue, null>,
 	step: StepRecord,
 	slot: number,
 ): JsonValue {

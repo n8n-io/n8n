@@ -153,7 +153,7 @@ export function emptyRun(
 /**
  * One link per item of `sources`, in item order: the item's index in its source
  * slot, with the source as `sourceOverwrite`. `undefined` for an item whose
- * source node is unknown.
+ * source node is not in `namesById`.
  */
 export function sourceLinks(
 	sources: ItemSource[],
