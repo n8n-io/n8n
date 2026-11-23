@@ -161,6 +161,13 @@ describe('Instance AI skills', () => {
 		expect(skill?.instructions).not.toContain('additionalInstructions');
 	});
 
+	it('recommends the app builder only for the apps tool group', async () => {
+		const skill = await loadInstanceAiSkills().loadSkill('app-builder');
+
+		// A broad group such as `tools` would suggest the skill for requests that are not about apps.
+		expect(skill?.recommendedToolGroups).toEqual(['apps']);
+	});
+
 	it('opens a newly created app before editing its files', async () => {
 		const skill = await loadInstanceAiSkills().loadSkill('app-builder');
 

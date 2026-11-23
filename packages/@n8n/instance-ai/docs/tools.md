@@ -1512,7 +1512,7 @@ commit with a conflict and the folder stays. A commit leaves out
 `node_modules` and `dist`, and n8n builds the version again.
 
 `create_app`, `open_app`, `commit_app` and every binding change add the app to
-the thread metadata key `instanceAiAppTargets`. Reads do not. A thread can build several
+the thread metadata key `instanceAiAppTargets`. Reads and `discard_app_changes` do not. A thread can build several
 apps. On each user turn the `<app-targets>` block names these apps. They also
 report the app as an `app` artifact through `onArtifactChanged`, so the thread
 shows the app's tab. The `create_app` and `commit_app` results include `app`
