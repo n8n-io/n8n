@@ -314,8 +314,12 @@ const blockerCount = computed(
 	() =>
 		blockerList.value.filter(isBlocking).length + (scopedCheck.value?.outsideAccess?.length ?? 0),
 );
+// Apply always has the tab. Promote has it when the preview carries issues.
 const showBlockersTab = computed(
-	() => props.direction === 'apply' && !!scopedCheck.value && state.value === 'ready',
+	() =>
+		!!scopedCheck.value &&
+		state.value === 'ready' &&
+		(props.direction === 'apply' || (scopedCheck.value.outsideAccess?.length ?? 0) > 0),
 );
 watch(showBlockersTab, (show) => {
 	if (!show) activeTab.value = 'changes';
@@ -547,6 +551,7 @@ const treeResizer = useResizablePanel({
 				</section>
 			</div>
 			<PromotionBlockers
+				:direction="direction"
 				v-if="showBlockersTab && scopedCheck"
 				v-show="activeTab === 'blockers'"
 				:class="$style.blockers"

@@ -13,6 +13,11 @@ import type {
 export type PromotionOutsideAccessDependency = {
 	kind: 'credential' | 'variable' | 'workflow';
 	name: string;
+	/**
+	 * Set when the user can reach the dependency, but Promote cannot carry it: a credential in a
+	 * personal project. Absent when the user has no access to its project.
+	 */
+	reason?: 'personal';
 	/** The workflows that use it, so the row can link to them. */
 	consumers: PromotionBindingConsumer[];
 };

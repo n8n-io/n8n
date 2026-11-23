@@ -8,6 +8,7 @@ import { buildPlaygroundDetail } from './playground.data';
  * the page runs with no server state. It sits in front of axios and touches no product code.
  * Remove it with the rest of the Playground.
  */
+const PROMOTE_PATH = /\/promotions\/projects\/[^/]+\/promote$/;
 const CHANGES_PATH = /\/promotions\/projects\/[^/]+\/changes\/(promote|apply)$/;
 const DETAILS_PATH = /\/promotions\/projects\/[^/]+\/changes\/(promote|apply)\/details$/;
 
@@ -37,13 +38,24 @@ function requestedKeys(data: unknown): string[] {
  * know fails, so a missing answer shows up instead of an empty page.
  * Returns a function that removes the hook.
  */
-export function installMockPromotionApi(getPreview: () => PromotionPreview): () => void {
+export function installMockPromotionApi(
+	/** `changed` is true after a Promote found that the list had changed. */
+	getPreview: (changed: boolean) => PromotionPreview,
+	/** Names the scenario and the amount, so a change of either starts over. */
+	getKey: () => string,
+): () => void {
+	let key = getKey();
+	let changed = false;
 	const hook = axios.interceptors.request.use((config) => {
 		if (!isPromotionsRequest(config)) return config;
 
 		config.adapter = async (adapterConfig) => {
 			const url = adapterConfig.url ?? '';
-			const preview = getPreview();
+			if (getKey() !== key) {
+				key = getKey();
+				changed = false;
+			}
+			const preview = getPreview(changed);
 
 			if (DETAILS_PATH.test(url)) {
 				const details = requestedKeys(adapterConfig.data)
@@ -52,6 +64,14 @@ export function installMockPromotionApi(getPreview: () => PromotionPreview): () 
 				return respond(adapterConfig, { details, missingKeys: [] });
 			}
 			if (CHANGES_PATH.test(url)) return respond(adapterConfig, preview);
+			if (PROMOTE_PATH.test(url)) {
+				// Each Promote finds that the list changed since the preview. The next preview shows it.
+				changed = true;
+				return respond(adapterConfig, {
+					status: 'preview-changed',
+					environmentId: preview.source.environmentId,
+				});
+			}
 
 			throw new AxiosError(`The Playground has no sample data for ${url}`);
 		};

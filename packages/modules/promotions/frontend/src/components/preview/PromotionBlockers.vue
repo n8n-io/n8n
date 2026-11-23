@@ -2,6 +2,7 @@
 import type {
 	PromotionBindingConflict,
 	PromotionBindingConsumer,
+	PromotionDirection,
 	PromotionResourceType,
 } from '@n8n/api-types';
 import {
@@ -10,6 +11,7 @@ import {
 	N8nHeading,
 	N8nIcon,
 	N8nText,
+	N8nTooltip,
 	type IconName,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -18,15 +20,24 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { usePromotionBindingCreation } from '../../composables/usePromotionBindingCreation';
 import { usePromotionBindings } from '../../composables/usePromotionBindings';
 import { usePromotionPreviewLabels } from '../../composables/usePromotionPreviewLabels';
-import type { ApplyCheckResult, BlockedApplyResult } from '../../promotions.types';
+import type {
+	ApplyCheckResult,
+	BlockedApplyResult,
+	PromotionOutsideAccessDependency,
+} from '../../promotions.types';
 import { resourceIcon } from '../../promotionPreview.tree';
 import PromotionWorkflowLinks from './PromotionWorkflowLinks.vue';
 
-const props = defineProps<{
-	/** The Apply check, scoped to the workflows that the preview lists. Moved folders stay unscoped. */
-	check: ApplyCheckResult;
-	busy: boolean;
-}>();
+const props = withDefaults(
+	defineProps<{
+		/** The check, scoped to the workflows that the preview lists. Moved folders stay unscoped. */
+		check: ApplyCheckResult;
+		busy: boolean;
+		/** Which page shows the issues. It decides the wording. */
+		direction?: PromotionDirection;
+	}>(),
+	{ direction: 'apply' },
+);
 
 const emit = defineEmits<{
 	/** A binding was created, so the preview and the check must load again. */
@@ -77,6 +88,8 @@ type BlockerRow = {
 	detail?: string;
 	/** The button that adds a missing binding. */
 	createLabel?: string;
+	/** A disabled button for an issue that users cannot resolve, and the reason in its tooltip. */
+	disabled?: { label: string; reason: string };
 };
 
 const usedBy = (consumers: PromotionBindingConsumer[]) =>
@@ -84,7 +97,7 @@ const usedBy = (consumers: PromotionBindingConsumer[]) =>
 		workflows.map(({ id, name }) => ({ key: `workflow:${id}`, name })),
 	);
 
-type StatusKey = 'missing' | 'resolved' | 'access' | 'conflict' | 'moved' | 'outside';
+type StatusKey = 'missing' | 'resolved' | 'access' | 'conflict' | 'moved' | 'outside' | 'personal';
 
 const status = (key: StatusKey) => ({
 	label: i18n.baseText(`promotions.preview.blockers.status.${key}`),
@@ -201,23 +214,61 @@ const blockerRows = computed<BlockerRow[]>(() => {
 	];
 });
 
-const outsideRows = computed<BlockerRow[]>(() =>
-	(props.check.outsideAccess ?? []).map((dependency, index) => ({
-		key: `outside:${index}`,
-		icon: resourceIcon(dependency.kind),
-		name: dependency.name,
-		type: dependency.kind,
-		usedBy: usedBy(dependency.consumers),
-		status: status('outside'),
-	})),
+/**
+ * The action that users would take if they could, shown disabled with the reason. It keeps the
+ * row the same as a row that users can resolve.
+ */
+function disabledAction(dependency: PromotionOutsideAccessDependency) {
+	const promote = props.direction === 'promote';
+	const label = promote
+		? i18n.baseText('promotions.preview.blockers.include')
+		: i18n.baseText(`promotions.preview.blockers.create.${dependency.kind}`);
+	const reason =
+		dependency.reason === 'personal'
+			? i18n.baseText('promotions.preview.blockers.disabled.personal')
+			: i18n.baseText(
+					promote
+						? 'promotions.preview.blockers.disabled.outside.promote'
+						: 'promotions.preview.blockers.disabled.outside.apply',
+					{
+						interpolate: {
+							type: i18n
+								.baseText(`promotions.preview.blockers.type.${dependency.kind}`)
+								.toLowerCase(),
+						},
+					},
+				);
+	return { label, reason };
+}
+
+const outsideRowOf = (dependency: PromotionOutsideAccessDependency, index: number): BlockerRow => ({
+	key: `outside:${index}`,
+	icon: resourceIcon(dependency.kind),
+	name: dependency.name,
+	type: dependency.kind,
+	usedBy: usedBy(dependency.consumers),
+	status: status(dependency.reason === 'personal' ? 'personal' : 'outside'),
+	disabled: disabledAction(dependency),
+});
+
+const outsideEntries = computed(() => (props.check.outsideAccess ?? []).map(outsideRowOf));
+const outsideRows = computed(() =>
+	outsideEntries.value.filter((_, index) => !props.check.outsideAccess?.[index]?.reason),
+);
+// A personal credential is reachable, but Promote cannot carry it, so it has its own section.
+const personalRows = computed(() =>
+	outsideEntries.value.filter(
+		(_, index) => props.check.outsideAccess?.[index]?.reason === 'personal',
+	),
 );
 
-// The two kinds of issue, in the order that users act on them. Only the first one stops Apply.
+// The kinds of issue, in the order that users act on them. Only the first one stops the operation.
 const sections = computed(() =>
 	(
 		[
 			{ id: 'blockers', rows: blockerRows.value },
 			{ id: 'outsideAccess', rows: outsideRows.value },
+			{ id: 'notPromoted', rows: personalRows.value },
 		] as const
 	)
 		.filter(({ rows }) => rows.length > 0)
@@ -228,7 +279,11 @@ const sections = computed(() =>
 				adjustToNumber: rows.length,
 				interpolate: { count: String(rows.length) },
 			}),
-			description: i18n.baseText(`promotions.preview.blockers.section.${id}.description`),
+			description: i18n.baseText(
+				props.direction === 'promote' && id === 'outsideAccess'
+					? 'promotions.preview.blockers.section.outsideAccess.description.promote'
+					: `promotions.preview.blockers.section.${id}.description`,
+			),
 		})),
 );
 
@@ -252,7 +307,7 @@ const warnings = computed(() => props.check.warnings);
 const warningCount = computed(
 	() => bindings.destructiveChanges.value.length + warnings.value.length,
 );
-const open = ref({ blockers: true, outsideAccess: true, warnings: true });
+const open = ref({ blockers: true, outsideAccess: true, notPromoted: true, warnings: true });
 
 async function create(key: string) {
 	await bindings.createBinding(key, creation.createBinding);
@@ -268,11 +323,17 @@ const isCreateDisabled = computed(() => props.busy || bindings.isBusy.value);
 	<div :class="$style.blockers" data-test-id="promotion-preview-blockers">
 		<slot />
 		<N8nText tag="p" color="text-base">
-			{{ i18n.baseText('promotions.preview.blockers.intro') }}
+			{{
+				i18n.baseText(
+					direction === 'promote'
+						? 'promotions.preview.blockers.intro.promote'
+						: 'promotions.preview.blockers.intro',
+				)
+			}}
 		</N8nText>
 
 		<N8nCallout
-			v-if="unresolvedCount === 0 && outsideRows.length === 0"
+			v-if="unresolvedCount === 0 && outsideEntries.length === 0"
 			theme="success"
 			slim
 			role="status"
@@ -384,6 +445,21 @@ const isCreateDisabled = computed(() => props.busy || bindings.isBusy.value);
 								>
 									{{ row.createLabel }}
 								</N8nButton>
+								<!-- A disabled button gets no pointer events, so the tooltip sits on its wrapper. -->
+								<N8nTooltip v-else-if="row.disabled" placement="left">
+									<template #content>{{ row.disabled.reason }}</template>
+									<span
+										tabindex="0"
+										role="group"
+										:class="$style.disabledAction"
+										:aria-label="`${row.disabled.label}. ${row.disabled.reason}`"
+										data-test-id="promotion-preview-blocker-disabled-action"
+									>
+										<N8nButton variant="outline" size="small" disabled>
+											{{ row.disabled.label }}
+										</N8nButton>
+									</span>
+								</N8nTooltip>
 							</td>
 						</tr>
 					</tbody>
@@ -660,5 +736,9 @@ const isCreateDisabled = computed(() => props.busy || bindings.isBusy.value);
 .action {
 	text-align: right;
 	white-space: nowrap;
+}
+
+.disabledAction {
+	display: inline-block;
 }
 </style>

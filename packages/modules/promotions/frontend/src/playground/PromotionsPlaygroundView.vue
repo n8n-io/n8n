@@ -59,8 +59,15 @@ async function back() {
 // marks the sidebar, so the CSS below hides the Settings links only while this page is open.
 const SIDEBAR = '#sidebar';
 // Installed during setup, before the preview page below can send its first request.
-removeMockApi = installMockPromotionApi(() =>
-	buildPlaygroundPreview(scenarioId.value, scenario.value?.direction ?? 'promote', size.value),
+removeMockApi = installMockPromotionApi(
+	(changed) =>
+		buildPlaygroundPreview(
+			scenarioId.value,
+			scenario.value?.direction ?? 'promote',
+			size.value,
+			changed,
+		),
+	() => `${scenarioId.value}-${size.value}`,
 );
 onMounted(() => document.querySelector(SIDEBAR)?.setAttribute('data-playground', ''));
 onBeforeUnmount(() => {
