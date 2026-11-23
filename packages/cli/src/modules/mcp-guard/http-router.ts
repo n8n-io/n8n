@@ -26,6 +26,10 @@ export interface HttpGuardRouterDeps {
 
 const refusal = (status: number, text: string): Response => new Response(text, { status });
 
+// A 401, 403 or 5xx of a real read goes back to the node. A 404 stays with the gym: the id can be its own.
+const isPassedBack = (status: unknown): boolean =>
+	typeof status === 'number' && (status === 401 || status === 403 || status >= 500);
+
 const textOf = (res: CallToolResult): string =>
 	res.content.flatMap((c) => (c.type === 'text' ? [c.text] : [])).join('\n');
 
@@ -110,9 +114,10 @@ export class HttpGuardRouter {
 				const real = await upstream.callTool(name, args);
 				if (real.isError)
 					this.warn(args, `real read failed with status ${String(real._meta?.status)}`);
-				// An expired token: the node refreshes its credential and sends the request again.
-				if (real._meta?.status === 401) return toResponse(real);
-				// A failed real read (an id that only the gym knows, a bad token) leaves the gym to answer.
+				// The node must see these failures. An expired token (401) makes the node refresh its credential.
+				// The others (a closed API, a denied scope, a service error) are no empty result.
+				if (isPassedBack(real._meta?.status)) return toResponse(real);
+				// Any other failed real read (a 404 for an id that only the gym knows) leaves the gym to answer.
 				if (!real.isError && profile.hydrateRead?.(args, safeJson(textOf(real))) !== false) {
 					await hydrator.hydrate(name, args, real).catch(() => {
 						Container.get(Logger).warn(`mcp-guard http hydration failed for ${name}`);

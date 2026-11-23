@@ -327,6 +327,39 @@ describe('HttpGuardRouter', () => {
 	});
 });
 
+describe('HttpGuardRouter real read failures', () => {
+	it.each([403, 500, 503])('returns a %i of the real read to the node', async (status) => {
+		const { router, upstream, gym, hydrator } = setup();
+		upstream.callTool.mockResolvedValueOnce(result({ error: 'failed' }, status));
+
+		const res = await router.handle(request('GET', LIST));
+
+		expect(res.status).toBe(status);
+		expect(gym.callTool).not.toHaveBeenCalled();
+		expect(hydrator.hydrate).not.toHaveBeenCalled();
+	});
+
+	it('leaves a 404 of the real read to the gym, for an id that only the gym knows', async () => {
+		const { router, upstream, gym } = setup();
+		upstream.callTool.mockResolvedValueOnce(result({ error: 'not found' }, 404));
+
+		const res = await router.handle(request('GET', `${LIST}/${ID}`));
+
+		expect(res.status).toBe(200);
+		expect(gym.callTool).toHaveBeenCalledTimes(1);
+	});
+
+	it('does not block a write when the real read of its hydration fails with a 403', async () => {
+		const { router, upstream, gym } = setup();
+		upstream.callTool.mockResolvedValue(result({ error: 'denied' }, 403));
+		gym.callTool.mockResolvedValueOnce(result({ id: 'gym-sent' }));
+
+		const res = await router.handle(request('POST', `${LIST}/send`, { raw: 'abc' }));
+
+		expect(res.status).toBe(200);
+	});
+});
+
 describe('HttpGuardRouter with real ids', () => {
 	const REAL = '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms';
 	const MADE = '1gymMade0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2xyz';
