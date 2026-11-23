@@ -192,12 +192,6 @@ const sizeOptions = computed(() =>
 // The same background as the active menu item, so the description sits inside its box.
 .active {
 	background-color: var(--color--background--light-1);
-	// An accent bar and bold label, so the selected scenario is clear at a glance.
-	box-shadow: inset 3px 0 0 var(--color--primary);
-
-	[data-test-id^='promotions-playground-scenario-'] :global(.n8n-text) {
-		font-weight: var(--font-weight--bold);
-	}
 }
 
 .description {
