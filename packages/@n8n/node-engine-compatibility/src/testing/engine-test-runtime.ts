@@ -91,10 +91,20 @@ export class EngineTestRuntime {
 	}
 
 	async start(postgresConnectionUri: string): Promise<void> {
+		try {
+			await this.startRuntime(postgresConnectionUri);
+		} catch (error) {
+			// A failed start must not leave the pool or the server open.
+			await this.stop();
+			throw error;
+		}
+	}
+
+	private async startRuntime(postgresConnectionUri: string): Promise<void> {
 		const dataSource = createDataSource(postgresConnectionUri);
+		this.db = dataSource;
 		await dataSource.initialize();
 		await dataSource.runMigrations();
-		this.db = dataSource;
 
 		this.runtime = createEngineRuntime({
 			dataSource,
@@ -107,6 +117,13 @@ export class EngineTestRuntime {
 				const finishExecution = executionStore.finishExecution.bind(executionStore);
 				executionStore.finishExecution = async (id, status) => {
 					const recorded = await finishExecution(id, status);
+					if (recorded) this.markFinished(id);
+					return recorded;
+				};
+				// A failed parent cancels its live sub-executions, so a cancel is an end too.
+				const cancelExecution = executionStore.cancelExecution.bind(executionStore);
+				executionStore.cancelExecution = async (id) => {
+					const recorded = await cancelExecution(id);
 					if (recorded) this.markFinished(id);
 					return recorded;
 				};
