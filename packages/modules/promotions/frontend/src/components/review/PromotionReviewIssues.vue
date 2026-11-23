@@ -11,7 +11,7 @@ import PromotionBlockers from '../preview/PromotionBlockers.vue';
 
 /**
  * What a promotion review leaves out: the dependencies that the promotion does not carry. The
- * reviewer reads them and cannot act on them, so the table shows no actions.
+ * reviewer cannot act on them, so each action is disabled and says why.
  */
 const props = defineProps<SlotPromotionIssuesProps>();
 
@@ -72,7 +72,6 @@ const check = computed<ApplyCheckResult | undefined>(() =>
 		:check="check"
 		:busy="false"
 		direction="promote"
-		read-only
 		:intro="i18n.baseText('promotions.review.issues.intro')"
 		data-test-id="promotion-review-issues"
 	/>

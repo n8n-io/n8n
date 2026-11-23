@@ -37,10 +37,8 @@ const props = withDefaults(
 		direction?: PromotionDirection;
 		/** Replaces the intro, for a page that has its own, such as a review. */
 		intro?: string;
-		/** For a reader who cannot act, such as a reviewer: no actions, not even disabled ones. */
-		readOnly?: boolean;
 	}>(),
-	{ direction: 'apply', intro: undefined, readOnly: false },
+	{ direction: 'apply', intro: undefined },
 );
 
 const emit = defineEmits<{
@@ -451,7 +449,7 @@ const isCreateDisabled = computed(() => props.busy || bindings.isBusy.value);
 									{{ row.createLabel }}
 								</N8nButton>
 								<!-- A disabled button gets no pointer events, so the tooltip sits on its wrapper. -->
-								<N8nTooltip v-else-if="row.disabled && !readOnly" placement="left">
+								<N8nTooltip v-else-if="row.disabled" placement="left">
 									<template #content>{{ row.disabled.reason }}</template>
 									<span
 										tabindex="0"
