@@ -1,0 +1,31 @@
+packages/@n8n/expression-runtime/src/runtime/url-pathname.ts
+  ai_agent 1-10
+packages/@n8n/expression-runtime/src/extensions/url-pathname.ts
+  s_b9f41586fbcdfe::t_1f60ab74056561 3-5
+packages/@n8n/expression-runtime/src/bridge/isolated-vm-bridge.ts
+  ai_agent 7-11,180,182,285
+packages/@n8n/expression-runtime/src/bridge/quickjs-bridge.ts
+  ai_agent 22-26,750,752,807-820
+packages/@n8n/expression-runtime/esbuild.config.js
+  ai_agent 32-41,52
+packages/@n8n/expression-runtime/src/extensions/string-extensions.ts
+  ai_agent 11,365
+packages/@n8n/expression-runtime/src/runtime/host-function-names.ts
+  ai_agent 3-5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "213dd4dfec67726db79b0e23f25695636c951b37",
+  "prompts": {},
+  "sessions": {
+    "s_b9f41586fbcdfe": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bd1c3dfe-33a1-452f-87d6-c9e273151a5a",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
