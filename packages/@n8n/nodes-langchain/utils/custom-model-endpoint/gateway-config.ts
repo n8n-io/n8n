@@ -3,8 +3,13 @@ import { UserError } from '@n8n/errors';
 import type { ICredentialDataDecryptedObject, INode } from 'n8n-workflow';
 
 import type { CustomModelEndpointFetchContext } from './auth-fetch';
-import { createCustomModelEndpointAuthFetch, createEndpointBaseFetch } from './auth-fetch';
+import {
+	createCustomModelEndpointAuthFetch,
+	createCustomModelEndpointTokenSource,
+	createEndpointBaseFetch,
+} from './auth-fetch';
 import { readCustomModelEndpointCredential, readOpenAiCredential } from './credential-data';
+import type { AccessTokenSource } from './oauth2';
 import type { EndpointCredential } from './types';
 
 export const CUSTOM_MODEL_ENDPOINT_CREDENTIAL = 'customModelEndpointApi';
@@ -68,6 +73,7 @@ export function createCustomModelEndpointConfig(
 		credentialType: AcceptedCredential;
 		timeout?: number;
 		requestHeaders?: Record<string, string>;
+		tokenSource?: AccessTokenSource;
 	},
 ): { configuration: ClientOptions; endpoint: EndpointCredential } {
 	const endpoint = readEndpointCredential(options.credentialType, credential);
@@ -79,6 +85,7 @@ export function createCustomModelEndpointConfig(
 		egressFilter,
 		baseFetch: createEndpointBaseFetch(egressFilter, options.timeout),
 		requestHeaders: options.requestHeaders,
+		tokenSource: options.tokenSource,
 	});
 
 	return {
@@ -88,4 +95,22 @@ export function createCustomModelEndpointConfig(
 			fetch: authFetch,
 		},
 	};
+}
+
+/**
+ * One sign-in for a whole run. A caller that builds a config for each item passes the
+ * result back in as `tokenSource`, or every item signs in again.
+ */
+export function createRunTokenSource(
+	ctx: CustomModelEndpointFetchContext,
+	credential: ICredentialDataDecryptedObject,
+	credentialType: AcceptedCredential,
+): AccessTokenSource | undefined {
+	const endpoint = readEndpointCredential(credentialType, credential);
+	assertAbsoluteHttpUrl(endpoint.baseUrl);
+
+	return createCustomModelEndpointTokenSource(ctx, credential, {
+		endpoint,
+		egressFilter: ctx.helpers.getSecureEgressFilter(),
+	});
 }

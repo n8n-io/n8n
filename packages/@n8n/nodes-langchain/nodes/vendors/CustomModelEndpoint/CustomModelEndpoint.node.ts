@@ -23,6 +23,7 @@ import {
 } from '@utils/custom-model-endpoint/descriptions';
 import {
 	createCustomModelEndpointConfig,
+	createRunTokenSource,
 	CUSTOM_MODEL_ENDPOINT_CREDENTIAL,
 	OPENAI_CREDENTIAL,
 	pickCredentialType,
@@ -187,6 +188,12 @@ export class CustomModelEndpoint implements INodeType {
 				? n8nContextHeaders(this)
 				: {};
 
+		// The transport below is rebuilt for each item, and the OAuth2 token lives in the
+		// source, so one built per transport would sign in once for every item. A run of
+		// 500 items would then make 500 token requests and can trip the login server's
+		// rate limit. This one is shared by all of them.
+		const tokenSource = createRunTokenSource(this, credential, credentialType);
+
 		/**
 		 * One transport for each item, because the headers belong to the item. Sharing one
 		 * and rewriting a record between items leaks: the refresh path keeps its own copy of
@@ -200,6 +207,7 @@ export class CustomModelEndpoint implements INodeType {
 				credentialType,
 				timeout,
 				requestHeaders,
+				tokenSource,
 			});
 
 			return new OpenAI({
