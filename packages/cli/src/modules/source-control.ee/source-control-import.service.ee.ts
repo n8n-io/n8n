@@ -390,9 +390,9 @@ export class SourceControlImportService {
 				const fileContent = await fsReadFile(file, { encoding: 'utf8' });
 				try {
 					return jsonParse<ExportableCredential>(fileContent);
-				} catch (error) {
-					const reason = error instanceof Error ? error.message : String(error);
-					this.logger.warn(`Failed to parse credential from file ${file}: ${reason}`);
+				} catch {
+					// Do not log the parser error: its message can include fragments of the credential file
+					this.logger.warn(`Failed to parse credential from file ${file}: invalid JSON format`);
 					return undefined;
 				}
 			},
@@ -1181,9 +1181,9 @@ export class SourceControlImportService {
 				credential = jsonParse<ExportableCredential>(
 					await fsReadFile(file.file, { encoding: 'utf8' }),
 				);
-			} catch (error) {
-				const reason = error instanceof Error ? error.message : String(error);
-				this.logger.warn(`Failed to parse credential from file ${file.file}: ${reason}`);
+			} catch {
+				// Do not log the parser error: its message can include fragments of the credential file
+				this.logger.warn(`Failed to parse credential from file ${file.file}: invalid JSON format`);
 				return;
 			}
 			if (!credential?.id) {
@@ -1226,9 +1226,11 @@ export class SourceControlImportService {
 					credential = jsonParse<ExportableCredential>(
 						await fsReadFile(candidate.file, { encoding: 'utf8' }),
 					);
-				} catch (error) {
-					const reason = error instanceof Error ? error.message : String(error);
-					this.logger.warn(`Failed to parse credential from file ${candidate.file}: ${reason}`);
+				} catch {
+					// Do not log the parser error: its message can include fragments of the credential file
+					this.logger.warn(
+						`Failed to parse credential from file ${candidate.file}: invalid JSON format`,
+					);
 					return undefined;
 				}
 				if (!credential?.id) {

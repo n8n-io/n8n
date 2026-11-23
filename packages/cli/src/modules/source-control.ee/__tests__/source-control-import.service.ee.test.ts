@@ -1943,7 +1943,7 @@ describe('SourceControlImportService', () => {
 			globMock.mockResolvedValue(['/mock/credential_good.json', '/mock/credential_bad.json']);
 			fsReadFile.mockImplementation(async (file: string) =>
 				file.includes('bad')
-					? 'not json'
+					? '{"apiKey": super-secret-value}'
 					: JSON.stringify({ id: 'cred1', name: 'Good', type: 'oauth2' }),
 			);
 
@@ -1951,7 +1951,10 @@ describe('SourceControlImportService', () => {
 
 			expect(result).toHaveLength(1);
 			expect(result[0]).toEqual(expect.objectContaining({ id: 'cred1' }));
-			expect(mockLogger.warn).toHaveBeenCalledWith(expect.stringContaining('credential_bad.json'));
+			expect(mockLogger.warn).toHaveBeenCalledWith(
+				'Failed to parse credential from file /mock/credential_bad.json: invalid JSON format',
+			);
+			expect(JSON.stringify(mockLogger.warn.mock.calls)).not.toContain('super-secr');
 		});
 
 		it('should skip credentials that are instance credentials locally, for any caller', async () => {
@@ -2262,7 +2265,7 @@ describe('SourceControlImportService', () => {
 				.mockResolvedValueOnce(
 					JSON.stringify({ id: 'cred1', name: 'Good Credential', type: 'oauth2Api', data: {} }),
 				)
-				.mockResolvedValueOnce('not json at all');
+				.mockResolvedValueOnce('{"apiKey": super-secret-value}');
 			credentialsRepository.find.mockResolvedValue([]);
 			sharedCredentialsRepository.find.mockResolvedValue([]);
 			credentialsRepository.upsert.mockResolvedValue({
@@ -2275,7 +2278,10 @@ describe('SourceControlImportService', () => {
 
 			expect(result).toHaveLength(1);
 			expect(result[0]).toEqual({ id: 'cred1', name: 'Good Credential', type: 'oauth2Api' });
-			expect(mockLogger.warn).toHaveBeenCalledWith(expect.stringContaining('cred2.json'));
+			expect(mockLogger.warn).toHaveBeenCalledWith(
+				'Failed to parse credential from file /mock/credential_stubs/cred2.json: invalid JSON format',
+			);
+			expect(JSON.stringify(mockLogger.warn.mock.calls)).not.toContain('super-secr');
 		});
 
 		it('should skip credential files flagged as instance credentials', async () => {
@@ -3272,7 +3278,7 @@ describe('SourceControlImportService', () => {
 		it('skips a credential file with invalid JSON instead of failing the preview', async () => {
 			fsReadFile.mockImplementation(async (path) =>
 				path === '/mock/cred-bad.json'
-					? 'not json at all'
+					? '{"apiKey": super-secret-value}'
 					: JSON.stringify({ id: 'cred1', type: 'slackApi', ownedBy: null }),
 			);
 
@@ -3285,7 +3291,10 @@ describe('SourceControlImportService', () => {
 			);
 
 			expect(policyEnforcementService.evaluateContentImport).toHaveBeenCalledTimes(1);
-			expect(mockLogger.warn).toHaveBeenCalledWith(expect.stringContaining('cred-bad.json'));
+			expect(mockLogger.warn).toHaveBeenCalledWith(
+				'Failed to parse credential from file /mock/cred-bad.json: invalid JSON format',
+			);
+			expect(JSON.stringify(mockLogger.warn.mock.calls)).not.toContain('super-secr');
 		});
 
 		it('resolves each owner once', async () => {
