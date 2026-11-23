@@ -105,7 +105,14 @@ export function matchesVendor(vendor: VendorKnowledge, host: string, pathname: s
 }
 
 // The vendors that have a file. Add a name here when a file is added.
-const VENDOR_NAMES = ['gmail', 'googlesheets', 'googlecalendar', 'googledrive', 'googledocs', 'youtube'] as const;
+const VENDOR_NAMES = [
+	'gmail',
+	'googlesheets',
+	'googlecalendar',
+	'googledrive',
+	'googledocs',
+	'youtube',
+] as const;
 
 export function vendorForRequest(host: string, pathname: string): VendorKnowledge | undefined {
 	return VENDOR_NAMES.map(loadVendorKnowledge).find((vendor) =>
