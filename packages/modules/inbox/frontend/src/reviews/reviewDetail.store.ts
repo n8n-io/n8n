@@ -1,10 +1,11 @@
-import type { WorkflowReviewRequestDetail } from '@n8n/api-types';
+import type { WorkflowReviewRequestDetail, WorkflowReviewRequestSummary } from '@n8n/api-types';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
 
 import {
+	closeWorkflowReviewRequest,
 	decideWorkflowReviewRequest,
 	fetchWorkflowReviewRequestDetail,
 	type WorkflowReviewDecisionInput,
@@ -43,13 +44,23 @@ export const useReviewDetailStore = defineStore('workflowReviewDetail', () => {
 		}
 	}
 
+	function applySummary(id: string, summary: WorkflowReviewRequestSummary) {
+		if (detail.value?.id === id) {
+			detail.value.decision = summary.decision;
+			detail.value.state = summary.state;
+			detail.value.updatedAt = summary.updatedAt;
+		}
+	}
+
 	async function decideOnReview(id: string, input: WorkflowReviewDecisionInput) {
 		const response = await decideWorkflowReviewRequest(rootStore.restApiContext, id, input);
-		if (detail.value?.id === id) {
-			detail.value.decision = response.decision;
-			detail.value.state = response.state;
-			detail.value.updatedAt = response.updatedAt;
-		}
+		applySummary(id, response);
+		return response;
+	}
+
+	async function closeReview(id: string) {
+		const response = await closeWorkflowReviewRequest(rootStore.restApiContext, id);
+		applySummary(id, response);
 		return response;
 	}
 
@@ -69,6 +80,7 @@ export const useReviewDetailStore = defineStore('workflowReviewDetail', () => {
 		selectionRevision,
 		fetchDetail,
 		decideOnReview,
+		closeReview,
 		clearDetail,
 	};
 });

@@ -348,3 +348,23 @@ describe('useWorkflowStaging', () => {
 		expect(stagingDraft.value).toBeUndefined();
 	});
 });
+
+describe('useWorkflowStaging, building', () => {
+	it('is building while the running agent has the workflow builder', () => {
+		const { building } = setup([userMessage(), assistantMessage([loadBuilder])]);
+
+		expect(building.value).toBe(true);
+	});
+
+	it('is not building before the agent loads the workflow builder', () => {
+		const { building } = setup([userMessage(), assistantMessage([call('list_credentials')])]);
+
+		expect(building.value).toBe(false);
+	});
+
+	it('is not building once the run ends', () => {
+		const { building } = setup([userMessage(), assistantMessage([loadBuilder], false)]);
+
+		expect(building.value).toBe(false);
+	});
+});

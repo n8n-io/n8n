@@ -44,6 +44,8 @@ export interface ArtifactTab {
 	pending?: boolean;
 	/** The AI is actively mutating this artifact right now. */
 	building?: boolean;
+	/** The run that builds this artifact waits on the user. Only a draft tab sets it. */
+	waiting?: boolean;
 	/** An unsaved workflow from the builder's source file. Never stored with the thread's tabs. */
 	draft?: boolean;
 }
@@ -94,6 +96,8 @@ interface UseCanvasPreviewOptions {
 	buildTarget?: () => BuildTarget | undefined;
 	/** Drops the drafts that a saved workflow replaced. */
 	dismissWorkflowDrafts?: (workflowId: string) => void;
+	/** The active run waits on the user, for an answer or an approval. */
+	isAwaitingUser?: () => boolean;
 }
 
 interface LinkedAgentTarget {
@@ -116,13 +120,14 @@ function fileName(filePath: string): string {
 	return filePath.split('/').pop() ?? filePath;
 }
 
-function toDraftTab(draft: WorkflowDraft, building: boolean): ArtifactTab {
+function toDraftTab(draft: WorkflowDraft, building: boolean, waiting: boolean): ArtifactTab {
 	return {
 		id: draftTabId(draft.filePath),
 		type: 'workflow',
 		name: draft.workflow.name || fileName(draft.filePath),
 		icon: ARTIFACT_TAB_ICONS.workflow,
 		building,
+		waiting: building && waiting,
 		draft: true,
 	};
 }
@@ -137,6 +142,7 @@ export function useCanvasPreview({
 	stagingDraft = () => undefined,
 	buildTarget = () => undefined,
 	dismissWorkflowDrafts,
+	isAwaitingUser = () => false,
 }: UseCanvasPreviewOptions) {
 	const i18n = useI18n();
 	/**
@@ -212,7 +218,7 @@ export function useCanvasPreview({
 		// A new workflow shows as a draft tab until its saved workflow joins the registry.
 		for (const draft of draftsWithStaging()) {
 			if (draft.savedWorkflowId || draft.workflowId) continue;
-			result.push(toDraftTab(draft, isAgentWorking.value));
+			result.push(toDraftTab(draft, isAgentWorking.value, isAwaitingUser()));
 		}
 
 		if (linkedAgent && !result.some((tab) => tab.id === linkedAgent.agentId)) {

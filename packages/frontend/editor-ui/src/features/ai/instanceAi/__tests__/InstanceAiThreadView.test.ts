@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 import { ResponseError } from '@n8n/rest-api-client';
 import { defineComponent, h, inject, type PropType, type Ref, nextTick, ref } from 'vue';
 import userEvent from '@testing-library/user-event';
@@ -208,7 +208,6 @@ const InstanceAiWorkflowDraftPreviewStub = defineComponent({
 	props: {
 		draft: { type: Object, required: true },
 		building: Boolean,
-		statusText: String,
 		waiting: Boolean,
 	},
 	setup: (props) => () =>
@@ -216,7 +215,6 @@ const InstanceAiWorkflowDraftPreviewStub = defineComponent({
 			'data-test-id': 'instance-ai-workflow-draft-preview-stub',
 			'data-file-path': (props.draft as { filePath: string }).filePath,
 			'data-building': String(props.building),
-			'data-status-text': props.statusText ?? '',
 			'data-waiting': String(props.waiting),
 		}),
 });
@@ -2823,7 +2821,100 @@ describe('InstanceAiThreadView', () => {
 
 			const preview = await findByTestId('instance-ai-workflow-draft-preview-stub');
 			expect(preview).toHaveAttribute('data-file-path', 'staging:run-1');
+			expect(preview).toHaveAttribute('data-waiting', 'false');
 			expect(trackCanvasRendered).toHaveBeenCalledWith('staging');
+		});
+
+		it('shows on the staging canvas that the run waits on the user', async () => {
+			mockedStore(usePostHog).getVariant.mockImplementation((name) =>
+				name === INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.name ? 'variant' : undefined,
+			);
+			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
+			stageNewWorkflow();
+
+			thread.isAwaitingUserInput = true;
+
+			const preview = await findByTestId('instance-ai-workflow-draft-preview-stub');
+			await vi.waitFor(() => expect(preview).toHaveAttribute('data-waiting', 'true'));
+		});
+
+		it('hides the building wave over the saved workflow while the run waits on the user', async () => {
+			mockedStore(usePostHog).getVariant.mockImplementation((name) =>
+				name === INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.name ? 'variant' : undefined,
+			);
+			thread.producedArtifacts = new Map([
+				['wf-1', { type: 'workflow', id: 'wf-1', name: 'Demo' }],
+			]) as typeof thread.producedArtifacts;
+			const { findByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
+			thread.isStreaming = true;
+			stageNewWorkflow();
+			thread.messages[1].agentTree!.toolCalls.splice(1, 0, {
+				toolCallId: 'tc-read',
+				toolName: 'get_workflow_as_code',
+				args: { workflowId: 'wf-1' },
+				isLoading: false,
+			});
+			thread.messages = [...thread.messages];
+			await findByTestId('instance-ai-draft-building-wave');
+
+			thread.isAwaitingUserInput = true;
+
+			await vi.waitFor(() => expect(queryByTestId('instance-ai-draft-building-wave')).toBeNull());
+		});
+
+		it('shows the building wave over the saved workflow that the build edits', async () => {
+			mockedStore(usePostHog).getVariant.mockImplementation((name) =>
+				name === INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.name ? 'variant' : undefined,
+			);
+			thread.producedArtifacts = new Map([
+				['wf-1', { type: 'workflow', id: 'wf-1', name: 'Demo' }],
+			]) as typeof thread.producedArtifacts;
+			const { findByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+			thread.isStreaming = true;
+			stageNewWorkflow();
+			const run = thread.messages[1];
+			run.agentTree!.toolCalls.splice(1, 0, {
+				toolCallId: 'tc-read',
+				toolName: 'get_workflow_as_code',
+				args: { workflowId: 'wf-1' },
+				isLoading: false,
+			});
+			thread.messages = [...thread.messages];
+
+			await findByTestId('instance-ai-workflow-preview-stub');
+			await findByTestId('instance-ai-draft-building-wave');
+			expect(queryByTestId('instance-ai-workflow-draft-preview-stub')).toBeNull();
+		});
+
+		it('shows a thinking word of the thread in the status bar', async () => {
+			mockedStore(usePostHog).getVariant.mockImplementation((name) =>
+				name === INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.name ? 'variant' : undefined,
+			);
+			// The last word of the general list.
+			const random = vi.spyOn(Math, 'random').mockReturnValue(0.999);
+			onTestFinished(() => random.mockRestore());
+			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+			thread.isStreaming = true;
+
+			const bar = await findByTestId('instance-ai-status-bar');
+			expect(bar).toHaveTextContent('Tracing the connections');
+		});
+
+		it('shows "Thinking" in the status bar in the control arm', async () => {
+			mockedStore(usePostHog).getVariant.mockImplementation((name) =>
+				name === INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.name ? 'control' : undefined,
+			);
+			const random = vi.spyOn(Math, 'random').mockReturnValue(0.999);
+			onTestFinished(() => random.mockRestore());
+			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+			thread.isStreaming = true;
+
+			const bar = await findByTestId('instance-ai-status-bar');
+			expect(bar).toHaveTextContent('Thinking');
+			expect(bar).not.toHaveTextContent('Tracing the connections');
 		});
 
 		it('shows no staging canvas in the control arm', async () => {
