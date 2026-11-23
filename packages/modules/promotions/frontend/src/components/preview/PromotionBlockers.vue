@@ -442,6 +442,7 @@ const isCreateDisabled = computed(() => props.busy || bindings.isBusy.value);
 									v-if="row.createLabel"
 									variant="outline"
 									size="small"
+									:class="$style.createAction"
 									:disabled="isCreateDisabled"
 									data-test-id="promotion-preview-blocker-create"
 									@click="create(row.key)"
@@ -751,5 +752,10 @@ const isCreateDisabled = computed(() => props.busy || bindings.isBusy.value);
 
 .disabledAction {
 	display: inline-block;
+}
+
+/* The button is block-level, so the text alignment of the cell does not move it. */
+.createAction {
+	margin-left: auto;
 }
 </style>
