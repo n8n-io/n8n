@@ -3,6 +3,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, ref, type DeepReadonly } from 'vue';
 
 import { CHAT_MESSAGE_ROLE } from '@/features/ai/shared/agentsChat/constants';
+import { isStoppedMessage } from '@/features/ai/shared/agentsChat/messageMappers';
 import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
 
 import {
@@ -26,11 +27,15 @@ export function useAssistantAgentFeedback({
 	const rootStore = useRootStore();
 	const ratings = ref<Record<string, AssistantAgentRating>>({});
 
-	/** The execution of the latest answer. A message that the user sent after it hides it. */
+	/**
+	 * The execution of the latest answer. A message that the user sent after it
+	 * hides it. Like the current runtime, a turn that the user stopped has no rating.
+	 */
 	const latestAnswerExecutionId = computed(() => {
 		const list = messages();
 		const last = list[list.length - 1];
-		return last?.role === CHAT_MESSAGE_ROLE.ASSISTANT ? last.executionId : undefined;
+		if (last?.role !== CHAT_MESSAGE_ROLE.ASSISTANT || isStoppedMessage(last)) return undefined;
+		return last.executionId;
 	});
 
 	/** Whether the answer of this execution is the one that the user can rate. */

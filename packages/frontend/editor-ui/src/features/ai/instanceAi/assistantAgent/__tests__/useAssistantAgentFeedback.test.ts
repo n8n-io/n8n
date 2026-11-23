@@ -2,6 +2,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { ref } from 'vue';
 
+import { createStoppedMessage } from '@/features/ai/shared/agentsChat/messageMappers';
 import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
 
 import { postAssistantAgentFeedback } from '../assistantAgentFeedback.api';
@@ -59,6 +60,18 @@ describe('useAssistantAgentFeedback', () => {
 		messages.value = [...messages.value, user('u2')];
 
 		expect(feedback.isRateable('exec-1')).toBe(false);
+	});
+
+	it('does not let the user rate a turn that the user stopped', () => {
+		const { feedback } = setup([
+			user('u1'),
+			answer('a1', 'exec-1'),
+			createStoppedMessage('exec-1'),
+		]);
+
+		expect(feedback.isRateable('exec-1')).toBe(false);
+		feedback.rate('exec-1', 'up');
+		expect(postAssistantAgentFeedback).not.toHaveBeenCalled();
 	});
 
 	it('sends the rating of the turn and tracks it', () => {

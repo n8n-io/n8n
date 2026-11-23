@@ -12,7 +12,7 @@ export async function postAssistantAgentFeedback(
 	return await makeRestApiRequest(
 		context,
 		'POST',
-		`/assistant/threads/${threadId}/feedback`,
+		`/assistant/threads/${encodeURIComponent(threadId)}/feedback`,
 		request,
 	);
 }
