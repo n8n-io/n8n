@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { skillTelemetryContextSchema } from '../skills/skill-telemetry.schema';
 
 import {
 	AGENT_SKILL_NAME_MAX_LENGTH,
@@ -267,6 +268,7 @@ export type SkillNewNameResponse = { name: string };
 export const SKILL_NAME_TAKEN_MESSAGE = 'That name is taken, choose another';
 
 export class CreateSkillDto extends Z.class({
+	telemetry: skillTelemetryContextSchema.optional().catch(undefined),
 	scope: skillScopeSchema,
 	/** Required for a project skill, absent otherwise. */
 	projectId: z.string().max(36).optional(),

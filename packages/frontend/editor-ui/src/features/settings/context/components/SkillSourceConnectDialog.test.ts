@@ -996,15 +996,28 @@ describe('SkillSourceConnectDialog', () => {
 		it('imports only the selected folder and requires all its files', async () => {
 			skillsStore.discoverSource.mockResolvedValue(discovery());
 			skillsStore.connectSource.mockResolvedValue({ sourceId: 'src-1', imported: [], failed: [] });
-			const view = renderDialog({ props: { open: true, scopeOptions: SCOPES, preset } });
+			const telemetryContext = {
+				navigation_source: 'agent_picker_discover' as const,
+				flow_id: 'b23b6134-b7a7-4912-a635-6d38cbbe0ae8',
+				add_entry_point: 'discover_detail' as const,
+				catalog_skill_id: 'n8n-workflows',
+			};
+			const view = renderDialog({
+				props: { open: true, scopeOptions: SCOPES, preset, telemetryContext },
+			});
 			await next(view);
 			await view.findByTestId('skill-source-review');
+			expect(skillsStore.discoverSource).toHaveBeenCalledWith(
+				expect.objectContaining({ telemetry: telemetryContext }),
+			);
+			await view.rerender({ telemetryContext: undefined });
 			await userEvent.click(view.getByTestId('skill-source-import'));
 			expect(skillsStore.connectSource).toHaveBeenCalledWith(
 				expect.objectContaining({
 					url: preset.url,
 					skillKeys: ['skills/brand-voice'],
 					allowedSkippedFiles: [],
+					telemetry: telemetryContext,
 				}),
 			);
 		});

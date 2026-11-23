@@ -7,6 +7,7 @@ import {
 	type SkillSourceCredentialOption,
 	type SkillSourceDiscovery,
 	type SkillSourceRepositoryOption,
+	type SkillTelemetryContext,
 } from '@n8n/api-types';
 import { computed, onBeforeUnmount, ref, useId, watch } from 'vue';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
@@ -65,6 +66,7 @@ const props = defineProps<{
 	scopeOptions: AgentSkillModalScopeOption[];
 	/** A catalog entry keeps the import focused on one reviewed folder. */
 	preset?: SkillSourcePreset;
+	telemetryContext?: SkillTelemetryContext;
 }>();
 
 const emit = defineEmits<{
@@ -138,6 +140,7 @@ const discovered = ref<{
 	credentialId?: string;
 	existingSourceId?: string;
 	allowedSkippedFiles?: string[];
+	telemetry?: SkillTelemetryContext;
 } | null>(null);
 
 /** `''` is "None, the repository is public". */
@@ -643,6 +646,7 @@ async function onNext() {
 		requestedCredential === credentialId.value;
 	const target: NonNullable<typeof discovered.value> = {
 		url: link,
+		...(props.telemetryContext ? { telemetry: props.telemetryContext } : {}),
 		...(requestedCredential ? { credentialId: requestedCredential } : {}),
 		...(props.preset ? { allowedSkippedFiles: props.preset.allowedSkippedFiles ?? [] } : {}),
 	};

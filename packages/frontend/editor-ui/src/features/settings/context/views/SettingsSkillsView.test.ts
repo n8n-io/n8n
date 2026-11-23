@@ -8,6 +8,8 @@ import {
 	type SkillDetail,
 	type SkillListItem,
 	type SkillSourceCheckResponse,
+	type SkillSourcePreview,
+	type DiscoveredSkill,
 	type SkillUserDto,
 } from '@n8n/api-types';
 import { ResponseError } from '@n8n/rest-api-client';
@@ -28,6 +30,8 @@ import type { ProjectListItem } from '@/features/collaboration/projects/projects
 
 import SettingsSkillsView from './SettingsSkillsView.vue';
 import { useSkillsStore } from '../skills.store';
+import { previewSkillSource } from '../skills.api';
+import { SKILL_CATALOG } from '../catalog/skillCatalog';
 
 const push = vi.fn();
 const routeQuery = reactive<Record<string, string>>({});
@@ -233,6 +237,9 @@ describe('SettingsSkillsView', () => {
 		expect(trackMock).toHaveBeenCalledTimes(1);
 		expect(trackMock).toHaveBeenCalledWith(TELEMETRY_EVENT.CONTEXT.USER_VIEWED_SKILLS, {
 			count: 72,
+			view: 'installed',
+			navigation_source: 'direct_or_unknown',
+			flow_id: expect.any(String),
 		});
 	});
 
@@ -797,6 +804,10 @@ describe('SettingsSkillsView', () => {
 				projectId: 'personal-1',
 				skill: content,
 				method: 'upload',
+				telemetry: expect.objectContaining({
+					navigation_source: 'direct_or_unknown',
+					add_entry_point: 'skills_create_menu',
+				}),
 			});
 			// The new row is the feedback, as on the preferences page.
 			expect(showMessageMock).not.toHaveBeenCalled();
@@ -945,26 +956,31 @@ describe('SettingsSkillsView', () => {
 		});
 
 		it.each(['variant', 'control', undefined])(
-			'shows only the catalog on an empty page when Skill Sync is enabled (recommendations: %s)',
+			'preserves the recommended empty state experiment when Skill Sync is enabled (%s)',
 			async (variant) => {
 				assignVariant(variant);
 				mockedStore(usePostHog).isFeatureEnabled.mockImplementation(
 					(flag) => String(flag) === SKILL_SYNC_FLAG,
 				);
 				const view = renderView();
-				await view.findByTestId('skill-catalog');
-				expect(view.getByRole('tab', { name: 'Discover' })).toHaveAttribute(
+				const emptyState = await view.findByTestId(
+					variant === 'variant' ? 'skills-recommended-empty-state' : 'skills-empty-state',
+				);
+				expect(emptyState).toBeVisible();
+				expect(view.getByRole('tab', { name: 'Your skills' })).toHaveAttribute(
 					'aria-selected',
 					'true',
 				);
-				expect(view.queryByTestId('skills-recommended-empty-state')).not.toBeInTheDocument();
-				expect(view.queryByTestId('skills-empty-state')).not.toBeInTheDocument();
-				expect(view.queryByTestId('skills-search')).not.toBeInTheDocument();
-				expect(mockedStore(usePostHog).trackExposure).not.toHaveBeenCalled();
-				await userEvent.click(view.getByRole('tab', { name: 'Your skills' }));
-				await userEvent.click(view.getByTestId('skills-create-menu-button'));
-				await view.findByTestId('skills-create-manual');
-				expect(view.queryByTestId('skills-create-recommended')).not.toBeInTheDocument();
+				if (variant) {
+					expect(mockedStore(usePostHog).trackExposure).toHaveBeenCalledWith(
+						RECOMMENDED_SKILLS_EXPERIMENT.name,
+					);
+				} else {
+					expect(mockedStore(usePostHog).trackExposure).not.toHaveBeenCalled();
+				}
+				await userEvent.click(view.getByRole('tab', { name: 'Discover' }));
+				expect(await view.findByTestId('skill-catalog')).toBeVisible();
+				expect(view.queryByTestId('recommended-skill-cards')).not.toBeInTheDocument();
 			},
 		);
 
@@ -1071,6 +1087,10 @@ describe('SettingsSkillsView', () => {
 				projectId: 'personal-1',
 				skill: data.skill,
 				method: 'manual',
+				telemetry: expect.objectContaining({
+					add_entry_point: 'recommended_empty_state',
+					recommended_skill_id: 'cold-email',
+				}),
 			});
 			expect(addedEvents()).toEqual([
 				[
@@ -1098,8 +1118,11 @@ describe('SettingsSkillsView', () => {
 			expect(addedEvents()).toHaveLength(0);
 		});
 
-		it('offers "Recommended skills" last in the menu and shows the cards in a dialog', async () => {
+		it('offers "Recommended skills" in the menu with Skill Sync enabled and shows the cards in a dialog', async () => {
 			assignVariant('variant');
+			mockedStore(usePostHog).isFeatureEnabled.mockImplementation(
+				(flag) => String(flag) === SKILL_SYNC_FLAG,
+			);
 			skillsStore.skills = [skill()];
 			skillsStore.count = 1;
 			skillsStore.createSkill.mockResolvedValue(detail({ id: 's-new' }));
@@ -1109,6 +1132,7 @@ describe('SettingsSkillsView', () => {
 			await userEvent.click(view.getByTestId('skills-create-menu-button'));
 			await view.findByTestId('skills-create-manual');
 			expect(createMenuLabels()).toEqual([
+				'Connect to GitHub',
 				'Upload folder',
 				'Upload SKILL.md',
 				'Create manually',
@@ -1579,11 +1603,11 @@ describe('SettingsSkillsView', () => {
 		};
 		const ConnectDialogStub = {
 			name: 'SkillSourceConnectDialog',
-			props: ['open', 'scopeOptions'],
+			props: ['open', 'scopeOptions', 'telemetryContext'],
 			emits: ['update:open', 'connected', 'openSource'],
 			setup: () => ({ connected }),
 			template: `
-				<div v-if="open" data-test-id="connect-dialog-stub" />
+				<div v-if="open" data-test-id="connect-dialog-stub">{{ JSON.stringify(telemetryContext) }}</div>
 				<button data-test-id="connect-dialog-open-source" @click="$emit('openSource', 'src-1')" />
 				<button data-test-id="connect-dialog-done" @click="$emit('connected', connected)" />
 			`,
@@ -1601,11 +1625,49 @@ describe('SettingsSkillsView', () => {
 
 		it('opens the detail page before the GitHub import dialog', async () => {
 			enableSkillSync();
+			vi.mocked(previewSkillSource).mockResolvedValueOnce(
+				mock<SkillSourcePreview>({
+					skills: [
+						mock<DiscoveredSkill>({
+							location: SKILL_CATALOG[0].location,
+							skippedFiles: [],
+							previewFiles: [],
+							error: null,
+							check: null,
+						}),
+					],
+				}),
+			);
+			routeQuery.skillsFrom = 'agent_picker_discover';
 			const view = renderWithDialogStub();
+			await userEvent.click(view.getByRole('tab', { name: 'Discover' }));
 			await view.findByTestId('skill-catalog');
 			await userEvent.click(view.getAllByTestId('skill-catalog-details')[0]);
 			expect(await view.findByTestId('skill-catalog-detail')).toBeVisible();
 			expect(view.queryByTestId('connect-dialog-stub')).not.toBeInTheDocument();
+			expect(
+				trackMock.mock.calls.filter(
+					([event]) => event === TELEMETRY_EVENT.CONTEXT.USER_STARTED_ADDING_SKILL,
+				),
+			).toHaveLength(0);
+			await waitFor(() => expect(view.getByRole('button', { name: 'Add skill' })).toBeEnabled());
+			await userEvent.click(view.getByRole('button', { name: 'Add skill' }));
+			const started = trackMock.mock.calls.filter(
+				([event]) => event === TELEMETRY_EVENT.CONTEXT.USER_STARTED_ADDING_SKILL,
+			);
+			expect(started).toHaveLength(1);
+			expect(started[0][1]).toMatchObject({
+				navigation_source: 'agent_picker_discover',
+				add_entry_point: 'discover_detail',
+				catalog_skill_id: expect.any(String),
+			});
+			expect(view.getByTestId('connect-dialog-stub')).toHaveTextContent(
+				JSON.stringify(started[0][1]),
+			);
+			expect(trackMock).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.CONTEXT.USER_VIEWED_CATALOG_SKILL,
+				expect.objectContaining({ flow_id: started[0][1].flow_id }),
+			);
 		});
 
 		it('opens catalog details without permission to create skills', async () => {
@@ -1613,10 +1675,11 @@ describe('SettingsSkillsView', () => {
 			mockedStore(useProjectsStore).personalProject = null;
 			mockedStore(useProjectsStore).myProjects = [];
 			const view = renderView();
+			await userEvent.click(view.getByRole('tab', { name: 'Discover' }));
 			await view.findByTestId('skill-catalog');
 			await userEvent.click(view.getAllByTestId('skill-catalog-details')[0]);
 			const detail = await view.findByTestId('skill-catalog-detail');
-			expect(within(detail).getByText(/workflow tools/)).toBeVisible();
+			expect(within(detail).getByText(/n8n Assistant isn't available/)).toBeVisible();
 			expect(within(detail).getByText(/permission/)).toBeVisible();
 			expect(within(detail).getByRole('button', { name: 'Add skill' })).toBeDisabled();
 		});
@@ -1654,8 +1717,6 @@ describe('SettingsSkillsView', () => {
 		it('offers "Connect to GitHub" first in the "Create skills" menu when the flag is on', async () => {
 			enableSkillSync();
 			const view = renderWithDialogStub();
-			await view.findByTestId('skill-catalog');
-			await userEvent.click(view.getByRole('tab', { name: 'Your skills' }));
 
 			await userEvent.click(view.getByTestId('skills-create-menu-button'));
 

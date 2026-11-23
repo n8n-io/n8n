@@ -1,6 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { TelemetryProxy } from '@n8n/backend-services';
 import { Service } from '@n8n/di';
+import type { SkillTelemetryContext } from '@n8n/api-types';
 import { TELEMETRY_EVENT, type InferTelemetryProps } from '@n8n/telemetry';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 
@@ -75,7 +76,7 @@ export class SkillsTelemetry {
 		refs: SkillTelemetryRef[],
 		source: SkillTelemetrySource,
 		method: SkillTelemetryMethod,
-		origin?: SkillTelemetryOrigin,
+		metadata?: SkillTelemetryOrigin | SkillTelemetryContext,
 	): Promise<void> {
 		await this.safely(async () => {
 			const skills = await this.resolve(refs);
@@ -86,7 +87,7 @@ export class SkillsTelemetry {
 					...placeOf(skill),
 					source,
 					method,
-					...origin,
+					...metadata,
 				});
 			}
 		});

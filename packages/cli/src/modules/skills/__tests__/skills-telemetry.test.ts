@@ -41,7 +41,14 @@ describe('SkillsTelemetry', () => {
 	});
 
 	it('reports the provider and access of the source of a synced skill', async () => {
+		const attribution = {
+			navigation_source: 'agent_picker_discover' as const,
+			flow_id: 'b23b6134-b7a7-4912-a635-6d38cbbe0ae8',
+			add_entry_point: 'discover_detail' as const,
+			catalog_skill_id: 'n8n-workflows',
+		};
 		await service.created('user-1', ['skill_instance'], 'github', 'sync', {
+			...attribution,
 			source_provider: 'github',
 			source_access: 'credential',
 		});
@@ -52,6 +59,7 @@ describe('SkillsTelemetry', () => {
 			scope: 'instance',
 			source: 'github',
 			method: 'sync',
+			...attribution,
 			source_provider: 'github',
 			source_access: 'credential',
 		});

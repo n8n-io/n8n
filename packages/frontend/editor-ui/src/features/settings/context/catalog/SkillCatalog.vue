@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, ref, useTemplateRef, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import type { SkillSourceListItem } from '@n8n/api-types';
+import type { SkillSourceListItem, SkillTelemetryContext } from '@n8n/api-types';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { useSkillTelemetry } from '../skills.telemetry';
 import { useSkillScopeDisplay } from '../skills.utils';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import {
@@ -24,7 +26,12 @@ import {
 } from './skillCatalog';
 
 const props = withDefaults(
-	defineProps<{ loading?: boolean; canAdd?: boolean; sources?: SkillSourceListItem[] }>(),
+	defineProps<{
+		loading?: boolean;
+		canAdd?: boolean;
+		sources?: SkillSourceListItem[];
+		telemetryContext?: SkillTelemetryContext;
+	}>(),
 	{ canAdd: false, sources: () => [] },
 );
 const emit = defineEmits<{ select: [entry: SkillCatalogEntry]; openInstalled: [id: string] }>();
@@ -33,6 +40,8 @@ const SkillCatalogDetail = defineAsyncComponent(
 );
 const route = useRoute();
 const router = useRouter();
+const skillTelemetry = useSkillTelemetry(route.query.skillsFrom);
+let openedFrom: 'browse' | 'search' | 'direct' = 'direct';
 const catalog = useTemplateRef<HTMLElement>('catalog');
 watch(
 	() => route.query.catalogSkill,
@@ -55,11 +64,34 @@ function installed(entry: SkillCatalogEntry) {
 	return installations.value.filter((skill) => skill.webUrl === entry.url);
 }
 function openDetails(entry?: SkillCatalogEntry) {
+	openedFrom = search.value.trim() ? 'search' : 'browse';
 	void router.push({ query: { ...route.query, view: 'discover', catalogSkill: entry?.id } });
 }
 const i18n = useI18n();
 const search = ref('');
 const category = ref('all');
+
+watch(
+	() => route.query.catalogSkill,
+	(id) => {
+		const context = props.telemetryContext ?? skillTelemetry.context;
+		if (!id) {
+			skillTelemetry.track(TELEMETRY_EVENT.CONTEXT.USER_VIEWED_SKILL_CATALOG, {
+				...context,
+				catalog_version: CATALOG_REVIEWED_AT,
+			});
+		} else if (selected.value) {
+			skillTelemetry.track(TELEMETRY_EVENT.CONTEXT.USER_VIEWED_CATALOG_SKILL, {
+				...context,
+				catalog_skill_id: selected.value.id,
+				category: selected.value.category,
+				opened_from: openedFrom,
+			});
+		}
+		openedFrom = 'direct';
+	},
+	{ immediate: true },
+);
 
 const categoryKeys = {
 	build: 'settings.context.skills.catalog.categories.build',

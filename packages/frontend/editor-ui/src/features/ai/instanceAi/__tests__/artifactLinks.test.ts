@@ -52,7 +52,7 @@ describe('useArtifactLinks', () => {
 
 			expect(artifactHref('workflow', 'wf-1')).toBe(`${prefix}/workflow/wf-1`);
 			expect(artifactUrl('skill', 'skill-1')).toBe(
-				`${window.location.origin}${prefix}/settings/context/skills?skillId=skill-1`,
+				`${window.location.origin}${prefix}/settings/context/skills?skillsFrom=assistant_artifact&skillId=skill-1`,
 			);
 			expect(openArtifactInNewTab('agent', 'agent-1', 'project-1')).toBe(true);
 			expect(open).toHaveBeenCalledWith(

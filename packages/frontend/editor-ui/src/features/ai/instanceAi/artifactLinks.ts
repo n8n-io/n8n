@@ -4,6 +4,7 @@ import { VIEWS } from '@/app/constants';
 import { getSameOriginUrl } from '@/features/ai/shared/components/ChatMarkdown/ChatResourceLink.utils';
 import { AGENT_BUILDER_VIEW, AGENTS_LIST_VIEW } from '@/features/agents/constants';
 import { DATA_TABLE_DETAILS, DATA_TABLE_VIEW } from '@/features/core/dataTable/constants';
+import { skillNavigationQuery } from '@/features/settings/context/skills.telemetry';
 
 const ARTIFACT_LINK_TYPES = [
 	'workflow',
@@ -45,7 +46,10 @@ function artifactRoute(
 				? { name: AGENT_BUILDER_VIEW, params: { projectId, agentId: id } }
 				: { name: AGENTS_LIST_VIEW };
 		case 'skill':
-			return { name: VIEWS.SETTINGS_CONTEXT_SKILLS, query: { skillId: id } };
+			return {
+				name: VIEWS.SETTINGS_CONTEXT_SKILLS,
+				query: { ...skillNavigationQuery('assistant_artifact'), skillId: id },
+			};
 		case 'app':
 			return projectId ? { name: APP_DETAIL_VIEW, params: { projectId, appId: id } } : undefined;
 	}

@@ -24,6 +24,7 @@ import {
 	type SkillDetail,
 	type SkillListItem,
 	type SkillSourceListItem,
+	type SkillTelemetryContext,
 	type SkillUserDto,
 } from '@n8n/api-types';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
@@ -100,6 +101,7 @@ import {
 } from '../context.utils';
 import type { SkillListQuery } from '../skills.api';
 import { useSkillsStore } from '../skills.store';
+import { useSkillTelemetry } from '../skills.telemetry';
 import { sourceLineOf } from '../skillSourceReview.utils';
 import {
 	PROJECT_SCOPE_PREFIX,
@@ -135,18 +137,20 @@ const { isEnabled: assistantSkillsEnabled } = useAssistantSkillsExperiment();
 const posthogStore = usePostHog();
 const { deleteBlockedReason } = useSkillDeleteRule();
 const telemetry = useTelemetry();
+const skillTelemetry = useSkillTelemetry(route.query.skillsFrom);
 const { showError, showMessage } = useToast();
 const { scopeDisplay } = useSkillScopeDisplay();
 const { failedSkillReason, reasonText } = useSkillSourceReasons();
 const skillSyncEnabled = useSkillSyncFlag();
 const {
-	showRecommendedSkills: recommendedSkillsEnabled,
+	showRecommendedSkills,
 	hasVariant: hasRecommendedSkillsVariant,
 	trackExposure: trackRecommendedSkillsExposure,
 	trackSkillAdded: trackRecommendedSkillAdded,
 } = useRecommendedSkillsExperiment();
 const connectOpen = ref(false);
 const catalogPreset = ref<SkillSourcePreset>();
+const connectTelemetry = ref<SkillTelemetryContext>();
 const activeView = ref('installed');
 const catalogDetailOpen = computed(
 	() => skillSyncEnabled.value && activeView.value === 'discover' && !!route.query.catalogSkill,
@@ -164,6 +168,9 @@ function onViewChange(view: string) {
 function onCatalogSelect(entry: SkillCatalogEntry) {
 	if (uploadBusy.value) return;
 	dropPendingUpload();
+	connectTelemetry.value = skillTelemetry.startAdding('discover_detail', {
+		catalog_skill_id: entry.id,
+	});
 	catalogPreset.value = {
 		name: i18n.baseText(entry.nameKey),
 		description: i18n.baseText(entry.descriptionKey),
@@ -219,17 +226,6 @@ const showLoading = computed(() => skillsStore.loading && !hasLoaded.value);
 const emptyState = computed<'none' | 'noSkills' | 'noResults'>(() => {
 	if (!hasLoaded.value || loadFailed.value || skillsStore.count > 0) return 'none';
 	return loadedFiltered.value ? 'noResults' : 'noSkills';
-});
-
-watch([skillSyncEnabled, hasLoaded], ([enabled]) => {
-	if (!enabled) activeView.value = 'installed';
-	else if (
-		route.query.view !== 'installed' &&
-		emptyState.value === 'noSkills' &&
-		skillsStore.collapsedSources.length === 0
-	) {
-		activeView.value = 'discover';
-	}
 });
 
 const scopeFilterOptions = computed(() =>
@@ -457,9 +453,11 @@ function openModal(data: AgentSkillModalData) {
 function openCreateModal(
 	preset: Pick<AgentSkillModalData, 'initialStep' | 'skill' | 'initialMethod'> = {},
 	onCreated?: (skillId: string) => void,
+	attribution?: SkillTelemetryContext,
 ) {
 	const options = scopeOptions.value;
 	if (options.length === 0) return;
+	const createTelemetry = attribution ?? skillTelemetry.startAdding(createEntryPoint());
 	openModal({
 		...preset,
 		scopeOptions: options,
@@ -472,7 +470,14 @@ function openCreateModal(
 				name: i18n.baseText('agents.builder.skills.defaultName'),
 			}),
 		onConfirm: async ({ skill, scope, method, availableToMCP }) =>
-			await onCreate(skill, scope ?? options[0].value, method, availableToMCP, onCreated),
+			await onCreate(
+				skill,
+				scope ?? options[0].value,
+				method,
+				availableToMCP,
+				onCreated,
+				createTelemetry,
+			),
 	});
 }
 
@@ -480,9 +485,18 @@ function onRecommendedSkillSelect(
 	entryPoint: RecommendedSkillsEntryPoint,
 	recommended: RecommendedSkillSelection,
 ) {
-	openCreateModal({ skill: recommended.skill }, (skillId) =>
-		trackRecommendedSkillAdded(recommended.id, skillId, entryPoint),
+	openCreateModal(
+		{ skill: recommended.skill },
+		(skillId) => trackRecommendedSkillAdded(recommended.id, skillId, entryPoint),
+		skillTelemetry.startAdding(
+			entryPoint === 'empty_state' ? 'recommended_empty_state' : 'recommended_dialog',
+			{ recommended_skill_id: recommended.id },
+		),
 	);
+}
+
+function createEntryPoint() {
+	return emptyState.value === 'noSkills' ? 'skills_empty_state' : 'skills_create_menu';
 }
 
 type CreateAction = 'recommended' | 'github' | 'uploadFolder' | 'uploadFile' | 'manual';
@@ -498,10 +512,6 @@ function dropPendingUpload() {
 }
 
 onBeforeUnmount(dropPendingUpload);
-
-const showRecommendedSkills = computed(
-	() => !skillSyncEnabled.value && recommendedSkillsEnabled.value,
-);
 
 // "Recommended skills" and "Connect to GitHub" are behind flags. The other items are for everyone.
 const createMenuItems = computed<Array<ActionDropdownItem<CreateAction>>>(() => [
@@ -549,7 +559,6 @@ const createMenuItems = computed<Array<ActionDropdownItem<CreateAction>>>(() => 
 
 const recommendedSkillsEligible = computed(
 	() =>
-		!skillSyncEnabled.value &&
 		activeView.value === 'installed' &&
 		emptyState.value === 'noSkills' &&
 		skillsStore.collapsedSources.length === 0 &&
@@ -584,6 +593,7 @@ function onCreateMenuSelect(action: CreateAction) {
 		if (action === 'recommended') recommendedOpen.value = true;
 		else {
 			catalogPreset.value = undefined;
+			connectTelemetry.value = skillTelemetry.startAdding(createEntryPoint());
 			connectOpen.value = true;
 		}
 	}
@@ -597,13 +607,14 @@ async function onSkillFilesPicked(event: Event) {
 	// Cleared so that the same pick fires a change event again.
 	input.value = '';
 	if (files.length === 0 || uploadBusy.value) return;
+	const attribution = skillTelemetry.startAdding(createEntryPoint());
 	const request = {};
 	pendingUpload = request;
 	uploadBusy.value = true;
 	try {
 		const skill = await importSkillFiles(files);
 		if (pendingUpload !== request) return;
-		openCreateModal({ skill, initialMethod: 'upload' });
+		openCreateModal({ skill, initialMethod: 'upload' }, undefined, attribution);
 	} catch (error) {
 		if (pendingUpload !== request) return;
 		// The same texts as the upload step in the modal, so both paths read alike.
@@ -701,6 +712,7 @@ async function onCreate(
 	method?: SkillCreateMethod,
 	availableToMCP?: boolean,
 	onCreated?: (skillId: string) => void,
+	attribution?: SkillTelemetryContext,
 ): Promise<AgentSkillConfirmFailure | undefined> {
 	let createdId: string;
 	try {
@@ -710,6 +722,7 @@ async function onCreate(
 				skill,
 				...(method ? { method } : {}),
 				availableToMCP,
+				telemetry: attribution,
 			})
 		).id;
 	} catch (error) {
@@ -1086,7 +1099,15 @@ onMounted(async () => {
 	// Once for the visit, not once for each page. A failed load reports nothing, so a zero
 	// here is an empty list and never a broken one.
 	if (!loadFailed.value) {
-		telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_VIEWED_SKILLS, { count: skillsStore.count });
+		skillTelemetry.track(TELEMETRY_EVENT.CONTEXT.USER_VIEWED_SKILLS, {
+			...skillTelemetry.context,
+			count: skillsStore.count,
+			view: catalogDetailOpen.value
+				? 'detail'
+				: activeView.value === 'discover'
+					? 'discover'
+					: 'installed',
+		});
 	}
 	// Deep links: one skill to open, or a new one to start. The skill may be on another
 	// page, so it is read by id rather than from the list.
@@ -1097,7 +1118,13 @@ onMounted(async () => {
 		// The API refuses a malformed id, which would fail the whole list.
 		await onOpenSource(sourceId);
 	} else if (create === 'true') {
-		openCreateModal();
+		openCreateModal(
+			{},
+			undefined,
+			skillTelemetry.context.navigation_source === 'assistant_menu'
+				? skillTelemetry.startAdding('assistant_menu')
+				: undefined,
+		);
 	}
 });
 </script>
@@ -1371,6 +1398,7 @@ onMounted(async () => {
 			:loading="uploadBusy"
 			:can-add="scopeOptions.length > 0"
 			:sources="skillsStore.sources"
+			:telemetry-context="skillTelemetry.context"
 			@select="onCatalogSelect"
 			@open-installed="openEditModal({ id: $event })"
 		/>
@@ -1399,6 +1427,7 @@ onMounted(async () => {
 			v-model:open="connectOpen"
 			:scope-options="scopeOptions"
 			:preset="catalogPreset"
+			:telemetry-context="connectTelemetry"
 			@connected="onSourceConnected"
 			@open-source="onOpenSource"
 		/>

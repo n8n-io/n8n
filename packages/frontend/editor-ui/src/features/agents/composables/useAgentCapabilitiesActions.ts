@@ -9,6 +9,7 @@ import {
 	type AgentSkillAvailability,
 	type AgentSkillVersionInfo,
 	type SkillCreateMethod,
+	type SkillTelemetryContext,
 	type SkillDetail,
 	type SkillVersionDetail,
 	type SkillListItem,
@@ -543,11 +544,13 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 					skill,
 					availableTo,
 					method,
+					telemetry,
 				}: {
 					id?: string;
 					skill: AgentSkill;
 					availableTo?: AgentSkillAvailability;
 					method?: SkillCreateMethod;
+					telemetry?: SkillTelemetryContext;
 				}): Promise<AgentSkillConfirmResult> => {
 					if (localSkills) {
 						if (!isCurrentTarget()) return undefined;
@@ -582,6 +585,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 							sanitizedSkill,
 							availableTo,
 							method,
+							telemetry,
 						);
 					} catch (error) {
 						if (isSkillNameTakenError(error)) {

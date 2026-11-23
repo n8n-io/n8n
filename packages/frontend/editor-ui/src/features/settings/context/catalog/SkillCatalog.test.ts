@@ -5,6 +5,10 @@ import { reactive } from 'vue';
 import { mock } from 'vitest-mock-extended';
 import { createTestingPinia } from '@pinia/testing';
 import type { SkillSourceListItem } from '@n8n/api-types';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
+
+const track = vi.fn();
+vi.mock('@n8n/composables/useTelemetry', () => ({ useTelemetry: () => ({ track }) }));
 
 const query = reactive<Record<string, string | undefined>>({});
 vi.mock('vue-router', () => ({
@@ -21,6 +25,7 @@ vi.mock('./SkillCatalogDetail.vue', () => ({
 	},
 }));
 beforeEach(() => {
+	track.mockReset();
 	createTestingPinia();
 	for (const key of Object.keys(query)) delete query[key];
 });
@@ -43,6 +48,12 @@ describe('SkillCatalog', () => {
 		expect(view.getAllByTestId('skill-catalog-details')).toHaveLength(1);
 		await userEvent.type(view.getByTestId('skill-catalog-search'), ' no match');
 		expect(view.getByTestId('skill-catalog-empty')).toHaveTextContent(/search|category/i);
+		await view.rerender({ sources: [] });
+		expect(track).toHaveBeenCalledTimes(1);
+		expect(track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.CONTEXT.USER_VIEWED_SKILL_CATALOG,
+			expect.any(Object),
+		);
 	});
 
 	it('opens a shareable detail page and keeps the search when returning', async () => {
@@ -59,6 +70,29 @@ describe('SkillCatalog', () => {
 		await waitFor(() => expect(view.queryByTestId('skill-catalog-detail')).not.toBeInTheDocument());
 		expect(view.getByTestId('skill-catalog-search')).toHaveValue('workflow');
 		expect(view.queryByRole('dialog')).not.toBeInTheDocument();
+		expect(track.mock.calls.map(([event]) => event)).toEqual([
+			TELEMETRY_EVENT.CONTEXT.USER_VIEWED_SKILL_CATALOG,
+			TELEMETRY_EVENT.CONTEXT.USER_VIEWED_CATALOG_SKILL,
+			TELEMETRY_EVENT.CONTEXT.USER_VIEWED_SKILL_CATALOG,
+		]);
+		expect(track.mock.calls[1][1]).toMatchObject({
+			flow_id: track.mock.calls[0][1].flow_id,
+			catalog_skill_id: entry.id,
+			opened_from: 'search',
+		});
+	});
+	it('attributes a direct detail link without reporting a list view', () => {
+		query.catalogSkill = SKILL_CATALOG[0].id;
+		query.skillsFrom = 'agent_picker_discover';
+		renderCatalog();
+		expect(track).toHaveBeenCalledExactlyOnceWith(
+			TELEMETRY_EVENT.CONTEXT.USER_VIEWED_CATALOG_SKILL,
+			expect.objectContaining({
+				navigation_source: 'agent_picker_discover',
+				opened_from: 'direct',
+				catalog_skill_id: SKILL_CATALOG[0].id,
+			}),
+		);
 	});
 	it('marks only the installed folder and shows its scope', () => {
 		const entry = SKILL_CATALOG[0];

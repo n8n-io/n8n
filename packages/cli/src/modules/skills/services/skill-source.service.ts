@@ -159,7 +159,7 @@ export class SkillSourceService {
 	async discover(user: User, payload: DiscoverSkillSourceDto): Promise<SkillSourceDiscovery> {
 		await this.flagGate.assertEnabled(user);
 		const { target, scopeType } = await this.resolveScope(user, payload);
-		const report = connectReport(scopeType, payload.credentialId);
+		const report = { ...connectReport(scopeType, payload.credentialId), ...payload.telemetry };
 		try {
 			const source = await this.parse(payload, user, target.projectId);
 			report.provider = source.type;
@@ -269,7 +269,7 @@ export class SkillSourceService {
 	async connect(user: User, payload: ConnectSkillSourceDto): Promise<SkillSourceConnectResponse> {
 		await this.flagGate.assertEnabled(user);
 		const { target, scopeType } = await this.resolveScope(user, payload);
-		const report = connectReport(scopeType, payload.credentialId);
+		const report = { ...connectReport(scopeType, payload.credentialId), ...payload.telemetry };
 		try {
 			const source = await this.parse(payload, user, target.projectId);
 			report.provider = source.type;
@@ -287,6 +287,7 @@ export class SkillSourceService {
 				reviewedSkillKeys: payload.reviewedSkillKeys ?? [],
 				existingSourceId: existingSource?.id,
 				allowedSkippedFiles: payload.allowedSkippedFiles,
+				telemetry: payload.telemetry,
 			});
 			await this.skillsTelemetry.connectedSource(
 				{ ...report, status: 'success', ...(warning ? { reason: warning } : {}) },
@@ -748,11 +749,13 @@ export class SkillSourceService {
 			reviewedSkillKeys,
 			existingSourceId,
 			allowedSkippedFiles,
+			telemetry,
 		}: {
 			skillKeys: string[];
 			reviewedSkillKeys: string[];
 			existingSourceId?: string;
 			allowedSkippedFiles?: string[];
+			telemetry?: ConnectSkillSourceDto['telemetry'];
 		},
 	): Promise<{ response: SkillSourceConnectResponse; warning?: SkillSourceReason }> {
 		const keys = [...new Set(skillKeys)];
@@ -766,6 +769,7 @@ export class SkillSourceService {
 			const skipped = countSkippedFiles(skippedPaths);
 			await this.skillsTelemetry.importedFromSource(
 				{
+					...telemetry,
 					provider: source.type,
 					access,
 					scope_type: scopeType,
@@ -930,7 +934,7 @@ export class SkillSourceService {
 			imported.map(({ skillId }) => ({ id: skillId, ...target })),
 			source.type,
 			'sync',
-			{ source_provider: source.type, source_access: access },
+			{ source_provider: source.type, source_access: access, ...telemetry },
 		);
 		return { response: { sourceId, imported, failed }, warning: warningOf(discovered) };
 	}

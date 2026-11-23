@@ -19,6 +19,7 @@ import { VIEWS } from '@/app/constants';
 import { useContextStore } from '../context.store';
 import { isContextSkillsEnabled } from '../context.utils';
 import { useSkillsStore } from '../skills.store';
+import { skillNavigationQuery } from '../skills.telemetry';
 
 const i18n = useI18n();
 const router = useRouter();
@@ -44,7 +45,10 @@ const skillCount = computed(() =>
 );
 
 async function openSkills() {
-	await router.push({ name: VIEWS.SETTINGS_CONTEXT_SKILLS });
+	await router.push({
+		name: VIEWS.SETTINGS_CONTEXT_SKILLS,
+		query: skillNavigationQuery('context_settings'),
+	});
 }
 
 async function openPreferences() {

@@ -5,6 +5,7 @@ import {
 	type AgentSkill,
 	type AgentSkillMutationResponse,
 	type SkillCreateMethod,
+	type SkillTelemetryContext,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { ProjectScopeService } from '@n8n/backend-services';
@@ -117,6 +118,7 @@ export class AgentSkillsService {
 		context: AgentMutationTelemetryContext,
 		availableTo: AgentSkillAvailability = 'project',
 		method?: SkillCreateMethod,
+		telemetry?: SkillTelemetryContext,
 	): Promise<AgentSkillMutationResponse> {
 		const { results } = await this.createSkillsBatch(
 			agentId,
@@ -125,6 +127,7 @@ export class AgentSkillsService {
 			context,
 			availableTo,
 			method,
+			telemetry,
 		);
 		return results[0];
 	}
@@ -136,6 +139,7 @@ export class AgentSkillsService {
 		context: AgentMutationTelemetryContext,
 		availableTo: AgentSkillAvailability = 'project',
 		method?: SkillCreateMethod,
+		telemetry?: SkillTelemetryContext,
 	): Promise<{ results: AgentSkillMutationResponse[]; saved: Agent; skillRefs: AgentSkillRefs }> {
 		if (skills.length === 0) {
 			throw new UserError('At least one skill is required.');
@@ -193,6 +197,7 @@ export class AgentSkillsService {
 			ids,
 			telemetrySourceOf(context),
 			telemetryMethodOf(context, method),
+			telemetry,
 		);
 
 		return {

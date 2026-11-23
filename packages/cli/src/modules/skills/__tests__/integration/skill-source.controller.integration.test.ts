@@ -848,6 +848,12 @@ describe('SkillSourceController', () => {
 	});
 
 	describe('telemetry', () => {
+		const attribution = {
+			navigation_source: 'agent_picker_discover',
+			flow_id: 'b23b6134-b7a7-4912-a635-6d38cbbe0ae8',
+			add_entry_point: 'discover_detail',
+			catalog_skill_id: 'n8n-workflows',
+		};
 		let connectedSource: MockInstance<SkillsTelemetry['connectedSource']>;
 		let created: MockInstance<SkillsTelemetry['created']>;
 
@@ -874,11 +880,17 @@ describe('SkillSourceController', () => {
 		};
 
 		it('reports a successful connect in Global and the skills it created', async () => {
-			const { data } = await connectPdf(owner, { scope: 'instance' });
+			const imported = vi.spyOn(Container.get(SkillsTelemetry), 'importedFromSource');
+			const { data } = await connectPdf(owner, { scope: 'instance', telemetry: attribution });
+			expect(imported).toHaveBeenCalledWith(
+				expect.objectContaining({ ...attribution, imported: 1 }),
+				ownerUser.id,
+			);
 
 			expect(connectedSource.mock.calls).toEqual([
 				[
 					{
+						...attribution,
 						provider: 'github',
 						access: 'public',
 						scope_type: 'global',
@@ -893,7 +905,7 @@ describe('SkillSourceController', () => {
 				[{ id: data.imported[0].skillId, projectId: null }],
 				'github',
 				'sync',
-				{ source_provider: 'github', source_access: 'public' },
+				{ source_provider: 'github', source_access: 'public', ...attribution },
 			);
 		});
 
@@ -992,11 +1004,11 @@ describe('SkillSourceController', () => {
 			async (_name, setUp, status, reason) => {
 				setUp();
 
-				await discover(owner, { url: REPO, scope: 'instance' }, status);
+				await discover(owner, { url: REPO, scope: 'instance', telemetry: attribution }, status);
 
 				expect(connectedSource).toHaveBeenCalledTimes(1);
 				expect(connectedSource).toHaveBeenCalledWith(
-					expect.objectContaining({ status: 'failure', reason }),
+					expect.objectContaining({ ...attribution, status: 'failure', reason }),
 					ownerUser.id,
 				);
 			},

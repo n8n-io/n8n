@@ -841,7 +841,12 @@ describe('useAgentCapabilitiesActions — skill refs', () => {
 			});
 			const { modalData } = setupHub();
 
-			modalData.onConfirm({ skill: sqlHelper, availableTo, method: 'upload' });
+			const telemetry = {
+				navigation_source: 'agent_picker' as const,
+				flow_id: 'b23b6134-b7a7-4912-a635-6d38cbbe0ae8',
+				add_entry_point: 'agent_picker' as const,
+			};
+			modalData.onConfirm({ skill: sqlHelper, availableTo, method: 'upload', telemetry });
 			await flushPromises();
 
 			expect(createAgentSkill).toHaveBeenCalledWith(
@@ -851,6 +856,7 @@ describe('useAgentCapabilitiesActions — skill refs', () => {
 				sqlHelper,
 				availableTo,
 				'upload',
+				telemetry,
 			);
 		},
 	);

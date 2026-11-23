@@ -276,6 +276,7 @@ function renderModal({
 // Every suite renders an open modal with fresh stores.
 beforeEach(() => {
 	skillSync.value = false;
+	recommendedSkills.show.value = false;
 	vi.clearAllMocks();
 	createTestingPinia({ stubActions: false });
 	const uiStore = mockedStore(useUIStore);
@@ -563,6 +564,10 @@ describe('AgentSkillModal', () => {
 				instructions: 'Main instructions',
 			},
 			method: 'upload',
+			telemetry: expect.objectContaining({
+				navigation_source: 'agent_picker',
+				add_entry_point: 'agent_picker',
+			}),
 		});
 		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
 	});
@@ -603,6 +608,10 @@ describe('AgentSkillModal', () => {
 				references: [{ path: 'references/guide.md', content: '# Guide' }],
 			},
 			method: 'manual',
+			telemetry: expect.objectContaining({
+				navigation_source: 'agent_picker',
+				add_entry_point: 'agent_picker',
+			}),
 		});
 		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
 	});
@@ -1169,12 +1178,15 @@ describe('AgentSkillModal', () => {
 
 			await fireEvent.click(getByTestId('agent-skill-picker-manage'));
 
-			expect(resolveRoute).toHaveBeenCalledWith({ name: VIEWS.SETTINGS_CONTEXT_SKILLS });
+			expect(resolveRoute).toHaveBeenCalledWith({
+				name: VIEWS.SETTINGS_CONTEXT_SKILLS,
+				query: { skillsFrom: 'agent_picker_manage' },
+			});
 			expect(open).toHaveBeenCalledWith('/settings/context/skills', '_blank', 'noopener');
 			open.mockRestore();
 		});
 
-		it('offers discovery and hides the old recommendations when Skill Sync is enabled', async () => {
+		it('offers discovery alongside the three recommendations when Skill Sync is enabled', async () => {
 			skillSync.value = true;
 			recommendedSkills.show.value = true;
 			resolveRoute.mockReturnValueOnce({ href: '/settings/context/skills?view=discover' });
@@ -1183,15 +1195,19 @@ describe('AgentSkillModal', () => {
 			await fireEvent.click(view.getByTestId('agent-skill-picker-discover'));
 			expect(resolveRoute).toHaveBeenCalledWith({
 				name: VIEWS.SETTINGS_CONTEXT_SKILLS,
-				query: { view: 'discover' },
+				query: { skillsFrom: 'agent_picker_discover', view: 'discover' },
 			});
 			expect(open).toHaveBeenCalledWith(
 				'/settings/context/skills?view=discover',
 				'_blank',
 				'noopener',
 			);
-			expect(view.queryByText('humanizer')).not.toBeInTheDocument();
-			expect(recommendedSkills.trackCardsShown).not.toHaveBeenCalled();
+			for (const recommended of RECOMMENDED_SKILLS) {
+				expect(view.getByText(recommended.name)).toBeVisible();
+			}
+			expect(recommendedSkills.trackCardsShown).toHaveBeenCalledExactlyOnceWith(
+				'agent_skill_modal',
+			);
 			open.mockRestore();
 			recommendedSkills.show.value = false;
 		});

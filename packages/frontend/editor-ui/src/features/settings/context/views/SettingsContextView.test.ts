@@ -112,7 +112,10 @@ describe('SettingsContextView', () => {
 			expect(getByTestId('settings-context-skills-row')).toHaveTextContent('7 skills');
 
 			await userEvent.click(getByTestId('settings-context-skills-row'));
-			expect(push).toHaveBeenCalledWith({ name: 'SettingsContextSkills' });
+			expect(push).toHaveBeenCalledWith({
+				name: 'SettingsContextSkills',
+				query: { skillsFrom: 'context_settings' },
+			});
 		});
 
 		it('reports a failed skill count', async () => {

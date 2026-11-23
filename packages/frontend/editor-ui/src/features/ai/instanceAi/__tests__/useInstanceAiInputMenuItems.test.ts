@@ -429,7 +429,10 @@ describe('useInstanceAiInputMenuItems', () => {
 			await refreshSkills();
 			await findItem(menuItems.value, id)?.data?.action?.();
 
-			expect(router.resolve).toHaveBeenCalledWith({ name: 'SettingsContextSkills', query });
+			expect(router.resolve).toHaveBeenCalledWith({
+				name: 'SettingsContextSkills',
+				query: { skillsFrom: 'assistant_menu', ...query },
+			});
 			expect(openSpy).toHaveBeenCalledWith(href, '_blank', 'noopener');
 			expect(router.push).not.toHaveBeenCalled();
 			openSpy.mockRestore();

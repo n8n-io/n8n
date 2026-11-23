@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { skillTelemetryContextSchema } from './skill-telemetry.schema';
 
 import { Z } from '../zod-class';
 import type { ProjectIcon } from '../schemas/project.schema';
@@ -42,6 +43,7 @@ const skillSourceScope = {
 };
 
 const skillSourceTarget = {
+	telemetry: skillTelemetryContextSchema.optional().catch(undefined),
 	/** Add to this source without changing its scope, branch, or credential. */
 	existingSourceId: z.string().uuid().optional(),
 	/** When supplied, reject omitted files outside this reviewed list. */

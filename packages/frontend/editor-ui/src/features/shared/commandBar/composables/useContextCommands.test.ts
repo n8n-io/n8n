@@ -70,7 +70,10 @@ describe('useContextCommands', () => {
 		expect(match?.title).toBe('Skills');
 
 		void match?.handler?.();
-		expect(routerPushMock).toHaveBeenCalledWith({ name: VIEWS.SETTINGS_CONTEXT_SKILLS });
+		expect(routerPushMock).toHaveBeenCalledWith({
+			name: VIEWS.SETTINGS_CONTEXT_SKILLS,
+			query: { skillsFrom: 'command_bar' },
+		});
 	});
 
 	it('finds the Preferences entry with a "preferences" search and opens the Preferences page', () => {

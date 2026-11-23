@@ -14,6 +14,7 @@ import {
 	type AgentSkillAvailability,
 	type ProjectIcon,
 	type SkillCreateMethod,
+	type SkillTelemetryContext,
 	type SkillDetail,
 	type SkillListItem,
 	type SkillSyncedFrom,
@@ -43,6 +44,10 @@ import { preferenceUserName } from '@/features/settings/context/context.utils';
 import SkillScopeBadge from '@/features/settings/context/components/SkillScopeBadge.vue';
 import { useSkillSyncFlag } from '@/features/settings/context/composables/useSkillSyncFlag';
 import { parseScope } from '@/features/settings/context/skills.utils';
+import {
+	skillNavigationQuery,
+	useSkillTelemetry,
+} from '@/features/settings/context/skills.telemetry';
 import { sourceLineOf } from '@/features/settings/context/skillSourceReview.utils';
 import { useMessage } from '@/app/composables/useMessage';
 import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
@@ -178,6 +183,7 @@ export type AgentSkillModalData = {
 		availableToMCP?: boolean;
 		/** Set on create only: whether the user typed the skill or uploaded it. */
 		method?: SkillCreateMethod;
+		telemetry?: SkillTelemetryContext;
 		/** Set when the save restores this older version. */
 		restoredFrom?: number;
 	}) => AgentSkillConfirmResult | Promise<AgentSkillConfirmResult>;
@@ -243,6 +249,8 @@ const selectedPath = ref(SKILL_FILE);
 const isEditing = computed(() => !!props.data.skillId);
 // An upload lands on the edit step like a saved skill does, so the step alone cannot tell.
 const createMethod = ref<SkillCreateMethod>(props.data.initialMethod ?? 'manual');
+const skillTelemetry = useSkillTelemetry('agent_picker');
+const createTelemetry = ref<SkillTelemetryContext>();
 const hasPicker = !props.data.skillId && !!props.data.skillRefsEnabled && !!props.data.onAttach;
 // The caller chose "Create manually", so there is no upload step to go back to.
 const startsManual =
@@ -362,14 +370,11 @@ const pickerItems = computed<SkillConnectionItem[]>(() =>
 );
 
 const {
-	showRecommendedSkills: recommendedSkillsEnabled,
+	showRecommendedSkills,
 	trackCardsShown: trackRecommendedSkillsShown,
 	trackSkillAdded: trackRecommendedSkillAdded,
 } = useRecommendedSkillsExperiment();
 const skillSyncEnabled = useSkillSyncFlag();
-const showRecommendedSkills = computed(
-	() => !skillSyncEnabled.value && recommendedSkillsEnabled.value,
-);
 const recommendedSkillId = ref<RecommendedSkillId>();
 const { loadRecommendedSkill } = useRecommendedSkillLoader();
 const pickerCategories = computed<ToolCategoryKey[]>(() =>
@@ -915,6 +920,7 @@ function targetForPickerCategory(category: ToolCategoryKey): AgentSkillAvailabil
 }
 
 function onPickerCreate(category: ToolCategoryKey) {
+	createTelemetry.value = skillTelemetry.startAdding('agent_picker');
 	availableTo.value = targetForPickerCategory(category);
 	step.value = 'upload';
 }
@@ -938,6 +944,9 @@ async function selectRecommendedSkill(id: string) {
 	if (!recommended) return;
 	const loadedSkill = await loadRecommendedSkill(recommended);
 	if (!loadedSkill || step.value !== 'select') return;
+	createTelemetry.value = skillTelemetry.startAdding('agent_picker', {
+		recommended_skill_id: recommended.id,
+	});
 	onSkillUploaded(loadedSkill);
 	createMethod.value = 'manual';
 	recommendedSkillId.value = recommended.id;
@@ -982,7 +991,10 @@ function onManageSkills(discover = false) {
 	window.open(
 		router.resolve({
 			name: VIEWS.SETTINGS_CONTEXT_SKILLS,
-			...(discover ? { query: { view: 'discover' } } : {}),
+			query: {
+				...skillNavigationQuery(discover ? 'agent_picker_discover' : 'agent_picker_manage'),
+				...(discover ? { view: 'discover' } : {}),
+			},
 		}).href,
 		'_blank',
 		'noopener',
@@ -996,6 +1008,9 @@ function onPreviewAdd() {
 }
 
 onMounted(() => {
+	if (props.data.agentId && !isEditing.value && !hasPicker) {
+		createTelemetry.value = skillTelemetry.startAdding('agent_picker');
+	}
 	if (startsManual) void refreshDefaultName();
 	if (hasPicker) {
 		void loadLibrarySkills();
@@ -1281,6 +1296,7 @@ async function onSave() {
 			: {}),
 		...(availableToMCPChanged.value ? { availableToMCP: availableToMCP.value } : {}),
 		...(isEditing.value ? {} : { method: createMethod.value }),
+		...(!isEditing.value && createTelemetry.value ? { telemetry: createTelemetry.value } : {}),
 	});
 	if (saved) {
 		if (recommendedSkillId.value) {
