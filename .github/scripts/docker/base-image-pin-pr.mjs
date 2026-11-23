@@ -83,7 +83,7 @@ export function renderBody(results, { group, runUrl }) {
 		);
 		if (result.gateSkipped)
 			lines.push(
-				'A manual run skipped the 24-hour gate: this digest is less than 24 hours old.',
+				`A manual run skipped the 24-hour gate: ${result.publisher.publishedAt ? 'this digest is less than 24 hours old' : 'the publish time of this digest is unknown'}.`,
 				'',
 			);
 		const added = [...new Set(result.platforms.flatMap((platform) => platform.addedPackages))];

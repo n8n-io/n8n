@@ -126,4 +126,19 @@ describe('renderBody', () => {
 		);
 		assert.doesNotMatch(body, /New packages/);
 	});
+
+	it('does not claim an age for a digest without a publish time', () => {
+		const result = {
+			...ready('DHI_REF', false, [platform('linux/amd64', [finding('CVE-1', 'zlib')])]),
+			gateSkipped: true,
+		};
+		result.publisher = { ...result.publisher, publishedAt: null };
+		const body = renderBody([result], { group: 'review', runUrl });
+		assert.match(body, /Published: unknown\./);
+		assert.match(
+			body,
+			/A manual run skipped the 24-hour gate: the publish time of this digest is unknown\./,
+		);
+		assert.doesNotMatch(body, /less than 24 hours old/);
+	});
 });
