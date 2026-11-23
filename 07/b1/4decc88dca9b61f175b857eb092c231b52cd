@@ -1,0 +1,21 @@
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  s_4e8100d4ba14d2::t_48eb76308a2933 3847-3848
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_4e8100d4ba14d2::t_bbc73ae9a1c2df 1096-1098,1103-1105
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "07b14decc88dca9b61f175b857eb092c231b52cd",
+  "prompts": {},
+  "sessions": {
+    "s_4e8100d4ba14d2": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a20889-233d-7672-8300-b96f5d9f857d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}
