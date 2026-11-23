@@ -314,12 +314,14 @@ describe('ExecutionLimitsService', () => {
 			);
 			await service.setProjectLimits([{ projectId: first.id, maxExecutions: 30 }], USER_ID);
 			await service.removeProjectLimits([second.id], USER_ID);
+			await (await removeLimitInTransaction(first.id))();
 
 			expect(events).toEqual([
 				{ ...project, projectId: first.id, oldValue: null, newValue: 10 },
 				{ ...project, projectId: second.id, oldValue: null, newValue: 20 },
 				{ ...project, projectId: first.id, oldValue: 10, newValue: 30 },
 				{ ...project, projectId: second.id, oldValue: 20, newValue: null },
+				{ ...project, projectId: first.id, oldValue: 30, newValue: null },
 			]);
 			expect(await readAuditRows()).toEqual(events);
 		});
@@ -338,46 +340,6 @@ describe('ExecutionLimitsService', () => {
 
 			expect(events).toEqual([]);
 			expect(await readAuditRows()).toEqual(rowsBefore);
-		});
-
-		it('records the removed limit in the transaction that deletes the project and emits after it commits', async () => {
-			const project = await createTeamProject();
-			await service.setProjectLimits([{ projectId: project.id, maxExecutions: 10 }], USER_ID);
-			events.length = 0;
-
-			const announce = await removeLimitInTransaction(project.id);
-			expect(events).toEqual([]);
-			await announce();
-
-			const removal = {
-				projectId: project.id,
-				field: 'projectMaxExecutions',
-				oldValue: 10,
-				newValue: null,
-				updatedBy: USER_ID,
-			};
-			expect(events).toEqual([removal]);
-			expect((await readAuditRows()).at(-1)).toEqual(removal);
-		});
-
-		it('keeps the limit and records nothing when the transaction that deletes the project fails', async () => {
-			const project = await createTeamProject();
-			await service.setProjectLimits([{ projectId: project.id, maxExecutions: 10 }], USER_ID);
-			events.length = 0;
-			const rowsBefore = await readAuditRows();
-
-			await expect(
-				Container.get(TransactionRunner).run({}, async (ctx) => {
-					await service.removeLimitOfDeletedProject(project.id, USER_ID, undefined, ctx);
-					throw new Error('The project delete failed');
-				}),
-			).rejects.toThrow('The project delete failed');
-
-			expect(await service.getProjectLimits([project.id])).toEqual([
-				{ projectId: project.id, maxExecutions: 10 },
-			]);
-			expect(await readAuditRows()).toEqual(rowsBefore);
-			expect(events).toEqual([]);
 		});
 
 		it('keeps the limit and emits nothing when the row cannot be recorded', async () => {

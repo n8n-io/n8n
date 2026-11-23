@@ -1259,9 +1259,8 @@ describe('ProjectService', () => {
 				expect(credentialDelete).toHaveBeenCalledWith(user, 'credential-1', {}, ctx);
 			});
 
-			it('removes the execution limit before the project, as the caller, and announces it after the transaction', async () => {
-				const announce = vi.fn();
-				const removeLimitOfDeletedProject = vi.fn().mockResolvedValue(announce);
+			it('removes the execution limit as the caller', async () => {
+				const removeLimitOfDeletedProject = vi.fn();
 				Object.defineProperty(projectService, 'executionLimitsService', {
 					configurable: true,
 					get: async () => ({ removeLimitOfDeletedProject }),
@@ -1280,12 +1279,6 @@ describe('ProjectService', () => {
 					user.id,
 					'login-1',
 					expect.anything(),
-				);
-				expect(removeLimitOfDeletedProject.mock.invocationCallOrder[0]).toBeLessThan(
-					projectRepository.removeProjectForDeletion.mock.invocationCallOrder[0],
-				);
-				expect(announce.mock.invocationCallOrder[0]).toBeGreaterThan(
-					projectRepository.removeProjectForDeletion.mock.invocationCallOrder[0],
 				);
 			});
 

@@ -173,11 +173,7 @@ export class ExecutionLimitsService {
 		updatedBy: string | null,
 		loginId?: string,
 	): Promise<void> {
-		await this.commit(
-			updatedBy,
-			loginId,
-			async (ctx) => await this.deleteProjectLimits(projectIds, ctx),
-		);
+		await this.commit(updatedBy, loginId, this.deleteLimitsOf(projectIds));
 	}
 
 	async removeLimitOfDeletedProject(
@@ -190,20 +186,19 @@ export class ExecutionLimitsService {
 			ctx,
 			updatedBy,
 			loginId,
-			async (trxCtx) => await this.deleteProjectLimits([projectId], trxCtx),
+			this.deleteLimitsOf([projectId]),
 		);
 
 		return async () => await this.announce(recorded);
 	}
 
-	private async deleteProjectLimits(
-		projectIds: string[],
-		ctx: OperationContext,
-	): Promise<{ result: undefined; changes: ExecutionLimitChange[] }> {
-		const before = await this.projectLimitRepository.findByProjectIds(projectIds, ctx);
-		await this.projectLimitRepository.deleteByProjectIds(projectIds, ctx);
+	private deleteLimitsOf(projectIds: string[]): LimitWrite<undefined> {
+		return async (ctx) => {
+			const before = await this.projectLimitRepository.findByProjectIds(projectIds, ctx);
+			await this.projectLimitRepository.deleteByProjectIds(projectIds, ctx);
 
-		return { result: undefined, changes: diffProjectLimits(before, []) };
+			return { result: undefined, changes: diffProjectLimits(before, []) };
+		};
 	}
 
 	private async commit<T>(
@@ -240,6 +235,8 @@ export class ExecutionLimitsService {
 
 	/** Every write ends here after its transaction commits, so the limits in memory reload. */
 	private async announce(recorded: RecordedExecutionLimitChange[]): Promise<void> {
+		if (recorded.length === 0) return;
+
 		for (const change of recorded) {
 			this.eventService.emit('execution-limit-updated', change);
 		}
