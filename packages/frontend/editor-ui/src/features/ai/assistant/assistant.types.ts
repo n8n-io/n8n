@@ -159,7 +159,7 @@ export namespace ChatRequest {
 			name: VIEWS;
 			description?: string;
 		};
-		aiUsageSettings?: FrontendSettings['ai'];
+		aiUsageSettings?: Pick<FrontendSettings['ai'], 'allowSendingParameterValues'>;
 	}
 
 	export type AssistantContext = UserContext & WorkflowContext;

@@ -4,6 +4,7 @@ import {
 	ReplaceAttachmentsDto,
 	UpdatePolicyDocumentDto,
 	type InstanceTypeAccessResponse,
+	type NodeTypeUsageResponse,
 } from '@n8n/api-types';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import { AuthenticatedRequest } from '@n8n/db';
@@ -26,6 +27,7 @@ import { NotFoundError } from '@n8n/errors';
 import { NodeTypes } from '@/node-types';
 
 import { NODE_TYPES_KIND } from './constants';
+import { NodeTypeUsageService } from './node-type-usage.service';
 import { TypeAvailabilityPolicyService } from './type-availability-policy.service';
 
 /**
@@ -39,6 +41,7 @@ export class TypeAvailabilityPolicyInstanceController {
 	constructor(
 		private readonly service: TypeAvailabilityPolicyService,
 		private readonly nodeTypes: NodeTypes,
+		private readonly nodeTypeUsageService: NodeTypeUsageService,
 	) {}
 
 	@Get('/instance')
@@ -75,6 +78,13 @@ export class TypeAvailabilityPolicyInstanceController {
 		});
 
 		return { ...access, types };
+	}
+
+	@Get('/usage')
+	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
+	@GlobalScope('nodeTypePolicy:manage')
+	async getUsage(): Promise<NodeTypeUsageResponse> {
+		return await this.nodeTypeUsageService.getUsage(null);
 	}
 
 	@Put('/instance')

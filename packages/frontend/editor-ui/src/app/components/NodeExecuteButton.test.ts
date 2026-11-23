@@ -147,6 +147,18 @@ describe('NodeExecuteButton', () => {
 		expect(() => renderComponent()).not.toThrow();
 	});
 
+	it('keeps the tooltip trigger around a natively disabled button', async () => {
+		const { getByRole, emitted } = renderComponent({
+			props: { disabled: true, tooltip: 'Execute this node' },
+		});
+		const button = getByRole('button');
+		expect(button).toBeDisabled();
+		await userEvent.hover(button.parentElement!);
+		await waitFor(() => expect(getTooltip()).toHaveTextContent('Execute this node'));
+		await userEvent.click(button);
+		expect(emitted('execute')).toBeUndefined();
+	});
+
 	it('displays correct button label for regular node', () => {
 		const { getByRole } = renderComponent();
 		expect(getByRole('button').textContent).toBe('Execute step');
@@ -251,7 +263,8 @@ describe('NodeExecuteButton', () => {
 		const { getByRole } = renderComponent();
 
 		const button = getByRole('button');
-		expect(button).toBeDisabled();
+		expect(button).toHaveAttribute('aria-disabled', 'true');
+		expect(button).not.toBeDisabled();
 
 		await userEvent.hover(button);
 
@@ -320,7 +333,8 @@ describe('NodeExecuteButton', () => {
 		const { getByRole } = renderComponent();
 
 		const button = getByRole('button');
-		expect(button).toBeDisabled();
+		expect(button).toHaveAttribute('aria-disabled', 'true');
+		expect(button).not.toBeDisabled();
 
 		await userEvent.hover(button);
 
@@ -344,7 +358,8 @@ describe('NodeExecuteButton', () => {
 
 		const { getByRole } = renderComponent();
 
-		expect(getByRole('button')).toBeDisabled();
+		expect(getByRole('button')).toHaveAttribute('aria-disabled', 'true');
+		expect(getByRole('button')).not.toBeDisabled();
 	});
 
 	it('stops webhook when clicking button while listening for events', async () => {

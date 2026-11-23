@@ -502,6 +502,13 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		}
 	};
 
+	const updateModelTrainingSettings = async (allowModelTraining: boolean) => {
+		await aiUsageApi.updateModelTrainingSettings(useRootStore().restApiContext, {
+			allowModelTraining,
+		});
+		settings.value.ai.allowModelTraining = allowModelTraining;
+	};
+
 	return {
 		settings,
 		userManagement,
@@ -584,6 +591,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		getModuleSettings,
 		moduleSettings,
 		updateAiDataSharingSettings,
+		updateModelTrainingSettings,
 		isMFAEnforcementLicensed,
 		isMFAEnforced,
 		activeModules,

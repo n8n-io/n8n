@@ -175,6 +175,12 @@ const props = withDefaults(
 		 * list is read once, when the panel is set up.
 		 */
 		interactionExtensions?: readonly AgentsChatInteractionExtension[];
+		/**
+		 * Disables the composer, for example when the host knows the server would
+		 * refuse the turn. Cards that wait for an answer stay usable. Host sends are
+		 * not blocked; use `beforeSend` to refuse them.
+		 */
+		disabled?: boolean;
 	}>(),
 	{
 		visible: true,
@@ -196,6 +202,7 @@ const props = withDefaults(
 		acceptedMimeTypes: undefined,
 		attachButtonIcon: 'paperclip',
 		interactionExtensions: () => [],
+		disabled: false,
 	},
 );
 
@@ -407,7 +414,10 @@ async function loadChatAttachmentFile(attachment: ChatMessageAttachment): Promis
 }
 
 async function startQueueEdit(item: AgentChatQueueItem) {
-	if (hasDraft.value || isQueueItemBusy(item) || isSubmissionBlocked.value) return;
+	// A disabled composer could not send the message again, so it stays queued.
+	if (props.disabled || hasDraft.value || isQueueItemBusy(item) || isSubmissionBlocked.value) {
+		return;
+	}
 	queueExpanded.value = true;
 	const target = {
 		projectId: props.projectId,
@@ -972,8 +982,13 @@ const hasDraft = computed(
 	() => inputText.value.trim().length > 0 || attachedFiles.value.length > 0,
 );
 const isPreparingToSend = ref(false);
-/** The composer takes no input while a send starts or a queued message moves back into it. */
-const isComposerBlocked = computed(() => isPreparingToSend.value || !!editingQueueId.value);
+/**
+ * The composer takes no input while the host disables it, a send starts, or a
+ * queued message moves back into it.
+ */
+const isComposerBlocked = computed(
+	() => props.disabled || isPreparingToSend.value || !!editingQueueId.value,
+);
 let disposed = false;
 let queuedExternalMessage: string | undefined;
 let submittingQueuedExternalMessage = false;
@@ -1705,16 +1720,11 @@ function removeComposerAttachment(id: string) {
 	composerAttachments.value = composerAttachments.value.filter((item) => item.chip.id !== id);
 }
 
-// Session files: the preview chat and n8n Chat have the list route.
-const sessionFilesChannel = computed(() =>
-	props.channel === 'chat' || props.channel === 'n8n-chat' ? props.channel : undefined,
-);
+// Session files: every channel has the list route.
 const posthog = usePostHog();
 const showSessionFilesToggle = computed(
 	() =>
-		posthog.isFeatureEnabled(AGENT_SANDBOX_FILES_FLAG) === true &&
-		sessionFilesChannel.value !== undefined &&
-		Boolean(props.continueSessionId),
+		posthog.isFeatureEnabled(AGENT_SANDBOX_FILES_FLAG) === true && Boolean(props.continueSessionId),
 );
 const sessionFilesOpen = ref(false);
 const sessionFiles = ref<AgentSessionFile[]>([]);
@@ -1734,8 +1744,8 @@ function sessionFileHref(fileId: string) {
 
 async function loadSessionFiles() {
 	const threadId = props.continueSessionId;
-	const channel = sessionFilesChannel.value;
-	if (!threadId || !channel) return;
+	const { channel } = props;
+	if (!threadId) return;
 	sessionFilesLoading.value = true;
 	sessionFilesError.value = false;
 	try {
@@ -1990,7 +2000,7 @@ onBeforeUnmount(() => {
 						:show-attach="showAttach"
 						:show-attach-button="false"
 						:accepted-mime-types="acceptedMimeTypes"
-						:can-submit="!isSubmissionBlocked && hasDraft"
+						:can-submit="!props.disabled && !isSubmissionBlocked && hasDraft"
 						:disabled="isComposerBlocked"
 						data-testid="chat-input"
 						@submit="onSubmit"
@@ -2005,7 +2015,7 @@ onBeforeUnmount(() => {
 								:displayed-items="queueDisplayItems"
 								:expanded="queueExpanded"
 								:is-reordering="isReorderingQueue"
-								:can-edit="!hasDraft && !isSubmissionBlocked"
+								:can-edit="!props.disabled && !hasDraft && !isSubmissionBlocked"
 								:steer-action="queueSteerAction"
 								:can-steer="canSteer"
 								:can-drag-queue-item="canDragQueueItem"
@@ -2087,6 +2097,7 @@ onBeforeUnmount(() => {
 							<slot name="composer-start" />
 							<N8nTooltip
 								v-if="showAttach && showAttachButton"
+								as-child
 								:content="locale.baseText('chatInputBase.button.attach')"
 								placement="top"
 							>
@@ -2095,11 +2106,14 @@ onBeforeUnmount(() => {
 									:icon="attachButtonIcon"
 									icon-size="large"
 									:disabled="isComposerBlocked"
+									focusable-when-disabled
 									:aria-label="locale.baseText('chatInputBase.button.attach')"
 									data-test-id="chat-input-attach-button"
 									@click.stop="chatInput?.openFilePicker()"
 								/>
 							</N8nTooltip>
+							<!-- Before the files toggle: a host menu such as the Assistant "+" menu replaces the attach button. -->
+							<slot name="footer-start" :disabled="isComposerBlocked" />
 							<N8nTooltip
 								v-if="showSessionFilesToggle"
 								:content="locale.baseText('agents.chat.sessionFiles.title')"
@@ -2115,7 +2129,6 @@ onBeforeUnmount(() => {
 									@click.stop="toggleSessionFiles"
 								/>
 							</N8nTooltip>
-							<slot name="footer-start" :disabled="isComposerBlocked" />
 						</template>
 						<template v-if="$slots['composer-actions']" #right-actions>
 							<slot name="composer-actions" />

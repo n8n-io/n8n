@@ -1,3 +1,4 @@
+import { escapeXmlAttribute } from '@n8n/utils/string/escape-xml';
 import type {
 	ILoadOptions,
 	INodeCredentials,
@@ -259,15 +260,6 @@ export function detectAuthenticationParameterValue(
 	return undefined;
 }
 
-function escapeXmlText(value: string): string {
-	return value
-		.replaceAll('&', '&amp;')
-		.replaceAll('<', '&lt;')
-		.replaceAll('>', '&gt;')
-		.replaceAll('"', '&quot;')
-		.replaceAll("'", '&apos;');
-}
-
 export function formatResourceLocatorOptionsForLLM(
 	options: INodeListSearchItems[],
 	parameterPath: string,
@@ -277,15 +269,15 @@ export function formatResourceLocatorOptionsForLLM(
 	}
 
 	const parts: string[] = [
-		`<resource_locator_options parameter="${escapeXmlText(parameterPath)}">`,
+		`<resource_locator_options parameter="${escapeXmlAttribute(parameterPath)}">`,
 		`<total_count>${options.length}</total_count>`,
 		'<options>',
 	];
 
 	options.forEach((opt, index) => {
 		parts.push(`  <option index="${index}">`);
-		parts.push(`    <display_name>${escapeXmlText(opt.name)}</display_name>`);
-		parts.push(`    <id>${escapeXmlText(String(opt.value))}</id>`);
+		parts.push(`    <display_name>${escapeXmlAttribute(opt.name)}</display_name>`);
+		parts.push(`    <id>${escapeXmlAttribute(String(opt.value))}</id>`);
 		parts.push('  </option>');
 	});
 

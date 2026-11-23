@@ -1,8 +1,9 @@
 import { getApiKeyScopesForRole } from '@/public-api-permissions.ee';
 
 describe('getApiKeyScopesForRole', () => {
-	test('returns no scopes for global:agent', () => {
+	test('returns no scopes for global:agent or global:chatUser', () => {
 		expect(getApiKeyScopesForRole({ role: { slug: 'global:agent', scopes: [] } })).toEqual([]);
+		expect(getApiKeyScopesForRole({ role: { slug: 'global:chatUser', scopes: [] } })).toEqual([]);
 	});
 
 	test('adds the personal project scopes for a role without global scopes', () => {

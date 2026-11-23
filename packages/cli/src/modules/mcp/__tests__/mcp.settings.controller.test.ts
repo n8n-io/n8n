@@ -2,6 +2,7 @@ import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { EventService, Publisher } from '@n8n/backend-services';
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { type ApiKey, type AuthenticatedRequest, Person, type User, Role } from '@n8n/db';
+import { PubSubMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
 import { mock, mockDeep } from 'vitest-mock-extended';
@@ -189,6 +190,20 @@ describe('McpSettingsController', () => {
 			expect(moduleRegistry.refreshModuleSettings).toHaveBeenCalledWith('mcp');
 		});
 
+		test.each(['reload-mcp-settings', 'pubsub-reconnected'])(
+			'refreshes the MCP module settings on %s',
+			(eventName) => {
+				const handlers = Container.get(PubSubMetadata)
+					.getHandlers()
+					.filter(
+						({ eventName: name, eventHandlerClass }) =>
+							name === eventName && eventHandlerClass.name === 'McpSettingsController',
+					);
+
+				expect(handlers.map(({ methodName }) => methodName)).toEqual(['refreshMcpModuleSettings']);
+			},
+		);
+
 		test('handles module registry refresh failure gracefully', async () => {
 			const req = createReq({ mcpAccessEnabled: true }, { user: createPerson() });
 			const dto = new UpdateMcpSettingsDto({ mcpAccessEnabled: true });
@@ -280,13 +295,34 @@ describe('McpSettingsController', () => {
 			expect(result).toEqual({ mcpAccessEnabled: true, autoExposeNewWorkflows: true });
 		});
 
+		test('saves the preferences switch and returns it', async () => {
+			const req = createReq({ preferencesEnabled: false }, { user: createPerson() });
+			const dto = UpdateMcpSettingsDto.parse({ preferencesEnabled: false });
+			mcpSettingsService.getEnabled.mockResolvedValue(true);
+			mcpSettingsService.getAutoExposeNewWorkflows.mockResolvedValue(false);
+			mcpSettingsService.getPreferencesEnabled.mockResolvedValue(false);
+			moduleRegistry.refreshModuleSettings.mockResolvedValue(null);
+
+			const result = await controller.updateSettings(req, createRes(), dto);
+
+			expect(mcpSettingsService.setPreferencesEnabled).toHaveBeenCalledWith(false);
+			expect(mcpSettingsService.setEnabled).not.toHaveBeenCalled();
+			expect(moduleRegistry.refreshModuleSettings).toHaveBeenCalledWith('mcp');
+			expect(publisher.publishCommand).toHaveBeenCalledWith({ command: 'reload-mcp-settings' });
+			expect(result).toEqual({
+				mcpAccessEnabled: true,
+				autoExposeNewWorkflows: false,
+				preferencesEnabled: false,
+			});
+		});
+
 		test('rejects an empty body', () => {
 			const result = UpdateMcpSettingsDto.safeParse({});
 
 			expect(result.success).toBe(false);
 			if (!result.success) {
 				expect(result.error.errors[0].message).toBe(
-					'Provide at least one of mcpAccessEnabled or autoExposeNewWorkflows',
+					'Provide at least one of mcpAccessEnabled, autoExposeNewWorkflows or preferencesEnabled',
 				);
 			}
 			expect(mcpSettingsService.setEnabled).not.toHaveBeenCalled();
