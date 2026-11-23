@@ -57,8 +57,9 @@ export TESTCONTAINERS_RYUK_DISABLED=true
 ## How it works
 
 1. **Grammar** (`src/grammar`). fast-check generates a structure tree of
-   combinators (`chain`, `branch`, `switch`, `fanOut`, `merge`, `loop`)
-   with node parameter drafts from the catalog. fast-check shrinks this tree. `toIr` lowers it to the plain-data IR
+   combinators (`chain`, `branch`, `switch`, `fanOut`, `merge`, `loop`,
+   `errorOutput`) with node parameter drafts from the
+   catalog. fast-check shrinks this tree. `toIr` lowers it to the plain-data IR
    (`ir.ts`) and fills expression holes with the names of upstream nodes.
    Every shape is valid by construction: each block has one way in and one way
    out, and only `merge` joins branches.

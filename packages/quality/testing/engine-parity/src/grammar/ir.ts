@@ -20,7 +20,15 @@ import type { IWorkflowBase } from 'n8n-workflow';
  */
 
 /** The structure combinators. Each one places nodes and edges in the IR. */
-export type CombinatorId = 'chain' | 'branch' | 'switch' | 'fanOut' | 'merge' | 'loop' | 'trigger';
+export type CombinatorId =
+	| 'chain'
+	| 'branch'
+	| 'switch'
+	| 'fanOut'
+	| 'merge'
+	| 'loop'
+	| 'errorOutput'
+	| 'trigger';
 
 export type IrItem = { json: Record<string, unknown> };
 
@@ -30,7 +38,7 @@ export type IrNode = {
 	/** The catalog entry, for example `set.manual` or `if.condition`. */
 	catalogId: string;
 	params: Record<string, unknown>;
-	flags?: { disabled?: boolean };
+	flags?: { disabled?: boolean; onError?: 'continueErrorOutput' };
 	/** The combinator that placed the node. Signatures and coverage use it. */
 	via: CombinatorId;
 };

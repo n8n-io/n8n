@@ -101,6 +101,15 @@ export function blockArb(rules: ParityRules): fc.Arbitrary<Block> {
 				}),
 			);
 		}
+		if (has('errorOutput') && rules.features.errorOutputs) {
+			options.push(
+				fc.record({
+					kind: fc.constant('errorOutput' as const),
+					node: plainDraft,
+					handler: optional,
+				}),
+			);
+		}
 
 		return {
 			// The first option is the leaf: past the maximum depth, only leaves remain.
@@ -156,6 +165,7 @@ function toIrNodes(placed: PlacedNode[], edges: IrEdge[]): IrNode[] {
 			catalogId: node.catalogId,
 			params: typeof params === 'object' && params !== null ? { ...params } : {},
 			via: node.via,
+			...(node.onError ? { flags: { onError: node.onError } } : {}),
 		};
 	});
 }
