@@ -23,6 +23,7 @@ import {
 	listOwnSubscriptions,
 	logTrigger,
 	markPendingReconcile,
+	parseResourceIds,
 	reconcileSubscriptions,
 	renewSubscriptions,
 	storedSubscriptionsCover,
@@ -556,7 +557,13 @@ export class MicrosoftTeamsTrigger implements INodeType {
 		// include it.
 		const workflowData = [
 			changeNotifications.map(({ clientState, ...notification }) => ({
-				json: (notification.resourceData ?? notification) as IDataObject,
+				// The added fields go first. On a name clash the resourceData (or notification) value wins.
+				json: {
+					...(notification.changeType !== undefined && { changeType: notification.changeType }),
+					...(notification.resource !== undefined && { resource: notification.resource }),
+					...parseResourceIds(notification.resource),
+					...(notification.resourceData ?? notification),
+				} as IDataObject,
 			})),
 		];
 

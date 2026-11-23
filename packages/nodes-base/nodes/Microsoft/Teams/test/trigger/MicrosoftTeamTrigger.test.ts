@@ -1426,9 +1426,126 @@ describe('Microsoft Teams Trigger Node', () => {
 
 			expect(result).toEqual({
 				workflowData: [
-					[{ json: { subscriptionId: 'sub1', changeType: 'created' } }, { json: { id: 'm2' } }],
+					[
+						{ json: { subscriptionId: 'sub1', changeType: 'created' } },
+						{ json: { changeType: 'created', id: 'm2' } },
+					],
 				],
 			});
+		});
+
+		it('keeps changeType, resource and the parsed ids in the item', async () => {
+			const resource = "teams('t1')/channels('c1')/messages('m1')";
+			const { ctx } = arrange({
+				value: [
+					{
+						subscriptionId: 'sub1',
+						clientState: 'secret',
+						changeType: 'Created',
+						resource,
+						tenantId: 'x',
+						resourceData: { id: 'm1', '@odata.type': '#Microsoft.Graph.chatMessage' },
+					},
+					{
+						subscriptionId: 'sub1',
+						clientState: 'secret',
+						changeType: 'created',
+						resource: 'unexpected/path',
+						tenantId: 'x',
+						resourceData: { id: 'm2' },
+					},
+				],
+			});
+
+			const result = await new MicrosoftTeamsTrigger().webhook.call(ctx);
+
+			expect(result.workflowData).toStrictEqual([
+				[
+					{
+						json: {
+							changeType: 'Created',
+							resource,
+							teamId: 't1',
+							channelId: 'c1',
+							messageId: 'm1',
+							id: 'm1',
+							'@odata.type': '#Microsoft.Graph.chatMessage',
+						},
+					},
+					{ json: { changeType: 'created', resource: 'unexpected/path', id: 'm2' } },
+				],
+			]);
+			expect(microsoftApiRequest.call).not.toHaveBeenCalled();
+			expect(microsoftApiRequestAllItems.call).not.toHaveBeenCalled();
+		});
+
+		it('keeps the resourceData value when a field has the same name', async () => {
+			const { ctx } = arrange({
+				value: [
+					{
+						subscriptionId: 'sub1',
+						clientState: 'secret',
+						changeType: 'created',
+						resource: "teams('t1')/channels('c1')/messages('m1')",
+						tenantId: 'x',
+						resourceData: {
+							id: 'm1',
+							teamId: 'from-resource-data',
+							changeType: 'from-resource-data',
+							resource: 'from-resource-data',
+						},
+					},
+				],
+			});
+
+			const result = await new MicrosoftTeamsTrigger().webhook.call(ctx);
+
+			expect(result.workflowData).toStrictEqual([
+				[
+					{
+						json: {
+							changeType: 'from-resource-data',
+							resource: 'from-resource-data',
+							teamId: 'from-resource-data',
+							channelId: 'c1',
+							messageId: 'm1',
+							id: 'm1',
+						},
+					},
+				],
+			]);
+		});
+
+		it('adds the ids to a notification with no resourceData', async () => {
+			const resource = "chats('c1')/messages('m1')";
+			const { ctx } = arrange({
+				value: [
+					{
+						subscriptionId: 'sub1',
+						clientState: 'secret',
+						changeType: 'created',
+						resource,
+						tenantId: 'x',
+					},
+				],
+			});
+
+			const result = await new MicrosoftTeamsTrigger().webhook.call(ctx);
+
+			expect(result.workflowData).toStrictEqual([
+				[
+					{
+						json: {
+							changeType: 'created',
+							resource,
+							chatId: 'c1',
+							messageId: 'm1',
+							subscriptionId: 'sub1',
+							tenantId: 'x',
+						},
+					},
+				],
+			]);
 		});
 
 		it('caps the logged subscription ids of the rejected notifications', async () => {
