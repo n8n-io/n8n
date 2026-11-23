@@ -1389,7 +1389,10 @@ export class AgentChatBridge {
 	}
 
 	private async fetchAttachmentData(attachment: Attachment): Promise<Buffer | null> {
-		if (attachment.fetchData) return await attachment.fetchData();
+		if (attachment.fetchData) {
+			const fetched = await attachment.fetchData();
+			return Buffer.isBuffer(fetched) ? fetched : Buffer.from(fetched);
+		}
 		if (Buffer.isBuffer(attachment.data)) return attachment.data;
 		if (attachment.data) return Buffer.from(await attachment.data.arrayBuffer());
 		if (this.integration.type === 'discord' && attachment.url && this.discordHttpClient) {

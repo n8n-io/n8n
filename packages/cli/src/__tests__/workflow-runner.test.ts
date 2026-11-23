@@ -562,7 +562,7 @@ describe('processError', () => {
 			hooks,
 		);
 
-		expect(announce).toHaveBeenCalledExactlyOnceWith(execution.id);
+		expect(announce).toHaveBeenCalledExactlyOnceWith(execution.id, hooks.workflowData.name);
 		expect(watcher.workflowExecuteAfter).toHaveBeenCalledTimes(1);
 		expect(watcher.workflowExecuteAfter).toHaveBeenCalledWith(
 			expect.objectContaining({
@@ -1280,6 +1280,17 @@ describe('run', () => {
 			// the constructor was given additionalData by reference — assert the
 			// mutation landed on the same object the engine sees.
 			expect(additionalData.evalLlmMockHandler).toBe(sentinel);
+		});
+
+		it('restores the root execution mode from the execution data', async () => {
+			const { data, additionalData } = arrangeRunDeps({
+				...createRunExecutionData({}),
+				rootExecutionMode: 'manual',
+			});
+
+			await runner.run(data);
+
+			expect(additionalData.rootExecutionMode).toBe('manual');
 		});
 
 		it('is a no-op when not provided', async () => {

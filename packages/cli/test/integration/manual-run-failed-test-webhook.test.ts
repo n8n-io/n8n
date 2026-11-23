@@ -77,11 +77,11 @@ describe('Manual run of a trigger whose test webhook the external service reject
 		);
 
 	const runManually = async (workflow: IWorkflowDb) =>
-		await workflowExecutionService.executeManually(
-			workflow,
-			{ triggerToStartFrom: { name: TRIGGER_NAME } },
-			owner,
-		);
+		await workflowExecutionService.executeManually({
+			workflowData: workflow,
+			payload: { triggerToStartFrom: { name: TRIGGER_NAME } },
+			user: owner,
+		});
 
 	test('reports the error of the service after runs that could not delete their webhook', async () => {
 		const workflow = await createTriggerWorkflow();

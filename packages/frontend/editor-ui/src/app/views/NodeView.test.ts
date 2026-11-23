@@ -46,6 +46,8 @@ import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.s
 import { useCanvasStore } from '@/app/stores/canvas.store';
 import { DEFAULT_NODE_SIZE, snapPositionToGrid } from '@/app/utils/nodeViewUtils';
 import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
+import type { EngineCompatibilityReason } from '@n8n/frontend-module-engine-v2';
+import { mockEngineV2Compatibility } from '@n8n/frontend-module-engine-v2/__tests__/mocks';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { lazyModalLoaders, type LazyModalKey } from '@/app/modals/lazyModals';
 import {
@@ -219,6 +221,9 @@ describe('NodeView', () => {
 								data-test-id="node-creation-stub-add-node"
 								@click="$emit('addNodes', { nodes: [{ type: '${SET_NODE_TYPE}', name: 'Added' }], connections: [] }); $emit('toggleNodeCreator', { createNodeActive: false, hasAddedNodes: true }); $emit('close')"
 							/>
+							<div data-test-id="node-creation-stub-above-toolbar">
+								<slot name="above-toolbar" />
+							</div>
 						</>`,
 					}),
 					LazySetupWorkflowCredentialsButton: { render: () => null },
@@ -1137,6 +1142,141 @@ describe('NodeView', () => {
 			renderNodeView();
 
 			await waitFor(() => expect(fetchForProject).not.toHaveBeenCalled());
+		});
+	});
+
+	describe('Engine v2 compatibility', () => {
+		const BUTTON = 'engine-v2-compatibility-button';
+
+		/** Opens the list of reasons from the button, and returns its text. */
+		async function reasonsText(findByTestId: (id: string) => Promise<HTMLElement>) {
+			await userEvent.click(await findByTestId(BUTTON));
+			return (await findByTestId('engine-v2-compatibility-dialog')).textContent;
+		}
+
+		const incompatible = createTestNode({ type: SET_NODE_TYPE, name: 'Incompatible' });
+		const blockingReason: EngineCompatibilityReason = {
+			code: 'ERROR_WORKFLOW',
+			kind: 'temporary',
+			severity: 'blocking',
+			message: 'Engine v2 does not run an error workflow yet.',
+		};
+
+		// A reason for every node of the incompatible type, so the button follows the canvas.
+		const mockReasonsForIncompatibleNodes = () =>
+			mockEngineV2Compatibility({
+				reasons: (workflow) =>
+					workflow.nodes
+						.filter((node) => node.type === SET_NODE_TYPE)
+						.map((node) => ({ ...blockingReason, nodeId: node.id, nodeName: node.name })),
+			});
+
+		const setEngineV2Gate = ({ moduleActive = true, engineType = 'v2' as 'v1' | 'v2' } = {}) => {
+			useSettingsStore().settings.activeModules = moduleActive ? ['engine-v2'] : [];
+			workflowDocumentStore.mergeSettings({ engineType });
+		};
+
+		beforeEach(() => {
+			useNodeTypesStore().setNodeTypes([
+				mockNodeTypeDescription({ name: MANUAL_TRIGGER_NODE_TYPE, group: ['trigger'] }),
+				mockNodeTypeDescription({ name: SET_NODE_TYPE }),
+			]);
+		});
+
+		it('shows the button above the toolbar on an editable canvas, and lists the reasons', async () => {
+			setEngineV2Gate();
+			mockEngineV2Compatibility({ reasons: [blockingReason] });
+			useWorkflowsListStore().addWorkflow(
+				createTestWorkflow({ id: 'w0', scopes: ['workflow:read', 'workflow:update'] }),
+			);
+
+			const { findByTestId } = renderNodeView();
+
+			const aboveToolbar = await findByTestId('node-creation-stub-above-toolbar');
+			expect(aboveToolbar).toContainElement(await findByTestId(BUTTON));
+			expect(await reasonsText(findByTestId)).toContain(
+				"Engine v2 doesn't run error workflows yet.",
+			);
+		});
+
+		it('shows the button on its own on a read-only canvas', async () => {
+			setEngineV2Gate();
+			mockEngineV2Compatibility({ reasons: [blockingReason] });
+			useSourceControlStore().preferences.branchReadOnly = true;
+
+			const { findByTestId, queryByTestId } = renderNodeView();
+
+			expect(await findByTestId(BUTTON)).toBeInTheDocument();
+			expect(queryByTestId('node-creation-stub-above-toolbar')).not.toBeInTheDocument();
+		});
+
+		it.each([
+			['the engine-v2 module is off', { moduleActive: false }],
+			['the workflow runs on engine v1', { engineType: 'v1' as const }],
+		])('shows nothing when %s', async (_case, gate) => {
+			setEngineV2Gate(gate);
+			const { checkWorkflow } = mockEngineV2Compatibility({ reasons: [blockingReason] });
+
+			const { findByTestId, queryByTestId } = renderNodeView();
+
+			await findByTestId('canvas-stub-copy');
+			expect(queryByTestId(BUTTON)).not.toBeInTheDocument();
+			expect(checkWorkflow).not.toHaveBeenCalled();
+		});
+
+		it('hides the button when no reason is left', async () => {
+			setEngineV2Gate();
+			mockReasonsForIncompatibleNodes();
+			workflowDocumentStore.setNodes([incompatible]);
+
+			const { findByTestId, queryByTestId } = renderNodeView();
+			expect(await findByTestId(BUTTON)).toBeInTheDocument();
+
+			workflowDocumentStore.removeNodeById(incompatible.id);
+
+			await waitFor(() => expect(queryByTestId(BUTTON)).not.toBeInTheDocument());
+		});
+
+		it('shows the reasons after an import', async () => {
+			setEngineV2Gate();
+			mockReasonsForIncompatibleNodes();
+
+			const { findByTestId, queryByTestId } = renderNodeView();
+			await findByTestId('canvas-stub-copy');
+			expect(queryByTestId(BUTTON)).not.toBeInTheDocument();
+
+			nodeViewEventBus.emit('importWorkflowData', {
+				data: { nodes: [incompatible], connections: {} },
+			});
+
+			expect(await reasonsText(findByTestId)).toContain('Incompatible');
+		});
+
+		it('shows the reasons after a paste', async () => {
+			setEngineV2Gate();
+			mockReasonsForIncompatibleNodes();
+			// Paste only runs on the workflow tab of a writable canvas.
+			routeMock.meta = { nodeView: true };
+			useWorkflowsListStore().addWorkflow(
+				createTestWorkflow({ id: 'w0', scopes: ['workflow:read', 'workflow:update'] }),
+			);
+			mockMcpJsonNudgeGate.mockReset().mockImplementation(async (_surface, action) => {
+				await action();
+			});
+
+			const { findByTestId, queryByTestId } = renderNodeView();
+			await findByTestId('canvas-stub-copy');
+			expect(queryByTestId(BUTTON)).not.toBeInTheDocument();
+
+			const event = new Event('paste');
+			Object.assign(event, {
+				clipboardData: {
+					getData: () => JSON.stringify({ nodes: [incompatible], connections: {} }),
+				},
+			});
+			document.dispatchEvent(event);
+
+			expect(await reasonsText(findByTestId)).toContain('Incompatible');
 		});
 	});
 

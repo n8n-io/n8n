@@ -2,8 +2,11 @@ import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n
 import { NodeOperationError, requestPath, updateDisplayOptions } from 'n8n-workflow';
 
 import {
+	assertGenerateContentResponse,
+	assertResponseHasCandidates,
+} from '../../helpers/candidates';
+import {
 	type GenerateContentRequest,
-	type GenerateContentResponse,
 	type ImagenResponse,
 	Modality,
 } from '../../helpers/interfaces';
@@ -102,16 +105,20 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			generationConfig,
 		};
 
-		const response = (await apiRequest.call(
+		const response: unknown = await apiRequest.call(
 			this,
 			'POST',
 			requestPath`/v1beta${modelPath.call(this, model)}:generateContent`,
 			{
 				body,
 			},
-		)) as GenerateContentResponse;
+		);
+
+		assertGenerateContentResponse(response);
+		assertResponseHasCandidates(response);
+
 		const promises = response.candidates.map(async (candidate) => {
-			const imagePart = candidate.content.parts.find((part) => 'inlineData' in part);
+			const imagePart = candidate.content?.parts.find((part) => 'inlineData' in part);
 			const mimeType = imagePart?.inlineData.mimeType;
 			const fileName = getFilenameFromMimeType(mimeType, 'image', 'png');
 			const buffer = Buffer.from(imagePart?.inlineData.data ?? '', 'base64');

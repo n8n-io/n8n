@@ -1,0 +1,174 @@
+{
+	"properties": {
+		"@content.downloadUrl": {
+			"type": "string"
+		},
+		"@content.downloadUrlNoAuth": {
+			"type": "string"
+		},
+		"@odata.context": {
+			"type": "string"
+		},
+		"createdBy": {
+			"properties": {
+				"application": {
+					"properties": {
+						"displayName": {
+							"type": "string"
+						},
+						"id": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
+				"user": {
+					"properties": {
+						"displayName": {
+							"type": "string"
+						},
+						"email": {
+							"type": "string"
+						},
+						"id": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				}
+			},
+			"type": "object"
+		},
+		"createdDateTime": {
+			"type": "string"
+		},
+		"cTag": {
+			"type": "string"
+		},
+		"eTag": {
+			"type": "string"
+		},
+		"file": {
+			"properties": {
+				"fileExtension": {
+					"type": "string"
+				},
+				"hashes": {
+					"properties": {
+						"quickXorHash": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
+				"irmEffectivelyEnabled": {
+					"type": "boolean"
+				},
+				"irmEnabled": {
+					"type": "boolean"
+				},
+				"mimeType": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"fileSystemInfo": {
+			"properties": {
+				"createdDateTime": {
+					"type": "string"
+				},
+				"lastModifiedDateTime": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"id": {
+			"type": "string"
+		},
+		"isAuthoritative": {
+			"type": "boolean"
+		},
+		"lastModifiedBy": {
+			"properties": {
+				"application": {
+					"properties": {
+						"displayName": {
+							"type": "string"
+						},
+						"id": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
+				"user": {
+					"properties": {
+						"displayName": {
+							"type": "string"
+						},
+						"email": {
+							"type": "string"
+						},
+						"id": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				}
+			},
+			"type": "object"
+		},
+		"lastModifiedDateTime": {
+			"type": "string"
+		},
+		"name": {
+			"type": "string"
+		},
+		"parentReference": {
+			"properties": {
+				"driveId": {
+					"type": "string"
+				},
+				"driveType": {
+					"type": "string"
+				},
+				"id": {
+					"type": "string"
+				},
+				"name": {
+					"type": "string"
+				},
+				"path": {
+					"type": "string"
+				},
+				"siteId": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"shared": {
+			"properties": {
+				"effectiveRoles": {
+					"items": {
+						"type": "string"
+					},
+					"type": "array"
+				},
+				"scope": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"size": {
+			"type": "number"
+		},
+		"webUrl": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

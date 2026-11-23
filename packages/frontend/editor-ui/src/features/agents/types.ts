@@ -9,6 +9,7 @@ import type {
 	AgentTokenUsage,
 } from '@n8n/api-types';
 import type { Agent, ToolDescriptor, CustomToolEntry, AgentListItem } from './agent.types';
+import type { TimelineTokenBreakdown } from './session-timeline.types';
 
 export type { ToolDescriptor, CustomToolEntry, AgentSkill, AgentSkillReference };
 
@@ -19,7 +20,11 @@ export interface SessionTimelineMetadata {
 		label: string;
 	};
 	totalTokens: number;
+	/** Where the tokens of the saved turns went. Hovering the token total shows it. */
+	usage?: TimelineTokenBreakdown & { turns: number };
 	totalCost: number | null;
+	/** Assistant credits that the session used. When set, the header shows it instead of the cost. */
+	totalCredits?: number;
 	durationLabel: string;
 }
 

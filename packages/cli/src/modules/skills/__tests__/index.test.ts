@@ -19,6 +19,8 @@ describe('public API', () => {
 			'SkillService',
 			'SkillSourceCredentials',
 			'SkillSourceCredentialsProxy',
+			'SkillSourceService',
+			'SkillSyncFlagGate',
 			'SkillUsage',
 			'SkillUsageProxy',
 			'SkillsGate',
@@ -30,6 +32,7 @@ describe('public API', () => {
 			'skillContentHashOf',
 			'skillNameTakenToolMessage',
 			'skillScopeOf',
+			'skillSourceReasonOf',
 			'toSkillToolRefusal',
 			'withTrimmedName',
 		]);

@@ -1,0 +1,453 @@
+{
+	"properties": {
+		"cakeOrganizationId": {
+			"type": "string"
+		},
+		"costRate": {
+			"properties": {
+				"amount": {
+					"type": "number"
+				},
+				"currency": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"currencies": {
+			"items": {
+				"properties": {
+					"code": {
+						"type": "string"
+					},
+					"id": {
+						"type": "string"
+					},
+					"isDefault": {
+						"type": "boolean"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"features": {
+			"items": {
+				"type": "string"
+			},
+			"type": "array"
+		},
+		"featureSubscriptionType": {
+			"type": "string"
+		},
+		"hourlyRate": {
+			"properties": {
+				"amount": {
+					"type": "number"
+				},
+				"currency": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"id": {
+			"type": "string"
+		},
+		"imageUrl": {
+			"type": "string"
+		},
+		"memberships": {
+			"items": {
+				"properties": {
+					"costRate": {},
+					"hourlyRate": {},
+					"membershipStatus": {
+						"type": "string"
+					},
+					"membershipType": {
+						"type": "string"
+					},
+					"targetId": {
+						"type": "string"
+					},
+					"userId": {
+						"type": "string"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"name": {
+			"type": "string"
+		},
+		"subdomain": {
+			"properties": {
+				"enabled": {
+					"type": "boolean"
+				},
+				"name": {}
+			},
+			"type": "object"
+		},
+		"workspaceSettings": {
+			"properties": {
+				"activeBillableHours": {
+					"type": "boolean"
+				},
+				"adminOnlyPages": {
+					"items": {
+						"type": "string"
+					},
+					"type": "array"
+				},
+				"approvalSettings": {
+					"properties": {
+						"approvalEnabled": {
+							"type": "boolean"
+						},
+						"approvalPeriod": {
+							"type": "string"
+						},
+						"approvalRoles": {
+							"items": {
+								"type": "string"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"auditLogSettings": {
+					"properties": {
+						"auditEnabled": {
+							"type": "boolean"
+						},
+						"clientAuditing": {
+							"type": "boolean"
+						},
+						"clientStartedRecording": {},
+						"expensesAuditing": {
+							"type": "boolean"
+						},
+						"expensesStartedRecording": {},
+						"projectAuditing": {
+							"type": "boolean"
+						},
+						"projectStartedRecording": {},
+						"tagAuditing": {
+							"type": "boolean"
+						},
+						"tagStartedRecording": {},
+						"timeEntryAuditing": {
+							"type": "boolean"
+						},
+						"timeEntryStartedRecording": {}
+					},
+					"type": ["null", "object"]
+				},
+				"automaticLock": {
+					"properties": {
+						"changeDay": {
+							"type": "string"
+						},
+						"dayOfMonth": {
+							"type": "number"
+						},
+						"firstDay": {
+							"type": "string"
+						},
+						"olderThanPeriod": {
+							"type": "string"
+						},
+						"olderThanValue": {
+							"type": "number"
+						},
+						"type": {
+							"type": "string"
+						}
+					},
+					"type": ["null", "object"]
+				},
+				"breakSettings": {
+					"properties": {
+						"breaksEnabled": {
+							"type": "boolean"
+						},
+						"defaultBreakEntities": {
+							"properties": {
+								"projectId": {
+									"type": ["null", "string"]
+								},
+								"taskId": {}
+							},
+							"type": "object"
+						}
+					},
+					"type": "object"
+				},
+				"canManagerEditUsersTime": {
+					"type": "boolean"
+				},
+				"canManagerLaunchKiosk": {
+					"type": "boolean"
+				},
+				"canSeeTimeSheet": {
+					"type": "boolean"
+				},
+				"canSeeTracker": {
+					"type": "boolean"
+				},
+				"companyAddress": {
+					"type": "string"
+				},
+				"currencyFormat": {
+					"type": "string"
+				},
+				"customLabels": {
+					"properties": {
+						"projectGroupingLabel": {
+							"type": "string"
+						},
+						"projectLabel": {
+							"type": "string"
+						},
+						"taskLabel": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
+				"decimalFormat": {
+					"type": "boolean"
+				},
+				"defaultBillableProjects": {
+					"type": "boolean"
+				},
+				"durationFormat": {
+					"type": "string"
+				},
+				"entityCreationPermissions": {
+					"properties": {
+						"whoCanCreateProjectsAndClients": {
+							"type": "string"
+						},
+						"whoCanCreateTags": {
+							"type": "string"
+						},
+						"whoCanCreateTasks": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
+				"expenseApprovalSettings": {
+					"properties": {
+						"approvalEnabled": {
+							"type": "boolean"
+						},
+						"approvalPeriod": {
+							"type": "string"
+						},
+						"approvalRoles": {
+							"items": {
+								"type": "string"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"expensesEnabled": {
+					"type": "boolean"
+				},
+				"favoriteEntriesEnabled": {
+					"type": "boolean"
+				},
+				"forceDescription": {
+					"type": "boolean"
+				},
+				"forceProjects": {
+					"type": "boolean"
+				},
+				"forceTags": {
+					"type": "boolean"
+				},
+				"forceTasks": {
+					"type": "boolean"
+				},
+				"highResolutionScreenshots": {
+					"type": "boolean"
+				},
+				"invoicingEnabled": {
+					"type": "boolean"
+				},
+				"isCostRateActive": {
+					"type": "boolean"
+				},
+				"isProjectPublicByDefault": {
+					"type": "boolean"
+				},
+				"kioskAuthType": {},
+				"kioskAutologinEnabled": {
+					"type": "boolean"
+				},
+				"kioskEnabled": {
+					"type": "boolean"
+				},
+				"kioskPhotoCaptureEnabled": {
+					"type": "boolean"
+				},
+				"kioskProjectsAndTasksEnabled": {
+					"type": "boolean"
+				},
+				"locationsEnabled": {
+					"type": "boolean"
+				},
+				"lockTimeEntries": {
+					"type": ["null", "string"]
+				},
+				"lockTimeZone": {},
+				"multiFactorEnabled": {
+					"type": "boolean"
+				},
+				"numberFormat": {
+					"type": "string"
+				},
+				"onlyAdminsCanChangeBillableStatus": {
+					"type": "boolean"
+				},
+				"onlyAdminsCreateProject": {
+					"type": "boolean"
+				},
+				"onlyAdminsCreateTag": {
+					"type": "boolean"
+				},
+				"onlyAdminsCreateTask": {
+					"type": "boolean"
+				},
+				"onlyAdminsSeeAllTimeEntries": {
+					"type": "boolean"
+				},
+				"onlyAdminsSeeBillableRates": {
+					"type": "boolean"
+				},
+				"onlyAdminsSeeDashboard": {
+					"type": "boolean"
+				},
+				"onlyAdminsSeeProjectStatus": {
+					"type": "boolean"
+				},
+				"onlyAdminsSeePublicProjectsEntries": {
+					"type": "boolean"
+				},
+				"overtimeCalculationPeriod": {
+					"type": "string"
+				},
+				"projectFavorites": {
+					"type": "boolean"
+				},
+				"projectGroupingLabel": {
+					"type": "string"
+				},
+				"projectLabel": {
+					"type": "string"
+				},
+				"projectPickerSpecialFilter": {
+					"type": "boolean"
+				},
+				"round": {
+					"properties": {
+						"minutes": {
+							"type": "string"
+						},
+						"round": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
+				"schedulingEnabled": {
+					"type": "boolean"
+				},
+				"schedulingSettings": {
+					"properties": {
+						"canSeeBillableAndCostAmount": {
+							"type": "boolean"
+						},
+						"enabled": {
+							"type": "boolean"
+						},
+						"everyoneCanSeeAllAssignments": {
+							"type": "boolean"
+						},
+						"whoCanCreateAssignments": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
+				"screenshotsEnabled": {
+					"type": "boolean"
+				},
+				"taskBillableEnabled": {
+					"type": "boolean"
+				},
+				"taskLabel": {
+					"type": "string"
+				},
+				"taskRateEnabled": {
+					"type": "boolean"
+				},
+				"timeApprovalEnabled": {
+					"type": "boolean"
+				},
+				"timeOff": {
+					"properties": {
+						"active": {
+							"type": "boolean"
+						},
+						"regularUserCanSeeOtherUsersTimeOff": {
+							"type": "boolean"
+						},
+						"showDefaultPoliciesMessageToUsers": {
+							"items": {},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"timeRoundingInReports": {
+					"type": "boolean"
+				},
+				"timeTrackingMode": {
+					"type": "string"
+				},
+				"timeViewMode": {
+					"type": "string"
+				},
+				"trackTimeDownToSecond": {
+					"type": "boolean"
+				},
+				"weekStart": {
+					"type": "string"
+				},
+				"whitelistedForAggregateView": {
+					"type": "boolean"
+				},
+				"workCapacity": {
+					"type": "string"
+				},
+				"workingDays": {
+					"items": {
+						"type": "string"
+					},
+					"type": "array"
+				}
+			},
+			"type": "object"
+		}
+	},
+	"type": "object"
+}

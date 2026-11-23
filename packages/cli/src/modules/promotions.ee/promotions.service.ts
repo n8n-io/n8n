@@ -16,6 +16,7 @@ import {
 	type PromotionDirection,
 	type PromotionMissingProjectListPublicDto,
 	type PromotionPreviewCheck,
+	type PromotionPreview,
 	type PromotionRunContents,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
@@ -70,6 +71,7 @@ import {
 	instanceApplyRequest,
 } from './apply-preview.service';
 import { PromotePreviewService } from './promote-preview.service';
+import { previewEnvironment, previewSource } from './promotion-preview';
 import { GitCommitPackageReader } from './git-commit-package-reader';
 import { exportInstancePackage, instancePromotionExportRequest } from './instance-package';
 import { PromotionCheckoutCleanupService } from './promotion-checkout-cleanup.service';
@@ -853,7 +855,8 @@ export class PromotionsService {
 	 */
 	async readInstanceApplyPackage(environmentId: string): Promise<{
 		commitSha: string;
-		source: { environmentId: string; branchName: string };
+		source: PromotionPreview['source'];
+		environment: PromotionPreview['environment'];
 		files: Map<string, Buffer>;
 	}> {
 		const resolve = async () => {
@@ -865,7 +868,8 @@ export class PromotionsService {
 		const { identity, files } = await this.readApplyTip(input, undefined);
 		return {
 			commitSha: identity.git.commitSha,
-			source: { environmentId: identity.environmentId, branchName: identity.git.branchName },
+			source: previewSource(input),
+			environment: previewEnvironment(input),
 			files,
 		};
 	}
@@ -1384,6 +1388,7 @@ export class PromotionsService {
 		});
 
 		return {
+			input,
 			environmentId: input.environmentId,
 			branchName,
 			commitSha,
