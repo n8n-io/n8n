@@ -103,7 +103,7 @@ const AgentTestChatPageStub = {
 	setup(_props: unknown, { expose }: { expose: (exposed: Record<string, unknown>) => void }) {
 		expose({
 			focusInput: vi.fn(),
-			getConversationMarkdown: () => '**User:**\n\nHello',
+			getConversationMarkdown: async () => '**User:**\n\nHello',
 			clearBudgetStops: chatPageClearBudgetStopsMock,
 		});
 	},

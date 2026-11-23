@@ -20,10 +20,7 @@ import {
 	type PersistedAgentOutcome,
 } from '../entities/agent/agent-import.types';
 import { CredentialImporter } from '../entities/credential/credential-importer';
-import {
-	consumersBlockedByCredentials,
-	credentialMissingModeUsesPackageData,
-} from '../entities/credential/credential-missing-mode';
+import { consumersBlockedByCredentials } from '../entities/credential/credential-missing-mode';
 import type {
 	CredentialApplyResult,
 	CredentialBindResult,
@@ -35,7 +32,7 @@ import {
 	columnIdConflictError,
 	DataTableImporter,
 } from '../entities/data-table/data-table-importer';
-import { reconcileSharedWrites, shareRevisionRaises } from '../entities/skill/skill-import.types';
+import { reconcileSharedWrites } from '../entities/skill/skill-import.types';
 import type {
 	DataTableImportPlan,
 	DataTableImportRequest,
@@ -112,6 +109,8 @@ import {
 	assertArchiveTransitionsAllowed,
 	assertCredentialUpdatesAllowed,
 	assertDataTableWritesAllowed,
+	assertFolderWritesAllowed,
+	assertWorkflowRemovalsAllowed,
 	assertSharedSkillWritesAllowed,
 	assertTagWritesAllowed,
 	assertVariableWritesAllowed,
@@ -241,14 +240,12 @@ export class ImportOrchestrator {
 			options.apiKeyScopes,
 			plans.map((plan) => plan.dataTablePlan),
 		);
-		if (
-			plans.some(
-				({ input, credentialPlan, agentPlan }) =>
-					credentialPlan.stubIds.size > 0 &&
-					(agentPlan !== undefined ||
-						credentialMissingModeUsesPackageData(input.credentialRequest.missingMode)),
-			)
-		) {
+		assertFolderWritesAllowed(this.licenseState, options.apiKeyScopes, plans);
+		assertWorkflowRemovalsAllowed(
+			options.apiKeyScopes,
+			plans.map((plan) => plan.removalPlan),
+		);
+		if (plans.some(({ credentialPlan }) => credentialPlan.stubIds.size > 0)) {
 			assertPackageImportApiKeyScopes(options.apiKeyScopes, ['credential:create']);
 		}
 		if (plans.length > 0) {
@@ -404,7 +401,6 @@ export class ImportOrchestrator {
 		);
 		const skillPlans = scopes.map(({ skills }) => skills);
 		const issues = reconcileSharedWrites(skillPlans);
-		shareRevisionRaises(skillPlans);
 		for (const [index, { agentPlan }] of scopes.entries()) agentPlan.issues.push(...issues[index]);
 	}
 
@@ -424,7 +420,7 @@ export class ImportOrchestrator {
 				{ ...input.context, projectPendingCreation: input.projectPendingCreation },
 				input.agents,
 				input.skills ?? [],
-				input.options,
+				{ ...input.options, checkRootPlacement: input.checkRootPlacement },
 			);
 			input = scopeAgentRequirements(input, agentPlan);
 		}

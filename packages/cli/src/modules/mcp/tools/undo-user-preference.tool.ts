@@ -4,8 +4,7 @@ import type { User } from '@n8n/db';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import z from 'zod';
 
-import type { AiPreferenceService } from '@n8n/backend-services';
-import type { Telemetry } from '@/telemetry';
+import type { AiPreferenceService, TelemetryProxy } from '@n8n/backend-services';
 
 import {
 	MCP_SAVE_USER_PREFERENCE_TOOL_NAME,
@@ -45,7 +44,7 @@ const outputSchema = {
 export const createUndoUserPreferenceTool = (
 	user: User,
 	aiPreferenceService: AiPreferenceService,
-	telemetry: Telemetry,
+	telemetry: TelemetryProxy,
 	logger: Logger,
 ): ToolDefinition<typeof inputSchema> => ({
 	name: MCP_UNDO_USER_PREFERENCE_TOOL_NAME,

@@ -23,6 +23,7 @@ export const LOG_SCOPES = [
 	'task-runner-py',
 	'insights',
 	'workflow-statistics',
+	'execution-ledger',
 	'workflow-activation',
 	'ssh-client',
 	'data-table',

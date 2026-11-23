@@ -105,10 +105,16 @@ erDiagram
 }
 "instance_ai_observation_cursors" {
   datetime_3_ createdAt
+  varchar_255_ lastModelId
   datetime_3_ lastObservedAt
   varchar_36_ lastObservedMessageId
+  INTEGER lastRequestTokens
   varchar observationScopeId PK
+  datetime_3_ resumeFromAt
+  varchar_36_ resumeFromMessageId
+  TEXT resumeNotes
   datetime_3_ updatedAt
+  TEXT workingSet
 }
 "instance_ai_observation_locks" {
   datetime_3_ createdAt

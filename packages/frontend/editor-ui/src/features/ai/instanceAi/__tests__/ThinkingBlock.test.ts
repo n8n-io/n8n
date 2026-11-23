@@ -72,6 +72,85 @@ describe('ThinkingBlock', () => {
 		},
 	);
 
+	it('shows an action that Auto mode approved, with the reason', async () => {
+		const tc = makeToolCall({
+			toolName: 'publish_workflow',
+			autoApproval: {
+				message: 'Publish "Lead router"',
+				reason: 'The user asked to publish this workflow.',
+				decidedBy: 'judge',
+			},
+		});
+		const { getByTestId, findByTestId, findByText } = renderComponent({
+			props: {
+				agentNode: makeAgentNode({ toolCalls: [tc] }),
+				entries: [toolEntry(tc.toolCallId)],
+				active: false,
+			},
+		});
+		await fireEvent.click(getByTestId('thinking-block-header'));
+
+		const step = await findByTestId('instance-ai-auto-approval');
+		expect(step.textContent).toContain('Approved automatically: Publish "Lead router"');
+		await userEvent.click(await findByText('Approved automatically: Publish "Lead router"'));
+		expect(await findByText('The user asked to publish this workflow.')).toBeInTheDocument();
+	});
+
+	it('labels a multi-line card message with its first line', async () => {
+		const tc = makeToolCall({
+			toolName: 'data_tables',
+			autoApproval: {
+				message: 'Add 1 row\n\nRow 1: set "name" to "Jane Doe"',
+				reason: 'The user asked for this row.',
+				decidedBy: 'judge',
+			},
+		});
+		const { getByTestId, findByTestId } = renderComponent({
+			props: {
+				agentNode: makeAgentNode({ toolCalls: [tc] }),
+				entries: [toolEntry(tc.toolCallId)],
+				active: false,
+			},
+		});
+		await fireEvent.click(getByTestId('thinking-block-header'));
+
+		const step = await findByTestId('instance-ai-auto-approval');
+		expect(step.textContent).toContain('Approved automatically: Add 1 row');
+		expect(step.textContent).not.toContain('Row 1');
+	});
+
+	it('explains an action that the low-risk rule approved', async () => {
+		const tc = makeToolCall({
+			toolName: 'workspace',
+			autoApproval: { message: 'Create folder "Reports"', reason: 'n/a', decidedBy: 'rule' },
+		});
+		const { getByTestId, findByText } = renderComponent({
+			props: {
+				agentNode: makeAgentNode({ toolCalls: [tc] }),
+				entries: [toolEntry(tc.toolCallId)],
+				active: false,
+			},
+		});
+		await fireEvent.click(getByTestId('thinking-block-header'));
+
+		await userEvent.click(await findByText('Approved automatically: Create folder "Reports"'));
+		expect(await findByText("Low-risk action that's easy to undo")).toBeInTheDocument();
+	});
+
+	it('shows no auto-approval line for a call that the user approved', async () => {
+		const tc = makeToolCall({ confirmationStatus: 'approved' });
+		const { getByTestId, queryByTestId } = renderComponent({
+			props: {
+				agentNode: makeAgentNode({ toolCalls: [tc] }),
+				entries: [toolEntry(tc.toolCallId)],
+				active: false,
+			},
+		});
+		await fireEvent.click(getByTestId('thinking-block-header'));
+
+		expect(queryByTestId('instance-ai-auto-approval')).not.toBeInTheDocument();
+	});
+
 	it('animates a loading tool owned by a live agent', async () => {
 		const tc = makeToolCall({ isLoading: true });
 		const { getByTestId, findByText } = renderComponent({
@@ -486,36 +565,6 @@ describe('collapsed subline label', () => {
 });
 
 describe('skill update activity', () => {
-	it.each([undefined, 'Updated instructions for this response.'])(
-		'shows the saved skill content with a fallback for metadata-only events (%s)',
-		async (content) => {
-			const entry: InstanceAiTimelineEntry = {
-				type: 'skill-update',
-				runId: 'run-1',
-				skillId: 'hub:1',
-				name: 'Writing',
-				version: 'v2',
-				change: 'updated',
-				content,
-			};
-			const { getByTestId, findByRole, findByText } = renderComponent({
-				props: { agentNode: makeAgentNode(), entries: [entry], active: true },
-				global: { stubs: { ToolResultJson: false } },
-			});
-			expect(getByTestId('thinking-block-subline')).toHaveTextContent(
-				'Using updated skill: Writing',
-			);
-			await fireEvent.click(getByTestId('thinking-block-header'));
-			await fireEvent.click(await findByRole('button', { name: 'Using updated skill: Writing' }));
-			if (content) {
-				expect(await findByText(/Updated instructions for this response/)).toBeVisible();
-				expect(await findByText(/"hash": "v2"/)).toBeVisible();
-			} else {
-				expect(await findByText('Latest version loaded for this response')).toBeVisible();
-			}
-		},
-	);
-
 	it('shows an unnamed unavailable skill without exposing its internal ID', async () => {
 		const entry: InstanceAiTimelineEntry = {
 			type: 'skill-update',
@@ -528,10 +577,27 @@ describe('skill update activity', () => {
 			props: { agentNode: makeAgentNode(), entries: [entry], active: false },
 		});
 		await fireEvent.click(getByTestId('thinking-block-header'));
-		await fireEvent.click(
-			await findByRole('button', { name: 'A previously loaded skill is unavailable' }),
-		);
-		expect(await findByText("The Assistant can't use this skill for this response")).toBeVisible();
+		await fireEvent.click(await findByRole('button', { name: 'A loaded skill is unavailable' }));
+		expect(await findByText('The Assistant stopped using this skill')).toBeVisible();
 		expect(queryByText('hub:internal-id')).toBeNull();
+	});
+
+	it('says that the Assistant loads an updated skill again', async () => {
+		const entry: InstanceAiTimelineEntry = {
+			type: 'skill-update',
+			runId: 'run-1',
+			skillId: 'hub:internal-id',
+			name: 'Triage',
+			version: 'v2',
+			change: 'updated',
+		};
+		const { getByTestId, findByRole, findByText } = renderComponent({
+			props: { agentNode: makeAgentNode(), entries: [entry], active: false },
+		});
+		await fireEvent.click(getByTestId('thinking-block-header'));
+		await fireEvent.click(await findByRole('button', { name: 'Skill updated: Triage' }));
+		expect(
+			await findByText('This skill changed. The Assistant loads the new version when it needs it.'),
+		).toBeVisible();
 	});
 });

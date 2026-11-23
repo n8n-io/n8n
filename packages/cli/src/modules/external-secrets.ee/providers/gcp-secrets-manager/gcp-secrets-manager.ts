@@ -74,6 +74,7 @@ export class GcpSecretsManager extends SecretsProvider {
 			// TODO: gRPC bypasses @n8n/backend-network, so the configured proxy and SSRF/DNS rules are not enforced here.
 			// Route through it once it supports a gRPC transport.
 			this.client = new GcpClient({
+				// oxlint-disable-next-line typescript/no-deprecated -- Pass explicit service-account fields, not an arbitrary credential configuration.
 				credentials: { client_email: clientEmail, private_key: privateKey },
 				projectId,
 			});

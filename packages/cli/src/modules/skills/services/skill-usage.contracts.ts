@@ -29,6 +29,12 @@ export abstract class SkillUsage {
 	/** The agents that use the skill: a draft ref or a published pin. */
 	abstract findUsingAgentIds(skillId: string, ctx: OperationContext): Promise<string[]>;
 
+	/** Distinct agents per skill, including draft refs and published pins. Unused skills are absent. */
+	abstract findUsingAgentIdsBySkill(
+		skillIds: string[],
+		ctx: OperationContext,
+	): Promise<Map<string, string[]>>;
+
 	/** The skills the agent uses: a draft ref or a published pin. */
 	abstract findSkillIdsUsedByAgent(agentId: string, ctx: OperationContext): Promise<string[]>;
 
@@ -49,15 +55,8 @@ export abstract class SkillUsage {
 		ctx: OperationContext,
 	): Promise<void>;
 
-	/**
-	 * In the save transaction: the agents that follow the skill run the new version, so each
-	 * one gets a saved Agent version. Returns the ids of the following agents.
-	 */
-	abstract markFollowersChanged(
-		skillId: string,
-		ctx: OperationContext,
-		userId?: string | null,
-	): Promise<string[]>;
+	/** The agents whose drafts follow the latest skill version. Write no agent data. */
+	abstract findFollowingAgentIds(skillId: string, ctx: OperationContext): Promise<string[]>;
 
 	/** After a save commits: the agents reload, except the tab of `excludePushRef`. */
 	abstract refreshAgents(agentIds: string[], excludePushRef?: string): Promise<void>;

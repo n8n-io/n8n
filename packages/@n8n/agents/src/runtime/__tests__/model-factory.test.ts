@@ -384,30 +384,41 @@ describe('createModel', () => {
 		expect(model.modelId).toBe('claude-opus-5');
 	});
 
-	it('uses the Responses API when a baseURL explicitly serves it', () => {
+	it('uses the Responses API when a baseURL explicitly serves it', async () => {
 		// The n8n Connect gateway proxies real OpenAI, so it sets a baseURL but does
 		// serve /responses. An explicit `apiStyle` pins that and skips the probe.
-		const model = createModel({
-			id: 'openai/gpt-5-mini',
-			apiKey: 'gateway-jwt',
-			baseURL: 'https://gw.example/v1/gateway/openai/v1',
-			apiStyle: 'responses',
-		}) as unknown as Record<string, unknown>;
-		expect(model.baseURL).toBe('https://gw.example/v1/gateway/openai/v1');
-		expect(model.api).toBeUndefined();
+		const { fetchFn, paths } = fakeEndpoint({ '/v1/gateway/openai/v1/responses': 200 });
+		const model = createModel(
+			{
+				id: 'openai/gpt-5-mini',
+				apiKey: 'gateway-jwt',
+				baseURL: 'https://gw.example/v1/gateway/openai/v1',
+				apiStyle: 'responses',
+			},
+			fetchFn,
+		) as unknown as EndpointModel;
+		await expect(model.doGenerate({ prompt: [] })).resolves.toMatchObject({
+			api: undefined,
+			url: 'https://gw.example/v1/gateway/openai/v1/responses',
+		});
+		expect(paths).toEqual(['/v1/gateway/openai/v1/responses']);
 	});
 
-	it('accepts `url` as an alias for baseURL (host configs like Instance AI)', () => {
-		const model = createModel({
-			id: 'openai/mock-model',
-			apiKey: 'sk-test',
-			url: 'http://127.0.0.1:1234/v1',
-			// Pinned, so the alias is asserted on the adapter itself instead of on the
-			// wrapper the automatic choice returns.
-			apiStyle: 'responses',
-		}) as unknown as Record<string, unknown>;
-		expect(model.baseURL).toBe('http://127.0.0.1:1234/v1');
-		expect(model.api).toBeUndefined();
+	it('accepts `url` as an alias for baseURL (host configs like Instance AI)', async () => {
+		const { fetchFn } = fakeEndpoint({ '/v1/responses': 200 });
+		const model = createModel(
+			{
+				id: 'openai/mock-model',
+				apiKey: 'sk-test',
+				url: 'http://127.0.0.1:1234/v1',
+				apiStyle: 'responses',
+			},
+			fetchFn,
+		) as unknown as EndpointModel;
+		await expect(model.doGenerate({ prompt: [] })).resolves.toMatchObject({
+			api: undefined,
+			url: 'http://127.0.0.1:1234/v1/responses',
+		});
 	});
 
 	it('treats an empty url as no custom endpoint (api-key-only host config)', () => {
@@ -462,8 +473,9 @@ describe('createModel', () => {
 				prompt: [],
 				providerOptions: { openai: { reasoningEffort: 'low' } },
 			});
+			// A requested effort is forced through, as the SDK cannot tell from a proxy's model id.
 			expect(result.providerOptions).toEqual({
-				openai: { store: false, reasoningEffort: 'low' },
+				openai: { store: false, reasoningEffort: 'low', forceReasoning: true },
 			});
 		});
 
@@ -603,36 +615,41 @@ describe('createModel', () => {
 	});
 
 	it('passes credential headers to the OpenAI provider', () => {
+		// The chat style skips the Responses wrapper, so the provider stub is visible.
 		const model = createModel({
 			id: 'openai/gpt-5-mini',
 			apiKey: 'key',
+			apiStyle: 'chat',
 			headers: { 'x-custom-header': 'value' },
 		}) as unknown as Record<string, unknown>;
 		expect(model.headers).toEqual({ 'x-custom-header': 'value' });
 	});
 
 	it('should not pass fetch when no proxy env vars are set', () => {
-		const model = createModel('anthropic/claude-sonnet-4-5') as unknown as Record<string, unknown>;
+		const model = createModel('anthropic/claude-sonnet-5-5') as unknown as Record<string, unknown>;
 		expect(model.fetch).toBeUndefined();
 	});
 
 	it('should pass proxy-aware fetch when HTTPS_PROXY is set', () => {
 		process.env.HTTPS_PROXY = 'http://proxy:8080';
-		const model = createModel('anthropic/claude-sonnet-4-5') as unknown as Record<string, unknown>;
+		const model = createModel('anthropic/claude-sonnet-5-5') as unknown as Record<string, unknown>;
 		expect(model.fetch).toBeInstanceOf(Function);
 		expect(mockProxyAgent).toHaveBeenCalledWith('http://proxy:8080');
 	});
 
 	it('should pass proxy-aware fetch when HTTP_PROXY is set', () => {
 		process.env.HTTP_PROXY = 'http://proxy:9090';
-		const model = createModel('openai/gpt-4o') as unknown as Record<string, unknown>;
+		const model = createModel({ id: 'openai/gpt-4o', apiStyle: 'chat' }) as unknown as Record<
+			string,
+			unknown
+		>;
 		expect(model.fetch).toBeInstanceOf(Function);
 		expect(mockProxyAgent).toHaveBeenCalledWith('http://proxy:9090');
 	});
 
 	it('should forward custom headers to the provider factory', () => {
 		const model = createModel({
-			id: 'anthropic/claude-sonnet-4-5',
+			id: 'anthropic/claude-sonnet-5-5',
 			apiKey: 'sk-test',
 			headers: { 'x-proxy-auth': 'Bearer abc', 'anthropic-beta': 'tools-2024' },
 		}) as unknown as Record<string, unknown>;
@@ -645,7 +662,7 @@ describe('createModel', () => {
 	it('should prefer HTTPS_PROXY over HTTP_PROXY', () => {
 		process.env.HTTPS_PROXY = 'http://https-proxy:8080';
 		process.env.HTTP_PROXY = 'http://http-proxy:9090';
-		createModel('anthropic/claude-sonnet-4-5');
+		createModel('anthropic/claude-sonnet-5-5');
 		expect(mockProxyAgent).toHaveBeenCalledWith('http://https-proxy:8080');
 	});
 
@@ -775,7 +792,7 @@ describe('createModel', () => {
 		});
 
 		it('leaves baseURL undefined when none is provided', () => {
-			const model = createModel('anthropic/claude-sonnet-4-5') as unknown as Record<
+			const model = createModel('anthropic/claude-sonnet-5-5') as unknown as Record<
 				string,
 				unknown
 			>;
@@ -1445,9 +1462,9 @@ describe('createModel', () => {
 
 describe('supportsSplitSystemMessages', () => {
 	it.each([
-		['anthropic/claude-sonnet-4-5', true],
+		['anthropic/claude-sonnet-5-5', true],
 		['google-vertex-anthropic/claude-opus-4-8', true],
-		['google-vertex/claude-sonnet-4-5', true],
+		['google-vertex/claude-sonnet-5-5', true],
 		['google-vertex/claude-opus-5@default', true],
 		['google-vertex/gemini-3-flash-preview', false],
 		['google-vertex/mistral-large-2411', false],

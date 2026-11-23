@@ -8,6 +8,8 @@ import { AgentMessageQueueRepository } from '@/modules/agents/repositories/agent
 import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
+import { createAgent, createAgentIdentity } from '@test-integration/db/agents';
+
 import { AgentConversationStateService } from '@/modules/agents/agent-conversation-state.service';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
 import { N8NCheckpointStorage } from '@/modules/agents/integrations/n8n-checkpoint-storage';
@@ -62,15 +64,13 @@ describe('Agent conversation state', () => {
 
 	beforeEach(async () => {
 		const project = await createTeamProject();
-		agent = await agents.save(
-			agents.create({
-				id: randomUUID(),
-				name: 'Agent',
-				projectId: project.id,
-				integrations: [],
-				tools: {},
-			}),
-		);
+		agent = await createAgent({
+			id: randomUUID(),
+			name: 'Agent',
+			projectId: project.id,
+			integrations: [],
+			tools: {},
+		});
 	});
 
 	afterEach(async () => {
@@ -86,7 +86,9 @@ describe('Agent conversation state', () => {
 	});
 
 	it('limits checkpoint reads to one agent and thread and selects the newest parent suspension', async () => {
-		const otherAgent = await agents.save(agents.create({ ...agent, id: randomUUID() }));
+		const otherAgent = await agents.save(
+			agents.create({ ...agent, id: randomUUID(), identityId: await createAgentIdentity() }),
+		);
 		const parent = { ...suspended, iterationCount: 2 };
 		const rows = [
 			{ runId: 'older', state: JSON.stringify(suspended) },

@@ -15,6 +15,7 @@ import type { PrometheusDnsCacheMetricsService } from '../prometheus/dns-cache-m
 import type { PrometheusEncryptionMetricsService } from '../prometheus/encryption-metrics.service';
 import type { PrometheusEventBusMetricsService } from '../prometheus/event-bus-metrics.service';
 import type { PrometheusExecutionDataMetricsService } from '../prometheus/execution-data-metrics.service';
+import type { PrometheusAgentMetricsService } from '../prometheus/agent-metrics.service';
 import type { PrometheusInstanceAiMetricsService } from '../prometheus/instance-ai-metrics.service';
 import type { PrometheusInstanceRoleMetricsService } from '../prometheus/instance-role-metrics.service';
 import type { PrometheusMcpPostSaveMetricsService } from '../prometheus/mcp-post-save-metrics.service';
@@ -25,6 +26,7 @@ import type { PrometheusQueueMetricsService } from '../prometheus/queue-metrics.
 import type { PrometheusRouteMetricsService } from '../prometheus/route-metrics.service';
 import type { PrometheusSchedulerMetricsService } from '../prometheus/scheduler-metrics.service';
 import type { PrometheusSsrfMetricsService } from '../prometheus/ssrf-metrics.service';
+import type { PrometheusExecutionLedgerMetricsService } from '../prometheus/execution-ledger-metrics.service';
 import type { PrometheusMemoryGuardMetricsService } from '../prometheus/memory-guard-metrics.service';
 import type { PrometheusSystemTaskMetricsService } from '../prometheus/system-task-metrics.service';
 import type { PrometheusTokenExchangeMetricsService } from '../prometheus/token-exchange-metrics.service';
@@ -60,6 +62,7 @@ describe('PrometheusMetricsService', () => {
 	let webhook: Mocked<PrometheusWebhookAndFormMetricsService>;
 	let workflowInfo: Mocked<PrometheusWorkflowInfoMetricsService>;
 	let instanceAi: Mocked<PrometheusInstanceAiMetricsService>;
+	let agent: Mocked<PrometheusAgentMetricsService>;
 	let mcpPostSave: Mocked<PrometheusMcpPostSaveMetricsService>;
 	let dbPool: Mocked<PrometheusDbPoolMetricsService>;
 	let workflowPublication: Mocked<PrometheusWorkflowPublicationMetricsService>;
@@ -67,6 +70,7 @@ describe('PrometheusMetricsService', () => {
 	let pollTrigger: Mocked<PrometheusPollTriggerMetricsService>;
 	let systemTask: Mocked<PrometheusSystemTaskMetricsService>;
 	let memoryGuard: Mocked<PrometheusMemoryGuardMetricsService>;
+	let executionLedger: Mocked<PrometheusExecutionLedgerMetricsService>;
 	const databaseIndependentRoutes = mock<DatabaseIndependentRoutes>();
 
 	let service: PrometheusMetricsService;
@@ -92,6 +96,7 @@ describe('PrometheusMetricsService', () => {
 			webhook,
 			workflowInfo,
 			instanceAi,
+			agent,
 			mcpPostSave,
 			dbPool,
 			workflowPublication,
@@ -100,6 +105,7 @@ describe('PrometheusMetricsService', () => {
 			encryption,
 			systemTask,
 			memoryGuard,
+			executionLedger,
 			databaseIndependentRoutes,
 		);
 
@@ -132,6 +138,7 @@ describe('PrometheusMetricsService', () => {
 		webhook = mock<PrometheusWebhookAndFormMetricsService>({ enabled: true });
 		workflowInfo = mock<PrometheusWorkflowInfoMetricsService>({ enabled: true });
 		instanceAi = mock<PrometheusInstanceAiMetricsService>({ enabled: true });
+		agent = mock<PrometheusAgentMetricsService>({ enabled: true });
 		mcpPostSave = mock<PrometheusMcpPostSaveMetricsService>({ enabled: true });
 		dbPool = mock<PrometheusDbPoolMetricsService>({ enabled: true });
 		workflowPublication = mock<PrometheusWorkflowPublicationMetricsService>({ enabled: true });
@@ -140,6 +147,7 @@ describe('PrometheusMetricsService', () => {
 		encryption = mock<PrometheusEncryptionMetricsService>({ enabled: true });
 		systemTask = mock<PrometheusSystemTaskMetricsService>({ enabled: true });
 		memoryGuard = mock<PrometheusMemoryGuardMetricsService>({ enabled: true });
+		executionLedger = mock<PrometheusExecutionLedgerMetricsService>({ enabled: true });
 
 		service = buildService();
 	});
@@ -170,6 +178,7 @@ describe('PrometheusMetricsService', () => {
 			expect(webhook.init).toHaveBeenCalledWith(app);
 			expect(workflowInfo.init).toHaveBeenCalledWith(app);
 			expect(instanceAi.init).toHaveBeenCalledWith(app);
+			expect(agent.init).toHaveBeenCalledWith(app);
 			expect(mcpPostSave.init).toHaveBeenCalledWith(app);
 			expect(dbPool.init).toHaveBeenCalledWith(app);
 			expect(workflowPublication.init).toHaveBeenCalledWith(app);
@@ -178,6 +187,7 @@ describe('PrometheusMetricsService', () => {
 			expect(encryption.init).toHaveBeenCalledWith(app);
 			expect(systemTask.init).toHaveBeenCalledWith(app);
 			expect(memoryGuard.init).toHaveBeenCalledWith(app);
+			expect(executionLedger.init).toHaveBeenCalledWith(app);
 		});
 
 		it('should NOT call init on disabled collectors', () => {

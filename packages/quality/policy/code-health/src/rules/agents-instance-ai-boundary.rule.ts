@@ -27,8 +27,10 @@ const AGENT_ENTRY_POINTS = new Set([
 	'evaluation/agent-evaluation.contracts',
 	'evaluation/evaluation-config',
 	'system-agents/system-agent.types',
+	'system-agents/system-agent-eval.service',
 	'system-agents/system-agent-registration.service',
 	'system-agents/system-agent-thread-metadata.service',
+	'system-agents/system-agent-turn-events.service',
 ]);
 
 function sdkEntryPoints(rootDir: string): Set<string> {

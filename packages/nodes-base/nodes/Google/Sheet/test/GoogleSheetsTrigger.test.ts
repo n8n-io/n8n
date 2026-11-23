@@ -6,6 +6,7 @@ import { mockDeep } from 'vitest-mock-extended';
 
 import { getGoogleAccessToken } from '../../GenericFunctions';
 import { GoogleSheetsTrigger } from '../GoogleSheetsTrigger.node';
+import { BINARY_MIME_TYPE } from '../GoogleSheetsTrigger.utils';
 
 // Mock only the service-account token mint so the service-account branch in the
 // shared transport does not perform real JWT signing / token network calls.
@@ -344,9 +345,9 @@ describe('GoogleSheetsTrigger', () => {
 
 	describe('anyUpdate event', () => {
 		const driveBaseUrl = 'https://www.googleapis.com';
-		const exportHost = 'https://example.com';
-		const previousExportPath = '/export/prev';
-		const previousExportUrl = `${exportHost}${previousExportPath}`;
+		const exportHost = 'https://docs.google.com';
+		const previousExportPath = '/spreadsheets/export';
+		const previousExportUrl = `${exportHost}${previousExportPath}?id=testDocumentId&exportFormat=xlsx`;
 
 		// Build a real xlsx workbook for the previous revision so the real XLSX.read
 		// inside sheetBinaryToArrayOfArrays parses a valid file. The sheet name must
@@ -552,6 +553,50 @@ describe('GoogleSheetsTrigger', () => {
 			const scopes = vi.mocked(getGoogleAccessToken).mock.calls.map((call) => call[1]);
 			expect(scopes.filter((scope) => scope === 'sheetV2Trigger')).toHaveLength(2);
 			expect(scopes.filter((scope) => scope === 'sheetV2')).toHaveLength(2);
+		});
+
+		it('should send no request to a stored revision link of another host', async () => {
+			const sheetsScope = nock(baseUrl);
+			sheetsScope
+				.get('/v4/spreadsheets/testDocumentId')
+				.query({ fields: 'sheets.properties' })
+				.reply(200, {
+					sheets: [{ properties: { sheetId: 1, title: 'testSheetName' } }],
+				});
+			sheetsScope
+				.get((uri) => uri.startsWith('/v4/spreadsheets/testDocumentId/values/testSheetName!A:ZZZ'))
+				.reply(200, { values: [['name'], ['apple']] });
+			nock(driveBaseUrl)
+				.get('/drive/v3/files/testDocumentId/revisions')
+				.query(true)
+				.reply(200, {
+					revisions: [{ id: '2', exportLinks: { [BINARY_MIME_TYPE]: previousExportUrl } }],
+				});
+			const foreignScope = nock('https://other.example').get('/export').query(true).reply(200, '');
+
+			await expect(
+				testPollingTriggerNode(GoogleSheetsTrigger, {
+					credential: mockDeep(),
+					mode: 'trigger',
+					workflowStaticData: {
+						documentId: 'testDocumentId',
+						sheetId: 1,
+						lastRevision: 1,
+						lastRevisionLink: 'https://other.example/export',
+					},
+					node: {
+						parameters: {
+							authentication: 'serviceAccount',
+							documentId: 'testDocumentId',
+							sheetName: 1,
+							event: 'anyUpdate',
+							options: { dataLocationOnSheet: null },
+						},
+					},
+				}),
+			).rejects.toThrow('Unexpected revision export link');
+
+			expect(foreignScope.isDone()).toBe(false);
 		});
 	});
 

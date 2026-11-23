@@ -24,6 +24,7 @@ export class ScheduleTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Schedule Trigger',
 		name: 'scheduleTrigger',
+		schemaPath: 'Schedule',
 		icon: 'node:schedule-trigger',
 		iconColor: 'black',
 		group: ['trigger', 'schedule'],

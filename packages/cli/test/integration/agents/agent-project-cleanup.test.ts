@@ -3,6 +3,8 @@ import { ProjectRepository, SettingsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { v4 as uuid } from 'uuid';
 
+import { createAgent, createAgentIdentity } from '@test-integration/db/agents';
+
 import { AgentKnowledgeService } from '@/modules/agents/agent-knowledge.service';
 import { chatThreadId } from '@/modules/agents/agent-test-chat.service';
 import { N8nMemory } from '@/modules/agents/integrations/n8n-memory';
@@ -59,6 +61,7 @@ describe('Agent conversations on project deletion', () => {
 	});
 
 	it('rejects a late checkpoint save before the project cascade', async () => {
+		const owner = await createOwner();
 		const project = await createTeamProject();
 		const agents = Container.get(AgentRepository);
 		const agent = await agents.save(
@@ -66,6 +69,7 @@ describe('Agent conversations on project deletion', () => {
 				name: 'Instance agent',
 				scope: 'instance',
 				projectId: null,
+				identityId: await createAgentIdentity(),
 				integrations: [],
 			}),
 		);
@@ -94,7 +98,7 @@ describe('Agent conversations on project deletion', () => {
 				state: '{}',
 			}),
 		);
-		await Container.get(AgentProjectCleanupService).cleanupProject(project.id);
+		await Container.get(AgentProjectCleanupService).cleanupProject(project.id, { actor: owner });
 		expect(await checkpoints.findByRunId('finished-checkpoint')).toBeNull();
 		expect(await threads.findOneBy({ id: threadId })).not.toBeNull();
 		await expect(
@@ -125,20 +129,25 @@ describe('Agent conversations on project deletion', () => {
 		const agents = Container.get(AgentRepository);
 		const threads = Container.get(AgentExecutionThreadRepository);
 		const memory = Container.get(N8nMemory);
-		const agent = await agents.save(
-			agents.create({ name: 'Project agent', projectId: project.id, integrations: [] }),
-		);
+		const agent = await createAgent({
+			name: 'Project agent',
+			projectId: project.id,
+			integrations: [],
+		});
 		const instanceAgent = await agents.save(
 			agents.create({
 				name: 'Instance agent',
 				scope: 'instance',
 				projectId: null,
+				identityId: await createAgentIdentity(),
 				integrations: [],
 			}),
 		);
-		const otherAgent = await agents.save(
-			agents.create({ name: 'Other project agent', projectId: otherProject.id, integrations: [] }),
-		);
+		const otherAgent = await createAgent({
+			name: 'Other project agent',
+			projectId: otherProject.id,
+			integrations: [],
+		});
 		const builderId = chatThreadId(agent.id, owner.id);
 		const keptBuilderId = chatThreadId(otherAgent.id, owner.id);
 		const projectSessionId = uuid();
@@ -244,7 +253,7 @@ describe('Agent conversations on project deletion', () => {
 			name: 'Replacement project',
 		});
 		await expect(
-			Container.get(AgentProjectDeletionRepository).assertWritable(project.id),
+			Container.get(AgentProjectDeletionRepository).withWritableProject(project.id, async () => {}),
 		).resolves.toBeUndefined();
 		expect(await executions.findOneBy({ id: deletedLog.executionId })).toBeNull();
 		expect(await logs.read(deletedLog, 'fs')).toBeNull();

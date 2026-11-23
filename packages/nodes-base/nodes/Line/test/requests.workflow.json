@@ -1,0 +1,59 @@
+{
+	"name": "Line request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "00000000-0000-4000-8000-000000000000",
+			"name": "When clicking 'Execute workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "notification",
+				"operation": "send",
+				"message": "Hello from n8n",
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.line",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"id": "00000000-0000-4000-8000-000000000001",
+			"name": "Send Notification",
+			"credentials": {
+				"lineNotifyOAuth2Api": {
+					"id": "cred1",
+					"name": "Line account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Send Notification": [
+			{
+				"json": {
+					"status": 200,
+					"message": "ok"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute workflow'": {
+			"main": [
+				[
+					{
+						"node": "Send Notification",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

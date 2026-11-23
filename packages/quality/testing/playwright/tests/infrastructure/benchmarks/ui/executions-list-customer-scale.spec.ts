@@ -44,7 +44,7 @@ test.describe(
 	{
 		tag: '@bench:ui',
 		annotation: [
-			{ type: 'owner', description: 'Catalysts' },
+			{ type: 'owner', description: 'Core Execution' },
 			{ type: 'question', description: 'executions-list-customer-scale' },
 		],
 	},

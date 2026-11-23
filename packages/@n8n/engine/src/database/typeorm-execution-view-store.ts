@@ -104,6 +104,9 @@ export class TypeOrmExecutionViewStore implements ExecutionViewStore {
 				parentExecutionId: query.parentExecutionId,
 			});
 		}
+		if (query.hasParent !== undefined) {
+			qb.andWhere(`${alias}.parent_execution_id IS ${query.hasParent ? 'NOT NULL' : 'NULL'}`);
+		}
 		if (query.createdAfter)
 			qb.andWhere(`${alias}.created_at >= :createdAfter`, { createdAfter: query.createdAfter });
 		if (query.createdBefore)
@@ -193,6 +196,7 @@ export class TypeOrmExecutionViewStore implements ExecutionViewStore {
 							'iteration', step.iteration,
 							'status', step.status,
 							'outputs', step.outputs,
+							'outputSources', step.output_sources,
 							'error', step.error,
 							'createdAt', step.created_at,
 							'updatedAt', step.updated_at

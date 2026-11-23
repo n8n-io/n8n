@@ -4,6 +4,7 @@ import type {
 	BreakingChangeWorkflowIssue,
 	BreakingChangeWorkflowRuleResult,
 	MigrationFindingListedStatus,
+	MigrationFindingStatus,
 } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type {
@@ -26,6 +27,7 @@ import type { MigrationRegistry } from '../../breaking-changes.migration-registr
 import type { RuleRegistry } from '../../breaking-changes.rule-registry.service';
 import type { BreakingChangeService } from '../../breaking-changes.service';
 import type { MigrationFindingSync } from '../../database/entities/migration-finding-sync.entity';
+import type { MigrationFinding } from '../../database/entities/migration-finding.entity';
 import type { MigrationWorkflowOwner } from '../../database/entities/migration-workflow-owner.entity';
 import type { MigrationFindingSyncRepository } from '../../database/repositories/migration-finding-sync.repository';
 import type {
@@ -752,6 +754,21 @@ describe('MigrationFindingQueryService', () => {
 			]);
 		});
 
+		it('passes on the Assistant action the rule declares, and none by default', async () => {
+			findingRepository.listTriageableForRule.mockResolvedValue([]);
+			workflowRepository.findByIds.mockResolvedValue([]);
+			ruleRegistry.getRule.mockReturnValueOnce({
+				...workflowRule('rule-a', 'n8n-nodes-base.a'),
+				getMetadata: () => ({ ...metadata('rule-a'), assistant: 'review' }),
+			});
+
+			const declared = await service.getRuleFindings(TARGET_VERSION, 'rule-a', INSTANCE);
+			const undeclared = await service.getRuleFindings(TARGET_VERSION, 'rule-a', INSTANCE);
+
+			expect(declared.assistantAction).toBe('review');
+			expect(undeclared.assistantAction).toBe('none');
+		});
+
 		it('rejects an unknown rule id with a not-found error', async () => {
 			await expect(
 				service.getRuleFindings(TARGET_VERSION, 'missing-rule', INSTANCE),
@@ -763,6 +780,198 @@ describe('MigrationFindingQueryService', () => {
 			await expect(
 				service.getRuleFindings(TARGET_VERSION, 'instance-rule', INSTANCE),
 			).rejects.toThrow(NotFoundError);
+		});
+	});
+
+	describe('getWorkflowFindings', () => {
+		/** A stored finding of one workflow, as the table returns it. */
+		const storedFinding = (id: number, ruleId: string, status: MigrationFindingStatus) =>
+			({
+				id,
+				ruleId,
+				workflowId: 'wf-1',
+				targetVersion: TARGET_VERSION,
+				status,
+			}) as MigrationFinding;
+
+		it('returns each open, notified or wont_fix finding with its rule and current issues, oldest first', async () => {
+			findingRepository.listForWorkflows.mockResolvedValue([
+				storedFinding(1, 'rule-a', 'open'),
+				storedFinding(2, 'rule-b', 'wont_fix'),
+				storedFinding(3, 'rule-a', 'notified'),
+				storedFinding(4, 'rule-b', 'fixed'),
+			]);
+			workflowRepository.findByIds.mockResolvedValue([
+				workflowWithNodes('wf-1', ['n8n-nodes-base.a', 'n8n-nodes-base.b']),
+			]);
+
+			const result = await service.getWorkflowFindings(TARGET_VERSION, 'wf-1');
+
+			expect(findingRepository.listForWorkflows).toHaveBeenCalledWith(
+				TARGET_VERSION,
+				['wf-1'],
+				expect.anything(),
+			);
+			expect(result).toEqual([
+				expect.objectContaining({
+					ruleId: 'rule-a',
+					ruleTitle: 'rule-a title',
+					migratable: false,
+					status: 'open',
+					issues: [expect.objectContaining({ nodeId: 'wf-1-node-0' })],
+				}),
+				expect.objectContaining({
+					ruleId: 'rule-b',
+					migratable: true,
+					status: 'wont_fix',
+					issues: [expect.objectContaining({ nodeId: 'wf-1-node-1' })],
+				}),
+				expect.objectContaining({ ruleId: 'rule-a', status: 'notified' }),
+			]);
+		});
+
+		it('returns undefined for a workflow the report never flagged, without loading it', async () => {
+			findingRepository.listForWorkflows.mockResolvedValue([]);
+
+			expect(await service.getWorkflowFindings(TARGET_VERSION, 'wf-1')).toBeUndefined();
+			expect(workflowRepository.findByIds).not.toHaveBeenCalled();
+		});
+
+		it('returns an empty list once every finding of the workflow is fixed', async () => {
+			findingRepository.listForWorkflows.mockResolvedValue([storedFinding(1, 'rule-a', 'fixed')]);
+			workflowRepository.findByIds.mockResolvedValue([workflowWithNodes('wf-1', [])]);
+
+			expect(await service.getWorkflowFindings(TARGET_VERSION, 'wf-1')).toEqual([]);
+		});
+
+		it('lists a batch rule finding without issues, since one workflow cannot decide it', async () => {
+			const batch = batchRule('batch-rule');
+			ruleRegistry.getRule.mockReturnValue(batch);
+			findingRepository.listForWorkflows.mockResolvedValue([
+				storedFinding(1, 'batch-rule', 'open'),
+			]);
+			workflowRepository.findByIds.mockResolvedValue([workflowWithNodes('wf-1', [])]);
+
+			const result = await service.getWorkflowFindings(TARGET_VERSION, 'wf-1');
+
+			expect(result).toEqual([expect.objectContaining({ ruleId: 'batch-rule', issues: [] })]);
+		});
+
+		it('skips a finding whose rule is no longer registered', async () => {
+			findingRepository.listForWorkflows.mockResolvedValue([
+				storedFinding(1, 'retired-rule', 'open'),
+			]);
+			workflowRepository.findByIds.mockResolvedValue([workflowWithNodes('wf-1', [])]);
+
+			expect(await service.getWorkflowFindings(TARGET_VERSION, 'wf-1')).toEqual([]);
+		});
+
+		it('returns nothing for a workflow that no longer exists', async () => {
+			findingRepository.listForWorkflows.mockResolvedValue([storedFinding(1, 'rule-a', 'open')]);
+			workflowRepository.findByIds.mockResolvedValue([]);
+
+			expect(await service.getWorkflowFindings(TARGET_VERSION, 'wf-1')).toEqual([]);
+		});
+	});
+
+	describe('describeWorkflowFinding', () => {
+		const optedIn = <T extends { getMetadata: () => BreakingChangeRuleMetadata }>(rule: T): T => ({
+			...rule,
+			getMetadata: () => ({ ...rule.getMetadata(), assistant: 'fix' }),
+		});
+
+		it("describes the rule and lists the workflow's current issues for it", async () => {
+			ruleRegistry.getRule.mockReturnValue(optedIn(workflowRule('rule-a', 'n8n-nodes-base.a')));
+			const workflow = workflowWithNodes('wf-1', ['n8n-nodes-base.a', 'n8n-nodes-base.other']);
+
+			const result = await service.describeWorkflowFinding(TARGET_VERSION, 'rule-a', workflow);
+
+			expect(result).toEqual({
+				rule: {
+					ruleId: 'rule-a',
+					ruleTitle: 'rule-a title',
+					ruleDescription: 'rule-a description',
+					ruleImpact: 'executionsFail',
+					ruleDocumentationUrl: 'https://docs.n8n.io/rule-a',
+					recommendations: [{ action: 'Fix rule-a', description: 'How to fix rule-a' }],
+					migratable: false,
+				},
+				issues: [issueFor(workflow.nodes[0])],
+				assistantAction: 'fix',
+				unpublishedFix: false,
+			});
+		});
+
+		it('lists no issues when the rule no longer flags the workflow', async () => {
+			ruleRegistry.getRule.mockReturnValue(optedIn(workflowRule('rule-a', 'n8n-nodes-base.a')));
+			breakingChangeService.loadPublishedNodes.mockResolvedValue(new Map());
+
+			const result = await service.describeWorkflowFinding(
+				TARGET_VERSION,
+				'rule-a',
+				workflowWithNodes('wf-1', ['n8n-nodes-base.other']),
+			);
+
+			expect(result).toMatchObject({ issues: [], unpublishedFix: false });
+		});
+
+		it('flags a clean draft whose published version still has the issue', async () => {
+			ruleRegistry.getRule.mockReturnValue(optedIn(workflowRule('rule-a', 'n8n-nodes-base.a')));
+			const published = workflowWithNodes('wf-1', ['n8n-nodes-base.a']);
+			breakingChangeService.loadPublishedNodes.mockResolvedValue(
+				new Map([['wf-1', published.nodes]]),
+			);
+
+			const result = await service.describeWorkflowFinding(
+				TARGET_VERSION,
+				'rule-a',
+				workflowWithNodes('wf-1', ['n8n-nodes-base.other']),
+			);
+
+			expect(result).toMatchObject({ issues: [], unpublishedFix: true });
+		});
+
+		it('does not check the published version when the draft check throws', async () => {
+			ruleRegistry.getRule.mockReturnValue({
+				...optedIn(workflowRule('rule-a', 'n8n-nodes-base.a')),
+				detectWorkflow: async () => {
+					throw new Error('Rule failed');
+				},
+			});
+
+			const result = await service.describeWorkflowFinding(
+				TARGET_VERSION,
+				'rule-a',
+				workflowWithNodes('wf-1', ['n8n-nodes-base.a']),
+			);
+
+			expect(result).toMatchObject({ issues: [], unpublishedFix: false });
+			expect(breakingChangeService.loadPublishedNodes).not.toHaveBeenCalled();
+		});
+
+		it.each([
+			['an unknown rule', undefined],
+			['a rule that does not offer the Assistant', workflowRule('rule-a', 'n8n-nodes-base.a')],
+			[
+				'a rule of another version',
+				optedIn({
+					...workflowRule('rule-a', 'n8n-nodes-base.a'),
+					getMetadata: () => ({ ...metadata('rule-a'), version: 'v2' as const }),
+				}),
+			],
+			['a batch rule, which would scan every workflow', optedIn(batchRule('batch-rule'))],
+			['an instance rule', instanceRule('instance-rule')],
+		])('returns undefined for %s', async (_, rule) => {
+			ruleRegistry.getRule.mockReturnValue(rule);
+
+			await expect(
+				service.describeWorkflowFinding(
+					TARGET_VERSION,
+					'rule-a',
+					workflowWithNodes('wf-1', ['n8n-nodes-base.a']),
+				),
+			).resolves.toBeUndefined();
+			expect(breakingChangeService.detectRule).not.toHaveBeenCalled();
 		});
 	});
 });

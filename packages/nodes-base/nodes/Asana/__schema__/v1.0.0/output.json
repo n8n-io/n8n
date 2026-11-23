@@ -1,0 +1,61 @@
+{
+	"properties": {
+		"action": {
+			"type": "string"
+		},
+		"change": {
+			"properties": {
+				"action": {
+					"type": "string"
+				},
+				"field": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"created_at": {
+			"type": "string"
+		},
+		"parent": {
+			"properties": {
+				"gid": {
+					"type": "string"
+				},
+				"resource_subtype": {
+					"type": "string"
+				},
+				"resource_type": {
+					"type": "string"
+				}
+			},
+			"type": ["null", "object"]
+		},
+		"resource": {
+			"properties": {
+				"gid": {
+					"type": "string"
+				},
+				"resource_subtype": {
+					"type": "string"
+				},
+				"resource_type": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"user": {
+			"properties": {
+				"gid": {
+					"type": "string"
+				},
+				"resource_type": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		}
+	},
+	"type": "object"
+}

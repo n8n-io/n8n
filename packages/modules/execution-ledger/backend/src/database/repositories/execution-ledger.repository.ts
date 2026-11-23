@@ -1,3 +1,4 @@
+import type { ExecutionLedgerBacklogStats } from '@n8n/backend-services';
 import { DatabaseConfig } from '@n8n/config';
 import {
 	BaseRepository,
@@ -14,7 +15,7 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, type EntityManager } from '@n8n/typeorm';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { ExecutionLedgerEntity } from '../entities/execution-ledger.entity';
 
@@ -82,6 +83,28 @@ export class ExecutionLedgerRepository {
 	}
 
 	/**
+	 * Separate subqueries, because SQLite scans the whole table when MIN and MAX share
+	 * one aggregate. Each one is a primary-key lookup on both dialects.
+	 */
+	async getBacklogStats(): Promise<ExecutionLedgerBacklogStats> {
+		const manager = this.table.managerFor({});
+		const table = manager.connection.driver.escape(this.table.metadata.tableName);
+		const [stats] = await this.query<{ minId: unknown; maxId: unknown; oldest: unknown }>(
+			manager,
+			`SELECT (SELECT MIN("id") FROM ${table}) AS "minId", (SELECT MAX("id") FROM ${table}) AS "maxId", (SELECT "occurredAt" FROM ${table} WHERE "id" = (SELECT MIN("id") FROM ${table})) AS "oldest"`,
+			[],
+		);
+		const oldest = stats?.oldest;
+		const isEmpty = stats?.minId === null || stats?.minId === undefined;
+
+		return {
+			rows: isEmpty ? 0 : Number(stats.maxId) - Number(stats.minId) + 1,
+			oldestOccurredAt:
+				oldest instanceof Date || typeof oldest === 'string' ? parseDbTime(oldest) : null,
+		};
+	}
+
+	/**
 	 * The sqlite-pooled driver drops the rows of a DELETE ... RETURNING. A SELECT and then a
 	 * DELETE up to the last id is exact, because the write lock stops new inserts in between.
 	 */
@@ -99,26 +122,27 @@ export class ExecutionLedgerRepository {
 		return rows;
 	}
 
-	private async query(
+	private async query<T = RawLedgerRow>(
 		manager: EntityManager,
 		rawSql: string,
 		rawParams: unknown[],
-	): Promise<RawLedgerRow[]> {
+	): Promise<T[]> {
 		const { sql, params } = toDialectQuery(this.isPostgres, rawSql, rawParams);
-		const rows: RawLedgerRow[] = await manager.query(sql, params);
+		const rows: T[] = await manager.query(sql, params);
 		return rows;
 	}
 }
 
 function toLedgerRow(raw: RawLedgerRow): ExecutionLedgerRow {
-	const { entityType, event, outcome, blockedBy, origin, occurredAt } = raw;
+	const { entityType, event, outcome, blockedBy, origin, occurredAt, projectId } = raw;
 	if (
 		!isOneOf(EXECUTION_LEDGER_ENTITY_TYPES, entityType) ||
 		!isOneOf(EXECUTION_LEDGER_EVENTS, event) ||
 		!isOneOf(EXECUTION_LEDGER_OUTCOMES, outcome) ||
 		!isOneOf(EXECUTION_LEDGER_BLOCKED_BY, blockedBy) ||
 		!isOneOf(EXECUTION_LEDGER_ORIGINS, origin) ||
-		!(occurredAt instanceof Date || typeof occurredAt === 'string')
+		!(occurredAt instanceof Date || typeof occurredAt === 'string') ||
+		!(typeof projectId === 'string' || projectId === null)
 	) {
 		throw new UnexpectedError('Ledger row has an unexpected value', { extra: { id: raw.id } });
 	}
@@ -130,7 +154,7 @@ function toLedgerRow(raw: RawLedgerRow): ExecutionLedgerRow {
 		entityType,
 		entityName: String(raw.entityName),
 		entityId: String(raw.entityId),
-		projectId: String(raw.projectId),
+		projectId,
 		mode: String(raw.mode),
 		source: String(raw.source),
 		event,

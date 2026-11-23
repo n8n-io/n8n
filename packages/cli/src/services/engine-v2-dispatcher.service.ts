@@ -10,6 +10,7 @@ import {
 import type {
 	INode,
 	INodeExecutionData,
+	IPinData,
 	IWorkflowBase,
 	IWorkflowExecutionDataProcess,
 	WorkflowExecuteMode,
@@ -17,6 +18,7 @@ import type {
 import { classifyTriggerIdentity, isTriggerNodeType } from 'n8n-workflow';
 import assert from 'node:assert';
 
+import { getPushRefUserId } from '@/execution-lifecycle/execution-lifecycle-hooks';
 import {
 	createExecutionIdV2,
 	type ExecutionIdV2,
@@ -185,6 +187,11 @@ export class EngineV2Dispatcher {
 		let prepared: PreparedStart;
 		try {
 			this.assertAvailable();
+			// Before the plan: the planner cannot plan a tool run, and its error
+			// would hide the real cause.
+			if (data.agentRequest !== undefined) {
+				throw new NotImplementedError('Engine v2 cannot run a workflow as an AI tool yet.');
+			}
 
 			// A partial run, or one with pinned data, is planned here: the data plane
 			// gets a graph trimmed to what runs, plus the steps it records as done.
@@ -242,8 +249,8 @@ export class EngineV2Dispatcher {
 			triggerName: trigger.name,
 			triggerOutputs: trigger.outputs,
 			allowNonTriggerRoot: plan !== undefined,
+			pinData: this.resolvePinData(data),
 		});
-		// One pass per node: a planned run seeds nothing inside a loop yet.
 		const seededSteps = await this.toSeededSteps(plan);
 
 		const executionId = data.engineV2ExecutionId ?? createExecutionIdV2();
@@ -293,6 +300,7 @@ export class EngineV2Dispatcher {
 
 		this.pushRegistry.register(executionId, {
 			pushRef,
+			userId: getPushRefUserId(data),
 			workflowId: workflowData.id,
 			// The engine never announces the trigger, so save its outputs for the relay.
 			trigger:
@@ -300,6 +308,12 @@ export class EngineV2Dispatcher {
 					? undefined
 					: { nodeName: trigger.name, outputs: trigger.outputs },
 		});
+	}
+
+	/** v1's `resolvePinData`: a production run ignores pinned data. */
+	private resolvePinData(data: IWorkflowExecutionDataProcess): IPinData | undefined {
+		if (!['manual', 'evaluation'].includes(data.executionMode)) return undefined;
+		return data.pinData ?? data.workflowData.pinData;
 	}
 
 	/**
@@ -351,10 +365,6 @@ export class EngineV2Dispatcher {
 			throw new NotImplementedError(
 				'Engine v2 cannot start a run at a pinned node yet. Run the workflow from the trigger instead.',
 			);
-		}
-
-		if (data.agentRequest !== undefined) {
-			throw new NotImplementedError('Engine v2 cannot run a workflow as an AI tool yet.');
 		}
 
 		// `WorkflowRunner.run` returns through the v2 branch before it establishes the
@@ -423,8 +433,13 @@ export class EngineV2Dispatcher {
 		if (!plan) return undefined;
 		// Lazily imported, as in `toEngineWorkflowPayload`.
 		const { toStepOutputs } = await import('@n8n/node-engine-compatibility');
-		return Object.fromEntries(
-			plan.seeded.map(({ nodeId, outputs }) => [nodeId, [toStepOutputs(outputs)]]),
-		);
+		// One entry per node, its passes in iteration order; the planner numbers
+		// them from 0 without gaps. A null prototype: a node id such as
+		// `constructor` must land on its own key.
+		const byNode: SeededSteps = Object.create(null);
+		for (const { nodeId, iteration, outputs } of plan.seeded) {
+			(byNode[nodeId] ??= [])[iteration] = toStepOutputs(outputs);
+		}
+		return byNode;
 	}
 }

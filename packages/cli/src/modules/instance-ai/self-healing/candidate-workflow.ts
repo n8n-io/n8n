@@ -82,10 +82,35 @@ export async function compileCandidateWorkflow({
 	}
 
 	try {
-		const compiled = await compileWorkflowSource(context, filePath, source, abortSignal);
-		if (!compiled.success) return compiled;
-
 		const original = toWorkflowJSON({ ...baseline.original, id: baseline.workflowId });
+		// The candidate keeps the baseline settings, so it runs on the engine of the baseline
+		// whatever the code sets. Validate for that engine.
+		const engine = original.settings?.engineType === 'v2' ? 'v2' : 'v1';
+		const compiled = await compileWorkflowSource(context, filePath, source, abortSignal, {
+			engine,
+		});
+		if (!compiled.success) return compiled;
+		const codeEngine = compiled.workflow.settings?.engineType;
+		if (codeEngine !== undefined && codeEngine !== engine) {
+			return {
+				success: false,
+				reason: 'candidate_engine_changed',
+				errors: [
+					`A repair cannot change the workflow engine. Set \`engineType: '${engine}'\` in the workflow settings, or remove \`engineType\`.`,
+				],
+			};
+		}
+		if (compiled.workflow.id !== baseline.workflowId) {
+			return {
+				success: false,
+				reason: 'candidate_workflow_mismatch',
+				errors: [
+					`The file does not declare workflow ${baseline.workflowId}. ` +
+						'Verify the file that get_workflow_as_code returned for this workflow.',
+				],
+			};
+		}
+
 		const warnings = downgradeUnchangedNodeBlockers(compiled.warnings, compiled.workflow, original);
 		const { blocking } = partitionWarnings(warnings);
 		if (blocking.length > 0) {

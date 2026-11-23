@@ -6,6 +6,10 @@ import type {
 } from '@n8n/api-types/dist/dto/packages/import-package-request.dto';
 import type { ImportResultDto } from '@n8n/api-types/dist/dto/packages/import-result.dto';
 import type { PromotionMissingProject } from '@n8n/api-types/dist/dto/promotions/promotion-apply-check.dto';
+import type {
+	PromotionInstanceApplyPreview,
+	PromotionPreview,
+} from '@n8n/api-types/dist/dto/promotions/promotion-preview.dto';
 import type { CreateProjectPublicDto } from '@n8n/api-types/dist/dto/project/project-public.dto';
 
 export interface PaginatedResponse<T> {
@@ -112,6 +116,11 @@ export type PromotePackageResult = {
 	git: PromotionGitResult;
 };
 
+/** Outcome of promoting a selection of a project. Only `promoted` pushed anything. */
+export type PromoteSelectionResult =
+	| (PromotePackageResult & { status: 'promoted' })
+	| { status: 'preview-changed'; environmentId: string };
+
 /** The reviewed source that Apply must still match. Any mismatch reports `source-changed`. */
 export interface PromotionExpectedSource {
 	environmentId: string;
@@ -157,31 +166,10 @@ export type ApplyPackageResult =
 			warnings: Array<Record<string, unknown>>;
 	  })
 	| (ApplyPackageIdentity & { status: 'blocked'; check: PromotionApplyCheck })
-	| (ApplyPackageIdentity & { status: 'source-changed' });
+	| (ApplyPackageIdentity & { status: 'source-changed' })
+	| (ApplyPackageIdentity & { status: 'preview-changed' });
 
-export interface PromotionChangesQuery {
-	search?: string;
-	sort?: 'name' | 'updatedAt' | 'status';
-	order?: 'asc' | 'desc';
-}
-
-/** One workflow that differs between a project and its configured branch. */
-export interface PromotableResourceSummary {
-	id: string;
-	name: string;
-	type: 'workflow';
-	status: 'new' | 'modified' | 'renamed' | 'renamed-and-modified' | 'archived' | 'deleted';
-	version: number | null;
-	updatedAt: string | null;
-	updatedBy: string | null;
-	dependencyCount: number;
-}
-
-/** The changes of a project in one direction, with the commit they were read from. */
-export interface ProjectPromotionChanges {
-	commitSha: string | null;
-	changes: PromotableResourceSummary[];
-}
+export type { PromotionInstanceApplyPreview, PromotionPreview };
 
 /** A repository that the token of a Git host provider can access. */
 export interface PromotionRepository {
@@ -477,32 +465,38 @@ export class N8nClient {
 		return await this.post<PromotePackageResult>(`/promotions/environments/${id}/promote`, body);
 	}
 
-	async applyPackage(id: string, expectedSource?: PromotionExpectedSource) {
-		return await this.post<ApplyPackageResult>(
-			`/promotions/environments/${id}/apply`,
-			expectedSource ? { expectedSource } : undefined,
-		);
+	async listInstanceApplyChanges(id: string) {
+		return await this.get<PromotionInstanceApplyPreview>(`/promotions/environments/${id}/changes`);
+	}
+
+	async applyPackage(
+		id: string,
+		expectedSource?: PromotionExpectedSource,
+		expectedPreviewRevision?: string,
+	) {
+		return await this.post<ApplyPackageResult>(`/promotions/environments/${id}/apply`, {
+			// Dropped by JSON serialization when undefined, so the branch tip is applied.
+			expectedSource,
+			expectedPreviewRevision,
+		});
 	}
 
 	async continueApplyPackage(
 		id: string,
 		expectedSource: PromotionExpectedSource,
 		confirmDestructiveChanges?: boolean,
+		expectedPreviewRevision?: string,
 	) {
 		return await this.post<ApplyPackageResult>(`/promotions/environments/${id}/apply/continue`, {
 			expectedSource,
 			confirmDestructiveChanges,
+			expectedPreviewRevision,
 		});
 	}
 
-	async listProjectPromotionChanges(
-		projectId: string,
-		direction: PromotionDirection,
-		query: PromotionChangesQuery = {},
-	) {
-		return await this.get<ProjectPromotionChanges>(
+	async listProjectPromotionChanges(projectId: string, direction: PromotionDirection) {
+		return await this.get<PromotionPreview>(
 			`/promotions/projects/${projectId}/changes/${direction}`,
-			{ ...query },
 		);
 	}
 
@@ -510,11 +504,13 @@ export class N8nClient {
 		projectId: string,
 		selection: PromotionSelection,
 		commitMessage?: string,
+		expectedPreviewRevision?: string,
 	) {
-		return await this.post<PromotePackageResult>(`/promotions/projects/${projectId}/promote`, {
+		return await this.post<PromoteSelectionResult>(`/promotions/projects/${projectId}/promote`, {
 			...selection,
-			// Dropped by JSON serialization when undefined, so the server default applies.
+			// Dropped by JSON serialization when undefined, so the server defaults apply.
 			commitMessage,
+			expectedPreviewRevision,
 		});
 	}
 
@@ -522,11 +518,13 @@ export class N8nClient {
 		projectId: string,
 		selection: PromotionSelection,
 		expectedSource?: PromotionExpectedSource,
+		expectedPreviewRevision?: string,
 	) {
 		return await this.post<ApplyPackageResult>(`/promotions/projects/${projectId}/apply`, {
 			...selection,
 			// Dropped by JSON serialization when undefined, so the branch tip is applied.
 			expectedSource,
+			expectedPreviewRevision,
 		});
 	}
 
@@ -535,11 +533,13 @@ export class N8nClient {
 		selection: PromotionSelection,
 		expectedSource: PromotionExpectedSource,
 		confirmDestructiveChanges?: boolean,
+		expectedPreviewRevision?: string,
 	) {
 		return await this.post<ApplyPackageResult>(`/promotions/projects/${projectId}/apply/continue`, {
 			...selection,
 			expectedSource,
 			confirmDestructiveChanges,
+			expectedPreviewRevision,
 		});
 	}
 
@@ -807,7 +807,7 @@ export class N8nClient {
 		if (fields.versionPolicy) body.versionPolicy = fields.versionPolicy;
 		// Only sent when set, so an older server without this field in its schema never sees it.
 		if (fields.credentialExportPolicy) body.credentialExportPolicy = fields.credentialExportPolicy;
-		if (fields.includeArchivedWorkflows) body.includeArchivedWorkflows = true;
+		if (fields.includeArchived) body.includeArchived = true;
 
 		let counts: ExportPackageCounts | undefined;
 		const archive = await this.request<Buffer>('POST', '/n8n-packages/export', {

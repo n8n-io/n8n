@@ -895,6 +895,45 @@ describe('workflow tool → parentAgentRun stamping', () => {
 		expect(executionData?.parentAgentRun).not.toHaveProperty('previewChat');
 	});
 
+	it('stamps the service account and the delegating agent for log attribution', async () => {
+		const executionData = await runToolWith(
+			{
+				agentId: 'agent-1',
+				integrationType: 'slack',
+				agentServiceAccountId: 'sa-1',
+				delegatingAgentId: 'parent-agent-1',
+			},
+			agentCtx,
+		);
+
+		expect(executionData?.parentAgentRun).toEqual({
+			agentId: 'agent-1',
+			projectId: 'project-1',
+			threadId: 'agent-1:slack:C123',
+			runId: 'run-1',
+			toolCallId: 'call-1',
+			integrationType: 'slack',
+			agentServiceAccountId: 'sa-1',
+			delegatingAgentId: 'parent-agent-1',
+		});
+	});
+
+	it('does not run the execution as the agent or its service account', async () => {
+		const workflowLoader = mock<CallableWorkflowLoader>();
+		workflowLoader.loadWorkflow.mockResolvedValue(workflow);
+		const run = vi.fn().mockResolvedValue('exec-1');
+		const tool = await resolveWorkflowTool({ type: 'workflow', workflow: 'Lookup workflow' }, {
+			...buildContext(run, { workflowLoader, agentId: 'agent-1', agentServiceAccountId: 'sa-1' }),
+			projectId: 'project-1',
+			executionMode: 'integrated',
+		} as WorkflowToolContext);
+		await tool.handler?.({}, agentCtx as never);
+
+		const runData = run.mock.calls[0][0] as IWorkflowExecutionDataProcess;
+		expect(runData.executionData?.parentAgentRun?.agentServiceAccountId).toBe('sa-1');
+		expect(runData.userId).toBeUndefined();
+	});
+
 	it('omits the integration type for a run with no chat platform', async () => {
 		const executionData = await runToolWith({ agentId: 'agent-1' }, agentCtx);
 
@@ -912,6 +951,20 @@ describe('workflow tool → parentAgentRun stamping', () => {
 		['no toolCallId', { agentId: 'agent-1' }, { ...agentCtx, toolCallId: undefined }],
 	])('writes no marker when there is %s', async (_label, contextExtras, ctx) => {
 		const executionData = await runToolWith(contextExtras, ctx);
+
+		expect(executionData?.parentAgentRun).toBeUndefined();
+	});
+
+	// Attribution rides on the marker, so a tool call without a full marker names no agent.
+	it.each([
+		['no thread', { ...agentCtx, persistence: undefined }],
+		['no runId', { ...agentCtx, runId: undefined }],
+		['no toolCallId', { ...agentCtx, toolCallId: undefined }],
+	])('writes no attribution when there is %s', async (_label, ctx) => {
+		const executionData = await runToolWith(
+			{ agentId: 'agent-1', agentServiceAccountId: 'sa-1' },
+			ctx,
+		);
 
 		expect(executionData?.parentAgentRun).toBeUndefined();
 	});

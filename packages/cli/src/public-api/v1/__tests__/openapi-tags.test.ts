@@ -34,6 +34,8 @@ const compareNames = (a: string, b: string) => (a < b ? -1 : 1);
 // Our expected grouping of OpenAPI tags in GitBook.
 const EXPECTED_GROUPS: Record<string, string[]> = {
 	BuildAndRun: [
+		'Agent',
+		'AiPreference',
 		'Credential',
 		'DataTable',
 		'Evaluation',

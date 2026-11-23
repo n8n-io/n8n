@@ -34,6 +34,7 @@ import { N8nButton, N8nHeading, N8nIconButton, N8nText, N8nTooltip } from '@n8n/
 import { VARIABLE_MODAL_KEY } from '@/features/settings/environments.ee/environments.constants';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useCreateAgent } from '@/features/agents/composables/useCreateAgent';
+import { PROJECT_AGENTS } from '@/features/agents/constants';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { useCreateApp } from '@n8n/frontend-module-apps';
@@ -140,7 +141,7 @@ const showSettings = computed(
 const showFolders = computed(() => {
 	return (
 		settingsStore.isFoldersFeatureEnabled &&
-		[VIEWS.PROJECTS_WORKFLOWS, VIEWS.PROJECTS_FOLDERS].includes(route.name as VIEWS)
+		[VIEWS.PROJECTS_WORKFLOWS, VIEWS.PROJECTS_FOLDERS, PROJECT_AGENTS].includes(String(route.name))
 	);
 });
 
@@ -168,6 +169,7 @@ const personalSelfHealingTab = computed((): TabOptions<string> | null => {
 	return {
 		label: i18n.baseText('selfHealing.config.heading'),
 		value: PERSONAL_SELF_HEALING_VIEW,
+		preview: true,
 		to: { name: PERSONAL_SELF_HEALING_VIEW, params: { projectId: project.id } },
 	};
 });

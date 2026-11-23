@@ -1,5 +1,6 @@
 import {
 	activeLifecycleState,
+	observationCursorPosition,
 	prepareObservationLogBatchCursor,
 	type ObservationCursor,
 	type ObservationLogBatch,
@@ -49,7 +50,7 @@ export class AgentObservationRepository extends BaseRepository<AgentObservationE
 		if (expected) {
 			const result = await manager.update(
 				AgentObservationCursorEntity,
-				{ agentId, ...expected },
+				{ agentId, ...observationCursorPosition(expected) },
 				cursor,
 			);
 			return result.affected === 1;

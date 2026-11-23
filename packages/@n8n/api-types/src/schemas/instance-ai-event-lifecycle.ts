@@ -13,6 +13,8 @@ export function createInstanceAiEventLifecycle(): InstanceAiEventLifecycle {
 /** Keep user actions and thread metadata available after a run ends. */
 function isRunActivity(event: InstanceAiEvent): boolean {
 	switch (event.type) {
+		// Arrives after a background agent completed, when a later run picks up its result.
+		case 'agent-result-delivered':
 		case 'thread-title-updated':
 		case 'preference-card':
 		case 'tasks-update':
@@ -29,7 +31,9 @@ export function canAcceptInstanceAiEvent(
 ): boolean {
 	if (!isSafeObjectKey(event.runId) || !isSafeObjectKey(event.agentId)) return false;
 	if (!isRunActivity(event)) return true;
-	if (state.closedRuns[event.runId]) return false;
+	// Late events of a cancelled or failed run are dropped, except for detached agents, which
+	// outlive their run, so their events are kept.
+	if (state.closedRuns[event.runId] && !event.detachedFromTurn) return false;
 	if (
 		event.type === 'agent-spawned' &&
 		(!isSafeObjectKey(event.payload.parentId) ||

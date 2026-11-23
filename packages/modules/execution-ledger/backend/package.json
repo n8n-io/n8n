@@ -1,6 +1,6 @@
 {
   "name": "@n8n/backend-module-execution-ledger",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "main": "dist/index.js",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -14,6 +14,11 @@
       "types": "./dist/execution-ledger.module.d.ts",
       "import": "./dist/execution-ledger.module.js",
       "require": "./dist/execution-ledger.module.js"
+    },
+    "./testing": {
+      "types": "./dist/testing.d.ts",
+      "import": "./dist/testing.js",
+      "require": "./dist/testing.js"
     }
   },
   "files": [
@@ -36,12 +41,18 @@
     "test:dev": "vitest --silent=false"
   },
   "dependencies": {
+    "@n8n/backend-common": "workspace:*",
+    "@n8n/backend-services": "workspace:*",
     "@n8n/config": "workspace:*",
+    "@n8n/constants": "workspace:*",
     "@n8n/db": "workspace:*",
     "@n8n/decorators": "workspace:*",
     "@n8n/di": "workspace:*",
+    "@n8n/errors": "workspace:*",
     "@n8n/typeorm": "workspace:*",
-    "n8n-workflow": "workspace:*"
+    "@n8n/utils": "workspace:*",
+    "n8n-core": "workspace:*",
+    "uuid": "catalog:"
   },
   "devDependencies": {
     "@n8n/backend-test-utils": "workspace:*",
@@ -49,11 +60,13 @@
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "n8n-containers": "workspace:*",
+    "n8n-workflow": "workspace:*",
     "oxlint": "catalog:",
     "oxlint-tsgolint": "catalog:",
     "typescript": "catalog:typescript",
     "vite": "catalog:",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "vitest-mock-extended": "catalog:"
   },
   "license": "LicenseRef-n8n-sustainable-use"
 }

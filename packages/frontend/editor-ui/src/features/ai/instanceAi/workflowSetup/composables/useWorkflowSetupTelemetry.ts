@@ -1,10 +1,11 @@
 import { watch, type ComputedRef, type Ref } from 'vue';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { TELEMETRY_EVENT, type InferTelemetryProps } from '@n8n/telemetry';
-import { isRecord } from '@n8n/utils/is-record';
+import { TELEMETRY_EVENT, type AssistantRuntime } from '@n8n/telemetry';
 import { useInstanceAiSetupPanelExperiment } from '@/experiments/instanceAiSetupPanel/useInstanceAiSetupPanelExperiment';
+import { useAssistantRuntime } from '../../assistantRuntime';
 import type { WorkflowSetupSection } from '../workflowSetup.types';
+import { buildSetupSavedOutcome } from '../workflowSetupSavedTelemetry';
 
 type ProvidedSetupInput = { label: string; options: string[]; option_chosen: string };
 type SkippedSetupInput = { label: string; options: string[] };
@@ -25,6 +26,7 @@ type WorkflowSetupStepTelemetryPayload = {
 	input_thread_id: string;
 	instance_id: string;
 	type: 'setup';
+	runtime: AssistantRuntime;
 	request_id: string;
 	step_index: number;
 	step_count: number;
@@ -34,7 +36,13 @@ type WorkflowSetupStepTelemetryPayload = {
 
 type SetupTelemetryContext = Pick<
 	WorkflowSetupStepTelemetryPayload,
-	'session_id' | 'workflow_id' | 'thread_id' | 'input_thread_id' | 'instance_id' | 'type'
+	| 'session_id'
+	| 'workflow_id'
+	| 'thread_id'
+	| 'input_thread_id'
+	| 'instance_id'
+	| 'type'
+	| 'runtime'
 >;
 
 interface WorkflowSetupTelemetryInputAccessors {
@@ -57,6 +65,7 @@ export function useWorkflowSetupTelemetry(deps: {
 	const telemetry = useTelemetry();
 	const rootStore = useRootStore();
 	const { getTelemetryPayload } = useInstanceAiSetupPanelExperiment();
+	const runtime = useAssistantRuntime();
 
 	const shownStepKeys = new Set<string>();
 	const handledStepKeys = new Set<string>();
@@ -70,6 +79,7 @@ export function useWorkflowSetupTelemetry(deps: {
 			input_thread_id: deps.inputThreadId.value ?? '',
 			instance_id: rootStore.instanceId,
 			type: 'setup',
+			runtime,
 		};
 	}
 
@@ -109,67 +119,9 @@ export function useWorkflowSetupTelemetry(deps: {
 
 	function trackSetupSaved(result: Record<string, unknown>): void {
 		const workflowId = deps.workflowId?.value;
-		if (!workflowId || result.success !== true) return;
-		const report = (value: unknown) => (Array.isArray(value) ? value.filter(isRecord) : []);
-		const completedNodes = report(result.completedNodes);
-		if (!completedNodes.length) return;
-		const failedNodes = new Set(report(result.failedNodes).map((node) => node.nodeName));
-		const pendingNodes = report(result.nodesStillNeedingSetup);
-		const savedNodes = report(result.updatedNodes);
-		const items: InferTelemetryProps<typeof TELEMETRY_EVENT.WORKFLOW.SETUP_SAVED>['items'] = [];
-		const parameters = new Set<string>();
-		for (const section of deps.sections.value) {
-			if (section.credentialType) {
-				for (const node of section.credentialTargetNodes) {
-					const savedNode = savedNodes.find((saved) => saved.id === node.id);
-					const credential = isRecord(savedNode?.credentials)
-						? savedNode.credentials[section.credentialType]
-						: undefined;
-					items.push({
-						node_id: node.id,
-						node_type: node.type,
-						kind: 'credential',
-						credential_type: section.credentialType,
-						completed:
-							!failedNodes.has(node.name) &&
-							(completedNodes.some(
-								(completed) =>
-									completed.nodeName === node.name &&
-									completed.credentialType === section.credentialType,
-							) ||
-								(isRecord(credential) &&
-									((typeof credential.id === 'string' && credential.id.length > 0) ||
-										credential.__aiGatewayManaged === true))),
-					});
-				}
-			}
-			for (const parameterName of section.parameterNames) {
-				const key = JSON.stringify([section.node.id, parameterName]);
-				if (parameters.has(key)) continue;
-				parameters.add(key);
-				items.push({
-					node_id: section.node.id,
-					node_type: section.node.type,
-					kind: 'parameter',
-					parameter_name: parameterName,
-					completed:
-						!failedNodes.has(section.node.name) &&
-						!pendingNodes.some(
-							(pending) =>
-								pending.nodeName === section.node.name &&
-								isRecord(pending.parameterIssues) &&
-								Object.hasOwn(pending.parameterIssues, parameterName),
-						) &&
-						completedNodes.some(
-							(completed) =>
-								completed.nodeName === section.node.name &&
-								Array.isArray(completed.parametersSet) &&
-								completed.parametersSet.includes(parameterName),
-						),
-				});
-			}
-		}
-		if (!items.some((item) => item.completed)) return;
+		if (!workflowId) return;
+		const outcome = buildSetupSavedOutcome(deps.sections.value, result);
+		if (!outcome) return;
 		telemetry.track(TELEMETRY_EVENT.WORKFLOW.SETUP_SAVED, {
 			...getTelemetryPayload(),
 			instance_id: rootStore.instanceId,
@@ -178,13 +130,8 @@ export function useWorkflowSetupTelemetry(deps: {
 			session_id: rootStore.pushRef,
 			source: 'instance_ai_setup_wizard',
 			request_id: deps.requestId.value,
-			items,
-			setup_complete:
-				(result.partial === undefined || result.partial === false) &&
-				[result.failedNodes, result.nodesStillNeedingSetup, result.skippedByUser].every(
-					(value) => value === undefined || (Array.isArray(value) && value.length === 0),
-				) &&
-				items.every((item) => item.completed),
+			...outcome,
+			runtime,
 		});
 	}
 

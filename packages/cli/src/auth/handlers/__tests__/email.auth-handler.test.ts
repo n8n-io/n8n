@@ -1,10 +1,9 @@
-import type { EventService } from '@n8n/backend-services';
+import type { EventService, PasswordUtility } from '@n8n/backend-services';
 import type { GlobalConfig } from '@n8n/config';
-import type { AuthIdentity, PersonRepository, User } from '@n8n/db';
+import type { AuthIdentity, Person, PersonRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import { AuthError } from '@n8n/errors';
-import type { PasswordUtility } from '@/services/password.utility';
 
 import { EmailAuthHandler } from '../email.auth-handler';
 
@@ -41,19 +40,19 @@ describe('EmailAuthHandler', () => {
 		const password = 'password123';
 
 		it('should return user when credentials are valid', async () => {
-			const user = mock<User>({
+			const person = mock<Person>({
 				email,
 				password: 'hashedPassword',
 			});
 
-			personRepository.findByEmailWithAuthIdentities.mockResolvedValue(user);
+			personRepository.findByEmailWithAuthIdentities.mockResolvedValue(person);
 			passwordUtility.compare.mockResolvedValue(true);
 
 			const result = await handler.handleLogin(email, password);
 
-			expect(result).toBe(user);
+			expect(result).toBe(person);
 			expect(personRepository.findByEmailWithAuthIdentities).toHaveBeenCalledWith(email);
-			expect(passwordUtility.compare).toHaveBeenCalledWith(password, user.password);
+			expect(passwordUtility.compare).toHaveBeenCalledWith(password, person.password);
 		});
 
 		it('should return undefined when user is not found', async () => {
@@ -66,13 +65,13 @@ describe('EmailAuthHandler', () => {
 		});
 
 		it('should return undefined when password is incorrect', async () => {
-			const user = mock<User>({
+			const person = mock<Person>({
 				email,
 				password: 'hashedPassword',
 				authIdentities: [],
 			});
 
-			personRepository.findByEmailWithAuthIdentities.mockResolvedValue(user);
+			personRepository.findByEmailWithAuthIdentities.mockResolvedValue(person);
 			passwordUtility.compare.mockResolvedValue(false);
 
 			const result = await handler.handleLogin(email, password);
@@ -81,13 +80,13 @@ describe('EmailAuthHandler', () => {
 		});
 
 		it('should return undefined when user has no password', async () => {
-			const user = mock<User>({
+			const person = mock<Person>({
 				email,
 				password: null,
 				authIdentities: [],
 			});
 
-			personRepository.findByEmailWithAuthIdentities.mockResolvedValue(user);
+			personRepository.findByEmailWithAuthIdentities.mockResolvedValue(person);
 
 			const result = await handler.handleLogin(email, password);
 
@@ -100,14 +99,14 @@ describe('EmailAuthHandler', () => {
 				const ldapIdentity = mock<AuthIdentity>({
 					providerType: 'ldap',
 				});
-				const user = mock<User>({
+				const person = mock<Person>({
 					id: 'user-id',
 					email,
 					password: null,
 					authIdentities: [ldapIdentity],
 				});
 
-				personRepository.findByEmailWithAuthIdentities.mockResolvedValue(user);
+				personRepository.findByEmailWithAuthIdentities.mockResolvedValue(person);
 				globalConfig.sso.ldap.loginEnabled = false;
 
 				const promise = handler.handleLogin(email, password);
@@ -117,7 +116,7 @@ describe('EmailAuthHandler', () => {
 				);
 
 				expect(eventService.emit).toHaveBeenCalledWith('login-failed-due-to-ldap-disabled', {
-					userId: user.id,
+					userId: person.id,
 				});
 			});
 
@@ -125,14 +124,14 @@ describe('EmailAuthHandler', () => {
 				const ldapIdentity = mock<AuthIdentity>({
 					providerType: 'ldap',
 				});
-				const user = mock<User>({
+				const person = mock<Person>({
 					id: 'user-id',
 					email,
 					password: null,
 					authIdentities: [ldapIdentity],
 				});
 
-				personRepository.findByEmailWithAuthIdentities.mockResolvedValue(user);
+				personRepository.findByEmailWithAuthIdentities.mockResolvedValue(person);
 				globalConfig.sso.ldap.loginEnabled = true;
 
 				const result = await handler.handleLogin(email, password);
@@ -142,13 +141,13 @@ describe('EmailAuthHandler', () => {
 			});
 
 			it('should return undefined when user has no LDAP identity', async () => {
-				const user = mock<User>({
+				const person = mock<Person>({
 					email,
 					password: null,
 					authIdentities: [],
 				});
 
-				personRepository.findByEmailWithAuthIdentities.mockResolvedValue(user);
+				personRepository.findByEmailWithAuthIdentities.mockResolvedValue(person);
 
 				const result = await handler.handleLogin(email, password);
 

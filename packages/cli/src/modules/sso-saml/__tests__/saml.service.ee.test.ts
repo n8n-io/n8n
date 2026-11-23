@@ -4,13 +4,7 @@ import type { HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import { Person, ServiceAccount, SettingsRepository } from '@n8n/db';
-import type {
-	AuthIdentity,
-	AuthIdentityRepository,
-	PersonRepository,
-	Settings,
-	User,
-} from '@n8n/db';
+import type { AuthIdentity, AuthIdentityRepository, PersonRepository, Settings } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type express from 'express';
 import { mock, type MockProxy } from 'vitest-mock-extended';
@@ -782,22 +776,22 @@ describe('SamlService', () => {
 				lastName: '',
 				userPrincipalName: 'foo@bar.com',
 			};
-			const mockUser = mock<User>();
-			mockUser.firstName = '';
-			mockUser.lastName = '';
+			const mockPerson = mock<Person>();
+			mockPerson.firstName = '';
+			mockPerson.lastName = '';
 
 			vi.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
 				mapped: samlAttributes,
 				raw: {},
 			});
 			vi.mocked(personRepository.findByEmailWithAuthIdentities).mockResolvedValue(null);
-			vi.spyOn(samlHelpers, 'createUserFromSamlAttributes').mockResolvedValue(mockUser);
+			vi.spyOn(samlHelpers, 'createUserFromSamlAttributes').mockResolvedValue(mockPerson);
 			vi.spyOn(ssoHelpers, 'isSsoJustInTimeProvisioningEnabled').mockReturnValue(true);
 
 			const loginResult = await samlService.handleSamlLogin(mock<express.Request>(), 'post');
 
 			expect(loginResult).toEqual({
-				authenticatedUser: mockUser,
+				authenticatedUser: mockPerson,
 				attributes: samlAttributes,
 				rawAttributes: {},
 				onboardingRequired: true,
@@ -811,22 +805,22 @@ describe('SamlService', () => {
 				lastName: 'Doe',
 				userPrincipalName: 'newuser@bar.com',
 			};
-			const mockUser = mock<User>();
-			mockUser.firstName = 'Jane';
-			mockUser.lastName = 'Doe';
+			const mockPerson = mock<Person>();
+			mockPerson.firstName = 'Jane';
+			mockPerson.lastName = 'Doe';
 
 			vi.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
 				mapped: samlAttributes,
 				raw: {},
 			});
 			vi.mocked(personRepository.findByEmailWithAuthIdentities).mockResolvedValue(null);
-			vi.spyOn(samlHelpers, 'createUserFromSamlAttributes').mockResolvedValue(mockUser);
+			vi.spyOn(samlHelpers, 'createUserFromSamlAttributes').mockResolvedValue(mockPerson);
 			vi.spyOn(ssoHelpers, 'isSsoJustInTimeProvisioningEnabled').mockReturnValue(true);
 
 			const loginResult = await samlService.handleSamlLogin(mock<express.Request>(), 'post');
 
 			expect(loginResult).toEqual({
-				authenticatedUser: mockUser,
+				authenticatedUser: mockPerson,
 				attributes: samlAttributes,
 				rawAttributes: {},
 				onboardingRequired: false,

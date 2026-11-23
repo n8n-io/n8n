@@ -1,4 +1,5 @@
 import { vi } from 'vitest';
+import { toArtifactTurns } from '../agentTreeArtifactTurns';
 import { defineComponent, h, reactive, ref, type Component } from 'vue';
 import { createComponentRenderer, type RenderOptions } from '@/__tests__/render';
 import { provideThread, useInstanceAiStore, type ThreadRuntime } from '../instanceAi.store';
@@ -16,6 +17,9 @@ export function makeThread(): ThreadRuntime {
 	const thread = reactive({
 		id: 'thread-1',
 		messages: [] as InstanceAiMessage[],
+		get artifactTurns() {
+			return toArtifactTurns(this.messages);
+		},
 		hasMessages: false,
 		sseState: 'connected',
 		isStreaming: false,
@@ -110,7 +114,7 @@ export const InstanceAiInputStub = defineComponent({
 		reservedAttachmentCount: { type: Number, required: false },
 		isOutOfCredits: { type: Boolean, required: false },
 	},
-	emits: ['submit', 'dismiss-context-chip'],
+	emits: ['submit', 'stop', 'dismiss-context-chip'],
 	setup(props, { emit, expose }) {
 		const inputDraft = ref(inputState.initialDraft);
 		const hasAttachments = ref(inputState.hasAttachments);
@@ -141,7 +145,15 @@ export const InstanceAiInputStub = defineComponent({
 				promptModified: message !== prefill.text.trim(),
 			};
 		};
-		expose({ focus: inputFocusSpy, setText, setPrefill, clearTextIfMatches, isDirty });
+		const sendStopButton = ref<HTMLElement>();
+		expose({
+			focus: inputFocusSpy,
+			setText,
+			setPrefill,
+			clearTextIfMatches,
+			isDirty,
+			getSendStopButtonElement: () => sendStopButton.value,
+		});
 		return () =>
 			h('div', { 'data-test-id': 'instance-ai-input-stub' }, [
 				props.suggestions === undefined ? 'unset' : String(props.suggestions.length),
@@ -180,6 +192,15 @@ export const InstanceAiInputStub = defineComponent({
 					'span',
 					{ 'data-test-id': 'instance-ai-input-attachments' },
 					hasAttachments.value ? 'attached' : '',
+				),
+				h(
+					'button',
+					{
+						ref: sendStopButton,
+						'data-test-id': 'instance-ai-input-stop',
+						onClick: () => emit('stop'),
+					},
+					'Stop',
 				),
 				h(
 					'button',

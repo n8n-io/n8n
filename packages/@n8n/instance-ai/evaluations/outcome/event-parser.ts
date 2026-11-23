@@ -4,6 +4,7 @@
 
 import {
 	AGENT_BUILDER_TOOL_NAMES,
+	CHANGE_DATA_TABLES_TOOL_NAME,
 	getExecutionCallAction,
 	isFormerDataTablesTool,
 	REMOVED_BUILDER_TOOL_NAMES,
@@ -256,22 +257,25 @@ function captureConfigEvalRef(
 }
 
 /**
- * Capture an agent ref from the builder tools that the orchestrator runs: a successful
- * `agent_builder_select_agent` result, or any result stamped `configMutated: true`.
- * Both carry the target `agentId`. Deduped by type+id.
+ * The Agent a builder tool result targets: a successful `agent_builder_select_agent`
+ * result, or any result stamped `configMutated: true`. Both carry the `agentId`.
  */
+export function builderToolAgentId(toolName: string, result: unknown): string | undefined {
+	const record = toResultRecord(result);
+	const agentId = record ? getString(record, 'agentId') : undefined;
+	if (!record || !agentId) return undefined;
+	const selected = toolName === AGENT_BUILDER_TOOL_NAMES.SELECT_AGENT && record.ok === true;
+	return selected || record.configMutated === true ? agentId : undefined;
+}
+
+/** Capture the Agent a builder tool targets as an artifact ref. Deduped by type+id. */
 function captureBuilderToolAgentRef(
 	toolName: string,
 	result: unknown,
 	out: Map<string, ArtifactRef>,
 ): void {
-	const record = toResultRecord(result);
-	const agentId = record ? getString(record, 'agentId') : undefined;
-	if (!record || !agentId) return;
-	const selected = toolName === AGENT_BUILDER_TOOL_NAMES.SELECT_AGENT && record.ok === true;
-	if (selected || record.configMutated === true) {
-		out.set(`agent:${agentId}`, { type: 'agent', id: agentId });
-	}
+	const agentId = builderToolAgentId(toolName, result);
+	if (agentId) out.set(`agent:${agentId}`, { type: 'agent', id: agentId });
 }
 
 /**
@@ -600,10 +604,7 @@ function extractResourceIds(
 
 	const action = getString(args, 'action');
 
-	if (
-		toolName === EXECUTION_TOOL_LEGACY ||
-		getExecutionCallAction(toolName, action) === 'run'
-	) {
+	if (toolName === EXECUTION_TOOL_LEGACY || getExecutionCallAction(toolName, action) === 'run') {
 		const id = extractIdFromResult(result, 'executionId', 'id');
 		if (id) executionIds.push(id);
 	}
@@ -624,6 +625,25 @@ function extractResourceIds(
 		const id = table ? extractIdFromRecord(table, ['id']) : undefined;
 		if (id) dataTableIds.push(id);
 	}
+
+	if (toolName === CHANGE_DATA_TABLES_TOOL_NAME) {
+		dataTableIds.push(...extractBatchCreatedTableIds(result));
+	}
+}
+
+/**
+ * Ids of the tables that a `change_data_tables` batch created. A batch that
+ * fails later keeps its earlier changes, so a failed batch still counts.
+ */
+function extractBatchCreatedTableIds(result: unknown): string[] {
+	const applied = toResultRecord(result)?.applied;
+	if (!Array.isArray(applied)) return [];
+	return applied.flatMap((change: unknown) => {
+		if (!isRecord(change) || change.action !== 'create') return [];
+		const table = getRecord(change, 'table');
+		const id = table ? extractIdFromRecord(table, ['id']) : undefined;
+		return id ? [id] : [];
+	});
 }
 
 /** Normalize a tool result (object or stringified JSON) to a record. */
