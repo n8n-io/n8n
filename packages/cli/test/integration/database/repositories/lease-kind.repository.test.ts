@@ -19,15 +19,19 @@ describe('LeaseKindRepository', () => {
 		await testDb.terminate();
 	});
 
-	it('keeps one row with default values when the same kind is inserted twice', async () => {
+	it('keeps one row and its counter when the same kind is inserted twice', async () => {
 		await repository.insertIfMissing('test-kind', {});
+		await Container.get(DataSource)
+			.getRepository(LeaseKind)
+			.update({ kind: 'test-kind' }, { fencingTokenCounter: 7 });
+
 		await repository.insertIfMissing('test-kind', {});
 
 		const rows = await Container.get(DataSource).getRepository(LeaseKind).find();
 		expect(rows).toHaveLength(1);
 		expect(rows[0]).toMatchObject({
 			kind: 'test-kind',
-			fencingTokenCounter: 0,
+			fencingTokenCounter: 7,
 			syncLockRoundId: null,
 			syncLockExpiresAt: null,
 			lastFullSyncAt: null,
