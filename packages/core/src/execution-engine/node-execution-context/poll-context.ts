@@ -1,19 +1,26 @@
 import { Time } from '@n8n/constants';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type {
+	AINodeConnectionType,
+	CloseFunction,
 	ICredentialDataDecryptedObject,
 	IDataObject,
+	IExecuteData,
 	INode,
+	INodeExecutionData,
 	IPollFunctions,
 	IWorkflowExecuteAdditionalData,
 	Workflow,
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
+import { createEmptyRunExecutionData } from 'n8n-workflow';
 import { UnexpectedError } from '@n8n/errors';
 
 import { NodeExecutionContext } from './node-execution-context';
+import { SupplyDataContext } from './supply-data-context';
 import { getBinaryHelperFunctions } from './utils/binary-helper-functions';
+import { getInputConnectionData } from './utils/get-input-connection-data';
 import { getRequestHelperFunctions } from './utils/request-helper-functions';
 import { returnJsonArray } from './utils/return-json-array';
 import { getSchedulingFunctions } from './utils/scheduling-helper-functions';
@@ -28,6 +35,8 @@ const throwOnEmitError = () => {
 
 export class PollContext extends NodeExecutionContext implements IPollFunctions {
 	readonly helpers: IPollFunctions['helpers'];
+
+	private readonly closeFunctions: CloseFunction[] = [];
 
 	constructor(
 		workflow: Workflow,
@@ -78,5 +87,38 @@ export class PollContext extends NodeExecutionContext implements IPollFunctions 
 
 	async getCredentials<T extends object = ICredentialDataDecryptedObject>(type: string) {
 		return await this._getRunlessCredentials<T>(type, { credentialUsage: 'trigger' });
+	}
+
+	async getInputConnectionData(
+		connectionType: AINodeConnectionType,
+		itemIndex: number,
+	): Promise<unknown> {
+		const connectionInputData: INodeExecutionData[] = [{ json: {} }];
+		const executeData: IExecuteData = {
+			data: { main: [connectionInputData] },
+			node: this.node,
+			source: null,
+		};
+
+		return await getInputConnectionData.call(
+			this,
+			SupplyDataContext,
+			this.workflow,
+			this.runExecutionData ?? createEmptyRunExecutionData(),
+			this.runIndex,
+			connectionInputData,
+			{},
+			this.additionalData,
+			executeData,
+			this.mode,
+			this.closeFunctions,
+			connectionType,
+			itemIndex,
+		);
+	}
+
+	async __closeConnections() {
+		const closeFunctions = this.closeFunctions.splice(0);
+		await Promise.allSettled(closeFunctions.map(async (close) => await close()));
 	}
 }

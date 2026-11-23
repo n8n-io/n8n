@@ -1,0 +1,7 @@
+{
+	"node": "n8n-nodes-base.pollTrigger",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Development", "Core Nodes"],
+	"resources": {}
+}

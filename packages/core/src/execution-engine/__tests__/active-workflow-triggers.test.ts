@@ -7,6 +7,7 @@ import type {
 	ICredentialDataDecryptedObject,
 	INode,
 	INodeExecutionData,
+	INodeTypes,
 	ITriggerResponse,
 	IWorkflowExecuteAdditionalData,
 	JsonObject,
@@ -46,7 +47,8 @@ const WORKFLOW_SCHEDULE_GROUP_TYPE = 'workflow';
 
 describe('ActiveWorkflowTriggers', () => {
 	const workflowId = 'test-workflow-id';
-	const workflow = mock<Workflow>();
+	const nodeTypes = mock<INodeTypes>();
+	const workflow = mock<Workflow>({ nodeTypes });
 	const workflowGroup = (id = workflowId) => ({ type: WORKFLOW_SCHEDULE_GROUP_TYPE, id });
 	const additionalData = mock<IWorkflowExecuteAdditionalData>();
 	const mode: WorkflowExecuteMode = 'trigger';
