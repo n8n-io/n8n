@@ -1,0 +1,22 @@
+.github/scripts/detect-new-packages.mjs
+  h_52a137d26d774c 16-17,29,40,55,80,87
+.github/scripts/detect-new-packages.test.mjs
+  h_52a137d26d774c 1-37
+.github/scripts/workflow-validation.test.mjs
+  h_52a137d26d774c 452,454-455,460-468
+.github/workflows/ci-detect-new-packages.yml
+  h_52a137d26d774c 33,38,46,52
+.github/workflows/release-publish-new-package.yml
+  h_52a137d26d774c 87
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0701d689e357272ee4e3d0270e755b704ba3e072",
+  "prompts": {},
+  "humans": {
+    "h_52a137d26d774c": {
+      "author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}
