@@ -1,6 +1,6 @@
 import { UserError } from '@n8n/errors';
 
-import { oauth2BasicCredentials } from './headers';
+import { formEncoded, oauth2BasicCredentials } from './headers';
 import { clientCredentialsTokenRequest, createClientCredentialsTokenSource } from './oauth2';
 import type { OAuth2Login } from './types';
 
@@ -184,6 +184,25 @@ describe('createClientCredentialsTokenSource', () => {
 			const source = createClientCredentialsTokenSource(login(), refusing(body, status));
 
 			await expect(source.getToken()).rejects.toThrow(expected);
+		});
+
+		// Sent in the request body the secret is form-encoded, so that is the spelling echoed back
+		it('keeps a form-encoded secret out of the error', async () => {
+			const special = 'cs/9f2a+71c4=ab';
+			const encoded = formEncoded(special);
+			const source = createClientCredentialsTokenSource(
+				login({ clientSecret: special, sendCredentialsIn: 'body' }),
+				refusing(JSON.stringify({ error_description: `the value ${encoded} is not valid` }), 401),
+			);
+
+			const error = await source.getToken().then(
+				() => undefined,
+				(reason: UserError) => reason,
+			);
+
+			expect(encoded).not.toBe(special);
+			expect(error?.message).toContain('is not valid');
+			expect(`${error?.message} ${error?.description ?? ''}`).not.toContain(encoded);
 		});
 
 		it.each([

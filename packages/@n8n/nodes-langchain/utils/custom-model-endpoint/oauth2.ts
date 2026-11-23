@@ -2,7 +2,7 @@ import { isRecord } from '@n8n/utils/is-record';
 import { UserError } from '@n8n/errors';
 
 import { messageFromBody, truncateMessage, withoutSecrets } from './error-handling';
-import { oauth2BasicCredentials } from './headers';
+import { formEncoded, oauth2BasicCredentials } from './headers';
 import type { OAuth2Login } from './types';
 
 const CLOCK_SKEW_MARGIN_MS = 30_000;
@@ -59,9 +59,16 @@ export function clientCredentialsTokenRequest(login: OAuth2Login): TokenRequest 
  * credential-shaped strings this does not know the value of.
  */
 function withoutTheCredential(text: string, login: OAuth2Login): string {
+	// Sent in the body the secret is form-encoded, so that spelling is what an echo returns
+	const spellings = [
+		login.clientSecret,
+		formEncoded(login.clientSecret),
+		oauth2BasicCredentials(login),
+	];
+
 	return withoutSecrets(
 		text,
-		[login.clientSecret, oauth2BasicCredentials(login)].filter((secret) => secret.length > 0),
+		[...new Set(spellings)].filter((secret) => secret.length > 0),
 	);
 }
 

@@ -67,8 +67,9 @@ export async function listGatewayModels(
 		method: 'GET',
 		signal: deadline,
 	}).catch(whenDeadlinePassed);
-	// The body is the second place the gateway can stall: the headers can arrive and
-	// the body never finish, which aborts here rather than above.
+	// The body is the second place the gateway can stall: the headers can arrive and the
+	// body never finish. The transport reads it to filter, so the deadline fires in the
+	// call above and this await resolves what it already holds.
 	const text = await response.text().catch(whenDeadlinePassed);
 	const httpCode = String(response.status);
 

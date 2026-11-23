@@ -1,8 +1,6 @@
 import { redactSecrets } from '@n8n/ai-utilities';
 import { isRecord } from '@n8n/utils/is-record';
 
-import type { CredentialSecrets } from './headers';
-
 const MAX_MESSAGE_LENGTH = 500;
 const UNPARSED = Symbol('unparsed');
 
@@ -22,10 +20,16 @@ function parseJson(text: string): unknown {
 	}
 }
 
+type ClientShaped = Record<string, unknown> & {
+	error: Record<string, unknown> & { message: string };
+};
+
+function isClientShaped(parsed: unknown): parsed is ClientShaped {
+	return isRecord(parsed) && isRecord(parsed.error) && typeof parsed.error.message === 'string';
+}
+
 function clientShapedMessage(parsed: unknown): string | undefined {
-	return isRecord(parsed) && isRecord(parsed.error) && typeof parsed.error.message === 'string'
-		? parsed.error.message
-		: undefined;
+	return isClientShaped(parsed) ? parsed.error.message : undefined;
 }
 
 /** Reads back what this module writes, for callers that handle a failure themselves. */
@@ -90,9 +94,8 @@ function withoutKnownSecrets(text: string, secrets: string[]): string {
  * is free to repeat what it was sent, so its error text is never shown unfiltered.
  *
  * `redactSecrets` is a heuristic over the whole body: it also takes out a phrase that merely
- * looks like a credential, and it replaces a subtree deeper than eight levels wholesale.
- * That trade is worth it on an error body and not on an answer, which is why the streamed
- * path below strips the known values alone.
+ * looks like a credential, and it replaces a subtree deeper than eight levels wholesale. An
+ * error is worth that trade and an answer is not, so nothing here ever reaches an answer.
  */
 export function withoutSecrets(text: string, secrets: string[]): string {
 	return redactSecrets(withoutKnownSecrets(text, secrets));
@@ -114,6 +117,9 @@ const EVENT_BOUNDARY = /\r\n\r\n|\n\n|\r\r/g;
 /** Nothing is held past this without a frame boundary, so an odd gateway cannot grow it. */
 const MAX_CARRIED = 64 * 1024;
 
+/** The client throws on a frame whose JSON carries this, and only such a frame is a refusal. */
+const REFUSAL_KEY = '"error"';
+
 function endOfLastFrame(text: string): number {
 	let end = -1;
 	for (const boundary of text.matchAll(EVENT_BOUNDARY)) {
@@ -123,9 +129,12 @@ function endOfLastFrame(text: string): number {
 }
 
 /**
- * A streamed answer carries the gateway's refusal in a frame of a 200, so the error path
- * below never sees it. Frames are delimited, so each complete one is filtered as it passes
- * and the stream is not held up.
+ * A gateway can refuse inside a frame of a 200, which the error path below never sees.
+ * Only a frame carrying a refusal is filtered: an answer is the user's own content, and
+ * replacing a credential that is also an ordinary word would corrupt it.
+ *
+ * `redactSecrets` is deliberately not used here. It re-serialises the JSON it walks, and a
+ * re-indented frame no longer parses as one.
  */
 function withoutSecretsInStream(
 	body: ReadableStream<Uint8Array>,
@@ -137,28 +146,36 @@ function withoutSecretsInStream(
 	const overlap = Math.max(...secrets.map((secret) => secret.length)) - 1;
 	let carried = '';
 
-	const emit = (text: string, controller: TransformStreamDefaultController<Uint8Array>) =>
-		controller.enqueue(encoder.encode(withoutKnownSecrets(text, secrets)));
+	/**
+	 * A whole frame is self-contained, so a refusal can be told from an answer and an answer
+	 * passes through untouched. A release forced by the size bound is part of neither, and the
+	 * marker may already have gone out in an earlier piece, so that one is always filtered.
+	 */
+	const emit = (
+		text: string,
+		controller: TransformStreamDefaultController<Uint8Array>,
+		framed: boolean,
+	) => {
+		const safe = framed && !text.includes(REFUSAL_KEY) ? text : withoutKnownSecrets(text, secrets);
+		controller.enqueue(encoder.encode(safe));
+	};
 
 	return body.pipeThrough(
 		new TransformStream<Uint8Array, Uint8Array>({
 			transform(chunk, controller) {
 				carried += decoder.decode(chunk, { stream: true });
 
+				const frameEnd = endOfLastFrame(carried);
 				const release =
-					endOfLastFrame(carried) === -1
-						? carried.length > MAX_CARRIED
-							? carried.length - overlap
-							: -1
-						: endOfLastFrame(carried);
+					frameEnd !== -1 ? frameEnd : carried.length > MAX_CARRIED ? carried.length - overlap : -1;
 				if (release <= 0) return;
 
-				emit(carried.slice(0, release), controller);
+				emit(carried.slice(0, release), controller, frameEnd !== -1);
 				carried = carried.slice(release);
 			},
 			flush(controller) {
 				carried += decoder.decode();
-				if (carried.length > 0) emit(carried, controller);
+				if (carried.length > 0) emit(carried, controller, false);
 			},
 		}),
 	);
@@ -166,57 +183,90 @@ function withoutSecretsInStream(
 
 const STREAM_CONTENT_TYPE = 'text/event-stream';
 
-/** Media types are case-insensitive and carry parameters, so compare the essence alone. */
+/**
+ * Media types are case-insensitive and carry parameters, so the essence is compared. A
+ * gateway that declares nothing is treated as streaming, because buffering a stream to
+ * find out would hold back every token.
+ */
 function isStreamed(response: Response): boolean {
 	const declared = response.headers.get('content-type');
-	return declared?.split(';')[0].trim().toLowerCase() === STREAM_CONTENT_TYPE;
+	if (declared === null) return true;
+	return declared.split(';')[0].trim().toLowerCase() === STREAM_CONTENT_TYPE;
+}
+
+/**
+ * `new Response(body, init)` drops these read-only fields, as the transport below also
+ * finds. `statusText` is left behind on purpose: the constructor rejects a reason phrase
+ * that is not ASCII, and nothing downstream reads it.
+ */
+function rebuiltFrom(response: Response, body: BodyInit, headers: Headers): Response {
+	return Object.defineProperties(new Response(body, { status: response.status, headers }), {
+		url: { value: response.url },
+		redirected: { value: response.redirected },
+		type: { value: response.type },
+	});
+}
+
+function withoutContentLength(response: Response): Headers {
+	const headers = new Headers(response.headers);
+	headers.delete('content-length');
+	return headers;
+}
+
+/**
+ * Every reader decodes before it displays, so the decoded text is filtered as well as the
+ * bytes: a credential spelled `\u0073k-…` or `&#115;k-…` would otherwise be rebuilt in
+ * cleartext downstream. The body is rewritten only when a filter changed something, so an
+ * untouched error reaches the client exactly as the gateway sent it.
+ */
+function filteredErrorBody(raw: string, secrets: string[]): string {
+	const filtered = withoutSecrets(raw, secrets);
+	const parsed = parseJson(filtered);
+
+	if (isClientShaped(parsed)) {
+		// Reshaping a body the client already understands would drop the fields beside its message
+		const safe = withoutSecrets(parsed.error.message, secrets);
+		return safe === parsed.error.message
+			? filtered
+			: JSON.stringify({ ...parsed, error: { ...parsed.error, message: safe } });
+	}
+
+	const message = messageFromBody(filtered);
+	return message === undefined
+		? filtered
+		: asClientError(truncateMessage(withoutSecrets(message, secrets)));
 }
 
 export function wrapCustomModelEndpointErrorFetch(
 	baseFetch: typeof fetch,
-	secrets: CredentialSecrets = { login: [], gatewayHeaders: [] },
+	secrets: string[] = [],
 ): typeof fetch {
 	return async (input, init) => {
 		const response = await baseFetch(input, init);
-		// A credential cannot be a word of the answer, so it is taken out of every body
-		const inAnswers = [...secrets.login, ...sentCredential(input, init)];
+		const known = [...secrets, ...sentCredential(input, init)];
 
 		if (response.ok) {
-			if (inAnswers.length === 0 || response.body === null) return response;
+			if (known.length === 0 || response.body === null) return response;
 
-			// A gateway can refuse on a 200, and the client prints that body as the error.
-			// Only the known values go here: the generic pass would redact the answer itself.
-			const filtered = isStreamed(response)
-				? withoutSecretsInStream(response.body, inAnswers)
-				: withoutKnownSecrets(await response.text(), inAnswers);
+			// A refusal can arrive on a 200. An answer never passes through a filter: it is the
+			// user's content, and a credential that is also an ordinary word would corrupt it.
+			if (isStreamed(response)) {
+				const filtered = withoutSecretsInStream(response.body, known);
+				return rebuiltFrom(response, filtered, withoutContentLength(response));
+			}
 
-			const headers = new Headers(response.headers);
-			headers.delete('content-length');
+			const raw = await response.text();
+			if (!isClientShaped(parseJson(raw))) return rebuiltFrom(response, raw, response.headers);
 
-			return new Response(filtered, {
-				status: response.status,
-				statusText: response.statusText,
-				headers,
-			});
+			const body = filteredErrorBody(raw, known);
+			return rebuiltFrom(response, body, withoutContentLength(response));
 		}
 
-		// A gateway header value can be a word of an answer but not of an error worth keeping
-		const text = withoutSecrets((await response.text()).trim(), [
-			...inAnswers,
-			...secrets.gatewayHeaders,
-		]);
-		// Reshaping a body the client already understands would drop the fields beside its message
-		const message =
-			clientShapedMessage(parseJson(text)) === undefined ? messageFromBody(text) : undefined;
+		const body = filteredErrorBody((await response.text()).trim(), known);
+		const headers = withoutContentLength(response);
+		// Reshaping produced client-shaped JSON; saying so is a no-op when it already was
+		if (isClientShaped(parseJson(body))) headers.set('content-type', 'application/json');
 
-		const headers = new Headers(response.headers);
-		headers.delete('content-length');
-		if (message !== undefined) headers.set('content-type', 'application/json');
-
-		return new Response(message === undefined ? text : asClientError(truncateMessage(message)), {
-			status: response.status,
-			statusText: response.statusText,
-			headers,
-		});
+		return rebuiltFrom(response, body, headers);
 	};
 }

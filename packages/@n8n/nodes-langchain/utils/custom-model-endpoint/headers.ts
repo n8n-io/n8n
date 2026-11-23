@@ -55,27 +55,17 @@ function loginSecrets(login: LoginMethod): string[] {
 	}
 }
 
-export interface CredentialSecrets {
-	/** A credential is never a legitimate word in an answer, so this is filtered everywhere. */
-	login: string[];
-	/** A user-chosen string can also be a word in an answer, so this is filtered from errors. */
-	gatewayHeaders: string[];
-}
-
 /**
- * Every value of the credential that must not reach the user in error text, split by how
- * safe it is to redact. A gateway header value is trimmed, because `Headers.set` trims it
- * on the way out and the gateway can only echo what it was sent.
+ * Every value of the credential that must not reach the user in an error. Values are
+ * trimmed, because `Headers.set` trims them on the way out and a gateway can only echo
+ * what it was sent.
  */
 export function credentialSecrets(
 	endpoint: Pick<EndpointCredential, 'login' | 'gatewayHeaders'>,
-): CredentialSecrets {
-	const present = (values: string[]) => values.filter((value) => value.length > 0);
-
-	return {
-		login: present(loginSecrets(endpoint.login)),
-		gatewayHeaders: present(Object.values(endpoint.gatewayHeaders).map((value) => value.trim())),
-	};
+): string[] {
+	return [...loginSecrets(endpoint.login), ...Object.values(endpoint.gatewayHeaders)]
+		.map((value) => value.trim())
+		.filter((value) => value.length > 0);
 }
 
 export function toHeaderRecord(headers: IDataObject | undefined): Record<string, string> {

@@ -86,7 +86,8 @@ describe('wrapCustomModelEndpointErrorFetch', () => {
 		expect(await response.text()).toBe(body);
 	});
 
-	it('hands back the very same 200, so a stream is never buffered', async () => {
+	// A credential with nothing to hide leaves the response object itself untouched
+	it('hands back the very same 200 when there is no secret to remove', async () => {
 		const ok = new Response('{"choices":[{"text":"hello"}]}', { status: 200 });
 		const wrapped = wrapCustomModelEndpointErrorFetch((async () => ok) as typeof fetch);
 
@@ -307,9 +308,7 @@ describe('a gateway that repeats what it was sent', () => {
 				})) as typeof fetch;
 
 		const readAll = async (baseFetch: typeof fetch, login: string[]) =>
-			await (
-				await wrapCustomModelEndpointErrorFetch(baseFetch, { login, gatewayHeaders: [] })(BASE_URL)
-			).text();
+			await (await wrapCustomModelEndpointErrorFetch(baseFetch, login)(BASE_URL)).text();
 
 		// The gateway's refusal rides a frame of a 200, so the error path never sees it
 		it('keeps a secret out of an error frame', async () => {
@@ -356,22 +355,20 @@ describe('a gateway that repeats what it was sent', () => {
 			expect(await readAll(streamed(frames), [SECRET])).not.toContain(SECRET);
 		});
 
-		const NOTHING_RELEASED = 'nothing released';
-
 		/**
-		 * The first chunk the consumer sees while the producer is still holding. A transform
-		 * that buffers instead of streaming releases nothing until the producer finishes.
+		 * The producer holds until the consumer has read, so a transform that buffers instead
+		 * of streaming deadlocks and the test times out. No wall clock decides the pass.
 		 */
-		const releasedWhileProducing = async (contentType: string, head: string) => {
-			let release = () => {};
-			const held = new Promise<void>((resolve) => {
-				release = resolve;
+		const releasedWhileProducing = async (contentType: string | null, head: string) => {
+			let readFirst = () => {};
+			const read = new Promise<void>((resolve) => {
+				readFirst = resolve;
 			});
 			const body = new ReadableStream<Uint8Array>({
 				async start(controller) {
 					const encoder = new TextEncoder();
 					controller.enqueue(encoder.encode(head));
-					await held;
+					await read;
 					controller.enqueue(encoder.encode('data: [DONE]\n\n'));
 					controller.close();
 				},
@@ -379,22 +376,16 @@ describe('a gateway that repeats what it was sent', () => {
 			const baseFetch = (async () =>
 				new Response(body, {
 					status: 200,
-					headers: { 'content-type': contentType },
+					headers: contentType === null ? {} : { 'content-type': contentType },
 				})) as typeof fetch;
 
-			const response = await wrapCustomModelEndpointErrorFetch(baseFetch, {
-				login: [SECRET],
-				gatewayHeaders: [],
-			})(BASE_URL);
+			const response = await wrapCustomModelEndpointErrorFetch(baseFetch, [SECRET])(BASE_URL);
 			const reader = (response.body as ReadableStream<Uint8Array>).getReader();
 
-			const first = await Promise.race([
-				reader.read().then(({ value }) => new TextDecoder().decode(value)),
-				new Promise<string>((resolve) => setTimeout(() => resolve(NOTHING_RELEASED), 50)),
-			]);
-			release();
+			const { value } = await reader.read();
+			readFirst();
 			void reader.cancel();
-			return first;
+			return new TextDecoder().decode(value);
 		};
 
 		it.each([
@@ -403,9 +394,14 @@ describe('a gateway that repeats what it was sent', () => {
 			['a carriage return alone ends it', 'text/event-stream', 'data: one\r\r'],
 			['the media type is capitalised', 'Text/Event-Stream', 'data: one\n\n'],
 			['the media type carries a charset', 'text/event-stream; charset=utf-8', 'data: one\n\n'],
-		])('releases a frame before the stream ends when %s', async (_name, contentType, head) => {
-			expect(await releasedWhileProducing(contentType, head)).toBe(head);
-		});
+			['the gateway declares no media type at all', null, 'data: one\n\n'],
+		])(
+			'releases a frame before the stream ends when %s',
+			async (_name, contentType, head) => {
+				expect(await releasedWhileProducing(contentType, head)).toBe(head);
+			},
+			2000,
+		);
 
 		// Without a bound a gateway that never ends a frame would hold the whole body in memory
 		it('releases a body that never ends a frame, rather than holding it whole', async () => {
@@ -413,8 +409,32 @@ describe('a gateway that repeats what it was sent', () => {
 
 			const released = await releasedWhileProducing('text/event-stream', filler);
 
-			expect(released).not.toBe(NOTHING_RELEASED);
+			expect(released.length).toBeGreaterThan(0);
 			expect(released.length).toBeLessThan(filler.length);
+		}, 2000);
+
+		// An answer is the user's own content. A credential that is also an ordinary word, as
+		// Ollama and LM Studio document, must not be cut out of it.
+		it.each([
+			[
+				'a frame of a stream',
+				'text/event-stream',
+				'data: {"choices":[{"delta":{"content":"run `ollama serve`"}}]}\n\n',
+			],
+			[
+				'a non-streamed body',
+				'application/json',
+				'{"choices":[{"message":{"content":"run `ollama serve`"}}]}',
+			],
+			['a model list', 'application/json', '{"data":[{"id":"ollama/llama3.1"},{"id":"gpt-4o"}]}'],
+		])('leaves %s alone', async (_name, contentType, answer) => {
+			const baseFetch = (async () =>
+				new Response(answer, {
+					status: 200,
+					headers: { 'content-type': contentType },
+				})) as typeof fetch;
+
+			expect(await readAll(baseFetch, ['ollama', 'Bearer ollama'])).toBe(answer);
 		});
 
 		// A gateway header value is a user-chosen word that can also be in the answer, so it is
@@ -426,10 +446,7 @@ describe('a gateway that repeats what it was sent', () => {
 					status: 200,
 					headers: { 'content-type': 'application/json' },
 				})) as typeof fetch;
-			const wrapped = wrapCustomModelEndpointErrorFetch(baseFetch, {
-				login: [SECRET],
-				gatewayHeaders: ['platform'],
-			});
+			const wrapped = wrapCustomModelEndpointErrorFetch(baseFetch, [SECRET, 'platform']);
 
 			expect(await (await wrapped(BASE_URL)).text()).toBe(answer);
 		});
@@ -445,12 +462,75 @@ describe('a gateway that repeats what it was sent', () => {
 			expect(await readAll(baseFetch, [SECRET])).not.toContain(SECRET);
 		});
 
-		it('filters a secret split across two chunks', async () => {
+		// The last frame of a stream often arrives with no trailing blank line
+		it('delivers and filters a final frame that ends no frame', async () => {
+			const frames = ['data: one\n\n', `data: {"error":{"message":"bad key ${SECRET}"}}`];
+
+			const surfaced = await readAll(streamed(frames), [SECRET]);
+
+			expect(surfaced).toContain('data: one');
+			expect(surfaced).toContain('bad key ***');
+			expect(surfaced).not.toContain(SECRET);
+		});
+
+		// The tail held back at the size-bound release is what stops a secret being cut in two
+		it('filters a secret straddling the release of a body that ends no frame', async () => {
+			const filler = `{"error":"${'x'.repeat(64 * 1024)}`;
 			const body = new ReadableStream<Uint8Array>({
 				start(controller) {
 					const encoder = new TextEncoder();
-					controller.enqueue(encoder.encode(`data: {"m":"${SECRET.slice(0, 6)}`));
-					controller.enqueue(encoder.encode(`${SECRET.slice(6)}"}\n\n`));
+					controller.enqueue(encoder.encode(filler + SECRET.slice(0, 8)));
+					controller.enqueue(encoder.encode(`${SECRET.slice(8)}"}`));
+					controller.close();
+				},
+			});
+			const baseFetch = (async () =>
+				new Response(body, {
+					status: 200,
+					headers: { 'content-type': 'text/event-stream' },
+				})) as typeof fetch;
+
+			expect(await readAll(baseFetch, [SECRET])).not.toContain(SECRET);
+		});
+
+		// Decoding each chunk on its own would turn the halves of a character into U+FFFD
+		it('keeps a character whose bytes arrive in two chunks', async () => {
+			const frame = 'data: {"m":"né"}\n\n';
+			const bytes = new TextEncoder().encode(frame);
+			const mid = frame.indexOf('é') + 1;
+			const body = new ReadableStream<Uint8Array>({
+				start(controller) {
+					controller.enqueue(bytes.slice(0, mid));
+					controller.enqueue(bytes.slice(mid));
+					controller.close();
+				},
+			});
+			const baseFetch = (async () =>
+				new Response(body, {
+					status: 200,
+					headers: { 'content-type': 'text/event-stream' },
+				})) as typeof fetch;
+
+			expect(await readAll(baseFetch, [SECRET])).toBe(frame);
+		});
+
+		it('hands back a status that carries no body', async () => {
+			const baseFetch = (async () => new Response(null, { status: 204 })) as typeof fetch;
+
+			const response = await wrapCustomModelEndpointErrorFetch(baseFetch, [SECRET])(BASE_URL);
+
+			expect(response.status).toBe(204);
+			expect(response.body).toBeNull();
+		});
+
+		it('filters a secret split across two chunks', async () => {
+			const refusal = `data: {"error":{"message":"bad key ${SECRET}"}}\n\n`;
+			const split = refusal.indexOf(SECRET) + 6;
+			const body = new ReadableStream<Uint8Array>({
+				start(controller) {
+					const encoder = new TextEncoder();
+					controller.enqueue(encoder.encode(refusal.slice(0, split)));
+					controller.enqueue(encoder.encode(refusal.slice(split)));
 					controller.close();
 				},
 			});
