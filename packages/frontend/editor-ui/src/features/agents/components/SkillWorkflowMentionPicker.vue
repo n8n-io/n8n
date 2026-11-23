@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { SkillWorkflowMention } from '@n8n/api-types';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import {
 	N8nDropdownMenu,
 	N8nIcon,
@@ -13,6 +14,7 @@ import {
 } from '@n8n/design-system';
 import { DEBOUNCE_TIME } from '@n8n/frontend-constants/durations';
 import { useI18n } from '@n8n/i18n';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { useDebounceFn } from '@vueuse/core';
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 
@@ -50,6 +52,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const telemetry = useTelemetry();
 const dropdown = useTemplateRef<DropdownMenuExposed>('dropdown');
 const { workflows, isLoading, hasMore, hasError, search, loadMore } = useSkillWorkflowMentionSearch(
 	() => props.projectId,
@@ -140,7 +143,13 @@ function onSelect(itemId: string) {
 		return;
 	}
 	const workflow = workflows.value.find(({ workflowId }) => workflowId === itemId);
-	if (workflow) emit('select', workflow);
+	if (!workflow) return;
+	emit('select', workflow);
+	telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_ADDED_SKILL_WORKFLOW_MENTION, {
+		source: props.mode,
+		scope: props.projectId ? 'project' : 'instance',
+		project_id: props.projectId,
+	});
 }
 
 function handleExternalKeydown(event: KeyboardEvent): boolean {

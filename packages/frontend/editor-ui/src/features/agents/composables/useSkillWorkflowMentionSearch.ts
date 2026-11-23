@@ -19,8 +19,10 @@ export function useSkillWorkflowMentionSearch(projectId: MaybeRefOrGetter<string
 		isLoading.value = true;
 		hasError.value = false;
 		try {
+			const scopeProjectId = toValue(projectId);
 			const page = await workflowsListStore.searchWorkflows({
-				projectId: toValue(projectId),
+				projectId: scopeProjectId,
+				excludePersonalProjectsOfOthers: scopeProjectId ? undefined : true,
 				query: currentQuery || undefined,
 				isArchived: false,
 				select: ['id', 'name'],

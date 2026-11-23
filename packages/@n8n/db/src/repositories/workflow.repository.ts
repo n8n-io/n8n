@@ -1,7 +1,7 @@
 import { GlobalConfig } from '@n8n/config';
 import { assertClearedFor, workflowContentSubject, workflowSubject } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import type { Scope } from '@n8n/permissions';
+import { PROJECT_OWNER_ROLE_SLUG, type Scope } from '@n8n/permissions';
 import { DataSource, In, Like, MoreThan, Not, IsNull } from '@n8n/typeorm';
 import type {
 	SelectQueryBuilder,
@@ -29,6 +29,8 @@ import {
 	WorkflowDependency,
 	WORKFLOW_DEPENDENCY_INDEX_VERSION,
 	User,
+	Project,
+	ProjectRelation,
 } from '../entities';
 import { SharedWorkflow } from '../entities/shared-workflow';
 import type {
@@ -1520,6 +1522,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 
 		this.applyFilters(qb, filtersToApply);
 		this.applyTriggerNodeTypesFilter(qb, options.filter?.triggerNodeTypes as string[] | undefined);
+		this.applyPersonalProjectsOfOthersFilter(qb, user, options.filter);
 		this.applyWorkflowIdsInFilter(qb, options.workflowIdsIn);
 		this.applySelect(qb, options.select);
 		this.applyRelations(qb, options.select);
@@ -1527,6 +1530,34 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		this.applyPagination(qb, options);
 
 		return qb;
+	}
+
+	private applyPersonalProjectsOfOthersFilter(
+		qb: SelectQueryBuilder<WorkflowEntity>,
+		user: User,
+		filter: WorkflowListQueryOptions['filter'],
+	): void {
+		if (filter?.excludePersonalProjectsOfOthers !== true) return;
+
+		const homeSubquery = this.manager
+			.createQueryBuilder()
+			.select('homeShare.workflowId')
+			.from(SharedWorkflow, 'homeShare')
+			.innerJoin(Project, 'homeProject', 'homeProject.id = homeShare.projectId')
+			.leftJoin(
+				ProjectRelation,
+				'homeOwner',
+				'homeOwner.projectId = homeProject.id AND homeOwner.role = :homeOwnerRole',
+			)
+			.where('homeShare.role = :homeShareRole')
+			.andWhere('(homeProject.type = :homeTeamType OR homeOwner.userId = :homeUserId)');
+
+		qb.andWhere(`workflow.id IN (${homeSubquery.getQuery()})`, {
+			homeOwnerRole: PROJECT_OWNER_ROLE_SLUG,
+			homeShareRole: 'workflow:owner',
+			homeTeamType: 'team',
+			homeUserId: user.id,
+		});
 	}
 
 	/**

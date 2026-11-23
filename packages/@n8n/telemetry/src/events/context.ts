@@ -487,6 +487,20 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 			scope_changed: z.boolean().describe('Whether the same save moved the skill to another scope'),
 		}),
 	},
+	USER_ADDED_SKILL_WORKFLOW_MENTION: {
+		name: 'User added skill workflow mention',
+		description:
+			'A user picked a workflow in the skill editor, which adds a workflow mention to the skill text. Fires when the mention is inserted, before the save, so a mention that the user deletes or does not save still counts. Fires only when the workflows in skills flag is on.',
+		properties: z.object({
+			source: z
+				.enum(['typed', 'button'])
+				.describe(
+					'`typed` is the picker that an at sign opens. `button` is the + button of the Workflows section',
+				),
+			scope: skillScope,
+			project_id: skillProjectId,
+		}),
+	},
 	USER_VIEWED_RECOMMENDED_SKILLS: {
 		name: 'User viewed recommended skills',
 		description:

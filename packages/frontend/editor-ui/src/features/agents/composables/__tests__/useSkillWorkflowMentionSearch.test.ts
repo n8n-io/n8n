@@ -30,6 +30,7 @@ describe('useSkillWorkflowMentionSearch', () => {
 
 		expect(searchWorkflows).toHaveBeenCalledWith({
 			projectId: 'project-1',
+			excludePersonalProjectsOfOthers: undefined,
 			query: 'report',
 			isArchived: false,
 			select: ['id', 'name'],
@@ -47,14 +48,18 @@ describe('useSkillWorkflowMentionSearch', () => {
 		expect(hasMore.value).toBe(false);
 	});
 
-	it('searches all readable workflows when the skill has no project', async () => {
+	it('searches readable workflows outside the personal projects of others when the skill has no project', async () => {
 		searchWorkflows.mockResolvedValue([]);
 		const { search } = useSkillWorkflowMentionSearch(() => undefined);
 
 		await search('');
 
 		expect(searchWorkflows).toHaveBeenCalledWith(
-			expect.objectContaining({ projectId: undefined, query: undefined }),
+			expect.objectContaining({
+				projectId: undefined,
+				excludePersonalProjectsOfOthers: true,
+				query: undefined,
+			}),
 		);
 	});
 

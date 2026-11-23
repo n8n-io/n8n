@@ -1721,6 +1721,26 @@ describe('GET /workflows', () => {
 			});
 		});
 
+		test('should leave out workflows from the personal projects of other users', async () => {
+			const ownWorkflow = await createWorkflow({ name: 'Own' }, owner);
+			const teamProject = await createTeamProject('Team', member);
+			const teamWorkflow = await createWorkflow({ name: 'Team' }, teamProject);
+			await createWorkflow({ name: 'Member' }, member);
+			const sharedWorkflow = await createWorkflow({ name: 'Shared' }, anotherMember);
+			await shareWorkflowWithUsers(sharedWorkflow, [owner]);
+
+			const response = await authOwnerAgent
+				.get('/workflows')
+				.query('filter={ "excludePersonalProjectsOfOthers": true }')
+				.query('sortBy=name:asc')
+				.expect(200);
+
+			expect(response.body).toEqual({
+				count: 2,
+				data: [objectContaining({ id: ownWorkflow.id }), objectContaining({ id: teamWorkflow.id })],
+			});
+		});
+
 		test('should filter workflows by field: tags (AND operator)', async () => {
 			const workflow1 = await createWorkflow({ name: 'First' }, owner);
 			const workflow2 = await createWorkflow({ name: 'Second' }, owner);

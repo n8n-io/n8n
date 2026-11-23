@@ -29,6 +29,7 @@ export {
 	renameIntroducesClash,
 } from './utils/skill-names';
 export { getSkillHash } from './utils/skill-hash';
+export { withSkillWorkflowMentionHint } from './utils/skill-workflow-mention-hint';
 export {
 	isSameSkillTarget,
 	skillContentHashOf,

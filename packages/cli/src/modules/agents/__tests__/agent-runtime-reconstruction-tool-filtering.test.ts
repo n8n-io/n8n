@@ -1212,4 +1212,44 @@ describe('AgentRuntimeReconstructionService — workflows that skills mention', 
 
 		expect(toolNamesPassedToBuildFromJson()).toEqual([]);
 	});
+
+	function skillInstructionsPassedToBuildFromJson(): string | undefined {
+		const [, , options] = buildFromJsonMock.mock.calls.at(-1) as [
+			AgentJsonConfig,
+			unknown,
+			BuildFromJsonOptions,
+		];
+		return options.skills?.['skill-1']?.instructions;
+	}
+
+	it('adds the workflow hint to the instructions of a skill that mentions a workflow', async () => {
+		const { service, workflowsInSkillsFlagGate } = makeService({});
+		workflowsInSkillsFlagGate.isEnabled.mockResolvedValue(true);
+		buildFromJsonResolvingTools([]);
+
+		await service.reconstructFromAgentEntity(
+			makeSkillAgentEntity(),
+			mock<CredentialProvider>(),
+			'production',
+		);
+
+		expect(skillInstructionsPassedToBuildFromJson()).toMatch(
+			/^Call \[Get code\]\(n8n:\/\/workflow\/wf-mentioned\) and reply with the code\.\n\n.*If you cannot find or run the workflow, stop and tell the user\.$/,
+		);
+	});
+
+	it('keeps the skill instructions while the flag is off', async () => {
+		const { service, workflowsInSkillsFlagGate } = makeService({});
+		workflowsInSkillsFlagGate.isEnabled.mockResolvedValue(false);
+
+		await service.reconstructFromAgentEntity(
+			makeSkillAgentEntity(),
+			mock<CredentialProvider>(),
+			'production',
+		);
+
+		expect(skillInstructionsPassedToBuildFromJson()).toBe(
+			'Call [Get code](n8n://workflow/wf-mentioned) and reply with the code.',
+		);
+	});
 });

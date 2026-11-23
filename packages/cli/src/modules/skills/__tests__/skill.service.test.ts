@@ -17,6 +17,7 @@ import type { Skill } from '../database/entities/skill.entity';
 import { SkillSyncedError } from '../errors/skill-synced.error';
 import { toAgentSkill, type ResolvedSkillRow } from '../utils/skill-content';
 import { getSkillHash } from '../utils/skill-hash';
+import { SKILL_WORKFLOW_MENTION_HINT } from '../utils/skill-workflow-mention-hint';
 
 vi.mock('@n8n/permissions', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@n8n/permissions')>()),
@@ -40,6 +41,7 @@ describe('SkillService', () => {
 		assistantGate,
 		links,
 		skillSyncGate,
+		workflowsInSkillsGate,
 		service,
 	} = createSkillServices();
 	const user = mock<User>({ id: 'user-1' });
@@ -1154,6 +1156,37 @@ describe('SkillService', () => {
 
 		it('does not read a missing skill', async () => {
 			expect(await service.readForMcp(user, 'missing')).toBeNull();
+		});
+
+		describe('a skill that mentions a workflow', () => {
+			const mentioning = 'Run [Report](n8n://workflow/wf-1).';
+
+			beforeEach(() => {
+				projectSkill.version.instructions = mentioning;
+				projectScope.getProjectIds.mockResolvedValue(['project-1']);
+				skills.findVisiblePage.mockResolvedValue({ skills: [projectSkill.skill], count: 1 });
+			});
+
+			afterEach(() => {
+				projectSkill.version.instructions = 'Use short sentences.';
+			});
+
+			it('adds the workflow hint to the instructions when the flag is on', async () => {
+				workflowsInSkillsGate.isEnabled.mockResolvedValue(true);
+				const expected = `${mentioning}\n\n${SKILL_WORKFLOW_MENTION_HINT}`;
+
+				expect((await service.readForMcp(user, 'skill-2'))?.skill.instructions).toBe(expected);
+				expect((await service.listForMcp(user, 0, 50)).skills[0].skill.instructions).toBe(expected);
+			});
+
+			it('keeps the instructions when the flag is off', async () => {
+				workflowsInSkillsGate.isEnabled.mockResolvedValue(false);
+
+				expect((await service.readForMcp(user, 'skill-2'))?.skill.instructions).toBe(mentioning);
+				expect((await service.listForMcp(user, 0, 50)).skills[0].skill.instructions).toBe(
+					mentioning,
+				);
+			});
 		});
 
 		describe('the origin of a synced skill', () => {

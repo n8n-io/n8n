@@ -112,7 +112,7 @@ export function createSkillServices() {
 		sharedWorkflows,
 		workflowsInSkillsGate,
 	);
-	const runtime = new SkillRuntimeService(skills, projectScope, access);
+	const runtime = new SkillRuntimeService(skills, projectScope, access, workflowsInSkillsGate);
 	const service = new SkillService(
 		logger,
 		skills,
@@ -128,6 +128,7 @@ export function createSkillServices() {
 		links,
 		skillSyncGate,
 		sourceClients,
+		workflowsInSkillsGate,
 	);
 	return {
 		logger,

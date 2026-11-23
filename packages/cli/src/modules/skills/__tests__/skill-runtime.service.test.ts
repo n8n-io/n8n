@@ -10,6 +10,7 @@ import {
 	versionRow,
 	resetSkillMocks,
 } from './test-utils/skill-services';
+import { SKILL_WORKFLOW_MENTION_HINT } from '../utils/skill-workflow-mention-hint';
 import type {
 	AssistantSkillContext,
 	AssistantSkillSummary,
@@ -22,7 +23,8 @@ vi.mock('@n8n/permissions', async (importOriginal) => ({
 }));
 
 describe('SkillRuntimeService', () => {
-	const { skills, usage, txRunner, projectScope, runtime } = createSkillServices();
+	const { skills, usage, txRunner, projectScope, workflowsInSkillsGate, runtime } =
+		createSkillServices();
 	const user = mock<User>({ id: 'user-1' });
 
 	beforeEach(async () => await resetSkillMocks({ skills, usage, txRunner }));
@@ -140,6 +142,30 @@ describe('SkillRuntimeService', () => {
 				frontmatter: null,
 				files: [],
 			});
+		});
+
+		it('adds the workflow hint to instructions that mention a workflow when the flag is on', async () => {
+			workflowsInSkillsGate.isEnabled.mockResolvedValue(true);
+			row.version.instructions = 'Run [Report](n8n://workflow/wf-1).';
+
+			expect((await runtime.readForAssistant(context, 'skill-1'))?.instructions).toBe(
+				`Run [Report](n8n://workflow/wf-1).\n\n${SKILL_WORKFLOW_MENTION_HINT}`,
+			);
+		});
+
+		it('keeps instructions without a workflow mention when the flag is on', async () => {
+			workflowsInSkillsGate.isEnabled.mockResolvedValue(true);
+
+			expect((await runtime.readForAssistant(context, 'skill-1'))?.instructions).toBe('Be brief.');
+		});
+
+		it('keeps instructions that mention a workflow when the flag is off', async () => {
+			workflowsInSkillsGate.isEnabled.mockResolvedValue(false);
+			row.version.instructions = 'Run [Report](n8n://workflow/wf-1).';
+
+			expect((await runtime.readForAssistant(context, 'skill-1'))?.instructions).toBe(
+				'Run [Report](n8n://workflow/wf-1).',
+			);
 		});
 
 		it('returns the path of each saved file without its content', async () => {

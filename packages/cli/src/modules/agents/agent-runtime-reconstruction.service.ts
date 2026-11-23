@@ -64,7 +64,7 @@ import { createAiMcpFetch, createAiProxyFetch, createWebSearchFetch } from '@/ut
 import { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
 import type { KnowledgeConsumerScope } from '@/modules/knowledge/knowledge-consumer-scope';
 import { KnowledgeRetrievalService } from '@/modules/knowledge/retrieval/knowledge-retrieval.service';
-import { WorkflowsInSkillsFlagGate } from '@/modules/skills';
+import { withSkillWorkflowMentionHint, WorkflowsInSkillsFlagGate } from '@/modules/skills';
 import type { EmbeddingProviderOptions } from '@/modules/knowledge/vector-stores/embedding-credential';
 import { WorkflowRunner } from '@/workflow-runner';
 import { CallableWorkflowLoader } from '@/workflows/callable/callable-workflow-loader.service';
@@ -458,11 +458,12 @@ export class AgentRuntimeReconstructionService {
 		if (!agentEntity.schema) {
 			throw new UserError('Agent has no JSON config.');
 		}
-		let config = await this.withSkillWorkflowTools(
+		const skillWorkflows = await this.withSkillWorkflows(
 			toAgentDocument(agentEntity.schema, skillRefs),
 			skills,
 			agentEntity.projectId,
 		);
+		let config = skillWorkflows.config;
 
 		// Published/integration runs have no interactive n8n user and keep
 		// today's project-scoped trust boundary. When a user is present (in-app
@@ -508,7 +509,7 @@ export class AgentRuntimeReconstructionService {
 			credentialProvider,
 			toolDescriptors,
 			toolCodeByName,
-			skills,
+			skills: skillWorkflows.skills,
 			runtimeProfile: 'top-level',
 			supportsHitl,
 			runType,
@@ -733,7 +734,12 @@ export class AgentRuntimeReconstructionService {
 	async reconstructFromResolvedSource(
 		params: ReconstructAgentRuntimeParams,
 	): Promise<ReconstructedAgentRuntime> {
-		let config = await this.withSkillWorkflowTools(params.config, params.skills, params.projectId);
+		const skillWorkflows = await this.withSkillWorkflows(
+			params.config,
+			params.skills,
+			params.projectId,
+		);
+		let config = skillWorkflows.config;
 		let unavailableTools: UnavailableTool[] = [];
 		if (params.user && config.tools?.length) {
 			// Sub-agent runtimes are built per delegation and never cached, so the
@@ -756,19 +762,20 @@ export class AgentRuntimeReconstructionService {
 		return await this.reconstructRuntime({
 			...params,
 			config,
+			skills: skillWorkflows.skills,
 			credentialIntegrations: [],
 			subAgentDelegation,
 			unavailableTools,
 		});
 	}
 
-	private async withSkillWorkflowTools(
+	private async withSkillWorkflows(
 		config: AgentJsonConfig,
 		skills: Record<string, AgentSkill>,
 		projectId: string,
-	): Promise<AgentJsonConfig> {
+	): Promise<{ config: AgentJsonConfig; skills: Record<string, AgentSkill> }> {
 		if (!config.skills?.length || !(await this.workflowsInSkillsFlagGate.isEnabled())) {
-			return config;
+			return { config, skills };
 		}
 		const legacyRefs = extractAgentWorkflowRefs(config).filter(
 			(ref) => ref.workflowId === undefined,
@@ -784,7 +791,15 @@ export class AgentRuntimeReconstructionService {
 				return workflow ? [[ref.workflow, workflow.id] as const] : [];
 			}),
 		);
-		return withSkillWorkflowTools(config, skills, legacyWorkflowIds);
+		return {
+			config: withSkillWorkflowTools(config, skills, legacyWorkflowIds),
+			skills: Object.fromEntries(
+				Object.entries(skills).map(([id, skill]) => [
+					id,
+					{ ...skill, instructions: withSkillWorkflowMentionHint(skill.instructions) },
+				]),
+			),
+		};
 	}
 
 	private async reconstructRuntime(
