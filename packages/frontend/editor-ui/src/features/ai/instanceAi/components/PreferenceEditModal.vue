@@ -19,7 +19,6 @@ import {
 import type { IconOrEmoji } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useUsersStore } from '@n8n/stores/users.store';
-import { useRootStore } from '@n8n/stores/useRootStore';
 import type { Rule, RuleGroup } from '@/Interface';
 
 import { DEFAULT_PROJECT_ICON } from '@/features/collaboration/projects/projects.constants';
@@ -30,9 +29,7 @@ import {
 	canWriteProjectScope,
 } from '@/features/settings/context/context.utils';
 
-import { editPreferenceCard, undoPreferenceCard } from '../instanceAi.api';
-import { useThread } from '../instanceAi.store';
-import { isPreferenceCardEvent } from '../preferenceCard.utils';
+import { usePreferenceCardHost } from '../preferenceCardHost';
 import { preferenceScopeLabel } from '../preferenceScope.utils';
 
 type FailureKey =
@@ -55,8 +52,7 @@ const props = defineProps<{
 }>();
 
 const i18n = useI18n();
-const { restApiContext } = useRootStore();
-const thread = useThread();
+const host = usePreferenceCardHost();
 
 const projectsStore = useProjectsStore();
 const usersStore = useUsersStore();
@@ -110,7 +106,7 @@ function optionFor(value: string): ScopeOption {
 	const project = projects.find((candidate) => candidate.id === projectId);
 	return {
 		value,
-		label: preferenceScopeLabel(i18n, 'project', projectId, projects, thread.projectId),
+		label: preferenceScopeLabel(i18n, 'project', projectId, projects, host.projectId()),
 		icon: project?.type === 'personal' ? USER_ICON : (project?.icon ?? DEFAULT_PROJECT_ICON),
 	};
 }
@@ -124,7 +120,7 @@ function optionFor(value: string): ScopeOption {
  */
 const scopeOptions = computed<ScopeOption[]>(() => {
 	const values = [USER_SCOPE_VALUE];
-	const boundProjectId = thread.projectId;
+	const boundProjectId = host.projectId();
 	if (boundProjectId && canWriteProjectScope(boundProjectId)) {
 		values.push(projectScopeValue(boundProjectId));
 	}
@@ -190,18 +186,20 @@ async function save() {
 	busy.value = true;
 	errorMessage.value = '';
 	try {
-		const response = await editPreferenceCard(restApiContext, thread.id, props.preferenceId, {
-			runId: props.runId,
-			toolCallId: props.toolCallId,
+		const preference = await host.edit(cardTarget(), {
 			content: validation.value.data,
 			// The scope travels only when the user moved it. The card's idea of where the row
 			// lives is its own last write, which a move on the settings page or over MCP makes
 			// stale, so restating it on a text-only edit would undo that move.
 			...(scopeChanged.value ? parseScope() : {}),
 		});
-		if (!applyReturnedFact(response, 'instanceAi.preferenceCard.modal.saveFailed')) return;
+		// An answer without the card state leaves the row state unknown, so the modal stays open.
+		if (!preference) {
+			errorMessage.value = i18n.baseText('instanceAi.preferenceCard.modal.saveFailed');
+			return;
+		}
 		// The row the write returned, so the card reads the new scope without another read.
-		contextStore.setRow(response.preference);
+		contextStore.setRow(preference);
 		open.value = false;
 	} catch (error) {
 		// The refusal belongs next to the text that caused it, so the modal stays open.
@@ -217,11 +215,10 @@ async function remove() {
 	errorMessage.value = '';
 	try {
 		// Opening this modal is the deliberate step, so nothing asks again here.
-		const response = await undoPreferenceCard(restApiContext, thread.id, props.preferenceId, {
-			runId: props.runId,
-			toolCallId: props.toolCallId,
-		});
-		if (!applyReturnedFact(response, 'instanceAi.preferenceCard.modal.removeFailed')) return;
+		if (!(await host.undo(cardTarget()))) {
+			errorMessage.value = i18n.baseText('instanceAi.preferenceCard.modal.removeFailed');
+			return;
+		}
 		// The row is gone, so nothing may resolve it again.
 		contextStore.forgetRow(props.preferenceId);
 		open.value = false;
@@ -232,22 +229,12 @@ async function remove() {
 	}
 }
 
-/**
- * Moves the card with the fact the endpoint returned. The stream delivers the same
- * fact and sets the same fields. A body without that fact leaves the row state
- * unknown, so nothing is applied and the modal stays open with the failure line.
- */
-function applyReturnedFact(response: unknown, failureKey: FailureKey): boolean {
-	const event =
-		typeof response === 'object' && response !== null && 'event' in response
-			? response.event
-			: undefined;
-	if (!isPreferenceCardEvent(event)) {
-		errorMessage.value = i18n.baseText(failureKey);
-		return false;
-	}
-	thread.applyEvent(event);
-	return true;
+function cardTarget() {
+	return {
+		preferenceId: props.preferenceId,
+		toolCallId: props.toolCallId,
+		runId: props.runId,
+	};
 }
 
 /** A close while a request is in flight would hide the refusal it may still return. */

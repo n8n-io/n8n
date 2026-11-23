@@ -1,13 +1,14 @@
 <script setup lang="ts">
-import type {
-	AgentJsonConfig,
-	AgentSseEvent,
-	AssistantAgentTargetsState,
-	InstanceAiAttachment,
-	InstanceAiHandoffContext,
-	InstanceAiNodesAttachment,
-	InstanceAiResourceAttachment,
-	InstanceAiWorkflowAttachment,
+import {
+	EXTENDED_PROMPT_MAX_LENGTH,
+	type AgentJsonConfig,
+	type AgentSseEvent,
+	type AssistantAgentTargetsState,
+	type InstanceAiAttachment,
+	type InstanceAiHandoffContext,
+	type InstanceAiNodesAttachment,
+	type InstanceAiResourceAttachment,
+	type InstanceAiWorkflowAttachment,
 } from '@n8n/api-types';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@n8n/composables/useToast';
@@ -15,6 +16,7 @@ import { useAssistantAwayTelemetry } from '../composables/useAssistantAwayTeleme
 import { getCurrentTurn } from '../assistantTurn';
 import {
 	N8nActionDropdown,
+	N8nChatRating,
 	N8nIconButton,
 	N8nResizeWrapper,
 	N8nTabsRoot,
@@ -109,6 +111,11 @@ import { assistantAutoApprovalExtension } from './assistantAutoApproval';
 import { assistantConfirmationExtension } from './assistantConfirmation';
 import { assistantHostEventExtensions } from './assistantHostEvents';
 import { assistantCodeToolResultExtension } from './assistantCodeToolResults';
+import {
+	ASSISTANT_PREFERENCE_CARDS,
+	assistantPreferenceCardExtension,
+	useAssistantPreferenceCards,
+} from './assistantPreferenceCards';
 import { assistantSharedFilesExtension } from './assistantSharedFiles';
 import { assistantToolResultTableExtension } from './assistantToolResultTables';
 import { useAssistantAgentThreadsStore } from './assistantAgentThreads.store';
@@ -131,6 +138,7 @@ import {
 import { useAssistantAgentMentions } from './useAssistantAgentMentions';
 import { useAssistantAgentTargets } from './useAssistantAgentTargets';
 import { useAssistantAgentTrace } from './useAssistantAgentTrace';
+import { useAssistantAgentFeedback } from './useAssistantAgentFeedback';
 import { useAssistantArtifactThread } from './useAssistantArtifactThread';
 
 const props = defineProps<{ threadId: string; projectId: string }>();
@@ -284,6 +292,7 @@ function messageReferences(context: Record<string, unknown> | undefined): unknow
 const interactionExtensions = [
 	assistantConfirmationExtension,
 	assistantAutoApprovalExtension,
+	assistantPreferenceCardExtension,
 	...assistantHostEventExtensions,
 	assistantToolResultTableExtension,
 	assistantCodeToolResultExtension,
@@ -291,6 +300,15 @@ const interactionExtensions = [
 ];
 
 const panel = useTemplateRef<InstanceType<typeof AgentChatPanel>>('panel');
+
+provide(
+	ASSISTANT_PREFERENCE_CARDS,
+	useAssistantPreferenceCards({
+		threadId: props.threadId,
+		projectId: props.projectId,
+		messages: () => panel.value?.messages ?? [],
+	}),
+);
 
 // --- Credits ---
 // The InstanceAiView parent loads the balance, and a push event keeps it current.
@@ -307,6 +325,11 @@ function assertCreditsAvailable(): void {
 }
 
 const trace = useAssistantAgentTrace({
+	threadId: props.threadId,
+	messages: () => panel.value?.messages ?? [],
+});
+
+const feedback = useAssistantAgentFeedback({
 	threadId: props.threadId,
 	messages: () => panel.value?.messages ?? [],
 });
@@ -920,6 +943,7 @@ function updateStagedNodes(attachment: InstanceAiNodesAttachment): void {
 						:input-draft="mentions.draft.value"
 						:interaction-extensions="interactionExtensions"
 						:show-attach-button="false"
+						:max-length="EXTENDED_PROMPT_MAX_LENGTH"
 						:disabled="creditsStore.isOutOfCredits"
 						:before-send="assertCreditsAvailable"
 						@stream-event="onStreamEvent"
@@ -954,6 +978,13 @@ function updateStagedNodes(attachment: InstanceAiNodesAttachment): void {
 								:dismissible="!creditsStore.isOutOfCredits"
 								@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
 								@dismiss="creditBanner.dismiss()"
+							/>
+						</template>
+						<template #message-actions="{ executionId }">
+							<N8nChatRating
+								v-if="feedback.isRateable(executionId)"
+								:rating="feedback.ratingOf(executionId)"
+								@rate="feedback.rate(executionId, $event)"
 							/>
 						</template>
 						<!-- Nodes chips can drop single nodes. The other chips look as the panel draws them. -->
