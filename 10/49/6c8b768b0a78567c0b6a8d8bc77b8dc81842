@@ -1,0 +1,9 @@
+packages/workflow/src/index.ts
+  ai_agent 17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "10496c8b768b0a78567c0b6a8d8bc77b8dc81842",
+  "prompts": {}
+}

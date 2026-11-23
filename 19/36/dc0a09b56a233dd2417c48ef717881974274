@@ -1,0 +1,41 @@
+.github/scripts/github-helpers.test.mjs
+  s_ee09121db36145::t_f429207e8486f2 24,33-75
+  s_ee09121db36145::t_1014b4cc6b9bca 76
+.github/scripts/migration-bump/handle-bump-migration.mjs
+  s_ee09121db36145::t_296528d561c741 184-196
+packages/@n8n/db/scripts/bump-migrations.mjs
+  s_ee09121db36145::t_2cbd3741094d3b 70,72,74
+  s_ee09121db36145::t_a5f3012e12291e 15
+  s_ee09121db36145::t_f491c93308e948 29,35,42-53
+  s_ee09121db36145::t_737eeb7881ed07 138-140
+  s_ee09121db36145::t_15841a7cf6a7ed 135
+  s_ee09121db36145::t_a8d6785f3de7ff 54-55
+packages/@n8n/db/scripts/bump-migrations.test.mjs
+  s_ee09121db36145::t_d7a91804ffff14 94-119
+.github/workflows/util-bump-migration.yml
+  s_ee09121db36145::t_8f0ceb85b9ba97 26-28
+packages/quality/policy/code-health/src/rules/migration-timestamp.rule.ts
+  s_ee09121db36145::t_38eaf2a12d22e9 126
+.github/scripts/migration-bump/handle-bump-migration.test.mjs
+  s_ee09121db36145::t_9d992b515dbce3 53
+  s_ee09121db36145::t_0cbef5d5a3f0fd 199-218
+  s_ee09121db36145::t_917cac44fdfde5 33
+packages/@n8n/db/scripts/migration-timestamps.mjs
+  s_ee09121db36145::t_adb3bfc3f3efc1 15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1936dc0a09b56a233dd2417c48ef717881974274",
+  "prompts": {},
+  "sessions": {
+    "s_ee09121db36145": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ccf088c3-9596-4a0b-a5f9-3a0121cac9b0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

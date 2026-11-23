@@ -1,0 +1,11 @@
+packages/frontend/editor-ui/src/features/settings/security/WorkflowReviewsSection.vue
+  ai_agent 128-131
+packages/frontend/editor-ui/src/features/settings/security/SecuritySettings.test.ts
+  ai_agent 1022
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "654f23b4bef16e8c776542f8d29996c821c5b0d2",
+  "prompts": {}
+}

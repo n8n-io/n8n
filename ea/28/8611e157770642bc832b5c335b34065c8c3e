@@ -1,0 +1,30 @@
+scripts/zero-trust-vault/scoreboard.test.mjs
+  s_293d023a29dd97::t_3786023cdcbdf1 124-136,143-150,154-160,166-173,177-184,217-219,230-232,318-321
+  s_293d023a29dd97::t_7b759b73cdb740 1-123,137-142,151-153,161-165,174-176,185-216,220-229,233-317,322-354
+scripts/zero-trust-vault/compromise-core.mjs
+  s_293d023a29dd97::t_546a1680574489 51-56,101-104,182-183,191-193,204-208
+  s_293d023a29dd97::t_10aab0b3bb991a 1-50,57-100,105-181,184-190,194-203,209-222
+scripts/zero-trust-vault/scoreboard.mjs
+  s_293d023a29dd97::t_3786023cdcbdf1 12,61-64,66-69
+  s_293d023a29dd97::t_dba5402bbf11d9 1-11,13-60,65,70-170
+scripts/zero-trust-vault/scoreboard.html
+  s_293d023a29dd97::t_14fff916dafc18 1-225
+scripts/zero-trust-vault/compromise.mjs
+  s_293d023a29dd97::t_2c64950339b126 10-11,29-39,42-43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ea288611e157770642bc832b5c335b34065c8c3e",
+  "prompts": {},
+  "sessions": {
+    "s_293d023a29dd97": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "20ed4163-15ff-44f2-a2f6-48db5f846d4f",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

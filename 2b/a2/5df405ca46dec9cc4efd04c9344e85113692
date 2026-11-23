@@ -1,0 +1,19 @@
+packages/@n8n/tournament/test/Expression.test.ts
+  s_6e17ad8fee3e37::t_31951c4225b984 46-47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2ba25df405ca46dec9cc4efd04c9344e85113692",
+  "prompts": {},
+  "sessions": {
+    "s_6e17ad8fee3e37": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3eb22668-e9f0-4e19-bf4e-18646a8d620a",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

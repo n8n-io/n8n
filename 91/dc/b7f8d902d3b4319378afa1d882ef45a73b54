@@ -1,0 +1,33 @@
+packages/modules/engine-v2/frontend/src/components/EngineV2CompatibilityButton.test.ts
+  s_5e5f3ce1c6da16::t_daac9164afbe45 38-39
+packages/modules/engine-v2/frontend/src/components/EngineV2CompatibilityDialog.vue
+  s_5e5f3ce1c6da16::t_daac9164afbe45 58-63
+  s_5e5f3ce1c6da16::t_fd7578e6a1e9b4 2,18-19,22,28-32,64-65,84-88
+  s_5e5f3ce1c6da16::t_3f881eda8e18ca 33-35
+packages/modules/engine-v2/frontend/README.md
+  s_5e5f3ce1c6da16::t_daac9164afbe45 32
+packages/modules/engine-v2/frontend/src/components/EngineV2CompatibilityDialog.test.ts
+  s_5e5f3ce1c6da16::t_daac9164afbe45 10,208-239
+  s_5e5f3ce1c6da16::t_2503c9f5dddbb2 240
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_5e5f3ce1c6da16::t_710b3474b64e6b 1830-1832,1835,1867
+  s_5e5f3ce1c6da16::t_fd7578e6a1e9b4 1833-1834
+packages/modules/engine-v2/frontend/src/composables/useEngineV2Compatibility.test.ts
+  s_5e5f3ce1c6da16::t_daac9164afbe45 168
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "91dcb7f8d902d3b4319378afa1d882ef45a73b54",
+  "prompts": {},
+  "sessions": {
+    "s_5e5f3ce1c6da16": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "512d7f4b-1d3a-4776-9de2-8862e7f307bc",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

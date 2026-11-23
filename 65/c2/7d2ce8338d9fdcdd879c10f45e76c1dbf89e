@@ -1,0 +1,35 @@
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/VaultSecretEntry.test.ts
+  s_293d023a29dd97::t_10b0aef41d549d 86-88,105-106,117
+scripts/zero-trust-vault/example-workflow.mjs
+  s_293d023a29dd97::t_e3152e4f40c289 27,67,117,173-174
+  s_293d023a29dd97::t_56737d14ec75f3 175
+  s_293d023a29dd97::t_fd8026078a651c 1,4-11,16-21,25,31,33-66,68-92,94-102,104-116,118-139,141,143-150,152-158,161-163,165-166,170,176-181,183,187-188,190,197,203-206,208,210-217,224-225,230,240-241,243,245,249-251,255,257-259,262
+  s_293d023a29dd97::t_69279f6d2b89dc 193
+  s_293d023a29dd97::t_10d68be29198de 159-160,167-168,219-222,226-227
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/VaultSecretEntry.vue
+  s_293d023a29dd97::t_28d990dec0a74a 65-66,71-72
+scripts/zero-trust-vault/capture.mjs
+  s_293d023a29dd97::t_b4fef402e3a84b 132-145,151-154,160,204,224-226,321-328,342-349
+scripts/zero-trust-vault/capture-window.test.mjs
+  s_293d023a29dd97::t_21c9aef291e519 44-55,139-145
+  s_293d023a29dd97::t_5f3818ec81eeff 218-222
+  s_293d023a29dd97::t_6ddd1652c3cc15 1-43,56-138,146-217,223-224
+scripts/zero-trust-vault/demo-client.mjs
+  s_293d023a29dd97::t_168470e7eb57fe 62-130
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "65c27d2ce8338d9fdcdd879c10f45e76c1dbf89e",
+  "prompts": {},
+  "sessions": {
+    "s_293d023a29dd97": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "20ed4163-15ff-44f2-a2f6-48db5f846d4f",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

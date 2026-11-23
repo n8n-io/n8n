@@ -1,0 +1,208 @@
+packages/frontend/@n8n/design-system/src/components/N8nDataGrid/DataGridLoadingIndicator.vue
+  s_74d64b3f874ae2::t_91f92fa344745f 1-39
+packages/frontend/@n8n/design-system/src/components/index.ts
+  s_74d64b3f874ae2::t_0ceca8a17a083a 238
+packages/frontend/editor-ui/src/features/core/dataTable/composables/useDataTableColumns.ts
+  s_74d64b3f874ae2::t_09e13a74d6eddb 1-5,12,14,16,18,20-45,48-55,57,59-69,71-72,74,76-82,85-89
+packages/frontend/@n8n/design-system/src/components/N8nDataGrid/DataGrid.types.ts
+  s_74d64b3f874ae2::t_32f059823e7e2e 1-4,7-60,62-92,102-193,196-217,230-252
+  s_74d64b3f874ae2::t_3979f2e36948ef 5-6,61
+  s_74d64b3f874ae2::t_a8212bffa78816 194-195,218-219
+  s_74d64b3f874ae2::t_0e08065897cb20 229
+  s_74d64b3f874ae2::t_ae009d8ff2e5f4 220-228
+  s_74d64b3f874ae2::t_54f7cb348d318c 93-101,253
+packages/frontend/@n8n/design-system/src/components/N8nDataGrid/DataGrid.vue
+  s_74d64b3f874ae2::t_53367c4e0643b0 476,478-479,481
+  s_74d64b3f874ae2::t_dd25ba33c56606 506-508,562
+  s_74d64b3f874ae2::t_54e005a100f2a1 232
+  s_74d64b3f874ae2::t_b4465e89435eb1 1-10,12-17,19-20,22-39,41-44,46-67,69-80,84-87,92,95-102,115-151,157-165,174-177,179-226,229-231,233-258,261-264,266-268,270-289,292-302,314-318,320-391,393-394,398-404,411-475,477,480,482-502,504-505,509-533,535-561,563-647,655,657-662,665-668,670-690,692-704,709-735,738-756,758-760,762-765,767-770,772-776,778-784,786-788,790-802,805-806,808-812,815-818,820-823,825-828,830-832,857-859,861-863,865-867,869-870,872-881,934-935,937-942,944-946,949-950,952-958
+  s_74d64b3f874ae2::t_c9ee78908d2938 45
+  s_74d64b3f874ae2::t_28cff8939db37b 40,81-83,534
+  s_74d64b3f874ae2::t_7d448c52c7169c 88
+  s_74d64b3f874ae2::t_a6113e06d38403 663
+  s_74d64b3f874ae2::t_50f121e7577526 669
+  s_74d64b3f874ae2::t_a8212bffa78816 68,303-309,312-313,392
+  s_74d64b3f874ae2::t_63fd07be00118a 93-94,103-104,106-109,166-173,178,259-260,265,310-311,503,649-654,664,804,839-848,947-948
+  s_74d64b3f874ae2::t_557d251348c44d 105,110-114
+  s_74d64b3f874ae2::t_95428a4001266a 11
+  s_74d64b3f874ae2::t_d5ad2b9a8be545 21,89-91,269,290-291,834-836,838,849-850,852-855
+  s_74d64b3f874ae2::t_8882f255667bc6 227-228
+  s_74d64b3f874ae2::t_6ede9f90976bf3 152-156
+  s_74d64b3f874ae2::t_958d4645aff241 395-397,405-410
+  s_74d64b3f874ae2::t_abc15f0eee4660 648,656,691,705,708,736-737,757,761,766,771,777,785,789,803,807,813-814,819,824,829,833,837,851,856,860,864,868,871,936,943,951
+  s_74d64b3f874ae2::t_97fefce9c2a0b4 706-707,882-933
+  s_74d64b3f874ae2::t_44b94dfc3bdd2f 319
+  s_74d64b3f874ae2::t_733c2cfdf587a3 18
+packages/frontend/@n8n/design-system/src/components/N8nDataGrid/cellValues.test.ts
+  s_74d64b3f874ae2::t_28cff8939db37b 6,49-114
+  s_74d64b3f874ae2::t_e0fd56976606bb 8-48,115-116
+  s_74d64b3f874ae2::t_22af8737f8ad25 1-5,7
+packages/frontend/editor-ui/src/features/core/dataTable/utils/filterProcessors.test.ts
+  s_74d64b3f874ae2::t_73bb6139e0c47b 1,3,5-7,10-21,25-35,37,39-45,47,49-64
+packages/frontend/editor-ui/src/features/core/dataTable/components/dataGrid/DataTableTable.vue
+  s_74d64b3f874ae2::t_d269614e0730f1 2,164-165,167-172,175-180,186-188,229
+  s_74d64b3f874ae2::t_18b8df1f834b9d 207-208
+  s_74d64b3f874ae2::t_65e91c68308bd3 3-12,15,18-19,21-23,25-28,48,51-55,57-59,61,63-66,78,80-86,88-98,101-102,108-109,112-114,117-118,121-123,126,128-131,133-136,138-140,144-146,148-151,154-156,160-161,181-185,191-193,198-206,209-228,230,232-241,243-245,252,266-267
+  s_74d64b3f874ae2::t_16bcee53f79655 62,124-125
+packages/frontend/@n8n/design-system/src/components/N8nDataGrid/DataGrid.test.ts
+  s_74d64b3f874ae2::t_1dc73e627be835 3,32,57
+  s_74d64b3f874ae2::t_cf90ada809e15d 33-34,72-75
+  s_74d64b3f874ae2::t_546de729f1bdb7 1-2,4-31,35-56,58-71,76-107,109-122,124-141,147-148,154-165,171-172,178-204,206-224,226-263,269-280,287-294,296-297,299-304,310-323,325-330,332-389,392-397,402-404
+  s_74d64b3f874ae2::t_e35b275a30baff 108,123,142-146,149-153,166-170,173-177,205,225,264-268,281-286,295,298,305-309,324,331
+  s_74d64b3f874ae2::t_6ee8fe11d7438a 390-391,398-401
+packages/frontend/@n8n/design-system/src/components/N8nDataGrid/index.ts
+  s_74d64b3f874ae2::t_a0a5f3d8d22fb8 3,8
+  s_74d64b3f874ae2::t_0b8d39383cbe76 6-7,9-28
+  s_74d64b3f874ae2::t_4e91ab126991fe 1-2,4-5
+pnpm-workspace.yaml
+  s_74d64b3f874ae2::t_98fe7862151712 336-337
+packages/frontend/@n8n/design-system/src/components/N8nDataGrid/DataGrid.stories.ts
+  s_74d64b3f874ae2::t_d10db5dfa5db8a 152-154
+  s_74d64b3f874ae2::t_b79975748652c9 57
+  s_74d64b3f874ae2::t_ff22e29047f67f 243-254
+  s_74d64b3f874ae2::t_86d4e36f2e50ae 1-36,41-54,56,58-151,155-242
+  s_74d64b3f874ae2::t_63be7cc94bb7e0 37-40,55
+packages/frontend/@n8n/design-system/src/components/N8nDataGrid/DataGridSpecialValue.vue
+  s_74d64b3f874ae2::t_fd047e38039382 1-7,11
+  s_74d64b3f874ae2::t_dd25ba33c56606 8-10
+packages/frontend/editor-ui/src/features/core/dataTable/composables/useDataTableTypes.test.ts
+  s_74d64b3f874ae2::t_5493eca276d133 5
+packages/frontend/@n8n/design-system/src/components/N8nDataGrid/dataGridHistory.test.ts
+  s_74d64b3f874ae2::t_ed3eb58c3c8350 1-10,22,35,38-43,47,54-56,60-66,73-76,81-86,90,100-102,113-115,119-125,130-135
+  s_74d64b3f874ae2::t_e1c0e1c48661e8 11-21,34,36-37,44-45,48-53,57-58,67-68,70-71,77-79,87-89,91-98,103-107,109-112,116-117,126-127,129
+  s_74d64b3f874ae2::t_1130c5f0dd0f48 23-33,46,59,69,72,80,99,108,118,128
+packages/frontend/@n8n/design-system/src/components/N8nDataGrid/component-data-grid.md
+  s_74d64b3f874ae2::t_3af2d56162ab53 196
+  s_74d64b3f874ae2::t_482c9e96e54f41 3
+  s_74d64b3f874ae2::t_a8212bffa78816 148,187,307
+  s_74d64b3f874ae2::t_91ff7a2cde6a7e 1-2,6-18,20,22-41,45-73,75-144,147,149-177,179-186,189-193,195,197-214,216-218,220-263,265-303
+  s_74d64b3f874ae2::t_55d6d14b51c0a8 178
+  s_74d64b3f874ae2::t_f58c3520183474 42-44
+  s_74d64b3f874ae2::t_8c87f7b522763d 219
+  s_74d64b3f874ae2::t_1eb55812c1a4f8 188
+  s_74d64b3f874ae2::t_8ff1501469c591 74
+  s_74d64b3f874ae2::t_dcf3d20aca45bc 306
+  s_74d64b3f874ae2::t_c5d983cb043892 304-305,308,310
+  s_74d64b3f874ae2::t_478c4b28fb01e6 4-5
+  s_74d64b3f874ae2::t_acacd38a6f8db0 264
+  s_74d64b3f874ae2::t_b1cce1d1f929a6 145-146
+  s_74d64b3f874ae2::t_f5e1ed6ba922ac 19,21
+  s_74d64b3f874ae2::t_be810ac39ba429 215,309
+  s_74d64b3f874ae2::t_851fa5306c23f7 194
+packages/frontend/@n8n/design-system/src/components/N8nDataGrid/DataGridSlotRenderer.vue
+  s_74d64b3f874ae2::t_8b07f1c996516a 1-4,6-11,15
+  s_74d64b3f874ae2::t_63fd07be00118a 5,12
+  s_74d64b3f874ae2::t_b5a5541248d425 13-14
+packages/frontend/editor-ui/src/features/core/dataTable/typeGuards.test.ts
+  s_74d64b3f874ae2::t_5493eca276d133 2
+packages/frontend/@n8n/design-system/src/components/N8nDataGrid/DataGridDateEditor.vue
+  s_74d64b3f874ae2::t_d8a9b49b28c351 3,6,14,16,19,25-35
+  s_74d64b3f874ae2::t_03c42197bdc552 1-2,4-5,7-13,15,17-18,20-24,36
+packages/frontend/editor-ui/src/features/core/dataTable/composables/useDataTableOperations.test.ts
+  s_74d64b3f874ae2::t_a5268f563bdabc 1-4,9,11-27,30,34,38,42,46-48,51-85,87-90,92-93,95-98,100-101,103,106-110,112,115-125,128,130-131,133-134,138-139,142-144,146-147,149-150,155-156,158-161,164-166,168,170-176,179-181,183,185-193,195-196,198,202-205,207,209-214,216-221,223-237,239-244,247-252,255-256,258-259,261-266,269-273,275,277-278,281-284,286,288-292,295-299,301,303-306,309-312,314,316,318,320-361,365,367,371,373-375,377,379-406,408-412,414,416-418,420-423,425,427-428,433-436,441-442,444-446,448,452-454,458,461-464,468-472,477-480,482,484-489,492-493,496-497,499,501-502,505-508,510,512-516,518-520,522,524,527-529,531-535,538-541,547-555,560-562,567,569,571,575-578,582-584,590-591,593,595-596,599-601,603,605-608,610,613-616,618,620-625,627,630-633,635,637-640
+  s_74d64b3f874ae2::t_692a7e1fa6da4d 362-364,366,368-370
+packages/frontend/@n8n/design-system/src/components/N8nDataGrid/DataGridDatePicker.test.ts
+  s_74d64b3f874ae2::t_b1f71587155d83 85,108
+  s_74d64b3f874ae2::t_bb7dd879f1ae39 1-84,86-103,105-107,109-111,113-139,143,149-179,183-217
+  s_74d64b3f874ae2::t_e10674c8ba5cf5 112
+  s_74d64b3f874ae2::t_673a005ceb7b89 104
+  s_74d64b3f874ae2::t_9e155b975bcc67 140-142,144-148,180-182
+packages/frontend/@n8n/design-system/src/components/N8nDataGrid/filters.test.ts
+  s_74d64b3f874ae2::t_3cb9bd676840ce 1-27,29-34,40,46,50-52,56-134,139-162
+  s_74d64b3f874ae2::t_9845da9cda7f66 28,35-39,41-45,47-49,53-55
+  s_74d64b3f874ae2::t_e35b275a30baff 135-138
+packages/frontend/@n8n/design-system/package.json
+  s_74d64b3f874ae2::t_2a76188af715d0 116-117
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiDataTablePreview.vue
+  s_74d64b3f874ae2::t_db1a565714c5bc 3,135
+packages/frontend/@n8n/design-system/src/components/N8nDataGrid/DataGridDateFilter.vue
+  s_74d64b3f874ae2::t_52077cd0dde99d 3,5,11,13,15-18,21-22,27-36
+  s_74d64b3f874ae2::t_e3f18c69dccf65 1-2,4,6-10,12,14,19-20,23-26,37
+packages/frontend/@n8n/design-system/src/components/N8nDataGrid/dataGridHistory.ts
+  s_74d64b3f874ae2::t_c3f00e29015ddf 5-10,12,15,21-25,27-28,30,44,46
+  s_74d64b3f874ae2::t_05033b0ea3b8f1 1-4,11,13-14,16-20,26,29,31-43,45,47-54
+packages/frontend/editor-ui/package.json
+  s_74d64b3f874ae2::t_18be4ba693cba5 115
+packages/frontend/@n8n/design-system/src/locale/lang/en.ts
+  s_74d64b3f874ae2::t_cd9b5c3120c1a2 313-331
+packages/frontend/@n8n/design-system/src/components/N8nDataGrid/agGrid.ts
+  s_74d64b3f874ae2::t_129d717c237772 1-7,9-17,19-40,42-48,50-76
+  s_74d64b3f874ae2::t_5f982eeac0d14f 18,49
+  s_74d64b3f874ae2::t_d9326292badb8c 8,41
+packages/frontend/editor-ui/src/features/core/dataTable/composables/useDataTableColumns.test.ts
+  s_74d64b3f874ae2::t_692a7e1fa6da4d 26
+  s_74d64b3f874ae2::t_44031571f22b9b 1,3-13,21-22,24,28-32,34-35,38-47,50-61,64-77,81-82,84-94,97-114,118-120,122-124,127-129,131-133,136-137,139-141,144-146,148,150
+packages/frontend/editor-ui/src/features/core/dataTable/composables/useDataTableOperations.ts
+  s_74d64b3f874ae2::t_16bcee53f79655 205-209
+  s_74d64b3f874ae2::t_1c9edb542160d9 9,12-13,17,20,24-25,29-30,36-38,40-43,49-50,56-57,59-62,69-70,72,74-80,82,85,87-100,105-106,108,110,114,116-119,124,129-130,136-145,152,156-157,176-177,194-202,204,211,214,216,225,227-229,241-243,245,248-249,253-254,256,264,269,279-281,283,285,295-296,298,300-301,305,309,313,320,323,327,329
+packages/frontend/@n8n/design-system/src/components/N8nDataGrid/filters.ts
+  s_74d64b3f874ae2::t_e35b275a30baff 92
+  s_74d64b3f874ae2::t_4f0a6384f459dd 70
+  s_74d64b3f874ae2::t_28cff8939db37b 3,38-39,41,46-48,54-56,81
+  s_74d64b3f874ae2::t_2e7ea4d064a1b6 1-2,4-37,40,42-45,49-53,57-69,71-80,82-91,93-97,102-137,140-143,157-195,203-205,221-227,229-230
+  s_74d64b3f874ae2::t_cbd1c1c5557a5d 98-101
+  s_74d64b3f874ae2::t_430497454008a0 138-139,144-145,154-156
+  s_74d64b3f874ae2::t_ece759a8f725d9 196-202,206-220,228
+  s_74d64b3f874ae2::t_6ee8fe11d7438a 146-153
+packages/frontend/@n8n/design-system/src/components/N8nDataGrid/DataGridColumnHeader.vue
+  s_74d64b3f874ae2::t_e155c9905d42bd 1-9,11-12,14-75,82-83,85-97,99-127,129-133,136-142,144-148,150-154,156-164,166-182
+  s_74d64b3f874ae2::t_3f8b6e6ffb5f93 76-81,84
+  s_74d64b3f874ae2::t_acb55b9f71364e 10,13
+  s_74d64b3f874ae2::t_b3ff2b0988a96b 128,134-135,143,149,155,165
+  s_74d64b3f874ae2::t_ce9884ffe7df1b 98
+packages/frontend/editor-ui/src/features/core/dataTable/components/dataGrid/DataTableTable.loading.test.ts
+  s_74d64b3f874ae2::t_2a60502b9bfcbf 26-29
+  s_74d64b3f874ae2::t_9eaa3997730ca9 44-45,48,53,75,78,86,99,104,111,123,127
+packages/frontend/editor-ui/src/features/core/dataTable/components/dataGrid/DataTableTable.test.ts
+  s_74d64b3f874ae2::t_f5f594ee4a2984 4-6,8,10-12,15-16,18-19,23-25,27-35,37-38,40-45,47-49,51-65,68-82,85-86,88,91,94-113,115-119,121-124,126-127,129-130,132-138,140-141,143-144,146-147,149-154,156-157,159-162,164,166-169
+  s_74d64b3f874ae2::t_813561ae01ae6a 87,90,128,139,145,155
+packages/frontend/editor-ui/src/features/core/dataTable/typeGuards.ts
+  s_74d64b3f874ae2::t_fd7509a273e429 5
+packages/frontend/@n8n/design-system/src/components/N8nDataGrid/DataGridDatePicker.vue
+  s_74d64b3f874ae2::t_9a1d8086821411 1-129
+packages/frontend/editor-ui/src/features/core/dataTable/composables/useDataTablePagination.ts
+  s_74d64b3f874ae2::t_44bf649929c56b 5-6,12,25
+packages/frontend/@n8n/design-system/src/components/N8nDataGrid/__tests__/DataGridProps.typecheck.ts
+  s_74d64b3f874ae2::t_dd5509a50bda2f 63
+  s_74d64b3f874ae2::t_d5fc0b7c13b6c9 1
+  s_74d64b3f874ae2::t_029539997afbc1 2-62,64-81
+packages/frontend/editor-ui/src/features/core/dataTable/utils/filterProcessors.ts
+  s_74d64b3f874ae2::t_8fa4c7dc8935fd 1-39,41-42,46-47,49-51,53-56
+packages/frontend/editor-ui/src/features/core/dataTable/utils/columnUtils.ts
+  s_74d64b3f874ae2::t_17c3158d0f573a 1
+packages/quality/testing/playwright/pages/DataTableDetails.ts
+  s_74d64b3f874ae2::t_76a46934cb6fd9 120-122
+  s_74d64b3f874ae2::t_1a4c6e14b68f41 37,41,62-63,70,174,176,180-181,189,199,203,290,341,369
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiDataTablePreview.test.ts
+  s_74d64b3f874ae2::t_18b8df1f834b9d 267,320,415
+  s_74d64b3f874ae2::t_9eaa3997730ca9 73,75,82,104,106,110,113,133,135
+packages/frontend/@n8n/design-system/src/components/N8nDataGrid/cellValues.ts
+  s_74d64b3f874ae2::t_28cff8939db37b 52-65,71,73-74
+  s_74d64b3f874ae2::t_2df074d4fad839 1-2,9-27,115
+  s_74d64b3f874ae2::t_55d2f2f3b5c55d 3-8,28-51,66-70,72,75-114
+packages/frontend/editor-ui/src/features/core/dataTable/utils/columnUtils.test.ts
+  s_74d64b3f874ae2::t_96373ebac26135 1-3
+pnpm-lock.yaml
+  s_74d64b3f874ae2::t_c6b83c9ce6748b 889-894,6134-6139,7180
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "90c20a3d19f330b380e81b2165c6824509788a29",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_74d64b3f874ae2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bcf6478d-a88f-473e-b22e-6b13b235969e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
