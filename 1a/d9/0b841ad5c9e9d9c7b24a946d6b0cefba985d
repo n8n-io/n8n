@@ -1,0 +1,28 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentVersionMetadataModal.vue
+  s_0cdcde79e91f6b::t_9aa8e8eb9fc69a 24-25,81,97,100,123,125-126,128,180
+  s_0cdcde79e91f6b::t_373c1b2ff020d3 35
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_0cdcde79e91f6b::t_9aa8e8eb9fc69a 9854
+packages/frontend/editor-ui/src/features/agents/composables/useAgentPublish.ts
+  s_0cdcde79e91f6b::t_373c1b2ff020d3 80
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentPublish.test.ts
+  s_0cdcde79e91f6b::t_9aa8e8eb9fc69a 115-117,119-120,134
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentVersionMetadataModal.test.ts
+  s_0cdcde79e91f6b::t_9aa8e8eb9fc69a 35,53,64,68-80,82,86-87,89-91,107,133,141,156,169
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1ad90b841ad5c9e9d9c7b24a946d6b0cefba985d",
+  "prompts": {},
+  "sessions": {
+    "s_0cdcde79e91f6b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3c9d1c4b-1278-45dc-bfd3-efc3f67067de",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

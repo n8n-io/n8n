@@ -1,0 +1,20 @@
+packages/cli/src/modules/agents/__tests__/agents-service-reconstruct-gating.test.ts
+  s_0ba2c5ee7252e2::t_5540ef8a5e7819 25,278-292,295-312,314
+  s_0ba2c5ee7252e2::t_84d52da6d7cf63 293-294,313,315
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "82106d25268f2831d4ae52f05f47c2e9d83ddbcc",
+  "prompts": {},
+  "sessions": {
+    "s_0ba2c5ee7252e2": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1f986-7fcc-722a-8bea-b90ed8d7e0ca",
+        "model": "gpt-6.2-astra"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}
