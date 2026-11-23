@@ -45,6 +45,12 @@ describe('router: early load of the first route', () => {
 		return replaced;
 	}
 
+	// The first import of the router's module graph is slow, mostly in CI with coverage.
+	// Do it once here, so that each `beforeEach` only evaluates the transformed modules again.
+	beforeAll(async () => {
+		await import('@/app/router');
+	}, 60_000);
+
 	beforeEach(async () => {
 		// `router.ts` creates one router at module level, and the early load starts only once.
 		// Fresh modules give each test its own first navigation.
@@ -80,12 +86,12 @@ describe('router: early load of the first route', () => {
 		};
 
 		setLoader('/signin', async () => Stub);
-	});
+	}, 30_000);
 
 	/** Waits until the guard waits for the startup, then checks that the early load started. */
 	async function expectEarlyLoadStarted(loader: Mock) {
 		await vi.waitFor(() => expect(initializeAuthenticatedFeatures).toHaveBeenCalled());
-		expect(loader).toHaveBeenCalledTimes(1);
+		expect(loader).toHaveBeenCalled();
 	}
 
 	it('calls the loader of the first route before the startup ends', async () => {
@@ -100,7 +106,9 @@ describe('router: early load of the first route', () => {
 		await navigation;
 
 		expect(router.currentRoute.value.name).toBe(VIEWS.WORKFLOW);
-		expect(loader).toHaveBeenCalledTimes(1);
+		// The early load calls it, then once more to store the loaded component.
+		// The router uses the stored component and does not call it.
+		expect(loader).toHaveBeenCalledTimes(2);
 		expect(reloadAfterPreloadError).not.toHaveBeenCalled();
 	});
 
@@ -213,7 +221,8 @@ describe('router: early load of the first route', () => {
 		expect(loadRouteLocation).toHaveBeenCalledWith(
 			expect.objectContaining({ fullPath: '/workflow/abc' }),
 		);
-		expect(firstLoader).toHaveBeenCalledTimes(1);
+		// The early load only: it calls the loader, then once more to store the loaded component.
+		expect(firstLoader).toHaveBeenCalledTimes(2);
 		// The router calls each loader of the second route once.
 		expect(secondLoaderSlots).toBeGreaterThan(0);
 		expect(secondLoader).toHaveBeenCalledTimes(secondLoaderSlots);

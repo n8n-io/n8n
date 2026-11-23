@@ -132,7 +132,7 @@ describe('registerVitePreloadErrorHandler', () => {
 
 			dispatchPreloadError();
 			settle(false);
-			await vi.mocked(awaitRoutePreload).mock.results[0]?.value;
+			await vi.mocked(awaitRoutePreload).mock.results.at(-1)?.value;
 			await Promise.resolve();
 
 			expect(reloadSpy).not.toHaveBeenCalled();
