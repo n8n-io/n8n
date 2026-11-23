@@ -154,10 +154,16 @@ describe('ScimProvisioningSection', () => {
 		);
 	});
 
-	it('shows the Preview badge next to the title', async () => {
-		const { findByTestId } = renderComponent({ props: { ssoEnabled: true } });
+	// IAM-1935: The SCIM configuration screen must not show the Preview badge.
+	it('does not show the Preview badge next to the title', async () => {
+		const { findByTestId, getByRole, queryByTestId, queryByText } = renderComponent({
+			props: { ssoEnabled: true },
+		});
 
-		expect(await findByTestId('sso-scim-preview-badge')).toHaveTextContent('Preview');
+		await findByTestId('sso-scim-base-url');
+		expect(getByRole('heading', { level: 2, name: 'SCIM' })).toBeVisible();
+		expect(queryByTestId('sso-scim-preview-badge')).not.toBeInTheDocument();
+		expect(queryByText('Preview')).not.toBeInTheDocument();
 	});
 
 	it('names the select for assistive technology', async () => {
