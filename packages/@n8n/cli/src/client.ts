@@ -12,6 +12,11 @@ import type {
 } from '@n8n/api-types/dist/dto/promotions/promotion-preview.dto';
 import type { CreateProjectPublicDto } from '@n8n/api-types/dist/dto/project/project-public.dto';
 
+// The Public API reads this header to count n8n CLI calls in usage telemetry.
+// Keep both values equal to N8N_CLIENT_HEADER and N8N_CLIENT_N8N_CLI in @n8n/api-types.
+const N8N_CLIENT_HEADER = 'x-n8n-client';
+const N8N_CLIENT_N8N_CLI = 'n8n-cli';
+
 export interface PaginatedResponse<T> {
 	data: T[];
 	nextCursor?: string;
@@ -237,6 +242,7 @@ export class N8nClient {
 			'Content-Type': 'application/json',
 			Accept: 'application/json',
 			'User-Agent': 'n8n-cli',
+			[N8N_CLIENT_HEADER]: N8N_CLIENT_N8N_CLI,
 		});
 		this.debug = options.debug;
 	}

@@ -889,3 +889,42 @@ describe('N8nClient packages', () => {
 		});
 	});
 });
+
+describe('N8nClient request headers', () => {
+	const fetchMock = vi.fn();
+	let client: N8nClient;
+
+	beforeEach(() => {
+		vi.stubGlobal('fetch', fetchMock);
+		fetchMock.mockReset();
+		fetchMock.mockResolvedValue(jsonResponse(200, {}));
+		client = new N8nClient({ baseUrl: 'https://n8n.example.com', apiKey: 'test-key' });
+	});
+
+	afterEach(() => {
+		vi.unstubAllGlobals();
+	});
+
+	function headersSentToFetch(): Headers {
+		const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+		return init.headers as Headers;
+	}
+
+	it.each([
+		{ request: 'a JSON GET request', send: async () => await client.getWorkflow('workflow-1') },
+		{ request: 'a JSON POST request', send: async () => await client.createTag('tag-1') },
+		{
+			request: 'a multipart request',
+			send: async () =>
+				await client.importPackage(
+					{ buffer: Buffer.from('package-bytes'), filename: 'export.n8np' },
+					{ conflictPolicy: 'fail' },
+				),
+		},
+	])('sends the n8n CLI client header on $request', async ({ send }) => {
+		await send();
+
+		expect(fetchMock).toHaveBeenCalledOnce();
+		expect(headersSentToFetch().get('x-n8n-client')).toBe('n8n-cli');
+	});
+});

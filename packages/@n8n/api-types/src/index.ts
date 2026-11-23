@@ -1075,7 +1075,12 @@ export {
 	SSO_ERROR_LOGIN_FAILED,
 } from './constants/role-mapping';
 export { SSO_LOGIN_REQUIRED_ERROR_CODE } from './constants/auth';
-export { N8N_CLIENT_HEADER, N8N_CLIENT_EDITOR_UI, N8N_CLIENT_N8N_NODE } from './constants/client';
+export {
+	N8N_CLIENT_HEADER,
+	N8N_CLIENT_EDITOR_UI,
+	N8N_CLIENT_N8N_NODE,
+	N8N_CLIENT_N8N_CLI,
+} from './constants/client';
 
 export {
 	agentPublishSendTargetSchema,

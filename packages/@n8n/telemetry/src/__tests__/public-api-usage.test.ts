@@ -7,14 +7,18 @@ const report = {
 	total_calls: 3,
 	first: '2026-11-16T10:00:00.000Z',
 	endpoints: JSON.stringify({ 'GET /workflows/{workflowId}': 2, 'GET /executions': 1 }),
-	endpoints_by_client: JSON.stringify({ editor_ui: { 'GET /executions': 1 } }),
+	endpoints_by_client: JSON.stringify({
+		editor_ui: { 'GET /executions': 1 },
+		n8n_node: {},
+		n8n_cli: { 'GET /workflows/{workflowId}': 1 },
+	}),
 	routes: JSON.stringify([
-		{ route: 'GET /workflows/{workflowId}', result: '2xx', caller: 'other', calls: 1 },
+		{ route: 'GET /workflows/{workflowId}', result: '2xx', caller: 'n8n_cli', calls: 1 },
 		{ route: 'GET /workflows/{workflowId}', result: '4xx', caller: 'other', calls: 1 },
 		{ route: 'GET /executions', result: '2xx', caller: 'editor_ui', calls: 1 },
 	]),
 	user_agents: JSON.stringify({ 'n8n-cli/1.0': 3 }),
-	clients: JSON.stringify({ editor_ui: 1, other: 2 }),
+	clients: JSON.stringify({ editor_ui: 1, n8n_node: 0, n8n_cli: 1, other: 1 }),
 };
 
 type JsonField = keyof typeof PUBLIC_API_USAGE_JSON_FIELDS;
@@ -35,6 +39,18 @@ describe('Public API usage', () => {
 
 	it('rejects a route row with a result outside 2xx, 4xx and 5xx', () => {
 		const row = { route: 'GET /workflows', result: '3xx', caller: 'other', calls: 1 };
+
+		expect(PUBLIC_API_USAGE_JSON_FIELDS.routes.safeParse([row]).success).toBe(false);
+	});
+
+	it('rejects client counts that leave out a client', () => {
+		const clients = { editor_ui: 1, other: 2 };
+
+		expect(PUBLIC_API_USAGE_JSON_FIELDS.clients.safeParse(clients).success).toBe(false);
+	});
+
+	it('rejects a route row with an unknown caller', () => {
+		const row = { route: 'GET /workflows', result: '2xx', caller: 'unknown', calls: 1 };
 
 		expect(PUBLIC_API_USAGE_JSON_FIELDS.routes.safeParse([row]).success).toBe(false);
 	});
