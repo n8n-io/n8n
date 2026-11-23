@@ -25,6 +25,7 @@ import ToolDataBlock from '@/features/ai/shared/components/ToolDataBlock/ToolDat
 import ToolDataSection from '@/features/ai/shared/components/ToolDataBlock/ToolDataSection.vue';
 import type { AgentFixWithAssistantFailure } from '../types';
 import { useSubAgentNames } from '../composables/useSubAgentNames';
+import { useSkillWorkflowToolNames } from '@/features/agents/composables/useSkillWorkflowToolNames';
 import { isCompactToolName, resolveToolNameForDisplay } from '../utils/toolDisplayName';
 import {
 	getDelegateDifficultySummary,
@@ -152,8 +153,12 @@ interface ToolStepDisplay {
 	expandable: boolean;
 }
 
+const { skillWorkflowName } = useSkillWorkflowToolNames(() =>
+	props.toolCalls.map(({ tool }) => tool),
+);
+
 function getToolDisplayName(toolName: string, output?: unknown): string {
-	return resolveToolNameForDisplay(toolName, i18n, output);
+	return skillWorkflowName(toolName) ?? resolveToolNameForDisplay(toolName, i18n, output);
 }
 
 function toolStepLabel(tc: ToolCall, isCompact = false): string {
