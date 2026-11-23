@@ -3,6 +3,7 @@ import { useI18n } from '@n8n/i18n';
 import type { RouteRecordRaw } from 'vue-router';
 
 import { PROMOTIONS_PLAYGROUND_VIEW } from '../promotions.constants';
+import { bootEmbeddedReview } from './playground.embed';
 
 /**
  * The only link between the Environments Playground and the promotions module. The module adds
@@ -10,6 +11,9 @@ import { PROMOTIONS_PLAYGROUND_VIEW } from '../promotions.constants';
  * delete this folder and the two spreads in `promotions.module.ts`.
  */
 const PlaygroundView = async () => await import('./PromotionsPlaygroundView.vue');
+
+// The review scenario loads the Inbox in a frame, and the frame needs the sample data from boot.
+if (import.meta.env.DEV) bootEmbeddedReview();
 
 export const playgroundSettingsPages = import.meta.env.DEV
 	? [

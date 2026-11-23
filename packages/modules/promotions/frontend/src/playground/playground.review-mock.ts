@@ -96,8 +96,11 @@ export function startReviewMock(context: ReviewContext) {
 		if (!known) return config;
 
 		config.adapter = async (adapterConfig) => {
+			// The REST API wraps every answer in a `data` key. The public API, used by the preview
+			// scenarios, does not.
+			const answer = (payload: unknown) => respond(adapterConfig, { data: payload });
 			if (INBOX_SUMMARY.test(url)) {
-				return respond(adapterConfig, {
+				return answer({
 					counts: { open: 1, closed: 0 },
 					partial: false,
 					failedSources: [],
@@ -105,7 +108,7 @@ export function startReviewMock(context: ReviewContext) {
 				});
 			}
 			if (INBOX_LIST.test(url)) {
-				return respond(adapterConfig, {
+				return answer({
 					data: [reviewItem],
 					hasMore: false,
 					nextCursor: null,
@@ -115,13 +118,13 @@ export function startReviewMock(context: ReviewContext) {
 				});
 			}
 			const { preview, changes } = reviewChanges(context);
-			if (REVIEW_CHANGES.test(url)) return respond(adapterConfig, changes);
+			if (REVIEW_CHANGES.test(url)) return answer(changes);
 			if (REVIEW_DETAILS.test(url)) {
 				const details = requestedKeys(adapterConfig.data).flatMap((key) => {
 					const detail = buildPlaygroundDetail(preview, key);
 					return detail ? [detail] : [];
 				});
-				return respond(adapterConfig, { details, missingKeys: [] });
+				return answer({ details, missingKeys: [] });
 			}
 			throw new AxiosError(`The Playground has no sample data for ${url}`);
 		};
