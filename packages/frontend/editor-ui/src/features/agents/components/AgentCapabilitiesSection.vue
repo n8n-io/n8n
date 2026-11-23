@@ -818,7 +818,7 @@ function openExistingSubAgentModal(subAgent: {
 					<div
 						v-for="workflow in skillWorkflowRows"
 						:key="`skill-workflow-${workflow.workflowId}`"
-						:class="$style.chipGroup"
+						:class="[$style.chipGroup, $style.skillWorkflowChipGroup]"
 					>
 						<AgentChipButton
 							icon="workflow"
@@ -930,6 +930,10 @@ function openExistingSubAgentModal(subAgent: {
 	> .capabilityChip {
 		width: 100%;
 	}
+}
+
+.skillWorkflowChipGroup {
+	max-width: 100%;
 }
 
 .skillNote {
