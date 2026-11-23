@@ -89,6 +89,9 @@ async function send() {
 <template>
 	<N8nDialog
 		v-model:open="open"
+		:close-on-overlay-click="!busy"
+		:close-on-escape="!busy"
+		:show-close-button="!busy"
 		size="medium"
 		:header="i18n.baseText('apps.feedback.title')"
 		data-test-id="app-feedback-dialog"

@@ -77,6 +77,19 @@ describe('AppFeedbackService', () => {
 		);
 	});
 
+	it('sends a null email for a person without an email address', async () => {
+		const { service, http } = createService();
+		const userWithoutEmail = Object.assign(new Person(), { id: 'user-2', email: null });
+
+		await service.send(userWithoutEmail, 'project-1', 'app-1', input);
+
+		expect(http.request).toHaveBeenCalledWith(
+			expect.objectContaining({
+				body: expect.objectContaining({ user: { id: 'user-2', email: null } }),
+			}),
+		);
+	});
+
 	it('rejects feedback when no feedback address is set', async () => {
 		const { service, http } = createService({ feedbackUrl: '' });
 

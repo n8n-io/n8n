@@ -56,4 +56,17 @@ describe('AppFeedbackDialog', () => {
 		expect(emitted('update:open')).toBeUndefined();
 		expect(screen.getByTestId('app-feedback-input')).toHaveValue('The preview is blank');
 	});
+
+	it('hides the close button while the feedback is sending', async () => {
+		vi.mocked(sendAppFeedback).mockReturnValue(new Promise(() => {}));
+		renderComponent();
+
+		expect(await screen.findByRole('button', { name: /close/i })).toBeInTheDocument();
+		await userEvent.type(screen.getByTestId('app-feedback-input'), 'The preview is blank');
+		await userEvent.click(screen.getByTestId('app-feedback-send'));
+
+		await waitFor(() =>
+			expect(screen.queryByRole('button', { name: /close/i })).not.toBeInTheDocument(),
+		);
+	});
 });

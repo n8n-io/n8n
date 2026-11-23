@@ -25,7 +25,7 @@ export interface AppFeedbackReport {
 	submittedAt: string;
 	category: AppFeedbackCategory;
 	feedback: string;
-	user: { id: string; email: string };
+	user: { id: string; email: string | null };
 	instance: { id: string; url: string };
 	app: {
 		id: string;
@@ -108,7 +108,7 @@ export class AppFeedbackService {
 			submittedAt: new Date().toISOString(),
 			category: input.category,
 			feedback: input.feedback,
-			user: { id: user.id, email: user.email },
+			user: { id: user.id, email: user.email ?? null },
 			instance: { id: this.instanceSettings.instanceId, url: this.urls.getInstanceBaseUrl() },
 			app: { id: app.id, projectId, name: app.name, bindings },
 		};
