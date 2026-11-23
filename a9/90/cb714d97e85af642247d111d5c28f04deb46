@@ -1,0 +1,25 @@
+packages/cli/src/modules/promotions.ee/CONTEXT.md
+  s_c51b71bedc600f::t_0d6b43707b7e1f 1-29,31-32,36-44
+  s_c51b71bedc600f::t_82c04b93969dfb 30
+  s_c51b71bedc600f::t_8572d49e99fb54 33-35
+packages/cli/docs/adr/ADR-20261123-take-the-owner-project-of-a-credential-from-its-branch-path.md
+  s_c51b71bedc600f::t_0a59b555d8a7e2 1-62
+packages/quality/policy/code-health/src/index.ts
+  s_c51b71bedc600f::t_284ae906d38522 64
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a990cb714d97e85af642247d111d5c28f04deb46",
+  "prompts": {},
+  "sessions": {
+    "s_c51b71bedc600f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2399fe73-cf74-480a-bdbb-a1eca36c6f59",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

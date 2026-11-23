@@ -1,0 +1,129 @@
+packages/@n8n/api-types/src/skills/skill-telemetry.schema.ts
+  s_bc27ac3adda411::t_0d472fd924f659 1-28,34-37
+  s_bc27ac3adda411::t_6741f013733762 29-33
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useInstanceAiInputMenuItems.ts
+  s_bc27ac3adda411::t_6741f013733762 104-107
+  s_bc27ac3adda411::t_d261e3a44b75a9 18
+packages/frontend/editor-ui/src/features/agents/components/AgentSkillModal.vue
+  s_bc27ac3adda411::t_ec243b7bd37d8f 17,186,252-253,923,994-997,1011-1013,1299
+  s_bc27ac3adda411::t_02a6c32942826c 47-50,947-949
+  s_bc27ac3adda411::t_c37c0c6dc6739f 373
+packages/@n8n/telemetry/src/events/context.ts
+  s_bc27ac3adda411::t_c7615536e76339 1-7,53,69,74-76,418-419,425-426,429-435,438-446,449-453,483,578,597
+  s_bc27ac3adda411::t_6741f013733762 54-68,70-73,427,436-437,447-448
+  s_bc27ac3adda411::t_da73792322ac4d 428
+packages/frontend/editor-ui/src/features/ai/instanceAi/artifactLinks.ts
+  s_bc27ac3adda411::t_6741f013733762 49-52
+  s_bc27ac3adda411::t_07e872c5b54185 7
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentCapabilitiesActions.test.ts
+  s_bc27ac3adda411::t_f659f1be3cd845 844-849,859
+packages/frontend/editor-ui/src/features/agents/composables/useAgentCapabilitiesActions.ts
+  s_bc27ac3adda411::t_07e872c5b54185 12,547,553,588
+packages/cli/src/modules/skills/services/skills-telemetry.service.ts
+  s_bc27ac3adda411::t_a7bf740b747f09 4,79,90
+packages/frontend/editor-ui/src/features/settings/context/catalog/SkillCatalog.vue
+  s_bc27ac3adda411::t_02a6c32942826c 29-34
+  s_bc27ac3adda411::t_3614a5556f5065 4-6,43-44,67,74-94
+packages/frontend/editor-ui/src/features/shared/commandBar/composables/useContextCommands.test.ts
+  s_bc27ac3adda411::t_6741f013733762 73-76
+packages/frontend/editor-ui/src/features/settings/context/views/SettingsContextView.vue
+  s_bc27ac3adda411::t_02a6c32942826c 48-51
+  s_bc27ac3adda411::t_07e872c5b54185 22
+packages/@n8n/api-types/src/agents/agent-skill.schema.ts
+  s_bc27ac3adda411::t_0d472fd924f659 2,127
+packages/frontend/editor-ui/src/features/settings/context/components/SkillSourceConnectDialog.vue
+  s_bc27ac3adda411::t_ec243b7bd37d8f 10,69,143,649
+packages/frontend/editor-ui/src/features/settings/context/views/SettingsSkillsView.vue
+  s_bc27ac3adda411::t_02a6c32942826c 171-173,473-480,1105-1109
+  s_bc27ac3adda411::t_da73792322ac4d 1121-1127
+  s_bc27ac3adda411::t_f221a624e2436f 27,104,140,153,456,460,488-494,498-501,596,610,617,715,725,1102-1104,1110,1401,1430
+  s_bc27ac3adda411::t_02b37544200da9 146
+packages/cli/src/modules/skills/__tests__/skill.service.user-actions.test.ts
+  s_bc27ac3adda411::t_1f34546ded9dc3 619-624,631,645,659
+packages/cli/src/modules/skills/services/skill.service.ts
+  s_bc27ac3adda411::t_a7bf740b747f09 407,777,779
+packages/frontend/editor-ui/src/features/settings/context/components/SkillSourceConnectDialog.test.ts
+  s_bc27ac3adda411::t_6741f013733762 1005-1007,1010-1012
+  s_bc27ac3adda411::t_f659f1be3cd845 999-1004,1013,1020
+packages/cli/src/modules/agents/__tests__/agents-skills.controller.test.ts
+  s_bc27ac3adda411::t_83de57ca3fa2fa 41-46,48-54
+  s_bc27ac3adda411::t_f37fde40d6a03d 1,3-6,28-33,35-40,47,55
+  s_bc27ac3adda411::t_e37b070a57db83 2,34
+packages/frontend/editor-ui/src/features/settings/context/skills.telemetry.test.ts
+  s_bc27ac3adda411::t_6741f013733762 8-10,23-26,31-36,39-41
+  s_bc27ac3adda411::t_2be840d0c4e4b3 1-7,11-22,27-30,37-38,42-46
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/artifactLinks.test.ts
+  s_bc27ac3adda411::t_decafe26353a73 55
+packages/@n8n/api-types/src/skills/__tests__/skill-telemetry.schema.test.ts
+  s_bc27ac3adda411::t_6741f013733762 5-9,25-35
+  s_bc27ac3adda411::t_2be840d0c4e4b3 2-4,10-24,36-37
+  s_bc27ac3adda411::t_85d9b71815ded4 1
+packages/frontend/editor-ui/src/features/shared/commandBar/composables/useContextCommands.ts
+  s_bc27ac3adda411::t_07e872c5b54185 7
+  s_bc27ac3adda411::t_6741f013733762 32-35
+packages/frontend/editor-ui/src/features/settings/context/catalog/SkillCatalog.test.ts
+  s_bc27ac3adda411::t_2be840d0c4e4b3 8-11,28,51-52,73-89,95
+  s_bc27ac3adda411::t_6741f013733762 53-56,90-94
+packages/cli/src/modules/skills/__tests__/integration/skill-source.controller.integration.test.ts
+  s_bc27ac3adda411::t_1f34546ded9dc3 851-856,883-884,893,908,1007,1011
+  s_bc27ac3adda411::t_6741f013733762 885-888
+packages/@n8n/api-types/src/agents/skills.schema.ts
+  s_bc27ac3adda411::t_0d472fd924f659 2,271
+packages/frontend/editor-ui/src/features/settings/context/views/SettingsSkillsView.test.ts
+  s_bc27ac3adda411::t_decafe26353a73 240-242
+  s_bc27ac3adda411::t_2dbf1acc0f0a32 1682
+  s_bc27ac3adda411::t_3af9aa43f7d77c 1635-1636,1653
+  s_bc27ac3adda411::t_02b37544200da9 959,966-970,974-983,1121,1123-1125,1135,1643,1678
+  s_bc27ac3adda411::t_83de57ca3fa2fa 1628-1634,1637-1640,1648-1652,1655-1657,1659-1670
+  s_bc27ac3adda411::t_da73792322ac4d 1606,1610,1641,1654,1658
+  s_bc27ac3adda411::t_6741f013733762 807-810,1090-1093
+  s_bc27ac3adda411::t_10290992b08c2f 11-12,33-34
+packages/cli/src/modules/agents/__tests__/agent-skills.service.test.ts
+  s_bc27ac3adda411::t_6741f013733762 189-197
+  s_bc27ac3adda411::t_1f34546ded9dc3 183-188,204,221
+packages/frontend/editor-ui/src/features/settings/context/skills.telemetry.ts
+  s_bc27ac3adda411::t_c7615536e76339 1-36
+packages/frontend/editor-ui/src/features/settings/context/views/SettingsContextView.test.ts
+  s_bc27ac3adda411::t_6741f013733762 115-118
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useInstanceAiInputMenuItems.test.ts
+  s_bc27ac3adda411::t_6741f013733762 432-435
+packages/cli/src/modules/agents/agents-skills.controller.ts
+  s_bc27ac3adda411::t_a7bf740b747f09 61,73
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentApi.test.ts
+  s_bc27ac3adda411::t_f659f1be3cd845 101-105,120
+  s_bc27ac3adda411::t_6741f013733762 106-114
+packages/cli/src/modules/agents/agent-skills.service.ts
+  s_bc27ac3adda411::t_a7bf740b747f09 130,200
+  s_bc27ac3adda411::t_ec243b7bd37d8f 8,121,142
+packages/cli/src/modules/skills/__tests__/skills-telemetry.test.ts
+  s_bc27ac3adda411::t_1f34546ded9dc3 44-49,51,62
+packages/cli/src/modules/skills/services/skill-source.service.ts
+  s_bc27ac3adda411::t_a7bf740b747f09 162,272,290,752,758,772,937
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_bc27ac3adda411::t_6741f013733762 844-849
+  s_bc27ac3adda411::t_07e872c5b54185 35,838
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSkillModal.test.ts
+  s_bc27ac3adda411::t_decafe26353a73 279,1198
+  s_bc27ac3adda411::t_c37c0c6dc6739f 1189,1205-1210
+  s_bc27ac3adda411::t_6741f013733762 567-570,611-614,1181-1184
+packages/@n8n/api-types/src/skills/index.ts
+  s_bc27ac3adda411::t_0d472fd924f659 2
+packages/@n8n/api-types/src/skills/skill-sources.schema.ts
+  s_bc27ac3adda411::t_0d472fd924f659 2,46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "306cb094541aa04dfb9f5a969df9c84737c6abe2",
+  "prompts": {},
+  "sessions": {
+    "s_bc27ac3adda411": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1e944-3dbf-7aa3-9124-352b45e22dd3",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}
