@@ -99,7 +99,9 @@ function onApproval(project: ReviewPolicyProject, value: SelectValue | undefined
 			</div>
 		</template>
 		<template v-if="$slots.empty" #cover>
-			<slot name="empty" />
+			<div :class="$style.empty">
+				<slot name="empty" />
+			</div>
 		</template>
 		<template #[`item.requiredByInstance`]="{ item }">
 			<div :class="$style.approval">
@@ -146,6 +148,14 @@ function onApproval(project: ReviewPolicyProject, value: SelectValue | undefined
 .inlineTrigger.inlineTrigger {
 	width: fit-content;
 	max-width: 100%;
+}
+
+/* The cover cell has no padding or height. Match the height and inset of a row. */
+.empty {
+	display: flex;
+	align-items: center;
+	min-height: var(--spacing--2xl);
+	padding: 0 var(--spacing--sm);
 }
 
 .lockedControl {
