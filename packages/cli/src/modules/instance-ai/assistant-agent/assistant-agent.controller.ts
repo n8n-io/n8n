@@ -1,8 +1,13 @@
 import {
 	AssistantAgentTargetRequestDto,
+	AssistantPreferenceCardEditRequestDto,
+	AssistantPreferenceCardUndoRequestDto,
 	AssistantThreadTabsRequestDto,
 	InstanceAiPersistPendingAgentRequest,
 	type AssistantAgentTargetsResponse,
+	type AssistantPreferenceCardEditResponse,
+	type AssistantPreferenceCardsResponse,
+	type AssistantPreferenceCardUndoResponse,
 	type AssistantThreadTabsResponse,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
@@ -10,6 +15,7 @@ import { Body, Get, GlobalScope, Param, Post, Put, RestController } from '@n8n/d
 import type { Response } from 'express';
 
 import { AssistantAgentTargetsService } from './assistant-agent-targets.service';
+import { AssistantPreferenceCardsService } from './assistant-preference-cards.service';
 import { AssistantThreadCreditsService } from './assistant-thread-credits.service';
 import { AssistantThreadTabsService } from './assistant-thread-tabs.service';
 
@@ -29,6 +35,7 @@ export class AssistantAgentController {
 		private readonly threadTabs: AssistantThreadTabsService,
 		private readonly threadCredits: AssistantThreadCreditsService,
 		private readonly agentTargets: AssistantAgentTargetsService,
+		private readonly preferenceCards: AssistantPreferenceCardsService,
 	) {}
 
 	@Get('/threads/:threadId/credits')
@@ -63,6 +70,45 @@ export class AssistantAgentController {
 		const state = { ...payload };
 		await this.threadTabs.saveState(req.user, threadId, state);
 		return { state };
+	}
+
+	/** The preference cards of the thread that the user edited or undid. */
+	@Get('/threads/:threadId/preference-cards')
+	@GlobalScope('instanceAi:message')
+	async getPreferenceCards(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('threadId') threadId: string,
+	): Promise<AssistantPreferenceCardsResponse> {
+		return { cards: await this.preferenceCards.getCards(req.user, threadId) };
+	}
+
+	/** Undo of the preference that a `save_user_preference` call saved. The row checks are in the preference service. */
+	@Post('/threads/:threadId/preferences/:preferenceId/undo')
+	@GlobalScope('instanceAi:message')
+	async undoPreference(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('threadId') threadId: string,
+		@Param('preferenceId') preferenceId: string,
+		@Body payload: AssistantPreferenceCardUndoRequestDto,
+	): Promise<AssistantPreferenceCardUndoResponse> {
+		return {
+			card: await this.preferenceCards.undo(req.user, threadId, preferenceId, payload),
+		};
+	}
+
+	/** Edit of the preference that a `save_user_preference` call saved. The row checks are in the preference service. */
+	@Post('/threads/:threadId/preferences/:preferenceId/edit')
+	@GlobalScope('instanceAi:message')
+	async editPreference(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('threadId') threadId: string,
+		@Param('preferenceId') preferenceId: string,
+		@Body payload: AssistantPreferenceCardEditRequestDto,
+	): Promise<AssistantPreferenceCardEditResponse> {
+		return await this.preferenceCards.edit(req.user, threadId, preferenceId, payload);
 	}
 
 	/** The agents that the thread builds or edits, for its agent previews. */

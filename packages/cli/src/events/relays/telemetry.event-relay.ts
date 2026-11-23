@@ -1,6 +1,6 @@
 import { EMPTY_CANVAS_GROUPS_FLAG } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
-import { EventService, PostHogClient } from '@n8n/backend-services';
+import { EventService, PostHogClient, EventRelay } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import {
 	CredentialsRepository,
@@ -66,7 +66,6 @@ import { getCpuLimit, getMemoryLimit } from '@/utils/container-limits';
 import { detectDbVendor, detectRedisVendor } from '@/utils/detect-managed-services';
 import { detectKubernetesProvider, detectRuntime } from '@/utils/detect-runtime';
 
-import { EventRelay } from './event-relay';
 import { Telemetry } from '../../telemetry';
 import { toTrustedSourceTelemetryFacets } from '@n8n/inbound-auth';
 
@@ -330,6 +329,8 @@ export class TelemetryEventRelay extends EventRelay {
 			'login-failed-due-to-ldap-disabled': (event) => this.loginFailedDueToLdapDisabled(event),
 			'sso-user-project-access-updated': (event) => this.ssoUserProjectAccessUpdated(event),
 			'sso-user-instance-role-updated': (event) => this.ssoUserInstanceRoleUpdated(event),
+			'sso-settings-updated': (event) => this.ssoSettingsUpdated(event),
+			'provisioning-settings-updated': (event) => this.provisioningSettingsUpdated(event),
 			'scim-settings-updated': (event) => this.scimSettingsUpdated(event),
 			'scim-request-rejected': (event) => this.scimRequestRejected(event),
 			'workflow-created': (event) => this.workflowCreated(event),
@@ -1537,6 +1538,40 @@ export class TelemetryEventRelay extends EventRelay {
 		this.telemetry.track('Sso user instance role update', { user_id: userId, role });
 	}
 
+	private ssoSettingsUpdated({
+		user,
+		protocol,
+		loginEnabled,
+		fieldsChanged,
+		publicApi,
+	}: RelayEventMap['sso-settings-updated']) {
+		this.telemetry.track(TELEMETRY_EVENT.SSO.USER_UPDATED_SSO_SETTINGS, {
+			user_id: user.id,
+			authentication_method: protocol,
+			is_active: loginEnabled,
+			fields_changed: fieldsChanged,
+			public_api: publicApi,
+		});
+	}
+
+	private provisioningSettingsUpdated({
+		user,
+		authenticationMethod,
+		assignmentMethod,
+		roleMappingMethod,
+		instanceRuleCount,
+		projectRuleCount,
+	}: RelayEventMap['provisioning-settings-updated']) {
+		this.telemetry.track(TELEMETRY_EVENT.PROVISIONING.USER_UPDATED_PROVISIONING_SETTINGS, {
+			user_id: user.id,
+			authentication_method: authenticationMethod,
+			assignment_method: assignmentMethod,
+			role_mapping_method: roleMappingMethod,
+			instance_rule_count: instanceRuleCount,
+			project_rule_count: projectRuleCount,
+		});
+	}
+
 	private scimSettingsUpdated({ user, isActive, change }: RelayEventMap['scim-settings-updated']) {
 		this.telemetry.track(TELEMETRY_EVENT.SCIM.USER_UPDATED_SCIM_SETTINGS, {
 			// n8n turns SCIM off by itself when single sign-on is off, so then no
@@ -2311,9 +2346,21 @@ export class TelemetryEventRelay extends EventRelay {
 		this.telemetry.track(TELEMETRY_EVENT.INSTANCE.INSTANCE_STARTED, {
 			...info,
 			earliest_workflow_created: firstWorkflow?.createdAt,
+			license_consumer_id: this.getLicenseConsumerId(),
 			otel,
 			settings_managed_by_env_vars: settingsManagedByEnvVars,
 		});
+	}
+
+	/**
+	 * The license server's consumer ID for this install's license, so the
+	 * warehouse can join a license to telemetry. Absent without a license, and
+	 * for ephemeral licenses, which all share one placeholder consumer ID.
+	 */
+	private getLicenseConsumerId(): string | undefined {
+		if (this.license.isEphemeral()) return undefined;
+		const consumerId = this.license.getConsumerId();
+		return consumerId !== 'unknown' ? consumerId : undefined;
 	}
 
 	// Instance information available at group level on PostHog & Rudderstack

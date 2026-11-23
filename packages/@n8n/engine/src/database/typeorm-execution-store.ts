@@ -1,16 +1,21 @@
-import { In, LessThanOrEqual, type Repository } from '@n8n/typeorm';
+import { In, LessThanOrEqual, type EntityManager, type Repository } from '@n8n/typeorm';
 
 import { WorkflowSeededStep, type WorkflowExecution } from './entities';
 import { parentLinkSql, toParentColumns } from './parent-link-columns';
 import {
 	ExecutionNotFoundError,
+	ParentExecutionEndedError,
 	type ExecutionRecord,
 	type ExecutionStore,
 	type NewExecutionRecord,
+	type PrunableExecution,
+	type PrunableExecutionQuery,
 	type StaleQueuedExecution,
 } from '../execution/execution-store';
 import { DEFAULT_STALENESS_THRESHOLDS, type StalenessThresholds } from '../execution/staleness';
 import {
+	ENDED_EXECUTION_STATUSES,
+	isEndedExecutionStatus,
 	LIVE_EXECUTION_STATUSES,
 	stepKeyId,
 	type ExecutionStatus,
@@ -48,12 +53,30 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 			passes.map((outputs, iteration) => ({ executionId: record.id, nodeId, iteration, outputs })),
 		);
 		await this.repo.manager.transaction(async (manager) => {
+			if (parent) await this.holdParentNotEnded(manager, parent.executionId);
 			// The cast is needed because the insert payload type recurses into the
 			// opaque `graph` jsonb and rejects `StepConfig`'s deliberate `unknown`.
 			// NOTE: prefer insert to save for performance reasons.
 			await manager.insert(this.repo.target, execution as InsertValues);
 			if (seeded.length > 0) await manager.insert(WorkflowSeededStep, seeded);
 		});
+	}
+
+	/**
+	 * Takes a shared lock on the parent row. We do this to prevent a race between
+	 * sub-execution creation and parent status update (cancellation, failure).
+	 */
+	private async holdParentNotEnded(manager: EntityManager, parentId: string): Promise<void> {
+		const row = await manager
+			.createQueryBuilder(this.repo.target, 'execution')
+			.setLock('pessimistic_read')
+			.select('execution.status', 'status')
+			.where('execution.id = :parentId', { parentId })
+			.getRawOne<{ status: ExecutionStatus }>();
+		if (!row) throw new ExecutionNotFoundError(parentId);
+		if (isEndedExecutionStatus(row.status)) {
+			throw new ParentExecutionEndedError(parentId, row.status);
+		}
 	}
 
 	async loadSeededOutputs(
@@ -155,6 +178,19 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 		return result.affected === 1;
 	}
 
+	async loadLiveSubExecutionIds(parentExecutionId: string): Promise<string[]> {
+		const rows: Array<{ id: string }> = await this.repo
+			.createQueryBuilder('execution')
+			.select('execution.id', 'id')
+			.where('execution.parent_execution_id = :parentExecutionId', { parentExecutionId })
+			.andWhere('execution.status IN (:...statuses)', {
+				statuses: ['queued', ...LIVE_EXECUTION_STATUSES] satisfies ExecutionStatus[],
+			})
+			.orderBy('execution.id', 'ASC')
+			.getRawMany();
+		return rows.map(({ id }) => id);
+	}
+
 	async refreshLiveStatus(id: string): Promise<void> {
 		// The probes read the steps before the UPDATE takes the row's lock, so a
 		// step can change in between.
@@ -184,5 +220,61 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 				AND e.status IS DISTINCT FROM CASE WHEN live.runnable THEN 'running' ELSE 'waiting' END`,
 			[id],
 		);
+	}
+
+	async findPrunableExecutions({
+		maxAgeMs,
+		limit,
+		after,
+	}: PrunableExecutionQuery): Promise<PrunableExecution[]> {
+		// Served by the partial index on `(finished_at, id)` for ended rows.
+		const qb = this.repo
+			.createQueryBuilder('execution')
+			.select('execution.id', 'id')
+			.addSelect('execution.workflow_id', 'workflowId')
+			.addSelect('execution.finished_at', 'finishedAt')
+			.where('execution.finished_at IS NOT NULL')
+			.andWhere("execution.finished_at < now() - interval '1 millisecond' * :maxAgeMs", {
+				maxAgeMs,
+			})
+			.andWhere('execution.status IN (:...ended)', { ended: ENDED_EXECUTION_STATUSES })
+			// A cancel does not stop a running step, and that step can still write.
+			.andWhere(
+				`NOT EXISTS (
+					SELECT 1 FROM workflow_step_execution step
+					WHERE step.execution_id = execution.id
+						AND step.status IN ('queued', 'running', 'waiting')
+				)`,
+			)
+			// The waiting parent step still reads the result of this execution.
+			.andWhere(
+				`NOT EXISTS (
+					SELECT 1 FROM workflow_step_execution parent_step
+					WHERE execution.parent_awaited
+						AND parent_step.id = execution.parent_step_id
+						AND parent_step.execution_id = execution.parent_execution_id
+						AND parent_step.status = 'waiting'
+				)`,
+			);
+		if (after) {
+			qb.andWhere('(execution.finished_at, execution.id) > (:afterFinishedAt, :afterId)', {
+				afterFinishedAt: after.finishedAt,
+				afterId: after.id,
+			});
+		}
+		return await qb
+			.orderBy('execution.finished_at')
+			.addOrderBy('execution.id')
+			.limit(limit)
+			.getRawMany<PrunableExecution>();
+	}
+
+	async deleteEndedExecutions(ids: string[]): Promise<number> {
+		if (ids.length === 0) return 0;
+		const result = await this.repo.delete({
+			id: In(ids),
+			status: In([...ENDED_EXECUTION_STATUSES]),
+		});
+		return result.affected ?? 0;
 	}
 }

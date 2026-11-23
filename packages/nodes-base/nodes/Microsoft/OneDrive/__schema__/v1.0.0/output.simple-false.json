@@ -1,0 +1,127 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"@odata.type": {
+			"type": "string"
+		},
+		"createdBy": {
+			"additionalProperties": true,
+			"properties": {
+				"user": {
+					"properties": {
+						"displayName": {
+							"type": "string"
+						},
+						"email": {
+							"type": "string"
+						},
+						"id": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				}
+			},
+			"type": "object"
+		},
+		"createdDateTime": {
+			"type": "string"
+		},
+		"cTag": {
+			"type": "string"
+		},
+		"eTag": {
+			"type": "string"
+		},
+		"file": {
+			"properties": {
+				"fileExtension": {
+					"type": "string"
+				},
+				"hashes": {
+					"additionalProperties": true,
+					"properties": {
+						"quickXorHash": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
+				"mimeType": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"fileSystemInfo": {
+			"properties": {
+				"createdDateTime": {
+					"type": "string"
+				},
+				"lastModifiedDateTime": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"id": {
+			"type": "string"
+		},
+		"isAuthoritative": {
+			"type": "boolean"
+		},
+		"lastModifiedBy": {
+			"additionalProperties": true,
+			"properties": {
+				"user": {
+					"properties": {
+						"displayName": {
+							"type": "string"
+						},
+						"email": {
+							"type": "string"
+						},
+						"id": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				}
+			},
+			"type": "object"
+		},
+		"lastModifiedDateTime": {
+			"type": "string"
+		},
+		"name": {
+			"type": "string"
+		},
+		"parentReference": {
+			"properties": {
+				"driveId": {
+					"type": "string"
+				},
+				"driveType": {
+					"type": "string"
+				},
+				"id": {
+					"type": "string"
+				},
+				"path": {
+					"type": "string"
+				},
+				"siteId": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"size": {
+			"type": "number"
+		},
+		"webUrl": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

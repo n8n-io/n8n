@@ -6,6 +6,7 @@ import type {
 	StepSlots,
 	StepStatus,
 	WaitDeclaration,
+	StepOutputSources,
 } from './execution.types';
 
 /**
@@ -36,6 +37,8 @@ export interface StepRecord {
 	status: StepStatus;
 	/** Outputs of a completed step, indexed by output slot; `null` until it completes. */
 	outputs: StepSlots | null;
+	/** Where the outputs' items came from. Only a loop node that ran states it. Otherwise `null`. */
+	outputSources: StepOutputSources | null;
 	/** The wait this step declared; `null` unless it has suspended. */
 	waitDeclaration: WaitDeclaration | null;
 	/** What resumed this step's current dispatch; `null` on a first run. */
@@ -134,9 +137,14 @@ export interface StepStore {
 	 * Record a successful run: persist `outputs` and mark the step completed.
 	 * A compare-and-set on `running`, so it returns `false` if the caller no
 	 * longer holds the claim — the outcome and the status are written together,
-	 * so they can't be observed apart.
+	 * so they can't be observed apart. `outputSources` is what the step states
+	 * about where its items came from; `null` when it states nothing.
 	 */
-	completeStep(id: string, outputs: StepSlots): Promise<boolean>;
+	completeStep(
+		id: string,
+		outputs: StepSlots,
+		outputSources: StepOutputSources | null,
+	): Promise<boolean>;
 
 	/**
 	 * Record a wait: persist `wait_declaration` and move the step to `waiting`. A

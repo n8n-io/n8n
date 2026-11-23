@@ -82,25 +82,12 @@ describe('CanvasNodeStatusIcons', () => {
 	});
 
 	it.each([
-		{ enabled: true, bound: false, otherIssue: false, executionError: false, pending: true },
-		{ enabled: false, bound: false, otherIssue: false, executionError: false, pending: false },
-		{ enabled: true, bound: true, otherIssue: false, executionError: false, pending: false },
-		{ enabled: true, bound: false, otherIssue: true, executionError: false, pending: false },
-		{ enabled: true, bound: false, otherIssue: false, executionError: true, pending: false },
+		{ setupRequired: true, executionError: false, pending: true },
+		{ setupRequired: false, executionError: false, pending: false },
+		{ setupRequired: true, executionError: true, pending: false },
 	])(
 		'distinguishes missing credentials from errors: %j',
-		({ enabled, bound, otherIssue, executionError, pending }) => {
-			const document = useWorkflowDocumentStore(createWorkflowDocumentId('workflow'));
-			vi.spyOn(document, 'getNodeById').mockReturnValue({
-				...createTestNode({
-					id: 'node',
-					credentials: bound ? { slackApi: { id: 'account', name: 'Slack' } } : {},
-				}),
-				issues: {
-					credentials: { slackApi: ['Select a credential'] },
-					...(otherIssue ? { parameters: { channel: ['Channel is required'] } } : {}),
-				},
-			});
+		({ setupRequired, executionError, pending }) => {
 			if (executionError)
 				executionIssuesByNodeId.set(
 					'node',
@@ -111,10 +98,11 @@ describe('CanvasNodeStatusIcons', () => {
 					provide: {
 						...createCanvasProvide(),
 						...createCanvasNodeProvide({
-							data: { issues: { visible: true, validation: ['Select a credential'] } },
+							id: 'node',
+							data: {
+								issues: { visible: true, validation: ['Select a credential'], setupRequired },
+							},
 						}),
-						[WorkflowDocumentStoreKey]: computed(() => document),
-						[EditorEnabledFeaturesKey]: computed(() => ({ credentialSetupWarnings: enabled })),
 					},
 				},
 			});

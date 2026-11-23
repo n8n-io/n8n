@@ -1,0 +1,35 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"attributes": {
+			"properties": {
+				"type": {
+					"type": "string"
+				},
+				"url": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"Company": {
+			"type": ["null", "string"]
+		},
+		"Email": {
+			"type": ["null", "string"]
+		},
+		"FirstName": {
+			"type": ["null", "string"]
+		},
+		"Id": {
+			"type": "string"
+		},
+		"LastModifiedDate": {
+			"type": "string"
+		},
+		"LastName": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

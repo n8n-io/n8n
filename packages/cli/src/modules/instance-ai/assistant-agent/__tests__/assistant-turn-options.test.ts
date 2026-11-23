@@ -28,6 +28,20 @@ describe('Assistant turn options', () => {
 		});
 	});
 
+	it('keeps the execution that the preview of a workflow tab shows, also for a resume', () => {
+		const threadArtifacts = {
+			artifacts: [{ type: 'workflow', id: 'wf-1', name: 'Digest', executionId: 'exec-7' }],
+			activeId: 'wf-1',
+		};
+
+		const options = createAssistantTurnOptions({ threadArtifacts });
+
+		expect(options.request.threadArtifacts).toEqual(threadArtifacts);
+		// The queue and the checkpoint store the JSON form.
+		const stored = deepCopy(serializeAssistantTurnOptions(options));
+		expect(readAssistantTurnOptions(stored).request.threadArtifacts).toEqual(threadArtifacts);
+	});
+
 	it('drops a client context that does not parse and logs the invalid fields', () => {
 		const logger = mock<Logger>();
 

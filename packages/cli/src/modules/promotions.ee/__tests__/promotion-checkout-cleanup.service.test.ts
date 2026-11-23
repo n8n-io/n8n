@@ -18,6 +18,7 @@ import {
 	PromotionLockLostError,
 } from '../promotion-environment-lock.service';
 import { PromotionWorkingDirectoryService } from '../promotion-working-directory.service';
+import { holdEnvironmentLock } from './utils/environment-lock';
 
 describe('PromotionCheckoutCleanupService', () => {
 	const environmentRepository = mock<PromotionEnvironmentRepository>();
@@ -71,21 +72,8 @@ describe('PromotionCheckoutCleanupService', () => {
 			() => false,
 		);
 
-	/** Holds the environment lock until the returned function is called. */
-	const holdLock = async (environmentId: string) => {
-		let release!: () => void;
-		let acquired!: () => void;
-		const held = new Promise<void>((resolve) => (acquired = resolve));
-		const done = environmentLock.run(environmentId, async () => {
-			acquired();
-			await new Promise<void>((resolve) => (release = resolve));
-		});
-		await held;
-		return async () => {
-			release();
-			await done;
-		};
-	};
+	const holdLock = async (environmentId: string) =>
+		await holdEnvironmentLock(environmentLock, environmentId);
 
 	/** Whether another operation can take the lock now. */
 	const isLockFree = async (environmentId: string) =>
@@ -403,25 +391,36 @@ describe('PromotionCheckoutCleanupService', () => {
 		);
 
 		it.each(entryPointNames)(
-			'$name publishes and deletes the trash after it releases the lock',
+			'$name publishes and then deletes the trash after it releases the lock',
 			async ({ name }) => {
 				isMultiMain = true;
 				await createCheckout(LIVE_ID);
 				let lockFreeOnPublish: boolean | undefined;
+				let publishProbe: Promise<void> | undefined;
 				publisher.publishCommand.mockImplementation(async () => {
-					lockFreeOnPublish = await isLockFree(LIVE_ID);
+					publishProbe = isLockFree(LIVE_ID).then((free) => {
+						lockFreeOnPublish = free;
+					});
+					await publishProbe;
 				});
 				let lockFreeOnTrashDeletion: boolean | undefined;
 				const deleteTrash = workingDirectory.deleteTrash.bind(workingDirectory);
-				vi.spyOn(workingDirectory, 'deleteTrash').mockImplementation(async (folders) => {
-					lockFreeOnTrashDeletion = await isLockFree(LIVE_ID);
-					await deleteTrash(folders);
-				});
+				const deleteTrashSpy = vi
+					.spyOn(workingDirectory, 'deleteTrash')
+					.mockImplementation(async (folders) => {
+						// Each probe takes the lock, so a concurrent publish probe would make this one fail.
+						await publishProbe;
+						lockFreeOnTrashDeletion = await isLockFree(LIVE_ID);
+						await deleteTrash(folders);
+					});
 
 				await entryPoint(name).run();
 
 				await vi.waitFor(() => expect(lockFreeOnPublish).toBe(true));
 				expect(lockFreeOnTrashDeletion).toBe(true);
+				expect(publisher.publishCommand.mock.invocationCallOrder[0]).toBeLessThan(
+					deleteTrashSpy.mock.invocationCallOrder[0],
+				);
 			},
 		);
 

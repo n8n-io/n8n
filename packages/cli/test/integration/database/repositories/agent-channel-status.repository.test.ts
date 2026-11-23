@@ -6,6 +6,8 @@ import { DataSource, type Repository } from '@n8n/typeorm';
 import { InstanceSettings } from 'n8n-core';
 import { v4 as uuid } from 'uuid';
 
+import { createAgent } from '@test-integration/db/agents';
+
 import type { Agent } from '@/modules/agents/entities/agent.entity';
 import { AgentChannelStatus } from '@/modules/agents/entities/agent-channel-status.entity';
 import type { AgentChannelObservation } from '@/modules/agents/repositories/agent-channel-status.repository';
@@ -65,18 +67,16 @@ describe('AgentChannelStatusRepository', () => {
 
 	beforeEach(async () => {
 		const project = await createTeamProject();
-		agent = await agentRepo.save(
-			agentRepo.create({
-				id: uuid(),
-				name: 'Test Agent',
-				projectId: project.id,
-				integrations: [],
-				tools: {},
-				skills: {},
-				versionId: 'version-1',
-				activeVersionId: null,
-			} as Partial<Agent>),
-		);
+		agent = await createAgent({
+			id: uuid(),
+			name: 'Test Agent',
+			projectId: project.id,
+			integrations: [],
+			tools: {},
+			skills: {},
+			versionId: 'version-1',
+			activeVersionId: null,
+		});
 		ref = { agentId: agent.id, integrationType: 'telegram', credentialId: 'cred-1' };
 	});
 

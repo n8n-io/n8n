@@ -9,7 +9,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | Name | Columns | Comment | Type |
 | ---- | ------- | ------- | ---- |
 | [activity_event](activity_event.md) | 11 |  | table |
-| [agent_background_job](agent_background_job.md) | 26 |  | table |
+| [agent_background_job](agent_background_job.md) | 28 |  | table |
 | [agent_budget_applied_call](agent_budget_applied_call.md) | 2 |  | table |
 | [agent_budget_spend](agent_budget_spend.md) | 4 |  | table |
 | [agent_channel_status](agent_channel_status.md) | 11 |  | table |
@@ -27,6 +27,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [agent_file_grants](agent_file_grants.md) | 4 |  | table |
 | [agent_files](agent_files.md) | 10 |  | table |
 | [agent_history](agent_history.md) | 11 |  | table |
+| [agent_knowledge_dependency](agent_knowledge_dependency.md) | 3 |  | table |
 | [agent_message_queue](agent_message_queue.md) | 10 |  | table |
 | [agent_plan](agent_plan.md) | 8 |  | table |
 | [agent_plan_history](agent_plan_history.md) | 6 |  | table |
@@ -38,13 +39,13 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [agent_thread_grants](agent_thread_grants.md) | 4 |  | table |
 | [agent_version_skill_dependency](agent_version_skill_dependency.md) | 4 |  | table |
 | [agent_workflow_dependency](agent_workflow_dependency.md) | 3 |  | table |
-| [agents](agents.md) | 19 |  | table |
+| [agents](agents.md) | 20 |  | table |
 | [agents_memory_entries](agents_memory_entries.md) | 13 |  | table |
 | [agents_memory_entry_candidates](agents_memory_entry_candidates.md) | 14 |  | table |
 | [agents_memory_entry_locks](agents_memory_entry_locks.md) | 6 |  | table |
 | [agents_memory_entry_sources](agents_memory_entry_sources.md) | 10 |  | table |
 | [agents_messages](agents_messages.md) | 12 |  | table |
-| [agents_observation_cursors](agents_observation_cursors.md) | 11 |  | table |
+| [agents_observation_cursors](agents_observation_cursors.md) | 12 |  | table |
 | [agents_observation_locks](agents_observation_locks.md) | 7 |  | table |
 | [agents_observations](agents_observations.md) | 11 |  | table |
 | [agents_resources](agents_resources.md) | 4 |  | table |
@@ -81,6 +82,10 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [execution_data](execution_data.md) | 4 |  | table |
 | [execution_entity](execution_entity.md) | 20 |  | table |
 | [execution_ledger](execution_ledger.md) | 16 |  | table |
+| [execution_ledger_parked](execution_ledger_parked.md) | 20 |  | table |
+| [execution_limit_audit](execution_limit_audit.md) | 8 |  | table |
+| [execution_limit_instance_usage](execution_limit_instance_usage.md) | 5 |  | table |
+| [execution_limit_usage](execution_limit_usage.md) | 6 |  | table |
 | [execution_metadata](execution_metadata.md) | 4 |  | table |
 | [folder](folder.md) | 7 |  | table |
 | [folder_tag](folder_tag.md) | 2 |  | table |
@@ -94,7 +99,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [instance_ai_events](instance_ai_events.md) | 7 |  | table |
 | [instance_ai_mcp_registry_connections](instance_ai_mcp_registry_connections.md) | 7 |  | table |
 | [instance_ai_messages](instance_ai_messages.md) | 8 |  | table |
-| [instance_ai_observation_cursors](instance_ai_observation_cursors.md) | 10 |  | table |
+| [instance_ai_observation_cursors](instance_ai_observation_cursors.md) | 11 |  | table |
 | [instance_ai_observation_locks](instance_ai_observation_locks.md) | 6 |  | table |
 | [instance_ai_observational_memory](instance_ai_observational_memory.md) | 32 |  | table |
 | [instance_ai_observations](instance_ai_observations.md) | 10 |  | table |
@@ -108,6 +113,9 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [instance_monitoring_report](instance_monitoring_report.md) | 10 |  | table |
 | [instance_version_history](instance_version_history.md) | 5 |  | table |
 | [invalid_auth_token](invalid_auth_token.md) | 2 |  | table |
+| [knowledge_collection](knowledge_collection.md) | 11 |  | table |
+| [knowledge_file](knowledge_file.md) | 11 |  | table |
+| [knowledge_vector_store](knowledge_vector_store.md) | 12 |  | table |
 | [lease](lease.md) | 11 |  | table |
 | [lease_kind](lease_kind.md) | 7 |  | table |
 | [lease_session](lease_session.md) | 7 |  | table |
@@ -148,10 +156,11 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [service_account_details](service_account_details.md) | 4 |  | table |
 | [settings](settings.md) | 3 |  | table |
 | [shared_credentials](shared_credentials.md) | 5 |  | table |
+| [shared_knowledge_collection](shared_knowledge_collection.md) | 5 |  | table |
 | [shared_workflow](shared_workflow.md) | 5 |  | table |
 | [skill](skill.md) | 8 |  | table |
 | [skill_file](skill_file.md) | 5 |  | table |
-| [skill_source](skill_source.md) | 14 |  | table |
+| [skill_source](skill_source.md) | 15 |  | table |
 | [skill_source_link](skill_source_link.md) | 14 |  | table |
 | [skill_version](skill_version.md) | 12 |  | table |
 | [tag_entity](tag_entity.md) | 4 |  | table |
@@ -175,7 +184,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [workflow_entity](workflow_entity.md) | 20 |  | table |
 | [workflow_history](workflow_history.md) | 12 |  | table |
 | [workflow_publication_outbox](workflow_publication_outbox.md) | 8 |  | table |
-| [workflow_publication_retry_state](workflow_publication_retry_state.md) | 4 |  | table |
+| [workflow_publication_retry_state](workflow_publication_retry_state.md) | 5 |  | table |
 | [workflow_publication_trigger_status](workflow_publication_trigger_status.md) | 8 |  | table |
 | [workflow_publish_history](workflow_publish_history.md) | 6 |  | table |
 | [workflow_published_version](workflow_published_version.md) | 4 |  | table |
@@ -197,9 +206,10 @@ erDiagram
 
 "activity_event" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "activity_event" }o--o| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
-"agent_background_job" }o--|| "agents" : "FOREIGN KEY (parentAgentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"agent_background_job" }o--o| "agent_execution" : "FOREIGN KEY (sourceExecutionId) REFERENCES agent_execution (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"agent_background_job" }o--o| "execution_entity" : "FOREIGN KEY (callerExecutionId) REFERENCES execution_entity (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "agent_background_job" }o--o| "agent_plan" : "FOREIGN KEY (planId) REFERENCES agent_plan (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"agent_background_job" }o--o| "agent_execution" : "FOREIGN KEY (sourceExecutionId) REFERENCES agent_execution (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"agent_background_job" }o--|| "agents" : "FOREIGN KEY (parentAgentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_channel_status" |o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_chat_attachments" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_chat_attachments" }o--o| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -226,6 +236,8 @@ erDiagram
 "agent_files" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_history" }o--o| "user" : "FOREIGN KEY (publishedById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "agent_history" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agent_knowledge_dependency" |o--|| "knowledge_collection" : "FOREIGN KEY (knowledgeCollectionId) REFERENCES knowledge_collection (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agent_knowledge_dependency" |o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_message_queue" }o--o| "agent_execution" : "FOREIGN KEY (executionId) REFERENCES agent_execution (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
 "agent_message_queue" }o--|| "agent_execution_threads" : "FOREIGN KEY (threadId) REFERENCES agent_execution_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_message_queue" }o--|| "agents_messages" : "FOREIGN KEY (messageId) REFERENCES agents_messages (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -247,8 +259,9 @@ erDiagram
 "agent_version_skill_dependency" |o--|| "agent_history" : "FOREIGN KEY (agentVersionId) REFERENCES agent_history (versionId) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_workflow_dependency" |o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_workflow_dependency" |o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agents" }o--o| "workflow_entity" : "FOREIGN KEY (approvalWorkflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE RESTRICT MATCH NONE"
+"agents" }o--|| "user" : "FOREIGN KEY (identityId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE RESTRICT MATCH NONE"
 "agents" }o--o| "folder" : "FOREIGN KEY (parentFolderId) REFERENCES folder (id) ON UPDATE NO ACTION ON DELETE RESTRICT MATCH NONE"
-"agents" }o--o| "user" : "FOREIGN KEY (identityId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "agents" }o--o| "agent_history" : "FOREIGN KEY (activeVersionId) REFERENCES agent_history (versionId) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "agents" }o--o| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agents_memory_entries" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -266,8 +279,8 @@ erDiagram
 "agents_memory_entry_sources" }o--|| "agents_memory_entries" : "FOREIGN KEY (memoryEntryId) REFERENCES agents_memory_entries (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agents_memory_entry_sources" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agents_messages" }o--|| "agents_threads" : "FOREIGN KEY (threadId) REFERENCES agents_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"agents_observation_cursors" |o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agents_observation_cursors" |o--|| "agents_threads" : "FOREIGN KEY (observationScopeId) REFERENCES agents_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agents_observation_cursors" |o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agents_observation_locks" |o--|| "agents_threads" : "FOREIGN KEY (observationScopeId) REFERENCES agents_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agents_observation_locks" |o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agents_observations" }o--o| "agents_observations" : "FOREIGN KEY (supersededBy) REFERENCES agents_observations (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
@@ -278,9 +291,9 @@ erDiagram
 "agents_tags" |o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "ai_builder_temporary_workflow" }o--|| "instance_ai_threads" : "FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "ai_builder_temporary_workflow" |o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"ai_preference" }o--o| "user" : "FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
-"ai_preference" }o--o| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "ai_preference" }o--o| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"ai_preference" }o--o| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"ai_preference" }o--o| "user" : "FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "app" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "app" }o--o| "app_version" : "FOREIGN KEY (draftVersionId) REFERENCES app_version (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "app" }o--o| "app_version" : "FOREIGN KEY (publishedVersionId) REFERENCES app_version (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
@@ -356,6 +369,15 @@ erDiagram
 "instance_ai_thread_tabs" |o--|| "instance_ai_threads" : "FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_ai_threads" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_credential_assignment" }o--|| "credentials_entity" : "FOREIGN KEY (credentialId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE RESTRICT MATCH NONE"
+"knowledge_collection" }o--o| "user" : "FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"knowledge_collection" }o--o| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"knowledge_collection" }o--o| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"knowledge_file" }o--o| "user" : "FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"knowledge_file" }o--|| "knowledge_collection" : "FOREIGN KEY (knowledgeCollectionId) REFERENCES knowledge_collection (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"knowledge_vector_store" }o--o| "user" : "FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"knowledge_vector_store" }o--o| "credentials_entity" : "FOREIGN KEY (embeddingCredentialId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"knowledge_vector_store" }o--o| "credentials_entity" : "FOREIGN KEY (credentialId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"knowledge_vector_store" }o--|| "knowledge_collection" : "FOREIGN KEY (knowledgeCollectionId) REFERENCES knowledge_collection (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "lease" |o--|| "lease_kind" : "FOREIGN KEY (leaseKind) REFERENCES lease_kind (kind) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "lease_session" }o--|| "lease_kind" : "FOREIGN KEY (leaseKind) REFERENCES lease_kind (kind) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "migration_finding" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -414,6 +436,8 @@ erDiagram
 "service_account_details" |o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "shared_credentials" |o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "shared_credentials" |o--|| "credentials_entity" : "FOREIGN KEY (credentialsId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"shared_knowledge_collection" |o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"shared_knowledge_collection" |o--|| "knowledge_collection" : "FOREIGN KEY (knowledgeCollectionId) REFERENCES knowledge_collection (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "shared_workflow" |o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "shared_workflow" |o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "skill" }o--o| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -499,6 +523,7 @@ erDiagram
   varchar userId FK
 }
 "agent_background_job" {
+  INTEGER callerExecutionId FK
   varchar_36_ childExecutionId
   varchar_128_ childThreadId
   datetime_3_ createdAt
@@ -510,6 +535,7 @@ erDiagram
   varchar_36_ parentAgentId FK
   varchar_64_ parentPrincipalHash
   varchar_255_ parentResourceId
+  varchar_128_ parentRunId
   varchar_128_ parentThreadId
   varchar pauseRequestId
   varchar planId FK
@@ -733,6 +759,11 @@ erDiagram
   datetime_3_ updatedAt
   varchar_36_ versionId PK
 }
+"agent_knowledge_dependency" {
+  varchar_36_ agentId PK
+  datetime_3_ createdAt
+  varchar_16_ knowledgeCollectionId PK
+}
 "agent_message_queue" {
   datetime_3_ createdAt
   varchar_36_ executionId FK
@@ -827,6 +858,7 @@ erDiagram
 }
 "agents" {
   varchar_36_ activeVersionId FK
+  varchar_36_ approvalWorkflowId FK
   boolean availableInMCP
   datetime_3_ createdAt
   varchar_36_ id PK
@@ -923,6 +955,7 @@ erDiagram
   varchar_36_ resumeFromMessageId
   TEXT resumeNotes
   datetime_3_ updatedAt
+  TEXT workingSet
 }
 "agents_observation_locks" {
   varchar_36_ agentId PK
@@ -1281,6 +1314,53 @@ erDiagram
   varchar_32_ source
   INTEGER timeSavedMin
 }
+"execution_ledger_parked" {
+  varchar_32_ blockedBy
+  varchar_36_ entityId
+  varchar_128_ entityName
+  varchar_16_ entityType
+  varchar_255_ error
+  varchar_16_ event
+  varchar eventId
+  varchar_36_ executionId
+  INTEGER id
+  bigint ledgerId
+  varchar_32_ mode
+  datetime_3_ occurredAt
+  varchar_8_ origin
+  varchar_16_ outcome
+  datetime_3_ parkedAt
+  varchar_36_ projectId
+  bigint runtimeMs
+  varchar_32_ source
+  varchar_48_ step
+  INTEGER timeSavedMin
+}
+"execution_limit_audit" {
+  datetime_3_ createdAt
+  varchar_32_ field
+  INTEGER id
+  varchar_255_ loginId
+  TEXT newValue
+  TEXT oldValue
+  varchar_36_ projectId
+  varchar updatedBy
+}
+"execution_limit_instance_usage" {
+  INTEGER blockedCount
+  date day PK
+  varchar_16_ entityType PK
+  INTEGER startedCount
+  datetime_3_ updatedAt
+}
+"execution_limit_usage" {
+  INTEGER blockedCount
+  date day PK
+  varchar_16_ entityType PK
+  varchar_36_ projectId PK
+  INTEGER startedCount
+  datetime_3_ updatedAt
+}
 "execution_metadata" {
   INTEGER executionId FK
   INTEGER id
@@ -1397,6 +1477,7 @@ erDiagram
   varchar_36_ resumeFromMessageId
   TEXT resumeNotes
   datetime_3_ updatedAt
+  TEXT workingSet
 }
 "instance_ai_observation_locks" {
   datetime_3_ createdAt
@@ -1533,6 +1614,46 @@ erDiagram
 "invalid_auth_token" {
   datetime_3_ expiresAt
   varchar_512_ token PK
+}
+"knowledge_collection" {
+  varchar_36_ agentId FK
+  datetime_3_ createdAt
+  varchar createdById FK
+  varchar_512_ description
+  varchar_16_ id PK
+  boolean isGlobal
+  varchar_16_ kind
+  varchar_128_ name
+  varchar_36_ projectId FK
+  varchar_24_ slug
+  datetime_3_ updatedAt
+}
+"knowledge_file" {
+  datetime_3_ createdAt
+  varchar createdById FK
+  TEXT description
+  INTEGER fileSizeBytes
+  varchar_16_ id PK
+  varchar_16_ knowledgeCollectionId FK
+  varchar_255_ mimeType
+  varchar_255_ name
+  TEXT storageKey
+  varchar_2_ storedAt
+  datetime_3_ updatedAt
+}
+"knowledge_vector_store" {
+  TEXT config
+  datetime_3_ createdAt
+  varchar createdById FK
+  varchar_36_ credentialId FK
+  varchar_512_ description
+  varchar_36_ embeddingCredentialId FK
+  varchar_255_ embeddingModel
+  varchar_16_ id PK
+  varchar_16_ knowledgeCollectionId FK
+  varchar_64_ name
+  varchar_16_ provider
+  datetime_3_ updatedAt
 }
 "lease" {
   datetime_3_ claimedAt
@@ -1910,6 +2031,13 @@ erDiagram
   TEXT role
   datetime_3_ updatedAt
 }
+"shared_knowledge_collection" {
+  datetime_3_ createdAt
+  varchar_16_ knowledgeCollectionId PK
+  varchar_36_ projectId PK
+  varchar_32_ role
+  datetime_3_ updatedAt
+}
 "shared_workflow" {
   datetime_3_ createdAt
   varchar_36_ projectId PK
@@ -1948,6 +2076,7 @@ erDiagram
   varchar_36_ projectId FK
   varchar_32_ status
   varchar_16_ type
+  TEXT unlinkedSkills
   datetime_3_ updatedAt
 }
 "skill_source_link" {
@@ -2218,6 +2347,7 @@ erDiagram
 }
 "workflow_publication_retry_state" {
   datetime_3_ createdAt
+  INTEGER retryDelaySeconds
   varchar_36_ targetVersionId
   datetime_3_ updatedAt
   varchar_36_ workflowId PK

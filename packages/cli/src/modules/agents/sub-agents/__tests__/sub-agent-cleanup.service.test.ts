@@ -19,7 +19,7 @@ function makeAgent(overrides: AgentFixtureOverrides = {}): ProjectAgent {
 		projectId,
 		schema: {
 			name: 'Parent',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			instructions: 'Delegate work',
 		} as AgentJsonConfig,
 		...overrides,
@@ -56,7 +56,7 @@ describe('SubAgentCleanupService', () => {
 			activeVersionId: 'v1',
 			schema: {
 				name: 'Parent',
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 				instructions: 'Delegate work',
 				subAgents: {
 					maxChildren: 5,
@@ -90,7 +90,7 @@ describe('SubAgentCleanupService', () => {
 			id: 'parent-2',
 			schema: {
 				name: 'Parent',
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 				instructions: 'Delegate work',
 				subAgents: { agents: [{ agentId: 'other-child' }] },
 			} as AgentJsonConfig,
@@ -109,7 +109,7 @@ describe('SubAgentCleanupService', () => {
 			id: childAgentId,
 			schema: {
 				name: 'Child',
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 				instructions: 'x',
 				subAgents: { agents: [{ agentId: childAgentId }] },
 			} as AgentJsonConfig,
@@ -130,7 +130,7 @@ describe('SubAgentCleanupService', () => {
 				id: 'parent-1',
 				schema: {
 					name: 'Parent',
-					model: 'anthropic/claude-sonnet-4-5',
+					model: 'anthropic/claude-sonnet-5-5',
 					instructions: 'x',
 					subAgents: { agents: [{ agentId: childAgentId }] },
 				} as AgentJsonConfig,
@@ -156,7 +156,7 @@ describe('SubAgentCleanupService', () => {
 				id: 'parent-1',
 				schema: {
 					name: 'Parent',
-					model: 'anthropic/claude-sonnet-4-5',
+					model: 'anthropic/claude-sonnet-5-5',
 					instructions: 'x',
 					subAgents: { agents: [{ agentId: childAgentId }] },
 				} as AgentJsonConfig,
@@ -179,7 +179,7 @@ describe('SubAgentCleanupService', () => {
 			id: 'parent-a',
 			schema: {
 				name: 'Parent A',
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 				instructions: 'x',
 				subAgents: { agents: [{ agentId: childAgentId }] },
 			} as AgentJsonConfig,
@@ -188,7 +188,7 @@ describe('SubAgentCleanupService', () => {
 			id: 'parent-b',
 			schema: {
 				name: 'Parent B',
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 				instructions: 'x',
 				subAgents: { agents: [{ agentId: childAgentId }] },
 			} as AgentJsonConfig,

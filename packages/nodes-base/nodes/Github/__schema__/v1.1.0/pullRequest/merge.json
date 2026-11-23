@@ -1,0 +1,14 @@
+{
+	"properties": {
+		"merged": {
+			"type": "boolean"
+		},
+		"message": {
+			"type": "string"
+		},
+		"sha": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

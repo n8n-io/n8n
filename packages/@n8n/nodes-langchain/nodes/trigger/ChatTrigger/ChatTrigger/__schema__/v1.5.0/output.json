@@ -1,0 +1,15 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"action": {
+			"type": "string"
+		},
+		"chatInput": {
+			"type": "string"
+		},
+		"sessionId": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

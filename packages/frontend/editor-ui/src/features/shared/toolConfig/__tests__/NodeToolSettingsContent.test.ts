@@ -279,7 +279,7 @@ describe('NodeToolSettingsContent', () => {
 		const { rerender } = renderComponent({
 			props: { initialNode, syncNodeToNdv: true },
 		});
-		const toolNdvStore = useNDVStore(createWorkflowDocumentId('node-tool-workflow'));
+		const toolNdvStore = useNDVStore(createWorkflowDocumentId('', 'node-tool-workflow'));
 
 		expect(toolNdvStore.activeNode?.parameters).toEqual(initialNode.parameters);
 

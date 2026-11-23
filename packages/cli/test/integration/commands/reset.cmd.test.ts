@@ -1,8 +1,10 @@
 import {
+	createTeamProject,
 	getPersonalProject,
 	mockInstance,
 	createWorkflow,
 	testDb,
+	testModules,
 	randomCredentialPayload,
 } from '@n8n/backend-test-utils';
 import {
@@ -16,8 +18,10 @@ import {
 import { Container } from '@n8n/di';
 
 import { Reset } from '@/commands/user-management/reset';
+import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { NodeTypes } from '@/node-types';
+import { createAgent } from '@test-integration/db/agents';
 import { setupTestCommand } from '@test-integration/utils/test-command';
 
 import { encryptCredentialData, saveCredential } from '../shared/db/credentials';
@@ -25,6 +29,10 @@ import { createMember, createUser } from '../shared/db/users';
 
 mockInstance(LoadNodesAndCredentials);
 mockInstance(NodeTypes);
+// Before the command setup inits the DB, so the agent tables exist.
+beforeAll(async () => {
+	await testModules.loadModules(['agents']);
+});
 const command = setupTestCommand(Reset);
 
 beforeEach(async () => {
@@ -93,4 +101,18 @@ test('user-management:reset should reset DB to default user state', async () => 
 	await expect(
 		Container.get(SharedCredentialsRepository).findBy({ credentialsId: danglingCredential.id }),
 	).resolves.toMatchObject([{ projectId: ownerProject.id, role: 'credential:owner' }]);
+});
+
+test('user-management:reset keeps agents and their service accounts', async () => {
+	await createUser({ role: GLOBAL_OWNER_ROLE });
+	const agent = await createAgent({ projectId: (await createTeamProject()).id });
+
+	await command.run();
+
+	await expect(Container.get(AgentRepository).findOneBy({ id: agent.id })).resolves.toMatchObject({
+		identityId: agent.identityId,
+	});
+	await expect(
+		Container.get(UserRepository).findOneBy({ id: agent.identityId }),
+	).resolves.toMatchObject({ kind: 'service' });
 });

@@ -88,7 +88,7 @@ export const codeTaskInputSchema = z
 		version: z.literal(CODE_TASK_CONTRACT_VERSION),
 		taskId: z.string().min(1),
 		language: z.literal('javascript'),
-		code: z.string(),
+		code: z.string().min(1),
 		nodeMode: z.enum(CODE_EXECUTION_MODES),
 		continueOnFail: z.boolean(),
 		/** Only for the `runOnceForEachItem` mode. */

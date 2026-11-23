@@ -5,6 +5,7 @@ import {
 	EventService,
 	ExecutionRedactionServiceProxy,
 	WorkflowVersionedSettingsService,
+	loginIdOf,
 } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type {
@@ -43,13 +44,13 @@ import {
 	createEmptyRunExecutionData,
 	createErrorExecutionData,
 	runDataUsedDynamicCredentials,
+	WORKFLOW_ENGINE_TYPES,
 } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
 import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error';
-import { loginIdOf } from '@/events/login-id';
 import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error';
 import {
 	BadRequestError,
@@ -74,6 +75,7 @@ import { getWorkflowProjectDetailsSafe } from '@/workflows/utils';
 import { EngineV2ExecutionReader } from './engine-v2-execution-reader.service';
 import { MissingExecutionDataError } from './execution-data/missing-execution-data.error';
 import { isExecutionIdV2, type ExecutionIdV2 } from './execution-id';
+import { ExecutionCancelService } from './execution-cancel.service';
 import { ExecutionPersistence } from './execution-persistence';
 
 import type { ExecutionRequest, RetriedExecution, StopResult } from './execution.types';
@@ -96,6 +98,7 @@ export const schemaGetExecutionsQueryFilter = {
 		vote: { type: 'string' },
 		projectId: { type: 'string' },
 		workflowVersionId: { type: 'string' },
+		engine: { type: 'string', enum: [...WORKFLOW_ENGINE_TYPES] },
 	},
 	$defs: {
 		metadata: {
@@ -143,6 +146,7 @@ export class ExecutionService {
 		private readonly engineV2ExecutionReader: EngineV2ExecutionReader,
 		private readonly engineDataPlane: EngineDataPlaneProxyService,
 		private readonly workflowVersionedSettings: WorkflowVersionedSettingsService,
+		private readonly executionCancelService: ExecutionCancelService,
 	) {}
 
 	/**
@@ -355,7 +359,8 @@ export class ExecutionService {
 		// Start the workflow
 		const data: IWorkflowExecutionDataProcess = {
 			executionMode,
-			executionData: execution.data,
+			// A retry is a new root execution. It must not take the root mode of the original run.
+			executionData: { ...execution.data, rootExecutionMode: undefined },
 			retryOf: executionId,
 			workflowData: execution.workflowData,
 			userId: user.id,
@@ -493,6 +498,17 @@ export class ExecutionService {
 	async delete(user: User, payload: DeleteExecutionsDto, sharedWorkflowIds: string[]) {
 		const { deleteBefore, ids, filters: requestFiltersRaw } = payload;
 
+		// Read the engine from the raw filter: if a field fails the schema, the
+		// filters are dropped and a delete by date would match every v1 row.
+		const engine: unknown = requestFiltersRaw?.engine;
+		if (engine !== undefined && !WORKFLOW_ENGINE_TYPES.some((known) => known === engine)) {
+			throw new BadRequestError('Unknown engine in the executions filter');
+		}
+
+		// A delete by date reaches only the engine v1 table, so an engine v2 filter
+		// matches nothing there.
+		if (deleteBefore && engine === 'v2') return;
+
 		let requestFilters: IGetExecutionsQueryFilter | undefined;
 		if (requestFiltersRaw) {
 			try {
@@ -542,6 +558,7 @@ export class ExecutionService {
 		const fullExecutionData: CreateExecutionPayload = {
 			data: executionData,
 			mode,
+			// oxlint-disable-next-line typescript/no-deprecated -- Keep the legacy execution field for existing consumers.
 			finished: false,
 			workflowData,
 			workflowId: workflow.id,
@@ -740,7 +757,9 @@ export class ExecutionService {
 	}
 
 	private async stopBeforeRun(execution: IExecutionResponse): Promise<IExecutionResponse> {
-		const [canceled] = await this.executionRepository.markAsCanceled([execution.id]);
+		const {
+			canceled: [canceled],
+		} = await this.executionCancelService.markAsCanceled([execution.id]);
 		if (canceled) {
 			return { ...execution, status: 'canceled', stoppedAt: canceled.stoppedAt, waitTill: null };
 		}
@@ -771,12 +790,24 @@ export class ExecutionService {
 		execution.waitTill = null;
 		execution.status = 'canceled';
 
-		const stopped = await this.executionPersistence.updateExistingExecution(
+		const { updated, ended } = await this.executionPersistence.saveExecutionOutcome(
 			execution.id,
 			execution,
 			{ requireStatus: expectedStatus },
 		);
-		if (!stopped) {
+		if (ended) {
+			void this.executionCancelService.recordEnded([
+				{
+					id: execution.id,
+					workflowId: execution.workflowId,
+					workflowName: execution.workflowData?.name,
+					mode: execution.mode,
+					startedAt: execution.startedAt ?? null,
+					stoppedAt: execution.stoppedAt,
+				},
+			]);
+		}
+		if (!updated) {
 			const current = await this.findCurrentOrThrow(execution);
 			if (current.status === 'canceled') return current;
 			this.assertStoppable(current);

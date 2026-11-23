@@ -8,11 +8,13 @@ import { useTypeAvailabilityPoliciesStore } from '../type-availability-policies.
 
 const mocks = vi.hoisted(() => ({
 	fetchInstancePolicy: vi.fn(),
+	fetchInstanceAccess: vi.fn(),
 	saveInstancePolicy: vi.fn(),
 }));
 
 vi.mock('../type-availability-policies.api', () => ({
 	fetchInstancePolicy: mocks.fetchInstancePolicy,
+	fetchInstanceAccess: mocks.fetchInstanceAccess,
 	saveInstancePolicy: mocks.saveInstancePolicy,
 }));
 
@@ -38,6 +40,22 @@ const credentialPolicy = (version: number): InstancePolicy<'credential'> => ({
 	version,
 });
 
+const accessResponse = (version: number, slack: 'allow' | 'deny' = 'allow') => ({
+	scopeId: 'scope-node',
+	version,
+	defaultAction: 'allow' as const,
+	types: [{ name: 'n8n-nodes-base.slack', access: slack, matchedRuleId: null }],
+});
+
+/** The access after the Acme node type was installed, at the same policy version. */
+const accessWithInstalledAcme = () => ({
+	...accessResponse(3),
+	types: [
+		...accessResponse(3).types,
+		{ name: 'n8n-nodes-acme.acme', access: 'deny' as const, matchedRuleId: null },
+	],
+});
+
 const conflict = () => new ResponseError('Policy scope has changed', { httpStatusCode: 409 });
 
 const addDenySlack = (policy: InstancePolicy<'node'>): InstancePolicyContent<'node'> => ({
@@ -51,16 +69,264 @@ describe('useInstancePolicyStore', () => {
 		mocks.fetchInstancePolicy.mockImplementation(async (_context, kind: string) =>
 			kind === 'node' ? nodePolicy(3) : credentialPolicy(7),
 		);
+		mocks.fetchInstanceAccess.mockImplementation(async () => accessResponse(3));
 		vi.spyOn(useTypeAvailabilityPoliciesStore(), 'reload').mockResolvedValue();
+	});
+
+	describe('typeAccess', () => {
+		it('reads the access of each type with the policy', async () => {
+			const store = useInstancePolicyStore();
+
+			await store.load(['node']);
+
+			expect(mocks.fetchInstanceAccess).toHaveBeenCalledWith(expect.anything(), 'node');
+			expect(store.typeAccess.node?.version).toBe(3);
+			expect(store.typeAccess.node?.types.get('n8n-nodes-base.slack')?.access).toBe('allow');
+			expect(store.typeAccess.credential).toBeNull();
+		});
+
+		it('reads the access of the credential policy for its own version', async () => {
+			mocks.fetchInstanceAccess.mockImplementation(async (_context, kind: string) =>
+				kind === 'node'
+					? accessResponse(3)
+					: {
+							scopeId: 'scope-credential',
+							version: 7,
+							defaultAction: 'allow' as const,
+							types: [{ name: 'slackApi', access: 'deny', matchedRuleId: null }],
+						},
+			);
+			const store = useInstancePolicyStore();
+
+			await store.load(['node', 'credential']);
+
+			expect(store.typeAccess.credential?.version).toBe(7);
+			expect(store.typeAccess.credential?.types.get('slackApi')?.access).toBe('deny');
+			expect(store.typeAccess.node?.types.has('slackApi')).toBe(false);
+		});
+
+		it('reads the access again on each load, so it lists the types installed since', async () => {
+			const store = useInstancePolicyStore();
+			await store.load(['node']);
+			mocks.fetchInstanceAccess.mockResolvedValue(accessWithInstalledAcme());
+
+			await store.load(['node']);
+
+			expect(mocks.fetchInstanceAccess).toHaveBeenCalledTimes(2);
+			expect(store.typeAccess.node?.types.get('n8n-nodes-acme.acme')?.access).toBe('deny');
+		});
+
+		it('reads the access again before a save resolves', async () => {
+			mocks.saveInstancePolicy.mockResolvedValue({ ...nodePolicy(4, [DENY_SLACK]), warnings: [] });
+			const store = useInstancePolicyStore();
+			await store.load(['node']);
+			mocks.fetchInstanceAccess.mockResolvedValue(accessResponse(4, 'deny'));
+
+			await store.save('node', addDenySlack);
+
+			expect(store.typeAccess.node?.version).toBe(4);
+			expect(store.typeAccess.node?.types.get('n8n-nodes-base.slack')?.access).toBe('deny');
+		});
+
+		it('keeps a newer access when an older answer arrives late', async () => {
+			const olderAccess = createDeferredPromise<ReturnType<typeof accessResponse>>();
+			mocks.fetchInstanceAccess.mockReturnValueOnce(olderAccess.promise);
+			const store = useInstancePolicyStore();
+			const olderLoad = store.load(['node']);
+			mocks.fetchInstancePolicy.mockResolvedValue(nodePolicy(4));
+			mocks.fetchInstanceAccess.mockResolvedValue(accessResponse(4, 'deny'));
+			await vi.waitFor(() => expect(mocks.fetchInstanceAccess).toHaveBeenCalledTimes(1));
+
+			await store.load(['node']);
+			olderAccess.resolve(accessResponse(3));
+			await olderLoad;
+
+			expect(store.typeAccess.node?.version).toBe(4);
+			expect(store.typeAccess.node?.types.get('n8n-nodes-base.slack')?.access).toBe('deny');
+		});
+
+		it('keeps the newer access when an older answer of the same policy version arrives late', async () => {
+			const olderAccess = createDeferredPromise<ReturnType<typeof accessResponse>>();
+			mocks.fetchInstanceAccess.mockReturnValueOnce(olderAccess.promise);
+			const store = useInstancePolicyStore();
+			const olderLoad = store.load(['node']);
+			await vi.waitFor(() => expect(mocks.fetchInstanceAccess).toHaveBeenCalledTimes(1));
+			mocks.fetchInstanceAccess.mockResolvedValue(accessWithInstalledAcme());
+
+			await store.load(['node']);
+			olderAccess.resolve(accessResponse(3));
+			await olderLoad;
+
+			expect(store.typeAccess.node?.types.get('n8n-nodes-acme.acme')?.access).toBe('deny');
+		});
+
+		it('reports no read error for a load when a save read the current access after it', async () => {
+			const store = useInstancePolicyStore();
+			await store.load(['node']);
+			const loadRead = createDeferredPromise<ReturnType<typeof accessResponse>>();
+			mocks.fetchInstanceAccess.mockReturnValueOnce(loadRead.promise);
+			const load = store.load(['node']);
+			await vi.waitFor(() => expect(mocks.fetchInstanceAccess).toHaveBeenCalledTimes(2));
+			mocks.saveInstancePolicy.mockResolvedValue({ ...nodePolicy(4, [DENY_SLACK]), warnings: [] });
+			mocks.fetchInstanceAccess.mockResolvedValue(accessResponse(4, 'deny'));
+
+			await store.save('node', addDenySlack);
+			loadRead.reject(new Error('offline'));
+
+			expect(await load).toEqual({ errors: [], accessErrors: [] });
+			expect(store.typeAccess.node?.version).toBe(4);
+		});
+
+		it('keeps the older access, and its older version, when the read after a save fails', async () => {
+			mocks.saveInstancePolicy.mockResolvedValue({ ...nodePolicy(4, [DENY_SLACK]), warnings: [] });
+			const store = useInstancePolicyStore();
+			await store.load(['node']);
+			mocks.fetchInstanceAccess.mockRejectedValue(new Error('offline'));
+
+			const result = await store.save('node', addDenySlack);
+
+			expect(result).toEqual({ status: 'saved', warnings: [], accessError: new Error('offline') });
+			expect(store.typeAccess.node?.version).toBe(3);
+			expect(store.policies.node?.version).toBe(4);
+		});
+
+		it('reads the access of the new policy when a save finds that the policy changed', async () => {
+			mocks.saveInstancePolicy.mockRejectedValue(conflict());
+			const store = useInstancePolicyStore();
+			await store.load(['node']);
+			mocks.fetchInstancePolicy.mockResolvedValue(nodePolicy(4, [DENY_SLACK]));
+			mocks.fetchInstanceAccess.mockResolvedValue(accessResponse(4, 'deny'));
+
+			await store.save('node', addDenySlack);
+
+			expect(store.typeAccess.node?.version).toBe(4);
+			expect(store.typeAccess.node?.types.get('n8n-nodes-base.slack')?.access).toBe('deny');
+		});
+
+		it('reports the read error, and keeps the older access, when the policy changed and its access cannot be read', async () => {
+			mocks.saveInstancePolicy.mockRejectedValue(conflict());
+			const store = useInstancePolicyStore();
+			await store.load(['node']);
+			mocks.fetchInstancePolicy.mockResolvedValue(nodePolicy(4, [DENY_SLACK]));
+			mocks.fetchInstanceAccess.mockRejectedValue(new Error('offline'));
+
+			const result = await store.save('node', addDenySlack);
+
+			expect(result).toEqual({ status: 'changed', accessError: new Error('offline') });
+			expect(store.typeAccess.node?.version).toBe(3);
+			expect(store.policies.node?.version).toBe(4);
+		});
+
+		it('sends the next save of a kind before the access read of the previous save ends', async () => {
+			const store = useInstancePolicyStore();
+			await store.load(['node']);
+			const firstRead = createDeferredPromise<ReturnType<typeof accessResponse>>();
+			mocks.fetchInstanceAccess.mockReturnValueOnce(firstRead.promise);
+			mocks.fetchInstanceAccess.mockResolvedValue(accessResponse(5, 'deny'));
+			mocks.saveInstancePolicy
+				.mockResolvedValueOnce({ ...nodePolicy(4, [DENY_SLACK]), warnings: [] })
+				.mockResolvedValueOnce({ ...nodePolicy(5, [DENY_SLACK]), warnings: [] });
+
+			const first = store.save('node', addDenySlack);
+			const second = store.save('node', (policy) => policy);
+			await vi.waitFor(() => expect(mocks.saveInstancePolicy).toHaveBeenCalledTimes(2));
+			await second;
+			firstRead.resolve(accessResponse(4));
+			await first;
+
+			expect(store.policies.node?.version).toBe(5);
+			expect(store.typeAccess.node?.version).toBe(5);
+			expect(store.typeAccess.node?.types.get('n8n-nodes-base.slack')?.access).toBe('deny');
+		});
+
+		it('reports no read error for a save when a later save already read the current access', async () => {
+			const store = useInstancePolicyStore();
+			await store.load(['node']);
+			const firstRead = createDeferredPromise<ReturnType<typeof accessResponse>>();
+			mocks.fetchInstanceAccess.mockReturnValueOnce(firstRead.promise);
+			mocks.fetchInstanceAccess.mockResolvedValue(accessResponse(5, 'deny'));
+			mocks.saveInstancePolicy
+				.mockResolvedValueOnce({ ...nodePolicy(4, [DENY_SLACK]), warnings: [] })
+				.mockResolvedValueOnce({ ...nodePolicy(5, [DENY_SLACK]), warnings: [] });
+
+			const first = store.save('node', addDenySlack);
+			await store.save('node', (policy) => policy);
+			firstRead.reject(new Error('offline'));
+
+			expect(await first).toEqual({ status: 'saved', warnings: [] });
+			expect(store.typeAccess.node?.version).toBe(5);
+		});
+
+		it('keeps no access when an older read ends after a newer read failed', async () => {
+			const olderRead = createDeferredPromise<ReturnType<typeof accessResponse>>();
+			mocks.fetchInstanceAccess.mockReturnValueOnce(olderRead.promise);
+			const store = useInstancePolicyStore();
+			const olderLoad = store.load(['node']);
+			await vi.waitFor(() => expect(mocks.fetchInstanceAccess).toHaveBeenCalledTimes(1));
+			mocks.fetchInstancePolicy.mockResolvedValue(nodePolicy(4));
+			mocks.fetchInstanceAccess.mockRejectedValue(new Error('offline'));
+
+			await store.load(['node']);
+			olderRead.resolve(accessResponse(3));
+			await olderLoad;
+
+			expect(store.typeAccess.node).toBeNull();
+		});
+
+		it('reads the access again on request after a failed read', async () => {
+			mocks.fetchInstanceAccess.mockRejectedValueOnce(new Error('offline'));
+			const store = useInstancePolicyStore();
+			await store.load(['node']);
+
+			const errors = await store.loadAccess(['node']);
+
+			expect(errors).toEqual([]);
+			expect(store.typeAccess.node?.version).toBe(3);
+		});
+
+		it('reads the access again on request when a read of the current version failed', async () => {
+			const store = useInstancePolicyStore();
+			await store.load(['node']);
+			mocks.fetchInstanceAccess.mockRejectedValueOnce(new Error('offline'));
+			await store.load(['node']);
+			mocks.fetchInstanceAccess.mockResolvedValue(accessWithInstalledAcme());
+
+			const errors = await store.loadAccess(['node']);
+
+			expect(errors).toEqual([]);
+			expect(mocks.fetchInstanceAccess).toHaveBeenCalledTimes(3);
+			expect(store.typeAccess.node?.types.get('n8n-nodes-acme.acme')?.access).toBe('deny');
+		});
+
+		it('does not read the access again when it matches the policy', async () => {
+			const store = useInstancePolicyStore();
+			await store.load(['node']);
+
+			await store.loadAccess(['node']);
+
+			expect(mocks.fetchInstanceAccess).toHaveBeenCalledTimes(1);
+		});
+
+		it('loads the policy when the access read fails', async () => {
+			mocks.fetchInstanceAccess.mockRejectedValue(new Error('offline'));
+			const store = useInstancePolicyStore();
+
+			const result = await store.load(['node']);
+
+			expect(result).toEqual({ errors: [], accessErrors: [new Error('offline')] });
+			expect(store.policies.node).toEqual(nodePolicy(3));
+			expect(store.loadStates.node).toBe('loaded');
+			expect(store.typeAccess.node).toBeNull();
+		});
 	});
 
 	describe('load', () => {
 		it('loads the policy of each kind', async () => {
 			const store = useInstancePolicyStore();
 
-			const errors = await store.load(['node', 'credential']);
+			const result = await store.load(['node', 'credential']);
 
-			expect(errors).toEqual([]);
+			expect(result).toEqual({ errors: [], accessErrors: [] });
 			expect(store.policies.node).toEqual(nodePolicy(3));
 			expect(store.policies.credential).toEqual(credentialPolicy(7));
 			expect(store.loadStates).toEqual({ node: 'loaded', credential: 'loaded' });
@@ -84,9 +350,9 @@ describe('useInstancePolicyStore', () => {
 			});
 			const store = useInstancePolicyStore();
 
-			const errors = await store.load(['node', 'credential']);
+			const result = await store.load(['node', 'credential']);
 
-			expect(errors).toEqual([error]);
+			expect(result).toEqual({ errors: [error], accessErrors: [] });
 			expect(store.policies.node).toEqual(nodePolicy(3));
 			expect(store.loadStates).toEqual({ node: 'loaded', credential: 'failed' });
 		});
@@ -115,9 +381,24 @@ describe('useInstancePolicyStore', () => {
 			await store.load(['node']);
 			older.reject(new Error('Network'));
 
-			expect(await olderLoad).toEqual([]);
+			expect(await olderLoad).toEqual({ errors: [], accessErrors: [] });
 			expect(store.loadStates.node).toBe('loaded');
 			expect(store.policies.node).toEqual(nodePolicy(3));
+		});
+
+		it('drops the access read error of an older load when a newer load read the access', async () => {
+			const olderRead = createDeferredPromise<ReturnType<typeof accessResponse>>();
+			mocks.fetchInstanceAccess.mockReturnValueOnce(olderRead.promise);
+			const store = useInstancePolicyStore();
+			const olderLoad = store.load(['node']);
+			await vi.waitFor(() => expect(mocks.fetchInstanceAccess).toHaveBeenCalledTimes(1));
+
+			const newerLoad = await store.load(['node']);
+			olderRead.reject(new Error('offline'));
+
+			expect(await olderLoad).toEqual({ errors: [], accessErrors: [] });
+			expect(newerLoad).toEqual({ errors: [], accessErrors: [] });
+			expect(store.typeAccess.node?.version).toBe(3);
 		});
 
 		it('does not reload the builder restrictions on the first load', async () => {

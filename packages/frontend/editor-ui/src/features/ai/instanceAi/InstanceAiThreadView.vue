@@ -34,6 +34,7 @@ import { useAssistantAwayTelemetry } from './composables/useAssistantAwayTelemet
 import { getCurrentTurn } from './assistantTurn';
 import { CloudBrowserTasksKey, useCloudBrowserTasks } from './composables/useCloudBrowserTasks';
 import {
+	CloudBrowserLiveViewRefreshKey,
 	CloudBrowserLiveViewsKey,
 	useCloudBrowserLiveViews,
 } from './composables/useCloudBrowserLiveViews';
@@ -71,6 +72,7 @@ import { isAgentWorthTesting, testAgentOfferKey } from './testAgentOffer';
 import InstanceAiDataTablePreview from './components/InstanceAiDataTablePreview.vue';
 import InstanceAiAgentPreview from './components/InstanceAiAgentPreview.vue';
 import InstanceAiBrowserPreview from './components/InstanceAiBrowserPreview.vue';
+import InstanceAiCloudBrowserUserActionPanel from './components/InstanceAiCloudBrowserUserActionPanel.vue';
 import InstanceAiSkillPreview from './components/InstanceAiSkillPreview.vue';
 import InstanceAiAppPreview from './components/InstanceAiAppPreview.vue';
 import { useAgentEvalsFlag } from '@/features/ai/evaluation.ee/composables/useAgentEvalsFlag';
@@ -376,10 +378,12 @@ provide(CloudBrowserTasksKey, preview.cloudBrowserTasks);
 const runningCloudBrowserTasks = computed(() =>
 	preview.cloudBrowserTasks.value.filter((task) => task.state === 'running'),
 );
-provide(
-	CloudBrowserLiveViewsKey,
-	useCloudBrowserLiveViews(runningCloudBrowserTasks, () => props.threadId),
+const cloudBrowserLiveViews = useCloudBrowserLiveViews(
+	runningCloudBrowserTasks,
+	() => props.threadId,
 );
+provide(CloudBrowserLiveViewsKey, cloudBrowserLiveViews.views);
+provide(CloudBrowserLiveViewRefreshKey, cloudBrowserLiveViews.refresh);
 provide('openAgentChatPreview', openAgentChatPreview);
 provide('openSkillPreview', preview.openSkillPreview);
 provide('openAppPreview', preview.openAppPreview);
@@ -826,26 +830,29 @@ function handleNewThreadClick() {
 								store.debugMode = showDebugPanel;
 							"
 						/>
-						<N8nTooltip
-							:content="artifactsPanelToggleLabel"
-							placement="bottom"
-							:show-after="TOOLTIP_DELAY_MS"
-						>
-							<Transition name="preview-toggle-opacity" :css="isArtifactsPanelTransitionEnabled">
-								<N8nIconButton
-									v-if="showArtifactsPanelToggle"
-									icon="list"
-									variant="ghost"
-									size="small"
-									icon-size="large"
-									data-test-id="instance-ai-artifacts-panel-toggle"
-									:aria-label="artifactsPanelToggleLabel"
-									:aria-pressed="showArtifactsPanel"
-									:disabled="!canShowArtifactsPanel"
-									@click="toggleArtifactsPanel"
-								/>
-							</Transition>
-						</N8nTooltip>
+						<Transition name="preview-toggle-opacity" :css="isArtifactsPanelTransitionEnabled">
+							<span v-if="showArtifactsPanelToggle">
+								<N8nTooltip
+									as-child
+									:content="artifactsPanelToggleLabel"
+									placement="bottom"
+									:show-after="TOOLTIP_DELAY_MS"
+								>
+									<N8nIconButton
+										icon="list"
+										variant="ghost"
+										size="small"
+										icon-size="large"
+										data-test-id="instance-ai-artifacts-panel-toggle"
+										:aria-label="artifactsPanelToggleLabel"
+										:aria-pressed="showArtifactsPanel"
+										:disabled="!canShowArtifactsPanel"
+										focusable-when-disabled
+										@click="toggleArtifactsPanel"
+									/>
+								</N8nTooltip>
+							</span>
+						</Transition>
 						<!-- With no tabs to show, the toggle opens a resource in a new tab. -->
 						<InstanceAiResourcePicker
 							v-if="showOpenResourcePicker && thread.projectId"
@@ -873,27 +880,29 @@ function handleNewThreadClick() {
 								</N8nTooltip>
 							</template>
 						</InstanceAiResourcePicker>
-						<N8nTooltip
-							v-else
-							:content="artifactsPreviewToggleLabel"
-							placement="bottom"
-							:show-after="TOOLTIP_DELAY_MS"
-						>
-							<Transition name="preview-toggle-opacity" :css="isPreviewPanelTransitionEnabled">
-								<N8nIconButton
-									v-if="!preview.isPreviewVisible.value"
-									icon="panel-right"
-									variant="ghost"
-									size="small"
-									icon-size="large"
-									data-test-id="instance-ai-artifacts-preview-toggle"
-									:aria-label="artifactsPreviewToggleLabel"
-									:aria-pressed="preview.isPreviewVisible.value"
-									:disabled="!hasPreviewTabs"
-									@click="toggleArtifactsPreview"
-								/>
-							</Transition>
-						</N8nTooltip>
+						<Transition v-else name="preview-toggle-opacity" :css="isPreviewPanelTransitionEnabled">
+							<span v-if="!preview.isPreviewVisible.value">
+								<N8nTooltip
+									as-child
+									:content="artifactsPreviewToggleLabel"
+									placement="bottom"
+									:show-after="TOOLTIP_DELAY_MS"
+								>
+									<N8nIconButton
+										icon="panel-right"
+										variant="ghost"
+										size="small"
+										icon-size="large"
+										data-test-id="instance-ai-artifacts-preview-toggle"
+										:aria-label="artifactsPreviewToggleLabel"
+										:aria-pressed="preview.isPreviewVisible.value"
+										:disabled="!hasPreviewTabs"
+										focusable-when-disabled
+										@click="toggleArtifactsPreview"
+									/>
+								</N8nTooltip>
+							</span>
+						</Transition>
 					</template>
 				</InstanceAiViewHeader>
 			</div>
@@ -927,6 +936,7 @@ function handleNewThreadClick() {
 						<ApprovalModeSelector :thread-id="props.threadId" />
 					</template>
 					<template #above-input>
+						<InstanceAiCloudBrowserUserActionPanel />
 						<InstanceAiSetupPanel
 							v-if="setupPanelWorkflowId"
 							ref="setupPanel"
@@ -1095,6 +1105,7 @@ function handleNewThreadClick() {
 								:key="browserTab.id"
 								:class="$style.previewSlot"
 								:task-id="browserTab.taskId"
+								:user-action="browserTab.userAction"
 							/>
 							<!-- Retain each open skill's draft while another artifact is visible. -->
 							<KeepAlive v-for="tab in openSkillTabs" :key="tab.id">
