@@ -862,7 +862,7 @@ onMounted(() => {
 
 <style module lang="scss">
 .fixedHeight {
-	height: min(80vh, 850px);
+	min-height: min(80vh, 850px);
 	overflow: hidden;
 }
 
