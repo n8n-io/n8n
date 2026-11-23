@@ -30,6 +30,8 @@ const logId = (value: unknown) => (typeof value === 'string' ? value.slice(0, 64
 const httpStatus = (error: unknown) =>
 	error instanceof NodeApiError ? (error.httpCode ?? undefined) : undefined;
 
+export const errorText = (error: unknown) => ensureError(error).message.slice(0, 200);
+
 /** The enabled filters, or `undefined` when no filter is on. */
 export function getMessageFilters(this: IWebhookFunctions): MessageFilters | undefined {
 	if (!isMessageEvent(this.getNodeParameter('event', ''))) return undefined;
@@ -43,15 +45,16 @@ export function getMessageFilters(this: IWebhookFunctions): MessageFilters | und
 		skipSystemMessages: options.skipSystemMessages === true,
 		skipBotMessages: options.skipBotMessages === true,
 	};
-	const anyOn =
-		filters.mentionsMe ||
+	return filters.mentionsMe ||
 		filters.keyword !== '' ||
 		filters.skipSystemMessages ||
-		filters.skipBotMessages;
-	return anyOn ? filters : undefined;
+		filters.skipBotMessages
+		? filters
+		: undefined;
 }
 
-async function readUserId(this: IHookFunctions | IWebhookFunctions): Promise<string> {
+/** The signed-in user id, or `undefined` when the answer has none. */
+async function readUserId(this: IHookFunctions | IWebhookFunctions): Promise<string | undefined> {
 	const answer: unknown = await microsoftApiRequest.call(
 		this,
 		'GET',
@@ -59,8 +62,7 @@ async function readUserId(this: IHookFunctions | IWebhookFunctions): Promise<str
 		{},
 		{ $select: 'id' },
 	);
-	if (!isRecord(answer) || !validId(answer.id)) throw new Error('No user id in the answer');
-	return answer.id;
+	return isRecord(answer) && validId(answer.id) ? answer.id : undefined;
 }
 
 /**
@@ -69,6 +71,8 @@ async function readUserId(this: IHookFunctions | IWebhookFunctions): Promise<str
  */
 export async function storeMentionUserId(this: IHookFunctions): Promise<void> {
 	const webhookData = this.getWorkflowStaticData('node');
+	let id: string | undefined;
+	let failure: Record<string, unknown> = {};
 	try {
 		// Read only this option: an unresolvable expression in another filter must not fail the activation.
 		const wanted =
@@ -79,19 +83,23 @@ export async function storeMentionUserId(this: IHookFunctions): Promise<void> {
 			if ('mentionUserId' in webhookData) delete webhookData.mentionUserId;
 			return;
 		}
-		const id = await readUserId.call(this);
-		// Each static-data write is a database save.
-		if (webhookData.mentionUserId !== id) webhookData.mentionUserId = id;
+		id = await readUserId.call(this);
 	} catch (error) {
+		failure = { status: httpStatus(error), error: errorText(error) };
+	}
+	if (id === undefined) {
 		logTrigger.call(
 			this,
 			'warn',
 			'could not read the signed-in user; Mentions Me needs the User.Read permission',
-			{ status: httpStatus(error), error: ensureError(error).message },
+			failure,
 		);
 		// A stale id can belong to another user.
 		if ('mentionUserId' in webhookData) delete webhookData.mentionUserId;
+		return;
 	}
+	// Each static-data write is a database save.
+	if (webhookData.mentionUserId !== id) webhookData.mentionUserId = id;
 }
 
 /** The Graph path of the notified message, or `undefined` when the resource names no message. */
@@ -168,13 +176,13 @@ export async function messagePassesFilters(
 		return false;
 	}
 	if (filters.mentionsMe) {
+		if (!validId(userId)) return false;
 		const mentions = Array.isArray(message.mentions) ? message.mentions : [];
 		const mentioned = mentions.some(
 			(mention) =>
 				isRecord(mention) &&
 				isRecord(mention.mentioned) &&
 				isRecord(mention.mentioned.user) &&
-				validId(userId) &&
 				mention.mentioned.user.id === userId,
 		);
 		if (!mentioned) return false;
@@ -182,8 +190,10 @@ export async function messagePassesFilters(
 	if (filters.keyword !== '') {
 		const keyword = filters.keyword.toLowerCase();
 		// Each text is checked alone, so a keyword never matches across subject and body.
-		const texts = [await plainBody(message.body)];
-		if (typeof message.subject === 'string') texts.push(message.subject);
+		const texts = [
+			await plainBody(message.body),
+			typeof message.subject === 'string' ? message.subject : '',
+		];
 		if (!texts.some((text) => text.toLowerCase().includes(keyword))) return false;
 	}
 	return true;
@@ -205,14 +215,18 @@ export async function filterChangeNotifications(
 			userId = stored;
 		} else {
 			// No static-data write here: a write in `webhook()` can be lost.
+			let failure: Record<string, unknown> = {};
 			try {
 				userId = await readUserId.call(this);
 			} catch (error) {
+				failure = { status: httpStatus(error), error: errorText(error) };
+			}
+			if (userId === undefined) {
 				logTrigger.call(
 					this,
 					'warn',
 					'could not read the signed-in user, Mentions Me notifications skipped; grant User.Read',
-					{ status: httpStatus(error), error: ensureError(error).message },
+					failure,
 				);
 				return { passed: [] };
 			}
@@ -221,6 +235,7 @@ export async function filterChangeNotifications(
 
 	const passed: WebhookNotification[] = [];
 	let denied: NodeApiError | undefined;
+	// Graph already has its 202, so a skipped notification is final.
 	// ponytail: no batch cap. GETs run one after another for each request, not for each channel, so a
 	// large batch under throttling holds this handler for its whole length. Add a cap (or a per-channel
 	// queue) if long-running webhook requests show up.
@@ -258,7 +273,7 @@ export async function filterChangeNotifications(
 				logTrigger.call(this, 'warn', 'failed to read message, notification skipped', {
 					...fields,
 					status,
-					error: ensureError(error).message,
+					error: errorText(error),
 				});
 			}
 		}

@@ -83,6 +83,15 @@ describe('message filters', () => {
 			},
 		);
 
+		it.each([
+			['a missing messageType', {}],
+			['a non-string messageType', { messageType: 1 }],
+		])('skips %s with Skip System Messages', async (_label, message) => {
+			expect(await messagePassesFilters(message, { ...off, skipSystemMessages: true }, 'me')).toBe(
+				false,
+			);
+		});
+
 		it('skips a message from an app with Skip Bot Messages', async () => {
 			const filters = { ...off, skipBotMessages: true };
 			const fromApp = { from: { application: { id: 'bot' }, user: null } };
@@ -107,6 +116,25 @@ describe('message filters', () => {
 					'',
 				),
 			).toBe(false);
+		});
+
+		it('counts only the user mention next to a channel mention', async () => {
+			const filters = { ...off, mentionsMe: true };
+			const message = (userId: string) => ({
+				mentions: [
+					{ mentioned: { conversation: { id: 'c1', conversationIdentityType: 'channel' } } },
+					{ mentioned: { user: { id: userId } } },
+				],
+			});
+
+			expect(await messagePassesFilters(message('someone'), filters, 'me')).toBe(false);
+			expect(await messagePassesFilters(message('me'), filters, 'me')).toBe(true);
+		});
+
+		it('does not count a tag mention as a mention of the user', async () => {
+			const tagOnly = { mentions: [{ mentioned: { tag: { id: 'tag1', displayName: 'Ops' } } }] };
+
+			expect(await messagePassesFilters(tagOnly, { ...off, mentionsMe: true }, 'me')).toBe(false);
 		});
 
 		const html = (content: string) => ({ body: { contentType: 'html', content } });
@@ -343,15 +371,16 @@ describe('message filters', () => {
 			expect(readPaths()).toHaveLength(3);
 		});
 
-		it('handles a 401 like a 403', async () => {
-			routeMessages({ [messagePath('1')]: apiError('401') });
+		it('handles a 401 like a 403 and keeps the first denied error', async () => {
+			routeMessages({ [messagePath('1')]: apiError('401'), [messagePath('2')]: apiError('403') });
 
 			const { denied } = await filterChangeNotifications.call(
 				ctxWith(),
-				[notification('1')],
+				[notification('1'), notification('2')],
 				skipBot,
 			);
 
+			expect(readPaths()).toEqual([messagePath('1'), messagePath('2')]);
 			expect(denied?.httpCode).toBe('401');
 		});
 
@@ -402,6 +431,18 @@ describe('message filters', () => {
 					subscriptionId: 's'.repeat(64),
 					messageId: 'm'.repeat(64),
 				}),
+			);
+		});
+
+		it('caps the logged error text', async () => {
+			routeMessages({ [messagePath('1')]: new Error('e'.repeat(300)) });
+			const ctx = ctxWith();
+
+			await filterChangeNotifications.call(ctx, [notification('1')], skipBot);
+
+			expect(ctx.logger.warn).toHaveBeenCalledWith(
+				'Microsoft Teams Trigger: failed to read message, notification skipped',
+				expect.objectContaining({ error: 'e'.repeat(200) }),
 			);
 		});
 
