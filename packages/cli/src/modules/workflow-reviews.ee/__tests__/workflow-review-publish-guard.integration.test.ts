@@ -434,11 +434,15 @@ describe('publishing when the instance requires an approved review for the proje
 		const { workflow, newVersionId } = await createLiveTeamWorkflow();
 		await setInstanceApprovalForProject(true);
 
-		await ownerAgent
-			.patch(projectSettingsUrl(teamProject.id))
-			.send({ requiredByProject: false })
-			.expect(200);
+		for (const requiredByProject of [true, false]) {
+			await ownerAgent
+				.patch(projectSettingsUrl(teamProject.id))
+				.send({ requiredByProject })
+				.expect(200);
+		}
 
+		const stored = await ownerAgent.get(projectSettingsUrl(teamProject.id)).expect(200);
+		expect(stored.body.data).toEqual({ requiredByProject: false, requiredByInstance: true });
 		await ownerAgent
 			.post(`/workflows/${workflow.id}/activate`)
 			.send({ versionId: newVersionId })

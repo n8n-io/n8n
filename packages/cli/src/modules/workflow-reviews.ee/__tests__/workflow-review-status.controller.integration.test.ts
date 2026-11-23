@@ -398,6 +398,11 @@ describe('the level that requires a review for a workflow', () => {
 		['the instance', { instance: true, instanceForProject: false, project: false }, 'instance'],
 		[
 			'the instance for this project',
+			{ instance: false, instanceForProject: true, project: false },
+			'instance',
+		],
+		[
+			'the instance for this project over the project',
 			{ instance: false, instanceForProject: true, project: true },
 			'instance',
 		],
@@ -427,6 +432,15 @@ describe('the level that requires a review for a workflow', () => {
 			expect(await reviewRequiredBy(ownerAgent, workflow.id)).toBe('project');
 		},
 	);
+
+	test('applies the instance option of the project again when the instance stops always requiring approval', async () => {
+		const { workflow } = await createReviewableWorkflow(teamProject);
+		await setInstanceApprovalRequiredForProject(true);
+		await setInstanceApprovalRequired(true);
+		await setInstanceApprovalRequired(false);
+
+		expect(await reviewRequiredBy(ownerAgent, workflow.id)).toBe('instance');
+	});
 
 	test('reports the project level to a user who can read the workflow but not its project', async () => {
 		const { workflow } = await createReviewableWorkflow(teamProject);

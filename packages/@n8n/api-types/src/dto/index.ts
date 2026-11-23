@@ -728,6 +728,7 @@ export {
 	UpdateWorkflowReviewProjectDto,
 	type WorkflowReviewProject,
 	type WorkflowReviewProjectList,
+	type WorkflowReviewProjectUpdateResponse,
 } from './workflow-reviews/workflow-review-projects.dto';
 export type { WorkflowReviewInboxItem } from './workflow-reviews/list-workflow-review-inbox.dto';
 export { ListInboxQueryDto } from './inbox/list-inbox.dto';

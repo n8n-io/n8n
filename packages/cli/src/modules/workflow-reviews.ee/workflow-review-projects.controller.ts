@@ -2,6 +2,7 @@ import {
 	ListWorkflowReviewProjectsQueryDto,
 	UpdateWorkflowReviewProjectDto,
 	type WorkflowReviewProjectList,
+	type WorkflowReviewProjectUpdateResponse,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import {
@@ -42,7 +43,7 @@ export class WorkflowReviewProjectsController {
 		_res: Response,
 		@Param('projectId') projectId: string,
 		@Body dto: UpdateWorkflowReviewProjectDto,
-	): Promise<{ requiredByInstance: boolean }> {
+	): Promise<WorkflowReviewProjectUpdateResponse> {
 		return await this.projectSettingsService.setRequiredByInstance(req.user, projectId, dto);
 	}
 }

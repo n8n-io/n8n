@@ -23,6 +23,8 @@ export type WorkflowReviewProject = {
 	requiredByProject: boolean;
 };
 
+export type WorkflowReviewProjectUpdateResponse = Pick<WorkflowReviewProject, 'requiredByInstance'>;
+
 export type WorkflowReviewProjectList = {
 	count: number;
 	data: WorkflowReviewProject[];

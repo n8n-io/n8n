@@ -4163,11 +4163,19 @@ describe('LogStreamingEventRelay', () => {
 		);
 
 		it.each([
-			[true, 'n8n.audit.workflow-reviews.project-approval-required-by-instance.enabled'],
-			[false, 'n8n.audit.workflow-reviews.project-approval-required-by-instance.disabled'],
+			[
+				'Required',
+				true,
+				'n8n.audit.workflow-reviews.project-approval-required-by-instance.enabled',
+			],
+			[
+				'Not required',
+				false,
+				'n8n.audit.workflow-reviews.project-approval-required-by-instance.disabled',
+			],
 		])(
-			'should log the instance approval requirement for a project set to %s as `%s`',
-			(requiredByInstance, eventName) => {
+			'should log the instance approval option %s for a project as `%s`',
+			(_option, requiredByInstance, eventName) => {
 				eventService.emit('project-workflow-review-required-by-instance-updated', {
 					user: reviewer,
 					projectId: 'project-1',

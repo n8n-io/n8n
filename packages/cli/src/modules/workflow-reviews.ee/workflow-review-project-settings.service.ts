@@ -4,6 +4,7 @@ import type {
 	UpdateProjectWorkflowReviewSettingsDto,
 	UpdateWorkflowReviewProjectDto,
 	WorkflowReviewProjectList,
+	WorkflowReviewProjectUpdateResponse,
 } from '@n8n/api-types';
 import { EventService } from '@n8n/backend-services';
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
@@ -76,7 +77,7 @@ export class WorkflowReviewProjectSettingsService {
 		user: User,
 		projectId: string,
 		{ requiredByInstance }: UpdateWorkflowReviewProjectDto,
-	): Promise<{ requiredByInstance: boolean }> {
+	): Promise<WorkflowReviewProjectUpdateResponse> {
 		await this.featureGate.assertAvailable();
 		if (this.instanceSettingsLoaderConfig.securityPolicyManagedByEnv) {
 			throw new ForbiddenError(
