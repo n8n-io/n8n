@@ -267,14 +267,13 @@ describe('RunData', () => {
 			expect(queryByTestId('radio-button-chart')).not.toBeInTheDocument();
 		});
 
-		it('renders the pane default, and saves nothing, when the mode cannot render the data', async () => {
+		it('renders the pane default, and the panel and the select save nothing, when the mode cannot render the data', async () => {
 			runDataDisplayModeRegistry.register(map({ canRender: () => false }));
 
 			const { emitted, findByTestId, queryByTestId } = render({
 				defaultRunItems: items,
 				displayMode: 'map',
 				paneType: 'input',
-				disableDisplayModeSelection: true,
 			});
 
 			expect(await findByTestId('run-data-schema-node')).toBeInTheDocument();
@@ -2110,7 +2109,6 @@ describe('RunData', () => {
 		otherNodeRuns,
 		fetchedRunData,
 		inputNodes,
-		disableDisplayModeSelection,
 	}: {
 		defaultRunItems?: INodeExecutionData[];
 		workflowId?: string;
@@ -2139,7 +2137,6 @@ describe('RunData', () => {
 		fetchedRunData?: IRunData;
 		/** The parent nodes that the input panel's schema view shows. */
 		inputNodes?: IConnectedNode[];
-		disableDisplayModeSelection?: boolean;
 		lastSuccessfulExecution?: {
 			id: string;
 			finished: boolean;
@@ -2308,7 +2305,6 @@ describe('RunData', () => {
 				executingMessage: '',
 				noDataInBranchMessage: '',
 				overrideOutputs,
-				disableDisplayModeSelection,
 			},
 			slots: {
 				'data-redacted': '<div data-test-id="data-redacted-slot">Data is redacted</div>',
