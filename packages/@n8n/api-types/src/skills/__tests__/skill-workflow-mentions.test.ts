@@ -3,6 +3,7 @@ import {
 	parseAgentSkillWorkflowMentions,
 	parseSkillWorkflowMentions,
 	renameSkillWorkflowMentions,
+	replaceSkillWorkflowMentionUrls,
 } from '../skill-workflow-mentions';
 
 describe('parseSkillWorkflowMentions', () => {
@@ -136,5 +137,15 @@ describe('parseAgentSkillWorkflowMentions', () => {
 			{ workflowId: 'wf1', name: 'Report' },
 			{ workflowId: 'wf2', name: 'Archive' },
 		]);
+	});
+});
+
+describe('replaceSkillWorkflowMentionUrls', () => {
+	it('points each mention at the given URL and keeps its link text', () => {
+		const body = 'Run [A \\] b](n8n://workflow/wf1?instance=x) and [Web](https://example.com).';
+
+		expect(replaceSkillWorkflowMentionUrls(body, (id) => `/workflow/${id}`)).toBe(
+			'Run [A \\] b](/workflow/wf1) and [Web](https://example.com).',
+		);
 	});
 });

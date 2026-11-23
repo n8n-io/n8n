@@ -48,3 +48,13 @@ export function renameSkillWorkflowMentions(
 		return `[${escapeLinkText(name)}]${link.slice(text.length + 2)}`;
 	});
 }
+
+export function replaceSkillWorkflowMentionUrls(
+	body: string,
+	urlForWorkflow: (workflowId: string) => string,
+): string {
+	return body.replace(
+		SKILL_WORKFLOW_MENTION_PATTERN,
+		(_link, text: string, workflowId: string) => `[${text}](${urlForWorkflow(workflowId)})`,
+	);
+}
