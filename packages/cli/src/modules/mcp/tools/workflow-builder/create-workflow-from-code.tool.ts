@@ -70,6 +70,8 @@ export type CreateWorkflowFromCodeToolOptions = {
 	findUninstalledNodeTypes?: FindUninstalledNodeTypes;
 	/** Whether this session can call the install tool; steers the warning text. */
 	installToolAvailable?: boolean;
+	/** Maximum length, in characters, accepted for the workflow code input. */
+	maxWorkflowCodeLength?: number;
 };
 
 function normalizeWorkflowDescription(description?: string) {
@@ -84,42 +86,45 @@ function normalizeWorkflowDescription(description?: string) {
 	};
 }
 
-const inputSchema = {
-	code: z
-		.string()
-		.max(MAX_WORKFLOW_CODE_LENGTH)
-		.describe(
-			`Full TypeScript/JavaScript workflow code using the n8n Workflow SDK. Must be validated first with ${CODE_BUILDER_VALIDATE_TOOL.toolName}. Max ${MAX_WORKFLOW_CODE_LENGTH} characters.`,
+const buildInputSchema = (maxWorkflowCodeLength: number) =>
+	({
+		code: z
+			.string()
+			.max(maxWorkflowCodeLength)
+			.describe(
+				`Full TypeScript/JavaScript workflow code using the n8n Workflow SDK. Must be validated first with ${CODE_BUILDER_VALIDATE_TOOL.toolName}. Max ${maxWorkflowCodeLength} characters.`,
+			),
+		skillsUsed: z.array(z.string()).optional().describe(SKILLS_USED_PARAM_DESCRIPTION),
+		name: z
+			.string()
+			.max(128)
+			.optional()
+			.describe('Optional workflow name. If not provided, uses the name from the code.'),
+		description: z
+			.string()
+			.optional()
+			.describe('Workflow description. Longer text is shortened to 255 chars before saving.'),
+		versionName: versionNameInputSchema.describe(
+			`Short title of this initial version, shown in the workflow's version history (e.g. "Initial Slack notification workflow"). ${VERSION_NAME_GUIDANCE}`,
 		),
-	skillsUsed: z.array(z.string()).optional().describe(SKILLS_USED_PARAM_DESCRIPTION),
-	name: z
-		.string()
-		.max(128)
-		.optional()
-		.describe('Optional workflow name. If not provided, uses the name from the code.'),
-	description: z
-		.string()
-		.optional()
-		.describe('Workflow description. Longer text is shortened to 255 chars before saving.'),
-	versionName: versionNameInputSchema.describe(
-		`Short title of this initial version, shown in the workflow's version history (e.g. "Initial Slack notification workflow"). ${VERSION_NAME_GUIDANCE}`,
-	),
-	versionDescription: versionDescriptionInputSchema.describe(
-		`Detailed description of what this initial version does, shown in the version history below the title. ${VERSION_DESCRIPTION_GUIDANCE}`,
-	),
-	projectId: z
-		.string()
-		.optional()
-		.describe(
-			"Project ID to create the workflow in. If the user named a project (e.g. 'in my Marketing project'), you MUST call search_projects first to resolve the name to an ID and pass it here — do not guess. If search_projects returns multiple partial matches with no exact match, ask the user to clarify before creating the workflow. Only omit this field when the user did not mention a project at all; in that case it defaults to the user's personal project.",
+		versionDescription: versionDescriptionInputSchema.describe(
+			`Detailed description of what this initial version does, shown in the version history below the title. ${VERSION_DESCRIPTION_GUIDANCE}`,
 		),
-	folderId: z
-		.string()
-		.optional()
-		.describe(
-			'Optional folder ID to create the workflow in. Requires projectId to be set. Use search_folders to find a folder by name within a project; when multiple folders match the name, ask the user which one they meant before creating.',
-		),
-} satisfies z.ZodRawShape;
+		projectId: z
+			.string()
+			.optional()
+			.describe(
+				"Project ID to create the workflow in. If the user named a project (e.g. 'in my Marketing project'), you MUST call search_projects first to resolve the name to an ID and pass it here — do not guess. If search_projects returns multiple partial matches with no exact match, ask the user to clarify before creating the workflow. Only omit this field when the user did not mention a project at all; in that case it defaults to the user's personal project.",
+			),
+		folderId: z
+			.string()
+			.optional()
+			.describe(
+				'Optional folder ID to create the workflow in. Requires projectId to be set. Use search_folders to find a folder by name within a project; when multiple folders match the name, ask the user which one they meant before creating.',
+			),
+	}) satisfies z.ZodRawShape;
+
+type CreateWorkflowFromCodeInputSchema = ReturnType<typeof buildInputSchema>;
 
 // The MCP SDK publishes this schema with `additionalProperties: false` and
 // validates `structuredContent` against it on every response. Success returns
@@ -334,11 +339,11 @@ export const createCreateWorkflowFromCodeTool = (
 	logger: Logger,
 	postSaveMetrics: McpPostSaveMetricsService,
 	ctx: OperationContext = {},
-): ToolDefinition<typeof inputSchema> => ({
+): ToolDefinition<CreateWorkflowFromCodeInputSchema> => ({
 	name: MCP_CREATE_WORKFLOW_FROM_CODE_TOOL.toolName,
 	config: {
 		description: `Create a workflow in n8n from validated SDK code. This tool expects code that already follows the n8n Workflow SDK patterns and has passed ${CODE_BUILDER_VALIDATE_TOOL.toolName}. If code fails to parse, call get_workflow_sdk_reference, rewrite the code using the reference, validate again, then retry creation. If the user named a target project, resolve it via search_projects before calling this tool; when projectId is omitted, the workflow is created in the user's personal project. If the user named a target folder, resolve it via search_folders. If you used n8n skills while preparing this workflow, pass their identifiers in skillsUsed. After creation, always tell the user which project — and folder, if any — the workflow landed in (see the targetProject and targetFolder fields in the response).`,
-		inputSchema,
+		inputSchema: buildInputSchema(options.maxWorkflowCodeLength ?? MAX_WORKFLOW_CODE_LENGTH),
 		outputSchema,
 		annotations: {
 			title: MCP_CREATE_WORKFLOW_FROM_CODE_TOOL.displayTitle,

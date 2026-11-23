@@ -1804,6 +1804,157 @@ describe('McpService', () => {
 			expect(nodeCatalogService.initialize).toHaveBeenCalled();
 		});
 
+		it('propagates configured maxWorkflowCodeLength into builder tool schemas', async () => {
+			const user = Object.assign(new User(), { id: 'user-1', role: GLOBAL_MEMBER_ROLE });
+			const customLimit = 600_000;
+			const service = new McpService(
+				mockLogger(),
+				executionsConfig,
+				instanceSettings,
+				mockInstance(WorkflowFinderService),
+				mockInstance(WorkflowService),
+				mockInstance(UrlService),
+				mockInstance(CredentialsService),
+				mockInstance(CredentialsFinderService),
+				activeExecutions,
+				mockInstance(GlobalConfig, {
+					endpoints: {
+						webhook: '/webhook',
+						webhookTest: '/webhook-test',
+						mcpBuilderEnabled: true,
+					},
+				}),
+				mockInstance(TelemetryProxy),
+				mockInstance(WorkflowRunner),
+				mockInstance(RoleService),
+				mockInstance(ProjectService),
+				mockInstance(NodeCatalogService),
+				mockInstance(WorkflowCreationService),
+				mockInstance(NodeTypesProxy),
+				mockInstance(ProjectRepository),
+				mockInstance(FolderFinderService),
+				mockInstance(SharedWorkflowRepository),
+				mockInstance(ExecutionService),
+				mockInstance(ExecutionListService),
+				mockInstance(DataTableProxyService),
+				mockInstance(CollaborationService),
+				mockInstance(NodeResourceExplorerService),
+				mockInstance(TagService),
+				mockInstance(LicenseState),
+				mockInstance(PostHogClient),
+				mockInstance(WorkflowHistoryService),
+				mockInstance(WorkflowsConfig),
+				mockInstance(WorkflowPublishedDataService),
+				mockInstance(ErrorWorkflowValidationService),
+				mockAiGatewayService(),
+				mockInstance(McpPostSaveMetricsService),
+				mockModuleRegistry(),
+				mockInstance(EventService),
+				mockInstance(FolderService),
+				mockInstance(AiPreferenceService),
+				mockInstance(McpConfig, { maxWorkflowCodeLength: customLimit }),
+				mockInstance(ExecutionRedactionServiceProxy),
+				mockInstance(InstanceWriteAccessService),
+				mockInstance(McpPreferencesNoteService),
+				mockInstance(WorkflowPublicationStatusService),
+			);
+
+			const tools = new Map<string, ToolDefinition<z.ZodRawShape, ToolHandlerResult>>();
+			const createRegistrar = service.createToolRegistrar.bind(service);
+			vi.spyOn(service, 'createToolRegistrar').mockImplementation((...args) => {
+				const register = createRegistrar(...args);
+				return (tool) => {
+					tools.set(tool.name, tool);
+					return register(tool);
+				};
+			});
+
+			await service.getServer(user, mcpFeatureFlags());
+
+			for (const toolName of ['validate_workflow', 'create_workflow_from_code']) {
+				const codeSchema = tools.get(toolName)?.config.inputSchema?.code as z.ZodString | undefined;
+				expect(codeSchema).toBeDefined();
+				expect(codeSchema?.description).toContain(`Max ${customLimit} characters.`);
+				expect(codeSchema?.safeParse('a'.repeat(customLimit)).success).toBe(true);
+				expect(codeSchema?.safeParse('a'.repeat(customLimit + 1)).success).toBe(false);
+			}
+		});
+
+		it('falls back to the default maxWorkflowCodeLength when McpConfig leaves it unset', async () => {
+			const user = Object.assign(new User(), { id: 'user-1', role: GLOBAL_MEMBER_ROLE });
+			const service = new McpService(
+				mockLogger(),
+				executionsConfig,
+				instanceSettings,
+				mockInstance(WorkflowFinderService),
+				mockInstance(WorkflowService),
+				mockInstance(UrlService),
+				mockInstance(CredentialsService),
+				mockInstance(CredentialsFinderService),
+				activeExecutions,
+				mockInstance(GlobalConfig, {
+					endpoints: {
+						webhook: '/webhook',
+						webhookTest: '/webhook-test',
+						mcpBuilderEnabled: true,
+					},
+				}),
+				mockInstance(TelemetryProxy),
+				mockInstance(WorkflowRunner),
+				mockInstance(RoleService),
+				mockInstance(ProjectService),
+				mockInstance(NodeCatalogService),
+				mockInstance(WorkflowCreationService),
+				mockInstance(NodeTypesProxy),
+				mockInstance(ProjectRepository),
+				mockInstance(FolderFinderService),
+				mockInstance(SharedWorkflowRepository),
+				mockInstance(ExecutionService),
+				mockInstance(ExecutionListService),
+				mockInstance(DataTableProxyService),
+				mockInstance(CollaborationService),
+				mockInstance(NodeResourceExplorerService),
+				mockInstance(TagService),
+				mockInstance(LicenseState),
+				mockInstance(PostHogClient),
+				mockInstance(WorkflowHistoryService),
+				mockInstance(WorkflowsConfig),
+				mockInstance(WorkflowPublishedDataService),
+				mockInstance(ErrorWorkflowValidationService),
+				mockAiGatewayService(),
+				mockInstance(McpPostSaveMetricsService),
+				mockModuleRegistry(),
+				mockInstance(EventService),
+				mockInstance(FolderService),
+				mockInstance(AiPreferenceService),
+				mockInstance(McpConfig),
+				mockInstance(ExecutionRedactionServiceProxy),
+				mockInstance(InstanceWriteAccessService),
+				mockInstance(McpPreferencesNoteService),
+				mockInstance(WorkflowPublicationStatusService),
+			);
+
+			const tools = new Map<string, ToolDefinition<z.ZodRawShape, ToolHandlerResult>>();
+			const createRegistrar = service.createToolRegistrar.bind(service);
+			vi.spyOn(service, 'createToolRegistrar').mockImplementation((...args) => {
+				const register = createRegistrar(...args);
+				return (tool) => {
+					tools.set(tool.name, tool);
+					return register(tool);
+				};
+			});
+
+			await service.getServer(user, mcpFeatureFlags());
+
+			for (const toolName of ['validate_workflow', 'create_workflow_from_code']) {
+				const codeSchema = tools.get(toolName)?.config.inputSchema?.code as z.ZodString | undefined;
+				expect(codeSchema).toBeDefined();
+				expect(codeSchema?.description).toContain('Max 300000 characters.');
+				expect(codeSchema?.safeParse('a'.repeat(300_000)).success).toBe(true);
+				expect(codeSchema?.safeParse('a'.repeat(300_001)).success).toBe(false);
+			}
+		});
+
 		describe('MCP Apps integration', () => {
 			// Resolution of the MCP Apps flag (PostHog cohort, env override,
 			// error fallback) is covered in the `resolveFeatureFlags` block.

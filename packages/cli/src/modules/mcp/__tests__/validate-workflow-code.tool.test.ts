@@ -59,7 +59,8 @@ describe('validate-workflow-code MCP tool', () => {
 		}) as typeof nodeTypes.getByNameAndVersion);
 	});
 
-	const createTool = () => createValidateWorkflowCodeTool(user, telemetry, nodeTypes);
+	const createTool = (maxWorkflowCodeLength?: number) =>
+		createValidateWorkflowCodeTool(user, telemetry, nodeTypes, maxWorkflowCodeLength);
 
 	describe('smoke tests', () => {
 		test('creates tool with correct name and readOnlyHint=true', () => {
@@ -76,6 +77,26 @@ describe('validate-workflow-code MCP tool', () => {
 				}),
 			);
 			expect(typeof tool.handler).toBe('function');
+		});
+	});
+
+	describe('inputSchema', () => {
+		test('uses the default 300_000-character limit in validation and description', () => {
+			const tool = createTool();
+			const codeSchema = tool.config.inputSchema!.code;
+
+			expect(codeSchema.description).toContain('Max 300000 characters.');
+			expect(codeSchema.safeParse('a'.repeat(300_000)).success).toBe(true);
+			expect(codeSchema.safeParse('a'.repeat(300_001)).success).toBe(false);
+		});
+
+		test('applies a custom maxWorkflowCodeLength to validation and description', () => {
+			const tool = createTool(500_000);
+			const codeSchema = tool.config.inputSchema!.code;
+
+			expect(codeSchema.description).toContain('Max 500000 characters.');
+			expect(codeSchema.safeParse('a'.repeat(500_000)).success).toBe(true);
+			expect(codeSchema.safeParse('a'.repeat(500_001)).success).toBe(false);
 		});
 	});
 

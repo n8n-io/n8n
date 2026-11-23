@@ -8,7 +8,10 @@ import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
 
 import { McpPostSaveMetricsService } from '../mcp-post-save-metrics.service';
-import { createCreateWorkflowFromCodeTool } from '../tools/workflow-builder/create-workflow-from-code.tool';
+import {
+	createCreateWorkflowFromCodeTool,
+	type CreateWorkflowFromCodeToolOptions,
+} from '../tools/workflow-builder/create-workflow-from-code.tool';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@n8n/errors';
@@ -175,7 +178,7 @@ describe('create-workflow-from-code MCP tool', () => {
 		incrementPostSaveFailure: vi.fn(),
 	});
 
-	const createTool = (ctx?: OperationContext) =>
+	const createTool = (ctx?: OperationContext, options: CreateWorkflowFromCodeToolOptions = {}) =>
 		createCreateWorkflowFromCodeTool(
 			user,
 			workflowCreationService,
@@ -187,7 +190,7 @@ describe('create-workflow-from-code MCP tool', () => {
 			projectRepository,
 			dataTableOps as never,
 			aiGatewayService,
-			{},
+			options,
 			logger,
 			postSaveMetrics,
 			ctx,
@@ -238,6 +241,26 @@ describe('create-workflow-from-code MCP tool', () => {
 				}),
 			);
 			expect(typeof tool.handler).toBe('function');
+		});
+	});
+
+	describe('inputSchema', () => {
+		test('uses the default 300_000-character limit in validation and description', () => {
+			const tool = createTool();
+			const codeSchema = tool.config.inputSchema!.code;
+
+			expect(codeSchema.description).toContain('Max 300000 characters.');
+			expect(codeSchema.safeParse('a'.repeat(300_000)).success).toBe(true);
+			expect(codeSchema.safeParse('a'.repeat(300_001)).success).toBe(false);
+		});
+
+		test('applies a custom maxWorkflowCodeLength to validation and description', () => {
+			const tool = createTool(undefined, { maxWorkflowCodeLength: 500_000 });
+			const codeSchema = tool.config.inputSchema!.code;
+
+			expect(codeSchema.description).toContain('Max 500000 characters.');
+			expect(codeSchema.safeParse('a'.repeat(500_000)).success).toBe(true);
+			expect(codeSchema.safeParse('a'.repeat(500_001)).success).toBe(false);
 		});
 	});
 
