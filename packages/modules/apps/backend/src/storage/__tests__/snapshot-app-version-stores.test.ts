@@ -23,6 +23,7 @@ const version: NewSourceVersion = {
 	expectedDraftVersionId: 'draft',
 	label: 'Snapshot',
 	bindings: [{ key: 'submit', kind: 'workflow', workflowId: 'w1' }],
+	isScaffold: true,
 };
 const files = new Map([['index.html', Buffer.from('<html/>')]]);
 const attempt = { attemptNumber: 1, startedAt: new Date() };
@@ -78,6 +79,7 @@ describe('SnapshotAppSourceVersionStore', () => {
 				label: version.label,
 				sourceArtifactId: artifact.id,
 				bindings: version.bindings,
+				isScaffold: version.isScaffold,
 			},
 			ctx,
 		);

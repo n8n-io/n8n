@@ -3832,6 +3832,7 @@ export class InstanceAiAdapterService {
 					appId,
 					dto.baseVersionId,
 					dto.bindings,
+					{ threadId, source: 'assistant' },
 				);
 				return { ...result, types: renderBindingTypes(result.bindings) };
 			},
