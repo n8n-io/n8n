@@ -810,11 +810,12 @@ describe('NodeToolSettingsContent', () => {
 			if (!content) throw new Error('The component did not mount');
 			const mounted: { node: INode | null; handleChangeName: (name: string) => void } = content;
 
-			mounted.handleChangeName('My CRM tool');
+			// A name that looks like a default name, so only the user edit keeps it.
+			mounted.handleChangeName('Test Tool (3)');
 			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(MOCK_NODE_TYPE);
 
 			await waitFor(() => expect(mounted.node?.parameters?.resource).toBe('contact'));
-			expect(mounted.node?.name).toBe('My CRM tool');
+			expect(mounted.node?.name).toBe('Test Tool (3)');
 		});
 
 		it('does not fill the defaults again when the node type changes later', async () => {

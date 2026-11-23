@@ -9,6 +9,7 @@ import {
 } from '@/app/constants/injectionKeys';
 import {
 	createWorkflowDocumentId,
+	useExistingWorkflowDocumentStore,
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -88,7 +89,22 @@ describe('WorkflowPreviewHost', () => {
 			expect(useWorkflowDocumentStore(documentId).allNodes).toHaveLength(1);
 		});
 
-		it('hydrates only the latest workflow when the props change while it waits', async () => {
+		it('does not hydrate after it unmounts while it waits', async () => {
+			const { promise, resolve } = Promise.withResolvers<void>();
+			vi.mocked(useNodeTypesStore().loadNodeTypesIfNotLoaded).mockReturnValueOnce(promise);
+			const { unmount } = renderComponent({
+				pinia,
+				props: { documentId, workflow: workflowWithNode },
+			});
+
+			unmount();
+			resolve();
+			await flushPromises();
+
+			expect(useExistingWorkflowDocumentStore(documentId)).toBeUndefined();
+		});
+
+		it('hydrates the latest workflow one time when the props change while it waits', async () => {
 			const first = Promise.withResolvers<void>();
 			const second = Promise.withResolvers<void>();
 			vi.mocked(useNodeTypesStore().loadNodeTypesIfNotLoaded)
@@ -103,10 +119,13 @@ describe('WorkflowPreviewHost', () => {
 
 			second.resolve();
 			await waitFor(() => expect(getByTestId('node-view-stub')).toBeInTheDocument());
+			const hydratedStore = useWorkflowDocumentStore(otherDocumentId);
 			first.resolve();
 			await flushPromises();
 
-			expect(useWorkflowDocumentStore(otherDocumentId).allNodes).toHaveLength(1);
+			// The earlier call must not dispose and hydrate the store again.
+			expect(useWorkflowDocumentStore(otherDocumentId)).toBe(hydratedStore);
+			expect(hydratedStore.allNodes).toHaveLength(1);
 			expect(useWorkflowDocumentStore(documentId).allNodes).toHaveLength(0);
 		});
 	});
