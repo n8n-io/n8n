@@ -29,6 +29,7 @@ describe('EngineV2Webhooks.assertSupported', () => {
 			}),
 			responseMode,
 			executionId: undefined,
+			formHasMorePages: false,
 		});
 	};
 
@@ -41,28 +42,39 @@ describe('EngineV2Webhooks.assertSupported', () => {
 		},
 	);
 
-	// The form trigger runs control-plane-side like the webhook node; only its
-	// multi-page response mode is refused, by the mode check.
-	it('allows the form trigger', () => {
-		const proxy = mock<EngineDataPlaneProxyService>();
-		proxy.isAvailable.mockReturnValue(true);
-		const webhooks = new EngineV2Webhooks(mock<EngineV2Dispatcher>(), proxy);
-
-		expect(() =>
-			webhooks.assertSupported({
+	describe('form trigger', () => {
+		const assertForm = (responseMode: WebhookResponseMode, formHasMorePages: boolean) => {
+			const proxy = mock<EngineDataPlaneProxyService>();
+			proxy.isAvailable.mockReturnValue(true);
+			new EngineV2Webhooks(mock<EngineV2Dispatcher>(), proxy).assertSupported({
 				workflowStartNode: mock<INode>({
 					name: 'On form submission',
 					type: FORM_TRIGGER_NODE_TYPE,
 					parameters: {},
 				}),
-				responseMode: 'onReceived',
+				responseMode,
 				executionId: undefined,
-			}),
-		).not.toThrow();
+				formHasMorePages,
+			});
+		};
+
+		it('allows a single-page form', () => {
+			expect(() => assertForm('onReceived', false)).not.toThrow();
+		});
+
+		// The GET that renders the form has the trigger's own mode. Only the submit has 'formPage'.
+		it.each(['onReceived', 'formPage'] as const)(
+			'refuses a form with more pages or a Form Ending in %s mode',
+			(responseMode) => {
+				expect(() => assertForm(responseMode, true)).toThrow(
+					'Engine v2 cannot run a form that has more pages or a Form Ending yet.',
+				);
+			},
+		);
 	});
 
-	it('refuses the next-page response mode of a multi-page form', () => {
-		expect(() => assertSupported('formPage')).toThrow("'formPage' response mode");
+	it('refuses a response mode that engine v2 does not support', () => {
+		expect(() => assertSupported('hostedChat')).toThrow("'hostedChat' response mode");
 	});
 
 	// The streaming node sends its headers before it outputs the raw body, so a
@@ -158,6 +170,7 @@ describe('EngineV2Webhooks.assertSupported on a resume', () => {
 			workflowStartNode: mock<INode>({ name: 'Wait', type, parameters: {} }),
 			responseMode,
 			executionId: EXECUTION_ID,
+			formHasMorePages: false,
 		});
 	};
 
