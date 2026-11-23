@@ -16,6 +16,13 @@ export interface PlaygroundProject {
 	name: string;
 }
 
+/**
+ * A short mark that is new on each page load. The create actions of the page save to the real
+ * database, which keeps what users create. A variable key and a credential id must be unique, so
+ * the names and ids of the sample data carry this mark, and an earlier load never collides.
+ */
+const RUN = Math.random().toString(36).slice(2, 5).toUpperCase();
+
 const COMMIT_SHA = 'c'.repeat(40);
 const PREVIEW_REVISION = 'a'.repeat(64);
 
@@ -244,7 +251,7 @@ function buildCheck(
 					return {
 						kind: 'credential' as const,
 						// The create action saves the credential under this id, and ids hold at most 16 characters.
-						sourceId: `pg-credential-${credential}`,
+						sourceId: `pg${RUN}c${credential}`,
 						name: nameAt(MISSING_CREDENTIAL_NAMES, credential),
 						credentialType: 'httpHeaderAuth',
 						consumers,
@@ -253,7 +260,7 @@ function buildCheck(
 				}
 				return {
 					kind: 'variable' as const,
-					name: nameAt(MISSING_VARIABLE_NAMES, Math.floor(index / 2)),
+					name: `${nameAt(MISSING_VARIABLE_NAMES, Math.floor(index / 2))}_${RUN}`,
 					variableType: 'string' as const,
 					scope: { kind: 'global' as const },
 					consumers,
