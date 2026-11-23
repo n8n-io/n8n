@@ -23,7 +23,7 @@ export function getWorkflowEngineSection(engineSetup?: InstanceAiEngineSetup): s
 	return `
 ## Workflow Engine
 
-This instance has two workflow engines, v1 and v2. New workflows run on engine ${defaultEngine}.
+This instance has two workflow engines, v1 and v2. New workflows run on engine ${defaultEngine} by default.
 
 - The engine of a saved workflow is \`engineType\` in its \`workflow()\` settings. A workflow without \`engineType\` runs on engine v1.
 - Keep an existing workflow on its engine. Change its \`engineType\` only when the user asks for a different engine or approves the change.

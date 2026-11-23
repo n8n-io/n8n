@@ -116,11 +116,6 @@ function unsupportedNodeTypes(): string[] {
 	];
 }
 
-function joinList(items: string[]): string {
-	if (items.length <= 1) return items.join('');
-	return `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`;
-}
-
 let cachedSettingRules:
 	| Partial<Record<EngineV2NodeSettingCode, EngineV2NodeSettingRule>>
 	| undefined;
@@ -173,7 +168,7 @@ function buildEngineV2BuildRules(): string {
 
 	const nodeTypes = unsupportedNodeTypes();
 	if (nodeTypes.length > 0) {
-		lines.push(`- Engine v2 does not run these nodes yet: ${joinList(nodeTypes)}.`);
+		lines.push(`- Engine v2 does not run these nodes yet: ${nodeTypes.join(', ')}.`);
 	}
 
 	const blockedLimits = getBlockedEngineV2Limits();
@@ -181,7 +176,7 @@ function buildEngineV2BuildRules(): string {
 		(probe) => probe.text,
 	);
 	if (limits.length > 0) {
-		lines.push(`- Engine v2 does not support ${joinList(limits)} yet.`);
+		lines.push(`- Engine v2 does not support ${limits.join(', ')} yet.`);
 	}
 
 	const settingLines = Object.values(getBlockedEngineV2NodeSettingRules()).map(

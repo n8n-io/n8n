@@ -28,7 +28,7 @@ describe('getSystemPrompt — workflow engine', () => {
 		});
 
 		expect(prompt).toContain('## Workflow Engine');
-		expect(prompt).toContain('New workflows run on engine v1.');
+		expect(prompt).toContain('New workflows run on engine v1 by default.');
 		expect(prompt).toContain('Keep an existing workflow on its engine.');
 		expect(prompt).toContain(
 			'Do not set `engineType` on a new workflow, unless the user asks for an engine.',
@@ -44,7 +44,7 @@ describe('getSystemPrompt — workflow engine', () => {
 			engineSetup: { engineV2Available: true, newWorkflowEngine: 'v2' },
 		});
 
-		expect(prompt).toContain('New workflows run on engine v2.');
+		expect(prompt).toContain('New workflows run on engine v2 by default.');
 		expect(prompt).toContain('add a Limit node (1 item) before this node');
 		expect(prompt).toContain("`onError: 'continueRegularOutput'` is v2-safe");
 		expect(prompt).toContain('`n8n-nodes-base.formTrigger`');
