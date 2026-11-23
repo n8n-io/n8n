@@ -42,8 +42,14 @@ export interface GenerateContentRequest extends IDataObject {
 
 export interface GenerateContentResponse {
 	modelVersion?: string;
-	candidates: Array<{
-		content: Content;
+	promptFeedback?: {
+		blockReason?: string;
+		blockReasonMessage?: string;
+	};
+	candidates?: Array<{
+		content?: Content;
+		finishReason?: string;
+		finishMessage?: string;
 	}>;
 }
 

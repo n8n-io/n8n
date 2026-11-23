@@ -4,6 +4,8 @@ import { linkUserToProject, testModules } from '@n8n/backend-test-utils';
 import { ProjectRepository, TransactionRunner } from '@n8n/db';
 import { Container } from '@n8n/di';
 
+import { createAgent as createTestAgent } from '@test-integration/db/agents';
+
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
 import { AgentBackgroundJobRepository } from '@/modules/agents/repositories/agent-background-job.repository';
@@ -28,18 +30,15 @@ const chatIntegration = { type: 'n8n_chat', credentialId: '' } as const;
 describe('production n8n Chat HTTP route', () => {
 	async function createAgent(ownerId: string) {
 		const project = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(ownerId);
-		const repository = Container.get(AgentRepository);
-		const agent = await repository.save(
-			repository.create({
-				id: randomUUID(),
-				name: 'Agent',
-				projectId: project.id,
-				schema: { name: 'Agent', model: 'openai:gpt-4o-mini', instructions: 'Help' },
-				integrations: [chatIntegration],
-				tools: {},
-				versionId: randomUUID(),
-			}),
-		);
+		const agent = await createTestAgent({
+			id: randomUUID(),
+			name: 'Agent',
+			projectId: project.id,
+			schema: { name: 'Agent', model: 'openai:gpt-4o-mini', instructions: 'Help' },
+			integrations: [chatIntegration],
+			tools: {},
+			versionId: randomUUID(),
+		});
 		return { agent, project };
 	}
 

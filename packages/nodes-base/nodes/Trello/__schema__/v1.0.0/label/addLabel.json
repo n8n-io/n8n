@@ -1,0 +1,18 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"color": {
+			"type": "string"
+		},
+		"id": {
+			"type": "string"
+		},
+		"idBoard": {
+			"type": "string"
+		},
+		"name": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

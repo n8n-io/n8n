@@ -18,6 +18,18 @@ export interface EventPayloadWorkflow extends AbstractEventPayload {
 	executionId?: IExecutionBase['id'];
 
 	workflowId?: IWorkflowBase['id'];
+
+	/** The agent whose workflow tool started the execution. */
+	agentId?: string;
+
+	/** That agent's service account. Attribution only: the execution does not run as it. */
+	agentServiceAccountId?: string;
+
+	/** The n8n user who started the agent run, when there is one. */
+	agentRunUserId?: string;
+
+	/** For a sub-agent's tool run, the top-level agent that delegated to it. */
+	delegatingAgentId?: string;
 }
 
 export interface EventMessageWorkflowOptions extends AbstractEventMessageOptions {

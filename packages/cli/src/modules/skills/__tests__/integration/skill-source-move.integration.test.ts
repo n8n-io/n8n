@@ -36,6 +36,7 @@ import { createSkill, deleteAllSkills, findLatestSkillVersion, findSkill } from 
 import { linkSkill } from '../test-utils/skill-source-fixtures';
 
 import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
+import { createAgent } from '@test-integration/db/agents';
 import { createMember, createOwner } from '@test-integration/db/users';
 import { saveCredential } from '@test-integration/db/credentials';
 import type { SuperAgentTest } from '@test-integration/types';
@@ -118,18 +119,15 @@ describe('Skill source scope moves', () => {
 		await agent.post(`/skill-sources/${sourceId}/move`).send(payload).expect(status);
 
 	async function attach(skillId: string, projectId: string, name: string) {
-		const agents = Container.get(AgentRepository);
-		const agent = await agents.save(
-			agents.create({
-				id: randomUUID(),
-				name,
-				schema: { name, model: 'anthropic/claude-sonnet-4-5', instructions: 'Help.' },
-				projectId,
-				integrations: [],
-				tools: {},
-				versionId: randomUUID(),
-			}),
-		);
+		const agent = await createAgent({
+			id: randomUUID(),
+			name,
+			schema: { name, model: 'anthropic/claude-sonnet-4-5', instructions: 'Help.' },
+			projectId,
+			integrations: [],
+			tools: {},
+			versionId: randomUUID(),
+		});
 		await Container.get(AgentSkillRepository).replaceDependencies(agent.id, [{ skillId }]);
 		return agent;
 	}

@@ -200,15 +200,17 @@ onMounted(async () => {
 		<!-- When no tools configured, show just the button that opens the manager -->
 		<N8nTooltip
 			v-if="chatStore.configuredTools.length === 0"
-			:content="disabledTooltip"
+			as-child
 			:disabled="!disabledTooltip || !disabled"
 			placement="bottom"
 		>
+			<template #content>{{ disabledTooltip }}</template>
 			<N8nButton
 				variant="outline"
 				native-type="button"
 				:class="$style.toolsButton"
 				:disabled="disabled"
+				:focusable-when-disabled="!!disabledTooltip"
 				icon="plus"
 				data-test-id="chat-tools-button"
 				@click="openToolsManager"
@@ -217,28 +219,27 @@ onMounted(async () => {
 			</N8nButton>
 		</N8nTooltip>
 
-		<N8nTooltip
+		<N8nDropdownMenu
 			v-else
-			:content="disabledTooltip"
-			:disabled="!disabledTooltip || !disabled"
-			placement="bottom"
+			ref="dropdownMenu"
+			:disabled="disabled"
+			:items="menuItems"
+			placement="top-start"
+			extra-popper-class="tools-selector-dropdown"
+			searchable
+			:search-placeholder="i18n.baseText('chatHub.toolsManager.searchPlaceholder')"
+			:empty-text="i18n.baseText('chatHub.toolsManager.noResults')"
+			@select="handleSelect"
+			@search="handleSearch"
 		>
-			<N8nDropdownMenu
-				ref="dropdownMenu"
-				:items="menuItems"
-				placement="top-start"
-				extra-popper-class="tools-selector-dropdown"
-				searchable
-				:search-placeholder="i18n.baseText('chatHub.toolsManager.searchPlaceholder')"
-				:empty-text="i18n.baseText('chatHub.toolsManager.noResults')"
-				@select="handleSelect"
-				@search="handleSearch"
-			>
-				<template #trigger>
+			<template #trigger>
+				<N8nTooltip as-child :disabled="!disabledTooltip || !disabled" placement="bottom">
+					<template #content>{{ disabledTooltip }}</template>
 					<N8nButton
 						variant="outline"
 						native-type="button"
 						:disabled="disabled"
+						:focusable-when-disabled="!!disabledTooltip"
 						:icon="toolCount === 0 ? 'plus' : undefined"
 						data-test-id="chat-tools-button"
 					>
@@ -261,55 +262,55 @@ onMounted(async () => {
 						</span>
 						{{ toolsLabel }}
 					</N8nButton>
-				</template>
+				</N8nTooltip>
+			</template>
 
-				<template #search-prefix>
-					<N8nIcon icon="search" />
-				</template>
+			<template #search-prefix>
+				<N8nIcon icon="search" />
+			</template>
 
-				<template #search-suffix>
+			<template #search-suffix>
+				<N8nIconButton
+					icon="settings"
+					variant="ghost"
+					size="medium"
+					text
+					:class="$style.settingsButton"
+					@click.stop="openToolsManager"
+				/>
+			</template>
+
+			<template #item-leading="{ item }">
+				<NodeIcon
+					v-if="item.data?.nodeType"
+					:node-type="item.data.nodeType"
+					:size="16"
+					:class="{ [$style.restrictedIcon]: !!item.data.restriction }"
+				/>
+				<N8nIcon v-else-if="item.icon?.type === 'icon'" :icon="item.icon.value" size="large" />
+			</template>
+
+			<template #item-trailing="{ item }">
+				<template v-if="item.id !== CREATE_NEW_TOOL_ID">
+					<RestrictedMenuItemMarker
+						v-if="item.data?.restriction"
+						:node-type-name="restrictedTypeName(item)"
+						:restriction="item.data.restriction"
+						@contact-admin="(audience) => requestContactAdmin(item, audience)"
+					/>
 					<N8nIconButton
 						icon="settings"
 						variant="ghost"
 						size="medium"
 						text
-						:class="$style.settingsButton"
-						@click.stop="openToolsManager"
+						:class="$style.itemSettingsButton"
+						data-test-id="chat-tool-item-settings"
+						@click.stop="openToolSettings(item)"
 					/>
+					<span v-if="!item.checked" :class="$style.checkPlaceholder" />
 				</template>
-
-				<template #item-leading="{ item }">
-					<NodeIcon
-						v-if="item.data?.nodeType"
-						:node-type="item.data.nodeType"
-						:size="16"
-						:class="{ [$style.restrictedIcon]: !!item.data.restriction }"
-					/>
-					<N8nIcon v-else-if="item.icon?.type === 'icon'" :icon="item.icon.value" size="large" />
-				</template>
-
-				<template #item-trailing="{ item }">
-					<template v-if="item.id !== CREATE_NEW_TOOL_ID">
-						<RestrictedMenuItemMarker
-							v-if="item.data?.restriction"
-							:node-type-name="restrictedTypeName(item)"
-							:restriction="item.data.restriction"
-							@contact-admin="(audience) => requestContactAdmin(item, audience)"
-						/>
-						<N8nIconButton
-							icon="settings"
-							variant="ghost"
-							size="medium"
-							text
-							:class="$style.itemSettingsButton"
-							data-test-id="chat-tool-item-settings"
-							@click.stop="openToolSettings(item)"
-						/>
-						<span v-if="!item.checked" :class="$style.checkPlaceholder" />
-					</template>
-				</template>
-			</N8nDropdownMenu>
-		</N8nTooltip>
+			</template>
+		</N8nDropdownMenu>
 		<ContactAdminModal
 			:type-name="contactAdmin?.typeName ?? ''"
 			:audience="contactAdmin?.audience ?? 'instance'"

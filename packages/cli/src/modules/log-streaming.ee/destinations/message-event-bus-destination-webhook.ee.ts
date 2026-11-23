@@ -374,7 +374,7 @@ export class MessageEventBusDestinationWebhook
 		let httpDigestAuth;
 		let httpHeaderAuth;
 		let httpQueryAuth;
-		let httpTemplatedCustomAuth;
+		let customAuthCredentials;
 
 		if (this.authentication === 'genericCredentialType') {
 			if (this.genericAuthType === 'httpBasicAuth') {
@@ -385,9 +385,11 @@ export class MessageEventBusDestinationWebhook
 				httpHeaderAuth = await this.matchDecryptedCredentialType('httpHeaderAuth');
 			} else if (this.genericAuthType === 'httpQueryAuth') {
 				httpQueryAuth = await this.matchDecryptedCredentialType('httpQueryAuth');
-			} else if (this.genericAuthType === 'httpTemplatedCustomAuth') {
-				httpTemplatedCustomAuth =
-					await this.matchDecryptedCredentialType('httpTemplatedCustomAuth');
+			} else if (
+				this.genericAuthType === 'httpTemplatedCustomAuth' ||
+				this.genericAuthType === 'httpMultipleHeadersAuth'
+			) {
+				customAuthCredentials = await this.matchDecryptedCredentialType(this.genericAuthType);
 			}
 		}
 
@@ -412,13 +414,13 @@ export class MessageEventBusDestinationWebhook
 				username: httpDigestAuth.user as string,
 				password: httpDigestAuth.password as string,
 			};
-		} else if (httpTemplatedCustomAuth) {
+		} else if (customAuthCredentials) {
 			this.credentialsHelper ??= Container.get(CredentialsHelper);
 			Object.assign(
 				request,
 				await this.credentialsHelper.authenticate(
-					httpTemplatedCustomAuth,
-					'httpTemplatedCustomAuth',
+					customAuthCredentials,
+					this.genericAuthType,
 					request,
 				),
 			);
