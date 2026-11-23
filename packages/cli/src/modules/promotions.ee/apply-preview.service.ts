@@ -185,8 +185,9 @@ export class ApplyPreviewService {
 				)
 			: null;
 
+		// The plan covers the whole project, and the user applies a selection of it.
 		const check = plan
-			? await this.check(plan, inventory, selection, moves)
+			? await this.check(plan, inventory, selection, moves, true)
 			: projectNotOnBranch(projectId, instance);
 		const { resources, dependencies } = compareWithBranch({
 			operation: { direction: 'apply', planned: plan && plannedChanges(plan) },
@@ -341,12 +342,16 @@ export class ApplyPreviewService {
 	 * What stops the Apply of a plan, and what its workflows cannot use after the Apply. Without a
 	 * selection, it checks the whole package. It reads references only from the workflows that the
 	 * plan imports.
+	 *
+	 * `selectionOpen` is for the preview of a project: the user applies a part of `selection`, so an
+	 * entry of the missing dependencies can depend on that part.
 	 */
 	async check(
 		plan: PackageImportPlan,
 		inventory: PackageDirectoryInventory,
 		selection: ImportSelection | undefined,
 		moves: CrossProjectMoves,
+		selectionOpen = false,
 	): Promise<PromotionPreviewCheck> {
 		const selected = selection && new Set(selection.selectedWorkflowIds);
 		const scoped = {
@@ -370,6 +375,7 @@ export class ApplyPreviewService {
 				applied: scoped.workflows,
 				references: workflows,
 				wholeInstance: selection === undefined,
+				selectionOpen,
 			}),
 		});
 	}

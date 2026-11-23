@@ -40,34 +40,50 @@ describe('ApplyDependencyCheckService', () => {
 		mock<GlobalConfig>({ workflows: { callerPolicyDefaultOption: 'none' } }),
 	);
 
-	/** The package holds the projects `alpha` and `beta`. Beta holds the credential and `on-branch`. */
+	/**
+	 * The package holds the projects `alpha`, `beta` and `gamma`. Beta holds `on-branch` and the
+	 * credential `beta-key`. By default, the plan does not find `beta-key`.
+	 */
 	const facts = async ({
 		user = userWith(),
 		references = [],
 		removedIds = [],
+		missingCredentialIds = ['beta-key'],
 		wholeInstance = false,
+		selectionOpen = false,
 	}: {
 		user?: User;
 		references?: WorkflowReference[];
 		removedIds?: string[];
+		missingCredentialIds?: string[];
 		wholeInstance?: boolean;
+		selectionOpen?: boolean;
 	}) =>
 		await service.facts({
 			plan: {
 				request: { user },
 				scopes: [{ plan: { removalPlan: { removals: removedIds.map((id) => ({ id })) } } }],
+				issues: [
+					{ type: 'workflow-conflict', sourceWorkflowId: 'applied' },
+					...missingCredentialIds.map((sourceId) => ({ type: 'credential-unresolved', sourceId })),
+				],
 			} as unknown as PackageImportPlan,
 			inventory: {
-				projects: [{ id: 'alpha' }, { id: 'beta' }],
+				projects: [{ id: 'alpha' }, { id: 'beta' }, { id: 'gamma' }],
 				workflows: [
 					{ id: 'applied', projectId: 'alpha' },
 					{ id: 'on-branch', projectId: 'beta' },
 				],
-				credentials: [{ projectId: 'beta' }, { projectId: null }],
+				credentials: [
+					{ projectId: 'beta', credential: { id: 'beta-key' } },
+					{ projectId: 'gamma', credential: { id: 'gamma-key' } },
+					{ projectId: null, credential: { id: 'top-level-key' } },
+				],
 			} as unknown as PackageDirectoryInventory,
 			applied: [{ id: 'applied', projectId: 'alpha' }] as InventoryWorkflow[],
 			references,
 			wholeInstance,
+			selectionOpen,
 		});
 
 	beforeEach(() => {
@@ -84,7 +100,33 @@ describe('ApplyDependencyCheckService', () => {
 		expect(result.callerPolicyDefault).toBe('none');
 		expect([...result.appliedWorkflowIds]).toEqual(['applied']);
 		expect(result.instanceWorkflows.size).toBe(0);
+		expect(result.removedWorkflowIds.size).toBe(0);
+		expect(result.selectableWorkflowIds.size).toBe(0);
 		expect(workflowRepository.findByIds).not.toHaveBeenCalled();
+	});
+
+	it('reads the access only to the owner projects of the credentials that the plan does not find', async () => {
+		const user = userWith('project:create');
+
+		await facts({ user, missingCredentialIds: ['gamma-key', 'top-level-key', 'no-file'] });
+
+		expect(projectService.getProjectIdsWithScope).toHaveBeenCalledWith(
+			user,
+			['credential:create'],
+			['gamma'],
+		);
+		expect(projectService.findExistingProjectIds).toHaveBeenCalledWith(['gamma']);
+	});
+
+	it('reads no access to a credential project when the plan finds every credential', async () => {
+		const result = await facts({
+			user: userWith('project:create'),
+			missingCredentialIds: [],
+		});
+
+		expect(result.credentialProjectIds.size).toBe(0);
+		expect(projectService.getProjectIdsWithScope).not.toHaveBeenCalled();
+		expect(projectService.findExistingProjectIds).not.toHaveBeenCalled();
 	});
 
 	it('lets a project member create a credential only in a project that grants it', async () => {
@@ -139,18 +181,29 @@ describe('ApplyDependencyCheckService', () => {
 		]);
 	});
 
-	it('leaves out a workflow that the Apply deletes', async () => {
+	it('keeps the state and the owner project of a workflow that the Apply deletes', async () => {
 		workflowRepository.findByIds.mockResolvedValue([workflowRow('kept'), workflowRow('removed')]);
+		sharedWorkflowRepository.findOwnerProjectsByWorkflowIds.mockResolvedValue(
+			new Map([['removed', project('alpha')]]),
+		);
 
 		const result = await facts({
 			references: [reference('kept'), reference('removed')],
-			removedIds: ['removed'],
+			removedIds: ['removed', 'not-referenced'],
 		});
 
-		expect([...result.instanceWorkflows.keys()]).toEqual(['kept']);
+		expect([...result.removedWorkflowIds]).toEqual(['removed']);
+		expect(result.instanceWorkflows.get('removed')).toEqual({
+			isArchived: false,
+			settings: undefined,
+			projectId: 'alpha',
+		});
+		expect([...result.instanceWorkflows.keys()]).toEqual(['kept', 'removed']);
+		// The selection is known, so no entry depends on it.
+		expect(result.selectableWorkflowIds.size).toBe(0);
 	});
 
-	it('leaves out a workflow of a team project that an Apply of the whole instance deletes', async () => {
+	it('marks a workflow of a team project that an Apply of the whole instance deletes', async () => {
 		workflowRepository.findByIds.mockResolvedValue([
 			workflowRow('in-package-project'),
 			workflowRow('in-other-team-project'),
@@ -159,7 +212,7 @@ describe('ApplyDependencyCheckService', () => {
 		sharedWorkflowRepository.findOwnerProjectsByWorkflowIds.mockResolvedValue(
 			new Map([
 				['in-package-project', project('alpha')],
-				['in-other-team-project', project('gamma')],
+				['in-other-team-project', project('delta')],
 				['in-personal-project', project('personal', 'personal')],
 			]),
 		);
@@ -172,12 +225,65 @@ describe('ApplyDependencyCheckService', () => {
 		const wholeInstance = await facts({ references, wholeInstance: true });
 		const projectOnly = await facts({ references });
 
-		expect([...wholeInstance.instanceWorkflows.keys()]).toEqual([
-			'in-package-project',
-			'in-personal-project',
-		]);
+		expect([...wholeInstance.removedWorkflowIds]).toEqual(['in-other-team-project']);
+		expect(wholeInstance.instanceWorkflows.get('in-other-team-project')?.projectId).toBe('delta');
+		expect(wholeInstance.instanceWorkflows.size).toBe(3);
 		// A project Apply deletes no project.
+		expect(projectOnly.removedWorkflowIds.size).toBe(0);
 		expect(projectOnly.instanceWorkflows.size).toBe(3);
+	});
+
+	it('reads the access to the project of a workflow that the Apply deletes', async () => {
+		const user = userWith();
+		workflowRepository.findByIds.mockResolvedValue([workflowRow('removed')]);
+		sharedWorkflowRepository.findOwnerProjectsByWorkflowIds.mockResolvedValue(
+			new Map([['removed', project('delta')]]),
+		);
+		projectService.getProjectIdsWithScope.mockImplementation(async (_user, scopes) =>
+			scopes.includes('project:read') ? ['delta'] : [],
+		);
+
+		const result = await facts({
+			user,
+			references: [reference('removed')],
+			removedIds: ['removed'],
+		});
+
+		expect(projectService.getProjectIdsWithScope).toHaveBeenCalledWith(
+			user,
+			['project:read'],
+			['delta'],
+		);
+		expect([...result.readableProjectIds]).toEqual(['delta']);
+	});
+
+	it('with an open selection, also reads the applied workflows and makes the planned changes selectable', async () => {
+		workflowRepository.findByIds.mockResolvedValue([
+			workflowRow('applied'),
+			workflowRow('removed'),
+		]);
+		sharedWorkflowRepository.findOwnerProjectsByWorkflowIds.mockResolvedValue(
+			new Map([
+				['applied', project('alpha')],
+				['removed', project('alpha')],
+			]),
+		);
+		const references = [reference('applied'), reference('removed'), reference('other')];
+
+		const open = await facts({ references, removedIds: ['removed'], selectionOpen: true });
+
+		expect(workflowRepository.findByIds).toHaveBeenCalledWith(['applied', 'removed', 'other'], {
+			fields: ['isArchived', 'settings'],
+		});
+		expect([...open.instanceWorkflows.keys()]).toEqual(['applied', 'removed']);
+		expect([...open.selectableWorkflowIds]).toEqual(['applied', 'removed']);
+
+		const known = await facts({ references, removedIds: ['removed'] });
+
+		expect(workflowRepository.findByIds).toHaveBeenLastCalledWith(['removed', 'other'], {
+			fields: ['isArchived', 'settings'],
+		});
+		expect(known.selectableWorkflowIds.size).toBe(0);
 	});
 
 	it('reads the access to the projects that hold a referenced workflow, on the branch or on this instance', async () => {

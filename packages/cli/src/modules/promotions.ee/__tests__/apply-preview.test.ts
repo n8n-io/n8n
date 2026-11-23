@@ -86,6 +86,8 @@ const consumer = (project: typeof ALPHA, ...ids: string[]) => ({
 const NO_ACCESS: ApplyDependencyFacts = {
 	credentialProjectIds: new Set(),
 	appliedWorkflowIds: new Set(),
+	removedWorkflowIds: new Set(),
+	selectableWorkflowIds: new Set(),
 	instanceWorkflows: new Map(),
 	readableProjectIds: new Set(),
 	callerPolicyDefault: 'workflowsFromSameOwner',
@@ -359,7 +361,7 @@ describe('toPreviewCheck: missing dependencies', () => {
 		['a file at the top level', [credentialFile('cred-1', null, 'GitHub key')], 'GitHub key'],
 		['no file', [], 'Row name'],
 	])(
-		'lists a missing credential with %s only in the list, and reports no conflict',
+		'lists a missing credential with %s only in the list as not on the branch, and reports no conflict',
 		(_case, credentials, name) => {
 			const check = checkPackage({
 				workflows: [usesCredential('wf-1', ALPHA.id)],
@@ -386,7 +388,7 @@ describe('toPreviewCheck: missing dependencies', () => {
 					...credentialEntry,
 					name,
 					...outsideAccess,
-					reason: 'not-on-instance',
+					reason: 'not-on-branch',
 					consumers: [consumer(ALPHA, 'wf-1')],
 				},
 			]);
@@ -499,7 +501,7 @@ describe('toPreviewCheck: missing dependencies', () => {
 		]);
 	});
 
-	it('lists a missing sub-workflow, which does not stop the Apply', () => {
+	it('lists a sub-workflow that the package and this instance lack, which does not stop the Apply', () => {
 		const check = checkPackage({
 			workflows: [
 				workflow('wf-1', ALPHA.id, [
@@ -518,7 +520,7 @@ describe('toPreviewCheck: missing dependencies', () => {
 				id: 'sub-1',
 				name: 'sub-1',
 				...outsideAccess,
-				reason: 'not-on-instance',
+				reason: 'not-on-branch',
 				blocking: false,
 				consumers: [consumer(ALPHA, 'wf-1')],
 			},
@@ -562,10 +564,46 @@ describe('toPreviewCheck: missing dependencies', () => {
 			['credential', 'cred-b', 'not-shared'],
 			['variable', 'AREA', 'not-on-instance'],
 			['variable', 'ZONE', 'not-on-instance'],
-			['workflow', 'sub-1', 'not-on-instance'],
+			['workflow', 'sub-1', 'not-on-branch'],
 		]);
 		expect(checkPackage(input([...issues].reverse())).missingDependencies).toEqual(
 			check.missingDependencies,
 		);
+	});
+
+	it('gives a condition to a workflow entry of an open selection, and orders the two conditions', () => {
+		const calls = (id: string, workflowId: string) =>
+			workflow(id, ALPHA.id, [
+				node('Call', { type: 'n8n-nodes-base.executeWorkflow', parameters: { workflowId } }),
+			]);
+		const archived = {
+			...workflow('sub-1', ALPHA.id, []),
+			content: { name: 'Workflow sub-1', nodes: [], connections: {}, isArchived: true },
+		} as unknown as InventoryWorkflow;
+
+		const check = checkPackage({
+			workflows: [calls('wf-1', 'sub-1'), archived],
+			dependencies: {
+				appliedWorkflowIds: new Set(['wf-1', 'sub-1']),
+				selectableWorkflowIds: new Set(['wf-1', 'sub-1']),
+				instanceWorkflows: new Map([
+					['sub-1', { isArchived: false, settings: { callerPolicy: 'none' }, projectId: ALPHA.id }],
+				]),
+			},
+		});
+
+		const entry = {
+			kind: 'workflow',
+			id: 'sub-1',
+			name: 'sub-1',
+			...needsAction,
+			blocking: false,
+			consumers: [consumer(ALPHA, 'wf-1')],
+		};
+		expect(check.missingDependencies).toEqual([
+			{ ...entry, reason: 'archived', condition: 'target-selected' },
+			{ ...entry, reason: 'caller-policy', condition: 'target-not-selected' },
+		]);
+		expect(check).toMatchObject({ missingBindings: [], accessRequirements: [], conflicts: [] });
 	});
 });

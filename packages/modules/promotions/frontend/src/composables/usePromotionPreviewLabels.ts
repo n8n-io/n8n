@@ -117,15 +117,24 @@ export function usePromotionPreviewLabels() {
 			adjustToNumber: dependencies.length,
 			interpolate: { count: String(dependencies.length) },
 		};
-		if (dependencies.every(({ group }) => group === 'outside-access')) {
+		// On Apply, the status of this reason is "Not on the branch". Promote gives the reason to
+		// every dependency that it leaves out.
+		const notOnBranch = ({ reason }: PromotionMissingDependency) =>
+			direction === 'apply' && reason === 'not-on-branch';
+		if (dependencies.every((entry) => entry.group === 'outside-access' && !notOnBranch(entry))) {
 			return i18n.baseText(`promotions.preview.marker.outside.${direction}`, options);
 		}
-		// Only Apply has the group `needs-action`. A dependency of another project that the user
-		// can access is not outside the access of the user, so the text only says that the Promote
-		// does not include the dependencies.
-		return dependencies.some(({ group }) => group === 'needs-action')
-			? i18n.baseText('promotions.preview.marker.notUsable', options)
-			: i18n.baseText('promotions.preview.marker.notIncluded', options);
+		// A dependency of another project that the user can access is not outside the access of
+		// the user. Then the text only says that the Promote does not include the dependencies.
+		if (direction === 'promote') {
+			return i18n.baseText('promotions.preview.marker.notIncluded', options);
+		}
+		return i18n.baseText(
+			dependencies.every(notOnBranch)
+				? 'promotions.preview.marker.notOnBranch'
+				: 'promotions.preview.marker.notUsable',
+			options,
+		);
 	}
 
 	/** The checkbox of a project or folder selects it and everything inside it. */

@@ -92,6 +92,50 @@ describe('promotionMissingDependencySchema', () => {
 
 		expect(promotionMissingDependencySchema.parse(withOwner)).toEqual(credential);
 	});
+
+	describe('condition', () => {
+		const workflow = {
+			kind: 'workflow',
+			id: 'workflow2',
+			name: 'Notify',
+			group: 'needs-action',
+			reason: 'not-on-instance',
+			accessible: true,
+			blocking: false,
+			consumers,
+		};
+
+		it.each(['target-selected', 'target-not-selected'])(
+			'accepts the condition `%s`',
+			(condition) => {
+				const entry = { ...workflow, condition };
+
+				expect(promotionMissingDependencySchema.parse(entry)).toEqual(entry);
+			},
+		);
+
+		it('accepts an entry without a condition, and adds none', () => {
+			expect(promotionMissingDependencySchema.parse(workflow)).toEqual(workflow);
+			expect(promotionMissingDependencySchema.parse(workflow)).not.toHaveProperty('condition');
+		});
+
+		it.each(['selected', '', null, true])('rejects the condition %j', (condition) => {
+			expect(promotionMissingDependencySchema.safeParse({ ...workflow, condition }).success).toBe(
+				false,
+			);
+		});
+
+		it('accepts the reason `not-on-branch` for an Apply entry outside the access', () => {
+			const entry = {
+				...workflow,
+				group: 'outside-access',
+				reason: 'not-on-branch',
+				accessible: false,
+			};
+
+			expect(promotionMissingDependencySchema.parse(entry)).toEqual(entry);
+		});
+	});
 });
 
 describe('promotionDependencyWarningSchema', () => {

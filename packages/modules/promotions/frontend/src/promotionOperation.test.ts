@@ -7,6 +7,8 @@ import {
 	outsideAccessWorkflow,
 	personalCredential,
 	repeatedBinding,
+	targetNotSelectedWorkflow,
+	targetSelectedWorkflow,
 	unreachableCredential,
 	unreachableWorkflow,
 } from './__tests__/missingDependencies.fixtures';
@@ -30,6 +32,8 @@ const consumer = (...ids: string[]) => [
 		workflows: ids.map((id) => ({ id, name: id })),
 	},
 ];
+
+const noSelection: ReadonlySet<string> = new Set();
 
 const check = (fields: Partial<ApplyCheckResult> = {}): ApplyCheckResult => ({
 	environmentId: 'environment-1',
@@ -111,6 +115,7 @@ describe('promotion operation', () => {
 					movedFolders: [],
 				},
 				[],
+				noSelection,
 			),
 		);
 
@@ -142,6 +147,7 @@ describe('promotion operation', () => {
 					],
 				},
 				[],
+				noSelection,
 			),
 		);
 
@@ -180,7 +186,7 @@ describe('promotion operation', () => {
 		const listed = ['workflow:w1', 'workflow:w2', 'workflow:w3'];
 		const project = { id: 'p1', name: 'Billing' };
 		const blockersOf = (conflicts: ApplyCheckResult['conflicts']) =>
-			indexBlockers(listBlockers(check({ conflicts }), listed));
+			indexBlockers(listBlockers(check({ conflicts }), listed, noSelection));
 
 		const tagConflict = blockersOf([
 			{
@@ -229,6 +235,7 @@ describe('promotion operation', () => {
 					missingDependencies: [unreachableCredential, unreachableWorkflow, archivedWorkflow],
 				}),
 				[],
+				noSelection,
 			),
 		);
 
@@ -250,7 +257,7 @@ describe('promotion operation', () => {
 			unreachableWorkflow,
 		];
 
-		expect(listOnlyDependencies(missingDependencies)).toEqual([
+		expect(listOnlyDependencies(missingDependencies, noSelection)).toEqual([
 			archivedWorkflow,
 			unreachableWorkflow,
 		]);
@@ -258,8 +265,35 @@ describe('promotion operation', () => {
 			listBlockers(
 				check({ missingBindings: [missingCredential, missingVariable], missingDependencies }),
 				[],
+				noSelection,
 			).map(({ kind }) => kind),
 		).toEqual(['missing', 'missing']);
+	});
+
+	it('should keep a missing dependency with a condition only when the selection matches the condition', () => {
+		const missingDependencies = [
+			archivedWorkflow,
+			targetNotSelectedWorkflow,
+			targetSelectedWorkflow,
+		];
+		const reasons = (selected: string[]) =>
+			listOnlyDependencies(missingDependencies, new Set(selected)).map(({ reason }) => reason);
+
+		// The target of the two entries is "Weekly KPI report" (w3). The first entry has no condition.
+		expect(reasons(['workflow:w1', 'workflow:w3'])).toEqual(['archived', 'caller-policy']);
+		expect(reasons(['workflow:w1'])).toEqual(['archived', 'not-on-instance']);
+		expect(reasons([])).toEqual(['archived', 'not-on-instance']);
+	});
+
+	it('should block the workflows of a missing dependency with a condition only when the selection matches the condition', () => {
+		const stops = { ...targetSelectedWorkflow, blocking: true };
+		const blocked = (selected: string[]) => [
+			...indexBlockers(listBlockers(check({ missingDependencies: [stops] }), [], new Set(selected)))
+				.blocked,
+		];
+
+		expect(blocked(['workflow:w3'])).toEqual(['workflow:w1']);
+		expect(blocked(['workflow:w1'])).toEqual([]);
 	});
 
 	it('should keep the missing dependencies that a selected workflow uses, with only the selected workflows', () => {

@@ -23,7 +23,7 @@ properties:
       - outside-access
       - other-project
       - personal
-    description: '`needs-action` (Apply): you can resolve it on this instance. `outside-access`: it is in a project that you cannot access. `other-project` (Promote): it is in another project that you can access, and this Promote does not include it. `personal` (Promote): it is in a personal project, which a promotion does not carry.'
+    description: '`needs-action` (Apply): you can resolve it on this instance. `outside-access`: it is in a project that you cannot access, or (Apply, reason `not-on-branch`) the branch does not hold it under a project. `other-project` (Promote): it is in another project that you can access, and this Promote does not include it. `personal` (Promote): it is in a personal project, which a promotion does not carry.'
   reason:
     type: string
     enum:
@@ -54,6 +54,12 @@ properties:
   blocking:
     type: boolean
     description: Whether the operation stops on this dependency. When false, the operation continues without it.
+  condition:
+    type: string
+    enum:
+      - target-selected
+      - target-not-selected
+    description: Only in the Apply preview of a project, for a workflow entry. The entry holds only when the selection includes (`target-selected`) or does not include (`target-not-selected`) the workflow with this `id`. Without it, the entry holds for every selection.
   consumers:
     type: array
     items:

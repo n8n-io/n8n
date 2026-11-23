@@ -29,6 +29,7 @@ export class ApplyDependencyCheckService {
 		applied,
 		references,
 		wholeInstance,
+		selectionOpen,
 	}: {
 		plan: PackageImportPlan;
 		/** The whole package. */
@@ -39,12 +40,15 @@ export class ApplyDependencyCheckService {
 		references: WorkflowReference[];
 		/** An Apply of the whole instance deletes the team projects that the package lacks. */
 		wholeInstance: boolean;
+		/** The user applies a selection of the plan, which the caller does not know yet. */
+		selectionOpen: boolean;
 	}): Promise<ApplyDependencyFacts> {
 		const { user } = plan.request;
 		const appliedWorkflowIds = new Set(applied.map(({ id }) => id));
 		const referencedIds = new Set(references.map(({ id }) => id));
-		const instanceWorkflows = await this.instanceWorkflowsAfterApply(
-			[...referencedIds].filter((id) => !appliedWorkflowIds.has(id)),
+		// With an open selection, a workflow of the plan can stay as this instance holds it.
+		const { instanceWorkflows, removedWorkflowIds } = await this.instanceWorkflows(
+			[...referencedIds].filter((id) => selectionOpen || !appliedWorkflowIds.has(id)),
 			plan,
 			wholeInstance ? new Set(inventory.projects.map(({ id }) => id)) : null,
 		);
@@ -53,13 +57,17 @@ export class ApplyDependencyCheckService {
 			...instanceWorkflows.values(),
 		];
 		const [credentialProjectIds, readableProjectIds] = await Promise.all([
-			this.credentialProjectIds(user, projectIdsOf(inventory.credentials)),
+			this.credentialProjectIds(user, missingCredentialProjectIds(plan, inventory)),
 			this.readableProjectIds(user, projectIdsOf(holders)),
 		]);
 
 		return {
 			credentialProjectIds,
 			appliedWorkflowIds,
+			removedWorkflowIds,
+			selectableWorkflowIds: new Set(
+				selectionOpen ? [...appliedWorkflowIds, ...removedWorkflowIds] : [],
+			),
 			instanceWorkflows,
 			readableProjectIds,
 			callerPolicyDefault: this.globalConfig.workflows.callerPolicyDefaultOption,
@@ -67,32 +75,36 @@ export class ApplyDependencyCheckService {
 	}
 
 	/**
-	 * The state of the workflows that the Apply does not import. It leaves out a workflow that the
-	 * Apply deletes, because a reference to it does not resolve after the Apply.
+	 * The state of the workflows on this instance before the Apply, and the ones that the Apply
+	 * deletes. A deleted workflow keeps its state here, because its project decides who can act.
 	 */
-	private async instanceWorkflowsAfterApply(
+	private async instanceWorkflows(
 		workflowIds: string[],
 		plan: PackageImportPlan,
 		keptTeamProjectIds: ReadonlySet<string> | null,
-	): Promise<Map<string, ReferencedWorkflowState>> {
-		if (workflowIds.length === 0) return new Map();
+	): Promise<{
+		instanceWorkflows: Map<string, ReferencedWorkflowState>;
+		removedWorkflowIds: Set<string>;
+	}> {
+		const instanceWorkflows = new Map<string, ReferencedWorkflowState>();
+		const removedWorkflowIds = new Set<string>();
+		if (workflowIds.length === 0) return { instanceWorkflows, removedWorkflowIds };
 		const [workflows, owners] = await Promise.all([
 			this.workflowRepository.findByIds(workflowIds, { fields: ['isArchived', 'settings'] }),
 			this.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds(workflowIds),
 		]);
-		const removedIds = new Set(
+		const plannedRemovalIds = new Set(
 			plan.scopes.flatMap(({ plan: scope }) => scope.removalPlan.removals.map(({ id }) => id)),
 		);
 
-		const states = new Map<string, ReferencedWorkflowState>();
 		for (const { id, isArchived, settings } of workflows) {
 			const owner = owners.get(id);
 			const inDeletedProject =
 				keptTeamProjectIds !== null && owner?.type === 'team' && !keptTeamProjectIds.has(owner.id);
-			if (removedIds.has(id) || inDeletedProject) continue;
-			states.set(id, { isArchived, settings, projectId: owner?.id ?? null });
+			if (plannedRemovalIds.has(id) || inDeletedProject) removedWorkflowIds.add(id);
+			instanceWorkflows.set(id, { isArchived, settings, projectId: owner?.id ?? null });
 		}
-		return states;
+		return { instanceWorkflows, removedWorkflowIds };
 	}
 
 	/**
@@ -121,6 +133,19 @@ export class ApplyDependencyCheckService {
 			await this.projectService.getProjectIdsWithScope(user, ['project:read'], projectIds),
 		);
 	}
+}
+
+/** Only a credential that the plan did not find needs the access to its owner project. */
+function missingCredentialProjectIds(
+	plan: PackageImportPlan,
+	inventory: PackageDirectoryInventory,
+): string[] {
+	const unresolvedIds = new Set(
+		plan.issues.flatMap((issue) => (issue.type === 'credential-unresolved' ? issue.sourceId : [])),
+	);
+	return projectIdsOf(
+		inventory.credentials.filter(({ credential }) => unresolvedIds.has(credential.id)),
+	);
 }
 
 function projectIdsOf(entries: ReadonlyArray<{ projectId: string | null }>): string[] {

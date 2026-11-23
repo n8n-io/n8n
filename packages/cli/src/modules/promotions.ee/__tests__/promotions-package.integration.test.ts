@@ -3,6 +3,7 @@ import {
 	applyPackageResultSchema,
 	type ApplyPackageResultDto,
 	type ContinueApplyPackageDto,
+	type PromotionApplyCheck,
 	type PromotionProviderType,
 } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
@@ -37,6 +38,7 @@ import {
 	WorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { Scope } from '@n8n/permissions';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { Cipher, InstanceSettings } from 'n8n-core';
 import { jsonParse, type INode } from 'n8n-workflow';
@@ -2599,37 +2601,42 @@ describe('Missing dependencies of an Apply', () => {
 		beta = await createTeamProject('Beta team', owner);
 	});
 
+	/** What a user needs in a project to apply to it and to export it, except for credentials. */
+	const APPLY_SCOPES: Scope[] = [
+		'project:read',
+		'project:list',
+		'project:update',
+		'project:export',
+		'folder:create',
+		'folder:read',
+		'folder:update',
+		'folder:list',
+		'workflow:create',
+		'workflow:read',
+		'workflow:update',
+		'workflow:import',
+		'workflow:export',
+		'workflow:list',
+		'workflow:delete',
+		'workflow:publish',
+		'credential:read',
+		'credential:update',
+		'credential:list',
+	];
+
+	async function linkWithScopes(user: User, project: Project, scopes: Scope[]) {
+		const role = await createCustomRoleWithScopeSlugs(scopes, { roleType: 'project' });
+		await linkUserToProject(user, project, role.slug);
+	}
+
 	/** A user who can apply in Alpha and create credentials there, without access to Beta. */
-	async function createAlphaApplier() {
+	async function createAlphaApplier(globalScopes: Scope[] = []) {
 		const applier = await createUser({
-			role: await createCustomRoleWithScopeSlugs(['promotions:apply'], { roleType: 'global' }),
+			role: await createCustomRoleWithScopeSlugs(['promotions:apply', ...globalScopes], {
+				roleType: 'global',
+			}),
 		});
-		const role = await createCustomRoleWithScopeSlugs(
-			[
-				'project:read',
-				'project:list',
-				'project:update',
-				'project:export',
-				'folder:create',
-				'folder:read',
-				'folder:update',
-				'folder:list',
-				'workflow:create',
-				'workflow:read',
-				'workflow:update',
-				'workflow:import',
-				'workflow:export',
-				'workflow:list',
-				'workflow:delete',
-				'workflow:publish',
-				'credential:create',
-				'credential:read',
-				'credential:update',
-				'credential:list',
-			],
-			{ roleType: 'project' },
-		);
-		await linkUserToProject(applier, alpha, role.slug);
+		await linkWithScopes(applier, alpha, [...APPLY_SCOPES, 'credential:create']);
 		return applier;
 	}
 
@@ -2655,14 +2662,104 @@ describe('Missing dependencies of an Apply', () => {
 		expectedPreviewRevision: preview.revision,
 	});
 
-	/** The lists of a check that a user reads, as text. */
-	const shownIn = ({
+	/** No part of what a user reads names the project: not its id, and not its name. */
+	const expectNotNamed = (project: Project, ...shown: unknown[]) => {
+		for (const value of shown) {
+			const text = JSON.stringify(value);
+			expect(text).not.toContain(project.id);
+			expect(text).not.toContain(project.name);
+		}
+	};
+
+	/** The whole preview of the project and the whole result of an Apply that stops. */
+	async function readPreviewAndBlocked(user: User, workflow: { id: string }) {
+		const preview = await loadApplyPreview(alpha.id, user);
+		const blocked = await service.applyProjectSelection(alpha.id, user, {
+			workflowIds: [workflow.id],
+		});
+		assert(blocked.status === 'blocked');
+		// The preview holds every part that a user reads.
+		expect(preview).toMatchObject({
+			resources: expect.any(Array),
+			dependencies: expect.any(Array),
+			check: { missingProjects: expect.any(Array), warnings: expect.any(Array) },
+		});
+		return [preview, blocked] as const;
+	}
+
+	/** Removes a workflow from the branch, as a later Promote without it does. */
+	async function removeFromBranch(workflowId: string) {
+		const root = path.join(remote.workingDir, 'n8n');
+		const manifestPath = path.join(root, 'manifest.json');
+		const manifest = jsonParse<{ workflows: Array<{ id: string; target: string }> }>(
+			await readFile(manifestPath, 'utf-8'),
+		);
+		const entry = manifest.workflows.find(({ id }) => id === workflowId);
+		assert(entry);
+		await rm(path.join(root, entry.target), { recursive: true });
+		manifest.workflows = manifest.workflows.filter(({ id }) => id !== workflowId);
+		await writeFile(manifestPath, JSON.stringify(manifest, null, 2));
+		await commitAndPushRemote(remote, 'Remove a workflow');
+	}
+
+	const workflowEntries = ({
 		missingDependencies,
-		missingBindings,
-		conflicts,
-		accessRequirements,
-	}: Awaited<ReturnType<typeof loadApplyPreview>>['check']) =>
-		JSON.stringify([missingDependencies, missingBindings, conflicts, accessRequirements]);
+	}: Pick<PromotionApplyCheck, 'missingDependencies'>) =>
+		missingDependencies.filter(({ kind }) => kind === 'workflow');
+
+	/**
+	 * A workflow of Alpha that calls a helper of Alpha, both on the branch. Its credential has
+	 * another type here, which stops every Apply of the caller until `unblock` runs.
+	 */
+	async function exportCallerOfOwnHelper() {
+		const credential = await saveHeaderCredential('Alpha key', alpha);
+		const helper = await createWorkflow({ name: 'Helper', nodes: [], connections: {} }, alpha);
+		const caller = await createWorkflow(
+			{
+				name: 'Caller',
+				nodes: [headerAuthNode(credential), executeWorkflowNode(helper.id)],
+				connections: {},
+			},
+			alpha,
+		);
+		await exportPackageToRemote(remote);
+		await Container.get(WorkflowRepository).update(caller.id, { nodes: [] });
+		const setType = async (type: string) =>
+			await Container.get(CredentialsRepository).update(credential.id, { type });
+		await setType('httpBasicAuth');
+
+		return {
+			helper,
+			caller,
+			unblock: async () => await setType(credential.type),
+			/** The workflow entries of the Apply that stops on the credential. Nothing changes here. */
+			blockedOn: async (workflowIds: string[]) => {
+				const before = await snapshotApplyState();
+				const result = await service.applyProjectSelection(alpha.id, owner, { workflowIds });
+				assert(result.status === 'blocked');
+				expect(await snapshotApplyState()).toEqual(before);
+				return workflowEntries(result.check);
+			},
+			apply: async (workflowIds: string[]) => {
+				const result = await service.applyProjectSelection(alpha.id, owner, {
+					workflowIds,
+					...applyOf(await loadApplyPreview(alpha.id)),
+				});
+				assert(result.status === 'applied');
+				return result.counts.workflows;
+			},
+			entry: {
+				kind: 'workflow',
+				id: helper.id,
+				name: 'Helper',
+				group: 'needs-action',
+				reason: 'not-on-instance',
+				accessible: true,
+				blocking: false,
+				consumers: usedBy(caller),
+			},
+		};
+	}
 
 	/**
 	 * Apply stops, as it did before the list existed. The result is the same with and without a
@@ -2804,15 +2901,15 @@ describe('Missing dependencies of an Apply', () => {
 			}),
 		]);
 
-		const withoutAccess = await expectBlocked(await createAlphaApplier(), workflow);
+		const applier = await createAlphaApplier();
+		const withoutAccess = await expectBlocked(applier, workflow);
 
 		expect(withoutAccess.missingDependencies).toEqual([
 			{ ...entry, group: 'outside-access', accessible: false },
 		]);
 		expect(withoutAccess.missingBindings).toEqual([]);
 		expect(withoutAccess.conflicts).toEqual([]);
-		expect(shownIn(withoutAccess)).not.toContain(beta.id);
-		expect(shownIn(withoutAccess)).not.toContain(beta.name);
+		expectNotNamed(beta, ...(await readPreviewAndBlocked(applier, workflow)));
 	});
 
 	it('lists a missing credential without an owner project on the branch, and reports no conflict', async () => {
@@ -2837,12 +2934,95 @@ describe('Missing dependencies of an Apply', () => {
 				name: 'My key',
 				credentialType: 'httpHeaderAuth',
 				group: 'outside-access',
-				reason: 'not-on-instance',
+				reason: 'not-on-branch',
 				accessible: false,
 				blocking: true,
 				consumers: usedBy(workflow),
 			},
 		]);
+	});
+
+	it('lists a missing credential of a project that this instance lacks by the scope to create projects', async () => {
+		const credential = await saveHeaderCredential('CRM key', beta);
+		await shareCredentialWithProjects(credential, [alpha]);
+		const workflow = await createWorkflow(
+			{ name: 'Sync', nodes: [headerAuthNode(credential)], connections: {} },
+			alpha,
+		);
+		await exportPackageToRemote(remote);
+		await Container.get(CredentialsRepository).delete(credential.id);
+		await projectRepository.delete(beta.id);
+		const entry = {
+			kind: 'credential',
+			id: credential.id,
+			name: 'CRM key',
+			credentialType: 'httpHeaderAuth',
+			reason: 'not-on-instance',
+			blocking: true,
+			consumers: usedBy(workflow),
+		};
+
+		// A user who can create projects can create the owner project, then the credential.
+		const withScope = await expectBlocked(await createAlphaApplier(['project:create']), workflow);
+
+		expect(withScope.missingDependencies).toEqual([
+			{ ...entry, group: 'needs-action', accessible: true },
+		]);
+		expect(withScope.missingBindings).toEqual([
+			expect.objectContaining({
+				kind: 'credential',
+				sourceId: credential.id,
+				ownerProject: { id: beta.id, name: beta.name },
+			}),
+		]);
+
+		const applier = await createAlphaApplier();
+		const withoutScope = await expectBlocked(applier, workflow);
+
+		expect(withoutScope.missingDependencies).toEqual([
+			{ ...entry, group: 'outside-access', accessible: false },
+		]);
+		expect(withoutScope).toMatchObject({ missingBindings: [], conflicts: [] });
+		expectNotNamed(beta, ...(await readPreviewAndBlocked(applier, workflow)));
+	});
+
+	it('lists a missing credential outside the access of the user for an Apply of the whole instance', async () => {
+		const credential = await saveHeaderCredential('CRM key', beta);
+		await shareCredentialWithProjects(credential, [alpha]);
+		const workflow = await createWorkflow(
+			{ name: 'Sync', nodes: [headerAuthNode(credential)], connections: {} },
+			alpha,
+		);
+		await exportPackageToRemote(remote);
+		await Container.get(CredentialsRepository).delete(credential.id);
+		// The Apply of the whole instance needs every project. The user cannot create a credential
+		// in the owner project of the credential.
+		const applier = await createAlphaApplier();
+		await linkWithScopes(applier, beta, APPLY_SCOPES);
+		const before = await snapshotApplyState();
+
+		const preview = await changeService().getInstanceApplyPreview(applier, environments.apply.id);
+		const blocked = await service.apply(environments.apply.id, applier);
+
+		assert(preview.check && blocked.status === 'blocked');
+		for (const check of [preview.check, blocked.check]) {
+			expect(check.missingDependencies).toEqual([
+				{
+					kind: 'credential',
+					id: credential.id,
+					name: 'CRM key',
+					credentialType: 'httpHeaderAuth',
+					group: 'outside-access',
+					reason: 'not-on-instance',
+					accessible: false,
+					blocking: true,
+					consumers: usedBy(workflow),
+				},
+			]);
+			// The binding names the owner project and holds the expressions of the credential.
+			expect(check.missingBindings).toEqual([]);
+		}
+		expect(await snapshotApplyState()).toEqual(before);
 	});
 
 	it('lists a credential that the project cannot use and a credential of another type, with their reasons', async () => {
@@ -2917,12 +3097,11 @@ describe('Missing dependencies of an Apply', () => {
 		expect(withoutAccess.check.missingDependencies).toEqual([
 			{ ...entry, group: 'outside-access', accessible: false },
 		]);
-		expect(shownIn(withoutAccess.check)).not.toContain(beta.id);
-		expect(shownIn(withoutAccess.check)).not.toContain(beta.name);
+		expectNotNamed(beta, withoutAccess);
 		expect(check).toMatchObject({ missingBindings: [], accessRequirements: [], conflicts: [] });
 	});
 
-	it('lists a sub-workflow that the branch archives, and applies as before', async () => {
+	it('lists a sub-workflow that the branch archives for a selection with it, and applies as before', async () => {
 		const helper = await createWorkflow(
 			{ name: 'Helper', nodes: [], connections: {}, isArchived: true },
 			alpha,
@@ -2934,7 +3113,7 @@ describe('Missing dependencies of an Apply', () => {
 					alpha,
 				),
 		);
-		// The Apply of the project writes the sub-workflow, so the branch decides.
+		// Only an Apply that includes the sub-workflow archives it here.
 		await Container.get(WorkflowRepository).update(helper.id, { isArchived: false });
 
 		const check = await expectApplied(await createAlphaApplier(), callers);
@@ -2948,8 +3127,66 @@ describe('Missing dependencies of an Apply', () => {
 				reason: 'archived',
 				accessible: true,
 				blocking: false,
+				condition: 'target-selected',
 				consumers: usedBy(...callers),
 			},
+		]);
+	});
+
+	it('lists a sub-workflow that the branch adds only for a selection without it, and applies each selection as before', async () => {
+		const { helper, caller, entry, blockedOn, unblock, apply } = await exportCallerOfOwnHelper();
+		const workflows = Container.get(WorkflowRepository);
+		await workflows.delete(helper.id);
+		const conditional = { ...entry, condition: 'target-not-selected' };
+
+		// The preview covers every selection. The result of an Apply covers its selection.
+		expect(workflowEntries((await loadApplyPreview(alpha.id)).check)).toEqual([conditional]);
+		expect(await blockedOn([caller.id])).toEqual([entry]);
+		expect(await blockedOn([caller.id, helper.id])).toEqual([]);
+
+		await unblock();
+		expect((await loadApplyPreview(alpha.id)).check.missingDependencies).toEqual([conditional]);
+		const overApi = await testServer
+			.publicApiAgentFor(owner)
+			.get(`/promotions/projects/${alpha.id}/changes/apply`)
+			.expect(200);
+		expect(overApi.body.check.missingDependencies).toEqual([conditional]);
+
+		// The Apply does not check the call, so it writes a call to a workflow that is not here.
+		expect(await apply([caller.id])).toMatchObject({ created: 0, updated: 1 });
+		expect((await workflows.findOneByOrFail({ id: caller.id })).nodes).toEqual(caller.nodes);
+		expect(await workflows.existsBy({ id: helper.id })).toBe(false);
+
+		expect(await apply([caller.id, helper.id])).toMatchObject({ created: 1 });
+		expect(await workflows.existsBy({ id: helper.id })).toBe(true);
+		expect((await loadApplyPreview(alpha.id)).check.missingDependencies).toEqual([]);
+	});
+
+	it('lists a sub-workflow that the branch lacks only for a selection that deletes it, and applies each selection as before', async () => {
+		const { helper, caller, entry, blockedOn, unblock, apply } = await exportCallerOfOwnHelper();
+		const workflows = Container.get(WorkflowRepository);
+		await removeFromBranch(helper.id);
+		const conditional = { ...entry, condition: 'target-selected' };
+
+		// The user can read the project of the deleted workflow, so the user can act on the entry.
+		expect(workflowEntries((await loadApplyPreview(alpha.id)).check)).toEqual([conditional]);
+		expect(await blockedOn([caller.id])).toEqual([]);
+		expect(await blockedOn([caller.id, helper.id])).toEqual([entry]);
+
+		await unblock();
+		expect((await loadApplyPreview(alpha.id)).check.missingDependencies).toEqual([conditional]);
+
+		expect(await apply([caller.id])).toMatchObject({ created: 0, updated: 1 });
+		expect((await workflows.findOneByOrFail({ id: caller.id })).nodes).toEqual(caller.nodes);
+		expect(await workflows.existsBy({ id: helper.id })).toBe(true);
+		expect((await loadApplyPreview(alpha.id)).check.missingDependencies).toEqual([conditional]);
+
+		// The Apply does not check the call, so it deletes a workflow that the caller still calls.
+		await apply([helper.id]);
+		expect(await workflows.existsBy({ id: helper.id })).toBe(false);
+		// Now neither this instance nor the branch holds the workflow, for every selection.
+		expect((await loadApplyPreview(alpha.id)).check.missingDependencies).toEqual([
+			{ ...entry, group: 'outside-access', reason: 'not-on-branch', accessible: false },
 		]);
 	});
 
@@ -2989,9 +3226,8 @@ describe('Missing dependencies of an Apply', () => {
 				consumers: usedBy(...callers),
 			},
 		]);
-		expect(shownIn(archived.check)).not.toContain(beta.id);
-		expect(shownIn(archived.check)).not.toContain(beta.name);
-		expect(shownIn(archived.check)).not.toContain('Name on this instance');
+		expectNotNamed(beta, archived);
+		expect(JSON.stringify(archived)).not.toContain('Name on this instance');
 		// Only the list changed, and an Apply that reviewed the old list stops.
 		expect(archived.resources).toEqual(usable.resources);
 		expect(archived.revision).not.toBe(usable.revision);

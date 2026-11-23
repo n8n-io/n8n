@@ -41,7 +41,7 @@ const props = withDefaults(
 		/**
 		 * The missing dependencies that get a row of their own. Promote: what the selected workflows
 		 * use and the branch does not hold after the Promote. Apply: the dependencies that the other
-		 * lists of the check do not detail.
+		 * lists of the check do not detail, and that hold for the selection.
 		 */
 		missingDependencies?: PromotionMissingDependency[];
 		/** Promote only: what the selected workflows reference and this instance does not have. */
@@ -123,6 +123,7 @@ type StatusKey =
 	| 'archived'
 	| 'otherProject'
 	| 'outside'
+	| 'notOnBranch'
 	| 'personal';
 
 const WARNING_STYLE: StatusStyle = { tone: 'warning', icon: 'circle-alert' };
@@ -130,6 +131,7 @@ const WARNING_STYLE: StatusStyle = { tone: 'warning', icon: 'circle-alert' };
 const STATUS_STYLES: Partial<Record<StatusKey, StatusStyle>> = {
 	resolved: { tone: 'success', icon: 'circle-check' },
 	...PROMOTE_STATUS_STYLES,
+	notOnBranch: { tone: 'neutral', icon: 'circle-minus' },
 };
 
 const status = (key: StatusKey) => ({
@@ -325,7 +327,14 @@ const otherProjectDetail = ({ group, project }: PromotionMissingDependency) =>
 function dependencyRow(dependency: PromotionMissingDependency, sectionId: string) {
 	const issue = workflowIssue(dependency);
 	return {
-		key: `${sectionId}:${dependency.kind}:${dependency.id ?? dependency.name}`,
+		// One dependency can have an entry for each reason and for each condition on the selection.
+		key: [
+			sectionId,
+			dependency.kind,
+			dependency.id ?? dependency.name,
+			dependency.reason,
+			dependency.condition ?? '',
+		].join(':'),
 		icon: resourceIcon(dependency.kind),
 		name: dependency.name,
 		type: dependency.kind,
@@ -334,24 +343,16 @@ function dependencyRow(dependency: PromotionMissingDependency, sectionId: string
 	};
 }
 
-// Promote cannot include the dependency yet, and Apply cannot add one that users cannot access.
-// The button of the action only says why.
-function disabledAction(
+// The type of a dependency, as a tooltip names it inside a sentence.
+const typeInSentence = (kind: PromotionMissingDependency['kind']) => ({
+	type: i18n.baseText(`promotions.preview.blockers.type.${kind}`).toLowerCase(),
+});
+
+// Promote cannot include the dependency yet. The button of the action only says why.
+function includeAction(
 	{ kind, group, accessible, project }: PromotionMissingDependency,
 	reason: DependencySection['reason'],
 ): BlockerRow['disabledAction'] {
-	const interpolate = {
-		type: i18n.baseText(`promotions.preview.blockers.type.${kind}`).toLowerCase(),
-		project: project?.name ?? '',
-	};
-	if (props.check) {
-		return {
-			label: i18n.baseText(`promotions.preview.blockers.create.${kind}`),
-			reason: i18n.baseText('promotions.preview.blockers.disabled.outside.apply', {
-				interpolate,
-			}),
-		};
-	}
 	// The tooltip must not tell the user to move what the user cannot reach. It names the project
 	// of the dependency when the API sends it.
 	const namedReason =
@@ -364,7 +365,49 @@ function disabledAction(
 			: namedReason;
 	return {
 		label: i18n.baseText('promotions.preview.blockers.include'),
-		reason: i18n.baseText(promoteReason, { interpolate }),
+		reason: i18n.baseText(promoteReason, {
+			interpolate: { ...typeInSentence(kind), project: project?.name ?? '' },
+		}),
+	};
+}
+
+/**
+ * Apply: why the workflows cannot use a sub-workflow or an error workflow of "Outside your
+ * access". The user cannot change the workflow, so no text asks the user to.
+ */
+const OUTSIDE_WORKFLOW_DETAILS: Partial<Record<PromotionMissingDependencyReason, BaseTextKey>> = {
+	'not-on-branch': 'promotions.preview.blockers.workflow.notOnBranch',
+	'not-on-instance': 'promotions.preview.blockers.workflow.notOnInstance',
+	archived: 'promotions.preview.blockers.workflow.archived.noAccess',
+	'caller-policy': 'promotions.preview.blockers.workflow.callerPolicy.noAccess',
+};
+
+// Apply: what a row of "Outside your access" shows, by the reason of the dependency.
+function outsideAccessOnApply({
+	kind,
+	reason,
+}: PromotionMissingDependency): Pick<BlockerRow, 'status' | 'detail' | 'disabledAction'> {
+	const detailKey = kind === 'workflow' ? OUTSIDE_WORKFLOW_DETAILS[reason] : undefined;
+	const detail = detailKey && i18n.baseText(detailKey);
+	// The workflow is on this instance, so the row offers nothing to add.
+	if (reason === 'archived' || reason === 'caller-policy') {
+		return { status: status('outside'), detail };
+	}
+	// Apply cannot add a dependency that the branch does not hold, or that users cannot access.
+	// The button of the action only says why.
+	const notOnBranch = reason === 'not-on-branch';
+	return {
+		status: status(notOnBranch ? 'notOnBranch' : 'outside'),
+		detail,
+		disabledAction: {
+			label: i18n.baseText(`promotions.preview.blockers.create.${kind}`),
+			reason: i18n.baseText(
+				notOnBranch
+					? 'promotions.preview.blockers.disabled.notOnBranch.apply'
+					: 'promotions.preview.blockers.disabled.outside.apply',
+				{ interpolate: typeInSentence(kind) },
+			),
+		},
 	};
 }
 
@@ -388,7 +431,10 @@ const sections = computed(() =>
 			title: i18n.baseText('promotions.preview.blockers.section.blockers', {
 				interpolate: { count: String(needsActionRows.value.length) },
 			}),
-			description: i18n.baseText('promotions.preview.blockers.section.blockers.description'),
+			// The text tells users to create dependencies, so it needs a row that they can create.
+			description: needsActionRows.value.some(({ createLabel }) => createLabel !== undefined)
+				? i18n.baseText('promotions.preview.blockers.section.blockers.description')
+				: undefined,
 			rows: needsActionRows.value,
 		},
 		...DEPENDENCY_SECTIONS.map((section) => {
@@ -399,11 +445,16 @@ const sections = computed(() =>
 					interpolate: { count: String(dependencies.length) },
 				}),
 				description: dependencyDescription(section.id, dependencies),
+				// On Apply, the only section of this list is "Outside your access".
 				rows: dependencies.map(
 					(dependency): BlockerRow => ({
 						...dependencyRow(dependency, section.id),
-						status: status(section.status),
-						disabledAction: disabledAction(dependency, section.reason),
+						...(props.check
+							? outsideAccessOnApply(dependency)
+							: {
+									status: status(section.status),
+									disabledAction: includeAction(dependency, section.reason),
+								}),
 					}),
 				),
 			};

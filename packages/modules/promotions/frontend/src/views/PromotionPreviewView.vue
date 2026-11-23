@@ -20,7 +20,7 @@ import { useI18n } from '@n8n/i18n';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { computed, nextTick, ref, toRef, watch } from 'vue';
+import { computed, nextTick, ref, shallowRef, toRef, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import PromotionBlockers from '../components/preview/PromotionBlockers.vue';
@@ -51,6 +51,7 @@ import {
 	resolveInclusion,
 	selectableKeys,
 	totalChangeCount,
+	type DisabledKeys,
 	type ResourceKey,
 } from '../promotionPreview.selection';
 import { defaultActiveWorkflow, hasWorkflowDiff } from '../promotionPreview.workflow';
@@ -83,22 +84,43 @@ const scopedCheck = computed(() => {
 });
 // A project-wide conflict blocks all of them, so it also stops a selection without workflows.
 const selectableResourceKeys = computed(() => (graph.value ? selectableKeys(graph.value) : []));
+// A missing dependency with a condition depends on the selection, and the selection depends on
+// the blocked workflows. So the blockers read this copy of the selected keys, which exists before
+// the selection and follows it.
+const selectedKeys = shallowRef<ReadonlySet<ResourceKey>>(new Set());
 const blockerList = computed(() => [
-	...(scopedCheck.value ? listBlockers(scopedCheck.value, selectableResourceKeys.value) : []),
+	...(scopedCheck.value
+		? listBlockers(scopedCheck.value, selectableResourceKeys.value, selectedKeys.value)
+		: []),
 	...(props.direction === 'promote' && graph.value ? crossProjectMoveBlockers(graph.value) : []),
 ]);
 const blockers = computed(() => indexBlockers(blockerList.value));
 const operation = usePromotionOperation(projectId, direction, { preview, check, refresh });
 const selection = usePromotionSelection(graph, {
-	disabled: computed(() => blockers.value.blocked),
+	// Each change of the selection makes a new set of blocked workflows. The selection must react
+	// only when the keys of the set change. If not, the two never settle.
+	disabled: computed<DisabledKeys>((previous) => {
+		const { blocked } = blockers.value;
+		const unchanged =
+			previous?.size === blocked.size && [...blocked].every((key) => previous.has(key));
+		return unchanged ? previous : blocked;
+	}),
 	locked: operation.isBusy,
 });
+watch(
+	selection.selected,
+	(keys) => {
+		selectedKeys.value = keys;
+	},
+	{ immediate: true, flush: 'sync' },
+);
 // The missing dependencies that the Issues tab lists as rows of their own. Promote: what the
 // selected workflows use, and the branch does not hold after the Promote. Nothing there stops the
-// Promote. Apply: the dependencies that the other lists of the check do not detail.
+// Promote. Apply: the dependencies that the other lists of the check do not detail, and that hold
+// for the selection.
 const missingDependencies = computed(() =>
 	props.direction === 'apply'
-		? listOnlyDependencies(scopedCheck.value?.missingDependencies ?? [])
+		? listOnlyDependencies(scopedCheck.value?.missingDependencies ?? [], selectedKeys.value)
 		: scopeToSelection(preview.value?.missingDependencies ?? [], selection.selected.value),
 );
 const dependencyWarnings = computed(() =>

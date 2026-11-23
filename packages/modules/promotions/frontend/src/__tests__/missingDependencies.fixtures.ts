@@ -119,6 +119,79 @@ export const archivedWorkflow: PromotionMissingDependency = {
 	consumers: usedBy(reconciliation),
 };
 
+/**
+ * Apply: a credential that this instance does not have, and that the branch holds under no
+ * project. It stops "Invoice reconciliation".
+ */
+export const notOnBranchCredential: PromotionMissingDependency = {
+	kind: 'credential',
+	id: 'c9',
+	name: 'Legacy SMTP',
+	credentialType: 'smtp',
+	group: 'outside-access',
+	reason: 'not-on-branch',
+	accessible: false,
+	blocking: true,
+	consumers: usedBy(reconciliation),
+};
+
+/** Apply: a sub-workflow that this instance and the branch do not have. */
+export const notOnBranchWorkflow: PromotionMissingDependency = {
+	kind: 'workflow',
+	id: 'w12',
+	name: 'Sync ledger',
+	group: 'outside-access',
+	reason: 'not-on-branch',
+	accessible: false,
+	blocking: false,
+	consumers: usedBy(kpiReport),
+};
+
+/** Apply: an archived sub-workflow in a project that the user cannot access. */
+export const outsideArchivedWorkflow: PromotionMissingDependency = {
+	...archivedWorkflow,
+	group: 'outside-access',
+	accessible: false,
+};
+
+/** Apply: a sub-workflow in a project that the user cannot access. It refuses its callers. */
+export const outsideCallerPolicyWorkflow: PromotionMissingDependency = {
+	kind: 'workflow',
+	id: 'w10',
+	name: 'Notify finance',
+	group: 'outside-access',
+	reason: 'caller-policy',
+	accessible: false,
+	blocking: false,
+	consumers: usedBy(reconciliation),
+};
+
+/**
+ * Apply of a project: "Invoice reconciliation" calls "Weekly KPI report", which the branch adds.
+ * This instance does not have it while the selection leaves it out.
+ */
+export const targetNotSelectedWorkflow: PromotionMissingDependency = {
+	kind: 'workflow',
+	id: 'w3',
+	name: kpiReport.name,
+	group: 'needs-action',
+	reason: 'not-on-instance',
+	accessible: true,
+	blocking: false,
+	condition: 'target-not-selected',
+	consumers: usedBy(reconciliation),
+};
+
+/**
+ * Apply of a project: the other entry of the same target. The caller policy on the branch refuses
+ * "Invoice reconciliation" when the selection includes "Weekly KPI report".
+ */
+export const targetSelectedWorkflow: PromotionMissingDependency = {
+	...targetNotSelectedWorkflow,
+	reason: 'caller-policy',
+	condition: 'target-selected',
+};
+
 /** Apply: the entry of the list that repeats a missing binding of the check. */
 export const repeatedBinding = (binding: MissingPromotionBinding): PromotionMissingDependency => ({
 	kind: binding.kind,

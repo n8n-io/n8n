@@ -28,11 +28,17 @@ import {
 import {
 	archivedWorkflow,
 	deletedWorkflowWarning,
+	notOnBranchCredential,
+	notOnBranchWorkflow,
 	otherProjectCredential,
 	outsideAccessWorkflow,
+	outsideArchivedWorkflow,
+	outsideCallerPolicyWorkflow,
 	personalCredential,
 	personalWorkflow,
 	repeatedBinding,
+	targetNotSelectedWorkflow,
+	targetSelectedWorkflow,
 	unreachableCredential,
 	unreachableWorkflow,
 } from '../__tests__/missingDependencies.fixtures';
@@ -1697,6 +1703,265 @@ describe('PromotionPreviewView', () => {
 			expect(getByTestId('promotion-preview-blockers-status')).toHaveTextContent(
 				'2 issues to resolve',
 			);
+		});
+
+		it('should say that a dependency is not on the branch, and that the user cannot add it here', async () => {
+			const { findByTestId, getAllByRole, getAllByTestId, getByRole } = await renderIssues({
+				missingDependencies: [notOnBranchCredential, notOnBranchWorkflow],
+			});
+
+			expect(headings(getAllByRole)).toEqual(['Outside your access (2)']);
+			const outside = section(getAllByTestId, 'Outside your access (2)');
+			const credentialRow = outside.getByRole('row', { name: /Legacy SMTP/ });
+			expect(cells(credentialRow)).toEqual([
+				'Legacy SMTP',
+				'Invoice reconciliation',
+				'Credential',
+				'Not on the branch',
+				'Add credential',
+			]);
+			const workflowRow = outside.getByRole('row', { name: /Sync ledger/ });
+			expect(cells(workflowRow)).toEqual([
+				'Sync ledgerThis workflow is not on this instance and not on the branch. Workflows that use it fail until it exists here.',
+				'Weekly KPI report',
+				'Workflow',
+				'Not on the branch',
+				'Add workflow',
+			]);
+			// The status is neutral, with the icon of a dependency that the operation leaves out.
+			for (const row of [credentialRow, workflowRow]) {
+				const status = within(row).getByText('Not on the branch');
+				expect(status.className).toContain('neutral');
+				expect(status.querySelector('n8n-icon-stub')).toHaveAttribute('icon', 'circle-minus');
+				expect(row).not.toHaveTextContent('No access');
+			}
+
+			const addWorkflow = within(workflowRow).getByTestId(
+				'promotion-preview-blocker-disabled-action',
+			);
+			expect(addWorkflow).toHaveAccessibleName(
+				'Add workflow. The branch does not hold this workflow, so you cannot add it here. Promote it from its project first.',
+			);
+			const addCredential = within(credentialRow).getByTestId(
+				'promotion-preview-blocker-disabled-action',
+			);
+			expect(within(addCredential).getByRole('button', { name: 'Add credential' })).toBeDisabled();
+			addCredential.focus();
+			expect(await findByTestId('tooltip-content')).toHaveTextContent(
+				'The branch does not hold this credential, so you cannot add it here. Promote it from its project first.',
+			);
+
+			// "Weekly KPI report" (w3) uses the sub-workflow, which does not stop it.
+			await userEvent.click(getByRole('tab', { name: /Changes/ }));
+			expect(
+				treeRow(getAllByTestId, 'workflow:w3').getByTestId('promotion-preview-tree-dependencies'),
+			).toHaveAccessibleName('1 dependency is not on the branch.');
+		});
+
+		it('should show no action for a workflow of this instance that the user cannot access', async () => {
+			const { getAllByTestId } = await renderIssues({
+				missingDependencies: [outsideArchivedWorkflow, outsideCallerPolicyWorkflow],
+			});
+
+			const outside = section(getAllByTestId, 'Outside your access (2)');
+			expect(cells(outside.getByRole('row', { name: /Archive invoices/ }))).toEqual([
+				'Archive invoicesThis workflow is archived on this instance. Someone with access must unarchive it.',
+				'Invoice reconciliation',
+				'Workflow',
+				'No access',
+				'',
+			]);
+			expect(cells(outside.getByRole('row', { name: /Notify finance/ }))).toEqual([
+				'Notify financeThis workflow does not accept calls from the workflows that use it. Someone with access must change its caller policy.',
+				'Invoice reconciliation',
+				'Workflow',
+				'No access',
+				'',
+			]);
+			expect(
+				outside.queryByTestId('promotion-preview-blocker-disabled-action'),
+			).not.toBeInTheDocument();
+			expect(outside.queryByRole('button', { name: /Add/ })).not.toBeInTheDocument();
+		});
+
+		it('should tell users to create dependencies only when "Needs your action" has one to create', async () => {
+			const description = 'Create these dependencies or use a placeholder before you apply.';
+			const access = {
+				...credential,
+				code: 'access-required' as const,
+				sourceId: 'c2',
+				name: 'Currency API',
+				consumers: consumers('w1'),
+			};
+			// No row of these two has an "Add" button.
+			const { getAllByTestId, unmount } = await renderIssues({
+				accessRequirements: [access],
+				missingDependencies: [
+					{ ...repeatedBinding(access), reason: 'not-shared' },
+					archivedWorkflow,
+				],
+			});
+			const withoutCreate = section(getAllByTestId, 'Needs your action (2)');
+			expect(withoutCreate.queryByRole('button', { name: /Add/ })).not.toBeInTheDocument();
+			expect(withoutCreate.queryByText(description)).not.toBeInTheDocument();
+			unmount();
+
+			const withCreate = await renderIssues({
+				missingBindings: [missingVariable],
+				missingDependencies: [repeatedBinding(missingVariable), archivedWorkflow],
+			});
+			const needsAction = section(withCreate.getAllByTestId, 'Needs your action (2)');
+			expect(needsAction.getByRole('button', { name: 'Add variable' })).toBeVisible();
+			expect(needsAction.getByText(description)).toBeVisible();
+		});
+
+		describe('with a condition on the selection', () => {
+			const openTab = async (
+				getByRole: (role: string, options: object) => HTMLElement,
+				name: RegExp,
+			) => await userEvent.click(getByRole('tab', { name }));
+
+			it('should list a dependency only while the selection matches its condition, and count and mark it', async () => {
+				vi.mocked(api.getPromotionPreview).mockResolvedValue(
+					previewWithCheck(check({ missingDependencies: [targetNotSelectedWorkflow] })),
+				);
+				const {
+					getAllByRole,
+					getAllByTestId,
+					getByRole,
+					getByTestId,
+					queryAllByTestId,
+					queryByTestId,
+				} = await renderApply();
+				const issuesTab = getByRole('tab', { name: /Issues/ });
+				// "Invoice reconciliation" (w1) calls "Weekly KPI report" (w3), which the branch adds.
+				const target = () => treeRow(getAllByTestId, 'workflow:w3').getByRole('checkbox');
+				const caller = () => treeRow(getAllByTestId, 'workflow:w1');
+				const marker = () => caller().queryByTestId('promotion-preview-tree-dependencies');
+
+				// The selection includes the target, so the Apply adds it.
+				expect(target()).toBeChecked();
+				expect(issuesTab).toHaveTextContent(/^Issues$/);
+				expect(marker()).not.toBeInTheDocument();
+				expect(queryAllByTestId('promotion-preview-blocker-row')).toHaveLength(0);
+				expect(getByTestId('promotion-preview-blockers-status')).toHaveTextContent(
+					'No issues. You can apply the selected changes.',
+				);
+
+				await userEvent.click(target());
+
+				expect(issuesTab).toHaveTextContent(/^Issues\s*1$/);
+				expect(marker()).toHaveAccessibleName('1 dependency is not usable on this instance.');
+				expect(caller().getByRole('checkbox')).toBeChecked();
+				expect(queryByTestId('promotion-preview-blockers-status')).not.toBeInTheDocument();
+				await openTab(getByRole, /Issues/);
+				expect(headings(getAllByRole)).toEqual(['Needs your action (1)']);
+				expect(
+					cells(
+						section(getAllByTestId, 'Needs your action (1)').getByRole('row', {
+							name: /Weekly KPI report/,
+						}),
+					),
+				).toEqual([
+					'Weekly KPI reportThis workflow is not on this instance. Workflows that use it fail until it exists here.',
+					'Invoice reconciliation',
+					'Workflow',
+					'Missing',
+					'',
+				]);
+
+				await openTab(getByRole, /Changes/);
+				await userEvent.click(target());
+
+				expect(issuesTab).toHaveTextContent(/^Issues$/);
+				expect(marker()).not.toBeInTheDocument();
+				expect(queryAllByTestId('promotion-preview-blocker-row')).toHaveLength(0);
+				expect(getByTestId('promotion-preview-blockers-status')).toHaveTextContent(
+					'No issues. You can apply the selected changes.',
+				);
+			});
+
+			it('should stop a workflow for a dependency only while the selection matches its condition', async () => {
+				vi.mocked(api.getPromotionPreview).mockResolvedValue(
+					previewWithCheck(
+						check({ missingDependencies: [{ ...targetNotSelectedWorkflow, blocking: true }] }),
+					),
+				);
+				const { getAllByTestId, getByRole, getByTestId, queryByTestId } = await renderApply();
+				const issuesTab = getByRole('tab', { name: /Issues/ });
+				const submit = getByTestId('promotion-preview-submit');
+				const target = () => treeRow(getAllByTestId, 'workflow:w3').getByRole('checkbox');
+				const caller = () => treeRow(getAllByTestId, 'workflow:w1');
+
+				// The selection includes the target, so nothing stops "Invoice reconciliation" (w1).
+				expect(caller().getByRole('checkbox')).toBeChecked();
+				expect(caller().queryByTestId('promotion-preview-tree-blocker')).not.toBeInTheDocument();
+				expect(issuesTab).toHaveTextContent(/^Issues$/);
+				expect(submit).toBeEnabled();
+
+				await userEvent.click(target());
+
+				expect(caller().getByTestId('promotion-preview-tree-blocker')).toBeInTheDocument();
+				expect(issuesTab).toHaveTextContent(/^Issues\s*1$/);
+				expect(getByTestId('promotion-preview-blockers-status')).toHaveTextContent(
+					/^1 issue to resolve$/,
+				);
+				expect(submit).toBeDisabled();
+
+				await userEvent.click(target());
+
+				expect(caller().queryByTestId('promotion-preview-tree-blocker')).not.toBeInTheDocument();
+				expect(issuesTab).toHaveTextContent(/^Issues$/);
+				expect(queryByTestId('promotion-preview-submit-blocked')).not.toBeInTheDocument();
+				expect(submit).toBeEnabled();
+			});
+
+			it('should show one row at a time for two entries of one workflow with opposite conditions', async () => {
+				vi.mocked(api.getPromotionPreview).mockResolvedValue(
+					previewWithCheck(
+						check({ missingDependencies: [targetNotSelectedWorkflow, targetSelectedWorkflow] }),
+					),
+				);
+				const { getAllByTestId, getByRole } = await renderApply();
+				const issuesTab = getByRole('tab', { name: /Issues/ });
+				const target = () => treeRow(getAllByTestId, 'workflow:w3').getByRole('checkbox');
+				const marker = () =>
+					treeRow(getAllByTestId, 'workflow:w1').getByTestId('promotion-preview-tree-dependencies');
+				const rows = async () => {
+					await openTab(getByRole, /Issues/);
+					const shown = getAllByTestId('promotion-preview-blocker-row').map(cells);
+					await openTab(getByRole, /Changes/);
+					return shown;
+				};
+
+				// The selection includes the target: the caller policy of the branch applies.
+				expect(issuesTab).toHaveTextContent(/^Issues\s*1$/);
+				expect(marker()).toHaveAccessibleName('1 dependency is not usable on this instance.');
+				expect(await rows()).toEqual([
+					[
+						'Weekly KPI reportThis workflow does not accept calls from the workflows that use it. Change its caller policy to let them run.',
+						'Invoice reconciliation',
+						'Workflow',
+						'Conflict',
+						'',
+					],
+				]);
+
+				await userEvent.click(target());
+
+				// The selection leaves out the target: this instance does not have the workflow.
+				expect(issuesTab).toHaveTextContent(/^Issues\s*1$/);
+				expect(marker()).toHaveAccessibleName('1 dependency is not usable on this instance.');
+				expect(await rows()).toEqual([
+					[
+						'Weekly KPI reportThis workflow is not on this instance. Workflows that use it fail until it exists here.',
+						'Invoice reconciliation',
+						'Workflow',
+						'Missing',
+						'',
+					],
+				]);
+			});
 		});
 
 		it('should show no project and no owner of a dependency', async () => {

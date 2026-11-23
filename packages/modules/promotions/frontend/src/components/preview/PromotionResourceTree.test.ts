@@ -4,9 +4,12 @@ import userEvent from '@testing-library/user-event';
 import { within } from '@testing-library/vue';
 
 import {
+	archivedWorkflow,
+	notOnBranchWorkflow,
 	otherProjectCredential,
 	outsideAccessWorkflow,
 	personalCredential,
+	unreachableWorkflow,
 } from '../../__tests__/missingDependencies.fixtures';
 import { billingPreview } from '../../__tests__/preview.fixtures';
 import { crossProjectMoveBlockers, indexBlockers, indexByWorkflow } from '../../promotionOperation';
@@ -144,6 +147,7 @@ describe('PromotionResourceTree', () => {
 				outsideAccessWorkflow,
 				{ ...personalCredential, consumers: otherProjectCredential.consumers },
 			],
+			direction: 'promote' | 'apply' = 'promote',
 		) => {
 			const selected = new Set(['workflow:w1', 'workflow:w3']);
 			return renderComponent({
@@ -157,7 +161,7 @@ describe('PromotionResourceTree', () => {
 					totalChanges: 0,
 					disabled: new Set(),
 					locked: false,
-					direction: 'promote',
+					direction,
 					blockers: indexBlockers([]),
 					missingDependencies: indexByWorkflow(dependencies),
 				},
@@ -274,6 +278,40 @@ describe('PromotionResourceTree', () => {
 			]) {
 				expect(marker).toHaveAttribute('data-icon', 'triangle-alert');
 			}
+		});
+
+		// "Weekly KPI report" (w3) uses each of these dependencies of an Apply.
+		const anotherNotOnBranch = { ...notOnBranchWorkflow, id: 'w13', name: 'Close ledger' };
+		const usedByKpiReport = { ...archivedWorkflow, consumers: notOnBranchWorkflow.consumers };
+		it.each([
+			[
+				'no dependency is on the branch',
+				[notOnBranchWorkflow, anotherNotOnBranch],
+				'2 dependencies are not on the branch.',
+			],
+			[
+				'every dependency is outside the access of the user',
+				[unreachableWorkflow],
+				'This workflow uses 1 dependency that is outside your access. You can apply it without it.',
+			],
+			[
+				'only some dependencies are outside the access of the user',
+				[unreachableWorkflow, notOnBranchWorkflow],
+				'2 dependencies are not usable on this instance.',
+			],
+			[
+				'the user can resolve one of the dependencies',
+				[usedByKpiReport, notOnBranchWorkflow],
+				'2 dependencies are not usable on this instance.',
+			],
+		])('should mark a workflow of an Apply when %s', (_case, dependencies, message) => {
+			const { getAllByTestId } = renderWithMissing(dependencies, 'apply');
+
+			const marker = row(getAllByTestId, 'workflow:w3').getByTestId(
+				'promotion-preview-tree-dependencies',
+			);
+			expect(marker).toHaveAccessibleName(message);
+			expect(marker.querySelector('[data-icon]')).toHaveAttribute('data-icon', 'triangle-alert');
 		});
 
 		it('should show no marker on a workflow without missing dependencies', () => {

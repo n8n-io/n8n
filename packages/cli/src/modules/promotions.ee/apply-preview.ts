@@ -525,7 +525,7 @@ function addCredentialRules(
 				});
 			} else if (!file || file.projectId === null) {
 				// Nobody can create a credential that has no owner project on the branch.
-				list(sourceId, { reference, consumers }, 'not-on-instance', false);
+				list(sourceId, { reference, consumers }, 'not-on-branch', false);
 			} else {
 				missing.set(sourceId, {
 					reference,
