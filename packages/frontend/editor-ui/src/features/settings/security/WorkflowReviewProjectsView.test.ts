@@ -190,6 +190,56 @@ describe('WorkflowReviewProjectsView', () => {
 		});
 	});
 
+	it('moves to the last page when a save under a filter leaves the page empty', async () => {
+		const stored = Array.from({ length: 11 }, (_, index) =>
+			project({
+				id: `p${index + 1}`,
+				name: `Project ${String(index + 1).padStart(2, '0')}`,
+				requiredByInstance: true,
+			}),
+		);
+		getWorkflowReviewProjects.mockImplementation(
+			async (_context, query: { skip: number; take: number; requiredByInstance?: boolean }) => {
+				const matches = stored.filter(
+					(row) =>
+						query.requiredByInstance === undefined ||
+						row.requiredByInstance === query.requiredByInstance,
+				);
+				return projectList(matches.slice(query.skip, query.skip + query.take), {
+					count: matches.length,
+				});
+			},
+		);
+		updateWorkflowReviewProject.mockImplementation(
+			async (_context, projectId: string, { requiredByInstance }) => {
+				const row = stored.find(({ id }) => id === projectId)!;
+				row.requiredByInstance = requiredByInstance;
+				return { requiredByInstance };
+			},
+		);
+		const { findByTestId, getByTestId } = renderView();
+
+		await userEvent.click(await findByTestId('resources-list-filters-trigger'));
+		const filter = await findByTestId('workflow-review-projects-filter-approval');
+		await userEvent.click(within(filter).getAllByRole('combobox')[0]);
+		await userEvent.click(await screen.findByRole('option', { name: 'Required' }));
+		await approvalSelect('Project 01');
+		await userEvent.click(getByTestId('pagination-next'));
+
+		await userEvent.click(await approvalSelect('Project 11'));
+		await userEvent.click(await screen.findByRole('option', { name: 'Not required' }));
+
+		expect(await approvalSelect('Project 01')).toHaveTextContent('Required');
+		expect(
+			screen.queryByRole('combobox', { name: 'Approval for Project 11' }),
+		).not.toBeInTheDocument();
+		expect(getWorkflowReviewProjects).toHaveBeenLastCalledWith(expect.anything(), {
+			skip: 0,
+			take: 10,
+			requiredByInstance: true,
+		});
+	});
+
 	it('shows every row as Required and locked, naming the instance setting, while the instance always requires approval', async () => {
 		setInstancePolicy(true);
 		const { findByTestId } = renderView();

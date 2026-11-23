@@ -86,6 +86,13 @@ async function load() {
 			...requiredByInstanceQuery(filters.value.approval),
 		});
 		if (!isLatest()) return;
+		// A save under a filter can leave the page past the end.
+		const lastPage = Math.max(0, Math.ceil(result.count / itemsPerPage) - 1);
+		if (page > lastPage) {
+			tableOptions.value = { ...tableOptions.value, page: lastPage };
+			await load();
+			return;
+		}
 		projects.value = result.data;
 		count.value = result.count;
 		managedByEnv.value = result.managedByEnv;
@@ -147,6 +154,8 @@ async function onRequired(projectId: string, required: boolean) {
 			requiredByInstance: required,
 		});
 		setRequiredByInstance(projectId, response.requiredByInstance);
+		// The saved row can leave the filter, so the count and the page change.
+		if (filters.value.approval !== '') void load();
 		showToast({
 			type: 'success',
 			title: i18n.baseText('settings.security.workflowReviews.requireApproval.success'),

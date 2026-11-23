@@ -1085,11 +1085,14 @@ describe('SecuritySettings', () => {
 				...defaultSettings,
 				workflowReviews: { enabled: true },
 			});
+			settingsStore.settings.workflowReviews = { enabled: false };
 			const { findByTestId } = renderView();
 
 			await userEvent.click(await findByTestId('security-workflow-reviews-projects-row'));
 
 			expect(routerPush).toHaveBeenCalledWith({ name: 'SecurityWorkflowReviewProjects' });
+			// The route guard reads the policy from the settings store.
+			expect(settingsStore.settings.workflowReviews).toEqual({ enabled: true });
 		});
 
 		it('shows Require approval and saves Always required', async () => {
