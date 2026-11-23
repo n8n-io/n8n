@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
+import type { KnowledgeCollectionDto } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { useLatestFetch } from '@n8n/composables/useLatestFetch';
 import { useToast } from '@n8n/composables/useToast';
@@ -16,6 +17,7 @@ import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { VIEWS } from '@/app/constants';
 import CollectionModal from '@/features/settings/context/components/CollectionModal.vue';
 import CollectionsTable from '@/features/settings/context/components/CollectionsTable.vue';
+import DeleteCollectionDialog from '@/features/settings/context/components/DeleteCollectionDialog.vue';
 import { useCollectionsStore } from '@/features/settings/context/collections.store';
 
 const i18n = useI18n();
@@ -25,6 +27,9 @@ const collectionsStore = useCollectionsStore();
 const { showError } = useToast();
 
 const modalOpen = ref(false);
+/** The collection the dialog edits. None means the dialog creates one. */
+const editingCollection = ref<KnowledgeCollectionDto | null>(null);
+const deletingCollection = ref<KnowledgeCollectionDto | null>(null);
 const loadFailed = ref(false);
 const { next: nextLoad } = useLatestFetch();
 
@@ -51,12 +56,32 @@ async function load() {
 	}
 }
 
+// The edited collection stays set while the dialog closes, so its header does not change.
 function openCreateModal() {
+	editingCollection.value = null;
+	modalOpen.value = true;
+}
+
+function openEditModal(collection: KnowledgeCollectionDto) {
+	editingCollection.value = collection;
 	modalOpen.value = true;
 }
 
 function onCreated() {
 	modalOpen.value = false;
+}
+
+function openDeleteDialog(collection: KnowledgeCollectionDto) {
+	deletingCollection.value = collection;
+}
+
+function closeDeleteDialog() {
+	deletingCollection.value = null;
+}
+
+async function onDeleted() {
+	closeDeleteDialog();
+	await load();
 }
 
 async function goBack() {
@@ -96,6 +121,8 @@ onMounted(async () => {
 			:collections="collectionsStore.collections"
 			:loading="collectionsStore.loading"
 			:show-empty="showEmptyState"
+			@edit="openEditModal"
+			@delete="openDeleteDialog"
 		>
 			<template #empty>
 				<div :class="$style.empty" data-test-id="collections-empty-state">
@@ -114,7 +141,18 @@ onMounted(async () => {
 			</template>
 		</CollectionsTable>
 
-		<CollectionModal v-model:open="modalOpen" @saved="load" @created="onCreated" />
+		<CollectionModal
+			v-model:open="modalOpen"
+			:collection="editingCollection"
+			@saved="load"
+			@created="onCreated"
+		/>
+		<DeleteCollectionDialog
+			v-if="deletingCollection"
+			:collection="deletingCollection"
+			@close="closeDeleteDialog"
+			@deleted="onDeleted"
+		/>
 	</N8nSettingsLayout>
 </template>
 

@@ -1,4 +1,8 @@
-import type { CreateKnowledgeCollectionDto, KnowledgeCollectionDto } from '@n8n/api-types';
+import type {
+	CreateKnowledgeCollectionDto,
+	KnowledgeCollectionDto,
+	UpdateKnowledgeCollectionDto,
+} from '@n8n/api-types';
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -48,5 +52,25 @@ export const useCollectionsStore = defineStore('contextCollections', () => {
 		return await api.createCollection(rootStore.restApiContext, projectId, payload);
 	}
 
-	return { collections, count, loading, fetchCollections, createCollection };
+	async function updateCollection(
+		projectId: string,
+		collectionId: string,
+		payload: UpdateKnowledgeCollectionDto,
+	): Promise<KnowledgeCollectionDto> {
+		return await api.updateCollection(rootStore.restApiContext, projectId, collectionId, payload);
+	}
+
+	async function deleteCollection(projectId: string, collectionId: string): Promise<void> {
+		await api.deleteCollection(rootStore.restApiContext, projectId, collectionId);
+	}
+
+	return {
+		collections,
+		count,
+		loading,
+		fetchCollections,
+		createCollection,
+		updateCollection,
+		deleteCollection,
+	};
 });

@@ -8,10 +8,14 @@ import { useCollectionsStore } from './collections.store';
 
 const createCollection = vi.fn();
 const fetchCollections = vi.fn();
+const updateCollection = vi.fn();
+const deleteCollection = vi.fn();
 
 vi.mock('./collections.api', () => ({
 	createCollection: async (...args: unknown[]) => await createCollection(...args),
 	fetchCollections: async (...args: unknown[]) => await fetchCollections(...args),
+	updateCollection: async (...args: unknown[]) => await updateCollection(...args),
+	deleteCollection: async (...args: unknown[]) => await deleteCollection(...args),
 }));
 
 function collection(id: string): KnowledgeCollectionDto {
@@ -34,6 +38,8 @@ describe('useCollectionsStore', () => {
 		setActivePinia(createTestingPinia({ stubActions: false }));
 		createCollection.mockReset();
 		fetchCollections.mockReset();
+		updateCollection.mockReset();
+		deleteCollection.mockReset();
 	});
 
 	it('keeps the list and the count of a read', async () => {
@@ -138,5 +144,44 @@ describe('useCollectionsStore', () => {
 		await expect(
 			store.createCollection('proj-1', { name: 'Support', description: 'Refunds' }),
 		).rejects.toBe(error);
+	});
+
+	it('updates a collection with the REST context and returns it', async () => {
+		const updated = { id: 'c1', name: 'Support handbook' } as KnowledgeCollectionDto;
+		updateCollection.mockResolvedValue(updated);
+		const store = useCollectionsStore();
+
+		await expect(
+			store.updateCollection('proj-1', 'c1', { name: 'Support handbook' }),
+		).resolves.toBe(updated);
+
+		expect(updateCollection).toHaveBeenCalledWith(useRootStore().restApiContext, 'proj-1', 'c1', {
+			name: 'Support handbook',
+		});
+	});
+
+	it('passes a refused update on to the caller', async () => {
+		const error = new Error('conflict');
+		updateCollection.mockRejectedValue(error);
+		const store = useCollectionsStore();
+
+		await expect(store.updateCollection('proj-1', 'c1', { name: 'Taken' })).rejects.toBe(error);
+	});
+
+	it('deletes a collection with the REST context', async () => {
+		deleteCollection.mockResolvedValue({ success: true });
+		const store = useCollectionsStore();
+
+		await expect(store.deleteCollection('proj-1', 'c1')).resolves.toBeUndefined();
+
+		expect(deleteCollection).toHaveBeenCalledWith(useRootStore().restApiContext, 'proj-1', 'c1');
+	});
+
+	it('passes a failed delete on to the caller', async () => {
+		const error = new Error('offline');
+		deleteCollection.mockRejectedValue(error);
+		const store = useCollectionsStore();
+
+		await expect(store.deleteCollection('proj-1', 'c1')).rejects.toBe(error);
 	});
 });
