@@ -110,8 +110,9 @@ interface TabsSlots<Value extends string | number> {
 - **Must** select one view at a time. Pass `modelValue` when the parent owns the selection. Omit `modelValue` and pass `defaultValue` to let the component keep the selection.
 - **Must** let the caller choose who renders the content: the tab bar only, the caller's own content in `#default`, or component panels in `#content`.
 - **Must** treat route options as navigation, not selection. A click goes to the route and does not emit `update:modelValue`.
-- **Must** move focus with arrow keys and select only on Enter or Space, so keyboard users can look through tabs with no view change.
+- **Must** select the tab that receives focus from the arrow keys (automatic activation), so keyboard users see each view as they move.
 - **Must** keep every tab reachable when the tabs do not fit a horizontal bar: scroll buttons, and scroll into view on focus.
+- **Must** fade only the edges of the tab list that have hidden content: left, right, or both for horizontal tabs, and top, bottom, or both for vertical tabs.
 - **Must** keep tabs in place when `justified`, so a label change does not move the other tabs.
 - **Should** let a disabled tab explain itself with a `tooltip`, for mouse and keyboard users.
 - **Should** match the heights of `N8nSelect` and `N8nInput` at the same `size`, so tabs fit in a toolbar with other controls.

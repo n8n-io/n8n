@@ -61,6 +61,61 @@ describe('N8nTabs', () => {
 		vi.unstubAllGlobals();
 	});
 
+	it.each([
+		{ scrollLeft: 0, expected: 'fadeEnd' },
+		{ scrollLeft: 150, expected: 'fadeBoth' },
+		{ scrollLeft: 300, expected: 'fadeStart' },
+	])(
+		'adds the $expected fade to horizontal tabs at scroll position $scrollLeft',
+		async ({ scrollLeft, expected }) => {
+			const { getByRole } = render(N8nTabs, { props: { options: overflowOptions } });
+			const tablist = getByRole('tablist');
+
+			setOverflowLayout(tablist, scrollLeft);
+			await fireEvent.scroll(tablist);
+
+			const fades = ['fadeStart', 'fadeEnd', 'fadeBoth'].filter((name) =>
+				tablist.className.includes(name),
+			);
+			expect(fades).toEqual([expected]);
+		},
+	);
+
+	it.each([
+		{ scrollTop: 0, expected: 'fadeEnd' },
+		{ scrollTop: 150, expected: 'fadeBoth' },
+		{ scrollTop: 300, expected: 'fadeStart' },
+	])(
+		'adds the $expected fade to vertical tabs at scroll position $scrollTop',
+		async ({ scrollTop, expected }) => {
+			const { getByRole } = render(N8nTabs, {
+				props: { options: overflowOptions, orientation: 'vertical' },
+			});
+			const tablist = getByRole('tablist');
+
+			Object.defineProperties(tablist, {
+				scrollHeight: { configurable: true, value: 500 },
+				clientHeight: { configurable: true, value: 200 },
+				scrollTop: { configurable: true, value: scrollTop },
+			});
+			await fireEvent.scroll(tablist);
+
+			const fades = ['fadeStart', 'fadeEnd', 'fadeBoth'].filter((name) =>
+				tablist.className.includes(name),
+			);
+			expect(fades).toEqual([expected]);
+		},
+	);
+
+	it('does not add a fade when the tabs fit', async () => {
+		const { getByRole } = render(N8nTabs, { props: { options: overflowOptions } });
+		const tablist = getByRole('tablist');
+
+		await fireEvent.scroll(tablist);
+
+		expect(tablist.className).not.toMatch(/fade/);
+	});
+
 	it('scrolls without animation when reduced motion is enabled', async () => {
 		vi.mocked(window.matchMedia).mockImplementation((query) => createMediaQuery(query, true));
 		const { getByRole } = render(N8nTabs, { props: { options: overflowOptions } });
@@ -168,7 +223,27 @@ describe('N8nTabs', () => {
 
 		await userEvent.click(getByText('First'));
 
-		expect(emitted('update:modelValue')).toEqual([['first']]);
+		/** Automatic activation selects on mouse down and again on focus. */
+		const events = emitted<[string]>('update:modelValue');
+		expect(events.length).toBeGreaterThan(0);
+		expect(events.every(([value]) => value === 'first')).toBe(true);
+	});
+
+	it('selects a tab when arrow keys move focus to it', async () => {
+		const enabled = [
+			{ value: 'first', label: 'First' },
+			{ value: 'second', label: 'Second' },
+		];
+		const { getByRole, emitted } = render(N8nTabs, {
+			props: { defaultValue: 'first', options: enabled },
+		});
+
+		getByRole('tab', { name: 'First' }).focus();
+		await userEvent.keyboard('{ArrowRight}');
+
+		expect(getByRole('tab', { name: 'Second' })).toHaveFocus();
+		expect(getByRole('tab', { name: 'Second' })).toHaveAttribute('data-state', 'active');
+		expect(emitted<[string]>('update:modelValue').at(-1)).toEqual(['second']);
 	});
 
 	it('does not emit for a disabled tab and marks it disabled', async () => {
@@ -230,7 +305,9 @@ describe('N8nTabs', () => {
 		await userEvent.click(getByRole('tab', { name: 'Second' }));
 
 		expect(getByRole('tab', { name: 'Second' })).toHaveAttribute('data-state', 'active');
-		expect(emitted('update:modelValue')).toEqual([['second']]);
+		const events = emitted<[string]>('update:modelValue');
+		expect(events.length).toBeGreaterThan(0);
+		expect(events.every(([value]) => value === 'second')).toBe(true);
 	});
 
 	it('renders the suffix slot outside the tab list', () => {

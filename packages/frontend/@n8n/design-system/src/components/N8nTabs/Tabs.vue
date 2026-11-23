@@ -1,6 +1,14 @@
 <script lang="ts" setup generic="Value extends string | number">
 import { usePreferredReducedMotion } from '@vueuse/core';
-import { computed, getCurrentInstance, onMounted, onUnmounted, ref, watch } from 'vue';
+import {
+	computed,
+	getCurrentInstance,
+	onMounted,
+	onUnmounted,
+	ref,
+	useCssModule,
+	watch,
+} from 'vue';
 import { RouterLink } from 'vue-router';
 
 import { useI18n } from '../../composables/useI18n';
@@ -42,6 +50,9 @@ const selectedValue = computed(() => (isModelControlled ? props.modelValue : int
 const scrollPosition = ref(0);
 const canScrollRight = ref(false);
 const hasOverflow = ref(false);
+/** Hidden content before and after the visible area, on the scroll axis of the orientation. */
+const canScrollStart = ref(false);
+const canScrollEnd = ref(false);
 const root = ref<HTMLDivElement>();
 const suffix = ref<HTMLDivElement>();
 const tabsList = ref<InstanceType<typeof TabsList>>();
@@ -58,12 +69,22 @@ function getTabsElement(): HTMLElement | undefined {
 	return element instanceof HTMLElement ? element : undefined;
 }
 
-/** The shared indicator cannot read the colour of the active tab, so it gets the state here. */
-const iconSize = computed(() => (props.size === 'large' ? 'large' : 'small'));
+const style = useCssModule();
+const tabItemClass = computed(() => style.tabItem);
+
+const fallbackIconSize = computed(() => (props.size === 'large' ? 'large' : 'small'));
 
 const activeOption = computed(() =>
 	props.options.find((option) => option.value === selectedValue.value),
 );
+
+/** Fade only the edges that have hidden content. */
+const scrollFadeClass = computed(() => {
+	if (canScrollStart.value && canScrollEnd.value) return 'fadeBoth';
+	if (canScrollStart.value) return 'fadeStart';
+	if (canScrollEnd.value) return 'fadeEnd';
+	return undefined;
+});
 
 /**
  * Reka measures the indicator only on selection or resize. A label change in an
@@ -77,12 +98,28 @@ const indicatorKey = computed(() =>
 		.join('|'),
 );
 
+/**
+ * Scroll offsets from before the last focus change. Reka calls `focus()` without
+ * `preventScroll`, so the browser can jump to a hidden tab before `focusin` runs.
+ */
+let settledScroll = { left: 0, top: 0 };
+
 function updateScrollState() {
 	const container = getTabsElement();
 	if (!container) return;
 
+	settledScroll = { left: container.scrollLeft, top: container.scrollTop };
+
 	scrollPosition.value = container.scrollLeft;
 	canScrollRight.value = container.scrollWidth - container.clientWidth - container.scrollLeft > 1;
+
+	if (props.orientation === 'vertical') {
+		canScrollStart.value = container.scrollTop > 1;
+		canScrollEnd.value = container.scrollHeight - container.clientHeight - container.scrollTop > 1;
+	} else {
+		canScrollStart.value = scrollPosition.value > 1;
+		canScrollEnd.value = canScrollRight.value;
+	}
 	/**
 	 * Compare against the row minus the suffix. The arrows do not count, so the
 	 * reserved controls stay stable when they appear.
@@ -92,14 +129,44 @@ function updateScrollState() {
 		!props.justified && props.orientation === 'horizontal' && container.scrollWidth > available;
 }
 
-/** Keep the tab that receives roving focus inside the visible area. */
+/**
+ * Keep the tab that receives roving focus inside the visible area. Scroll only
+ * the tab list, and only by the distance that puts the tab edge on the list edge.
+ * `scrollIntoView` also scrolls ancestors, which makes the page jump.
+ */
 function handleFocusIn(event: FocusEvent) {
-	if (!(event.target instanceof HTMLElement)) return;
-	event.target.scrollIntoView({
-		block: 'nearest',
-		inline: 'nearest',
+	const container = getTabsElement();
+	if (!container || !(event.target instanceof HTMLElement)) return;
+
+	const item = event.target.closest(`.${CSS.escape(tabItemClass.value)}`) ?? event.target;
+	const viewport = container.getBoundingClientRect();
+	const bounds = item.getBoundingClientRect();
+	const vertical = props.orientation === 'vertical';
+	const start = vertical ? bounds.top - viewport.top : bounds.left - viewport.left;
+	const end = vertical ? bounds.bottom - viewport.bottom : bounds.right - viewport.right;
+
+	let delta = 0;
+	if (start < 0) delta = start;
+	else if (end > 0) delta = Math.min(end, start);
+
+	/** Undo the native focus jump, then scroll from the previous position. */
+	const from = vertical ? settledScroll.top : settledScroll.left;
+	const current = vertical ? container.scrollTop : container.scrollLeft;
+	const target = current + delta;
+	if (Math.abs(target - from) < 1) {
+		if (Math.abs(current - from) >= 1) restoreScroll(container, vertical, from);
+		return;
+	}
+
+	restoreScroll(container, vertical, from);
+	container.scrollTo({
+		[vertical ? 'top' : 'left']: target,
 		behavior: reducedMotion.value === 'reduce' ? 'instant' : 'smooth',
 	});
+}
+
+function restoreScroll(container: HTMLElement, vertical: boolean, position: number) {
+	container.scrollTo({ [vertical ? 'top' : 'left']: position, behavior: 'instant' });
 }
 
 onMounted(() => {
@@ -176,7 +243,7 @@ function scroll(direction: 'left' | 'right') {
 		:class="['n8n-tabs', $style.root]"
 		:model-value="selectedValue"
 		:orientation="orientation"
-		activation-mode="manual"
+		activation-mode="automatic"
 		@update:model-value="handleUpdate"
 	>
 		<div
@@ -201,7 +268,11 @@ function scroll(direction: 'left' | 'right') {
 			>
 				<N8nIcon icon="chevron-left" size="small" />
 			</button>
-			<TabsList ref="tabsList" :class="$style.tabs" @focusin="handleFocusIn">
+			<TabsList
+				ref="tabsList"
+				:class="[$style.tabs, scrollFadeClass && $style[scrollFadeClass]]"
+				@focusin="handleFocusIn"
+			>
 				<div
 					v-for="option in options"
 					:id="option.value.toString()"
@@ -228,7 +299,7 @@ function scroll(direction: 'left' | 'right') {
 								:icon="option.icon"
 								:color="option.iconColor"
 								:class="$style.icon"
-								:size="option.iconSize ?? iconSize"
+								:size="option.iconSize ?? fallbackIconSize"
 							/>
 							<N8nText :size="size" bold :class="$style.label">{{ option.label }}</N8nText>
 							<N8nIcon
@@ -236,7 +307,7 @@ function scroll(direction: 'left' | 'right') {
 								:icon="option.icon"
 								:color="option.iconColor"
 								:class="$style.icon"
-								:size="option.iconSize ?? iconSize"
+								:size="option.iconSize ?? fallbackIconSize"
 							/>
 							<PreviewBadge v-if="option.preview" :class="$style.badge" />
 							<N8nBadge v-if="option.tag" :class="$style.badge">{{ option.tag }}</N8nBadge>
@@ -283,6 +354,7 @@ function scroll(direction: 'left' | 'right') {
 
 <style lang="scss" module>
 @use '../../css/mixins/focus';
+@use '../../css/mixins/mixins';
 @use '../../css/mixins/motion';
 @use '../../css/mixins/utils';
 
@@ -335,6 +407,18 @@ function scroll(direction: 'left' | 'right') {
 	&::-webkit-scrollbar {
 		display: none;
 	}
+
+	&.fadeStart {
+		@include mixins.scroll-mask(left);
+	}
+
+	&.fadeEnd {
+		@include mixins.scroll-mask(right);
+	}
+
+	&.fadeBoth {
+		@include mixins.scroll-mask(x);
+	}
 }
 
 .tab {
@@ -365,13 +449,9 @@ function scroll(direction: 'left' | 'right') {
 		color: var(--n8n-tabs--tab--color--hover);
 	}
 
+	/** No focus visual needed. By default, when tab is focused it is also 'active' which shows the indicator **/
 	&:focus {
 		outline: none;
-	}
-
-	&:focus-visible {
-		@include focus.focus-ring-with-border;
-		outline-offset: calc(-1 * var(--focus--border-width));
 	}
 
 	&[data-state='active'] {
@@ -446,6 +526,19 @@ function scroll(direction: 'left' | 'right') {
 	.tabs {
 		flex-direction: column;
 		overflow-x: visible;
+		overflow-y: auto;
+
+		&.fadeStart {
+			@include mixins.scroll-mask(top);
+		}
+
+		&.fadeEnd {
+			@include mixins.scroll-mask(bottom);
+		}
+
+		&.fadeBoth {
+			@include mixins.scroll-mask(y);
+		}
 	}
 
 	.tab {
