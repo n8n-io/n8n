@@ -24,6 +24,8 @@ export interface HttpGuardRouterDeps {
 	profile: HttpVendorProfile;
 	// The ids that the gym made. Vendors of one tenant share them. Without this, the router keeps its own.
 	gymIds?: Set<string>;
+	// The refs of the seed with the ids that the gym made. Needed for a profile with `idMap`.
+	refs?: () => Promise<Record<string, string>>;
 }
 
 const refusal = (status: number, text: string): Response => new Response(text, { status });
@@ -151,7 +153,13 @@ export class HttpGuardRouter {
 		remember: boolean,
 	): Promise<CallToolResult | Response> {
 		try {
-			const res = await this.deps.gym.callTool(name, args);
+			const { profile, refs } = this.deps;
+			const idMap = refs ? profile.idMap : undefined;
+			// The refs come after the hydration, so the objects of this call have their gym ids.
+			const known = idMap && refs ? await refs().catch(() => ({})) : {};
+			const sent = idMap ? idMap.toGym(args, known) : args;
+			let res = await this.deps.gym.callTool(name, sent);
+			if (idMap) res = withRealIds(res, (json) => idMap.fromGym(json, known));
 			if (remember) {
 				for (const match of textOf(res).matchAll(ID_FIELD)) this.gymIds.add(match[1]);
 			}
@@ -160,6 +168,18 @@ export class HttpGuardRouter {
 			return refusal(502, 'mcp-guard: the gym could not be reached');
 		}
 	}
+}
+
+// The text of the result, with its JSON changed by `change`. A text that is no JSON stays as it is.
+function withRealIds(res: CallToolResult, change: (json: unknown) => unknown): CallToolResult {
+	return {
+		...res,
+		content: res.content.map((part) => {
+			if (part.type !== 'text') return part;
+			const json = safeJson(part.text);
+			return json === undefined ? part : { ...part, text: JSON.stringify(change(json)) };
+		}),
+	};
 }
 
 function safeJson(text: string): unknown {

@@ -278,6 +278,7 @@ describe('a bot token never leaves the guard', () => {
 			issueMcpCredential: vi.fn(async () => TENANT_TOKEN),
 			tenantExists: vi.fn(async () => true),
 			deleteTenant: vi.fn(async () => {}),
+			refs: vi.fn(async () => ({})),
 		};
 		const registry = new HttpRunRegistry({
 			profile: TELEGRAM_PROFILE,
@@ -353,5 +354,68 @@ describe('a bot token never leaves the guard', () => {
 		expect(logs.length).toBeGreaterThan(0);
 		expect(logs.join('\n')).not.toContain(TOKEN);
 		expect(JSON.stringify(gymRequests)).not.toContain(TOKEN);
+	});
+});
+
+describe('Telegram id map', () => {
+	const idMap = TELEGRAM_PROFILE.idMap!;
+	const refs = {
+		'person:me': 'user:100000001',
+		'person:8761991977': 'user:100000002',
+		'chat:-1001': 'chat:-100000003',
+	};
+	const send = (body: Record<string, unknown>) => ({
+		method: 'POST',
+		path: '/botx/sendMessage',
+		body,
+	});
+
+	it('changes a real chat id in the body into the id of the gym', () => {
+		const sent = idMap.toGym(send({ chat_id: 8761991977, text: 'hi' }), refs);
+
+		expect(sent.body).toEqual({ chat_id: 100000002, text: 'hi' });
+	});
+
+	it('changes a real id that is text, and the id of a group', () => {
+		expect(idMap.toGym(send({ chat_id: '8761991977' }), refs).body).toEqual({ chat_id: 100000002 });
+		expect(idMap.toGym(send({ chat_id: -1001 }), refs).body).toEqual({ chat_id: -100000003 });
+	});
+
+	it('changes a real id in the query of a GET', () => {
+		const args = { method: 'GET', path: '/botx/getChat', query: { chat_id: '8761991977' } };
+
+		expect(idMap.toGym(args, refs).query).toEqual({ chat_id: '100000002' });
+	});
+
+	it('leaves a name, an unknown id and other fields as they are', () => {
+		const body = { chat_id: '@news', user_id: 42, message_id: 8761991977, text: 'x' };
+
+		expect(idMap.toGym(send(body), refs).body).toEqual(body);
+	});
+
+	it('does not change the args it was given', () => {
+		const args = send({ chat_id: 8761991977 });
+
+		idMap.toGym(args, refs);
+
+		expect(args.body).toEqual({ chat_id: 8761991977 });
+	});
+
+	it('changes the ids of the gym in an answer back into real ids', () => {
+		const answer = {
+			ok: true,
+			result: { message_id: 7, chat: { id: 100000002, type: 'private' }, from: { id: 100000001 } },
+		};
+
+		expect(idMap.fromGym(answer, refs)).toEqual({
+			ok: true,
+			result: { message_id: 7, chat: { id: 8761991977, type: 'private' }, from: { id: 100000001 } },
+		});
+	});
+
+	it('leaves a message id alone, even when it equals an id of the gym', () => {
+		const answer = { result: { message_id: 100000002 } };
+
+		expect(idMap.fromGym(answer, refs)).toEqual(answer);
 	});
 });
