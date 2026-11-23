@@ -355,6 +355,27 @@ describe('PostHog', () => {
 			expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledTimes(2);
 		});
 
+		it('passes the variant of a multivariate instance flag to the editor', async () => {
+			(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(
+				mockEvaluatedFlags({ [WORKFLOWS_IN_SKILLS_FLAG]: 'variant', [SELF_HEALING_FLAG]: true }),
+			);
+
+			const ph = new PostHogClient(instanceSettings, globalConfig);
+			await ph.init();
+
+			const { featureFlags } = await ph.getFeatureFlagsAndPayloads({ id: userId, createdAt });
+
+			expect(featureFlags).toEqual({
+				[CREDENTIAL_DESCRIPTIONS_FLAG]: false,
+				[ASSISTANT_SKILLS_FLAG]: false,
+				[AGENT_SANDBOX_FILES_FLAG]: false,
+				[INSTANCE_AI_CLOUD_BROWSER_FLAG]: false,
+				[KNOWLEDGE_COLLECTIONS_FLAG]: false,
+				[SELF_HEALING_FLAG]: true,
+				[WORKFLOWS_IN_SKILLS_FLAG]: 'variant',
+			});
+		});
+
 		it('returns cached flags on second call', async () => {
 			const flags = { 'test-flag': true };
 			(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(mockEvaluatedFlags(flags));
