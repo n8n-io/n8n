@@ -2,15 +2,20 @@ import type { ApplyCheckResult } from './promotions.types';
 
 import { credential, destructiveChange, variable } from './__tests__/bindings.fixtures';
 import {
+	archivedWorkflow,
 	otherProjectCredential,
 	outsideAccessWorkflow,
 	personalCredential,
+	repeatedBinding,
+	unreachableCredential,
+	unreachableWorkflow,
 } from './__tests__/missingDependencies.fixtures';
 import { billingPreview, billingResources, resource } from './__tests__/preview.fixtures';
 import {
 	indexBlockers,
 	indexByWorkflow,
 	listBlockers,
+	listOnlyDependencies,
 	crossProjectMoveBlockers,
 	scopeCheck,
 	scopeToSelection,
@@ -34,6 +39,7 @@ const check = (fields: Partial<ApplyCheckResult> = {}): ApplyCheckResult => ({
 	accessRequirements: [],
 	conflicts: [],
 	warnings: [],
+	missingDependencies: [],
 	movedWorkflows: [],
 	movedFolders: [],
 	...fields,
@@ -201,12 +207,59 @@ describe('promotion operation', () => {
 				accessRequirements: [
 					{ ...credential, code: 'access-required', consumers: consumer('w99') },
 				],
+				missingDependencies: [
+					{ ...unreachableCredential, consumers: consumer('w1', 'w99') },
+					{ ...unreachableWorkflow, consumers: consumer('w99') },
+				],
 			}),
 			graph,
 		);
 
 		expect(scoped.accessRequirements).toEqual([]);
 		expect(scoped.missingBindings[0].consumers[0].workflows).toEqual([{ id: 'w1', name: 'w1' }]);
+		expect(scoped.missingDependencies).toEqual([
+			{ ...unreachableCredential, consumers: consumer('w1') },
+		]);
+	});
+
+	it('should block the workflows of a missing dependency only when the dependency stops the Apply', () => {
+		const index = indexBlockers(
+			listBlockers(
+				check({
+					missingDependencies: [unreachableCredential, unreachableWorkflow, archivedWorkflow],
+				}),
+				[],
+			),
+		);
+
+		// "Invoice reconciliation" (w1) uses the credential. The two sub-workflows stop nothing.
+		expect([...index.blocked]).toEqual(['workflow:w1']);
+		expect(index.byWorkflow.has('workflow:w3')).toBe(false);
+		expect(index.byResource.get('credential:c1')).toEqual([
+			{ kind: 'outside', resourceKey: 'credential:c1', workflowKeys: ['workflow:w1'] },
+		]);
+	});
+
+	it('should not count a credential or a variable twice when the check also details it', () => {
+		const missingCredential = { ...credential, sourceId: 'c1', consumers: consumer('w1') };
+		const missingVariable = { ...variable, consumers: consumer('w1') };
+		const missingDependencies = [
+			repeatedBinding(missingCredential),
+			repeatedBinding(missingVariable),
+			archivedWorkflow,
+			unreachableWorkflow,
+		];
+
+		expect(listOnlyDependencies(missingDependencies)).toEqual([
+			archivedWorkflow,
+			unreachableWorkflow,
+		]);
+		expect(
+			listBlockers(
+				check({ missingBindings: [missingCredential, missingVariable], missingDependencies }),
+				[],
+			).map(({ kind }) => kind),
+		).toEqual(['missing', 'missing']);
 	});
 
 	it('should keep the missing dependencies that a selected workflow uses, with only the selected workflows', () => {

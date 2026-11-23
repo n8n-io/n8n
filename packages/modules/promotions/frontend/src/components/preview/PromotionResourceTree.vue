@@ -36,7 +36,10 @@ const props = withDefaults(
 		locked: boolean;
 		direction: PromotionDirection;
 		blockers: BlockerIndex;
-		/** By workflow: the dependencies that Promote leaves out. They do not block the workflow. */
+		/**
+		 * By workflow: the missing dependencies that the Issues tab lists. A workflow that no blocker
+		 * stops gets a quiet marker for them.
+		 */
 		missingDependencies?: ReadonlyMap<ResourceKey, readonly PromotionMissingDependency[]>;
 		/** False for a list that users only read, such as a review. Rows then only open their card. */
 		selectable?: boolean;
@@ -68,7 +71,7 @@ function markers(resource: PromotionResource) {
 	return {
 		blocked,
 		meta: blocked ? undefined : meta,
-		missing: missing?.length ? missingDependencyMarker(missing) : undefined,
+		missing: missing?.length ? missingDependencyMarker(missing, props.direction) : undefined,
 	};
 }
 

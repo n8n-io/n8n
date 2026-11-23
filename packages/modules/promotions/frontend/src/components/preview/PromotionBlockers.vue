@@ -4,6 +4,7 @@ import type {
 	PromotionBindingConsumer,
 	PromotionDependencyWarning,
 	PromotionMissingDependency,
+	PromotionMissingDependencyReason,
 	PromotionResourceType,
 } from '@n8n/api-types';
 import {
@@ -15,7 +16,7 @@ import {
 	N8nTooltip,
 	type IconName,
 } from '@n8n/design-system';
-import { useI18n } from '@n8n/i18n';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 
 import { usePromotionBindingCreation } from '../../composables/usePromotionBindingCreation';
@@ -37,7 +38,11 @@ const props = withDefaults(
 		 * `null` on Promote, which has no check.
 		 */
 		check: ApplyCheckResult | null;
-		/** Promote only: what the selected workflows use and the branch does not hold after the Promote. */
+		/**
+		 * The missing dependencies that get a row of their own. Promote: what the selected workflows
+		 * use and the branch does not hold after the Promote. Apply: the dependencies that the other
+		 * lists of the check do not detail.
+		 */
 		missingDependencies?: PromotionMissingDependency[];
 		/** Promote only: what the selected workflows reference and this instance does not have. */
 		dependencyWarnings?: PromotionDependencyWarning[];
@@ -115,12 +120,13 @@ type StatusKey =
 	| 'access'
 	| 'conflict'
 	| 'moved'
+	| 'archived'
 	| 'otherProject'
 	| 'outside'
 	| 'personal';
 
 const WARNING_STYLE: StatusStyle = { tone: 'warning', icon: 'circle-alert' };
-// A dependency that Promote leaves out does not stop it, so its status is not a warning.
+// A dependency that users cannot act on from this page has a neutral status.
 const STATUS_STYLES: Partial<Record<StatusKey, StatusStyle>> = {
 	resolved: { tone: 'success', icon: 'circle-check' },
 	...PROMOTE_STATUS_STYLES,
@@ -268,7 +274,14 @@ function dependencyDescription(
 		return i18n.baseText('promotions.preview.blockers.section.otherProject.description');
 	}
 	if (id === 'outsideAccess') {
-		return i18n.baseText('promotions.preview.blockers.section.outsideAccess.description.promote');
+		if (!props.check) {
+			return i18n.baseText('promotions.preview.blockers.section.outsideAccess.description.promote');
+		}
+		return i18n.baseText(
+			dependencies.some(({ blocking }) => blocking)
+				? 'promotions.preview.blockers.section.outsideAccess.description.blocking'
+				: 'promotions.preview.blockers.section.outsideAccess.description',
+		);
 	}
 	// A user cannot move what is in a personal project that the user cannot access.
 	if (dependencies.some(({ accessible }) => !accessible)) {
@@ -281,19 +294,23 @@ function dependencyDescription(
 	);
 }
 
-// The tooltip of one row. It must not tell the user to move what the user cannot reach. It names
-// the project of the dependency when the API sends it.
-function disabledReason(
-	{ group, accessible, project }: PromotionMissingDependency,
-	reason: DependencySection['reason'],
-) {
-	if (group === 'personal' && !accessible) {
-		return 'promotions.preview.blockers.disabled.personal.noAccess';
-	}
-	return group === 'other-project' && project
-		? 'promotions.preview.blockers.disabled.otherProject.named'
-		: reason;
-}
+/** Why the workflows cannot use a sub-workflow or an error workflow on this instance after an Apply. */
+const WORKFLOW_ISSUES: Partial<
+	Record<PromotionMissingDependencyReason, { status: StatusKey; detail: BaseTextKey }>
+> = {
+	'not-on-instance': {
+		status: 'missing',
+		detail: 'promotions.preview.blockers.workflow.notOnInstance',
+	},
+	archived: { status: 'archived', detail: 'promotions.preview.blockers.workflow.archived' },
+	'caller-policy': {
+		status: 'conflict',
+		detail: 'promotions.preview.blockers.workflow.callerPolicy',
+	},
+};
+
+const workflowIssue = ({ kind, reason }: PromotionMissingDependency) =>
+	kind === 'workflow' ? WORKFLOW_ISSUES[reason] : undefined;
 
 // The row of a dependency of another project tells which project to promote it from.
 const otherProjectDetail = ({ group, project }: PromotionMissingDependency) =>
@@ -305,40 +322,74 @@ const otherProjectDetail = ({ group, project }: PromotionMissingDependency) =>
 
 // The row shows the name, the type and the workflows that use the dependency. The API sends no
 // owner. It sends the project only for a dependency of another project that the user can access.
-const dependencyRow = (
-	dependency: PromotionMissingDependency,
-	{ id, status: statusKey, reason }: DependencySection,
-): BlockerRow => ({
-	key: `${id}:${dependency.kind}:${dependency.id ?? dependency.name}`,
-	icon: resourceIcon(dependency.kind),
-	name: dependency.name,
-	type: dependency.kind,
-	usedBy: usedBy(dependency.consumers),
-	status: status(statusKey),
-	detail: otherProjectDetail(dependency),
-	// "Include" is not available yet, so the button only says why.
-	disabledAction: {
-		label: i18n.baseText('promotions.preview.blockers.include'),
-		reason: i18n.baseText(disabledReason(dependency, reason), {
-			interpolate: {
-				type: i18n.baseText(`promotions.preview.blockers.type.${dependency.kind}`).toLowerCase(),
-				project: dependency.project?.name ?? '',
-			},
-		}),
-	},
-});
+function dependencyRow(dependency: PromotionMissingDependency, sectionId: string) {
+	const issue = workflowIssue(dependency);
+	return {
+		key: `${sectionId}:${dependency.kind}:${dependency.id ?? dependency.name}`,
+		icon: resourceIcon(dependency.kind),
+		name: dependency.name,
+		type: dependency.kind,
+		usedBy: usedBy(dependency.consumers),
+		detail: issue ? i18n.baseText(issue.detail) : otherProjectDetail(dependency),
+	};
+}
 
-// The kinds of issue, in the order that users read them. Only the first one stops the operation.
+// Promote cannot include the dependency yet, and Apply cannot add one that users cannot access.
+// The button of the action only says why.
+function disabledAction(
+	{ kind, group, accessible, project }: PromotionMissingDependency,
+	reason: DependencySection['reason'],
+): BlockerRow['disabledAction'] {
+	const interpolate = {
+		type: i18n.baseText(`promotions.preview.blockers.type.${kind}`).toLowerCase(),
+		project: project?.name ?? '',
+	};
+	if (props.check) {
+		return {
+			label: i18n.baseText(`promotions.preview.blockers.create.${kind}`),
+			reason: i18n.baseText('promotions.preview.blockers.disabled.outside.apply', {
+				interpolate,
+			}),
+		};
+	}
+	// The tooltip must not tell the user to move what the user cannot reach. It names the project
+	// of the dependency when the API sends it.
+	const namedReason =
+		group === 'other-project' && project
+			? 'promotions.preview.blockers.disabled.otherProject.named'
+			: reason;
+	const promoteReason =
+		group === 'personal' && !accessible
+			? 'promotions.preview.blockers.disabled.personal.noAccess'
+			: namedReason;
+	return {
+		label: i18n.baseText('promotions.preview.blockers.include'),
+		reason: i18n.baseText(promoteReason, { interpolate }),
+	};
+}
+
+// The rows of "Needs your action", which only Apply has. A sub-workflow or an error workflow that
+// users can access joins them. It does not stop the Apply, and this page cannot add it.
+const needsActionRows = computed<BlockerRow[]>(() => [
+	...blockerRows.value,
+	...props.missingDependencies
+		.filter(({ group }) => group === 'needs-action')
+		.map((dependency) => ({
+			...dependencyRow(dependency, 'blockers'),
+			status: status(workflowIssue(dependency)?.status ?? 'missing'),
+		})),
+]);
+
+// The kinds of issue, in the order that users read them.
 const sections = computed(() =>
 	[
 		{
 			id: 'blockers' as const,
 			title: i18n.baseText('promotions.preview.blockers.section.blockers', {
-				adjustToNumber: blockerRows.value.length,
-				interpolate: { count: String(blockerRows.value.length) },
+				interpolate: { count: String(needsActionRows.value.length) },
 			}),
-			description: undefined,
-			rows: blockerRows.value,
+			description: i18n.baseText('promotions.preview.blockers.section.blockers.description'),
+			rows: needsActionRows.value,
 		},
 		...DEPENDENCY_SECTIONS.map((section) => {
 			const dependencies = props.missingDependencies.filter(({ group }) => group === section.group);
@@ -348,14 +399,24 @@ const sections = computed(() =>
 					interpolate: { count: String(dependencies.length) },
 				}),
 				description: dependencyDescription(section.id, dependencies),
-				rows: dependencies.map((dependency) => dependencyRow(dependency, section)),
+				rows: dependencies.map(
+					(dependency): BlockerRow => ({
+						...dependencyRow(dependency, section.id),
+						status: status(section.status),
+						disabledAction: disabledAction(dependency, section.reason),
+					}),
+				),
 			};
 		}),
 	].filter(({ rows }) => rows.length > 0),
 );
 
-const unresolvedCount = computed(
-	() => blockerRows.value.filter((row) => row.status.tone === 'warning').length,
+// What still stops the Apply. A missing dependency says itself whether it does.
+const unresolvedCount = computed(() =>
+	props.check
+		? blockerRows.value.filter((row) => row.status.tone === 'warning').length +
+			props.missingDependencies.filter(({ blocking }) => blocking).length
+		: 0,
 );
 
 function removedColumns(
@@ -408,7 +469,7 @@ const isCreateDisabled = computed(() => props.busy || bindings.isBusy.value);
 		</N8nText>
 
 		<N8nCallout
-			v-if="check && unresolvedCount === 0"
+			v-if="check && unresolvedCount === 0 && missingDependencies.length === 0"
 			theme="success"
 			slim
 			role="status"

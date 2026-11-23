@@ -39,6 +39,7 @@ import {
 	indexByWorkflow,
 	isBlocking,
 	listBlockers,
+	listOnlyDependencies,
 	crossProjectMoveBlockers,
 	toOperationRequest,
 	scopeCheck,
@@ -92,10 +93,13 @@ const selection = usePromotionSelection(graph, {
 	disabled: computed(() => blockers.value.blocked),
 	locked: operation.isBusy,
 });
-// Promote only: what the selected workflows use, and the branch does not hold after the Promote.
-// Nothing here stops the Promote.
+// The missing dependencies that the Issues tab lists as rows of their own. Promote: what the
+// selected workflows use, and the branch does not hold after the Promote. Nothing there stops the
+// Promote. Apply: the dependencies that the other lists of the check do not detail.
 const missingDependencies = computed(() =>
-	scopeToSelection(preview.value?.missingDependencies ?? [], selection.selected.value),
+	props.direction === 'apply'
+		? listOnlyDependencies(scopedCheck.value?.missingDependencies ?? [])
+		: scopeToSelection(preview.value?.missingDependencies ?? [], selection.selected.value),
 );
 const dependencyWarnings = computed(() =>
 	scopeToSelection(preview.value?.warnings ?? [], selection.selected.value),
@@ -320,10 +324,12 @@ async function onPromoteConfirm(commitMessage: string | undefined) {
 
 type PreviewTab = 'changes' | 'blockers';
 const activeTab = ref<PreviewTab>('changes');
-// Warnings do not count in either direction.
+// Warnings do not count in either direction. On Apply, a dependency that stops its workflows is
+// already one of the blockers.
 const blockerCount = computed(() =>
 	props.direction === 'apply'
-		? blockerList.value.filter(isBlocking).length
+		? blockerList.value.filter(isBlocking).length +
+			missingDependencies.value.filter(({ blocking }) => !blocking).length
 		: missingDependencies.value.length,
 );
 // Apply always has the tab. Promote has it only when the selection has issues.

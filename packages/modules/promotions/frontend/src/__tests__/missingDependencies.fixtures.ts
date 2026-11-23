@@ -4,6 +4,7 @@ import type {
 	PromotionMissingDependency,
 } from '@n8n/api-types';
 
+import type { MissingPromotionBinding } from '../promotions.types';
 import { billingResources } from './preview.fixtures';
 
 const { reconciliation, kpiReport } = billingResources;
@@ -77,3 +78,58 @@ export const deletedWorkflowWarning: PromotionDependencyWarning = {
 	blocking: false,
 	consumers: usedBy(reconciliation),
 };
+
+/**
+ * Apply: the "Stripe" credential of the "Billing" preview is not on this instance, and the user
+ * cannot add it. It stops "Invoice reconciliation".
+ */
+export const unreachableCredential: PromotionMissingDependency = {
+	kind: 'credential',
+	id: 'c1',
+	name: 'Stripe',
+	credentialType: 'stripeApi',
+	group: 'outside-access',
+	reason: 'not-on-instance',
+	accessible: false,
+	blocking: true,
+	consumers: usedBy(reconciliation),
+};
+
+/** Apply: a sub-workflow that is not on this instance, and that the user cannot access. */
+export const unreachableWorkflow: PromotionMissingDependency = {
+	kind: 'workflow',
+	id: 'w7',
+	name: 'Send audit log',
+	group: 'outside-access',
+	reason: 'not-on-instance',
+	accessible: false,
+	blocking: false,
+	consumers: usedBy(kpiReport),
+};
+
+/** Apply: an archived sub-workflow in a project that the user can access. */
+export const archivedWorkflow: PromotionMissingDependency = {
+	kind: 'workflow',
+	id: 'w8',
+	name: 'Archive invoices',
+	group: 'needs-action',
+	reason: 'archived',
+	accessible: true,
+	blocking: false,
+	consumers: usedBy(reconciliation),
+};
+
+/** Apply: the entry of the list that repeats a missing binding of the check. */
+export const repeatedBinding = (binding: MissingPromotionBinding): PromotionMissingDependency => ({
+	kind: binding.kind,
+	...(binding.kind === 'credential' && {
+		id: binding.sourceId,
+		credentialType: binding.credentialType,
+	}),
+	name: binding.name,
+	group: 'needs-action',
+	reason: 'not-on-instance',
+	accessible: true,
+	blocking: true,
+	consumers: binding.consumers,
+});

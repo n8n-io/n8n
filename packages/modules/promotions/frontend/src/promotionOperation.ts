@@ -1,6 +1,7 @@
 import type {
 	PromotionBindingConflict,
 	PromotionBindingConsumer,
+	PromotionMissingDependency,
 	PromotionResource,
 	PromotionVariableScope,
 } from '@n8n/api-types';
@@ -45,11 +46,18 @@ export function toOperationRequest(
 }
 
 /**
- * `missing`, `access`, `conflict` and `moved` (between projects) stop the operation for their
- * workflows. A moved folder stops Apply for every workflow. A `destructive` data table change
- * needs a confirmation. A `warning` only informs.
+ * `missing`, `access`, `conflict`, `moved` (between projects) and `outside` (a dependency that
+ * the user cannot access) stop the operation for their workflows. A moved folder stops Apply for
+ * every workflow. A `destructive` data table change needs a confirmation. A `warning` only informs.
  */
-export type BlockerKind = 'missing' | 'access' | 'conflict' | 'moved' | 'destructive' | 'warning';
+export type BlockerKind =
+	| 'missing'
+	| 'access'
+	| 'conflict'
+	| 'moved'
+	| 'outside'
+	| 'destructive'
+	| 'warning';
 
 export type Blocker = {
 	kind: BlockerKind;
@@ -114,6 +122,13 @@ export function indexByWorkflow<Entry extends UsedByWorkflows>(
 }
 
 /**
+ * The missing dependencies of an Apply that only `missingDependencies` holds. The other lists of
+ * the check already detail a credential or a variable that the user can resolve.
+ */
+export const listOnlyDependencies = (missingDependencies: PromotionMissingDependency[]) =>
+	missingDependencies.filter(({ group, kind }) => group !== 'needs-action' || kind === 'workflow');
+
+/**
  * Keeps the blockers of workflows that the preview lists. The check also covers unchanged
  * workflows, which users cannot select, so their blockers stop nothing on the page.
  */
@@ -133,6 +148,7 @@ export function scopeCheck(check: ApplyCheckResult, graph: SelectionGraph): Appl
 			return [conflict];
 		}),
 		warnings: scope(check.warnings),
+		missingDependencies: scope(check.missingDependencies),
 		movedWorkflows: check.movedWorkflows.filter(({ id }) => listed(id)),
 		// A folder that moved into the project stops the import for every selection, so keep all.
 		movedFolders: check.movedFolders,
@@ -146,6 +162,7 @@ export function listBlockers(
 		accessRequirements,
 		conflicts,
 		warnings,
+		missingDependencies,
 		movedWorkflows,
 		movedFolders,
 	}: ApplyCheckResult,
@@ -211,6 +228,19 @@ export function listBlockers(
 				workflowKeys: listedKeys,
 			});
 		}
+	}
+	// A dependency that does not stop the Apply is not a blocker. The page only lists it.
+	for (const dependency of listOnlyDependencies(missingDependencies)) {
+		if (!dependency.blocking) continue;
+		blockers.push({
+			kind: 'outside',
+			// Only a credential has a preview row to mark.
+			resourceKey:
+				dependency.kind === 'credential' && dependency.id !== undefined
+					? `credential:${dependency.id}`
+					: null,
+			workflowKeys: consumerKeys(dependency.consumers),
+		});
 	}
 	for (const warning of warnings) {
 		blockers.push({
