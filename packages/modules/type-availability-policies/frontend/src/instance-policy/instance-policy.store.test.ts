@@ -663,38 +663,23 @@ describe('useInstancePolicyStore', () => {
 			expect(mocks.fetchCredentialTypeUsage).not.toHaveBeenCalled();
 		});
 
-		it('sends one request for calls that overlap', async () => {
-			const usage = createDeferredPromise<Record<string, typeof SLACK_USAGE>>();
-			mocks.fetchNodeTypeUsage.mockReturnValue(usage.promise);
-			const store = useInstancePolicyStore();
-
-			const first = store.loadUsage('node');
-			const second = store.loadUsage('node', { ifMissing: true });
-			usage.resolve({ [SLACK]: SLACK_USAGE });
-			await Promise.all([first, second]);
-
-			expect(mocks.fetchNodeTypeUsage).toHaveBeenCalledTimes(1);
-			expect(store.usageOf('node', SLACK)).toEqual(SLACK_USAGE);
-		});
-
-		it('reads loaded counts again only without ifMissing', async () => {
+		it('reads only the kinds that have no counts yet', async () => {
 			const store = useInstancePolicyStore();
 			await store.loadUsage('node');
 
-			await store.loadUsage('node', { ifMissing: true });
-			expect(mocks.fetchNodeTypeUsage).toHaveBeenCalledTimes(1);
+			await store.loadMissingUsage(['node', 'credential']);
 
-			await store.loadUsage('node');
-			expect(mocks.fetchNodeTypeUsage).toHaveBeenCalledTimes(2);
+			expect(mocks.fetchNodeTypeUsage).toHaveBeenCalledTimes(1);
+			expect(mocks.fetchCredentialTypeUsage).toHaveBeenCalledTimes(1);
 		});
 
-		it('reads the counts again with ifMissing after a failed read', async () => {
+		it('reads the counts of a kind again after a failed read', async () => {
 			mocks.fetchNodeTypeUsage.mockRejectedValueOnce(new Error('offline'));
 			const store = useInstancePolicyStore();
 			await store.loadUsage('node');
 			expect(store.usageOf('node', SLACK)).toBeNull();
 
-			await store.loadUsage('node', { ifMissing: true });
+			await store.loadMissingUsage(['node']);
 
 			expect(store.usageOf('node', SLACK)).toEqual(SLACK_USAGE);
 		});

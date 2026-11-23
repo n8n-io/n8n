@@ -109,13 +109,13 @@ export const useInstancePolicyStore = defineStore(INSTANCE_POLICY_STORE_ID, () =
 		credential: useTypeUsage(async () => await fetchCredentialTypeUsage(rootStore.restApiContext)),
 	};
 
-	/** Reads the usage counts of a kind. With `ifMissing`, a kind whose counts loaded is not read again. */
-	async function loadUsage(
-		kind: RestrictedTypeKind,
-		{ ifMissing = false }: { ifMissing?: boolean } = {},
-	): Promise<void> {
-		if (ifMissing && usage[kind].isLoaded()) return;
-		await usage[kind].load();
+	const loadUsage = async (kind: RestrictedTypeKind) => await usage[kind].load();
+
+	/** Reads the usage counts of each kind that has none yet, for example after a failed read. */
+	async function loadMissingUsage(kinds: readonly RestrictedTypeKind[]): Promise<void> {
+		await Promise.all(
+			kinds.filter((kind) => !usage[kind].isLoaded()).map(async (kind) => await loadUsage(kind)),
+		);
 	}
 
 	const usageOf = (kind: RestrictedTypeKind, typeName: string) => usage[kind].usageOf(typeName);
@@ -288,6 +288,7 @@ export const useInstancePolicyStore = defineStore(INSTANCE_POLICY_STORE_ID, () =
 		load,
 		loadAccess,
 		loadUsage,
+		loadMissingUsage,
 		usageOf,
 		save,
 	};
