@@ -99,6 +99,10 @@ const tokenFormatter = new Intl.NumberFormat('en-US', {
 const costFormatter = new Intl.NumberFormat('en-US', {
 	maximumFractionDigits: 4,
 });
+
+const creditsFormatter = new Intl.NumberFormat('en-US', {
+	maximumFractionDigits: 2,
+});
 </script>
 
 <template>
@@ -160,7 +164,19 @@ const costFormatter = new Intl.NumberFormat('en-US', {
 					<N8nIcon color="text-light" icon="hash" />
 					<N8nText step="xs" bold>
 						{{ tokenFormatter.format(metadata.totalTokens).toUpperCase() }}
-						<span v-if="metadata.totalCost !== null" :class="$style.innerLabel"
+						<span
+							v-if="metadata.totalCredits !== undefined"
+							:class="$style.innerLabel"
+							data-testid="agent-session-timeline-credits"
+							>({{
+								i18n.baseText('agentSessions.timeline.credits', {
+									// Only a total shown as exactly 1 is singular, not 0.5 or 1.01.
+									adjustToNumber: Math.round(metadata.totalCredits * 100) === 100 ? 1 : 2,
+									interpolate: { count: creditsFormatter.format(metadata.totalCredits) },
+								})
+							}})</span
+						>
+						<span v-else-if="metadata.totalCost !== null" :class="$style.innerLabel"
 							>(${{ costFormatter.format(metadata.totalCost) }})</span
 						>
 					</N8nText>

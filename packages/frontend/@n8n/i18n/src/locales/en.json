@@ -2035,6 +2035,7 @@
 	"agentSessions.timeline.testControls.completed": "Completed",
 	"agentSessions.timeline.testControls.failed": "Failed",
 	"agentSessions.timeline.testControls.interrupted": "Interrupted",
+	"agentSessions.timeline.credits": "{count} credit | {count} credits",
 	"agentSessions.timeline.user": "User",
 	"agentSessions.timeline.assistant": "Assistant",
 	"agentSessions.timeline.skill": "Skill",
