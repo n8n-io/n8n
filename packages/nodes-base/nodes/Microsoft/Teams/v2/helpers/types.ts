@@ -11,7 +11,7 @@ export interface ChannelResponse {
 export interface WebhookNotification {
 	subscriptionId: string;
 	changeType?: string;
-	// Wire data that nothing checks. `parseResourceIds` takes `unknown` for this reason.
+	// Graph can omit `changeType` and `resource`. Nothing checks the wire data, so `parseResourceIds` takes `unknown`.
 	resource: string;
 	resourceData?: ResourceData;
 	tenantId: string;

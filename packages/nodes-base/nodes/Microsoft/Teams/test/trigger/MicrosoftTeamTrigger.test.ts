@@ -1424,7 +1424,7 @@ describe('Microsoft Teams Trigger Node', () => {
 
 			const result = await new MicrosoftTeamsTrigger().webhook.call(ctx);
 
-			expect(result).toEqual({
+			expect(result).toStrictEqual({
 				workflowData: [
 					[
 						{ json: { subscriptionId: 'sub1', changeType: 'created' } },
