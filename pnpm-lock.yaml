@@ -3314,10 +3314,10 @@ importers:
         version: link:../typescript-config
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       typescript:
         specifier: catalog:typescript
         version: 7.0.2

@@ -6,6 +6,7 @@
  * fails after a change in n8n, fix the adapter, not the expectation. A changed
  * expectation is a breaking change and needs a new contract version.
  */
+import { PasswordUtility } from '@n8n/backend-services';
 import { testDb } from '@n8n/backend-test-utils';
 import { GLOBAL_OWNER_ROLE, isPerson, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -13,7 +14,6 @@ import type { HooksApiErrorV1, HooksApiV1, OwnerSetupInputV1 } from '@n8n/hooks-
 
 import { ExternalHooks } from '@/external-hooks';
 import { HooksApiService } from '@/hooks-api/hooks-api.service';
-import { PasswordUtility } from '@/services/password.utility';
 import { createUserShell } from '@test-integration/db/users';
 
 let api: HooksApiV1;
