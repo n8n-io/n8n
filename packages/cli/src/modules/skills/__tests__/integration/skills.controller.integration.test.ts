@@ -1,4 +1,8 @@
-import { ASSISTANT_SKILLS_FLAG, WORKFLOWS_IN_SKILLS_FLAG } from '@n8n/api-types';
+import {
+	ASSISTANT_SKILLS_FLAG,
+	WORKFLOWS_IN_SKILLS_ENABLED_VARIANT,
+	WORKFLOWS_IN_SKILLS_FLAG,
+} from '@n8n/api-types';
 import { PostHogClient } from '@n8n/backend-services';
 import {
 	createTeamProject,
@@ -1085,8 +1089,8 @@ describe('SkillsController', () => {
 
 	describe('workflow mentions', () => {
 		it('refuses a mention of a workflow that the author cannot read, and accepts it after a share', async () => {
-			postHog.getFeatureFlagForInstance.mockImplementation(
-				async (flag) => flag === WORKFLOWS_IN_SKILLS_FLAG,
+			postHog.getFeatureFlagForInstance.mockImplementation(async (flag) =>
+				flag === WORKFLOWS_IN_SKILLS_FLAG ? WORKFLOWS_IN_SKILLS_ENABLED_VARIANT : false,
 			);
 			const workflow = await createWorkflow({ name: 'Owner report' }, ownerPerson);
 			const skill = {
