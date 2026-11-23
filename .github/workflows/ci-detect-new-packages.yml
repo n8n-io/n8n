@@ -29,7 +29,7 @@ jobs:
         id: detect
         run: node .github/scripts/detect-new-packages.mjs --report-only --strict
 
-      - name: Notify Developer Platform
+      - name: Notify Developer Platform alerts channel
         if: steps.detect.outputs.packages != ''
         env:
           PACKAGES: ${{ steps.detect.outputs.packages }}
@@ -47,11 +47,11 @@ jobs:
 
           $PACKAGE_LIST
 
-          Publish each package manually. Then configure \`release-publish.yml\` as its trusted publisher before the next release.
+           Run <${{ github.server_url }}/${{ github.repository }}/actions/workflows/release-publish-new-package.yml|Release: Setup Trusted Publishing for Package> for each package before the next release.
 
           <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View the check>
           EOF
           )
           node .github/scripts/slack/notify.mjs \
-            --channel '#team-developer-platform' \
+             --channel '#alerts-developer-platforms' \
             --text "$MESSAGE"

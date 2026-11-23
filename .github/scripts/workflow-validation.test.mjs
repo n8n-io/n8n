@@ -441,13 +441,18 @@ describe('unpublished package handling', () => {
 
 	it('checks unpublished packages every two hours on Mondays and Tuesdays', () => {
 		const check = stepNamed(scheduledCheck, 'detect-new-packages', 'Check unpublished packages');
-		const notify = stepNamed(scheduledCheck, 'detect-new-packages', 'Notify Developer Platform');
+		const notify = stepNamed(
+			scheduledCheck,
+			'detect-new-packages',
+			'Notify Developer Platform alerts channel',
+		);
 
 		assert.deepEqual(triggersOf(scheduledCheck).schedule, [{ cron: '15 */2 * * 1-2' }]);
 		assert.match(check.run, /detect-new-packages\.mjs --report-only --strict/);
 		assert.equal(notify.if, "steps.detect.outputs.packages != ''");
-		assert.match(notify.run, /--channel '#team-developer-platform'/);
-		assert.match(notify.run, /Publish each package manually/);
+		assert.match(notify.run, /--channel '#alerts-developer-platforms'/);
+		assert.match(notify.run, /\/actions\/workflows\/release-publish-new-package\.yml\|/);
+		assert.match(notify.run, /\/actions\/runs\/.*\|View the check>/);
 	});
 
 	it('keeps unpublished package setup out of the release workflow', () => {
