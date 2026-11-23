@@ -1,6 +1,7 @@
 import { Expression, type IWorkflowDataProxyData } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
+import { nextCloudRootUrl } from '../../nodes/NextCloud/GenericFunctions';
 import { NextCloudApi } from '../NextCloudApi.credentials';
 
 describe('NextCloudApi credential test', () => {
@@ -24,7 +25,8 @@ describe('NextCloudApi credential test', () => {
 				mock<IWorkflowDataProxyData>({ $credentials: { webDavUrl } }),
 			);
 
-			expect(`${baseURL}${credential.test.request.url}`).toBe(`${root}/ocs/v1.php/cloud/user`);
+			expect(`${baseURL}${credential.test.request.url}`).toBe(`${root}/ocs/v2.php/cloud/user`);
+			expect(baseURL).toBe(nextCloudRootUrl(webDavUrl));
 		});
 	});
 });

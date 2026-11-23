@@ -13,6 +13,7 @@ import type { Mock } from 'vitest';
 
 import {
 	nextCloudApiRequest,
+	nextCloudRootUrl,
 	nextCloudUserId,
 	outputPath,
 	parseFolderList,
@@ -600,6 +601,23 @@ describe('NextCloud GenericFunctions', () => {
 			['an empty folder', [], []],
 		])('parses the folder list for %s', async (_, children, expected) => {
 			expect(await parseFolderList(multistatus(children))).toEqual(expected);
+		});
+
+		it.each([
+			['https://nc.example.com/remote.php/webdav', 'https://nc.example.com'],
+			['https://nc.example.com/nextcloud/remote.php/webdav/', 'https://nc.example.com/nextcloud'],
+			['https://nc.example.com/remote.php/dav/files/alice', 'https://nc.example.com'],
+			[
+				'https://nc.example.com/nextcloud/remote.php/dav/files/alice@example.com/',
+				'https://nc.example.com/nextcloud',
+			],
+		])('strips the same WebDAV root from %s and from its hrefs', async (url, root) => {
+			const href = `${new URL(url).pathname.replace(/\/*$/, '')}/a.txt`;
+
+			expect(nextCloudRootUrl(url)).toBe(root);
+			expect(await parseFolderList(multistatus([response(href, fileProps)]))).toEqual([
+				{ path: 'a.txt', ...file },
+			]);
 		});
 	});
 
