@@ -1,5 +1,5 @@
 import type { Config } from '@oclif/core';
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach, type Mock } from 'vitest';
 
 import type {
 	N8nClient,
@@ -147,7 +147,7 @@ const PROMOTE_LISTS = [
 const APPLY_LISTS = [
 	'',
 	'Needs your action (1)',
-	'Create these dependencies before you apply.',
+	'Resolve these dependencies on this instance. An entry that stops the Apply must be resolved before you apply.',
 	'  Credential "CRM" (hubspotApi): not on this instance; stops the Apply; used by Weekly report',
 ].join('\n');
 
@@ -183,7 +183,19 @@ async function runListChanges(
 
 	await command.run();
 
-	return { stdout: log.mock.calls.map(([line]) => line), stderr: logToStderr.mock.calls };
+	return {
+		stdout: log.mock.calls.map(([line]) => line),
+		stderr: logToStderr.mock.calls,
+		order: callOrder(log, logToStderr),
+	};
+}
+
+/** When each stream got its first line, in the order of all mock calls. */
+function callOrder(log: Mock, logToStderr: Mock) {
+	return {
+		stdout: log.mock.invocationCallOrder[0],
+		stderr: logToStderr.mock.invocationCallOrder[0],
+	};
 }
 
 function stubCommand(flags: ListChangesFlags, preview: PromotionPreview = PREVIEW) {
@@ -258,13 +270,14 @@ describe('promotion-environment list-changes command', () => {
 	});
 
 	it('prints the groups and the warnings of a Promote on stderr, after the same table', async () => {
-		const { stdout, stderr } = await runListChanges(
+		const { stdout, stderr, order } = await runListChanges(
 			{ format: 'table' },
 			PROMOTE_PREVIEW_WITH_LISTS,
 		);
 
 		expect(stdout).toEqual([TABLE]);
 		expect(stderr).toEqual([[PROMOTE_LISTS]]);
+		expect(order.stdout).toBeLessThan(order.stderr);
 	});
 
 	it('prints only the table of an Apply when its check lists nothing', async () => {
@@ -274,8 +287,21 @@ describe('promotion-environment list-changes command', () => {
 		expect(stderr).toEqual([]);
 	});
 
+	it.each([
+		{ title: 'the preview has no check', preview: PREVIEW },
+		{
+			title: 'the check has no list',
+			preview: { ...PREVIEW, check: {} } as unknown as PromotionPreview,
+		},
+	])('prints only the table of an Apply from an older server when $title', async ({ preview }) => {
+		const { stdout, stderr } = await runListChanges({ format: 'table' }, preview, 'apply');
+
+		expect(stdout).toEqual([TABLE]);
+		expect(stderr).toEqual([]);
+	});
+
 	it('prints the groups of an Apply from its check on stderr, after the same table', async () => {
-		const { stdout, stderr } = await runListChanges(
+		const { stdout, stderr, order } = await runListChanges(
 			{ format: 'table' },
 			applyPreview([NEEDS_ACTION]),
 			'apply',
@@ -283,6 +309,7 @@ describe('promotion-environment list-changes command', () => {
 
 		expect(stdout).toEqual([TABLE]);
 		expect(stderr).toEqual([[APPLY_LISTS]]);
+		expect(order.stdout).toBeLessThan(order.stderr);
 	});
 
 	it('names the workflow and the condition of an Apply entry that depends on the selection', async () => {
@@ -310,8 +337,8 @@ describe('promotion-environment list-changes command', () => {
 				[
 					'',
 					'Needs your action (1)',
-					'Create these dependencies before you apply.',
-					'  Workflow "Send alert" (id wf-9): not on this instance; used by Weekly report; only when the Apply does not include this workflow',
+					'Resolve these dependencies on this instance. An entry that stops the Apply must be resolved before you apply.',
+					'  Workflow "Send alert" (id wf-9): not on this instance; used by Weekly report; only when the Apply does not include wf-9',
 				].join('\n'),
 			],
 		]);
@@ -332,8 +359,9 @@ describe('promotion-environment list-changes command', () => {
 		);
 
 		expect(ids.stdout).toEqual(['wf-1\ncred-1']);
-		expect(rows.stdout).toEqual([TABLE.split('\n').slice(2).join('\n')]);
 		expect(ids.stderr).toEqual([[PROMOTE_LISTS]]);
+		expect(rows.stdout).toEqual([TABLE.split('\n').slice(2).join('\n')]);
+		expect(rows.stderr).toEqual([[PROMOTE_LISTS]]);
 	});
 
 	it.each([{ json: true }, { jq: '.revision' }])(
@@ -439,24 +467,31 @@ describe('promotion-environment list-apply-changes command', () => {
 		);
 	});
 
-	async function runListApplyChanges(missingDependencies: PromotionMissingDependency[]) {
+	async function runListApplyChanges(
+		check: { missingDependencies?: PromotionMissingDependency[] },
+		flags: ListChangesFlags = { format: 'table' },
+	) {
 		const command = new PromotionEnvironmentListApplyChanges([], {} as Config);
 		const internals = command as unknown as ListChangesInternals;
+		const preview = { ...PREVIEW, check };
 		vi.spyOn(internals, 'parse').mockResolvedValue({
 			args: { id: 'env-1' },
-			flags: { format: 'table' },
+			flags,
 		} as unknown as Awaited<ReturnType<ListChangesInternals['parse']>>);
 		vi.spyOn(internals, 'getClient').mockReturnValue({
-			listInstanceApplyChanges: vi
-				.fn()
-				.mockResolvedValue({ ...PREVIEW, check: { missingDependencies } }),
+			listInstanceApplyChanges: vi.fn().mockResolvedValue(preview),
 		} as unknown as N8nClient);
 		const log = vi.spyOn(internals, 'log').mockImplementation(() => {});
 		const logToStderr = vi.spyOn(internals, 'logToStderr').mockImplementation(() => {});
 
 		await command.run();
 
-		return { stdout: log.mock.calls.map(([line]) => line), stderr: logToStderr.mock.calls };
+		return {
+			preview,
+			stdout: log.mock.calls.map(([line]) => line),
+			stderr: logToStderr.mock.calls,
+			order: callOrder(log, logToStderr),
+		};
 	}
 
 	/** What the table of `PREVIEW` printed before the command listed missing dependencies. */
@@ -467,19 +502,26 @@ describe('promotion-environment list-apply-changes command', () => {
 		'credential  cred-1  Billing API    -               modified  -        wf-2  ',
 	].join('\n');
 
-	it('prints only the table when the check lists nothing', async () => {
-		const { stdout, stderr } = await runListApplyChanges([]);
+	it.each([
+		{ title: 'the check lists nothing', check: { missingDependencies: [] } },
+		// A server that does not know the list.
+		{ title: 'the check has no list', check: {} },
+	])('prints only the table when $title', async ({ check }) => {
+		const { stdout, stderr } = await runListApplyChanges(check);
 
 		expect(stdout).toEqual([INSTANCE_TABLE]);
 		expect(stderr).toEqual([]);
 	});
 
 	it('prints the groups of the check on stderr, after the same table', async () => {
-		const { stdout, stderr } = await runListApplyChanges([
-			NEEDS_ACTION,
-			{ ...NEEDS_ACTION, name: 'Shared CRM', group: 'outside-access', accessible: false },
-		]);
+		const { stdout, stderr, order } = await runListApplyChanges({
+			missingDependencies: [
+				NEEDS_ACTION,
+				{ ...NEEDS_ACTION, name: 'Shared CRM', group: 'outside-access', accessible: false },
+			],
+		});
 
+		expect(order.stdout).toBeLessThan(order.stderr);
 		expect(stdout).toEqual([INSTANCE_TABLE]);
 		expect(stderr).toEqual([
 			[
@@ -492,5 +534,35 @@ describe('promotion-environment list-apply-changes command', () => {
 				].join('\n'),
 			],
 		]);
+	});
+
+	it('keeps the lists out of the IDs', async () => {
+		const { stdout, stderr } = await runListApplyChanges(
+			{ missingDependencies: [NEEDS_ACTION] },
+			{ format: 'id-only' },
+		);
+
+		expect(stdout).toEqual(['wf-1\ncred-1']);
+		expect(stderr).toEqual([[APPLY_LISTS]]);
+	});
+
+	it('prints only the API response as JSON', async () => {
+		const { preview, stdout, stderr } = await runListApplyChanges(
+			{ missingDependencies: [NEEDS_ACTION] },
+			{ json: true },
+		);
+
+		expect(stdout).toEqual([JSON.stringify(preview, null, 2)]);
+		expect(stderr).toEqual([]);
+	});
+
+	it('prints nothing when quiet', async () => {
+		const { stdout, stderr } = await runListApplyChanges(
+			{ missingDependencies: [NEEDS_ACTION] },
+			{ format: 'table', quiet: true },
+		);
+
+		expect(stdout).toEqual([]);
+		expect(stderr).toEqual([]);
 	});
 });

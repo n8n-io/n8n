@@ -404,7 +404,8 @@ closed.
 After the table, the command lists the
 [missing dependencies](#missing-dependencies) of the workflows by group. For
 `promote`, it also lists the warnings, and the lists cover every workflow of
-the project. Use the `used by` names to find the entries of a selection. The
+the project. To find the entries of a selection, use `--json`: the `consumers`
+of each entry hold the IDs of the workflows that use the dependency. The
 command prints the lists on stderr, so stdout holds only the table. When
 nothing is missing, the command prints only the table.
 
@@ -495,8 +496,9 @@ A missing dependency is a credential, variable, sub-workflow, or error workflow
 that a workflow uses and that is not there after the operation. For Promote, the
 branch does not hold it after the Promote. For Apply, the workflow can't use it
 on this instance after the Apply. A warning is a reference to something that
-does not exist on the source instance. References in expressions are not
-checked.
+does not exist on the source instance. A `$vars.NAME` reference in an
+expression is checked. A sub-workflow or an error workflow that is given by an
+expression is not checked.
 
 These commands list the missing dependencies and the warnings:
 
@@ -509,7 +511,8 @@ These commands list the missing dependencies and the warnings:
 | `apply`, `apply-continue`, `apply-selection`, `apply-selection-continue` | The missing dependencies of an Apply that is `blocked`. |
 
 The output never names the project or the owner of a dependency. It shows the
-name, the type, and the workflows that use the dependency.
+name, the type, and the workflows that use the dependency. A workflow that does
+not exist, or whose name you can't read, shows its ID as its name.
 
 The groups are the same as in the n8n UI. Each group shows its count. A group
 without entries is not printed.
@@ -519,9 +522,10 @@ without entries is not printed.
 | `In another project` | Promote | The dependency is in another project that you can access. This Promote does not include it. |
 | `Outside your access` | Promote | You do not have access to the dependency. |
 | `Outside your access` | Apply | You can't add the dependency from here. It is in a project that you can't access, or the branch does not hold it. |
-| `Cannot be promoted` | Promote | The dependency is in a personal project. Move it to a team project to promote it. |
-| `Needs your action` | Apply | Create the dependency before you apply. |
+| `Cannot be promoted` | Promote | The dependency is in a personal project. Move it to a team project to promote it. When you can't access one of the entries, the group says that someone with access must move them. |
+| `Needs your action` | Apply | Resolve the dependency on this instance. An entry that stops the Apply must be resolved before you apply. |
 | `Warnings` | Promote | The reference points to something that does not exist on the source instance. |
+| `Other` | Promote, Apply | The server sent a group that this version of the CLI does not know. The group has no description line. Use `--json` for the details. |
 
 Each line shows one entry:
 
@@ -530,7 +534,8 @@ Each line shows one entry:
 ```
 
 - The type: `Credential`, `Variable`, or `Workflow`. A sub-workflow and an error
-  workflow are both `Workflow`.
+  workflow are both `Workflow`. A type that this version of the CLI does not
+  know shows as the server sent it.
 - The name, and for a credential its credential type.
 - For Apply, the reason. See the table below.
 - `stops the Promote` or `stops the Apply` when the operation stops on the
@@ -549,6 +554,8 @@ Each line shows one entry:
 | `its type is not installed on this instance` | This instance does not know the credential type. |
 | `this project cannot use an instance credential` | The credential on this instance has a usage scope that the project can't use. |
 | `archived on this instance` | The sub-workflow or error workflow is archived. |
+| `archived by this Apply` | Only for a [conditional entry](#conditional-entries): the Apply archives the sub-workflow or error workflow when the selection includes it. |
+| `deleted by this Apply` | Only for a [conditional entry](#conditional-entries): the Apply deletes the sub-workflow or error workflow when the selection includes it. |
 | `its caller policy refuses the workflow` | The sub-workflow or error workflow does not let this workflow call it. |
 
 ### Conditional entries
@@ -556,25 +563,42 @@ Each line shows one entry:
 `list-changes <projectId> apply` covers every workflow of the project on the
 branch, before you select workflows. Some entries for a sub-workflow or an error
 workflow depend on the selection. Such a line shows the ID of that workflow
-after its name, and the condition at the end:
+after its name, and the condition at the end. The condition names the workflow
+by the same ID, not the workflows after `used by`:
 
 ```text
-  Workflow "Send alert" (id wf-9): not on this instance; used by Weekly report; only when the Apply does not include this workflow
+  Workflow "Send alert" (id wf-9): not on this instance; used by Weekly report; only when the Apply does not include wf-9
+  Workflow "Notify owner" (id wf-7): archived by this Apply; used by Invoices; only when the Apply includes wf-7
 ```
 
 | Condition | Meaning |
 |-----------|---------|
-| `only when the Apply includes this workflow` | The entry applies only when the selection of `apply-selection` includes the workflow with this ID. |
-| `only when the Apply does not include this workflow` | The entry applies only when the selection of `apply-selection` does not include the workflow with this ID. |
+| `only when the Apply includes <id>` | The entry applies only when the selection of `apply-selection` includes the workflow with this ID. The reason tells what the Apply does to that workflow: `archived by this Apply` or `deleted by this Apply`. |
+| `only when the Apply does not include <id>` | The entry applies only when the selection of `apply-selection` does not include the workflow with this ID. |
 
-In the example, the entry does not apply when the selection includes `wf-9`. An
-entry without a condition applies to every selection. The result of an Apply
-has no conditional entries. With `--json`, the entry has the field `condition`:
-`target-selected` or `target-not-selected`.
+In the example, the first entry does not apply when the selection includes
+`wf-9`. The second entry applies only when the selection includes `wf-7`: the
+Apply then archives `wf-7`, which `Invoices` uses. An entry without a condition
+applies to every selection. The result of an Apply has no conditional entries.
+With `--json`, the entry has the field `condition`: `target-selected` or
+`target-not-selected`.
 
-`--quiet` hides the lists. With `--json`, each command prints the API response
-and no list. The response holds the same entries: `missingDependencies` and
-`warnings` for Promote, and `check.missingDependencies` for Apply.
+### Output formats
+
+The table and the lists are the output for people. When stdout is a terminal,
+the CLI prints them by default. When stdout is not a terminal, for example in a
+pipe or in a script, the CLI prints JSON by default. Pass `--format table` to
+get the table and the lists there too. `--format id-only` prints the IDs in
+place of the table, and keeps the lists. `--format json` gives JSON. `--json`
+and `--jq` give JSON too, also when you pass another `--format`.
+
+With JSON, each command prints the API response and no list. The response holds
+the same entries: `missingDependencies` and `warnings` for Promote, and
+`check.missingDependencies` for Apply.
+
+With `--quiet`, `list-changes`, `list-apply-changes`, and `promote-check` print
+nothing: no table, no list, and no JSON. An Apply that is `blocked` prints
+nothing and keeps its exit code.
 
 ## `promotion-environment promote-selection`
 
@@ -649,10 +673,12 @@ instance still matches the preview that you reviewed.
 
 A `blocked` Apply prints the count of each cause, and then the
 [missing dependencies](#missing-dependencies) by group. `Outside your access`
-counts the dependencies that you can't add from here: they are in a project
-that you can't access, or the branch does not hold them. Such a dependency is in
-no other count, so it can be the only cause. Someone with access must add it to
-this instance or to the branch.
+counts the dependencies that stop the Apply and that you can't add from here:
+they are in a project that you can't access, or the branch does not hold them.
+Such a dependency is in no other count, so it can be the only cause. Someone
+with access must add it to this instance or to the branch. The title of the
+group below the counts shows the count of all its entries, also of those that
+do not stop the Apply.
 
 ```text
 Apply is blocked. Nothing was imported.
@@ -664,7 +690,7 @@ Apply is blocked. Nothing was imported.
   Outside your access: 1
 
 Needs your action (2)
-Create these dependencies before you apply.
+Resolve these dependencies on this instance. An entry that stops the Apply must be resolved before you apply.
   Credential "Billing API" (httpHeaderAuth): not on this instance; stops the Apply; used by Weekly report, Invoices
   Workflow "Send alert": archived on this instance; used by Weekly report
 

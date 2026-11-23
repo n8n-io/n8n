@@ -437,7 +437,7 @@ describe('missing dependencies of a blocked Apply', () => {
 				'  Outside your access: 1',
 				'',
 				'Needs your action (2)',
-				'Create these dependencies before you apply.',
+				'Resolve these dependencies on this instance. An entry that stops the Apply must be resolved before you apply.',
 				'  Credential "Billing API" (httpHeaderAuth): not on this instance; stops the Apply; used by Weekly report',
 				'  Workflow "Send alert": archived on this instance; used by Weekly report',
 				'',
@@ -451,6 +451,52 @@ describe('missing dependencies of a blocked Apply', () => {
 		);
 		expect(message).not.toContain('Finance');
 		expect(message).not.toContain('proj-finance');
+	});
+
+	it('counts only the entries that stop the Apply, and keeps every entry in the group', async () => {
+		const message = await blockedMessageOf({
+			...BLOCKED_BY_DEPENDENCIES_RESULT,
+			check: {
+				...BLOCKED_BY_DEPENDENCIES_RESULT.check,
+				missingDependencies: [
+					OUTSIDE_ACCESS_DEPENDENCY,
+					{ ...OUTSIDE_ACCESS_DEPENDENCY, name: 'Old CRM', blocking: false },
+				],
+			},
+		});
+
+		expect(message).toContain(
+			[
+				'  Outside your access: 1',
+				'',
+				'Outside your access (2)',
+				'You cannot add these dependencies from here: they are in a project that you cannot access, or the branch does not hold them.',
+				'  Credential "Shared CRM" (hubspotApi): not on this instance; stops the Apply; used by Weekly report',
+				'  Credential "Old CRM" (hubspotApi): not on this instance; used by Weekly report',
+				'',
+			].join('\n'),
+		);
+	});
+
+	it('lists the entry of a group that it does not know when only that entry stops the Apply', async () => {
+		const message = await blockedMessageOf({
+			...BLOCKED_BY_DEPENDENCIES_RESULT,
+			check: {
+				...BLOCKED_BY_DEPENDENCIES_RESULT.check,
+				missingDependencies: [{ ...OUTSIDE_ACCESS_DEPENDENCY, group: 'future-group' }],
+			},
+		});
+
+		expect(message).toContain(
+			[
+				'  Outside your access: 0',
+				'',
+				'Other (1)',
+				'  Credential "Shared CRM" (hubspotApi): not on this instance; stops the Apply; used by Weekly report',
+				'',
+				'Run with --json for the details.',
+			].join('\n'),
+		);
 	});
 
 	it.each([

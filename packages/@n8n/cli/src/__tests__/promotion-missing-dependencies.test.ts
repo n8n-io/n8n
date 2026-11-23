@@ -3,7 +3,7 @@ import { describe, it, expect } from 'vitest';
 import type { PromotionDependencyWarning, PromotionMissingDependency } from '../client';
 import {
 	applyDependencyLines,
-	countOutsideAccess,
+	countBlockingOutsideAccess,
 	promoteDependencyLines,
 } from '../commands/promotion-environment/missing-dependencies';
 
@@ -94,6 +94,17 @@ describe('promoteDependencyLines', () => {
 		]);
 	});
 
+	it('says that someone with access must move an entry that the user cannot access', () => {
+		const lines = promoteDependencyLines([PERSONAL, { ...PERSONAL, accessible: false }], []);
+
+		expect(lines).toEqual([
+			'Cannot be promoted (2)',
+			'These dependencies are in a personal project. Someone with access must move them to a team project to promote them.',
+			'  Credential "My token" (httpHeaderAuth): used by Weekly report',
+			'  Credential "My token" (httpHeaderAuth): used by Weekly report',
+		]);
+	});
+
 	it('lists warnings when no dependency is missing', () => {
 		expect(promoteDependencyLines([], [warning({ kind: 'credential', name: 'Old key' })])).toEqual([
 			'Warnings (1)',
@@ -112,6 +123,43 @@ describe('promoteDependencyLines', () => {
 		expect(lines).toContain(
 			'  Workflow "Deleted helper": stops the Promote; used by Weekly report',
 		);
+	});
+
+	it('lists an entry of a group that it does not know in a last section without description', () => {
+		const lines = promoteDependencyLines(
+			[
+				{ ...OTHER_PROJECT, name: 'New', group: 'future-group' as never, blocking: true },
+				// An Apply group is not a group of a Promote.
+				{ ...NEEDS_ACTION, name: 'Stray' },
+				OTHER_PROJECT,
+			],
+			[warning()],
+		);
+
+		expect(lines).toEqual([
+			'In another project (1)',
+			'These dependencies are in other projects that you can access. This Promote does not include them.',
+			'  Credential "Billing API" (httpHeaderAuth): used by Weekly report',
+			'',
+			'Warnings (1)',
+			'These references point to something that does not exist on the source instance.',
+			'  Variable "API_URL": used by Weekly report',
+			'',
+			'Other (2)',
+			'  Credential "New" (httpHeaderAuth): stops the Promote; used by Weekly report',
+			'  Credential "Stray" (httpHeaderAuth): stops the Promote; used by Weekly report',
+		]);
+	});
+
+	it('prints a kind that it does not know as it is', () => {
+		const lines = promoteDependencyLines(
+			[{ ...OTHER_PROJECT, kind: 'data-table' as never, credentialType: undefined }],
+			[warning({ kind: 'tag' as never, name: 'Old tag' })],
+		);
+
+		expect(lines).toContain('  data-table "Billing API": used by Weekly report');
+		expect(lines).toContain('  tag "Old tag": used by Weekly report');
+		expect(lines.join('\n')).not.toContain('undefined');
 	});
 
 	it('returns no line when nothing is missing', () => {
@@ -141,7 +189,7 @@ describe('applyDependencyLines', () => {
 
 		expect(lines).toEqual([
 			'Needs your action (2)',
-			'Create these dependencies before you apply.',
+			'Resolve these dependencies on this instance. An entry that stops the Apply must be resolved before you apply.',
 			'  Credential "Billing API" (httpHeaderAuth): not on this instance; stops the Apply; used by Weekly report',
 			'  Variable "API_URL": not on this instance; stops the Apply; used by Weekly report',
 			'',
@@ -192,31 +240,98 @@ describe('applyDependencyLines', () => {
 		expect(lines.join('\n')).not.toContain('undefined');
 	});
 
+	it('lists an entry of a group that it does not know in a last section without description', () => {
+		const lines = applyDependencyLines([
+			{ ...NEEDS_ACTION, name: 'New', group: 'future-group' as never },
+			// A Promote group is not a group of an Apply.
+			{ ...OTHER_PROJECT, name: 'Stray', reason: 'not-shared' },
+			{ ...OUTSIDE_ACCESS, reason: 'archived' },
+		]);
+
+		expect(lines).toEqual([
+			'Outside your access (1)',
+			'You cannot add these dependencies from here: they are in a project that you cannot access, or the branch does not hold them.',
+			'  Workflow "Send alert": archived on this instance; used by Weekly report',
+			'',
+			'Other (2)',
+			'  Credential "New" (httpHeaderAuth): not on this instance; stops the Apply; used by Weekly report',
+			'  Credential "Stray" (httpHeaderAuth): this project cannot use it; used by Weekly report',
+		]);
+	});
+
+	it('prints a kind that it does not know as it is', () => {
+		const lines = applyDependencyLines([
+			{ ...NEEDS_ACTION, kind: 'data-table' as never, credentialType: undefined },
+		]);
+
+		expect(lines[2]).toBe(
+			'  data-table "Billing API": not on this instance; stops the Apply; used by Weekly report',
+		);
+		expect(lines.join('\n')).not.toContain('undefined');
+	});
+
 	it.each([
+		// The Apply archives or deletes the workflow, so the reason is not a present state.
 		[
 			'target-selected',
 			'archived',
-			'archived on this instance; used by Weekly report; only when the Apply includes this workflow',
+			'archived by this Apply; used by Weekly report; only when the Apply includes wf-9',
+		],
+		[
+			'target-selected',
+			'not-on-instance',
+			'deleted by this Apply; used by Weekly report; only when the Apply includes wf-9',
+		],
+		[
+			'target-selected',
+			'caller-policy',
+			'its caller policy refuses the workflow; used by Weekly report; only when the Apply includes wf-9',
+		],
+		[
+			'target-not-selected',
+			'archived',
+			'archived on this instance; used by Weekly report; only when the Apply does not include wf-9',
 		],
 		[
 			'target-not-selected',
 			'not-on-instance',
-			'not on this instance; used by Weekly report; only when the Apply does not include this workflow',
+			'not on this instance; used by Weekly report; only when the Apply does not include wf-9',
 		],
-	] as const)('names the workflow of the condition %s by its id', (condition, reason, facts) => {
+	] as const)(
+		'names the workflow of the condition %s by its id, with the reason %s',
+		(condition, reason, facts) => {
+			const lines = applyDependencyLines([
+				dependency({
+					kind: 'workflow',
+					id: 'wf-9',
+					credentialType: undefined,
+					name: 'Send alert',
+					group: 'needs-action',
+					reason,
+					condition,
+				}),
+			]);
+
+			expect(lines[2]).toBe(`  Workflow "Send alert" (id wf-9): ${facts}`);
+		},
+	);
+
+	it('names the workflow of a condition as this workflow when the entry has no id', () => {
 		const lines = applyDependencyLines([
 			dependency({
 				kind: 'workflow',
-				id: 'wf-9',
+				id: undefined,
 				credentialType: undefined,
 				name: 'Send alert',
 				group: 'needs-action',
-				reason,
-				condition,
+				reason: 'archived',
+				condition: 'target-not-selected',
 			}),
 		]);
 
-		expect(lines[2]).toBe(`  Workflow "Send alert" (id wf-9): ${facts}`);
+		expect(lines[2]).toBe(
+			'  Workflow "Send alert": archived on this instance; used by Weekly report; only when the Apply does not include this workflow',
+		);
 	});
 
 	it('prints no id and no condition for an entry without a condition', () => {
@@ -295,12 +410,14 @@ describe('the project of a dependency', () => {
 	});
 });
 
-describe('countOutsideAccess', () => {
-	it('counts only the entries of the group', () => {
-		expect(countOutsideAccess([NEEDS_ACTION, OUTSIDE_ACCESS, OUTSIDE_ACCESS])).toBe(2);
+describe('countBlockingOutsideAccess', () => {
+	it('counts only the entries of the group that stop the Apply', () => {
+		const blocking = { ...OUTSIDE_ACCESS, blocking: true };
+
+		expect(countBlockingOutsideAccess([NEEDS_ACTION, OUTSIDE_ACCESS, blocking, blocking])).toBe(2);
 	});
 
 	it('counts nothing when the server does not send the list', () => {
-		expect(countOutsideAccess(undefined)).toBe(0);
+		expect(countBlockingOutsideAccess(undefined)).toBe(0);
 	});
 });

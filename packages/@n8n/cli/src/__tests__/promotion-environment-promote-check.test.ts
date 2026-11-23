@@ -92,7 +92,7 @@ describe('promotion-environment promote-check command', () => {
 		expect(stdout).toEqual([
 			[
 				'Cannot be promoted (2)',
-				'These dependencies are in a personal project. Move them to a team project to promote them.',
+				'These dependencies are in a personal project. Someone with access must move them to a team project to promote them.',
 				'  Credential "My token" (httpHeaderAuth): used by Weekly report, Invoices',
 				'  Workflow "Send alert": stops the Promote; used by Weekly report, Invoices',
 				'',
@@ -118,6 +118,23 @@ describe('promotion-environment promote-check command', () => {
 
 		expect(stdout).toEqual(['No missing dependencies and no warnings.']);
 		expect(exit).not.toHaveBeenCalled();
+	});
+
+	it('lists an entry of a group that it does not know', async () => {
+		const { stdout } = await runPromoteCheck(
+			{ format: 'table' },
+			{
+				...NOTHING_MISSING,
+				missingDependencies: [{ ...CHECK.missingDependencies[0], group: 'future-group' as never }],
+			},
+		);
+
+		expect(stdout).toEqual([
+			[
+				'Other (1)',
+				'  Credential "My token" (httpHeaderAuth): used by Weekly report, Invoices',
+			].join('\n'),
+		]);
 	});
 
 	it.each([CHECK, NOTHING_MISSING])(

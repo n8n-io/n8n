@@ -150,8 +150,11 @@ export interface PromotionApplyCheck {
 	accessRequirements: Array<Record<string, unknown>>;
 	conflicts: Array<Record<string, unknown>>;
 	warnings: Array<Record<string, unknown>>;
-	/** What the applied workflows use and this instance cannot give them after the Apply. */
-	missingDependencies: PromotionMissingDependency[];
+	/**
+	 * What the applied workflows use and this instance cannot give them after the Apply.
+	 * An older server does not send it.
+	 */
+	missingDependencies?: PromotionMissingDependency[];
 }
 
 /** A team project that a full Apply deletes, because the package does not hold it. */

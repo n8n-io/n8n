@@ -1,4 +1,4 @@
-import { applyDependencyLines, countOutsideAccess } from './missing-dependencies';
+import { applyDependencyLines, countBlockingOutsideAccess } from './missing-dependencies';
 import { BaseCommand, EXIT_BLOCKED, EXIT_SOURCE_CHANGED, EXIT_SUCCESS } from '../../base-command';
 import type {
 	ApplyPackageResult,
@@ -93,8 +93,9 @@ function blockedMessage(
 		`  Missing variables:   ${bindings('variable')}`,
 		`  Access requirements: ${check.accessRequirements.length}`,
 		`  Conflicts:           ${check.conflicts.length}`,
-		// These entries are in no other list, so an Apply can stop on them alone.
-		`  Outside your access: ${countOutsideAccess(check.missingDependencies)}`,
+		// These entries are in no other list, so an Apply can stop on them alone. The line counts
+		// causes, so it leaves out the entries that do not stop the Apply.
+		`  Outside your access: ${countBlockingOutsideAccess(check.missingDependencies)}`,
 		...(projectDeletions.length > 0
 			? [
 					'Apply deletes these projects with everything in them:',

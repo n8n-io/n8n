@@ -4,14 +4,19 @@ type Operation = 'Promote' | 'Apply';
 
 interface Section {
 	title: string;
-	description: string;
+	description?: string;
 	entries: Array<PromotionMissingDependency | PromotionDependencyWarning>;
 }
 
 /** A line cuts a long list, so it names a few workflows and counts the rest. */
 const MAX_LISTED_WORKFLOWS = 5;
 
-const KINDS = { credential: 'Credential', variable: 'Variable', workflow: 'Workflow' };
+/** A kind that this version does not know has no title, so the line prints the kind as it is. */
+const KINDS: Partial<Record<string, string>> = {
+	credential: 'Credential',
+	variable: 'Variable',
+	workflow: 'Workflow',
+};
 
 /**
  * Only Apply gives a reason. On Promote, the group is the reason.
@@ -29,12 +34,23 @@ const APPLY_REASONS: Partial<Record<PromotionMissingDependency['reason'], string
 };
 
 /**
+ * With `target-selected`, the Apply itself archives or deletes the workflow. These reasons tell
+ * what the Apply does, because the workflow is not in that state yet.
+ */
+const APPLY_REASONS_OF_SELECTED_TARGET: Partial<
+	Record<PromotionMissingDependency['reason'], string>
+> = {
+	archived: 'archived by this Apply',
+	'not-on-instance': 'deleted by this Apply',
+};
+
+/**
  * An entry of a project Apply preview can depend on the selection. The preview has no selection,
- * so the line states the condition.
+ * so the line states the condition. The id of the workflow of the entry follows the text.
  */
 const APPLY_CONDITIONS: Record<NonNullable<PromotionMissingDependency['condition']>, string> = {
-	'target-selected': 'only when the Apply includes this workflow',
-	'target-not-selected': 'only when the Apply does not include this workflow',
+	'target-selected': 'only when the Apply includes',
+	'target-not-selected': 'only when the Apply does not include',
 };
 
 /**
@@ -45,7 +61,8 @@ export function promoteDependencyLines(
 	missingDependencies: PromotionMissingDependency[] = [],
 	warnings: PromotionDependencyWarning[] = [],
 ): string[] {
-	return sectionLines('Promote', [
+	const personal = inGroup(missingDependencies, 'personal');
+	return sectionLines('Promote', missingDependencies, [
 		{
 			title: 'In another project',
 			description:
@@ -55,9 +72,11 @@ export function promoteDependencyLines(
 		outsideAccessSection(missingDependencies, 'You do not have access to these dependencies.'),
 		{
 			title: 'Cannot be promoted',
-			description:
-				'These dependencies are in a personal project. Move them to a team project to promote them.',
-			entries: inGroup(missingDependencies, 'personal'),
+			// The user cannot move a dependency that is in the personal project of another user.
+			description: personal.some(({ accessible }) => !accessible)
+				? 'These dependencies are in a personal project. Someone with access must move them to a team project to promote them.'
+				: 'These dependencies are in a personal project. Move them to a team project to promote them.',
+			entries: personal,
 		},
 		{
 			title: 'Warnings',
@@ -72,10 +91,11 @@ export function promoteDependencyLines(
 export function applyDependencyLines(
 	missingDependencies: PromotionMissingDependency[] = [],
 ): string[] {
-	return sectionLines('Apply', [
+	return sectionLines('Apply', missingDependencies, [
 		{
 			title: 'Needs your action',
-			description: 'Create these dependencies before you apply.',
+			description:
+				'Resolve these dependencies on this instance. An entry that stops the Apply must be resolved before you apply.',
 			entries: inGroup(missingDependencies, 'needs-action'),
 		},
 		outsideAccessSection(
@@ -85,9 +105,11 @@ export function applyDependencyLines(
 	]);
 }
 
-/** How many entries only someone with more access can resolve. */
-export function countOutsideAccess(missingDependencies: PromotionMissingDependency[] = []): number {
-	return inGroup(missingDependencies, 'outside-access').length;
+/** How many entries stop the Apply, of those that only someone with more access can resolve. */
+export function countBlockingOutsideAccess(
+	missingDependencies: PromotionMissingDependency[] = [],
+): number {
+	return inGroup(missingDependencies, 'outside-access').filter(({ blocking }) => blocking).length;
 }
 
 function inGroup(
@@ -108,14 +130,24 @@ function outsideAccessSection(
 	};
 }
 
-/** One block for each section that has entries, with an empty line between two blocks. */
-function sectionLines(operation: Operation, sections: Section[]): string[] {
-	return sections
+/**
+ * One block for each section that has entries, with an empty line between two blocks.
+ * A newer server can send a group that this version does not know. The output must show every
+ * entry, so the entries that are in no section go in a last block.
+ */
+function sectionLines(
+	operation: Operation,
+	missingDependencies: PromotionMissingDependency[],
+	sections: Section[],
+): string[] {
+	const listed = new Set(sections.flatMap(({ entries }) => entries));
+	const other = missingDependencies.filter((dependency) => !listed.has(dependency));
+	return [...sections, { title: 'Other', entries: other }]
 		.filter(({ entries }) => entries.length > 0)
 		.flatMap(({ title, description, entries }, index) => [
 			...(index > 0 ? [''] : []),
 			`${title} (${entries.length})`,
-			description,
+			...(description ? [description] : []),
 			...entries.map((entry) => entryLine(entry, operation)),
 		]);
 }
@@ -132,19 +164,26 @@ function entryLine(
 		'credentialType' in entry && entry.credentialType ? ` (${entry.credentialType})` : '';
 	const dependency = operation === 'Apply' && 'reason' in entry ? entry : undefined;
 	const condition = dependency?.condition ? APPLY_CONDITIONS[dependency.condition] : undefined;
-	// The condition names "this workflow", so the line must say which workflow that is.
+	// The condition names the workflow by its id, so the line shows that id next to the name.
 	const id = condition && entry.id ? ` (id ${entry.id})` : '';
 	const workflowNames = entry.consumers.flatMap(({ workflows }) =>
 		workflows.map(({ name }) => name),
 	);
 	const facts = [
-		dependency ? APPLY_REASONS[dependency.reason] : undefined,
+		dependency ? applyReason(dependency) : undefined,
 		entry.blocking ? `stops the ${operation}` : undefined,
 		`used by ${listNames(workflowNames)}`,
-		condition,
+		condition ? `${condition} ${entry.id ?? 'this workflow'}` : undefined,
 	].filter((fact) => fact !== undefined);
+	const kind = KINDS[entry.kind] ?? entry.kind;
 
-	return `  ${KINDS[entry.kind]} "${entry.name}"${id}${credentialType}: ${facts.join('; ')}`;
+	return `  ${kind} "${entry.name}"${id}${credentialType}: ${facts.join('; ')}`;
+}
+
+function applyReason({ reason, condition }: PromotionMissingDependency): string | undefined {
+	const ofSelectedTarget =
+		condition === 'target-selected' ? APPLY_REASONS_OF_SELECTED_TARGET[reason] : undefined;
+	return ofSelectedTarget ?? APPLY_REASONS[reason];
 }
 
 function listNames(names: string[]): string {

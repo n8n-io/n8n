@@ -364,12 +364,18 @@ Key points:
   group, with the workflows that use them: `In another project`,
   `Outside your access`, and `Cannot be promoted` for Promote, `Needs your action`
   and `Outside your access` for Apply. Promote also lists `Warnings`: references
-  to something that does not exist on the source instance. The output never names
+  to something that does not exist on the source instance. `Other` holds the
+  entries of a group that this CLI version does not know. The output never names
   the project of a dependency. `list-changes` and `list-apply-changes` print the
   lists on stderr, after the table. With `--json`, read `missingDependencies` and
   `warnings` (Promote) or `check.missingDependencies` (Apply) instead.
 - An entry outside your access can be the only cause of a `blocked` Apply. Someone
-  with access must add the dependency to the instance.
+  with access must add the dependency to the instance. The `Outside your access`
+  count of a `blocked` Apply holds only the entries that stop the Apply.
+- A conditional entry of `list-changes <projectId> apply` ends with
+  `only when the Apply includes <id>` or `only when the Apply does not include <id>`.
+  The ID is the ID of the missing sub-workflow or error workflow, not of a
+  workflow after `used by`.
 - API key scopes for this group are named `promotions:*`:
   - `promotion-provider create`, `update`, `delete`, `list-repositories` and
     `list-branches` need `manageProviders`. `promotion-provider list` and `get`
