@@ -374,7 +374,7 @@ async function createWorkflow() {
 					name: verificationName,
 					type: 'n8n-nodes-base.noOp',
 					typeVersion: 1,
-					position: [240, 0],
+					position: [288, 0],
 					parameters: {},
 				},
 				{
@@ -383,7 +383,7 @@ async function createWorkflow() {
 					type: 'n8n-nodes-base.agentDecisionResponse',
 					typeVersion: 1,
 					// Leave space for the expanded verification section.
-					position: [720, 0],
+					position: [752, 0],
 					parameters: { approved: false },
 				},
 			],

@@ -236,14 +236,17 @@ it('names a new workflow from the Agent and the next available number', async ()
 			nodes: [
 				expect.objectContaining({
 					name: 'Request from agent',
+					position: [0, 0],
 					type: 'n8n-nodes-base.agentDecisionTrigger',
 				}),
 				expect.objectContaining({
 					name: 'Verify/Approve',
+					position: [288, 0],
 					type: 'n8n-nodes-base.noOp',
 				}),
 				expect.objectContaining({
 					name: 'Respond to agent',
+					position: [752, 0],
 					type: 'n8n-nodes-base.agentDecisionResponse',
 					parameters: { approved: false },
 				}),
