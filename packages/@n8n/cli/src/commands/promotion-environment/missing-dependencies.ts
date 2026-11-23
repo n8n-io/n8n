@@ -1,6 +1,29 @@
-import type { PromotionDependencyWarning, PromotionMissingDependency } from '../../client';
+import { Flags } from '@oclif/core';
+
+import type {
+	PromotionBindingWarning,
+	PromotionDependencyWarning,
+	PromotionMissingDependency,
+} from '../../client';
 
 type Operation = 'Promote' | 'Apply';
+
+const CONFIRM_DESCRIPTIONS: Record<Operation, string> = {
+	Promote:
+		'Promote without the missing dependencies of the workflows. The branch does not hold them after the Promote. Workflows that use them cannot be published where the branch is applied, until the dependencies exist there.',
+	Apply:
+		'Apply without the missing dependencies that do not stop the Apply. They stay missing on this instance. Apply does not create them. Workflows that use them cannot be published until the dependencies exist here.',
+};
+
+/** Confirms the missing dependencies, so the operation continues without them. */
+export function confirmMissingDependenciesFlag(operation: Operation) {
+	return {
+		confirmMissingDependencies: Flags.boolean({
+			description: CONFIRM_DESCRIPTIONS[operation],
+			aliases: ['confirm-missing-dependencies'],
+		}),
+	};
+}
 
 interface Section {
 	title: string;
@@ -79,18 +102,17 @@ export function promoteDependencyLines(
 				: 'These dependencies are in a personal project. Move them to a team project to promote them.',
 			entries: personal,
 		},
-		{
-			title: 'Warnings',
-			description:
-				'These references point to something that does not exist on the source instance.',
-			entries: warnings,
-		},
+		warningsSection(warnings),
 	]);
 }
 
-/** The list of an Apply, with the groups and the titles of the UI. Empty when nothing is missing. */
+/**
+ * The lists of an Apply, with the groups and the titles of the UI. Empty when nothing is missing.
+ * Of the Apply warnings, only `missing-on-source` is about a dependency, so the others are left out.
+ */
 export function applyDependencyLines(
 	missingDependencies: PromotionMissingDependency[] = [],
+	warnings: PromotionBindingWarning[] = [],
 ): string[] {
 	return sectionLines('Apply', missingDependencies, [
 		{
@@ -103,6 +125,7 @@ export function applyDependencyLines(
 			missingDependencies,
 			'You cannot add these dependencies from here: they are in a project that you cannot access, or the branch does not hold them.',
 		),
+		warningsSection(warnings.filter((warning) => warning.code === 'missing-on-source')),
 	]);
 }
 
@@ -111,6 +134,12 @@ export function countBlockingOutsideAccess(
 	missingDependencies: PromotionMissingDependency[] = [],
 ): number {
 	return inGroup(missingDependencies, 'outside-access').filter(({ blocking }) => blocking).length;
+}
+
+/** How many entries stop the operation, and how many only need a confirmation. */
+export function countByBlocking(missingDependencies: PromotionMissingDependency[] = []) {
+	const blocking = missingDependencies.filter((dependency) => dependency.blocking).length;
+	return { blocking, confirmable: missingDependencies.length - blocking };
 }
 
 function inGroup(
@@ -128,6 +157,14 @@ function outsideAccessSection(
 		title: 'Outside your access',
 		description,
 		entries: inGroup(missingDependencies, 'outside-access'),
+	};
+}
+
+function warningsSection(warnings: PromotionDependencyWarning[]): Section {
+	return {
+		title: 'Warnings',
+		description: 'These references point to something that does not exist on the source instance.',
+		entries: warnings,
 	};
 }
 
@@ -174,8 +211,8 @@ function entryLine(
 	const facts = [
 		'project' in entry && entry.project ? `in project "${entry.project.name}"` : undefined,
 		dependency ? applyReason(dependency) : undefined,
-		// A warning has no `blocking`. Only an older server sends it.
-		'blocking' in entry && entry.blocking ? `stops the ${operation}` : undefined,
+		// Nothing stops a Promote, and nothing stops on a warning.
+		dependency?.blocking ? 'stops the Apply' : undefined,
 		`used by ${listNames(workflowNames)}`,
 		condition ? `${condition} ${entry.id ?? 'this workflow'}` : undefined,
 	].filter((fact) => fact !== undefined);

@@ -4,6 +4,7 @@ import type { PromotionDependencyWarning, PromotionMissingDependency } from '../
 import {
 	applyDependencyLines,
 	countBlockingOutsideAccess,
+	countByBlocking,
 	promoteDependencyLines,
 } from '../commands/promotion-environment/missing-dependencies';
 
@@ -112,17 +113,16 @@ describe('promoteDependencyLines', () => {
 		]);
 	});
 
-	it('says when an entry or a warning stops the Promote', () => {
+	it('never says that an entry stops the Promote', () => {
+		// An older server can still mark an entry as blocking.
 		const lines = promoteDependencyLines(
 			[{ ...PERSONAL, kind: 'workflow', credentialType: undefined, blocking: true }],
 			// An older server sends `blocking` on a warning.
 			[{ ...warning({ kind: 'workflow', name: 'Deleted helper' }), blocking: true } as never],
 		);
 
-		expect(lines).toContain('  Workflow "My token": stops the Promote; used by Weekly report');
-		expect(lines).toContain(
-			'  Workflow "Deleted helper": stops the Promote; used by Weekly report',
-		);
+		expect(lines).toContain('  Workflow "My token": used by Weekly report');
+		expect(lines).toContain('  Workflow "Deleted helper": used by Weekly report');
 	});
 
 	it('lists an entry of a group that it does not know in a last section without description', () => {
@@ -146,8 +146,8 @@ describe('promoteDependencyLines', () => {
 			'  Variable "API_URL": used by Weekly report',
 			'',
 			'Other (2)',
-			'  Credential "New" (httpHeaderAuth): stops the Promote; used by Weekly report',
-			'  Credential "Stray" (httpHeaderAuth): stops the Promote; used by Weekly report',
+			'  Credential "New" (httpHeaderAuth): used by Weekly report',
+			'  Credential "Stray" (httpHeaderAuth): used by Weekly report',
 		]);
 	});
 
@@ -388,6 +388,48 @@ describe('applyDependencyLines', () => {
 		expect(lines[2]).toContain('used by A, B, C, D, E (+2 more)');
 	});
 
+	it('lists the references that are missing on the source as warnings, and no other warning', () => {
+		const lines = applyDependencyLines(
+			[NEEDS_ACTION],
+			[
+				{
+					kind: 'variable',
+					code: 'variable-shadowed',
+					name: 'REGION',
+					scope: { kind: 'global' },
+					consumers: usedBy('Weekly report'),
+				},
+				warning({ kind: 'workflow', name: 'Deleted helper' }),
+			],
+		);
+
+		expect(lines).toEqual([
+			'Needs your action (1)',
+			'Resolve these dependencies on this instance. An entry that stops the Apply must be resolved before you apply.',
+			'  Credential "Billing API" (httpHeaderAuth): not on this instance; stops the Apply; used by Weekly report',
+			'',
+			'Warnings (1)',
+			'These references point to something that does not exist on the source instance.',
+			'  Workflow "Deleted helper": used by Weekly report',
+		]);
+	});
+
+	it('lists an entry of a group that it does not know after the warnings', () => {
+		const lines = applyDependencyLines(
+			[{ ...OUTSIDE_ACCESS, group: 'future-group' as never }],
+			[warning({ kind: 'workflow', name: 'Deleted helper' })],
+		);
+
+		expect(lines).toEqual([
+			'Warnings (1)',
+			'These references point to something that does not exist on the source instance.',
+			'  Workflow "Deleted helper": used by Weekly report',
+			'',
+			'Other (1)',
+			'  Workflow "Send alert": not on this instance and not on the branch; used by Weekly report',
+		]);
+	});
+
 	it('returns no line when nothing is missing', () => {
 		expect(applyDependencyLines([])).toEqual([]);
 	});
@@ -436,5 +478,18 @@ describe('countBlockingOutsideAccess', () => {
 
 	it('counts nothing when the server does not send the list', () => {
 		expect(countBlockingOutsideAccess(undefined)).toBe(0);
+	});
+});
+
+describe('countByBlocking', () => {
+	it('separates the entries that stop the operation from the entries that need a confirmation', () => {
+		expect(countByBlocking([NEEDS_ACTION, OUTSIDE_ACCESS, OTHER_PROJECT])).toEqual({
+			blocking: 1,
+			confirmable: 2,
+		});
+	});
+
+	it('counts nothing when the server does not send the list', () => {
+		expect(countByBlocking(undefined)).toEqual({ blocking: 0, confirmable: 0 });
 	});
 });

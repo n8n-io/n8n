@@ -306,12 +306,27 @@ Export all team projects, commit them, and push to the configured branch.
 ```bash
 n8n-cli promotion-environment promote env-1
 n8n-cli promotion-environment promote env-1 -m "Promote team projects" --force
+n8n-cli promotion-environment promote env-1 \
+  --expected-preview-revision=<revision> --confirm-missing-dependencies
 ```
 
 | Flag | Description |
 |------|-------------|
 | `-m, --message` | Commit message. If you omit it, the commit uses a generated message. |
 | `--force` | Overwrite the remote branch when it has diverged. |
+| `--expected-preview-revision` | `revision` of the Promote check that you reviewed, from `promote-check env-1 --json`. |
+| `--confirm-missing-dependencies` | Promote without the missing dependencies. See [Confirm missing dependencies](#confirm-missing-dependencies). |
+
+| Result | Exit code | What happened |
+|--------|-----------|---------------|
+| `promoted` | `0` | The team projects were pushed. JSON output includes `counts`, `git`, and `missingDependencies`: the confirmed dependencies that the branch does not hold. |
+| `preview-changed` | `3` | Only with `--expected-preview-revision`: the Promote check changed since you reviewed it. Nothing was pushed. Run `promote-check` again. |
+| `missing-dependencies` | `4` | The workflows have missing dependencies, and you did not pass `--confirm-missing-dependencies`. Nothing was pushed. The output lists them and shows the command that confirms them. |
+
+When nothing is missing, the command needs no confirmation and prints only the
+success line. The results are the same as for
+[`promote-selection`](#promotion-environment-promote-selection), which shows the
+output of each result.
 
 Personal projects are not included. A workflow on the branch that moved to a
 personal project is refused, because Apply would delete it on the destination.
@@ -321,7 +336,8 @@ exists, because Apply can't move it between projects. This command works on an
 `instance` Promote environment only.
 
 Run [`promote-check`](#promotion-environment-promote-check) first to see what
-the Promote does not include.
+the Promote does not include. It also prints the `promote` command that confirms
+exactly the dependencies that it lists.
 
 ## `promotion-environment promote-check`
 
@@ -337,11 +353,14 @@ n8n-cli promotion-environment promote-check env-1 --json
 Cannot be promoted (2)
 These dependencies are in a personal project. Move them to a team project to promote them.
   Credential "My token" (httpHeaderAuth): used by Invoices
-  Workflow "Notify owner": stops the Promote; used by Weekly report
+  Workflow "Notify owner": used by Weekly report
 
 Warnings (1)
 These references point to something that does not exist on the source instance.
   Variable "API_URL": used by Weekly report
+
+The Promote needs --confirm-missing-dependencies. To confirm exactly this list, run:
+  n8n-cli promotion-environment promote env-1 --expected-preview-revision=<revision> --confirm-missing-dependencies
 ```
 
 The output has the groups and the lines that
@@ -349,8 +368,12 @@ The output has the groups and the lines that
 project or the owner of a dependency. When nothing is missing, the command
 prints `No missing dependencies and no warnings.`
 
-The command only shows the lists. It exits `0` with or without entries, also
-when an entry stops the Promote.
+The command only shows the lists. It exits `0` with or without entries.
+
+When dependencies are missing, the last lines show the `promote` command that
+confirms them. The command holds the `revision` of this check, so the
+confirmation covers exactly the listed dependencies. Warnings need no
+confirmation, so a check with only warnings shows no command.
 
 Use `--json` to get the full check:
 
@@ -510,7 +533,8 @@ These commands list the missing dependencies and the warnings:
 | `promote-check <id>` | The missing dependencies and the warnings of a Promote of all team projects. |
 | `list-changes <projectId> apply` | The missing dependencies of a project Apply. |
 | `list-apply-changes <id>` | The missing dependencies of a whole-instance Apply. |
-| `apply`, `apply-continue`, `apply-selection`, `apply-selection-continue` | The missing dependencies of an Apply that is `blocked`. |
+| `apply`, `apply-continue`, `apply-selection`, `apply-selection-continue` | The missing dependencies of an Apply that is `blocked`. After a confirmed Apply, the dependencies that are still missing. |
+| `promote`, `promote-selection` | The missing dependencies and the warnings of a Promote that needs a confirmation. After a confirmed Promote, the dependencies that the branch does not hold. |
 
 The output never names the owner of a dependency. It shows the name, the type,
 and the workflows that use the dependency. A workflow that does not exist, or
@@ -536,7 +560,7 @@ without entries is not printed.
 | `Outside your access` | Apply | You can't add the dependency from here. It is in a project that you can't access, or the branch does not hold it. |
 | `Cannot be promoted` | Promote | The dependency is in a personal project. Move it to a team project to promote it. When you can't access one of the entries, the group says that someone with access must move them. |
 | `Needs your action` | Apply | Resolve the dependency on this instance. An entry that stops the Apply must be resolved before you apply. |
-| `Warnings` | Promote | The reference points to something that does not exist on the source instance. |
+| `Warnings` | Promote, Apply (result only) | The reference points to something that does not exist on the source instance. A warning needs no confirmation. |
 | `Other` | Promote, Apply | The server sent a group that this version of the CLI does not know. The group has no description line. Use `--json` for the details. |
 
 Each line shows one entry:
@@ -550,8 +574,9 @@ Each line shows one entry:
   know shows as the server sent it.
 - The name, and for a credential its credential type.
 - For Apply, the reason. See the table below.
-- `stops the Promote` or `stops the Apply` when the operation stops on the
-  entry. Without it, the operation continues without the dependency.
+- `stops the Apply` when the Apply stops on the entry: resolve it first. Without
+  it, the Apply continues without the dependency when you confirm. Nothing stops
+  a Promote, so a Promote line never shows it.
 - `used by`: the workflows that use the dependency. A line names up to five
   workflows and counts the rest, for example `(+2 more)`.
 - For a conditional entry, the ID of the workflow and the condition. See
@@ -606,11 +631,84 @@ and `--jq` give JSON too, also when you pass another `--format`.
 
 With JSON, each command prints the API response and no list. The response holds
 the same entries: `missingDependencies` and `warnings` for Promote, and
-`check.missingDependencies` for Apply.
+`check.missingDependencies` for Apply. A `promoted` or `applied` result holds
+the confirmed entries in `missingDependencies`.
 
 With `--quiet`, `list-changes`, `list-apply-changes`, and `promote-check` print
-nothing: no table, no list, and no JSON. An Apply that is `blocked` prints
-nothing and keeps its exit code.
+nothing: no table, no list, and no JSON. An Apply that is `blocked` and a
+Promote that needs a confirmation print nothing and keep their exit codes.
+
+## Confirm missing dependencies
+
+A Promote or an Apply that has missing dependencies does not continue on its
+own. Resolve what you can, and confirm the rest with
+`--confirm-missing-dependencies`. The CLI never asks a question. Without the
+flag, the command changes nothing, prints the lists on stderr, and exits `4`.
+
+| Command | What needs a confirmation |
+|---------|---------------------------|
+| `promote`, `promote-selection` | Each missing dependency. The branch does not hold it after the Promote. |
+| `apply-continue`, `apply-selection-continue` | Each missing dependency that does not stop the Apply: a line without `stops the Apply`. It stays missing on this instance. Apply does not create it. |
+
+You cannot confirm these entries:
+
+- An Apply entry with `stops the Apply`. Most of these are `Needs your action`
+  entries that you can resolve, for example a credential that you can create.
+  An `Outside your access` entry stops the Apply when the credential exists on
+  this instance and the project of the workflow can't use it. Someone with
+  access must share that credential. Resolve each one first. With the flag, the
+  Apply still exits `4` while one remains.
+- A warning. It needs no confirmation and stops nothing.
+
+Workflows that use a confirmed dependency cannot be published on the destination
+until the dependency exists there.
+
+When nothing is missing, the commands work as before and need no flag.
+
+### Confirm exactly the list that you reviewed
+
+Without `--expected-preview-revision`, the confirmation covers every missing
+dependency when the command runs. This includes a dependency that was not
+missing when you looked. To confirm only the list that you reviewed, also pass
+the `revision` of the preview:
+
+| Command | Take the `revision` from |
+|---------|--------------------------|
+| `promote` | `promote-check <id> --json` |
+| `promote-selection` | `list-changes <projectId> promote --json` |
+| `apply-continue` | `list-apply-changes <id> --json` |
+| `apply-selection-continue` | `list-changes <projectId> apply --json` |
+
+When the list changed since that preview, the command changes nothing and exits
+`3` (`preview-changed`). Review the new list, and run the command with the new
+revision.
+
+### Use in CI
+
+A job has no reviewer, so it passes the flag. The exit code tells what happened.
+
+```bash
+# Promote the team projects. The confirmation covers every missing dependency
+# when the command runs.
+n8n-cli promotion-environment promote env-1 -m "Nightly promote" --confirm-missing-dependencies
+
+# Or confirm only the list that a person reviewed. Keep the check of that review.
+n8n-cli promotion-environment promote-check env-1 --json > check.json
+n8n-cli promotion-environment promote env-1 -m "Nightly promote" \
+  --expected-preview-revision="$(jq -r .revision check.json)" --confirm-missing-dependencies
+# Exit 3: the list changed since the review. Nothing was pushed. Review again.
+
+# Apply the branch tip. Continue without the dependencies that only need a confirmation.
+n8n-cli promotion-environment apply env-2 --json > result.json || true
+if [ "$(jq -r .status result.json)" = "blocked" ]; then
+  n8n-cli promotion-environment apply-continue env-2 \
+    --expected-environment-id="$(jq -r .environmentId result.json)" \
+    --expected-branch="$(jq -r .git.branchName result.json)" \
+    --expected-commit-sha="$(jq -r .git.commitSha result.json)" \
+    --confirm-missing-dependencies
+  # Exit 0: applied. Exit 4: an entry that stops the Apply remains. Resolve it first.
+fi
+```
 
 ## `promotion-environment promote-selection`
 
@@ -625,6 +723,8 @@ n8n-cli promotion-environment promote-selection proj-abc --folder folder-1
 n8n-cli promotion-environment promote-selection proj-abc
 n8n-cli promotion-environment promote-selection proj-abc -w wf-1 \
   --expected-preview-revision=<revision>
+n8n-cli promotion-environment promote-selection proj-abc -w wf-1 \
+  --expected-preview-revision=<revision> --confirm-missing-dependencies
 ```
 
 | Flag | Description |
@@ -633,11 +733,56 @@ n8n-cli promotion-environment promote-selection proj-abc -w wf-1 \
 | `--folder` | Folder ID to promote. Repeat the flag for more than one. |
 | `-m, --message` | Commit message. If you omit it, the commit uses a generated message. |
 | `--expected-preview-revision` | `revision` of the Promote preview that you reviewed, from `list-changes proj-abc promote --json`. |
+| `--confirm-missing-dependencies` | Promote without the missing dependencies of the selected workflows. See [Confirm missing dependencies](#confirm-missing-dependencies). |
 
 | Result | Exit code | What happened |
 |--------|-----------|---------------|
-| `promoted` | `0` | The selection was pushed. JSON output includes `counts` and `git`. |
+| `promoted` | `0` | The selection was pushed. JSON output includes `counts`, `git`, and `missingDependencies`: the confirmed dependencies that the branch does not hold. |
 | `preview-changed` | `3` | Only with `--expected-preview-revision`: the project on this instance or its branch changed since you reviewed the preview. Nothing was pushed. Review the changes again. |
+| `missing-dependencies` | `4` | The selected workflows have missing dependencies, and you did not pass `--confirm-missing-dependencies`. Nothing was pushed. |
+
+A Promote that needs a confirmation lists the
+[missing dependencies](#missing-dependencies) and the warnings on stderr. The
+last line is the same command with `--confirm-missing-dependencies`. It keeps
+your `-w`, `--folder`, `-m`, and `--expected-preview-revision` flags.
+
+```text
+Promote needs a confirmation. Nothing was pushed.
+
+In another project (1)
+These dependencies are in other projects that you can access. This Promote does not include them.
+  Credential "Billing API" (httpHeaderAuth): used by Weekly report, Invoices
+
+Outside your access (1)
+You do not have access to these dependencies.
+  Workflow "Send alert": used by Weekly report
+
+Warnings (1)
+These references point to something that does not exist on the source instance.
+  Variable "API_URL": used by Weekly report
+
+To promote without the missing dependencies, run:
+  n8n-cli promotion-environment promote-selection proj-abc -w wf-1 -w wf-2 -m 'Promote checkout flow' --confirm-missing-dependencies
+```
+
+A confirmed Promote exits `0`. It lists on stderr the dependencies that it left
+out, and prints the success line on stdout:
+
+```text
+The branch does not hold these dependencies:
+
+In another project (1)
+These dependencies are in other projects that you can access. This Promote does not include them.
+  Credential "Billing API" (httpHeaderAuth): used by Weekly report, Invoices
+
+Outside your access (1)
+You do not have access to these dependencies.
+  Workflow "Send alert": used by Weekly report
+
+Promoted selection to main as commit 4f2a9c1d.
+```
+
+With `--json`, the output is the API response for each result, and no list.
 
 The project's own details (name, icon, description, and telemetry tags) are
 always pushed. Without `-w` and `--folder`, the command promotes only the
@@ -678,19 +823,30 @@ instance still matches the preview that you reviewed.
 
 | Result | Exit code | What happened |
 |--------|-----------|---------------|
-| `applied` | `0` | The package was imported. JSON output includes `counts` and `warnings`. |
+| `applied` | `0` | The package was imported. JSON output includes `counts`, `warnings`, and `missingDependencies`: the confirmed dependencies that are still missing. |
 | `source-changed` | `3` | The environment, branch, or commit is not the one you reviewed. Nothing was imported. Review the changes again. |
 | `preview-changed` | `3` | Only with `--expected-preview-revision`: the Apply preview changed since you reviewed it, because this instance or the branch changed. Nothing was imported. Review the changes again. |
-| `blocked` | `4` | The Apply check found missing bindings, access requirements, conflicts, or dependencies outside your access. A conflict can be a destructive data table change or a project deletion. Nothing was imported. The output shows the `apply-continue` command to run after you resolve them. |
+| `blocked` | `4` | The Apply check found missing bindings, access requirements, or conflicts, or missing dependencies that stop the Apply or that need a confirmation. A conflict can be a destructive data table change or a project deletion. Nothing was imported. The output shows the `apply-continue` command to run. |
 
 A `blocked` Apply prints the count of each cause, and then the
 [missing dependencies](#missing-dependencies) by group. `Outside your access`
-counts the dependencies that stop the Apply and that you can't add from here:
-they are in a project that you can't access, or the branch does not hold them.
-Such a dependency is in no other count, so it can be the only cause. Someone
-with access must add it to this instance or to the branch. The title of the
-group below the counts shows the count of all its entries, also of those that
-do not stop the Apply.
+counts the dependencies that stop the Apply and that you can't resolve from
+here: a credential that exists on this instance, that the project of the
+workflow can't use, and that you can't access. Such a dependency is in no other
+count, so it can be the only cause. Someone with access must share the
+credential. The count leaves out the entries that only need a confirmation, so
+it is `0` for a credential that this instance does not have. The title of the
+group below the counts shows the count of all its entries.
+
+The first line tells which case you have:
+
+- `Apply is blocked.` An entry stops the Apply. Resolve the missing bindings,
+  access requirements, and conflicts, and each dependency with
+  `stops the Apply`. Then run the `apply-continue` command of the output.
+- `Apply needs a confirmation.` Nothing stops the Apply, but dependencies stay
+  missing. The output shows the `apply-continue` command with
+  `--confirm-missing-dependencies`. See
+  [Confirm missing dependencies](#confirm-missing-dependencies).
 
 ```text
 Apply is blocked. Nothing was imported.
@@ -699,7 +855,7 @@ Apply is blocked. Nothing was imported.
   Missing variables:   0
   Access requirements: 0
   Conflicts:           0
-  Outside your access: 1
+  Outside your access: 0
 
 Needs your action (2)
 Resolve these dependencies on this instance. An entry that stops the Apply must be resolved before you apply.
@@ -708,10 +864,53 @@ Resolve these dependencies on this instance. An entry that stops the Apply must 
 
 Outside your access (1)
 You cannot add these dependencies from here: they are in a project that you cannot access, or the branch does not hold them.
-  Credential "Shared CRM" (hubspotApi): not on this instance; stops the Apply; used by Invoices
+  Credential "Shared CRM" (hubspotApi): not on this instance; used by Invoices
 
 Run with --json for the details. After you resolve them, run:
   n8n-cli promotion-environment apply-continue env-2 --expected-environment-id=env-2 --expected-branch=main --expected-commit-sha=<full sha>
+The dependencies that do not stop the Apply need a confirmation. To apply without them, add --confirm-missing-dependencies after you resolve the others.
+```
+
+An Apply that only needs a confirmation:
+
+```text
+Apply needs a confirmation. Nothing was imported.
+  Missing projects:    0
+  Missing credentials: 0
+  Missing variables:   0
+  Access requirements: 0
+  Conflicts:           0
+  Outside your access: 0
+
+Needs your action (1)
+Resolve these dependencies on this instance. An entry that stops the Apply must be resolved before you apply.
+  Workflow "Send alert": archived on this instance; used by Weekly report
+
+Outside your access (1)
+You cannot add these dependencies from here: they are in a project that you cannot access, or the branch does not hold them.
+  Credential "Shared CRM" (hubspotApi): not on this instance; used by Invoices
+
+Run with --json for the details. To apply without these dependencies, run:
+  n8n-cli promotion-environment apply-continue env-2 --expected-environment-id=env-2 --expected-branch=main --expected-commit-sha=<full sha> --confirm-missing-dependencies
+```
+
+An Apply that you confirmed exits `0`. It lists on stderr the dependencies that
+are still missing on this instance, and prints the success line on stdout. The
+list also holds a `Warnings` group for the references that were already missing
+on the source instance.
+
+```text
+These dependencies are still missing on this instance:
+
+Needs your action (1)
+Resolve these dependencies on this instance. An entry that stops the Apply must be resolved before you apply.
+  Workflow "Send alert": archived on this instance; used by Weekly report
+
+Outside your access (1)
+You cannot add these dependencies from here: they are in a project that you cannot access, or the branch does not hold them.
+  Credential "Shared CRM" (hubspotApi): not on this instance; used by Invoices
+
+Applied main at commit <full sha> to the instance.
 ```
 
 With `--json`, the output is the full result for each status. For `blocked`, the
@@ -744,6 +943,9 @@ n8n-cli promotion-environment apply-continue env-2 \
 n8n-cli promotion-environment apply-continue env-2 \
   --expected-environment-id=env-2 --expected-branch=main --expected-commit-sha=<full sha> \
   --expected-preview-revision=<revision> --confirm-destructive-changes
+n8n-cli promotion-environment apply-continue env-2 \
+  --expected-environment-id=env-2 --expected-branch=main --expected-commit-sha=<full sha> \
+  --confirm-missing-dependencies
 ```
 
 The three `--expected-*` flags are required. Use the `environmentId`,
@@ -772,6 +974,12 @@ not report. With `--expected-preview-revision`, the flag covers only the changes
 and project deletions of the preview that you reviewed. Without the flag, a
 destructive change or a project deletion blocks the command, and it exits `4`.
 
+Add `--confirm-missing-dependencies` to apply without the missing dependencies
+that do not stop the Apply. They stay missing on this instance, and Apply does
+not create them. Without the flag, such a dependency blocks the command, and it
+exits `4`. The flag does not cover an entry with `stops the Apply`: resolve it
+first. See [Confirm missing dependencies](#confirm-missing-dependencies).
+
 ## Apply a reviewed commit
 
 ```bash
@@ -786,8 +994,13 @@ n8n-cli promotion-environment apply env-2 \
   --expected-preview-revision=<revision from step 1>
 
 # 3. On exit code 3, the source or this instance changed. Go back to step 1.
-# 4. On exit code 4, resolve the missing bindings, access requirements, or conflicts.
-#    Then run the apply-continue command that step 2 printed.
+# 4. On exit code 4, read the first line of the output.
+#    "Apply is blocked.": resolve the missing bindings, access requirements, and conflicts,
+#    and each dependency with "stops the Apply". Then run the apply-continue command that
+#    step 2 printed.
+#    "Apply needs a confirmation.": nothing stops the Apply, but dependencies stay missing.
+#    To apply without them, run the apply-continue command that step 2 printed. It has
+#    --confirm-missing-dependencies.
 ```
 
 ## `promotion-environment apply-selection`
@@ -832,7 +1045,9 @@ The results and exit codes are the same as for `apply`: `applied` (`0`),
 `source-changed` (`3`), `preview-changed` (`3`), and `blocked` (`4`). When it exits `4`, the output shows
 the `apply-selection-continue` command to run after you resolve the bindings; it
 resends the same selection. It also shows the
-[missing dependencies](#missing-dependencies) by group, as `apply` does. With
+[missing dependencies](#missing-dependencies) by group, as `apply` does. When
+the Apply only needs a confirmation, that command has
+`--confirm-missing-dependencies`. With
 `--json`, the output is the full result for each status.
 
 The API key needs `promotions:apply`. The environment is the project's own
@@ -846,6 +1061,9 @@ bindings, access requirements, or conflicts.
 ```bash
 n8n-cli promotion-environment apply-selection-continue proj-abc -w wf-1 -w wf-2 \
   --expected-environment-id=env-2 --expected-branch=main --expected-commit-sha=<full sha>
+n8n-cli promotion-environment apply-selection-continue proj-abc -w wf-1 -w wf-2 \
+  --expected-environment-id=env-2 --expected-branch=main --expected-commit-sha=<full sha> \
+  --confirm-missing-dependencies
 ```
 
 Resend the same `-w` and `--folder` flags. The three `--expected-environment-id`,
@@ -863,6 +1081,13 @@ changes: removed or retyped columns. The values in those columns are removed.
 Rows and other columns are kept. The flag applies all such changes when the
 command runs. This includes changes that the blocked Apply did not report.
 Without the flag, a destructive change blocks the command, and it exits `4`.
+
+Add `--confirm-missing-dependencies` to apply without the missing dependencies
+of the selected workflows that do not stop the Apply. They stay missing on this
+instance, and Apply does not create them. Without the flag, such a dependency
+blocks the command, and it exits `4`. The flag does not cover an entry with
+`stops the Apply`: resolve it first. See
+[Confirm missing dependencies](#confirm-missing-dependencies).
 
 ## `promotion-environment list-missing-projects` / `create-missing-projects`
 

@@ -6,6 +6,7 @@ import type {
 } from '@n8n/api-types/dist/dto/packages/import-package-request.dto';
 import type { ImportResultDto } from '@n8n/api-types/dist/dto/packages/import-result.dto';
 import type {
+	PromotionBindingWarning,
 	PromotionDependencyWarning,
 	PromotionMissingDependency,
 	PromotionMissingProject,
@@ -115,17 +116,31 @@ export interface PromotionGitResult {
 	branchName: string;
 }
 
-/** Outcome of promoting the team projects through an environment. */
-export type PromotePackageResult = {
-	environmentId: string;
-	counts: ExportPackageCounts;
-	git: PromotionGitResult;
-};
+/**
+ * Outcome of promoting the team projects through an environment. Only `promoted` pushed anything.
+ * A server that does not know the missing dependencies sends a `promoted` result without `status`
+ * and without the list.
+ */
+export type PromotePackageResult =
+	| {
+			status?: 'promoted';
+			environmentId: string;
+			counts: ExportPackageCounts;
+			git: PromotionGitResult;
+			/** The confirmed missing dependencies. The branch does not hold them after the Promote. */
+			missingDependencies?: PromotionMissingDependency[];
+	  }
+	| { status: 'preview-changed'; environmentId: string }
+	| {
+			/** The Promote has missing dependencies that the caller did not confirm. */
+			status: 'missing-dependencies';
+			environmentId: string;
+			missingDependencies: PromotionMissingDependency[];
+			warnings: PromotionDependencyWarning[];
+	  };
 
-/** Outcome of promoting a selection of a project. Only `promoted` pushed anything. */
-export type PromoteSelectionResult =
-	| (PromotePackageResult & { status: 'promoted' })
-	| { status: 'preview-changed'; environmentId: string };
+/** Outcome of promoting a selection of a project. It has the statuses of an instance Promote. */
+export type PromoteSelectionResult = PromotePackageResult;
 
 /** The reviewed source that Apply must still match. Any mismatch reports `source-changed`. */
 export interface PromotionExpectedSource {
@@ -174,13 +189,19 @@ export type ApplyPackageResult =
 	| (ApplyPackageIdentity & {
 			status: 'applied';
 			counts: ImportPackageCounts;
-			warnings: Array<Record<string, unknown>>;
+			warnings: PromotionBindingWarning[];
+			/**
+			 * The confirmed missing dependencies. They are still missing after the Apply. A server
+			 * that does not know the list does not send it.
+			 */
+			missingDependencies?: PromotionMissingDependency[];
 	  })
 	| (ApplyPackageIdentity & { status: 'blocked'; check: PromotionApplyCheck })
 	| (ApplyPackageIdentity & { status: 'source-changed' })
 	| (ApplyPackageIdentity & { status: 'preview-changed' });
 
 export type {
+	PromotionBindingWarning,
 	PromotionDependencyWarning,
 	PromotionInstanceApplyPreview,
 	PromotionMissingDependency,
@@ -487,7 +508,15 @@ export class N8nClient {
 		return await this.del<undefined>(`/promotions/environments/${id}/projects/${projectId}`);
 	}
 
-	async promotePackage(id: string, body: { commitMessage?: string; force?: boolean }) {
+	async promotePackage(
+		id: string,
+		body: {
+			commitMessage?: string;
+			force?: boolean;
+			expectedPreviewRevision?: string;
+			confirmMissingDependencies?: boolean;
+		},
+	) {
 		return await this.post<PromotePackageResult>(`/promotions/environments/${id}/promote`, body);
 	}
 
@@ -516,11 +545,13 @@ export class N8nClient {
 		expectedSource: PromotionExpectedSource,
 		confirmDestructiveChanges?: boolean,
 		expectedPreviewRevision?: string,
+		confirmMissingDependencies?: boolean,
 	) {
 		return await this.post<ApplyPackageResult>(`/promotions/environments/${id}/apply/continue`, {
 			expectedSource,
 			confirmDestructiveChanges,
 			expectedPreviewRevision,
+			confirmMissingDependencies,
 		});
 	}
 
@@ -535,12 +566,14 @@ export class N8nClient {
 		selection: PromotionSelection,
 		commitMessage?: string,
 		expectedPreviewRevision?: string,
+		confirmMissingDependencies?: boolean,
 	) {
 		return await this.post<PromoteSelectionResult>(`/promotions/projects/${projectId}/promote`, {
 			...selection,
 			// Dropped by JSON serialization when undefined, so the server defaults apply.
 			commitMessage,
 			expectedPreviewRevision,
+			confirmMissingDependencies,
 		});
 	}
 
@@ -564,12 +597,14 @@ export class N8nClient {
 		expectedSource: PromotionExpectedSource,
 		confirmDestructiveChanges?: boolean,
 		expectedPreviewRevision?: string,
+		confirmMissingDependencies?: boolean,
 	) {
 		return await this.post<ApplyPackageResult>(`/promotions/projects/${projectId}/apply/continue`, {
 			...selection,
 			expectedSource,
 			confirmDestructiveChanges,
 			expectedPreviewRevision,
+			confirmMissingDependencies,
 		});
 	}
 

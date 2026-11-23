@@ -1,4 +1,8 @@
-import { applyDependencyLines, countBlockingOutsideAccess } from './missing-dependencies';
+import {
+	applyDependencyLines,
+	countBlockingOutsideAccess,
+	countByBlocking,
+} from './missing-dependencies';
 import { BaseCommand, EXIT_BLOCKED, EXIT_SOURCE_CHANGED, EXIT_SUCCESS } from '../../base-command';
 import type {
 	ApplyPackageResult,
@@ -7,9 +11,11 @@ import type {
 	PromotionSelection,
 } from '../../client';
 
-type ReportFlags = { quiet?: boolean; format?: string; json?: boolean; jq?: string };
+export type ReportFlags = { quiet?: boolean; format?: string; json?: boolean; jq?: string };
 
-/** The Apply result that stopped for binding setup. */
+type AppliedResult = Extract<ApplyPackageResult, { status: 'applied' }>;
+
+/** The Apply result that stopped for binding setup, or for a confirmation. */
 type BlockedResult = Extract<ApplyPackageResult, { status: 'blocked' }>;
 
 /** Builds the command that resumes a blocked Apply. Shapes differ per entry point. */
@@ -31,6 +37,11 @@ export abstract class PromotionApplyCommand extends BaseCommand {
 		}
 
 		if (result.status === 'applied') {
+			const stillMissing = stillMissingLines(result);
+			// On stderr, so stdout holds only the success line.
+			if (stillMissing.length > 0 && !flags.quiet) {
+				this.logToStderr([...stillMissing, ''].join('\n'));
+			}
 			const warnings =
 				result.warnings.length > 0 ? ` with ${result.warnings.length} warning(s)` : '';
 			this.succeed(
@@ -51,6 +62,17 @@ export abstract class PromotionApplyCommand extends BaseCommand {
 function exitCodeFor(result: ApplyPackageResult): number {
 	if (result.status === 'applied') return EXIT_SUCCESS;
 	return result.status === 'blocked' ? EXIT_BLOCKED : EXIT_SOURCE_CHANGED;
+}
+
+/**
+ * What a successful Apply left unresolved. A warning is not a missing dependency, so warnings
+ * alone get no heading.
+ */
+function stillMissingLines({ missingDependencies = [], warnings }: AppliedResult): string[] {
+	const lines = applyDependencyLines(missingDependencies, warnings);
+	return missingDependencies.length > 0
+		? ['These dependencies are still missing on this instance:', '', ...lines]
+		: lines;
 }
 
 function stopMessage(
@@ -85,16 +107,28 @@ function blockedMessage(
 		check.missingBindings.filter((binding) => binding.kind === kind).length;
 	const projectDeletions = check.conflicts.filter(isProjectDeletion);
 	const dependencies = applyDependencyLines(check.missingDependencies);
+	const { blocking, confirmable } = countByBlocking(check.missingDependencies);
+	// Entries that do not stop the Apply only need a confirmation. The other lists always stop it.
+	const needsOnlyConfirmation =
+		confirmable > 0 &&
+		blocking +
+			check.missingProjects.length +
+			check.missingBindings.length +
+			check.accessRequirements.length +
+			check.conflicts.length ===
+			0;
 
 	return [
-		'Apply is blocked. Nothing was imported.',
+		needsOnlyConfirmation
+			? 'Apply needs a confirmation. Nothing was imported.'
+			: 'Apply is blocked. Nothing was imported.',
 		`  Missing projects:    ${check.missingProjects.length}`,
 		`  Missing credentials: ${bindings('credential')}`,
 		`  Missing variables:   ${bindings('variable')}`,
 		`  Access requirements: ${check.accessRequirements.length}`,
 		`  Conflicts:           ${check.conflicts.length}`,
 		// These entries are in no other list, so an Apply can stop on them alone. The line counts
-		// causes, so it leaves out the entries that do not stop the Apply.
+		// causes, so it leaves out the entries that only need a confirmation.
 		`  Outside your access: ${countBlockingOutsideAccess(check.missingDependencies)}`,
 		...(projectDeletions.length > 0
 			? [
@@ -103,8 +137,20 @@ function blockedMessage(
 				]
 			: []),
 		...(dependencies.length > 0 ? ['', ...dependencies, ''] : []),
-		'Run with --json for the details. After you resolve them, run:',
-		`  ${continueCommand(result)}`,
+		...(needsOnlyConfirmation
+			? [
+					'Run with --json for the details. To apply without these dependencies, run:',
+					`  ${continueCommand(result)} --confirm-missing-dependencies`,
+				]
+			: [
+					'Run with --json for the details. After you resolve them, run:',
+					`  ${continueCommand(result)}`,
+				]),
+		...(confirmable > 0 && !needsOnlyConfirmation
+			? [
+					'The dependencies that do not stop the Apply need a confirmation. To apply without them, add --confirm-missing-dependencies after you resolve the others.',
+				]
+			: []),
 		...(check.conflicts.some(({ code }) => code === 'destructive-change')
 			? [
 					'To also apply data table changes that remove or retype columns, add --confirm-destructive-changes. The values in those columns are removed.',

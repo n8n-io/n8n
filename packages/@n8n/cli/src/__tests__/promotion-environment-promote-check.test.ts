@@ -44,13 +44,19 @@ const CHECK: PromotionPromoteCheck = {
 			group: 'personal',
 			reason: 'personal-project',
 			accessible: false,
-			blocking: true,
+			blocking: false,
 			consumers,
 		},
 	],
 	warnings: [{ kind: 'variable', code: 'missing-on-source', name: 'API_URL', consumers }],
 	revision: 'c'.repeat(64),
 };
+
+const WARNINGS = [
+	'Warnings (1)',
+	'These references point to something that does not exist on the source instance.',
+	'  Variable "API_URL": used by Weekly report, Invoices',
+];
 
 const NOTHING_MISSING: PromotionPromoteCheck = { ...CHECK, missingDependencies: [], warnings: [] };
 
@@ -80,7 +86,7 @@ describe('promotion-environment promote-check command', () => {
 		expect(commands['promotion-environment:promote-check']).toBe(PromotionEnvironmentPromoteCheck);
 	});
 
-	it('prints the groups and the warnings of the instance Promote, and exits 0', async () => {
+	it('prints the groups, the warnings and the command that confirms this list, and exits 0', async () => {
 		const { stdout, logToStderr, exit, getPromoteCheck } = await runPromoteCheck(
 			{ format: 'table' },
 			CHECK,
@@ -92,16 +98,26 @@ describe('promotion-environment promote-check command', () => {
 				'Cannot be promoted (2)',
 				'These dependencies are in a personal project. Someone with access must move them to a team project to promote them.',
 				'  Credential "My token" (httpHeaderAuth): used by Weekly report, Invoices',
-				'  Workflow "Send alert": stops the Promote; used by Weekly report, Invoices',
+				'  Workflow "Send alert": used by Weekly report, Invoices',
 				'',
-				'Warnings (1)',
-				'These references point to something that does not exist on the source instance.',
-				'  Variable "API_URL": used by Weekly report, Invoices',
+				...WARNINGS,
+				'',
+				'The Promote needs --confirm-missing-dependencies. To confirm exactly this list, run:',
+				`  n8n-cli promotion-environment promote env-1 --expected-preview-revision=${CHECK.revision} --confirm-missing-dependencies`,
 			].join('\n'),
 		]);
 		expect(logToStderr).not.toHaveBeenCalled();
-		// The command only shows. A blocking entry does not change the exit code.
+		// The command only shows. An entry does not change the exit code.
 		expect(exit).not.toHaveBeenCalled();
+	});
+
+	it('prints no command when the check has only warnings, because they need no confirmation', async () => {
+		const { stdout } = await runPromoteCheck(
+			{ format: 'table' },
+			{ ...CHECK, missingDependencies: [] },
+		);
+
+		expect(stdout).toEqual([WARNINGS.join('\n')]);
 	});
 
 	it('does not name the project of a consumer', async () => {

@@ -79,6 +79,12 @@ imported Agents. Only `source` is supported for `--id-policy`.
 See [package commands](docs/commands/package.md)
 for scopes, defaults, and examples. Agent packages use the ordinary import command.
 
+`promotion-environment promote`, `promote-selection`, `apply-continue`, and
+`apply-selection-continue` stop with exit code `4` when workflows have missing
+dependencies that need a confirmation. They list the dependencies and change
+nothing. Pass `--confirm-missing-dependencies` to continue without them. See
+[Confirm missing dependencies](docs/commands/promotions.md#confirm-missing-dependencies).
+
 ## Output formats
 
 All commands support three output formats via `--format`:

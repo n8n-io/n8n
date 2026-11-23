@@ -10,15 +10,17 @@ import {
 	expectedSourceFlags,
 	toExpectedSource,
 } from './expected-source';
+import { confirmMissingDependenciesFlag } from './missing-dependencies';
 import { BaseCommand } from '../../base-command';
 
 export default class PromotionEnvironmentApplyContinue extends PromotionApplyCommand {
 	static override description =
-		'Continue a blocked Apply after you resolve its bindings, access requirements, or conflicts. Pass the environment ID, branch, and commit SHA that the blocked Apply reported. Pass --expected-preview-revision to continue only when this instance still matches the reviewed preview; --confirm-destructive-changes then covers only the changes that this preview showed. Exits 3 when the reviewed source or preview no longer matches and 4 when bindings are still missing or a destructive data table change or project deletion is not confirmed with --confirm-destructive-changes; nothing is imported in either case. On exit 4, the output lists the missing dependencies of the workflows by group, but only when the Apply has missing dependencies and you do not pass --quiet.';
+		'Continue a blocked Apply after you resolve its bindings, access requirements, or conflicts. Pass the environment ID, branch, and commit SHA that the blocked Apply reported. Pass --expected-preview-revision to continue only when this instance still matches the reviewed preview; --confirm-destructive-changes then covers only the changes that this preview showed. Exits 3 when the reviewed source or preview no longer matches and 4 when bindings are still missing, a destructive data table change or project deletion is not confirmed with --confirm-destructive-changes, or missing dependencies that do not stop the Apply are not confirmed with --confirm-missing-dependencies; nothing is imported in either case. On exit 4, the output lists the missing dependencies of the workflows by group, but only when the Apply has missing dependencies and you do not pass --quiet.';
 
 	static override examples = [
 		'<%= config.bin %> promotion-environment apply-continue env-1 --expected-environment-id=env-1 --expected-branch=main --expected-commit-sha=<full sha>',
 		'<%= config.bin %> promotion-environment apply-continue env-1 --expected-environment-id=env-1 --expected-branch=main --expected-commit-sha=<full sha> --expected-preview-revision=<revision> --confirm-destructive-changes',
+		'<%= config.bin %> promotion-environment apply-continue env-1 --expected-environment-id=env-1 --expected-branch=main --expected-commit-sha=<full sha> --confirm-missing-dependencies',
 	];
 
 	static override args = { id: Args.string({ description: 'Environment ID', required: true }) };
@@ -32,6 +34,7 @@ export default class PromotionEnvironmentApplyContinue extends PromotionApplyCom
 				'Also apply data table changes that remove or retype columns, and delete the team projects that the package does not hold. The values in those columns and everything in those projects are removed.',
 			aliases: ['confirm-destructive-changes'],
 		}),
+		...confirmMissingDependenciesFlag('Apply'),
 	};
 
 	async run() {
@@ -45,6 +48,7 @@ export default class PromotionEnvironmentApplyContinue extends PromotionApplyCom
 				expectedSource,
 				flags.confirmDestructiveChanges,
 				flags.expectedPreviewRevision,
+				flags.confirmMissingDependencies,
 			);
 			this.reportApplyResult(
 				result,

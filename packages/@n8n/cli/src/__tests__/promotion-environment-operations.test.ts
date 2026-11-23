@@ -83,8 +83,9 @@ const OUTSIDE_ACCESS_DEPENDENCY = {
 	credentialType: 'hubspotApi',
 	group: 'outside-access',
 	accessible: false,
+	blocking: false,
 };
-/** Only entries outside the access of the caller stop this Apply. No other list has an entry. */
+/** This Apply only needs a confirmation: no entry stops it, and no other list has an entry. */
 const BLOCKED_BY_DEPENDENCIES_RESULT = {
 	...IDENTITY,
 	status: 'blocked',
@@ -383,28 +384,29 @@ describe('missing dependencies of a blocked Apply', () => {
 		return logToStderr.mock.calls[0][0];
 	}
 
-	it('counts and lists the entries when nothing else stops the Apply', async () => {
+	it('asks for a confirmation, with the Continue command that gives it, when nothing stops the Apply', async () => {
 		expect(await blockedMessageOf(BLOCKED_BY_DEPENDENCIES_RESULT)).toBe(
 			[
-				'Apply is blocked. Nothing was imported.',
+				'Apply needs a confirmation. Nothing was imported.',
 				'  Missing projects:    0',
 				'  Missing credentials: 0',
 				'  Missing variables:   0',
 				'  Access requirements: 0',
 				'  Conflicts:           0',
-				'  Outside your access: 1',
+				// The line counts only the entries that stop the Apply.
+				'  Outside your access: 0',
 				'',
 				'Outside your access (1)',
 				'You cannot add these dependencies from here: they are in a project that you cannot access, or the branch does not hold them.',
-				'  Credential "Shared CRM" (hubspotApi): not on this instance; stops the Apply; used by Weekly report',
+				'  Credential "Shared CRM" (hubspotApi): not on this instance; used by Weekly report',
 				'',
-				'Run with --json for the details. After you resolve them, run:',
-				CONTINUE,
+				'Run with --json for the details. To apply without these dependencies, run:',
+				`${CONTINUE} --confirm-missing-dependencies`,
 			].join('\n'),
 		);
 	});
 
-	it('lists the entries by group after the counts when other lists have entries too', async () => {
+	it('stays blocked when an entry stops the Apply, and tells that the other entries need a confirmation', async () => {
 		const message = await blockedMessageOf({
 			...BLOCKED_RESULT,
 			check: {
@@ -434,7 +436,7 @@ describe('missing dependencies of a blocked Apply', () => {
 				'  Missing variables:   1',
 				'  Access requirements: 0',
 				'  Conflicts:           1',
-				'  Outside your access: 1',
+				'  Outside your access: 0',
 				'',
 				'Needs your action (2)',
 				'Resolve these dependencies on this instance. An entry that stops the Apply must be resolved before you apply.',
@@ -443,10 +445,11 @@ describe('missing dependencies of a blocked Apply', () => {
 				'',
 				'Outside your access (1)',
 				'You cannot add these dependencies from here: they are in a project that you cannot access, or the branch does not hold them.',
-				'  Credential "Shared CRM" (hubspotApi): not on this instance; stops the Apply; used by Weekly report',
+				'  Credential "Shared CRM" (hubspotApi): not on this instance; used by Weekly report',
 				'',
 				'Run with --json for the details. After you resolve them, run:',
 				CONTINUE,
+				'The dependencies that do not stop the Apply need a confirmation. To apply without them, add --confirm-missing-dependencies after you resolve the others.',
 			].join('\n'),
 		);
 		expect(message).not.toContain('Finance');
@@ -459,21 +462,31 @@ describe('missing dependencies of a blocked Apply', () => {
 			check: {
 				...BLOCKED_BY_DEPENDENCIES_RESULT.check,
 				missingDependencies: [
-					OUTSIDE_ACCESS_DEPENDENCY,
-					{ ...OUTSIDE_ACCESS_DEPENDENCY, name: 'Old CRM', blocking: false },
+					// The credential exists on this instance, and the project cannot use it.
+					{ ...OUTSIDE_ACCESS_DEPENDENCY, reason: 'not-shared', blocking: true },
+					{ ...OUTSIDE_ACCESS_DEPENDENCY, name: 'Old CRM' },
 				],
 			},
 		});
 
 		expect(message).toContain(
 			[
+				'Apply is blocked. Nothing was imported.',
+				'  Missing projects:    0',
+				'  Missing credentials: 0',
+				'  Missing variables:   0',
+				'  Access requirements: 0',
+				'  Conflicts:           0',
 				'  Outside your access: 1',
 				'',
 				'Outside your access (2)',
 				'You cannot add these dependencies from here: they are in a project that you cannot access, or the branch does not hold them.',
-				'  Credential "Shared CRM" (hubspotApi): not on this instance; stops the Apply; used by Weekly report',
+				'  Credential "Shared CRM" (hubspotApi): this project cannot use it; stops the Apply; used by Weekly report',
 				'  Credential "Old CRM" (hubspotApi): not on this instance; used by Weekly report',
 				'',
+				'Run with --json for the details. After you resolve them, run:',
+				CONTINUE,
+				'The dependencies that do not stop the Apply need a confirmation.',
 			].join('\n'),
 		);
 	});
@@ -483,7 +496,9 @@ describe('missing dependencies of a blocked Apply', () => {
 			...BLOCKED_BY_DEPENDENCIES_RESULT,
 			check: {
 				...BLOCKED_BY_DEPENDENCIES_RESULT.check,
-				missingDependencies: [{ ...OUTSIDE_ACCESS_DEPENDENCY, group: 'future-group' }],
+				missingDependencies: [
+					{ ...OUTSIDE_ACCESS_DEPENDENCY, group: 'future-group', blocking: true },
+				],
 			},
 		});
 
@@ -611,11 +626,11 @@ describe.each([
 		expect(stdout).toEqual([]);
 		expect(logToStderr.mock.calls[0][0]).toContain(
 			[
-				'  Outside your access: 1',
+				'  Outside your access: 0',
 				'',
 				'Outside your access (1)',
 				'You cannot add these dependencies from here: they are in a project that you cannot access, or the branch does not hold them.',
-				'  Credential "Shared CRM" (hubspotApi): not on this instance; stops the Apply; used by Weekly report',
+				'  Credential "Shared CRM" (hubspotApi): not on this instance; used by Weekly report',
 				'',
 				'Run with --json for the details.',
 			].join('\n'),
@@ -640,6 +655,7 @@ describe('promotion-environment apply-continue command', () => {
 		expect(continueApplyPackage).toHaveBeenCalledWith(
 			'env-1',
 			EXPECTED_SOURCE,
+			undefined,
 			undefined,
 			undefined,
 		);
@@ -673,6 +689,7 @@ describe('promotion-environment apply-continue command', () => {
 			EXPECTED_SOURCE,
 			true,
 			PREVIEW_REVISION,
+			undefined,
 		);
 	});
 });
@@ -747,6 +764,7 @@ describe('promotion-environment promote-selection command', () => {
 			{ workflowIds: ['wf-1', 'wf-2'] },
 			undefined,
 			undefined,
+			undefined,
 		);
 		// A selection can be deletions only, so the summary names the branch and
 		// commit instead of a workflow count that would read "0" for that case.
@@ -780,6 +798,7 @@ describe('promotion-environment promote-selection command', () => {
 			{ workflowIds: ['wf-1'] },
 			'Promote checkout flow',
 			undefined,
+			undefined,
 		);
 	});
 
@@ -811,6 +830,7 @@ describe('promotion-environment promote-selection command', () => {
 			{ workflowIds: ['wf-1'] },
 			undefined,
 			revision,
+			undefined,
 		);
 		expect(logToStderr).toHaveBeenCalledWith(
 			expect.stringContaining(
@@ -972,6 +992,7 @@ describe('promotion-environment apply-selection-continue command', () => {
 			EXPECTED_SOURCE,
 			undefined,
 			undefined,
+			undefined,
 		);
 		expect(exit).toHaveBeenCalledWith(3);
 	});
@@ -1004,6 +1025,7 @@ describe('promotion-environment apply-selection-continue command', () => {
 			{ workflowIds: ['wf-1'] },
 			EXPECTED_SOURCE,
 			true,
+			undefined,
 			undefined,
 		);
 	});

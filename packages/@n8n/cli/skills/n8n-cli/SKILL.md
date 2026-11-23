@@ -212,6 +212,9 @@ n8n-cli promotion-environment create --file=apply.json
 #    Promote does not include. It changes nothing, and entries do not change its exit code.
 n8n-cli promotion-environment promote-check <promoteId>
 n8n-cli promotion-environment promote <promoteId>
+# Exit 4: the workflows have missing dependencies. Nothing was pushed. The output lists
+# them and shows the same command with --confirm-missing-dependencies. Run that command
+# only when the user accepts to promote without them.
 n8n-cli promotion-environment apply <applyId>
 
 # A project that exists only in the Apply package must exist here before you
@@ -247,11 +250,14 @@ n8n-cli promotion-environment apply <applyId> \
   --expected-environment-id=<source.environmentId> --expected-branch=<source.branchName> \
   --expected-commit-sha=<commitSha> --expected-preview-revision=<revision>
 # Exit 3: the source or this instance changed since the review. Review again.
-# Exit 4: the Apply check found missing bindings, access requirements, conflicts, or dependencies
-# outside your access. The output lists the missing dependencies by group. Resolve them,
-# then run the apply-continue command that apply printed:
+# Exit 4, first line "Apply is blocked.": the Apply check found missing bindings, access
+# requirements, conflicts, or dependencies that stop the Apply. The output lists the missing
+# dependencies by group. Resolve them, then run the apply-continue command that apply printed:
 n8n-cli promotion-environment apply-continue <applyId> \
   --expected-environment-id=<applyId> --expected-branch=<branch> --expected-commit-sha=<full sha>
+# Exit 4, first line "Apply needs a confirmation.": nothing stops the Apply, but dependencies
+# stay missing on this instance. The printed apply-continue command has
+# --confirm-missing-dependencies. Run it only when the user accepts to apply without them.
 # Setting up bindings changes the preview. To continue only with a reviewed preview, run
 # list-apply-changes again and add --expected-preview-revision=<new revision>.
 # To also apply destructive data table changes and delete the team projects that the
@@ -273,6 +279,9 @@ n8n-cli promotion-environment list-changes <projectId> promote --json > preview.
 n8n-cli promotion-environment promote-selection <projectId> -w <workflowId> \
   --expected-preview-revision="$(jq -r .revision preview.json)"
 # Exit 3: the project or its branch changed since the review. Review again.
+# Exit 4: the selected workflows have missing dependencies. Nothing was pushed. To promote
+# without them, add --confirm-missing-dependencies. With --expected-preview-revision, the
+# confirmation covers only the list of that preview.
 
 # Apply only the reviewed selection. Take the source and the revision from the same preview.
 n8n-cli promotion-environment list-changes <projectId> apply --json > preview.json
@@ -352,12 +361,16 @@ Key points:
   or `preview-changed`) or `4` (`blocked`). Check `$?`, or the `status` field in JSON output, before you
   read `counts`. With `--json`, a `blocked` result lists what is missing under
   `check`.
+- `promote` and `promote-selection` push nothing on exit code `3`
+  (`preview-changed`) or `4` (`missing-dependencies`). Only the status `promoted`
+  pushed.
 - The `--expected-environment-id`, `--expected-branch`, and
   `--expected-commit-sha` flags go together: pass all three or none. The commit
   SHA must be the full SHA. `--expected-preview-revision` is separate. It works
-  with `promote-selection`, `apply`, `apply-continue`, `apply-selection`, and
-  `apply-selection-continue`. Take it from `list-apply-changes` for a whole-instance
-  Apply and from `list-changes <projectId> <promote|apply>` for a selection.
+  with `promote`, `promote-selection`, `apply`, `apply-continue`, `apply-selection`, and
+  `apply-selection-continue`. Take it from `promote-check` for a Promote of all team
+  projects, from `list-apply-changes` for a whole-instance Apply, and from
+  `list-changes <projectId> <promote|apply>` for a selection.
 - A missing dependency is a credential, variable, sub-workflow, or error workflow
   that a workflow uses and that is not there after the operation. `list-changes`,
   `list-apply-changes`, `promote-check`, and a `blocked` Apply list them by
@@ -371,13 +384,25 @@ Key points:
   lists on stderr, after the table. With `--json`, read `missingDependencies` and
   `warnings` (Promote) or `check.missingDependencies` (Apply) instead. There, an
   entry of the group `other-project` holds the project in `project`.
-- An entry outside your access can be the only cause of a `blocked` Apply. Someone
-  with access must add the dependency to the instance. The `Outside your access`
-  count of a `blocked` Apply holds only the entries that stop the Apply.
+- Missing dependencies need a confirmation. There is no prompt:
+  `--confirm-missing-dependencies` on `promote`, `promote-selection`,
+  `apply-continue`, and `apply-selection-continue` is the confirmation. Without it,
+  the command changes nothing, lists the entries on stderr, and exits `4`. Pass the
+  flag only when the user accepts that the dependencies stay missing. Add
+  `--expected-preview-revision` to confirm exactly the reviewed list.
+- On Apply, an entry with `stops the Apply` cannot be confirmed. Resolve it first,
+  for example create the credential. An entry without it only needs the
+  confirmation, for example a credential that is in a project that you can't access,
+  or that the branch does not hold. Apply does not create it. The
+  `Outside your access` count of a `blocked` Apply holds only the entries that stop
+  the Apply, so it is `0` when the Apply only needs a confirmation.
 - A conditional entry of `list-changes <projectId> apply` ends with
   `only when the Apply includes <id>` or `only when the Apply does not include <id>`.
   The ID is the ID of the missing sub-workflow or error workflow, not of a
   workflow after `used by`.
+- After a confirmed Promote or Apply, the command exits `0` and lists on stderr the
+  dependencies that are still missing. With `--json`, read `missingDependencies` of
+  the result.
 - API key scopes for this group are named `promotions:*`:
   - `promotion-provider create`, `update`, `delete`, `list-repositories` and
     `list-branches` need `manageProviders`. `promotion-provider list` and `get`

@@ -61,7 +61,7 @@ const PREVIEW_REVISION = /^[0-9a-f]{64}$/;
 export const expectedPreviewRevisionFlag = {
 	expectedPreviewRevision: Flags.string({
 		description:
-			'Revision of the reviewed preview, from `list-changes <projectId> <promote|apply> --json` or `list-apply-changes <id> --json`',
+			'Revision of the reviewed preview, from `list-changes <projectId> <promote|apply> --json`, `list-apply-changes <id> --json` or `promote-check <id> --json`',
 		aliases: ['expected-preview-revision'],
 		parse: async (input: string) => {
 			if (!PREVIEW_REVISION.test(input)) {
