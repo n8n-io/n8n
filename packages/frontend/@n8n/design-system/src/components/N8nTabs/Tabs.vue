@@ -1,6 +1,6 @@
 <script lang="ts" setup generic="Value extends string | number">
 import { usePreferredReducedMotion } from '@vueuse/core';
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { computed, getCurrentInstance, onMounted, onUnmounted, ref, watch } from 'vue';
 import { RouterLink } from 'vue-router';
 
 import { useI18n } from '../../composables/useI18n';
@@ -35,6 +35,10 @@ defineSlots<{
 
 const { t } = useI18n();
 const reducedMotion = usePreferredReducedMotion();
+const vnodeProps = getCurrentInstance()?.vnode.props ?? {};
+const isModelControlled = 'modelValue' in vnodeProps || 'model-value' in vnodeProps;
+const internalValue = ref<Value | undefined>(props.defaultValue);
+const selectedValue = computed(() => (isModelControlled ? props.modelValue : internalValue.value));
 const scrollPosition = ref(0);
 const canScrollRight = ref(false);
 const hasOverflow = ref(false);
@@ -55,7 +59,7 @@ function getTabsElement(): HTMLElement | undefined {
 
 /** The shared indicator cannot read the colour of the active tab, so it gets the state here. */
 const activeOption = computed(() =>
-	props.options.find((option) => option.value === props.modelValue),
+	props.options.find((option) => option.value === selectedValue.value),
 );
 
 function updateScrollState() {
@@ -122,6 +126,7 @@ function handleUpdate(value: string | number) {
 	const option = props.options.find((item) => item.value === value);
 	/** The router changes the page for route options, so the consumer does not get a selection. */
 	if (!option || option.disabled || isLinkOption(option)) return;
+	if (!isModelControlled) internalValue.value = option.value;
 	emit('update:modelValue', option.value);
 }
 
@@ -152,7 +157,7 @@ function scroll(direction: 'left' | 'right') {
 
 <template>
 	<TabsRoot
-		:model-value="modelValue"
+		:model-value="selectedValue"
 		:orientation="orientation"
 		activation-mode="manual"
 		@update:model-value="handleUpdate"
@@ -249,8 +254,8 @@ function scroll(direction: 'left' | 'right') {
 			</div>
 		</div>
 
-		<TabsContent v-if="$slots.content && modelValue !== undefined" :value="modelValue">
-			<slot name="content" :value="modelValue" />
+		<TabsContent v-if="$slots.content && selectedValue !== undefined" :value="selectedValue">
+			<slot name="content" :value="selectedValue" />
 		</TabsContent>
 
 		<slot />

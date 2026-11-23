@@ -51,8 +51,16 @@ interface TabOptions<Value extends string | number> {
 }
 
 interface TabsProps<Value extends string | number = string | number> {
-  /** The selected tab. Bind with `v-model`. */
+  /**
+   * The selected tab. Bind it with `v-model`.
+   * The parent value stays in place until the parent accepts the update.
+   */
   modelValue?: Value;
+  /**
+   * The selected tab on first render when `modelValue` is omitted.
+   * The tabs keep later changes.
+   */
+  defaultValue?: Value;
   /**
    * The tabs to render.
    * @default []
@@ -99,7 +107,7 @@ interface TabsSlots<Value extends string | number> {
 
 ## Behaviour
 
-- **Must** select exactly one view at a time. The caller owns the selected value through `v-model`.
+- **Must** select one view at a time. Pass `modelValue` when the parent owns the selection. Omit `modelValue` and pass `defaultValue` to let the component keep the selection.
 - **Must** let the caller choose who renders the content: the tab bar only, the caller's own content in `#default`, or component panels in `#content`.
 - **Must** treat route options as navigation, not selection. A click goes to the route and does not emit `update:modelValue`.
 - **Must** move focus with arrow keys and select only on Enter or Space, so keyboard users can look through tabs with no view change.

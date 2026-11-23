@@ -11,8 +11,16 @@ export type {
 
 /** Extracted from the SFC so the generic props are nameable in the emitted declaration (TS4082). */
 export interface TabsProps<Value extends string | number = string | number> {
-	/** The selected tab. Bind with `v-model` when the parent owns the selection. */
+	/**
+	 * The selected tab. Bind it with `v-model`.
+	 * The parent value stays in place until the parent accepts the update.
+	 */
 	modelValue?: Value;
+	/**
+	 * The selected tab on first render when `modelValue` is omitted.
+	 * The tabs keep later changes.
+	 */
+	defaultValue?: Value;
 	/**
 	 * The tabs to render. Callers can narrow `Value` outside the component.
 	 * @default []

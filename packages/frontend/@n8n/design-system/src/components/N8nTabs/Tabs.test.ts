@@ -185,6 +185,54 @@ describe('N8nTabs', () => {
 		expect(emitted('update:modelValue')).toBeUndefined();
 	});
 
+	it('keeps the parent value until the parent accepts the update', async () => {
+		const enabled = [
+			{ value: 'first', label: 'First' },
+			{ value: 'second', label: 'Second' },
+		];
+		const { getByRole, rerender } = render(N8nTabs, {
+			props: { modelValue: 'first', options: enabled },
+		});
+
+		await userEvent.click(getByRole('tab', { name: 'Second' }));
+
+		expect(getByRole('tab', { name: 'First' })).toHaveAttribute('data-state', 'active');
+		expect(getByRole('tab', { name: 'Second' })).toHaveAttribute('data-state', 'inactive');
+
+		await rerender({ modelValue: 'second', options: enabled });
+
+		expect(getByRole('tab', { name: 'Second' })).toHaveAttribute('data-state', 'active');
+	});
+
+	it('uses modelValue when defaultValue is also set', () => {
+		const enabled = [
+			{ value: 'first', label: 'First' },
+			{ value: 'second', label: 'Second' },
+		];
+		const { getByRole } = render(N8nTabs, {
+			props: { modelValue: 'second', defaultValue: 'first', options: enabled },
+		});
+
+		expect(getByRole('tab', { name: 'Second' })).toHaveAttribute('data-state', 'active');
+	});
+
+	it('uses defaultValue when the parent does not bind a value', async () => {
+		const enabled = [
+			{ value: 'first', label: 'First' },
+			{ value: 'second', label: 'Second' },
+		];
+		const { getByRole, emitted } = render(N8nTabs, {
+			props: { defaultValue: 'first', options: enabled },
+		});
+
+		expect(getByRole('tab', { name: 'First' })).toHaveAttribute('data-state', 'active');
+
+		await userEvent.click(getByRole('tab', { name: 'Second' }));
+
+		expect(getByRole('tab', { name: 'Second' })).toHaveAttribute('data-state', 'active');
+		expect(emitted('update:modelValue')).toEqual([['second']]);
+	});
+
 	it('renders the suffix slot outside the tab list', () => {
 		const { getByText } = render(N8nTabs, {
 			props: { modelValue: 'first', options },

@@ -2,8 +2,9 @@ import type { StoryFn } from '@storybook/vue3-vite';
 import { action } from 'storybook/actions';
 import { ref } from 'vue';
 
-import N8nTabs from './Tabs.vue';
 import type { TabOptions } from '../../types/tabs';
+import N8nButton from '../N8nButton';
+import N8nTabs from './Tabs.vue';
 
 export default {
 	title: 'Core/Tabs',
@@ -257,3 +258,39 @@ export const Vertical: StoryFn = (args) => ({
 	`,
 });
 Vertical.args = { ...sharedArgs, orientation: 'vertical' };
+
+export const ControlledUncontrolled: StoryFn = () => ({
+	components: { N8nButton, N8nTabs },
+	setup() {
+		const value = ref<DefaultTab>('overview');
+		return { value, options: defaultTabs };
+	},
+	template: `
+		<div style="display: flex; flex-direction: column; gap: var(--spacing--xl);">
+			<section style="display: flex; flex-direction: column; gap: var(--spacing--sm);">
+				<h3 style="margin: 0; font-size: var(--font-size--sm); font-weight: var(--font-weight--bold);">
+					Controlled
+				</h3>
+				<n8n-tabs v-model="value" :options="options" />
+				<div style="display: flex; gap: var(--spacing--2xs); flex-wrap: wrap;">
+					<n8n-button
+						v-for="option in options"
+						:key="option.value"
+						size="small"
+						variant="outline"
+						@click="value = option.value"
+					>
+						{{ option.label }}
+					</n8n-button>
+				</div>
+			</section>
+			<section style="display: flex; flex-direction: column; gap: var(--spacing--sm);">
+				<h3 style="margin: 0; font-size: var(--font-size--sm); font-weight: var(--font-weight--bold);">
+					Uncontrolled
+				</h3>
+				<n8n-tabs default-value="overview" :options="options" />
+			</section>
+		</div>
+	`,
+});
+ControlledUncontrolled.storyName = 'Controlled/Uncontrolled';
