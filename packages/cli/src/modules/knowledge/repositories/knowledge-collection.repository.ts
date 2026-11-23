@@ -131,9 +131,12 @@ export class KnowledgeCollectionRepository {
 			return [];
 		}
 
-		const homeProjects = await this.findHomeProjects(projectIds, manager);
-		const fileTotals = await this.findFileTotals(collectionIds, manager);
-		const agentCounts = await this.findAgentCounts(collectionIds, manager);
+		// The three reads do not depend on each other.
+		const [homeProjects, fileTotals, agentCounts] = await Promise.all([
+			this.findHomeProjects(projectIds, manager),
+			this.findFileTotals(collectionIds, manager),
+			this.findAgentCounts(collectionIds, manager),
+		]);
 
 		return collections.flatMap((collection) => {
 			const homeProject = collection.projectId ? homeProjects.get(collection.projectId) : undefined;

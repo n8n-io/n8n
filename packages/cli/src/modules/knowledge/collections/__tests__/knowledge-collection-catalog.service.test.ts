@@ -1,11 +1,5 @@
-import type { RoleService } from '@n8n/backend-services';
-import {
-	GLOBAL_MEMBER_ROLE,
-	GLOBAL_OWNER_ROLE,
-	type ProjectRelationRepository,
-	type ProjectRepository,
-	type User,
-} from '@n8n/db';
+import type { ProjectScopeService } from '@n8n/backend-services';
+import type { ProjectRepository, User } from '@n8n/db';
 import { ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import type { Scope } from '@n8n/permissions';
 import { QueryFailedError } from '@n8n/typeorm';
@@ -60,33 +54,20 @@ function makeService({ collectionsFlag = true }: { collectionsFlag?: boolean } =
 	const projectRepository = mock<ProjectRepository>();
 	projectRepository.existsBy.mockResolvedValue(true);
 
-	const projectRelationRepository = mock<ProjectRelationRepository>();
-	projectRelationRepository.getAccessibleProjectsByRoles.mockResolvedValue([
-		'project-1',
-		'personal-1',
-	]);
-
-	const roleService = mock<RoleService>();
-	roleService.rolesWithScope.mockResolvedValue(['project:personalOwner', 'project:viewer']);
+	const projectScopeService = mock<ProjectScopeService>();
+	projectScopeService.getProjectIds.mockResolvedValue(['project-1', 'personal-1']);
 
 	return {
 		service: new KnowledgeCollectionCatalogService(
 			collectionRepository,
 			makeKnowledgeAvailabilityService({ collectionsFlag }),
 			projectRepository,
-			projectRelationRepository,
-			roleService,
+			projectScopeService,
 		),
 		collectionRepository,
 		projectRepository,
-		projectRelationRepository,
-		roleService,
+		projectScopeService,
 	};
-}
-
-// Assign the role onto an empty mock: mock(overrides) wraps the shared role constant in proxies.
-function userWithRole(id: string, role: User['role']) {
-	return Object.assign(mock<User>(), { id, role });
 }
 
 function uniqueConstraintError() {
@@ -221,21 +202,15 @@ describe('KnowledgeCollectionCatalogService', () => {
 	});
 
 	describe('listForUser', () => {
-		const member = userWithRole('member-1', GLOBAL_MEMBER_ROLE);
-		const instanceOwner = userWithRole('owner-1', GLOBAL_OWNER_ROLE);
+		const member = mock<User>({ id: 'member-1' });
+		const instanceOwner = mock<User>({ id: 'owner-1' });
 
-		it('lists the collections of the projects where the member can read agents', async () => {
-			const { service, collectionRepository, projectRelationRepository, roleService } =
-				makeService();
+		it('lists the collections of the projects where the member can list agents', async () => {
+			const { service, collectionRepository, projectScopeService } = makeService();
 
 			const result = await service.listForUser(member);
 
-			expect(roleService.rolesWithScope).toHaveBeenCalledWith('project', ['agent:read']);
-
-			expect(projectRelationRepository.getAccessibleProjectsByRoles).toHaveBeenCalledWith(
-				'member-1',
-				['project:personalOwner', 'project:viewer'],
-			);
+			expect(projectScopeService.getProjectIds).toHaveBeenCalledWith(member, ['agent:list']);
 
 			expect(collectionRepository.findSharedSummaries).toHaveBeenCalledWith(
 				['project-1', 'personal-1'],
@@ -261,13 +236,14 @@ describe('KnowledgeCollectionCatalogService', () => {
 			});
 		});
 
-		it('lists the collections of every project for a global agent:read scope', async () => {
-			const { service, collectionRepository, projectRelationRepository } = makeService();
+		it('lists the collections of every project for a global agent:list scope', async () => {
+			const { service, collectionRepository, projectScopeService } = makeService();
+			// `getProjectIds` answers `null` for a global scope.
+			projectScopeService.getProjectIds.mockResolvedValue(null);
 
 			await service.listForUser(instanceOwner);
 
 			expect(collectionRepository.findSharedSummaries).toHaveBeenCalledWith('all', {});
-			expect(projectRelationRepository.getAccessibleProjectsByRoles).not.toHaveBeenCalled();
 		});
 
 		it('answers an empty list when no collection matches', async () => {
