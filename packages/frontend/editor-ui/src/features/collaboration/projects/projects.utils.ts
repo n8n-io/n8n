@@ -105,10 +105,13 @@ export function isSelfHealingEnabled(): boolean {
 	const settingsStore = useSettingsStore();
 	const settings = settingsStore.moduleSettings['instance-ai'];
 	if (!settings?.workflowSuggestionsEnabled) return false;
-	// Self-healing is not available on the Enterprise plan yet.
-	if (settingsStore.isEnterprisePlan) return false;
-	// On Cloud, an instance flag can turn self-healing off. Self-hosted instances have no flag.
-	return !settings.cloudManaged || usePostHog().isFeatureEnabled(SELF_HEALING_FLAG);
+	if (!settings.cloudManaged) {
+		// Self-healing is not available on self-hosted Enterprise yet.
+		// Other self-hosted instances have no PostHog flag.
+		return !settingsStore.isEnterprisePlan;
+	}
+	// Every Cloud plan requires both the env setting and the PostHog instance flag.
+	return usePostHog().isFeatureEnabled(SELF_HEALING_FLAG);
 }
 
 export function canConfigureSelfHealing(
