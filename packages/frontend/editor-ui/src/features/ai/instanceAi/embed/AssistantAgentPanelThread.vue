@@ -7,12 +7,13 @@
  * same calls as `InstanceAiConversation`, so the panel treats both runtimes
  * the same.
  */
-import type {
-	AgentJsonConfig,
-	InstanceAiAgentAttachment,
-	InstanceAiAttachment,
-	InstanceAiHandoffContext,
-	InstanceAiPrefillPayload,
+import {
+	EXTENDED_PROMPT_MAX_LENGTH,
+	type AgentJsonConfig,
+	type InstanceAiAgentAttachment,
+	type InstanceAiAttachment,
+	type InstanceAiHandoffContext,
+	type InstanceAiPrefillPayload,
 } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -288,6 +289,7 @@ defineExpose({
 		:visible="props.visible"
 		autofocus
 		:composer-height="props.composerHeight"
+		:max-length="EXTENDED_PROMPT_MAX_LENGTH"
 		data-test-id="instance-ai-embed-assistant-agent-thread"
 		@content-change="emit('content-change', $event)"
 		@session-created="onSessionCreated"
