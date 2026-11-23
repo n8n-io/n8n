@@ -80,7 +80,11 @@ import {
 	getPendingWorkflowAttachment,
 	type PendingFirstMessage,
 } from '../composables/useInstanceAiHandoff';
-import { INSTANCE_AI_APP_ID_QUERY, INSTANCE_AI_VIEW } from '../constants';
+import {
+	INSTANCE_AI_APP_ID_QUERY,
+	INSTANCE_AI_THREAD_SESSION_VIEW,
+	INSTANCE_AI_VIEW,
+} from '../constants';
 import { buildFixWithAiPrompt } from '../fixWithAi';
 import { formatAgentPreviewContextLabel } from '../instanceAi.handoffContext';
 import { useInstanceAiStore } from '../instanceAi.store';
@@ -703,6 +707,13 @@ function startNewThread(): void {
 	void router.push({ name: INSTANCE_AI_VIEW });
 }
 
+function viewSessionTrace(): void {
+	void router.push({
+		name: INSTANCE_AI_THREAD_SESSION_VIEW,
+		params: { threadId: props.threadId },
+	});
+}
+
 // --- Layout ---
 const threadArea = useTemplateRef<HTMLElement>('threadArea');
 const { width: threadAreaWidth } = useElementSize(threadArea);
@@ -809,6 +820,23 @@ function updateStagedNodes(attachment: InstanceAiNodesAttachment): void {
 				:aria-hidden="isAgentTestDockOpen || undefined"
 			>
 				<template #actions>
+					<!-- A new thread has no turns to show until its first message starts the session. -->
+					<N8nTooltip
+						v-if="!isNewSession"
+						:content="i18n.baseText('agents.builder.preview.viewSession')"
+						placement="bottom"
+						:show-after="TOOLTIP_DELAY_MS"
+					>
+						<N8nIconButton
+							icon="list-tree"
+							variant="ghost"
+							size="small"
+							icon-size="large"
+							:aria-label="i18n.baseText('agents.builder.preview.viewSession')"
+							data-test-id="assistant-agent-view-session"
+							@click="viewSessionTrace"
+						/>
+					</N8nTooltip>
 					<N8nTooltip
 						:content="i18n.baseText('instanceAi.thread.new')"
 						placement="bottom"

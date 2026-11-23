@@ -86,7 +86,7 @@ test.describe(
 			await authorN8n.workflowReviewControls.submitChangesToReview('Release candidate 2');
 
 			// --- The reviewer approves, which publishes the reviewed version ---
-			await reviewerN8n.workflowReviews.approve('Looks good now');
+			await reviewerN8n.workflowReviews.approve();
 			await expect(reviewerN8n.workflowReviews.getSelectedRequestStatus()).toHaveAttribute(
 				'aria-label',
 				'Closed | Approved',
