@@ -1,0 +1,22 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/fixWithAi.ts
+  s_5d7834813eed3a::t_697882fd633f8a 1,20-21,23-28,34-37,40
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/fixWithAi.test.ts
+  s_5d7834813eed3a::t_697882fd633f8a 1,73-83
+  s_5d7834813eed3a::t_76f16b7091e9f0 84
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8d9c869b0eff186f4a01b32ad7a278092e2ebb8b",
+  "prompts": {},
+  "sessions": {
+    "s_5d7834813eed3a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f62f663e-f534-4582-8dd5-6cc581318eaf",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}
