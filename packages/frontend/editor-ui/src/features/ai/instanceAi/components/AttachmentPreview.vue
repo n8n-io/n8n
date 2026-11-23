@@ -86,7 +86,11 @@ const thumbnailSrc = computed(() => {
 		v-else-if="agentAttachment"
 		:label="agentAttachment.name ?? 'Agent'"
 		icon="robot"
+		:removable="isRemovable"
+		:remove-label="i18n.baseText('instanceAi.mentions.removeAgent')"
 		test-id="attachment-preview-resource"
+		remove-test-id="attachment-preview-remove-resource"
+		@remove="emit('remove-resource')"
 	/>
 	<N8nAttachment
 		v-else-if="props.file"

@@ -17,17 +17,22 @@ import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { VIEWS } from '@/app/constants';
 
 import { useContextStore } from '../context.store';
-import { isContextSkillsEnabled } from '../context.utils';
+import {
+	canManageContextPreferences,
+	isContextPreferencesEnabled,
+	isContextSkillsEnabled,
+} from '../context.utils';
 import { useSkillsStore } from '../skills.store';
-import { skillNavigationQuery } from '../skills.telemetry';
+import { skillNavigationQuery } from '@/features/settings/context/skills.telemetry';
 
 const i18n = useI18n();
 const router = useRouter();
 const documentTitle = useDocumentTitle();
 const contextStore = useContextStore();
 const skillsStore = useSkillsStore();
-// The skills row follows the skills consumers. Preferences are always on.
 const skillsEnabled = isContextSkillsEnabled();
+const preferencesEnabled = isContextPreferencesEnabled();
+const canManagePreferences = canManageContextPreferences();
 const { showError } = useToast();
 
 const preferenceCount = computed(() =>
@@ -67,10 +72,11 @@ async function loadCount(fetchCount: () => Promise<unknown>, errorKey: BaseTextK
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.context.title'));
 	await Promise.all([
-		loadCount(
-			async () => await contextStore.fetchPreferenceCount(),
-			'settings.context.preferences.error.load',
-		),
+		preferencesEnabled &&
+			loadCount(
+				async () => await contextStore.fetchPreferenceCount(),
+				'settings.context.preferences.error.load',
+			),
 		skillsEnabled &&
 			loadCount(
 				async () => await skillsStore.fetchSkillCount(),
@@ -94,6 +100,7 @@ onMounted(async () => {
 
 		<N8nSettingsRowGroup>
 			<N8nSettingsRow
+				v-if="preferencesEnabled || canManagePreferences"
 				clickable
 				:title="i18n.baseText('settings.context.preferences.title')"
 				:description="i18n.baseText('settings.context.preferences.subtitle')"
@@ -101,7 +108,13 @@ onMounted(async () => {
 				@click="openPreferences"
 			>
 				<template #action>
-					<N8nSettingsRowConfigure :value="preferenceCount" />
+					<N8nSettingsRowConfigure
+						:value="
+							preferencesEnabled
+								? preferenceCount
+								: i18n.baseText('settings.context.preferences.disabled.status')
+						"
+					/>
 				</template>
 			</N8nSettingsRow>
 

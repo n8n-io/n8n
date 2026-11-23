@@ -28,7 +28,7 @@ import {
 	N8nTooltip,
 	N8nUserSelect,
 } from '@n8n/design-system';
-import type { TableHeader } from '@n8n/design-system';
+import type { TableHeader, TextColor } from '@n8n/design-system';
 import * as breakingChangesApi from '@n8n/rest-api-client/api/breaking-changes';
 import { useI18n } from '@n8n/i18n';
 import { useRBACStore } from '@n8n/stores/rbac.store';
@@ -225,6 +225,20 @@ function runCountLabel(workflow: AffectedWorkflow): string {
 		adjustToNumber: workflow.numberOfExecutions,
 		interpolate: { count: workflow.numberOfExecutions.toLocaleString(rootStore.defaultLocale) },
 	});
+}
+
+function lastRunColor(workflow: AffectedWorkflow): TextColor {
+	if (!workflow.lastExecutedAt) return 'warning';
+	return isStale(workflow) ? 'danger' : 'text-light';
+}
+
+// Only the coloured states need an explanation.
+function lastRunTooltip(workflow: AffectedWorkflow): string | undefined {
+	if (!workflow.lastExecutedAt) {
+		return i18n.baseText('settings.migrationReport.detail.table.neverRunTooltip');
+	}
+	if (isStale(workflow)) return i18n.baseText('settings.migrationReport.detail.table.staleTooltip');
+	return undefined;
 }
 
 // Workflows successfully migrated this session (the row shows a "Migrated" state).
@@ -690,25 +704,27 @@ watch(
 			<template #[`item.numberOfExecutions`]="{ item }">
 				<div :class="$style.cellStack">
 					<N8nText color="text-dark">{{ runCountLabel(item) }}</N8nText>
-					<N8nText
-						size="small"
-						:color="isStale(item) ? 'danger' : 'text-light'"
-						data-test-id="migration-workflow-last-run"
-					>
-						<I18nT
-							v-if="item.lastExecutedAt"
-							keypath="settings.migrationReport.detail.table.lastRun"
-							tag="span"
-							scope="global"
+					<N8nTooltip :content="lastRunTooltip(item)" :disabled="!lastRunTooltip(item)">
+						<N8nText
+							size="small"
+							:color="lastRunColor(item)"
+							data-test-id="migration-workflow-last-run"
 						>
-							<template #time>
-								<TimeAgo :date="item.lastExecutedAt.toString()" />
+							<I18nT
+								v-if="item.lastExecutedAt"
+								keypath="settings.migrationReport.detail.table.lastRun"
+								tag="span"
+								scope="global"
+							>
+								<template #time>
+									<TimeAgo :date="item.lastExecutedAt.toString()" />
+								</template>
+							</I18nT>
+							<template v-else>
+								{{ i18n.baseText('settings.migrationReport.detail.table.neverRun') }}
 							</template>
-						</I18nT>
-						<template v-else>
-							{{ i18n.baseText('settings.migrationReport.detail.table.neverRun') }}
-						</template>
-					</N8nText>
+						</N8nText>
+					</N8nTooltip>
 				</div>
 			</template>
 			<template #[`item.owner`]="{ item }">
@@ -987,8 +1003,10 @@ watch(
 	margin-bottom: var(--spacing--md);
 }
 
+/* A small flex basis lets the search shrink before the sort and filter wrap to a new line. */
 .search {
-	flex: 0 1 20rem;
+	flex: 1 1 10rem;
+	max-width: 20rem;
 }
 
 .sort {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, ref, useId, watch } from 'vue';
 import type { DiscoveredSkill } from '@n8n/api-types';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -12,11 +12,12 @@ import {
 	N8nHeading,
 	N8nIcon,
 	N8nText,
+	N8nTooltip,
 } from '@n8n/design-system';
 
-import SkillSourceFilesView from '../components/SkillSourceFilesView.vue';
-import { previewSkillSource } from '../skills.api';
-import { useSkillSourceReasons } from '../skills.utils';
+import SkillSourceFilesView from '@/features/settings/context/components/SkillSourceFilesView.vue';
+import { previewSkillSource } from '@/features/settings/context/skills.api';
+import { useSkillSourceReasons } from '@/features/settings/context/skills.utils';
 import type { SkillCatalogEntry, SkillCatalogInstallation } from './skillCatalog';
 
 const props = defineProps<{
@@ -33,6 +34,7 @@ const skill = ref<DiscoveredSkill>();
 const loading = ref(false);
 const error = ref('');
 const retry = ref(0);
+const explanationId = useId();
 
 const requirements = computed<BaseTextKey[]>(() => {
 	if (props.entry.requirementsKey !== 'settings.context.skills.catalog.requirements.n8n') {
@@ -106,6 +108,22 @@ const checkDetails = computed(() => {
 		skill.value?.check?.findings.filter((finding) => finding.severity !== 'info') ?? [],
 	);
 });
+const addUnavailable = computed(() => {
+	if (!props.canAdd)
+		return {
+			id: `${explanationId}-permission`,
+			text: i18n.baseText('settings.context.skills.catalog.noPermission'),
+		};
+	if (loading.value)
+		return {
+			id: `${explanationId}-loading`,
+			text: i18n.baseText('settings.context.skills.catalog.loading'),
+		};
+	if (error.value) return { id: `${explanationId}-error`, text: error.value };
+	if (blocked.value)
+		return { id: `${explanationId}-check`, text: checkDetails.value || checkLabel.value };
+	return undefined;
+});
 </script>
 
 <template>
@@ -138,16 +156,20 @@ const checkDetails = computed(() => {
 						})
 					}}
 				</N8nButton>
-				<N8nButton
-					:disabled="!canAdd || loading || !skill || blocked"
-					data-test-id="skill-catalog-add"
-					@click="emit('add')"
-				>
-					{{ i18n.baseText('settings.context.skills.catalog.add') }}
-				</N8nButton>
+				<N8nTooltip as-child :disabled="!addUnavailable" :content="addUnavailable?.text">
+					<N8nButton
+						:disabled="!canAdd || loading || !skill || blocked"
+						:focusable-when-disabled="!loading"
+						:aria-describedby="addUnavailable?.id"
+						data-test-id="skill-catalog-add"
+						@click="emit('add')"
+					>
+						{{ i18n.baseText('settings.context.skills.catalog.add') }}
+					</N8nButton>
+				</N8nTooltip>
 			</div>
 		</header>
-		<N8nText v-if="!canAdd" size="small" color="text-light">{{
+		<N8nText v-if="!canAdd" :id="`${explanationId}-permission`" size="small" color="text-light">{{
 			i18n.baseText('settings.context.skills.catalog.noPermission')
 		}}</N8nText>
 		<section :class="$style.requirements">
@@ -171,11 +193,16 @@ const checkDetails = computed(() => {
 				<N8nText size="small" color="text-light">{{ checkLabel }}</N8nText>
 			</div>
 		</section>
-		<N8nText v-if="loading" role="status">{{
+		<N8nText v-if="loading" :id="`${explanationId}-loading`" role="status">{{
 			i18n.baseText('settings.context.skills.catalog.loading')
 		}}</N8nText>
 		<template v-else-if="error">
-			<N8nCallout theme="warning" data-test-id="skill-catalog-load-error">{{ error }}</N8nCallout>
+			<N8nCallout
+				:id="`${explanationId}-error`"
+				theme="warning"
+				data-test-id="skill-catalog-load-error"
+				>{{ error }}</N8nCallout
+			>
 			<N8nButton variant="outline" :class="$style.retry" @click="retry++">{{
 				i18n.baseText('generic.retry')
 			}}</N8nButton>
@@ -183,6 +210,7 @@ const checkDetails = computed(() => {
 		<template v-else-if="skill">
 			<N8nCallout
 				v-if="blocked || warnings"
+				:id="`${explanationId}-check`"
 				:theme="blocked ? 'danger' : 'warning'"
 				data-test-id="skill-catalog-check"
 			>

@@ -61,7 +61,7 @@ const byBuilder = { by: 'builder', trigger: 'explicit' } as const;
 
 const schema: AgentJsonConfig = {
 	name: 'Support Agent',
-	model: 'anthropic/claude-sonnet-4-5',
+	model: 'anthropic/claude-sonnet-5-5',
 	instructions: 'Help users',
 };
 

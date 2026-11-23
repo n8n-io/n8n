@@ -833,6 +833,29 @@ export class Github implements INodeType {
 				displayOptions: {
 					show: {
 						resource: ['workflow'],
+						operation: ['dispatch'],
+					},
+				},
+				options: [
+					{
+						displayName: 'Return Run Details',
+						name: 'returnRunDetails',
+						type: 'boolean',
+						default: false,
+						description:
+							'Whether to return the workflow run ID, API URL, and GitHub URL. Leave this option off on GitHub Enterprise Server. Version 3.21 and later return run details without it.',
+					},
+				],
+			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add option',
+				default: {},
+				displayOptions: {
+					show: {
+						resource: ['workflow'],
 						operation: ['dispatchAndWait'],
 					},
 				},
@@ -3205,6 +3228,9 @@ export class Github implements INodeType {
 							});
 						}
 						body.inputs = inputs;
+						if (this.getNodeParameter('options.returnRunDetails', i, false)) {
+							body.return_run_details = true;
+						}
 					} else if (operation === 'enable') {
 						// ----------------------------------
 						//         enable
@@ -3304,6 +3330,10 @@ export class Github implements INodeType {
 
 				if (fullOperation === 'release:delete') {
 					responseData = { success: true };
+				}
+
+				if (fullOperation === 'workflow:dispatch') {
+					responseData ??= {};
 				}
 
 				if (fullOperation === 'secret:createOrUpdate') {

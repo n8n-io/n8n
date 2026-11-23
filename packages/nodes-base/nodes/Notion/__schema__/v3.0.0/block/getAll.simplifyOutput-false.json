@@ -1,0 +1,120 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"created_by": {
+			"properties": {
+				"id": {
+					"type": "string"
+				},
+				"object": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"created_time": {
+			"type": "string"
+		},
+		"has_children": {
+			"type": "boolean"
+		},
+		"id": {
+			"type": "string"
+		},
+		"in_trash": {
+			"type": "boolean"
+		},
+		"last_edited_by": {
+			"properties": {
+				"id": {
+					"type": "string"
+				},
+				"object": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"last_edited_time": {
+			"type": "string"
+		},
+		"object": {
+			"type": "string"
+		},
+		"paragraph": {
+			"properties": {
+				"color": {
+					"type": "string"
+				},
+				"icon": {},
+				"rich_text": {
+					"items": {
+						"additionalProperties": true,
+						"properties": {
+							"annotations": {
+								"properties": {
+									"bold": {
+										"type": "boolean"
+									},
+									"code": {
+										"type": "boolean"
+									},
+									"color": {
+										"type": "string"
+									},
+									"italic": {
+										"type": "boolean"
+									},
+									"strikethrough": {
+										"type": "boolean"
+									},
+									"underline": {
+										"type": "boolean"
+									}
+								},
+								"type": "object"
+							},
+							"href": {
+								"type": ["null", "string"]
+							},
+							"plain_text": {
+								"type": "string"
+							},
+							"text": {
+								"properties": {
+									"content": {
+										"type": "string"
+									},
+									"link": {}
+								},
+								"type": "object"
+							},
+							"type": {
+								"type": "string"
+							}
+						},
+						"type": "object"
+					},
+					"type": "array"
+				}
+			},
+			"type": "object"
+		},
+		"parent": {
+			"additionalProperties": true,
+			"properties": {
+				"page_id": {
+					"type": "string"
+				},
+				"type": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"type": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

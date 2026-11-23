@@ -8,9 +8,9 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { mock } from 'vitest-mock-extended';
 import SkillCatalogDetail from './SkillCatalogDetail.vue';
 import { SKILL_CATALOG } from './skillCatalog';
-import { previewSkillSource } from '../skills.api';
+import { previewSkillSource } from '@/features/settings/context/skills.api';
 
-vi.mock('../skills.api', () => ({ previewSkillSource: vi.fn() }));
+vi.mock('@/features/settings/context/skills.api', () => ({ previewSkillSource: vi.fn() }));
 const preview = vi.mocked(previewSkillSource);
 const entry = SKILL_CATALOG[0];
 const skill: DiscoveredSkill = {
@@ -26,13 +26,26 @@ const skill: DiscoveredSkill = {
 	previewFiles: [{ path: 'SKILL.md', text: '# Instructions\nRead the workflow first.' }],
 	check: { verdict: 'pass', findings: [] },
 };
+function skillPreview({ skills }: Pick<SkillSourcePreview, 'skills'>): SkillSourcePreview {
+	return {
+		source: {
+			type: 'github',
+			label: 'n8n-io/skills',
+			ref: 'main',
+			path: entry.location,
+			webUrl: entry.url,
+		},
+		skills,
+		truncated: false,
+	};
+}
 const render = createComponentRenderer(SkillCatalogDetail, {
 	props: { entry, installed: [], canAdd: true },
 });
 beforeEach(() => {
 	createTestingPinia();
 	preview.mockReset();
-	preview.mockResolvedValue(mock<SkillSourcePreview>({ skills: [skill] }));
+	preview.mockResolvedValue(skillPreview({ skills: [skill] }));
 });
 
 it('shows the content before offering the existing import flow', async () => {
@@ -53,7 +66,12 @@ it('keeps browsing available without permission to add and links to the installe
 		props: { canAdd: false, installed: [{ id: 'saved-1', label: 'Global' }] },
 	});
 	await view.findByTestId('skill-source-file-content');
-	expect(view.getByTestId('skill-catalog-add')).toBeDisabled();
+	expect(view.getByTestId('skill-catalog-add')).toHaveAttribute('aria-disabled', 'true');
+	const add = view.getByTestId('skill-catalog-add');
+	expect(add).toHaveAccessibleDescription(/Ask an admin for permission/);
+	add.focus();
+	await userEvent.keyboard('{Enter}');
+	expect(view.emitted('add')).toBeUndefined();
 	await userEvent.click(view.getByRole('button', { name: 'View skill in Global' }));
 	expect(view.emitted('openInstalled')).toEqual([['saved-1']]);
 });
@@ -119,7 +137,7 @@ it('keeps an unpublished skill unavailable and allows retry after publication', 
 	expect(await view.findByTestId('skill-catalog-load-error')).toHaveTextContent(
 		'after its source is published',
 	);
-	expect(view.getByTestId('skill-catalog-add')).toBeDisabled();
+	expect(view.getByTestId('skill-catalog-add')).toHaveAttribute('aria-disabled', 'true');
 	await userEvent.click(view.getByRole('button', { name: 'Retry' }));
 	await waitFor(() => expect(view.getByTestId('skill-catalog-add')).toBeEnabled());
 });
@@ -128,7 +146,7 @@ it.each(['blocked', 'needs_review'] as const)(
 	'shows %s findings before import',
 	async (verdict) => {
 		preview.mockResolvedValue(
-			mock<SkillSourcePreview>({
+			skillPreview({
 				skills: [
 					{
 						...skill,
@@ -143,16 +161,15 @@ it.each(['blocked', 'needs_review'] as const)(
 		const view = render();
 		const check = await view.findByTestId('skill-catalog-check');
 		expect(check).toHaveTextContent('new domain');
-		if (verdict === 'blocked') expect(view.getByTestId('skill-catalog-add')).toBeDisabled();
+		if (verdict === 'blocked')
+			expect(view.getByTestId('skill-catalog-add')).toHaveAttribute('aria-disabled', 'true');
 		else expect(view.getByTestId('skill-catalog-add')).toBeEnabled();
 	},
 );
 
 it('refuses a catalog import that would omit unreviewed files', async () => {
-	preview.mockResolvedValue(
-		mock<SkillSourcePreview>({ skills: [{ ...skill, skippedFiles: ['script.py'] }] }),
-	);
+	preview.mockResolvedValue(skillPreview({ skills: [{ ...skill, skippedFiles: ['script.py'] }] }));
 	const view = render();
 	await view.findByTestId('skill-catalog-check');
-	expect(view.getByTestId('skill-catalog-add')).toBeDisabled();
+	expect(view.getByTestId('skill-catalog-add')).toHaveAttribute('aria-disabled', 'true');
 });

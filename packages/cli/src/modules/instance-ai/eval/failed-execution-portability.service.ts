@@ -225,6 +225,7 @@ export class FailedExecutionPortabilityService {
 				{
 					data,
 					workflowData,
+					// oxlint-disable-next-line typescript/no-deprecated -- Keep the legacy execution field for existing consumers.
 					finished: false,
 					mode: envelope.execution.mode,
 					status: envelope.execution.status,

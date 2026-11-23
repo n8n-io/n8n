@@ -93,6 +93,7 @@ export interface LeaseStatus {
 
 /** A family of leases with one handler, for example the triggers of published workflows. */
 export interface LeaseKind<TTransaction> {
+	/** Lower case letters, digits and dashes, starting with a letter, at most `MAX_LEASE_KIND_LENGTH` characters. */
 	name: string;
 	handler: LeaseHandler<TTransaction>;
 	source: LeaseSource;

@@ -1,5 +1,17 @@
 import { parseFlatted } from '@n8n/backend-common';
-import { EventService, ExecutionLedger } from '@n8n/backend-services';
+import {
+	EventService,
+	ExecutionLedger,
+	ExecutionRetentionService,
+	CorruptedExecutionDataError,
+	ExecutionDataJsonStore,
+	isExecutionDataPayload,
+	type BlobStorageLocation,
+	type BundleWorkflowSnapshot,
+	type ExecutionDataPayload,
+	type ExecutionRef,
+	toWorkflowSnapshot,
+} from '@n8n/backend-services';
 import { DatabaseConfig, ExecutionsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type {
@@ -35,18 +47,8 @@ import {
 } from 'n8n-workflow';
 import { UnexpectedError } from '@n8n/errors';
 
-import { CorruptedExecutionDataError } from './execution-data/corrupted-execution-data.error';
 import { DbStore } from './execution-data/db-store';
-import { ExecutionDataJsonStore } from './execution-data/execution-data-json-store';
 import { MissingExecutionDataError } from './execution-data/missing-execution-data.error';
-import {
-	isExecutionDataPayload,
-	type BlobStorageLocation,
-	type BundleWorkflowSnapshot,
-	type ExecutionDataPayload,
-	type ExecutionRef,
-	toWorkflowSnapshot,
-} from './execution-data/types';
 import { UnreadableRunDataError } from './execution-data/unreadable-run-data.error';
 import { sumBinaryDataBytes } from './sum-binary-data-bytes';
 import { DuplicateExecutionError } from '../errors/duplicate-execution.error';
@@ -58,6 +60,8 @@ type ReclaimedTombstone = DeletionTarget & { mode: WorkflowExecuteMode };
 export type CreateExecutionOptions = {
 	/** Who started the run. The execution row does not store it, so the ledger gets it here. */
 	source?: WorkflowExecutionSource;
+	/** The owner project of the workflow. The ledger looks it up when this is unset or empty. */
+	projectId?: string;
 	/** For rows that copy a run from elsewhere: that run is not a run of this instance. */
 	skipLedger?: true;
 };
@@ -115,6 +119,7 @@ export class ExecutionPersistence {
 		private readonly storageConfig: StorageConfig,
 		private readonly executionsConfig: ExecutionsConfig,
 		private readonly databaseConfig: DatabaseConfig,
+		private readonly retention: ExecutionRetentionService,
 		private readonly errorReporter: ErrorReporter,
 		private readonly eventService: EventService,
 		private readonly executionLedger: ExecutionLedger,
@@ -176,6 +181,7 @@ export class ExecutionPersistence {
 								workflowName: workflowData.name,
 								mode: executionEntity.mode,
 								source: options.source,
+								projectId: options.projectId || undefined,
 								occurredAt: executionEntity.createdAt,
 							},
 							status: executionEntity.status,
@@ -806,6 +812,8 @@ export class ExecutionPersistence {
 		const targets = Array.isArray(target) ? target : [target];
 		if (targets.length === 0) return;
 
+		await this.retention.assertCanDelete(targets.map((target) => target.executionId));
+
 		// Binaries first. A failure leaves the payload and the rows, so the execution stays openable.
 		await this.binaryDataService.deleteMany(
 			targets.map((t) => ({ type: 'execution' as const, ...t })),
@@ -834,6 +842,9 @@ export class ExecutionPersistence {
 
 	async hardDeleteBy(criteria: ExecutionDeletionCriteria) {
 		const refs = await this.executionRepository.findExecutionsToDelete(criteria);
+		// Check every target before the first batch commits, so a retained execution
+		// does not stop the deletion part way through.
+		await this.retention.assertCanDelete(refs.map((ref) => ref.executionId));
 
 		// Batches keep each row delete under the SQLite expression-depth limit.
 		// Each batch deletes binaries, then the payload, then the rows.
@@ -853,6 +864,12 @@ export class ExecutionPersistence {
 	 * instead of looping forever.
 	 */
 	async hardDeleteByWorkflowId(workflowId: string) {
+		// Check before the first batch commits. Each batch checks again for work that
+		// starts during the deletion.
+		await this.retention.assertNoneRetained(
+			async (retainedIds) =>
+				await this.executionRepository.hasWorkflowExecutionAmong(workflowId, retainedIds),
+		);
 		const maxBatches = await this.maxBulkDeletionBatches();
 
 		for (let batch = 0; batch < maxBatches; batch++) {
@@ -1148,6 +1165,7 @@ export class ExecutionPersistence {
 		}
 
 		const where: FindOptionsWhere<ExecutionEntity> = { id: executionId };
+		if (conditions?.requireWaitTill) where.waitTill = conditions.requireWaitTill;
 		if (conditions?.requireStatus) where.status = conditions.requireStatus;
 		if (conditions?.requireStatuses) where.status = In([...conditions.requireStatuses]);
 		// TODO(CAT-3214): `ExecutionEntity.finished` is deprecated and we should rely on statuses

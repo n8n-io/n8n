@@ -357,7 +357,7 @@ export class InstanceAiPage extends BasePage {
 	}
 
 	getConfirmationText(text: string): Locator {
-		return this.page.getByText(text, { exact: false });
+		return this.container.getByText(text, { exact: false });
 	}
 
 	/**

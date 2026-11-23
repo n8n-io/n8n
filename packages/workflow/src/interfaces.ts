@@ -601,6 +601,7 @@ export type IHttpRequestMethods =
 	| 'MOVE'
 	| 'COPY'
 	| 'REPORT'
+	| 'SEARCH'
 	| 'HEAD';
 
 export type IgnoreStatusErrorConfig = {
@@ -2577,6 +2578,10 @@ export type ExecuteAgentInfo = ExecuteAgentSource & {
  * must be treated as read-only.
  */
 export interface ExecuteAgentWorkflowContext {
+	/** The caller can persist and resume an Agent invocation. */
+	supportsSuspension?: boolean;
+	/** Private continuation from the previous segment of this item. */
+	continuation?: AgentWorkflowSuspension;
 	workflowId?: string;
 	workflowName?: string;
 	/** Name of the node that invoked the agent */
@@ -2617,7 +2622,14 @@ export interface ExecuteAgentOptions {
 	executionMode?: WorkflowExecuteMode;
 }
 
+export interface AgentWorkflowSuspension {
+	runId: string;
+	executionIds: string[];
+}
+
 export interface ExecuteAgentData {
+	/** Private engine state. Never include it in node output. */
+	waiting?: AgentWorkflowSuspension;
 	/** The agent's text response extracted from the last assistant message. */
 	response: string;
 	/** Parsed structured output if the agent has a structuredOutput schema. */
@@ -3623,12 +3635,16 @@ export interface RelatedExecution {
  * Stamped by the agent workflow tool onto the sub-executions it starts.
  */
 export interface RelatedAgentRun {
+	/** Workflow caller to resume through the existing parent-wait path. */
+	workflowCaller?: RelatedExecution;
 	agentId: string;
 	projectId: string;
 	/** Agent memory thread the run belongs to; addresses the chat thread to reply in. */
 	threadId: string;
 	runId: string;
 	toolCallId: string;
+	/** Use the same published or draft runtime when a task resumes. */
+	published?: boolean;
 	/** Chat platform the run came from, or `n8n_chat` for the in-app preview. */
 	integrationType?: string;
 	/**
@@ -3642,8 +3658,20 @@ export interface RelatedAgentRun {
 	/**
 	 * The interactive n8n user, when there is one. The preview chat resumes the draft
 	 * agent version, which gates node and workflow tools by this user's access.
+	 * Workflow log events report it as `agentRunUserId`.
 	 */
 	userId?: string;
+	/**
+	 * The agent's service account (`agents.identityId`), for attribution in workflow
+	 * log events only: the execution does not run as this account. Set only when
+	 * agent service accounts are enabled and the agent has one.
+	 */
+	agentServiceAccountId?: string;
+	/**
+	 * For a tool run of a sub-agent, the top-level agent that delegated to it.
+	 * Attribution only. Set only together with `agentServiceAccountId`.
+	 */
+	delegatingAgentId?: string;
 }
 
 type SubNodeExecutionDataAction = {
@@ -3654,6 +3682,12 @@ type SubNodeExecutionDataAction = {
 };
 
 export interface ITaskMetadata {
+	/**
+	 * Waiting nodes normally resume by forwarding the child output without running again.
+	 * Use 'reexecute' when a node must restore its own progress and finish its input items.
+	 * The engine keeps its input unchanged and lets the node handle child results and errors.
+	 */
+	resumeMode?: 'reexecute';
 	subRun?: ITaskSubRunMetadata[];
 	parentExecution?: RelatedExecution;
 	subExecution?: RelatedExecution;
@@ -4711,6 +4745,10 @@ export interface IUserSettings {
 	mcpPreferencesNote?: {
 		impressions: number;
 		lastShownAt?: number;
+	};
+	assistantPreferencesNote?: {
+		impressions: number;
+		lastShownAt: number;
 	};
 }
 

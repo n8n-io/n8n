@@ -94,21 +94,26 @@ describe('SkillCatalog', () => {
 			}),
 		);
 	});
-	it('marks only the installed folder and shows its scope', () => {
-		const entry = SKILL_CATALOG[0];
-		const view = renderCatalog({
-			props: {
-				sources: [
-					mock<SkillSourceListItem>({
-						projectId: null,
-						skills: [{ id: 'renamed-skill', webUrl: entry.url }],
-					}),
-				],
-			},
-		});
-		expect(
-			within(view.getByTestId(`skill-catalog-${entry.id}`)).getByText('Added to Global'),
-		).toBeVisible();
-		expect(view.getAllByTestId('skill-catalog-installed')).toHaveLength(1);
-	});
+	it.each(['n8n-io/skills', 'N8N-IO/Skills'])(
+		'matches an installed folder from %s and shows its scope',
+		(repository) => {
+			const entry = SKILL_CATALOG[0];
+			const view = renderCatalog({
+				props: {
+					sources: [
+						mock<SkillSourceListItem>({
+							projectId: null,
+							skills: [
+								{ id: 'renamed-skill', webUrl: entry.url.replace('n8n-io/skills', repository) },
+							],
+						}),
+					],
+				},
+			});
+			expect(
+				within(view.getByTestId(`skill-catalog-${entry.id}`)).getByText('Added to Global'),
+			).toBeVisible();
+			expect(view.getAllByTestId('skill-catalog-installed')).toHaveLength(1);
+		},
+	);
 });

@@ -2,6 +2,7 @@ import type { Workspace, WorkspaceFilesystem, WorkspaceSandbox } from '@n8n/agen
 import type { Logger } from '@n8n/backend-common';
 import type { PostHogClient } from '@n8n/backend-services';
 import type { AgentsConfig } from '@n8n/config';
+import { UserError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import {
@@ -22,8 +23,9 @@ describe('AgentSandboxFilesService', () => {
 	const workspace = mock<Workspace>({ filesystem, sandbox });
 	const agentsConfig = mock<AgentsConfig>({ maxImportMb: 1 });
 	const postHogClient = mock<PostHogClient>();
+	const logger = mock<Logger>();
 	const service = new AgentSandboxFilesService(
-		mock<Logger>(),
+		logger,
 		attachmentService,
 		agentsConfig,
 		postHogClient,
@@ -254,7 +256,12 @@ describe('AgentSandboxFilesService', () => {
 		const readable = (sizes: Record<string, number>) =>
 			attachmentService.getReadable.mockImplementation(async (fileId) =>
 				fileId in sizes
-					? mock<AgentChatAttachment>({ id: fileId, fileSizeBytes: sizes[fileId] })
+					? mock<AgentChatAttachment>({
+							id: fileId,
+							fileName: `${fileId}.csv`,
+							mimeType: 'text/csv',
+							fileSizeBytes: sizes[fileId],
+						})
 					: null,
 			);
 
@@ -264,13 +271,82 @@ describe('AgentSandboxFilesService', () => {
 
 			await expect(
 				service.importFiles(workspace, { 'data/./sales.csv': 'f1' }, readScope),
-			).resolves.toEqual([{ path: 'inputs/data/sales.csv', fileId: 'f1', sizeBytes: 3 }]);
+			).resolves.toEqual([
+				{
+					fileId: 'f1',
+					fileName: 'f1.csv',
+					mimeType: 'text/csv',
+					sizeBytes: 3,
+					path: 'inputs/data/sales.csv',
+				},
+			]);
 			expect(attachmentService.getReadable).toHaveBeenCalledWith('f1', readScope);
 			expect(filesystem.writeFile).toHaveBeenCalledWith(
 				'inputs/data/sales.csv',
 				Buffer.from('a,b'),
-				{ recursive: true, overwrite: true },
+				{ recursive: true, overwrite: true, abortSignal: undefined },
 			);
+		});
+
+		it('names the files that were copied before a failed write', async () => {
+			readable({ f1: 3, f2: 3 });
+			attachmentService.getBuffer.mockResolvedValue(Buffer.from('a,b'));
+			filesystem.writeFile
+				.mockResolvedValueOnce(undefined)
+				.mockRejectedValueOnce(new Error('sandbox write failed at 10.0.0.3'));
+
+			const error = await service
+				.importFiles(workspace, { 'a.csv': 'f1', 'b.csv': 'f2' }, readScope)
+				.catch((caught: unknown) => caught);
+
+			expect(error).toBeInstanceOf(UserError);
+			expect((error as Error).message).toBe(
+				'Could not copy "f2" to inputs/b.csv. These files were copied before it: inputs/a.csv.',
+			);
+			// The model does not get the cause, so the operator gets it in the log.
+			expect(logger.warn).toHaveBeenCalledWith('Failed to import a file into an agent sandbox', {
+				fileId: 'f2',
+				path: 'inputs/b.csv',
+				error: 'sandbox write failed at 10.0.0.3',
+			});
+		});
+
+		it('stops a cancelled import before the next write', async () => {
+			readable({ f1: 3, f2: 3 });
+			attachmentService.getBuffer.mockResolvedValue(Buffer.from('a,b'));
+			const controller = new AbortController();
+			filesystem.writeFile.mockImplementationOnce(async () => controller.abort());
+
+			const error = await service
+				.importFiles(workspace, { 'a.csv': 'f1', 'b.csv': 'f2' }, readScope, controller.signal)
+				.catch((caught: unknown) => caught);
+
+			// The reason of the abort, not a message for the model.
+			expect(error).toBe(controller.signal.reason);
+			expect(error).toBeInstanceOf(DOMException);
+			expect(filesystem.writeFile).toHaveBeenCalledTimes(1);
+			expect(filesystem.writeFile).toHaveBeenCalledWith('inputs/a.csv', expect.anything(), {
+				recursive: true,
+				overwrite: true,
+				abortSignal: controller.signal,
+			});
+		});
+
+		it('rethrows the error of a write that a cancel stopped', async () => {
+			readable({ f1: 3 });
+			attachmentService.getBuffer.mockResolvedValue(Buffer.from('a,b'));
+			const controller = new AbortController();
+			const writeError = new Error('write stopped');
+			filesystem.writeFile.mockImplementationOnce(async () => {
+				controller.abort();
+				throw writeError;
+			});
+
+			await expect(
+				service.importFiles(workspace, { 'a.csv': 'f1' }, readScope, controller.signal),
+			).rejects.toBe(writeError);
+			// A cancel is not a failure.
+			expect(logger.warn).not.toHaveBeenCalled();
 		});
 
 		it('writes nothing when a file is not readable', async () => {
@@ -305,6 +381,31 @@ describe('AgentSandboxFilesService', () => {
 			).rejects.toThrow('One import copies up to 1 MB');
 			expect(filesystem.writeFile).not.toHaveBeenCalled();
 		});
+
+		it('finds the files with the lookup of the caller', async () => {
+			const file = mock<AgentChatAttachment>({
+				id: 'f1',
+				fileName: 'sales.csv',
+				mimeType: 'text/csv',
+				fileSizeBytes: 3,
+			});
+			const findFile = vi.fn(async (fileId: string) => (fileId === 'f1' ? file : null));
+			attachmentService.getBuffer.mockResolvedValue(Buffer.from('a,b'));
+
+			await expect(
+				service.importFilesFrom(workspace, { 'sales.csv': 'f1' }, findFile),
+			).resolves.toEqual([
+				{
+					fileId: 'f1',
+					fileName: 'sales.csv',
+					mimeType: 'text/csv',
+					sizeBytes: 3,
+					path: 'inputs/sales.csv',
+				},
+			]);
+			expect(findFile).toHaveBeenCalledWith('f1');
+			expect(attachmentService.getReadable).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('store', () => {
@@ -335,6 +436,16 @@ describe('AgentSandboxFilesService', () => {
 				mimeType: 'text/csv',
 				contentHash: expect.stringMatching(/^[0-9a-f]{64}$/),
 			});
+		});
+
+		it('stores the file under the memory resource of the scope, for a system chat', async () => {
+			fileOf('a,b\n');
+
+			await service.store(workspace, 'q1.csv', { ...scope, resourceId: 'system-chat:user-1' });
+
+			expect(attachmentService.storeInbound).toHaveBeenCalledWith(
+				expect.objectContaining({ resourceId: 'system-chat:user-1', source: 'sandbox' }),
+			);
 		});
 
 		it('returns a readable file with the same name and bytes instead of a new one', async () => {

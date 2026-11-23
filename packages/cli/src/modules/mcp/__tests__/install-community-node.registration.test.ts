@@ -27,6 +27,7 @@ import { ExecutionListService } from '@/executions/execution-list.service';
 import { DataTableProxyService } from '@n8n/backend-module-data-table';
 import { NodeCatalogService } from '@/node-catalog';
 import { AiGatewayService } from '@/services/ai-gateway.service';
+import { AiPreferenceSettingsService } from '@/services/ai-preference-settings.service';
 import { FolderService } from '@/services/folder.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
 import { ProjectService } from '@/services/project.service.ee';
@@ -39,6 +40,7 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 
 import { WorkflowService } from '@/workflows/workflow.service';
+import { WorkflowPublicationStatusService } from '@/workflows/publication/workflow-publication-status.service';
 
 import { McpPostSaveMetricsService } from '../mcp-post-save-metrics.service';
 import { BUILDER_TOOLS, TOOLS_BY_SCOPE } from '../mcp-scopes';
@@ -93,6 +95,9 @@ const OAUTH_WITH_INSTALL: McpAuthContext = {
  * harness. Without this file that exemption would mean nothing checks the tool
  * ever registers, so renaming it would silently remove it for every client.
  */
+
+mockInstance(AiPreferenceSettingsService, { isEnabled: true });
+
 describe('install_community_node registration', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
 
@@ -151,6 +156,9 @@ describe('install_community_node registration', () => {
 			mockInstance(McpPostSaveMetricsService),
 			mockInstance(ModuleRegistry, {
 				isActive: vi.fn().mockImplementation((name: string) => name === 'community-packages'),
+				settings: {
+					get: (name: string) => (name === 'mcp' ? { preferencesEnabled: true } : undefined),
+				} as unknown as ModuleRegistry['settings'],
 			}),
 			mockInstance(EventService),
 			mockInstance(FolderService),
@@ -159,6 +167,7 @@ describe('install_community_node registration', () => {
 			mockInstance(ExecutionRedactionServiceProxy),
 			mockInstance(InstanceWriteAccessService),
 			mockInstance(McpPreferencesNoteService),
+			mockInstance(WorkflowPublicationStatusService),
 		);
 
 	beforeEach(() => {

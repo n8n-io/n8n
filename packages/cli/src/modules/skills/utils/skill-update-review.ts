@@ -1,6 +1,12 @@
-import { SKILL_SCAN_RULES, type SkillUpdateFile, type SkillScanResult } from '@n8n/api-types';
+import {
+	SKILL_SCAN_LIMIT_FIELDS,
+	SKILL_SCAN_RULES,
+	type SkillUpdateFile,
+	type SkillScanResult,
+} from '@n8n/api-types';
 import { UnexpectedError } from '@n8n/errors';
 import { diffText } from '@n8n/utils/diff-text';
+import isEqual from 'lodash/isEqual';
 import { z } from 'zod';
 
 import type { SkillSourceLink } from '../database/entities/skill-source-link.entity';
@@ -23,6 +29,9 @@ const scanSchema = z.object({
 			rule: z.enum(SKILL_SCAN_RULES),
 			severity: z.enum(['info', 'needs_review', 'blocked']),
 			detail: z.string(),
+			limit: z
+				.object({ field: z.enum(SKILL_SCAN_LIMIT_FIELDS), max: z.number(), current: z.number() })
+				.optional(),
 			file: z.string().optional(),
 			domain: z.string().optional(),
 			location: z.object({ line: z.number(), start: z.number(), end: z.number() }).optional(),
@@ -53,7 +62,19 @@ function filesOf(content: SkillContent): Map<string, string> {
 }
 
 export function updateFiles(before: SkillContent, after: SkillContent): SkillUpdateFile[] {
-	const from = filesOf(before);
+	// Match the incoming key order for unchanged values, including nested maps.
+	// Keep the scanned text and its finding offsets intact.
+	const from = filesOf({
+		...before,
+		frontmatter: Object.fromEntries(
+			Object.entries({ ...after.frontmatter, ...before.frontmatter })
+				.filter(([key]) => Object.hasOwn(before.frontmatter ?? {}, key))
+				.map(([key, value]) => [
+					key,
+					isEqual(value, after.frontmatter?.[key]) ? after.frontmatter?.[key] : value,
+				]),
+		),
+	});
 	const to = filesOf(after);
 	return [...new Set([...from.keys(), ...to.keys()])].map((path) => ({
 		path,

@@ -3,8 +3,8 @@ import { computed, defineAsyncComponent, ref, useTemplateRef, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router';
 import type { SkillSourceListItem, SkillTelemetryContext } from '@n8n/api-types';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
-import { useSkillTelemetry } from '../skills.telemetry';
-import { useSkillScopeDisplay } from '../skills.utils';
+import { useSkillTelemetry } from '@/features/settings/context/skills.telemetry';
+import { useSkillScopeDisplay } from '@/features/settings/context/skills.utils';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import {
 	N8nButton,
@@ -60,8 +60,17 @@ const installations = computed(() =>
 		})),
 	),
 );
+function repositoryUrl(url: string) {
+	// Repository names ignore case, but branches and file paths do not.
+	const [protocol, separator, host, owner, repository, ...path] = url.split('/');
+	return [protocol, separator, host, owner?.toLowerCase(), repository?.toLowerCase(), ...path].join(
+		'/',
+	);
+}
 function installed(entry: SkillCatalogEntry) {
-	return installations.value.filter((skill) => skill.webUrl === entry.url);
+	return installations.value.filter(
+		(skill) => repositoryUrl(skill.webUrl) === repositoryUrl(entry.url),
+	);
 }
 function openDetails(entry?: SkillCatalogEntry) {
 	openedFrom = search.value.trim() ? 'search' : 'browse';

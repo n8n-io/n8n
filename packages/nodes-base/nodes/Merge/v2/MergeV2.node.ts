@@ -8,6 +8,7 @@ import {
 	type INodeTypeDescription,
 	type IPairedItemData,
 	NodeConnectionTypes,
+	READ_ONLY_ANNOTATIONS,
 } from 'n8n-workflow';
 
 import { preparePairedItemDataArray } from '@utils/utilities';
@@ -36,6 +37,7 @@ export class MergeV2 implements INodeType {
 		this.description = {
 			...baseDescription,
 			version: [2, 2.1],
+			annotations: READ_ONLY_ANNOTATIONS,
 			defaults: {
 				name: 'Merge',
 			},

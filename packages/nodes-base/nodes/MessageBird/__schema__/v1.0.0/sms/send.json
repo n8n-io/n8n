@@ -1,0 +1,82 @@
+{
+	"properties": {
+		"body": {
+			"type": "string"
+		},
+		"createdDatetime": {
+			"type": "string"
+		},
+		"datacoding": {
+			"type": "string"
+		},
+		"direction": {
+			"type": "string"
+		},
+		"gateway": {
+			"type": "number"
+		},
+		"href": {
+			"type": "string"
+		},
+		"id": {
+			"type": "string"
+		},
+		"mclass": {
+			"type": "number"
+		},
+		"originator": {
+			"type": "string"
+		},
+		"recipients": {
+			"properties": {
+				"items": {
+					"items": {
+						"properties": {
+							"messagePartCount": {
+								"type": "number"
+							},
+							"recipient": {
+								"type": "number"
+							},
+							"status": {
+								"type": "string"
+							},
+							"statusDatetime": {
+								"type": ["null", "string"]
+							}
+						},
+						"type": "object"
+					},
+					"type": "array"
+				},
+				"totalCount": {
+					"type": "number"
+				},
+				"totalDeliveredCount": {
+					"type": "number"
+				},
+				"totalDeliveryFailedCount": {
+					"type": "number"
+				},
+				"totalSentCount": {
+					"type": "number"
+				}
+			},
+			"type": "object"
+		},
+		"reference": {
+			"type": ["null", "string"]
+		},
+		"scheduledDatetime": {
+			"type": ["null", "string"]
+		},
+		"type": {
+			"type": "string"
+		},
+		"typeDetails": {
+			"type": "object"
+		},
+		"validity": {}
+	},
+	"type": "object"
+}

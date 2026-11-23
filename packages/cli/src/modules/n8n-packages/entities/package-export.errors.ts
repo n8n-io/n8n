@@ -1,10 +1,17 @@
-import { UserError } from '@n8n/errors';
+import { ResponseError, UserError } from '@n8n/errors';
 
 /** A requested entity exists but the caller has no access to it. */
 export class PackageEntityAccessDeniedError extends UserError {}
 
 /** A requested entity does not exist at all. */
 export class PackageEntityNotFoundError extends UserError {}
+
+/** A stored workflow fails the package schema, so it cannot be exported. */
+export class PackageWorkflowInvalidError extends ResponseError {
+	constructor(message: string, cause: unknown) {
+		super(message, 422, 422, undefined, cause);
+	}
+}
 
 /** A valid export request is blocked by package export rules. */
 export class PackageExportBlockedError extends UserError {}

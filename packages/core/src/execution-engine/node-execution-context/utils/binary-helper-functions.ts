@@ -367,6 +367,7 @@ export const getBinaryHelperFunctions = (
 		await prepareBinaryData(binaryData, executionId!, workflowId, filePath, mimeType),
 	setBinaryDataBuffer: async (data, binaryData) =>
 		await setBinaryDataBuffer(data, binaryData, workflowId, executionId!),
+	// oxlint-disable-next-line typescript/no-deprecated -- Keep the upgrade error for nodes that call the removed helper.
 	copyBinaryFile: async () => {
 		throw new UserError('`copyBinaryFile` has been removed. Please upgrade this node.');
 	},

@@ -1,4 +1,5 @@
 import type { Readable } from 'node:stream';
+import { createHash } from 'node:crypto';
 import { Parser, type ReadEntry } from 'tar';
 
 import { isInside } from './skill-discovery';
@@ -33,8 +34,8 @@ export const DEFAULT_ARCHIVE_LIMITS: ArchiveLimits = {
 export type RepositoryArchive = {
 	paths: string[];
 	text: Map<string, string>;
-	/** Files that could be skill content but are over the size limit, so they have no text. */
-	oversized: Set<string>;
+	/** SHA-256 hashes for files over the size limit. Null means the reader did not fetch the file. */
+	oversized: Map<string, string | null>;
 };
 
 /** About the bytes that an archive holds in memory, for the cache budget. */
@@ -42,13 +43,14 @@ export function archiveSize(archive: RepositoryArchive): number {
 	let bytes = 0;
 	for (const path of archive.paths) bytes += path.length;
 	for (const text of archive.text.values()) bytes += text.length;
+	for (const hash of archive.oversized.values()) bytes += hash?.length ?? 0;
 	return bytes;
 }
 
-function tooLarge(root: string | string[]): SkillSourceReadError {
+export function archiveTooLarge(root: string): SkillSourceReadError {
 	return new SkillSourceReadError(
 		'archive_too_large',
-		(Array.isArray(root) ? root.includes('') : root === '')
+		root === ''
 			? 'The repository is too large for n8n to read. Link to the folder of the skills.'
 			: 'The folder is too large for n8n to read. Link to a smaller folder.',
 	);
@@ -62,13 +64,12 @@ function tooLarge(root: string | string[]): SkillSourceReadError {
  */
 export async function readRepositoryArchive(
 	source: Readable,
-	options: { root?: string | string[]; signal?: AbortSignal; limits?: ArchiveLimits } = {},
+	options: { root?: string; signal?: AbortSignal; limits?: ArchiveLimits } = {},
 ): Promise<RepositoryArchive> {
 	const { root = '', signal, limits = DEFAULT_ARCHIVE_LIMITS } = options;
-	const roots = Array.isArray(root) ? root : [root];
 	const paths: string[] = [];
 	const text = new Map<string, string>();
-	const oversized = new Set<string>();
+	const oversized = new Map<string, string>();
 	let downloaded = 0;
 	let entries = 0;
 	let bytes = 0;
@@ -99,10 +100,9 @@ export async function readRepositoryArchive(
 			const path = withoutTopFolder(entry.path);
 			if (
 				path === undefined ||
-				!roots.some(
-					(folder) =>
-						isInside(path, folder) ||
-						(isLicensePath(path) && isInside(folder, path.split('/').slice(0, -1).join('/'))),
+				!(
+					isInside(path, root) ||
+					(isLicensePath(path) && isInside(root, path.split('/').slice(0, -1).join('/')))
 				)
 			) {
 				entry.resume();
@@ -112,22 +112,27 @@ export async function readRepositoryArchive(
 			bytes += entry.size;
 			if (entries > limits.maxEntries || bytes > limits.maxUncompressedBytes) {
 				entry.resume();
-				return fail(tooLarge(root));
+				return fail(archiveTooLarge(root));
 			}
 			if (entry.type !== 'File') {
 				entry.resume();
 				return;
 			}
 			paths.push(path);
-			if (!keepsText(path) || entry.size > limits.maxTextFileBytes) {
-				if (keepsText(path)) oversized.add(path);
+			if (!keepsText(path)) {
 				entry.resume();
+				return;
+			}
+			if (entry.size > limits.maxTextFileBytes) {
+				const hash = createHash('sha256');
+				entry.on('data', (chunk: Buffer) => hash.update(chunk));
+				entry.on('end', () => oversized.set(path, hash.digest('hex')));
 				return;
 			}
 			textBytes += entry.size;
 			if (textBytes > limits.maxTextBytes) {
 				entry.resume();
-				return fail(tooLarge(root));
+				return fail(archiveTooLarge(root));
 			}
 			const chunks: Buffer[] = [];
 			entry.on('data', (chunk: Buffer) => chunks.push(chunk));
@@ -180,7 +185,7 @@ function withoutTopFolder(path: string): string | undefined {
 	return rest === '' ? undefined : rest;
 }
 
-function keepsText(path: string): boolean {
+export function keepsText(path: string): boolean {
 	const segments = path.split('/');
 	const name = segments.at(-1) ?? '';
 	if (name === 'SKILL.md' || isLicensePath(path)) return true;

@@ -43,6 +43,7 @@ commit. Do not execute scripts from a candidate repository during this review.
 
 The server retains applicable license and notice files in a Markdown reference.
 Those notices remain in exported content and take part in update review.
+The generated reference uses a free filename to preserve upstream source files.
 
 `allowedSkippedFiles` lists exact paths reviewed as development-only material.
 The Caveman README and marketing evaluation fixtures are not runtime inputs.
@@ -85,8 +86,6 @@ The workflow-tidying skill retains the MIT notice from its guide. The memory
 skill includes the repository license. Tests read these source files locally;
 the production editor bundle contains only their catalog metadata.
 
-The current GitHub reader downloads a repository archive even for a folder
-link. The n8n archive was about 64 MB at review and fits the existing 512 MB
-download limit. Source update checks can download it again after changes to
-master. A later move to n8n-io/skills can reduce that transfer, but needs a
-migration plan for existing source connections.
+Folder links use GitHub trees and individual file downloads. The reader also
+retains license and notice files from parent directories. It applies the existing
+file count and size limits. Repository-root links still use an archive.

@@ -1848,6 +1848,7 @@ const { width } = useElementSize(credNameRef);
 									:ai-gateway-credits-are-free="
 										aiGateway.creditsLabelKey.value === 'generic.freeCredits'
 									"
+									:fixed-credentials-only="modalOptions?.fixedCredentialsOnly"
 									:hide-ask-assistant="hideAskAssistant"
 									:instance-ai-credential-help="instanceAiCredentialHelp"
 									@update="onDataChange"

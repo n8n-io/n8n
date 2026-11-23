@@ -50,6 +50,7 @@ import {
 	isKnownAssistantAgentThread,
 	knownAssistantThreadRuntime,
 	lookUpAssistantThreadRuntime,
+	markAssistantAgentLaunch,
 	rememberAssistantAgentThread,
 } from '../assistantAgent/assistantAgentThreads';
 import { useAssistantAgentThreadsStore } from '../assistantAgent/assistantAgentThreads.store';
@@ -655,6 +656,14 @@ async function openFullAssistant() {
 	if (!mounted || props.subject.id !== subjectIdAtStart || activeThreadId.value !== threadId) {
 		return;
 	}
+	// The server does not know a thread before its first message. The full view then
+	// opens it as new, shows the agent, and its first message binds it.
+	if (panelAgentThreads.get(threadId) === true && props.subject.type !== 'workflow') {
+		markAssistantAgentLaunch(threadId, {
+			projectId: props.subject.projectId,
+			subject: props.subject,
+		});
+	}
 	handedOffThreadId = threadId;
 	void router.push({ name: INSTANCE_AI_THREAD_VIEW, params: { threadId } });
 }
@@ -760,6 +769,7 @@ function handleCloseShortcut(event: KeyboardEvent) {
 		>
 			<template #actions>
 				<N8nTooltip
+					as-child
 					:content="i18n.baseText('instanceAi.thread.new')"
 					placement="bottom"
 					:show-after="TOOLTIP_DELAY_MS"
@@ -770,6 +780,7 @@ function handleCloseShortcut(event: KeyboardEvent) {
 						size="small"
 						icon-size="large"
 						:disabled="building"
+						focusable-when-disabled
 						:aria-label="i18n.baseText('instanceAi.thread.new')"
 						data-test-id="instance-ai-embed-new-thread"
 						@click="onNewThreadRequested"

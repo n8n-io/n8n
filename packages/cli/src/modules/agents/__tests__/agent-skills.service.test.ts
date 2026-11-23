@@ -33,7 +33,7 @@ const versionId = 'v1';
 const pinId = '0b2c6f1e-7d3a-4c1b-9f2e-5a6b7c8d9e0f';
 const baseConfig = {
 	name: 'Test Agent',
-	model: 'anthropic/claude-sonnet-4-5',
+	model: 'anthropic/claude-sonnet-5-5',
 	instructions: 'Be helpful',
 };
 

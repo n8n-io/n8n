@@ -15,11 +15,12 @@ import {
 	blobsByPath,
 	buildPreview,
 	parsePackageManifest,
+	previewEnvironment,
 	previewRevision,
+	previewSource,
 	scopeManifestToProject,
 } from './promotion-preview';
 import { PromotionReviewGateService } from './promotion-review-gate.service';
-import { checkoutBranchName } from './promotions-git.utils';
 import type { BranchPackage, PromotionOperationInput } from './promotions.types';
 
 /**
@@ -53,13 +54,11 @@ export class PromotePreviewService {
 				? await this.reviewGate.findPromoteBlocker(projectId, input.environmentId)
 				: null;
 		if (blocker) {
-			const source = {
-				environmentId: input.environmentId,
-				branchName: checkoutBranchName(input.config),
-			};
+			const source = previewSource(input);
 			return {
 				commitSha: null,
 				source,
+				environment: previewEnvironment(input),
 				resources: [],
 				dependencies: [],
 				blocker,
@@ -67,7 +66,7 @@ export class PromotePreviewService {
 			};
 		}
 		const branch = await readBranch();
-		const instance = await exportInstancePackage(this.packagesService, user, projectId);
+		const instance = await exportInstancePackage(this.packagesService, user, [projectId]);
 		// Promote compares with the branch manifest to see renames and moves. The manifest can list
 		// other projects while this project has no files on the branch yet, and the move markers
 		// still need it.
@@ -88,10 +87,12 @@ export class PromotePreviewService {
 		const resources = promoteBase
 			? await this.markCrossProjectMoves(projectId, compared, promoteBase)
 			: compared;
-		const source = { environmentId: branch.environmentId, branchName: branch.branchName };
+		// The branch read resolves the environment again. Name the one it read.
+		const source = previewSource(branch.input);
 		return {
 			commitSha: branch.commitSha,
 			source,
+			environment: previewEnvironment(branch.input),
 			resources,
 			dependencies,
 			revision: previewRevision({ source, resources }),

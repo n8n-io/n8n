@@ -21,6 +21,7 @@ export function visitWorkflowCredentials(
 	let changed = false;
 	for (const node of nodes) {
 		for (const [credentialType, details] of Object.entries(node.credentials ?? {})) {
+			if (!details) continue;
 			changed = visitor(credentialType, details) || changed;
 		}
 

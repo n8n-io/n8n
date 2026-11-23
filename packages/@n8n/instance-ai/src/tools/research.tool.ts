@@ -98,6 +98,8 @@ type DomainGatingSuspendPayload = z.infer<typeof domainGatingSuspendSchema>;
 interface DomainGatingToolContext {
 	resumeData: DomainGatingResumeData | undefined;
 	suspend?: (payload: DomainGatingSuspendPayload) => Promise<never>;
+	/** The payload this tool suspended with, restored by the runtime on resume. */
+	suspendPayload?: DomainGatingSuspendPayload;
 	abortSignal?: AbortSignal;
 }
 
@@ -179,11 +181,14 @@ async function handleFetchUrl(
 
 	// ── Resume path: apply user's domain decision ──────────────────
 	if (resumeData !== undefined && resumeData !== null) {
-		let host: string;
-		try {
-			host = new URL(input.url).hostname;
-		} catch {
-			host = input.url;
+		// The card may be for a redirect target, so take the host from the card.
+		let host = ctx.suspendPayload?.domainAccess?.host;
+		if (!host) {
+			try {
+				host = new URL(input.url).hostname;
+			} catch {
+				host = input.url;
+			}
 		}
 		const { proceed } = await applyDomainAccessResume({
 			resumeData,
@@ -249,16 +254,35 @@ async function handleFetchUrl(
 			throw new Error(`Access to ${new URL(targetUrl).hostname} is blocked by admin.`);
 		}
 		if (await isSameRegistrableDomainOverHttps(input.url, targetUrl)) return;
+		// Cross-domain HTTPS redirect (e.g. directus.io → directus.com): don't follow
+		// it silently. Remember the target so the handler can ask the user to approve
+		// its domain. Redirects to plain HTTP stay rejected.
+		if (new URL(targetUrl).protocol === 'https:') blockedRedirectUrl = targetUrl;
 		throw new Error(
 			`Redirect from ${new URL(input.url).hostname} to ${new URL(targetUrl).hostname} is not allowed. ` +
 				'Skip this URL and try a different research strategy — retrying the same URL will not help.',
 		);
 	};
 
-	const page = await context.webResearchService.fetchUrl(input.url, {
-		authorizeUrl,
-		abortSignal: ctx.abortSignal,
-	});
+	let blockedRedirectUrl: string | undefined;
+	let page: FetchedPage;
+	try {
+		page = await context.webResearchService.fetchUrl(input.url, {
+			authorizeUrl,
+			abortSignal: ctx.abortSignal,
+		});
+	} catch (error) {
+		if (blockedRedirectUrl === undefined) throw error;
+		const redirectCheck = checkDomainAccess({
+			url: blockedRedirectUrl,
+			tracker: context.domainAccessTracker,
+			permissionMode: context.permissions?.fetchUrl,
+			runId: context.runId,
+		});
+		// Ask the user to approve the redirect target, then the fetch re-runs on resume.
+		if (!ctx.suspend || !redirectCheck.suspendPayload) throw error;
+		return await ctx.suspend(redirectCheck.suspendPayload);
+	}
 	const content = sanitizeWebContent(page.content);
 	const saveResult = input.saveTo
 		? await saveFetchedPage(context, page, content, input.saveTo, ctx.abortSignal)
