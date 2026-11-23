@@ -962,7 +962,10 @@ export class AgentRuntimeReconstructionService {
 				nonInterrupting: runtimeProfile === 'inline',
 				oauthService: this.oauthService,
 				projectId,
-				proxyFetch: instrumentation?.mcpFetch?.(server.name) ?? aiMcpFetch,
+				proxyFetch: aiMcpFetch,
+				// A test run or an eval answers MCP itself: no stored credential is read and no
+				// token is refreshed.
+				simulatedFetch: instrumentation?.mcpFetch?.(server.name),
 				resolveRegistryConnection: async (nodeTypeName) => {
 					const connection = await this.mcpRegistryService.getConnection(nodeTypeName);
 					if (connection?.attribution) {

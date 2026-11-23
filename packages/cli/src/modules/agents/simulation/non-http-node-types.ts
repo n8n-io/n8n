@@ -24,6 +24,15 @@ const LANGCHAIN_NODE_PREFIX = '@n8n/n8n-nodes-langchain.';
 const NO_HTTP = 'This node does not use HTTP, so the simulator cannot answer it.';
 const RUNS_CODE = 'This node can run code that reaches any service.';
 const HOST_FILES = 'This node uses files on the n8n host.';
+const N8N_DATA = 'This node reads or changes data stored in n8n, which the simulator cannot see.';
+const DEDUPE_HISTORY =
+	'This operation keeps a history in n8n across executions, which a test run would change.';
+
+/** Remove Duplicates operations that read or write the history stored in n8n. */
+const DEDUPE_HISTORY_OPERATIONS: ReadonlySet<unknown> = new Set([
+	'removeItemsSeenInPreviousExecutions',
+	'clearDeduplicationHistory',
+]);
 
 const blockAll = (names: string[], reason: string) =>
 	names.map((name): [string, string] => [`${FIRST_PARTY_NODE_PREFIX}${name}`, reason]);
@@ -41,6 +50,10 @@ const TEST_RUN_BLOCKED_NODE_TYPES: ReadonlyMap<string, string> = new Map([
 	...blockAll(['executeWorkflow'], 'Nested workflows do not run under the test run yet.'),
 	// A paused workflow resumes later without the test run's hooks and would run for real.
 	...blockAll(['wait', 'form'], 'This node pauses the workflow, which a test run cannot resume.'),
+	// They write n8n data through `additionalData`, with no HTTP request the simulator sees.
+	...blockAll(['dataTable', 'evaluation', 'evaluationTrigger'], N8N_DATA),
+	// The agent it calls runs with real credentials and without the test run's interceptor.
+	...blockAll(['messageAnAgent'], 'Agents that this node calls do not run under the test run yet.'),
 ]);
 
 /**
@@ -65,6 +78,12 @@ export function nodeSimulationGap(
 	}
 	if (!nodeType.startsWith(FIRST_PARTY_NODE_PREFIX)) {
 		return 'Community nodes cannot run in a test run, because n8n cannot check what they send.';
+	}
+	if (
+		nodeType === `${FIRST_PARTY_NODE_PREFIX}removeDuplicates` &&
+		DEDUPE_HISTORY_OPERATIONS.has(parameters?.operation)
+	) {
+		return DEDUPE_HISTORY;
 	}
 	if (parameters?.operation === 'sendAndWait') return 'Send-and-wait waits for a real person.';
 	if (parameters?.operation === 'dispatchAndWait') {

@@ -23,8 +23,10 @@ export interface SimulationBackend {
 
 	/**
 	 * Deletes what a world holds, for example data it copied from a real service. n8n calls it
-	 * when it replaces the world, when the test chat's thread is removed and when the cached
-	 * world expires. Best effort: n8n logs a failure and does not retry. Optional.
+	 * when it replaces the world, when it finds on the chat's next turn that the thread was
+	 * removed, and when the cached world expires (about 30 minutes after its last turn). It is
+	 * not called at the moment a thread is removed. Best effort: n8n logs a failure and does
+	 * not retry. Optional.
 	 */
 	closeWorld?(worldId: string): Promise<void>;
 }
@@ -78,6 +80,8 @@ export interface ToolCallContext {
 	toolName: string;
 	/** For example `n8n-nodes-base.slack`. */
 	nodeType?: string;
+	/** Aborts when the run stops, so a backend can stop waiting on (and paying for) a reply. */
+	signal?: AbortSignal;
 }
 
 export type SimulatedReply =

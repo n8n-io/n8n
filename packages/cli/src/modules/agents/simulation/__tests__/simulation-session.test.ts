@@ -594,6 +594,120 @@ describe('SimulationSession', () => {
 		).rejects.toThrow(SimulationBlockedError);
 		expect(handler).not.toHaveBeenCalled();
 	});
+	it.each([
+		['custom', { name: 'my_code', description: '', metadata: { customTool: true } }],
+		['integration', { name: 'slack_action', description: '', metadata: { kind: 'integration' } }],
+		['other', { name: 'workspace_execute_command', description: '' }],
+	] as const)(
+		'blocks a %s tool even when the list marks it simulated, because no seam sees it',
+		async (kind, partial) => {
+			const world = makeWorld({ outcome: 'served', source: 'made_up', status: 200, body: {} });
+			const toolName = kind === 'other' ? `unknown:${partial.name}` : partial.name;
+			const session = new SimulationSession({
+				testChatId: 't',
+				world,
+				capabilities: [{ toolName, kind, testability: 'simulated' }],
+			});
+			const handler = vi.fn();
+
+			await expect(runTool(session, { ...partial, handler })).rejects.toThrow(
+				SimulationBlockedError,
+			);
+			expect(handler).not.toHaveBeenCalled();
+			expect(world.handleRequest).not.toHaveBeenCalled();
+			expect(session.takeDecision('tc-1')).toMatchObject({
+				route: 'blocked',
+				reason: 'not_simulatable',
+			});
+		},
+	);
+
+	it.each([
+		['a status Response() rejects', { status: 99 }],
+		['a status above 599', { status: 600 }],
+		['a non-integer status', { status: 200.5 }],
+		['no source', { source: undefined }],
+	])('blocks the call as unavailable when the world sends %s', async (_label, override) => {
+		const world = makeWorld({
+			outcome: 'served',
+			source: 'made_up',
+			status: 200,
+			body: {},
+			...override,
+		} as SimulatedReply);
+		const session = new SimulationSession({
+			testChatId: 't',
+			world,
+			capabilities: [slackCapability],
+		});
+		const { tool } = slackTool(session);
+
+		await expect(runTool(session, tool)).rejects.toThrow(SimulationBlockedError);
+		expect(session.takeDecision('tc-1')).toMatchObject({
+			route: 'blocked',
+			reason: 'simulator_unavailable',
+		});
+	});
+
+	it.each([204, 205, 304])('returns an MCP %i reply with no body', async (status) => {
+		const world = makeWorld({ outcome: 'served', source: 'made_up', status, body: { x: 1 } });
+		const session = new SimulationSession({
+			testChatId: 't',
+			world,
+			capabilities: [{ toolName: 'linear', kind: 'mcp', testability: 'simulated' }],
+		});
+
+		const response = await session.instrumentation().mcpFetch!('linear')('https://x.test/mcp', {
+			method: 'POST',
+			body: '{}',
+		});
+		expect(response.status).toBe(status);
+		expect(await response.text()).toBe('');
+	});
+
+	it('passes the abort signal of the request to the world', async () => {
+		const world = makeWorld({ outcome: 'served', source: 'made_up', status: 200, body: {} });
+		const session = new SimulationSession({
+			testChatId: 't',
+			world,
+			capabilities: [{ toolName: 'linear', kind: 'mcp', testability: 'simulated' }],
+		});
+		const controller = new AbortController();
+
+		await session.instrumentation().mcpFetch!('linear')('https://x.test/mcp', {
+			method: 'POST',
+			body: '{}',
+			signal: controller.signal,
+		});
+		expect(world.handleRequest).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({ signal: controller.signal }),
+		);
+	});
+
+	it('drops the oldest decision nobody takes, so the map stays bounded', async () => {
+		const session = new SimulationSession({ testChatId: 't', capabilities: [] });
+		const tool: BuiltTool = { name: 'my_code', description: '', handler: vi.fn() };
+
+		for (let index = 0; index < 501; index++) {
+			await expect(runTool(session, tool, `tc-${index}`)).rejects.toThrow(SimulationBlockedError);
+		}
+		expect(session.takeDecision('tc-0')).toBeUndefined();
+		expect(session.takeDecision('tc-1')).toMatchObject({ route: 'blocked' });
+		expect(session.takeDecision('tc-500')).toMatchObject({ route: 'blocked' });
+	});
+	it('passes the run abort signal of a web search to the world', async () => {
+		const world = makeWorld({ outcome: 'served', source: 'made_up', status: 200, body: [] });
+		const session = new SimulationSession({ testChatId: 't', world, capabilities: [] });
+		const controller = new AbortController();
+
+		await session.instrumentation().webSearch!({ query: 'n8n' }, { signal: controller.signal });
+
+		expect(world.handleRequest).toHaveBeenCalledWith(
+			expect.objectContaining({ protocol: 'web_search' }),
+			expect.objectContaining({ signal: controller.signal }),
+		);
+	});
 });
 
 describe('SimulationSession route evidence', () => {

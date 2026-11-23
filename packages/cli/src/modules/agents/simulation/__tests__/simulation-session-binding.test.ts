@@ -87,6 +87,7 @@ function fakeBackend(dependsOnConnections: boolean) {
 
 function setup({ dependsOnConnections = true }: { dependsOnConnections?: boolean } = {}) {
 	const { backend, opened, closed, state } = fakeBackend(dependsOnConnections);
+	// Tests may replace `closeWorld`; the service reads it from the registered backend.
 	const registry = new SimulationBackendRegistry();
 	registry.register(backend);
 
@@ -163,6 +164,7 @@ function setup({ dependsOnConnections = true }: { dependsOnConnections?: boolean
 	};
 	return {
 		service,
+		backend,
 		opened,
 		closed,
 		state,
@@ -444,6 +446,8 @@ describe('SimulationSessionService connection binding', () => {
 				'credential-a',
 				expect.objectContaining({ id: 'user-1' }),
 				['credential:read'],
+				// A see-only role cannot use the credential, so it does not keep the server.
+				{ excludeSeeOnlyRoles: true },
 			);
 		});
 
@@ -465,6 +469,21 @@ describe('SimulationSessionService connection binding', () => {
 			await turn();
 
 			expect(closed).toEqual(['world-1']);
+		});
+
+		it('should still run the turn when closing the old world throws synchronously', async () => {
+			const { turn, opened, backend, draft } = setup();
+			await turn();
+			backend.closeWorld = () => {
+				throw new Error('not a promise');
+			};
+
+			draft.current = draftWith([serverB]);
+			const second = await turn();
+			await vi.runAllTicks();
+
+			expect(second?.worldId).toBe('world-2');
+			expect(opened).toHaveLength(2);
 		});
 
 		it('should still run the turn when closing the old world fails', async () => {

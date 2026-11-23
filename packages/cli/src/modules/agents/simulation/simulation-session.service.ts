@@ -146,14 +146,17 @@ export class SimulationSessionService {
 					.filter((id): id is string => typeof id === 'string' && id !== AI_GATEWAY_MANAGED_TAG),
 			),
 		];
-		// The same check the agent runtime makes before it uses a credential.
+		// Stricter than seeing it: a see-only role cannot drive the credential's secret, so a
+		// server whose credential the owner can only see stays out of the world.
 		const states = new Map(
 			await Promise.all(
 				credentialIds.map(
 					async (id) =>
 						[
 							id,
-							await this.credentialsFinder.findCredentialForUser(id, owner, ['credential:read']),
+							await this.credentialsFinder.findCredentialForUser(id, owner, ['credential:read'], {
+								excludeSeeOnlyRoles: true,
+							}),
 						] as const,
 				),
 			),
@@ -179,12 +182,16 @@ export class SimulationSessionService {
 		const backend = this.registry.get();
 		const { worldId } = session;
 		if (!worldId || !backend?.closeWorld || backend.id !== session.backend) return;
-		void backend.closeWorld(worldId).catch((error: unknown) => {
-			this.logger.warn('[SafeTesting] Failed to close a simulated world', {
-				worldId,
-				error: error instanceof Error ? error.message : String(error),
+		// `then` also catches a backend that throws before it returns a promise.
+		const closeWorld = backend.closeWorld.bind(backend);
+		void Promise.resolve()
+			.then(async () => await closeWorld(worldId))
+			.catch((error: unknown) => {
+				this.logger.warn('[SafeTesting] Failed to close a simulated world', {
+					worldId,
+					error: error instanceof Error ? error.message : String(error),
+				});
 			});
-		});
 	}
 
 	private async openNew(input: OpenSimulationInput): Promise<SimulationSession | undefined> {

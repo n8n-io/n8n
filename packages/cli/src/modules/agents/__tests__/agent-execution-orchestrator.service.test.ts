@@ -2324,6 +2324,81 @@ describe('AgentExecutionOrchestratorService', () => {
 		);
 	});
 
+	describe('test chat isolation', () => {
+		async function runTestTurn() {
+			const { service, runtimeCacheService } = makeService();
+			const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
+			runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+			await collect(
+				service.executeForChat({
+					agentId,
+					projectId,
+					message: 'hello',
+					user,
+					memory: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
+					simulation: vi.fn().mockResolvedValue(mock<SimulationSession>()),
+				}),
+			);
+			return { runtime, runtimeCacheService };
+		}
+
+		it("runs in the test chat's own sandbox, never the user's live draft sandbox", async () => {
+			const { runtime, runtimeCacheService } = await runTestTurn();
+			const testChatHash = hashAgentSandboxPrincipal({
+				type: 'test-chat',
+				userId,
+				threadId: 'thread-1',
+			});
+
+			expect(testChatHash).not.toBe(userPrincipalHash);
+			expect(runtimeCacheService.getRuntime).toHaveBeenCalledWith(
+				expect.objectContaining({ sandboxPrincipalHash: testChatHash }),
+			);
+			expect(runtime.agent.stream.mock.calls[0][1]?.persistence?.hostMetadata).toMatchObject(
+				encodeAgentSandboxHostMetadata({ projectId, principalHash: testChatHash }),
+			);
+		});
+
+		it('turns episodic memory off, so simulated results never reach live chats', async () => {
+			const { runtime } = await runTestTurn();
+
+			expect(runtime.agent.stream.mock.calls[0][1]?.persistence?.hostMetadata).toMatchObject(
+				encodeEpisodicScopeMetadata({ disabled: true }),
+			);
+		});
+
+		it('cannot start background jobs, so no background sub-agent runs outside the test run', async () => {
+			const { runtimeCacheService } = await runTestTurn();
+
+			expect(runtimeCacheService.getRuntime).toHaveBeenCalledWith(
+				expect.objectContaining({ allowBackgroundTasks: false }),
+			);
+		});
+
+		it('keeps live draft chats in the shared draft sandbox with episodic memory on', async () => {
+			const { service, runtimeCacheService } = makeService();
+			const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
+			runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+			await collect(
+				service.executeForChat({
+					agentId,
+					projectId,
+					message: 'hello',
+					user,
+					memory: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
+					simulation: vi.fn().mockResolvedValue(undefined),
+				}),
+			);
+
+			expect(runtimeCacheService.getRuntime).toHaveBeenCalledWith(
+				expect.objectContaining({ sandboxPrincipalHash: userPrincipalHash }),
+			);
+			expect(runtime.agent.stream.mock.calls[0][1]?.persistence?.hostMetadata).not.toHaveProperty(
+				EPISODIC_SCOPE_METADATA_KEY,
+			);
+		});
+	});
+
 	it('does not run the agent when the test chat marker cannot be stored', async () => {
 		const { service, runtimeCacheService } = makeService();
 		const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
@@ -4476,6 +4551,59 @@ describe('AgentExecutionOrchestratorService', () => {
 			),
 		).rejects.toThrow('unavailable');
 		expect(runtimeCacheService.getRuntime).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		['resumes a test chat in its own sandbox', 'test-chat', true],
+		['never resumes a test chat in the shared draft sandbox', 'n8n-user', false],
+	] as const)('%s', async (_label, checkpointPrincipal, resumes) => {
+		const { service, checkpointStorage, runtimeCacheService, executionService } = makeService(true);
+		const testChatHash = hashAgentSandboxPrincipal({
+			type: 'test-chat',
+			userId,
+			threadId: 'thread-1',
+		});
+		executionService.findThreadById.mockResolvedValue(
+			mock<AgentExecutionThread>({ id: 'thread-1', testChat: true }),
+		);
+		checkpointStorage.getStatus.mockResolvedValue({
+			status: 'active',
+			checkpoint: makeCheckpoint(
+				{},
+				{
+					threadId: 'thread-1',
+					resourceId: 'draft-chat:user-1',
+					hostMetadata: encodeAgentSandboxHostMetadata({
+						projectId,
+						principalHash: checkpointPrincipal === 'test-chat' ? testChatHash : userPrincipalHash,
+					}),
+				},
+			),
+		});
+		runtimeCacheService.getRuntime.mockResolvedValue(makeRuntime());
+
+		const run = collect(
+			service.resumeForChat({
+				agentId,
+				projectId,
+				runId: 'run-1',
+				toolCallId: 'tc-1',
+				resumeData: { value: 'yes' },
+				user,
+				usePublishedVersion: false,
+				integrationType: N8N_CHAT_INTEGRATION_TYPE,
+			}),
+		);
+
+		if (resumes) {
+			await run;
+			expect(runtimeCacheService.getRuntime).toHaveBeenCalledWith(
+				expect.objectContaining({ sandboxPrincipalHash: testChatHash }),
+			);
+		} else {
+			await expect(run).rejects.toThrow('unavailable');
+			expect(runtimeCacheService.getRuntime).not.toHaveBeenCalled();
+		}
 	});
 
 	it('rejects an old checkpoint without sandbox scope when workspaces are enabled', async () => {

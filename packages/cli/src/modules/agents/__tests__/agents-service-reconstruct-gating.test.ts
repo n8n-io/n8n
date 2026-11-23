@@ -22,7 +22,7 @@ import { Container } from '@n8n/di';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { mock } from 'vitest-mock-extended';
 
-import * as proxyTransport from '@/utils/ai-proxy-fetch';
+import type * as ProxyTransport from '@/utils/ai-proxy-fetch';
 import type { ActiveExecutions } from '@/active-executions';
 import type { CredentialsFinderService } from '@n8n/backend-services';
 import type { EphemeralNodeExecutor } from '@/node-execution';
@@ -69,6 +69,14 @@ import type { AgentSandboxFilesService } from '../agent-sandbox-files.service';
 
 const { getCachedCatalog } = vi.hoisted(() => ({ getCachedCatalog: vi.fn() }));
 vi.mock('@n8n/agents/catalog', () => ({ getCachedCatalog }));
+
+// A module mock, so the MCP transport can be replaced without changing an ESM namespace.
+const { createAiMcpFetchMock } = vi.hoisted(() => ({ createAiMcpFetchMock: vi.fn() }));
+vi.mock('@/utils/ai-proxy-fetch', async () => {
+	const actual = await vi.importActual<typeof ProxyTransport>('@/utils/ai-proxy-fetch');
+	createAiMcpFetchMock.mockImplementation(actual.createAiMcpFetch);
+	return { ...actual, createAiMcpFetch: createAiMcpFetchMock };
+});
 
 // Mock buildFromJson so reconstruction doesn't try to actually build an agent.
 const builtAgent = mock<agents.Agent>();
@@ -290,7 +298,8 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — MCP w
 			'no-override': { onMcpToolCallSettled: vi.fn() },
 			override: { mcpFetch },
 		};
-		const factory = vi.spyOn(proxyTransport, 'createAiMcpFetch').mockReturnValue(liveFetch);
+		const realFactory = createAiMcpFetchMock.getMockImplementation();
+		createAiMcpFetchMock.mockReturnValue(liveFetch);
 		try {
 			const entity = makeAgentEntity(undefined, {
 				mcpServers: [
@@ -310,14 +319,23 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — MCP w
 				undefined,
 				instrumentation[mode],
 			);
+			// The default transport stays the proxy fetch. An override replaces it as the simulated
+			// fetch, which answers every request, so no credential is read for that server.
 			expect(buildMcpClientForServerMock).toHaveBeenCalledWith(
 				expect.objectContaining({ name: 'fixture' }),
-				expect.objectContaining({ proxyFetch: mode === 'override' ? evalFetch : liveFetch }),
+				expect.objectContaining({
+					proxyFetch: liveFetch,
+					simulatedFetch: mode === 'override' ? evalFetch : undefined,
+				}),
 			);
 			if (mode === 'override') expect(mcpFetch).toHaveBeenCalledWith('fixture');
 			else expect(mcpFetch).not.toHaveBeenCalled();
+			// Auth-pending servers are attached only when the override keeps them off the network.
+			expect(buildFromJsonMock.mock.lastCall?.at(-1)).toMatchObject({
+				attachAuthPendingMcpServers: mode === 'override',
+			});
 		} finally {
-			factory.mockRestore();
+			createAiMcpFetchMock.mockImplementation(realFactory!);
 		}
 	});
 
