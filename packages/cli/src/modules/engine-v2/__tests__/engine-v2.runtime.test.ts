@@ -35,7 +35,6 @@ const mocks = vi.hoisted(() => {
 		initialize: vi.fn(async () => {
 			dataSource.isInitialized = true;
 		}),
-		runMigrations: vi.fn(async () => []),
 		destroy: vi.fn(async () => {
 			dataSource.isInitialized = false;
 		}),
@@ -96,6 +95,7 @@ const mocks = vi.hoisted(() => {
 		v1StepExecutor,
 		stepDataLoader,
 		createDataSource: vi.fn((_url: string, _options?: unknown) => dataSource),
+		runMigrations: vi.fn(async (_dataSource: unknown) => {}),
 		createServer: vi.fn((_app: unknown) => httpServer),
 		createEngineRuntime: vi.fn((_options: unknown) => engine),
 		createEngineStepDataLoader: vi.fn((_executionStore: unknown, _stepStore: unknown) => {
@@ -113,6 +113,7 @@ vi.mock('@n8n/engine', async (importOriginal) => ({
 	AllowAllAdmittance: vi.fn(),
 	SharedSecretIdentityVerifier: vi.fn(),
 	createDataSource: mocks.createDataSource,
+	runMigrations: mocks.runMigrations,
 	createEngineRuntime: mocks.createEngineRuntime,
 	mintResumeToken: vi.fn((_secret: string, executionId: string) => `token-for-${executionId}`),
 	mintStepBoundResumeToken: vi.fn(() => 'step-bound-token'),
@@ -220,7 +221,7 @@ describe('EngineV2Runtime', () => {
 
 			expect(mocks.createDataSource).toHaveBeenCalledWith('postgres://engine', expect.anything());
 			expect(mocks.dataSource.initialize).toHaveBeenCalled();
-			expect(mocks.dataSource.runMigrations).toHaveBeenCalled();
+			expect(mocks.runMigrations).toHaveBeenCalledWith(mocks.dataSource);
 			expect(mocks.createEngineRuntime).toHaveBeenCalledWith(
 				expect.objectContaining({ dataSource: mocks.dataSource }),
 			);
@@ -495,7 +496,7 @@ describe('EngineV2Runtime', () => {
 		});
 
 		it('closes the connection when migrations fail', async () => {
-			mocks.dataSource.runMigrations.mockRejectedValueOnce(new Error('migration failed'));
+			mocks.runMigrations.mockRejectedValueOnce(new Error('migration failed'));
 
 			await expect(newRuntime().init(initOptions())).rejects.toThrow('migration failed');
 

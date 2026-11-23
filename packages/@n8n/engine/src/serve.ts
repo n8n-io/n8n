@@ -3,7 +3,7 @@ import { Container } from '@n8n/di';
 
 import { AllowAllAdmittance } from './admittance';
 import { SharedSecretIdentityVerifier } from './auth';
-import { createDataSource } from './database';
+import { createDataSource, runMigrations } from './database';
 import { createConsoleLogger } from './logging';
 import { createInMemoryWorkQueues } from './queue';
 import { noopExecutionResponseSender } from './response-channel';
@@ -34,7 +34,7 @@ async function main(): Promise<void> {
 		connectTimeoutMS: config.databaseConnectionTimeoutMs,
 	});
 	await dataSource.initialize();
-	await dataSource.runMigrations();
+	await runMigrations(dataSource);
 
 	const runtime = createEngineRuntime({
 		dataSource,
