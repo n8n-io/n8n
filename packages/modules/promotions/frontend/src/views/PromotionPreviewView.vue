@@ -370,14 +370,8 @@ const treeResizer = useResizablePanel({
 			<N8nLink :to="backRoute" theme="text" size="small" data-test-id="promotion-preview-back">
 				<span :class="$style.back"><N8nIcon icon="arrow-left" size="small" />{{ backLabel }}</span>
 			</N8nLink>
-			<N8nHeading tag="h1" size="xlarge" :class="$style.title">{{ title }}</N8nHeading>
-			<div :class="$style.tabRow">
-				<N8nTabs
-					v-model="activeTab"
-					:options="tabs"
-					:class="$style.tabs"
-					data-test-id="promotion-preview-tabs"
-				/>
+			<div :class="$style.titleRow">
+				<N8nHeading tag="h1" size="xlarge" :class="$style.title">{{ title }}</N8nHeading>
 				<div :class="$style.actions">
 					<N8nButton
 						variant="outline"
@@ -401,6 +395,14 @@ const treeResizer = useResizablePanel({
 						{{ submitLabel }}
 					</N8nButton>
 				</div>
+			</div>
+			<div :class="$style.tabRow">
+				<N8nTabs
+					v-model="activeTab"
+					:options="tabs"
+					:class="$style.tabs"
+					data-test-id="promotion-preview-tabs"
+				/>
 			</div>
 		</header>
 
@@ -587,8 +589,16 @@ const treeResizer = useResizablePanel({
 	background-color: var(--background--surface);
 }
 
+.titleRow {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--sm);
+	width: 100%;
+}
+
 .title {
-	margin-bottom: var(--spacing--2xs);
+	min-width: 0;
 }
 
 .back {
@@ -613,7 +623,6 @@ const treeResizer = useResizablePanel({
 
 .actions {
 	flex-shrink: 0;
-	align-self: center;
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
