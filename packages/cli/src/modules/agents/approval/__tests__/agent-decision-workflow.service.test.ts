@@ -123,7 +123,7 @@ function setup(
 	};
 }
 
-describe('Agent review workflow approval', () => {
+describe('Request from agent workflow approval', () => {
 	it('stops the child when request registration fails', async () => {
 		const { loader, jobService, wrapped, handler, context } = setup();
 		Container.set(WorkflowRunner, mock<WorkflowRunner>());
@@ -206,7 +206,7 @@ describe('Agent review workflow approval', () => {
 			});
 			loader.loadWorkflow.mockResolvedValue({
 				id: 'decision-workflow',
-				nodes: [{ name: 'Agent review', type: 'n8n-nodes-base.agentDecisionTrigger' }],
+				nodes: [{ name: 'Request from agent', type: 'n8n-nodes-base.agentDecisionTrigger' }],
 				settings: {},
 			} as WorkflowEntity);
 			jobs.findWorkflowJobByExecutionId.mockResolvedValue({
@@ -305,7 +305,7 @@ describe('Agent review workflow approval', () => {
 		channels.prepareWorkflow.mockResolvedValue({
 			id: 'caller',
 			name: 'Channel approval',
-			nodes: [{ name: 'Agent review', type: 'n8n-nodes-base.agentDecisionTrigger' }],
+			nodes: [{ name: 'Request from agent', type: 'n8n-nodes-base.agentDecisionTrigger' }],
 			connections: {},
 			settings: {},
 		} as never);
@@ -566,7 +566,7 @@ describe('Agent review workflow approval', () => {
 						{
 							id: 'trigger',
 							disabled: false,
-							name: 'Agent review',
+							name: 'Request from agent',
 							type: 'n8n-nodes-base.agentDecisionTrigger',
 							typeVersion: 1,
 							position: [0, 0],

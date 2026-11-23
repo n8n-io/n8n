@@ -7,7 +7,7 @@ const node = new AgentDecisionResponse();
 
 function context(parameters: Array<{ approved: unknown; reason?: unknown }>) {
 	const ctx = mock<IExecuteFunctions>();
-	ctx.getNode.mockReturnValue(mock<INode>({ name: 'Respond to agent review' }));
+	ctx.getNode.mockReturnValue(mock<INode>({ name: 'Respond to agent' }));
 	ctx.getInputData.mockReturnValue(parameters.map(() => ({ json: {} })));
 	ctx.getNodeParameter.mockImplementation(
 		(name: string, index: number, fallback?: unknown) =>
