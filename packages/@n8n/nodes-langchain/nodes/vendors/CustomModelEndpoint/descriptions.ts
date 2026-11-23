@@ -1,6 +1,6 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-import { sharedOptions } from '@utils/custom-model-endpoint/descriptions';
+import { chatCompletionsOptions } from '@utils/custom-model-endpoint/descriptions';
 
 export const messagesField: INodeProperties = {
 	displayName: 'Messages',
@@ -71,7 +71,8 @@ export const actionNodeOptions: INodeProperties = {
 	placeholder: 'Add Option',
 	description: 'Additional options to add',
 	default: {},
-	options: [...sharedOptions.filter(({ name }) => !REPLACED.has(name)), ...tokenCapFields].sort(
-		(left, right) => left.displayName.localeCompare(right.displayName),
-	),
+	options: [
+		...chatCompletionsOptions.filter(({ name }) => !REPLACED.has(name)),
+		...tokenCapFields,
+	].sort((left, right) => left.displayName.localeCompare(right.displayName)),
 };
