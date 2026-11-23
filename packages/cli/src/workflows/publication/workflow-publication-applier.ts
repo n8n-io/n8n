@@ -149,8 +149,14 @@ export class WorkflowPublicationApplier {
 	): Promise<PublicationResult> {
 		// The checks below read the owner project from the database, because a transfer changes it.
 		const cacheFailure = await this.ownerCacheInvalidationFailure(record.workflowId);
-		// A transfer record fails on a failed delete only after its teardown.
-		if (cacheFailure && record.reason !== WorkflowPublicationReason.Transfer) throw cacheFailure;
+		if (cacheFailure) {
+			// A transfer record fails on a failed delete only after its teardown.
+			if (record.reason !== WorkflowPublicationReason.Transfer) throw cacheFailure;
+			this.logger.warn('Failed to clear the owner project cache of a transfer record', {
+				workflowId: record.workflowId,
+				error: cacheFailure.message,
+			});
+		}
 
 		const { workflow, oldVersion, newVersion } = await this.resolveVersions(record);
 
