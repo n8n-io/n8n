@@ -60,9 +60,8 @@ export class SkillRuntimeService {
 			description: version.description,
 			versionId: version.id,
 			version: version.version,
-			instructions: (await this.workflowsInSkillsFlagGate.isEnabled())
-				? withSkillWorkflowMentionHint({ instructions: version.instructions }).instructions
-				: version.instructions,
+			instructions: (await this.withWorkflowMentionHint({ instructions: version.instructions }))
+				.instructions,
 			frontmatter: version.frontmatter,
 			files: files.map(({ path }) => ({ path })),
 		};
@@ -82,7 +81,20 @@ export class SkillRuntimeService {
 			path,
 		);
 		if (!row || !(await this.canReadForAssistant(context, row.skill, projectId))) return null;
-		return { skillId, versionId, path: row.file.path, content: row.file.content };
+		return {
+			skillId,
+			versionId,
+			path: row.file.path,
+			content: (await this.withWorkflowMentionHint({ instructions: row.file.content }))
+				.instructions,
+		};
+	}
+
+	async withWorkflowMentionHint<T extends Pick<AgentSkill, 'instructions' | 'references'>>(
+		skill: T,
+	): Promise<T> {
+		if (!(await this.workflowsInSkillsFlagGate.isEnabled())) return skill;
+		return withSkillWorkflowMentionHint(skill);
 	}
 
 	/**

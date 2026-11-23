@@ -1258,6 +1258,34 @@ describe('AgentRuntimeReconstructionService — workflows that skills mention', 
 		);
 	});
 
+	it('adds the workflow hint to the skills of a sub-agent', async () => {
+		const { service, workflowsInSkillsFlagGate } = makeService({});
+		workflowsInSkillsFlagGate.isEnabled.mockResolvedValue(true);
+		buildFromJsonResolvingTools([]);
+		const { skillRefs, skills } = makeSkillAgentEntity();
+
+		await service.reconstructFromResolvedSource({
+			config: {
+				name: 'Child Agent',
+				model: 'anthropic/claude-sonnet-5-5',
+				instructions: 'Be helpful',
+				skills: skillRefs,
+			},
+			memoryOwnerAgentId: 'child-1',
+			projectId,
+			credentialProvider: mock<CredentialProvider>(),
+			toolDescriptors: {},
+			toolCodeByName: {},
+			skills,
+			runtimeProfile: 'sub-agent',
+			runType: 'test',
+		});
+
+		expect(skillInstructionsPassedToBuildFromJson()).toMatch(
+			/^Call \[Get code\]\(n8n:\/\/workflow\/wf-mentioned\) and reply with the code\.\n\n.*stop and tell the user\.$/,
+		);
+	});
+
 	it('keeps the skill instructions while the flag is off', async () => {
 		const { service, workflowsInSkillsFlagGate } = makeService({});
 		workflowsInSkillsFlagGate.isEnabled.mockResolvedValue(false);

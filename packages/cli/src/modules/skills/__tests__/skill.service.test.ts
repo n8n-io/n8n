@@ -1161,29 +1161,36 @@ describe('SkillService', () => {
 		describe('a skill that mentions a workflow', () => {
 			const mentioning = 'Run [Report](n8n://workflow/wf-1).';
 
-			beforeEach(() => {
-				projectSkill.version.instructions = mentioning;
+			function useSkill(
+				instructions: string,
+				files: Array<{ path: string; content: string }> = [],
+			) {
+				const row = versionRow(
+					skillRow('skill-4', { projectId: 'project-1' }),
+					1,
+					{ instructions },
+					files,
+				);
+				row.skill.availableToMCP = true;
 				projectScope.getProjectIds.mockResolvedValue(['project-1']);
-				skills.findVisiblePage.mockResolvedValue({ skills: [projectSkill.skill], count: 1 });
-			});
-
-			afterEach(() => {
-				projectSkill.version.instructions = 'Use short sentences.';
-				projectSkill.files = [];
-			});
+				skills.findLatestSaved.mockResolvedValue(new Map([['skill-4', row]]));
+				skills.findVisiblePage.mockResolvedValue({ skills: [row.skill], count: 1 });
+			}
 
 			it('adds the workflow hint to the instructions when the flag is on', async () => {
 				workflowsInSkillsGate.isEnabled.mockResolvedValue(true);
+				useSkill(mentioning);
 				const expected = `${mentioning}\n\n${SKILL_WORKFLOW_MENTION_HINT}`;
 
-				expect((await service.readForMcp(user, 'skill-2'))?.skill.instructions).toBe(expected);
+				expect((await service.readForMcp(user, 'skill-4'))?.skill.instructions).toBe(expected);
 				expect((await service.listForMcp(user, 0, 50)).skills[0].skill.instructions).toBe(expected);
 			});
 
 			it('keeps the instructions when the flag is off', async () => {
 				workflowsInSkillsGate.isEnabled.mockResolvedValue(false);
+				useSkill(mentioning);
 
-				expect((await service.readForMcp(user, 'skill-2'))?.skill.instructions).toBe(mentioning);
+				expect((await service.readForMcp(user, 'skill-4'))?.skill.instructions).toBe(mentioning);
 				expect((await service.listForMcp(user, 0, 50)).skills[0].skill.instructions).toBe(
 					mentioning,
 				);
@@ -1191,12 +1198,11 @@ describe('SkillService', () => {
 
 			it('adds the workflow hint to the instructions when only a reference mentions a workflow', async () => {
 				workflowsInSkillsGate.isEnabled.mockResolvedValue(true);
-				projectSkill.version.instructions = 'Use short sentences.';
-				projectSkill.files = [mock({ path: 'references/run.md', content: mentioning })];
+				useSkill('Be brief.', [{ path: 'references/run.md', content: mentioning }]);
 
 				const { skill } = (await service.listForMcp(user, 0, 50)).skills[0];
 
-				expect(skill.instructions).toBe(`Use short sentences.\n\n${SKILL_WORKFLOW_MENTION_HINT}`);
+				expect(skill.instructions).toBe(`Be brief.\n\n${SKILL_WORKFLOW_MENTION_HINT}`);
 				expect(skill.references).toEqual([{ path: 'references/run.md', content: mentioning }]);
 			});
 		});

@@ -218,6 +218,22 @@ describe('SkillRuntimeService', () => {
 			});
 		});
 
+		it('adds the workflow hint to a reference that mentions a workflow when the flag is on', async () => {
+			workflowsInSkillsGate.isEnabled.mockResolvedValue(true);
+			skills.findAssistantSkillFile.mockResolvedValue({
+				skill: row.skill,
+				file: mock<SkillFile>({
+					path: 'references/run.md',
+					content: 'Run [Report](n8n://workflow/wf-1).',
+				}),
+			});
+
+			expect(
+				(await runtime.readFileForAssistant(context, 'skill-1', 'version-1', 'references/run.md'))
+					?.content,
+			).toBe(`Run [Report](n8n://workflow/wf-1).\n\n${SKILL_WORKFLOW_MENTION_HINT}`);
+		});
+
 		it('allows instance skills without project access', async () => {
 			projectScope.getProjectIds.mockResolvedValue([]);
 			expect(await runtime.readForAssistant(context, 'skill-1')).not.toBeNull();

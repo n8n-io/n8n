@@ -67,13 +67,11 @@ import {
 import { compareSkillFilePaths, skillContentHash } from '../utils/skill-content-hash';
 import { skillGroupPage } from '../utils/skill-group-page';
 import { getSkillHash } from '../utils/skill-hash';
-import { withSkillWorkflowMentionHint } from '../utils/skill-workflow-mention-hint';
 import { AssistantSkillsFlagGate } from './assistant-skills-flag-gate';
 import { SkillAccessService } from './skill-access.service';
 import { SkillRuntimeService } from './skill-runtime.service';
 import { SkillSyncFlagGate } from './skill-sync-flag-gate';
 import { SkillSyncedFromService } from './skill-synced-from.service';
-import { WorkflowsInSkillsFlagGate } from './workflows-in-skills-flag-gate';
 import {
 	blocksDelete,
 	deleteRefusalMessage,
@@ -98,13 +96,8 @@ const LIST_SORTS: Record<SkillSortOption, SkillListSort> = {
 	'updatedAt:desc': { by: 'updatedAt', order: 'DESC' },
 };
 
-function toMcpSkillContent(row: ResolvedSkillRow, withMentionHint: boolean): McpSkillContent {
-	const skill = toAgentSkill(row);
-	return {
-		id: row.skill.id,
-		projectId: row.skill.projectId,
-		skill: withMentionHint ? withSkillWorkflowMentionHint(skill) : skill,
-	};
+function toMcpSkillContent(row: ResolvedSkillRow): McpSkillContent {
+	return { id: row.skill.id, projectId: row.skill.projectId, skill: toAgentSkill(row) };
 }
 
 function assertUnchangedSince(
@@ -164,7 +157,6 @@ export class SkillService {
 		private readonly sourceRepository: SkillSourceRepository,
 		private readonly skillSyncFlagGate: SkillSyncFlagGate,
 		private readonly sourceClients: SkillSourceClientRegistry,
-		private readonly workflowsInSkillsFlagGate: WorkflowsInSkillsFlagGate,
 	) {}
 
 	// ---------------------------------------------------------------- user actions
@@ -347,14 +339,20 @@ export class SkillService {
 			availableToMCP: true,
 		});
 		const rows = await this.skillRepository.findLatestSaved(page.skills.map((skill) => skill.id));
-		const withMentionHint = await this.workflowsInSkillsFlagGate.isEnabled();
+		const contents = page.skills.flatMap((skill) => {
+			const row = rows.get(skill.id);
+			return row ? [toMcpSkillContent(row)] : [];
+		});
 		return {
 			count: page.count,
-			skills: page.skills.flatMap((skill) => {
-				const row = rows.get(skill.id);
-				return row ? [toMcpSkillContent(row, withMentionHint)] : [];
-			}),
+			skills: await Promise.all(
+				contents.map(async (content) => await this.withMentionHint(content)),
+			),
 		};
+	}
+
+	private async withMentionHint(content: McpSkillContent): Promise<McpSkillContent> {
+		return { ...content, skill: await this.skillRuntime.withWorkflowMentionHint(content.skill) };
 	}
 
 	/** The latest saved version of a project or instance skill, for the MCP skills extension. */
@@ -367,7 +365,7 @@ export class SkillService {
 		) {
 			return null;
 		}
-		const content = toMcpSkillContent(row, await this.workflowsInSkillsFlagGate.isEnabled());
+		const content = await this.withMentionHint(toMcpSkillContent(row));
 		// The origin is only for telemetry: a failed lookup must not break the read.
 		const synced = await this.sourceRepository.findSyncedFrom(skillId).catch((error: unknown) => {
 			this.logger.warn('Could not find the source of a synced skill', {

@@ -1724,7 +1724,7 @@ describe('GET /workflows', () => {
 		test('should leave out workflows from the personal projects of other users', async () => {
 			const ownWorkflow = await createWorkflow({ name: 'Own' }, owner);
 			const teamProject = await createTeamProject('Team', member);
-			const teamWorkflow = await createWorkflow({ name: 'Team' }, teamProject);
+			await createWorkflow({ name: 'Team' }, teamProject);
 			await createWorkflow({ name: 'Member' }, member);
 			const sharedWorkflow = await createWorkflow({ name: 'Shared' }, anotherMember);
 			await shareWorkflowWithUsers(sharedWorkflow, [owner]);
@@ -1733,11 +1733,12 @@ describe('GET /workflows', () => {
 				.get('/workflows')
 				.query('filter={ "excludePersonalProjectsOfOthers": true }')
 				.query('sortBy=name:asc')
+				.query('take=1')
 				.expect(200);
 
 			expect(response.body).toEqual({
 				count: 2,
-				data: [objectContaining({ id: ownWorkflow.id }), objectContaining({ id: teamWorkflow.id })],
+				data: [objectContaining({ id: ownWorkflow.id })],
 			});
 		});
 

@@ -128,7 +128,6 @@ export function createSkillServices() {
 		links,
 		skillSyncGate,
 		sourceClients,
-		workflowsInSkillsGate,
 	);
 	return {
 		logger,

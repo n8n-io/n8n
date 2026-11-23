@@ -172,32 +172,28 @@ describe('SkillWorkflowMentionPicker', () => {
 		expect(wrapper.emitted('select')).toEqual([[{ workflowId: 'wf1', name: 'Weekly report' }]]);
 	});
 
-	it('tracks a workflow added with the + button in an instance skill', async () => {
+	it.each([
+		{
+			name: 'with the + button in an instance skill',
+			props: {},
+			payload: { source: 'button', scope: 'instance', project_id: undefined },
+		},
+		{
+			name: 'with @ in a project skill',
+			props: { mode: 'typed', projectId: 'p1' },
+			payload: { source: 'typed', scope: 'project', project_id: 'p1' },
+		},
+	])('tracks a workflow added $name', async ({ props, payload }) => {
 		searchWorkflows.mockResolvedValue([{ id: 'wf1', name: 'Weekly report' }]);
-		const { menu } = mountPicker();
+		const { menu } = mountPicker(props);
 		await flushPromises();
 
 		menu().vm.$emit('select', 'wf1');
 
-		expect(track).toHaveBeenCalledWith(TELEMETRY_EVENT.CONTEXT.USER_ADDED_SKILL_WORKFLOW_MENTION, {
-			source: 'button',
-			scope: 'instance',
-			project_id: undefined,
-		});
-	});
-
-	it('tracks a workflow added with @ in a project skill', async () => {
-		searchWorkflows.mockResolvedValue([{ id: 'wf1', name: 'Weekly report' }]);
-		const { menu } = mountPicker({ mode: 'typed', projectId: 'p1' });
-		await flushPromises();
-
-		menu().vm.$emit('select', 'wf1');
-
-		expect(track).toHaveBeenCalledWith(TELEMETRY_EVENT.CONTEXT.USER_ADDED_SKILL_WORKFLOW_MENTION, {
-			source: 'typed',
-			scope: 'project',
-			project_id: 'p1',
-		});
+		expect(track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.CONTEXT.USER_ADDED_SKILL_WORKFLOW_MENTION,
+			payload,
+		);
 	});
 
 	it('loads the next page from the show more row', async () => {
