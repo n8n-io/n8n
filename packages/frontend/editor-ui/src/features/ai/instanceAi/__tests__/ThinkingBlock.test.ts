@@ -4,6 +4,8 @@ import userEvent from '@testing-library/user-event';
 import { createThreadComponentRenderer } from './createThreadComponentRenderer';
 import { createTestingPinia } from '@pinia/testing';
 import ThinkingBlock from '../components/ThinkingBlock.vue';
+import { ThinkingWordKey } from '../composables/useThinkingWords';
+import { ref } from 'vue';
 import { mockedStore } from '@/__tests__/utils';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT } from '@/app/constants/experiments';
@@ -732,5 +734,41 @@ describe('skill update activity', () => {
 		expect(
 			await findByText('This skill changed. The Assistant loads the new version when it needs it.'),
 		).toBeVisible();
+	});
+});
+
+describe('thinking word', () => {
+	beforeEach(() => {
+		createTestingPinia({ stubActions: false });
+		setDraftWorkflowPreview(true);
+	});
+
+	const renderWithWord = (props: {
+		agentNode: InstanceAiAgentNode;
+		entries: InstanceAiTimelineEntry[];
+	}) =>
+		renderComponent({
+			props: { ...props, active: true },
+			global: { provide: { [ThinkingWordKey]: ref('Joining the dots') } },
+		});
+
+	it('shows the thinking word of the thread instead of "Thinking"', () => {
+		const { getByTestId } = renderWithWord({
+			agentNode: makeAgentNode({ status: 'active' }),
+			entries: [],
+		});
+
+		expect(getByTestId('thinking-block-header')).toHaveTextContent('Joining the dots');
+		expect(getByTestId('thinking-block-subline')).toHaveTextContent('Joining the dots');
+	});
+
+	it('shows a running tool instead of the thinking word', () => {
+		const tc = makeToolCall({ isLoading: true });
+		const { getByTestId } = renderWithWord({
+			agentNode: makeAgentNode({ status: 'active', toolCalls: [tc] }),
+			entries: [toolEntry(tc.toolCallId)],
+		});
+
+		expect(getByTestId('thinking-block-subline')).not.toHaveTextContent('Joining the dots');
 	});
 });

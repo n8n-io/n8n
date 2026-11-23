@@ -10,7 +10,7 @@ import {
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { isRecord } from '@n8n/utils/is-record';
 import { useNow } from '@vueuse/core';
-import { computed } from 'vue';
+import { computed, inject } from 'vue';
 
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useDraftWorkflowPreviewEnabled } from '@/experiments/instanceAiDraftWorkflowPreview/useDraftWorkflowPreviewEnabled';
@@ -18,6 +18,7 @@ import { useDraftWorkflowPreviewEnabled } from '@/experiments/instanceAiDraftWor
 import { currentSentence } from '../../shared/thinking.utils';
 
 import { useSteadyValue } from './useSteadyValue';
+import { ThinkingWordKey } from './useThinkingWords';
 import { getAgentActivityKey, getAgentSectionTitle, isActiveBuilderAgent } from '../builderAgents';
 import { useToolLabel } from '../toolLabels';
 
@@ -28,6 +29,8 @@ export interface RunActivity {
 	waiting?: true;
 	/** The text follows streaming reasoning, so it changes with each token. */
 	streaming?: true;
+	/** The generic "Thinking": nothing more specific is known. */
+	generic?: true;
 }
 
 /** The activity as one line, the way the status bar shows it. */
@@ -244,6 +247,11 @@ export function useRunActivity() {
 		return key ? i18n.baseText(key) : undefined;
 	}
 
+	const thinking = (): RunActivity => ({
+		label: i18n.baseText('instanceAi.statusBar.thinking'),
+		generic: true,
+	});
+
 	return (messages: InstanceAiMessage[], now = Date.now()): RunActivity | null => {
 		// Match the still-streaming orchestrator message, or — once it has handed off
 		// to a background builder — the message that owns the active builder, so the
@@ -255,7 +263,7 @@ export function useRunActivity() {
 					m.role === 'assistant' &&
 					(m.isStreaming || (m.agentTree?.children.some(isActiveBuilderAgent) ?? false)),
 			);
-		if (!lastMsg?.agentTree) return { label: i18n.baseText('instanceAi.statusBar.thinking') };
+		if (!lastMsg?.agentTree) return thinking();
 
 		const tree = lastMsg.agentTree;
 
@@ -284,7 +292,7 @@ export function useRunActivity() {
 		if (activeTool) return { label: runningToolLabel(activeTool, tree, now) };
 
 		const idle = idleActivity(tree, now);
-		if (!idle) return { label: i18n.baseText('instanceAi.statusBar.thinking') };
+		if (!idle) return thinking();
 		return { label: idle.text, ...(idle.streaming && { streaming: true }) };
 	};
 }
@@ -311,6 +319,12 @@ export function useSteadyRunActivity(messages: () => InstanceAiMessage[]) {
 		key: runActivityKey,
 		urgent: (activity) => activity.waiting === true,
 	});
+	// The thread view provides a word only for the variant of the experiment.
+	const thinkingWord = inject(ThinkingWordKey, undefined);
 	// The control group of the experiment shows each activity at once, as before.
-	return computed(() => (specificProgress.value ? steady.value : current()));
+	return computed(() => {
+		const activity = specificProgress.value ? steady.value : current();
+		const word = thinkingWord?.value;
+		return activity?.generic && word ? { ...activity, label: word } : activity;
+	});
 }

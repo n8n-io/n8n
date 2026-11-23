@@ -85,7 +85,7 @@ describe('useRunActivity', () => {
 	});
 
 	it('is thinking when no tool runs', () => {
-		expect(useRunActivity()([message(agent())])).toEqual({ label: 'Thinking' });
+		expect(useRunActivity()([message(agent())])).toEqual({ label: 'Thinking', generic: true });
 	});
 });
 
@@ -165,9 +165,15 @@ describe('useRunActivity, specific states', () => {
 			{ success: true, workflowId: 'wf-1' },
 			'Reviewing the workflow',
 		],
-		['list_credentials', {}, {}, 'Thinking'],
 	])('after %s, says what comes next', (toolName, args, result, label) => {
 		expect(activityOf([done(toolName, args, result)])).toEqual({ label });
+	});
+
+	it('is generic thinking after a tool with no next step', () => {
+		expect(activityOf([done('list_credentials', {}, {})])).toEqual({
+			label: 'Thinking',
+			generic: true,
+		});
 	});
 
 	describe('waiting on the user', () => {
@@ -390,7 +396,7 @@ describe('useRunActivity, control group of the experiment', () => {
 	it('is thinking while the agent reasons', () => {
 		const tree = agent({ timeline: [{ type: 'reasoning', content: 'Gmail can filter by label' }] });
 
-		expect(useRunActivity()([message(tree)])).toEqual({ label: 'Thinking' });
+		expect(useRunActivity()([message(tree)])).toEqual({ label: 'Thinking', generic: true });
 	});
 
 	it('does not mark a run that waits on the user', () => {
@@ -413,6 +419,7 @@ describe('useRunActivity, control group of the experiment', () => {
 
 		expect(useRunActivity()([message(agent({ toolCalls: [finished] }))])).toEqual({
 			label: 'Thinking',
+			generic: true,
 		});
 	});
 

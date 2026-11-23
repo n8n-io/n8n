@@ -79,6 +79,8 @@ import { useDraftWorkflowPreviewTelemetry } from '@/experiments/instanceAiDraftW
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useDraftWorkflowPreviewEnabled } from '@/experiments/instanceAiDraftWorkflowPreview/useDraftWorkflowPreviewEnabled';
 import { useWorkflowStaging } from './composables/useWorkflowStaging';
+import { ThinkingWordKey, useThinkingWordRotation } from './composables/useThinkingWords';
+import { collectActiveBuilderAgents } from './builderAgents';
 import { isStagingDraft, toStagingNodeTypeInfo } from './instanceAi.workflowStaging';
 import { getDraftWorkflowId } from './instanceAi.workflowDrafts';
 import InstanceAiSkillPreview from './components/InstanceAiSkillPreview.vue';
@@ -282,6 +284,15 @@ const workflowStaging = useWorkflowStaging({
 	enabled: () => draftWorkflowPreviewEnabled.value,
 	describeType: describeStagingNodeType,
 });
+// Replaces the generic "Thinking" in the chat while the thread runs.
+const thinkingWord = useThinkingWordRotation({
+	active: () =>
+		draftWorkflowPreviewEnabled.value &&
+		(thread.isStreaming || collectActiveBuilderAgents(thread.messages).length > 0),
+	building: () => workflowStaging.building.value,
+	threadId: () => props.threadId,
+});
+provide(ThinkingWordKey, thinkingWord);
 // EOF Experiment cleanup
 
 // --- Canvas / data table preview ---

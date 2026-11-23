@@ -7,11 +7,12 @@ import type {
 import { N8nAiActivityStep } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useNow } from '@vueuse/core';
-import { computed } from 'vue';
+import { computed, inject } from 'vue';
 import AiThinkingBlock from '../../shared/components/AiThinkingBlock.vue';
 
 import { currentSentence, firstSentence } from '../../shared/thinking.utils';
 import { useActiveToolLabel } from '../composables/useRunActivity';
+import { ThinkingWordKey } from '../composables/useThinkingWords';
 import { useSteadyValue } from '../composables/useSteadyValue';
 import { useDraftWorkflowPreviewEnabled } from '@/experiments/instanceAiDraftWorkflowPreview/useDraftWorkflowPreviewEnabled';
 
@@ -49,6 +50,9 @@ const now = useNow({ interval: 1000 });
 const { getInstanceContextLabel } = useInstanceContextLabel();
 // The control group of the experiment keeps the subline as it was.
 const specificProgress = useDraftWorkflowPreviewEnabled();
+// The thread view provides a word only for the variant of the experiment.
+const thinkingWord = inject(ThinkingWordKey, undefined);
+const idleLabel = computed(() => thinkingWord?.value);
 
 /** The reasoning sentence being written, unless the title already shows it. */
 function reasoningLabel(content: string): string | undefined {
@@ -150,6 +154,7 @@ const durationSec = computed<number | undefined>(() => {
 		:awaiting-input="props.awaitingInput"
 		:activity-label="steadyActivity?.text"
 		:activity-label-truncate="steadyActivity?.truncate"
+		:idle-label="idleLabel"
 		:duration-sec="durationSec"
 		test-id="instance-ai-thinking-block"
 	>

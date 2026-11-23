@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 import { ResponseError } from '@n8n/rest-api-client';
 import { defineComponent, h, inject, type PropType, type Ref, nextTick, ref } from 'vue';
 import userEvent from '@testing-library/user-event';
@@ -2885,6 +2885,36 @@ describe('InstanceAiThreadView', () => {
 			await findByTestId('instance-ai-workflow-preview-stub');
 			await findByTestId('instance-ai-draft-building-wave');
 			expect(queryByTestId('instance-ai-workflow-draft-preview-stub')).toBeNull();
+		});
+
+		it('shows a thinking word of the thread in the status bar', async () => {
+			mockedStore(usePostHog).getVariant.mockImplementation((name) =>
+				name === INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.name ? 'variant' : undefined,
+			);
+			// The last word of the general list.
+			const random = vi.spyOn(Math, 'random').mockReturnValue(0.999);
+			onTestFinished(() => random.mockRestore());
+			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+			thread.isStreaming = true;
+
+			const bar = await findByTestId('instance-ai-status-bar');
+			expect(bar).toHaveTextContent('Tracing the connections');
+		});
+
+		it('shows "Thinking" in the status bar in the control arm', async () => {
+			mockedStore(usePostHog).getVariant.mockImplementation((name) =>
+				name === INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.name ? 'control' : undefined,
+			);
+			const random = vi.spyOn(Math, 'random').mockReturnValue(0.999);
+			onTestFinished(() => random.mockRestore());
+			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+			thread.isStreaming = true;
+
+			const bar = await findByTestId('instance-ai-status-bar');
+			expect(bar).toHaveTextContent('Thinking');
+			expect(bar).not.toHaveTextContent('Tracing the connections');
 		});
 
 		it('shows no staging canvas in the control arm', async () => {

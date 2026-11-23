@@ -72,9 +72,15 @@ export function useWorkflowStaging(options: {
 		options.enabled() ? findRunningTurn(options.messages()) : undefined,
 	);
 
+	/** The running turn builds a workflow: its agent loaded the workflow builder. */
+	const building = computed(() => {
+		const turn = runningTurn.value;
+		return turn !== undefined && loadsWorkflowBuilder(turn.tree);
+	});
+
 	const buildTarget = computed((): BuildTarget | undefined => {
 		const turn = runningTurn.value;
-		if (!turn || !loadsWorkflowBuilder(turn.tree)) return undefined;
+		if (!turn || !building.value) return undefined;
 		const fromRun = workflowOfRun(turn.tree);
 		if (fromRun) return { workflowId: fromRun, source: 'run' };
 		const fromRequest = turn.request ? requestWorkflowId(turn.request) : undefined;
@@ -104,5 +110,5 @@ export function useWorkflowStaging(options: {
 		};
 	});
 
-	return { stagingDraft, buildTarget };
+	return { stagingDraft, buildTarget, building };
 }
