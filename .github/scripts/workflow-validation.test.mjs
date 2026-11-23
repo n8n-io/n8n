@@ -449,10 +449,21 @@ describe('unpublished package handling', () => {
 
 		assert.deepEqual(triggersOf(scheduledCheck).schedule, [{ cron: '15 */2 * * 1-2' }]);
 		assert.match(check.run, /detect-new-packages\.mjs --report-only --strict/);
-		assert.equal(notify.if, "steps.detect.outputs.packages != ''");
+		assert.equal(notify.if, "steps.detect.outputs.packages != '[]'");
 		assert.match(notify.run, /--channel '#alerts-developer-platforms'/);
+		assert.ok(notify.run.includes(String.raw`\(.name)`));
+		assert.ok(notify.run.includes(String.raw`\(.path)`));
 		assert.match(notify.run, /\/actions\/workflows\/release-publish-new-package\.yml\|/);
 		assert.match(notify.run, /\/actions\/runs\/.*\|View the check>/);
+	});
+
+	it('uses a setup-only dist-tag for the initial publish', () => {
+		const setup = workflowFile('release-publish-new-package.yml');
+		const publish = stepNamed(setup, 'publish-to-npm', 'Publish throwaway package version');
+
+		assert.equal(publish.if, "steps.registry.outputs.exists == 'false'");
+		assert.equal(publish['working-directory'], '${{ inputs.package-path }}');
+		assert.match(publish.run, /pnpm publish --access public --tag tp-setup --no-git-checks/);
 	});
 
 	it('keeps unpublished package setup out of the release workflow', () => {
