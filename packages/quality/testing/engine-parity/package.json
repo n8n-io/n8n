@@ -15,6 +15,7 @@
     "test:dev": "vitest --watch"
   },
   "dependencies": {
+    "@n8n/utils": "workspace:*",
     "@n8n/workflow-engine-check": "workspace:*",
     "@n8n/workflow-sdk": "workspace:*",
     "fast-check": "catalog:",

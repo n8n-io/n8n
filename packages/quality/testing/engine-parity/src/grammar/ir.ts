@@ -1,5 +1,24 @@
 import type { IWorkflowBase } from 'n8n-workflow';
 
+/**
+ * The intermediate representation (IR) of one generated workflow.
+ *
+ * The generator works in three steps:
+ * 1. fast-check generates a `Block` tree. The tree holds only decisions, so
+ *    fast-check can shrink it.
+ * 2. `toIr` lowers the tree to the IR: named nodes with final parameters,
+ *    numbered edges, and the trigger items.
+ * 3. `compile` builds the workflow JSON from the IR with the workflow SDK.
+ *
+ * Why the IR exists:
+ * - It is plain JSON, so it is easy to print, compare and store.
+ * - It does not depend on the SDK or on the workflow JSON format.
+ * - It keeps data that the workflow JSON does not hold: the trigger items, the
+ *   fired trigger, and the combinator that placed each node.
+ * - Checks such as port ranges read the IR directly. They do not parse
+ *   the workflow JSON.
+ */
+
 /** The structure combinators. Each one places nodes and edges in the IR. */
 export type CombinatorId = 'chain' | 'branch' | 'fanOut' | 'merge' | 'trigger';
 

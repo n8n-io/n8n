@@ -3,8 +3,9 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 
 import { toSdkCode } from '../compile/to-sdk';
-import { parityCaseArb } from './arbitrary';
+import { generatedCaseArb, parityCaseArb } from './arbitrary';
 import { getEntry, outputCount } from './catalog';
+import type { Block } from './combinators';
 import type { ParityCase } from './ir';
 import { ruleSets } from './rules';
 
@@ -20,6 +21,27 @@ function portsInRange({ ir }: ParityCase): boolean {
 		const outputs = outputCount(getEntry(from.catalogId), from.params);
 		return edge.out < outputs && edge.in < getEntry(to.catalogId).inputs;
 	});
+}
+
+/** The nodes that reach `key` along the edges. With `forward`, the nodes that `key` reaches. */
+function reachable(key: string, ir: ParityCase['ir'], forward: boolean): Set<string> {
+	const found = new Set<string>();
+	const queue = [key];
+	while (queue.length > 0) {
+		const current = queue.shift()!;
+		for (const edge of ir.edges) {
+			const [here, next] = forward ? [edge.from, edge.to] : [edge.to, edge.from];
+			if (here === current && !found.has(next)) {
+				found.add(next);
+				queue.push(next);
+			}
+		}
+	}
+	return found;
+}
+
+function referencedNodes(params: unknown): string[] {
+	return [...JSON.stringify(params).matchAll(/\$\(\\"([^\\]+)\\"\)/g)].map((match) => match[1]);
 }
 
 describe('grammar', () => {
@@ -54,12 +76,36 @@ describe('grammar', () => {
 		}
 	});
 
-	it('refers to upstream nodes in expressions', () => {
-		const references = sample('smoke').flatMap(
-			(parityCase) => JSON.stringify(parityCase.workflow.nodes).match(/\$\(\\"[^\\]+\\"\)/g) ?? [],
-		);
+	it('refers to upstream nodes in expressions, and never to a parallel branch', () => {
+		let upstreamReferences = 0;
+		for (const { ir } of sample('smoke')) {
+			for (const irNode of ir.nodes) {
+				const ancestors = reachable(irNode.key, ir, false);
+				const descendants = reachable(irNode.key, ir, true);
+				for (const name of referencedNodes(irNode.params)) {
+					if (ancestors.has(name)) upstreamReferences++;
+					else expect(name === 'Ghost' || descendants.has(name)).toBe(true);
+				}
+			}
+		}
 
-		expect(references.length).toBeGreaterThan(0);
+		expect(upstreamReferences).toBeGreaterThan(0);
+	});
+
+	it('uses every combinator that the rules allow', () => {
+		const used = new Set<string>();
+		const visit = (block: Block | null): void => {
+			if (!block) return;
+			used.add(block.kind);
+			if (block.kind === 'chain') block.blocks.forEach(visit);
+			if (block.kind === 'fanOut') block.targets.forEach(visit);
+			if (block.kind === 'branch') [block.onTrue, block.onFalse].forEach(visit);
+			if (block.kind === 'merge') [block.left, block.right].forEach(visit);
+		};
+		const generated = fc.sample(generatedCaseArb(ruleSets.smoke), { seed: 42, numRuns: 100 });
+		for (const { main } of generated) visit(main);
+
+		for (const combinator of ruleSets.smoke.combinators) expect(used).toContain(combinator);
 	});
 
 	it('makes cases that the SDK can print as code', () => {

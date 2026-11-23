@@ -10013,6 +10013,9 @@ importers:
 
   packages/quality/testing/engine-parity:
     dependencies:
+      '@n8n/utils':
+        specifier: workspace:*
+        version: link:../../../@n8n/utils
       '@n8n/workflow-engine-check':
         specifier: workspace:*
         version: link:../../../@n8n/workflow-engine-check

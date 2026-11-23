@@ -1,9 +1,7 @@
+import { isRecord } from '@n8n/utils/is-record';
+
 import { renderExpression, renderValue } from './expressions';
 import type { ExprScope, ValueExpr } from './expressions';
-
-export function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 function isValueExpr(value: unknown): value is ValueExpr {
 	return isRecord(value) && typeof value.kind === 'string';
