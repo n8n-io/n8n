@@ -268,9 +268,7 @@ export class EngineV2ExecutionReader {
 
 	/**
 	 * The parent and the sub-executions of the execution, for the links the editor
-	 * shows, limited to the workflows the caller can read: a link names an
-	 * execution, and naming one the caller cannot open tells them it exists.
-	 * The row holds the parent's id only, so its workflow is read from the parent.
+	 * shows, limited to the workflows the caller can read.
 	 */
 	private async findLinks(
 		snapshot: ExecutionSnapshot,
