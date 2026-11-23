@@ -39,7 +39,7 @@ describe('LeaseSessionManager', () => {
 		vi.useRealTimers();
 	});
 
-	it('deletes the row and keeps no session when stopped during the first insert', async () => {
+	it('deletes the row of an insert that finishes during stop', async () => {
 		let finishInsert: () => void = () => {};
 		sessions.insertSession.mockImplementationOnce(
 			async () =>
@@ -81,6 +81,29 @@ describe('LeaseSessionManager', () => {
 		expect(secondStopped).toBe(true);
 	});
 
+	it('resolves stop only after the delete of its session row finishes', async () => {
+		await session.start();
+		let finishDelete: () => void = () => {};
+		sessions.deleteSession.mockImplementationOnce(
+			async () =>
+				await new Promise<void>((resolve) => {
+					finishDelete = resolve;
+				}),
+		);
+		let stopped = false;
+		const stopping = session.stop().then(() => {
+			stopped = true;
+		});
+
+		await vi.advanceTimersByTimeAsync(0);
+		expect(sessions.deleteSession).toHaveBeenCalled();
+		expect(stopped).toBe(false);
+
+		finishDelete();
+		await stopping;
+		expect(stopped).toBe(true);
+	});
+
 	it('inserts no session when started after stop', async () => {
 		await session.stop();
 
@@ -105,39 +128,6 @@ describe('LeaseSessionManager', () => {
 		expect(sessions.deleteSession).toHaveBeenCalledWith(first.id, expect.anything());
 	});
 
-	it('waits for the delete of the row of an insert that finishes during stop', async () => {
-		let finishInsert: () => void = () => {};
-		sessions.insertSession.mockImplementationOnce(
-			async () =>
-				await new Promise<void>((resolve) => {
-					finishInsert = resolve;
-				}),
-		);
-		let finishDelete: () => void = () => {};
-		sessions.deleteSession.mockImplementationOnce(
-			async () =>
-				await new Promise<void>((resolve) => {
-					finishDelete = resolve;
-				}),
-		);
-		const starting = session.start();
-		await vi.advanceTimersByTimeAsync(0);
-
-		let stopped = false;
-		const stopping = session.stop().then(() => {
-			stopped = true;
-		});
-		finishInsert();
-		await starting;
-		await vi.advanceTimersByTimeAsync(0);
-		expect(sessions.deleteSession).toHaveBeenCalled();
-		expect(stopped).toBe(false);
-
-		finishDelete();
-		await stopping;
-		expect(stopped).toBe(true);
-	});
-
 	it('logs a failed delete of its session row and resolves when stopped', async () => {
 		await session.start();
 		sessions.deleteSession.mockRejectedValueOnce(new Error('database unavailable'));
@@ -148,25 +138,6 @@ describe('LeaseSessionManager', () => {
 			'Failed to delete lease session',
 			expect.objectContaining({ kind: 'test-kind' }),
 		);
-	});
-
-	it('starts one insert and resolves both calls when ensureSession is called twice during an insert', async () => {
-		let finishInsert: () => void = () => {};
-		sessions.insertSession.mockImplementationOnce(
-			async () =>
-				await new Promise<void>((resolve) => {
-					finishInsert = resolve;
-				}),
-		);
-		const firstCall = session.ensureSession();
-		const secondCall = session.ensureSession();
-		await vi.advanceTimersByTimeAsync(0);
-		expect(sessions.insertSession).toHaveBeenCalledTimes(1);
-
-		finishInsert();
-
-		await expect(Promise.all([firstCall, secondCall])).resolves.toEqual([undefined, undefined]);
-		expect(sessions.insertSession).toHaveBeenCalledTimes(1);
 	});
 
 	it('rejects start and inserts no session when the kind insert fails', async () => {

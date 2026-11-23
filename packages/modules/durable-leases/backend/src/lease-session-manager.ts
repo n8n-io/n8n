@@ -21,19 +21,15 @@ export class LeaseSessionManager {
 
 	private inFlightInsert: Promise<void> | undefined;
 
-	private readonly pendingDeletes = new Set<Promise<void>>();
-
 	constructor(private readonly deps: LeaseSessionManagerDeps) {}
 
 	async start(): Promise<void> {
 		await this.ensureSession();
 	}
 
-	async ensureSession(): Promise<void> {
+	private async ensureSession(): Promise<void> {
 		if (this.stopped || this.currentId !== undefined) return;
-		this.inFlightInsert ??= this.insertSession(randomUUID()).finally(() => {
-			this.inFlightInsert = undefined;
-		});
+		this.inFlightInsert = this.insertSession(randomUUID());
 		await this.inFlightInsert;
 	}
 
@@ -60,8 +56,6 @@ export class LeaseSessionManager {
 				});
 			}
 		}
-
-		await Promise.all(this.pendingDeletes);
 	}
 
 	private async insertSession(id: string): Promise<void> {
@@ -74,24 +68,6 @@ export class LeaseSessionManager {
 			{},
 		);
 
-		if (this.stopped) {
-			this.deleteRow(id);
-			return;
-		}
 		this.currentId = id;
-	}
-
-	private deleteRow(id: string): void {
-		const deleting = this.deps.sessions
-			.deleteSession(id, {})
-			.catch((error: unknown) => {
-				this.deps.logger.warn('Failed to delete lease session', {
-					kind: this.deps.kind,
-					sessionId: id,
-					error,
-				});
-			})
-			.finally(() => this.pendingDeletes.delete(deleting));
-		this.pendingDeletes.add(deleting);
 	}
 }
