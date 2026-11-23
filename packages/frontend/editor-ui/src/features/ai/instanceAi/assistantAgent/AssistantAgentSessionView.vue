@@ -10,7 +10,6 @@ import { truncate } from '@n8n/utils/string/truncate';
 import { computed, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
-import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import AgentSessionTimelineHeader from '@/features/agents/components/AgentSessionTimelineHeader.vue';
 import AgentSessionTimelinePanel from '@/features/agents/components/AgentSessionTimelinePanel.vue';
 import { getSystemAgentThread } from '@/features/agents/composables/useAgentApi';
@@ -22,7 +21,9 @@ import type {
 	ThreadDetail,
 } from '@/features/agents/composables/useAgentThreadsApi';
 import { useBackOrFallback } from '@/features/agents/composables/useBackOrFallback';
+import { formatDuration } from '@/features/agents/session-timeline.utils';
 import type { SessionTimelineMetadata } from '@/features/agents/types';
+import { formatSessionDateTime } from '@/features/agents/utils/timeline-time';
 
 import { useAssistantCreditsStore } from '../assistantCredits.store';
 import { INSTANCE_AI_THREAD_SESSION_VIEW, INSTANCE_AI_THREAD_VIEW } from '../constants';
@@ -166,7 +167,7 @@ const sessionOptions = computed<
 		id: known.id,
 		label: truncate(known.title || i18n.baseText('agents.builder.chat.newChat.label'), 64),
 		class: known.id === props.threadId ? 'session-dropdown-item-active' : undefined,
-		data: { date: formatDate(known.updatedAt), active: known.id === props.threadId },
+		data: { date: formatSessionDateTime(known.updatedAt), active: known.id === props.threadId },
 	})),
 );
 
@@ -195,18 +196,6 @@ async function copySessionLink() {
 }
 
 const closeTimeline = useBackOrFallback(threadRoute);
-
-function formatDuration(ms: number): string {
-	if (!Number.isFinite(ms) || ms <= 0) return '';
-	if (ms < 1000) return `${ms}ms`;
-	return `${(ms / 1000).toFixed(1)}s`;
-}
-
-function formatDate(fullDate: string): string {
-	if (!fullDate) return '';
-	const { date, time } = convertToDisplayDate(fullDate);
-	return `${date} ${time}`;
-}
 </script>
 
 <template>
