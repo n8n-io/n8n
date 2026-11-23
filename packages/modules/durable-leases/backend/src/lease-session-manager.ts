@@ -138,9 +138,6 @@ export class LeaseSessionManager {
 			return;
 		}
 
-		// Stop has already deleted the row of the current session.
-		if (this.stopped) return;
-
 		if (!renewed) this.lose('renewal found the lease session expired');
 	}
 

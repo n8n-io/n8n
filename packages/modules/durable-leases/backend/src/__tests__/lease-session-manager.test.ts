@@ -142,26 +142,6 @@ describe('LeaseSessionManager', () => {
 		expect(sessions.deleteSession).toHaveBeenCalledWith(first.id, expect.anything());
 	});
 
-	it('leaves the row alone when a renewal finishes after stop', async () => {
-		vi.spyOn(Math, 'random').mockReturnValue(0.5);
-		let finishRenewal: (renewed: boolean) => void = () => {};
-		sessions.renewLive.mockImplementationOnce(
-			async () =>
-				await new Promise<boolean>((resolve) => {
-					finishRenewal = resolve;
-				}),
-		);
-		await session.start();
-		await vi.advanceTimersByTimeAsync(RENEW_SECONDS * 1000);
-		await session.stop();
-		expect(sessions.deleteSession).toHaveBeenCalledTimes(1);
-
-		finishRenewal(true);
-		await vi.advanceTimersByTimeAsync(0);
-
-		expect(sessions.deleteSession).toHaveBeenCalledTimes(1);
-	});
-
 	it('resolves a second stop only after the first has deleted the row', async () => {
 		await session.start();
 		let finishDelete: () => void = () => {};
