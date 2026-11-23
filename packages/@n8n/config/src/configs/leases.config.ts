@@ -9,7 +9,7 @@ export class LeasesConfig {
 	/**
 	 * How long an instance holds a lease before it expires, in seconds, as a whole number from 8 to 2147483. The lease length must be at least three times the renewal interval plus the margin. n8n checks this rule when you enable the `durable-leases` module (`N8N_ENABLED_MODULES=durable-leases`) and doesn't start if the values break it.
 	 */
-	@Env('N8N_LEASES_LEASE_SECONDS', leaseSecondsSchema)
+	@Env('N8N_LEASES_LEASE_SECONDS', leaseSecondsSchema.min(8))
 	leaseSeconds: number = 20;
 
 	/**

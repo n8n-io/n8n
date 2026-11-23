@@ -36,6 +36,16 @@ describe('LeasesConfig', () => {
 		expect(leases.marginSeconds).toBe(2147483);
 	});
 
+	it('warns and falls back to the default for a lease shorter than 8 seconds', () => {
+		const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+		vi.stubEnv('N8N_LEASES_LEASE_SECONDS', '7');
+
+		const { leases } = Container.get(GlobalConfig);
+
+		expect(leases.leaseSeconds).toBe(20);
+		expect(warn).toHaveBeenCalledTimes(1);
+	});
+
 	it.each(['0', '-5', '2.5', 'abc', '2147484'])(
 		'warns and falls back to the defaults for %s',
 		(value) => {
