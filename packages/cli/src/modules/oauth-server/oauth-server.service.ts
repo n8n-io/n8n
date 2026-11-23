@@ -26,7 +26,7 @@ import { hasGlobalScope } from '@n8n/permissions';
 import type { Response } from 'express';
 
 import { AuthService } from '@/auth/auth.service';
-import { ForbiddenError } from '@n8n/errors';
+import { ForbiddenError, UnexpectedError } from '@n8n/errors';
 import { UserManagementMailer } from '@/user-management/email';
 
 import type { OAuthClient } from './database/entities/oauth-client.entity';
@@ -612,11 +612,27 @@ export class OAuthServerService implements OAuthServerProvider {
 		return tokens;
 	}
 
-	async issueAccessToken(
+	/**
+	 * For internal, in-process use only. This method skips the authorization-code grant,
+	 * PKCE and user consent. Do not expose it to an HTTP endpoint or to a third-party client.
+	 *
+	 * The caller must authenticate the user first. The method only issues a token to the
+	 * virtual client of a first-party resource, for that same resource, because then no
+	 * other party gets the user's authority.
+	 */
+	async issueInternalAccessTokenWithoutConsent(
 		client: OAuthClientInformationFull,
 		userId: string,
 		resource: string,
 	): Promise<{ accessToken: string; expiresIn: number }> {
+		// A registered client's id is a server-generated UUID, so it can never equal a resource URL.
+		const target = await this.resourceRegistry.getByResourceUrl(resource);
+		if (client.client_id !== resource || !target?.isFirstParty) {
+			throw new UnexpectedError(
+				"Tokens without consent are only issued to a first-party resource's own client",
+			);
+		}
+
 		const accessToken = await this.grantService.runForActiveUser(userId, async (ctx) => {
 			const pair = this.tokenService.generateTokenPair(userId, client.client_id, resource, []);
 			await this.tokenService.saveTokenPair(

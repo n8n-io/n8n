@@ -346,7 +346,11 @@ export class OAuth2FlowService implements N8nOAuth2Flow {
 
 		let issued: { accessToken: string; expiresIn: number };
 		try {
-			issued = await this.oauthServerService.issueAccessToken(client, userId, resourceUrl);
+			issued = await this.oauthServerService.issueInternalAccessTokenWithoutConsent(
+				client,
+				userId,
+				resourceUrl,
+			);
 		} catch (error) {
 			if (error instanceof InvalidGrantError) return { valid: false, reason: 'invalid_grant' };
 			throw error;

@@ -8,6 +8,7 @@ import { ProtectedResourceRegistry } from '@n8n/backend-services/auth';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { TransactionRunner } from '@n8n/db';
+import { UnexpectedError } from '@n8n/errors';
 import {
 	GLOBAL_MEMBER_ROLE,
 	GLOBAL_OWNER_ROLE,
@@ -1545,6 +1546,105 @@ describe('OAuthServerService', () => {
 					'https://example.com/callback',
 				),
 			).rejects.toThrow(InvalidGrantError);
+		});
+	});
+
+	describe('issueInternalAccessTokenWithoutConsent', () => {
+		const appResourceUrl = 'https://sales--preview.apps.example.com/_n8n/auth/app-123/callback';
+		let internalService: OAuthServerService;
+
+		const clientFor = (clientId: string) => ({
+			client_id: clientId,
+			client_name: 'Sales dashboard',
+			redirect_uris: [clientId],
+			grant_types: ['authorization_code', 'refresh_token'],
+			token_endpoint_auth_method: 'none',
+			response_types: ['code'],
+		});
+
+		beforeAll(() => {
+			const registry = new ProtectedResourceRegistry(mock<Logger>());
+			registry.register({
+				surface: 'instance-mcp',
+				id: 'instance-mcp',
+				getResourceUrl: () => TEST_RESOURCE_URL,
+				getAudiences: () => [TEST_RESOURCE_URL],
+				scopes: SUPPORTED_SCOPES,
+				isDefault: true,
+				authorize: async () => true,
+			});
+			registry.register({
+				surface: 'apps',
+				id: 'app-preview:app-123',
+				displayName: 'Sales dashboard',
+				getResourceUrl: () => appResourceUrl,
+				getAudiences: () => [appResourceUrl],
+				scopes: [],
+				isFirstParty: true,
+				authorize: async () => true,
+			});
+			internalService = new OAuthServerService(
+				logger,
+				mockInstance(GlobalConfig),
+				oauthSessionService,
+				oauthClientRepository,
+				tokenService,
+				authorizationCodeService,
+				userConsentRepository,
+				registry,
+				mailer,
+				urlServiceMock,
+				eventService,
+				mock<AuthService>(),
+				mock<OAuthConsentService>(),
+				grantService,
+			);
+		});
+
+		it("should issue a token to a first-party resource's own client", async () => {
+			tokenService.generateTokenPair.mockReturnValue({
+				accessToken: 'access-token-123',
+				refreshToken: 'refresh-token-456',
+				audience: appResourceUrl,
+			});
+			tokenService.saveTokenPair.mockResolvedValue();
+			tokenService.getAccessTokenExpirySeconds.mockReturnValue(3600);
+
+			const result = await internalService.issueInternalAccessTokenWithoutConsent(
+				clientFor(appResourceUrl),
+				'user-456',
+				appResourceUrl,
+			);
+
+			expect(result).toEqual({ accessToken: 'access-token-123', expiresIn: 3600 });
+			expect(tokenService.generateTokenPair).toHaveBeenCalledWith(
+				'user-456',
+				appResourceUrl,
+				appResourceUrl,
+				[],
+			);
+		});
+
+		it('should reject a client that is not the resource itself', async () => {
+			await expect(
+				internalService.issueInternalAccessTokenWithoutConsent(
+					clientFor('registered-client-uuid'),
+					'user-456',
+					appResourceUrl,
+				),
+			).rejects.toThrow(UnexpectedError);
+			expect(tokenService.saveTokenPair).not.toHaveBeenCalled();
+		});
+
+		it('should reject a resource that is not first-party', async () => {
+			await expect(
+				internalService.issueInternalAccessTokenWithoutConsent(
+					clientFor(TEST_RESOURCE_URL),
+					'user-456',
+					TEST_RESOURCE_URL,
+				),
+			).rejects.toThrow(UnexpectedError);
+			expect(tokenService.saveTokenPair).not.toHaveBeenCalled();
 		});
 	});
 
