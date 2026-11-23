@@ -69,6 +69,22 @@ const LOCAL_TOOL_NAMES: ReadonlySet<string> = new Set([
 
 const WEB_SEARCH_TOOL_NAME = 'web_search';
 
+/** Decisions nobody takes (an aborted call, for example) are dropped oldest first past this. */
+const MAX_PENDING_DECISIONS = 500;
+
+/** Statuses that `new Response()` rejects with a body. */
+const NULL_BODY_STATUSES: ReadonlySet<number> = new Set([204, 205, 304]);
+
+/**
+ * Kinds that never reach a seam the simulator answers: custom code, integration SDKs and
+ * anything unknown. The session blocks them itself and never trusts a `simulated` list entry.
+ */
+const UNSIMULATABLE_KINDS: Partial<Record<ToolTestKind, string>> = {
+	custom: 'Custom code tools can reach any service, so they cannot run in a test run.',
+	integration: 'This integration calls its service directly, so the simulator cannot answer it.',
+	other: 'This kind of tool cannot run in a test run yet.',
+};
+
 /** The error the model receives when a test run blocks a tool call. */
 export class SimulationBlockedError extends Error {
 	constructor(readonly simulation: ToolCallSimulation) {
@@ -157,6 +173,15 @@ export class SimulationSession {
 		this.capabilities = new Map(capabilities.map((tool) => [tool.toolName, tool]));
 	}
 
+	private recordDecision(toolCallId: string, decision: ToolCallSimulation): void {
+		this.decisions.delete(toolCallId);
+		this.decisions.set(toolCallId, decision);
+		if (this.decisions.size > MAX_PENDING_DECISIONS) {
+			const oldest = this.decisions.keys().next().value;
+			if (oldest !== undefined) this.decisions.delete(oldest);
+		}
+	}
+
 	takeDecision(toolCallId: string): ToolCallSimulation | undefined {
 		const decision = this.decisions.get(toolCallId);
 		this.decisions.delete(toolCallId);
@@ -169,7 +194,7 @@ export class SimulationSession {
 
 		const preflight = this.preflight(classification);
 		if (preflight) {
-			this.decisions.set(toolCallId, preflight);
+			this.recordDecision(toolCallId, preflight);
 			throw new SimulationBlockedError(preflight);
 		}
 
@@ -187,20 +212,20 @@ export class SimulationSession {
 				active.blocked = blocked('not_simulatable', error.message);
 			}
 			if (active.blocked) {
-				this.decisions.set(toolCallId, active.blocked);
+				this.recordDecision(toolCallId, active.blocked);
 				throw new SimulationBlockedError(active.blocked);
 			}
 			const decision = foldSources(active.sources);
-			if (decision) this.decisions.set(toolCallId, decision);
+			if (decision) this.recordDecision(toolCallId, decision);
 			throw error;
 		}
 		// A node can catch a failed request and return an error item instead.
 		if (active.blocked) {
-			this.decisions.set(toolCallId, active.blocked);
+			this.recordDecision(toolCallId, active.blocked);
 			throw new SimulationBlockedError(active.blocked);
 		}
 		const decision = foldSources(active.sources);
-		if (decision) this.decisions.set(toolCallId, decision);
+		if (decision) this.recordDecision(toolCallId, decision);
 		return output;
 	};
 
@@ -242,22 +267,27 @@ export class SimulationSession {
 		if (capability.testability === 'blocked') {
 			return blocked(capability.reason, capability.detail);
 		}
+		const unsimulatable = UNSIMULATABLE_KINDS[classification.kind];
+		if (unsimulatable) return blocked('not_simulatable', unsimulatable);
 		if (!this.world) return blocked('simulator_unavailable', this.unavailableDetail);
 		return undefined;
 	}
 
-	private async ask(request: OutboundRequest, nodeType?: string) {
+	private async ask(request: OutboundRequest, nodeType?: string, signal?: AbortSignal) {
 		const active = this.activeCalls.getStore();
 		let reply: SimulatedReply;
 		if (!this.world) {
 			reply = { outcome: 'unavailable', detail: this.unavailableDetail };
 		} else {
 			try {
-				reply = await this.world.handleRequest(request, {
-					toolCallId: active?.toolCallId,
-					toolName: active?.toolName ?? 'unknown',
-					...(nodeType ? { nodeType } : {}),
-				});
+				reply = validReply(
+					await this.world.handleRequest(request, {
+						toolCallId: active?.toolCallId,
+						toolName: active?.toolName ?? 'unknown',
+						...(nodeType ? { nodeType } : {}),
+						...(signal ? { signal } : {}),
+					}),
+				);
 			} catch (error) {
 				reply = {
 					outcome: 'unavailable',
@@ -290,7 +320,8 @@ export class SimulationSession {
 				headers: stringHeaders(options.headers),
 				body: options.body,
 			});
-			const reply = await this.ask(request, node.type);
+			const signal = options.abortSignal instanceof AbortSignal ? options.abortSignal : undefined;
+			const reply = await this.ask(request, node.type, signal);
 			if (reply.outcome !== 'served') throw new UnexpectedError(`Unexpected reply for ${toolName}`);
 			return { body: reply.body, headers: reply.headers ?? {}, statusCode: reply.status };
 		};
@@ -314,12 +345,15 @@ export class SimulationSession {
 			const rawBody =
 				init?.body ?? (input instanceof Request ? await input.clone().text() : undefined);
 			const body = typeof rawBody === 'string' ? parseJson(rawBody) : rawBody;
+			const signal = init?.signal ?? (input instanceof Request ? input.signal : undefined);
 			const reply = await this.ask(
 				redactOutboundRequest({ protocol: 'mcp', server, method, body }),
+				undefined,
+				signal ?? undefined,
 			);
 			if (reply.outcome !== 'served') throw new UnexpectedError('Unexpected MCP reply');
 			const payload = typeof reply.body === 'string' ? reply.body : JSON.stringify(reply.body);
-			return new Response(reply.status === 204 ? null : payload, {
+			return new Response(NULL_BODY_STATUSES.has(reply.status) ? null : payload, {
 				status: reply.status,
 				headers: { 'content-type': 'application/json', ...(reply.headers ?? {}) },
 			});
@@ -356,6 +390,24 @@ export function foldSources(sources: ReplySource[]): ToolCallSimulation | undefi
 	if (sources.length === 0) return undefined;
 	if (sources.includes('made_up')) return { route: 'simulated_made_up', reason: 'invented_by_llm' };
 	return { route: 'simulated', reason: 'served_from_world' };
+}
+
+/**
+ * A served reply must be one a real service could send. Anything else is a broken backend, so the
+ * call is blocked as unavailable, not recorded as served.
+ */
+function validReply(reply: SimulatedReply): SimulatedReply {
+	if (reply.outcome !== 'served') return reply;
+	if (!Number.isInteger(reply.status) || reply.status < 200 || reply.status > 599) {
+		return {
+			outcome: 'unavailable',
+			detail: `The simulator sent an invalid status (${String(reply.status)}).`,
+		};
+	}
+	if (reply.source !== 'world_state' && reply.source !== 'made_up') {
+		return { outcome: 'unavailable', detail: 'The simulator sent a reply with no source.' };
+	}
+	return reply;
 }
 
 function blocked(reason: ToolCallReason, detail?: string): ToolCallSimulation {
