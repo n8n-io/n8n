@@ -26,6 +26,7 @@ import { useActions } from '../../composables/useActions';
 import { useViewStacks } from '../../composables/useViewStacks';
 import {
 	getNodeItemRestriction,
+	keepsFullTriggerName,
 	isNodePreviewKey,
 	removePreviewToken,
 	shouldShowCommunityNodeDetails,
@@ -144,9 +145,8 @@ const displayName = computed<string>(() => {
 
 	return i18n.headerText({
 		key: `headers.${shortNodeType.value}.displayName`,
-		// A restricted row keeps its full name, so it is not mistaken for an allowed node of the same app.
 		fallback:
-			hasActions.value && !restriction.value
+			hasActions.value && !keepsFullTriggerName(props.nodeType.name)
 				? trimmedDisplayName.replace('Trigger', '')
 				: trimmedDisplayName,
 	});

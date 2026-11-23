@@ -68,6 +68,12 @@ describe('useViewStacks', () => {
 			expect(openAppTriggerSubcategory()).toEqual(['Acme']);
 		});
 
+		it('keeps the full name when the app node of the trigger is restricted', () => {
+			mockRestrictedNodeTypes({ 'n8n-nodes-base.acme': 'instance' });
+
+			expect(openAppTriggerSubcategory()).toEqual(['Acme Trigger']);
+		});
+
 		it('keeps the full name when the trigger is restricted', () => {
 			mockRestrictedNodeTypes({ [TRIGGER_NAME]: 'instance' });
 

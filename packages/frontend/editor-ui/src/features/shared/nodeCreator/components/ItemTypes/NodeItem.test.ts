@@ -330,6 +330,14 @@ describe('NodeItem', () => {
 				expect(getByTestId('node-creator-action-item')).not.toHaveTextContent('Acme Trigger');
 			});
 
+			it('keeps the full name when the trigger is allowed but its app node is restricted', () => {
+				mockRestrictedNodeTypes({ 'n8n-nodes-base.acme': 'instance' });
+
+				const { getByTestId } = render({ pinia, props: { nodeType: acmeTrigger() } });
+
+				expect(getByTestId('node-creator-action-item')).toHaveTextContent('Acme Trigger');
+			});
+
 			it('keeps the full name in the row and the explanation when the trigger is restricted', async () => {
 				mockRestrictedNodeTypes({ 'n8n-nodes-base.acmeTrigger': 'instance' });
 
