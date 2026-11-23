@@ -46,6 +46,7 @@ import { PromotionEnvironmentResolver } from './promotion-environment.resolver';
 import { ApplyPreviewService } from './apply-preview.service';
 import { PromotePreviewService } from './promote-preview.service';
 import { exportInstancePackage, type InstancePackage } from './instance-package';
+import { PromotionCredentialSelectionService } from './promotion-credential-selection.service';
 import {
 	LocalPackageEntities,
 	type LocalDataTable,
@@ -70,6 +71,7 @@ export class PromotionChangeService {
 		private readonly localEntities: LocalPackageEntities,
 		private readonly environmentResolver: PromotionEnvironmentResolver,
 		private readonly projectRepository: ProjectRepository,
+		private readonly credentialSelection: PromotionCredentialSelectionService,
 	) {}
 
 	/**
@@ -160,12 +162,20 @@ export class PromotionChangeService {
 				keepContent: (path) =>
 					requestedIds.has(entityIdOfPath(path)) ||
 					path.includes(`/${PACKAGE_ENTITY_LAYOUT.variables.directory}/`),
+				// Promote lists the project's own credentials, so their details need them in the export.
+				...(direction === 'promote'
+					? { credentialIds: await this.credentialSelection.findSelectableIds(user, projectId) }
+					: {}),
 			}),
 		]);
 		const branchManifest = parseBranchManifest(branchFiles.get(manifestPath), projectId);
-		const branchIndex = indexSide({ manifest: branchManifest, blobByPath: new Map() }, projectId);
+		const ownedCredentials = direction === 'promote';
+		const branchIndex = indexSide(
+			{ manifest: branchManifest, blobByPath: new Map(), ownedCredentials },
+			projectId,
+		);
 		const instanceIndex = indexSide(
-			{ manifest: instance.manifest, blobByPath: blobsByPath(instance.files) },
+			{ manifest: instance.manifest, blobByPath: blobsByPath(instance.files), ownedCredentials },
 			projectId,
 		);
 		// A resource can disappear after the summary, for example when a local workflow is deleted.

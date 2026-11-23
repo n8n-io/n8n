@@ -50,7 +50,14 @@ export async function exportInstancePackage(
 	packagesService: N8nPackagesService,
 	user: User,
 	projectIds: string[],
-	{ keepContent }: { keepContent?: (path: string) => boolean } = {},
+	{
+		keepContent,
+		credentialIds,
+	}: {
+		keepContent?: (path: string) => boolean;
+		/** Credentials of the exported projects to write although no workflow uses them. */
+		credentialIds?: string[];
+	} = {},
 ): Promise<InstancePackage> {
 	const writer = new HashingPackageWriter();
 	const contents = new Map<string, string>();
@@ -58,6 +65,7 @@ export async function exportInstancePackage(
 		{
 			user,
 			projectIds,
+			projectCredentialIds: credentialIds,
 			includeAgents: false,
 			includeArchived: true,
 			includeTags: true,

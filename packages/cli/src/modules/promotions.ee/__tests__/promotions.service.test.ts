@@ -60,6 +60,7 @@ import { PromotionWorkingDirectoryService } from '../promotion-working-directory
 import type { PromotionsGitService } from '../promotions-git.service';
 import { ApplyPreviewService } from '../apply-preview.service';
 import type { PromotePreviewService } from '../promote-preview.service';
+import type { PromotionCredentialSelectionService } from '../promotion-credential-selection.service';
 import { GitCommitPackageReader } from '../git-commit-package-reader';
 import { PromotionGitError } from '../promotions-git.error';
 import { PromotionsService } from '../promotions.service';
@@ -109,6 +110,7 @@ describe('PromotionsService', () => {
 	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
 	const projectService = mock<ProjectService>();
 	const folderService = mock<FolderService>();
+	const credentialSelection = mock<PromotionCredentialSelectionService>();
 	const n8nPackagesService = mock<N8nPackagesService>();
 	const inventoryReader = mock<PackageDirectoryInventoryReader>();
 	const globalConfig = mock<GlobalConfig>({ tags: { disabled: false } });
@@ -236,6 +238,7 @@ describe('PromotionsService', () => {
 			sharedWorkflowRepository,
 			projectService,
 			folderService,
+			credentialSelection,
 			n8nPackagesService,
 			applyPreviewService,
 			promotePreviewService,
@@ -2314,6 +2317,7 @@ describe('PromotionsService', () => {
 					workflowIds: ['w1', 'w2', 'w4'],
 					deletedWorkflowIds: ['w3'],
 					folderIds: [],
+					credentialIds: [],
 				},
 				new Map(),
 				expect.any(AbortSignal),
@@ -2344,7 +2348,13 @@ describe('PromotionsService', () => {
 				promoteInput(),
 				actor,
 				expect.objectContaining({ commitMessage: 'Promote checkout flow' }),
-				{ projectId: 'p1', workflowIds: ['w1'], deletedWorkflowIds: [], folderIds: [] },
+				{
+					projectId: 'p1',
+					workflowIds: ['w1'],
+					deletedWorkflowIds: [],
+					folderIds: [],
+					credentialIds: [],
+				},
 				new Map(),
 				expect.any(AbortSignal),
 			);
@@ -2367,7 +2377,13 @@ describe('PromotionsService', () => {
 				promoteInput(),
 				actor,
 				expect.anything(),
-				{ projectId: 'p1', workflowIds: ['w1'], deletedWorkflowIds: ['w9'], folderIds: [] },
+				{
+					projectId: 'p1',
+					workflowIds: ['w1'],
+					deletedWorkflowIds: ['w9'],
+					folderIds: [],
+					credentialIds: [],
+				},
 				new Map(),
 				expect.any(AbortSignal),
 			);
@@ -2392,7 +2408,13 @@ describe('PromotionsService', () => {
 				promoteInput(),
 				actor,
 				expect.anything(),
-				{ projectId: 'p1', workflowIds: ['w1'], deletedWorkflowIds: ['w9'], folderIds: [] },
+				{
+					projectId: 'p1',
+					workflowIds: ['w1'],
+					deletedWorkflowIds: ['w9'],
+					folderIds: [],
+					credentialIds: [],
+				},
 				new Map([['w9', 'project "Ops"']]),
 				expect.any(AbortSignal),
 			);

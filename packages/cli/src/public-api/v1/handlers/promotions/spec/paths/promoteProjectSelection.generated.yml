@@ -36,6 +36,13 @@ requestBody:
               minLength: 1
               maxLength: 36
             description: Folders of the project to promote. Promote writes a selected folder with its current name and place, even when it is empty.
+          credentialIds:
+            type: array
+            items:
+              type: string
+              minLength: 1
+              maxLength: 36
+            description: Credentials that the project owns, to promote without a selected workflow that uses them. Promote writes a credential under the folder of its owner project. It never writes secret values.
           commitMessage:
             type: string
             minLength: 1

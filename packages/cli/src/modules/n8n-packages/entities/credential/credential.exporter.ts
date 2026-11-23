@@ -37,6 +37,11 @@ export interface CredentialExportRequest {
 	credentialExportPolicy: CredentialExportPolicy;
 	/** Target directory of each exported project (`projects/<slug>-<id>`), keyed by project id. */
 	projectTargetsById?: Map<string, string>;
+	/**
+	 * Credentials to write although no workflow of the package requires them. They get a file and a
+	 * manifest entry but no requirement row. An id that a requirement already covers is skipped.
+	 */
+	additionalCredentialIds?: string[];
 }
 
 export interface CredentialExportResult {
@@ -75,36 +80,7 @@ export class CredentialExporter {
 			};
 
 			if (credential) {
-				let decryptedData: ICredentialDataDecryptedObject | undefined;
-				const expressionData = await selectCredentialDataForExport(
-					request.credentialExportPolicy,
-					async () => {
-						decryptedData = await new Credentials(
-							{ id: credential.id, name: credential.name },
-							credential.type,
-							credential.data,
-						).getData();
-						return decryptedData;
-					},
-				);
-				const data = this.withDisplayControllers(credential.type, expressionData, decryptedData);
-				entries.push(
-					await writeManifestEntry(
-						request.writer,
-						'credentials',
-						projectScopedDirectory(
-							'credentials',
-							this.ownerProjectId(credential),
-							request.projectTargetsById,
-						),
-						{ id: credential.id, name: credential.name },
-						this.credentialSerializer.serialize(credential, {
-							data,
-							includeDescription,
-							...(data !== undefined ? { dataIsComplete: isEqual(data, decryptedData) } : {}),
-						}),
-					),
-				);
+				entries.push(await this.writeCredential(credential, request, includeDescription));
 			}
 
 			requirements.push({
@@ -115,7 +91,55 @@ export class CredentialExporter {
 			});
 		}
 
+		const required = new Set(requirements.map(({ id }) => id));
+		for (const credentialId of new Set(request.additionalCredentialIds)) {
+			if (required.has(credentialId)) continue;
+			const credential = await this.credentialsFinder.findCredentialForUser(
+				credentialId,
+				request.user,
+				['credential:read'],
+			);
+			if (credential) {
+				entries.push(await this.writeCredential(credential, request, includeDescription));
+			}
+		}
+
 		return { entries, requirements };
+	}
+
+	private async writeCredential(
+		credential: CredentialsEntity,
+		request: CredentialExportRequest,
+		includeDescription: boolean,
+	): Promise<ManifestEntry> {
+		let decryptedData: ICredentialDataDecryptedObject | undefined;
+		const expressionData = await selectCredentialDataForExport(
+			request.credentialExportPolicy,
+			async () => {
+				decryptedData = await new Credentials(
+					{ id: credential.id, name: credential.name },
+					credential.type,
+					credential.data,
+				).getData();
+				return decryptedData;
+			},
+		);
+		const data = this.withDisplayControllers(credential.type, expressionData, decryptedData);
+		return await writeManifestEntry(
+			request.writer,
+			'credentials',
+			projectScopedDirectory(
+				'credentials',
+				this.ownerProjectId(credential),
+				request.projectTargetsById,
+			),
+			{ id: credential.id, name: credential.name },
+			this.credentialSerializer.serialize(credential, {
+				data,
+				includeDescription,
+				...(data !== undefined ? { dataIsComplete: isEqual(data, decryptedData) } : {}),
+			}),
+		);
 	}
 
 	/**
