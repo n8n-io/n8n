@@ -48,6 +48,7 @@ export class AssistantAgentFeedbackService {
 			threadId,
 			executionId,
 			ASSISTANT_TRACE_EVENT,
+			'turn',
 		);
 		const trace = assistantTracePayloadSchema.safeParse(payload);
 		if (!trace.success) {

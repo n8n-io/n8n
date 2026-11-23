@@ -236,20 +236,29 @@ export class AssistantTurnTrace {
 		private readonly orchestratorInputs: Record<string, unknown> = {},
 		/** Called once, after the trace finished. */
 		private readonly onFinished?: () => void,
-		/** The root of the turn that this trace resumes. A new turn is its own root. */
-		private readonly turnRoot?: AssistantTurnRoot,
+		/** The root of the turn that this trace resumes. Unset for a new turn. */
+		private readonly resumedTurnRoot?: AssistantTurnRoot,
 	) {}
+
+	/** The root of the turn: the root that this trace resumes, or its own root. */
+	private get turnRoot(): AssistantTurnRoot {
+		const { rootRun } = this.context;
+		return this.resumedTurnRoot ?? { langsmithTraceId: rootRun.traceId, runId: rootRun.id };
+	}
 
 	/** The ids that the client and the feedback use to find the trace. */
 	get payload(): AssistantTracePayload {
 		const { rootRun } = this.context;
-		const { turnRoot } = this;
+		const { resumedTurnRoot } = this;
 		return {
 			...(rootRun.otelTraceId ? { traceId: rootRun.otelTraceId } : {}),
 			langsmithTraceId: rootRun.traceId,
 			langsmithRunId: rootRun.id,
-			...(turnRoot
-				? { turnLangsmithTraceId: turnRoot.langsmithTraceId, turnLangsmithRunId: turnRoot.runId }
+			...(resumedTurnRoot
+				? {
+						turnLangsmithTraceId: resumedTurnRoot.langsmithTraceId,
+						turnLangsmithRunId: resumedTurnRoot.runId,
+					}
 				: {}),
 		};
 	}
@@ -263,7 +272,6 @@ export class AssistantTurnTrace {
 	private anchor(): JSONObject {
 		const { rootRun, actorRun } = this.context;
 		const messageGroupId = rootRun.metadata?.message_group_id;
-		const turnRoot = this.turnRoot ?? { langsmithTraceId: rootRun.traceId, runId: rootRun.id };
 		return {
 			langsmithTraceId: rootRun.traceId,
 			rootRunId: rootRun.id,
@@ -271,7 +279,7 @@ export class AssistantTurnTrace {
 			...(rootRun.otelTraceId ? { otelTraceId: rootRun.otelTraceId } : {}),
 			...(actorRun.otelSpanId ? { actorSpanId: actorRun.otelSpanId } : {}),
 			...(typeof messageGroupId === 'string' ? { messageGroupId } : {}),
-			turnRoot: { ...turnRoot },
+			turnRoot: { ...this.turnRoot },
 		};
 	}
 
@@ -678,21 +686,25 @@ export class AssistantTurnTracer {
 		anchor: AssistantTraceAnchor | undefined,
 		{ input, orchestratorInputs, metadata }: AssistantTraceInputs,
 	): Promise<AssistantTurnTrace | undefined> {
-		const create = async () => {
-			return await continueInstanceAiTraceContext(undefined, {
-				...this.commonOptions(scope),
-				input,
-				metadata: {
-					resume_reason: 'approval',
-					agent_id: orchestratorAgentId(scope.runId),
-					...continuedFromMetadata(anchor),
-					...scope.threadProvenance,
-					...metadata,
-					...RUNTIME_TRACE_METADATA,
-				},
-			});
-		};
-		return await this.create(scope, orchestratorInputs, create, turnRootOf(anchor));
+		return await this.create(
+			scope,
+			orchestratorInputs,
+			async () => {
+				return await continueInstanceAiTraceContext(undefined, {
+					...this.commonOptions(scope),
+					input,
+					metadata: {
+						resume_reason: 'approval',
+						agent_id: orchestratorAgentId(scope.runId),
+						...continuedFromMetadata(anchor),
+						...scope.threadProvenance,
+						...metadata,
+						...RUNTIME_TRACE_METADATA,
+					},
+				});
+			},
+			turnRootOf(anchor),
+		);
 	}
 
 	/**
@@ -727,7 +739,7 @@ export class AssistantTurnTracer {
 		scope: AssistantTraceScope,
 		orchestratorInputs: Record<string, unknown>,
 		createContext: () => Promise<InstanceAiTraceContext | undefined>,
-		turnRoot?: AssistantTurnRoot,
+		resumedTurnRoot?: AssistantTurnRoot,
 	): Promise<AssistantTurnTrace | undefined> {
 		try {
 			const context = await createContext();
@@ -738,7 +750,7 @@ export class AssistantTurnTracer {
 				this.logger,
 				orchestratorInputs,
 				() => this.openTraces.delete(trace),
-				turnRoot,
+				resumedTurnRoot,
 			);
 			// Shutdown started while the trace was created, after the open traces were
 			// closed. Close this one too, and run the turn without a trace.

@@ -50,6 +50,7 @@ describe('AssistantAgentFeedbackService', () => {
 			THREAD_ID,
 			'exec-1',
 			ASSISTANT_TRACE_EVENT,
+			'turn',
 		);
 		expect(submitLangsmithUserFeedback).toHaveBeenCalledWith({
 			langsmithRunId: 'root-1',
