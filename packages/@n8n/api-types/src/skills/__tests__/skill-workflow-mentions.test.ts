@@ -1,5 +1,6 @@
 import {
 	formatSkillWorkflowMention,
+	parseAgentSkillWorkflowMentions,
 	parseSkillWorkflowMentions,
 	renameSkillWorkflowMentions,
 } from '../skill-workflow-mentions';
@@ -71,6 +72,15 @@ describe('formatSkillWorkflowMention', () => {
 		);
 	});
 
+	it('writes a name with line breaks on one line, so the link stays a mention', () => {
+		const link = formatSkillWorkflowMention({ workflowId: 'abc', name: 'Weekly\r\n report' });
+
+		expect(link).toBe('[Weekly report](n8n://workflow/abc)');
+		expect(parseSkillWorkflowMentions(link)).toEqual([
+			{ workflowId: 'abc', name: 'Weekly report' },
+		]);
+	});
+
 	it.each(['Run [v2]', 'Back\\slash', 'Plain'])('keeps the name "%s" after a parse', (name) => {
 		const link = formatSkillWorkflowMention({ workflowId: 'abc', name });
 
@@ -96,9 +106,35 @@ describe('renameSkillWorkflowMentions', () => {
 		);
 	});
 
+	it('keeps a mention when the new name has a line break', () => {
+		const renamed = renameSkillWorkflowMentions(
+			'[Old](n8n://workflow/abc)',
+			new Map([['abc', 'Two\nlines']]),
+		);
+
+		expect(parseSkillWorkflowMentions(renamed)).toEqual([{ workflowId: 'abc', name: 'Two lines' }]);
+	});
+
 	it('returns the body unchanged when no name is known', () => {
 		const body = 'See [Name](n8n://workflow/abc) and [Web](https://example.com)';
 
 		expect(renameSkillWorkflowMentions(body, new Map())).toBe(body);
+	});
+});
+
+describe('parseAgentSkillWorkflowMentions', () => {
+	it('returns each workflow once, from the instructions and then the references', () => {
+		const skill = {
+			instructions: 'Run [Report](n8n://workflow/wf1).',
+			references: [
+				{ path: 'references/a.md', content: 'Then [Archive](n8n://workflow/wf2).' },
+				{ path: 'references/b.md', content: 'Or [Report again](n8n://workflow/wf1).' },
+			],
+		};
+
+		expect(parseAgentSkillWorkflowMentions(skill)).toEqual([
+			{ workflowId: 'wf1', name: 'Report' },
+			{ workflowId: 'wf2', name: 'Archive' },
+		]);
 	});
 });

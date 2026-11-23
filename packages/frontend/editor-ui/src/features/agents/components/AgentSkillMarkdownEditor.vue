@@ -15,6 +15,7 @@ import { isMentionTrigger } from '@/features/ai/assistant-at-mentions/composable
 import SkillWorkflowMentionPicker from './SkillWorkflowMentionPicker.vue';
 
 type MarkdownEditor = N8nMarkdownEditorEmits['ready'][0];
+type Transaction = MarkdownEditor['state']['tr'];
 type EditorProps = NonNullable<N8nMarkdownEditorProps['editorProps']>;
 
 defineOptions({ inheritAttrs: false });
@@ -66,7 +67,8 @@ const editorProps: EditorProps = {
 	},
 	handleKeyDown(_view, event) {
 		if (!pickerOpen.value) return false;
-		return picker.value?.handleExternalKeydown(event) ?? false;
+		picker.value?.handleExternalKeydown(event);
+		return event.defaultPrevented;
 	},
 };
 
@@ -76,10 +78,14 @@ function closePicker() {
 	typedQuery.value = '';
 }
 
-function syncTypedQuery() {
+function syncTypedQuery({ transaction }: { transaction: Transaction }) {
 	const target = editor.value;
 	const position = typedTriggerPosition.value;
 	if (!target || position === undefined) return;
+	if (!transaction.docChanged && transaction.selectionSet) {
+		closePicker();
+		return;
+	}
 	const { doc, selection } = target.state;
 	const query =
 		selection.empty && selection.from > position
@@ -116,9 +122,7 @@ function onSelect(mention: SkillWorkflowMention) {
 }
 
 function onPickerOpenChange(open: boolean) {
-	if (open) return;
-	closePicker();
-	editor.value?.commands.focus();
+	if (!open) closePicker();
 }
 </script>
 
