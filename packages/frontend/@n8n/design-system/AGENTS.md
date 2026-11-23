@@ -234,8 +234,7 @@ Write your own behavior only when Reka has no primitive. In that case, follow th
 </template>
 ```
 
-✅ Do: wrap the Reka primitive and forward its props. This is how
-`N8nRadioGroup` works.
+✅ Do: wrap the Reka primitive and forward its props.
 
 ```vue
 <script setup lang="ts">
