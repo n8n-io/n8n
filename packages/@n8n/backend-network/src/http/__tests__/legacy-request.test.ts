@@ -1,10 +1,16 @@
 import type { Logger } from '@n8n/backend-common';
 import { HttpRequestConfig, type SsrfProtectionConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
+import axios from 'axios';
 import { jsonParse, type IHttpRequestOptions, type IRequestOptions } from 'n8n-workflow';
 import nock from 'nock';
 import { createServer, type Server } from 'node:http';
-import type { AddressInfo } from 'node:net';
+import {
+	createServer as createNetServer,
+	type AddressInfo,
+	type Server as NetServer,
+	type Socket,
+} from 'node:net';
 import { Readable } from 'node:stream';
 import { mock } from 'vitest-mock-extended';
 
@@ -695,5 +701,124 @@ describe('OutboundHttp.requests requestLegacy', () => {
 			expect(stream.destroyed).toBe(false);
 			stream.destroy();
 		});
+	});
+
+	// Regression test for NODE-5666: HTTP Request node with Response Format = Autodetect
+	// hangs until responseBodyReadTimeout (default 5 min) on a proxy 403 CONNECT denial.
+	describe('proxy CONNECT error responses', () => {
+		let proxyServer: NetServer;
+		let proxyUrl: string;
+		let previousAxiosProxy: typeof axios.defaults.proxy;
+		const openSockets = new Set<Socket>();
+		const pendingTimers = new Set<NodeJS.Timeout>();
+		const errorBody = `<!DOCTYPE html><html><body>${'Access Denied. '.repeat(250)}</body></html>`;
+
+		beforeAll(async () => {
+			// Match production startup (configureGlobalAxiosDefaults) so axios lets
+			// HttpsProxyAgent handle proxying even when the test runner sets HTTPS_PROXY.
+			previousAxiosProxy = axios.defaults.proxy;
+			axios.defaults.proxy = false;
+			// Restore native http/https modules because nock's @mswjs/interceptors
+			// breaks HttpsProxyAgent real socket passthrough.
+			nock.restore();
+			// Emulate Squid denying an HTTPS CONNECT tunnel: write 403 headers with a
+			// multi-KB Content-Length first, then send the HTML body shortly after
+			// (matching headers and body spanning separate writes or TCP segments).
+			proxyServer = createNetServer((socket) => {
+				openSockets.add(socket);
+				socket.once('close', () => openSockets.delete(socket));
+				socket.setNoDelay(true);
+				socket.once('data', () => {
+					socket.write(
+						'HTTP/1.1 403 Forbidden\r\n' +
+							'Server: squid/5.7\r\n' +
+							'Content-Type: text/html;charset=utf-8\r\n' +
+							`Content-Length: ${Buffer.byteLength(errorBody)}\r\n` +
+							'X-Squid-Error: ERR_ACCESS_DENIED 0\r\n' +
+							'Connection: close\r\n' +
+							'\r\n',
+					);
+					const timer = setTimeout(() => {
+						pendingTimers.delete(timer);
+						if (!socket.destroyed) {
+							socket.end(errorBody);
+						}
+					}, 20);
+					timer.unref();
+					pendingTimers.add(timer);
+				});
+			});
+			await new Promise<void>((resolve) => proxyServer.listen(0, '127.0.0.1', resolve));
+			proxyUrl = `http://127.0.0.1:${(proxyServer.address() as AddressInfo).port}`;
+		});
+
+		afterAll(async () => {
+			for (const timer of pendingTimers) clearTimeout(timer);
+			pendingTimers.clear();
+			for (const socket of openSockets) socket.destroy();
+			openSockets.clear();
+			await new Promise<void>((resolve) => proxyServer.close(() => resolve()));
+			axios.defaults.proxy = previousAxiosProxy;
+			if (!nock.isActive()) nock.activate();
+		});
+
+		beforeEach(() => {
+			// Bound the inactivity timeout below the test timeout so a hang fails fast
+			// in CI rather than waiting for the 300_000ms production default.
+			Container.set(
+				HttpRequestConfig,
+				Object.assign(new HttpRequestConfig(), { responseBodyReadTimeout: 1500 }),
+			);
+		});
+
+		afterEach(() => {
+			Container.set(HttpRequestConfig, new HttpRequestConfig());
+		});
+
+		it(
+			'fails fast with 403 when proxy denies CONNECT without streaming (Text format)',
+			{ timeout: 5000 },
+			async () => {
+				const client = makeFacade().requests({ useDefaultSsrfPolicy: 'unsafe' });
+				const start = Date.now();
+
+				await expect(
+					client.requestLegacy({
+						url: 'https://denied.example.com/',
+						method: 'GET',
+						proxy: proxyUrl,
+						json: true,
+						resolveWithFullResponse: true,
+						timeout: 300_000,
+					}),
+				).rejects.toMatchObject({ statusCode: 403 });
+
+				expect(Date.now() - start).toBeLessThan(1000);
+			},
+		);
+
+		it(
+			'fails fast with 403 when proxy denies CONNECT with streaming (Autodetect format)',
+			{ timeout: 5000 },
+			async () => {
+				const client = makeFacade().requests({ useDefaultSsrfPolicy: 'unsafe' });
+				const start = Date.now();
+
+				await expect(
+					client.requestLegacy({
+						url: 'https://denied.example.com/',
+						method: 'GET',
+						proxy: proxyUrl,
+						encoding: null,
+						json: false,
+						useStream: true,
+						resolveWithFullResponse: true,
+						timeout: 300_000,
+					}),
+				).rejects.toMatchObject({ statusCode: 403 });
+
+				expect(Date.now() - start).toBeLessThan(1000);
+			},
+		);
 	});
 });
