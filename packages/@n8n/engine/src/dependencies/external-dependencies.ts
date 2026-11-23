@@ -8,7 +8,7 @@ import type {
 	WorkflowDocument,
 } from '../execution';
 import type { GraphNode, WorkflowGraph } from '../graph';
-import type { LifecycleEventCallback } from '../lifecycle-events';
+import type { LifecycleEvent, LifecycleEventCallback } from '../lifecycle-events';
 import type { ResponseEmitter, ResponseExpectation } from '../response-channel';
 
 /**
@@ -157,9 +157,19 @@ export interface ExecutionLocation {
  */
 export type ExecutionFilesDeleter = (execution: ExecutionLocation) => Promise<void>;
 
+/**
+ * Called in process for each transition a handler won, for every execution,
+ * before the event reaches the batching publisher. Must not throw or block.
+ */
+export type ExecutionObserver = (
+	event: LifecycleEvent,
+	execution: { callerContext: CallerContext },
+) => void;
+
 export interface ExternalDependencies {
 	/** Executes `v1-node` steps — supplied by the host in integrated mode. */
 	v1StepExecutor?: IStepExecutor;
+	executionObserver?: ExecutionObserver;
 	/** Ships lifecycle events to the host. A failed delivery never fails a step. */
 	lifecycleEventCallback?: LifecycleEventCallback;
 	/**

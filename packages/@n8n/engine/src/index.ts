@@ -102,6 +102,7 @@ export type {
 export type {
 	ExecutionFilesDeleter,
 	ExecutionLocation,
+	ExecutionObserver,
 	ExternalDependencies,
 	IStepExecutor,
 	StepExecutionContext,

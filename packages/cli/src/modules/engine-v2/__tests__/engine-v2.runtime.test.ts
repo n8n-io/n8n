@@ -17,6 +17,7 @@ import type { CredentialTypes } from '@/credential-types';
 import type { CredentialsHelper } from '@/credentials-helper';
 import type { NodeTypesProxy } from '@n8n/backend-services';
 
+import type { EngineV2Tracing } from '@/modules/otel/engine-v2-tracing';
 import type { EngineAdditionalDataBuilder } from '../engine-additional-data';
 import type { EngineControlPlaneTransport } from '../engine-control-plane-transport';
 import type { EngineCredentialsClient } from '../engine-credentials-client';
@@ -166,6 +167,11 @@ describe('EngineV2Runtime', () => {
 			credentialTypes,
 			additionalDataBuilder,
 			binaryDataService,
+			{
+				wrapStepExecutor: (inner: unknown) => inner,
+				observe: vi.fn(),
+				injectTraceHeaders: vi.fn(),
+			} as unknown as EngineV2Tracing,
 		);
 
 	const stepContext = {

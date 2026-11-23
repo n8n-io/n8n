@@ -143,6 +143,7 @@ export function createEngineRuntime({
 		: noopLifecycleEventPublisher;
 	const lifecycleEventPublisherFactory = new LifecycleEventPublisherFactory(
 		lifecycleEventPublisher,
+		dependencies.executionObserver,
 	);
 
 	// One cancel path for the API and for an execution that ends with sub-executions.

@@ -42,6 +42,10 @@ const StartExecutionBody = z.object({
 			userId: z.string().min(1).optional(),
 			projectId: z.string().min(1).optional(),
 			hostMode: z.string().min(1),
+			traceContext: z
+				.record(z.string().min(1).max(64), z.string().max(8192))
+				.refine((entries) => Object.keys(entries).length <= 16)
+				.optional(),
 		})
 		.strict(),
 	/** What kind of a response the caller expects. */

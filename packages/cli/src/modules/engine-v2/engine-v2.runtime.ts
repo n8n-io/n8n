@@ -29,6 +29,8 @@ import { CredentialTypes } from '@/credential-types';
 import { CredentialsHelper } from '@/credentials-helper';
 import { NodeTypesProxy } from '@n8n/backend-services';
 
+import { EngineV2Tracing } from '@/modules/otel/engine-v2-tracing';
+
 import { EngineAdditionalDataBuilder } from './engine-additional-data';
 import { EngineControlPlaneTransport } from './engine-control-plane-transport';
 import { EngineCredentialsClient } from './engine-credentials-client';
@@ -85,6 +87,7 @@ export class EngineV2Runtime {
 		private readonly credentialTypes: CredentialTypes,
 		private readonly additionalDataBuilder: EngineAdditionalDataBuilder,
 		private readonly binaryDataService: BinaryDataService,
+		private readonly tracing: EngineV2Tracing,
 	) {
 		this.logger = this.logger.scoped('engine-v2');
 		this.dataTablesHttp = transport.forScope('data-tables:use');
@@ -155,14 +158,17 @@ export class EngineV2Runtime {
 					await this.binaryDataService.deleteMany([
 						FileLocation.ofExecution(workflowId, executionId),
 					]),
-				v1StepExecutor: new V1StepExecutor({
-					nodeTypes: this.nodeTypes,
-					additionalDataFactory: async (context) => this.buildAdditionalData(context, stopping),
-					loadStepData: createEngineStepDataLoader(executionStore, stepStore),
-					...this.resumeMinters(),
-					resolveSubWorkflow: async (request) =>
-						await this.subWorkflowClient.resolve(request, stopping.signal),
-				}),
+				v1StepExecutor: this.tracing.wrapStepExecutor(
+					new V1StepExecutor({
+						nodeTypes: this.nodeTypes,
+						additionalDataFactory: async (context) => this.buildAdditionalData(context, stopping),
+						loadStepData: createEngineStepDataLoader(executionStore, stepStore),
+						...this.resumeMinters(),
+						resolveSubWorkflow: async (request) =>
+							await this.subWorkflowClient.resolve(request, stopping.signal),
+					}),
+				),
+				executionObserver: this.tracing.observe,
 			}),
 		});
 		engine.start();
@@ -203,7 +209,17 @@ export class EngineV2Runtime {
 			stopping.signal,
 		);
 
-		return this.additionalDataBuilder.build(context, credentialsHelper, dataTableProxyProvider);
+		const additionalData = this.additionalDataBuilder.build(
+			context,
+			credentialsHelper,
+			dataTableProxyProvider,
+		);
+		additionalData.otel = {
+			injectTraceHeaders: (_executionId, _nodeName, headers) =>
+				this.tracing.injectTraceHeaders(headers),
+			extractInboundBaggage: () => undefined,
+		};
+		return additionalData;
 	}
 
 	private async initServer(): Promise<void> {

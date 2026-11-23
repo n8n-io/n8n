@@ -53,6 +53,8 @@ export interface CallerContext {
 	 * to the engine; a v1 host stores its `WorkflowExecuteMode` here.
 	 */
 	hostMode: string;
+	/** The host's trace context for this execution. Opaque to the engine. */
+	traceContext?: Record<string, string>;
 }
 
 /**

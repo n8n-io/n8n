@@ -1,6 +1,7 @@
 export type {
 	ExecutionFilesDeleter,
 	ExecutionLocation,
+	ExecutionObserver,
 	ExternalDependencies,
 	IStepExecutor,
 	SubExecutionDeclaration,

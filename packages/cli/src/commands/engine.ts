@@ -85,6 +85,9 @@ export class Engine extends BaseCommand {
 			step: engineConfig.stepConcurrency,
 		});
 
+		const { EngineV2Tracing } = await import('@/modules/otel/engine-v2-tracing.js');
+		await Container.get(EngineV2Tracing).startExport();
+
 		const { EngineV2Runtime } = await import('@/modules/engine-v2/engine-v2.runtime.js');
 		this.runtime = Container.get(EngineV2Runtime);
 		await this.runtime.init({

@@ -23,7 +23,7 @@ import {
 	type ResourceDetector,
 } from '@opentelemetry/resources';
 import { NodeSDK } from '@opentelemetry/sdk-node';
-import type { BasicTracerProvider } from '@opentelemetry/sdk-trace-base';
+import type { BasicTracerProvider, ReadableSpan } from '@opentelemetry/sdk-trace-base';
 import { OperationalError } from '@n8n/errors';
 
 import { createAgent365TracerProvider } from './agent-365-provider';
@@ -75,6 +75,8 @@ export class OtelSdk {
 
 	private agent365Provider?: BasicTracerProvider;
 
+	private sdkResource?: Resource;
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly tracingSourcesConfig: TracingSourcesConfig,
@@ -82,6 +84,15 @@ export class OtelSdk {
 
 	get isRunning(): boolean {
 		return this.sdk !== undefined;
+	}
+
+	get resource(): Resource | undefined {
+		return this.sdkResource;
+	}
+
+	/** Exports a span that another process started, so no tracer here holds it. */
+	exportEndedSpan(span: ReadableSpan): void {
+		this.spanProcessor.onEnd(span);
 	}
 
 	start(): void {
@@ -99,6 +110,7 @@ export class OtelSdk {
 
 		this.useDiagnosticsLogger();
 		const resource = defaultResource().merge(detectResources({ detectors: resourceDetectors() }));
+		this.sdkResource = resource;
 		const sdk = new NodeSDK({
 			resource,
 			autoDetectResources: false,

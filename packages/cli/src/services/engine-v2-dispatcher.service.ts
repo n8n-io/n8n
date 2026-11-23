@@ -37,6 +37,7 @@ import {
 import { EngineV2PayloadFiles } from '@/services/engine-v2-payload-files.service';
 import { EngineV2PushRegistry } from '@/services/engine-v2-push-registry.service';
 import { toEngineWorkflowPayload } from '@/services/engine-v2-workflow-payload';
+import { EngineV2TraceContextBuilder } from '@/modules/otel/engine-v2-tracing';
 import { toResponseExpectation } from '@/webhooks/engine-v2-response-expectation';
 
 /** The trigger that fired and the payload it produced. */
@@ -277,6 +278,13 @@ export class EngineV2Dispatcher {
 					hostMode: data.executionMode,
 					userId: data.userId,
 					projectId: data.projectId,
+					traceContext: Container.get(EngineV2TraceContextBuilder).build({
+						executionId,
+						workflowId: workflowData.id,
+						workflowName: workflowData.name,
+						projectId: data.projectId,
+						inbound: data.tracingContext,
+					}),
 				},
 				responseExpectation: toResponseExpectation(data.engineV2Response?.responseMode),
 				// Only a run with a push ref has an editor session to relay events to.
