@@ -186,6 +186,7 @@ function scroll(direction: 'left' | 'right') {
 				[$style.justified]: justified,
 				[$style.vertical]: orientation === 'vertical',
 				[$style.filled]: variant === 'filled',
+				[$style.showBorder]: showBorder,
 			}"
 		>
 			<button
@@ -296,13 +297,14 @@ function scroll(direction: 'left' | 'right') {
 	--n8n-tabs--font-size: var(--font-size--sm);
 	--n8n-tabs--indicator--width: 2px;
 	--n8n-tabs--indicator--duration: var(--duration--snappy);
-	--n8n-tabs--indicator--easing: var(--easing--ease-out-quart);
+	--n8n-tabs--indicator--easing: var(--easing--ease-in-out);
 
 	position: relative;
 	display: flex;
 	align-items: stretch;
 	min-height: var(--n8n-tabs--height);
 	width: 100%;
+	border-bottom: 1px solid transparent;
 
 	&.small {
 		--n8n-tabs--height: var(--height--sm);
@@ -426,9 +428,18 @@ function scroll(direction: 'left' | 'right') {
 	}
 }
 
+.showBorder {
+	border-bottom: var(--border);
+}
+.showBorder.vertical {
+	border-bottom: 0;
+	border-left: var(--border);
+}
+
 /** Vertical tabs stack and mark the active tab on the leading edge. */
 .vertical {
 	flex-direction: column;
+	border-left: 1px solid transparent;
 
 	.tabs {
 		flex-direction: column;

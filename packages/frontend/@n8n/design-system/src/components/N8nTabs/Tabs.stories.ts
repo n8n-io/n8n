@@ -25,6 +25,9 @@ export default {
 		justified: {
 			control: 'boolean',
 		},
+		showBorder: {
+			control: 'boolean',
+		},
 	},
 	parameters: {
 		docs: {
@@ -61,6 +64,7 @@ export const Default: StoryFn = (args) => ({
 			:size="args.size"
 			:orientation="args.orientation"
 			:justified="args.justified"
+			:show-border="args.showBorder"
 			@update:model-value="onUpdateModelValue"
 		>
 			<template #content="{ value }">
@@ -85,6 +89,7 @@ Default.args = {
 	size: 'medium',
 	orientation: 'horizontal',
 	justified: false,
+	showBorder: false,
 };
 
 const sharedArgs = {
@@ -92,6 +97,7 @@ const sharedArgs = {
 	size: 'medium',
 	orientation: 'horizontal',
 	justified: false,
+	showBorder: false,
 };
 
 const overflowTabs: Array<TabOptions<string>> = [
@@ -129,6 +135,7 @@ export const Overflow: StoryFn = (args) => ({
 				:size="args.size"
 				:orientation="args.orientation"
 				:justified="args.justified"
+				:show-border="args.showBorder"
 				@update:model-value="onUpdateModelValue"
 			>
 				<template #content="{ value }">
@@ -168,6 +175,7 @@ export const Icons: StoryFn = (args) => ({
 			:size="args.size"
 			:orientation="args.orientation"
 			:justified="args.justified"
+			:show-border="args.showBorder"
 			@update:model-value="onUpdateModelValue"
 		>
 			<template #content="{ value }">
@@ -203,6 +211,7 @@ export const Justified: StoryFn = (args) => ({
 			:size="args.size"
 			:orientation="args.orientation"
 			:justified="args.justified"
+			:show-border="args.showBorder"
 			@update:model-value="onUpdateModelValue"
 		>
 			<template #content="{ value }">
@@ -240,6 +249,7 @@ export const Vertical: StoryFn = (args) => ({
 			:size="args.size"
 			:orientation="args.orientation"
 			:justified="args.justified"
+			:show-border="args.showBorder"
 			@update:model-value="onUpdateModelValue"
 		>
 			<template #content="{ value }">

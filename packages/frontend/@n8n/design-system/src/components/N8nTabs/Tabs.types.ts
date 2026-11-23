@@ -47,4 +47,10 @@ export interface TabsProps<Value extends string | number = string | number> {
 	 * @default 'underline'
 	 */
 	variant?: 'underline' | 'filled';
+	/**
+	 * Show container border (Bottom when horizontal. Left when vertical. ).
+	 * Many consumers add this themselves so is optional.
+	 * @default false
+	 */
+	showBorder?: boolean;
 }
