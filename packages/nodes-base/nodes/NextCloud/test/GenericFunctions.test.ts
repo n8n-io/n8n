@@ -3,12 +3,21 @@ import type {
 	IExecuteFunctions,
 	IHookFunctions,
 	IHttpRequestMethods,
+	ILoadOptionsFunctions,
 	INode,
+	IPollFunctions,
+	IWebhookFunctions,
 } from 'n8n-workflow';
 import { NodeOperationError, requestPath, requestUrl } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 
-import { nextCloudApiRequest, outputPath, parseFolderList, webDavPath } from '../GenericFunctions';
+import {
+	nextCloudApiRequest,
+	nextCloudUserId,
+	outputPath,
+	parseFolderList,
+	webDavPath,
+} from '../GenericFunctions';
 
 const webDavUrl = 'https://nextcloud.example.com/remote.php/webdav';
 const baseUrl = 'https://nextcloud.example.com';
@@ -17,7 +26,7 @@ type Authentication = 'accessToken' | 'oAuth2';
 
 function buildFunctions(authentication: Authentication = 'accessToken') {
 	const requestWithAuthentication = vi.fn();
-	const getCredentials = vi.fn(async () => ({ webDavUrl }));
+	const getCredentials = vi.fn(async (): Promise<IDataObject> => ({ webDavUrl }));
 	const getNodeParameter = vi.fn((parameterName: string) => {
 		if (parameterName === 'authentication') return authentication;
 		return undefined;
@@ -43,6 +52,10 @@ function buildFunctions(authentication: Authentication = 'accessToken') {
 	} as unknown as IHookFunctions & IExecuteFunctions;
 
 	return { functions, getCredentials, getNodeParameter, requestWithAuthentication };
+}
+
+function ocsUser(id: unknown) {
+	return JSON.stringify({ ocs: { meta: { status: 'ok', statuscode: 200 }, data: { id } } });
 }
 
 function requestOptions(requestWithAuthentication: Mock, callIndex = 0): IDataObject {
@@ -110,7 +123,7 @@ describe('NextCloud GenericFunctions', () => {
 				undefined,
 				undefined,
 				undefined,
-				true,
+				'webdav',
 			);
 
 			expect(requestOptions(requestWithAuthentication).uri).toBe(`${customUrl}//test.txt`);
@@ -147,7 +160,7 @@ describe('NextCloud GenericFunctions', () => {
 				{ 'OCS-APIRequest': true },
 				undefined,
 				undefined,
-				false,
+				'ocs',
 			);
 
 			expect(requestOptions(requestWithAuthentication)).toMatchObject({
@@ -177,12 +190,37 @@ describe('NextCloud GenericFunctions', () => {
 				{},
 				undefined,
 				undefined,
-				false,
+				'ocs',
 			);
 
 			expect(requestOptions(requestWithAuthentication).uri).toBe(
 				'https://custom.example.com/nextcloud/ocs/v1.php/cloud/users',
 			);
+		});
+
+		it.each([
+			['https://nc.example.com/remote.php/dav/files/alice', 'https://nc.example.com'],
+			[
+				'https://nc.example.com/nextcloud/remote.php/dav/files/alice@example.com/',
+				'https://nc.example.com/nextcloud',
+			],
+		])('strips the dav/files path of %s for OCS requests', async (davUrl, root) => {
+			const { functions, getCredentials, requestWithAuthentication } = buildFunctions();
+			getCredentials.mockResolvedValue({ webDavUrl: davUrl });
+			requestWithAuthentication.mockResolvedValue('<ocs />');
+
+			await nextCloudApiRequest.call(
+				functions,
+				'POST',
+				requestPath`ocs/v1.php/cloud/users`,
+				'',
+				{},
+				undefined,
+				undefined,
+				'ocs',
+			);
+
+			expect(requestOptions(requestWithAuthentication).uri).toBe(`${root}/ocs/v1.php/cloud/users`);
 		});
 
 		it('passes body, headers, query, and null encoding to requestWithAuthentication', async () => {
@@ -200,7 +238,7 @@ describe('NextCloud GenericFunctions', () => {
 				headers,
 				null,
 				query,
-				true,
+				'webdav',
 			);
 
 			expect(requestOptions(requestWithAuthentication)).toMatchObject({
@@ -253,7 +291,7 @@ describe('NextCloud GenericFunctions', () => {
 				{},
 				undefined,
 				undefined,
-				false,
+				'ocs',
 			);
 
 			expect(requestOptions(requestWithAuthentication).uri).toBe(
@@ -273,7 +311,7 @@ describe('NextCloud GenericFunctions', () => {
 				{},
 				undefined,
 				undefined,
-				false,
+				'ocs',
 			);
 
 			expect(requestOptions(requestWithAuthentication).uri).toBe(
@@ -295,12 +333,180 @@ describe('NextCloud GenericFunctions', () => {
 				undefined,
 				undefined,
 				undefined,
-				true,
+				'webdav',
 			);
 
 			expect(requestOptions(requestWithAuthentication).uri).toBe(`${customUrl}//test.txt`);
 			expect(requestOptions(requestWithAuthentication).uri).toEqual(
 				expect.stringContaining('/dav'),
+			);
+		});
+	});
+
+	describe('dav endpoint mode', () => {
+		it.each([
+			'https://nc.example.com/remote.php/webdav',
+			'https://nc.example.com/remote.php/webdav/',
+			'https://nc.example.com/remote.php/dav/files/alice',
+			'https://nc.example.com/remote.php/dav/files/alice/',
+		])('builds the same dav files URL from %s', async (credentialUrl) => {
+			const { functions, getCredentials, requestWithAuthentication } = buildFunctions();
+			getCredentials.mockResolvedValue({ webDavUrl: credentialUrl });
+			requestWithAuthentication.mockResolvedValue('<d:multistatus />');
+
+			await nextCloudApiRequest.call(
+				functions,
+				'PROPFIND',
+				requestPath`files/${'alice'}/`,
+				'',
+				{ Depth: '0' },
+				undefined,
+				undefined,
+				'dav',
+			);
+
+			expect(requestOptions(requestWithAuthentication)).toMatchObject({
+				method: 'PROPFIND',
+				uri: 'https://nc.example.com/remote.php/dav/files/alice/',
+			});
+		});
+
+		it('keeps a sub-path and builds the dav root', async () => {
+			const { functions, getCredentials, requestWithAuthentication } = buildFunctions();
+			getCredentials.mockResolvedValue({
+				webDavUrl: 'https://nc.example.com/nextcloud/remote.php/webdav',
+			});
+			requestWithAuthentication.mockResolvedValue('<d:multistatus />');
+
+			await nextCloudApiRequest.call(
+				functions,
+				'SEARCH',
+				requestPath``,
+				'<d:searchrequest />',
+				undefined,
+				undefined,
+				undefined,
+				'dav',
+			);
+
+			expect(requestOptions(requestWithAuthentication).uri).toBe(
+				'https://nc.example.com/nextcloud/remote.php/dav/',
+			);
+		});
+	});
+
+	describe('Context types', () => {
+		it('sends requests from poll, webhook and load-options contexts', async () => {
+			const { functions, requestWithAuthentication } = buildFunctions();
+			requestWithAuthentication.mockResolvedValue('');
+			const poll = functions as unknown as IPollFunctions;
+			const webhook = functions as unknown as IWebhookFunctions;
+			const loadOptions = functions as unknown as ILoadOptionsFunctions;
+
+			await nextCloudApiRequest.call(poll, 'GET', webDavPath('/a.txt'), '');
+			await nextCloudApiRequest.call(webhook, 'GET', webDavPath('/a.txt'), '');
+			await nextCloudApiRequest.call(loadOptions, 'GET', webDavPath('/a.txt'), '');
+
+			expect(requestWithAuthentication).toHaveBeenCalledTimes(3);
+			expect(requestWithAuthentication).toHaveBeenCalledWith(
+				'nextCloudApi',
+				expect.objectContaining({ uri: requestUrl`${webDavUrl}//a.txt` }),
+			);
+		});
+	});
+
+	describe('nextCloudUserId', () => {
+		it('looks up the uid on the OCS user endpoint', async () => {
+			const { functions, requestWithAuthentication } = buildFunctions();
+			requestWithAuthentication.mockResolvedValue(ocsUser('alice'));
+
+			await expect(nextCloudUserId.call(functions)).resolves.toBe('alice');
+			expect(requestWithAuthentication).toHaveBeenCalledWith('nextCloudApi', expect.anything());
+			expect(requestOptions(requestWithAuthentication)).toMatchObject({
+				method: 'GET',
+				uri: `${baseUrl}/ocs/v2.php/cloud/user`,
+				headers: { 'OCS-APIRequest': true },
+				qs: { format: 'json' },
+			});
+		});
+
+		it('resolves the uid for an OAuth2 credential', async () => {
+			const { functions, requestWithAuthentication } = buildFunctions('oAuth2');
+			requestWithAuthentication.mockResolvedValue(ocsUser('alice'));
+
+			await expect(nextCloudUserId.call(functions)).resolves.toBe('alice');
+			expect(requestWithAuthentication).toHaveBeenCalledWith(
+				'nextCloudOAuth2Api',
+				expect.anything(),
+			);
+		});
+
+		it('looks up the uid once per execution', async () => {
+			const { functions, requestWithAuthentication } = buildFunctions();
+			requestWithAuthentication.mockResolvedValue(ocsUser('alice'));
+
+			await nextCloudUserId.call(functions);
+			await nextCloudUserId.call(functions);
+
+			expect(requestWithAuthentication).toHaveBeenCalledTimes(1);
+		});
+
+		it('looks up the uid again in a new execution', async () => {
+			const first = buildFunctions();
+			const second = buildFunctions();
+			first.requestWithAuthentication.mockResolvedValue(ocsUser('alice'));
+			second.requestWithAuthentication.mockResolvedValue(ocsUser('bob'));
+
+			await expect(nextCloudUserId.call(first.functions)).resolves.toBe('alice');
+			await expect(nextCloudUserId.call(second.functions)).resolves.toBe('bob');
+		});
+
+		it.each<[Authentication, IDataObject, IDataObject]>([
+			['accessToken', { webDavUrl, user: 'alice' }, { webDavUrl, user: 'bob' }],
+			[
+				'oAuth2',
+				{ webDavUrl, oauthTokenData: { access_token: 'token-alice' } },
+				{ webDavUrl, oauthTokenData: { access_token: 'token-bob' } },
+			],
+		])(
+			'looks up the uid again after the %s credential is edited',
+			async (authentication, before, after) => {
+				const { functions, getCredentials, requestWithAuthentication } =
+					buildFunctions(authentication);
+				requestWithAuthentication
+					.mockResolvedValueOnce(ocsUser('alice'))
+					.mockResolvedValueOnce(ocsUser('bob'));
+
+				getCredentials.mockResolvedValue(before);
+				await expect(nextCloudUserId.call(functions)).resolves.toBe('alice');
+				await expect(nextCloudUserId.call(functions)).resolves.toBe('alice');
+				getCredentials.mockResolvedValue(after);
+				await expect(nextCloudUserId.call(functions)).resolves.toBe('bob');
+
+				expect(requestWithAuthentication).toHaveBeenCalledTimes(2);
+			},
+		);
+
+		it('does not keep a failed lookup', async () => {
+			const { functions, requestWithAuthentication } = buildFunctions();
+			requestWithAuthentication
+				.mockRejectedValueOnce(new Error('Request timed out'))
+				.mockResolvedValueOnce(ocsUser('alice'));
+
+			await expect(nextCloudUserId.call(functions)).rejects.toThrow('Request timed out');
+			await expect(nextCloudUserId.call(functions)).resolves.toBe('alice');
+		});
+
+		it.each([
+			['no uid', ocsUser(undefined)],
+			['an empty uid', ocsUser('')],
+			['XML', '<ocs />'],
+		])('throws when the response has %s', async (_, response) => {
+			const { functions, requestWithAuthentication } = buildFunctions();
+			requestWithAuthentication.mockResolvedValue(response);
+
+			await expect(nextCloudUserId.call(functions)).rejects.toThrow(
+				'Could not resolve the Nextcloud user ID',
 			);
 		});
 	});

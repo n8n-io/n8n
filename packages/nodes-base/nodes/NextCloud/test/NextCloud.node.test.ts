@@ -812,6 +812,29 @@ describe('NextCloud Node', () => {
 			expect(result).toEqual([[{ json: { link: `${baseUrl}/f/77777` }, pairedItem: { item: 0 } }]]);
 		});
 
+		it('returns an internal link for a dav/files WebDAV URL', async () => {
+			const { executeFunctions, getCredentials, requestWithAuthentication } = buildExecuteFunctions(
+				{
+					parameters: {
+						resource,
+						operation: 'share',
+						path,
+						shareType: 200,
+						options: {},
+					},
+				},
+			);
+			getCredentials.mockResolvedValue({ webDavUrl: `${baseUrl}/remote.php/dav/files/alice` });
+			requestWithAuthentication.mockResolvedValue(webDavFilePropfindResponse);
+
+			const result = await executeNode(executeFunctions);
+
+			expect(requestOptions(requestWithAuthentication).uri).toBe(
+				`${baseUrl}/remote.php/dav/files/alice/${encodeURI(path)}`,
+			);
+			expect(result).toEqual([[{ json: { link: `${baseUrl}/f/55555` }, pairedItem: { item: 0 } }]]);
+		});
+
 		it('throws when webDavUrl does not match the expected pattern for internal links', async () => {
 			const { executeFunctions, getCredentials, requestWithAuthentication } = buildExecuteFunctions(
 				{

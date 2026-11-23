@@ -49,8 +49,10 @@ export class NextCloudApi implements ICredentialType {
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: "={{$credentials.webDavUrl.replace('/remote.php/webdav', '')}}",
-			url: '/ocs/v1.php/cloud/capabilities',
+			baseURL:
+				'={{$credentials.webDavUrl.replace(/\\/remote\\.php\\/(?:webdav|dav\\/files\\/[^\\/]+)\\/*$/, "")}}',
+			// Needs a login, unlike cloud/capabilities, so a wrong password fails the test.
+			url: '/ocs/v1.php/cloud/user',
 			headers: { 'OCS-APIRequest': true },
 		},
 	};
