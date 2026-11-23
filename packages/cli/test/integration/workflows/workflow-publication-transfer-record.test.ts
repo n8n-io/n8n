@@ -12,6 +12,7 @@ import type { Project, WorkflowEntity } from '@n8n/db';
 import {
 	SharedWorkflowRepository,
 	WorkflowHistoryRepository,
+	WorkflowRepository,
 	WorkflowPublicationOutboxRepository,
 	WorkflowPublicationReason,
 	WorkflowPublicationRetryStateRepository,
@@ -248,6 +249,18 @@ describe('a transfer record on the leader', () => {
 			cronRegistered: registeredCronOf(workflow.id) !== undefined,
 			triggerStatuses: await triggerStatusesOf(workflow.id),
 		}).toEqual(FAILED_CLOSED);
+	});
+
+	test('clears the owner cache for a transfer record of a workflow that is unpublished', async () => {
+		const workflow = await runningInSource();
+		await moveToTarget(workflow.id);
+		const ownership = Container.get(OwnershipService);
+		await ownership.setWorkflowProjectCacheEntry(workflow.id, sourceProject);
+		await Container.get(WorkflowRepository).update({ id: workflow.id }, { activeVersionId: null });
+
+		await applyRecord(workflow.id, workflow.versionId, WorkflowPublicationReason.Transfer);
+
+		expect((await ownership.getWorkflowProjectCached(workflow.id)).id).toBe(targetProject.id);
 	});
 
 	test('removes the old triggers of a transfer record when the leader refuses its credential', async () => {
