@@ -1140,7 +1140,7 @@ describe('SkillService', () => {
 
 			await service.trackCreated('user-1', refs, 'agent', 'upload');
 
-			expect(telemetry.created).toHaveBeenCalledWith('user-1', refs, 'agent', 'upload');
+			expect(telemetry.created).toHaveBeenCalledWith('user-1', refs, 'agent', 'upload', undefined);
 		});
 
 		it('trackUpdated passes its arguments to SkillsTelemetry.updated in order', async () => {

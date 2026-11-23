@@ -382,7 +382,7 @@ describe('InstanceAiPreviewTabBar', () => {
 			await selectContextMenuItem('Open in skill hub');
 
 			expect(window.open).toHaveBeenCalledWith(
-				'/settings/context/skills?skillId=skill-1',
+				'/settings/context/skills?skillsFrom=assistant_artifact&skillId=skill-1',
 				'_blank',
 				'noopener',
 			);
