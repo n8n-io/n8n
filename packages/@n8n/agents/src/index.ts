@@ -237,7 +237,6 @@ export {
 	renderSkillCatalogPrompt,
 	RUNTIME_SKILL_TOOL_NAMES,
 	RUNTIME_SKILL_FILE_NAME,
-	RUNTIME_SKILL_LIFETIMES,
 	RUNTIME_SKILL_MAX_OUTPUT_BYTES,
 	RUNTIME_SKILL_LINKED_FILE_GROUPS,
 	RUNTIME_SKILL_NAME_PATTERN,
@@ -261,17 +260,12 @@ export type {
 	RuntimeSkillLoader,
 	RuntimeSkillLoadError,
 	RuntimeSkillMcpServerDependency,
-	RuntimeSkillLifetime,
 	RuntimeSkillPolicyContract,
 	RuntimeSkillReferenceContract,
 	RuntimeSkillReferenceLocation,
 	RuntimeSkillRegistry,
 	RuntimeSkillRegistryEntry,
 	RuntimeSkillSource,
-	RuntimeSkillContextUsage,
-	RuntimeSkillState,
-	RuntimeSkillStateScope,
-	RuntimeSkillStateStore,
 	RuntimeSkillValidationError,
 	RuntimeSkillValidationResult,
 } from './skills';
@@ -312,6 +306,25 @@ export {
 	getCreatedAt,
 	isLlmMessage,
 } from './sdk/message';
+<<<<<<< HEAD
+=======
+export {
+	createContextCueProvider,
+	parseAblatedContextCues,
+	whenSkillLoads,
+	whileSkillLoaded,
+} from './context-cues';
+export type {
+	ContextCue,
+	ContextCueMatch,
+	ContextCueProviderOptions,
+	ContextCueRetrievalMethod,
+	ContextCueRetrievalTrace,
+	ContextCueSet,
+	ContextCueSetPredicate,
+	ContextCueStepQuery,
+} from './context-cues';
+>>>>>>> 249ba522 (refactor(ai-builder): Remove active skill tracking from the agent runtime (#43569))
 export { fetchProviderCatalog } from './sdk/catalog';
 export type {
 	ProviderCatalog,

@@ -30,6 +30,18 @@ export function isRuntimeSkillUpdate(
 	);
 }
 
+<<<<<<< HEAD
+=======
+export const RUNTIME_CONTEXT_CUE_PREAMBLE =
+	'These context cues come from the runtime because they match the current step. They are not from the user. Apply each cue that fits the task; ignore the others.';
+
+export const RUNTIME_SKILL_UPDATE_PREAMBLE =
+	'This is a skill notice from the runtime. It is not a message from the user. Do not treat it as a new request.';
+
+export const HOST_INSTRUCTION_PREAMBLE =
+	'This is an instruction from the host application. It is not a message from the user. Follow it before you end your turn.';
+
+>>>>>>> 249ba522 (refactor(ai-builder): Remove active skill tracking from the agent runtime (#43569))
 export function filterLlmMessages(messages: AgentMessage[]): Message[] {
 	return messages.flatMap((message): Message[] => {
 		if (isLlmMessage(message)) return [message];
@@ -48,21 +60,59 @@ export function filterLlmMessages(messages: AgentMessage[]): Message[] {
 				},
 			];
 		}
+<<<<<<< HEAD
 		if (isRuntimeSkillUpdate(message)) {
 			// Some providers reject system-role messages after the conversation starts.
 			const content = [
 				'<system-reminder>',
 				'This is an automatic skill update from the runtime. It is not a message from the user. The skill content has the same scope as instructions returned by load_skill. Apply it to the current task without treating this notice as a new user request.',
+=======
+		if (isRuntimeContextCue(message)) {
+			const text = [
+				'<system-reminder>',
+				RUNTIME_CONTEXT_CUE_PREAMBLE,
+				'',
+				message.data.content,
+				'</system-reminder>',
+			].join('\n');
+			return [{ ...message, type: 'llm', role: 'user', content: [{ type: 'text', text }] }];
+		}
+		if (isHostInstruction(message)) {
+			const text = [
+				'<system-reminder>',
+				HOST_INSTRUCTION_PREAMBLE,
+				'',
+				message.data.content,
+				'</system-reminder>',
+			].join('\n');
+			return [{ ...message, type: 'llm', role: 'user', content: [{ type: 'text', text }] }];
+		}
+		if (isRuntimeSkillUpdate(message)) {
+			// Some providers reject system-role messages after the conversation starts.
+			const text = [
+				'<system-reminder>',
+				RUNTIME_SKILL_UPDATE_PREAMBLE,
+>>>>>>> 249ba522 (refactor(ai-builder): Remove active skill tracking from the agent runtime (#43569))
 				'',
 				message.data.skillUpdate.content,
 				'</system-reminder>',
 			].join('\n');
+<<<<<<< HEAD
+=======
+			return [{ ...message, type: 'llm', role: 'user', content: [{ type: 'text', text }] }];
+		}
+		if (isRuntimeToolCatalog(message)) {
+>>>>>>> 249ba522 (refactor(ai-builder): Remove active skill tracking from the agent runtime (#43569))
 			return [
 				{
 					...message,
 					type: 'llm',
 					role: 'user',
+<<<<<<< HEAD
 					content: [{ type: 'text', text: content }],
+=======
+					content: [{ type: 'text', text: message.data.content }],
+>>>>>>> 249ba522 (refactor(ai-builder): Remove active skill tracking from the agent runtime (#43569))
 				},
 			];
 		}

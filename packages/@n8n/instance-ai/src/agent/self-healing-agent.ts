@@ -62,7 +62,7 @@ function createSelfHealingTools(
 			skillGuidance: false,
 		}),
 		createSearchNodesTool(context),
-		createGetNodeTypesTool(context),
+		createGetNodeTypesTool(context, { skillHints: false }),
 		createN8nDocsTool(context),
 		createResearchTool(context),
 		new Tool('verify_candidate')

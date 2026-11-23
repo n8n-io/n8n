@@ -45,6 +45,13 @@ vi.mock('@n8n/agents', async (importOriginal) => ({
 		this.functionId = vi.fn().mockReturnThis();
 		mockAgentInstances.push(this);
 	}),
+<<<<<<< HEAD
+=======
+	createContextCueProvider: vi.fn(() => vi.fn()),
+	parseAblatedContextCues: vi.fn(() => []),
+	whenSkillLoads: vi.fn(() => vi.fn()),
+	whileSkillLoaded: vi.fn(() => vi.fn()),
+>>>>>>> 249ba522 (refactor(ai-builder): Remove active skill tracking from the agent runtime (#43569))
 	Memory: vi.fn().mockImplementation(function Memory() {
 		return mockMemoryBuilder;
 	}),

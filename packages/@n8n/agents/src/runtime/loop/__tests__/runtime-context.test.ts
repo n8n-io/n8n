@@ -1,8 +1,10 @@
+<<<<<<< HEAD
 import { createRuntimeSkillSource } from '../../../skills/registry';
+=======
+import type { BuiltMemory, BuiltTool } from '../../../types';
+>>>>>>> 249ba522 (refactor(ai-builder): Remove active skill tracking from the agent runtime (#43569))
 import type { ModelConfig } from '../../../types/sdk/agent';
 import { getCatalogModelId, getModelIdString } from '../../../utils/model';
-import { AgentMessageList } from '../../model/message-list';
-import { ActiveSkills } from '../../skills/active-skills';
 import { RuntimeContextBuilder } from '../runtime-context';
 
 describe('getModelIdString', () => {
@@ -52,6 +54,7 @@ describe('getCatalogModelId', () => {
 	});
 });
 
+<<<<<<< HEAD
 describe('OpenRouter recovered skills', () => {
 	it('keeps the caller instruction marker without copying it to recovered skills', async () => {
 		const marker = { anthropic: { cacheControl: { type: 'ephemeral', ttl: '1h' } } };
@@ -96,6 +99,52 @@ describe('OpenRouter recovered skills', () => {
 			openrouter: { user: 'test-user', cacheControl: { type: 'ephemeral', ttl: '1h' } },
 		});
 		expect(list.serialize()).toEqual(before);
+=======
+describe('read_history wiring', () => {
+	const persistence = { threadId: 't-1', resourceId: 'r-1' };
+	const memory = { getMessages: vi.fn(async () => []) } as unknown as BuiltMemory;
+
+	function build(historyRecall: boolean, tools: BuiltTool[] = []) {
+		return new RuntimeContextBuilder(
+			{
+				name: 'test',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Base instructions',
+				memory,
+				observationalMemory: { historyRecall },
+				tools,
+			},
+			undefined,
+		);
+	}
+
+	it('adds read_history when history recall is enabled', () => {
+		const names = build(true)
+			.getCurrentTools(persistence)
+			.map((tool) => tool.name);
+		expect(names).toContain(READ_HISTORY_TOOL_NAME);
+	});
+
+	it('leaves read_history out when history recall is off', () => {
+		const names = build(false)
+			.getCurrentTools(persistence)
+			.map((tool) => tool.name);
+		expect(names).not.toContain(READ_HISTORY_TOOL_NAME);
+	});
+
+	it('leaves read_history out without persistence', () => {
+		const names = build(true)
+			.getCurrentTools()
+			.map((tool) => tool.name);
+		expect(names).not.toContain(READ_HISTORY_TOOL_NAME);
+	});
+
+	it('rejects a user tool with the reserved name', () => {
+		const userTool = { name: READ_HISTORY_TOOL_NAME } as BuiltTool;
+		expect(() => build(true, [userTool]).getCurrentTools(persistence)).toThrow(
+			'is reserved while history recall is enabled',
+		);
+>>>>>>> 249ba522 (refactor(ai-builder): Remove active skill tracking from the agent runtime (#43569))
 	});
 });
 

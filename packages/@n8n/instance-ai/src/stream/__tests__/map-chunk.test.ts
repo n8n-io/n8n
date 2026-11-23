@@ -104,13 +104,13 @@ describe('mapAgentChunkToEvent', () => {
 		});
 	});
 
-	it('maps the skill update content delivered for the response', () => {
+	it('maps a runtime skill update note to a skill-update event', () => {
 		const update = {
 			skillId: 'hub-example',
 			name: 'Writing style',
 			version: 'v2',
 			change: 'updated',
-			content: 'Private skill instructions.',
+			content: 'Skill "Writing style" changed after you loaded it.',
 		};
 		expect(
 			map(
@@ -131,13 +131,7 @@ describe('mapAgentChunkToEvent', () => {
 			runId,
 			agentId,
 			responseId: 'response-1',
-			payload: {
-				skillId: update.skillId,
-				name: update.name,
-				version: update.version,
-				change: update.change,
-				content: update.content,
-			},
+			payload: update,
 		});
 		expect(
 			map({ type: 'message', message: { type: 'custom', data: { skillUpdate: update } } }),
