@@ -1,3 +1,4 @@
+import { folderNameSchema } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { PROJECT_ROOT } from 'n8n-workflow';
 import { UserError } from '@n8n/errors';
@@ -15,6 +16,7 @@ import { LayoutConflictPolicy } from '../../n8n-packages.types';
 import type { FolderConflict, ImportedFolderSummary } from '../../n8n-packages.types';
 
 interface ExistingFolder {
+	resourceType: 'workflow' | 'agent';
 	projectId: string;
 	parentFolderId: string | null;
 	name: string;
@@ -32,8 +34,20 @@ export class FolderImporter {
 		const conflicts: FolderConflict[] = [];
 
 		for (const folder of ordered) {
+			const parsedName = folderNameSchema.safeParse(folder.name);
+
+			if (!parsedName.success) {
+				throw new UserError('Package folder name is invalid');
+			}
+
+			folder.name = parsedName.data;
+
 			const targetParentFolderId =
-				folder.parentFolderId === null ? (context.folderId ?? null) : folder.parentFolderId;
+				folder.parentFolderId === null
+					? folder.resourceType === 'agent'
+						? null
+						: (context.folderId ?? null)
+					: folder.parentFolderId;
 
 			const match = existing.get(folder.sourceFolderId);
 
@@ -55,6 +69,10 @@ export class FolderImporter {
 					existingProjectId: match.projectId,
 				});
 				continue;
+			}
+
+			if (match.resourceType !== (folder.resourceType ?? 'workflow')) {
+				throw new UserError('Cannot change the resource type of an existing folder');
 			}
 
 			const followsPackage = context.layoutConflictPolicy === LayoutConflictPolicy.FollowPackage;
@@ -79,10 +97,9 @@ export class FolderImporter {
 				continue;
 			}
 
-			// Under `follow-package` a folder takes the parent and name of the package. A folder outside
-			// the selection stays as it is, with everything inside it.
+			// Under `follow-package` a folder takes the parent and name of the package.
 			const renamed = followsPackage && match.name !== folder.name;
-			if ((moved || renamed) && (context.movableFolderIds?.has(folder.sourceFolderId) ?? true)) {
+			if (moved || renamed) {
 				items.push({
 					action: 'update',
 					sourceFolderId: folder.sourceFolderId,
@@ -104,6 +121,25 @@ export class FolderImporter {
 			});
 		}
 
+		const byId = new Map(ordered.map((folder) => [folder.sourceFolderId, folder]));
+
+		for (const item of items) {
+			item.resourceType = byId.get(item.sourceFolderId)?.resourceType ?? 'workflow';
+			const parent = item.targetParentFolderId ? byId.get(item.targetParentFolderId) : undefined;
+
+			if (parent && (parent.resourceType ?? 'workflow') !== item.resourceType) {
+				throw new UserError('Parent and child folders must use the same resource type');
+			}
+
+			if (item.targetParentFolderId && !parent) {
+				await this.folderService.validateDestination(
+					item.targetParentFolderId,
+					context.projectId,
+					item.resourceType,
+				);
+			}
+		}
+
 		return { items, conflicts };
 	}
 
@@ -115,7 +151,11 @@ export class FolderImporter {
 		for (const item of plan.items) {
 			if (item.action !== 'create') continue;
 			await this.folderService.createFolder(
-				{ name: item.name, parentFolderId: item.targetParentFolderId ?? undefined },
+				{
+					name: item.name,
+					parentFolderId: item.targetParentFolderId ?? undefined,
+					resourceType: item.resourceType,
+				},
 				context.projectId,
 				item.sourceFolderId,
 			);
@@ -142,6 +182,7 @@ export class FolderImporter {
 					projectId: folder.homeProject.id,
 					parentFolderId: folder.parentFolderId,
 					name: folder.name,
+					resourceType: folder.resourceType ?? 'workflow',
 				},
 			]),
 		);

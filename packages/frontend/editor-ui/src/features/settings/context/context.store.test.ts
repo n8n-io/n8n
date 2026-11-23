@@ -2,6 +2,8 @@ import { AI_PREFERENCES_MAX_IDS_FILTER } from '@n8n/api-types';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 
+import { useSettingsStore } from '@n8n/stores/settings.store';
+
 import { useContextStore } from './context.store';
 import type { Preference } from './context.types';
 
@@ -10,6 +12,7 @@ const countOnly = vi.fn();
 const create = vi.fn();
 const update = vi.fn();
 const remove = vi.fn();
+const saveSettings = vi.fn();
 
 vi.mock('./context.api', () => ({
 	getPreferences: async (...args: unknown[]) => await list(...args),
@@ -17,6 +20,7 @@ vi.mock('./context.api', () => ({
 	createPreference: async (...args: unknown[]) => await create(...args),
 	updatePreference: async (...args: unknown[]) => await update(...args),
 	deletePreference: async (...args: unknown[]) => await remove(...args),
+	updatePreferenceSettings: async (...args: unknown[]) => await saveSettings(...args),
 }));
 
 function deferred<T>() {
@@ -53,6 +57,17 @@ describe('context.store', () => {
 		create.mockResolvedValue(row());
 		update.mockResolvedValue(row());
 		remove.mockResolvedValue(undefined);
+	});
+
+	it('saves the preferences switch and keeps the settings in step', async () => {
+		const settingsStore = useSettingsStore();
+		settingsStore.settings.aiPreferences = { enabled: true, managedByEnv: true };
+		saveSettings.mockResolvedValue({ enabled: false });
+
+		await useContextStore().setPreferencesEnabled(false);
+
+		expect(saveSettings).toHaveBeenCalledWith(expect.anything(), { enabled: false });
+		expect(settingsStore.settings.aiPreferences).toEqual({ enabled: false, managedByEnv: true });
 	});
 
 	it('stores the page and the total from a fetch', async () => {

@@ -5,8 +5,9 @@ import type {
 	IHttpRequestMethods,
 	INodeExecutionData,
 	INodeProperties,
+	RequestPath,
 } from 'n8n-workflow';
-import { NodeApiError, updateDisplayOptions } from 'n8n-workflow';
+import { NodeApiError, requestPath, updateDisplayOptions } from 'n8n-workflow';
 
 import { apiRequest } from '../../transport';
 
@@ -88,7 +89,7 @@ async function getTables(
 ) {
 	return await Promise.all(
 		tables.map(async (table) => {
-			const endpoint = `/api/v3/meta/bases/${baseId}/tables/${table.id}`;
+			const endpoint = requestPath`/api/v3/meta/bases/${baseId}/tables/${table.id}`;
 			return await apiRequest.call(this, 'GET', endpoint, {}, {});
 		}),
 	);
@@ -100,7 +101,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 	let responseData;
 
 	let requestMethod: IHttpRequestMethods;
-	let endPoint = '';
+	let endPoint: RequestPath;
 	const qs: IDataObject = {};
 
 	for (let i = 0; i < items.length; i++) {
@@ -109,13 +110,13 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			const baseId = this.getNodeParameter('projectId', i, undefined, {
 				extractValue: true,
 			}) as string;
-			endPoint = `/api/v3/meta/bases/${baseId}`;
+			endPoint = requestPath`/api/v3/meta/bases/${baseId}`;
 
 			responseData = await apiRequest.call(this, requestMethod, endPoint, {}, qs);
 			const tableResponse = await apiRequest.call(
 				this,
 				requestMethod,
-				`${endPoint}/tables`,
+				requestPath`${endPoint}/tables`,
 				{},
 				{},
 			);

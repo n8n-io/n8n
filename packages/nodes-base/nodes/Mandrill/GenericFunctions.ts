@@ -7,14 +7,16 @@ import type {
 	ILoadOptionsFunctions,
 	IRequestOptions,
 	JsonObject,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestUrl } from 'n8n-workflow';
 
 export async function mandrillApiRequest(
 	this: IExecuteFunctions | IHookFunctions | ILoadOptionsFunctions,
-	resource: string,
+	resource: RequestPath,
 	method: IHttpRequestMethods,
-	action: string,
+	action: RequestPath,
 
 	body: any = {},
 	headers?: IDataObject,
@@ -23,12 +25,10 @@ export async function mandrillApiRequest(
 
 	const data = Object.assign({}, body, { key: credentials.apiKey });
 
-	const endpoint = 'mandrillapp.com/api/1.0';
-
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers,
 		method,
-		uri: `https://${endpoint}${resource}${action}.json`,
+		uri: requestUrl`https://mandrillapp.com/api/1.0${resource}${action}.json`,
 		body: data,
 		json: true,
 	};

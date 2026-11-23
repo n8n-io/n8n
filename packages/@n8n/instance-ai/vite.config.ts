@@ -19,7 +19,6 @@ const INDEX_LAZY_REQUIRE_TEST_SPECS = new Set([
 	'./skills/skills',
 	'./utils/eval-agents',
 	'./utils/agent-tree',
-	'./workspace/builder-templates-service',
 	'./workspace/create-workspace',
 	'@n8n/agents/sandbox',
 	'./workspace/lazy-runtime-workspace',
@@ -35,6 +34,7 @@ const INDEX_LAZY_REQUIRE_TEST_SPECS = new Set([
 	'./runtime/liveness-policy',
 	'./workflow-loop',
 	'./workflow-loop/runtime',
+	'./approval-review/approval-judge',
 ]);
 
 /**

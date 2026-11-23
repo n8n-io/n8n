@@ -3,15 +3,30 @@ import { setActivePinia } from 'pinia';
 import { effectScope, ref } from 'vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { useSettingsStore } from '@n8n/stores/settings.store';
+
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import { listAgentsPage } from '@/features/agents/composables/useAgentApi';
+import { mockedStore } from '@/__tests__/utils';
 
 import type { WorkflowArtifactReference } from '../assistantAtMentions.types';
 import { useAssistantMentionAvailability } from './useAssistantMentionAvailability';
 
+vi.mock('@/features/agents/composables/useAgentApi', () => ({
+	listAgentsPage: vi.fn(),
+}));
+
 describe('useAssistantMentionAvailability', () => {
 	beforeEach(() => {
 		setActivePinia(createTestingPinia());
+		vi.mocked(listAgentsPage).mockReset();
+		vi.mocked(listAgentsPage).mockResolvedValue({ data: [], count: 0 } as never);
 	});
+
+	function enableAgents(count: number) {
+		mockedStore(useSettingsStore).isAgentsEnabled = true;
+		vi.mocked(listAgentsPage).mockResolvedValue({ data: [], count } as never);
+	}
 
 	function setup(
 		options: {
@@ -82,6 +97,52 @@ describe('useAssistantMentionAvailability', () => {
 		expect(availability.isAvailable.value).toBe(false);
 
 		await availability.refresh();
+		expect(availability.isAvailable.value).toBe(true);
+		scope.stop();
+	});
+
+	it('does not list agents when agents are off', async () => {
+		const store = useWorkflowsListStore();
+		vi.mocked(store.searchWorkflows).mockResolvedValue([] as never);
+		const { availability, scope } = setup({ projectId: 'project-1' });
+
+		await vi.waitFor(() => expect(availability.isLoading.value).toBe(false));
+		expect(availability.isAvailable.value).toBe(false);
+		expect(listAgentsPage).not.toHaveBeenCalled();
+		scope.stop();
+	});
+
+	it('is available for a project that has an agent but no workflows', async () => {
+		enableAgents(1);
+		const store = useWorkflowsListStore();
+		vi.mocked(store.searchWorkflows).mockResolvedValue([] as never);
+		const { availability, scope } = setup({ projectId: 'project-1' });
+
+		await vi.waitFor(() => expect(availability.isAvailable.value).toBe(true));
+		expect(listAgentsPage).toHaveBeenCalledWith(expect.anything(), 'project-1', { limit: 1 });
+		scope.stop();
+	});
+
+	it('finds an agent when the workflow request fails', async () => {
+		enableAgents(1);
+		const store = useWorkflowsListStore();
+		vi.mocked(store.searchWorkflows).mockRejectedValue(new Error('Request failed'));
+		const { availability, scope } = setup({ projectId: 'project-1' });
+
+		await vi.waitFor(() => expect(availability.isAvailable.value).toBe(true));
+		scope.stop();
+	});
+
+	it('keeps the last result when a check fails and the other finds nothing', async () => {
+		enableAgents(1);
+		const store = useWorkflowsListStore();
+		vi.mocked(store.searchWorkflows).mockResolvedValue([] as never);
+		const { availability, scope } = setup({ projectId: 'project-1' });
+		await vi.waitFor(() => expect(availability.isAvailable.value).toBe(true));
+
+		vi.mocked(listAgentsPage).mockRejectedValue(new Error('Request failed'));
+		await availability.refresh();
+
 		expect(availability.isAvailable.value).toBe(true);
 		scope.stop();
 	});

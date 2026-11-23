@@ -7,6 +7,7 @@ import {
 	randomCredentialPayload,
 	setActiveVersion,
 	testDb,
+	testModules,
 	mockInstance,
 } from '@n8n/backend-test-utils';
 import {
@@ -17,6 +18,7 @@ import {
 	type Project,
 	type TagEntity,
 	TagRepository,
+	type Person,
 	type User,
 	VariablesRepository,
 	type WorkflowEntity,
@@ -52,6 +54,7 @@ import type { IWorkflowToImport } from '@/interfaces';
 import { SourceControlContextFactory } from '@/modules/source-control.ee/source-control-context.factory';
 import { SourceControlImportService } from '@/modules/source-control.ee/source-control-import.service.ee';
 import { SourceControlScopedService } from '@/modules/source-control.ee/source-control-scoped.service';
+import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import type { ExportableCredential } from '@/modules/source-control.ee/types/exportable-credential';
 import { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
 import type { NodeTypes } from '@/node-types';
@@ -60,6 +63,7 @@ import { PolicyViolationError } from '@/policy/policy-violation.error';
 import { DeprecatedNodesValidationService } from '@/workflows/deprecated-nodes-validation.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
+import { createAgent } from '@test-integration/db/agents';
 import { createFolder } from '@test-integration/db/folders';
 import { assignTagToWorkflow, createTag } from '@test-integration/db/tags';
 import { createVariable } from '@test-integration/db/variables';
@@ -105,6 +109,7 @@ describe('SourceControlImportService', () => {
 	const mockFileData = new Map<string, string>();
 
 	beforeAll(async () => {
+		await testModules.loadModules(['agents']);
 		await testDb.init();
 
 		credentialsRepository = Container.get(CredentialsRepository);
@@ -264,10 +269,10 @@ describe('SourceControlImportService', () => {
 		const globMock = fastGlob.default as unknown as Mock<(...args: string[]) => Promise<string[]>>;
 		const fsReadFile = vi.mocked(readFile);
 
-		let globalAdmin: User;
-		let globalOwner: User;
-		let globalMember: User;
-		let teamAdmin: User;
+		let globalAdmin: Person;
+		let globalOwner: Person;
+		let globalMember: Person;
+		let teamAdmin: Person;
 		let team1: Project;
 
 		beforeEach(async () => {
@@ -391,8 +396,8 @@ describe('SourceControlImportService', () => {
 
 	describe('getLocalVersionIdsFromDb()', () => {
 		let instanceOwner: User;
-		let projectAdmin: User;
-		let projectMember: User;
+		let projectAdmin: Person;
+		let projectMember: Person;
 		let teamProjectA: Project;
 		let teamProjectB: Project;
 		let teamAWorkflows: WorkflowEntity[];
@@ -541,10 +546,10 @@ describe('SourceControlImportService', () => {
 		const globMock = fastGlob.default as unknown as Mock<(...args: string[]) => Promise<string[]>>;
 		const fsReadFile = vi.mocked(readFile);
 
-		let globalAdmin: User;
-		let globalOwner: User;
-		let globalMember: User;
-		let teamAdmin: User;
+		let globalAdmin: Person;
+		let globalOwner: Person;
+		let globalMember: Person;
+		let teamAdmin: Person;
 		let team1: Project;
 
 		beforeEach(async () => {
@@ -661,8 +666,8 @@ describe('SourceControlImportService', () => {
 
 	describe('getLocalCredentialsFromDb', () => {
 		let instanceOwner: User;
-		let projectAdmin: User;
-		let projectMember: User;
+		let projectAdmin: Person;
+		let projectMember: Person;
 		let teamProjectA: Project;
 		let teamProjectB: Project;
 		let teamACredentials: CredentialsEntity[];
@@ -896,8 +901,8 @@ describe('SourceControlImportService', () => {
 
 	describe('getLocalFoldersAndMappingsFromDb()', () => {
 		let instanceOwner: User;
-		let projectAdmin: User;
-		let projectMember: User;
+		let projectAdmin: Person;
+		let projectMember: Person;
 		let teamProjectA: Project;
 		let teamProjectB: Project;
 		let foldersProjectA: Folder[];
@@ -947,9 +952,12 @@ describe('SourceControlImportService', () => {
 					name: 'folder3',
 				}),
 			];
+
+			await createFolder(teamProjectA, { resourceType: 'agent' });
+			await createFolder(teamProjectB, { resourceType: 'agent' });
 		});
 
-		it('should get all available folders on the instance, for an instance owner', async () => {
+		it('gets only workflow folders on the instance for an instance owner', async () => {
 			const folders = await service.getLocalFoldersAndMappingsFromDb(
 				await sourceControlContextFactory.createContext(instanceOwner),
 			);
@@ -959,7 +967,7 @@ describe('SourceControlImportService', () => {
 			);
 		});
 
-		it('should only get all available folders from the team project, for a project admin', async () => {
+		it('gets only workflow folders from an authorized team project for a project admin', async () => {
 			const versions = await service.getLocalFoldersAndMappingsFromDb(
 				await sourceControlContextFactory.createContext(projectAdmin),
 			);
@@ -1026,10 +1034,10 @@ describe('SourceControlImportService', () => {
 		const globMock = fastGlob.default as unknown as Mock<(...args: string[]) => Promise<string[]>>;
 		const fsReadFile = vi.mocked(readFile);
 
-		let globalAdmin: User;
-		let globalOwner: User;
-		let globalMember: User;
-		let teamAdmin: User;
+		let globalAdmin: Person;
+		let globalOwner: Person;
+		let globalMember: Person;
+		let teamAdmin: Person;
 		let team1: Project;
 		let team2: Project;
 		let workflowTeam1: WorkflowEntity[];
@@ -1153,8 +1161,8 @@ describe('SourceControlImportService', () => {
 
 	describe('getLocalTagsAndMappingsFromDb()', () => {
 		let instanceOwner: User;
-		let projectAdmin: User;
-		let projectMember: User;
+		let projectAdmin: Person;
+		let projectMember: Person;
 		let teamProjectA: Project;
 		let teamProjectB: Project;
 		let tags: TagEntity[];
@@ -2054,14 +2062,14 @@ describe('SourceControlImportService', () => {
 
 		describe('workflow history', () => {
 			it('should create workflow history for new workflow on import', async () => {
-				const importingUser = await getGlobalOwner();
+				const importingPerson = (await getGlobalOwner()) as Person;
 
 				const workflow = makeWorkflowImport();
 				const file = putWorkflowFile(workflow.id, workflow);
 
 				await service.importWorkflowFromWorkFolder(
 					[mock<SourceControlledFile>({ id: workflow.id, file })],
-					importingUser.id,
+					importingPerson.id,
 				);
 
 				// Verify workflow history was created
@@ -2073,12 +2081,136 @@ describe('SourceControlImportService', () => {
 				expect(historyRecord?.nodes).toEqual(workflow.nodes);
 				expect(historyRecord?.connections).toEqual(workflow.connections);
 				expect(historyRecord?.authors).toBe(
-					`import by ${importingUser.firstName} ${importingUser.lastName}`,
+					`import by ${importingPerson.firstName} ${importingPerson.lastName}`,
 				);
 			});
 
-			it('should update workflow history when versionId exists but nodes changed', async () => {
+			it('should store the engine of a new workflow on import', async () => {
 				const importingUser = await getGlobalOwner();
+
+				const workflow = makeWorkflowImport({
+					settings: { engineType: 'v2', availableInMCP: true },
+				});
+				const file = putWorkflowFile(workflow.id, workflow);
+
+				await service.importWorkflowFromWorkFolder(
+					[mock<SourceControlledFile>({ id: workflow.id, file })],
+					importingUser.id,
+				);
+
+				const historyRecord = await workflowHistoryRepository.findOneOrFail({
+					where: { versionId: workflow.versionId, workflowId: workflow.id },
+				});
+				expect(historyRecord.settings).toEqual({ engineType: 'v2' });
+			});
+
+			it('should update workflow history when versionId exists and only the engine changed', async () => {
+				const importingUser = await getGlobalOwner();
+				const workflowId = nanoid();
+				const versionId = nanoid();
+				const nodes = [
+					{
+						id: 'node-1',
+						name: 'Start',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [250, 300] as [number, number],
+						parameters: {},
+					},
+				];
+
+				await createWorkflowWithHistory(
+					{ id: workflowId, name: 'Test Workflow', versionId, nodes, connections: {} },
+					importingUser,
+				);
+				const { authors } = await workflowHistoryRepository.findOneByOrFail({
+					versionId,
+					workflowId,
+				});
+
+				const workflow = makeWorkflowImport({
+					id: workflowId,
+					versionId,
+					nodes,
+					connections: {},
+					settings: { engineType: 'v2', availableInMCP: true },
+				});
+				const file = putWorkflowFile(workflowId, workflow);
+
+				await service.importWorkflowFromWorkFolder(
+					[mock<SourceControlledFile>({ id: workflowId, file })],
+					importingUser.id,
+				);
+
+				const historyRecord = await workflowHistoryRepository.findOneOrFail({
+					where: { versionId, workflowId },
+				});
+				expect(historyRecord).toMatchObject({ settings: { engineType: 'v2' }, authors });
+			});
+
+			it('should store v1 for a new workflow without an engine on import', async () => {
+				const importingUser = await getGlobalOwner();
+
+				const workflow = makeWorkflowImport({ settings: { availableInMCP: true } });
+				const file = putWorkflowFile(workflow.id, workflow);
+
+				await service.importWorkflowFromWorkFolder(
+					[mock<SourceControlledFile>({ id: workflow.id, file })],
+					importingUser.id,
+				);
+
+				const historyRecord = await workflowHistoryRepository.findOneOrFail({
+					where: { versionId: workflow.versionId, workflowId: workflow.id },
+				});
+				expect(historyRecord.settings).toEqual({ engineType: 'v1' });
+			});
+
+			it('should set v1 when versionId exists and the file has no engine', async () => {
+				const importingUser = await getGlobalOwner();
+				const workflowId = nanoid();
+				const versionId = nanoid();
+				const nodes = [
+					{
+						id: 'node-1',
+						name: 'Start',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [250, 300] as [number, number],
+						parameters: {},
+					},
+				];
+
+				await createWorkflowWithHistory(
+					{ id: workflowId, name: 'Test Workflow', versionId, nodes, connections: {} },
+					importingUser,
+				);
+				await workflowHistoryRepository.update(
+					{ versionId, workflowId },
+					{ settings: { engineType: 'v2' } },
+				);
+
+				const workflow = makeWorkflowImport({
+					id: workflowId,
+					versionId,
+					nodes,
+					connections: {},
+					settings: { availableInMCP: true },
+				});
+				const file = putWorkflowFile(workflowId, workflow);
+
+				await service.importWorkflowFromWorkFolder(
+					[mock<SourceControlledFile>({ id: workflowId, file })],
+					importingUser.id,
+				);
+
+				const historyRecord = await workflowHistoryRepository.findOneOrFail({
+					where: { versionId, workflowId },
+				});
+				expect(historyRecord.settings).toEqual({ engineType: 'v1' });
+			});
+
+			it('should update workflow history when versionId exists but nodes changed', async () => {
+				const importingPerson = (await getGlobalOwner()) as Person;
 				const workflowId = nanoid();
 				const versionId = nanoid();
 
@@ -2102,7 +2234,7 @@ describe('SourceControlImportService', () => {
 						nodes: initialNodes,
 						connections: {},
 					},
-					importingUser,
+					importingPerson,
 				);
 
 				// Import with updated nodes
@@ -2123,7 +2255,7 @@ describe('SourceControlImportService', () => {
 
 				await service.importWorkflowFromWorkFolder(
 					[mock<SourceControlledFile>({ id: workflowId, file })],
-					importingUser.id,
+					importingPerson.id,
 				);
 
 				// Verify workflow history was updated
@@ -2134,7 +2266,7 @@ describe('SourceControlImportService', () => {
 				expect(historyRecord).toBeTruthy();
 				expect(historyRecord?.nodes).toEqual(updatedNodes);
 				expect(historyRecord?.authors).toBe(
-					`import by ${importingUser.firstName} ${importingUser.lastName}`,
+					`import by ${importingPerson.firstName} ${importingPerson.lastName}`,
 				);
 			});
 
@@ -2243,6 +2375,110 @@ describe('SourceControlImportService', () => {
 				// Verify workflow was not created in database
 				const workflowInDb = await workflowRepository.findOne({ where: { id: workflow.id } });
 				expect(workflowInDb).toBeNull();
+			});
+
+			describe('when the file has the published versionId and another engine', () => {
+				const createPublishedWorkflow = async (user: User, engineType: 'v1' | 'v2') => {
+					const { nodes, connections } = makeWorkflowImport();
+					const workflow = await createWorkflowWithHistory(
+						{ id: nanoid(), name: 'Test Workflow', nodes, connections },
+						user,
+					);
+					await workflowHistoryRepository.update(
+						{ workflowId: workflow.id, versionId: workflow.versionId },
+						{ settings: { engineType } },
+					);
+					await setActiveVersion(workflow.id, workflow.versionId);
+					return workflow;
+				};
+
+				// The shared cleanup truncates the history before the workflows
+				afterEach(async () => {
+					await workflowRepository
+						.createQueryBuilder()
+						.update()
+						.set({ activeVersionId: null })
+						.execute();
+				});
+
+				const pull = async (
+					workflow: WorkflowEntity,
+					settings: IWorkflowToImport['settings'],
+					userId: string,
+					autoPublish?: 'none' | 'published',
+				) => {
+					const file = putWorkflowFile(
+						workflow.id,
+						makeWorkflowImport({ id: workflow.id, versionId: workflow.versionId, settings }),
+					);
+					await service.importWorkflowFromWorkFolder(
+						[mock<SourceControlledFile>({ id: workflow.id, file })],
+						userId,
+						autoPublish,
+					);
+				};
+
+				it('should keep the published engine and put the pulled engine on a draft without auto-publish', async () => {
+					const importingUser = await getGlobalOwner();
+					const workflow = await createPublishedWorkflow(importingUser, 'v2');
+
+					await pull(workflow, { engineType: 'v1' }, importingUser.id);
+
+					const stored = await workflowRepository.findOneByOrFail({ id: workflow.id });
+					expect(stored.activeVersionId).toBe(workflow.versionId);
+					expect(stored.versionId).not.toBe(workflow.versionId);
+
+					const published = await workflowHistoryRepository.findOneByOrFail({
+						workflowId: workflow.id,
+						versionId: workflow.versionId,
+					});
+					expect(published.settings).toEqual({ engineType: 'v2' });
+
+					const draft = await workflowHistoryRepository.findOneByOrFail({
+						workflowId: workflow.id,
+						versionId: stored.versionId,
+					});
+					expect(draft.settings).toEqual({ engineType: 'v1' });
+				});
+
+				it('should not create another version when the same file is pulled again', async () => {
+					const importingUser = await getGlobalOwner();
+					const workflow = await createPublishedWorkflow(importingUser, 'v2');
+
+					await pull(workflow, { engineType: 'v1' }, importingUser.id);
+					await pull(workflow, { engineType: 'v1' }, importingUser.id);
+
+					await expect(
+						workflowHistoryRepository.countBy({ workflowId: workflow.id }),
+					).resolves.toBe(2);
+				});
+
+				it('should update the published version with auto-publish "published"', async () => {
+					const importingUser = await getGlobalOwner();
+					const workflow = await createPublishedWorkflow(importingUser, 'v2');
+
+					await pull(workflow, { engineType: 'v1' }, importingUser.id, 'published');
+
+					const versions = await workflowHistoryRepository.findBy({ workflowId: workflow.id });
+					expect(versions).toHaveLength(1);
+					expect(versions[0]).toMatchObject({
+						versionId: workflow.versionId,
+						settings: { engineType: 'v1' },
+					});
+				});
+
+				it('should not create a version when the file has no engine and the published engine is v1', async () => {
+					const importingUser = await getGlobalOwner();
+					const workflow = await createPublishedWorkflow(importingUser, 'v1');
+
+					await pull(workflow, { availableInMCP: true }, importingUser.id);
+
+					const stored = await workflowRepository.findOneByOrFail({ id: workflow.id });
+					expect(stored.versionId).toBe(workflow.versionId);
+					await expect(
+						workflowHistoryRepository.countBy({ workflowId: workflow.id }),
+					).resolves.toBe(1);
+				});
 			});
 		});
 
@@ -2502,6 +2738,48 @@ describe('SourceControlImportService', () => {
 				).resolves.toBeNull();
 			});
 		});
+	});
+
+	describe('folder deletion on pull', () => {
+		it.each([false, true])(
+			'keeps Agent folders when they contain an Agent: %s',
+			async (hasAgent) => {
+				const project = await createTeamProject();
+				const workflowFolder = await createFolder(project);
+				const agentFolder = await createFolder(project, { resourceType: 'agent' });
+				const agents = Container.get(AgentRepository);
+				const agent = hasAgent
+					? await createAgent({
+							id: nanoid(),
+							name: 'Support',
+							projectId: project.id,
+							parentFolderId: agentFolder.id,
+						})
+					: null;
+
+				try {
+					await service.deleteFoldersNotInWorkfolder([
+						mock<SourceControlledFile>({ id: workflowFolder.id }),
+						mock<SourceControlledFile>({ id: agentFolder.id }),
+					]);
+
+					expect(await folderRepository.existsBy({ id: workflowFolder.id })).toBe(false);
+					expect(await folderRepository.existsBy({ id: agentFolder.id })).toBe(true);
+
+					if (agent) {
+						expect(await agents.findOneByOrFail({ id: agent.id })).toMatchObject({
+							parentFolderId: agentFolder.id,
+						});
+					}
+				} finally {
+					if (agent) {
+						await agents.delete(agent.id);
+					}
+
+					await folderRepository.delete([workflowFolder.id, agentFolder.id]);
+				}
+			},
+		);
 	});
 
 	describe('credential deletion on pull', () => {

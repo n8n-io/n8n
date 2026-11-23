@@ -3,6 +3,7 @@ import { ref } from 'vue';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AgentApproval, ChatIntegrationDescriptor } from '@n8n/api-types';
 
+import { getAgentChannelPlatform } from '../channels/registry';
 import AgentChannelModal, { type ChannelView } from '../components/AgentChannelModal.vue';
 
 const mocks = vi.hoisted(() => ({
@@ -52,6 +53,7 @@ const runtimeErrors = ref<Record<string, string>>({});
 const errorIsConflict = ref<Record<string, boolean>>({});
 const platformSaveLabel = ref<string | undefined>();
 const platformCanFinish = ref(false);
+const platformCredentialRequired = ref<boolean | undefined>();
 const credentialModalOpen = ref(false);
 
 vi.mock('@n8n/i18n', () => ({
@@ -86,6 +88,7 @@ vi.mock('../channels/registry', async () => {
 				afterSave: mocks.afterSave,
 				keepOpenAfterConnect: mocks.keepOpenAfterConnect,
 				canFinish: platformCanFinish,
+				credentialRequired: platformCredentialRequired,
 				saveLabel: platformSaveLabel,
 				loading,
 				startOwnFlow: () => {
@@ -101,6 +104,7 @@ vi.mock('../channels/registry', async () => {
 				:data-setup-kind="runtime.setupKind?.value"
 			>
 				<button data-testid="select-credential" @click="$emit('update:modelValue', 'credential-new')" />
+				<button data-testid="clear-credential" @click="$emit('update:modelValue', '')" />
 				<button data-testid="connect-channel" @click="$emit('connect')" />
 				<button data-testid="platform-done" @click="$emit('done')" />
 				<button data-testid="persist-channel" @click="$emit('persist')" />
@@ -356,6 +360,7 @@ describe('AgentChannelModal', () => {
 		vi.clearAllMocks();
 		mocks.keepOpenAfterConnect = false;
 		platformCanFinish.value = false;
+		platformCredentialRequired.value = undefined;
 		catalog.value = [exampleIntegration];
 		statuses.value = {};
 		connectedCredentials.value = {};
@@ -777,6 +782,61 @@ describe('AgentChannelModal', () => {
 		expect(mocks.disconnect).not.toHaveBeenCalled();
 	});
 
+	describe('a channel that needs no credential', () => {
+		beforeEach(() => {
+			platformCredentialRequired.value = false;
+		});
+
+		it('saves without a credential', async () => {
+			const wrapper = mountModal('example_edit');
+			await flushPromises();
+
+			await wrapper.get('[data-testid="agent-channel-save-channel-config"]').trigger('click');
+			await flushPromises();
+
+			expect(wrapper.find('[data-testid="agent-channel-credential-required"]').exists()).toBe(
+				false,
+			);
+			expect(mocks.connect).toHaveBeenCalledWith('example', '', { accessMode: 'all' }, {});
+		});
+
+		it('drops the saved credential when the selection is cleared', async () => {
+			statuses.value.example = 'connected';
+			connectedCredentials.value.example = 'credential-old';
+			const wrapper = mountModal('example_edit');
+			await flushPromises();
+
+			await wrapper.get('[data-testid="clear-credential"]').trigger('click');
+			await wrapper.get('[data-testid="agent-channel-save-channel-config"]').trigger('click');
+			await flushPromises();
+
+			expect(mocks.connect).toHaveBeenCalledWith(
+				'example',
+				'',
+				{ accessMode: 'all' },
+				{ replaces: { credentialId: 'credential-old' } },
+			);
+		});
+
+		it('replaces a saved entry without a credential when a credential is chosen', async () => {
+			statuses.value.example = 'connected';
+			connectedCredentials.value.example = '';
+			const wrapper = mountModal('example_edit');
+			await flushPromises();
+
+			await wrapper.get('[data-testid="select-credential"]').trigger('click');
+			await wrapper.get('[data-testid="agent-channel-save-channel-config"]').trigger('click');
+			await flushPromises();
+
+			expect(mocks.connect).toHaveBeenCalledWith(
+				'example',
+				'credential-new',
+				{ accessMode: 'all' },
+				{ replaces: { credentialId: '' } },
+			);
+		});
+	});
+
 	describe('action approval', () => {
 		it.each(['example', 'slack'] as const)('saves the approval and edits for %s', async (type) => {
 			catalog.value = [{ ...exampleIntegration, type }];
@@ -898,6 +958,31 @@ describe('AgentChannelModal', () => {
 			duration: 0,
 		});
 		expect(wrapper.emitted('agent-changed')).toHaveLength(1);
+	});
+
+	it('tells the platform when a removal is a restart', async () => {
+		statuses.value.example = 'connected';
+		connectedCredentials.value.example = 'credential-old';
+		const warning = {
+			integrationType: 'example',
+			code: 'cleanup_incomplete',
+			action: { type: 'open_url', url: 'https://example.test/settings' },
+		};
+		mocks.disconnect.mockResolvedValueOnce({ status: 'disconnected', warning });
+		const presentDisconnectWarning = vi.spyOn(
+			getAgentChannelPlatform('example'),
+			'presentDisconnectWarning',
+		);
+		const wrapper = mountModal('example_edit');
+		await flushPromises();
+
+		await wrapper.get('[data-testid="platform-restart"]').trigger('click');
+		await flushPromises();
+
+		expect(presentDisconnectWarning).toHaveBeenCalledWith(
+			warning,
+			expect.objectContaining({ restart: true }),
+		);
 	});
 
 	it('confirms managed removal from the edit view and keeps the Slack app when unchecked', async () => {

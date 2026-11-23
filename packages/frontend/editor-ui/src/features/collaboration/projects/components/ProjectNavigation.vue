@@ -3,7 +3,7 @@ import { useDocumentVisibility } from '@/app/composables/useDocumentVisibility';
 import { useGlobalEntityCreation } from '@/app/composables/useGlobalEntityCreation';
 import { VIEWS } from '@/app/constants';
 import { sourceControlEventBus } from '@/features/integrations/sourceControl.ee/sourceControl.eventBus';
-import { promotionEventBus } from '@/features/integrations/promotions.ee/promotions.eventBus';
+import { promotionEventBus } from '@n8n/frontend-module-promotions';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { N8nIcon, N8nMenuItem, N8nText } from '@n8n/design-system';
@@ -47,6 +47,10 @@ import { hasPermission } from '@/app/utils/rbac/permissions';
 
 const PROJECTS_COLLAPSED_KEY = 'n8n:sidebar:projects-collapsed';
 const INSTANCE_AI_CHATS_COLLAPSED_KEY = 'n8n:sidebar:instance-ai-chats-collapsed';
+// Clear .home horizontal padding (8px expanded, 6px collapsed) + 1px sidebar border + 4px gap
+// so the popover and its caret sit outside the sidebar border.
+const SIDEBAR_HINT_SIDE_OFFSET_EXPANDED = 13;
+const SIDEBAR_HINT_SIDE_OFFSET_COLLAPSED = 11;
 
 type Props = {
 	collapsed: boolean;
@@ -275,6 +279,9 @@ onBeforeUnmount(() => {
 				:title="locale.baseText('agents.n8nChatHint.newChatSidebar.title')"
 				:body="locale.baseText('agents.n8nChatHint.newChatSidebar.body')"
 				side="right"
+				:side-offset="
+					props.collapsed ? SIDEBAR_HINT_SIDE_OFFSET_COLLAPSED : SIDEBAR_HINT_SIDE_OFFSET_EXPANDED
+				"
 			>
 				<N8nMenuItem
 					:item="instanceAi"

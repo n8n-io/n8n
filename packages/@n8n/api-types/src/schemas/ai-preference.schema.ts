@@ -1,11 +1,6 @@
 import type { Scope } from '@n8n/permissions';
 import { z } from 'zod';
 
-/** Multivariate flag: only `variant` enables the feature. */
-export const CONTEXT_PREFERENCES_FLAG = '111_context_preferences';
-export const CONTEXT_PREFERENCES_CONTROL_VARIANT = 'control';
-export const CONTEXT_PREFERENCES_ENABLED_VARIANT = 'variant';
-
 /** Caps the prompt text, not the column. */
 export const AI_PREFERENCE_CONTENT_MAX_LENGTH = 2000;
 
@@ -18,10 +13,10 @@ export const AI_PREFERENCE_MAX_PER_SCOPE = 50;
 
 /**
  * Which surface wrote the row. `ui` is the settings area, `aia` the n8n Assistant,
- * `mcp` an MCP client. Never taken from a request body: a client must not be able
+ * `mcp` an MCP client, `api` the public API. Never taken from a request body: a client must not be able
  * to claim that the assistant wrote a row the user wrote.
  */
-export const aiPreferenceSourceSchema = z.enum(['ui', 'aia', 'mcp']);
+export const aiPreferenceSourceSchema = z.enum(['ui', 'aia', 'mcp', 'api']);
 
 export type AiPreferenceSource = z.infer<typeof aiPreferenceSourceSchema>;
 

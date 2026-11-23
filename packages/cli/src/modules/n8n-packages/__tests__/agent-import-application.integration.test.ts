@@ -1,6 +1,6 @@
 import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
-import { UrlService } from '@n8n/backend-services';
+import { UrlService, TelemetryProxy } from '@n8n/backend-services';
 import {
 	createTeamProject,
 	createWorkflow,
@@ -11,8 +11,10 @@ import {
 } from '@n8n/backend-test-utils';
 import {
 	CredentialsRepository,
+	FolderRepository,
 	ProjectRepository,
 	ProjectRelationRepository,
+	type OperationContext,
 	type Project,
 	type User,
 } from '@n8n/db';
@@ -26,8 +28,10 @@ import {
 } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { ConflictError, ForbiddenError } from '@n8n/errors';
+import type { SecurityContext } from '@n8n/permissions';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { DataSource } from '@n8n/typeorm';
+import { mock } from 'vitest-mock-extended';
 import { ExecuteWorkflowTrigger } from 'n8n-nodes-base/nodes/ExecuteWorkflow/ExecuteWorkflowTrigger/ExecuteWorkflowTrigger.node';
 import { ScheduleTrigger } from 'n8n-nodes-base/nodes/Schedule/ScheduleTrigger.node';
 
@@ -61,9 +65,10 @@ import { PolicyDecisionService } from '@/modules/policy-infrastructure/policy-de
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
 import { AiGatewayService } from '@/services/ai-gateway.service';
-import { Telemetry } from '@/telemetry';
 import { WorkflowService } from '@/workflows/workflow.service';
+import { createAgent } from '@test-integration/db/agents';
 import { createCredentials } from '@test-integration/db/credentials';
+import { createFolder } from '@test-integration/db/folders';
 import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
 import { createMember, createOwner, createUser } from '@test-integration/db/users';
 import { LicenseMocker } from '@test-integration/license';
@@ -85,6 +90,7 @@ import { WorkflowPackageImporter } from '../engine/workflow-package-importer';
 import { TarPackageReader } from '../io/tar/tar-package-reader';
 import { TarPackageWriter } from '../io/tar/tar-package-writer';
 import { PackageImportConfig } from '../n8n-packages.config';
+import { N8nPackagesService } from '../n8n-packages.service';
 import type { ResolvedImportRequest } from '../n8n-packages.types';
 import { serializedAgentSchema } from '../spec/serialized/agent.schema';
 
@@ -119,11 +125,11 @@ class AgentDefinitionSaveCheck implements RegisteredPolicyCheck {
 
 const license = new LicenseMocker();
 mockInstance(ActiveWorkflowManager);
-mockInstance(Telemetry);
+mockInstance(TelemetryProxy);
 mockInstance(CredentialTypes).recognizes.mockReturnValue(true);
 const runtimes = mockInstance(AgentRuntimeCacheService);
 const broadcaster = mockInstance(AgentUpdateBroadcaster);
-const telemetry = mockInstance(Telemetry);
+const telemetry = mockInstance(TelemetryProxy);
 let owner: User;
 let project: Project;
 let agents: AgentRepository;
@@ -157,6 +163,7 @@ beforeEach(async () => {
 	// Skills belong to projects and outlive their Agents.
 	await deleteAllSkills();
 	await testDb.truncate([
+		'Folder',
 		'WorkflowEntity',
 		'WorkflowHistory',
 		'SharedWorkflow',
@@ -282,7 +289,12 @@ async function planFor(input: AgentPackageFixture, overrides: Partial<ResolvedIm
 	const parser = Container.get(N8nPackageParser);
 	const options = request(overrides);
 	return await orchestrator.plan({
-		context: { user: options.user, projectId: options.projectId!, folderId: null },
+		context: {
+			user: options.user,
+			projectId: options.projectId!,
+			folderId: null,
+			publicApi: false,
+		},
 		agents: await parser.getAgents(reader),
 		skills: await parser.getSkills(reader),
 		folders: [],
@@ -468,37 +480,54 @@ it('applies selected Agents with complete bodies, cycles, workflow bindings and 
 });
 
 it.each(['project', 'instance'] as const)(
-	'reports a skill ID owned by another %s in the preview without replacing its content',
+	'imports a copy of a skill whose ID belongs to another %s',
 	async (scope) => {
 		const input = fixture();
 		input.manifest.agents.splice(1);
 		const elsewhere = await createTeamProject('Elsewhere', owner);
-		const body = {
-			name: 'Existing skill',
-			description: 'Keep this skill.',
-			instructions: 'Keep these instructions.',
-		};
 		await createSkill({
 			id: 'support_source_skill',
 			projectId: scope === 'project' ? elsewhere.id : null,
 			createdById: owner.id,
-			content: body,
-		});
-		const before = await findLatestSkillVersion('support_source_skill');
-		await expect(importSelected(input)).rejects.toMatchObject({
-			meta: {
-				issues: [
-					expect.objectContaining({
-						type: 'agent-invalid',
-						path: 'skills.support_source_skill',
-						message: expect.stringContaining('already belongs to another'),
-					}),
-				],
+			content: {
+				name: 'Existing skill',
+				description: 'Keep this skill.',
+				instructions: 'Keep these instructions.',
 			},
 		});
+		const before = await findLatestSkillVersion('support_source_skill');
+		await importSelected(input);
 		expect(await findLatestSkillVersion('support_source_skill')).toEqual(before);
-		expect(await agents.findById('support_source')).toBeNull();
+		const refs = await Container.get(AgentSkillRefsService).refsForDraft(
+			{ id: 'support_source' },
+			{},
+		);
+		expect(refs).toEqual([
+			{ type: 'skill', id: expect.not.stringMatching('support_source_skill') },
+		]);
+		const copyId = refs[0].id;
+		expect(await findSkill(copyId)).toMatchObject({ projectId: project.id, source: 'import' });
+		const { name, description, instructions } = packageSkill(input).skill;
+		expect(await findLatestSkillVersion(copyId)).toMatchObject({
+			version: 1,
+			name,
+			description,
+			instructions,
+		});
+		const skillIds = await findSkillIds();
+		await importSelected(input);
+		expect(await findSkillIds()).toEqual(skillIds);
+		expect(await findLatestSkillVersion(copyId)).toMatchObject({ version: 1 });
+		// The import must find the copy again after the deletion of the original skill.
 		await deleteSkill('support_source_skill');
+		await importSelected(input);
+		expect(await findSkillIds()).toEqual(skillIds.filter((id) => id !== 'support_source_skill'));
+		expect(
+			await Container.get(AgentSkillRefsService).refsForDraft({ id: 'support_source' }, {}),
+		).toEqual([{ type: 'skill', id: copyId }]);
+		expect(await findLatestSkillVersion(copyId)).toMatchObject({ version: 1 });
+		await agents.delete({});
+		await deleteSkill(copyId);
 	},
 );
 
@@ -616,13 +645,13 @@ it('reuses destination IDs, replaces removed content, skips writes and preserves
 	skill.skill.references = [];
 	first.tasks[`${first.id}_task`].objective = 'Promoted task objective';
 	const promoted = (await importSelected(input)).scopes[0].imported.agentOutcomes[0].agent;
-	// The project skill save raises the revision of the Agent, and the Agent save once more.
+	// The project skill save leaves the Agent unchanged. Only the Agent save raises the revision.
 	expect(await agents.findById(initial.id)).toMatchObject({
 		versionId: promoted.versionId,
-		revision: initial.revision + 2,
+		revision: initial.revision + 1,
 	});
-	// The project skill save captures a version of the Agent that follows it.
-	expect(await history.count()).toBe(3);
+	// The skill save captures no Agent version. The Agent save captures one.
+	expect(await history.count()).toBe(2);
 	expect(
 		await Container.get(AgentTaskSnapshotRepository).findByVersionId(promoted.versionId!),
 	).toMatchObject([{ taskId: task.id, objective: 'Promoted task objective' }]);
@@ -677,7 +706,7 @@ it('reuses destination IDs, replaces removed content, skips writes and preserves
 		{ id: task.id, objective: 'Updated objective' },
 	]);
 	expect(await tasks.count()).toBe(1);
-	expect(await history.count()).toBe(5);
+	expect(await history.count()).toBe(4);
 	expect(await skillRefs.readVersion({ versionId: initial.versionId! }, {})).toEqual(initialSkills);
 	expect(schedule).not.toHaveBeenCalled();
 	const before = await agents.findById(initial.id);
@@ -877,6 +906,44 @@ it('keeps source version semantics and skips publication for skipped Agents', as
 	expect(unpublished.agentOutcomes[0]).toMatchObject({
 		agent: { activeVersionId: null },
 		publishing: { state: 'unpublished' },
+	});
+});
+
+it('archives and restores a matched Agent to match the package', async () => {
+	const input = publishableFixture();
+	input.manifest.agents.splice(1);
+	const published = await importSelected(input, { publishingPolicy: 'match-source' });
+	expect(published.agentOutcomes[0].agent).toMatchObject({ isArchived: false });
+	expect(published.agentOutcomes[0].agent.activeVersionId).not.toBeNull();
+
+	const publishService = Container.get(AgentPublishService);
+	const archiveSpy = vi.spyOn(publishService, 'archiveAgent');
+	const unarchiveSpy = vi.spyOn(publishService, 'unarchiveAgent');
+	const ctx: OperationContext = { security: mock<SecurityContext>({ subIdentityId: 'login-1' }) };
+
+	source(input).isArchived = true;
+	const archived = await importSelected(input, { publishingPolicy: 'match-source', ctx });
+	expect(archiveSpy.mock.calls[0][5]).toBe(ctx);
+	expect(archived.agentOutcomes[0]).toMatchObject({
+		status: 'updated',
+		agent: { isArchived: true, activeVersionId: null },
+		publishing: { state: 'unchanged' },
+	});
+
+	// An import replaces the definition of an agent that stays archived.
+	source(input).name = 'Renamed while archived';
+	const updated = await importSelected(input);
+	expect(updated.agentOutcomes[0].agent).toMatchObject({ isArchived: true });
+
+	source(input).isArchived = false;
+	const restored = await importSelected(input, {
+		publishingPolicy: 'preserve-published-state',
+		ctx,
+	});
+	expect(unarchiveSpy.mock.calls[0][4]).toBe(ctx);
+	expect(restored.agentOutcomes[0].agent).toMatchObject({
+		isArchived: false,
+		activeVersionId: null,
 	});
 });
 
@@ -1116,6 +1183,7 @@ it.each(['publish', 'unpublish'] as const)(
 		const before = await agents.findByProjectId(project.id);
 		const result = await orchestrator.publishPackage({
 			user: member,
+			publicApi: false,
 			content: [content],
 			policy,
 			subWorkflowRequirements: undefined,
@@ -1144,6 +1212,7 @@ it.each(['publish', 'unpublish'] as const)(
 		const before = await agents.findById(current.id);
 		const result = await orchestrator.publishPackage({
 			user: owner,
+			publicApi: false,
 			content: [content],
 			policy,
 			subWorkflowRequirements: undefined,
@@ -1182,6 +1251,7 @@ it.each(['validation', 'policy', 'post-commit'] as const)(
 			});
 		const result = await orchestrator.publishPackage({
 			user: owner,
+			publicApi: false,
 			content: [content],
 			policy: 'publish-all',
 			subWorkflowRequirements: undefined,
@@ -1295,7 +1365,11 @@ it('keeps strict creation when a planned ID becomes occupied', async () => {
 	input.manifest.agents.splice(1);
 	const plan = await planFor(input);
 	const id = plan.agentPlan!.items[0].sourceAgentId;
-	await agents.save({ id, name: 'Concurrent Agent', projectId: project.id });
+	await createAgent({
+		id,
+		name: 'Concurrent Agent',
+		projectId: project.id,
+	});
 	const before = await agents.findById(id);
 	await expect(orchestrator.apply(plan)).rejects.toBeInstanceOf(ConflictError);
 	expect(await agents.findById(id)).toEqual(before);
@@ -1388,3 +1462,216 @@ it.each(['body', 'task', 'credential', 'policy'] as const)(
 		expect(effects).not.toHaveBeenCalled();
 	},
 );
+
+function folderPlacementFixture(atRoot = false) {
+	const input = fixture(true);
+	const prefix = 'projects/operations';
+	const sourceProject = input.manifest.projects![0];
+	sourceProject.id = project.id;
+	input.files[`${prefix}/project.json`] = { id: project.id, name: project.name };
+	input.manifest.folders = [
+		{ id: 'agent-parent', name: 'Team', target: `${prefix}/folders/team` },
+		{ id: 'agent-child', name: 'Support', target: `${prefix}/folders/team/support` },
+		{ id: 'agent-empty', name: 'Empty', target: `${prefix}/folders/empty` },
+	];
+
+	for (const entry of input.manifest.folders) {
+		input.files[`${entry.target}/folder.json`] = {
+			id: entry.id,
+			name: entry.name,
+			parentFolderId: entry.id === 'agent-child' ? 'agent-parent' : null,
+			resourceType: 'agent',
+		};
+	}
+
+	if (atRoot) {
+		return input;
+	}
+
+	const entry = input.manifest.agents[0];
+	const previousTarget = entry.target;
+	entry.target = `${prefix}/folders/team/support/agents/support`;
+
+	for (const file of ['agent.json', 'agent-metadata.json']) {
+		input.files[`${entry.target}/${file}`] = input.files[`${previousTarget}/${file}`];
+		delete input.files[`${previousTarget}/${file}`];
+	}
+
+	return input;
+}
+
+it('imports Agent placement and empty folders and preserves additional Agent resources on overwrite', async () => {
+	const input = folderPlacementFixture();
+	const entry = input.manifest.agents[0];
+
+	const importer = Container.get(ProjectPackageImporter);
+	const options = request({
+		projectId: undefined,
+		projectConflictPolicy: 'overwrite',
+		overwriteDeletionPolicy: 'hard-delete',
+	});
+	await importer.import(options, await readerFor(input), input.manifest, 'package-import');
+
+	expect(await agents.findById(entry.id)).toMatchObject({ parentFolderId: 'agent-child' });
+	const folders = Container.get(FolderRepository);
+	expect(await folders.findOneByOrFail({ id: 'agent-empty' })).toMatchObject({
+		resourceType: 'agent',
+		parentFolderId: null,
+	});
+	await folders.save({
+		id: 'additional-agent-folder',
+		name: 'Keep',
+		resourceType: 'agent',
+		homeProject: project,
+	});
+	await createAgent({
+		id: 'additional-agent',
+		name: 'Keep',
+		projectId: project.id,
+		parentFolderId: 'additional-agent-folder',
+	});
+	await importer.import(options, await readerFor(input), input.manifest, 'package-import');
+
+	expect(await agents.findById('additional-agent')).toMatchObject({
+		parentFolderId: 'additional-agent-folder',
+	});
+	expect(await folders.existsBy({ id: 'additional-agent-folder' })).toBe(true);
+	expect(await agents.findById(entry.id)).toMatchObject({ parentFolderId: 'agent-child' });
+});
+
+describe.each([false, true])('Agent placement import (project root: %s)', (atRoot) => {
+	it.each([undefined, 'fail', 'follow-package'] as const)(
+		'honors the %s layout policy when updating an Agent',
+		async (layoutConflictPolicy) => {
+			const input = folderPlacementFixture(atRoot);
+			const importer = Container.get(ProjectPackageImporter);
+			const options = request({ projectId: undefined });
+			await importer.import(options, await readerFor(input), input.manifest, 'package-import');
+
+			const agent = source(input);
+			const originalName = agent.name;
+			const localFolder = await createFolder(project, { resourceType: 'agent' });
+			await agents.update(agent.id, { parentFolderId: localFolder.id });
+			agent.name = 'Updated Agent';
+			agent.config!.name = 'Updated Agent';
+
+			const result = importer.import(
+				{ ...options, layoutConflictPolicy },
+				await readerFor(input),
+				input.manifest,
+				'package-import',
+			);
+
+			if (layoutConflictPolicy === 'follow-package') {
+				await result;
+
+				expect(await agents.findById(agent.id)).toMatchObject({
+					name: 'Updated Agent',
+					parentFolderId: atRoot ? null : 'agent-child',
+				});
+			} else {
+				await expect(result).rejects.toMatchObject({
+					meta: {
+						issues: expect.arrayContaining([
+							expect.objectContaining({
+								type: 'agent-invalid',
+								sourceAgentId: agent.id,
+								path: 'parentFolderId',
+							}),
+						]),
+					},
+				});
+
+				expect(await agents.findById(agent.id)).toMatchObject({
+					name: originalName,
+					parentFolderId: localFolder.id,
+				});
+			}
+		},
+	);
+});
+
+it.each([undefined, 'follow-package'] as const)(
+	'keeps local Agent placement when a loose import has no layout (%s)',
+	async (layoutConflictPolicy) => {
+		const input = fixture();
+		await importSelected(input);
+
+		const agent = source(input);
+		const localFolder = await createFolder(project, { resourceType: 'agent' });
+		await agents.update(agent.id, { parentFolderId: localFolder.id });
+		agent.name = 'Updated Agent';
+		agent.config!.name = 'Updated Agent';
+		await importSelected(input, { layoutConflictPolicy });
+
+		expect(await agents.findById(agent.id)).toMatchObject({
+			name: 'Updated Agent',
+			parentFolderId: localFolder.id,
+		});
+	},
+);
+
+it('keeps local Agent placement when the existing Agent is skipped', async () => {
+	const input = folderPlacementFixture();
+	const importer = Container.get(ProjectPackageImporter);
+	const options = request({ projectId: undefined });
+	await importer.import(options, await readerFor(input), input.manifest, 'package-import');
+
+	const agent = source(input);
+	const localFolder = await createFolder(project, { resourceType: 'agent' });
+	await agents.update(agent.id, { parentFolderId: localFolder.id });
+	await importer.import(
+		{ ...options, conflictPolicy: 'skip' },
+		await readerFor(input),
+		input.manifest,
+		'package-import',
+	);
+
+	expect(await agents.findById(agent.id)).toMatchObject({ parentFolderId: localFolder.id });
+});
+
+it('round-trips nested Agent placement and empty folders through the archive API', async () => {
+	const parent = await createFolder(project, { name: 'Team', resourceType: 'agent' });
+	const child = await createFolder(project, {
+		name: 'Support',
+		resourceType: 'agent',
+		parentFolder: parent,
+	});
+	const empty = await createFolder(project, { name: 'Empty', resourceType: 'agent' });
+	const agent = await createAgent({
+		id: 'roundtrip-agent',
+		name: 'Support Agent',
+		projectId: project.id,
+		parentFolderId: child.id,
+		schema: null,
+	});
+	const service = Container.get(N8nPackagesService);
+	const exported = await service.exportPackage({ user: owner, projectIds: [project.id] });
+	const packageBuffer = await streamToBuffer(exported.stream);
+	await agents.delete({ id: agent.id });
+	const folders = Container.get(FolderRepository);
+	await folders.delete({ id: parent.id });
+	await folders.delete({ id: empty.id });
+
+	const imported = await service.importPackage(
+		importPackageRequest({ user: owner, packageBuffer }),
+	);
+
+	for (const [folder, parentFolderId] of [
+		[parent, null],
+		[child, parent.id],
+		[empty, null],
+	] as const) {
+		expect(await folders.findOneByOrFail({ id: folder.id })).toMatchObject({
+			name: folder.name,
+			resourceType: 'agent',
+			parentFolderId,
+		});
+	}
+
+	expect(await agents.findById(agent.id)).toMatchObject({
+		name: agent.name,
+		parentFolderId: child.id,
+	});
+	expect(imported.counts.agents).toMatchObject({ created: 1 });
+});

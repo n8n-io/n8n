@@ -28,12 +28,29 @@ and infrastructure services that need the persistence layer or that only
 ## What lives here
 
 - `EventService`: the shared, typed event bus.
+- `EventRelay`: the base class for a service that listens to `EventService`
+  events. Its listener map uses the open `EventMap`.
+- `loginIdOf`: the login of a service account in an `OperationContext`, for
+  audit events.
+- `UserDeactivationHooks`: modules register cleanup steps that run in the
+  transaction that deactivates a user.
+- `PasswordUtility`: password hashes and checks with bcrypt.
+- `ExecutionDataJsonStore`: execution data bundles in blob storage, with the
+  bundle types and the read and write errors. `DbStore` stays in `cli`.
 - `UrlService`: instance and webhook URLs.
 - `CacheService`: application cache access.
 - `RedisClientService`: shared Redis connections and support code.
+- `PostHogClient`: product analytics events and feature flags from PostHog.
+- `Publisher` and `Subscriber`: the scaling-mode pubsub channels. The command
+  payload types (`PubSubCommandMap`) live in `@n8n/decorators`, next to
+  `@OnPubSubEvent`.
+- `ProjectScopeService`: project-level scope checks. A module calls
+  `hasScopes(user, projectId, scopes)`, not `userHasScopes` from `cli`.
+  `userHasScopes` stays in `cli` for the route decorators and for checks on
+  shared credentials and workflows.
 
-The next PRs move `ProtectedResourceRegistry`, `RoleService`, the finder services
-and the scope checks here, one area at a time.
+The next PRs move `ProtectedResourceRegistry`, `RoleService` and the finder
+services here, one area at a time.
 
 ### Register event payloads
 

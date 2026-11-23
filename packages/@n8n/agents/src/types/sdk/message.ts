@@ -140,13 +140,16 @@ export type ContentToolCall = ContentMetadata & {
 	resultProviderOptions?: ProviderOptions;
 
 	/**
-	 * Skills this tool activated programmatically (via `ctx.loadSkill`), so the
-	 * skill body can re-anchor to this result on a later turn instead of falling
-	 * back to the system prompt. Metadata only — never sent to the model.
+	 * Number of content blocks before a provider-executed result in the original
+	 * assistant message. Replay puts the result back at this position.
 	 */
-	activatedSkillIds?: string[];
-	/** Versions delivered by this activation. Used by skills with append updates. */
-	activatedSkillVersions?: Record<string, string>;
+	resultPosition?: number;
+
+	/**
+	 * Order of a provider-executed result among the results in the original
+	 * assistant message. Breaks ties between results at the same position.
+	 */
+	resultOrder?: number;
 } & (
 		| { state: 'pending'; suspension?: ToolCallSuspensionInfo }
 		| { state: 'resolved'; output: JSONValue; canceled?: boolean }
@@ -241,15 +244,45 @@ export interface CustomAgentMessages {
 		type: 'n8n:runtime-skill-catalog';
 		content: string;
 	};
+	runtimeToolCatalog: {
+		type: 'n8n:runtime-tool-catalog';
+		/** The tool group lines the model last saw; empty when no tool catalog applies. */
+		toolCatalog: string;
+		/** The text the model sees, already wrapped. */
+		content: string;
+	};
+	/** Tells the model that a skill it loaded changed or became unavailable. */
 	runtimeSkillUpdate: {
 		type: 'n8n:runtime-skill-update';
 		skillUpdate: {
 			skillId: string;
+			/** The skill hash this note announces. Null when the skill is unavailable. */
 			version: string | null;
+			/** The text the model sees, without the `<system-reminder>` wrapper. */
 			content: string;
 			name?: string;
+			/** `restored`: a skill that was unavailable is in the catalog again. Older threads also used it when they resent a skill after compaction. */
 			change?: 'updated' | 'restored' | 'unavailable';
 		};
+	};
+	runtimeContextCue: {
+		type: 'n8n:runtime-context-cue';
+		/** Stable cue ids, so a conversation receives each cue only once. */
+		cueIds: string[];
+		/** The cue text the model sees, without the `<system-reminder>` wrapper. */
+		content: string;
+	};
+	/**
+	 * An instruction that the host adds to a running turn, for example when the
+	 * agent tries to stop before a required step. It is not user input, so
+	 * transcripts, the observer and cue retrieval skip it.
+	 */
+	hostInstruction: {
+		type: 'n8n:host-instruction';
+		/** Stable key of the host feature that sent it, for example `workflow_setup`. */
+		reason: string;
+		/** The text the model sees, without the `<system-reminder>` wrapper. */
+		content: string;
 	};
 	// Apps can add message types through declaration merging.
 }

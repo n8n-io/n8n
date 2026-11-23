@@ -45,6 +45,7 @@ import {
 	toSkillContent,
 } from '@/modules/skills/testing';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
+import { createAgent } from '@test-integration/db/agents';
 import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
 import { createCredentials } from '@test-integration/db/credentials';
 import { createMember, createOwner } from '@test-integration/db/users';
@@ -110,6 +111,7 @@ function agent(sourceAgentId: string, config: Partial<AgentJsonConfig> = {}): Pr
 			...config,
 		}),
 		availableInMCP: false,
+		isArchived: false,
 		tools: {},
 		tasks: {},
 		metadata: { versionId: 'source-version', publishedVersionId: null },
@@ -123,7 +125,7 @@ function input(sources: PreparedAgent[], projectId = project.id): ImportOrchestr
 		conflictPolicy: 'new-version',
 	});
 	return {
-		context: { user, projectId, folderId: null },
+		context: { user, projectId, folderId: null, publicApi: false },
 		agents: sources,
 		folders: [],
 		workflows: [],
@@ -214,7 +216,11 @@ it('seeds bundled credential expressions after planning and excludes skipped Age
 	};
 	fixture.files['credentials/model/credential.json'] = credential;
 	fixture.files['credentials/skipped/credential.json'] = { invalid: true };
-	await agents.save({ id: 'research_source', name: 'Existing', projectId: project.id });
+	await createAgent({
+		id: 'research_source',
+		name: 'Existing',
+		projectId: project.id,
+	});
 	const writer = new TarPackageWriter();
 	await writeAgentPackageFixture(writer, fixture);
 	const packageBuffer = await streamToBuffer(writer.finalize());
@@ -360,7 +366,7 @@ it('plans cycles, typed bindings and task IDs without changing definitions or de
 it.each<ImportConflictPolicy>(['new-version', 'skip', 'fail'])(
 	'applies %s without resolving unused skipped definitions',
 	async (policy) => {
-		const existing = await agents.save({
+		const existing = await createAgent({
 			id: 'source',
 			name: 'Existing',
 			projectId: project.id,
@@ -418,7 +424,7 @@ it.each<ImportConflictPolicy>(['new-version', 'skip', 'fail'])(
 );
 
 it('resolves dependency IDs and rejects missing references without writes', async () => {
-	await agents.save({
+	await createAgent({
 		id: 'child-source',
 		name: 'Child',
 		projectId: project.id,
@@ -577,7 +583,11 @@ it('checks project boundaries after matching the whole package', async () => {
 it.each<ImportConflictPolicy>(['new-version', 'skip'])(
 	'checks task ownership across project plans under %s',
 	async (policy) => {
-		await agents.save({ id: 'first', name: 'First', projectId: project.id });
+		await createAgent({
+			id: 'first',
+			name: 'First',
+			projectId: project.id,
+		});
 		const requests = [input([agent('first')]), input([agent('second')], otherProject.id)];
 		requests[0].options.conflictPolicy = policy;
 		for (const request of requests) {
@@ -701,14 +711,62 @@ it.each([
 	expect((await planner.plan(request)).blockingIssues).toEqual([]);
 });
 
+it('plans a copy of a skill whose ID belongs to another scope', async () => {
+	await createSkill({
+		id: 'skill_shared',
+		projectId: null,
+		content: toSkillContent({ name: 'Other', description: 'Other.', instructions: 'Other.' }),
+	});
+	const request = input([agent('source', { skills: [{ type: 'skill', id: 'skill_shared' }] })]);
+	request.options.conflictPolicy = 'fail';
+	request.skills = [sharedSkill('skill_shared', 'project')];
+	const before = await findLatestSkillVersion('skill_shared');
+	const plan = await planner.plan(request);
+	expect(plan.blockingIssues).toEqual([]);
+	const writes = plan.agentPlan?.skills?.shared ?? [];
+	expect(writes).toEqual([
+		expect.objectContaining({
+			skill: expect.objectContaining({ id: expect.not.stringMatching('skill_shared') }),
+			target: { projectId: project.id },
+		}),
+	]);
+	expect(plan.agentPlan?.items[0].config?.skills).toEqual([
+		{ type: 'skill', id: writes[0].skill.id },
+	]);
+	expect(await findLatestSkillVersion('skill_shared')).toEqual(before);
+	await deleteSkill('skill_shared');
+});
+
+it('reports a skill when other scopes own its ID and the ID of its copy', async () => {
+	const content = (name: string) =>
+		toSkillContent({ name, description: 'Other.', instructions: 'Other.' });
+	await createSkill({ id: 'skill_shared', projectId: null, content: content('Other') });
+	const request = input([agent('source', { skills: [{ type: 'skill', id: 'skill_shared' }] })]);
+	request.skills = [sharedSkill('skill_shared', 'project')];
+	// The first plan gives the ID of the copy.
+	const copyId = (await planner.plan(request)).agentPlan?.skills?.shared[0].skill.id ?? '';
+	expect(copyId).not.toBe('');
+	await createSkill({ id: copyId, projectId: otherProject.id, content: content('Copy owner') });
+	const plan = await planner.plan(request);
+	expect(plan.blockingIssues).toEqual([
+		expect.objectContaining({
+			type: 'agent-invalid',
+			sourceAgentId: 'source',
+			path: 'skills.skill_shared',
+			message: expect.stringContaining('already belongs to another'),
+		}),
+	]);
+	await deleteSkill('skill_shared');
+	await deleteSkill(copyId);
+});
+
 it.each([
-	['a skill ID in another scope', 'skill_shared', 'Other', 'already belongs to another'],
 	['another skill with the same name', 'skill_other', 'REVIEW', 'already named "Review"'],
 	['changed content under fail', 'skill_shared', 'Review', 'already exists with different content'],
 ] as const)('reports %s in the preview', async (_case, existingId, existingName, message) => {
 	await createSkill({
 		id: existingId,
-		projectId: _case === 'a skill ID in another scope' ? null : project.id,
+		projectId: project.id,
 		content: toSkillContent({ name: existingName, description: 'Other.', instructions: 'Other.' }),
 	});
 	const request = input([agent('source', { skills: [{ type: 'skill', id: 'skill_shared' }] })]);
@@ -809,7 +867,11 @@ it('reports two instance skills with names like each other in different project 
 });
 
 it('reports a rename that clashes with a skill of another Agent that follows the skill', async () => {
-	await agents.save({ id: 'follower', name: 'Follower', projectId: project.id });
+	await createAgent({
+		id: 'follower',
+		name: 'Follower',
+		projectId: project.id,
+	});
 	// The follower's other skill is in another scope, so only the follower check sees the clash.
 	for (const [id, target] of [
 		['skill_shared', { projectId: project.id }],
@@ -844,7 +906,11 @@ it('reports a rename that clashes with a skill of another Agent that follows the
 });
 
 it('keeps a name clash that the Agent already has', async () => {
-	await agents.save({ id: 'source', name: 'Existing', projectId: project.id });
+	await createAgent({
+		id: 'source',
+		name: 'Existing',
+		projectId: project.id,
+	});
 	const skills = [
 		sharedSkill('skill_first', 'project'),
 		sharedSkill('skill_second', 'project', 'review'),
@@ -909,7 +975,7 @@ it.each(['create', 'update', 'publish', 'unpublish'] as const)(
 		);
 		await linkUserToProject(member, project, role.slug);
 		if (action !== 'create') {
-			await agents.save({
+			await createAgent({
 				id: 'source',
 				name: 'Existing',
 				projectId: project.id,

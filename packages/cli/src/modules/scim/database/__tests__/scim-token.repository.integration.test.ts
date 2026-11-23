@@ -110,15 +110,52 @@ describe('ScimTokenRepository', () => {
 	it('removes the token on revoke and accepts a new first token', async () => {
 		await repository.replace(null, newToken('first'), ctx);
 
-		await repository.revokeInstanceToken(ctx);
+		await expect(repository.revokeInstanceToken(ctx)).resolves.toBe(true);
 
 		await expect(repository.findInstanceToken(ctx)).resolves.toBeNull();
 		await repository.replace(null, newToken('second'), ctx);
 		await expect(repository.findInstanceToken(ctx)).resolves.toEqual(newToken('second'));
 	});
 
-	it('does nothing on revoke when the instance has no token', async () => {
+	it('keeps the hash of a token that a rotation replaced', async () => {
+		await repository.replace(null, newToken('first'), ctx);
+		await repository.replace(newToken('first').tokenHash, newToken('second'), ctx);
+
+		await expect(repository.isReplacedToken(newToken('first').tokenHash, ctx)).resolves.toBe(true);
+		await expect(repository.isReplacedToken(newToken('second').tokenHash, ctx)).resolves.toBe(
+			false,
+		);
+		await expect(repository.isReplacedToken(newToken('other').tokenHash, ctx)).resolves.toBe(false);
+	});
+
+	it('does not count a revoked token as replaced', async () => {
+		await repository.replace(null, newToken('first'), ctx);
 		await repository.revokeInstanceToken(ctx);
+
+		await expect(repository.isReplacedToken(newToken('first').tokenHash, ctx)).resolves.toBe(false);
+	});
+
+	it('keeps the last ten replaced token hashes', async () => {
+		let current: string | null = null;
+		for (let index = 0; index < 12; index++) {
+			const token = newToken(`token-${index}`);
+			await repository.replace(current, token, ctx);
+			current = token.tokenHash;
+		}
+
+		await expect(repository.isReplacedToken(newToken('token-10').tokenHash, ctx)).resolves.toBe(
+			true,
+		);
+		await expect(repository.isReplacedToken(newToken('token-1').tokenHash, ctx)).resolves.toBe(
+			true,
+		);
+		await expect(repository.isReplacedToken(newToken('token-0').tokenHash, ctx)).resolves.toBe(
+			false,
+		);
+	});
+
+	it('does nothing on revoke when the instance has no token', async () => {
+		await expect(repository.revokeInstanceToken(ctx)).resolves.toBe(false);
 
 		await expect(repository.findInstanceToken(ctx)).resolves.toBeNull();
 	});

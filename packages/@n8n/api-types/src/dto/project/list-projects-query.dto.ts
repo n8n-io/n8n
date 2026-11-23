@@ -40,10 +40,21 @@ const takeValidator = z
 	})
 	.transform((val) => (val !== undefined ? Math.min(val, MAX_ITEMS_PER_PAGE) : undefined));
 
-export class ListProjectsQueryDto extends Z.class({
+const listProjectsQueryShape = {
 	skip: skipValidator,
 	take: takeValidator,
 	search: searchValidator,
 	type: typeValidator,
 	activated: activatedValidator,
+};
+
+export class ListProjectsQueryDto extends Z.class(listProjectsQueryShape) {}
+
+export class ListSharingCandidatesQueryDto extends Z.class({
+	...listProjectsQueryShape,
+	// Service accounts are opt-in: only the pickers where a share to one has an effect ask for them.
+	includeServiceAccounts: z
+		.enum(['true', 'false'])
+		.optional()
+		.transform((val) => val === 'true'),
 }) {}

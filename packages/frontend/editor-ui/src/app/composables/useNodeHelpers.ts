@@ -236,32 +236,7 @@ export function useNodeHelpers() {
 			}
 		}
 
-		if (hasNodeExecutionIssues(node) && !ignoreIssues.includes('execution')) {
-			if (nodeIssues === null) {
-				nodeIssues = {};
-			}
-			nodeIssues.execution = true;
-		}
-
 		return nodeIssues;
-	}
-
-	// Set the status on all the nodes which produced an error so that it can be
-	// displayed in the node-view
-	function hasNodeExecutionIssues(node: INodeUi): boolean {
-		const workflowResultData = workflowExecutionStateStore.value.activeExecutionRunData;
-
-		if (!workflowResultData?.hasOwnProperty(node.name)) {
-			return false;
-		}
-
-		for (const taskData of workflowResultData[node.name]) {
-			if (taskData.error !== undefined) {
-				return true;
-			}
-		}
-
-		return false;
 	}
 
 	function reportUnsetCredential(credentialType: ICredentialType) {
@@ -311,18 +286,6 @@ export function useNodeHelpers() {
 
 		for (const node of nodes) {
 			updateNodeInputIssues(node);
-		}
-	}
-
-	function updateNodesExecutionIssues() {
-		const nodes = workflowDocumentStore.value.allNodes;
-
-		for (const node of nodes) {
-			workflowDocumentStore.value.setNodeIssue({
-				node: node.name,
-				type: 'execution',
-				value: hasNodeExecutionIssues(node) ? true : null,
-			});
 		}
 	}
 
@@ -1099,7 +1062,6 @@ export function useNodeHelpers() {
 		getNodeInputIssues,
 		getNodeIssues,
 		updateNodesInputIssues,
-		updateNodesExecutionIssues,
 		updateNodesParameterIssues,
 		updateNodeInputIssues,
 		updateNodeInputIssuesByName,

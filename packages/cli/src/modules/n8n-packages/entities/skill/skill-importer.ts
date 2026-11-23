@@ -2,6 +2,7 @@ import { skillNameKey } from '@n8n/api-types';
 import { TransactionRunner, type OperationContext, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ConflictError, ForbiddenError, UserError } from '@n8n/errors';
+import { createHash } from 'node:crypto';
 
 import { AgentSkillRefsService } from '@/modules/agents/agent-skill-refs.service';
 import type { AgentSkillWriter } from '@/modules/agents/utils/agent-definition';
@@ -12,6 +13,7 @@ import {
 	SkillAccessService,
 	skillContentHashOf,
 	SkillService,
+	SkillRuntimeService,
 	type LatestSkill,
 	type SkillTarget,
 } from '@/modules/skills';
@@ -26,11 +28,17 @@ import type {
 } from '../agent/agent-import.types';
 import { decideImportConflictAction } from '../import-conflict-policy';
 
-/** `name` is the skill name the Agents use after the import. */
+/** `id` and `name` are the skill ID and the skill name the Agents use after the import. */
 type SkillDecision =
-	| { kind: 'write'; write: SkillWrite; name: string }
-	| { kind: 'keep'; name: string }
+	| { kind: 'write'; write: SkillWrite; id: string; name: string }
+	| { kind: 'keep'; id: string; name: string }
 	| { kind: 'issue'; message: string };
+
+/** The skill that the import compares and writes, with its latest destination version. */
+interface DestinationSkill {
+	skill: SerializedSkill;
+	row: LatestSkill | undefined;
+}
 
 /**
  * Plans and writes the skills that imported Agents reference. Every write goes through
@@ -43,6 +51,7 @@ export class SkillImporter {
 		private readonly skillAccess: SkillAccessService,
 		private readonly transactionRunner: TransactionRunner,
 		private readonly agentSkillRefs: AgentSkillRefsService,
+		private readonly skillRuntime: SkillRuntimeService,
 	) {}
 
 	async plan(
@@ -50,11 +59,10 @@ export class SkillImporter {
 		items: AgentPlanItem[],
 		packageSkills: SerializedSkill[],
 		conflictPolicy: ImportConflictPolicy,
-	): Promise<{ plan: SkillImportPlan; issues: AgentImportIssue[] }> {
+	): Promise<{ plan: SkillImportPlan; issues: AgentImportIssue[]; copyIds: Map<string, string> }> {
 		const plan: SkillImportPlan = {
 			shared: [],
 			sharedUsers: new Set(),
-			raisedRevisions: new Map(),
 		};
 		const active = items.filter(({ action }) => action !== 'skip');
 		const users = skillUsers(active);
@@ -65,11 +73,11 @@ export class SkillImporter {
 			if (decision.kind === 'issue') {
 				issues.push(...agentIds.map((id) => skillIssue(id, skillId, decision.message)));
 			}
-			if (decision.kind === 'write') addWrite(plan, decision.write, agentIds);
+			if (decision.kind === 'write') addWrite(plan, decision.write, skillId, agentIds);
 		}
 		issues.push(...(await this.agentNameClashes(active, decisions)));
 		await this.assertCanWrite(context.user, plan.shared, context.projectPendingCreation);
-		return { plan, issues };
+		return { plan, issues, copyIds: copyIdsOf(decisions) };
 	}
 
 	/** Checks each Agent's skill names as `replaceDraftRefs` does when the Agent is saved. */
@@ -115,19 +123,20 @@ export class SkillImporter {
 	/**
 	 * Rechecks the permission for every planned write, then writes the project and instance
 	 * skills. Call it before the Agents are written: the Agent transactions check nothing.
-	 * Each new skill version raises the revision of the Agents that follow the skill by one.
-	 * Adds these raises to `plan.raisedRevisions`.
 	 */
 	async applyShared(user: User, plan: SkillImportPlan): Promise<void> {
 		await this.assertCanWrite(user, plan.shared);
 		if (plan.shared.length === 0) return;
 		const following = await this.transactionRunner.run({}, async (ctx) => {
+			// Lock every existing row before a create or save takes the name lock.
+			await this.skillRuntime.lockForEdit(
+				plan.shared.filter((write) => write.base).map((write) => write.skill.id),
+				ctx,
+			);
 			const agentIds: string[] = [];
 			for (const write of plan.shared) agentIds.push(...(await this.write(user, write, ctx)));
 			return agentIds;
 		});
-		const raised = plan.raisedRevisions;
-		for (const agentId of following) raised.set(agentId, (raised.get(agentId) ?? 0) + 1);
 		await this.skillService.refreshFollowingAgents([...new Set(following)]);
 	}
 
@@ -156,18 +165,43 @@ export class SkillImporter {
 		}
 		const name = packaged.skill.name;
 		const target = targetOf(packaged, projectId);
-		if (row && !isSameSkillTarget(row.target, target)) {
+		const destination = await this.destinationSkill(packaged, target, row);
+		if (!destination) {
 			return {
 				kind: 'issue',
 				message: `Skill ID "${skillId}" already belongs to another project or the instance. Change the skill ID in the package, or delete the existing skill.`,
 			};
 		}
-		const decision = decideWrite(packaged, target, row, conflictPolicy);
+		const { skill, row: current } = destination;
+		const decision = decideWrite(skill, target, current, conflictPolicy);
 		if (decision.kind !== 'write') return decision;
-		const nameProblem = row
-			? await this.renameProblem(skillId, target, row.skill.name, name)
-			: await this.createNameProblem(skillId, target, name);
+		const nameProblem = current
+			? await this.renameProblem(skill.id, target, current.skill.name, name)
+			: await this.createNameProblem(skill.id, target, name);
 		return nameProblem ? { kind: 'issue', message: nameProblem } : decision;
+	}
+
+	/**
+	 * A skill ID that another scope owns must not block the import. The import then uses a
+	 * copy of the skill in the target scope. A skill with the package ID in the target scope
+	 * comes first. A copy from an earlier import comes second, also after the deletion of
+	 * the skill that had the package ID. Returns nothing when other scopes own the package
+	 * ID and the ID of the copy.
+	 */
+	private async destinationSkill(
+		packaged: SerializedSkill,
+		target: SkillTarget,
+		row: LatestSkill | undefined,
+	): Promise<DestinationSkill | undefined> {
+		if (row && isSameSkillTarget(row.target, target)) return { skill: packaged, row };
+		const id = copyIdOf(packaged.id, target);
+		const copy = (await this.skillService.findLatest([id])).get(id);
+		if (copy && isSameSkillTarget(copy.target, target)) {
+			return { skill: { ...packaged, id }, row: copy };
+		}
+		if (!row) return { skill: packaged, row: undefined };
+		if (copy) return undefined;
+		return { skill: { ...packaged, id }, row: undefined };
 	}
 
 	private async createNameProblem(
@@ -265,10 +299,11 @@ function decideWrite(
 	row: LatestSkill | undefined,
 	conflictPolicy: ImportConflictPolicy,
 ): SkillDecision {
+	const { id } = packaged;
 	const name = packaged.skill.name;
-	if (!row) return { kind: 'write', write: { skill: packaged, target }, name };
+	if (!row) return { kind: 'write', write: { skill: packaged, target }, id, name };
 	const contentHash = skillContentHashOf(packaged.skill, packaged.frontmatter);
-	if (contentHash === row.contentHash) return { kind: 'keep', name };
+	if (contentHash === row.contentHash) return { kind: 'keep', id, name };
 	const { action, blocked } = decideImportConflictAction(conflictPolicy, true);
 	if (blocked) {
 		return {
@@ -276,9 +311,9 @@ function decideWrite(
 			message: `Skill "${packaged.skill.name}" already exists with different content. Use the conflict policy new-version to save a new version, or skip to keep the existing skill.`,
 		};
 	}
-	if (action === 'skip') return { kind: 'keep', name: row.skill.name };
+	if (action === 'skip') return { kind: 'keep', id, name: row.skill.name };
 	const base = { skillHash: getSkillHash(row.skill), versionId: row.versionId };
-	return { kind: 'write', write: { skill: packaged, target, base }, name };
+	return { kind: 'write', write: { skill: packaged, target, base }, id, name };
 }
 
 /** Skill ID to the IDs of the Agents that reference it. */
@@ -297,6 +332,24 @@ function targetOf(skill: SerializedSkill, projectId: string): SkillTarget {
 	return { projectId: skill.scope === 'project' ? projectId : null };
 }
 
+/**
+ * The ID of the copy of a skill in a target scope. The ID is the same for each import of
+ * the skill into the scope, so a second import finds the copy of the first import.
+ */
+function copyIdOf(sourceSkillId: string, target: SkillTarget): string {
+	const hash = createHash('sha256').update(JSON.stringify([sourceSkillId, target.projectId]));
+	return `skill_${hash.digest('hex').slice(0, 16)}`;
+}
+
+/** Package skill ID to the ID of its copy, for the skills that the import copies. */
+function copyIdsOf(decisions: Map<string, SkillDecision>): Map<string, string> {
+	const copyIds = new Map<string, string>();
+	for (const [skillId, decision] of decisions) {
+		if (decision.kind !== 'issue' && decision.id !== skillId) copyIds.set(skillId, decision.id);
+	}
+	return copyIds;
+}
+
 /** Records the name of a planned write. Returns false when another write in its scope has it. */
 function claimName(names: Set<string>, { skill, target }: SkillWrite): boolean {
 	const key = JSON.stringify([target.projectId, skillNameKey(skill.skill.name)]);
@@ -305,8 +358,13 @@ function claimName(names: Set<string>, { skill, target }: SkillWrite): boolean {
 	return true;
 }
 
-function addWrite(plan: SkillImportPlan, write: SkillWrite, agentIds: string[]): void {
-	plan.shared.push({ ...write, usedBy: agentIds });
+function addWrite(
+	plan: SkillImportPlan,
+	write: SkillWrite,
+	packageSkillId: string,
+	agentIds: string[],
+): void {
+	plan.shared.push({ ...write, packageSkillId, usedBy: agentIds });
 	for (const id of agentIds) plan.sharedUsers.add(id);
 }
 
@@ -329,10 +387,12 @@ function nameClashIssues(
 ): AgentImportIssue[] {
 	const named = (item.config?.skills ?? []).flatMap(({ id }) => {
 		const decision = decisions.get(id);
-		return decision && decision.kind !== 'issue' ? [{ id, name: decision.name }] : [];
+		if (!decision || decision.kind === 'issue') return [];
+		// The Agent has the skill when its draft has the ID that the import uses.
+		return [{ id, name: decision.name, isCurrent: currentIds.has(decision.id) }];
 	});
-	const current = named.filter(({ id }) => currentIds.has(id)).map(({ name }) => name);
-	const added = named.filter(({ id }) => !currentIds.has(id));
+	const current = named.filter(({ isCurrent }) => isCurrent).map(({ name }) => name);
+	const added = named.filter(({ isCurrent }) => !isCurrent);
 	return added.flatMap(({ id, name }, index) => {
 		const earlier = [...current, ...added.slice(0, index).map((skill) => skill.name)];
 		if (findIntroducedNameClashes(earlier, [name]).length === 0) return [];

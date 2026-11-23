@@ -55,8 +55,12 @@ flowchart LR
   data table becomes an issue too. `mode: 'enforce'` keeps the import's errors as they are.
 - A refused project (project permission, an id of a personal project) is an issue in both
   modes, so Apply returns it as a blocker. `import` throws the same error for it as before.
-- A new gate returns issues. Throw only for API-key scopes and malformed packages. Two older
-  checks still throw in both modes: the folder license and `assertCanPublish`.
+- A new gate returns issues. Throw only for API-key scopes and malformed packages. Older
+  checks still throw in both modes: the licence checks and `assertCanPublish`.
+- Project, folder, data table and removal gates read the plan, not the package. A project,
+  folder or data table that the import keeps as it is needs no scope, and an `overwrite` that
+  removes nothing needs no delete scope. `WorkflowPackageImporter.findImportLocation` still
+  checks the user's project role for the folder scopes before the plan (see LIGO-1439).
 
 ### Adding an IMPORT property
 

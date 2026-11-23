@@ -7,8 +7,8 @@ import {
 } from '@n8n/backend-services/auth';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { EngineConfig, ExecutionsConfig } from '@n8n/config';
-import type { Project, User } from '@n8n/db';
-import { UserRepository } from '@n8n/db';
+import type { Project } from '@n8n/db';
+import { Person, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import {
 	ResourceAdmission,
@@ -27,7 +27,7 @@ import {
 	isWebhookHtmlSandboxingDisabled,
 } from 'n8n-core';
 
-import type { ExecutionResponseReceiver } from '@/modules/engine-v2/response-channel/execution-response-receiver';
+import type { ExecutionResponseReceiver } from '@/modules/engine-v2/execution-channel/execution-response-receiver';
 
 vi.mock('n8n-core', async () => ({
 	...(await vi.importActual<typeof import('n8n-core')>('n8n-core')),
@@ -107,7 +107,7 @@ import {
 	checkTriggerCredentialGate,
 	extractTracingContext,
 } from '../webhook-helpers';
-import { WebhookResponder } from '../webhook-responder';
+import { WebhookResponder, type WebhookResponseCallback } from '../webhook-responder';
 import { WebhookService } from '../webhook.service';
 import type { IWebhookResponseCallbackData, WebhookRequest } from '../webhook.types';
 
@@ -2292,7 +2292,7 @@ describe('executeWebhook additional data', () => {
 
 	it('projects the looked-up user down to the four public fields', async () => {
 		userRepository.findByIdWithRole.mockResolvedValue(
-			mock<User>({
+			Object.assign(new Person(), {
 				id: 'user-1',
 				email: 'user@example.com',
 				firstName: 'Test',
@@ -2874,7 +2874,8 @@ describe('executeWebhook on engine v2', () => {
 			},
 		});
 
-		const responseCallback = vi.fn();
+		const responseReceived = createDeferredPromise();
+		const responseCallback = vi.fn<WebhookResponseCallback>(() => responseReceived.resolve());
 
 		const returned = await executeWebhook(
 			workflow,
@@ -2903,7 +2904,7 @@ describe('executeWebhook on engine v2', () => {
 			{ engineResume },
 		);
 
-		return { response, responseCallback, returned };
+		return { response, responseCallback, responseReceived: responseReceived.promise, returned };
 	};
 
 	beforeEach(() => {
@@ -3104,7 +3105,9 @@ describe('executeWebhook on engine v2', () => {
 		});
 
 		it('answers with the data of the step the run ended on', async () => {
-			const { responseCallback } = await startWebhook({ responseMode: 'lastNode' });
+			const { responseCallback, responseReceived } = await startWebhook({
+				responseMode: 'lastNode',
+			});
 
 			answerRun('completed', {
 				nodeId: 'edit-fields',
@@ -3113,7 +3116,9 @@ describe('executeWebhook on engine v2', () => {
 				outputs: [[{ json: { ok: true } }]],
 			});
 
-			await vi.waitFor(() => expect(responseCallback).toHaveBeenCalledTimes(1));
+			// The first response with step data loads the compatibility module on demand.
+			await responseReceived;
+			expect(responseCallback).toHaveBeenCalledTimes(1);
 			expect(responseCallback).toHaveBeenCalledWith(
 				null,
 				expect.objectContaining({ body: [{ ok: true }], code: 200 }),

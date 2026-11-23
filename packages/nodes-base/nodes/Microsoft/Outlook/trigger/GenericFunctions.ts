@@ -1,5 +1,11 @@
-import { NodeApiError } from 'n8n-workflow';
-import type { JsonObject, IDataObject, INodeExecutionData, IPollFunctions } from 'n8n-workflow';
+import { NodeApiError, requestPath } from 'n8n-workflow';
+import type {
+	JsonObject,
+	IDataObject,
+	INodeExecutionData,
+	IPollFunctions,
+	RequestPath,
+} from 'n8n-workflow';
 
 import { prepareFilterString, simplifyOutputMessages } from '../v2/helpers/utils';
 import { downloadAttachments, microsoftApiRequest } from '../v2/transport';
@@ -10,7 +16,7 @@ const MAX_PAGES_PER_FOLDER = 10;
 
 async function getMessagesOldestFirst(
 	this: IPollFunctions,
-	endpoint: string,
+	endpoint: RequestPath,
 	qs: IDataObject,
 	maxPages = MAX_PAGES_PER_FOLDER,
 ): Promise<{ messages: IDataObject[]; capped: boolean }> {
@@ -99,7 +105,9 @@ export async function getPollResponse(
 			qs.$orderby = 'receivedDateTime asc';
 
 			const endpoints =
-				folderIds.length > 0 ? folderIds.map((id) => `/mailFolders/${id}/messages`) : ['/messages'];
+				folderIds.length > 0
+					? folderIds.map((id) => requestPath`/mailFolders/${id}/messages`)
+					: [requestPath`/messages`];
 
 			const results = await Promise.all(
 				endpoints.map(async (endpoint) => await getMessagesOldestFirst.call(this, endpoint, qs)),
@@ -161,7 +169,9 @@ export async function getPollResponse(
 				qs.$filter = `receivedDateTime ge 1900-01-01T00:00:00Z and (${qs.$filter})`;
 			}
 			const endpoints =
-				folderIds.length > 0 ? folderIds.map((id) => `/mailFolders/${id}/messages`) : ['/messages'];
+				folderIds.length > 0
+					? folderIds.map((id) => requestPath`/mailFolders/${id}/messages`)
+					: [requestPath`/messages`];
 
 			const results = await Promise.all(
 				endpoints.map(

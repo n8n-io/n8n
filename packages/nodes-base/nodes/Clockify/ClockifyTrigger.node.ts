@@ -7,8 +7,9 @@ import type {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	RequestPath,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import type { EntryType } from './EntryType';
 import { EntryTypes } from './EntryType';
@@ -73,7 +74,7 @@ export class ClockifyTrigger implements INodeType {
 				const workspaces: IWorkspaceDto[] = await clockifyApiRequest.call(
 					this,
 					'GET',
-					'workspaces',
+					requestPath`workspaces`,
 				);
 				if (undefined !== workspaces) {
 					workspaces.forEach((value) => {
@@ -95,19 +96,19 @@ export class ClockifyTrigger implements INodeType {
 
 		if (!webhookData.userId) {
 			// Cache the user-id that we do not have to request it every time
-			const userInfo: IUserDto = await clockifyApiRequest.call(this, 'GET', 'user');
+			const userInfo: IUserDto = await clockifyApiRequest.call(this, 'GET', requestPath`user`);
 			webhookData.userId = userInfo.id;
 		}
 
 		const qs: IDataObject = {};
-		let resource: string;
+		let resource: RequestPath;
 		let result = null;
 
 		switch (triggerField) {
 			case EntryTypes.NEW_TIME_ENTRY:
 			default:
 				const workflowTimezone = this.getTimezone();
-				resource = `workspaces/${workspaceId}/user/${webhookData.userId}/time-entries`;
+				resource = requestPath`workspaces/${workspaceId}/user/${webhookData.userId}/time-entries`;
 				qs.start = webhookData.lastTimeChecked;
 				qs.end = moment().tz(workflowTimezone).format('YYYY-MM-DDTHH:mm:ss') + 'Z';
 				qs.hydrated = true;

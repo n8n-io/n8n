@@ -44,7 +44,7 @@ function makeAgent(overrides: AgentFixtureOverrides = {}): ProjectAgent {
 		activeVersionId: 'version-1',
 		schema: {
 			name: 'Support Agent',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			instructions: 'Help users',
 			tools: [],
 			skills: [],
@@ -114,7 +114,9 @@ describe('AgentCustomToolsService', () => {
 		expect(agent.tools[result.id]).toEqual({ code: 'return 1;', descriptor });
 		expect(agent.versionId).not.toBe(agent.activeVersionId);
 		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
-		expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(agent, {}, undefined);
+		expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(agent, {}, undefined, {
+			allowArchivedUpdate: false,
+		});
 	});
 
 	it('keeps save effects silent when a custom tool loses the revision fence', async () => {
@@ -173,7 +175,7 @@ describe('AgentCustomToolsService', () => {
 			},
 			schema: {
 				name: 'Support Agent',
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 				instructions: 'Help users',
 				tools: [
 					{ type: 'custom', id: 'tool_keep' },
@@ -210,7 +212,9 @@ describe('AgentCustomToolsService', () => {
 		]);
 		expect(agent.versionId).not.toBe(agent.activeVersionId);
 		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
-		expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(agent, {}, undefined);
+		expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(agent, {}, undefined, {
+			allowArchivedUpdate: false,
+		});
 	});
 
 	it('snapshots only configured custom tools', () => {
@@ -225,7 +229,7 @@ describe('AgentCustomToolsService', () => {
 			service.snapshotConfiguredTools(
 				{
 					name: 'Support Agent',
-					model: 'anthropic/claude-sonnet-4-5',
+					model: 'anthropic/claude-sonnet-5-5',
 					instructions: 'Help users',
 					tools: [
 						{ type: 'custom', id: 'tool_keep' },
@@ -254,7 +258,7 @@ describe('AgentCustomToolsService', () => {
 			service.snapshotConfiguredTools(
 				{
 					name: 'Support Agent',
-					model: 'anthropic/claude-sonnet-4-5',
+					model: 'anthropic/claude-sonnet-5-5',
 					instructions: 'Help users',
 					tools: [{ type: 'custom', id: 'tool_missing' }],
 				},

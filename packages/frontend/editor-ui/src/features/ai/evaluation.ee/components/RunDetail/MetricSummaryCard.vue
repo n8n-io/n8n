@@ -50,7 +50,11 @@ const valueTooltip = computed(() =>
 <template>
 	<div :class="$style.card" data-test-id="metric-summary-card">
 		<div :class="$style.titleRow">
-			<N8nTooltip :content="sourceNodeName ? `${name} · ${sourceNodeName}` : name" placement="top">
+			<N8nTooltip
+				:content="sourceNodeName ? `${name} · ${sourceNodeName}` : name"
+				placement="top"
+				as-child
+			>
 				<N8nText size="small" :class="$style.title">{{ formattedLabel }}</N8nText>
 			</N8nTooltip>
 		</div>
@@ -71,7 +75,9 @@ const valueTooltip = computed(() =>
 	gap: var(--spacing--xs);
 	padding: var(--spacing--md) var(--spacing--lg);
 	border-right: var(--border-width) var(--border-style) var(--color--foreground);
-	flex: 1 0 calc(var(--spacing--4xl) + var(--spacing--3xl));
+	/* Sized by its content, never below the old fixed track. `MetricSummaryStrip`
+	   scrolls, so a wide value widens the card instead of overflowing it. */
+	flex: 1 0 auto;
 	min-width: calc(var(--spacing--4xl) + var(--spacing--3xl));
 
 	&:last-child {

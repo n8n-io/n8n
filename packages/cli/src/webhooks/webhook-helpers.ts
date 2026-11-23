@@ -250,7 +250,7 @@ async function prepareMcpQueueExecution(
 		firstItem && 'json' in firstItem ? firstItem.json?.mcpListToolsRelay : null;
 	if (!isMcpListToolsRelay(mcpListToolsRelayValue)) return false;
 
-	const { Publisher } = await import('@/scaling/pubsub/publisher.service.js');
+	const { Publisher } = await import('@n8n/backend-services');
 	const publisher = Container.get(Publisher);
 	await publisher.publishMcpRelay({
 		sessionId: mcpListToolsRelayValue.sessionId,
@@ -855,8 +855,7 @@ async function prepareWebhookAdditionalData({
 
 	additionalData.getUserById = async (id: string) => {
 		const user = await Container.get(UserRepository).findByIdWithRole(id);
-		if (!user) return undefined;
-		return toWebhookUser(user);
+		return user?.toIUser();
 	};
 
 	const oauth2FlowProxy = Container.get(OAuth2FlowProxy);
@@ -1046,6 +1045,7 @@ export async function executeWebhook(
 	);
 
 	const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
+		// oxlint-disable-next-line typescript/no-deprecated -- Keep the alias for existing webhook expressions.
 		$executionId: executionId,
 	};
 
@@ -1369,8 +1369,9 @@ export async function executeWebhook(
 		 * We track the webhook response mode so that `WorkflowRunner` can decide whether it
 		 * needs to fetch full execution data from the DB when a job finishes in scaling mdoe.
 		 *
-		 * A v2 run has no control-plane execution to record it against, and the
-		 * `engine-v2` module refuses queue mode, so there is nothing to track.
+		 * A v2 run has no control-plane execution to record it against, and its
+		 * response comes back over the execution channel, not from a queue job,
+		 * so there is nothing to track.
 		 */
 		if (!routesToEngineV2) {
 			Container.get(ActiveExecutions).setResponseMode(executionId, responseMode);

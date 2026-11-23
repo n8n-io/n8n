@@ -41,6 +41,12 @@ export type ToolCallData = {
 		errored?: boolean;
 	};
 	observation: string;
+	/**
+	 * Index of the item this step belongs to. Lets buildSteps() keep concurrent
+	 * batch items' histories separate when previousRequests from multiple items
+	 * end up merged into the same metadata (see executeBatch's batch merge).
+	 */
+	itemIndex?: number;
 };
 
 /**
@@ -70,6 +76,14 @@ export type ThinkingContentBlock = {
 export type RedactedThinkingContentBlock = {
 	type: 'redacted_thinking';
 	data: string;
+};
+
+/**
+ * Text content block
+ */
+export type TextContentBlock = {
+	type: 'text';
+	text: string;
 };
 
 /**
@@ -173,6 +187,8 @@ export type RequestResponseMetadata = {
 	hitl?: HitlMetadata;
 	/** LangChain tool name (preserves the LLM's chosen tool for reverse-lookup). */
 	toolName?: string;
+	/** Text the model wrote in the same turn before its tool calls */
+	modelText?: string;
 };
 
 /**

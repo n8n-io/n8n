@@ -1,9 +1,4 @@
-import type {
-	CreateCredentialPublicDto,
-	CredentialPublicDto,
-	CredentialOptionsRequestDto,
-} from '@n8n/api-types';
-import { makePublicApiRequest, type PublicApiContext } from '@n8n/rest-api-client';
+import type { CredentialOptionsRequestDto } from '@n8n/api-types';
 import type {
 	CredentialFetchScope,
 	CredentialPayload,
@@ -57,6 +52,7 @@ export interface GetAllCredentialsOptions {
 	includeScopes?: boolean;
 	onlySharedWithMe?: boolean;
 	includeGlobal?: boolean;
+	includeRestrictions?: boolean;
 	/**
 	 * The implementation of the externalSecretsStore filter option is not optimized for performance.
 	 * Don't expose it via the filter selection component. It shall only be provided when clicking on
@@ -72,7 +68,14 @@ export async function getAllCredentials(
 	context: IRestApiContext,
 	options: GetAllCredentialsOptions = {},
 ): Promise<ICredentialsResponse[]> {
-	const { filter, includeScopes, onlySharedWithMe, includeGlobal, externalSecretsStore } = options;
+	const {
+		filter,
+		includeScopes,
+		onlySharedWithMe,
+		includeGlobal,
+		includeRestrictions,
+		externalSecretsStore,
+	} = options;
 
 	return await makeRestApiRequest(context, 'GET', '/credentials', {
 		...(includeScopes ? { includeScopes } : {}),
@@ -81,6 +84,7 @@ export async function getAllCredentials(
 		...(onlySharedWithMe ? { onlySharedWithMe } : {}),
 		...(typeof includeGlobal === 'boolean' ? { includeGlobal } : {}),
 		...(externalSecretsStore ? { externalSecretsStore } : {}),
+		...(includeRestrictions ? { includeRestrictions } : {}),
 	});
 }
 
@@ -215,11 +219,4 @@ export async function probeCredential(
 	credentialId: string,
 ): Promise<INodeCredentialTestResult> {
 	return await makeRestApiRequest(context, 'POST', `/credentials/${credentialId}/probe`);
-}
-
-export async function createPublicCredential(
-	context: PublicApiContext,
-	data: CreateCredentialPublicDto,
-): Promise<CredentialPublicDto> {
-	return await makePublicApiRequest(context, 'POST', '/credentials', data);
 }

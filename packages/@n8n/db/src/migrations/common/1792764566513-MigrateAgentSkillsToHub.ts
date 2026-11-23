@@ -2,7 +2,7 @@ import { Container } from '@n8n/di';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { isRecord } from '@n8n/utils/is-record';
 import { ErrorReporter } from 'n8n-core';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import { createHash, randomUUID } from 'node:crypto';
 
 import type { IrreversibleMigration, MigrationContext } from '../migration-types';

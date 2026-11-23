@@ -6,7 +6,6 @@ import { ClipboardHelper } from '../helpers/ClipboardHelper';
 import { NodeParameterHelper } from '../helpers/NodeParameterHelper';
 import { ActionToggle } from './components/ActionToggle';
 import { CodeNodeEditor } from './components/CodeNodeEditor';
-import { dialogCloseIconIn, dialogRootIn } from './components/dialogLocators';
 import { InlineExpressionEditor } from './components/InlineExpressionEditor';
 import { NodeCreator } from './components/NodeCreator';
 import { NodeCredentials } from './components/NodeCredentials';
@@ -376,7 +375,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getPlaceholderText(text: string) {
-		return this.page.getByText(text);
+		return this.container.getByText(text);
 	}
 
 	async setParameterDropdown(parameterName: string, optionText: string): Promise<void> {
@@ -394,7 +393,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	async setParameterSwitch(parameterName: string, enabled: boolean): Promise<void> {
-		const switchElement = this.getParameterInput(parameterName).locator('.el-switch');
+		const switchElement = this.getParameterInput(parameterName).locator('[role="switch"]');
 		const isCurrentlyEnabled = (await switchElement.getAttribute('aria-checked')) === 'true';
 		if (isCurrentlyEnabled !== enabled) {
 			await switchElement.click();
@@ -460,7 +459,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getParameterSwitch(parameterName: string) {
-		return this.getParameterInput(parameterName).locator('.el-switch');
+		return this.getParameterInput(parameterName).locator('[role="switch"]');
 	}
 
 	getParameterTextInput(parameterName: string) {
@@ -564,7 +563,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	async checkParameterCheckboxInputByName(name: string): Promise<void> {
-		const checkbox = this.getParameterInput(name).locator('.el-switch.switch-input');
+		const checkbox = this.getParameterInput(name).locator('[role="switch"]');
 		await checkbox.click();
 	}
 
@@ -651,12 +650,18 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.codeNodeEditor.getFullscreenEditor();
 	}
 
+	/**
+	 * Fullscreen code editor dialog.
+	 * It teleports outside the NDV. The filter distinguishes it from the NDV dialog.
+	 */
 	getCodeEditorDialog() {
-		return dialogRootIn(this.page);
+		return this.page.getByRole('dialog').filter({
+			has: this.page.getByTestId('code-editor-fullscreen'),
+		});
 	}
 
 	async closeCodeEditorDialog() {
-		await dialogCloseIconIn(this.getCodeEditorDialog()).click();
+		await this.getCodeEditorDialog().getByTestId('dialog-close-button').click();
 	}
 
 	getNodeRunSuccessIndicator() {

@@ -1,3 +1,4 @@
+import type { FolderRepository } from '@n8n/db';
 import { AgentProjectDeletionRepository } from '@/modules/agents/repositories/agent-project-deletion.repository';
 import type {
 	AgentSessionOrigin,
@@ -12,8 +13,14 @@ import {
 	type CredentialProvider,
 } from '@n8n/agents';
 import { createTeamProject, mockLogger, testDb, testModules } from '@n8n/backend-test-utils';
-import { AgentsConfig, AiConfig } from '@n8n/config';
-import { SettingsRepository, UserRepository, type OperationContext, type User } from '@n8n/db';
+import { AgentsConfig, AiConfig, GlobalConfig } from '@n8n/config';
+import {
+	ServiceAccountRepository,
+	SettingsRepository,
+	UserRepository,
+	type OperationContext,
+	type User,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource, EntityManager, type Repository } from '@n8n/typeorm';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
@@ -27,8 +34,11 @@ import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
 
-import type { Telemetry } from '@/telemetry';
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import { createAgent, ensureInstanceAgent } from '@test-integration/db/agents';
+
+import type { AgentUsageTelemetryService } from '@/modules/agents/agent-usage-telemetry.service';
+import type { AgentExecutionMetrics } from '@/modules/agents/agent-execution-metrics';
+import type { Publisher } from '@n8n/backend-services';
 import type { ExternalHooks } from '@/external-hooks';
 import { AgentBackgroundJobRepository } from '@/modules/agents/repositories/agent-background-job.repository';
 import { AgentBackgroundJobService } from '@/modules/agents/background/agent-background-job.service';
@@ -51,7 +61,8 @@ import {
 	encodeAgentSandboxHostMetadata,
 	hashAgentSandboxPrincipal,
 } from '@/modules/agents/agent-sandbox-principal';
-import type { IntegrationMessageContextService } from '@/modules/agents/integrations/integration-message-context.service';
+import { IntegrationMessageContextService } from '@/modules/agents/integrations/integration-message-context.service';
+import { AgentResourceRepository } from '@/modules/agents/repositories/agent-resource.repository';
 import type { AgentChatAttachmentService } from '@/modules/agents/agent-chat-attachment.service';
 import type { AgentChatExecutionService } from '@/modules/agents/agent-chat-execution.service';
 import { buildInboundUserMessage } from '@/modules/agents/utils/inbound-attachments';
@@ -92,7 +103,6 @@ import { AgentCheckpointRepository } from '@/modules/agents/repositories/agent-c
 import { AgentChatAttachment } from '@/modules/agents/entities/agent-chat-attachment.entity';
 import type { AgentExecutionThread } from '@/modules/agents/entities/agent-execution-thread.entity';
 import type { AgentExecution } from '@/modules/agents/entities/agent-execution.entity';
-import type { Agent } from '@/modules/agents/entities/agent.entity';
 import { AgentChatAttachmentRepository } from '@/modules/agents/repositories/agent-chat-attachment.repository';
 import { AgentUserDeletionRepository } from '@/modules/agents/repositories/agent-user-deletion.repository';
 import { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
@@ -105,6 +115,7 @@ import { SystemAgentRegistry } from '@/modules/agents/system-agents/system-agent
 import { N8N_CHAT_PRODUCTION_SOURCE } from '@/modules/agents/utils/agent-thread-access';
 
 import { createMember, createAdmin } from '../../shared/db/users';
+import type { AgentSandboxFilesService } from '@/modules/agents/agent-sandbox-files.service';
 
 // Share the transaction class loaded by the built BaseRepository.
 const { TypeOrmTransaction, TypeOrmTransactionRunner } = createRequire(__filename)(
@@ -144,14 +155,13 @@ describe('AgentExecutionRepository', () => {
 		const project = await createTeamProject();
 		projectId = project.id;
 
-		const agent = agentRepo.create({
+		const agent = await createAgent({
 			id: uuid(),
 			name: 'Test Agent',
 			projectId,
 			integrations: [],
 			tools: {},
-		} as Partial<Agent>);
-		await agentRepo.save(agent);
+		});
 		agentId = agent.id;
 	});
 
@@ -213,7 +223,7 @@ describe('AgentExecutionRepository', () => {
 			executions,
 			threads,
 			memory,
-			mock<Telemetry>(),
+			mock<AgentUsageTelemetryService>(),
 			attachmentService,
 			executionLogStore,
 			mock<StorageConfig>({ modeTag: 'db' }),
@@ -225,6 +235,12 @@ describe('AgentExecutionRepository', () => {
 			messageRepository,
 			systemAgents,
 			Container.get(AgentProjectDeletionRepository),
+			new IntegrationMessageContextService(
+				new AgentThreadRepository(connection ?? repository.manager.connection, txRunner),
+				new AgentResourceRepository(connection ?? repository.manager.connection),
+				mockLogger(),
+			),
+			mock<AgentExecutionMetrics>(),
 		);
 		const queueUpdates = mock<AgentExecutionUpdateBroadcaster>();
 		const settingsService = new AgentsSettingsService(
@@ -255,7 +271,15 @@ describe('AgentExecutionRepository', () => {
 			executions,
 			executionService,
 			checkpointStorage,
-			connection ? new AgentRepository(connection, txRunner) : agentRepo,
+			connection
+				? new AgentRepository(
+						connection,
+						txRunner,
+						Container.get(GlobalConfig),
+						mock<FolderRepository>(),
+						Container.get(ServiceAccountRepository),
+					)
+				: agentRepo,
 			attachmentService,
 			queueUpdates,
 			messageRepository,
@@ -291,6 +315,7 @@ describe('AgentExecutionRepository', () => {
 				steering,
 				mock<AgentToolApprovalService>(),
 				mock<AgentKnowledgeUsageTracker>(),
+				mock<AgentSandboxFilesService>(),
 			),
 		};
 	}
@@ -529,6 +554,7 @@ describe('AgentExecutionRepository', () => {
 						repository,
 						mock<SystemAgentUsageRelay>(),
 						mock<AgentChatAttachmentService>({ returnToParent: async () => [] }),
+						mock<AgentSandboxFilesService>(),
 					),
 					service,
 					mockLogger(),
@@ -1071,15 +1097,13 @@ describe('AgentExecutionRepository', () => {
 		const nestedRunId = uuid();
 		const otherThreadRunId = uuid();
 		const otherAgentRunId = uuid();
-		const otherAgent = await agentRepo.save(
-			agentRepo.create({
-				id: uuid(),
-				name: 'Other Agent',
-				projectId,
-				integrations: [],
-				tools: {},
-			}),
-		);
+		const otherAgent = await createAgent({
+			id: uuid(),
+			name: 'Other Agent',
+			projectId,
+			integrations: [],
+			tools: {},
+		});
 		const childThread = await createThread({
 			id: uuid(),
 			agentId: otherAgent.id,
@@ -1531,7 +1555,7 @@ describe('AgentExecutionRepository', () => {
 				storage,
 				executionService,
 				turns,
-				mock<Telemetry>(),
+				mock<AgentUsageTelemetryService>(),
 				runtimeCache,
 				mock<IntegrationMessageContextService>(),
 				mock<AgentRunTracingService>(),
@@ -1544,6 +1568,7 @@ describe('AgentExecutionRepository', () => {
 				mock<AgentBackgroundJobService>(),
 				mock<AgentsSettingsService>(),
 				mock<AgentSkillRefsService>(),
+				mock<UserRepository>(),
 			);
 			const resume = async (
 				user: User,
@@ -2924,7 +2949,7 @@ describe('AgentExecutionRepository', () => {
 					authorize: async () => true,
 					prepareTurn: vi.fn(),
 				});
-				await agentRepo.ensureInstanceAgent(systemAgentId, 'Test System Agent');
+				await ensureInstanceAgent(systemAgentId, 'Test System Agent');
 				return recordingServices(undefined, undefined, registry);
 			}
 
@@ -2984,7 +3009,7 @@ describe('AgentExecutionRepository', () => {
 
 			it('refuses a system message for an agent without a registered provider', async () => {
 				const services = recordingServices();
-				await agentRepo.ensureInstanceAgent(systemAgentId, 'Test System Agent');
+				await ensureInstanceAgent(systemAgentId, 'Test System Agent');
 
 				await expect(services.queue.enqueue(systemInput(uuid(), 'Hello', 'new'))).rejects.toThrow(
 					'Agent not found',
@@ -2994,7 +3019,7 @@ describe('AgentExecutionRepository', () => {
 			it('refuses a system message without a provider while custom agents are turned off', async () => {
 				const services = recordingServices();
 				await services.settingsService.setEnabled(false);
-				await agentRepo.ensureInstanceAgent(systemAgentId, 'Test System Agent');
+				await ensureInstanceAgent(systemAgentId, 'Test System Agent');
 
 				await expect(services.queue.enqueue(systemInput(uuid(), 'Hello', 'new'))).rejects.toThrow(
 					'Agent not found',
@@ -3112,7 +3137,7 @@ describe('AgentExecutionRepository', () => {
 				authorize: async () => true,
 				prepareTurn: vi.fn(),
 			});
-			await agentRepo.ensureInstanceAgent(systemAgentId, 'Test System Agent');
+			await ensureInstanceAgent(systemAgentId, 'Test System Agent');
 			const services = recordingServices(undefined, undefined, registry);
 			const threadId = uuid();
 			const target = {
@@ -4225,15 +4250,13 @@ describe('AgentExecutionRepository', () => {
 		const owner = await createMember();
 		const other = await createAdmin();
 		const otherProject = await createTeamProject();
-		const otherAgent = await agentRepo.save(
-			agentRepo.create({
-				id: uuid(),
-				name: 'Other agent',
-				projectId,
-				integrations: [],
-				tools: {},
-			}),
-		);
+		const otherAgent = await createAgent({
+			id: uuid(),
+			name: 'Other agent',
+			projectId,
+			integrations: [],
+			tools: {},
+		});
 		const { executionService, txRunner } = recordingServices();
 		const access = { accessScope: 'user' as const, ownerId: owner.id };
 		const { thread } = await txRunner.run(
@@ -4601,6 +4624,56 @@ describe('AgentExecutionRepository', () => {
 			const result = await repository.findFirstSourceByThreadIds([thread.id]);
 
 			expect(result.has(thread.id)).toBe(false);
+		});
+	});
+
+	describe('failExpiredWaitingApprovals', () => {
+		it('keeps earlier tool failures when an approval expires', async () => {
+			const thread = await createThread();
+			const other = await createThread({ sessionNumber: 2 });
+			const toolFailures = {
+				count: 2,
+				latest: { kind: 'tool' as const, name: 'Lookup', message: 'failed', occurredAt: 10 },
+			};
+			const awaiting = await createExecution({
+				threadId: thread.id,
+				status: 'awaiting',
+				failureSummary: toolFailures,
+			});
+			const clean = await createExecution({
+				threadId: other.id,
+				status: 'awaiting',
+				failureSummary: null,
+			});
+			const succeeded = await createExecution({
+				threadId: thread.id,
+				status: 'success',
+				failureSummary: null,
+			});
+
+			await repository.failExpiredWaitingApprovals([thread.id, other.id]);
+
+			const expired = await repository.findOneByOrFail({ id: awaiting.id });
+			expect(expired.status).toBe('error');
+			expect(expired.error).toBe('This approval expired.');
+			expect(expired.failureSummary?.count).toBe(3);
+			expect(expired.failureSummary?.latest).toMatchObject({
+				kind: 'execution',
+				name: null,
+				message: 'This approval expired.',
+			});
+			expect(expired.failureSummary?.latest.occurredAt).toBeGreaterThan(10);
+
+			const firstExpiry = await repository.findOneByOrFail({ id: clean.id });
+			expect(firstExpiry.status).toBe('error');
+			expect(firstExpiry.failureSummary).toMatchObject({
+				count: 1,
+				latest: { kind: 'execution', message: 'This approval expired.' },
+			});
+
+			const untouched = await repository.findOneByOrFail({ id: succeeded.id });
+			expect(untouched.status).toBe('success');
+			expect(untouched.failureSummary).toBeNull();
 		});
 	});
 

@@ -145,7 +145,6 @@ export function extendRuntimeSkillSource(
 
 	const extended: RuntimeSkillSource = {
 		...source,
-		onContext: (usage) => source.onContext?.(usage),
 		registry: mergeRegistry(source.registry),
 		loadSkill: async (skillId) =>
 			addedIds.has(skillId) ? await added.loadSkill(skillId) : await source.loadSkill(skillId),
@@ -460,7 +459,7 @@ function toRegistryEntry(skill: RuntimeSkill): RuntimeSkillRegistryEntry {
 		description: skill.description,
 		hash: hashSkill(skill),
 		linkedFiles: normalizeLinkedFiles(skill.linkedFiles),
-		...(skill.recommendedTools ? { recommendedTools: skill.recommendedTools } : {}),
+		...(skill.recommendedToolGroups ? { recommendedToolGroups: skill.recommendedToolGroups } : {}),
 		...(skill.sourceName ? { sourceName: skill.sourceName } : {}),
 		...(skill.path ? { path: skill.path } : {}),
 		...(skill.sourcePath ? { sourcePath: skill.sourcePath } : {}),
@@ -489,7 +488,7 @@ function hashSkill(skill: RuntimeSkill): string {
 		name: skill.name,
 		description: skill.description,
 		instructions: skill.instructions,
-		recommendedTools: skill.recommendedTools,
+		recommendedToolGroups: skill.recommendedToolGroups,
 		allowedTools: skill.allowedTools,
 		interface: skill.interface,
 		policy: skill.policy,

@@ -422,6 +422,20 @@ describe('ActiveWorkflowTriggers', () => {
 
 				expect(error.level).toBe('warning');
 			});
+
+			it('does not send a trigger activation error caused by an imapflow connect timeout to Sentry', async () => {
+				const triggerError = Object.assign(
+					new Error('Failed to establish connection in required time'),
+					{ code: 'CONNECT_TIMEOUT' },
+				);
+				const reporter = new ErrorReporter(logger, tracing);
+
+				const error = await activationErrorFor({ triggerNodes: [triggerNode], triggerError });
+
+				expect(
+					await reporter.beforeSend({} as ErrorEvent, { originalException: error }),
+				).toBeNull();
+			});
 		});
 
 		describe('should roll back partial activation on failure', () => {

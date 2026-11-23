@@ -1,11 +1,4 @@
-import {
-	CONTEXT_PREFERENCES_CONTROL_VARIANT,
-	CONTEXT_PREFERENCES_ENABLED_VARIANT,
-	CONTEXT_PREFERENCES_FLAG,
-	INSTANCE_ACTIVITY_CONTEXT_FLAG,
-	CREDENTIAL_DESCRIPTIONS_FLAG,
-} from '@n8n/api-types';
-import type { PostHogClient } from '@/posthog';
+import { INSTANCE_ACTIVITY_CONTEXT_FLAG, CREDENTIAL_DESCRIPTIONS_FLAG } from '@n8n/api-types';
 import type { LicenseState, ModuleRegistry } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import { User } from '@n8n/db';
@@ -19,14 +12,21 @@ vi.mock('@n8n/permissions', async (importOriginal) => ({
 
 const hasGlobalScope = vi.mocked(permissions.hasGlobalScope);
 
+/** The role holds every global scope except the ones listed. */
+const denyGlobalScopes = (...denied: string[]) =>
+	hasGlobalScope.mockImplementation((_user, scope) =>
+		[scope].flat().every((s) => !denied.includes(s)),
+	);
+
 import type { McpConfig } from '../mcp.config';
 import type { McpSettingsService } from '../mcp.settings.service';
-import type { UrlService } from '@n8n/backend-services';
+import type { UrlService, PostHogClient } from '@n8n/backend-services';
 
 import { Container } from '@n8n/di';
 
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
-import { SkillsGate } from '@/modules/skills';
+import { SkillsGate, SkillSyncFlagGate } from '@/modules/skills';
+import { AiPreferenceSettingsService } from '@/services/ai-preference-settings.service';
 
 import { ACTIVITY_LOG_TOOLS, INSTANCE_CONTEXT_TOOLS } from '../mcp-scopes';
 import { McpProtectedResource } from '../mcp-protected-resource';
@@ -59,21 +59,32 @@ describe('McpProtectedResource', () => {
 		postHogClient,
 	);
 
+	function mockModuleSettings(overrides: Record<string, Record<string, unknown>>) {
+		const settings: Record<string, Record<string, unknown>> = {
+			mcp: { preferencesEnabled: true },
+			...overrides,
+		};
+		vi.mocked(moduleRegistry.settings.get).mockImplementation((name) => settings[name]);
+	}
+
 	beforeEach(() => {
 		vi.clearAllMocks();
 		postHogClient.getFeatureFlagForInstance.mockResolvedValue(true);
-		postHogClient.getFeatureFlags.mockResolvedValue({
-			[CONTEXT_PREFERENCES_FLAG]: CONTEXT_PREFERENCES_ENABLED_VARIANT,
-		});
+		postHogClient.getFeatureFlags.mockResolvedValue({});
 		mcpConfig.baseUrl = '';
 		moduleRegistry.isActive.mockReturnValue(true);
-		vi.mocked(moduleRegistry.settings.get).mockReturnValue(undefined);
+		mockModuleSettings({});
 		licenseState.isFoldersLicensed.mockReturnValue(true);
 		Container.set(
 			CommunityPackagesConfig,
 			mock<CommunityPackagesConfig>({ enabled: true, verifiedEnabled: true }),
 		);
 		Container.set(SkillsGate, mock<SkillsGate>({ isEnabled: true }));
+		Container.set(SkillSyncFlagGate, mock<SkillSyncFlagGate>({ isAvailable: true }));
+		Container.set(
+			AiPreferenceSettingsService,
+			mock<AiPreferenceSettingsService>({ isEnabled: true }),
+		);
 	});
 
 	describe('getScopeTools', () => {
@@ -87,7 +98,7 @@ describe('McpProtectedResource', () => {
 		});
 
 		it('withholds Agent scopes and tools when Agents is disabled', async () => {
-			vi.mocked(moduleRegistry.settings.get).mockReturnValue({ enabled: false });
+			mockModuleSettings({ agents: { enabled: false } });
 			const scopeTools = await resource.getScopeTools();
 			expect(resource.scopes).not.toContain('agent:read');
 			expect(resource.scopes).not.toContain('agent:write');
@@ -103,8 +114,55 @@ describe('McpProtectedResource', () => {
 			expect(await resource.getScopeTools()).not.toHaveProperty('skill:read');
 		});
 
+		it('lists the skill source tools while Skill Sync is on for the instance', async () => {
+			const scopeTools = await resource.getScopeTools();
+
+			expect(scopeTools['skill:read']).toEqual([
+				'search_n8n_skills',
+				'get_skill',
+				'list_skill_sources',
+			]);
+			expect(scopeTools['skill:write']).toEqual(
+				expect.arrayContaining(['discover_skill_source', 'import_skills_from_source']),
+			);
+		});
+
+		it('withholds the skill source tools while Skill Sync is off for the instance', async () => {
+			Container.set(SkillSyncFlagGate, mock<SkillSyncFlagGate>({ isAvailable: false }));
+
+			const scopeTools = await resource.getScopeTools();
+
+			expect(scopeTools['skill:read']).toEqual(['search_n8n_skills', 'get_skill']);
+			expect(scopeTools['skill:write']).toEqual([
+				'create_skill',
+				'update_skill',
+				'delete_skill',
+				'search_n8n_skills',
+				'get_skill',
+			]);
+		});
+
+		it('withholds preference scopes while the MCP Preferences switch is off', () => {
+			mockModuleSettings({ mcp: { preferencesEnabled: false } });
+
+			expect(resource.scopes).not.toContain('aiPreference:read');
+			expect(resource.scopes).not.toContain('aiPreference:write');
+			expect(resource.scopes).toContain('skill:read');
+		});
+
+		it('withholds preference scopes while the instance preferences switch is off', () => {
+			Container.set(
+				AiPreferenceSettingsService,
+				mock<AiPreferenceSettingsService>({ isEnabled: false }),
+			);
+
+			expect(resource.scopes).not.toContain('aiPreference:read');
+			expect(resource.scopes).not.toContain('aiPreference:write');
+			expect(resource.scopes).toContain('skill:read');
+		});
+
 		it('keeps skill scopes when Agents is disabled', () => {
-			vi.mocked(moduleRegistry.settings.get).mockReturnValue({ enabled: false });
+			mockModuleSettings({ agents: { enabled: false } });
 
 			expect(resource.scopes).not.toContain('agent:read');
 			expect(resource.scopes).toContain('skill:read');
@@ -135,7 +193,7 @@ describe('McpProtectedResource', () => {
 			}
 		});
 
-		it('keeps only node usage in consent when the module is inactive', async () => {
+		it('keeps only the index tools in consent when the module is inactive', async () => {
 			moduleRegistry.isActive.mockImplementation((name) => name !== 'instance-ai');
 
 			const scopeTools = await resource.getScopeTools();
@@ -144,6 +202,7 @@ describe('McpProtectedResource', () => {
 				expect(scopeTools['workflow:read']).not.toContain(tool);
 			}
 			expect(scopeTools['workflow:read']).toContain('get_node_usage');
+			expect(scopeTools['workflow:read']).toContain('get_dependencies');
 			// Unrelated entries under the same scope are untouched.
 			expect(scopeTools['workflow:read']).toContain('search_workflows');
 		});
@@ -215,6 +274,7 @@ describe('McpProtectedResource', () => {
 			expect(scopeTools['project:write']).not.toContain('create_folder');
 			expect(scopeTools['project:write']).not.toContain('update_folder');
 			expect(scopeTools['workflow:write']).not.toContain('move_workflows_to_folder');
+			expect(scopeTools['agent:write']).not.toContain('move_agent');
 			expect(scopeTools['project:write']).not.toContain('search_folders');
 			expect(scopeTools['project:read']).not.toContain('search_folders');
 			expect(scopeTools['project:read']).toContain('search_projects');
@@ -384,7 +444,7 @@ describe('McpProtectedResource', () => {
 			// Otherwise a member could tick a box that records a grant which can
 			// never do anything, because install_community_node is never registered
 			// for them.
-			hasGlobalScope.mockReturnValue(false);
+			denyGlobalScopes('communityPackage:install');
 
 			const scopes = await resource.getGrantableScopes(user);
 
@@ -401,7 +461,7 @@ describe('McpProtectedResource', () => {
 		});
 
 		it('narrows only the install scope, leaving every other scope grantable', async () => {
-			hasGlobalScope.mockReturnValue(false);
+			denyGlobalScopes('communityPackage:install');
 
 			const scopes = await resource.getGrantableScopes(user);
 
@@ -449,68 +509,77 @@ describe('McpProtectedResource', () => {
 				hasGlobalScope.mockReturnValue(true);
 			});
 
-			it('offers both preference scopes to a user in the experiment arm', async () => {
+			it('offers both preference scopes without a flag read', async () => {
 				const scopes = await resource.getGrantableScopes(user);
 
 				expect(scopes).toContain('aiPreference:read');
 				expect(scopes).toContain('aiPreference:write');
-				expect(postHogClient.getFeatureFlags).toHaveBeenCalledWith(user);
+				expect(postHogClient.getFeatureFlags).not.toHaveBeenCalled();
 			});
 
-			it('withholds both preference scopes from a user in the control arm', async () => {
-				// The control arm must not learn the feature exists from the consent
-				// screen, and the tools never register for them, so a tick here would
-				// only record a dead grant.
-				postHogClient.getFeatureFlags.mockResolvedValue({
-					[CONTEXT_PREFERENCES_FLAG]: CONTEXT_PREFERENCES_CONTROL_VARIANT,
-				});
+			it('keeps the preference scopes when the install scope is narrowed', async () => {
+				denyGlobalScopes('communityPackage:install');
 
 				const scopes = await resource.getGrantableScopes(user);
 
-				expect(scopes).not.toContain('aiPreference:read');
-				expect(scopes).not.toContain('aiPreference:write');
-				expect(scopes).toEqual(resource.scopes.filter((s) => !s.startsWith('aiPreference:')));
+				expect(scopes).toEqual(resource.scopes.filter((s) => s !== 'communityPackage:install'));
 			});
 
-			it('withholds the preference scopes when the flag is not the variant string', async () => {
-				postHogClient.getFeatureFlags.mockResolvedValue({ [CONTEXT_PREFERENCES_FLAG]: true });
-
-				const scopes = await resource.getGrantableScopes(user);
-
-				expect(scopes).not.toContain('aiPreference:read');
-				expect(scopes).not.toContain('aiPreference:write');
-			});
-
-			it('withholds the preference scopes when the flags cannot be read', async () => {
-				// Registration treats an unreadable flag as off; consent must not
-				// offer a scope the server will then refuse to honour.
-				postHogClient.getFeatureFlags.mockRejectedValue(new Error('Flags unavailable'));
-
-				const scopes = await resource.getGrantableScopes(user);
-
-				expect(scopes).not.toContain('aiPreference:read');
-				expect(scopes).not.toContain('aiPreference:write');
-				expect(scopes).toContain('workflow:read');
-			});
-
-			it('narrows the preference and install scopes independently', async () => {
-				hasGlobalScope.mockReturnValue(false);
-				postHogClient.getFeatureFlags.mockResolvedValue({
-					[CONTEXT_PREFERENCES_FLAG]: CONTEXT_PREFERENCES_CONTROL_VARIANT,
-				});
-
-				const scopes = await resource.getGrantableScopes(user);
-
-				expect(scopes).toEqual(
-					resource.scopes.filter(
-						(s) => s !== 'communityPackage:install' && !s.startsWith('aiPreference:'),
-					),
-				);
-			});
-
-			it('still advertises the preference scopes in discovery, which is unauthenticated', () => {
+			it('advertises the preference scopes in discovery, which is unauthenticated', () => {
 				expect(resource.scopes).toContain('aiPreference:read');
 				expect(resource.scopes).toContain('aiPreference:write');
+			});
+		});
+
+		describe('migration report scopes', () => {
+			const READ_TOOLS = ['get_migration_report', 'get_migration_findings'];
+			const ALL_TOOLS = [...READ_TOOLS, 'migrate_workflow', 'set_migration_finding_status'];
+
+			it('offers both to a user whose role holds both permissions', async () => {
+				hasGlobalScope.mockReturnValue(true);
+
+				const scopes = await resource.getGrantableScopes(user);
+
+				expect(scopes).toContain('breakingChanges:list');
+				expect(scopes).toContain('breakingChanges:migrate');
+			});
+
+			it('offers both to a user who can read the report, as the REST routes do', async () => {
+				denyGlobalScopes('breakingChanges:migrate');
+
+				const scopes = await resource.getGrantableScopes(user);
+
+				expect(scopes).toContain('breakingChanges:list');
+				expect(scopes).toContain('breakingChanges:migrate');
+			});
+
+			it('offers neither to a user who cannot read the report', async () => {
+				denyGlobalScopes('breakingChanges:list');
+
+				const scopes = await resource.getGrantableScopes(user);
+
+				expect(scopes).not.toContain('breakingChanges:list');
+				expect(scopes).not.toContain('breakingChanges:migrate');
+				expect(hasGlobalScope).toHaveBeenCalledWith(user, 'breakingChanges:list');
+			});
+
+			it('drops both everywhere when the breaking-changes module is inactive', async () => {
+				hasGlobalScope.mockReturnValue(true);
+				moduleRegistry.isActive.mockImplementation((name) => name !== 'breaking-changes');
+
+				const scopeTools = await resource.getScopeTools();
+				for (const scope of ['breakingChanges:list', 'breakingChanges:migrate']) {
+					expect(resource.scopes).not.toContain(scope);
+					expect(await resource.getGrantableScopes(user)).not.toContain(scope);
+					expect(scopeTools).not.toHaveProperty([scope]);
+				}
+			});
+
+			it('lists the tools of each on the consent screen while the module is active', async () => {
+				expect(await resource.getScopeTools()).toMatchObject({
+					'breakingChanges:list': READ_TOOLS,
+					'breakingChanges:migrate': ALL_TOOLS,
+				});
 			});
 		});
 	});

@@ -1,4 +1,4 @@
-import { LicenseState } from '@n8n/backend-common';
+import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
 import {
 	linkUserToProject,
 	createTeamProject,
@@ -6,7 +6,9 @@ import {
 	createWorkflow,
 	getPersonalProject,
 	testDb,
+	testModules,
 } from '@n8n/backend-test-utils';
+import { ExecutionLimitsService } from '@n8n/backend-module-execution-limits';
 import {
 	ProjectRelationRepository,
 	ProjectRelation,
@@ -24,6 +26,8 @@ import { cleanupRolesAndScopes, createCustomRoleWithScopeSlugs } from './shared/
 import { createOwner, createUser } from './shared/db/users';
 
 import { License } from '@/license';
+import { packagedModules } from '@/modules/modules.manifest';
+import { userHasScopes } from '@/permissions.ee/check-access';
 import { ProjectService } from '@/services/project.service.ee';
 
 describe('ProjectService', () => {
@@ -31,6 +35,7 @@ describe('ProjectService', () => {
 	let sharedWorkflowRepository: SharedWorkflowRepository;
 
 	beforeAll(async () => {
+		await testModules.loadModules(['execution-limits'], packagedModules);
 		await testDb.init();
 
 		projectService = Container.get(ProjectService);
@@ -40,6 +45,9 @@ describe('ProjectService', () => {
 		license.mock(Container.get(License));
 		license.mockLicenseState(Container.get(LicenseState));
 		license.enable('feat:projectRole:editor');
+		license.setQuota('quota:maxTeamProjects', -1);
+		license.enable('feat:executionLimits');
+		await Container.get(ModuleRegistry).initModules('main', ['execution-limits']);
 	});
 
 	afterEach(async () => {
@@ -49,12 +57,28 @@ describe('ProjectService', () => {
 			'ProjectRelation',
 			'WorkflowEntity',
 			'SharedWorkflow',
+			'Settings',
 		]);
 	});
 
 	afterAll(async () => {
 		await cleanupRolesAndScopes();
 		await testDb.terminate();
+	});
+
+	describe('createTeamProject', () => {
+		it('gives the new project the default execution limit', async () => {
+			const executionLimitsService = Container.get(ExecutionLimitsService);
+			await executionLimitsService.updateSettings({ defaultProjectMaxExecutions: 50 }, null);
+
+			const project = await projectService.createTeamProject(await createOwner(), {
+				name: 'Team',
+			});
+
+			expect(await executionLimitsService.getProjectLimits([project.id])).toEqual([
+				{ projectId: project.id, maxExecutions: 50 },
+			]);
+		});
 	});
 
 	describe('project reads', () => {
@@ -225,9 +249,11 @@ describe('ProjectService', () => {
 
 			// ACT
 			// add user again
-			await projectService.addUsersToProject(user, project.id, [
-				{ userId: user.id, role: 'project:admin' },
-			]);
+			await projectService.addUsersToProject({
+				user,
+				projectId: project.id,
+				relations: [{ userId: user.id, role: 'project:admin' }],
+			});
 
 			// ASSERT
 			const relations = await getAllProjectRelations({ projectId: project.id });
@@ -246,9 +272,11 @@ describe('ProjectService', () => {
 
 			// ACT
 			// add user again
-			await projectService.addUsersToProject(user, project.id, [
-				{ userId: user.id, role: 'project:editor' },
-			]);
+			await projectService.addUsersToProject({
+				user,
+				projectId: project.id,
+				relations: [{ userId: user.id, role: 'project:editor' }],
+			});
 
 			// ASSERT
 			const relations = await getAllProjectRelations({ projectId: project.id });
@@ -469,6 +497,40 @@ describe('ProjectService', () => {
 			expect(relationStatement.sql).not.toMatch(/role_scope/);
 			expect(await rowsMaterialized(relationStatement)).toBe(4);
 			expect(roleStatement.sql).toMatch(/role_scope/);
+		});
+	});
+
+	describe('with a service account as the caller', () => {
+		test('a service account with project:admin manages the members of its project', async () => {
+			const serviceAccount = await createUser({ kind: 'service' });
+			const person = await createUser();
+			const project = await createTeamProject('Team', await createOwner());
+			await linkUserToProject(serviceAccount, project, 'project:admin');
+
+			// The controller gates these calls with this scope.
+			expect(
+				await userHasScopes(serviceAccount, ['project:manageMembers'], false, {
+					projectId: project.id,
+				}),
+			).toBe(true);
+
+			await projectService.addUsersToProject({
+				user: serviceAccount,
+				projectId: project.id,
+				relations: [{ userId: person.id, role: 'project:editor' }],
+			});
+			const added = await Container.get(ProjectRelationRepository).findOne({
+				where: { projectId: project.id, userId: person.id },
+				relations: { role: true },
+			});
+			expect(added?.role.slug).toBe('project:editor');
+
+			await projectService.deleteUserFromProject(serviceAccount, project.id, person.id);
+			const removed = await Container.get(ProjectRelationRepository).findOneBy({
+				projectId: project.id,
+				userId: person.id,
+			});
+			expect(removed).toBeNull();
 		});
 	});
 });

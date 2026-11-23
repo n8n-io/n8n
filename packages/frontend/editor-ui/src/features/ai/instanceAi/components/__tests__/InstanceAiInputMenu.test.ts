@@ -1,13 +1,15 @@
 import userEvent from '@testing-library/user-event';
-import { fireEvent, waitFor } from '@testing-library/vue';
+import { waitFor } from '@testing-library/vue';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 import { createComponentRenderer } from '@/__tests__/render';
+import { getTooltip } from '@/__tests__/utils';
 import InstanceAiInputMenu from '../InstanceAiInputMenu.vue';
 
-const { action, track } = vi.hoisted(() => ({
+const { action, refreshSkills, track } = vi.hoisted(() => ({
 	action: vi.fn(),
+	refreshSkills: vi.fn(),
 	track: vi.fn(),
 }));
 
@@ -22,6 +24,18 @@ vi.mock('../../composables/useInstanceAiInputMenuItems', async () => {
 		useInstanceAiInputMenuItems: (_attachFiles: () => void) => ({
 			menuItems: ref([{ id: 'action', label: 'Action', data: { action } }]),
 			disconnectedConnectionCount: ref(0),
+			refreshSkills,
+		}),
+	};
+});
+
+vi.mock('../../composables/useLocalBrowserCoachmark', async () => {
+	const { ref } = await import('vue');
+
+	return {
+		useLocalBrowserCoachmark: () => ({
+			shouldShowCoachmark: ref(false),
+			onDismissCoachmark: vi.fn(),
 		}),
 	};
 });
@@ -61,6 +75,21 @@ describe('InstanceAiInputMenu', () => {
 		expect(action).toHaveBeenCalledOnce();
 	});
 
+	it('refreshes skills each time the menu opens', async () => {
+		const { getByRole } = renderComponent();
+		const trigger = getByRole('button', { name: /Add .*files/ });
+		expect(refreshSkills).not.toHaveBeenCalled();
+
+		await userEvent.click(trigger);
+		expect(refreshSkills).toHaveBeenCalledOnce();
+
+		await userEvent.click(getByRole('menuitem', { name: 'Action' }));
+		expect(refreshSkills).toHaveBeenCalledOnce();
+
+		await userEvent.click(trigger);
+		expect(refreshSkills).toHaveBeenCalledTimes(2);
+	});
+
 	it('disables both the trigger and menu interaction', async () => {
 		const { getByRole, queryByRole } = renderComponent({ props: { disabled: true } });
 		const trigger = getByRole('button', { name: /Add .*files/ });
@@ -71,20 +100,41 @@ describe('InstanceAiInputMenu', () => {
 		expect(action).not.toHaveBeenCalled();
 	});
 
-	it('explains the streaming restriction and restores the normal label afterward', async () => {
-		const { getByRole, getByText, rerender } = renderComponent({
+	it('closes an open menu when it becomes disabled', async () => {
+		const { getByRole, queryByRole, rerender } = renderComponent();
+
+		await userEvent.click(getByRole('button', { name: /Add .*files/ }));
+		expect(getByRole('menuitem', { name: 'Action' })).toBeInTheDocument();
+
+		await rerender({ disabled: true });
+
+		await waitFor(() =>
+			expect(queryByRole('menuitem', { name: 'Action' })).not.toBeInTheDocument(),
+		);
+	});
+
+	it('explains the streaming restriction on focus and blocks menu activation', async () => {
+		const user = userEvent.setup();
+		const { getByRole, queryByRole, rerender } = renderComponent({
 			props: { disabled: true, isStreaming: true },
 		});
-		const trigger = getByRole('button', {
-			name: 'Stop the response to add context with connectors, files, and more',
-		});
-		expect(trigger).toBeDisabled();
-		await fireEvent.pointerMove(trigger.parentElement!, { pointerType: 'mouse' });
+		const trigger = getByRole('button', { name: /Add .*files/ });
+		expect(trigger).toHaveAttribute('aria-disabled', 'true');
+		await user.tab();
+		expect(trigger).toHaveFocus();
 		await waitFor(() => {
-			expect(
-				getByText('Stop the response to add context with connectors, files, and more'),
-			).toBeVisible();
+			expect(getTooltip()).toHaveTextContent(
+				'Stop the response to add context with connectors, files, and more',
+			);
 		});
+		expect(trigger).toHaveAccessibleDescription(
+			'Stop the response to add context with connectors, files, and more',
+		);
+		await user.keyboard('{Enter} ');
+		await user.click(trigger);
+		expect(queryByRole('menuitem', { name: 'Action' })).not.toBeInTheDocument();
+		expect(action).not.toHaveBeenCalled();
+		expect(track).not.toHaveBeenCalled();
 
 		await rerender({ disabled: false, isStreaming: false });
 		expect(getByRole('button', { name: /Add .*files/ })).toBeEnabled();

@@ -30,8 +30,8 @@ export const importPackageRequestFieldDocs = {
 			'was retained. ' +
 			'Otherwise, also when the package has no completeness flag, it is listed under ' +
 			'`credentials.incomplete` and blocks workflow publishing with `incomplete-credential`. ' +
-			'`create-with-values` requires the `credential:create` scope when the import creates ' +
-			'a credential. ' +
+			'`create-stub` and `create-with-values` require the `credential:create` scope when the ' +
+			'import creates a credential. ' +
 			'`must-preexist` requires every referenced credential to already exist.',
 	},
 	credentialConflictPolicy: {
@@ -115,8 +115,9 @@ export const importPackageRequestFieldDocs = {
 			"those details with the package's; a detail the package omits is left as it is, not " +
 			'cleared. `fail` rejects the import before anything is written, with one `project-conflict` ' +
 			'issue per existing project. A package project id belonging to a personal project, or to ' +
-			'a team project the caller cannot update, always rejects the import. Ignored for workflow ' +
-			'packages.',
+			'a team project the caller cannot update, always rejects the import. A new project needs ' +
+			'the `project:create` scope. `overwrite` needs `project:update` only when it changes a ' +
+			'detail. Ignored for workflow packages.',
 	},
 	folderConflictPolicy: {
 		description:
@@ -130,10 +131,12 @@ export const importPackageRequestFieldDocs = {
 			'then removed too, but only once nothing is left inside them. Removals are listed under ' +
 			'`removedWorkflows` and `removedFolders`; see `overwriteDeletionPolicy`. A folder whose ' +
 			'id sits under a different parent, or belongs to another project, always blocks the ' +
-			'import. `overwrite` is project-packages-only, needs the `workflow:delete` and ' +
-			'`folder:delete` scopes, is rejected against a `projectConflictPolicy` other than ' +
-			'`overwrite`, and blocks up front if the caller cannot delete something it would remove. ' +
-			'Folders need the `folder:create` scope and a folders-enabled licence.',
+			'import. `overwrite` is project-packages-only. When it removes a workflow, it needs the ' +
+			'`workflow:delete` scope. When it removes a folder, it needs `folder:delete`. ' +
+			'It is rejected against a `projectConflictPolicy` other than `overwrite`, and blocks ' +
+			'up front if the caller cannot delete something it would remove. ' +
+			'The import needs the `folder:create` scope only when it creates a folder, and a ' +
+			'folders-enabled license only when it creates, changes or removes a folder.',
 	},
 	overwriteDeletionPolicy: {
 		description:
@@ -157,7 +160,8 @@ export const importPackageRequestFieldDocs = {
 		description:
 			'Controls what happens when a referenced data table has no match in the target ' +
 			'project. `create` (default) creates it from the package schema, keeping the source ' +
-			'id, with no rows; requires the `dataTable:create` scope. `must-preexist` rejects the ' +
+			'id, with no rows. It requires the `dataTable:create` scope only when it creates a ' +
+			'table. A table that already exists needs no scope. `must-preexist` rejects the ' +
 			'import. `do-nothing` skips creation of missing tables. Under the `keep-existing`, ' +
 			'`fail`, and `overwrite-non-destructive` schema conflict policies, matched tables are ' +
 			'still validated for schema compatibility and can still block the import. The import ' +

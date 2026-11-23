@@ -18,6 +18,7 @@ import {
 import { UUID_V7_PATTERN } from '@n8n/constants';
 import { EngineConfig, WorkflowsConfig } from '@n8n/config';
 import type {
+	Person,
 	User,
 	ListQueryDb,
 	WorkflowFolderUnionFull,
@@ -74,9 +75,9 @@ import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 import { makeWorkflow, MOCK_PINDATA } from '../shared/utils/';
 
-let owner: User;
-let member: User;
-let anotherMember: User;
+let owner: Person;
+let member: Person;
+let anotherMember: Person;
 
 let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
@@ -409,6 +410,32 @@ describe('POST /workflows', () => {
 		expect(historyVersion).not.toBeNull();
 		expect(historyVersion!.connections).toEqual(payload.connections);
 		expect(historyVersion!.nodes).toEqual(payload.nodes);
+	});
+
+	test('should store the engine in the first workflow history version', async () => {
+		const payload = {
+			name: 'testing engine',
+			nodes: [
+				{
+					id: 'uuid-1234',
+					parameters: {},
+					name: 'Start',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [240, 300],
+				},
+			],
+			connections: {},
+			settings: { engineType: 'v2', availableInMCP: true },
+		};
+
+		const response = await authOwnerAgent.post('/workflows').send(payload);
+
+		expect(response.statusCode).toBe(200);
+		const historyVersion = await workflowHistoryRepository.findOneOrFail({
+			where: { workflowId: response.body.data.id },
+		});
+		expect(historyVersion.settings).toEqual({ engineType: 'v2' });
 	});
 
 	test('should set autosaved: true in workflow history when autosaved parameter is sent', async () => {
@@ -1143,6 +1170,32 @@ describe('default engine', () => {
 });
 
 describe('GET /workflows/:workflowId', () => {
+	describe('home project', () => {
+		afterEach(() => {
+			testServer.license.enable('feat:sharing');
+		});
+
+		test.each([
+			{ sharing: 'enabled', setLicense: () => testServer.license.enable('feat:sharing') },
+			{ sharing: 'disabled', setLicense: () => testServer.license.disable('feat:sharing') },
+		])(
+			'should return homeProject and no shared relation when sharing license is $sharing',
+			async ({ setLicense }) => {
+				setLicense();
+
+				const ownerProject = await projectRepository.getPersonalProjectForUserOrFail(owner.id);
+				const workflow = await createWorkflow({}, owner);
+
+				const response = await authOwnerAgent.get(`/workflows/${workflow.id}`).expect(200);
+
+				const { data } = response.body as { data: Record<string, unknown> };
+				expect(data.homeProject).toMatchObject({ id: ownerProject.id, type: 'personal' });
+				expect(data.sharedWithProjects).toEqual([]);
+				expect(data).not.toHaveProperty('shared');
+			},
+		);
+	});
+
 	test('should return pin data', async () => {
 		const workflow = makeWorkflow({ withPinData: true });
 		const workflowCreationResponse = await authOwnerAgent.post('/workflows').send(workflow);
@@ -3897,6 +3950,7 @@ describe('PATCH /workflows/:workflowId', () => {
 		expect(activeWorkflowManagerLike.remove).toHaveBeenCalledWith(workflow.id);
 		expect(activeWorkflowManagerLike.add).toHaveBeenCalledWith(workflow.id, 'update', undefined, {
 			actor: expect.objectContaining({ kind: 'user' }),
+			publisherId: owner.id,
 		});
 	});
 
@@ -4412,6 +4466,7 @@ describe('POST /workflows/:workflowId/activate', () => {
 		expect(response.statusCode).toBe(200);
 		expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'activate', undefined, {
 			actor: expect.objectContaining({ kind: 'user' }),
+			publisherId: owner.id,
 		});
 
 		const { data } = response.body;
@@ -4549,6 +4604,7 @@ describe('POST /workflows/:workflowId/activate', () => {
 		expect(response.statusCode).toBe(200);
 		expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'activate', undefined, {
 			actor: expect.objectContaining({ kind: 'user' }),
+			publisherId: owner.id,
 		});
 
 		const { data } = response.body;
@@ -4572,6 +4628,7 @@ describe('POST /workflows/:workflowId/activate', () => {
 		expect(response.statusCode).toBe(200);
 		expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'activate', undefined, {
 			actor: expect.objectContaining({ kind: 'user' }),
+			publisherId: owner.id,
 		});
 
 		const { data } = response.body;
@@ -4598,6 +4655,7 @@ describe('POST /workflows/:workflowId/activate', () => {
 		expect(response.statusCode).toBe(200);
 		expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'activate', undefined, {
 			actor: expect.objectContaining({ kind: 'user' }),
+			publisherId: owner.id,
 		});
 
 		const { data } = response.body;
@@ -4725,6 +4783,7 @@ describe('POST /workflows/:workflowId/activate', () => {
 		expect(activeWorkflowManagerLike.remove).toBeCalledWith(workflow.id);
 		expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'update', undefined, {
 			actor: expect.objectContaining({ kind: 'user' }),
+			publisherId: owner.id,
 		});
 	});
 
@@ -4739,6 +4798,7 @@ describe('POST /workflows/:workflowId/activate', () => {
 		expect(activeWorkflowManagerLike.remove).not.toBeCalledWith(workflow.id);
 		expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'activate', undefined, {
 			actor: expect.objectContaining({ kind: 'user' }),
+			publisherId: owner.id,
 		});
 		expect(addRecordSpy).toBeCalledWith({
 			event: 'activated',
@@ -5247,8 +5307,9 @@ describe('POST /workflows/:workflowId/run', () => {
 				searchExecutions: vi.fn().mockResolvedValue({ items: [], nextCursor: null, total: 0 }),
 				findLatestExecution: vi.fn(),
 				cancelExecution: vi.fn(),
-				locateResumeTarget: vi.fn(),
+				locateResume: vi.fn(),
 				resolveStep: vi.fn(),
+				readApprovalCallback: vi.fn(),
 			});
 		});
 
@@ -5312,6 +5373,29 @@ describe('POST /workflows/:workflowId/run', () => {
 
 			const executions = await getAllExecutions();
 			expect(executions.filter((e) => e.workflowId === dbWorkflow.id)).toHaveLength(0);
+		});
+
+		test('should run on the draft engine while the published version runs on v1', async () => {
+			const isActiveSpy = vi
+				.spyOn(Container.get(ModuleRegistry), 'isActive')
+				.mockImplementation((name) => name === 'engine-v2');
+			onTestFinished(() => isActiveSpy.mockRestore());
+			const dbWorkflow = await createV2Workflow();
+			const publishedVersion = await createWorkflowHistoryItem(dbWorkflow.id, {
+				nodes: dbWorkflow.nodes,
+				connections: dbWorkflow.connections,
+				settings: { engineType: 'v1' },
+			});
+			await setActiveVersion(dbWorkflow.id, publishedVersion.versionId);
+
+			const response = await authOwnerAgent
+				.post(`/workflows/${dbWorkflow.id}/run`)
+				.send({ triggerToStartFrom: { name: TRIGGER_NAME } });
+
+			expect(response.statusCode).toBe(200);
+			expect(startExecution).toHaveBeenCalledWith(
+				objectContaining({ workflowId: dbWorkflow.id, mode: 'manual' }),
+			);
 		});
 
 		test('should seed a pinned node and reuse the trigger run data for a partial execution', async () => {
@@ -5461,8 +5545,9 @@ describe('POST /workflows/:workflowId/run', () => {
 				searchExecutions: vi.fn().mockResolvedValue({ items: [], nextCursor: null, total: 0 }),
 				findLatestExecution: vi.fn(),
 				cancelExecution: vi.fn(),
-				locateResumeTarget: vi.fn(),
+				locateResume: vi.fn(),
 				resolveStep: vi.fn(),
+				readApprovalCallback: vi.fn(),
 			});
 		});
 

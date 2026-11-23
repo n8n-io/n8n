@@ -9,8 +9,7 @@ import { lazyImport } from '@n8n/utils/lazy-import';
 import z from 'zod';
 
 import { writeAssistantPreference } from '@/services/ai-preference-write';
-import type { AiPreferenceService, UrlService } from '@n8n/backend-services';
-import type { Telemetry } from '@/telemetry';
+import type { AiPreferenceService, UrlService, TelemetryProxy } from '@n8n/backend-services';
 
 import {
 	MCP_GET_USER_PREFERENCES_TOOL_NAME,
@@ -120,7 +119,7 @@ function supportsFormElicitation(capabilities: unknown): boolean {
 export const createSaveUserPreferenceTool = (
 	user: User,
 	aiPreferenceService: AiPreferenceService,
-	telemetry: Telemetry,
+	telemetry: TelemetryProxy,
 	urlService: UrlService,
 	logger: Logger,
 ): ToolDefinition<typeof inputSchema, ToolHandlerResult> => ({

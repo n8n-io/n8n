@@ -8,6 +8,7 @@ import type {
 	AgentChatListItem,
 	AgentChatListResponse,
 	AgentChatMessagesResponse,
+	AgentSessionFilesResponse,
 	SystemAgentThreadSummary,
 	SystemAgentThreadsResponse,
 	AgentChatQueueResponse,
@@ -19,11 +20,11 @@ import type {
 	AgentConfigResponse,
 	AgentConfigValidationResponse,
 	AgentDisconnectIntegrationResponse,
-	AgentFileDto,
 	AgentMemoryEntriesPageDto,
 	AgentMemorySourceFacetsDto,
 	AgentIntegrationConnectResponse,
 	AgentIntegrationStatusResponse,
+	AgentWebhookUrlResponse,
 	AgentWhatsAppVerifyTokenResponse,
 	AgentJsonVectorStoreConfig,
 	AgentN8nChatAgentDetails,
@@ -40,6 +41,7 @@ import type {
 	AgentProviderModelsResponse,
 	AgentVersionListItemDto,
 	UpdateAgentVersionDto,
+	PublishAgentDto,
 	AgentPublishHistoryItemDto,
 	ChatIntegrationDescriptor,
 	SkillDetail,
@@ -56,7 +58,8 @@ import type {
 import { getFullApiResponse, makeRestApiRequest, request } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import { isRecord } from '@n8n/utils/is-record';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
+import type { AgentListItem } from '../agent.types';
 import type {
 	AgentCreationResource,
 	AgentResource,
@@ -121,13 +124,16 @@ export type ListAgentsSortBy =
 	| 'updatedAt:desc';
 
 export type ListAgentsOptions = {
-	skip?: number;
-	take?: number;
+	offset?: number;
+	limit?: number;
 	sortBy?: ListAgentsSortBy;
 	filter?: {
 		query?: string;
 		ids?: string[];
 		availableInMCP?: boolean;
+		includeArchived?: boolean;
+		parentFolderId?: string | null;
+		includeDescendants?: boolean;
 	};
 };
 
@@ -137,8 +143,8 @@ export const listAgentsPage = async (
 	context: IRestApiContext,
 	projectId: string,
 	options: ListAgentsOptions,
-): Promise<{ count: number; data: AgentResource[] }> => {
-	return await getFullApiResponse<AgentResource[]>(
+): Promise<{ count: number; data: AgentListItem[] }> => {
+	return await getFullApiResponse<AgentListItem[]>(
 		context,
 		'GET',
 		`/projects/${projectId}/agents/v2`,
@@ -149,8 +155,8 @@ export const listAgentsPage = async (
 export const listAgentsPageGlobal = async (
 	context: IRestApiContext,
 	options: ListAgentsOptions,
-): Promise<{ count: number; data: AgentResource[] }> => {
-	return await getFullApiResponse<AgentResource[]>(context, 'GET', '/agents/v2', options);
+): Promise<{ count: number; data: AgentListItem[] }> => {
+	return await getFullApiResponse<AgentListItem[]>(context, 'GET', '/agents/v2', options);
 };
 
 /** One agent as the n8n Chat page needs it (see the backend route's doc for why `getAgent` won't do). */
@@ -170,8 +176,8 @@ export type N8nChatAgentsSortBy = 'usage:desc';
 
 export type ListN8nChatAgentsOptions = {
 	query?: string;
-	skip?: number;
-	take?: number;
+	offset?: number;
+	limit?: number;
 	sortBy?: N8nChatAgentsSortBy;
 };
 
@@ -184,12 +190,12 @@ export const listN8nChatAgents = async (
 	context: IRestApiContext,
 	options: ListN8nChatAgentsOptions,
 ): Promise<AgentChatListResponse> => {
-	const { query, skip, take, sortBy } = options;
+	const { query, offset, limit, sortBy } = options;
 	const trimmedQuery = query?.trim();
 	return await getFullApiResponse<AgentChatListItem[]>(context, 'GET', '/agents/v2', {
 		filter: { availableInChat: true, ...(trimmedQuery ? { query: trimmedQuery } : {}) },
-		skip,
-		take,
+		offset,
+		limit,
 		sortBy,
 	});
 };
@@ -270,14 +276,14 @@ export const deleteN8nChatThread = async (
 export const listAgents = async (
 	context: IRestApiContext,
 	projectId: string,
-): Promise<AgentResource[]> => {
-	const agents: AgentResource[] = [];
+): Promise<AgentListItem[]> => {
+	const agents: AgentListItem[] = [];
 	let total = 0;
 
 	do {
 		const { count, data } = await listAgentsPage(context, projectId, {
-			skip: agents.length,
-			take: AGENTS_LIST_PAGE_SIZE,
+			offset: agents.length,
+			limit: AGENTS_LIST_PAGE_SIZE,
 		});
 		agents.push(...data);
 		total = count;
@@ -309,6 +315,7 @@ export const createAgent = async (
 	 *  `skills` to seed a full agent in a duplicate operation). */
 	options: {
 		id?: string;
+		parentFolderId?: string | null;
 		config?: AgentJsonConfig;
 		schema?: AgentJsonConfig;
 		tools?: Record<string, CustomToolEntry>;
@@ -321,6 +328,7 @@ export const createAgent = async (
 		`/projects/${projectId}/agents/v2`,
 		{
 			name,
+			...(options.parentFolderId !== undefined ? { parentFolderId: options.parentFolderId } : {}),
 			...(options.config ? { config: options.config } : {}),
 			...(options.id ? { id: options.id } : {}),
 			...(options.schema ? { schema: options.schema } : {}),
@@ -336,24 +344,36 @@ export const duplicateAgent = async (
 	agentId: string,
 	name: string,
 ): Promise<AgentResource> => {
-	const [agent, configResponse] = await Promise.all([
-		getAgent(context, projectId, agentId),
-		getAgentConfig(context, projectId, agentId),
-	]);
+	const agent = await getAgent(context, projectId, agentId);
+	if (!agent.config) {
+		throw new UnexpectedError('Agent has no JSON config yet.');
+	}
 	// Task bodies live in a separate table we don't copy, so drop the refs —
 	// otherwise the clone carries dangling task ids and cannot be published.
 	// Channels are copied without their credential: the claim check ignores
 	// publish state, so keeping the source's credentialId would 409 at publish
 	// time (and break the source's channel). Blank to drafts so the builder
 	// opens the copy with a "connect a channel" chip instead.
-	const { tasks: _tasks, integrations: sourceIntegrations, ...rest } = configResponse.config;
+	const { tasks: _tasks, integrations: sourceIntegrations, ...rest } = agent.config;
 	const draftIntegrations = (sourceIntegrations ?? []).map((integration) =>
 		integration.type === 'n8n_chat' ? integration : { ...integration, credentialId: '' },
 	);
 	return await createAgent(context, projectId, name, {
+		parentFolderId: agent.parentFolderId,
 		schema: { ...rest, name, integrations: draftIntegrations },
 		tools: agent.tools,
 		skills: agent.skills,
+	});
+};
+
+export const moveAgent = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	parentFolderId: string | null,
+): Promise<void> => {
+	await makeRestApiRequest(context, 'PATCH', `/projects/${projectId}/agents/v2/${agentId}/move`, {
+		parentFolderId,
 	});
 };
 
@@ -363,50 +383,6 @@ export const deleteAgent = async (
 	agentId: string,
 ): Promise<void> => {
 	await makeRestApiRequest(context, 'DELETE', `/projects/${projectId}/agents/v2/${agentId}`);
-};
-
-export const listAgentFiles = async (
-	context: IRestApiContext,
-	projectId: string,
-	agentId: string,
-): Promise<AgentFileDto[]> => {
-	return await makeRestApiRequest<AgentFileDto[]>(
-		context,
-		'GET',
-		`/projects/${projectId}/agents/v2/${agentId}/files`,
-	);
-};
-
-export const uploadAgentFiles = async (
-	context: IRestApiContext,
-	projectId: string,
-	agentId: string,
-	files: File[],
-): Promise<AgentFileDto[]> => {
-	const formData = new FormData();
-	for (const file of files) {
-		formData.append('files', file);
-	}
-
-	return await makeRestApiRequest<AgentFileDto[]>(
-		context,
-		'POST',
-		`/projects/${projectId}/agents/v2/${agentId}/files`,
-		formData,
-	);
-};
-
-export const deleteAgentFile = async (
-	context: IRestApiContext,
-	projectId: string,
-	agentId: string,
-	fileId: string,
-): Promise<void> => {
-	await makeRestApiRequest(
-		context,
-		'DELETE',
-		`/projects/${projectId}/agents/v2/${agentId}/files/${fileId}`,
-	);
 };
 
 export type AgentMemorySourceSelection = Pick<
@@ -466,18 +442,6 @@ export const deleteAgentMemoryCapture = async (
 	);
 };
 
-export const warmAgentKnowledgeSandbox = async (
-	context: IRestApiContext,
-	projectId: string,
-	agentId: string,
-): Promise<{ accepted: true }> => {
-	return await makeRestApiRequest<{ accepted: true }>(
-		context,
-		'POST',
-		`/projects/${projectId}/agents/v2/${agentId}/sandbox/knowledge/warmup`,
-	);
-};
-
 /** `replaces` swaps a same-type channel in the same request instead of a follow-up disconnect. */
 export interface ConnectIntegrationOptions {
 	replaces?: { credentialId: string };
@@ -533,6 +497,18 @@ export const getIntegrationStatus = async (
 		context,
 		'GET',
 		`/projects/${projectId}/agents/v2/${agentId}/integrations/status`,
+	);
+};
+
+export const getAgentWebhookUrl = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+): Promise<AgentWebhookUrlResponse> => {
+	return await makeRestApiRequest<AgentWebhookUrlResponse>(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2/${agentId}/integrations/webhook/url`,
 	);
 };
 
@@ -656,12 +632,13 @@ export const publishAgent = async (
 	agentId: string,
 	versionId?: string,
 	metadata?: UpdateAgentVersionDto,
+	draft?: PublishAgentDto['draft'],
 ): Promise<AgentResource> => {
 	return await makeRestApiRequest<AgentResource>(
 		context,
 		'POST',
 		`/projects/${projectId}/agents/v2/${agentId}/publish`,
-		{ versionId, ...metadata },
+		{ versionId, ...metadata, draft },
 	);
 };
 
@@ -674,6 +651,30 @@ export const unpublishAgent = async (
 		context,
 		'POST',
 		`/projects/${projectId}/agents/v2/${agentId}/unpublish`,
+	);
+};
+
+export const archiveAgent = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+): Promise<AgentResource> => {
+	return await makeRestApiRequest<AgentResource>(
+		context,
+		'POST',
+		`/projects/${projectId}/agents/v2/${agentId}/archive`,
+	);
+};
+
+export const unarchiveAgent = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+): Promise<AgentResource> => {
+	return await makeRestApiRequest<AgentResource>(
+		context,
+		'POST',
+		`/projects/${projectId}/agents/v2/${agentId}/unarchive`,
 	);
 };
 
@@ -1042,18 +1043,24 @@ export const steerAgentQueuedMessage = async (
 	);
 };
 
+/**
+ * The messages of a chat thread. Without `page`, the response holds the whole
+ * thread. With `page`, it holds the newest `limit` turns before `cursor`.
+ */
 export const getChatMessages = async (
 	context: IRestApiContext,
 	projectId: string,
 	agentId: string,
 	threadId: string,
 	channel: AgentChatChannel = 'chat',
+	page?: { limit: number; cursor?: string },
 ): Promise<AgentChatMessagesResponse> => {
-	return await makeRestApiRequest<AgentChatMessagesResponse>(
-		context,
-		'GET',
-		`${agentChatPath(projectId, agentId, channel)}/${encodeURIComponent(threadId)}/messages`,
-	);
+	const path = `${agentChatPath(projectId, agentId, channel)}/${encodeURIComponent(threadId)}/messages`;
+	if (!page) return await makeRestApiRequest<AgentChatMessagesResponse>(context, 'GET', path);
+	return await makeRestApiRequest<AgentChatMessagesResponse>(context, 'GET', path, {
+		limit: String(page.limit),
+		...(page.cursor !== undefined ? { cursor: page.cursor } : {}),
+	});
 };
 
 /** One of the user's own threads with a system agent. Rejects with a 404 for any other thread. */
@@ -1112,6 +1119,20 @@ export const deleteSystemAgentThread = async (
 		`${agentChatPath('', agentId, 'system')}/${encodeURIComponent(threadId)}`,
 	);
 };
+
+/** Files of a preview, n8n Chat or system agent session, for the session files list. */
+export const getSessionFiles = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	threadId: string,
+	channel: AgentChatChannel = 'chat',
+): Promise<AgentSessionFilesResponse> =>
+	await makeRestApiRequest<AgentSessionFilesResponse>(
+		context,
+		'GET',
+		`${agentChatPath(projectId, agentId, channel)}/${encodeURIComponent(threadId)}/files`,
+	);
 
 /**
  * Builds the download/thumbnail URL for a chat attachment on either channel.

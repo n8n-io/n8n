@@ -1,8 +1,4 @@
-import type {
-	InstanceAiBuildMode,
-	InstanceAiPromptConfiguration,
-	InstanceAiThreadStatusResponse,
-} from '@n8n/api-types';
+import type { InstanceAiPromptConfiguration, InstanceAiThreadStatusResponse } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 
 import type { InstanceAiTraceContext, ModelConfig, OrchestrationContext } from '../types';
@@ -28,6 +24,8 @@ export interface ActiveRunState {
 	lastActivityAt?: number;
 	/** Owner of the run, resolved at entry so concurrency can be counted per user. */
 	userId?: string;
+	/** The user stopped the run. The run reads it when it ends. */
+	stoppedByUser?: boolean;
 }
 
 export interface SuspendedRunState<TUser = unknown> extends ActiveRunState {
@@ -68,6 +66,7 @@ export interface BackgroundTaskStatusSnapshot {
 	runId: string;
 	messageGroupId?: string;
 	threadId: string;
+	detachedFromTurn?: boolean;
 }
 
 export interface RunStateTimeoutDetails {
@@ -110,8 +109,6 @@ export class RunStateRegistry<TUser = unknown> {
 	 *  no request of its own to ask. */
 	private readonly threadBrowserUseAvailable = new Map<string, boolean>();
 
-	/** Build mode captured at user-run entry and reused by follow-up runs. */
-	private readonly threadBuildModes = new Map<string, InstanceAiBuildMode>();
 	private readonly threadSetupPanelEnabled = new Map<string, boolean>();
 
 	private readonly threadObserverThresholds = new Map<string, number>();
@@ -197,6 +194,7 @@ export class RunStateRegistry<TUser = unknown> {
 					startedAt: task.startedAt,
 					runId: task.runId,
 					messageGroupId: task.messageGroupId,
+					...(task.detachedFromTurn ? { detachedFromTurn: true } : {}),
 				})),
 		};
 	}
@@ -492,16 +490,6 @@ export class RunStateRegistry<TUser = unknown> {
 		return this.threadBrowserUseAvailable.get(threadId);
 	}
 
-	/** Retain the request mode for internal follow-ups. An omitted mode clears it. */
-	setBuildMode(threadId: string, buildMode: InstanceAiBuildMode | undefined): void {
-		if (buildMode === undefined) this.threadBuildModes.delete(threadId);
-		else this.threadBuildModes.set(threadId, buildMode);
-	}
-
-	getBuildMode(threadId: string): InstanceAiBuildMode | undefined {
-		return this.threadBuildModes.get(threadId);
-	}
-
 	setSetupPanelEnabled(threadId: string, enabled: boolean): void {
 		this.threadSetupPanelEnabled.set(threadId, enabled);
 	}
@@ -688,7 +676,6 @@ export class RunStateRegistry<TUser = unknown> {
 		this.threadUsers.delete(threadId);
 		this.threadTimeZones.delete(threadId);
 		this.threadBrowserUseAvailable.delete(threadId);
-		this.threadBuildModes.delete(threadId);
 		this.threadSetupPanelEnabled.delete(threadId);
 		this.threadObserverThresholds.delete(threadId);
 		this.threadPromptSelections.delete(threadId);
@@ -741,7 +728,6 @@ export class RunStateRegistry<TUser = unknown> {
 		this.threadUsers.clear();
 		this.threadTimeZones.clear();
 		this.threadBrowserUseAvailable.clear();
-		this.threadBuildModes.clear();
 		this.threadSetupPanelEnabled.clear();
 		this.threadObserverThresholds.clear();
 		this.threadPromptSelections.clear();
