@@ -65,6 +65,8 @@ const refusedPublishes = new Set<string>();
 const refusedNodeTypes = new Set<string>();
 /** Projects in which the check refuses every credential decryption. */
 const refusedDecryptProjects = new Set<string>();
+/** Projects in which the publish check throws instead of answering. */
+const brokenPublishProjects = new Set<string>();
 
 @PolicyCheck()
 class PublishDenyCheck implements RegisteredPolicyCheck {
@@ -74,6 +76,9 @@ class PublishDenyCheck implements RegisteredPolicyCheck {
 		workflow,
 		projectId,
 	}: WorkflowPublishContext): Promise<PolicyCheckResult> {
+		if (projectId !== null && brokenPublishProjects.has(projectId)) {
+			throw new Error('policy store is down');
+		}
 		const refused =
 			refusedPublishes.has(`${projectId}:${workflow.id}`) ||
 			workflow.nodes.some((node) => refusedNodeTypes.has(`${projectId}:${node.type}`));
@@ -250,6 +255,7 @@ beforeEach(async () => {
 	refusedPublishes.clear();
 	refusedNodeTypes.clear();
 	refusedDecryptProjects.clear();
+	brokenPublishProjects.clear();
 	deactivatedEvents.length = 0;
 	deregisteredWebhooks.length = 0;
 	externalHooks.run.mockClear();
@@ -451,6 +457,29 @@ describe('a failed move', () => {
 
 		const UNTOUCHED = { deregistered: [], records: [] };
 		expect({
+			deregistered: deregisteredWebhooks,
+			records: await outboxRecordsOf(workflow.id),
+		}).toEqual(UNTOUCHED);
+	});
+
+	test('transfers nothing when the publish check of the destination fails to answer', async () => {
+		const workflow = await withRegisteredCredentialedWebhook();
+		brokenPublishProjects.add(targetProject.id);
+
+		await authMemberAgent
+			.put(`/workflows/${workflow.id}/transfer`)
+			.send({ destinationProjectId: targetProject.id })
+			.expect(503);
+
+		const UNTOUCHED = {
+			ownerProjectId: sourceProject.id,
+			activeVersionId: workflow.versionId,
+			deregistered: [],
+			records: [],
+		};
+		expect({
+			ownerProjectId: await ownerProjectIdOf(workflow.id),
+			activeVersionId: await activeVersionIdOf(workflow.id),
 			deregistered: deregisteredWebhooks,
 			records: await outboxRecordsOf(workflow.id),
 		}).toEqual(UNTOUCHED);

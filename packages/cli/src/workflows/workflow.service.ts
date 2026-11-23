@@ -1739,6 +1739,7 @@ export class WorkflowService {
 			try {
 				await this._enforcePublishInProject(workflow, destinationProjectId, user);
 			} catch (error) {
+				if (!findPolicyViolations(error)) throw error;
 				refusals.set(workflow.id, error);
 			}
 		}
