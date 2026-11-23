@@ -1717,77 +1717,62 @@ export class WorkflowService {
 	async republishAroundTransfer(
 		user: User,
 		workflowIds: string[],
-		destinationProjectId: string,
-		transfer: () => Promise<void>,
+		move: (ctx: OperationContext) => Promise<string[]>,
 		{ publicApi }: { publicApi: PublicApiCaller },
 	): Promise<Map<string, WorkflowTransferResult>> {
 		const publishedBeforeTransfer = await this._findPublished(workflowIds);
-		try {
-			await transfer();
-		} catch (error) {
-			const movedIds = await this._ownedByProject(workflowIds, destinationProjectId);
-			await this._finishTransfer(user, movedIds, publishedBeforeTransfer, publicApi);
-			throw error;
-		}
+		const movedIds = await this.workflowRepository.runInTransaction({}, async (_trx, ctx) => {
+			const moved = await move(ctx);
+			await this.outboxRepository.enqueueByWorkflowIds(
+				moved,
+				WorkflowPublicationReason.Transfer,
+				ctx,
+			);
+			return moved;
+		});
 
-		return await this._finishTransfer(user, workflowIds, publishedBeforeTransfer, publicApi);
+		await this.ownershipService.invalidateWorkflowProjectCacheByIds(movedIds);
+		const hookFailure = await this._afterWorkflowsTransferredFailure(movedIds, user);
+		const results = await this._finishTransfer(user, movedIds, publishedBeforeTransfer, publicApi);
+		if (hookFailure) throw hookFailure;
+
+		return results;
 	}
 
-	/** Never throws, and counts every workflow as moved if the owners cannot be read. */
-	private async _ownedByProject(workflowIds: string[], projectId: string): Promise<string[]> {
-		let owned = workflowIds;
-		try {
-			const owners =
-				await this.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds(workflowIds);
-			owned = workflowIds.filter((workflowId) => owners.get(workflowId)?.id === projectId);
-		} catch (error) {
-			this.logger.error('Failed to read which workflows a failed transfer moved', {
-				workflowIds,
-				error,
-			});
+	private async _afterWorkflowsTransferredFailure(
+		movedIds: string[],
+		user: User,
+	): Promise<Error | null> {
+		let failure: Error | null = null;
+		if (movedIds.length > 0) {
+			try {
+				await this.workflowMutationHooks.afterWorkflowsTransferred(movedIds, user.id);
+			} catch (error) {
+				failure = ensureError(error);
+			}
 		}
-		return owned;
+		return failure;
 	}
 
-	/** Never throws, so a transfer that failed half-way still reports its original error. */
+	/** Never throws, so the error of `afterWorkflowsTransferred` is still thrown after it. */
 	private async _finishTransfer(
 		user: User,
-		workflowIds: string[],
+		movedIds: string[],
 		publishedBeforeTransfer: PublishedWorkflow[],
 		publicApi: PublicApiCaller,
 	): Promise<Map<string, WorkflowTransferResult>> {
-		const workflows = await this._publishedAfterTransfer(workflowIds, publishedBeforeTransfer);
-		const failures = new Map<string, Error>();
-		for (const workflow of workflows) {
-			const checkFailure = await this._triggerCredentialCheckFailure(workflow);
-			if (checkFailure) failures.set(workflow.id, checkFailure);
-		}
-
-		const republishIds = workflowIds.filter((workflowId) => !failures.has(workflowId));
-		if (republishIds.length > 0) {
-			try {
-				await this.outboxRepository.enqueueByWorkflowIds(
-					republishIds,
-					WorkflowPublicationReason.Transfer,
-				);
-				this.workflowPublicationNotifier.requestDrain();
-			} catch (error) {
-				this.logger.error('Failed to republish the transferred workflows', {
-					workflowIds: republishIds,
-					error,
-				});
-				for (const workflowId of republishIds) failures.set(workflowId, ensureError(error));
-			}
-		}
-
+		const workflows = await this._publishedAfterTransfer(movedIds, publishedBeforeTransfer);
 		const results = new Map<string, WorkflowTransferResult>();
 		for (const workflow of workflows) {
-			const failure = failures.get(workflow.id);
+			const failure = await this._triggerCredentialCheckFailure(workflow);
 			if (failure) {
 				await this._unpublishAfterTransfer(user, workflow, publicApi);
 				results.set(workflow.id, { error: { name: failure.name, message: failure.message } });
 			}
 		}
+
+		// Each unpublish wakes the leader, and that drain also takes the `transfer` records.
+		if (movedIds.length > 0 && results.size === 0) this.workflowPublicationNotifier.requestDrain();
 
 		return results;
 	}

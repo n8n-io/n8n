@@ -770,13 +770,14 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		return workflows;
 	}
 
+	/** Only the published workflows among `workflowIds`. */
 	async findWithActiveVersionByIds(workflowIds: string[]): Promise<WorkflowEntity[]> {
 		const workflows: WorkflowEntity[] = [];
 
 		for (const chunk of chunkIds(workflowIds)) {
 			workflows.push(
 				...(await this.find({
-					where: { id: In(chunk) },
+					where: { id: In(chunk), activeVersionId: Not(IsNull()) },
 					relations: { activeVersion: true },
 				})),
 			);
