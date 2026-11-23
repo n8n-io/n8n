@@ -697,6 +697,41 @@ describe('WorkflowPublicationOutboxRepository', () => {
 			},
 		);
 
+		it('enqueues no transfer record for an unpublished workflow', async () => {
+			const workflow = await createWorkflow();
+
+			await repository.enqueueByWorkflowIds([workflow.id], 'transfer');
+
+			expect(await pendingOf(workflow.id)).toEqual([]);
+		});
+
+		it('clears the retry note of a workflow on a transfer', async () => {
+			const workflow = await createActiveWorkflow();
+			await retryStateRepository.suppressRetry(workflow.id, workflow.versionId);
+
+			await repository.enqueueByWorkflowIds([workflow.id], 'transfer');
+
+			expect(await retryStateRepository.findOneBy({ workflowId: workflow.id })).toBeNull();
+		});
+
+		it('writes nothing for a transfer when the transaction that enqueues it rolls back', async () => {
+			const workflow = await createActiveWorkflow();
+			await retryStateRepository.suppressRetry(workflow.id, workflow.versionId);
+
+			await expect(
+				repository.runInTransaction({}, async (_trx, ctx) => {
+					await repository.enqueueByWorkflowIds([workflow.id], 'transfer', ctx);
+					throw new Error('the move failed');
+				}),
+			).rejects.toThrow('the move failed');
+
+			const UNCHANGED = { records: [], retryNoteKept: true };
+			expect({
+				records: await pendingOf(workflow.id),
+				retryNoteKept: (await retryStateRepository.findOneBy({ workflowId: workflow.id })) !== null,
+			}).toEqual(UNCHANGED);
+		});
+
 		it('is a no-op for an empty list', async () => {
 			await createActiveWorkflow();
 
