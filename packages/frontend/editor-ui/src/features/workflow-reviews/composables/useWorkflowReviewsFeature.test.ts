@@ -65,6 +65,35 @@ describe('useWorkflowReviewsFeature', () => {
 	});
 
 	it.each([
+		{
+			label: 'an unknown home project with reviews on',
+			enabled: true,
+			homeProject: undefined,
+			expected: true,
+		},
+		{
+			label: 'a team project with reviews off',
+			enabled: false,
+			homeProject: { type: 'team' as const },
+			expected: false,
+		},
+	])(
+		'returns $expected under an always required policy for $label',
+		({ enabled, homeProject, expected }) => {
+			const settingsStore = useSettingsStore();
+			setGates({ licensed: true, instanceEnabled: enabled });
+			settingsStore.settings = {
+				...settingsStore.settings,
+				workflowReviews: { enabled, alwaysRequired: true },
+			};
+
+			const { isReviewRequiredFor } = useWorkflowReviewsFeature();
+
+			expect(isReviewRequiredFor(homeProject)).toBe(expected);
+		},
+	);
+
+	it.each([
 		{ licensed: false, instanceEnabled: true },
 		{ licensed: true, instanceEnabled: false },
 		{ licensed: true, instanceEnabled: undefined },

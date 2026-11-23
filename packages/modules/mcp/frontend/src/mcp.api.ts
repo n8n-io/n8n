@@ -13,6 +13,7 @@ import { makeRestApiRequest, getFullApiResponse } from '@n8n/rest-api-client';
 export type McpSettingsResponse = {
 	mcpAccessEnabled: boolean;
 	autoExposeNewWorkflows: boolean;
+	preferencesEnabled: boolean;
 };
 
 export type ToggleWorkflowsMcpAccessTarget =
@@ -44,7 +45,7 @@ export type ToggleAgentsMcpAccessResponse = {
 
 export async function updateMcpSettings(
 	context: IRestApiContext,
-	settings: { mcpAccessEnabled?: boolean; autoExposeNewWorkflows?: boolean },
+	settings: Partial<McpSettingsResponse>,
 ): Promise<McpSettingsResponse> {
 	return await makeRestApiRequest(context, 'PATCH', '/mcp/settings', settings);
 }
@@ -183,7 +184,7 @@ export async function toggleAgentsMcpAccessApi(
 
 export async function fetchMcpAgents(
 	context: IRestApiContext,
-	options?: { take?: number; skip?: number; query?: string; availableInMCP?: boolean },
+	options?: { limit?: number; offset?: number; query?: string; availableInMCP?: boolean },
 ): Promise<{ count: number; data: McpAgent[] }> {
 	const params: Record<string, string | number> = {};
 	const query = options?.query?.trim();
@@ -192,11 +193,11 @@ export async function fetchMcpAgents(
 		...(options?.availableInMCP !== undefined ? { availableInMCP: options.availableInMCP } : {}),
 	};
 
-	if (options?.take !== undefined) {
-		params.take = options.take;
+	if (options?.limit !== undefined) {
+		params.limit = options.limit;
 	}
-	if (options?.skip !== undefined) {
-		params.skip = options.skip;
+	if (options?.offset !== undefined) {
+		params.offset = options.offset;
 	}
 	if (Object.keys(filter).length > 0) {
 		params.filter = JSON.stringify(filter);

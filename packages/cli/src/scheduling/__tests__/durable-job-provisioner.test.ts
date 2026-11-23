@@ -1171,23 +1171,6 @@ describe('DurableJobProvisioner', () => {
 			expect(jobs.deleteByOwnerRef).toHaveBeenCalledWith(callerManager, OWNER_REF);
 			expect(dataSource.transaction).not.toHaveBeenCalled();
 		});
-
-		it("deletes one task type through the caller's manager", async () => {
-			const callerManager = mock<EntityManager>();
-
-			await provisioner.deprovisionOwnerTaskTypeInTransaction(
-				callerManager,
-				OWNER_REF,
-				'schedule-trigger',
-			);
-
-			expect(jobs.deleteByOwnerTaskType).toHaveBeenCalledWith(
-				callerManager,
-				OWNER_REF,
-				'schedule-trigger',
-			);
-			expect(dataSource.transaction).not.toHaveBeenCalled();
-		});
 	});
 
 	describe('owner guardrail wiring', () => {

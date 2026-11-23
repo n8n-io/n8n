@@ -1,7 +1,12 @@
 import { OwnerSetupRequestDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { CacheService, EventService, WorkflowProjectService } from '@n8n/backend-services';
-import type { ListQueryDb } from '@n8n/db';
+import {
+	CacheService,
+	EventService,
+	WorkflowProjectService,
+	PasswordUtility,
+} from '@n8n/backend-services';
+import type { ListQueryDb, UserKind } from '@n8n/db';
 import {
 	GLOBAL_OWNER_ROLE,
 	isPerson,
@@ -23,7 +28,7 @@ import { Service } from '@n8n/di';
 import config from '@/config';
 import { BadRequestError } from '@n8n/errors';
 
-import { PasswordUtility } from './password.utility';
+import { type AccountProject, ServiceAccountProjects } from './service-account-projects';
 
 @Service()
 export class OwnershipService {
@@ -38,6 +43,7 @@ export class OwnershipService {
 		private userRepository: UserRepository,
 		private personRepository: PersonRepository,
 		private settingsRepository: SettingsRepository,
+		private serviceAccountProjects: ServiceAccountProjects,
 	) {}
 
 	// To make use of the cache service we should store POJOs, these
@@ -187,6 +193,14 @@ export class OwnershipService {
 	):
 		| ListQueryDb.Workflow.WithOwnedByAndSharedWith
 		| ListQueryDb.Credentials.WithOwnedByAndSharedWith {
+		return this.toOwnedByAndSharedWith(rawEntity);
+	}
+
+	private toOwnedByAndSharedWith(
+		rawEntity: ListQueryDb.Workflow.WithSharing | ListQueryDb.Credentials.WithSharing,
+	):
+		| ListQueryDb.Workflow.WithOwnedByAndSharedWith
+		| ListQueryDb.Credentials.WithOwnedByAndSharedWith {
 		const shared = rawEntity.shared;
 		const entity = rawEntity as
 			| ListQueryDb.Workflow.WithOwnedByAndSharedWith
@@ -222,6 +236,56 @@ export class OwnershipService {
 		}
 
 		return entity;
+	}
+
+	/**
+	 * Adds the owner and the shares, plus the account kind of each project.
+	 * Use it for responses that show each share target, such as a share modal.
+	 * Lists show only a share count, so they use the sync method.
+	 */
+	async addSharingWithAccountKinds(
+		rawWorkflow: ListQueryDb.Workflow.WithSharing,
+	): Promise<ListQueryDb.Workflow.WithOwnedByAndSharedWith>;
+	async addSharingWithAccountKinds(
+		rawCredential: ListQueryDb.Credentials.WithSharing,
+	): Promise<ListQueryDb.Credentials.WithOwnedByAndSharedWith>;
+	async addSharingWithAccountKinds(
+		rawEntity: ListQueryDb.Workflow.WithSharing | ListQueryDb.Credentials.WithSharing,
+	): Promise<
+		ListQueryDb.Workflow.WithOwnedByAndSharedWith | ListQueryDb.Credentials.WithOwnedByAndSharedWith
+	> {
+		const entity = this.toOwnedByAndSharedWith(rawEntity);
+		await this.addAccountKinds([entity.homeProject, ...entity.sharedWithProjects]);
+		return entity;
+	}
+
+	/**
+	 * Sets `accountKind` on each personal project, so the UI can show the
+	 * personal project of a service account as that account, not as a person.
+	 * For a service account, also sets the project that the account acts for,
+	 * so users can tell two accounts with the same name apart.
+	 */
+	async addAccountKinds<
+		T extends { id: string; type: string; accountKind?: UserKind; accountProject?: AccountProject },
+	>(projects: Array<T | null | undefined>): Promise<void> {
+		const personalProjects = projects.filter(
+			(project): project is T => project?.type === 'personal',
+		);
+		if (personalProjects.length === 0) return;
+
+		const accountByProject = await this.projectRepository.findServiceAccountIdsByProject(
+			personalProjects.map((project) => project.id),
+		);
+		const projectOfAccount = await this.serviceAccountProjects.findProjectsOfAccounts([
+			...new Set(accountByProject.values()),
+		]);
+
+		for (const project of personalProjects) {
+			const accountId = accountByProject.get(project.id);
+			project.accountKind = accountId ? 'service' : 'person';
+			const accountProject = accountId ? projectOfAccount.get(accountId) : undefined;
+			if (accountProject) project.accountProject = accountProject;
+		}
 	}
 
 	async getInstanceOwner() {

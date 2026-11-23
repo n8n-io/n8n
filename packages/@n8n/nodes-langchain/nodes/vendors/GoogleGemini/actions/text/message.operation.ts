@@ -6,6 +6,7 @@ import {
 	NodeOperationError,
 	accumulateTokenUsage,
 	jsonParse,
+	requestPath,
 	updateDisplayOptions,
 	validateNodeParameters,
 } from 'n8n-workflow';
@@ -13,6 +14,7 @@ import zodToJsonSchema from 'zod-to-json-schema';
 
 import { getConnectedTools } from '@utils/helpers';
 
+import { assertResponseHasCandidates, type Candidates } from '../../helpers/candidates';
 import type {
 	GenerateContentRequest,
 	GenerateContentResponse,
@@ -23,7 +25,7 @@ import type {
 	FunctionCallPart,
 	TextPart,
 } from '../../helpers/interfaces';
-import { apiRequest } from '../../transport';
+import { apiRequest, modelPath } from '../../transport';
 import { modelRLC } from '../descriptions';
 
 const properties: INodeProperties[] = [
@@ -358,8 +360,8 @@ function isTextPart(part: unknown): part is TextPart {
 	return !!part && typeof part === 'object' && 'text' in part;
 }
 
-function getToolCalls(response: GenerateContentResponse) {
-	return response.candidates.flatMap((c) => c?.content?.parts ?? []).filter(isFunctionCallPart);
+function getToolCalls(candidates: Candidates) {
+	return candidates.flatMap((c) => c?.content?.parts ?? []).filter(isFunctionCallPart);
 }
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
@@ -545,9 +547,15 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	const requestedModel = model.replace(/^models\//, '');
 	const generateContent = async () => {
-		const response = (await apiRequest.call(this, 'POST', `/v1beta/${model}:generateContent`, {
-			body,
-		})) as GenerateContentResponse;
+		const response = (await apiRequest.call(
+			this,
+			'POST',
+			requestPath`/v1beta${modelPath.call(this, model)}:generateContent`,
+			{
+				body,
+			},
+		)) as GenerateContentResponse;
+		assertResponseHasCandidates(response);
 		captureUsage(response);
 		if (
 			requestedModel.startsWith('gemma-') &&
@@ -567,7 +575,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const maxToolsIterations = this.getNodeParameter('options.maxToolsIterations', i, 15) as number;
 	const abortSignal = this.getExecutionCancelSignal();
 	let currentIteration = 1;
-	let toolCalls = getToolCalls(response);
+	let toolCalls = getToolCalls(response.candidates);
 	while (toolCalls.length) {
 		if (
 			(maxToolsIterations > 0 && currentIteration >= maxToolsIterations) ||
@@ -578,7 +586,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 		contents.push.apply(
 			contents,
-			response.candidates.map((c) => c.content),
+			response.candidates.flatMap((c) => c.content ?? []),
 		);
 
 		for (const { functionCall } of toolCalls) {
@@ -606,7 +614,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		}
 
 		response = await generateContent();
-		toolCalls = getToolCalls(response);
+		toolCalls = getToolCalls(response.candidates);
 		currentIteration++;
 	}
 

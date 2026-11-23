@@ -39,6 +39,7 @@ import {
 	BINARY_MODE_COMBINED,
 	BINARY_MODE_SEPARATE,
 	channelsToPolicy,
+	pickVersionedSettings,
 	policyToChannels,
 } from 'n8n-workflow';
 import { SYSTEM_RESOLVER_ID } from '@n8n/api-types';
@@ -274,6 +275,17 @@ const engineType = computed({
 		workflowSettings.value.engineType = value;
 	},
 });
+
+// Production keeps running the published engine until the user publishes again.
+const isEngineTypeChangePendingPublish = computed(() => {
+	const activeVersion = workflowDocumentStore.value.activeVersion;
+	if (!activeVersion) return false;
+	return pickVersionedSettings(activeVersion.settings).engineType !== engineType.value;
+});
+
+const isExecutionLogicSettingVisible = computed(
+	() => !(isEngineTypeSettingVisible.value && engineType.value === 'v2'),
+);
 
 const isProductionRedactionLockedByFloor = computed(
 	() => instanceRedactionFloor.value === 'production' || instanceRedactionFloor.value === 'all',
@@ -881,8 +893,8 @@ onMounted(async () => {
 
 	if (!workflowsStore.isWorkflowSaved[workflowDocumentStore.value.workflowId]) {
 		toast.showMessage({
-			title: 'No workflow active',
-			message: 'No workflow active to display settings of.',
+			title: i18n.baseText('workflowSettings.showMessage.noWorkflowActive.title'),
+			message: i18n.baseText('workflowSettings.showMessage.noWorkflowActive.message'),
 			type: 'error',
 			duration: 0,
 		});
@@ -923,8 +935,8 @@ onMounted(async () => {
 
 		await Promise.all(promises);
 	} catch (error) {
-		toast.showError(error, 'Problem loading settings', {
-			message: 'The following error occurred loading the data:',
+		toast.showError(error, i18n.baseText('workflowSettings.showError.loadSettings.title'), {
+			message: i18n.baseText('workflowSettings.showError.loadSettings.message'),
 		});
 	}
 
@@ -987,9 +999,10 @@ onMounted(async () => {
 	// Fetch the instance redaction floor AFTER workflowSettings has been assigned, so
 	// the floor-coercion watch sees the loaded settings (not the initial empty object).
 	// The FE gates this fetch on the `DataRedaction` license, while the endpoint itself is
-	// gated by `feat:personalSpacePolicy` + `securitySettings:manage`. A license mismatch
-	// (one licensed, the other not) is intentionally absorbed by the try/catch fail-open
-	// below: the floor stays `'off'` and no enforcement is applied client-side.
+	// gated by `feat:personalSpacePolicy` or `feat:workflowReviews`, plus
+	// `securitySettings:manage`. A license mismatch (one licensed, the other not) is
+	// intentionally absorbed by the try/catch fail-open below: the floor stays `'off'`
+	// and no enforcement is applied client-side.
 	if (isDataRedactionLicensed.value) {
 		try {
 			const response = await securitySettingsApi.getSecuritySettings(rootStore.restApiContext);
@@ -1069,6 +1082,19 @@ onBeforeUnmount(() => {
 							</template>
 							<N8nIcon icon="circle-help" />
 						</N8nTooltip>
+						<N8nTooltip v-if="isEngineTypeChangePendingPublish" placement="top">
+							<template #content>
+								{{ i18n.baseText('workflowSettings.engineType.appliesOnPublish') }}
+							</template>
+							<N8nBadge
+								variant="warning"
+								leading-icon="clock"
+								:class="$style['engine-type-pending-badge']"
+								data-test-id="workflow-settings-engine-type-pending-publish"
+							>
+								{{ i18n.baseText('workflowSettings.engineType.appliesOnPublish.badge') }}
+							</N8nBadge>
+						</N8nTooltip>
 					</ElCol>
 					<ElCol :span="14" class="ignore-key-press-canvas">
 						<N8nSelect
@@ -1087,7 +1113,7 @@ onBeforeUnmount(() => {
 						</N8nSelect>
 					</ElCol>
 				</ElRow>
-				<ElRow>
+				<ElRow v-if="isExecutionLogicSettingVisible">
 					<ElCol :span="10" :class="$style['setting-name']">
 						{{ i18n.baseText('workflowSettings.executionLogic') }}
 					</ElCol>
@@ -1987,6 +2013,15 @@ onBeforeUnmount(() => {
 		svg {
 			opacity: 1;
 		}
+	}
+}
+
+.engine-type-pending-badge {
+	margin-left: var(--spacing--3xs);
+
+	// `.setting-name` hides label icons until hover. The badge icon stays visible.
+	svg {
+		opacity: 1;
 	}
 }
 

@@ -119,9 +119,22 @@ test.describe(
 				await request;
 				for (const button of [builder.getHeaderTestButton(), builder.getTriggersTestButton()]) {
 					await expect(button).toBeDisabled();
+					await expect(button).toHaveAttribute('aria-disabled', 'true');
 					await builder.hoverTestButtonWarning(button);
 					await expect(builder.getPreviewWorkingWarning()).toBeVisible();
 					await composer.hover();
+					await expect(builder.getPreviewWorkingWarning()).toHaveCount(0);
+					await button.focus();
+					await expect(button).toBeFocused();
+					await expect(builder.getPreviewWorkingWarning()).toBeVisible();
+					await expect(button).toHaveAccessibleDescription(
+						'Wait for the Assistant to finish working',
+					);
+					await button.press('Enter');
+					await expect(builder.getPreviewDock()).toHaveAttribute('aria-hidden', 'true');
+					await button.press('Space');
+					await expect(builder.getPreviewDock()).toHaveAttribute('aria-hidden', 'true');
+					await composer.focus();
 					await expect(builder.getPreviewWorkingWarning()).toHaveCount(0);
 				}
 				await expect(builder.getPreviewDock()).toHaveAttribute('aria-hidden', 'true');

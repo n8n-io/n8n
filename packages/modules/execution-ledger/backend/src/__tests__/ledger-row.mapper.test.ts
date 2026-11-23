@@ -45,6 +45,10 @@ describe('toStartedRow', () => {
 		});
 	});
 
+	it('stores a null project as null', () => {
+		expect(toStartedRow(startedFacts, null, 'event-1').projectId).toBeNull();
+	});
+
 	it.each(['user', 'instance_ai'] as const)('keeps the source %s', (source) => {
 		expect(toStartedRow({ ...startedFacts, source }, 'project-1', 'event-1').source).toBe(source);
 	});
@@ -62,6 +66,10 @@ describe('toEndedRow', () => {
 			origin: 'v1',
 			source: 'none',
 		});
+	});
+
+	it('stores a null project as null', () => {
+		expect(toEndedRow(endedFacts(), null, 'event-1').projectId).toBeNull();
 	});
 
 	it('keeps the reason of a blocked run', () => {

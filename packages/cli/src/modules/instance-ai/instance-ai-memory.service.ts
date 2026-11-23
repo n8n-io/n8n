@@ -32,6 +32,7 @@ import {
 import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 
 import type { InstanceAiCheckpoint } from './entities/instance-ai-checkpoint.entity';
+import { toRestorableMessages } from './restorable-messages';
 import { DurableLogMetrics } from './event-bus/durable-log-metrics';
 import { AUTO_FOLLOW_UP_MESSAGE } from './internal-messages';
 import {
@@ -49,29 +50,6 @@ export interface InstanceAiThreadLaunchMetadata {
 	source: InstanceAiThreadSource;
 	origin: InstanceAiThreadOrigin;
 	sourceContext?: Record<string, unknown>;
-}
-
-function isRestorableMessage(
-	value: Record<string, unknown> & { createdAt: Date },
-): value is AgentDbMessage & Record<string, unknown> {
-	if (typeof value.id !== 'string' || value.id.length === 0) return false;
-	if (value.type === 'custom') return typeof value.data === 'object' && value.data !== null;
-	return typeof value.role === 'string' && Array.isArray(value.content);
-}
-
-/** Coerce a wire-format seed message (ISO `createdAt`) into a persistable
- *  AgentDbMessage, or undefined if it fails the structural contract. */
-function toRestorableMessage(value: Record<string, unknown>): AgentDbMessage | undefined {
-	const rawCreatedAt = value.createdAt;
-	const createdAt =
-		rawCreatedAt instanceof Date
-			? rawCreatedAt
-			: typeof rawCreatedAt === 'string'
-				? new Date(rawCreatedAt)
-				: undefined;
-	if (!createdAt || Number.isNaN(createdAt.getTime())) return undefined;
-	const candidate = { ...value, createdAt };
-	return isRestorableMessage(candidate) ? candidate : undefined;
 }
 
 function messageCreatedAtMs(message: AgentDbMessage): number {
@@ -209,10 +187,15 @@ function buildLogDerivedSnapshots(
 	// A run's run-start is its first fact, so the run-to-group mapping is
 	// complete before any grouping decision needs it.
 	const groupKeyByRun = new Map<string, string>();
+	// Agents that keep working after their turn ended, such as cloud browser tasks.
+	const detachedFromTurnAgentIds = new Set<string>();
 	for (const row of rows) {
 		if (row.event.type === 'run-start') {
 			const groupId = row.event.payload.messageGroupId;
 			if (typeof groupId === 'string' && groupId) groupKeyByRun.set(row.runId, groupId);
+		}
+		if (row.event.type === 'agent-spawned' && row.event.detachedFromTurn) {
+			detachedFromTurnAgentIds.add(row.event.agentId);
 		}
 	}
 	// An excluded run poisons its whole message group: deriving a partial tree
@@ -262,9 +245,13 @@ function buildLogDerivedSnapshots(
 		// happen long after the turn. It must not move the anchor: the parser
 		// drops a snapshot anchored after the next conversational message, so a
 		// late fact would unpair the whole turn instead of correcting one card.
+		// An agent detached from its turn logs its events under the run that started it, long
+		// after the turn ended, while the user keeps chatting. For the same reason, they must not
+		// move the anchor.
 		if (
 			row.runId === group.runIds[0] &&
 			row.event.type !== 'preference-card' &&
+			!detachedFromTurnAgentIds.has(row.event.agentId) &&
 			row.createdAt > group.anchorAt
 		) {
 			group.anchorAt = row.createdAt;
@@ -466,17 +453,7 @@ export class InstanceAiMemoryService {
 		threadId: string,
 		messages: Array<Record<string, unknown>>,
 	): Promise<{ restored: number }> {
-		const restorable: AgentDbMessage[] = [];
-		for (const [index, raw] of messages.entries()) {
-			const message = toRestorableMessage(raw);
-			if (!message) {
-				throw new BadRequestError(
-					`Seed message at index ${index} is not a valid agent message (id, createdAt, and role+content or type:custom+data are required)`,
-				);
-			}
-			restorable.push(message);
-		}
-
+		const restorable = toRestorableMessages(messages);
 		await this.agentMemory.saveMessages({ threadId, resourceId: userId, messages: restorable });
 		return { restored: restorable.length };
 	}

@@ -1,0 +1,62 @@
+{
+	"properties": {
+		"data": {
+			"properties": {
+				"modelResponse": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"errors": {
+			"items": {},
+			"type": "array"
+		},
+		"meta": {
+			"properties": {
+				"actionId": {
+					"type": "string"
+				},
+				"clientProvided": {
+					"type": "object"
+				},
+				"requestId": {
+					"type": "string"
+				},
+				"status": {
+					"type": "string"
+				},
+				"usage": {
+					"properties": {
+						"credits": {
+							"type": "number"
+						},
+						"id": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				}
+			},
+			"type": "object"
+		},
+		"sessionId": {
+			"type": "string"
+		},
+		"warnings": {
+			"items": {
+				"properties": {
+					"message": {
+						"type": "string"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"windowId": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

@@ -33,6 +33,12 @@ import { setParameterValue } from '@/app/utils/parameterUtils';
 import type { Ref } from 'vue';
 import { omitKey } from '@/app/utils/objectUtils';
 import type { BaseTextKey } from '@n8n/i18n';
+import { BUILT_IN_DISPLAY_MODES, runDataDisplayModeRegistry } from '@n8n/frontend-module-sdk';
+import type {
+	BuiltInDisplayMode,
+	DisplayMode,
+	RunDataDisplayModePane,
+} from '@n8n/frontend-module-sdk';
 
 export interface ParameterOptionsOverrides {
 	hideExpressionSelector?: boolean;
@@ -856,4 +862,28 @@ export function resetValuesOfChangedShape(
 	return Object.fromEntries(
 		Object.entries(parameters).filter(([name]) => !reset.some(([resetName]) => resetName === name)),
 	);
+}
+
+export const PANE_DEFAULT_DISPLAY_MODE = {
+	input: 'schema',
+	output: 'table',
+} as const satisfies Record<RunDataDisplayModePane, BuiltInDisplayMode>;
+
+export function isBuiltInDisplayMode(mode: DisplayMode): mode is BuiltInDisplayMode {
+	return BUILT_IN_DISPLAY_MODES.some((builtIn) => builtIn === mode);
+}
+
+/**
+ * Returns the stored mode if it is built in or registered, otherwise the pane
+ * default. A stored id can be unknown after a rollback, an uninstall or a
+ * rename. Storage keeps the id, so it applies again if the module returns
+ * before another mode is selected.
+ *
+ * It does not check `canRender`: the caller must also fall back when
+ * `getAvailableDisplayMode` finds nothing for the current data.
+ */
+export function resolveDisplayMode(stored: DisplayMode, pane: RunDataDisplayModePane): DisplayMode {
+	return isBuiltInDisplayMode(stored) || runDataDisplayModeRegistry.has(stored)
+		? stored
+		: PANE_DEFAULT_DISPLAY_MODE[pane];
 }

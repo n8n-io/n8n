@@ -34,6 +34,10 @@ export type ProjectSharingData = {
 	icon: { type: 'emoji'; value: string } | { type: 'icon'; value: string } | null;
 	type: ProjectType;
 	description?: string | null;
+	/** Set on personal projects only: the kind of account that owns the project. */
+	accountKind?: 'person' | 'service';
+	/** Set for a service account only: the project that the account acts for. */
+	accountProject?: { id: string; name: string };
 	createdAt: string;
 	updatedAt: string;
 };

@@ -98,6 +98,7 @@ export type { AgentEvaluationPreparation } from '../agents/evaluation/agent-eval
 export { pruneConfigForEval } from '../agents/evaluation/evaluation-config';
 import type { SystemAgentProvider } from '@/modules/agents/system-agents/system-agent.types';
 import { SystemAgentRegistrationService } from '../agents/system-agents/system-agent-registration.service';
+import { SystemAgentEvalService } from '@/modules/agents/system-agents/system-agent-eval.service';
 import { Agent } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
 import '@n8n/agents/catalog';

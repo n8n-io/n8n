@@ -2,7 +2,14 @@ import { createTestingPinia } from '@pinia/testing';
 import merge from 'lodash/merge';
 import userEvent from '@testing-library/user-event';
 import { screen, within } from '@testing-library/vue';
-import { EnterpriseEditionFeature } from '@/app/constants';
+import {
+	DELETE_SECRETS_PROVIDER_MODAL_KEY,
+	EnterpriseEditionFeature,
+	SECRETS_PROVIDER_CONNECTION_MODAL_KEY,
+} from '@/app/constants';
+import { isModalPrefetchEnabled } from '@/__tests__/prefetchModals';
+
+vi.mock('@/app/composables/usePrefetchModals');
 import { STORES } from '@n8n/stores';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import SettingsSecretsProviders from './SettingsSecretsProviders.ee.vue';
@@ -435,5 +442,15 @@ describe('SettingsSecretsProviders', () => {
 			expect(mockFetchConnection).not.toHaveBeenCalled();
 			expect(mockShowError).toHaveBeenCalled();
 		});
+	});
+
+	it('prefetches the provider modals only with a license', () => {
+		renderComponent({ pinia });
+		expect(isModalPrefetchEnabled(SECRETS_PROVIDER_CONNECTION_MODAL_KEY)).toBe(false);
+		expect(isModalPrefetchEnabled(DELETE_SECRETS_PROVIDER_MODAL_KEY)).toBe(false);
+
+		mockIsEnterpriseEnabled.value = true;
+		expect(isModalPrefetchEnabled(SECRETS_PROVIDER_CONNECTION_MODAL_KEY)).toBe(true);
+		expect(isModalPrefetchEnabled(DELETE_SECRETS_PROVIDER_MODAL_KEY)).toBe(true);
 	});
 });

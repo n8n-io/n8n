@@ -1,0 +1,179 @@
+{
+	"properties": {
+		"categories": {
+			"properties": {
+				"harassment": {
+					"type": "boolean"
+				},
+				"harassment/threatening": {
+					"type": "boolean"
+				},
+				"hate": {
+					"type": "boolean"
+				},
+				"hate/threatening": {
+					"type": "boolean"
+				},
+				"illicit": {
+					"type": "boolean"
+				},
+				"illicit/violent": {
+					"type": "boolean"
+				},
+				"self-harm": {
+					"type": "boolean"
+				},
+				"self-harm/instructions": {
+					"type": "boolean"
+				},
+				"self-harm/intent": {
+					"type": "boolean"
+				},
+				"sexual": {
+					"type": "boolean"
+				},
+				"sexual/minors": {
+					"type": "boolean"
+				},
+				"violence": {
+					"type": "boolean"
+				},
+				"violence/graphic": {
+					"type": "boolean"
+				}
+			},
+			"type": "object"
+		},
+		"category_applied_input_types": {
+			"properties": {
+				"harassment": {
+					"items": {
+						"type": "string"
+					},
+					"type": "array"
+				},
+				"harassment/threatening": {
+					"items": {
+						"type": "string"
+					},
+					"type": "array"
+				},
+				"hate": {
+					"items": {
+						"type": "string"
+					},
+					"type": "array"
+				},
+				"hate/threatening": {
+					"items": {
+						"type": "string"
+					},
+					"type": "array"
+				},
+				"illicit": {
+					"items": {
+						"type": "string"
+					},
+					"type": "array"
+				},
+				"illicit/violent": {
+					"items": {
+						"type": "string"
+					},
+					"type": "array"
+				},
+				"self-harm": {
+					"items": {
+						"type": "string"
+					},
+					"type": "array"
+				},
+				"self-harm/instructions": {
+					"items": {
+						"type": "string"
+					},
+					"type": "array"
+				},
+				"self-harm/intent": {
+					"items": {
+						"type": "string"
+					},
+					"type": "array"
+				},
+				"sexual": {
+					"items": {
+						"type": "string"
+					},
+					"type": "array"
+				},
+				"sexual/minors": {
+					"items": {
+						"type": "string"
+					},
+					"type": "array"
+				},
+				"violence": {
+					"items": {
+						"type": "string"
+					},
+					"type": "array"
+				},
+				"violence/graphic": {
+					"items": {
+						"type": "string"
+					},
+					"type": "array"
+				}
+			},
+			"type": "object"
+		},
+		"category_scores": {
+			"properties": {
+				"harassment": {
+					"type": "number"
+				},
+				"harassment/threatening": {
+					"type": "number"
+				},
+				"hate": {
+					"type": "number"
+				},
+				"hate/threatening": {
+					"type": "number"
+				},
+				"illicit": {
+					"type": "number"
+				},
+				"illicit/violent": {
+					"type": "number"
+				},
+				"self-harm": {
+					"type": "number"
+				},
+				"self-harm/instructions": {
+					"type": "number"
+				},
+				"self-harm/intent": {
+					"type": "number"
+				},
+				"sexual": {
+					"type": "number"
+				},
+				"sexual/minors": {
+					"type": "number"
+				},
+				"violence": {
+					"type": "number"
+				},
+				"violence/graphic": {
+					"type": "number"
+				}
+			},
+			"type": "object"
+		},
+		"flagged": {
+			"type": "boolean"
+		}
+	},
+	"type": "object"
+}

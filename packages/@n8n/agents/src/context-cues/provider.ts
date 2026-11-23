@@ -11,7 +11,7 @@ import type {
 } from './types';
 import { loadAi } from '../runtime/model/lazy-ai';
 import { isLlmMessage } from '../sdk/message';
-import { SKILL_LOAD_TOOL_NAME } from '../skills/types';
+import { detectJustLoadedSkills, detectLoadedSkills } from '../skills/loaded-skills';
 import type {
 	ContextCueEntry,
 	ContextCueProvider,
@@ -103,27 +103,14 @@ function describeToolCall(toolName: string, input: unknown): string {
 	return keys.length ? `${toolName} with ${keys.join(', ')}` : toolName;
 }
 
-/** Skills that the agent loaded in its latest assistant message. */
-export function detectJustLoadedSkills(messages: readonly AgentMessage[]): Set<string> {
-	const loaded = new Set<string>();
-	for (let i = messages.length - 1; i >= 0; i--) {
-		const message = messages[i];
-		if (!isLlmMessage(message) || message.role !== 'assistant') continue;
-		for (const part of message.content) {
-			if (part.type !== 'tool-call' || part.toolName !== SKILL_LOAD_TOOL_NAME) continue;
-			if (!isPlainObject(part.input)) continue;
-			// load_skill accepts the skill id as `skillId` or `name`.
-			const id = part.input.skillId ?? part.input.name;
-			if (typeof id === 'string') loaded.add(id);
-		}
-		break;
-	}
-	return loaded;
-}
+export { detectJustLoadedSkills, detectLoadedSkills };
 
-/** Scores a set before each model call while the skill is active. */
-export function whileSkillActive(skillId: string): ContextCueSetPredicate {
-	return (request) => request.isSkillActive(skillId);
+/**
+ * Scores a set before each model call after the thread loads the skill. It
+ * stays active after compaction hides the `load_skill` call.
+ */
+export function whileSkillLoaded(skillId: string): ContextCueSetPredicate {
+	return (request) => (request.loadedSkillIds ?? detectLoadedSkills(request.messages)).has(skillId);
 }
 
 /**
@@ -131,8 +118,7 @@ export function whileSkillActive(skillId: string): ContextCueSetPredicate {
  * Use it for skills that make one decision in that call, such as routing.
  */
 export function whenSkillLoads(skillId: string): ContextCueSetPredicate {
-	return (request) =>
-		request.isSkillActive(skillId) && detectJustLoadedSkills(request.messages).has(skillId);
+	return (request) => detectJustLoadedSkills(request.messages).has(skillId);
 }
 
 /** User text and tool inputs, searched by a cue's `requiresAny` gate. */

@@ -1,10 +1,10 @@
 import type { AgentExecutionCounter } from '@n8n/agents';
 
-import type { AgentRunTelemetryType } from '@/interfaces';
-import type { Telemetry } from '@/telemetry';
+import type { AgentRunTelemetryType } from '../agent-telemetry.types';
+import type { AgentUsageTelemetryService } from '../agent-usage-telemetry.service';
 
 export function createAgentExecutionCounter(
-	telemetry: Telemetry,
+	usageTelemetry: AgentUsageTelemetryService,
 	{
 		agentId,
 		userId,
@@ -15,7 +15,7 @@ export function createAgentExecutionCounter(
 	const attribution = userId ? { user_id: userId } : {};
 	return {
 		incrementMessageCount: () =>
-			telemetry.trackAgentExecution({
+			usageTelemetry.trackAgentExecution({
 				agent_id: agentId,
 				...attribution,
 				run_type: runType,
@@ -23,7 +23,7 @@ export function createAgentExecutionCounter(
 				message_count: 1,
 			}),
 		incrementTokenCount: (tokenCount) =>
-			telemetry.trackAgentExecution({
+			usageTelemetry.trackAgentExecution({
 				agent_id: agentId,
 				...attribution,
 				run_type: runType,
@@ -31,7 +31,7 @@ export function createAgentExecutionCounter(
 				token_count: tokenCount,
 			}),
 		incrementToolCallCount: () =>
-			telemetry.trackAgentExecution({
+			usageTelemetry.trackAgentExecution({
 				agent_id: agentId,
 				...attribution,
 				run_type: runType,

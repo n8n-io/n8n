@@ -5,7 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import {
 	rocketchatApiRequest,
@@ -583,7 +583,7 @@ export class Rocketchat implements INodeType {
 
 						responseData = await rocketchatApiRequest.call(
 							this,
-							'/chat',
+							requestPath`/chat`,
 							'POST',
 							'postMessage',
 							body,
@@ -593,7 +593,7 @@ export class Rocketchat implements INodeType {
 					if (operation === 'get') {
 						const subscriptionsResponse = (await rocketchatApiRequest.call(
 							this,
-							'/subscriptions',
+							requestPath`/subscriptions`,
 							'GET',
 							'get',
 							{},
@@ -604,9 +604,15 @@ export class Rocketchat implements INodeType {
 						];
 					} else if (operation === 'read') {
 						const roomId = this.getNodeParameter('roomId', i) as string;
-						responseData = await rocketchatApiRequest.call(this, '/subscriptions', 'POST', 'read', {
-							rid: roomId,
-						});
+						responseData = await rocketchatApiRequest.call(
+							this,
+							requestPath`/subscriptions`,
+							'POST',
+							'read',
+							{
+								rid: roomId,
+							},
+						);
 					}
 				} else if (resource === 'dm') {
 					if (operation === 'messages') {
@@ -618,7 +624,7 @@ export class Rocketchat implements INodeType {
 							responseData = await rocketchatApiRequestAllItems.call(
 								this,
 								'messages',
-								'/dm',
+								requestPath`/dm`,
 								'GET',
 								'messages',
 								{},
@@ -628,7 +634,7 @@ export class Rocketchat implements INodeType {
 							qs.count = this.getNodeParameter('limit', i);
 							const messagesResponse = (await rocketchatApiRequest.call(
 								this,
-								'/dm',
+								requestPath`/dm`,
 								'GET',
 								'messages',
 								{},

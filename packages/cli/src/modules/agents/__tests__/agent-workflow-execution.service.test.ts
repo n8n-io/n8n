@@ -17,12 +17,12 @@ import { OperationalError, UserError } from '@n8n/errors';
 import type { ExecuteAgentWorkflowContext, IRunExecutionData } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
+import type { AgentUsageTelemetryService } from '../agent-usage-telemetry.service';
 import type { AgentsSettingsService } from '../agents-settings.service';
 import { SkillRuntimeService, SkillService } from '@/modules/skills';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { ExecutionLevelTracer } from '@/modules/otel/execution-level-tracer';
-import type { Telemetry } from '@/telemetry';
 
 import type { AgentExecutionService } from '../agent-execution.service';
 import type { AgentMessageQueueService } from '../agent-message-queue.service';
@@ -60,7 +60,7 @@ const userId = 'user-1';
 
 const schema: AgentJsonConfig = {
 	name: 'Support Agent',
-	model: 'anthropic/claude-sonnet-4-5',
+	model: 'anthropic/claude-sonnet-5-5',
 	instructions: 'Help users',
 };
 
@@ -146,7 +146,7 @@ function makeService() {
 	const agentRepository = mock<AgentRepository>();
 	const executionService = mock<AgentExecutionService>();
 	executionService.getAbortSignal.mockReturnValue(new AbortController().signal);
-	const telemetry = mock<Telemetry>();
+	const telemetry = mock<AgentUsageTelemetryService>();
 	const knowledgeUsageTracker = mock<AgentKnowledgeUsageTracker>();
 	const credentialsService = mock<CredentialsService>();
 	const reconstructionService = mock<AgentRuntimeReconstructionService>();
@@ -349,7 +349,7 @@ describe('AgentWorkflowExecutionService', () => {
 				telemetry: expect.objectContaining({
 					runType: 'production',
 					configuration: expect.objectContaining({
-						model: 'anthropic/claude-sonnet-4-5',
+						model: 'anthropic/claude-sonnet-5-5',
 					}),
 				}),
 			}),
@@ -625,7 +625,7 @@ describe('AgentWorkflowExecutionService', () => {
 		const hook = options.guardrails?.hooks[0];
 		if (!hook?.after) throw new Error('Expected a budget guardrail hook');
 		await hook.after(
-			{ callId: 'call-1', model: 'anthropic/claude-sonnet-4-5', source: 'turn' },
+			{ callId: 'call-1', model: 'anthropic/claude-sonnet-5-5', source: 'turn' },
 			{ promptTokens: 1, completionTokens: 1, totalTokens: 2, cost: 17 },
 		);
 
@@ -922,7 +922,7 @@ describe('AgentWorkflowExecutionService', () => {
 		const inlinePayload = {
 			config: {
 				name: 'Inline Agent',
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 				credential: 'cred-1',
 				instructions: 'Help users',
 			},
@@ -1070,7 +1070,7 @@ describe('AgentWorkflowExecutionService', () => {
 					run_type: 'production',
 					source: 'workflow',
 					turn_status: 'succeeded',
-					configuration: expect.objectContaining({ model: 'anthropic/claude-sonnet-4-5' }),
+					configuration: expect.objectContaining({ model: 'anthropic/claude-sonnet-5-5' }),
 				}),
 			);
 			// Inline workflow-invoked runs get the same 'workflow' tracing as
@@ -1103,7 +1103,7 @@ describe('AgentWorkflowExecutionService', () => {
 			const payloadWithForgedMarker = {
 				config: {
 					name: 'Inline Agent',
-					model: 'anthropic/claude-sonnet-4-5',
+					model: 'anthropic/claude-sonnet-5-5',
 					credential: 'cred-1',
 					instructions: 'Help users',
 					tools: [
@@ -1699,7 +1699,7 @@ describe('AgentWorkflowExecutionService', () => {
 		const inlinePayload = {
 			config: {
 				name: 'Inline Agent',
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 				credential: 'cred-1',
 				instructions: 'Help users',
 			},

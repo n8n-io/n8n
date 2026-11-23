@@ -1,4 +1,5 @@
 import { ASSISTANT_SKILLS_FLAG } from '@n8n/api-types';
+import { ModuleRegistry } from '@n8n/backend-common';
 import { PostHogClient } from '@n8n/backend-services';
 import {
 	createTeamProject,
@@ -30,6 +31,7 @@ import { SkillService } from '../../services/skill.service';
 import type { AssistantSkillContext } from '../../utils/skill-content';
 import * as fixtures from '../../testing';
 
+import { createAgentIdentity } from '@test-integration/db/agents';
 import { createOwner, createUser } from '@test-integration/db/users';
 
 /** More ids than SQLite binds in one query (32,766). */
@@ -66,6 +68,7 @@ describe('SkillRepository', () => {
 		histories = Container.get(DataSource).getRepository(AgentHistory);
 		txRunner = Container.get(TransactionRunner);
 		registerSkillUsage();
+		Container.get(ModuleRegistry).settings.set('instance-ai', { enabled: true });
 		skillRuntime = Container.get(SkillRuntimeService);
 		owner = await createOwner();
 		user = await createUser();
@@ -291,6 +294,7 @@ describe('SkillRepository', () => {
 				id: randomUUID(),
 				name,
 				projectId: options.projectId === undefined ? project.id : options.projectId,
+				identityId: await createAgentIdentity(),
 				scope: options.scope ?? 'project',
 				integrations: [],
 				tools: {},

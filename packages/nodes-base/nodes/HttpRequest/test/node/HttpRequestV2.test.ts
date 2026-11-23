@@ -1,4 +1,5 @@
-import type { IExecuteFunctions, INodeTypeBaseDescription } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
+import type { IExecuteFunctions, INodeTypeBaseDescription, JsonObject } from 'n8n-workflow';
 
 import { HttpRequestV2 } from '../../V2/HttpRequestV2.node';
 import type { Mock } from 'vitest';
@@ -95,6 +96,21 @@ describe('HttpRequestV2', () => {
 				authValue: { Authorization: 'Bearer token' },
 			},
 			{
+				genericCredentialType: 'httpMultipleHeadersAuth',
+				credentials: {
+					headers: {
+						values: [
+							{ name: 'X-Service-Token', value: 'first-test-value' },
+							{ name: 'X-Account-Key', value: 'second-test-value' },
+						],
+					},
+					allowedHttpRequestDomains: 'domains',
+					allowedDomains: 'example.com',
+				},
+				authField: 'headers',
+				authValue: { 'X-Service-Token': 'first-test-value', 'X-Account-Key': 'second-test-value' },
+			},
+			{
 				genericCredentialType: 'httpQueryAuth',
 				credentials: { name: 'Token', value: 'secretToken' },
 				authField: 'qs',
@@ -141,8 +157,18 @@ describe('HttpRequestV2', () => {
 							return options;
 						case 'bodyParametersUi':
 						case 'headerParametersUi':
-						case 'queryParametersUi':
 							return { parameter: [] };
+						case 'queryParametersUi':
+							return {
+								parameter:
+									genericCredentialType === 'httpMultipleHeadersAuth'
+										? [
+												{ name: 'First', value: 'first-test-value' },
+												{ name: 'Second', value: 'prefix-second-test-value' },
+												{ name: 'Keep', value: 'visible' },
+											]
+										: [],
+							};
 						default:
 							return undefined;
 					}
@@ -165,6 +191,26 @@ describe('HttpRequestV2', () => {
 						expect.objectContaining({
 							[authField]: expect.objectContaining(authValue),
 							sendCredentialsOnCrossOriginRedirect: true,
+						}),
+					);
+				}
+				if (genericCredentialType === 'httpMultipleHeadersAuth') {
+					expect(executeFunctions.sendMessageToUI).toHaveBeenCalledWith(
+						expect.objectContaining({
+							headers: expect.objectContaining(
+								Object.fromEntries(Object.keys(authValue).map((name) => [name, '**hidden**'])),
+							),
+							qs: { First: '**hidden**', Second: 'prefix-**hidden**', Keep: 'visible' },
+						}),
+					);
+					expect(executeFunctions.helpers.request).toHaveBeenCalledWith(
+						expect.objectContaining({
+							allowedDomains: 'example.com',
+							qs: {
+								First: 'first-test-value',
+								Second: 'prefix-second-test-value',
+								Keep: 'visible',
+							},
 						}),
 					);
 				}
@@ -268,6 +314,54 @@ describe('HttpRequestV2', () => {
 				`URL parameter must be a string, got ${expectedType}`,
 			);
 		});
+	});
+
+	it('should remove request options from the cause of continued errors', async () => {
+		const headerValue = 'header-value';
+
+		(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+		(executeFunctions.continueOnFail as Mock).mockReturnValue(true);
+		(executeFunctions.getNodeParameter as Mock).mockImplementation((paramName: string) => {
+			switch (paramName) {
+				case 'responseFormat':
+					return 'json';
+				case 'requestMethod':
+					return 'GET';
+				case 'url':
+					return baseUrl;
+				case 'authentication':
+					return 'predefinedCredentialType';
+				case 'nodeCredentialType':
+					return 'testApi';
+				case 'jsonParameters':
+					return false;
+				case 'options':
+					return options;
+				case 'bodyParametersUi':
+				case 'headerParametersUi':
+				case 'queryParametersUi':
+					return { parameter: [] };
+				default:
+					return undefined;
+			}
+		});
+		(executeFunctions.getCredentials as Mock).mockResolvedValue({ apiKey: headerValue });
+		(executeFunctions.helpers.requestWithAuthentication as Mock).mockImplementation(async () => {
+			const cause = Object.assign(new Error('Request failed'), {
+				statusCode: 401,
+				options: { headers: { Authorization: `Bearer ${headerValue}` } },
+			});
+
+			throw new NodeApiError(executeFunctions.getNode(), cause as unknown as JsonObject);
+		});
+
+		const result = await node.execute.call(executeFunctions);
+		const outputError = result[0][0].json.error;
+
+		expect(outputError).toBeInstanceOf(NodeApiError);
+		expect(outputError).toHaveProperty('cause.message', 'Request failed');
+		expect(outputError).not.toHaveProperty('cause.options');
+		expect(JSON.stringify(outputError)).not.toContain(headerValue);
 	});
 
 	describe('Raw request body', () => {

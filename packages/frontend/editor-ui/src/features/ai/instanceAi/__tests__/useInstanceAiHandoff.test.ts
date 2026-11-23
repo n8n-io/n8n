@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
 	instanceAiReady: { value: true },
-	settings: { isAssistantAgentEnabled: false },
+	settings: { newThreadsUseAssistantAgent: false },
 	telemetryTrack: vi.fn(),
 	routerPush: vi.fn(),
 	syncThread: vi.fn(),
@@ -76,6 +76,7 @@ import {
 	getPendingWorkflowAttachment,
 	provisionContextOnlyThread,
 	provisionLaunchedThread,
+	provisionLaunchedSubjectThread,
 	provisionSubjectThread,
 	provisionWorkflowThread,
 	stashPendingAgentAttachment,
@@ -94,7 +95,7 @@ describe('useInstanceAiHandoff', () => {
 		localStorage.clear();
 		forgetAssistantAgentThread('thread-1');
 		mocks.instanceAiReady.value = true;
-		mocks.settings.isAssistantAgentEnabled = false;
+		mocks.settings.newThreadsUseAssistantAgent = false;
 		mocks.syncThread.mockResolvedValue(undefined);
 		mocks.updateThreadMetadata.mockResolvedValue(undefined);
 		mocks.deleteThread.mockResolvedValue(true);
@@ -632,6 +633,19 @@ describe('useInstanceAiHandoff', () => {
 		});
 	});
 
+	it('binds the subject of a launched thread on the current runtime', async () => {
+		const threadId = await provisionLaunchedSubjectThread(
+			{ type: 'app', id: 'app-1', projectId: 'project-1' },
+			{ source: 'app_builder_page', origin: 'internal' },
+		);
+
+		expect(threadId).toBe('thread-1');
+		expect(mocks.updateThreadMetadata).toHaveBeenCalledWith('thread-1', {
+			instanceAiAppTargets: [{ appId: 'app-1', projectId: 'project-1' }],
+		});
+		expect(getAssistantAgentLaunch('thread-1')).toBeUndefined();
+	});
+
 	it('mints a thread bound to an existing app', async () => {
 		const threadId = await provisionSubjectThread(
 			{ type: 'app', id: 'app-1', projectId: 'project-1' },
@@ -670,6 +684,27 @@ describe('useInstanceAiHandoff', () => {
 		).rejects.toThrow('Save failed');
 		expect(mocks.deleteThread).toHaveBeenCalledWith('thread-1', { silent: true });
 		expect(mocks.showError).not.toHaveBeenCalled();
+	});
+
+	it('preserves a mounted draft runtime when its target metadata write fails', async () => {
+		mocks.updateThreadMetadata.mockRejectedValueOnce(new Error('Save failed'));
+
+		await expect(
+			provisionSubjectThread(
+				{ type: 'agent', id: 'agent-1', projectId: 'project-1' },
+				{ source: 'agent_builder_page', origin: 'internal' },
+				undefined,
+				'draft-thread',
+			),
+		).rejects.toThrow('Save failed');
+		expect(mocks.syncThread).toHaveBeenCalledWith('draft-thread', 'project-1', {
+			source: 'agent_builder_page',
+			origin: 'internal',
+		});
+		expect(mocks.deleteThread).toHaveBeenCalledWith('draft-thread', {
+			silent: true,
+			preserveRuntime: true,
+		});
 	});
 
 	it('opens a thread with a composer draft without sending it', async () => {
@@ -788,7 +823,7 @@ describe('useInstanceAiHandoff', () => {
 			});
 
 		beforeEach(() => {
-			mocks.settings.isAssistantAgentEnabled = true;
+			mocks.settings.newThreadsUseAssistantAgent = true;
 		});
 
 		it('provisions a launched thread without creating it on the current runtime', async () => {
@@ -813,6 +848,63 @@ describe('useInstanceAiHandoff', () => {
 				runtime: 'agents',
 			});
 			expect(consumePendingFirstMessage('thread-1')?.message).toBe('Adjust template 42');
+		});
+
+		it('keeps the subject of a launched thread for its first message', async () => {
+			const subject = {
+				type: 'app' as const,
+				id: '019a4012-272c-7313-91af-5c94a3d819a9',
+				projectId: 'project-1',
+				name: 'Portal',
+			};
+
+			const threadId = await provisionLaunchedSubjectThread(subject, {
+				source: 'app_builder_page',
+				origin: 'internal',
+			});
+
+			expect(threadId).toBe('thread-1');
+			expect(mocks.syncThread).not.toHaveBeenCalled();
+			expect(mocks.updateThreadMetadata).not.toHaveBeenCalled();
+			expect(getAssistantAgentLaunch('thread-1')).toEqual({ projectId: 'project-1', subject });
+			expect(mocks.telemetryTrack).toHaveBeenCalledWith(
+				'User launched Instance AI thread',
+				expect.objectContaining({ source: 'app_builder_page', runtime: 'agents' }),
+			);
+		});
+
+		it('keeps the launch marker when its subject is not valid', () => {
+			localStorage.setItem(
+				'n8n-assistant-agent-launch:thread-x',
+				JSON.stringify({ projectId: 'project-1', subject: { type: 'app', id: 'not-a-uuid' } }),
+			);
+
+			expect(getAssistantAgentLaunch('thread-x')).toEqual({ projectId: 'project-1' });
+		});
+
+		it('links a thread from a self-healing result to that result in the launch event', async () => {
+			await provisionLaunchedThread(
+				'project-1',
+				{
+					message: 'Continue this repair',
+					authorship: { kind: 'prefill', prefillType: 'handoff_self_healing_report' },
+				},
+				{
+					source: 'self_healing_result',
+					origin: 'internal',
+					sourceContext: { resultId: 'result-1', outcome: 'needs_you' },
+				},
+			);
+
+			expect(mocks.telemetryTrack).toHaveBeenCalledWith('User launched Instance AI thread', {
+				thread_id: 'thread-1',
+				instance_id: 'instance-1',
+				source: 'self_healing_result',
+				origin: 'internal',
+				result_id: 'result-1',
+				result_kind: 'needs_you',
+				runtime: 'agents',
+			});
 		});
 
 		it('opens a thread that a new tab finds on the Assistant agent', async () => {

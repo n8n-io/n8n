@@ -2,18 +2,23 @@ import { loadReplayedMessages, type AgentDbMessage, type BuiltMemory } from '@n8
 import {
 	INSTANCE_AI_APP_TARGETS_METADATA_KEY,
 	INSTANCE_AI_PENDING_APP_TARGET_METADATA_KEY,
-	type AiPreferencesAppliedPayload,
 } from '@n8n/api-types';
 import { AI_PREFERENCES_CLEARED_BLOCK, renderAiPreferencesBlock } from '@n8n/backend-services';
+import type { User } from '@n8n/db';
 import type { Mock } from 'vitest';
 
 import {
+	APPROVAL_MODE_OPEN_TAG,
 	buildAppTargetsBlock,
 	buildThreadArtifactsBlock,
 	buildThreadContextBlock,
 } from '../../internal-messages';
 import type { AssistantTurnEnvironment } from '../assistant-turn-environment.factory';
-import { AssistantTurnInputBuilder, OPENED_METADATA_KEY } from '../assistant-turn-input.builder';
+import {
+	AssistantTurnInputBuilder,
+	OPENED_METADATA_KEY,
+	type AiPreferencesTurn,
+} from '../assistant-turn-input.builder';
 
 type ThreadMemoryMock = {
 	getMessages: Mock;
@@ -69,7 +74,7 @@ async function loadHistory(memory: ThreadMemoryMock): Promise<AgentDbMessage[]> 
 
 describe('AssistantTurnInputBuilder — resolveThreadArtifactsTurn', () => {
 	type Context = {
-		artifacts: Array<{ type: 'workflow'; id: string; name?: string }>;
+		artifacts: Array<{ type: 'workflow'; id: string; name?: string; executionId?: string }>;
 		activeId?: string;
 	};
 	type Internals = {
@@ -141,6 +146,21 @@ describe('AssistantTurnInputBuilder — resolveThreadArtifactsTurn', () => {
 		expect(await resolve(service, { artifacts: [digest, report], activeId: 'wf-2' })).toContain(
 			'(id: `wf-2`) [current]',
 		);
+	});
+
+	it('sends the tabs when the preview of a tab shows a new run', async () => {
+		const service = createService();
+		const firstRun = { artifacts: [{ ...digest, executionId: 'exec-1' }], activeId: 'wf-1' };
+		const earlier = buildThreadArtifactsBlock(firstRun);
+		service.agentMemory.getMessages.mockResolvedValue([storedUserTurn(earlier)]);
+
+		expect(await resolve(service, firstRun)).toBe('');
+		expect(
+			await resolve(service, {
+				artifacts: [{ ...digest, executionId: 'exec-2' }],
+				activeId: 'wf-1',
+			}),
+		).toContain('currently viewing its execution `exec-2`');
 	});
 
 	it('says no tabs are open once, then not again while nothing changes', async () => {
@@ -259,12 +279,13 @@ describe('AssistantTurnInputBuilder — resolveAiPreferencesTurn', () => {
 	type StoredMessage = { role: string; content: string };
 	type Internals = {
 		resolveAiPreferencesTurn: (
-			userId: string,
+			user: User,
 			project: { id: string; name: string; type: 'team' } | undefined,
 			threadId: string,
 			loadHistory: () => Promise<unknown[]>,
-		) => Promise<{ block: string | undefined; payload: AiPreferencesAppliedPayload }>;
+		) => Promise<AiPreferencesTurn>;
 		aiPreferenceService: { getApplicable: Mock };
+		aiPreferenceSettingsService: { isEnabled: boolean };
 		agentMemory: ThreadMemoryMock;
 		logger: { warn: Mock };
 	};
@@ -272,6 +293,7 @@ describe('AssistantTurnInputBuilder — resolveAiPreferencesTurn', () => {
 	function createService(): Internals {
 		const service = Object.create(AssistantTurnInputBuilder.prototype) as unknown as Internals;
 		service.aiPreferenceService = { getApplicable: vi.fn() };
+		service.aiPreferenceSettingsService = { isEnabled: true };
 		service.agentMemory = createThreadMemory();
 		service.logger = { warn: vi.fn() };
 		return service;
@@ -282,7 +304,7 @@ describe('AssistantTurnInputBuilder — resolveAiPreferencesTurn', () => {
 		project: { id: string; name: string; type: 'team' } | undefined,
 	) {
 		return await service.resolveAiPreferencesTurn(
-			'user-1',
+			user,
 			project,
 			'thread-1',
 			async () => await loadHistory(service.agentMemory),
@@ -301,6 +323,7 @@ describe('AssistantTurnInputBuilder — resolveAiPreferencesTurn', () => {
 		],
 	};
 	const none = { instance: [], user: [], projects: [] };
+	const user = { id: 'user-1' } as User;
 	const boundProject = { id: 'project-1', name: 'Marketing', type: 'team' as const };
 
 	/** A persisted user turn whose leading thread-context carries `block`, as the service stores it. */
@@ -349,6 +372,32 @@ describe('AssistantTurnInputBuilder — resolveAiPreferencesTurn', () => {
 			renderedLength: AI_PREFERENCES_CLEARED_BLOCK.length,
 			injectedThisTurn: true,
 		});
+		expect(turn.noneSaved).toBeUndefined();
+	});
+
+	it('reads no preferences while they are off and sends nothing to a new thread', async () => {
+		const service = createService();
+		service.aiPreferenceSettingsService.isEnabled = false;
+		service.agentMemory.getMessages.mockResolvedValue([storedUserTurn(undefined)]);
+
+		const turn = await resolvePreferences(service, boundProject);
+
+		expect(service.aiPreferenceService.getApplicable).not.toHaveBeenCalled();
+		expect(turn.block).toBeUndefined();
+		expect(turn.payload).toEqual({ preferences: [], renderedLength: 0, injectedThisTurn: false });
+	});
+
+	it('clears the preferences a thread carried once they are turned off', async () => {
+		const service = createService();
+		service.aiPreferenceSettingsService.isEnabled = false;
+		service.agentMemory.getMessages.mockResolvedValue([
+			storedUserTurn(renderAiPreferencesBlock(applicable)),
+		]);
+
+		const turn = await resolvePreferences(service, boundProject);
+
+		expect(service.aiPreferenceService.getApplicable).not.toHaveBeenCalled();
+		expect(turn.block).toBe(AI_PREFERENCES_CLEARED_BLOCK);
 	});
 
 	it.each([
@@ -368,6 +417,7 @@ describe('AssistantTurnInputBuilder — resolveAiPreferencesTurn', () => {
 			expect(turn.block).toBe(block);
 			expect(turn.payload.injectedThisTurn).toBe(true);
 			expect(turn.payload.preferences.map(({ id }) => id)).not.toContain('removed-pref');
+			expect(turn.noneSaved).toBeUndefined();
 
 			service.agentMemory.getMessages.mockResolvedValue([...history, storedUserTurn(turn.block)]);
 			const nextTurn = await resolvePreferences(service, boundProject);
@@ -376,6 +426,7 @@ describe('AssistantTurnInputBuilder — resolveAiPreferencesTurn', () => {
 			expect(nextTurn.payload).toMatchObject({
 				injectedThisTurn: false,
 			});
+			expect(nextTurn.noneSaved).toBeUndefined();
 		},
 	);
 
@@ -402,9 +453,7 @@ describe('AssistantTurnInputBuilder — resolveAiPreferencesTurn', () => {
 
 		const turn = await resolvePreferences(service, boundProject);
 
-		expect(service.aiPreferenceService.getApplicable).toHaveBeenCalledWith('user-1', [
-			boundProject,
-		]);
+		expect(service.aiPreferenceService.getApplicable).toHaveBeenCalledWith(user, [boundProject]);
 		expect(turn.block).toContain('<ai-preferences>');
 		expect(turn.block).toContain('Preferences for project "Marketing":');
 		expect(turn.block).toContain('- Keep replies short.');
@@ -459,6 +508,33 @@ describe('AssistantTurnInputBuilder — resolveAiPreferencesTurn', () => {
 		expect(turn.payload).toMatchObject({ injectedThisTurn: true });
 	});
 
+	it('marks a turn as none saved when nothing is saved and the thread carries no block', async () => {
+		const service = createService();
+		service.aiPreferenceService.getApplicable.mockResolvedValue(none);
+
+		const turn = await resolvePreferences(service, undefined);
+
+		expect(turn.noneSaved).toBe(true);
+	});
+
+	it('does not mark a turn as none saved when preferences apply', async () => {
+		const service = createService();
+		service.aiPreferenceService.getApplicable.mockResolvedValue(applicable);
+
+		const turn = await resolvePreferences(service, boundProject);
+
+		expect(turn.noneSaved).toBeUndefined();
+	});
+
+	it('does not mark a turn as none saved when the read fails', async () => {
+		const service = createService();
+		service.aiPreferenceService.getApplicable.mockRejectedValue(new Error('db down'));
+
+		const turn = await resolvePreferences(service, undefined);
+
+		expect(turn.noneSaved).toBeUndefined();
+	});
+
 	it('publishes an empty payload when the read fails, without touching the history', async () => {
 		const service = createService();
 		service.aiPreferenceService.getApplicable.mockRejectedValue(new Error('db down'));
@@ -499,6 +575,7 @@ describe('AssistantTurnInputBuilder — resolveAiPreferencesTurn', () => {
 
 		expect(nextTurn.block).toBeUndefined();
 		expect(nextTurn.payload).toMatchObject({ preferences: [], injectedThisTurn: false });
+		expect(nextTurn.noneSaved).toBeUndefined();
 	});
 
 	it('sends nothing and reports an empty payload when there are no preferences and never were', async () => {
@@ -626,55 +703,62 @@ describe('AssistantTurnInputBuilder — applyTurnScope', () => {
 	});
 });
 
-describe('AssistantTurnInputBuilder — opening-turn title', () => {
-	function createMemory(thread: { title?: string; metadata?: Record<string, unknown> }) {
-		return {
-			getThread: vi.fn(async () => ({ id: 'thread-1', resourceId: 'user-1', ...thread })),
-			patchThread: vi.fn(
-				async (args: {
-					update: (current: { title?: string; metadata?: Record<string, unknown> }) => unknown;
-				}) => args.update({ metadata: {}, ...thread }),
-			),
-			getMessages: vi.fn(async () => []),
-		};
-	}
+function createMemory(thread: { title?: string; metadata?: Record<string, unknown> }) {
+	return {
+		getThread: vi.fn(async () => ({ id: 'thread-1', resourceId: 'user-1', ...thread })),
+		patchThread: vi.fn(
+			async (args: {
+				update: (current: { title?: string; metadata?: Record<string, unknown> }) => unknown;
+			}) => args.update({ metadata: {}, ...thread }),
+		),
+		getMessages: vi.fn(async () => []),
+	};
+}
 
-	function createBuilder() {
-		return Object.assign(Object.create(AssistantTurnInputBuilder.prototype) as object, {
-			defaultTimeZone: 'UTC',
-			webhookBaseUrl: 'https://acme.example.com/webhook',
-			formBaseUrl: 'https://acme.example.com/form',
-			logger: { warn: vi.fn(), debug: vi.fn() },
-			buildWorkflowSetupStateBlock: vi.fn(async () => ''),
-			instanceContext: {
-				buildBlock: vi.fn(async () => ({ state: 'absent', reason: 'disabled' })),
-			},
-			resolveBoundProject: vi.fn(async () => undefined),
-			skillsService: { loadSkill: vi.fn(async () => ({ instructions: '' })) },
-		}) as unknown as AssistantTurnInputBuilder;
-	}
+function createTurnBuilder() {
+	return Object.assign(Object.create(AssistantTurnInputBuilder.prototype) as object, {
+		defaultTimeZone: 'UTC',
+		webhookBaseUrl: 'https://acme.example.com/webhook',
+		formBaseUrl: 'https://acme.example.com/form',
+		logger: { warn: vi.fn(), debug: vi.fn() },
+		buildWorkflowSetupStateBlock: vi.fn(async () => ''),
+		instanceContext: {
+			buildBlock: vi.fn(async () => ({ state: 'absent', reason: 'disabled' })),
+		},
+		resolveBoundProject: vi.fn(async () => undefined),
+		skillsService: { loadSkill: vi.fn(async () => ({ instructions: '' })) },
+	}) as unknown as AssistantTurnInputBuilder;
+}
 
-	async function buildOpeningTurn(
-		memory: ReturnType<typeof createMemory>,
-		params: {
-			titledByRuntime?: boolean;
-			contextAttachments?: unknown[];
-			message?: string;
-			fileAttachments?: unknown[];
-		} = {},
-	) {
-		const conversationHistory = {
-			getPastConversationsSection: vi.fn(async () => undefined),
-		};
-		const environment = {
-			context: {},
-			memory,
-			taskStorage: { get: vi.fn(async () => undefined) },
-			conversationHistory,
-			instanceContextEnabled: false,
-			skillScope: {},
-		} as unknown as AssistantTurnEnvironment;
-		await createBuilder().buildInput(environment, { eventBus: { publish: vi.fn() } } as never, {
+async function buildOpeningTurn(
+	memory: ReturnType<typeof createMemory>,
+	params: {
+		titledByRuntime?: boolean;
+		contextAttachments?: unknown[];
+		message?: string;
+		fileAttachments?: unknown[];
+		context?: Record<string, unknown>;
+		builder?: Record<string, unknown>;
+		environment?: Record<string, unknown>;
+	} = {},
+) {
+	const conversationHistory = {
+		getPastConversationsSection: vi.fn(async () => undefined),
+	};
+	const environment = {
+		context: params.context ?? {},
+		memory,
+		taskStorage: { get: vi.fn(async () => undefined) },
+		conversationHistory,
+		instanceContextEnabled: false,
+		skillScope: {},
+		...params.environment,
+	} as unknown as AssistantTurnEnvironment;
+	const builder = Object.assign(createTurnBuilder(), params.builder);
+	const { fullMessage } = await builder.buildInput(
+		environment,
+		{ eventBus: { publish: vi.fn() } } as never,
+		{
 			user: { id: 'user-1' } as never,
 			threadId: 'thread-1',
 			runId: 'run-1',
@@ -682,15 +766,18 @@ describe('AssistantTurnInputBuilder — opening-turn title', () => {
 			fileAttachments: (params.fileAttachments ?? []) as never,
 			contextAttachments: (params.contextAttachments ?? []) as never,
 			...(params.titledByRuntime !== undefined ? { titledByRuntime: params.titledByRuntime } : {}),
-		});
-		const update = memory.patchThread.mock.results[0]?.value as Promise<unknown> | undefined;
-		return {
-			patch: update ? await update : undefined,
-			pastConversationsRequested:
-				conversationHistory.getPastConversationsSection.mock.calls.length > 0,
-		};
-	}
+		},
+	);
+	const update = memory.patchThread.mock.results[0]?.value as Promise<unknown> | undefined;
+	return {
+		fullMessage,
+		patch: update ? await update : undefined,
+		pastConversationsRequested:
+			conversationHistory.getPastConversationsSection.mock.calls.length > 0,
+	};
+}
 
+describe('AssistantTurnInputBuilder — opening-turn title', () => {
 	it('titles an untitled thread from the first message and marks it opened', async () => {
 		const memory = createMemory({});
 
@@ -797,5 +884,97 @@ describe('AssistantTurnInputBuilder — opening-turn title', () => {
 		});
 
 		expect(patch).toEqual({ title: '', metadata: { [OPENED_METADATA_KEY]: true } });
+	});
+});
+
+describe('AssistantTurnInputBuilder — approval mode', () => {
+	const openedThread = { title: 'Test rows', metadata: { [OPENED_METADATA_KEY]: true } };
+
+	it('tells the agent in Auto mode that an approval may run without a card', async () => {
+		const { fullMessage } = await buildOpeningTurn(createMemory(openedThread), {
+			context: { approvalReviewer: {} },
+		});
+		expect(fullMessage).toContain(APPROVAL_MODE_OPEN_TAG);
+	});
+
+	it('adds nothing about approvals in Manual mode', async () => {
+		const { fullMessage } = await buildOpeningTurn(createMemory(openedThread));
+		expect(fullMessage).not.toContain(APPROVAL_MODE_OPEN_TAG);
+	});
+});
+
+describe('AssistantTurnInputBuilder — empty preferences note', () => {
+	const openedThread = { title: 'Test rows', metadata: { [OPENED_METADATA_KEY]: true } };
+	const noteBlock = '<preferences-note>\nNote.\n</preferences-note>';
+
+	function createNoteBuilder(noneSaved: boolean) {
+		const takeNote = vi.fn(async (): Promise<string | undefined> => noteBlock);
+		const builder = {
+			resolveAiPreferencesTurn: vi.fn(async () => ({
+				block: undefined,
+				payload: { preferences: [], renderedLength: 0, injectedThisTurn: false },
+				...(noneSaved ? { noneSaved: true } : {}),
+			})),
+			preferencesNoteService: { takeNote },
+		};
+		return { builder, takeNote };
+	}
+
+	it('adds the note in the variant arm when nothing is saved', async () => {
+		const { builder, takeNote } = createNoteBuilder(true);
+
+		const { fullMessage } = await buildOpeningTurn(createMemory(openedThread), {
+			builder,
+			context: { aiPreferenceService: {} },
+			environment: { preferencesNoteVariant: 'variant' },
+		});
+
+		expect(takeNote).toHaveBeenCalledWith({ id: 'user-1' }, 'variant', 'thread-1');
+		expect(fullMessage).toContain(noteBlock);
+	});
+
+	it('counts the impression but adds no note in the control arm', async () => {
+		const { builder, takeNote } = createNoteBuilder(true);
+		takeNote.mockResolvedValue(undefined);
+
+		const { fullMessage } = await buildOpeningTurn(createMemory(openedThread), {
+			builder,
+			context: { aiPreferenceService: {} },
+			environment: { preferencesNoteVariant: 'control' },
+		});
+
+		expect(takeNote).toHaveBeenCalledWith({ id: 'user-1' }, 'control', 'thread-1');
+		expect(fullMessage).not.toContain('<preferences-note>');
+	});
+
+	it('does not take a note when preferences are saved', async () => {
+		const { builder, takeNote } = createNoteBuilder(false);
+
+		const { fullMessage } = await buildOpeningTurn(createMemory(openedThread), {
+			builder,
+			context: { aiPreferenceService: {} },
+		});
+
+		expect(takeNote).not.toHaveBeenCalled();
+		expect(fullMessage).not.toContain(noteBlock);
+	});
+
+	it('does not take a note when saving preferences is blocked', async () => {
+		const { builder, takeNote } = createNoteBuilder(true);
+
+		await buildOpeningTurn(createMemory(openedThread), {
+			builder,
+			context: { aiPreferenceService: {}, permissions: { createPreference: 'blocked' } },
+		});
+
+		expect(takeNote).not.toHaveBeenCalled();
+	});
+
+	it('does not take a note when preferences are off', async () => {
+		const { builder, takeNote } = createNoteBuilder(true);
+
+		await buildOpeningTurn(createMemory(openedThread), { builder });
+
+		expect(takeNote).not.toHaveBeenCalled();
 	});
 });

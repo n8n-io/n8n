@@ -27,6 +27,8 @@ export interface ErrorSentinel {
 	message: string;
 	stack?: string;
 	extra?: Record<string, unknown>;
+	/** Set when a host callback threw the error, not guest code. */
+	fromHost?: true;
 }
 
 interface ObjectMetadata {

@@ -1,0 +1,90 @@
+{
+	"properties": {
+		"access": {
+			"properties": {
+				"configuration": {
+					"type": "object"
+				},
+				"visibility": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"can_assign_tasks": {
+			"type": "boolean"
+		},
+		"can_comment": {
+			"type": "boolean"
+		},
+		"child_order": {
+			"type": "number"
+		},
+		"color": {
+			"type": "string"
+		},
+		"created_at": {
+			"type": "string"
+		},
+		"creator_uid": {
+			"type": "string"
+		},
+		"default_order": {
+			"type": "number"
+		},
+		"default_order_key": {},
+		"description": {
+			"type": "string"
+		},
+		"icon": {},
+		"id": {
+			"type": "string"
+		},
+		"inbox_project": {
+			"type": "boolean"
+		},
+		"is_archived": {
+			"type": "boolean"
+		},
+		"is_collapsed": {
+			"type": "boolean"
+		},
+		"is_deleted": {
+			"type": "boolean"
+		},
+		"is_favorite": {
+			"type": "boolean"
+		},
+		"is_frozen": {
+			"type": "boolean"
+		},
+		"is_shared": {
+			"type": "boolean"
+		},
+		"name": {
+			"type": "string"
+		},
+		"order_key": {
+			"type": "string"
+		},
+		"parent_id": {
+			"type": ["null", "string"]
+		},
+		"public_access": {
+			"type": "boolean"
+		},
+		"public_key": {
+			"type": "string"
+		},
+		"role": {
+			"type": "string"
+		},
+		"updated_at": {
+			"type": "string"
+		},
+		"view_style": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

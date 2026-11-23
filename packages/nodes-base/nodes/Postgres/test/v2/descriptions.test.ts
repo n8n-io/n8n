@@ -1,4 +1,4 @@
-import type { INodeProperties } from 'n8n-workflow';
+import type { INodeParameters, INodeProperties } from 'n8n-workflow';
 import { NodeHelpers, READ_ONLY_ANNOTATIONS, resolveNodeAnnotations } from 'n8n-workflow';
 
 import { optionsCollection } from '../../v2/actions/common.descriptions';
@@ -59,5 +59,72 @@ describe('PostgresV2, annotations', () => {
 		expect(resolveNodeAnnotations(versionDescription, { parameters, typeVersion: 2.8 })).toEqual(
 			expected,
 		);
+	});
+});
+
+describe('PostgresV2, Start After', () => {
+	const startAfter = versionDescription.properties.find(
+		(property) => property.name === 'startAfter',
+	) as INodeProperties;
+
+	it.each([
+		{ returnAll: false, typeVersion: 2.8, shown: true },
+		{ returnAll: true, typeVersion: 2.8, shown: false },
+		{ returnAll: false, typeVersion: 2.7, shown: true },
+		{ returnAll: false, typeVersion: 2.6, shown: false },
+		// n8n shows a field when a show value is an expression, so the version must be checked first
+		{ returnAll: '={{ false }}', typeVersion: 2.7, shown: true },
+		{ returnAll: '={{ false }}', typeVersion: 2.6, shown: false },
+	])(
+		'should show Start After: $shown when Return All is $returnAll at v$typeVersion',
+		({ returnAll, typeVersion, shown }) => {
+			const parameters = {
+				resource: 'database',
+				operation: 'select',
+				table: { __rl: true, mode: 'list', value: 'orders' },
+				returnAll,
+			};
+
+			expect(
+				NodeHelpers.displayParameter(parameters, startAfter, { typeVersion }, versionDescription),
+			).toBe(shown);
+		},
+	);
+});
+
+describe('PostgresV2, Load Rows With COPY option', () => {
+	const visibleOptions = (operation: string, options: INodeParameters) =>
+		(optionsCollection.options as INodeProperties[])
+			.filter((option) =>
+				NodeHelpers.displayParameter(options, option, { typeVersion: 2.8 }, versionDescription, {
+					operation,
+					options,
+				}),
+			)
+			.map((option) => option.name);
+
+	const optionsHiddenByCopy = ['queryBatching', 'outputColumns', 'skipOnConflict'];
+
+	it('should show only for Insert', () => {
+		expect(visibleOptions('insert', {})).toContain('useCopy');
+		['select', 'update', 'upsert', 'executeQuery', 'deleteTable'].forEach((operation) => {
+			expect(visibleOptions(operation, {})).not.toContain('useCopy');
+		});
+	});
+
+	it.each([{}, { useCopy: false }])(
+		'should keep the other Insert options when it is off (%o)',
+		(options) => {
+			expect(visibleOptions('insert', options)).toEqual(
+				expect.arrayContaining(optionsHiddenByCopy),
+			);
+		},
+	);
+
+	it('should hide Query Batching, Output Columns and Skip on Conflict when it is on', () => {
+		const visible = visibleOptions('insert', { useCopy: true });
+
+		expect(visible).toContain('useCopy');
+		optionsHiddenByCopy.forEach((name) => expect(visible).not.toContain(name));
 	});
 });

@@ -1,4 +1,5 @@
 import type { ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { parseAddress } from '../../Excel/v2/helpers/utils';
 import { fetchTableColumnNames } from '../helpers/tableRead';
@@ -12,13 +13,13 @@ async function readHeaderRow(this: ILoadOptionsFunctions): Promise<string[]> {
 		'Sheet',
 		this.getNodeParameter('worksheet', '', { extractValue: true }) as string,
 	);
-	const sheetPath = `${workbookRoot}/workbook/worksheets/${encodeURIComponent(worksheetId)}`;
+	const sheetPath = requestPath`${workbookRoot}/workbook/worksheets/${worksheetId}`;
 
 	const range = (this.getNodeParameter('range', '') as string).trim();
-	let endpoint = `${sheetPath}/usedRange`;
+	let endpoint = requestPath`${sheetPath}/usedRange`;
 	if (range !== '') {
 		const { cellFrom, cellTo } = parseAddress(range);
-		endpoint = `${sheetPath}/range(address='${cellFrom.value}:${cellTo.column}${cellFrom.row}')`;
+		endpoint = requestPath`${sheetPath}/range(address='${cellFrom.value}:${cellTo.column}${cellFrom.row}')`;
 	}
 
 	const worksheetData = await microsoftApiRequest.call(
@@ -59,7 +60,7 @@ export async function getTableColumns(
 		'Table',
 		this.getNodeParameter('table', '', { extractValue: true }) as string,
 	);
-	const tableEndpoint = `${workbookRoot}/workbook/tables/${encodeURIComponent(tableId)}`;
+	const tableEndpoint = requestPath`${workbookRoot}/workbook/tables/${tableId}`;
 	return (await fetchTableColumnNames.call(this, tableEndpoint)).map((column) => ({
 		name: column,
 		value: column,

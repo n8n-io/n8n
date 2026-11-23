@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { defineComponent, h, nextTick, provide, reactive, type Ref } from 'vue';
+import { computed, defineComponent, h, nextTick, provide, reactive } from 'vue';
 import { flushPromises, mount } from '@vue/test-utils';
 import { fireEvent } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
@@ -18,16 +18,21 @@ import InstanceAiConversation from '../InstanceAiConversation.vue';
 import { provideThread, useInstanceAiStore, type ThreadRuntime } from '../../instanceAi.store';
 import { useAssistantCreditsStore } from '../../assistantCredits.store';
 import {
+	consumePendingFirstMessage,
 	getPendingWorkflowAttachment,
+	stashPendingFirstMessage,
 	stashPendingAgentAttachment,
 	stashPendingRedirectLanding,
 	stashPendingWorkflowAttachment,
 } from '../../composables/useInstanceAiHandoff';
 import type { InstanceAiEmbedSubject } from '../../embed/instanceAiEmbed.types';
 import type { InstanceAiHandoffContext, InstanceAiMessage } from '@n8n/api-types';
-import type { UseInfiniteScrollOptions } from '@vueuse/core';
 import { ResponseError } from '@n8n/rest-api-client';
 import { USER_TYPED_MESSAGE } from '../../prefills';
+import {
+	CloudBrowserTasksKey,
+	type CloudBrowserTask,
+} from '../../composables/useCloudBrowserTasks';
 
 const telemetryTrackSpy = vi.hoisted(() => vi.fn());
 const showMessageSpy = vi.hoisted(() => vi.fn());
@@ -52,45 +57,6 @@ vi.mock('@/app/composables/usePageRedirectionHelper', () => ({
 	usePageRedirectionHelper: () => ({ goToUpgrade: vi.fn() }),
 }));
 
-// jsdom has no layout, so the scroll state and the top-of-list trigger cannot fire. Drive them directly.
-const infiniteScroll = vi.hoisted(() => ({
-	load: undefined as (() => Promise<void>) | undefined,
-	options: undefined as UseInfiniteScrollOptions | undefined,
-	isLoading: undefined as Ref<boolean> | undefined,
-	arrivedState: undefined as { top: boolean; bottom: boolean } | undefined,
-	/** The `bottom` value that the scroll state reads when it measures the view. */
-	measuredBottom: true,
-}));
-
-vi.mock('@vueuse/core', async (importOriginal) => {
-	const actual = await importOriginal<typeof import('@vueuse/core')>();
-	const { reactive, ref } = await import('vue');
-	return {
-		...actual,
-		useScroll: () => {
-			// The same start state as vueuse, before any scroll event.
-			const arrivedState = reactive({ top: true, bottom: false });
-			infiniteScroll.arrivedState = arrivedState;
-			return {
-				arrivedState,
-				measure: () => {
-					arrivedState.bottom = infiniteScroll.measuredBottom;
-				},
-			};
-		},
-		useInfiniteScroll: (
-			_el: unknown,
-			load: () => Promise<void>,
-			options: UseInfiniteScrollOptions,
-		) => {
-			infiniteScroll.load = load;
-			infiniteScroll.options = options;
-			infiniteScroll.isLoading = ref(false);
-			return { isLoading: infiniteScroll.isLoading, reset: () => {} };
-		},
-	};
-});
-
 describe('InstanceAiConversation', () => {
 	let store: ReturnType<typeof mockedStore<typeof useInstanceAiStore>>;
 	let thread: ThreadRuntime;
@@ -98,7 +64,6 @@ describe('InstanceAiConversation', () => {
 	beforeEach(() => {
 		// Prevent stashed hand-off state from leaking between test cases.
 		localStorage.clear();
-		infiniteScroll.measuredBottom = true;
 		const pinia = createTestingPinia();
 		setActivePinia(pinia);
 		useSettingsStore().moduleSettings = { 'instance-ai': { ...defaultModuleSettings } };
@@ -170,6 +135,7 @@ describe('InstanceAiConversation', () => {
 				workflow: 1,
 				node: 0,
 				group: 0,
+				agent: 0,
 			},
 			['wf-1'],
 		);
@@ -310,7 +276,7 @@ describe('InstanceAiConversation', () => {
 
 		expect(wrapper.get('[data-test-id="instance-ai-input-out-of-credits"]').text()).toBe('true');
 		expect(wrapper.get('[data-test-id="credit-warning-banner"]').text()).toContain(
-			"You've run out of AI credits",
+			"You've run out of Assistant credits",
 		);
 		expect(wrapper.find('[data-test-id="credit-banner-dismiss"]').exists()).toBe(false);
 	});
@@ -348,6 +314,7 @@ describe('InstanceAiConversation', () => {
 					workflow: 1,
 					node: 0,
 					group: 0,
+					agent: 0,
 				},
 				mentionedWorkflowIds: ['wf-1'],
 			}),
@@ -386,119 +353,104 @@ describe('InstanceAiConversation', () => {
 		expect(getByText('Hello')).toBeInTheDocument();
 	});
 
-	it('keeps the visible messages in place when older messages load above them', async () => {
-		thread.messages = [
-			{ id: 'msg-1', role: 'user', content: 'Hello', createdAt: '2026-04-01T00:00:00.000Z' },
-		] as InstanceAiMessage[];
-		let contentHeight = 1000;
-		// The position of the first message in the scrolled content.
-		let firstMessageTop = 300;
-		thread.loadOlderMessages = vi.fn(async () => {
-			// The older page adds 600px above the first message.
-			firstMessageTop += 600;
-			contentHeight += 600;
-		});
-		const wrapper = mountConversation();
-		const viewport = wrapper.find('[data-reka-scroll-area-viewport]').element;
-		let scrollTop = 50;
-		Object.defineProperty(viewport, 'scrollHeight', { get: () => contentHeight });
-		Object.defineProperty(viewport, 'scrollTop', {
-			get: () => scrollTop,
-			set: (value: number) => {
-				scrollTop = value;
-			},
-		});
-		const firstMessage = wrapper.find('[data-message-id="msg-1"]').element;
-		firstMessage.getBoundingClientRect = () => new DOMRect(0, firstMessageTop - scrollTop);
+	/** jsdom has no layout, so the scroll area cannot detect the top. Emit its event directly. */
+	function requestOlderMessages(wrapper: ReturnType<typeof mountConversation>) {
+		wrapper.findComponent({ name: 'N8nChatScrollArea' }).vm.$emit('load-older');
+	}
 
-		const loading = infiniteScroll.load?.();
-		// The user scrolls and a live reply grows below the view while the page loads.
-		scrollTop = 20;
-		contentHeight += 400;
-		await loading;
+	/**
+	 * Loads the last page, like the store does. jsdom keeps `scrollTop` at 0, so the
+	 * scroll area requests again after each load until no history is left.
+	 */
+	function loadLastPage() {
+		Object.assign(thread, { hasOlderMessages: false });
+	}
+
+	it('loads older messages when the scroll area reaches the top', async () => {
+		Object.assign(thread, { hasOlderMessages: true });
+		thread.loadOlderMessages = vi.fn(async () => loadLastPage());
+		const wrapper = mountConversation();
+
+		requestOlderMessages(wrapper);
+		await flushPromises();
 
 		expect(thread.loadOlderMessages).toHaveBeenCalledOnce();
-		expect(scrollTop).toBe(620);
 	});
 
-	it('loads older messages after the first scroll event', () => {
-		Object.assign(thread, { hasOlderMessages: true });
-		mountConversation();
-		const view = { scrollHeight: 1000, clientHeight: 500 } as HTMLElement;
-
-		// On mount the view is at the top before it scrolls to the bottom.
-		expect(infiniteScroll.options?.canLoadMore?.(view)).toBe(false);
-		// One scroll event that the throttled scroll state does not see.
-		infiniteScroll.options?.onScroll?.(new Event('scroll'));
-		expect(infiniteScroll.options?.canLoadMore?.(view)).toBe(true);
-	});
-
-	it('stops following new messages when older messages load', async () => {
-		Object.assign(thread, { hasMessages: true });
+	it('does not load older messages when the thread has no more history', async () => {
+		Object.assign(thread, { hasOlderMessages: false });
 		thread.loadOlderMessages = vi.fn(async () => {});
 		const wrapper = mountConversation();
-		expect(wrapper.find('[data-icon="arrow-down"]').exists()).toBe(false);
 
-		// One jump to the top that the throttled scroll state did not see.
-		infiniteScroll.measuredBottom = false;
-		await infiniteScroll.load?.();
-		await nextTick();
+		requestOlderMessages(wrapper);
+		await flushPromises();
 
-		expect(wrapper.find('[data-icon="arrow-down"]').exists()).toBe(true);
+		expect(thread.loadOlderMessages).not.toHaveBeenCalled();
 	});
 
-	it('shows a spinner while older messages load', async () => {
+	it('shows a spinner and sends one request while older messages load', async () => {
+		Object.assign(thread, { hasOlderMessages: true });
+		let finishLoad = () => {};
+		thread.loadOlderMessages = vi.fn(
+			async () =>
+				await new Promise<void>((resolve) => {
+					finishLoad = () => {
+						loadLastPage();
+						resolve();
+					};
+				}),
+		);
 		const wrapper = mountConversation();
 		const spinner = '[data-test-id="instance-ai-older-messages-loading"]';
 		expect(wrapper.find(spinner).exists()).toBe(false);
 
-		infiniteScroll.isLoading!.value = true;
+		requestOlderMessages(wrapper);
+		requestOlderMessages(wrapper);
 		await nextTick();
 
 		expect(wrapper.find(spinner).exists()).toBe(true);
+		expect(thread.loadOlderMessages).toHaveBeenCalledOnce();
+
+		finishLoad();
+		await flushPromises();
+
+		expect(wrapper.find(spinner).exists()).toBe(false);
 	});
 
-	it('shows an error and stops the retries until the user scrolls away from the top', async () => {
+	it('shows an error and stops the retries after a failed load', async () => {
 		Object.assign(thread, { hasOlderMessages: true });
 		thread.loadOlderMessages = vi.fn(async () => {
 			throw new Error('Network error');
 		});
 		const wrapper = mountConversation();
-		const view = { scrollHeight: 1000, clientHeight: 500 } as HTMLElement;
-		infiniteScroll.options?.onScroll?.(new Event('scroll'));
 
-		await infiniteScroll.load?.();
-		await nextTick();
+		requestOlderMessages(wrapper);
+		await flushPromises();
+		requestOlderMessages(wrapper);
+		await flushPromises();
 
 		expect(wrapper.find('[data-test-id="instance-ai-older-messages-error"]').text()).toContain(
 			"Couldn't load earlier messages",
 		);
 		expect(showErrorSpy).not.toHaveBeenCalled();
-		expect(infiniteScroll.options?.canLoadMore?.(view)).toBe(false);
-
-		infiniteScroll.arrivedState!.top = false;
-		await nextTick();
-
-		expect(infiniteScroll.options?.canLoadMore?.(view)).toBe(true);
+		expect(thread.loadOlderMessages).toHaveBeenCalledOnce();
 	});
 
-	it('lets the user retry a failed load in a thread too short to scroll', async () => {
+	it('loads older messages again when the user clicks retry', async () => {
 		Object.assign(thread, { hasOlderMessages: true });
 		thread.loadOlderMessages = vi.fn(async () => {
 			throw new Error('Network error');
 		});
 		const wrapper = mountConversation();
-		// The content fits in the view, so the user cannot scroll away from the top.
-		const view = { scrollHeight: 400, clientHeight: 500 } as HTMLElement;
 		const retryNotice = '[data-test-id="instance-ai-older-messages-error"]';
 
-		await infiniteScroll.load?.();
-		await nextTick();
-		expect(infiniteScroll.options?.canLoadMore?.(view)).toBe(false);
-
+		requestOlderMessages(wrapper);
+		await flushPromises();
+		thread.loadOlderMessages = vi.fn(async () => loadLastPage());
 		await wrapper.find(`${retryNotice} button`).trigger('click');
+		await flushPromises();
 
-		expect(infiniteScroll.options?.canLoadMore?.(view)).toBe(true);
+		expect(thread.loadOlderMessages).toHaveBeenCalledOnce();
 		expect(wrapper.find(retryNotice).exists()).toBe(false);
 	});
 
@@ -688,6 +640,112 @@ describe('InstanceAiConversation', () => {
 			);
 		});
 	});
+
+	it('does not fetch or connect a local draft, and waits for persistence before sending', async () => {
+		store.threads = [];
+		thread.hydrationStatus = 'idle';
+		stashPendingAgentAttachment(thread.id, {
+			type: 'agent',
+			id: 'agent-1',
+			projectId: 'proj-1',
+			pending: true,
+		});
+		const gate = Promise.withResolvers<void>();
+		const beforeSend = vi.fn(() => gate.promise);
+		const renderer = createThreadComponentRenderer(
+			InstanceAiConversation,
+			{
+				props: { newThread: true, beforeSend },
+				global: { stubs: { InstanceAiInput: InstanceAiInputStub } },
+			},
+			() => thread,
+		);
+		const { getByTestId } = renderer();
+		await flushPromises();
+		expect(store.loadThread).not.toHaveBeenCalled();
+		expect(thread.loadHistoricalMessages).not.toHaveBeenCalled();
+		expect(thread.loadThreadStatus).not.toHaveBeenCalled();
+		expect(thread.connectSSE).not.toHaveBeenCalled();
+		expect(thread.hydrationStatus).toBe('ready');
+		expect(getByTestId('instance-ai-input-busy').textContent).toBe('idle');
+
+		await fireEvent.click(getByTestId('instance-ai-input-submit'));
+		expect(beforeSend).toHaveBeenCalledOnce();
+		expect(thread.sendMessage).not.toHaveBeenCalled();
+		gate.resolve();
+		await flushPromises();
+		expect(getByTestId('instance-ai-input-busy').textContent).toBe('idle');
+		expect(thread.sendMessage).toHaveBeenCalledWith(
+			'Normal message',
+			expect.objectContaining({
+				attachments: [{ type: 'agent', id: 'agent-1', projectId: 'proj-1', pending: true }],
+			}),
+		);
+	});
+
+	it('replays a local draft opening prompt once, after provisioning, with its pending agent', async () => {
+		store.threads = [];
+		stashPendingFirstMessage(thread.id, {
+			message: 'Build a support agent',
+			authorship: USER_TYPED_MESSAGE,
+			responseStartedAtEpochMs: 123,
+		});
+		stashPendingAgentAttachment(thread.id, {
+			type: 'agent',
+			id: 'agent-1',
+			projectId: 'proj-1',
+			pending: true,
+		});
+		const gate = Promise.withResolvers<void>();
+		const beforeSend = vi.fn(() => gate.promise);
+		const renderer = createThreadComponentRenderer(
+			InstanceAiConversation,
+			{ props: { newThread: true, beforeSend } },
+			() => thread,
+		);
+		renderer();
+		await flushPromises();
+
+		expect(beforeSend).toHaveBeenCalledOnce();
+		expect(thread.sendMessage).not.toHaveBeenCalled();
+		expect(thread.loadHistoricalMessages).not.toHaveBeenCalled();
+		expect(thread.loadThreadStatus).not.toHaveBeenCalled();
+		gate.resolve();
+		await flushPromises();
+
+		expect(thread.sendMessage).toHaveBeenCalledExactlyOnceWith(
+			'Build a support agent',
+			expect.objectContaining({
+				authorship: USER_TYPED_MESSAGE,
+				responseStartedAtEpochMs: 123,
+				attachments: [{ type: 'agent', id: 'agent-1', projectId: 'proj-1', pending: true }],
+			}),
+		);
+		expect(consumePendingFirstMessage(thread.id)).toBeNull();
+	});
+
+	it.each(['provisioning failed', 'send refused'])(
+		'retains a local opening prompt when %s',
+		async (failure) => {
+			store.threads = [];
+			const pending = { message: 'Build a support agent', authorship: USER_TYPED_MESSAGE };
+			stashPendingFirstMessage(thread.id, pending);
+			const beforeSend = vi.fn(async () => {
+				if (failure === 'provisioning failed') throw new Error('provisioning failed');
+			});
+			vi.mocked(thread.sendMessage).mockResolvedValue(false);
+			const renderer = createThreadComponentRenderer(
+				InstanceAiConversation,
+				{ props: { newThread: true, beforeSend } },
+				() => thread,
+			);
+			renderer();
+			await flushPromises();
+
+			expect(beforeSend).toHaveBeenCalledOnce();
+			expect(consumePendingFirstMessage(thread.id)).toEqual(pending);
+		},
+	);
 
 	it('awaits beforeSend before sending, restoring the draft if it rejects', async () => {
 		const beforeSend = vi.fn().mockRejectedValueOnce(new Error('flush failed'));
@@ -988,6 +1046,95 @@ describe('InstanceAiConversation', () => {
 			await fireEvent.click(getByTestId('instance-ai-input-dismiss-context-chip'));
 			await vi.waitFor(() => expect(thread.clearPendingWorkflowAttachment).toHaveBeenCalled());
 			expect(thread.pendingWorkflowAttachment).toBeNull();
+		});
+	});
+
+	describe('stop browser tasks popover', () => {
+		const runningTask: CloudBrowserTask = {
+			agentId: 'agent-1',
+			taskId: 'task-1',
+			title: 'Find the price',
+			state: 'running',
+			sessionKey: 'tc-1',
+		};
+
+		function mountWithBrowserTasks(tasks: CloudBrowserTask[]) {
+			const cancelBackgroundTask = vi.fn().mockResolvedValue(undefined);
+			Object.assign(thread, { isStreaming: true, cancelBackgroundTask });
+			const Host = defineComponent({
+				setup() {
+					provideThread(thread);
+					provide(
+						CloudBrowserTasksKey,
+						computed(() => tasks),
+					);
+					return () => h(InstanceAiConversation);
+				},
+			});
+			const wrapper = mount(Host, {
+				attachTo: document.body,
+				global: { stubs: { InstanceAiInput: InstanceAiInputStub } },
+			});
+			return { wrapper, cancelBackgroundTask };
+		}
+
+		function findPopover() {
+			return document.body.querySelector('[data-test-id="instance-ai-stop-browser-tasks"]');
+		}
+
+		afterEach(() => {
+			document.body.innerHTML = '';
+		});
+
+		it('asks whether to stop the browser tasks that still run after the reply stops', async () => {
+			const { wrapper } = mountWithBrowserTasks([runningTask]);
+
+			await wrapper.get('[data-test-id="instance-ai-input-stop"]').trigger('click');
+
+			expect(thread.cancelRun).toHaveBeenCalled();
+			await vi.waitFor(() => expect(findPopover()).not.toBeNull());
+			expect(findPopover()?.textContent).toContain('Stop browser task?');
+			expect(findPopover()?.textContent).toContain('1 browser is still running');
+			wrapper.unmount();
+		});
+
+		it('stops the running tasks when the user chooses to', async () => {
+			const { wrapper, cancelBackgroundTask } = mountWithBrowserTasks([runningTask]);
+			await wrapper.get('[data-test-id="instance-ai-input-stop"]').trigger('click');
+			await vi.waitFor(() => expect(findPopover()).not.toBeNull());
+
+			await fireEvent.click(
+				document.body.querySelector('[data-test-id="instance-ai-stop-browser-tasks-stop"]')!,
+			);
+
+			expect(cancelBackgroundTask).toHaveBeenCalledWith('task-1');
+			await vi.waitFor(() => expect(findPopover()).toBeNull());
+			wrapper.unmount();
+		});
+
+		it('keeps the tasks running when the user chooses to', async () => {
+			const { wrapper, cancelBackgroundTask } = mountWithBrowserTasks([runningTask]);
+			await wrapper.get('[data-test-id="instance-ai-input-stop"]').trigger('click');
+			await vi.waitFor(() => expect(findPopover()).not.toBeNull());
+
+			await fireEvent.click(
+				document.body.querySelector('[data-test-id="instance-ai-stop-browser-tasks-keep"]')!,
+			);
+
+			expect(cancelBackgroundTask).not.toHaveBeenCalled();
+			await vi.waitFor(() => expect(findPopover()).toBeNull());
+			wrapper.unmount();
+		});
+
+		it('only stops the reply when no browser task runs', async () => {
+			const { wrapper } = mountWithBrowserTasks([{ ...runningTask, state: 'done' }]);
+
+			await wrapper.get('[data-test-id="instance-ai-input-stop"]').trigger('click');
+			await nextTick();
+
+			expect(thread.cancelRun).toHaveBeenCalled();
+			expect(findPopover()).toBeNull();
+			wrapper.unmount();
 		});
 	});
 });

@@ -12,6 +12,7 @@ const props = defineProps<{
 	language?: string;
 	/** Hide the copy affordance (e.g. while the value is still resolving). */
 	disabled?: boolean;
+	wrap?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -30,7 +31,7 @@ const handleCopy = async () => {
 </script>
 
 <template>
-	<div :class="$style.container" data-test-id="mcp-config-snippet">
+	<div :class="[$style.container, { [$style.wrap]: wrap }]" data-test-id="mcp-config-snippet">
 		<N8nMarkdown :content="code" />
 		<div :class="$style['copy-wrapper']">
 			<N8nTooltip
@@ -70,6 +71,11 @@ const handleCopy = async () => {
 		background: none !important;
 		overflow-x: auto;
 	}
+}
+
+.wrap code {
+	white-space: pre-wrap;
+	padding-right: var(--spacing--xl) !important;
 }
 
 .copy-wrapper {

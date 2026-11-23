@@ -13,6 +13,7 @@ import path from 'path';
 
 import { UrlService } from '@n8n/backend-services';
 
+import { AiPreferenceSettingsService } from './ai-preference-settings.service';
 import { AiUsageService } from './ai-usage.service';
 import { WorkflowReviewPolicyService } from './workflow-review-policy.service';
 
@@ -51,6 +52,9 @@ export type PublicFrontendSettings = {
 
 	/** Used to bypass authentication on the workflows/demo page */
 	previewMode: FrontendSettings['previewMode'];
+
+	/** Lets the editor load its expression engine before the user signs in */
+	expressionEngine: FrontendSettings['expressionEngine'];
 
 	authCookie: {
 		/** Blocks insecure access incompatible with the authentication cookie. */
@@ -105,6 +109,9 @@ export type PublicFrontendSettings = {
 	/** Used to fetch community nodes on preview instance */
 	communityNodesEnabled: FrontendSettings['communityNodesEnabled'];
 
+	/** Lets the editor know the active backend modules before its first request */
+	activeModules: FrontendSettings['activeModules'];
+
 	mfa?: {
 		enabled: boolean;
 		enforced: boolean;
@@ -142,6 +149,7 @@ export class FrontendService {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly workflowReviewPolicyService: WorkflowReviewPolicyService,
 		private readonly inboxService: InboxService,
+		private readonly aiPreferenceSettingsService: AiPreferenceSettingsService,
 	) {
 		loadNodesAndCredentials.addPostProcessor(async () => await this.generateTypes());
 		credentialsOverwrites.registerReloadHandler(async () => await this.generateTypes());
@@ -252,6 +260,7 @@ export class FrontendService {
 				},
 			},
 			instanceId: this.instanceSettings.instanceId,
+			installId: this.instanceSettings.installId,
 			telemetry: telemetrySettings,
 			posthog: {
 				enabled: this.globalConfig.diagnostics.enabled,
@@ -383,6 +392,7 @@ export class FrontendService {
 			banners: {
 				dismissed: [],
 			},
+			// oxlint-disable-next-line typescript/no-deprecated -- The AI Transform node still uses this setting.
 			askAi: {
 				enabled: false,
 			},
@@ -397,6 +407,11 @@ export class FrontendService {
 			},
 			ai: {
 				allowSendingParameterValues: true,
+				allowModelTraining: true,
+			},
+			aiPreferences: {
+				enabled: false,
+				managedByEnv: false,
 			},
 			workflowHistory: {
 				pruneTime: getWorkflowHistoryPruneTime(),
@@ -523,6 +538,17 @@ export class FrontendService {
 			this.settings.ai.allowSendingParameterValues =
 				this.globalConfig.ai.allowSendingParameterValues;
 		}
+		try {
+			this.settings.ai.allowModelTraining = await this.aiUsageService.isModelTrainingAllowed();
+		} catch {
+			// Show the instance as opted out rather than claim its traces train models.
+			this.settings.ai.allowModelTraining = false;
+		}
+
+		this.settings.aiPreferences = {
+			enabled: this.aiPreferenceSettingsService.isSwitchOn,
+			managedByEnv: this.aiPreferenceSettingsService.isManagedByEnv,
+		};
 
 		const isS3Selected = this.binaryDataConfig.mode === 's3';
 		const isS3Available = this.binaryDataConfig.availableModes.includes('s3');
@@ -731,6 +757,8 @@ export class FrontendService {
 			enterprise: { saml, ldap, oidc },
 			mfa,
 			communityNodesEnabled,
+			activeModules,
+			expressionEngine,
 		} = await this.getSettings();
 		const publicSettings: PublicFrontendSettings = {
 			settingsMode: 'public',
@@ -755,6 +783,8 @@ export class FrontendService {
 			previewMode,
 			enterprise: { saml, ldap, oidc },
 			communityNodesEnabled,
+			activeModules,
+			expressionEngine,
 		};
 		if (includeMfaSettings) {
 			publicSettings.mfa = mfa;
