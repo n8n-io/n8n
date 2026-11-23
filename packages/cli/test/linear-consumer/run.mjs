@@ -8,7 +8,6 @@ import { spawnSync } from 'node:child_process';
 // Bundle the tested source. Do not load the CLI bootstrap or its database and network clients.
 const here = fileURLToPath(new URL('.', import.meta.url));
 const dir = await mkdtemp(join(tmpdir(), 'consumer-'));
-const gym = resolve(process.argv[2] ?? '/tmp/lg-ai-gym');
 try {
 	const outfile = join(dir, 'test.cjs');
 	await build({
@@ -17,13 +16,21 @@ try {
 		bundle: true,
 		platform: 'node',
 		tsconfigRaw: { compilerOptions: { experimentalDecorators: true } },
-		alias: { '@/utils/ttl-map': resolve(here, '../../src/utils/ttl-map.ts') },
+		alias: {
+			'@/utils/ttl-map': resolve(here, '../../src/utils/ttl-map.ts'),
+			'@/utils/ai-proxy-fetch': resolve(here, '../../src/utils/ai-proxy-fetch.ts'),
+		},
 		plugins: [
 			{
 				name: 'isolated-consumer',
 				setup(b) {
 					b.onResolve({ filter: /.*/ }, ({ path, importer }) => {
 						if (path === 'zod' || path === './agent-sse-stream') return;
+						// The guard runs for real: its own imports (DI container, agents SDK, MCP SDK) are not stubbed.
+						if (importer.includes('/mcp-guard/') || path.includes('/mcp-guard/')) return;
+						// Stub only what the CLI source imports. The packages it uses (Logger, DI) load for real.
+						if (!importer.includes('/packages/cli/')) return;
+						if (path === '@/utils/ai-proxy-fetch') return;
 						if (importer.endsWith('/agents-builder-tools.service.ts') && path === '@n8n/api-types')
 							return { path: 'builder-schemas', namespace: 'builder' };
 						if (
@@ -31,7 +38,6 @@ try {
 								importer,
 							) ||
 							path === '@/modules/skills' ||
-							path === '@n8n/di' ||
 							/agent-runtime-reconstruction\.service\.ts$/.test(importer) ||
 							/^(?:@n8n\/(?:api-types|agents|ai-utilities\/agent-config)|n8n-workflow)$/.test(
 								path,
@@ -49,27 +55,25 @@ try {
 					}));
 					b.onLoad({ filter: /.*/, namespace: 'fixture-stub' }, () => ({
 						contents:
-							'module.exports = {Service:()=>()=>{},OnShutdown:()=>()=>{},AgentsCredentialProvider:class {},isCredentialAgentIntegration:()=>false,userHasScopes:()=>true,getIntegrationToolConnectionDescriptors:()=>[],InstrumentedRunUnsupportedError:class extends Error {},buildMcpClientForServer:(_server,options)=>options.proxyFetch};',
+							'module.exports = {Service:()=>()=>{},OnShutdown:()=>()=>{},AgentsCredentialProvider:class {},isCredentialAgentIntegration:()=>false,userHasScopes:()=>true,getIntegrationToolConnectionDescriptors:()=>[],InstrumentedRunUnsupportedError:class extends Error {},buildMcpClientForServer:(_server,options)=>options.proxyFetch,resolveModelConfig:async(config)=>config.model};',
 					}));
 				},
 			},
 		],
 	});
-	const result = spawnSync(
-		process.execPath,
-		['deploy/e2e/linear-spike.mjs', '--', process.execPath, outfile],
-		{
-			cwd: gym,
-			stdio: 'inherit',
-			env: {
-				PATH: process.env.PATH,
-				HOME: process.env.HOME,
-				GOPROXY: 'off',
-				N8N_USER_FOLDER: dir,
-				N8N_SAFE_TESTING_BACKEND: 'linear-gym',
-			},
+	// The gym must run already: admin API on 127.0.0.1:9090 and MCP on 127.0.0.1:8080, or set
+	// AI_GYM_LINEAR_URL and GYM_LINEAR_MCP_URL. The test starts its own stand-in for mcp.linear.app.
+	const result = spawnSync(process.execPath, [outfile], {
+		stdio: 'inherit',
+		env: {
+			PATH: process.env.PATH,
+			HOME: process.env.HOME,
+			N8N_USER_FOLDER: dir,
+			MCP_GUARD_HYDRATION: 'plan',
+			...(process.env.AI_GYM_LINEAR_URL && { AI_GYM_LINEAR_URL: process.env.AI_GYM_LINEAR_URL }),
+			...(process.env.GYM_LINEAR_MCP_URL && { GYM_LINEAR_MCP_URL: process.env.GYM_LINEAR_MCP_URL }),
 		},
-	);
+	});
 	if (result.error) throw result.error;
 	process.exitCode = result.status ?? 1;
 } finally {
