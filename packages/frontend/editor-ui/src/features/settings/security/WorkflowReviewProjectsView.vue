@@ -154,8 +154,8 @@ async function onRequired(projectId: string, required: boolean) {
 			requiredByInstance: required,
 		});
 		setRequiredByInstance(projectId, response.requiredByInstance);
-		// The saved row can leave the filter, so the count and the page change.
-		if (filters.value.approval !== '') void load();
+		// The reload drops an older list request, and the saved row can leave the filter.
+		void load();
 		showToast({
 			type: 'success',
 			title: i18n.baseText('settings.security.workflowReviews.requireApproval.success'),
@@ -248,6 +248,20 @@ onMounted(load);
 					</N8nSelect>
 				</div>
 			</ResourceFiltersDropdown>
+			<!-- Hidden during the first load, so it never shows 0 before the count arrives. -->
+			<N8nText
+				v-if="!loadFailed && (!loading || count > 0)"
+				size="small"
+				color="text-light"
+				data-test-id="workflow-review-projects-count"
+			>
+				{{
+					i18n.baseText('settings.security.workflowReviews.projects.count', {
+						adjustToNumber: count,
+						interpolate: { count: String(count) },
+					})
+				}}
+			</N8nText>
 		</div>
 
 		<N8nText

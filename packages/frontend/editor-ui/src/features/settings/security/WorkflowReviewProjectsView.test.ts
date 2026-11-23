@@ -58,6 +58,29 @@ function projectList(
 	return { count: data.length, data, managedByEnv: false, ...overrides };
 }
 
+/** Serves the list and the saves from `stored`, so a reload reads what a save wrote. */
+function serveStoredProjects(stored: WorkflowReviewProject[]) {
+	getWorkflowReviewProjects.mockImplementation(
+		async (_context, query: { skip: number; take: number; requiredByInstance?: boolean }) => {
+			const matches = stored.filter(
+				(row) =>
+					query.requiredByInstance === undefined ||
+					row.requiredByInstance === query.requiredByInstance,
+			);
+			return projectList(matches.slice(query.skip, query.skip + query.take), {
+				count: matches.length,
+			});
+		},
+	);
+	updateWorkflowReviewProject.mockImplementation(
+		async (_context, projectId: string, { requiredByInstance }) => {
+			const row = stored.find(({ id }) => id === projectId)!;
+			row.requiredByInstance = requiredByInstance;
+			return { requiredByInstance };
+		},
+	);
+}
+
 const approvalSelect = async (name: string) =>
 	await screen.findByRole('combobox', { name: `Approval for ${name}` });
 
@@ -103,7 +126,10 @@ describe('WorkflowReviewProjectsView', () => {
 	});
 
 	it('saves a changed option at once and shows a toast', async () => {
-		updateWorkflowReviewProject.mockResolvedValue({ requiredByInstance: true });
+		serveStoredProjects([
+			project({ id: 'p1', name: 'Alpha', requiredByInstance: true }),
+			project({ id: 'p2', name: 'Beta' }),
+		]);
 		renderView();
 
 		await userEvent.click(await approvalSelect('Beta'));
@@ -144,6 +170,34 @@ describe('WorkflowReviewProjectsView', () => {
 			vi.useRealTimers();
 		});
 
+		it('keeps a saved option when an older list request returns after the save', async () => {
+			const stored = [
+				project({ id: 'p1', name: 'Alpha', requiredByInstance: true }),
+				project({ id: 'p2', name: 'Beta' }),
+			];
+			serveStoredProjects(stored);
+			const staleList = projectList(stored.map((row) => ({ ...row })));
+			const { getByTestId } = renderView();
+			await approvalSelect('Beta');
+
+			let returnStaleList: (list: WorkflowReviewProjectList) => void = () => {};
+			getWorkflowReviewProjects.mockImplementationOnce(
+				async () => await new Promise((resolve) => (returnStaleList = resolve)),
+			);
+			await userEvent.type(getByTestId('workflow-review-projects-search'), 'a');
+			await vi.runAllTimersAsync();
+
+			await userEvent.click(await approvalSelect('Beta'));
+			await userEvent.click(await screen.findByRole('option', { name: 'Required' }));
+			await waitFor(() => expect(showToast).toHaveBeenCalled());
+			returnStaleList(staleList);
+			await vi.runAllTimersAsync();
+
+			const beta = await approvalSelect('Beta');
+			expect(beta).toHaveTextContent('Required');
+			expect(beta).not.toHaveTextContent('Not required');
+		});
+
 		it('says when no project matches the search', async () => {
 			const { findByTestId, getByTestId } = renderView();
 			await approvalSelect('Alpha');
@@ -159,6 +213,7 @@ describe('WorkflowReviewProjectsView', () => {
 
 		it('reloads the first page with the search term and the filter', async () => {
 			const { findByTestId, getByTestId } = renderView();
+			expect(await findByTestId('workflow-review-projects-count')).toHaveTextContent('25 projects');
 			await userEvent.click(await findByTestId('pagination-next'));
 			await waitFor(() =>
 				expect(getWorkflowReviewProjects).toHaveBeenLastCalledWith(expect.anything(), {
@@ -198,25 +253,7 @@ describe('WorkflowReviewProjectsView', () => {
 				requiredByInstance: true,
 			}),
 		);
-		getWorkflowReviewProjects.mockImplementation(
-			async (_context, query: { skip: number; take: number; requiredByInstance?: boolean }) => {
-				const matches = stored.filter(
-					(row) =>
-						query.requiredByInstance === undefined ||
-						row.requiredByInstance === query.requiredByInstance,
-				);
-				return projectList(matches.slice(query.skip, query.skip + query.take), {
-					count: matches.length,
-				});
-			},
-		);
-		updateWorkflowReviewProject.mockImplementation(
-			async (_context, projectId: string, { requiredByInstance }) => {
-				const row = stored.find(({ id }) => id === projectId)!;
-				row.requiredByInstance = requiredByInstance;
-				return { requiredByInstance };
-			},
-		);
+		serveStoredProjects(stored);
 		const { findByTestId, getByTestId } = renderView();
 
 		await userEvent.click(await findByTestId('resources-list-filters-trigger'));

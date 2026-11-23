@@ -7206,6 +7206,7 @@
 	"settings.security.workflowReviews.projects.page.title": "Require approval for projects",
 	"settings.security.workflowReviews.projects.page.description": "Choose which projects require approval before publishing.",
 	"settings.security.workflowReviews.projects.search": "Search projects",
+	"settings.security.workflowReviews.projects.count": "{count} project | {count} projects",
 	"settings.security.workflowReviews.projects.filter.all": "All",
 	"settings.security.workflowReviews.projects.loadError": "Projects could not be loaded. Refresh the page to try again.",
 	"settings.security.workflowReviews.projects.empty": "There are no team projects.",
