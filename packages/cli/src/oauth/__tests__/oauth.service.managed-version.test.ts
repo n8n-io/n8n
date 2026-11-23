@@ -11,6 +11,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { CredentialTypes } from '@/credential-types';
 import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
+import type { RuntimeCredentialsResolver } from '@/credentials/runtime-credentials-resolver';
 import { CredentialsHelper } from '@/credentials-helper';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
@@ -99,6 +100,7 @@ describe('OauthService with managed app versions', () => {
 			mock<ExternalSecretsConfig>(),
 			mock<AiGatewayService>(),
 			mock<PolicyEnforcementService>(),
+			mock<RuntimeCredentialsResolver>(),
 		);
 		service = new OauthService(
 			mock(),

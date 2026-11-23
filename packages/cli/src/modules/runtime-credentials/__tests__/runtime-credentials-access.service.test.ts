@@ -76,4 +76,23 @@ describe('RuntimeCredentialsAccessService', () => {
 			service.getRuntimeCredential(buildRunExecutionData(ENCRYPTED_BLOB), 'api_key'),
 		).rejects.toThrow();
 	});
+
+	describe('getRuntimeCredentials', () => {
+		it('returns every alias from the execution context', async () => {
+			const result = await service.getRuntimeCredentials({
+				version: 1,
+				establishedAt: 0,
+				source: 'webhook',
+				secureArtifacts: ENCRYPTED_BLOB,
+			});
+
+			expect(result).toEqual({ api_key: ['Bearer xyz', 'Bearer abc'] });
+			expect(cipher.decryptV2).toHaveBeenCalledWith(ENCRYPTED_BLOB);
+		});
+
+		it('returns an empty object without decrypting when there are no artifacts', async () => {
+			expect(await service.getRuntimeCredentials(undefined)).toEqual({});
+			expect(cipher.decryptV2).not.toHaveBeenCalled();
+		});
+	});
 });

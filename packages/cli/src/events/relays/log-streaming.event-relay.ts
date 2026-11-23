@@ -154,6 +154,7 @@ export class LogStreamingEventRelay extends EventRelay {
 			'email-failed': (event) => this.emailFailed(event),
 			'credentials-created': (event) => this.credentialsCreated(event),
 			'credentials-deleted': (event) => this.credentialsDeleted(event),
+			'runtime-credential-used': (event) => this.runtimeCredentialUsed(event),
 			'credentials-data-read': (event) => this.credentialsDataRead(event),
 			'credentials-list-data-read': (event) => this.credentialsListDataRead(event),
 			'credentials-user-disconnected': (event) => this.credentialsUserDisconnected(event),
@@ -960,6 +961,13 @@ export class LogStreamingEventRelay extends EventRelay {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.credentials.deleted',
 			payload: { ...user, credentialType, credentialId, ...(loginId !== undefined && { loginId }) },
+		});
+	}
+
+	private runtimeCredentialUsed(event: RelayEventMap['runtime-credential-used']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.runtime-credential.used',
+			payload: event,
 		});
 	}
 

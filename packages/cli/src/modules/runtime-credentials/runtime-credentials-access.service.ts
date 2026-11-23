@@ -1,9 +1,9 @@
 import { Service } from '@n8n/di';
 import { Cipher } from 'n8n-core';
-import type { IDataObject, IRunExecutionData } from 'n8n-workflow';
+import type { IDataObject, IExecutionContext, IRunExecutionData } from 'n8n-workflow';
 import { toSecureArtifacts } from 'n8n-workflow';
 
-import { RuntimeCredentialProvider } from '@n8n/backend-services';
+import { RuntimeCredentialProvider, type RuntimeCredentialValues } from '@n8n/backend-services';
 
 @Service()
 export class RuntimeCredentialsAccessService implements RuntimeCredentialProvider {
@@ -13,14 +13,23 @@ export class RuntimeCredentialsAccessService implements RuntimeCredentialProvide
 		runExecutionData: IRunExecutionData,
 		alias: string,
 	): Promise<IDataObject[string] | undefined> {
-		const secureArtifacts = runExecutionData.executionData?.runtimeData?.secureArtifacts;
+		const artifacts = await this.decrypt(runExecutionData.executionData?.runtimeData);
+		return artifacts?.[alias];
+	}
 
-		if (typeof secureArtifacts === 'string') {
-			const decryptedSecureArtifacts = await this.cipher.decryptV2(secureArtifacts);
-			const parsedSecureArtifacts = toSecureArtifacts(decryptedSecureArtifacts);
+	async getRuntimeCredentials(
+		executionContext: IExecutionContext | undefined,
+	): Promise<RuntimeCredentialValues> {
+		return (await this.decrypt(executionContext)) ?? {};
+	}
 
-			return parsedSecureArtifacts.artifacts[alias];
-		}
-		return undefined;
+	private async decrypt(
+		executionContext: IExecutionContext | undefined,
+	): Promise<RuntimeCredentialValues | undefined> {
+		const secureArtifacts = executionContext?.secureArtifacts;
+		if (typeof secureArtifacts !== 'string') return undefined;
+
+		const decryptedSecureArtifacts = await this.cipher.decryptV2(secureArtifacts);
+		return toSecureArtifacts(decryptedSecureArtifacts).artifacts;
 	}
 }

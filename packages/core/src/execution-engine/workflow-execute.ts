@@ -74,6 +74,10 @@ import * as NodeExecuteFunctions from '@/node-execute-functions';
 import { assertExecutionDataExists } from '@/utils/assertions';
 
 import { establishExecutionContext } from './execution-context';
+import {
+	buildRuntimeCredentialScrubber,
+	type RuntimeCredentialScrubber,
+} from './runtime-credential-scrubber';
 import type { ExecutionLifecycleHooks } from './execution-lifecycle-hooks';
 import {
 	ExecuteContext,
@@ -127,6 +131,9 @@ function normalizeUnhandledAxiosError(error: unknown, node: INode): ExecutionBas
 
 export class WorkflowExecute {
 	private status: ExecutionStatus = 'new';
+
+	/** Built once per execution, because the runtime credential values never change in a run. */
+	private runtimeCredentialScrubber?: Promise<RuntimeCredentialScrubber | undefined>;
 
 	private readonly abortController = new AbortController();
 	timedOut: boolean = false;
@@ -2305,6 +2312,7 @@ export class WorkflowExecute {
 		continueExecution: boolean;
 		nodeSuccessData: INodeExecutionData[][] | null | undefined;
 	}> {
+		(await this.getRuntimeCredentialScrubber())?.scrubError(executionError);
 		taskData.error = executionError;
 		taskData.executionStatus = 'error';
 
@@ -2385,6 +2393,24 @@ export class WorkflowExecute {
 		} else {
 			nodeRunData.push(taskData);
 		}
+	}
+
+	/**
+	 * Fails the execution when the runtime values cannot be read, because saving the output
+	 * unscrubbed could persist a value that a node echoed.
+	 */
+	private async getRuntimeCredentialScrubber() {
+		if (!this.additionalData.getRuntimeCredentials) return undefined;
+
+		this.runtimeCredentialScrubber ??= Promise.resolve()
+			.then(async () => await this.additionalData.getRuntimeCredentials?.(this.runExecutionData))
+			.then((values) => (values ? buildRuntimeCredentialScrubber(values) : undefined))
+			.catch((error: unknown) => {
+				throw new UnexpectedError('Could not read the runtime credentials of this execution', {
+					cause: error,
+				});
+			});
+		return await this.runtimeCredentialScrubber;
 	}
 
 	/**
@@ -2683,6 +2709,10 @@ export class WorkflowExecute {
 
 							break;
 						} catch (error) {
+							// Scrub before reporting, so an echoed runtime value never reaches error reports.
+							if (typeof error === 'object' && error !== null) {
+								(await this.getRuntimeCredentialScrubber())?.scrubError(error);
+							}
 							executionError = this.reportNodeExecutionError(error, executionNode, workflow);
 						}
 					}
@@ -2714,6 +2744,7 @@ export class WorkflowExecute {
 					}
 
 					this.normalizeNodeErrors(nodeSuccessData!);
+					(await this.getRuntimeCredentialScrubber())?.scrubItems(nodeSuccessData!);
 
 					// Node executed successfully. So add data and go on.
 					taskData.data = {

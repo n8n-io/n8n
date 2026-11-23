@@ -336,6 +336,16 @@ export interface FrontendSettings {
 
 export type FrontendModuleSettings = {
 	/**
+	 * Client settings for the runtime-credentials module.
+	 */
+	'runtime-credentials'?: {
+		/** Whether the feature flag `N8N_ENV_FEAT_RUNTIME_CREDENTIALS` is on. */
+		enabled: boolean;
+		/** Aliases that credentials can read through `$runtimeCredentials`. */
+		aliases: string[];
+	};
+
+	/**
 	 * Client settings for [insights](https://docs.n8n.io/insights/) module.
 	 *
 	 * - `summary`: Whether the summary banner should be shown.
