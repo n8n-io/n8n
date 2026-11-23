@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
+import { useLatestFetch } from '@n8n/composables/useLatestFetch';
 import { useToast } from '@n8n/composables/useToast';
 import {
 	N8nButton,
@@ -25,7 +26,7 @@ const { showError } = useToast();
 
 const modalOpen = ref(false);
 const loadFailed = ref(false);
-let latestLoad = 0;
+const { next: nextLoad } = useLatestFetch();
 
 // A failed load also reports zero collections, so the empty state must not stand in for it.
 const showEmptyState = computed(
@@ -33,15 +34,15 @@ const showEmptyState = computed(
 );
 
 async function load() {
-	const run = ++latestLoad;
+	const isLatest = nextLoad();
 	try {
 		await collectionsStore.fetchCollections();
-		if (run === latestLoad) {
+		if (isLatest()) {
 			loadFailed.value = false;
 		}
 	} catch (error) {
 		// A newer load owns the page now, so this one reports nothing.
-		if (run !== latestLoad) {
+		if (!isLatest()) {
 			return;
 		}
 
