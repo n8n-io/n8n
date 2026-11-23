@@ -25,6 +25,24 @@ export interface ParityRules {
 	severity: { L3: Severity; L4: Severity };
 }
 
+const FIRST_SET = [
+	'set.manual',
+	'set.raw',
+	'if.condition',
+	'switch.rules',
+	'switch.expression',
+	'merge.append',
+	'merge.combineByPosition',
+	'merge.combineByFields',
+	'splitOut',
+	'filter',
+	'aggregate.fields',
+	'aggregate.all',
+	'sort',
+	'limit',
+	'noOp',
+];
+
 const base: Omit<ParityRules, 'name'> = {
 	nodes: ['set.manual', 'set.raw', 'if.condition', 'merge.append', 'splitOut', 'noOp'],
 	combinators: ['chain', 'branch', 'fanOut', 'merge'],
@@ -36,6 +54,12 @@ const base: Omit<ParityRules, 'name'> = {
 /** Named rule sets. `PARITY_RULES` selects one or more of them, separated by commas. */
 export const ruleSets: Record<string, ParityRules> = {
 	smoke: { name: 'smoke', ...base },
+	branching: {
+		...base,
+		name: 'branching',
+		nodes: FIRST_SET,
+		combinators: ['chain', 'branch', 'switch', 'fanOut', 'merge'],
+	},
 };
 
 /** The rule sets that `PARITY_RULES` names. The default is `smoke`. */

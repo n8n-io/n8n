@@ -20,7 +20,7 @@ import type { IWorkflowBase } from 'n8n-workflow';
  */
 
 /** The structure combinators. Each one places nodes and edges in the IR. */
-export type CombinatorId = 'chain' | 'branch' | 'fanOut' | 'merge' | 'trigger';
+export type CombinatorId = 'chain' | 'branch' | 'switch' | 'fanOut' | 'merge' | 'trigger';
 
 export type IrItem = { json: Record<string, unknown> };
 

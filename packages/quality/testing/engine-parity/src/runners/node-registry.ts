@@ -1,10 +1,15 @@
 import { UnrecognizedNodeTypeError } from 'n8n-core';
 // The node sources predate strict mode or use path aliases, so all nodes come from dist.
+import { Filter } from 'n8n-nodes-base/dist/nodes/Filter/Filter.node';
 import { If } from 'n8n-nodes-base/dist/nodes/If/If.node';
 import { ManualTrigger } from 'n8n-nodes-base/dist/nodes/ManualTrigger/ManualTrigger.node';
 import { Merge } from 'n8n-nodes-base/dist/nodes/Merge/Merge.node';
 import { NoOp } from 'n8n-nodes-base/dist/nodes/NoOp/NoOp.node';
 import { Set as SetNode } from 'n8n-nodes-base/dist/nodes/Set/Set.node';
+import { Switch } from 'n8n-nodes-base/dist/nodes/Switch/Switch.node';
+import { Aggregate } from 'n8n-nodes-base/dist/nodes/Transform/Aggregate/Aggregate.node';
+import { Limit } from 'n8n-nodes-base/dist/nodes/Transform/Limit/Limit.node';
+import { Sort } from 'n8n-nodes-base/dist/nodes/Transform/Sort/Sort.node';
 import { SplitOut } from 'n8n-nodes-base/dist/nodes/Transform/SplitOut/SplitOut.node';
 import type { IDataObject, INodeType, INodeTypes, IVersionedNodeType } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
@@ -15,8 +20,13 @@ const registry = new Map<string, INodeType | IVersionedNodeType>([
 	['n8n-nodes-base.manualTrigger', new ManualTrigger()],
 	['n8n-nodes-base.set', new SetNode()],
 	['n8n-nodes-base.if', new If()],
+	['n8n-nodes-base.switch', new Switch()],
 	['n8n-nodes-base.merge', new Merge()],
 	['n8n-nodes-base.splitOut', new SplitOut()],
+	['n8n-nodes-base.filter', new Filter()],
+	['n8n-nodes-base.aggregate', new Aggregate()],
+	['n8n-nodes-base.sort', new Sort()],
+	['n8n-nodes-base.limit', new Limit()],
 	['n8n-nodes-base.noOp', new NoOp()],
 ]);
 

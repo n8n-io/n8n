@@ -5,17 +5,18 @@ import type { ParityRules } from '../rules';
 /**
  * How the combinators can use a node:
  * - `plain`: one input, and output 0 continues.
- * - `if`: routes items to more than one output.
+ * - `if`, `switch`: route items to more than one output.
  * - `merge`: two inputs.
  * - `trigger`: only the generator places triggers. No combinator uses them.
  */
-export type NodeRole = 'plain' | 'if' | 'merge' | 'trigger';
+export type NodeRole = 'plain' | 'if' | 'switch' | 'merge' | 'trigger';
 
 /**
  * Node parameters with holes. A hole becomes a string when the node is placed,
  * because only then are the upstream nodes known:
  * - `{ $expr }`: an n8n expression, `={{ … }}`.
  * - `{ $jsonTemplate }`: the JSON output of a Set node in raw mode.
+ * - `{ $outputIndex }`: the output expression of a Switch node in expression mode.
  */
 export type ParamDraft = Record<string, unknown>;
 

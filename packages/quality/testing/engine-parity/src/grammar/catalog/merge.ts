@@ -19,3 +19,37 @@ export const mergeAppend: CatalogEntry = {
 	id: 'merge.append',
 	params: () => fc.constant({ mode: 'append', numberInputs: 2 }),
 };
+
+export const mergeCombineByPosition: CatalogEntry = {
+	...base,
+	id: 'merge.combineByPosition',
+	params: () =>
+		fc.boolean().map((includeUnpaired) => ({
+			mode: 'combine',
+			combineBy: 'combineByPosition',
+			options: { includeUnpaired },
+		})),
+};
+
+export const mergeCombineByFields: CatalogEntry = {
+	...base,
+	id: 'merge.combineByFields',
+	params: () =>
+		fc
+			.record({
+				field: fc.constantFrom('id', 'n', 's'),
+				joinMode: fc.constantFrom(
+					'keepMatches',
+					'keepNonMatches',
+					'keepEverything',
+					'enrichInput1',
+				),
+			})
+			.map(({ field, joinMode }) => ({
+				mode: 'combine',
+				combineBy: 'combineByFields',
+				fieldsToMatchString: field,
+				joinMode,
+				options: {},
+			})),
+};
