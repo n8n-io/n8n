@@ -31,9 +31,6 @@ export interface HttpVendorProfile {
 	) => Array<{ tool: string; args: Record<string, unknown> }>;
 	// False when a real read needs no copy in the gym.
 	hydrateRead?: (args: HttpToolArgs, real: unknown) => boolean;
-	// The gym warns about an unknown field when two vendors share an entity kind and each knows other
-	// fields (`calendar_event` of Google Calendar and Outlook). Names the paths of such warnings.
-	ignoreSeedWarning?: (path: string) => boolean;
 	// A read under an id that only the gym knows (a calendar, a folder) has no real twin by that id.
 	// This names the real read that holds the same data, so the gym gets a copy of it first.
 	// `ask` reads a path from the gym.
@@ -265,27 +262,6 @@ const OUTLOOK_PERSONA = 'person:me';
 // The gym placeholder account is the only mailbox that the credential of the tenant reads. Code sets
 // it, so that a message of a real address with no account in the gym has a mailbox.
 export function withOutlookMailbox(overlay: Record<string, unknown>): Record<string, unknown> {
-	return withEventKind(withOutlookMailboxNative(overlay));
-}
-
-// The kind of an event is no data of the real result, so the checks of the plan remove it. Code sets it.
-function withEventKind(overlay: Record<string, unknown>): Record<string, unknown> {
-	if (!Array.isArray(overlay.entities)) return overlay;
-	const isEvent = (entity: unknown): entity is Record<string, unknown> =>
-		isRecord(entity) &&
-		entity.kind === undefined &&
-		entity.at !== undefined &&
-		entity.messages === undefined;
-	if (!overlay.entities.some(isEvent)) return overlay;
-	return {
-		...overlay,
-		entities: overlay.entities.map((entity) =>
-			isEvent(entity) ? { ...entity, kind: 'calendar_event' } : entity,
-		),
-	};
-}
-
-function withOutlookMailboxNative(overlay: Record<string, unknown>): Record<string, unknown> {
 	const native = isRecord(overlay.native) ? overlay.native : undefined;
 	const outlook = native && isRecord(native.outlook) ? native.outlook : undefined;
 	if (!native || !outlook) return overlay;
@@ -395,9 +371,6 @@ export const OUTLOOK_PROFILE: HttpVendorProfile = {
 	enrich: enrichOutlook,
 	finalize: withOutlookMailbox,
 	mirrorRead: mirrorOutlookRead,
-	// Google Calendar also claims `calendar_event` and does not know these fields of an Outlook event.
-	ignoreSeedWarning: (path) =>
-		/^\$\.entities\[\d+\]\.(?:subject|body|show_as|private|categories|responses)$/.test(path),
 	lookups: (tool, args) => {
 		// A list holds full messages, so a list needs no extra read. A write on an object needs that
 		// object in the gym.

@@ -538,26 +538,6 @@ describe('withOutlookMailbox', () => {
 		expect(outlook.calendars[0].account).toBe('person:me');
 	});
 
-	it('sets the kind of an event, and leaves other entities as they are', () => {
-		const thread = { ref: 'thread:a', kind: 'email_thread', at: '-1d' };
-		const out = withOutlookMailbox({
-			entities: [
-				{ ref: 'event:a', subject: 'Sync', at: '2026-11-25T10:00:00Z' },
-				thread,
-				{ ref: 'x' },
-			],
-		}) as { entities: Array<Record<string, unknown>> };
-
-		expect(out.entities[0]).toEqual({
-			ref: 'event:a',
-			subject: 'Sync',
-			at: '2026-11-25T10:00:00Z',
-			kind: 'calendar_event',
-		});
-		expect(out.entities[1]).toBe(thread);
-		expect(out.entities[2]).toEqual({ ref: 'x' });
-	});
-
 	it('overrides an account that the model wrote', () => {
 		const out = withOutlookMailbox({
 			native: { outlook: { messages: [{ ref: 'm', account: 'person:other' }] } },

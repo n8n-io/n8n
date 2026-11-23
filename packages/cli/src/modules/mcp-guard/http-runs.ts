@@ -134,7 +134,6 @@ export class HttpRunRegistry {
 				finalize: profile.finalize,
 				opaqueIds: profile.opaqueIds,
 				seeded: state?.seeded,
-				ignoreSeedWarning: profile.ignoreSeedWarning,
 			});
 			const router = new HttpGuardRouter({
 				upstream,
