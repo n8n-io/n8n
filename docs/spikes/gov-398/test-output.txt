@@ -1,0 +1,26 @@
+GOV-398 spike proof: test/integration/policy/engine-v2-start.policy.test.ts
+An instance policy blocks the node type n8n-nodes-base.set.
+
+Before the gate (master behaviour):
+
+ ❯ test/integration/policy/engine-v2-start.policy.test.ts (4 tests | 2 failed)
+   ❯ a v2 workflow with a node type that an instance policy blocks (2)
+     × a manual run is refused before the data plane gets a start request
+     × a sub-workflow resolve is refused before the engine starts the child
+   ✓ a v2 workflow that no policy blocks (2)
+     ✓ a manual run reaches the data plane
+     ✓ a sub-workflow resolve returns the child graph
+
+ FAIL  ... a manual run is refused before the data plane gets a start request
+AssertionError: promise resolved "'01a2093e-0c61-7134-a544-f402e44900f4'" instead of rejecting
+
+ FAIL  ... a sub-workflow resolve is refused before the engine starts the child
+AssertionError: promise resolved "{ workflowId: 'WYhkZOT4RuK4NY2p', …(4) }" instead of rejecting
+
+With the gate (spike commit):
+
+ ✓ test/integration/policy/workflow-start.policy.test.ts (8 tests)
+ ✓ test/integration/policy/engine-v2-start.policy.test.ts (4 tests)
+ ✓ test/integration/engine-v2-sub-workflow-resolve.test.ts (10 tests)
+ Test Files  3 passed (3)
+      Tests  22 passed (22)
