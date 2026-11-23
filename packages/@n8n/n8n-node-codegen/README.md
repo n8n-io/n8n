@@ -76,7 +76,10 @@ The tests in `src/__tests__/build-properties.test.ts` show each rule.
    `packages/nodes-base/nodes/N8n/v2/overrides.ts`. If the entry has no other
    keys, remove the entry.
 2. Run `generate`. If it shows errors, correct them. See [Errors](#errors).
-3. Commit `overrides.ts` and `properties.generated.ts` together.
+3. If the operation sends a request in a way that no workflow test covers, for
+   example the first flattened list or the first empty response, add one test
+   to `packages/nodes-base/nodes/N8n/test/v2/node/N8nV2.test.ts`.
+4. Commit `overrides.ts` and `properties.generated.ts` together.
 
 To keep an operation out of the node, give its entry `exclude` with a reason.
 
