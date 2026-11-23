@@ -10,11 +10,12 @@ import {
 	randomCredentialPayload,
 	testDb,
 } from '@n8n/backend-test-utils';
-import { Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import type { Project, User } from '@n8n/db';
 import {
+	SharedWorkflowRepository,
 	WorkflowPublicationOutboxRepository,
+	WorkflowPublicationReason,
 	WorkflowPublicationTriggerStatusRepository,
 	WorkflowPublishedVersionRepository,
 	WorkflowPublishHistoryRepository,
@@ -49,7 +50,7 @@ import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
 import { saveCredential } from '../shared/db/credentials';
 import { createFolder } from '../shared/db/folders';
-import { createMember, createOwnerWithApiKey } from '../shared/db/users';
+import { createMember, createOwner, createOwnerWithApiKey } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 
@@ -174,20 +175,38 @@ const outboxRecordsOf = async (workflowId: string) =>
 		({ status, reason, publishedVersionId }) => ({ status, reason, publishedVersionId }),
 	);
 
-const pendingUnpublish = (versionId: string) => ({
-	status: 'pending',
-	reason: 'publish',
-	publishedVersionId: versionId,
-});
-
 const pendingTransfer = (versionId: string) => ({
 	status: 'pending',
 	reason: 'transfer',
 	publishedVersionId: versionId,
 });
 
+const pendingReconcile = (versionId: string) => ({
+	status: 'pending',
+	reason: 'reconcile',
+	publishedVersionId: versionId,
+});
+
 const registeredCronOf = (workflowId: string) =>
 	Container.get(ActiveWorkflowTriggers).get(workflowId)?.get(CRON_NODE_ID);
+
+const ownerProjectIdOf = async (workflowId: string) =>
+	(
+		await Container.get(SharedWorkflowRepository).findOneByOrFail({
+			workflowId,
+			role: 'workflow:owner',
+		})
+	).projectId;
+
+/** Fails only the `transfer` enqueue, so the restore of the refused triggers still runs. */
+const failTransferEnqueue = () => {
+	const outbox = Container.get(WorkflowPublicationOutboxRepository);
+	const enqueue = outbox.enqueueByWorkflowIds.bind(outbox);
+	vi.spyOn(outbox, 'enqueueByWorkflowIds').mockImplementation(async (workflowIds, reason, ctx) => {
+		if (reason === WorkflowPublicationReason.Transfer) throw new Error('outbox is down');
+		return await enqueue(workflowIds, reason, ctx);
+	});
+};
 
 beforeAll(async () => {
 	expect(Container.get(PolicyCheckMetadata).getClasses()).toContain(PublishDenyCheck);
@@ -278,7 +297,7 @@ describe('PUT /workflows/:workflowId/transfer', () => {
 		expect(await activeVersionIdOf(workflow.id)).toBe(workflow.versionId);
 	});
 
-	test('enqueues an unpublish record when the destination refuses the publish', async () => {
+	test('leaves a pending transfer record that unpublishes a workflow the destination refuses', async () => {
 		const workflow = await createActiveWorkflow({}, sourceProject);
 		refusePublish(targetProject.id, workflow.id);
 
@@ -287,7 +306,7 @@ describe('PUT /workflows/:workflowId/transfer', () => {
 			.send({ destinationProjectId: targetProject.id })
 			.expect(200);
 
-		expect(await outboxRecordsOf(workflow.id)).toEqual([pendingUnpublish(workflow.versionId)]);
+		expect(await outboxRecordsOf(workflow.id)).toEqual([pendingTransfer(workflow.versionId)]);
 	});
 
 	test('runs the workflow.deactivate hook with the moving user when the destination refuses the publish', async () => {
@@ -366,10 +385,16 @@ describe('PUT /workflows/:workflowId/transfer', () => {
 			.send({ destinationProjectId: targetProject.id })
 			.expect(200);
 
-		expect(deactivatedEvents).toEqual([]);
-		expect(response.body.data).toEqual({
-			unpublishReasons: [expect.objectContaining({ checkId: CHECK_ID })],
-		});
+		const REPORTED_WITH_A_PENDING_TRANSFER = {
+			events: [],
+			data: { unpublishReasons: [expect.objectContaining({ checkId: CHECK_ID })] },
+			records: [pendingTransfer(workflow.versionId)],
+		};
+		expect({
+			events: deactivatedEvents,
+			data: response.body.data,
+			records: await outboxRecordsOf(workflow.id),
+		}).toEqual(REPORTED_WITH_A_PENDING_TRANSFER);
 	});
 
 	test('refuses a move on a node type that is only in the published version', async () => {
@@ -390,7 +415,7 @@ describe('PUT /workflows/:workflowId/transfer', () => {
 	});
 });
 
-describe('a move that fails before the ownership change', () => {
+describe('a failed move', () => {
 	test('restores the triggers of a refused workflow that did not move', async () => {
 		const workflow = await createActiveWorkflow({}, sourceProject);
 		refusePublish(targetProject.id, workflow.id);
@@ -409,10 +434,55 @@ describe('a move that fails before the ownership change', () => {
 		const NOT_MOVED_AND_RESTORED = {
 			sharing: [expect.objectContaining({ projectId: sourceProject.id, role: 'workflow:owner' })],
 			activeVersionId: workflow.versionId,
-			records: [{ status: 'pending', reason: 'reconcile', publishedVersionId: workflow.versionId }],
+			records: [pendingReconcile(workflow.versionId)],
 		};
 		expect({
 			sharing: await getWorkflowSharing(workflow),
+			activeVersionId: await activeVersionIdOf(workflow.id),
+			records: await outboxRecordsOf(workflow.id),
+		}).toEqual(NOT_MOVED_AND_RESTORED);
+	});
+
+	test('rolls back the move and restores the triggers of a refused workflow when the transfer enqueue fails', async () => {
+		const workflow = await createActiveWorkflow({}, sourceProject);
+		refusePublish(targetProject.id, workflow.id);
+		failTransferEnqueue();
+
+		await authMemberAgent
+			.put(`/workflows/${workflow.id}/transfer`)
+			.send({ destinationProjectId: targetProject.id })
+			.expect(500);
+
+		const NOT_MOVED_AND_RESTORED = {
+			ownerProjectId: sourceProject.id,
+			activeVersionId: workflow.versionId,
+			records: [pendingReconcile(workflow.versionId)],
+		};
+		expect({
+			ownerProjectId: await ownerProjectIdOf(workflow.id),
+			activeVersionId: await activeVersionIdOf(workflow.id),
+			records: await outboxRecordsOf(workflow.id),
+		}).toEqual(NOT_MOVED_AND_RESTORED);
+	});
+
+	test('rolls back the move and restores the triggers of a refused workflow when the move fails after the ownership change', async () => {
+		const owner = await createOwner();
+		const workflow = await createActiveWorkflow({}, sourceProject);
+		refusePublish(targetProject.id, workflow.id);
+
+		await testServer
+			.authAgentFor(owner)
+			.put(`/workflows/${workflow.id}/transfer`)
+			.send({ destinationProjectId: targetProject.id, shareCredentials: [uuid()] })
+			.expect(404);
+
+		const NOT_MOVED_AND_RESTORED = {
+			ownerProjectId: sourceProject.id,
+			activeVersionId: workflow.versionId,
+			records: [pendingReconcile(workflow.versionId)],
+		};
+		expect({
+			ownerProjectId: await ownerProjectIdOf(workflow.id),
 			activeVersionId: await activeVersionIdOf(workflow.id),
 			records: await outboxRecordsOf(workflow.id),
 		}).toEqual(NOT_MOVED_AND_RESTORED);
@@ -433,7 +503,7 @@ describe('a move that fails before the ownership change', () => {
 		const NOT_MOVED_AND_RESTORED = {
 			sharing: [expect.objectContaining({ projectId: sourceProject.id, role: 'workflow:owner' })],
 			activeVersionId: workflow.versionId,
-			records: [{ status: 'pending', reason: 'reconcile', publishedVersionId: workflow.versionId }],
+			records: [pendingReconcile(workflow.versionId)],
 		};
 		expect({
 			sharing: await getWorkflowSharing(workflow),
@@ -511,7 +581,7 @@ describe('PUT /projects/:projectId/folders/:folderId/transfer', () => {
 		expect(await activeVersionIdOf(allowed.id)).toBe(allowed.versionId);
 	});
 
-	test('a folder move enqueues a transfer record for allowed workflows and an unpublish record for refused ones', async () => {
+	test('a folder move enqueues a transfer record for allowed and refused workflows', async () => {
 		const folder = await createFolder(sourceProject, { name: 'Folder' });
 		const refused = await createActiveWorkflow(
 			{ name: 'Refused', parentFolder: folder },
@@ -532,7 +602,7 @@ describe('PUT /projects/:projectId/folders/:folderId/transfer', () => {
 			.expect(200);
 
 		const EXPECTED_RECORDS = [
-			{ workflowId: refused.id, records: [pendingUnpublish(refused.versionId)] },
+			{ workflowId: refused.id, records: [pendingTransfer(refused.versionId)] },
 			{ workflowId: allowed.id, records: [pendingTransfer(allowed.versionId)] },
 		];
 		for (const { workflowId, records } of EXPECTED_RECORDS) {
@@ -549,7 +619,7 @@ describe('PUT /projects/:projectId/folders/:folderId/transfer', () => {
 		]);
 	});
 
-	test('a folder move reports every allowed workflow as failed when the transfer enqueue fails', async () => {
+	test('a folder move moves nothing and restores the triggers of the refused workflow when the transfer enqueue fails', async () => {
 		const folder = await createFolder(sourceProject, { name: 'Folder' });
 		const refused = await createActiveWorkflow(
 			{ name: 'Refused', parentFolder: folder },
@@ -560,31 +630,25 @@ describe('PUT /projects/:projectId/folders/:folderId/transfer', () => {
 			sourceProject,
 		);
 		refusePublish(targetProject.id, refused.id);
-		vi.spyOn(
-			Container.get(WorkflowPublicationOutboxRepository),
-			'enqueueByWorkflowIds',
-		).mockRejectedValue(new Error('outbox is down'));
-		const logError = vi.spyOn(Container.get(Logger), 'error');
+		failTransferEnqueue();
 
-		const response = await authMemberAgent
+		await authMemberAgent
 			.put(`/projects/${sourceProject.id}/folders/${folder.id}/transfer`)
 			.send({ destinationProjectId: targetProject.id, destinationParentFolderId: '0' })
-			.expect(200);
+			.expect(500);
 
-		const EXPECTED_UNPUBLISHED = [
-			{
-				id: refused.id,
-				name: 'Refused',
-				unpublishReasons: [expect.objectContaining({ checkId: CHECK_ID })],
-			},
-			{ id: allowed.id, name: 'Allowed', error: { name: 'Error', message: 'outbox is down' } },
-		];
-		expect(response.body.data.unpublishedWorkflows).toEqual(
-			expect.arrayContaining(EXPECTED_UNPUBLISHED),
-		);
-		expect(response.body.data.unpublishedWorkflows).toHaveLength(EXPECTED_UNPUBLISHED.length);
-		expect(await activeVersionIdOf(allowed.id)).toBeNull();
-		expect(logError).toHaveBeenCalledTimes(1);
+		const NOT_MOVED = {
+			ownerProjectIds: [sourceProject.id, sourceProject.id],
+			activeVersionIds: [refused.versionId, allowed.versionId],
+			refusedRecords: [pendingReconcile(refused.versionId)],
+			allowedRecords: [],
+		};
+		expect({
+			ownerProjectIds: [await ownerProjectIdOf(refused.id), await ownerProjectIdOf(allowed.id)],
+			activeVersionIds: [await activeVersionIdOf(refused.id), await activeVersionIdOf(allowed.id)],
+			refusedRecords: await outboxRecordsOf(refused.id),
+			allowedRecords: await outboxRecordsOf(allowed.id),
+		}).toEqual(NOT_MOVED);
 	});
 });
 
