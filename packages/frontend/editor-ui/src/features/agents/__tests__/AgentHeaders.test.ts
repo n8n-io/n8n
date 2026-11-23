@@ -302,6 +302,14 @@ describe('AgentSessionTimelineHeader metadata', () => {
 		);
 	});
 
+	it('shows credits instead of the cost when the session used Assistant credits', () => {
+		const wrapper = mountHeader({ metadata: { ...metadata, totalCredits: 3.456 } });
+
+		const usage = wrapper.get('[data-testid="agent-session-timeline-metadata"] li:nth-child(2)');
+		expect(usage.find('[data-testid="agent-session-timeline-credits"]').exists()).toBe(true);
+		expect(usage.text()).not.toContain('$');
+	});
+
 	it('does not show metadata before it loads', () => {
 		const wrapper = mountHeader({ metadata: undefined });
 

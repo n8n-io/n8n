@@ -27,6 +27,7 @@ import {
 } from '@/features/agents/session-timeline.utils';
 import { timelineColors } from '@/features/agents/session-timeline.styles';
 import { useAgentBackgroundJobs } from '@/features/agents/composables/useAgentBackgroundJobs';
+import type { AgentChatChannel } from '@/features/agents/composables/useAgentApi';
 import {
 	backgroundTasksToTimelineItems,
 	insertBackgroundTaskTimelineItems,
@@ -55,6 +56,8 @@ const props = defineProps<{
 	threadId: string;
 	increaseBudget?: (payload: { field: BudgetAmountField; amount: number }) => Promise<boolean>;
 	personalisation?: AgentJsonConfig['personalisation'] | null;
+	/** The chat routes of the thread. System agents, such as the Assistant, use 'system'. */
+	channel?: AgentChatChannel;
 }>();
 
 // Hands the loaded thread detail up so an enclosing view (the standalone
@@ -93,6 +96,7 @@ const { allJobs, respondToApproval } = useAgentBackgroundJobs({
 	projectId: () => props.projectId,
 	agentId: () => props.agentId,
 	threadId: () => props.threadId,
+	channel: () => props.channel ?? 'chat',
 	active: true,
 });
 

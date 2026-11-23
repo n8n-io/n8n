@@ -20,6 +20,8 @@ export interface SessionTimelineMetadata {
 	};
 	totalTokens: number;
 	totalCost: number | null;
+	/** Assistant credits that the session used. When set, the header shows it instead of the cost. */
+	totalCredits?: number;
 	durationLabel: string;
 }
 
