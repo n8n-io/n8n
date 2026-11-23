@@ -18,9 +18,12 @@ import {
 	upsertEvaluationConfigSchema,
 	INSTANCE_AI_CONVERSATION_HISTORY_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
+	INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_FLAG,
+	INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_ENABLED_VARIANT,
 	INSTANCE_AI_SETUP_PANEL_FLAG,
 	INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT,
 	INSTANCE_AI_APPROVAL_MODES_FLAG,
+	INSTANCE_AI_EMPTY_PREFERENCES_NOTE_FLAG,
 	INSTANCE_AI_CONCISE_STYLE_FLAG,
 	INSTANCE_AI_CONCISE_STYLE_ENABLED_VARIANT,
 	ASSISTANT_SKILLS_FLAG,
@@ -38,6 +41,7 @@ import {
 	NodeTypesProxy,
 	PostHogClient,
 	TelemetryProxy,
+	WorkflowVersionedSettingsService,
 } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { Time, TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
@@ -106,6 +110,7 @@ import type {
 	UpsertEvaluationConfigInput,
 	InstanceAiActivityService,
 	InstanceAiPreferenceService,
+	InstanceAiAgentFeedbackService,
 	InstanceAiSkillService,
 	InstanceAiMcpService,
 	InstanceAiExecuteNodeService,
@@ -116,8 +121,6 @@ import type {
 	FolderResolutionFailure,
 } from '@n8n/instance-ai';
 import {
-	BuilderTemplatesService,
-	builderTemplatesOptionsFromEnv,
 	wrapUntrustedData,
 	deriveCredentialHosts,
 	AppNamespaceTakenError,
@@ -131,6 +134,7 @@ import {
 } from '@n8n/instance-ai';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
 import { LessThan } from '@n8n/typeorm';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { InstanceSettings } from 'n8n-core';
 import {
@@ -186,11 +190,16 @@ import {
 import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
 import { EvaluationConfigService } from '@/evaluation.ee/evaluation-config.service';
 import { LlmJudgeProviderRegistry } from '@/evaluation.ee/llm-judge-provider-registry';
+import { EngineV2ExecutionReader } from '@/executions/engine-v2-execution-reader.service';
+import { type ExecutionIdV2, isExecutionIdV2 } from '@/executions/execution-id';
+import { ExecutionListService } from '@/executions/execution-list.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import {
+	loadEngineV2ExecutionMetadataForViewer,
 	findUnsavedManualExecutionForViewer,
 	getExecutionRedaction,
 	loadExecutionForViewer,
+	loadLatestEngineV2ExecutionForViewer,
 } from '@/executions/execution-viewer-reader';
 import {
 	type CredentialRefusal,
@@ -210,7 +219,7 @@ import { InstanceAiSkillsAdapterService } from './instance-ai-skills.adapter';
 import type { AssistantCredentialTestTarget } from './turn-setup/assistant-turn-overrides';
 import { DataTableRepository, DataTableService } from '@n8n/backend-module-data-table';
 
-import { SkillsGate } from '@/modules/skills';
+import { SkillsGate, SkillSyncFlagGate } from '@/modules/skills';
 import {
 	MCP_REGISTRY_PACKAGE_NAME,
 	getMcpRegistryCredentialOptions,
@@ -233,6 +242,7 @@ import { checkAiGatewayEligibility } from '@/services/ai-gateway-eligibility';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import { AiPreferenceSettingsService } from '@/services/ai-preference-settings.service';
 import { writeAssistantPreference } from '@/services/ai-preference-write';
+import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
 import { FolderService } from '@/services/folder.service';
 import {
 	getParameterOptionsCredentialReferences,
@@ -241,7 +251,7 @@ import {
 import { ProjectService } from '@/services/project.service.ee';
 
 import { TagService } from '@/services/tag.service';
-import { createAiProxyFetch, createWebSearchFetch } from '@/utils/ai-proxy-fetch';
+import { createWebSearchFetch } from '@/utils/ai-proxy-fetch';
 import { resolveBuiltinNodeDefinitionDirs } from '@/utils/node-definition-dirs';
 import { WorkflowRunner } from '@/workflow-runner';
 import {
@@ -257,7 +267,12 @@ import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
 import { isAgentsAccessEnabled } from './agents-access';
 import { extractResolvedNodeParameters } from './extract-resolved-node-parameters';
-import { waitForInstanceAiExecution } from './instance-ai-execution-wait';
+import {
+	isEngineV2ExecutionUnsettled,
+	pollEngineV2Execution,
+	waitForEngineV2Execution,
+	waitForInstanceAiExecution,
+} from './instance-ai-execution-wait';
 import {
 	FOLDER_SCAN_LIMIT,
 	FOLDER_SCAN_PROJECT_LIMIT,
@@ -291,8 +306,6 @@ import { fetchAndExtract, fetchCachedPage, LRUCache } from './web-research';
 import { toWorkflowJSON } from './workflow-json';
 import { WorkflowTemplatesService } from './workflow-templates.service';
 import { toUserLike } from '@/utils/to-user-like';
-
-type BuilderTemplatesServiceInstance = InstanceType<typeof BuilderTemplatesService>;
 
 /**
  * Fill in defaults for properties whose visibility depends on sibling values
@@ -425,6 +438,8 @@ export interface InstanceAiFeatureFlags {
 	configEvalsEnabled: boolean;
 	/** Past-conversation recall: tool, prompt section and first-turn hint. */
 	conversationHistoryEnabled: boolean;
+	/** Canvas drafts parsed from the builder's source before the save. */
+	draftWorkflowPreviewEnabled: boolean;
 	/** Concise reply style. Applies only when the default build mode is selected. */
 	conciseStyleEnabled: boolean;
 	setupPanelEnabled: boolean;
@@ -443,7 +458,12 @@ export interface InstanceAiFeatureFlags {
 	/** Shared activity recording and retrieval use the same instance gate. */
 	instanceContextEnabled: boolean;
 	assistantSkillsEnabled: boolean;
+	skillSourcesEnabled?: boolean;
+	preferencesNoteVariant?: string;
 }
+
+const AGENT_FEEDBACK_SUMMARY_MAX_LENGTH = 1000;
+const AGENT_FEEDBACK_TOOL_NAME_MAX_LENGTH = 100;
 
 @Service()
 export class InstanceAiAdapterService {
@@ -463,8 +483,6 @@ export class InstanceAiAdapterService {
 	} | null = null;
 
 	private readonly NODES_CACHE_TTL_MS = 5 * 60 * 1000;
-
-	private templatesService: BuilderTemplatesServiceInstance | undefined;
 
 	private async getNodesFromCache(): Promise<INodeTypeDescription[]> {
 		if (this.nodesCache && Date.now() < this.nodesCache.expiresAt) {
@@ -594,6 +612,7 @@ export class InstanceAiAdapterService {
 			onboardingThread?: boolean;
 			credentialDescriptionsEnabled?: boolean;
 			assistantSkillsEnabled?: boolean;
+			skillSourcesEnabled?: boolean;
 			/** Host-resolved main model for the run. */
 			modelId?: ModelConfig;
 			/** Host-resolved utility model. Absent → utility calls use `modelId`. */
@@ -625,6 +644,7 @@ export class InstanceAiAdapterService {
 			onboardingThread,
 			credentialDescriptionsEnabled,
 			assistantSkillsEnabled,
+			skillSourcesEnabled,
 			modelId,
 			utilityModelId,
 			onHelperUsage,
@@ -713,13 +733,21 @@ export class InstanceAiAdapterService {
 			...(this.aiPreferenceService && Container.get(AiPreferenceSettingsService).isEnabled
 				? { aiPreferenceService: this.createPreferenceAdapter(user) }
 				: {}),
-			skillService: this.getSkillService(user, assistantSkillsEnabled === true),
+			// Reports go out only as telemetry. Without it the tool would make calls that do nothing.
+			...(this.globalConfig.diagnostics.enabled
+				? { agentFeedbackService: this.createAgentFeedbackAdapter(user) }
+				: {}),
+			skillService: this.getSkillService(
+				user,
+				assistantSkillsEnabled === true,
+				skillSourcesEnabled,
+			),
 			appService: this.createAppAdapter(user, projectId, threadId),
 			webResearchService: this.createWebResearchAdapter(user, searchProxyConfig),
 			workspaceService: this.createWorkspaceAdapter(user, projectId),
-			templatesService: this.getTemplatesService(),
 			workflowTemplateService: this.createWorkflowTemplateAdapter(),
 			licenseHints: this.buildLicenseHints(),
+			engineSetup: Container.get(WorkflowEngineDefaults).getSetup(),
 			logger: this.logger,
 			nodeTypesProvider: this.nodeTypes,
 			// Optional call for the same reason as addPostProcessor?.() above:
@@ -774,16 +802,18 @@ export class InstanceAiAdapterService {
 	private getSkillService(
 		user: User,
 		assistantSkillsEnabled: boolean,
+		skillSourcesEnabled?: boolean,
 	): InstanceAiSkillService | undefined {
 		try {
 			if (!Container.get(SkillsGate).isEnabled) return undefined;
 			return Container.get(InstanceAiSkillsAdapterService).createService(
 				user,
 				assistantSkillsEnabled,
+				skillSourcesEnabled,
 			);
 		} catch (error) {
 			this.logger.warn('Failed to resolve the skills adapter; skill tools disabled', {
-				error: error instanceof Error ? error.message : String(error),
+				error: ensureError(error).message,
 			});
 			return undefined;
 		}
@@ -803,7 +833,7 @@ export class InstanceAiAdapterService {
 			return Container.get(InstanceAiBuilderDelegateAdapterService);
 		} catch (error) {
 			this.logger.warn('Failed to resolve builder delegate adapter; agent building disabled', {
-				error: error instanceof Error ? error.message : String(error),
+				error: ensureError(error).message,
 			});
 			return null;
 		}
@@ -830,6 +860,7 @@ export class InstanceAiAdapterService {
 		let flags: Awaited<ReturnType<PostHogClient['getFeatureFlags']>> = {};
 		let instanceContextEnabled = false;
 		let assistantSkillsEnabled = false;
+		let skillSourcesEnabled = false;
 		try {
 			const postHog = Container.get(PostHogClient);
 			const [userFlags, instanceFlag, assistantSkillsFlag] = await Promise.allSettled([
@@ -841,16 +872,22 @@ export class InstanceAiAdapterService {
 			instanceContextEnabled = instanceFlag.status === 'fulfilled' && instanceFlag.value === true;
 			assistantSkillsEnabled =
 				assistantSkillsFlag.status === 'fulfilled' && assistantSkillsFlag.value === true;
+			// Reuse the assignments already fetched for this turn.
+			skillSourcesEnabled = Container.get(SkillSyncFlagGate).isEnabledForFlags(flags);
 		} catch {
 			// Leave unreadable flags unassigned.
 		}
 		const setupPanelVariant = flags[INSTANCE_AI_SETUP_PANEL_FLAG];
+		const preferencesNoteVariant = flags[INSTANCE_AI_EMPTY_PREFERENCES_NOTE_FLAG];
 		return {
 			credentialDescriptionsEnabled: flags[CREDENTIAL_DESCRIPTIONS_FLAG] === true,
 			configEvalsEnabled: flags[CONFIG_EVALUATIONS_FLAG] === CONFIG_EVALUATIONS_ENABLED_VARIANT,
 			conversationHistoryEnabled:
 				flags[INSTANCE_AI_CONVERSATION_HISTORY_FLAG] ===
 				INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
+			draftWorkflowPreviewEnabled:
+				flags[INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_FLAG] ===
+				INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_ENABLED_VARIANT,
 			conciseStyleEnabled:
 				flags[INSTANCE_AI_CONCISE_STYLE_FLAG] === INSTANCE_AI_CONCISE_STYLE_ENABLED_VARIANT,
 			setupPanelEnabled: setupPanelVariant === INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT,
@@ -866,6 +903,8 @@ export class InstanceAiAdapterService {
 			approvalModesEnabled: flags[INSTANCE_AI_APPROVAL_MODES_FLAG] === true,
 			instanceContextEnabled,
 			assistantSkillsEnabled,
+			...(skillSourcesEnabled ? { skillSourcesEnabled } : {}),
+			...(typeof preferencesNoteVariant === 'string' ? { preferencesNoteVariant } : {}),
 		};
 	}
 
@@ -893,6 +932,33 @@ export class InstanceAiAdapterService {
 					...(input.beforeId !== undefined ? { beforeId: input.beforeId } : {}),
 				}),
 			expand: async (id) => await instanceContext.expand({ id, user, scope }),
+		};
+	}
+
+	/**
+	 * The summary and the tool name are agent-written text, so secrets and personal data
+	 * are removed here. Redaction runs on the full text before the cut, so a secret
+	 * that crosses the cut is still found.
+	 */
+	private createAgentFeedbackAdapter(user: User): InstanceAiAgentFeedbackService {
+		return {
+			send: ({ category, severity, summary, toolName, threadId, runId }) => {
+				this.telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.ASSISTANT_SENT_FEEDBACK, {
+					user_id: user.id,
+					...(threadId ? { thread_id: threadId } : {}),
+					...(runId ? { run_id: runId } : {}),
+					category,
+					severity,
+					summary: redactTelemetryText(summary, { maxLength: AGENT_FEEDBACK_SUMMARY_MAX_LENGTH }),
+					...(toolName
+						? {
+								tool_name: redactTelemetryText(toolName, {
+									maxLength: AGENT_FEEDBACK_TOOL_NAME_MAX_LENGTH,
+								}),
+							}
+						: {}),
+				});
+			},
 		};
 	}
 
@@ -1041,18 +1107,6 @@ export class InstanceAiAdapterService {
 		const hiddenProperties = config.hiddenNodeProperties?.[nodeName];
 		if (hiddenProperties && hiddenProperties.length > 0) meta.hiddenProperties = hiddenProperties;
 		return meta;
-	}
-
-	getTemplatesService(): BuilderTemplatesServiceInstance {
-		if (!this.templatesService) {
-			this.templatesService = new BuilderTemplatesService({
-				...builderTemplatesOptionsFromEnv({ logger: this.logger }),
-				cacheDir: path.join(this.instanceSettings.n8nFolder, 'n8n-sdk-templates'),
-				logger: this.logger,
-				fetch: createAiProxyFetch(this.outboundHttp),
-			});
-		}
-		return this.templatesService;
 	}
 
 	private createWorkflowTemplateAdapter(): InstanceAiWorkflowTemplateService {
@@ -1385,7 +1439,7 @@ export class InstanceAiAdapterService {
 				logger.warn('Failed to notify open editors of an AI workflow update', {
 					threadId,
 					workflowId,
-					error: error instanceof Error ? error.message : String(error),
+					error: ensureError(error).message,
 				});
 			}
 		};
@@ -1768,7 +1822,12 @@ export class InstanceAiAdapterService {
 				if (!wf) throw new WorkflowNotFoundError(workflowId);
 				if (!versionId) return toWorkflowJSON(wf, { redactParameters });
 				const version = await workflowHistoryService.getVersion(user, workflowId, versionId);
-				return toWorkflowJSON(wf, { redactParameters, graph: version });
+				// The version stores its own engine, so its source must not show the draft's engine.
+				const settings = Container.get(WorkflowVersionedSettingsService).forVersionRun(
+					wf.settings,
+					version,
+				);
+				return toWorkflowJSON({ ...wf, settings }, { redactParameters, graph: version });
 			},
 
 			async getPinnedDataSummary(workflowId: string) {
@@ -1817,12 +1876,26 @@ export class InstanceAiAdapterService {
 				]);
 				if (!accessible) return null;
 
-				const [latest] = await executionRepository.find({
-					select: ['id'],
-					where: { workflowId },
-					order: { startedAt: 'DESC' },
-					take: 1,
-				});
+				// A workflow can have runs on both engines, for example after a switch
+				// of its engine. The newer run wins.
+				const [latest, latestV2] = await Promise.all([
+					executionRepository.findOne({
+						select: ['id', 'startedAt'],
+						where: { workflowId },
+						order: { startedAt: 'DESC' },
+					}),
+					// A data plane failure must not hide the v1 run data from validation.
+					loadLatestEngineV2ExecutionForViewer(workflowId, user).catch((error: unknown) => {
+						logger.warn('Failed to read the latest engine v2 execution', {
+							workflowId,
+							error: ensureError(error).message,
+						});
+						return undefined;
+					}),
+				]);
+				if (latestV2 && !isOlderRun(latestV2.startedAt, latest?.startedAt)) {
+					return latestV2.data?.resultData?.runData ?? null;
+				}
 				if (!latest) return null;
 
 				const execution = await loadExecutionForViewer(latest.id, user);
@@ -1965,7 +2038,7 @@ export class InstanceAiAdapterService {
 					logger.warn('AI-builder workflow save failed', {
 						threadId,
 						workflowId: saved.id,
-						error: error instanceof Error ? error.message : String(error),
+						error: ensureError(error).message,
 					});
 					try {
 						const archived = await workflowService.archive(user, saved.id, { skipArchived: true });
@@ -1976,7 +2049,7 @@ export class InstanceAiAdapterService {
 						logger.warn('Failed to clean up AI-builder workflow shell after create failure', {
 							threadId,
 							workflowId: saved.id,
-							error: cleanupError instanceof Error ? cleanupError.message : String(cleanupError),
+							error: ensureError(cleanupError).message,
 						});
 					}
 					throw error;
@@ -2092,7 +2165,7 @@ export class InstanceAiAdapterService {
 					logger.warn('AI-builder workflow save failed', {
 						threadId,
 						workflowId,
-						error: error instanceof Error ? error.message : String(error),
+						error: ensureError(error).message,
 					});
 					throw error;
 				}
@@ -2251,6 +2324,15 @@ export class InstanceAiAdapterService {
 			executionId: string,
 			scopes: Scope[] = ['workflow:read', 'execution:read'],
 		) => {
+			// An engine v2 execution has a UUID id and lives only on the data plane.
+			if (isExecutionIdV2(executionId)) {
+				const execution = await loadEngineV2ExecutionMetadataForViewer(executionId, user, scopes);
+				if (!execution) {
+					throw new Error(`Execution ${executionId} not found`);
+				}
+				return execution;
+			}
+
 			// A manual execution that n8n did not save stays readable only for the user who
 			// started it, until pruning hard-deletes it.
 			const execution =
@@ -2296,6 +2378,73 @@ export class InstanceAiAdapterService {
 			);
 		};
 
+		/**
+		 * The v1 status of an engine v2 execution of `workflowId`. Only call it after
+		 * an access check on that workflow.
+		 */
+		const readEngineV2Status = async (executionId: ExecutionIdV2, workflowId: string) => {
+			const execution = await Container.get(EngineV2ExecutionReader).findOne(
+				executionId,
+				[workflowId],
+				{ includeData: false },
+			);
+			return execution?.status;
+		};
+
+		/**
+		 * Waits for a run this adapter started, and stops it on a timeout or an
+		 * abort. An engine v2 run never registers in `ActiveExecutions`, so the
+		 * wait polls the data plane for it.
+		 */
+		const waitForRun = async (args: {
+			executionId: string;
+			workflowId: string;
+			timeoutMs: number;
+			abortSignal?: AbortSignal;
+		}) => {
+			const { executionId, workflowId, timeoutMs, abortSignal } = args;
+			if (!isExecutionIdV2(executionId)) {
+				return await waitForInstanceAiExecution({
+					activeExecutions,
+					executionId,
+					timeoutMs,
+					abortSignal,
+				});
+			}
+
+			return await waitForEngineV2Execution({
+				readStatus: async () => await readEngineV2Status(executionId, workflowId),
+				stop: async () => {
+					await Container.get(EngineDataPlaneProxyService).cancelExecution(executionId);
+				},
+				timeoutMs,
+				abortSignal,
+			});
+		};
+
+		/**
+		 * Stops an engine v2 execution. The engine decides the race against the end
+		 * of the run, so its answer wins over `status`.
+		 */
+		const stopEngineV2Execution = async (executionId: ExecutionIdV2, status: string) => {
+			const notRunning = {
+				success: false,
+				message: `Execution ${executionId} is not currently running`,
+			};
+			if (!isEngineV2ExecutionUnsettled(status)) return notRunning;
+
+			try {
+				const outcome = await Container.get(EngineDataPlaneProxyService).cancelExecution(
+					executionId,
+				);
+				return outcome?.cancelled
+					? { success: true, message: `Execution ${executionId} cancelled` }
+					: notRunning;
+			} catch {
+				return { success: false, message: `Failed to cancel execution ${executionId}` };
+			}
+		};
+
 		return {
 			async list(options) {
 				const scope: Scope = 'execution:read';
@@ -2333,7 +2482,11 @@ export class InstanceAiAdapterService {
 						: {}),
 				};
 
-				const executions = await executionRepository.findManyByRangeQuery(query);
+				// With the engine-v2 module on, the executions of both engines merge into
+				// one list, as on the executions page.
+				const executions = Container.get(EngineDataPlaneProxyService).isAvailable()
+					? (await Container.get(ExecutionListService).findPageWithCount(query)).results
+					: await executionRepository.findManyByRangeQuery(query);
 
 				return executions.map(
 					(e): InstanceAiExecutionSummary => ({
@@ -2448,6 +2601,16 @@ export class InstanceAiAdapterService {
 					runData.executionData = pinDataPlan.triggerExecutionData;
 				}
 
+				// Engine v2 drops pin data outside manual mode and cannot start a run at a
+				// pinned node. So a v2 run is always manual and names its trigger, and the
+				// engine reads the trigger output from the pin data.
+				if (workflow.settings?.engineType === 'v2') {
+					runData.executionMode = 'manual';
+					runData.startNodes = undefined;
+					runData.executionData = undefined;
+					if (triggerNode) runData.triggerToStartFrom = { name: triggerNode.name };
+				}
+
 				runData.source = 'instance_ai';
 				runData.telemetryMetadata = {
 					mockDataSources: pinDataPlan.mockDataSources,
@@ -2531,15 +2694,15 @@ export class InstanceAiAdapterService {
 						} catch (error) {
 							logger.warn('Failed to prune verification pin data from execution', {
 								executionId,
-								error: error instanceof Error ? error.message : String(error),
+								error: ensureError(error).message,
 							});
 						}
 					};
 
 					// Wait for completion with timeout / abort protection
-					const waitOutcome = await waitForInstanceAiExecution({
-						activeExecutions,
+					const waitOutcome = await waitForRun({
 						executionId,
+						workflowId,
 						timeoutMs,
 						abortSignal: options?.abortSignal,
 					});
@@ -2586,10 +2749,7 @@ export class InstanceAiAdapterService {
 					// A failure to launch (or any other unsettled error) is still an
 					// errored builder run — track it before rethrowing so it isn't
 					// silently dropped from telemetry.
-					trackBuilderExecutedWorkflow(
-						'error',
-						error instanceof Error ? error.message : String(error),
-					);
+					trackBuilderExecutedWorkflow('error', ensureError(error).message);
 					throw error;
 				}
 			},
@@ -2609,11 +2769,18 @@ export class InstanceAiAdapterService {
 				// while the execution still belongs to the workflow.
 				let nodes: INode[] = workflow.nodes ?? [];
 				let connections: IConnections = workflow.connections ?? {};
+				let settings = workflow.settings;
+				let ranVersionId = workflow.versionId;
 				const versionId = options?.versionId;
 				if (versionId !== undefined && versionId !== workflow.versionId) {
 					const version = await workflowHistoryService.getVersion(user, workflowId, versionId);
 					nodes = version.nodes ?? [];
 					connections = version.connections ?? {};
+					settings = Container.get(WorkflowVersionedSettingsService).forVersionRun(
+						workflow.settings,
+						version,
+					);
+					ranVersionId = version.versionId;
 				}
 
 				const target = nodes.find((node) => node.name === nodeName);
@@ -2771,8 +2938,9 @@ export class InstanceAiAdapterService {
 						...workflow,
 						nodes,
 						connections,
+						versionId: ranVersionId,
 						settings: {
-							...workflow.settings,
+							...settings,
 							saveManualExecutions: true,
 							saveDataSuccessExecution: 'all',
 							saveDataErrorExecution: 'all',
@@ -2896,9 +3064,9 @@ export class InstanceAiAdapterService {
 				try {
 					const executionId = await workflowRunner.run(runData);
 
-					const waitOutcome = await waitForInstanceAiExecution({
-						activeExecutions,
+					const waitOutcome = await waitForRun({
 						executionId,
+						workflowId,
 						timeoutMs,
 						abortSignal: options?.abortSignal,
 					});
@@ -2924,14 +3092,16 @@ export class InstanceAiAdapterService {
 					trackStepRun(result.status, telemetryError);
 					return describe(result);
 				} catch (error) {
-					trackStepRun('error', error instanceof Error ? error.message : String(error));
+					trackStepRun('error', ensureError(error).message);
 					throw error;
 				}
 			},
 
 			async getStatus(executionId: string) {
-				await assertExecutionAccess(executionId);
-				const isRunning = activeExecutions.has(executionId);
+				const execution = await assertExecutionAccess(executionId);
+				const isRunning = isExecutionIdV2(executionId)
+					? isEngineV2ExecutionUnsettled(execution.status)
+					: activeExecutions.has(executionId);
 				if (isRunning) {
 					return { executionId, status: 'running' } satisfies ExecutionResult;
 				}
@@ -2939,9 +3109,18 @@ export class InstanceAiAdapterService {
 			},
 
 			async getResult(executionId: string) {
-				await assertExecutionAccess(executionId);
+				const execution = await assertExecutionAccess(executionId);
 				// If still running, wait for it to complete
-				if (activeExecutions.has(executionId)) {
+				if (isExecutionIdV2(executionId)) {
+					// The poll has a bound, because it cannot wait on a promise as v1
+					// does. A run that is still going reads as running.
+					if (isEngineV2ExecutionUnsettled(execution.status)) {
+						await pollEngineV2Execution({
+							readStatus: async () => await readEngineV2Status(executionId, execution.workflowId),
+							timeoutMs: DEFAULT_TIMEOUT_MS,
+						});
+					}
+				} else if (activeExecutions.has(executionId)) {
 					await activeExecutions.getPostExecutePromise(executionId);
 				}
 				return (await readOutcome(executionId)).result;
@@ -2951,6 +3130,9 @@ export class InstanceAiAdapterService {
 				assertNotReadOnly();
 				const execution = await assertExecutionAccess(executionId, ['workflow:execute']);
 				await assertWorkflowInBoundProject(execution.workflowId);
+				if (isExecutionIdV2(executionId)) {
+					return await stopEngineV2Execution(executionId, execution.status);
+				}
 				if (!activeExecutions.has(executionId)) {
 					return {
 						success: false,
@@ -3692,6 +3874,7 @@ export class InstanceAiAdapterService {
 					appId,
 					dto.baseVersionId,
 					dto.bindings,
+					{ threadId, source: 'assistant' },
 				);
 				return { ...result, types: renderBindingTypes(result.bindings) };
 			},
@@ -4571,7 +4754,7 @@ export class InstanceAiAdapterService {
 						return {
 							ok: false,
 							code: 'lookup_failed',
-							message: error instanceof Error ? error.message : String(error),
+							message: ensureError(error).message,
 						};
 					}
 					return { ok: false, code: 'lookup_failed', message: RESOURCE_EXPLORATION_UNAVAILABLE };
@@ -6056,6 +6239,11 @@ function toWorkflowDetail(
 		connections: workflow.connections,
 		settings: workflow.settings as Record<string, unknown> | undefined,
 	};
+}
+
+/** Whether a run that started at `startedAt` started before `otherStartedAt`. */
+function isOlderRun(startedAt: Date, otherStartedAt: Date | null | undefined): boolean {
+	return otherStartedAt ? startedAt.getTime() < otherStartedAt.getTime() : false;
 }
 
 async function toWorkflowDetailWithChecksum(

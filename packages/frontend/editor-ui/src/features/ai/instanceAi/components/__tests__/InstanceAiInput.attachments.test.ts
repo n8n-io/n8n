@@ -7,6 +7,7 @@ import { defineComponent, h, nextTick } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import InstanceAiInput from '../InstanceAiInput.vue';
 import AttachmentPreview from '../AttachmentPreview.vue';
+import type { ContextChip } from '../../instanceAi.contextChip';
 import { useInstanceAiStore } from '../../instanceAi.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -405,6 +406,7 @@ const MentionPickerStub = defineComponent({
 	props: {
 		modelValue: { type: Boolean, default: false },
 		query: { type: String, default: '' },
+		excludedKeys: { type: Array, default: () => [] },
 	},
 	emits: ['select', 'update:modelValue', 'empty-search'],
 	setup(props, { emit, expose }) {
@@ -414,49 +416,57 @@ const MentionPickerStub = defineComponent({
 			flushEmptySearch: () => {},
 		});
 		return () =>
-			h('div', { 'data-test-id': 'mention-picker-stub', 'data-query': props.query }, [
-				h(
-					'button',
-					{
-						'data-test-id': 'mention-picker-select',
-						onClick: () => emit('select', workflowMentionSelection),
-					},
-					'Select workflow',
-				),
-				h(
-					'button',
-					{
-						'data-test-id': 'mention-picker-select-node',
-						onClick: () => emit('select', nodeMentionSelection),
-					},
-					'Select node',
-				),
-				h(
-					'button',
-					{
-						'data-test-id': 'mention-picker-dismiss',
-						onClick: () => emit('update:modelValue', false),
-					},
-					'Dismiss',
-				),
-				h(
-					'button',
-					{
-						'data-test-id': 'mention-picker-empty-search',
-						onClick: () => emit('empty-search', 'Slack'),
-					},
-					'Report empty search',
-				),
-				// The real menu opens itself on its trigger and reports it through v-model.
-				h(
-					'button',
-					{
-						'data-test-id': 'mention-picker-open',
-						onClick: () => emit('update:modelValue', true),
-					},
-					'Open from button',
-				),
-			]);
+			h(
+				'div',
+				{
+					'data-test-id': 'mention-picker-stub',
+					'data-query': props.query,
+					'data-excluded-keys': props.excludedKeys.join(','),
+				},
+				[
+					h(
+						'button',
+						{
+							'data-test-id': 'mention-picker-select',
+							onClick: () => emit('select', workflowMentionSelection),
+						},
+						'Select workflow',
+					),
+					h(
+						'button',
+						{
+							'data-test-id': 'mention-picker-select-node',
+							onClick: () => emit('select', nodeMentionSelection),
+						},
+						'Select node',
+					),
+					h(
+						'button',
+						{
+							'data-test-id': 'mention-picker-dismiss',
+							onClick: () => emit('update:modelValue', false),
+						},
+						'Dismiss',
+					),
+					h(
+						'button',
+						{
+							'data-test-id': 'mention-picker-empty-search',
+							onClick: () => emit('empty-search', 'Slack'),
+						},
+						'Report empty search',
+					),
+					// The real menu opens itself on its trigger and reports it through v-model.
+					h(
+						'button',
+						{
+							'data-test-id': 'mention-picker-open',
+							onClick: () => emit('update:modelValue', true),
+						},
+						'Open from button',
+					),
+				],
+			);
 	},
 });
 
@@ -653,6 +663,7 @@ describe('InstanceAiInput — mention attachments', () => {
 			workflow: 1,
 			node: 0,
 			group: 0,
+			agent: 0,
 		});
 		expect(firstSubmit[6]).toEqual(['w1']);
 
@@ -714,6 +725,25 @@ describe('InstanceAiInput — mention attachments', () => {
 		expect(telemetryTrack).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.INSTANCE_AI.USER_REMOVED_AI_ASSISTANT_MENTION,
 			{ thread_id: 'thread-1', kind: 'workflow' },
+		);
+	});
+
+	it.each<ContextChip>([
+		{ type: 'agent-artifact', label: 'Support agent', agentId: 'agent-1', projectId: 'project-1' },
+		{
+			type: 'agent-preview-session',
+			label: 'Support agent',
+			agentId: 'agent-1',
+			threadId: 'preview-thread',
+		},
+	])('hides the agent of a $type hand-off chip from the picker', (contextChip) => {
+		const { getByTestId } = renderMentionsInput({
+			props: { contextChip },
+		});
+
+		expect(getByTestId('mention-picker-stub')).toHaveAttribute(
+			'data-excluded-keys',
+			'agent:agent-1',
 		);
 	});
 });

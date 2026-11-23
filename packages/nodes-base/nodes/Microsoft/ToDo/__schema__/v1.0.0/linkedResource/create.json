@@ -1,0 +1,23 @@
+{
+	"properties": {
+		"@odata.context": {
+			"type": "string"
+		},
+		"applicationName": {
+			"type": "string"
+		},
+		"displayName": {
+			"type": "string"
+		},
+		"externalId": {
+			"type": "string"
+		},
+		"id": {
+			"type": "string"
+		},
+		"webUrl": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

@@ -1,0 +1,219 @@
+{
+	"properties": {
+		"additional_info": {
+			"additionalProperties": true,
+			"items": {},
+			"properties": {
+				"metadata": {
+					"type": "object"
+				}
+			},
+			"type": ["array", "object"]
+		},
+		"created_at": {
+			"type": "string"
+		},
+		"created_by": {
+			"properties": {
+				"id": {
+					"type": "string"
+				},
+				"login": {
+					"type": "string"
+				},
+				"name": {
+					"type": "string"
+				},
+				"type": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"id": {
+			"type": "string"
+		},
+		"source": {
+			"additionalProperties": true,
+			"properties": {
+				"content_created_at": {
+					"type": "string"
+				},
+				"content_modified_at": {
+					"type": "string"
+				},
+				"created_at": {
+					"type": "string"
+				},
+				"created_by": {
+					"properties": {
+						"id": {
+							"type": "string"
+						},
+						"login": {
+							"type": "string"
+						},
+						"name": {
+							"type": "string"
+						},
+						"type": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
+				"description": {
+					"type": "string"
+				},
+				"etag": {
+					"type": "string"
+				},
+				"file_version": {
+					"properties": {
+						"id": {
+							"type": "string"
+						},
+						"sha1": {
+							"type": "string"
+						},
+						"type": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
+				"id": {
+					"type": "string"
+				},
+				"item_status": {
+					"type": "string"
+				},
+				"modified_at": {
+					"type": "string"
+				},
+				"modified_by": {
+					"properties": {
+						"id": {
+							"type": "string"
+						},
+						"login": {
+							"type": "string"
+						},
+						"name": {
+							"type": "string"
+						},
+						"type": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
+				"name": {
+					"type": "string"
+				},
+				"owned_by": {
+					"properties": {
+						"id": {
+							"type": "string"
+						},
+						"login": {
+							"type": "string"
+						},
+						"name": {
+							"type": "string"
+						},
+						"type": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
+				"parent": {
+					"properties": {
+						"etag": {
+							"type": "string"
+						},
+						"id": {
+							"type": "string"
+						},
+						"name": {
+							"type": "string"
+						},
+						"sequence_id": {
+							"type": "string"
+						},
+						"type": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
+				"path_collection": {
+					"properties": {
+						"entries": {
+							"items": {
+								"properties": {
+									"etag": {
+										"type": ["null", "string"]
+									},
+									"id": {
+										"type": "string"
+									},
+									"name": {
+										"type": "string"
+									},
+									"sequence_id": {
+										"type": ["null", "string"]
+									},
+									"type": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						},
+						"total_count": {
+							"type": "number"
+						}
+					},
+					"type": "object"
+				},
+				"purged_at": {},
+				"sequence_id": {
+					"type": "string"
+				},
+				"sha1": {
+					"type": "string"
+				},
+				"shared_link": {},
+				"size": {
+					"type": "number"
+				},
+				"trashed_at": {},
+				"type": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"trigger": {
+			"type": "string"
+		},
+		"type": {
+			"type": "string"
+		},
+		"webhook": {
+			"properties": {
+				"id": {
+					"type": "string"
+				},
+				"type": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		}
+	},
+	"type": "object"
+}

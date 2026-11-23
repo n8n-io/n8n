@@ -60,7 +60,7 @@ const MarkdownEditorStub = {
 function makeConfig(overrides: Partial<AgentJsonConfig> = {}): AgentJsonConfig {
 	return {
 		name: 'Embedded Agent',
-		model: 'anthropic/claude-sonnet-4-5',
+		model: 'anthropic/claude-sonnet-5-5',
 		instructions: 'Help the user.',
 		tools: [],
 		...overrides,

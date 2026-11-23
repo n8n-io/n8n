@@ -1,0 +1,43 @@
+{
+	"properties": {
+		"affiliation": {
+			"type": "string"
+		},
+		"createTime": {
+			"type": "string"
+		},
+		"member": {
+			"properties": {
+				"avatarUrl": {
+					"type": "string"
+				},
+				"displayName": {
+					"type": "string"
+				},
+				"domainId": {
+					"type": "string"
+				},
+				"email": {
+					"type": "string"
+				},
+				"name": {
+					"type": "string"
+				},
+				"type": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"name": {
+			"type": "string"
+		},
+		"role": {
+			"type": "string"
+		},
+		"state": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

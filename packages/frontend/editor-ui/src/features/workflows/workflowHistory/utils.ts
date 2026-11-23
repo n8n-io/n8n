@@ -2,8 +2,10 @@ import type { IWorkflowDb } from '@/Interface';
 import type {
 	WorkflowPublishHistory,
 	WorkflowHistory,
+	WorkflowVersion,
 } from '@n8n/rest-api-client/api/workflowHistory';
 import dateformat from 'dateformat';
+import { pickVersionedSettings } from 'n8n-workflow';
 
 export const getLastPublishedVersion = (
 	workflowPublishHistory: readonly WorkflowPublishHistory[],
@@ -92,6 +94,28 @@ export const computeTimelineEntries = (items: WorkflowHistory[]): TimelineEntry[
 
 	return entries;
 };
+
+/**
+ * Returns the workflow as it was in the given version, for the compare view.
+ * Live settings stay those of the workflow. Version-scoped settings come from the version.
+ */
+export const toVersionDiffWorkflow = (
+	workflow: IWorkflowDb,
+	version: WorkflowVersion,
+): IWorkflowDb => ({
+	...workflow,
+	versionId: version.versionId,
+	nodes: version.nodes,
+	connections: version.connections,
+	nodeGroups: version.nodeGroups ?? [],
+	settings: {
+		...workflow.settings,
+		...pickVersionedSettings(version.settings),
+		// The editor settings type requires an execution order, so `applyVersionedSettings`
+		// does not fit here. A workflow without one runs with the legacy `v0` order.
+		executionOrder: workflow.settings?.executionOrder ?? 'v0',
+	},
+});
 
 export const getPublishedVersionId = (
 	workflow: IWorkflowDb | null | undefined,

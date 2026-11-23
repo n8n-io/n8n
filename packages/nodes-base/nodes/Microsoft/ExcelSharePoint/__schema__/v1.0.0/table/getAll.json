@@ -1,0 +1,41 @@
+{
+	"properties": {
+		"@odata.id": {
+			"type": "string"
+		},
+		"highlightFirstColumn": {
+			"type": "boolean"
+		},
+		"highlightLastColumn": {
+			"type": "boolean"
+		},
+		"id": {
+			"type": "string"
+		},
+		"legacyId": {
+			"type": "string"
+		},
+		"name": {
+			"type": "string"
+		},
+		"showBandedColumns": {
+			"type": "boolean"
+		},
+		"showBandedRows": {
+			"type": "boolean"
+		},
+		"showFilterButton": {
+			"type": "boolean"
+		},
+		"showHeaders": {
+			"type": "boolean"
+		},
+		"showTotals": {
+			"type": "boolean"
+		},
+		"style": {
+			"type": ["null", "string"]
+		}
+	},
+	"type": "object"
+}

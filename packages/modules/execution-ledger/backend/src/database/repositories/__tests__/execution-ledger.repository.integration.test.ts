@@ -60,6 +60,14 @@ describe('ExecutionLedgerRepository', () => {
 		expect(await claim(10)).toEqual([{ ...row, id: expect.any(String) }]);
 	});
 
+	it('returns a null project for a row with no project', async () => {
+		await repository.append(ledgerRow({ projectId: null }), {});
+
+		const [claimed] = await claim(10);
+
+		expect(claimed.projectId).toBeNull();
+	});
+
 	it('claims the oldest rows in id order and leaves the rest', async () => {
 		await appendMany(5);
 

@@ -36,6 +36,7 @@ const {
 	name,
 	validationErrors,
 	hasValidationErrors,
+	isSetupRequired: needsCredentialSetup,
 	executionStatus,
 	hasRunData,
 	runDataIterations,
@@ -60,25 +61,6 @@ const deprecatedTooltip = computed(() =>
 
 const editorFeatures = inject(EditorEnabledFeaturesKey, undefined);
 const workflowDocumentStore = injectWorkflowDocumentStore();
-const needsCredentialSetup = computed(() => {
-	if (!editorFeatures?.value.credentialSetupWarnings) return false;
-	const node = workflowDocumentStore.value.getNodeById(id.value);
-	const issues = node?.issues;
-	const credentialTypes = Object.keys(issues?.credentials ?? {});
-	if (!node || !credentialTypes.length) return false;
-	if (
-		Object.entries(issues ?? {}).some(
-			([kind, issue]) =>
-				kind !== 'credentials' &&
-				(typeof issue === 'boolean' ? issue : Object.keys(issue ?? {}).length > 0),
-		)
-	)
-		return false;
-	return credentialTypes.every((type) => {
-		const credential = node.credentials?.[type];
-		return !credential?.id && !credential?.__aiGatewayManaged;
-	});
-});
 const { labelOf } = usePolicyViolationLabels();
 const { restriction: subWorkflowRestriction } = useSubWorkflowRestriction({
 	parentWorkflowId: () => workflowDocumentStore.value.workflowId,

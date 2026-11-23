@@ -1,8 +1,36 @@
 import { BasePage } from './BasePage';
 
 export class SettingsSkillsPage extends BasePage {
-	async goto() {
-		await this.page.goto('/settings/context/skills');
+	async goto(skillId?: string) {
+		const query = skillId ? `?${new URLSearchParams({ skillId })}` : '';
+		await this.page.goto(`/settings/context/skills${query}`);
+	}
+
+	getSkillDialog() {
+		return this.page.getByRole('dialog').filter({
+			has: this.page.locator('[data-testid="agent-skill-viewer"]'),
+		});
+	}
+
+	async openVersion(version: number) {
+		await this.getSkillDialog().getByRole('button', { name: 'Show versions' }).click();
+		await this.getSkillDialog().locator(`[data-testid="skill-version-row-${version}"]`).click();
+	}
+
+	async selectSkillFile(name: string) {
+		await this.getSkillDialog().getByRole('button', { name, exact: true }).click();
+	}
+
+	getSkillDiagram(name: string) {
+		return this.getSkillDialog().getByRole('img', { name, exact: true });
+	}
+
+	getPendingDiagramFrames() {
+		return this.page.locator('iframe[srcdoc][sandbox="allow-scripts"]');
+	}
+
+	getSkillCodeBlock(source: string) {
+		return this.getSkillDialog().locator('pre > code').filter({ hasText: source });
 	}
 
 	async connect(url: string) {

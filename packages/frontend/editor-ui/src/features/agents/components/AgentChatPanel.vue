@@ -157,12 +157,19 @@ const props = withDefaults(
 		 */
 		clientContext?: () => Record<string, unknown> | undefined;
 		/**
+		 * The resources that a sent message shows, from the client context it
+		 * sends. The `user-message-references` slot renders them.
+		 */
+		messageReferences?: (clientContext: Record<string, unknown> | undefined) => unknown[];
+		/**
 		 * Replaces the default composer placeholder. The placeholders for an open
 		 * question card and for a non-empty queue still take priority.
 		 */
 		placeholder?: string;
 		placeholderPreview?: Readonly<Ref<string | undefined>>;
 		composerHeight?: string;
+		/** The most characters the composer accepts. Without it, the composer default applies. */
+		maxLength?: number;
 		/**
 		 * Shows the attach button of the composer. A host that opens the file
 		 * picker from its own `footer-start` menu sets this to false and calls
@@ -175,6 +182,14 @@ const props = withDefaults(
 		 * list is read once, when the panel is set up.
 		 */
 		interactionExtensions?: readonly AgentsChatInteractionExtension[];
+		/**
+		 * Disables the composer, for example when the host knows the server would
+		 * refuse the turn. Cards that wait for an answer stay usable. Host sends are
+		 * not blocked; use `beforeSend` to refuse them.
+		 */
+		disabled?: boolean;
+		/** Replaces the generic "Thinking" of the thinking blocks. The Assistant sets it. */
+		thinkingLabel?: string;
 	}>(),
 	{
 		visible: true,
@@ -191,11 +206,13 @@ const props = withDefaults(
 		budgetCards: false,
 		increaseBudget: undefined,
 		clientContext: undefined,
+		messageReferences: undefined,
 		placeholder: undefined,
 		showAttachButton: true,
 		acceptedMimeTypes: undefined,
 		attachButtonIcon: 'paperclip',
 		interactionExtensions: () => [],
+		disabled: false,
 	},
 );
 
@@ -272,6 +289,8 @@ defineSlots<{
 	'message-actions'?: (props: { message: ChatMessage; executionId?: string }) => unknown;
 	/** Content below the composer. */
 	'input-footer'?: () => unknown;
+	/** The `references` of a user message, for example mentioned workflows. */
+	'user-message-references'?: (props: { message: ChatMessage }) => unknown;
 	/** Content below the composer or an approval card. */
 	'composer-footer'?: () => unknown;
 }>();
@@ -332,6 +351,7 @@ const {
 	budgetCards: props.budgetCards,
 	interactionExtensions: props.interactionExtensions,
 	onStreamEvent: (event) => emit('stream-event', event),
+	messageReferences: (clientContext) => props.messageReferences?.(clientContext) ?? [],
 });
 
 provide(
@@ -407,7 +427,10 @@ async function loadChatAttachmentFile(attachment: ChatMessageAttachment): Promis
 }
 
 async function startQueueEdit(item: AgentChatQueueItem) {
-	if (hasDraft.value || isQueueItemBusy(item) || isSubmissionBlocked.value) return;
+	// A disabled composer could not send the message again, so it stays queued.
+	if (props.disabled || hasDraft.value || isQueueItemBusy(item) || isSubmissionBlocked.value) {
+		return;
+	}
 	queueExpanded.value = true;
 	const target = {
 		projectId: props.projectId,
@@ -797,6 +820,17 @@ function focusInput(options?: FocusOptions) {
 	if (props.visible) chatInput.value?.focus(options);
 }
 
+/** Moves focus to the card that the run waits on, for a host that points the user to it. */
+function focusOpenInteraction() {
+	if (hasOpenApproval.value) {
+		approvalCards.value?.querySelector<HTMLElement>('button')?.focus();
+		return;
+	}
+	// An open question is the last card of the transcript, and the composer answers it.
+	scrollArea.value?.scrollToBottom();
+	focusInput();
+}
+
 let forceFocusPending = true;
 watch(
 	[chatInput, () => props.autofocus, () => props.visible],
@@ -972,8 +1006,13 @@ const hasDraft = computed(
 	() => inputText.value.trim().length > 0 || attachedFiles.value.length > 0,
 );
 const isPreparingToSend = ref(false);
-/** The composer takes no input while a send starts or a queued message moves back into it. */
-const isComposerBlocked = computed(() => isPreparingToSend.value || !!editingQueueId.value);
+/**
+ * The composer takes no input while the host disables it, a send starts, or a
+ * queued message moves back into it.
+ */
+const isComposerBlocked = computed(
+	() => props.disabled || isPreparingToSend.value || !!editingQueueId.value,
+);
 let disposed = false;
 let queuedExternalMessage: string | undefined;
 let submittingQueuedExternalMessage = false;
@@ -1705,16 +1744,11 @@ function removeComposerAttachment(id: string) {
 	composerAttachments.value = composerAttachments.value.filter((item) => item.chip.id !== id);
 }
 
-// Session files: the preview chat and n8n Chat have the list route.
-const sessionFilesChannel = computed(() =>
-	props.channel === 'chat' || props.channel === 'n8n-chat' ? props.channel : undefined,
-);
+// Session files: every channel has the list route.
 const posthog = usePostHog();
 const showSessionFilesToggle = computed(
 	() =>
-		posthog.isFeatureEnabled(AGENT_SANDBOX_FILES_FLAG) === true &&
-		sessionFilesChannel.value !== undefined &&
-		Boolean(props.continueSessionId),
+		posthog.isFeatureEnabled(AGENT_SANDBOX_FILES_FLAG) === true && Boolean(props.continueSessionId),
 );
 const sessionFilesOpen = ref(false);
 const sessionFiles = ref<AgentSessionFile[]>([]);
@@ -1734,8 +1768,8 @@ function sessionFileHref(fileId: string) {
 
 async function loadSessionFiles() {
 	const threadId = props.continueSessionId;
-	const channel = sessionFilesChannel.value;
-	if (!threadId || !channel) return;
+	const { channel } = props;
+	if (!threadId) return;
 	sessionFilesLoading.value = true;
 	sessionFilesError.value = false;
 	try {
@@ -1802,6 +1836,9 @@ defineExpose({
 	isSubmitting: computed(() => isSubmitting.value),
 	/** The chat waits for the user to answer a card, such as an approval or a question. A waiting card does not count, because the workflow resumes the run. */
 	isAwaitingUserAnswer: computed(() => hasOpenInteraction.value && !hasOpenWaitCard.value),
+	/** The card that the chat waits on is an approval. */
+	isAwaitingUserApproval: computed(() => hasOpenApproval.value),
+	focusOpenInteraction,
 	/** The chat shows a card that the run waits on, including a waiting card. */
 	hasOpenInteraction: computed(() => hasOpenInteraction.value),
 	/** The chat streams, cannot take a send, or waits for the user to answer a card. */
@@ -1984,13 +2021,14 @@ onBeforeUnmount(() => {
 								: undefined
 						"
 						:composer-height="composerHeight"
+						:max-length="maxLength"
 						:is-streaming="false"
 						:show-stop-button="showStop"
 						show-voice
 						:show-attach="showAttach"
 						:show-attach-button="false"
 						:accepted-mime-types="acceptedMimeTypes"
-						:can-submit="!isSubmissionBlocked && hasDraft"
+						:can-submit="!props.disabled && !isSubmissionBlocked && hasDraft"
 						:disabled="isComposerBlocked"
 						data-testid="chat-input"
 						@submit="onSubmit"
@@ -2005,7 +2043,7 @@ onBeforeUnmount(() => {
 								:displayed-items="queueDisplayItems"
 								:expanded="queueExpanded"
 								:is-reordering="isReorderingQueue"
-								:can-edit="!hasDraft && !isSubmissionBlocked"
+								:can-edit="!props.disabled && !hasDraft && !isSubmissionBlocked"
 								:steer-action="queueSteerAction"
 								:can-steer="canSteer"
 								:can-drag-queue-item="canDragQueueItem"
@@ -2087,6 +2125,7 @@ onBeforeUnmount(() => {
 							<slot name="composer-start" />
 							<N8nTooltip
 								v-if="showAttach && showAttachButton"
+								as-child
 								:content="locale.baseText('chatInputBase.button.attach')"
 								placement="top"
 							>
@@ -2095,11 +2134,14 @@ onBeforeUnmount(() => {
 									:icon="attachButtonIcon"
 									icon-size="large"
 									:disabled="isComposerBlocked"
+									focusable-when-disabled
 									:aria-label="locale.baseText('chatInputBase.button.attach')"
 									data-test-id="chat-input-attach-button"
 									@click.stop="chatInput?.openFilePicker()"
 								/>
 							</N8nTooltip>
+							<!-- Before the files toggle: a host menu such as the Assistant "+" menu replaces the attach button. -->
+							<slot name="footer-start" :disabled="isComposerBlocked" />
 							<N8nTooltip
 								v-if="showSessionFilesToggle"
 								:content="locale.baseText('agents.chat.sessionFiles.title')"
@@ -2115,7 +2157,6 @@ onBeforeUnmount(() => {
 									@click.stop="toggleSessionFiles"
 								/>
 							</N8nTooltip>
-							<slot name="footer-start" :disabled="isComposerBlocked" />
 						</template>
 						<template v-if="$slots['composer-actions']" #right-actions>
 							<slot name="composer-actions" />
@@ -2230,6 +2271,7 @@ onBeforeUnmount(() => {
 				:has-older-messages="hasOlderMessages"
 				:loading-older-messages="isLoadingOlderMessages"
 				:load-older-messages-failed="loadOlderMessagesFailed"
+				:thinking-label="props.thinkingLabel"
 				:task-trace-route="
 					continueSessionId && capabilities.traceLinks ? backgroundTraceRoute : undefined
 				"
@@ -2242,6 +2284,12 @@ onBeforeUnmount(() => {
 			>
 				<template v-if="$slots['message-actions']" #message-actions="actionProps">
 					<slot name="message-actions" v-bind="actionProps" />
+				</template>
+				<template
+					v-if="$slots['user-message-references']"
+					#user-message-references="referenceProps"
+				>
+					<slot name="user-message-references" v-bind="referenceProps" />
 				</template>
 				<!-- Host offers end the transcript, so they share its column and scroll with it. -->
 				<template v-if="stopNotice || $slots['inline-offers']" #status>

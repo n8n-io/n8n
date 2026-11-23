@@ -202,6 +202,19 @@ describe('InstanceAiPreviewTabBar', () => {
 		expect(idleTab?.querySelector('[data-test-id="instance-ai-tab-building-spinner"]')).toBeNull();
 	});
 
+	it('shows a red dot instead of the spinner while the run waits on the user', () => {
+		const { container } = renderComponent({
+			props: {
+				tabs: [{ ...workflowTab, building: true, waiting: true }],
+				activeTabId: 'wf-1',
+			},
+		});
+
+		const tab = container.querySelector('[data-tab-id="wf-1"]');
+		expect(tab?.querySelector('[data-test-id="instance-ai-tab-waiting-dot"]')).not.toBeNull();
+		expect(tab?.querySelector('[data-test-id="instance-ai-tab-building-spinner"]')).toBeNull();
+	});
+
 	it('marks the active tab with data-state=active', () => {
 		const { container } = renderComponent({
 			props: { tabs: [workflowTab, dataTableTab], activeTabId: 'wf-1' },

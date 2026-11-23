@@ -1,0 +1,1770 @@
+{
+	"properties": {
+		"layouts": {
+			"items": {
+				"properties": {
+					"layoutProperties": {
+						"properties": {
+							"displayName": {
+								"type": "string"
+							},
+							"masterObjectId": {
+								"type": "string"
+							},
+							"name": {
+								"type": "string"
+							}
+						},
+						"type": "object"
+					},
+					"objectId": {
+						"type": "string"
+					},
+					"pageElements": {
+						"items": {
+							"properties": {
+								"objectId": {
+									"type": "string"
+								},
+								"shape": {
+									"properties": {
+										"placeholder": {
+											"properties": {
+												"index": {
+													"type": "number"
+												},
+												"parentObjectId": {
+													"type": "string"
+												},
+												"type": {
+													"type": "string"
+												}
+											},
+											"type": "object"
+										},
+										"shapeProperties": {
+											"properties": {
+												"autofit": {
+													"properties": {
+														"autofitType": {
+															"type": "string"
+														},
+														"fontScale": {
+															"type": "number"
+														}
+													},
+													"type": "object"
+												},
+												"contentAlignment": {
+													"type": "string"
+												},
+												"outline": {
+													"properties": {
+														"dashStyle": {
+															"type": "string"
+														},
+														"outlineFill": {
+															"properties": {
+																"solidFill": {
+																	"properties": {
+																		"alpha": {
+																			"type": "number"
+																		},
+																		"color": {
+																			"properties": {
+																				"rgbColor": {
+																					"type": "object"
+																				}
+																			},
+																			"type": "object"
+																		}
+																	},
+																	"type": "object"
+																}
+															},
+															"type": "object"
+														},
+														"propertyState": {
+															"type": "string"
+														},
+														"weight": {
+															"properties": {
+																"magnitude": {
+																	"type": "number"
+																},
+																"unit": {
+																	"type": "string"
+																}
+															},
+															"type": "object"
+														}
+													},
+													"type": "object"
+												},
+												"shadow": {
+													"properties": {
+														"alignment": {
+															"type": "string"
+														},
+														"alpha": {
+															"type": "number"
+														},
+														"blurRadius": {
+															"properties": {
+																"unit": {
+																	"type": "string"
+																}
+															},
+															"type": "object"
+														},
+														"color": {
+															"properties": {
+																"rgbColor": {
+																	"type": "object"
+																}
+															},
+															"type": "object"
+														},
+														"propertyState": {
+															"type": "string"
+														},
+														"rotateWithShape": {
+															"type": "boolean"
+														},
+														"transform": {
+															"properties": {
+																"scaleX": {
+																	"type": "number"
+																},
+																"scaleY": {
+																	"type": "number"
+																},
+																"unit": {
+																	"type": "string"
+																}
+															},
+															"type": "object"
+														},
+														"type": {
+															"type": "string"
+														}
+													},
+													"type": "object"
+												},
+												"shapeBackgroundFill": {
+													"properties": {
+														"propertyState": {
+															"type": "string"
+														},
+														"solidFill": {
+															"properties": {
+																"alpha": {
+																	"type": "number"
+																},
+																"color": {
+																	"properties": {
+																		"themeColor": {
+																			"type": "string"
+																		}
+																	},
+																	"type": "object"
+																}
+															},
+															"type": "object"
+														}
+													},
+													"type": "object"
+												}
+											},
+											"type": "object"
+										},
+										"shapeType": {
+											"type": "string"
+										},
+										"text": {
+											"properties": {
+												"lists": {
+													"properties": {
+														"bodyPlaceholderListEntity": {
+															"properties": {
+																"listId": {
+																	"type": "string"
+																},
+																"nestingLevel": {
+																	"type": "object"
+																}
+															},
+															"type": "object"
+														}
+													},
+													"type": "object"
+												},
+												"textElements": {
+													"items": {
+														"properties": {
+															"autoText": {
+																"properties": {
+																	"content": {
+																		"type": "string"
+																	},
+																	"style": {
+																		"type": "object"
+																	},
+																	"type": {
+																		"type": "string"
+																	}
+																},
+																"type": "object"
+															},
+															"endIndex": {
+																"type": "number"
+															},
+															"paragraphMarker": {
+																"properties": {
+																	"bullet": {
+																		"properties": {
+																			"bulletStyle": {
+																				"type": "object"
+																			},
+																			"glyph": {
+																				"type": "string"
+																			},
+																			"listId": {
+																				"type": "string"
+																			},
+																			"nestingLevel": {
+																				"type": "number"
+																			}
+																		},
+																		"type": "object"
+																	},
+																	"style": {
+																		"properties": {
+																			"alignment": {
+																				"type": "string"
+																			},
+																			"direction": {
+																				"type": "string"
+																			},
+																			"lineSpacing": {
+																				"type": "number"
+																			},
+																			"spaceBelow": {
+																				"properties": {
+																					"unit": {
+																						"type": "string"
+																					}
+																				},
+																				"type": "object"
+																			}
+																		},
+																		"type": "object"
+																	}
+																},
+																"type": "object"
+															},
+															"startIndex": {
+																"type": "number"
+															},
+															"textRun": {
+																"properties": {
+																	"content": {
+																		"type": "string"
+																	},
+																	"style": {
+																		"properties": {
+																			"fontSize": {
+																				"properties": {
+																					"magnitude": {
+																						"type": "number"
+																					},
+																					"unit": {
+																						"type": "string"
+																					}
+																				},
+																				"type": "object"
+																			}
+																		},
+																		"type": "object"
+																	}
+																},
+																"type": "object"
+															}
+														},
+														"type": "object"
+													},
+													"type": "array"
+												}
+											},
+											"type": "object"
+										}
+									},
+									"type": "object"
+								},
+								"size": {
+									"properties": {
+										"height": {
+											"properties": {
+												"magnitude": {
+													"type": "number"
+												},
+												"unit": {
+													"type": "string"
+												}
+											},
+											"type": "object"
+										},
+										"width": {
+											"properties": {
+												"magnitude": {
+													"type": "number"
+												},
+												"unit": {
+													"type": "string"
+												}
+											},
+											"type": "object"
+										}
+									},
+									"type": "object"
+								},
+								"transform": {
+									"properties": {
+										"scaleX": {
+											"type": "number"
+										},
+										"scaleY": {
+											"type": "number"
+										},
+										"translateX": {
+											"type": "number"
+										},
+										"translateY": {
+											"type": "number"
+										},
+										"unit": {
+											"type": "string"
+										}
+									},
+									"type": "object"
+								}
+							},
+							"type": "object"
+						},
+						"type": "array"
+					},
+					"pageProperties": {
+						"properties": {
+							"pageBackgroundFill": {
+								"properties": {
+									"propertyState": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							}
+						},
+						"type": "object"
+					},
+					"pageType": {
+						"type": "string"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"locale": {
+			"type": "string"
+		},
+		"masters": {
+			"items": {
+				"properties": {
+					"masterProperties": {
+						"properties": {
+							"displayName": {
+								"type": "string"
+							}
+						},
+						"type": "object"
+					},
+					"objectId": {
+						"type": "string"
+					},
+					"pageElements": {
+						"items": {
+							"properties": {
+								"objectId": {
+									"type": "string"
+								},
+								"shape": {
+									"properties": {
+										"placeholder": {
+											"properties": {
+												"type": {
+													"type": "string"
+												}
+											},
+											"type": "object"
+										},
+										"shapeProperties": {
+											"properties": {
+												"autofit": {
+													"properties": {
+														"autofitType": {
+															"type": "string"
+														},
+														"fontScale": {
+															"type": "number"
+														}
+													},
+													"type": "object"
+												},
+												"contentAlignment": {
+													"type": "string"
+												},
+												"outline": {
+													"properties": {
+														"dashStyle": {
+															"type": "string"
+														},
+														"outlineFill": {
+															"properties": {
+																"solidFill": {
+																	"properties": {
+																		"alpha": {
+																			"type": "number"
+																		},
+																		"color": {
+																			"properties": {
+																				"rgbColor": {
+																					"type": "object"
+																				}
+																			},
+																			"type": "object"
+																		}
+																	},
+																	"type": "object"
+																}
+															},
+															"type": "object"
+														},
+														"propertyState": {
+															"type": "string"
+														},
+														"weight": {
+															"properties": {
+																"magnitude": {
+																	"type": "number"
+																},
+																"unit": {
+																	"type": "string"
+																}
+															},
+															"type": "object"
+														}
+													},
+													"type": "object"
+												},
+												"shadow": {
+													"properties": {
+														"alignment": {
+															"type": "string"
+														},
+														"alpha": {
+															"type": "number"
+														},
+														"blurRadius": {
+															"properties": {
+																"unit": {
+																	"type": "string"
+																}
+															},
+															"type": "object"
+														},
+														"color": {
+															"properties": {
+																"rgbColor": {
+																	"type": "object"
+																}
+															},
+															"type": "object"
+														},
+														"propertyState": {
+															"type": "string"
+														},
+														"rotateWithShape": {
+															"type": "boolean"
+														},
+														"transform": {
+															"properties": {
+																"scaleX": {
+																	"type": "number"
+																},
+																"scaleY": {
+																	"type": "number"
+																},
+																"unit": {
+																	"type": "string"
+																}
+															},
+															"type": "object"
+														},
+														"type": {
+															"type": "string"
+														}
+													},
+													"type": "object"
+												},
+												"shapeBackgroundFill": {
+													"properties": {
+														"propertyState": {
+															"type": "string"
+														},
+														"solidFill": {
+															"properties": {
+																"alpha": {
+																	"type": "number"
+																},
+																"color": {
+																	"properties": {
+																		"rgbColor": {
+																			"properties": {
+																				"blue": {
+																					"type": "number"
+																				},
+																				"green": {
+																					"type": "number"
+																				},
+																				"red": {
+																					"type": "number"
+																				}
+																			},
+																			"type": "object"
+																		}
+																	},
+																	"type": "object"
+																}
+															},
+															"type": "object"
+														}
+													},
+													"type": "object"
+												}
+											},
+											"type": "object"
+										},
+										"shapeType": {
+											"type": "string"
+										},
+										"text": {
+											"properties": {
+												"lists": {
+													"properties": {
+														"bodyPlaceholderListEntity": {
+															"properties": {
+																"listId": {
+																	"type": "string"
+																},
+																"nestingLevel": {
+																	"type": "object"
+																}
+															},
+															"type": "object"
+														}
+													},
+													"type": "object"
+												},
+												"textElements": {
+													"items": {
+														"properties": {
+															"autoText": {
+																"properties": {
+																	"content": {
+																		"type": "string"
+																	},
+																	"style": {
+																		"properties": {
+																			"backgroundColor": {
+																				"type": "object"
+																			},
+																			"baselineOffset": {
+																				"type": "string"
+																			},
+																			"bold": {
+																				"type": "boolean"
+																			},
+																			"fontFamily": {
+																				"type": "string"
+																			},
+																			"fontSize": {
+																				"properties": {
+																					"magnitude": {
+																						"type": "number"
+																					},
+																					"unit": {
+																						"type": "string"
+																					}
+																				},
+																				"type": "object"
+																			},
+																			"foregroundColor": {
+																				"properties": {
+																					"opaqueColor": {
+																						"properties": {
+																							"themeColor": {
+																								"type": "string"
+																							}
+																						},
+																						"type": "object"
+																					}
+																				},
+																				"type": "object"
+																			},
+																			"italic": {
+																				"type": "boolean"
+																			},
+																			"smallCaps": {
+																				"type": "boolean"
+																			},
+																			"strikethrough": {
+																				"type": "boolean"
+																			},
+																			"underline": {
+																				"type": "boolean"
+																			},
+																			"weightedFontFamily": {
+																				"properties": {
+																					"fontFamily": {
+																						"type": "string"
+																					},
+																					"weight": {
+																						"type": "number"
+																					}
+																				},
+																				"type": "object"
+																			}
+																		},
+																		"type": "object"
+																	},
+																	"type": {
+																		"type": "string"
+																	}
+																},
+																"type": "object"
+															},
+															"endIndex": {
+																"type": "number"
+															},
+															"paragraphMarker": {
+																"properties": {
+																	"bullet": {
+																		"properties": {
+																			"bulletStyle": {
+																				"type": "object"
+																			},
+																			"glyph": {
+																				"type": "string"
+																			},
+																			"listId": {
+																				"type": "string"
+																			},
+																			"nestingLevel": {
+																				"type": "number"
+																			}
+																		},
+																		"type": "object"
+																	},
+																	"style": {
+																		"properties": {
+																			"alignment": {
+																				"type": "string"
+																			},
+																			"direction": {
+																				"type": "string"
+																			},
+																			"indentEnd": {
+																				"properties": {
+																					"unit": {
+																						"type": "string"
+																					}
+																				},
+																				"type": "object"
+																			},
+																			"indentFirstLine": {
+																				"properties": {
+																					"unit": {
+																						"type": "string"
+																					}
+																				},
+																				"type": "object"
+																			},
+																			"indentStart": {
+																				"properties": {
+																					"unit": {
+																						"type": "string"
+																					}
+																				},
+																				"type": "object"
+																			},
+																			"lineSpacing": {
+																				"type": "number"
+																			},
+																			"spaceAbove": {
+																				"properties": {
+																					"unit": {
+																						"type": "string"
+																					}
+																				},
+																				"type": "object"
+																			},
+																			"spaceBelow": {
+																				"properties": {
+																					"magnitude": {
+																						"type": "number"
+																					},
+																					"unit": {
+																						"type": "string"
+																					}
+																				},
+																				"type": "object"
+																			},
+																			"spacingMode": {
+																				"type": "string"
+																			}
+																		},
+																		"type": "object"
+																	}
+																},
+																"type": "object"
+															},
+															"startIndex": {
+																"type": "number"
+															},
+															"textRun": {
+																"properties": {
+																	"content": {
+																		"type": "string"
+																	},
+																	"style": {
+																		"properties": {
+																			"backgroundColor": {
+																				"type": "object"
+																			},
+																			"baselineOffset": {
+																				"type": "string"
+																			},
+																			"bold": {
+																				"type": "boolean"
+																			},
+																			"fontFamily": {
+																				"type": "string"
+																			},
+																			"fontSize": {
+																				"properties": {
+																					"magnitude": {
+																						"type": "number"
+																					},
+																					"unit": {
+																						"type": "string"
+																					}
+																				},
+																				"type": "object"
+																			},
+																			"foregroundColor": {
+																				"properties": {
+																					"opaqueColor": {
+																						"properties": {
+																							"themeColor": {
+																								"type": "string"
+																							}
+																						},
+																						"type": "object"
+																					}
+																				},
+																				"type": "object"
+																			},
+																			"italic": {
+																				"type": "boolean"
+																			},
+																			"smallCaps": {
+																				"type": "boolean"
+																			},
+																			"strikethrough": {
+																				"type": "boolean"
+																			},
+																			"underline": {
+																				"type": "boolean"
+																			},
+																			"weightedFontFamily": {
+																				"properties": {
+																					"fontFamily": {
+																						"type": "string"
+																					},
+																					"weight": {
+																						"type": "number"
+																					}
+																				},
+																				"type": "object"
+																			}
+																		},
+																		"type": "object"
+																	}
+																},
+																"type": "object"
+															}
+														},
+														"type": "object"
+													},
+													"type": "array"
+												}
+											},
+											"type": "object"
+										}
+									},
+									"type": "object"
+								},
+								"size": {
+									"properties": {
+										"height": {
+											"properties": {
+												"magnitude": {
+													"type": "number"
+												},
+												"unit": {
+													"type": "string"
+												}
+											},
+											"type": "object"
+										},
+										"width": {
+											"properties": {
+												"magnitude": {
+													"type": "number"
+												},
+												"unit": {
+													"type": "string"
+												}
+											},
+											"type": "object"
+										}
+									},
+									"type": "object"
+								},
+								"transform": {
+									"properties": {
+										"scaleX": {
+											"type": "number"
+										},
+										"scaleY": {
+											"type": "number"
+										},
+										"translateX": {
+											"type": "number"
+										},
+										"translateY": {
+											"type": "number"
+										},
+										"unit": {
+											"type": "string"
+										}
+									},
+									"type": "object"
+								}
+							},
+							"type": "object"
+						},
+						"type": "array"
+					},
+					"pageProperties": {
+						"properties": {
+							"colorScheme": {
+								"properties": {
+									"colors": {
+										"items": {
+											"properties": {
+												"color": {
+													"properties": {
+														"blue": {
+															"type": "number"
+														},
+														"green": {
+															"type": "number"
+														},
+														"red": {
+															"type": "number"
+														}
+													},
+													"type": "object"
+												},
+												"type": {
+													"type": "string"
+												}
+											},
+											"type": "object"
+										},
+										"type": "array"
+									}
+								},
+								"type": "object"
+							},
+							"pageBackgroundFill": {
+								"properties": {
+									"solidFill": {
+										"properties": {
+											"alpha": {
+												"type": "number"
+											},
+											"color": {
+												"properties": {
+													"themeColor": {
+														"type": "string"
+													}
+												},
+												"type": "object"
+											}
+										},
+										"type": "object"
+									}
+								},
+								"type": "object"
+							}
+						},
+						"type": "object"
+					},
+					"pageType": {
+						"type": "string"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"notesMaster": {
+			"properties": {
+				"objectId": {
+					"type": "string"
+				},
+				"pageElements": {
+					"items": {
+						"properties": {
+							"objectId": {
+								"type": "string"
+							},
+							"shape": {
+								"properties": {
+									"placeholder": {
+										"properties": {
+											"index": {
+												"type": "number"
+											},
+											"type": {
+												"type": "string"
+											}
+										},
+										"type": "object"
+									},
+									"shapeProperties": {
+										"properties": {
+											"autofit": {
+												"properties": {
+													"autofitType": {
+														"type": "string"
+													},
+													"fontScale": {
+														"type": "number"
+													}
+												},
+												"type": "object"
+											},
+											"contentAlignment": {
+												"type": "string"
+											},
+											"outline": {
+												"properties": {
+													"dashStyle": {
+														"type": "string"
+													},
+													"outlineFill": {
+														"properties": {
+															"solidFill": {
+																"properties": {
+																	"alpha": {
+																		"type": "number"
+																	},
+																	"color": {
+																		"properties": {
+																			"rgbColor": {
+																				"type": "object"
+																			}
+																		},
+																		"type": "object"
+																	}
+																},
+																"type": "object"
+															}
+														},
+														"type": "object"
+													},
+													"propertyState": {
+														"type": "string"
+													},
+													"weight": {
+														"properties": {
+															"magnitude": {
+																"type": "number"
+															},
+															"unit": {
+																"type": "string"
+															}
+														},
+														"type": "object"
+													}
+												},
+												"type": "object"
+											},
+											"shadow": {
+												"properties": {
+													"alignment": {
+														"type": "string"
+													},
+													"alpha": {
+														"type": "number"
+													},
+													"blurRadius": {
+														"properties": {
+															"unit": {
+																"type": "string"
+															}
+														},
+														"type": "object"
+													},
+													"color": {
+														"properties": {
+															"rgbColor": {
+																"type": "object"
+															}
+														},
+														"type": "object"
+													},
+													"propertyState": {
+														"type": "string"
+													},
+													"rotateWithShape": {
+														"type": "boolean"
+													},
+													"transform": {
+														"properties": {
+															"scaleX": {
+																"type": "number"
+															},
+															"scaleY": {
+																"type": "number"
+															},
+															"unit": {
+																"type": "string"
+															}
+														},
+														"type": "object"
+													},
+													"type": {
+														"type": "string"
+													}
+												},
+												"type": "object"
+											},
+											"shapeBackgroundFill": {
+												"properties": {
+													"propertyState": {
+														"type": "string"
+													},
+													"solidFill": {
+														"properties": {
+															"alpha": {
+																"type": "number"
+															},
+															"color": {
+																"properties": {
+																	"rgbColor": {
+																		"properties": {
+																			"blue": {
+																				"type": "number"
+																			},
+																			"green": {
+																				"type": "number"
+																			},
+																			"red": {
+																				"type": "number"
+																			}
+																		},
+																		"type": "object"
+																	}
+																},
+																"type": "object"
+															}
+														},
+														"type": "object"
+													}
+												},
+												"type": "object"
+											}
+										},
+										"type": "object"
+									},
+									"shapeType": {
+										"type": "string"
+									},
+									"text": {
+										"properties": {
+											"lists": {
+												"properties": {
+													"bodyPlaceholderListEntity": {
+														"properties": {
+															"listId": {
+																"type": "string"
+															},
+															"nestingLevel": {
+																"type": "object"
+															}
+														},
+														"type": "object"
+													}
+												},
+												"type": "object"
+											},
+											"textElements": {
+												"items": {
+													"properties": {
+														"endIndex": {
+															"type": "number"
+														},
+														"paragraphMarker": {
+															"properties": {
+																"bullet": {
+																	"properties": {
+																		"bulletStyle": {
+																			"type": "object"
+																		},
+																		"glyph": {
+																			"type": "string"
+																		},
+																		"listId": {
+																			"type": "string"
+																		},
+																		"nestingLevel": {
+																			"type": "number"
+																		}
+																	},
+																	"type": "object"
+																},
+																"style": {
+																	"properties": {
+																		"alignment": {
+																			"type": "string"
+																		},
+																		"direction": {
+																			"type": "string"
+																		},
+																		"indentEnd": {
+																			"properties": {
+																				"unit": {
+																					"type": "string"
+																				}
+																			},
+																			"type": "object"
+																		},
+																		"indentFirstLine": {
+																			"properties": {
+																				"unit": {
+																					"type": "string"
+																				}
+																			},
+																			"type": "object"
+																		},
+																		"indentStart": {
+																			"properties": {
+																				"unit": {
+																					"type": "string"
+																				}
+																			},
+																			"type": "object"
+																		},
+																		"lineSpacing": {
+																			"type": "number"
+																		},
+																		"spaceAbove": {
+																			"properties": {
+																				"unit": {
+																					"type": "string"
+																				}
+																			},
+																			"type": "object"
+																		},
+																		"spaceBelow": {
+																			"properties": {
+																				"unit": {
+																					"type": "string"
+																				}
+																			},
+																			"type": "object"
+																		},
+																		"spacingMode": {
+																			"type": "string"
+																		}
+																	},
+																	"type": "object"
+																}
+															},
+															"type": "object"
+														},
+														"startIndex": {
+															"type": "number"
+														},
+														"textRun": {
+															"properties": {
+																"content": {
+																	"type": "string"
+																},
+																"style": {
+																	"properties": {
+																		"backgroundColor": {
+																			"type": "object"
+																		},
+																		"baselineOffset": {
+																			"type": "string"
+																		},
+																		"bold": {
+																			"type": "boolean"
+																		},
+																		"fontFamily": {
+																			"type": "string"
+																		},
+																		"fontSize": {
+																			"properties": {
+																				"magnitude": {
+																					"type": "number"
+																				},
+																				"unit": {
+																					"type": "string"
+																				}
+																			},
+																			"type": "object"
+																		},
+																		"foregroundColor": {
+																			"properties": {
+																				"opaqueColor": {
+																					"properties": {
+																						"rgbColor": {
+																							"type": "object"
+																						}
+																					},
+																					"type": "object"
+																				}
+																			},
+																			"type": "object"
+																		},
+																		"italic": {
+																			"type": "boolean"
+																		},
+																		"smallCaps": {
+																			"type": "boolean"
+																		},
+																		"strikethrough": {
+																			"type": "boolean"
+																		},
+																		"underline": {
+																			"type": "boolean"
+																		},
+																		"weightedFontFamily": {
+																			"properties": {
+																				"fontFamily": {
+																					"type": "string"
+																				},
+																				"weight": {
+																					"type": "number"
+																				}
+																			},
+																			"type": "object"
+																		}
+																	},
+																	"type": "object"
+																}
+															},
+															"type": "object"
+														}
+													},
+													"type": "object"
+												},
+												"type": "array"
+											}
+										},
+										"type": "object"
+									}
+								},
+								"type": "object"
+							},
+							"size": {
+								"properties": {
+									"height": {
+										"properties": {
+											"magnitude": {
+												"type": "number"
+											},
+											"unit": {
+												"type": "string"
+											}
+										},
+										"type": "object"
+									},
+									"width": {
+										"properties": {
+											"magnitude": {
+												"type": "number"
+											},
+											"unit": {
+												"type": "string"
+											}
+										},
+										"type": "object"
+									}
+								},
+								"type": "object"
+							},
+							"transform": {
+								"properties": {
+									"scaleX": {
+										"type": "number"
+									},
+									"scaleY": {
+										"type": "number"
+									},
+									"translateX": {
+										"type": "number"
+									},
+									"translateY": {
+										"type": "number"
+									},
+									"unit": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							}
+						},
+						"type": "object"
+					},
+					"type": "array"
+				},
+				"pageProperties": {
+					"properties": {
+						"colorScheme": {
+							"properties": {
+								"colors": {
+									"items": {
+										"properties": {
+											"color": {
+												"properties": {
+													"blue": {
+														"type": "number"
+													},
+													"green": {
+														"type": "number"
+													},
+													"red": {
+														"type": "number"
+													}
+												},
+												"type": "object"
+											},
+											"type": {
+												"type": "string"
+											}
+										},
+										"type": "object"
+									},
+									"type": "array"
+								}
+							},
+							"type": "object"
+						},
+						"pageBackgroundFill": {
+							"properties": {
+								"propertyState": {
+									"type": "string"
+								},
+								"solidFill": {
+									"properties": {
+										"alpha": {
+											"type": "number"
+										},
+										"color": {
+											"properties": {
+												"rgbColor": {
+													"properties": {
+														"blue": {
+															"type": "number"
+														},
+														"green": {
+															"type": "number"
+														},
+														"red": {
+															"type": "number"
+														}
+													},
+													"type": "object"
+												}
+											},
+											"type": "object"
+										}
+									},
+									"type": "object"
+								}
+							},
+							"type": "object"
+						}
+					},
+					"type": "object"
+				},
+				"pageType": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"pageSize": {
+			"properties": {
+				"height": {
+					"properties": {
+						"magnitude": {
+							"type": "number"
+						},
+						"unit": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
+				"width": {
+					"properties": {
+						"magnitude": {
+							"type": "number"
+						},
+						"unit": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				}
+			},
+			"type": "object"
+		},
+		"presentationId": {
+			"type": "string"
+		},
+		"revisionId": {
+			"type": "string"
+		},
+		"slides": {
+			"items": {
+				"properties": {
+					"objectId": {
+						"type": "string"
+					},
+					"pageElements": {
+						"items": {
+							"properties": {
+								"objectId": {
+									"type": "string"
+								},
+								"shape": {
+									"properties": {
+										"placeholder": {
+											"properties": {
+												"parentObjectId": {
+													"type": "string"
+												},
+												"type": {
+													"type": "string"
+												}
+											},
+											"type": "object"
+										},
+										"shapeProperties": {
+											"properties": {
+												"autofit": {
+													"properties": {
+														"fontScale": {
+															"type": "number"
+														}
+													},
+													"type": "object"
+												},
+												"outline": {
+													"properties": {
+														"propertyState": {
+															"type": "string"
+														}
+													},
+													"type": "object"
+												},
+												"shadow": {
+													"properties": {
+														"propertyState": {
+															"type": "string"
+														}
+													},
+													"type": "object"
+												},
+												"shapeBackgroundFill": {
+													"properties": {
+														"propertyState": {
+															"type": "string"
+														}
+													},
+													"type": "object"
+												}
+											},
+											"type": "object"
+										},
+										"shapeType": {
+											"type": "string"
+										}
+									},
+									"type": "object"
+								},
+								"size": {
+									"properties": {
+										"height": {
+											"properties": {
+												"magnitude": {
+													"type": "number"
+												},
+												"unit": {
+													"type": "string"
+												}
+											},
+											"type": "object"
+										},
+										"width": {
+											"properties": {
+												"magnitude": {
+													"type": "number"
+												},
+												"unit": {
+													"type": "string"
+												}
+											},
+											"type": "object"
+										}
+									},
+									"type": "object"
+								},
+								"transform": {
+									"properties": {
+										"scaleX": {
+											"type": "number"
+										},
+										"scaleY": {
+											"type": "number"
+										},
+										"translateX": {
+											"type": "number"
+										},
+										"translateY": {
+											"type": "number"
+										},
+										"unit": {
+											"type": "string"
+										}
+									},
+									"type": "object"
+								}
+							},
+							"type": "object"
+						},
+						"type": "array"
+					},
+					"pageProperties": {
+						"properties": {
+							"pageBackgroundFill": {
+								"properties": {
+									"propertyState": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							}
+						},
+						"type": "object"
+					},
+					"slideProperties": {
+						"properties": {
+							"layoutObjectId": {
+								"type": "string"
+							},
+							"masterObjectId": {
+								"type": "string"
+							},
+							"notesPage": {
+								"properties": {
+									"notesProperties": {
+										"properties": {
+											"speakerNotesObjectId": {
+												"type": "string"
+											}
+										},
+										"type": "object"
+									},
+									"objectId": {
+										"type": "string"
+									},
+									"pageElements": {
+										"items": {
+											"properties": {
+												"objectId": {
+													"type": "string"
+												},
+												"shape": {
+													"properties": {
+														"placeholder": {
+															"properties": {
+																"index": {
+																	"type": "number"
+																},
+																"parentObjectId": {
+																	"type": "string"
+																},
+																"type": {
+																	"type": "string"
+																}
+															},
+															"type": "object"
+														},
+														"shapeProperties": {
+															"properties": {
+																"autofit": {
+																	"properties": {
+																		"fontScale": {
+																			"type": "number"
+																		}
+																	},
+																	"type": "object"
+																},
+																"outline": {
+																	"properties": {
+																		"propertyState": {
+																			"type": "string"
+																		}
+																	},
+																	"type": "object"
+																},
+																"shadow": {
+																	"properties": {
+																		"propertyState": {
+																			"type": "string"
+																		}
+																	},
+																	"type": "object"
+																},
+																"shapeBackgroundFill": {
+																	"properties": {
+																		"propertyState": {
+																			"type": "string"
+																		}
+																	},
+																	"type": "object"
+																}
+															},
+															"type": "object"
+														},
+														"shapeType": {
+															"type": "string"
+														}
+													},
+													"type": "object"
+												},
+												"size": {
+													"properties": {
+														"height": {
+															"properties": {
+																"magnitude": {
+																	"type": "number"
+																},
+																"unit": {
+																	"type": "string"
+																}
+															},
+															"type": "object"
+														},
+														"width": {
+															"properties": {
+																"magnitude": {
+																	"type": "number"
+																},
+																"unit": {
+																	"type": "string"
+																}
+															},
+															"type": "object"
+														}
+													},
+													"type": "object"
+												},
+												"transform": {
+													"properties": {
+														"scaleX": {
+															"type": "number"
+														},
+														"scaleY": {
+															"type": "number"
+														},
+														"translateX": {
+															"type": "number"
+														},
+														"translateY": {
+															"type": "number"
+														},
+														"unit": {
+															"type": "string"
+														}
+													},
+													"type": "object"
+												}
+											},
+											"type": "object"
+										},
+										"type": "array"
+									},
+									"pageProperties": {
+										"properties": {
+											"pageBackgroundFill": {
+												"properties": {
+													"propertyState": {
+														"type": "string"
+													}
+												},
+												"type": "object"
+											}
+										},
+										"type": "object"
+									},
+									"pageType": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							}
+						},
+						"type": "object"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"title": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}
