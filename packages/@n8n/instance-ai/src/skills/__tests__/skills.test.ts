@@ -164,7 +164,7 @@ describe('Instance AI skills', () => {
 	it('opens a newly created app before editing its files', async () => {
 		const skill = await loadInstanceAiSkills().loadSkill('app-builder');
 
-		expect(skill?.instructions).toContain('`action: "open"` and the returned `app.id`');
+		expect(skill?.instructions).toContain('call `open_app` with the returned `app.id`');
 	});
 
 	it('builds the layout of a new app before it creates resources', async () => {
