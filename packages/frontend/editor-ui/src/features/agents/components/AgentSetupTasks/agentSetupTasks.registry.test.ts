@@ -15,7 +15,7 @@ function makeContext(overrides?: Partial<SetupContext>): SetupContext {
 		channels: { loaded: true, ids: [] },
 		publication: { loaded: true, canPublish: true, activeVersionId: null },
 		sessions: { loaded: true, count: 0 },
-		showInvocationMethodStep: false,
+		showTriggerStep: false,
 		...overrides,
 	};
 }
@@ -34,57 +34,57 @@ describe('test-agent setup task', () => {
 	});
 });
 
-describe('add-invocation-method setup task', () => {
+describe('add-trigger setup task', () => {
 	it('is hidden when the experiment is disabled', () => {
-		const context = makeContext({ showInvocationMethodStep: false });
+		const context = makeContext({ showTriggerStep: false });
 
-		expect(setupTaskDefinitions['add-invocation-method'].getVisible(context)).toBe(false);
-		expect(setupTaskDefinitions['add-invocation-method'].getState(context)).toBe('todo');
+		expect(setupTaskDefinitions['add-trigger'].getVisible(context)).toBe(false);
+		expect(setupTaskDefinitions['add-trigger'].getState(context)).toBe('todo');
 	});
 
 	it('shows immediately when the experiment is enabled', () => {
-		const context = makeContext({ showInvocationMethodStep: true });
+		const context = makeContext({ showTriggerStep: true });
 		context.config.isRunnable = false;
 
-		expect(setupTaskDefinitions['add-invocation-method'].getVisible(context)).toBe(true);
-		expect(setupTaskDefinitions['add-invocation-method'].getState(context)).toBe('todo');
+		expect(setupTaskDefinitions['add-trigger'].getVisible(context)).toBe(true);
+		expect(setupTaskDefinitions['add-trigger'].getState(context)).toBe('todo');
 	});
 
 	it('completes when a channel is connected', () => {
-		const context = makeContext({ showInvocationMethodStep: true });
+		const context = makeContext({ showTriggerStep: true });
 		context.channels.ids = ['n8n_chat'];
 
-		expect(setupTaskDefinitions['add-invocation-method'].getState(context)).toBe('complete');
+		expect(setupTaskDefinitions['add-trigger'].getState(context)).toBe('complete');
 	});
 
 	it('completes when an enabled schedule exists', () => {
-		const context = makeContext({ showInvocationMethodStep: true });
+		const context = makeContext({ showTriggerStep: true });
 		context.config.scheduleCount = 1;
 
-		expect(setupTaskDefinitions['add-invocation-method'].getState(context)).toBe('complete');
+		expect(setupTaskDefinitions['add-trigger'].getState(context)).toBe('complete');
 	});
 
 	it('keeps the state unknown until channels and config load', () => {
-		const channelsLoading = makeContext({ showInvocationMethodStep: true });
+		const channelsLoading = makeContext({ showTriggerStep: true });
 		channelsLoading.channels.loaded = false;
-		expect(setupTaskDefinitions['add-invocation-method'].getState(channelsLoading)).toBe('unknown');
+		expect(setupTaskDefinitions['add-trigger'].getState(channelsLoading)).toBe('unknown');
 
-		const configLoading = makeContext({ showInvocationMethodStep: true });
+		const configLoading = makeContext({ showTriggerStep: true });
 		configLoading.config.loaded = false;
-		expect(setupTaskDefinitions['add-invocation-method'].getState(configLoading)).toBe('unknown');
+		expect(setupTaskDefinitions['add-trigger'].getState(configLoading)).toBe('unknown');
 	});
 });
 
 describe('publish-agent setup task', () => {
-	it('shows after testing in control even without an invocation method', () => {
-		const context = makeContext({ showInvocationMethodStep: false });
+	it('shows after testing in control even without a trigger', () => {
+		const context = makeContext({ showTriggerStep: false });
 		context.sessions.count = 1;
 
 		expect(setupTaskDefinitions['publish-agent'].getVisible(context)).toBe(true);
 	});
 
-	it('stays hidden until an invocation method is configured when the experiment is enabled', () => {
-		const context = makeContext({ showInvocationMethodStep: true });
+	it('stays hidden until a trigger is configured when the experiment is enabled', () => {
+		const context = makeContext({ showTriggerStep: true });
 		context.sessions.count = 1;
 
 		expect(setupTaskDefinitions['publish-agent'].getVisible(context)).toBe(false);
@@ -93,8 +93,8 @@ describe('publish-agent setup task', () => {
 		expect(setupTaskDefinitions['publish-agent'].getVisible(context)).toBe(true);
 	});
 
-	it('shows when a schedule satisfies the invocation method step', () => {
-		const context = makeContext({ showInvocationMethodStep: true });
+	it('shows when a schedule satisfies the trigger step', () => {
+		const context = makeContext({ showTriggerStep: true });
 		context.sessions.count = 1;
 		context.config.scheduleCount = 1;
 

@@ -25,7 +25,7 @@ export interface SetupContext {
 		loaded: boolean;
 		count: number;
 	};
-	showInvocationMethodStep: boolean;
+	showTriggerStep: boolean;
 }
 
 export interface SetupTask<TId extends string = string> {
@@ -61,18 +61,18 @@ function getConfigState(context: SetupContext, complete: boolean): SetupTaskStat
 	return complete ? 'complete' : 'todo';
 }
 
-function hasInvocationMethod(context: SetupContext): boolean {
+function hasTrigger(context: SetupContext): boolean {
 	return context.channels.ids.length > 0 || context.config.scheduleCount > 0;
 }
 
-function isAddInvocationMethodComplete(context: SetupContext): boolean {
-	return context.channels.loaded && context.config.loaded && hasInvocationMethod(context);
+function isAddTriggerComplete(context: SetupContext): boolean {
+	return context.channels.loaded && context.config.loaded && hasTrigger(context);
 }
 
-function getAddInvocationMethodState(context: SetupContext): SetupTaskState {
+function getAddTriggerState(context: SetupContext): SetupTaskState {
 	if (!context.channels.loaded || !context.config.loaded) return 'unknown';
 
-	return hasInvocationMethod(context) ? 'complete' : 'todo';
+	return hasTrigger(context) ? 'complete' : 'todo';
 }
 
 function getPublishAgentState(context: SetupContext): SetupTaskState {
@@ -132,23 +132,23 @@ export const setupTaskDefinitions = {
 		getVisible: (context) => context.config.isRunnable,
 		getState: getTestAgentState,
 	},
-	'add-invocation-method': {
-		titleKey: 'agents.builder.setupTasks.addInvocationMethod',
+	'add-trigger': {
+		titleKey: 'agents.builder.setupTasks.addTrigger',
 		descriptionKey: 'agents.builder.setupTasks.addChannel.description',
 		required: false,
-		getVisible: (context) => context.showInvocationMethodStep,
+		getVisible: (context) => context.showTriggerStep,
 		action: {
-			labelKey: 'agents.builder.setupTasks.addInvocationMethod',
+			labelKey: 'agents.builder.setupTasks.addTrigger',
 			target: { kind: 'channel' },
 		},
-		getState: getAddInvocationMethodState,
+		getState: getAddTriggerState,
 	},
 	'publish-agent': {
 		titleKey: 'agents.builder.setupTasks.publishAgent',
 		getVisible: (context) =>
 			context.publication.canPublish &&
 			isTestAgentComplete(context) &&
-			(!context.showInvocationMethodStep || isAddInvocationMethodComplete(context)),
+			(!context.showTriggerStep || isAddTriggerComplete(context)),
 		required: false,
 		action: {
 			labelKey: 'agents.builder.setupTasks.publishAgent',
@@ -165,6 +165,6 @@ export const setupTaskOrder = [
 	'add-tool',
 	'add-instructions',
 	'test-agent',
-	'add-invocation-method',
+	'add-trigger',
 	'publish-agent',
 ] as const satisfies readonly SetupTaskId[];

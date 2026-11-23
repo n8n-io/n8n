@@ -3705,7 +3705,7 @@ describe('AgentBuilderView — configuration validation', () => {
 		);
 	});
 
-	it('shows the invocation method step and gates publish behind it when the experiment is enabled', async () => {
+	it('shows the trigger step and gates publish behind it when the experiment is enabled', async () => {
 		fetchedSessionThreads.push({ id: 'thread-tested', updatedAt: '2026-01-02T00:00:00Z' });
 		intendedConfig = {
 			name: 'Agent One',
@@ -3731,7 +3731,7 @@ describe('AgentBuilderView — configuration validation', () => {
 		expect(header.props('tasks')).toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({
-					id: 'add-invocation-method',
+					id: 'add-trigger',
 					visible: true,
 					state: 'todo',
 				}),
@@ -3750,7 +3750,7 @@ describe('AgentBuilderView — configuration validation', () => {
 			configPatch: { tasks: [{ type: 'task' as const, id: 'schedule-1', enabled: true }] },
 		},
 	])(
-		'completes the invocation method step and reveals publish with $label when the experiment is enabled',
+		'completes the trigger step and reveals publish with $label when the experiment is enabled',
 		async ({ configPatch }) => {
 			fetchedSessionThreads.push({ id: 'thread-tested', updatedAt: '2026-01-02T00:00:00Z' });
 			intendedConfig = {
@@ -3776,7 +3776,7 @@ describe('AgentBuilderView — configuration validation', () => {
 			expect(header.props('tasks')).toEqual(
 				expect.arrayContaining([
 					expect.objectContaining({
-						id: 'add-invocation-method',
+						id: 'add-trigger',
 						visible: true,
 						state: 'complete',
 					}),
@@ -3786,7 +3786,7 @@ describe('AgentBuilderView — configuration validation', () => {
 		},
 	);
 
-	it('keeps the invocation method step hidden in the control arm', async () => {
+	it('keeps the trigger step hidden in the control arm', async () => {
 		fetchedSessionThreads.push({ id: 'thread-tested', updatedAt: '2026-01-02T00:00:00Z' });
 
 		const wrapper = await renderView({
@@ -3804,7 +3804,7 @@ describe('AgentBuilderView — configuration validation', () => {
 
 		expect(header.props('tasks')).toEqual(
 			expect.arrayContaining([
-				expect.objectContaining({ id: 'add-invocation-method', visible: false }),
+				expect.objectContaining({ id: 'add-trigger', visible: false }),
 				expect.objectContaining({ id: 'publish-agent', visible: true }),
 			]),
 		);
