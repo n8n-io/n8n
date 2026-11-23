@@ -117,7 +117,7 @@ describe('the Gmail vendor file', () => {
 		expect(vendorForRequest('gmail.googleapis.com', '/gmail/v1/users/me/labels')?.name).toBe(
 			'gmail',
 		);
-		expect(vendorForRequest('www.googleapis.com', '/drive/v3/files')).toBeUndefined();
+		expect(vendorForRequest('www.googleapis.com', '/tasks/v1/users/@me/lists')).toBeUndefined();
 		expect(vendorForRequest('example.com', '/gmail/v1/users/me/messages')).toBeUndefined();
 	});
 

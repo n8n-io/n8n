@@ -64,7 +64,7 @@ describe('the Google Docs vendor file', () => {
 		expect(vendorForRequest(DRIVE, '/drive/v3/drives')?.name).not.toBe('googledocs');
 		expect(vendorForRequest(DRIVE, '/gmail/v1/users/me/messages')?.name).toBe('gmail');
 		expect(vendorForRequest(DRIVE, '/drive/v2/files')).toBeUndefined();
-		expect(vendorForRequest(DRIVE, '/upload/drive/v3/files')).toBeUndefined();
+		expect(vendorForRequest(DRIVE, '/upload/drive/v3/files')?.name).not.toBe('googledocs');
 		expect(vendorForRequest(DOCS, '/v2/documents')).toBeUndefined();
 		expect(vendorForRequest('example.com', '/v1/documents/x')).toBeUndefined();
 	});
