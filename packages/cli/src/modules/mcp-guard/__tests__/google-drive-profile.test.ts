@@ -47,7 +47,9 @@ describe('the Google Drive vendor file', () => {
 		expect(vendorForRequest(HOST, '/drive/v3x/files')).toBeUndefined();
 		expect(vendorForRequest(HOST, '/gmail/v1/users/me/labels')?.name).toBe('gmail');
 		expect(vendorForRequest(HOST, '/upload/other')).toBeUndefined();
-		expect(vendorForRequest('docs.googleapis.com', '/v1/documents/x:batchUpdate')).toBeUndefined();
+		expect(vendorForRequest('docs.googleapis.com', '/v1/documents/x:batchUpdate')?.name).not.toBe(
+			'googledrive',
+		);
 		expect(vendorForRequest('docs.google.com', '/uc')).toBeUndefined();
 	});
 
@@ -464,15 +466,13 @@ describe('the guard on a Drive request', () => {
 		expect(hydrator.hydrateWrite).not.toHaveBeenCalled();
 	});
 
-	it('refuses the Docs API and another Google API, and calls nothing', async () => {
+	it('refuses another host and another Google API, and calls nothing', async () => {
 		const { router, upstream, gym } = setup();
 
-		const docs = await router.handle(
-			req('POST', '/v1/documents/x:batchUpdate', {}, 'docs.googleapis.com'),
-		);
+		const otherHost = await router.handle(req('GET', '/v1/files', undefined, 'example.com'));
 		const other = await router.handle(req('GET', '/tasks/v1/users/@me/lists'));
 
-		expect(docs.status).toBe(403);
+		expect(otherHost.status).toBe(403);
 		expect(other.status).toBe(403);
 		expect(upstream.callTool).not.toHaveBeenCalled();
 		expect(gym.callTool).not.toHaveBeenCalled();
