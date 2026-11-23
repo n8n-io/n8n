@@ -1022,7 +1022,7 @@ describe('PromotionPreviewView', () => {
 		);
 
 		const { getByTestId, getByRole } = await renderApply();
-		await userEvent.click(getByRole('tab', { name: /Blockers/ }));
+		await userEvent.click(getByRole('tab', { name: /Issues/ }));
 		const row = within(getByTestId('promotion-preview-blockers-table')).getByRole('row', {
 			name: /Payment reminders/,
 		});
@@ -1059,7 +1059,7 @@ describe('PromotionPreviewView', () => {
 		);
 
 		const { getByTestId, getByRole } = await renderApply();
-		await userEvent.click(getByRole('tab', { name: /Blockers/ }));
+		await userEvent.click(getByRole('tab', { name: /Issues/ }));
 		const table = within(getByTestId('promotion-preview-blockers-table'));
 
 		expect(table.getByRole('row', { name: /Orders/ })).toHaveTextContent(
@@ -1145,7 +1145,7 @@ describe('PromotionPreviewView', () => {
 		await userEvent.click(
 			treeRow(getAllByTestId, 'workflow:w3').getByTestId('promotion-preview-tree-blocker'),
 		);
-		expect(getByRole('tab', { name: /Blockers/ })).toHaveAttribute('aria-selected', 'true');
+		expect(getByRole('tab', { name: /Issues/ })).toHaveAttribute('aria-selected', 'true');
 		const row = within(getByTestId('promotion-preview-blockers-table')).getByRole('row', {
 			name: /API_URL/,
 		});
@@ -1154,7 +1154,7 @@ describe('PromotionPreviewView', () => {
 
 		expect(createBinding).toHaveBeenCalledWith(missing);
 		expect(row).toHaveTextContent('Resolved');
-		expect(getByTestId('promotion-preview-blockers-status')).toHaveTextContent('No blockers');
+		expect(getByTestId('promotion-preview-blockers-status')).toHaveTextContent('No issues');
 		// The refreshed check has no blockers, so the workflow joins the selection again.
 		await userEvent.click(getByRole('tab', { name: /Changes/ }));
 		expect(treeRow(getAllByTestId, 'workflow:w3').getByRole('checkbox')).toBeChecked();
@@ -1209,7 +1209,7 @@ describe('PromotionPreviewView', () => {
 
 			expect(getByTestId('promotion-preview-submit')).toBeDisabled();
 			expect(getByTestId('promotion-preview-submit-blocked')).toHaveTextContent(
-				'Some changes have blockers',
+				'Resolve the issues that need your action',
 			);
 		});
 
