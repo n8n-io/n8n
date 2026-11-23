@@ -189,7 +189,7 @@ export const FIRECRAWL_PROFILE: HttpVendorProfile = {
 	name: 'firecrawl',
 	gymOnly: true,
 	credentialKind: 'api_key',
-	credentialField: 'api_key',
+	credentialField: 'apiKey',
 	placeholderSeed: {
 		world_version: 1,
 		persona: { ref: 'person:me', name: 'Guard', email: 'guard@unknown.invalid' },
