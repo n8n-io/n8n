@@ -1,0 +1,35 @@
+packages/cli/src/workflows/workflow.service.ts
+  s_bc361d9d6c0744::t_04d4cc964a048e 1724,1734,1747,1750,1754,1756,1767,1771
+  s_bc361d9d6c0744::t_ad0c157b1d7a82 1720,1725,1727,1731
+  s_bc361d9d6c0744::t_063f0497872f42 1735-1740,1784-1785
+packages/cli/src/workflows/workflow.service.ee.ts
+  s_bc361d9d6c0744::t_063f0497872f42 916-921,1242-1247
+  s_bc361d9d6c0744::t_4bf8fc6411467e 1206
+  s_bc361d9d6c0744::t_202a189235fa1f 893,895,907,911,931,1194,1196,1214,1222,1237
+  s_bc361d9d6c0744::t_e040079813cdda 1249
+  s_bc361d9d6c0744::t_d3c1970f646464 1343,1367,1374,1381-1382
+packages/@n8n/db/src/repositories/folder.repository.ts
+  s_bc361d9d6c0744::t_97a1e469c5c0a3 41-42
+packages/@n8n/db/src/repositories/workflow-publication-outbox.repository.ts
+  s_bc361d9d6c0744::t_7fa4a0a38dd3f6 647,652-669
+packages/cli/src/workflows/__tests__/workflow.service.ee.test.ts
+  s_bc361d9d6c0744::t_ad33aa8d09339a 1565,1576,1663,1868,1871-1872,1877,1884,1889,1893,1898
+packages/cli/src/workflows/publication/workflow-publication-applier.ts
+  s_bc361d9d6c0744::t_c225a7884b2189 248-251,738,742-743
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "322642552c74b5afd4daf7cc9b7f2e319eccb16c",
+  "prompts": {},
+  "sessions": {
+    "s_bc361d9d6c0744": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6480b4a0-d3d2-4d24-a9bd-2dc7e311dd31",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

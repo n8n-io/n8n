@@ -1,0 +1,54 @@
+packages/@n8n/telemetry/src/schemas.ts
+  s_c47d78ced69afc::t_c28baddf02571e 17
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_c47d78ced69afc::t_1152de217eaeca 2241-2244
+  s_c47d78ced69afc::t_5289bc0e4c79ce 2240
+packages/@n8n/cli/src/__tests__/client.test.ts
+  s_c47d78ced69afc::t_659107667a08ac 892-930
+packages/@n8n/api-types/src/constants/client.ts
+  s_c47d78ced69afc::t_73109dbdfd9eaf 5
+packages/@n8n/telemetry/src/events/public-api.ts
+  s_c47d78ced69afc::t_99428de45355cd 4,8-10,13,18,23
+  s_c47d78ced69afc::t_d2698cd112a980 41
+  s_c47d78ced69afc::t_12b0314fc4c4a5 46
+  s_c47d78ced69afc::t_fb2320838b6f28 49
+  s_c47d78ced69afc::t_c3ecc6320403cc 50-53
+packages/@n8n/telemetry/src/__tests__/public-api-usage.test.ts
+  s_c47d78ced69afc::t_24479bed48c55d 45-56
+  s_c47d78ced69afc::t_3536f3a649acb5 10-14,16,21
+packages/@n8n/api-types/src/index.ts
+  s_c47d78ced69afc::t_8b9fdcdd18d4f9 1060-1065
+packages/@n8n/cli/src/client.ts
+  s_c47d78ced69afc::t_ae0f40699becfc 245
+  s_c47d78ced69afc::t_b72fc2924f59f2 15-19
+packages/cli/src/public-api/public-api-client.ts
+  s_c47d78ced69afc::t_3d113b1df1579d 21
+  s_c47d78ced69afc::t_3e83afcf840d69 1,4
+packages/cli/src/telemetry/index.ts
+  s_c47d78ced69afc::t_1fb03afe0fa7a7 82
+  s_c47d78ced69afc::t_9ee960bd7b24c9 367,370
+packages/cli/src/telemetry/__tests__/telemetry.test.ts
+  s_c47d78ced69afc::t_9259b1a8d4ecb8 675-676
+  s_c47d78ced69afc::t_de21817da22355 685-686,693-699
+  s_c47d78ced69afc::t_f33fb5be5ab2bd 1267-1268
+  s_c47d78ced69afc::t_2d1a8a027887a3 594
+  s_c47d78ced69afc::t_919caed45769f9 700-702
+packages/cli/src/public-api/__tests__/public-api-client.test.ts
+  s_c47d78ced69afc::t_672ab8ffdd1071 7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "62c0815db07c5e48a2654186b28678c3c25307c3",
+  "prompts": {},
+  "sessions": {
+    "s_c47d78ced69afc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc67a676-57cc-48ad-b828-b08bc7b6efc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

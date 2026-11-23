@@ -1,0 +1,32 @@
+packages/cli/src/modules/agents/approval/agent-decision-workflow.service.ts
+  s_dfe3f914c8bb46::t_71ff921916340e 309
+packages/cli/src/modules/agents/approval/agent-channel-hitl.service.ts
+  s_dfe3f914c8bb46::t_71ff921916340e 228,236,238
+  s_dfe3f914c8bb46::t_d785bbc3063fbc 237
+packages/cli/src/modules/agents/approval/README.md
+  s_dfe3f914c8bb46::t_71ff921916340e 21,64,78
+packages/cli/src/modules/agents/approval/__tests__/agent-decision-workflow.service.test.ts
+  s_dfe3f914c8bb46::t_71ff921916340e 126,209,308,569
+packages/nodes-base/nodes/AgentDecision/AgentDecisionTrigger.node.ts
+  s_dfe3f914c8bb46::t_71ff921916340e 17,26
+packages/nodes-base/nodes/AgentDecision/AgentDecisionResponse.node.ts
+  s_dfe3f914c8bb46::t_71ff921916340e 11,18
+packages/nodes-base/nodes/AgentDecision/AgentDecisionResponse.node.test.ts
+  s_dfe3f914c8bb46::t_71ff921916340e 10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6ad33f32a15ed8388d612881ebde3767d1291e49",
+  "prompts": {},
+  "sessions": {
+    "s_dfe3f914c8bb46": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a177de-1655-75e1-b502-74f6cb945148",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}
