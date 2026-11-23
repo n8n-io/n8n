@@ -56,7 +56,10 @@ describe('streamTurn', () => {
 		const result = await streamTurn(options);
 
 		expect(result).toEqual({ status: 'completed', finishReason: 'stop' });
-		expect(agent.stream).toHaveBeenCalledWith('Hi', { maxIterations: 5 });
+		expect(agent.stream).toHaveBeenCalledWith('Hi', {
+			maxIterations: 5,
+			abortSignal: options.signal,
+		});
 		expect(events).toEqual([
 			{
 				type: 'tool-call',
@@ -85,7 +88,7 @@ describe('streamTurn', () => {
 		expect(agent.resume).toHaveBeenCalledWith(
 			'stream',
 			{ approved: true },
-			{ guardrails, runId: 'agent-run', toolCallId: 'call-1' },
+			{ guardrails, abortSignal: options.signal, runId: 'agent-run', toolCallId: 'call-1' },
 		);
 		expect(events.map((event) => event.type)).toEqual(['confirmation-request', 'tool-call']);
 	});

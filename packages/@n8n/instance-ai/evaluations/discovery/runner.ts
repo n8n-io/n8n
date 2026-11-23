@@ -297,7 +297,6 @@ export async function runOrchestratorTurn(
 			streamOptions: {
 				maxIterations: maxSteps,
 				...(thread ? { persistence: { threadId, resourceId: context.userId } } : {}),
-				abortSignal: abortController.signal,
 				providerOptions: {
 					anthropic: { cacheControl: { type: 'ephemeral' as const } },
 				},

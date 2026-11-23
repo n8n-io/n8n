@@ -24,6 +24,7 @@ export interface StreamTurnOptions {
 	/** Run id and agent id on the events. */
 	runId: string;
 	agentId: string;
+	/** Aborts the first stream and each resumed stream. */
 	signal: AbortSignal;
 	onEvent: (event: InstanceAiEvent) => void;
 	/** Returns the resume data for a suspended tool call. Called when the suspension arrives. */
@@ -39,7 +40,10 @@ export interface StreamTurnResult {
 /** Runs one turn to its end. Each suspended tool call is answered and resumed. */
 export async function streamTurn(options: StreamTurnOptions): Promise<StreamTurnResult> {
 	const { agent, signal } = options;
-	let { stream, runId: agentRunId } = await agent.stream(options.input, options.streamOptions);
+	let { stream, runId: agentRunId } = await agent.stream(options.input, {
+		...options.streamOptions,
+		abortSignal: signal,
+	});
 
 	for (;;) {
 		let suspension: SuspensionInfo | undefined;
@@ -85,6 +89,7 @@ export async function streamTurn(options: StreamTurnOptions): Promise<StreamTurn
 
 		const resumed = await agent.resume('stream', await resumeData, {
 			...options.resumeOptions,
+			abortSignal: signal,
 			runId: agentRunId,
 			toolCallId: suspension.toolCallId,
 		});
