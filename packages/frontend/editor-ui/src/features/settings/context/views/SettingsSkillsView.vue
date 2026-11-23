@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useRoute, useRouter } from 'vue-router';
 import { useDebounceFn, useLocalStorage } from '@vueuse/core';
@@ -86,6 +87,7 @@ import {
 } from '../context.utils';
 import type { SkillListQuery } from '../skills.api';
 import { useSkillsStore } from '../skills.store';
+import { sourceLineOf } from '../skillSourceReview.utils';
 import {
 	PROJECT_SCOPE_PREFIX,
 	parseScope,
@@ -102,10 +104,11 @@ type SkillFilters = {
 	scope: string;
 	agentId: string;
 	createdById: string;
+	sourceIds: string[];
 };
 
-const FILTER_KEYS: Array<keyof SkillFilters> = ['scope', 'agentId', 'createdById'];
-const NO_FILTERS: SkillFilters = { scope: '', agentId: '', createdById: '' };
+const FILTER_KEYS: Array<keyof SkillFilters> = ['scope', 'agentId', 'createdById', 'sourceIds'];
+const NO_FILTERS: SkillFilters = { scope: '', agentId: '', createdById: '', sourceIds: [] };
 
 const i18n = useI18n();
 const router = useRouter();
@@ -115,7 +118,13 @@ const message = useMessage();
 const uiStore = useUIStore();
 const projectsStore = useProjectsStore();
 const skillsStore = useSkillsStore();
-const { isEnabled: assistantSkillsEnabled } = useAssistantSkillsExperiment();
+const settingsStore = useSettingsStore();
+const { isEnabled: assistantSkillsExperimentEnabled } = useAssistantSkillsExperiment();
+const assistantSkillsEnabled = computed(
+	() =>
+		assistantSkillsExperimentEnabled.value &&
+		settingsStore.moduleSettings['instance-ai']?.enabled === true,
+);
 const posthogStore = usePostHog();
 const { deleteBlockedReason } = useSkillDeleteRule();
 const telemetry = useTelemetry();
@@ -182,6 +191,21 @@ function creatorLabel(creator: SkillUserDto): string {
 	return preferenceUserName(creator) || creator.id;
 }
 
+const sourceFilterOptions = computed(() =>
+	skillsStore.sources
+		.map((source) => {
+			const { label: scope } = scopeDisplay({
+				...source,
+				scope: source.projectId ? 'project' : 'instance',
+			});
+			return {
+				value: source.id,
+				label: `${sourceLineOf(source)} · ${scope}`,
+			};
+		})
+		.sort((a, b) => a.label.localeCompare(b.label)),
+);
+
 function scopeQuery(scope: string): Pick<SkillListQuery, 'scope'> {
 	const parsed = skillScopeSchema.safeParse(scope);
 	return parsed.success ? { scope: parsed.data } : {};
@@ -191,7 +215,7 @@ function scopeQuery(scope: string): Pick<SkillListQuery, 'scope'> {
 // describe the matching skills, and the page is the only slice the browser holds.
 function listQuery(page: number, itemsPerPage: number): SkillListQuery {
 	const term = search.value.trim();
-	const { scope, agentId, createdById } = filters.value;
+	const { scope, agentId, createdById, sourceIds } = filters.value;
 	const sortBy = toSortOption(tableOptions.value.sortBy, SKILLS_SORT_OPTIONS);
 	return {
 		skip: page * itemsPerPage,
@@ -206,6 +230,7 @@ function listQuery(page: number, itemsPerPage: number): SkillListQuery {
 			? {
 					groupBy: 'source' as const,
 					page,
+					...(sourceIds.length > 0 ? { sourceIds: sourceIds.join(',') } : {}),
 					...(collapsedSourceIds.value.length > 0
 						? { collapsedSourceIds: collapsedSourceIds.value.join(',') }
 						: {}),
@@ -259,9 +284,13 @@ async function load(focusSourceId?: string) {
 	const { page = 0, itemsPerPage = SKILLS_DEFAULT_PAGE_SIZE } = tableOptions.value;
 	const query = { ...listQuery(page, itemsPerPage), ...(focusSourceId ? { focusSourceId } : {}) };
 	// Sort and paging do not narrow the list, so they do not count as filters.
-	const filtered = [query.search, query.scope, query.agentId, query.createdById].some(
-		(value) => value !== undefined,
-	);
+	const filtered = [
+		query.search,
+		query.scope,
+		query.agentId,
+		query.createdById,
+		query.sourceIds,
+	].some((value) => value !== undefined);
 	try {
 		await skillsStore.fetchSkills(query);
 		if (!isLatest()) return;
@@ -305,7 +334,7 @@ async function resetPage() {
 
 const onSearch = useDebounceFn(resetPage, getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH));
 
-async function setFilter(key: keyof SkillFilters, value: unknown) {
+async function setFilter(key: Exclude<keyof SkillFilters, 'sourceIds'>, value: unknown) {
 	// A cleared select reports an empty value, not an empty string.
 	filters.value = { ...filters.value, [key]: typeof value === 'string' ? value : '' };
 	await resetPage();
@@ -978,6 +1007,7 @@ async function goBack() {
 
 // The flags can arrive after the page: with Skill Sync on, the list groups and the sources load.
 watch(skillSyncEnabled, async (enabled) => {
+	if (!enabled) filters.value = { ...filters.value, sourceIds: [] };
 	tableOptions.value = { ...tableOptions.value, page: 0 };
 	await Promise.all([load(), ...(enabled ? [loadSources()] : [])]);
 });
@@ -1055,7 +1085,13 @@ onMounted(async () => {
 			<N8nInput
 				v-model="search"
 				:class="$style.search"
-				:placeholder="i18n.baseText('settings.context.skills.search.placeholder')"
+				:placeholder="
+					i18n.baseText(
+						skillSyncEnabled
+							? 'settings.context.skills.search.withSourcesPlaceholder'
+							: 'settings.context.skills.search.placeholder',
+					)
+				"
 				clearable
 				data-test-id="skills-search"
 				@update:model-value="onSearch"
@@ -1143,6 +1179,32 @@ onMounted(async () => {
 							:key="creator.id"
 							:value="creator.id"
 							:label="creatorLabel(creator)"
+						/>
+					</N8nSelect>
+				</div>
+				<div v-if="skillSyncEnabled" :class="$style.filter">
+					<N8nInputLabel
+						:label="i18n.baseText('settings.context.skills.filter.source')"
+						:bold="false"
+						size="small"
+						color="text-base"
+					/>
+					<N8nSelect
+						v-model="filters.sourceIds"
+						size="medium"
+						multiple
+						filterable
+						clearable
+						collapse-tags
+						:placeholder="i18n.baseText('settings.context.skills.filter.allSources')"
+						data-test-id="skills-filter-source"
+						@update:model-value="resetPage"
+					>
+						<N8nOption
+							v-for="source in sourceFilterOptions"
+							:key="source.value"
+							:value="source.value"
+							:label="source.label"
 						/>
 					</N8nSelect>
 				</div>
@@ -1331,8 +1393,9 @@ onMounted(async () => {
 	text-align: center;
 }
 
+// Wide enough to keep the "Based on" source of each card on one line.
 .recommended {
-	max-width: 48rem;
+	max-width: 58rem;
 	margin: var(--spacing--xs) 0;
 }
 </style>

@@ -4558,6 +4558,60 @@ describe('generate-types', () => {
 					expect(content).not.toContain('SimpleFalse');
 				});
 
+				describe('parameters inside a collection', () => {
+					const nodeWithCollection = (optionName: string): NodeTypeDescription => ({
+						...mockFreshserviceNode,
+						properties: [
+							...mockFreshserviceNode.properties,
+							{
+								displayName: 'Options',
+								name: 'options',
+								type: 'collection',
+								default: {},
+								options: [
+									{
+										displayName: 'Simplify Output',
+										name: optionName,
+										type: 'boolean',
+										default: true,
+									},
+								],
+								displayOptions: { show: { resource: ['ticket'], operation: ['get'] } },
+							},
+						],
+					});
+					const nestedVariant = { ...rawVariant, variant: 'options.simplifyOutput-false' };
+
+					it('emits an output type for the variant of a collection option', () => {
+						const content = generate([nestedVariant], nodeWithCollection('simplifyOutput'));
+
+						expect(content).toContain(
+							'export type FreshserviceV1TicketGetOptionsSimplifyOutputFalseOutput = {',
+						);
+					});
+
+					it('narrows the collection option in each node type', () => {
+						const content = generate([nestedVariant], nodeWithCollection('simplifyOutput'));
+
+						expect(content).toContain(
+							'NodeConfig<FreshserviceV1TicketGetParams & { options?: { simplifyOutput?: true } }>',
+						);
+						expect(content).toContain(
+							'NodeConfig<FreshserviceV1TicketGetParams & { options: { simplifyOutput: false } }>',
+						);
+						expect(content).toContain(
+							'NodeConfig<FreshserviceV1TicketGetParams & { options: { simplifyOutput: Expression<boolean> } }>',
+						);
+					});
+
+					it('ignores a variant whose collection does not have the option', () => {
+						const content = generate([nestedVariant], nodeWithCollection('somethingElse'));
+
+						expect(content).toContain('export type FreshserviceV1TicketGetNode = {');
+						expect(content).not.toContain('SimplifyOutputFalse');
+					});
+				});
+
 				describe('options parameters', () => {
 					const nodeWithOptions = (
 						values: Array<number | string | boolean>,
@@ -6238,6 +6292,134 @@ describe('generate-types', () => {
 				// Should contain the schema properties
 				expect(content).toContain('body');
 				expect(content).toContain('webhookUrl');
+			} finally {
+				cleanupTestDir(nodeName);
+			}
+		});
+
+		describe('parameter variants of a node without an operation', () => {
+			const nodeName = '__TestTriggerVariants__';
+			const triggerNode: NodeTypeDescription = {
+				name: `n8n-nodes-base.${nodeName}`,
+				displayName: 'Test Trigger Variants',
+				description: 'Test trigger with a simplify option',
+				group: ['trigger'],
+				version: 1,
+				inputs: [],
+				outputs: ['main'],
+				schemaPath: nodeName,
+				properties: [{ displayName: 'Simplify', name: 'simple', type: 'boolean', default: true }],
+			};
+			const files = {
+				'output.json': JSON.stringify({
+					type: 'object',
+					properties: { Subject: { type: 'string' } },
+				}),
+				'output.simple-false.json': JSON.stringify({
+					type: 'object',
+					properties: { headers: { type: 'object' } },
+				}),
+			};
+
+			it('emits an output type for the variant and keeps the plain one for the default', () => {
+				try {
+					createTestSchemaDir(nodeName, 'v1.0.0', files);
+
+					const content = generateTypes.generateSingleVersionTypeFile(triggerNode, 1);
+
+					expect(content).toMatch(/export type \w+SimpleFalseOutput = \{/);
+					expect(content).toContain('headers?:');
+					expect(content).toContain('Subject?:');
+				} finally {
+					cleanupTestDir(nodeName);
+				}
+			});
+
+			it('narrows the parameter in each node type', () => {
+				try {
+					createTestSchemaDir(nodeName, 'v1.0.0', files);
+
+					const content = generateTypes.generateSingleVersionTypeFile(triggerNode, 1);
+
+					expect(content).toContain('& { simple?: true }');
+					expect(content).toContain('& { simple: false }');
+					expect(content).toContain('& { simple: Expression<boolean> }');
+				} finally {
+					cleanupTestDir(nodeName);
+				}
+			});
+
+			it('keeps a layout variant such as with-parser out of the parameter variants', () => {
+				try {
+					createTestSchemaDir(nodeName, 'v1.0.0', {
+						'output.json': files['output.json'],
+						'output.with-parser.json': JSON.stringify({
+							type: 'object',
+							properties: { parsed: { type: 'object' } },
+						}),
+					});
+
+					const content = generateTypes.generateSingleVersionTypeFile(triggerNode, 1);
+
+					expect(content).toContain('Subject?:');
+					expect(content).not.toContain('parsed?:');
+					expect(content).not.toContain('WithParser');
+				} finally {
+					cleanupTestDir(nodeName);
+				}
+			});
+
+			it('still types the parameter variants when a layout variant is next to them', () => {
+				try {
+					createTestSchemaDir(nodeName, 'v1.0.0', {
+						...files,
+						'output.with-parser.json': JSON.stringify({
+							type: 'object',
+							properties: { parsed: { type: 'object' } },
+						}),
+					});
+
+					const content = generateTypes.generateSingleVersionTypeFile(triggerNode, 1);
+
+					expect(content).toMatch(/export type \w+SimpleFalseOutput = \{/);
+					expect(content).toContain('& { simple: false }');
+					expect(content).not.toContain('parsed?:');
+				} finally {
+					cleanupTestDir(nodeName);
+				}
+			});
+		});
+
+		it('prefers output.json over a sibling action file in a shared schema folder', () => {
+			const nodeName = '__TestSharedFolderTrigger__';
+			const triggerNode: NodeTypeDescription = {
+				name: `n8n-nodes-base.${nodeName}`,
+				displayName: 'Test Shared Trigger',
+				description: 'Test trigger that shares its schema folder with an action node',
+				group: ['trigger'],
+				version: 1,
+				inputs: [],
+				outputs: ['main'],
+				schemaPath: nodeName,
+				properties: [{ displayName: 'Event', name: 'event', type: 'string', default: '' }],
+			};
+
+			try {
+				createTestSchemaDir(nodeName, 'v1.0.0', {
+					'aSendLegacy.json': JSON.stringify({
+						type: 'object',
+						properties: { actionField: { type: 'string' } },
+					}),
+					'output.json': JSON.stringify({
+						type: 'object',
+						properties: { triggerField: { type: 'string' } },
+					}),
+				});
+
+				const content = generateTypes.generateSingleVersionTypeFile(triggerNode, 1);
+
+				expect(content).toContain('triggerField');
+				expect(content).not.toContain('actionField');
 			} finally {
 				cleanupTestDir(nodeName);
 			}

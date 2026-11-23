@@ -17,7 +17,7 @@ The module owns knowledge for Agents: uploaded files and their retrieval, and ex
 Three contracts at the module root define the file knowledge boundary. The module implements them; consumers call them. Change them by agreement of everyone working on the module, not in a review comment.
 
 - `knowledge-consumer-scope.ts`: identifies the consumer a call is made for and bounds the knowledge it can reach. `KnowledgeConsumerScope` is `{ kind: 'agent', projectId, agentId }`. Keep `projectId`: the sandbox id is derived from the instance id, the project id and the agent id, and it must stay byte-identical.
-- `knowledge-retriever.ts`: what the module offers to consumers. `hasFiles`, `findFiles`, `searchText` and `readFile` take a scope and the request types in `retrieval/retrieval-schemas.ts`, and return its result types unchanged, because tool outputs must stay identical.
+- `knowledge-retriever.ts`: what the module offers to consumers. `hasFiles`, `findFiles`, `searchText` and `readFile` take a scope and the request types in `retrieval/retrieval-schemas.ts`, and return its result types unchanged, because tool outputs must stay identical. `searchText` and `readFile` also take an optional observer that reports how long the call waited for the sandbox and the mirror.
 - `knowledge-sandbox-provider.ts`: what the module needs from a consumer. A sandbox to mirror files into, command execution in it, warm-up and teardown. The agents module implements it over its sandbox runtime.
 
 The agents module keeps the controllers, `getAgentOrThrow` and every user and project permission check, the three `Tool` definitions, the sandbox runtime (`AgentSandboxRuntimeService` owns the sandbox ids and lifecycle), and the `AgentKnowledgeService` facade. The knowledge module never checks project membership. Ownership is the caller's job. The caller also owns the fence around its writes: `KnowledgeFileService.uploadFiles` and `deleteFile` take a `KnowledgeWriteRunner`, and the agents facade passes its project-deletion lock through it. An upload inserts each row through the fence. The row delete does not run through it. An upload or a delete refreshes the sandbox mirror in the background, and the delete of the last file removes the sandbox. `KnowledgeRetrievalService.warmSandbox` and `destroySandbox` are the explicit versions: the agents facade calls them when the builder opens an agent and when an agent or a project is deleted. The file service runs an empty write through the fence before and after that refresh, so a mirror that finishes after the consumer stops accepting writes is removed.
@@ -44,7 +44,7 @@ This module imports nothing from `modules/agents` outside its tests. `vector-sto
 
 ```
 knowledge.module.ts                      module registration, byte-store wiring, settings
-knowledge.config.ts                      upload limits (N8N_KNOWLEDGE_*)
+knowledge.config.ts                      upload limits and the collections override (N8N_KNOWLEDGE_*)
 knowledge-availability.service.ts        the one availability check
 knowledge-consumer-scope.ts              the boundary: the scope
 knowledge-retriever.ts                   the boundary: what the module offers
@@ -84,3 +84,13 @@ vector-stores/                           external vector-store connections, conn
 - Vector stores keep working. They are plain code, not an entity.
 
 Each guard has a test. A new consumer, or a new knowledge call in the agents module, asks `KnowledgeAvailabilityService` and gets a test.
+
+## Collections flag
+
+Collections ship behind the PostHog flag `KNOWLEDGE_COLLECTIONS_FLAG` (`146_knowledge_collections`, in `@n8n/api-types`).
+
+- The backend asks `KnowledgeAvailabilityService.isCollectionsEnabled()`. It is true only when the module is active, and the operator override or the flag is on. The flag is read for the instance, because retrieval runs without a user.
+- The editor asks `useIsCollectionsEnabled()` in `editor-ui/src/features/shared/knowledge`. It applies the same rule. `PostHogClient` lists the flag in `EDITOR_INSTANCE_FLAGS`, so the editor gets the instance result.
+- Nothing else reads the flag. Put every collection endpoint, page and retrieval path behind these helpers.
+- The flag deletes no data. An agent's own knowledge does not depend on it.
+- `N8N_KNOWLEDGE_COLLECTIONS_ENABLED=true` (`collectionsEnabled` in `knowledge.config.ts`) turns collections on without PostHog. `false` falls back to PostHog. The backend helper reads the config. The editor helper reads it from `moduleSettings.knowledge.collectionsEnabled`. This is the pattern of `N8N_EVAL_COLLECTIONS_ENABLED`.

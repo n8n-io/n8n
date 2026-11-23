@@ -96,6 +96,18 @@ describe('checkEngineV2Eligibility', () => {
 			],
 			connections: {},
 		},
+		{
+			rule: 'graph',
+			nodes: [
+				manualTrigger,
+				{ ...manualTrigger, id: 'a-id', name: 'A', type: 'n8n-nodes-base.noOp' },
+				{ ...manualTrigger, id: 'b-id', name: 'B', type: 'n8n-nodes-base.noOp' },
+			],
+			connections: {
+				A: { main: [[{ node: 'B', type: 'main', index: 0 }]] },
+				B: { main: [[{ node: 'A', type: 'main', index: 0 }]] },
+			},
+		},
 	])('ignores nodes that no live trigger reaches in the $rule rule', ({ nodes, connections }) => {
 		expect(checkEngineV2Eligibility({ nodes, connections, settings: {} })).toEqual({
 			eligible: true,

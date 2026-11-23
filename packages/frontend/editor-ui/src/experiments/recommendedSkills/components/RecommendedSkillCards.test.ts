@@ -56,6 +56,28 @@ describe('RecommendedSkillCards', () => {
 		).toBeVisible();
 	});
 
+	it.each([
+		['humanizer', 'blader/humanizer', 'https://github.com/blader/humanizer'],
+		[
+			'cold-email',
+			'coreyhaines31/marketingskills',
+			'https://github.com/coreyhaines31/marketingskills/tree/main/skills/cold-email',
+		],
+		[
+			'research',
+			'mattpocock/skills',
+			'https://github.com/mattpocock/skills/tree/main/skills/engineering/research',
+		],
+	])('links the %s card to its source', (id, label, url) => {
+		const { getByTestId } = renderComponent({ pinia });
+		const card = within(getByTestId(`recommended-skill-${id}`));
+
+		expect(card.getByTestId('recommended-skill-source')).toHaveTextContent(`Based on ${label}`);
+		const link = card.getByTestId('recommended-skill-source-link');
+		expect(link).toHaveAttribute('href', url);
+		expect(link).toHaveAttribute('target', '_blank');
+	});
+
 	it('labels the added skills in the dialog and keeps their button working', async () => {
 		localStorage.setItem(LOCAL_STORAGE_ADDED_RECOMMENDED_SKILLS, JSON.stringify(['research']));
 		const { getByTestId, getAllByTestId, emitted } = renderComponent({
