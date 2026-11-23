@@ -748,7 +748,8 @@ export function turnUsageOf(exec: AgentExecution): TimelineTurnUsage | undefined
 
 /**
  * The token breakdown of a whole thread: the sum of its turns. The cache counts
- * are `null` when no turn reported cache data.
+ * are `null` unless every turn reported cache data: the input of a turn without
+ * it would otherwise show as uncached.
  */
 export function threadTokenBreakdownOf(
 	executions: AgentExecution[],
@@ -761,6 +762,9 @@ export function threadTokenBreakdownOf(
 		totalTokens: 0,
 		turns: 0,
 	};
+	let cacheRead = 0;
+	let cacheWrite = 0;
+	let everyTurnHasCacheData = true;
 	for (const exec of executions) {
 		const usage = turnUsageOf(exec);
 		if (!usage) continue;
@@ -768,12 +772,15 @@ export function threadTokenBreakdownOf(
 		sum.inputTokens += usage.inputTokens;
 		sum.outputTokens += usage.outputTokens;
 		sum.totalTokens += usage.totalTokens;
-		if (usage.cacheReadTokens !== null) {
-			sum.cacheReadTokens = (sum.cacheReadTokens ?? 0) + usage.cacheReadTokens;
+		if (usage.cacheReadTokens === null && usage.cacheWriteTokens === null) {
+			everyTurnHasCacheData = false;
 		}
-		if (usage.cacheWriteTokens !== null) {
-			sum.cacheWriteTokens = (sum.cacheWriteTokens ?? 0) + usage.cacheWriteTokens;
-		}
+		cacheRead += usage.cacheReadTokens ?? 0;
+		cacheWrite += usage.cacheWriteTokens ?? 0;
+	}
+	if (sum.turns > 0 && everyTurnHasCacheData) {
+		sum.cacheReadTokens = cacheRead;
+		sum.cacheWriteTokens = cacheWrite;
 	}
 	return sum;
 }

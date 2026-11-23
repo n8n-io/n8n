@@ -310,6 +310,25 @@ describe('turn usage', () => {
 		expect(breakdown.cacheReadTokens).toBeNull();
 		expect(breakdown.cacheWriteTokens).toBeNull();
 	});
+
+	it('has no cache counts when one turn reported no cache data', () => {
+		const breakdown = threadTokenBreakdownOf([
+			withTimeline([], { id: 'e-1', ...usage }),
+			withTimeline([], {
+				id: 'e-2',
+				...usage,
+				cacheReadTokens: null,
+				cacheWriteTokens: null,
+			}),
+		]);
+
+		expect(breakdown).toMatchObject({
+			inputTokens: 2000,
+			cacheReadTokens: null,
+			cacheWriteTokens: null,
+			turns: 2,
+		});
+	});
 });
 
 describe('timeline identity', () => {

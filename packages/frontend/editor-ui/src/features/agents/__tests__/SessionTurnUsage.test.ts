@@ -44,8 +44,9 @@ describe('SessionTurnUsage', () => {
 		const detail = mountUsage().get('[data-testid="session-turn-usage-detail"]').text();
 
 		expect(detail).toContain('9.1s');
-		// Cache hit rate: 94,830 of 126,800 input tokens.
+		// Cache read: 94,830 of 126,800 input tokens.
 		expect(detail).toContain('75%');
+		expect(detail).not.toContain('agentSessions.timeline.usage.cacheHitRate');
 		expect(detail).toContain('94,830');
 		expect(detail).toContain('31,920');
 		// Not cached: 126,800 - 94,830 - 31,920.

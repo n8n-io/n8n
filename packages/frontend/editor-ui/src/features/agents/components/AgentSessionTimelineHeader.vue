@@ -107,6 +107,7 @@ const creditsFormatter = new Intl.NumberFormat('en-US', {
 });
 
 const isUsageOpen = ref(false);
+const hasUsageBreakdown = computed(() => (props.metadata?.usage?.turns ?? 0) > 0);
 
 /** Credits where the Assistant pays with them, else the cost in dollars. */
 const usagePrice = computed(() => {
@@ -186,18 +187,20 @@ const usagePrice = computed(() => {
 						v-model:open="isUsageOpen"
 						:open-delay="200"
 						:close-delay="100"
-						:disabled="!metadata.usage?.turns"
+						:disabled="!hasUsageBreakdown"
 						side="bottom"
 						align="end"
 						:side-offset="6"
 						max-width="22rem"
 					>
 						<template #trigger>
-							<button
-								type="button"
-								:class="$style.usageTrigger"
+							<!-- A session without saved turns has no breakdown, so its count is plain text. -->
+							<component
+								:is="hasUsageBreakdown ? 'button' : 'span'"
+								:type="hasUsageBreakdown ? 'button' : undefined"
+								:class="[$style.usageTrigger, hasUsageBreakdown && $style.interactive]"
 								data-testid="agent-session-timeline-usage"
-								@click="isUsageOpen = !!metadata.usage?.turns && !isUsageOpen"
+								@click="isUsageOpen = hasUsageBreakdown && !isUsageOpen"
 							>
 								<N8nIcon color="text-light" icon="hash" />
 								<N8nText step="xs" bold>
@@ -218,9 +221,9 @@ const usagePrice = computed(() => {
 										>(${{ costFormatter.format(metadata.totalCost) }})</span
 									>
 								</N8nText>
-							</button>
+							</component>
 						</template>
-						<template v-if="metadata.usage?.turns" #content>
+						<template v-if="hasUsageBreakdown && metadata.usage" #content>
 							<SessionUsageBreakdown
 								:usage="metadata.usage"
 								:title="i18n.baseText('agentSessions.timeline.usage.sessionTitle')"
@@ -415,6 +418,9 @@ const usagePrice = computed(() => {
 	background: transparent;
 	color: inherit;
 	font: inherit;
+}
+
+.interactive {
 	cursor: pointer;
 
 	&:hover,

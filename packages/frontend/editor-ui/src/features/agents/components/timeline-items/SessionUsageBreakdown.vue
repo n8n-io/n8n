@@ -71,12 +71,6 @@ const inputRows = computed(() => {
 		</div>
 
 		<dl :class="$style.grid">
-			<template v-if="hasCacheData">
-				<dt>{{ i18n.baseText('agentSessions.timeline.usage.cacheHitRate') }}</dt>
-				<dd :class="$style.share">{{ share(cacheRead, props.usage.inputTokens) }}</dd>
-				<dd />
-			</template>
-
 			<dt :class="$style.strong">{{ i18n.baseText('agentSessions.timeline.usage.input') }}</dt>
 			<dd :class="$style.share">{{ share(props.usage.inputTokens, props.usage.totalTokens) }}</dd>
 			<dd>{{ numberFormatter.format(props.usage.inputTokens) }}</dd>

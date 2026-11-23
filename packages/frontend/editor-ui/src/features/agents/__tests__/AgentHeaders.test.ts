@@ -360,6 +360,21 @@ describe('AgentSessionTimelineHeader metadata', () => {
 			expect(detail).toContain('36.72');
 			expect(detail).not.toContain('$');
 		});
+
+		it('makes the token count a button only when the session has a breakdown', () => {
+			const withTurns = mountWithUsage();
+			expect(withTurns.get('[data-testid="agent-session-timeline-usage"]').element.tagName).toBe(
+				'BUTTON',
+			);
+
+			const withoutTurns = mountWithUsage({ usage: { ...usage, turns: 0 } });
+			expect(withoutTurns.get('[data-testid="agent-session-timeline-usage"]').element.tagName).toBe(
+				'SPAN',
+			);
+			expect(
+				withoutTurns.find('[data-testid="agent-session-timeline-usage-detail"]').exists(),
+			).toBe(false);
+		});
 	});
 
 	it('does not show metadata before it loads', () => {
