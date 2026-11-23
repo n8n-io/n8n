@@ -491,6 +491,32 @@ describe('useChatState', () => {
 
 			expect(logsStore.addChatMessage).not.toHaveBeenCalled();
 		});
+
+		it('should include urlBaseWebhook origin in allowedButtonOrigins when it differs from webhookTestUrl', () => {
+			const rootStore = useRootStore();
+			vi.spyOn(rootStore, 'webhookTestUrl', 'get').mockReturnValue(
+				'https://editor.example.com/webhook-test',
+			);
+			vi.spyOn(rootStore, 'urlBaseWebhook', 'get').mockReturnValue('https://webhooks.example.com/');
+
+			const chatState = useChatState(false);
+
+			expect(chatState.chatOptions.value.webhookUrl).toBe(
+				'https://editor.example.com/webhook-test/workflow-123/session-456',
+			);
+			expect(chatState.chatOptions.value.allowedButtonOrigins).toEqual([
+				'https://webhooks.example.com',
+			]);
+		});
+
+		it('should return empty allowedButtonOrigins when urlBaseWebhook is invalid', () => {
+			const rootStore = useRootStore();
+			vi.spyOn(rootStore, 'urlBaseWebhook', 'get').mockReturnValue('not-a-valid-url');
+
+			const chatState = useChatState(false);
+
+			expect(chatState.chatOptions.value.allowedButtonOrigins).toEqual([]);
+		});
 	});
 
 	describe('refreshSession', () => {

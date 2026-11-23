@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 
 import { useOptions } from '@n8n/chat/composables';
 
@@ -18,11 +18,39 @@ defineProps<{
 const chatOptions = useOptions();
 const clickedButtonIndex = ref<number | null>(null);
 
+const parseHttpOrigin = (value: string): string | null => {
+	try {
+		const parsed = new URL(value);
+		if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+			return null;
+		}
+		return parsed.origin;
+	} catch {
+		return null;
+	}
+};
+
+const validOrigins = computed(() => {
+	const origins = new Set<string>();
+	const webhookOrigin = parseHttpOrigin(chatOptions.options.webhookUrl);
+	if (webhookOrigin) {
+		origins.add(webhookOrigin);
+	}
+
+	for (const entry of chatOptions.options.allowedButtonOrigins ?? []) {
+		const origin = parseHttpOrigin(entry);
+		if (origin) {
+			origins.add(origin);
+		}
+	}
+
+	return origins;
+});
+
 const isButtonVisible = (link: string, index: number): boolean => {
 	try {
-		const validOrigin = new URL(chatOptions.options.webhookUrl).origin;
 		const url = new URL(link, window.location.href);
-		if (url.origin !== validOrigin) {
+		if (!validOrigins.value.has(url.origin)) {
 			return false;
 		}
 		return clickedButtonIndex.value === null || index === clickedButtonIndex.value;

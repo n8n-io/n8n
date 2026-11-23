@@ -12,11 +12,13 @@ vi.mock('../components/MarkdownRenderer.vue', () => ({
 	},
 }));
 
+let mockOptions: { webhookUrl: string; allowedButtonOrigins?: string[] } = {
+	webhookUrl: 'https://webhook.example.com/webhook/123/chat',
+};
+
 vi.mock('@n8n/chat/composables', () => ({
 	useOptions: () => ({
-		options: {
-			webhookUrl: 'https://webhook.example.com/webhook/123/chat',
-		},
+		options: mockOptions,
 	}),
 }));
 
@@ -30,6 +32,9 @@ const relativeUrlButtons = [
 
 describe('MessageWithButtons', () => {
 	beforeEach(() => {
+		mockOptions = {
+			webhookUrl: `${webhookOrigin}/webhook/123/chat`,
+		};
 		vi.stubGlobal('fetch', vi.fn());
 		Object.defineProperty(window, 'location', {
 			value: new URL(`${editorOrigin}/chat`),
@@ -116,5 +121,61 @@ describe('MessageWithButtons', () => {
 		const rendered = wrapper.findAll('button');
 		expect(rendered).toHaveLength(1);
 		expect(rendered[0].text()).toBe('Webhook');
+	});
+
+	it('renders and fetches buttons matching allowedButtonOrigins when webhookUrl has a different origin', async () => {
+		vi.mocked(fetch).mockResolvedValue({ ok: true } as Response);
+		mockOptions = {
+			webhookUrl: 'https://editor.example.com/webhook-test/wf-1/session-1',
+			allowedButtonOrigins: [webhookOrigin],
+		};
+
+		const waitingButtons = [
+			{
+				text: 'Approve',
+				link: `${webhookOrigin}/webhook-waiting/42?approved=true`,
+				type: 'primary' as const,
+			},
+			{
+				text: 'Untrusted',
+				link: 'https://untrusted.example.com/webhook-waiting/42?approved=false',
+				type: 'secondary' as const,
+			},
+		];
+
+		const wrapper = mount(MessageWithButtons, {
+			props: { text: 'Please approve', buttons: waitingButtons },
+		});
+
+		const rendered = wrapper.findAll('button');
+		expect(rendered).toHaveLength(1);
+		expect(rendered[0].text()).toBe('Approve');
+
+		await rendered[0].trigger('click');
+
+		await waitFor(() =>
+			expect(fetch).toHaveBeenCalledWith(`${webhookOrigin}/webhook-waiting/42?approved=true`),
+		);
+	});
+
+	it('ignores invalid and non-http entries in allowedButtonOrigins', () => {
+		mockOptions = {
+			webhookUrl: `${webhookOrigin}/webhook/123/chat`,
+			allowedButtonOrigins: ['not-a-valid-url', 'javascript:alert(1)'],
+		};
+
+		const wrapper = mount(MessageWithButtons, {
+			props: {
+				text: 'Please confirm',
+				buttons: [
+					{ text: 'Bad', link: 'javascript:alert(1)', type: 'primary' as const },
+					{ text: 'Good', link: `${webhookOrigin}/webhook-waiting/1`, type: 'secondary' as const },
+				],
+			},
+		});
+
+		const rendered = wrapper.findAll('button');
+		expect(rendered).toHaveLength(1);
+		expect(rendered[0].text()).toBe('Good');
 	});
 });

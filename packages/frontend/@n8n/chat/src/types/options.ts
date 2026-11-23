@@ -5,6 +5,7 @@ import type { SendMessageResponse } from './webhook';
 
 export interface ChatOptions {
 	webhookUrl: string;
+	allowedButtonOrigins?: string[];
 	webhookConfig?: {
 		method?: 'GET' | 'POST';
 		headers?: Record<string, string>;

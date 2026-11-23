@@ -159,6 +159,18 @@ export function useChatState(
 		return url;
 	});
 
+	const allowedButtonOrigins = computed<string[]>(() => {
+		if (!rootStore.urlBaseWebhook) {
+			return [];
+		}
+
+		try {
+			return [new URL(rootStore.urlBaseWebhook).origin];
+		} catch {
+			return [];
+		}
+	});
+
 	// Register ChatTrigger webhook for test execution
 	async function registerChatWebhook(): Promise<void> {
 		if (isRegistering.value || !chatTriggerNode.value) {
@@ -228,6 +240,7 @@ export function useChatState(
 	const chatOptionsComputed = computed<ChatOptions>(() => {
 		const options: ChatOptions = {
 			webhookUrl: webhookUrl.value,
+			allowedButtonOrigins: allowedButtonOrigins.value,
 			webhookConfig: {
 				method: 'POST' as const,
 				headers: {
