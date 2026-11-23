@@ -55,7 +55,10 @@ const i18n = useI18n();
 const posthog = usePostHog();
 const references = computed(() => props.skill.references ?? []);
 const workflowMentionsEnabled = computed(() =>
-	posthog.isFeatureEnabled(WORKFLOWS_IN_SKILLS_EXPERIMENT.name),
+	posthog.isVariantEnabled(
+		WORKFLOWS_IN_SKILLS_EXPERIMENT.name,
+		WORKFLOWS_IN_SKILLS_EXPERIMENT.variant,
+	),
 );
 const addWorkflowOpen = ref(false);
 const mentionedWorkflows = computed(() => parseAgentSkillWorkflowMentions(props.skill));

@@ -421,7 +421,10 @@ const workflowRows = computed<SingleToolRow[]>(() =>
 );
 
 const skillWorkflows = computed(() =>
-	posthogStore.isFeatureEnabled(WORKFLOWS_IN_SKILLS_EXPERIMENT.name)
+	posthogStore.isVariantEnabled(
+		WORKFLOWS_IN_SKILLS_EXPERIMENT.name,
+		WORKFLOWS_IN_SKILLS_EXPERIMENT.variant,
+	)
 		? findSkillWorkflows(props.skills, props.tools)
 		: [],
 );

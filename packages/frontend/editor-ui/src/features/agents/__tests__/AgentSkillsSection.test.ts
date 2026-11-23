@@ -16,7 +16,10 @@ vi.mock('@n8n/i18n', () => ({
 
 const workflowsInSkillsEnabled = ref(false);
 vi.mock('@/app/stores/posthog.store', () => ({
-	usePostHog: () => ({ isFeatureEnabled: () => workflowsInSkillsEnabled.value }),
+	usePostHog: () => ({
+		isVariantEnabled: (name: string, variant: string) =>
+			workflowsInSkillsEnabled.value && name === '152_workflows_in_skills' && variant === 'variant',
+	}),
 }));
 
 const skill = { name: 'Skill', description: 'A skill', instructions: 'Do it.' };
