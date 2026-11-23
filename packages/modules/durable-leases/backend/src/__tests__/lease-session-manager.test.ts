@@ -32,6 +32,8 @@ describe('LeaseSessionManager', () => {
 		await nextBeat();
 		expect(sessions.renewLive).not.toHaveBeenCalledWith(id, expect.anything(), expect.anything());
 		expect(sessions.insertSession.mock.calls.length).toBeGreaterThan(insertsBefore);
+		const [replacement] = sessions.insertSession.mock.calls.at(-1)!;
+		expect(replacement.id).not.toBe(id);
 	};
 
 	beforeEach(() => {
