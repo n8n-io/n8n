@@ -102,6 +102,8 @@ export interface BuildMcpClientDeps {
 	oauthService: OauthService;
 	projectId: string;
 	proxyFetch: CustomFetch;
+	/** Maximum time to wait for a tool call of this server. The MCP SDK default (60s) applies when omitted. */
+	callTimeoutMs?: number;
 	/**
 	 * Optional observer invoked when this server fails to connect. The
 	 * server's tools are skipped for the run; the run continues with the
@@ -137,6 +139,7 @@ export async function buildMcpClientForServer(
 		oauthService,
 		projectId,
 		proxyFetch,
+		callTimeoutMs,
 		onConnectionFailed,
 		onToolCallSettled,
 		nonInterrupting,
@@ -247,6 +250,7 @@ export async function buildMcpClientForServer(
 		}),
 		...(nonInterrupting && { configureToolsNonInterrupting: true }),
 		...(onToolCallSettled !== undefined && { onToolCallSettled }),
+		...(callTimeoutMs !== undefined && { callTimeoutMs }),
 		...(server.connectionTimeoutMs !== undefined && {
 			connectionTimeoutMs: server.connectionTimeoutMs,
 		}),

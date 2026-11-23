@@ -682,7 +682,7 @@ async function resolveEpisodicMemoryJsonConfig(
 	};
 }
 
-async function resolveModelConfig(
+export async function resolveModelConfig(
 	config: AgentJsonConfig,
 	credentialProvider: CredentialProvider,
 ): Promise<ModelConfig> {
