@@ -31,24 +31,27 @@ export async function answerWithRequestGuard(
 	}
 	return await callEvalMockHandler(
 		guard,
-		withLegacyAuth(normalizeLegacyRequest(request.options), request.options),
+		withLegacyFields(normalizeLegacyRequest(request.options), request.options),
 		node,
 		request.options.resolveWithFullResponse,
 		'legacy',
 	);
 }
 
-// `normalizeLegacyRequest` leaves out `auth`. The guard needs it to replay a read with the same credential.
-function withLegacyAuth(
+// `normalizeLegacyRequest` leaves out two fields that the guard needs:
+// `auth`, to replay a read with the same credential, and the binary answer (`encoding: null`).
+function withLegacyFields(
 	normalized: IHttpRequestOptions,
 	// oxlint-disable-next-line typescript/no-deprecated
 	legacy: IRequestOptions,
 ): IHttpRequestOptions {
+	const withEncoding: IHttpRequestOptions =
+		legacy.encoding === null ? { ...normalized, encoding: 'arraybuffer' } : normalized;
 	const auth = legacy.auth;
-	if (!auth) return normalized;
+	if (!auth) return withEncoding;
 	const username = auth.user ?? auth.username;
 	const password = auth.pass ?? auth.password;
 	return typeof username === 'string' && typeof password === 'string'
-		? { ...normalized, auth: { username, password } }
-		: normalized;
+		? { ...withEncoding, auth: { username, password } }
+		: withEncoding;
 }

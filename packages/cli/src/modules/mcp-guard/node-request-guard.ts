@@ -63,12 +63,22 @@ export function toCapturedRequest(options: IHttpRequestOptions): CapturedRequest
 	};
 }
 
-async function toMockResponse(res: Response) {
-	const text = await res.text();
+// The node reads the answer as bytes. Text would change every byte above 127.
+const BINARY_ENCODINGS: ReadonlySet<string | undefined> = new Set([
+	'arraybuffer',
+	'blob',
+	'stream',
+]);
+
+async function toMockResponse(res: Response, encoding: IHttpRequestOptions['encoding']) {
 	const headers: Record<string, string> = {};
 	res.headers.forEach((value, key) => {
 		headers[key] = value;
 	});
+	if (BINARY_ENCODINGS.has(encoding)) {
+		return { statusCode: res.status, headers, body: Buffer.from(await res.arrayBuffer()) };
+	}
+	const text = await res.text();
 	let body: unknown = text;
 	if (/json/i.test(res.headers.get('content-type') ?? '')) {
 		try {
@@ -95,6 +105,6 @@ export function createNodeRequestGuard(scope: NodeRequestGuardScope): EvalLlmMoc
 		// Load the guard only when a node tool makes a call. Most chats never do.
 		const { HttpGuardService } = await import('./http-guard.service.js');
 		const res = await Container.get(HttpGuardService).handle(toCapturedRequest(options), scope);
-		return res === undefined ? undefined : await toMockResponse(res);
+		return res === undefined ? undefined : await toMockResponse(res, options.encoding);
 	};
 }

@@ -126,6 +126,24 @@ describe('createNodeRequestGuard', () => {
 		});
 	});
 
+	it.each(['arraybuffer', 'blob', 'stream'] as const)(
+		'returns the bytes of the answer unchanged for the encoding %s',
+		async (encoding) => {
+			const bytes = Buffer.from([0x25, 0x50, 0x44, 0x46, 0x00, 0xff, 0x80, 0xc3, 0x28]);
+			handle.mockResolvedValue(
+				new Response(new Uint8Array(bytes), { headers: { 'content-type': 'application/pdf' } }),
+			);
+
+			const answer = (await createNodeRequestGuard(scope)(
+				{ url: 'https://www.googleapis.com/drive/v3/files/x/export', encoding },
+				{} as never,
+			)) as { body: Buffer };
+
+			expect(Buffer.isBuffer(answer.body)).toBe(true);
+			expect(answer.body.equals(bytes)).toBe(true);
+		},
+	);
+
 	it('returns text for an answer that is no JSON, and keeps broken JSON as text', async () => {
 		handle.mockResolvedValueOnce(new Response('plain', { status: 403 }));
 		handle.mockResolvedValueOnce(
