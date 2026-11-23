@@ -29,7 +29,11 @@ export interface AssistantPreferenceCards {
 	get(toolCallId: string): AssistantPreferenceCard | undefined;
 	/** Loads the stored cards once. A card calls it when it mounts, so a thread without cards loads nothing. */
 	load(): Promise<void>;
-	/** True when the call is in the last message of the thread. Only that card may edit. */
+	/**
+	 * True when the call is in the last turn of the thread: any message after the
+	 * last user message. The chat starts a message for each model step, so a
+	 * turn can have many. Only cards in the last turn may edit.
+	 */
 	isLatest(toolCallId: string): boolean;
 	host: PreferenceCardHost;
 }
@@ -77,9 +81,10 @@ export function useAssistantPreferenceCards({
 
 	function isLatest(toolCallId: string): boolean {
 		const all = messages();
-		const last = all[all.length - 1];
-		if (last?.role !== 'assistant') return false;
-		return last.toolCalls?.some((call) => call.toolCallId === toolCallId) === true;
+		const turnStart = all.findLastIndex((message) => message.role === 'user') + 1;
+		return all
+			.slice(turnStart)
+			.some((message) => message.toolCalls?.some((call) => call.toolCallId === toolCallId));
 	}
 
 	/** The server returns the merged card. Merging again keeps the edited text if it did not. */

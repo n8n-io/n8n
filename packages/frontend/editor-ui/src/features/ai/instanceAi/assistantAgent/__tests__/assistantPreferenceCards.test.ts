@@ -214,17 +214,42 @@ describe('useAssistantPreferenceCards', () => {
 		expect(create().host.projectId()).toBe('project-1');
 	});
 
-	it('treats only a call in the last assistant message as the latest', () => {
+	it('treats every call in the last turn as the latest', () => {
 		const cards = create();
 		messages = [
+			{ id: 'm0', role: 'user', content: 'First' },
 			{ id: 'm1', role: 'assistant', content: '', toolCalls: [toolCall({ toolCallId: 'tc-1' })] },
 			{ id: 'm2', role: 'assistant', content: '', toolCalls: [toolCall({ toolCallId: 'tc-2' })] },
 		];
 
-		expect(cards.isLatest('tc-1')).toBe(false);
+		expect(cards.isLatest('tc-1')).toBe(true);
 		expect(cards.isLatest('tc-2')).toBe(true);
 
 		messages.push({ id: 'm3', role: 'user', content: 'Next' });
+		expect(cards.isLatest('tc-1')).toBe(false);
 		expect(cards.isLatest('tc-2')).toBe(false);
+	});
+
+	it('keeps the card editable when a text reply follows the save call', () => {
+		const cards = create();
+		messages = [
+			{ id: 'm0', role: 'user', content: 'Use snake_case' },
+			{ id: 'm1', role: 'assistant', content: '', toolCalls: [toolCall({ toolCallId: 'tc-1' })] },
+			{ id: 'm2', role: 'assistant', content: 'Saved, I will use snake_case.', toolCalls: [] },
+		];
+
+		expect(cards.isLatest('tc-1')).toBe(true);
+	});
+
+	it('makes a card of an earlier turn read-only', () => {
+		const cards = create();
+		messages = [
+			{ id: 'm0', role: 'user', content: 'Use snake_case' },
+			{ id: 'm1', role: 'assistant', content: '', toolCalls: [toolCall({ toolCallId: 'tc-1' })] },
+			{ id: 'm2', role: 'user', content: 'Build a workflow' },
+			{ id: 'm3', role: 'assistant', content: 'Done.', toolCalls: [] },
+		];
+
+		expect(cards.isLatest('tc-1')).toBe(false);
 	});
 });
