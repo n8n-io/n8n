@@ -48,7 +48,7 @@ on:
         description: 'Rule sets, separated by commas'
         required: false
         type: string
-        default: 'smoke,branching,loops,code,subWorkflows,multiTrigger'
+        default: 'smoke,branching,loops,code,subWorkflows,multiTrigger,rawEdges,full'
 
 permissions:
   contents: read

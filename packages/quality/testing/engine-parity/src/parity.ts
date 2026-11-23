@@ -5,6 +5,7 @@ import { rmSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { parityCaseArb } from './grammar/arbitrary';
+import { getEntry, outputCount } from './grammar/catalog';
 import type { ParityCase } from './grammar/ir';
 import type { ParityRules } from './grammar/rules';
 import { compare } from './oracle/compare';
@@ -33,6 +34,30 @@ export interface CaseResult {
 	findings: Finding[];
 	/** The IDs of the known divergences that explain a difference. */
 	known: string[];
+}
+
+/** Edges from or into a port that the node does not have. */
+function findPortsOutOfRange(parityCase: ParityCase): Finding[] {
+	const nodes = new Map(
+		[...parityCase.ir.triggers, ...parityCase.ir.nodes].map((irNode) => [irNode.key, irNode]),
+	);
+	return parityCase.ir.edges.flatMap((edge): Finding[] => {
+		const from = nodes.get(edge.from);
+		const to = nodes.get(edge.to);
+		if (!from || !to) return [];
+		const fromEntry = getEntry(from.catalogId);
+		const outputs = outputCount(fromEntry, from.params) + (from.flags?.onError ? 1 : 0);
+		const inputs = getEntry(to.catalogId).inputs;
+		if (edge.out < outputs && edge.in < inputs) return [];
+		return [
+			{
+				kind: 'portOutOfRange',
+				engine: 'check',
+				message: `The check accepts the edge ${edge.from}[${edge.out}] -> ${edge.to}[${edge.in}], but "${edge.from}" has ${outputs} outputs and "${edge.to}" has ${inputs} inputs`,
+				detail: edge,
+			},
+		];
+	});
 }
 
 function runnerFindings(engine: 'v1' | 'v2', raw: RawOutcome): Finding[] {
@@ -89,6 +114,7 @@ export async function checkCase(
 	result.raw.v1 = await runners.v1.run(parityCase);
 	result.raw.v2 = await runners.v2.run(parityCase);
 	result.findings.push(
+		...findPortsOutOfRange(parityCase),
 		...runnerFindings('v1', result.raw.v1),
 		...runnerFindings('v2', result.raw.v2),
 	);
