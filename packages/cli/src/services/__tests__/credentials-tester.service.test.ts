@@ -465,13 +465,22 @@ describe('CredentialsTester', () => {
 					false,
 				),
 			).resolves.toEqual({ accessToken: 'fresh-token' });
-			expect(storedPreAuthentication).toHaveBeenCalledWith(
+			expect(storedPreAuthentication).toHaveBeenCalledTimes(1);
+			const [helpersUsed, credentialsUsed, typeUsed, nodeUsed, expired] = storedPreAuthentication
+				.mock.calls[0] as Parameters<ICredentialsHelper['preAuthentication']>;
+			expect([helpersUsed, credentialsUsed, typeUsed, expired]).toEqual([
 				requestHelper,
 				cached,
 				'salesforceJwtApi',
-				testNode,
 				true,
-			);
+			]);
+			// The helper gets the test node without its credentials, so the minted token is
+			// not written to the stored credential; the engine's own node keeps them.
+			expect(nodeUsed).toMatchObject({ name: 'Temp-Node', type: 'noOp' });
+			expect(nodeUsed.credentials).toBeUndefined();
+			expect(testNode.credentials).toEqual({
+				salesforceJwtApi: { id: 'credential-id', name: 'Salesforce JWT' },
+			});
 			// shared singleton not mutated
 			expect(storedHelper.preAuthentication).toBe(storedPreAuthentication);
 		});

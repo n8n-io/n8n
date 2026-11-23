@@ -485,9 +485,11 @@ export class CredentialsTester {
 		// Raw reads come only from the OAuth2 refresh race check, which must see the stored token so
 		// a refresh already done by another process is reused rather than repeated.
 		// An expirable credential caches the token its `preAuthentication` minted. The test must
-		// prove the stored key still mints one, so it forces that exchange instead of sending the
+		// prove the posted key still mints one, so it forces that exchange instead of sending the
 		// cached token: the generic refresh-and-resend only runs on a 401, and a service that
-		// answers an expired session with another status would fail a valid credential.
+		// answers an expired session with another status would fail a valid credential. The
+		// minted token serves the test request only. The helper gets a node without credentials,
+		// so the stored credential never receives a token minted from posted, unsaved values.
 		const storedCredentialsHelper = additionalData.credentialsHelper;
 		const getDecrypted: ICredentialsHelper['getDecrypted'] = async (
 			data,
@@ -515,7 +517,13 @@ export class CredentialsTester {
 			type,
 			testNode,
 		) =>
-			await storedCredentialsHelper.preAuthentication(helpers, credentials, type, testNode, true);
+			await storedCredentialsHelper.preAuthentication(
+				helpers,
+				credentials,
+				type,
+				{ ...testNode, credentials: undefined },
+				true,
+			);
 		additionalData.credentialsHelper = new Proxy(storedCredentialsHelper, {
 			get(target, prop) {
 				if (prop === 'getDecrypted') return getDecrypted;
