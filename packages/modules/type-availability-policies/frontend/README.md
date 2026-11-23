@@ -10,7 +10,10 @@ The descriptor `id` must match the backend module id
 The module is license-gated on `feat:typeAvailabilityPolicies` and is a default module. The policy
 pages under Settings > Security stay hidden until
 `N8N_ENV_FEAT_NODE_AND_CREDENTIAL_POLICIES_SETTINGS=true`. The shell checks this flag in
-`useTypePoliciesSettingsFlag`, because a module cannot import `useEnvFeatureFlag`.
+`useTypePoliciesSettingsFlag`, because a module cannot import `useEnvFeatureFlag`. The project
+policy parts (the Projects section and the project policy page) also need
+`N8N_ENV_FEAT_NODE_AND_CREDENTIAL_PROJECT_POLICIES=true` on the server. The module reads it in
+`useProjectPoliciesFlag` from the flags that `/rest/settings` sends.
 
 `useTypeAvailabilityPoliciesStore` answers whether a project may use a node type or a credential
 type. The store is passive: it does not watch the route, because the projects store lives in the
