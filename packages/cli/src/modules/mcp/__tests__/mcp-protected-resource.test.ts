@@ -25,7 +25,7 @@ import type { UrlService, PostHogClient } from '@n8n/backend-services';
 import { Container } from '@n8n/di';
 
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
-import { SkillsGate } from '@/modules/skills';
+import { SkillsGate, SkillSyncFlagGate } from '@/modules/skills';
 import { AiPreferenceSettingsService } from '@/services/ai-preference-settings.service';
 
 import { ACTIVITY_LOG_TOOLS, INSTANCE_CONTEXT_TOOLS } from '../mcp-scopes';
@@ -80,6 +80,7 @@ describe('McpProtectedResource', () => {
 			mock<CommunityPackagesConfig>({ enabled: true, verifiedEnabled: true }),
 		);
 		Container.set(SkillsGate, mock<SkillsGate>({ isEnabled: true }));
+		Container.set(SkillSyncFlagGate, mock<SkillSyncFlagGate>({ isAvailable: true }));
 		Container.set(
 			AiPreferenceSettingsService,
 			mock<AiPreferenceSettingsService>({ isEnabled: true }),
@@ -111,6 +112,34 @@ describe('McpProtectedResource', () => {
 			expect(resource.scopes).not.toContain('skill:read');
 			expect(resource.scopes).not.toContain('skill:write');
 			expect(await resource.getScopeTools()).not.toHaveProperty('skill:read');
+		});
+
+		it('lists the skill source tools while Skill Sync is on for the instance', async () => {
+			const scopeTools = await resource.getScopeTools();
+
+			expect(scopeTools['skill:read']).toEqual([
+				'search_n8n_skills',
+				'get_skill',
+				'list_skill_sources',
+			]);
+			expect(scopeTools['skill:write']).toEqual(
+				expect.arrayContaining(['discover_skill_source', 'import_skills_from_source']),
+			);
+		});
+
+		it('withholds the skill source tools while Skill Sync is off for the instance', async () => {
+			Container.set(SkillSyncFlagGate, mock<SkillSyncFlagGate>({ isAvailable: false }));
+
+			const scopeTools = await resource.getScopeTools();
+
+			expect(scopeTools['skill:read']).toEqual(['search_n8n_skills', 'get_skill']);
+			expect(scopeTools['skill:write']).toEqual([
+				'create_skill',
+				'update_skill',
+				'delete_skill',
+				'search_n8n_skills',
+				'get_skill',
+			]);
 		});
 
 		it('withholds preference scopes while the MCP Preferences switch is off', () => {

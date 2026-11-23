@@ -40,6 +40,20 @@ export interface ProjectPermissions {
 	isReadOnly(): boolean;
 }
 
+export type McpPreferencesEntryPoint = 'banner' | 'connection_row';
+
+export type McpPreferencesEntrySource = McpPreferencesEntryPoint | 'connect_dialog';
+
+export interface McpPreferencesEntryPoints {
+	entryPoint(): McpPreferencesEntryPoint | undefined;
+	trackExposure(): void;
+	fetchPreferenceCount(): Promise<number>;
+	isBannerDismissed(): boolean;
+	dismissBanner(): void;
+	trackEntryPointClicked(source: McpPreferencesEntrySource): void;
+	trackPromptCopied(client: string): void;
+}
+
 export interface McpExposeAllOffer {
 	/** Whether the experiment is on for this user. Reads reactive state, so call it in a `computed`. */
 	isEnabled(): boolean;

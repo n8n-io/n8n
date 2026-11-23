@@ -445,6 +445,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			id: generateNanoId(),
 			name: 'Internal execution owner',
 			isArchived: true,
+			// oxlint-disable-next-line typescript/no-deprecated -- Initialize the required legacy column for this unpublished workflow.
 			active: false,
 			activeVersionId: null,
 			versionId: randomUUID(),

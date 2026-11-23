@@ -157,6 +157,11 @@ const props = withDefaults(
 		 */
 		clientContext?: () => Record<string, unknown> | undefined;
 		/**
+		 * The resources that a sent message shows, from the client context it
+		 * sends. The `user-message-references` slot renders them.
+		 */
+		messageReferences?: (clientContext: Record<string, unknown> | undefined) => unknown[];
+		/**
 		 * Replaces the default composer placeholder. The placeholders for an open
 		 * question card and for a non-empty queue still take priority.
 		 */
@@ -197,6 +202,7 @@ const props = withDefaults(
 		budgetCards: false,
 		increaseBudget: undefined,
 		clientContext: undefined,
+		messageReferences: undefined,
 		placeholder: undefined,
 		showAttachButton: true,
 		acceptedMimeTypes: undefined,
@@ -279,6 +285,8 @@ defineSlots<{
 	'message-actions'?: (props: { message: ChatMessage; executionId?: string }) => unknown;
 	/** Content below the composer. */
 	'input-footer'?: () => unknown;
+	/** The `references` of a user message, for example mentioned workflows. */
+	'user-message-references'?: (props: { message: ChatMessage }) => unknown;
 	/** Content below the composer or an approval card. */
 	'composer-footer'?: () => unknown;
 }>();
@@ -339,6 +347,7 @@ const {
 	budgetCards: props.budgetCards,
 	interactionExtensions: props.interactionExtensions,
 	onStreamEvent: (event) => emit('stream-event', event),
+	messageReferences: (clientContext) => props.messageReferences?.(clientContext) ?? [],
 });
 
 provide(
@@ -2097,6 +2106,7 @@ onBeforeUnmount(() => {
 							<slot name="composer-start" />
 							<N8nTooltip
 								v-if="showAttach && showAttachButton"
+								as-child
 								:content="locale.baseText('chatInputBase.button.attach')"
 								placement="top"
 							>
@@ -2105,6 +2115,7 @@ onBeforeUnmount(() => {
 									:icon="attachButtonIcon"
 									icon-size="large"
 									:disabled="isComposerBlocked"
+									focusable-when-disabled
 									:aria-label="locale.baseText('chatInputBase.button.attach')"
 									data-test-id="chat-input-attach-button"
 									@click.stop="chatInput?.openFilePicker()"
@@ -2253,6 +2264,12 @@ onBeforeUnmount(() => {
 			>
 				<template v-if="$slots['message-actions']" #message-actions="actionProps">
 					<slot name="message-actions" v-bind="actionProps" />
+				</template>
+				<template
+					v-if="$slots['user-message-references']"
+					#user-message-references="referenceProps"
+				>
+					<slot name="user-message-references" v-bind="referenceProps" />
 				</template>
 				<!-- Host offers end the transcript, so they share its column and scroll with it. -->
 				<template v-if="stopNotice || $slots['inline-offers']" #status>

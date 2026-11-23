@@ -82,6 +82,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [execution_data](execution_data.md) | 4 |  | table |
 | [execution_entity](execution_entity.md) | 20 |  | table |
 | [execution_ledger](execution_ledger.md) | 16 |  | table |
+| [execution_ledger_parked](execution_ledger_parked.md) | 20 |  | table |
 | [execution_limit_audit](execution_limit_audit.md) | 8 |  | table |
 | [execution_limit_instance_usage](execution_limit_instance_usage.md) | 5 |  | table |
 | [execution_limit_usage](execution_limit_usage.md) | 6 |  | table |
@@ -183,7 +184,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [workflow_entity](workflow_entity.md) | 20 |  | table |
 | [workflow_history](workflow_history.md) | 12 |  | table |
 | [workflow_publication_outbox](workflow_publication_outbox.md) | 8 |  | table |
-| [workflow_publication_retry_state](workflow_publication_retry_state.md) | 4 |  | table |
+| [workflow_publication_retry_state](workflow_publication_retry_state.md) | 5 |  | table |
 | [workflow_publication_trigger_status](workflow_publication_trigger_status.md) | 8 |  | table |
 | [workflow_publish_history](workflow_publish_history.md) | 6 |  | table |
 | [workflow_published_version](workflow_published_version.md) | 4 |  | table |
@@ -1313,6 +1314,28 @@ erDiagram
   varchar_32_ source
   INTEGER timeSavedMin
 }
+"execution_ledger_parked" {
+  varchar_32_ blockedBy
+  varchar_36_ entityId
+  varchar_128_ entityName
+  varchar_16_ entityType
+  varchar_255_ error
+  varchar_16_ event
+  varchar eventId
+  varchar_36_ executionId
+  INTEGER id
+  bigint ledgerId
+  varchar_32_ mode
+  datetime_3_ occurredAt
+  varchar_8_ origin
+  varchar_16_ outcome
+  datetime_3_ parkedAt
+  varchar_36_ projectId
+  bigint runtimeMs
+  varchar_32_ source
+  varchar_48_ step
+  INTEGER timeSavedMin
+}
 "execution_limit_audit" {
   datetime_3_ createdAt
   varchar_32_ field
@@ -2324,6 +2347,7 @@ erDiagram
 }
 "workflow_publication_retry_state" {
   datetime_3_ createdAt
+  INTEGER retryDelaySeconds
   varchar_36_ targetVersionId
   datetime_3_ updatedAt
   varchar_36_ workflowId PK

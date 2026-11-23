@@ -33,6 +33,12 @@ import type {
 	SkillListResponse,
 	SkillSaveResponse,
 	SkillScope,
+	ConnectPublicSkillSource,
+	DiscoverPublicSkillSource,
+	PublicSkillSourceDiscovery,
+	PublicSkillSourceImportCheck,
+	SkillSourceConnectResponse,
+	SkillSourceListItem,
 	EvaluationMetric,
 	TaskList,
 	InstanceAiApprovalMode,
@@ -1243,6 +1249,13 @@ export interface InstanceAiPreferenceService {
 
 export interface InstanceAiSkillService {
 	assistantSkillsEnabled: boolean;
+	sources?: {
+		list(): Promise<SkillSourceListItem[]>;
+		discover(input: DiscoverPublicSkillSource): Promise<PublicSkillSourceDiscovery>;
+		/** What an import of the selection does, before the user approves it. Stores nothing. */
+		checkImport(input: ConnectPublicSkillSource): Promise<PublicSkillSourceImportCheck>;
+		connect(input: ConnectPublicSkillSource): Promise<SkillSourceConnectResponse>;
+	};
 	list(options: {
 		query?: string;
 		scope?: SkillScope;
