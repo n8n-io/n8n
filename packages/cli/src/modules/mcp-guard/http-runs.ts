@@ -61,8 +61,8 @@ export class HttpRunRegistry {
 	private async create(runId: string, model: HydrationModel): Promise<HttpRun> {
 		const { admin, profile, vendor, gymUrl } = this.cfg;
 		await this.deleteIdle();
-		// One gym serves all vendors. A tenant for each vendor keeps a vendor from starting the tenant of another.
-		const tenant = `guard-${runId}-${profile.name}`.toLowerCase().replace(/[^a-z0-9-]/g, '-');
+		// All vendors of a chat share one tenant, so an object of one vendor is there for the others.
+		const tenant = `guard-${runId}`.toLowerCase().replace(/[^a-z0-9-]/g, '-');
 		await admin.createTenant(tenant);
 		// The gym issues a credential only for a tenant with an account. Seed one placeholder account.
 		await admin.seed(tenant, profile.placeholderSeed);

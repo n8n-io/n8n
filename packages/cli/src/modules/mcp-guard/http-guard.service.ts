@@ -2,11 +2,11 @@ import { OutboundHttp } from '@n8n/backend-network';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 
-import { GymAdmin } from './gym-admin';
 import { HttpRunRegistry, REQUEST_TIMEOUT_MS } from './http-runs';
 import { GUARDED_CALL_TIMEOUT_MS } from './mcp-guard-fetch';
 import { sendToNetwork, type CapturedRequest } from './network';
 import { HTTP_PROFILES } from './http-profiles';
+import { SharedTenantAdmin } from './shared-tenants';
 import type { NodeRequestGuardScope } from './node-request-guard';
 import {
 	canonicalHost,
@@ -36,7 +36,7 @@ export class HttpGuardService {
 		const fetchViaInstance = outboundHttp.transport({ proxy: 'env' }).asCustomFetch();
 		const send = async (req: CapturedRequest) =>
 			await sendToNetwork(req, { fetch: fetchViaInstance, timeoutMs: REQUEST_TIMEOUT_MS });
-		const admin = new GymAdmin(process.env.AI_GYM_NODES_URL ?? DEFAULT_ADMIN_URL);
+		const admin = new SharedTenantAdmin(process.env.AI_GYM_NODES_URL ?? DEFAULT_ADMIN_URL);
 		const gymUrl = process.env.GYM_NODES_URL ?? DEFAULT_GYM_URL;
 		this.registries = new Map(
 			HTTP_PROFILES.map((profile) => [

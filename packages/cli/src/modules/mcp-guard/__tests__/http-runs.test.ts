@@ -34,13 +34,10 @@ describe('HttpRunRegistry', () => {
 
 		await registry.getOrCreate('Agent1-Chat1', model);
 
-		expect(admin.createTenant).toHaveBeenCalledWith('guard-agent1-chat1-gmail');
-		expect(admin.seed).toHaveBeenCalledWith(
-			'guard-agent1-chat1-gmail',
-			GMAIL_PROFILE.placeholderSeed,
-		);
+		expect(admin.createTenant).toHaveBeenCalledWith('guard-agent1-chat1');
+		expect(admin.seed).toHaveBeenCalledWith('guard-agent1-chat1', GMAIL_PROFILE.placeholderSeed);
 		expect(admin.issueMcpCredential).toHaveBeenCalledWith(
-			'guard-agent1-chat1-gmail',
+			'guard-agent1-chat1',
 			'gmail',
 			'google_oauth',
 			'oauthTokenData.access_token',
@@ -59,7 +56,7 @@ describe('HttpRunRegistry', () => {
 		await registry.getOrCreate('agent-x', model);
 
 		expect(admin.issueMcpCredential).toHaveBeenCalledWith(
-			'guard-agent-x-gmail',
+			'guard-agent-x',
 			'google-gmail',
 			'google_oauth',
 			'oauthTokenData.access_token',
@@ -103,7 +100,7 @@ describe('HttpRunRegistry', () => {
 
 		await registry.getOrCreate('Agent X/1:chat', model);
 
-		expect(admin.createTenant).toHaveBeenCalledWith('guard-agent-x-1-chat-gmail');
+		expect(admin.createTenant).toHaveBeenCalledWith('guard-agent-x-1-chat');
 	});
 
 	it('keeps the run when the gym cannot delete the tenant, so a later delete tries again', async () => {
@@ -120,7 +117,7 @@ describe('HttpRunRegistry', () => {
 		await registry.getOrCreate('agent-a', model);
 
 		expect(await registry.delete('agent-a')).toBe(true);
-		expect(admin.deleteTenant).toHaveBeenCalledWith('guard-agent-a-gmail');
+		expect(admin.deleteTenant).toHaveBeenCalledWith('guard-agent-a');
 		expect(await registry.delete('agent-a')).toBe(false);
 	});
 
@@ -154,13 +151,13 @@ describe('HttpRunRegistry', () => {
 			vi.setSystemTime(Date.now() + 7 * 60 * 60 * 1000);
 			await registry.getOrCreate('agent-new', model);
 
-			expect(admin.deleteTenant).toHaveBeenCalledWith('guard-agent-old-gmail');
+			expect(admin.deleteTenant).toHaveBeenCalledWith('guard-agent-old');
 		} finally {
 			vi.useRealTimers();
 		}
 	});
 
-	it('uses another tenant for another vendor of the same chat, so one gym can serve both', async () => {
+	it('uses one tenant for the vendors of the same chat, and seeds and signs in each of them', async () => {
 		const { registry, admin } = setup();
 		const other = new HttpRunRegistry({
 			profile: { ...GMAIL_PROFILE, name: 'other' },
@@ -172,8 +169,9 @@ describe('HttpRunRegistry', () => {
 		const a = await registry.getOrCreate('agent-a-chat-1', model);
 		const b = await other.getOrCreate('agent-a-chat-1', model);
 
-		expect(a.tenant).toBe('guard-agent-a-chat-1-gmail');
-		expect(b.tenant).toBe('guard-agent-a-chat-1-other');
-		expect(admin.createTenant).toHaveBeenCalledTimes(2);
+		expect(a.tenant).toBe('guard-agent-a-chat-1');
+		expect(b.tenant).toBe('guard-agent-a-chat-1');
+		expect(admin.seed).toHaveBeenCalledTimes(2);
+		expect(admin.issueMcpCredential).toHaveBeenCalledTimes(2);
 	});
 });
