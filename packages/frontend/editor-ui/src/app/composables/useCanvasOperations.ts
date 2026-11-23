@@ -2101,7 +2101,8 @@ export function useCanvasOperations() {
 	 * Determines which nodes and sticky notes need to be moved or stretched when inserting a new node.
 	 *
 	 * Algorithm:
-	 * 1. Find regular nodes that overlap with or are to the right of insertion area
+	 * 1. Find regular nodes that overlap with or are to the right of insertion area,
+	 *    and nodes that block the new node at any height
 	 * 2. Add downstream connected nodes and the sub-nodes of each node that moves,
 	 *    except sub-nodes that also feed a node that stays
 	 * 3. Classify sticky notes based on:
@@ -2137,6 +2138,9 @@ export function useCanvasOperations() {
 			const nodeRightEdge = node.position[0] + getNodePlacementSize(node)[0];
 			return nodeRightEdge > insertX || node.position[0] >= insertX;
 		};
+
+		const insertRect = { x: insertX, y: insertY, width: nodeSize[0], height: nodeSize[1] };
+		const blocksInsert = (node: INodeUi) => isPositionBlocked(insertRect, getNodeRect(node));
 
 		/** Checks if a node is fully contained within a sticky note's bounds */
 		const isNodeInsideSticky = (
@@ -2193,11 +2197,12 @@ export function useCanvasOperations() {
 		};
 
 		// Step 1: Find initial candidates - nodes that overlap with or are to the right of insertion
-		// A node overlaps if its right edge extends into the insertion area
+		// A node overlaps if its right edge extends into the insertion area. A tall node can
+		// block the new node from outside the similar-Y band, so it moves too.
 		const initialCandidates = allNodes.filter((node) => {
 			if (node.type === STICKY_NODE_TYPE) return false;
 			if (node.name === sourceNodeName) return false;
-			return isSimilarY(node) && overlapsInsertX(node);
+			return (isSimilarY(node) && overlapsInsertX(node)) || blocksInsert(node);
 		});
 
 		// Step 2: Add all downstream connected nodes from initial candidates

@@ -9970,6 +9970,11 @@ describe('useCanvasOperations', () => {
 			name: MESSAGE_AN_AGENT_NODE_TYPE,
 			version: 3.1,
 		});
+		// 10 main outputs make the node 96 + 8 * 32 = 352 high
+		const tallSwitchNodeType = mockNodeTypeDescription({
+			name: SWITCH_NODE_TYPE,
+			outputs: Array.from({ length: 10 }, () => NodeConnectionTypes.Main),
+		});
 
 		/**
 		 * Inserts a node on the connection from output `sourceIndex` of `source` to
@@ -10001,6 +10006,7 @@ describe('useCanvasOperations', () => {
 				setNodeType,
 				ifNodeType,
 				agentCardNodeType,
+				tallSwitchNodeType,
 			];
 			const connectionsByDestination = mapConnectionsByDestination(connections);
 
@@ -10172,6 +10178,29 @@ describe('useCanvasOperations', () => {
 
 			expect(position).toEqual([448, 192]);
 			expect(loop.position).toEqual([0, 0]);
+		});
+
+		it('should move a node that blocks the new node from outside the band of similar rows', () => {
+			const source = createTestNode({ id: 's', name: 'S', type: SET_NODE_TYPE, position: [0, 0] });
+			const target = createTestNode({
+				id: 't',
+				name: 'T',
+				type: SET_NODE_TYPE,
+				position: [448, 0],
+			});
+			// Its top is 336 above the new node, but its bottom edge reaches y 16
+			const tall = createTestNode({
+				id: 'tall',
+				name: 'Tall',
+				type: SWITCH_NODE_TYPE,
+				position: [224, -336],
+			});
+
+			const position = insertOnConnection(source, target, [source, target, tall]);
+
+			expect(position).toEqual([224, 0]);
+			expect(tall.position).toEqual([448, -336]);
+			expect(target.position).toEqual([672, 0]);
 		});
 
 		it('should keep the nodes inserted on two branches into one node on the rows of the branches', () => {
