@@ -225,6 +225,20 @@ export function buildPlaygroundPreview(
 	};
 }
 
+/** Dependencies in a project that the user cannot access. Few, some or many. */
+export function buildOutsideAccess(
+	size: PlaygroundSize,
+	workflows: number,
+	project: PlaygroundProject,
+): PromotionOutsideAccessDependency[] {
+	return Array.from({ length: ISSUE_AMOUNTS[size] }, (_, index) => ({
+		...outsideNameAt(index),
+		consumers: consumersOf(index + 1, workflows, project),
+	}));
+}
+
+export const workflowCountOf = (size: PlaygroundSize) => AMOUNTS[size].workflows;
+
 function hasPromoteIssues(scenario: PlaygroundScenarioId, changed: boolean) {
 	return (
 		OUTSIDE_ACCESS_SCENARIOS.includes(scenario) ||
@@ -271,10 +285,7 @@ function buildCheck(
 	const missingBindings = allMissing.filter(({ name }) => !resolved.has(name));
 	const outside: PromotionOutsideAccessDependency[] =
 		OUTSIDE_ACCESS_SCENARIOS.includes(scenario) || (scenario === 'p4' && changed)
-			? Array.from({ length: count }, (_, index) => ({
-					...outsideNameAt(index),
-					consumers: consumersOf(index + 1, workflows, project),
-				}))
+			? buildOutsideAccess(size, workflows, project)
 			: [];
 	const personal: PromotionOutsideAccessDependency[] = PERSONAL_SCENARIOS.includes(scenario)
 		? Array.from({ length: count }, (_, index) => ({

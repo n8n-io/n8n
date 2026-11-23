@@ -3,13 +3,14 @@ import { VIEWS } from '@n8n/frontend-constants/views';
 import { useI18n } from '@n8n/i18n';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { N8nText } from '@n8n/design-system';
+import { N8nButton, N8nText } from '@n8n/design-system';
 import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import PlaygroundSidebar from './PlaygroundSidebar.vue';
 import { buildPlaygroundPreview, type PlaygroundProject } from './playground.data';
 import { installMockPromotionApi } from './playground.mock-api';
+import { PLAYGROUND_REVIEW_ID, startReviewMock, stopReviewMock } from './playground.review-mock';
 import {
 	DEFAULT_PLAYGROUND_SCENARIO,
 	DEFAULT_PLAYGROUND_SIZE,
@@ -88,8 +89,20 @@ removeMockApi = installMockPromotionApi(
 );
 onMounted(() => {
 	document.querySelector(SIDEBAR)?.setAttribute('data-playground', '');
+	// Coming back from the Inbox ends the sample review.
+	stopReviewMock();
 	void loadProject();
 });
+
+// The review opens in the Inbox, which is another page, so the sample data stays on until the user
+// returns here.
+async function openReview() {
+	startReviewMock({
+		size: size.value,
+		project: project.value ?? { id: 'playground-project', name: 'Sales' },
+	});
+	await router.push(`/inbox/promotion-reviews/${PLAYGROUND_REVIEW_ID}`);
+}
 onBeforeUnmount(() => {
 	document.querySelector(SIDEBAR)?.removeAttribute('data-playground');
 	removeMockApi?.();
@@ -115,6 +128,14 @@ onBeforeUnmount(() => {
 				:project-id="project.id"
 				:direction="scenario.direction"
 			/>
+			<div v-else-if="scenarioId === 'b1'" :class="$style.launcher">
+				<N8nText color="text-base">
+					{{ i18n.baseText('promotions.playground.review.description') }}
+				</N8nText>
+				<N8nButton data-test-id="promotions-playground-open-review" @click="openReview">
+					{{ i18n.baseText('promotions.playground.review.open') }}
+				</N8nButton>
+			</div>
 			<N8nText
 				v-else
 				color="text-light"
@@ -151,6 +172,15 @@ onBeforeUnmount(() => {
 
 .pending {
 	flex: none;
+	padding: var(--spacing--lg);
+}
+
+.launcher {
+	flex: none;
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: var(--spacing--sm);
 	padding: var(--spacing--lg);
 }
 </style>

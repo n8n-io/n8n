@@ -15,7 +15,7 @@ const DETAILS_PATH = /\/promotions\/projects\/[^/]+\/changes\/(promote|apply)\/d
 const isPromotionsRequest = ({ url }: InternalAxiosRequestConfig) =>
 	typeof url === 'string' && url.includes('/promotions/');
 
-const respond = (config: InternalAxiosRequestConfig, data: unknown): AxiosResponse => ({
+export const respond = (config: InternalAxiosRequestConfig, data: unknown): AxiosResponse => ({
 	data,
 	status: 200,
 	statusText: 'OK',

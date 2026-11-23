@@ -39,7 +39,7 @@ export const PLAYGROUND_SCENARIOS: readonly PlaygroundScenario[] = [
 	{ id: 'a2', group: 'apply', direction: 'apply', built: true },
 	{ id: 'a3', group: 'apply', direction: 'apply', built: true },
 	{ id: 'a4', group: 'apply', direction: 'apply', built: true },
-	{ id: 'b1', group: 'review', built: false },
+	{ id: 'b1', group: 'review', built: true },
 ];
 
 export const DEFAULT_PLAYGROUND_SCENARIO: PlaygroundScenarioId = 'a4';
