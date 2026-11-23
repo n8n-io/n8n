@@ -29,7 +29,7 @@ import {
 	threadTargetsAgent,
 } from './instanceAi.threadRuntime';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
-import { isArtifactTab, useCanvasPreview } from './useCanvasPreview';
+import { isArtifactTab, isSavedArtifactTab, useCanvasPreview } from './useCanvasPreview';
 import { useAssistantAwayTelemetry } from './composables/useAssistantAwayTelemetry';
 import { getCurrentTurn } from './assistantTurn';
 import { CloudBrowserTasksKey, useCloudBrowserTasks } from './composables/useCloudBrowserTasks';
@@ -309,7 +309,7 @@ watch(
 	([tabId, previewVisible]) => {
 		// The agent knows saved artifacts only. A browser or draft tab has no id that it can use.
 		const isArtifact = preview.openTabs.value.some(
-			(tab) => tab.id === tabId && isArtifactTab(tab) && !tab.draft,
+			(tab) => tab.id === tabId && isSavedArtifactTab(tab),
 		);
 		thread.setActiveArtifactId(previewVisible && isArtifact ? tabId : undefined);
 	},
@@ -319,8 +319,7 @@ watch(
 // stored tabs load, the default tabs can still hold closed ones, so send none.
 watch(
 	[() => preview.openTabs.value, () => preview.tabsLoaded.value],
-	([tabs, loaded]) =>
-		thread.setOpenTabs(loaded ? tabs.filter((tab) => isArtifactTab(tab) && !tab.draft) : null),
+	([tabs, loaded]) => thread.setOpenTabs(loaded ? tabs.filter(isSavedArtifactTab) : null),
 	{ immediate: true },
 );
 // --- Setup panel (checklist docked above the composer) ---

@@ -65,6 +65,11 @@ export function isArtifactTab(tab: PreviewTab): tab is ArtifactTab {
 	return tab.type !== 'browser';
 }
 
+/** A tab of a saved artifact, which the agent knows. A draft or browser tab has no id that it can use. */
+export function isSavedArtifactTab(tab: PreviewTab): tab is ArtifactTab {
+	return isArtifactTab(tab) && !tab.draft;
+}
+
 const BROWSER_TAB_PREFIX = 'browser:';
 
 function isBrowserTabId(tabId: string | undefined): boolean {

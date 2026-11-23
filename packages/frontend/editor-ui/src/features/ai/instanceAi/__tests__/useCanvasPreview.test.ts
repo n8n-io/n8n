@@ -217,7 +217,9 @@ describe('useCanvasPreview', () => {
 			ctx.drafts.value = { [fileA]: makeDraft(fileA) };
 			await nextTick();
 
-			const tab = ctx.openTabs.value.find((t) => t.id === ctx.activeTabId.value);
+			const tab = ctx.openTabs.value
+				.filter(isArtifactTab)
+				.find((t) => t.id === ctx.activeTabId.value);
 			expect(tab).toMatchObject({ type: 'workflow', name: `Draft ${fileA}`, building: true });
 			expect(tab?.draft).toBe(true);
 			expect(ctx.activeWorkflowId.value).toBeNull();
@@ -234,7 +236,7 @@ describe('useCanvasPreview', () => {
 			ctx.thread.isStreaming = false;
 			await nextTick();
 
-			const tab = ctx.openTabs.value.find((t) => t.draft);
+			const tab = ctx.openTabs.value.filter(isArtifactTab).find((t) => t.draft);
 			expect(tab).toBeDefined();
 			expect(tab?.building).toBeFalsy();
 		});
@@ -273,7 +275,9 @@ describe('useCanvasPreview', () => {
 			ctx.drafts.value = { [fileA]: makeDraft(fileA, { revision: 2 }) };
 			await nextTick();
 
-			const tab = ctx.openTabs.value.find((t) => t.id === ctx.activeTabId.value);
+			const tab = ctx.openTabs.value
+				.filter(isArtifactTab)
+				.find((t) => t.id === ctx.activeTabId.value);
 			expect(tab?.draft).toBe(true);
 			expect(ctx.activeWorkflowDraft.value?.revision).toBe(2);
 		});
@@ -340,7 +344,7 @@ describe('useCanvasPreview', () => {
 			ctx.drafts.value = { [fileA]: makeDraft(fileA), [fileB]: makeDraft(fileB) };
 			await nextTick();
 
-			expect(ctx.openTabs.value.filter((t) => t.draft)).toHaveLength(2);
+			expect(ctx.openTabs.value.filter(isArtifactTab).filter((t) => t.draft)).toHaveLength(2);
 		});
 
 		test('keeps the tab the user picked while drafts of another workflow arrive', async () => {
@@ -367,7 +371,7 @@ describe('useCanvasPreview', () => {
 			await nextTick();
 
 			expect(ctx.activeTabId.value).toBe('wf-1');
-			expect(ctx.openTabs.value.some((t) => t.draft)).toBe(false);
+			expect(ctx.openTabs.value.filter(isArtifactTab).some((t) => t.draft)).toBe(false);
 			// The draft stays on screen until the saved canvas loads.
 			expect(ctx.activeWorkflowDraft.value?.filePath).toBe(fileA);
 		});
