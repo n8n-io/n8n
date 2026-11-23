@@ -304,3 +304,79 @@ export const ControlledUncontrolled: StoryFn = () => ({
 	`,
 });
 ControlledUncontrolled.storyName = 'Controlled/Uncontrolled';
+
+const variants = ['underline', 'filled'] as const;
+const sizes = ['small', 'medium', 'large'] as const;
+const orientations = ['horizontal', 'vertical'] as const;
+
+/** Shows each variant and size together, with and without the container border. */
+export const VariantsAndSizes: StoryFn = () => ({
+	components: { N8nTabs },
+	setup() {
+		const value = ref<DefaultTab>('overview');
+		return { value, options: defaultTabs, variants, sizes };
+	},
+	template: `
+		<div style="display: grid; grid-template-columns: repeat(2, max-content); gap: var(--spacing--lg) var(--spacing--2xl);">
+			<template v-for="variant in variants" :key="variant">
+				<template v-for="size in sizes" :key="variant + size">
+					<section v-for="showBorder in [false, true]" :key="variant + size + showBorder">
+						<p style="margin: 0 0 var(--spacing--2xs); font-size: var(--font-size--2xs); color: var(--text-color--subtle);">
+							{{ variant }} / {{ size }} / show-border: {{ showBorder }}
+						</p>
+						<n8n-tabs v-model="value" :options="options" :variant="variant" :size="size" :show-border="showBorder" />
+					</section>
+				</template>
+			</template>
+		</div>
+	`,
+});
+VariantsAndSizes.storyName = 'Variants and sizes';
+
+/** Shows each orientation with each variant, with and without the container border. */
+export const OrientationAndBorder: StoryFn = () => ({
+	components: { N8nTabs },
+	setup() {
+		const value = ref<DefaultTab>('overview');
+		return { value, options: defaultTabs, variants, orientations };
+	},
+	template: `
+		<div style="display: grid; grid-template-columns: repeat(4, max-content); gap: var(--spacing--lg) var(--spacing--2xl); align-items: start;">
+			<template v-for="orientation in orientations" :key="orientation">
+				<template v-for="variant in variants" :key="orientation + variant">
+					<section v-for="showBorder in [false, true]" :key="orientation + variant + showBorder">
+						<p style="margin: 0 0 var(--spacing--2xs); font-size: var(--font-size--2xs); color: var(--text-color--subtle);">
+							{{ orientation }} / {{ variant }} / show-border: {{ showBorder }}
+						</p>
+						<n8n-tabs v-model="value" :options="options" :variant="variant" :orientation="orientation" :show-border="showBorder" />
+					</section>
+				</template>
+			</template>
+		</div>
+	`,
+});
+OrientationAndBorder.storyName = 'Orientation and border';
+
+/**
+ * The parent rejects every change, so focus can move to an inactive tab.
+ * Use the arrow keys to see the focus border on the inactive tab.
+ */
+export const FocusOnInactiveTab: StoryFn = () => ({
+	components: { N8nTabs },
+	setup() {
+		return { options: defaultTabs, orientations };
+	},
+	template: `
+		<div style="display: flex; gap: var(--spacing--2xl); align-items: start;">
+			<n8n-tabs
+				v-for="orientation in orientations"
+				:key="orientation"
+				model-value="overview"
+				:options="options"
+				:orientation="orientation"
+				show-border
+			/>
+		</div>
+	`,
+});
+FocusOnInactiveTab.storyName = 'Focus on inactive tab';

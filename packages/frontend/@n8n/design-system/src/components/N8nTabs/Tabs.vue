@@ -449,9 +449,18 @@ function scroll(direction: 'left' | 'right') {
 		color: var(--n8n-tabs--tab--color--hover);
 	}
 
-	/** No focus visual needed. By default, when tab is focused it is also 'active' which shows the indicator **/
 	&:focus {
 		outline: none;
+	}
+
+	/**
+	 * The indicator marks the focused tab only when it is also active.
+	 * Controlled and route tabs can keep focus on an inactive tab, so mark it with a border.
+	 */
+	&:focus-visible:not([data-state='active']) {
+		border-bottom-color: var(--focus--border-color);
+		border-bottom-left-radius: 0;
+		border-bottom-right-radius: 0;
 	}
 
 	&[data-state='active'] {
@@ -543,6 +552,13 @@ function scroll(direction: 'left' | 'right') {
 
 	.tab {
 		min-height: var(--n8n-tabs--height);
+
+		/** Vertical tabs mark focus on the leading edge, like the indicator. */
+		&:focus-visible:not([data-state='active']) {
+			border-bottom-color: transparent;
+			border-left-color: var(--focus--border-color);
+			border-radius: 0;
+		}
 	}
 
 	.indicator {
