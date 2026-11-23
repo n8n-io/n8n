@@ -10007,6 +10007,7 @@ describe('useCanvasOperations', () => {
 				ifNodeType,
 				agentCardNodeType,
 				tallSwitchNodeType,
+				createMergeNodeTypeDescription(),
 			];
 			const connectionsByDestination = mapConnectionsByDestination(connections);
 
@@ -10234,6 +10235,49 @@ describe('useCanvasOperations', () => {
 			expect(position).toEqual([272, 144]);
 		});
 
+		it('should keep a node inserted before the second input of a Merge node on the source row', () => {
+			const source = createTestNode({ id: 's', name: 'S', type: SET_NODE_TYPE, position: [0, 0] });
+			// The Merge node is 96 high, so its second input is on the line of S (48)
+			const merge = createTestNode({
+				id: 'm',
+				name: 'M',
+				type: MERGE_NODE_TYPE,
+				typeVersion: 3,
+				position: [448, -16],
+			});
+
+			const position = insertOnConnection(source, merge, [source, merge], {
+				connections: createConnectionsBySource(
+					workflowConnection(source, merge, { targetIndex: 1 }),
+				),
+			});
+
+			expect(position).toEqual([224, 0]);
+			expect(merge.position).toEqual([448, -16]);
+		});
+
+		it('should keep a node inserted before a node on another row on the source row', () => {
+			const source = createTestNode({ id: 's', name: 'S', type: SET_NODE_TYPE, position: [0, 0] });
+			const other = createTestNode({
+				id: 'a',
+				name: 'A',
+				type: SET_NODE_TYPE,
+				position: [224, 256],
+			});
+			const target = createTestNode({
+				id: 'b',
+				name: 'B',
+				type: SET_NODE_TYPE,
+				position: [448, 256],
+			});
+
+			const position = insertOnConnection(source, target, [source, other, target]);
+
+			expect(position).toEqual([224, 0]);
+			expect(other.position).toEqual([224, 256]);
+			expect(target.position).toEqual([448, 256]);
+		});
+
 		it('should keep the nodes inserted on two branches into one node on the rows of the branches', () => {
 			const ifNode = createTestNode({ id: 'if', name: 'If', type: IF_NODE_TYPE, position: [0, 0] });
 			const t0 = createTestNode({
@@ -10314,23 +10358,6 @@ describe('useCanvasOperations', () => {
 			// T is left of the slot x (224)
 			expect(position).toEqual([224, 0]);
 			expect(target.position).toEqual([112, 200]);
-		});
-
-		it('should put a node inserted before an agent card on the handle line of the card', () => {
-			const source = createTestNode({ id: 's', name: 'S', type: SET_NODE_TYPE, position: [0, 0] });
-			const agent = createTestNode({
-				id: 'agent',
-				name: 'Agent',
-				type: MESSAGE_AN_AGENT_NODE_TYPE,
-				typeVersion: 3.1,
-				position: [448, 176],
-			});
-
-			const position = insertOnConnection(source, agent, [source, agent]);
-
-			// The card is 128 high, so its handle line is at 176 + 64 = 240
-			expect(position).toEqual([224, 192]);
-			expect(agent.position).toEqual([448, 176]);
 		});
 
 		it('should move a wide target that a default-size check misses', () => {

@@ -233,8 +233,6 @@ type NextNodeSlotAfterOptions = {
 	node: INodeUi;
 	nodeTypeDescription: INodeTypeDescription;
 	fan?: NextNodeSlotFan;
-	/** The node after the new node, for an insert on a connection. See getNextNodeSlot. */
-	downstream?: INodeUi;
 };
 
 export function useCanvasOperations() {
@@ -1908,18 +1906,13 @@ export function useCanvasOperations() {
 					// We want to place the new node directly to the right of the last interacted with node.
 
 					// If a node is active then add the new node directly after the current one.
-					// A node inserted on a main connection goes on the line of the connection target
-					// when that connection is the only way into the target, and the target is at or
-					// right of the new node. Then the node keeps the row of its branch. Otherwise,
-					// for example before a Merge node that two branches go into, or on a back edge,
-					// the node goes on the row of the source output.
+					// A node inserted on a main connection goes on the row of the source output,
+					// the same row as a node added from that output. The connection target does
+					// not set the row.
 					const insertConnection =
 						connectionType === NodeConnectionTypes.Main
 							? lastInteractedWithNodeConnection
 							: undefined;
-					const insertTarget = insertConnection
-						? workflowDocumentStore.value.getNodeById(insertConnection.target)
-						: undefined;
 					position = getNextNodeSlotAfter({
 						source: lastInteractedWithNodeObject,
 						sourceTypeDescription: lastInteractedWithNodeTypeDescription,
@@ -1929,10 +1922,6 @@ export function useCanvasOperations() {
 							lastInteractedWithNodeConnection && !insertConnection
 								? undefined
 								: { index: connectionIndex, count: lastInteractedWithNodeMainOutputs.length },
-						downstream:
-							insertTarget && getMainInputConnectionCount(insertTarget.name) === 1
-								? insertTarget
-								: undefined,
 					});
 
 					if (insertConnection) {
@@ -1968,15 +1957,6 @@ export function useCanvasOperations() {
 		return { position: getNewNodePosition(position), isAnchored };
 	}
 
-	/** Counts the main connections into a node, over all of its main inputs */
-	function getMainInputConnectionCount(nodeName: string): number {
-		const inputs =
-			workflowDocumentStore.value.incomingConnectionsByNodeName(nodeName)[
-				NodeConnectionTypes.Main
-			] ?? [];
-		return inputs.reduce((count, connections) => count + (connections?.length ?? 0), 0);
-	}
-
 	/**
 	 * Gets the next-node slot after the source node, from the rendered size and
 	 * the main handle line of both nodes
@@ -1987,11 +1967,9 @@ export function useCanvasOperations() {
 		node,
 		nodeTypeDescription,
 		fan,
-		downstream,
 	}: NextNodeSlotAfterOptions): XYPosition {
 		const [sourceWidth, sourceHeight] = getNodePlacementSize(source, sourceTypeDescription);
 		const [, height] = getNodePlacementSize(node, nodeTypeDescription);
-		const downstreamHeight = downstream ? getNodePlacementSize(downstream)[1] : 0;
 
 		return NodeViewUtils.getNextNodeSlot({
 			source: {
@@ -2001,11 +1979,6 @@ export function useCanvasOperations() {
 			},
 			target: { height, handleOffset: getMainHandleOffset(height, isAgentNodeV2(node)) },
 			fan,
-			downstream: downstream && {
-				x: downstream.position[0],
-				handleLine:
-					downstream.position[1] + getMainHandleOffset(downstreamHeight, isAgentNodeV2(downstream)),
-			},
 		});
 	}
 
