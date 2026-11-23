@@ -5,9 +5,12 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { defineStore } from 'pinia';
 import { shallowReactive } from 'vue';
 
+import { useTypeUsage } from './useTypeUsage';
 import {
+	fetchCredentialTypeUsage,
 	fetchInstancePolicy,
 	fetchInstanceAccess,
+	fetchNodeTypeUsage,
 	saveInstancePolicy,
 	type InstancePolicy,
 	type InstancePolicyContent,
@@ -99,6 +102,31 @@ export const useInstancePolicyStore = defineStore(INSTANCE_POLICY_STORE_ID, () =
 	});
 	// A failed read can leave a snapshot of the current version that misses the types installed since.
 	const accessReadFailed: Record<RestrictedTypeKind, boolean> = { node: false, credential: false };
+
+	// Held here and not in each tab, because an access dialog shows the usage of both kinds.
+	const usage = {
+		node: useTypeUsage(async () => await fetchNodeTypeUsage(rootStore.restApiContext)),
+		credential: useTypeUsage(async () => await fetchCredentialTypeUsage(rootStore.restApiContext)),
+	};
+	// Overlapping calls share one request, so two answers cannot race.
+	const usageReads: Record<RestrictedTypeKind, Promise<void> | null> = {
+		node: null,
+		credential: null,
+	};
+
+	/** Reads the usage counts of a kind. With `ifMissing`, a kind whose counts loaded is not read again. */
+	async function loadUsage(
+		kind: RestrictedTypeKind,
+		{ ifMissing = false }: { ifMissing?: boolean } = {},
+	): Promise<void> {
+		if (ifMissing && usage[kind].isLoaded()) return;
+		usageReads[kind] ??= usage[kind].load().finally(() => {
+			usageReads[kind] = null;
+		});
+		await usageReads[kind];
+	}
+
+	const usageOf = (kind: RestrictedTypeKind, typeName: string) => usage[kind].usageOf(typeName);
 
 	/**
 	 * Reads the access of the types. Only the latest read of a kind stores its answer or returns its
@@ -267,6 +295,8 @@ export const useInstancePolicyStore = defineStore(INSTANCE_POLICY_STORE_ID, () =
 		accessLoading,
 		load,
 		loadAccess,
+		loadUsage,
+		usageOf,
 		save,
 	};
 });

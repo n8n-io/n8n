@@ -48,6 +48,7 @@ export function useRelatedTypeIndex() {
 	onMounted(async () => {
 		// A failed earlier read leaves the dropdowns disabled, so each open tries again.
 		void instancePolicy.loadAccess();
+		void instancePolicy.loadMissingUsage();
 		try {
 			await typeDescriptions.load();
 			typesLoaded.value = true;

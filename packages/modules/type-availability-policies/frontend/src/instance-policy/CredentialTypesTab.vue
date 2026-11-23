@@ -5,12 +5,11 @@ import { computed, onMounted, shallowRef } from 'vue';
 
 import { credentialTypeIcon, FALLBACK_TYPE_ICON } from './credentialTypeIcon';
 import InstancePolicyTable, { type InstancePolicyTableRow } from './InstancePolicyTable.vue';
+import { useInstancePolicy } from './useInstancePolicy';
 import { useInstanceTypeAccess } from './useInstanceTypeAccess';
-import { useTypeUsage } from './useTypeUsage';
 import { useAppliedTheme } from '../composables/useAppliedTheme';
 import {
 	fetchCredentialTypeSummaries,
-	fetchCredentialTypeUsage,
 	type CredentialTypeSummary,
 } from '../type-availability-policies.api';
 
@@ -19,9 +18,7 @@ const emit = defineEmits<{ open: [name: string] }>();
 const i18n = useI18n();
 const rootStore = useRootStore();
 const theme = useAppliedTheme();
-const typeUsage = useTypeUsage(
-	async () => await fetchCredentialTypeUsage(rootStore.restApiContext),
-);
+const instancePolicy = useInstancePolicy();
 const { types, loading, changeAccess } = useInstanceTypeAccess('credential');
 
 const typeSummaries = shallowRef(new Map<string, CredentialTypeSummary>());
@@ -44,7 +41,7 @@ const rows = computed<InstancePolicyTableRow[]>(() =>
 	types.value.map((type) => ({
 		...type,
 		...(decorations.value.get(type.name) ?? { displayName: type.name, icon: FALLBACK_TYPE_ICON }),
-		usage: typeUsage.usageOf(type.name),
+		usage: instancePolicy.usageOf('credential', type.name),
 	})),
 );
 
@@ -57,7 +54,7 @@ async function loadSummaries() {
 }
 
 onMounted(async () => {
-	await Promise.all([loadSummaries(), typeUsage.load()]);
+	await Promise.all([loadSummaries(), instancePolicy.loadUsage('credential')]);
 });
 </script>
 

@@ -31,6 +31,13 @@ export function useInstancePolicy() {
 		if (error !== undefined) showAccessError(error);
 	}
 
+	/** Reads the usage counts of each kind that has none yet, for example for an access dialog. */
+	async function loadMissingUsage(): Promise<void> {
+		await Promise.all(
+			manageableKinds.value.map(async (kind) => await store.loadUsage(kind, { ifMissing: true })),
+		);
+	}
+
 	function showAccessError(error: unknown) {
 		toast.showError(
 			error,
@@ -98,6 +105,9 @@ export function useInstancePolicy() {
 		accessLoading: store.accessLoading,
 		load,
 		loadAccess,
+		loadUsage: store.loadUsage,
+		loadMissingUsage,
+		usageOf: store.usageOf,
 		save,
 		setAccess,
 	};
