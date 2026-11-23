@@ -1,0 +1,45 @@
+packages/@n8n/constants/src/index.ts
+  s_c47d78ced69afc::t_9d663eee5fc473 3
+packages/nodes-base/nodes/N8n/v1/N8nV1.node.ts
+  s_c47d78ced69afc::t_f312f236b21ec6 14
+packages/@n8n/cli/src/client.ts
+  s_c47d78ced69afc::t_744b7ffaed92eb 14
+packages/frontend/@n8n/stores/src/useRootStore.test.ts
+  s_c47d78ced69afc::t_5eff661b0de6cd 1
+packages/frontend/@n8n/rest-api-client/src/utils.test.ts
+  s_c47d78ced69afc::t_85326f750766e6 1
+packages/cli/src/public-api/public-api-client.ts
+  s_c47d78ced69afc::t_35b3d64338420a 1
+packages/nodes-base/nodes/N8n/v2/N8nV2.node.ts
+  s_c47d78ced69afc::t_f0dd0ddbd84298 8
+packages/cli/src/public-api/public-api-controller.registry.ts
+  s_c47d78ced69afc::t_511259fb5305e2 4
+packages/nodes-base/package.json
+  s_c47d78ced69afc::t_ebd50f2e0d7813 968
+packages/@n8n/cli/package.json
+  s_c47d78ced69afc::t_c61fd986176092 84,88
+packages/nodes-base/nodes/N8n/shared/GenericFunctions.ts
+  s_c47d78ced69afc::t_51b2455483ebb3 20
+packages/frontend/@n8n/stores/src/useRootStore.ts
+  s_c47d78ced69afc::t_fc810f04786179 1
+packages/cli/test/integration/public-api/workflows.test.ts
+  s_c47d78ced69afc::t_52ee1705f508da 1
+pnpm-lock.yaml
+  s_c47d78ced69afc::t_c2fcb4da629854 2267,2269,2274-2276,9296-9298
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2d9eb33c9d6aba2524aa8cbcfe6140243280d970",
+  "prompts": {},
+  "sessions": {
+    "s_c47d78ced69afc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc67a676-57cc-48ad-b828-b08bc7b6efc9",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}
