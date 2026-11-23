@@ -43,6 +43,7 @@ import { provideArtifactThread } from '../artifactThread';
 import { useAssistantCreditsStore } from '../assistantCredits.store';
 import ApprovalModeSelector from '../components/ApprovalModeSelector.vue';
 import AttachmentPreview from '../components/AttachmentPreview.vue';
+import AgentBuildingIndicator from '../components/AgentBuildingIndicator.vue';
 import InstanceAiAgentPreview from '../components/InstanceAiAgentPreview.vue';
 import InstanceAiArtifactsPanel from '../components/InstanceAiArtifactsPanel.vue';
 import InstanceAiAppPreview from '../components/InstanceAiAppPreview.vue';
@@ -54,6 +55,8 @@ import InstanceAiResourceChip from '../components/InstanceAiResourceChip.vue';
 import InstanceAiResourcePicker from '../components/InstanceAiResourcePicker.vue';
 import InstanceAiSkillPreview from '../components/InstanceAiSkillPreview.vue';
 import InstanceAiViewHeader from '../components/InstanceAiViewHeader.vue';
+import InstanceAiWorkflowDraftPreview from '../components/InstanceAiWorkflowDraftPreview.vue';
+import { useDraftWorkflowPreview } from '../composables/useDraftWorkflowPreview';
 import LimitedModeNotice from '../components/LimitedModeNotice.vue';
 import InstanceAiWorkflowPreview, {
 	type WorkflowFailuresReport,
@@ -90,7 +93,7 @@ import {
 } from '../instanceAi.threadRuntime';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { buildThreadArtifactsContext, createDisplayedExecutionReader } from '../threadArtifacts';
-import { isArtifactTab, useCanvasPreview } from '../useCanvasPreview';
+import { isArtifactTab, isSavedArtifactTab, useCanvasPreview } from '../useCanvasPreview';
 import { toAgentPreviewComposerAttachment } from './assistantAgentPreviewHandoff';
 import {
 	fetchAssistantAgentThreadTabs,
@@ -139,6 +142,7 @@ import { useAssistantAgentTargets } from './useAssistantAgentTargets';
 import { useAssistantAgentTrace } from './useAssistantAgentTrace';
 import { useAssistantAgentFeedback } from './useAssistantAgentFeedback';
 import { useAssistantArtifactThread } from './useAssistantArtifactThread';
+import { useAssistantWorkflowDrafts } from './useAssistantWorkflowDrafts';
 
 const props = defineProps<{ threadId: string; projectId: string }>();
 
@@ -254,7 +258,7 @@ function threadArtifactsContext(): Record<string, unknown> {
 	const threadArtifacts = buildThreadArtifactsContext(
 		thread.producedArtifacts.values(),
 		activeId,
-		preview.openTabs.value.filter(isArtifactTab),
+		preview.openTabs.value.filter(isSavedArtifactTab),
 		createDisplayedExecutionReader(thread.artifactTurns, thread.getRememberedManualExecution),
 	);
 	return threadArtifacts ? { threadArtifacts } : {};
@@ -350,6 +354,7 @@ function onMessageSending(message: AssistantAgentSendingMessage): void {
 function onStreamEvent(event: AgentSseEvent): void {
 	trace.recordEvent(event);
 	turnTelemetry.handleStreamEvent(event);
+	workflowDrafts.handleStreamEvent(event);
 }
 
 const setupSavedTelemetry = useAssistantAgentSetupSavedTelemetry({
@@ -480,6 +485,22 @@ const thread = useAssistantArtifactThread({
 });
 provideArtifactThread(thread);
 
+// Experiment cleanup (137_instance_ai_draft_workflow_preview)
+const isAgentRunning = () => (panel.value?.isStreaming || panel.value?.isSubmitting) ?? false;
+const isAwaitingUser = () => panel.value?.isAwaitingUserAnswer ?? false;
+const workflowDrafts = useAssistantWorkflowDrafts({
+	liveRunId: () => thread.artifactTurns.find((turn) => turn.isLive)?.id,
+});
+const draftPreview = useDraftWorkflowPreview({
+	threadId: () => props.threadId,
+	turns: () => thread.artifactTurns,
+	workflowDrafts: () => workflowDrafts.drafts.value,
+	dismissWorkflowDrafts: workflowDrafts.dismiss,
+	isRunning: isAgentRunning,
+	isAwaitingUser,
+});
+// EOF Experiment cleanup
+
 const preview = useCanvasPreview({
 	thread,
 	threadId: () => props.threadId,
@@ -495,7 +516,20 @@ const preview = useCanvasPreview({
 			await saveAssistantAgentThreadTabs(rootStore.restApiContext, props.threadId, state);
 		},
 	},
+	...draftPreview.canvasOptions,
 });
+
+// A build on a saved workflow shows the building wave over the saved canvas, until a draft
+// covers it. While the run waits on the user, nothing builds.
+const isSavedCanvasBuilding = computed(
+	() =>
+		isAgentRunning() &&
+		!isAwaitingUser() &&
+		preview.isPreviewVisible.value &&
+		!preview.activeWorkflowDraft.value &&
+		preview.activeWorkflowId.value !== null &&
+		preview.activeWorkflowId.value === draftPreview.buildTarget.value?.workflowId,
+);
 provide('openWorkflowPreview', preview.openWorkflowPreview);
 provide('openDataTablePreview', preview.openDataTablePreview);
 provide('openAppPreview', preview.openAppPreview);
@@ -546,7 +580,10 @@ const mentionReference = computed(
 watch(
 	[() => preview.activeTabId.value, () => preview.isPreviewVisible.value],
 	([tabId, previewVisible]) => {
-		activeArtifactId.value = previewVisible ? tabId : undefined;
+		const isDraft = preview.openTabs.value.some(
+			(tab) => tab.id === tabId && isArtifactTab(tab) && tab.draft,
+		);
+		activeArtifactId.value = previewVisible && !isDraft ? tabId : undefined;
 	},
 	{ immediate: true },
 );
@@ -937,6 +974,7 @@ function updateStagedNodes(attachment: InstanceAiNodesAttachment): void {
 						agent-status="production"
 						:connected-triggers="[]"
 						channel="system"
+						:thinking-label="draftPreview.thinkingWord.value"
 						:client-context="clientContext"
 						:message-references="messageReferences"
 						:input-draft="mentions.draft.value"
@@ -1110,6 +1148,20 @@ function updateStagedNodes(attachment: InstanceAiNodesAttachment): void {
 							:execution-result="preview.activeWorkflowExecutionResult.value"
 							@workflow-failures="handleWorkflowFailures"
 							@workflow-succeeded="handleWorkflowSucceeded"
+							@workflow-loaded="workflowDrafts.dismiss"
+						/>
+						<AgentBuildingIndicator
+							v-if="isSavedCanvasBuilding"
+							:show-label="false"
+							data-test-id="assistant-agent-draft-building-wave"
+						/>
+						<InstanceAiWorkflowDraftPreview
+							v-if="preview.isPreviewVisible.value && preview.activeWorkflowDraft.value"
+							:key="preview.activeWorkflowDraft.value.filePath"
+							:class="$style.previewSlot"
+							:draft="preview.activeWorkflowDraft.value"
+							:building="isAgentRunning()"
+							:waiting="isAwaitingUser()"
 						/>
 						<InstanceAiDataTablePreview
 							v-if="preview.isPreviewVisible.value && preview.activeDataTableId.value"

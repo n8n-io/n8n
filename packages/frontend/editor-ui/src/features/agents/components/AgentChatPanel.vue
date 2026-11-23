@@ -186,6 +186,8 @@ const props = withDefaults(
 		 * not blocked; use `beforeSend` to refuse them.
 		 */
 		disabled?: boolean;
+		/** Replaces the generic "Thinking" of the thinking blocks. The Assistant sets it. */
+		thinkingLabel?: string;
 	}>(),
 	{
 		visible: true,
@@ -2252,6 +2254,7 @@ onBeforeUnmount(() => {
 				:has-older-messages="hasOlderMessages"
 				:loading-older-messages="isLoadingOlderMessages"
 				:load-older-messages-failed="loadOlderMessagesFailed"
+				:thinking-label="props.thinkingLabel"
 				:task-trace-route="
 					continueSessionId && capabilities.traceLinks ? backgroundTraceRoute : undefined
 				"

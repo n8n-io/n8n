@@ -2711,6 +2711,13 @@ describe('InstanceAiThreadView', () => {
 	});
 
 	describe('workflow drafts', () => {
+		// The drafts belong to the variant of the draft workflow preview experiment.
+		beforeEach(() => {
+			mockedStore(usePostHog).getVariant.mockImplementation((name) =>
+				name === INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.name ? 'variant' : undefined,
+			);
+		});
+
 		const filePath = 'src/workflows/demo.workflow.ts';
 		const draft = (overrides: Record<string, unknown> = {}) => ({
 			filePath,
@@ -2944,6 +2951,9 @@ describe('InstanceAiThreadView', () => {
 
 		it('reports the first draft and saved canvas renders', async () => {
 			trackCanvasRendered.mockClear();
+			mockedStore(usePostHog).getVariant.mockImplementation((name) =>
+				name === INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.name ? 'variant' : undefined,
+			);
 			thread.producedArtifacts = new Map([
 				['wf-1', { type: 'workflow', id: 'wf-1', name: 'Demo' }],
 			]) as typeof thread.producedArtifacts;

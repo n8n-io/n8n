@@ -76,13 +76,9 @@ import InstanceAiCloudBrowserUserActionPanel from './components/InstanceAiCloudB
 import InstanceAiWorkflowDraftPreview from './components/InstanceAiWorkflowDraftPreview.vue';
 import AgentBuildingIndicator from './components/AgentBuildingIndicator.vue';
 import { useDraftWorkflowPreviewTelemetry } from '@/experiments/instanceAiDraftWorkflowPreview/useDraftWorkflowPreviewTelemetry';
-import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useDraftWorkflowPreviewEnabled } from '@/experiments/instanceAiDraftWorkflowPreview/useDraftWorkflowPreviewEnabled';
-import { useWorkflowStaging } from './composables/useWorkflowStaging';
-import { ThinkingWordKey, useThinkingWordRotation } from './composables/useThinkingWords';
 import { collectActiveBuilderAgents } from './builderAgents';
-import { isStagingDraft, toStagingNodeTypeInfo } from './instanceAi.workflowStaging';
-import { getDraftWorkflowId } from './instanceAi.workflowDrafts';
+import { isStagingDraft } from './instanceAi.workflowStaging';
+import { useDraftWorkflowPreview } from './composables/useDraftWorkflowPreview';
 import InstanceAiSkillPreview from './components/InstanceAiSkillPreview.vue';
 import InstanceAiAppPreview from './components/InstanceAiAppPreview.vue';
 import { useAgentEvalsFlag } from '@/features/ai/evaluation.ee/composables/useAgentEvalsFlag';
@@ -274,25 +270,15 @@ watch(
 );
 
 // Experiment cleanup (137_instance_ai_draft_workflow_preview)
-const draftWorkflowPreviewEnabled = useDraftWorkflowPreviewEnabled();
-const nodeTypesStore = useNodeTypesStore();
-const describeStagingNodeType = (nodeType: string) =>
-	toStagingNodeTypeInfo(nodeTypesStore.getNodeType(nodeType));
-const workflowStaging = useWorkflowStaging({
+const draftPreview = useDraftWorkflowPreview({
+	threadId: () => props.threadId,
 	turns: () => thread.artifactTurns,
 	workflowDrafts: () => thread.workflowDrafts,
-	enabled: () => draftWorkflowPreviewEnabled.value,
-	describeType: describeStagingNodeType,
+	dismissWorkflowDrafts: (workflowId) => thread.dismissWorkflowDrafts(workflowId),
+	// A builder can still work in the background after the orchestrator run ended.
+	isRunning: () => thread.isStreaming || collectActiveBuilderAgents(thread.messages).length > 0,
+	isAwaitingUser: () => thread.isAwaitingUserInput,
 });
-// Replaces the generic "Thinking" in the chat while the thread runs.
-const thinkingWord = useThinkingWordRotation({
-	active: () =>
-		draftWorkflowPreviewEnabled.value &&
-		(thread.isStreaming || collectActiveBuilderAgents(thread.messages).length > 0),
-	building: () => workflowStaging.building.value,
-	threadId: () => props.threadId,
-});
-provide(ThinkingWordKey, thinkingWord);
 // EOF Experiment cleanup
 
 // --- Canvas / data table preview ---
@@ -319,11 +305,7 @@ const preview = useCanvasPreview({
 			await saveThreadTabs(rootStore.restApiContext, props.threadId, state);
 		},
 	},
-	workflowDrafts: () => thread.workflowDrafts,
-	stagingDraft: () => workflowStaging.stagingDraft.value,
-	buildTarget: () => workflowStaging.buildTarget.value,
-	dismissWorkflowDrafts: (workflowId) => thread.dismissWorkflowDrafts(workflowId),
-	isAwaitingUser: () => thread.isAwaitingUserInput,
+	...draftPreview.canvasOptions,
 });
 const openSkillTabs = computed(() => preview.openTabs.value.filter((tab) => tab.type === 'skill'));
 watch(
@@ -343,7 +325,7 @@ const isSavedCanvasBuilding = computed(
 		preview.isPreviewVisible.value &&
 		!preview.activeWorkflowDraft.value &&
 		preview.activeWorkflowId.value !== null &&
-		preview.activeWorkflowId.value === workflowStaging.buildTarget.value?.workflowId,
+		preview.activeWorkflowId.value === draftPreview.buildTarget.value?.workflowId,
 );
 
 // Experiment cleanup (137_instance_ai_draft_workflow_preview)
@@ -364,10 +346,7 @@ watch(
 // The saved canvas loaded under its draft, so the draft has nothing left to cover.
 function handleSavedWorkflowLoaded(workflowId: string) {
 	// Only the workflow that the build works on counts, not one the user opens.
-	const isBuiltWorkflow =
-		workflowStaging.buildTarget.value?.workflowId === workflowId ||
-		Object.values(thread.workflowDrafts).some((draft) => getDraftWorkflowId(draft) === workflowId);
-	if (isBuiltWorkflow) draftPreviewTelemetry.trackCanvasRendered('saved');
+	if (draftPreview.isBuiltWorkflow(workflowId)) draftPreviewTelemetry.trackCanvasRendered('saved');
 	thread.dismissWorkflowDrafts(workflowId);
 }
 watch(
