@@ -1,7 +1,8 @@
 import { createHash } from 'node:crypto';
 
 import type { AgentJsonConfig, ToolTestCapability } from '@n8n/api-types';
-import { isCredentialAgentIntegration } from '@n8n/api-types';
+import { AI_GATEWAY_MANAGED_TAG, isCredentialAgentIntegration } from '@n8n/api-types';
+import { CredentialsFinderService } from '@n8n/backend-services';
 import { Logger } from '@n8n/backend-common';
 import { WorkflowRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -47,7 +48,12 @@ export interface OpenSimulationInput {
 /** Decides whether a draft run is a test run. A marked test chat stays one, also with the flag off. */
 @Service()
 export class SimulationSessionService {
-	private readonly sessions = new TtlMap<string, CachedSession>(30 * Time.minutes.toMilliseconds);
+	private readonly sessions = new TtlMap<string, CachedSession>(
+		30 * Time.minutes.toMilliseconds,
+		30 * Time.minutes.toMilliseconds,
+		// An expired world is never served again, so the backend can delete what it holds.
+		(expired) => this.closeWorld(expired.session),
+	);
 
 	private readonly opening = new Map<string, Promise<SimulationSession | undefined>>();
 
@@ -61,6 +67,7 @@ export class SimulationSessionService {
 		private readonly executionRepository: AgentExecutionRepository,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly chatIntegrations: ChatIntegrationRegistry,
+		private readonly credentialsFinder: CredentialsFinderService,
 	) {}
 
 	async openForDraftRun(input: OpenSimulationInput): Promise<SimulationSession | undefined> {
@@ -105,20 +112,79 @@ export class SimulationSessionService {
 			!(await this.threadRepository.findTestChatState(input.testChatId))?.testChat
 		) {
 			this.sessions.delete(key);
+			this.closeWorld(cached.session);
 			return await this.openNew(input);
 		}
 		const described = await this.describeAgent(input.agentId, input.projectId);
-		if (
-			connectionBinding(described.config) === cached.connectionBinding &&
-			this.sessions.touch(key)
-		) {
-			cached.session.updateCapabilities(await this.capabilitiesFor(described));
+		// Checked every turn: a credential edited in place or no longer usable by the owner
+		// changes the binding, so the world that holds data copied through it is dropped.
+		const binding = await this.bindingFor(described.config, input.user);
+		if (binding.digest === cached.connectionBinding && this.sessions.touch(key)) {
+			cached.session.updateCapabilities(
+				await this.capabilitiesFor(withBindingGaps(described, binding)),
+			);
 			return cached.session;
 		}
 		// The old session leaves the cache, so a switch back to its connections opens a new world.
 		this.sessions.delete(key);
+		this.closeWorld(cached.session);
 		// The thread keeps its marker, so the replacement still detects a removed thread.
-		return await this.createSession(input, described, cached.marked);
+		return await this.createSession(input, described, cached.marked, binding);
+	}
+
+	/**
+	 * The saved MCP connections of the draft and, for each credential, whether the owner can
+	 * still use it and when it last changed. Only IDs and timestamps are read, never a secret.
+	 */
+	private async bindingFor(config: AgentJsonConfig, owner: User): Promise<ConnectionBinding> {
+		const servers = config.mcpServers ?? [];
+		const credentialIds = [
+			...new Set(
+				servers
+					.filter((server) => (server.authentication ?? 'none') !== 'none')
+					.map((server) => server.credential)
+					.filter((id): id is string => typeof id === 'string' && id !== AI_GATEWAY_MANAGED_TAG),
+			),
+		];
+		// The same check the agent runtime makes before it uses a credential.
+		const states = new Map(
+			await Promise.all(
+				credentialIds.map(
+					async (id) =>
+						[
+							id,
+							await this.credentialsFinder.findCredentialForUser(id, owner, ['credential:read']),
+						] as const,
+				),
+			),
+		);
+		const credentialState = (id: string | undefined) => {
+			if (id === undefined || !states.has(id)) return null;
+			const credential = states.get(id);
+			if (!credential) return 'unusable';
+			return credential.updatedAt instanceof Date
+				? credential.updatedAt.toISOString()
+				: String(credential.updatedAt);
+		};
+		const unusableServers = new Set(
+			servers
+				.filter((server) => credentialState(server.credential) === 'unusable')
+				.map((server) => server.name),
+		);
+		return { digest: connectionBinding(config, credentialState), unusableServers };
+	}
+
+	/** Lets the backend delete what a world holds. Never blocks or fails the turn. */
+	private closeWorld(session: SimulationSession): void {
+		const backend = this.registry.get();
+		const { worldId } = session;
+		if (!worldId || !backend?.closeWorld || backend.id !== session.backend) return;
+		void backend.closeWorld(worldId).catch((error: unknown) => {
+			this.logger.warn('[SafeTesting] Failed to close a simulated world', {
+				worldId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		});
 	}
 
 	private async openNew(input: OpenSimulationInput): Promise<SimulationSession | undefined> {
@@ -148,13 +214,18 @@ export class SimulationSessionService {
 
 	private async createSession(
 		input: OpenSimulationInput,
-		described: DescribedAgent,
+		describedAgent: DescribedAgent,
 		/** True when the thread already holds the test chat marker. */
 		marked = false,
+		knownBinding?: ConnectionBinding,
 	): Promise<SimulationSession> {
+		const backend = this.registry.get();
+		const binding = backend?.worldDependsOnDraftConnections
+			? (knownBinding ?? (await this.bindingFor(describedAgent.config, input.user)))
+			: undefined;
+		const described = binding ? withBindingGaps(describedAgent, binding) : describedAgent;
 		const capabilities = await this.capabilitiesFor(described);
 		const { agent } = described;
-		const backend = this.registry.get();
 		let world: SimulationWorld | undefined;
 		let unavailableDetail: string | undefined;
 		if (!backend) {
@@ -195,9 +266,7 @@ export class SimulationSessionService {
 		const entry: CachedSession = {
 			session,
 			// The binding stays in this process. The backend never receives it.
-			...(backend?.worldDependsOnDraftConnections
-				? { connectionBinding: connectionBinding(described.config) }
-				: {}),
+			...(binding ? { connectionBinding: binding.digest } : {}),
 			marked,
 		};
 		this.sessions.set(sessionKey(input), entry);
@@ -381,6 +450,22 @@ export class SimulationSessionService {
 	}
 }
 
+interface ConnectionBinding {
+	digest: string;
+	/** MCP servers whose credential the owner can no longer use. They stay out of the world. */
+	unusableServers: Set<string>;
+}
+
+/** Leaves the servers the owner can no longer use out of the world, with a reason. */
+function withBindingGaps(described: DescribedAgent, binding: ConnectionBinding): DescribedAgent {
+	if (binding.unusableServers.size === 0) return described;
+	const hostGaps = new Map(described.hostGaps);
+	for (const name of binding.unusableServers) {
+		hostGaps.set(name, 'You can no longer use the credential of this MCP server.');
+	}
+	return { ...described, hostGaps };
+}
+
 interface CachedSession {
 	session: SimulationSession;
 	/** Set only for a backend whose world depends on the connections of the draft. */
@@ -403,9 +488,13 @@ function sessionKey({ user, projectId, agentId, testChatId }: OpenSimulationInpu
 
 /**
  * Identifies the saved MCP server connections of a draft. It reads the credential reference
- * (an ID) and never the credential. A URL can hold a key, so only a digest is kept.
+ * (an ID) and its state (when it last changed, or `unusable`), never the credential. A URL can
+ * hold a key, so only a digest is kept.
  */
-function connectionBinding(config: AgentJsonConfig): string {
+function connectionBinding(
+	config: AgentJsonConfig,
+	credentialState: (id: string | undefined) => string | null,
+): string {
 	const connections = (config.mcpServers ?? [])
 		.map((server) =>
 			JSON.stringify([
@@ -413,6 +502,7 @@ function connectionBinding(config: AgentJsonConfig): string {
 				server.url,
 				server.authentication ?? 'none',
 				server.credential ?? null,
+				credentialState(server.credential),
 			]),
 		)
 		// The order of the servers in the draft does not change the connections.

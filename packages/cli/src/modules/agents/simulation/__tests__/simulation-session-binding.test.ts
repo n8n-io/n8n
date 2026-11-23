@@ -1,5 +1,6 @@
 import type { AgentJsonConfig } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
+import type { CredentialsFinderService } from '@n8n/backend-services';
 import type { User, WorkflowRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
@@ -55,7 +56,8 @@ function deferred() {
 /** Counts the worlds that it opens. `gate` holds each open until the test releases it. */
 function fakeBackend(dependsOnConnections: boolean) {
 	const opened: OpenWorldInput[] = [];
-	const state: { gate?: Promise<void> } = {};
+	const closed: string[] = [];
+	const state: { gate?: Promise<void>; closeFails?: boolean } = {};
 	const backend: SimulationBackend = {
 		id: 'llm-mock',
 		...(dependsOnConnections ? { worldDependsOnDraftConnections: true } : {}),
@@ -75,12 +77,16 @@ function fakeBackend(dependsOnConnections: boolean) {
 			await state.gate;
 			return world;
 		},
+		closeWorld: async (worldId) => {
+			closed.push(worldId);
+			if (state.closeFails) throw new Error('backend down');
+		},
 	};
-	return { backend, opened, state };
+	return { backend, opened, closed, state };
 }
 
 function setup({ dependsOnConnections = true }: { dependsOnConnections?: boolean } = {}) {
-	const { backend, opened, state } = fakeBackend(dependsOnConnections);
+	const { backend, opened, closed, state } = fakeBackend(dependsOnConnections);
 	const registry = new SimulationBackendRegistry();
 	registry.register(backend);
 
@@ -114,6 +120,16 @@ function setup({ dependsOnConnections = true }: { dependsOnConnections?: boolean
 	flagGate.isEnabled.mockResolvedValue(true);
 	const chatIntegrations = mock<ChatIntegrationRegistry>();
 	chatIntegrations.get.mockReturnValue(undefined);
+	// Credentials the owner can use, with the time each last changed. Absent: no access.
+	const credentials = new Map<string, Date>([
+		['credential-a', new Date('2026-11-01T00:00:00Z')],
+		['credential-b', new Date('2026-11-01T00:00:00Z')],
+	]);
+	const credentialsFinder = mock<CredentialsFinderService>();
+	credentialsFinder.findCredentialForUser.mockImplementation(async (id) => {
+		const updatedAt = credentials.get(id);
+		return (updatedAt ? { id, updatedAt } : null) as never;
+	});
 
 	const service = new SimulationSessionService(
 		mock<Logger>(),
@@ -125,6 +141,7 @@ function setup({ dependsOnConnections = true }: { dependsOnConnections?: boolean
 		executionRepository,
 		workflowRepository,
 		chatIntegrations,
+		credentialsFinder,
 	);
 
 	const owner = mock<User>({ id: 'user-1' });
@@ -144,7 +161,19 @@ function setup({ dependsOnConnections = true }: { dependsOnConnections?: boolean
 		await session?.markTestChat();
 		return session;
 	};
-	return { service, opened, state, draft, threads, threadRepository, input, turn };
+	return {
+		service,
+		opened,
+		closed,
+		state,
+		draft,
+		threads,
+		threadRepository,
+		credentials,
+		credentialsFinder,
+		input,
+		turn,
+	};
 }
 
 describe('SimulationSessionService connection binding', () => {
@@ -379,6 +408,77 @@ describe('SimulationSessionService connection binding', () => {
 
 			expect(second).toBe(first);
 			expect(opened).toHaveLength(1);
+		});
+
+		it('should open a new world when the credential is edited in place', async () => {
+			const { turn, opened, closed, credentials } = setup();
+			const first = await turn();
+			expect(await turn()).toBe(first);
+
+			// Same credential ID, pointed at another account.
+			credentials.set('credential-a', new Date('2026-11-23T10:00:00Z'));
+			const second = await turn();
+
+			expect(second).not.toBe(first);
+			expect(opened).toHaveLength(2);
+			expect(closed).toEqual(['world-1']);
+		});
+
+		it('should drop the world and leave the server out when the owner loses access', async () => {
+			const { turn, opened, closed, credentials } = setup();
+			const first = await turn();
+
+			credentials.delete('credential-a');
+			const second = await turn();
+
+			expect(second).not.toBe(first);
+			expect(closed).toEqual(['world-1']);
+			expect(opened[1].agent.tools.map((tool) => tool.toolName)).not.toContain('tracker');
+		});
+
+		it('should check credential access as the owner, with the runtime scope', async () => {
+			const { turn, credentialsFinder } = setup();
+			await turn();
+
+			expect(credentialsFinder.findCredentialForUser).toHaveBeenCalledWith(
+				'credential-a',
+				expect.objectContaining({ id: 'user-1' }),
+				['credential:read'],
+			);
+		});
+
+		it('should close the world of a removed thread', async () => {
+			const { turn, closed, threads } = setup();
+			await turn();
+
+			threads.delete('chat-1');
+			await turn();
+
+			expect(closed).toEqual(['world-1']);
+		});
+
+		it('should close a world whose cache entry expired', async () => {
+			const { turn, closed } = setup();
+			await turn();
+
+			vi.advanceTimersByTime(31 * 60 * 1000);
+			await turn();
+
+			expect(closed).toEqual(['world-1']);
+		});
+
+		it('should still run the turn when closing the old world fails', async () => {
+			const { turn, opened, closed, state, draft } = setup();
+			await turn();
+			state.closeFails = true;
+
+			draft.current = draftWith([serverB]);
+			const second = await turn();
+			await vi.runAllTicks();
+
+			expect(second?.worldId).toBe('world-2');
+			expect(opened).toHaveLength(2);
+			expect(closed).toEqual(['world-1']);
 		});
 
 		it('should give a second owner their own world', async () => {

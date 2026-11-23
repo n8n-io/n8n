@@ -20,6 +20,13 @@ export interface SimulationBackend {
 	 * backend never receives the connections. Default: off.
 	 */
 	readonly worldDependsOnDraftConnections?: boolean;
+
+	/**
+	 * Deletes what a world holds, for example data it copied from a real service. n8n calls it
+	 * when it replaces the world, when the test chat's thread is removed and when the cached
+	 * world expires. Best effort: n8n logs a failure and does not retry. Optional.
+	 */
+	closeWorld?(worldId: string): Promise<void>;
 }
 
 export type SimulationBackendId = 'llm-mock' | 'shared-simulation-layer';
