@@ -14,7 +14,7 @@
 - **Should** declare state that the parent owns as a named prop. Declare the change as `update:<name>` on the emits interface.
 - **Should** name the prop for that state. For example, `N8nSettingsEnableRow` uses `enabled`. Callers bind `:enabled` and `@update:enabled`.
 - **Should** use `defineModel` only when the component must also work with no parent binding. `N8nSettingsRow` does this for its disclosure state.
-- **Should** prefer variant props over boolean ones (e.g `variant: 'default' | 'solid' | 'outline'` instead of `isDefault, isSolid, isOutline`)
+- **Should** avoid boolean props where possible (e.g `variant: 'default' | 'solid' | 'outline'` instead of `isDefault, isSolid, isOutline`)
 - **Should** use affirmative prop names over inverted ones (e.g `showItems` instead of `hideItems`)
 
 ## Component Architecture
@@ -95,7 +95,6 @@ component.
 
 ```ts
 export interface AttachmentGroupContext {
-	/** Move focus when an attachment starts removal. */
 	onRemoveStart: (attachment: HTMLElement) => Promise<void>;
 }
 
@@ -140,8 +139,7 @@ prop only switches which markup renders, it should probably be a slot or a separ
 />
 ```
 
-✅ Do: export the parts and let the caller compose them. This is how
-`N8nDialog` works today.
+✅ Do: export the parts and let the caller compose them.
 
 ```vue
 <N8nDialog v-model:open="isOpen" header="Edit profile">
@@ -166,8 +164,7 @@ prop only switches which markup renders, it should probably be a slot or a separ
 
 ### Keep interfaces generic for dependency injection
 
-Props and emits describe what the component needs, not where the data comes
-from.
+Props and emits describe what the component needs, not where the data comes from.
 
 Use plain types and callbacks. Do not use feature types such as `IWorkflowDb`, `INodeUi`, or store instances. This lets each caller inject its own data source, and it makes stories and tests easy to write.
 
