@@ -397,11 +397,11 @@ describe('the guard on a Sheets request', () => {
 		expect(hydrator.hydrateWrite).toHaveBeenCalledTimes(1);
 	});
 
-	it('refuses the Drive delete of a spreadsheet when no vendor owns the Drive paths', async () => {
+	it('refuses a delete on a path that no vendor owns', async () => {
 		const { router, upstream, gym } = setup();
 
 		const res = await router.handle(
-			req('DELETE', `/drive/v3/files/${ID}`, undefined, 'www.googleapis.com'),
+			req('DELETE', `/tasks/v1/lists/${ID}`, undefined, 'www.googleapis.com'),
 		);
 
 		expect(res.status).toBe(403);
