@@ -239,7 +239,21 @@ parallelism). See the `--build-via-mcp` section in
 |------------------------------------|--------------------------------|
 | PR closed (any)                    | `util-notify-pr-status.yml`    |
 | PR merged to `release/*`           | `release-publish.yml`          |
+| `release-publish.yml` completed    | `util-refresh-starter-scaffold.yml` (`workflow_run`) |
 | PR closed with `codespace-preview` | `util-codespace-preview.yml`   |
+
+**`util-refresh-starter-scaffold.yml` writes to a different repo.**
+`n8n-io/n8n-nodes-starter` is the committed output of `n8n-node new`. It has
+no scaffold logic of its own. `@n8n/node-cli` reaches npm with each release,
+so this workflow runs after `Release: Publish` succeeds. It checks out the
+starter with the `N8N_ASSISTANT` GitHub App (`contents: write`,
+`pull-requests: write` on `n8n-nodes-starter`), moves the starter lockfile to
+`@n8n/node-cli@latest`, runs `n8n-node new` with that CLI, writes the output
+into the checkout, and opens a PR there. A manifest in the starter
+(`.github/scaffold-manifest.json`) lists the files the templates own, so a
+file a template drops is deleted on the next run while starter-only files
+survive. The run is skipped when `latest` already matches the lockfile; a
+`workflow_dispatch` with `force: true` regenerates anyway.
 
 ### On Merge Queue Removal
 
@@ -608,6 +622,7 @@ out: `npm deprecate n8n@X.Y.Z "Failed release, use X.Y.(Z+1)"`.
 | Workflow                                  | Trigger         | Purpose                                        |
 |-------------------------------------------|-----------------|------------------------------------------------|
 | `release-standalone-package.yml`           | Manual dispatch | Release individual packages (@n8n/codemirror-lang, @n8n/create-node, etc.) |
+| `release-publish-new-package.yml`         | Manual dispatch or workflow call | Publish an initial version if needed and configure npm trusted publishing for one package |
 | `release-create-patch-pr.yml`              | Manual dispatch | Open a patch release PR for one track          |
 | `release-recreate-failed-release.yml`      | Manual dispatch | Re-release a version whose publish failed after it reached npm |
 
@@ -668,7 +683,7 @@ Push to master
 | Monday 00:00              | `util-update-node-popularity.yml` | Node usage stats         |
 | Monday 02:00              | `test-e2e-coverage-weekly.yml`    | Weekly E2E coverage      |
 | Monday 06:00              | `test-link-check-weekly.yml`      | Broken links in `packages/` |
-| Monday 08:00              | `ci-detect-new-packages.yml`      | Report unpublished npm packages to Developer Platform |
+| Mon–Tue every 2 hours at :15 | `ci-detect-new-packages.yml`   | Report unpublished npm packages in `#alerts-developer-platforms` and link the package setup workflow |
 | Wednesday 04:00           | `util-update-get-n8n-versions.yml` | get-n8n stable versions |
 | Saturday 22:00            | `test-evals-ai.yml`               | AI workflow evals        |
 | 1st of month 04:00        | `util-refresh-cubic-schema.yml`   | Refresh vendored cubic schema |
@@ -816,6 +831,7 @@ Workflows with `workflow_call` trigger:
 | `security-trivy-scan-callable.yml` | `image_ref`                                   | Trivy scan            |
 | `sbom-generation-callable.yml`     | `n8n_version`, `release_tag_ref`              | SBOM generation       |
 | `sbom-validation-callable.yml`     | `sha`                                         | Read-only SBOM validation |
+| `release-publish-new-package.yml`  | `package-path`                                | Set up npm trusted publishing for one package |
 | `test-single-instance-npm.yml`     | `scope`, `base-ref`, `base-branch`, `blocking`, `timeout-minutes` | Dependency duplication |
 
 ---
@@ -849,6 +865,12 @@ Scripts in `.github/scripts/`:
 | `docker/base-debian-smoke-check.mjs`| Verify the Debian base image contract (tools, no package manager, fonts, global npm modules) on amd64 and arm64 | `build-base-image.yml`|
 | `docker/bake-inputs-changed.mjs`| Decide whether an image must build: compare its resolved bake inputs and Dockerfile between two commits | `build-base-image.yml`, `build-node-pc-image.yml`|
 | `attest-image-sbom.mjs` | Generate, validate, and optionally attest image SBOMs | `docker-build-push.yml`, `test-sbom-nightly.yml` |
+
+### Node CLI Scripts
+
+| Script                                   | Purpose                                                            | Called By                            |
+|-------------------------------------------|--------------------------------------------------------------------|---------------------------------------|
+| `node-cli/refresh-starter-scaffold.mjs`   | Regenerate n8n-nodes-starter from the `@n8n/node-cli` installed in a given `--starter-root` checkout, and record the template-owned files in a manifest | `util-refresh-starter-scaffold.yml` |
 
 ### Validation Scripts
 

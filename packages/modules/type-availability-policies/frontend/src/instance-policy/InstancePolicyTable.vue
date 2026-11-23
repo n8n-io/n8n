@@ -89,29 +89,49 @@ const headers = computed<Array<TableHeader<InstancePolicyTableRow>>>(() => [
 	...USAGE_COLUMNS.map((column) => ({
 		title: i18n.baseText(column.title),
 		key: column.key,
+		// A string value makes the first click sort low to high. With a number, the table starts high
+		// to low, but only when the first visible row has a count.
 		value: (row: InstancePolicyTableRow) =>
-			row.usage?.[column.key] ??
+			row.usage?.[column.key].toString() ??
 			i18n.baseText('typeAvailabilityPolicies.instancePolicy.table.noValue'),
-		disableSort: true,
 		width: 92,
 	})),
 ]);
 
+function isUsageKey(id: string | undefined): id is keyof TypeUsage {
+	return USAGE_COLUMNS.some((column) => column.key === id);
+}
+
+type CompareRows = (a: InstancePolicyTableRow, b: InstancePolicyTableRow) => number;
+
 const collator = new Intl.Collator();
+const byName: CompareRows = (a, b) => collator.compare(a.displayName, b.displayName);
+
+// The direction flips only the sorted column. Rows with the same value keep A to Z.
+function compareRows(id: string | undefined, direction: number): CompareRows {
+	if (id === 'access') {
+		return (a, b) =>
+			direction * (ACCESS_ORDER.indexOf(a.access) - ACCESS_ORDER.indexOf(b.access)) || byName(a, b);
+	}
+	if (isUsageKey(id)) {
+		return (a, b) => {
+			const aCount = a.usage?.[id];
+			const bCount = b.usage?.[id];
+			// Rows with no known usage stay last in both directions.
+			return (
+				Number(aCount === undefined) - Number(bCount === undefined) ||
+				direction * ((aCount ?? 0) - (bCount ?? 0)) ||
+				byName(a, b)
+			);
+		};
+	}
+	return (a, b) => direction * byName(a, b);
+}
+
 // Sorting first means a search or a filter only removes rows from a list that is already in order.
 const sortedRows = computed(() => {
 	const [sort] = sortBy.value;
-	const direction = sort?.desc ? -1 : 1;
-	const byName = (a: InstancePolicyTableRow, b: InstancePolicyTableRow) =>
-		collator.compare(a.displayName, b.displayName);
-	// The direction flips only the sorted column. Rows with the same access keep A to Z.
-	const compare =
-		sort?.id === 'access'
-			? (a: InstancePolicyTableRow, b: InstancePolicyTableRow) =>
-					direction * (ACCESS_ORDER.indexOf(a.access) - ACCESS_ORDER.indexOf(b.access)) ||
-					byName(a, b)
-			: (a: InstancePolicyTableRow, b: InstancePolicyTableRow) => direction * byName(a, b);
-	return [...props.rows].sort(compare);
+	return [...props.rows].sort(compareRows(sort?.id, sort?.desc ? -1 : 1));
 });
 
 const searchedRows = computed(() => {
@@ -241,13 +261,20 @@ function onAccessChange(row: InstancePolicyTableRow, access: PolicyAction) {
 			:pin-columns="1"
 			:pagination="false"
 			data-test-id="instance-policy-table"
+			:row-props="{ class: $style.row }"
 			@click:row="onRowClick"
 		>
 			<template #[`item.displayName`]="{ item }">
-				<div :class="$style.name">
-					<N8nNodeIcon v-bind="item.icon" :size="20" />
-					<N8nText color="text-dark" bold>{{ item.displayName }}</N8nText>
-				</div>
+				<!-- A row is not focusable, so the name is the button that keyboard users reach. -->
+				<button
+					type="button"
+					:class="$style.name"
+					:data-test-id="`instance-policy-open-${item.name}`"
+					@click.stop="emit('open', item.name)"
+				>
+					<N8nNodeIcon v-bind="item.icon" :size="20" :class="$style.nameIcon" />
+					<N8nText color="text-dark" bold :class="$style.nameText">{{ item.displayName }}</N8nText>
+				</button>
 			</template>
 			<template #[`item.access`]="{ item }">
 				<N8nDropdownMenu
@@ -298,6 +325,8 @@ function onAccessChange(row: InstancePolicyTableRow, access: PolicyAction) {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/_focus.scss' as focus;
+
 .table {
 	display: flex;
 	flex-direction: column;
@@ -322,11 +351,43 @@ function onAccessChange(row: InstancePolicyTableRow, access: PolicyAction) {
 	margin-inline-start: auto;
 }
 
+.row {
+	cursor: pointer;
+}
+
 .name,
 .readOnly {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
+}
+
+.name {
+	/* The cell clips a wider button, and the focus ring with it, so a long name truncates instead. */
+	max-width: 100%;
+	padding: var(--spacing--5xs);
+	border: none;
+	border-radius: var(--radius);
+	background: none;
+	font: inherit;
+	text-align: start;
+	cursor: pointer;
+
+	&:focus-visible {
+		@include focus.focus-ring;
+		/* The table cell clips what lies outside the button, so the ring sits inside the padding. */
+		outline-offset: calc(-1 * var(--focus--border-width));
+	}
+}
+
+.nameIcon {
+	flex-shrink: 0;
+}
+
+.nameText {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 .footer {

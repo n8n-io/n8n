@@ -567,4 +567,45 @@ describe('EngineV2ExecutionReader', () => {
 			});
 		});
 	});
+
+	describe('findOne with an access check', () => {
+		it('asks the check about the workflow of the execution, then maps the snapshot', async () => {
+			const canRead = vi.fn().mockResolvedValue(true);
+
+			const result = await reader.findOne(EXECUTION_ID, canRead);
+
+			expect(canRead).toHaveBeenCalledWith(WORKFLOW_ID);
+			expect(dataPlane.getExecution).toHaveBeenCalledWith(EXECUTION_ID, { includeSteps: true });
+			expect(result?.id).toBe(EXECUTION_ID);
+			expect(result?.data.resultData.runData).toEqual({});
+		});
+
+		it('returns undefined when the check refuses the workflow', async () => {
+			const canRead = vi.fn().mockResolvedValue(false);
+
+			await expect(reader.findOne(EXECUTION_ID, canRead)).resolves.toBeUndefined();
+			await expect(
+				reader.findOne(EXECUTION_ID, canRead, { includeData: false }),
+			).resolves.toBeUndefined();
+		});
+
+		it('does not run the check when the data plane holds no such execution', async () => {
+			dataPlane.getExecution.mockResolvedValue(undefined);
+			const canRead = vi.fn().mockResolvedValue(true);
+
+			await expect(reader.findOne(EXECUTION_ID, canRead)).resolves.toBeUndefined();
+			expect(canRead).not.toHaveBeenCalled();
+		});
+
+		it('reads the status without the steps', async () => {
+			dataPlane.getExecution.mockResolvedValue(snapshot({ status: 'running', finishedAt: null }));
+
+			const result = await reader.findOne(EXECUTION_ID, async () => true, {
+				includeData: false,
+			});
+
+			expect(dataPlane.getExecution).toHaveBeenCalledWith(EXECUTION_ID, { includeSteps: false });
+			expect(result?.status).toBe('running');
+		});
+	});
 });

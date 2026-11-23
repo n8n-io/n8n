@@ -5,12 +5,28 @@ import {
 	createOrchestratorDomainTools,
 	getActiveOrchestratorDomainToolNames,
 } from '..';
-import type { InstanceAiContext, OrchestrationContext } from '../../types';
+import type { InstanceAiContext, InstanceAiListedFile, OrchestrationContext } from '../../types';
 import { ALWAYS_LOADED_TOOL_NAMES, getMcpToolGroup, getToolGroup } from '../tool-ids';
 
 vi.mock('../attachments/parse-file.tool', () => ({
 	createParseFileTool: vi.fn(() => ({ id: 'parse-file' })),
 	createParseStoredFileTool: vi.fn(() => ({ id: 'parse-file', storedFiles: true })),
+}));
+
+vi.mock('../attachments/import-files.tool', () => ({
+	createImportFilesTool: vi.fn(() => ({ id: 'import-files' })),
+}));
+
+vi.mock('../attachments/list-files.tool', () => ({
+	createListFilesTool: vi.fn((list: unknown) => ({ id: 'list-files', list })),
+}));
+
+vi.mock('../attachments/view-file.tool', () => ({
+	createViewFileTool: vi.fn((storedFiles: unknown) => ({ id: 'view-file', storedFiles })),
+}));
+
+vi.mock('../attachments/share-files.tool', () => ({
+	createShareFilesTool: vi.fn(() => ({ id: 'share-files' })),
 }));
 
 vi.mock('../credentials.tool', () => ({
@@ -306,6 +322,127 @@ describe('domain tool construction', () => {
 
 		expect(createOrchestratorDomainTools(context).get('parse-file')).toMatchObject({
 			storedFiles: true,
+		});
+	});
+
+	describe('import-files registration', () => {
+		const storedFiles = { read: vi.fn() };
+		const workspace = {} as InstanceAiContext['workspace'];
+		const sandboxFiles = { maxImportBytes: 1024, importFiles: vi.fn(), storeOutput: vi.fn() };
+
+		it.each([
+			['nothing', {}],
+			['only a file reader', { storedFiles }],
+			['no workspace', { storedFiles, sandboxFiles }],
+			['the feature off', { storedFiles, workspace }],
+			['no file reader', { workspace, sandboxFiles }],
+		])('leaves the tool out with %s', (_label, overrides) => {
+			expect(createOrchestratorDomainTools(makeContext(overrides)).has('import-files')).toBe(false);
+		});
+
+		it('registers the tool with a file reader, a workspace and the feature on', () => {
+			const context = makeContext({ storedFiles, workspace, sandboxFiles });
+
+			expect(createOrchestratorDomainTools(context).get('import-files')).toEqual({
+				id: 'import-files',
+			});
+			expect(ALWAYS_LOADED_TOOL_NAMES.has('import-files')).toBe(true);
+		});
+	});
+
+	describe('list-files registration', () => {
+		it.each([
+			['nothing', {}],
+			['a file reader without a list', { storedFiles: { read: vi.fn() } }],
+		])('leaves the tool out with %s', (_label, overrides) => {
+			expect(createOrchestratorDomainTools(makeContext(overrides)).has('list-files')).toBe(false);
+		});
+
+		it('registers the tool when the file reader can list the files', async () => {
+			const files: InstanceAiListedFile[] = [
+				{
+					fileId: 'file-1',
+					fileName: 'report.csv',
+					mimeType: 'text/csv',
+					sizeBytes: 3,
+					origin: 'sandbox',
+					createdAt: '2026-11-18T10:00:00.000Z',
+				},
+			];
+			const storedFiles = { read: vi.fn(), list: vi.fn(async () => await Promise.resolve(files)) };
+			const context = makeContext({ storedFiles });
+
+			const tool = createOrchestratorDomainTools(context).get('list-files') as unknown as {
+				list: () => Promise<unknown>;
+			};
+
+			// The list keeps the reader as `this`.
+			await expect(tool.list()).resolves.toBe(files);
+			expect(ALWAYS_LOADED_TOOL_NAMES.has('list-files')).toBe(true);
+		});
+	});
+
+	describe('view-file registration', () => {
+		it.each([
+			['nothing', {}],
+			['a file reader without a list', { storedFiles: { read: vi.fn(), canView: vi.fn() } }],
+			[
+				'a file reader without the viewable types',
+				{ storedFiles: { read: vi.fn(), list: vi.fn() } },
+			],
+		])('leaves the tool out with %s', (_label, overrides) => {
+			expect(createOrchestratorDomainTools(makeContext(overrides)).has('view-file')).toBe(false);
+		});
+
+		it('registers the tool with the file reader when the sandbox files feature is on', async () => {
+			const file = {
+				fileName: 'hat.png',
+				mimeType: 'image/png',
+				sizeBytes: 3,
+				hasContent: vi.fn(),
+				readContent: vi.fn(),
+			};
+			const storedFiles = {
+				read: vi.fn(async () => await Promise.resolve(file)),
+				list: vi.fn(),
+				canView: vi.fn(() => true),
+			};
+
+			const tool = createOrchestratorDomainTools(makeContext({ storedFiles })).get(
+				'view-file',
+			) as unknown as {
+				storedFiles: {
+					read: (fileId: string) => Promise<unknown>;
+					canView: (type: string) => boolean;
+				};
+			};
+
+			await expect(tool.storedFiles.read('file-1')).resolves.toBe(file);
+			expect(tool.storedFiles.canView('image/png')).toBe(true);
+			expect(storedFiles.canView).toHaveBeenCalledWith('image/png');
+			expect(ALWAYS_LOADED_TOOL_NAMES.has('view-file')).toBe(true);
+		});
+	});
+
+	describe('share-files registration', () => {
+		const workspace = {} as InstanceAiContext['workspace'];
+		const sandboxFiles = { maxImportBytes: 1024, importFiles: vi.fn(), storeOutput: vi.fn() };
+
+		it.each([
+			['nothing', {}],
+			['the feature off', { workspace }],
+			['no workspace', { sandboxFiles }],
+		])('leaves the tool out with %s', (_label, overrides) => {
+			expect(createOrchestratorDomainTools(makeContext(overrides)).has('share-files')).toBe(false);
+		});
+
+		it('registers the tool with a workspace and the feature on', () => {
+			const context = makeContext({ workspace, sandboxFiles });
+
+			expect(createOrchestratorDomainTools(context).get('share-files')).toEqual({
+				id: 'share-files',
+			});
+			expect(ALWAYS_LOADED_TOOL_NAMES.has('share-files')).toBe(true);
 		});
 	});
 

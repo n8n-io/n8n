@@ -3,10 +3,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { flushPromises } from '@vue/test-utils';
 import type { AgentVersionMetadataModalData } from '../components/AgentVersionMetadataModal.vue';
 import { useAgentPublish } from '../composables/useAgentPublish';
-import {
-	AGENT_PUBLISHED_MODAL_KEY,
-	LOCAL_STORAGE_HIDE_AGENT_PUBLISHED_CONFIRMATION,
-} from '../constants';
 import type { AgentResource } from '../types';
 
 const {
@@ -86,7 +82,6 @@ const agentResource = {
 
 describe('useAgentPublish', () => {
 	beforeEach(() => {
-		localStorage.removeItem(LOCAL_STORAGE_HIDE_AGENT_PUBLISHED_CONFIRMATION);
 		publishAgentMock.mockReset();
 		getAgentMock.mockReset().mockResolvedValue({ versionId: 'v2', skillVersions: {} });
 		getAgentVersionMock
@@ -104,7 +99,7 @@ describe('useAgentPublish', () => {
 		n8nChatFlag.value = false;
 	});
 
-	it('shows the published confirmation modal after a successful publish', async () => {
+	it('publishes in one step without a follow-up modal', async () => {
 		publishAgentMock.mockResolvedValueOnce(agentResource);
 		const { publish } = useAgentPublish();
 
@@ -112,46 +107,34 @@ describe('useAgentPublish', () => {
 
 		expect(updated).toBe(agentResource);
 		expect(showMessageMock).toHaveBeenCalled();
-		expect(openModalWithDataMock).toHaveBeenCalledWith({
-			name: AGENT_PUBLISHED_MODAL_KEY,
-			data: { agentId: 'a1', projectId: 'p1', n8nChatLive: false },
-		});
+		expect(openVersionMetadataMock).toHaveBeenCalledTimes(1);
+		expect(openModalWithDataMock).not.toHaveBeenCalled();
 	});
 
 	it.each([
-		{ flag: true, integrations: [{ type: 'n8n_chat' }], live: true },
-		{ flag: false, integrations: [{ type: 'n8n_chat' }], live: false },
-		{ flag: true, integrations: [{ type: 'slack', credentialId: 'c1' }], live: false },
+		{ flag: true, includesN8nChat: true, n8nChatAgentId: 'a1' },
+		{ flag: false, includesN8nChat: true, n8nChatAgentId: undefined },
+		{ flag: true, includesN8nChat: false, n8nChatAgentId: undefined },
 	])(
-		'reports n8nChatLive $live when the flag is $flag and the published channels are $integrations',
-		async ({ flag, integrations, live }) => {
+		'passes n8nChatAgentId $n8nChatAgentId when the flag is $flag and the version includes n8n Chat is $includesN8nChat',
+		async ({ flag, includesN8nChat, n8nChatAgentId }) => {
 			n8nChatFlag.value = flag;
-			publishAgentMock.mockResolvedValueOnce({
-				...agentResource,
-				activeVersion: { versionId: 'v2', integrations },
+			getAgentVersionMock.mockResolvedValueOnce({
+				versionId: 'v2',
+				name: 'Release',
+				description: 'Changes',
+				includesN8nChat,
 			});
+			publishAgentMock.mockResolvedValueOnce(agentResource);
 			const { publish } = useAgentPublish();
 
 			await publish('p1', 'a1');
 
-			expect(openModalWithDataMock).toHaveBeenCalledWith({
-				name: AGENT_PUBLISHED_MODAL_KEY,
-				data: { agentId: 'a1', projectId: 'p1', n8nChatLive: live },
-			});
+			expect(openVersionMetadataMock).toHaveBeenCalledWith(
+				expect.objectContaining({ mode: 'publish', n8nChatAgentId }),
+			);
 		},
 	);
-
-	it('keeps the toast but skips the modal when the user chose not to show it again', async () => {
-		localStorage.setItem(LOCAL_STORAGE_HIDE_AGENT_PUBLISHED_CONFIRMATION, 'true');
-		publishAgentMock.mockResolvedValueOnce(agentResource);
-		const { publish } = useAgentPublish();
-
-		const updated = await publish('p1', 'a1');
-
-		expect(updated).toBe(agentResource);
-		expect(showMessageMock).toHaveBeenCalled();
-		expect(openModalWithDataMock).not.toHaveBeenCalled();
-	});
 
 	it('opens no modal when the publish fails', async () => {
 		publishAgentMock.mockRejectedValueOnce(new Error('workflow not published'));
