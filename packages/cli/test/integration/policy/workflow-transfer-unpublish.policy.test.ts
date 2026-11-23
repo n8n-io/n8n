@@ -416,7 +416,7 @@ describe('PUT /workflows/:workflowId/transfer', () => {
 });
 
 describe('a failed move', () => {
-	test('restores the triggers of a refused workflow that did not move', async () => {
+	test('enqueues a reconcile record for a refused workflow that did not move', async () => {
 		const workflow = await createActiveWorkflow({}, sourceProject);
 		refusePublish(targetProject.id, workflow.id);
 		vi.spyOn(
@@ -443,7 +443,7 @@ describe('a failed move', () => {
 		}).toEqual(NOT_MOVED_AND_RESTORED);
 	});
 
-	test('rolls back the move and restores the triggers of a refused workflow when the transfer enqueue fails', async () => {
+	test('rolls back the move and enqueues a reconcile record for a refused workflow when the transfer enqueue fails', async () => {
 		const workflow = await createActiveWorkflow({}, sourceProject);
 		refusePublish(targetProject.id, workflow.id);
 		failTransferEnqueue();
@@ -465,7 +465,7 @@ describe('a failed move', () => {
 		}).toEqual(NOT_MOVED_AND_RESTORED);
 	});
 
-	test('rolls back the move and restores the triggers of a refused workflow when the move fails after the ownership change', async () => {
+	test('rolls back the move and enqueues a reconcile record for a refused workflow when the move fails after the ownership change', async () => {
 		const owner = await createOwner();
 		const workflow = await createActiveWorkflow({}, sourceProject);
 		refusePublish(targetProject.id, workflow.id);
@@ -619,7 +619,7 @@ describe('PUT /projects/:projectId/folders/:folderId/transfer', () => {
 		]);
 	});
 
-	test('a folder move moves nothing and restores the triggers of the refused workflow when the transfer enqueue fails', async () => {
+	test('a folder move moves nothing and enqueues a reconcile record for the refused workflow when the transfer enqueue fails', async () => {
 		const folder = await createFolder(sourceProject, { name: 'Folder' });
 		const refused = await createActiveWorkflow(
 			{ name: 'Refused', parentFolder: folder },
@@ -677,6 +677,32 @@ describe('on the leader', () => {
 			.expect(200);
 
 		expect(registeredCronOf(workflow.id)).toBe(registeredBefore);
+	});
+
+	test('checks no policy and keeps the triggers for a move inside one project', async () => {
+		const folder = await createFolder(sourceProject, { name: 'Folder' });
+		const workflow = await createActiveWorkflow({}, sourceProject);
+		await Container.get(ActiveWorkflowManager).add(workflow.id, 'activate');
+		const registeredBefore = registeredCronOf(workflow.id);
+		refusePublish(sourceProject.id, workflow.id);
+
+		const response = await authMemberAgent
+			.put(`/workflows/${workflow.id}/transfer`)
+			.send({ destinationProjectId: sourceProject.id, destinationParentFolderId: folder.id })
+			.expect(200);
+
+		const UNCHANGED = {
+			body: {},
+			activeVersionId: workflow.versionId,
+			registeredCron: registeredBefore,
+			records: [],
+		};
+		expect({
+			body: response.body,
+			activeVersionId: await activeVersionIdOf(workflow.id),
+			registeredCron: registeredCronOf(workflow.id),
+			records: await outboxRecordsOf(workflow.id),
+		}).toEqual(UNCHANGED);
 	});
 
 	test('a refused move converges after the leader drains its unpublish record', async () => {

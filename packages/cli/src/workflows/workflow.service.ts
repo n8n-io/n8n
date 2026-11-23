@@ -1730,8 +1730,9 @@ export class WorkflowService {
 	): Promise<Map<string, WorkflowTransferResult>> {
 		const publishedBeforeTransfer = await this._findPublished(workflowIds);
 
+		const leaving = await this._leavingProject(publishedBeforeTransfer, destinationProjectId);
 		const refusals = new Map<string, unknown>();
-		for (const workflow of publishedBeforeTransfer) {
+		for (const workflow of leaving) {
 			try {
 				await this._enforcePublishInProject(workflow, destinationProjectId, user);
 			} catch (error) {
@@ -1765,8 +1766,7 @@ export class WorkflowService {
 			);
 		}
 
-		await this.ownershipService.invalidateWorkflowProjectCacheByIds(movedIds);
-		const hookFailure = await this._afterWorkflowsTransferredFailure(movedIds, user);
+		const afterCommitFailure = await this._afterCommitFailure(movedIds, user);
 		const results = await this._finishTransfer(
 			user,
 			movedIds,
@@ -1774,9 +1774,20 @@ export class WorkflowService {
 			publishedBeforeTransfer,
 			publicApi,
 		);
-		if (hookFailure) throw hookFailure;
+		if (afterCommitFailure) throw afterCommitFailure;
 
 		return results;
+	}
+
+	/** The workflows whose owner project is not `projectId`: only these change project in a move. */
+	private async _leavingProject(
+		workflows: PublishedWorkflow[],
+		projectId: string,
+	): Promise<PublishedWorkflow[]> {
+		const owners = await this.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds(
+			workflows.map((workflow) => workflow.id),
+		);
+		return workflows.filter((workflow) => owners.get(workflow.id)?.id !== projectId);
 	}
 
 	private async _enforcePublishInProject(
@@ -1823,22 +1834,25 @@ export class WorkflowService {
 		}
 	}
 
-	private async _afterWorkflowsTransferredFailure(
-		movedIds: string[],
-		user: User,
-	): Promise<Error | null> {
+	/** Runs both steps after the move commits, even if the first fails, and returns the first failure. */
+	private async _afterCommitFailure(movedIds: string[], user: User): Promise<Error | null> {
 		let failure: Error | null = null;
+		try {
+			await this.ownershipService.invalidateWorkflowProjectCacheByIds(movedIds);
+		} catch (error) {
+			failure = ensureError(error);
+		}
 		if (movedIds.length > 0) {
 			try {
 				await this.workflowMutationHooks.afterWorkflowsTransferred(movedIds, user.id);
 			} catch (error) {
-				failure = ensureError(error);
+				failure ??= ensureError(error);
 			}
 		}
 		return failure;
 	}
 
-	/** Never throws, so the error of `afterWorkflowsTransferred` is still thrown after it. */
+	/** Never throws, so a failure after the commit is still thrown after it. */
 	private async _finishTransfer(
 		user: User,
 		movedIds: string[],
@@ -1848,18 +1862,20 @@ export class WorkflowService {
 	): Promise<Map<string, WorkflowTransferResult>> {
 		const workflows = await this._publishedAfterTransfer(movedIds, publishedBeforeTransfer);
 		const results = new Map<string, WorkflowTransferResult>();
+		let unpublishedAny = false;
 		for (const workflow of workflows) {
 			const failure = refusals.has(workflow.id)
 				? refusals.get(workflow.id)
 				: await this._triggerCredentialCheckFailure(workflow);
 			if (failure) {
-				await this._unpublishAfterTransfer(user, workflow, publicApi);
+				const unpublished = await this._unpublishAfterTransfer(user, workflow, publicApi);
+				unpublishedAny ||= unpublished;
 				results.set(workflow.id, toTransferResult(failure));
 			}
 		}
 
-		// Each unpublish wakes the leader, and that drain also takes the `transfer` records.
-		if (movedIds.length > 0 && results.size === 0) this.workflowPublicationNotifier.requestDrain();
+		// Each committed unpublish wakes the leader, and that drain also takes the `transfer` records.
+		if (movedIds.length > 0 && !unpublishedAny) this.workflowPublicationNotifier.requestDrain();
 
 		return results;
 	}
@@ -1906,15 +1922,17 @@ export class WorkflowService {
 		return checkFailure;
 	}
 
-	/** Never throws: a failed unpublish is logged and the workflow stays published. */
+	/** Never throws: returns false when the unpublish failed and the workflow stays published. */
 	private async _unpublishAfterTransfer(
 		user: User,
 		workflow: PublishedWorkflow,
 		publicApi: PublicApiCaller,
-	): Promise<void> {
+	): Promise<boolean> {
 		const deactivatedVersionId = workflow.activeVersion.versionId;
+		let unpublished = false;
 		try {
 			await this._forceUnpublish(workflow, deactivatedVersionId, user);
+			unpublished = true;
 
 			this.eventService.emit('workflow-deactivated', {
 				user,
@@ -1936,6 +1954,7 @@ export class WorkflowService {
 				error,
 			});
 		}
+		return unpublished;
 	}
 
 	/** Unpublishes in a way the `workflow.deactivate` hook cannot block: a hook failure is a warning. */

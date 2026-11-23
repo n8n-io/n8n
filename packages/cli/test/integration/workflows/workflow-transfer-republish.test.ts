@@ -352,6 +352,30 @@ describe('PUT /workflows/:workflowId/transfer', () => {
 		}).toEqual(MOVED_AND_PUBLISHED);
 	});
 
+	test('still runs the hook and unpublishes a refused workflow when the cache invalidation fails', async () => {
+		const workflow = await createActiveWorkflow({}, sourceProject);
+		await addCredentialOnlySourceHolds(workflow.versionId);
+		vi.spyOn(
+			Container.get(OwnershipService),
+			'invalidateWorkflowProjectCacheByIds',
+		).mockRejectedValueOnce(new Error('cache is down'));
+		const afterTransferred = vi.spyOn(
+			Container.get(WorkflowMutationHooksProxy),
+			'afterWorkflowsTransferred',
+		);
+
+		await authMemberAgent
+			.put(`/workflows/${workflow.id}/transfer`)
+			.send({ destinationProjectId: targetProject.id })
+			.expect(500);
+
+		const HOOKED_AND_UNPUBLISHED = { hookedWorkflowIds: [[workflow.id]], activeVersionId: null };
+		expect({
+			hookedWorkflowIds: afterTransferred.mock.calls.map(([workflowIds]) => workflowIds),
+			activeVersionId: await activeVersionIdOf(workflow.id),
+		}).toEqual(HOOKED_AND_UNPUBLISHED);
+	});
+
 	test('still unpublishes a refused workflow when afterWorkflowsTransferred throws', async () => {
 		const workflow = await createActiveWorkflow({}, sourceProject);
 		await addCredentialOnlySourceHolds(workflow.versionId);
@@ -736,12 +760,15 @@ describe('on the leader', () => {
 			activeVersionId: workflow.versionId,
 			registeredCron: registeredBefore,
 			records: [pendingTransfer(workflow.versionId)],
+			drainRequests: 1,
 		};
 		expect({
 			error: response.body.data?.error,
 			activeVersionId: await activeVersionIdOf(workflow.id),
 			registeredCron: registeredCronOf(workflow.id),
 			records: await outboxRecordsOf(workflow.id),
+			drainRequests: vi.mocked(Container.get(WorkflowPublicationNotifier).requestDrain).mock.calls
+				.length,
 		}).toEqual(AFTER_THE_REQUEST);
 
 		const outbox = Container.get(WorkflowPublicationOutboxRepository);
