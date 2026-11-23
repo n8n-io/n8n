@@ -32,7 +32,7 @@ Postgres. Build the workspace first (`pnpm build`).
 cd packages/quality/testing/engine-parity
 pnpm test                        # unit tests, no containers
 pnpm test:parity                 # parity runs and the runner tests
-PARITY_RULES=smoke,branching PARITY_SEED=1 PARITY_RUNS=500 pnpm test:parity
+PARITY_RULES=smoke,loops PARITY_SEED=1 PARITY_RUNS=500 pnpm test:parity
 pnpm parity:replay parity-failures/smoke/L2.merge-merge.items.json
 ```
 
@@ -57,9 +57,8 @@ export TESTCONTAINERS_RYUK_DISABLED=true
 ## How it works
 
 1. **Grammar** (`src/grammar`). fast-check generates a structure tree of
-   combinators (`chain`, `branch`, `switch`, `fanOut`, `merge`) with
-   node parameter drafts from the catalog. fast-check shrinks this tree.
-   `toIr` lowers it to the plain-data IR
+   combinators (`chain`, `branch`, `switch`, `fanOut`, `merge`, `loop`)
+   with node parameter drafts from the catalog. fast-check shrinks this tree. `toIr` lowers it to the plain-data IR
    (`ir.ts`) and fills expression holes with the names of upstream nodes.
    Every shape is valid by construction: each block has one way in and one way
    out, and only `merge` joins branches.

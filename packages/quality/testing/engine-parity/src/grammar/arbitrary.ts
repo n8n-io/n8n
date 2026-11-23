@@ -34,6 +34,7 @@ export function blockArb(rules: ParityRules): fc.Arbitrary<Block> {
 	const ifs = allowedEntries(rules.nodes, 'if');
 	const switches = allowedEntries(rules.nodes, 'switch');
 	const merges = allowedEntries(rules.nodes, 'merge');
+	const loops = allowedEntries(rules.nodes, 'loop');
 
 	const plainDraft = draftArb(plain, ctx);
 	const nodeBlock: fc.Arbitrary<Block> = plainDraft.map((node) => ({ kind: 'node', node }));
@@ -83,6 +84,20 @@ export function blockArb(rules: ParityRules): fc.Arbitrary<Block> {
 					node: draftArb(merges, ctx),
 					left: optional,
 					right: optional,
+				}),
+			);
+		}
+		if (has('loop') && rules.features.loops && loops.length > 0) {
+			// The body is a chain of plain nodes. Engine v2 refuses nested loops, and
+			// a body that branches has more than one way back.
+			const body = fc
+				.array(nodeBlock, { minLength: 1, maxLength: width })
+				.map((blocks): Block => ({ kind: 'chain', blocks }));
+			options.push(
+				fc.record({
+					kind: fc.constant('loop' as const),
+					node: draftArb(loops, ctx),
+					body: fc.option(body, { nil: null, freq: 4 }),
 				}),
 			);
 		}

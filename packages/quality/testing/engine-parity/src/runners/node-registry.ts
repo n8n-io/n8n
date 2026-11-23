@@ -6,6 +6,7 @@ import { ManualTrigger } from 'n8n-nodes-base/dist/nodes/ManualTrigger/ManualTri
 import { Merge } from 'n8n-nodes-base/dist/nodes/Merge/Merge.node';
 import { NoOp } from 'n8n-nodes-base/dist/nodes/NoOp/NoOp.node';
 import { Set as SetNode } from 'n8n-nodes-base/dist/nodes/Set/Set.node';
+import { SplitInBatches } from 'n8n-nodes-base/dist/nodes/SplitInBatches/SplitInBatches.node';
 import { Switch } from 'n8n-nodes-base/dist/nodes/Switch/Switch.node';
 import { Aggregate } from 'n8n-nodes-base/dist/nodes/Transform/Aggregate/Aggregate.node';
 import { Limit } from 'n8n-nodes-base/dist/nodes/Transform/Limit/Limit.node';
@@ -28,6 +29,7 @@ const registry = new Map<string, INodeType | IVersionedNodeType>([
 	['n8n-nodes-base.sort', new Sort()],
 	['n8n-nodes-base.limit', new Limit()],
 	['n8n-nodes-base.noOp', new NoOp()],
+	['n8n-nodes-base.splitInBatches', new SplitInBatches()],
 ]);
 
 for (const { type } of catalogNodeTypes()) {
