@@ -1,0 +1,30 @@
+packages/cli/test/linear-consumer/turns.mjs
+  s_12df2e47332d68::t_4e459975952f1d 16-17,22-30,335-338
+packages/cli/src/modules/agents/simulation/__tests__/linear-gym-capabilities.test.ts
+  s_12df2e47332d68::t_7dd1574e028903 95-96
+  s_12df2e47332d68::t_f82c83c4233507 1-39,41-94,97-121,123-284
+  s_12df2e47332d68::t_4e459975952f1d 40,122
+packages/cli/src/modules/agents/simulation/linear-gym-backend.ts
+  s_12df2e47332d68::t_e7a4973a793d49 2,13,65-67,100-132,135,137-138,285
+  s_12df2e47332d68::t_4e459975952f1d 142
+packages/cli/src/modules/agents/simulation/linear-gym-manifest.ts
+  s_12df2e47332d68::t_e7a4973a793d49 1-48
+packages/cli/src/modules/agents/simulation/__tests__/linear-gym-backend.test.ts
+  s_12df2e47332d68::t_f82c83c4233507 74,148-153,333-334
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c602fceee421994177e3bcbfa39e133b993680e4",
+  "prompts": {},
+  "sessions": {
+    "s_12df2e47332d68": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1fa49-ae31-719a-a01d-017bf7a29072",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}
