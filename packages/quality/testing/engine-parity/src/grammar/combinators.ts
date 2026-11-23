@@ -23,7 +23,9 @@ export type Block =
 	/** One output into many blocks. The first block continues. */
 	| { kind: 'fanOut'; targets: Block[] }
 	/** Two branches into the two inputs of a Merge node. */
-	| { kind: 'merge'; node: NodeDraft; left: Block | null; right: Block | null };
+	| { kind: 'merge'; node: NodeDraft; left: Block | null; right: Block | null }
+	/** Split In Batches: output 1 runs the body, which returns to input 0. Output 0 continues. */
+	| { kind: 'loop'; node: NodeDraft; body: Block | null };
 
 export type End = { from: string; out: number };
 
@@ -130,6 +132,16 @@ export function lowerBlock(block: Block, flow: Flow, state: LowerState): Flow {
 			connect(state, right.ends, key, 1);
 			return after(key, 0, upstream);
 		}
+
+		case 'loop': {
+			const key = place(state, block.node, 'loop', flow.upstream);
+			connect(state, flow.ends, key, 0);
+			const passStart = after(key, 1, flow.upstream);
+			const passEnd = block.body ? lowerBlock(block.body, passStart, state) : passStart;
+			// The back edge: each pass returns to the batch node.
+			connect(state, passEnd.ends, key, 0);
+			return { ends: [{ from: key, out: 0 }], upstream: passEnd.upstream };
+		}
 	}
 }
 
@@ -148,6 +160,8 @@ export function blockSize(block: Block): number {
 			return block.targets.reduce((sum, target) => sum + blockSize(target), 0);
 		case 'merge':
 			return 1 + sizeOf(block.left) + sizeOf(block.right);
+		case 'loop':
+			return 1 + sizeOf(block.body);
 	}
 }
 

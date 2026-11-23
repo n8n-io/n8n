@@ -6,6 +6,7 @@ import { mergeAppend, mergeCombineByFields, mergeCombineByPosition } from './mer
 import { noOp } from './no-op';
 import { setManual, setRaw } from './set';
 import { sort } from './sort';
+import { splitInBatches } from './split-in-batches';
 import { splitOut } from './split-out';
 import { switchExpression, switchRules } from './switch';
 import { manualTrigger } from './triggers';
@@ -30,6 +31,7 @@ const entries: CatalogEntry[] = [
 	sort,
 	limit,
 	noOp,
+	splitInBatches,
 	manualTrigger,
 ];
 
