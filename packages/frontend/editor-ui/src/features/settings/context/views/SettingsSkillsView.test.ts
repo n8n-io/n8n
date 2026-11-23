@@ -1090,7 +1090,10 @@ describe('SettingsSkillsView', () => {
 			'preserves the recommended empty state experiment when Skill Sync is enabled (%s)',
 			async (variant) => {
 				assignVariant(variant);
-				mockedStore(useSettingsStore).moduleSettings.skills = { skillSyncEnabled: true };
+				mockedStore(useSettingsStore).moduleSettings.skills = {
+					skillSyncEnabled: true,
+					skillSyncManagedByEnv: false,
+				};
 				mockedStore(usePostHog).isFeatureEnabled.mockImplementation(
 					(flag) => String(flag) === SKILL_SYNC_FLAG,
 				);
@@ -1258,7 +1261,10 @@ describe('SettingsSkillsView', () => {
 			skillsStore.skills = [skill()];
 			skillsStore.count = 1;
 			skillsStore.createSkill.mockResolvedValue(detail({ id: 's-new' }));
-			mockedStore(useSettingsStore).moduleSettings.skills = { skillSyncEnabled: true };
+			mockedStore(useSettingsStore).moduleSettings.skills = {
+				skillSyncEnabled: true,
+				skillSyncManagedByEnv: false,
+			};
 			const view = renderView();
 			await new Promise(process.nextTick);
 

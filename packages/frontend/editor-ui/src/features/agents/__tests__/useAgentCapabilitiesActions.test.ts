@@ -12,6 +12,7 @@ import {
 	SKILL_NAME_TAKEN_MESSAGE,
 	type SkillDetail,
 	type SkillListItem,
+	type SkillTelemetryContext,
 	type SkillVersionDetail,
 } from '@n8n/api-types';
 import { ResponseError } from '@n8n/rest-api-client';
@@ -190,6 +191,7 @@ type SkillModalData = {
 		skill: AgentSkill;
 		availableTo?: 'project' | 'instance';
 		method?: 'manual' | 'upload';
+		telemetry?: SkillTelemetryContext;
 	}) => unknown;
 	onAttach?: (skill: SkillListItem) => Promise<void>;
 	onRemove?: (skillId: string) => void;

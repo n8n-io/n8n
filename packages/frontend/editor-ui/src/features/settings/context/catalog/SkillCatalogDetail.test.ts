@@ -90,7 +90,7 @@ it.each([
 			'instance-ai': mock<NonNullable<FrontendModuleSettings['instance-ai']>>({
 				enabled: assistantEnabled,
 			}),
-			mcp: { mcpAccessEnabled: mcpEnabled },
+			mcp: mock<NonNullable<FrontendModuleSettings['mcp']>>({ mcpAccessEnabled: mcpEnabled }),
 		};
 		const view = render();
 		expect(
@@ -112,7 +112,7 @@ it('does not offer settings for unavailable modules', () => {
 	vi.mocked(settings.isModuleActive).mockReturnValue(false);
 	settings.moduleSettings = {
 		'instance-ai': mock<NonNullable<FrontendModuleSettings['instance-ai']>>({ enabled: true }),
-		mcp: { mcpAccessEnabled: true },
+		mcp: mock<NonNullable<FrontendModuleSettings['mcp']>>({ mcpAccessEnabled: true }),
 	};
 	const view = render();
 	expect(view.getByText(/n8n Assistant isn't available/)).toBeVisible();
