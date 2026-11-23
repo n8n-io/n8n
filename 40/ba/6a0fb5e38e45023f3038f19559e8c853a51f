@@ -1,0 +1,19 @@
+packages/@n8n/cli/docs/commands/promotions.md
+  s_2f753964d21ebd::t_435ddeb2cff7f8 640-642
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "40ba6a0fb5e38e45023f3038f19559e8c853a51f",
+  "prompts": {},
+  "sessions": {
+    "s_2f753964d21ebd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "645d3161-c649-4b8b-834e-3c4407874109",
+        "model": "unknown"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}
