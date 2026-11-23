@@ -1725,7 +1725,7 @@ export class WorkflowService {
 		user: User,
 		workflowIds: string[],
 		destinationProjectId: string,
-		move: (ctx: OperationContext) => Promise<string[]>,
+		transfer: (ctx: OperationContext) => Promise<string[]>,
 		{ publicApi }: { publicApi: PublicApiCaller },
 	): Promise<Map<string, WorkflowTransferResult>> {
 		const publishedBeforeTransfer = await this._findPublished(workflowIds);
@@ -1748,28 +1748,28 @@ export class WorkflowService {
 		);
 		const failedRemoval = removals.find((removal) => removal.status === 'rejected');
 
-		let movedIds: string[] = [];
+		let transferredIds: string[] = [];
 		try {
 			if (failedRemoval) throw ensureError(failedRemoval.reason);
-			movedIds = await this.workflowRepository.runInTransaction({}, async (_trx, ctx) => {
-				const moved = await move(ctx);
+			transferredIds = await this.workflowRepository.runInTransaction({}, async (_trx, ctx) => {
+				const transferred = await transfer(ctx);
 				await this.outboxRepository.enqueueByWorkflowIds(
-					moved,
+					transferred,
 					WorkflowPublicationReason.Transfer,
 					ctx,
 				);
-				return moved;
+				return transferred;
 			});
 		} finally {
 			await this._restoreTriggersOfUntransferred(
-				[...refusals.keys()].filter((workflowId) => !movedIds.includes(workflowId)),
+				[...refusals.keys()].filter((workflowId) => !transferredIds.includes(workflowId)),
 			);
 		}
 
-		const afterCommitFailure = await this._afterCommitFailure(movedIds, user);
+		const afterCommitFailure = await this._afterCommitFailure(transferredIds, user);
 		const results = await this._finishTransfer(
 			user,
-			movedIds,
+			transferredIds,
 			refusals,
 			publishedBeforeTransfer,
 			publicApi,
@@ -1835,16 +1835,16 @@ export class WorkflowService {
 	}
 
 	/** Runs both steps after the move commits, even if the first fails, and returns the first failure. */
-	private async _afterCommitFailure(movedIds: string[], user: User): Promise<Error | null> {
+	private async _afterCommitFailure(transferredIds: string[], user: User): Promise<Error | null> {
 		let failure: Error | null = null;
 		try {
-			await this.ownershipService.invalidateWorkflowProjectCacheByIds(movedIds);
+			await this.ownershipService.invalidateWorkflowProjectCacheByIds(transferredIds);
 		} catch (error) {
 			failure = ensureError(error);
 		}
-		if (movedIds.length > 0) {
+		if (transferredIds.length > 0) {
 			try {
-				await this.workflowMutationHooks.afterWorkflowsTransferred(movedIds, user.id);
+				await this.workflowMutationHooks.afterWorkflowsTransferred(transferredIds, user.id);
 			} catch (error) {
 				failure ??= ensureError(error);
 			}
@@ -1855,12 +1855,12 @@ export class WorkflowService {
 	/** Never throws, so a failure after the commit is still thrown after it. */
 	private async _finishTransfer(
 		user: User,
-		movedIds: string[],
+		transferredIds: string[],
 		refusals: Map<string, unknown>,
 		publishedBeforeTransfer: PublishedWorkflow[],
 		publicApi: PublicApiCaller,
 	): Promise<Map<string, WorkflowTransferResult>> {
-		const workflows = await this._publishedAfterTransfer(movedIds, publishedBeforeTransfer);
+		const workflows = await this._publishedAfterTransfer(transferredIds, publishedBeforeTransfer);
 		const results = new Map<string, WorkflowTransferResult>();
 		let unpublishedAny = false;
 		for (const workflow of workflows) {
@@ -1875,7 +1875,8 @@ export class WorkflowService {
 		}
 
 		// Each committed unpublish wakes the leader, and that drain also takes the `transfer` records.
-		if (movedIds.length > 0 && !unpublishedAny) this.workflowPublicationNotifier.requestDrain();
+		if (transferredIds.length > 0 && !unpublishedAny)
+			this.workflowPublicationNotifier.requestDrain();
 
 		return results;
 	}

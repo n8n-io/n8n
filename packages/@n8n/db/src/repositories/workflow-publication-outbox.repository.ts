@@ -644,22 +644,27 @@ export class WorkflowPublicationOutboxRepository extends BaseRepository<Workflow
 			return (affected ?? 0) > 0;
 		} catch (error) {
 			if (!isUniqueConstraintError(error)) throw error;
-			await this.manager.transaction(async (tx) => {
-				const claimed = await tx.findOneBy(WorkflowPublicationOutbox, {
-					id,
-					status: Status.InProgress,
-				});
-				await tx.delete(WorkflowPublicationOutbox, { id, status: Status.InProgress });
-				if (claimed?.reason === WorkflowPublicationReason.Transfer) {
-					await tx.update(
-						WorkflowPublicationOutbox,
-						{ workflowId: claimed.workflowId, status: Status.Pending },
-						{ reason: WorkflowPublicationReason.Transfer },
-					);
-				}
-			});
+			await this.mergeIntoPendingRecord(id);
 			return true;
 		}
+	}
+
+	/** Deletes a claimed record and keeps the pending record of its workflow, which takes over a `transfer` reason. */
+	private async mergeIntoPendingRecord(id: number): Promise<void> {
+		await this.manager.transaction(async (tx) => {
+			const claimed = await tx.findOneBy(WorkflowPublicationOutbox, {
+				id,
+				status: Status.InProgress,
+			});
+			await tx.delete(WorkflowPublicationOutbox, { id, status: Status.InProgress });
+			if (claimed?.reason === WorkflowPublicationReason.Transfer) {
+				await tx.update(
+					WorkflowPublicationOutbox,
+					{ workflowId: claimed.workflowId, status: Status.Pending },
+					{ reason: WorkflowPublicationReason.Transfer },
+				);
+			}
+		});
 	}
 
 	/**
