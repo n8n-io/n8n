@@ -38,8 +38,8 @@ export class FolderRepository extends Repository<Folder> {
 		this.table = new FolderTable(dataSource, transactionRunner);
 	}
 
-	/** Moves a folder and its subfolders into another project, under `destinationParentFolderId`. */
-	async moveTreeToProject(
+	/** Transfers a folder and its subfolders to another project, under `destinationParentFolderId`. */
+	async transferTreeToProject(
 		folderId: string,
 		childFolderIds: string[],
 		destinationProjectId: string,

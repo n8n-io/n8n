@@ -892,12 +892,17 @@ export class EnterpriseWorkflowService {
 		}
 
 		// 7. transfer the workflow
-		const movedWorkflowIds = await this.transferWorkflowOwnership(
+		const transferredWorkflowIds = await this.transferWorkflowOwnership(
 			[workflow],
 			destinationProject,
 			{},
 		);
-		await this.afterOwnershipTransferred(user, [workflow], destinationProject, movedWorkflowIds);
+		await this.afterOwnershipTransferred(
+			user,
+			[workflow],
+			destinationProject,
+			transferredWorkflowIds,
+		);
 
 		// 8. share credentials into the destination project
 		await this.shareCredentialsWithProject(user, shareCredentials, destinationProject.id, {});
@@ -1161,18 +1166,23 @@ export class EnterpriseWorkflowService {
 		await Promise.all(deactivateWorkflowsPromises);
 
 		// 6. transfer the workflows
-		const movedWorkflowIds = await this.transferWorkflowOwnership(
+		const transferredWorkflowIds = await this.transferWorkflowOwnership(
 			workflows,
 			destinationProject,
 			{},
 		);
-		await this.afterOwnershipTransferred(user, workflows, destinationProject, movedWorkflowIds);
+		await this.afterOwnershipTransferred(
+			user,
+			workflows,
+			destinationProject,
+			transferredWorkflowIds,
+		);
 
 		// 7. share credentials into the destination project
 		await this.shareCredentialsWithProject(user, shareCredentials, destinationProject.id, {});
 
 		// 8. Move all children folder to the destination project
-		await this.folderRepository.moveTreeToProject(
+		await this.folderRepository.transferTreeToProject(
 			sourceFolderId,
 			childrenFolderIds,
 			destinationProjectId,
@@ -1267,7 +1277,7 @@ export class EnterpriseWorkflowService {
 	): Promise<string[]> {
 		// Resolved before the transaction rewrites the sharings. Workflows already
 		// owned by the destination are folder moves, not project transfers.
-		const movedWorkflowIds = workflows
+		const transferredWorkflowIds = workflows
 			.filter(
 				(workflow) =>
 					workflow.shared.find((s) => s.role === 'workflow:owner')?.project.id !==
@@ -1291,22 +1301,22 @@ export class EnterpriseWorkflowService {
 			}
 		});
 
-		return movedWorkflowIds;
+		return transferredWorkflowIds;
 	}
 
 	private async afterOwnershipTransferred(
 		user: User,
 		workflows: WorkflowEntity[],
 		destinationProject: Project,
-		movedWorkflowIds: string[],
+		transferredWorkflowIds: string[],
 	): Promise<void> {
 		// Update workflow project cache entries
 		for (const workflow of workflows) {
 			await this.ownershipService.setWorkflowProjectCacheEntry(workflow.id, destinationProject);
 		}
 
-		if (movedWorkflowIds.length > 0) {
-			await this.workflowMutationHooks.afterWorkflowsTransferred(movedWorkflowIds, user.id);
+		if (transferredWorkflowIds.length > 0) {
+			await this.workflowMutationHooks.afterWorkflowsTransferred(transferredWorkflowIds, user.id);
 		}
 	}
 

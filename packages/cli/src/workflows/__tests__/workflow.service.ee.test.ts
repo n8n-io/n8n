@@ -1559,7 +1559,7 @@ describe('EnterpriseWorkflowService', () => {
 			);
 
 			expect(transferOwnershipSpy).not.toHaveBeenCalled();
-			expect(folderRepository.moveTreeToProject).not.toHaveBeenCalled();
+			expect(folderRepository.transferTreeToProject).not.toHaveBeenCalled();
 		});
 
 		it('moves the folder without asking the transfer policy', async () => {
@@ -1570,7 +1570,7 @@ describe('EnterpriseWorkflowService', () => {
 			});
 			expect(policyEnforcementService.enforceWorkflowTransfer).not.toHaveBeenCalled();
 			expect(transferOwnershipSpy).toHaveBeenCalledTimes(1);
-			expect(folderRepository.moveTreeToProject).toHaveBeenCalledTimes(1);
+			expect(folderRepository.transferTreeToProject).toHaveBeenCalledTimes(1);
 		});
 
 		it('reports the workflows whose republish the destination policy refuses', async () => {
@@ -1657,7 +1657,7 @@ describe('EnterpriseWorkflowService', () => {
 
 			expect(activeWorkflowManager.remove).not.toHaveBeenCalled();
 			expect(transferOwnershipSpy).not.toHaveBeenCalled();
-			expect(folderRepository.moveTreeToProject).not.toHaveBeenCalled();
+			expect(folderRepository.transferTreeToProject).not.toHaveBeenCalled();
 		});
 	});
 
@@ -1862,37 +1862,37 @@ describe('EnterpriseWorkflowService', () => {
 		});
 
 		it('returns only the workflows whose owning project changes', async () => {
-			const moved = makeWorkflow('wf-moved', 'proj-source');
+			const transferred = makeWorkflow('wf-transferred', 'proj-source');
 			const folderMoveOnly = makeWorkflow('wf-same-project', 'proj-dest');
 
-			const movedIds = await service['transferWorkflowOwnership'](
-				[moved, folderMoveOnly],
+			const transferredIds = await service['transferWorkflowOwnership'](
+				[transferred, folderMoveOnly],
 				destinationProject,
 				{},
 			);
 
-			expect(movedIds).toEqual(['wf-moved']);
+			expect(transferredIds).toEqual(['wf-transferred']);
 		});
 	});
 
 	describe('afterOwnershipTransferred', () => {
 		const destinationProject = mock<Project>({ id: 'proj-dest' });
 
-		it('notifies the mutation hook with the moved workflows', async () => {
+		it('notifies the mutation hook with the transferred workflows', async () => {
 			await service['afterOwnershipTransferred'](
 				mock<User>({ id: 'user-1' }),
 				[],
 				destinationProject,
-				['wf-moved'],
+				['wf-transferred'],
 			);
 
 			expect(workflowMutationHooks.afterWorkflowsTransferred).toHaveBeenCalledExactlyOnceWith(
-				['wf-moved'],
+				['wf-transferred'],
 				'user-1',
 			);
 		});
 
-		it('does not notify the mutation hook when no workflow moved', async () => {
+		it('does not notify the mutation hook when no workflow is transferred', async () => {
 			await service['afterOwnershipTransferred'](mock<User>(), [], destinationProject, []);
 
 			expect(workflowMutationHooks.afterWorkflowsTransferred).not.toHaveBeenCalled();
