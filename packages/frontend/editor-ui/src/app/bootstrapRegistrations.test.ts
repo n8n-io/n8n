@@ -28,3 +28,16 @@ describe('main.ts bootstrap registrations', () => {
 		expect(mainTs).toMatch(new RegExp(`^${fn}\\(\\);$`, 'm'));
 	});
 });
+
+/**
+ * Chart.js is not registered at startup, so that it stays out of the startup JS. Each chart
+ * component registers the parts it needs (see `chartRegistrations.test.ts`).
+ */
+describe('main.ts startup imports', () => {
+	it.each(['chart.js', 'vue-chartjs', 'registerCharts', 'ChartJSPlugin'])(
+		'does not reference %s',
+		(name) => {
+			expect(mainTs).not.toContain(name);
+		},
+	);
+});

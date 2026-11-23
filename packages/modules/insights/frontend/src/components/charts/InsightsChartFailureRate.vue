@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { registerCharts } from '@n8n/composables/registerCharts';
 import { useI18n } from '@n8n/i18n';
 import { smartDecimal } from '@n8n/utils/number/smart-decimal';
 import { useCssVar } from '@vueuse/core';
@@ -10,6 +11,8 @@ import type { ChartProps } from './insightChartProps';
 import { generateBarChartOptions } from '../../chartjs.utils';
 import { GRANULARITY_DATE_FORMAT_MASK, INSIGHTS_UNIT_MAPPING } from '../../insights.constants';
 import { transformInsightsFailureRate } from '../../insights.utils';
+
+registerCharts();
 
 const props = defineProps<ChartProps>();
 

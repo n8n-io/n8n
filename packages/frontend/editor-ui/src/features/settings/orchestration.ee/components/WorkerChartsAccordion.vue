@@ -5,8 +5,11 @@ import { ref } from 'vue';
 import type { ChartData, ChartOptions } from 'chart.js';
 import type { ChartComponentRef } from 'vue-chartjs';
 import { Chart } from 'vue-chartjs';
+import { registerCharts } from '@n8n/composables/registerCharts';
 import { averageWorkerLoadFromLoads } from '../orchestration.utils';
 import { useI18n } from '@n8n/i18n';
+
+registerCharts();
 
 const props = defineProps<{
 	workerId: string;

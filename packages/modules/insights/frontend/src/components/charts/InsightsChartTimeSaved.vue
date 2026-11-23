@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { registerCharts } from '@n8n/composables/registerCharts';
 import { useI18n } from '@n8n/i18n';
 import { type ChartData, Filler, type ScriptableContext } from 'chart.js';
 import { computed } from 'vue';
@@ -8,6 +9,8 @@ import type { ChartProps } from './insightChartProps';
 import { generateLinearGradient, generateLineChartOptions } from '../../chartjs.utils';
 import { GRANULARITY_DATE_FORMAT_MASK, INSIGHTS_UNIT_MAPPING } from '../../insights.constants';
 import { transformInsightsTimeSaved } from '../../insights.utils';
+
+registerCharts();
 
 const props = defineProps<ChartProps>();
 const i18n = useI18n();
