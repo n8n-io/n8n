@@ -1,5 +1,6 @@
 import type fc from 'fast-check';
 
+import type { ValueExpr } from '../expressions';
 import type { ParityRules } from '../rules';
 
 /**
@@ -12,12 +13,22 @@ import type { ParityRules } from '../rules';
  */
 export type NodeRole = 'plain' | 'if' | 'switch' | 'merge' | 'loop' | 'trigger';
 
+/** A Code node body, generated as a string. See `catalog/code.ts`. */
+export type CodeSpec = {
+	mode: 'runOnceForAllItems' | 'runOnceForEachItem';
+	field: string;
+	value: ValueExpr;
+	/** Keep the input fields in the output. */
+	spread: boolean;
+};
+
 /**
  * Node parameters with holes. A hole becomes a string when the node is placed,
  * because only then are the upstream nodes known:
  * - `{ $expr }`: an n8n expression, `={{ … }}`.
  * - `{ $jsonTemplate }`: the JSON output of a Set node in raw mode.
  * - `{ $outputIndex }`: the output expression of a Switch node in expression mode.
+ * - `{ $code }`: the JavaScript of a Code node.
  */
 export type ParamDraft = Record<string, unknown>;
 

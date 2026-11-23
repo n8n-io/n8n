@@ -826,7 +826,7 @@ catalogs:
       version: 11.1.1
     vite:
       specifier: ^8.1.6
-      version: 8.3.7
+      version: 8.3.4
     vite-plugin-singlefile:
       specifier: 2.3.3
       version: 2.3.3

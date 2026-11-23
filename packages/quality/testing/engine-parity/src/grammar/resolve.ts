@@ -1,10 +1,20 @@
 import { isRecord } from '@n8n/utils/is-record';
 
+import type { CodeSpec } from './catalog';
 import { renderExpression, renderValue } from './expressions';
 import type { ExprScope, ValueExpr } from './expressions';
 
 function isValueExpr(value: unknown): value is ValueExpr {
 	return isRecord(value) && typeof value.kind === 'string';
+}
+
+function isCodeSpec(value: unknown): value is CodeSpec {
+	return (
+		isRecord(value) &&
+		(value.mode === 'runOnceForAllItems' || value.mode === 'runOnceForEachItem') &&
+		typeof value.field === 'string' &&
+		isValueExpr(value.value)
+	);
 }
 
 export interface ResolveContext {
@@ -28,6 +38,9 @@ export function resolveDraft(value: unknown, ctx: ResolveContext): unknown {
 			return `={{ (Math.abs(Math.trunc(Number(${renderValue(expr, ctx.scope)}))) || 0) % ${numberOutputs} }}`;
 		}
 	}
+	if ('$code' in value && isCodeSpec(value.$code)) {
+		return renderCode(value.$code, ctx.scope);
+	}
 
 	return Object.fromEntries(
 		Object.entries(value).map(([key, entry]) => [key, resolveDraft(entry, ctx)]),
@@ -46,4 +59,21 @@ function renderJsonTemplate(fields: Record<string, unknown>, scope: ExprScope): 
 	});
 	const body = `{ ${parts.join(', ')} }`;
 	return hasExpression ? `=${body}` : body;
+}
+
+function renderCode(spec: CodeSpec, scope: ExprScope): string {
+	const field = JSON.stringify(spec.field);
+	if (spec.mode === 'runOnceForEachItem') {
+		const value = renderValue(spec.value, scope);
+		const base = spec.spread ? '...$json, ' : '';
+		return [`const value = ${value};`, `return { json: { ${base}[${field}]: value } };`].join('\n');
+	}
+	const value = renderValue(spec.value, { ...scope, json: 'item.json' });
+	const base = spec.spread ? '...item.json, ' : '';
+	return [
+		'return $input.all().map((item) => {',
+		`\tconst value = ${value};`,
+		`\treturn { json: { ${base}[${field}]: value } };`,
+		'});',
+	].join('\n');
 }
