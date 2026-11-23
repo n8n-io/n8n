@@ -33,14 +33,10 @@ export const ENGINE_PORT = 3000;
 export const ENGINE_CONTROL_PLANE_PORT = 3001;
 
 /**
- * The storage path of both planes in `container` mode, where binary data is
- * kept. The two containers share one store: the main stores a webhook upload
- * that the engine reads, and the engine stores a file that the main streams in
- * a response. The stack mounts one host dir here in both containers. The stack
- * owns the path: a caller's `N8N_STORAGE_PATH` or deprecated
- * `N8N_BINARY_DATA_STORAGE_PATH` would point the planes at different dirs, or
- * fail the start when the two differ. The mode is pinned too: in queue mode
- * n8n defaults to `database`, which the engine cannot reach.
+ * Mount target for the shared storage directory in n8n and engine containers.
+ * The stack owns this path: a caller's `N8N_STORAGE_PATH` or deprecated
+ * `N8N_BINARY_DATA_STORAGE_PATH` would point the containers at different
+ * directories, or stop n8n from starting when the two differ.
  */
 export const ENGINE_SHARED_STORAGE_PATH = '/data/storage';
 
@@ -97,10 +93,15 @@ function bypassProxyBetweenPlanes(env: Record<string, string>, projectName: stri
 	env.NO_PROXY = hosts.join(',');
 }
 
-function applySharedStoragePath(env: Record<string, string>): void {
+export function applySharedStorageEnv(
+	env: Record<string, string>,
+	binaryDataMode = 'filesystem',
+): void {
 	env.N8N_STORAGE_PATH = ENGINE_SHARED_STORAGE_PATH;
-	env.N8N_DEFAULT_BINARY_DATA_MODE = 'filesystem';
+	env.N8N_DEFAULT_BINARY_DATA_MODE = binaryDataMode;
+	// n8n fails to start if the deprecated path differs from the storage path.
 	delete env.N8N_BINARY_DATA_STORAGE_PATH;
+	delete env.N8N_BINARY_DATA_STORAGE_PATH_FILE;
 }
 
 /** Every value the URL interpolates, so a missing one is named, not printed. */
@@ -220,7 +221,8 @@ export function applyEngineEnv(
 		env.N8N_ENGINE_CONTROL_PLANE_HOST = '0.0.0.0';
 		env.N8N_ENGINE_CONTROL_PLANE_PORT = String(ENGINE_CONTROL_PLANE_PORT);
 		env.N8N_ENGINE_AUTH_SECRET = authSecret;
-		applySharedStoragePath(env);
+		// The engine cannot access the control plane database.
+		applySharedStorageEnv(env);
 		bypassProxyBetweenPlanes(env, projectName);
 		// The main never touches the data plane database in this mode, and it
 		// refuses to start with the resume secret.
@@ -257,7 +259,7 @@ export function engineContainerEnv(
 		),
 	);
 
-	applySharedStoragePath(env);
+	applySharedStorageEnv(env);
 	bypassProxyBetweenPlanes(env, projectName);
 
 	return {

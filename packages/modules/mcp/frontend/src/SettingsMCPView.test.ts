@@ -119,6 +119,7 @@ const enableMcpSettings = () => {
 			mcpAccessEnabled: true,
 			mcpManagedByEnv: false,
 			autoExposeNewWorkflows: false,
+			preferencesEnabled: true,
 		},
 	};
 };
@@ -138,6 +139,7 @@ describe('SettingsMCPView', () => {
 
 		settingsStore.settings = {
 			enterprise: {},
+			aiPreferences: { enabled: true, managedByEnv: false },
 		} as FrontendSettings;
 
 		settingsStore.moduleSettings = {
@@ -145,6 +147,7 @@ describe('SettingsMCPView', () => {
 				mcpAccessEnabled: false,
 				mcpManagedByEnv: false,
 				autoExposeNewWorkflows: false,
+				preferencesEnabled: true,
 			},
 		};
 
@@ -660,6 +663,7 @@ describe('SettingsMCPView', () => {
 					mcpAccessEnabled: false,
 					mcpManagedByEnv: true,
 					autoExposeNewWorkflows: false,
+					preferencesEnabled: true,
 				},
 			};
 
@@ -828,5 +832,98 @@ describe('SettingsMCPView', () => {
 				'Could not update setting',
 			);
 		});
+	});
+
+	describe('preferences switch', () => {
+		beforeEach(() => {
+			enableMcpSettings();
+			mcpStore.preferencesEnabled = true;
+		});
+
+		it.each([true, false])(
+			'shows the saved value %s to a user with mcp:manage',
+			async (preferencesEnabled) => {
+				mcpStore.preferencesEnabled = preferencesEnabled;
+
+				const { getByTestId } = createComponent({ pinia });
+				await waitAllPromises();
+
+				expect(getByTestId('mcp-preferences-toggle')).toHaveAttribute(
+					'aria-checked',
+					String(preferencesEnabled),
+				);
+				expect(getByTestId('mcp-preferences-toggle')).not.toBeDisabled();
+			},
+		);
+
+		it('hides the switch from a user without mcp:manage', async () => {
+			rbacStore.hasScope.mockReturnValue(false);
+
+			const { queryByTestId } = createComponent({ pinia });
+			await waitAllPromises();
+
+			expect(queryByTestId('mcp-context-section')).toBeNull();
+		});
+
+		it('saves the new value', async () => {
+			const { getByTestId } = createComponent({ pinia });
+			await waitAllPromises();
+
+			await userEvent.click(getByTestId('mcp-preferences-toggle'));
+			await waitAllPromises();
+
+			expect(mcpStore.setPreferencesEnabled).toHaveBeenCalledWith(false);
+		});
+
+		it('shows a toast error when saving fails', async () => {
+			mcpStore.setPreferencesEnabled.mockRejectedValueOnce(new Error('nope'));
+
+			const { getByTestId } = createComponent({ pinia });
+			await waitAllPromises();
+
+			await userEvent.click(getByTestId('mcp-preferences-toggle'));
+			await waitAllPromises();
+
+			expect(useToast().showError).toHaveBeenCalledWith(
+				expect.anything(),
+				'Could not update setting',
+			);
+		});
+
+		it('shows Preferences as off and disabled while the global preferences switch is off', async () => {
+			settingsStore.settings = {
+				enterprise: {},
+				aiPreferences: { enabled: false, managedByEnv: false },
+			} as FrontendSettings;
+
+			const { getByTestId } = createComponent({ pinia });
+			await waitAllPromises();
+
+			expect(getByTestId('mcp-preferences-toggle')).toHaveAttribute('aria-checked', 'false');
+			expect(getByTestId('mcp-preferences-toggle')).toBeDisabled();
+		});
+
+		it('disables the switch when MCP settings are managed by env', async () => {
+			mcpStore.mcpManagedByEnv = true;
+
+			const { getByTestId } = createComponent({ pinia });
+			await waitAllPromises();
+
+			expect(getByTestId('mcp-preferences-toggle')).toBeDisabled();
+		});
+
+		it.each([true, false])(
+			'shows the enterprise readiness badge only on the enterprise plan: %s',
+			async (isEnterprisePlan) => {
+				settingsStore.isEnterprisePlan = isEnterprisePlan;
+
+				const { queryAllByTestId } = createComponent({ pinia });
+				await waitAllPromises();
+
+				expect(queryAllByTestId('settings-enable-row-enterprise-readiness-badge')).toHaveLength(
+					isEnterprisePlan ? 1 : 0,
+				);
+			},
+		);
 	});
 });

@@ -1,0 +1,29 @@
+{
+	"properties": {
+		"created_at": {
+			"type": "string"
+		},
+		"downloadable": {
+			"type": "boolean"
+		},
+		"filename": {
+			"type": "string"
+		},
+		"id": {
+			"type": "string"
+		},
+		"mime_type": {
+			"type": "string"
+		},
+		"size_bytes": {
+			"type": "number"
+		},
+		"type": {
+			"type": "string"
+		},
+		"url": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

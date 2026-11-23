@@ -90,7 +90,13 @@ export interface StackConfig {
 	 * or a service that brings it), one main, no workers, no webhook procs.
 	 */
 	engine?: EngineMode;
+	/** Share one temporary storage directory across all n8n containers. */
+	sharedStorage?: boolean;
 	env?: Record<string, string>;
+	/** Remove these keys after the stack merges the n8n environment. */
+	unsetEnv?: string[];
+	/** Copy these files into each main, worker, and webhook container. */
+	files?: FileToMount[];
 	projectName?: string;
 	resourceQuota?: { memory?: number; cpu?: number };
 	workerResourceQuota?: { memory?: number; cpu?: number };
@@ -102,8 +108,12 @@ export interface StackConfig {
 	/** When set, the Docker network uses this exact name instead of a random UUID. */
 	networkName?: string;
 	/**
-	 * Caddy load-balancer upstream-selection policy. Only applies when `mains > 1`
-	 * or `webhooks > 0` (anything that triggers the LB to start).
+	 * Start Caddy and serve n8n under an absolute subpath, such as `/n8n/`.
+	 * Use with `n8n-playwright/containers` and relative paths; root-relative requests receive HTTP 404.
+	 */
+	pathPrefix?: string;
+	/**
+	 * Caddy upstream-selection policy. Applies when the stack starts Caddy.
 	 * Defaults to `'first'` — sticky to main #1, useful for UI debuggability.
 	 * Benchmarks should set `'round_robin'` to actually distribute load.
 	 */
@@ -130,6 +140,15 @@ export interface StackConfig {
 	userHomeHostDir?: string;
 	/** Run the n8n containers as this uid:gid (e.g. the host user for bind mounts). */
 	user?: string;
+	/** Container settings for the main, worker, and webhook processes. */
+	n8nContainer?: {
+		/** Make the root filesystem read-only. Incompatible with copied files. */
+		readOnlyRootfs?: boolean;
+		/** Map from container paths to Docker tmpfs options. Keep copied files outside these paths. */
+		tmpfs?: Record<string, string>;
+		/** Docker platform, for example `linux/arm64`. Requires a matching local image. */
+		platform?: string;
+	};
 }
 
 export interface Service<TResult extends ServiceResult = ServiceResult> {

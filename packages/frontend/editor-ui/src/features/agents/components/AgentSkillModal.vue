@@ -53,6 +53,7 @@ import {
 } from '@/experiments/recommendedSkills/recommendedSkills';
 import { useRecommendedSkillsExperiment } from '@/experiments/recommendedSkills/useRecommendedSkillsExperiment';
 import { useRecommendedSkillLoader } from '@/experiments/recommendedSkills/useRecommendedSkillLoader';
+import RecommendedSkillSource from '@/experiments/recommendedSkills/components/RecommendedSkillSource.vue';
 import type {
 	SkillConnectionItem,
 	ToolCategoryKey,
@@ -371,6 +372,9 @@ const pickerCategories = computed<ToolCategoryKey[]>(() =>
 		? ['all', 'project', 'global', 'recommended']
 		: ['all', 'project', 'global'],
 );
+const recommendedSkillByPickerItemId = new Map(
+	RECOMMENDED_SKILLS.map((recommended) => [`recommended:${recommended.id}`, recommended]),
+);
 const pickerItemsWithRecommended = computed<SkillConnectionItem[]>(() =>
 	showRecommendedSkills.value
 		? [
@@ -442,7 +446,14 @@ const canStopSyncing = computed(
 const isStoppingSync = ref(false);
 
 async function onStopSyncing() {
-	if (!props.data.skillId || !props.data.onStopSyncing || isStoppingSync.value) return;
+	if (
+		!canStopSyncing.value ||
+		!props.data.skillId ||
+		!props.data.onStopSyncing ||
+		isStoppingSync.value ||
+		isSaving.value
+	)
+		return;
 	isStoppingSync.value = true;
 	try {
 		await props.data.onStopSyncing(props.data.skillId);
@@ -662,6 +673,25 @@ const headerMenuItems = computed<Array<DropdownMenuItemProps<string>>>(() => {
 			})),
 		});
 	}
+	if (syncedFrom.value) {
+		items.push({
+			id: 'openInGithub',
+			label: i18n.baseText('settings.context.skills.synced.openInGithub'),
+			icon: { type: 'icon', value: 'external-link' },
+			class: $style.menuItem,
+			testId: 'agent-skill-open-in-github',
+		});
+		if (canStopSyncing.value) {
+			items.push({
+				id: 'stopSyncing',
+				label: i18n.baseText('settings.context.skills.stopSyncing.action'),
+				icon: { type: 'icon', value: 'unlink' },
+				disabled: isSaving.value || isStoppingSync.value,
+				class: $style.menuItem,
+				testId: 'agent-skill-stop-syncing',
+			});
+		}
+	}
 	if (isEditing.value && (props.data.onDelete || showAttachToggle.value)) {
 		items.push({
 			id: 'delete',
@@ -684,6 +714,14 @@ const menuSwitchTestIds: Record<string, string> = {
 };
 
 function onHeaderMenuSelect(action: string) {
+	if (action === 'openInGithub' && syncedFrom.value) {
+		window.open(syncedFrom.value.webUrl, '_blank', 'noopener,noreferrer');
+		return;
+	}
+	if (action === 'stopSyncing') {
+		void onStopSyncing();
+		return;
+	}
 	if (action === 'assistant' && showAssistantToggle.value && !editorLocked.value) {
 		availableToAssistant.value = !availableToAssistant.value;
 		return;
@@ -1505,7 +1543,14 @@ function onRemove() {
 				@connect="onPickerItemAttach"
 				@open-detail="onPickerItemPreview"
 				@create="onPickerCreate"
-			/>
+			>
+				<template #row-footer="{ item }">
+					<RecommendedSkillSource
+						:skill="recommendedSkillByPickerItemId.get(item.id)"
+						:class="$style.recommendedSkillSource"
+					/>
+				</template>
+			</ToolsConnectionModal>
 		</div>
 		<div
 			v-if="step === 'preview' && previewSkill"
@@ -1546,29 +1591,6 @@ function onRemove() {
 						</template>
 					</I18nT>
 				</N8nText>
-				<div :class="$style.syncedActions">
-					<N8nButton
-						variant="ghost"
-						size="small"
-						:href="syncedFrom.webUrl"
-						target="_blank"
-						data-testid="agent-skill-open-in-github"
-					>
-						<template #icon><N8nIcon icon="external-link" :size="16" /></template>
-						{{ i18n.baseText('settings.context.skills.synced.openInGithub') }}
-					</N8nButton>
-					<N8nButton
-						v-if="canStopSyncing"
-						variant="ghost"
-						size="small"
-						:disabled="isSaving || isStoppingSync"
-						data-testid="agent-skill-stop-syncing"
-						@click="onStopSyncing"
-					>
-						<template #icon><N8nIcon icon="unlink" :size="16" /></template>
-						{{ i18n.baseText('settings.context.skills.stopSyncing.action') }}
-					</N8nButton>
-				</div>
 			</div>
 			<N8nCallout
 				v-else-if="data.readOnly"
@@ -1718,7 +1740,7 @@ function onRemove() {
 						:skill="displayedSkill"
 						:selected-path="selectedPath"
 						:disabled="editorLocked"
-						:read-only="(cannotEdit && !isPinned) || !!viewedVersion"
+						:read-only="cannotEdit || skillAccessFailed || !!viewedVersion"
 						:errors="visibleErrors"
 						:show-validation-warnings="submitted || openedWithMissingContent"
 						@select:path="selectedPath = $event"
@@ -1873,13 +1895,17 @@ function onRemove() {
 	margin-bottom: var(--spacing--md);
 }
 
-/* The header menu, as the design: grey icons and check mark, a red Delete when it is allowed. */
+/* Keep normal menu icons neutral. Mark the modal's Delete label and icon in red. */
 .menuItem :global(svg) {
 	color: var(--color--text--tint-1);
 }
 
 .deleteItem:not([data-disabled]) {
-	color: var(--color--danger);
+	color: var(--text-color--danger);
+
+	:global(svg) {
+		color: var(--icon-color--danger) !important;
+	}
 }
 
 .menuSwitchRow {
@@ -1959,13 +1985,6 @@ function onRemove() {
 	overflow-wrap: anywhere;
 }
 
-.syncedActions {
-	display: flex;
-	flex-wrap: wrap;
-	gap: var(--spacing--2xs);
-	margin-left: auto;
-}
-
 .compareSelect {
 	width: calc(var(--spacing--3xl) + var(--spacing--xs));
 }
@@ -2016,6 +2035,10 @@ function onRemove() {
 		border-right: none;
 		border-bottom: var(--border);
 	}
+}
+
+.recommendedSkillSource {
+	padding-top: var(--spacing--5xs);
 }
 
 @media (max-width: 480px) {

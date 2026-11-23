@@ -1,11 +1,10 @@
+import type { ExecutionDataJsonStore } from '@n8n/backend-services';
 import { AzureBlobService } from '@n8n/blob-storage/azure-blob';
 import { ObjectStoreService } from '@n8n/blob-storage/object-store';
 import type { BinaryDataRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { ErrorReporter, FsByteStoreService, StorageConfig } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
-
-import type { ExecutionDataJsonStore } from '@/executions/execution-data/execution-data-json-store';
 
 import type { KnowledgeConsumerScope } from '../../knowledge-consumer-scope';
 import type { KnowledgeFileCleanupRepository } from '../../repositories/knowledge-file-cleanup.repository';

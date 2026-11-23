@@ -8,8 +8,10 @@ import { join } from 'node:path';
 import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
+import { EventMessageWorkflow } from '../../event-message-classes/event-message-workflow';
 import { MessageEventBusLogWriter } from '../../message-event-bus-writer/message-event-bus-log-writer';
 import { MessageEventBus } from '../message-event-bus';
+import type { WorkflowCrashJournal } from '@/crash-loop/workflow-crash-journal';
 import type { ExecutionCrashService } from '@/executions/execution-crash.service';
 
 vi.unmock('@/eventbus/message-event-bus/message-event-bus');
@@ -51,6 +53,7 @@ describe('MessageEventBus.initialize', () => {
 	const executionRepository = mock<ExecutionRepository>();
 	const workflowRepository = mock<WorkflowRepository>();
 	const executionCrashService = mock<ExecutionCrashService>();
+	const workflowCrashJournal = mock<WorkflowCrashJournal>();
 
 	const buildBus = (globalConfig: GlobalConfig) =>
 		new MessageEventBus(
@@ -61,6 +64,7 @@ describe('MessageEventBus.initialize', () => {
 			executionCrashService,
 			globalConfig,
 			mock<InstanceSettings>({ n8nFolder: tempDir }),
+			workflowCrashJournal,
 		);
 
 	beforeEach(() => {
@@ -76,12 +80,14 @@ describe('MessageEventBus.initialize', () => {
 		mockedWriter.getLogFileName.mockReturnValue('mocked.log');
 		mockedWriter.isRecoveryProcessRunning.mockReturnValue(false);
 		executionRepository.findUnfinishedIds.mockResolvedValue([]);
+		executionRepository.findRunningIds.mockResolvedValue([]);
 		workflowRepository.getWorkflowInfo.mockResolvedValue([]);
 	});
 
 	afterEach(() => {
 		getInstanceSpy.mockRestore();
 		rmSync(tempDir, { recursive: true, force: true });
+		vi.unstubAllEnvs();
 		vi.clearAllMocks();
 	});
 
@@ -149,6 +155,72 @@ describe('MessageEventBus.initialize', () => {
 			);
 		});
 
+		it('notes the workflows of the logged executions that are still running', async () => {
+			const started = (workflowId?: string) =>
+				new EventMessageWorkflow({ eventName: 'n8n.workflow.started', payload: { workflowId } });
+			mockedWriter.getUnsentAndUnfinishedExecutions.mockResolvedValue({
+				unsentMessages: [],
+				unfinishedExecutions: {
+					a: [started('wf-1')],
+					b: [started('wf-2')],
+					c: [started('wf-3')],
+					d: [started()],
+				},
+			});
+			executionRepository.findRunningIds.mockResolvedValue(['a', 'd']);
+			const bus = buildBus(buildGlobalConfig({ crashRecoveryMode: 'simple' }));
+
+			await bus.initialize({});
+
+			expect(executionRepository.findRunningIds).toHaveBeenCalledWith(['a', 'b', 'c', 'd']);
+			expect(workflowCrashJournal.noteUnfinishedExecutions).toHaveBeenCalledWith(new Set(['wf-1']));
+		});
+
+		it('notes only manual executions in queue mode, while they are not offloaded', async () => {
+			vi.stubEnv('OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS', '');
+			const started = (workflowId: string, isManual: boolean) =>
+				new EventMessageWorkflow({
+					eventName: 'n8n.workflow.started',
+					payload: { workflowId, isManual },
+				});
+			mockedWriter.getUnsentAndUnfinishedExecutions.mockResolvedValue({
+				unsentMessages: [],
+				unfinishedExecutions: { a: [started('wf-1', true)], b: [started('wf-2', false)] },
+			});
+			executionRepository.findRunningIds.mockResolvedValue(['a']);
+			const bus = buildBus(
+				buildGlobalConfig({ crashRecoveryMode: 'simple', executionsMode: 'queue' }),
+			);
+
+			await bus.initialize({});
+
+			expect(executionRepository.findRunningIds).toHaveBeenCalledWith(['a']);
+			expect(workflowCrashJournal.noteUnfinishedExecutions).toHaveBeenCalledWith(new Set(['wf-1']));
+		});
+
+		it('skips the query in queue mode when manual executions are offloaded', async () => {
+			vi.stubEnv('OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS', 'true');
+			mockedWriter.getUnsentAndUnfinishedExecutions.mockResolvedValue({
+				unsentMessages: [],
+				unfinishedExecutions: {
+					a: [
+						new EventMessageWorkflow({
+							eventName: 'n8n.workflow.started',
+							payload: { workflowId: 'wf-1', isManual: true },
+						}),
+					],
+				},
+			});
+			const bus = buildBus(
+				buildGlobalConfig({ crashRecoveryMode: 'simple', executionsMode: 'queue' }),
+			);
+
+			await bus.initialize({});
+
+			expect(executionRepository.findRunningIds).not.toHaveBeenCalled();
+			expect(workflowCrashJournal.noteUnfinishedExecutions).not.toHaveBeenCalled();
+		});
+
 		it('does not read unfinished executions from the database in queue mode', async () => {
 			mockedWriter.getUnsentAndUnfinishedExecutions.mockResolvedValue({
 				unsentMessages: [],
@@ -161,6 +233,7 @@ describe('MessageEventBus.initialize', () => {
 			await bus.initialize({});
 
 			expect(executionRepository.findUnfinishedIds).not.toHaveBeenCalled();
+			expect(executionRepository.findRunningIds).not.toHaveBeenCalled();
 			expect(executionCrashService.markAsCrashed).toHaveBeenCalledWith(
 				['b', 'c'],
 				'startup-recovery',

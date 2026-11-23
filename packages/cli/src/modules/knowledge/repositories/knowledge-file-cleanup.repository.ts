@@ -3,7 +3,7 @@ import { DataSource } from '@n8n/typeorm';
 
 import type { KnowledgeFileStorageReference } from '../files/knowledge-file-store';
 
-/** Reads storage references even when the module has not registered KnowledgeFile. */
+/** Reads storage references even when the module has not registered AgentFile. */
 @Service()
 export class KnowledgeFileCleanupRepository {
 	constructor(private readonly dataSource: DataSource) {}

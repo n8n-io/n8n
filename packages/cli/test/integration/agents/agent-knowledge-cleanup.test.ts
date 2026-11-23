@@ -5,10 +5,12 @@ import { DataSource } from '@n8n/typeorm';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { v4 as uuid } from 'uuid';
 
+import { createAgent as createTestAgent } from '@test-integration/db/agents';
+
 import { AgentKnowledgeService } from '@/modules/agents/agent-knowledge.service';
 import { AgentsService } from '@/modules/agents/agents.service';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
-import { KnowledgeFile } from '@/modules/knowledge/entities/knowledge-file.entity';
+import { AgentFile } from '@/modules/knowledge/entities';
 import { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
 import { ProjectService } from '@/services/project.service.ee';
 
@@ -35,7 +37,7 @@ describe('Knowledge cleanup with the module disabled', () => {
 
 	beforeEach(() => {
 		expect(Container.get(KnowledgeAvailabilityService).isModuleActive()).toBe(false);
-		expect(dataSource.hasMetadata(KnowledgeFile)).toBe(false);
+		expect(dataSource.hasMetadata(AgentFile)).toBe(false);
 		vi.spyOn(Container.get(AgentKnowledgeService), 'destroyKnowledgeSandbox').mockResolvedValue();
 	});
 
@@ -46,9 +48,12 @@ describe('Knowledge cleanup with the module disabled', () => {
 	});
 
 	async function createAgentWithFile(projectId: string) {
-		const agent = await agents.save(
-			agents.create({ name: 'Knowledge agent', projectId, schema: null, integrations: [] }),
-		);
+		const agent = await createTestAgent({
+			name: 'Knowledge agent',
+			projectId,
+			schema: null,
+			integrations: [],
+		});
 		const fileId = generateNanoId();
 		const storageKey = uuid();
 		const content = Buffer.from('Stored knowledge');

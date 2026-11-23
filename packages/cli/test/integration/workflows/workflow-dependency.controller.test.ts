@@ -10,6 +10,8 @@ import { ModuleRegistry } from '@n8n/backend-common';
 import { ProjectRepository, WorkflowDependencyRepository, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
+import { createAgent } from '@test-integration/db/agents';
+
 import { AgentCredentialDependency } from '@/modules/agents/entities/agent-credential-dependency.entity';
 import { AgentHistory } from '@/modules/agents/entities/agent-history.entity';
 import { AgentWorkflowDependency } from '@/modules/agents/entities/agent-workflow-dependency.entity';
@@ -83,7 +85,7 @@ async function seedIndexedAgent(
 	schema: Pick<AgentJsonConfig, 'credential' | 'tools'>,
 ) {
 	const project = await projectRepo.getPersonalProjectForUserOrFail(user.id);
-	const agent = agentRepo.create({
+	const agent = await createAgent({
 		name,
 		projectId: project.id,
 		schema: storedAgentConfig({
@@ -97,7 +99,6 @@ async function seedIndexedAgent(
 		tools: {},
 		versionId: 'draft-version-1',
 	});
-	await agentRepo.save(agent);
 
 	const publishedVersionId = randomUUID();
 	await agentHistoryRepo.saveVersion(

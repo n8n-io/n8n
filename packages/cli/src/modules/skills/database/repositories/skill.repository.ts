@@ -55,6 +55,10 @@ export type SkillListFilter = {
 	/** The skills an agent uses. */
 	usedBySkillIds?: string[];
 	createdById?: string;
+	/** Restrict results to these connected sources. An empty array matches nothing. */
+	sourceIds?: string[];
+	/** Sources whose labels match the search, in addition to skill names and descriptions. */
+	searchSourceIds?: string[];
 	search?: string;
 	availableToMCP?: boolean;
 	/** Most recently changed first when absent. */
@@ -128,14 +132,18 @@ export class SkillRepository {
 		return await query.getMany();
 	}
 
-	/** Read all open source groups on one page in one query. */
+	/** Read the page slice across its open source groups. */
 	async findVisibleSourceSkills(
 		visibility: SkillVisibility,
 		filter: SkillMatchFilter,
 		sourceIds: string[],
+		slice: { skip: number; take: number },
 	): Promise<Skill[]> {
 		const skills: Skill[] = [];
+		let skip = slice.skip;
 		for (const ids of chunkIds(sourceIds)) {
+			const remaining = slice.take - skills.length;
+			if (remaining <= 0) break;
 			const query = this.filteredQuery(visibility, filter, {});
 			if (!query) return [];
 			const sourceOrder = ids.map(
@@ -151,8 +159,11 @@ export class SkillRepository {
 					filter.sort?.order ?? 'DESC',
 				)
 				.addOrderBy('skill.id', 'ASC')
+				.offset(skip)
+				.limit(remaining)
 				.getMany();
 			skills.push(...rows);
+			skip = 0;
 		}
 		return skills;
 	}
@@ -205,6 +216,15 @@ export class SkillRepository {
 		if (filter.createdById !== undefined) {
 			query.andWhere('skill.createdById = :createdById', { createdById: filter.createdById });
 		}
+		if (filter.sourceIds || filter.searchSourceIds?.length) {
+			query.leftJoin(SkillSourceLink, 'filterSourceLink', 'filterSourceLink.skillId = skill.id');
+		}
+		if (filter.sourceIds) {
+			if (filter.sourceIds.length === 0) return null;
+			query.andWhere('filterSourceLink.sourceId IN (:...filterSourceIds)', {
+				filterSourceIds: filter.sourceIds,
+			});
+		}
 		if (filter.availableToMCP !== undefined) {
 			query.andWhere('skill.availableToMCP = :availableToMCP', {
 				availableToMCP: filter.availableToMCP,
@@ -223,11 +243,16 @@ export class SkillRepository {
 		}
 		if (filter.search) {
 			query.andWhere(
-				new Brackets((qb) =>
-					qb
-						.where(`LOWER(latest.name) LIKE :search ${LIKE_ESCAPE_CLAUSE}`)
-						.orWhere(`LOWER(latest.description) LIKE :search ${LIKE_ESCAPE_CLAUSE}`),
-				),
+				new Brackets((qb) => {
+					qb.where(`LOWER(latest.name) LIKE :search ${LIKE_ESCAPE_CLAUSE}`).orWhere(
+						`LOWER(latest.description) LIKE :search ${LIKE_ESCAPE_CLAUSE}`,
+					);
+					if (filter.searchSourceIds?.length) {
+						qb.orWhere('filterSourceLink.sourceId IN (:...searchSourceIds)', {
+							searchSourceIds: filter.searchSourceIds,
+						});
+					}
+				}),
 				{ search: `%${escapeLike(filter.search.toLowerCase())}%` },
 			);
 		}

@@ -9,6 +9,12 @@ import { ContextModule } from './module.descriptor';
 
 const stub = { render: () => null };
 
+const permissions = vi.hoisted(() => ({ managePreferences: false }));
+
+vi.mock('@/app/utils/rbac/permissions', () => ({
+	hasPermission: () => permissions.managePreferences,
+}));
+
 // Avoid loading the views during route tests.
 const moduleRoutes = (ContextModule.routes ?? []).map(
 	(route) => ({ ...route, component: stub }) as RouteRecordRaw,
@@ -23,13 +29,19 @@ const createTestRouter = () =>
 		],
 	});
 
-const setup = (agentsActive = false, moduleSettings: FrontendModuleSettings = {}) => {
+const setup = (
+	agentsActive = false,
+	moduleSettings: FrontendModuleSettings = {},
+	preferencesSwitchOn = true,
+) => {
 	createTestingPinia({ stubActions: false });
 	const settingsStore = useSettingsStore();
 	settingsStore.settings = {
 		activeModules: agentsActive ? ['skills', 'agents'] : [],
+		aiPreferences: { enabled: preferencesSwitchOn, managedByEnv: false },
 	} as unknown as FrontendSettings;
 	settingsStore.moduleSettings = moduleSettings;
+	permissions.managePreferences = false;
 };
 
 const allConsumersOff = {
@@ -39,16 +51,52 @@ const allConsumersOff = {
 } as FrontendModuleSettings;
 
 describe('ContextModule routes', () => {
-	test.each([
-		['/settings/context', VIEWS.SETTINGS_CONTEXT],
-		['/settings/context/preferences', VIEWS.SETTINGS_CONTEXT_PREFERENCES],
-	])('opens %s without a flag or an active module', async (path, name) => {
+	test('opens the context page without a flag or an active module', async () => {
 		setup();
 		const router = createTestRouter();
 
-		await router.push(path);
+		await router.push('/settings/context');
 
-		expect(router.currentRoute.value.name).toBe(name);
+		expect(router.currentRoute.value.name).toBe(VIEWS.SETTINGS_CONTEXT);
+	});
+
+	describe('preferences', () => {
+		test.each([
+			{ 'instance-ai': { enabled: true } },
+			{ mcp: { mcpAccessEnabled: true } },
+		] as FrontendModuleSettings[])(
+			'opens the preferences page while one consumer is on: %o',
+			async (consumerOn) => {
+				setup(false, { ...allConsumersOff, ...consumerOn });
+				const router = createTestRouter();
+
+				await router.push('/settings/context/preferences');
+
+				expect(router.currentRoute.value.name).toBe(VIEWS.SETTINGS_CONTEXT_PREFERENCES);
+			},
+		);
+
+		test.each([
+			{ name: 'the switch is off', moduleSettings: { mcp: { mcpAccessEnabled: true } }, on: false },
+			{ name: 'every consumer is off', moduleSettings: allConsumersOff, on: true },
+		])('sends a member to the homepage when $name', async ({ moduleSettings, on }) => {
+			setup(false, moduleSettings as FrontendModuleSettings, on);
+			const router = createTestRouter();
+
+			await router.push('/settings/context/preferences');
+
+			expect(router.currentRoute.value.name).toBe(VIEWS.HOMEPAGE);
+		});
+
+		test('opens the preferences page for an admin while preferences are off', async () => {
+			setup(false, allConsumersOff, false);
+			permissions.managePreferences = true;
+			const router = createTestRouter();
+
+			await router.push('/settings/context/preferences');
+
+			expect(router.currentRoute.value.name).toBe(VIEWS.SETTINGS_CONTEXT_PREFERENCES);
+		});
 	});
 
 	describe('skills', () => {

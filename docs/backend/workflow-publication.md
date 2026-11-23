@@ -1,6 +1,6 @@
 ---
 title: Workflow publication
-last_reviewed: 2026-11-05
+last_reviewed: 2026-11-20
 contact: tomi
 ---
 
@@ -33,7 +33,7 @@ A workflow has a **draft**, which is the last saved version, and a **published v
 
 First, the main checks that the user may publish the workflow and that the version can run (e.g. that its webhook path is free). A policy or an open review request can also refuse the publication.
 
-The main runs all checks before it changes anything, so a refused publication leaves the previous version live. Every way to publish (e.g. editor, public API, or source control) runs the same checks.
+The main runs these checks before it changes the published version, so a refused publication leaves the previous version live. An instance can require an approved review for a team project's workflow version. An open review can block publication during a source control pull. The pull never requires an approved review.
 
 ## Outbox
 
@@ -52,7 +52,7 @@ The leader compares the old and new versions: it stops removed triggers, starts 
 | Trigger | How it runs |
 |---|---|
 | Webhook | Instance sends each call for its path and method to the workflow. No two workflows can share a path and method |
-| Poller | Leader polls the source |
+| Poller | Any main polls the source at each due time, from a job in the database. A poll can run more than once. With `N8N_SCHEDULER_POLL_TRIGGERS_ENABLED=false`, the leader polls on in-memory timers |
 | Trigger that holds a connection (e.g. to a message queue) | Leader keeps the connection open |
 | Schedule | Any main starts each due run, from a job in the database |
 

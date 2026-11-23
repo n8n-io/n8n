@@ -1,13 +1,12 @@
+import { ExecutionDataJsonStore } from '@n8n/backend-services';
 import { Service } from '@n8n/di';
-
-import { ExecutionDataJsonStore } from '@/executions/execution-data/execution-data-json-store';
 
 import type { KnowledgeConsumerScope } from '../knowledge-consumer-scope';
 import { KnowledgeFileCleanupRepository } from '../repositories/knowledge-file-cleanup.repository';
 import { KnowledgeFileStore } from './knowledge-file-store';
 import { registerKnowledgeByteStores } from './register-knowledge-byte-stores';
 
-/** Deletes stored knowledge bytes without requiring KnowledgeFile entity metadata. */
+/** Deletes stored knowledge bytes without requiring AgentFile entity metadata. */
 @Service()
 export class KnowledgeFileCleanupService {
 	constructor(

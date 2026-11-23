@@ -1,0 +1,139 @@
+{
+	"properties": {
+		"content": {
+			"type": "string"
+		},
+		"fullResponse": {
+			"properties": {
+				"output": {
+					"properties": {
+						"choices": {
+							"items": {
+								"properties": {
+									"finish_reason": {
+										"type": "string"
+									},
+									"message": {
+										"properties": {
+											"content": {
+												"items": {
+													"properties": {
+														"text": {
+															"type": "string"
+														}
+													},
+													"type": "object"
+												},
+												"type": "array"
+											},
+											"reasoning_content": {
+												"type": "string"
+											},
+											"role": {
+												"type": "string"
+											}
+										},
+										"type": "object"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"request_id": {
+					"type": "string"
+				},
+				"usage": {
+					"properties": {
+						"input_tokens": {
+							"type": "number"
+						},
+						"input_tokens_details": {
+							"properties": {
+								"text_tokens": {
+									"type": "number"
+								}
+							},
+							"type": "object"
+						},
+						"output_tokens": {
+							"type": "number"
+						},
+						"output_tokens_details": {
+							"properties": {
+								"reasoning_tokens": {
+									"type": "number"
+								},
+								"text_tokens": {
+									"type": "number"
+								}
+							},
+							"type": "object"
+						},
+						"prompt_tokens_details": {
+							"properties": {
+								"cached_tokens": {
+									"type": "number"
+								}
+							},
+							"type": "object"
+						},
+						"total_tokens": {
+							"type": "number"
+						}
+					},
+					"type": "object"
+				}
+			},
+			"type": "object"
+		},
+		"model": {
+			"type": "string"
+		},
+		"usage": {
+			"properties": {
+				"input_tokens": {
+					"type": "number"
+				},
+				"input_tokens_details": {
+					"properties": {
+						"text_tokens": {
+							"type": "number"
+						}
+					},
+					"type": "object"
+				},
+				"output_tokens": {
+					"type": "number"
+				},
+				"output_tokens_details": {
+					"properties": {
+						"reasoning_tokens": {
+							"type": "number"
+						},
+						"text_tokens": {
+							"type": "number"
+						}
+					},
+					"type": "object"
+				},
+				"prompt_tokens_details": {
+					"properties": {
+						"cached_tokens": {
+							"type": "number"
+						}
+					},
+					"type": "object"
+				},
+				"total_tokens": {
+					"type": "number"
+				}
+			},
+			"type": "object"
+		}
+	},
+	"type": "object"
+}

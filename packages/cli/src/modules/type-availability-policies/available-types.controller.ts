@@ -1,31 +1,13 @@
-import type { AvailableTypesResponse, NodeTypeAvailability } from '@n8n/api-types';
+import type { AvailableTypesResponse } from '@n8n/api-types';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import { Get, Licensed, Param, ProjectScope, RestController } from '@n8n/decorators';
 import type { Request, Response } from 'express';
 
 import { NodeTypes } from '@/node-types';
 
+import { toAvailabilityEntry } from './availability-entry';
 import { NODE_TYPES_KIND } from './constants';
-import {
-	TypeAvailabilityPolicyService,
-	type ComposedTypeVerdict,
-} from './type-availability-policy.service';
-
-/**
- * Only unavailable entries carry a reason, so the response for ~1,400 types stays small on the
- * common path — the builder fetches it on every workflow open.
- */
-function toAvailabilityEntry(verdict: ComposedTypeVerdict): NodeTypeAvailability {
-	if (verdict.action === 'allow') return { name: verdict.name, available: true };
-
-	return {
-		name: verdict.name,
-		available: false,
-		scope: verdict.scope,
-		...(verdict.matchedRuleId !== null && { matchedRuleId: verdict.matchedRuleId }),
-		...(verdict.optInAvailable && { optInAvailable: true }),
-	};
-}
+import { TypeAvailabilityPolicyService } from './type-availability-policy.service';
 
 /**
  * The effective node type set for one project — the builder UI's only source for what a member

@@ -192,6 +192,98 @@ describe('detectWrongKindLocatorValues', () => {
 			detectWrongKindLocatorValues(workflow({ sheetName: rl('list', 'Sheet1') }), undefined),
 		).toEqual([]);
 	});
+
+	describe('id mode', () => {
+		// Modeled on the Microsoft Excel `worksheet` locator: only list and id
+		// modes, and the id mode requires a braced GUID-like value.
+		const worksheetLocator: INodeProperties = {
+			displayName: 'Sheet',
+			name: 'worksheet',
+			type: 'resourceLocator',
+			default: { mode: 'list', value: '' },
+			modes: [
+				{ displayName: 'From list', name: 'list', type: 'list' },
+				{
+					displayName: 'By ID',
+					name: 'id',
+					type: 'string',
+					validation: [
+						{
+							type: 'regex',
+							properties: { regex: '{[a-zA-Z0-9\\-_]{2,}}', errorMessage: 'Not a valid Sheet ID' },
+						},
+					],
+				},
+			],
+		};
+		const excelNodeTypes = nodeTypesWith([worksheetLocator]);
+
+		it('flags an id-mode value that fails the id-mode regex', () => {
+			const warnings = detectWrongKindLocatorValues(
+				workflow({ worksheet: rl('id', 'Sheet1') }),
+				excelNodeTypes,
+			);
+			expect(warnings).toHaveLength(1);
+			expect(warnings[0].code).toBe('INVALID_ID_MODE_VALUE');
+			expect(warnings[0].nodeName).toBe('Read Sheet');
+		});
+
+		it('does not flag an id-mode value that matches the id-mode regex', () => {
+			expect(
+				detectWrongKindLocatorValues(
+					workflow({ worksheet: rl('id', '{00000000-0001-0000-0000-000000000000}') }),
+					excelNodeTypes,
+				),
+			).toEqual([]);
+		});
+
+		it('does not flag a placeholder id-mode value', () => {
+			expect(
+				detectWrongKindLocatorValues(
+					workflow({ worksheet: rl('id', '<__PLACEHOLDER_VALUE__Worksheet ID__>') }),
+					excelNodeTypes,
+				),
+			).toEqual([]);
+		});
+
+		it('does not flag an expression id-mode value', () => {
+			expect(
+				detectWrongKindLocatorValues(
+					workflow({ worksheet: rl('id', '={{ $json.worksheetId }}') }),
+					excelNodeTypes,
+				),
+			).toEqual([]);
+		});
+
+		it('does not flag an empty id-mode value', () => {
+			expect(
+				detectWrongKindLocatorValues(workflow({ worksheet: rl('id', '') }), excelNodeTypes),
+			).toEqual([]);
+		});
+
+		it('flags an id-mode value that fails any one of several regexes', () => {
+			const twoRegexLocator: INodeProperties = {
+				...worksheetLocator,
+				modes: worksheetLocator.modes?.map((mode) =>
+					mode.name === 'id'
+						? {
+								...mode,
+								validation: [
+									{ type: 'regex', properties: { regex: '[a-z0-9]+', errorMessage: 'a' } },
+									{ type: 'regex', properties: { regex: '[0-9]+', errorMessage: 'b' } },
+								],
+							}
+						: mode,
+				),
+			};
+			expect(
+				detectWrongKindLocatorValues(
+					workflow({ worksheet: rl('id', 'abc') }),
+					nodeTypesWith([twoRegexLocator]),
+				),
+			).toHaveLength(1);
+		});
+	});
 });
 
 describe('coerceWrongKindListModeParams', () => {

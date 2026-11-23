@@ -28,6 +28,8 @@ import type { PlannedChange } from './apply-preview';
 import type { PackageFile } from './base-branch-files';
 import { PACKAGE_SUBFOLDER } from './constants';
 import { compare } from './package-references';
+import { checkoutBranchName } from './promotions-git.utils';
+import type { PromotionOperationInput } from './promotions.types';
 
 /** One side of the comparison: its manifest, and the Git blob SHA of each file path. */
 export type PreviewSide = {
@@ -241,10 +243,12 @@ function applyOperationRules(
 		direction,
 		before,
 		planned,
+		removals,
 	}: {
 		direction: PromotionDirection;
 		before: SideResource | undefined;
 		planned: ReadonlyMap<string, PlannedChange> | null;
+		removals?: ReadonlySet<string>;
 	},
 ): PromotionResource | null {
 	const { type, change } = resource;
@@ -256,11 +260,13 @@ function applyOperationRules(
 		change: 'unchanged',
 	});
 
+	if (removals?.has(resource.key)) return { ...withoutChanges, change: 'deleted' };
 	if (change === 'deleted') {
 		// Neither direction deletes dependencies. Their files and rows stay.
 		if (type !== 'workflow' && type !== 'project' && type !== 'folder') return null;
 		// Projects and folders stay too. They remain as context for the deleted workflows inside them.
-		if (type !== 'workflow') return unchanged();
+		// When the plan lists the removals, a workflow that it keeps stays too.
+		if (type !== 'workflow' || removals) return unchanged();
 	}
 
 	if (direction === 'promote') return resource;
@@ -412,6 +418,11 @@ export function buildPreview({
 		direction: PromotionDirection;
 		/** Apply only: what the import plan does, by resource key. */
 		planned: ReadonlyMap<string, PlannedChange> | null;
+		/**
+		 * Whole-instance Apply only: the keys of everything that Apply deletes. Any other resource
+		 * that the branch lacks stays, such as a sub-workflow that the branch calls.
+		 */
+		removals?: ReadonlySet<string>;
 	} | null;
 	/** Both sides are indexed across all of them, so a workflow that moves between them stays one row. */
 	projectIds: readonly string[];
@@ -520,6 +531,28 @@ export function previewRevision(shown: {
 	return createHash('sha256')
 		.update(canonicalJson({ schemaVersion: PREVIEW_SCHEMA_VERSION, ...shown }))
 		.digest('hex');
+}
+
+/** The environment and branch that a preview reads. Apply sends it back as its expected source. */
+export function previewSource(input: PromotionOperationInput): PromotionPreview['source'] {
+	return { environmentId: input.environmentId, branchName: checkoutBranchName(input.config) };
+}
+
+/**
+ * How the environment of a preview presents itself. The UI shows it, so a user who can only
+ * preview does not need to read the environment settings. It stays out of the revision.
+ */
+export function previewEnvironment(
+	input: PromotionOperationInput,
+): PromotionPreview['environment'] {
+	const { environmentName, providerType, config } = input;
+	return {
+		name: environmentName,
+		providerType,
+		...(config.direction === 'promote'
+			? { createBranchOnPromotion: config.settings.createBranchOnPromotion }
+			: {}),
+	};
 }
 
 /** Parses JSON read from Git. `undefined` when it is not valid JSON. */

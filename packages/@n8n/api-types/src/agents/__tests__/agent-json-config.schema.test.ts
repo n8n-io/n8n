@@ -8,7 +8,7 @@ import {
 
 const minimalConfig = {
 	name: 'test-agent',
-	model: 'anthropic/claude-sonnet-4-5',
+	model: 'anthropic/claude-sonnet-5-5',
 	instructions: 'Help the user.',
 };
 
@@ -912,12 +912,10 @@ describe('AgentJsonConfigSchema — config.guardrails.tools', () => {
 			blockUserinfo: true,
 			allowSubdomains: false,
 		},
-		{ kind: 'customRegex', regex: [{ name: 'ticket', value: '[A-Z]+-\\d+' }] },
 		{ kind: 'jailbreak' },
 		{ kind: 'jailbreak', prompt: 'Detect jailbreaks', threshold: 0.7 },
 		{ kind: 'nsfw', threshold: 0 },
 		{ kind: 'topicalAlignment', prompt: 'Stay on topic', threshold: 1 },
-		{ kind: 'customPrompt', prompt: 'Check the output' },
 	])('accepts a valid %s guardrail', (guardrail) => {
 		expect(parseGuardrails([{ ...baseGuardrail, ...guardrail }]).success).toBe(true);
 	});
@@ -994,19 +992,12 @@ describe('AgentJsonConfigSchema — config.guardrails.tools', () => {
 		).toBe(false);
 	});
 
-	it.each(['[A-Z', '(', '*'])('rejects a customRegex value of %s that does not parse', (value) => {
-		expect(
-			parseGuardrails([{ ...baseGuardrail, kind: 'customRegex', regex: [{ name: 'r', value }] }])
-				.success,
-		).toBe(false);
-	});
-
-	it('accepts a customRegex value in /pattern/flags literal form', () => {
+	it('rejects the discarded customRegex kind', () => {
 		expect(
 			parseGuardrails([
-				{ ...baseGuardrail, kind: 'customRegex', regex: [{ name: 'r', value: '/ticket-\\d+/gi' }] },
+				{ ...baseGuardrail, kind: 'customRegex', regex: [{ name: 'r', value: 'a+' }] },
 			]).success,
-		).toBe(true);
+		).toBe(false);
 	});
 });
 

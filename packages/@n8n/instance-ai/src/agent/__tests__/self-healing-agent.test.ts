@@ -295,8 +295,7 @@ describe('createSelfHealingAgent', () => {
 		expect(names).not.toContain(DOMAIN_TOOL_IDS.RUN_WORKFLOW);
 		expect(names).not.toContain(DOMAIN_TOOL_IDS.RUN_WORKFLOW_STEP);
 		expect(names).not.toContain(DOMAIN_TOOL_IDS.STOP_EXECUTION);
-		expect(names).not.toContain(DOMAIN_TOOL_IDS.CREATE_DATA_TABLE);
-		expect(names).not.toContain(DOMAIN_TOOL_IDS.INSERT_DATA_TABLE_ROWS);
+		expect(names).not.toContain(DOMAIN_TOOL_IDS.CHANGE_DATA_TABLES);
 		expect(names).not.toContain(DOMAIN_TOOL_IDS.PUBLISH_WORKFLOW);
 		expect(names).not.toContain(DOMAIN_TOOL_IDS.SETUP_WORKFLOW);
 	});

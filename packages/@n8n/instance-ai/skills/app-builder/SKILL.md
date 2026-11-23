@@ -184,6 +184,22 @@ const { user } = await n8n.me();
 Every call throws `N8nAppError` with `status`, `code` and `message` on failure.
 Show the user a short error message, and a loading state while a call runs.
 
+A workflow can use the visitor's own accounts. When the visitor has not
+connected one, `run` throws code `credentials_required`, and
+`error.credentials` lists the accounts. Show a link for each account with a
+`connectUrl`. Open the link in a new tab. Let the visitor run the workflow
+again after they connect:
+
+```js
+try {
+  await n8n.workflows.submit.run({ email });
+} catch (error) {
+  if (error instanceof N8nAppError && error.code === 'credentials_required') {
+    showConnectLinks(error.credentials.filter((c) => c.connectUrl));
+  } else throw error;
+}
+```
+
 ## Several apps
 
 One conversation can build several apps for one requirement, for example a

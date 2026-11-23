@@ -237,7 +237,7 @@ describe('EditImageVersionRule', () => {
 
 			expect(recommendations).toHaveLength(1);
 			expect(recommendations[0].action).toContain('version 2');
-			expect(recommendations[0].description).toContain('automatic migration');
+			expect(recommendations[0].description).toContain('Blur Radius');
 		});
 	});
 

@@ -7,8 +7,10 @@ import {
 import type { WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { IConnections, INode } from 'n8n-workflow';
+import { ZodError } from 'zod';
 
 import { visitWorkflowCredentials } from '../credential/workflow-credential-references';
+import { PackageWorkflowInvalidError } from '../package-export.errors';
 import { definePackageSerializationPayload } from '../package-serialization.types';
 import { compareTagsByName } from '../tag/tag.types';
 
@@ -107,6 +109,23 @@ export class WorkflowSerializer {
 			return true;
 		});
 		return copy;
+	}
+
+	serializeForExport(workflow: WorkflowEntity, options: { includeTags: boolean }) {
+		try {
+			return [this.serialize(workflow, options), this.serializeMetadata(workflow)] as const;
+		} catch (error) {
+			if (!(error instanceof ZodError)) throw error;
+
+			const fields = error.issues
+				.slice(0, 10)
+				.map((issue) => `${issue.path.join('.') || '(root)'}: ${issue.message}`)
+				.join('; ');
+			throw new PackageWorkflowInvalidError(
+				`Workflow ${workflow.id} cannot be exported because its stored data is invalid (${fields}). Export aborted.`,
+				error,
+			);
+		}
 	}
 
 	serializeMetadata(workflow: WorkflowEntity): SerializedWorkflowMetadata {

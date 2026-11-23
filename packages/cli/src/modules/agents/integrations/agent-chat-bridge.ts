@@ -302,7 +302,9 @@ export class AgentChatBridge {
 			postErrorToThread: this.postErrorToThread.bind(this),
 			handleSuspension: this.handleSuspension.bind(this),
 			handleMessage: this.handleMessage.bind(this),
-			isIntegrationActionTool: (toolName) => actionToolNamePattern.test(toolName),
+			isIntegrationActionTool: (toolName) =>
+				actionToolNamePattern.test(toolName) ||
+				(this.integrationImpl?.conversationTools.some((name) => name === toolName) ?? false),
 			postReplyFiles: async (thread, { fileIds, caption, agentThreadId, onPosted }) =>
 				await Container.get(AgentOutboundFiles).postReplyFiles(thread, integration.type, {
 					fileIds,
@@ -1387,7 +1389,10 @@ export class AgentChatBridge {
 	}
 
 	private async fetchAttachmentData(attachment: Attachment): Promise<Buffer | null> {
-		if (attachment.fetchData) return await attachment.fetchData();
+		if (attachment.fetchData) {
+			const fetched = await attachment.fetchData();
+			return Buffer.isBuffer(fetched) ? fetched : Buffer.from(fetched);
+		}
 		if (Buffer.isBuffer(attachment.data)) return attachment.data;
 		if (attachment.data) return Buffer.from(await attachment.data.arrayBuffer());
 		if (this.integration.type === 'discord' && attachment.url && this.discordHttpClient) {

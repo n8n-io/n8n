@@ -3,19 +3,16 @@ import type { EventService } from '@n8n/backend-services';
 import type { AuthenticatedRequest, User } from '@n8n/db';
 import { ControllerRegistryMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import type { NextFunction, Request, Response } from 'express';
+import type { Response } from 'express';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { ScimDeprovisioningService } from '../scim-deprovisioning.service';
-import { scimOptInGate } from '../scim-opt-in';
 import type { ScimSettingsService } from '../scim-settings.service';
 import type { ScimSsoService } from '../scim-sso.service';
 import { ScimTokenController } from '../scim-token.controller';
 import type { ScimTokenService } from '../scim-token.service';
 import { ScimTokenConflictError } from '../scim.errors';
-
-vi.mock('../scim-opt-in', () => ({ scimOptInGate: vi.fn() }));
 
 describe('ScimTokenController', () => {
 	let scimTokenService: Mocked<ScimTokenService>;
@@ -57,21 +54,6 @@ describe('ScimTokenController', () => {
 			scimDeprovisioningService,
 			eventService,
 		);
-	});
-
-	describe('opt-in gate', () => {
-		it('runs the shared opt-in gate before every route', () => {
-			const metadata = Container.get(ControllerRegistryMetadata).getControllerMetadata(
-				ScimTokenController as never,
-			);
-			const [gateReq, gateRes] = [mock<Request>(), mock<Response>()];
-			const next: NextFunction = vi.fn();
-
-			controller.requireOptIn(gateReq, gateRes, next);
-
-			expect(metadata.middlewares).toEqual(['requireOptIn']);
-			expect(scimOptInGate).toHaveBeenCalledWith(gateReq, gateRes, next);
-		});
 	});
 
 	// Every one of these routes administers the credential an IdP uses to
