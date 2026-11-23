@@ -253,7 +253,7 @@ export const AGENT_BUILDER_TEST_TOGGLE_EXPERIMENT = createExperiment(
 	},
 );
 
-/** Boolean flag. Shows agent triggers first and restyles the trigger section. */
+/** A/B test. The `variant` arm shows agent triggers first and restyles the trigger section. */
 export const AGENT_TRIGGER_REDESIGN_EXPERIMENT = createExperiment('143_agent_trigger_redesign');
 
 export const EXPERIMENTS_TO_TRACK = [

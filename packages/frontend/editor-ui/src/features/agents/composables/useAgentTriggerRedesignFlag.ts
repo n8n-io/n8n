@@ -10,5 +10,10 @@ import { usePostHog } from '@/app/stores/posthog.store';
 export function useAgentTriggerRedesignFlag() {
 	const posthogStore = usePostHog();
 
-	return computed(() => posthogStore.isFeatureEnabled(AGENT_TRIGGER_REDESIGN_EXPERIMENT.name));
+	return computed(() =>
+		posthogStore.isVariantEnabled(
+			AGENT_TRIGGER_REDESIGN_EXPERIMENT.name,
+			AGENT_TRIGGER_REDESIGN_EXPERIMENT.variant,
+		),
+	);
 }
