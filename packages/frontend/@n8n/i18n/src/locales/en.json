@@ -9592,7 +9592,7 @@
 	"instanceAi.tools.search_tools": "Searching tools",
 	"instanceAi.tools.load_tool": "Loading tool",
 	"instanceAi.tools.find_tools": "Finding tools",
-	"instanceAi.tools.call_tool": "Running tool",
+	"instanceAi.tools.call_tool": "Choosing a tool",
 	"instanceAi.tools.save_user_preference": "Saving preference",
 	"instanceAi.tools.leave-onboarding": "Leaving onboarding",
 	"instanceAi.tools.updateWorkingMemory": "Updating memory",
