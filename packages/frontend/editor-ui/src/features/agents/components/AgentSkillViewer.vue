@@ -7,13 +7,7 @@ import {
 	AGENT_SKILL_REFERENCE_MAX_COUNT,
 	AGENT_SKILL_REFERENCES_TOTAL_MAX_LENGTH,
 } from '@n8n/api-types';
-import {
-	N8nFormInput,
-	N8nInputLabel,
-	N8nMarkdown,
-	N8nMarkdownEditor,
-	N8nText,
-} from '@n8n/design-system';
+import { N8nFormInput, N8nInputLabel, N8nMarkdown, N8nText } from '@n8n/design-system';
 import type { IValidator, Validatable } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
@@ -21,6 +15,7 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 import type { Rule, RuleGroup } from '@/Interface';
 import type { AgentSkill, AgentSkillReference } from '../types';
+import AgentSkillMarkdownEditor from './AgentSkillMarkdownEditor.vue';
 import AgentSkillMermaidDiagram from './AgentSkillMermaidDiagram.vue';
 import type { SkillMermaidResult } from './skillMermaidRenderer';
 
@@ -37,12 +32,16 @@ const props = withDefaults(
 		errors?: Partial<Record<keyof AgentSkill, string>>;
 		selectedPath?: string;
 		showValidationWarnings?: boolean;
+		mentionProjectId?: string;
+		mentionProjectName?: string;
 	}>(),
 	{
 		disabled: false,
 		readOnly: false,
 		selectedPath: SKILL_FILE,
 		showValidationWarnings: false,
+		mentionProjectId: undefined,
+		mentionProjectName: undefined,
 	},
 );
 
@@ -410,13 +409,15 @@ function onDiagramRenderEnd(outcome: SkillMermaidResult['outcome']) {
 					:required="true"
 					size="small"
 				>
-					<N8nMarkdownEditor
+					<AgentSkillMarkdownEditor
 						:class="$style.editor"
 						:container-class="$style.resizable"
 						:model-value="props.skill.instructions ?? ''"
 						:placeholder="i18n.baseText('agents.builder.skills.instructions.placeholder')"
 						show-toolbar="floating"
 						:disabled="props.disabled"
+						:mention-project-id="props.mentionProjectId"
+						:mention-project-name="props.mentionProjectName"
 						max-height="none"
 						data-testid="agent-skill-instructions-editor"
 						@update:model-value="onInstructionsInput"
@@ -461,12 +462,14 @@ function onDiagramRenderEnd(outcome: SkillMermaidResult['outcome']) {
 				:required="true"
 				size="small"
 			>
-				<N8nMarkdownEditor
+				<AgentSkillMarkdownEditor
 					:class="[$style.editor, $style.referenceEditor]"
 					:model-value="selectedReference.content"
 					:placeholder="i18n.baseText('agents.builder.skills.references.content.placeholder')"
 					show-toolbar="floating"
 					:disabled="props.disabled"
+					:mention-project-id="props.mentionProjectId"
+					:mention-project-name="props.mentionProjectName"
 					max-height="none"
 					data-testid="agent-skill-reference-editor"
 					@update:model-value="onReferenceInput"

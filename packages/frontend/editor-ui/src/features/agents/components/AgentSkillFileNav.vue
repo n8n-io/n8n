@@ -1,9 +1,13 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
+import { parseSkillWorkflowMentions, type SkillWorkflowMention } from '@n8n/api-types';
 import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 
+import { WORKFLOWS_IN_SKILLS_EXPERIMENT } from '@/app/constants/experiments';
+import { usePostHog } from '@/app/stores/posthog.store';
 import type { AgentSkill } from '../types';
+import SkillWorkflowMentionPicker from './SkillWorkflowMentionPicker.vue';
 import SkillDiffCount from './skillVersions/SkillDiffCount.vue';
 import type { FileChange } from './skillVersions/skillVersionDiff';
 
@@ -19,11 +23,15 @@ const props = withDefaults(
 		invalidPaths?: string[];
 		/** Compare mode: lines added and removed in each file, keyed by path. */
 		changeCounts?: Record<string, FileChange>;
+		mentionProjectId?: string;
+		mentionProjectName?: string;
 	}>(),
 	{
 		addReferenceDisabled: false,
 		readOnly: false,
 		invalidPaths: () => [],
+		mentionProjectId: undefined,
+		mentionProjectName: undefined,
 	},
 );
 
@@ -31,10 +39,27 @@ const emit = defineEmits<{
 	select: [path: string];
 	'add-reference': [];
 	'remove-reference': [path: string];
+	'add-workflow': [mention: SkillWorkflowMention];
 }>();
 
 const i18n = useI18n();
+const posthog = usePostHog();
 const references = computed(() => props.skill.references ?? []);
+const workflowMentionsEnabled = computed(() =>
+	posthog.isFeatureEnabled(WORKFLOWS_IN_SKILLS_EXPERIMENT.name),
+);
+const addWorkflowOpen = ref(false);
+const mentionedWorkflows = computed(() => {
+	const texts = [props.skill.instructions, ...references.value.map(({ content }) => content)];
+	const workflows = new Map<string, SkillWorkflowMention>();
+	for (const mention of texts.flatMap(parseSkillWorkflowMentions)) {
+		if (!workflows.has(mention.workflowId)) workflows.set(mention.workflowId, mention);
+	}
+	return [...workflows.values()];
+});
+const mentionedWorkflowIds = computed(() =>
+	mentionedWorkflows.value.map(({ workflowId }) => workflowId),
+);
 
 function isInvalid(path: string) {
 	return props.invalidPaths.includes(path);
@@ -164,6 +189,40 @@ function testIdForPath(path: string) {
 				/>
 			</div>
 		</div>
+
+		<div v-if="workflowMentionsEnabled" :class="$style.section" data-testid="agent-skill-workflows">
+			<div :class="$style.sectionHeader">
+				<N8nText size="small" color="text-light" :class="$style.sectionTitle">
+					{{ i18n.baseText('agents.builder.skills.workflowMentions.title') }}
+				</N8nText>
+				<SkillWorkflowMentionPicker
+					v-if="!props.readOnly"
+					v-model:open="addWorkflowOpen"
+					mode="button"
+					:project-id="props.mentionProjectId"
+					:project-name="props.mentionProjectName"
+					:mentioned-workflow-ids="mentionedWorkflowIds"
+					@select="emit('add-workflow', $event)"
+				/>
+			</div>
+			<N8nText
+				v-if="mentionedWorkflows.length === 0"
+				size="small"
+				color="text-light"
+				:class="$style.sectionTitle"
+			>
+				{{ i18n.baseText('agents.builder.skills.workflowMentions.empty') }}
+			</N8nText>
+			<div
+				v-for="workflow in mentionedWorkflows"
+				:key="workflow.workflowId"
+				:class="[$style.item, $style.workflow]"
+				data-testid="agent-skill-workflow-item"
+			>
+				<N8nIcon icon="workflow" :size="16" :class="$style.icon" />
+				<N8nText size="medium" :class="$style.path">{{ workflow.name }}</N8nText>
+			</div>
+		</div>
 	</nav>
 </template>
 
@@ -262,6 +321,14 @@ function testIdForPath(path: string) {
 	margin-left: auto;
 	margin-right: var(--spacing--2xs);
 	flex-shrink: 0;
+}
+
+.workflow {
+	cursor: default;
+
+	&:hover {
+		background: transparent;
+	}
 }
 
 .invalidIcon {

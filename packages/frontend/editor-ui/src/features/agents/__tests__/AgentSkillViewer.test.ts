@@ -20,6 +20,9 @@ vi.mock('@n8n/composables/useTelemetry', () => ({ useTelemetry: () => ({ track }
 vi.mock('@/features/agents/components/skillMermaidRenderer', { spy: true });
 const uiStore = reactive({ appliedTheme: 'light' });
 vi.mock('@/app/stores/ui.store', () => ({ useUIStore: () => uiStore }));
+vi.mock('@/app/stores/posthog.store', () => ({
+	usePostHog: () => ({ isFeatureEnabled: () => false }),
+}));
 
 enableAutoUnmount(afterEach);
 beforeEach(() => {

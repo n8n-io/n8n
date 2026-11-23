@@ -1,4 +1,8 @@
-import { formatSkillWorkflowMention, parseSkillWorkflowMentions } from '../skill-workflow-mentions';
+import {
+	formatSkillWorkflowMention,
+	parseSkillWorkflowMentions,
+	renameSkillWorkflowMentions,
+} from '../skill-workflow-mentions';
 
 describe('parseSkillWorkflowMentions', () => {
 	it('returns the workflow ID and link text of each mention, in body order', () => {
@@ -71,5 +75,30 @@ describe('formatSkillWorkflowMention', () => {
 		const link = formatSkillWorkflowMention({ workflowId: 'abc', name });
 
 		expect(parseSkillWorkflowMentions(link)).toEqual([{ workflowId: 'abc', name }]);
+	});
+});
+
+describe('renameSkillWorkflowMentions', () => {
+	it('replaces the link text of each mention with the new name', () => {
+		const body =
+			'Call [Old](n8n://workflow/abc) and [Old](n8n://workflow/abc) then [Keep](n8n://workflow/xyz).';
+
+		expect(renameSkillWorkflowMentions(body, new Map([['abc', 'New [v2]']]))).toBe(
+			'Call [New \\[v2\\]](n8n://workflow/abc) and [New \\[v2\\]](n8n://workflow/abc) then [Keep](n8n://workflow/xyz).',
+		);
+	});
+
+	it('keeps the query parameters and escaped link text of other mentions', () => {
+		const body = '[A \\] b](n8n://workflow/abc?instance=x) [C \\] d](n8n://workflow/xyz)';
+
+		expect(renameSkillWorkflowMentions(body, new Map([['abc', 'Renamed']]))).toBe(
+			'[Renamed](n8n://workflow/abc?instance=x) [C \\] d](n8n://workflow/xyz)',
+		);
+	});
+
+	it('returns the body unchanged when no name is known', () => {
+		const body = 'See [Name](n8n://workflow/abc) and [Web](https://example.com)';
+
+		expect(renameSkillWorkflowMentions(body, new Map())).toBe(body);
 	});
 });

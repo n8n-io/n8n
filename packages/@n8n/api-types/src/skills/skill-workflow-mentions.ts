@@ -20,6 +20,21 @@ export function parseSkillWorkflowMentions(body: string): SkillWorkflowMention[]
 	return [...mentions.values()];
 }
 
+export function getSkillWorkflowMentionUrl(workflowId: string): string {
+	return `n8n://workflow/${workflowId}`;
+}
+
 export function formatSkillWorkflowMention({ workflowId, name }: SkillWorkflowMention): string {
-	return `[${escapeLinkText(name)}](n8n://workflow/${workflowId})`;
+	return `[${escapeLinkText(name)}](${getSkillWorkflowMentionUrl(workflowId)})`;
+}
+
+export function renameSkillWorkflowMentions(
+	body: string,
+	namesByWorkflowId: ReadonlyMap<string, string>,
+): string {
+	return body.replace(SKILL_WORKFLOW_MENTION_PATTERN, (link, text: string, workflowId: string) => {
+		const name = namesByWorkflowId.get(workflowId);
+		if (name === undefined) return link;
+		return `[${escapeLinkText(name)}]${link.slice(text.length + 2)}`;
+	});
 }
