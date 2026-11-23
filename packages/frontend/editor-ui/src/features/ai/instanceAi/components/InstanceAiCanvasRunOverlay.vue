@@ -50,6 +50,7 @@ const i18n = useI18n();
 	display: flex;
 	justify-content: center;
 	pointer-events: none;
+	@include motion.fade-in-up;
 }
 
 // The same pill as the building label of the agent builder.
@@ -59,24 +60,33 @@ const i18n = useI18n();
 	gap: var(--spacing--2xs);
 	height: var(--height--xl);
 	padding-inline: var(--spacing--sm);
-	border: none;
+	border: var(--border-width) solid var(--color--danger);
 	border-radius: var(--radius--full);
 	background: var(--color--neutral-black);
 	color: var(--color--neutral-white);
 	font-size: var(--font-size--sm);
 	font-weight: var(--font-weight--bold);
 	white-space: nowrap;
-	box-shadow:
-		inset 0 0 0 1px light-dark(var(--color--white-alpha-200), var(--color--white-alpha-100)),
-		0 0 0 1px var(--color--neutral-black),
-		var(--shadow--xl);
+	box-shadow: var(--shadow--xl);
 	cursor: pointer;
 	pointer-events: auto;
-	@include motion.fade-in-up;
+	// Nudges toward the chat, which is to the left of the canvas.
+	animation: waiting-nudge 1.2s var(--easing--ease-in-out) infinite;
+	@include motion.reduced-motion;
+
+	&:hover {
+		animation-play-state: paused;
+	}
 
 	&:focus-visible {
 		outline: var(--focus--border-width) solid var(--color--primary);
 		outline-offset: var(--spacing--5xs);
+	}
+}
+
+@keyframes waiting-nudge {
+	50% {
+		translate: calc(-1 * var(--spacing--2xs)) 0;
 	}
 }
 </style>
