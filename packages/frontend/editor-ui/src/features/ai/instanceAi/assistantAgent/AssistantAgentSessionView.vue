@@ -7,11 +7,12 @@ import { N8nButton, N8nSpinner, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { truncate } from '@n8n/utils/string/truncate';
-import { computed, ref, watch } from 'vue';
+import { computed, provide, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
 import AgentSessionTimelineHeader from '@/features/agents/components/AgentSessionTimelineHeader.vue';
 import AgentSessionTimelinePanel from '@/features/agents/components/AgentSessionTimelinePanel.vue';
+import { SESSION_TIMELINE_SHOW_COST_KEY } from '@/features/agents/components/agentChatInjectionKeys';
 import { getSystemAgentThread } from '@/features/agents/composables/useAgentApi';
 import { useAgentExecutionUpdates } from '@/features/agents/composables/useAgentExecutionUpdates';
 import { useAgentSessionUsage } from '@/features/agents/composables/useAgentSessionUsage';
@@ -21,7 +22,7 @@ import type {
 	ThreadDetail,
 } from '@/features/agents/composables/useAgentThreadsApi';
 import { useBackOrFallback } from '@/features/agents/composables/useBackOrFallback';
-import { formatDuration } from '@/features/agents/session-timeline.utils';
+import { formatDuration, threadTokenBreakdownOf } from '@/features/agents/session-timeline.utils';
 import type { SessionTimelineMetadata } from '@/features/agents/types';
 import { formatSessionDateTime } from '@/features/agents/utils/timeline-time';
 
@@ -129,6 +130,8 @@ const totalCredits = computed(() => {
 	if (used !== undefined) return used;
 	return costUnit.value === 'credits' && creditsLoadedFor.value === props.threadId ? 0 : undefined;
 });
+// The turns show credits nowhere yet, so they hide the dollar cost too.
+provide(SESSION_TIMELINE_SHOW_COST_KEY, () => costUnit.value === 'dollars');
 
 const sessionMetadata = computed<SessionTimelineMetadata>(() => ({
 	trigger: {
@@ -137,6 +140,7 @@ const sessionMetadata = computed<SessionTimelineMetadata>(() => ({
 		label: i18n.baseText('agentSessions.origin.instanceAi'),
 	},
 	totalTokens: sessionUsage.value.totalTokens,
+	usage: threadTokenBreakdownOf(executions.value),
 	totalCost: costUnit.value === 'dollars' ? sessionUsage.value.cost : null,
 	totalCredits: totalCredits.value,
 	durationLabel: formatDuration(duration.value),
