@@ -199,6 +199,15 @@ try {
 }
 ```
 
+A workflow that the app runs gets the visitor's user ID from the expression
+`{{ $execution.customData.get('appVisitor') }}`. The value has the format
+`user:<id>`. Use it to save and read data for each visitor, for example in a
+`userId` column of a data table. Do not trust a user ID, email or name that
+the app sends in the run input, because the visitor can change it. Use the
+values from `n8n.me()` only for display. A data table that you bind to the app
+shows all its rows to every visitor. When each visitor must see only their own
+rows, read the table in a workflow that filters by `appVisitor`.
+
 ## Several apps
 
 One conversation can build several apps for one requirement, for example a

@@ -168,6 +168,12 @@ describe('Instance AI skills', () => {
 		expect(skill?.recommendedToolGroups).toEqual(['apps']);
 	});
 
+	it('tells workflows where to read the app visitor', async () => {
+		const skill = await loadInstanceAiSkills().loadSkill('app-builder');
+
+		expect(skill?.instructions).toContain("$execution.customData.get('appVisitor')");
+	});
+
 	it('opens a newly created app before editing its files', async () => {
 		const skill = await loadInstanceAiSkills().loadSkill('app-builder');
 
