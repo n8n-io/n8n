@@ -59,6 +59,8 @@ function getTabsElement(): HTMLElement | undefined {
 }
 
 /** The shared indicator cannot read the colour of the active tab, so it gets the state here. */
+const iconSize = computed(() => (props.size === 'large' ? 'large' : 'small'));
+
 const activeOption = computed(() =>
 	props.options.find((option) => option.value === selectedValue.value),
 );
@@ -226,7 +228,7 @@ function scroll(direction: 'left' | 'right') {
 								:icon="option.icon"
 								:color="option.iconColor"
 								:class="$style.icon"
-								size="small"
+								:size="option.iconSize ?? iconSize"
 							/>
 							<N8nText :size="size" bold :class="$style.label">{{ option.label }}</N8nText>
 							<N8nIcon
@@ -234,7 +236,7 @@ function scroll(direction: 'left' | 'right') {
 								:icon="option.icon"
 								:color="option.iconColor"
 								:class="$style.icon"
-								size="small"
+								:size="option.iconSize ?? iconSize"
 							/>
 							<PreviewBadge v-if="option.preview" :class="$style.badge" />
 							<N8nBadge v-if="option.tag" :class="$style.badge">{{ option.tag }}</N8nBadge>
