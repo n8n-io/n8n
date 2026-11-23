@@ -1,6 +1,12 @@
 import { OperationalError, UnexpectedError } from '@n8n/errors';
 
-export class GymAdmin {
+/** What a hydrator needs from the Gym: seed a tenant and post events. Consumers depend on this, not on the class. */
+export interface GymSeeder {
+	seed(tenant: string, overlay: unknown): Promise<unknown>;
+	event(tenant: string, event: unknown): Promise<void>;
+}
+
+export class GymAdmin implements GymSeeder {
 	private readonly baseUrl: string;
 
 	constructor(baseUrl: string) {

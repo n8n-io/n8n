@@ -3,7 +3,7 @@ import { Container } from '@n8n/di';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
 
-import type { GymAdmin } from './gym-admin';
+import type { GymSeeder } from './gym-admin';
 import { COMMON_INSTRUCTIONS } from './hydration-prompts';
 import type { McpCaller } from './mcp-upstream';
 import { OnceByKey } from './once-by-key';
@@ -25,7 +25,7 @@ export type HydrationLlm = (request: {
 }) => Promise<void>;
 
 interface AgentHydratorDeps {
-	admin: GymAdmin;
+	admin: GymSeeder;
 	tenant: string;
 	upstream: McpCaller;
 	gym: McpCaller;

@@ -2,7 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 
-import type { GymAdmin } from './gym-admin';
+import type { GymSeeder } from './gym-admin';
 import { isRecord } from './gym-admin';
 import type { McpCaller } from './mcp-upstream';
 import { OnceByKey } from './once-by-key';
@@ -25,7 +25,7 @@ import { SeededEntities } from './seeded-entities';
 export type PlanLlm = (request: { instructions: string; prompt: string }) => Promise<string>;
 
 export interface PlanHydratorDeps {
-	admin: GymAdmin;
+	admin: GymSeeder;
 	tenant: string;
 	upstream: McpCaller;
 	gym: McpCaller;
