@@ -691,6 +691,9 @@ background-agent routing from captured `tool-call`, `tool-result`, `tool-error`,
 `agent-spawned` events. Use them when a regression is about which path the
 agent chooses, not whether a generated workflow executes.
 
+The agent is the one that both Assistant runtimes build. The runner reads its
+stream directly (`discovery/stream-turn.ts`), so these evals need no runtime.
+
 To inspect skill loading, run a focused verbose pass:
 
 ```bash
