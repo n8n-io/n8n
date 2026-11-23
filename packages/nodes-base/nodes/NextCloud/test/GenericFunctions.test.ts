@@ -501,6 +501,8 @@ describe('NextCloud GenericFunctions', () => {
 			['no uid', ocsUser(undefined)],
 			['an empty uid', ocsUser('')],
 			['XML', '<ocs />'],
+			['JSON that is not an object', 'null'],
+			['no body', undefined],
 		])('throws when the response has %s', async (_, response) => {
 			const { functions, requestWithAuthentication } = buildFunctions();
 			requestWithAuthentication.mockResolvedValue(response);
