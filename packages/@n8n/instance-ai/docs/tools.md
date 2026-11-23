@@ -1503,15 +1503,17 @@ Always loaded, because the agent needs it at the moment it is stuck.
 |-------|------|----------|-------------|
 | `category` | `'unsure' \| 'bug' \| 'missing_capability' \| 'confusing_tool' \| 'other'` | yes | What kind of problem it is |
 | `severity` | `'blocked' \| 'workaround' \| 'minor'` | yes | How much the problem affected the task |
-| `summary` | string | yes | The goal, what the agent tried, and where it got stuck. The tool cuts it to 1,000 characters |
+| `summary` | string | yes | The goal, what the agent tried, and where it got stuck. The CLI adapter redacts it, then cuts it to 1,000 characters |
 | `toolName` | string | no | The tool that the report is about |
 
 The tool does not suspend and nothing replies. It always returns
 `{ ok: true, message }`, and the message tells the agent to continue. A run
 sends at most 3 reports. Later calls return the same result and send nothing.
+A resume rebuilds the agent and starts a new count.
 
 The CLI adapter tracks the `AI Assistant sent feedback` telemetry event. It
-removes secrets and personal data from the summary first. LangSmith records the
+removes secrets and personal data from the summary and the tool name before it
+cuts them, so a secret that crosses the cut is still found. LangSmith records the
 call as a normal tool span, so traces show the reports too.
 
 The system prompt carries the judgment of *when* to call it (see

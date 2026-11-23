@@ -75,7 +75,7 @@ describe('send_feedback tool', () => {
 		expect(result.ok).toBe(true);
 	});
 
-	it('cuts a long summary instead of rejecting it', async () => {
+	it('accepts a long summary and sends it in full, so the host redacts it before it cuts it', async () => {
 		const { context, service } = makeContext();
 		const tool = createSendFeedbackTool(context);
 		const long = { ...input, summary: 'x'.repeat(5000) };
@@ -83,8 +83,7 @@ describe('send_feedback tool', () => {
 		expect(parseToolInput(tool, long).success).toBe(true);
 		await executeTool(tool, long);
 
-		const sent = service.send.mock.calls[0][0];
-		expect(sent.summary.length).toBeLessThanOrEqual(1000);
+		expect(service.send.mock.calls[0][0].summary).toHaveLength(5000);
 	});
 
 	it('rejects an unknown category', () => {

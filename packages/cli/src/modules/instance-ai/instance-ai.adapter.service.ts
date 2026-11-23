@@ -458,6 +458,9 @@ export interface InstanceAiFeatureFlags {
 	preferencesNoteVariant?: string;
 }
 
+const AGENT_FEEDBACK_SUMMARY_MAX_LENGTH = 1000;
+const AGENT_FEEDBACK_TOOL_NAME_MAX_LENGTH = 100;
+
 @Service()
 export class InstanceAiAdapterService {
 	private readonly logger: Logger;
@@ -922,7 +925,11 @@ export class InstanceAiAdapterService {
 		};
 	}
 
-	/** The summary is agent-written free text, so secrets and personal data are removed here. */
+	/**
+	 * The summary and the tool name are agent-written text, so secrets and personal data
+	 * are removed here. Redaction runs on the full text before the cut, so a secret
+	 * that crosses the cut is still found.
+	 */
 	private createAgentFeedbackAdapter(user: User): InstanceAiAgentFeedbackService {
 		return {
 			send: ({ category, severity, summary, toolName, threadId, runId }) => {
@@ -932,8 +939,14 @@ export class InstanceAiAdapterService {
 					...(runId ? { run_id: runId } : {}),
 					category,
 					severity,
-					summary: redactTelemetryText(summary),
-					...(toolName ? { tool_name: toolName } : {}),
+					summary: redactTelemetryText(summary, { maxLength: AGENT_FEEDBACK_SUMMARY_MAX_LENGTH }),
+					...(toolName
+						? {
+								tool_name: redactTelemetryText(toolName, {
+									maxLength: AGENT_FEEDBACK_TOOL_NAME_MAX_LENGTH,
+								}),
+							}
+						: {}),
 				});
 			},
 		};

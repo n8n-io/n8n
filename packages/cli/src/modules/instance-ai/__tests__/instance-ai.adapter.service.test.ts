@@ -10401,4 +10401,40 @@ describe('createContext: agentFeedbackService', () => {
 			'sk-ant-api03-abcdefghijklmnopqrstuvwxyz0123456789',
 		);
 	});
+
+	it('removes a secret that crosses the summary length cap, then cuts the summary', () => {
+		const { service, telemetry } = buildService();
+		const context = service.createContext(user, { threadId: 't1' });
+		const secret = 'sk-ant-api03-abcdefghijklmnopqrstuvwxyz0123456789';
+
+		context.agentFeedbackService!.send({
+			category: 'bug',
+			severity: 'minor',
+			summary: `${'x'.repeat(990)} ${secret} ${'y'.repeat(500)}`,
+			threadId: 't1',
+			runId: 'r1',
+		});
+
+		const [, properties] = telemetry.track.mock.calls[0];
+		const { summary } = properties as { summary: string };
+		expect(summary).not.toContain('sk-ant-api03-abcdefghij');
+		expect(summary.length).toBeLessThanOrEqual(1003);
+	});
+
+	it('removes secrets from the tool name before it tracks the event', () => {
+		const { service, telemetry } = buildService();
+		const context = service.createContext(user, { threadId: 't1' });
+
+		context.agentFeedbackService!.send({
+			category: 'bug',
+			severity: 'minor',
+			summary: 'A tool failed.',
+			toolName: 'sk-ant-api03-abcdefghijklmnopqrstuvwxyz0123456789',
+			threadId: 't1',
+			runId: 'r1',
+		});
+
+		const [, properties] = telemetry.track.mock.calls[0];
+		expect(JSON.stringify(properties)).not.toContain('abcdefghijklmnopqrstuvwxyz0123456789');
+	});
 });

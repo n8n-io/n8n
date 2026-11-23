@@ -8,8 +8,6 @@ import { z } from 'zod';
 import type { InstanceAiContext } from '../types';
 import { DOMAIN_TOOL_IDS } from './tool-ids';
 
-const SUMMARY_MAX_LENGTH = 1000;
-
 /** One run can send a few distinct problems, but a loop must not flood the team. */
 const MAX_REPORTS_PER_RUN = 3;
 
@@ -47,7 +45,8 @@ const CAPPED_MESSAGE =
 	'Feedback is already recorded for this turn. No reply will come. Do not send more feedback in this turn. Continue the task.';
 
 export function createSendFeedbackTool(context: InstanceAiContext) {
-	// The factory runs once per run, so this counts the reports of one run.
+	// Counts the reports of one agent build. A resume rebuilds the agent and starts a new
+	// count, but a resume needs a user answer, so the cap still stops a loop from flooding.
 	let reportsSent = 0;
 
 	return new Tool(DOMAIN_TOOL_IDS.SEND_FEEDBACK)
@@ -59,10 +58,10 @@ export function createSendFeedbackTool(context: InstanceAiContext) {
 			reportsSent++;
 
 			try {
+				// The full summary goes to the host, which redacts it and then cuts it.
+				// Cutting here first could split a secret so that redaction misses it.
 				context.agentFeedbackService?.send({
 					...input,
-					// Cut, not reject: feedback must never cost the agent a retry.
-					summary: input.summary.slice(0, SUMMARY_MAX_LENGTH),
 					threadId: context.threadId,
 					runId: context.runId,
 				});
