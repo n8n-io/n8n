@@ -15,7 +15,7 @@ import { createDataSource } from '../data-source';
 import { WorkflowExecution } from '../entities/workflow-execution.entity';
 import { WorkflowStepExecution } from '../entities/workflow-step-execution.entity';
 import { generateId } from '../generate-id';
-import { WidenStepStaleAfterIndex1795046400000 } from '../migrations/1795046400000-WidenStepStaleAfterIndex';
+import { WidenStepStaleAfterIndex1795050000000 } from '../migrations/1795050000000-WidenStepStaleAfterIndex';
 import { TypeOrmExecutionViewStore } from '../typeorm-execution-view-store';
 import { TypeOrmStepStore } from '../typeorm-step-store';
 
@@ -1789,7 +1789,7 @@ describe('workflow_step_execution table (integration)', () => {
 			);
 			return row.comment;
 		};
-		const migration = new WidenStepStaleAfterIndex1795046400000();
+		const migration = new WidenStepStaleAfterIndex1795050000000();
 		const queryRunner = dataSource.createQueryRunner();
 		await queryRunner.connect();
 		try {

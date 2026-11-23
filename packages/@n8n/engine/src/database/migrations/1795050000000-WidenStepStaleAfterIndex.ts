@@ -43,7 +43,7 @@ async function setComment(queryRunner: QueryRunner, comment: string): Promise<vo
  * statuses to every row that has a time. A settled row leaves the index when
  * the orchestration worker clears its time.
  */
-export class WidenStepStaleAfterIndex1795046400000 implements MigrationInterface {
+export class WidenStepStaleAfterIndex1795050000000 implements MigrationInterface {
 	async up(queryRunner: QueryRunner): Promise<void> {
 		await replaceIndex(queryRunner, HAS_STALE_AFTER);
 		await setComment(queryRunner, COMMENT_AFTER);
