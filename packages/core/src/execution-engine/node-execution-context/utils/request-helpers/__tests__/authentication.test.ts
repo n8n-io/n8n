@@ -97,6 +97,32 @@ describe('httpRequestWithAuthentication', () => {
 		expect(request).not.toHaveBeenCalled();
 	});
 
+	test('signs a request with the base oAuth2Api credential type, which has no parent types', async () => {
+		mockAdditionalData.credentialsHelper.getParentTypes.mockReturnValue([]);
+		mockThis.getCredentials.mockResolvedValue({
+			oauthTokenData: { access_token: 'access-token', token_type: 'Bearer' },
+		});
+		mockThis.helpers.httpRequest.mockResolvedValueOnce({ ok: true });
+
+		await expect(
+			httpRequestWithAuthentication.call(
+				mockThis,
+				'oAuth2Api',
+				{ method: 'GET', url: `${baseUrl}/data` },
+				mockWorkflow,
+				mockNode,
+				mockAdditionalData,
+			),
+		).resolves.toEqual({ ok: true });
+
+		expect(mockThis.helpers.httpRequest).toHaveBeenCalledWith(
+			expect.objectContaining({
+				headers: expect.objectContaining({ Authorization: 'Bearer access-token' }),
+			}),
+		);
+		expect(request).not.toHaveBeenCalled();
+	});
+
 	test('still refreshes and resends on 401 for preAuthentication credentials', async () => {
 		mockAdditionalData.credentialsHelper.getParentTypes.mockReturnValue([]);
 		mockThis.getCredentials.mockResolvedValue({ sessionToken: 'stale' });
