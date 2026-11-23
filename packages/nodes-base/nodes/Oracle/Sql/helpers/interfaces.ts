@@ -17,6 +17,7 @@ export type QueryWithValues = {
 	values?: QueryValue; // For execute
 	executeManyValues?: QueryValue[]; // for executeMany
 	outputColumns?: string[]; // RETURNING INTO columns in sql string
+	startAfterTextColumn?: string; // Start After pages by this text column, which needs a binary session sort
 };
 
 export type WhereClause = { column: string; condition: string; value: any };

@@ -1871,17 +1871,27 @@ VALUES (
 				mockConnection.execute.mockImplementation((sql: string = '') => {
 					if (isCatalogQuery([sql])) return { rows: [{ COLUMN_NAME: 'NAME' }] };
 					if (sql.includes('NLS_SORT')) return { rows: [{ NLS_SORT: 'GERMAN' }] };
-					return defaultImpl(sql);
+					return {
+						rows: defaultImpl(sql).rows.map((row) =>
+							row.COLUMN_NAME === 'NAME' ? { ...row, NULLABLE: 'N' } : row,
+						),
+					};
 				});
 				const mockThis = createMockExecuteFunction({
 					...baseParameters,
 					startAfter: { values: { column: 'NAME', value: 'b' } },
 				});
-				const runQueries = getRunQueriesFn(mockThis, pool);
+				// The real runner, because it reads NLS_SORT on the connection that runs the page query
+				const runQueries = configureQueryRunner.call(mockThis, mockThis.getNode(), false, pool);
 
 				await expect(
 					select.execute.call(mockThis, runQueries, items, nodeOptions, pool),
 				).rejects.toThrow('Start After cannot use the text column "NAME" in this database session');
+				expect(mockConnection.execute).not.toHaveBeenCalledWith(
+					expect.stringContaining('ORDER BY "NAME"'),
+					expect.anything(),
+					expect.anything(),
+				);
 			});
 
 			it('should not duplicate ORDER BY when the cursor column is already sorted', async () => {

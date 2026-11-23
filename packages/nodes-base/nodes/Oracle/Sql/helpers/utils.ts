@@ -418,18 +418,33 @@ export async function getUniqueKeyColumns(
 	}
 }
 
-/** The NLS_SORT of the database session, for example BINARY or GERMAN. */
-export async function getSessionSort(pool: oracledb.Pool): Promise<string> {
-	const conn = await pool.getConnection();
-	try {
-		const result = await conn.execute<{ NLS_SORT: string }>(
-			"SELECT SYS_CONTEXT('USERENV', 'NLS_SORT') AS nls_sort FROM dual",
-			[],
-			{ outFormat: oracledb.OUT_FORMAT_OBJECT },
+/**
+ * Throws if a query pages by a text column and the session of `connection` does not sort in binary order.
+ * ORDER BY follows NLS_SORT, but a comparison and a unique index can use binary order.
+ * Sessions of one pool can differ, so the check runs on the connection that runs the queries.
+ */
+async function assertBinarySort(
+	node: INode,
+	connection: oracledb.Connection,
+	queries: QueryWithValues[],
+) {
+	const itemIndex = queries.findIndex((query) => query.startAfterTextColumn);
+	if (itemIndex === -1) return;
+	const result = await connection.execute<{ NLS_SORT: string }>(
+		"SELECT SYS_CONTEXT('USERENV', 'NLS_SORT') AS nls_sort FROM dual",
+		[],
+		{ outFormat: oracledb.OUT_FORMAT_OBJECT },
+	);
+	const sessionSort = result.rows?.[0]?.NLS_SORT ?? 'BINARY';
+	if (sessionSort !== 'BINARY') {
+		throw new NodeOperationError(
+			node,
+			`Start After cannot use the text column "${queries[itemIndex].startAfterTextColumn}" in this database session`,
+			{
+				itemIndex,
+				description: `The session sorts text with NLS_SORT = ${sessionSort}. Start After needs binary order, or a page can skip rows. Use a NUMBER column, or connect with a session where NLS_SORT is BINARY.`,
+			},
 		);
-		return result.rows?.[0]?.NLS_SORT ?? 'BINARY';
-	} finally {
-		await conn.close();
 	}
 }
 
@@ -438,7 +453,7 @@ const START_AFTER_TYPE = /^(NUMBER|N?VARCHAR2|N?CHAR)$/;
 
 /**
  * Throws if Start After cannot page by the column without skipped or repeated rows.
- * `uniqueColumns` comes from getUniqueKeyColumns, `sessionSort` from getSessionSort.
+ * `uniqueColumns` comes from getUniqueKeyColumns. The query runner checks the sort order of a text column.
  */
 export function checkStartAfterColumn(
 	node: INode,
@@ -447,7 +462,6 @@ export function checkStartAfterColumn(
 	column: string,
 	columnInfo: ColumnDefinition | undefined,
 	uniqueColumns: string[],
-	sessionSort: string,
 ) {
 	if (!columnInfo) {
 		throw new NodeOperationError(node, `Column "${column}" was not found in table "${table}"`, {
@@ -456,17 +470,6 @@ export function checkStartAfterColumn(
 	}
 	assertUniqueCursorColumn(node, itemIndex, uniqueColumns, column);
 	assertCursorColumnType(node, itemIndex, column, columnInfo.type, START_AFTER_TYPE);
-	// ORDER BY follows NLS_SORT, but a comparison and a unique index can use binary order
-	if (columnInfo.type !== 'NUMBER' && sessionSort !== 'BINARY') {
-		throw new NodeOperationError(
-			node,
-			`Start After cannot use the text column "${column}" in this database session`,
-			{
-				itemIndex,
-				description: `The session sorts text with NLS_SORT = ${sessionSort}. Start After needs binary order, or a page can skip rows. Use a NUMBER column, or connect with a session where NLS_SORT is BINARY.`,
-			},
-		);
-	}
 	assertCursorColumnNotNull(node, itemIndex, column, columnInfo.nullable);
 }
 
@@ -783,6 +786,7 @@ export function configureQueryRunner(
 				return createErrorItems(error, items);
 			}
 			try {
+				await assertBinarySort(node, connection, queries);
 				for (let i = 0; i < queries.length; i++) {
 					try {
 						const { query, values, outputColumns } = queries[i];
@@ -846,6 +850,7 @@ export function configureQueryRunner(
 				return createErrorItems(error, items);
 			}
 			try {
+				await assertBinarySort(node, connection, queries);
 				for (let i = 0; i < queries.length; i++) {
 					try {
 						const { query, values, outputColumns } = queries[i];

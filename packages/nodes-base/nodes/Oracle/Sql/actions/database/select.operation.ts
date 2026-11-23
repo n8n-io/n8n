@@ -30,7 +30,6 @@ import {
 	quoteSqlIdentifier,
 	getColumnMap,
 	getColumnMetaData,
-	getSessionSort,
 	getUniqueKeyColumns,
 } from '../../helpers/utils';
 import {
@@ -103,7 +102,6 @@ export async function execute(
 		async (schema: string, table: string) => await getUniqueKeyColumns(pool, schema, table),
 		(schema, table) => `${schema}.${table}`,
 	);
-	const sessionSort = memoize(async () => await getSessionSort(pool));
 
 	const conn = await pool.getConnection();
 	const isCDBSupported = conn.oracleServerVersion >= 1200000000;
@@ -145,6 +143,7 @@ export async function execute(
 		const sortRules =
 			((this.getNodeParameter('sort', i, []) as IDataObject).values as SortRule[]) || [];
 		let rules = sortRules;
+		let startAfterTextColumn: string | undefined;
 
 		const returnAll = this.getNodeParameter('returnAll', i, false);
 		const startAfter = returnAll
@@ -162,8 +161,8 @@ export async function execute(
 				column,
 				columnInfo,
 				await uniqueColumnsOf(schema, table),
-				columnInfo && columnInfo.type !== 'NUMBER' ? await sessionSort() : 'BINARY',
 			);
+			if (columnInfo.type !== 'NUMBER') startAfterTextColumn = column;
 
 			if (value !== undefined) {
 				const operator = rules[0].direction === 'DESC' ? '<' : '>';
@@ -201,7 +200,11 @@ export async function execute(
 			query = innerQuery;
 		}
 
-		const queryWithValues = { query, values };
+		const queryWithValues = {
+			query,
+			values,
+			...(startAfterTextColumn && { startAfterTextColumn }),
+		};
 		queries.push(queryWithValues);
 	}
 
