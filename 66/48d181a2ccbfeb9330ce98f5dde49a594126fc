@@ -6,6 +6,10 @@ packages/@n8n/cli/src/__tests__/promotion-missing-dependencies.test.ts
   s_4a494bfdece475::t_6bb6e806c8bf44 1-5,8-35,36-96,108-115,118-119,121-122,136,162-190,192-195,197-201,203-217,371-389,432-453,472-474,476-477
   s_4a494bfdece475::t_d6e6cde58bd017 7,116-117,120,123-124,390-406,408-415,465-476
   s_4a494bfdece475::t_dc3afb3b91f8d5 477
+  s_4a494bfdece475::t_6b3674e38adbfe 429-431
+  s_4a494bfdece475::t_3ca5ce37c1a00b 407,416-427
+  s_4a494bfdece475::t_00f4b87ec1a75d 148-149
+  s_4a494bfdece475::t_b1e21e72ecdbce 428
 packages/@n8n/cli/src/__tests__/client.test.ts
   s_4a494bfdece475::t_e7117b9a9e689a 246-256
   s_4a494bfdece475::t_d6e6cde58bd017 114-126,178-215,228-243
@@ -14,10 +18,12 @@ packages/@n8n/cli/skills/n8n-cli/SKILL.md
   s_4a494bfdece475::t_4fb947a90bfcdb 211,213,374-379,382-384
   s_4a494bfdece475::t_ced678633a5b8f 212
   s_4a494bfdece475::t_b0069550218e5c 215-217,253-255,258-260,282-284,364-366,370-373,385-391,401-403
+  s_4a494bfdece475::t_7a996371a746d1 392-396
 packages/@n8n/cli/src/__tests__/promotion-environment-operations.test.ts
   s_4a494bfdece475::t_6bb6e806c8bf44 584
   s_4a494bfdece475::t_4d2a4e109d6e7e 62-85,87,89-100,367-386,388-389,391-395,398-399,402,405-408,410-438,440-441,443-446,449-451,453-458,517-583,585-628,630-631,634-640
   s_4a494bfdece475::t_1de8c74b4e842a 86,88,387,390,401,403-404,409,448,452,633,660,692,767,801,833,995,1029
+  s_4a494bfdece475::t_00f4b87ec1a75d 396-397,439,465-467,474-479,484,487-489,499-501,629
 packages/@n8n/cli/src/commands/promotion-environment/promote-check.ts
   s_4a494bfdece475::t_7d6498dd24750e 1-2,4,6-9,11-32,42-43,45-49
   s_4a494bfdece475::t_a742f698149d87 3,5,10,33-41,44
@@ -35,6 +41,7 @@ packages/@n8n/cli/src/commands/promotion-environment/missing-dependencies.ts
   s_4a494bfdece475::t_7d6c6994ed691f 93,121,142-146,148-150,155-156,158-159,193-194,206-208,213
   s_4a494bfdece475::t_79febd4e85aa44 1-7,11-27,104,108-109,111,114,127,138-143,162-169,211
   s_4a494bfdece475::t_82cfe5021204d3 110
+  s_4a494bfdece475::t_aa5a685dbd0e97 212
 packages/@n8n/cli/src/__tests__/promotion-command-wiring.test.ts
   s_4a494bfdece475::t_e7117b9a9e689a 13,151-156
   s_4a494bfdece475::t_88026be1469b44 157
@@ -46,10 +53,14 @@ packages/@n8n/cli/docs/commands/promotions.md
   s_4a494bfdece475::t_131629c9416ff7 534,614-615,659-660,662-667,669-670
   s_4a494bfdece475::t_5927cf95eb1313 291-292,299-311,322-323,339,344-346,354-359,517-518,548-550,611-613,616-625,632-658,661,668,671-682,697-698,707,711,713-756,798,812-821,839,843-854,856-857,859-861,863-877,879-881,883-885,918-920,949-954,969-975,1020-1022,1036-1038,1057-1062
   s_4a494bfdece475::t_4965cb208b0d64 1063
+  s_4a494bfdece475::t_3feb42b53fca6e 605-606,609-610,626-631,805-811
+  s_4a494bfdece475::t_5b657331775519 801
+  s_4a494bfdece475::t_610cbc2f76efd6 830,855,858,862,878,882
 packages/@n8n/cli/src/commands/promotion-environment/apply-command.ts
   s_4a494bfdece475::t_7d6c6994ed691f 109,139
   s_4a494bfdece475::t_2d5f464681292f 67-70
   s_4a494bfdece475::t_e71e6d01db595e 14,16-18,40-44,71-77,110-119,122-124,140-153
+  s_4a494bfdece475::t_c46d62a5d45d00 1-5,131
 packages/@n8n/cli/src/commands/promotion-environment/list-apply-changes.ts
   s_4a494bfdece475::t_7d6498dd24750e 4,9,34-38
 packages/@n8n/cli/src/__tests__/promotion-environment-list-changes.test.ts
