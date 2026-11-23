@@ -44,6 +44,7 @@ function toHandle(irNode: IrNode, position: [number, number], isTrigger: boolean
 		// The IR holds JSON only, which is what the SDK type describes.
 		parameters: irNode.params as SdkDataObject,
 		position,
+		...(irNode.flags?.onError ? { onError: irNode.flags.onError } : {}),
 		...(irNode.flags?.disabled ? { disabled: true } : {}),
 	};
 	return isTrigger
@@ -77,6 +78,7 @@ function toWorkflowBase(json: WorkflowJSON, id: string): IWorkflowBase {
 		typeVersion: sdkNode.typeVersion,
 		position: sdkNode.position,
 		parameters: jsonParse<INodeParameters>(JSON.stringify(sdkNode.parameters ?? {})),
+		...(sdkNode.onError ? { onError: sdkNode.onError } : {}),
 		...(sdkNode.disabled ? { disabled: true } : {}),
 	}));
 	const connections = toConnections(json);

@@ -25,7 +25,9 @@ export type Block =
 	/** Two branches into the two inputs of a Merge node. */
 	| { kind: 'merge'; node: NodeDraft; left: Block | null; right: Block | null }
 	/** Split In Batches: output 1 runs the body, which returns to input 0. Output 0 continues. */
-	| { kind: 'loop'; node: NodeDraft; body: Block | null };
+	| { kind: 'loop'; node: NodeDraft; body: Block | null }
+	/** A node with `onError: continueErrorOutput`. Its error output goes to the handler. */
+	| { kind: 'errorOutput'; node: NodeDraft; handler: Block | null };
 
 export type End = { from: string; out: number };
 
@@ -37,6 +39,7 @@ export interface PlacedNode {
 	catalogId: string;
 	draft: ParamDraft;
 	via: CombinatorId;
+	onError?: 'continueErrorOutput';
 	/** The nodes that ran before this node. */
 	upstream: string[];
 }
@@ -66,7 +69,13 @@ export function connect(state: LowerState, ends: End[], to: string, input: numbe
 	for (const end of ends) state.edges.push({ from: end.from, out: end.out, to, in: input });
 }
 
-function place(state: LowerState, node: NodeDraft, via: CombinatorId, upstream: string[]): string {
+function place(
+	state: LowerState,
+	node: NodeDraft,
+	via: CombinatorId,
+	upstream: string[],
+	extra: Partial<PlacedNode> = {},
+): string {
 	state.counter.value += 1;
 	const key = `${shortName(node.catalogId)}${state.counter.value}`;
 	state.nodes.push({
@@ -75,6 +84,7 @@ function place(state: LowerState, node: NodeDraft, via: CombinatorId, upstream: 
 		draft: node.params,
 		via,
 		upstream,
+		...extra,
 	});
 	return key;
 }
@@ -142,6 +152,17 @@ export function lowerBlock(block: Block, flow: Flow, state: LowerState): Flow {
 			connect(state, passEnd.ends, key, 0);
 			return { ends: [{ from: key, out: 0 }], upstream: passEnd.upstream };
 		}
+
+		case 'errorOutput': {
+			const key = place(state, block.node, 'errorOutput', flow.upstream, {
+				onError: 'continueErrorOutput',
+			});
+			connect(state, flow.ends, key, 0);
+			// The error output comes after the regular outputs.
+			const errorOut = outputCount(getEntry(block.node.catalogId), block.node.params);
+			if (block.handler) lowerBlock(block.handler, after(key, errorOut, flow.upstream), state);
+			return after(key, 0, flow.upstream);
+		}
 	}
 }
 
@@ -162,6 +183,8 @@ export function blockSize(block: Block): number {
 			return 1 + sizeOf(block.left) + sizeOf(block.right);
 		case 'loop':
 			return 1 + sizeOf(block.body);
+		case 'errorOutput':
+			return 1 + sizeOf(block.handler);
 	}
 }
 
