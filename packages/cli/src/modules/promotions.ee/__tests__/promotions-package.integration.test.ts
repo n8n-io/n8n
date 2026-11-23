@@ -104,6 +104,7 @@ import { PromotionProviderRepository } from '../database/repositories/promotion-
 import type { GitHostClients } from '../git-hosts/git-host-clients';
 import { ApplyPreviewService } from '../apply-preview.service';
 import { PromotePreviewService } from '../promote-preview.service';
+import { PromotionCredentialSelectionService } from '../promotion-credential-selection.service';
 import { LocalPackageEntities } from '../local-package-entities.service';
 import { PromotionChangeService } from '../promotion-change.service';
 import { PromotionEnvironmentResolver } from '../promotion-environment.resolver';
@@ -244,6 +245,7 @@ beforeEach(async () => {
 		Container.get(SharedWorkflowRepository),
 		projectService,
 		Container.get(FolderService),
+		Container.get(PromotionCredentialSelectionService),
 		packagesService,
 		Container.get(ApplyPreviewService),
 		Container.get(PromotePreviewService),
@@ -452,6 +454,7 @@ async function readBranchEntities(
 		| 'workflows'
 		| 'folders'
 		| 'projects'
+		| 'credentials'
 		| 'agents']['fileName'],
 ): Promise<Array<{ id: string; name: string; target: string }>> {
 	const exportRoot = path.join(inspectionDir, 'n8n');
@@ -533,6 +536,7 @@ function changeService() {
 		Container.get(LocalPackageEntities),
 		Container.get(PromotionEnvironmentResolver),
 		Container.get(ProjectRepository),
+		Container.get(PromotionCredentialSelectionService),
 	);
 }
 
@@ -3183,6 +3187,63 @@ describe('Promote a project selection — branch effects', () => {
 		expect((await readBranchEntities(second.dir, 'workflow.json')).map((w) => w.id).sort()).toEqual(
 			workflows.map((w) => w.id).sort(),
 		);
+	});
+
+	it('promotes a credential on its own under its owner project and then lists no change', async () => {
+		const remote = await createRemote();
+		const environments = await createInstanceEnvironments(remote.bareDir);
+		await service.clone(environments.promote.id, owner);
+		const { project } = await setupProjectWithWorkflows('Platform', []);
+		const credential = await saveCredential(
+			{ name: 'CRM key', type: 'httpHeaderAuth', data: { name: 'X-Key', value: 'secret' } },
+			{ project, role: 'credential:owner' },
+		);
+
+		const before = await changeService().getPreview(owner, project.id, 'promote');
+		expect(before.resources).toContainEqual(
+			expect.objectContaining({
+				key: `credential:${credential.id}`,
+				change: 'added',
+				selectable: true,
+				parentKey: `project:${project.id}`,
+			}),
+		);
+
+		await service.promoteProjectSelection(project.id, owner, {
+			credentialIds: [credential.id],
+			commitMessage: 'Promote credential',
+			canExportVariableValues: true,
+		});
+
+		const { dir } = await inspectBranch(remote.bareDir);
+		const [onBranch] = await readBranchEntities(dir, PACKAGE_ENTITY_LAYOUT.credentials.fileName);
+		expect(onBranch).toMatchObject({ id: credential.id, name: 'CRM key' });
+		expect(onBranch.target).toMatch(new RegExp(`^projects/[^/]+-${project.id}/credentials/`));
+		expect(
+			await readFile(path.join(dir, 'n8n', onBranch.target, 'credential.json'), 'utf-8'),
+		).not.toContain('secret');
+
+		const after = await changeService().getPreview(owner, project.id, 'promote');
+		expect(after.resources.find(({ type }) => type === 'credential')).toBeUndefined();
+	});
+
+	it('refuses to promote a credential that another project owns', async () => {
+		const remote = await createRemote();
+		const environments = await createInstanceEnvironments(remote.bareDir);
+		await service.clone(environments.promote.id, owner);
+		const { project } = await setupProjectWithWorkflows('Sales', []);
+		const platform = await createTeamProject('Platform', owner);
+		const credential = await saveCredential(
+			{ name: 'CRM key', type: 'httpHeaderAuth', data: { name: 'X-Key', value: 'secret' } },
+			{ project: platform, role: 'credential:owner' },
+		);
+
+		await expect(
+			service.promoteProjectSelection(project.id, owner, {
+				credentialIds: [credential.id],
+				canExportVariableValues: true,
+			}),
+		).rejects.toThrow(BadRequestError);
 	});
 
 	it.each(['n8n', 'n8n/manifest.json'])(

@@ -70,6 +70,7 @@ import {
 	ApplyPreviewService,
 	instanceApplyRequest,
 } from './apply-preview.service';
+import { PromotionCredentialSelectionService } from './promotion-credential-selection.service';
 import { PromotePreviewService } from './promote-preview.service';
 import { previewEnvironment, previewSource } from './promotion-preview';
 import { GitCommitPackageReader } from './git-commit-package-reader';
@@ -156,6 +157,7 @@ export class PromotionsService {
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly projectService: ProjectService,
 		private readonly folderService: FolderService,
+		private readonly credentialSelection: PromotionCredentialSelectionService,
 		private readonly n8nPackagesService: N8nPackagesService,
 		private readonly applyPreviewService: ApplyPreviewService,
 		private readonly promotePreviewService: PromotePreviewService,
@@ -518,6 +520,7 @@ export class PromotionsService {
 					projectIds: [selection.projectId],
 					projectWorkflowIds: selection.workflowIds,
 					projectFolderIds: selection.folderIds,
+					projectCredentialIds: selection.credentialIds,
 					includeAgents: false,
 					includeVariableValues: true,
 					canExportVariableValues: request.canExportVariableValues,
@@ -650,6 +653,7 @@ export class PromotionsService {
 	): Promise<PromoteSelectionResultDto> {
 		const workflowIds = request.workflowIds ?? [];
 		const folderIds = request.folderIds ?? [];
+		const credentialIds = request.credentialIds ?? [];
 
 		// Resolve like the change preview does, so the promote pushes to the environment
 		// the user previewed. resolveForProject validates the project and environment too.
@@ -692,6 +696,7 @@ export class PromotionsService {
 							workflowIds,
 							folderIds,
 						);
+						await this.credentialSelection.assertSelectable(actor, projectId, credentialIds);
 						return await this.promoteSelectionResolved(
 							current,
 							actor,
@@ -699,7 +704,7 @@ export class PromotionsService {
 								commitMessage: request.commitMessage,
 								canExportVariableValues: request.canExportVariableValues,
 							},
-							selection,
+							{ ...selection, credentialIds },
 							movedTo,
 							signal,
 						);
@@ -1676,6 +1681,7 @@ export class PromotionsService {
 		const exported = new Map((staging.workflows ?? []).map((w) => [w.id, w.name]));
 		const pushed = selection.workflowIds.map((id) => ({ id, name: exported.get(id) ?? id }));
 		const exportedFolders = new Map((staging.folders ?? []).map((f) => [f.id, f.name]));
+		const exportedCredentials = new Map((staging.credentials ?? []).map((c) => [c.id, c.name]));
 
 		return buildSelectionPromotionCommitMessage({
 			projectName,
@@ -1683,6 +1689,10 @@ export class PromotionsService {
 			updated: pushed.filter(({ id }) => onBranch.has(id)),
 			removed: selection.deletedWorkflowIds.map((id) => ({ id, name: onBranch.get(id) ?? id })),
 			folders: selection.folderIds.map((id) => ({ id, name: exportedFolders.get(id) ?? id })),
+			credentials: (selection.credentialIds ?? []).map((id) => ({
+				id,
+				name: exportedCredentials.get(id) ?? id,
+			})),
 		});
 	}
 
