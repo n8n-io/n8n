@@ -1,0 +1,58 @@
+[
+  {
+    "scenario": "low",
+    "runs / s asked": 20,
+    "runs / s done": 20,
+    "runs": 199,
+    "start s": 10,
+    "events expected": 1952,
+    "events received": 1952,
+    "events lost": 0,
+    "lost %": 0,
+    "dropped at the 10,000 cap": 0,
+    "feed ended runs missing": 0,
+    "feed repeats": 0
+  },
+  {
+    "scenario": "medium",
+    "runs / s asked": 100,
+    "runs / s done": 93,
+    "runs": 999,
+    "start s": 10,
+    "events expected": 9792,
+    "events received": 9792,
+    "events lost": 0,
+    "lost %": 0,
+    "dropped at the 10,000 cap": 0,
+    "feed ended runs missing": 0,
+    "feed repeats": 0
+  },
+  {
+    "scenario": "high",
+    "runs / s asked": 400,
+    "runs / s done": 112,
+    "runs": 3999,
+    "start s": 10,
+    "events expected": 39192,
+    "events received": 39192,
+    "events lost": 0,
+    "lost %": 0,
+    "dropped at the 10,000 cap": 0,
+    "feed ended runs missing": 0,
+    "feed repeats": 0
+  },
+  {
+    "scenario": "medium, control plane restarts",
+    "runs / s asked": 100,
+    "runs / s done": 99,
+    "runs": 999,
+    "start s": 10,
+    "events expected": 9792,
+    "events received": 7842,
+    "events lost": 1950,
+    "lost %": 19.91,
+    "dropped at the 10,000 cap": 0,
+    "feed ended runs missing": 0,
+    "feed repeats": 0
+  }
+]
