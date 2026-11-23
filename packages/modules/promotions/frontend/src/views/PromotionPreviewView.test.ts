@@ -1740,7 +1740,7 @@ describe('PromotionPreviewView', () => {
 				'promotion-preview-blocker-disabled-action',
 			);
 			expect(addWorkflow).toHaveAccessibleName(
-				'Add workflow. The branch does not hold this workflow, so you cannot add it here. Promote it from its project first.',
+				'Add workflow. The branch does not hold this workflow, so you cannot add it here.',
 			);
 			const addCredential = within(credentialRow).getByTestId(
 				'promotion-preview-blocker-disabled-action',
@@ -1748,7 +1748,7 @@ describe('PromotionPreviewView', () => {
 			expect(within(addCredential).getByRole('button', { name: 'Add credential' })).toBeDisabled();
 			addCredential.focus();
 			expect(await findByTestId('tooltip-content')).toHaveTextContent(
-				'The branch does not hold this credential, so you cannot add it here. Promote it from its project first.',
+				'The branch does not hold this credential, so you cannot add it here.',
 			);
 
 			// "Weekly KPI report" (w3) uses the sub-workflow, which does not stop it.
@@ -1915,6 +1915,38 @@ describe('PromotionPreviewView', () => {
 				expect(queryByTestId('promotion-preview-submit-blocked')).not.toBeInTheDocument();
 				expect(submit).toBeEnabled();
 			});
+
+			it.each([
+				{
+					reason: 'archived',
+					status: 'Archived',
+					detail:
+						'This Apply archives this workflow. Workflows that use it fail until it is unarchived.',
+				},
+				{
+					reason: 'not-on-instance',
+					status: 'Missing',
+					detail:
+						'This Apply deletes this workflow. Workflows that use it fail until it exists here again.',
+				},
+			] as const)(
+				'should say what the Apply does to a selected workflow with the reason $reason',
+				async ({ reason, status, detail }) => {
+					vi.mocked(api.getPromotionPreview).mockResolvedValue(
+						previewWithCheck(
+							check({ missingDependencies: [{ ...targetSelectedWorkflow, reason }] }),
+						),
+					);
+					const { getAllByTestId, getByRole } = await renderApply();
+
+					// The selection includes the target, so the entry holds.
+					await openTab(getByRole, /Issues/);
+
+					expect(getAllByTestId('promotion-preview-blocker-row').map(cells)).toEqual([
+						[`Weekly KPI report${detail}`, 'Invoice reconciliation', 'Workflow', status, ''],
+					]);
+				},
+			);
 
 			it('should show one row at a time for two entries of one workflow with opposite conditions', async () => {
 				vi.mocked(api.getPromotionPreview).mockResolvedValue(

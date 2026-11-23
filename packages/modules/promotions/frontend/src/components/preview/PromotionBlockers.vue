@@ -311,8 +311,21 @@ const WORKFLOW_ISSUES: Partial<
 	},
 };
 
-const workflowIssue = ({ kind, reason }: PromotionMissingDependency) =>
-	kind === 'workflow' ? WORKFLOW_ISSUES[reason] : undefined;
+/**
+ * With `target-selected`, the Apply itself archives or deletes the workflow. The text tells what
+ * the Apply does, because the workflow is not in that state yet.
+ */
+const WORKFLOW_DETAILS_BY_APPLY: Partial<Record<PromotionMissingDependencyReason, BaseTextKey>> = {
+	'not-on-instance': 'promotions.preview.blockers.workflow.notOnInstance.byApply',
+	archived: 'promotions.preview.blockers.workflow.archived.byApply',
+};
+
+function workflowIssue({ kind, reason, condition }: PromotionMissingDependency) {
+	const issue = kind === 'workflow' ? WORKFLOW_ISSUES[reason] : undefined;
+	const detailByApply =
+		condition === 'target-selected' ? WORKFLOW_DETAILS_BY_APPLY[reason] : undefined;
+	return issue && detailByApply ? { ...issue, detail: detailByApply } : issue;
+}
 
 // The row of a dependency of another project tells which project to promote it from.
 const otherProjectDetail = ({ group, project }: PromotionMissingDependency) =>
