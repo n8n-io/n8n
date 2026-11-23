@@ -18,6 +18,8 @@ export interface HttpToolArgs extends Record<string, unknown> {
 	path: string;
 	query?: Record<string, string | string[]>;
 	body?: unknown;
+	// Type of a body that is no JSON, such as `multipart/related; boundary=x`. The body is then text of one byte per character.
+	contentType?: string;
 }
 
 // Parts of a path that carry no meaning for a tool name.
@@ -48,18 +50,26 @@ function describePath(method: string, pathname: string): string {
 	return `${method.toLowerCase()}_${nouns.join('_') || 'root'}`;
 }
 
-function parseBody(body: Buffer | undefined): unknown {
-	if (!body || body.length === 0) return undefined;
-	const text = body.toString('utf8');
+// A header value with a line break would add a header.
+const isSafeContentType = (type: string): boolean => type !== '' && !/[\r\n]/.test(type);
+
+function parseBody(
+	body: Buffer | undefined,
+	contentType: string | undefined,
+): { body?: unknown; contentType?: string } {
+	if (!body || body.length === 0) return {};
 	try {
-		return JSON.parse(text) as unknown;
+		return { body: JSON.parse(body.toString('utf8')) as unknown };
 	} catch {
-		return text;
+		// A body that is no JSON (an upload) keeps its type and its bytes. Text of one byte per character holds them.
+		return contentType && isSafeContentType(contentType)
+			? { body: body.toString('latin1'), contentType }
+			: { body: body.toString('utf8') };
 	}
 }
 
 export function toToolCall(
-	req: Pick<CapturedRequest, 'method' | 'url' | 'body'>,
+	req: Pick<CapturedRequest, 'method' | 'url' | 'body'> & Partial<Pick<CapturedRequest, 'headers'>>,
 	readShaped: boolean,
 ): { name: string; args: HttpToolArgs } {
 	const method = req.method.toUpperCase();
@@ -68,7 +78,10 @@ export function toToolCall(
 		const known = query[key];
 		query[key] = known === undefined ? value : [...(Array.isArray(known) ? known : [known]), value];
 	}
-	const body = parseBody(req.body);
+	const { body, contentType } = parseBody(
+		req.body,
+		Object.entries(req.headers ?? {}).find(([name]) => name.toLowerCase() === 'content-type')?.[1],
+	);
 	return {
 		name: `${readShaped ? 'read' : 'write'}_${describePath(method, req.url.pathname)}`,
 		args: {
@@ -76,6 +89,7 @@ export function toToolCall(
 			path: req.url.pathname,
 			...(Object.keys(query).length > 0 && { query }),
 			...(body !== undefined && { body }),
+			...(contentType !== undefined && { contentType }),
 		},
 	};
 }
@@ -130,7 +144,13 @@ export function fromToolArgs(
 	let body: Buffer | undefined;
 	if (method !== 'GET' && method !== 'HEAD' && args.body !== undefined) {
 		if (typeof args.body === 'string') {
-			body = Buffer.from(args.body);
+			const type = args.contentType;
+			if (typeof type === 'string' && isSafeContentType(type)) {
+				body = Buffer.from(args.body, 'latin1');
+				out['content-type'] = type;
+			} else {
+				body = Buffer.from(args.body);
+			}
 		} else {
 			body = Buffer.from(JSON.stringify(args.body));
 			out['content-type'] = 'application/json';
