@@ -189,9 +189,17 @@ const sizeOptions = computed(() =>
 	border-radius: var(--radius);
 }
 
-// The same background as the active menu item, so the description sits inside its box.
+// The design system's background for a selected row. The menu item inside keeps no background of
+// its own, so the label and the description share one box.
 .active {
-	background-color: var(--color--background--light-1);
+	background-color: var(--background--active);
+
+	:is(
+		[data-test-id^='promotions-playground-scenario-'],
+		[data-test-id^='promotions-playground-scenario-'] *
+	) {
+		background-color: transparent;
+	}
 }
 
 .description {
