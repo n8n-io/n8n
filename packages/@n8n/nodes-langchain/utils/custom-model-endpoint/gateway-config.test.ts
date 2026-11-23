@@ -202,6 +202,57 @@ describe('createCustomModelEndpointConfig', () => {
 		expect(`${error?.message} ${error?.description ?? ''}`).not.toContain(carried);
 	});
 
+	// The login server is the second host the credential names, so it takes the same check
+	const oauth2With = (tokenUrl: string) => ({
+		url: 'https://gateway.example.com/v1',
+		authentication: 'oauth2',
+		tokenUrl,
+		clientId: 'cid',
+		clientSecret: 'shh',
+	});
+
+	const buildWith = (tokenUrl: string) =>
+		createCustomModelEndpointConfig(
+			contextWith(filterFrom(vi.fn(async () => ({ ok: true })))),
+			oauth2With(tokenUrl),
+			{ credentialType: CUSTOM_MODEL_ENDPOINT_CREDENTIAL },
+		);
+
+	const refusalFor = (tokenUrl: string) => {
+		try {
+			buildWith(tokenUrl);
+			return undefined;
+		} catch (reason) {
+			return reason as UserError;
+		}
+	};
+
+	it('builds a config from an OAuth2 credential whose token URL is usable', () => {
+		expect(buildWith('https://login.example.com/token').configuration.baseURL).toBe(
+			'https://gateway.example.com/v1',
+		);
+	});
+
+	it.each([
+		['is empty', ''],
+		['names no scheme', 'login.example.com/token'],
+		['names a scheme the client cannot call', 'ftp://login.example.com/token'],
+	])('refuses a token URL that %s', (_name, tokenUrl) => {
+		expect(refusalFor(tokenUrl)?.message).toBe('The credential has no usable Token URL');
+	});
+
+	it.each([
+		['a user name and a password', 'https://cid:s3cr3t@login.example.com/token', 's3cr3t'],
+		['a user name alone', 'https://cid@login.example.com/token', 'cid'],
+	])('refuses a token URL carrying %s, without repeating it', (_name, tokenUrl, carried) => {
+		const error = refusalFor(tokenUrl);
+
+		expect(error?.message).toBe(
+			'The Token URL of the credential carries a user name or a password',
+		);
+		expect(`${error?.message} ${error?.description ?? ''}`).not.toContain(carried);
+	});
+
 	it('checks the target against the egress filter before the request leaves', async () => {
 		const validateUrl = vi.fn(async () => ({ ok: true }));
 		const { configuration } = configFor(filterFrom(validateUrl));

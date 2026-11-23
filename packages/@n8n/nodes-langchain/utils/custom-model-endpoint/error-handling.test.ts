@@ -159,3 +159,308 @@ describe('a rejected login', () => {
 		expect(response.status).toBe(401);
 	});
 });
+
+describe('a gateway that repeats what it was sent', () => {
+	// No vendor prefix, so no pattern inside redactSecrets can cover for the code under test
+	const SECRET = 'Zx7Qw2Lm9Rt4Bv6N';
+	const TOKEN_URL = 'https://login.example.com/token';
+
+	const node = {
+		id: '1',
+		name: 'n',
+		type: 'test',
+		typeVersion: 1,
+		position: [0, 0],
+		parameters: {},
+	} as INode;
+	const ctx = { getNode: () => node } as unknown as CustomModelEndpointFetchContext;
+	const allowAll = { validateUrl: async () => ({ ok: true }) } as unknown as NodeEgressFilter;
+
+	/** The login server answers, so an OAuth2 credential reaches the gateway body under test. */
+	const routed = (body: string) =>
+		(async (url: RequestInfo | URL) =>
+			String(url) === TOKEN_URL
+				? new Response(JSON.stringify({ access_token: 'minted-token', expires_in: 3600 }), {
+						status: 200,
+						headers: { 'content-type': 'application/json' },
+					})
+				: new Response(body, { status: 401, statusText: 'Unauthorized' })) as typeof fetch;
+
+	/** Through the real transport, so the wiring of the secrets is covered with the filter. */
+	const bodyFrom = async (endpoint: EndpointCredential, body: string) => {
+		const authFetch = createCustomModelEndpointAuthFetch(
+			ctx,
+			{},
+			{ endpoint, egressFilter: allowAll, baseFetch: routed(body) },
+		);
+		return await (await authFetch(BASE_URL)).text();
+	};
+
+	const endpointWith = (
+		login: EndpointCredential['login'],
+		gatewayHeaders: Record<string, string> = {},
+	): EndpointCredential => ({ baseUrl: BASE_URL, login, gatewayHeaders });
+
+	const oauth2 = {
+		type: 'oauth2',
+		tokenUrl: TOKEN_URL,
+		clientId: 'cid',
+		clientSecret: SECRET,
+		scope: '',
+		sendCredentialsIn: 'header',
+	} as const;
+
+	it.each([
+		['a bearer token', endpointWith({ type: 'bearer', token: SECRET }), SECRET],
+		[
+			'a key in a named header',
+			endpointWith({ type: 'header', name: 'x-api-key', prefix: '', key: SECRET }),
+			SECRET,
+		],
+		[
+			'a basic password',
+			endpointWith({ type: 'basic', username: 'tenant', password: SECRET }),
+			SECRET,
+		],
+		['an OAuth2 client secret', endpointWith(oauth2), SECRET],
+		['the token minted for the request', endpointWith(oauth2), 'minted-token'],
+		['a gateway header value', endpointWith({ type: 'none' }, { 'x-tenant-key': SECRET }), SECRET],
+		[
+			'a gateway header value too short to look like a key',
+			endpointWith({ type: 'none' }, { 'x-region': 'eu' }),
+			'eu',
+		],
+	])('keeps %s out of the error', async (_name, endpoint, secret) => {
+		const body = JSON.stringify({ error: { message: `bad credential ${secret}` } });
+
+		expect(await bodyFrom(endpoint, body)).not.toContain(secret);
+	});
+
+	// The reshape branch rebuilds the message, so it needs the same filter as the pass-through
+	it.each([
+		[
+			'a top-level message, which the client does not understand',
+			(k: string) => `{"statusCode":401,"message":"Invalid API key: ${k}"}`,
+		],
+		['plain text', (k: string) => `Invalid API key: ${k}`],
+		[
+			'an HTML title',
+			(k: string) => `<html><head><title>Invalid API key: ${k}</title></head></html>`,
+		],
+	])('keeps a secret out of %s', async (_name, bodyFor) => {
+		const endpoint = endpointWith({ type: 'bearer', token: SECRET });
+
+		expect(await bodyFrom(endpoint, bodyFor(SECRET))).not.toContain(SECRET);
+	});
+
+	// Stored untrimmed, sent trimmed by Headers.set, so the gateway can only echo the trimmed one
+	it('keeps a gateway header value the user pasted with whitespace out of the error', async () => {
+		const endpoint = endpointWith({ type: 'none' }, { 'x-api-key': `${SECRET}\n` });
+		const body = JSON.stringify({ error: { message: `key ${SECRET} is revoked` } });
+
+		expect(await bodyFrom(endpoint, body)).not.toContain(SECRET);
+	});
+
+	// The pass-through path hands the body to the client untouched, so it needs the same filter
+	it('keeps a secret out of a body the client already understands', async () => {
+		const endpoint = endpointWith({ type: 'bearer', token: SECRET });
+		const body = JSON.stringify({ error: { message: 'denied', code: 'bad_key', param: SECRET } });
+
+		expect(await bodyFrom(endpoint, body)).not.toContain(SECRET);
+	});
+
+	// An empty value must not reach the replacement, where `split('')` shreds the body
+	it('survives a gateway header named Authorization with no value', async () => {
+		const endpoint = endpointWith({ type: 'none' }, { Authorization: '' });
+		const body = JSON.stringify({ error: { message: 'Missing authorization header' } });
+
+		expect(await bodyFrom(endpoint, body)).toContain('Missing authorization header');
+	});
+
+	describe('the generic pass over an error body', () => {
+		const surfacedFrom = async (body: string) =>
+			await (await wrapCustomModelEndpointErrorFetch(failingWith(body))(BASE_URL)).text();
+
+		it('removes a key the gateway forwarded from further upstream', async () => {
+			const forwarded = 'sk-proj-0123456789abcdefghijklmn';
+
+			expect(
+				await surfacedFrom(`{"error":{"message":"upstream said ${forwarded}"}}`),
+			).not.toContain(forwarded);
+		});
+
+		// The cost of the pass above: a phrase shaped like a credential goes with it
+		it('takes a scheme word followed by a long word with it', async () => {
+			const surfaced = await surfacedFrom('{"error":{"message":"Bearer authentication required"}}');
+
+			expect(surfaced).toContain('required');
+			expect(surfaced).not.toContain('Bearer authentication');
+		});
+	});
+
+	describe('a streamed answer', () => {
+		const streamed = (frames: string[]) =>
+			(async () =>
+				new Response(frames.join(''), {
+					status: 200,
+					headers: { 'content-type': 'text/event-stream' },
+				})) as typeof fetch;
+
+		const readAll = async (baseFetch: typeof fetch, login: string[]) =>
+			await (
+				await wrapCustomModelEndpointErrorFetch(baseFetch, { login, gatewayHeaders: [] })(BASE_URL)
+			).text();
+
+		// The gateway's refusal rides a frame of a 200, so the error path never sees it
+		it('keeps a secret out of an error frame', async () => {
+			const frames = [
+				'data: {"choices":[{"delta":{"content":"hi"}}]}\n\n',
+				`data: {"error":{"message":"Incorrect API key provided: ${SECRET}"}}\n\n`,
+			];
+
+			expect(await readAll(streamed(frames), [SECRET])).not.toContain(SECRET);
+		});
+
+		it('passes every frame on unchanged when none carries a secret', async () => {
+			const frames = ['data: one\n\n', 'data: two\n\n', 'data: [DONE]\n\n'];
+
+			expect(await readAll(streamed(frames), [SECRET])).toBe(frames.join(''));
+		});
+
+		// Media types are case-insensitive and carry parameters; missing either skips the filter
+		it.each([
+			['text/event-stream'],
+			['Text/Event-Stream'],
+			['TEXT/EVENT-STREAM'],
+			['text/event-stream; charset=utf-8'],
+		])('filters a frame declared %s', async (contentType) => {
+			const baseFetch = (async () =>
+				new Response(`data: {"error":{"message":"bad key ${SECRET}"}}\n\n`, {
+					status: 200,
+					headers: { 'content-type': contentType },
+				})) as typeof fetch;
+
+			expect(await readAll(baseFetch, [SECRET])).not.toContain(SECRET);
+		});
+
+		it.each([
+			['a line feed', '\n\n'],
+			['a carriage return and line feed', '\r\n\r\n'],
+			['a carriage return alone', '\r\r'],
+		])('ends a frame on %s', async (_name, boundary) => {
+			const frames = [
+				`data: {"m":"hi"}${boundary}`,
+				`data: {"error":{"message":"bad key ${SECRET}"}}${boundary}`,
+			];
+
+			expect(await readAll(streamed(frames), [SECRET])).not.toContain(SECRET);
+		});
+
+		const NOTHING_RELEASED = 'nothing released';
+
+		/**
+		 * The first chunk the consumer sees while the producer is still holding. A transform
+		 * that buffers instead of streaming releases nothing until the producer finishes.
+		 */
+		const releasedWhileProducing = async (contentType: string, head: string) => {
+			let release = () => {};
+			const held = new Promise<void>((resolve) => {
+				release = resolve;
+			});
+			const body = new ReadableStream<Uint8Array>({
+				async start(controller) {
+					const encoder = new TextEncoder();
+					controller.enqueue(encoder.encode(head));
+					await held;
+					controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+					controller.close();
+				},
+			});
+			const baseFetch = (async () =>
+				new Response(body, {
+					status: 200,
+					headers: { 'content-type': contentType },
+				})) as typeof fetch;
+
+			const response = await wrapCustomModelEndpointErrorFetch(baseFetch, {
+				login: [SECRET],
+				gatewayHeaders: [],
+			})(BASE_URL);
+			const reader = (response.body as ReadableStream<Uint8Array>).getReader();
+
+			const first = await Promise.race([
+				reader.read().then(({ value }) => new TextDecoder().decode(value)),
+				new Promise<string>((resolve) => setTimeout(() => resolve(NOTHING_RELEASED), 50)),
+			]);
+			release();
+			void reader.cancel();
+			return first;
+		};
+
+		it.each([
+			['a line feed ends the frame', 'text/event-stream', 'data: one\n\n'],
+			['a carriage return and line feed end it', 'text/event-stream', 'data: one\r\n\r\n'],
+			['a carriage return alone ends it', 'text/event-stream', 'data: one\r\r'],
+			['the media type is capitalised', 'Text/Event-Stream', 'data: one\n\n'],
+			['the media type carries a charset', 'text/event-stream; charset=utf-8', 'data: one\n\n'],
+		])('releases a frame before the stream ends when %s', async (_name, contentType, head) => {
+			expect(await releasedWhileProducing(contentType, head)).toBe(head);
+		});
+
+		// Without a bound a gateway that never ends a frame would hold the whole body in memory
+		it('releases a body that never ends a frame, rather than holding it whole', async () => {
+			const filler = 'x'.repeat(70 * 1024);
+
+			const released = await releasedWhileProducing('text/event-stream', filler);
+
+			expect(released).not.toBe(NOTHING_RELEASED);
+			expect(released.length).toBeLessThan(filler.length);
+		});
+
+		// A gateway header value is a user-chosen word that can also be in the answer, so it is
+		// filtered from an error and left alone in a 200. A model list proved this the hard way.
+		it('leaves a gateway header value alone in an answer', async () => {
+			const answer = '{"data":[{"id":"platform/gpt-4o"}]}';
+			const baseFetch = (async () =>
+				new Response(answer, {
+					status: 200,
+					headers: { 'content-type': 'application/json' },
+				})) as typeof fetch;
+			const wrapped = wrapCustomModelEndpointErrorFetch(baseFetch, {
+				login: [SECRET],
+				gatewayHeaders: ['platform'],
+			});
+
+			expect(await (await wrapped(BASE_URL)).text()).toBe(answer);
+		});
+
+		// A 200 can carry a refusal the client prints verbatim, so it is not only a stream
+		it('keeps a secret out of a refusal sent on a non-streamed 200', async () => {
+			const baseFetch = (async () =>
+				new Response(`{"error":{"message":"Incorrect API key provided: ${SECRET}"}}`, {
+					status: 200,
+					headers: { 'content-type': 'application/json' },
+				})) as typeof fetch;
+
+			expect(await readAll(baseFetch, [SECRET])).not.toContain(SECRET);
+		});
+
+		it('filters a secret split across two chunks', async () => {
+			const body = new ReadableStream<Uint8Array>({
+				start(controller) {
+					const encoder = new TextEncoder();
+					controller.enqueue(encoder.encode(`data: {"m":"${SECRET.slice(0, 6)}`));
+					controller.enqueue(encoder.encode(`${SECRET.slice(6)}"}\n\n`));
+					controller.close();
+				},
+			});
+			const baseFetch = (async () =>
+				new Response(body, {
+					status: 200,
+					headers: { 'content-type': 'text/event-stream' },
+				})) as typeof fetch;
+
+			expect(await readAll(baseFetch, [SECRET])).not.toContain(SECRET);
+		});
+	});
+});

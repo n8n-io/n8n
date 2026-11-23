@@ -32,6 +32,52 @@ function getLoginHeader(login: LoginMethod): Record<string, string> {
 	}
 }
 
+/**
+ * A switch, so a login added later stops compiling here rather than leaking quietly. The
+ * built header goes in beside the raw value, because a gateway can echo either one, but
+ * only when the value is there: with the field blank the header is the bare scheme word,
+ * and redacting `Bearer ` takes it out of the gateway's own advice.
+ */
+function loginSecrets(login: LoginMethod): string[] {
+	const sent = () => Object.values(getLoginHeader(login));
+
+	switch (login.type) {
+		case 'bearer':
+			return login.token ? [login.token, ...sent()] : [];
+		case 'header':
+			return login.key ? [login.key, ...sent()] : [];
+		case 'basic':
+			return login.password ? [login.password, ...sent()] : [];
+		case 'oauth2':
+			return login.clientSecret ? [login.clientSecret, oauth2BasicCredentials(login)] : [];
+		case 'none':
+			return [];
+	}
+}
+
+export interface CredentialSecrets {
+	/** A credential is never a legitimate word in an answer, so this is filtered everywhere. */
+	login: string[];
+	/** A user-chosen string can also be a word in an answer, so this is filtered from errors. */
+	gatewayHeaders: string[];
+}
+
+/**
+ * Every value of the credential that must not reach the user in error text, split by how
+ * safe it is to redact. A gateway header value is trimmed, because `Headers.set` trims it
+ * on the way out and the gateway can only echo what it was sent.
+ */
+export function credentialSecrets(
+	endpoint: Pick<EndpointCredential, 'login' | 'gatewayHeaders'>,
+): CredentialSecrets {
+	const present = (values: string[]) => values.filter((value) => value.length > 0);
+
+	return {
+		login: present(loginSecrets(endpoint.login)),
+		gatewayHeaders: present(Object.values(endpoint.gatewayHeaders).map((value) => value.trim())),
+	};
+}
+
 export function toHeaderRecord(headers: IDataObject | undefined): Record<string, string> {
 	return Object.fromEntries(
 		Object.entries(headers ?? {})

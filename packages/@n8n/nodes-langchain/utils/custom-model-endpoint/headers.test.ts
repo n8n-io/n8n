@@ -1,6 +1,11 @@
 import { UserError } from '@n8n/errors';
 
-import { buildRequestHeaders, oauth2BasicCredentials, toHeaderRecord } from './headers';
+import {
+	buildRequestHeaders,
+	credentialSecrets,
+	oauth2BasicCredentials,
+	toHeaderRecord,
+} from './headers';
 import type { EndpointCredential, LoginMethod, OAuth2Login } from './types';
 
 const endpoint = (
@@ -214,5 +219,56 @@ describe('toHeaderRecord', () => {
 		});
 
 		expect(headers).toEqual({ 'x-text': 'a', 'x-number': '5', 'x-flag': 'true' });
+	});
+});
+
+describe('credentialSecrets', () => {
+	const SECRET = 'Zx7Qw2Lm9Rt4Bv6N';
+
+	const oauth2 = (clientSecret: string): OAuth2Login => ({
+		type: 'oauth2',
+		tokenUrl: 'https://login.example.com/token',
+		clientId: 'cid',
+		clientSecret,
+		scope: '',
+		sendCredentialsIn: 'header',
+	});
+
+	it.each([
+		['bearer', { type: 'bearer', token: SECRET } as const],
+		['header', { type: 'header', name: 'x-api-key', prefix: 'Token', key: SECRET } as const],
+		['basic', { type: 'basic', username: 'tenant', password: SECRET } as const],
+		['oauth2', oauth2(SECRET)],
+	])('carries the %s secret and the header built from it', (_name, login) => {
+		const { login: secrets } = credentialSecrets(endpoint(login));
+
+		expect(secrets).toContain(SECRET);
+		expect(secrets.length).toBeGreaterThan(1);
+	});
+
+	// With the field blank the built header is the bare scheme word, and redacting
+	// `Bearer ` takes it out of the gateway's own advice on how to send one
+	it.each([
+		['bearer', { type: 'bearer', token: '' } as const],
+		['header', { type: 'header', name: 'x-api-key', prefix: 'Token', key: '' } as const],
+		['basic', { type: 'basic', username: 'tenant', password: '' } as const],
+		['oauth2', oauth2('')],
+		['none', { type: 'none' } as const],
+	])('carries nothing for %s with its secret left blank', (_name, login) => {
+		expect(credentialSecrets(endpoint(login)).login).toEqual([]);
+	});
+
+	it('trims a gateway header value, because Headers.set trims it on the way out', () => {
+		const { gatewayHeaders } = credentialSecrets(
+			endpoint({ type: 'none' }, { 'x-api-key': `  ${SECRET}\n` }),
+		);
+
+		expect(gatewayHeaders).toEqual([SECRET]);
+	});
+
+	it('drops a gateway header value that is only whitespace', () => {
+		expect(
+			credentialSecrets(endpoint({ type: 'none' }, { 'x-trace': '   ' })).gatewayHeaders,
+		).toEqual([]);
 	});
 });

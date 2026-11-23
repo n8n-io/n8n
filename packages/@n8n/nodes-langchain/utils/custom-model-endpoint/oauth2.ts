@@ -1,8 +1,7 @@
-import { redactSecrets } from '@n8n/ai-utilities';
 import { isRecord } from '@n8n/utils/is-record';
 import { UserError } from '@n8n/errors';
 
-import { messageFromBody, truncateMessage } from './error-handling';
+import { messageFromBody, truncateMessage, withoutSecrets } from './error-handling';
 import { oauth2BasicCredentials } from './headers';
 import type { OAuth2Login } from './types';
 
@@ -60,10 +59,10 @@ export function clientCredentialsTokenRequest(login: OAuth2Login): TokenRequest 
  * credential-shaped strings this does not know the value of.
  */
 function withoutTheCredential(text: string, login: OAuth2Login): string {
-	const known = [login.clientSecret, oauth2BasicCredentials(login)].filter(
-		(secret) => secret.length > 0,
+	return withoutSecrets(
+		text,
+		[login.clientSecret, oauth2BasicCredentials(login)].filter((secret) => secret.length > 0),
 	);
-	return redactSecrets(known.reduce((carried, secret) => carried.split(secret).join('***'), text));
 }
 
 function refusedToSignIn(text: string, status: number, login: OAuth2Login): UserError {

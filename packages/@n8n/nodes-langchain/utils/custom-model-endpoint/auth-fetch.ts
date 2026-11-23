@@ -10,7 +10,7 @@ import {
 } from 'n8n-workflow';
 
 import { wrapCustomModelEndpointErrorFetch } from './error-handling';
-import { buildRequestHeaders } from './headers';
+import { buildRequestHeaders, credentialSecrets } from './headers';
 import { createClientCredentialsTokenSource } from './oauth2';
 import type { EndpointCredential } from './types';
 
@@ -96,7 +96,7 @@ export function createCustomModelEndpointAuthFetch(
 		});
 
 	const authFetch = createRefreshingAuthFetch({
-		baseFetch: wrapCustomModelEndpointErrorFetch(baseFetch),
+		baseFetch: wrapCustomModelEndpointErrorFetch(baseFetch, credentialSecrets(endpoint)),
 		resolveHeaders,
 		...(tokenSource && {
 			// The retry is a whole request again, so it needs the gateway headers too
