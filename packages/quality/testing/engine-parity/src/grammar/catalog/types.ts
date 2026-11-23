@@ -9,9 +9,10 @@ import type { ParityRules } from '../rules';
  * - `if`, `switch`: route items to more than one output.
  * - `merge`: two inputs.
  * - `loop`: Split In Batches.
+ * - `subWorkflow`: Execute Workflow, which calls a generated sub-workflow.
  * - `trigger`: only the generator places triggers. No combinator uses them.
  */
-export type NodeRole = 'plain' | 'if' | 'switch' | 'merge' | 'loop' | 'trigger';
+export type NodeRole = 'plain' | 'if' | 'switch' | 'merge' | 'loop' | 'subWorkflow' | 'trigger';
 
 /** A Code node body, generated as a string. See `catalog/code.ts`. */
 export type CodeSpec = {
@@ -29,6 +30,7 @@ export type CodeSpec = {
  * - `{ $jsonTemplate }`: the JSON output of a Set node in raw mode.
  * - `{ $outputIndex }`: the output expression of a Switch node in expression mode.
  * - `{ $code }`: the JavaScript of a Code node.
+ * - `{ $subWorkflowId }`: the ID of the sub-workflow that the node calls.
  */
 export type ParamDraft = Record<string, unknown>;
 

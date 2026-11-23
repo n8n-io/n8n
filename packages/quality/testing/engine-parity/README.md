@@ -58,7 +58,7 @@ export TESTCONTAINERS_RYUK_DISABLED=true
 
 1. **Grammar** (`src/grammar`). fast-check generates a structure tree of
    combinators (`chain`, `branch`, `switch`, `fanOut`, `merge`, `loop`,
-   `errorOutput`) with node parameter drafts from the
+   `errorOutput`, `subWorkflow`) with node parameter drafts from the
    catalog. fast-check shrinks this tree. `toIr` lowers it to the plain-data IR
    (`ir.ts`) and fills expression holes with the names of upstream nodes.
    Every shape is valid by construction: each block has one way in and one way
@@ -66,17 +66,18 @@ export TESTCONTAINERS_RYUK_DISABLED=true
 2. **Compile** (`src/compile/to-sdk.ts`). The IR goes through
    `@n8n/workflow-sdk` with `connect()` and `regenerateNodeIds()`, so the same
    seed gives byte-identical JSON.
-3. **Eligibility.** `checkEngineV2Eligibility` runs on the workflow. The
-   harness discards a case that the check refuses, and counts
+3. **Eligibility.** `checkEngineV2Eligibility` runs on the workflow and on each
+   sub-workflow. The harness discards a case that the check refuses, and counts
    the reason.
 4. **Runners** (`src/runners`). Both runners use one node registry, one
    expression evaluator, one set of additional data, and one in-process stand-in
    for the JavaScript task runner, so a difference comes from the engine.
    - v1: `WorkflowExecute` in `trigger` mode. The fired trigger passes the
-     trigger items through.
+     trigger items through. Sub-workflows run in `integrated` mode and return
+     the last run of the last node.
    - v2: one Postgres container and one engine runtime for each worker. The
      workflow goes through `V1WorkflowConverter`. The result comes back through
-     `toV1RunExecutionData`.
+     `toV1RunExecutionData`. Sub-workflows resolve from the case.
 5. **Oracle** (`src/oracle`). Both results become one `Outcome`, without
    timings, IDs and metadata.
 

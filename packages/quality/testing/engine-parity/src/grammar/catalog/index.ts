@@ -1,5 +1,6 @@
 import { aggregateAll, aggregateFields } from './aggregate';
 import { codeAllItems, codeEachItem } from './code';
+import { executeWorkflow } from './execute-workflow';
 import { filter } from './filter';
 import { ifCondition } from './if';
 import { limit } from './limit';
@@ -10,7 +11,7 @@ import { sort } from './sort';
 import { splitInBatches } from './split-in-batches';
 import { splitOut } from './split-out';
 import { switchExpression, switchRules } from './switch';
-import { manualTrigger } from './triggers';
+import { executeWorkflowTrigger, manualTrigger } from './triggers';
 import type { CatalogEntry, NodeRole } from './types';
 
 export type { CatalogEntry, CodeSpec, GenContext, NodeRole, ParamDraft } from './types';
@@ -35,7 +36,9 @@ const entries: CatalogEntry[] = [
 	splitInBatches,
 	codeAllItems,
 	codeEachItem,
+	executeWorkflow,
 	manualTrigger,
+	executeWorkflowTrigger,
 ];
 
 export const catalog = new Map(entries.map((entry) => [entry.id, entry]));

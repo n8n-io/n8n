@@ -34,7 +34,10 @@ const STATUS = new Map([
 	['failed', 'error'],
 ]);
 
-/** The failing node is the node of the workflow that failed. */
+/**
+ * The failing node is the node of the workflow that failed. For an error from a
+ * sub-workflow, that is the node that called it, not the node inside it.
+ */
 function normalizeError(error: unknown, lastNodeExecuted?: string): Outcome['error'] {
 	if (!isRecord(error)) return undefined;
 	const node =

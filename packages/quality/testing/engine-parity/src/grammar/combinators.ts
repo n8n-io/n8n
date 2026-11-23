@@ -27,7 +27,9 @@ export type Block =
 	/** Split In Batches: output 1 runs the body, which returns to input 0. Output 0 continues. */
 	| { kind: 'loop'; node: NodeDraft; body: Block | null }
 	/** A node with `onError: continueErrorOutput`. Its error output goes to the handler. */
-	| { kind: 'errorOutput'; node: NodeDraft; handler: Block | null };
+	| { kind: 'errorOutput'; node: NodeDraft; handler: Block | null }
+	/** Execute Workflow, which calls a sub-workflow made from `body`. */
+	| { kind: 'subWorkflow'; node: NodeDraft; body: Block };
 
 export type End = { from: string; out: number };
 
@@ -42,17 +44,21 @@ export interface PlacedNode {
 	onError?: 'continueErrorOutput';
 	/** The nodes that ran before this node. */
 	upstream: string[];
+	/** For Execute Workflow nodes: the ID of the sub-workflow that the node calls. */
+	subWorkflowId?: string;
 }
 
 export interface LowerState {
 	nodes: PlacedNode[];
 	edges: IrEdge[];
-	/** Keeps node names unique. */
+	/** Sub-workflow bodies, by workflow ID. */
+	subWorkflows: Map<string, Block>;
+	/** Shared with the sub-workflows, so that names and IDs stay unique. */
 	counter: { value: number };
 }
 
 export function newLowerState(counter = { value: 0 }): LowerState {
-	return { nodes: [], edges: [], counter };
+	return { nodes: [], edges: [], subWorkflows: new Map(), counter };
 }
 
 function shortName(catalogId: string): string {
@@ -163,10 +169,18 @@ export function lowerBlock(block: Block, flow: Flow, state: LowerState): Flow {
 			if (block.handler) lowerBlock(block.handler, after(key, errorOut, flow.upstream), state);
 			return after(key, 0, flow.upstream);
 		}
+
+		case 'subWorkflow': {
+			const subWorkflowId = `sub-${state.counter.value + 1}`;
+			const key = place(state, block.node, 'subWorkflow', flow.upstream, { subWorkflowId });
+			connect(state, flow.ends, key, 0);
+			state.subWorkflows.set(subWorkflowId, block.body);
+			return after(key, 0, flow.upstream);
+		}
 	}
 }
 
-/** The count of nodes that the block places. */
+/** The count of nodes that the block places, sub-workflows included. */
 export function blockSize(block: Block): number {
 	switch (block.kind) {
 		case 'node':
@@ -185,6 +199,9 @@ export function blockSize(block: Block): number {
 			return 1 + sizeOf(block.body);
 		case 'errorOutput':
 			return 1 + sizeOf(block.handler);
+		case 'subWorkflow':
+			// The sub-workflow trigger counts too.
+			return 2 + blockSize(block.body);
 	}
 }
 
