@@ -3845,6 +3845,10 @@ a.br-card:hover .br-mini .nst-tile { scale: 1.06; }
   .rk-switch { margin-top: 32px; font-size: 14px; color: hsl(var(--muted-foreground)); }
   .rk-switch a { color: hsl(var(--foreground)); text-decoration: underline; text-underline-offset: 3px; }
   @media (max-width: 639px) { .rk-item .nfold-body { padding-left: 2px; } }
+  .rk-item .nfold-body a { color: hsl(var(--foreground)); text-decoration: underline; text-underline-offset: 3px; }
+  .rk-item .nfold-body code { font-family: var(--font-mono); font-size: .9em; }
+  .pk-agb-note { margin-top: 6px; }
+  .pk-agb-note a { color: hsl(var(--foreground)); text-decoration: underline; text-underline-offset: 2px; }
 
   /* ---------- reduced motion: complete still frame ---------- */
   @media (prefers-reduced-motion: reduce) {
@@ -3932,6 +3936,7 @@ a.br-card:hover .br-mini .nst-tile { scale: 1.06; }
   <div class="page" id="page-kontakt"></div>
   <div class="page" id="page-impressum"></div>
   <div class="page" id="page-datenschutz"></div>
+  <div class="page" id="page-agb"></div>
 </main>
 
 <!-- ============ FOOTER ============ -->
@@ -3958,7 +3963,7 @@ a.br-card:hover .br-mini .nst-tile { scale: 1.06; }
       </div>
       <div>
         <h3>Mehr</h3>
-        <ul><li><a href="#preise">Preise</a></li><li><a href="#kontakt">Kontakt</a></li><li><a href="#impressum">Impressum</a></li><li><a href="#datenschutz">Datenschutz</a></li></ul>
+        <ul><li><a href="#preise">Preise</a></li><li><a href="#kontakt">Kontakt</a></li><li><a href="#impressum">Impressum</a></li><li><a href="#datenschutz">Datenschutz</a></li><li><a href="#agb">AGB</a></li></ul>
       </div>
       <div>
         <h3>Kontakt</h3>
@@ -3968,12 +3973,12 @@ a.br-card:hover .br-mini .nst-tile { scale: 1.06; }
     </div>
     <div class="foot-bottom">
       <p>© 2026 Norra</p>
-      <nav class="foot-legal" aria-label="Rechtliches"><a href="#impressum">Impressum</a><a href="#datenschutz">Datenschutz</a></nav>
+      <nav class="foot-legal" aria-label="Rechtliches"><a href="#impressum">Impressum</a><a href="#datenschutz">Datenschutz</a><a href="#agb">AGB</a></nav>
       <p>Beispielbetriebe und Zahlen sind Beispiel- oder Richtwerte.</p>
     </div>
   </div>
 </footer>
-<script>window.NORRA_ENV = 'hosting'; window.NORRA_I18N_LAZY = true; window.NORRA_I18N_VER = '62924f8cd3';</script>
+<script>window.NORRA_ENV = 'hosting'; window.NORRA_I18N_LAZY = true; window.NORRA_I18N_VER = 'b1e60bccee';</script>
 <script>
 /* ===== src/core.js ===== */
 /* =========================================================================
@@ -4444,7 +4449,7 @@ NORRA.canPost = function () {
 /* Flat hash routes. industry routes are 'branche-' + industry slug. */
 NORRA.ROUTES = ['start', 'produkte', 'voice-agent', 'chatbot', 'social-media', 'website', 'branchen',
   'branche-kosmetik', 'branche-coaches', 'branche-gastro', 'branche-friseure', 'branche-hotels',
-  'preise', 'kontakt', 'impressum', 'datenschutz'];
+  'preise', 'kontakt', 'impressum', 'datenschutz', 'agb'];
 NORRA.PRODUCT_ROUTES = ['voice-agent', 'chatbot', 'social-media', 'website'];
 NORRA.KIT_BY_PRODUCT = { 'voice-agent': 'voice', 'chatbot': 'chat', 'social-media': 'social', 'website': 'website' };
 /* Boot calls this: every slug in NORRA.products / NORRA.industries becomes a route. */
@@ -6334,7 +6339,7 @@ NORRA.buildChrome = function () {
       '<a href="#kontakt" data-route="kontakt"><span class="ico">' + NORRA.ico('mail') + '</span><span>Kontakt</span></a>' +
       '<div class="mnav-cta">' + NORRA.btn({ label: 'Demo anfragen', href: '#kontakt', arrow: true }) + '</div>' +
       '<h4>Sprache und Land</h4><div class="mnav-lsw">' + NORRA.switcherHtml('mlsw') + '</div>' +
-      '<nav class="mnav-legal" aria-label="Rechtliches"><a href="#impressum" data-route="impressum">Impressum</a><a href="#datenschutz" data-route="datenschutz">Datenschutz</a></nav>';
+      '<nav class="mnav-legal" aria-label="Rechtliches"><a href="#impressum" data-route="impressum">Impressum</a><a href="#datenschutz" data-route="datenschutz">Datenschutz</a><a href="#agb" data-route="agb">AGB</a></nav>';
   }
   NORRA.buildSwitcher();
 
@@ -6487,7 +6492,7 @@ NORRA.titleFor = function (name) {
   if (ctx.product) return ctx.product.name + ' · Norra';
   if (ctx.industry) return NORRA.trf('KI-Agenten für {name} · Norra', { name: NORRA.tr(ctx.industry.name) });
   var map = { start: 'Norra · KI-Agenten für lokale Unternehmen', produkte: 'Produkte und Funktionen · Norra', branchen: 'Branchen · Norra', preise: 'Preise · Norra', kontakt: 'Kontakt · Norra',
-    website: 'Website · Norra', impressum: 'Impressum · Norra', datenschutz: 'Datenschutz · Norra' };
+    website: 'Website · Norra', impressum: 'Impressum · Norra', datenschutz: 'Datenschutz · Norra', agb: 'AGB · Norra' };
   return map[name] || 'Norra';
 };
 
@@ -13097,7 +13102,8 @@ NORRA.preise.plans = function () {
     NORRA.sectHead({ eyebrow: 'Vier Leistungen', title: 'Klare Spannen, fester Preis' }) +
     '<div class="pk-plans" data-pk-stagger>' + P.SLUGS.map(P.card).join('') + '</div>' +
     '<ul class="pills pk-terms" data-pk-stagger>' + terms.map(function (t, i) { return '<li class="pill" style="--i:' + i + '">' + NORRA.ico(icons[i] || 'check') + '<span>' + t + '</span></li>'; }).join('') + '</ul>' +
-    NORRA.priceNoteHtml('center') + '</section>';
+    NORRA.priceNoteHtml('center') +
+    '<p class="note center pk-agb-note">Angebote nur für Unternehmen. Es gelten unsere <a href="#agb">AGB</a>.</p></section>';
 };
 
 NORRA.preise.included = function () {
@@ -13498,7 +13504,7 @@ NORRA.kontakt.form = function () {
     '<div class="pk-hp" aria-hidden="true"><label for="pk-botcheck">Nicht ausfüllen</label><input type="checkbox" id="pk-botcheck" name="botcheck" tabindex="-1" autocomplete="off"></div>' +
     '<div class="pk-f pk-full"><label class="pk-consent"><input type="checkbox" id="pk-consent" name="einwilligung" aria-describedby="pk-consent-err">' +
     '<span class="pk-cbx" aria-hidden="true">' + ico('check', 12) + '</span>' +
-    '<span>Meine Angaben dürfen zur Bearbeitung der Anfrage verwendet werden. Details im <a href="#datenschutz">Datenschutz</a>. <span class="pk-req" aria-hidden="true">*</span></span></label><p class="pk-err" id="pk-consent-err"></p></div>' +
+    '<span>Ich frage für ein Unternehmen an. Meine Angaben dürfen zur Bearbeitung der Anfrage verwendet werden. Details in <a href="#datenschutz">Datenschutz</a> und <a href="#agb">AGB</a>. <span class="pk-req" aria-hidden="true">*</span></span></label><p class="pk-err" id="pk-consent-err"></p></div>' +
     '<div class="pk-full pk-submit"><small>* Pflichtfelder</small>' +
     '<button class="btn btn-primary btn-lg" type="submit" id="pk-submit"><span>' + (post ? 'Anfrage senden' : 'E-Mail vorbereiten') + '</span>' + NORRA._arrowSvg + '</button></div>' +
     '<p class="pk-full pk-summary" id="pk-summary" role="alert"></p>' +
@@ -13714,23 +13720,30 @@ NORRA.kontakt.applyPrefill = function (root) {
 <script>
 /* ===== src/content/60-rechtliches.js ===== */
 /* =========================================================================
-   60-rechtliches.js: routes #impressum and #datenschutz (replace the engine fallbacks).
+   60-rechtliches.js: routes #impressum, #datenschutz and #agb (replace the engine fallbacks).
    Namespace NORRA.recht. CSS lives in 50-preise-kontakt.css (prefix rk-).
-   Placeholders use <mark class="ph">[...]</mark> and must be filled in by the operator before publishing.
-   The "keine Rechtsberatung" note lives only in an HTML comment inside the rendered page (and here):
-   these texts are a template, not legal advice; have them checked (revDSG, DSGVO, UWG, DDG, MStV) before going live.
+   Operator notes live only in HTML comments inside the rendered pages (and here):
+   these texts are a careful template, not legal advice; have them checked before relying on them
+   (Schweiz: revDSG, UWG, OR, IPRG; EU/DE: DSGVO, DDG, MStV, TDDDG, UWG, KI-VO; UK GDPR/PECR; US TCPA/CCPA).
+   German source text, Swiss spelling. Every paragraph is one self-contained string, so the
+   i18n dictionaries can translate it by exact match.
    ========================================================================= */
 
 NORRA.recht = NORRA.recht || {};
 NORRA.titles.impressum = 'Impressum · Norra';
 NORRA.titles.datenschutz = 'Datenschutz · Norra';
+NORRA.titles.agb = 'AGB · Norra';
+/* The engine knows impressum/datenschutz; make sure #agb is a route too (core also lists it). */
+if (NORRA.ROUTES.indexOf('agb') < 0) NORRA.ROUTES.push('agb');
 
+NORRA.recht.STAND = 'Stand: 23. November 2026';
 NORRA.recht.ph = function (t) { return '<mark class="ph">[' + t + ']</mark>'; };
 /* HTML comment for the operator, assembled so no raw comment token sits in the script source. */
 NORRA.recht.note = function (text) { return '<' + '!-- ' + text + ' --' + '>'; };
 NORRA.recht.list = function (items) { return '<ul class="rk-list">' + items.map(function (x) { return '<li>' + x + '</li>'; }).join('') + '</ul>'; };
+NORRA.recht.p = function () { return Array.prototype.map.call(arguments, function (x) { return '<p>' + x + '</p>'; }).join(''); };
 
-/* o: {title, lede, facts:[[label, html]], sections:[[id, title, html]], switchLink}
+/* o: {title, lede, facts:[[label, html]], sections:[[id, title, html]], switchLink, notes?}
    facts = always visible key data; sections = accordion (native details, animated by core). */
 NORRA.recht.page = function (o) {
   var ico = NORRA.ico;
@@ -13741,10 +13754,10 @@ NORRA.recht.page = function (o) {
     return '<details class="nfold rk-item" id="' + s[0] + '" style="--i:' + i + '"><summary><span class="rk-n">' + String(i + 1).padStart(2, '0') + '</span>' +
       '<h2>' + s[1] + '</h2>' + ico('chevron') + '</summary><div class="nfold-body">' + s[2] + '</div></details>';
   }).join('') + '</div>';
-  return NORRA.recht.note(NORRA.recht.COMMENT) +
+  return NORRA.recht.note(NORRA.recht.COMMENT) + (o.notes ? NORRA.recht.note(o.notes) : '') +
     '<section class="wrap legal rk-legal"><div class="rk-head reveal"><p class="eyebrow">Rechtliches</p><h1>' + o.title + '</h1>' +
     '<p class="rk-lede">' + o.lede + '</p></div>' + facts +
-    '<div class="rk-bar"><p class="rk-stand">Stand: November 2026</p>' +
+    '<div class="rk-bar"><p class="rk-stand">' + (o.stand || NORRA.recht.STAND) + '</p>' +
     '<button type="button" class="rk-all" data-rk-all aria-expanded="false">' + ico('list', 14) + '<span>Alle öffnen</span></button></div>' +
     secs + '<p class="rk-switch">' + o.switchLink + '</p></section>';
 };
@@ -13757,94 +13770,351 @@ NORRA.recht.wire = function (el) {
     var open = b.getAttribute('aria-expanded') !== 'true';
     el.querySelectorAll('details.rk-item').forEach(function (d) { d.open = open; });
     b.setAttribute('aria-expanded', String(open));
-    b.querySelector('span').textContent = open ? 'Alle schliessen' : 'Alle öffnen';
+    b.querySelector('span').textContent = NORRA.tr(open ? 'Alle schliessen' : 'Alle öffnen');
   });
 };
 
-NORRA.recht.COMMENT = 'Hinweis für den Betreiber: Vorlage, keine Rechtsberatung. Alle markierten Platzhalter ausfüllen, ' +
-  'nicht zutreffende Abschnitte streichen und den Text vor der Veröffentlichung rechtlich prüfen lassen ' +
-  '(Schweiz: revDSG, UWG Art. 3 Abs. 1 lit. s; Deutschland/EU: DSGVO, DDG § 5, MStV § 18). ' +
-  'Empfehlung: Google Fonts lokal einbinden, dann den Abschnitt Schriftarten anpassen. ' +
-  'Unterauftragsverarbeiter der Agent-Plattform und des Formulardienstes aktuell halten.';
+NORRA.recht.COMMENT = 'Hinweis für den Betreiber: sorgfältig erstellte Vorlage, keine Rechtsberatung. ' +
+  'Vor dem Verlass darauf rechtlich prüfen lassen (Schweiz: revDSG, UWG Art. 3 Abs. 1 lit. s, OR, IPRG; EU/Deutschland: DSGVO, DDG § 5, MStV § 18, TDDDG § 25, UWG § 7, KI-VO Art. 50; ' +
+  'UK: UK GDPR, PECR; USA: TCPA, CCPA). Offene Punkte: (1) MWST-Status klären; erst nach Eintragung eine MWST-Nummer im Impressum ergänzen. ' +
+  '(2) DPF-Zertifizierung je Anbieter (Vercel, Retell AI, OpenAI, Anthropic, Google, Twilio, Telnyx, Web3Forms) inkl. Swiss-U.S.-Erweiterung auf dataprivacyframework.gov prüfen ' +
+  'und mit jedem Anbieter den Auftragsbearbeitungsvertrag (DPA mit Standardvertragsklauseln und Schweizer Anpassungen) abschliessen; danach die Empfängerliste als Tabelle Anbieter / Land / Garantie führen. ' +
+  'Die Datenschutzerklärung erst als verbindlich betrachten, wenn diese DPAs tatsächlich abgeschlossen sind. (3) Rechtsträger, Sitz und Datenstandort von Web3Forms prüfen und nennen. ' +
+  '(4) PRIORITÄT: Google Fonts lokal einbinden (build.py FONTS, Schriftdateien selbst ausliefern); berechtigtes Interesse trägt das dynamische Laden nach LG München I, 3 O 17493/20 nicht. ' +
+  'Danach den Abschnitt Schriftarten ersetzen durch: Schriftarten lokal eingebunden, keine Verbindung zu Google; Google Fonts aus der Empfängerliste streichen. ' +
+  '(5) Unterauftragsbearbeiter der Agenten aktuell halten; Meta (WhatsApp, Instagram, Facebook) aufnehmen, falls Norra die Schnittstellen selbst betreibt; WhatsApp-Agenten nach den aktuellen Meta-Bedingungen prüfen. ' +
+  '(6) EU-Vertreter (Art. 27 DSGVO) und UK-Vertreter (Art. 27 UK GDPR) vor dem ersten EU- bzw. UK-Kunden und vor jeder Akquise dort bestellen und in der Datenschutzerklärung nennen; ICO-Gebührenpflicht prüfen. ' +
+  '(7) Mit Retell AI und den Modellanbietern Zero-Data-Retention bzw. kein Training mit Gesprächsdaten vereinbaren und im AVV festhalten. ' +
+  '(8) Plattformwerte (Sprachen, Antwortzeit, Verfügbarkeit) gegen Dokumentation und SLA von Retell AI prüfen, mit Quelle und Datum belegen oder auf allen Seiten streichen. ' +
+  '(9) Englische AGB-Fassung juristisch prüfen lassen; AGB als PDF jedem Angebot beilegen und die Annahme ausdrücklich einholen (Haftung, Schiedsklausel); für Kunden in Quebec vorab eine französische Fassung anbieten. ' +
+  '(10) Meldepflicht als Fernmeldedienstanbieterin beim BAKOM prüfen (Art. 4 FMG), falls Norra Kunden Rufnummern bereitstellt; sonst Rufnummern über Konten der Kunden beziehen. ' +
+  '(11) Keine Werbe-E-Mails ohne Einwilligung an Adressen in DE, AT und CH senden; interne Länderliste führen.';
 
+/* Shared building blocks */
+NORRA.recht.contactHtml = function () {
+  return NORRA.copyLine(NORRA.CONTACT.email) + '<br>Telefon <a href="tel:+41784067099">+41 78 406 70 99</a>';
+};
+NORRA.recht.ADDR = 'Harles E-Commerce, Inhaber Niklas Dean Harles, Brunnacker 8, 5712 Beinwil am See, Schweiz';
+
+/* ===================================================================== IMPRESSUM */
 NORRA.pages.impressum = function (el) {
-  var ph = NORRA.recht.ph;
+  var p = NORRA.recht.p, list = NORRA.recht.list;
   el.innerHTML = NORRA.recht.page({
-    title: 'Impressum', lede: 'Angaben zum Anbieter dieser Website.',
-    switchLink: 'Zum Umgang mit Daten: <a href="#datenschutz">Datenschutz</a>.',
+    title: 'Impressum', lede: 'Angaben zum Anbieter dieser Website und seiner Angebote.',
+    switchLink: 'Weiter zu <a href="#datenschutz">Datenschutz</a> und <a href="#agb">AGB</a>.',
+    notes: 'Impressum: Pflichtangaben nach Art. 3 Abs. 1 lit. s UWG (CH), § 5 DDG und § 18 Abs. 1 MStV (DE), reg. 6 E-Commerce Regulations 2002 (UK). ' +
+      'Keine MWST-Nummer angeben, solange keine Eintragung im MWST-Register besteht. Der Wunsch, Retell AI als Hoster zu nennen, ist präzisiert: ' +
+      'die Website liegt bei Vercel, die KI-Agenten laufen auf Retell AI. Keinen Link zur eingestellten EU-OS-Plattform einfügen. ' +
+      'Kein Verantwortlicher nach § 18 Abs. 2 MStV: das Angebot ist nicht journalistisch-redaktionell, und die Person müsste ständigen Aufenthalt in Deutschland haben. ' +
+      'Nach einer MWST-Eintragung die MWST-Nummer hier ergänzen. Vollständige Anschriften von Vercel und Retell AI optional nach Prüfung der DPAs ergänzen.',
     facts: [
-      ['Anbieter', 'Harles E-Commerce<br>Inhaber: Niklas Dean Harles<br>Brunnacker 8<br>5712 Beinwil am See<br>Schweiz'],
-      ['Kontakt', NORRA.copyLine(NORRA.CONTACT.email) + '<br>Telefon <a href="tel:+41784067099">+41 78 406 70 99</a>'],
-      ['Verantwortlich für den Inhalt', 'Niklas Dean Harles, Anschrift wie oben'],
+      ['Anbieter', 'Harles E-Commerce<br>Einzelunternehmen nach Schweizer Recht<br>Inhaber: Niklas Dean Harles<br>Marke: Norra'],
+      ['Anschrift', 'Brunnacker 8<br>5712 Beinwil am See<br>Kanton Aargau, Schweiz'],
+      ['Kontakt', NORRA.recht.contactHtml()],
+      ['Handelsregister', 'Handelsregister des Kantons Aargau<br>UID: CHE-267.096.187<br>CH-ID: CH-400-1611227-9'],
+      ['Inhaber und Vertretungsberechtigter', 'Niklas Dean Harles'],
       ['Hosting', 'Website: Vercel Inc., USA<br>KI-Agenten (Telefon und Chat): Retell AI, Inc., USA']
     ],
     sections: [
-      ['rk-haftung', 'Haftung',
-        '<p>Wir erstellen die Inhalte mit Sorgfalt, übernehmen für Richtigkeit, Vollständigkeit und Aktualität aber keine Gewähr. ' +
-        'Für verlinkte Websites sind deren Betreiber verantwortlich.</p>'],
-      ['rk-beispiele', 'Beispiele und Kennzahlen',
-        '<p>Betriebe wie Salon Mira oder Studio Belle sind erfundene Beispiele. Zahlen sind als Beispiel- oder Richtwerte gekennzeichnet. ' +
-        '55 Sprachen, ca. 0,6 s Antwortzeit und über 99,9 % Verfügbarkeit sind Werte der zugrunde liegenden Plattform.</p>'],
-      ['rk-rechte', 'Urheberrecht und Bildnachweis',
-        '<p>Texte und Gestaltung sind urheberrechtlich geschützt. Bilder und Videos: eigene Aufnahmen und lizenziertes Stockmaterial.</p>'],
-      ['rk-streit', 'Streitbeilegung',
-        '<p>Wir nehmen nicht an Streitbeilegungsverfahren vor einer Verbraucherschlichtungsstelle teil.</p>']
+      ['im-angaben', 'Angaben nach Schweizer und deutschem Recht',
+        p('Diese Angaben erfüllen die Pflicht zur Anbieterkennzeichnung im elektronischen Geschäftsverkehr nach Art. 3 Abs. 1 lit. s UWG (Schweiz).',
+          'Für Besucherinnen und Besucher aus Deutschland gelten sie zugleich als Angaben nach § 5 DDG und § 18 Abs. 1 MStV, für das Vereinigte Königreich nach reg. 6 der Electronic Commerce Regulations 2002.',
+          'Für unsere Tätigkeit besteht nach unserem Kenntnisstand keine Bewilligungspflicht.')],
+      ['im-b2b', 'Angebote nur für Unternehmen',
+        p('Unsere Angebote richten sich ausschliesslich an Unternehmen, Selbständige, Organisationen und öffentliche Stellen, die in Ausübung ihrer gewerblichen oder beruflichen Tätigkeit handeln. Mit Verbraucherinnen und Verbrauchern schliessen wir keine Verträge.',
+          'Alle Preise auf dieser Website sind Nettopreise in der Währung der gewählten Region. Mehrwertsteuer stellen wir nur in Rechnung, soweit wir steuerpflichtig sind und die Leistung im Inland steuerbar ist; bei Leistungen an Unternehmen im Ausland gilt in der Regel das Empfängerortprinzip (Reverse Charge).',
+          'Es gelten unsere <a href="#agb">Allgemeinen Geschäftsbedingungen (AGB)</a>.')],
+      ['im-vertrag', 'Kein Vertragsschluss über die Website',
+        p('Über diese Website kommt kein Vertrag zustande. Das Kontaktformular dient nur Ihrer Anfrage. Einen Vertrag schliessen wir individuell: Erstgespräch, schriftliches Angebot per E-Mail und Ihre Annahme in Textform. Den Ablauf beschreiben die <a href="#agb">AGB</a>.')],
+      ['im-ki', 'Hinweis zu KI-Agenten',
+        p('Die von uns gebauten Voice Agents, Chatbots und Social-Media-Agenten sind KI-Systeme. Sie geben sich zu Beginn jedes Gesprächs als KI-Assistent zu erkennen (Art. 50 Abs. 1 KI-Verordnung der EU). Unsere Kundinnen und Kunden dürfen diesen Hinweis nicht entfernen.',
+          'Automatisch erstellte Beiträge und Nachrichten in sozialen Netzwerken werden als automatisiert gekennzeichnet, wo dies vorgeschrieben ist (z. B. § 18 Abs. 3 MStV).',
+          'KI-Antworten können unvollständig oder fehlerhaft sein. Verbindlich sind nur Auskünfte des jeweiligen Betriebs selbst.')],
+      ['im-beispiele', 'Beispiele und Kennzahlen',
+        p('Betriebe wie Salon Mira oder Studio Belle sind erfundene Beispiele. Zahlen sind als Beispiel- oder Richtwerte gekennzeichnet. ' +
+          'Angaben wie 55 Sprachen, ca. 0,6 s Antwortzeit oder über 99,9 % Verfügbarkeit beruhen auf den Angaben des Plattformanbieters. Sie sind Richtwerte, keine Zusicherung von Norra; verbindlich ist nur, was im Angebot ausdrücklich vereinbart ist.')],
+      ['im-haftung', 'Haftung für Inhalte',
+        p('Wir erstellen die Inhalte dieser Website mit Sorgfalt, übernehmen für Richtigkeit, Vollständigkeit und Aktualität aber keine Gewähr. Die Inhalte dienen der allgemeinen Information und sind kein Angebot im Rechtssinn.',
+          'Die Haftung für Vorsatz und grobe Fahrlässigkeit bleibt unberührt.')],
+      ['im-links', 'Haftung für Links',
+        p('Diese Website enthält Links zu Websites Dritter. Für deren Inhalte sind allein die jeweiligen Betreiber verantwortlich. Wir haben die verlinkten Seiten beim Setzen des Links geprüft und keine Rechtsverstösse erkannt. Werden uns Rechtsverletzungen bekannt, entfernen wir den Link umgehend.')],
+      ['im-urheber', 'Urheberrecht und Marken',
+        p('Texte, Gestaltung, Grafiken, Bilder und Videos dieser Website sind urheberrechtlich geschützt. Jede Verwendung ausserhalb der Grenzen des Urheberrechts braucht unsere schriftliche Zustimmung. Bilder und Videos: eigene Aufnahmen und lizenziertes Stockmaterial.',
+          '„Norra“ ist eine Geschäftsbezeichnung von Harles E-Commerce. Genannte Produkt- und Firmennamen Dritter (z. B. Sprachmodelle oder Plattformen) gehören ihren Inhabern. Ihre Nennung dient nur der Information und bedeutet keine Partnerschaft oder Empfehlung.')],
+      ['im-streit', 'Streitbeilegung',
+        p('Da wir nur mit Unternehmen Verträge schliessen, nehmen wir nicht an Streitbeilegungsverfahren vor einer Verbraucherschlichtungsstelle teil und sind dazu nicht verpflichtet.',
+          'Die frühere EU-Plattform zur Online-Streitbeilegung wurde am 20. Juli 2025 eingestellt (Verordnung (EU) 2024/3228). Ein Hinweis darauf ist daher nicht mehr vorgesehen.',
+          'Für Verträge gelten Schweizer Recht sowie der Gerichtsstand bzw. das Schiedsverfahren nach unseren <a href="#agb">AGB</a>.')]
     ]
   });
 };
 NORRA.pages.impressum.wire = function (el) { NORRA.recht.wire(el); };
 
+/* ===================================================================== DATENSCHUTZ */
 NORRA.pages.datenschutz = function (el) {
-  var ph = NORRA.recht.ph, list = NORRA.recht.list, mail = NORRA.esc(NORRA.CONTACT.email);
+  var p = NORRA.recht.p, list = NORRA.recht.list, mail = NORRA.esc(NORRA.CONTACT.email);
   el.innerHTML = NORRA.recht.page({
-    title: 'Datenschutz', lede: 'Welche Daten wir bearbeiten, wozu und welche Rechte Sie haben.',
-    switchLink: 'Angaben zum Anbieter: <a href="#impressum">Impressum</a>.',
+    title: 'Datenschutz', lede: 'Welche Daten wir bearbeiten, wozu, wohin sie gehen und welche Rechte Sie haben.',
+    switchLink: 'Weiter zu <a href="#impressum">Impressum</a> und <a href="#agb">AGB</a>.',
+    notes: 'Datenschutz: Art. 19 und 21 DSG, Art. 13 DSV, Art. 13, 14, 22 und 27 DSGVO, UK GDPR. ' +
+      'EU-Vertreter (Art. 27 DSGVO) und UK-Vertreter (Art. 27 UK GDPR): derzeit KEIN Vertreter bestellt, daher auf der Seite keiner genannt. ' +
+      'Die Ausnahme für nur gelegentliche Bearbeitung (Art. 27 Abs. 2 lit. a) greift bei laufender Akquise und laufendem Kundengeschäft in EU und UK nicht (EDPB-Leitlinien 3/2018). ' +
+      'PFLICHT: vor dem ersten EU- bzw. UK-Kunden und vor jeder Akquise dort je einen Vertreter bestellen und in „Verantwortliche Stelle und Kontakt“ mit Name, Anschrift und E-Mail ergänzen; bis dahin keine Akquise in EU und UK. ' +
+      'ICO-Gebührenpflicht (Data Protection (Charges and Information) Regulations 2018) prüfen. UK-Beschwerdeverfahren nach s. 164A DPA 2018: Inkrafttreten verifizieren. ' +
+      'CCPA: Schwellenwerte derzeit nicht erreicht; der US-Abschnitt ist eine freiwillige Information. Löschfristen mit der tatsächlichen Praxis abgleichen.',
     facts: [
-      ['Verantwortlich', 'Harles E-Commerce, Niklas Dean Harles<br>Brunnacker 8, 5712 Beinwil am See, Schweiz'],
-      ['Kontakt', NORRA.copyLine(NORRA.CONTACT.email)],
-      ['Kein Tracking', 'Keine Analyse- oder Werbe-Cookies.']
+      ['Verantwortlich', 'Harles E-Commerce, Inhaber Niklas Dean Harles<br>Brunnacker 8, 5712 Beinwil am See, Schweiz'],
+      ['Kontakt', NORRA.recht.contactHtml()],
+      ['Rechtsrahmen', 'Schweizer Datenschutzgesetz (revDSG), DSGVO (EU/EWR), UK GDPR und weitere Gesetze je nach Wohnsitz'],
+      ['Cookies und Tracking', 'Keine Analyse- oder Werbe-Cookies, keine Tracking-Pixel. Kein Verkauf von Daten.']
     ],
     sections: [
-      ['ds-verantwortlich', 'Verantwortliche Stelle',
-        '<p>Harles E-Commerce, Inhaber Niklas Dean Harles, Brunnacker 8, 5712 Beinwil am See, Schweiz. E-Mail: ' + mail + ', Telefon +41 78 406 70 99.</p>'],
-      ['ds-grundlagen', 'Grundsätze und Rechtsgrundlagen',
-        '<p>Wir bearbeiten Personendaten nach dem Schweizer Datenschutzgesetz (revDSG) und, soweit anwendbar, nach der DSGVO. Nur was für den Zweck nötig ist.</p>' +
-        list(['Einwilligung (Art. 6 Abs. 1 lit. a DSGVO)', 'Vertrag und vorvertragliche Anfragen (lit. b)', 'Gesetzliche Pflichten (lit. c)', 'Berechtigte Interessen, z. B. sicherer Betrieb (lit. f)'])],
-      ['ds-hosting', 'Hosting und Server-Logs',
-        '<p>Diese Website wird bei Vercel Inc. (USA) betrieben. Beim Aufruf fallen technisch nötige Daten an: ' +
-        'IP-Adresse, Zeitpunkt, aufgerufene Seite, Browser und Betriebssystem. Zweck: sicherer und stabiler Betrieb (berechtigtes Interesse). ' +
-        'Die Protokolle werden nach den Fristen des Anbieters gelöscht.</p>'],
-      ['ds-kontakt', 'Kontaktformular und E-Mail',
-        '<p>Wenn Sie uns schreiben, bearbeiten wir Ihre Angaben (Name, E-Mail, optional Unternehmen, Telefon, Branche, Interesse, Nachricht), um Ihre Anfrage zu beantworten.</p>' +
-        '<p>Das Formular übermittelt die Angaben über den Formulardienst Web3Forms (web3forms.com) per E-Mail an uns. ' +
-        'Dabei können Daten in Länder ausserhalb der Schweiz und des EWR gelangen.</p>' +
-        '<p>Unser Postfach liegt bei Gmail (Google LLC, USA). Anfragen löschen wir, sobald sie erledigt sind und keine Aufbewahrungspflicht besteht.</p>'],
-      ['ds-schriften', 'Schriftarten',
-        '<p>Diese Website lädt Schriftarten von Google Fonts (Google Ireland Limited, Irland; Google LLC, USA). Dabei wird Ihre IP-Adresse an Google übermittelt. ' +
-        'Grundlage ist unser berechtigtes Interesse an einer einheitlichen Darstellung.</p>'],
+      ['ds-ueberblick', 'Überblick und Geltungsbereich',
+        p('Diese Erklärung beschreibt, wie Harles E-Commerce (Marke Norra) Personendaten bearbeitet: beim Besuch dieser Website, bei Anfragen, in der geschäftlichen Kommunikation und bei Verträgen mit Geschäftskunden.',
+          'Wir bearbeiten Personendaten nach dem Schweizer Datenschutzgesetz (revDSG). Da wir Leistungen auch in der EU, im EWR und im Vereinigten Königreich anbieten, beachten wir zusätzlich die DSGVO (Art. 3 Abs. 2 DSGVO) und die UK GDPR. Hinweise für weitere Länder finden Sie im Abschnitt „Hinweise für einzelne Länder“.',
+          'Nicht erfasst ist die Bearbeitung durch die KI-Agenten, die wir für unsere Kundinnen und Kunden betreiben. Dort ist der jeweilige Betrieb verantwortlich, wir handeln in seinem Auftrag (siehe „KI-Agenten: Bearbeitung im Auftrag“).')],
+      ['ds-verantwortlich', 'Verantwortliche Stelle und Kontakt',
+        p('Verantwortlich ist ' + NORRA.recht.ADDR + '. E-Mail: ' + mail + ', Telefon +41 78 406 70 99.',
+          'Eine Datenschutzberaterin oder einen Datenschutzbeauftragten haben wir nicht bestellt, da keine Pflicht dazu besteht.',
+          'Ansprechperson für den Datenschutz (u. a. Encarregado nach Art. 41 LGPD, Person responsible nach PIPEDA bzw. Quebec Law 25) ist der Inhaber Niklas Dean Harles, erreichbar unter den obigen Angaben.')],
+      ['ds-website', 'Website-Aufruf und Server-Logs',
+        p('Diese Website wird bei Vercel Inc. (USA) betrieben. Beim Aufruf fallen technisch nötige Daten an: IP-Adresse, Datum und Uhrzeit, aufgerufene Seite, übertragene Datenmenge, Browser, Betriebssystem und die zuvor besuchte Seite.',
+          'Zweck: Auslieferung der Website, sicherer und stabiler Betrieb, Abwehr von Angriffen. Rechtsgrundlage: unser berechtigtes Interesse (Schweiz: Art. 31 Abs. 1 DSG; EU/UK: Art. 6 Abs. 1 lit. f DSGVO).',
+          'Die Protokolle speichert Vercel nur kurz nach eigenen Fristen. Wir werten sie nicht für Analyse- oder Werbezwecke aus und führen sie nicht mit anderen Daten zusammen.')],
+      ['ds-kontakt', 'Kontaktformular',
+        p('Wenn Sie das Formular nutzen, bearbeiten wir Ihre Angaben: Name, E-Mail-Adresse und Nachricht sowie freiwillig Unternehmen, Telefonnummer, Branche und Interesse. Zweck ist die Beantwortung Ihrer Anfrage und gegebenenfalls die Vorbereitung eines Angebots.',
+          'Rechtsgrundlage: vorvertragliche Massnahmen auf Ihre Anfrage (Art. 6 Abs. 1 lit. b DSGVO) und unser berechtigtes Interesse an der Beantwortung geschäftlicher Anfragen (Art. 6 Abs. 1 lit. f DSGVO). In der Schweiz ist die Bearbeitung durch Ihre Anfrage gerechtfertigt.',
+          'Das Formular übermittelt die Angaben über den Formulardienst Web3Forms (web3forms.com) per E-Mail an unser Postfach. Dabei können Daten in Länder ausserhalb der Schweiz und des EWR gelangen, insbesondere in die USA.',
+          'Entsteht keine Geschäftsbeziehung, löschen wir Ihre Anfrage spätestens zwölf Monate nach dem letzten Kontakt.')],
+      ['ds-email', 'E-Mail und Telefon',
+        p('Schreiben Sie uns eine E-Mail oder rufen Sie an, bearbeiten wir Ihre Kontaktdaten, den Inhalt der Nachricht oder Notizen zum Gespräch, um Ihr Anliegen zu bearbeiten. Rechtsgrundlage wie beim Kontaktformular.',
+          'Unser E-Mail-Postfach wird über Gmail (Google LLC, USA) betrieben. Google bearbeitet dabei Daten auch als eigener Verantwortlicher nach seiner Datenschutzerklärung.')],
+      ['ds-kunden', 'Geschäftskunden, Angebote und Verträge',
+        p('Für Angebote, Verträge, Abrechnung und Support bearbeiten wir Daten der Kontaktpersonen unserer Geschäftskunden: Name, Funktion, geschäftliche Kontaktdaten, Vertrags- und Rechnungsdaten sowie die Korrespondenz.',
+          'Rechtsgrundlage: Vertragserfüllung (Art. 6 Abs. 1 lit. b DSGVO), gesetzliche Pflichten (lit. c) und unser berechtigtes Interesse an der Kommunikation mit Ansprechpersonen unserer Kunden (lit. f).',
+          'Geschäftsbücher und Buchungsbelege bewahren wir zehn Jahre auf (Art. 958f OR). Übrige Vertragsdaten löschen wir, sobald sie nicht mehr nötig sind, in der Regel nach Ablauf der Verjährungsfristen.')],
+      ['ds-akquise', 'Geschäftliche Ansprache',
+        p('Sprechen wir Unternehmen von uns aus an, nutzen wir öffentlich zugängliche geschäftliche Kontaktdaten, etwa von der Website des Unternehmens oder aus dem Handelsregister: Name, Funktion, Firma, geschäftliche E-Mail-Adresse und Telefonnummer.',
+          'Rechtsgrundlage ist unser berechtigtes Interesse an der Geschäftsanbahnung (Art. 6 Abs. 1 lit. f DSGVO).',
+          'Werbe-E-Mails und andere elektronische Werbenachrichten senden wir nur mit Ihrer vorherigen Einwilligung, an bestehende Kunden für ähnliche eigene Leistungen mit Hinweis auf das Widerspruchsrecht oder an geschäftliche Adressen von Unternehmen, wo das am Sitz des Empfängers geltende Recht dies ohne Einwilligung ausdrücklich erlaubt (u. a. Art. 3 Abs. 1 lit. o UWG Schweiz; § 7 Abs. 2 Nr. 2 und Abs. 3 UWG Deutschland; PECR reg. 22 im Vereinigten Königreich; CASL in Kanada). Jede Nachricht nennt uns als Absender mit Anschrift und enthält eine einfache Abmeldemöglichkeit (u. a. CAN-SPAM in den USA).',
+          'Telefonisch sprechen wir Unternehmen nur an, wenn ein mutmassliches Interesse anzunehmen ist und kein Sperrvermerk besteht (u. a. Sterneintrag nach Art. 3 Abs. 1 lit. u UWG Schweiz; § 7 Abs. 2 Nr. 1 UWG Deutschland; TPS und CTPS im Vereinigten Königreich). Automatisierte oder KI-gestützte Werbeanrufe tätigen wir nicht ohne vorherige Einwilligung.',
+          'Bei der ersten Kontaktaufnahme informieren wir Sie über die Herkunft der Daten. Sie können dieser Nutzung jederzeit widersprechen. Dann sprechen wir Sie nicht mehr an und behalten nur einen Sperrvermerk.')],
+      ['ds-schriften', 'Schriftarten (Google Fonts)',
+        p('Diese Website lädt Schriftarten von Google Fonts (Google Ireland Limited, Irland; Google LLC, USA). Dabei übermittelt Ihr Browser Ihre IP-Adresse an Google.',
+          'Rechtsgrundlage ist unser berechtigtes Interesse an einer einheitlichen, gut lesbaren Darstellung (Art. 6 Abs. 1 lit. f DSGVO).')],
       ['ds-browser', 'Speicherung im Browser',
-        '<p>Ihre Wahl zwischen hellem und dunklem Farbschema speichern wir nur lokal in Ihrem Browser. Keine Analyse- oder Werbe-Cookies, kein Tracking. ' +
-        'Videos lädt die Website selbst, nicht über Drittanbieter.</p>'],
-      ['ds-agents', 'KI-Agenten für Kundinnen und Kunden',
-        '<p>Betreiben wir für Ihren Betrieb einen Agent, bearbeiten wir Gesprächs- und Nachrichtendaten in Ihrem Auftrag, auf Grundlage eines Auftragsverarbeitungsvertrags (AVV).</p>' +
-        list(['Verarbeitung in der EU, wo verfügbar', 'Schwärzung sensibler Angaben in Transkripten', 'Aufbewahrung und Löschung nach Ihrer Vorgabe',
-          'Agent-Plattform: Retell AI, Inc. (USA)', 'Sprachmodelle je nach Einrichtung: OpenAI, Anthropic oder Google (USA)', 'Telefonie je nach Einrichtung: Twilio oder Telnyx (USA)']) +
-        '<p>Sicherheitszertifizierungen wie SOC 2 oder ISO 27001 hält die zugrunde liegende Plattform, nicht Norra.</p>'],
+        p('Wir setzen keine Cookies. Im lokalen Speicher Ihres Browsers (localStorage) speichern wir nur Einstellungen, die Sie selbst wählen:') +
+        list(['<code>norra-theme</code>: helles oder dunkles Farbschema', '<code>norra-lang</code>: Sprache', '<code>norra-region</code>: Land bzw. Region für Preise und Steuern']) +
+        p('Diese Speicherung ist für die von Ihnen gewünschte Funktion unbedingt erforderlich und braucht daher keine Einwilligung (§ 25 Abs. 2 Nr. 2 TDDDG; Schedule A1 PECR). Sie können die Einträge jederzeit in Ihrem Browser löschen oder den Umschalter einfach nicht verwenden.',
+          'Keine Analyse- oder Werbe-Cookies, keine Tracking-Pixel und, abgesehen von den Schriftarten (siehe „Schriftarten“), keine Einbettungen von Drittanbietern. Videos liefert die Website selbst aus.')],
+      ['ds-agents', 'KI-Agenten: Bearbeitung im Auftrag',
+        p('Für unsere Geschäftskunden bauen und betreiben wir Voice Agents, Chatbots und Social-Media-Agenten. Sprechen Sie mit einem solchen Agenten, ist der jeweilige Betrieb Verantwortlicher. Wir sind sein Auftragsbearbeiter (Art. 9 DSG, Art. 28 DSGVO) und bearbeiten die Daten nur nach seinen Weisungen auf Grundlage eines Auftragsbearbeitungsvertrags (AVV).',
+          'Je nach Kanal und Einrichtung sind das: Telefonnummer, Transkripte der Gespräche (zur Beantwortung automatisch erstellt; darauf weist der Agent zu Beginn hin), Gesprächsaudio (nur wenn die Aufzeichnung angekündigt und eingeschaltet ist), Chat- und Social-Media-Nachrichten, Termin- und Anliegensdaten sowie technische Metadaten.',
+          'Die Agenten geben sich zu Beginn als KI zu erkennen. Aufbewahrung und Löschung richten sich nach den Vorgaben des Betriebs. Sensible Angaben können in Transkripten geschwärzt werden.',
+          'Die Bearbeitung erfolgt über Anbieter mit Sitz in den USA; die Garantien stehen unter „Bekanntgabe ins Ausland“. Eine Bearbeitung ausschliesslich in der EU bieten wir nur an, wenn sie im Angebot ausdrücklich vereinbart ist.',
+          'Fragen und Anträge zu diesen Daten richten Sie bitte an den Betrieb, mit dem Sie gesprochen haben. Erreichen sie uns, leiten wir sie an ihn weiter und unterstützen ihn bei der Beantwortung.')],
+      ['ds-empfaenger', 'Empfänger und Auftragsbearbeiter',
+        p('Wir geben Personendaten nur weiter, soweit es für die genannten Zwecke nötig ist. Folgende Dienstleister setzen wir ein; soweit sie als Auftragsbearbeiter tätig sind, bearbeiten sie die Daten nur in unserem Auftrag und nach unseren Weisungen:') +
+        list(['Website-Hosting: Vercel Inc., USA',
+          'Kontaktformular: Web3Forms (web3forms.com)',
+          'KI-Agenten-Plattform: Retell AI, Inc., USA',
+          'Sprachmodelle je nach Einrichtung: OpenAI (USA), Anthropic PBC (USA) oder Google LLC (USA)',
+          'Telefonie je nach Einrichtung: Twilio Inc. (USA) oder Telnyx LLC (USA)']) +
+        p('E-Mail (Gmail) und Schriftarten (Google Fonts): Google LLC, USA, bzw. Google Ireland Limited, Irland. Google bearbeitet diese Daten auch als eigener Verantwortlicher nach seiner Datenschutzerklärung.',
+          'Darüber hinaus geben wir Daten nur an Behörden oder Gerichte weiter, wenn wir dazu verpflichtet sind, sowie an zur Verschwiegenheit verpflichtete Berater wie Treuhand oder Rechtsanwälte. Wir verkaufen keine Personendaten.')],
       ['ds-ausland', 'Bekanntgabe ins Ausland',
-        '<p>Einige Dienstleister sitzen ausserhalb der Schweiz und des EWR. Wir übermitteln Daten dorthin nur mit Angemessenheitsbeschluss ' +
-        '(z. B. Swiss-U.S. bzw. EU-U.S. Data Privacy Framework) oder mit geeigneten Garantien wie Standardvertragsklauseln.</p>'],
+        p('Mehrere Dienstleister haben ihren Sitz in den USA. Daten gehen dorthin nur, wenn ein angemessener Schutz besteht:') +
+        list(['bei Anbietern, die unter dem EU-U.S. Data Privacy Framework (für das Vereinigte Königreich mit UK Extension) bzw. dem Swiss-U.S. Data Privacy Framework zertifiziert sind: auf Grundlage der Angemessenheitsentscheide (Anhang 1 DSV; Art. 45 DSGVO; für das Vereinigte Königreich die Data Protection (Adequacy) (United States of America) Regulations 2023)',
+          'bei allen anderen Anbietern: auf Grundlage der Standardvertragsklauseln der EU-Kommission (Art. 46 Abs. 2 lit. c DSGVO), vom EDÖB anerkannt und für die Schweiz angepasst (Art. 16 Abs. 2 lit. d DSG), für das Vereinigte Königreich ergänzt durch das UK-Addendum oder das International Data Transfer Agreement (Art. 46 UK GDPR)',
+          'bei Daten aus Brasilien: auf Grundlage der Standardvertragsklauseln der ANPD (Art. 33 LGPD)',
+          'ausnahmsweise, wenn die Bekanntgabe für den Abschluss oder die Abwicklung eines Vertrags mit Ihnen nötig ist (Art. 17 Abs. 1 lit. b DSG; Art. 49 Abs. 1 lit. b DSGVO)']) +
+        p('Welche Garantie für welchen Anbieter gilt, teilen wir Ihnen auf Anfrage mit; eine Kopie der jeweiligen Garantien erhalten Sie ebenfalls auf Anfrage an ' + mail + '.',
+          'Daten aus der EU und dem Vereinigten Königreich gelangen zu uns in die Schweiz, für die Angemessenheitsentscheide der EU und des Vereinigten Königreichs bestehen.')],
+      ['ds-speicher', 'Aufbewahrung und Löschung',
+        list(['Server-Logs: nach den kurzen Fristen des Hosters',
+          'Anfragen ohne Geschäftsbeziehung: spätestens zwölf Monate nach dem letzten Kontakt',
+          'Vertrags- und Korrespondenzdaten: für die Dauer der Geschäftsbeziehung und danach bis zum Ablauf der Verjährungsfristen',
+          'Geschäftsbücher und Buchungsbelege: zehn Jahre (Art. 958f OR)',
+          'Sperrvermerke nach einem Widerspruch: solange nötig, um ihn zu beachten',
+          'Einstellungen im Browser: bis Sie sie löschen',
+          'Daten der KI-Agenten: nach den Vorgaben des jeweiligen Betriebs'])],
       ['ds-rechte', 'Ihre Rechte',
-        '<p>Sie können Auskunft, Berichtigung, Löschung, Einschränkung und Herausgabe Ihrer Daten verlangen, der Bearbeitung widersprechen ' +
-        'und eine Einwilligung jederzeit für die Zukunft widerrufen. Schreiben Sie an ' + mail + '.</p>' +
-        '<p>Beschwerden: in der Schweiz beim Eidgenössischen Datenschutz- und Öffentlichkeitsbeauftragten (EDÖB), in der EU bei der Aufsichtsbehörde Ihres Wohnsitzlandes.</p>'],
-      ['ds-sicherheit', 'Sicherheit',
-        '<p>Die Übertragung ist per TLS verschlüsselt. Wir treffen angemessene technische und organisatorische Massnahmen.</p>'],
+        p('Sie können Auskunft über Ihre Daten verlangen, ihre Berichtigung, Löschung oder Einschränkung, die Herausgabe oder Übertragung in einem gängigen elektronischen Format, und Sie können der Bearbeitung widersprechen (Art. 25 bis 28 und 32 DSG; Art. 15 bis 21 DSGVO).',
+          'Haben Sie eine Einwilligung erteilt, können Sie sie jederzeit mit Wirkung für die Zukunft widerrufen. Einer Bearbeitung auf Grundlage berechtigter Interessen und jeder Direktwerbung können Sie jederzeit widersprechen.',
+          'Schreiben Sie an ' + mail + ' oder per Post an die oben genannte Anschrift. Damit keine Unbefugten Ihre Daten erhalten, können wir einen Nachweis Ihrer Identität verlangen. Die Auskunft ist kostenlos. Wir antworten innert 30 Tagen; ist das nicht möglich, teilen wir Ihnen mit, bis wann Sie die Antwort erhalten.',
+          'Für Personen in Brasilien beantworten wir vollständige Auskunftsbegehren innert 15 Tagen (Art. 19 LGPD).')],
+      ['ds-beschwerde', 'Beschwerde bei einer Aufsichtsbehörde',
+        p('Sie können sich jederzeit bei einer Aufsichtsbehörde beschweren, insbesondere:') +
+        list(['Schweiz: Eidgenössischer Datenschutz- und Öffentlichkeitsbeauftragter (EDÖB), Feldeggweg 1, 3003 Bern, edoeb.admin.ch',
+          'EU und EWR: die Aufsichtsbehörde Ihres Wohnsitzes, Ihres Arbeitsplatzes oder des Orts der mutmasslichen Verletzung',
+          'Vereinigtes Königreich: Information Commissioner’s Office (ICO), ico.org.uk',
+          'Kanada: Office of the Privacy Commissioner of Canada (OPC), priv.gc.ca',
+          'Australien: Office of the Australian Information Commissioner (OAIC), oaic.gov.au',
+          'Brasilien: Autoridade Nacional de Proteção de Dados (ANPD), gov.br/anpd']) +
+        p('Wir freuen uns, wenn Sie sich zuerst an uns wenden, damit wir Ihr Anliegen klären können.')],
+      ['ds-laender', 'Hinweise für einzelne Länder',
+        p('<b>EU und EWR:</b> Die DSGVO gilt für uns nach Art. 3 Abs. 2 DSGVO. Die Rechtsgrundlagen sind bei jeder Bearbeitung genannt.',
+          '<b>Vereinigtes Königreich:</b> Für Personen im Vereinigten Königreich gelten die UK GDPR und der Data Protection Act 2018 mit denselben Rechten und Rechtsgrundlagen; für die Speicherung im Browser gelten die PECR. Verweise auf die DSGVO gelten für Personen im Vereinigten Königreich als Verweise auf die entsprechenden Bestimmungen der UK GDPR.',
+          '<b>Beschwerden im Vereinigten Königreich:</b> Beschwerden zum Datenschutz können Sie per E-Mail an ' + mail + ' oder über das Kontaktformular einreichen. Wir bestätigen den Eingang innert 30 Tagen, bearbeiten die Beschwerde ohne unangemessene Verzögerung und informieren Sie über das Ergebnis (s. 164A Data Protection Act 2018). Ihr Recht auf Beschwerde beim ICO bleibt unberührt.',
+          '<b>USA:</b> Wir erreichen die Schwellenwerte des California Consumer Privacy Act (CCPA/CPRA) und vergleichbarer Gesetze anderer Bundesstaaten derzeit nicht. Zur Transparenz: In den letzten zwölf Monaten haben wir folgende Kategorien erhoben: Identifikatoren (Name, E-Mail, Telefon, IP-Adresse), berufliche Angaben (Firma, Funktion), kommerzielle Angaben (Angebote, Verträge, Rechnungen) und Internetaktivität (Server-Logs). Quellen, Zwecke und Fristen stehen oben.',
+          '<b>Kein Verkauf, kein Teilen:</b> Wir verkaufen keine personenbezogenen Daten und teilen sie nicht für kontextübergreifende Werbung („no sale or sharing“). Sensible Daten nutzen wir nicht, um Eigenschaften abzuleiten. Wer seine Rechte ausübt, wird nicht benachteiligt; Anträge sind auch über eine bevollmächtigte Person möglich.',
+          '<b>Kanada:</b> Personendaten werden in der Schweiz und in den USA bearbeitet und können dort nach dem jeweiligen Recht Behörden zugänglich sein. Bearbeiten wir Daten für einen kanadischen Kunden, bleibt dieser nach PIPEDA verantwortlich; wir sichern ihm vertraglich einen vergleichbaren Schutz zu.',
+          '<b>Australien:</b> Wir beachten die Australian Privacy Principles (APPs), soweit sie auf uns anwendbar sind. Personendaten werden in der Schweiz und in den USA bearbeitet (APP 8). Wir treffen keine automatisierten Entscheidungen, die Ihre Rechte oder Interessen erheblich beeinträchtigen (APP 1.7). Beschwerden können Sie an uns und anschliessend an das OAIC richten.',
+          '<b>Brasilien:</b> Für Personen in Brasilien gilt das LGPD. Rechtsgrundlagen sind Vertrag, berechtigtes Interesse und, wo eingeholt, Einwilligung (Art. 7 LGPD); Ihre Rechte nach Art. 18 LGPD üben Sie wie oben beschrieben aus.')],
+      ['ds-automatisiert', 'Automatisierte Entscheidungen und Profiling',
+        p('Auf dieser Website und in unserer Geschäftskommunikation treffen wir keine automatisierten Einzelentscheidungen und betreiben kein Profiling (Art. 21 DSG; Art. 22 DSGVO).',
+          'Setzt ein Betrieb einen unserer Agenten so ein, dass er selbständig Entscheidungen mit erheblicher Wirkung trifft, ist der Betrieb dafür verantwortlich, Sie zu informieren und eine Überprüfung durch einen Menschen zu ermöglichen.')],
+      ['ds-pflicht', 'Pflicht zur Bereitstellung',
+        p('Sie sind nicht verpflichtet, uns Daten bereitzustellen. Ohne Kontaktangaben können wir eine Anfrage aber nicht beantworten, und ohne Vertrags- und Rechnungsdaten keinen Vertrag schliessen.')],
+      ['ds-kinder', 'Kinder',
+        p('Unsere Angebote richten sich an Unternehmen, nicht an Kinder. Wir bearbeiten wissentlich keine Daten von Personen unter 16 Jahren. Erfahren wir davon, löschen wir die Daten.')],
+      ['ds-sicherheit', 'Datensicherheit',
+        p('Die Übertragung ist per TLS verschlüsselt. Wir treffen angemessene technische und organisatorische Massnahmen: Zugriff nur für berechtigte Personen, geschützte Konten, sparsame Datenhaltung und Auftragsbearbeitungsverträge mit unseren Dienstleistern, soweit diese als Auftragsbearbeiter tätig sind.',
+          'Verletzungen der Datensicherheit melden wir nach Art. 24 DSG dem EDÖB, soweit sie voraussichtlich zu einem hohen Risiko führen, und nach Art. 33 DSGVO binnen 72 Stunden der zuständigen Aufsichtsbehörde, sofern ein Risiko nicht unwahrscheinlich ist. Betroffene Personen informieren wir bei hohem Risiko (Art. 34 DSGVO).')],
       ['ds-aenderungen', 'Änderungen',
-        '<p>Wir passen diese Erklärung an, wenn sich unsere Bearbeitung oder die Rechtslage ändert. Es gilt die aktuelle Fassung auf dieser Seite.</p>']
+        p('Wir passen diese Erklärung an, wenn sich unsere Bearbeitung oder die Rechtslage ändert. Es gilt die aktuelle Fassung auf dieser Seite.')]
     ]
   });
 };
 NORRA.pages.datenschutz.wire = function (el) { NORRA.recht.wire(el); };
+
+/* ===================================================================== AGB */
+NORRA.pages.agb = function (el) {
+  var p = NORRA.recht.p, list = NORRA.recht.list;
+  el.innerHTML = NORRA.recht.page({
+    title: 'AGB', lede: 'Allgemeine Geschäftsbedingungen von Harles E-Commerce (Norra) für Unternehmen.',
+    switchLink: 'Weiter zu <a href="#impressum">Impressum</a> und <a href="#datenschutz">Datenschutz</a>.',
+    notes: 'AGB: B2B-only (Art. 120 IPRG, Art. 15 LugÜ, Art. 8 UWG gilt nur für Konsumenten). Haftung nach Art. 100/101 OR. ' +
+      'Rechtswahl Art. 116 IPRG, CISG-Ausschluss Art. 6 CISG, Gerichtsstand Art. 5 IPRG / Art. 23 LugÜ / Art. 17 ZPO. ' +
+      'Für Beinwil am See (Bezirk Kulm) ist voraussichtlich das Bezirksgericht Kulm zuständig, bei Handelsstreitigkeiten das Handelsgericht Aargau (Art. 6 ZPO): vor einer Klage prüfen. ' +
+      'Kunden ausserhalb CH/EU/EFTA: Schiedsklausel Swiss Rules (Vollstreckung nach dem New Yorker Übereinkommen), da die Schweiz weder dem Haager Gerichtsstandsübereinkommen 2005 noch dem Anerkennungsübereinkommen 2019 angehört. ' +
+      'Haftungs-, Freistellungs- und Schiedsklausel im Angebot ausdrücklich annehmen lassen (Ungewöhnlichkeitsregel). Englische Fassung juristisch prüfen lassen. ' +
+      'Zahlungsfristen (30 Tage, Einrichtung 50/50) sind Standardwerte: bei abweichender Praxis anpassen. ' +
+      'Die AGB in jedem Angebot verlinken und die Annahme mit Zeitstempel bzw. per E-Mail dokumentieren (Textform). Separaten AVV/DPA mit Unterauftragsbearbeiterliste bereithalten.',
+    facts: [
+      ['Anbieter', 'Harles E-Commerce (Marke Norra)<br>Inhaber: Niklas Dean Harles<br>Brunnacker 8, 5712 Beinwil am See, Schweiz'],
+      ['Für wen', 'Ausschliesslich Unternehmen (B2B), keine Verbraucherinnen und Verbraucher'],
+      ['Recht und Gerichtsstand', 'Schweizer Recht, ohne UN-Kaufrecht<br>Gerichtsstand: Sitz des Anbieters (Beinwil am See, Kanton Aargau, Schweiz)<br>Kunden ausserhalb der Schweiz, der EU und der EFTA: Schiedsgericht mit Sitz in Zürich'],
+      ['Kontakt', NORRA.recht.contactHtml()]
+    ],
+    sections: [
+      ['agb-geltung', 'Geltungsbereich',
+        p('Diese AGB gelten für alle Verträge zwischen Harles E-Commerce, Inhaber Niklas Dean Harles, Brunnacker 8, 5712 Beinwil am See, Schweiz, UID CHE-267.096.187 (nachfolgend „Norra“ oder „wir“), und ihren Kundinnen und Kunden (nachfolgend „Kunde“) über Einrichtung und Betrieb von KI-Agenten (Voice Agent, Chatbot, Social-Media-Agent) und Websites.',
+          'Abweichende oder ergänzende Bedingungen des Kunden gelten nur, wenn wir ihnen ausdrücklich in Textform zustimmen. Individuelle Vereinbarungen im Angebot gehen diesen AGB vor.')],
+      ['agb-b2b', 'Nur für Unternehmen',
+        p('Wir schliessen Verträge ausschliesslich mit Unternehmen, Selbständigen, Organisationen und öffentlichen Stellen, die in Ausübung ihrer gewerblichen oder beruflichen Tätigkeit handeln. Verträge mit Verbraucherinnen und Verbrauchern schliessen wir nicht.',
+          'Mit der Annahme des Angebots bestätigt der Kunde, dass er als Unternehmen handelt. Wir dürfen dafür Nachweise verlangen, etwa eine Handelsregister-, UID- oder Umsatzsteuer-Identifikationsnummer, und Anfragen ohne solchen Nachweis ablehnen.')],
+      ['agb-vertrag', 'Vertragsschluss',
+        p('Darstellungen auf der Website sind kein verbindliches Angebot. Der Vertrag kommt so zustande:') +
+        list(['Anfrage des Kunden über das Kontaktformular, per E-Mail oder Telefon',
+          'Erstgespräch zum Bedarf',
+          'schriftliches Angebot von Norra per E-Mail oder als PDF mit Leistungsumfang, Preisen und Verweis auf diese AGB',
+          'Annahme durch den Kunden in Textform (E-Mail, Unterschrift oder Bestätigung in einem Online-Formular)',
+          'Bestätigung des Vertragsschlusses durch Norra per E-Mail']) +
+        p('Eingabefehler kann der Kunde bis zur Annahme korrigieren, indem er uns schreibt; wir passen das Angebot dann an. Vertragssprachen sind Deutsch und Englisch. Wir speichern den Vertragstext und senden ihn dem Kunden mit der Bestätigung.')],
+      ['agb-leistungen', 'Leistungen',
+        p('Art und Umfang der Leistungen ergeben sich aus dem Angebot. Typisch sind die Einrichtung (Konzeption, Aufbau, Anbindung und Test eines Agenten oder einer Website) und der laufende Betrieb (Bereitstellung, Überwachung, Pflege und Anpassungen).',
+          'Kleine Änderungen nach der Einrichtung sind im Rahmen des Angebots inbegriffen. Grössere Erweiterungen bieten wir gesondert an.',
+          'Wir dürfen Hilfspersonen und Unterauftragnehmer einsetzen. Für die Bearbeitung von Personendaten gilt dabei der Abschnitt „Datenschutz und Auftragsbearbeitung“.')],
+      ['agb-dritte', 'Plattformen und Drittanbieter',
+        p('Unsere Leistungen beruhen auf Plattformen Dritter, insbesondere der Agent-Plattform Retell AI, Sprachmodellen von OpenAI, Anthropic oder Google, Telefonie von Twilio oder Telnyx, dem Hosting von Vercel sowie Messaging- und Social-Media-Plattformen (z. B. WhatsApp, Instagram, Facebook, TikTok).',
+          'Benötigt eine Plattform ein eigenes Konto des Kunden, schliesst der Kunde den Vertrag mit ihr selbst ab und hält deren Bedingungen und Richtlinien ein.',
+          'Ändert eine Plattform Funktionen, Preise oder Richtlinien, können Anpassungen nötig werden. Wir dürfen einen Anbieter durch einen gleichwertigen ersetzen und informieren den Kunden darüber vorab.')],
+      ['agb-preise', 'Preise und Steuern',
+        p('Es gelten die Preise im Angebot. Die Preise auf der Website sind Nettopreise in der Währung der gewählten Region (EUR, CHF, GBP oder USD).',
+          'Alle Preise sind Nettopreise. Mehrwertsteuer stellen wir nur in Rechnung, soweit wir steuerpflichtig sind und die Leistung im Inland steuerbar ist. Bei Leistungen an Unternehmen im Ausland gilt in der Regel das Empfängerortprinzip; die Steuer schuldet dann der Kunde (Reverse Charge). Der Kunde nennt uns dafür seine Steuernummer.',
+          'Allfällige Quellensteuern oder ähnliche Abzüge trägt der Kunde. Zahlungen erfolgen ohne Abzug; muss der Kunde von Gesetzes wegen etwas einbehalten, erhöht sich der Betrag so, dass wir den vollen Rechnungsbetrag erhalten (Gross-up).',
+          'Das Entgelt besteht in der Regel aus einer einmaligen Einrichtungsgebühr, einer monatlichen Grundgebühr und nutzungsabhängigen Gebühren (z. B. pro Gesprächsminute oder pro Nachricht). Die Nutzung ermitteln wir aus den Daten der Plattformen.',
+          'Kosten Dritter, die nicht im Angebot enthalten sind (z. B. eigene Rufnummern, Werbebudgets oder Lizenzen), trägt der Kunde nach Absprache.',
+          'Ändern sich die Kosten unserer Plattformen, dürfen wir laufende Gebühren und Nutzungspreise mit mindestens 60 Tagen Vorankündigung in Textform anpassen. Der Kunde kann den Vertrag dann auf das Inkrafttreten hin kündigen.')],
+      ['agb-zahlung', 'Rechnung und Zahlung',
+        p('Sofern das Angebot nichts anderes bestimmt, ist die Einrichtungsgebühr zur Hälfte bei Auftragserteilung und zur Hälfte beim Go-live fällig. Monatliche Grundgebühren rechnen wir monatlich im Voraus ab, Nutzungsgebühren monatlich im Nachhinein.',
+          'Rechnungen sind innert 30 Tagen ohne Abzug in der Rechnungswährung zahlbar; Bank- und Wechselgebühren trägt der Kunde. Nach Ablauf der Frist gerät der Kunde ohne Mahnung in Verzug; der Verzugszins beträgt 5 % pro Jahr (Art. 104 OR).',
+          'Bei einem Zahlungsverzug von mehr als 30 Tagen dürfen wir die Leistungen nach vorheriger Ankündigung in Textform aussetzen, bis die offenen Beträge bezahlt sind.')],
+      ['agb-mitwirkung', 'Mitwirkung des Kunden',
+        p('Der Kunde stellt rechtzeitig alle Informationen, Inhalte, Zugänge und Freigaben bereit, die wir für die Leistung brauchen, und benennt eine Ansprechperson.',
+          'Er ist für die Richtigkeit und Rechtmässigkeit der Inhalte verantwortlich, die er liefert oder freigibt (z. B. Wissensbasis, Preise, Öffnungszeiten, Texte, Bilder), und besitzt die dafür nötigen Rechte.',
+          'Vor dem Go-live testet der Kunde den Agenten oder die Website und gibt ihn frei. Verzögerungen, die auf fehlender Mitwirkung beruhen, verlängern unsere Fristen entsprechend.')],
+      ['agb-einsatz', 'Rechtmässiger Einsatz der Agenten',
+        p('Der Kunde setzt die Agenten in eigener Verantwortung und im Einklang mit dem anwendbaren Recht ein. Insbesondere:') +
+        list(['<b>KI-Hinweis:</b> Die Agenten geben sich zu Beginn jedes Gesprächs als KI zu erkennen und nennen den Betrieb. Der Kunde entfernt oder verschleiert diesen Hinweis nicht (u. a. Art. 50 KI-Verordnung der EU; Cal. Bus. &amp; Prof. Code § 17941; C.R.S. § 6-1-1704 (Colorado); Utah Code § 13-75-103).',
+          '<b>Aufzeichnung und Transkription:</b> Gespräche werden automatisch transkribiert, damit der Agent antworten kann, und nur auf Wunsch zusätzlich aufgezeichnet. Darauf weist der Agent zu Beginn jedes Anrufs und das Chatfenster vor der ersten Nachricht hin (Standardbegrüssung mit dem Namen des Betriebs, dem Hinweis auf den KI-Assistenten und auf die automatische Transkription bzw. Aufzeichnung). Der Kunde entfernt diesen Hinweis nicht und holt, wo nötig, die Einwilligung ein (u. a. Art. 179ter StGB Schweiz; § 201 StGB Deutschland; Cal. Penal Code §§ 631, 632, 632.7 sowie die Gesetze weiterer Staaten mit Einwilligung aller Beteiligten, z. B. Florida, Illinois, Pennsylvania, Washington).',
+          '<b>Ausgehende Anrufe und Nachrichten:</b> Ausgehende Anrufe mit KI-Stimme und automatisierte Nachrichten gehen nur an Empfänger, die vorher ausdrücklich eingewilligt haben, bei Werbung in der nach dem Zielland erforderlichen Form (z. B. in den USA „prior express written consent“). Der Kunde beachtet Sperrlisten (u. a. Sterneintrag in der Schweiz, US National und State Do-Not-Call, UK TPS und CTPS, Kanada DNCL, Australien Do Not Call Register), zulässige Anrufzeiten und Identifikationspflichten, zeigt eine gültige Rufnummer an und stellt in jedem Anruf eine Abmeldemöglichkeit bereit (u. a. Art. 3 Abs. 1 lit. o, u, v UWG Schweiz; § 7 UWG Deutschland; PECR reg. 19, 21 und 22; 47 U.S.C. § 227, 47 C.F.R. § 64.1200 und FCC 24-17, wonach KI-Stimmen als künstliche Stimmen gelten; CRTC Unsolicited Telecommunications Rules; Do Not Call Register Act 2006 und Spam Act 2003 (Australien); CAN-SPAM; CASL).',
+          '<b>Start ausgehender Kampagnen:</b> Ausgehende Kampagnen startet Norra erst, wenn der Kunde die Einwilligungsnachweise vorgelegt hat. Ohne Nachweis dürfen wir Kampagnen ablehnen oder pausieren.',
+          '<b>Nachweise:</b> Der Kunde dokumentiert Einwilligungen und legt sie uns auf Anfrage vor.',
+          '<b>Soziale Netzwerke:</b> Automatisierte Beiträge und Nachrichten werden gekennzeichnet, wo dies vorgeschrieben ist (z. B. § 18 Abs. 3 MStV), und die Regeln der Plattformen werden eingehalten.',
+          '<b>Information der eigenen Kunden:</b> Der Kunde informiert seine Kundinnen und Kunden in seiner Datenschutzerklärung über den Einsatz der Agenten und führt, wo nötig, eine Datenschutz-Folgenabschätzung durch.',
+          '<b>Branchenregeln:</b> Der Kunde beachtet Berufsgeheimnisse und branchenspezifische Vorschriften, etwa im Gesundheits-, Finanz- oder Rechtsbereich. Besonders schützenswerte Daten bearbeiten die Agenten nur nach vorheriger Vereinbarung.',
+          '<b>Automatisierte Entscheidungen:</b> Trifft ein Agent Entscheidungen mit rechtlicher oder erheblicher Wirkung für Personen, sorgt der Kunde für die nötige Information und eine Überprüfung durch einen Menschen (Art. 21 DSG; Art. 22 DSGVO).'])],
+      ['agb-nutzung', 'Unzulässige Nutzung',
+        p('Nicht erlaubt ist insbesondere, die Agenten oder Websites zu nutzen:') +
+        list(['um Personen über die KI-Natur eines Agenten oder über den Absender zu täuschen',
+          'um die Stimme oder Identität realer Personen ohne deren Einwilligung nachzubilden oder Deepfakes ohne Kennzeichnung zu verbreiten',
+          'um biometrische Merkmale wie Stimmabdrücke ohne die gesetzlich erforderliche Einwilligung zu erfassen (u. a. 740 ILCS 14, Illinois)',
+          'für unerlaubte Werbung, Spam, Belästigung, Betrug oder diskriminierende Inhalte',
+          'für rechtswidrige Inhalte oder die Verletzung von Rechten Dritter',
+          'für nach Art. 5 KI-Verordnung verbotene Praktiken oder ohne vorherige Vereinbarung für Hochrisiko-Anwendungen nach Anhang III KI-Verordnung',
+          'als Ersatz für Notrufdienste oder für Situationen, in denen Fehler Leib und Leben gefährden können',
+          'um Sicherheitsmassnahmen zu umgehen oder die Plattformen zu stören']) +
+        p('Bei Verstössen oder begründetem Verdacht dürfen wir den betroffenen Agenten sofort ganz oder teilweise sperren. Wir informieren den Kunden unverzüglich.')],
+      ['agb-verfuegbarkeit', 'Verfügbarkeit und Wartung',
+        p('Wir betreiben die Agenten und Websites mit der gebotenen Sorgfalt. Eine Verfügbarkeit über die Zusagen der zugrunde liegenden Plattformen hinaus schulden wir nicht. Angaben zur Verfügbarkeit auf der Website sind Richtwerte nach Angaben der Plattformen, sofern das Angebot nichts anderes zusichert.',
+          'Für Ausfälle und Störungen bei Plattformen, Telefonnetzen oder Internetanbietern sind wir nicht verantwortlich, soweit wir diese nicht absichtlich oder grobfahrlässig verursacht haben. Wir informieren den Kunden über bekannte Störungen und setzen uns für eine rasche Behebung ein. Geplante Wartungen kündigen wir nach Möglichkeit vorab an.')],
+      ['agb-gewalt', 'Höhere Gewalt',
+        p('Keine Partei haftet für die Nichterfüllung oder verspätete Erfüllung ihrer Pflichten, soweit diese auf Ereignissen ausserhalb ihres Einflussbereichs beruht, etwa Naturereignisse, Pandemien, Krieg, Terror, behördliche Massnahmen oder Ausfälle von Netzen und Plattformen Dritter, die sie nicht zu vertreten hat.',
+          'Für die Dauer eines solchen Ereignisses ruhen die betroffenen Leistungspflichten. Die betroffene Partei informiert die andere unverzüglich. Dauert das Ereignis länger als 60 Tage, kann jede Partei den betroffenen Teil des Vertrags kündigen. Zahlungspflichten für bereits erbrachte Leistungen bleiben bestehen.')],
+      ['agb-ki', 'KI-Ergebnisse',
+        p('KI-Agenten erzeugen Antworten auf Basis von Wahrscheinlichkeiten. Antworten können unvollständig, veraltet oder falsch sein, auch wenn der Agent sorgfältig eingerichtet ist.',
+          'Der Kunde prüft die Wissensbasis und die Einstellungen, überwacht den Betrieb in angemessenem Umfang und meldet uns Fehler. Die Agenten ersetzen keine fachliche Beratung.',
+          'Bestimmte Ergebnisse wie eine Zahl an Buchungen, Anrufen oder ein Umsatz sind nicht geschuldet. Entscheidungen, die der Kunde auf Grundlage von KI-Ergebnissen trifft, liegen in seiner Verantwortung.')],
+      ['agb-datenschutz', 'Datenschutz und Auftragsbearbeitung',
+        p('Für die Daten, die die Agenten im Gespräch mit Kundinnen und Kunden des Kunden bearbeiten, ist der Kunde Verantwortlicher und Norra Auftragsbearbeiter. Die Parteien schliessen dafür einen Auftragsbearbeitungsvertrag (AVV/DPA) nach Art. 9 DSG, Art. 28 DSGVO und UK GDPR, der Bestandteil des Vertrags ist. Auf Wunsch enthält er auch Bestimmungen für Dienstleister nach dem CCPA.',
+          'Der Kunde genehmigt die Unterauftragsbearbeiter nach der Liste im AVV (derzeit Retell AI, OpenAI, Anthropic, Google, Twilio, Telnyx und Vercel). Über Änderungen informieren wir vorab in Textform. Der Kunde kann innert 30 Tagen nach der Mitteilung widersprechen; kommt keine Einigung zustande, kann er den betroffenen Dienst ausserordentlich kündigen.',
+          'Messaging- und Social-Media-Plattformen, die über ein Konto des Kunden laufen, sind keine Unterauftragsbearbeiter von Norra; dort ist der Kunde selbst Vertragspartner der Plattform.',
+          'Wir bearbeiten die Daten nur nach Weisung des Kunden, melden Verletzungen der Datensicherheit unverzüglich, unterstützen ihn bei Anfragen betroffener Personen und löschen oder übergeben die Daten nach Vertragsende.',
+          'Für unsere eigene Bearbeitung gilt unsere <a href="#datenschutz">Datenschutzerklärung</a>.')],
+      ['agb-vertraulich', 'Vertraulichkeit',
+        p('Beide Parteien behandeln vertrauliche Informationen der anderen Partei vertraulich und nutzen sie nur für den Vertrag. Dies gilt nicht für Informationen, die öffentlich bekannt sind, rechtmässig von Dritten stammen oder offengelegt werden müssen. Die Pflicht gilt auch nach Vertragsende.')],
+      ['agb-rechte', 'Rechte an Inhalten und Lizenzen',
+        p('Der Kunde behält alle Rechte an seinen Inhalten und Daten. Er räumt uns die Rechte ein, die wir für die Erbringung der Leistungen brauchen.',
+          'Unsere Vorlagen, Prompts, Abläufe, Software und unser Know-how bleiben unser Eigentum. Der Kunde erhält für die Dauer des Vertrags ein nicht ausschliessliches, nicht übertragbares Recht, die Agenten für seinen eigenen Geschäftsbetrieb zu nutzen.',
+          'An einer für ihn erstellten Website erhält der Kunde nach vollständiger Bezahlung ein zeitlich unbeschränktes, nicht ausschliessliches Nutzungsrecht. Bestandteile Dritter (z. B. Schriften, Bibliotheken, Stockmaterial) unterliegen deren Lizenzen.',
+          'Als Referenz nennen wir den Kunden nur mit seiner Zustimmung.')],
+      ['agb-abnahme', 'Abnahme und Mängel',
+        p('Der Kunde prüft eingerichtete Agenten und Websites innert zehn Arbeitstagen nach Bereitstellung. Mit dem Go-live oder wenn er innert dieser Frist keine wesentlichen Mängel meldet, gilt die Leistung als abgenommen.',
+          'Mängel meldet der Kunde unverzüglich in Textform. Wir beheben sie innert angemessener Frist. Gelingt das nicht, kann der Kunde den Preis angemessen mindern oder, bei erheblichen Mängeln, vom betroffenen Teil des Vertrags zurücktreten.')],
+      ['agb-haftung', 'Haftung',
+        p('Wir haften unbeschränkt für Schäden, die wir absichtlich oder grobfahrlässig verursachen, sowie für Personenschäden.',
+          '<b>Für leichte Fahrlässigkeit ist unsere Haftung, soweit gesetzlich zulässig, auf den höheren Betrag aus (a) den in den zwölf Monaten vor dem schädigenden Ereignis bezahlten oder geschuldeten Entgelten und (b) CHF 5000 bzw. dem Gegenwert in der Vertragswährung beschränkt. Für indirekte Schäden und Folgeschäden, entgangenen Gewinn und Datenverlust haften wir bei leichter Fahrlässigkeit nicht.</b>',
+          '<b>Für Betreiber der genutzten Plattformen, die wir mit Zustimmung des Kunden beiziehen (u. a. Retell AI, Sprachmodelle, Telefonie, Hosting), haften wir nur für gehörige Sorgfalt bei Auswahl und Instruktion (Art. 399 Abs. 2 OR). Im Übrigen ist die Haftung für Hilfspersonen bei leichter Fahrlässigkeit ausgeschlossen (Art. 101 Abs. 2 OR); Personenschäden sind ausgenommen.</b>',
+          'Zwingende gesetzliche Haftung bleibt unberührt (Art. 100 Abs. 1 OR).')],
+      ['agb-freistellung', 'Freistellung',
+        p('Der Kunde stellt Norra von Ansprüchen Dritter sowie von behördlichen Verfahrenskosten und Bussen, soweit deren Überwälzung rechtlich zulässig ist, frei, die entstehen, weil er die Abschnitte „Mitwirkung des Kunden“, „Rechtmässiger Einsatz der Agenten“ oder „Unzulässige Nutzung“ verletzt, etwa durch fehlende Einwilligungen, unzulässige Aufzeichnungen oder rechtswidrige Inhalte. Dies umfasst angemessene Kosten der Rechtsverteidigung.',
+          'Wir informieren den Kunden unverzüglich über solche Ansprüche und stimmen das weitere Vorgehen mit ihm ab.')],
+      ['agb-laufzeit', 'Laufzeit und Kündigung',
+        p('Verträge über den laufenden Betrieb haben keine Mindestlaufzeit. Beide Parteien können sie jederzeit in Textform kündigen. Die monatliche Grundgebühr gilt die Bereitstellung der Infrastruktur für den jeweiligen Kalendermonat ab und bleibt für den laufenden Monat auch bei einer Kündigung während des Monats geschuldet; Nutzungsgebühren rechnen wir bis zur Abschaltung ab. Eine Kündigung zur Unzeit verpflichtet zum Ersatz des dadurch entstandenen Schadens (Art. 404 Abs. 2 OR).',
+          'Tritt der Kunde vor Abschluss der Einrichtung zurück, vergütet er die bereits geleistete Arbeit und die entstandenen Aufwendungen (Art. 377 OR).',
+          'Das Recht zur fristlosen Kündigung aus wichtigem Grund bleibt unberührt, insbesondere bei Zahlungsverzug von mehr als 30 Tagen trotz Mahnung, bei schweren Verstössen gegen die Abschnitte zum rechtmässigen Einsatz oder bei Sanktionen.',
+          'Nach Vertragsende schalten wir die Agenten ab und löschen oder übergeben die Daten nach dem AVV.')],
+      ['agb-sanktionen', 'Sanktionen und Exportkontrolle',
+        p('Der Kunde sichert zu, dass weder er noch seine Eigentümer oder Geschäftsführer Sanktionen der Schweiz, der UNO, der EU, des Vereinigten Königreichs oder der USA unterliegen und dass er die Leistungen nicht in sanktionierten Ländern oder für verbotene Zwecke einsetzt (u. a. Embargogesetz, SR 946.231).',
+          'Verstösst der Kunde dagegen oder werden Sanktionen gegen ihn erlassen, dürfen wir den Vertrag fristlos kündigen und die Leistungen sofort einstellen.')],
+      ['agb-aenderungen', 'Änderungen dieser AGB',
+        p('Wir können diese AGB mit Wirkung für die Zukunft ändern. Änderungen teilen wir mindestens 30 Tage vor Inkrafttreten in Textform mit. Widerspricht der Kunde nicht vor dem Inkrafttreten, gelten sie als angenommen; auf diese Folge weisen wir in der Mitteilung hin. Bei einem Widerspruch kann jede Partei den Vertrag auf das Inkrafttreten hin kündigen.',
+          'Änderungen wesentlicher Leistungs- oder Preisbestimmungen bedürfen der Zustimmung des Kunden.')],
+      ['agb-recht', 'Anwendbares Recht und Gerichtsstand',
+        p('Es gilt ausschliesslich schweizerisches Recht unter Ausschluss der Kollisionsnormen. Das Übereinkommen der Vereinten Nationen über Verträge über den internationalen Warenkauf (CISG) ist ausgeschlossen.',
+          'Für Kunden mit Sitz in der Schweiz, der EU oder einem anderen Vertragsstaat des Lugano-Übereinkommens sind für alle Streitigkeiten aus oder im Zusammenhang mit dem Vertrag ausschliesslich die Gerichte am Sitz von Harles E-Commerce in Beinwil am See, Kanton Aargau, Schweiz, zuständig (Bezirksgericht Kulm bzw. Handelsgericht des Kantons Aargau; Art. 5 IPRG, Art. 23 Lugano-Übereinkommen, Art. 6 und 17 ZPO).',
+          'Für alle übrigen Kunden werden Streitigkeiten aus oder im Zusammenhang mit dem Vertrag endgültig durch ein Schiedsverfahren nach den Swiss Rules of International Arbitration des Swiss Arbitration Centre entschieden: Einzelschiedsrichter, Sitz des Schiedsgerichts Zürich, Verfahrenssprache Englisch oder, wenn der Vertrag auf Deutsch geschlossen wurde, Deutsch; bei Streitwerten bis CHF 1 Mio. im beschleunigten Verfahren (Art. 7 und 176 ff. IPRG).',
+          'Wir dürfen den Kunden auch an seinem Sitz belangen.')],
+      ['agb-schluss', 'Schlussbestimmungen',
+        p('Ist eine Bestimmung unwirksam, bleibt der Rest des Vertrags gültig. Die unwirksame Bestimmung wird durch eine wirksame ersetzt, die ihrem wirtschaftlichen Zweck am nächsten kommt.',
+          'Änderungen und Ergänzungen des Vertrags bedürfen der Textform; E-Mail genügt. Der Kunde darf Rechte und Pflichten aus dem Vertrag nur mit unserer Zustimmung übertragen.',
+          'Es gilt folgende Rangfolge: individuelles Angebot und Vertrag, für den Datenschutz der AVV, dann diese AGB. Wird der Vertrag auf Englisch geschlossen, ist die englische Fassung dieser AGB massgeblich, sonst die deutsche. Übersetzungen in weitere Sprachen dienen der Information.')]
+    ]
+  });
+};
+NORRA.pages.agb.wire = function (el) { NORRA.recht.wire(el); };
 </script>
 <script>
 /* ===== src/content/90-logo-reel.js ===== */
