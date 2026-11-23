@@ -17,6 +17,7 @@ import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { VIEWS } from '@/app/constants';
 import { useIsCollectionsEnabled } from '@/features/shared/knowledge/useIsCollectionsEnabled';
 
+import { useCollectionsStore } from '../collections.store';
 import { useContextStore } from '../context.store';
 import {
 	canManageContextPreferences,
@@ -30,6 +31,7 @@ const router = useRouter();
 const documentTitle = useDocumentTitle();
 const contextStore = useContextStore();
 const skillsStore = useSkillsStore();
+const collectionsStore = useCollectionsStore();
 const skillsEnabled = isContextSkillsEnabled();
 const preferencesEnabled = isContextPreferencesEnabled();
 const canManagePreferences = canManageContextPreferences();
@@ -47,6 +49,13 @@ const skillCount = computed(() =>
 	i18n.baseText('settings.context.skills.count', {
 		interpolate: { count: skillsStore.count },
 		adjustToNumber: skillsStore.count,
+	}),
+);
+
+const collectionCount = computed(() =>
+	i18n.baseText('settings.context.collections.count', {
+		interpolate: { count: collectionsStore.count },
+		adjustToNumber: collectionsStore.count,
 	}),
 );
 
@@ -83,6 +92,11 @@ onMounted(async () => {
 			loadCount(
 				async () => await skillsStore.fetchSkillCount(),
 				'settings.context.skills.error.load',
+			),
+		collectionsEnabled.value &&
+			loadCount(
+				async () => await collectionsStore.fetchCollections(),
+				'settings.context.collections.error.load',
 			),
 	]);
 });
@@ -154,8 +168,7 @@ onMounted(async () => {
 				@click="openCollections"
 			>
 				<template #action>
-					<!-- No count: there is no endpoint that lists collections yet. -->
-					<N8nSettingsRowConfigure value="" />
+					<N8nSettingsRowConfigure :value="collectionCount" />
 				</template>
 			</N8nSettingsRow>
 		</N8nSettingsRowGroup>

@@ -4,6 +4,7 @@ import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 
 import SettingsContextView from './SettingsContextView.vue';
+import { useCollectionsStore } from '../collections.store';
 import { useContextStore } from '../context.store';
 import { useSkillsStore } from '../skills.store';
 
@@ -141,10 +142,48 @@ describe('SettingsContextView', () => {
 	});
 
 	describe('collections', () => {
-		it('hides the collections row while collections are off', () => {
+		it('hides the collections row and reads no count while collections are off', async () => {
+			const collectionsStore = mockedStore(useCollectionsStore);
 			const { queryByTestId } = renderView();
+			await new Promise(process.nextTick);
 
 			expect(queryByTestId('settings-context-collections-row')).toBeNull();
+			expect(collectionsStore.fetchCollections).not.toHaveBeenCalled();
+		});
+
+		it('reads the collection count and shows "None yet" for zero', async () => {
+			flags.collections = true;
+			const collectionsStore = mockedStore(useCollectionsStore);
+			collectionsStore.count = 0;
+
+			const { getByTestId } = renderView();
+			await new Promise(process.nextTick);
+
+			expect(collectionsStore.fetchCollections).toHaveBeenCalled();
+			expect(getByTestId('settings-context-collections-row')).toHaveTextContent('None yet');
+		});
+
+		it.each([
+			[1, '1 collection'],
+			[3, '3 collections'],
+		])('shows the count for %i as "%s"', (count, expected) => {
+			flags.collections = true;
+			mockedStore(useCollectionsStore).count = count;
+
+			const { getByTestId } = renderView();
+
+			expect(getByTestId('settings-context-collections-row')).toHaveTextContent(expected);
+		});
+
+		it('reports a failed collection count', async () => {
+			flags.collections = true;
+			const error = new Error('offline');
+			mockedStore(useCollectionsStore).fetchCollections.mockRejectedValueOnce(error);
+
+			renderView();
+			await new Promise(process.nextTick);
+
+			expect(showErrorMock).toHaveBeenCalledWith(error, 'Could not load collections');
 		});
 
 		it('shows the collections row and opens the collections page', async () => {
