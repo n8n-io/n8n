@@ -1178,6 +1178,21 @@ describe('WorkflowPublicationApplier', () => {
 		expect(result).toMatchObject({ type: 'failed', teardownFailures: [teardownFailure] });
 	});
 
+	test('reports the teardown failures of a failed transfer record', async () => {
+		setTriggerSets([triggerNode('a')], [triggerNode('a')]);
+		const teardownFailure = { nodeName: 'a', error: new Error('remote unreachable') };
+		workflowTriggerActivator.deactivate.mockResolvedValue({
+			externalTeardownFailures: [teardownFailure],
+		});
+		credentialsPermissionChecker.check.mockRejectedValue(
+			new UserError('Node "a" does not have access to the credential'),
+		);
+
+		const result = await applier.apply(makeRecord({ reason: 'transfer' }), abort);
+
+		expect(result).toMatchObject({ type: 'failed', teardownFailures: [teardownFailure] });
+	});
+
 	test('carries external teardown failures when advancing the version throws', async () => {
 		// The teardown (and its abandoned deregistrations) already happened;
 		// an advance failure must not throw past them and lose the report.
@@ -1433,6 +1448,26 @@ describe('WorkflowPublicationApplier', () => {
 			nodeTypes.getByNameAndVersion.mockReset();
 		});
 
+		test('marks the old triggers failed when a transfer record fails and the old version holds an unknown node', async () => {
+			workflowPublishedVersionRepository.findOne.mockResolvedValue(
+				makePublishedVersion(withNodes(oldVersion, [triggerNode('a'), unknownNode])),
+			);
+			workflowHistoryRepository.findOneBy.mockResolvedValue(null);
+			workflowTriggerActivator.getEnabledTriggerNodes.mockImplementation((version) => {
+				if (version?.nodes.some((node) => node.type === unknownNode.type)) {
+					throw new UnrecognizedNodeTypeError('n8n-nodes-base', 'executeCommand');
+				}
+				return [triggerNode('a')];
+			});
+
+			const result = await applier.apply(makeRecord({ reason: 'transfer' }), abort);
+
+			expect(result).toMatchObject({
+				type: 'failed',
+				triggerState: { versionId: 'v-1', triggerStatuses: [{ nodeId: 'a', status: 'failed' }] },
+			});
+		});
+
 		test('fails with every trigger and the unknown node marked failed, without activating', async () => {
 			const result = await applier.apply(makeRecord(), abort);
 
@@ -1678,6 +1713,23 @@ describe('WorkflowPublicationApplier', () => {
 				reassigned_count: 1,
 				dropped_count: 0,
 				superseded: false,
+			});
+		});
+
+		it('reports the teardown failures of a transfer record whose version needs healing', async () => {
+			workflowHistoryRepository.findOneBy.mockResolvedValue(dupTriggerVersion());
+			setTriggerSets([triggerNode('a')], []);
+			const teardownFailure = { nodeName: 'a', error: new Error('remote unreachable') };
+			workflowTriggerActivator.deactivate.mockResolvedValue({
+				externalTeardownFailures: [teardownFailure],
+			});
+
+			const result = await applier.apply(makeRecord({ reason: 'transfer' }), abort);
+
+			expect(result).toEqual({
+				type: 'skipped',
+				reason: 'node-ids-healed',
+				teardownFailures: [teardownFailure],
 			});
 		});
 

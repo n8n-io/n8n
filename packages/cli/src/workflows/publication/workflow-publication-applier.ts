@@ -147,6 +147,9 @@ export class WorkflowPublicationApplier {
 		record: WorkflowPublicationOutbox,
 		abort: TriggerOperationAbort,
 	): Promise<PublicationResult> {
+		// A transfer changes the owner project, so the checks below read it from the database.
+		await this.ownershipService.invalidateWorkflowProjectCacheByIds([record.workflowId]);
+
 		const { workflow, oldVersion, newVersion } = await this.resolveVersions(record);
 
 		if (!workflow) return { type: 'skipped', reason: 'workflow-not-found' };
@@ -158,9 +161,62 @@ export class WorkflowPublicationApplier {
 			return await this.unpublish(workflow, oldVersion, record, abort);
 		}
 
+		const activationMode = this.resolveActivationMode(record, oldVersion);
+
+		if (record.reason === WorkflowPublicationReason.Transfer) {
+			return await this.transfer(workflow, oldVersion, newVersion, record, activationMode, abort);
+		}
+
 		if (!newVersion) return { type: 'version-missing' };
 
-		return await this.publish(workflow, oldVersion, newVersion, record, abort);
+		return await this.publish(workflow, oldVersion, newVersion, record, activationMode, abort);
+	}
+
+	/**
+	 * Removes every trigger of the old version before any check, so a transfer that does not
+	 * complete leaves no trigger that runs in the context of the old project.
+	 */
+	private async transfer(
+		workflow: WorkflowEntity,
+		oldVersion: WorkflowHistory | null,
+		newVersion: WorkflowHistory | null,
+		record: WorkflowPublicationOutbox,
+		activationMode: WorkflowActivateMode,
+		abort: TriggerOperationAbort,
+	): Promise<PublicationResult> {
+		const { old, oldTriggerCandidates } = this.resolveOldTriggerCandidates(oldVersion);
+		const toRemove = new Set(oldTriggerCandidates.map((node) => node.id));
+		const teardownFailures = await this.teardownOldVersionNodes(workflow, old, toRemove, abort);
+
+		let result: PublicationResult;
+		try {
+			result =
+				newVersion === null
+					? { type: 'failed', error: new UserError('Published version not found') }
+					: await this.publish(workflow, null, newVersion, record, activationMode, abort);
+		} catch (e) {
+			result = { type: 'failed', error: ensureError(e) };
+		}
+
+		return this.withTeardownFailures(
+			this.withOldTriggersFailed(
+				result,
+				oldVersion?.versionId ?? record.publishedVersionId,
+				old?.runnable ?? null,
+			),
+			teardownFailures,
+		);
+	}
+
+	/** Marks every trigger of the old version `failed` on a failed result that has no trigger state. */
+	private withOldTriggersFailed(
+		result: PublicationResult,
+		oldVersionId: string,
+		oldRunnable: WorkflowTriggerVersion | null,
+	): PublicationResult {
+		return result.type === 'failed' && result.triggerState === undefined
+			? { ...result, triggerState: this.allTriggersFailed(oldVersionId, oldRunnable, result.error) }
+			: result;
 	}
 
 	/**
@@ -176,6 +232,7 @@ export class WorkflowPublicationApplier {
 		oldVersion: WorkflowHistory | null,
 		newVersion: WorkflowHistory,
 		record: WorkflowPublicationOutbox,
+		activationMode: WorkflowActivateMode,
 		abort: TriggerOperationAbort,
 	): Promise<PublicationResult> {
 		const healSkip = await this.healBrokenNodeIds(workflow, newVersion);
@@ -279,7 +336,6 @@ export class WorkflowPublicationApplier {
 
 			abort.signal.throwIfAborted();
 			if (toAdd.size > 0) {
-				const activationMode = this.resolveActivationMode(record, oldVersion);
 				// A user publication keeps the full attempt budget even when a retry note exists.
 				let retriedNodeIds = new Set<INode['id']>();
 				if (!isUserIntent(record)) {
@@ -485,13 +541,16 @@ export class WorkflowPublicationApplier {
 
 	/**
 	 * Attaches abandoned external deregistrations from the remove phase to a
-	 * version-advancing result, so the reporter can surface them.
+	 * result that follows a teardown, so the reporter can surface them.
 	 */
 	private withTeardownFailures(
 		result: PublicationResult,
 		teardownFailures: TriggerTeardownFailure[],
 	): PublicationResult {
-		return (result.type === 'completed' || result.type === 'partial' || result.type === 'failed') &&
+		return (result.type === 'completed' ||
+			result.type === 'partial' ||
+			result.type === 'failed' ||
+			result.type === 'skipped') &&
 			teardownFailures.length > 0
 			? { ...result, teardownFailures }
 			: result;
@@ -640,23 +699,27 @@ export class WorkflowPublicationApplier {
 	 * reconciliation from retrying it when the previous version stays live.
 	 */
 	private failAllTriggers(newVersion: WorkflowHistory, error: Error): PublicationResult {
-		const desiredTriggerNodes = this.workflowTriggerActivator.getEnabledTriggerNodes(newVersion);
-		const triggerKinds = this.workflowTriggerActivator.getTriggerKinds(desiredTriggerNodes);
-
 		return {
 			type: 'failed',
 			error,
-			triggerState: {
-				versionId: newVersion.versionId,
-				triggerStatuses: this.buildTriggerStatuses(desiredTriggerNodes, triggerKinds, {
-					activated: [],
-					failures: desiredTriggerNodes.map((node) => ({
-						nodeId: node.id,
-						nodeName: node.name,
-						error,
-					})),
-				}),
-			},
+			triggerState: this.allTriggersFailed(newVersion.versionId, newVersion, error),
+		};
+	}
+
+	private allTriggersFailed(
+		versionId: string,
+		version: WorkflowTriggerVersion | null,
+		error: Error,
+	): { versionId: string; triggerStatuses: TriggerPublicationStatus[] } {
+		const triggerNodes = this.workflowTriggerActivator.getEnabledTriggerNodes(version);
+		const triggerKinds = this.workflowTriggerActivator.getTriggerKinds(triggerNodes);
+
+		return {
+			versionId,
+			triggerStatuses: this.buildTriggerStatuses(triggerNodes, triggerKinds, {
+				activated: [],
+				failures: triggerNodes.map((node) => ({ nodeId: node.id, nodeName: node.name, error })),
+			}),
 		};
 	}
 

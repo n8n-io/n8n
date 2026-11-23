@@ -238,6 +238,95 @@ describe('WorkflowPublicationOutboxConsumer (integration)', () => {
 		expect(activeWorkflowTriggers.get(workflow.id)?.get(trigger.id)).not.toBe(responseBefore);
 	});
 
+	describe('a transfer record aborted before the apply', () => {
+		const trigger = scheduleNode('only');
+		const abortedSignal = AbortSignal.abort();
+
+		const runningWorkflow = async () => {
+			const owner = await createOwner();
+			const workflow = await createWorkflowWithHistory({ active: true, nodes: [trigger] }, owner);
+			await setActiveVersion(workflow.id, workflow.versionId);
+			await publishedVersionRepository.setPublishedVersion(workflow.id, workflow.versionId);
+			await activeWorkflowManager.add(workflow.id, 'activate');
+			return workflow;
+		};
+
+		const recordsOf = async (workflowId: string) =>
+			(await outboxRepository.findBy({ workflowId })).map(
+				({ reason, status, publishedVersionId }) => ({ reason, status, publishedVersionId }),
+			);
+
+		test('returns a transfer record to pending when it is aborted before the apply', async () => {
+			const workflow = await runningWorkflow();
+			await outboxRepository.enqueue(workflow.id, workflow.versionId, 'transfer');
+			const record = await outboxRepository.claimNextPendingRecord();
+
+			await consumer.processRecord(record!, abortedSignal);
+
+			const PENDING_WITH_TRIGGERS_RUNNING = {
+				records: [
+					{ reason: 'transfer', status: 'pending', publishedVersionId: workflow.versionId },
+				],
+				triggerRegistered: true,
+			};
+			expect({
+				records: await recordsOf(workflow.id),
+				triggerRegistered: activeWorkflowTriggers.get(workflow.id)?.has(trigger.id),
+			}).toEqual(PENDING_WITH_TRIGGERS_RUNNING);
+		});
+
+		test('fails an aborted transfer record that is older than three leases', async () => {
+			const workflow = await runningWorkflow();
+			await outboxRepository.enqueue(workflow.id, workflow.versionId, 'transfer');
+			const leaseMs = Container.get(WorkflowsConfig).publicationOutboxLeaseSeconds * 1000;
+			await outboxRepository.update(
+				{ workflowId: workflow.id },
+				{ createdAt: new Date(Date.now() - 4 * leaseMs) },
+			);
+			const record = await outboxRepository.claimNextPendingRecord();
+
+			await consumer.processRecord(record!, abortedSignal);
+
+			expect(await recordsOf(workflow.id)).toEqual([
+				{ reason: 'transfer', status: 'failed', publishedVersionId: workflow.versionId },
+			]);
+		});
+
+		test('measures the age of an aborted transfer record with the database clock', async () => {
+			const workflow = await runningWorkflow();
+			await outboxRepository.enqueue(workflow.id, workflow.versionId, 'transfer');
+			const record = await outboxRepository.claimNextPendingRecord();
+			const leaseMs = Container.get(WorkflowsConfig).publicationOutboxLeaseSeconds * 1000;
+			vi.spyOn(Date, 'now').mockReturnValue(record!.createdAt.getTime() + 4 * leaseMs);
+
+			await consumer.processRecord(record!, abortedSignal);
+
+			vi.restoreAllMocks();
+			expect(await recordsOf(workflow.id)).toEqual([
+				{ reason: 'transfer', status: 'pending', publishedVersionId: workflow.versionId },
+			]);
+		});
+
+		test('keeps the transfer reason when an aborted transfer record collides with a pending publish', async () => {
+			const workflow = await runningWorkflow();
+			await outboxRepository.enqueue(workflow.id, workflow.versionId, 'transfer');
+			const record = await outboxRepository.claimNextPendingRecord();
+			const newVersionId = uuid();
+			await createWorkflowHistoryItem(workflow.id, {
+				versionId: newVersionId,
+				nodes: [trigger],
+				connections: {},
+			});
+			await outboxRepository.enqueue(workflow.id, newVersionId, 'publish');
+
+			await consumer.processRecord(record!, abortedSignal);
+
+			expect(await recordsOf(workflow.id)).toEqual([
+				{ reason: 'transfer', status: 'pending', publishedVersionId: newVersionId },
+			]);
+		});
+	});
+
 	test('does no trigger work when only non-trigger content changed', async () => {
 		const owner = await createOwner();
 
