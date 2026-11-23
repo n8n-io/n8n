@@ -10025,9 +10025,18 @@ importers:
       fast-check:
         specifier: 'catalog:'
         version: 3.23.2
+      n8n-core:
+        specifier: workspace:*
+        version: link:../../../core
+      n8n-nodes-base:
+        specifier: workspace:*
+        version: link:../../../nodes-base
       n8n-workflow:
         specifier: workspace:*
         version: link:../../../workflow
+      uuid:
+        specifier: 'catalog:'
+        version: 11.1.1
     devDependencies:
       '@n8n/oxlint-config':
         specifier: workspace:*
