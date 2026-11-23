@@ -3,11 +3,17 @@ export { AiGymRuntimeService } from './ai-gym-runtime.service';
 export { MissingWorkflowCredentialsError } from './errors/missing-workflow-credentials.error';
 export { UnsupportedWorkflowNodesError } from './errors/unsupported-workflow-nodes.error';
 export {
+	composeEvalHttpHandlers,
+	createAiGymEvalHttpHandler,
+	type AiGymEvalHttpHandlerOptions,
+} from './eval-http-handler';
+export {
 	CREDENTIAL_TYPE_TO_VENDOR,
 	checkWorkflowSupport,
 	matchManifestHost,
 	resolveVendorForCredentialType,
 } from './node-support-validator';
+export { AiGymRemoteAdminClient } from './remote-admin-client';
 export { SimulationCredentialsHelper } from './simulation-credentials-helper';
 export { createAiGymScopedInterceptor } from './simulation-transport';
 export {

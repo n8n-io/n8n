@@ -94,6 +94,7 @@ function createSetupFactory() {
 		approvalReviewerFactory: {
 			create: vi.fn(() => ({ judge: vi.fn(), onReviewed: vi.fn() })),
 		},
+		workflowTestService: { isAvailable: vi.fn(async () => false), runTest: vi.fn() },
 		areMcpConnectionsAvailable: () => false,
 	};
 	return { factory: createFactory(fields), fields };
@@ -658,6 +659,7 @@ describe('AssistantTurnEnvironmentFactory', () => {
 					editorBaseUrl: '',
 				}),
 				mock<UrlService>({ getInstanceBaseUrl: vi.fn(() => 'https://acme.example.com') }),
+				mock(),
 				mock(),
 				mock(),
 				mock(),

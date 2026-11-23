@@ -198,7 +198,18 @@ export class SimulationCredentialsHelper extends ICredentialsHelper {
 	}
 
 	private async mintAndExchange(vendor: string): Promise<CredentialResult> {
-		const minted = await this.tenant.mintCredential(vendor);
+		let minted: CredentialResult;
+		try {
+			minted = await this.tenant.mintCredential(vendor);
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			if (message.includes('seed') || message.includes('404')) {
+				await this.tenant.seed(vendor, {}).catch(() => undefined);
+				minted = await this.tenant.mintCredential(vendor);
+			} else {
+				throw error;
+			}
+		}
 		const record = minted as Record<string, unknown>;
 		const hasAccessToken =
 			typeof record.token === 'string' || typeof record.access_token === 'string';
@@ -221,8 +232,8 @@ export class SimulationCredentialsHelper extends ICredentialsHelper {
 				});
 				const exchanged = await this.tenant.run(
 					{ services: [vendor], unmatched: 'block' },
-					async () => {
-						const res = await fetch(tokenUri, {
+					async (scope) => {
+						const res = await scope.fetch(tokenUri, {
 							method: 'POST',
 							headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
 							body: form.toString(),

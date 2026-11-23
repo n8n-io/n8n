@@ -4,6 +4,7 @@ import {
 	type WorkflowSimulationService,
 } from '@n8n/backend-module-ai-gym';
 import type { User, WorkflowEntity } from '@n8n/db';
+import { createRunExecutionData } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -96,7 +97,7 @@ describe('MCP AI Gym simulation tools', () => {
 				events: [{ kind: 'http', service: 'slack' } as never],
 				vendorStates: { slack: { messages: [] } },
 				runData: {
-					data: {
+					data: createRunExecutionData({
 						resultData: {
 							runData: {
 								'Post Alert': [
@@ -113,10 +114,11 @@ describe('MCP AI Gym simulation tools', () => {
 								],
 							},
 						},
-					},
+					}),
 					mode: 'manual',
 					startedAt: new Date(),
 					status: 'success',
+					storedAt: 'db',
 				},
 			});
 

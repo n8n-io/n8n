@@ -10,6 +10,7 @@ import type { EvalLlmMockHandler } from 'n8n-core';
 import type { INode } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
+import { AiGymRuntimeService, type AiGymSession } from '@n8n/backend-module-ai-gym';
 import { AgentEvaluationService } from '@/modules/agents/evaluation/agent-evaluation.service';
 import type { AgentEvaluationPreparation } from '@/modules/agents/evaluation/agent-evaluation.contracts';
 
@@ -83,6 +84,7 @@ function buildService(
 		queueMode?: boolean;
 		agentsActive?: boolean;
 		mcpRegistryActive?: boolean;
+		aiGymActive?: boolean;
 	} = {},
 ) {
 	const executionsConfig = mock<ExecutionsConfig>();
@@ -93,6 +95,7 @@ function buildService(
 	moduleRegistry.isActive.mockImplementation((moduleName) => {
 		if (moduleName === 'agents') return overrides.agentsActive ?? true;
 		if (moduleName === 'mcp-registry') return overrides.mcpRegistryActive ?? true;
+		if (moduleName === 'ai-gym') return overrides.aiGymActive ?? false;
 		return true;
 	});
 	return new EvalAgentExecutionService(
@@ -697,6 +700,110 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 
 		expect(result.success).toBe(false);
 		expect(result.errors[0]).toMatch(/Model run error: rate limited/);
+	});
+
+	it('routes supported vendor HTTP calls through ai-gym and falls back to LLM mock for unmatched hosts', async () => {
+		const gymRequestHandler = vi.fn().mockResolvedValue({
+			statusCode: 200,
+			headers: { 'content-type': 'application/json' },
+			body: { ok: true, channel: 'C01GENERAL1', ts: '1700000001.000500' },
+		});
+		const sessionClose = vi.fn().mockResolvedValue(undefined);
+		const fakeSession = {
+			tenant: {
+				id: 'tenant-1',
+				mintCredential: vi.fn().mockResolvedValue({ token: 'xoxb-gym-token' }),
+				requestHandler: vi.fn().mockReturnValue(gymRequestHandler),
+			},
+			manifest: {
+				version: '1',
+				vendors: [{ slug: 'slack', hosts: ['slack.com'], routes: 10 }],
+			},
+			close: sessionClose,
+		} as unknown as AiGymSession;
+
+		const aiGymRuntime = mock<AiGymRuntimeService>();
+		aiGymRuntime.createSession.mockResolvedValue(fakeSession);
+		Container.set(AiGymRuntimeService, aiGymRuntime);
+
+		const llmFallback = vi.fn().mockResolvedValue({
+			statusCode: 200,
+			headers: {},
+			body: { source: 'llm-fallback' },
+		});
+		vi.mocked(createLlmMockHandler).mockReturnValue(llmFallback);
+
+		const generate = vi.fn().mockImplementation(async () => {
+			const instrumentation = buildRuntime.mock.calls[0][0] as {
+				configureToolAdditionalData: (
+					additionalData: Record<string, unknown>,
+					ctx: { toolName: string; toolKind: string },
+				) => void;
+			};
+			const additionalData: Record<string, unknown> = { credentialsHelper: {} };
+			instrumentation.configureToolAdditionalData(additionalData, {
+				toolName: 'Slack_Tool',
+				toolKind: 'node',
+			});
+			const handler = additionalData.evalLlmMockHandler as EvalLlmMockHandler;
+			await handler(
+				{
+					url: 'https://slack.com/api/chat.postMessage',
+					method: 'POST',
+					body: { channel: 'general', text: 'hi' },
+				},
+				{ name: 'Slack_Tool', type: 'n8n-nodes-base.slackTool' } as INode,
+			);
+			await handler({ url: 'https://custom.internal.example/items', method: 'GET' }, {
+				name: 'HTTP_Tool',
+				type: 'n8n-nodes-base.httpRequestTool',
+			} as INode);
+			return makeGenerateResult();
+		});
+		buildRuntime.mockResolvedValue({ generate, close: vi.fn() });
+
+		const result = await buildService({ aiGymActive: true }).executeWithLlmMock(
+			'agent-1',
+			user,
+			request,
+		);
+
+		expect(result.success).toBe(true);
+		expect(aiGymRuntime.createSession).toHaveBeenCalledTimes(1);
+		expect(gymRequestHandler).toHaveBeenCalledTimes(1);
+		expect(llmFallback).toHaveBeenCalledTimes(1);
+		expect(result.toolCalls[0].interceptedRequests).toEqual([
+			expect.objectContaining({
+				url: 'https://slack.com/api/chat.postMessage',
+				mockResponse: { ok: true, channel: 'C01GENERAL1', ts: '1700000001.000500' },
+			}),
+			expect.objectContaining({
+				url: 'https://custom.internal.example/items',
+				mockResponse: { source: 'llm-fallback' },
+			}),
+		]);
+		expect(sessionClose).toHaveBeenCalledTimes(1);
+	});
+
+	it('falls back to LLM mock when ai-gym session creation fails and still runs the case', async () => {
+		const aiGymRuntime = mock<AiGymRuntimeService>();
+		aiGymRuntime.createSession.mockRejectedValue(new Error('native addon unavailable'));
+		Container.set(AiGymRuntimeService, aiGymRuntime);
+
+		const generate = vi.fn().mockResolvedValue(makeGenerateResult());
+		buildRuntime.mockResolvedValue({ generate, close: vi.fn() });
+
+		const result = await buildService({ aiGymActive: true }).executeWithLlmMock(
+			'agent-1',
+			user,
+			request,
+		);
+
+		expect(result.success).toBe(true);
+		expect(logger.warn).toHaveBeenCalledWith(
+			'[EvalAgentMock] Failed to open ai-gym session; falling back to LLM HTTP mocks',
+			{ error: 'native addon unavailable' },
+		);
 	});
 });
 

@@ -15,6 +15,12 @@ import type {
 	InstanceAiEvalInterceptedRequest,
 } from '@n8n/api-types';
 import { TOOL_CATALOG_CALL_TOOL_NAME } from '@n8n/api-types';
+import {
+	AiGymRuntimeService,
+	composeEvalHttpHandlers,
+	createAiGymEvalHttpHandler,
+	type AiGymSession,
+} from '@n8n/backend-module-ai-gym';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import { ExecutionsConfig } from '@n8n/config';
@@ -249,11 +255,23 @@ export class EvalAgentExecutionService {
 			seed = { ...seed, openingMessage: caseInput };
 		}
 
-		const mockHandler = createLlmMockHandler({
+		const llmMockHandler = createLlmMockHandler({
 			scenarioHints: scenarioSignal,
 			globalContext: seed.globalContext,
 			nodeHints: seed.toolHints,
 		});
+
+		const aiGymSession = await this.openAiGymSession();
+		const mockHandler = aiGymSession
+			? composeEvalHttpHandlers(
+					createAiGymEvalHttpHandler({
+						tenant: aiGymSession.tenant,
+						manifest: aiGymSession.manifest,
+						logger: this.logger,
+					}),
+					llmMockHandler,
+				)
+			: llmMockHandler;
 
 		const toolLedger: ToolLedger = new Map();
 		const credentialHelpers: EvalMockedCredentialsHelper[] = [];
@@ -262,20 +280,43 @@ export class EvalAgentExecutionService {
 			this.logger,
 		);
 		const evidence = { recorder, toolLedger, credentialHelpers };
-		const instrumentation = await this.createRuntimeInstrumentation(
-			config,
-			seed,
-			scenarioSignal,
-			mockHandler,
-			evidence,
-		);
-		return await this.executePreparedRuntime(
-			preparation,
-			instrumentation,
-			seed,
-			evidence,
-			options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
-		);
+		try {
+			const instrumentation = await this.createRuntimeInstrumentation(
+				config,
+				seed,
+				scenarioSignal,
+				mockHandler,
+				evidence,
+			);
+			return await this.executePreparedRuntime(
+				preparation,
+				instrumentation,
+				seed,
+				evidence,
+				options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+			);
+		} finally {
+			if (aiGymSession) {
+				await aiGymSession.close();
+			}
+		}
+	}
+
+	private async openAiGymSession(): Promise<AiGymSession | undefined> {
+		if (!this.moduleRegistry.isActive('ai-gym')) {
+			return undefined;
+		}
+		try {
+			return await Container.get(AiGymRuntimeService).createSession();
+		} catch (error) {
+			this.logger.warn(
+				'[EvalAgentMock] Failed to open ai-gym session; falling back to LLM HTTP mocks',
+				{
+					error: error instanceof Error ? error.message : String(error),
+				},
+			);
+			return undefined;
+		}
 	}
 
 	private async createRuntimeInstrumentation(
