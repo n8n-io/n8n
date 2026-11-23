@@ -225,6 +225,14 @@ describe('CollectionsTable', () => {
 			expect(within(rowOf('Brand guidelines')).queryByTestId('collection-row-actions')).toBeNull();
 		});
 
+		it('gives the row menu a name for screen readers', () => {
+			const { getByTestId } = render([editable]);
+
+			expect(
+				within(getByTestId('collection-row-actions')).getByRole('button', { name: 'More actions' }),
+			).toBeVisible();
+		});
+
 		it('shows the menu on every row to a user with the global scope', () => {
 			mockedStore(useRBACStore).hasScope.mockImplementation((scope) => scope === 'agent:update');
 			const { getAllByTestId } = render([

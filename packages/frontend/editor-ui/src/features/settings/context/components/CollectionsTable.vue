@@ -230,6 +230,7 @@ const headers = computed<Array<TableHeader<KnowledgeCollectionDto>>>(() => [
 				<div v-if="canChange(item)" :class="$style.actions">
 					<N8nActionToggle
 						:actions="rowActions"
+						:aria-label="i18n.baseText('node.moreActions')"
 						data-test-id="collection-row-actions"
 						@action="(action: CollectionAction) => onAction(item, action)"
 					/>
