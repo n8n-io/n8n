@@ -1138,7 +1138,7 @@ describe('SkillService', () => {
 		it('trackCreated passes its arguments to SkillsTelemetry.created in order', async () => {
 			const refs = [{ id: 'skill_a', projectId: PROJECT }, 'skill_b'];
 
-			await service.trackCreated('user-1', refs, 'agent', 'upload');
+			await service.trackCreated(mock<User>({ id: 'user-1' }), refs, 'agent', 'upload');
 
 			expect(telemetry.created).toHaveBeenCalledWith('user-1', refs, 'agent', 'upload', undefined);
 		});

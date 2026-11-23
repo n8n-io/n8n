@@ -217,50 +217,48 @@ function installs(entry: SkillCatalogEntry) {
 			<ul :class="$style.grid">
 				<li v-for="entry in group.skills" :key="entry.id">
 					<N8nCard :class="$style.card" :data-test-id="`skill-catalog-${entry.id}`">
-						<div :class="$style.cardContent">
-							<div :class="$style.identity">
-								<N8nHeading tag="h3" size="medium" bold>{{
-									i18n.baseText(entry.nameKey)
-								}}</N8nHeading>
-								<N8nText size="small" color="text-light">{{ entry.publisher }}</N8nText>
-							</div>
-							<N8nText tag="p" color="text-base" :class="$style.description">{{
-								i18n.baseText(entry.descriptionKey)
-							}}</N8nText>
+						<div :class="$style.identity">
+							<N8nHeading tag="h3" size="medium" bold>{{
+								i18n.baseText(entry.nameKey)
+							}}</N8nHeading>
+							<N8nText size="small" color="text-light">{{ entry.publisher }}</N8nText>
+						</div>
+						<N8nText tag="p" color="text-base" :class="$style.description">{{
+							i18n.baseText(entry.descriptionKey)
+						}}</N8nText>
+						<N8nText
+							v-for="item in installed(entry)"
+							:key="item.id"
+							size="small"
+							color="text-light"
+							data-test-id="skill-catalog-installed"
+							>{{
+								i18n.baseText('settings.context.skills.catalog.addedTo', {
+									interpolate: { scope: item.label },
+								})
+							}}</N8nText
+						>
+						<div :class="$style.cardFooter">
 							<N8nText
-								v-for="item in installed(entry)"
-								:key="item.id"
+								v-if="entry.installs !== undefined"
+								:class="$style.installs"
 								size="small"
 								color="text-light"
-								data-test-id="skill-catalog-installed"
-								>{{
-									i18n.baseText('settings.context.skills.catalog.addedTo', {
-										interpolate: { scope: item.label },
-									})
-								}}</N8nText
 							>
-							<div :class="$style.cardFooter">
-								<N8nText
-									v-if="entry.installs !== undefined"
-									:class="$style.installs"
-									size="small"
-									color="text-light"
-								>
-									<N8nIcon icon="download" size="medium" aria-hidden="true" />
-									{{ installs(entry) }}
-								</N8nText>
-								<N8nButton
-									:class="$style.detailsButton"
-									variant="outline"
-									size="small"
-									data-test-id="skill-catalog-details"
-									:data-attr="`skill-catalog-details-${entry.id}`"
-									@click="openDetails(entry)"
-								>
-									{{ i18n.baseText('settings.context.skills.catalog.details') }}
-									<N8nIcon icon="arrow-right" size="medium" aria-hidden="true" />
-								</N8nButton>
-							</div>
+								<N8nIcon icon="download" size="medium" aria-hidden="true" />
+								{{ installs(entry) }}
+							</N8nText>
+							<N8nButton
+								:class="$style.detailsButton"
+								variant="outline"
+								size="small"
+								data-test-id="skill-catalog-details"
+								:data-attr="`skill-catalog-details-${entry.id}`"
+								@click="openDetails(entry)"
+							>
+								{{ i18n.baseText('settings.context.skills.catalog.details') }}
+								<N8nIcon icon="arrow-right" size="medium" aria-hidden="true" />
+							</N8nButton>
 						</div>
 					</N8nCard>
 				</li>
@@ -315,17 +313,12 @@ function installs(entry: SkillCatalogEntry) {
 }
 .card {
 	--card--padding: var(--spacing--md);
+	--n8n--card-body--gap: var(--spacing--sm);
 
 	height: 100%;
 	align-items: stretch;
 }
-.cardContent {
-	display: flex;
-	flex: 1;
-	flex-direction: column;
-	gap: var(--spacing--sm);
-	min-width: 0;
-}
+
 .identity {
 	display: flex;
 	flex-direction: column;

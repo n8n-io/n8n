@@ -7,6 +7,7 @@ import type {
 } from '@n8n/api-types';
 import { computed, useCssModule, useId, useTemplateRef, type Directive } from 'vue';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { createReusableTemplate } from '@vueuse/core';
 import { N8nCallout, N8nIcon, N8nLink, N8nText } from '@n8n/design-system';
 import NodeDiff from '@/features/workflows/workflowDiff/NodeDiff.vue';
 
@@ -18,6 +19,7 @@ const props = defineProps<{
 	sidebar?: boolean;
 }>();
 
+const [DefineFileIndex, ReuseFileIndex] = createReusableTemplate();
 const i18n = useI18n();
 const styles = useCssModule();
 const { ruleText } = useSkillSourceReasons();
@@ -240,31 +242,34 @@ function hasPreview(finding: SkillScanFinding): boolean {
 
 <template>
 	<div :class="[$style.pane, { [$style.sidebar]: sidebar }]" data-test-id="skill-source-preview">
-		<nav
-			v-if="sidebar && files.length > 1"
-			:class="$style.fileIndex"
-			:aria-label="i18n.baseText('settings.context.skills.connect.review.files')"
-			data-test-id="skill-source-file-index"
-		>
-			<N8nText size="small" bold>
-				{{ i18n.baseText('settings.context.skills.connect.review.files') }}
-			</N8nText>
-			<ul :class="$style.fileList">
-				<li v-for="file in files" :key="file.path">
-					<N8nLink
-						:href="`#${encodeURIComponent(fileId(file.path))}`"
-						target="_self"
-						:class="$style.fileLink"
-						size="small"
-						theme="text"
-						:underline="false"
-						@click.prevent="goToFile(file.path)"
-					>
-						{{ file.path }}
-					</N8nLink>
-				</li>
-			</ul>
-		</nav>
+		<DefineFileIndex>
+			<nav
+				v-if="files.length > 1"
+				:class="$style.fileIndex"
+				:aria-label="i18n.baseText('settings.context.skills.connect.review.files')"
+				data-test-id="skill-source-file-index"
+			>
+				<N8nText size="small" bold>
+					{{ i18n.baseText('settings.context.skills.connect.review.files') }}
+				</N8nText>
+				<ul :class="$style.fileList">
+					<li v-for="file in files" :key="file.path">
+						<N8nLink
+							:href="`#${encodeURIComponent(fileId(file.path))}`"
+							target="_self"
+							:class="$style.fileLink"
+							size="small"
+							theme="text"
+							:underline="false"
+							@click.prevent="goToFile(file.path)"
+						>
+							{{ file.path }}
+						</N8nLink>
+					</li>
+				</ul>
+			</nav>
+		</DefineFileIndex>
+		<ReuseFileIndex v-if="sidebar" />
 		<div :class="$style.content" data-test-id="skill-source-file-content">
 			<N8nCallout
 				v-if="issueCount"
@@ -323,31 +328,7 @@ function hasPreview(finding: SkillScanFinding): boolean {
 					</li>
 				</ul>
 			</N8nCallout>
-			<nav
-				v-if="!sidebar && files.length > 1"
-				:class="$style.fileIndex"
-				:aria-label="i18n.baseText('settings.context.skills.connect.review.files')"
-				data-test-id="skill-source-file-index"
-			>
-				<N8nText size="small" bold>
-					{{ i18n.baseText('settings.context.skills.connect.review.files') }}
-				</N8nText>
-				<ul :class="$style.fileList">
-					<li v-for="file in files" :key="file.path">
-						<N8nLink
-							:href="`#${encodeURIComponent(fileId(file.path))}`"
-							target="_self"
-							:class="$style.fileLink"
-							size="small"
-							theme="text"
-							:underline="false"
-							@click.prevent="goToFile(file.path)"
-						>
-							{{ file.path }}
-						</N8nLink>
-					</li>
-				</ul>
-			</nav>
+			<ReuseFileIndex v-if="!sidebar" />
 			<section
 				v-for="file in files"
 				:id="fileId(file.path)"
@@ -451,6 +432,10 @@ function hasPreview(finding: SkillScanFinding): boolean {
 }
 
 .sidebar {
+	.fileIndex {
+		max-height: 30%;
+	}
+
 	@include breakpoints.breakpoint('md-and-up') {
 		flex-direction: row;
 

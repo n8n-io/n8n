@@ -1,10 +1,13 @@
-import type { TelemetryProxy } from '@n8n/backend-services';
+import { RECOMMENDED_SKILLS_FLAG } from '@n8n/api-types';
+import type { User } from '@n8n/db';
+import type { PostHogClient, TelemetryProxy } from '@n8n/backend-services';
 import { mockLogger } from '@n8n/backend-test-utils';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { mock } from 'vitest-mock-extended';
 
 import type { Skill } from '../database/entities/skill.entity';
 import type { SkillRepository } from '../database/repositories/skill.repository';
+import { RecommendedSkillsFlagGate } from '../services/recommended-skills-flag-gate';
 import { flaggedCodes, SkillsTelemetry } from '../services/skills-telemetry.service';
 
 function skill(id: string, target: Partial<Pick<Skill, 'projectId'>> = {}): Skill {
@@ -14,7 +17,13 @@ function skill(id: string, target: Partial<Pick<Skill, 'projectId'>> = {}): Skil
 describe('SkillsTelemetry', () => {
 	const telemetry = mock<TelemetryProxy>();
 	const repository = mock<SkillRepository>();
-	const service = new SkillsTelemetry(telemetry, repository, mockLogger());
+	const postHog = mock<PostHogClient>();
+	const service = new SkillsTelemetry(
+		telemetry,
+		repository,
+		mockLogger(),
+		new RecommendedSkillsFlagGate(postHog),
+	);
 	const skills = [skill('skill_instance'), skill('skill_project', { projectId: 'project-1' })];
 
 	beforeEach(() => {
@@ -23,6 +32,41 @@ describe('SkillsTelemetry', () => {
 			skills.filter((s) => ids.includes(s.id)),
 		);
 	});
+
+	it.each(['variant', 'control', true, false, undefined, new Error('unavailable')])(
+		'keeps existing events and gates experiment attribution for %s',
+		async (flag) => {
+			if (flag instanceof Error) postHog.getFeatureFlags.mockRejectedValue(flag);
+			else
+				postHog.getFeatureFlags.mockResolvedValue(
+					flag === undefined ? {} : { [RECOMMENDED_SKILLS_FLAG]: flag },
+				);
+			const attribution = {
+				navigation_source: 'agent_picker' as const,
+				flow_id: 'b23b6134-b7a7-4912-a635-6d38cbbe0ae8',
+			};
+			const context = await service.experimentContext(mock<User>(), attribution);
+			if (flag === 'variant') {
+				expect(context).toEqual({
+					...attribution,
+					variant: 'variant',
+					'$feature/143_recommended_skills': 'variant',
+				});
+			} else expect(context).toBeUndefined();
+			await service.created('user-1', [skills[0]], 'ui', 'manual', context);
+			expect(telemetry.track).toHaveBeenCalledExactlyOnceWith(
+				TELEMETRY_EVENT.CONTEXT.USER_CREATED_SKILL,
+				{
+					user_id: 'user-1',
+					skill_id: skills[0].id,
+					scope: 'instance',
+					source: 'ui',
+					method: 'manual',
+					...context,
+				},
+			);
+		},
+	);
 
 	it('reports each created skill with its scope', async () => {
 		await service.created('user-1', ['skill_instance', 'skill_project'], 'ui', 'upload');

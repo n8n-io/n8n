@@ -1,3 +1,5 @@
+import { mockedStore } from '@/__tests__/utils';
+import { usePostHog } from '@/app/stores/posthog.store';
 import { createComponentRenderer } from '@/__tests__/render';
 import userEvent from '@testing-library/user-event';
 import { within, waitFor } from '@testing-library/vue';
@@ -27,6 +29,7 @@ vi.mock('./SkillCatalogDetail.vue', () => ({
 beforeEach(() => {
 	track.mockReset();
 	createTestingPinia();
+	mockedStore(usePostHog).isVariantEnabled.mockReturnValue(true);
 	for (const key of Object.keys(query)) delete query[key];
 });
 
@@ -40,7 +43,7 @@ describe('SkillCatalog', () => {
 		const view = renderCatalog();
 		await userEvent.click(view.getByTestId('skill-catalog-category'));
 		await userEvent.click(await view.findByRole('option', { name: 'Write and plan content' }));
-		expect(view.queryByTestId('skill-catalog-n8n-error-handling-official')).not.toBeInTheDocument();
+		expect(view.queryByTestId('skill-catalog-n8n-debugging-official')).not.toBeInTheDocument();
 		expect(
 			view.getByTestId('skill-catalog-coreyhaines31/marketingskills/copywriting'),
 		).toBeVisible();

@@ -42,7 +42,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { preferenceUserName } from '@/features/settings/context/context.utils';
 import SkillScopeBadge from '@/features/settings/context/components/SkillScopeBadge.vue';
-import { useSkillSyncFlag } from '@/features/settings/context/composables/useSkillSyncFlag';
+import { useSkillSyncEnabled } from '@/features/settings/context/composables/useSkillSyncFlag';
 import { parseScope } from '@/features/settings/context/skills.utils';
 import {
 	skillNavigationQuery,
@@ -375,7 +375,8 @@ const {
 	trackCardsShown: trackRecommendedSkillsShown,
 	trackSkillAdded: trackRecommendedSkillAdded,
 } = useRecommendedSkillsExperiment();
-const skillSyncEnabled = useSkillSyncFlag();
+const skillSyncEnabled = useSkillSyncEnabled();
+const catalogEnabled = computed(() => skillSyncEnabled.value && showRecommendedSkills.value);
 const recommendedSkillId = ref<RecommendedSkillId>();
 const { loadRecommendedSkill } = useRecommendedSkillLoader();
 const pickerCategories = computed<ToolCategoryKey[]>(() =>
@@ -948,6 +949,7 @@ async function loadLibrarySkills() {
 }
 
 useEventListener(window, 'focus', () => {
+	if (!catalogEnabled.value) return;
 	if (hasPicker && modalOpen.value && step.value === 'select' && !libraryLoading.value) {
 		void loadLibrarySkills();
 	}
@@ -1837,7 +1839,7 @@ function onRemove() {
 		</template>
 		<template v-else-if="step === 'select'" #footerLeft>
 			<N8nButton
-				v-if="skillSyncEnabled"
+				v-if="catalogEnabled"
 				variant="ghost"
 				icon="search"
 				data-testid="agent-skill-picker-discover"

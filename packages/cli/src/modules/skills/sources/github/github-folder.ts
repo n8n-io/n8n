@@ -5,7 +5,6 @@ import { z } from 'zod';
 import {
 	archiveTooLarge,
 	keepsText,
-	isLicensePath,
 	type ArchiveLimits,
 	type RepositoryArchive,
 } from './github-archive';
@@ -54,26 +53,15 @@ export async function readRepositoryFolder(
 
 	// Read only the immediate children of each ancestor. Recurse from the linked folder.
 	let sha = revision;
-	let ancestor = '';
-	const notices: z.infer<typeof treeResponse>['tree'] = [];
 	for (const segment of root.split('/')) {
-		const children = await tree(sha);
-		for (const entry of children) {
-			if (!isLicensePath(entry.path)) continue;
-			if (notices.length >= limits.maxEntries) throw archiveTooLarge(root);
-			notices.push({ ...entry, path: ancestor ? `${ancestor}/${entry.path}` : entry.path });
-		}
-		const child = children.find((entry) => entry.type === 'tree' && entry.path === segment);
+		const child = (await tree(sha)).find(
+			(entry) => entry.type === 'tree' && entry.path === segment,
+		);
 		if (!child) return result;
 		sha = child.sha;
-		ancestor = ancestor ? `${ancestor}/${segment}` : segment;
 	}
-	const folder = await tree(sha, true);
-	if (notices.length + folder.length > limits.maxEntries) throw archiveTooLarge(root);
-	const entries = [
-		...notices,
-		...folder.map((entry) => ({ ...entry, path: `${root}/${entry.path}` })),
-	];
+	const entries = await tree(sha, true);
+	if (entries.length > limits.maxEntries) throw archiveTooLarge(root);
 
 	let bytes = 0;
 	let textBytes = 0;
@@ -86,7 +74,7 @@ export async function readRepositoryFolder(
 		bytes += size;
 		if (bytes > limits.maxUncompressedBytes) throw archiveTooLarge(root);
 
-		const { path } = entry;
+		const path = `${root}/${entry.path}`;
 		result.paths.push(path);
 		if (!keepsText(path)) continue;
 		const oversized = size > limits.maxTextFileBytes;

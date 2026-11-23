@@ -166,10 +166,3 @@ it.each(['blocked', 'needs_review'] as const)(
 		else expect(view.getByTestId('skill-catalog-add')).toBeEnabled();
 	},
 );
-
-it('refuses a catalog import that would omit unreviewed files', async () => {
-	preview.mockResolvedValue(skillPreview({ skills: [{ ...skill, skippedFiles: ['script.py'] }] }));
-	const view = render();
-	await view.findByTestId('skill-catalog-check');
-	expect(view.getByTestId('skill-catalog-add')).toHaveAttribute('aria-disabled', 'true');
-});

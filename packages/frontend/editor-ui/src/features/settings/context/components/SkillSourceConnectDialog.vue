@@ -59,7 +59,6 @@ export type SkillSourcePreset = {
 	description: string;
 	url: string;
 	location: string;
-	allowedSkippedFiles?: string[];
 };
 
 const props = defineProps<{
@@ -140,8 +139,6 @@ const selected = ref<string[]>([]);
 const discovered = ref<{
 	url: string;
 	credentialId?: string;
-	existingSourceId?: string;
-	allowedSkippedFiles?: string[];
 	telemetry?: SkillTelemetryContext;
 } | null>(null);
 
@@ -389,6 +386,7 @@ async function loadCredentials(select?: string) {
 
 async function loadRepositories() {
 	resetRepositories();
+	if (props.preset) return;
 	const id = credentialId.value;
 	if (!id) {
 		keepRepositoryIn([]);
@@ -614,18 +612,8 @@ watch(needsReview, (needed) => {
 	if (!needed) reviewed.value = false;
 });
 
-const incomplete = computed(
-	() =>
-		!!props.preset &&
-		(discovery.value?.skills.some(
-			(skill) =>
-				selected.value.includes(skill.key) &&
-				skill.skippedFiles.some((file) => !props.preset?.allowedSkippedFiles?.includes(file)),
-		) ??
-			false),
-);
 const canImport = computed(
-	() => selected.value.length > 0 && !incomplete.value && (!needsReview.value || reviewed.value),
+	() => selected.value.length > 0 && (!needsReview.value || reviewed.value),
 );
 
 async function onNext() {
@@ -650,17 +638,14 @@ async function onNext() {
 		url: link,
 		...(props.telemetryContext ? { telemetry: props.telemetryContext } : {}),
 		...(requestedCredential ? { credentialId: requestedCredential } : {}),
-		...(props.preset ? { allowedSkippedFiles: props.preset.allowedSkippedFiles ?? [] } : {}),
 	};
 	discovering.value = true;
 	try {
 		let result = await skillsStore.discoverSource({
 			...target,
 			...parseScope(requestedScope),
-			...(props.preset ? { reuseExistingSource: true } : {}),
 		});
 		if (!isCurrent()) return;
-		if (result.existingSourceId) target.existingSourceId = result.existingSourceId;
 		if (props.preset) {
 			result = {
 				...result,
@@ -951,9 +936,6 @@ function onInteractOutside(event: Event) {
 		</N8nDialogBody>
 
 		<N8nDialogBody v-else-if="discovery" :class="$style.body">
-			<N8nCallout v-if="incomplete" theme="warning" data-test-id="skill-catalog-incomplete">
-				{{ i18n.baseText('settings.context.skills.catalog.incomplete') }}
-			</N8nCallout>
 			<N8nText
 				v-if="alsoConnected"
 				size="small"

@@ -621,14 +621,20 @@ describe('SkillService user actions', () => {
 				flow_id: 'b23b6134-b7a7-4912-a635-6d38cbbe0ae8',
 				add_entry_point: 'skills_create_menu' as const,
 			};
+			skillsTelemetry.experimentContext.mockResolvedValue({
+				...attribution,
+				variant: 'variant',
+				'$feature/143_recommended_skills': 'variant',
+			});
 			await service.create(user, payload({ method: 'upload', telemetry: attribution }));
+			expect(skillsTelemetry.experimentContext).toHaveBeenCalledWith(user, attribution);
 
 			expect(skillsTelemetry.created).toHaveBeenCalledWith(
 				user.id,
 				[{ id: 'skill_new', projectId: null }],
 				'ui',
 				'upload',
-				attribution,
+				expect.objectContaining(attribution),
 			);
 		});
 

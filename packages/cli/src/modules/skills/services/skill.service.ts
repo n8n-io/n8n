@@ -421,7 +421,7 @@ export class SkillService {
 			[{ id, ...target }],
 			source,
 			source === 'ui' ? (payload.method ?? 'manual') : 'ai',
-			payload.telemetry,
+			await this.skillsTelemetry.experimentContext(user, payload.telemetry),
 		);
 		// No second access check: a custom role can create skills it cannot read later.
 		const [skill] = await this.skillRepository.findByIds([id]);
@@ -787,13 +787,19 @@ export class SkillService {
 	}
 
 	async trackCreated(
-		userId: string,
+		user: User,
 		refs: SkillTelemetryRef[],
 		source: SkillTelemetrySource,
 		method: SkillTelemetryMethod,
 		telemetry?: CreateSkillDto['telemetry'],
 	): Promise<void> {
-		await this.skillsTelemetry.created(userId, refs, source, method, telemetry);
+		await this.skillsTelemetry.created(
+			user.id,
+			refs,
+			source,
+			method,
+			await this.skillsTelemetry.experimentContext(user, telemetry),
+		);
 	}
 
 	async trackUpdated(

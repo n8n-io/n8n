@@ -96,7 +96,7 @@ export class SkillSourceController {
 	/** The sources that the user can see, each with its counts, for its row in the skills table. */
 	@Get('/')
 	async list(req: AuthenticatedRequest) {
-		return await this.skillSourceService.list(req.user);
+		return await this.skillSourceService.list(req.user, { includeSkills: true });
 	}
 
 	// Resource-dependent scope checks run in the service. GlobalScope would exclude project roles.

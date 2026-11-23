@@ -19,6 +19,7 @@ export const ASSISTANT_SKILLS_FLAG = '130_attach_skills_to_assistant';
 export const MCP_SKILLS_EXTENSION_FLAG = '128_mcp_skills_extension';
 /** Per-user PostHog flag for Skill Sync. Force it on with `N8N_FEATURE_FLAG_OVERRIDES`. */
 export const SKILL_SYNC_FLAG = '136_skill_sync';
+export const RECOMMENDED_SKILLS_FLAG = '143_recommended_skills';
 
 /** Optional on purpose: without `take` the caller gets every visible skill. */
 const optionalTake = z

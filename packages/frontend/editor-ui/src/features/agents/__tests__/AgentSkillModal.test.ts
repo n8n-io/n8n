@@ -1,4 +1,5 @@
-import { AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH } from '@n8n/api-types';
+import { AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH, SKILL_SYNC_FLAG } from '@n8n/api-types';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { defineComponent, ref, type PropType } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -6,6 +7,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
 import { VIEWS } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
+import { usePostHog } from '@/app/stores/posthog.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
 import { configure, fireEvent, screen, waitFor, within } from '@testing-library/vue';
@@ -38,10 +40,6 @@ vi.mock('@n8n/i18n', () => {
 	return { useI18n: () => i18n, i18n, i18nInstance: { install: vi.fn() } };
 });
 
-const skillSync = ref(false);
-vi.mock('@/features/settings/context/composables/useSkillSyncFlag', () => ({
-	useSkillSyncFlag: () => skillSync,
-}));
 const apiCreateSpy = vi.fn();
 const { listAttachableSkills, getSkillDetail, listSkillVersions, getSkillVersion } = vi.hoisted(
 	() => ({
@@ -276,7 +274,6 @@ function renderModal({
 
 // Every suite renders an open modal with fresh stores.
 beforeEach(() => {
-	skillSync.value = false;
 	recommendedSkills.show.value = false;
 	vi.clearAllMocks();
 	createTestingPinia({ stubActions: false });
@@ -533,6 +530,7 @@ describe('AgentSkillModal', () => {
 	});
 
 	it('opens the editor after import and saves only when confirmed', async () => {
+		mockedStore(usePostHog).isVariantEnabled.mockReturnValue(true);
 		const onConfirm = vi.fn();
 		const { getByTestId, queryByTestId } = renderModal({ onConfirm });
 		const file = new File(
@@ -574,6 +572,7 @@ describe('AgentSkillModal', () => {
 	});
 
 	it('validates a manual skill and saves its edited reference', async () => {
+		mockedStore(usePostHog).isVariantEnabled.mockReturnValue(true);
 		const onConfirm = vi.fn();
 		const { getByTestId } = renderModal({ onConfirm });
 		await fireEvent.click(getByTestId('agent-skill-add-manually'));
@@ -1230,8 +1229,25 @@ describe('AgentSkillModal', () => {
 			open.mockRestore();
 		});
 
+		function enableCatalog() {
+			recommendedSkills.show.value = true;
+			mockedStore(usePostHog).isFeatureEnabled.mockImplementation(
+				(flag) => flag === SKILL_SYNC_FLAG,
+			);
+			mockedStore(useSettingsStore).moduleSettings.skills = {
+				skillSyncEnabled: true,
+				skillSyncManagedByEnv: false,
+			};
+		}
+
 		it('offers discovery alongside the three recommendations when Skill Sync is enabled', async () => {
-			skillSync.value = true;
+			mockedStore(usePostHog).isFeatureEnabled.mockImplementation(
+				(flag) => flag === SKILL_SYNC_FLAG,
+			);
+			mockedStore(useSettingsStore).moduleSettings.skills = {
+				skillSyncEnabled: true,
+				skillSyncManagedByEnv: false,
+			};
 			recommendedSkills.show.value = true;
 			resolveRoute.mockReturnValueOnce({ href: '/settings/context/skills?view=discover' });
 			const open = vi.spyOn(window, 'open').mockReturnValue(null);
@@ -1256,7 +1272,25 @@ describe('AgentSkillModal', () => {
 			recommendedSkills.show.value = false;
 		});
 
+		it.each([
+			{ sync: false, recommended: true },
+			{ sync: true, recommended: false },
+		])('hides discovery without both gates: %o', ({ sync, recommended }) => {
+			recommendedSkills.show.value = recommended;
+			mockedStore(usePostHog).isFeatureEnabled.mockImplementation(
+				(flag) => flag === SKILL_SYNC_FLAG,
+			);
+			mockedStore(useSettingsStore).moduleSettings.skills = {
+				skillSyncEnabled: sync,
+				skillSyncManagedByEnv: false,
+			};
+			const view = renderModal({ skillRefsEnabled: true, onAttach: vi.fn() });
+			expect(view.queryByTestId('agent-skill-picker-discover')).not.toBeInTheDocument();
+			expect(view.getByTestId('agent-skill-picker-manage')).toBeVisible();
+		});
+
 		it('refreshes skills on return without replacing the picker or overlapping requests', async () => {
+			enableCatalog();
 			listAttachableSkills.mockResolvedValue([projectSkill]);
 			const onAttach = vi.fn();
 			const view = renderModal({ skillRefsEnabled: true, onAttach });
@@ -1283,6 +1317,7 @@ describe('AgentSkillModal', () => {
 		});
 
 		it('keeps the current skills when a refresh fails and retries on the next return', async () => {
+			enableCatalog();
 			listAttachableSkills.mockResolvedValue([projectSkill]);
 			const view = renderModal({ skillRefsEnabled: true, onAttach: vi.fn() });
 			await view.findByText(projectSkill.name);
@@ -1301,6 +1336,7 @@ describe('AgentSkillModal', () => {
 		});
 
 		it('does not refresh when the picker is closed, on another step, or unmounted', async () => {
+			enableCatalog();
 			listAttachableSkills.mockResolvedValue([projectSkill]);
 			const view = renderModal({ skillRefsEnabled: true, onAttach: vi.fn() });
 			await view.findByText(projectSkill.name);

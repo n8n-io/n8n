@@ -193,7 +193,7 @@ export class AgentSkillsService {
 
 		this.logger.debug('Created and attached agent skills', { agentId, projectId, skillIds: ids });
 		await this.skillService.trackCreated(
-			context.user.id,
+			context.user,
 			ids,
 			telemetrySourceOf(context),
 			telemetryMethodOf(context, method),

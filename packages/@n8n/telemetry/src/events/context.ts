@@ -51,7 +51,15 @@ const skillScope = z
 
 const skillId = z.string().describe('The skill. Its name and text are never reported');
 
+const recommendedSkillsVariant = z
+	.enum(['variant'])
+	.describe(
+		'Variant of the 143_recommended_skills feature flag. Only the treatment shows recommendations and the catalog',
+	);
+
 const skillAttribution = {
+	variant: recommendedSkillsVariant.optional(),
+	'$feature/143_recommended_skills': recommendedSkillsVariant.optional(),
 	navigation_source: z
 		.enum(skillNavigationSourceSchema.options)
 		.optional()
@@ -151,12 +159,6 @@ const emptyPreferencesNoteVariant = z
 	.enum(['control', 'variant'])
 	.describe(
 		'Variant of the 147_assistant_empty_preferences_note feature flag. Only the treatment adds the note',
-	);
-
-const recommendedSkillsVariant = z
-	.enum(['variant'])
-	.describe(
-		'Variant of the 143_recommended_skills feature flag. Only the treatment shows the cards',
 	);
 
 const recommendedSkillsEntryPoint = z

@@ -197,7 +197,7 @@ describe('AgentSkillsService', () => {
 			);
 
 			expect(skillService.trackCreated).toHaveBeenCalledWith(
-				'user-1',
+				user,
 				['skill_new1'],
 				'agent',
 				'upload',
@@ -214,7 +214,7 @@ describe('AgentSkillsService', () => {
 			await service.createAndAttachSkills(agentId, projectId, [skill], { user, modifiedBy });
 
 			expect(skillService.trackCreated).toHaveBeenCalledWith(
-				'user-1',
+				user,
 				['skill_new1'],
 				source,
 				'ai',

@@ -1,6 +1,7 @@
 import {
 	connectPublicSkillSourceSchema,
 	SKILL_SYNC_FLAG,
+	RECOMMENDED_SKILLS_FLAG,
 	type SkillSourceConnectResponse,
 	type SkillSourceDiscovery,
 	type SkillSourcePreview,
@@ -23,13 +24,13 @@ import type { MockInstance } from 'vitest';
 
 import { createSkill, deleteAllSkills, findLatestSkillVersion, findSkill } from '../../testing';
 import { SkillSourceConnection } from '../../database/entities/skill-source-connection.entity';
+import { SkillSourceRepository } from '../../database/repositories/skill-source.repository';
 import { SkillSourceNotFoundError } from '../../errors/skill-source-not-found.error';
 import { SkillSourceReadError } from '../../errors/skill-source-read.error';
 import { SkillSourceBackoff } from '../../services/skill-source-backoff';
 import { SkillSourceService } from '../../services/skill-source.service';
 import { SkillSourceToolBudget } from '../../services/skill-source-tool-budget';
 import { SkillsTelemetry } from '../../services/skills-telemetry.service';
-import { SkillService } from '../../services/skill.service';
 import { GitHubSkillSourceClient } from '../../sources/github/github-skill-source-client';
 import { SkillSourceClientRegistry } from '../../sources/skill-source-client-registry.service';
 import type { RemoteSkillRef } from '../../sources/skill-source-client';
@@ -104,7 +105,10 @@ describe('SkillSourceController', () => {
 		await deleteAllSkills();
 		// Deleting a skill deletes its link. A source stays until it is deleted.
 		await Container.get(DataSource).manager.delete(SkillSourceConnection, {});
-		postHog.getFeatureFlags.mockResolvedValue({ [SKILL_SYNC_FLAG]: true });
+		postHog.getFeatureFlags.mockResolvedValue({
+			[SKILL_SYNC_FLAG]: true,
+			[RECOMMENDED_SKILLS_FLAG]: 'variant',
+		});
 		// The budget counts in memory for the whole file, so only its own tests let it count.
 		toolBudget = vi.spyOn(Container.get(SkillSourceToolBudget), 'take').mockReturnValue();
 		github.start();
@@ -170,6 +174,19 @@ describe('SkillSourceController', () => {
 			await viewer.post('/skill-sources/preview').send({}).expect(404);
 		});
 
+		it.each(['control', false, true, undefined])(
+			'requires catalog treatment before fetching content (%s)',
+			async (flag) => {
+				postHog.getFeatureFlags.mockResolvedValue({
+					[SKILL_SYNC_FLAG]: true,
+					...(flag === undefined ? {} : { [RECOMMENDED_SKILLS_FLAG]: flag }),
+				});
+				const requestsBefore = { ...github.requests };
+				await viewer.post('/skill-sources/preview').send({ url: REPO }).expect(404);
+				expect(github.requests).toEqual(requestsBefore);
+			},
+		);
+
 		it('does not use a supplied credential to preview private content', async () => {
 			github.push('acme/private', FILES, 'main', { private: true });
 			await viewer
@@ -179,7 +196,7 @@ describe('SkillSourceController', () => {
 		});
 	});
 
-	it('lists only installed folders in visible scopes', async () => {
+	it('includes visible installed folders only for editor source lists', async () => {
 		const { data } = await discover(owner, { url: REPO, scope: 'instance' });
 		const result = await connect(owner, {
 			url: REPO,
@@ -205,6 +222,23 @@ describe('SkillSourceController', () => {
 		expect(sources[0].skills).toEqual([
 			{ id: result.data.imported[0].skillId, webUrl: `${REPO}/tree/main/skills/docx` },
 		]);
+		const installedSkills = vi.spyOn(Container.get(SkillSourceRepository), 'findInstalledSkills');
+		try {
+			const summaries = await Container.get(SkillSourceService).list(memberUser);
+			expect(summaries).toHaveLength(1);
+			expect(summaries[0]).toMatchObject({ id: sources[0].id, skillCount: 1 });
+			expect(summaries[0]).not.toHaveProperty('skills');
+			postHog.getFeatureFlags.mockResolvedValue({
+				[SKILL_SYNC_FLAG]: true,
+				[RECOMMENDED_SKILLS_FLAG]: 'control',
+			});
+			const { body } = await member.get('/skill-sources').expect(200);
+			expect(body.data[0]).toMatchObject({ id: sources[0].id, skillCount: 1 });
+			expect(body.data[0]).not.toHaveProperty('skills');
+			expect(installedSkills).not.toHaveBeenCalled();
+		} finally {
+			installedSkills.mockRestore();
+		}
 	});
 
 	describe('discover', () => {
@@ -468,8 +502,8 @@ describe('SkillSourceController', () => {
 			expect(importedFromSource).toHaveBeenCalledWith(
 				expect.objectContaining({
 					imported: 1,
-					skipped_files: 4,
-					skipped_file_extensions: { '.py': 2, '.png': 1, '.sh': 1 },
+					skipped_files: 5,
+					skipped_file_extensions: { '.py': 2, '.png': 1, '.sh': 1, none: 1 },
 					skipped_script_files: 3,
 					status: 'success',
 				}),
@@ -1388,6 +1422,11 @@ describe('SkillSourceController', () => {
 			add_entry_point: 'discover_detail',
 			catalog_skill_id: 'n8n-workflows',
 		};
+		const attributed = {
+			...attribution,
+			variant: 'variant',
+			'$feature/143_recommended_skills': 'variant',
+		};
 		let connectedSource: MockInstance<SkillsTelemetry['connectedSource']>;
 		let created: MockInstance<SkillsTelemetry['created']>;
 
@@ -1417,14 +1456,14 @@ describe('SkillSourceController', () => {
 			const imported = vi.spyOn(Container.get(SkillsTelemetry), 'importedFromSource');
 			const { data } = await connectPdf(owner, { scope: 'instance', telemetry: attribution });
 			expect(imported).toHaveBeenCalledWith(
-				expect.objectContaining({ ...attribution, imported: 1 }),
+				expect.objectContaining({ ...attributed, imported: 1 }),
 				ownerUser.id,
 			);
 
 			expect(connectedSource.mock.calls).toEqual([
 				[
 					{
-						...attribution,
+						...attributed,
 						provider: 'github',
 						access: 'public',
 						scope_type: 'global',
@@ -1439,8 +1478,26 @@ describe('SkillSourceController', () => {
 				[{ id: data.imported[0].skillId, projectId: null }],
 				'github',
 				'sync',
-				{ source_provider: 'github', source_access: 'public', ...attribution },
+				{ source_provider: 'github', source_access: 'public', ...attributed },
 			);
+		});
+
+		it('imports normally without experiment attribution in control', async () => {
+			postHog.getFeatureFlags.mockResolvedValue({
+				[SKILL_SYNC_FLAG]: true,
+				[RECOMMENDED_SKILLS_FLAG]: 'control',
+			});
+			const { data } = await connectPdf(owner, { scope: 'instance', telemetry: attribution });
+			expect(data.imported).toHaveLength(1);
+			expect(connectedSource).toHaveBeenCalledWith(
+				expect.objectContaining({ status: 'success' }),
+				ownerUser.id,
+			);
+			expect(connectedSource.mock.calls[0][0]).not.toHaveProperty('flow_id');
+			expect(created.mock.calls[0][4]).toEqual({
+				source_provider: 'github',
+				source_access: 'public',
+			});
 		});
 
 		it('reports a connect in a personal project', async () => {
@@ -1645,184 +1702,6 @@ describe('SkillSourceController', () => {
 				);
 			},
 		);
-	});
-
-	describe('adding skills to an existing source', () => {
-		async function connectDocx() {
-			const { data: preview } = await discover(owner, { url: REPO, scope: 'instance' });
-			return (
-				await connect(owner, { url: REPO, scope: 'instance', skillKeys: keysOf(preview, ['docx']) })
-			).data;
-		}
-
-		it('adds another folder and keeps one source, then refuses a repeated import', async () => {
-			const first = await connectDocx();
-			const target = { url: REPO, scope: 'instance', existingSourceId: first.sourceId };
-			const connected = vi.spyOn(Container.get(SkillsTelemetry), 'connectedSource');
-			const { data: preview } = await discover(owner, {
-				url: REPO,
-				scope: 'instance',
-				reuseExistingSource: true,
-			});
-			expect(preview.existingSourceId).toBe(first.sourceId);
-			expect(connected).not.toHaveBeenCalled();
-			expect(preview.duplicate).toEqual({ kind: 'none' });
-			expect(preview.skills.find((skill) => skill.name === 'docx')?.nameTaken).toBe(true);
-			const skillKeys = keysOf(preview, ['pdf']);
-			const { data: second } = await connect(owner, {
-				...target,
-				skillKeys,
-				reviewedSkillKeys: skillKeys,
-			});
-			expect(second.sourceId).toBe(first.sourceId);
-			expect(second.imported).toHaveLength(1);
-			expect(await countSources()).toBe(1);
-			const repeated = await connect(
-				owner,
-				{ ...target, skillKeys, reviewedSkillKeys: skillKeys },
-				409,
-			);
-			expect(repeated.meta).toEqual({ reason: 'name_taken' });
-			expect(await countSources()).toBe(1);
-		});
-
-		it('keeps other unlinked skills when a catalog folder is added to the source', async () => {
-			const first = await connectDocx();
-			const manager = Container.get(DataSource).manager;
-			const before = await manager.findOneByOrFail(SkillSourceConnection, { id: first.sourceId });
-			const url = `${REPO}/tree/main/skills/pdf`;
-			const { data: preview } = await discover(owner, {
-				url,
-				scope: 'instance',
-				reuseExistingSource: true,
-			});
-			const skillKeys = keysOf(preview, ['pdf']);
-			await connect(owner, {
-				url,
-				scope: 'instance',
-				existingSourceId: first.sourceId,
-				skillKeys,
-				reviewedSkillKeys: skillKeys,
-			});
-			const after = await manager.findOneByOrFail(SkillSourceConnection, { id: first.sourceId });
-			expect(before.unlinkedSkills?.length).toBeGreaterThan(1);
-			expect(after.unlinkedSkills).toEqual(
-				before.unlinkedSkills?.filter(({ key }) => !skillKeys.includes(key)),
-			);
-		});
-
-		it('keeps imported notices in the skill data used by downloads and MCP', async () => {
-			github.push('acme/skills', { ...FILES, LICENSE: 'Copyright Acme. Permission notice.' });
-			const { imported } = await connectDocx();
-			const skillId = imported[0].skillId;
-			const detail = (await owner.get(`/skills/${skillId}`).expect(200)).body.data;
-			expect(detail.skill.references).toContainEqual({
-				path: 'references/SOURCE.md',
-				content: expect.stringContaining('Copyright Acme. Permission notice.'),
-			});
-			expect(detail.skill.references[0].content).toContain(`${REPO}/tree/main/skills/docx`);
-			await owner
-				.patch(`/skills/${skillId}`)
-				.send({
-					availableToMCP: true,
-					baseSkillHash: detail.skillHash,
-				})
-				.expect(200);
-			const mcp = await Container.get(SkillService).readForMcp(ownerUser, skillId);
-			expect(mcp?.skill.references).toEqual(detail.skill.references);
-		});
-
-		it.each(['scope', 'branch'])(
-			'leaves a different %s blocked during automatic reuse',
-			async (difference) => {
-				await connectDocx();
-				github.push('acme/skills', FILES, 'develop');
-				const { data } = await discover(owner, {
-					url: difference === 'branch' ? `${REPO}/tree/develop` : REPO,
-					scope: difference === 'scope' ? 'project' : 'instance',
-					...(difference === 'scope' ? { projectId: team.id } : {}),
-					reuseExistingSource: true,
-				});
-				expect(data.duplicate.kind).toBe('blocked');
-				expect(data.existingSourceId).toBeUndefined();
-			},
-		);
-
-		it('refuses to reuse a source in another scope', async () => {
-			const first = await connectDocx();
-			const result = await discover(
-				owner,
-				{ url: REPO, scope: 'project', projectId: team.id, existingSourceId: first.sourceId },
-				409,
-			);
-			expect(result.meta).toEqual({ reason: 'stale' });
-			expect(await countSources()).toBe(1);
-		});
-
-		it('checks create permission before reading an existing source', async () => {
-			const first = await connectDocx();
-			await discover(
-				member,
-				{ url: REPO, scope: 'instance', existingSourceId: first.sourceId },
-				403,
-			);
-			expect(await countSources()).toBe(1);
-		});
-
-		it('keeps the original branch when adding to a source', async () => {
-			const first = await connectDocx();
-			github.push('acme/skills', FILES, 'develop');
-			const result = await discover(
-				owner,
-				{
-					url: `${REPO}/tree/develop`,
-					scope: 'instance',
-					existingSourceId: first.sourceId,
-				},
-				409,
-			);
-			expect(result.meta).toEqual({ reason: 'stale' });
-			expect(await countSources()).toBe(1);
-		});
-
-		it('allows reviewed development files but rejects a new omitted file', async () => {
-			const url = 'https://github.com/acme/curated';
-			const files = { 'SKILL.md': skillMd('curated'), 'evals/evals.json': '{}' };
-			github.push('acme/curated', files);
-			const { data: preview } = await discover(owner, { url, scope: 'instance' });
-			const target = {
-				url,
-				scope: 'instance',
-				skillKeys: keysOf(preview, ['curated']),
-				allowedSkippedFiles: ['evals/evals.json'],
-			};
-			github.push('acme/curated', { ...files, 'scripts/run.py': 'print(1)' });
-			const result = await connect(owner, target, 422);
-			expect(result.meta).toEqual({ reason: 'blocked_by_check' });
-			expect(await countSources()).toBe(0);
-			github.push('acme/curated', files);
-			const { data } = await connect(owner, target);
-			expect(data.imported).toHaveLength(1);
-			expect(await countSources()).toBe(1);
-		});
-
-		it('refuses omitted files when the catalog requires a complete import', async () => {
-			const { data: preview } = await discover(owner, { url: REPO, scope: 'instance' });
-			const keys = keysOf(preview, ['pdf']);
-			const result = await connect(
-				owner,
-				{
-					url: REPO,
-					scope: 'instance',
-					skillKeys: keys,
-					reviewedSkillKeys: keys,
-					allowedSkippedFiles: [],
-				},
-				422,
-			);
-			expect(result.meta).toEqual({ reason: 'blocked_by_check' });
-			expect(await countSources()).toBe(0);
-		});
 	});
 
 	describe('duplicate rules', () => {

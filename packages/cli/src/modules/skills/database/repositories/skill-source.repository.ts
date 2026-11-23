@@ -217,7 +217,14 @@ export class SkillSourceRepository {
 	async invalidateSourceForSkill(skillId: string, ctx: OperationContext): Promise<void> {
 		const link = await this.findLinkBySkillId(skillId, ctx);
 		if (!link) return;
-		await this.invalidateCheckCursor(link.sourceId, ctx);
+		// A unique cursor also invalidates a check that started with a null cursor.
+		await this.sources
+			.managerFor(ctx)
+			.update(
+				SkillSourceConnection,
+				{ id: link.sourceId },
+				{ probeCursor: `local-change:${generateNanoId()}` },
+			);
 	}
 
 	async lockForMove(sourceId: string, ctx: OperationContext): Promise<void> {
@@ -250,16 +257,6 @@ export class SkillSourceRepository {
 			if (isUniqueConstraintError(error)) throw new DuplicateSkillSourceError();
 			throw error;
 		}
-	}
-
-	async invalidateCheckCursor(sourceId: string, ctx: OperationContext): Promise<void> {
-		await this.sources
-			.managerFor(ctx)
-			.update(
-				SkillSourceConnection,
-				{ id: sourceId },
-				{ probeCursor: `local-change:${generateNanoId()}` },
-			);
 	}
 
 	/** Replaces validated access only while the source still has the scope and credential read. */
@@ -548,7 +545,7 @@ export class SkillSourceRepository {
 	 * The result of one check of a source. `lastCheckedAt` and `lastErrorReason` change only
 	 * when no check that started later wrote them first, so a slow check never hides a newer
 	 * result. `probeCursor` moves only from the cursor that the check started from. When
-	 * another check moved it first, the cursor is invalidated, so the next check reads
+	 * another check moved it first, the cursor is cleared instead, so the next check reads
 	 * every skill again and fixes a link that the slower check could not write.
 	 */
 	async recordCheck(
@@ -590,9 +587,7 @@ export class SkillSourceRepository {
 			{ probeCursor: probeCursor.to },
 		);
 		if ((moved.affected ?? 0) === 0) {
-			await manager.update(SkillSourceConnection, unchanged, {
-				probeCursor: `local-change:${generateNanoId()}`,
-			});
+			await manager.update(SkillSourceConnection, unchanged, { probeCursor: null });
 		}
 		return true;
 	}

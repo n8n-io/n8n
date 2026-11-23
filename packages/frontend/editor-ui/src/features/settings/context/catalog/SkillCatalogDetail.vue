@@ -85,12 +85,7 @@ watch(
 	{ immediate: true },
 );
 
-const incomplete = computed(() =>
-	skill.value?.skippedFiles.some((file) => !props.entry.allowedSkippedFiles?.includes(file)),
-);
-const blocked = computed(
-	() => !!skill.value?.error || skill.value?.check?.verdict === 'blocked' || incomplete.value,
-);
+const blocked = computed(() => !!skill.value?.error || skill.value?.check?.verdict === 'blocked');
 const warnings = computed(() => skill.value?.check?.verdict === 'needs_review');
 const checkLabel = computed(() =>
 	i18n.baseText(
@@ -102,7 +97,6 @@ const checkLabel = computed(() =>
 	),
 );
 const checkDetails = computed(() => {
-	if (incomplete.value) return i18n.baseText('settings.context.skills.catalog.incomplete');
 	if (skill.value?.error) return reasonText(skill.value.error.reason);
 	return findingsText(
 		skill.value?.check?.findings.filter((finding) => finding.severity !== 'info') ?? [],
