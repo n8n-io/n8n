@@ -147,8 +147,11 @@ export class WorkflowPublicationApplier {
 		record: WorkflowPublicationOutbox,
 		abort: TriggerOperationAbort,
 	): Promise<PublicationResult> {
-		// A transfer changes the owner project, so the checks below read it from the database.
-		await this.ownershipService.invalidateWorkflowProjectCacheByIds([record.workflowId]);
+		// The checks below read the owner project from the database, because a transfer changes it.
+		// A transfer clears it after the teardown, so a cache error cannot keep the old triggers.
+		if (record.reason !== WorkflowPublicationReason.Transfer) {
+			await this.ownershipService.invalidateWorkflowProjectCacheByIds([record.workflowId]);
+		}
 
 		const { workflow, oldVersion, newVersion } = await this.resolveVersions(record);
 
@@ -190,6 +193,7 @@ export class WorkflowPublicationApplier {
 
 		let result: PublicationResult;
 		try {
+			await this.ownershipService.invalidateWorkflowProjectCacheByIds([record.workflowId]);
 			result =
 				newVersion === null
 					? { type: 'failed', error: new UserError('Published version not found') }

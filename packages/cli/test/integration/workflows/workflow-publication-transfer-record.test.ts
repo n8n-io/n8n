@@ -233,6 +233,23 @@ describe('a transfer record on the leader', () => {
 		}).toEqual(FAILED_CLOSED_WITH_RETRY);
 	});
 
+	test('removes the old triggers of a transfer record when the leader cannot clear the owner cache', async () => {
+		const workflow = await runningInSource();
+		await moveToTarget(workflow.id);
+		vi.spyOn(
+			Container.get(OwnershipService),
+			'invalidateWorkflowProjectCacheByIds',
+		).mockRejectedValueOnce(new Error('cache is down'));
+
+		await applyRecord(workflow.id, workflow.versionId, WorkflowPublicationReason.Transfer);
+
+		const FAILED_CLOSED = { cronRegistered: false, triggerStatuses: ['failed', 'failed'] };
+		expect({
+			cronRegistered: registeredCronOf(workflow.id) !== undefined,
+			triggerStatuses: await triggerStatusesOf(workflow.id),
+		}).toEqual(FAILED_CLOSED);
+	});
+
 	test('removes the old triggers of a transfer record when the leader refuses its credential', async () => {
 		const workflow = await runningInSource({ withCredentialOnlySourceHolds: true });
 		await moveToTarget(workflow.id);
