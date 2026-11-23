@@ -10,7 +10,9 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeConnectionTypes } from 'n8n-workflow';
 
+import type { MessageFilters } from './v2/helpers/message-filters';
 import {
+	errorText,
 	filterChangeNotifications,
 	getMessageFilters,
 	storeMentionUserId,
@@ -361,7 +363,7 @@ export class MicrosoftTeamsTrigger implements INodeType {
 				placeholder: 'Add Filter',
 				default: {},
 				description:
-					'Each filter reads the message from Microsoft Graph once for each notification',
+					'Only trigger on messages that pass these filters. All filters share one Microsoft Graph read for each notification.',
 				displayOptions: {
 					show: {
 						event: ['newChannelMessage', 'newChatMessage'],
@@ -624,14 +626,25 @@ export class MicrosoftTeamsTrigger implements INodeType {
 			return { json };
 		};
 
-		const filters = changeNotifications.length > 0 ? getMessageFilters.call(this) : undefined;
+		let filters: MessageFilters | undefined;
+		let filtersFailed = false;
+		try {
+			filters = changeNotifications.length > 0 ? getMessageFilters.call(this) : undefined;
+		} catch (error) {
+			// A throw here answers 5xx and Graph re-delivers, so the change items are skipped instead.
+			filtersFailed = true;
+			logTrigger.call(this, 'warn', 'failed to read the filters, notifications skipped', {
+				error: errorText(error),
+			});
+		}
 		// `workflowData` has one array for each output. The node has one output, so all change
 		// notifications go in one array.
-		if (lifecycleNotifications.length === 0 && filters === undefined) {
+		if (lifecycleNotifications.length === 0 && filters === undefined && !filtersFailed) {
 			return { workflowData: [changeNotifications.map(toItem)] };
 		}
 
-		// Ack before any Graph call: a slow answer makes Graph re-deliver.
+		// Ack before any Graph call (lifecycle handling and message reads): a slow answer makes
+		// Graph re-deliver.
 		res.status(202).end();
 		// A test run would list by the production URL and write production ids into the
 		// test static data.
@@ -640,13 +653,13 @@ export class MicrosoftTeamsTrigger implements INodeType {
 			await handleLifecycleNotifications.call(this, lifecycleNotifications, rejected);
 		}
 
-		let passed = changeNotifications;
+		let passed = filtersFailed ? [] : changeNotifications;
 		if (filters) {
 			const result = await filterChangeNotifications.call(this, changeNotifications, filters);
 			passed = result.passed;
 			if (result.denied) {
-				// A throw skips the static-data save, so a batch whose lifecycle handler ran only warns.
-				if (!ranLifecycle) throw result.denied;
+				// A throw skips the static-data save and drops the passed items, so either one only warns.
+				if (!ranLifecycle && passed.length === 0) throw result.denied;
 				logTrigger.call(this, 'warn', `${result.denied.message}. ${result.denied.description}`);
 			}
 		}

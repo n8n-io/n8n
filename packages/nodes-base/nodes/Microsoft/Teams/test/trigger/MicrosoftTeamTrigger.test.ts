@@ -501,6 +501,22 @@ describe('Microsoft Teams Trigger Node', () => {
 					expect(staticData.mentionUserId).toBe('me');
 				});
 
+				it('activates and removes the stored user id when the user cannot be read', async () => {
+					const staticData: Record<string, unknown> = {
+						webhookSecret: 'secret',
+						mentionUserId: 'old',
+					};
+					const ctx = hookCtx(staticData, { ...channelParams, 'filters.mentionsMe': true });
+					(microsoftApiRequestAllItems.call as Mock).mockResolvedValue([]);
+					(microsoftApiRequest.call as Mock).mockImplementation(async (_ctx, method: string) => {
+						if (method === 'GET') throw forbidden(ctx);
+						return { id: 'new' };
+					});
+
+					await expect(checkExists(ctx)).resolves.toBe(true);
+					expect(staticData).not.toHaveProperty('mentionUserId');
+				});
+
 				it('does not read the user when Mentions Me is off', async () => {
 					await activate(channelParams);
 
@@ -2200,6 +2216,7 @@ describe('Microsoft Teams Trigger Node', () => {
 				const result = await webhook(ctx);
 
 				expect(result).toEqual({ noWebhookResponse: true });
+				expect(result.workflowData).toBeUndefined();
 			},
 		);
 
@@ -2251,6 +2268,74 @@ describe('Microsoft Teams Trigger Node', () => {
 
 			await expect(webhook(ctx)).rejects.toBeInstanceOf(NodeApiError);
 			expect(calls('PATCH')).toHaveLength(0);
+		});
+
+		it('warns and emits the passed items when another read is forbidden', async () => {
+			routeMessages({ [messagePath('m1')]: forbidden(), [messagePath('m2')]: userMessage });
+			const { ctx } = arrange({
+				value: [channelItem('m1'), channelItem('m2')],
+				params: skipBot(),
+			});
+
+			const result = await webhook(ctx);
+
+			expect(result.workflowData?.[0].map((item) => item.json.id)).toEqual(['m2']);
+			expect(ctx.logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('ChannelMessage.Read.All'),
+				expect.anything(),
+			);
+		});
+
+		it('throws the first denied error of the batch', async () => {
+			routeMessages({
+				[messagePath('m1')]: new NodeApiError(mock<INode>(), {
+					message: 'Unauthorized',
+					httpCode: '401',
+				}),
+				[messagePath('m2')]: forbidden(),
+			});
+			const { ctx } = arrange({
+				value: [channelItem('m1'), channelItem('m2')],
+				params: skipBot(),
+			});
+
+			const error = await webhook(ctx).catch((caught: unknown) => caught);
+
+			expect((error as NodeApiError).httpCode).toBe('401');
+		});
+
+		it('acks and starts no execution when the filters cannot be read', async () => {
+			const { ctx, res } = arrange({ value: [channelItem('m1')], params: skipBot() });
+			ctx.getNodeParameter.mockImplementation(((name: string, fallback?: unknown) => {
+				if (name === 'filters') throw new Error(`cannot resolve ${'x'.repeat(300)}`);
+				return name === 'event' ? 'newChannelMessage' : fallback;
+			}) as never);
+
+			const result = await webhook(ctx);
+
+			expect(res.status).toHaveBeenCalledWith(202);
+			expect(microsoftApiRequest.call).not.toHaveBeenCalled();
+			expect(result).toEqual({ noWebhookResponse: true });
+			expect(ctx.logger.warn).toHaveBeenCalledWith(
+				'Microsoft Teams Trigger: failed to read the filters, notifications skipped',
+				expect.objectContaining({ error: expect.stringMatching(/^.{200}$/) }),
+			);
+		});
+
+		it('still handles the lifecycle item when the filters cannot be read', async () => {
+			const { ctx } = arrange({
+				value: [channelItem('m1'), reauthorization],
+				params: skipBot(),
+			});
+			ctx.getNodeParameter.mockImplementation(((name: string, fallback?: unknown) => {
+				if (name === 'filters') throw new Error('cannot resolve the keyword');
+				return name === 'event' ? 'newChannelMessage' : fallback;
+			}) as never);
+
+			const result = await webhook(ctx);
+
+			expect(calls('PATCH').map((call) => call[2])).toEqual(['/v1.0/subscriptions/sub1']);
+			expect(result).toEqual({ noWebhookResponse: true });
 		});
 
 		it('ignores the filters for an event without messages', async () => {
