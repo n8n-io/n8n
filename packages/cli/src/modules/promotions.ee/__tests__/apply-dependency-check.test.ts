@@ -193,8 +193,8 @@ describe('collectWorkflowReferences', () => {
 				workflows: [other, caller, dynamic],
 			} as PackageDirectoryInventory),
 		).toEqual([
-			{ id: 'handler', callers: [], errorSources: [caller] },
-			{ id: 'sub', callers: [other, caller], errorSources: [] },
+			{ id: 'handler', workflows: [caller] },
+			{ id: 'sub', workflows: [other, caller] },
 		]);
 	});
 });
@@ -342,13 +342,38 @@ describe('missingWorkflowDependencies', () => {
 		).toEqual([entry('sub', 'caller-policy', true, consumer(ALPHA, 'unlisted'))]);
 	});
 
-	it('does not apply the caller policy to an error workflow', () => {
+	it('lists the workflows that the caller policy of their error workflow refuses', () => {
 		const workflows = [
-			workflow('failing', ALPHA.id, { settings: { errorWorkflow: 'handler' } }),
-			workflow('handler', BETA.id, { settings: { callerPolicy: 'none' } }),
+			workflow('same-project', BETA.id, { settings: { errorWorkflow: 'handler' } }),
+			workflow('other-project', ALPHA.id, { settings: { errorWorkflow: 'handler' } }),
+			workflow('handler', BETA.id),
 		];
 
-		expect(check(workflows)).toEqual([]);
+		expect(check(workflows)).toEqual([
+			entry('handler', 'caller-policy', false, consumer(ALPHA, 'other-project')),
+		]);
+		expect(check(workflows, { callerPolicyDefault: 'any' })).toEqual([]);
+	});
+
+	it('lists a workflow once when the caller policy refuses its call and its error workflow', () => {
+		const workflows = [
+			workflow('caller', ALPHA.id, { calls: ['handler'], settings: { errorWorkflow: 'handler' } }),
+			workflow('handler', ALPHA.id, { settings: { callerPolicy: 'none' } }),
+		];
+
+		expect(check(workflows)).toEqual([
+			entry('handler', 'caller-policy', true, consumer(ALPHA, 'caller')),
+		]);
+	});
+
+	it('applies the caller policy to a workflow that is its own error workflow', () => {
+		const own = (callerPolicy: IWorkflowSettings['callerPolicy']) =>
+			workflow('own', ALPHA.id, { settings: { errorWorkflow: 'own', callerPolicy } });
+
+		expect(check([own('workflowsFromSameOwner')])).toEqual([]);
+		expect(check([own('none')])).toEqual([
+			entry('own', 'caller-policy', true, consumer(ALPHA, 'own')),
+		]);
 	});
 
 	it('lists a workflow without an owner project on this instance outside the access', () => {

@@ -27,7 +27,7 @@ const workflowRow = (id: string, row: Partial<WorkflowEntity> = {}) =>
 
 const project = (id: string, type: Project['type'] = 'team') => ({ id, type }) as Project;
 
-const reference = (id: string): WorkflowReference => ({ id, callers: [], errorSources: [] });
+const reference = (id: string): WorkflowReference => ({ id, workflows: [] });
 
 describe('ApplyDependencyCheckService', () => {
 	const workflowRepository = mock<WorkflowRepository>();

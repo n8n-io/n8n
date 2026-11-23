@@ -47,8 +47,8 @@ export function placementOf(
 }
 
 /**
- * Whether a sub-workflow accepts a call from a workflow. It gives the same answer as the check
- * that runs before an execution.
+ * Whether a workflow accepts a start from another workflow, as its sub-workflow or as its error
+ * workflow. It gives the same answer as the check that runs before both executions.
  */
 export function callerPolicyAllows(
 	subWorkflow: Pick<ReferencedWorkflowState, 'settings' | 'projectId'>,
@@ -94,13 +94,13 @@ export function missingWorkflowDependencies({
 		(manifest.requirements?.workflows ?? []).map(({ id, name }) => [id, name ?? id]),
 	);
 
-	return references.flatMap(({ id, callers, errorSources }) => {
+	return references.flatMap(({ id, workflows }) => {
 		const branchWorkflow = onBranch.get(id);
 		const target =
 			branchWorkflow && facts.appliedWorkflowIds.has(id)
 				? branchState(branchWorkflow)
 				: facts.instanceWorkflows.get(id);
-		const unusable = unusableFor(target, callers, errorSources, facts.callerPolicyDefault);
+		const unusable = unusableFor(target, workflows, facts.callerPolicyDefault);
 		if (!unusable) return [];
 
 		// A workflow that only the branch holds is in the project that the branch gives it.
@@ -125,14 +125,13 @@ export function missingWorkflowDependencies({
 /** Why workflows cannot use a referenced workflow, and which ones. `null` when all of them can. */
 function unusableFor(
 	target: ReferencedWorkflowState | undefined,
-	callers: InventoryWorkflow[],
-	errorSources: InventoryWorkflow[],
+	workflows: InventoryWorkflow[],
 	defaultPolicy: WorkflowSettings.CallerPolicy,
 ): { reason: PromotionMissingDependencyReason; workflows: InventoryWorkflow[] } | null {
-	if (!target) return { reason: 'not-on-instance', workflows: [...callers, ...errorSources] };
-	if (target.isArchived) return { reason: 'archived', workflows: [...callers, ...errorSources] };
-	// The caller policy is reported for a call from a node only.
-	const refused = callers.filter((caller) => !callerPolicyAllows(target, caller, defaultPolicy));
+	if (!target) return { reason: 'not-on-instance', workflows };
+	if (target.isArchived) return { reason: 'archived', workflows };
+	// The start of an error workflow obeys the caller policy, as a call from a node does.
+	const refused = workflows.filter((caller) => !callerPolicyAllows(target, caller, defaultPolicy));
 	return refused.length > 0 ? { reason: 'caller-policy', workflows: refused } : null;
 }
 

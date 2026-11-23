@@ -32,10 +32,8 @@ export interface VariableReference {
 /** A workflow that other workflows call from a node, or set as their error workflow. */
 export interface WorkflowReference {
 	id: string;
-	/** The workflows that call it from a node. Its caller policy applies to them. */
-	callers: InventoryWorkflow[];
-	/** The workflows that set it as their error workflow. */
-	errorSources: InventoryWorkflow[];
+	/** The workflows that reference it. Its caller policy applies to each of them. */
+	workflows: InventoryWorkflow[];
 }
 
 export type ProjectLookup = (id: string) => PromotionBindingProject;
@@ -114,18 +112,18 @@ export function collectWorkflowReferences(
 	inventory: PackageDirectoryInventory,
 ): WorkflowReference[] {
 	const groups = new Map<string, WorkflowReference>();
-	const groupOf = (id: string) => {
-		const group = groups.get(id) ?? { id, callers: [], errorSources: [] };
+	const add = (id: string, workflow: InventoryWorkflow) => {
+		const group = groups.get(id) ?? { id, workflows: [] };
+		group.workflows.push(workflow);
 		groups.set(id, group);
-		return group;
 	};
 	for (const workflow of inventory.workflows) {
 		for (const node of workflow.content.nodes ?? []) {
 			const calledId = node?.parameters ? getStaticSubworkflowId(node) : undefined;
-			if (calledId) groupOf(calledId).callers.push(workflow);
+			if (calledId) add(calledId, workflow);
 		}
 		const errorWorkflowId = staticErrorWorkflowId(workflow.content);
-		if (errorWorkflowId) groupOf(errorWorkflowId).errorSources.push(workflow);
+		if (errorWorkflowId) add(errorWorkflowId, workflow);
 	}
 	return [...groups.values()].sort((a, b) => compare(a.id, b.id));
 }

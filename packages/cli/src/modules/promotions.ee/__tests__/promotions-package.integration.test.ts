@@ -3063,6 +3063,33 @@ describe('Missing dependencies of an Apply', () => {
 		]);
 	});
 
+	it('lists an error workflow whose caller policy refuses the workflow, and applies as before', async () => {
+		// Without a policy of its own, an error workflow accepts only the workflows of its project.
+		const handler = await createWorkflow({ name: 'Handler', nodes: [], connections: {} }, beta);
+		const callers = await exportCallers(
+			async (name) =>
+				await createWorkflow(
+					{ name, nodes: [], connections: {}, settings: { errorWorkflow: handler.id } },
+					alpha,
+				),
+		);
+
+		const check = await expectApplied(owner, callers);
+
+		expect(check.missingDependencies).toEqual([
+			{
+				kind: 'workflow',
+				id: handler.id,
+				name: 'Handler',
+				group: 'needs-action',
+				reason: 'caller-policy',
+				accessible: true,
+				blocking: false,
+				consumers: usedBy(...callers),
+			},
+		]);
+	});
+
 	it('lists nothing when this instance holds every dependency in a usable state', async () => {
 		const credential = await saveHeaderCredential('CRM key', beta);
 		await shareCredentialWithProjects(credential, [alpha]);
@@ -3071,9 +3098,8 @@ describe('Missing dependencies of an Apply', () => {
 			beta,
 		);
 		const ownHelper = await createWorkflow({ name: 'Own helper', nodes: [] }, alpha);
-		// The caller policy does not apply to an error workflow.
 		const handler = await createWorkflow(
-			{ name: 'Handler', nodes: [], connections: {}, settings: { callerPolicy: 'none' } },
+			{ name: 'Handler', nodes: [], connections: {}, settings: { callerPolicy: 'any' } },
 			beta,
 		);
 		const callers = await exportCallers(
