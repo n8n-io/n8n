@@ -1176,11 +1176,10 @@ export class SourceControlImportService {
 		});
 
 		await mapInBatches(credentials, SOURCE_CONTROL_READ_FILE_BATCH_SIZE, async (file) => {
+			const fileContent = await fsReadFile(file.file, { encoding: 'utf8' });
 			let credential: ExportableCredential;
 			try {
-				credential = jsonParse<ExportableCredential>(
-					await fsReadFile(file.file, { encoding: 'utf8' }),
-				);
+				credential = jsonParse<ExportableCredential>(fileContent);
 			} catch {
 				// Do not log the parser error: its message can include fragments of the credential file
 				this.logger.warn(`Failed to parse credential from file ${file.file}: invalid JSON format`);
@@ -1221,11 +1220,10 @@ export class SourceControlImportService {
 		const importCredentialsResult: Array<CredentialImportResult | undefined> = await Promise.all(
 			candidates.map(async (candidate) => {
 				this.logger.debug(`Importing credentials file ${candidate.file}`);
+				const fileContent = await fsReadFile(candidate.file, { encoding: 'utf8' });
 				let credential: ExportableCredential;
 				try {
-					credential = jsonParse<ExportableCredential>(
-						await fsReadFile(candidate.file, { encoding: 'utf8' }),
-					);
+					credential = jsonParse<ExportableCredential>(fileContent);
 				} catch {
 					// Do not log the parser error: its message can include fragments of the credential file
 					this.logger.warn(
