@@ -33,6 +33,8 @@ import type { IWorkflowDb } from '@/Interface';
 import type { ToolPickerMode } from '../components/AgentCapabilitiesSection.types';
 import AgentToolsConnectionModalWrapper from '../components/AgentToolsConnectionModalWrapper.vue';
 import type { AgentToolConfigData } from '../components/AgentToolConfigContent.vue';
+import type { ToolGuardrailsWiring } from '../components/AgentToolGuardrailsSection.vue';
+import { AGENT_GUARDRAIL_MODAL_KEY } from '../constants';
 import type { AgentJsonMcpServerConfig, AgentJsonToolRef } from '../types';
 
 const showMessageMock = vi.fn();
@@ -189,7 +191,7 @@ const AgentModalMultiStepStub = defineComponent({
 const AgentToolConfigFormStub = defineComponent({
 	name: 'AgentToolConfigForm',
 	props: ['data'],
-	emits: ['update:restricted'],
+	emits: ['update:restricted', 'open-guardrail'],
 	setup(props, { emit, expose }) {
 		watchEffect(() => {
 			configFormData = props.data as AgentToolConfigData;
@@ -227,7 +229,14 @@ const AgentToolConfigFormStub = defineComponent({
 		});
 		return {};
 	},
-	template: '<div data-test-id="agent-tool-config-form-stub" />',
+	template: `
+		<div data-test-id="agent-tool-config-form-stub">
+			<button
+				data-test-id="stub-open-guardrail"
+				@click="$emit('open-guardrail', { guardrail: null, kind: 'keywords' })"
+			/>
+		</div>
+	`,
 });
 
 const ToolsConnectionModalStub = defineComponent({
@@ -414,11 +423,21 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		mcpServers: AgentJsonMcpServerConfig[] = [],
 		projectId = PROJECT_ID,
 		mode: ToolPickerMode = 'tools',
+		guardrails?: ToolGuardrailsWiring,
+		resumeToolRef?: AgentJsonToolRef,
 	) {
 		return renderComponent({
 			props: {
 				modalName: MODAL_NAME,
-				data: { tools, mcpServers, onConfirm, projectId, mode },
+				data: {
+					tools,
+					mcpServers,
+					onConfirm,
+					projectId,
+					mode,
+					...(guardrails ? { guardrails } : {}),
+					...(resumeToolRef ? { resumeToolRef } : {}),
+				},
 			},
 		});
 	}
@@ -1590,6 +1609,152 @@ describe('AgentToolsConnectionModalWrapper', () => {
 				`nodeType:${WIKIPEDIA.name}`,
 			]);
 			expect(nodeItems.every((item) => !('restriction' in item && item.restriction))).toBe(true);
+		});
+	});
+
+	describe('tool guardrails wiring', () => {
+		it('hands the wiring to the configure step of a connected tool', async () => {
+			// A connected node row activates "add another instance"; a restricted
+			// one opens the existing configuration, which is the path the
+			// guardrails section rides on.
+			mockRestrictedNodeTypes({ [SLACK.name]: 'instance' });
+			const guardrails: ToolGuardrailsWiring = {
+				getGuardrails: () => [],
+				getTools: () => [],
+				onUpdateGuardrails: vi.fn(),
+			};
+
+			render([toolRef(SLACK.name)], vi.fn(), [], PROJECT_ID, 'tools', guardrails);
+			await flushPromises();
+
+			const connected = getItems().find((item) => item.status === 'connected');
+			emitOpenDetail(connected!);
+			await flushPromises();
+
+			const data = getConfigData();
+			const handed =
+				data.kind !== 'mcpServer' && data.kind !== 'registryMcpServer'
+					? data.guardrails
+					: undefined;
+			expect(handed).toBeDefined();
+			// Props arrive behind a reactive proxy, so compare the wiring's own
+			// functions rather than the wrapper object identity.
+			expect(handed?.getGuardrails).toBe(guardrails.getGuardrails);
+			expect(handed?.getTools).toBe(guardrails.getTools);
+			expect(handed?.onUpdateGuardrails).toBe(guardrails.onUpdateGuardrails);
+		});
+
+		it('adds no wiring to the configure step of a tool being added', async () => {
+			const guardrails: ToolGuardrailsWiring = {
+				getGuardrails: () => [],
+				getTools: () => [],
+				onUpdateGuardrails: vi.fn(),
+			};
+
+			render([], vi.fn(), [], PROJECT_ID, 'tools', guardrails);
+			await flushPromises();
+
+			const wikipedia = getItems().find((item) => item.id === `nodeType:${WIKIPEDIA.name}`);
+			emitOpenDetail(wikipedia!);
+			await flushPromises();
+
+			const data = getConfigData();
+			expect(
+				data.kind !== 'mcpServer' && data.kind !== 'registryMcpServer'
+					? data.guardrails
+					: 'unexpected mcp data',
+			).toBeUndefined();
+		});
+
+		it('adds no wiring when the host passes none', async () => {
+			mockRestrictedNodeTypes({ [SLACK.name]: 'instance' });
+			render([toolRef(SLACK.name)]);
+			await flushPromises();
+
+			const connected = getItems().find((item) => item.status === 'connected');
+			emitOpenDetail(connected!);
+			await flushPromises();
+
+			const data = getConfigData();
+			expect(
+				data.kind !== 'mcpServer' && data.kind !== 'registryMcpServer'
+					? data.guardrails
+					: 'unexpected mcp data',
+			).toBeUndefined();
+		});
+
+		it('closes itself and hands over to the guardrail modal, stashing the tool to resume', async () => {
+			// A connected node row activates "add another instance"; a restricted
+			// one opens the existing configuration, which the guardrails flow rides on.
+			mockRestrictedNodeTypes({ [SLACK.name]: 'instance' });
+			const guardrails: ToolGuardrailsWiring = {
+				getGuardrails: () => [],
+				getTools: () => [],
+				onUpdateGuardrails: vi.fn(),
+			};
+			const ref = toolRef(SLACK.name);
+
+			render([ref], vi.fn(), [], PROJECT_ID, 'tools', guardrails);
+			await flushPromises();
+
+			const connected = getItems().find((item) => item.status === 'connected');
+			emitOpenDetail(connected!);
+			await flushPromises();
+
+			const openGuardrail = document.querySelector('[data-test-id="stub-open-guardrail"]');
+			if (!(openGuardrail instanceof HTMLElement)) throw new Error('Missing stub emit button');
+			openGuardrail.click();
+			await flushPromises();
+
+			// The wrapper closes and stashes the tool being configured.
+			expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
+			const stashed = uiStore.modalStateById[MODAL_NAME].data as {
+				resumeToolRef?: AgentJsonToolRef;
+			};
+			expect(stashed.resumeToolRef).toEqual(ref);
+			// The guardrail modal receives the request and the wiring.
+			expect(uiStore.openModalWithData).toHaveBeenCalledWith(
+				expect.objectContaining({
+					name: AGENT_GUARDRAIL_MODAL_KEY,
+					data: expect.objectContaining({
+						guardrail: null,
+						kind: 'keywords',
+						onUpdateGuardrails: guardrails.onUpdateGuardrails,
+					}),
+				}),
+			);
+			const call = vi.mocked(uiStore.openModalWithData).mock.calls.at(-1)?.[0] as unknown as {
+				data: { onExit: () => void };
+			};
+			expect(typeof call.data.onExit).toBe('function');
+
+			// The exit callback reopens the wrapper.
+			const openModalSpy = vi.spyOn(uiStore, 'openModal');
+			call.data.onExit();
+			expect(openModalSpy).toHaveBeenCalledWith(MODAL_NAME);
+		});
+
+		it('reopens on the config step of the stashed tool after a guardrail edit', async () => {
+			const guardrails: ToolGuardrailsWiring = {
+				getGuardrails: () => [],
+				getTools: () => [],
+				onUpdateGuardrails: vi.fn(),
+			};
+			const ref = toolRef(SLACK.name);
+
+			render([ref], vi.fn(), [], PROJECT_ID, 'tools', guardrails, ref);
+			await flushPromises();
+
+			// The resume lands directly on the tool's config step, not the picker.
+			const data = getConfigData();
+			expect(
+				data.kind !== 'mcpServer' && data.kind !== 'registryMcpServer' ? data.toolRef : undefined,
+			).toEqual(ref);
+			// The stash is consumed, so a later manual open starts at the picker.
+			const stored = uiStore.modalStateById[MODAL_NAME].data as {
+				resumeToolRef?: AgentJsonToolRef;
+			};
+			expect(stored.resumeToolRef).toBeUndefined();
 		});
 	});
 });

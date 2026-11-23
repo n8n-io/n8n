@@ -4,6 +4,7 @@ import {
 	AGENT_VERSION_METADATA_MODAL_KEY,
 	AGENT_CONFIRMATION_MODAL_KEY,
 	AGENT_DESCRIPTION_MODAL_KEY,
+	AGENT_GUARDRAIL_MODAL_KEY,
 	AGENT_JSON_IMPORT_MODAL_KEY,
 	AGENT_PUBLISHED_MODAL_KEY,
 	AGENT_SKILL_MODAL_KEY,
@@ -44,6 +45,20 @@ export const AGENTS_MODALS: ModalDefinition[] = [
 				kind: 'node',
 				toolRef: null,
 				onConfirm: () => {},
+			},
+		},
+	},
+	{
+		key: AGENT_GUARDRAIL_MODAL_KEY,
+		component: async () => await import('./components/AgentGuardrailModalHost.vue'),
+		initialState: {
+			open: false,
+			data: {
+				guardrail: null,
+				getGuardrails: () => [],
+				getTools: () => [],
+				onUpdateGuardrails: () => {},
+				onExit: () => {},
 			},
 		},
 	},

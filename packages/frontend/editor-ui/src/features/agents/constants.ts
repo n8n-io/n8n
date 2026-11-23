@@ -31,6 +31,7 @@ export const AGENT_N8N_CHAT_SEARCH_MAX_LENGTH = 128;
 
 export const AGENT_TOOLS_MODAL_KEY = 'agentToolsModal';
 export const AGENT_TOOL_CONFIG_MODAL_KEY = 'agentToolConfigModal';
+export const AGENT_GUARDRAIL_MODAL_KEY = 'agentGuardrailModal';
 export const AGENT_SKILL_MODAL_KEY = 'agentSkillModal';
 export const AGENT_TASK_MODAL_KEY = 'agentTaskModal';
 export const AGENT_SUB_AGENTS_MODAL_KEY = 'agentSubAgentsModal';

@@ -9,6 +9,7 @@ import type {
 import type { AgentRegistryMcpModalData } from '../composables/useAgentRegistryMcpConfig';
 import AgentRegistryMcpConfigForm from './AgentRegistryMcpConfigForm.vue';
 import AgentToolConfigForm, { type AgentToolConfigModalData } from './AgentToolConfigForm.vue';
+import type { OpenGuardrailRequest } from './AgentToolGuardrailsSection.vue';
 
 export type AgentToolConfigData = AgentToolConfigModalData | AgentRegistryMcpModalData;
 
@@ -21,6 +22,7 @@ const emit = defineEmits<{
 	'request-credential-picker': [];
 	'update:title': [title: string];
 	'update:restricted': [restricted: boolean];
+	'open-guardrail': [request: OpenGuardrailRequest];
 }>();
 
 const genericForm = ref<InstanceType<typeof AgentToolConfigForm> | null>(null);
@@ -86,5 +88,6 @@ defineExpose({
 		@credential-deleted="emit('credential-deleted')"
 		@update:title="emit('update:title', $event)"
 		@update:restricted="emit('update:restricted', $event)"
+		@open-guardrail="emit('open-guardrail', $event)"
 	/>
 </template>
