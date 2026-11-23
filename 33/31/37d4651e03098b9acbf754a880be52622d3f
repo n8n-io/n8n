@@ -1,0 +1,23 @@
+packages/nodes-base/nodes/N8n/v2/generated/properties.generated.ts
+  ai_agent 3-1267
+packages/nodes-base/nodes/N8n/v2/overrides.ts
+  s_09a09ad2cc1d95::t_aef1bb0de0bc4e 137
+packages/nodes-base/nodes/N8n/test/v2/node/N8nV2.test.ts
+  ai_agent 1-124
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "333137d4651e03098b9acbf754a880be52622d3f",
+  "prompts": {},
+  "sessions": {
+    "s_09a09ad2cc1d95": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e8a88936-e27f-4171-9770-6c94c3f8f3cb",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dmitrii Kulikov <dmitrii.kulikov@n8n.io>"
+    }
+  }
+}

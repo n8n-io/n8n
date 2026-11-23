@@ -1,0 +1,26 @@
+packages/@n8n/db/src/repositories/workflow.repository.ts
+  s_bc361d9d6c0744::t_e03bf4dd0215de 400-407
+packages/cli/src/workflows/workflow.service.ee.ts
+  s_bc361d9d6c0744::t_4be5440efbc332 16
+  s_bc361d9d6c0744::t_e03bf4dd0215de 905
+packages/cli/test/integration/workflows/workflow-transfer-republish.test.ts
+  s_bc361d9d6c0744::t_adb0d58a489ce6 355-378,763,770-771
+packages/cli/src/workflows/workflow.service.ts
+  s_bc361d9d6c0744::t_bc37da072919ea 1734,1736,1741-1742,1744-1748,1753,1759,1768,1772-1773,1778-1779,1826,1831,1833,1836,1858
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "93803a0d2e39c5089104f8d93dada9f7dcee6146",
+  "prompts": {},
+  "sessions": {
+    "s_bc361d9d6c0744": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6480b4a0-d3d2-4d24-a9bd-2dc7e311dd31",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

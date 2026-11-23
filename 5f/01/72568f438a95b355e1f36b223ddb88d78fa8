@@ -1,0 +1,89 @@
+packages/@n8n/api-types/src/schemas/public-api-path-params.schema.ts
+  s_2f753964d21ebd::t_de12df1d52e2c1 47-50
+packages/cli/test/integration/public-api/promotions.test.ts
+  s_2f753964d21ebd::t_1d850c547ee1b0 48,120-123
+  s_2f753964d21ebd::t_c7154a96ec6637 1940-1941,1947-1948,2699,2718-2722,2731-2733
+packages/cli/src/modules/promotions.ee/promotion-review-inbox.service.ts
+  s_2f753964d21ebd::t_1d850c547ee1b0 534-538
+  s_2f753964d21ebd::t_38a423ab94054f 6-7,10,28,105-108,129-169,221,247,529-533,539-546,556
+  s_2f753964d21ebd::t_50bc4c1b6deb28 550-555
+  s_2f753964d21ebd::t_7f37f14b36f161 547-549
+  s_2f753964d21ebd::t_66dae031ec6bb7 557
+packages/frontend/editor-ui/src/features/settings/apiKeys/apiKeys.constants.ts
+  s_2f753964d21ebd::t_8a50b69240ecfb 32,40
+packages/@n8n/api-types/src/index.ts
+  s_2f753964d21ebd::t_de12df1d52e2c1 180
+packages/@n8n/cli/docs/commands/promotions.md
+  s_2f753964d21ebd::t_008c8f1dc8b5d2 35-36,625-641
+  s_2f753964d21ebd::t_227a7dfc5ebc44 642
+packages/@n8n/cli/src/commands/promotion-review/get.ts
+  s_2f753964d21ebd::t_b28ea8522ab150 1-8,12-23
+  s_2f753964d21ebd::t_7f37f14b36f161 9-11
+packages/@n8n/cli/README.md
+  s_2f753964d21ebd::t_008c8f1dc8b5d2 65
+packages/frontend/editor-ui/src/features/settings/apiKeys/apiKeys.utils.test.ts
+  s_2f753964d21ebd::t_e5338bf03900fa 42
+packages/nodes-base/nodes/N8n/n8n-api-coverage.json
+  s_2f753964d21ebd::t_d43d41f9470faf 344-349
+packages/@n8n/api-types/src/inbox.ts
+  s_2f753964d21ebd::t_de12df1d52e2c1 3,34
+packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
+  s_2f753964d21ebd::t_89006d71306eb6 912,952
+  s_2f753964d21ebd::t_1d850c547ee1b0 920
+  s_2f753964d21ebd::t_dd502459db9df3 13,34-35,47,913-919,921-951,991-997
+  s_2f753964d21ebd::t_b21e09f346aed1 998
+packages/@n8n/api-types/src/dto/index.ts
+  s_2f753964d21ebd::t_de12df1d52e2c1 871,873-874,884
+packages/@n8n/permissions/src/public-api-permissions.ee.ts
+  s_2f753964d21ebd::t_2ddd2abaac13e1 35,174,256-257
+packages/@n8n/permissions/src/constants.ee.ts
+  s_2f753964d21ebd::t_2ddd2abaac13e1 168
+packages/@n8n/api-types/src/dto/promotions/promotion-review.dto.ts
+  s_2f753964d21ebd::t_1d850c547ee1b0 86,109-116
+  s_2f753964d21ebd::t_de12df1d52e2c1 8,54-60,66-85,87-106
+  s_2f753964d21ebd::t_c25b64b5123ff2 117
+packages/@n8n/cli/package.json
+  s_2f753964d21ebd::t_2fbe95206faf08 75-77
+packages/@n8n/cli/src/index.ts
+  s_2f753964d21ebd::t_2fbe95206faf08 64-65,145-146
+  s_2f753964d21ebd::t_f938cd96f033d5 147
+packages/@n8n/cli/src/commands/promotion-review/list.ts
+  s_2f753964d21ebd::t_b28ea8522ab150 1-15,17,20-25,27-40
+  s_2f753964d21ebd::t_008c8f1dc8b5d2 16,18-19,26
+packages/@n8n/cli/skills/n8n-cli/SKILL.md
+  s_2f753964d21ebd::t_008c8f1dc8b5d2 283-289
+packages/cli/test/integration/promotion-review-inbox.test.ts
+  s_2f753964d21ebd::t_2413d502c3baee 21-27,136,199-200,205-210,241,395-397,401-402,503-516,520,531-545,552-554,565-585,603
+  s_2f753964d21ebd::t_7f37f14b36f161 201-204
+packages/@n8n/cli/src/__tests__/client.test.ts
+  s_2f753964d21ebd::t_1d850c547ee1b0 325
+  s_2f753964d21ebd::t_7f37f14b36f161 235-238,240,242-246
+  s_2f753964d21ebd::t_61f48c63d35a7b 199-202,320-324,326-327
+  s_2f753964d21ebd::t_b6a45b05b7882d 198,328-330
+packages/@n8n/cli/src/client.ts
+  s_2f753964d21ebd::t_2fbe95206faf08 540-553
+packages/@n8n/cli/src/__tests__/promotion-command-wiring.test.ts
+  s_2f753964d21ebd::t_61f48c63d35a7b 21-22,100-113
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionReview.generated.yml
+  s_2f753964d21ebd::t_2b97f55e646867 1-149
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionReviews.generated.yml
+  s_2f753964d21ebd::t_b2869603000b26 1-164
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  s_2f753964d21ebd::t_1d8ceddef71451 352-357
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5f0172568f438a95b355e1f36b223ddb88d78fa8",
+  "prompts": {},
+  "sessions": {
+    "s_2f753964d21ebd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "645d3161-c649-4b8b-834e-3c4407874109",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}
