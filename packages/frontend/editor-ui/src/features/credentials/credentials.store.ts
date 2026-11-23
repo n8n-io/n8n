@@ -74,7 +74,10 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 	 * scope from here instead of losing it.
 	 */
 	const usableCredentialsByScope = ref<Record<string, ICredentialsResponse[]>>({});
-	/** Newest request per scope, so an older response cannot overwrite a newer one. */
+	/**
+	 * Newest in-flight request per scope, so an older response cannot overwrite a newer
+	 * one. An entry is removed when its request settles, so the map stays small.
+	 */
 	const usableCredentialsRequestIdByScope = new Map<string, number>();
 	const MAX_CACHED_USABLE_CREDENTIAL_SCOPES = 10;
 
@@ -86,6 +89,35 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 			Math.max(0, entries.length - (MAX_CACHED_USABLE_CREDENTIAL_SCOPES - 1)),
 		);
 		usableCredentialsByScope.value = { ...Object.fromEntries(kept), [key]: credentials };
+	};
+
+	/**
+	 * Applies a local change to one credential in the slice and in every cached scope.
+	 * Return `null` to remove the credential. Only the server can say whether a
+	 * credential is usable, so this never adds one to a list.
+	 */
+	const patchUsableCredential = (
+		id: string,
+		patch: (credential: ICredentialsResponse) => ICredentialsResponse | null,
+	) => {
+		const usable = usableCredentials.value[id];
+		if (usable) {
+			const patched = patch(usable);
+			if (patched) {
+				usableCredentials.value[id] = patched;
+			} else {
+				const { [id]: _removed, ...rest } = usableCredentials.value;
+				usableCredentials.value = rest;
+			}
+		}
+		for (const [key, credentials] of Object.entries(usableCredentialsByScope.value)) {
+			if (!credentials.some((credential) => credential.id === id)) continue;
+			usableCredentialsByScope.value[key] = credentials.flatMap((credential) => {
+				if (credential.id !== id) return [credential];
+				const patched = patch(credential);
+				return patched ? [patched] : [];
+			});
+		}
 	};
 
 	const clearUsableCredentials = () => {
@@ -335,6 +367,8 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 					...credential,
 				},
 			};
+			// Keep cached usable lists in step with a rename or other edit.
+			patchUsableCredential(credential.id, (cached) => ({ ...cached, ...credential }));
 		}
 	};
 
@@ -391,11 +425,16 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		const requestId = ++usableCredentialsRequestId;
 		usableCredentialsRequestIdByScope.set(requestedScope, requestId);
 
-		const credentials = await credentialsApi.getUsableCredentials(
-			rootStore.restApiContext,
-			options,
-		);
-		if (usableCredentialsRequestIdByScope.get(requestedScope) === requestId) {
+		let credentials: ICredentialsResponse[];
+		let isNewestForScope = false;
+		try {
+			credentials = await credentialsApi.getUsableCredentials(rootStore.restApiContext, options);
+		} finally {
+			// A newer request for this scope owns the entry; only the newest removes it.
+			isNewestForScope = usableCredentialsRequestIdByScope.get(requestedScope) === requestId;
+			if (isNewestForScope) usableCredentialsRequestIdByScope.delete(requestedScope);
+		}
+		if (isNewestForScope) {
 			cacheUsableCredentials(requestedScope, credentials);
 		}
 		// Only the newest request publishes. Several scoped fetches can be in flight at
@@ -540,6 +579,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 			const { [id]: deletedCredential, ...rest } = state.value.credentials;
 			state.value.credentials = rest;
 			credentialTestResults.value.delete(id);
+			patchUsableCredential(id, () => null);
 		}
 		return deleted;
 	};
@@ -563,17 +603,11 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		connectedByMe: boolean,
 		connectedAccountIdentifier?: string,
 	) => {
-		const usable = usableCredentials.value[id];
-		if (usable)
-			usableCredentials.value[id] = { ...usable, connectedByMe, connectedAccountIdentifier };
-		for (const [key, credentials] of Object.entries(usableCredentialsByScope.value)) {
-			if (!credentials.some((credential) => credential.id === id)) continue;
-			usableCredentialsByScope.value[key] = credentials.map((credential) =>
-				credential.id === id
-					? { ...credential, connectedByMe, connectedAccountIdentifier }
-					: credential,
-			);
-		}
+		patchUsableCredential(id, (credential) => ({
+			...credential,
+			connectedByMe,
+			connectedAccountIdentifier,
+		}));
 		const existing = state.value.credentials[id];
 		if (existing) {
 			state.value.credentials = {

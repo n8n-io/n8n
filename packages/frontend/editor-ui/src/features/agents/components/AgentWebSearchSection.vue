@@ -208,8 +208,21 @@ const managedCredentialOption = computed<ManagedCredentialOption | null>(() => {
 	};
 });
 
+// Read the agent scope by key when there is one: the tools modal fetches a different
+// scope, which replaces the single-scope slice and shows credentials agents cannot use.
+const fallbackCredentialSource = computed(() => {
+	if (!props.projectId)
+		return credentialsStore.getUsableCredentialByType(fallbackCredentialType.value);
+	const credentials =
+		credentialsStore.getUsableCredentialsForScope({ projectId: props.projectId, forAgent: true }) ??
+		[];
+	return credentials
+		.filter((credential) => credential.type === fallbackCredentialType.value)
+		.sort((a, b) => a.name.localeCompare(b.name));
+});
+
 const fallbackCredentials = computed<AgentCredentialOption[]>(() =>
-	credentialsStore.getUsableCredentialByType(fallbackCredentialType.value).map((credential) => ({
+	fallbackCredentialSource.value.map((credential) => ({
 		id: credential.id,
 		name: credential.name,
 		typeDisplayName: credentialsStore.getCredentialTypeByName(credential.type)?.displayName,

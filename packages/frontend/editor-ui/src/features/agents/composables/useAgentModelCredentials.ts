@@ -31,6 +31,12 @@ function parseStoredCredentials(value: string): AgentCredentialsByProvider {
 	}
 }
 
+/**
+ * Refetches in flight after the store dropped an agent scope, by project. Several
+ * panels mount this composable at once, and each sees the same drop.
+ */
+const droppedScopeRefetches = new Map<string, Promise<void>>();
+
 export function useAgentModelCredentials(userId: string, projectId: MaybeRefOrGetter<string>) {
 	const credentialsStore = useCredentialsStore();
 	const aiGatewayStore = useAiGatewayStore();
@@ -136,9 +142,15 @@ export function useAgentModelCredentials(userId: string, projectId: MaybeRefOrGe
 		() => [isCredentialsReady.value, toValue(projectId)] as const,
 		([ready, id], [wasReady, previousId]) => {
 			if (ready || !wasReady || !id || id !== previousId) return;
-			void credentialsStore
+			if (droppedScopeRefetches.has(id)) return;
+			const refetch = credentialsStore
 				.fetchUsableCredentials({ projectId: id, forAgent: true })
-				.catch(() => {});
+				.then(
+					() => {},
+					() => {},
+				)
+				.finally(() => droppedScopeRefetches.delete(id));
+			droppedScopeRefetches.set(id, refetch);
 		},
 	);
 

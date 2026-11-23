@@ -1,6 +1,7 @@
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only patterns */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
+import { effectScope, nextTick, ref, type Ref } from 'vue';
 
 const LOCAL_STORAGE_KEY = 'agent-model-credentials-user-1';
 
@@ -12,7 +13,14 @@ type StoreCredential = { id: string; name: string; type: string; createdAt: stri
 
 const credentialsByType = vi.hoisted(() => ({ value: {} as Record<string, StoreCredential[]> }));
 
-const agentScope = vi.hoisted(() => ({ isFetched: true, requested: [] as unknown[] }));
+const agentScope = vi.hoisted(() => ({
+	isFetched: true,
+	requested: [] as unknown[],
+	/** Set by a test that needs the store to react, as the real store does. */
+	reactiveIsFetched: null as { value: boolean } | null,
+}));
+
+const fetchUsableCredentialsMock = vi.hoisted(() => vi.fn());
 
 const aiGatewayState = vi.hoisted(() => ({
 	isEnabled: { value: false },
@@ -23,14 +31,15 @@ vi.mock('@/features/credentials/credentials.store', () => ({
 	useCredentialsStore: () => ({
 		getUsableCredentialsForScope: (scope: unknown) => {
 			agentScope.requested.push(scope);
-			return agentScope.isFetched ? Object.values(credentialsByType.value).flat() : undefined;
+			const isFetched = agentScope.reactiveIsFetched?.value ?? agentScope.isFetched;
+			return isFetched ? Object.values(credentialsByType.value).flat() : undefined;
 		},
 		getCredentialById: (id: string) =>
 			Object.values(credentialsByType.value)
 				.flat()
 				.find((c) => c.id === id),
 		fetchCredentialTypes: vi.fn().mockResolvedValue(undefined),
-		fetchUsableCredentials: vi.fn().mockResolvedValue(undefined),
+		fetchUsableCredentials: fetchUsableCredentialsMock,
 	}),
 }));
 
@@ -60,6 +69,8 @@ describe('useAgentModelCredentials — credentialsByProvider', () => {
 		credentialsByType.value = {};
 		agentScope.isFetched = true;
 		agentScope.requested = [];
+		agentScope.reactiveIsFetched = null;
+		fetchUsableCredentialsMock.mockReset().mockResolvedValue(undefined);
 		aiGatewayState.isEnabled.value = false;
 		aiGatewayState.supportedTypes = new Set<string>();
 	});
@@ -175,6 +186,8 @@ describe('useAgentModelCredentials — agent scope', () => {
 		};
 		agentScope.isFetched = false;
 		agentScope.requested = [];
+		agentScope.reactiveIsFetched = null;
+		fetchUsableCredentialsMock.mockReset().mockResolvedValue(undefined);
 		aiGatewayState.isEnabled.value = false;
 		aiGatewayState.supportedTypes = new Set<string>();
 	});
@@ -198,5 +211,47 @@ describe('useAgentModelCredentials — agent scope', () => {
 		expect(getCredentialsForProvider('anthropic').map((credential) => credential.id)).toEqual([
 			'cred-1',
 		]);
+	});
+
+	it('refetches once when the store drops the agent scope, however many panels use it', async () => {
+		const isFetched: Ref<boolean> = ref(true);
+		agentScope.reactiveIsFetched = isFetched;
+		const scope = effectScope();
+		scope.run(() => {
+			useAgentModelCredentials('user-1', 'project-1');
+			useAgentModelCredentials('user-1', 'project-1');
+			useAgentModelCredentials('user-1', 'project-1');
+		});
+		await nextTick();
+		// Each mount fetches once for the project.
+		expect(fetchUsableCredentialsMock).toHaveBeenCalledTimes(3);
+		fetchUsableCredentialsMock.mockClear();
+
+		isFetched.value = false;
+		await nextTick();
+
+		expect(fetchUsableCredentialsMock).toHaveBeenCalledTimes(1);
+		expect(fetchUsableCredentialsMock).toHaveBeenCalledWith({
+			projectId: 'project-1',
+			forAgent: true,
+		});
+		scope.stop();
+	});
+
+	it('does not refetch again while the agent scope stays missing', async () => {
+		const isFetched: Ref<boolean> = ref(true);
+		agentScope.reactiveIsFetched = isFetched;
+		const scope = effectScope();
+		scope.run(() => useAgentModelCredentials('user-1', 'project-1'));
+		await nextTick();
+		fetchUsableCredentialsMock.mockClear().mockRejectedValue(new Error('offline'));
+
+		isFetched.value = false;
+		await nextTick();
+		await Promise.resolve();
+		await nextTick();
+
+		expect(fetchUsableCredentialsMock).toHaveBeenCalledTimes(1);
+		scope.stop();
 	});
 });
