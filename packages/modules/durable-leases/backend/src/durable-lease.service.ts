@@ -17,7 +17,7 @@ export class DurableLeaseService {
 	private readonly leaseService: LeaseService<LeaseTransaction>;
 
 	constructor(config: LeasesConfig) {
-		assertLeaseTimings(config, 'N8N_LEASES_*');
+		assertLeaseTimings(config);
 		this.provider = new DatabaseLeaseProvider();
 		this.leaseService = new LeaseService(this.provider);
 	}
