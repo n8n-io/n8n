@@ -9,7 +9,8 @@ import {
 	SECRET_PASTE_GUARDRAIL,
 } from './credential-guardrails.prompt';
 import { getSandboxWorkspaceSection, UNTRUSTED_CONTENT_DOCTRINE } from './shared-prompts';
-import type { BrowserUseState } from '../types';
+import { getWorkflowEngineSection } from './workflow-engine-prompt';
+import type { BrowserUseState, InstanceAiEngineSetup } from '../types';
 
 interface SystemPromptOptions {
 	browserUseState?: BrowserUseState;
@@ -40,6 +41,8 @@ interface SystemPromptOptions {
 	cloudBrowserEnabled?: boolean;
 	/** Setup panel v2 flag: `setup_workflow` announces instead of opening a card. */
 	setupPanelEnabled?: boolean;
+	/** The workflow engines of the instance. Adds the engine section only with the `engine-v2` module. */
+	engineSetup?: InstanceAiEngineSetup;
 }
 
 export function getDateTimeSection(timeZone?: string): string {
@@ -323,6 +326,7 @@ export function createSystemPromptRenderer(communicationStyleSection: string) {
 			skillManagementEnabled,
 			cloudBrowserEnabled,
 			setupPanelEnabled,
+			engineSetup,
 		} = options;
 
 		return `You are the n8n Instance Agent — a helpful AI assistant embedded in an n8n instance. Your job is to understand the user's request and load the skills that match it. Once a skill is loaded, learn it in depth before continuing. You are also encouraged to call skills at any point in the conversation if it will help you achieve the user's goal. Match the user's request against skill descriptions in the catalog. Call \`load_skill\` before acting on a matched skill's guidance. A single turn may need more than one skill when routing requires it. Tool descriptions carry any load-before-call gates (\`load_skill\`).
@@ -369,7 +373,7 @@ ${getBrowserUsePrompt({ state: browserUseState })}
 ${cloudBrowserEnabled ? getCloudBrowserSection(browserUseState) : ''}
 ${getLicenseLimitationsSection(licenseHints)}
 ${getReadOnlySection(branchReadOnly, skillManagementEnabled)}
-${getLimitedModeSection(parameterValuesHidden)}
+${getLimitedModeSection(parameterValuesHidden)}${getWorkflowEngineSection(engineSetup)}
 
 ## Reply language
 

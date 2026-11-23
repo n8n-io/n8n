@@ -1,6 +1,6 @@
 import type { EngineV2Reason } from '@n8n/workflow-engine-check';
 
-import { formatEngineV2Message } from './engine-v2-support';
+import { formatEngineV2Message, isEngineV2NodeSettingCode } from './engine-v2-support';
 import { validateWorkflow, type ValidationError } from './validate-workflow';
 import { validateWorkflowBuilder } from './validate-workflow-builder';
 import type { NodeJSON, WorkflowJSON, WorkflowSettings } from '../types/base';
@@ -50,6 +50,19 @@ function engineErrors(errors: ValidationError[]): ValidationError[] {
 const V1_FALLBACK = "set `engineType: 'v1'` in the workflow settings.";
 
 describe('engine v2 support validation', () => {
+	describe('isEngineV2NodeSettingCode', () => {
+		it('accepts the node setting codes', () => {
+			expect(isEngineV2NodeSettingCode('EXECUTE_ONCE')).toBe(true);
+			expect(isEngineV2NodeSettingCode('ALWAYS_OUTPUT_DATA')).toBe(true);
+		});
+
+		it('rejects other codes and inherited object keys', () => {
+			expect(isEngineV2NodeSettingCode('COMMUNITY_NODE')).toBe(false);
+			expect(isEngineV2NodeSettingCode('toString')).toBe(false);
+			expect(isEngineV2NodeSettingCode('constructor')).toBe(false);
+		});
+	});
+
 	describe('engine selection', () => {
 		const json = workflowJson(node({ retryOnFail: true }));
 
