@@ -100,6 +100,7 @@ export interface AssistantTurnEnvironment {
 	instanceContextEnabled: boolean;
 	nodeUsageEnabled: boolean;
 	skillScope: InstanceAiSkillScope;
+	preferencesNoteVariant?: string;
 }
 
 export interface AssistantTurnEnvironmentParams {
@@ -299,6 +300,8 @@ export class AssistantTurnEnvironmentFactory {
 			folderExplorationEnabled,
 			credentialDescriptionsEnabled,
 			assistantSkillsEnabled,
+			skillSourcesEnabled,
+			preferencesNoteVariant,
 		} = gates;
 		runtime.turnState.setSetupPanelEnabled(setupPanelEnabled);
 		// Resumed segments use the gates bound to the original turn.
@@ -342,6 +345,7 @@ export class AssistantTurnEnvironmentFactory {
 			onboardingThread,
 			credentialDescriptionsEnabled,
 			assistantSkillsEnabled,
+			skillSourcesEnabled,
 			modelId,
 			utilityModelId,
 			onHelperUsage: this.creditService.helperUsageClaimer(user, threadId, runId),
@@ -649,6 +653,7 @@ export class AssistantTurnEnvironmentFactory {
 			instanceContextEnabled,
 			nodeUsageEnabled,
 			skillScope,
+			preferencesNoteVariant,
 		};
 	}
 

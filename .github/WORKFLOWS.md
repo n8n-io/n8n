@@ -239,7 +239,31 @@ parallelism). See the `--build-via-mcp` section in
 |------------------------------------|--------------------------------|
 | PR closed (any)                    | `util-notify-pr-status.yml`    |
 | PR merged to `release/*`           | `release-publish.yml`          |
+| `release-publish.yml` completed    | `util-refresh-starter-scaffold.yml` (`workflow_run`) |
 | PR closed with `codespace-preview` | `util-codespace-preview.yml`   |
+
+**`util-refresh-starter-scaffold.yml` writes to a different repo.**
+`n8n-io/n8n-nodes-starter` is the committed output of `n8n-node new`. It has
+no scaffold logic of its own. `@n8n/node-cli` reaches npm with each release,
+so this workflow runs after `Release: Publish` succeeds. It checks out the
+starter with the `N8N_ASSISTANT` GitHub App (`contents: write`,
+`pull-requests: write` on `n8n-nodes-starter`), moves the starter lockfile to
+`@n8n/node-cli@latest`, runs `n8n-node new` with that CLI, writes the output
+into the checkout, and opens a PR there. A manifest in the starter
+(`.github/scaffold-manifest.json`) lists the files the templates own, so a
+file a template drops is deleted on the next run while starter-only files
+survive. The run is skipped when `latest` already matches the lockfile; a
+`workflow_dispatch` with `force: true` regenerates anyway.
+
+### On Merge Queue Removal
+
+| Event                              | Workflow                               | Effect |
+|------------------------------------|----------------------------------------|--------|
+| PR dequeued (not merged or manual) | `util-notify-merge-queue-removal.yml`  | Writes one PR comment with the reason. Later removals update the same comment. |
+
+This workflow uses `pull_request_target`. Thus, it runs without approval on
+fork and bot PRs, and it has a write token on them. No step checks out or runs
+PR code. An edit to the comment does not send a new notification.
 
 ### Label Triggers
 
@@ -658,7 +682,7 @@ Push to master
 | Monday 00:00              | `util-update-node-popularity.yml` | Node usage stats         |
 | Monday 02:00              | `test-e2e-coverage-weekly.yml`    | Weekly E2E coverage      |
 | Monday 06:00              | `test-link-check-weekly.yml`      | Broken links in `packages/` |
-| Monday 08:00              | `ci-detect-new-packages.yml`      | Report unpublished npm packages to Developer Platform |
+| Mon–Tue every 2 hours at :15 | `ci-detect-new-packages.yml`   | Report unpublished npm packages to Developer Platform |
 | Wednesday 04:00           | `util-update-get-n8n-versions.yml` | get-n8n stable versions |
 | Saturday 22:00            | `test-evals-ai.yml`               | AI workflow evals        |
 | 1st of month 04:00        | `util-refresh-cubic-schema.yml`   | Refresh vendored cubic schema |
@@ -839,6 +863,12 @@ Scripts in `.github/scripts/`:
 | `docker/base-debian-smoke-check.mjs`| Verify the Debian base image contract (tools, no package manager, fonts, global npm modules) on amd64 and arm64 | `build-base-image.yml`|
 | `docker/bake-inputs-changed.mjs`| Decide whether an image must build: compare its resolved bake inputs and Dockerfile between two commits | `build-base-image.yml`, `build-node-pc-image.yml`|
 | `attest-image-sbom.mjs` | Generate, validate, and optionally attest image SBOMs | `docker-build-push.yml`, `test-sbom-nightly.yml` |
+
+### Node CLI Scripts
+
+| Script                                   | Purpose                                                            | Called By                            |
+|-------------------------------------------|--------------------------------------------------------------------|---------------------------------------|
+| `node-cli/refresh-starter-scaffold.mjs`   | Regenerate n8n-nodes-starter from the `@n8n/node-cli` installed in a given `--starter-root` checkout, and record the template-owned files in a manifest | `util-refresh-starter-scaffold.yml` |
 
 ### Validation Scripts
 

@@ -157,6 +157,11 @@ const props = withDefaults(
 		 */
 		clientContext?: () => Record<string, unknown> | undefined;
 		/**
+		 * The resources that a sent message shows, from the client context it
+		 * sends. The `user-message-references` slot renders them.
+		 */
+		messageReferences?: (clientContext: Record<string, unknown> | undefined) => unknown[];
+		/**
 		 * Replaces the default composer placeholder. The placeholders for an open
 		 * question card and for a non-empty queue still take priority.
 		 */
@@ -197,6 +202,7 @@ const props = withDefaults(
 		budgetCards: false,
 		increaseBudget: undefined,
 		clientContext: undefined,
+		messageReferences: undefined,
 		placeholder: undefined,
 		showAttachButton: true,
 		acceptedMimeTypes: undefined,
@@ -279,6 +285,8 @@ defineSlots<{
 	'message-actions'?: (props: { message: ChatMessage; executionId?: string }) => unknown;
 	/** Content below the composer. */
 	'input-footer'?: () => unknown;
+	/** The `references` of a user message, for example mentioned workflows. */
+	'user-message-references'?: (props: { message: ChatMessage }) => unknown;
 	/** Content below the composer or an approval card. */
 	'composer-footer'?: () => unknown;
 }>();
@@ -339,6 +347,7 @@ const {
 	budgetCards: props.budgetCards,
 	interactionExtensions: props.interactionExtensions,
 	onStreamEvent: (event) => emit('stream-event', event),
+	messageReferences: (clientContext) => props.messageReferences?.(clientContext) ?? [],
 });
 
 provide(
@@ -1720,16 +1729,11 @@ function removeComposerAttachment(id: string) {
 	composerAttachments.value = composerAttachments.value.filter((item) => item.chip.id !== id);
 }
 
-// Session files: the preview chat and n8n Chat have the list route.
-const sessionFilesChannel = computed(() =>
-	props.channel === 'chat' || props.channel === 'n8n-chat' ? props.channel : undefined,
-);
+// Session files: every channel has the list route.
 const posthog = usePostHog();
 const showSessionFilesToggle = computed(
 	() =>
-		posthog.isFeatureEnabled(AGENT_SANDBOX_FILES_FLAG) === true &&
-		sessionFilesChannel.value !== undefined &&
-		Boolean(props.continueSessionId),
+		posthog.isFeatureEnabled(AGENT_SANDBOX_FILES_FLAG) === true && Boolean(props.continueSessionId),
 );
 const sessionFilesOpen = ref(false);
 const sessionFiles = ref<AgentSessionFile[]>([]);
@@ -1749,8 +1753,8 @@ function sessionFileHref(fileId: string) {
 
 async function loadSessionFiles() {
 	const threadId = props.continueSessionId;
-	const channel = sessionFilesChannel.value;
-	if (!threadId || !channel) return;
+	const { channel } = props;
+	if (!threadId) return;
 	sessionFilesLoading.value = true;
 	sessionFilesError.value = false;
 	try {
@@ -2102,6 +2106,7 @@ onBeforeUnmount(() => {
 							<slot name="composer-start" />
 							<N8nTooltip
 								v-if="showAttach && showAttachButton"
+								as-child
 								:content="locale.baseText('chatInputBase.button.attach')"
 								placement="top"
 							>
@@ -2110,11 +2115,14 @@ onBeforeUnmount(() => {
 									:icon="attachButtonIcon"
 									icon-size="large"
 									:disabled="isComposerBlocked"
+									focusable-when-disabled
 									:aria-label="locale.baseText('chatInputBase.button.attach')"
 									data-test-id="chat-input-attach-button"
 									@click.stop="chatInput?.openFilePicker()"
 								/>
 							</N8nTooltip>
+							<!-- Before the files toggle: a host menu such as the Assistant "+" menu replaces the attach button. -->
+							<slot name="footer-start" :disabled="isComposerBlocked" />
 							<N8nTooltip
 								v-if="showSessionFilesToggle"
 								:content="locale.baseText('agents.chat.sessionFiles.title')"
@@ -2130,7 +2138,6 @@ onBeforeUnmount(() => {
 									@click.stop="toggleSessionFiles"
 								/>
 							</N8nTooltip>
-							<slot name="footer-start" :disabled="isComposerBlocked" />
 						</template>
 						<template v-if="$slots['composer-actions']" #right-actions>
 							<slot name="composer-actions" />
@@ -2257,6 +2264,12 @@ onBeforeUnmount(() => {
 			>
 				<template v-if="$slots['message-actions']" #message-actions="actionProps">
 					<slot name="message-actions" v-bind="actionProps" />
+				</template>
+				<template
+					v-if="$slots['user-message-references']"
+					#user-message-references="referenceProps"
+				>
+					<slot name="user-message-references" v-bind="referenceProps" />
 				</template>
 				<!-- Host offers end the transcript, so they share its column and scroll with it. -->
 				<template v-if="stopNotice || $slots['inline-offers']" #status>

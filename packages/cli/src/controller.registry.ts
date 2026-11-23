@@ -177,7 +177,7 @@ export class ControllerRegistry {
 	 * Builds middleware array based on route configuration.
 	 * Used for both static routers and inline router definitions.
 	 */
-	private buildMiddlewares(
+	buildMiddlewares(
 		route: {
 			skipAuth?: boolean;
 			allowSkipMFA?: boolean;

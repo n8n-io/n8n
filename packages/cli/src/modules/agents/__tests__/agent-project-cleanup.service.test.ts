@@ -106,6 +106,7 @@ describe('AgentProjectCleanupService', () => {
 				'target-1',
 				ctx,
 				expect.any(Function),
+				{ source: 'project-deletion' },
 			);
 			expect(executionService.deleteExecutionLogsForAgent).toHaveBeenCalledWith(agent.id);
 		}

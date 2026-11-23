@@ -140,12 +140,22 @@ export function buildUpdateWorkflowSessionGrantKey(workflowId: string): string {
 }
 
 /**
- * Builds the thread-level "always allow" grant key for a gated action on one
- * workflow, such as `publish` or `unarchive`. Scoped per workflow, so approving
- * one workflow never approves the same action on another.
+ * Workflow actions whose "always allow" grant covers every workflow of the
+ * thread. Each one runs once on a workflow, so a per-workflow grant would never
+ * apply a second time and a bulk cleanup would ask for each workflow.
+ */
+const THREAD_WIDE_WORKFLOW_GRANT_ACTIONS = new Set(['delete', 'unpublish']);
+
+/**
+ * Builds the thread-level "always allow" grant key for a gated workflow action.
+ * Scoped per workflow for actions such as `publish` or `unarchive`, so approving
+ * one workflow never approves the same action on another. Archive (`delete`) and
+ * `unpublish` are scoped per action.
  */
 export function buildWorkflowActionSessionGrantKey(action: string, workflowId: string): string {
-	return `workflows:${action}:${workflowId}`;
+	return THREAD_WIDE_WORKFLOW_GRANT_ACTIONS.has(action)
+		? `workflows:${action}`
+		: `workflows:${action}:${workflowId}`;
 }
 
 /**
@@ -3004,6 +3014,8 @@ export const INSTANCE_AI_CONCISE_STYLE_ENABLED_VARIANT = 'variant';
  * choice gets Auto.
  */
 export const INSTANCE_AI_APPROVAL_MODES_FLAG = '144_instance_ai_approval_modes';
+
+export const INSTANCE_AI_EMPTY_PREFERENCES_NOTE_FLAG = '147_assistant_empty_preferences_note';
 
 export const INSTANCE_AI_SETUP_PANEL_FLAG = '118_instance_ai_setup_overhaul';
 export const INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT = 'variant';

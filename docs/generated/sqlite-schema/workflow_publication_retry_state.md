@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "workflow_publication_retry_state" ("workflowId" varchar(36) PRIMARY KEY NOT NULL, "targetVersionId" varchar(36) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "FK_7b73bc41b329a0d7ad736f79bb2" FOREIGN KEY ("workflowId") REFERENCES "workflow_entity" ("id") ON DELETE CASCADE)
+CREATE TABLE "workflow_publication_retry_state" ("workflowId" varchar(36) PRIMARY KEY NOT NULL, "targetVersionId" varchar(36) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "retryDelaySeconds" integer, CONSTRAINT "FK_7b73bc41b329a0d7ad736f79bb2" FOREIGN KEY ("workflowId") REFERENCES "workflow_entity" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)
 ```
 
 </details>
@@ -16,6 +16,7 @@ CREATE TABLE "workflow_publication_retry_state" ("workflowId" varchar(36) PRIMAR
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| retryDelaySeconds | INTEGER |  | true |  |  |  |
 | targetVersionId | varchar(36) |  | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | workflowId | varchar(36) |  | false |  | [workflow_entity](workflow_entity.md) |  |
@@ -43,6 +44,7 @@ erDiagram
 
 "workflow_publication_retry_state" {
   datetime_3_ createdAt
+  INTEGER retryDelaySeconds
   varchar_36_ targetVersionId
   datetime_3_ updatedAt
   varchar_36_ workflowId PK

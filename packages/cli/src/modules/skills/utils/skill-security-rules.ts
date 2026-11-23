@@ -1,10 +1,14 @@
 import {
+	AGENT_SKILL_REFERENCES_TOTAL_MAX_LENGTH,
 	agentSkillSchema,
 	type SkillLinkReviewReason,
 	type SkillScanFinding,
+	type SkillScanLimit,
+	type SkillScanLimitField,
 	type SkillScanLocation,
 } from '@n8n/api-types';
 import { kebabCase } from 'change-case';
+import get from 'lodash/get';
 import { isDeepStrictEqual } from 'node:util';
 import type { ZodIssue } from 'zod';
 
@@ -33,31 +37,121 @@ export type SkillScanInput = {
 };
 
 /** The skill must fit the shape that `createTrusted` and `saveTrusted` store. */
-export function checkShape({ content }: SkillScanInput): SkillScanFinding[] {
-	const parsed = agentSkillSchema.safeParse({
+export function checkShape({ content }: Pick<SkillScanInput, 'content'>): SkillScanFinding[] {
+	const input = {
 		// The service trims these, so a value of only spaces is empty.
 		name: content.name.trim(),
 		description: content.description.trim(),
 		instructions: content.instructions.trim(),
 		...(content.files.length ? { references: content.files } : {}),
-	});
+	};
+	const parsed = agentSkillSchema.safeParse(input);
 	const findings: SkillScanFinding[] = parsed.success
 		? []
-		: parsed.error.issues.map((issue) => ({
-				rule: isSizeIssue(issue) ? 'over_limit' : 'invalid_skill',
-				severity: 'blocked',
-				file: fileOfIssue(content, issue.path),
-				detail: issue.message,
-			}));
-	if (content.frontmatter && JSON.stringify(content.frontmatter).length > FRONTMATTER_MAX_LENGTH) {
-		findings.push({
-			rule: 'over_limit',
-			severity: 'blocked',
-			file: SKILL_MD,
-			detail: `The frontmatter must be ${FRONTMATTER_MAX_LENGTH} characters or fewer as JSON.`,
-		});
+		: parsed.error.issues.map<SkillScanFinding>((issue) => {
+				const file = fileOfIssue(content, issue.path);
+				const limit = limitOf(content, input, issue);
+				return limit
+					? overLimit(file, limit)
+					: {
+							rule: 'invalid_skill',
+							severity: 'blocked',
+							file,
+							detail: emptyDetail(issue) ?? issue.message,
+						};
+			});
+	const frontmatterLength = content.frontmatter ? JSON.stringify(content.frontmatter).length : 0;
+	if (frontmatterLength > FRONTMATTER_MAX_LENGTH) {
+		findings.push(
+			overLimit(SKILL_MD, {
+				field: 'frontmatter',
+				max: FRONTMATTER_MAX_LENGTH,
+				current: frontmatterLength,
+			}),
+		);
 	}
 	return findings;
+}
+
+/** The English text of each limit, for the `detail` of a finding. The UI writes its own from `limit`. */
+const LIMIT_DETAIL: Record<SkillScanLimitField, (limit: SkillScanLimit) => string> = {
+	name: ({ max, current }) =>
+		`The name can have at most ${max} characters. It has ${current} characters.`,
+	description: ({ max, current }) =>
+		`The description can have at most ${max} characters. It has ${current} characters.`,
+	instructions: ({ max, current }) =>
+		`The instructions can have at most ${max} characters. They have ${current} characters.`,
+	frontmatter: ({ max, current }) =>
+		`The frontmatter can have at most ${max} characters as JSON. It has ${current} characters.`,
+	referenceCount: ({ max, current }) =>
+		`A skill can have at most ${max} reference files. It has ${current} files.`,
+	referencePath: ({ max, current }) =>
+		`The path of a reference file can have at most ${max} characters. It has ${current} characters.`,
+	referenceContent: ({ max, current }) =>
+		`A reference file can have at most ${max} characters. It has ${current} characters.`,
+	referencesTotal: ({ max, current }) =>
+		`The reference files can have at most ${max} characters in total. They have ${current} characters.`,
+};
+
+function overLimit(file: string, limit: SkillScanLimit): SkillScanFinding {
+	return {
+		rule: 'over_limit',
+		severity: 'blocked',
+		file,
+		detail: LIMIT_DETAIL[limit.field](limit),
+		limit,
+	};
+}
+
+const TEXT_FIELDS: Record<string, SkillScanLimitField> = {
+	name: 'name',
+	description: 'description',
+	instructions: 'instructions',
+};
+
+/**
+ * The limit that an issue of the skills schema reports. The total size of the references is a
+ * custom issue on the list itself. The other custom issue of the list, a duplicate path, is on
+ * one entry.
+ */
+function limitOf(
+	content: SkillContent,
+	input: object,
+	issue: ZodIssue,
+): SkillScanLimit | undefined {
+	const [field, , part] = issue.path;
+	if (issue.code === 'custom') {
+		return field === 'references' && issue.path.length === 1
+			? {
+					field: 'referencesTotal',
+					max: AGENT_SKILL_REFERENCES_TOTAL_MAX_LENGTH,
+					current: content.files.reduce((total, file) => total + file.content.length, 0),
+				}
+			: undefined;
+	}
+	if (issue.code !== 'too_big') return undefined;
+	const value: unknown = get(input, issue.path);
+	const limitField =
+		field !== 'references'
+			? TEXT_FIELDS[String(field)]
+			: issue.path.length === 1
+				? 'referenceCount'
+				: part === 'path'
+					? 'referencePath'
+					: 'referenceContent';
+	if (!limitField || (typeof value !== 'string' && !Array.isArray(value))) return undefined;
+	return { field: limitField, max: Number(issue.maximum), current: value.length };
+}
+
+/** The schema has no message of its own for an empty text, so the finding names the field. */
+function emptyDetail(issue: ZodIssue): string | undefined {
+	if (issue.code !== 'too_small') return undefined;
+	const [field, , part] = issue.path;
+	if (field === 'name') return 'The name is empty.';
+	if (field === 'description') return 'The description is empty.';
+	if (field === 'references' && part === 'content') return 'The reference file is empty.';
+	if (field === 'references' && part === 'path') return 'The reference file has no path.';
+	return undefined;
 }
 
 /**
@@ -313,17 +407,6 @@ function stringsIn(value: unknown): string[] {
 		return Object.entries(value).flatMap(([key, entry]) => [key, ...stringsIn(entry)]);
 	}
 	return [];
-}
-
-/**
- * The total size of the references is a custom issue on the list itself. The other custom
- * issue of the list, a duplicate path, is on one entry.
- */
-function isSizeIssue(issue: ZodIssue): boolean {
-	return (
-		issue.code === 'too_big' ||
-		(issue.code === 'custom' && issue.path.length === 1 && issue.path[0] === 'references')
-	);
 }
 
 /** Issues under `references` name the file. Every other field is in SKILL.md. */

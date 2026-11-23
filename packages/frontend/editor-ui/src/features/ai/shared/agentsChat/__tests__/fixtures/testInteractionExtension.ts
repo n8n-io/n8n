@@ -83,6 +83,31 @@ export const testToolResultExtension: AgentsChatInteractionExtension = {
 	resultComponent: TestToolResult,
 };
 
+/** Test-only tool whose output the host renders inside the default step. */
+export const TEST_OUTPUT_TOOL_NAME = 'list_rows';
+
+export const TestToolOutput = defineComponent({
+	name: 'TestToolOutput',
+	props: {
+		toolCall: { type: Object as PropType<ToolCall>, required: true },
+		label: { type: String, required: true },
+	},
+	setup(props) {
+		return () =>
+			h('div', { 'data-testid': 'test-tool-output' }, [
+				h('span', { 'data-testid': 'test-tool-output-label' }, props.label),
+				h('span', JSON.stringify(props.toolCall.output)),
+			]);
+	},
+});
+
+/** A host extension that only renders the output of a default tool step. */
+export const testToolOutputExtension: AgentsChatInteractionExtension = {
+	key: 'test_output',
+	matchToolOutput: (toolCall) => toolCall.tool === TEST_OUTPUT_TOOL_NAME,
+	toolOutputComponent: TestToolOutput,
+};
+
 /** Test-only host event names, one for each placement. */
 export const TEST_HOST_EVENT = {
 	START: 'test.start',

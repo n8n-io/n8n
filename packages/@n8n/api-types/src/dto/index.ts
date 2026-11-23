@@ -51,6 +51,10 @@ export { TrackPageHideEventRequestDto } from './telemetry/track-page-hide-event-
 export { AssistantThreadTabsRequestDto } from './assistant/assistant-thread-tabs-request.dto';
 export { AssistantAgentTargetRequestDto } from './assistant/assistant-agent-target-request.dto';
 export {
+	AssistantPreferenceCardUndoRequestDto,
+	AssistantPreferenceCardEditRequestDto,
+} from './assistant/assistant-preference-card-request.dto';
+export {
 	InstanceAiPreferenceCardUndoRequestDto,
 	InstanceAiPreferenceCardEditRequestDto,
 } from './instance-ai/instance-ai-preference-card-request.dto';
@@ -206,6 +210,13 @@ export { ListCredentialsQueryDto } from './credentials/list-credentials-query.dt
 export { AiPreferenceRequestDto } from './ai-preference/ai-preference-request.dto';
 export { AiPreferenceSettingsRequestDto } from './ai-preference/ai-preference-settings-request.dto';
 export {
+	AiPreferencePublicDto,
+	AiPreferenceListPublicDto,
+	ListAiPreferencesPublicQueryDto,
+	CreateAiPreferencePublicDto,
+	UpdateAiPreferencePublicDto,
+} from './ai-preference/ai-preference-public.dto';
+export {
 	AiPreferenceListQueryDto,
 	AI_PREFERENCES_DEFAULT_PAGE_SIZE,
 	AI_PREFERENCES_MAX_IDS_FILTER,
@@ -257,6 +268,10 @@ export {
 export { ImportWorkflowFromUrlDto } from './workflows/import-workflow-from-url.dto';
 export { TransferWorkflowBodyDto } from './workflows/transfer.dto';
 export { TransferWorkflowPublicDto } from './workflows/transfer-workflow-public.dto';
+export {
+	RunWorkflowPublicDto,
+	StartedWorkflowRunPublicDto,
+} from './workflows/run-workflow-public.dto';
 export { ActivateWorkflowDto } from './workflows/activate-workflow.dto';
 export { DeactivateWorkflowDto } from './workflows/deactivate-workflow.dto';
 export { ArchiveWorkflowDto } from './workflows/archive-workflow.dto';

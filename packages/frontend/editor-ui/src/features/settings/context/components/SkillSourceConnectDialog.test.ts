@@ -46,7 +46,6 @@ vi.mock('@n8n/design-system', async () => {
 		emits: ['update:open'],
 		template: `
 			<div v-if="open" role="dialog">
-				<h2 data-test-id="dialog-title">{{ header }}</h2>
 				<slot />
 			</div>
 		`,
@@ -98,7 +97,13 @@ vi.mock('@n8n/design-system', async () => {
 			</div>
 		`,
 	};
-	return { ...actual, N8nDialog, N8nSelect2, N8nCombobox2 };
+	return {
+		...actual,
+		N8nDialog,
+		N8nSelect2,
+		N8nCombobox2,
+		N8nDialogTitle: { template: '<h2><slot /></h2>' },
+	};
 });
 
 const SCOPES: AgentSkillModalScopeOption[] = [
@@ -264,7 +269,7 @@ describe('SkillSourceConnectDialog', () => {
 		it('asks for the scope, the credential and the repository in one modal', async () => {
 			const view = render();
 
-			expect(view.getByTestId('dialog-title')).toHaveTextContent('Import skills from GitHub');
+			expect(view.getByRole('heading')).toHaveTextContent('Import skills');
 			expect(view.getByText('Who can use these skills')).toBeInTheDocument();
 			expect(view.getByText('GitHub credential')).toBeInTheDocument();
 			expect(view.getByText('Repository')).toBeInTheDocument();
@@ -537,7 +542,7 @@ describe('SkillSourceConnectDialog', () => {
 						detail: 'raw detail',
 						location: { line: 6, start: 9, end: 17 },
 					},
-					{ rule: 'file_skipped', severity: 'info', file: 'scripts/run.sh', detail: 'raw' },
+					{ rule: 'file_skipped', severity: 'needs_review', file: 'scripts/run.sh', detail: 'raw' },
 					{ rule: 'file_unstorable', severity: 'info', file: 'references/data.md', detail: 'raw' },
 				],
 			},
@@ -586,8 +591,19 @@ describe('SkillSourceConnectDialog', () => {
 			expect(tab(view, 'Blocked')).toHaveTextContent('Blocked (3)');
 			expect(rows(view)).toEqual(['skills/hidden']);
 			expect(view.getByTestId('skill-source-summary')).toHaveTextContent('acme/skills · main');
-			const warningIcon = view.getByRole('button', { name: '1 warning' });
-			expect(warningIcon.textContent).toBe('');
+			expect(view.getByTestId('skill-source-summary').closest('header')).toContainElement(
+				view.getByRole('heading'),
+			);
+			expect(view.queryByTestId('skill-source-cancel')).not.toBeInTheDocument();
+			const acknowledgment = view.getByTestId('skill-source-reviewed-warnings');
+			expect(view.getByTestId('skill-source-import').previousElementSibling).toContainElement(
+				acknowledgment,
+			);
+			expect(view.getByTestId('skill-source-back').parentElement?.firstElementChild).toBe(
+				view.getByTestId('skill-source-back'),
+			);
+			const warningIcon = view.getByRole('button', { name: '2 warnings' });
+			expect(warningIcon).toHaveTextContent('2');
 			expect(view.getByTestId('skill-source-skills')).not.toHaveTextContent('Hidden Unicode');
 			warningIcon.focus();
 			expect(await view.findByTestId('tooltip-content')).toHaveTextContent(
@@ -714,7 +730,7 @@ describe('SkillSourceConnectDialog', () => {
 			expect(view.getByTestId('skill-source-import')).toHaveTextContent('Import 1 skill to Global');
 		});
 
-		it('shows the skipped files, then each file with its path, a GitHub link and the marked findings', async () => {
+		it('shows one finding notice before the files and skipped files after them', async () => {
 			skillsStore.discoverSource.mockResolvedValue(discovery({ skills }));
 			const view = render();
 			await review(view);
@@ -722,7 +738,7 @@ describe('SkillSourceConnectDialog', () => {
 			const pane = view.getByTestId('skill-source-preview');
 			const skipped = within(pane).getAllByTestId('skill-source-skipped-file');
 			expect(skipped.map((row) => row.textContent)).toEqual([
-				'skills/hidden/scripts/run.sh · A file that n8n leaves out',
+				'skills/hidden/scripts/run.sh',
 				'skills/hidden/references/data.md · A file that n8n cannot store, because it has a NUL character',
 			]);
 			const files = within(pane).getAllByTestId('skill-source-file');
@@ -736,10 +752,39 @@ describe('SkillSourceConnectDialog', () => {
 			const mark = within(files[0]).getByTestId('skill-source-finding-mark');
 			expect(mark).toHaveTextContent('⟦U+200B⟧');
 			expect(mark).toHaveAttribute('title', 'Hidden Unicode characters');
-			// Skipped files come before the content.
+			const notice = within(pane).getByTestId('skill-source-findings');
+			expect(notice).toHaveTextContent('2 issues to review');
+			expect(notice).toHaveTextContent('Hidden Unicode characters in SKILL.md:6');
+			expect(notice).toHaveTextContent('1 script that n8n leaves out');
+			expect(notice).not.toHaveTextContent('scripts/run.sh');
 			expect(
-				skipped[0].compareDocumentPosition(files[0]) & Node.DOCUMENT_POSITION_FOLLOWING,
+				notice.compareDocumentPosition(files[0]) & Node.DOCUMENT_POSITION_FOLLOWING,
 			).toBeTruthy();
+			expect(
+				files[files.length - 1].compareDocumentPosition(skipped[0]) &
+					Node.DOCUMENT_POSITION_FOLLOWING,
+			).toBeTruthy();
+		});
+
+		it('goes to the line of a finding from the notice, and marks its text on that line', async () => {
+			skillsStore.discoverSource.mockResolvedValue(discovery({ skills }));
+			const view = render();
+			await review(view);
+
+			const file = view.getByRole('region', { name: 'skills/hidden/SKILL.md' });
+			const line = file.querySelector<HTMLElement>('[data-line="6"]')!;
+			expect(line).toContainElement(within(file).getByTestId('skill-source-finding-mark'));
+			const scrollIntoView = vi.fn();
+			line.scrollIntoView = scrollIntoView;
+
+			await userEvent.click(
+				within(view.getByTestId('skill-source-findings')).getByRole('link', {
+					name: 'Hidden Unicode characters in SKILL.md:6',
+				}),
+			);
+
+			expect(scrollIntoView).toHaveBeenCalledWith({ block: 'center', inline: 'nearest' });
+			expect(file).toHaveFocus();
 		});
 
 		it('marks the most severe finding where two findings mark the same text', async () => {
@@ -865,8 +910,8 @@ describe('SkillSourceConnectDialog', () => {
 			const view = render();
 			await review(view);
 
-			expect(view.getByTestId('skill-source-unplaced-finding')).toHaveTextContent(
-				'Hidden Unicode characters in references/late.md',
+			expect(view.getByTestId('skill-source-finding')).toHaveTextContent(
+				'Hidden Unicode characters in references/late.md:1',
 			);
 		});
 
@@ -897,7 +942,7 @@ describe('SkillSourceConnectDialog', () => {
 			const view = render();
 			await review(view);
 
-			expect(view.getByTestId('skill-source-unplaced-finding')).toHaveTextContent(
+			expect(view.getByTestId('skill-source-finding')).toHaveTextContent(
 				'Hidden Unicode characters in SKILL.md',
 			);
 		});

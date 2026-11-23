@@ -29,6 +29,11 @@ export interface AgentsChatInteractionRenderer {
  * component in place of the default tool step. An extension that only renders
  * results needs no card fields.
  *
+ * An extension can also render only the output of a finished tool call
+ * (`matchToolOutput` and `toolOutputComponent`). The chat keeps the default
+ * tool step, and shows the host component in place of the default output
+ * section when the step opens.
+ *
  * An extension can also render host events (`matchHostEvent`,
  * `hostEventComponent` and `hostEventPlacement`). The placement sets where the
  * assistant message shows the event. See `AgentsChatHostEventPlacement`.
@@ -63,6 +68,18 @@ export interface AgentsChatInteractionExtension<TInput = unknown> {
 	 * the resume data until the tool result arrives.
 	 */
 	resultComponent?: Component;
+	/**
+	 * True when the host renders the output of this tool call inside the default
+	 * tool step. The chat asks only for calls that finished with an output,
+	 * without an error or a cancel.
+	 */
+	matchToolOutput?(toolCall: ToolCall): boolean;
+	/**
+	 * Renders a matched tool output, with its label. It gets the finished call as
+	 * the `toolCall` prop and the label as the `label` prop. Use `ToolDataSection`
+	 * or `ToolDataViews` so the label row looks like the default one.
+	 */
+	toolOutputComponent?: Component;
 	/** True when this extension handles the host event. Usually a check on `event.name`. */
 	matchHostEvent?(event: AgentsChatHostEvent): boolean;
 	/**
@@ -156,6 +173,22 @@ export function findToolResultRenderer(
 		return { key: extension.key, component: extension.resultComponent };
 	}
 	return undefined;
+}
+
+/**
+ * The host component that renders the output of `toolCall` inside its default
+ * tool step, or `undefined` when the step shows the default output block.
+ * Calls that run, wait for the user, fail, were canceled or have no output yet
+ * always use the default output block.
+ */
+export function findToolOutputRenderer(
+	toolCall: ToolCall,
+	extensions: readonly AgentsChatInteractionExtension[],
+): Component | undefined {
+	if (!isFinishedToolCall(toolCall)) return undefined;
+	return extensions.find(
+		(extension) => extension.toolOutputComponent && extension.matchToolOutput?.(toolCall),
+	)?.toolOutputComponent;
 }
 
 /**
