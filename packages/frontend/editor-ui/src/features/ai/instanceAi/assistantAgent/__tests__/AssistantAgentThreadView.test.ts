@@ -1221,7 +1221,8 @@ describe('AssistantAgentThreadView', () => {
 			expect(sendHostMessage).toHaveBeenCalledOnce();
 			const [prompt, clientContext] = sendHostMessage.mock.calls[0];
 			expect(prompt).toContain('Extract Emails');
-			expect(prompt).toContain('Intentional break');
+			// The agent reads the error from the attached execution.
+			expect(prompt).not.toContain('Intentional break');
 			expect(clientContext).toEqual({
 				attachments: [{ type: 'workflow', id: 'wf-1', name: 'Untitled', executionId: 'exec-1' }],
 			});

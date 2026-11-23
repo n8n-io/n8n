@@ -51,4 +51,21 @@ describe('buildFixWithAiPrompt', () => {
 			}),
 		).toContain('instanceAi.fixWithAi.prompt.multipleInWorkflow');
 	});
+
+	it('names the failed nodes without their error messages', () => {
+		const single = buildFixWithAiPrompt({
+			errors: [{ nodeName: 'Node A', errorMessage: 'first' }],
+		});
+		const multiple = buildFixWithAiPrompt({
+			errors: [
+				{ nodeName: 'Node A', errorMessage: 'first' },
+				{ nodeName: 'Node B', errorMessage: 'second' },
+			],
+		});
+
+		expect(single).toContain('Node A');
+		expect(single).not.toContain('first');
+		expect(multiple).toContain('Node B');
+		expect(multiple).not.toContain('second');
+	});
 });

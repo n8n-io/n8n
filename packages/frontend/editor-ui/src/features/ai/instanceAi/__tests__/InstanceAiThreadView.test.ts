@@ -2761,7 +2761,7 @@ describe('InstanceAiThreadView', () => {
 			});
 		});
 
-		it('sends a fix prompt that names the failed node, error and workflow', async () => {
+		it('sends a fix prompt that names the failed node and workflow, without the error', async () => {
 			seedThreadArtifact('wf-1', 'My Workflow');
 			const user = userEvent.setup();
 			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
@@ -2773,7 +2773,7 @@ describe('InstanceAiThreadView', () => {
 			expect(thread.sendMessage).toHaveBeenCalledOnce();
 			const [prompt] = vi.mocked(thread.sendMessage).mock.calls[0];
 			expect(prompt).toContain('Extract Emails');
-			expect(prompt).toContain('Intentional break');
+			expect(prompt).not.toContain('Intentional break');
 			expect(prompt).toContain('My Workflow');
 		});
 
