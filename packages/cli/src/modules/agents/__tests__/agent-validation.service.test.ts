@@ -1444,7 +1444,51 @@ describe('AgentValidationService — structured issues', () => {
 				},
 			]),
 		);
-		expect(runtimeResult.issues.filter((issue) => issue.path.includes('guard_draft'))).toEqual([]);
+		expect(
+			runtimeResult.issues.filter(
+				(issue) => issue.capability.kind === 'guardrail' && issue.capability.id === 'guard_draft',
+			),
+		).toEqual([]);
+	});
+
+	it('does not treat a workflow tool name as a guardrail workflow id', async () => {
+		const { service, agentRepository, workflowRepository } = makeService();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({
+				...runnableConfig,
+				tools: [{ type: 'workflow', workflow: 'wf-check' }],
+				config: {
+					guardrails: {
+						tools: [{ kind: 'workflow', id: 'guard_1', workflowId: 'wf-check' }],
+					},
+				},
+			}),
+		);
+		workflowRepository.findManyByAgentToolReferences.mockResolvedValue([
+			{
+				id: 'wf-real',
+				name: 'wf-check',
+				activeVersionId: 'v1',
+				nodes: [executeWorkflowTriggerNode],
+			},
+		] as never);
+
+		const result = await service.validateAgentConfiguration(
+			agentId,
+			projectId,
+			makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
+			'runtime',
+		);
+
+		expect(result.issues).toEqual(
+			expect.arrayContaining([
+				{
+					code: 'missing_reference',
+					path: 'config.guardrails.tools.0.workflowId',
+					capability: { kind: 'guardrail', id: 'guard_1' },
+				},
+			]),
+		);
 	});
 
 	it('flags an enabled task with an invalid schedule while keeping its body available, but ignores the same invalid body on a disabled task', async () => {

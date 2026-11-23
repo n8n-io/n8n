@@ -51,6 +51,12 @@ export function createWorkflowGuardrailCheck(
 					`The check workflow "${guardrail.workflowId}" is not accessible`,
 				);
 			}
+			if (context.canExecuteWorkflow && !(await context.canExecuteWorkflow(workflow.id))) {
+				return failed(
+					guardrailName,
+					`The user cannot execute the check workflow "${guardrail.workflowId}"`,
+				);
+			}
 
 			validateCompatibility(workflow);
 			const { node: triggerNode, triggerType } = detectTriggerNode(workflow);

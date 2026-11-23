@@ -805,6 +805,7 @@ export class AgentRuntimeReconstructionService {
 			? await this.buildWorkflowToolContext(
 					this.toolRunIdentity(options, backgroundTasksEnabled),
 					options.instrumentation?.configureToolAdditionalData,
+					options.user,
 				)
 			: undefined;
 		return {
@@ -1170,6 +1171,8 @@ export class AgentRuntimeReconstructionService {
 	private async buildWorkflowToolContext(
 		runIdentity: ToolRunIdentity,
 		instrumentToolAdditionalData?: AgentRuntimeInstrumentation['configureToolAdditionalData'],
+		/** Interactive user. Absent for published and integration runs. */
+		workflowAccessUser?: User,
 	): Promise<WorkflowToolContext> {
 		const {
 			projectId,
@@ -1204,6 +1207,22 @@ export class AgentRuntimeReconstructionService {
 			delegatingAgentId,
 			supportsHitl,
 			backgroundTasksEnabled,
+			...(workflowAccessUser && {
+				canExecuteWorkflow: async (workflowId: string) => {
+					if (
+						!(await userHasScopes(workflowAccessUser, ['workflow:execute'], false, {
+							projectId,
+						}))
+					) {
+						return false;
+					}
+					return Boolean(
+						await this.workflowFinderService.findWorkflowForUser(workflowId, workflowAccessUser, [
+							'workflow:execute',
+						]),
+					);
+				},
+			}),
 		};
 	}
 

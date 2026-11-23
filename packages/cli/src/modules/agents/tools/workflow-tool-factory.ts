@@ -189,6 +189,12 @@ export interface WorkflowToolContext {
 	previewChat?: boolean;
 	publishedN8nChat?: boolean;
 	userId?: string;
+	/**
+	 * Set only for an interactive user. A guardrail check calls it before the
+	 * workflow runs. Published and integration runs leave it unset and keep the
+	 * project-scoped trust boundary.
+	 */
+	canExecuteWorkflow?: (workflowId: string) => Promise<boolean>;
 	/** See `RelatedAgentRun.agentServiceAccountId`. */
 	agentServiceAccountId?: string;
 	/** See `RelatedAgentRun.delegatingAgentId`. */

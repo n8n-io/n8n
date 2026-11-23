@@ -373,7 +373,8 @@ export class AgentValidationService {
 			return credentialList.find((credential) => credential.id === credentialId);
 		};
 
-		const { agentsById, workflowsByReference } = await this.prefetchReferenceLookups(ctx);
+		const { agentsById, workflowsByReference, guardrailWorkflowsById } =
+			await this.prefetchReferenceLookups(ctx);
 
 		this.collectCoreIssues(config, issues);
 		this.collectVectorStoreIssues(config, issues);
@@ -408,7 +409,7 @@ export class AgentValidationService {
 			await this.collectChannelIssues(ctx.integrations, findCredential, issues);
 		}
 		await this.collectToolIssues(ctx, findCredential, workflowsByReference, issues, scope);
-		this.collectGuardrailWorkflowIssues(config, workflowsByReference, issues, scope);
+		this.collectGuardrailWorkflowIssues(config, guardrailWorkflowsById, issues, scope);
 		await this.collectMcpServerIssues(config, findCredential, issues);
 
 		return this.dedupe(withoutIssuesOfLockedEntries(issues));
@@ -417,6 +418,8 @@ export class AgentValidationService {
 	private async prefetchReferenceLookups(ctx: ConfigurationValidationContext): Promise<{
 		agentsById: Map<string, Pick<Agent, 'id' | 'activeVersionId'>>;
 		workflowsByReference: Map<string, WorkflowEntity>;
+		/** Check workflows keyed by id. Separate from tool names, which share that map. */
+		guardrailWorkflowsById: Map<string, WorkflowEntity>;
 	}> {
 		const subAgentIds = new Set<string>();
 		const workflowRefs = extractAgentWorkflowRefs(ctx.config).filter(
@@ -442,14 +445,12 @@ export class AgentValidationService {
 					)
 				: [],
 		]);
-		// Keyed by id only: a guardrail check workflow has no name ref to collide with.
-		for (const workflow of guardrailCheckWorkflows) {
-			workflowsByReference.set(workflow.id, workflow);
-		}
-
 		return {
 			agentsById: new Map(agents.map((agent) => [agent.id, agent])),
 			workflowsByReference,
+			guardrailWorkflowsById: new Map(
+				guardrailCheckWorkflows.map((workflow) => [workflow.id, workflow]),
+			),
 		};
 	}
 
@@ -676,7 +677,7 @@ export class AgentValidationService {
 	 */
 	private collectGuardrailWorkflowIssues(
 		config: AgentJsonConfig,
-		workflowsByReference: Map<string, WorkflowEntity>,
+		guardrailWorkflowsById: Map<string, WorkflowEntity>,
 		issues: AgentConfigValidationIssue[],
 		scope: AgentValidationScope,
 	) {
@@ -691,7 +692,7 @@ export class AgentValidationService {
 				id: guardrail.id,
 			};
 
-			const workflow = workflowsByReference.get(guardrail.workflowId);
+			const workflow = guardrailWorkflowsById.get(guardrail.workflowId);
 			if (!workflow) {
 				issues.push(issue('missing_reference', path, capability));
 				continue;

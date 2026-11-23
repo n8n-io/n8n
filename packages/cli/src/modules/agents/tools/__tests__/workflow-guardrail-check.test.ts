@@ -109,6 +109,37 @@ describe('createWorkflowGuardrailCheck', () => {
 		expect(runContext.executionMetadata).toEqual({ guardrailCheckFor: 'agent-1' });
 	});
 
+	it('does not run the check workflow when the user cannot execute it', async () => {
+		const loader = loaderWith(workflow);
+		const canExecuteWorkflow = vi.fn().mockResolvedValue(false);
+
+		const check = createWorkflowGuardrailCheck(
+			guardrail,
+			contextWith(loader, { canExecuteWorkflow }),
+		);
+		const result = await check(toolCall.toolName, toolCall.input);
+
+		expect(canExecuteWorkflow).toHaveBeenCalledWith('wf-check');
+		expect(executeWorkflow).not.toHaveBeenCalled();
+		expect(result.executionFailed).toBe(true);
+		expect(result.tripwireTriggered).toBe(false);
+	});
+
+	it('runs the check workflow when the user can execute it', async () => {
+		const loader = loaderWith(workflow);
+		executeResult({ data: {} });
+		const canExecuteWorkflow = vi.fn().mockResolvedValue(true);
+
+		const check = createWorkflowGuardrailCheck(
+			guardrail,
+			contextWith(loader, { canExecuteWorkflow }),
+		);
+		const result = await check(toolCall.toolName, toolCall.input);
+
+		expect(executeWorkflow).toHaveBeenCalledOnce();
+		expect(result.executionFailed).toBeUndefined();
+	});
+
 	it('resolves the published version for production runtimes', async () => {
 		const loader = loaderWith(workflow);
 		executeResult({ data: {} });
