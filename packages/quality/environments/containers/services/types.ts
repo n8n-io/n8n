@@ -87,9 +87,15 @@ export interface StackConfig {
 	/**
 	 * Runs engine v2. `container` starts a data plane container next to the
 	 * main; `in-process` hosts it in the main. Needs Postgres (`postgres: true`
-	 * or a service that brings it), one main, no workers, no webhook procs.
+	 * or a service that brings it) and no webhook procs. `in-process` also needs
+	 * exactly one main and no workers.
 	 */
 	engine?: EngineMode;
+	/**
+	 * With `engine: 'container'`, starts one engine container per role (`api`,
+	 * `orchestrator`, `step-worker`) instead of one with every role.
+	 */
+	splitEngineRoles?: boolean;
 	/** Share one temporary storage directory across all n8n containers. */
 	sharedStorage?: boolean;
 	env?: Record<string, string>;

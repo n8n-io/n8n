@@ -261,6 +261,25 @@ export function getProjects(): Project[] {
 			use: { containerConfig: { postgres: true, engine: 'container', mains: 2, workers: 1 } },
 		});
 
+		// The same suite with one engine container per role (api, orchestrator,
+		// step-worker), so the roles prove they work together over Redis.
+		projects.push({
+			name: 'engine-v2-split-roles:e2e',
+			testDir: './tests/e2e',
+			grep: new RegExp(ENGINE_TAG_PREFIX),
+			timeout: 180000,
+			workers: 1,
+			use: {
+				containerConfig: {
+					postgres: true,
+					engine: 'container',
+					splitEngineRoles: true,
+					mains: 2,
+					workers: 1,
+				},
+			},
+		});
+
 		projects.push({
 			name: 'coverage',
 			testDir: './tests/e2e',

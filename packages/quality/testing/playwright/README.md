@@ -304,6 +304,15 @@ pnpm --filter=n8n-playwright test:container:engine-v2:e2e tests/e2e/api/manual-r
 For a local stack with the engine: `pnpm --filter n8n-containers stack --engine`.
 Add `--mains 2 --workers 1` for the topology of the project.
 
+The `engine-v2-split-roles:e2e` project runs the same specs with one engine
+container per role (`containerConfig.splitEngineRoles: true`): `api` serves the
+mains, `orchestrator` runs the orchestration queue, and `step-worker` runs the
+nodes and hosts the task broker. Run it with
+`pnpm --filter=n8n-playwright test:container:engine-v2-split-roles:e2e`, or start
+the stack with `pnpm --filter n8n-containers stack --split-engine-roles`. Add
+`--mains 2 --workers 1` for the topology of the project. No CI job runs this
+project; run it by hand when you change how the engine roles work together.
+
 ### Worker Isolation (Fresh Database)
 
 Tests that need their own isolated database should use `test.use()` with a unique capability config. This gives the test file its own container with a fresh database:

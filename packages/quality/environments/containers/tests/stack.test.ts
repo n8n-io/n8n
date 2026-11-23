@@ -11,7 +11,9 @@ import { afterEach, beforeEach, expect, onTestFinished, test, vi } from 'vitest'
 
 import * as containerUtils from '../helpers/utils';
 import { ENGINE_SHARED_STORAGE_PATH } from '../services/engine';
+import { createN8NInstances } from '../services/n8n';
 import { createN8NStack, type N8NConfig, type N8NStack } from '../stack';
+import { StartupDeadline } from '../startup-deadline';
 
 const projectName = 'test-stack';
 const main = `${projectName}-n8n`;
@@ -37,6 +39,8 @@ const built = new Map<
 		bindMounts: BindMounts;
 		n8nContainer: NonNullable<N8NConfig['n8nContainer']>;
 		reuse: boolean;
+		command?: string[];
+		networkAliases: string[];
 	}
 >();
 let stack: N8NStack | undefined;
@@ -84,6 +88,8 @@ vi.mock('testcontainers', async (importOriginal) => {
 					platform: this.createOpts.platform,
 				},
 				reuse: this.reuse,
+				command: this.createOpts.Cmd,
+				networkAliases: this.networkAliases,
 			});
 			return startedContainer(name);
 		}
@@ -511,4 +517,37 @@ test('keeps the file-based configuration when replacing the main', async () => {
 	expect(Object.hasOwn(environment, 'N8N_ENCRYPTION_KEY')).toBe(false);
 	expect(environment.N8N_ENCRYPTION_KEY_FILE).toBe(keyFile.target);
 	expect(files).toEqual(expect.arrayContaining([keyFile, serviceFile]));
+});
+
+test('starts one engine container per role with split engine roles, and none when it reuses the engine', async () => {
+	const startupDeadline = new StartupDeadline(60_000);
+	onTestFinished(() => startupDeadline.dispose());
+	const options = {
+		mains: 1,
+		workers: 0,
+		projectName,
+		network: { getName: () => 'test-network' } as unknown as StartedNetwork,
+		serviceEnvironment: { DB_TYPE: 'postgresdb', N8N_ENGINE_DATABASE_URL: 'postgres://e/db' },
+		usePostgres: true,
+		engine: 'container' as const,
+		splitEngineRoles: true,
+		engineAuthSecret: 'a'.repeat(32),
+		startupDeadline,
+	};
+	const engines = () =>
+		[...built]
+			.filter(([name]) => name.startsWith(`${main}-engine`))
+			.map(([name, { command, networkAliases }]) => ({ name, command, networkAliases }));
+
+	await createN8NInstances(options);
+	expect(engines()).toEqual(
+		['api', 'orchestrator', 'step-worker'].map((role) => {
+			const name = role === 'api' ? `${main}-engine` : `${main}-engine-${role}`;
+			return { name, command: ['engine', `--roles=${role}`], networkAliases: [name] };
+		}),
+	);
+
+	built.clear();
+	await createN8NInstances({ ...options, reuseEngine: true });
+	expect(engines()).toEqual([]);
 });

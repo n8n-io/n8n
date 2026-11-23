@@ -1,4 +1,4 @@
-import { engineHostname } from './engine';
+import { engineTaskBrokerHostname } from './engine';
 import {
 	startTaskRunnerContainer,
 	type TaskRunnerConfig,
@@ -15,7 +15,8 @@ export const engineTaskRunner: Service<TaskRunnerResult> = {
 	shouldStart: (ctx) => ctx.config.engine === 'container',
 
 	getOptions(ctx) {
-		return { taskBrokerUri: `http://${engineHostname(ctx.projectName)}:5679` };
+		const host = engineTaskBrokerHostname(ctx.projectName, ctx.config.splitEngineRoles ?? false);
+		return { taskBrokerUri: `http://${host}:5679` };
 	},
 
 	async start(network, projectName, config?: unknown): Promise<TaskRunnerResult> {
