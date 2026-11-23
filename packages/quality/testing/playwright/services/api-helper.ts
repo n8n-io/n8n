@@ -39,6 +39,7 @@ import { TagApiHelper } from './tag-api-helper';
 import { TokenExchangeApiHelper } from './token-exchange-api-helper';
 import { TrustedSourceApiHelper } from './trusted-source-api-helper';
 import { TypePolicyApiHelper } from './type-policy-api-helper';
+import { WorkflowRulesApiHelper } from './workflow-rules-api-helper';
 import { UserApiHelper, type TestUser } from './user-api-helper';
 import { VariablesApiHelper } from './variables-api-helper';
 import { WebhookApiHelper } from './webhook-api-helper';
@@ -96,6 +97,7 @@ export class ApiHelpers {
 	instanceAi: InstanceAiApiHelper;
 	nodeTypePolicies: TypePolicyApiHelper<'node'>;
 	credentialTypePolicies: TypePolicyApiHelper<'credential'>;
+	workflowRules: WorkflowRulesApiHelper;
 	nodeParameters: NodeParameterApiHelper;
 	communityPackages: CommunityPackagesApiHelper;
 	promotions: PromotionsApiHelper;
@@ -130,6 +132,7 @@ export class ApiHelpers {
 		this.instanceAi = new InstanceAiApiHelper(this);
 		this.nodeTypePolicies = new TypePolicyApiHelper(this, 'node');
 		this.credentialTypePolicies = new TypePolicyApiHelper(this, 'credential');
+		this.workflowRules = new WorkflowRulesApiHelper(this);
 		this.nodeParameters = new NodeParameterApiHelper(this);
 		this.communityPackages = new CommunityPackagesApiHelper(this);
 		this.promotions = new PromotionsApiHelper(this);

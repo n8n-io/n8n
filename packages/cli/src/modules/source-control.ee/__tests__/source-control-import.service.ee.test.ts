@@ -1809,11 +1809,12 @@ describe('SourceControlImportService', () => {
 
 				expect(policyEnforcementService.enforceContentImport).toHaveBeenCalledWith(
 					{
-						workflow: {
+						workflow: expect.objectContaining({
 							id: mockWorkflowData.id,
 							name: mockWorkflowData.name,
 							nodes: mockWorkflowData.nodes,
-						},
+							connections: mockWorkflowData.connections,
+						}),
 						projectId: 'personal-project-id-123',
 						transport: 'source-control',
 					},
@@ -3119,7 +3120,7 @@ describe('SourceControlImportService', () => {
 			await service.previewContentImportPolicy(files, userId);
 
 			expect(policyEnforcementService.evaluateContentImport).toHaveBeenCalledWith({
-				workflow: { id: 'wf1', name: 'Workflow 1', nodes },
+				workflow: expect.objectContaining({ id: 'wf1', name: 'Workflow 1', nodes }),
 				projectId: personalProject.id,
 				transport: 'source-control',
 			});

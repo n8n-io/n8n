@@ -15,6 +15,7 @@ import ExperimentalInPlaceNodeSettings from '../../../../experimental/components
 import CanvasNodeTooltip from './parts/CanvasNodeTooltip.vue';
 import CanvasNodeDisabledStrikeThrough from './parts/CanvasNodeDisabledStrikeThrough.vue';
 import CanvasNodeStatusIcons from './parts/CanvasNodeStatusIcons.vue';
+import { WorkflowRuleNodeBadge } from '@n8n/frontend-module-workflow-rules';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { useRoute } from 'vue-router';
 import { VIEWS } from '@/app/constants';
@@ -268,6 +269,7 @@ function onActivate(event: MouseEvent) {
 			v-if="!isDisabled || isRestricted || isDeprecated"
 			:class="$style.statusIcons"
 		/>
+		<WorkflowRuleNodeBadge :node-name="name" :class="$style.ruleBadge" />
 	</div>
 </template>
 
@@ -482,6 +484,13 @@ function onActivate(event: MouseEvent) {
 	text-overflow: ellipsis;
 	line-height: var(--line-height--sm);
 	font-weight: var(--font-weight--regular);
+}
+
+.ruleBadge {
+	position: absolute;
+	top: calc(-1 * var(--spacing--xs));
+	left: calc(-1 * var(--spacing--3xs));
+	z-index: 1;
 }
 
 .statusIcons {

@@ -48,6 +48,7 @@ export const RESOURCES = {
 	license: ['manage'] as const,
 	logStreaming: ['manage'] as const,
 	nodeTypePolicy: ['manage'] as const,
+	workflowRules: ['read', 'manage'] as const,
 	orchestration: ['read', 'list', 'manage'] as const,
 	// `manageMembers` gates changes to a project's membership list: adding a member
 	// with a role, changing a member's role, and removing a member. Kept separate
@@ -187,6 +188,7 @@ export const API_KEY_RESOURCES = {
 	roleMappingRule: ['create', 'delete', 'list', 'update'] as const,
 	nodeTypePolicy: ['manage'] as const,
 	credentialTypePolicy: ['manage'] as const,
+	workflowRules: ['read', 'manage'] as const,
 } as const;
 
 export const GLOBAL_OWNER_ROLE_SLUG = 'global:owner';

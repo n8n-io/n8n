@@ -1,4 +1,9 @@
-import type { PolicedWorkflow, PolicyDecision, PolicyViolation } from '@n8n/decorators';
+import type {
+	PolicedWorkflow,
+	PolicedWorkflowContent,
+	PolicyDecision,
+	PolicyViolation,
+} from '@n8n/decorators';
 import { workflowContentSubject } from '@n8n/decorators';
 import { UnexpectedError } from '@n8n/errors';
 import { mock, type MockProxy } from 'vitest-mock-extended';
@@ -11,7 +16,13 @@ vi.mock('@/node-execution/resolve-tool-node-type', () => ({
 	resolveToolNodeType: (nodeType: string) => nodeType,
 }));
 
-const savedWorkflow: PolicedWorkflow = { id: 'wf-1', name: 'My workflow', nodes: [] };
+const noContent: PolicedWorkflowContent = { settings: null, connections: null, description: null };
+const savedWorkflow: PolicedWorkflow & PolicedWorkflowContent = {
+	id: 'wf-1',
+	name: 'My workflow',
+	nodes: [],
+	...noContent,
+};
 
 const violation: PolicyViolation = {
 	kind: 'node-type-unavailable',
@@ -34,7 +45,7 @@ const enforceCalls = (service: PolicyEnforcementService) => ({
 		),
 	workflowPublish: async () =>
 		await service.enforceWorkflowPublish(
-			{ workflow: savedWorkflow, projectId: 'proj-1' },
+			{ workflow: savedWorkflow, projectId: 'proj-1', republish: false },
 			{ kind: 'system', reason: 'execution' },
 		),
 	workflowStart: async () =>
@@ -96,7 +107,11 @@ const evaluateCalls = (service: PolicyEnforcementService) => ({
 			projectId: 'proj-1',
 		}),
 	workflowPublish: async () =>
-		await service.evaluateWorkflowPublish({ workflow: savedWorkflow, projectId: 'proj-1' }),
+		await service.evaluateWorkflowPublish({
+			workflow: savedWorkflow,
+			projectId: 'proj-1',
+			republish: false,
+		}),
 	workflowStart: async () =>
 		await service.evaluateWorkflowStart({ workflow: savedWorkflow, projectId: 'proj-1' }),
 	workflowTransfer: async () =>
@@ -250,7 +265,8 @@ describe('PolicyEnforcementService', () => {
 		let service: PolicyEnforcementService;
 		let backend: MockProxy<PolicyEnforcementBackend>;
 
-		const withInlineAgent: PolicedWorkflow = {
+		const withInlineAgent: PolicedWorkflow & PolicedWorkflowContent = {
+			...noContent,
 			id: 'wf-1',
 			name: 'My workflow',
 			nodes: [
@@ -295,7 +311,10 @@ describe('PolicyEnforcementService', () => {
 			[
 				'workflowPublish',
 				async (s: PolicyEnforcementService) =>
-					await s.enforceWorkflowPublish({ workflow: withInlineAgent, projectId: 'proj-1' }, actor),
+					await s.enforceWorkflowPublish(
+						{ workflow: withInlineAgent, projectId: 'proj-1', republish: false },
+						actor,
+					),
 			],
 			[
 				'workflowStart',
@@ -342,7 +361,11 @@ describe('PolicyEnforcementService', () => {
 		});
 
 		it('expands for evaluate as well as enforce', async () => {
-			await service.evaluateWorkflowPublish({ workflow: withInlineAgent, projectId: 'proj-1' });
+			await service.evaluateWorkflowPublish({
+				workflow: withInlineAgent,
+				projectId: 'proj-1',
+				republish: false,
+			});
 
 			expect(checkedTypes(backend.evaluate.mock.calls[0])).toEqual(expectedTypes);
 		});
@@ -433,8 +456,15 @@ describe('PolicyEnforcementService', () => {
 		it('binds an agent to its id with the agent subject type', async () => {
 			const token = await service.enforceWorkflowPublish(
 				{
-					workflow: { id: 'agent-1', name: 'Support agent', nodes: [], artifactKind: 'agent' },
+					workflow: {
+						id: 'agent-1',
+						name: 'Support agent',
+						nodes: [],
+						artifactKind: 'agent',
+						...noContent,
+					},
 					projectId: 'proj-1',
+					republish: false,
 				},
 				{ kind: 'user', user: { id: 'user-1' } },
 			);

@@ -195,7 +195,11 @@ export class WorkflowPublicationApplier {
 		);
 		if (unrunnable !== null) return unrunnable;
 
-		const blocked = await this.enforcePublishPolicy(workflow, newVersion);
+		const blocked = await this.enforcePublishPolicy(
+			workflow,
+			newVersion,
+			oldVersion?.versionId === newVersion.versionId,
+		);
 		if (blocked !== null) {
 			return await this.preserveRunningTriggerStatuses(workflow, oldVersion, blocked);
 		}
@@ -506,13 +510,22 @@ export class WorkflowPublicationApplier {
 	private async enforcePublishPolicy(
 		workflow: WorkflowEntity,
 		newVersion: WorkflowHistory,
+		republish: boolean,
 	): Promise<PublicationResult | null> {
 		try {
 			await enforceWorkflowPublishPolicy(
 				this.policyEnforcementService,
 				this.ownershipService,
-				{ id: workflow.id, name: workflow.name, nodes: newVersion.nodes },
+				{
+					id: workflow.id,
+					name: workflow.name,
+					nodes: newVersion.nodes,
+					connections: newVersion.connections,
+					settings: workflow.settings ?? null,
+					description: workflow.description ?? null,
+				},
 				{ kind: 'system', reason: 'publication' },
+				republish,
 			);
 
 			return null;

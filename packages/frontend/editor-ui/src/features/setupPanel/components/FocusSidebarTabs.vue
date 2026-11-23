@@ -7,6 +7,7 @@ import { N8nIcon, N8nTabs } from '@n8n/design-system';
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 import { useEvaluationsWizardSidepanelExperiment } from '@/experiments/evaluationsWizardSidepanel/useEvaluationsWizardSidepanelExperiment';
+import { useWorkflowRulesStore } from '@n8n/frontend-module-workflow-rules';
 
 const i18n = useI18n();
 const focusPanelStore = useFocusPanelStore();
@@ -14,6 +15,7 @@ const setupPanelStore = useSetupPanelStore();
 const isSetupPanelEnabled = computed(() => setupPanelStore.isFeatureEnabled);
 const { isFeatureEnabled: isEvaluationsWizardSidepanelEnabled } =
 	useEvaluationsWizardSidepanelExperiment();
+const workflowRulesStore = useWorkflowRulesStore();
 
 const props = withDefaults(
 	defineProps<{
@@ -22,6 +24,7 @@ const props = withDefaults(
 			setup?: string;
 			focus?: string;
 			evaluations?: string;
+			rules?: string;
 		};
 	}>(),
 	{
@@ -52,6 +55,12 @@ const tabs = computed<Array<TabOptions<FocusSidebarTabs>>>(() => {
 		opts.push({
 			label: props.tabLabels?.evaluations ?? i18n.baseText('setupPanel.tabs.evaluations'),
 			value: 'evaluations',
+		});
+	}
+	if (workflowRulesStore.isEnabled && workflowRulesStore.hasRules) {
+		opts.push({
+			label: props.tabLabels?.rules ?? i18n.baseText('workflowRules.panel.title'),
+			value: 'rules',
 		});
 	}
 	return opts;

@@ -27,6 +27,10 @@ import type { IUsedCredential } from '@/features/credentials/credentials.types';
 import WorkflowActivationErrorMessage from '@/features/workflows/components/WorkflowActivationErrorMessage.vue';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { generateVersionLabelFromId } from '@/features/workflows/workflowHistory/utils';
+import {
+	WorkflowRuleFindingsCallout,
+	useWorkflowRulesStore,
+} from '@n8n/frontend-module-workflow-rules';
 
 const modalBus = createEventBus();
 const i18n = useI18n();
@@ -69,11 +73,22 @@ const nodesWithValidationIssues = computed(() => workflowDocumentStore.value.pub
 
 const hasNodeIssues = computed(() => workflowDocumentStore.value.hasPublishBlockingIssues);
 
+const workflowRulesStore = useWorkflowRulesStore();
+const hasBlockingRuleFindings = computed(
+	() => workflowRulesStore.isEnabled && workflowRulesStore.blockingFindings.length > 0,
+);
+
+function showWorkflowRules() {
+	modalBus.emit('close');
+	workflowRulesStore.showPanel();
+}
+
 const inputsDisabled = computed(() => {
 	return (
 		!(wfHasAnyChanges.value || isReattempt.value) ||
 		!containsTrigger.value ||
 		hasNodeIssues.value ||
+		hasBlockingRuleFindings.value ||
 		publishing.value
 	);
 });
@@ -311,6 +326,10 @@ async function handlePublish() {
 						</li>
 					</ul>
 				</N8nCallout>
+				<WorkflowRuleFindingsCallout
+					v-else-if="hasBlockingRuleFindings"
+					@show-panel="showWorkflowRules"
+				/>
 				<N8nCallout
 					v-else-if="activeCalloutId === 'reattempt'"
 					theme="info"

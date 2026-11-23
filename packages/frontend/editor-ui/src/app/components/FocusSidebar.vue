@@ -22,6 +22,11 @@ import TestsPanel from '@/features/ai/evaluation.ee/components/Tests/TestsPanel.
 import EvaluationsPaywall from '@/features/ai/evaluation.ee/components/Paywall/EvaluationsPaywall.vue';
 import { useEvaluationsWizardSidepanelExperiment } from '@/experiments/evaluationsWizardSidepanel/useEvaluationsWizardSidepanelExperiment';
 import { useEvaluationsLicense } from '@/features/ai/evaluation.ee/composables/useEvaluationsLicense';
+import { WorkflowRulesPanel, useWorkflowRulesStore } from '@n8n/frontend-module-workflow-rules';
+import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
+import { useUIStore } from '@/app/stores/ui.store';
+import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/app/constants';
 
 defineOptions({ name: 'FocusSidebar' });
 
@@ -77,12 +82,37 @@ const showEvaluationsPaywall = computed(
 		!isLicensed.value,
 );
 
-// Tab bar visibility used to track only the setup panel; now it also needs to
-// stay shown when the evaluations tab is available, otherwise the user has no
-// way to switch back.
-const showTabs = computed(
-	() => isSetupPanelEnabled.value || isEvaluationsWizardSidepanelEnabled.value,
+const workflowRulesStore = useWorkflowRulesStore();
+const hasWorkflowRulesTab = computed(
+	() => workflowRulesStore.isEnabled && workflowRulesStore.hasRules,
 );
+const showRulesPanel = computed(() => hasWorkflowRulesTab.value && selectedTab.value === 'rules');
+
+// Tab bar visibility used to track only the setup panel; now it also needs to
+// stay shown when the evaluations or rules tab is available, otherwise the user
+// has no way to switch back.
+const showTabs = computed(
+	() =>
+		isSetupPanelEnabled.value ||
+		isEvaluationsWizardSidepanelEnabled.value ||
+		hasWorkflowRulesTab.value,
+);
+
+const ndvStore = injectNDVStore();
+const uiStore = useUIStore();
+
+function onSelectRuleNode(nodeName: string) {
+	const node = workflowDocumentStore?.value?.getNodeByName(nodeName);
+	if (node) canvasEventBus.emit('nodes:select', { ids: [node.id], panIntoView: true });
+}
+
+function onOpenRuleNode(nodeName: string) {
+	ndvStore.value.setActiveNodeName(nodeName, 'other');
+}
+
+function onOpenWorkflowSettings() {
+	uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
+}
 
 const node = computed<INodeUi | undefined>(() => {
 	if (!experimentalNdvStore.isNdvInFocusPanelEnabled || resolvedParameter.value) {
@@ -190,7 +220,14 @@ onBeforeUnmount(() => {
 				<div v-if="showTabs">
 					<FocusSidebarTabs v-model="selectedTab" :tab-labels="labelOverrides" />
 				</div>
-				<div v-if="showSetupPanel" :class="$style['setup-panel-wrapper']">
+				<div v-if="showRulesPanel" :class="$style['setup-panel-wrapper']">
+					<WorkflowRulesPanel
+						@select-node="onSelectRuleNode"
+						@open-node="onOpenRuleNode"
+						@open-settings="onOpenWorkflowSettings"
+					/>
+				</div>
+				<div v-else-if="showSetupPanel" :class="$style['setup-panel-wrapper']">
 					<SetupPanel :is-read-only="isCanvasReadOnly" />
 				</div>
 				<div v-else-if="showEvaluationsPanel" :class="$style['setup-panel-wrapper']">

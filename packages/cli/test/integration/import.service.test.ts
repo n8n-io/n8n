@@ -531,7 +531,7 @@ describe('ImportService', () => {
 			expect(mockPolicyEnforcementService.enforceContentImport).toHaveBeenCalledTimes(2);
 			expect(mockPolicyEnforcementService.enforceContentImport).toHaveBeenCalledWith(
 				{
-					workflow: { id: first.id, name: first.name, nodes: first.nodes },
+					workflow: expect.objectContaining({ id: first.id, name: first.name, nodes: first.nodes }),
 					projectId: ownerPersonalProject.id,
 					transport: 'cli',
 				},
@@ -539,7 +539,11 @@ describe('ImportService', () => {
 			);
 			expect(mockPolicyEnforcementService.enforceContentImport).toHaveBeenCalledWith(
 				{
-					workflow: { id: second.id, name: second.name, nodes: second.nodes },
+					workflow: expect.objectContaining({
+						id: second.id,
+						name: second.name,
+						nodes: second.nodes,
+					}),
 					projectId: ownerPersonalProject.id,
 					transport: 'cli',
 				},
@@ -618,11 +622,11 @@ describe('ImportService', () => {
 
 			expect(mockPolicyEnforcementService.enforceContentImport).toHaveBeenCalledWith(
 				{
-					workflow: {
+					workflow: expect.objectContaining({
 						id: workflowToReimport.id,
 						name: workflowToReimport.name,
 						nodes: workflowToReimport.nodes,
-					},
+					}),
 					projectId: memberPersonalProject.id,
 					transport: 'cli',
 				},

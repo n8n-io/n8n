@@ -121,7 +121,7 @@ describe('ContentImportPolicyGate', () => {
 		expect(policyEnforcementService.enforceContentImport).toHaveBeenNthCalledWith(
 			1,
 			{
-				workflow: { id: 'new-id', name: 'W1', nodes: [] },
+				workflow: expect.objectContaining({ id: 'new-id', name: 'W1', nodes: [] }),
 				projectId: 'project-1',
 				transport: 'git-connection',
 			},
@@ -130,7 +130,7 @@ describe('ContentImportPolicyGate', () => {
 		expect(policyEnforcementService.enforceContentImport).toHaveBeenNthCalledWith(
 			2,
 			{
-				workflow: { id: 'existing-id', name: 'W2', nodes: [] },
+				workflow: expect.objectContaining({ id: 'existing-id', name: 'W2', nodes: [] }),
 				projectId: 'project-1',
 				transport: 'git-connection',
 			},

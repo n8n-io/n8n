@@ -1,5 +1,5 @@
 import type { AgentJsonConfig } from '@n8n/api-types';
-import type { PolicedWorkflow, PolicyDecision } from '@n8n/decorators';
+import type { PolicedWorkflow, PolicedWorkflowContent, PolicyDecision } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 
 import { toPolicedNodes } from '@/policy/policed-agent-nodes';
@@ -27,6 +27,13 @@ function policedWorkflowForAgent(
  * server, so every workflow check covers agents too. Call it outside a transaction: checks
  * read on their own.
  */
+/** An agent has no workflow settings, connections or description. */
+const AGENT_HAS_NO_WORKFLOW_CONTENT: PolicedWorkflowContent = {
+	settings: null,
+	connections: null,
+	description: null,
+};
+
 @Service()
 export class AgentPolicyService {
 	constructor(private readonly policyEnforcementService: PolicyEnforcementService) {}
@@ -69,7 +76,14 @@ export class AgentPolicyService {
 		actor: PolicyActor,
 	): Promise<void> {
 		await this.policyEnforcementService.enforceWorkflowPublish(
-			{ workflow: policedWorkflowForAgent(agentId, content), projectId },
+			{
+				workflow: {
+					...policedWorkflowForAgent(agentId, content),
+					...AGENT_HAS_NO_WORKFLOW_CONTENT,
+				},
+				projectId,
+				republish: false,
+			},
 			actor,
 		);
 	}
@@ -85,8 +99,9 @@ export class AgentPolicyService {
 		content: PolicedAgentContent,
 	): Promise<PolicyDecision> {
 		return await this.policyEnforcementService.evaluateWorkflowPublish({
-			workflow: policedWorkflowForAgent(agentId, content),
+			workflow: { ...policedWorkflowForAgent(agentId, content), ...AGENT_HAS_NO_WORKFLOW_CONTENT },
 			projectId,
+			republish: false,
 		});
 	}
 }

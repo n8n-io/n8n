@@ -86,6 +86,8 @@ exports[`Scope Information > ensure scopes are defined correctly 1`] = `
   "license:manage",
   "logStreaming:manage",
   "nodeTypePolicy:manage",
+  "workflowRules:read",
+  "workflowRules:manage",
   "orchestration:read",
   "orchestration:list",
   "orchestration:manage",
