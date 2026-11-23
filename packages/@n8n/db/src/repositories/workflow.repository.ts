@@ -397,6 +397,14 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		return count > 0;
 	}
 
+	async moveToFolder(id: string, folderId: string | null, ctx: OperationContext): Promise<void> {
+		await this.managerFor(ctx).update(
+			WorkflowEntity,
+			{ id },
+			{ parentFolder: folderId === null ? null : { id: folderId } },
+		);
+	}
+
 	async updateContent(
 		id: string,
 		content: QueryDeepPartialEntity<WorkflowEntity>,

@@ -13,6 +13,7 @@ import type {
 	ListQueryDb,
 	OperationContext,
 	User,
+	WorkflowEntity,
 	WorkflowWithSharingsAndCredentials,
 	WorkflowWithSharingsMetaDataAndCredentials,
 } from '@n8n/db';
@@ -22,7 +23,6 @@ import {
 	CredentialsRepository,
 	FolderRepository,
 	SharedWorkflowRepository,
-	WorkflowEntity,
 	WorkflowRepository,
 	WorkflowHistoryRepository,
 	WorkflowPublishHistoryRepository,
@@ -902,9 +902,7 @@ export class EnterpriseWorkflowService {
 			await this.shareCredentialsWithProject(user, shareCredentials, destinationProject.id, ctx);
 
 			// 9. Move workflow to the right folder if any
-			await this.workflowRepository.runInTransaction(ctx, async (trx) => {
-				await trx.update(WorkflowEntity, { id: workflow.id }, { parentFolder });
-			});
+			await this.workflowRepository.moveToFolder(workflow.id, parentFolder?.id ?? null, ctx);
 
 			return movedWorkflowIds;
 		};
