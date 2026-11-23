@@ -53,26 +53,27 @@ RUN BUILD_LIBRDKAFKA=0 node "$NODE_GYP" rebuild --release
 # when you change its pin in docker/docker-bake.hcl.
 FROM ${RUNTIME_IMAGE}
 
+# Replace the base image's stock Node with our compiled Node from BUILDER_IMAGE.
+# Keeping this above release metadata ARGs/ENV and `COPY ./compiled` decouples
+# OS base refreshes from Node source compiles while keeping release and app-only
+# builds cached on these layers.
+RUN rm -f /usr/bin/node /usr/bin/nodejs /usr/bin/npm /usr/bin/npx /usr/local/bin/node
+COPY --from=node-source /usr/local/bin /usr/local/bin
+COPY --from=node-source /usr/local/lib /usr/local/lib
+ARG ENABLE_POINTER_COMPRESSION
+RUN --mount=type=bind,source=docker/images/node-pc/check-v8-patches.js,target=/tmp/check-v8-patches.js \
+    node --version \
+    && node /tmp/check-v8-patches.js \
+    && ln -sf /usr/local/bin/node /usr/bin/node
+
 ARG N8N_VERSION
 ARG N8N_RELEASE_TYPE=dev
 ARG IMAGE_DESCRIPTION="Workflow Automation Tool"
-ARG ENABLE_POINTER_COMPRESSION
 ENV NODE_ENV=production
 ENV N8N_RELEASE_TYPE=${N8N_RELEASE_TYPE}
 ENV SHELL=/bin/sh
 # Restrict GraphicsMagick to its commonly used coder set.
 ENV MAGICK_CODER_STABILITY=PRIMARY
-
-# Replace the base image's stock Node with our compiled Node from BUILDER_IMAGE.
-# Keeping this above `COPY ./compiled` decouples OS base refreshes from Node
-# source compiles while keeping app-only builds cached on these layers.
-RUN rm -f /usr/bin/node /usr/bin/nodejs /usr/bin/npm /usr/bin/npx /usr/local/bin/node
-COPY --from=node-source /usr/local/bin /usr/local/bin
-COPY --from=node-source /usr/local/lib /usr/local/lib
-RUN --mount=type=bind,source=docker/images/node-pc/check-v8-patches.js,target=/tmp/check-v8-patches.js \
-    node --version \
-    && node /tmp/check-v8-patches.js \
-    && ln -sf /usr/local/bin/node /usr/bin/node
 
 WORKDIR /home/node
 
