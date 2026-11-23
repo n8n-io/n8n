@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import type { DataSource } from '@n8n/typeorm';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import { RedisContainer, type StartedRedisContainer } from '@testcontainers/redis';
+import type { Application } from 'express';
 import Redis from 'ioredis';
 import postgresVersions from 'n8n-containers/postgres-versions.json';
 import { TEST_CONTAINER_IMAGES } from 'n8n-containers/test-containers';
@@ -10,15 +11,15 @@ import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { AllowAllAdmittance } from '../../admittance';
-import { mintIdentityToken, SharedSecretIdentityVerifier } from '../../auth';
-import { createDataSource, WorkflowExecution } from '../../database';
+import { mintIdentityToken, mintResumeToken, SharedSecretIdentityVerifier } from '../../auth';
+import { createDataSource, createStores, WorkflowExecution } from '../../database';
 import { generateId } from '../../database/generate-id';
 import type { IStepExecutor } from '../../dependencies';
 import type { WorkflowGraph } from '../../graph';
 import type { EngineLogger } from '../../logging';
 import { createRedisWorkQueues } from '../../queue';
 import { noopExecutionResponseSender } from '../../response-channel';
-import { createEngineRuntime } from '../create-engine-runtime';
+import { createEngineRuntime, ENGINE_ROLES, type EngineRole } from '../create-engine-runtime';
 
 const silentLogger: EngineLogger = {
 	debug: () => {},
@@ -28,6 +29,8 @@ const silentLogger: EngineLogger = {
 };
 
 const secret = 'a'.repeat(32);
+const resumeSecret = 'r'.repeat(32);
+const authorization = `Bearer ${mintIdentityToken(secret, { cpId: 'cp-1', tenantId: 'tenant-1' })}`;
 
 const diamondGraph: WorkflowGraph = {
 	nodes: [
@@ -65,7 +68,12 @@ describe('engine runtimes on shared Redis work queues (integration)', () => {
 	});
 
 	/** One engine process: its own connections, on the shared database and lists. */
-	function startEngine(keyPrefix: string, executor: IStepExecutor, onFinish: () => void) {
+	function startEngine(
+		keyPrefix: string,
+		executor: IStepExecutor,
+		onFinish: () => void,
+		roles?: readonly EngineRole[],
+	) {
 		const publisher = new Redis(redis.getConnectionUrl());
 		const workQueues = createRedisWorkQueues({
 			publisher,
@@ -75,12 +83,14 @@ describe('engine runtimes on shared Redis work queues (integration)', () => {
 			logger: silentLogger,
 		});
 		const runtime = createEngineRuntime({
+			roles,
 			dataSource,
 			admittance: new AllowAllAdmittance(),
 			identityVerifier: new SharedSecretIdentityVerifier(secret),
 			responseSender: noopExecutionResponseSender,
 			logger: silentLogger,
 			queues: workQueues.queues,
+			resumeSecret,
 			externalDependencies: ({ executionStore }) => {
 				const finishExecution = executionStore.finishExecution.bind(executionStore);
 				vi.spyOn(executionStore, 'finishExecution').mockImplementation(async (id, status) => {
@@ -136,10 +146,7 @@ describe('engine runtimes on shared Redis work queues (integration)', () => {
 		try {
 			await request(engines[0].app)
 				.post('/api/workflow-executions')
-				.set(
-					'Authorization',
-					`Bearer ${mintIdentityToken(secret, { cpId: 'cp-1', tenantId: 'tenant-1' })}`,
-				)
+				.set('Authorization', authorization)
 				.send({
 					workflowId: 'wf-scale-out',
 					graph: diamondGraph,
@@ -165,5 +172,115 @@ describe('engine runtimes on shared Redis work queues (integration)', () => {
 			new Set(['engine-1', 'engine-2']),
 		);
 		expect(ranOn.get('node-m')).toHaveLength(1);
+	}, 30_000);
+
+	/** Runs a trigger and one step on three engines that each run one role, until it finishes. */
+	async function runOnOneEnginePerRole(
+		executorOf: (role: EngineRole) => IStepExecutor,
+		whileRunning?: (api: Application, executionId: string) => Promise<void>,
+	) {
+		const keyPrefix = `engine-test:${randomUUID()}`;
+		const finishedOn: EngineRole[] = [];
+		const engines = Object.fromEntries(
+			ENGINE_ROLES.map((role) => [
+				role,
+				startEngine(keyPrefix, executorOf(role), () => finishedOn.push(role), [role]),
+			]),
+		);
+		const executionId = generateId();
+		const loadExecution = async () =>
+			await dataSource
+				.getRepository(WorkflowExecution)
+				.findOneOrFail({ where: { id: executionId } });
+
+		try {
+			await request(engines.api.app)
+				.post('/api/workflow-executions')
+				.set('Authorization', authorization)
+				.send({
+					workflowId: 'wf-roles',
+					graph: {
+						nodes: [
+							{ id: 'trigger', name: 'Webhook', type: 'trigger' },
+							{ id: 'node-a', name: 'A', type: 'v1-node' },
+						],
+						edges: [{ from: 'trigger', to: 'node-a', outputIndex: 0, inputIndex: 0 }],
+					},
+					workflow: {},
+					triggerOutputs: [{}],
+					executionId,
+					callerContext: { hostMode: 'trigger' },
+				})
+				.expect(201);
+			await whileRunning?.(engines.api.app, executionId);
+			await vi.waitFor(
+				async () => {
+					expect((await loadExecution()).finishedAt).not.toBeNull();
+				},
+				{ timeout: 15_000 },
+			);
+		} finally {
+			await Promise.all(Object.values(engines).map(async (engine) => await engine.stop()));
+		}
+
+		return { execution: await loadExecution(), finishedOn };
+	}
+
+	it('runs an execution on three engines that each run one role', async () => {
+		const ranOn: string[] = [];
+
+		const { execution, finishedOn } = await runOnOneEnginePerRole((role) => ({
+			execute: async ({ node }) => {
+				ranOn.push(`${node.id} on ${role}`);
+				return { outputs: [[{ json: { ran: node.id } }]] };
+			},
+		}));
+
+		expect(execution.status).toBe('completed');
+		expect(finishedOn).toEqual(['orchestrator']);
+		expect(ranOn).toEqual(['node-a on step-worker']);
+	}, 30_000);
+
+	it('ends a short time wait on time when each engine runs one role', async () => {
+		// The sweep interval stays at its one-minute default, so the wait ends in
+		// time only if the process that suspends the step also runs the wait sweeper.
+		const { execution } = await runOnOneEnginePerRole(() => ({
+			execute: async () => ({
+				wait: {
+					resumeAt: new Date(Date.now() + 1_000).toISOString(),
+					outputsAtDeadline: [[{ json: { waited: true } }]],
+				},
+			}),
+		}));
+
+		expect(execution.status).toBe('completed');
+	}, 30_000);
+
+	it('resumes a waiting step through the api engine when each engine runs one role', async () => {
+		const { stepStore } = createStores(dataSource);
+
+		const { execution } = await runOnOneEnginePerRole(
+			() => ({ execute: async () => ({ wait: { resumeBinding: 'execution' } }) }),
+			async (api, executionId) => {
+				const [waiting] = await vi.waitFor(
+					async () => {
+						const steps = await stepStore.loadWaitingSteps(executionId);
+						expect(steps).toHaveLength(1);
+						return steps;
+					},
+					{ timeout: 15_000 },
+				);
+				await request(api)
+					.post(`/api/step-executions/${waiting.id}/resolve`)
+					.set('Authorization', authorization)
+					.send({
+						token: mintResumeToken(resumeSecret, executionId),
+						outputs: [[{ json: { approved: true } }]],
+					})
+					.expect(200);
+			},
+		);
+
+		expect(execution.status).toBe('completed');
 	}, 30_000);
 });

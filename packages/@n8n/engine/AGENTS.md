@@ -55,7 +55,13 @@ a deployable engine worker) without touching core logic.
   internal topology: the stores, the handlers, the workers, the HTTP app and the
   start/stop order. It takes the adapters a host chooses and returns a running
   engine, so no host repeats the wiring. The host gives it the queues. It
-  starts and stops them, but never closes their connections.
+  starts and stops the queues its roles consume, but never closes their
+  connections.
+  A process runs one or more roles (all three by default): `api` mounts `/api`,
+  `orchestrator` runs the orchestration worker and the reconciliation sweeper,
+  and `step-worker` runs the step worker and the wait sweeper. Every role serves
+  `/healthz`. Roles can be split over processes only on shared queues: the
+  in-memory queues need all three roles in one process.
   A data plane database is not optional — the factory's type requires one, and
   each composition root refuses to start without it rather than serving
   `/healthz` while unable to run a workflow.
