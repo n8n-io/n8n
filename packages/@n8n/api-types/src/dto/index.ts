@@ -723,6 +723,12 @@ export {
 	UpdateProjectWorkflowReviewSettingsDto,
 	type ProjectWorkflowReviewSettingsResponse,
 } from './workflow-reviews/update-project-workflow-review-settings.dto';
+export {
+	ListWorkflowReviewProjectsQueryDto,
+	UpdateWorkflowReviewProjectDto,
+	type WorkflowReviewProject,
+	type WorkflowReviewProjectList,
+} from './workflow-reviews/workflow-review-projects.dto';
 export type { WorkflowReviewInboxItem } from './workflow-reviews/list-workflow-review-inbox.dto';
 export { ListInboxQueryDto } from './inbox/list-inbox.dto';
 export type * from './workflow-reviews/get-workflow-review-request-detail.dto';

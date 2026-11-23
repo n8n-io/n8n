@@ -1585,6 +1585,12 @@ export type RelayEventMap = ModuleEventMap & {
 		requiredByProject: boolean;
 	};
 
+	'project-workflow-review-required-by-instance-updated': {
+		user: UserLike;
+		projectId: string;
+		requiredByInstance: boolean;
+	};
+
 	'workflow-review-requested': {
 		user: UserLike;
 		workflowReviewRequestId: string;
