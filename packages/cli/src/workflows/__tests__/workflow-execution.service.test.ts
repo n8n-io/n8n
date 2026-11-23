@@ -484,6 +484,14 @@ describe('WorkflowExecutionService', () => {
 			expect(responsePromise.reject).not.toHaveBeenCalled();
 		});
 
+		test('passes the owner project of the workflow to the cursor commit', async () => {
+			await runPolledWorkflow();
+
+			expect(pollCursorService.commitWithExecution).toHaveBeenCalledWith(
+				expect.objectContaining({ projectId: 'test-project-id' }),
+			);
+		});
+
 		test('passes the fence through to the cursor commit', async () => {
 			const fence = { taskId: 'task-1', leaseEpoch: 3 };
 
