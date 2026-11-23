@@ -1,0 +1,19 @@
+packages/cli/src/modules/promotions.ee/spec/credential-selection.feature
+  s_c51b71bedc600f::t_329509c8172cdc 1-210
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4cc5abeeec4462e7920c049bea2ff0dc4f2357e5",
+  "prompts": {},
+  "sessions": {
+    "s_c51b71bedc600f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2399fe73-cf74-480a-bdbb-a1eca36c6f59",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

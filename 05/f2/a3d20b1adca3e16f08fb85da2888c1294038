@@ -1,0 +1,25 @@
+packages/cli/src/modules/agents/simulation/__tests__/node-n8n-state-helpers.test.ts
+  s_4e8100d4ba14d2::t_f32c234db3c390 1-81
+packages/cli/src/modules/agents/simulation/__tests__/node-network-imports.test.ts
+  s_4e8100d4ba14d2::t_ce3ae3a0e8e889 1-250
+packages/cli/src/modules/agents/simulation/__tests__/non-http-node-types.test.ts
+  s_4e8100d4ba14d2::t_df0f68407ee510 1-78
+packages/cli/src/modules/agents/simulation/non-http-node-types.ts
+  s_4e8100d4ba14d2::t_39fd4f12d8f693 1-93
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "05f2a3d20b1adca3e16f08fb85da2888c1294038",
+  "prompts": {},
+  "sessions": {
+    "s_4e8100d4ba14d2": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a20889-233d-7672-8300-b96f5d9f857d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

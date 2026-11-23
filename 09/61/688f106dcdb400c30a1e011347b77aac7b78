@@ -1,0 +1,19 @@
+packages/nodes-base/nodes/NextCloud/test/GenericFunctions.test.ts
+  s_50795f9787e625::t_6d6e113dcc4766 487-488
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0961688f106dcdb400c30a1e011347b77aac7b78",
+  "prompts": {},
+  "sessions": {
+    "s_50795f9787e625": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "42d12515-ea53-4ce2-9f84-b88ec831710f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}

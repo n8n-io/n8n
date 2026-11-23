@@ -1,0 +1,41 @@
+packages/cli/src/modules/mcp-guard/plan-template.ts
+  s_006d832c28e1e9::t_a0c37fa8841b4f 1-217
+packages/cli/src/modules/mcp-guard/mcp-upstream.ts
+  s_006d832c28e1e9::t_d3be8bea3bcf7a 1-6
+packages/cli/src/modules/agents/simulation/linear-gym-backend.ts
+  s_006d832c28e1e9::t_092a97a2a5304f 6-9,110,123-124,127-132,136-137,140-146,150-152,158-159,185-186,190-191,194-195,221,229,282,284
+  s_006d832c28e1e9::t_297e7442154afc 98-101
+  s_006d832c28e1e9::t_3e9d15b5754efc 125-126,133-135,139,147-149,153-157,162-184,187-189,192-193,196-208,211-220,222-228,283
+  s_006d832c28e1e9::t_bf4ada34c3dab2 138,160-161
+  s_006d832c28e1e9::t_ad9ce3c03816fc 209-210
+packages/cli/src/modules/mcp-guard/once-by-key.ts
+  s_006d832c28e1e9::t_a0c37fa8841b4f 1-20
+packages/cli/src/modules/mcp-guard/seeded-entities.ts
+  s_006d832c28e1e9::t_a0c37fa8841b4f 1-159
+packages/cli/src/modules/mcp-guard/gym-admin.ts
+  s_006d832c28e1e9::t_fe55840d1cec8d 1-6
+packages/cli/src/modules/mcp-guard/plan-hydrator.ts
+  s_006d832c28e1e9::t_a0c37fa8841b4f 1-480
+packages/cli/src/modules/agents/simulation/__tests__/linear-gym-backend.test.ts
+  s_006d832c28e1e9::t_00609d292454e3 7,12
+  s_006d832c28e1e9::t_3e9d15b5754efc 8-11,58-63,119-121,123-125,127-129
+  s_006d832c28e1e9::t_19295f4cefe35b 56,64,116-118,122,126,130
+packages/cli/src/modules/mcp-guard/router.ts
+  s_006d832c28e1e9::t_a0c37fa8841b4f 1-164
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0f155187c023448d3a3dcbf38b25478b77894ff9",
+  "prompts": {},
+  "sessions": {
+    "s_006d832c28e1e9": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1f9bc-2535-76ac-93b7-668de5ab5253",
+        "model": "gpt-6.2-astra"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}
