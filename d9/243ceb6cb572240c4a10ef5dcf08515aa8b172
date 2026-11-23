@@ -3,6 +3,7 @@ packages/modules/promotions/frontend/src/promotionOperation.test.ts
   s_4a494bfdece475::t_d149fc71c49b20 5,9-11,18,210-213,220-262
 packages/modules/promotions/frontend/src/composables/usePromotionPreviewLabels.ts
   s_4a494bfdece475::t_728b4e1abccc92 82-88,103-105,109,111-112,122,124-125
+  s_4a494bfdece475::t_05ec0e03900784 110,123,126-131
 packages/modules/promotions/frontend/src/views/PromotionPreviewView.test.ts
   s_4a494bfdece475::t_d149fc71c49b20 1749-1750,1756,1758
   s_4a494bfdece475::t_ad0c05d17b2403 151
@@ -25,6 +26,8 @@ packages/modules/promotions/frontend/src/components/preview/PromotionBlockers.vu
   s_4a494bfdece475::t_3a5a2a071df325 7,19,36-40,118,274-281,294-311,314-328,330-334,352-353,359-363,366,374,385-391,397-402,455
   s_4a494bfdece475::t_72f269ca206c5c 125
   s_4a494bfdece475::t_32a496dc4c724b 354-355
+  s_4a494bfdece475::t_05ec0e03900784 329,335-348,350
+  s_4a494bfdece475::t_6e24f545e0a1ca 351
 packages/modules/promotions/frontend/src/__tests__/bindings.fixtures.ts
   s_4a494bfdece475::t_ad0c05d17b2403 69
 packages/modules/promotions/frontend/src/views/PromotionPreviewView.vue
