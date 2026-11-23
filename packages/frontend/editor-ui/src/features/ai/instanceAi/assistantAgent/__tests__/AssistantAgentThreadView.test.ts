@@ -1,4 +1,5 @@
 import {
+	EXTENDED_PROMPT_MAX_LENGTH,
 	WORKFLOW_BUILDER_TOOL_NAMES,
 	type AssistantAgentTargetsState,
 	type AssistantThreadTabsState,
@@ -614,6 +615,13 @@ describe('AssistantAgentThreadView', () => {
 			expect.objectContaining({ key: 'assistant_shared_files' }),
 		]);
 		expect(sendMessageFromOutside).not.toHaveBeenCalled();
+	});
+
+	it('lets the composer take a message up to the Assistant limit', async () => {
+		renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+		await flushPromises();
+
+		expect(panelProps.current['max-length']).toBe(EXTENDED_PROMPT_MAX_LENGTH);
 	});
 
 	it('replaces the attach button with the Assistant "+" menu, which opens the file picker', async () => {
