@@ -160,13 +160,14 @@ async function install() {
 									@credential-selected="selectedCredentialId = $event"
 									@new-credential="createCredential"
 								/>
-								<N8nTooltip :content="i18n.baseText('generic.edit')" placement="top">
+								<N8nTooltip as-child :content="i18n.baseText('generic.edit')" placement="top">
 									<N8nIconButton
 										variant="ghost"
 										size="large"
 										icon-size="medium"
 										icon="pen"
 										:disabled="loading || connecting || !selectedCredentialId"
+										focusable-when-disabled
 										:aria-label="i18n.baseText('generic.edit')"
 										data-testid="slack-manager-edit"
 										@click="editManager(selectedCredentialId)"

@@ -1,6 +1,6 @@
 ---
 title: Lifecycle
-last_reviewed: 2026-11-06
+last_reviewed: 2026-11-20
 contact: ivov
 ---
 
@@ -31,7 +31,7 @@ Configuration comes from env vars, through `@Config` classes at `@n8n/config`. T
 > [!IMPORTANT]
 > **A setting that an admin saves in the UI overrides its env var.** For example, the Assistant sandbox stays off after an admin turns off the sandbox, even when `N8N_INSTANCE_AI_SANDBOX_ENABLED` is `true`.
 
-Each process has a **host ID**, e.g. `main-6bf523178bc6`. A pubsub message names its sender by host ID. Do not confuse the host ID with the **instance ID**, which identifies the whole deployment. Telemetry and the license rely on the instance ID. Telemetry also sends an **install ID**: a random ID per database. The first server process to start stores it. It is never derived from the encryption key, so deployments that share a key still report different install IDs. A one-off CLI command on a database that has no install ID yet sends none.
+Each process has a **host ID**, e.g. `main-6bf523178bc6`. A pubsub message names its sender by host ID. Do not confuse the host ID with the **instance ID**, which identifies the whole deployment. Telemetry and the license rely on the instance ID. n8n also sends an **install ID** in telemetry and when it activates or renews a license. The first server process to start stores this random ID in the database. Deployments that share an encryption key still report different install IDs. A one-off CLI command on a database that has no install ID yet sends none.
 
 ## Modules
 

@@ -1,0 +1,17 @@
+{
+	"properties": {
+		"action": {
+			"type": "string"
+		},
+		"id": {
+			"type": "string"
+		},
+		"name": {
+			"type": "string"
+		},
+		"state": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

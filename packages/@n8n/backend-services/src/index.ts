@@ -19,6 +19,11 @@ export {
 } from './executions/counting-rules';
 export { computeTimeSavedMinutes, sumNodeTimeSavedMinutes } from './executions/time-saved';
 export {
+	toEndedFactsFromCancel,
+	toEndedFactsFromCrash,
+	toEndedFactsFromRun,
+} from './executions/execution-ledger-ended-facts';
+export {
 	CredentialsFinderService,
 	CREDENTIAL_USABILITY_SCOPES,
 	type UnusableCredential,
@@ -45,6 +50,10 @@ export {
 	type RoleDeletionChecker,
 } from './services/role-deletion-check-proxy.service';
 export { RoleService } from './services/role.service';
+export {
+	ProjectMutationHooksProxy,
+	type ProjectMutationHooks,
+} from './services/project-mutation-hooks-proxy.service';
 export { ProjectScopeService } from './services/project-scope.service';
 export { UserDeactivationHooks } from './services/user-deactivation-hooks.service';
 export { PasswordUtility } from './services/password.utility';
@@ -124,6 +133,7 @@ export {
 	InstanceRegistryProxyService,
 	type InstanceRegistryProvider,
 } from './services/instance-registry-proxy.service';
+export { PushProxy, type PushSender } from './services/push-proxy.service';
 export { TelemetryProxy, type TelemetryTracker } from './services/telemetry-proxy.service';
 export { ExecutingUserIdentifierProxy } from './credentials/executing-user-identifier-proxy';
 export type { IExecutingUserIdentifier } from './credentials/executing-user-identifier.interface';
@@ -157,11 +167,17 @@ export {
 export {
 	WorkflowPublishGuardProxy,
 	type WorkflowPublishGuard,
+	type WorkflowPublishTarget,
 } from './workflows/workflow-publish-guard-proxy.service';
 export {
 	NodeTypesProviderMissingError,
 	NodeTypesProxy,
 } from './services/node-types-proxy.service';
+export {
+	CredentialRestrictionsProviderProxy,
+	type CredentialRestrictionsProvider,
+	type CredentialToJudge,
+} from './credentials/credential-restrictions-provider-proxy.service';
 export {
 	RestrictedNodeTypesProviderProxy,
 	type RestrictedNodeTypesProvider,

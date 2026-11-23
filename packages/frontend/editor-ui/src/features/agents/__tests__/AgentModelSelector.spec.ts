@@ -257,8 +257,8 @@ const modelsByProvider: AgentModelsByProvider = {
 		models: [
 			{
 				provider: 'anthropic',
-				model: 'claude-sonnet-4-5',
-				name: 'Claude Sonnet 4.5',
+				model: 'claude-sonnet-5-5',
+				name: 'Claude Sonnet 5.5',
 				description: null,
 				createdAt: null,
 				metadata: { functionCalling: true, available: true },
@@ -669,7 +669,7 @@ describe('AgentModelSelector', () => {
 		const wrapper = await mountSelector({ anthropic: AI_GATEWAY_MANAGED_TAG });
 		const anthropicItem = getProviderItem(wrapper, 'anthropic');
 
-		expect(JSON.stringify(anthropicItem?.children ?? [])).toContain('Claude Sonnet 4.5');
+		expect(JSON.stringify(anthropicItem?.children ?? [])).toContain('Claude Sonnet 5.5');
 	});
 
 	it('shows the remaining balance on the n8n credits option', async () => {
@@ -776,7 +776,7 @@ describe('AgentModelSelector', () => {
 
 		expect(dropdown.props('credentialsMissing')).toBe(true);
 		expect(dropdown.props('selectedCredentialName')).toBeUndefined();
-		expect(JSON.stringify(anthropicItem?.children ?? [])).not.toContain('Claude Sonnet 4.5');
+		expect(JSON.stringify(anthropicItem?.children ?? [])).not.toContain('Claude Sonnet 5.5');
 	});
 
 	it('reports missing credentials when the picker resolves one the config has not bound', async () => {
@@ -798,8 +798,8 @@ describe('AgentModelSelector', () => {
 
 		expect(dropdown.props('credentialsMissing')).toBe(false);
 		expect(dropdown.props('selectedCredentialName')).toBe('Anthropic credential');
-		expect(JSON.stringify(anthropicItem?.children ?? [])).toContain('Claude Sonnet 4.5');
-		expect(getMenuItemByLabel(anthropicItem?.children ?? [], 'Claude Sonnet 4.5')?.checked).toBe(
+		expect(JSON.stringify(anthropicItem?.children ?? [])).toContain('Claude Sonnet 5.5');
+		expect(getMenuItemByLabel(anthropicItem?.children ?? [], 'Claude Sonnet 5.5')?.checked).toBe(
 			true,
 		);
 	});
@@ -822,10 +822,10 @@ describe('AgentModelSelector', () => {
 	it('emits change with no auto source for a direct model pick', async () => {
 		const wrapper = await mountSelector({ anthropic: 'anthropic-cred' });
 
-		getDropdown(wrapper).vm.$emit('select', 'anthropic::model::claude-sonnet-4-5');
+		getDropdown(wrapper).vm.$emit('select', 'anthropic::model::claude-sonnet-5-5');
 
 		expect(wrapper.emitted('change')).toEqual([
-			[{ provider: 'anthropic', model: 'claude-sonnet-4-5' }],
+			[{ provider: 'anthropic', model: 'claude-sonnet-5-5' }],
 		]);
 	});
 

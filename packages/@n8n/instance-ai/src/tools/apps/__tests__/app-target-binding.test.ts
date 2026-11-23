@@ -7,7 +7,7 @@ import {
 	parseAppTargets,
 	parsePendingAppTarget,
 	withAppTarget,
-	withAttachedAppTarget,
+	withAppSubject,
 } from '../app-target-binding';
 
 const APP_A = { appId: '0190a5d2-6f4b-7c3e-8a1d-2b3c4d5e6f70', projectId: 'project-1' };
@@ -29,7 +29,7 @@ describe('withAppTarget', () => {
 	});
 });
 
-describe('withAttachedAppTarget', () => {
+describe('withAppSubject', () => {
 	const subject = (app: typeof APP_A, pending?: true) => ({
 		type: 'app' as const,
 		id: app.appId,
@@ -38,14 +38,14 @@ describe('withAttachedAppTarget', () => {
 	});
 
 	it('binds a saved app and keeps other metadata', () => {
-		expect(withAttachedAppTarget({ other: true }, { ...subject(APP_A), name: 'Portal' })).toEqual({
+		expect(withAppSubject({ other: true }, { ...subject(APP_A), name: 'Portal' })).toEqual({
 			other: true,
 			[INSTANCE_AI_APP_TARGETS_METADATA_KEY]: [{ ...APP_A, name: 'Portal' }],
 		});
 	});
 
 	it('marks a pending app, so the first build creates it under its id', () => {
-		expect(withAttachedAppTarget({}, subject(APP_A, true))).toEqual({
+		expect(withAppSubject({}, subject(APP_A, true))).toEqual({
 			[INSTANCE_AI_PENDING_APP_TARGET_METADATA_KEY]: APP_A,
 		});
 	});
@@ -53,14 +53,14 @@ describe('withAttachedAppTarget', () => {
 	it('changes nothing when the thread already has the app', () => {
 		const metadata = withAppTarget({}, APP_A);
 
-		expect(withAttachedAppTarget(metadata, subject(APP_A))).toBeUndefined();
-		expect(withAttachedAppTarget(metadata, subject(APP_A, true))).toBeUndefined();
+		expect(withAppSubject(metadata, subject(APP_A))).toBeUndefined();
+		expect(withAppSubject(metadata, subject(APP_A, true))).toBeUndefined();
 	});
 
 	it('keeps an earlier pending app', () => {
 		const metadata = { [INSTANCE_AI_PENDING_APP_TARGET_METADATA_KEY]: APP_A };
 
-		expect(withAttachedAppTarget(metadata, subject(APP_B, true))).toBeUndefined();
+		expect(withAppSubject(metadata, subject(APP_B, true))).toBeUndefined();
 	});
 });
 

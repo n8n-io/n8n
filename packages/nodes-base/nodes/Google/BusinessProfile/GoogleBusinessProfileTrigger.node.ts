@@ -20,6 +20,7 @@ export class GoogleBusinessProfileTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Google Business Profile Trigger',
 		name: 'googleBusinessProfileTrigger',
+		schemaPath: 'Google/BusinessProfile',
 		icon: 'file:googleBusinessProfile.svg',
 		group: ['trigger'],
 		version: 1,

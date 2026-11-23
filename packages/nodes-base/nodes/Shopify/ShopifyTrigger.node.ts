@@ -16,6 +16,7 @@ export class ShopifyTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Shopify Trigger',
 		name: 'shopifyTrigger',
+		schemaPath: 'Shopify',
 		icon: 'file:shopify.svg',
 		group: ['trigger'],
 		version: 1,

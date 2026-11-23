@@ -22,7 +22,7 @@ Credential ID values in the workflow JSON (real, placeholder strings, or stale r
 ## What you receive
 
 The artifact is split into two blocks:
-1. **Workflow structure** (stable across scenarios for the same build): all nodes, their saved configs, and the connections JSON.
+1. **Workflow structure** (stable across scenarios for the same build): all nodes, their saved configs, the connections JSON, and the workflow settings.
 2. **Scenario context** (fresh per scenario): pre-analysis flags, execution summary, errors, and per-node execution trace.
 
 The full layout:

@@ -42,6 +42,15 @@ function findNodeReasons(node: INode): EngineV2Reason[] {
 	if (node.onError === 'continueErrorOutput') {
 		reasons.push(temporaryReason(node, 'CONTINUE_ERROR_OUTPUT', 'it uses the error output'));
 	}
+	if (node.retryOnFail === true) {
+		reasons.push(temporaryReason(node, 'RETRY_ON_FAIL', 'it uses Retry On Fail'));
+	}
+	if (node.alwaysOutputData === true) {
+		reasons.push(temporaryReason(node, 'ALWAYS_OUTPUT_DATA', 'it uses Always Output Data'));
+	}
+	if (node.executeOnce === true) {
+		reasons.push(temporaryReason(node, 'EXECUTE_ONCE', 'it uses Execute Once'));
+	}
 
 	if (node.type === MERGE_NODE_TYPE) reasons.push(...findMergeReasons(node));
 	if (node.type === SPLIT_IN_BATCHES_NODE_TYPE) reasons.push(...findSplitInBatchesReasons(node));

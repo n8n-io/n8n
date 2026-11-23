@@ -75,7 +75,7 @@ vi.mock('../composables/useAgentProjectId', () => ({
 function baseConfig(): AgentJsonConfig {
 	return {
 		name: 'Agent',
-		model: 'anthropic/claude-sonnet-4-5',
+		model: 'anthropic/claude-sonnet-5-5',
 		instructions: 'Help the user.',
 		memory: { enabled: true, storage: 'n8n' },
 	};

@@ -10,6 +10,7 @@ import { useTypeAvailabilityPoliciesStore } from '../type-availability-policies.
 
 const mocks = vi.hoisted(() => ({
 	fetchInstancePolicy: vi.fn(),
+	fetchInstanceAccess: vi.fn(),
 	saveInstancePolicy: vi.fn(),
 	showError: vi.fn(),
 	showMessage: vi.fn(),
@@ -17,6 +18,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('../type-availability-policies.api', () => ({
 	fetchInstancePolicy: mocks.fetchInstancePolicy,
+	fetchInstanceAccess: mocks.fetchInstanceAccess,
 	saveInstancePolicy: mocks.saveInstancePolicy,
 }));
 
@@ -42,6 +44,12 @@ describe('useInstancePolicy', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mocks.fetchInstancePolicy.mockResolvedValue(policy(1));
+		mocks.fetchInstanceAccess.mockResolvedValue({
+			scopeId: 'scope-1',
+			version: 1,
+			defaultAction: 'allow',
+			types: [],
+		});
 	});
 
 	it('loads both kinds for a user with both policy scopes', async () => {
@@ -70,6 +78,52 @@ describe('useInstancePolicy', () => {
 		await instancePolicy.load();
 
 		expect(mocks.showError).toHaveBeenCalledWith(error, 'Could not load the policy');
+	});
+
+	it('shows an access error, not a policy error, when only the access fails to load', async () => {
+		const instancePolicy = setup(['nodeTypePolicy:manage']);
+		mocks.fetchInstanceAccess.mockRejectedValue(new Error('offline'));
+
+		await instancePolicy.load();
+
+		expect(mocks.showError).toHaveBeenCalledTimes(1);
+		expect(mocks.showError).toHaveBeenCalledWith(
+			new Error('offline'),
+			'Could not load the access of the types',
+		);
+	});
+
+	it('shows the policy error and the access error when one kind fails each way', async () => {
+		const instancePolicy = setup();
+		const policyError = new Error('Network');
+		const accessError = new Error('offline');
+		mocks.fetchInstancePolicy.mockImplementation(async (_context: unknown, kind: string) =>
+			kind === 'node' ? await Promise.reject(policyError) : policy(1),
+		);
+		mocks.fetchInstanceAccess.mockRejectedValue(accessError);
+
+		await instancePolicy.load();
+
+		expect(mocks.showError).toHaveBeenCalledWith(policyError, 'Could not load the policy');
+		expect(mocks.showError).toHaveBeenCalledWith(
+			accessError,
+			'Could not load the access of the types',
+		);
+	});
+
+	it('reads the access again and shows an error when it still fails', async () => {
+		const instancePolicy = setup(['nodeTypePolicy:manage']);
+		mocks.fetchInstanceAccess.mockRejectedValue(new Error('offline'));
+		await instancePolicy.load();
+		mocks.showError.mockClear();
+
+		await instancePolicy.loadAccess();
+
+		expect(mocks.fetchInstanceAccess).toHaveBeenCalledTimes(2);
+		expect(mocks.showError).toHaveBeenCalledWith(
+			new Error('offline'),
+			'Could not load the access of the types',
+		);
 	});
 
 	it('says that the policy changed when it changed after the load', async () => {
@@ -167,5 +221,95 @@ describe('useInstancePolicy', () => {
 
 		expect(mocks.showError).not.toHaveBeenCalled();
 		expect(mocks.showMessage).not.toHaveBeenCalled();
+	});
+
+	describe('setAccess', () => {
+		const SLACK = 'n8n-nodes-base.slack';
+		const toolRule = {
+			id: 'deny-tool',
+			action: 'deny' as const,
+			selector: { kind: 'name' as const, value: `${SLACK}Tool` },
+		};
+		const packageRule = {
+			id: 'deny-package',
+			action: 'deny' as const,
+			selector: { kind: 'package' as const, value: 'n8n-nodes-base' },
+		};
+		const newRule = {
+			id: expect.any(String),
+			action: 'allow',
+			selector: { kind: 'name', value: SLACK },
+		};
+
+		const arrange = (accessVersion: number) => {
+			mocks.fetchInstancePolicy.mockResolvedValue({ ...policy(1), rules: [toolRule, packageRule] });
+			mocks.fetchInstanceAccess.mockResolvedValue({
+				scopeId: 'scope-1',
+				version: accessVersion,
+				defaultAction: 'allow',
+				types: [{ name: SLACK, access: 'deny', matchedRuleId: packageRule.id }],
+			});
+		};
+
+		it('puts the name rule before the rule that decides the type now', async () => {
+			arrange(1);
+			const instancePolicy = setup(['nodeTypePolicy:manage']);
+			await instancePolicy.load();
+
+			await instancePolicy.setAccess('node', SLACK, 'allow');
+
+			expect(mocks.saveInstancePolicy).toHaveBeenCalledWith(expect.anything(), 'node', {
+				rules: [toolRule, newRule, packageRule],
+				defaultAction: 'allow',
+				version: 1,
+			});
+		});
+
+		it('puts the name rule first when the access was read for another policy version', async () => {
+			arrange(0);
+			const instancePolicy = setup(['nodeTypePolicy:manage']);
+			await instancePolicy.load();
+
+			await instancePolicy.setAccess('node', SLACK, 'allow');
+
+			expect(mocks.saveInstancePolicy).toHaveBeenCalledWith(expect.anything(), 'node', {
+				rules: [newRule, toolRule, packageRule],
+				defaultAction: 'allow',
+				version: 1,
+			});
+		});
+	});
+
+	it('shows an error when a save succeeds but the access cannot be read', async () => {
+		const instancePolicy = setup(['nodeTypePolicy:manage']);
+		await instancePolicy.load();
+		mocks.saveInstancePolicy.mockResolvedValue({ ...policy(2), warnings: [] });
+		mocks.fetchInstanceAccess.mockRejectedValue(new Error('offline'));
+
+		const result = await instancePolicy.save('node', (current) => current);
+
+		expect(result.status).toBe('saved');
+		expect(mocks.showError).toHaveBeenCalledWith(
+			new Error('offline'),
+			'Could not load the access of the types',
+		);
+	});
+
+	it('shows an error when the policy changed and the access of the new policy cannot be read', async () => {
+		const instancePolicy = setup(['nodeTypePolicy:manage']);
+		await instancePolicy.load();
+		mocks.saveInstancePolicy.mockRejectedValue(
+			new ResponseError('Policy scope has changed', { httpStatusCode: 409 }),
+		);
+		mocks.fetchInstancePolicy.mockResolvedValue(policy(2));
+		mocks.fetchInstanceAccess.mockRejectedValue(new Error('offline'));
+
+		const result = await instancePolicy.save('node', (current) => current);
+
+		expect(result).toEqual({ status: 'changed', accessError: new Error('offline') });
+		expect(mocks.showError).toHaveBeenCalledWith(
+			new Error('offline'),
+			'Could not load the access of the types',
+		);
 	});
 });

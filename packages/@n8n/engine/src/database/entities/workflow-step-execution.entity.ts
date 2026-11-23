@@ -12,6 +12,7 @@ import type {
 	StepError,
 	ResumeCause,
 	StepSlots,
+	StepOutputSources,
 	StepStatus,
 	WaitDeclaration,
 } from '../../execution/execution.types';
@@ -49,6 +50,10 @@ export class WorkflowStepExecution {
 
 	@Column('jsonb', { nullable: true })
 	outputs!: StepSlots | null;
+
+	/** Where the outputs' items came from. Only a loop node writes it; see `StepOutputSources`. */
+	@Column('jsonb', { name: 'output_sources', nullable: true })
+	outputSources!: StepOutputSources | null;
 
 	@Column('jsonb', { nullable: true })
 	error!: StepError | null;

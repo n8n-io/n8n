@@ -30,16 +30,7 @@ vi.mock('@n8n/instance-ai', async () => {
 			const safeContent = content.replace(/<\/untrusted_data/gi, '&lt;/untrusted_data');
 			return `<untrusted_data source="${esc(source)}"${safeLabel}>\n${safeContent}\n</untrusted_data>`;
 		},
-		builderTemplatesOptionsFromEnv: () => ({}),
 		deriveCredentialHosts: vi.fn().mockReturnValue([]),
-		BuilderTemplatesService: class {
-			async getBundle() {
-				return { files: [], indexTxt: '', version: null };
-			}
-			getVersion() {
-				return null;
-			}
-		},
 	};
 });
 
@@ -78,6 +69,7 @@ import {
 	CONFIG_EVALUATIONS_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_FLAG,
 	INSTANCE_AI_APPROVAL_MODES_FLAG,
+	INSTANCE_AI_EMPTY_PREFERENCES_NOTE_FLAG,
 	INSTANCE_AI_NODE_USAGE_FLAG,
 	INSTANCE_ACTIVITY_CONTEXT_FLAG,
 	ASSISTANT_SKILLS_FLAG,
@@ -1960,6 +1952,7 @@ import {
 	type RoleService,
 	AiPreferenceScopeFullError,
 	type AiPreferenceService,
+	WorkflowVersionedSettingsService,
 } from '@n8n/backend-services';
 import { type DataTableRepository, type DataTableService } from '@n8n/backend-module-data-table';
 
@@ -1995,7 +1988,7 @@ import type {
 import { InstanceAiAdapterService } from '../instance-ai.adapter.service';
 import { InstanceAiBuilderDelegateAdapterService } from '../instance-ai-builder-delegate.adapter';
 import { InstanceAiSkillsAdapterService } from '../instance-ai-skills.adapter';
-import { SkillsGate } from '@/modules/skills';
+import { SkillsGate, SkillSyncFlagGate } from '@/modules/skills';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { AiPreferenceSettingsService } from '@/services/ai-preference-settings.service';
 import type { TemporaryWorkflowMarkers } from '../temporary-workflow-markers';
@@ -6955,6 +6948,54 @@ describe('createExecutionAdapter runStep()', () => {
 		]);
 	});
 
+	it('runs a past version on the engine that the version stores, and records that version', async () => {
+		const harness = createRunAdapterForTests({
+			...chainWorkflow,
+			versionId: 'v-draft',
+			settings: { engineType: 'v1', timezone: 'Europe/Berlin' },
+		});
+		harness.mockWorkflowHistoryService.getVersion.mockResolvedValue({
+			versionId: 'v-old',
+			nodes: chainWorkflow.nodes,
+			connections: chainWorkflow.connections,
+			settings: { engineType: 'v2' },
+		});
+		const versionedSettings = mock<WorkflowVersionedSettingsService>();
+		versionedSettings.forVersionRun.mockImplementation((settings, version) => ({
+			...settings,
+			...version.settings,
+		}));
+		vi.mocked(Container.get).mockImplementation(((token: unknown) =>
+			token === WorkflowVersionedSettingsService
+				? versionedSettings
+				: harness.mockExecutionPersistence) as typeof Container.get);
+		const runStep = harness.adapter.runStep as NonNullable<typeof harness.adapter.runStep>;
+
+		await runStep('wf-1', 'Send', { versionId: 'v-old' });
+
+		const runData = harness.mockWorkflowRunner.run.mock.calls[0][0];
+		expect(runData.workflowData.versionId).toBe('v-old');
+		expect(runData.workflowData.settings).toMatchObject({
+			engineType: 'v2',
+			timezone: 'Europe/Berlin',
+		});
+	});
+
+	it('runs the draft on the draft engine when no version is named', async () => {
+		const harness = createRunAdapterForTests({
+			...chainWorkflow,
+			versionId: 'v-draft',
+			settings: { engineType: 'v1' },
+		});
+		const runStep = harness.adapter.runStep as NonNullable<typeof harness.adapter.runStep>;
+
+		await runStep('wf-1', 'Send', undefined);
+
+		const runData = harness.mockWorkflowRunner.run.mock.calls[0][0];
+		expect(runData.workflowData.versionId).toBe('v-draft');
+		expect(runData.workflowData.settings.engineType).toBe('v1');
+	});
+
 	it('reads the draft without touching history when no version is named', async () => {
 		const harness = createRunAdapterForTests(chainWorkflow);
 		const runStep = harness.adapter.runStep as NonNullable<typeof harness.adapter.runStep>;
@@ -8126,6 +8167,27 @@ describe('resolveExperimentGates', () => {
 		});
 	});
 
+	it.each([true, false])(
+		'reads skill sources %s from the Skill Sync gate, with the flags of the turn',
+		async (enabled) => {
+			const flags = { [INSTANCE_AI_NODE_USAGE_FLAG]: true };
+			const getFeatureFlags = vi.fn().mockResolvedValue(flags);
+			getFeatureFlagForInstance.mockReset().mockResolvedValue(false);
+			const isEnabledForFlags = vi.fn().mockReturnValue(enabled);
+			vi.spyOn(Container, 'get').mockImplementation((token: unknown) =>
+				token === SkillSyncFlagGate
+					? { isEnabledForFlags }
+					: { getFeatureFlags, getFeatureFlagForInstance },
+			);
+
+			const gates = await createAdapter().resolveExperimentGates(user);
+
+			expect(isEnabledForFlags).toHaveBeenCalledWith(flags);
+			expect(gates.skillSourcesEnabled).toBe(enabled ? true : undefined);
+			expect(getFeatureFlags).toHaveBeenCalledTimes(1);
+		},
+	);
+
 	it('keeps instance activity off when its evaluation fails', async () => {
 		stubContainer(allEnabled, true);
 		getFeatureFlagForInstance.mockRejectedValue(new Error('PostHog failed'));
@@ -8144,6 +8206,14 @@ describe('resolveExperimentGates', () => {
 			instanceContextEnabled: true,
 			nodeUsageEnabled: false,
 			nodeContextEnabled: false,
+		});
+	});
+
+	it.each(['control', 'variant'])('passes the preferences note variant %s', async (variant) => {
+		stubContainer({ [INSTANCE_AI_EMPTY_PREFERENCES_NOTE_FLAG]: variant });
+
+		await expect(createAdapter().resolveExperimentGates(user)).resolves.toMatchObject({
+			preferencesNoteVariant: variant,
 		});
 	});
 
@@ -9520,9 +9590,30 @@ describe('createContext — skill service wiring', () => {
 
 			service.createContext(mockUser, { threadId: 'thread-1', assistantSkillsEnabled });
 
-			expect(createService).toHaveBeenCalledWith(mockUser, assistantSkillsEnabled);
+			expect(createService).toHaveBeenCalledWith(mockUser, assistantSkillsEnabled, undefined);
 		},
 	);
+
+	it('passes skill sources on to the skills adapter', () => {
+		const createService = vi.fn().mockReturnValue(mock<InstanceAiSkillService>());
+		vi.spyOn(Container, 'get').mockImplementation((token: unknown) => {
+			if (token === ModuleRegistry) {
+				return {
+					isActive: vi.fn().mockReturnValue(true),
+					settings: new Map([['agents', { enabled: true }]]),
+				};
+			}
+			if (token === SkillsGate) return { isEnabled: true };
+			if (token === InstanceAiSkillsAdapterService) return { createService };
+			if (token === InstanceAiBuilderDelegateAdapterService) return { createDelegate: vi.fn() };
+			throw new Error(`Unexpected Container.get call in test: ${String(token)}`);
+		});
+		const service = createAdapterWithGatewayMock(vi.fn());
+
+		service.createContext(mockUser, { threadId: 'thread-1', skillSourcesEnabled: true });
+
+		expect(createService).toHaveBeenCalledWith(mockUser, false, true);
+	});
 });
 
 describe('createContext: appService', () => {

@@ -1,0 +1,119 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"all_members": {
+			"type": "string"
+		},
+		"cluster_enabled": {
+			"type": "number"
+		},
+		"connected_clients": {
+			"type": "number"
+		},
+		"db0": {
+			"properties": {
+				"avg_ttl": {
+					"type": "number"
+				},
+				"expires": {
+					"type": "number"
+				},
+				"keys": {
+					"type": "number"
+				}
+			},
+			"type": "object"
+		},
+		"evicted_clients": {
+			"type": "number"
+		},
+		"evicted_keys": {
+			"type": "number"
+		},
+		"expired_keys": {
+			"type": "number"
+		},
+		"instantaneous_ops_per_sec": {
+			"type": "number"
+		},
+		"keyspace_hits": {
+			"type": "number"
+		},
+		"keyspace_misses": {
+			"type": "number"
+		},
+		"local_member": {
+			"type": "string"
+		},
+		"max_data_size": {
+			"type": "number"
+		},
+		"max_data_size_human": {
+			"type": "string"
+		},
+		"max_ops_per_sec": {
+			"type": "number"
+		},
+		"maxclients": {
+			"type": "number"
+		},
+		"maxmemory": {
+			"type": "number"
+		},
+		"maxmemory_human": {
+			"type": "string"
+		},
+		"maxmemory_policy": {
+			"type": "string"
+		},
+		"primary_candidates": {
+			"type": "string"
+		},
+		"primary_member": {
+			"type": "string"
+		},
+		"redis_build_id": {
+			"type": ["number", "string"]
+		},
+		"redis_git_sha1": {
+			"type": ["number", "string"]
+		},
+		"redis_mode": {
+			"type": "string"
+		},
+		"redis_version": {
+			"type": "number"
+		},
+		"total_commands_processed": {
+			"type": "number"
+		},
+		"total_connections_received": {
+			"type": "number"
+		},
+		"total_data_size": {
+			"type": "number"
+		},
+		"total_data_size_human": {
+			"type": "string"
+		},
+		"total_keys": {
+			"type": "number"
+		},
+		"total_reads_processed": {
+			"type": "number"
+		},
+		"total_writes_processed": {
+			"type": "number"
+		},
+		"upstash_version": {
+			"type": "number"
+		},
+		"used_memory": {
+			"type": "number"
+		},
+		"used_memory_human": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

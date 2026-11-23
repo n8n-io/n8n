@@ -30,6 +30,7 @@ import type {
 	IWorkflowExecutionDataProcess,
 	WorkflowExecuteMode,
 	ITaskStartedData,
+	RelatedAgentRun,
 } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
@@ -1846,6 +1847,65 @@ describe('Execution Lifecycle Hooks', () => {
 
 				expect(push.send).not.toHaveBeenCalled();
 			});
+		});
+	});
+
+	describe('the agent tool call on workflow events', () => {
+		const parentAgentRun: RelatedAgentRun = {
+			agentId: 'agent-1',
+			projectId: 'project-1',
+			threadId: 'thread-1',
+			runId: 'run-1',
+			toolCallId: 'call-1',
+			agentServiceAccountId: 'sa-1',
+		};
+		const executionData = () =>
+			createRunExecutionData({ resultData: { runData: {} }, parentAgentRun });
+
+		it.each([
+			{
+				hooks: 'regular main',
+				create: () =>
+					getLifecycleHooksForRegularMain(
+						{ executionMode: 'manual', workflowData, executionData: executionData() },
+						executionId,
+					),
+			},
+			{
+				hooks: 'scaling main',
+				create: () =>
+					getLifecycleHooksForScalingMain(
+						{ executionMode: 'manual', workflowData, executionData: executionData() },
+						executionId,
+					),
+			},
+		])('passes the marker of the run data to both workflow events ($hooks)', async ({ create }) => {
+			const hooks = create();
+
+			await hooks.runHook('workflowExecuteBefore', [workflow, runExecutionData]);
+			// The run that main gets back from a worker can be a slim summary without the marker.
+			await hooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'workflow-pre-execute',
+				expect.objectContaining({ parentAgentRun }),
+			);
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'workflow-post-execute',
+				expect.objectContaining({ parentAgentRun, runData: successfulRun }),
+			);
+		});
+
+		it('passes no marker to the workflow events of a sub-execution', async () => {
+			const hooks = getLifecycleHooksForSubExecutions('integrated', executionId, workflowData);
+
+			await hooks.runHook('workflowExecuteBefore', [workflow, executionData()]);
+
+			const preExecute = eventService.emit.mock.calls.find(
+				([eventName]) => eventName === 'workflow-pre-execute',
+			);
+			expect(preExecute).toBeDefined();
+			expect(preExecute?.[1]).not.toHaveProperty('parentAgentRun');
 		});
 	});
 

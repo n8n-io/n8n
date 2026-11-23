@@ -101,6 +101,9 @@ describe('routeApproval', () => {
 		expect(routeApproval({ toolName: 'skills', args: { action: 'delete', skillId: 's1' } })).toBe(
 			'always-ask',
 		);
+		expect(routeApproval({ toolName: 'skills', args: { action: 'import-from-source' } })).toBe(
+			'always-ask',
+		);
 		expect(routeApproval({ toolName: 'skills', args: { action: 'update', skillId: 's1' } })).toBe(
 			'judge',
 		);

@@ -234,12 +234,7 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 
 	readonly displayIcon = 'whatsapp';
 
-	/**
-	 * Hidden from the public catalog and the add-trigger UI until the
-	 * follow-on work (rate limiting, media handling, setup UX) lands —
-	 * without it this channel would go live with only the bare MVP.
-	 */
-	readonly internal = true;
+	readonly internal = false;
 
 	readonly builderGuidance = {
 		capabilities: [
