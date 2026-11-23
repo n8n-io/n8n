@@ -21,6 +21,11 @@
 // and the abandoned stream is left to unwind on its own. Scenarios or --max-steps
 // can additionally opt into an iteration cap.
 //
+// The runner approves a question card, which the model reads as skipped questions,
+// so the run can reach the calls that the scenario requires. After those calls, a
+// discovery trial ends at the next question card, like a production turn does.
+// Otherwise the model guesses the answers and builds until the budget.
+//
 // Routing mode (`stopBeforeTool`) checks each orchestrator tool call before it
 // runs, and ends the run when the check says so (see ../routing/grade.ts).
 // `answerQuestions` lets the user proxy answer a question card.
@@ -45,12 +50,13 @@ import { z } from 'zod';
 
 import {
 	buildConfirmationPolicy,
+	declaresAnswer,
 	resolveConfirmation,
 	unmatchedConfirmations,
 	type ApprovalResponder,
 } from './confirmation-policy';
 import { credentialAutoSetupResponder } from './credential-approval';
-import { evaluateDiscoveryTrial } from './expected-tools-invoked';
+import { evaluateDiscoveryTrial, requiredCallsMade } from './expected-tools-invoked';
 import { resolveStreamStatus } from './stream-status';
 import { streamTurn } from './stream-turn';
 import {
@@ -127,8 +133,20 @@ export interface DiscoveryRunResult {
 export async function runDiscoveryScenario(
 	options: DiscoveryRunOptions,
 ): Promise<DiscoveryRunResult> {
-	const turn = await runOrchestratorTurn({ ...options, stopBeforeTool: stopAtAgentBuild });
-	const outcome = extractOutcomeFromEvents(turn.events);
+	// A question that waits for the user has no result, so the outcome does not list
+	// its call. The Assistant still made it.
+	const outcomeOf = (events: CapturedEvent[], openQuestion?: PendingToolCall) => {
+		const result = extractOutcomeFromEvents(events);
+		if (openQuestion) result.toolCalls.push({ ...openQuestion, durationMs: 0 });
+		return result;
+	};
+	const turn = await runOrchestratorTurn({
+		...options,
+		stopBeforeTool: stopAtAgentBuild,
+		endAtQuestion: (question, events) =>
+			requiredCallsMade(options.scenario, outcomeOf(events, question)),
+	});
+	const outcome = outcomeOf(turn.events, turn.openQuestion);
 	const check = evaluateDiscoveryTrial(options.scenario, outcome, {
 		streamStatus: turn.streamStatus,
 		timeoutMs: turn.timeoutMs,
@@ -159,6 +177,11 @@ export interface OrchestratorTurnOptions extends Omit<DiscoveryRunOptions, 'scen
 		suspension: SuspensionInfo,
 		events: CapturedEvent[],
 	) => Promise<Record<string, unknown>>;
+	/**
+	 * Runs at a question card with no answer from `answerQuestions` or the scenario.
+	 * `true` ends the turn there. Otherwise the runner approves the card.
+	 */
+	endAtQuestion?: (question: PendingToolCall, events: CapturedEvent[]) => boolean;
 	/** The thread of the earlier turns of the same conversation. Unset starts a new thread. */
 	thread?: SeededThread;
 }
@@ -172,6 +195,8 @@ export interface OrchestratorTurnResult {
 	runError?: string;
 	timeoutMs: number;
 	unmatchedConfirmations: string[];
+	/** The question card that the turn ended at. */
+	openQuestion?: PendingToolCall;
 }
 
 /** Runs one orchestrator turn and returns what it published, with no check. */
@@ -185,13 +210,14 @@ export async function runOrchestratorTurn(
 	const maxSteps = options.scenario?.maxSteps ?? options.maxSteps;
 	const timeoutMs = options.scenario?.timeoutMs ?? options.timeoutMs ?? 60_000;
 	const nodesJsonPath = options.nodesJsonPath ?? defaultNodesJsonPath();
-	const { stopBeforeTool, answerQuestions } = options;
+	const { stopBeforeTool, answerQuestions, endAtQuestion } = options;
 
 	const events: CapturedEvent[] = [];
 	const instanceEvents: InstanceAiEvent[] = [];
 
 	let streamStatus: DiscoveryStreamStatus = 'completed';
 	let runError: string | undefined;
+	let openQuestion: PendingToolCall | undefined;
 
 	const confirmationPolicy = buildConfirmationPolicy(options.scenario);
 	const suspensions = new Map<string, SuspensionInfo>();
@@ -309,8 +335,17 @@ export async function runOrchestratorTurn(
 			onEvent: (event) => eventBus.publish(threadId, event),
 			answerSuspension: async (suspension) => {
 				suspensions.set(suspension.requestId, suspension);
-				if (answerQuestions && suspension.suspendPayload.inputType === 'questions') {
-					return await answerQuestions(suspension, events);
+				if (suspension.suspendPayload.inputType === 'questions') {
+					if (answerQuestions) return await answerQuestions(suspension, events);
+					const question = findToolCall(instanceEvents, suspension.toolCallId);
+					if (
+						question &&
+						!declaresAnswer(suspension, confirmationPolicy) &&
+						endAtQuestion?.(question, events)
+					) {
+						openQuestion = question;
+						return undefined;
+					}
 				}
 				return resolveConfirmation(suspension, confirmationPolicy, approvalResponders);
 			},
@@ -339,12 +374,25 @@ export async function runOrchestratorTurn(
 		...(runError ? { runError } : {}),
 		timeoutMs,
 		unmatchedConfirmations: unmatchedConfirmations(confirmationPolicy, suspensions.values()),
+		...(openQuestion ? { openQuestion } : {}),
 	};
 }
 
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
+
+function findToolCall(
+	events: readonly InstanceAiEvent[],
+	toolCallId: string,
+): PendingToolCall | undefined {
+	for (const event of events) {
+		if (event.type === 'tool-call' && event.payload.toolCallId === toolCallId) {
+			return { toolCallId, toolName: event.payload.toolName, args: event.payload.args };
+		}
+	}
+	return undefined;
+}
 
 function applyInstanceState(
 	base: InstanceAiContext,

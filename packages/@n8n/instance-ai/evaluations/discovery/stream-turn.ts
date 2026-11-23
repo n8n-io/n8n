@@ -30,17 +30,21 @@ export interface StreamTurnOptions {
 	/** Aborts the first stream and each resumed stream. */
 	signal: AbortSignal;
 	onEvent: (event: InstanceAiEvent) => void;
-	/** Returns the resume data for a suspended tool call. Called when the suspension arrives. */
-	answerSuspension: (suspension: SuspensionInfo) => Promise<Record<string, unknown>>;
+	/**
+	 * Returns the resume data for a suspended tool call, or `undefined` to end
+	 * the turn there. Called when the suspension arrives.
+	 */
+	answerSuspension: (suspension: SuspensionInfo) => Promise<Record<string, unknown> | undefined>;
 }
 
 export interface StreamTurnResult {
-	status: 'completed' | 'errored' | 'cancelled';
+	/** `suspended`: the turn ended at a tool call that got no answer. */
+	status: 'completed' | 'errored' | 'cancelled' | 'suspended';
 	/** The reason on the last `finish` chunk. Absent when the stream ended without one. */
 	finishReason?: FinishReason;
 }
 
-/** Runs one turn to its end. Each suspended tool call is answered and resumed. */
+/** Runs one turn to its end. Each suspended tool call that gets an answer is resumed. */
 export async function streamTurn(options: StreamTurnOptions): Promise<StreamTurnResult> {
 	const { agent, signal } = options;
 	const executionOptions = { ...options.executionOptions, abortSignal: signal };
@@ -51,7 +55,7 @@ export async function streamTurn(options: StreamTurnOptions): Promise<StreamTurn
 
 	for (;;) {
 		let suspension: SuspensionInfo | undefined;
-		let resumeData: Promise<Record<string, unknown>> | undefined;
+		let answer: Promise<Record<string, unknown> | undefined> | undefined;
 		let finishReason: FinishReason | undefined;
 		let errored = false;
 
@@ -78,9 +82,9 @@ export async function streamTurn(options: StreamTurnOptions): Promise<StreamTurn
 				const parsed = suspension ? undefined : parseSuspension(chunk);
 				if (parsed) {
 					suspension = parsed;
-					resumeData = options.answerSuspension(parsed);
+					answer = options.answerSuspension(parsed);
 					// The answer is awaited after the stream ends. An abort can come first.
-					resumeData.catch(() => {});
+					answer.catch(() => {});
 				}
 
 				const event = mapAgentChunkToEvent(options.runId, options.agentId, chunk);
@@ -91,11 +95,11 @@ export async function streamTurn(options: StreamTurnOptions): Promise<StreamTurn
 		}
 
 		if (signal.aborted) return { status: 'cancelled' };
-		if (!suspension || !resumeData) {
-			return { status: errored ? 'errored' : 'completed', finishReason };
-		}
+		if (!suspension) return { status: errored ? 'errored' : 'completed', finishReason };
+		const resumeData = await answer;
+		if (!resumeData) return { status: 'suspended', finishReason };
 
-		const resumed = await agent.resume('stream', await resumeData, {
+		const resumed = await agent.resume('stream', resumeData, {
 			...executionOptions,
 			runId: agentRunId,
 			toolCallId: suspension.toolCallId,

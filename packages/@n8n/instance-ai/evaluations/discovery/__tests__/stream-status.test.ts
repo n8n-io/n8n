@@ -46,6 +46,12 @@ describe('resolveStreamStatus', () => {
 		expect(resolveStreamStatus('timed-out', false)).toBe('timed-out');
 	});
 
+	it('reports a turn that ended at an unanswered tool call as waiting for the user', () => {
+		expect(resolveStreamStatus(streamResult({ status: 'suspended' }), false)).toBe(
+			'waiting-for-user',
+		);
+	});
+
 	it('reports a paused run as suspended', () => {
 		expect(resolveStreamStatus(streamResult({ finishReason: 'paused' }), false)).toBe('suspended');
 	});

@@ -9,6 +9,7 @@ export function resolveStreamStatus(
 ): DiscoveryStreamStatus {
 	if (result === 'timed-out' || aborted) return 'timed-out';
 	if (result.status === 'errored') return 'errored';
+	if (result.status === 'suspended') return 'waiting-for-user';
 	if (result.status === 'cancelled') return 'timed-out';
 	if (result.finishReason === undefined) return 'errored';
 	return statusForFinishReason(result.finishReason);
