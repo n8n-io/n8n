@@ -294,17 +294,18 @@ onMounted(async () => {
 				</div>
 			</div>
 			<div v-if="!modal.isReadOnly.value" :class="$style.actions">
-				<N8nTooltip placement="left">
+				<N8nTooltip as-child placement="left">
 					<N8nIconButton
 						v-if="modal.isEditMode.value && modal.canDelete.value"
 						:title="i18n.baseText('generic.delete')"
 						icon="trash-2"
 						variant="ghost"
 						:disabled="modal.isSaving.value"
+						focusable-when-disabled
 						data-test-id="secrets-provider-delete-button"
 						@click="handleDelete"
 					/>
-					<template #content> {{ i18n.baseText('generic.delete') }}</template>
+					<template #content>{{ i18n.baseText('generic.delete') }}</template>
 				</N8nTooltip>
 				<SaveButton
 					:saved="!modal.hasUnsavedChanges.value && modal.isEditMode.value"

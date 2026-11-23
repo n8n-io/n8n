@@ -296,12 +296,21 @@ function findPageEnd(transcript: string, start: number, pageSize: number): numbe
 	return isHighSurrogate(transcript.charCodeAt(end - 1)) ? end - 1 : end;
 }
 
-function findPageStart(transcript: string, cursor: string): number | null {
+// The limit is part of the digest because short tool values give the same text at any limit.
+function cursorDigest(transcript: string, end: number, maxToolValueLength: number): string {
+	return digestOf(`${maxToolValueLength}\n${transcript.slice(0, end)}`);
+}
+
+function findPageStart(
+	transcript: string,
+	cursor: string,
+	maxToolValueLength: number,
+): number | null {
 	const match = /^(\d+)\.([\w-]+)$/.exec(cursor);
 	if (!match) return null;
 	const start = Number(match[1]);
 	if (start === 0 || start >= transcript.length) return null;
-	return digestOf(transcript.slice(0, start)) === match[2] ? start : null;
+	return cursorDigest(transcript, start, maxToolValueLength) === match[2] ? start : null;
 }
 
 /**
@@ -309,8 +318,8 @@ function findPageStart(transcript: string, cursor: string): number | null {
  * tool value is cut at `maxToolValueLength`; 0 leaves tool values out. No turn
  * is left out: the pages joined in order give the complete transcript. A page
  * ends before a turn when the page stays at least half full. The cursor carries
- * a digest of the text before it, so a cursor from a session that changed since
- * is rejected.
+ * a digest of the text before it and of `maxToolValueLength`, so a cursor from a
+ * session that changed since, or from another limit, is rejected.
  */
 export function formatAgentSessionTranscriptPage(
 	thread: AgentSessionThread,
@@ -331,11 +340,11 @@ export function formatAgentSessionTranscriptPage(
 		scoped.map((execution) => `\n${formatExecution(execution, limits)}`).join('') +
 		`\n${PREVIEW_CONTEXT_CLOSE_TAG}`;
 
-	const start = cursor === undefined ? 0 : findPageStart(transcript, cursor);
+	const start = cursor === undefined ? 0 : findPageStart(transcript, cursor, maxToolValueLength);
 	if (start === null) return { ok: false, reason: 'invalid_cursor' };
 
 	const end = findPageEnd(transcript, start, pageSize);
 	const nextCursor =
-		end < transcript.length ? `${end}.${digestOf(transcript.slice(0, end))}` : null;
+		end < transcript.length ? `${end}.${cursorDigest(transcript, end, maxToolValueLength)}` : null;
 	return { ok: true, transcript: transcript.slice(start, end), nextCursor };
 }

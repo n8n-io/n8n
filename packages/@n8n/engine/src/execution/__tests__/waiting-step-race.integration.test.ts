@@ -11,6 +11,7 @@ import { generateId } from '../../database/generate-id';
 import type { IStepExecutor } from '../../dependencies';
 import type { WorkflowGraph } from '../../graph';
 import type { LifecycleEvent } from '../../lifecycle-events';
+import { createInMemoryWorkQueues } from '../../queue';
 import { noopExecutionResponseSender } from '../../response-channel';
 import { createEngineRuntime, type EngineRuntime } from '../../runtime';
 import type { StartExecutionResult } from '../start-execution.service';
@@ -78,7 +79,7 @@ describe('a step that starts to wait after its execution ended (integration)', (
 			admittance: new AllowAllAdmittance(),
 			identityVerifier: new SharedSecretIdentityVerifier(secret),
 			responseSender: noopExecutionResponseSender,
-			concurrency: { step: stepConcurrency },
+			queues: createInMemoryWorkQueues({ concurrency: { step: stepConcurrency } }),
 			externalDependencies: ({ stepStore }) => {
 				spyOn(stepStore);
 				return {

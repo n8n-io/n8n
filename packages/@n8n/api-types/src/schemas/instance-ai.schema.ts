@@ -1,6 +1,7 @@
 import type { InstanceAiEventLifecycle } from './instance-ai-event-lifecycle';
 import {
 	autoApprovalPayloadSchema,
+	instanceAiApprovalAskReasonSchema,
 	instanceAiApprovalDetailsSchema,
 } from './instance-ai-approval.schema';
 import type { InstanceAiAutoApprovalDecider } from './instance-ai-approval.schema';
@@ -139,12 +140,22 @@ export function buildUpdateWorkflowSessionGrantKey(workflowId: string): string {
 }
 
 /**
- * Builds the thread-level "always allow" grant key for a gated action on one
- * workflow, such as `publish` or `unarchive`. Scoped per workflow, so approving
- * one workflow never approves the same action on another.
+ * Workflow actions whose "always allow" grant covers every workflow of the
+ * thread. Each one runs once on a workflow, so a per-workflow grant would never
+ * apply a second time and a bulk cleanup would ask for each workflow.
+ */
+const THREAD_WIDE_WORKFLOW_GRANT_ACTIONS = new Set(['delete', 'unpublish']);
+
+/**
+ * Builds the thread-level "always allow" grant key for a gated workflow action.
+ * Scoped per workflow for actions such as `publish` or `unarchive`, so approving
+ * one workflow never approves the same action on another. Archive (`delete`) and
+ * `unpublish` are scoped per action.
  */
 export function buildWorkflowActionSessionGrantKey(action: string, workflowId: string): string {
-	return `workflows:${action}:${workflowId}`;
+	return THREAD_WIDE_WORKFLOW_GRANT_ACTIONS.has(action)
+		? `workflows:${action}`
+		: `workflows:${action}:${workflowId}`;
 }
 
 /**
@@ -971,6 +982,9 @@ export const confirmationRequestPayloadSchema = z.object({
 	severity: instanceAiConfirmationSeveritySchema,
 	message: z.string().describe('Human-readable description of the action'),
 	approvalDetails: instanceAiApprovalDetailsSchema.optional(),
+	askReason: instanceAiApprovalAskReasonSchema
+		.optional()
+		.describe('Why Auto approval mode showed this card. Absent in Manual mode'),
 	resourceName: z
 		.string()
 		.optional()
@@ -1219,7 +1233,8 @@ export interface InstanceAiBrowserCreateLinkResponse {
  * The live view of a cloud browser task:
  * - `live`: a session is open. The link lets anyone who has it control the browser, so the
  *   client keeps it in memory only. `windowId` names the window the link shows, so the client
- *   can tell a new window from a new link to the same one.
+ *   can tell a new window from a new link to the same one. `userHasTakenOver` is set after the
+ *   user clicked "Take over", until they give control back.
  * - `starting`: a session is opening.
  * - `no-session`: the task runs, but the agent has not opened a session yet.
  * - `disconnected`: the session closed while the task runs. The agent can open a new one.
@@ -1227,10 +1242,10 @@ export interface InstanceAiBrowserCreateLinkResponse {
  *   task runs on another main, or it is not the user's.
  */
 export type InstanceAiCloudBrowserLiveViewResponse =
-	| { status: 'live'; liveViewUrl: string; windowId: string }
+	| { status: 'live'; liveViewUrl: string; windowId: string; userHasTakenOver?: boolean }
 	| { status: 'starting' }
 	| { status: 'no-session' }
-	| { status: 'disconnected'; reason: 'connectionLost' | 'idleTimeout' }
+	| { status: 'disconnected'; reason: 'connectionLost' | 'idleTimeout' | 'userControlTimeout' }
 	| { status: 'not-found' };
 
 export interface InstanceAiBrowserStatusResponse {
@@ -1258,6 +1273,12 @@ export const assistantTracePayloadSchema = z.object({
 	traceId: z.string().optional(),
 	langsmithTraceId: z.string(),
 	langsmithRunId: z.string(),
+	/**
+	 * The root of the turn that a resume continues. Feedback on the answer goes
+	 * to this root, like on the current Assistant runtime. Only a resume sets it.
+	 */
+	turnLangsmithTraceId: z.string().optional(),
+	turnLangsmithRunId: z.string().optional(),
 });
 
 export type AssistantTracePayload = z.infer<typeof assistantTracePayloadSchema>;
@@ -1647,6 +1668,37 @@ export const instanceAiAppTargetSchema = z.object({
 });
 export type InstanceAiAppTarget = z.infer<typeof instanceAiAppTargetSchema>;
 
+/** An app that a page hands off to a thread. A pending app has no row yet. */
+export const instanceAiAppSubjectSchema = z.object({
+	type: z.literal('app'),
+	id: z.string().uuid(),
+	projectId: z.string().min(1).max(64),
+	name: z.string().max(255).optional(),
+	/** The first build creates the app under this id. */
+	pending: z.literal(true).optional(),
+});
+export type InstanceAiAppSubject = z.infer<typeof instanceAiAppSubjectSchema>;
+
+/**
+ * An agent that a page hands off to a thread. A pending agent has no row yet.
+ * It has the same shape as the agent attachment, but only the subject binds.
+ */
+export const instanceAiAgentSubjectSchema = instanceAiAgentAttachmentSchema;
+export type InstanceAiAgentSubject = z.infer<typeof instanceAiAgentSubjectSchema>;
+
+/**
+ * The resource of the page that opened a thread: an agent or an app. The
+ * Assistant agent binds it in the thread metadata, so its tools work on that
+ * resource and the page finds the thread again. Only the subject binds a thread:
+ * an attached or mentioned resource is a reference for one turn. Add a
+ * variant here, with its binding in `withThreadSubject`, for a new kind of page.
+ */
+export const instanceAiThreadSubjectSchema = z.discriminatedUnion('type', [
+	instanceAiAgentSubjectSchema,
+	instanceAiAppSubjectSchema,
+]);
+export type InstanceAiThreadSubject = z.infer<typeof instanceAiThreadSubjectSchema>;
+
 const instanceAiNodeRefSchema = z.object({
 	id: z.string().min(1).max(64),
 	name: z.string().max(255).optional(),
@@ -1807,6 +1859,8 @@ export const instanceAiThreadArtifactSchema = z.object({
 	projectId: z.string().min(1).max(64).optional(),
 	pending: z.literal(true).optional(),
 	archived: z.literal(true).optional(),
+	/** Execution that the preview of a workflow tab shows. */
+	executionId: z.string().min(1).max(64).optional(),
 });
 export type InstanceAiThreadArtifact = z.infer<typeof instanceAiThreadArtifactSchema>;
 
@@ -1851,6 +1905,13 @@ export class InstanceAiSendMessageRequest extends Z.class({
 	 *  user. Its device support is only visible there. Omit to advertise none.
 	 *  The backend still applies the admin switch, so this can only narrow. */
 	browserUseAvailable: z.boolean().optional(),
+	/**
+	 * The resource of the page that opened the thread. The Assistant agent binds
+	 * the thread to it. Sending it again changes nothing, so a page can send it
+	 * with each message. The current runtime binds before the thread opens and
+	 * does not read it.
+	 */
+	subject: instanceAiThreadSubjectSchema.optional(),
 	/** Pin a published prompt profile. Omit to use the backend experiment assignment. */
 	promptVersion: instanceAiPromptVersionSchema.optional(),
 	/** Eval override: observer threshold for THIS thread, so driving compaction
@@ -1860,6 +1921,11 @@ export class InstanceAiSendMessageRequest extends Z.class({
 
 export class InstanceAiCorrectTaskRequest extends Z.class({
 	message: z.string().min(1),
+}) {}
+
+/** The user hands a cloud browser back to its agent, with what they changed. */
+export class InstanceAiCloudBrowserReturnControlRequest extends Z.class({
+	note: z.string().trim().max(2000).optional(),
 }) {}
 
 /**
@@ -2954,6 +3020,8 @@ export const INSTANCE_AI_CONCISE_STYLE_ENABLED_VARIANT = 'variant';
  * choice gets Auto.
  */
 export const INSTANCE_AI_APPROVAL_MODES_FLAG = '144_instance_ai_approval_modes';
+
+export const INSTANCE_AI_EMPTY_PREFERENCES_NOTE_FLAG = '147_assistant_empty_preferences_note';
 
 export const INSTANCE_AI_SETUP_PANEL_FLAG = '118_instance_ai_setup_overhaul';
 export const INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT = 'variant';

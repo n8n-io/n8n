@@ -16,9 +16,9 @@ import {
 	type StepStatus,
 	type WaitDeclaration,
 } from '../execution.types';
-import { resolveInputReads, StepReadyHandler } from '../step-ready-handler';
 import { InvalidParentLinkError, type StartExecutionService } from '../start-execution.service';
 import { attachStepErrorDetails } from '../step-error-details';
+import { resolveInputReads, StepReadyHandler } from '../step-ready-handler';
 import type { StepRecord, StepStore, StepSummary } from '../step-store';
 
 /** Key for a `loadStepsByKeys` result at iteration 0, as the handler requests them. */
@@ -33,6 +33,7 @@ function stepRow(nodeId: string, status: StepStatus, outputs: StepSlots | null =
 		iteration: 0,
 		status,
 		outputs,
+		outputSources: null,
 		waitDeclaration: null,
 		resumeCause: null,
 	};
@@ -116,6 +117,9 @@ function makeExecutionStore(
 		findStaleQueuedExecutions: vi.fn(),
 		renewQueuedExecution: vi.fn(),
 		refreshLiveStatus: vi.fn(),
+		loadLiveSubExecutionIds: vi.fn().mockResolvedValue([]),
+		findPrunableExecutions: vi.fn(),
+		deleteEndedExecutions: vi.fn(),
 	};
 }
 
@@ -127,6 +131,7 @@ function makeStepStore(step: Partial<StepRecord> = {}, overrides: Partial<StepSt
 		iteration: 0,
 		status: 'running',
 		outputs: null,
+		outputSources: null,
 		waitDeclaration: null,
 		resumeCause: null,
 		...step,
@@ -214,7 +219,7 @@ describe('StepReadyHandler', () => {
 			// The step can answer the caller while it runs.
 			respond: { send: expect.any(Function), chunk: expect.any(Function) },
 		});
-		expect(stepStore.completeStep).toHaveBeenCalledWith('step-a', [[{ json: { ok: true } }]]);
+		expect(stepStore.completeStep).toHaveBeenCalledWith('step-a', [[{ json: { ok: true } }]], null);
 		expect(stepStore.failStep).not.toHaveBeenCalled();
 		expect(queue.publish).toHaveBeenCalledWith({
 			type: 'step:settled',
@@ -429,10 +434,11 @@ describe('StepReadyHandler', () => {
 		await handler.handle(event);
 
 		expect(stepStore.failStep).not.toHaveBeenCalled();
-		expect(stepStore.completeStep).toHaveBeenCalledWith('step-a', [
-			[{ json: { taken: true } }],
+		expect(stepStore.completeStep).toHaveBeenCalledWith(
+			'step-a',
+			[[{ json: { taken: true } }], null],
 			null,
-		]);
+		);
 		expect(queue.publish).toHaveBeenCalledWith({
 			type: 'step:settled',
 			executionId: 'exec-1',
@@ -452,7 +458,7 @@ describe('StepReadyHandler', () => {
 		await handler.handle(event);
 
 		expect(stepStore.failStep).not.toHaveBeenCalled();
-		expect(stepStore.completeStep).toHaveBeenCalledWith('step-a', []);
+		expect(stepStore.completeStep).toHaveBeenCalledWith('step-a', [], null);
 	});
 
 	it('completes a terminal step that leaves its output slot unfilled', async () => {
@@ -473,7 +479,7 @@ describe('StepReadyHandler', () => {
 		await handler.handle({ ...event, stepId: 'step-b' });
 
 		expect(stepStore.failStep).not.toHaveBeenCalled();
-		expect(stepStore.completeStep).toHaveBeenCalledWith('step-b', [null]);
+		expect(stepStore.completeStep).toHaveBeenCalledWith('step-b', [null], null);
 	});
 
 	it('routes from the output slot the edge names', async () => {
@@ -623,7 +629,7 @@ describe('StepReadyHandler', () => {
 		await handler.handle(event);
 
 		expect(executor.execute).toHaveBeenCalledOnce();
-		expect(stepStore.completeStep).toHaveBeenCalledWith('step-a', [[{ json: { ok: true } }]]);
+		expect(stepStore.completeStep).toHaveBeenCalledWith('step-a', [[{ json: { ok: true } }]], null);
 		expect(queue.publish).toHaveBeenCalledExactlyOnceWith({
 			type: 'step:settled',
 			executionId: 'exec-1',
@@ -1065,7 +1071,7 @@ describe('StepReadyHandler resumes', () => {
 		// so there is nothing to feed it either
 		expect(executor.execute).not.toHaveBeenCalled();
 		expect(stepStore.loadStepsByKeys).not.toHaveBeenCalled();
-		expect(stepStore.completeStep).toHaveBeenCalledWith('step-a', timeWait.outputsAtDeadline);
+		expect(stepStore.completeStep).toHaveBeenCalledWith('step-a', timeWait.outputsAtDeadline, null);
 		expect(stepStore.suspendStep).not.toHaveBeenCalled();
 		expect(queue.publish).toHaveBeenCalledWith({
 			type: 'step:settled',
@@ -1088,7 +1094,7 @@ describe('StepReadyHandler resumes', () => {
 
 		await handler.handle(event);
 
-		expect(stepStore.completeStep).toHaveBeenCalledWith('step-a', timeWait.outputsAtDeadline);
+		expect(stepStore.completeStep).toHaveBeenCalledWith('step-a', timeWait.outputsAtDeadline, null);
 		expect(queue.publish).toHaveBeenCalledWith({
 			type: 'step:settled',
 			executionId: 'exec-1',
@@ -1112,7 +1118,7 @@ describe('StepReadyHandler resumes', () => {
 		await handler.handle(event);
 
 		expect(stepStore.loadStepsByKeys).not.toHaveBeenCalled();
-		expect(stepStore.completeStep).toHaveBeenCalledWith('step-a', requestOutputs);
+		expect(stepStore.completeStep).toHaveBeenCalledWith('step-a', requestOutputs, null);
 		expect(stepStore.suspendStep).not.toHaveBeenCalled();
 		expect(queue.publish).toHaveBeenCalledWith({
 			type: 'step:settled',
@@ -1338,7 +1344,11 @@ describe('StepReadyHandler sub-executions', () => {
 
 		await handler.handle(event);
 
-		expect(stepStore.completeStep).toHaveBeenCalledWith('step-a', [[{ json: { id: 'exec-sub' } }]]);
+		expect(stepStore.completeStep).toHaveBeenCalledWith(
+			'step-a',
+			[[{ json: { id: 'exec-sub' } }]],
+			null,
+		);
 		expect(stepStore.suspendStep).not.toHaveBeenCalled();
 		expect(subExecutionStarter.start).toHaveBeenCalledWith(
 			expect.objectContaining({
@@ -1384,7 +1394,7 @@ describe('StepReadyHandler sub-executions', () => {
 
 		expect(subExecutionStarter.start).toHaveBeenCalledTimes(1);
 		expect(stepStore.failStep).not.toHaveBeenCalled();
-		expect(stepStore.completeStep).toHaveBeenCalledWith('step-a', [[{ json: { ok: true } }]]);
+		expect(stepStore.completeStep).toHaveBeenCalledWith('step-a', [[{ json: { ok: true } }]], null);
 	});
 
 	it('fails the step instead of completing it when a detached sub-execution cannot start', async () => {
@@ -1442,7 +1452,11 @@ describe('StepReadyHandler sub-executions', () => {
 		expect(executor.execute).toHaveBeenCalledWith(
 			expect.objectContaining({ inputs: [{}], resume: cause }),
 		);
-		expect(stepStore.completeStep).toHaveBeenCalledWith('step-a', [[{ json: { shaped: true } }]]);
+		expect(stepStore.completeStep).toHaveBeenCalledWith(
+			'step-a',
+			[[{ json: { shaped: true } }]],
+			null,
+		);
 	});
 });
 
@@ -1719,6 +1733,7 @@ describe('StepReadyHandler over loop iterations', () => {
 			iteration,
 			status: 'completed',
 			outputs,
+			outputSources: null,
 			waitDeclaration: null,
 			resumeCause: null,
 		};

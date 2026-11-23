@@ -124,7 +124,11 @@ describe('buildAlwaysAllowKeys', () => {
 		expect(buildAlwaysAllowKeys('skills', { action: 'create' })).toEqual(['skills:create']);
 	});
 
-	it.each(['delete', 'unarchive', 'publish', 'unpublish', 'restore-version', 'update-version'])(
+	it('does not offer a session grant for skill source imports', () => {
+		expect(buildAlwaysAllowKeys('skills', { action: 'import-from-source' })).toEqual([]);
+	});
+
+	it.each(['unarchive', 'publish', 'restore-version', 'update-version'])(
 		'matches the backend per-workflow grant for the workflows %s action',
 		(action) => {
 			expect(
@@ -134,10 +138,8 @@ describe('buildAlwaysAllowKeys', () => {
 	);
 
 	it.each([
-		['archive_workflow', 'delete'],
 		['unarchive_workflow', 'unarchive'],
 		['publish_workflow', 'publish'],
-		['unpublish_workflow', 'unpublish'],
 		['restore_workflow_version', 'restore-version'],
 		['update_workflow_version', 'update-version'],
 	])('matches the backend per-workflow grant for the %s tool', (toolName, action) => {
@@ -145,6 +147,16 @@ describe('buildAlwaysAllowKeys', () => {
 			`workflows:${action}:wf-1`,
 		]);
 		expect(buildAlwaysAllowKeys(toolName, {}, 'wf-2')).toEqual([`workflows:${action}:wf-2`]);
+	});
+
+	it.each([
+		['archive_workflow', 'delete'],
+		['unpublish_workflow', 'unpublish'],
+	])('matches the backend grant for every workflow for the %s tool', (toolName, action) => {
+		expect(buildAlwaysAllowKeys(toolName, { workflowId: 'wf-1' })).toEqual([`workflows:${action}`]);
+		expect(
+			buildAlwaysAllowKeys('workflow_builder_workflows', { action, workflowId: 'wf-2' }),
+		).toEqual([`workflows:${action}`]);
 	});
 
 	it('stores no key for a workflow tool call without a workflow', () => {

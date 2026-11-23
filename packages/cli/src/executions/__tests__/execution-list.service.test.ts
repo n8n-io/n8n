@@ -86,6 +86,47 @@ describe('ExecutionListService', () => {
 		});
 	});
 
+	it('lists the engine v2 filter from the merged provider while the data plane is up', async () => {
+		await service.listExecutionsForUI(query({ engine: 'v2' }));
+		await service.findPageWithCount(query({ engine: 'v2' }), cursor);
+
+		expect(v2Service.findCurrentAndCompleted).toHaveBeenCalledWith(
+			completedPageQuery({ engine: 'v2' }),
+		);
+		expect(v2Service.findPageWithCount).toHaveBeenCalledWith(query({ engine: 'v2' }), cursor);
+	});
+
+	describe('engine filter while the data plane is down', () => {
+		const emptyPage = { results: [], nextCursor: null, count: 0, estimated: false };
+
+		beforeEach(() => {
+			dataPlane.isAvailable.mockReturnValue(false);
+		});
+
+		// Engine v2 executions live in the data plane, so none can match.
+		it('lists no executions for the engine v2 filter, instead of the v1 executions', async () => {
+			expect(await service.listExecutionsForUI(query({ engine: 'v2' }))).toEqual(emptyPage);
+			expect(await service.findPageWithCount(query({ engine: 'v2' }), cursor)).toEqual(emptyPage);
+
+			expect(v1Service.findCurrentAndCompleted).not.toHaveBeenCalled();
+			expect(v1Service.findPageWithCount).not.toHaveBeenCalled();
+			expect(v2Service.findCurrentAndCompleted).not.toHaveBeenCalled();
+			expect(v2Service.findPageWithCount).not.toHaveBeenCalled();
+		});
+
+		it('lists the v1 executions for the engine v1 filter', async () => {
+			const v1Result = { results: [], nextCursor: null, count: 7, estimated: false };
+			v1Service.findCurrentAndCompleted.mockResolvedValue(v1Result);
+
+			const result = await service.listExecutionsForUI(query({ engine: 'v1' }));
+
+			expect(result).toBe(v1Result);
+			expect(v1Service.findCurrentAndCompleted).toHaveBeenCalledWith(
+				completedPageQuery({ engine: 'v1' }),
+			);
+		});
+	});
+
 	describe('listExecutionsForUI', () => {
 		it('prepends the current block on the first page of a status-less list', async () => {
 			await service.listExecutionsForUI(query());

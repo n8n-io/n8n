@@ -472,6 +472,57 @@ describe('useCanvasMapping — getNodeExecutionSnapshot', () => {
 		expect(snapshot.hasExecutionError).toBe(false);
 	});
 
+	describe('needsCredentialSetup', () => {
+		function mapWith({
+			validationErrors,
+			setupRequired,
+		}: {
+			validationErrors: string[];
+			setupRequired: boolean;
+		}) {
+			const node = createTestNode({ id: 'a', name: 'Alpha' }) as INodeUi;
+			const rd = createEmptyCanvasRenderData();
+			rd.validationErrorsByNodeId.set(
+				'a',
+				computed(() => validationErrors),
+			);
+			const isNodeSetupRequired = vi.fn(() => setupRequired);
+			const mapping = useCanvasMapping({
+				nodes: ref([node]),
+				connections: ref({}),
+				renderData: shallowRef(rd),
+				isNodeSetupRequired,
+			});
+			return { ...mapping, isNodeSetupRequired };
+		}
+
+		it('flags a node with validation errors that the host reports as setup required', () => {
+			const { getNodeExecutionSnapshot, nodes } = mapWith({
+				validationErrors: ['Credentials for Notion are not set.'],
+				setupRequired: true,
+			});
+			expect(getNodeExecutionSnapshot('a').needsCredentialSetup).toBe(true);
+			expect(nodes.value[0].data?.issues.setupRequired).toBe(true);
+		});
+
+		it('is false when the host does not report setup required', () => {
+			const { getNodeExecutionSnapshot } = mapWith({
+				validationErrors: ['Credentials for Notion are not set.'],
+				setupRequired: false,
+			});
+			expect(getNodeExecutionSnapshot('a').needsCredentialSetup).toBe(false);
+		});
+
+		it('skips the host check for a node without validation errors', () => {
+			const { getNodeExecutionSnapshot, isNodeSetupRequired } = mapWith({
+				validationErrors: [],
+				setupRequired: true,
+			});
+			expect(getNodeExecutionSnapshot('a').needsCredentialSetup).toBe(false);
+			expect(isNodeSetupRequired).not.toHaveBeenCalled();
+		});
+	});
+
 	it.each(['error', 'crashed'] as const)(
 		'flags hasExecutionError on %s status even without execution-issue text',
 		(status) => {
