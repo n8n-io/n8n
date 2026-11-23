@@ -538,6 +538,26 @@ describe('withOutlookMailbox', () => {
 		expect(outlook.calendars[0].account).toBe('person:me');
 	});
 
+	it('sets the kind of an event, and leaves other entities as they are', () => {
+		const thread = { ref: 'thread:a', kind: 'email_thread', at: '-1d' };
+		const out = withOutlookMailbox({
+			entities: [
+				{ ref: 'event:a', subject: 'Sync', at: '2026-11-25T10:00:00Z' },
+				thread,
+				{ ref: 'x' },
+			],
+		}) as { entities: Array<Record<string, unknown>> };
+
+		expect(out.entities[0]).toEqual({
+			ref: 'event:a',
+			subject: 'Sync',
+			at: '2026-11-25T10:00:00Z',
+			kind: 'calendar_event',
+		});
+		expect(out.entities[1]).toBe(thread);
+		expect(out.entities[2]).toEqual({ ref: 'x' });
+	});
+
 	it('overrides an account that the model wrote', () => {
 		const out = withOutlookMailbox({
 			native: { outlook: { messages: [{ ref: 'm', account: 'person:other' }] } },
@@ -575,5 +595,25 @@ describe('secrets', () => {
 			expect(line).not.toContain('body-secret');
 		}
 		expect(JSON.stringify(gym.callTool.mock.calls)).not.toContain(TOKEN);
+	});
+});
+
+describe('Outlook hydrateRead for calendars', () => {
+	const hydrate = OUTLOOK_PROFILE.hydrateRead!;
+	const read = { method: 'GET', path: '/v1.0/me/calendars' };
+
+	it('needs no copy when the list holds only the default calendar', () => {
+		expect(hydrate(read, { value: [{ name: 'Calendar', isDefaultCalendar: true }] })).toBe(false);
+	});
+
+	it('copies the list when the user made a calendar', () => {
+		expect(
+			hydrate(read, {
+				value: [
+					{ name: 'Calendar', isDefaultCalendar: true },
+					{ name: 'Travel', isDefaultCalendar: false },
+				],
+			}),
+		).toBe(true);
 	});
 });

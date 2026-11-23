@@ -31,6 +31,16 @@ export interface HttpVendorProfile {
 	) => Array<{ tool: string; args: Record<string, unknown> }>;
 	// False when a real read needs no copy in the gym.
 	hydrateRead?: (args: HttpToolArgs, real: unknown) => boolean;
+	// The gym warns about an unknown field when two vendors share an entity kind and each knows other
+	// fields (`calendar_event` of Google Calendar and Outlook). Names the paths of such warnings.
+	ignoreSeedWarning?: (path: string) => boolean;
+	// A read under an id that only the gym knows (a calendar, a folder) has no real twin by that id.
+	// This names the real read that holds the same data, so the gym gets a copy of it first.
+	// `ask` reads a path from the gym.
+	mirrorRead?: (
+		args: HttpToolArgs,
+		ask: (path: string) => Promise<unknown>,
+	) => Promise<HttpToolArgs | undefined>;
 	// True when a write names an object that the gym must get first. `gymIds` are the ids the gym made.
 	hydrateWrite?: (args: HttpToolArgs, gymIds: ReadonlySet<string>) => boolean;
 }
@@ -255,6 +265,27 @@ const OUTLOOK_PERSONA = 'person:me';
 // The gym placeholder account is the only mailbox that the credential of the tenant reads. Code sets
 // it, so that a message of a real address with no account in the gym has a mailbox.
 export function withOutlookMailbox(overlay: Record<string, unknown>): Record<string, unknown> {
+	return withEventKind(withOutlookMailboxNative(overlay));
+}
+
+// The kind of an event is no data of the real result, so the checks of the plan remove it. Code sets it.
+function withEventKind(overlay: Record<string, unknown>): Record<string, unknown> {
+	if (!Array.isArray(overlay.entities)) return overlay;
+	const isEvent = (entity: unknown): entity is Record<string, unknown> =>
+		isRecord(entity) &&
+		entity.kind === undefined &&
+		entity.at !== undefined &&
+		entity.messages === undefined;
+	if (!overlay.entities.some(isEvent)) return overlay;
+	return {
+		...overlay,
+		entities: overlay.entities.map((entity) =>
+			isEvent(entity) ? { ...entity, kind: 'calendar_event' } : entity,
+		),
+	};
+}
+
+function withOutlookMailboxNative(overlay: Record<string, unknown>): Record<string, unknown> {
 	const native = isRecord(overlay.native) ? overlay.native : undefined;
 	const outlook = native && isRecord(native.outlook) ? native.outlook : undefined;
 	if (!native || !outlook) return overlay;
@@ -320,6 +351,39 @@ const readOf = (base: string, id: string) => ({
 	args: { method: 'GET', path: `${base}/${encodeURIComponent(id)}` },
 });
 
+const GRAPH_CALENDAR_READ =
+	/^(\/v1\.0\/(?:me|users\/[^/]+))\/calendars\/[^/]+\/(events|calendarView)$/;
+const GRAPH_FOLDER_READ =
+	/^(\/v1\.0\/(?:me|users\/[^/]+))\/mailFolders\/([^/]+)\/(messages|childFolders)$/;
+
+// The names that Graph accepts in place of the id of a system folder.
+const WELL_KNOWN_FOLDER_NAMES: Readonly<Record<string, string>> = {
+	inbox: 'inbox',
+	drafts: 'drafts',
+	'sent items': 'sentitems',
+	'deleted items': 'deleteditems',
+	'junk email': 'junkemail',
+	archive: 'archive',
+};
+
+// The gym has one default calendar and the system folders. The agent sees their ids, which the real
+// service does not know. The real twin is the default calendar and the system folder of the same name.
+async function mirrorOutlookRead(
+	args: HttpToolArgs,
+	ask: (path: string) => Promise<unknown>,
+): Promise<HttpToolArgs | undefined> {
+	const calendar = GRAPH_CALENDAR_READ.exec(args.path);
+	if (calendar) return { ...args, path: `${calendar[1]}/${calendar[2]}` };
+	const folder = GRAPH_FOLDER_READ.exec(args.path);
+	if (!folder) return undefined;
+	const named = await ask(`${folder[1]}/mailFolders/${folder[2]}`).catch(() => undefined);
+	const name = isRecord(named) && typeof named.displayName === 'string' ? named.displayName : '';
+	const wellKnown = WELL_KNOWN_FOLDER_NAMES[name.toLowerCase()];
+	return wellKnown === undefined
+		? undefined
+		: { ...args, path: `${folder[1]}/mailFolders/${wellKnown}/${folder[3]}` };
+}
+
 export const OUTLOOK_PROFILE: HttpVendorProfile = {
 	name: 'outlook',
 	credentialKind: 'ms_oauth',
@@ -330,6 +394,10 @@ export const OUTLOOK_PROFILE: HttpVendorProfile = {
 	},
 	enrich: enrichOutlook,
 	finalize: withOutlookMailbox,
+	mirrorRead: mirrorOutlookRead,
+	// Google Calendar also claims `calendar_event` and does not know these fields of an Outlook event.
+	ignoreSeedWarning: (path) =>
+		/^\$\.entities\[\d+\]\.(?:subject|body|show_as|private|categories|responses)$/.test(path),
 	lookups: (tool, args) => {
 		// A list holds full messages, so a list needs no extra read. A write on an object needs that
 		// object in the gym.
@@ -346,6 +414,11 @@ export const OUTLOOK_PROFILE: HttpVendorProfile = {
 		return reads.slice(0, MAX_LOOKUPS);
 	},
 	hydrateRead: (args, real) => {
+		// The gym has a default calendar. Only a calendar that the user made needs a copy.
+		if (/\/calendars$/.test(args.path)) {
+			const calendars = isRecord(real) && Array.isArray(real.value) ? real.value : [];
+			return calendars.some((c) => isRecord(c) && c.isDefaultCalendar !== true);
+		}
 		// The gym has the system folders. Only a folder that the user made needs a copy.
 		if (/\/(?:mailFolders|childFolders)$/.test(args.path)) {
 			const folders = isRecord(real) && Array.isArray(real.value) ? real.value : [];

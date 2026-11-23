@@ -110,27 +110,52 @@ export class HttpGuardRouter {
 			.map(decodeSegment)
 			.some((segment) => looksLikeId(segment) && this.gymIds.has(segment));
 		this.log(args, gymOnly ? 'gym (an id of the gym)' : 'real read, then gym');
-		if (!gymOnly) {
+		// A read under an id of the gym can have a real twin without that id. Copy the real data first.
+		const mirror = gymOnly ? await this.mirror(args) : undefined;
+		if (!gymOnly || mirror) {
+			const real = mirror ?? { name, args };
 			try {
-				const real = await upstream.callTool(name, args);
-				if (real.isError)
-					this.warn(args, `real read failed with status ${String(real._meta?.status)}`);
+				const answer = await upstream.callTool(real.name, real.args);
+				if (answer.isError)
+					this.warn(real.args, `real read failed with status ${String(answer._meta?.status)}`);
 				// The node must see these failures. An expired token (401) makes the node refresh its credential.
 				// The others (a closed API, a denied scope, a service error) are no empty result.
-				if (isPassedBack(real._meta?.status)) return toResponse(real);
+				if (isPassedBack(answer._meta?.status)) return toResponse(answer);
 				// Any other failed real read (a 404 for an id that only the gym knows) leaves the gym to answer.
-				if (!real.isError && profile.hydrateRead?.(args, safeJson(textOf(real))) !== false) {
-					await hydrator.hydrate(name, args, real).catch(() => {
-						Container.get(Logger).warn(`mcp-guard http hydration failed for ${name}`);
+				if (
+					!answer.isError &&
+					profile.hydrateRead?.(real.args, safeJson(textOf(answer))) !== false
+				) {
+					await hydrator.hydrate(real.name, real.args, answer).catch(() => {
+						Container.get(Logger).warn(`mcp-guard http hydration failed for ${real.name}`);
 					});
 				}
 			} catch {
-				Container.get(Logger).warn(`mcp-guard http real read failed for ${name}`);
+				Container.get(Logger).warn(`mcp-guard http real read failed for ${real.name}`);
 			}
 		}
 		// A read of a vendor with real ids shows real ids. Only a write makes an id that the gym alone knows.
 		const res = await this.callGym(name, args, !profile.opaqueIds);
 		return res instanceof Response ? res : toResponse(res);
+	}
+
+	private async mirror(
+		args: HttpToolArgs,
+	): Promise<{ name: string; args: HttpToolArgs } | undefined> {
+		const { profile, gym } = this.deps;
+		if (!profile.mirrorRead) return undefined;
+		const ask = async (path: string): Promise<unknown> =>
+			safeJson(textOf(await gym.callTool('read_get_object', { method: 'GET', path })));
+		const twin = await profile.mirrorRead(args, ask).catch(() => undefined);
+		if (!twin) return undefined;
+		this.log(twin, 'real read, then gym (the real twin of an id of the gym)');
+		return {
+			name: toToolCall(
+				{ method: 'GET', url: new URL(twin.path, 'https://x'), body: undefined },
+				true,
+			).name,
+			args: twin,
+		};
 	}
 
 	// Method, host and path only. Never the query, the headers or the body.
