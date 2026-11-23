@@ -44,6 +44,22 @@ function nodeSelection(): AssistantMentionSelection {
 	};
 }
 
+function agentSelection(): AssistantMentionSelection {
+	return {
+		item: {
+			key: 'agent:a1',
+			kind: 'agent',
+			source: 'agents',
+			label: 'Support agent',
+			breadcrumbs: ['Support agent'],
+			entityId: 'a1',
+			projectId: 'project-1',
+		},
+		attachment: { type: 'agent', id: 'a1', name: 'Support agent', projectId: 'project-1' },
+		truncated: false,
+	};
+}
+
 function setup(options: { reservedAttachmentCount?: number } = {}) {
 	const scope = effectScope();
 	const files = ref<File[]>([]);
@@ -86,6 +102,30 @@ describe('useAssistantMentionAttachments', () => {
 		scope.stop();
 	});
 
+	it('stages a mentioned agent once, counts it, and drops it when its chip is removed', () => {
+		const { mentions, resources, onMentionRemoved, scope } = setup();
+
+		expect(mentions.select(agentSelection())).toEqual({ status: 'added', truncated: false });
+		expect(mentions.select(agentSelection())).toEqual({ status: 'duplicate', truncated: false });
+		expect(resources.value).toEqual([
+			{ type: 'agent', id: 'a1', name: 'Support agent', projectId: 'project-1' },
+		]);
+		expect(mentions.snapshotCounts()).toEqual({
+			total: 1,
+			workflow: 0,
+			node: 0,
+			group: 0,
+			agent: 1,
+		});
+		expect(mentions.snapshotMentionedWorkflowIds()).toEqual([]);
+
+		mentions.removeResource(0);
+
+		expect(resources.value).toEqual([]);
+		expect(onMentionRemoved).toHaveBeenCalledWith('agent');
+		scope.stop();
+	});
+
 	it('propagates the group truncation result', () => {
 		const { mentions, scope } = setup();
 		const selection = workflowSelection();
@@ -119,6 +159,7 @@ describe('useAssistantMentionAttachments', () => {
 			workflow: 1,
 			node: 1,
 			group: 0,
+			agent: 0,
 		});
 		// Both mentions point at the same workflow: one tab, listed once.
 		expect(mentions.snapshotMentionedWorkflowIds()).toEqual(['w1']);
@@ -160,7 +201,13 @@ describe('useAssistantMentionAttachments', () => {
 		restore();
 		restore();
 
-		expect(mentions.snapshotCounts()).toEqual({ total: 1, workflow: 1, node: 0, group: 0 });
+		expect(mentions.snapshotCounts()).toEqual({
+			total: 1,
+			workflow: 1,
+			node: 0,
+			group: 0,
+			agent: 0,
+		});
 		expect(mentions.select(nodeSelection())).toEqual({ status: 'added', truncated: false });
 		scope.stop();
 	});
@@ -173,7 +220,13 @@ describe('useAssistantMentionAttachments', () => {
 
 		mentions.detachSubmission(snapshot);
 
-		expect(mentions.snapshotCounts()).toEqual({ total: 1, workflow: 0, node: 1, group: 0 });
+		expect(mentions.snapshotCounts()).toEqual({
+			total: 1,
+			workflow: 0,
+			node: 1,
+			group: 0,
+			agent: 0,
+		});
 		scope.stop();
 	});
 

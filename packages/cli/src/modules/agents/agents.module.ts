@@ -8,12 +8,20 @@ import { InstanceSettings } from 'n8n-core';
 @BackendModule({ name: 'agents' })
 export class AgentsModule implements ModuleInterface {
 	async init() {
+		const { FolderContentService } = await import('@/services/folder-content.service.js');
+		const { AgentFolderService } = await import('./agent-folder.service.js');
+		Container.get(FolderContentService).register('agent', Container.get(AgentFolderService));
+
 		const { SandboxSettingsService } = await import('@/services/sandbox-settings.service.js');
 		Container.get(SandboxSettingsService).registerCredentialUses();
 
 		// The skills module starts before this module. Tell it which agents use skills.
 		const { registerSkillUsage } = await import('./register-skill-usage.js');
 		registerSkillUsage();
+
+		// Tell core which agent acts as a service account, so a user deletion keeps it.
+		const { registerServiceAccountUsage } = await import('./register-service-account-usage.js');
+		registerServiceAccountUsage();
 
 		// The knowledge module starts before this module. Hand it the sandbox its file mirror runs in.
 		const { registerKnowledgeSandboxProvider } = await import(
@@ -58,6 +66,11 @@ export class AgentsModule implements ModuleInterface {
 		const { registerUserDeletionHandler } = await import('./register-user-deletion-handler.js');
 		registerUserDeletionHandler();
 
+		// Share pickers show the project of each agent's service account.
+		const { ServiceAccountProjects } = await import('@/services/service-account-projects.js');
+		const { AgentServiceAccountService } = await import('./agent-service-account.service.js');
+		Container.get(ServiceAccountProjects).register(Container.get(AgentServiceAccountService));
+
 		// Register blob backends for agent execution logs.
 		// The fs backend is always available; s3/az reuse the clients base-command
 		// already initialized (initBinaryDataService runs before module init in
@@ -65,9 +78,7 @@ export class AgentsModule implements ModuleInterface {
 		// data backend cannot be reached — so a live process in s3/az mode always
 		// has that location registered here.
 		const { AgentExecutionLogStore } = await import('./execution-log/agent-execution-log-store.js');
-		const { ExecutionDataJsonStore } = await import(
-			'@/executions/execution-data/execution-data-json-store.js'
-		);
+		const { ExecutionDataJsonStore } = await import('@n8n/backend-services');
 		const { registerAgentBlobByteStores } = await import('./register-blob-byte-stores.js');
 		await registerAgentBlobByteStores({
 			executionDataJsonStore: Container.get(ExecutionDataJsonStore),
@@ -76,6 +87,11 @@ export class AgentsModule implements ModuleInterface {
 
 		const { registerFavoriteResolver } = await import('./register-favorite-resolver.js');
 		registerFavoriteResolver();
+
+		// Collaboration checks agent access on push messages through this lookup.
+		const { AgentProjectLookupProxy } = await import('@n8n/backend-services');
+		const { AgentRepository } = await import('./repositories/agent.repository.js');
+		Container.get(AgentProjectLookupProxy).registerProvider(Container.get(AgentRepository));
 
 		const { registerAgentUsageProvider } = await import('./register-agent-usage-provider.js');
 		registerAgentUsageProvider();

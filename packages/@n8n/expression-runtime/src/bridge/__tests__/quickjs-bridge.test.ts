@@ -2,12 +2,13 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { setFlagsFromString } from 'node:v8';
 import { runInNewContext } from 'node:vm';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { QuickJSContext } from 'quickjs-emscripten-core';
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { ExpressionEvaluator } from '../../evaluator/expression-evaluator';
-import { classifyExpressionError } from '../../evaluator/error-classification';
+import { classifyExpressionError, errorOriginOf } from '../../evaluator/error-classification';
 import type { BridgeConfig, RuntimeBridge } from '../../types';
-import { HostCallError, RuntimeRestartingError } from '../../types';
+import { HostCallError, MemoryLimitError, RuntimeRestartingError } from '../../types';
 import { QuickJsBridge } from '../quickjs-bridge';
 
 // Deep enough that V8 runs out of native stack inside the QuickJS WASM code
@@ -92,6 +93,15 @@ describe('QuickJsBridge after a host error in a guest call', () => {
 		expect(() => bridge.execute(OVERFLOW, deepData)).toThrow(NATIVE_OVERFLOW);
 	});
 
+	it('should return a string that contains NUL characters on a rebuilt runtime', async () => {
+		const bridge = await newBridge();
+		expect(() => bridge.execute(OVERFLOW, deepData)).toThrow(NATIVE_OVERFLOW);
+
+		await waitForReplacementModule();
+
+		expect(bridge.execute('return "x\\u0000y";', {})).toBe('x\0y');
+	});
+
 	it('should report that the engine restarts while the replacement module loads', async () => {
 		const bridge = await newBridge();
 		expect(() => bridge.execute(OVERFLOW, deepData)).toThrow(NATIVE_OVERFLOW);
@@ -174,6 +184,112 @@ describe('QuickJsBridge after a host error in a guest call', () => {
 		bridges.push(next);
 		expect(() => next.initializeSync()).toThrow(/not loaded yet/);
 		await waitForReplacementModule();
+		expect(bridge.execute('return 1 + 1;', {})).toBe(2);
+	});
+
+	it('should record a failed rebuild as the origin of its error', async () => {
+		const bridge = await newBridge();
+		expect(() => bridge.execute(OVERFLOW, deepData)).toThrow(NATIVE_OVERFLOW);
+		await waitForReplacementModule();
+		vi.spyOn(
+			bridge as unknown as { verifyProxySystem(): void },
+			'verifyProxySystem',
+		).mockImplementationOnce(() => {
+			throw new TypeError('rebuild failed');
+		});
+
+		let rebuildError: unknown;
+		try {
+			bridge.execute('return 1 + 1;', {});
+		} catch (error) {
+			rebuildError = error;
+		}
+
+		expect(errorOriginOf(rebuildError)).toEqual({ kind: 'rebuild', errorName: 'TypeError' });
+	});
+});
+
+describe('QuickJsBridge error origin', () => {
+	let bridge: QuickJsBridge;
+
+	beforeAll(async () => {
+		bridge = new QuickJsBridge({ timeout: 5000 });
+		await bridge.initialize();
+	});
+
+	afterAll(async () => {
+		await bridge.dispose();
+	});
+
+	const errorOf = (code: string, data: Record<string, unknown> = {}) => {
+		try {
+			bridge.execute(code, data);
+		} catch (error) {
+			return error;
+		}
+		throw new Error('expected the call to fail');
+	};
+
+	it('should keep the class of a guest error that the bridge replaces with a generic Error', () => {
+		const error = errorOf('return null.missing;');
+
+		expect(error).toMatchObject({ name: 'Error' });
+		expect(errorOriginOf(error)).toEqual({ kind: 'guest', errorName: 'TypeError' });
+	});
+
+	it('should tell an error that a host callback threw from a guest error', () => {
+		const data = {
+			$json: {
+				get broken() {
+					throw new RangeError('host failure');
+				},
+			},
+		};
+
+		expect(errorOriginOf(errorOf('return this.$json.broken;', data))).toEqual({
+			kind: 'host_callback',
+			errorName: 'RangeError',
+		});
+	});
+
+	it('should record a compile error', () => {
+		expect(errorOriginOf(errorOf('return );'))).toEqual({ kind: 'compile' });
+	});
+
+	it('should record a failed callback setup and keep its error', () => {
+		const vm = (bridge as unknown as { vm: { newFunction(): unknown } }).vm;
+		const setupError = new TypeError('setup failed');
+		vi.spyOn(vm, 'newFunction').mockImplementationOnce(() => {
+			throw setupError;
+		});
+
+		const error = errorOf('return 1;');
+
+		expect(error).toBe(setupError);
+		expect(errorOriginOf(error)).toEqual({ kind: 'callback_setup', errorName: 'TypeError' });
+	});
+
+	it('should record a failed callback cleanup and keep its error', () => {
+		const cleanupError = new RangeError('cleanup failed');
+		const internals = bridge as unknown as {
+			createCallbackHandles(resolver: unknown): Array<{ dispose(): void }>;
+		};
+		const createCallbackHandles = internals.createCallbackHandles.bind(bridge);
+		vi.spyOn(internals, 'createCallbackHandles').mockImplementationOnce((resolver) => {
+			const handles = createCallbackHandles(resolver);
+			const [first] = handles;
+			const dispose = first.dispose.bind(first);
+			first.dispose = () => {
+				dispose();
+				throw cleanupError;
+			};
+			return handles;
+		});
+
+		const error = errorOf('return 1;');
+
+		expect(error).toBe(cleanupError);
+		expect(errorOriginOf(error)).toEqual({ kind: 'callback_cleanup', errorName: 'RangeError' });
 		expect(bridge.execute('return 1 + 1;', {})).toBe(2);
 	});
 });
@@ -366,6 +482,124 @@ describe('ExpressionEvaluator on QuickJS after native stack overflows', () => {
 			await evaluator.release(execution);
 		} finally {
 			await evaluator.dispose();
+		}
+	});
+});
+
+describe('QuickJsBridge string transfer', () => {
+	let bridge: QuickJsBridge;
+
+	beforeAll(async () => {
+		bridge = new QuickJsBridge({ timeout: 5000 });
+		await bridge.initialize();
+	});
+
+	afterAll(async () => {
+		await bridge.dispose();
+	});
+
+	it('should return a string that contains NUL characters', () => {
+		expect(bridge.execute('return "x\\u0000y\\u0000";', {})).toBe('x\0y\0');
+	});
+
+	it('should read a data string that contains NUL characters', () => {
+		const data = { $json: { s: '\0x\0y' } };
+
+		expect(bridge.execute('return this.$json.s.length;', data)).toBe(4);
+		expect(bridge.execute('return this.$json.s;', data)).toBe('\0x\0y');
+	});
+
+	it('should read a data string that contains a lone surrogate', () => {
+		const codeUnitsOf = (s: string) =>
+			bridge.execute(
+				'return Array.from({ length: this.$json.s.length }, (_, i) => this.$json.s.charCodeAt(i));',
+				{ $json: { s } },
+			);
+
+		expect(codeUnitsOf('\ud800x')).toEqual([0xd800, 0x78]);
+		expect(codeUnitsOf('x\udc00')).toEqual([0x78, 0xdc00]);
+		expect(codeUnitsOf('\udc00\ud800')).toEqual([0xdc00, 0xd800]);
+		expect(codeUnitsOf('x\ud800\ud800y')).toEqual([0x78, 0xd800, 0xd800, 0x79]);
+		expect(codeUnitsOf('😀')).toEqual([0xd83d, 0xde00]);
+	});
+
+	it('should pass strings that contain NUL characters to Intl', () => {
+		expect(
+			bridge.execute('return new Intl.Collator("en").compare("\\u0000a", "\\u0000b");', {}),
+		).toBe(-1);
+	});
+
+	it('should pass Date arguments to Intl', () => {
+		expect(
+			bridge.execute(
+				'return new Intl.Collator("en").compare(new Date(0), new Date(5 * 86400000));',
+				{},
+			),
+		).toBe(-1);
+	});
+
+	it('should return a lone surrogate followed by a NUL character unchanged', () => {
+		expect(bridge.execute('return "\\ud800\\u0000x";', {})).toBe('\ud800\0x');
+	});
+
+	it('should report the memory limit during a string read and keep the engine running', async () => {
+		const small = new QuickJsBridge({ timeout: 5000, memoryLimit: 32 });
+		await small.initialize();
+		try {
+			expect(() => small.execute('return "\\u0000".repeat(8_000_000);', {})).toThrow(
+				MemoryLimitError,
+			);
+			expect(small.execute('return 1 + 1;', {})).toBe(2);
+		} finally {
+			await small.dispose();
+		}
+	});
+
+	it('should report the memory limit during a string read for Intl in a template expression', async () => {
+		const evaluator = new ExpressionEvaluator({
+			createBridge: () => new QuickJsBridge({ timeout: 5000, memoryLimit: 32 }),
+			maxCodeCacheSize: 16,
+			poolSize: 1,
+		});
+		await evaluator.initialize();
+		const execution = {};
+		await evaluator.acquire(execution);
+		try {
+			const expression = '{{ new Intl.Collator("en").compare("\\u0000".repeat(8_000_000), "a") }}';
+			expect(() => evaluator.evaluate(expression, {}, execution)).toThrow(MemoryLimitError);
+			expect(evaluator.evaluate('{{ 1 + 1 }}', {}, execution)).toBe(2);
+		} finally {
+			await evaluator.release(execution);
+			await evaluator.dispose();
+		}
+	});
+
+	it('should return a lone surrogate unchanged', () => {
+		expect(bridge.execute('return "\\ud83d\\ude00"[0];', {})).toBe('\ud83d');
+	});
+
+	it('should return a string with NUL characters when an expression adds toJSON hooks', async () => {
+		const hooked = new QuickJsBridge({ timeout: 5000 });
+		await hooked.initialize();
+		try {
+			const code = `
+				Array.prototype.toJSON = function () { return ['changed']; };
+				String.prototype.toJSON = function () { return 'changed'; };
+				return "x\\u0000y";
+			`;
+			expect(hooked.execute(code, {})).toBe('x\0y');
+		} finally {
+			await hooked.dispose();
+		}
+	});
+
+	it('should read a string without NUL characters in one dump', () => {
+		const callFunction = vi.spyOn(QuickJSContext.prototype, 'callFunction');
+		try {
+			expect(bridge.execute('return "abc";', {})).toBe('abc');
+			expect(callFunction).toHaveBeenCalledTimes(1);
+		} finally {
+			callFunction.mockRestore();
 		}
 	});
 });

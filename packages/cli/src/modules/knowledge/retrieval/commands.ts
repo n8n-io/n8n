@@ -2,20 +2,20 @@ import { redactText } from '@n8n/utils/redaction/redact-text';
 import { Buffer } from 'node:buffer';
 import { z } from 'zod';
 
-import { assertKnowledgePathSegment, type KnowledgePaths } from '../files/storage-naming';
+import { assertKnowledgePathSegment, type KnowledgeMirrorPaths } from '../files/storage-naming';
 import {
 	DEFAULT_SEARCH_TEXT_LIMIT,
 	MAX_OPERATION_OUTPUT_CHARS,
 	MAX_READ_LINE_CHARS,
 	MAX_SEARCH_LINE_CHARS,
 	truncateKnowledgeText,
-	type SearchKnowledgeCount,
-	type SearchKnowledgeContextLine,
-	type AgentKnowledgeFileReference,
-	type ReadKnowledgeRangeResult,
-	type ReadKnowledgeRequest,
-	type SearchKnowledgeMatch,
-	type SearchKnowledgeRequest,
+	type SearchKnowledgeTextCount,
+	type SearchKnowledgeTextContextLine,
+	type KnowledgeFileReference,
+	type ReadKnowledgeFileRangeResult,
+	type ReadKnowledgeFileRequest,
+	type SearchKnowledgeTextMatch,
+	type SearchKnowledgeTextRequest,
 } from './retrieval-schemas';
 
 const COMMAND_TIMEOUT_SECONDS = 20;
@@ -26,7 +26,7 @@ const SEARCH_JSON_EVENT_OVERHEAD_CHARS = 1_500;
 const MAX_SEARCH_OPERATION_OUTPUT_CHARS = 500_000;
 export const KNOWLEDGE_FILES_DIR_UNAVAILABLE_EXIT_CODE = 3;
 
-interface ParsedRipgrepContentLine extends SearchKnowledgeContextLine {
+interface ParsedRipgrepContentLine extends SearchKnowledgeTextContextLine {
 	filePath: string;
 }
 
@@ -66,8 +66,8 @@ type RipgrepJsonEvent = z.infer<typeof ripgrepJsonEventSchema>;
 type RipgrepContentEvent = Extract<RipgrepJsonEvent, { type: 'match' | 'context' }>;
 type RipgrepEncodedText = z.infer<typeof ripgrepEncodedTextSchema>;
 
-export function buildSearchKnowledgeCommand(
-	request: SearchKnowledgeRequest,
+export function buildSearchKnowledgeTextCommand(
+	request: SearchKnowledgeTextRequest,
 	scopedFiles: string[],
 ): string {
 	const outputMode = request.output_mode ?? 'content';
@@ -131,7 +131,7 @@ export function buildSearchKnowledgeCommand(
 }
 
 export function estimateSearchOutputLimit(
-	request: Pick<SearchKnowledgeRequest, '-C'>,
+	request: Pick<SearchKnowledgeTextRequest, '-C'>,
 	matchLimit: number,
 ): number {
 	const contextWindow = getSearchContextWindow(request);
@@ -145,7 +145,7 @@ export function estimateSearchOutputLimit(
 }
 
 export function getSearchContextWindow(
-	request: Pick<SearchKnowledgeRequest, '-C'>,
+	request: Pick<SearchKnowledgeTextRequest, '-C'>,
 ): SearchContextWindow {
 	const symmetricContext = request['-C'] ?? 0;
 	return {
@@ -154,7 +154,10 @@ export function getSearchContextWindow(
 	};
 }
 
-export function buildReadKnowledgeCommand(file: string, request: ReadKnowledgeRequest): string {
+export function buildReadKnowledgeFileCommand(
+	file: string,
+	request: ReadKnowledgeFileRequest,
+): string {
 	const emitLineScript = [
 		'function emit(i) {',
 		// Emit complete lines so TypeScript can redact secrets before applying
@@ -185,12 +188,12 @@ export function buildReadKnowledgeCommand(file: string, request: ReadKnowledgeRe
 	return `awk ${quoteShellArg(script)} ${quoteShellArg(`./${file}`)}`;
 }
 
-export function parseRipgrepOutput(
+export function parseRipgrepContentOutput(
 	output: string,
-	filesByPath: Map<string, AgentKnowledgeFileReference>,
+	filesByPath: Map<string, KnowledgeFileReference>,
 	contextWindow: SearchContextWindow = { before: 0, after: 0 },
-): { matches: SearchKnowledgeMatch[]; incomplete: boolean } {
-	const matches: SearchKnowledgeMatch[] = [];
+): { matches: SearchKnowledgeTextMatch[]; incomplete: boolean } {
+	const matches: SearchKnowledgeTextMatch[] = [];
 	const contextByFile = new Map<string, Map<number, SearchContextSourceLine>>();
 	let incomplete = false;
 
@@ -257,9 +260,9 @@ export function parseRipgrepOutput(
 
 export function parseRipgrepFilesOutput(
 	output: string,
-	filesByPath: Map<string, AgentKnowledgeFileReference>,
-): { files: AgentKnowledgeFileReference[]; incomplete: boolean } {
-	const files: AgentKnowledgeFileReference[] = [];
+	filesByPath: Map<string, KnowledgeFileReference>,
+): { files: KnowledgeFileReference[]; incomplete: boolean } {
+	const files: KnowledgeFileReference[] = [];
 	const seenFiles = new Set<string>();
 	let incomplete = false;
 
@@ -282,9 +285,9 @@ export function parseRipgrepFilesOutput(
 
 export function parseRipgrepCountOutput(
 	output: string,
-	filesByPath: Map<string, AgentKnowledgeFileReference>,
-): { counts: SearchKnowledgeCount[]; incomplete: boolean } {
-	const counts: SearchKnowledgeCount[] = [];
+	filesByPath: Map<string, KnowledgeFileReference>,
+): { counts: SearchKnowledgeTextCount[]; incomplete: boolean } {
+	const counts: SearchKnowledgeTextCount[] = [];
 	let incomplete = false;
 
 	for (const line of output.split(/\r?\n/)) {
@@ -324,14 +327,14 @@ export function parseRipgrepCountOutput(
 	return { counts, incomplete };
 }
 
-export function parseReadKnowledgeOutput(
+export function parseReadKnowledgeFileOutput(
 	output: string,
-	file: AgentKnowledgeFileReference,
-	request: ReadKnowledgeRequest,
-): { ranges: ReadKnowledgeRangeResult[]; truncated: boolean } {
+	file: KnowledgeFileReference,
+	request: ReadKnowledgeFileRequest,
+): { ranges: ReadKnowledgeFileRangeResult[]; truncated: boolean } {
 	const isWholeFileRead = !request.ranges;
 	const requestedRanges = request.ranges ?? [{ startLine: 1, endLine: 0 }];
-	const ranges = requestedRanges.map<ReadKnowledgeRangeResult>((range) => ({
+	const ranges = requestedRanges.map<ReadKnowledgeFileRangeResult>((range) => ({
 		startLine: range.startLine,
 		endLine: range.endLine,
 		text: '',
@@ -387,10 +390,10 @@ function buildSearchMatchContext(
 	linesByNumber: Map<number, SearchContextSourceLine> | undefined,
 	matchLineNumber: number,
 	contextWindow: SearchContextWindow,
-): SearchKnowledgeContextLine[] {
+): SearchKnowledgeTextContextLine[] {
 	if (!linesByNumber) return [];
 
-	const context: SearchKnowledgeContextLine[] = [];
+	const context: SearchKnowledgeTextContextLine[] = [];
 	const startLine = Math.max(1, matchLineNumber - contextWindow.before);
 	const endLine = matchLineNumber + contextWindow.after;
 	for (let lineNumber = startLine; lineNumber <= endLine; lineNumber++) {
@@ -409,7 +412,7 @@ function hasSearchContext(contextWindow: SearchContextWindow): boolean {
 	return contextWindow.before > 0 || contextWindow.after > 0;
 }
 
-function buildSearchContextArgs(request: Pick<SearchKnowledgeRequest, '-C'>): string[] {
+function buildSearchContextArgs(request: Pick<SearchKnowledgeTextRequest, '-C'>): string[] {
 	const contextLines = request['-C'] ?? 0;
 	return contextLines > 0 ? ['--context', String(contextLines)] : [];
 }
@@ -540,7 +543,10 @@ function buildAwkPipeline(command: string, script: string): string {
 	].join('; ');
 }
 
-export function buildScopedKnowledgeShellCommand(command: string, paths: KnowledgePaths): string {
+export function buildScopedKnowledgeShellCommand(
+	command: string,
+	paths: KnowledgeMirrorPaths,
+): string {
 	const scopedCommand = [
 		`[ -d ${quoteShellArg(paths.filesDir)} ] || exit ${KNOWLEDGE_FILES_DIR_UNAVAILABLE_EXIT_CODE}`,
 		`cd ${quoteShellArg(paths.filesDir)} || exit ${KNOWLEDGE_FILES_DIR_UNAVAILABLE_EXIT_CODE}`,
@@ -558,8 +564,8 @@ export function buildScopedKnowledgeShellCommand(command: string, paths: Knowled
 export function buildMirrorFinalizeCommand(
 	toCopy: string[],
 	toDelete: string[],
-	manifestFiles: Array<Pick<AgentKnowledgeFileReference, 'file' | 'fileId'>>,
-	paths: KnowledgePaths,
+	manifestFiles: Array<Pick<KnowledgeFileReference, 'file' | 'fileId'>>,
+	paths: KnowledgeMirrorPaths,
 	stagingId: string,
 ): string {
 	for (const name of [...toCopy, ...toDelete, ...manifestFiles.map((file) => file.file)]) {
@@ -584,10 +590,10 @@ export function buildMirrorFinalizeCommand(
 		manifestFiles.length > 0
 			? `${manifestFiles.map(({ file, fileId }) => `${fileId}\t${file}`).join('\n')}\n`
 			: '';
-	const stagedManifest = `${paths.manifest}.${stagingId}.tmp`;
+	const stagedManifest = `${paths.manifestPath}.${stagingId}.tmp`;
 	commands.push(
 		`printf '%s' ${quoteShellArg(manifestBody)} > ${stagedManifest}`,
-		`mv ${stagedManifest} ${paths.manifest}`,
+		`mv ${stagedManifest} ${paths.manifestPath}`,
 	);
 
 	return `timeout ${MIRROR_SYNC_TIMEOUT_SECONDS} bash -o pipefail -c ${quoteShellArg(commands.join(' && '))}`;

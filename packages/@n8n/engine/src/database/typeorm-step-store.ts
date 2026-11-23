@@ -1,17 +1,20 @@
-import { In, type Repository } from '@n8n/typeorm';
+import { In, LessThanOrEqual, type EntityManager, type Repository } from '@n8n/typeorm';
 
 import { WorkflowStepExecution } from './entities';
 import { generateId } from './generate-id';
 import { UnexpectedError } from '../common';
 import {
 	SETTLED_STEP_STATUSES,
+	isLiveExecutionStatus,
 	stepKeyId,
+	type ExecutionStatus,
 	type ResumeCause,
 	type WaitDeclaration,
 	type StepError,
 	type StepKey,
 	type StepKeyId,
 	type StepSlots,
+	type StepOutputSources,
 	type StepStatus,
 } from '../execution/execution.types';
 import { DEFAULT_STALENESS_THRESHOLDS, type StalenessThresholds } from '../execution/staleness';
@@ -19,6 +22,8 @@ import {
 	StepNotFoundError,
 	type DueStep,
 	type NewStepRecord,
+	type StaleQueuedStep,
+	type StaleRunningStep,
 	type StepRecord,
 	type StepStore,
 	type StepSummary,
@@ -194,23 +199,56 @@ export class TypeOrmStepStore implements StepStore {
 				iteration: row.iteration,
 				status: 'running',
 				outputs: null,
+				outputSources: null,
 				waitDeclaration: row.wait_declaration,
 				resumeCause: row.resume_cause,
 			};
 		});
 	}
 
-	async completeStep(id: string, outputs: StepSlots): Promise<boolean> {
-		return await this.transition(id, 'running', 'completed', { outputs });
+	async completeStep(
+		id: string,
+		outputs: StepSlots,
+		outputSources: StepOutputSources | null,
+	): Promise<boolean> {
+		return await this.transition(id, 'running', 'completed', { outputs, outputSources });
 	}
 
 	async suspendStep(id: string, waitDeclaration: WaitDeclaration): Promise<boolean> {
 		// `wait_till` is derived from the declaration in the same statement that
 		// writes it, so the column the sweep reads can never disagree with the
 		// declaration it fires.
-		return await this.transition(id, 'running', 'waiting', {
-			waitDeclaration,
-			waitTill: waitDeclaration.resumeAt === undefined ? null : new Date(waitDeclaration.resumeAt),
+		//
+		// The execution-row lock orders the suspension with the write that ends
+		// the execution. A wait that lands first is cancelled by
+		// `cancelPendingSteps`, which runs after the end. A wait that comes after
+		// the end cancels the step here, because nothing resumes a wait in an
+		// ended execution.
+		return await this.repo.manager.transaction(async (manager) => {
+			const [execution] = await manager.query<Array<{ status: ExecutionStatus }>>(
+				`SELECT status FROM workflow_execution
+				 WHERE id = (SELECT execution_id FROM workflow_step_execution WHERE id = $1)
+				 FOR SHARE`,
+				[id],
+			);
+			if (!execution) return false;
+
+			if (!isLiveExecutionStatus(execution.status)) {
+				await this.transition(id, 'running', 'cancelled', {}, manager);
+				return false;
+			}
+
+			return await this.transition(
+				id,
+				'running',
+				'waiting',
+				{
+					waitDeclaration,
+					waitTill:
+						waitDeclaration.resumeAt === undefined ? null : new Date(waitDeclaration.resumeAt),
+				},
+				manager,
+			);
 		});
 	}
 
@@ -268,6 +306,44 @@ export class TypeOrmStepStore implements StepStore {
 		return row?.next ?? null;
 	}
 
+	async findStaleQueuedSteps(at: Date, limit: number): Promise<StaleQueuedStep[]> {
+		// Served by the partial index on `status` and `stale_after`.
+		const rows = await this.repo
+			.createQueryBuilder('step')
+			.select(['step.id', 'step.executionId', 'step.staleAfter'])
+			.where("step.status = 'queued'")
+			.andWhere('step.staleAfter <= :at', { at })
+			.orderBy('step.staleAfter', 'ASC')
+			.limit(limit)
+			.getMany();
+		return rows.flatMap(({ id, executionId, staleAfter }) =>
+			staleAfter ? [{ id, executionId, staleAfter }] : [],
+		);
+	}
+
+	async renewQueuedStep(id: string, staleAfter: Date): Promise<boolean> {
+		const result = await this.repo.update(
+			{ id, status: 'queued', staleAfter },
+			{ staleAfter: this.staleAfterFor('queued') },
+		);
+		return result.affected === 1;
+	}
+
+	async findStaleRunningSteps(at: Date, limit: number): Promise<StaleRunningStep[]> {
+		// Served by the partial index on `status` and `stale_after`.
+		const rows = await this.repo.find({
+			select: { id: true, staleAfter: true },
+			where: { status: 'running', staleAfter: LessThanOrEqual(at) },
+			order: { staleAfter: 'ASC' },
+			take: limit,
+		});
+		return rows.flatMap(({ id, staleAfter }) => (staleAfter ? [{ id, staleAfter }] : []));
+	}
+
+	async failStaleRunningStep(id: string, staleAfter: Date, error: StepError): Promise<boolean> {
+		return await this.failStepFrom('running', id, error, staleAfter);
+	}
+
 	async cancelPendingSteps(executionId: string): Promise<void> {
 		await this.repo.update(
 			{ executionId, status: In(['queued', 'waiting'] satisfies StepStatus[]) },
@@ -287,7 +363,13 @@ export class TypeOrmStepStore implements StepStore {
 		return await this.failStepFrom('waiting', id, error);
 	}
 
-	private async failStepFrom(from: StepStatus, id: string, error: StepError): Promise<boolean> {
+	/** `observedStaleAfter` adds a test on the `stale_after` value that the caller read. */
+	private async failStepFrom(
+		from: StepStatus,
+		id: string,
+		error: StepError,
+		observedStaleAfter?: Date,
+	): Promise<boolean> {
 		// Locking the execution row makes concurrent claims and planning inserts
 		// wait for this failure to commit (see `claimStep` and `createSteps`).
 		// NO KEY UPDATE, not UPDATE, so plain FK checks don't queue behind it.
@@ -300,7 +382,7 @@ export class TypeOrmStepStore implements StepStore {
 			);
 			const result = await manager.update(
 				WorkflowStepExecution,
-				{ id, status: from },
+				{ id, status: from, ...(observedStaleAfter ? { staleAfter: observedStaleAfter } : {}) },
 				{ error, status: 'failed', staleAfter: null },
 			);
 			return result.affected === 1;
@@ -318,13 +400,16 @@ export class TypeOrmStepStore implements StepStore {
 		to: StepStatus,
 		fields: {
 			outputs?: StepSlots;
+			outputSources?: StepOutputSources | null;
 			error?: StepError;
 			waitDeclaration?: WaitDeclaration;
 			waitTill?: Date | null;
 			resumeCause?: ResumeCause;
 		} = {},
+		manager: EntityManager = this.repo.manager,
 	): Promise<boolean> {
-		const result = await this.repo.update(
+		const result = await manager.update(
+			WorkflowStepExecution,
 			{ id, status: from },
 			{ ...fields, status: to, staleAfter: this.staleAfterFor(to) },
 		);

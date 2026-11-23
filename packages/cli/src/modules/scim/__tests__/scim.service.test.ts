@@ -6,8 +6,7 @@ import { GLOBAL_MEMBER_ROLE } from '@n8n/db';
 import type { Person, PersonRepository, Role, UserRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import type { EventService } from '@n8n/backend-services';
-import type { PasswordUtility } from '@/services/password.utility';
+import type { EventService, PasswordUtility } from '@n8n/backend-services';
 import type { UrlService } from '@n8n/backend-services';
 
 import {
@@ -353,6 +352,7 @@ describe('ScimService', () => {
 				user: createdUser,
 				userType: 'saml',
 				wasDisabledLdapUser: false,
+				source: 'scim',
 			});
 		});
 
@@ -421,6 +421,7 @@ describe('ScimService', () => {
 			expect(eventService.emit).toHaveBeenCalledWith('user-updated', {
 				user,
 				fieldsChanged: ['disabled'],
+				source: 'scim',
 			});
 		});
 
@@ -574,6 +575,7 @@ describe('ScimService', () => {
 			expect(eventService.emit).toHaveBeenCalledWith('user-updated', {
 				user,
 				fieldsChanged: ['firstName'],
+				source: 'scim',
 			});
 		});
 	});
@@ -602,6 +604,7 @@ describe('ScimService', () => {
 			expect(eventService.emit).toHaveBeenCalledWith('user-updated', {
 				user,
 				fieldsChanged: expect.arrayContaining(['email', 'firstName', 'lastName', 'disabled']),
+				source: 'scim',
 			});
 		});
 
@@ -616,6 +619,7 @@ describe('ScimService', () => {
 			expect(eventService.emit).toHaveBeenCalledWith('user-updated', {
 				user,
 				fieldsChanged: expect.not.arrayContaining(['disabled']),
+				source: 'scim',
 			});
 		});
 
@@ -774,6 +778,7 @@ describe('ScimService', () => {
 			expect(eventService.emit).toHaveBeenCalledWith('user-updated', {
 				user,
 				fieldsChanged: ['disabled'],
+				source: 'scim',
 			});
 		});
 

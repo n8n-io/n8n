@@ -113,6 +113,7 @@ test.describe(
 			});
 
 			test('should show the blocked node as restricted and keep the workflow editable', async ({
+				api,
 				n8n,
 			}) => {
 				await n8n.start.fromExistingWorkflow(workflow.id);
@@ -123,10 +124,13 @@ test.describe(
 				await expect(n8n.ndv.getRestrictedNodePanel()).toBeVisible();
 				await n8n.ndv.close();
 
-				const saved = n8n.canvas.waitForSaveWorkflowCompleted();
 				await n8n.canvas.addNode('Code', { action: 'Code in JavaScript', closeNDV: true });
 
-				expect((await saved).status()).toBe(200);
+				// Autosave fires after a debounce, so no single click owns the save request. Read
+				// the stored workflow instead of racing a one-shot response wait.
+				await expect
+					.poll(async () => (await api.workflows.getWorkflow(workflow.id)).nodes.map((n) => n.type))
+					.toEqual(expect.arrayContaining([NO_OP.type, 'n8n-nodes-base.code']));
 			});
 		});
 

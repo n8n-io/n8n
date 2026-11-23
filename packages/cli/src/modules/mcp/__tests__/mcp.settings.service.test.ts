@@ -8,6 +8,7 @@ import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { CollaborationService } from '@/collaboration/collaboration.service';
+import type { License } from '@/license';
 import { BadRequestError } from '@n8n/errors';
 import type { CacheService } from '@n8n/backend-services';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -19,12 +20,14 @@ describe('McpSettingsService', () => {
 	let service: McpSettingsService;
 	let findByKey: Mock<(...args: [string]) => Promise<Settings | null>>;
 	let upsert: Mock;
+	let upsertByKey: Mock;
 	let settingsRepository: SettingsRepository;
 	const cacheService = mock<CacheService>();
 	const workflowRepository = mock<WorkflowRepository>();
 	const workflowFinderService = mock<WorkflowFinderService>();
 	const logger = mock<Logger>();
 	const collaborationService = mock<CollaborationService>();
+	const license = mock<License>();
 	const globalConfig = {
 		executions: { timeout: -1 },
 	} as unknown as GlobalConfig;
@@ -33,7 +36,8 @@ describe('McpSettingsService', () => {
 		vi.clearAllMocks();
 		findByKey = vi.fn<(...args: [string]) => Promise<Settings | null>>();
 		upsert = vi.fn();
-		settingsRepository = { findByKey, upsert } as unknown as SettingsRepository;
+		upsertByKey = vi.fn();
+		settingsRepository = { findByKey, upsert, upsertByKey } as unknown as SettingsRepository;
 		collaborationService.filterOpenWorkflowIds.mockImplementation(
 			async (workflowIds) => workflowIds,
 		);
@@ -49,7 +53,45 @@ describe('McpSettingsService', () => {
 			globalConfig,
 			logger,
 			collaborationService,
+			license,
 		);
+	});
+
+	describe('preferences switch', () => {
+		const key = 'mcp.preferences.enabled';
+
+		test.each([
+			{ isEnterprisePlan: true, expected: false },
+			{ isEnterprisePlan: false, expected: true },
+		])(
+			'returns $expected when nothing is saved and isEnterprisePlan is $isEnterprisePlan',
+			async ({ isEnterprisePlan, expected }) => {
+				findByKey.mockResolvedValue(null);
+				license.isEnterprisePlan.mockReturnValue(isEnterprisePlan);
+
+				await expect(service.getPreferencesEnabled()).resolves.toBe(expected);
+				expect(findByKey).toHaveBeenCalledWith(key);
+			},
+		);
+
+		test.each([
+			{ value: 'true', isEnterprisePlan: true },
+			{ value: 'false', isEnterprisePlan: false },
+		])(
+			'returns the saved value "$value" when isEnterprisePlan is $isEnterprisePlan',
+			async ({ value, isEnterprisePlan }) => {
+				findByKey.mockResolvedValue(mock<Settings>({ key, value }));
+				license.isEnterprisePlan.mockReturnValue(isEnterprisePlan);
+
+				await expect(service.getPreferencesEnabled()).resolves.toBe(value === 'true');
+			},
+		);
+
+		test('saves the value', async () => {
+			await service.setPreferencesEnabled(false);
+
+			expect(upsertByKey).toHaveBeenCalledWith(key, 'false', true, {});
+		});
 	});
 
 	describe('getEnabled', () => {

@@ -123,6 +123,8 @@ interface TurnSession {
 	/** The session that the turn runs in. A task-session binding can redirect it. */
 	memory: { threadId: InternalThread; resourceId: string };
 	sessionMode: AgentSessionMode;
+	/** Task messages this recipient has not answered yet. The turn carries them, then they clear. */
+	priorOutboundMessages?: string[];
 }
 
 /**
@@ -147,8 +149,14 @@ interface InboundOptions {
 function buildModelMessage(
 	labelledText: string,
 	bridgeExecutionContext: BridgeExecutionContext,
+	priorOutboundMessages: string[] = [],
 ): string {
 	const modelContext: string[] = [];
+	if (priorOutboundMessages.length > 0) {
+		modelContext.push(
+			`A task sent this user the following message(s) before they replied:\n${priorOutboundMessages.join('\n---\n')}`,
+		);
+	}
 	if (bridgeExecutionContext.historyContext) {
 		modelContext.push(bridgeExecutionContext.historyContext);
 	}
@@ -294,7 +302,9 @@ export class AgentChatBridge {
 			postErrorToThread: this.postErrorToThread.bind(this),
 			handleSuspension: this.handleSuspension.bind(this),
 			handleMessage: this.handleMessage.bind(this),
-			isIntegrationActionTool: (toolName) => actionToolNamePattern.test(toolName),
+			isIntegrationActionTool: (toolName) =>
+				actionToolNamePattern.test(toolName) ||
+				(this.integrationImpl?.conversationTools.some((name) => name === toolName) ?? false),
 			postReplyFiles: async (thread, { fileIds, caption, agentThreadId, onPosted }) =>
 				await Container.get(AgentOutboundFiles).postReplyFiles(thread, integration.type, {
 					fileIds,
@@ -989,23 +999,47 @@ export class AgentChatBridge {
 		// currently active.
 		// A failed-send report goes to the session that sent the message, which
 		// is not always the one the thread is bound to.
-		const sessionOrigin =
-			(await this.resolveFailedSendOrigin(thread, message)) ??
-			(await this.messageContextBridge.resolveSession(this.baseThreadId(thread)));
-		if (sessionOrigin) {
+		const failedSendOrigin = await this.resolveFailedSendOrigin(thread, message);
+		if (failedSendOrigin) {
 			return {
 				activeThreadId,
 				memory: {
-					threadId: toInternalThreadId(sessionOrigin.threadId),
-					resourceId: sessionOrigin.resourceId,
+					threadId: toInternalThreadId(failedSendOrigin.threadId),
+					resourceId: failedSendOrigin.resourceId,
 				},
 				sessionMode: 'existing',
+			};
+		}
+		const replyScope = await this.messageContextBridge.resolveSessionReplyScope(
+			this.baseThreadId(thread),
+		);
+		// A task that messaged several recipients keeps one memory for all of them.
+		// A reply then runs in its own session, so it cannot see what the task sent
+		// to the others. Only the messages sent to this recipient are carried over.
+		if (replyScope && !replyScope.sharedWithOtherRecipients) {
+			return {
+				activeThreadId,
+				memory: {
+					threadId: toInternalThreadId(replyScope.binding.threadId),
+					resourceId: replyScope.binding.resourceId,
+				},
+				sessionMode: 'existing',
+				priorOutboundMessages: replyScope.outboundMessages,
+			};
+		}
+		const sessionMode = (await this.agentService.getSessionMode?.(activeThreadId.id)) ?? 'new';
+		if (replyScope) {
+			return {
+				activeThreadId,
+				memory: { threadId: activeThreadId, resourceId },
+				sessionMode,
+				priorOutboundMessages: replyScope.outboundMessages,
 			};
 		}
 		return {
 			activeThreadId,
 			memory: { threadId: activeThreadId, resourceId },
-			sessionMode: (await this.agentService.getSessionMode?.(activeThreadId.id)) ?? 'new',
+			sessionMode,
 		};
 	}
 
@@ -1092,6 +1126,7 @@ export class AgentChatBridge {
 					modelMessage: buildModelMessage(
 						`[${author.name} (${author.id})]: ${textWithNotes}`,
 						context,
+						session.priorOutboundMessages,
 					),
 					author,
 					integrationOrigin,
@@ -1111,6 +1146,12 @@ export class AgentChatBridge {
 				},
 			});
 			accepted = result.status === 'accepted';
+			if (accepted && session.priorOutboundMessages?.length) {
+				await this.messageContextBridge.consumeOutboundMessages(
+					this.baseThreadId(thread),
+					session.priorOutboundMessages,
+				);
+			}
 			if (result.status === 'accepted' && integrationOrigin) {
 				this.recordOriginNames(
 					{ thread, message, subject },
@@ -1348,7 +1389,10 @@ export class AgentChatBridge {
 	}
 
 	private async fetchAttachmentData(attachment: Attachment): Promise<Buffer | null> {
-		if (attachment.fetchData) return await attachment.fetchData();
+		if (attachment.fetchData) {
+			const fetched = await attachment.fetchData();
+			return Buffer.isBuffer(fetched) ? fetched : Buffer.from(fetched);
+		}
 		if (Buffer.isBuffer(attachment.data)) return attachment.data;
 		if (attachment.data) return Buffer.from(await attachment.data.arrayBuffer());
 		if (this.integration.type === 'discord' && attachment.url && this.discordHttpClient) {

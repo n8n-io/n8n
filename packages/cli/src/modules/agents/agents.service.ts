@@ -21,13 +21,15 @@ import {
 	type AgentSkill,
 	type ListAgentsOptions,
 } from '@n8n/api-types';
-import { Logger } from '@n8n/backend-common';
+import { LicenseState, Logger } from '@n8n/backend-common';
 import { EventService, ProjectScopeService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import {
 	In,
 	isUniqueConstraintError,
+	type OperationContext,
 	ProjectRelationRepository,
+	ProjectRepository,
 	TransactionRunner,
 	type TagEntity,
 	type User,
@@ -47,6 +49,7 @@ import { TagService } from '@/services/tag.service';
 import {
 	BadRequestError,
 	ConflictError,
+	ForbiddenError,
 	NotFoundError,
 	UnexpectedError,
 	UserError,
@@ -95,6 +98,7 @@ import type {
 	PlannedAgentDestinations,
 } from './utils/agent-definition';
 import { buildAgentMutationEvent } from './agent-modification-telemetry.service';
+import { FolderService } from '@/services/folder.service';
 
 type CreateAgentOptions =
 	| DraftAgentCreateOptions
@@ -106,9 +110,12 @@ type CreateAgentOptions =
 			metadata?: AgentDefinitionMetadata;
 			plannedDestinations?: PlannedAgentDestinations;
 			writeSkills?: AgentSkillWriter;
+			/** Context of the request, for the audit event. */
+			ctx?: OperationContext;
 	  };
 
 type DraftAgentCreateOptions = {
+	parentFolderId?: string | null;
 	/** Who asked for the create, named on the policy block audit event. */
 	actor: PolicyActor;
 	availableInMCP?: boolean;
@@ -136,6 +143,8 @@ type DraftAgentCreateOptions = {
 	tagIds?: string[];
 	/** User for configuration validation and product save effects. With schema, duplicates safely. */
 	user?: User;
+	/** Context of the request, for the audit event. */
+	ctx?: OperationContext;
 };
 
 export type AgentCreationResult = AgentCreationState & { agent: ProjectAgent };
@@ -163,6 +172,7 @@ export class AgentsService {
 		private readonly logger: Logger,
 		private readonly agentRepository: AgentRepository,
 		private readonly projectRelationRepository: ProjectRelationRepository,
+		private readonly projectRepository: ProjectRepository,
 		private readonly agentChatAttachmentService: AgentChatAttachmentService,
 		private readonly agentKnowledgeService: AgentKnowledgeService,
 		private readonly runtimeCacheService: AgentRuntimeCacheService,
@@ -184,8 +194,34 @@ export class AgentsService {
 		private readonly definitionService: AgentDefinitionService,
 		private readonly globalConfig: GlobalConfig,
 		private readonly tagService: TagService,
+		private readonly folderService: FolderService,
+		private readonly licenseState: LicenseState,
 		private readonly agentServiceAccount: AgentServiceAccountService,
 	) {}
+
+	/**
+	 * Target project for a create whose `projectId` comes from the request body
+	 * (Public API): the caller's personal project when omitted, else a project
+	 * the caller may create agents in. Enforces `agent:create` project scope.
+	 */
+	async resolveOwningProjectId(user: User, projectId?: string): Promise<string> {
+		if (!projectId) {
+			const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(user.id);
+			return personalProject.id;
+		}
+
+		if (!(await this.projectRepository.exists({ where: { id: projectId } }))) {
+			throw new NotFoundError('Project not found');
+		}
+
+		if (!(await this.projectScopeService.hasScopes(user, projectId, ['agent:create']))) {
+			throw new ForbiddenError(
+				"You don't have the permissions to create an agent in this project.",
+			);
+		}
+
+		return projectId;
+	}
 
 	/**
 	 * `id` lets the caller mint the agent id before deciding to persist it, so a
@@ -226,6 +262,13 @@ export class AgentsService {
 		}
 		this.assertCreateOptions(options);
 		const agentTags = await this.resolveCreateTags(options.tagIds);
+
+		if (options.parentFolderId) {
+			this.assertFoldersLicensed();
+
+			await this.folderService.validateDestination(options.parentFolderId, projectId, 'agent');
+		}
+
 		const { schemaConfig, integrations } = await this.prepareInitialConfig(
 			projectId,
 			name,
@@ -237,6 +280,7 @@ export class AgentsService {
 				id: options.id || generateNanoId(),
 				name,
 				projectId,
+				parentFolderId: options.parentFolderId ?? null,
 				schema: fromAgentDocument(schemaConfig).config,
 				...(integrations.length > 0 ? { integrations } : {}),
 				...(options.tools ? { tools: options.tools as Agent['tools'] } : {}),
@@ -258,6 +302,7 @@ export class AgentsService {
 			);
 			return await this.getCreationResult(existing, true);
 		}
+		this.agentServiceAccount.reportCreated(agent, options.actor, options.ctx);
 
 		// The mappings were written in the insert transaction; carry them on the
 		// entity so the create response reports the agent's tags.
@@ -475,6 +520,7 @@ export class AgentsService {
 			await this.definitionService.captureVersion(agent, user, ctx);
 			return savedRefs;
 		});
+		this.agentServiceAccount.reportCreated(agent, options.actor, options.ctx);
 		await Container.get(AgentSaveCompletionService).definitionSaved(
 			buildAgentMutationEvent(
 				agent,
@@ -537,13 +583,73 @@ export class AgentsService {
 		projectId: string,
 		options: ListAgentsOptions,
 	): Promise<AgentListResult> {
-		return await this.addListSkillVersions(
+		if (options.filter?.parentFolderId) {
+			await this.folderService.validateDestination(
+				options.filter.parentFolderId,
+				projectId,
+				'agent',
+			);
+		}
+
+		const result = await this.addListSkillVersions(
 			await this.agentRepository.findByProjectIdsPaginated([projectId], options),
 		);
+
+		if (!options.filter?.query) {
+			return result;
+		}
+
+		const folderIds = [
+			...new Set(
+				result.data.flatMap((agent) => (agent.parentFolderId ? [agent.parentFolderId] : [])),
+			),
+		];
+		const paths = await this.folderService.getFolderPathsToRoot(folderIds);
+
+		return {
+			...result,
+			data: result.data.map((agent) =>
+				Object.assign(agent, {
+					folderPath: agent.parentFolderId ? (paths.get(agent.parentFolderId) ?? []) : [],
+				}),
+			),
+		};
 	}
 
-	async findById(agentId: string, projectId: string): Promise<ProjectAgent | null> {
-		return await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+	async move(agentId: string, projectId: string, parentFolderId: string | null): Promise<boolean> {
+		await this.settingsService.assertEnabled();
+		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+
+		if (!agent) {
+			return false;
+		}
+
+		if (parentFolderId || agent.parentFolderId) {
+			this.assertFoldersLicensed();
+		}
+
+		if (parentFolderId) {
+			await this.folderService.validateDestination(parentFolderId, projectId, 'agent');
+		}
+
+		return await this.agentRepository.moveToFolder(agentId, projectId, parentFolderId);
+	}
+
+	private assertFoldersLicensed() {
+		if (!this.licenseState.isFoldersLicensed()) {
+			throw new ForbiddenError('Plan lacks license for this feature');
+		}
+	}
+
+	/**
+	 * With `projectId`: scoped lookup (internal REST). Without it the agent is
+	 * resolved by ID alone in Public API, where `@ProjectScope` has already
+	 * authorized the user against the agent's project. Returns no instance agent
+	 */
+	async findById(agentId: string, projectId?: string): Promise<ProjectAgent | null> {
+		return projectId
+			? await this.agentRepository.findByIdAndProjectId(agentId, projectId)
+			: await this.agentRepository.findById(agentId);
 	}
 
 	/**
@@ -698,6 +804,18 @@ export class AgentsService {
 		projectIds: string[] | null,
 		options: AgentSummaryFilters = {},
 	): Promise<AgentSummary[]> {
+		if (options.parentFolderId) {
+			const [folder] = await this.folderService.getFoldersByIds([options.parentFolderId]);
+
+			if (
+				!folder ||
+				folder.resourceType !== 'agent' ||
+				(projectIds !== null && !projectIds.includes(folder.homeProject.id))
+			) {
+				throw new NotFoundError('Agent folder not found');
+			}
+		}
+
 		return await this.agentRepository.findSummariesByProjectIds(projectIds, options);
 	}
 
@@ -890,11 +1008,16 @@ export class AgentsService {
 	 *
 	 * `requireArchived`: reject the delete of an agent that a user did not
 	 * archive first.
+	 *
+	 * `actor` is the user who deletes the agent. The audit event of the service
+	 * account removal names this user.
 	 */
 	async delete(
 		agentId: string,
+		actor: User,
 		projectId?: string,
 		{ requireArchived = false }: { requireArchived?: boolean } = {},
+		ctx: OperationContext = {},
 	): Promise<DeletedAgentSnapshot | null> {
 		const agent = projectId
 			? await this.agentRepository.findByIdAndProjectId(agentId, projectId)
@@ -922,22 +1045,25 @@ export class AgentsService {
 		// (no `projectId` argument) cleans up the same as the project-scoped one.
 		const { projectId: agentProjectId } = agent;
 
-		await this.deleteKnowledgeFiles(agentProjectId, agentId);
+		// The work of the account moves before any cleanup that cannot be undone.
+		// If a policy blocks the transfer, the agent stays as it was. The agent
+		// row and the account row go in one transaction.
+		await this.agentServiceAccount.deleteForAgent(agent, actor, agentProjectId, ctx, async () => {
+			await this.deleteKnowledgeFiles(agentProjectId, agentId);
 
-		await this.agentKnowledgeService.destroyKnowledgeSandbox(agentProjectId, agentId);
+			await this.agentKnowledgeService.destroyKnowledgeSandbox(agentProjectId, agentId);
 
-		await this.deleteChatAttachments(agentId);
+			await this.deleteChatAttachments(agentId);
 
-		const chatIntegrationService = Container.get(ChatIntegrationService);
-		for (const integration of agent.integrations ?? []) {
-			await chatIntegrationService.disconnectChannel(agentId, integration);
-		}
+			const chatIntegrationService = Container.get(ChatIntegrationService);
+			for (const integration of agent.integrations ?? []) {
+				await chatIntegrationService.disconnectChannel(agentId, integration);
+			}
 
-		await this.agentExecutionService.deleteExecutionLogsForAgent(agentId);
+			await this.agentExecutionService.deleteExecutionLogsForAgent(agentId);
 
-		await this.agentExecutionService.deleteMemoryThreadsForAgent(agentId);
-
-		await this.agentRepository.remove(agent);
+			await this.agentExecutionService.deleteMemoryThreadsForAgent(agentId);
+		});
 
 		this.runtimeCacheService.clearRuntimes(agentId);
 

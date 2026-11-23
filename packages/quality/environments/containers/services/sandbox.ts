@@ -294,6 +294,10 @@ export const sandbox: Service<SandboxResult> = {
 			N8N_INSTANCE_AI_SANDBOX_PROVIDER: 'n8n-sandbox',
 			N8N_SANDBOX_SERVICE_URL: hosted.apiUrl,
 			N8N_SANDBOX_SERVICE_API_KEY: hosted.apiKey,
+			// The stack stops without deleting its sandboxes. An ephemeral sandbox
+			// frees its slot in the tenant quota after the idle time; a regular one
+			// holds the slot for about a day more.
+			N8N_INSTANCE_AI_SANDBOX_EPHEMERAL: 'true',
 		};
 	},
 

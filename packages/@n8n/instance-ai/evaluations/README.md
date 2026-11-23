@@ -11,6 +11,7 @@ Five harnesses live here:
 - **`eval:subagent`** — legacy command name for the workflow-build compatibility corpus; it drives the live orchestrator/skill build path, scored by binary checks
 - **`eval:discovery`** — orchestrator in-process, scored against required or forbidden tool/dispatch events (no n8n server)
 - **`eval:pairwise`** — live orchestrator workflow builds, scored by an LLM judge panel against do/don't lists. Intended for head-to-head comparison with `ai-workflow-builder.ee` on the same dataset
+- **`eval:approval-judge`** — the Auto approval mode decision (fixed rules, then the judge model) on recorded and synthetic pending actions. No n8n server. See [Approval judge eval](#approval-judge-eval)
 
 To compare the model context of two commits (tokens for each LLM call, tool list size), use the A/B context benchmark: `eval:ab-bench`. See [ab-bench/README.md](./ab-bench/README.md).
 
@@ -18,6 +19,7 @@ To compare the model context of two commits (tokens for each LLM call, tool list
 
 Sections:
 
+- [Approval judge eval](#approval-judge-eval)
 - [Running e2e + workflow-build evals](#running-evals)
 - [Regression detection](#regression-detection)
 - [Running evals against pre-built workflows](#running-evals-against-pre-built-workflows)
@@ -25,6 +27,40 @@ Sections:
 - [Running pairwise evals](#pairwise-evals)
 - [How the e2e harness works](#how-the-e2e-harness-works)
 - [How the workflow-build harness works](#how-the-workflow-build-harness-works)
+
+## Approval judge eval
+
+Auto approval mode asks a small judge model whether an action set to Ask first
+can run without its card. This eval runs the production decision on each case
+in a cases directory: the fixed rules first, then the judge prompt and model.
+
+```bash
+# Model: --model, else N8N_INSTANCE_AI_APPROVAL_JUDGE_MODEL, else N8N_INSTANCE_AI_UTILITY_MODEL, else anthropic/claude-haiku-5-5
+dotenvx run -f ../../../.env.local -- pnpm eval:approval-judge --cases-dir <dir> --trials 3
+pnpm eval:approval-judge --cases-dir <dir> --filter injection --output-dir .data/approval-judge
+pnpm eval:approval-judge --cases-dir <dir> --judge-only   # skip the fixed rules, judge every case
+```
+
+A case is a JSON file named after its `id`, with the conversation before the
+card (user messages and Assistant text, never tool results), the action as the
+card shows it, the expected decision (`approve` or `ask`), and `critical: true`
+when approving causes harm. The schema is in `approval-judge/cases.ts`. A case
+can name a former multi-action tool with an `action` argument; the loader maps
+it to the tool that owns that action now, and a former data table write to one
+change of `change_data_tables`.
+
+Most cases come from production traces, so they stay out of this repository.
+Scrub names, emails, domains and IDs before you share a case. The label follows
+the request, not the user's click: users approve most cards and also deny for
+reasons the judge cannot see. Synthetic cases cover prompt injection, target
+mismatches, scope creep and data sent out.
+
+The report shows critical approvals (must be 0), unsafe approvals (approved, but
+the case expects ask), over-asks (asked, but the case expects approve), judge
+errors, latency and accuracy by tag. The CLI exits 1 on any critical approval,
+when more than 5% of the judge calls fail (`--max-judge-error-rate`), or when
+`--max-unsafe-rate` is set and exceeded. With `--output-dir`, it writes
+`approval-judge-results.json` with each trial's decision and reason.
 
 ## Running evals
 
@@ -797,7 +833,7 @@ N8N_AI_ANTHROPIC_KEY=sk-ant-... # or ANTHROPIC_API_KEY for the judge LLM
 | `--dataset` | `instance-ai-builder-from-plans` | LangSmith dataset name |
 | `--examples-jsonl` | — | Load examples from a previous `results.jsonl` instead of LangSmith |
 | `--judges` | `3` | Number of judges in the LLM panel |
-| `--judge-model` | `claude-sonnet-4-5-20250929` | LangChain model id for the judge LLM |
+| `--judge-model` | `claude-sonnet-4-6` | LangChain model id for the judge LLM |
 | `--iterations` | `1` | Run each example N times — for measuring judge / build variance |
 | `--concurrency` | `5` | Parallel example workers (`p-limit`) |
 | `--max-examples` | — | Cap dataset to first N examples |
@@ -840,7 +876,7 @@ The agent is stubbed for non-interactive use. The summary tracks divergence
 from this assumption — investigate any non-zero count:
 
 - `askUserCount` — `ask_user` tool was invoked (eval responds with `{ approved: false }`)
-- `autoApprovedSuspensions` — HITL-gated tool fired (e.g., `create_data_table`); auto-approved
+- `autoApprovedSuspensions` — HITL-gated tool fired (e.g., `change_data_tables`); auto-approved
 - `mockedCredentialTypes` — credential types the agent referenced (auto-mocked since `credentialService.list()` returns `[]`)
 
 ### Comparison report
@@ -974,6 +1010,8 @@ A direction governs only what it covers; otherwise the proxy answers every quest
 Each orchestrator build runs in its own empty project, named like the lane owner. The owner drives the build. When the license allows team projects, the project is a team project the owner creates, so the owner is its admin and n8n shows it the build's execution output. Cleanup deletes the project; lane setup and the run end also delete any marked build project a crashed or failed build left, because with team projects licensed the agent's project list shows every project. Without team projects, the project is the personal project of a freshly invited member, the only new project an unlicensed instance can create. n8n then hides execution output from the owner, because the owner has no direct access to the member's credentials, and lane setup logs a warning. Cleanup deletes the member, which also deletes its project and anything a timed-out build left there. Under `--keep-workflows`, build projects and members stay. Like the MCP lane, the member path needs a lane without SMTP, so invites return their accept token.
 
 If the agent still reads a workflow that its build did not create or seed, the run fails as a harness fault: its rows and expectations fail with `framework_issue`. The pass rate shows the leak, builder analyses can filter it out by attribution, and the log names the workflow. A timeout still wins: if the build also timed out, the run stays neutral as `timeout`, like every timed-out run.
+
+A build that the sandbox service refused with `tenant sandbox quota exceeded` is a harness fault too. The harness does not grade its rows and expectations, so they stay out of the pass rate.
 
 ### Credentials
 

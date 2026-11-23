@@ -119,6 +119,9 @@
 			.btn-disconnect { display: block; width: 100%; text-align: left; white-space: nowrap; background: none; border: 0; padding: 8px 14px; font-size: 13px; color: var(--n8n-connect-error); cursor: pointer; }
 			.btn-disconnect:hover { background: var(--n8n-connect-error-bg); }
 			.cred-blocked { font-size: 13px; color: var(--n8n-connect-muted); }
+			/* Under the status line, which keeps saying what the account really is. */
+			.cred-error { display: block; font-size: 12px; color: var(--n8n-connect-error); }
+			.cred-row[data-pending] button { opacity: 0.6; cursor: default; }
 		</style>
 	</head>
 	<body>
@@ -526,10 +529,77 @@
 						if (img.complete && img.naturalWidth === 0) fallBackToLetterTile(img);
 					});
 
+					var DISCONNECT_FAILED_TEXT = "Couldn't disconnect. Try again.";
+					var SESSION_EXPIRED_TEXT = 'Your session expired. Reload the page to try again.';
+
+					// Rows with a request in flight. A second click on one of them is ignored,
+					// so it can't send a second request.
+					var busy = {};
+
+					function rowsFor(key) {
+						return document.querySelectorAll('.cred-row[data-row-key="' + key + '"]');
+					}
+
+					function closeMenus() {
+						document.querySelectorAll('.cred-menu.open').forEach(function (m) { m.classList.remove('open'); });
+					}
+
 					function clearError(key) {
 						delete failed[key];
-						document.querySelectorAll('.cred-row[data-row-key="' + key + '"] .cred-sub').forEach(function (sub) {
-							sub.classList.remove('error');
+						rowsFor(key).forEach(function (row) {
+							var sub = row.querySelector('.cred-sub');
+							if (sub) sub.classList.remove('error');
+							var error = row.querySelector('.cred-error');
+							if (error) error.remove();
+						});
+					}
+
+					// The status line keeps saying what the account really is; the error goes
+					// on a line of its own under it.
+					function showRowError(key, message) {
+						rowsFor(key).forEach(function (row) {
+							var meta = row.querySelector('.cred-meta');
+							if (!meta) return;
+							var error = meta.querySelector('.cred-error');
+							if (!error) {
+								error = document.createElement('span');
+								error.className = 'cred-error';
+								error.setAttribute('role', 'alert');
+								meta.appendChild(error);
+							}
+							error.textContent = message;
+						});
+					}
+
+					function isSessionFailure(status) {
+						return status === 401 || status === 403;
+					}
+
+					// Locks the row's controls while a request runs. `pendingText`, when given,
+					// replaces the status line until endPending() puts it back.
+					function startPending(key, pendingText) {
+						busy[key] = true;
+						rowsFor(key).forEach(function (row) {
+							row.setAttribute('data-pending', 'true');
+							row.querySelectorAll('button').forEach(function (b) { b.disabled = true; });
+							var sub = row.querySelector('.cred-sub');
+							if (sub && pendingText) {
+								sub.setAttribute('data-idle-text', sub.textContent);
+								sub.textContent = pendingText;
+							}
+						});
+					}
+
+					function endPending(key) {
+						delete busy[key];
+						rowsFor(key).forEach(function (row) {
+							row.removeAttribute('data-pending');
+							row.querySelectorAll('button').forEach(function (b) { b.disabled = false; });
+							var sub = row.querySelector('.cred-sub');
+							if (sub && sub.hasAttribute('data-idle-text')) {
+								sub.textContent = sub.getAttribute('data-idle-text');
+								sub.removeAttribute('data-idle-text');
+							}
 						});
 					}
 
@@ -593,11 +663,11 @@
 
 					// A visible error, never a silent revert to "Connect": the row and the bar
 					// both say plainly that the last attempt didn't work.
-					function markFailed(key) {
+					function markFailed(key, message) {
 						if (!key || connected[key]) return;
 						failed[key] = true;
 						document.querySelectorAll('.cred-row[data-row-key="' + key + '"] .cred-sub').forEach(function (sub) {
-							sub.textContent = 'Connection failed · try again';
+							sub.textContent = message || 'Connection failed · try again';
 							sub.classList.add('error');
 						});
 						refresh();
@@ -618,11 +688,11 @@
 						settlePending();
 						markConnected(key);
 					}
-					function onErrorSignal() {
+					function onErrorSignal(message) {
 						if (!pendingId || pendingSettled) return;
 						var key = pendingId;
 						settlePending();
-						markFailed(key);
+						markFailed(key, message);
 					}
 
 					// The popup can close without either broadcast firing - the visitor closes
@@ -690,41 +760,57 @@
 					function disconnectById(key) {
 						var row = document.querySelector('.cred-row[data-row-key="' + key + '"]');
 						var revokeUrl = row ? row.getAttribute('data-revoke-url') : null;
-						if (!key || !revokeUrl) return;
+						if (!key || !revokeUrl || busy[key]) return;
+						closeMenus();
+						clearError(key);
+						startPending(key, 'Disconnecting…');
 						fetch(revokeUrl + '&authSource=cookie', {
 							method: 'DELETE',
 							credentials: 'include',
 							headers: authHeaders(),
 						})
-							.then(function (r) { if (r.ok) markDisconnected(key); })
-							.catch(function () {});
+							.then(function (r) {
+								endPending(key);
+								// 404: nothing is stored for this account, so it is already disconnected.
+								if (r.ok || r.status === 404) markDisconnected(key);
+								else showRowError(key, isSessionFailure(r.status) ? SESSION_EXPIRED_TEXT : DISCONNECT_FAILED_TEXT);
+							})
+							.catch(function () {
+								endPending(key);
+								showRowError(key, DISCONNECT_FAILED_TEXT);
+							});
 					}
 
 					// Reconnect after a disconnect: mint a fresh authorize link and send the
 					// popup there. The popup opens synchronously so it isn't a pop-under.
 					function reconnect(key, mintUrl) {
-						if (!key || !mintUrl) return;
+						if (!key || !mintUrl || busy[key]) return;
 						var popup = window.open('', 'n8n-credential-connect', popupFeatures());
 						pendingId = key;
 						clearError(key);
+						startPending(key);
 						refresh();
 						watchPopup(popup);
+						function fail(status) {
+							endPending(key);
+							if (popup) popup.close();
+							onErrorSignal(isSessionFailure(status) ? SESSION_EXPIRED_TEXT : undefined);
+						}
 						fetch(mintUrl + '&authSource=cookie', {
 							method: 'POST',
 							credentials: 'include',
 							headers: authHeaders(),
 						})
-							.then(function (r) { return r.ok ? r.json() : null; })
-							.then(function (body) {
-								var url = body && (body.data || body);
-								if (typeof url === 'string' && popup) {
+							.then(function (r) {
+								if (!r.ok) return fail(r.status);
+								return r.json().then(function (body) {
+									var url = body && (body.data || body);
+									if (typeof url !== 'string' || !popup) return fail();
+									endPending(key);
 									popup.location = url;
-								} else {
-									if (popup) popup.close();
-									onErrorSignal();
-								}
+								});
 							})
-							.catch(function () { if (popup) popup.close(); onErrorSignal(); });
+							.catch(function () { fail(); });
 					}
 
 					// Delegated, so controls created by markConnected()/markDisconnected() work
@@ -744,7 +830,7 @@
 							e.stopPropagation();
 							var menu = menuBtn.parentElement.querySelector('.cred-menu');
 							var wasOpen = menu && menu.classList.contains('open');
-							document.querySelectorAll('.cred-menu.open').forEach(function (m) { m.classList.remove('open'); });
+							closeMenus();
 							if (menu && !wasOpen) {
 								menu.classList.add('open');
 								// Anchor to the button; flip above when out of room below.
@@ -762,7 +848,7 @@
 							if (disconnectRow) disconnectById(disconnectRow.getAttribute('data-row-key'));
 							return;
 						}
-						document.querySelectorAll('.cred-menu.open').forEach(function (m) { m.classList.remove('open'); });
+						closeMenus();
 					});
 
 					// No dialog is rendered in test mode, so every use of it tolerates null.

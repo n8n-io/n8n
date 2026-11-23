@@ -17,6 +17,58 @@ Show the project icon before the project name in Agent builder and session
 timeline breadcrumbs. Use the same icon as the owning project. Show the user
 icon for a personal project.
 
+Include the selected folder path for an unsaved Agent. Keep the path through
+its first save. Use saved placement for saved Agents.
+
+## Folder subtitles
+
+Use the shared `FolderCardSubtitle` for Agent and workflow folder metadata.
+Show direct resource counts, child-folder counts, Last updated, and Created in
+that order. Hide zero counts. Keep timestamps visible for empty folders.
+Hide Created on narrow screens. Keep count labels together when the subtitle
+wraps. Show search paths on a separate line.
+
+## Folder pagination
+
+List folders before Agents, as workflow lists do. Use one total, page size, and
+pager for both resource types. Fill the remaining page slots with Agents when a
+page contains the last folders. Keep the global overview flat.
+
+## Folder action menus
+
+Use the shared `FolderCardActions` for workflow and Agent folder cards. Keep
+the same trigger, menu width, labels, and neutral Delete treatment. Order Agent
+actions as Open, Create folder inside, Create Agent inside, Favorite, Rename,
+Move, and Delete. Keep unavailable actions visible and disabled. Keep Open and
+Favorite available in read-only branches. Keep MCP access actions specific to
+workflow folders. Create the Agent in the selected folder through the existing
+Agent creation flow.
+
+## Folder moves
+
+Match the workflow move dialog. Name the Agent or folder in the title. Show the
+current project and its icon above the shared searchable folder picker. Keep the
+project fixed. Offer project root and show nested folder paths. Use `Move Agent`
+or `Move folder` after Cancel. Keep the Agent modal shell and its narrow layout.
+Disable the fixed project field. Focus the folder picker after its options load.
+
+## Folder removal
+
+Match the workflow folder confirmation. Name the folder in the title and show
+its content counts. Offer relocation and archival as radio choices. Start with
+neither choice selected. Show the destination picker after relocation is selected.
+Require the same typed folder confirmation as workflows before archival. Keep
+keyboard focus on the choices without selecting text when the dialog opens. Archival
+deletes the folder tree and moves its Agents to the project root. Keep all Agent
+data. Explain that users can unarchive the Agents later. Use `Delete folder` for
+the confirmation action. Do not offer permanent Agent deletion in this dialog.
+Keep a `Show archived agents` link in the empty state when only archived Agents remain.
+
+## Agent card subtitles
+
+Use a separate element for each separator between metadata fields, as workflow
+cards do. Use the row gap to give each separator equal space on both sides.
+
 ## History entry points
 
 Put `Version history` in the Agent actions menu. Put `View timeline` in the
@@ -421,6 +473,10 @@ user how to edit the skill, or whom to ask. A skill that the user can use but
 not edit opens this way. Hide Save. Keep `Detach` for an attached skill, and
 `Add skill` for a preview of a skill that is not attached.
 
+Render Mermaid code blocks as diagrams in the skill view. Keep the source in a
+collapsed section below each diagram. If a block cannot render, show its source
+as code. Keep the original Markdown in the editor.
+
 A skill that the draft pins to an older version also opens read-only, with
 the hint that the agent uses an older version. Its primary action is
 `Use latest version`. The action removes the pin, saves the draft, and opens
@@ -434,6 +490,10 @@ until the editor opens. Show Back for manual creation. Back discards the draft
 and returns to the upload screen.
 Existing skills open in the editor. Keep the body field order: When to use this
 skill, What the skill does, and Allowed tools. Use `Save skill` to confirm.
+
+Show the selected scope in the skill header. The Change scope menu lists only
+other scopes. After a new selection, keep the previous scope available so the
+user can undo the selection before they save.
 
 ### Review checklist
 

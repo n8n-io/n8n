@@ -12,6 +12,7 @@ import {
 	jsonParse,
 	type DataTableColumnType,
 	type ICredentialDataDecryptedObject,
+	versionedSettingsEqual,
 } from 'n8n-workflow';
 import { UserError } from '@n8n/errors';
 import { ok } from 'node:assert/strict';
@@ -347,7 +348,7 @@ export function hasOwnerChanged(
 
 /**
  * Checks if a workflow has been modified by comparing version IDs, parent folder IDs,
- * descriptions and owners between local and remote versions
+ * descriptions, owners and version-scoped settings between local and remote versions
  */
 function normalizeDescription(description: string | null | undefined): string | null {
 	return description ? description : null;
@@ -368,8 +369,19 @@ export function isWorkflowModified(
 			? false
 			: normalizeDescription(remote.description) !== normalizeDescription(local.description);
 	const ownerChanged = hasOwnerChanged(remote.owner, local.owner);
+	// A version-scoped setting changed in Git can keep the same versionId
+	const hasVersionedSettingsChanged = !versionedSettingsEqual(
+		local.versionedSettings,
+		remote.versionedSettings,
+	);
 
-	return hasVersionIdChanged || hasParentFolderIdChanged || hasDescriptionChanged || ownerChanged;
+	return (
+		hasVersionIdChanged ||
+		hasParentFolderIdChanged ||
+		hasDescriptionChanged ||
+		ownerChanged ||
+		hasVersionedSettingsChanged
+	);
 }
 
 /**

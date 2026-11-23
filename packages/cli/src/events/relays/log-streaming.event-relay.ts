@@ -1,24 +1,33 @@
-import { EventService } from '@n8n/backend-services';
+import { EventService, EventRelay } from '@n8n/backend-services';
+import { AgentsConfig } from '@n8n/config';
 import { UserRepository } from '@n8n/db';
 import { Redactable } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
-import type { JsonValue } from 'n8n-workflow';
+import type { JsonValue, RelatedAgentRun, WorkflowExecuteMode } from 'n8n-workflow';
 import {
 	ERROR_MESSAGE_REDACTED_MESSAGE,
 	isExecutionOutputRedacted,
 	redactExecutionError,
 } from 'n8n-workflow';
 
+import type { EventNamesAuditType } from '@/eventbus/event-message-classes';
 import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-message-generic';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import type { RelayEventMap, UserLike } from '@/events/maps/relay.event-map';
-import { EventRelay } from '@/events/relays/event-relay';
 import type {
 	PolicyAttachment,
 	PolicyRule,
 } from '@/modules/type-availability-policies/policy-rule.types';
 import { assertNever } from '@/utils';
+
+const SCIM_SETTINGS_AUDIT_EVENTS = {
+	enabled: 'n8n.audit.scim.enabled',
+	disabled: 'n8n.audit.scim.disabled',
+	token_created: 'n8n.audit.scim.token.created',
+	token_rotated: 'n8n.audit.scim.token.rotated',
+	token_revoked: 'n8n.audit.scim.token.revoked',
+} as const satisfies Record<RelayEventMap['scim-settings-updated']['change'], EventNamesAuditType>;
 
 type WorkflowExecutedEvent = RelayEventMap['workflow-executed'];
 type WorkflowExecutedEventWithUser = WorkflowExecutedEvent & { user: UserLike };
@@ -29,13 +38,14 @@ function hasUser(event: WorkflowExecutedEvent): event is WorkflowExecutedEventWi
 
 function withoutExecutionMetadata(
 	event: RelayEventMap['workflow-post-execute'],
-): Omit<RelayEventMap['workflow-post-execute'], 'source' | 'telemetryMetadata'> {
+): Omit<RelayEventMap['workflow-post-execute'], 'source' | 'telemetryMetadata' | 'parentAgentRun'> {
 	const trimmed = { ...event };
 
-	// Execution metadata (provenance + telemetry) is internal and not part of
-	// the log-streaming payload contract.
+	// Execution metadata (provenance, telemetry, the agent tool call) is internal
+	// and not part of the log-streaming payload contract.
 	delete trimmed.source;
 	delete trimmed.telemetryMetadata;
+	delete trimmed.parentAgentRun;
 
 	return trimmed;
 }
@@ -75,8 +85,28 @@ export class LogStreamingEventRelay extends EventRelay {
 		private readonly eventBus: MessageEventBus,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly userRepository: UserRepository,
+		private readonly agentsConfig: AgentsConfig,
 	) {
 		super(eventService);
+	}
+
+	/** Agent fields of a workflow log event. Empty unless an agent with a service account started the run. */
+	private agentFieldsOf(
+		parentAgentRun: RelatedAgentRun | undefined,
+		mode: WorkflowExecuteMode | undefined,
+	) {
+		// The tool stamps the marker only with the flag on, but a stored marker can come back
+		// after the flag goes off, for example when a waiting execution resumes.
+		if (!this.agentsConfig.serviceAccountsEnabled) return {};
+		// A retry copies the run data of the original execution, but its caller starts it.
+		if (mode === 'retry' || !parentAgentRun?.agentServiceAccountId) return {};
+		const { agentId, agentServiceAccountId, userId, delegatingAgentId } = parentAgentRun;
+		return {
+			agentId,
+			agentServiceAccountId,
+			...(userId !== undefined ? { agentRunUserId: userId } : {}),
+			...(delegatingAgentId !== undefined ? { delegatingAgentId } : {}),
+		};
 	}
 
 	init() {
@@ -91,6 +121,8 @@ export class LogStreamingEventRelay extends EventRelay {
 			'workflow-unarchived': (event) => this.workflowUnarchived(event),
 			'agent-archived': (event) => this.agentArchived(event),
 			'agent-unarchived': (event) => this.agentUnarchived(event),
+			'agent-service-account-created': (event) => this.agentServiceAccountCreated(event),
+			'agent-service-account-deleted': (event) => this.agentServiceAccountDeleted(event),
 			'workflow-activated': (event) => this.workflowActivated(event),
 			'workflow-deactivated': (event) => this.workflowDeactivated(event),
 			'workflow-deactivated-by-system': (event) => this.workflowDeactivatedBySystem(event),
@@ -112,6 +144,7 @@ export class LogStreamingEventRelay extends EventRelay {
 			'user-logged-out': (event) => this.userLoggedOut(event),
 			'user-login-failed': (event) => this.userLoginFailed(event),
 			'user-login-email-conflict': (event) => this.userLoginEmailConflict(event),
+			'sso-settings-updated': (event) => this.ssoSettingsUpdated(event),
 			'user-invite-email-click': (event) => this.userInviteEmailClick(event),
 			'user-password-reset-email-click': (event) => this.userPasswordResetEmailClick(event),
 			'user-password-reset-request-click': (event) => this.userPasswordResetRequestClick(event),
@@ -139,6 +172,7 @@ export class LogStreamingEventRelay extends EventRelay {
 			'node-type-policy-attachments-updated': (event) =>
 				this.nodeTypePolicyAttachmentsUpdated(event),
 			'policy-decision-blocked': (event) => this.policyDecisionBlocked(event),
+			'execution-limit-updated': (event) => this.executionLimitUpdated(event),
 			'external-secrets-provider-settings-saved': (event) =>
 				this.externalSecretsProviderSettingsSaved(event),
 			'external-secrets-provider-reloaded': (event) => this.externalSecretsProviderReloaded(event),
@@ -201,9 +235,13 @@ export class LogStreamingEventRelay extends EventRelay {
 			'role-mapping-rule-updated': (event) => this.roleMappingRuleUpdated(event),
 			'role-mapping-rule-deleted': (event) => this.roleMappingRuleDeleted(event),
 			'role-mapping-rules-bulk-deleted': (event) => this.roleMappingRulesBulkDeleted(event),
+			'provisioning-settings-updated': (event) => this.provisioningSettingsUpdated(event),
 			'trusted-source-created': (event) => this.trustedSourceCreated(event),
 			'trusted-source-updated': (event) => this.trustedSourceUpdated(event),
 			'trusted-source-deleted': (event) => this.trustedSourceDeleted(event),
+			'scim-settings-updated': (event) => this.scimSettingsUpdated(event),
+			'scim-deprovisioning-policy-updated': (event) => this.scimDeprovisioningPolicyUpdated(event),
+			'scim-request-rejected': (event) => this.scimRequestRejected(event),
 			'promotion-provider-created': (event) => this.promotionProviderCreated(event),
 			'promotion-provider-updated': (event) => this.promotionProviderUpdated(event),
 			'promotion-provider-deleted': (event) => this.promotionProviderDeleted(event),
@@ -341,6 +379,42 @@ export class LogStreamingEventRelay extends EventRelay {
 	}
 
 	@Redactable()
+	private agentServiceAccountCreated({
+		user,
+		source,
+		loginId,
+		...target
+	}: RelayEventMap['agent-service-account-created']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.agent.service-account.created',
+			// Without a user, name the system as the actor.
+			payload: user
+				? { ...user, ...target, ...(loginId !== undefined && { loginId }) }
+				: { userId: null, source, ...target },
+		});
+	}
+
+	@Redactable()
+	private agentServiceAccountDeleted({
+		user,
+		source,
+		loginId,
+		...target
+	}: RelayEventMap['agent-service-account-deleted']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.agent.service-account.deleted',
+			payload: user
+				? {
+						...user,
+						...target,
+						...(source && { source }),
+						...(loginId !== undefined && { loginId }),
+					}
+				: { userId: null, source, ...target },
+		});
+	}
+
+	@Redactable()
 	private workflowActivated({
 		user,
 		workflowId,
@@ -445,6 +519,7 @@ export class LogStreamingEventRelay extends EventRelay {
 		mode,
 		projectId,
 		projectName,
+		parentAgentRun,
 	}: RelayEventMap['workflow-pre-execute']) {
 		const payload = {
 			executionId,
@@ -455,6 +530,7 @@ export class LogStreamingEventRelay extends EventRelay {
 			workflowName: data.name,
 			projectId,
 			projectName,
+			...this.agentFieldsOf(parentAgentRun, mode),
 		};
 
 		void this.eventBus.sendWorkflowEvent({
@@ -478,6 +554,7 @@ export class LogStreamingEventRelay extends EventRelay {
 			workflowName: workflow.name,
 			projectId,
 			projectName,
+			...this.agentFieldsOf(event.parentAgentRun, runData?.mode),
 		};
 
 		if (payload.success) {
@@ -743,6 +820,20 @@ export class LogStreamingEventRelay extends EventRelay {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.login.emailConflict',
 			payload: { ...user, authenticationMethod, _assertedEmail: assertedEmail },
+		});
+	}
+
+	@Redactable()
+	private ssoSettingsUpdated({
+		user,
+		protocol,
+		loginEnabled,
+		fieldsChanged,
+		publicApi,
+	}: RelayEventMap['sso-settings-updated']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.sso.settings.updated',
+			payload: { ...user, protocol, loginEnabled, fieldsChanged, publicApi },
 		});
 	}
 
@@ -1014,6 +1105,20 @@ export class LogStreamingEventRelay extends EventRelay {
 				scopeId: event.scopeId,
 				before: event.before ? { ...event.before } : null,
 				after: { ...event.after },
+				...(event.loginId !== undefined && { loginId: event.loginId }),
+			},
+		});
+	}
+
+	private executionLimitUpdated(event: RelayEventMap['execution-limit-updated']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.execution-limit.updated',
+			payload: {
+				updatedBy: event.updatedBy,
+				projectId: event.projectId,
+				field: event.field,
+				oldValue: event.oldValue,
+				newValue: event.newValue,
 				...(event.loginId !== undefined && { loginId: event.loginId }),
 			},
 		});
@@ -1553,6 +1658,14 @@ export class LogStreamingEventRelay extends EventRelay {
 					payload,
 				});
 				break;
+			case 'workflow_reviews_approval_required':
+				void this.eventBus.sendAuditEvent({
+					eventName: value
+						? 'n8n.audit.workflow-reviews.approval-required.enabled'
+						: 'n8n.audit.workflow-reviews.approval-required.disabled',
+					payload,
+				});
+				break;
 			case 'public_api_rate_limit':
 				void this.eventBus.sendAuditEvent({
 					eventName: value
@@ -1811,6 +1924,32 @@ export class LogStreamingEventRelay extends EventRelay {
 
 	// #endregion
 
+	// #region Provisioning settings
+
+	@Redactable()
+	private provisioningSettingsUpdated({
+		user,
+		authenticationMethod,
+		assignmentMethod,
+		roleMappingMethod,
+		instanceRuleCount,
+		projectRuleCount,
+	}: RelayEventMap['provisioning-settings-updated']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.provisioning.settings.updated',
+			payload: {
+				...user,
+				authenticationMethod,
+				assignmentMethod,
+				roleMappingMethod,
+				instanceRuleCount,
+				projectRuleCount,
+			},
+		});
+	}
+
+	// #endregion
+
 	// #region Trusted sources
 
 	@Redactable()
@@ -1846,6 +1985,54 @@ export class LogStreamingEventRelay extends EventRelay {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.trusted-source.deleted',
 			payload: { ...user, sourceId, issuer },
+		});
+	}
+
+	// #endregion
+
+	// #region SCIM
+
+	@Redactable()
+	private scimSettingsUpdated({
+		user,
+		isActive,
+		change,
+		source,
+	}: RelayEventMap['scim-settings-updated']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: SCIM_SETTINGS_AUDIT_EVENTS[change],
+			// n8n turns SCIM off by itself when single sign-on turns off, so then
+			// no user acts.
+			payload: user ? { ...user, isActive, source } : { userId: null, isActive, source },
+		});
+	}
+
+	@Redactable()
+	private scimDeprovisioningPolicyUpdated({
+		user,
+		isActive,
+		before,
+		after,
+	}: RelayEventMap['scim-deprovisioning-policy-updated']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.scim.deprovisioning.updated',
+			payload: { ...user, isActive, before, after },
+		});
+	}
+
+	/**
+	 * The identity provider is the caller, so no user acts. A 429 and a path
+	 * without a route skip the audit log. The IP rate limit already refused a
+	 * 429, and a path without a route has no rate limit and no token check.
+	 * Thus each of them would let any caller write to every destination.
+	 * Telemetry still reports them, at most once an hour.
+	 */
+	private scimRequestRejected(event: RelayEventMap['scim-request-rejected']) {
+		if (event.reason === 'rate_limited' || event.operation === 'other') return;
+
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.scim.request.rejected',
+			payload: { userId: null, ...event },
 		});
 	}
 

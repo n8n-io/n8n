@@ -1,7 +1,5 @@
 import { z, type ZodError } from 'zod';
 
-import { parseRegexLiteral } from 'n8n-workflow';
-
 import { isDraftAgentConfig } from './agent-config-lifecycle';
 import { AgentIntegrationConfigSchema } from './agent-integration.schema';
 import { AGENT_MODEL_STRING_REGEX } from './model-providers';
@@ -29,7 +27,7 @@ export const AgentModelSchema = z.string().min(1).regex(
 	 * `@` allows gateway model IDs after the provider (e.g. "openai/@OpenAI/gpt-5-mini")
 	 */
 	AGENT_MODEL_STRING_REGEX,
-	'Model must be "provider/model-name" format (e.g. "anthropic/claude-sonnet-4-5" or "openrouter/amazon/nova-micro-v1")',
+	'Model must be "provider/model-name" format (e.g. "anthropic/claude-sonnet-5-5" or "openrouter/amazon/nova-micro-v1")',
 );
 
 const CredentialIdSchema = z.string().trim();
@@ -52,6 +50,12 @@ const ObservationalMemoryConfigSchema = z.object({
 	renderTokenBudget: z.number().int().min(1).optional(),
 	observationLogTailLimit: z.number().int().min(1).optional(),
 	lockTtlMs: z.number().int().min(0).optional(),
+	windowShares: z
+		.object({
+			// 0 removes the default cap; the model's context window still applies.
+			maxContextWindowTokens: z.number().int().min(0).optional(),
+		})
+		.optional(),
 });
 
 export const EPISODIC_MEMORY_GUIDANCE_MAX_TOPICS = 20;
@@ -524,19 +528,6 @@ export const TOOL_GUARDRAIL_PII_ENTITIES = [
 
 export type ToolGuardrailPiiEntity = (typeof TOOL_GUARDRAIL_PII_ENTITIES)[number];
 
-const ParseableRegexSchema = z
-	.string()
-	.min(1)
-	.refine((value) => {
-		try {
-			const { source, flags } = parseRegexLiteral(value);
-			new RegExp(source, flags);
-			return true;
-		} catch {
-			return false;
-		}
-	}, 'Enter a valid regular expression');
-
 /**
  * A typed ref to a tool configured on the agent, resolving to a runtime tool
  * name at reconstruction.
@@ -555,8 +546,10 @@ const toolGuardrailBaseShape = {
 			'Guardrail id can only contain letters, numbers, hyphens, and underscores',
 		),
 	name: z.string().trim().min(1).optional(),
-	stage: z.enum(['before', 'after']),
-	tools: z.array(ToolGuardrailToolRefSchema).min(1),
+	/** When absent, runs at every stage the kind supports (both, for pattern kinds). */
+	stage: z.enum(['before', 'after']).optional(),
+	/** Covers every tool when absent. At least one ref when present. */
+	tools: z.array(ToolGuardrailToolRefSchema).min(1).optional(),
 };
 
 const modelToolGuardrailShape = {
@@ -595,11 +588,6 @@ export const ToolGuardrailConfigSchema = z.discriminatedUnion('kind', [
 		allowSubdomains: z.boolean().optional(),
 	}),
 	z.object({
-		kind: z.literal('customRegex'),
-		...toolGuardrailBaseShape,
-		regex: z.array(z.object({ name: z.string().min(1), value: ParseableRegexSchema })).min(1),
-	}),
-	z.object({
 		kind: z.literal('jailbreak'),
 		...toolGuardrailBaseShape,
 		...modelToolGuardrailShape,
@@ -607,11 +595,6 @@ export const ToolGuardrailConfigSchema = z.discriminatedUnion('kind', [
 	z.object({ kind: z.literal('nsfw'), ...toolGuardrailBaseShape, ...modelToolGuardrailShape }),
 	z.object({
 		kind: z.literal('topicalAlignment'),
-		...toolGuardrailBaseShape,
-		...modelToolGuardrailShape,
-	}),
-	z.object({
-		kind: z.literal('customPrompt'),
 		...toolGuardrailBaseShape,
 		...modelToolGuardrailShape,
 	}),
@@ -899,6 +882,8 @@ export function findToolGuardrailRefIssues(
 	const issues: ToolGuardrailRefIssue[] = [];
 	for (let guardrailIndex = 0; guardrailIndex < guardrails.length; guardrailIndex++) {
 		const refs = guardrails[guardrailIndex].tools;
+		// A guardrail without `tools` covers every tool, so it has no refs to dangle.
+		if (!refs) continue;
 		for (let toolIndex = 0; toolIndex < refs.length; toolIndex++) {
 			const ref = refs[toolIndex];
 			const matches =

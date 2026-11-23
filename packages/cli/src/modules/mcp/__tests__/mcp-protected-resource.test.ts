@@ -25,7 +25,8 @@ import type { UrlService, PostHogClient } from '@n8n/backend-services';
 import { Container } from '@n8n/di';
 
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
-import { SkillsGate } from '@/modules/skills';
+import { SkillsGate, SkillSyncFlagGate } from '@/modules/skills';
+import { AiPreferenceSettingsService } from '@/services/ai-preference-settings.service';
 
 import { ACTIVITY_LOG_TOOLS, INSTANCE_CONTEXT_TOOLS } from '../mcp-scopes';
 import { McpProtectedResource } from '../mcp-protected-resource';
@@ -58,19 +59,32 @@ describe('McpProtectedResource', () => {
 		postHogClient,
 	);
 
+	function mockModuleSettings(overrides: Record<string, Record<string, unknown>>) {
+		const settings: Record<string, Record<string, unknown>> = {
+			mcp: { preferencesEnabled: true },
+			...overrides,
+		};
+		vi.mocked(moduleRegistry.settings.get).mockImplementation((name) => settings[name]);
+	}
+
 	beforeEach(() => {
 		vi.clearAllMocks();
 		postHogClient.getFeatureFlagForInstance.mockResolvedValue(true);
 		postHogClient.getFeatureFlags.mockResolvedValue({});
 		mcpConfig.baseUrl = '';
 		moduleRegistry.isActive.mockReturnValue(true);
-		vi.mocked(moduleRegistry.settings.get).mockReturnValue(undefined);
+		mockModuleSettings({});
 		licenseState.isFoldersLicensed.mockReturnValue(true);
 		Container.set(
 			CommunityPackagesConfig,
 			mock<CommunityPackagesConfig>({ enabled: true, verifiedEnabled: true }),
 		);
 		Container.set(SkillsGate, mock<SkillsGate>({ isEnabled: true }));
+		Container.set(SkillSyncFlagGate, mock<SkillSyncFlagGate>({ isAvailable: true }));
+		Container.set(
+			AiPreferenceSettingsService,
+			mock<AiPreferenceSettingsService>({ isEnabled: true }),
+		);
 	});
 
 	describe('getScopeTools', () => {
@@ -84,7 +98,7 @@ describe('McpProtectedResource', () => {
 		});
 
 		it('withholds Agent scopes and tools when Agents is disabled', async () => {
-			vi.mocked(moduleRegistry.settings.get).mockReturnValue({ enabled: false });
+			mockModuleSettings({ agents: { enabled: false } });
 			const scopeTools = await resource.getScopeTools();
 			expect(resource.scopes).not.toContain('agent:read');
 			expect(resource.scopes).not.toContain('agent:write');
@@ -100,8 +114,55 @@ describe('McpProtectedResource', () => {
 			expect(await resource.getScopeTools()).not.toHaveProperty('skill:read');
 		});
 
+		it('lists the skill source tools while Skill Sync is on for the instance', async () => {
+			const scopeTools = await resource.getScopeTools();
+
+			expect(scopeTools['skill:read']).toEqual([
+				'search_n8n_skills',
+				'get_skill',
+				'list_skill_sources',
+			]);
+			expect(scopeTools['skill:write']).toEqual(
+				expect.arrayContaining(['discover_skill_source', 'import_skills_from_source']),
+			);
+		});
+
+		it('withholds the skill source tools while Skill Sync is off for the instance', async () => {
+			Container.set(SkillSyncFlagGate, mock<SkillSyncFlagGate>({ isAvailable: false }));
+
+			const scopeTools = await resource.getScopeTools();
+
+			expect(scopeTools['skill:read']).toEqual(['search_n8n_skills', 'get_skill']);
+			expect(scopeTools['skill:write']).toEqual([
+				'create_skill',
+				'update_skill',
+				'delete_skill',
+				'search_n8n_skills',
+				'get_skill',
+			]);
+		});
+
+		it('withholds preference scopes while the MCP Preferences switch is off', () => {
+			mockModuleSettings({ mcp: { preferencesEnabled: false } });
+
+			expect(resource.scopes).not.toContain('aiPreference:read');
+			expect(resource.scopes).not.toContain('aiPreference:write');
+			expect(resource.scopes).toContain('skill:read');
+		});
+
+		it('withholds preference scopes while the instance preferences switch is off', () => {
+			Container.set(
+				AiPreferenceSettingsService,
+				mock<AiPreferenceSettingsService>({ isEnabled: false }),
+			);
+
+			expect(resource.scopes).not.toContain('aiPreference:read');
+			expect(resource.scopes).not.toContain('aiPreference:write');
+			expect(resource.scopes).toContain('skill:read');
+		});
+
 		it('keeps skill scopes when Agents is disabled', () => {
-			vi.mocked(moduleRegistry.settings.get).mockReturnValue({ enabled: false });
+			mockModuleSettings({ agents: { enabled: false } });
 
 			expect(resource.scopes).not.toContain('agent:read');
 			expect(resource.scopes).toContain('skill:read');
@@ -213,6 +274,7 @@ describe('McpProtectedResource', () => {
 			expect(scopeTools['project:write']).not.toContain('create_folder');
 			expect(scopeTools['project:write']).not.toContain('update_folder');
 			expect(scopeTools['workflow:write']).not.toContain('move_workflows_to_folder');
+			expect(scopeTools['agent:write']).not.toContain('move_agent');
 			expect(scopeTools['project:write']).not.toContain('search_folders');
 			expect(scopeTools['project:read']).not.toContain('search_folders');
 			expect(scopeTools['project:read']).toContain('search_projects');

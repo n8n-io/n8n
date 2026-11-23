@@ -4,6 +4,7 @@ import {
 	getProviderPrefix,
 	isAzureFoundryAnthropicModel,
 	isGoogleVertexAnthropicModel,
+	splitModelId,
 } from '@n8n/ai-utilities/agent-config';
 import { isRecord } from '@n8n/utils/is-record';
 import type { ModelMessage, SystemModelMessage, ToolSet } from 'ai';
@@ -169,30 +170,29 @@ export function buildInstructionPromptCacheOptions(
 	return buildAnthropicCacheControl(config);
 }
 
-/**
- * Cache options for the recovered-skills system message. It reuses the
- * instruction breakpoint, so it is cached only when the instructions are.
- * Undefined when the extra breakpoint would leave no slot for the
- * conversation breakpoint next to the caller's tool and message breakpoints.
- */
-export function buildSkillInstructionCacheOptions(
-	instructionProviderOptions: ProviderOptions | undefined,
-	aiTools: ToolSet,
-	messages: ModelMessage[],
-): ProviderOptions | undefined {
-	if (!hasAnthropicCacheControl(instructionProviderOptions)) return undefined;
-	const callerBreakpoints = countAnthropicBreakpoints([], aiTools, messages);
-	// Instructions + skills + conversation breakpoint.
-	if (callerBreakpoints + 3 > MAX_ANTHROPIC_CACHE_BREAKPOINTS) return undefined;
-	return instructionProviderOptions;
-}
-
 const HOUR_MS = 60 * 60_000;
 
 /**
+ * OpenAI keeps a cache entry for at least 30 minutes by default on GPT-5.6 and later
+ * (`prompt_cache_options.ttl`). It may keep it longer.
+ */
+const OPENAI_DEFAULT_MIN_CACHE_MS = 30 * 60_000;
+
+/**
+ * GPT-6 and later do not accept `promptCacheRetention`: the AI SDK drops it and logs
+ * a warning on every call, even when the config sets it. Unknown model names keep the
+ * retention.
+ */
+function supportsPromptCacheRetention(modelId: string): boolean {
+	const version = /^gpt-(\d+)/.exec(splitModelId(modelId).model);
+	return !version || Number(version[1]) < 6;
+}
+
+/**
  * How long the provider keeps a prompt cache warm for this model. Anthropic uses
- * the configured TTL. OpenAI uses its retention, 24 hours by default. Other
- * providers cache on their own terms, so assume one hour.
+ * the configured TTL. OpenAI uses its retention, 24 hours by default. GPT-6 and later
+ * take no retention, so assume the 30 minute minimum lifetime that OpenAI documents
+ * for them. Other providers cache on their own terms, so assume one hour.
  */
 export function getPromptCacheRetentionMs(
 	config: PromptCachingConfig | undefined,
@@ -202,12 +202,15 @@ export function getPromptCacheRetentionMs(
 	if (anthropicTtl) return anthropicTtl === '5m' ? 5 * 60_000 : HOUR_MS;
 	if (getProviderPrefix(modelId) === 'openai' && isEnabledForProvider(config, 'openai')) {
 		const openaiConfig = typeof config?.openai === 'object' ? config.openai : undefined;
-		return (openaiConfig?.promptCacheRetention ?? '24h') === '24h' ? 24 * HOUR_MS : HOUR_MS;
+		// The retention is never sent to these models, so a configured one does not apply either.
+		if (!supportsPromptCacheRetention(modelId)) return OPENAI_DEFAULT_MIN_CACHE_MS;
+		const retention = openaiConfig?.promptCacheRetention ?? '24h';
+		return retention === '24h' ? 24 * HOUR_MS : HOUR_MS;
 	}
 	return HOUR_MS;
 }
 
-/** OpenAI call-level cache options (routing key + retention). Undefined for non-OpenAI models or when disabled. */
+/** OpenAI call-level cache options (routing key + retention, where the model takes one). Undefined for non-OpenAI models or when disabled. */
 export function buildCallPromptCacheOptions(
 	config: PromptCachingConfig | undefined,
 	modelId: string,
@@ -218,11 +221,15 @@ export function buildCallPromptCacheOptions(
 	}
 
 	const openaiConfig = typeof config?.openai === 'object' ? config.openai : undefined;
+	// Models that reject the retention get none, even when the config sets one.
+	const retention = supportsPromptCacheRetention(modelId)
+		? (openaiConfig?.promptCacheRetention ?? '24h')
+		: undefined;
 	return {
 		openai: {
 			promptCacheKey:
 				openaiConfig?.promptCacheKey ?? createOpenAIPromptCacheKey({ ...context, modelId }),
-			promptCacheRetention: openaiConfig?.promptCacheRetention ?? '24h',
+			...(retention ? { promptCacheRetention: retention } : {}),
 		},
 	};
 }
