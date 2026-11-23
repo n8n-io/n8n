@@ -94,8 +94,13 @@ export type SlotPromotionChangesProps = {
 	reviewId: string;
 };
 
-/** The `promotion-issues` slot takes the same review as `promotion-changes`. */
-export type SlotPromotionIssuesProps = SlotPromotionChangesProps;
+/**
+ * The `promotion-issues` slot takes the same review as `promotion-changes`. It is written out and
+ * not an alias, because the Vue compiler cannot resolve an alias of an imported type.
+ */
+export type SlotPromotionIssuesProps = {
+	reviewId: string;
+};
 
 export type SlotNodeTypeIconProps = {
 	nodeType: INodeTypeDescription | null;
