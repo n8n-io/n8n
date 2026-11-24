@@ -11,7 +11,7 @@ const props = withDefaults(
 		active: boolean;
 		awaitingInput?: boolean;
 		durationSec?: number;
-		/** Replaces the latest sentence while active. */
+		/** Replaces the rotating thinking words while active. */
 		activityLabel?: string;
 		/** Replaces the generic "Thinking" while active. */
 		idleLabel?: string;
@@ -53,6 +53,18 @@ const hasContent = computed(() => visibleSegments.value.length > 0 || Boolean(sl
 		:data-test-id="props.testId"
 		:data-active="String(props.active)"
 	>
+		<template #label>
+			<span :class="$style.label">
+				<Transition
+					:enter-active-class="$style.labelEnterActive"
+					:leave-active-class="$style.labelLeaveActive"
+					:enter-from-class="$style.labelEnterFrom"
+					:leave-to-class="$style.labelLeaveTo"
+				>
+					<span :key="label" :class="$style.labelWord">{{ label }}</span>
+				</Transition>
+			</span>
+		</template>
 		<div :class="$style.panel">
 			<slot name="prepend" />
 			<div
@@ -72,6 +84,44 @@ const hasContent = computed(() => visibleSegments.value.length > 0 || Boolean(sl
 
 <style module lang="scss">
 @use '@n8n/design-system/css/mixins/mixins' as mixins;
+
+/** One grid cell, so the old and the new word overlap while they change. */
+.label {
+	display: inline-grid;
+	min-width: 0;
+}
+
+.labelWord {
+	grid-area: 1 / 1;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.labelEnterActive,
+.labelLeaveActive {
+	transition:
+		opacity var(--duration--snappy) var(--easing--ease-out),
+		transform var(--duration--snappy) var(--easing--ease-out);
+}
+
+.labelEnterFrom {
+	opacity: 0;
+	transform: translateY(25%);
+}
+
+.labelLeaveTo {
+	opacity: 0;
+	transform: translateY(-25%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.labelEnterFrom,
+	.labelLeaveTo {
+		transform: none;
+	}
+}
 
 .panel {
 	display: flex;

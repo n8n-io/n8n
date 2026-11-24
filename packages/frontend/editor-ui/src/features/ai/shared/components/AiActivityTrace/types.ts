@@ -7,7 +7,7 @@ export interface AiThinkingSegment {
 	content: string;
 }
 
-/** The thinking section of a run. Its label reads the latest sentence and the elapsed time. */
+/** The thinking section of a run. Its label rotates thinking words and shows the elapsed time. */
 export interface AiActivityThinkingItem {
 	kind: 'thinking';
 	id: string;
@@ -16,7 +16,7 @@ export interface AiActivityThinkingItem {
 	awaitingInput?: boolean;
 	/** Persisted duration. The label uses the longer of this and the observed time. */
 	durationSec?: number;
-	/** Replaces the latest sentence while active. */
+	/** Replaces the rotating thinking words while active. */
 	activityLabel?: string;
 	/** Replaces the generic "Thinking" while active. */
 	idleLabel?: string;

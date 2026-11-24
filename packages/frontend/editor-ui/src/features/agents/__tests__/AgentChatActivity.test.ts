@@ -968,8 +968,12 @@ describe('AgentChatActivity', () => {
 		]);
 
 		await wrapper.find('button').trigger('click');
-		expect(wrapper.text()).toContain('Weighing the sources.');
-		expect(wrapper.text()).not.toContain('Reasoning');
+		const childThinking = wrapper.find('[data-test-id="agent-chat-delegate-child-thinking"]');
+		await childThinking.find('button').trigger('click');
+
+		const segments = childThinking.findAll('[data-test-id="ai-thinking-step-segment"]');
+		expect(segments).toHaveLength(1);
+		expect(segments[0].text()).toContain('Weighing the sources.');
 	});
 
 	describe('policy-refused tool calls', () => {

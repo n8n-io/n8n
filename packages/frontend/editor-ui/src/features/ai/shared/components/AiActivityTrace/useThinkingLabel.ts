@@ -1,6 +1,6 @@
 import { useI18n } from '@n8n/i18n';
 import { computed, onUnmounted, ref, watch } from 'vue';
-import { currentSentence, firstSentence } from '../../thinking.utils';
+import { useThinkingWordRotation } from '../../composables/useThinkingWords';
 import type { AiThinkingSegment } from './types';
 
 export interface ThinkingLabelSource {
@@ -20,19 +20,10 @@ export function formatThinkingDuration(totalSec: number): string {
 	return `${Math.floor(totalSec / 60)}m ${totalSec % 60}s`;
 }
 
-/** The newest readable sentence of the trace, so the label follows the stream. */
-function latestSentence(segments: AiThinkingSegment[]): string | undefined {
-	for (let index = segments.length - 1; index >= 0; index--) {
-		const content = segments[index].content;
-		const sentence = currentSentence(content) ?? firstSentence(content);
-		if (sentence) return sentence;
-	}
-	return undefined;
-}
-
 /**
- * Label of a thinking step. While active, it reads the latest sentence of the
- * trace, and `meta` holds the elapsed time. When done, it reads "Thought for Ns".
+ * Label of a thinking step. While active, it rotates thinking words, such as
+ * "Pondering…". The trace text shows only in the
+ * collapsed content. `meta` holds the elapsed time. When done, it reads "Thought for Ns".
  */
 export function useThinkingLabel(source: () => ThinkingLabelSource) {
 	const i18n = useI18n();
@@ -43,6 +34,11 @@ export function useThinkingLabel(source: () => ThinkingLabelSource) {
 	let ticker: ReturnType<typeof setInterval> | null = null;
 
 	const isCounting = computed(() => source().active && source().awaitingInput !== true);
+
+	/** Rotates only while no caller label replaces it. */
+	const thinkingWord = useThinkingWordRotation({
+		active: () => isCounting.value && !source().activityLabel && !source().idleLabel,
+	});
 
 	const elapsedSec = computed(() => {
 		const live =
@@ -82,8 +78,7 @@ export function useThinkingLabel(source: () => ThinkingLabelSource) {
 	onUnmounted(stopTicker);
 
 	const label = computed(() => {
-		const { active, awaitingInput, durationSec, activityLabel, idleLabel, settledLabel, segments } =
-			source();
+		const { active, awaitingInput, durationSec, activityLabel, idleLabel, settledLabel } = source();
 
 		if (!active) {
 			if (settledLabel) return settledLabel;
@@ -103,9 +98,7 @@ export function useThinkingLabel(source: () => ThinkingLabelSource) {
 
 		if (awaitingInput === true) return i18n.baseText('ai.thinking.waitingForInput');
 
-		return (
-			activityLabel ?? latestSentence(segments) ?? idleLabel ?? i18n.baseText('ai.thinking.active')
-		);
+		return activityLabel ?? idleLabel ?? thinkingWord.value ?? i18n.baseText('ai.thinking.active');
 	});
 
 	const meta = computed(() =>

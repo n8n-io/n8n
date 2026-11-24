@@ -34,6 +34,18 @@ const INVISIBLE_RENDER_HINTS = new Set(['data-table', 'eval-setup']);
  *  beyond it, it is likely the final answer and renders outside the block. */
 const TAIL_NARRATION_MAX_LENGTH = 200;
 
+/**
+ * How long the transcript must stay quiet before the typing indicator shows.
+ *
+ * Short silences are normal: the tail of a streamed answer, or a run that ends
+ * after its last token. A real stall is much longer. A provider that buffers
+ * tool calls can go quiet for 10s to 53s (INS-1224).
+ *
+ * The client cannot tell the two apart, so a threshold is used. A server
+ * signal for "mid-generation" would replace it.
+ */
+export const ACTIVITY_INDICATOR_DELAY_MS = 5_000;
+
 type TextEntry = Extract<InstanceAiTimelineEntry, { type: 'text' }>;
 
 /**

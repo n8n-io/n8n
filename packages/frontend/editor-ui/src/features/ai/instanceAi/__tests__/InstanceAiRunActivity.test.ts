@@ -4,7 +4,7 @@ import type { InstanceAiAgentNode, InstanceAiMessage } from '@n8n/api-types';
 import { createThreadComponentRenderer } from './createThreadComponentRenderer';
 import InstanceAiRunActivity from '../components/InstanceAiRunActivity.vue';
 import type { ThreadRuntime } from '../instanceAi.store';
-import { ThinkingWordKey } from '../composables/useThinkingWords';
+import { ThinkingWordKey } from '../../shared/composables/useThinkingWords';
 import { ref } from 'vue';
 
 let thread: ThreadRuntime;
@@ -75,36 +75,54 @@ describe('InstanceAiRunActivity', () => {
 	});
 });
 
-describe('InstanceAiRunActivity, thinking word', () => {
+describe('InstanceAiRunActivity, visibility', () => {
 	beforeEach(() => {
 		createTestingPinia();
 	});
 
-	function renderStreaming(messages: InstanceAiMessage[]) {
+	function renderThread(messages: InstanceAiMessage[], overrides: Partial<ThreadRuntime> = {}) {
 		thread = {
 			id: 'thread-1',
 			messages,
-			isStreaming: true,
+			isStreaming: false,
 			isAwaitingConfirmation: false,
+			...overrides,
 		} as unknown as ThreadRuntime;
 		return renderComponent({
 			global: { provide: { [ThinkingWordKey]: ref('Joining the dots') } },
 		});
 	}
 
-	it('shows the thinking word of the thread instead of "Thinking"', () => {
-		const { getByTestId } = renderStreaming([]);
+	it('stays hidden while the orchestrator runs', () => {
+		const message = messageWithActiveBuilder({ title: 'Building workflow' });
+		message.isStreaming = true;
+		message.agentTree!.status = 'active';
 
-		expect(getByTestId('instance-ai-run-activity')).toHaveTextContent('Joining the dots');
-		expect(getByTestId('instance-ai-run-activity')).not.toHaveTextContent('Thinking');
+		const { queryByTestId } = renderThread([message], { isStreaming: true });
+
+		expect(queryByTestId('instance-ai-run-activity')).not.toBeInTheDocument();
 	});
 
-	it('shows the active builder instead of the thinking word', () => {
-		const { getByTestId } = renderStreaming([
-			messageWithActiveBuilder({ title: 'Building workflow' }),
+	it('stays hidden at run start, before any agent tree exists', () => {
+		const { queryByTestId } = renderThread([], { isStreaming: true });
+
+		expect(queryByTestId('instance-ai-run-activity')).not.toBeInTheDocument();
+	});
+
+	it('shows for a child agent that is not a builder and still runs', () => {
+		const { getByTestId } = renderThread([
+			messageWithActiveBuilder({ kind: undefined, role: 'researcher', title: 'Researching' }),
 		]);
 
-		expect(getByTestId('instance-ai-run-activity')).toHaveTextContent('Building workflow');
-		expect(getByTestId('instance-ai-run-activity')).not.toHaveTextContent('Joining the dots');
+		expect(getByTestId('instance-ai-run-activity')).toHaveTextContent('Researching');
+	});
+
+	it('stays hidden while a confirmation is pending', () => {
+		const { queryByTestId } = renderThread(
+			[messageWithActiveBuilder({ title: 'Building workflow' })],
+			{ isAwaitingConfirmation: true },
+		);
+
+		expect(queryByTestId('instance-ai-run-activity')).not.toBeInTheDocument();
 	});
 });

@@ -41,6 +41,8 @@ const props = withDefaults(
 
 defineSlots<{
 	prefix?: () => unknown;
+	/** Replaces the label text, for example to animate a change of label. */
+	label?: () => unknown;
 	default?: () => unknown;
 	/** Replaces the callout text; the tooltip keeps showing `error`. */
 	errorCallout?: () => unknown;
@@ -64,7 +66,7 @@ const errorTooltip = computed(() =>
 			<CollapsibleTrigger as-child>
 				<N8nAiActivityStepButton size="small" :loading="props.loading">
 					<template #prefix><slot name="prefix" /></template>
-					{{ props.label }}
+					<slot name="label">{{ props.label }}</slot>
 					<template #icon>
 						<span v-if="props.meta" :class="$style.meta" data-test-id="ai-activity-step-meta">
 							· {{ props.meta }}
@@ -102,7 +104,7 @@ const errorTooltip = computed(() =>
 		</CollapsibleRoot>
 		<N8nAiActivityStepButton v-else size="small" :loading="props.loading" :interactive="false">
 			<template #prefix><slot name="prefix" /></template>
-			{{ props.label }}
+			<slot name="label">{{ props.label }}</slot>
 			<template #icon>
 				<span v-if="props.meta" :class="$style.meta" data-test-id="ai-activity-step-meta">
 					· {{ props.meta }}

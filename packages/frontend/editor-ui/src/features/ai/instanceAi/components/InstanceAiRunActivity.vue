@@ -1,9 +1,8 @@
 <script lang="ts" setup>
 import { N8nAiActivityStep } from '@n8n/design-system';
 import { ref, computed, watch, onUnmounted } from 'vue';
-import type { InstanceAiMessage, InstanceAiTimelineEntry } from '@n8n/api-types';
+import type { InstanceAiMessage } from '@n8n/api-types';
 import { useThread } from '../instanceAi.store';
-import { collectActiveBuilderAgents, isAwaitingFirstOutput } from '../builderAgents';
 import { useSteadyRunActivity } from '../composables/useRunActivity';
 
 const thread = useThread();
@@ -14,39 +13,25 @@ let timer: ReturnType<typeof setInterval> | null = null;
 const activity = useSteadyRunActivity(() => thread.messages);
 
 /**
- * True while the streaming orchestrator is rendering an active thinking
- * block — its streamed status line (and tool subline) already shows the live
- * activity, so the bar would say the same thing twice. The bar still covers
- * the moments the block can't: run start before any trace exists, and
- * background builders working after the orchestrator finished (root no
- * longer active).
+ * True when the orchestrator has stopped but one of its child agents still runs.
  */
-function hasActiveThinkingTrace(messages: InstanceAiMessage[]): boolean {
-	// ANY streaming message counts — follow-up chains and mid-run replay can
-	// briefly append a stub streaming message after the one that renders the
-	// active block, and checking only the last would re-show the bar next to it.
-	return messages.some((m) => {
-		if (m.role !== 'assistant' || !m.isStreaming) return false;
-		const root = m.agentTree;
-		if (!root || root.status !== 'active') return false;
-		return root.timeline.some(
-			(entry: InstanceAiTimelineEntry) => entry.type === 'reasoning' || entry.type === 'tool-call',
-		);
+function hasDetachedWork(messages: InstanceAiMessage[]): boolean {
+	return messages.some((message) => {
+		const root = message.role === 'assistant' ? message.agentTree : undefined;
+		if (!root || root.status === 'active') return false;
+		return root.children.some((child) => child.status === 'active');
 	});
 }
 
-// Stay visible while the orchestrator streams, and also while a builder runs in
-// the background after the orchestrator run has ended (isStreaming === false).
-// Hidden while a confirmation is pending — the thinking-block header reads
-// "Waiting for your input" then, and the pending card itself is the prompt —
-// and while an active thinking block is the live activity surface.
-// The typing dots of the message cover the wait for its first output.
+/**
+ * The bar shows only for work that continues after the orchestrator stops.
+ * While the orchestrator runs, the thinking trace, its tool rows and the
+ * typing dots of the message show the live activity. The bar then repeated
+ * them, for example as a second "Thinking" row.
+ * A pending confirmation hides the bar, because the card is the prompt.
+ */
 const isVisible = computed(
-	() =>
-		!thread.isAwaitingConfirmation &&
-		!hasActiveThinkingTrace(thread.messages) &&
-		!thread.messages.some(isAwaitingFirstOutput) &&
-		(thread.isStreaming || collectActiveBuilderAgents(thread.messages).length > 0),
+	() => !thread.isAwaitingConfirmation && hasDetachedWork(thread.messages),
 );
 
 const formattedElapsed = computed(() => {

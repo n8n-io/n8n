@@ -3060,22 +3060,34 @@ describe('InstanceAiThreadView', () => {
 			expect(queryByTestId('instance-ai-workflow-draft-preview-stub')).toBeNull();
 		});
 
-		it('shows a thinking word of the thread in the run activity row', async () => {
+		/** A streaming run whose only entry is reasoning, so its thinking step is active. */
+		function streamReasoning() {
+			stageNewWorkflow();
+			const run = thread.messages[1];
+			run.agentTree!.toolCalls = [];
+			run.agentTree!.timeline = [{ type: 'reasoning', content: 'Checking the request.' }];
+			thread.messages = [...thread.messages];
+			thread.isStreaming = true;
+		}
+
+		it('shows a thinking word of the thread in the thinking step of the run', async () => {
 			mockedStore(usePostHog).getVariant.mockImplementation((name) =>
 				name === INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.name ? 'variant' : undefined,
 			);
-			// The last word of the general list.
+			/** The last word of the general list. */
 			const random = vi.spyOn(Math, 'random').mockReturnValue(0.999);
 			onTestFinished(() => random.mockRestore());
-			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
+			const { findByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
-			thread.isStreaming = true;
+			streamReasoning();
 
-			const bar = await findByTestId('instance-ai-run-activity');
-			expect(bar).toHaveTextContent('Tracing the connections');
+			const step = await findByTestId('instance-ai-thinking-block');
+			await vi.waitFor(() => expect(step).toHaveTextContent('Tracing the connections'));
+			/** The thinking step shows the live activity, so the run activity row stays hidden. */
+			expect(queryByTestId('instance-ai-run-activity')).toBeNull();
 		});
 
-		it('shows "Thinking" in the run activity row in the control arm', async () => {
+		it('shows the first sentence, not a thinking word, in the control arm', async () => {
 			mockedStore(usePostHog).getVariant.mockImplementation((name) =>
 				name === INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.name ? 'control' : undefined,
 			);
@@ -3083,11 +3095,11 @@ describe('InstanceAiThreadView', () => {
 			onTestFinished(() => random.mockRestore());
 			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
-			thread.isStreaming = true;
+			streamReasoning();
 
-			const bar = await findByTestId('instance-ai-run-activity');
-			expect(bar).toHaveTextContent('Thinking');
-			expect(bar).not.toHaveTextContent('Tracing the connections');
+			const step = await findByTestId('instance-ai-thinking-block');
+			await vi.waitFor(() => expect(step).toHaveTextContent('Checking the request.'));
+			expect(step).not.toHaveTextContent('Tracing the connections');
 		});
 
 		it('shows no staging canvas in the control arm', async () => {

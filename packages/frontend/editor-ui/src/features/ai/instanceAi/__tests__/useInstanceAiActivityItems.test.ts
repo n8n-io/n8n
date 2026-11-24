@@ -1,16 +1,21 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
 import userEvent from '@testing-library/user-event';
 import { createThreadComponentRenderer } from './createThreadComponentRenderer';
 import { createTestingPinia } from '@pinia/testing';
 import { AiActivityTrace } from '../../shared/components/AiActivityTrace';
 import { useInstanceAiActivityItems } from '../composables/useInstanceAiActivityItems';
-import { ThinkingWordKey } from '../composables/useThinkingWords';
+import { ThinkingWordKey } from '../../shared/composables/useThinkingWords';
 import { defineComponent, h, ref, type PropType } from 'vue';
 import type {
 	InstanceAiAgentNode,
 	InstanceAiTimelineEntry,
 	InstanceAiToolCallState,
 } from '@n8n/api-types';
+
+const draftPreviewEnabled = ref(true);
+vi.mock('@/experiments/instanceAiDraftWorkflowPreview/useDraftWorkflowPreviewEnabled', () => ({
+	useDraftWorkflowPreviewEnabled: () => draftPreviewEnabled,
+}));
 
 /** Renders one block the same way `AgentTimeline` does. */
 const ActivityBlock = defineComponent({
@@ -76,6 +81,11 @@ const toolEntry = (toolCallId: string): InstanceAiTimelineEntry => ({
 describe('useInstanceAiActivityItems', () => {
 	beforeEach(() => {
 		createTestingPinia({ stubActions: false });
+	});
+
+	/** A failed assertion must not leave the control group on for later tests. */
+	afterEach(() => {
+		draftPreviewEnabled.value = true;
 	});
 
 	it('renders thinking as its own row, apart from the tool calls', () => {
@@ -309,7 +319,7 @@ describe('useInstanceAiActivityItems', () => {
 		expect(getByTestId('instance-ai-thinking-block')).toHaveTextContent('Thought for 12s');
 	});
 
-	it('shows the latest reasoning sentence while active', () => {
+	it('shows a thinking word, not the reasoning text, while active', () => {
 		const { getByTestId } = renderComponent({
 			props: {
 				agentNode: makeAgentNode({ status: 'active' }),
@@ -318,7 +328,21 @@ describe('useInstanceAiActivityItems', () => {
 			},
 		});
 
-		expect(getByTestId('instance-ai-thinking-block')).toHaveTextContent('Then mapping the fields');
+		expect(getByTestId('instance-ai-thinking-block')).not.toHaveTextContent('Then mapping');
+	});
+
+	it('shows the first sentence of the latest segment for the experiment control group', () => {
+		draftPreviewEnabled.value = false;
+		const { getByTestId } = renderComponent({
+			props: {
+				agentNode: makeAgentNode({ status: 'active' }),
+				entries: [reasoning('Reading the workflow first. Then mapping the fields')],
+				active: true,
+			},
+		});
+
+		const block = getByTestId('instance-ai-thinking-block');
+		expect(block).toHaveTextContent('Reading the workflow first.');
 	});
 
 	it('says that it waits for input while paused on a confirmation', () => {
@@ -335,18 +359,20 @@ describe('useInstanceAiActivityItems', () => {
 	});
 
 	it('shows narration and reasoning as markdown when expanded', async () => {
-		const { getByTestId, getByText } = renderComponent({
+		const { getByTestId } = renderComponent({
 			props: {
 				agentNode: makeAgentNode(),
-				entries: [reasoning('Deep thoughts. More detail.'), text('Checking credentials now.')],
+				entries: [reasoning('**Deep** thoughts.'), text('Checking `credentials` now.')],
 				active: false,
 			},
 		});
 
-		await userEvent.click(getByTestId('instance-ai-thinking-block').querySelector('button')!);
+		const block = getByTestId('instance-ai-thinking-block');
+		await userEvent.click(block.querySelector('button')!);
 
-		expect(getByText('Deep thoughts. More detail.')).toBeVisible();
-		expect(getByText('Checking credentials now.')).toBeVisible();
+		expect(block.querySelector('strong')).toHaveTextContent('Deep');
+		expect(block.querySelector('code')).toHaveTextContent('credentials');
+		expect(block).not.toHaveTextContent('**');
 	});
 });
 

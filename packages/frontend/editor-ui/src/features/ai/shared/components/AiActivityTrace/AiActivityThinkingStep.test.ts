@@ -16,21 +16,15 @@ describe('AiActivityThinkingStep', () => {
 		vi.useRealTimers();
 	});
 
-	it('shows the latest sentence of the trace while active', () => {
+	it('shows a thinking word, not the trace text, while active', () => {
 		const { getByTestId } = renderComponent({
 			props: {
 				active: true,
-				segments: [
-					{ content: 'Checking the schema of the table.' },
-					{ content: '\n\n' },
-					{ content: 'Planning the response for the user. Then' },
-				],
+				segments: [{ content: 'Planning the response for the user. Then' }],
 			},
 		});
 
-		expect(getByTestId('ai-thinking-step')).toHaveTextContent(
-			'Planning the response for the user.',
-		);
+		expect(getByTestId('ai-thinking-step')).not.toHaveTextContent('Planning the response');
 	});
 
 	it('shows the idle label before the trace has text', () => {
@@ -39,12 +33,6 @@ describe('AiActivityThinkingStep', () => {
 		});
 
 		expect(getByTestId('ai-thinking-step')).toHaveTextContent('Joining the dots');
-	});
-
-	it('shows "Thinking" without an idle label', () => {
-		const { getByTestId } = renderComponent({ props: { active: true, segments: [] } });
-
-		expect(getByTestId('ai-thinking-step')).toHaveTextContent('Thinking');
 	});
 
 	it('shows the elapsed time after the label while active', async () => {

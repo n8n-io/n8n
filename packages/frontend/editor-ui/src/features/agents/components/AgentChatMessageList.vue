@@ -940,7 +940,7 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 								group.message.status !== CHAT_MESSAGE_STATUS.STREAMING
 							"
 						>
-							<div :class="[$style.chatMessage, , $style.stopReplyText]">
+							<div :class="[$style.chatMessage, $style.stopReplyText]">
 								<AgentMarkdownChunk
 									v-if="group.message.content.trim()"
 									:source="group.message.content"

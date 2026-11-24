@@ -10,11 +10,13 @@ import type {
 	AiActivityItem,
 	AiActivityThinkingItem,
 } from '../../shared/components/AiActivityTrace';
+import { firstSentence } from '../../shared/thinking.utils';
+import { useDraftWorkflowPreviewEnabled } from '@/experiments/instanceAiDraftWorkflowPreview/useDraftWorkflowPreviewEnabled';
 import { autoApprovalLabel, autoApprovalReason } from '../autoApproval';
 import { useInstanceContextLabel } from '../instanceContextLabels';
 import { useToolLabel } from '../toolLabels';
 import { useActiveToolLabel } from './useRunActivity';
-import { ThinkingWordKey } from './useThinkingWords';
+import { ThinkingWordKey } from '../../shared/composables/useThinkingWords';
 
 type SegmentEntry = Extract<InstanceAiTimelineEntry, { type: 'text' | 'reasoning' }>;
 type SkillUpdateEntry = Extract<InstanceAiTimelineEntry, { type: 'skill-update' }>;
@@ -52,6 +54,18 @@ function blockDurationSec(
 }
 
 /**
+ * The first sentence of the newest segment. The control group of the draft
+ * workflow preview experiment keeps this label, not the sentence being written.
+ */
+function latestFirstSentence(segments: SegmentEntry[]): string | undefined {
+	for (let index = segments.length - 1; index >= 0; index--) {
+		const sentence = firstSentence(segments[index].content);
+		if (sentence) return sentence;
+	}
+	return undefined;
+}
+
+/**
  * Maps the timeline entries of an Instance AI block to the rows of the shared
  * activity trace. Only the mapping is specific to Instance AI.
  */
@@ -64,6 +78,8 @@ export function useInstanceAiActivityItems(agentNode: () => InstanceAiAgentNode)
 	const now = useNow({ interval: 1000 });
 	/** The thread view provides a word only for the variant of the experiment. */
 	const thinkingWord = inject(ThinkingWordKey, undefined);
+	/** The variant of the experiment gets the specific progress label. */
+	const specificProgress = useDraftWorkflowPreviewEnabled();
 
 	function skillUpdateLabel(entry: SkillUpdateEntry): string {
 		return entry.name
@@ -157,6 +173,7 @@ export function useInstanceAiActivityItems(agentNode: () => InstanceAiAgentNode)
 						segments,
 						active: block.active,
 						awaitingInput: block.awaitingInput,
+						activityLabel: specificProgress.value ? undefined : latestFirstSentence(segments),
 						durationSec: blockDurationSec(block.entries, toolCallsById),
 						idleLabel: thinkingWord?.value,
 						testId: 'instance-ai-thinking-block',
