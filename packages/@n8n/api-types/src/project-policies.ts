@@ -5,7 +5,9 @@ import type { ProjectIcon } from './schemas/project.schema';
  * can match many types, for example a package selector.
  */
 export type ProjectPolicyRuleCounts = {
+	/** Types that the instance policy allows and the project policy blocks. */
 	restricted: number;
+	/** Types that the instance policy leaves to projects and the project policy allows. */
 	optedIn: number;
 };
 
