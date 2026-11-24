@@ -1,3 +1,5 @@
+import type { INodeProperties } from 'n8n-workflow';
+
 export type HttpMethod = 'DELETE' | 'GET' | 'PATCH' | 'POST' | 'PUT';
 
 export interface Schema {
@@ -60,6 +62,7 @@ export interface Spec {
 export interface SpecOptions {
 	ignoredHeaderParameters: string[];
 	cursorParameter: string;
+	offsetParameter: string;
 	limitParameter: string;
 	nextCursorProperty: string;
 	itemsProperty: string;
@@ -82,4 +85,6 @@ export interface OperationRow {
 	operation: SpecOperation;
 	resource: Resource;
 	excludeReason?: string;
+	isDefault: boolean;
+	fields: Record<string, Partial<INodeProperties>>;
 }

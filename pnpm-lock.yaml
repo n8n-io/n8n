@@ -788,6 +788,9 @@ catalogs:
     testcontainers:
       specifier: ^11.13.0
       version: 11.13.0
+    title-case:
+      specifier: 3.0.3
+      version: 3.0.3
     tmp-promise:
       specifier: 3.0.3
       version: 3.0.3
@@ -3215,7 +3218,7 @@ importers:
         specifier: 0.32.0
         version: 0.32.0
       title-case:
-        specifier: 3.0.3
+        specifier: 'catalog:'
         version: 3.0.3
       transliteration:
         specifier: 2.3.5
@@ -3835,6 +3838,9 @@ importers:
       pluralize:
         specifier: 'catalog:'
         version: 8.0.0
+      title-case:
+        specifier: 'catalog:'
+        version: 3.0.3
       yaml:
         specifier: 'catalog:'
         version: 2.8.3
@@ -10277,7 +10283,7 @@ importers:
         specifier: 'catalog:'
         version: 1.15.0
       title-case:
-        specifier: 3.0.3
+        specifier: 'catalog:'
         version: 3.0.3
       transliteration:
         specifier: 2.3.5

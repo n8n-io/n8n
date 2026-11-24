@@ -47,7 +47,7 @@
     "luxon": "catalog:",
     "md5": "2.3.0",
     "quickjs-emscripten-core": "0.32.0",
-    "title-case": "3.0.3",
+    "title-case": "catalog:",
     "transliteration": "2.3.5",
     "zod": "catalog:"
   },
