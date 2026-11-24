@@ -43,7 +43,7 @@ packages/@n8n/db/src/migrations/
 | Interface | When to use |
 |---|---|
 | `ReversibleMigration` | Schema changes that can be cleanly undone (add/drop column, create/drop table). Requires a working `down()`. |
-| `IrreversibleMigration` | Data transformations, destructive changes, or anything where `down()` would lose data. No `down()` allowed. |
+| `IrreversibleMigration` | `up()` destroys data that a correct `down()` needs, for example a backfill that overwrites values. No `down()` allowed. A `down()` that loses only data that the new schema can hold is still a `ReversibleMigration`. See [Reversibility](#reversibility). |
 
 ### MigrationContext API
 
@@ -123,9 +123,16 @@ CI checks the items marked **(CI)** on each migration file that a PR adds. The `
 - [ ] **Composite index column order** matches your actual `WHERE` / `ORDER BY` usage. — [Index Management](#index-management)
 - [ ] **Entity ↔ migration parity**: column types, `notNull`, defaults, FKs, `@Index` decorators all match. — [Schema/Entity Drift](#schemaentity-drift)
 - [ ] **If using `addColumns`, `dropColumns`, `addNotNull`, `dropNotNull`, `addEnumCheck`, or `dropEnumCheck`:** verified whether the target table has incoming FKs. If so, either set `withFKsDisabled = true as const` (in a `sqlite/` subclass if this is a `common/` migration) or use raw `ALTER TABLE ADD COLUMN` for nullable/defaulted columns. — [SQLite table recreation risk](#sqlite-table-recreation-risk)
-- [ ] **No live-app value imports** in the migration body. Inline types/utility code locally. **(CI)** — [Never import entities as values](#never-import-entities-as-values)
+- [ ] **Each SQLite table is rebuilt at most once.** Several recreating calls on the same table copy it several times. Combine them, or use raw `ALTER TABLE ADD COLUMN` for nullable columns. — [SQLite table recreation risk](#sqlite-table-recreation-risk)
+- [ ] **An index on a busy table has a measured build time** in the PR description. — [Locks on existing Postgres tables](#locks-on-existing-postgres-tables)
+- [ ] **The migration cannot block startup.** A new `NOT NULL` column without a default has its rows cleared or backfilled first. Every loop ends. A failed precondition throws, and does not skip the work silently. — [Do not block startup](#do-not-block-startup)
+- [ ] **No live-app value imports** in the migration body. Inline types/utility code locally, for example a local copy of `IUserSettings`. Helpers from `@n8n/utils`, such as `isRecord`, are allowed. **(CI)** — [Never import entities as values](#never-import-entities-as-values)
 - [ ] **Each `runInBatches` query has `ORDER BY`** on a unique column. **(CI)** — [Use Batch Operations](#use-batch-operations)
-- [ ] **`async down()` was tested locally**: `pnpm start && pnpm start -- db:revert && pnpm start` on **both** SQLite and Postgres. — [Reversibility](#reversibility)
+- [ ] **Rolling deploys keep working.** Old instances can still run during the upgrade. Do not drop a column, or add `NOT NULL` to a column, in the release that changes its writer. — [Deprecate columns, then drop in a follow-up](#deprecate-columns-then-drop-in-a-follow-up)
+- [ ] **`async down()` was tested locally**: `pnpm start && pnpm start -- db:revert && pnpm start` on **both** SQLite and Postgres. Every step that loses data has a comment. — [Reversibility](#reversibility)
+- [ ] **A shortcut for an unreleased feature has a comment.** If the migration deletes rows or skips expand-contract because no release has the table, the migration comment says so. — [Unreleased features](#unreleased-features)
+- [ ] **The test is isolated and covers rollback.** Each test sets up its own state. The test runs `undoLastSingleMigration()` and then runs `up()` again. It asserts the schema, and for a SQLite rebuild it asserts the rows in the referencing tables. — [Tests](#tests)
+- [ ] **Re-checked the timestamp after the last rebase.** The class-name suffix matches the file name. — [Creating Migrations](#creating-migrations)
 - [ ] **One logical change per migration**; split unrelated table changes into separate files. — [Don't combine independent schema changes](#dont-combine-independent-schema-changes)
 - [ ] **`up()` / `down()` reads as a list of intentions.** If either body grows past a screen or mixes schema operations with a multi-statement raw-SQL data move, extract the data move into a `private async` method on the same class (e.g. `private async backfillFromX(ctx)`). The top-level should orchestrate, not implement.
 - [ ] **Precedent is the bar to fix, not perpetuate.** When the checklist conflicts with what an older migration does (e.g. redundant `.primary.notNull`, hand-quoted identifiers, missing `.comment()`), the checklist wins for new code — don't copy the violation forward. Note the old occurrences in the PR if you spotted them.
@@ -142,8 +149,6 @@ Rules that apply to every migration — schema or data, common or DB-specific. R
 
 ### Creating Migrations
 
-> **Temporary timestamp workaround:** This repository currently has future-dated migrations, with the head at `1784000000008` (`2026-07-14T03:33:20.008Z`). Until real time passes that timestamp, a migration created with `Date.now()` would sort before the deployed head and can run out of order on databases that already applied later migrations. Use the generator during this window — it picks `max + 1` when needed. See [PR #30511](https://github.com/n8n-io/n8n/pull/30511) for context.
-
 Migration files are named `{TIMESTAMP}-{DescriptiveName}.ts`. The timestamp must be strictly greater than every existing migration timestamp in this package (across `common/`, `postgresdb/`, and `sqlite/`). TypeORM runs unrecorded migrations in timestamp order, so inserting a value below the current max corrupts ordering on databases that have already executed the later migrations.
 
 Use the generator — it picks a safe timestamp, writes the scaffold, and regenerates the migration index files (`sqlite/index.ts` and `postgresdb/index.ts` are gitignored build artifacts, generated from the files on disk by `scripts/generate-migration-index.mjs` — never edit or commit them):
@@ -155,6 +160,8 @@ pnpm --filter=@n8n/db migration:new <Name> [--folder=common|postgresdb|sqlite]
 `<Name>` is PascalCase and describes the change (e.g. `AddTracingToExecution`). `--folder` defaults to `common`; use `postgresdb` or `sqlite` only for dialect-specific migrations. The generator picks `Date.now()` when it's greater than the current head, otherwise `max + 1`.
 
 The `migration-timestamp` rule in `@n8n/code-health` enforces both invariants (strict ordering and no far-future fabrication) at lint time; the generator is the easy path, the rule is the safety net.
+
+**After you rebase on master, check the timestamp again.** Other PRs merge migrations while yours is in review. If a newer migration is on master, rename your file to a new timestamp. Change the class-name suffix to the same value. A class suffix that does not match the file name is a frequent review finding.
 
 ### Applying and Reverting Migrations
 
@@ -285,6 +292,19 @@ The `migration-conventions` CI rule allows value imports only from these sources
 
 Use `escape.tableName()`, `escape.columnName()`, and `escape.indexName()` for every identifier. Don't hand-roll `${tablePrefix}my_table` or hardcode quoted names like `"model_tmp"`.
 
+This includes constraint names in raw SQL. Pass the full name through `escape.columnName()`:
+
+```typescript
+// 🚫 a prefix that contains a quote breaks the statement
+`ADD CONSTRAINT "CHK_${tablePrefix}user_kind" ...`
+
+// ✅
+const checkName = escape.columnName(`CHK_${tablePrefix}user_kind`);
+`ADD CONSTRAINT ${checkName} ...`
+```
+
+Exception: `queryRunner` helpers such as `hasColumn()` and `hasTable()` expect the bare name, not the quoted one. Pass `${tablePrefix}my_table` to them.
+
 **Why:** The DB type, table prefix, and quoting rules differ between Postgres and SQLite. The `escape.*` helpers apply the right rules; manual interpolation will eventually be wrong on one of them.
 
 ### Prefer inlining over importing from sibling packages
@@ -304,13 +324,27 @@ logger.info(`[${migrationName}] Processing ${count} workflows`);
 logger.warn(`[${migrationName}] Skipping row ${id}: missing required field`);
 ```
 
+### Do not block startup
+
+n8n runs pending migrations at startup. If a migration fails, the instance does not start. If a migration does not end, the instance hangs.
+
+- **A new `NOT NULL` column without a default needs empty rows first.** Backfill the column before you add the constraint. If the old rows are not needed, delete them first. Do this even when the table "should be empty": a development or internal instance can hold rows.
+- **Every loop must end.** Check loops that try names until one is free. A suffix that makes the name longer than the column limit can collide again on every attempt. Truncate the base part and keep the suffix.
+- **Fail when a precondition fails.** Skip a bad *row* with a warning (see [Always Handle Dirty / Legacy Data](#always-handle-dirty--legacy-data)). But if the migration cannot read the state that decides what to do, throw. A migration that skips its work and then completes is recorded as applied, and never runs again.
+
+Do not use `ErrorReporter` in a migration. Log with the context `logger`, or throw.
+
 ### Don't combine independent schema changes
 
 One logical change per file. Multiple unrelated tables → split. The reviewer line: "the name of the migration is misleading because it does two things." A migration that adds a column to `workflow_entity` *and* creates `audit_log` should be two migrations.
 
 ### Don't edit a previously merged migration
 
-Once shipped, migrations are immutable. Write a new migration. To remove a column added by an earlier migration, do it in a separate follow-up migration (typically in a later release — see [Deprecate columns, then drop in a follow-up](#deprecate-columns-then-drop-in-a-follow-up)).
+Once merged, migrations are immutable. Write a new migration. To remove a column added by an earlier migration, do it in a separate follow-up migration (typically in a later release — see [Deprecate columns, then drop in a follow-up](#deprecate-columns-then-drop-in-a-follow-up)).
+
+**Why:** Instances that already ran the migration never run it again. An edit to `up()` makes their schema differ from the schema of new instances.
+
+**One narrow exception:** a change that does not alter the result of `up()`. For example, a guard that lets `up()` finish when its column already exists, or a log line in `down()`. Instances that ran the old version and instances that run the new version end with the same schema. Give the reason in the PR description.
 
 ### Don't parameterize values that aren't user input
 
@@ -404,6 +438,18 @@ All six require a final options parameter with `recreatesOnSqlite: true` — Typ
 **How `withFKsDisabled` works:** The migration wrapper calls `PRAGMA foreign_keys=OFF` before `up()`/`down()`, runs the migration inside a manual transaction, then re-enables foreign keys. This prevents CASCADE from firing during the internal table drop. It also sets `transaction = false` to avoid TypeORM's default transaction (since SQLite can't nest transactions with PRAGMA changes).
 
 > **Note:** On Postgres, these methods use `ALTER TABLE` directly and don't recreate the table. The risk is SQLite-specific.
+
+**Rebuild each table at most once.** Each recreating call copies the full table. `addColumns` followed by `addNotNull`, `addForeignKey` or a CHECK on the same table copies it two or three times. Do one of these:
+
+- Use raw `ALTER TABLE ADD COLUMN` for nullable or defaulted columns, even when the table has no incoming foreign keys.
+- Add the column with its final constraints in one call.
+- If several rebuilds are necessary, write in the PR description how many rows the table holds on a large instance.
+
+### Locks on existing Postgres tables
+
+On Postgres, some changes scan the whole table while they hold a lock. This is a problem on a busy table. A busy table can hold millions of rows, or the app writes to it often. `DEFAULT_BUSY_TABLES` in the [`migration-busy-table`](../../../packages/quality/policy/code-health/src/rules/migration-busy-table.rule.ts) code-health rule lists the busy tables, for example `execution_entity` and `workflow_entity`. Use that list. Do not keep a second list in this skill.
+
+**Measure an index on a busy table.** `CREATE INDEX` blocks writes until it finishes. `CREATE INDEX CONCURRENTLY` cannot run inside a transaction, and n8n always runs migrations in a transaction. Use a normal index, measure the build time on a realistic row count, and write the result in the PR description.
 
 ### Column types
 
@@ -554,6 +600,20 @@ await schemaBuilder.dropIndex('my_table', ['columnA'], { skipIfMissing: true });
 - `down()` must restore the previous schema, not just drop new objects — its effect should let `up()` be re-run cleanly afterwards.
 - **Test the down migration** on both engines: `pnpm start && pnpm start -- db:revert && pnpm start`. Down failures often surface as FK-protected indexes blocking column drops.
 
+**A `down()` may lose data that only the new schema can hold.** An operator runs `db:revert` during an incident, so `down()` must not block. These cases are correct:
+
+- `down()` deletes rows or bytes that only `up()` made possible. For example, it drops a new table, or deletes rows that use a new enum value.
+- `down()` clamps or truncates values that do not fit the old column type.
+
+An `IrreversibleMigration` blocks `db:revert` on every instance, also on instances that have no affected data. Thus, prefer a `ReversibleMigration` that loses data only on rollback.
+
+Two rules apply to every lossy `down()`:
+
+- Add a comment in the code for each step that loses data. Say what is lost.
+- `down()` must not claim to restore data that it does not restore. If `up()` deletes rows and `down()` recreates only empty tables, the comment says so.
+
+Make `down()` tolerate a partial state. For example, check `hasTable()` before a query that needs the table.
+
 ### Schema/Entity Drift
 
 Schema, entity, and OpenAPI types must agree. Caught regularly:
@@ -568,6 +628,19 @@ When a new column is required for data integrity (e.g. `activeVersionId` should 
 ### Deprecate columns, then drop in a follow-up
 
 Don't drop a column the same release you stop writing to it. Wait one release, then drop. This protects rolling deploys and provides a quick rollback path if the "stop writing" change has unforeseen issues.
+
+The same rule applies to a new `NOT NULL` constraint. During a rolling deploy, instances of the previous release still write to the table. If they do not set the column, their inserts fail. Add the column as nullable, or with a default, in release N. Add `NOT NULL` in release N+1, after every writer sets the column.
+
+### Unreleased features
+
+The rules for expand-contract and for keeping old rows protect user data. If no `n8n@` release contains the table, no user has that data. Then a migration can:
+
+- delete rows instead of converting them;
+- drop or change a column in one step, without expand-contract.
+
+Check the release tags before you rely on this: `git tag --contains <commit that created the table>`. Write the reason in a comment in the migration, for example: "No release contains this table. The feature is behind a flag. Only development builds have rows."
+
+This does not allow an edit to a merged migration. Development and internal instances have already run it. See [Don't edit a previously merged migration](#dont-edit-a-previously-merged-migration).
 
 ---
 
@@ -638,6 +711,18 @@ await copyTable('old_table', 'new_table', ['col1', 'col2'], ['col1', 'col2'], 50
 
 A sequential scan on the entire table is very slow on larger instances. If you must iterate, batch.
 
+**Give a batched query a stable `ORDER BY`.** `runInBatches` pages with `LIMIT` and `OFFSET`. Without an order on a unique column, a page can repeat or skip rows. Order by the primary key, or by another unique column. Also, if the operation changes rows so that the `WHERE` clause no longer matches them, the offset skips rows. Do not filter on the column that the operation writes.
+
+### Fail closed on ambiguous rows
+
+A backfill sets a new value for each old row. A row is ambiguous when its old data does not show the correct new value. For example, the column that decides the value is NULL, or it has two possible meanings. For an ambiguous row, choose the safe value, not the convenient one. The safe value gives less access, or keeps the old behaviour.
+
+For example, a backfill sets a new `isPublic` column from `credentialId`. A NULL `credentialId` can mean "needs no credential" or "the credential was deleted". Set `isPublic = false` for these rows. Write which rows are ambiguous in the migration comment.
+
+### Prefer a read-time default to a large backfill
+
+For a new key in a JSON column, a backfill updates every row of the table. Instead, parse the value in application code with a schema, for example with Zod, and give a missing key a safe default. This also handles rows that are written without the key after the migration ran. Use a backfill only when application code cannot know the correct value.
+
 ### Order backfill inserts deliberately
 
 When the migration writes rows whose order is observable downstream (auto-increment IDs, default sort order, "most recent first" UI lists), add explicit `ORDER BY` to the source `SELECT` — typically `updatedAt` or `createdAt`. Without one, the database picks any order and the chronology that was implicit in the old schema is lost.
@@ -691,13 +776,13 @@ Skip the gap only when the old location is genuinely throwaway (e.g. a temp tabl
 
 Where data is duplicated across two tables (e.g. `workflow_entity.nodes` vs `workflow_history.nodes`), the backfill must update both copies. Out-of-sync denormalized data tends to be discovered weeks later, usually in production.
 
-### Don't add JSON-substring scans on hot tables
+### Don't add JSON-substring scans on busy tables
 
 Add a real column (e.g. `isDraft`, similar to `isArchived`) instead of `WHERE settings::text LIKE '%foo%'`. Substring scans on JSON blobs degrade into full table scans and don't index.
 
-### Avoid storing large blobs inline on hot rows
+### Avoid storing large blobs inline on busy tables
 
-Move opt-out large columns to a side table — backups, replication, and read performance all benefit. The row-level lock on a hot table also shrinks when the row payload is smaller.
+Move opt-out large columns to a side table — backups, replication, and read performance all benefit. The row-level lock on a busy table also shrinks when the row payload is smaller.
 
 ### Verify data integrity when copying tables
 
@@ -748,14 +833,17 @@ For renames, use `ALTER TABLE ... RENAME TO`. Faster, atomic, no data-loss risk.
 
 **Every data migration ships with an integration test.** Schema-only migrations can usually be reviewed by reading the DSL calls. Data migrations cannot — they encode assumptions about row shape, JSON structure, NULL handling, and edge cases that only show up when the migration actually runs against representative data.
 
+A schema migration also needs a test when it rebuilds a SQLite table, changes foreign keys, or has a `down()` that changes data.
+
 A data migration runs *once* per database, on production data, with no opportunity to retry cleanly. The cost of a bad migration is a customer-facing incident; the cost of a test is ten minutes.
 
 Tests live in `packages/cli/test/migration/`, named to match the migration file (e.g. `1773000000000-create-credential-dependency-table.test.ts`). Use the helpers from `@n8n/backend-test-utils`:
 
 - **`initDbUpToMigration(MigrationName)`** runs every migration *up to but not including* yours, leaving the DB in the exact state your migration will see in production.
 - **`runSingleMigration(MigrationName)`** runs just your migration on top of that state.
+- **`undoLastSingleMigration()`** runs the `down()` of the last migration. Do not write your own revert logic.
 
-Full helper API: `packages/@n8n/backend-test-utils/MIGRATION_TESTING.md`.
+Full helper API: `packages/@n8n/backend-test-utils/MIGRATION_TESTING.md`. For a recent example, see `packages/cli/test/migration/1794826383663-add-agent-folder-placement.test.ts`.
 
 ```typescript
 import { initDbUpToMigration, runSingleMigration } from '@n8n/backend-test-utils';
@@ -792,6 +880,22 @@ describe('AddAndBackfillColumn1234567890000', () => {
 - Each edge case the migration claims to handle (NULL fields, malformed JSON, missing keys, legacy schema versions).
 - Idempotency where applicable — running the migration twice shouldn't double-apply transformations.
 - Both SQLite and Postgres if the migration branches on DB type.
+- **The rollback.** Run `undoLastSingleMigration()`, assert the old schema, then run the migration again. This proves the round trip works.
+- **The schema, not only the behavior.** A test that only reads and writes values can pass on the wrong schema. For example, a SQLite `TEXT` column also stores blobs. Assert column types with `PRAGMA table_info` on SQLite and `information_schema.columns` on Postgres. Assert the exact number of foreign keys and their `onDelete`. After `down()`, assert that each column, CHECK, foreign key and index that `up()` added is gone.
+- **The rows in other tables, when a SQLite table is rebuilt.** Seed rows in each table that references the rebuilt table. Assert that they still exist after `up()` and after `down()`. Without these rows, a rebuild that cascades deletes still passes.
+- **Each fixture that the test name claims.** If the migration keeps pins in a history table, insert a pin and assert it.
+
+**Keep each test isolated.** Each test sets up its own state in `beforeEach`: clear the database, run `initDbUpToMigration()`, and insert the rows that the test needs. A test must not use a row or a variable that an earlier test made. A test that passes only in file order fails with a confusing error when it runs alone.
+
+```typescript
+beforeEach(async () => {
+	await withContext(async ({ queryRunner }) => await queryRunner.clearDatabase());
+	await initDbUpToMigration(migration);
+	// insert the fixtures that every test needs
+});
+```
+
+**Run engine-specific tests by default.** SQLite is the default database. Gate a SQLite-only test with `(process.env.DB_TYPE ?? 'sqlite') === 'sqlite'`, not with `process.env.DB_TYPE === 'sqlite'`.
 
 ---
 

@@ -43,8 +43,12 @@ describe('Splunk v2 > Workflows', () => {
 			.reply(200, jsonEntry(`/services/search/jobs/${searchJobId}`));
 		api
 			.post('/services/saved/searches')
+			.query({ output_mode: 'xml' })
 			.reply(200, xmlFeed(`/services/saved/searches/${reportId}`));
-		api.delete(`/services/saved/searches/${reportId}`).reply(200, xmlMessage);
+		api
+			.delete(`/services/saved/searches/${reportId}`)
+			.query({ output_mode: 'xml' })
+			.reply(200, xmlMessage);
 		api
 			.get(`/services/saved/searches/${reportId}`)
 			.query(true)
@@ -53,8 +57,11 @@ describe('Splunk v2 > Workflows', () => {
 			.get('/services/saved/searches')
 			.query(true)
 			.reply(200, jsonEntry(`/services/saved/searches/${reportId}`));
-		api.post('/services/search/jobs').reply(200, xmlSid);
-		api.delete(`/services/search/jobs/${searchJobId}`).reply(200, xmlMessage);
+		api.post('/services/search/jobs').query({ output_mode: 'xml' }).reply(200, xmlSid);
+		api
+			.delete(`/services/search/jobs/${searchJobId}`)
+			.query({ output_mode: 'xml' })
+			.reply(200, xmlMessage);
 		api
 			.get('/services/search/jobs')
 			.query(true)
@@ -65,8 +72,12 @@ describe('Splunk v2 > Workflows', () => {
 			.reply(200, { results: [{ host: 'web-01' }] });
 		api
 			.post('/services/authentication/users')
+			.query({ output_mode: 'xml' })
 			.reply(200, xmlFeed('/services/authentication/users/nathan'));
-		api.delete('/services/authentication/users/nathan').reply(200, xmlMessage);
+		api
+			.delete('/services/authentication/users/nathan')
+			.query({ output_mode: 'xml' })
+			.reply(200, xmlMessage);
 		api
 			.get('/services/authentication/users/nathan')
 			.query(true)
@@ -77,6 +88,7 @@ describe('Splunk v2 > Workflows', () => {
 			.reply(200, jsonEntry('/services/authentication/users/nathan'));
 		api
 			.post('/services/authentication/users/nathan')
+			.query({ output_mode: 'xml' })
 			.reply(200, xmlFeed('/services/authentication/users/nathan'));
 	});
 
