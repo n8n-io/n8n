@@ -875,7 +875,7 @@ export class AgentRuntimeReconstructionService {
 		const resolvedTools: BuiltTool[] = [];
 		const mcpServerAttributions = new Map<string, string>();
 		const aiProxyFetch = createAiProxyFetch(this.outboundHttp);
-		const aiMcpFetch = instrumentation?.mcpFetch ?? createAiMcpFetch(this.outboundHttp);
+		const aiMcpFetch = createAiMcpFetch(this.outboundHttp);
 		const webSearchFetch = createWebSearchFetch(this.outboundHttp);
 		const needsDecisionWorkflows =
 			(options.supportsHitl ?? options.runtimeProfile === 'top-level') &&
@@ -917,11 +917,15 @@ export class AgentRuntimeReconstructionService {
 				this.knowledgeUsageTracker.startToolCall(runId, 'vector_store_search'),
 			modelFetch: credentialProvider.createAiGatewayTokenRefreshFetch?.(modelFetch) ?? modelFetch,
 			fallbackWebSearch: instrumentation?.webSearch,
+			disableProviderTools: instrumentation?.disableProviderTools,
 			// Only the mock MCP transport makes attaching auth-pending servers safe.
 			attachAuthPendingMcpServers: instrumentation?.mcpFetch !== undefined,
 			webSearchFetch,
 			previewChat,
 		});
+		if (instrumentation?.toolCallInterceptor) {
+			reconstructed.toolCallInterceptor(instrumentation.toolCallInterceptor);
+		}
 		return {
 			agent: reconstructed,
 			resolvedTools,
@@ -1077,6 +1081,9 @@ export class AgentRuntimeReconstructionService {
 				oauthService: this.oauthService,
 				projectId,
 				proxyFetch: aiMcpFetch,
+				// A test run or an eval answers MCP itself: no stored credential is read and no
+				// token is refreshed.
+				simulatedFetch: instrumentation?.mcpFetch?.(server.name),
 				resolveRegistryConnection: async (nodeTypeName) => {
 					const connection = await this.mcpRegistryService.getConnection(nodeTypeName);
 					if (connection?.attribution) {
@@ -1406,17 +1413,24 @@ export class AgentRuntimeReconstructionService {
 			descriptors.push(this.createN8nChatDescriptor(agentId, integrationRegistry));
 		}
 
+		// Tagged so a test run can tell them apart from the SDK's own tools.
+		const integrationTool = (tool: { build(): BuiltTool }): BuiltTool => ({
+			...tool.build(),
+			metadata: { kind: 'integration' },
+		});
 		for (const descriptor of descriptors) {
-			agent.tool(createIntegrationContextTool({ descriptor, queryExecutor }));
-			const actionTool = createIntegrationActionTool({
-				descriptor,
-				projectId,
-				messageContextStore,
-				actionExecutor,
-			});
+			agent.tool(integrationTool(createIntegrationContextTool({ descriptor, queryExecutor })));
+			const actionTool = integrationTool(
+				createIntegrationActionTool({
+					descriptor,
+					projectId,
+					messageContextStore,
+					actionExecutor,
+				}),
+			);
 			agent.tool(
 				descriptor.approval
-					? withApprovalDescription(actionTool.build(), (input) => {
+					? withApprovalDescription(actionTool, (input) => {
 							if (!isRecord(input)) return false;
 							const action = descriptor.actionToolDefinitions.find(
 								(entry) => entry.name === input.action,
@@ -1426,9 +1440,14 @@ export class AgentRuntimeReconstructionService {
 					: actionTool,
 			);
 		}
-		agent.tool(
-			createConversationTools({ descriptors, messageContextStore, actionExecutor, projectId }),
-		);
+		for (const tool of createConversationTools({
+			descriptors,
+			messageContextStore,
+			actionExecutor,
+			projectId,
+		})) {
+			agent.tool(integrationTool(tool));
+		}
 	}
 
 	private createIntegrationDescriptors(
@@ -1630,8 +1649,14 @@ export class AgentRuntimeReconstructionService {
 				...(inlineSubAgentModelsByDifficulty !== undefined
 					? { inlineSubAgentModelsByDifficulty }
 					: {}),
-				resolveInlineSubAgentProviderTools: (modelConfig: ModelConfig) =>
-					buildProviderToolsForModel(config, modelConfig),
+				// Provider tools run inside the provider's call, out of the test run's reach. Without
+				// the resolver, the delegate tool also tells the model that children get none.
+				...(instrumentation?.disableProviderTools
+					? {}
+					: {
+							resolveInlineSubAgentProviderTools: (modelConfig: ModelConfig) =>
+								buildProviderToolsForModel(config, modelConfig),
+						}),
 			}),
 		);
 		this.logger.debug('Injected delegate_subagent tool', { agentId: parentAgentId });

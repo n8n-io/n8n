@@ -35,17 +35,20 @@ export function buildSelectionPromotionCommitMessage({
 	updated,
 	removed,
 	folders = [],
+	credentials = [],
 }: {
 	projectName: string;
 	added: NamedRef[];
 	updated: NamedRef[];
 	removed: NamedRef[];
 	folders?: NamedRef[];
+	credentials?: NamedRef[];
 }): string {
 	const workflowCount = added.length + updated.length + removed.length;
 	const counts = [
 		...(workflowCount > 0 ? [plural(workflowCount, 'workflow')] : []),
 		...(folders.length > 0 ? [plural(folders.length, 'folder')] : []),
+		...(credentials.length > 0 ? [plural(credentials.length, 'credential')] : []),
 	];
 	const title =
 		counts.length > 0
@@ -56,6 +59,7 @@ export function buildSelectionPromotionCommitMessage({
 		listSection('Updated', updated),
 		listSection('Removed', removed),
 		listSection('Folders', folders),
+		listSection('Credentials', credentials),
 	];
 	return [title, ...sections].filter(Boolean).join('\n\n');
 }

@@ -332,4 +332,178 @@ describe('CollectionModal', () => {
 		expect(nameInput(getByTestId)).toHaveValue('');
 		expect(descriptionInput(getByTestId)).toHaveValue('');
 	});
+
+	describe('in edit mode', () => {
+		const existing: KnowledgeCollectionDto = {
+			...created,
+			id: 'c7',
+			name: 'Support knowledge base',
+			description: 'Every help-centre article',
+			homeProject: { id: 'p-write', name: 'Support team', type: 'team' },
+		};
+		const renamed: KnowledgeCollectionDto = { ...existing, name: 'Support handbook' };
+
+		function renderEdit() {
+			return renderModal({ props: { open: true, collection: existing }, pinia });
+		}
+
+		beforeEach(() => {
+			collectionsStore.updateCollection.mockResolvedValue(renamed);
+		});
+
+		it('starts with the name and the description of the collection', () => {
+			const { getByTestId } = renderEdit();
+			const modal = getByTestId('collection-modal');
+
+			expect(modal).toHaveTextContent('Edit collection');
+			expect(modal).not.toHaveTextContent('New collection');
+			expect(nameInput(getByTestId)).toHaveValue('Support knowledge base');
+			expect(descriptionInput(getByTestId)).toHaveValue('Every help-centre article');
+			expect(modal).toHaveTextContent('Agents read this to decide when to search the collection.');
+			expect(getByTestId('collection-description-counter')).toHaveTextContent(
+				`25 / ${KNOWLEDGE_COLLECTION_DESCRIPTION_MAX_LENGTH}`,
+			);
+			expect(getByTestId('collection-modal-submit')).toHaveTextContent('Save');
+			expect(getByTestId('collection-modal-cancel')).toHaveTextContent('Cancel');
+		});
+
+		it('hides the project select, because a change cannot move a collection', () => {
+			const { getByTestId, queryByTestId } = renderEdit();
+
+			expect(queryByTestId('collection-project-select')).toBeNull();
+			expect(getByTestId('collection-modal')).not.toHaveTextContent(
+				'Every agent in this project can use the collection.',
+			);
+			expect(mockedStore(useProjectsStore).getMyProjects).not.toHaveBeenCalled();
+		});
+
+		it('keeps Save disabled until the name or the description changes', async () => {
+			const { getByTestId } = renderEdit();
+			const submit = getByTestId('collection-modal-submit');
+
+			expect(submit).toBeDisabled();
+
+			// Spaces around the text are not saved, so they are no change.
+			await userEvent.type(descriptionInput(getByTestId), '  ');
+			expect(submit).toBeDisabled();
+
+			await userEvent.type(nameInput(getByTestId), '{Enter}');
+			expect(collectionsStore.updateCollection).not.toHaveBeenCalled();
+
+			await userEvent.type(descriptionInput(getByTestId), 'and macros');
+			expect(submit).toBeEnabled();
+		});
+
+		it('sends only the name when only the name changes, then closes and reports the save', async () => {
+			const { getByTestId, emitted } = renderEdit();
+
+			await userEvent.clear(nameInput(getByTestId));
+			await userEvent.type(nameInput(getByTestId), ' Support handbook ');
+			await userEvent.click(getByTestId('collection-modal-submit'));
+
+			expect(collectionsStore.updateCollection).toHaveBeenCalledWith('p-write', 'c7', {
+				name: 'Support handbook',
+			});
+			await waitFor(() => expect(emitted('saved')).toEqual([[renamed]]));
+			expect(emitted('update:open')).toEqual([[false]]);
+			expect(emitted('created')).toBeUndefined();
+			expect(collectionsStore.createCollection).not.toHaveBeenCalled();
+			expect(showMessage).toHaveBeenCalledWith({
+				title: 'Collection “Support handbook” saved.',
+				type: 'success',
+			});
+		});
+
+		it('sends only the description when only the description changes', async () => {
+			const { getByTestId } = renderEdit();
+
+			await userEvent.clear(descriptionInput(getByTestId));
+			await userEvent.type(descriptionInput(getByTestId), 'Help-centre articles and macros ');
+			await userEvent.click(getByTestId('collection-modal-submit'));
+
+			expect(collectionsStore.updateCollection).toHaveBeenCalledWith('p-write', 'c7', {
+				description: 'Help-centre articles and macros',
+			});
+		});
+
+		it('shows the required error when the user clears the name', async () => {
+			const { getByTestId, getAllByText } = renderEdit();
+
+			await userEvent.clear(nameInput(getByTestId));
+			await userEvent.click(getByTestId('collection-modal-submit'));
+
+			expect(getAllByText('This field is required')).toHaveLength(1);
+			expect(collectionsStore.updateCollection).not.toHaveBeenCalled();
+		});
+
+		it('shows a taken name under the name field and keeps the dialog open', async () => {
+			collectionsStore.updateCollection.mockRejectedValue(
+				new ResponseError('A collection with this name already exists in this project.', {
+					httpStatusCode: 409,
+				}),
+			);
+			const { getByTestId, emitted } = renderEdit();
+
+			await userEvent.clear(nameInput(getByTestId));
+			await userEvent.type(nameInput(getByTestId), 'Product docs');
+			await userEvent.click(getByTestId('collection-modal-submit'));
+
+			await waitFor(() =>
+				expect(getByTestId('collection-name-error')).toHaveTextContent(
+					'A collection with this name already exists.',
+				),
+			);
+			expect(emitted('update:open')).toBeUndefined();
+			expect(emitted('saved')).toBeUndefined();
+			expect(showError).not.toHaveBeenCalled();
+		});
+
+		it('reports any other failure in a toast and keeps the dialog open', async () => {
+			const failure = new Error('offline');
+			collectionsStore.updateCollection.mockRejectedValue(failure);
+			const { getByTestId, emitted } = renderEdit();
+
+			await userEvent.type(descriptionInput(getByTestId), ' and macros');
+			await userEvent.click(getByTestId('collection-modal-submit'));
+
+			await waitFor(() =>
+				expect(showError).toHaveBeenCalledWith(failure, 'Could not save collection'),
+			);
+			expect(emitted('update:open')).toBeUndefined();
+		});
+
+		it('confirms an edit that ends after the dialog opens again, without closing the new dialog', async () => {
+			const pending = createDeferredPromise<KnowledgeCollectionDto>();
+			collectionsStore.updateCollection.mockReturnValue(pending.promise);
+			const { getByTestId, rerender, emitted } = renderEdit();
+
+			await userEvent.clear(nameInput(getByTestId));
+			await userEvent.type(nameInput(getByTestId), 'Support handbook');
+			await userEvent.click(getByTestId('collection-modal-submit'));
+			await rerender({ open: false });
+			await rerender({ open: true });
+			pending.resolve(renamed);
+
+			await waitFor(() =>
+				expect(showMessage).toHaveBeenCalledWith({
+					title: 'Collection “Support handbook” saved.',
+					type: 'success',
+				}),
+			);
+			expect(emitted('saved')).toEqual([[renamed]]);
+			expect(emitted('update:open')).toBeUndefined();
+		});
+
+		it('starts as a create dialog again when it opens without a collection', async () => {
+			const { getByTestId, rerender } = renderEdit();
+
+			await rerender({ open: false });
+			await rerender({ open: true, collection: null });
+
+			expect(getByTestId('collection-modal')).toHaveTextContent('New collection');
+			expect(nameInput(getByTestId)).toHaveValue('');
+			expect(getByTestId('collection-project-select')).toBeInTheDocument();
+			expect(getByTestId('collection-modal-submit')).toHaveTextContent('Create collection');
+		});
+	});
 });
