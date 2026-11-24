@@ -349,12 +349,12 @@ export class ImportOrchestrator {
 			}
 			issues.push(
 				...(await this.credentialSavePolicyGate.refusedUpdates(
-					// A selected rename is a save like an update, so the policy gate sees it too.
+					// A selected update is a save like any other update, so the policy gate sees it too.
 					new Map([
 						...plannedCredentialUpdates(credentialRequest.conflictPolicy, credentialPlans),
 						...credentialPlans
-							.flatMap(({ selected }) => selected.renames)
-							.map((rename): [string, CredentialUpdateCandidate[]] => [rename.targetId, [rename]]),
+							.flatMap(({ selected }) => selected.updates)
+							.map((update): [string, CredentialUpdateCandidate[]] => [update.targetId, [update]]),
 					]),
 					contentImportTransport(importSource),
 					{ kind: 'user', user: context.user },
@@ -641,15 +641,22 @@ export class ImportOrchestrator {
 			folderSummaries: toFolderSummaries(folderPlan),
 			bindings,
 			// A selected credential keeps its id, so it binds to itself. The counts and the telemetry
-			// read a created one as a stub and a renamed one as an update.
+			// read a created one as stubbed, seeded or incomplete, and a changed one as updated.
 			credentialResult: {
 				...credentialBindResult,
 				bindings: new Map([
 					...credentialBindResult.bindings,
-					...[...selected.created, ...selected.renamed].map((id): [string, string] => [id, id]),
+					...[
+						...selected.stubbed,
+						...selected.seeded,
+						...selected.incomplete,
+						...selected.updated,
+					].map((id): [string, string] => [id, id]),
 				]),
-				stubbed: [...credentialBindResult.stubbed, ...selected.created],
-				updated: [...credentialsUpdated, ...selected.renamed],
+				stubbed: [...credentialBindResult.stubbed, ...selected.stubbed],
+				seeded: [...credentialBindResult.seeded, ...selected.seeded],
+				incomplete: [...credentialBindResult.incomplete, ...selected.incomplete],
+				updated: [...credentialsUpdated, ...selected.updated],
 			},
 			dataTablePlan,
 			variablePlan,
