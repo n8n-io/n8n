@@ -9,7 +9,10 @@ import N8nIcon from '../N8nIcon/Icon.vue';
 import N8nInput from '../N8nInput/Input.vue';
 import N8nInputLabel from '../N8nInputLabel';
 import N8nOption from '../N8nOption';
+import N8nPopover from '../N8nPopover/Popover.vue';
+import N8nScrollArea from '../N8nScrollArea/N8nScrollArea.vue';
 import N8nSelect from '../N8nSelect';
+import N8nSidebar from '../N8nSidebar/Sidebar.vue';
 import N8nSwitch from '../N8nSwitch';
 import N8nText from '../N8nText/Text.vue';
 import {
@@ -613,12 +616,12 @@ export const Details: Story = {
 		docs: {
 			description: {
 				story:
-					'Open another version and the Compare tooltip names that pair. Hover a published version to read who published it. The footer sits at the end of the list. Command-click or Control-click keeps the open version.',
+					'Open another version and the Compare tooltip names that pair. Hover a published version to read who published it. Command-click or Control-click keeps the open version.',
 			},
 		},
 	},
 	render: (args) => ({
-		components: { VersionHistory, N8nText },
+		components: { VersionHistory },
 		setup() {
 			return { args, ...presentedHistory(args.items) };
 		},
@@ -633,11 +636,7 @@ export const Details: Story = {
 					@compare="onCompare"
 					@action="onAction"
 					@toggle="onToggle"
-				>
-					<template #footer>
-						<N8nText size="small" color="text-base">Older versions are hidden.</N8nText>
-					</template>
-				</VersionHistory>
+				/>
 			</div>
 		`,
 	}),
@@ -939,8 +938,7 @@ function findVersion(entries: VersionHistoryEntry[], id: string): VersionHistory
 }
 
 const layoutStyle = [
-	'display: grid',
-	'grid-template-columns: minmax(0, 1fr) 22rem',
+	'display: flex',
 	'width: min(64rem, 100%)',
 	'height: 36rem',
 	'overflow: hidden',
@@ -951,6 +949,7 @@ const layoutStyle = [
 const contentStyle = [
 	'display: flex',
 	'flex-direction: column',
+	'flex: 1',
 	'gap: var(--spacing--sm)',
 	'min-width: 0',
 	'min-height: 0',
@@ -965,13 +964,18 @@ const canvasStyle = [
 	'background-color: var(--background--surface)',
 ].join('; ');
 
-const sidebarStyle = [
+// The host scroll area owns the fade. Its content must fill the viewport
+// so this list keeps a fixed height and scrolls itself.
+const hostFillStyle = [
+	'.version-history-host [data-reka-scroll-area-viewport] { position: relative; }',
+	'.version-history-host [data-reka-scroll-area-viewport] > * { height: 100%; min-height: 0; }',
+].join(' ');
+
+const popoverStageStyle = [
 	'display: flex',
-	'flex-direction: column',
-	'min-width: 0',
-	'min-height: 0',
-	'background-color: var(--background--surface)',
-	'border-left: var(--border)',
+	'align-items: flex-start',
+	'min-height: 32rem',
+	'padding: var(--spacing--lg)',
 ].join('; ');
 
 export const InPanel: Story = {
@@ -979,12 +983,12 @@ export const InPanel: Story = {
 		docs: {
 			description: {
 				story:
-					'The history sits in a side panel next to a content area. The switch keeps named versions. Compare text follows the open version, including after that switch. Command-click or Control-click keeps the open version.',
+					'The list fills a sidebar. The sidebar fades the top and the bottom. The list scrolls inside that frame. The switch keeps named versions. Compare text follows the open version. Command-click or Control-click keeps the open version.',
 			},
 		},
 	},
 	render: (args) => ({
-		components: { VersionHistory, N8nHeading, N8nSwitch, N8nCard, N8nText },
+		components: { VersionHistory, N8nSidebar, N8nHeading, N8nSwitch, N8nCard, N8nText },
 		setup() {
 			const namedOnly = ref(false);
 			const history = useHistory('v40');
@@ -1024,24 +1028,85 @@ export const InPanel: Story = {
 					</N8nCard>
 					<div style="${canvasStyle}"></div>
 				</section>
-				<aside style="${sidebarStyle}">
-					<header style="${panelHeaderStyle}">
-						<N8nHeading tag="h2" size="small" bold>Versions</N8nHeading>
-						<N8nSwitch v-model="namedOnly" label="Named versions" size="small" />
-					</header>
-					<div style="${panelBodyStyle}">
-						<VersionHistory
-							v-bind="args"
-							:items="visibleItems"
-							:selected-id="selectedId"
-							@select="onSelect"
-							@select-separate="onSelectSeparate"
-							@compare="onCompare"
-							@action="onAction"
-							@toggle="onToggle"
-						/>
-					</div>
-				</aside>
+				<N8nSidebar
+					class="version-history-host"
+					side="right"
+					label="Versions"
+					:width="320"
+					:min-width="320"
+					width-storage-id="version-history-sidebar-width"
+					style="--n8n-sidebar--padding: 0; flex-shrink: 0"
+				>
+					<template #header>
+						<header style="${panelHeaderStyle}">
+							<N8nHeading tag="h2" size="small" bold>Versions</N8nHeading>
+							<N8nSwitch v-model="namedOnly" label="Named versions" size="small" />
+						</header>
+					</template>
+					<VersionHistory
+						v-bind="args"
+						:items="visibleItems"
+						:selected-id="selectedId"
+						style="--version-history--inset: var(--spacing--xs); --version-history--heading-pad: 0"
+						@select="onSelect"
+						@select-separate="onSelectSeparate"
+						@compare="onCompare"
+						@action="onAction"
+						@toggle="onToggle"
+					/>
+				</N8nSidebar>
+				<component :is="'style'">${hostFillStyle}</component>
+			</div>
+		`,
+	}),
+	args: {
+		items: manyVersions,
+	},
+};
+
+export const InPopover: Story = {
+	parameters: {
+		docs: {
+			description: {
+				story:
+					'A popover does not give this list a height. Turn off the popover scroll so the list is the only scrollport. Put the list in a scroll area with a fixed height. The scroll area fades the edges. The list scrolls inside it.',
+			},
+		},
+	},
+	render: (args) => ({
+		components: { VersionHistory, N8nPopover, N8nScrollArea, N8nButton },
+		setup() {
+			const open = ref(false);
+			return { args, open, ...presentedHistory(args.items, 'v40') };
+		},
+		template: `
+			<div style="${popoverStageStyle}">
+				<N8nPopover
+					v-model:open="open"
+					:enable-scrolling="false"
+					side="bottom"
+					align="start"
+					width="20rem"
+				>
+					<template #trigger>
+						<N8nButton label="Versions" variant="outline" />
+					</template>
+					<template #content>
+						<N8nScrollArea class="version-history-host" edge-fade="y" style="height: 24rem">
+							<VersionHistory
+								v-bind="args"
+								:items="items"
+								:selected-id="selectedId"
+								@select="onSelect"
+								@select-separate="onSelectSeparate"
+								@compare="onCompare"
+								@action="onAction"
+								@toggle="onToggle"
+							/>
+						</N8nScrollArea>
+					</template>
+				</N8nPopover>
+				<component :is="'style'">${hostFillStyle}</component>
 			</div>
 		`,
 	}),

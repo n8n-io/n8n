@@ -154,12 +154,18 @@ function onUpdateItemSize(item: { [key: string]: string }) {
 		const previousSize = itemSizeCache.value[itemId] ?? props.itemSize;
 		const size = itemRef ? itemRef.offsetHeight : props.itemSize;
 		const difference = size - previousSize;
+		// Read the position before the size change. This row's top does not depend on its own height.
+		const position = itemPositionCache.value[itemId as Item[Key]] ?? 0;
 
 		itemSizeCache.value[itemId] = size;
 
-		if (wrapperRef.value && scrollTop.value) {
-			wrapperRef.value.scrollTop = wrapperRef.value.scrollTop + difference;
-			scrollTop.value = wrapperRef.value.scrollTop;
+		// A taller row above the anchor pushes the rows under it down. Follow that shift.
+		// A row at the anchor or below it must stay put, or a jump scrolls past the target.
+		const wrapper = wrapperRef.value;
+		if (wrapper && difference !== 0 && position < wrapper.scrollTop) {
+			const next = wrapper.scrollTop + difference;
+			wrapper.scrollTop = next;
+			scrollTop.value = next;
 		}
 	});
 }

@@ -22,7 +22,6 @@ import { useI18n } from '../../composables/useI18n';
 import { N8nListbox } from '../N8nListbox';
 import N8nLoading from '../N8nLoading/Loading.vue';
 import N8nRecycleScroller from '../N8nRecycleScroller';
-import N8nScrollArea from '../N8nScrollArea';
 import N8nSpinner from '../N8nSpinner';
 
 defineOptions({ name: 'VersionHistory' });
@@ -384,109 +383,96 @@ defineExpose({ scrollTo });
 		</div>
 
 		<!-- The scroller mounts each row in a div, so this list cannot be a ul. -->
-		<N8nScrollArea
+		<N8nListbox
 			v-else-if="rows.length"
-			:class="$style.scroll"
-			edge-fade="y"
-			:enable-vertical-scroll="false"
+			v-bind="listboxProps"
+			:class="$style.list"
+			:model-value="activeId"
+			:label="listLabel"
+			@update:model-value="onSelect"
+			@keydown.capture="onListKeydown"
+			@focusout.capture="onListFocusOut"
 		>
-			<N8nListbox
-				v-bind="listboxProps"
-				:class="$style.list"
-				:model-value="activeId"
-				:label="listLabel"
-				@update:model-value="onSelect"
-				@keydown.capture="onListKeydown"
-				@focusout.capture="onListFocusOut"
+			<N8nRecycleScroller
+				ref="scrollerRef"
+				:items="scrollerItems"
+				item-key="key"
+				:item-size="ESTIMATED_ROW_HEIGHT"
+				@scroll="onListScroll"
 			>
-				<N8nRecycleScroller
-					ref="scrollerRef"
-					:items="scrollerItems"
-					item-key="key"
-					:item-size="ESTIMATED_ROW_HEIGHT"
-					@scroll="onListScroll"
-				>
-					<template #default="{ item }">
-						<div
-							v-if="isHistoryRow(item)"
-							:class="[
-								$style.row,
-								item.isFirst && $style.first,
-								item.isLast && $style.last,
-								item.kind === 'heading' && $style.headingRow,
-								!item.connectAbove &&
-									!item.isFirst &&
-									item.kind !== 'heading' &&
-									$style.segmentStart,
-							]"
-							data-test-id="version-history-row"
-							:data-row-id="item.key"
+				<template #default="{ item }">
+					<div
+						v-if="isHistoryRow(item)"
+						:class="[
+							$style.row,
+							item.isFirst && $style.first,
+							item.isLast && $style.last,
+							item.kind === 'heading' && $style.headingRow,
+							!item.connectAbove && !item.isFirst && item.kind !== 'heading' && $style.segmentStart,
+						]"
+						data-test-id="version-history-row"
+						:data-row-id="item.key"
+					>
+						<!-- The gap sits outside the row content. A heading leaves this gap empty. -->
+						<span
+							v-if="item.connectAbove"
+							:class="$style.gap"
+							data-test-id="version-history-line"
+							data-segment="gap"
+						/>
+						<VersionHistoryHeading v-if="item.kind === 'heading'" :label="item.label">
+							<slot v-if="$slots.heading" name="heading" :id="item.key" :label="item.label" />
+						</VersionHistoryHeading>
+						<VersionHistoryItem
+							v-else-if="item.kind === 'version'"
+							:item="item.item"
+							:connect-above="item.connectAbove"
+							:connect-below="item.connectBelow"
+							:aria-setsize="rows.length"
+							:aria-posinset="item.position"
+							@compare="emit('compare', $event)"
+							@select-separate="emit('selectSeparate', $event)"
+							@action="onAction(item.item.id, $event)"
 						>
-							<!-- The gap sits outside the row content. A heading leaves this gap empty. -->
-							<span
-								v-if="item.connectAbove"
-								:class="$style.gap"
-								data-test-id="version-history-line"
-								data-segment="gap"
-							/>
-							<VersionHistoryHeading v-if="item.kind === 'heading'" :label="item.label">
-								<slot v-if="$slots.heading" name="heading" :id="item.key" :label="item.label" />
-							</VersionHistoryHeading>
-							<VersionHistoryItem
-								v-else-if="item.kind === 'version'"
-								:item="item.item"
-								:connect-above="item.connectAbove"
-								:connect-below="item.connectBelow"
-								:aria-setsize="rows.length"
-								:aria-posinset="item.position"
-								@compare="emit('compare', $event)"
-								@select-separate="emit('selectSeparate', $event)"
-								@action="onAction(item.item.id, $event)"
-							>
-								<template v-if="$slots.actions" #actions="slotProps">
-									<slot name="actions" v-bind="slotProps" />
-								</template>
-							</VersionHistoryItem>
-							<VersionHistoryGroup
-								v-else-if="item.kind === 'group'"
-								:id="item.groupId"
-								:label="item.label"
-								:expanded="item.expanded"
-								:connect-above="item.connectAbove"
-								:connect-below="item.connectBelow"
-								:aria-setsize="rows.length"
-								:aria-posinset="item.position"
-								@toggle="onToggle(item.groupId)"
-							/>
-						</div>
-						<div v-else-if="isEndRow(item)" :class="$style.end">
-							<div
-								v-if="hasMore || loadingMore"
-								ref="loadMoreSentinel"
-								:class="[$style.loadMore, !loadingMore && $style.sentinel]"
-								data-test-id="version-history-load-more"
-								:role="loadingMore ? 'status' : undefined"
-								:aria-live="loadingMore ? 'polite' : undefined"
-								:aria-busy="loadingMore ? 'true' : undefined"
-								:aria-hidden="loadingMore ? undefined : 'true'"
-								:aria-label="loadingMore ? loadingMoreLabel : undefined"
-							>
-								<div v-if="loadingMore" :class="$style.loader">
-									<N8nSpinner type="grid" size="small" aria-hidden="true" />
-								</div>
-							</div>
-							<div
-								v-if="$slots.footer"
-								:class="$style.footer"
-								data-test-id="version-history-footer"
-							>
-								<slot name="footer" />
+							<template v-if="$slots.actions" #actions="slotProps">
+								<slot name="actions" v-bind="slotProps" />
+							</template>
+						</VersionHistoryItem>
+						<VersionHistoryGroup
+							v-else-if="item.kind === 'group'"
+							:id="item.groupId"
+							:label="item.label"
+							:expanded="item.expanded"
+							:connect-above="item.connectAbove"
+							:connect-below="item.connectBelow"
+							:aria-setsize="rows.length"
+							:aria-posinset="item.position"
+							@toggle="onToggle(item.groupId)"
+						/>
+					</div>
+					<div v-else-if="isEndRow(item)" :class="$style.end">
+						<div
+							v-if="hasMore || loadingMore"
+							ref="loadMoreSentinel"
+							:class="[$style.loadMore, !loadingMore && $style.sentinel]"
+							data-test-id="version-history-load-more"
+							:role="loadingMore ? 'status' : undefined"
+							:aria-live="loadingMore ? 'polite' : undefined"
+							:aria-busy="loadingMore ? 'true' : undefined"
+							:aria-hidden="loadingMore ? undefined : 'true'"
+							:aria-label="loadingMore ? loadingMoreLabel : undefined"
+						>
+							<div v-if="loadingMore" :class="$style.loader">
+								<N8nSpinner type="grid" size="small" aria-hidden="true" />
 							</div>
 						</div>
-					</template>
-				</N8nRecycleScroller>
-			</N8nListbox>
-		</N8nScrollArea>
+						<div v-if="$slots.footer" :class="$style.footer" data-test-id="version-history-footer">
+							<slot name="footer" />
+						</div>
+					</div>
+				</template>
+			</N8nRecycleScroller>
+		</N8nListbox>
 
 		<div v-else :class="$style.empty" data-test-id="version-history-empty">
 			<slot name="empty" />
@@ -504,21 +490,11 @@ defineExpose({ scrollTo });
 	color: var(--color--text);
 }
 
-.scroll {
-	flex: 1;
-	min-height: 0;
-
-	// The list fills the frame. The scroller inside it scrolls.
-	:global([data-reka-scroll-area-viewport]) {
-		position: relative;
-	}
-}
-
 .list {
-	position: absolute;
-	inset: 0;
 	display: flex;
 	flex-direction: column;
+	flex: 1;
+	height: 100%;
 	min-height: 0;
 	min-width: 0;
 	// The rows draw their own gap. Listbox padding would move the timeline.
@@ -558,7 +534,8 @@ defineExpose({ scrollTo });
 	box-sizing: border-box;
 	width: 100%;
 	padding-top: var(--version-history--row-gap);
-	padding-inline: var(--spacing--2xs);
+	// A host sets this so the rows line up with its header.
+	padding-inline: var(--version-history--inset, var(--spacing--2xs));
 }
 
 .first {
@@ -571,7 +548,7 @@ defineExpose({ scrollTo });
 
 // Space with no line. The track ends, the heading shows, and the next track starts.
 .headingRow {
-	padding-top: var(--spacing--2xs);
+	padding-top: var(--version-history--inset, var(--spacing--2xs));
 	padding-bottom: var(--spacing--2xs);
 }
 
@@ -584,8 +561,8 @@ defineExpose({ scrollTo });
 	position: absolute;
 	top: 0;
 	left: calc(
-		var(--spacing--2xs) + var(--version-history--body-pad) + var(--version-history--rail-margin) +
-			(var(--version-history--rail-size) / 2)
+		var(--version-history--inset, var(--spacing--2xs)) + var(--version-history--body-pad) +
+			var(--version-history--rail-margin) + (var(--version-history--rail-size) / 2)
 	);
 	width: 1px;
 	height: var(--version-history--row-gap);
