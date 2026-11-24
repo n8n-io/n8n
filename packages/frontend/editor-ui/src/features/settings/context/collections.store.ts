@@ -1,0 +1,52 @@
+import type { CreateKnowledgeCollectionDto, KnowledgeCollectionDto } from '@n8n/api-types';
+import { defineStore } from 'pinia';
+import { ref } from 'vue';
+import { useRootStore } from '@n8n/stores/useRootStore';
+
+import * as api from './collections.api';
+
+/** The knowledge collections in Settings > Context > Collections. */
+export const useCollectionsStore = defineStore('contextCollections', () => {
+	const rootStore = useRootStore();
+
+	const collections = ref<KnowledgeCollectionDto[]>([]);
+	const count = ref(0);
+	const loading = ref(false);
+
+	// Only the newest read commits, so a slow earlier read cannot overwrite a later one.
+	let latestRead = 0;
+
+	async function fetchCollections() {
+		const read = ++latestRead;
+		loading.value = true;
+		try {
+			const response = await api.fetchCollections(rootStore.restApiContext);
+			if (read === latestRead) {
+				collections.value = response.data;
+				count.value = response.count;
+			}
+
+			return response;
+		} catch (error) {
+			// A newer read owns the result, so an older failure reports nothing.
+			if (read === latestRead) {
+				throw error;
+			}
+
+			return undefined;
+		} finally {
+			if (read === latestRead) {
+				loading.value = false;
+			}
+		}
+	}
+
+	async function createCollection(
+		projectId: string,
+		payload: CreateKnowledgeCollectionDto,
+	): Promise<KnowledgeCollectionDto> {
+		return await api.createCollection(rootStore.restApiContext, projectId, payload);
+	}
+
+	return { collections, count, loading, fetchCollections, createCollection };
+});

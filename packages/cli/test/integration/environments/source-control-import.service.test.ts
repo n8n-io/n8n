@@ -63,6 +63,7 @@ import { PolicyViolationError } from '@/policy/policy-violation.error';
 import { DeprecatedNodesValidationService } from '@/workflows/deprecated-nodes-validation.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
+import { createAgent } from '@test-integration/db/agents';
 import { createFolder } from '@test-integration/db/folders';
 import { assignTagToWorkflow, createTag } from '@test-integration/db/tags';
 import { createVariable } from '@test-integration/db/variables';
@@ -2748,7 +2749,7 @@ describe('SourceControlImportService', () => {
 				const agentFolder = await createFolder(project, { resourceType: 'agent' });
 				const agents = Container.get(AgentRepository);
 				const agent = hasAgent
-					? await agents.save({
+					? await createAgent({
 							id: nanoid(),
 							name: 'Support',
 							projectId: project.id,

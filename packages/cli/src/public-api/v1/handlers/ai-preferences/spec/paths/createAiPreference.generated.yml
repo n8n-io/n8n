@@ -1,0 +1,64 @@
+operationId: createAiPreference
+tags:
+  - AiPreference
+summary: Create an AI preference
+description: |-
+  Create an AI preference for yourself (scope user), for a project (scope project, with projectId), or for the whole instance (scope instance). A preference for the instance or for another user needs the aiPreference:create permission. A preference for a project needs the projectAiPreference:create permission in that project. Each scope holds at most 50 preferences, and two preferences in one scope cannot have the same text.
+
+  Requires the `aiPreference:create` API key scope.
+x-required-scope: aiPreference:create
+parameters:
+  - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          content:
+            type: string
+            minLength: 1
+            maxLength: 2000
+            description: One instruction, written as the user would say it. At most 2000 characters. A scope that already holds 50 preferences refuses a new one, so edit or delete one first.
+          scope:
+            type: string
+            enum:
+              - user
+              - project
+              - instance
+          projectId:
+            type: string
+            nullable: true
+            maxLength: 36
+          userId:
+            type: string
+            nullable: true
+            format: uuid
+        required:
+          - content
+          - scope
+        additionalProperties: false
+responses:
+  '201':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          $ref: ../../../../shared/spec/schemas/aiPreferencePublicDto.generated.yml
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '409':
+    $ref: ../../../../shared/spec/responses/conflict.yml
+  '415':
+    $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
+  '422':
+    $ref: ../../../../shared/spec/responses/unprocessableEntity.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml

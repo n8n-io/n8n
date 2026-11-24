@@ -185,13 +185,11 @@ describe('External secrets — expression access', () => {
 			owner,
 		);
 
-		const result = await workflowExecutionService.executeManually(
-			workflow,
-			{ triggerToStartFrom: { name: 'Trigger' } },
-			owner,
-			undefined,
-			undefined,
-		);
+		const result = await workflowExecutionService.executeManually({
+			workflowData: workflow,
+			payload: { triggerToStartFrom: { name: 'Trigger' } },
+			user: owner,
+		});
 
 		if (!('executionId' in result)) {
 			throw new Error(`Expected executionId, got ${JSON.stringify(result)}`);
@@ -262,13 +260,11 @@ describe('External secrets — expression access', () => {
 			owner,
 		);
 
-		const result = await workflowExecutionService.executeManually(
-			workflow,
-			{ triggerToStartFrom: { name: 'Trigger' } },
-			owner,
-			undefined,
-			undefined,
-		);
+		const result = await workflowExecutionService.executeManually({
+			workflowData: workflow,
+			payload: { triggerToStartFrom: { name: 'Trigger' } },
+			user: owner,
+		});
 
 		if (!('executionId' in result)) {
 			throw new Error(`Expected executionId, got ${JSON.stringify(result)}`);

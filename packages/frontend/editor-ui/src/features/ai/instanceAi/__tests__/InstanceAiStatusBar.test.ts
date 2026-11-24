@@ -4,6 +4,8 @@ import type { InstanceAiAgentNode, InstanceAiMessage } from '@n8n/api-types';
 import { createThreadComponentRenderer } from './createThreadComponentRenderer';
 import InstanceAiStatusBar from '../components/InstanceAiStatusBar.vue';
 import type { ThreadRuntime } from '../instanceAi.store';
+import { ThinkingWordKey } from '../composables/useThinkingWords';
+import { ref } from 'vue';
 
 let thread: ThreadRuntime;
 const renderComponent = createThreadComponentRenderer(InstanceAiStatusBar, {}, () => thread);
@@ -70,5 +72,39 @@ describe('InstanceAiStatusBar', () => {
 		const { getByTestId } = renderWith({ title: '' });
 
 		expect(getByTestId('instance-ai-status-bar')).toHaveTextContent('Building workflow');
+	});
+});
+
+describe('InstanceAiStatusBar, thinking word', () => {
+	beforeEach(() => {
+		createTestingPinia();
+	});
+
+	function renderStreaming(messages: InstanceAiMessage[]) {
+		thread = {
+			id: 'thread-1',
+			messages,
+			isStreaming: true,
+			isAwaitingConfirmation: false,
+		} as unknown as ThreadRuntime;
+		return renderComponent({
+			global: { provide: { [ThinkingWordKey]: ref('Joining the dots') } },
+		});
+	}
+
+	it('shows the thinking word of the thread instead of "Thinking"', () => {
+		const { getByTestId } = renderStreaming([]);
+
+		expect(getByTestId('instance-ai-status-bar')).toHaveTextContent('Joining the dots');
+		expect(getByTestId('instance-ai-status-bar')).not.toHaveTextContent('Thinking');
+	});
+
+	it('shows the active builder instead of the thinking word', () => {
+		const { getByTestId } = renderStreaming([
+			messageWithActiveBuilder({ title: 'Building workflow' }),
+		]);
+
+		expect(getByTestId('instance-ai-status-bar')).toHaveTextContent('Building workflow');
+		expect(getByTestId('instance-ai-status-bar')).not.toHaveTextContent('Joining the dots');
 	});
 });

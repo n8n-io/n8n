@@ -28,6 +28,7 @@ import { SkillSourceConnection } from '../../database/entities/skill-source-conn
 import { deleteAllSkills } from '../../testing';
 import { FakeGitHub } from '../test-utils/fake-github';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { SkillSourceBackoff } from '../../services/skill-source-backoff';
 import { SkillSyncService } from '../../services/skill-sync.service';
 import { SkillsTelemetry } from '../../services/skills-telemetry.service';
 import { SkillSourceLink } from '../../database/entities/skill-source-link.entity';
@@ -487,6 +488,25 @@ describe('Skill Sync with credentials', () => {
 			expect(source.credentialId).toBe(teamCredential.id);
 		});
 
+		it('imports from a folder of a private repository only with a credential', async () => {
+			const body = { url: `${PRIVATE}/tree/main/skills`, ...scope() };
+			const withCredential = { ...body, credentialId: teamCredential.id };
+			const { data: discovery } = await post<SkillSourceDiscovery>(
+				editor,
+				'/skill-sources/discover',
+				withCredential,
+			);
+			const { data } = await post<SkillSourceConnectResponse>(editor, '/skill-sources', {
+				...withCredential,
+				skillKeys: discovery.skills.map(({ key }) => key),
+			});
+
+			expect(data.imported.map(({ name }) => name)).toEqual(['pdf']);
+			expect(github.requests.archives).toBe(0);
+			const { meta } = await post(editor, '/skill-sources/discover', body, 404);
+			expect(meta).toEqual({ reason: 'not_found' });
+		});
+
 		it('cannot read the private repository without a credential', async () => {
 			const { meta } = await post(
 				editor,
@@ -775,7 +795,7 @@ describe('Skill Sync with credentials', () => {
 		it('keeps a deleted credential visible while public access waits after a rate limit', async () => {
 			const { sourceId } = await importPrivate();
 			await db().update(SkillSourceConnection, { id: sourceId }, { credentialId: null });
-			const backoff = Reflect.get(Container.get(SkillSyncService), 'backoff') as Map<
+			const backoff = Reflect.get(Container.get(SkillSourceBackoff), 'waits') as Map<
 				string,
 				{ until: number; attempts: number }
 			>;
@@ -895,7 +915,7 @@ describe('Skill Sync with credentials', () => {
 
 		describe('the wait after a rate limit, for each access', () => {
 			const backoff = () =>
-				Reflect.get(Container.get(SkillSyncService), 'backoff') as Map<
+				Reflect.get(Container.get(SkillSourceBackoff), 'waits') as Map<
 					string,
 					{ until: number; attempts: number }
 				>;

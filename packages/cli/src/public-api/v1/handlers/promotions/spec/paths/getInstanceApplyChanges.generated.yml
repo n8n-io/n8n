@@ -39,6 +39,22 @@ responses:
               required:
                 - environmentId
                 - branchName
+            environment:
+              type: object
+              properties:
+                name:
+                  type: string
+                providerType:
+                  type: string
+                  enum:
+                    - git
+                    - gitlab
+                createBranchOnPromotion:
+                  type: boolean
+                  description: Promote only. When true, Promote pushes to a new branch created from `source.branchName`. When false, it pushes to `source.branchName` directly.
+              required:
+                - name
+                - providerType
             resources:
               type: array
               items:
@@ -149,6 +165,7 @@ responses:
           required:
             - commitSha
             - source
+            - environment
             - resources
             - dependencies
             - check

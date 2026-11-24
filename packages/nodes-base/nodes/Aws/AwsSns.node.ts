@@ -18,6 +18,7 @@ export class AwsSns implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'AWS SNS',
 		name: 'awsSns',
+		schemaPath: 'Aws',
 		icon: 'file:sns.svg',
 		group: ['output'],
 		version: 1,

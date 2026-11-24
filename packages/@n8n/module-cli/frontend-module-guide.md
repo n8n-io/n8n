@@ -183,16 +183,17 @@ you use a surface.
 
 ### Live — the shell registers these, and a reader shows them
 
-| Field                   | Register function               | Reader                                   |
-| ----------------------- | ------------------------------- | ---------------------------------------- |
-| `routes`                | `registerModuleRoutes`          | vue-router                               |
-| `projectTabs`           | `registerModuleProjectTabs`     | `ProjectHeader`                          |
-| `resources`             | `registerModuleResources`       | `ResourcesListLayout`                    |
-| `modals`                | `registerModuleModals`          | `DynamicModalLoader`                     |
-| `adHocModalKeyPrefixes` | `registerModuleModals`          | `modalRegistry` (keys minted at runtime) |
-| `settingsPages`         | `registerModuleSettingsPages`   | `SettingsSidebar`                        |
-| `pushHandlers`          | `registerModulePushHandlers`    | `useModulePushDispatcher`, in `App.vue`  |
-| `parameterInputs`       | `registerModuleParameterInputs` | `ParameterInput`, `ParameterInputFull`   |
+| Field                   | Register function                   | Reader                                   |
+| ----------------------- | ----------------------------------- | ---------------------------------------- |
+| `routes`                | `registerModuleRoutes`              | vue-router                               |
+| `projectTabs`           | `registerModuleProjectTabs`         | `ProjectHeader`                          |
+| `resources`             | `registerModuleResources`           | `ResourcesListLayout`                    |
+| `modals`                | `registerModuleModals`              | `DynamicModalLoader`                     |
+| `adHocModalKeyPrefixes` | `registerModuleModals`              | `modalRegistry` (keys minted at runtime) |
+| `settingsPages`         | `registerModuleSettingsPages`       | `SettingsSidebar`                        |
+| `pushHandlers`          | `registerModulePushHandlers`        | `useModulePushDispatcher`, in `App.vue`  |
+| `parameterInputs`       | `registerModuleParameterInputs`     | `ParameterInput`, `ParameterInputFull`   |
+| `runDataDisplayModes`   | `registerModuleRunDataDisplayModes` | `RunData` and its display mode select    |
 
 ### Position of a settings link
 
@@ -208,8 +209,9 @@ its section. Two links with the same `order` keep their registration order. A li
 `section` is listed before the first heading. Neither field is part of `IMenuItem`.
 
 All the register functions are in `editor-ui/src/app/moduleInitializer/moduleInitializer.ts`.
-`main.ts` registers `routes` before the mount. `app/init/index.ts` registers the other surfaces
-after the login.
+`main.ts` registers `routes` before the mount. `app/init/index.ts` registers
+`runDataDisplayModes` before the login check, so a visitor in preview mode sees run data. It
+registers the other surfaces after the login.
 
 `pushHandlers` has one more rule. Only an **active** module registers its handlers. A module
 handler also stops the built-in handler of the shell for that push type. A handler from an
@@ -227,9 +229,6 @@ composables. The registry keeps your `commands` array, but the command bar never
 
 The SDK exports the types. No file in the shell reads them. A value that you set does nothing: no
 error, no warning, no behaviour.
-
-`runDataDisplayModes` is also types-only for now. The shell support lands with **CAP-327**. See
-[Run data display modes](#run-data-display-modes) for the contract.
 
 Do not use `commands` or the four types-only fields yet. **CAT-3685** tracks the remaining work.
 The descriptor that the CLI writes repeats this split in a comment, so you see it as you write.
@@ -258,7 +257,8 @@ runDataDisplayModes: [
   mode and the telemetry `view` value. Do not change it after a release. The ids in
   `BUILT_IN_DISPLAY_MODES` are reserved.
 - `canRender` decides if the select offers the mode. It gets all items of the selected run, not
-  filtered by search. It must be synchronous and cheap, because it runs on every data change.
+  filtered by search. It must be synchronous and cheap, because it runs on every data change. When
+  it returns false for the saved mode, the pane shows its default view and keeps the saved mode.
 - `autoSelect: true` makes the output pane select the mode when the node opens or finishes a run,
   if `canRender` is true.
 - `supports.search: true` shows the search field. Without it, the search field is hidden and

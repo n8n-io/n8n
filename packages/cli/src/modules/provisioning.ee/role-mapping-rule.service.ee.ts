@@ -326,6 +326,15 @@ export class RoleMappingRuleService {
 		return result.affected ?? 0;
 	}
 
+	/** How many rules of each type exist. */
+	async countByType(): Promise<Record<'instance' | 'project', number>> {
+		const [instance, project] = await Promise.all([
+			this.roleMappingRuleRepository.count({ where: { type: 'instance' } }),
+			this.roleMappingRuleRepository.count({ where: { type: 'project' } }),
+		]);
+		return { instance, project };
+	}
+
 	async move(
 		{
 			id,

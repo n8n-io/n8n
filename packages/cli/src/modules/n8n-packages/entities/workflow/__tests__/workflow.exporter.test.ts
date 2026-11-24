@@ -19,6 +19,7 @@ import { VariableRequirementsExtractor } from '../../variable/variable-requireme
 import type { WorkflowVariableRequirement } from '../../variable/variable.types';
 import { WorkflowExporter } from '../workflow.exporter';
 import { WorkflowSerializer } from '../workflow.serializer';
+import { PackageWorkflowInvalidError } from '../../package-export.errors';
 
 const user = mock<User>({ id: 'user-1' });
 
@@ -236,6 +237,28 @@ describe('WorkflowExporter', () => {
 			id: null,
 			__aiGatewayManaged: true,
 		});
+	});
+
+	it('throws a 422 that names the workflow and invalid fields when stored data fails the schema', async () => {
+		const workflow = makeWorkflow({
+			nodes: [{ id: 'n1', name: 'Node', type: 'x', typeVersion: 1, parameters: {} }] as never,
+		});
+		const { exporter } = makeExporter([workflow]);
+
+		const error = await exporter
+			.export({
+				user,
+				workflowIds: [workflow.id],
+				writer: new CapturingWriter(),
+				includeTags: true,
+				versionPolicy: 'latest',
+			})
+			.catch((e: unknown) => e);
+
+		expect(error).toBeInstanceOf(PackageWorkflowInvalidError);
+		expect((error as PackageWorkflowInvalidError).httpStatusCode).toBe(422);
+		expect((error as PackageWorkflowInvalidError).message).toContain(workflow.id);
+		expect((error as PackageWorkflowInvalidError).message).toContain('nodes.0.position');
 	});
 
 	it('writes node groups into workflow.json', async () => {

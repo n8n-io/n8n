@@ -138,6 +138,7 @@ describe('PromotionsService', () => {
 		over: Partial<PromotionOperationInput> = {},
 	): PromotionOperationInput => ({
 		environmentId: ENVIRONMENT_ID,
+		environmentName: 'Production',
 		scope: 'instance',
 		providerId: 'prov1',
 		providerType: 'git',
@@ -474,9 +475,9 @@ describe('PromotionsService', () => {
 				resolver.resolveForEnvironment.mockResolvedValue(input);
 				loseLock();
 
-				await expect(
-					service.promote(ENVIRONMENT_ID, actor, { canExportVariableValues: true }),
-				).rejects.toThrow(PromotionLockLostError);
+				await expect(service.promote(ENVIRONMENT_ID, actor, {})).rejects.toThrow(
+					PromotionLockLostError,
+				);
 
 				expect(n8nPackagesService.exportPackageToDirectory).toHaveBeenCalled();
 				expect(gitService.commitAndPush).not.toHaveBeenCalled();
@@ -506,9 +507,9 @@ describe('PromotionsService', () => {
 				return result;
 			});
 
-			await expect(
-				service.promote(ENVIRONMENT_ID, actor, { canExportVariableValues: true }),
-			).rejects.toThrow(PromotionLockLostError);
+			await expect(service.promote(ENVIRONMENT_ID, actor, {})).rejects.toThrow(
+				PromotionLockLostError,
+			);
 
 			expect(await readFile(path.join(packageFolder, 'manifest.json'), 'utf-8')).toBe(
 				'{"projects":["before"]}',
@@ -540,9 +541,9 @@ describe('PromotionsService', () => {
 					await realRm(target, options);
 				});
 
-				await expect(
-					service.promote(ENVIRONMENT_ID, actor, { canExportVariableValues: true }),
-				).rejects.toThrow(PromotionLockLostError);
+				await expect(service.promote(ENVIRONMENT_ID, actor, {})).rejects.toThrow(
+					PromotionLockLostError,
+				);
 
 				expect(gitService.commitAndPush).not.toHaveBeenCalled();
 				expect(runRepository.insertRun).not.toHaveBeenCalled();
@@ -562,9 +563,9 @@ describe('PromotionsService', () => {
 				return { commitSha: 'c'.repeat(40) };
 			});
 
-			await expect(
-				service.promote(ENVIRONMENT_ID, actor, { canExportVariableValues: true }),
-			).rejects.toThrow(PromotionLockLostError);
+			await expect(service.promote(ENVIRONMENT_ID, actor, {})).rejects.toThrow(
+				PromotionLockLostError,
+			);
 
 			expect(runRepository.insertRun).not.toHaveBeenCalled();
 		});
@@ -600,7 +601,6 @@ describe('PromotionsService', () => {
 				);
 
 				const refusal = service.promote(ENVIRONMENT_ID, actor, {
-					canExportVariableValues: true,
 					commitMessage: 'sync projects',
 				});
 
@@ -636,7 +636,6 @@ describe('PromotionsService', () => {
 
 				await expect(
 					service.promote(ENVIRONMENT_ID, actor, {
-						canExportVariableValues: true,
 						commitMessage: 'sync projects',
 					}),
 				).rejects.toMatchObject({
@@ -668,7 +667,6 @@ describe('PromotionsService', () => {
 
 				await expect(
 					service.promote(ENVIRONMENT_ID, actor, {
-						canExportVariableValues: true,
 						commitMessage: 'sync projects',
 					}),
 				).rejects.toThrow(
@@ -686,7 +684,6 @@ describe('PromotionsService', () => {
 				);
 
 				await service.promote(ENVIRONMENT_ID, actor, {
-					canExportVariableValues: true,
 					commitMessage: 'sync projects',
 				});
 
@@ -700,7 +697,6 @@ describe('PromotionsService', () => {
 				);
 
 				await service.promote(ENVIRONMENT_ID, actor, {
-					canExportVariableValues: true,
 					commitMessage: 'sync projects',
 				});
 
@@ -714,7 +710,6 @@ describe('PromotionsService', () => {
 
 				await expect(
 					service.promote(ENVIRONMENT_ID, actor, {
-						canExportVariableValues: true,
 						commitMessage: 'sync projects',
 					}),
 				).rejects.toMatchObject({
@@ -749,7 +744,6 @@ describe('PromotionsService', () => {
 
 				await expect(
 					service.promote(ENVIRONMENT_ID, actor, {
-						canExportVariableValues: true,
 						commitMessage: 'sync projects',
 					}),
 				).rejects.toMatchObject({
@@ -766,7 +760,6 @@ describe('PromotionsService', () => {
 				);
 
 				await service.promote(ENVIRONMENT_ID, actor, {
-					canExportVariableValues: true,
 					commitMessage: 'sync projects',
 				});
 
@@ -781,7 +774,6 @@ describe('PromotionsService', () => {
 				gitService.findPathsAtCommit.mockResolvedValue(new Set());
 
 				await service.promote(ENVIRONMENT_ID, actor, {
-					canExportVariableValues: true,
 					commitMessage: 'first promote',
 				});
 
@@ -794,7 +786,6 @@ describe('PromotionsService', () => {
 				gitService.hasRemoteBranch.mockResolvedValue(false);
 
 				await service.promote(ENVIRONMENT_ID, actor, {
-					canExportVariableValues: true,
 					commitMessage: 'first promote',
 				});
 
@@ -808,7 +799,6 @@ describe('PromotionsService', () => {
 				gitService.hasRemoteBranch.mockResolvedValue(false);
 
 				await service.promote(ENVIRONMENT_ID, actor, {
-					canExportVariableValues: true,
 					commitMessage: 'first promote',
 				});
 
@@ -829,7 +819,6 @@ describe('PromotionsService', () => {
 
 				await expect(
 					service.promote(ENVIRONMENT_ID, actor, {
-						canExportVariableValues: true,
 						commitMessage: 'sync projects',
 					}),
 				).rejects.toBe(readFailure);
@@ -845,7 +834,6 @@ describe('PromotionsService', () => {
 
 				await expect(
 					service.promote(ENVIRONMENT_ID, actor, {
-						canExportVariableValues: true,
 						commitMessage: 'sync projects',
 					}),
 				).rejects.toThrow('Could not complete the Git operation');
@@ -866,7 +854,6 @@ describe('PromotionsService', () => {
 			await writeFile(path.join(packageFolder, 'stale.json'), '{}');
 
 			const result = await service.promote(ENVIRONMENT_ID, actor, {
-				canExportVariableValues: true,
 				commitMessage: 'sync projects',
 			});
 			const stagingFolder = n8nPackagesService.exportPackageToDirectory.mock.calls[0][1].targetDir;
@@ -878,7 +865,6 @@ describe('PromotionsService', () => {
 					projectIds: ['project-a', 'project-b'],
 					includeAgents: false,
 					includeVariableValues: true,
-					canExportVariableValues: true,
 					includeTags: true,
 					includeArchived: true,
 					dependencyPolicy: ExportDependencyPolicy.Fail,
@@ -937,7 +923,6 @@ describe('PromotionsService', () => {
 
 		it('emits one event with the exported counts when the push works', async () => {
 			await service.promote(ENVIRONMENT_ID, actor, {
-				canExportVariableValues: true,
 				commitMessage: 'sync projects',
 			});
 
@@ -962,7 +947,7 @@ describe('PromotionsService', () => {
 		});
 
 		it('generates a commit message when the request has none', async () => {
-			await service.promote(ENVIRONMENT_ID, actor, { canExportVariableValues: true });
+			await service.promote(ENVIRONMENT_ID, actor, {});
 
 			expect(gitService.commitAndPush).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -985,7 +970,6 @@ describe('PromotionsService', () => {
 
 			await expect(
 				service.promote(ENVIRONMENT_ID, actor, {
-					canExportVariableValues: true,
 					commitMessage: 'm',
 				}),
 			).rejects.toThrow(BadRequestError);
@@ -1013,7 +997,6 @@ describe('PromotionsService', () => {
 			gitService.hasCheckout.mockResolvedValueOnce(false);
 
 			await service.promote(ENVIRONMENT_ID, actor, {
-				canExportVariableValues: true,
 				commitMessage: 'm',
 			});
 
@@ -1047,7 +1030,6 @@ describe('PromotionsService', () => {
 
 		it('does not clone when the checkout is ready', async () => {
 			await service.promote(ENVIRONMENT_ID, actor, {
-				canExportVariableValues: true,
 				commitMessage: 'm',
 			});
 
@@ -1064,7 +1046,6 @@ describe('PromotionsService', () => {
 
 			await expect(
 				service.promote(ENVIRONMENT_ID, actor, {
-					canExportVariableValues: true,
 					commitMessage: 'm',
 				}),
 			).rejects.toThrow(PromotionGitError);
@@ -1090,7 +1071,6 @@ describe('PromotionsService', () => {
 			);
 
 			await service.promote(ENVIRONMENT_ID, actor, {
-				canExportVariableValues: true,
 				commitMessage: 'm',
 			});
 
@@ -1109,7 +1089,6 @@ describe('PromotionsService', () => {
 			resolver.resolveForEnvironment.mockResolvedValue(promoteInput({ providerId: 'prov2' }));
 
 			await service.promote(ENVIRONMENT_ID, actor, {
-				canExportVariableValues: true,
 				commitMessage: 'm',
 			});
 
@@ -1147,7 +1126,6 @@ describe('PromotionsService', () => {
 
 			await expect(
 				service.promote(ENVIRONMENT_ID, actor, {
-					canExportVariableValues: true,
 					commitMessage: 'm',
 				}),
 			).rejects.toThrow('"Invoices" (w1) is in a personal project here');
@@ -1167,7 +1145,6 @@ describe('PromotionsService', () => {
 			);
 
 			const result = await service.promote(ENVIRONMENT_ID, actor, {
-				canExportVariableValues: true,
 				commitMessage: 'm',
 				force: true,
 			});
@@ -1206,7 +1183,6 @@ describe('PromotionsService', () => {
 				});
 
 				const result = await service.promote(ENVIRONMENT_ID, actor, {
-					canExportVariableValues: true,
 					commitMessage: '\nReal title\nMore detail',
 				});
 
@@ -1248,9 +1224,7 @@ describe('PromotionsService', () => {
 				const input = branched();
 				resolver.resolveForEnvironment.mockResolvedValue(input);
 
-				const result = await service.promote(ENVIRONMENT_ID, actor, {
-					canExportVariableValues: true,
-				});
+				const result = await service.promote(ENVIRONMENT_ID, actor, {});
 
 				expect(reviewsService.openMergeRequest).toHaveBeenCalledWith(
 					input,
@@ -1268,7 +1242,6 @@ describe('PromotionsService', () => {
 
 			it('does not open a review for a direct push to the base branch', async () => {
 				const result = await service.promote(ENVIRONMENT_ID, actor, {
-					canExportVariableValues: true,
 					commitMessage: 'm',
 				});
 
@@ -1290,7 +1263,6 @@ describe('PromotionsService', () => {
 				resolver.resolveForEnvironment.mockResolvedValue(branched());
 
 				const plain = await service.promote(ENVIRONMENT_ID, actor, {
-					canExportVariableValues: true,
 					commitMessage: 'm',
 				});
 
@@ -1308,7 +1280,6 @@ describe('PromotionsService', () => {
 				// The first promote drops trust until Git restores the base branch.
 				await markCloned(branched(), 'staging');
 				const gitlab = await service.promote(ENVIRONMENT_ID, actor, {
-					canExportVariableValues: true,
 					commitMessage: 'm',
 				});
 
@@ -1335,7 +1306,6 @@ describe('PromotionsService', () => {
 
 			await expect(
 				service.promote(ENVIRONMENT_ID, actor, {
-					canExportVariableValues: true,
 					commitMessage: 'm',
 				}),
 			).rejects.toThrow('Descriptor removal failed');
@@ -1357,7 +1327,6 @@ describe('PromotionsService', () => {
 
 			await expect(
 				service.promote(ENVIRONMENT_ID, actor, {
-					canExportVariableValues: true,
 					commitMessage: 'm',
 				}),
 			).rejects.toThrow('Missing workflow dependency');
@@ -1371,7 +1340,6 @@ describe('PromotionsService', () => {
 			);
 
 			await service.promote(ENVIRONMENT_ID, actor, {
-				canExportVariableValues: true,
 				commitMessage: 'm',
 			});
 
@@ -1392,7 +1360,6 @@ describe('PromotionsService', () => {
 			});
 
 			await service.promote(ENVIRONMENT_ID, bareActor, {
-				canExportVariableValues: true,
 				commitMessage: 'm',
 			});
 
@@ -1414,7 +1381,6 @@ describe('PromotionsService', () => {
 			});
 
 			await service.promote(ENVIRONMENT_ID, partialActor, {
-				canExportVariableValues: true,
 				commitMessage: 'm',
 			});
 
@@ -1425,25 +1391,12 @@ describe('PromotionsService', () => {
 
 		it('forwards the force option to Git', async () => {
 			await service.promote(ENVIRONMENT_ID, actor, {
-				canExportVariableValues: true,
 				commitMessage: 'm',
 				force: true,
 			});
 
 			expect(gitService.commitAndPush).toHaveBeenCalledWith(
 				expect.objectContaining({ force: true }),
-			);
-		});
-
-		it('forwards variable value permission to the package exporter', async () => {
-			await service.promote(ENVIRONMENT_ID, actor, {
-				commitMessage: 'm',
-				canExportVariableValues: false,
-			});
-
-			expect(n8nPackagesService.exportPackageToDirectory).toHaveBeenCalledWith(
-				expect.objectContaining({ includeVariableValues: true, canExportVariableValues: false }),
-				expect.any(Object),
 			);
 		});
 	});
@@ -1559,7 +1512,6 @@ describe('PromotionsService', () => {
 			await service.promoteProjectSelection('p1', actor, {
 				workflowIds: ['w1', 'w2'],
 				commitMessage: 'm',
-				canExportVariableValues: true,
 			});
 
 			expect(n8nPackagesService.exportPackageToDirectory).toHaveBeenCalledWith(
@@ -1568,7 +1520,6 @@ describe('PromotionsService', () => {
 					projectWorkflowIds: ['w1', 'w2'],
 					includeAgents: false,
 					includeArchived: true,
-					canExportVariableValues: true,
 					dependencyPolicy: ExportDependencyPolicy.ReferenceOnly,
 					versionPolicy: ExportVersionPolicy.Latest,
 				}),
@@ -1596,7 +1547,6 @@ describe('PromotionsService', () => {
 			const result = await service.promoteProjectSelection('p1', actor, {
 				workflowIds: ['w1'],
 				commitMessage: 'm',
-				canExportVariableValues: true,
 			});
 			expectPushed(result);
 
@@ -1628,7 +1578,6 @@ describe('PromotionsService', () => {
 				service.promoteProjectSelection('p1', actor, {
 					workflowIds: ['w1'],
 					commitMessage: 'm',
-					canExportVariableValues: true,
 				}),
 			).rejects.toBe(readError);
 			expect(n8nPackagesService.exportPackageToDirectory).not.toHaveBeenCalled();
@@ -1656,7 +1605,6 @@ describe('PromotionsService', () => {
 			const result = await service.promoteProjectSelection('p1', actor, {
 				workflowIds: ['w1'],
 				commitMessage: 'm',
-				canExportVariableValues: true,
 			});
 			expectPushed(result);
 
@@ -1701,7 +1649,6 @@ describe('PromotionsService', () => {
 			ownedByP1('w1');
 			const result = await service.promoteProjectSelection('p1', actor, {
 				workflowIds: ['w1'],
-				canExportVariableValues: true,
 			});
 			expectPushed(result);
 
@@ -1736,7 +1683,6 @@ describe('PromotionsService', () => {
 				service.promoteProjectSelection('p1', actor, {
 					workflowIds: ['w1', 'w2'],
 					commitMessage: 'm',
-					canExportVariableValues: true,
 				}),
 			).rejects.toThrow('The export does not match the selection (missing w2)');
 			expect(gitService.commitAndPush).not.toHaveBeenCalled();
@@ -1759,7 +1705,6 @@ describe('PromotionsService', () => {
 				service.promoteProjectSelection('p1', actor, {
 					workflowIds: ['w1'],
 					commitMessage: 'm',
-					canExportVariableValues: true,
 				}),
 			).rejects.toThrow(BadRequestError);
 
@@ -1780,7 +1725,6 @@ describe('PromotionsService', () => {
 				service.promoteProjectSelection('p1', actor, {
 					workflowIds: ['w-unknown'],
 					commitMessage: 'm',
-					canExportVariableValues: true,
 				}),
 			).rejects.toThrow('Deleted workflows not found on the branch: w-unknown');
 			expect(n8nPackagesService.exportPackageToDirectory).not.toHaveBeenCalled();
@@ -1807,7 +1751,6 @@ describe('PromotionsService', () => {
 				service.promoteProjectSelection('p1', actor, {
 					workflowIds: ['w1'],
 					commitMessage: 'm',
-					canExportVariableValues: true,
 				}),
 			).rejects.toMatchObject({
 				meta: { workflowIds: ['w1'] },
@@ -1833,7 +1776,6 @@ describe('PromotionsService', () => {
 				service.promoteProjectSelection('p1', actor, {
 					workflowIds: ['w1'],
 					commitMessage: 'm',
-					canExportVariableValues: true,
 				}),
 			).rejects.toMatchObject({
 				message: expect.stringContaining('w1 (now in project "Ops" here)'),
@@ -1863,7 +1805,6 @@ describe('PromotionsService', () => {
 			const refusal = service.promoteProjectSelection('p1', actor, {
 				workflowIds: ['w1'],
 				commitMessage: 'm',
-				canExportVariableValues: true,
 			});
 
 			await expect(refusal).rejects.toMatchObject({
@@ -1894,7 +1835,6 @@ describe('PromotionsService', () => {
 				service.promoteProjectSelection('p1', actor, {
 					workflowIds: ['w-other'],
 					commitMessage: 'm',
-					canExportVariableValues: true,
 				}),
 			).rejects.toThrow('Deleted workflows do not belong to the selected project: w-other');
 		});
@@ -1917,7 +1857,6 @@ describe('PromotionsService', () => {
 			ownedByP1('w1', 'w2');
 			await service.promoteProjectSelection('p1', actor, {
 				workflowIds: ['w1', 'w2', 'w3'],
-				canExportVariableValues: true,
 			});
 
 			expect(gitService.commitAndPush).toHaveBeenCalledWith(
@@ -1948,7 +1887,6 @@ describe('PromotionsService', () => {
 			await service.promoteProjectSelection('p1', actor, {
 				workflowIds: ['w2'],
 				commitMessage: 'add w2',
-				canExportVariableValues: true,
 			});
 
 			const snapshot = JSON.parse(await readExported('manifest.json')) as {
@@ -1976,7 +1914,6 @@ describe('PromotionsService', () => {
 				service.promoteProjectSelection('p1', actor, {
 					workflowIds: ['w1'],
 					commitMessage: 'm',
-					canExportVariableValues: true,
 				}),
 			).resolves.toMatchObject({ git: { commitSha: 'selsha', branchName: 'staging' } });
 
@@ -2013,7 +1950,6 @@ describe('PromotionsService', () => {
 				await service.promoteProjectSelection('p1', actor, {
 					workflowIds: ['w2'],
 					commitMessage: 'm',
-					canExportVariableValues: true,
 				});
 
 			it('stops before it changes the package and keeps the backup when the lock is lost during the export', async () => {
@@ -2135,7 +2071,6 @@ describe('PromotionsService', () => {
 				service.promoteProjectSelection('p1', actor, {
 					workflowIds: ['w2'],
 					commitMessage: 'm',
-					canExportVariableValues: true,
 				}),
 			).rejects.toBe(pushError);
 
@@ -2167,7 +2102,6 @@ describe('PromotionsService', () => {
 				service.promoteProjectSelection('p1', actor, {
 					workflowIds: ['w1', 'w2'],
 					commitMessage: 'm',
-					canExportVariableValues: true,
 				}),
 			).rejects.toBe(stopped);
 
@@ -2201,7 +2135,6 @@ describe('PromotionsService', () => {
 				service.promoteProjectSelection('p1', actor, {
 					workflowIds: ['w1', 'w2'],
 					commitMessage: 'm',
-					canExportVariableValues: true,
 				}),
 			).rejects.toBe(stopped);
 
@@ -2221,7 +2154,6 @@ describe('PromotionsService', () => {
 				service.promoteProjectSelection('p1', actor, {
 					workflowIds: ['w1', 'w2'],
 					commitMessage: 'm',
-					canExportVariableValues: true,
 				}),
 			).rejects.toThrow('instance environment');
 			expect(n8nPackagesService.exportPackageToDirectory).not.toHaveBeenCalled();
@@ -2235,7 +2167,6 @@ describe('PromotionsService', () => {
 				service.promoteProjectSelection('p1', actor, {
 					workflowIds: ['w1', 'w2'],
 					commitMessage: 'm',
-					canExportVariableValues: true,
 				}),
 			).rejects.toThrow(NotFoundError);
 			expect(n8nPackagesService.exportPackageToDirectory).not.toHaveBeenCalled();
@@ -2269,7 +2200,6 @@ describe('PromotionsService', () => {
 				await service.promoteProjectSelection('p1', actor, {
 					workflowIds: ['w1'],
 					expectedPreviewRevision: 'reviewed',
-					canExportVariableValues: true,
 				}),
 			).toEqual({ status: 'preview-changed', environmentId: ENVIRONMENT_ID });
 			expect(eventService.emit).toHaveBeenCalledExactlyOnceWith('promotion-promoted', {
@@ -2297,7 +2227,6 @@ describe('PromotionsService', () => {
 
 			await service.promoteProjectSelection('p1', actor, {
 				workflowIds: ['w1', 'w2', 'w3', 'w4'],
-				canExportVariableValues: true,
 			});
 
 			expect(resolver.resolveForProject).toHaveBeenCalledWith('p1', 'promote');
@@ -2305,7 +2234,6 @@ describe('PromotionsService', () => {
 				promoteInput(),
 				actor,
 				expect.objectContaining({
-					canExportVariableValues: true,
 					commitMessage: undefined,
 				}),
 				{
@@ -2336,7 +2264,6 @@ describe('PromotionsService', () => {
 			await service.promoteProjectSelection('p1', actor, {
 				workflowIds: ['w1'],
 				commitMessage: 'Promote checkout flow',
-				canExportVariableValues: true,
 			});
 
 			expect(promoteSelectionResolved).toHaveBeenCalledWith(
@@ -2359,7 +2286,6 @@ describe('PromotionsService', () => {
 
 			await service.promoteProjectSelection('p1', actor, {
 				workflowIds: ['w1', 'w9'],
-				canExportVariableValues: false,
 			});
 
 			expect(promoteSelectionResolved).toHaveBeenCalledWith(
@@ -2384,7 +2310,6 @@ describe('PromotionsService', () => {
 
 			await service.promoteProjectSelection('p1', actor, {
 				workflowIds: ['w1', 'w9'],
-				canExportVariableValues: false,
 			});
 
 			expect(promoteSelectionResolved).toHaveBeenCalledWith(
@@ -3535,8 +3460,7 @@ describe('PromotionsService', () => {
 				route: 'environment',
 				input: promoteInput,
 				event: 'promotion-promoted',
-				call: async () =>
-					await service.promote(ENVIRONMENT_ID, actor, { canExportVariableValues: true }),
+				call: async () => await service.promote(ENVIRONMENT_ID, actor, {}),
 			},
 			{
 				name: 'promoteProjectSelection',
@@ -3546,7 +3470,6 @@ describe('PromotionsService', () => {
 				call: async () =>
 					await service.promoteProjectSelection('p1', actor, {
 						workflowIds: ['w1'],
-						canExportVariableValues: true,
 					}),
 			},
 			{

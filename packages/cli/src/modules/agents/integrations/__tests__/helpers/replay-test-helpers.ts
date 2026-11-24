@@ -136,12 +136,6 @@ export class MemoryMessageContextStore implements IntegrationMessageContextStore
 		this.outbound.delete(derivedThreadId);
 		await Promise.resolve();
 	}
-
-	async clearSessionBindings(_originThreadId: string): Promise<void> {
-		// The in-memory store does not track the origin→derived list; tests
-		// that need unbind semantics call unbindSession directly.
-		await Promise.resolve();
-	}
 }
 
 export function toStream(chunks: StreamChunk[], gapMs = 0): AsyncGenerator<StreamChunk> {

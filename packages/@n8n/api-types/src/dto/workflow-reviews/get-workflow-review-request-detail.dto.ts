@@ -60,4 +60,5 @@ export interface WorkflowReviewRequestDetail
 	viewerDecisionIneligibilityReason: WorkflowReviewDecisionIneligibilityReason | null;
 	/** Not advisory, unlike `viewerCanDecide`: the comment endpoint applies the same verdict. */
 	viewerCanComment: boolean;
+	viewerCanClose: boolean;
 }

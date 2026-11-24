@@ -418,6 +418,7 @@ describe('Instance AI skills', () => {
 		expect(loaded?.instructions).toContain('workspace source file');
 		expect(loaded?.instructions).toContain('`search_nodes` with `categories`');
 		expect(loaded?.instructions).toContain('`search_nodes` with `query`/`queries`');
+		expect(loaded?.instructions).toMatch(/prefer its app-specific trigger node/i);
 		expect(loaded?.instructions).toContain("newCredential('Credential Name', 'credential-id')");
 		expect(loaded?.instructions).toContain('Verification');
 		expect(loaded?.instructions).toContain('Build/save success is not workflow-quality evidence');
@@ -436,7 +437,6 @@ describe('Instance AI skills', () => {
 		expect(loaded?.instructions).toContain('Prefer n8n sources over guessing');
 		expect(loaded?.instructions).toContain('knowledge base');
 		expect(loaded?.instructions).toContain('n8n-docs-assistant');
-		expect(loaded?.instructions).toContain('never load `templates/index.json`');
 		expect(loaded?.instructions).toContain('node-types/index.txt');
 		// Eval-driven rules arrive as retrieved context cues, not in the skill body.
 		const builderCueText = WORKFLOW_BUILDER_CUES.cues.map(({ text }) => text).join('\n');

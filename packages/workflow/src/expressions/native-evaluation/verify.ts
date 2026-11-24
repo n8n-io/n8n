@@ -1,3 +1,4 @@
+import { IsolateError } from '@n8n/errors';
 import isEqualWith from 'lodash/isEqualWith';
 
 import { getCompiled } from './compiler';
@@ -77,7 +78,11 @@ export class NativeVerifier {
 		data: IWorkflowDataProxyData,
 	): void {
 		try {
-			if (compareResults(native, engine) === 'different' && !hitEngineLimit(engine)) {
+			if (
+				compareResults(native, engine) === 'different' &&
+				!hitEngineLimit(engine) &&
+				!engineUnavailable(engine)
+			) {
 				const skeleton = nativeSkeleton(expression);
 				if (skeleton === null) return;
 
@@ -161,6 +166,11 @@ function sameDefinedEntries(
 
 function hitEngineLimit(result: ExpressionEvaluationOutcome): boolean {
 	return !result.ok && (result.errorClass === 'timeout' || result.errorClass === 'memory_limit');
+}
+
+/** The engine did not run the expression, so its error says nothing about the native result. */
+function engineUnavailable(result: ExpressionEvaluationOutcome): boolean {
+	return !result.ok && result.error instanceof IsolateError;
 }
 
 function resultType(result: ExpressionEvaluationOutcome): string {

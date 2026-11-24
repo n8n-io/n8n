@@ -1,0 +1,415 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"body": {
+			"additionalProperties": true,
+			"properties": {
+				"changes": {
+					"additionalProperties": true,
+					"properties": {
+						"updated_at": {
+							"properties": {
+								"current": {
+									"type": "string"
+								},
+								"previous": {
+									"type": ["null", "string"]
+								}
+							},
+							"type": "object"
+						}
+					},
+					"type": "object"
+				},
+				"event_type": {
+					"type": "string"
+				},
+				"labels": {
+					"items": {
+						"properties": {
+							"color": {
+								"type": "string"
+							},
+							"created_at": {
+								"type": "string"
+							},
+							"description": {
+								"type": "string"
+							},
+							"group_id": {
+								"type": ["null", "number"]
+							},
+							"id": {
+								"type": "number"
+							},
+							"project_id": {
+								"type": ["null", "number"]
+							},
+							"template": {
+								"type": "boolean"
+							},
+							"title": {
+								"type": "string"
+							},
+							"type": {
+								"type": "string"
+							},
+							"updated_at": {
+								"type": "string"
+							}
+						},
+						"type": "object"
+					},
+					"type": "array"
+				},
+				"object_attributes": {
+					"additionalProperties": true,
+					"properties": {
+						"action": {
+							"type": "string"
+						},
+						"assignee_id": {
+							"type": ["null", "number"]
+						},
+						"assignee_ids": {
+							"items": {
+								"type": "number"
+							},
+							"type": "array"
+						},
+						"author_id": {
+							"type": "number"
+						},
+						"created_at": {
+							"type": "string"
+						},
+						"description": {
+							"type": "string"
+						},
+						"human_time_change": {},
+						"human_time_estimate": {},
+						"human_total_time_spent": {},
+						"id": {
+							"type": "number"
+						},
+						"iid": {
+							"type": "number"
+						},
+						"labels": {
+							"items": {
+								"properties": {
+									"color": {
+										"type": "string"
+									},
+									"created_at": {
+										"type": "string"
+									},
+									"description": {
+										"type": "string"
+									},
+									"group_id": {
+										"type": ["null", "number"]
+									},
+									"id": {
+										"type": "number"
+									},
+									"project_id": {
+										"type": ["null", "number"]
+									},
+									"template": {
+										"type": "boolean"
+									},
+									"title": {
+										"type": "string"
+									},
+									"type": {
+										"type": "string"
+									},
+									"updated_at": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						},
+						"last_edited_at": {
+							"type": ["null", "string"]
+						},
+						"last_edited_by_id": {
+							"type": ["null", "number"]
+						},
+						"milestone_id": {},
+						"source": {
+							"properties": {
+								"avatar_url": {},
+								"ci_config_path": {
+									"type": "string"
+								},
+								"default_branch": {
+									"type": "string"
+								},
+								"description": {
+									"type": ["null", "string"]
+								},
+								"git_http_url": {
+									"type": "string"
+								},
+								"git_ssh_url": {
+									"type": "string"
+								},
+								"homepage": {
+									"type": "string"
+								},
+								"http_url": {
+									"type": "string"
+								},
+								"id": {
+									"type": "number"
+								},
+								"name": {
+									"type": "string"
+								},
+								"namespace": {
+									"type": "string"
+								},
+								"path_with_namespace": {
+									"type": "string"
+								},
+								"ssh_url": {
+									"type": "string"
+								},
+								"url": {
+									"type": "string"
+								},
+								"visibility_level": {
+									"type": "number"
+								},
+								"web_url": {
+									"type": "string"
+								}
+							},
+							"type": ["object", "string"]
+						},
+						"state": {
+							"type": "string"
+						},
+						"state_id": {
+							"type": "number"
+						},
+						"time_change": {
+							"type": "number"
+						},
+						"time_estimate": {
+							"type": "number"
+						},
+						"title": {
+							"type": "string"
+						},
+						"total_time_spent": {
+							"type": "number"
+						},
+						"updated_at": {
+							"type": "string"
+						},
+						"updated_by_id": {
+							"type": ["null", "number"]
+						},
+						"url": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
+				"object_kind": {
+					"type": "string"
+				},
+				"project": {
+					"properties": {
+						"avatar_url": {
+							"type": ["null", "string"]
+						},
+						"ci_config_path": {
+							"type": ["null", "string"]
+						},
+						"default_branch": {
+							"type": "string"
+						},
+						"description": {
+							"type": ["null", "string"]
+						},
+						"git_http_url": {
+							"type": "string"
+						},
+						"git_ssh_url": {
+							"type": "string"
+						},
+						"homepage": {
+							"type": "string"
+						},
+						"http_url": {
+							"type": "string"
+						},
+						"id": {
+							"type": "number"
+						},
+						"name": {
+							"type": "string"
+						},
+						"namespace": {
+							"type": "string"
+						},
+						"path_with_namespace": {
+							"type": "string"
+						},
+						"ssh_url": {
+							"type": "string"
+						},
+						"url": {
+							"type": "string"
+						},
+						"visibility_level": {
+							"type": "number"
+						},
+						"web_url": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
+				"repository": {
+					"additionalProperties": true,
+					"properties": {
+						"description": {
+							"type": ["null", "string"]
+						},
+						"homepage": {
+							"type": "string"
+						},
+						"name": {
+							"type": "string"
+						},
+						"url": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
+				"user": {
+					"properties": {
+						"avatar_url": {
+							"type": "string"
+						},
+						"email": {
+							"type": "string"
+						},
+						"id": {
+							"type": "number"
+						},
+						"name": {
+							"type": "string"
+						},
+						"username": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				}
+			},
+			"type": "object"
+		},
+		"headers": {
+			"properties": {
+				"accept": {
+					"type": "string"
+				},
+				"accept-encoding": {
+					"type": "string"
+				},
+				"cdn-loop": {
+					"type": "string"
+				},
+				"cf-connecting-ip": {
+					"type": "string"
+				},
+				"cf-ew-via": {
+					"type": "string"
+				},
+				"cf-ipcountry": {
+					"type": "string"
+				},
+				"cf-ray": {
+					"type": "string"
+				},
+				"cf-visitor": {
+					"type": "string"
+				},
+				"cf-worker": {
+					"type": "string"
+				},
+				"content-length": {
+					"type": "string"
+				},
+				"content-type": {
+					"type": "string"
+				},
+				"host": {
+					"type": "string"
+				},
+				"idempotency-key": {
+					"type": "string"
+				},
+				"user-agent": {
+					"type": "string"
+				},
+				"webhook-id": {
+					"type": "string"
+				},
+				"webhook-timestamp": {
+					"type": "string"
+				},
+				"x-forwarded-for": {
+					"type": "string"
+				},
+				"x-forwarded-host": {
+					"type": "string"
+				},
+				"x-forwarded-port": {
+					"type": "string"
+				},
+				"x-forwarded-proto": {
+					"type": "string"
+				},
+				"x-forwarded-server": {
+					"type": "string"
+				},
+				"x-gitlab-event": {
+					"type": "string"
+				},
+				"x-gitlab-event-uuid": {
+					"type": "string"
+				},
+				"x-gitlab-instance": {
+					"type": "string"
+				},
+				"x-gitlab-token": {
+					"type": "string"
+				},
+				"x-gitlab-webhook-uuid": {
+					"type": "string"
+				},
+				"x-is-trusted": {
+					"type": "string"
+				},
+				"x-real-ip": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"query": {
+			"type": "object"
+		}
+	},
+	"type": "object"
+}

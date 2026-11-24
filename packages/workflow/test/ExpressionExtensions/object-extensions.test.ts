@@ -173,6 +173,12 @@ describe('Data Transformation Functions', () => {
 			expect(evaluate('={{ ({ name: "hello!()" }).urlEncode() }}')).toEqual('name=hello%21%28%29');
 		});
 
+		test('.urlEncode should encode a lone surrogate as U+FFFD', () => {
+			const values = [{ s: '\uD800', t: 'a\uD83Db' }];
+			expect(evaluate('={{ ({ v: $json.s }).urlEncode() }}', values)).toEqual('v=%EF%BF%BD');
+			expect(evaluate('={{ ({ [$json.t]: 1 }).urlEncode() }}', values)).toEqual('a%EF%BF%BDb=1');
+		});
+
 		describe('.keys', () => {
 			test('should return an array of keys from the object', () => {
 				expect(evaluate('={{ ({ test1: 1, test2: 2 }).keys() }}')).toEqual(['test1', 'test2']);

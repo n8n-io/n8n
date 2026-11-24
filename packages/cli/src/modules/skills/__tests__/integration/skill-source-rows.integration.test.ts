@@ -18,14 +18,15 @@ import { DataSource } from '@n8n/typeorm';
 import nock from 'nock';
 import { randomUUID } from 'node:crypto';
 
-import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { AgentSkillRepository } from '@/modules/agents/repositories/agent-skill.repository';
 import { createSkill, deleteAllSkills } from '../../testing';
 import { SkillSourceConnection } from '../../database/entities/skill-source-connection.entity';
 import { SkillSourceLink } from '../../database/entities/skill-source-link.entity';
+import { SkillSourceBackoff } from '../../services/skill-source-backoff';
 import { SkillSyncService } from '../../services/skill-sync.service';
 import { FakeGitHub } from '../test-utils/fake-github';
 
+import { createAgent } from '@test-integration/db/agents';
 import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
 import { createMember, createOwner } from '@test-integration/db/users';
 import type { SuperAgentTest } from '@test-integration/types';
@@ -89,7 +90,7 @@ describe('Sources in the skills table', () => {
 		await deleteAllSkills();
 		await db().delete(SkillSourceConnection, {});
 		postHog.getFeatureFlags.mockResolvedValue({ [SKILL_SYNC_FLAG]: true });
-		(Reflect.get(Container.get(SkillSyncService), 'backoff') as Map<string, unknown>).clear();
+		(Reflect.get(Container.get(SkillSourceBackoff), 'waits') as Map<string, unknown>).clear();
 		github.start();
 		github.push('acme/zeta', repo(['z1', 'z2', 'z3']));
 		github.push('acme/alpha', repo(['a1', 'a2']));
@@ -288,8 +289,8 @@ describe('Sources in the skills table', () => {
 			expect(page.collapsedSources).toEqual([]);
 		});
 
-		it('keeps each source group whole, including a group larger than the page target', async () => {
-			await connect('acme/zeta');
+		it('splits a large source across pages and repeats its source id', async () => {
+			const zeta = await connect('acme/zeta');
 			await connect('acme/alpha');
 
 			const first = await list(editor, { groupBy: 'source', sortBy: 'name:asc', take: 2 });
@@ -301,26 +302,49 @@ describe('Sources in the skills table', () => {
 			});
 
 			expect(namesOf(first)).toEqual(['a1', 'a2']);
-			expect(namesOf(second)).toEqual(['z1', 'z2', 'z3']);
+			expect(namesOf(second)).toEqual(['z1', 'z2']);
 			expect(first.count).toBe(5);
-			expect(first.pageCount).toBe(2);
+			expect(first.pageCount).toBe(3);
 			expect(second.page).toBe(1);
+			const third = await list(editor, { groupBy: 'source', sortBy: 'name:asc', page: 2, take: 2 });
+			expect(namesOf(third)).toEqual(['z3']);
+			expect(third.data[0].sourceId).toBe(zeta);
 		});
 
-		it('paginates empty sources and finds the page of a source', async () => {
+		it('fills ten-skill pages across uneven sources', async () => {
+			github.push('acme/alpha', repo(['a1']));
+			github.push('acme/zeta', repo(Array.from({ length: 10 }, (_, index) => `z${index}`)));
+			const alpha = await connect('acme/alpha');
+			const zeta = await connect('acme/zeta');
+			const query = { groupBy: 'source', sortBy: 'name:asc', take: 10 };
+			const first = await list(editor, query);
+			const second = await list(editor, { ...query, page: 1 });
+			expect(namesOf(first)).toEqual(['a1', 'z0', 'z1', 'z2', 'z3', 'z4', 'z5', 'z6', 'z7', 'z8']);
+			expect(first.data.map(({ sourceId }) => sourceId)).toEqual([alpha, ...Array(9).fill(zeta)]);
+			expect(first.sourceRanges).toEqual([
+				{ sourceId: alpha, start: 1, end: 1, total: 1 },
+				{ sourceId: zeta, start: 1, end: 9, total: 10 },
+			]);
+			expect(namesOf(second)).toEqual(['z9']);
+			expect(second.data[0].sourceId).toBe(zeta);
+			expect(second.sourceRanges).toEqual([{ sourceId: zeta, start: 10, end: 10, total: 10 }]);
+			expect(second).toMatchObject({ count: 11, page: 1, pageCount: 2 });
+		});
+
+		it('keeps empty sources beside skills without consuming a pagination slot', async () => {
 			const zeta = await connect('acme/zeta');
 			const alpha = await connect('acme/alpha');
 			await db().delete(SkillSourceLink, { sourceId: alpha });
 			const first = await list(editor, { groupBy: 'source', take: 1 });
 			expect(first.collapsedSources).toEqual([{ sourceId: alpha, index: 0, skillCount: 0 }]);
 			const focused = await list(editor, { groupBy: 'source', take: 1, focusSourceId: zeta });
-			expect(focused.page).toBe(1);
+			expect(focused.page).toBe(0);
 			expect(focused.data.every(({ sourceId }) => sourceId === zeta)).toBe(true);
-			expect(focused.data).toHaveLength(3);
-			expect(focused.collapsedSources).toEqual([]);
+			expect(focused.data).toHaveLength(1);
+			expect(focused.collapsedSources).toEqual([{ sourceId: alpha, index: 0, skillCount: 0 }]);
 		});
 
-		it('counts a folded source as one row in place of its skills', async () => {
+		it('counts the skills of a folded source', async () => {
 			const zeta = await connect('acme/zeta');
 			await connect('acme/alpha');
 
@@ -332,7 +356,45 @@ describe('Sources in the skills table', () => {
 
 			expect(namesOf(page)).toEqual(['a1', 'a2']);
 			expect(page.collapsedSources).toEqual([{ sourceId: zeta, index: 2, skillCount: 3 }]);
-			expect(page.count).toBe(3);
+			expect(page.count).toBe(5);
+		});
+
+		it('keeps a later page and its other skills when a source is folded', async () => {
+			const zeta = await connect('acme/zeta');
+			await connect('acme/alpha');
+			await createSkill({ projectId: team.id, content: { name: 'local' } });
+			const query = { groupBy: 'source', sortBy: 'name:asc', page: 1, take: 4 };
+			const expanded = await list(editor, query);
+			const folded = await list(editor, { ...query, collapsedSourceIds: zeta });
+			expect(namesOf(expanded)).toEqual(['z3', 'local']);
+			expect(namesOf(folded)).toEqual(['local']);
+			expect(folded).toMatchObject({
+				count: expanded.count,
+				page: 1,
+				pageCount: expanded.pageCount,
+			});
+			expect(folded.collapsedSources).toEqual([{ sourceId: zeta, index: 0, skillCount: 3 }]);
+			expect(folded.sourceRanges).toEqual(expanded.sourceRanges);
+			expect(folded.sourceRanges).toEqual([{ sourceId: zeta, start: 3, end: 3, total: 3 }]);
+			expect(namesOf(await list(editor, query))).toEqual(namesOf(expanded));
+		});
+
+		it('applies access and filters before slicing and clamps an invalid page', async () => {
+			await connect('acme/zeta');
+			await connect('acme/alpha');
+			const query = { groupBy: 'source', sortBy: 'name:desc', search: 'z', take: 2, page: 99 };
+			const filtered = await list(editor, query);
+			expect(namesOf(filtered)).toEqual(['z1']);
+			expect(filtered).toMatchObject({ count: 3, page: 1, pageCount: 2 });
+			expect(filtered.sourceRanges).toEqual([
+				{ sourceId: filtered.data[0].sourceId, start: 3, end: 3, total: 3 },
+			]);
+			expect(await list(outsider, query)).toMatchObject({
+				count: 0,
+				data: [],
+				page: 0,
+				pageCount: 1,
+			});
 		});
 
 		it.each([
@@ -367,7 +429,7 @@ describe('Sources in the skills table', () => {
 			expect(namesOf(plain)).toEqual(['alpha-local', 'z1']);
 		});
 
-		it('filters multiple sources before paging and keeps folded and large groups whole', async () => {
+		it('filters multiple sources before paging and keeps folded pagination slots', async () => {
 			const zeta = await connect('acme/zeta');
 			const alpha = await connect('acme/alpha');
 			github.push('acme/other', repo(['other']));
@@ -384,13 +446,18 @@ describe('Sources in the skills table', () => {
 			const first = await list(editor, query);
 			const second = await list(editor, { ...query, page: 1 });
 			expect(namesOf(first)).toEqual(['a1', 'a2']);
-			expect(namesOf(second)).toEqual(['z1', 'z2', 'z3']);
-			expect(first).toMatchObject({ count: 5, pageCount: 2 });
-			expect(second).toMatchObject({ count: 5, pageCount: 2, page: 1 });
+			expect(namesOf(second)).toEqual(['z1', 'z2']);
+			expect(first).toMatchObject({ count: 5, pageCount: 3 });
+			expect(second).toMatchObject({ count: 5, pageCount: 3, page: 1 });
+			expect(second.sourceRanges).toEqual([{ sourceId: zeta, start: 1, end: 2, total: 3 }]);
+			const third = await list(editor, { ...query, page: 2 });
+			expect(namesOf(third)).toEqual(['z3']);
+			expect(third.sourceRanges).toEqual([{ sourceId: zeta, start: 3, end: 3, total: 3 }]);
 
 			const folded = await list(editor, { ...query, collapsedSourceIds: zeta, page: 1 });
-			expect(folded).toMatchObject({ count: 3, pageCount: 2, data: [] });
+			expect(folded).toMatchObject({ count: 5, pageCount: 3, page: 1, data: [] });
 			expect(folded.collapsedSources).toEqual([{ sourceId: zeta, index: 0, skillCount: 3 }]);
+			expect(folded.sourceRanges).toEqual(second.sourceRanges);
 			const selected = await list(editor, { ...query, sourceIds: alpha, search: 'zeta' });
 			expect(selected).toMatchObject({ count: 0, data: [], collapsedSources: [] });
 		});
@@ -399,17 +466,14 @@ describe('Sources in the skills table', () => {
 			const alpha = await connect('acme/alpha');
 			const zeta = await connect('acme/zeta');
 			const { data } = await list(editor, { search: 'a1' });
-			const agents = Container.get(AgentRepository);
-			const agent = await agents.save(
-				agents.create({
-					id: randomUUID(),
-					name: 'Support bot',
-					projectId: team.id,
-					integrations: [],
-					tools: {},
-					versionId: randomUUID(),
-				}),
-			);
+			const agent = await createAgent({
+				id: randomUUID(),
+				name: 'Support bot',
+				projectId: team.id,
+				integrations: [],
+				tools: {},
+				versionId: randomUUID(),
+			});
 			await Container.get(AgentSkillRepository).replaceDependencies(agent.id, [
 				{ skillId: data[0].id },
 			]);
@@ -441,7 +505,7 @@ describe('Sources in the skills table', () => {
 			for (const filter of [{ search: 'alpha' }, { sourceIds: alpha }]) {
 				const page = await list(editor, { ...query, ...filter, scope: 'project' });
 				expect(page.collapsedSources).toEqual([{ sourceId: alpha, index: 0, skillCount: 0 }]);
-				expect(page).toMatchObject({ count: 1, pageCount: 1, data: [] });
+				expect(page).toMatchObject({ count: 0, pageCount: 1, data: [] });
 			}
 			for (const filter of [
 				{ scope: 'instance' },
