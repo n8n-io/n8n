@@ -415,6 +415,9 @@ describe('PoliciesLandingView', () => {
 			(scope) => {
 				const pinia = createTestingPinia({ stubActions: false });
 				useSettingsStore().isModuleActive = vi.fn(() => true);
+				useSettingsStore().settings.envFeatureFlags = {
+					N8N_ENV_FEAT_NODE_AND_CREDENTIAL_PROJECT_POLICIES: 'true',
+				};
 				useRBACStore().setGlobalScopes([scope]);
 
 				renderView({ pinia });

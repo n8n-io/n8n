@@ -104,6 +104,25 @@ describe('AddProjectPolicyDialog', () => {
 		expect(emitted('update:open')).toEqual([[false]]);
 	});
 
+	it('adds the policy but stays on the page when the dialog closed during the add', async () => {
+		let resolveAdd: (value: unknown) => void = () => {};
+		createProjectPolicy.mockReturnValue(
+			new Promise((resolve) => {
+				resolveAdd = resolve;
+			}),
+		);
+		const { findByTestId, getByTestId, rerender } = render();
+
+		await findByTestId('add-project-policy-dialog');
+		await pick(getByTestId, 'security');
+		await fireEvent.click(getByTestId('add-project-policy-submit'));
+		await rerender({ open: false, projects: PROJECTS });
+		resolveAdd(PROJECTS[1]);
+
+		await waitFor(() => expect(showMessage).toHaveBeenCalled());
+		expect(push).not.toHaveBeenCalled();
+	});
+
 	it('stays open with the error when the add fails', async () => {
 		createProjectPolicy.mockRejectedValue(new Error('Could not add the policy'));
 		const { findByTestId, getByTestId, getAllByRole, emitted } = render();

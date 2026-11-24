@@ -10,6 +10,7 @@ const { fetchProjectPolicies } = vi.hoisted(() => ({ fetchProjectPolicies: vi.fn
 vi.mock('../type-availability-policies.api', () => ({ fetchProjectPolicies }));
 
 const FINANCE = mockProjectPolicy({ projectId: 'finance', name: 'Finance' });
+const LEGAL = mockProjectPolicy({ projectId: 'legal', name: 'Legal' });
 
 describe('useProjectPolicies', () => {
 	beforeEach(() => {
@@ -35,5 +36,23 @@ describe('useProjectPolicies', () => {
 		await load();
 
 		expect(projects.value).toEqual([FINANCE]);
+	});
+
+	it('keeps the newest list when an older read ends last', async () => {
+		let resolveFirst: (value: { projects: unknown[] }) => void = () => {};
+		fetchProjectPolicies.mockReturnValueOnce(
+			new Promise((resolve) => {
+				resolveFirst = resolve;
+			}),
+		);
+		fetchProjectPolicies.mockResolvedValueOnce({ projects: [FINANCE, LEGAL] });
+		const { projects, load } = useProjectPolicies();
+
+		const first = load();
+		await load();
+		resolveFirst({ projects: [FINANCE] });
+		await first;
+
+		expect(projects.value).toEqual([FINANCE, LEGAL]);
 	});
 });

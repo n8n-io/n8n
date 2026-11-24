@@ -3052,7 +3052,7 @@
 	"typeAvailabilityPolicies.landing.nodeCount": "{restricted} of {total} node restricted | {restricted} of {total} nodes restricted",
 	"typeAvailabilityPolicies.landing.credentialCount": "{restricted} of {total} credential restricted | {restricted} of {total} credentials restricted",
 	"typeAvailabilityPolicies.landing.projects": "Projects",
-	"typeAvailabilityPolicies.landing.projects.description": "Projects that restrict the instance policy.",
+	"typeAvailabilityPolicies.landing.projects.description": "Projects with their own policy.",
 	"typeAvailabilityPolicies.landing.projects.add": "Add project policy",
 	"typeAvailabilityPolicies.landing.projects.allHavePolicy": "Every team project already has a custom policy.",
 	"typeAvailabilityPolicies.landing.projects.noTeamProjects": "There is no team project yet. Personal projects always follow the instance policy.",

@@ -76,6 +76,8 @@ async function onAdd() {
 		}),
 		message: i18n.baseText('typeAvailabilityPolicies.addProjectPolicy.success.message'),
 	});
+	// An admin who closed the dialog while the add ran stays on this page.
+	if (!open.value) return;
 	open.value = false;
 	void router.push({ name: PROJECT_POLICY_VIEW, params: { teamProjectId: project.projectId } });
 }
