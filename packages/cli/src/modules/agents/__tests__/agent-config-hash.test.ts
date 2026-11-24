@@ -17,11 +17,41 @@ describe('Agent runtime definition hash', () => {
 		);
 	});
 
-	it('includes tool implementations and connected destinations', () => {
+	it('still invalidates an approval when tool code changes', () => {
 		const hash = getAgentRuntimeDefinitionHash(config);
 		expect(getAgentRuntimeDefinitionHash(config, { write: 'changed' })).not.toBe(hash);
+	});
+
+	it('ignores unrelated live integrations but invalidates a disconnected approval destination', () => {
+		const routedConfig: AgentJsonConfig = {
+			...config,
+			tools: [
+				{
+					type: 'workflow',
+					workflow: 'Send',
+					requireApproval: true,
+					approvalRoute: { type: 'configuration', configurationIds: ['review'] },
+				},
+			],
+			hitlConfigurations: [
+				{
+					id: 'review',
+					name: 'Review',
+					method: 'channel',
+					channel: 'slack',
+					credentialId: 'credential',
+					recipient: { kind: 'channel', id: 'C1' },
+				},
+			],
+		};
+		const connected = { type: 'slack', credentialId: 'credential' } as const;
+		const hash = getAgentRuntimeDefinitionHash(routedConfig, {}, [connected]);
 		expect(
-			getAgentRuntimeDefinitionHash(config, {}, [{ type: 'slack', credentialId: 'credential' }]),
-		).not.toBe(hash);
+			getAgentRuntimeDefinitionHash(routedConfig, {}, [
+				{ type: 'slack', credentialId: 'unrelated' },
+				connected,
+			]),
+		).toBe(hash);
+		expect(getAgentRuntimeDefinitionHash(routedConfig)).not.toBe(hash);
 	});
 });

@@ -12,8 +12,8 @@ const requesterSchema = z.object({
 export type AgentReviewRequester = z.infer<typeof requesterSchema>;
 
 export function reviewRequesterForUser(user: User, source: string): AgentReviewRequester {
-	const { firstName, lastName, email } = accountSummary(user);
-	const name = [firstName, lastName].filter(Boolean).join(' ').trim() || email;
+	const { firstName, lastName } = accountSummary(user);
+	const name = [firstName, lastName].filter(Boolean).join(' ').trim();
 	return { id: user.id, ...(name ? { name } : {}), source };
 }
 
