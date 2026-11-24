@@ -220,8 +220,8 @@ the values from `n8n.me()` only for display. For this case:
    return $input.all().map((item) => ({ json: { ...item.json, visitor } }));
    ```
 
-4. In the nodes after the Code node, use `{{ $json.visitor }}`. For example,
-   filter and set a `userId` column of the data table with it.
+4. In the later nodes, read `visitor` from the output of the Code node. For
+   example, filter and set a `userId` column of the data table with it.
 
 The value has the format `user:<id>`. Read `appVisitor` only in a Code node.
 
