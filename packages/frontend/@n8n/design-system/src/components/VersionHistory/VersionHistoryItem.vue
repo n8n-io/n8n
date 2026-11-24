@@ -244,7 +244,7 @@ function onAction(action: string) {
 	flex-direction: column;
 	flex: 1 1 auto;
 	min-width: 0;
-	padding: var(--spacing--4xs);
+	padding: var(--spacing--2xs) var(--spacing--4xs);
 }
 
 .mainRow {

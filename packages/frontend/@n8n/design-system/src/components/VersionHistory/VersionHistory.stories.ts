@@ -11,9 +11,7 @@ import N8nInputLabel from '../N8nInputLabel';
 import N8nOption from '../N8nOption';
 import N8nSelect from '../N8nSelect';
 import N8nSwitch from '../N8nSwitch';
-import { N8nTabs } from '../N8nTabs';
 import N8nText from '../N8nText/Text.vue';
-import N8nIconButton from '../N8nIconButton/IconButton.vue';
 import {
 	isVersionHistoryGroup,
 	isVersionHistoryHeading,
@@ -484,22 +482,6 @@ function decorateVersions(
 
 function itemsFor(entries: VersionHistoryEntry[] | undefined, selectedId: string | undefined) {
 	return decorateVersions(entries ?? [], selectedId);
-}
-
-function withShowCompare(
-	entries: VersionHistoryEntry[],
-	showCompare: boolean,
-): VersionHistoryEntry[] {
-	return entries.map((entry) => {
-		if (isVersionHistoryHeading(entry)) return entry;
-		if (isVersionHistoryGroup(entry)) {
-			return {
-				...entry,
-				items: entry.items.map((item) => ({ ...item, showCompare })),
-			};
-		}
-		return { ...entry, showCompare };
-	});
 }
 
 function presentedHistory(entries: VersionHistoryEntry[] | undefined, initialId?: string) {
@@ -1165,7 +1147,7 @@ export const LoadMore: Story = {
 		docs: {
 			description: {
 				story:
-					'The list loads the first page from a mock API. Scroll to the end to load the next page. Each page returns 12 versions. There are 400 versions in total. The request waits before it resolves. Compare text follows the open version as pages arrive. The retention note stays at the end of the loaded rows.',
+					'The list loads the first page from a mock API. Scroll to the end to load the next page. Each page returns 12 versions. There are 400 versions in total. The request waits before it resolves. Compare text follows the open version as pages arrive.',
 			},
 		},
 	},
@@ -1217,13 +1199,11 @@ export const LoadMore: Story = {
 			});
 
 			const visibleItems = computed(() => itemsFor(items.value, selectedId.value));
-			const showFooter = computed(() => !loading.value && items.value.length > 0);
 
 			return {
 				args,
 				items,
 				visibleItems,
-				showFooter,
 				hasMore,
 				loading,
 				loadingMore,
@@ -1261,359 +1241,12 @@ export const LoadMore: Story = {
 						@compare="onCompare"
 						@action="onAction"
 						@load-more="onLoadMore"
-					>
-						<template v-if="showFooter" #footer>
-							<N8nText size="small" color="text-base" align="center">
-								Version history is limited to 24 hours
-							</N8nText>
-						</template>
-					</VersionHistory>
+					/>
 				</div>
 			</div>
 		`,
 	}),
 	args: {
 		items: [],
-	},
-};
-
-interface WorkflowHistorySource {
-	id: string;
-	name?: string;
-	authors: string[];
-	createdAt: string;
-	createdAtIso: string;
-	published?: boolean;
-	publishedBy?: string;
-	publishedAt?: string;
-}
-
-const workflowSources: WorkflowHistorySource[] = [
-	{
-		id: 'current001',
-		authors: ['Alex', 'Sam'],
-		createdAt: 'Oct 28 at 09:14:02',
-		createdAtIso: '2026-10-28T09:14:02',
-	},
-	{
-		id: 'aa11bb22cc33',
-		authors: ['Sam'],
-		createdAt: 'Oct 27 at 18:41:09',
-		createdAtIso: '2026-10-27T18:41:09',
-	},
-	{
-		id: 'bb22cc33dd44',
-		authors: ['Sam', 'Alex', 'Jordan'],
-		createdAt: 'Oct 27 at 11:02:33',
-		createdAtIso: '2026-10-27T11:02:33',
-	},
-	{
-		id: 'cc33dd44ee55',
-		authors: ['Alex'],
-		createdAt: 'Oct 26 at 16:02:41',
-		createdAtIso: '2026-10-26T16:02:41',
-	},
-	{
-		id: 'checkout001',
-		name: 'Checkout flow',
-		authors: ['Alex'],
-		createdAt: 'Oct 24 at 14:28:10',
-		createdAtIso: '2026-10-24T14:28:10',
-		published: true,
-		publishedBy: 'Alex',
-		publishedAt: 'Oct 24 at 16:02:18',
-	},
-	{
-		id: 'dd44ee55ff66',
-		authors: ['Sam'],
-		createdAt: 'Oct 20 at 09:12:44',
-		createdAtIso: '2026-10-20T09:12:44',
-	},
-	{
-		id: 'ee55ff660011',
-		authors: ['Alex'],
-		createdAt: 'Oct 18 at 15:40:02',
-		createdAtIso: '2026-10-18T15:40:02',
-	},
-	{
-		id: 'welcome001',
-		name: 'Welcome email',
-		authors: ['Sam'],
-		createdAt: 'Oct 12 at 11:02:18',
-		createdAtIso: '2026-10-12T11:02:18',
-		publishedBy: 'Sam',
-		publishedAt: 'Oct 12 at 11:05:40',
-	},
-];
-
-function authorLabel(authors: string[]): string {
-	const [first, ...rest] = authors;
-	if (!first) return '';
-	if (rest.length === 0) return first;
-	return `${first} + ${rest.length}`;
-}
-
-function workflowMenu(index: number, published: boolean) {
-	return [
-		...(index === 0 ? [] : [{ id: 'restore', label: 'Restore version' }]),
-		published
-			? { id: 'unpublish', label: 'Unpublish workflow' }
-			: { id: 'publish', label: 'Publish version' },
-		{ id: 'name', label: 'Name version' },
-		{ id: 'clone', label: 'Clone to new workflow' },
-		{ id: 'open', label: 'Open version in new tab' },
-		{ id: 'download', label: 'Download' },
-	];
-}
-
-function workflowBaseLabel(source: WorkflowHistorySource, isCurrent: boolean): string {
-	if (source.name?.trim()) return source.name;
-	if (isCurrent) return 'Current changes';
-	return `Version ${source.id.slice(0, 8)}`;
-}
-
-function buildWorkflowEntries(sources: WorkflowHistorySource[]): VersionHistoryEntry[] {
-	const currentId = sources[0]?.id;
-	const entries: VersionHistoryEntry[] = [];
-	let group: VersionHistoryItem[] = [];
-	let groupIndex = 0;
-
-	function flushGroup() {
-		if (group.length === 0) return;
-		const count = group.length;
-		entries.push({
-			type: 'group',
-			id: `unnamed-${groupIndex}`,
-			label: count === 1 ? '1 version' : `${count} versions`,
-			items: group,
-		});
-		group = [];
-		groupIndex += 1;
-	}
-
-	sources.forEach((source, index) => {
-		const isCurrent = source.id === currentId;
-		const baseLabel = workflowBaseLabel(source, isCurrent);
-		const item: VersionHistoryItem = {
-			id: source.id,
-			label: source.published ? `${baseLabel} (Published)` : baseLabel,
-			author: authorLabel(source.authors),
-			createdAt: source.createdAt,
-			createdAtIso: source.createdAtIso,
-			status: source.published ? 'published' : isCurrent ? 'latest' : 'default',
-			statusLabel: source.published
-				? 'Published version'
-				: isCurrent
-					? 'Latest version'
-					: undefined,
-			actions: workflowMenu(index, source.published === true),
-			tooltip: source.publishedBy
-				? {
-						title: source.published ? `${baseLabel} (Published)` : baseLabel,
-						detail: `Published by ${source.publishedBy}, ${source.publishedAt ?? source.createdAt}`,
-					}
-				: undefined,
-		};
-
-		// The first row stays visible. Later unnamed rows collapse together.
-		if (index > 0 && !source.name?.trim()) {
-			group.push(item);
-			return;
-		}
-
-		flushGroup();
-		entries.push(item);
-	});
-
-	flushGroup();
-	return entries;
-}
-
-const workflowEntries = buildWorkflowEntries(workflowSources);
-
-const workflowTabs = [
-	{ label: 'Versions', value: 'history' },
-	{ label: 'Publish Timeline', value: 'timeline' },
-] as const;
-
-// The workflow history column is 330px wide. No spacing token matches that width.
-const workflowFrameStyle = [
-	'display: flex',
-	'flex-direction: column',
-	'width: 20.625rem',
-	'height: 36rem',
-	'max-width: 100%',
-	'overflow: hidden',
-	'border: var(--border)',
-	'border-radius: var(--radius)',
-	'background-color: var(--background--surface)',
-].join('; ');
-
-const workflowHeaderStyle = [
-	'display: flex',
-	'flex-direction: column',
-	'gap: var(--spacing--2xs)',
-	'flex-shrink: 0',
-	'padding: var(--spacing--xs) var(--spacing--2xs) var(--spacing--2xs) var(--spacing--sm)',
-	'border-bottom: var(--border)',
-].join('; ');
-
-const workflowTabRowStyle = [
-	'display: flex',
-	'align-items: center',
-	'gap: var(--spacing--2xs)',
-	'min-width: 0',
-].join('; ');
-
-const workflowToolbarStyle = [
-	'display: flex',
-	'align-items: center',
-	'justify-content: space-between',
-	'gap: var(--spacing--2xs)',
-	'min-width: 0',
-].join('; ');
-
-const workflowPaywallStyle = [
-	'display: flex',
-	'flex-direction: column',
-	'align-items: center',
-	'gap: var(--spacing--xs)',
-	'width: 100%',
-	'box-sizing: border-box',
-	'padding: var(--spacing--sm)',
-	'border: var(--border)',
-	'border-radius: var(--radius)',
-	'background-color: var(--background--surface)',
-	'text-align: center',
-].join('; ');
-
-const workflowPaywallIconStyle = [
-	'display: flex',
-	'align-items: center',
-	'justify-content: center',
-	'flex-shrink: 0',
-	'width: var(--height--xl)',
-	'height: var(--height--xl)',
-	'border-radius: var(--radius)',
-	'background-color: var(--color--foreground--tint-1)',
-].join('; ');
-
-const timelineEmptyStyle = [
-	'display: flex',
-	'align-items: center',
-	'justify-content: center',
-	'flex: 1',
-	'min-height: 0',
-	'padding: var(--spacing--lg)',
-	'text-align: center',
-].join('; ');
-
-export const WorkflowEditor: Story = {
-	parameters: {
-		docs: {
-			description: {
-				story:
-					'This is the workflow editor history list. The newest row is Current changes and has no Restore action. Unnamed rows collapse. A published row adds (Published), and hover shows who published it. Compare names the open version and the other version, and it follows a new selection. Turn Compare off to hide that control. Command-click or Control-click keeps the open version and reports the row. A lock and an Upgrade button sit at the end.',
-			},
-		},
-	},
-	render: () => ({
-		components: {
-			VersionHistory,
-			N8nTabs,
-			N8nSwitch,
-			N8nText,
-			N8nIcon,
-			N8nIconButton,
-			N8nButton,
-		},
-		setup() {
-			const tab = ref<(typeof workflowTabs)[number]['value']>('history');
-			const showCompare = ref(true);
-			const openedLabel = ref('');
-			const history = useHistory(workflowSources[0]?.id ?? '');
-			const items = computed(() =>
-				withShowCompare(itemsFor(workflowEntries, history.selectedId.value), showCompare.value),
-			);
-
-			function onSelectSeparate(id: string) {
-				const item = flattenVersions(workflowEntries).find((entry) => entry.id === id);
-				openedLabel.value = item?.label ?? id;
-				action('selectSeparate')(id);
-			}
-
-			function onUpgrade() {
-				action('upgrade')();
-			}
-
-			function onClose() {
-				action('close')();
-			}
-
-			return {
-				tab,
-				tabs: workflowTabs,
-				showCompare,
-				openedLabel,
-				items,
-				...history,
-				onSelectSeparate,
-				onUpgrade,
-				onClose,
-			};
-		},
-		template: `
-			<div style="${workflowFrameStyle}">
-				<header style="${workflowHeaderStyle}">
-					<div style="${workflowTabRowStyle}">
-						<N8nTabs v-model="tab" :options="tabs" size="small" />
-						<N8nIconButton
-							variant="ghost"
-							icon="x"
-							size="small"
-							aria-label="Close"
-							@click="onClose"
-						/>
-					</div>
-					<div style="${workflowToolbarStyle}">
-						<N8nSwitch v-model="showCompare" label="Compare" size="small" />
-						<N8nText v-if="openedLabel" size="small" color="text-light">
-							Opened {{ openedLabel }} in a new tab
-						</N8nText>
-					</div>
-				</header>
-				<div v-if="tab === 'timeline'" style="${timelineEmptyStyle}">
-					<N8nText size="small" color="text-light" align="center">No publish events yet.</N8nText>
-				</div>
-				<div v-else style="${panelBodyStyle}">
-					<VersionHistory
-						:items="items"
-						:selected-id="selectedId"
-						@select="onSelect"
-						@select-separate="onSelectSeparate"
-						@compare="onCompare"
-						@action="onAction"
-						@toggle="onToggle"
-					>
-						<template #footer>
-							<div style="${workflowPaywallStyle}">
-								<div style="${workflowPaywallIconStyle}">
-									<N8nIcon icon="lock" size="large" color="text-base" />
-								</div>
-								<N8nText size="small" color="text-base" align="center" bold>
-									Version history is limited to 24 hours
-								</N8nText>
-								<N8nButton size="small" variant="solid" style="width: 100%" @click="onUpgrade">
-									Upgrade
-								</N8nButton>
-							</div>
-						</template>
-					</VersionHistory>
-				</div>
-			</div>
-		`,
-	}),
-	args: {
-		items: workflowEntries,
 	},
 };

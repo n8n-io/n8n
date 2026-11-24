@@ -22,6 +22,8 @@ import { useI18n } from '../../composables/useI18n';
 import { N8nListbox } from '../N8nListbox';
 import N8nLoading from '../N8nLoading/Loading.vue';
 import N8nRecycleScroller from '../N8nRecycleScroller';
+import N8nScrollArea from '../N8nScrollArea';
+import N8nSpinner from '../N8nSpinner';
 
 defineOptions({ name: 'VersionHistory' });
 
@@ -382,108 +384,109 @@ defineExpose({ scrollTo });
 		</div>
 
 		<!-- The scroller mounts each row in a div, so this list cannot be a ul. -->
-		<N8nListbox
+		<N8nScrollArea
 			v-else-if="rows.length"
-			v-bind="listboxProps"
-			:class="$style.list"
-			:model-value="activeId"
-			:label="listLabel"
-			@update:model-value="onSelect"
-			@keydown.capture="onListKeydown"
-			@focusout.capture="onListFocusOut"
+			:class="$style.scroll"
+			edge-fade="y"
+			:enable-vertical-scroll="false"
 		>
-			<N8nRecycleScroller
-				ref="scrollerRef"
-				:items="scrollerItems"
-				item-key="key"
-				:item-size="ESTIMATED_ROW_HEIGHT"
-				@scroll="onListScroll"
+			<N8nListbox
+				v-bind="listboxProps"
+				:class="$style.list"
+				:model-value="activeId"
+				:label="listLabel"
+				@update:model-value="onSelect"
+				@keydown.capture="onListKeydown"
+				@focusout.capture="onListFocusOut"
 			>
-				<template #default="{ item }">
-					<div
-						v-if="isHistoryRow(item)"
-						:class="[
-							$style.row,
-							item.isFirst && $style.first,
-							item.isLast && $style.last,
-							item.kind === 'heading' && $style.headingRow,
-							!item.connectAbove && !item.isFirst && item.kind !== 'heading' && $style.segmentStart,
-						]"
-						data-test-id="version-history-row"
-						:data-row-id="item.key"
-					>
-						<!-- The gap sits outside the row content. A heading leaves this gap empty. -->
-						<span
-							v-if="item.connectAbove"
-							:class="$style.gap"
-							data-test-id="version-history-line"
-							data-segment="gap"
-						/>
-						<VersionHistoryHeading v-if="item.kind === 'heading'" :label="item.label">
-							<slot v-if="$slots.heading" name="heading" :id="item.key" :label="item.label" />
-						</VersionHistoryHeading>
-						<VersionHistoryItem
-							v-else-if="item.kind === 'version'"
-							:item="item.item"
-							:connect-above="item.connectAbove"
-							:connect-below="item.connectBelow"
-							:aria-setsize="rows.length"
-							:aria-posinset="item.position"
-							@compare="emit('compare', $event)"
-							@select-separate="emit('selectSeparate', $event)"
-							@action="onAction(item.item.id, $event)"
-						>
-							<template v-if="$slots.actions" #actions="slotProps">
-								<slot name="actions" v-bind="slotProps" />
-							</template>
-						</VersionHistoryItem>
-						<VersionHistoryGroup
-							v-else-if="item.kind === 'group'"
-							:id="item.groupId"
-							:label="item.label"
-							:expanded="item.expanded"
-							:connect-above="item.connectAbove"
-							:connect-below="item.connectBelow"
-							:aria-setsize="rows.length"
-							:aria-posinset="item.position"
-							@toggle="onToggle(item.groupId)"
-						/>
-					</div>
-					<div v-else-if="isEndRow(item)">
+				<N8nRecycleScroller
+					ref="scrollerRef"
+					:items="scrollerItems"
+					item-key="key"
+					:item-size="ESTIMATED_ROW_HEIGHT"
+					@scroll="onListScroll"
+				>
+					<template #default="{ item }">
 						<div
-							v-if="hasMore || loadingMore"
-							ref="loadMoreSentinel"
-							:class="[$style.loadMore, loadingMore ? $style.loadingMore : $style.sentinel]"
-							data-test-id="version-history-load-more"
-							:role="loadingMore ? 'status' : undefined"
-							:aria-live="loadingMore ? 'polite' : undefined"
-							:aria-busy="loadingMore ? 'true' : undefined"
-							:aria-hidden="loadingMore ? undefined : 'true'"
-							:aria-label="loadingMore ? loadingMoreLabel : undefined"
+							v-if="isHistoryRow(item)"
+							:class="[
+								$style.row,
+								item.isFirst && $style.first,
+								item.isLast && $style.last,
+								item.kind === 'heading' && $style.headingRow,
+								!item.connectAbove &&
+									!item.isFirst &&
+									item.kind !== 'heading' &&
+									$style.segmentStart,
+							]"
+							data-test-id="version-history-row"
+							:data-row-id="item.key"
 						>
-							<div v-if="loadingMore" :class="$style.skeleton" aria-hidden="true">
-								<span :class="$style.skeletonMark">
-									<span :class="$style.skeletonDot">
-										<N8nLoading variant="circle" />
-									</span>
-								</span>
-								<span :class="$style.skeletonCopy">
-									<span :class="$style.skeletonLine" :style="{ width: '42%' }">
-										<N8nLoading variant="text" />
-									</span>
-									<span :class="$style.skeletonLine" :style="{ width: '68%' }">
-										<N8nLoading variant="text" />
-									</span>
-								</span>
+							<!-- The gap sits outside the row content. A heading leaves this gap empty. -->
+							<span
+								v-if="item.connectAbove"
+								:class="$style.gap"
+								data-test-id="version-history-line"
+								data-segment="gap"
+							/>
+							<VersionHistoryHeading v-if="item.kind === 'heading'" :label="item.label">
+								<slot v-if="$slots.heading" name="heading" :id="item.key" :label="item.label" />
+							</VersionHistoryHeading>
+							<VersionHistoryItem
+								v-else-if="item.kind === 'version'"
+								:item="item.item"
+								:connect-above="item.connectAbove"
+								:connect-below="item.connectBelow"
+								:aria-setsize="rows.length"
+								:aria-posinset="item.position"
+								@compare="emit('compare', $event)"
+								@select-separate="emit('selectSeparate', $event)"
+								@action="onAction(item.item.id, $event)"
+							>
+								<template v-if="$slots.actions" #actions="slotProps">
+									<slot name="actions" v-bind="slotProps" />
+								</template>
+							</VersionHistoryItem>
+							<VersionHistoryGroup
+								v-else-if="item.kind === 'group'"
+								:id="item.groupId"
+								:label="item.label"
+								:expanded="item.expanded"
+								:connect-above="item.connectAbove"
+								:connect-below="item.connectBelow"
+								:aria-setsize="rows.length"
+								:aria-posinset="item.position"
+								@toggle="onToggle(item.groupId)"
+							/>
+						</div>
+						<div v-else-if="isEndRow(item)" :class="$style.end">
+							<div
+								v-if="hasMore || loadingMore"
+								ref="loadMoreSentinel"
+								:class="[$style.loadMore, !loadingMore && $style.sentinel]"
+								data-test-id="version-history-load-more"
+								:role="loadingMore ? 'status' : undefined"
+								:aria-live="loadingMore ? 'polite' : undefined"
+								:aria-busy="loadingMore ? 'true' : undefined"
+								:aria-hidden="loadingMore ? undefined : 'true'"
+								:aria-label="loadingMore ? loadingMoreLabel : undefined"
+							>
+								<div v-if="loadingMore" :class="$style.loader">
+									<N8nSpinner type="grid" size="small" aria-hidden="true" />
+								</div>
+							</div>
+							<div
+								v-if="$slots.footer"
+								:class="$style.footer"
+								data-test-id="version-history-footer"
+							>
+								<slot name="footer" />
 							</div>
 						</div>
-						<div v-if="$slots.footer" :class="$style.footer" data-test-id="version-history-footer">
-							<slot name="footer" />
-						</div>
-					</div>
-				</template>
-			</N8nRecycleScroller>
-		</N8nListbox>
+					</template>
+				</N8nRecycleScroller>
+			</N8nListbox>
+		</N8nScrollArea>
 
 		<div v-else :class="$style.empty" data-test-id="version-history-empty">
 			<slot name="empty" />
@@ -501,25 +504,43 @@ defineExpose({ scrollTo });
 	color: var(--color--text);
 }
 
-.list {
-	display: flex;
-	flex-direction: column;
+.scroll {
 	flex: 1;
 	min-height: 0;
+
+	// The list fills the frame. The scroller inside it scrolls.
+	:global([data-reka-scroll-area-viewport]) {
+		position: relative;
+	}
+}
+
+.list {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	flex-direction: column;
+	min-height: 0;
 	min-width: 0;
-	// The rows draw their own gap, padding, and height.
-	// The listbox defaults would separate the timeline from the marks.
+	// The rows draw their own gap. Listbox padding would move the timeline.
 	--n8n-listbox--gap: 0;
 	--n8n-listbox-item--padding: 0;
 	--n8n-listbox-item--min-height: 0;
+	// The timeline uses the foreground line. The default active fill hides that line.
+	--n8n-listbox-item--color--background--selected: var(--background--hover);
 
-	// The scroller fills the panel. Pass that height through the listbox content.
-	> :deep(*) {
+	// CSS modules ignore :deep(). :global() reaches the listbox and the scroller.
+	// The scroller's minimum height is the full list, so the frame clips it.
+	:global([role='listbox']) {
 		display: flex;
 		flex-direction: column;
 		flex: 1;
 		min-height: 0;
 		min-width: 0;
+		overflow: hidden;
+	}
+
+	:global(.recycle-scroller-wrapper) {
+		min-height: 0;
 	}
 }
 
@@ -566,7 +587,7 @@ defineExpose({ scrollTo });
 		var(--spacing--2xs) + var(--version-history--body-pad) + var(--version-history--rail-margin) +
 			(var(--version-history--rail-size) / 2)
 	);
-	width: var(--border-width);
+	width: 1px;
 	height: var(--version-history--row-gap);
 	transform: translateX(-50%);
 	background-color: var(--color--foreground);
@@ -653,16 +674,24 @@ defineExpose({ scrollTo });
 	text-align: center;
 }
 
+.end {
+	width: 100%;
+}
+
 .loadMore {
 	box-sizing: border-box;
+	width: 100%;
 }
 
 .sentinel {
 	height: var(--spacing--5xs);
 }
 
-.loadingMore {
-	padding: 0 var(--spacing--2xs) var(--spacing--3xs);
+.loader {
+	display: flex;
+	justify-content: center;
+	width: 100%;
+	padding: var(--spacing--xs) 0;
 }
 
 .footer {

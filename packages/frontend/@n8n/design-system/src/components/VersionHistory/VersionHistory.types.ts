@@ -173,7 +173,7 @@ export interface VersionHistoryProps {
 	hasMore?: boolean;
 	/**
 	 * A later page is loading.
-	 * The rows stay visible. A status appears at the end of the list.
+	 * The rows stay visible. A loader appears at the end of the list.
 	 * @default false
 	 */
 	loadingMore?: boolean;

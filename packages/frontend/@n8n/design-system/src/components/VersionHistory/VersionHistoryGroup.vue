@@ -68,6 +68,7 @@ const iconProps = {
 	// Taller than the label so the track can stop short of the chevron.
 	min-height: var(--height--xs);
 	// Match the version row inset so the rail lines up.
+	padding-block: var(--spacing--2xs);
 	padding-inline: var(--version-history--body-pad, var(--spacing--3xs));
 	text-align: start;
 }

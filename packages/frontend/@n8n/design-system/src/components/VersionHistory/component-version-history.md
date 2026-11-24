@@ -33,7 +33,7 @@ VersionHistory
 - `scrollToId?: string` — Id of the row to bring into view. The list scrolls when this id changes. It does not follow the open version. A group that contains this id opens before the scroll. The id can be a version, a group, or a heading. Call `scrollTo` to scroll to the same id again.
 - `loading?: boolean` — Replace the list with skeleton rows. The list and the empty state stay hidden. The region is named "Loading versions" (`versionHistory.loading`). Use this for the first page. | `default: false`
 - `hasMore?: boolean` — More versions can be loaded. The list emits `loadMore` when the end is near the bottom of the scroll area. The list does not emit `loadMore` while `loading` or `loadingMore` is true, or while `items` is empty. | `default: false`
-- `loadingMore?: boolean` — A later page is loading. The rows stay visible. A skeleton row at the end of the list is named "Loading more versions" (`versionHistory.loadingMore`). | `default: false`
+- `loadingMore?: boolean` — A later page is loading. The rows stay visible. A loader at the end of the list is named "Loading more versions" (`versionHistory.loadingMore`). | `default: false`
 
 Omit `selectedId` and the list keeps the row the user selects. Omit `selectedId` and `defaultSelectedId` and no version is open until the user selects one.
 

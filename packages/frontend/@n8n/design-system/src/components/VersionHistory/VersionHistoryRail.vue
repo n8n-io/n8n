@@ -63,7 +63,7 @@ defineSlots<{
 .line {
 	position: absolute;
 	left: 50%;
-	width: var(--border-width);
+	width: 1px;
 	transform: translateX(-50%);
 	background-color: var(--color--foreground);
 	pointer-events: none;
