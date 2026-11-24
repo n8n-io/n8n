@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/artifactCardMetadata.ts
+  s_c37889037f3355::t_413f5a69a9394d 26-28,30
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/artifactCardMetadata.test.ts
+  s_c37889037f3355::t_413f5a69a9394d 12,15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a2cea22c224a1390168e6607d96babbaf56c8b0e",
+  "prompts": {},
+  "sessions": {
+    "s_c37889037f3355": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3b14e87d-39b8-413d-bc15-a17dbea4555b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}
