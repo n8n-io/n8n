@@ -167,6 +167,16 @@ describe('Agent runtime identity', () => {
 			expect(await runtimeIdentity.resolveActingAccount(agent)).toBeUndefined();
 		});
 
+		it('gives the workflow tools of a test run the account, but not for a disabled agent', async () => {
+			const project = await createTeamProject();
+			const agent = await createAgentIn(project.id);
+
+			expect(await runtimeIdentity.resolveWorkflowToolAccountId(agent)).toBe(agent.identityId);
+
+			await Container.get(AgentServiceAccountService).setDisabled(agent, true);
+			expect(await runtimeIdentity.resolveWorkflowToolAccountId(agent)).toBeUndefined();
+		});
+
 		it('refuses a disabled agent', async () => {
 			const project = await createTeamProject();
 			const agent = await createAgentIn(project.id);

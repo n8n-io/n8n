@@ -767,6 +767,26 @@ describe('AgentRuntimeCacheService', () => {
 			});
 		const account = mock<User>({ id: 'agent-account', kind: 'service' });
 
+		it('lets the workflow tools of a test run act as the agent account', async () => {
+			const { service, agentRepository, reconstructionService, runtimeIdentity } = makeService();
+			const agent = makeAgent();
+			const builder = mock<User>({ id: 'builder', kind: 'person' });
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			runtimeIdentity.resolveWorkflowToolAccountId.mockResolvedValue('agent-account');
+			reconstructionService.reconstructFromAgentEntity.mockResolvedValue(makeRuntime());
+
+			await service.getRuntime({ agentId, projectId, user: builder });
+
+			expect(runtimeIdentity.resolveRunIdentity).not.toHaveBeenCalled();
+			const [, , runType, , user, , , , options] =
+				reconstructionService.reconstructFromAgentEntity.mock.calls[0];
+			expect(runType).toBe('test');
+			expect(user).toBe(builder);
+			expect(options).toEqual(
+				expect.objectContaining({ workflowToolActingUserId: 'agent-account' }),
+			);
+		});
+
 		it('builds a published run without a person as the agent account', async () => {
 			const { service, agentRepository, reconstructionService, runtimeIdentity } = makeService();
 			const agent = publishedAgent();

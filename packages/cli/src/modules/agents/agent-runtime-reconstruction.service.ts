@@ -209,6 +209,12 @@ export interface ReconstructAgentRuntimeParams extends AgentRuntimeAssets {
 	toolProjectIds?: string[];
 	attributionUserId?: string;
 	/**
+	 * The account that workflow tool runs act as, for their credential check.
+	 * A test run sets the agent's account here, so it gets the same result as a
+	 * published run. Defaults to the runtime user when that is an account.
+	 */
+	workflowToolActingUserId?: string;
+	/**
 	 * The stored agent's service account (`agents.identityId`). Workflow tools stamp it
 	 * for attribution in log events only. Absent for inline agents.
 	 */
@@ -452,6 +458,7 @@ export class AgentRuntimeReconstructionService {
 			allowBackgroundTasks = true,
 			allowPlanTools = true,
 			attributionUserId,
+			workflowToolActingUserId,
 			abortSignal,
 			security,
 		}: {
@@ -463,6 +470,7 @@ export class AgentRuntimeReconstructionService {
 			allowBackgroundTasks?: boolean;
 			allowPlanTools?: boolean;
 			attributionUserId?: string;
+			workflowToolActingUserId?: string;
 			abortSignal?: AbortSignal;
 			security?: SecurityContext;
 		} = {},
@@ -529,6 +537,7 @@ export class AgentRuntimeReconstructionService {
 			subAgentDelegation,
 			user,
 			attributionUserId,
+			...(workflowToolActingUserId ? { workflowToolActingUserId } : {}),
 			...(security ? { security } : {}),
 			toolProjectIds,
 			...(agentEntity.identityId ? { agentServiceAccountId: agentEntity.identityId } : {}),
@@ -972,6 +981,7 @@ export class AgentRuntimeReconstructionService {
 			integrationType,
 			user,
 			attributionUserId,
+			workflowToolActingUserId,
 			previewChat,
 			supportsHitl,
 			runtimeProfile,
@@ -979,6 +989,10 @@ export class AgentRuntimeReconstructionService {
 			security,
 		} = options;
 		const canResume = supportsHitl ?? runtimeProfile === 'top-level';
+		// Workflow tools act as the agent's account: in a run as that account, and
+		// in a test run that names it.
+		const actingUserId =
+			workflowToolActingUserId ?? (user?.kind === 'service' ? user.id : undefined);
 		return this.makeToolResolver(
 			{
 				projectId,
@@ -989,8 +1003,7 @@ export class AgentRuntimeReconstructionService {
 				integrationType,
 				// An agent account is not the person who chats, so only a person goes here.
 				userId: attributionUserId ?? (user?.kind === 'person' ? user.id : undefined),
-				// A run as the agent's account: workflow tools act as it too.
-				...(user?.kind === 'service' ? { actingUserId: user.id } : {}),
+				...(actingUserId ? { actingUserId } : {}),
 				previewChat,
 				publishedN8nChat:
 					runType === 'production' &&

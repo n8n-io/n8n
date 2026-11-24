@@ -71,6 +71,20 @@ export class AgentRuntimeIdentityService {
 	}
 
 	/**
+	 * The account that a test run's workflow tools act as, so a test gets the
+	 * same credential result as a published run. The rest of the test run keeps
+	 * the builder's access. Returns `undefined` in the same cases as
+	 * {@link resolveActingAccount}, and for a disabled agent.
+	 */
+	async resolveWorkflowToolAccountId(
+		agent: Pick<Agent, 'identityId' | 'projectId'>,
+	): Promise<string | undefined> {
+		if (!this.isEnabled()) return undefined;
+		if (await this.agentServiceAccount.isDisabled(agent)) return undefined;
+		return (await this.agentServiceAccount.findActingAccount(agent))?.id;
+	}
+
+	/**
 	 * The account and the security context of a published run. The account is
 	 * the subject. Returns `undefined` in the same cases as {@link resolveActingAccount}.
 	 */

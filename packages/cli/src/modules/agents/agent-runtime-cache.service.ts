@@ -341,6 +341,11 @@ export class AgentRuntimeCacheService {
 		const actingAccount = runIdentity?.account;
 		const security = runIdentity?.security;
 		const runtimeUser = user ?? actingAccount;
+		// A test run keeps the builder's access, but its workflow tools act as the
+		// agent, like a published run does.
+		const workflowToolActingUserId = usePublishedVersion
+			? undefined
+			: await this.runtimeIdentity.resolveWorkflowToolAccountId(agentEntity);
 
 		const runSource = await resolveAgentRunSource(
 			agentEntity,
@@ -372,7 +377,13 @@ export class AgentRuntimeCacheService {
 			undefined,
 			usePublishedVersion ? 'integrated' : 'manual',
 			sandboxPrincipalHash,
-			{ previewChat, allowBackgroundTasks, attributionUserId, ...(security ? { security } : {}) },
+			{
+				previewChat,
+				allowBackgroundTasks,
+				attributionUserId,
+				...(workflowToolActingUserId ? { workflowToolActingUserId } : {}),
+				...(security ? { security } : {}),
+			},
 		);
 		const {
 			agent: agentInstance,
