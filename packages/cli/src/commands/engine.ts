@@ -18,7 +18,7 @@ const flagsSchema = z.object({
 		.string()
 		.optional()
 		.describe(
-			'Comma-separated list, without spaces, of the engine roles to run: api, orchestrator, step-worker. Runs every role when unset.',
+			'Comma-separated list, without spaces, of the engine roles to run: api, orchestrator, step-worker. Takes precedence over N8N_ENGINE_ROLES. Runs every role when neither is set.',
 		),
 });
 
@@ -50,10 +50,10 @@ export class Engine extends BaseCommand<z.infer<typeof flagsSchema>> {
 		// The guards below run before `super.init()` wires the reporter, and the
 		// crash path reports through it.
 		this.errorReporter = Container.get(ErrorReporter);
-		const { parseEngineRoles } = await import('@/modules/engine-v2/engine-roles.js');
-		const roles = parseEngineRoles(this.flags.roles);
-		assertControlPlaneIsolated(process.env);
 		const engineConfig = Container.get(EngineConfig);
+		const { parseEngineRoles } = await import('@/modules/engine-v2/engine-roles.js');
+		const roles = parseEngineRoles(this.flags.roles, engineConfig.roles);
+		assertControlPlaneIsolated(process.env);
 		assertRemoteControlPlane(engineConfig);
 		const { EngineMtls } = await import('@/modules/engine-v2/engine-mtls.js');
 		Container.get(EngineMtls).assertSecureTransport({

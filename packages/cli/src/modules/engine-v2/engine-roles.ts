@@ -1,11 +1,18 @@
 import { ENGINE_ROLES, type EngineRole } from '@n8n/engine';
 import { UserError } from '@n8n/errors';
 
-/** Reads the `--roles` flag of `n8n engine`. Without the flag, the process runs every role. */
-export function parseEngineRoles(flag: string | undefined): readonly EngineRole[] {
-	if (flag === undefined) return ENGINE_ROLES;
+/**
+ * Reads the roles of `n8n engine`: the `--roles` flag, else `N8N_ENGINE_ROLES`,
+ * else every role. An empty variable counts as unset, an empty flag does not.
+ */
+export function parseEngineRoles(flag: string | undefined, envValue = ''): readonly EngineRole[] {
+	if (flag !== undefined) return parseRoleList(flag, '--roles');
+	if (envValue !== '') return parseRoleList(envValue, 'N8N_ENGINE_ROLES');
+	return ENGINE_ROLES;
+}
 
-	const names = flag
+function parseRoleList(value: string, source: string): readonly EngineRole[] {
+	const names = value
 		.split(',')
 		.map((name) => name.trim())
 		.filter((name) => name !== '');
@@ -14,11 +21,15 @@ export function parseEngineRoles(flag: string | undefined): readonly EngineRole[
 
 	if (unknown.length > 0) {
 		const noun = unknown.length === 1 ? 'role' : 'roles';
-		throw new UserError(`Unknown engine ${noun}: ${unknown.join(', ')}. ${validRoles}`);
+		throw new UserError(
+			`Unknown engine ${noun} in ${source}: ${unknown.join(', ')}. ${validRoles}`,
+		);
 	}
 
 	if (names.length === 0) {
-		throw new UserError(`Give at least one engine role in --roles. ${validRoles}`);
+		throw new UserError(
+			`Give at least one engine role in ${source}. Got "${value}". ${validRoles}`,
+		);
 	}
 
 	return ENGINE_ROLES.filter((role) => names.includes(role));

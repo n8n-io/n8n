@@ -98,6 +98,18 @@ export class EngineConfig {
 	orchestrationConcurrency: number = 1;
 
 	/**
+	 * Which engine roles an `n8n engine` process runs, as a comma-separated list
+	 * of `api`, `orchestrator` and `step-worker`, for example `api,orchestrator`.
+	 * When unset or empty, the process runs every role. The `--roles` flag takes
+	 * precedence over this variable. An n8n instance in `in-process` mode always
+	 * runs every role.
+	 *
+	 * This is in development and not ready for use.
+	 */
+	@Env('N8N_ENGINE_ROLES')
+	roles: string = '';
+
+	/**
 	 * Maximum number of connections in the engine's Postgres connection pool, for
 	 * each engine process. Raise it when the engine reports connection timeouts
 	 * while the database responds normally.

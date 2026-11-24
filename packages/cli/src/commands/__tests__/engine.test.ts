@@ -107,6 +107,7 @@ describe('Engine', () => {
 			tlsInsecureAllowPlainHttp: true,
 			orchestrationConcurrency: 1,
 			stepConcurrency: 1,
+			roles: '',
 		});
 		useTls(false);
 	});
@@ -253,13 +254,20 @@ describe('Engine', () => {
 			});
 
 			it.each([
-				{ flag: undefined, roles: ['api', 'orchestrator', 'step-worker'] },
-				{ flag: 'api,orchestrator', roles: ['api', 'orchestrator'] },
-			])('runs $roles when --roles is $flag', async ({ flag, roles }) => {
-				await createEngine({ roles: flag }).init();
+				{ flag: undefined, env: '', roles: ['api', 'orchestrator', 'step-worker'] },
+				{ flag: 'api,orchestrator', env: '', roles: ['api', 'orchestrator'] },
+				{ flag: undefined, env: 'orchestrator', roles: ['orchestrator'] },
+				{ flag: 'orchestrator', env: 'api', roles: ['orchestrator'] },
+			])(
+				'runs $roles with --roles=$flag and N8N_ENGINE_ROLES=$env',
+				async ({ flag, env, roles }) => {
+					engineConfig.roles = env;
 
-				expect(runtime.init).toHaveBeenCalledWith(expect.objectContaining({ roles }));
-			});
+					await createEngine({ roles: flag }).init();
+
+					expect(runtime.init).toHaveBeenCalledWith(expect.objectContaining({ roles }));
+				},
+			);
 
 			it.each(['step-worker', 'api,step-worker'])(
 				'starts the expression engine and the code execution backend with --roles=%s',
@@ -281,12 +289,19 @@ describe('Engine', () => {
 				},
 			);
 
-			it.each(['worker', ','])(
-				'refuses to boot with --roles=%s before it starts anything',
-				async (flag) => {
-					await expect(createEngine({ roles: flag }).init()).rejects.toThrow(
-						'The valid roles are api, orchestrator, step-worker.',
-					);
+			it.each([
+				{ flag: 'worker', env: '', source: '--roles' },
+				{ flag: ',', env: '', source: '--roles' },
+				{ flag: undefined, env: 'worker', source: 'N8N_ENGINE_ROLES' },
+			])(
+				'refuses to boot with --roles=$flag and N8N_ENGINE_ROLES=$env before it starts anything',
+				async ({ flag, env, source }) => {
+					engineConfig.roles = env;
+
+					const boot = createEngine({ roles: flag }).init();
+
+					await expect(boot).rejects.toThrow(source);
+					await expect(boot).rejects.toThrow('The valid roles are api, orchestrator, step-worker.');
 					expect(loadNodesAndCredentials.init).not.toHaveBeenCalled();
 					expect(redisClientService.createClient).not.toHaveBeenCalled();
 					expect(taskRunnerModule.start).not.toHaveBeenCalled();
@@ -294,11 +309,12 @@ describe('Engine', () => {
 				},
 			);
 
-			it('names every engine role in the help text of --roles', () => {
+			it('names every engine role and the environment variable in the help text of --roles', () => {
 				const flagsSchema = Container.get(CommandMetadata).get('engine')?.flagsSchema;
 				const allRoles = parseEngineRoles(undefined);
 
 				expect(flagsSchema?.shape.roles.description).toContain(allRoles.join(', '));
+				expect(flagsSchema?.shape.roles.description).toContain('N8N_ENGINE_ROLES');
 			});
 		});
 
