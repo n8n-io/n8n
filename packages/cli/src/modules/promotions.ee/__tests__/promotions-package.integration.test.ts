@@ -3803,7 +3803,6 @@ describe('Missing dependencies of an Apply', () => {
 			await service.promoteProjectSelection(alpha.id, owner, {
 				workflowIds: [workflow.id],
 				commitMessage: 'Promote Sync',
-				canExportVariableValues: true,
 				confirmMissingDependencies: true,
 			}),
 		);
