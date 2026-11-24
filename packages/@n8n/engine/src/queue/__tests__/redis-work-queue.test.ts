@@ -284,6 +284,26 @@ describe('RedisWorkQueueConsumer', () => {
 		expect(() => consumer.start(async () => {})).toThrow(UnexpectedError);
 	});
 
+	it('closes its connection in close and opens a new one on the next start', async () => {
+		const first = new FakeRedisList();
+		const second = new FakeRedisList();
+		const openConnection = vi.fn<() => ClosableWorkQueueConsumerClient>();
+		openConnection.mockReturnValueOnce(first).mockReturnValueOnce(second);
+		const consumer = createConsumer(new FakeRedisList(), { openConnection });
+
+		consumer.start(async () => {});
+		await consumer.stop();
+		consumer.close();
+
+		expect(first.disconnect).toHaveBeenCalledOnce();
+
+		consumer.start(async () => {});
+		await vi.waitFor(() => expect(second.brpop).toHaveBeenCalled());
+
+		expect(openConnection).toHaveBeenCalledTimes(2);
+		expect(second.disconnect).not.toHaveBeenCalled();
+	});
+
 	it('accepts ioredis Redis and Cluster clients', () => {
 		expectTypeOf<Redis>().toExtend<WorkQueuePublisherClient & ClosableWorkQueueConsumerClient>();
 		expectTypeOf<Cluster>().toExtend<WorkQueuePublisherClient & ClosableWorkQueueConsumerClient>();

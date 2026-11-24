@@ -69,7 +69,6 @@ async function delay(ms: number, signal: AbortSignal): Promise<void> {
 export class RedisWorkQueuePublisher<TMessage> implements WorkQueuePublisher<TMessage> {
 	constructor(
 		private readonly client: WorkQueuePublisherClient,
-		/** The Redis list that holds the messages of this queue. */
 		private readonly key: string,
 	) {}
 

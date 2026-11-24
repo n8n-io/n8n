@@ -152,7 +152,7 @@ describe('createEngineRuntime', () => {
 		{ name: 'orchestrator only', roles: ['orchestrator'], consumed: ['orchestration'] },
 		{ name: 'step-worker only', roles: ['step-worker'], consumed: ['step'] },
 		{ name: 'a role listed twice', roles: ['step-worker', 'step-worker'], consumed: ['step'] },
-	])('starts and stops only the queues its roles consume ($name)', async ({ roles, consumed }) => {
+	])('starts and stops only the consumers of its roles ($name)', async ({ roles, consumed }) => {
 		vi.spyOn(TypeOrmStepStore.prototype, 'nextWaitDeadline').mockResolvedValue(null);
 		const queues = fakeQueues();
 		const engine = runtime({ roles, queues });

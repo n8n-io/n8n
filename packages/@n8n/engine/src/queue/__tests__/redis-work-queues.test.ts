@@ -11,30 +11,30 @@ const ready = JSON.stringify({ type: 'step:ready', executionId: 'exec-1', stepId
 
 function create(concurrency = { orchestration: 1, step: 1 }, logger?: EngineLogger) {
 	const publisher = new FakeRedisList();
-	const consumers: FakeRedisList[] = [];
+	const connections: FakeRedisList[] = [];
 	const { queues, close } = createRedisWorkQueues({
 		publisher,
 		createConsumer: () => {
-			const consumer = new FakeRedisList();
-			consumers.push(consumer);
-			return consumer;
+			const connection = new FakeRedisList();
+			connections.push(connection);
+			return connection;
 		},
 		keyPrefix: 'n8n',
 		concurrency,
 		logger,
 	});
-	return { publisher, consumers, queues, close };
+	return { publisher, connections, queues, close };
 }
 
 /** Starts both queues with handlers that block until `stop()`. Fill their lists before the next await. */
-function startBlocked({ queues, consumers }: ReturnType<typeof create>) {
+function startBlocked({ queues, connections }: ReturnType<typeof create>) {
 	let release = () => {};
 	const blocked = new Promise<void>((resolve) => (release = resolve));
 	const orchestrationHandler = vi.fn(async () => await blocked);
 	const stepHandler = vi.fn(async () => await blocked);
 	queues.consumers.orchestration.start(orchestrationHandler);
 	queues.consumers.step.start(stepHandler);
-	const [orchestrationConsumer, stepConsumer] = consumers;
+	const [orchestrationConnection, stepConnection] = connections;
 	const stop = async () => {
 		// Stop before the release, so that no queue starts a fetch that waits for the block timeout.
 		const stopping = Promise.all([
@@ -44,7 +44,7 @@ function startBlocked({ queues, consumers }: ReturnType<typeof create>) {
 		release();
 		await stopping;
 	};
-	return { orchestrationConsumer, stepConsumer, orchestrationHandler, stepHandler, stop };
+	return { orchestrationConnection, stepConnection, orchestrationHandler, stepHandler, stop };
 }
 
 describe('createRedisWorkQueues', () => {
@@ -68,10 +68,10 @@ describe('createRedisWorkQueues', () => {
 	});
 
 	it('consumes each queue from its own list over its own connection', async () => {
-		const { orchestrationConsumer, stepConsumer, orchestrationHandler, stepHandler, stop } =
+		const { orchestrationConnection, stepConnection, orchestrationHandler, stepHandler, stop } =
 			startBlocked(create());
-		orchestrationConsumer.items.push(enqueued);
-		stepConsumer.items.push(ready);
+		orchestrationConnection.items.push(enqueued);
+		stepConnection.items.push(ready);
 
 		try {
 			await vi.waitFor(() => {
@@ -82,15 +82,17 @@ describe('createRedisWorkQueues', () => {
 			await stop();
 		}
 
-		expect(orchestrationConsumer.brpop.mock.calls.map(([key]) => key)).toEqual([orchestrationKey]);
-		expect(stepConsumer.brpop.mock.calls.map(([key]) => key)).toEqual([stepKey]);
+		expect(orchestrationConnection.brpop.mock.calls.map(([key]) => key)).toEqual([
+			orchestrationKey,
+		]);
+		expect(stepConnection.brpop.mock.calls.map(([key]) => key)).toEqual([stepKey]);
 	});
 
 	it('runs up to its own concurrency limit of handlers at once on each queue', async () => {
-		const { orchestrationConsumer, stepConsumer, orchestrationHandler, stepHandler, stop } =
+		const { orchestrationConnection, stepConnection, orchestrationHandler, stepHandler, stop } =
 			startBlocked(create({ orchestration: 2, step: 3 }));
-		orchestrationConsumer.items.push(...Array<string>(3).fill(enqueued));
-		stepConsumer.items.push(...Array<string>(4).fill(ready));
+		orchestrationConnection.items.push(...Array<string>(3).fill(enqueued));
+		stepConnection.items.push(...Array<string>(4).fill(ready));
 
 		try {
 			await vi.waitFor(() => {
@@ -98,8 +100,8 @@ describe('createRedisWorkQueues', () => {
 				expect(stepHandler).toHaveBeenCalledTimes(3);
 			});
 
-			expect(orchestrationConsumer.items).toHaveLength(1);
-			expect(stepConsumer.items).toHaveLength(1);
+			expect(orchestrationConnection.items).toHaveLength(1);
+			expect(stepConnection.items).toHaveLength(1);
 		} finally {
 			await stop();
 		}
@@ -107,10 +109,10 @@ describe('createRedisWorkQueues', () => {
 
 	it('drops a message of the other queue and logs it through the given logger', async () => {
 		const logger = { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
-		const { orchestrationConsumer, stepConsumer, orchestrationHandler, stepHandler, stop } =
+		const { orchestrationConnection, stepConnection, orchestrationHandler, stepHandler, stop } =
 			startBlocked(create(undefined, logger));
-		orchestrationConsumer.items.push(ready);
-		stepConsumer.items.push(enqueued);
+		orchestrationConnection.items.push(ready);
+		stepConnection.items.push(enqueued);
 
 		try {
 			await vi.waitFor(() => expect(logger.error).toHaveBeenCalledTimes(2));
@@ -123,7 +125,7 @@ describe('createRedisWorkQueues', () => {
 	});
 
 	it('opens no consumer connection for a queue that it only publishes to', async () => {
-		const { publisher, consumers, queues, close } = create();
+		const { publisher, connections, queues, close } = create();
 
 		await queues.publishers.orchestration.publish({
 			type: 'execution:enqueued',
@@ -137,14 +139,14 @@ describe('createRedisWorkQueues', () => {
 		close();
 
 		expect(publisher.lpush).toHaveBeenCalledTimes(2);
-		expect(consumers).toHaveLength(0);
+		expect(connections).toHaveLength(0);
 	});
 
 	it('opens one consumer connection when a queue starts and keeps it after a restart', async () => {
-		const { consumers, queues } = create();
+		const { connections, queues } = create();
 
 		queues.consumers.step.start(async () => {});
-		expect(consumers).toHaveLength(1);
+		expect(connections).toHaveLength(1);
 		expect(() => queues.consumers.step.start(async () => {})).toThrow(
 			'work queue already has a consumer',
 		);
@@ -152,18 +154,18 @@ describe('createRedisWorkQueues', () => {
 		queues.consumers.step.start(async () => {});
 		await queues.consumers.step.stop();
 
-		expect(consumers).toHaveLength(1);
+		expect(connections).toHaveLength(1);
 	});
 
 	it('closes the consumer connections it opened but not the publisher', async () => {
-		const { publisher, consumers, queues, close } = create();
+		const { publisher, connections, queues, close } = create();
 		queues.consumers.orchestration.start(async () => {});
 		await queues.consumers.orchestration.stop();
 
 		close();
 
-		expect(consumers).toHaveLength(1);
-		expect(consumers[0].disconnect).toHaveBeenCalledOnce();
+		expect(connections).toHaveLength(1);
+		expect(connections[0].disconnect).toHaveBeenCalledOnce();
 		expect(publisher.disconnect).not.toHaveBeenCalled();
 	});
 });

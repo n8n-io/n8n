@@ -34,21 +34,23 @@ a deployable engine worker) without touching core logic.
   (the `createScheduler(deps)` pattern).
 - **Core interfaces** — interfaces the core depends on, each defined in its own
   core module beside a default/reference use: `AdmittanceService` (`admittance/`),
-  `WorkQueue` (`queue/`), `ExecutionStore` / `StepStore` / `ExecutionViewStore`
+  `WorkQueuePublisher` and `WorkQueueConsumer` (`queue/`), `ExecutionStore` / `StepStore` / `ExecutionViewStore`
   (`execution/`), `LifecycleEventPublisher` (`lifecycle-events/`). Adapters
   implement them; the core never imports the interface from an adapter. Handed
   in at construction.
 - **Adapters (do)** — effectful implementations: `database/` (TypeORM entities,
   migrations, the Postgres `DataSource`, and `TypeOrmExecutionStore`), `queue/`
-  (`InMemoryWorkQueue`, and `RedisWorkQueue` on a Redis list). The Postgres/ORM
+  (`InMemoryWorkQueue`, and `RedisWorkQueuePublisher` and
+  `RedisWorkQueueConsumer` on a Redis list). The Postgres/ORM
   coupling lives *here only*. `createInMemoryWorkQueues` builds the pair of
   in-memory queues. `createRedisWorkQueues` builds the pair of Redis queues:
   the engine sets the list names and the message schemas. The host gives the
   Redis connections, the key prefix and the concurrency limits.
-  `RedisWorkQueue` never closes a connection. A queue opens its consumer
-  connection on its first `start()`, so a process that only publishes to a
-  queue opens none for it. The factory's `close()` closes only the consumer
-  connections that were opened; the host closes the publisher. The engine has
+  `RedisWorkQueuePublisher` never closes its client. `RedisWorkQueueConsumer`
+  opens its own connection on its first `start()` and closes it in `close()`,
+  so a process that only publishes to a queue opens none for it. The
+  factory's `close()` calls the `close()` of both consumers; the host closes
+  the publisher. The engine has
   no runtime dependency on `ioredis`; the adapter declares the client commands
   it needs as interfaces.
 - **Serving infra** — `server/` (express), `serve.ts` (standalone entrypoint),
@@ -57,7 +59,7 @@ a deployable engine worker) without touching core logic.
   internal topology: the stores, the handlers, the workers, the HTTP app and the
   start/stop order. It takes the adapters a host chooses and returns a running
   engine, so no host repeats the wiring. The host gives it the queues. It
-  starts and stops the queues its roles consume, but never closes their
+  starts and stops the consumers of its roles, but never closes their
   connections.
   A process runs one or more roles (all three by default): `api` mounts `/api`,
   `orchestrator` runs the orchestration worker and the reconciliation sweeper,
