@@ -12,6 +12,7 @@ export function createSqliteTemplateGlobalSetup(moduleName: string) {
 		if (
 			process.env.CI !== 'true' ||
 			(process.env.DB_TYPE ?? 'sqlite') !== 'sqlite' ||
+			(process.env.DB_TYPE === undefined && Boolean(process.env.DB_TYPE_FILE)) ||
 			process.env.N8N_TEST_DISABLE_TEMPLATE_DB === '1'
 		) {
 			return;

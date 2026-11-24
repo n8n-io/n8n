@@ -29,7 +29,18 @@
       "import": "./dist/sqlite-template-setup.js",
       "require": "./dist/sqlite-template-setup.js"
     },
-    "./package.json": "./package.json"
+    "./dist/*.js": {
+      "types": "./dist/*.d.ts",
+      "import": "./dist/*.js",
+      "require": "./dist/*.js"
+    },
+    "./dist/*": {
+      "types": "./dist/*.d.ts",
+      "import": "./dist/*.js",
+      "require": "./dist/*.js"
+    },
+    "./package.json": "./package.json",
+    "./*": "./*"
   },
   "files": [
     "dist/**/*"
