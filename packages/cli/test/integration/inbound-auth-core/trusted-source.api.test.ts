@@ -131,11 +131,11 @@ describe('POST /trusted-sources', () => {
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data.config).toMatchObject({
-			version: 2,
+			version: 3,
 			identity: { provision: { person: 'jit' } },
 		});
 		const row = await rows.findOneByOrFail({ id: response.body.data.id });
-		expect(row.configVersion).toBe(2);
+		expect(row.configVersion).toBe(3);
 		expect(
 			JSON.parse(await Container.get(Cipher).decryptV2(row.config)).identity.provision,
 		).toEqual({ person: 'jit' });
@@ -171,7 +171,7 @@ describe('POST /trusted-sources', () => {
 		expect(response.body).toMatchObject({ path: ['config', 'identity', 'provision'] });
 	});
 
-	it('stores a v1 write as v2 with person provisioning', async () => {
+	it('stores a v1 write as v3 with person provisioning', async () => {
 		const response = await adminAgent.post('/trusted-sources').send(
 			body({
 				config: {
@@ -184,11 +184,11 @@ describe('POST /trusted-sources', () => {
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data.config).toMatchObject({
-			version: 2,
+			version: 3,
 			identity: { provision: { person: 'jit' } },
 		});
 		const row = await rows.findOneByOrFail({ id: response.body.data.id });
-		expect(row.configVersion).toBe(2);
+		expect(row.configVersion).toBe(3);
 		expect(
 			JSON.parse(await Container.get(Cipher).decryptV2(row.config)).identity.provision,
 		).toEqual({ person: 'jit' });
@@ -209,7 +209,7 @@ describe('POST /trusted-sources', () => {
 			lastError: null,
 			lastCheckedAt: null,
 			config: {
-				version: 2,
+				version: 3,
 				authentication: {
 					type: 'oauth2',
 					clockSkewSeconds: 60,
@@ -221,7 +221,7 @@ describe('POST /trusted-sources', () => {
 		expect(JSON.stringify(response.body)).not.toContain('s3cret');
 
 		const row = await rows.findOneByOrFail({ id: response.body.data.id });
-		expect(row).toMatchObject({ managedBy: 'admin', status: 'unchecked', configVersion: 2 });
+		expect(row).toMatchObject({ managedBy: 'admin', status: 'unchecked', configVersion: 3 });
 		expect(await storedClient(row.id)).toEqual({
 			kind: 'registered',
 			clientId: 'n8n',
@@ -379,7 +379,7 @@ describe('GET /trusted-sources', () => {
 });
 
 describe('GET /trusted-sources/:id', () => {
-	it('returns a stored v1 source as v2 with person provisioning', async () => {
+	it('returns a stored v1 source as v3 with person provisioning', async () => {
 		const { id } = await createSource();
 		await rows.update(id, {
 			configVersion: 1,
@@ -395,7 +395,7 @@ describe('GET /trusted-sources/:id', () => {
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data.config).toMatchObject({
-			version: 2,
+			version: 3,
 			identity: { provision: { person: 'jit' } },
 		});
 		expect(response.body.data.config.identity.provision).not.toHaveProperty('human');

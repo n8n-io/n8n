@@ -7030,5 +7030,28 @@ describe('TelemetryEventRelay', () => {
 				},
 			);
 		});
+
+		it('tracks a tool call with the client, the status, and the duration', () => {
+			mcpEventService.emit('mcp-server-tool-called', {
+				serverId: 'server-1',
+				userId: 'user-1',
+				clientName: 'Claude Code',
+				toolKind: 'workflow',
+				status: 'error',
+				durationMs: 1200,
+			});
+
+			expect(telemetry.track).toHaveBeenCalledExactlyOnceWith(
+				TELEMETRY_EVENT.CUSTOM_MCP_SERVERS.CUSTOM_MCP_SERVER_TOOL_CALLED,
+				{
+					server_id: 'server-1',
+					user_id: 'user-1',
+					client_name: 'Claude Code',
+					tool_kind: 'workflow',
+					status: 'error',
+					duration_ms: 1200,
+				},
+			);
+		});
 	});
 });

@@ -66,6 +66,11 @@ export class McpServerRepository {
 			.findOneBy(McpServer, { id: serverId, projectId, deletedAt: IsNull() });
 	}
 
+	/** The server that serves this URL slug. A deleted server serves nothing. */
+	async findBySlug(slug: string, ctx: OperationContext = {}): Promise<McpServer | null> {
+		return await this.table.managerFor(ctx).findOneBy(McpServer, { slug, deletedAt: IsNull() });
+	}
+
 	/** Newest change first. `null` lists the servers of all projects. */
 	async listInProjects(
 		projectIds: string[] | null,

@@ -6,7 +6,7 @@ export type * from './scaling';
 export type * from './process-internals';
 export * from './frontend-settings';
 export type * from './user';
-export type * from './consent';
+export * from './consent';
 export type * from './api-keys';
 export type * from './community-node-types';
 export type * from './quick-connect';

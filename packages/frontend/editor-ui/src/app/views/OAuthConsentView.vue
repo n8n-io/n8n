@@ -1,5 +1,7 @@
 <script setup lang="ts">
+import { MCP_SERVER_CONSENT_TYPE, mcpServerConnectRefusalSchema } from '@n8n/api-types';
 import { useConsentStore } from '@/app/stores/consent.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
@@ -23,6 +25,7 @@ import { useTelemetry } from '@n8n/composables/useTelemetry';
 import ScopesSelector from '@/app/components/scopes/ScopesSelector.vue';
 
 const consentStore = useConsentStore();
+const usersStore = useUsersStore();
 
 const route = useRoute();
 // Id of the authorization request this screen was opened for, put in the URL by
@@ -71,7 +74,44 @@ const clientDetails = computed<ConsentDetailsPicker | null>(() => {
 	return details && !details.autoApproved ? details : null;
 });
 const resourceName = computed(() => clientDetails.value?.resourceName);
-const uiHints = computed(() => consentStore.consentDetails?.uiHints);
+const uiHints = computed(
+	() => consentStore.consentDetails?.uiHints ?? consentStore.refusal?.uiHints,
+);
+const isMcpServerConsent = computed(() => uiHints.value?.consentType === MCP_SERVER_CONSENT_TYPE);
+// A custom MCP server says why it refused, so the screen names the reason and the project.
+const serverRefusal = computed(() => {
+	const refusal = consentStore.refusal;
+	if (consentStore.errorCode !== 'forbidden' || !refusal) return null;
+	if (refusal.uiHints?.consentType !== MCP_SERVER_CONSENT_TYPE) return null;
+	const reason = mcpServerConnectRefusalSchema.safeParse(refusal.reason);
+	if (!reason.success) return null;
+	const interpolate = {
+		resourceName: refusal.resourceName ?? '',
+		projectName: refusal.projectName ?? '',
+	};
+	return {
+		heading: i18n.baseText(`oauth.consentView.mcpServer.refusal.${reason.data}.heading`, {
+			interpolate,
+		}),
+		description: i18n.baseText(`oauth.consentView.mcpServer.refusal.${reason.data}.description`, {
+			interpolate,
+		}),
+	};
+});
+const allowLabel = computed(() => {
+	if (isAppConsent.value) return i18n.baseText('oauth.consentView.app.allow');
+	if (isMcpServerConsent.value) return i18n.baseText('generic.allow');
+	return i18n.baseText('oauth.consentView.allow');
+});
+const signedInAs = computed(() => {
+	const user = usersStore.currentUser;
+	if (!user?.email) return null;
+	return user.fullName
+		? i18n.baseText('oauth.consentView.signedInAs', {
+				interpolate: { name: user.fullName, email: user.email },
+			})
+		: i18n.baseText('oauth.consentView.signedInAsEmail', { interpolate: { email: user.email } });
+});
 const isAppConsent = computed(
 	() => clientDetails.value?.isFirstParty && uiHints.value?.consentType === 'app',
 );
@@ -257,6 +297,20 @@ watch(
 			</div>
 			<!-- Rejection state: the details fetch failed (e.g. the requested resource
 				is no longer available), so we must not present a consent grant. -->
+			<div v-else-if="serverRefusal" :class="$style.content" data-test-id="consent-refusal">
+				<N8nHeading tag="h2" size="large" :bold="true">
+					{{ serverRefusal.heading }}
+				</N8nHeading>
+				<N8nText color="text-base" size="medium">{{ serverRefusal.description }}</N8nText>
+				<N8nText
+					v-if="signedInAs"
+					color="text-light"
+					size="small"
+					data-test-id="consent-signed-in-as"
+				>
+					{{ signedInAs }}
+				</N8nText>
+			</div>
 			<div v-else-if="error" :class="$style.content" data-test-id="consent-error">
 				<N8nHeading tag="h2" size="large" :bold="true">
 					{{ i18n.baseText('oauth.consentView.error.heading') }}
@@ -278,7 +332,17 @@ watch(
 			/>
 			<!-- Default content -->
 			<div v-else :class="$style.content" data-test-id="consent-content">
-				<N8nHeading v-if="clientDetails?.isFirstParty" tag="h2" size="large" :bold="true">
+				<N8nHeading v-if="isMcpServerConsent" tag="h2" size="large" :bold="true">
+					{{
+						i18n.baseText('oauth.consentView.mcpServer.heading', {
+							interpolate: {
+								clientName: clientDetails?.clientName ?? '',
+								resourceName: resourceName ?? '',
+							},
+						})
+					}}
+				</N8nHeading>
+				<N8nHeading v-else-if="clientDetails?.isFirstParty" tag="h2" size="large" :bold="true">
 					{{
 						i18n.baseText(
 							isAppConsent
@@ -311,7 +375,24 @@ watch(
 					}}
 				</N8nHeading>
 				<div :class="$style['text-content']">
-					<N8nText v-if="clientDetails?.isFirstParty" color="text-base" size="medium">
+					<template v-if="isMcpServerConsent">
+						<N8nText color="text-base" size="medium">
+							{{
+								i18n.baseText('oauth.consentView.mcpServer.description', {
+									interpolate: { clientName: clientDetails?.clientName ?? '' },
+								})
+							}}
+						</N8nText>
+						<N8nText
+							v-if="signedInAs"
+							color="text-light"
+							size="small"
+							data-test-id="consent-signed-in-as"
+						>
+							{{ signedInAs }}
+						</N8nText>
+					</template>
+					<N8nText v-else-if="clientDetails?.isFirstParty" color="text-base" size="medium">
 						{{
 							isAppConsent
 								? i18n.baseText('oauth.consentView.app.description')
@@ -401,7 +482,11 @@ watch(
 							:size="'large'"
 							@click="handleClose"
 						>
-							{{ i18n.baseText('generic.close') }}
+							{{
+								serverRefusal
+									? i18n.baseText('oauth.consentView.mcpServer.goToN8n')
+									: i18n.baseText('generic.close')
+							}}
 						</N8nButton>
 						<template v-else>
 							<N8nButton
@@ -412,7 +497,7 @@ watch(
 								:disabled="loading"
 								@click="handleDeny"
 							>
-								{{ i18n.baseText('generic.deny') }}
+								{{ i18n.baseText(isMcpServerConsent ? 'generic.cancel' : 'generic.deny') }}
 							</N8nButton>
 							<N8nTooltip as-child :disabled="!allowDisabled || !allowDisabledReason">
 								<template #content>{{ allowDisabledReason }}</template>
@@ -425,11 +510,7 @@ watch(
 									:focusable-when-disabled="!!allowDisabledReason"
 									@click="handleAllow"
 								>
-									{{
-										i18n.baseText(
-											isAppConsent ? 'oauth.consentView.app.allow' : 'oauth.consentView.allow',
-										)
-									}}
+									{{ allowLabel }}
 								</N8nButton>
 							</N8nTooltip>
 						</template>

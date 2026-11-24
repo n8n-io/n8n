@@ -6,12 +6,14 @@ import * as consentApi from '@n8n/rest-api-client/api/consent';
 import { type Ref, ref } from 'vue';
 import type { ConsentDetails } from '@n8n/rest-api-client/api/consent';
 import { ResponseError } from '@n8n/rest-api-client/utils';
+import { consentRefusalDetailsSchema, type ConsentRefusalDetails } from '@n8n/api-types';
 
 export const useConsentStore = defineStore(STORES.CONSENT, () => {
 	const consentDetails = ref<ConsentDetails | null>(null);
 	const isLoading = ref(false);
 	const error = ref<string | null>(null);
 	const errorCode: Ref<'resource_unavailable' | 'forbidden' | null> = ref(null);
+	const refusal = ref<ConsentRefusalDetails | null>(null);
 
 	const rootStore = useRootStore();
 
@@ -25,6 +27,7 @@ export const useConsentStore = defineStore(STORES.CONSENT, () => {
 		isLoading.value = true;
 		error.value = null;
 		errorCode.value = null;
+		refusal.value = null;
 
 		try {
 			const response = await consentApi.getConsentDetails(rootStore.restApiContext, flow);
@@ -37,6 +40,8 @@ export const useConsentStore = defineStore(STORES.CONSENT, () => {
 					errorCode.value = 'resource_unavailable';
 				} else if (err instanceof ResponseError && err.httpStatusCode === 403) {
 					errorCode.value = 'forbidden';
+					const parsed = consentRefusalDetailsSchema.safeParse(err.meta?.refusal);
+					refusal.value = parsed.success ? parsed.data : null;
 				}
 				error.value = err instanceof Error ? err.message : 'Failed to load consent details';
 			}
@@ -73,6 +78,7 @@ export const useConsentStore = defineStore(STORES.CONSENT, () => {
 		isLoading.value = false;
 		error.value = null;
 		errorCode.value = null;
+		refusal.value = null;
 	};
 
 	return {
@@ -83,5 +89,6 @@ export const useConsentStore = defineStore(STORES.CONSENT, () => {
 		isLoading,
 		error,
 		errorCode,
+		refusal,
 	};
 });

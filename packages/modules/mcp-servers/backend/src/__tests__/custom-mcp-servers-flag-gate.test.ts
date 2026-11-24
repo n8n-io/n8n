@@ -22,6 +22,17 @@ describe('CustomMcpServersFlagGate', () => {
 		expect(postHog.getFeatureFlags).toHaveBeenCalledWith(user);
 	});
 
+	it.each([
+		['test', true],
+		['control', false],
+		[undefined, false],
+	])('reads the instance variant %j as enabled %j', async (variant, enabled) => {
+		postHog.getFeatureFlagForInstance.mockResolvedValue(variant);
+
+		expect(await gate.isEnabledForInstance()).toBe(enabled);
+		expect(postHog.getFeatureFlagForInstance).toHaveBeenCalledWith(CUSTOM_MCP_SERVERS_FLAG);
+	});
+
 	it('gives a 404 error when the flag is off, so that the feature looks unknown', async () => {
 		postHog.getFeatureFlags.mockResolvedValue({ [CUSTOM_MCP_SERVERS_FLAG]: 'control' });
 

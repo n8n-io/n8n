@@ -19,6 +19,15 @@ export class CustomMcpServersFlagGate {
 		return flags?.[CUSTOM_MCP_SERVERS_FLAG] === CUSTOM_MCP_SERVERS_FLAG_VARIANT;
 	}
 
+	/**
+	 * The same answer as {@link isEnabled}, for a request that has no person yet, such as the
+	 * first request of an AI client. The flag rolls out by instance, so no person is needed.
+	 */
+	async isEnabledForInstance(): Promise<boolean> {
+		const value = await this.postHog.getFeatureFlagForInstance(CUSTOM_MCP_SERVERS_FLAG);
+		return value === CUSTOM_MCP_SERVERS_FLAG_VARIANT;
+	}
+
 	// 404, not 403: a surface behind a flag that is off looks unknown, not forbidden.
 	async assertEnabled(user: FlagUser): Promise<void> {
 		if (!(await this.isEnabled(user))) throw new NotFoundError('Not found');

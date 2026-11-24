@@ -1,3 +1,4 @@
+import type { OAuthClientNamePort } from './oauth-client-name-port';
 import type { TextDraftPort } from './text-draft-port';
 
 /**
@@ -110,5 +111,9 @@ export abstract class WorkflowToolPort {
  * exist yet at load time.
  */
 export abstract class McpServerToolAdapters {
-	abstract resolve(): { workflows: WorkflowToolPort; textDrafts: TextDraftPort };
+	abstract resolve(): {
+		workflows: WorkflowToolPort;
+		textDrafts: TextDraftPort;
+		clients: OAuthClientNamePort;
+	};
 }
