@@ -6,7 +6,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { ResponseError } from '@n8n/rest-api-client';
 import { setActivePinia } from 'pinia';
 import { createComponentRenderer } from '@/__tests__/render';
-import { MODAL_CONFIRM } from '@/app/constants';
+import { MODAL_CANCEL, MODAL_CLOSE, MODAL_CONFIRM } from '@/app/constants';
 import SettingsInstanceAiView from '../views/SettingsInstanceAiView.vue';
 import ConnectionDialog from '../components/settings/ConnectionDialog.vue';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
@@ -16,6 +16,7 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { fetchSettings } from '../instanceAi.settings.api';
 import type { FrontendModuleSettings } from '@n8n/api-types';
 import type { ICredentialType } from 'n8n-workflow';
+import type { RouteLeaveGuard } from 'vue-router';
 import { defaultModuleSettings } from './createThreadComponentRenderer';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { MODEL_TRAINING_OPT_OUT_EXPERIMENT } from '@/app/constants/experiments';
@@ -82,6 +83,14 @@ vi.mock('../composables/useInstanceCredentialTest', async (importOriginal) => {
 		}),
 	};
 });
+
+let routeLeaveGuard: RouteLeaveGuard | undefined;
+vi.mock('vue-router', async (importOriginal) => ({
+	...(await importOriginal<typeof import('vue-router')>()),
+	onBeforeRouteLeave: (guard: RouteLeaveGuard) => {
+		routeLeaveGuard = guard;
+	},
+}));
 
 vi.mock('@/app/composables/useMessage', () => ({
 	useMessage: () => ({ confirm: confirmMock }),
@@ -1255,6 +1264,78 @@ describe('SettingsInstanceAiView', () => {
 
 				expect(sites).toHaveValue('github.com');
 				expect(queryByTestId('n8n-agent-saved-login-sites-error')).toBeNull();
+			});
+
+			describe('leaving the page', () => {
+				async function leave() {
+					const next = vi.fn();
+					await routeLeaveGuard?.({} as never, {} as never, next);
+					await flushPromises();
+					return next;
+				}
+
+				async function renderWithUnsavedSites() {
+					setSavedLogins({ cloudBrowserSavedLoginsMode: 'except' });
+					const rendered = renderComponent();
+					await flushPromises();
+					await fireEvent.update(rendered.getByTestId('n8n-agent-saved-login-sites'), 'bank.com');
+					return rendered;
+				}
+
+				it('leaves without asking when the list has no unsaved changes', async () => {
+					setSavedLogins({ cloudBrowserSavedLoginsMode: 'except' });
+					renderComponent();
+					await flushPromises();
+
+					const next = await leave();
+
+					expect(confirmMock).not.toHaveBeenCalled();
+					expect(next).toHaveBeenCalledWith();
+				});
+
+				it('saves the list and leaves when the admin chooses Save', async () => {
+					await renderWithUnsavedSites();
+					confirmMock.mockResolvedValue(MODAL_CONFIRM);
+					vi.spyOn(store, 'save').mockImplementation(async () => {
+						store.settings = { ...store.settings!, cloudBrowserSavedLoginSites: ['bank.com'] };
+						return true;
+					});
+
+					const next = await leave();
+
+					expect(store.save).toHaveBeenCalledTimes(1);
+					expect(next).toHaveBeenCalledWith(true);
+				});
+
+				it('stays on the page when the save fails', async () => {
+					await renderWithUnsavedSites();
+					confirmMock.mockResolvedValue(MODAL_CONFIRM);
+					vi.spyOn(store, 'save').mockResolvedValue(false);
+
+					const next = await leave();
+
+					expect(next).toHaveBeenCalledWith(false);
+				});
+
+				it('leaves without saving when the admin chooses that', async () => {
+					await renderWithUnsavedSites();
+					confirmMock.mockResolvedValue(MODAL_CANCEL);
+					const save = vi.spyOn(store, 'save');
+
+					const next = await leave();
+
+					expect(save).not.toHaveBeenCalled();
+					expect(next).toHaveBeenCalledWith();
+				});
+
+				it('stays on the page when the admin closes the dialog', async () => {
+					await renderWithUnsavedSites();
+					confirmMock.mockResolvedValue(MODAL_CLOSE);
+
+					const next = await leave();
+
+					expect(next).toHaveBeenCalledWith(false);
+				});
 			});
 
 			it('hides the error when the admin edits the list', async () => {

@@ -2099,6 +2099,22 @@ describe('InstanceAiSettingsService', () => {
 				expect(result.cloudBrowserSavedLoginSites).toEqual(['gitlab.com']);
 			});
 
+			it('compares with the stored mode when this main still has an older one', async () => {
+				const staleService = createService();
+				// Another main stored "only" with a list. This main still has the default, "off".
+				persistedSettingsValue = JSON.stringify({
+					cloudBrowserSavedLoginsMode: 'only',
+					cloudBrowserSavedLoginSites: ['github.com'],
+				});
+
+				const result = await staleService.updateAdminSettings(
+					{ cloudBrowserSavedLoginsMode: 'off' },
+					admin,
+				);
+
+				expect(result.cloudBrowserSavedLoginSites).toEqual([]);
+			});
+
 			it('keeps the sites when the mode stays the same', async () => {
 				const result = await service.updateAdminSettings(
 					{ cloudBrowserSavedLoginsMode: 'only' },

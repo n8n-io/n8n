@@ -583,13 +583,6 @@ export class InstanceAiSettingsService {
 			);
 		}
 
-		const newSavedLoginsMode = update.cloudBrowserSavedLoginsMode;
-		const isSavedLoginsModeChange =
-			newSavedLoginsMode !== undefined && newSavedLoginsMode !== this.cloudBrowserSavedLoginsMode;
-		if (isSavedLoginsModeChange && update.cloudBrowserSavedLoginSites === undefined) {
-			update.cloudBrowserSavedLoginSites = [];
-		}
-
 		const {
 			modelCredentialId: initialModelCredentialId,
 			daytonaCredentialId: initialDaytonaCredentialId,
@@ -764,6 +757,7 @@ export class InstanceAiSettingsService {
 				const previous = this.snapshotAdminSettings();
 				const next = this.mergeAdminSettings(current, settingsUpdate);
 				if (clearsSandboxConnection) delete next.sandboxProvider;
+				if (clearsSavedLoginSites(current, settingsUpdate)) next.cloudBrowserSavedLoginSites = [];
 
 				const nextModelCredentialId =
 					modelCredentialId === undefined ? currentModelCredentialId : modelCredentialId;
@@ -1900,6 +1894,23 @@ export class InstanceAiSettingsService {
 				});
 		}
 	}
+}
+
+/**
+ * Whether the update changes the saved login mode without sending sites. The list belongs to its
+ * mode, so an allow list never becomes a block list, and a list does not come back after saved
+ * logins were off. Compared with the stored settings, so a main with old settings applies it too.
+ */
+function clearsSavedLoginSites(
+	current: PersistedAdminSettings,
+	update: Pick<
+		PersistedAdminSettings,
+		'cloudBrowserSavedLoginsMode' | 'cloudBrowserSavedLoginSites'
+	>,
+): boolean {
+	const newMode = update.cloudBrowserSavedLoginsMode;
+	if (newMode === undefined || newMode === current.cloudBrowserSavedLoginsMode) return false;
+	return update.cloudBrowserSavedLoginSites === undefined;
 }
 
 /**

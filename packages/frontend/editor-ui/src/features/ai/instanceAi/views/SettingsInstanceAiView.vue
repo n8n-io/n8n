@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { onBeforeRouteLeave } from 'vue-router';
 import {
 	N8nBadge,
 	N8nButton,
@@ -34,7 +35,7 @@ import { ResponseError } from '@n8n/rest-api-client';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@n8n/composables/useToast';
 import { useAsyncState } from '@vueuse/core';
-import { MODAL_CONFIRM } from '@/app/constants';
+import { MODAL_CANCEL, MODAL_CONFIRM } from '@/app/constants';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useMessage } from '@/app/composables/useMessage';
 import { useSettingsStore } from '@n8n/stores/settings.store';
@@ -488,6 +489,37 @@ async function saveSavedLoginSites() {
 	if (await store.save()) return;
 	savedLoginSitesError.value = invalidSitesMessage(store.lastSaveError);
 }
+
+onBeforeRouteLeave(async (_to, _from, next) => {
+	if (!hasUnsavedLoginSites.value) {
+		next();
+		return;
+	}
+
+	const response = await message.confirm(
+		i18n.baseText('generic.unsavedWork.confirmMessage.message'),
+		{
+			title: i18n.baseText('generic.unsavedWork.confirmMessage.headline'),
+			type: 'warning',
+			confirmButtonText: i18n.baseText('generic.unsavedWork.confirmMessage.confirmButtonText'),
+			cancelButtonText: i18n.baseText('generic.unsavedWork.confirmMessage.cancelButtonText'),
+			showClose: true,
+		},
+	);
+
+	if (response === MODAL_CONFIRM) {
+		await saveSavedLoginSites();
+		next(!hasUnsavedLoginSites.value);
+		return;
+	}
+
+	if (response === MODAL_CANCEL) {
+		next();
+		return;
+	}
+
+	next(false);
+});
 
 /** The message for the sites that the server could not read. Nothing for any other error. */
 function invalidSitesMessage(error: unknown): string | undefined {
