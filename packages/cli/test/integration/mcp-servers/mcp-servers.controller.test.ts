@@ -162,9 +162,13 @@ describe('GET /projects/:projectId/mcp-servers/slug-available', () => {
 		});
 	});
 
-	it('needs the create scope', async () => {
-		expect((await check('free', agentFor('project:editor'))).status).toBe(200);
-		expect((await check('free', agentFor('project:viewer'))).status).toBe(403);
+	it.each([
+		['project:admin', 200],
+		['project:editor', 200],
+		['project:viewer', 403],
+		['project:chatUser', 403],
+	] as const)('answers %s with %i', async (role, status) => {
+		expect((await check('free', agentFor(role))).status).toBe(status);
 	});
 
 	it('refuses an invalid slug', async () => {
@@ -225,6 +229,8 @@ describe('GET /mcp-servers', () => {
 				.sort();
 
 		expect(await ids(testServer.authAgentFor(viewer))).toEqual([own.id, mine.body.data.id].sort());
+		expect(await ids(agentFor('project:admin'))).toEqual([own.id]);
+		expect(await ids(agentFor('project:editor'))).toEqual([own.id]);
 		expect(await ids(agentFor('project:chatUser'))).toEqual([]);
 		expect(await ids(testServer.authAgentFor(admin))).toEqual(
 			[own.id, hidden.id, mine.body.data.id].sort(),
@@ -241,7 +247,17 @@ describe('GET /projects/:projectId/mcp-servers/:serverId', () => {
 			.expect(200);
 
 		expect(response.body.data).toMatchObject({ id: server.id, slug: 'sales-tools' });
-		await agentFor('project:chatUser').get(`${serversPath()}/${server.id}`).expect(403);
+	});
+
+	it.each([
+		['project:admin', 200],
+		['project:editor', 200],
+		['project:viewer', 200],
+		['project:chatUser', 403],
+	] as const)('answers %s with %i', async (role, status) => {
+		const server = await createServer({ name: 'Sales tools', slug: 'sales-tools' });
+
+		await agentFor(role).get(`${serversPath()}/${server.id}`).expect(status);
 	});
 
 	it('answers 404 for a deleted server, a server of another project, and an unknown id', async () => {
@@ -281,6 +297,17 @@ describe('PATCH /projects/:projectId/mcp-servers/:serverId', () => {
 		await agentFor('project:viewer').patch(path).send({ name: 'X' }).expect(403);
 	});
 
+	it.each([
+		['project:admin', 200],
+		['project:editor', 200],
+		['project:viewer', 403],
+		['project:chatUser', 403],
+	] as const)('answers %s with %i', async (role, status) => {
+		const server = await createServer({ name: 'Sales tools', slug: 'sales-tools' });
+
+		await agentFor(role).patch(`${serversPath()}/${server.id}`).send({ name: 'X' }).expect(status);
+	});
+
 	it('answers 404 for a deleted server', async () => {
 		const server = await createServer({ name: 'Sales tools', slug: 'sales-tools' });
 		await ownerAgent.delete(`${serversPath()}/${server.id}`).expect(200);
@@ -306,6 +333,7 @@ describe('DELETE /projects/:projectId/mcp-servers/:serverId', () => {
 	});
 
 	it.each([
+		['project:admin', 200],
 		['project:editor', 200],
 		['project:viewer', 403],
 		['project:chatUser', 403],

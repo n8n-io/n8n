@@ -8,7 +8,7 @@ import {
 import { EventService, ProjectScopeService } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { BadRequestError, NotFoundError } from '@n8n/errors';
+import { BadRequestError, NotFoundError, UnexpectedError } from '@n8n/errors';
 
 import type { McpServer } from './mcp-server.entity';
 import type { McpServerActor } from './mcp-server-events';
@@ -118,7 +118,9 @@ export class McpServersService {
 
 	private async withProject(server: McpServer): Promise<McpServerResponse> {
 		const [response] = await this.toResponses([server]);
-		if (!response) throw new NotFoundError('Project not found');
+		// A server row always has its project row: a project delete also deletes its servers.
+		if (!response)
+			throw new UnexpectedError('MCP server has no project', { extra: { serverId: server.id } });
 		return response;
 	}
 

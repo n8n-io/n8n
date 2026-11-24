@@ -2,6 +2,8 @@
 import {
 	mcpServerSlugFromName,
 	mcpServerSlugInput,
+	MCP_SERVER_DESCRIPTION_MAX_LENGTH,
+	MCP_SERVER_NAME_MAX_LENGTH,
 	MCP_SERVER_SLUG_MAX_LENGTH,
 	type McpServerSlugAvailability,
 } from '@n8n/api-types';
@@ -220,7 +222,7 @@ async function onCreate() {
 					ref="nameInput"
 					v-model="name"
 					:placeholder="i18n.baseText('mcpServers.create.name.placeholder')"
-					:maxlength="128"
+					:maxlength="MCP_SERVER_NAME_MAX_LENGTH"
 					data-test-id="create-mcp-server-name"
 					@keydown.enter="onCreate"
 				/>
@@ -267,7 +269,7 @@ async function onCreate() {
 					v-model="description"
 					type="textarea"
 					:rows="3"
-					:maxlength="2000"
+					:maxlength="MCP_SERVER_DESCRIPTION_MAX_LENGTH"
 					:placeholder="i18n.baseText('mcpServers.create.descriptionField.placeholder')"
 					data-test-id="create-mcp-server-description"
 				/>
@@ -308,7 +310,7 @@ async function onCreate() {
 	margin-top: var(--spacing--4xs);
 	font-family: var(--font-family--monospace);
 	font-size: var(--font-size--2xs);
-	color: var(--color--text);
+	color: var(--text-color--subtle);
 	word-break: break-all;
 }
 </style>

@@ -9,10 +9,12 @@ import { projectTypeSchema } from './project.schema';
 export const CUSTOM_MCP_SERVERS_FLAG = '155_custom_mcp_servers';
 export const CUSTOM_MCP_SERVERS_FLAG_VARIANT = 'test';
 
+export const MCP_SERVER_NAME_MAX_LENGTH = 128;
 export const MCP_SERVER_SLUG_MAX_LENGTH = 64;
+export const MCP_SERVER_DESCRIPTION_MAX_LENGTH = 2000;
 export const MCP_SERVER_TOOL_NAME_MAX_LENGTH = 64;
 
-export const mcpServerNameSchema = z.string().trim().min(1).max(128);
+export const mcpServerNameSchema = z.string().trim().min(1).max(MCP_SERVER_NAME_MAX_LENGTH);
 
 /** Path segment of the server URL `/mcp-servers/<slug>`. It never changes after the create. */
 export const mcpServerSlugSchema = z
@@ -45,7 +47,7 @@ export function mcpServerSlugFromName(name: string): string {
 }
 
 /** Clients get the description as the MCP instructions. */
-export const mcpServerDescriptionSchema = z.string().trim().max(2000);
+export const mcpServerDescriptionSchema = z.string().trim().max(MCP_SERVER_DESCRIPTION_MAX_LENGTH);
 
 export const mcpServerToolNameSchema = z
 	.string()

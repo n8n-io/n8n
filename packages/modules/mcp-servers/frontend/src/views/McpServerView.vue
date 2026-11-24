@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import type { McpServerResponse } from '@n8n/api-types';
+import { MCP_SERVER_DESCRIPTION_MAX_LENGTH, type McpServerResponse } from '@n8n/api-types';
+import { useLatestFetch } from '@n8n/composables/useLatestFetch';
 import { useToast } from '@n8n/composables/useToast';
 import {
 	N8nActionToggle,
@@ -15,6 +16,7 @@ import {
 	N8nTooltip,
 	type PathItem,
 } from '@n8n/design-system';
+import { VIEWS } from '@n8n/frontend-constants/views';
 import { useI18n } from '@n8n/i18n';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -37,6 +39,7 @@ const router = useRouter();
 const rootStore = useRootStore();
 const toast = useToast();
 const { serverUrl, copyServerUrl } = useMcpServerUrl();
+const latestFetch = useLatestFetch();
 
 const projectId = computed(() => String(route.params.projectId));
 const serverId = computed(() => String(route.params.serverId));
@@ -64,10 +67,16 @@ const selectedTab = computed(() =>
 
 const breadcrumbs = computed<PathItem[]>(() => [
 	{
+		id: VIEWS.WORKFLOWS,
+		label: i18n.baseText('projects.menu.overview'),
+		href: router.resolve({ name: VIEWS.WORKFLOWS }).href,
+	},
+	{
 		id: MCP_SERVERS_LIST_VIEW,
 		label: i18n.baseText('mcpServers.tab'),
 		href: router.resolve({ name: MCP_SERVERS_LIST_VIEW }).href,
 	},
+	...(server.value ? [{ id: MCP_SERVER_VIEW, label: server.value.name }] : []),
 ]);
 
 type MenuAction = 'rename' | 'copy-url' | 'delete';
@@ -94,21 +103,29 @@ const menuActions = computed(() => {
 	return actions;
 });
 
+/** Keeps a response only while the route still shows the server that it is for. */
+function applyResponse(response: McpServerResponse) {
+	if (response.id === serverId.value) server.value = response;
+}
+
 async function load() {
+	const isLatest = latestFetch.next();
 	loading.value = true;
 	notFound.value = false;
 	try {
-		server.value = await getMcpServer(rootStore.restApiContext, projectId.value, serverId.value);
+		const response = await getMcpServer(rootStore.restApiContext, projectId.value, serverId.value);
+		if (!isLatest()) return;
+		server.value = response;
 	} catch (error) {
+		if (!isLatest()) return;
 		server.value = null;
 		if (error instanceof ResponseError && error.httpStatusCode === 404) {
 			notFound.value = true;
 		} else {
 			toast.showError(error, i18n.baseText('mcpServers.server.load.error'));
 		}
-	} finally {
-		loading.value = false;
 	}
+	loading.value = false;
 }
 
 watch([projectId, serverId], load, { immediate: true });
@@ -134,13 +151,8 @@ function onTitleDoubleClick() {
 async function onRename(name: string) {
 	renaming.value = true;
 	try {
-		server.value = await updateMcpServer(
-			rootStore.restApiContext,
-			projectId.value,
-			serverId.value,
-			{
-				name,
-			},
+		applyResponse(
+			await updateMcpServer(rootStore.restApiContext, projectId.value, serverId.value, { name }),
 		);
 		renameOpen.value = false;
 		toast.showMessage({ type: 'success', title: i18n.baseText('mcpServers.rename.success') });
@@ -153,13 +165,10 @@ async function onRename(name: string) {
 
 async function onDescription(description: string) {
 	try {
-		server.value = await updateMcpServer(
-			rootStore.restApiContext,
-			projectId.value,
-			serverId.value,
-			{
+		applyResponse(
+			await updateMcpServer(rootStore.restApiContext, projectId.value, serverId.value, {
 				description,
-			},
+			}),
 		);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('mcpServers.server.description.error'));
@@ -186,7 +195,7 @@ async function onDelete() {
 }
 
 async function onBreadcrumbSelected(item: PathItem) {
-	await router.push({ name: item.id });
+	if (item.id !== MCP_SERVER_VIEW) await router.push({ name: item.id });
 }
 </script>
 
@@ -225,7 +234,7 @@ async function onBreadcrumbSelected(item: PathItem) {
 							v-if="permissions.canUpdate"
 							:model-value="server.description"
 							:placeholder="i18n.baseText('mcpServers.server.description.placeholder')"
-							:max-length="2000"
+							:max-length="MCP_SERVER_DESCRIPTION_MAX_LENGTH"
 							:max-width="640"
 							:class="$style.description"
 							data-test-id="mcp-server-description"
@@ -350,7 +359,7 @@ async function onBreadcrumbSelected(item: PathItem) {
 }
 
 .description {
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtler);
 }
 
 .url {

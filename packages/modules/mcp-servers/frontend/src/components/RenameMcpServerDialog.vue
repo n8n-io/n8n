@@ -8,6 +8,7 @@ import {
 	N8nInputLabel,
 	N8nText,
 } from '@n8n/design-system';
+import { MCP_SERVER_NAME_MAX_LENGTH } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { computed, ref, useTemplateRef, watch } from 'vue';
 
@@ -66,7 +67,7 @@ function onRename() {
 				<N8nInput
 					ref="nameInput"
 					v-model="value"
-					:maxlength="128"
+					:maxlength="MCP_SERVER_NAME_MAX_LENGTH"
 					data-test-id="rename-mcp-server-name"
 					@keydown.enter="onRename"
 				/>
