@@ -1,0 +1,41 @@
+packages/frontend/@n8n/design-system/src/components/N8nAiActivityStepGroup/AiActivityStepGroup.stories.scss
+  s_cf08597b8e4e18::t_dfe9cd8c0cdf9a 5-8
+packages/frontend/@n8n/design-system/src/components/N8nAiActivityStep/AiActivityStep.vue
+  s_cf08597b8e4e18::t_dfe9cd8c0cdf9a 19-20,32,69-71,107-109,166,195-200
+packages/frontend/editor-ui/src/features/agents/components/timeline-items/SessionCapabilityItem.vue
+  s_cf08597b8e4e18::t_dfe9cd8c0cdf9a 233,241,245,249
+packages/frontend/editor-ui/src/features/agents/components/timeline-items/SessionHitlItem.vue
+  s_cf08597b8e4e18::t_dfe9cd8c0cdf9a 149,156
+packages/frontend/editor-ui/src/features/agents/components/AgentToolCallRouteRow.vue
+  s_cf08597b8e4e18::t_dfe9cd8c0cdf9a 145,149-150
+packages/frontend/@n8n/design-system/src/components/N8nAiActivityStep/AiActivityStep.test.ts
+  s_cf08597b8e4e18::t_dfe9cd8c0cdf9a 31-40
+packages/frontend/editor-ui/src/features/agents/components/timeline-items/SessionBackgroundTaskItem.vue
+  s_cf08597b8e4e18::t_dfe9cd8c0cdf9a 142,151,202,206
+packages/frontend/editor-ui/src/features/agents/components/timeline-items/SessionMemoryItem.vue
+  s_cf08597b8e4e18::t_dfe9cd8c0cdf9a 66,71
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/AgentTimeline.vue
+  s_cf08597b8e4e18::t_dfe9cd8c0cdf9a 393,396,403
+packages/frontend/@n8n/design-system/src/components/N8nAiActivityStepButton/AiActivityStepButton.vue
+  s_cf08597b8e4e18::t_dfe9cd8c0cdf9a 61,63-74,76-77,82,93,97,134,137
+packages/frontend/editor-ui/src/features/agents/components/timeline-items/SessionBackgroundJobItem.vue
+  s_cf08597b8e4e18::t_dfe9cd8c0cdf9a 103,110
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_cf08597b8e4e18::t_dfe9cd8c0cdf9a 2364-2367
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "30dfb2a03ce105fe35c376ba9590cdf108772a91",
+  "prompts": {},
+  "sessions": {
+    "s_cf08597b8e4e18": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a20d77-45f5-7320-9e58-5a91629c58b8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

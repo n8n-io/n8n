@@ -1,0 +1,46 @@
+packages/cli/src/scaling/scaling.types.ts
+  s_b6af11fe672df8::t_27003405cc4b84 137-138
+packages/@n8n/nodes-langchain/nodes/mcp/McpTrigger/__tests__/McpServer.test.ts
+  h_44f8d1c0f2f8c4 820-840,842-847
+  s_b6af11fe672df8::t_730a066eb9b78f 841
+packages/cli/src/scaling/job-processor.ts
+  s_b6af11fe672df8::t_ecd7c7de9caeda 547
+packages/cli/src/scaling/__tests__/scaling.service.test.ts
+  s_b6af11fe672df8::t_f90e15dfb8c82f 1521,1536
+  s_b6af11fe672df8::t_0491b3a4a2f211 1631
+packages/@n8n/nodes-langchain/nodes/mcp/McpTrigger/McpServer.ts
+  s_b6af11fe672df8::t_2beef26f88c685 327-332
+  s_b6af11fe672df8::t_05e645e878bd65 472-475
+  s_b6af11fe672df8::t_54a01857ea6f74 644
+  s_b6af11fe672df8::t_f5290d458ac5b6 373
+packages/@n8n/nodes-langchain/nodes/mcp/McpTrigger/protocol/MessageFormatter.ts
+  s_b6af11fe672df8::t_5ff24adec9c580 47-52
+  s_b6af11fe672df8::t_a722282cd0c924 78
+packages/cli/src/scaling/__tests__/job-processor.service.test.ts
+  s_b6af11fe672df8::t_b6a7977ccd740d 1378
+packages/cli/src/scaling/scaling.service.ts
+  s_b6af11fe672df8::t_4c70adb2a93edf 792
+  s_b6af11fe672df8::t_386a3d9f75d06f 743
+  s_b6af11fe672df8::t_bb24ec7f9d36b4 661
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "08884ff121e29c35c79f4854f6872cc83532a568",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_b6af11fe672df8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4205028a-c6cc-464f-9032-2c08a86aeaab",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

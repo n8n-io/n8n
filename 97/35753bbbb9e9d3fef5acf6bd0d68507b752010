@@ -1,0 +1,105 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/AgentTimeline.activity.test.ts
+  s_c71c95c4c5a66e::t_22c8aa7da60835 1,6-8,39-43,46,50-73,76,79-80
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/builderAgents.test.ts
+  s_c71c95c4c5a66e::t_62b07cee44b648 89-109
+packages/quality/testing/playwright/pages/InstanceAiPage.ts
+  s_c71c95c4c5a66e::t_85dfc352fac6a8 223
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useInstanceAiActivityItems.test.ts
+  s_56e4b09b2b091a::t_4906554f9abb2b 322,331
+  s_77a2e306b6b0e2::t_defd3034d384a4 15-19,89,332-345
+  s_c71c95c4c5a66e::t_6cf25f6303edd8 1,86-88
+  s_c71c95c4c5a66e::t_8cb0b6ab7640ed 362,365,370-371,373-375
+  s_c71c95c4c5a66e::t_da0dd181f7853c 7,90
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatActivity.test.ts
+  s_c71c95c4c5a66e::t_3f17a2d260c1ba 971-976
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/SubagentStepTimeline.test.ts
+  s_c71c95c4c5a66e::t_ffed2306b15aba 42,284-288,290-305,307-335
+  s_c71c95c4c5a66e::t_443dfda0844771 255,264-266,289,306
+packages/frontend/editor-ui/src/features/ai/shared/components/AiActivityTrace/AiActivityThinkingStep.vue
+  s_56e4b09b2b091a::t_bb36039af2ef37 14,56-67
+  s_c71c95c4c5a66e::t_b5126ce2b9193c 88-125
+packages/frontend/editor-ui/src/features/ai/shared/components/ToolResult/ToolResultRenderer.test.ts
+  s_c71c95c4c5a66e::t_64f08755e5b560 8-19
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiRunActivity.vue
+  s_82b05088f621e9::t_f621da80a2e6d3 4,16,18-22,27-31,34
+  s_82b05088f621e9::t_6a3eba7cbd626d 26,32
+packages/frontend/editor-ui/src/features/ai/shared/components/AiActivityTrace/types.ts
+  s_56e4b09b2b091a::t_f498fd7758b04a 10
+  s_56e4b09b2b091a::t_bb36039af2ef37 19
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/SubagentStepTimeline.vue
+  s_c71c95c4c5a66e::t_3e96c2c2e9f7b6 20-21,39,41,46-56,58-59,62-63,65,71,90-95,97-131,133-134,136-140,142,144-152,160-176,178,181-188,190,193-199
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiThreadView.test.ts
+  s_c71c95c4c5a66e::t_73b21994b008ad 3063-3073,3077,3080,3082,3084-3087,3090,3098,3100-3102
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useInstanceAiActivityItems.ts
+  s_77a2e306b6b0e2::t_64502b09605fe2 13-14,19,56-67,81-82,176
+packages/frontend/editor-ui/src/features/agents/components/AgentChatMessageList.vue
+  s_77a2e306b6b0e2::t_e06611e0a2e872 909
+packages/frontend/editor-ui/src/features/ai/shared/components/AiActivityTrace/useThinkingLabel.ts
+  s_56e4b09b2b091a::t_989f013a34d142 24,38-41
+  s_56e4b09b2b091a::t_bb36039af2ef37 25-26
+  s_56e4b09b2b091a::t_4906554f9abb2b 81,101
+  s_c71c95c4c5a66e::t_de9b420c940487 3,42
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useQuietPeriod.ts
+  s_c71c95c4c5a66e::t_6e0c59deafeac1 1-33
+packages/frontend/editor-ui/src/features/ai/shared/composables/useThinkingWords.ts
+  s_c71c95c4c5a66e::t_2b2fc15af3e057 79-103
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useRunActivity.ts
+  s_82b05088f621e9::t_e9b945b8338aac 22
+  s_82b05088f621e9::t_f48c64567206a5 264-265
+  s_c71c95c4c5a66e::t_e5f22c677c0da8 21
+packages/frontend/editor-ui/src/features/ai/shared/components/AiActivityTrace/AiActivityThinkingStep.test.ts
+  s_56e4b09b2b091a::t_f498fd7758b04a 19,23,27
+packages/frontend/editor-ui/src/features/ai/instanceAi/agentTimeline.utils.ts
+  s_c71c95c4c5a66e::t_01cc7d74d3cd26 37-48
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/AgentTimeline.vue
+  s_c71c95c4c5a66e::t_754e4f9b5bbe14 18,36,129-144,385
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiRunActivity.test.ts
+  s_82b05088f621e9::t_33ac7d3fe16aef 78,83,87,89,96-107,109,112-114,117-126
+  s_c71c95c4c5a66e::t_5bb0f630bbbf6c 7
+packages/frontend/@n8n/design-system/src/components/N8nAiActivityStep/AiActivityStep.vue
+  s_56e4b09b2b091a::t_c61065ba45e1e9 44-45,69,107
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useDraftWorkflowPreview.ts
+  s_c71c95c4c5a66e::t_1564731f18a68b 10-13
+packages/frontend/editor-ui/src/features/ai/shared/composables/useThinkingWords.test.ts
+  s_c71c95c4c5a66e::t_13053b4d1f62df 9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9735753bbbb9e9d3fef5acf6bd0d68507b752010",
+  "prompts": {},
+  "sessions": {
+    "s_56e4b09b2b091a": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a20def-4c0c-7093-bc24-5e2e57095d69",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_77a2e306b6b0e2": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a20ddb-c6f8-7320-9e58-5a9943f28b2c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_82b05088f621e9": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a20de1-96ca-7093-bc24-5e2d128d262a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_c71c95c4c5a66e": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a20df8-664c-7093-bc24-5e3120d46500",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}
