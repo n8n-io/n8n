@@ -34,6 +34,7 @@ import {
 	resolvePromptProfile,
 	setTracePromptVersion,
 	setTraceModelId,
+	setTraceApprovalMode,
 	modelConfigId,
 	modelIdTraceMetadata,
 	createInstanceAiTraceContext,
@@ -3888,6 +3889,9 @@ export class InstanceAiService {
 			this.runState.getPromptConfiguration(opts.threadId)?.version;
 		setTracePromptVersion(opts.tracing, promptVersion);
 		setTraceModelId(opts.tracing, opts.modelId);
+		// A resume that reuses the suspended agent does not create the agent again, so the mode
+		// is recorded here for the new trace.
+		setTraceApprovalMode(opts.tracing, opts.orchestrationContext?.domainContext?.approvalMode);
 		let completedSetupWorkflowId: string | undefined;
 		let skipPostRunCleanup = false;
 		let resumeClaimed = false;

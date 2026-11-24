@@ -1,9 +1,11 @@
 import type { IWorkflowDb } from '@/Interface';
 
+import type { AgentListItem } from '@/features/agents/agent.types';
+
 import type {
-	AssistantMentionItem,
-	AssistantMentionKind,
+	AssistantAgentMentionItem,
 	AssistantMentionSourceId,
+	AssistantWorkflowMentionItem,
 	WorkflowArtifactIndex,
 	WorkflowArtifactReference,
 } from '../assistantAtMentions.types';
@@ -15,17 +17,35 @@ import type {
 export const MAX_MENTION_RESULTS = 10;
 
 export function buildMentionKey(
-	kind: AssistantMentionKind,
+	kind: AssistantWorkflowMentionItem['kind'],
 	workflowId: string,
 	entityId: string,
 ): string {
 	return `${kind}:${workflowId}:${entityId}`;
 }
 
+export function buildAgentMentionKey(agentId: string): string {
+	return `agent:${agentId}`;
+}
+
+export function buildAgentMentionItem(
+	agent: Pick<AgentListItem, 'id' | 'name' | 'projectId'>,
+): AssistantAgentMentionItem {
+	return {
+		key: buildAgentMentionKey(agent.id),
+		kind: 'agent',
+		source: 'agents',
+		label: agent.name,
+		breadcrumbs: [agent.name],
+		entityId: agent.id,
+		projectId: agent.projectId,
+	};
+}
+
 export function buildWorkflowMentionItem(
 	workflow: Pick<IWorkflowDb, 'id' | 'name' | 'description'>,
 	source: AssistantMentionSourceId,
-): AssistantMentionItem {
+): AssistantWorkflowMentionItem {
 	return {
 		key: buildMentionKey('workflow', workflow.id, workflow.id),
 		kind: 'workflow',
@@ -43,7 +63,7 @@ function buildNodeMentionItem(
 	index: WorkflowArtifactIndex,
 	nodeId: string,
 	groupId?: string,
-): AssistantMentionItem | undefined {
+): AssistantWorkflowMentionItem | undefined {
 	const node = index.nodesById.get(nodeId);
 	if (!node) return undefined;
 
@@ -68,7 +88,7 @@ function buildGroupMentionItem(
 	groupId: string,
 	includeChildren: boolean,
 	excludedKeys?: ReadonlySet<string>,
-): AssistantMentionItem | undefined {
+): AssistantWorkflowMentionItem | undefined {
 	const group = index.groupsById.get(groupId);
 	if (!group) return undefined;
 
@@ -76,7 +96,7 @@ function buildGroupMentionItem(
 		? group.nodeIds
 				.map((nodeId) => buildNodeMentionItem(index, nodeId, group.id))
 				.filter(
-					(item): item is AssistantMentionItem =>
+					(item): item is AssistantWorkflowMentionItem =>
 						item !== undefined && !excludedKeys?.has(item.key),
 				)
 		: undefined;
@@ -104,7 +124,7 @@ function buildArtifactWorkflowItem(
 	index?: WorkflowArtifactIndex,
 	includeChildren = true,
 	excludedKeys?: ReadonlySet<string>,
-): AssistantMentionItem {
+): AssistantWorkflowMentionItem {
 	const workflowName = index?.workflowName ?? artifact.name;
 	const children =
 		includeChildren && index
@@ -116,7 +136,7 @@ function buildArtifactWorkflowItem(
 						.filter((node) => !index.nodeIdToGroupId.has(node.id))
 						.map((node) => buildNodeMentionItem(index, node.id)),
 				].filter(
-					(item): item is AssistantMentionItem =>
+					(item): item is AssistantWorkflowMentionItem =>
 						item !== undefined &&
 						(!excludedKeys?.has(item.key) || Boolean(item.hasChildren && item.children?.length)),
 				)
@@ -142,8 +162,8 @@ export function buildArtifactBrowseItems(
 	artifacts: readonly WorkflowArtifactReference[],
 	getIndex: (workflowId: string) => WorkflowArtifactIndex | undefined,
 	excludedKeys?: ReadonlySet<string>,
-): AssistantMentionItem[] {
-	const items: AssistantMentionItem[] = [];
+): AssistantWorkflowMentionItem[] {
+	const items: AssistantWorkflowMentionItem[] = [];
 	for (const artifact of artifacts) {
 		const item = buildArtifactWorkflowItem(artifact, getIndex(artifact.id), true, excludedKeys);
 		if (excludedKeys?.has(item.key) && !item.hasChildren) continue;
@@ -157,8 +177,8 @@ export function buildArtifactSearchItems(
 	artifacts: readonly WorkflowArtifactReference[],
 	getIndex: (workflowId: string) => WorkflowArtifactIndex | undefined,
 	excludedKeys?: ReadonlySet<string>,
-): AssistantMentionItem[] {
-	const items: AssistantMentionItem[] = [];
+): AssistantWorkflowMentionItem[] {
+	const items: AssistantWorkflowMentionItem[] = [];
 
 	for (const artifact of artifacts) {
 		const index = getIndex(artifact.id);

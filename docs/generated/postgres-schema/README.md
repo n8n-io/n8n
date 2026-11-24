@@ -23,6 +23,8 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.agent_eval_run](public.agent_eval_run.md) | 14 |  | BASE TABLE |
 | [public.agent_execution](public.agent_execution.md) | 28 |  | BASE TABLE |
 | [public.agent_execution_message_links](public.agent_execution_message_links.md) | 5 |  | BASE TABLE |
+| [public.agent_execution_statistics](public.agent_execution_statistics.md) | 2 |  | BASE TABLE |
+| [public.agent_execution_statistics_delta](public.agent_execution_statistics_delta.md) | 2 |  | BASE TABLE |
 | [public.agent_execution_threads](public.agent_execution_threads.md) | 20 |  | BASE TABLE |
 | [public.agent_file_grants](public.agent_file_grants.md) | 4 |  | BASE TABLE |
 | [public.agent_files](public.agent_files.md) | 10 |  | BASE TABLE |
@@ -56,7 +58,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.annotation_tag_entity](public.annotation_tag_entity.md) | 4 |  | BASE TABLE |
 | [public.app](public.app.md) | 9 |  | BASE TABLE |
 | [public.app_artifact](public.app_artifact.md) | 8 |  | BASE TABLE |
-| [public.app_version](public.app_version.md) | 12 |  | BASE TABLE |
+| [public.app_version](public.app_version.md) | 13 |  | BASE TABLE |
 | [public.auth_identity](public.auth_identity.md) | 5 |  | BASE TABLE |
 | [public.auth_provider_sync_history](public.auth_provider_sync_history.md) | 11 |  | BASE TABLE |
 | [public.binary_data](public.binary_data.md) | 9 |  | BASE TABLE |
@@ -720,6 +722,14 @@ erDiagram
   varchar_36_ messageId FK
   integer position
 }
+"public.agent_execution_statistics" {
+  bigint count
+  timestamp_3__with_time_zone periodStart
+}
+"public.agent_execution_statistics_delta" {
+  bigint id
+  timestamp_3__with_time_zone periodStart
+}
 "public.agent_execution_threads" {
   varchar_16_ accessScope
   varchar_36_ agentId FK
@@ -1064,6 +1074,7 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   text description
   uuid id
+  boolean isScaffold
   varchar_255_ label
   integer sourceArtifactId FK
   timestamp_3__with_time_zone updatedAt

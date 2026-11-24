@@ -23,6 +23,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [agent_eval_run](agent_eval_run.md) | 14 |  | table |
 | [agent_execution](agent_execution.md) | 28 |  | table |
 | [agent_execution_message_links](agent_execution_message_links.md) | 5 |  | table |
+| [agent_execution_statistics](agent_execution_statistics.md) | 2 |  | table |
 | [agent_execution_threads](agent_execution_threads.md) | 20 |  | table |
 | [agent_file_grants](agent_file_grants.md) | 4 |  | table |
 | [agent_files](agent_files.md) | 10 |  | table |
@@ -56,7 +57,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [annotation_tag_entity](annotation_tag_entity.md) | 4 |  | table |
 | [app](app.md) | 9 |  | table |
 | [app_artifact](app_artifact.md) | 8 |  | table |
-| [app_version](app_version.md) | 12 |  | table |
+| [app_version](app_version.md) | 13 |  | table |
 | [auth_identity](auth_identity.md) | 5 |  | table |
 | [auth_provider_sync_history](auth_provider_sync_history.md) | 11 |  | table |
 | [binary_data](binary_data.md) | 9 |  | table |
@@ -706,6 +707,10 @@ erDiagram
   varchar_36_ messageId PK
   INTEGER position
 }
+"agent_execution_statistics" {
+  bigint count
+  datetime_3_ periodStart PK
+}
 "agent_execution_threads" {
   varchar_16_ accessScope
   varchar_36_ agentId FK
@@ -1050,6 +1055,7 @@ erDiagram
   datetime_3_ createdAt
   TEXT description
   varchar id PK
+  BOOLEAN isScaffold
   varchar_255_ label
   INTEGER sourceArtifactId FK
   datetime_3_ updatedAt

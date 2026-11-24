@@ -187,6 +187,11 @@ export class EngineV2Dispatcher {
 		let prepared: PreparedStart;
 		try {
 			this.assertAvailable();
+			// Before the plan: the planner cannot plan a tool run, and its error
+			// would hide the real cause.
+			if (data.agentRequest !== undefined) {
+				throw new NotImplementedError('Engine v2 cannot run a workflow as an AI tool yet.');
+			}
 
 			// A partial run, or one with pinned data, is planned here: the data plane
 			// gets a graph trimmed to what runs, plus the steps it records as done.
@@ -360,10 +365,6 @@ export class EngineV2Dispatcher {
 			throw new NotImplementedError(
 				'Engine v2 cannot start a run at a pinned node yet. Run the workflow from the trigger instead.',
 			);
-		}
-
-		if (data.agentRequest !== undefined) {
-			throw new NotImplementedError('Engine v2 cannot run a workflow as an AI tool yet.');
 		}
 
 		// `WorkflowRunner.run` returns through the v2 branch before it establishes the

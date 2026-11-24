@@ -107,6 +107,20 @@ function flushResponse(res: { flush?: () => void }) {
 	}
 }
 
+/**
+ * Whether `WorkflowRunner.run` hands a v1 run to a queue worker instead of running it in this
+ * process. Test runs and evals ask this too (`instrumentedRunGap`): their hooks only apply in
+ * this process, so keep this the one place the queue decision is made.
+ */
+export function runsOnQueueWorker(
+	executionsConfig: Pick<ExecutionsConfig, 'mode'>,
+	executionMode: WorkflowExecuteMode,
+): boolean {
+	if (executionsConfig.mode !== 'queue') return false;
+	// @TODO: Reduce to `true` once offloading manual executions is stable
+	return process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true' || executionMode !== 'manual';
+}
+
 @Service()
 export class WorkflowRunner {
 	private scalingService: ScalingService;
@@ -552,6 +566,11 @@ export class WorkflowRunner {
 		// queue/local decision because a worker cannot write to it.
 		const heartbeat = this.setupV1StreamingHeartbeat(data);
 
+<<<<<<< HEAD
+=======
+		const shouldEnqueue = runsOnQueueWorker(this.executionsConfig, data.executionMode);
+
+>>>>>>> fa015b17861f0cd4824489282d1c5093b4b5d653
 		const shouldReloadStaticData = Boolean(existingExecution && loadStaticData);
 
 		try {
