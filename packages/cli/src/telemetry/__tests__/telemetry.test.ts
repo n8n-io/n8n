@@ -1480,6 +1480,37 @@ describe('Telemetry', () => {
 			expect(telemetry.getInternalApiInvocationsBuffer().size).toBe(0);
 		});
 
+		test('should send one totals-only report when the editor is the only caller', () => {
+			telemetry.trackInternalApiInvocation({
+				user_id: 'user1',
+				route: 'GET /rest/workflows',
+				result: '2xx',
+				client: 'editor_ui',
+			});
+			telemetry.trackInternalApiInvocation({
+				user_id: 'user1',
+				route: 'GET /rest/workflows/{workflowId}',
+				result: '2xx',
+				client: 'editor_ui',
+			});
+
+			telemetry.flushBuffers();
+
+			const reports = spyTrack.mock.calls
+				.filter(([e]) => e === TELEMETRY_EVENT.INTERNAL_API.INTERNAL_API_USAGE)
+				.map(([, report]) => report);
+			expect(reports).toHaveLength(1);
+			expect(reports[0]).toMatchObject({
+				user_id: 'user1',
+				total_calls: 2,
+				routes: '[]',
+				clients: JSON.stringify({ editor_ui: 2, n8n_node: 0, other: 0 }),
+			});
+			for (const [field, schema] of Object.entries(INTERNAL_API_USAGE_JSON_FIELDS)) {
+				expect(schema.safeParse(jsonParse(reports[0][field] as string)).success).toBe(true);
+			}
+		});
+
 		test('should split a large route report into events that each fit the size limit', () => {
 			for (let i = 0; i < 250; i++) {
 				telemetry.trackInternalApiInvocation({
