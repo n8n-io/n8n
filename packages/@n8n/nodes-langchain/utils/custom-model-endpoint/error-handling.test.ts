@@ -732,6 +732,21 @@ describe('every shape a gateway can answer with', () => {
 
 	// A gateway that declares a stream but frames nothing still sends a refusal, and PHP
 	// escapes a slash while Python escapes non-ASCII, both by default
+	/** A string body makes undici add `text/plain`, so an absent type needs a stream. */
+	const answering = (body: string, contentType: string | null) =>
+		(async () => {
+			const stream = new ReadableStream<Uint8Array>({
+				start(controller) {
+					controller.enqueue(new TextEncoder().encode(body));
+					controller.close();
+				},
+			});
+			return new Response(stream, {
+				status: 200,
+				headers: contentType === null ? {} : { 'content-type': contentType },
+			});
+		}) as typeof fetch;
+
 	it.each([
 		['declaring a stream', 'text/event-stream'],
 		['declaring nothing', null],
@@ -741,17 +756,27 @@ describe('every shape a gateway can answer with', () => {
 			'/',
 			'\\/',
 		);
-		const baseFetch = (async () =>
-			new Response(body, {
-				status: 200,
-				headers: contentType === null ? {} : { 'content-type': contentType },
-			})) as typeof fetch;
 
 		const surfaced = await (
-			await wrapCustomModelEndpointErrorFetch(baseFetch, [slashed])(BASE_URL)
+			await wrapCustomModelEndpointErrorFetch(answering(body, contentType), [slashed])(BASE_URL)
 		).text();
 
 		expect(JSON.stringify(JSON.parse(surfaced))).not.toContain(slashed);
+	});
+
+	// Rebuilding a frame as JSON would drop its blank line and fuse the next one onto it
+	it('keeps the blank line after an unframed body it had to rebuild', async () => {
+		const refusal = `{"error":{"message":"bad key ${KEY}"}}\n\n`;
+		const answer = 'data: {"choices":[{"delta":{"content":"hi"}}]}\n\n';
+
+		const surfaced = await (
+			await wrapCustomModelEndpointErrorFetch(answering(refusal + answer, 'text/event-stream'), [
+				KEY,
+			])(BASE_URL)
+		).text();
+
+		expect(surfaced).toContain(`\n\n${answer}`);
+		expect(surfaced).not.toContain(KEY);
 	});
 
 	// A client parses the escape back into the credential, so the bytes alone are not enough

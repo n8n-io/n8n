@@ -228,12 +228,20 @@ function withoutSecretsInFrame(frame: string, secrets: string[]): string {
 	const filtered = withoutKnownSecrets(frame, secrets);
 	const data = frameData(frame);
 	// A gateway that frames nothing still sends a body, and it reaches here rather than the
-	// branch below, so it takes the same decoded filter that branch uses.
-	if (data === undefined) return withoutSecretsInJson(frame, secrets);
+	// branch below, so it takes the same decoded filter that branch uses. The boundary is
+	// held back and put on again, because a rebuilt JSON body would drop it and the next
+	// frame would arrive fused onto this one.
+	if (data === undefined) {
+		const boundary = ENDS_A_FRAME.exec(frame)?.[0] ?? '';
+		const content = boundary === '' ? frame : frame.slice(0, -boundary.length);
+		return withoutSecretsInJson(content, secrets) + boundary;
+	}
 
 	const safe = withoutSecretsInJson(data, secrets);
 	return safe === data ? filtered : withoutKnownSecrets(frame.split(data).join(safe), secrets);
 }
+
+const ENDS_A_FRAME = /(?:\r\n\r\n|\n\n|\r\r)$/;
 
 /** Splits on the boundary and keeps it, so the bytes out are the bytes in. */
 function framesOf(text: string): string[] {
