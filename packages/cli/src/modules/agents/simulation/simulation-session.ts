@@ -423,7 +423,11 @@ export class SimulationSession {
 			const signal = options.abortSignal instanceof AbortSignal ? options.abortSignal : undefined;
 			const reply = await this.ask(request, node.type, signal);
 			if (reply.outcome !== 'served') throw new UnexpectedError(`Unexpected reply for ${toolName}`);
-			return { body: reply.body, headers: reply.headers ?? {}, statusCode: reply.status };
+			return {
+				body: NULL_BODY_STATUSES.has(reply.status) ? undefined : reply.body,
+				headers: reply.headers ?? {},
+				statusCode: reply.status,
+			};
 		};
 	}
 

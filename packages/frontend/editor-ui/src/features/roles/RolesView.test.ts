@@ -86,11 +86,18 @@ describe('RolesView', () => {
 
 			const { getByText, getByTestId, queryByTestId } = renderComponent();
 
-			const instanceTab = getByText('Instance roles').closest('[aria-disabled]');
-			expect(instanceTab).toHaveAttribute('aria-disabled', 'true');
+			const instanceTab = getByText('Instance roles').closest('button');
+			expect(instanceTab).toBeDisabled();
+			expect(instanceTab).toHaveAttribute('data-disabled');
 			expect(getByText('Project roles')).toBeInTheDocument();
 			expect(getByTestId('project-roles-view')).toBeInTheDocument();
 			expect(queryByTestId('instance-roles-view')).not.toBeInTheDocument();
+		});
+
+		it('shows a permission tooltip when the user hovers the disabled instance tab', async () => {
+			rbacStore.hasScope = vi.fn().mockReturnValue(false);
+
+			const { getByText } = renderComponent();
 
 			await userEvent.hover(getByText('Instance roles'));
 			expect(
