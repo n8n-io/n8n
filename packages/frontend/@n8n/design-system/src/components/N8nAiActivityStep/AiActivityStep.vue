@@ -16,6 +16,8 @@ import N8nTooltip from '../N8nTooltip';
 const props = withDefaults(
 	defineProps<{
 		label: string;
+		/** Short text after the label, such as an elapsed time. A long label does not cut it. */
+		meta?: string;
 		loading?: boolean;
 		error?: string;
 		/** Whether the step has collapsible content. */
@@ -27,6 +29,7 @@ const props = withDefaults(
 		errorIcon?: IconName;
 	}>(),
 	{
+		meta: undefined,
 		loading: false,
 		error: undefined,
 		hasContent: true,
@@ -63,6 +66,9 @@ const errorTooltip = computed(() =>
 					<template #prefix><slot name="prefix" /></template>
 					{{ props.label }}
 					<template #icon>
+						<span v-if="props.meta" :class="$style.meta" data-test-id="ai-activity-step-meta">
+							· {{ props.meta }}
+						</span>
 						<N8nTooltip v-if="props.error" placement="top">
 							<template #content>
 								<span :class="$style.errorTooltip">{{ errorTooltip }}</span>
@@ -98,6 +104,9 @@ const errorTooltip = computed(() =>
 			<template #prefix><slot name="prefix" /></template>
 			{{ props.label }}
 			<template #icon>
+				<span v-if="props.meta" :class="$style.meta" data-test-id="ai-activity-step-meta">
+					· {{ props.meta }}
+				</span>
 				<N8nTooltip v-if="props.error" placement="top">
 					<template #content>
 						<span :class="$style.errorTooltip">{{ errorTooltip }}</span>
@@ -154,7 +163,7 @@ const errorTooltip = computed(() =>
 	&::after {
 		top: calc(var(--spacing--xs) + calc(var(--spacing--3xs) + var(--spacing--4xs)));
 		/** Extends the rail through the parent timeline gap when that shared value is set. */
-		bottom: calc(var(--n8n--ai-activity-step-gap, 0px) * -1);
+		bottom: calc(var(--n8n-ai-activity-step--gap, 0px) * -1);
 	}
 }
 
@@ -183,6 +192,12 @@ const errorTooltip = computed(() =>
 	overflow-wrap: anywhere;
 	word-break: break-word;
 }
+.meta {
+	flex-shrink: 0;
+	white-space: nowrap;
+	font-variant-numeric: tabular-nums;
+}
+
 .activityErrorIcon {
 	transform: translateY(1px);
 }
