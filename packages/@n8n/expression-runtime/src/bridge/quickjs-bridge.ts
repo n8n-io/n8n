@@ -41,7 +41,7 @@ import {
 	reconstructError,
 	serializeError,
 } from './host-functions';
-import { BATCH_READ_LIMITS, readBatchAtPath } from './batch-read';
+import { BATCH_READ_LIMITS, batchReadBudget, readBatchAtPath } from './batch-read';
 import type { BatchReadBudget } from './batch-read';
 import type { BatchRequest } from '../runtime/lazy-proxy';
 
@@ -1582,7 +1582,7 @@ export class QuickJsBridge implements RuntimeBridge {
 		// and its cycle collector runs late. So the callbacks read the data from a
 		// resolver that `finally` disposes, else a finished call's data stays in memory.
 		const resolver = new HostDataResolver(data);
-		const budget = { remaining: BATCH_READ_LIMITS.maxCharsPerEvaluation };
+		const budget = batchReadBudget(this.config.memoryLimit, BATCH_READ_LIMITS);
 		const callbackHandles = this.createCallbackHandles(resolver, budget);
 		// Push this call's deadline; the interrupt handler (set in initialize)
 		// interrupts on the earliest in-flight deadline. Popped in finally so a

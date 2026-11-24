@@ -168,8 +168,9 @@ A value crosses whole when it is plain JSON data and its size is at most
 length of each string and object key. The host counts while it copies and stops when
 the size is too large. A larger object or array stays a lazy proxy with the same
 rules. A whole value can be as large as `maxBatchChars`. All reads of one
-evaluation share one character budget. When the budget is spent, a proxy reads
-one value for each host call. `BATCH_READ_LIMITS` holds the sizes.
+evaluation share one character budget: half of the memory limit of the bridge,
+in bytes, as characters. When the budget is spent, a proxy reads one value for
+each host call. `BATCH_READ_LIMITS` holds the sizes.
 
 `readBatchAtPath` in `src/bridge/batch-read.ts` is the host side. It copies
 only data properties of `$json`. All other roots stay lazy. Both bridges pass it

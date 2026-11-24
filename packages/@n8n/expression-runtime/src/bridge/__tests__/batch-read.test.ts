@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { SMALL_VALUES, WHOLE_VALUES } from '../../runtime/lazy-proxy';
 import type { BatchRequest } from '../../runtime/lazy-proxy';
-import { BATCH_READ_LIMITS, readBatchAtPath } from '../batch-read';
+import { BATCH_READ_LIMITS, batchReadBudget, readBatchAtPath } from '../batch-read';
 import type { BatchReadBudget } from '../batch-read';
 import { HostDataResolver } from '../host-data-resolver';
 
@@ -10,7 +10,7 @@ const limits = {
 	smallValueChars: 100,
 	firstBatchChars: 60,
 	maxBatchChars: 1000,
-	maxCharsPerEvaluation: 100_000,
+	memoryBytesPerChar: 2,
 };
 
 const whole = (value: unknown) => ({ __n8nType: 'HostData', __value: value });
@@ -20,7 +20,7 @@ function readItems(
 	start: number,
 	step: number,
 	request: BatchRequest,
-	budget: BatchReadBudget = { remaining: limits.maxCharsPerEvaluation },
+	budget: BatchReadBudget = { remaining: 100_000 },
 ) {
 	return readBatchAtPath(
 		new HostDataResolver({ $json: { rows } }),
@@ -36,7 +36,7 @@ function readItems(
 function readFields(
 	$json: unknown,
 	request: BatchRequest = SMALL_VALUES,
-	budget: BatchReadBudget = { remaining: limits.maxCharsPerEvaluation },
+	budget: BatchReadBudget = { remaining: 100_000 },
 ) {
 	return readBatchAtPath(new HostDataResolver({ $json }), ['$json'], 0, 0, request, limits, budget);
 }
@@ -103,7 +103,7 @@ describe('readBatchAtPath on an array', () => {
 				0,
 				SMALL_VALUES,
 				BATCH_READ_LIMITS,
-				{ remaining: BATCH_READ_LIMITS.maxCharsPerEvaluation },
+				batchReadBudget(128, BATCH_READ_LIMITS),
 			),
 		).toEqual({ __isObject: true, __keys: ['text'] });
 	});
@@ -369,6 +369,11 @@ describe('readBatchAtPath on an object', () => {
 });
 
 describe('readBatchAtPath with the character budget of an evaluation', () => {
+	it('gives an evaluation half of the memory limit of the bridge in characters', () => {
+		expect(batchReadBudget(128, BATCH_READ_LIMITS)).toEqual({ remaining: 67_108_864 });
+		expect(batchReadBudget(32, BATCH_READ_LIMITS)).toEqual({ remaining: 16_777_216 });
+	});
+
 	it('gives one item, as a read of one item does, when the budget is spent', () => {
 		expect(readItems([1, { id: 2 }], 0, 0, SMALL_VALUES, { remaining: 0 })).toBe(1);
 		expect(readItems([1, { id: 2 }], 1, 0, ['id'], { remaining: 0 })).toEqual({

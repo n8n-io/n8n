@@ -1,6 +1,7 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import type { RuntimeBridge } from '../../types';
+import { DEFAULT_BRIDGE_CONFIG } from '../../types';
 import { BATCH_READ_LIMITS } from '../batch-read';
 import { HostDataResolver } from '../host-data-resolver';
 import { IsolatedVmBridge } from '../isolated-vm-bridge';
@@ -387,8 +388,9 @@ describe.each(bridges)('$label item data', ({ create }) => {
 	it('reads one value for each host call after the batched reads spend the budget of the evaluation', () => {
 		const $json = { rows: rowsOf(100) };
 		const code = 'return $json.rows.map(function (r) { return r.id; });';
-		const budget = BATCH_READ_LIMITS.maxCharsPerEvaluation;
-		BATCH_READ_LIMITS.maxCharsPerEvaluation = 1;
+		const bytesPerChar = BATCH_READ_LIMITS.memoryBytesPerChar;
+		// A budget of one character.
+		BATCH_READ_LIMITS.memoryBytesPerChar = DEFAULT_BRIDGE_CONFIG.memoryLimit * 1024 * 1024;
 		try {
 			const hostReads = countHostReads();
 
@@ -396,7 +398,7 @@ describe.each(bridges)('$label item data', ({ create }) => {
 			// The first batched read spends the budget. Each next row takes two host reads.
 			expect(hostReads()).toBeGreaterThan(100);
 		} finally {
-			BATCH_READ_LIMITS.maxCharsPerEvaluation = budget;
+			BATCH_READ_LIMITS.memoryBytesPerChar = bytesPerChar;
 		}
 	});
 

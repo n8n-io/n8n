@@ -7,7 +7,7 @@ import { readToAsciiCharmapJson } from '../extensions/to-ascii';
 import { TO_ASCII_CHARMAP_HOST_FUNCTION } from '../runtime/host-function-names';
 import type { BatchRequest, ErrorSentinel } from '../runtime/lazy-proxy';
 import { unwrapTransferredValue } from '../runtime/transfer-codec';
-import { BATCH_READ_LIMITS, readBatchAtPath } from './batch-read';
+import { BATCH_READ_LIMITS, batchReadBudget, readBatchAtPath } from './batch-read';
 import type { BatchReadBudget } from './batch-read';
 import { HostDataResolver } from './host-data-resolver';
 import {
@@ -447,7 +447,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 		// next isolated-vm call in the process, even after the isolate is disposed.
 		// So the callbacks read the data from a resolver that `finally` disposes.
 		const resolver = new HostDataResolver(data);
-		const budget = { remaining: BATCH_READ_LIMITS.maxCharsPerEvaluation };
+		const budget = batchReadBudget(this.config.memoryLimit, BATCH_READ_LIMITS);
 
 		try {
 			const getValueAtPath = this.createGetValueAtPathRef(resolver);

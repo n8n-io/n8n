@@ -28,10 +28,12 @@ export interface BatchReadLimits {
 	/** The most that one read takes. */
 	maxBatchChars: number;
 	/**
-	 * A batched read starts only while the reads of one evaluation took less. So
-	 * they can take up to one read more. After that, each read gives one value.
+	 * The bytes of the memory limit of the bridge for each character of the
+	 * budget of one evaluation. A batched read starts only while the reads of the
+	 * evaluation took less than the budget, so they can take up to one read more.
+	 * After that, each read gives one value.
 	 */
-	maxCharsPerEvaluation: number;
+	memoryBytesPerChar: number;
 }
 
 /** The limits that the bridges use for the batched reads of item data. */
@@ -39,13 +41,18 @@ export const BATCH_READ_LIMITS: BatchReadLimits = {
 	smallValueChars: 1024,
 	firstBatchChars: 512,
 	maxBatchChars: 262_144,
-	// Provisional. Tune it by measurement.
-	maxCharsPerEvaluation: 16_777_216,
+	// Half the limit: one-byte strings of as many characters as the limit has bytes fill the isolate.
+	memoryBytesPerChar: 2,
 };
 
 /** The characters that the batched reads of one evaluation can still take. */
 export interface BatchReadBudget {
 	remaining: number;
+}
+
+/** The budget of one evaluation in a bridge with a memory limit of `memoryLimitMb`. */
+export function batchReadBudget(memoryLimitMb: number, limits: BatchReadLimits): BatchReadBudget {
+	return { remaining: Math.floor((memoryLimitMb * 1024 * 1024) / limits.memoryBytesPerChar) };
 }
 
 /** The characters counted for an array item that goes across with only some of its fields. */
