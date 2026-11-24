@@ -74,7 +74,8 @@ export class AgentWorkspaceService {
 			undefined,
 			{ ensureRootExists: true },
 		);
-		return { workspace: this.withCoreToolsOnly(workspace), handle: runtime };
+
+		return { workspace: this.configureWorkspace(workspace), handle: runtime };
 	}
 
 	/**
@@ -90,13 +91,23 @@ export class AgentWorkspaceService {
 			undefined,
 			{ ensureRootExists: true },
 		);
-		return this.withCoreToolsOnly(workspace);
+
+		return this.configureWorkspace(workspace);
 	}
 
-	private withCoreToolsOnly(workspace: Workspace): Workspace {
+	private configureWorkspace(workspace: Workspace): Workspace {
 		const getTools = workspace.getTools.bind(workspace);
 		workspace.getTools = () =>
 			getTools().filter((tool) => CORE_WORKSPACE_TOOL_NAMES.has(tool.name));
+
+		if (!this.agentsConfig.sandboxEgressEnabled) {
+			const getInstructions = workspace.getInstructions.bind(workspace);
+			workspace.getInstructions = () =>
+				[getInstructions(), 'Outbound network access from this sandbox is disabled.']
+					.filter(Boolean)
+					.join('\n\n');
+		}
+
 		return workspace;
 	}
 

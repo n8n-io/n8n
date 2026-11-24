@@ -87,6 +87,11 @@ function buildKnowledgeSandboxId(scope: {
 	);
 }
 
+function sandboxIdForEgress(sandboxId: string, egressEnabled: boolean): string {
+	// Keep existing public workspaces. Restricted workspaces need a new creation policy.
+	return egressEnabled ? sandboxId : uuidv5('egress:none', sandboxId);
+}
+
 function buildWorkspaceLabels(
 	projectId: string,
 	agentId: string,
@@ -140,7 +145,7 @@ export class AgentSandboxRuntimeService {
 		await this.destroySandboxByIdentity(
 			projectId,
 			agentId,
-			`${WORKSPACE_SANDBOX_NAME_PREFIX}${sandboxId}`,
+			WORKSPACE_SANDBOX_NAME_PREFIX,
 			sandboxId,
 			buildWorkspaceLabels(projectId, agentId, principalHash),
 		);
@@ -155,7 +160,7 @@ export class AgentSandboxRuntimeService {
 		await this.destroySandboxByIdentity(
 			projectId,
 			agentId,
-			`${KNOWLEDGE_SANDBOX_NAME_PREFIX}${sandboxId}`,
+			KNOWLEDGE_SANDBOX_NAME_PREFIX,
 			sandboxId,
 			buildKnowledgeLabels(projectId, agentId),
 		);
@@ -168,12 +173,16 @@ export class AgentSandboxRuntimeService {
 		options?: { onFilesystemInit?: FilesystemLifecycleHook },
 	): Promise<AgentSandboxRuntime> {
 		const provider = this.sandboxSettingsService.getProvider();
-		const sandboxId = buildWorkspaceSandboxId({
-			instanceId: this.instanceSettings.instanceId,
-			projectId,
-			agentId,
-			principalHash,
-		});
+		const sandboxId = sandboxIdForEgress(
+			buildWorkspaceSandboxId({
+				instanceId: this.instanceSettings.instanceId,
+				projectId,
+				agentId,
+				principalHash,
+			}),
+			this.agentsConfig.sandboxEgressEnabled,
+		);
+
 		return await this.acquireSandboxByIdentity(
 			projectId,
 			agentId,
@@ -199,11 +208,15 @@ export class AgentSandboxRuntimeService {
 
 	async acquireKnowledgeSandbox(projectId: string, agentId: string): Promise<AgentSandboxRuntime> {
 		const provider = this.sandboxSettingsService.getProvider();
-		const sandboxId = buildKnowledgeSandboxId({
-			instanceId: this.instanceSettings.instanceId,
-			projectId,
-			agentId,
-		});
+		const sandboxId = sandboxIdForEgress(
+			buildKnowledgeSandboxId({
+				instanceId: this.instanceSettings.instanceId,
+				projectId,
+				agentId,
+			}),
+			this.agentsConfig.sandboxEgressEnabled,
+		);
+
 		return await this.acquireSandboxByIdentity(
 			projectId,
 			agentId,
@@ -283,17 +296,20 @@ export class AgentSandboxRuntimeService {
 	private async destroySandboxByIdentity(
 		projectId: string,
 		agentId: string,
-		daytonaName: string,
+		daytonaNamePrefix: string,
 		n8nSandboxId: string,
 		labels: Record<string, string>,
 	): Promise<void> {
-		const sandboxes = [
-			['daytona', daytonaName],
-			['n8n-sandbox', n8nSandboxId],
-		] as const;
+		for (const egressEnabled of [true, false]) {
+			const id = sandboxIdForEgress(n8nSandboxId, egressEnabled);
+			const sandboxes = [
+				['daytona', `${daytonaNamePrefix}${id}`],
+				['n8n-sandbox', id],
+			] as const;
 
-		for (const [provider, sandboxId] of sandboxes) {
-			await this.tryDestroySandbox(projectId, agentId, provider, sandboxId, labels);
+			for (const [provider, sandboxId] of sandboxes) {
+				await this.tryDestroySandbox(projectId, agentId, provider, sandboxId, labels);
+			}
 		}
 	}
 
@@ -397,6 +413,7 @@ export class AgentSandboxRuntimeService {
 			...connection,
 			enabled: true,
 			provider: 'daytona',
+			egress: this.agentsConfig.sandboxEgressEnabled ? 'public' : 'none',
 			id: sandboxId,
 			name: sandboxId,
 			labels,
@@ -421,6 +438,7 @@ export class AgentSandboxRuntimeService {
 		return {
 			enabled: true,
 			provider: 'n8n-sandbox',
+			egress: this.agentsConfig.sandboxEgressEnabled ? 'public' : 'none',
 			id: sandboxId,
 			serviceUrl: normalizedServiceUrl,
 			apiKey,

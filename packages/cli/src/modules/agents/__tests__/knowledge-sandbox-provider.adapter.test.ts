@@ -85,7 +85,7 @@ describe('AgentKnowledgeSandboxProvider', () => {
 	});
 
 	describe('sandbox identity', () => {
-		// The id of (instance-1, project-1, agent-1), pinned so a scope change cannot
+		// The public sandbox id of (instance-1, project-1, agent-1), pinned so a scope change cannot
 		// silently orphan existing knowledge sandboxes.
 		const knowledgeSandboxName = 'agent-kb-a54b9053-9f50-51e5-b971-e02942ff7b6b';
 
@@ -119,6 +119,7 @@ describe('AgentKnowledgeSandboxProvider', () => {
 						sandboxSnapshot: '',
 						sandboxTimeout: 300_000,
 						sandboxEphemeral: false,
+						sandboxEgressEnabled: true,
 					} as AgentsConfig,
 					mock<Logger>(),
 					mock<InstanceSettings>({ instanceId: 'instance-1' }),

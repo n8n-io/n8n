@@ -40,9 +40,11 @@ const otherPrincipalHash = hashAgentSandboxPrincipal({
 	type: 'n8n-user',
 	userId: 'user/123:raw',
 });
-const workspaceSandboxId = 'cd7bd5bf-d6c4-5a24-a100-43c5158ab50d';
-const otherWorkspaceSandboxId = '4197eecc-3092-54b8-9196-a4fecccea156';
-const knowledgeSandboxId = 'a54b9053-9f50-51e5-b971-e02942ff7b6b';
+const publicWorkspaceSandboxId = 'cd7bd5bf-d6c4-5a24-a100-43c5158ab50d';
+const publicKnowledgeSandboxId = 'a54b9053-9f50-51e5-b971-e02942ff7b6b';
+const workspaceSandboxId = '1e99acd3-e09d-5d6a-90dd-6767c2865bac';
+const otherWorkspaceSandboxId = '627f3230-e7ec-5b27-83f3-15958c492912';
+const knowledgeSandboxId = '2aad0203-68a6-5485-bb9b-dd4e05f00e09';
 
 type TestWorkspaceSandbox = WorkspaceSandbox &
 	Required<Pick<WorkspaceSandbox, '_start' | 'destroy' | 'deleteRemote' | 'executeCommand'>>;
@@ -95,6 +97,7 @@ function makeService({
 			sandboxSnapshot: '',
 			sandboxTimeout: 300_000,
 			sandboxEphemeral: false,
+			sandboxEgressEnabled: false,
 			...configOverrides,
 		} as AgentsConfig,
 		logger,
@@ -127,6 +130,63 @@ describe('AgentSandboxRuntimeService', () => {
 		sandbox = makeSandbox();
 		createSandboxMock.mockResolvedValue(sandbox);
 		createFilesystemMock.mockReturnValue(mock<WorkspaceFilesystem>());
+	});
+
+	it.each(['daytona', 'n8n-sandbox'] as const)(
+		'disables %s egress for workspace and knowledge sandboxes by default',
+		async (provider) => {
+			const service = makeService({ sandboxSettingsService: makeSandboxSettingsService(provider) });
+
+			await service.acquireWorkspaceSandbox(projectId, agentId, principalHash);
+			await service.acquireKnowledgeSandbox(projectId, agentId);
+
+			expect(createSandboxMock.mock.calls.map(([config]) => config.egress)).toEqual([
+				'none',
+				'none',
+			]);
+		},
+	);
+
+	it.each(['daytona', 'n8n-sandbox'] as const)(
+		'enables %s egress and keeps existing public sandbox identities when configured',
+		async (provider) => {
+			const service = makeService({
+				configOverrides: { sandboxEgressEnabled: true },
+				sandboxSettingsService: makeSandboxSettingsService(provider),
+			});
+
+			await service.acquireWorkspaceSandbox(projectId, agentId, principalHash);
+			await service.acquireKnowledgeSandbox(projectId, agentId);
+
+			expect(createSandboxMock.mock.calls.map(([config]) => config.egress)).toEqual([
+				'public',
+				'public',
+			]);
+			expect(createSandboxMock.mock.calls.map(([config]) => config.id)).toEqual(
+				provider === 'daytona'
+					? [`agent-ws-${publicWorkspaceSandboxId}`, `agent-kb-${publicKnowledgeSandboxId}`]
+					: [publicWorkspaceSandboxId, publicKnowledgeSandboxId],
+			);
+		},
+	);
+
+	it('uses the same restricted sandbox identities across service instances', async () => {
+		const first = makeService();
+		const second = makeService();
+
+		const firstWorkspace = await first.acquireWorkspaceSandbox(projectId, agentId, principalHash);
+		const secondWorkspace = await second.acquireWorkspaceSandbox(projectId, agentId, principalHash);
+		const firstKnowledge = await first.acquireKnowledgeSandbox(projectId, agentId);
+		const secondKnowledge = await second.acquireKnowledgeSandbox(projectId, agentId);
+
+		expect(firstWorkspace.cacheKey).toBe(secondWorkspace.cacheKey);
+		expect(firstKnowledge.cacheKey).toBe(secondKnowledge.cacheKey);
+		expect(createSandboxMock.mock.calls.map(([config]) => config.id)).toEqual([
+			`agent-ws-${workspaceSandboxId}`,
+			`agent-ws-${workspaceSandboxId}`,
+			`agent-kb-${knowledgeSandboxId}`,
+			`agent-kb-${knowledgeSandboxId}`,
+		]);
 	});
 
 	it('creates and starts the deterministic direct-mode Daytona knowledge sandbox', async () => {
@@ -351,8 +411,12 @@ describe('AgentSandboxRuntimeService', () => {
 		await service.destroyKnowledgeSandbox(projectId, agentId);
 
 		expect(destroyedIds).toEqual([
+			`agent-ws-${publicWorkspaceSandboxId}`,
+			publicWorkspaceSandboxId,
 			`agent-ws-${workspaceSandboxId}`,
 			workspaceSandboxId,
+			`agent-kb-${publicKnowledgeSandboxId}`,
+			publicKnowledgeSandboxId,
 			`agent-kb-${knowledgeSandboxId}`,
 			knowledgeSandboxId,
 		]);

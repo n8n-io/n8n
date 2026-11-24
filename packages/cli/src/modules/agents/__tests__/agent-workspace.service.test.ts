@@ -15,7 +15,7 @@ const projectId = 'project-1';
 const agentId = 'agent-1';
 const principalHash = hashAgentSandboxPrincipal({ type: 'n8n-user', userId: 'user-1' });
 
-function makeService() {
+function makeService(sandboxEgressEnabled = false) {
 	const filesystem = mock<WorkspaceFilesystem>();
 	const sandbox = mock<WorkspaceSandbox>({
 		id: 'sandbox-id',
@@ -25,7 +25,7 @@ function makeService() {
 	});
 	const runtimeService = mock<AgentSandboxRuntimeService>();
 	const checkpointStorage = mock<N8NCheckpointStorage>();
-	const agentsConfig = mock<AgentsConfig>({ checkpointTtlSeconds: 60 });
+	const agentsConfig = mock<AgentsConfig>({ checkpointTtlSeconds: 60, sandboxEgressEnabled });
 	filesystem.readdir.mockResolvedValue([]);
 	checkpointStorage.getActiveRunIdsForSandbox.mockResolvedValue(new Set());
 	const runtime = {
@@ -63,6 +63,26 @@ function getFilesystemInitHook(
 }
 
 describe('AgentWorkspaceService', () => {
+	it.each([false, true])(
+		'includes the network restriction in parent and delegated instructions only when egress is disabled (enabled=%s)',
+		async (egressEnabled) => {
+			const { service, sandbox, runtime } = makeService(egressEnabled);
+			sandbox.getInstructions = () => 'Use the sandbox to run commands.';
+
+			const { workspace } = await service.getAgentWorkspace(projectId, agentId, principalHash);
+			const delegatedWorkspace = service.getDelegatedAgentWorkspace(runtime, 'thread-9');
+
+			for (const current of [workspace, delegatedWorkspace]) {
+				const instructions = current.getInstructions();
+				expect(instructions).toContain('Use the sandbox to run commands.');
+				expect(instructions).toContain(`Run commands from ${current.filesystem?.basePath}.`);
+				expect(
+					instructions.includes('Outbound network access from this sandbox is disabled.'),
+				).toBe(!egressEnabled);
+			}
+		},
+	);
+
 	it('creates a scoped workspace with only the core workspace tools without touching the filesystem', async () => {
 		const { service, filesystem, runtime, runtimeService, checkpointStorage } = makeService();
 

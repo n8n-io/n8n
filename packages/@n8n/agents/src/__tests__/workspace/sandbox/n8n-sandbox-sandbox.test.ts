@@ -112,6 +112,31 @@ describe('destroy()', () => {
 });
 
 describe('start()', () => {
+	it.each(['none', 'public'] as const)('keeps egress %s across restarts', async (egress) => {
+		const sandbox = new N8nSandboxServiceSandbox({ ...makeDefaultOptions(), egress });
+
+		await sandbox.start();
+		await sandbox.stop();
+		await sandbox.start();
+
+		expect(mockCreateSandbox).toHaveBeenNthCalledWith(1, { egress });
+		expect(mockCreateSandbox).toHaveBeenNthCalledWith(2, { id: 'sb-123', egress });
+	});
+
+	it('propagates an egress conflict without retrying with public access', async () => {
+		mockCreateSandbox.mockRejectedValue(new SandboxServiceError('egress conflict', 409));
+		const sandbox = new N8nSandboxServiceSandbox({
+			...makeDefaultOptions(),
+			id: '11111111-1111-4111-8111-111111111111',
+			egress: 'none',
+		});
+
+		await expect(sandbox.start()).rejects.toThrow('egress conflict');
+
+		expect(mockCreateSandbox).toHaveBeenCalledTimes(1);
+		expect(mockDeleteSandbox).not.toHaveBeenCalled();
+	});
+
 	describe('fresh creation (no existing ID)', () => {
 		it('creates a new sandbox with a service-generated id', async () => {
 			const sandbox = new N8nSandboxServiceSandbox(makeDefaultOptions());

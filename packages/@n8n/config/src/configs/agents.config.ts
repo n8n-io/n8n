@@ -95,6 +95,13 @@ export class AgentsConfig {
 	@Env('N8N_AGENTS_AI_SANDBOX_ENABLED')
 	sandboxEnabled: boolean = false;
 
+	/**
+	 * Whether Agent sandboxes can access the public internet. Set to true to enable outbound
+	 * connections. Changing this setting selects a separate sandbox workspace and doesn't affect n8n Assistant.
+	 */
+	@Env('N8N_AGENTS_AI_SANDBOX_EGRESS_ENABLED')
+	sandboxEgressEnabled: boolean = false;
+
 	/** Docker image for the Daytona sandbox (default: daytonaio/sandbox:0.5.0). */
 	@Env('N8N_AGENTS_AI_SANDBOX_IMAGE')
 	sandboxImage: string = 'daytonaio/sandbox:0.5.0';
