@@ -610,6 +610,10 @@ export declare const suspendedInstanceContextSchema: typeof InstanceContextState
 export type { HubSkillTelemetryState } from './runtime/instance-context-state';
 export { createSetupItemsEmitter, isSetupPanelEnabled } from './tools/workflows/setup-items';
 export {
+	createWorkflowDraftPublisher,
+	type WorkflowDraftPublisher,
+} from './tools/workflows/workflow-draft-publisher';
+export {
 	formatWorkflowSetupStateNote,
 	observeWorkflowSetupStates,
 } from './tools/workflows/setup-panel-state';
@@ -765,6 +769,7 @@ export const WorkflowLoopRuntime: typeof WorkflowLoopRuntimeMod.WorkflowLoopRunt
 export type {
 	InstanceAiChangedArtifact,
 	InstanceAiContext,
+	InstanceAiEngineSetup,
 	InstanceAiToolRegistry,
 	InstanceAiWorkflowService,
 	InstanceAiExecutionService,
@@ -783,6 +788,8 @@ export type {
 	InstanceAiActivityExpansion,
 	InstanceAiActivityService,
 	InstanceAiPreferenceService,
+	InstanceAiAgentFeedback,
+	InstanceAiAgentFeedbackService,
 	InstanceAiPreferenceWriteResult,
 	InstanceAiPreferenceWriteRejection,
 	InstanceAiSavedPreference,

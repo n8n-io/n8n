@@ -53,8 +53,12 @@ describe('Private approval execution ownership', () => {
 		const firstAgent = await createAgent({ projectId: first.id });
 		const secondAgent = await createAgent({ projectId: second.id });
 		const owners = Container.get(AgentHitlWorkflowRepository);
-		expect(await owners.ensureExecutionOwner(first.id, firstAgent.id)).not.toBe(
-			await owners.ensureExecutionOwner(second.id, secondAgent.id),
+		const firstOwner = await owners.ensureExecutionOwner(first.id, firstAgent.id);
+		const secondOwner = await owners.ensureExecutionOwner(second.id, secondAgent.id);
+		expect(firstOwner).not.toBe(secondOwner);
+		const workflows = Container.get(WorkflowRepository);
+		expect((await workflows.findOneByOrFail({ id: firstOwner })).name).not.toBe(
+			(await workflows.findOneByOrFail({ id: secondOwner })).name,
 		);
 		await expect(owners.ensureExecutionOwner(second.id, firstAgent.id)).rejects.toThrow(
 			'Agent not found',
@@ -110,7 +114,13 @@ describe('Private approval execution ownership', () => {
 		await expect(agents.removeAfterApprovalCleanup(agent.id, project.id)).rejects.toThrow(
 			'approval started during cleanup',
 		);
-		await jobs.update(job.id, { status: 'cancelled', notifiedAt: new Date() });
+		expect(await agents.findOneBy({ id: agent.id })).not.toBeNull();
+		await jobs.update(job.id, { status: 'cancelled' });
+		await expect(agents.removeAfterApprovalCleanup(agent.id, project.id)).rejects.toThrow(
+			'approval started during cleanup',
+		);
+		expect(await agents.findOneBy({ id: agent.id })).not.toBeNull();
+		await jobs.update(job.id, { notifiedAt: new Date() });
 		await agents.removeAfterApprovalCleanup(agent.id, project.id);
 		expect(await agents.findOneBy({ id: agent.id })).toBeNull();
 		await expect(

@@ -10,6 +10,7 @@ export const n8nTheme = themeQuartz.withPart(iconSetAlpine).withParams({
 	headerColumnBorderHeight: '100%',
 	// Match the divider so the resize handle on top of it does not show a second shade
 	headerColumnResizeHandleColor: 'var(--color--foreground)',
+	checkboxBorderRadius: 'var(--radius--3xs)',
 	checkboxUncheckedBackgroundColor: 'var(--color--background--light-1)',
 	checkboxCheckedBackgroundColor: 'var(--color--primary)',
 });

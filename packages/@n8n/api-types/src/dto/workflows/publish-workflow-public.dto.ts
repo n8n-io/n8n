@@ -11,11 +11,11 @@ export const publishWorkflowPublicSchema = z.object({
 	name: z
 		.string()
 		.optional()
-		.openapi({ description: 'Optional name for the workflow version during publication.' }),
+		.openapi({ description: 'Optional name for the workflow version during publication' }),
 	description: z
 		.string()
 		.optional()
-		.openapi({ description: 'Optional description for the workflow version during publication.' }),
+		.openapi({ description: 'Optional description for the workflow version during publication' }),
 });
 
 export class PublishWorkflowPublicDto extends Z.class(publishWorkflowPublicSchema.shape) {}

@@ -8,10 +8,24 @@ const config: AgentJsonConfig = {
 };
 
 describe('Agent runtime definition hash', () => {
-	it('ignores object key order', () => {
-		expect(getAgentRuntimeDefinitionHash(config, { first: 'a', second: 'b' })).toBe(
+	it('ignores object key order, including in nested tool input bindings', () => {
+		const workflow = { type: 'workflow', workflow: 'Send' } as const;
+		expect(
 			getAgentRuntimeDefinitionHash(
-				{ instructions: config.instructions, model: config.model, name: config.name },
+				{
+					...config,
+					tools: [{ ...workflow, inputs: { target: { mode: 'ai', description: 'To' } } }],
+				},
+				{ first: 'a', second: 'b' },
+			),
+		).toBe(
+			getAgentRuntimeDefinitionHash(
+				{
+					instructions: config.instructions,
+					model: config.model,
+					name: config.name,
+					tools: [{ ...workflow, inputs: { target: { description: 'To', mode: 'ai' } } }],
+				},
 				{ second: 'b', first: 'a' },
 			),
 		);

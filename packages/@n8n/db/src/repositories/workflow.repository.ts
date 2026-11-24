@@ -441,9 +441,10 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 
 	/** Create an empty private owner. Execution snapshots still pass the workflowStart policy. */
 	async createPrivateExecutionOwner(ctx: OperationContext): Promise<string> {
+		const id = generateNanoId();
 		const workflow = this.create({
-			id: generateNanoId(),
-			name: 'Internal execution owner',
+			id,
+			name: `Internal execution owner ${id}`,
 			isArchived: true,
 			// oxlint-disable-next-line typescript/no-deprecated -- Initialize the required legacy column for this unpublished workflow.
 			active: false,

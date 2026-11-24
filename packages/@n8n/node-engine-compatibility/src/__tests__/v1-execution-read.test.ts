@@ -256,6 +256,41 @@ describe('toV1RunExecutionData', () => {
 		expect(toV1RunExecutionData(graph, [step()]).resultData.pinData).toBeUndefined();
 	});
 
+	describe('execution links', () => {
+		it('notes the parent execution on the trigger task, as v1 does for a sub-workflow', () => {
+			const data = toV1RunExecutionData(graph, [step()], undefined, {
+				parent: { executionId: 'exec-parent', workflowId: 'wf-parent' },
+			});
+
+			expect(data.resultData.runData.Trigger[0].metadata).toEqual({
+				parentExecution: { executionId: 'exec-parent', workflowId: 'wf-parent' },
+			});
+		});
+
+		it('notes the sub-execution on the step that started it', () => {
+			const data = toV1RunExecutionData(
+				graph,
+				[step(), step({ id: 'step-2', nodeId: 's' })],
+				undefined,
+				{ subExecutions: [{ stepId: 'step-2', executionId: 'exec-sub', workflowId: 'wf-sub' }] },
+			);
+
+			expect(data.resultData.runData.Trigger[0].metadata).toBeUndefined();
+			expect(data.resultData.runData.Set[0].metadata).toEqual({
+				subExecution: { executionId: 'exec-sub', workflowId: 'wf-sub' },
+				subExecutionsCount: 1,
+			});
+		});
+
+		it('ignores a sub-execution whose step is not reported', () => {
+			const data = toV1RunExecutionData(graph, [step()], undefined, {
+				subExecutions: [{ stepId: 'step-9', executionId: 'exec-sub', workflowId: 'wf-sub' }],
+			});
+
+			expect(data.resultData.runData.Trigger[0].metadata).toBeUndefined();
+		});
+	});
+
 	describe('parallel branches', () => {
 		// Two branches off the trigger. Row creation order says nothing about
 		// which branch settled first.

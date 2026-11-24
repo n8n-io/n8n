@@ -1,6 +1,54 @@
+import type { IWorkflowBase } from 'n8n-workflow';
+
 import { test, expect } from '../../../../../fixtures/base';
 
 const WORKFLOW_FILE = 'Subworkflow-debugging-execute-workflow.json';
+
+const CHILD: Partial<IWorkflowBase> = {
+	name: 'Linked child',
+	nodes: [
+		{
+			id: 'start',
+			name: 'Start',
+			type: 'n8n-nodes-base.executeWorkflowTrigger',
+			typeVersion: 1.3,
+			position: [0, 0],
+			parameters: { inputSource: 'passthrough' },
+		},
+	],
+	connections: {},
+	settings: { executionOrder: 'v1' },
+};
+
+function parentCalling(childId: string): Partial<IWorkflowBase> {
+	return {
+		name: 'Linked parent',
+		nodes: [
+			{
+				id: 'webhook',
+				name: 'Webhook',
+				type: 'n8n-nodes-base.webhook',
+				typeVersion: 2.1,
+				position: [0, 0],
+				parameters: { path: 'execution-links', responseMode: 'onReceived', options: {} },
+			},
+			{
+				id: 'call-child',
+				name: 'Call child',
+				type: 'n8n-nodes-base.executeWorkflow',
+				typeVersion: 1.3,
+				position: [200, 0],
+				parameters: {
+					source: 'database',
+					workflowId: { __rl: true, mode: 'id', value: childId },
+					options: { waitForSubWorkflow: true },
+				},
+			},
+		],
+		connections: { Webhook: { main: [[{ node: 'Call child', type: 'main', index: 0 }]] } },
+		settings: { executionOrder: 'v1' },
+	};
+}
 
 test.describe(
 	'Subworkflow debugging',
@@ -100,6 +148,50 @@ test.describe(
 					'Terry.Dach@hotmail.com',
 				);
 			});
+		});
+	},
+);
+
+test.describe(
+	'Execution links',
+	{
+		annotation: [{ type: 'owner', description: 'Core Execution' }],
+	},
+	() => {
+		test('links a saved parent execution and its sub-execution both ways @engine:v2', async ({
+			n8n,
+			api,
+		}) => {
+			const child = await api.workflows.importWorkflowFromDefinition(CHILD);
+			await api.workflows.activate(child.workflowId, child.createdWorkflow.versionId!);
+			const parent = await api.workflows.importWorkflowFromDefinition(
+				parentCalling(child.workflowId),
+			);
+			await api.workflows.activate(parent.workflowId, parent.createdWorkflow.versionId!);
+
+			await api.webhooks.trigger(`/webhook/${parent.webhookPath}`, { maxNotFoundRetries: 5 });
+			const parentExecution = await api.workflows.waitForExecution(parent.workflowId, 15_000);
+			expect(parentExecution.status).toBe('success');
+
+			await n8n.navigate.toExecution(parent.workflowId, parentExecution.id);
+			await n8n.executions.openNodeExecutionDetails('Call child');
+			const subExecutionLink = n8n.ndv.outputPanel.getRelatedExecutionLink();
+			await expect(subExecutionLink).toContainText('View sub-execution');
+			const subExecutionUrl = new RegExp(`/workflow/${child.workflowId}/executions/([^/?#]+)$`);
+			await expect(subExecutionLink).toHaveAttribute('href', subExecutionUrl);
+			const href = await subExecutionLink.getAttribute('href');
+			const childExecutionId = subExecutionUrl.exec(href!)![1];
+
+			await n8n.navigate.toExecution(child.workflowId, childExecutionId);
+			await n8n.executions.openNodeExecutionDetails('Start');
+			const parentExecutionLink = n8n.ndv.outputPanel.getRelatedExecutionLink();
+			await expect(parentExecutionLink).toContainText(
+				`View parent execution ${parentExecution.id}`,
+			);
+			await expect(parentExecutionLink).toHaveAttribute(
+				'href',
+				new RegExp(`/workflow/${parent.workflowId}/executions/${parentExecution.id}$`),
+			);
 		});
 	},
 );

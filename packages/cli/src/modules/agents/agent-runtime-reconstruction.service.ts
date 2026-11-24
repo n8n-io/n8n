@@ -50,7 +50,7 @@ import { AgentsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
-import { UserError } from '@n8n/errors';
+import { UnexpectedError, UserError } from '@n8n/errors';
 import { nanoid } from 'nanoid';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -123,7 +123,7 @@ import {
 } from './tools/read-binary-data.tool';
 import type { WorkflowToolExecutionMode } from './tools/workflow-tool-factory';
 import { findWorkflowToolWorkflow } from './tools/workflow-tool-workflow-resolver';
-import { AgentDecisionWorkflowService } from './approval/agent-decision-workflow.service';
+import type { AgentDecisionWorkflowService } from './approval/agent-decision-workflow.service';
 import { withApprovalDescription } from './approval/approval-description';
 import type { AgentRunSource } from './utils/agent-published-snapshot';
 import { getAgentRuntimeAssets, type AgentRuntimeAssets } from './utils/agent-runtime-assets';
@@ -871,11 +871,30 @@ export class AgentRuntimeReconstructionService {
 		const aiProxyFetch = createAiProxyFetch(this.outboundHttp);
 		const aiMcpFetch = instrumentation?.mcpFetch ?? createAiMcpFetch(this.outboundHttp);
 		const webSearchFetch = createWebSearchFetch(this.outboundHttp);
-		const buildMcpClient = this.makeMcpClientFactory(options, aiMcpFetch, mcpServerAttributions);
+		const needsDecisionWorkflows =
+			(options.supportsHitl ?? options.runtimeProfile === 'top-level') &&
+			[...(config.tools ?? []), ...(config.mcpServers ?? [])].some(
+				({ approvalRoute }) => approvalRoute?.type === 'configuration',
+			);
+		let decisionWorkflows: AgentDecisionWorkflowService | undefined;
+		if (needsDecisionWorkflows) {
+			const { AgentDecisionWorkflowService } = await import(
+				'./approval/agent-decision-workflow.service.js'
+			);
+			decisionWorkflows = Container.get(AgentDecisionWorkflowService);
+		}
+		const wrapApproval = (tool: BuiltTool, route: AgentApprovalRoute | undefined) =>
+			this.wrapConfiguredApproval(tool, route, options, decisionWorkflows);
+		const buildMcpClient = this.makeMcpClientFactory(
+			options,
+			aiMcpFetch,
+			mcpServerAttributions,
+			wrapApproval,
+		);
 		const modelFetch = instrumentation?.modelFetch ?? aiProxyFetch;
 		const guardrailModel = await this.resolveGuardrailModel(config, credentialProvider, modelFetch);
 		const reconstructed = await buildFromJson(config, toolDescriptors, {
-			wrapApproval: (tool, ref) => this.wrapConfiguredApproval(tool, ref.approvalRoute, options),
+			wrapApproval: (tool, ref) => wrapApproval(tool, ref.approvalRoute),
 			toolExecutor,
 			credentialProvider,
 			resolveTool: async (ref) => {
@@ -988,6 +1007,7 @@ export class AgentRuntimeReconstructionService {
 		tool: BuiltTool,
 		route: AgentApprovalRoute | undefined,
 		options: RuntimeReconstructionOptions,
+		decisionWorkflows: AgentDecisionWorkflowService | undefined,
 	): BuiltTool {
 		const effective = route;
 		if (!effective || effective.type === 'conversation') {
@@ -1004,8 +1024,10 @@ export class AgentRuntimeReconstructionService {
 				},
 			};
 		}
+		if (!decisionWorkflows)
+			throw new UnexpectedError('Configured Agent approval service is unavailable');
 		return withApprovalDescription(
-			Container.get(AgentDecisionWorkflowService).wrap(
+			decisionWorkflows.wrap(
 				tool,
 				effective,
 				options.config,
@@ -1031,13 +1053,13 @@ export class AgentRuntimeReconstructionService {
 		options: RuntimeReconstructionOptions,
 		aiMcpFetch: ReturnType<typeof createAiMcpFetch>,
 		mcpServerAttributions: Map<string, string>,
+		wrapApproval: (tool: BuiltTool, route: AgentApprovalRoute | undefined) => BuiltTool,
 	) {
 		const { credentialProvider, projectId, memoryOwnerAgentId, instrumentation, runtimeProfile } =
 			options;
 		return async (server: AgentJsonMcpServerConfig) =>
 			await buildMcpClientForServer(server, {
-				wrapApproval: (tool: BuiltTool) =>
-					this.wrapConfiguredApproval(tool, server.approvalRoute, options),
+				wrapApproval: (tool) => wrapApproval(tool, server.approvalRoute),
 				credentialProvider,
 				// Inline agents have no checkpoint storage, and their schema rejects approval policies.
 				nonInterrupting: runtimeProfile === 'inline',

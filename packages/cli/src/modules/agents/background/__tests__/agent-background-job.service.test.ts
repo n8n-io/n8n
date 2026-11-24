@@ -1102,23 +1102,37 @@ describe('result consumption updates', () => {
 });
 
 describe('cancel', () => {
-	it('cancels active child jobs for a session across its resource IDs', async () => {
+	it.each([false, true])('settles cancellable jobs (resource scoped: %s)', async (scoped) => {
 		const { service, jobRepository } = setup();
-		const cancel = vi.spyOn(service, 'cancel').mockResolvedValue('cancelled');
+		const executionService = mock<ExecutionService>();
+		Container.set(ExecutionService, executionService);
 		const jobs = [
 			makeJob({ id: 'running', parentResourceId: 'integration:thread-1' }),
-			makeJob({ id: 'suspended', status: 'suspended', parentResourceId: 'draft-chat:user-1' }),
-			makeWorkflowJob({ id: 'ordinary-workflow' }),
+			makeJob({ id: 'suspended', status: 'suspended' }),
+			makeWorkflowJob({ id: 'ordinary-workflow', childExecutionId: 'ordinary-execution' }),
 			makeWorkflowJob({ id: 'approval', kind: 'approval' }),
 			makeJob({ id: 'other-agent', parentAgentId: 'other-agent' }),
 			makeJob({ id: 'paused', status: 'paused' }),
 		];
-		jobRepository.findByParentThread.mockResolvedValue(jobs);
+		jobRepository.findByParentThread.mockImplementation(async (_threadId, ids) =>
+			ids ? jobs.filter(({ id }) => ids.includes(id)) : jobs,
+		);
+		jobRepository.settleIfActive.mockResolvedValue(true);
 
-		await service.cancelForSession('agent-1', 'thread-1');
+		if (scoped) await service.cancelForParent('agent-1', 'thread-1', 'draft-chat:user-1');
+		else await service.cancelForSession('agent-1', 'thread-1');
 
-		expect(cancel.mock.calls.map(([, id]) => id)).toEqual(['running', 'suspended', 'approval']);
+		expect(executionService.stop).toHaveBeenCalledExactlyOnceWith('exec-1', ['workflow-1']);
+		expect(
+			jobRepository.settleIfActive.mock.calls.map(([id, settlement]) => [id, settlement.status]),
+		).toEqual(
+			(scoped ? ['suspended', 'approval'] : ['running', 'suspended', 'approval']).map((id) => [
+				id,
+				'cancelled',
+			]),
+		);
 	});
+
 	it.each([false, true])(
 		'retains paused tasks when the parent reply is cancelled (stale snapshot: %s)',
 		async (staleSnapshot) => {

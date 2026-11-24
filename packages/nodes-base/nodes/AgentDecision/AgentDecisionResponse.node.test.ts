@@ -1,18 +1,9 @@
-import { AgentsConfig } from '@n8n/config';
-import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 import { NodeOperationError, type IExecuteFunctions, type INode } from 'n8n-workflow';
 
 import { AgentDecisionResponse } from './AgentDecisionResponse.node';
 
 const node = new AgentDecisionResponse();
-beforeEach(() => Container.set(AgentsConfig, mock<AgentsConfig>({ humanReviewEnabled: true })));
-afterEach(() => Container.reset());
-
-it('does not run when human review is disabled', async () => {
-	Container.set(AgentsConfig, mock<AgentsConfig>({ humanReviewEnabled: false }));
-	await expect(node.execute.call(context([]))).rejects.toThrow('Human review is not enabled');
-});
 
 function context(parameters: Array<{ approved: unknown; reason?: unknown }>) {
 	const ctx = mock<IExecuteFunctions>();

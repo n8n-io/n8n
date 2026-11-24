@@ -1019,7 +1019,7 @@ export class AgentBackgroundJobService {
 		const jobs = await this.jobRepository.findByParentThread(parentThreadId);
 		for (const job of jobs) {
 			if (
-				(job.kind === 'subagent' || (job.kind === 'approval' && parentResourceId === undefined)) &&
+				(job.kind === 'subagent' || job.kind === 'approval') &&
 				job.parentAgentId === parentAgentId &&
 				(parentResourceId === undefined || job.parentResourceId === parentResourceId) &&
 				(job.status === 'running' || job.status === 'suspended')

@@ -414,6 +414,9 @@
 	// Action Dropdown
 	--action-dropdown--item--color--background--active: var(--color--background);
 
+	// Checkbox
+	--checkbox--label--color--disabled: var(--text-color--subtler);
+
 	// Switch (Activation, boolean)
 	--switch--color--background: var(--color--neutral-400);
 	--switch--color--background--active: var(--background--brand);
@@ -1018,6 +1021,9 @@
 	// NPS Survey
 	--nps-survey--color--background: var(--color--neutral-850);
 	--nps-survey--color--text: var(--color--neutral-white);
+
+	// Checkbox
+	--checkbox--label--color--disabled: var(--text-color--disabled);
 
 	// Switch (Activation, boolean)
 	--switch--color--background: var(--color--neutral-950);

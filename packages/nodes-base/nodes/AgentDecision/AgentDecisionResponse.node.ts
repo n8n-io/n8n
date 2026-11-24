@@ -1,5 +1,3 @@
-import { AgentsConfig } from '@n8n/config';
-import { Container } from '@n8n/di';
 import {
 	NodeConnectionTypes,
 	NodeOperationError,
@@ -40,8 +38,6 @@ export class AgentDecisionResponse implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions) {
-		if (!Container.get(AgentsConfig).humanReviewEnabled)
-			throw new NodeOperationError(this.getNode(), 'Human review is not enabled on this instance');
 		return [
 			this.getInputData().map((_item, index) => {
 				const approved = this.getNodeParameter('approved', index);

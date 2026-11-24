@@ -94,8 +94,8 @@ vi.mock('@/features/ai/shared/components/AiThinkingBlock.vue', () => ({
 	default: {
 		name: 'AiThinkingBlock',
 		template:
-			'<section data-test-id="shared-thinking-block" :data-active="active ? \'true\' : \'false\'" :data-duration="durationSec"><slot /></section>',
-		props: ['segments', 'active', 'durationSec'],
+			'<section data-test-id="shared-thinking-block" :data-active="active ? \'true\' : \'false\'" :data-duration="durationSec" :data-idle-label="idleLabel"><slot /></section>',
+		props: ['segments', 'active', 'durationSec', 'idleLabel'],
 	},
 }));
 
@@ -970,6 +970,51 @@ describe('AgentChatMessageList', () => {
 			'Inspect the request. Then answer.',
 		);
 		expect(wrapper.find('[data-test-id="agent-typing-indicator"]').exists()).toBe(false);
+	});
+
+	describe('thinking label', () => {
+		const streamingMessage = {
+			id: 'assistant-reasoning',
+			role: 'assistant',
+			content: '',
+			thinkingSegments: [{ id: 'reasoning-1', content: 'Inspect the request.' }],
+			status: 'streaming',
+		} satisfies ChatMessage;
+		const toolRunMessage = {
+			id: 'assistant-tool',
+			role: 'assistant',
+			content: '',
+			thinkingSegments: [{ id: 'reasoning-1', content: 'Choose a tool.' }],
+			toolCalls: [{ tool: 'lookup', toolCallId: 'tool-1', state: 'running' }],
+			status: 'streaming',
+		} satisfies ChatMessage;
+
+		it.each([
+			['a message', streamingMessage],
+			['a tool run', toolRunMessage],
+		])('gives the thinking block of %s the label of the host', (_name, message) => {
+			const wrapper = mount(AgentChatMessageList, {
+				props: {
+					messages: [message],
+					messagingState: 'receiving',
+					thinkingLabel: 'Joining the dots',
+				},
+			});
+
+			expect(
+				wrapper.find('[data-test-id="shared-thinking-block"]').attributes('data-idle-label'),
+			).toBe('Joining the dots');
+		});
+
+		it('gives the thinking block no label when the host sets none', () => {
+			const wrapper = mount(AgentChatMessageList, {
+				props: { messages: [streamingMessage], messagingState: 'receiving' },
+			});
+
+			expect(
+				wrapper.find('[data-test-id="shared-thinking-block"]').attributes('data-idle-label'),
+			).toBeUndefined();
+		});
 	});
 
 	it('renders thinking below standalone assistant output', () => {
