@@ -188,11 +188,20 @@ describe('a gateway that repeats what it was sent', () => {
 				: new Response(body, { status: 401, statusText: 'Unauthorized' })) as typeof fetch;
 
 	/** Through the real transport, so the wiring of the secrets is covered with the filter. */
-	const bodyFrom = async (endpoint: EndpointCredential, body: string) => {
+	const bodyFrom = async (
+		endpoint: EndpointCredential,
+		body: string,
+		requestHeaders?: Record<string, string>,
+	) => {
 		const authFetch = createCustomModelEndpointAuthFetch(
 			ctx,
 			{},
-			{ endpoint, egressFilter: allowAll, baseFetch: routed(body) },
+			{
+				endpoint,
+				egressFilter: allowAll,
+				baseFetch: routed(body),
+				requestHeaders,
+			},
 		);
 		return await (await authFetch(BASE_URL)).text();
 	};
@@ -268,6 +277,14 @@ describe('a gateway that repeats what it was sent', () => {
 		const body = JSON.stringify({ error: { message: 'denied', code: 'bad_key', param: SECRET } });
 
 		expect(await bodyFrom(endpoint, body)).not.toContain(SECRET);
+	});
+
+	// The node's own per-request headers can hold a key, and the gateway can echo that too
+	it('keeps a per-request header value out of the error', async () => {
+		const endpoint = endpointWith({ type: 'none' });
+		const body = JSON.stringify({ error: { message: `bad key ${SECRET}` } });
+
+		expect(await bodyFrom(endpoint, body, { 'x-api-key': SECRET })).not.toContain(SECRET);
 	});
 
 	// An empty value must not reach the replacement, where `split('')` shreds the body
@@ -570,6 +587,13 @@ describe('every shape a gateway can answer with', () => {
 		['a top-level message', `{"message":"Access denied for ${KEY}"}`],
 		['the vLLM flat shape', `{"object":"error","message":"bad key ${KEY}","code":401}`],
 		['an errors array', `{"errors":[{"message":"bad key ${KEY}"}]}`],
+		// The failure event of the Responses stream nests its error one level down
+		[
+			'a response.failed event',
+			`{"type":"response.failed","response":{"object":"response","error":{"message":"bad key ${KEY}"}}}`,
+		],
+		// A client parses the escape back into the credential before it displays it
+		['a JSON-escaped credential', '{"error":{"message":"bad key \\u006fllama"}}'],
 		// Answer-shaped but for the error, which is the client's own test for a refusal
 		[
 			'a Responses body carrying an error',
@@ -632,6 +656,38 @@ describe('every shape a gateway can answer with', () => {
 
 	it.each(ANSWERS)('hands back %s byte for byte', async (_name, body, contentType) => {
 		expect(await through(body, 200, contentType)).toBe(body);
+	});
+
+	/** What the client shows, which is the decoded message rather than the bytes. */
+	const decodedMessage = (body: string) => {
+		const payload = body.startsWith('data:') ? body.slice('data:'.length).trim() : body;
+		return JSON.stringify(JSON.parse(payload));
+	};
+
+	// A client parses the escape back into the credential, so the bytes alone are not enough
+	it.each([
+		['on a 200', 'application/json', '{"error":{"message":"bad key \\u006fllama"}}'],
+		['in a frame', 'text/event-stream', 'data: {"error":{"message":"bad key \\u006fllama"}}\n\n'],
+	])('loses a credential spelled with a JSON escape %s', async (_name, contentType, body) => {
+		expect(decodedMessage(await through(body, 200, contentType))).not.toContain(KEY);
+	});
+
+	// A minted token is free to contain a space, and the scheme is only the first word.
+	// The tail is what is asserted: redacting the first word alone would leave it behind.
+	it('loses a minted token that contains a space', async () => {
+		const token = 'tok-one tok-two';
+		const baseFetch = (async () =>
+			new Response(`{"error":{"message":"rejected ${token}"}}`, {
+				status: 401,
+				headers: { 'content-type': 'application/json' },
+			})) as typeof fetch;
+		const wrapped = wrapCustomModelEndpointErrorFetch(baseFetch, []);
+
+		const surfaced = await (
+			await wrapped(BASE_URL, { headers: { authorization: `Bearer ${token}` } })
+		).text();
+
+		expect(surfaced).not.toContain('tok-two');
 	});
 
 	// undici hands on whatever has arrived, so two frames often reach the filter together

@@ -10,7 +10,7 @@ import {
 } from 'n8n-workflow';
 
 import { wrapCustomModelEndpointErrorFetch } from './error-handling';
-import { buildRequestHeaders, credentialSecrets } from './headers';
+import { asSent, buildRequestHeaders, credentialSecrets } from './headers';
 import { createClientCredentialsTokenSource } from './oauth2';
 import type { EndpointCredential } from './types';
 
@@ -96,7 +96,14 @@ export function createCustomModelEndpointAuthFetch(
 		});
 
 	const authFetch = createRefreshingAuthFetch({
-		baseFetch: wrapCustomModelEndpointErrorFetch(baseFetch, credentialSecrets(endpoint)),
+		// The node's own headers can hold a key too, and an answer is never filtered, so
+		// listing a routing label among them costs nothing
+		baseFetch: wrapCustomModelEndpointErrorFetch(baseFetch, [
+			...credentialSecrets(endpoint),
+			...Object.values(requestHeaders ?? {})
+				.map(asSent)
+				.filter((value) => value.length > 0),
+		]),
 		resolveHeaders,
 		...(tokenSource && {
 			// The retry is a whole request again, so it needs the gateway headers too

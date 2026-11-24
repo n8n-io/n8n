@@ -235,15 +235,32 @@ describe('credentialSecrets', () => {
 	});
 
 	it.each([
-		['bearer', { type: 'bearer', token: SECRET } as const],
-		['header', { type: 'header', name: 'x-api-key', prefix: 'Token', key: SECRET } as const],
-		['basic', { type: 'basic', username: 'tenant', password: SECRET } as const],
-		['oauth2', oauth2(SECRET)],
-	])('carries the %s secret and the header built from it', (_name, login) => {
+		['bearer', { type: 'bearer', token: SECRET } as const, `Bearer ${SECRET}`],
+		[
+			'header',
+			{ type: 'header', name: 'x-api-key', prefix: 'Token', key: SECRET } as const,
+			`Token ${SECRET}`,
+		],
+		[
+			'basic',
+			{ type: 'basic', username: 'tenant', password: SECRET } as const,
+			`Basic ${Buffer.from(`tenant:${SECRET}`).toString('base64')}`,
+		],
+		['oauth2', oauth2(SECRET), oauth2BasicCredentials(oauth2(SECRET))],
+	])('carries the %s secret and the value built from it', (_name, login, built) => {
 		const secrets = credentialSecrets(endpoint(login));
 
 		expect(secrets).toContain(SECRET);
-		expect(secrets.length).toBeGreaterThan(1);
+		expect(secrets).toContain(built);
+	});
+
+	// `String.trim` also takes a no-break space, which `Headers.set` sends
+	it('keeps a gateway header value spelled with a no-break space', () => {
+		const padded = `\u00a0${SECRET}\u00a0`;
+
+		expect(credentialSecrets(endpoint({ type: 'none' }, { 'x-api-key': padded }))).toEqual([
+			padded,
+		]);
 	});
 
 	// With the field blank the built header is the bare scheme word, and redacting

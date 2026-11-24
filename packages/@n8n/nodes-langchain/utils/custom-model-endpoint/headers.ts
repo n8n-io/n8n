@@ -55,16 +55,23 @@ function loginSecrets(login: LoginMethod): string[] {
 	}
 }
 
+/** What `Headers.set` strips on the way out. `String.trim` is wider and would also take
+ * a no-break space, which is sent, leaving the listed value and the sent value different. */
+const HTTP_WHITESPACE = /^[ \t\r\n]+|[ \t\r\n]+$/g;
+
+export function asSent(value: string): string {
+	return value.replace(HTTP_WHITESPACE, '');
+}
+
 /**
- * Every value of the credential that must not reach the user in an error. Values are
- * trimmed, because `Headers.set` trims them on the way out and a gateway can only echo
- * what it was sent.
+ * Every value of the credential that must not reach the user in an error, spelled the way
+ * the gateway receives it, because that is the only spelling it can echo.
  */
 export function credentialSecrets(
 	endpoint: Pick<EndpointCredential, 'login' | 'gatewayHeaders'>,
 ): string[] {
 	return [...loginSecrets(endpoint.login), ...Object.values(endpoint.gatewayHeaders)]
-		.map((value) => value.trim())
+		.map(asSent)
 		.filter((value) => value.length > 0);
 }
 

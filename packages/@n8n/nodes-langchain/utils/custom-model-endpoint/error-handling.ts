@@ -107,8 +107,10 @@ function sentCredential(input: RequestInfo | URL, init?: RequestInit): string[] 
 	const authorization = source === undefined ? null : new Headers(source).get('authorization');
 	if (authorization === null) return [];
 
-	const [, credential] = authorization.split(' ');
-	return [authorization, credential].filter((value) => Boolean(value?.length));
+	// Everything after the scheme, because a token is free to contain a space
+	const scheme = authorization.indexOf(' ');
+	const credential = scheme === -1 ? '' : authorization.slice(scheme + 1);
+	return [authorization, credential].filter((value) => value.length > 0);
 }
 
 /** A blank line ends a frame, and the spec allows all three line terminators for it. */
@@ -116,6 +118,33 @@ const EVENT_BOUNDARY = /\r\n\r\n|\n\n|\r\r/g;
 
 /** Nothing is held past this without a frame boundary, so an odd gateway cannot grow it. */
 const MAX_CARRIED = 64 * 1024;
+
+/**
+ * A refusal filtered in place, with the escaped spellings covered. `\u006f` in a JSON
+ * string is the credential once the client parses it, so every string in the body is
+ * filtered after decoding and the body is rebuilt only when that changed something.
+ * A body that does not parse falls back to the bytes, which is all there is to work with.
+ */
+function withoutSecretsInJson(raw: string, secrets: string[]): string {
+	const parsed = parseJson(raw);
+	if (parsed === UNPARSED) return withoutKnownSecrets(raw, secrets);
+
+	let changed = false;
+	const walk = (value: unknown): unknown => {
+		if (typeof value === 'string') {
+			const safe = withoutKnownSecrets(value, secrets);
+			changed ||= safe !== value;
+			return safe;
+		}
+		if (Array.isArray(value)) return value.map(walk);
+		if (isRecord(value))
+			return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, walk(v)]));
+		return value;
+	};
+
+	const filtered = walk(parsed);
+	return changed ? JSON.stringify(filtered) : withoutKnownSecrets(raw, secrets);
+}
 
 /**
  * What this node reads as an answer, and nothing else.
@@ -131,6 +160,8 @@ const MAX_CARRIED = 64 * 1024;
 function isAnswer(parsed: unknown): boolean {
 	if (Array.isArray(parsed)) return true;
 	if (!isRecord(parsed) || parsed.error) return false;
+	// `response.failed` is an answer-shaped frame whose error sits one level down
+	if (isRecord(parsed.response) && parsed.response.error) return false;
 
 	return (
 		Array.isArray(parsed.choices) ||
@@ -162,6 +193,15 @@ function endOfLastFrame(text: string): number {
 		end = boundary.index + boundary[0].length;
 	}
 	return end;
+}
+
+/** A frame is `data:` lines around a payload, so the payload is filtered and put back. */
+function withoutSecretsInFrame(frame: string, secrets: string[]): string {
+	const data = frameData(frame);
+	if (data === undefined) return withoutKnownSecrets(frame, secrets);
+
+	const safe = withoutSecretsInJson(data, secrets);
+	return safe === data ? withoutKnownSecrets(frame, secrets) : frame.split(data).join(safe);
 }
 
 /** Splits on the boundary and keeps it, so the bytes out are the bytes in. */
@@ -204,7 +244,7 @@ function withoutSecretsInStream(
 		controller: TransformStreamDefaultController<Uint8Array>,
 		readable: boolean,
 	) => {
-		const safe = readable && isAnswerText(text) ? text : withoutKnownSecrets(text, secrets);
+		const safe = readable && isAnswerText(text) ? text : withoutSecretsInFrame(text, secrets);
 		controller.enqueue(encoder.encode(safe));
 	};
 
@@ -310,7 +350,11 @@ export function wrapCustomModelEndpointErrorFetch(
 			// A refusal on a 200 keeps its shape and loses only the credential. It is not
 			// reshaped: the client reads a 200 as an answer, so the body it gets must still
 			// be the one the gateway sent.
-			return rebuiltFrom(response, withoutKnownSecrets(raw, known), withoutContentLength(response));
+			return rebuiltFrom(
+				response,
+				withoutSecretsInJson(raw, known),
+				withoutContentLength(response),
+			);
 		}
 
 		// A status that carries no body cannot be rebuilt around one
