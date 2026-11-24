@@ -273,6 +273,7 @@ describe('Community packages (Public API)', () => {
 				parsedNpmPackageName.packageName,
 				undefined,
 				undefined,
+				{ rejectCredentialTypeConflicts: true },
 			);
 		});
 
@@ -318,6 +319,7 @@ describe('Community packages (Public API)', () => {
 				parsedNpmPackageName.packageName,
 				undefined,
 				undefined,
+				{ rejectCredentialTypeConflicts: true },
 			);
 		});
 
@@ -339,6 +341,7 @@ describe('Community packages (Public API)', () => {
 				parsedNpmPackageName.packageName,
 				mockedVettedPackage.npmVersion,
 				mockedVettedPackage.checksum,
+				{ rejectCredentialTypeConflicts: true },
 			);
 		});
 
@@ -410,6 +413,7 @@ describe('Community packages (Public API)', () => {
 				pkg,
 				COMMUNITY_PACKAGE_VERSION.UPDATED,
 				undefined,
+				{ rejectCredentialTypeConflicts: true },
 			);
 		});
 
@@ -459,6 +463,7 @@ describe('Community packages (Public API)', () => {
 				pkg,
 				COMMUNITY_PACKAGE_VERSION.UPDATED,
 				mockedVettedPackage.checksum,
+				{ rejectCredentialTypeConflicts: true },
 			);
 		});
 

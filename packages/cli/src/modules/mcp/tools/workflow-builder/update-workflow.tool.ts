@@ -63,6 +63,8 @@ import {
 import {
 	buildUpdateVersionMetadata,
 	resolveVersionMetadata,
+	VERSION_DESCRIPTION_GUIDANCE,
+	VERSION_NAME_GUIDANCE,
 	versionDescriptionInputSchema,
 	versionNameInputSchema,
 } from './version-metadata';
@@ -288,10 +290,10 @@ const inputSchema = {
 			`Ordered operations to apply atomically (max ${MAX_OPERATIONS_PER_CALL}). If any op fails, nothing is saved — except node-group operations (${NON_FATAL_OPERATION_TYPES_LIST}): an invalid one is skipped and reported in skippedOperations, while the rest of the batch still saves. An existing group that these ops leave invalid is removed and reported in removedGroups.`,
 		),
 	versionName: versionNameInputSchema.describe(
-		'Short summary of what this update changes, shown in the workflow\'s version history (e.g. "Added Slack notification after HTTP request"). Always provide it.',
+		`Short title of what this update changes, shown in the workflow's version history (e.g. "Added Slack failure alert"). ${VERSION_NAME_GUIDANCE}`,
 	),
 	versionDescription: versionDescriptionInputSchema.describe(
-		'Longer description of what changed and why, shown in the version history alongside the version name.',
+		`Detailed description of what this update changes, shown in the version history below the title. ${VERSION_DESCRIPTION_GUIDANCE}`,
 	),
 } satisfies z.ZodRawShape;
 // The MCP SDK publishes this schema with `additionalProperties: false` and

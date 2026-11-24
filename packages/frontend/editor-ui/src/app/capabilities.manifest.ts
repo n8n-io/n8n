@@ -30,6 +30,7 @@ import { useAppAssistantHandoff } from '@/features/ai/instanceAi/composables/use
 // Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 import { mcpDiscoverySettings } from '@/experiments/surfaceMcpToClaudeTrialUsers/mcpDiscoverySettings';
 // EOF Experiment cleanup
+import { mcpPreferencesEntryPoints } from '@/experiments/mcpPreferencesEntryPoints/mcpPreferencesEntryPoints';
 
 /**
  * Shell actions that a module calls but cannot import — the counterpart to
@@ -202,4 +203,5 @@ export const registerShellCapabilities = () => {
 	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 	capabilityRegistry.provide(capabilities.mcpDiscoverySettings, mcpDiscoverySettings);
 	// EOF Experiment cleanup
+	capabilityRegistry.provide(capabilities.mcpPreferencesEntryPoints, mcpPreferencesEntryPoints);
 };

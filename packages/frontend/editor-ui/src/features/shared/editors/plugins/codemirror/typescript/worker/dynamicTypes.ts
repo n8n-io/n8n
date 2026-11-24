@@ -2,6 +2,12 @@ import type { Schema } from '@/Interface';
 import { pascalCase } from 'change-case';
 import { globalTypeDefinition } from './utils';
 
+const IDENTIFIER_REGEX = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/;
+
+function formatPropertyKey(key: string): string {
+	return IDENTIFIER_REGEX.test(key) ? key : JSON.stringify(key);
+}
+
 function processSchema(schema: Schema): string {
 	switch (schema.type) {
 		case 'string':
@@ -35,7 +41,7 @@ function processSchema(schema: Schema): string {
 				.map((prop) => {
 					const key = prop.key ?? 'unknown';
 					const type = processSchema(prop);
-					return `  ${key}: ${type};`;
+					return `  ${formatPropertyKey(key)}: ${type};`;
 				})
 				.join('\n');
 

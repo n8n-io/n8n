@@ -386,6 +386,52 @@ describe('SystemAgentExecutionService', () => {
 			]);
 		});
 
+		it('streams a transient event from the turn, and history does not keep it', async () => {
+			const { service, provider, handle, onChunk, recorders } = setupWithRecorder();
+			provider.prepareTurn.mockImplementation(async (turn) => {
+				onChunk.mockImplementation(() =>
+					turn.emitTransientHostEvent('test.preview', { revision: 1 }),
+				);
+				return handle;
+			});
+			const send = vi.fn();
+
+			await service.consume(claimFor(), user, new AbortController().signal, send);
+
+			expect(send).toHaveBeenCalledWith({
+				type: 'transient-host-event',
+				name: 'test.preview',
+				payload: { revision: 1 },
+			});
+			const { timeline } = recorders[0].getMessageRecord();
+			expect(timeline.map((event) => event.type)).toEqual(['text']);
+		});
+
+		it('streams a transient event of a resume turn to the resume stream', async () => {
+			const { service, provider, handle, checkpointStorage } = setupWithRecorder();
+			checkpointStorage.findSuspendedForThread.mockResolvedValue(suspendedCheckpoint() as never);
+			provider.prepareTurn.mockImplementation(async (turn) => {
+				turn.emitTransientHostEvent('test.preview', { revision: 2 });
+				return handle;
+			});
+			const send = vi.fn();
+
+			const { done } = await service.resume({
+				agentId: AGENT_ID,
+				user,
+				threadId: 'thread-1',
+				resumeData: { approved: true },
+				send,
+			});
+			await done;
+
+			expect(send).toHaveBeenCalledWith({
+				type: 'transient-host-event',
+				name: 'test.preview',
+				payload: { revision: 2 },
+			});
+		});
+
 		it('streams events of a resume turn to the resume stream', async () => {
 			const { service, provider, handle, checkpointStorage } = setupWithRecorder();
 			checkpointStorage.findSuspendedForThread.mockResolvedValue(suspendedCheckpoint() as never);

@@ -35,7 +35,8 @@ export type ExecutionLedgerRow = Readonly<{
 	entityType: ExecutionLedgerEntityType;
 	entityName: string;
 	entityId: string;
-	projectId: string;
+	/** Null when the workflow had no owner project. A project count must skip the row. */
+	projectId: string | null;
 	/** Not constrained in the table: engine v2 rows can carry other values. */
 	mode: string;
 	source: string;

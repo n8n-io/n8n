@@ -28,6 +28,9 @@ export class AppChangeService {
 		origin: AppBuildOrigin = {},
 	): Promise<AppBuildResponse> {
 		this.builds.assertNotStopping();
+		// A bindings change can create a scaffold version before the first code. The
+		// first commit on top of it is still the initial version of the app.
+		const baseIsScaffold = await this.versions.isScaffold(expectedDraftVersionId);
 		const version = await this.versions.saveSource(
 			projectId,
 			appId,
@@ -38,7 +41,7 @@ export class AppChangeService {
 		);
 		try {
 			return await this.builds.build(projectId, appId, version.id, false, {
-				changeSource: expectedDraftVersionId === null ? 'initial' : 'chat',
+				changeSource: expectedDraftVersionId === null || baseIsScaffold ? 'initial' : 'chat',
 				...origin,
 			});
 		} catch (error) {
@@ -80,6 +83,7 @@ export class AppChangeService {
 				null,
 				bindings,
 				origin,
+				true,
 			);
 			return { version, previousBindings: [] };
 		}
@@ -102,6 +106,7 @@ export class AppChangeService {
 			draft.label,
 			bindings,
 			origin,
+			draft.isScaffold,
 		);
 		return { version, previousBindings };
 	}
@@ -115,6 +120,7 @@ export class AppChangeService {
 		label: string | null,
 		bindings: AppBinding[],
 		origin: AppBuildOrigin,
+		isScaffold: boolean,
 	): Promise<AppVersion> {
 		const version = await this.versions.saveSource(
 			projectId,
@@ -123,6 +129,7 @@ export class AppChangeService {
 			files,
 			label,
 			bindings,
+			{ isScaffold },
 		);
 		await this.startBuildInBackground(projectId, appId, version.id, origin);
 		return version;

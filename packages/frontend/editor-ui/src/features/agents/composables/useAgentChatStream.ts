@@ -57,7 +57,10 @@ import type { ChatMessage, ThinkingSegment, ToolCall } from '@/features/ai/share
 import { CHAT_MESSAGE_ROLE, CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from '../constants';
 import { summariseToolCall } from '@/features/ai/shared/agentsChat/interactiveSummary';
 import { isPolicyRefusedToolOutput } from '@/features/ai/shared/agentsChat/toolPolicyRefusal';
-import { resolveToolCatalogCall } from '@/features/ai/shared/agentsChat/toolCatalogCall';
+import {
+	readStreamedToolCatalogTarget,
+	resolveToolCatalogCall,
+} from '@/features/ai/shared/agentsChat/toolCatalogCall';
 import { addReplyAttachments } from '@/features/ai/shared/agentsChat/replyFiles';
 import { isBudgetStopCode, type BudgetNoticeCode } from '../utils/budget-config';
 import { isFailedDelegateOutput } from '../utils/delegate-tool';
@@ -103,6 +106,11 @@ export interface UseAgentChatStreamParams {
 	interactionExtensions?: readonly AgentsChatInteractionExtension[];
 	/** Called with each event of the chat stream, as received. */
 	onStreamEvent?: (event: AgentSseEvent) => void;
+	/**
+	 * The `references` of a sent message, from the client context that it sends.
+	 * The history gives the same references after a reload.
+	 */
+	messageReferences?: (clientContext: Record<string, unknown> | undefined) => unknown[];
 }
 
 type ResumePayload =
@@ -773,6 +781,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		minted: Set<ChatMessage>;
 		reasoningStartedAt: Map<string, number>;
 		openReasoning: Map<string, ThinkingSegment>;
+		/** The streamed input of each call_tool call, until it names the tool that the call runs. */
+		toolCatalogInputPrefixes: Map<string, string>;
 	}
 
 	/**
@@ -964,6 +974,24 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	 * iterations after the tool-call message has been closed by `finish-step`,
 	 * so we cannot rely on the cursor — only the natural id.
 	 */
+	function nameStreamedToolCatalogCall(
+		session: StreamSession,
+		toolCallId: string,
+		delta: string,
+	): void {
+		const found = findToolCallById(toolCallId);
+		if (!found) return;
+		const prefixes = session.toolCatalogInputPrefixes;
+		const prefix = (prefixes.get(toolCallId) ?? '') + delta;
+		const target = readStreamedToolCatalogTarget(found.tc.tool, prefix);
+		if (target === undefined) {
+			prefixes.set(toolCallId, prefix);
+			return;
+		}
+		prefixes.delete(toolCallId);
+		if (target) found.tc.tool = target;
+	}
+
 	function findToolCallById(toolCallId: string): { msg: ChatMessage; tc: ToolCall } | null {
 		for (let i = messages.value.length - 1; i >= 0; i--) {
 			const m = messages.value[i];
@@ -1283,7 +1311,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			}
 			case 'tool-input-delta':
 				// Streaming tool input isn't rendered incrementally; the full
-				// input arrives on `tool-call`. No ToolCall state mutation here.
+				// input arrives on `tool-call`. Only a call_tool call reads it, for its tool name.
+				nameStreamedToolCatalogCall(session, event.toolCallId, event.delta);
 				break;
 			case 'tool-call': {
 				// LLM finalized the call. Update input on the existing entry,
@@ -1291,6 +1320,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				const msg = ensureCurrent(session);
 				msg.toolCalls = msg.toolCalls ?? [];
 				// `tool-input-start` names a tool catalog call `call_tool`. The full input names the real tool.
+				session.toolCatalogInputPrefixes.delete(event.toolCallId);
 				const call = resolveToolCatalogCall(event.toolName, event.input);
 				const existing = msg.toolCalls.find((t) => t.toolCallId === event.toolCallId);
 				if (!existing) {
@@ -1695,6 +1725,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			minted: new Set(),
 			reasoningStartedAt: new Map(),
 			openReasoning: new Map(),
+			toolCatalogInputPrefixes: new Map(),
 		};
 		streams.set(controller, session);
 
@@ -2006,6 +2037,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		isSubmitting.value = true;
 		const submission = ++submissionVersion;
 		const target = targetKey();
+		const references = params.messageReferences?.(clientContext);
 		const userMessage: ChatMessage = {
 			id: crypto.randomUUID(),
 			role: 'user',
@@ -2018,6 +2050,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				sizeBytes: file.size,
 				file,
 			})),
+			...(references?.length ? { references } : {}),
 		};
 		// Nothing waits ahead of the first message of a new session, so its run starts
 		// right away. The message shows now, not when the run starts.

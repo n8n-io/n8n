@@ -4,6 +4,7 @@ import { PROVIDER_CAPABILITIES } from '@n8n/api-types';
 import { resolveModelIdString, resolveModelProvider } from './model-config-identity';
 import {
 	parseReasoningEffort,
+	parseReplayReasoning,
 	resolveCustomModelExperimentDefaultsFromEnv,
 } from '../utils/custom-model-defaults';
 
@@ -50,8 +51,12 @@ export function applyAgentThinking(
 		// No blanket default: env override → known-model map → omit.
 		const resolvedModelId = resolveModelIdString(modelId) ?? '';
 		const { reasoningEffort } = resolveCustomModelExperimentDefaultsFromEnv(resolvedModelId);
-		if (reasoningEffort !== undefined) {
-			agent.thinking('custom', { reasoningEffort });
+		const replayReasoning = parseReplayReasoning(process.env.N8N_INSTANCE_AI_REPLAY_REASONING);
+		if (reasoningEffort !== undefined || replayReasoning !== undefined) {
+			agent.thinking('custom', {
+				...(reasoningEffort !== undefined ? { reasoningEffort } : {}),
+				...(replayReasoning !== undefined ? { replayReasoning } : {}),
+			});
 		}
 		return;
 	}

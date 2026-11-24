@@ -132,6 +132,7 @@ packages/cli/src/binary-data/                           @n8n-io/core-execution
 packages/cli/src/eventbus/                              @n8n-io/core-execution
 packages/cli/src/events/                                @n8n-io/core-execution
 packages/cli/src/modules/engine-v2/                     @n8n-io/core-execution required
+packages/modules/engine-v2/frontend/                    @n8n-io/core-execution
 packages/cli/src/workflow-runner.ts                     @n8n-io/core-execution
 packages/cli/src/wait-tracker.ts                        @n8n-io/core-execution
 packages/cli/src/active-executions.ts                   @n8n-io/core-execution
@@ -156,6 +157,8 @@ packages/cli/src/modules/token-exchange/                @n8n-io/iam
 
 packages/cli/src/environments.ee/                       @n8n-io/ligo
 packages/cli/src/public-api/                            @n8n-io/ligo
+packages/cli/src/hooks-api/                             @n8n-io/api-and-oem
+packages/@n8n/hooks-api/                                @n8n-io/api-and-oem required
 packages/cli/src/modules/source-control.ee/             @n8n-io/ligo
 packages/cli/src/modules/external-secrets.ee/           @n8n-io/ligo
 packages/modules/insights/                              @n8n-io/ligo

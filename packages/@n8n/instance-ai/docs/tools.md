@@ -60,7 +60,18 @@ the Assistant's text. In a long thread it sees the newest messages. From the
 part before them it sees only what the user wrote, up to a budget of messages
 and characters. A limit that the user set there stays in view while it fits
 the budget. A note tells the judge when older messages are left out. Of a long
-message it sees only the end.
+message it sees only the end. `pnpm eval:approval-judge` measures the judge on
+a directory of cases (see the evaluations README).
+
+The trace of a run shows the mode as `approval_mode` in the metadata of its
+root run and its `agent: orchestrator` run: `manual`, `auto`, or `unavailable`
+when the flag is off. In Auto, each reviewed approval adds an `approval: review`
+run to the trace, with the tag `approval-review`. Its metadata has `tool_name`,
+`approval_route` (`always-ask`, `low-risk` or `judge`), `approval_decision`
+(`approve` or `ask`), `approval_decided_by` (`rule` or `judge`),
+`approval_judge_failed`, and `tool_call_id` when the call has one. Its output
+adds `approval_reason`. A decision that the judge model made also has its
+`llm: approval-judge` run. A review that failed before the model call has none.
 
 ### Approval copy
 
@@ -1476,6 +1487,40 @@ those cases. The model relays a rejection in its own words and never says
 The system prompt carries the judgment of *when* to call it (see
 `getPreferenceSavingSection` in `agent/system-prompt.ts`); the description
 carries *what* it does.
+
+---
+
+## `send_feedback` *(conditional)*
+
+Send a short report to the n8n team when the agent is not sure how to do
+something, a tool or n8n behaves wrong, or n8n cannot do what the user needs.
+Present when the adapter wires `agentFeedbackService` and the instance shares
+data (`allowSendingParameterValues` is not `false`). The CLI adapter wires the
+service only when telemetry is on (`N8N_DIAGNOSTICS_ENABLED`), because the report
+goes out only as a telemetry event. The report is agent-written text, so the
+tool is not registered when data sharing is off. When the tool is absent, the
+system prompt omits the feedback section too.
+Always loaded, because the agent needs it at the moment it is stuck.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `category` | `'unsure' \| 'bug' \| 'missing_capability' \| 'confusing_tool' \| 'other'` | yes | What kind of problem it is |
+| `severity` | `'blocked' \| 'workaround' \| 'minor'` | yes | How much the problem affected the task |
+| `summary` | string | yes | The goal, what the agent tried, and where it got stuck. The CLI adapter redacts it, then cuts it to 1,000 characters |
+| `toolName` | string | no | The tool that the report is about |
+
+The tool does not suspend and nothing replies. It always returns
+`{ ok: true, message }`, and the message tells the agent to continue. A run
+sends at most 3 reports. Later calls return the same result and send nothing.
+A resume rebuilds the agent and starts a new count.
+
+The CLI adapter tracks the `AI Assistant sent feedback` telemetry event. It
+removes secrets and personal data from the summary and the tool name before it
+cuts them, so a secret that crosses the cut is still found. LangSmith records the
+call as a normal tool span, so traces show the reports too.
+
+The system prompt carries the judgment of *when* to call it (see
+`getFeedbackSection` in `agent/system-prompt.ts`).
 
 ---
 

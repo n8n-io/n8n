@@ -107,6 +107,15 @@ function flushResponse(res: { flush?: () => void }) {
 	}
 }
 
+/**
+ * Whether `WorkflowRunner.run` hands a v1 run to a queue worker instead of running it in this
+ * process. Test runs and evals ask this too (`instrumentedRunGap`): their hooks only apply in
+ * this process, so keep this the one place the queue decision is made.
+ */
+export function runsOnQueueWorker(executionsConfig: Pick<ExecutionsConfig, 'mode'>): boolean {
+	return executionsConfig.mode === 'queue';
+}
+
 @Service()
 export class WorkflowRunner {
 	private scalingService: ScalingService;
@@ -555,7 +564,7 @@ export class WorkflowRunner {
 		const shouldReloadStaticData = Boolean(existingExecution && loadStaticData);
 
 		try {
-			if (this.executionsConfig.mode === 'queue') {
+			if (runsOnQueueWorker(this.executionsConfig)) {
 				await this.enqueueExecution(
 					executionId,
 					workflowId,
