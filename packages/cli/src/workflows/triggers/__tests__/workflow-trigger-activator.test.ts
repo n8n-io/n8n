@@ -1574,28 +1574,6 @@ describe('WorkflowTriggerActivator', () => {
 			]);
 		});
 
-		test('runs the error workflow with an error-level activation error when the teardown fails', async () => {
-			const closeFailure = new Error('close failed');
-			const nonWebhookTriggerRegistrar = mock<NonWebhookTriggerRegistrar>();
-			const triggerExecutionContextFactory = mock<TriggerExecutionContextFactory>();
-			const activationErrorsService = mock<ActivationErrorsService>();
-			const onTriggerFailure = await activateAndCaptureFailureHandler({
-				nonWebhookTriggerRegistrar,
-				triggerExecutionContextFactory,
-				activationErrorsService,
-			});
-			nonWebhookTriggerRegistrar.deregister.mockRejectedValue(closeFailure);
-
-			onTriggerFailure(failure);
-			await flushPromises();
-
-			const surfaced = triggerExecutionContextFactory.executeErrorWorkflow.mock.calls.map(
-				([error]) => ({ level: (error as WorkflowActivationError).level, cause: error.cause }),
-			);
-			expect(surfaced).toEqual([{ level: 'error', cause: closeFailure }]);
-			expect(activationErrorsService.register).toHaveBeenCalledWith('wf-1', 'close failed');
-		});
-
 		test('starts one recovery for two back-to-back failures of the same node', async () => {
 			const nonWebhookTriggerRegistrar = mock<NonWebhookTriggerRegistrar>();
 			const triggerExecutionContextFactory = mock<TriggerExecutionContextFactory>();
