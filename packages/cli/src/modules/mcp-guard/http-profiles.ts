@@ -1,4 +1,4 @@
-import { isRecord } from './gym-admin';
+import { isRecord } from '@n8n/utils/is-record';
 import { looksLikeId, type HttpToolArgs } from './http-tool-caller';
 
 /** What the guard needs to run one HTTP vendor on a gym. The instructions are in `vendors/<name>.md`. */
