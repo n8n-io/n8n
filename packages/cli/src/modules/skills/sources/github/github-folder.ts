@@ -82,11 +82,14 @@ export async function readRepositoryFolder(
 	const skillFolders = new Set(findSkillFolders(result.paths, root).folders);
 	// Each file is one request. Fetch only the files that a skill in the picker can keep. The
 	// other files keep their path, so the review lists them.
+	const starvedFolders = new Set<string>();
 	const keep = selectSkillFiles(
 		new Map([...blobs].map(([path, { size }]) => [path, size])),
 		skillFolders,
 		fileSelectionLimits(limits),
+		starvedFolders,
 	);
+	if (starvedFolders.size > 0) result.starvedFolders = starvedFolders;
 	for (const [path, { sha, size }] of blobs) {
 		if (!keep.has(path)) continue;
 		const oversized = size > limits.maxFileBytes;

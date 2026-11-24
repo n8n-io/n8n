@@ -8,14 +8,14 @@ describe('withUnsentSkillFiles', () => {
 	const stored = [logo, guide, notes, script];
 	const newGuide = { ...guide, content: 'New.' };
 
-	it('keeps the stored binary files that the update does not name', () => {
-		expect(withUnsentSkillFiles(stored, [newGuide])).toEqual([newGuide, logo]);
+	it('keeps the stored binary files that the update does not name in stored path order', () => {
+		expect(withUnsentSkillFiles(stored, [newGuide])).toEqual([logo, newGuide]);
 	});
 
-	it('also keeps the other files that are not Markdown for a caller that sends Markdown only', () => {
+	it('also keeps the other files that are not Markdown in stored path order for a caller that sends Markdown only', () => {
 		expect(withUnsentSkillFiles(stored, [newGuide], { keepNonMarkdown: true })).toEqual([
-			newGuide,
 			logo,
+			newGuide,
 			script,
 		]);
 	});

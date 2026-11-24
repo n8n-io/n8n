@@ -249,6 +249,35 @@ describe('selectSkillFiles', () => {
 			'a/assets/small.bin',
 		]);
 	});
+
+	it('records only folders starved by maxTotalBytes, not folders capped by their own limits', () => {
+		const files = {
+			'a/SKILL.md': 10,
+			'a/assets/1.bin': 40,
+			'a/assets/2.bin': 40,
+			'a/assets/3.bin': 40,
+			'b/SKILL.md': 10,
+			'b/assets/1.bin': 40,
+		};
+		const starved = new Set<string>();
+
+		const kept = selectSkillFiles(
+			new Map(Object.entries(files)),
+			new Set(['a', 'b']),
+			{ maxFiles: 3, maxSkillBytes: 80, maxTotalBytes: 100, maxFileBytes: 50 },
+			starved,
+		);
+
+		// Skill `a` hit its own maxSkillBytes (80), not maxTotalBytes.
+		// Skill `b` had room in its own budget (40 <= 80), but hit maxTotalBytes (100).
+		expect([...kept].sort()).toEqual([
+			'a/SKILL.md',
+			'a/assets/1.bin',
+			'a/assets/2.bin',
+			'b/SKILL.md',
+		]);
+		expect([...starved]).toEqual(['b']);
+	});
 });
 
 describe('parseGitHubLink', () => {

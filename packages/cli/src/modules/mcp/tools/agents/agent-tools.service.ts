@@ -19,11 +19,15 @@ import {
 	McpOAuth2CredentialTypeSchema,
 	agentSkillSchema,
 	agentTaskSchema,
+	projectSkillDetailsForModel,
 	projectSkillForModel,
 	sanitizeAgentJsonConfig,
+	skillReferenceReadError,
+	skillReferenceReadShape,
 	WEBHOOK_INTEGRATION_TYPE,
 	type AgentJsonConfig,
 	type AgentSkill,
+	type SkillReferenceRead,
 } from '@n8n/api-types';
 import { OutboundHttp } from '@n8n/backend-network';
 import type { OperationContext, User } from '@n8n/db';
@@ -122,7 +126,7 @@ function skillsForModel(skills: Record<string, AgentSkill>) {
 	return Object.fromEntries(
 		Object.entries(skills).map(([id, skill]) => [
 			id,
-			projectSkillForModel(skill, { paths: [], maxLength: 0 }).skill,
+			projectSkillForModel(skill, { paths: [], maxBytes: 0 }).skill,
 		]),
 	);
 }
@@ -193,6 +197,14 @@ const getAgentInput = {
 		.describe(
 			'Read a published version snapshot instead of the draft, e.g. the activeVersionId. Snapshots are read-only, so the response has no configHash.',
 		),
+	skillId: z
+		.string()
+		.min(1)
+		.optional()
+		.describe(
+			'Read bounded reference text from one attached skill of this Agent (or of the selected versionId) instead of returning the full Agent snapshot.',
+		),
+	...skillReferenceReadShape,
 } satisfies z.ZodRawShape;
 
 const publishAgentInput = {
@@ -654,7 +666,7 @@ export class McpAgentToolsService {
 			name: 'get_agent',
 			config: {
 				description:
-					'Read an Agent draft, sidecar resources, runnable state, and configHash. Call before mutate_agent. Pass versionId to inspect a published version snapshot instead of the draft. A skill lists its files by path and size, without content. Read the text of a file with get_skill and referencePath.',
+					'Read an Agent draft, sidecar resources, runnable state, and configHash. Call before mutate_agent. Pass versionId to inspect a published version snapshot instead of the draft. A skill lists its files by path and size, without content. Pass skillId (and optional referencePath, referenceOffset, and versionId) to read bounded reference text from an attached skill.',
 				inputSchema: getAgentInput,
 				annotations: {
 					title: 'Get Agent',
@@ -664,14 +676,34 @@ export class McpAgentToolsService {
 					openWorldHint: false,
 				},
 			},
-			handler: async ({ agentId, versionId }) =>
+			handler: async ({ agentId, versionId, skillId, referencePath, referenceOffset }) =>
 				await this.run(
 					user,
 					'get_agent',
-					{ agentId, ...(versionId ? { versionId } : {}) },
+					{
+						agentId,
+						...(versionId ? { versionId } : {}),
+						...(skillId ? { skillId } : {}),
+					},
 					async () => {
+						if (!skillId && (referencePath !== undefined || referenceOffset !== undefined)) {
+							throw new UserError('Pass skillId with referencePath or referenceOffset.');
+						}
+						const readError = skillReferenceReadError({ referencePath, referenceOffset });
+						if (readError) throw new UserError(readError);
+
 						const agent = await this.resolveAgent(user, agentId);
 						await this.assertScope(user, agent.projectId, 'agent:read');
+						if (skillId) {
+							return {
+								ok: true,
+								...(await this.getAgentSkillDetails(agent, skillId, {
+									versionId,
+									referencePath,
+									referenceOffset,
+								})),
+							};
+						}
 						const snapshot = versionId
 							? await this.getAgentVersionSnapshot(agent.projectId, agentId, versionId)
 							: await this.getAgentSnapshot(user, agent);
@@ -1431,6 +1463,49 @@ export class McpAgentToolsService {
 				id,
 				descriptor: tool.descriptor,
 			})),
+		};
+	}
+
+	/**
+	 * Bounded read of one skill attached to the draft or to a published version snapshot.
+	 * Uses the Agent's own authorization so Agent-scoped MCP clients can read attached files,
+	 * and resolves pinned or published skill versions directly from the selected definition.
+	 */
+	private async getAgentSkillDetails(
+		agent: ProjectAgent,
+		skillId: string,
+		{ versionId, referencePath, referenceOffset }: { versionId?: string } & SkillReferenceRead,
+	) {
+		let skill: AgentSkill;
+		if (versionId) {
+			const { definition } = await this.agentPublishService.getVersion(
+				agent.id,
+				agent.projectId,
+				versionId,
+			);
+			const found = Object.hasOwn(definition.skills, skillId)
+				? definition.skills[skillId]
+				: undefined;
+			if (!found) {
+				throw new UserError(`Skill "${skillId}" is not attached to version "${versionId}".`);
+			}
+			skill = found;
+		} else {
+			skill = await this.agentSkillsService.getSkill(agent.id, agent.projectId, skillId);
+		}
+		const { missingReferencePaths, ...projection } = projectSkillDetailsForModel(skill, {
+			referencePath,
+			referenceOffset,
+		});
+		if (missingReferencePaths) {
+			throw new UserError(`Skill reference not found: ${missingReferencePaths.join(', ')}`);
+		}
+		return {
+			agentId: agent.id,
+			...(versionId ? { versionId } : {}),
+			skillId,
+			...(!versionId ? { skillHash: getAgentSkillHash(skill) } : {}),
+			...projection,
 		};
 	}
 

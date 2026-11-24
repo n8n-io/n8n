@@ -327,26 +327,28 @@ describe('McpSkillToolsService', () => {
 
 		it('bounds reference content and reads omitted paths and the remaining parts on request', async () => {
 			const referencePath = 'reference/long.md';
-			const first = 'x'.repeat(72 * 1024);
+			const fullContent = `${'x'.repeat(50 * 1024)}Last part`;
 			skillService.get.mockResolvedValue({
 				...detail,
 				skill: {
 					...detail.skill,
 					references: [
-						{ path: referencePath, content: `${first}Last part` },
+						{ path: referencePath, content: fullContent },
 						{ path: 'reference/other.md', content: 'Another guide' },
 					],
 				},
 			});
 
 			const initial = await callTool('get_skill', { skillId: 'skill_a' });
+			const firstRef = (
+				initial.structuredContent.skill as {
+					references: Array<{ content?: string; nextOffset?: number; contentTruncated?: boolean }>;
+				}
+			).references[0];
+			expect(firstRef.contentTruncated).toBe(true);
+			expect(firstRef.nextOffset).toBeGreaterThan(0);
+			expect(firstRef.content).toBe(fullContent.slice(0, firstRef.nextOffset));
 			expect(initial.structuredContent).toMatchObject({
-				skill: {
-					references: [
-						{ content: first, nextOffset: first.length },
-						{ path: 'reference/other.md' },
-					],
-				},
 				omittedReferencePaths: ['reference/other.md'],
 			});
 			expect(JSON.stringify(initial.structuredContent)).not.toContain('Another guide');
@@ -354,12 +356,12 @@ describe('McpSkillToolsService', () => {
 			const next = await callTool('get_skill', {
 				skillId: 'skill_a',
 				referencePath,
-				referenceOffset: first.length,
+				referenceOffset: firstRef.nextOffset,
 			});
 			expect(next.structuredContent).toMatchObject({
 				skill: {
 					references: [
-						{ path: referencePath, content: 'Last part' },
+						{ path: referencePath, content: fullContent.slice(firstRef.nextOffset) },
 						{ path: 'reference/other.md' },
 					],
 				},

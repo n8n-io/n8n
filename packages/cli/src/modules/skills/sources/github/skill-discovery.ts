@@ -119,11 +119,14 @@ export type SkillFileSelectionLimits = {
  * because they are what n8n kept before it kept other files. The other files follow in
  * priority order while the bytes of all skills fit `maxTotalBytes`. A file over
  * `maxFileBytes` is in the result, so the reader lists it as too large.
+ * When `starvedFolders` is provided, records each skill folder that had at least one file
+ * skipped only because the shared `maxTotalBytes` budget was exhausted.
  */
 export function selectSkillFiles(
 	sizes: ReadonlyMap<string, number>,
 	folders: ReadonlySet<string>,
 	limits: SkillFileSelectionLimits,
+	starvedFolders?: Set<string>,
 ): Set<string> {
 	const keep = new Set<string>();
 	const skills = new Map<
@@ -174,11 +177,11 @@ export function selectSkillFiles(
 		);
 		for (const path of skill.files) {
 			const size = sizes.get(path) ?? 0;
-			if (
-				skill.count >= limits.maxFiles ||
-				skill.bytes + size > limits.maxSkillBytes ||
-				total + size > limits.maxTotalBytes
-			) {
+			if (skill.count >= limits.maxFiles || skill.bytes + size > limits.maxSkillBytes) {
+				continue;
+			}
+			if (total + size > limits.maxTotalBytes) {
+				starvedFolders?.add(folder);
 				continue;
 			}
 			keep.add(path);

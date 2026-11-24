@@ -290,12 +290,13 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 		let archive = await this.archiveAt(parsed, sha, auth);
 		const inRepository = (file: string) => (path ? `${path}/${file}` : file);
 		const skillFile = inRepository(SKILL_FILE);
-		// A linked skill can fall out of the picker, for example when new skills fill it.
+		// A linked skill can fall out of the picker, or lose supporting files when other skills fill
+		// the shared archive budget. Re-read its folder alone so it gets its own budget.
 		if (
 			path !== parsed.path &&
 			archive.paths.includes(skillFile) &&
-			!archive.files.has(skillFile) &&
-			!archive.oversized.has(skillFile)
+			((!archive.files.has(skillFile) && !archive.oversized.has(skillFile)) ||
+				archive.starvedFolders?.has(path))
 		) {
 			archive = await this.archiveAt({ ...parsed, path }, sha, auth);
 		}
@@ -593,13 +594,15 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 		// The repository holds more than n8n keeps. The first read gave the path and the size of
 		// every file, so a second read keeps the files that the skills can store. The other
 		// files keep their path, and the review lists them.
+		const starvedFolders = new Set<string>();
 		const keep = selectSkillFiles(
 			sizes,
 			new Set(findSkillFolders(whole.paths, '').folders),
 			fileSelectionLimits(this.archiveLimits),
+			starvedFolders,
 		);
 		const { paths, files, oversized } = await read({ keep: (path) => keep.has(path) });
-		return { paths, files, oversized };
+		return { paths, files, oversized, ...(starvedFolders.size > 0 ? { starvedFolders } : {}) };
 	}
 
 	private async sendStream(

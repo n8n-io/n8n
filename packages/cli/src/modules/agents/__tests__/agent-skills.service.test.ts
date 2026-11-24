@@ -449,11 +449,11 @@ describe('AgentSkillsService', () => {
 
 			// A model reads no binary content, and the builder prompt says to send Markdown only.
 			it.each([
-				['builder', [newGuide, script, logo]],
-				['mcp', [newGuide, logo]],
+				['builder', [logo, newGuide, script]],
+				['mcp', [logo, newGuide]],
 				['user', [newGuide]],
 			] as const)('from %s saves the files %j', async (modifiedBy, references) => {
-				const stored = { ...skill, references: [guide, script, logo] };
+				const stored = { ...skill, references: [logo, guide, script] };
 				skillRefs.bodies.skill_a = stored;
 				givenAgent({
 					schema: { ...baseConfig, skills: [{ type: 'skill', id: 'skill_a' }] },
@@ -477,7 +477,7 @@ describe('AgentSkillsService', () => {
 			});
 
 			it('keeps the files that are not Markdown when the builder sends no files', async () => {
-				const stored = { ...skill, references: [guide, script, logo] };
+				const stored = { ...skill, references: [logo, guide, script] };
 				skillRefs.bodies.skill_a = stored;
 				givenAgent({
 					schema: { ...baseConfig, skills: [{ type: 'skill', id: 'skill_a' }] },
@@ -494,11 +494,43 @@ describe('AgentSkillsService', () => {
 
 				expect(skillService.saveTrusted).toHaveBeenCalledWith(
 					'skill_a',
-					expect.objectContaining({ references: [script, logo] }),
+					expect.objectContaining({ references: [logo, script] }),
 					'user-1',
 					{},
 				);
 			});
+
+			it.each([
+				['builder', [guide]],
+				['mcp', [guide, script]],
+			] as const)(
+				'does not unpin a pinned skill on a no-op %s update that omits binary or non-Markdown files',
+				async (modifiedBy, sentReferences) => {
+					const pinId = 'skill-version-1';
+					// Stored references are in path order: assets/logo.png < references/guide.md < scripts/run.py.
+					const stored = { ...skill, references: [logo, guide, script] };
+					skillRefs.bodies.skill_a = stored;
+					givenAgent({
+						schema: {
+							...baseConfig,
+							skills: [{ type: 'skill', id: 'skill_a', versionId: pinId }],
+						},
+						skills: { skill_a: stored },
+					});
+
+					const result = await service.updateSkill(
+						agentId,
+						projectId,
+						'skill_a',
+						{ references: [...sentReferences] },
+						{ user, modifiedBy },
+					);
+
+					expect(result.skill).toEqual(stored);
+					expect(skillRefs.unpinDraftRef).not.toHaveBeenCalled();
+					expect(skillService.saveTrusted).not.toHaveBeenCalled();
+				},
+			);
 		});
 
 		it('saves the next version with the skill edit permission, then refreshes the agents that follow it', async () => {

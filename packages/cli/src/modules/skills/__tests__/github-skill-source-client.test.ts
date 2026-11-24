@@ -647,6 +647,50 @@ describe('GitHubSkillSourceClient', () => {
 			expect(fetched.content.name).toBe('linked');
 		});
 
+		it('re-reads a later skill folder alone when earlier skills exhaust the shared archive budget', async () => {
+			const asset = 'x'.repeat(200);
+			const small = clientWithLimits({ maxRetainedBytes: 360 });
+			github.push('acme/skills', {
+				'skills/a/SKILL.md': skillMd('a'),
+				'skills/a/assets/a.txt': asset,
+				'skills/b/SKILL.md': skillMd('b'),
+				'skills/b/assets/b.txt': asset,
+			});
+			const locator = await small.parseLocator('https://github.com/acme/skills/tree/main/skills');
+
+			const { items, revision } = await small.discover(locator);
+			expect(items).toEqual([{ path: 'skills/a' }, { path: 'skills/b' }]);
+
+			const fetchedA = await small.fetchLatest(locator, { path: 'skills/a' }, undefined, revision);
+			const fetchedB = await small.fetchLatest(locator, { path: 'skills/b' }, undefined, revision);
+
+			expect(fetchedA.content.files).toEqual([{ path: 'assets/a.txt', content: asset }]);
+			expect(fetchedB.content.files).toEqual([{ path: 'assets/b.txt', content: asset }]);
+			expect(fetchedB.overLimitFiles).toEqual([]);
+		});
+
+		it('re-reads a starved skill folder alone when a repository archive overflows the shared budget', async () => {
+			const asset = 'x'.repeat(200);
+			const small = clientWithLimits({ maxRetainedBytes: 360 });
+			github.push('acme/skills', {
+				'a/SKILL.md': skillMd('a'),
+				'a/assets/a.txt': asset,
+				'b/SKILL.md': skillMd('b'),
+				'b/assets/b.txt': asset,
+			});
+			const locator = await small.parseLocator('https://github.com/acme/skills');
+
+			const { items, revision } = await small.discover(locator);
+			expect(items).toEqual([{ path: 'a' }, { path: 'b' }]);
+
+			const fetchedA = await small.fetchLatest(locator, { path: 'a' }, undefined, revision);
+			const fetchedB = await small.fetchLatest(locator, { path: 'b' }, undefined, revision);
+
+			expect(fetchedA.content.files).toEqual([{ path: 'assets/a.txt', content: asset }]);
+			expect(fetchedB.content.files).toEqual([{ path: 'assets/b.txt', content: asset }]);
+			expect(fetchedB.overLimitFiles).toEqual([]);
+		});
+
 		it('reads only the linked folder at the selected commit when the repository archive is too large', async () => {
 			const files = {
 				'.agents/skill set/pdf/SKILL.md': skillMd('pdf'),

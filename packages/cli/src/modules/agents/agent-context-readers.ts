@@ -1,4 +1,4 @@
-import { projectSkillForModel, SKILL_READ_MAX_LENGTH } from '@n8n/api-types';
+import { projectSkillForModel, SKILL_READ_MAX_BYTES } from '@n8n/api-types';
 import { UserError } from '@n8n/errors';
 
 import type { AgentSkillsService } from './agent-skills.service';
@@ -21,7 +21,7 @@ export async function readAgentSkill(
 	const { missingReferencePaths, ...projection } = projectSkillForModel(skill, {
 		paths: referencePaths,
 		offset: referenceOffset,
-		maxLength: SKILL_READ_MAX_LENGTH,
+		maxBytes: SKILL_READ_MAX_BYTES,
 	});
 	if (missingReferencePaths) {
 		throw new UserError(`Skill reference not found: ${missingReferencePaths.join(', ')}`);

@@ -1,5 +1,6 @@
 import type { AgentSkillReference } from '@n8n/api-types';
 
+import { compareSkillFilePaths } from './skill-content-hash';
 import { MARKDOWN_FILE } from './skill-md';
 
 /**
@@ -7,7 +8,8 @@ import { MARKDOWN_FILE } from './skill-md';
  * content, so it cannot send the file back. The stored binary files that the update does not
  * name stay, and a binary file with empty content means the stored file. `keepNonMarkdown` is
  * for a caller whose instructions say to send Markdown only: its update replaces the Markdown
- * files, and every other stored file stays.
+ * files, and every other stored file stays. The result keeps stored path order so an unchanged
+ * update compares equal to the stored skill.
  */
 export function withUnsentSkillFiles(
 	stored: readonly AgentSkillReference[],
@@ -25,5 +27,5 @@ export function withUnsentSkillFiles(
 			!named.has(file.path) &&
 			(file.isBinary === true || (keepNonMarkdown && !MARKDOWN_FILE.test(file.path))),
 	);
-	return [...files, ...kept];
+	return [...files, ...kept].sort((left, right) => compareSkillFilePaths(left.path, right.path));
 }

@@ -53,6 +53,8 @@ export type RepositoryArchive = {
 	files: Map<string, Buffer>;
 	/** Oversized files. Keep a SHA-256 hash only for SKILL.md. */
 	oversized: Map<string, string | null>;
+	/** Skill folders that lost supporting files only because other skills filled `maxRetainedBytes`. */
+	starvedFolders?: ReadonlySet<string>;
 };
 
 /** About the bytes that an archive holds in memory, for the cache budget. */

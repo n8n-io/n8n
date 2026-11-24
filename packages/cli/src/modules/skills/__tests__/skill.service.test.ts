@@ -1026,9 +1026,9 @@ describe('SkillService', () => {
 			expect(saveTrusted.mock.calls[0][1]).toEqual({
 				baseSkillHash: 'hash-2',
 				references: [
-					{ path: 'references/new.md', content: 'New.' },
-					{ path: 'assets/old.png', content: 'Now text.' },
 					{ path: 'assets/logo.png', content: 'AP8=', isBinary: true },
+					{ path: 'assets/old.png', content: 'Now text.' },
+					{ path: 'references/new.md', content: 'New.' },
 				],
 			});
 		});

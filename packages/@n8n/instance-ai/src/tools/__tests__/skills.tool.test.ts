@@ -205,20 +205,28 @@ describe('skills tool', () => {
 
 	it('reads the next part of a reference on request', async () => {
 		const referencePath = 'reference/guide.md';
-		const first = 'x'.repeat(72 * 1024);
+		const fullContent = `${'x'.repeat(50 * 1024)}End`;
 		service.get.mockResolvedValue({
 			...detail,
-			skill: { ...detail.skill, references: [{ path: referencePath, content: `${first}End` }] },
+			skill: { ...detail.skill, references: [{ path: referencePath, content: fullContent }] },
 		});
 		const tool = createSkillsTool(createContext(service));
 		const input = { action: 'get', skillId: 'skill_a', referencePath };
 
-		const start = await executeTool(tool, input);
-		expect(start).toMatchObject({
-			skill: { references: [{ content: first, nextOffset: first.length }] },
+		const start = (await executeTool(tool, input)) as {
+			skill: {
+				references: Array<{ content?: string; nextOffset?: number; contentTruncated?: boolean }>;
+			};
+		};
+		const firstRef = start.skill.references[0];
+		expect(firstRef.contentTruncated).toBe(true);
+		expect(firstRef.nextOffset).toBeGreaterThan(0);
+		expect(firstRef.content).toBe(fullContent.slice(0, firstRef.nextOffset));
+
+		const end = await executeTool(tool, { ...input, referenceOffset: firstRef.nextOffset });
+		expect(end).toMatchObject({
+			skill: { references: [{ content: fullContent.slice(firstRef.nextOffset) }] },
 		});
-		const end = await executeTool(tool, { ...input, referenceOffset: first.length });
-		expect(end).toMatchObject({ skill: { references: [{ content: 'End' }] } });
 		expect(end).not.toHaveProperty('skill.references.0.nextOffset');
 	});
 
