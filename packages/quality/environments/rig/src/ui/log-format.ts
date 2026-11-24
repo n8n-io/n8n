@@ -1,4 +1,8 @@
+import { stripVTControlCharacters } from 'node:util';
 import pc from 'picocolors';
+
+/** Log lines come from the components and can carry terminal control sequences. */
+const clean = stripVTControlCharacters;
 
 const LEVEL_COLORS: Record<string, (text: string) => string> = {
 	error: pc.red,
@@ -33,15 +37,15 @@ function formatValue(value: unknown): string {
  * `12:00:01 info  message scope key=value`. Other lines stay as they are.
  */
 export function formatLogLine(line: string): string {
-	if (!line.startsWith('{"')) return line;
+	if (!line.startsWith('{"')) return clean(line);
 	let parsed: unknown;
 	try {
 		parsed = JSON.parse(line);
 	} catch {
-		return line;
+		return clean(line);
 	}
 	if (!isRecord(parsed) || typeof parsed.message !== 'string' || typeof parsed.level !== 'string') {
-		return line;
+		return clean(line);
 	}
 	const metadata = isRecord(parsed.metadata) ? parsed.metadata : {};
 	const extra: Record<string, unknown> = { ...metadata };
@@ -50,18 +54,18 @@ export function formatLogLine(line: string): string {
 	}
 	const stamp = time(extra.timestamp);
 	const scopes = Array.isArray(extra.scopes)
-		? extra.scopes.filter((s) => typeof s === 'string')
+		? extra.scopes.filter((s) => typeof s === 'string').map(clean)
 		: [];
 	delete extra.scopes;
 	const details = Object.entries(extra)
 		.filter(([key, value]) => !NOISE.has(key) && value !== undefined)
-		.map(([key, value]) => `${key}=${formatValue(value)}`);
+		.map(([key, value]) => clean(`${key}=${formatValue(value)}`));
 
 	const color = LEVEL_COLORS[parsed.level] ?? ((text: string) => text);
 	return [
 		stamp ? pc.dim(stamp) : undefined,
-		color(parsed.level.padEnd(5)),
-		parsed.message,
+		color(clean(parsed.level).padEnd(5)),
+		clean(parsed.message),
 		scopes.length > 0 ? pc.cyan(`[${scopes.join(',')}]`) : undefined,
 		details.length > 0 ? pc.dim(details.join(' ')) : undefined,
 	]

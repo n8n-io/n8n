@@ -32,6 +32,24 @@ describe('JSON log lines', () => {
 		expect(formatLogLine('{"not":"a log"}')).toBe('{"not":"a log"}');
 		expect(formatLogLine('{"broken')).toBe('{"broken');
 	});
+
+	it('should strip control characters from the message, the level, and the metadata', () => {
+		const line = JSON.stringify({
+			level: 'info',
+			message: 'bad \u001b[2J message',
+			metadata: { hint: 'x\u001b]52;c;YWFh\u0007', scopes: ['db\u001b[1m'] },
+		});
+		const formatted = plain(formatLogLine(line));
+		expect(formatted).toContain('bad  message');
+		expect(formatted).not.toContain('[2J');
+		expect(formatted).not.toContain('YWFh');
+		expect(formatted).not.toContain('[1m');
+	});
+
+	it('should strip control characters from lines that are not n8n JSON logs', () => {
+		expect(formatLogLine('plain \u001b[31mred\u001b[39m')).toBe('plain red');
+		expect(formatLogLine('\u001b[2J{"broken')).toBe('{"broken');
+	});
 });
 
 describe('status line', () => {

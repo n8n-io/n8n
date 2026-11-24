@@ -2,6 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { request } from 'node:https';
 import { createServer } from 'node:net';
+import { stripVTControlCharacters } from 'node:util';
 
 import type { Component } from '../topology/components';
 
@@ -115,6 +116,10 @@ export async function isPortFree(port: number): Promise<boolean> {
 	return (await canListen(port)) && (await canListen(port, '127.0.0.1'));
 }
 
+function printable(text: string): string {
+	return [...text].map((char) => (char < ' ' || char === '\u007f' ? '?' : char)).join('');
+}
+
 /** Names the process that listens on a port, when `lsof` is available. */
 export function portOwner(port: number): string | undefined {
 	const result = spawnSync('lsof', ['-nP', `-iTCP:${port}`, '-sTCP:LISTEN', '-Fpc'], {
@@ -123,5 +128,7 @@ export function portOwner(port: number): string | undefined {
 	if (result.status !== 0 || !result.stdout) return undefined;
 	const pid = /^p(\d+)/m.exec(result.stdout)?.[1];
 	const command = /^c(.+)$/m.exec(result.stdout)?.[1];
-	return pid ? `${command ?? 'process'} (pid ${pid})` : undefined;
+	// A process controls its own name. Keep control characters out of the terminal.
+	const name = command ? printable(stripVTControlCharacters(command)) : 'process';
+	return pid ? `${name} (pid ${pid})` : undefined;
 }

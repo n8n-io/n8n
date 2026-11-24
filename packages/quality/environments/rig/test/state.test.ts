@@ -3,7 +3,13 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { envsDir } from '../src/config/paths';
 import { envPaths } from '../src/environment';
-import { type ComponentState, liveStates, writeState } from '../src/runtime/state';
+import {
+	type ComponentState,
+	liveStates,
+	pidIdentity,
+	processStartTime,
+	writeState,
+} from '../src/runtime/state';
 import { inheritedOwner } from '../src/runtime/supervisor';
 
 function state(component: string, pid: number, ownerPid: number | null = null): ComponentState {
@@ -37,6 +43,27 @@ describe('live states', () => {
 
 	it('should be empty without a state directory', () => {
 		expect(liveStates(envPaths('none'))).toEqual([]);
+	});
+});
+
+describe('pid identity', () => {
+	it('should recognize the same process, a dead pid, and a recycled pid', () => {
+		const same = state('main-1', process.pid);
+		same.processStart = processStartTime(process.pid);
+		expect(pidIdentity(same)).toBe('same');
+
+		const dead = state('main-1', DEAD_PID);
+		dead.processStart = 'Wed Jan  1 00:00:00 1970';
+		expect(pidIdentity(dead)).toBe('dead');
+
+		const recycled = state('main-1', process.pid);
+		recycled.processStart = 'Wed Jan  1 00:00:00 1970';
+		expect(pidIdentity(recycled)).toBe('other');
+	});
+
+	it('should answer same when it cannot tell the start time', () => {
+		// state() records no processStart, so there is no anchor to compare.
+		expect(pidIdentity(state('main-1', process.pid))).toBe('same');
 	});
 });
 

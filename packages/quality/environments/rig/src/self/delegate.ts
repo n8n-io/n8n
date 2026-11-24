@@ -1,9 +1,12 @@
 import { spawn } from 'node:child_process';
-import { existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import pc from 'picocolors';
+import { z } from 'zod';
 
+import { dataDir } from '../config/paths';
 import { findMonorepoRoot } from '../source';
+import { confirm, isInteractive } from '../ui/prompt';
 import { BUILD, DELEGATED_FROM_VAR, versionId } from './build-info';
 import { RIG_PACKAGE_DIR } from './install';
 
@@ -21,13 +24,65 @@ export type HandOff =
  */
 export function handOffTarget(): HandOff {
 	if (!BUILD || process.env[NO_DELEGATE_VAR] === '1') return { kind: 'none' };
-	const root = findMonorepoRoot(process.cwd());
-	if (!root) return { kind: 'none' };
+	const found = findMonorepoRoot(process.cwd());
+	if (!found) return { kind: 'none' };
+	// The real path, so a trust entry matches the same checkout through a symlink.
+	const root = realpathSync(found);
 	const packageDir = join(root, RIG_PACKAGE_DIR);
 	const entry = join(packageDir, 'bin', 'rig.mjs');
 	if (!existsSync(entry)) return { kind: 'none' };
 	if (!existsSync(join(packageDir, 'node_modules', 'tsx'))) return { kind: 'not-installed', root };
 	return { kind: 'checkout', root, entry };
+}
+
+const trustSchema = z.array(z.string());
+
+function trustFile(): string {
+	return join(dataDir(), 'trusted-checkouts.json');
+}
+
+/** The checkouts that the user allowed the global rig to hand off to. */
+export function trustedCheckouts(): string[] {
+	try {
+		const result = trustSchema.safeParse(JSON.parse(readFileSync(trustFile(), 'utf8')));
+		return result.success ? result.data : [];
+	} catch {
+		return [];
+	}
+}
+
+export function isTrustedCheckout(root: string): boolean {
+	return trustedCheckouts().includes(root);
+}
+
+export function trustCheckout(root: string): void {
+	const trusted = trustedCheckouts();
+	if (trusted.includes(root)) return;
+	mkdirSync(dirname(trustFile()), { recursive: true });
+	writeFileSync(trustFile(), `${JSON.stringify([...trusted, root], null, 2)}\n`);
+}
+
+/**
+ * A hand-off runs code of the checkout, so it needs the consent of the user.
+ * Any directory can claim `name: "n8n-monorepo"` in its package.json. Without
+ * a terminal, the global version runs instead of running untrusted code.
+ */
+async function askTrust(root: string): Promise<boolean> {
+	if (!isInteractive()) {
+		console.error(
+			pc.dim(
+				`rig: ${root} has its own rig, but the checkout is not trusted. Run rig interactively once to trust it. ${NO_DELEGATE_VAR}=1 turns off the hand-off.`,
+			),
+		);
+		return false;
+	}
+	const trusted = await confirm(`Trust this checkout and run its rig? ${root}`, true);
+	if (!trusted) {
+		console.error(pc.dim(`rig: running the global version. ${NO_DELEGATE_VAR}=1 skips this.`));
+		return false;
+	}
+	trustCheckout(root);
+	return true;
 }
 
 /** Runs the rig of the checkout. Resolves to true when it handed off. */
@@ -42,6 +97,7 @@ export async function handOff(args: string[]): Promise<boolean> {
 		return false;
 	}
 	if (target.kind !== 'checkout' || !BUILD) return false;
+	if (!isTrustedCheckout(target.root) && !(await askTrust(target.root))) return false;
 
 	const child = spawn(process.execPath, [target.entry, ...args], {
 		stdio: 'inherit',

@@ -93,6 +93,20 @@ export function isStateAlive(state: ComponentState): boolean {
 	return start === '' || start === state.processStart;
 }
 
+/**
+ * Whether the pid of the state is dead, still the recorded process, or now a
+ * different process. The OS can recycle a pid after its process exits, so check
+ * the start time before a signal. Without a recorded or a readable start time,
+ * this cannot tell and answers 'same'.
+ */
+export function pidIdentity(state: ComponentState): 'dead' | 'same' | 'other' {
+	if (!isPidAlive(state.pid)) return 'dead';
+	if (!state.processStart) return 'same';
+	const start = processStartTime(state.pid);
+	if (start === '') return 'same';
+	return start === state.processStart ? 'same' : 'other';
+}
+
 /** Returns the state of a running component, and removes stale state. */
 export function liveState(paths: EnvPaths, component: string): ComponentState | undefined {
 	const state = readState(paths, component);

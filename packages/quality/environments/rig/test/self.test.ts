@@ -6,7 +6,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { RigError } from '../src/errors';
 import { type BuildInfo, versionId } from '../src/self/build-info';
-import { handOffTarget } from '../src/self/delegate';
+import {
+	handOffTarget,
+	isTrustedCheckout,
+	trustCheckout,
+	trustedCheckouts,
+} from '../src/self/delegate';
 import {
 	currentInstall,
 	installBundle,
@@ -99,6 +104,24 @@ describe('global install', () => {
 describe('hand-off', () => {
 	it('should not hand off when rig runs from source', () => {
 		expect(handOffTarget()).toEqual({ kind: 'none' });
+	});
+});
+
+describe('checkout trust', () => {
+	it('should trust a checkout once and keep the trust', () => {
+		expect(isTrustedCheckout('/repo')).toBe(false);
+		trustCheckout('/repo');
+		trustCheckout('/repo');
+		trustCheckout('/other');
+		expect(trustedCheckouts()).toEqual(['/repo', '/other']);
+		expect(isTrustedCheckout('/repo')).toBe(true);
+	});
+
+	it('should ignore a broken trust file', () => {
+		mkdirSync(join(root, 'data'), { recursive: true });
+		writeFileSync(join(root, 'data', 'trusted-checkouts.json'), 'not json');
+		expect(trustedCheckouts()).toEqual([]);
+		expect(isTrustedCheckout('/repo')).toBe(false);
 	});
 });
 

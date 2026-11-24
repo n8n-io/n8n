@@ -100,7 +100,8 @@ export class PrefixPrinter {
 		const prefix = this.prefix(name);
 		let output = '';
 		for (const text of texts) {
-			const formatted = this.readable ? formatLogLine(text) : text;
+			// Component output can carry terminal control sequences. Strip them.
+			const formatted = this.readable ? formatLogLine(text) : stripVTControlCharacters(text);
 			// A JSON message can contain new lines. Each one gets the prefix.
 			for (const line of formatted.split('\n')) output += `${prefix}${line}\n`;
 		}

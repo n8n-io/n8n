@@ -121,6 +121,8 @@ export function buildCompose(envName: string, topology: Topology): Record<string
 						`http://host.docker.internal:${target?.ports.http ?? 5678}`,
 					],
 			// rig passes the token in the environment of `compose`, so it stays out of this file.
+			// The container env keeps it out of `ps`, but anyone with container runtime access
+			// reads it with `docker inspect`. On Docker that access is root-equivalent already.
 			...(tunnel.hostname ? { environment: [`TUNNEL_TOKEN=\${${TUNNEL_TOKEN_KEY}}`] } : {}),
 			ports: [`127.0.0.1:${metricsPort}:${metricsPort}`],
 			// Docker Desktop, OrbStack, and Podman define this host. Docker on Linux needs the mapping.

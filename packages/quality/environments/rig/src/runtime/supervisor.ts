@@ -25,6 +25,7 @@ import {
 	currentTty,
 	isPidAlive,
 	liveState,
+	pidIdentity,
 	processStartTime,
 	writeState,
 } from './state';
@@ -314,27 +315,52 @@ export class Supervisor {
 		const name = state.component;
 		this.stopping.add(name);
 		try {
+			let identity = pidIdentity(state);
+			if (identity === 'other') {
+				// The pid was recycled. A signal would hit an unrelated process.
+				this.notOurs(name, state.pid);
+				clearState(this.env.paths, name, state.pid);
+				return;
+			}
 			signalGroup(state.pid, 'SIGTERM');
 			const deadline = Date.now() + graceMs;
-			while (isPidAlive(state.pid) && Date.now() < deadline) {
+			while (identity === 'same' && Date.now() < deadline) {
 				await sleep(100);
+				identity = pidIdentity(state);
 			}
-			if (isPidAlive(state.pid)) signalGroup(state.pid, 'SIGKILL');
-			// A process in uninterruptible sleep ignores SIGKILL. Do not wait for it forever.
-			const killDeadline = Date.now() + KILL_WAIT_MS;
-			while (isPidAlive(state.pid) && Date.now() < killDeadline) await sleep(50);
-			if (isPidAlive(state.pid)) {
-				this.printer.event(
-					name,
-					pc.yellow(`pid ${state.pid} did not exit after SIGKILL. Check it with \`ps\`.`),
-				);
+			if (identity === 'same') {
+				signalGroup(state.pid, 'SIGKILL');
+				// A process in uninterruptible sleep ignores SIGKILL. Do not wait for it forever.
+				const killDeadline = Date.now() + KILL_WAIT_MS;
+				while (identity === 'same' && Date.now() < killDeadline) {
+					await sleep(50);
+					identity = pidIdentity(state);
+				}
+				if (identity === 'same') {
+					this.printer.event(
+						name,
+						pc.yellow(`pid ${state.pid} did not exit after SIGKILL. Check it with \`ps\`.`),
+					);
+				}
 			}
-			// The launcher's runners are in its group. Make sure they are gone too.
-			signalGroup(state.pid, 'SIGKILL', false);
+			if (identity === 'other') {
+				// The component exited and another process took its pid. Do not signal it.
+				this.notOurs(name, state.pid);
+			} else {
+				// The launcher's runners are in its group. Make sure they are gone too.
+				signalGroup(state.pid, 'SIGKILL', false);
+			}
 			clearState(this.env.paths, name, state.pid);
 		} finally {
 			this.stopping.delete(name);
 		}
+	}
+
+	private notOurs(name: string, pid: number): void {
+		this.printer.event(
+			name,
+			pc.yellow(`pid ${pid} now belongs to another process. Left it alone.`),
+		);
 	}
 
 	/** Stops and starts a component. The new process keeps the owner of the old one. */

@@ -80,8 +80,11 @@ checkout that built it, so a branch switch or a deleted worktree does not
 break it.
 
 - Inside an n8n checkout that contains rig, the global `rig` runs the rig of
-  that checkout. `RIG_NO_DELEGATE=1` turns this off. `rig --version` shows
-  both versions.
+  that checkout. A hand-off runs code of the checkout, so the first time `rig`
+  asks you to trust it. It saves the trusted checkouts in
+  `~/.local/share/rig/trusted-checkouts.json`. Without a terminal, the global
+  version runs instead. `RIG_NO_DELEGATE=1` turns this off. `rig --version`
+  shows both versions.
 - Outside a checkout, `rig` runs n8n from `repo` in the global config
   (`rig config set repo ~/work/n8n`). To pin one environment to a checkout,
   set `source: repo:<path>` in its `env.yaml`.
@@ -144,6 +147,10 @@ tunnel:
   hostname: n8n-dev.example.com   # needs CLOUDFLARE_TUNNEL_TOKEN in secrets.env
   target: main-1                  # optional, the main to expose
 ```
+
+`rig` passes the token to the container through its environment, so it stays
+out of the compose file and out of `ps`. Anyone with access to the container
+runtime can still read it with `docker inspect rig-<env>-tunnel`.
 
 `pnpm rig status` shows the URL. `pnpm rig open --public` opens it.
 
