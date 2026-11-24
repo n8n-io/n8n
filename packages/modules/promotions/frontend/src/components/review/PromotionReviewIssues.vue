@@ -4,7 +4,7 @@ import { N8nEmptyState, N8nLoading } from '@n8n/design-system';
 import type { SlotPromotionIssuesProps } from '@n8n/frontend-module-sdk';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { ref, shallowRef, watch } from 'vue';
+import { computed, ref, shallowRef, watch } from 'vue';
 
 import { getLoadedReviewChanges } from '../../promotionReviewChanges';
 import { getPromotionReviewChanges } from '../../promotions.api';
@@ -21,6 +21,8 @@ const rootStore = useRootStore();
 
 const state = ref<'loading' | 'error' | 'ready'>('loading');
 const missingDependencies = shallowRef<PromotionMissingDependency[]>([]);
+// A review shows no project of a dependency. The reviewer does not promote from that project.
+const listed = computed(() => missingDependencies.value.map(({ project, ...entry }) => entry));
 // Each load counts up, so the answer for a review that is no longer shown is dropped.
 let generation = 0;
 
@@ -62,7 +64,7 @@ watch(
 	<PromotionBlockers
 		v-else
 		:check="null"
-		:missing-dependencies="missingDependencies"
+		:missing-dependencies="listed"
 		:busy="false"
 		:intro="i18n.baseText('promotions.review.issues.intro')"
 		:outside-description="i18n.baseText('promotions.review.issues.outsideDescription')"

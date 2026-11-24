@@ -172,7 +172,7 @@ it('shows the workflows that use a dependency as text, because the review opens 
 	}
 });
 
-it('shows no project and no owner in the text of a row', async () => {
+it('shows no project and no owner of a dependency, also when the API sends the project', async () => {
 	vi.mocked(api.getPromotionReviewChanges).mockResolvedValue(
 		reviewChanges([
 			{ ...otherProjectCredential, project: { id: 'p2', name: 'Finance' } },
@@ -188,6 +188,10 @@ it('shows no project and no owner in the text of a row', async () => {
 	expect(getByTestId('promotion-review-issues')).not.toHaveTextContent('Finance');
 	for (const row of getAllByTestId('promotion-preview-blocker-row')) {
 		expect(row).not.toHaveTextContent(/project|owner/i);
+	}
+	// The reason of the action does not name the project too.
+	for (const action of getAllByTestId('promotion-preview-blocker-disabled-action')) {
+		expect(action.getAttribute('aria-label')).not.toContain('Finance');
 	}
 });
 
