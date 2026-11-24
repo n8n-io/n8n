@@ -1377,7 +1377,7 @@ describe('WorkflowTriggerActivator', () => {
 			onTriggerFailure(failure);
 			await flushPromises();
 
-			expect(callOrder).toEqual(['teardown', 'save-static', 'register-error', 'error-workflow']);
+			expect(callOrder).toEqual(['teardown', 'save-static', 'error-workflow', 'register-error']);
 			expect(nonWebhookTriggerRegistrar.deregister).toHaveBeenCalledWith(
 				'wf-1',
 				't',
@@ -1407,7 +1407,7 @@ describe('WorkflowTriggerActivator', () => {
 			expect(passedMode).toBe('trigger');
 		});
 
-		test('reports only, when the failing registration is no longer current', async () => {
+		test('logs only, when the failing registration is no longer current', async () => {
 			const nonWebhookTriggerRegistrar = mock<NonWebhookTriggerRegistrar>();
 			const triggerExecutionContextFactory = mock<TriggerExecutionContextFactory>();
 			const activationErrorsService = mock<ActivationErrorsService>();
@@ -1419,14 +1419,57 @@ describe('WorkflowTriggerActivator', () => {
 				errorReporter,
 			});
 			errorReporter.warn.mockClear();
+			logger.info.mockClear();
 
 			onTriggerFailure({ ...failure, isCurrentRegistration: () => false });
 			await flushPromises();
 
-			expect(errorReporter.warn).toHaveBeenCalledTimes(1);
+			expect(logger.info).toHaveBeenCalledWith(
+				'Ignored a runtime error from a replaced connection of trigger node "t"',
+				expect.objectContaining({ workflowId: 'wf-1', nodeId: 't' }),
+			);
+			expect(errorReporter.warn).not.toHaveBeenCalled();
 			expect(nonWebhookTriggerRegistrar.deregister).not.toHaveBeenCalled();
 			expect(triggerExecutionContextFactory.executeErrorWorkflow).not.toHaveBeenCalled();
 			expect(activationErrorsService.register).not.toHaveBeenCalled();
+		});
+
+		test('surfaces the failure and runs the error workflow when the teardown fails', async () => {
+			const nonWebhookTriggerRegistrar = mock<NonWebhookTriggerRegistrar>();
+			const triggerExecutionContextFactory = mock<TriggerExecutionContextFactory>();
+			const activationErrorsService = mock<ActivationErrorsService>();
+			const onTriggerFailure = await activateAndCaptureFailureHandler({
+				nonWebhookTriggerRegistrar,
+				triggerExecutionContextFactory,
+				activationErrorsService,
+			});
+			nonWebhookTriggerRegistrar.deregister.mockRejectedValue(new Error('close failed'));
+
+			onTriggerFailure(failure);
+			await flushPromises();
+
+			expect(activationErrorsService.register).toHaveBeenCalledWith('wf-1', 'trigger crashed');
+			expect(triggerExecutionContextFactory.executeErrorWorkflow).toHaveBeenCalledTimes(1);
+		});
+
+		test('runs the error workflow and logs a recording failure when storing the activation error fails', async () => {
+			const triggerExecutionContextFactory = mock<TriggerExecutionContextFactory>();
+			const activationErrorsService = mock<ActivationErrorsService>();
+			activationErrorsService.register.mockRejectedValue(new Error('cache unavailable'));
+			const onTriggerFailure = await activateAndCaptureFailureHandler({
+				nonWebhookTriggerRegistrar: mock<NonWebhookTriggerRegistrar>(),
+				triggerExecutionContextFactory,
+				activationErrorsService,
+			});
+			logger.error.mockClear();
+
+			onTriggerFailure(failure);
+			await flushPromises();
+
+			expect(triggerExecutionContextFactory.executeErrorWorkflow).toHaveBeenCalledTimes(1);
+			expect(logger.error.mock.calls.map(([message]) => message)).toEqual([
+				'Failed to record the activation error of trigger node "t" of workflow "Test workflow" after a runtime failure',
+			]);
 		});
 
 		test('waits for the workflow lock before it tears the failed node down', async () => {

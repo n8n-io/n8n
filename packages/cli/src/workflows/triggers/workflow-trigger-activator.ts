@@ -1032,33 +1032,17 @@ export class WorkflowTriggerActivator {
 		isCurrentRegistration: () => boolean;
 	}): Promise<void> {
 		const workflowId = workflow.id;
-
-		const activationError = new WorkflowActivationError(
-			`The trigger node "${node.name}" failed at runtime and was deactivated`,
-			{ cause: error, node, level: 'warning' },
-		);
-		this.errorReporter.warn(activationError, {
-			extra: { workflowId, nodeId: node.id, nodeName: node.name, mode, activation },
-			shouldBeLogged: true,
-		});
+		// Stays true when the teardown throws, so a trigger left stuck is still surfaced.
+		let isFailureCurrent = true;
 
 		try {
-			const isTornDown = await this.lifecycleLock.runExclusive({
+			isFailureCurrent = await this.lifecycleLock.runExclusive({
 				workflowId,
 				fn: async () =>
 					await this.tearDownCurrentRegistration(workflow, node.id, isCurrentRegistration),
 				// Runtime recovery has no abort context; it waits for the lock however long it takes.
 				signal: new AbortController().signal,
 			});
-
-			if (isTornDown) {
-				await this.activationErrorsService.register(workflowId, error.message);
-				this.triggerExecutionContextFactory.executeErrorWorkflow(
-					activationError,
-					workflowData,
-					mode,
-				);
-			}
 		} catch (e) {
 			const recoveryError = ensureError(e);
 			this.logger.error(
@@ -1068,6 +1052,32 @@ export class WorkflowTriggerActivator {
 			this.errorReporter.error(recoveryError, {
 				extra: { workflowId, nodeId: node.id, nodeName: node.name },
 			});
+		}
+
+		if (isFailureCurrent) {
+			const activationError = new WorkflowActivationError(
+				`The trigger node "${node.name}" failed at runtime`,
+				{ cause: error, node, level: 'warning' },
+			);
+			this.errorReporter.warn(activationError, {
+				extra: { workflowId, nodeId: node.id, nodeName: node.name, mode, activation },
+				shouldBeLogged: true,
+			});
+			this.triggerExecutionContextFactory.executeErrorWorkflow(activationError, workflowData, mode);
+
+			try {
+				await this.activationErrorsService.register(workflowId, error.message);
+			} catch (e) {
+				this.logger.error(
+					`Failed to record the activation error of trigger node "${node.name}" of workflow "${workflowData.name}" after a runtime failure`,
+					{ workflowId, nodeId: node.id, nodeName: node.name, error: ensureError(e) },
+				);
+			}
+		} else {
+			this.logger.info(
+				`Ignored a runtime error from a replaced connection of trigger node "${node.name}"`,
+				{ workflowId, nodeId: node.id, nodeName: node.name, error },
+			);
 		}
 	}
 
