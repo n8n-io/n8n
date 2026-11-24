@@ -642,7 +642,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 			temporaryWorkflowMarkers: createThreadTemporaryWorkflowMarkers(turn.memory, turn.thread.id),
 			getProjectId: async () => turn.thread.projectId,
 			eventBus: new AssistantEventSink(
-				turn.emitHostEvent,
+				turn,
 				this.logger,
 				trace ? (event) => trace.observeEvent(event) : undefined,
 			),

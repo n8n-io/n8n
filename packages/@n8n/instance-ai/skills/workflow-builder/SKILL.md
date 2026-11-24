@@ -113,6 +113,8 @@ topology. Never solicit secrets through `ask_user`.
    `node-types/index.txt` (searchable node catalog)
 2. A matching runtime skill (`data-table-manager`, `debugging-executions`, …).
 3. Official n8n docs: load `n8n-docs-assistant` and call `n8n-docs`.
+4. If no source answers it and `send_feedback` is available, call it once.
+   Then continue with your best attempt and tell the user what you assumed.
 
 For workflows with several external systems or effects, digests, non-trivial
 branching or Code nodes, read

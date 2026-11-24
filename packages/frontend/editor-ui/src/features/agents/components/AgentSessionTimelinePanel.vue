@@ -27,6 +27,7 @@ import {
 } from '@/features/agents/session-timeline.utils';
 import { timelineColors } from '@/features/agents/session-timeline.styles';
 import { useAgentBackgroundJobs } from '@/features/agents/composables/useAgentBackgroundJobs';
+import type { AgentChatChannel } from '@/features/agents/composables/useAgentApi';
 import {
 	backgroundTasksToTimelineItems,
 	insertBackgroundTaskTimelineItems,
@@ -55,6 +56,8 @@ const props = defineProps<{
 	threadId: string;
 	increaseBudget?: (payload: { field: BudgetAmountField; amount: number }) => Promise<boolean>;
 	personalisation?: AgentJsonConfig['personalisation'] | null;
+	/** The chat routes of the thread. System agents, such as the Assistant, use 'system'. */
+	channel?: AgentChatChannel;
 }>();
 
 // Hands the loaded thread detail up so an enclosing view (the standalone
@@ -93,6 +96,7 @@ const { allJobs, respondToApproval } = useAgentBackgroundJobs({
 	projectId: () => props.projectId,
 	agentId: () => props.agentId,
 	threadId: () => props.threadId,
+	channel: () => props.channel ?? 'chat',
 	active: true,
 });
 
@@ -296,10 +300,11 @@ const approvalDisabled = computed(() => pendingApprovalIdentity.value === thread
 
 // The approval suspension parked on the latest execution, if that execution is
 // still awaiting a decision. Independent of the selected row: the card sits
-// inline in the timeline table.
+// inline in the timeline table. Only task runs resume from here; a chat turn,
+// such as an Assistant turn, takes its approval in the chat.
 const openApprovalItem = computed((): TimelineItem | null => {
 	const latest = executions.value.at(-1);
-	if (!latest || latest.status !== 'awaiting') return null;
+	if (!latest || latest.status !== 'awaiting' || latest.source !== 'task') return null;
 	return (
 		items.value.find(
 			(item) =>

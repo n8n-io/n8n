@@ -73,6 +73,9 @@ const loadActivityTool = lazyMod(
 const loadSaveUserPreferenceTool = lazyMod(
 	() => require('./save-user-preference.tool') as typeof import('./save-user-preference.tool'),
 );
+const loadSendFeedbackTool = lazyMod(
+	() => require('./send-feedback.tool') as typeof import('./send-feedback.tool'),
+);
 const loadSkillsTool = lazyMod(() => require('./skills.tool') as typeof import('./skills.tool'));
 const loadN8nDocsTool = lazyMod(
 	() => require('./n8n-docs.tool') as typeof import('./n8n-docs.tool'),
@@ -267,6 +270,14 @@ function getOrchestratorDomainToolFactories(
 		tools.push([
 			DOMAIN_TOOL_IDS.SAVE_USER_PREFERENCE,
 			() => loadSaveUserPreferenceTool().createSaveUserPreferenceTool(context),
+		]);
+	}
+
+	// The report is agent-written text, so it is not sent when the instance does not share data.
+	if (context.agentFeedbackService && context.allowSendingParameterValues !== false) {
+		tools.push([
+			DOMAIN_TOOL_IDS.SEND_FEEDBACK,
+			() => loadSendFeedbackTool().createSendFeedbackTool(context),
 		]);
 	}
 
