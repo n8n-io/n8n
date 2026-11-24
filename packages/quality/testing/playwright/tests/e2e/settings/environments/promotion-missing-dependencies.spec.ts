@@ -9,10 +9,10 @@ import type { PromotionsApiHelper } from '../../../../services/promotions-api-he
 import { generateUniqueRepoName } from '../../../../utils/source-control-helper';
 
 const PROMOTION_SCOPES: ApiKeyScope[] = [
-	'promotions:create',
-	'promotions:list',
-	'promotions:delete',
-	'promotions:connect',
+	'promotions:manageProviders',
+	'promotions:readProviders',
+	'promotions:manageEnvironments',
+	'promotions:readEnvironments',
 	'promotions:promote',
 ];
 
