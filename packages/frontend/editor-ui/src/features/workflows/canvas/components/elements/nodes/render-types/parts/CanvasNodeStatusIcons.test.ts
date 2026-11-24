@@ -502,6 +502,7 @@ describe('CanvasNodeStatusIcons', () => {
 					type === 'slackApi' ? { name: 'slackApi', displayName: 'Slack API' } : undefined,
 				);
 			credentialsStore.getCredentialById = vi.fn().mockReturnValue(undefined);
+			credentialsStore.getUsableCredentialById = vi.fn().mockReturnValue(undefined);
 		});
 
 		function renderSlackNode({
@@ -565,6 +566,17 @@ describe('CanvasNodeStatusIcons', () => {
 
 			const { queryByTestId } = renderSlackNode({ credentialType: 'slackOAuth2Api' });
 
+			expect(queryByTestId('node-credential-type-restricted')).toBeInTheDocument();
+		});
+
+		it('should find the selected credential in the usable credentials of the workflow', () => {
+			credentialsStore.getUsableCredentialById = vi
+				.fn()
+				.mockReturnValue({ id: '1', name: 'Slack account', type: 'slackApi' });
+
+			const { queryByTestId } = renderSlackNode({ credentialType: 'slackOAuth2Api' });
+
+			expect(credentialsStore.getCredentialById).not.toHaveBeenCalled();
 			expect(queryByTestId('node-credential-type-restricted')).toBeInTheDocument();
 		});
 

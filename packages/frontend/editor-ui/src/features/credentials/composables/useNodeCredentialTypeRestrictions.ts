@@ -35,7 +35,10 @@ export function useNodeCredentialTypeRestrictions(
 			),
 		);
 		for (const { id } of Object.values(current.credentials ?? {})) {
-			const selectedType = id ? credentialsStore.getCredentialById(id)?.type : undefined;
+			const selectedType = id
+				? (credentialsStore.getUsableCredentialById(id) ?? credentialsStore.getCredentialById(id))
+						?.type
+				: undefined;
 			if (selectedType) credentialTypes.add(selectedType);
 		}
 
