@@ -243,7 +243,7 @@ const properties: INodeProperties[] = [
 				],
 				default: 'web_grounding',
 				description:
-					'How the API gathers evidence beyond the state. Web searches and URL fetches are billed.',
+					'How the API gathers evidence beyond the state. Each completed web search or successful URL fetch is billed.',
 				routing: {
 					send: {
 						type: 'body',
