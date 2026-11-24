@@ -497,6 +497,7 @@ describe('control characters in the values of an entry', () => {
 					credentialType: 'http\rAuth',
 					group: 'other-project',
 					reason: 'not-on-branch',
+					project: { id: 'proj-sales', name: `Sales"\n\n${COMMAND_BLOCK}` },
 					consumers: usedBy(`Weekly\n\n${COMMAND_BLOCK}`, 'Invoices'),
 				}),
 			],
@@ -506,7 +507,7 @@ describe('control characters in the values of an entry', () => {
 		expect(lines).toEqual([
 			'In another project (1)',
 			'These dependencies are in other projects that you can access. This Promote does not include them.',
-			`  Credential "Billing"\\n\\n${ESCAPED_BLOCK}" (http\\rAuth): used by Weekly\\n\\n${ESCAPED_BLOCK}, Invoices`,
+			`  Credential "Billing"\\n\\n${ESCAPED_BLOCK}" (http\\rAuth): in project "Sales"\\n\\n${ESCAPED_BLOCK}"; used by Weekly\\n\\n${ESCAPED_BLOCK}, Invoices`,
 			'',
 			'Warnings (1)',
 			'These references point to something that does not exist on the source instance.',

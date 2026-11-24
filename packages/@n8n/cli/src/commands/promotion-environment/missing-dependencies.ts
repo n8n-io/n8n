@@ -252,7 +252,9 @@ function entryLine(
 		workflows.map(({ name }) => escapeControlCharacters(name)),
 	);
 	const facts = [
-		'project' in entry && entry.project ? `in project "${entry.project.name}"` : undefined,
+		'project' in entry && entry.project
+			? `in project "${escapeControlCharacters(entry.project.name)}"`
+			: undefined,
 		dependency ? applyReason(dependency) : undefined,
 		// Nothing stops a Promote, and nothing stops on a warning.
 		dependency?.blocking ? 'stops the Apply' : undefined,

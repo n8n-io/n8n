@@ -816,7 +816,7 @@ Promote needs a confirmation. Nothing was pushed.
 
 In another project (1)
 These dependencies are in other projects that you can access. This Promote does not include them.
-  Credential "Billing API" (httpHeaderAuth): used by Weekly report, Invoices
+  Credential "Billing API" (httpHeaderAuth): in project "Sales"; used by Weekly report, Invoices
 
 Outside your access (1)
 You do not have access to these dependencies.
@@ -838,7 +838,7 @@ on stdout:
 The branch does not hold these dependencies:
 
 In another project (1)
-  Credential "Billing API" (httpHeaderAuth): used by Weekly report, Invoices
+  Credential "Billing API" (httpHeaderAuth): in project "Sales"; used by Weekly report, Invoices
 
 Outside your access (1)
   Workflow "Send alert": used by Weekly report
