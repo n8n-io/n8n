@@ -12,6 +12,7 @@ import {
 	N8nResizeWrapper,
 	N8nTabs,
 	N8nText,
+	N8nTooltip,
 	useResizablePanel,
 } from '@n8n/design-system';
 import { VIEWS } from '@n8n/frontend-constants/views';
@@ -20,7 +21,7 @@ import { useI18n } from '@n8n/i18n';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { computed, nextTick, ref, toRef, watch } from 'vue';
+import { computed, nextTick, ref, toRef, useId, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import PromotionBlockers from '../components/preview/PromotionBlockers.vue';
@@ -258,6 +259,20 @@ const submitBlockedReason = computed(() => {
 			: 'promotions.preview.submit.blocked',
 	);
 });
+// The tooltip repeats the reason in short form. The callout below keeps the full text visible.
+const submitBlockedReasonId = useId();
+const submitTooltip = computed(() => {
+	if (!submitBlockedReason.value) {
+		// A ready preview with nothing selected has no callout, so the tooltip is the only hint.
+		return state.value === 'ready' && actionableChanges.value === 0
+			? i18n.baseText(`promotions.preview.submit.selectTooltip.${props.direction}`)
+			: undefined;
+	}
+	const foldersMoved = (scopedCheck.value?.movedFolders ?? []).length > 0;
+	return props.direction === 'apply' && !foldersMoved
+		? i18n.baseText('promotions.preview.submit.blockedTooltip')
+		: submitBlockedReason.value;
+});
 const actionableChanges = computed(() => {
 	if (!graph.value || scopedCheck.value?.movedFolders.length) return 0;
 	if (isInstance.value) return totalChanges.value;
@@ -389,16 +404,27 @@ const treeResizer = useResizablePanel({
 					>
 						{{ i18n.baseText('promotions.preview.refresh') }}
 					</N8nButton>
-					<N8nButton
-						:variant="isDestructive ? 'destructive' : 'brand'"
-						size="small"
-						:disabled="!canSubmit"
-						:loading="operation.isRunning.value"
-						data-test-id="promotion-preview-submit"
-						@click="onSubmit"
+					<N8nTooltip
+						:content="submitTooltip"
+						:disabled="!submitTooltip"
+						placement="bottom"
+						as-child
 					>
-						{{ submitLabel }}
-					</N8nButton>
+						<N8nButton
+							:variant="isDestructive ? 'destructive' : 'brand'"
+							size="small"
+							:disabled="!canSubmit"
+							:focusable-when-disabled="!!submitTooltip"
+							:aria-describedby="
+								submitBlockedReason && !operation.error.value ? submitBlockedReasonId : undefined
+							"
+							:loading="operation.isRunning.value"
+							data-test-id="promotion-preview-submit"
+							@click="onSubmit"
+						>
+							{{ submitLabel }}
+						</N8nButton>
+					</N8nTooltip>
 				</div>
 			</div>
 		</header>
@@ -494,6 +520,7 @@ const treeResizer = useResizablePanel({
 					<!-- A disabled button cannot explain itself to keyboard users, so the reason shows here. -->
 					<N8nCallout
 						v-if="submitBlockedReason && !operation.error.value"
+						:id="submitBlockedReasonId"
 						theme="warning"
 						slim
 						data-test-id="promotion-preview-submit-blocked"

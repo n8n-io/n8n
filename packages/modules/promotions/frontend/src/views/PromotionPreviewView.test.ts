@@ -222,7 +222,7 @@ describe('PromotionPreviewView', () => {
 				),
 				dependencies: [],
 			});
-			const { getByTestId, getAllByTestId } = await render(
+			const { getByTestId, getAllByTestId, findAllByText } = await render(
 				`/projects/p1/promotions/${direction}`,
 				direction,
 			);
@@ -237,7 +237,12 @@ describe('PromotionPreviewView', () => {
 
 			await userEvent.click(treeRow(getAllByTestId, 'workflow:w3').getByRole('checkbox'));
 			expect(submit).toHaveTextContent(`${action} changes`);
-			expect(submit).toBeDisabled();
+			expect(submit).toHaveAttribute('aria-disabled', 'true');
+
+			await userEvent.hover(submit);
+			expect(
+				(await findAllByText(`Select at least one change to ${action.toLowerCase()}.`)).length,
+			).toBeGreaterThan(0);
 		},
 	);
 
@@ -268,7 +273,7 @@ describe('PromotionPreviewView', () => {
 		await waitAllPromises();
 
 		expect(getByTestId('promotion-preview-submit')).toHaveTextContent(/^Apply changes$/);
-		expect(getByTestId('promotion-preview-submit')).toBeDisabled();
+		expect(getByTestId('promotion-preview-submit')).toHaveAttribute('aria-disabled', 'true');
 		for (const key of ['workflow:w1', 'workflow:w3']) {
 			const row = treeRow(getAllByTestId, key);
 			expect(row.getByRole('checkbox')).toBeChecked();
@@ -992,7 +997,7 @@ describe('PromotionPreviewView', () => {
 
 		const { getByTestId } = await renderApply();
 
-		expect(getByTestId('promotion-preview-submit')).toBeDisabled();
+		expect(getByTestId('promotion-preview-submit')).toHaveAttribute('aria-disabled', 'true');
 		expect(getByTestId('promotion-preview-submit')).toHaveTextContent(/^Apply changes$/);
 		expect(getByTestId('promotion-preview-submit-blocked')).toHaveTextContent(
 			'Apply is disabled. The branch and this instance hold the folder "Payments" in different projects',
@@ -1201,10 +1206,28 @@ describe('PromotionPreviewView', () => {
 
 			const { getByTestId } = await renderInstance();
 
-			expect(getByTestId('promotion-preview-submit')).toBeDisabled();
+			expect(getByTestId('promotion-preview-submit')).toHaveAttribute('aria-disabled', 'true');
+			expect(getByTestId('promotion-preview-submit')).toHaveAttribute(
+				'aria-describedby',
+				getByTestId('promotion-preview-submit-blocked').id,
+			);
 			expect(getByTestId('promotion-preview-submit-blocked')).toHaveTextContent(
 				'Some changes have blockers',
 			);
+		});
+
+		it('should explain the disabled Apply in a tooltip on the button', async () => {
+			const missing = { ...variable, name: 'API_URL', consumers: consumers('w-unchanged') };
+			vi.mocked(api.getPromotionEnvironmentChanges).mockResolvedValue(
+				instancePreview({ missingBindings: [missing] }),
+			);
+
+			const { getByTestId, findAllByText } = await renderInstance();
+			await userEvent.hover(getByTestId('promotion-preview-submit'));
+
+			expect(
+				(await findAllByText('Resolve the blockers to apply the changes.')).length,
+			).toBeGreaterThan(0);
 		});
 
 		it.each([false, true])(
