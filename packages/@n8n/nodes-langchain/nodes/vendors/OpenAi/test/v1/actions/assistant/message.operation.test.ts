@@ -107,4 +107,18 @@ describe('OpenAI assistant message operation', () => {
 
 		await expect(messageOperation.execute.call(ctx, 0)).rejects.toBeInstanceOf(NodeOperationError);
 	});
+
+	it('should abort the signal of a failed run', async () => {
+		const ctx = setupMockContext();
+		const invoke = vi.fn().mockRejectedValue(new Error('A tool failed'));
+		vi.mocked(AgentExecutor.fromAgentAndTools).mockReturnValueOnce({
+			withConfig: vi.fn().mockReturnValue({ invoke }),
+		} as never);
+
+		await expect(messageOperation.execute.call(ctx, 0)).rejects.toThrow('A tool failed');
+
+		const [chainValues, config] = invoke.mock.calls[0] as Array<{ signal: AbortSignal }>;
+		expect(chainValues.signal.aborted).toBe(true);
+		expect(config.signal).toBe(chainValues.signal);
+	});
 });

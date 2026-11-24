@@ -1,13 +1,15 @@
-import { toBase64, fromBase64 } from 'js-base64';
+import { toBase64 } from 'js-base64';
 import SHA from 'jssha';
 import { DateTime } from 'luxon';
 import MD5 from 'md5';
 import { titleCase } from 'title-case';
 
+import { decodeBase64 } from './base64';
 import type { Extension, ExtensionMap } from './extensions';
 import { ExpressionExtensionError } from './expression-extension-error';
 import { toDateTime as numberToDateTime } from './number-extensions';
 import { toAscii } from './to-ascii';
+import { decodeUtf8, toWellFormed } from './utf8';
 
 export const SupportedHashAlgorithms = [
 	'md5',
@@ -91,7 +93,7 @@ function hash(value: string, extraArgs: string[]): string {
 	const algorithm = extraArgs[0]?.toLowerCase() ?? 'md5';
 	switch (algorithm) {
 		case 'base64':
-			return toBase64(value);
+			return base64Encode(value);
 		case 'md5':
 			return MD5(value);
 		case 'sha1':
@@ -430,12 +432,17 @@ function toBoolean(value: string): boolean {
 	return normalized.length > 0 && !FALSY.has(normalized);
 }
 
+// DIVERGENCE from packages/workflow/src/extensions/string-extensions.ts:
+// js-base64 relies on Buffer, TextEncoder and TextDecoder, which the isolate
+// does not have. Its fallback keeps lone surrogates and invalid UTF-8 bytes,
+// where the original gives U+FFFD. It also throws on characters that are not
+// base64, where the original skips them.
 function base64Encode(value: string): string {
-	return toBase64(value);
+	return toBase64(toWellFormed(value));
 }
 
 function base64Decode(value: string): string {
-	return fromBase64(value);
+	return decodeUtf8(decodeBase64(value));
 }
 
 removeMarkdown.doc = {

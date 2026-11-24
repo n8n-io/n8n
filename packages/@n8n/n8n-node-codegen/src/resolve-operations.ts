@@ -1,7 +1,7 @@
 import pluralize from 'pluralize';
 
 import { NODE_PARAMETER_NAMES, operationLabel } from './build-properties';
-import type { Overrides } from './overrides';
+import type { Overrides, OverridesEntry } from './overrides';
 import type { OperationRow, Resource, Spec, SpecOperation, SpecTag } from './types';
 
 interface Resolution {
@@ -46,36 +46,30 @@ function flattened(operation: SpecOperation, field: string | undefined): SpecOpe
 	return { ...operation, parameters };
 }
 
-function flattenErrors(spec: Spec, flatten: Record<string, string>): string[] {
-	return Object.entries(flatten).flatMap(([operationId, field]) => {
-		const operation = spec.operations.find((candidate) => candidate.operationId === operationId);
-		if (!operation) return [`flatten: "${operationId}" is not an operation in the spec.`];
-		const { parameters } = flattened(operation, field);
-		if (!parameters.some((parameter) => parameter.property !== undefined)) {
-			return [`flatten: "${operationId}" has no body field "${field}" that is a list of objects.`];
-		}
-		const names = parameters.map((parameter) => parameter.name);
-		const repeated = [...new Set(names.filter((name, index) => names.indexOf(name) !== index))];
-		return repeated.map(
-			(name) => `flatten: "${operationId}" gets two fields with the name "${name}".`,
-		);
-	});
+function flattenErrors({ operationId, parameters }: SpecOperation, field: string): string[] {
+	if (!parameters.some((parameter) => parameter.property !== undefined)) {
+		return [`flatten: "${operationId}" has no body field "${field}" that is a list of objects.`];
+	}
+	const names = parameters.map((parameter) => parameter.name);
+	const repeated = [...new Set(names.filter((name, index) => names.indexOf(name) !== index))];
+	return repeated.map(
+		(name) => `flatten: "${operationId}" gets two fields with the name "${name}".`,
+	);
 }
 
-function excludeErrors(spec: Spec, exclude: Record<string, string>): string[] {
-	const operationIds = spec.operations.map((operation) => operation.operationId);
-	const errors: string[] = [];
-
-	for (const [operationId, reason] of Object.entries(exclude)) {
-		if (!operationIds.includes(operationId)) {
-			errors.push(
-				`exclude: "${operationId}" is not an operation in the spec. The spec does not contain this operation any more, or the ID is not correct.`,
-			);
-		} else if (reason.trim() === '') {
-			errors.push(`exclude: "${operationId}" has no reason.`);
+function entryErrors(rows: OperationRow[], entries: Record<string, OverridesEntry>): string[] {
+	return Object.entries(entries).flatMap(([operationId, { exclude, flatten }]) => {
+		const row = rows.find((candidate) => candidate.operation.operationId === operationId);
+		if (!row) {
+			return [
+				`overrides: "${operationId}" is not an operation in the spec. The spec does not contain this operation any more, or the ID is not correct.`,
+			];
 		}
-	}
-	return errors;
+		return [
+			...(exclude?.trim() === '' ? [`exclude: "${operationId}" has no reason.`] : []),
+			...(flatten === undefined ? [] : flattenErrors(row.operation, flatten)),
+		];
+	});
 }
 
 function duplicates(
@@ -124,22 +118,52 @@ function nodeErrors(rows: OperationRow[]): string[] {
 	return errors;
 }
 
-export function resolveOperations(spec: Spec, overrides: Overrides): Resolution {
-	const flatten = overrides.flatten ?? {};
-	const rows = spec.operations.map(
-		(operation): OperationRow => ({
-			operation: flattened(operation, flatten[operation.operationId]),
+function defaultErrors(rows: OperationRow[], defaultResource: string | undefined): string[] {
+	const inNode = rows.filter((row) => row.excludeReason === undefined);
+	const resources = [...new Set(inNode.map((row) => row.resource.id))];
+	if (resources.length === 0) return [];
+
+	const errors =
+		defaultResource !== undefined && resources.includes(defaultResource)
+			? []
+			: [`defaultResource must be one of the resources in the node: ${resources.join(', ')}.`];
+	for (const resource of resources) {
+		const defaults = inNode
+			.filter((row) => row.resource.id === resource && row.isDefault)
+			.map((row) => row.operation.operationId);
+		if (defaults.length !== 1) {
+			const found = defaults.length === 0 ? 'none' : `${defaults.length}: ${defaults.join(', ')}`;
+			errors.push(
+				`"${resource}" needs one operation in the node with default: true. It has ${found}.`,
+			);
+		}
+	}
+	return errors;
+}
+
+export function resolveOperations(
+	spec: Spec,
+	overrides: Overrides,
+	defaultResource?: string,
+): Resolution {
+	const { '*': shared, ...entries } = overrides;
+	const rows = spec.operations.map((operation): OperationRow => {
+		const { exclude, flatten, fields, default: isDefault } = entries[operation.operationId] ?? {};
+		return {
+			operation: flattened(operation, flatten),
 			resource: resourceOf(operation.tag),
-			excludeReason: overrides.exclude[operation.operationId],
-		}),
-	);
+			excludeReason: exclude,
+			isDefault: isDefault === true,
+			fields: { ...shared?.fields, ...fields },
+		};
+	});
 
 	return {
 		rows,
 		errors: [
-			...excludeErrors(spec, overrides.exclude),
-			...flattenErrors(spec, flatten),
+			...entryErrors(rows, entries),
 			...nodeErrors(rows),
+			...defaultErrors(rows, defaultResource),
 		],
 	};
 }
