@@ -38,6 +38,7 @@ import {
 	useAssistantPreferenceCards,
 } from '../assistantAgent/assistantPreferenceCards';
 import { assistantSharedFilesExtension } from '../assistantAgent/assistantSharedFiles';
+import { provideAssistantArtifactCards } from '@/features/ai/instanceAi/assistantAgent/assistantArtifactCards';
 import { useAssistantAgentFeedback } from '../assistantAgent/useAssistantAgentFeedback';
 import {
 	useAssistantAgentMessageTelemetry,
@@ -257,6 +258,7 @@ const interactionExtensions = [
 	assistantConfirmationExtension,
 	assistantPreferenceCardExtension,
 	assistantSharedFilesExtension,
+	provideAssistantArtifactCards(thread),
 ];
 
 provide(

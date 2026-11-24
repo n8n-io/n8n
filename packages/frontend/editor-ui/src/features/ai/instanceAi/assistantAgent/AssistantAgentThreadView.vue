@@ -127,6 +127,7 @@ import {
 	useAssistantPreferenceCards,
 } from './assistantPreferenceCards';
 import { assistantSharedFilesExtension } from './assistantSharedFiles';
+import { provideAssistantArtifactCards } from './assistantArtifactCards';
 import { assistantToolResultTableExtension } from './assistantToolResultTables';
 import { useAssistantAgentThreadsStore } from './assistantAgentThreads.store';
 import { stagedElementAppId, toElementComposerAttachment } from './assistantElementAttachments';
@@ -299,16 +300,6 @@ function onMessageAccepted({ clientContext }: { clientContext?: Record<string, u
 function messageReferences(context: Record<string, unknown> | undefined): unknown[] {
 	return readMessageReferences(context?.attachments);
 }
-
-const interactionExtensions = [
-	assistantConfirmationExtension,
-	assistantAutoApprovalExtension,
-	assistantPreferenceCardExtension,
-	...assistantHostEventExtensions,
-	assistantToolResultTableExtension,
-	assistantCodeToolResultExtension,
-	assistantSharedFilesExtension,
-];
 
 const panel = useTemplateRef<InstanceType<typeof AgentChatPanel>>('panel');
 
@@ -493,6 +484,17 @@ const thread = useAssistantArtifactThread({
 	activeArtifactId: () => activeArtifactId.value,
 });
 provideArtifactThread(thread);
+
+const interactionExtensions = [
+	assistantConfirmationExtension,
+	assistantAutoApprovalExtension,
+	assistantPreferenceCardExtension,
+	...assistantHostEventExtensions,
+	assistantToolResultTableExtension,
+	assistantCodeToolResultExtension,
+	assistantSharedFilesExtension,
+	provideAssistantArtifactCards(thread),
+];
 
 // Experiment cleanup (137_instance_ai_draft_workflow_preview)
 const isAwaitingUser = () => panel.value?.isAwaitingUserAnswer ?? false;
