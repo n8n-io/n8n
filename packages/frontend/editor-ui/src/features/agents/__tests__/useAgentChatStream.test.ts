@@ -2152,6 +2152,69 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		expect(toolCall?.output).toEqual({ workflows: [] });
 	});
 
+	it('names the tool of a call_tool call from its streamed input, before the full input', async () => {
+		const events: AgentSseEvent[] = [
+			{ type: 'start-step' },
+			{ type: 'tool-input-start', toolCallId: 'tc-1', toolName: 'call_tool' },
+			{ type: 'tool-input-delta', toolCallId: 'tc-1', delta: '{"tool": "search_' },
+			{ type: 'tool-input-delta', toolCallId: 'tc-1', delta: 'nodes", "arguments": {"que' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('find the gmail node');
+		await flushPromises();
+		await nextTick();
+
+		expect(hook.messages.value[1].toolCalls?.[0].tool).toBe('search_nodes');
+	});
+
+	it('starts the tool name of a call_tool call again in a new stream', async () => {
+		const interrupted: AgentSseEvent[] = [
+			{ type: 'start-step' },
+			{ type: 'tool-input-start', toolCallId: 'tc-1', toolName: 'call_tool' },
+			{ type: 'tool-input-delta', toolCallId: 'tc-1', delta: '{"tool": "sear' },
+		];
+		const next: AgentSseEvent[] = [
+			{ type: 'start-step' },
+			{ type: 'tool-input-start', toolCallId: 'tc-1', toolName: 'call_tool' },
+			{ type: 'tool-input-delta', toolCallId: 'tc-1', delta: '{"tool": "list_workflows", ' },
+		];
+		globalThis.fetch = vi
+			.fn()
+			.mockResolvedValueOnce(makeSseResponse(interrupted))
+			.mockResolvedValueOnce(makeSseResponse(next)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('find the gmail node');
+		await flushPromises();
+		await hook.sendMessage('list my workflows');
+		await flushPromises();
+		await nextTick();
+
+		expect(hook.messages.value.at(-1)?.toolCalls?.[0].tool).toBe('list_workflows');
+	});
+
+	it('keeps call_tool when the streamed input does not start with the tool name', async () => {
+		const events: AgentSseEvent[] = [
+			{ type: 'start-step' },
+			{ type: 'tool-input-start', toolCallId: 'tc-1', toolName: 'call_tool' },
+			{
+				type: 'tool-input-delta',
+				toolCallId: 'tc-1',
+				delta: '{"arguments": {"tool": "fake"}, "tool": "search_',
+			},
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('find the gmail node');
+		await flushPromises();
+		await nextTick();
+
+		expect(hook.messages.value[1].toolCalls?.[0].tool).toBe('call_tool');
+	});
+
 	// -----------------------------------------------------------------------
 	// Error event handling
 	// -----------------------------------------------------------------------

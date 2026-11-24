@@ -22,6 +22,7 @@ import type { NodeTypeSelectedPayload } from '@/Interface';
 import { onClickOutside, useElementBounding } from '@vueuse/core';
 
 import { N8nIconButton, OVERLAY_LAYER_SELECTOR } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
 // elements that should not trigger onClickOutside
 const OUTSIDE_CLICK_WHITELIST = [
 	// different modals
@@ -36,6 +37,7 @@ export interface Props {
 }
 
 const props = defineProps<Props>();
+const i18n = useI18n();
 const { resetViewStacks } = useViewStacks();
 const { registerKeyHook } = useKeyboardNavigation();
 const emit = defineEmits<{
@@ -211,7 +213,7 @@ onClickOutside(
 			v-if="active"
 			:class="$style.close"
 			icon="x"
-			aria-label="Close Node Creator"
+			:aria-label="i18n.baseText('nodeCreator.close')"
 			@click="emit('closeNodeCreator')"
 		/>
 		<SlideTransition>
