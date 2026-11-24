@@ -19,10 +19,12 @@ const DEFAULT_REASONING_ID = 'reasoning';
 type TextKind = 'text' | 'reasoning';
 
 type ToolCallState = {
-	id: string;
+	readonly id: string;
+	/**
+	 * The AI SDK opens a tool input with its name, so the input starts when the
+	 * name arrives. A call without a name has not started.
+	 */
 	name?: string;
-	/** Whether `tool-input-start` was sent. It needs the name. */
-	started: boolean;
 	input: string;
 	/** Chat model metadata of all chunks of the call. */
 	metadata?: Record<string, unknown>;
@@ -238,13 +240,13 @@ export class AiSdkStreamConverter {
 	}
 
 	private openToolCall(id: string): ToolCallState {
-		const state = this.openToolCalls.get(id) ?? { id, started: false, input: '' };
+		const state = this.openToolCalls.get(id) ?? { id, input: '' };
 		this.openToolCalls.set(id, state);
 		return state;
 	}
 
 	private startToolInput(state: ToolCallState, name: string): LanguageModelV4StreamPart[] {
-		state.started = true;
+		state.name = name;
 		this.toolNames.set(state.id, name);
 		const parts: LanguageModelV4StreamPart[] = [
 			{ type: 'tool-input-start', id: state.id, toolName: name },
@@ -261,18 +263,22 @@ export class AiSdkStreamConverter {
 	): LanguageModelV4StreamPart[] {
 		if (metadata) state.metadata = { ...state.metadata, ...metadata };
 
-		// The name is not streamed in fragments: chat models send it whole, and
-		// some repeat it on every delta. The first name wins.
-		if (name && state.name === undefined) state.name = name;
 		if (argumentsDelta) state.input += argumentsDelta;
 
-		if (state.started) {
-			return argumentsDelta
-				? [{ type: 'tool-input-delta', id: state.id, delta: argumentsDelta }]
-				: [];
+		// The name is not streamed in fragments: chat models send it whole, and
+		// some repeat it on every delta. The first name wins.
+		const started = state.name !== undefined;
+		switch (true) {
+			case started:
+				return argumentsDelta
+					? [{ type: 'tool-input-delta', id: state.id, delta: argumentsDelta }]
+					: [];
+			// The input that arrived before the start is sent in one delta.
+			case !started && name !== undefined && name !== '':
+				return this.startToolInput(state, name);
+			default:
+				return [];
 		}
-		// The input that arrived before the start is sent in one delta.
-		return state.name === undefined ? [] : this.startToolInput(state, state.name);
 	}
 
 	/** A complete content block is sent as a bracketed part of its own. */
