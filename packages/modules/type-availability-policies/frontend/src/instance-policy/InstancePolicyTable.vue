@@ -211,7 +211,11 @@ function returnFocus(name: string | undefined) {
 	const buttons = root.value?.querySelectorAll<HTMLElement>('[data-type-name]') ?? [];
 	const button = [...buttons].find((element) => element.dataset.typeName === name);
 	if (button) button.focus();
-	else filter.value?.focus();
+	else focusFilter();
+}
+
+function focusFilter() {
+	filter.value?.focus();
 }
 
 // A change of access can take the focused row out of the table, or move it when the table is sorted
@@ -253,7 +257,7 @@ async function onAccessChange(row: InstancePolicyTableRow, access: PolicyAction)
 	emit('change', row.name, access);
 	await nextTick();
 	// The menu returns the focus to its trigger, which a row that left the filter took with it.
-	if (!pageRows.value.some(({ name }) => name === row.name)) returnFocus(undefined);
+	if (!pageRows.value.some(({ name }) => name === row.name)) focusFilter();
 }
 </script>
 

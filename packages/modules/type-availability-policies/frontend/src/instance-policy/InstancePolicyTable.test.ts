@@ -377,6 +377,29 @@ describe('InstancePolicyTable', () => {
 			expect(airtableButton).toHaveFocus();
 		});
 
+		it('keeps the focus on a row that moves when the table is sorted by access', async () => {
+			const rows = [...ROWS, row('zoomApi', 'Zoom API')];
+			const { getByTestId, getByRole, rerender } = setup(rows);
+			await userEvent.click(getByRole('columnheader', { name: /Access/ }));
+			getByTestId('instance-policy-open-airtableApi').focus();
+
+			await rerender({
+				rows: rows.map((item) =>
+					item.name === 'airtableApi' ? { ...item, access: 'deny' } : item,
+				),
+			});
+
+			await waitFor(() =>
+				expect(rowNames(getByTestId('instance-policy-table'))).toEqual([
+					'Notion API',
+					'Zoom API',
+					'Airtable API',
+					'Bitly API',
+				]),
+			);
+			expect(getByTestId('instance-policy-open-airtableApi')).toHaveFocus();
+		});
+
 		it('does not move the focus of a control that is not a row', async () => {
 			const { getByTestId, rerender } = setup(paginationRows(30));
 			getByTestId('pagination-next').focus();
