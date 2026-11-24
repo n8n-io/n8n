@@ -70,13 +70,13 @@ FROM system-deps AS runtime
 # Replace the base image's stock Node with our compiled Node from BUILDER_IMAGE.
 # Keeping this above release metadata ARGs/ENV and `COPY --from=app-artifact-processor`
 # decouples OS base refreshes from Node source compiles while keeping release and
-# app-only builds cached on these layers.
+# app-only builds cached on these layers. V8 patches are already checked by
+# check-v8-patches.js when BUILDER_IMAGE is built on master.
 RUN rm -f /usr/bin/node /usr/bin/nodejs /usr/bin/npm /usr/bin/npx /usr/local/bin/node
 COPY --from=node-source /usr/local/bin /usr/local/bin
 COPY --from=node-source /usr/local/lib /usr/local/lib
-RUN --mount=type=bind,source=docker/images/n8n/check-v8-patches.js,target=/tmp/check-v8-patches.js \
-    ENABLE_POINTER_COMPRESSION=false node --version \
-    && ENABLE_POINTER_COMPRESSION=false node /tmp/check-v8-patches.js \
+RUN node --version \
+    && node -e "if (process.execPath !== '/usr/local/bin/node') throw new Error('expected /usr/local/bin/node, got ' + process.execPath); if (process.config.variables.v8_enable_pointer_compression) throw new Error('pointer compression is on, expected off');" \
     && ln -sf /usr/local/bin/node /usr/bin/node
 
 ARG N8N_VERSION
