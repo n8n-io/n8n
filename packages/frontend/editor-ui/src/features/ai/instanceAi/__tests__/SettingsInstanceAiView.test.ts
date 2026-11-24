@@ -16,7 +16,7 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { fetchSettings } from '../instanceAi.settings.api';
 import type { FrontendModuleSettings } from '@n8n/api-types';
 import type { ICredentialType } from 'n8n-workflow';
-import type { RouteLeaveGuard } from 'vue-router';
+import type { NavigationGuard } from 'vue-router';
 import { defaultModuleSettings } from './createThreadComponentRenderer';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { MODEL_TRAINING_OPT_OUT_EXPERIMENT } from '@/app/constants/experiments';
@@ -84,10 +84,10 @@ vi.mock('../composables/useInstanceCredentialTest', async (importOriginal) => {
 	};
 });
 
-let routeLeaveGuard: RouteLeaveGuard | undefined;
+let routeLeaveGuard: NavigationGuard | undefined;
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal<typeof import('vue-router')>()),
-	onBeforeRouteLeave: (guard: RouteLeaveGuard) => {
+	onBeforeRouteLeave: (guard: NavigationGuard) => {
 		routeLeaveGuard = guard;
 	},
 }));
