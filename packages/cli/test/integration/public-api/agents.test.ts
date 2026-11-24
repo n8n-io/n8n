@@ -2,10 +2,13 @@ import { createTeamProject, linkUserToProject, testDb, testModules } from '@n8n/
 import type { Project, User } from '@n8n/db';
 import { ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { DataSource } from '@n8n/typeorm';
 import { InstanceSettings } from 'n8n-core';
 
 import { createAgent as createTestAgent, ensureInstanceAgent } from '@test-integration/db/agents';
 
+import { AgentHistory } from '@/modules/agents/entities/agent-history.entity';
+import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 
 import { createFolder } from '../shared/db/folders';
@@ -13,7 +16,7 @@ import { cleanupRolesAndScopes, createCustomRoleWithScopeSlugs } from '../shared
 import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
 import { setupTestServer } from '../shared/utils/';
 
-beforeAll(async () => await testModules.loadModules(['agents']));
+beforeAll(async () => await testModules.loadModules(['skills', 'agents']));
 
 const testServer = setupTestServer({ endpointGroups: ['publicApi'] });
 
@@ -987,5 +990,281 @@ describe('PUT /agents/:agentId', () => {
 
 		expect(response.statusCode).toBe(403);
 		expect(await agentRepository.existsBy({ id: agent.id })).toBe(true);
+	});
+});
+
+describe('GET /agents/:agentId/versions', () => {
+	let agentRepository: AgentRepository;
+	let historyRepository: AgentHistoryRepository;
+
+	beforeAll(async () => {
+		agentRepository = Container.get(AgentRepository);
+		historyRepository = Container.get(AgentHistoryRepository);
+		Container.get(InstanceSettings).markAsLeader();
+	});
+
+	beforeEach(async () => {
+		await Container.get(DataSource).getRepository(AgentHistory).delete({});
+		await agentRepository.delete({});
+		await cleanupRolesAndScopes();
+	});
+
+	afterEach(async () => {
+		await Container.get(DataSource).getRepository(AgentHistory).delete({});
+		await agentRepository.delete({});
+		await testDb.truncate(['ProjectRelation', 'Project']);
+	});
+
+	const schema = { name: 'Support', model: '', instructions: 'Help users.' };
+	const tools = { lookup: { code: 'return 1;', descriptor: { name: 'lookup' } } };
+
+	async function createVersionedAgent(projectId: string) {
+		const agent = await createTestAgent({
+			id: 'agent-versioned',
+			name: 'Support',
+			projectId,
+			schema,
+			integrations: [],
+			tools,
+			skills: {},
+			versionId: 'draft-version',
+		});
+
+		for (let index = 1; index <= 5; index++) {
+			// Version ids sort the opposite way from createdAt, so a timestamp
+			// tie cannot pass the newest-first assertion.
+			const versionId = `v-00${6 - index}`;
+			await historyRepository.saveVersion(
+				{
+					agentId: agent.id,
+					versionId,
+					schema,
+					tools: index === 5 ? tools : {},
+					savedBy: 'Ada Lovelace',
+				},
+				{},
+			);
+			await historyRepository.updateMetadata(
+				agent.id,
+				versionId,
+				{ name: `Version ${versionId}`, description: 'Saved copy' },
+				{},
+			);
+			await Container.get(DataSource)
+				.getRepository(AgentHistory)
+				.update({ versionId }, { createdAt: new Date(Date.UTC(2024, 0, index)) });
+		}
+
+		return agent;
+	}
+
+	test('should list versions newest first', async () => {
+		const member = await createMemberWithApiKey();
+		const personalProject: Project = await Container.get(
+			ProjectRepository,
+		).getPersonalProjectForUserOrFail(member.id);
+		await createVersionedAgent(personalProject.id);
+
+		const response = await testServer
+			.publicApiAgentFor(member)
+			.get('/agents/agent-versioned/versions');
+
+		expect(response.statusCode, JSON.stringify(response.body)).toBe(200);
+		expect(response.body.data.map((row: { versionId: string }) => row.versionId)).toEqual([
+			'v-001',
+			'v-002',
+			'v-003',
+			'v-004',
+			'v-005',
+		]);
+		expect(response.body.nextCursor).toBeNull();
+		expect(response.body.data[0]).toEqual({
+			versionId: 'v-001',
+			agentId: 'agent-versioned',
+			name: 'Version v-001',
+			description: 'Saved copy',
+			author: 'Ada Lovelace',
+			createdAt: expect.any(String),
+			updatedAt: expect.any(String),
+			isActive: false,
+			isCurrent: false,
+		});
+		expect(response.body.data[0]).not.toHaveProperty('includesN8nChat');
+	});
+
+	test('should page through versions with the cursor', async () => {
+		const member = await createMemberWithApiKey();
+		const personalProject: Project = await Container.get(
+			ProjectRepository,
+		).getPersonalProjectForUserOrFail(member.id);
+		await createVersionedAgent(personalProject.id);
+
+		const firstPage = await testServer
+			.publicApiAgentFor(member)
+			.get('/agents/agent-versioned/versions')
+			.query({ limit: 2 });
+		expect(firstPage.statusCode, JSON.stringify(firstPage.body)).toBe(200);
+		expect(firstPage.body.data.map((row: { versionId: string }) => row.versionId)).toEqual([
+			'v-001',
+			'v-002',
+		]);
+		expect(firstPage.body.nextCursor).toEqual(expect.any(String));
+
+		const secondPage = await testServer
+			.publicApiAgentFor(member)
+			.get('/agents/agent-versioned/versions')
+			.query({ limit: 2, cursor: firstPage.body.nextCursor });
+		expect(secondPage.statusCode, JSON.stringify(secondPage.body)).toBe(200);
+		expect(secondPage.body.data.map((row: { versionId: string }) => row.versionId)).toEqual([
+			'v-003',
+			'v-004',
+		]);
+		expect(secondPage.body.nextCursor).toEqual(expect.any(String));
+
+		const thirdPage = await testServer
+			.publicApiAgentFor(member)
+			.get('/agents/agent-versioned/versions')
+			.query({ cursor: secondPage.body.nextCursor });
+		expect(thirdPage.statusCode, JSON.stringify(thirdPage.body)).toBe(200);
+		expect(thirdPage.body.data.map((row: { versionId: string }) => row.versionId)).toEqual([
+			'v-005',
+		]);
+		expect(thirdPage.body.nextCursor).toBeNull();
+	});
+
+	test('should return 400 for an invalid cursor', async () => {
+		const member = await createMemberWithApiKey();
+		const personalProject: Project = await Container.get(
+			ProjectRepository,
+		).getPersonalProjectForUserOrFail(member.id);
+		await createVersionedAgent(personalProject.id);
+
+		const response = await testServer
+			.publicApiAgentFor(member)
+			.get('/agents/agent-versioned/versions')
+			.query({ cursor: 'not-a-cursor' });
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	test('should return 404 for an unknown agent', async () => {
+		const member = await createMemberWithApiKey();
+
+		const response = await testServer
+			.publicApiAgentFor(member)
+			.get('/agents/missing-agent/versions');
+
+		expect(response.statusCode).toBe(404);
+	});
+
+	test('should return 404 for an instance agent', async () => {
+		const owner = await createOwnerWithApiKey();
+		await ensureInstanceAgent('instance-agent', 'Instance Agent');
+
+		const response = await testServer
+			.publicApiAgentFor(owner)
+			.get('/agents/instance-agent/versions');
+
+		expect(response.statusCode).toBe(404);
+	});
+
+	test('should return 403 when the API key lacks the agent:read scope', async () => {
+		const member = await createMemberWithApiKey({ scopes: ['agent:list'] });
+		const personalProject: Project = await Container.get(
+			ProjectRepository,
+		).getPersonalProjectForUserOrFail(member.id);
+		await createVersionedAgent(personalProject.id);
+
+		const response = await testServer
+			.publicApiAgentFor(member)
+			.get('/agents/agent-versioned/versions');
+
+		expect(response.statusCode).toBe(403);
+	});
+
+	test('should return 403 when the user lacks the agent:read project permission', async () => {
+		const owner = await createOwnerWithApiKey();
+		const member = await createMemberWithApiKey();
+		const customRole = await createCustomRoleWithScopeSlugs(['agent:list'], {
+			roleType: 'project',
+			displayName: 'Agent Lister',
+			description: 'Can list agents but not read one',
+		});
+		const teamProject = await createTeamProject('Test Project', owner);
+		await linkUserToProject(member, teamProject, customRole.slug);
+		await createVersionedAgent(teamProject.id);
+
+		const response = await testServer
+			.publicApiAgentFor(member)
+			.get('/agents/agent-versioned/versions');
+
+		expect(response.statusCode).toBe(403);
+	});
+
+	test('should return one saved version with its document', async () => {
+		const member = await createMemberWithApiKey();
+		const personalProject: Project = await Container.get(
+			ProjectRepository,
+		).getPersonalProjectForUserOrFail(member.id);
+		await createVersionedAgent(personalProject.id);
+
+		const response = await testServer
+			.publicApiAgentFor(member)
+			.get('/agents/agent-versioned/versions/v-001');
+
+		expect(response.statusCode, JSON.stringify(response.body)).toBe(200);
+		expect(response.body).toMatchObject({
+			versionId: 'v-001',
+			agentId: 'agent-versioned',
+			name: 'Version v-001',
+			description: 'Saved copy',
+			author: 'Ada Lovelace',
+			isActive: false,
+			isCurrent: false,
+			config: schema,
+			tools,
+			skills: {},
+		});
+		expect(response.body).not.toHaveProperty('includesN8nChat');
+		expect(response.body).not.toHaveProperty('publishedById');
+		expect(response.body).not.toHaveProperty('tasks');
+	});
+
+	test('should return 404 for an unknown version', async () => {
+		const member = await createMemberWithApiKey();
+		const personalProject: Project = await Container.get(
+			ProjectRepository,
+		).getPersonalProjectForUserOrFail(member.id);
+		await createVersionedAgent(personalProject.id);
+
+		const response = await testServer
+			.publicApiAgentFor(member)
+			.get('/agents/agent-versioned/versions/missing-version');
+
+		expect(response.statusCode).toBe(404);
+	});
+
+	test('should return 404 when the version route names an unknown agent', async () => {
+		const member = await createMemberWithApiKey();
+
+		const response = await testServer
+			.publicApiAgentFor(member)
+			.get('/agents/missing-agent/versions/v-005');
+
+		expect(response.statusCode).toBe(404);
+	});
+
+	test('should return 403 when the version route key lacks the agent:read scope', async () => {
+		const member = await createMemberWithApiKey({ scopes: ['agent:list'] });
+		const personalProject: Project = await Container.get(
+			ProjectRepository,
+		).getPersonalProjectForUserOrFail(member.id);
+		await createVersionedAgent(personalProject.id);
+
+		const response = await testServer
+			.publicApiAgentFor(member)
+			.get('/agents/agent-versioned/versions/v-001');
+
+		expect(response.statusCode).toBe(403);
 	});
 });
