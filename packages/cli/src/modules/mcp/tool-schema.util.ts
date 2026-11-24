@@ -2,10 +2,10 @@ import type { StandardSchemaWithJSON } from '@modelcontextprotocol/server';
 import { zodToDraft202012 } from '@n8n/ai-utilities/json-schema';
 import { z } from 'zod';
 
-// The MCP server is rebuilt on every request, and most tool shapes are module-level
-// constants. Caching by shape identity skips the costly zod-to-JSON-Schema
-// conversion on each `tools/list`. The `WeakMap` frees an entry with its shape.
-const standardSchemaCache = new WeakMap<object, unknown>();
+// The MCP server is rebuilt on every request, but most tool shapes are
+// module-level constants. A cache keyed on the shape object converts each shape
+// once per process. The `WeakMap` frees an entry with its shape.
+const jsonSchemaCache = new WeakMap<z.ZodRawShape, Record<string, unknown>>();
 
 /**
  * Bridges a classic-zod raw shape to the Standard Schema interface the v2 MCP
@@ -20,24 +20,26 @@ export function shapeToStandardSchema<Shape extends z.ZodRawShape>(
 	z.objectInputType<Shape, z.ZodTypeAny>,
 	z.objectOutputType<Shape, z.ZodTypeAny>
 > {
-	type Result = StandardSchemaWithJSON<
-		z.objectInputType<Shape, z.ZodTypeAny>,
-		z.objectOutputType<Shape, z.ZodTypeAny>
-	>;
-
-	const cached = standardSchemaCache.get(shape);
-	if (cached) return cached as Result;
-
 	const schema = z.object(shape);
-	// `$refStrategy: 'none'` inlines schema instances that are reused across the
-	// shape. The default strategy dedupes a reused instance into a `$ref` to an
-	// arbitrary `#/properties/...` path, which common client-side validators
-	// (e.g. Zod v4's `fromJSONSchema`) refuse to resolve — they only follow refs
-	// into `$defs`/`definitions`. Inlining also matches Zod v4's `toJSONSchema`
-	// default (`reused: 'inline'`), the migration target for this bridge.
-	const jsonSchema = zodToDraft202012(schema, { $refStrategy: 'none' });
 
-	const standardSchema: Result = {
+	// The SDK reads the JSON Schema only for `tools/list` and for the tool that a
+	// `tools/call` names. Convert on the first read, so that other requests skip it.
+	const toJsonSchema = () => {
+		const cached = jsonSchemaCache.get(shape);
+		if (cached) return cached;
+
+		// `$refStrategy: 'none'` inlines schema instances that are reused across the
+		// shape. The default strategy dedupes a reused instance into a `$ref` to an
+		// arbitrary `#/properties/...` path, which common client-side validators
+		// (e.g. Zod v4's `fromJSONSchema`) refuse to resolve — they only follow refs
+		// into `$defs`/`definitions`. Inlining also matches Zod v4's `toJSONSchema`
+		// default (`reused: 'inline'`), the migration target for this bridge.
+		const jsonSchema = zodToDraft202012(schema, { $refStrategy: 'none' });
+		jsonSchemaCache.set(shape, jsonSchema);
+		return jsonSchema;
+	};
+
+	return {
 		'~standard': {
 			version: 1,
 			vendor: 'n8n-zod-classic',
@@ -53,12 +55,9 @@ export function shapeToStandardSchema<Shape extends z.ZodRawShape>(
 						};
 			},
 			jsonSchema: {
-				input: () => jsonSchema,
-				output: () => jsonSchema,
+				input: toJsonSchema,
+				output: toJsonSchema,
 			},
 		},
 	};
-
-	standardSchemaCache.set(shape, standardSchema);
-	return standardSchema;
 }
