@@ -127,6 +127,12 @@ The status `applied` now has `missingDependencies`. It lists the confirmed entri
 `warnings` now has a second kind of entry, with the code `missing-on-source`. Read `code` before you read the other fields.
 It is a reference that was already broken on the source instance. It needs no confirmation.
 
+The CLI commands `promotion-environment promote` and `promotion-environment promote-selection` now exit with code 4 and push nothing when the Promote has missing dependencies.
+Add `--confirm-missing-dependencies` to promote without them.
+The CLI commands `promotion-environment apply` and `promotion-environment apply-selection` now exit with code 4 when the Apply has a missing dependency that only needs a confirmation.
+Run `promotion-environment apply-continue` or `promotion-environment apply-selection-continue` with `--confirm-missing-dependencies` to apply without it.
+In JSON mode, `promote` and `promote-selection` now print an indented result, and `--jq` applies to it.
+
 # 2.0.0
 
 ### What changed?
