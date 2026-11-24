@@ -71,6 +71,7 @@ async function load() {
 						status: 'ready',
 						headCommitSha: result.headCommitSha,
 						issueCount: result.outsideAccess?.length ?? 0,
+						changeCount: totalChanges.value,
 					},
 		);
 	} catch (error) {

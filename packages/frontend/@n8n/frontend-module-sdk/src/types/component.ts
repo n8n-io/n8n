@@ -131,6 +131,8 @@ export type PromotionChangesState =
 			headCommitSha: string;
 			/** How many issues the review has. The inbox shows the Issues tab only when this is above 0. */
 			issueCount?: number;
+			/** How many changes the review holds. The Changes tab shows it. */
+			changeCount?: number;
 	  }
 	| { status: 'unavailable' };
 

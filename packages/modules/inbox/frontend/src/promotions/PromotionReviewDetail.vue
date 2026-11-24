@@ -58,9 +58,16 @@ const tab = ref<PromotionReviewTab>('changes');
 const issueCount = computed(() =>
 	changes.value.status === 'ready' ? (changes.value.issueCount ?? 0) : 0,
 );
+const changeCount = computed(() =>
+	changes.value.status === 'ready' ? changes.value.changeCount : undefined,
+);
 // The Issues tab exists only when the review has issues. The bar matches workflow reviews.
 const tabOptions = computed(() => [
-	{ label: i18n.baseText('inbox.promotionReview.detail.tabs.changes'), value: 'changes' as const },
+	{
+		label: i18n.baseText('inbox.promotionReview.detail.tabs.changes'),
+		value: 'changes' as const,
+		tag: changeCount.value === undefined ? undefined : String(changeCount.value),
+	},
 	...(issueCount.value > 0
 		? [
 				{

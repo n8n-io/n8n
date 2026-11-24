@@ -412,6 +412,13 @@ describe('issues tab', () => {
 		expect(queryByRole('tab', { name: /Issues/ })).not.toBeInTheDocument();
 	});
 
+	it('should show the number of changes in the Changes tab, and no number before it is known', async () => {
+		shownChanges = { status: 'ready', headCommitSha, changeCount: 5 };
+		const { getByRole } = renderComponent({ props: { item: item(), onItemChange } });
+
+		await waitFor(() => expect(getByRole('tab', { name: /Changes/ })).toHaveTextContent('5'));
+	});
+
 	it('should show the Issues tab with its count and open the issues of the review', async () => {
 		shownChanges = { status: 'ready', headCommitSha, issueCount: 3 };
 		const { getByRole, getByTestId, queryByTestId } = renderComponent({

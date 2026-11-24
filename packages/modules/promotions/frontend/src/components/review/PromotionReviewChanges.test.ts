@@ -67,7 +67,9 @@ it('lists what the review changes, read-only, and reads each card at the commits
 	const { getAllByTestId, queryAllByRole, emitted } = await render();
 
 	// Approve in the inbox sends this head.
-	expect(emitted().state.at(-1)).toEqual([{ status: 'ready', headCommitSha, issueCount: 0 }]);
+	expect(emitted().state.at(-1)).toEqual([
+		{ status: 'ready', headCommitSha, issueCount: 0, changeCount: 5 },
+	]);
 
 	expect(api.getPromotionReviewDetails).toHaveBeenCalledWith(expect.anything(), 'review-1', {
 		baselineCommitSha,
