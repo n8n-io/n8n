@@ -1,6 +1,5 @@
 import type { IDataObject, IExecuteFunctions, INodeProperties, RequestPath } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError, decodePathValue, requestPath } from 'n8n-workflow';
-import { posix } from 'path';
+import { NodeApiError, NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
@@ -49,7 +48,7 @@ const properties: INodeProperties[] = [
 				name: 'Add Suffix',
 				value: 'addSuffix',
 				description:
-					'Keep the existing file and save the new one with a number after the name, like "name (2).ext"',
+					'Keep the existing file and save the new one with the current UTC time after the name, like "notes 2026-11-24T10-15-30.123Z.txt"',
 			},
 			{
 				name: 'Fail',
@@ -80,52 +79,13 @@ const PROPFIND_BODY = `<?xml version="1.0"?>
   <d:prop><oc:fileid/><d:getetag/><d:getlastmodified/><d:getcontentlength/><d:getcontenttype/></d:prop>
 </d:propfind>`;
 
-const LIST_BODY = `<?xml version="1.0"?>
-<d:propfind xmlns:d="DAV:">
-  <d:prop><d:resourcetype/></d:prop>
-</d:propfind>`;
-
-// Another writer can take the chosen name between the folder listing and the PUT
-const MAX_TRIES = 5;
-
-// Like Nextcloud's own "keep both" names: "notes (2).txt", and ".env (2)" for a leading dot
-function splitName(fileName: string) {
+export function nameWithTimestamp(fileName: string, date: Date) {
+	// Windows file names cannot contain colons
+	const timestamp = date.toISOString().replace(/:/g, '-');
 	const dot = fileName.lastIndexOf('.');
 	return dot > 0
-		? { stem: fileName.slice(0, dot), ext: fileName.slice(dot) }
-		: { stem: fileName, ext: '' };
-}
-
-export function nameWithSuffix(fileName: string, suffix: number) {
-	const { stem, ext } = splitName(fileName);
-	return `${stem} (${suffix})${ext}`;
-}
-
-export function nextSuffix(fileName: string, names: string[]) {
-	const { stem, ext } = splitName(fileName);
-	const start = `${stem} (`;
-	const end = `)${ext}`;
-	const numbers = names
-		.filter((name) => name.startsWith(start) && name.endsWith(end))
-		.map((name) => name.slice(start.length, name.length - end.length))
-		.filter((suffix) => /^\d+$/.test(suffix))
-		.map(Number);
-	return Math.max(1, ...numbers) + 1;
-}
-
-async function listNames(this: IExecuteFunctions, folder: RequestPath) {
-	const responses = await readMultistatus(
-		await nextCloudApiRequest.call(this, 'PROPFIND', folder, LIST_BODY, {
-			'Content-Type': 'application/xml',
-			Depth: '1',
-		}),
-	);
-	// The first response is the listed folder itself. Subfolders stay in, because their names are taken too.
-	return responses
-		.slice(1)
-		.map((response) => response['d:href'])
-		.filter((href) => typeof href === 'string')
-		.map((href) => decodePathValue(posix.basename(href)));
+		? `${fileName.slice(0, dot)} ${timestamp}${fileName.slice(dot)}`
+		: `${fileName} ${timestamp}`;
 }
 
 async function putIfNew(this: IExecuteFunctions, endpoint: RequestPath, content: string) {
@@ -137,20 +97,6 @@ async function putIfNew(this: IExecuteFunctions, endpoint: RequestPath, content:
 		if (error instanceof NodeApiError && error.httpCode === '412') return false;
 		throw error;
 	}
-}
-
-async function putWithSuffix(
-	this: IExecuteFunctions,
-	folder: RequestPath,
-	fileName: string,
-	content: string,
-) {
-	const first = nextSuffix(fileName, await listNames.call(this, folder));
-	for (let suffix = first; suffix < first + MAX_TRIES; suffix++) {
-		const name = nameWithSuffix(fileName, suffix);
-		if (await putIfNew.call(this, requestPath`${folder}/${name}`, content)) return name;
-	}
-	return undefined;
 }
 
 const OUTPUT_PROPS = {
@@ -199,18 +145,14 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<IData
 			);
 		}
 
-		const suffixedName = await putWithSuffix.call(this, folder, fileName, content);
-		if (suffixedName === undefined) {
+		writtenName = nameWithTimestamp(fileName, new Date());
+		if (!(await putIfNew.call(this, requestPath`${folder}/${writtenName}`, content))) {
 			throw new NodeOperationError(
 				this.getNode(),
-				`Could not find a free name for "${parentFolder}/${fileName}"`,
-				{
-					itemIndex: i,
-					description: 'Other files with the same name were created at the same time.',
-				},
+				`The file "${parentFolder}/${writtenName}" already exists`,
+				{ itemIndex: i },
 			);
 		}
-		writtenName = suffixedName;
 	}
 
 	const path = `${parentFolder}/${writtenName}`;

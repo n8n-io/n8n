@@ -7,7 +7,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import { nameWithSuffix, nextSuffix } from '../actions/file/createFromText.operation';
+import { nameWithTimestamp } from '../actions/file/createFromText.operation';
 import { NextCloud } from '../NextCloud.node';
 
 const webDavUrl = 'https://nextcloud.example.com/remote.php/webdav';
@@ -30,22 +30,9 @@ interface RequestOptions {
 
 function fakeNextcloud() {
 	const files = new Map<string, { id: string; content: string }>();
-	const href = (uri: string) => `/remote.php/webdav${uri.slice(webDavUrl.length)}`;
-
 	const request = vi.fn(async (_credentialType: string, options: RequestOptions) => {
 		const uri = String(options.uri);
 		const existing = files.get(uri);
-
-		if (options.method === 'PROPFIND' && options.headers?.Depth === '1') {
-			const children = [...files.keys()]
-				.filter((file) => file.startsWith(`${uri}/`) && !file.slice(uri.length + 1).includes('/'))
-				.map((file) => `<d:response><d:href>${href(file)}</d:href></d:response>`);
-			return `<?xml version="1.0"?>
-<d:multistatus xmlns:d="DAV:">
-  <d:response><d:href>${href(uri)}/</d:href></d:response>
-  ${children.join('\n  ')}
-</d:multistatus>`;
-		}
 
 		if (options.method === 'PUT') {
 			if (options.headers?.['If-None-Match'] === '*' && existing) {
@@ -120,37 +107,29 @@ async function run(executeFunctions: IExecuteFunctions) {
 
 const notesUri = `${webDavUrl}//docs/notes.txt`;
 
-describe('nameWithSuffix', () => {
-	it.each([
-		['notes.txt', 'notes (2).txt'],
-		['archive.tar.gz', 'archive.tar (2).gz'],
-		['README', 'README (2)'],
-		['.env', '.env (2)'],
-	])('turns %s into %s', (fileName, expected) => {
-		expect(nameWithSuffix(fileName, 2)).toBe(expected);
-	});
-});
+const now = new Date('2026-11-24T10:15:30.123Z');
 
-describe('nextSuffix', () => {
+describe('nameWithTimestamp', () => {
 	it.each([
-		['an empty folder', 'notes.txt', [], 2],
-		['no copies', 'notes.txt', ['notes.txt'], 2],
-		['a gap', 'notes.txt', ['notes.txt', 'notes (3).txt'], 4],
-		['two-digit numbers', 'notes.txt', ['notes (9).txt', 'notes (10).txt'], 11],
-		[
-			'only other names',
-			'notes.txt',
-			['notes (x).txt', 'notes (-1).txt', 'notes (7).md', 'notes (5)', 'other (9).txt'],
-			2,
-		],
-		['a name with no extension', 'README', ['README', 'README (4)', 'README (5).md'], 5],
-		['a name with a leading dot', '.env', ['.env', '.env (2)'], 3],
-	])('handles %s', (_, fileName, names, expected) => {
-		expect(nextSuffix(fileName, names)).toBe(expected);
+		['notes.txt', 'notes 2026-11-24T10-15-30.123Z.txt'],
+		['archive.tar.gz', 'archive.tar 2026-11-24T10-15-30.123Z.gz'],
+		['README', 'README 2026-11-24T10-15-30.123Z'],
+		['.env', '.env 2026-11-24T10-15-30.123Z'],
+	])('turns %s into %s', (fileName, expected) => {
+		expect(nameWithTimestamp(fileName, now)).toBe(expected);
 	});
 });
 
 describe('NextCloud Node: file createFromText', () => {
+	beforeEach(() => {
+		vi.useFakeTimers({ toFake: ['Date'] });
+		vi.setSystemTime(now);
+	});
+
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
 	it('writes the text and returns the new file metadata with the file ID', async () => {
 		const { files, request } = fakeNextcloud();
 
@@ -229,20 +208,19 @@ describe('NextCloud Node: file createFromText', () => {
 		puts.forEach(([, options]) => {
 			expect(options.headers).toEqual({ 'If-None-Match': '*' });
 		});
-		expect(request.mock.calls.some(([, options]) => options.headers?.Depth === '1')).toBe(false);
 		expect(files.get(notesUri)?.content).toBe('first');
 	});
 
-	it('keeps every file on repeated writes to the same name with Add Suffix', async () => {
+	it('keeps both files on a second write to the same name with Add Suffix', async () => {
 		const { files, request } = fakeNextcloud();
 		const parameters = { fileName: 'notes.txt', parentFolder: '/docs', ifFileExists: 'addSuffix' };
+		const timestampedUri = `${webDavUrl}//docs/notes%202026-11-24T10-15-30.123Z.txt`;
 
 		const result = await run(
 			buildExecuteFunctions(
 				[
 					{ ...parameters, content: 'first' },
 					{ ...parameters, content: 'second' },
-					{ ...parameters, content: 'third' },
 				],
 				request,
 			),
@@ -250,120 +228,42 @@ describe('NextCloud Node: file createFromText', () => {
 
 		expect(Object.fromEntries([...files].map(([uri, file]) => [uri, file.content]))).toEqual({
 			[notesUri]: 'first',
-			[`${webDavUrl}//docs/notes%20(2).txt`]: 'second',
-			[`${webDavUrl}//docs/notes%20(3).txt`]: 'third',
+			[timestampedUri]: 'second',
 		});
 		expect(result[0].map((item) => item.json.path)).toEqual([
 			'/docs/notes.txt',
-			'/docs/notes (2).txt',
-			'/docs/notes (3).txt',
+			'/docs/notes 2026-11-24T10-15-30.123Z.txt',
 		]);
-		expect(result[0].map((item) => item.json.fileId)).toEqual(['1000', '1001', '1002']);
+		expect(result[0].map((item) => item.json.fileId)).toEqual(['1000', '1001']);
 
 		const puts = request.mock.calls.filter(([, options]) => options.method === 'PUT');
-		// The third write lists the folder and does not try "notes (2).txt" again
-		expect(puts.map(([, options]) => String(options.uri).slice(webDavUrl.length))).toEqual([
-			'//docs/notes.txt',
-			'//docs/notes.txt',
-			'//docs/notes%20(2).txt',
-			'//docs/notes.txt',
-			'//docs/notes%20(3).txt',
+		expect(puts.map(([, options]) => String(options.uri))).toEqual([
+			notesUri,
+			notesUri,
+			timestampedUri,
 		]);
 		puts.forEach(([, options]) => {
 			expect(options.headers).toEqual({ 'If-None-Match': '*' });
 		});
 	});
 
-	it('lists the folder once and writes one number above the highest copy', async () => {
+	it('fails with Add Suffix when the name with the timestamp is also taken', async () => {
 		const { files, request } = fakeNextcloud();
-		files.set(notesUri, { id: '1', content: '' });
-		files.set(`${webDavUrl}//docs/notes%20(3).txt`, { id: '3', content: '' });
-
-		const result = await run(
-			buildExecuteFunctions(
-				[{ content: 'x', fileName: 'notes.txt', parentFolder: '/docs', ifFileExists: 'addSuffix' }],
-				request,
-			),
-		);
-
-		expect(result[0][0].json.path).toBe('/docs/notes (4).txt');
-		expect(request.mock.calls.filter(([, options]) => options.headers?.Depth === '1')).toHaveLength(
-			1,
-		);
-	});
-
-	it("does not count the listed folder's own name as a copy", async () => {
-		const { files, request } = fakeNextcloud();
-		files.set(`${webDavUrl}//notes%20(5).txt/notes.txt`, { id: '1', content: '' });
-
-		const result = await run(
-			buildExecuteFunctions(
-				[
-					{
-						content: 'x',
-						fileName: 'notes.txt',
-						parentFolder: '/notes (5).txt',
-						ifFileExists: 'addSuffix',
-					},
-				],
-				request,
-			),
-		);
-
-		expect(result[0][0].json.path).toBe('/notes (5).txt/notes (2).txt');
-	});
-
-	it('tries the next number when another writer takes the chosen name first', async () => {
-		const { files, request } = fakeNextcloud();
-		files.set(notesUri, { id: '1', content: '' });
-		const answer = request.getMockImplementation()!;
-		request.mockImplementation(async (credentialType, options) => {
-			const uri = String(options.uri);
-			if (options.method === 'PUT' && uri.endsWith('notes%20(2).txt') && !files.has(uri)) {
-				files.set(uri, { id: '2', content: 'other writer' });
-			}
-			return await answer(credentialType, options);
-		});
-
-		const result = await run(
-			buildExecuteFunctions(
-				[{ content: 'x', fileName: 'notes.txt', parentFolder: '/docs', ifFileExists: 'addSuffix' }],
-				request,
-			),
-		);
-
-		expect(result[0][0].json.path).toBe('/docs/notes (3).txt');
-		expect(files.get(`${webDavUrl}//docs/notes%20(2).txt`)?.content).toBe('other writer');
-	});
-
-	it('stops after a few tries when other writers keep taking the names', async () => {
-		const { request } = fakeNextcloud();
-		const answer = request.getMockImplementation()!;
-		request.mockImplementation(async (credentialType, options) => {
-			if (options.method === 'PUT') {
-				throw new NodeApiError(node, { message: 'Precondition Failed', httpCode: '412' });
-			}
-			return await answer(credentialType, options);
-		});
+		const parameters = { fileName: 'notes.txt', parentFolder: '/docs', ifFileExists: 'addSuffix' };
 
 		await expect(
 			run(
 				buildExecuteFunctions(
 					[
-						{
-							content: 'x',
-							fileName: 'notes.txt',
-							parentFolder: '/docs',
-							ifFileExists: 'addSuffix',
-						},
+						{ ...parameters, content: 'first' },
+						{ ...parameters, content: 'second' },
+						{ ...parameters, content: 'third' },
 					],
 					request,
 				),
 			),
-		).rejects.toThrow('Could not find a free name for "/docs/notes.txt"');
-		const puts = request.mock.calls.filter(([, options]) => options.method === 'PUT');
-		expect(puts).toHaveLength(6);
-		expect(String(puts[5][1].uri)).toBe(`${webDavUrl}//docs/notes%20(6).txt`);
+		).rejects.toThrow('The file "/docs/notes 2026-11-24T10-15-30.123Z.txt" already exists');
+		expect([...files.values()].map((file) => file.content)).toEqual(['first', 'second']);
 	});
 
 	it('returns the error as an item when Continue On Fail is on', async () => {
