@@ -51,6 +51,10 @@ export class AgentThreadsController {
 		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
 	) {
 		const { projectId, agentId, threadId } = req.params;
+		// A system-agent thread loads through its own route, which runs the checks of the provider.
+		if (this.systemAgents.has(agentId)) {
+			throw new NotFoundError(`Thread "${threadId}" not found`);
+		}
 		const result = await this.agentExecutionService.getThreadDetail(
 			threadId,
 			projectId,
@@ -67,11 +71,7 @@ export class AgentThreadsController {
 			threadId,
 			executions: result.executions,
 		});
-		return toThreadDetailResponse(result, {
-			userId: req.user.id,
-			isSystemAgent: this.systemAgents.has(result.thread.agentId),
-			memory,
-		});
+		return toThreadDetailResponse(result, { userId: req.user.id, isSystemAgent: false, memory });
 	}
 
 	@Post('/:agentId/threads/:threadId/approval')
