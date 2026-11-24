@@ -107,7 +107,11 @@ directly on that object — there is no \`value\` wrapper. For example:
 - skill.upsert: Set \`skill\` to the complete skill body. Omit \`skillId\` to create a new skill in
   the Agent's project and attach it, or pass it to save a new version of an attached skill. When
   replacing, also pass \`baseSkillHash\` from get_agent's \`skillHashes\` so a skill edited elsewhere
-  in the meantime is not overwritten. Skills ignore \`allowedTools\`.
+  in the meantime is not overwritten. Skills ignore \`allowedTools\`. get_agent lists the files of
+  a skill by path, without content. Read bounded text of an attached skill's files with get_agent
+  using \`skillId\` (and optional \`referencePath\`, \`referenceOffset\`, or \`versionId\` for a published
+  version). When you pass \`references\`, they replace the text files of the skill, so pass every
+  text file that stays. A binary file that you do not name stays in the skill.
 - skill.delete: Set \`skillId\` to the skill to detach. The skill stays available to other Agents.
 - A skill ref with \`versionId\` pins that saved version of the skill. get_agent lists the pinned
   skills that have a newer version in \`outdatedSkillIds\`. To use the latest version, remove

@@ -48,7 +48,54 @@ describe('readRepositoryArchive', () => {
 		expect(paths).toEqual(['file-0.txt', 'file-1.txt']);
 	});
 
-	it('keeps the text of SKILL.md files and references only', async () => {
+	it('leaves out a file over the file limit, keeps its path, and reads the files after it', async () => {
+		const archive = await readRepositoryArchive(
+			streamOf(
+				archiveOf({
+					'a/SKILL.md': 'skill',
+					'a/assets/big.bin': 'x'.repeat(11),
+					'a/references/x.md': 'reference',
+				}),
+			),
+			{ limits: { ...DEFAULT_ARCHIVE_LIMITS, maxFileBytes: 10 } },
+		);
+
+		expect(archive.paths).toEqual(['a/SKILL.md', 'a/assets/big.bin', 'a/references/x.md']);
+		expect([...archive.oversized]).toEqual([['a/assets/big.bin', null]]);
+		expect([...archive.files.keys()]).toEqual(['a/SKILL.md', 'a/references/x.md']);
+	});
+
+	it('keeps the bytes of the files that `keep` accepts, and the path of every file', async () => {
+		const archive = await readRepositoryArchive(
+			streamOf(archiveOf({ 'a/SKILL.md': 'skill', 'src/big.ts': 'x'.repeat(100) })),
+			{
+				keep: (path) => path.startsWith('a/'),
+				limits: { ...DEFAULT_ARCHIVE_LIMITS, maxRetainedBytes: 10 },
+			},
+		);
+
+		expect(archive.paths).toEqual(['a/SKILL.md', 'src/big.ts']);
+		expect([...archive.files.keys()]).toEqual(['a/SKILL.md']);
+		expect(archive.overflowed).toBe(false);
+	});
+
+	it('reads on for the paths when the kept files pass the budget and the caller asks for it', async () => {
+		const archive = await readRepositoryArchive(
+			streamOf(
+				archiveOf({ 'a/SKILL.md': 'skill', 'src/big.ts': 'x'.repeat(100), 'b/SKILL.md': 'skill' }),
+			),
+			{
+				onRetainedOverflow: 'paths',
+				limits: { ...DEFAULT_ARCHIVE_LIMITS, maxRetainedBytes: 10 },
+			},
+		);
+
+		expect(archive.paths).toEqual(['a/SKILL.md', 'src/big.ts', 'b/SKILL.md']);
+		expect(archive.files.size).toBe(0);
+		expect(archive.overflowed).toBe(true);
+	});
+
+	it('keeps file bytes regardless of the path or extension', async () => {
 		const archive = await readRepositoryArchive(
 			streamOf(
 				archiveOf({
@@ -59,16 +106,18 @@ describe('readRepositoryArchive', () => {
 			),
 		);
 
-		expect([...archive.text]).toEqual([
-			['a/SKILL.md', 'skill'],
-			['a/references/x.md', 'reference'],
+		expect([...archive.files]).toEqual([
+			['a/SKILL.md', Buffer.from('skill')],
+			['a/references/x.md', Buffer.from('reference')],
+			['a/scripts/run.sh', Buffer.from('script')],
 		]);
 		expect(archiveSize(archive)).toBe(
 			'a/SKILL.md'.length +
 				'a/references/x.md'.length +
 				'a/scripts/run.sh'.length +
 				'skill'.length +
-				'reference'.length,
+				'reference'.length +
+				'script'.length,
 		);
 	});
 
@@ -107,8 +156,8 @@ describe('readRepositoryArchive', () => {
 		});
 	});
 
-	it('stops reading the archive once it keeps too much text', async () => {
-		const limits = { ...DEFAULT_ARCHIVE_LIMITS, maxTextBytes: 1000 };
+	it('stops reading the archive once it keeps too many file bytes', async () => {
+		const limits = { ...DEFAULT_ARCHIVE_LIMITS, maxRetainedBytes: 1000 };
 		const files = { 'a/SKILL.md': 'x'.repeat(600), 'b/SKILL.md': 'x'.repeat(600) };
 
 		await expect(
@@ -116,15 +165,15 @@ describe('readRepositoryArchive', () => {
 		).rejects.toMatchObject({ reason: 'archive_too_large' });
 	});
 
-	it('keeps the path of a file over the text size, without its text', async () => {
-		const limits = { ...DEFAULT_ARCHIVE_LIMITS, maxTextFileBytes: 10 };
+	it('keeps the path of a file over the byte limit, without its content', async () => {
+		const limits = { ...DEFAULT_ARCHIVE_LIMITS, maxFileBytes: 10 };
 		const archive = await readRepositoryArchive(
 			streamOf(archiveOf({ 'a/SKILL.md': 'x'.repeat(10), 'b/SKILL.md': 'x'.repeat(11) })),
 			{ limits },
 		);
 
 		expect(archive.paths).toEqual(['a/SKILL.md', 'b/SKILL.md']);
-		expect([...archive.text.keys()]).toEqual(['a/SKILL.md']);
+		expect([...archive.files.keys()]).toEqual(['a/SKILL.md']);
 		expect([...archive.oversized]).toEqual([['b/SKILL.md', await sha256('x'.repeat(11))]]);
 	});
 
@@ -142,7 +191,7 @@ describe('readRepositoryArchive', () => {
 			);
 
 			expect(archive.paths).toEqual(['skills/a/SKILL.md']);
-			expect([...archive.text.keys()]).toEqual(['skills/a/SKILL.md']);
+			expect([...archive.files.keys()]).toEqual(['skills/a/SKILL.md']);
 		});
 
 		it('counts only the files under the folder toward the limits', async () => {
