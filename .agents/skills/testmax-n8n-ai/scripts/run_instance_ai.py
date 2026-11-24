@@ -31,7 +31,7 @@ from pathlib import Path
 
 from live import enabled as live_enabled
 from live import open_url, recording
-from n8n_api import N8nClient, setting
+from n8n_api import N8nClient, file_backed_setting, setting
 
 DEFAULT_TEXT_ANSWER = 'Use sensible defaults and continue.'
 HERE = Path(__file__).resolve().parent
@@ -92,7 +92,12 @@ CUSTOM_MODEL_EFFORTS = (('kimi-k3', 'low'), ('glm-5.2', 'medium'))
 
 def configured_effort():
 	"""Read the orchestrator settings because n8n does not report the configured effort."""
-	if setting('N8N_INSTANCE_AI_THINKING_ENABLED', default='true').lower() in ('false', '0'):
+	try:
+		thinking_enabled = file_backed_setting('N8N_INSTANCE_AI_THINKING_ENABLED', default='true')
+	except (OSError, UnicodeError):
+		# The server may mount the configuration file outside the runner.
+		return None
+	if thinking_enabled.lower() in ('false', '0'):
 		return None
 	model = (setting('N8N_INSTANCE_AI_MODEL') or DEFAULT_INSTANCE_AI_MODEL).lower()
 	provider = model.split('/', 1)[0] if '/' in model else ''
