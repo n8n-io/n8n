@@ -1553,12 +1553,12 @@ function getInvalidParameterPaths(
 	const entries = typeOptions?.multipleValues ? value : [value];
 	const valid =
 		Array.isArray(entries) &&
-		entries.every(
-			(entry) =>
-				isExpression(entry) ||
-				(type === 'options' || type === 'multiOptions'
+		entries.every((entry) =>
+			isExpression(entry)
+				? !property.noDataExpression || isFromAIOnlyExpression(entry)
+				: type === 'options' || type === 'multiOptions'
 					? isOfferedOptionValue(property, entry, displayValues, root, node, nodeType)
-					: isValidParameterValue(property, entry)),
+					: isValidParameterValue(property, entry),
 		);
 	return valid ? [] : [path];
 }

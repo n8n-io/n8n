@@ -404,6 +404,24 @@ describe('carryOverNodeParameters', () => {
 			expect(result.parameters).toEqual({ name: "={{ $fromAI('x') }}" });
 		});
 
+		it('should set aside a list with an expression entry', () => {
+			const tags = (noDataExpression: boolean) =>
+				desc(1, [
+					{
+						displayName: 'Tags',
+						name: 'tags',
+						type: 'string',
+						typeOptions: { multipleValues: true },
+						noDataExpression,
+						default: [],
+					},
+				]);
+			const value = ['literal', '={{ $json.value }}'];
+
+			expect(names(carry(node(1, { tags: value }), tags(false), tags(true), 1))).toEqual(['tags']);
+			expect(carry(node(1, { tags: value }), tags(true), tags(false), 1).setAside).toEqual([]);
+		});
+
 		it('should set aside a dependent value with the expression', () => {
 			const result = carry(
 				node(1, { resource: '={{ $json.r }}', operation: 'delete' }),
