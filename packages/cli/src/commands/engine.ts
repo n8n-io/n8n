@@ -55,14 +55,15 @@ export class Engine extends BaseCommand<z.infer<typeof flagsSchema>> {
 		const roles = parseEngineRoles(this.flags.roles, engineConfig.roles);
 		assertControlPlaneIsolated(process.env);
 		assertRoleSettings(engineConfig, roles);
-		// Only the step worker runs nodes, so only it evaluates expressions and Code nodes,
-		// and only it dials the control plane.
+		// Only the step worker runs nodes, so only it loads them, evaluates expressions and
+		// Code nodes, and dials the control plane.
 		const runsSteps = roles.includes('step-worker');
 		const { EngineMtls } = await import('@/modules/engine-v2/engine-mtls.js');
 		Container.get(EngineMtls).assertSecureTransport(
 			runsSteps ? { N8N_ENGINE_CONTROL_PLANE_BASE_URL: engineConfig.controlPlaneBaseUrl } : {},
 		);
 
+		this.needsNodeTypes = runsSteps;
 		this.needsExpressionEngine = runsSteps;
 		// TODO(CET-332): remove once Code nodes run on the sandbox service.
 		this.needsCodeExecution = runsSteps;
@@ -114,7 +115,7 @@ export class Engine extends BaseCommand<z.infer<typeof flagsSchema>> {
 			roles,
 		});
 
-		await Container.get(LoadNodesAndCredentials).postProcessLoaders();
+		if (runsSteps) await Container.get(LoadNodesAndCredentials).postProcessLoaders();
 	}
 
 	/**

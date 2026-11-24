@@ -312,20 +312,24 @@ describe('Engine', () => {
 			);
 
 			it.each(['step-worker', 'api,step-worker'])(
-				'starts the expression engine and the code execution backend with --roles=%s',
+				'loads the nodes and starts the expression engine and the code execution backend with --roles=%s',
 				async (flag) => {
 					await createEngine({ roles: flag }).init();
 
+					expect(loadNodesAndCredentials.init).toHaveBeenCalled();
+					expect(loadNodesAndCredentials.postProcessLoaders).toHaveBeenCalled();
 					expect(initExpressionEngine).toHaveBeenCalled();
 					expect(taskRunnerModule.start).toHaveBeenCalled();
 				},
 			);
 
 			it.each(['api', 'orchestrator', 'api,orchestrator'])(
-				'starts neither the expression engine nor the code execution backend with --roles=%s',
+				'loads no nodes and starts neither the expression engine nor the code execution backend with --roles=%s',
 				async (flag) => {
 					await createEngine({ roles: flag }).init();
 
+					expect(loadNodesAndCredentials.init).not.toHaveBeenCalled();
+					expect(loadNodesAndCredentials.postProcessLoaders).not.toHaveBeenCalled();
 					expect(initExpressionEngine).not.toHaveBeenCalled();
 					expect(taskRunnerModule.start).not.toHaveBeenCalled();
 				},
