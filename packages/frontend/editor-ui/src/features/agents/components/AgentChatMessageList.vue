@@ -778,6 +778,7 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 							:active="group.active || group.awaitingInput"
 							:awaiting-input="group.awaitingInput"
 							:duration-sec="getThinkingDurationSec(group.thinkingSegments)"
+							:class="$style.thinkingBlock"
 							test-id="agent-chat-thinking-block"
 						>
 							<AgentChatHostEvents :items="getGroupHostEventItems(group.id).thinking" />
@@ -1028,6 +1029,7 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 							:active="isThinkingActive(group.message)"
 							:awaiting-input="group.message.status === CHAT_MESSAGE_STATUS.AWAITING_USER"
 							:duration-sec="getThinkingDurationSec(group.thinkingSegments)"
+							:class="$style.thinkingBlock"
 							test-id="agent-chat-thinking-block"
 						>
 							<AgentChatHostEvents :items="getGroupHostEventItems(group.id).thinking" />
@@ -1259,7 +1261,26 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 	color: var(--text-color--danger);
 }
 
+/* Takes the row of the thinking header that replaces it, so the dots have the
+   same space above and below. */
 .typingIndicator {
-	margin-top: var(--spacing--xs);
+	align-items: center;
+	height: calc(var(--font-size--sm) * var(--line-height--lg));
+	margin-block: var(--spacing--4xs);
+}
+
+/* Keeps the space of the actions row (its margin and its small buttons) that
+   shows above the thinking line when the run ends, so the line does not sit
+   on the text while the run streams, and does not move when it ends. */
+.thinkingBlock {
+	margin-top: calc(var(--spacing--xs) + var(--height--sm));
+	/* Lines up with the message text, which has the same inline padding. */
+	padding-inline: var(--spacing--sm);
+}
+
+/* With the actions row above, or no content above, the space is already there. */
+:has(> .messageFooter) + .thinkingBlock,
+:empty + .thinkingBlock {
+	margin-top: 0;
 }
 </style>
