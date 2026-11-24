@@ -67,6 +67,19 @@ describe('PromotionMissingDependencyList', () => {
 		expect(rows[0]).toHaveTextContent('CRM keyCredential · Used by Invoice reconciliation');
 	});
 
+	it('says that the user has no access to a dependency of a personal project', () => {
+		const unreachable = { ...personalCredential, id: 'c8', accessible: false };
+		const { getAllByTestId } = renderComponent({
+			props: { dependencies: [personalCredential, unreachable], showStatus: true },
+		});
+
+		const rows = getAllByTestId('promotion-missing-dependency');
+		expect(rows.map((row) => statusOf(row)?.textContent?.trim())).toEqual([
+			'Personal project',
+			'Personal project · No access',
+		]);
+	});
+
 	it('does not show a project or an owner in a status of a dependency that the user cannot access', () => {
 		const { getAllByTestId } = renderComponent({
 			props: { dependencies: [outsideAccessWorkflow], showStatus: true },

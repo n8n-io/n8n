@@ -4,7 +4,7 @@ import { N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 
-import { promoteGroupStatus } from '../promotionDependencyStatus';
+import { promoteGroupStatus, type PromoteGroupStatus } from '../promotionDependencyStatus';
 import { resourceIcon } from '../promotionPreview.tree';
 
 type Dependency = PromotionMissingDependency | PromotionDependencyWarning;
@@ -24,17 +24,19 @@ const props = defineProps<{
 
 const i18n = useI18n();
 
+const statusLabel = (key: PromoteGroupStatus) =>
+	i18n.baseText(`promotions.preview.blockers.status.${key}`);
+
 // A warning has no group, and so no status.
 const statuses = computed(() =>
 	props.dependencies.map((dependency) => {
-		const status =
-			props.showStatus && 'group' in dependency ? promoteGroupStatus(dependency.group) : undefined;
-		return (
-			status && {
-				...status,
-				label: i18n.baseText(`promotions.preview.blockers.status.${status.key}`),
-			}
-		);
+		if (!props.showStatus || !('group' in dependency)) return undefined;
+		const status = promoteGroupStatus(dependency.group);
+		if (!status) return undefined;
+		// The group of a personal project does not say if the user can access that project.
+		const keys: PromoteGroupStatus[] =
+			status.key === 'personal' && !dependency.accessible ? [status.key, 'outside'] : [status.key];
+		return { ...status, label: keys.map(statusLabel).join(' · ') };
 	}),
 );
 
