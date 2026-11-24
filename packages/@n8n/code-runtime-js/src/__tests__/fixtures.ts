@@ -1,4 +1,8 @@
-import type { CodeTaskData } from '@n8n/code-task-contract';
+import {
+	CODE_TASK_CONTRACT_VERSION,
+	type CodeTaskData,
+	type CodeTaskInput,
+} from '@n8n/code-task-contract';
 import { createRunExecutionData, type INode, type INodeExecutionData } from 'n8n-workflow';
 
 const trigger: INode = {
@@ -57,5 +61,18 @@ export function newTaskData(items: INodeExecutionData[]): CodeTaskData {
 			webhookTestBaseUrl: 'http://webhook-test',
 			variables: { color: 'red' },
 		},
+	};
+}
+
+/** A task that runs `code` once for all `items`. */
+export function newTaskInput(code: string, items: INodeExecutionData[] = []): CodeTaskInput {
+	return {
+		version: CODE_TASK_CONTRACT_VERSION,
+		taskId: 'task',
+		language: 'javascript',
+		code,
+		nodeMode: 'runOnceForAllItems',
+		continueOnFail: false,
+		data: newTaskData(items),
 	};
 }
