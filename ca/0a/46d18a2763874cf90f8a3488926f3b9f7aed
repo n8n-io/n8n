@@ -1,0 +1,19 @@
+packages/cli/src/modules/agents/simulation/__tests__/node-network-imports.test.ts
+  s_4e8100d4ba14d2::t_5a722484ab41f7 43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ca0a46d18a2763874cf90f8a3488926f3b9f7aed",
+  "prompts": {},
+  "sessions": {
+    "s_4e8100d4ba14d2": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a20889-233d-7672-8300-b96f5d9f857d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}
