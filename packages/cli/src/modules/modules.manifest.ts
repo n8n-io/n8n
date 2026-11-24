@@ -31,8 +31,12 @@ export const packagedModules: PackagedModules = {
 	'mcp-servers': async () => {
 		const { McpServerToolAdapters } = await import('@n8n/backend-module-mcp-servers');
 		const { WorkflowToolAdapter } = await import('./mcp-servers/workflow-tool.adapter.js');
+		const { TextDraftAdapter } = await import('./mcp-servers/text-draft.adapter.js');
 		Container.set(McpServerToolAdapters, {
-			resolve: () => ({ workflows: Container.get(WorkflowToolAdapter) }),
+			resolve: () => ({
+				workflows: Container.get(WorkflowToolAdapter),
+				textDrafts: Container.get(TextDraftAdapter),
+			}),
 		});
 		return await import('@n8n/backend-module-mcp-servers/module');
 	},

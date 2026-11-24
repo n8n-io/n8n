@@ -1,4 +1,8 @@
-import { AddMcpServerToolsDto, UpdateMcpServerToolDto } from '@n8n/api-types';
+import {
+	AddMcpServerToolsDto,
+	DraftMcpServerToolDto,
+	UpdateMcpServerToolDto,
+} from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Body, Delete, Get, Patch, Post, ProjectScope, RestController } from '@n8n/decorators';
 
@@ -44,6 +48,20 @@ export class McpServerToolsController {
 			req.params.serverId,
 			req.params.toolId,
 			dto,
+		);
+	}
+
+	/** One model call. Without `field`, the draft writes both fields, as after an add. */
+	@Post('/tools/:toolId/draft')
+	@ProjectScope('mcpServer:update')
+	async draft(req: ToolRequest, _res: unknown, @Body dto: DraftMcpServerToolDto) {
+		await this.flagGate.assertEnabled(req.user);
+		return await this.toolsService.draftTool(
+			req.user,
+			req.params.projectId,
+			req.params.serverId,
+			req.params.toolId,
+			dto.field,
 		);
 	}
 

@@ -2,27 +2,37 @@
 import {
 	MCP_SERVER_TOOL_NAME_MAX_LENGTH,
 	mcpServerToolNameSchema,
+	type McpServerToolDraftField,
 	type McpServerToolResponse,
 	type UpdateMcpServerToolDto,
 } from '@n8n/api-types';
 import {
 	N8nActionToggle,
 	N8nBadge,
+	N8nButton,
 	N8nCallout,
 	N8nIcon,
 	N8nInput,
 	N8nInputLabel,
 	N8nLink,
+	N8nSpinner,
 	N8nText,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, ref, watch } from 'vue';
 
 // One tool of a server. Collapsed: the name and the description. Expanded: the source link, the
-// tool name, the description, and a menu with "Remove". A field saves when it loses focus.
+// tool name, the description, and a menu with "Remove". A field saves when it loses focus. With
+// the n8n Assistant, a "Generate" button below each field writes that field again.
 const props = defineProps<{
 	tool: McpServerToolResponse;
 	canUpdate: boolean;
+	/** The builder can edit, and the n8n Assistant can write drafts. */
+	canGenerate?: boolean;
+	/** The first draft after the add runs. The row shows a loading line instead of the text. */
+	drafting?: boolean;
+	/** The fields for which a "Generate" call runs. */
+	generating?: McpServerToolDraftField[];
 	/** The URL of the source workflow, which opens in a new tab. */
 	workflowHref: string | null;
 	/** Open the row on mount, for a deep link. */
@@ -32,6 +42,7 @@ const props = defineProps<{
 const emit = defineEmits<{
 	update: [changes: UpdateMcpServerToolDto];
 	remove: [];
+	generate: [field: McpServerToolDraftField];
 }>();
 
 const i18n = useI18n();
@@ -49,7 +60,11 @@ watch(
 );
 
 const nameInvalid = computed(() => !mcpServerToolNameSchema.safeParse(toolName.value).success);
-const missingDescription = computed(() => props.tool.description.trim() === '');
+const missingDescription = computed(() => !props.drafting && props.tool.description.trim() === '');
+
+function isGenerating(field: McpServerToolDraftField) {
+	return props.generating?.includes(field) ?? false;
+}
 
 const menuActions = computed(() => [
 	{
@@ -81,7 +96,14 @@ function saveDescription() {
 		data-test-id="mcp-tool-row"
 		:data-tool-name="tool.toolName"
 	>
+		<div v-if="drafting && !expanded" :class="$style.drafting" data-test-id="mcp-tool-row-drafting">
+			<N8nSpinner size="small" />
+			<N8nText size="small" color="text-light">
+				{{ i18n.baseText('mcpServers.tools.row.drafting') }}
+			</N8nText>
+		</div>
 		<button
+			v-else
 			type="button"
 			:class="$style.summary"
 			:aria-expanded="expanded"
@@ -144,7 +166,14 @@ function saveDescription() {
 				{{ i18n.baseText(`mcpServers.tools.broken.callout.${tool.brokenReason}`) }}
 			</N8nCallout>
 
-			<template v-if="canUpdate">
+			<div v-if="drafting" :class="$style.drafting" data-test-id="mcp-tool-row-drafting">
+				<N8nSpinner size="small" />
+				<N8nText size="small" color="text-light">
+					{{ i18n.baseText('mcpServers.tools.row.drafting') }}
+				</N8nText>
+			</div>
+
+			<template v-else-if="canUpdate">
 				<div>
 					<N8nInputLabel
 						:label="i18n.baseText('mcpServers.tools.row.toolName')"
@@ -155,23 +184,40 @@ function saveDescription() {
 							v-model="toolName"
 							:class="$style.mono"
 							:maxlength="MCP_SERVER_TOOL_NAME_MAX_LENGTH"
+							:disabled="isGenerating('toolName')"
 							data-test-id="mcp-tool-row-name-input"
 							@blur="saveName"
-						/>
+						>
+							<template v-if="isGenerating('toolName')" #suffix>
+								<N8nSpinner size="small" data-test-id="mcp-tool-row-generating-name" />
+							</template>
+						</N8nInput>
 					</N8nInputLabel>
-					<N8nText
-						v-if="nameInvalid"
-						tag="p"
-						size="small"
-						color="danger"
-						:class="$style.hint"
-						data-test-id="mcp-tool-row-name-error"
-					>
-						{{ i18n.baseText('mcpServers.tools.row.toolNameInvalid') }}
-					</N8nText>
-					<N8nText v-else tag="p" size="small" color="text-light" :class="$style.hint">
-						{{ i18n.baseText('mcpServers.tools.row.toolNameHint') }}
-					</N8nText>
+					<div :class="$style.fieldFooter">
+						<N8nText
+							v-if="nameInvalid"
+							tag="p"
+							size="small"
+							color="danger"
+							data-test-id="mcp-tool-row-name-error"
+						>
+							{{ i18n.baseText('mcpServers.tools.row.toolNameInvalid') }}
+						</N8nText>
+						<N8nText v-else tag="p" size="small" color="text-light">
+							{{ i18n.baseText('mcpServers.tools.row.toolNameHint') }}
+						</N8nText>
+						<N8nButton
+							v-if="canGenerate"
+							variant="ghost"
+							size="xsmall"
+							:label="i18n.baseText('mcpServers.tools.row.generate')"
+							:disabled="isGenerating('toolName')"
+							:class="$style.generate"
+							data-test-id="mcp-tool-row-generate-name"
+							data-attr="mcp-tool-row-generate-name"
+							@click="emit('generate', 'toolName')"
+						/>
+					</div>
 				</div>
 
 				<div>
@@ -185,23 +231,39 @@ function saveDescription() {
 							v-model="description"
 							type="textarea"
 							:rows="2"
+							:disabled="isGenerating('description')"
 							:class="$style.resizable"
 							data-test-id="mcp-tool-row-description-input"
 							@blur="saveDescription"
-						/>
+						>
+							<template v-if="isGenerating('description')" #suffix>
+								<N8nSpinner
+									size="small"
+									:class="$style.textareaSpinner"
+									data-test-id="mcp-tool-row-generating-description"
+								/>
+							</template>
+						</N8nInput>
 					</N8nInputLabel>
-					<N8nText
-						v-if="missingDescription"
-						tag="p"
-						size="small"
-						color="warning"
-						:class="$style.hint"
-					>
-						{{ i18n.baseText('mcpServers.tools.row.missingDescription') }}
-					</N8nText>
-					<N8nText v-else tag="p" size="small" color="text-light" :class="$style.hint">
-						{{ i18n.baseText('mcpServers.tools.row.descriptionHint') }}
-					</N8nText>
+					<div :class="$style.fieldFooter">
+						<N8nText v-if="missingDescription" tag="p" size="small" color="warning">
+							{{ i18n.baseText('mcpServers.tools.row.missingDescription') }}
+						</N8nText>
+						<N8nText v-else tag="p" size="small" color="text-light">
+							{{ i18n.baseText('mcpServers.tools.row.descriptionHint') }}
+						</N8nText>
+						<N8nButton
+							v-if="canGenerate"
+							variant="ghost"
+							size="xsmall"
+							:label="i18n.baseText('mcpServers.tools.row.generate')"
+							:disabled="isGenerating('description')"
+							:class="$style.generate"
+							data-test-id="mcp-tool-row-generate-description"
+							data-attr="mcp-tool-row-generate-description"
+							@click="emit('generate', 'description')"
+						/>
+					</div>
 				</div>
 			</template>
 
@@ -327,8 +389,47 @@ function saveDescription() {
 	min-height: var(--spacing--lg);
 }
 
-.hint {
+.drafting {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--xs) var(--spacing--sm);
+	min-height: var(--height--3xl);
+}
+
+.editor .drafting {
+	padding: 0;
+	min-height: auto;
+}
+
+// The helper text on the left, "Generate" on the right, directly below the field.
+.fieldFooter {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--xs);
 	margin-top: var(--spacing--4xs);
+
+	// "Generate": a small text button with no border and no background. Two classes, to win
+	// over the size and variant classes of N8nButton.
+	.generate {
+		--button--color: var(--text-color--subtle);
+		--button--color--background-hover: transparent;
+		--button--color--background-active: transparent;
+		--button--padding: 0;
+		flex: none;
+		font-style: italic;
+		font-weight: var(--font-weight--regular);
+
+		&:hover:not(:disabled) {
+			--button--color: var(--text-color);
+		}
+	}
+}
+
+// The spinner sits in the top-right corner of the description while "Generate" runs.
+.textareaSpinner {
+	margin: var(--spacing--xs) var(--spacing--xs) 0 0;
 }
 
 .mono :global(input),

@@ -65,6 +65,8 @@ export type CallableWorkflowDescription =
 			name: string;
 			description: string | null;
 			inputSchema: CallableWorkflowInputSchema;
+			/** The node names of the published version. */
+			nodeNames: string[];
 	  }
 	| { callable: false; reason: CallableWorkflowRefusal };
 
@@ -144,6 +146,7 @@ export class CallableWorkflowRunner {
 			name: workflow.name,
 			description: workflow.description ?? null,
 			inputSchema: toInputJsonSchema(trigger),
+			nodeNames: workflow.nodes.map((node) => node.name),
 		};
 	}
 

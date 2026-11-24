@@ -466,6 +466,7 @@ describe('access', () => {
 		['candidates', (s) => ['get', `${base(s)}/tool-candidates`]],
 		['add', (s) => ['post', `${base(s)}/tools`, { workflowIds: ['x'] }]],
 		['edit', (s, t) => ['patch', `${base(s)}/tools/${t}`, { description: 'x' }]],
+		['draft', (s, t) => ['post', `${base(s)}/tools/${t}/draft`, {}]],
 		['remove', (s, t) => ['delete', `${base(s)}/tools/${t}`]],
 	];
 
