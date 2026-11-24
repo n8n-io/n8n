@@ -23,12 +23,11 @@ function formatRelativeTime(isoTime: string): string {
 }
 
 function formatCreatedDate(isoTime: string): string {
-	const date = new Date(isoTime);
-	const day = date.getDate();
-	const month = date.toLocaleString(i18n.locale, { month: 'long' });
-	return i18n.baseText('instanceAi.artifactCard.createdAt', {
-		interpolate: { date: `${day} ${month}` },
+	const date = new Date(isoTime).toLocaleDateString(i18n.locale, {
+		day: 'numeric',
+		month: 'long',
 	});
+	return i18n.baseText('instanceAi.artifactCard.createdAt', { interpolate: { date } });
 }
 
 /** The metadata line of an artifact card, from the time of the tool call that produced it. */

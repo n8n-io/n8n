@@ -9,9 +9,9 @@ describe('formatArtifactMetadata', () => {
 		i18nInstance.global.locale.value = originalLocale;
 	});
 
-	it('writes the month of the created date in the active locale', () => {
+	it('writes the created date in the format of the active locale', () => {
 		i18nInstance.global.locale.value = 'es';
 
-		expect(formatArtifactMetadata('2026-11-24T12:00:00.000Z')).toContain('24 noviembre');
+		expect(formatArtifactMetadata('2026-11-24T12:00:00.000Z')).toContain('24 de noviembre');
 	});
 });
