@@ -24,7 +24,7 @@ flowchart LR
     subgraph hosts["Host call sites (packages/cli)"]
         save["workflowSave<br/>WorkflowCreationService, WorkflowService,<br/>chat hub, instance AI, public API"]
         publish["workflowPublish<br/>WorkflowService.activateWorkflow,<br/>WorkflowPublicationApplier, ActiveWorkflowManager"]
-        admission["executionAdmission<br/>before the execution row<br/>or the agent execution row"]
+        admission["executionAdmission<br/>no host calls it yet"]
         start["workflowStart<br/>PolicyLifecycleHandler on<br/>workflowExecuteBefore"]
         other["workflowTransfer<br/>credentialSave<br/>credentialTransfer<br/>contentImport<br/>credentialDecrypt"]
     end
@@ -95,7 +95,7 @@ request. A check can compare it with `workflow` to judge only what the save adds
 | ------------------- | -------- | --------------------------------- | --------------------------------------------------------------------- |
 | `workflowSave`      | 1000 ms  | row id, or node hash for a create | editor, public API, chat hub, instance AI, eval thread restore        |
 | `workflowPublish`   | 1000 ms  | row id                            | activate, publication applier, activation on startup                  |
-| `executionAdmission` | 250 ms  | artifact id (workflow or agent)   | before a run gets its execution row or its agent execution row        |
+| `executionAdmission` | 250 ms  | artifact id (workflow or agent)   | no host calls it yet; it is for the check before a run gets its row   |
 | `workflowStart`     | 250 ms   | row id                            | `workflowExecuteBefore` on main, workers, sub-executions, manual runs |
 | `workflowTransfer`  | 1000 ms  | row id                            | move to another project                                               |
 | `credentialSave`    | 1000 ms  | row id, or type hash for a create | editor, public API, package import stubs, provider connections        |
@@ -105,9 +105,9 @@ request. A check can compare it with `workflow` to judge only what the save adds
 
 Deadlines are tight on the points on the execution path. A wedged policy store
 there pins worker slots instead of failing one request. A check on
-`executionAdmission` must read memory only, because it runs before every
-execution. A refusal there leaves no execution row, no queue job, and no worker
-slot.
+`executionAdmission` must read memory only. When a host calls the point, it
+runs before every execution. A refusal there leaves no execution row, no queue
+job, and no worker slot.
 
 A one-off CLI command registers no check unless it calls
 `BaseCommand.initPolicyEnforcement()`. `import:workflow`, `import:credentials`,

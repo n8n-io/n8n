@@ -1,6 +1,11 @@
 import type { PolicyCheckFailure, PolicyViolation } from '@n8n/api-types';
 import type { Constructable } from '@n8n/di';
-import type { INode, WorkflowExecuteMode, WorkflowExecutionSource } from 'n8n-workflow';
+import type {
+	INode,
+	WorkflowEngineType,
+	WorkflowExecuteMode,
+	WorkflowExecutionSource,
+} from 'n8n-workflow';
 
 export type { PolicyViolation, PolicyCheckFailure };
 
@@ -85,9 +90,6 @@ export type PolicedArtifactRef = {
 	readonly name: string;
 };
 
-/** Which engine runs the execution. */
-export type ExecutionEngine = 'v1' | 'v2';
-
 /**
  * A run that asks for its execution row. The fields match a ledger row, so a check can apply
  * the shared counting rules. There are no nodes: a check here must read memory only.
@@ -99,7 +101,7 @@ export type ExecutionAdmissionContext = {
 	readonly mode: WorkflowExecuteMode;
 	/** `null` for a regular run. */
 	readonly source: WorkflowExecutionSource | null;
-	readonly engine: ExecutionEngine;
+	readonly engine: WorkflowEngineType;
 };
 
 export type WorkflowStartContext = {
