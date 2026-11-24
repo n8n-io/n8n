@@ -62,6 +62,18 @@ describe('useAssistantAgentThreadsStore', () => {
 			expect(store.threadCreditsUsed('t1')).toBe(2.5);
 		});
 
+		it('reports whether the credit total loaded', async () => {
+			vi.spyOn(console, 'error').mockImplementation(() => {});
+			const store = useAssistantAgentThreadsStore();
+
+			vi.mocked(fetchAssistantAgentThreadCredits).mockResolvedValue({ creditsUsed: null });
+			await expect(store.loadThreadCredits('t1')).resolves.toBe(true);
+
+			vi.mocked(fetchAssistantAgentThreadCredits).mockRejectedValue(new Error('offline'));
+			await expect(store.loadThreadCredits('t2')).resolves.toBe(false);
+			expect(store.threadCreditsUsed('t2')).toBeUndefined();
+		});
+
 		it('keeps a pushed total that a slower load would make older', async () => {
 			let resolve: (value: { creditsUsed: number }) => void = () => {};
 			vi.mocked(fetchAssistantAgentThreadCredits).mockReturnValue(

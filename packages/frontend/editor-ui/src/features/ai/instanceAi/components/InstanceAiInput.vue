@@ -3,7 +3,6 @@ import { computed, nextTick, onBeforeUnmount, ref, watch, type Component, type R
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
-import { EXTENDED_PROMPT_MAX_LENGTH } from '@/features/ai/shared/constants';
 import AttachmentPreview from './AttachmentPreview.vue';
 import { N8nAttachment, N8nAttachmentGroup } from '@n8n/design-system';
 import { useAttachmentPreviews } from '@/features/ai/shared/composables/useAttachmentPreviews';
@@ -12,6 +11,7 @@ import InstanceAiInputMenu from './InstanceAiInputMenu.vue';
 import { convertFileToBinaryData } from '@/app/utils/fileUtils';
 import {
 	base64EncodedSize,
+	EXTENDED_PROMPT_MAX_LENGTH,
 	type InstanceAiAttachment,
 	type InstanceAiResourceAttachment,
 } from '@n8n/api-types';

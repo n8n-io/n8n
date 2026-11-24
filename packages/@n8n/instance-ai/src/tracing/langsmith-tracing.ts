@@ -52,6 +52,7 @@ import {
 	rawTracePayload,
 	redactLangSmithTelemetrySpan,
 	sanitizeTracePayload,
+	type SanitizeTracePayloadOptions,
 	sanitizeTraceValue,
 	serializeModelIdForTrace,
 	toTelemetryAttributeValue,
@@ -300,6 +301,7 @@ function buildProductSpanAttributes(options: {
 	tags?: string[];
 	metadata?: Record<string, unknown>;
 	inputs?: unknown;
+	root?: boolean;
 }): Record<string, AttributeValue> {
 	const attributes: Record<string, AttributeValue> = {
 		[LANGSMITH_TRACEABLE]: 'true',
@@ -324,7 +326,10 @@ function buildProductSpanAttributes(options: {
 		}
 	}
 
-	const inputs = options.inputs === undefined ? undefined : stringifyTracePayload(options.inputs);
+	const inputs =
+		options.inputs === undefined
+			? undefined
+			: stringifyTracePayload(options.inputs, { conversationText: options.root === true });
 	if (inputs !== undefined) {
 		attributes[GEN_AI_PROMPT] = inputs;
 	}
@@ -332,12 +337,20 @@ function buildProductSpanAttributes(options: {
 	return attributes;
 }
 
-function stringifyTracePayload(value: unknown): string | undefined {
+function stringifyTracePayload(
+	value: unknown,
+	options?: SanitizeTracePayloadOptions,
+): string | undefined {
 	try {
-		return JSON.stringify(sanitizeTracePayload(value));
+		return JSON.stringify(sanitizeTracePayload(value, options));
 	} catch {
 		return undefined;
 	}
+}
+
+/** Only a root run carries the user message and the assistant reply of a turn. */
+function conversationTextFor(run: InstanceAiTraceRun): SanitizeTracePayloadOptions {
+	return { conversationText: run.parentRunId === undefined };
 }
 
 function startProductSpan(
@@ -393,7 +406,11 @@ function startProductSpan(
 		...(parentRun ? { parentRunId: parentRun.id } : {}),
 		...(options.tags ? { tags: normalizeTags(DEFAULT_TAGS, parentRun?.tags, options.tags) } : {}),
 		...(runMetadata ? { metadata: runMetadata } : {}),
-		...(options.inputs !== undefined ? { inputs: sanitizeTracePayload(options.inputs) } : {}),
+		...(options.inputs !== undefined
+			? {
+					inputs: sanitizeTracePayload(options.inputs, { conversationText: options.root === true }),
+				}
+			: {}),
 	};
 
 	if (parentRun) {
@@ -435,8 +452,8 @@ async function finishProductSpan(
 				// Unserializable (cycles) — fall through to the sanitized path.
 			}
 		}
-		completion ??= stringifyTracePayload(options.outputs);
-		runOutputs ??= sanitizeTracePayload(options.outputs);
+		completion ??= stringifyTracePayload(options.outputs, conversationTextFor(run));
+		runOutputs ??= sanitizeTracePayload(options.outputs, conversationTextFor(run));
 		if (completion !== undefined) {
 			attributes[GEN_AI_COMPLETION] = completion;
 		}
@@ -710,10 +727,13 @@ function updateProductRunInputs(
 	run: InstanceAiTraceRun,
 	inputs: Record<string, unknown>,
 ): void {
-	const mergedInputs = sanitizeTracePayload(mergeTraceInputs(run.inputs, inputs));
+	const mergedInputs = sanitizeTracePayload(
+		mergeTraceInputs(run.inputs, inputs),
+		conversationTextFor(run),
+	);
 	run.inputs = mergedInputs;
 
-	const prompt = stringifyTracePayload(mergedInputs);
+	const prompt = stringifyTracePayload(mergedInputs, conversationTextFor(run));
 	if (prompt !== undefined) {
 		try {
 			runtime.spans.get(run.id)?.setAttributes({ [GEN_AI_PROMPT]: prompt });
@@ -1032,7 +1052,7 @@ export function mergeTraceRunInputs(
 		return;
 	}
 
-	run.inputs = sanitizeTracePayload(mergeTraceInputs(run.inputs, inputs));
+	run.inputs = sanitizeTracePayload(mergeTraceInputs(run.inputs, inputs), conversationTextFor(run));
 }
 
 export async function withCurrentTraceSpan<T>(
