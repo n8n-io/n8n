@@ -2,7 +2,7 @@ import type { INode, NodeEgressFilter } from 'n8n-workflow';
 
 import { createCustomModelEndpointAuthFetch } from './auth-fetch';
 import type { CustomModelEndpointFetchContext } from './auth-fetch';
-import { wrapCustomModelEndpointErrorFetch } from './error-handling';
+import { clientErrorMessage, wrapCustomModelEndpointErrorFetch } from './error-handling';
 import type { EndpointCredential } from './types';
 
 const BASE_URL = 'https://gateway.example.com/v1';
@@ -34,6 +34,11 @@ describe('wrapCustomModelEndpointErrorFetch', () => {
 			'Bad client',
 		],
 		['the detail a FastAPI gateway sends', { detail: 'Not authenticated' }, 'Not authenticated'],
+		[
+			'the first field that actually says something, past the blank ones',
+			{ error_description: '', error: '   ', message: 'Subscription key is invalid' },
+			'Subscription key is invalid',
+		],
 		[
 			'a message ahead of the detail beside it',
 			{ message: 'Subscription key is invalid', detail: 'Not authenticated' },
@@ -73,6 +78,12 @@ describe('wrapCustomModelEndpointErrorFetch', () => {
 		expect(await surfaced(titled(`Denied ${entity} here`))).toBe(expected);
 	});
 
+	// `constructor` is the one Object.prototype key the entity pattern can reach:
+	// it matches `[a-z]+` and survives the lowercasing the lookup does
+	it('leaves &constructor; alone, rather than reading it off Object.prototype', async () => {
+		expect(await surfaced(titled('Denied &constructor; here'))).toBe('Denied &constructor; here');
+	});
+
 	it.each([
 		[
 			'one already shaped for the client',
@@ -104,6 +115,17 @@ describe('wrapCustomModelEndpointErrorFetch', () => {
 
 		expect(message.length).toBeLessThan(900);
 		expect(message.endsWith('…')).toBe(true);
+	});
+});
+
+describe('clientErrorMessage', () => {
+	it.each<[string, string, string | undefined]>([
+		['the message the wrapper wrote', '{"error":{"message":"Quota exhausted"}}', 'Quota exhausted'],
+		['nothing for a body that is not client-shaped', '{"detail":"Not authenticated"}', undefined],
+		['nothing for a message that is empty', '{"error":{"message":""}}', undefined],
+		['nothing for a message that is only whitespace', '{"error":{"message":"  "}}', undefined],
+	])('reads back %s', (_name, body, expected) => {
+		expect(clientErrorMessage(body)).toBe(expected);
 	});
 });
 
@@ -139,7 +161,7 @@ describe('a rejected login', () => {
 			{
 				endpoint,
 				egressFilter: allowAll,
-				baseFetch: wrapCustomModelEndpointErrorFetch(baseFetch),
+				baseFetch,
 			},
 		);
 		const response = await authFetch(BASE_URL);

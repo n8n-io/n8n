@@ -188,9 +188,9 @@ function makeCatalog(): ProviderCatalog {
 			id: 'aws-bedrock',
 			name: 'AWS Bedrock',
 			models: {
-				'anthropic.claude-sonnet-4-5-v1:0': {
-					id: 'anthropic.claude-sonnet-4-5-v1:0',
-					name: 'Claude Sonnet 4.5',
+				'anthropic.claude-sonnet-5-5': {
+					id: 'anthropic.claude-sonnet-5-5',
+					name: 'Claude Sonnet 5.5',
 					reasoning: true,
 					toolCall: true,
 				},
@@ -274,7 +274,7 @@ describe('AgentAdvancedPanel', () => {
 
 	it('shows the reasoning toggle when the selected model supports reasoning', () => {
 		const config = makeConfig({
-			model: 'aws-bedrock/anthropic.claude-sonnet-4-5-v1:0',
+			model: 'aws-bedrock/anthropic.claude-sonnet-5-5',
 		});
 		const wrapper = mount(AgentAdvancedPanel, {
 			props: { config, projectId: 'project-1' },
@@ -488,9 +488,9 @@ describe('AgentAdvancedPanel', () => {
 	});
 
 	it.each([
-		'anthropic/claude-sonnet-4-5',
-		'openrouter/anthropic/claude-sonnet-4.5',
-		'google-vertex/claude-sonnet-4-5',
+		'anthropic/claude-sonnet-5-5',
+		'openrouter/anthropic/claude-sonnet-5.5',
+		'google-vertex/claude-sonnet-5-5',
 	])('shows a default 1h cache duration for %s', async (model) => {
 		const config = makeConfig({ model });
 		const wrapper = mount(AgentAdvancedPanel, {
@@ -534,7 +534,7 @@ describe('AgentAdvancedPanel', () => {
 
 	it('shows prompt caching as off and hides the cache duration when the config turned it off', () => {
 		const config = makeConfig({
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			config: { promptCaching: { enabled: false, anthropic: { ttl: '5m' } } },
 		});
 		const wrapper = mount(AgentAdvancedPanel, {
@@ -549,7 +549,7 @@ describe('AgentAdvancedPanel', () => {
 
 	it('keeps the Anthropic cache duration when the user turns prompt caching back on', async () => {
 		const config = makeConfig({
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			config: { promptCaching: { enabled: false, anthropic: { ttl: '5m' } } },
 		});
 		const wrapper = mount(AgentAdvancedPanel, {
@@ -576,9 +576,9 @@ describe('AgentAdvancedPanel', () => {
 	});
 
 	it.each([
-		'anthropic/claude-sonnet-4-5',
-		'openrouter/anthropic/claude-sonnet-4.5',
-		'google-vertex/claude-sonnet-4-5',
+		'anthropic/claude-sonnet-5-5',
+		'openrouter/anthropic/claude-sonnet-5.5',
+		'google-vertex/claude-sonnet-5-5',
 	])('saves the selected cache duration for %s', (model) => {
 		const config = makeConfig({ model });
 		const wrapper = mount(AgentAdvancedPanel, {
@@ -662,6 +662,45 @@ describe('AgentAdvancedPanel', () => {
 		expect(events.length).toBeGreaterThan(0);
 		const last = events[events.length - 1][0] as Partial<AgentJsonConfig>;
 		expect(last.config).not.toHaveProperty('maxIterations');
+	});
+
+	it.each([
+		['config has not loaded', null],
+		['config block is absent', makeConfig()],
+		['toolCallConcurrency is unset', makeConfig({ config: { toolCallConcurrency: undefined } })],
+	] as const)('shows the runtime concurrency default when %s', (_description, config) => {
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: { config },
+			global: { stubs: globalStubs },
+		});
+		const input = wrapper.find('[data-testid="agent-concurrency-input"]');
+		expect(Number(input.element.getAttribute('value'))).toBe(1);
+		expect(wrapper.emitted('update:config')).toBeUndefined();
+	});
+
+	it('shows explicit concurrency and restores the runtime default when it is removed', async () => {
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: { config: makeConfig({ config: { toolCallConcurrency: 7 } }) },
+			global: { stubs: globalStubs },
+		});
+		const input = wrapper.find('[data-testid="agent-concurrency-input"]');
+		expect(Number(input.element.getAttribute('value'))).toBe(7);
+		await wrapper.setProps({ config: makeConfig({ config: {} }) });
+		expect(Number(input.element.getAttribute('value'))).toBe(1);
+		expect(wrapper.emitted('update:config')).toBeUndefined();
+	});
+
+	it('resets cleared concurrency to the runtime default and preserves other settings', async () => {
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: { config: makeConfig({ config: { toolCallConcurrency: 7, maxIterations: 42 } }) },
+			global: { stubs: globalStubs },
+		});
+		const input = wrapper.find('[data-testid="agent-concurrency-input"]');
+		await input.setValue('abc');
+		expect(Number(input.element.getAttribute('value'))).toBe(1);
+		expect(wrapper.emitted('update:config')).toEqual([
+			[{ config: { toolCallConcurrency: 1, maxIterations: 42 } }],
+		]);
 	});
 
 	it('emits update:config with toolCallConcurrency when the concurrency field changes', async () => {

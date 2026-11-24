@@ -1,0 +1,136 @@
+{
+	"properties": {
+		"base_resp": {
+			"properties": {
+				"status_code": {
+					"type": "number"
+				},
+				"status_msg": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"choices": {
+			"items": {
+				"properties": {
+					"finish_reason": {
+						"type": "string"
+					},
+					"index": {
+						"type": "number"
+					},
+					"message": {
+						"properties": {
+							"audio_content": {
+								"type": "string"
+							},
+							"content": {
+								"type": "string"
+							},
+							"name": {
+								"type": "string"
+							},
+							"reasoning_content": {
+								"type": "string"
+							},
+							"reasoning_details": {
+								"items": {
+									"properties": {
+										"format": {
+											"type": "string"
+										},
+										"id": {
+											"type": "string"
+										},
+										"index": {
+											"type": "number"
+										},
+										"text": {
+											"type": "string"
+										},
+										"type": {
+											"type": "string"
+										}
+									},
+									"type": "object"
+								},
+								"type": "array"
+							},
+							"role": {
+								"type": "string"
+							}
+						},
+						"type": "object"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"created": {
+			"type": "number"
+		},
+		"id": {
+			"type": "string"
+		},
+		"input_sensitive": {
+			"type": "boolean"
+		},
+		"input_sensitive_type": {
+			"type": "number"
+		},
+		"model": {
+			"type": "string"
+		},
+		"object": {
+			"type": "string"
+		},
+		"output_sensitive": {
+			"type": "boolean"
+		},
+		"output_sensitive_int": {
+			"type": "number"
+		},
+		"output_sensitive_type": {
+			"type": "number"
+		},
+		"service_tier": {
+			"type": "string"
+		},
+		"usage": {
+			"properties": {
+				"completion_tokens": {
+					"type": "number"
+				},
+				"completion_tokens_details": {
+					"properties": {
+						"reasoning_tokens": {
+							"type": "number"
+						}
+					},
+					"type": "object"
+				},
+				"prompt_tokens": {
+					"type": "number"
+				},
+				"prompt_tokens_details": {
+					"properties": {
+						"cached_tokens": {
+							"type": "number"
+						}
+					},
+					"type": "object"
+				},
+				"total_characters": {
+					"type": "number"
+				},
+				"total_tokens": {
+					"type": "number"
+				}
+			},
+			"type": "object"
+		}
+	},
+	"type": "object"
+}

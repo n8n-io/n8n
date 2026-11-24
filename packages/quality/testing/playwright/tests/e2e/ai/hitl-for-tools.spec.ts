@@ -42,7 +42,7 @@ const ANTHROPIC_RESPONSE = {
 	id: 'msg_hitl_visibility',
 	type: 'message',
 	role: 'assistant',
-	model: 'claude-sonnet-4-5-20250929',
+	model: 'claude-sonnet-5-5',
 	content: [{ type: 'text', text: 'Here is my answer.' }],
 	stop_reason: 'end_turn',
 	stop_sequence: null,

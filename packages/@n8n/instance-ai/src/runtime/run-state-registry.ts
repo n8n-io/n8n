@@ -24,6 +24,8 @@ export interface ActiveRunState {
 	lastActivityAt?: number;
 	/** Owner of the run, resolved at entry so concurrency can be counted per user. */
 	userId?: string;
+	/** The user stopped the run. The run reads it when it ends. */
+	stoppedByUser?: boolean;
 }
 
 export interface SuspendedRunState<TUser = unknown> extends ActiveRunState {
@@ -64,6 +66,7 @@ export interface BackgroundTaskStatusSnapshot {
 	runId: string;
 	messageGroupId?: string;
 	threadId: string;
+	detachedFromTurn?: boolean;
 }
 
 export interface RunStateTimeoutDetails {
@@ -191,6 +194,7 @@ export class RunStateRegistry<TUser = unknown> {
 					startedAt: task.startedAt,
 					runId: task.runId,
 					messageGroupId: task.messageGroupId,
+					...(task.detachedFromTurn ? { detachedFromTurn: true } : {}),
 				})),
 		};
 	}

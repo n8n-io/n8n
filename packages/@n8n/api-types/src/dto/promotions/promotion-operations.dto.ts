@@ -143,9 +143,12 @@ const expectedSourceSchema = z
 	})
 	.strict();
 
-/** Apply may pin the reviewed source. Without it, the branch tip is applied. */
+/** Apply may pin the reviewed source and preview. Without them, the branch tip is applied. */
 export class ApplyPackageDto extends Z.class(
-	{ expectedSource: expectedSourceSchema.optional() },
+	{
+		expectedSource: expectedSourceSchema.optional(),
+		expectedPreviewRevision: expectedPreviewRevisionSchema,
+	},
 	{ strict: true },
 ) {}
 
@@ -159,14 +162,15 @@ const confirmDestructiveChangesSchema = z
 			'Rows and other columns are kept. ' +
 			'On a full apply, also deletes the team projects that a `project-deletion` conflict reports, ' +
 			'with everything in them. ' +
-			'The confirmation covers every such change and deletion when Continue runs, ' +
-			'including those that are not in the reviewed result.',
+			'Without `expectedPreviewRevision`, the confirmation covers every such change and deletion ' +
+			'when Continue runs, including those that are not in the reviewed result.',
 	});
 
 /** Continue must name the source that the paused Apply reported. */
 export class ContinueApplyPackageDto extends Z.class(
 	{
 		expectedSource: expectedSourceSchema,
+		expectedPreviewRevision: expectedPreviewRevisionSchema,
 		confirmDestructiveChanges: confirmDestructiveChangesSchema,
 	},
 	{ strict: true },

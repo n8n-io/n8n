@@ -180,14 +180,15 @@ describe('AssistantAgentPanelThread', () => {
 		});
 	});
 
-	it('sends the agent with each message', async () => {
+	it('sends the agent with each message, as a reference and as the subject', async () => {
 		await render();
 
 		const first = clientContext();
 		expect(first.attachments).toEqual([subject]);
+		expect(first.subject).toEqual(subject);
 		acceptMessage(first);
 
-		expect(clientContext().attachments).toEqual([subject]);
+		expect(clientContext()).toMatchObject({ attachments: [subject], subject });
 	});
 
 	it('sends the hand-off context with the next message only', async () => {

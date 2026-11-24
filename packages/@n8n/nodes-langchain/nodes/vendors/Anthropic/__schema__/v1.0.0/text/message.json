@@ -1,0 +1,28 @@
+{
+	"properties": {
+		"content": {
+			"items": {
+				"properties": {
+					"signature": {
+						"type": "string"
+					},
+					"text": {
+						"type": "string"
+					},
+					"thinking": {
+						"type": "string"
+					},
+					"type": {
+						"type": "string"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"merged_response": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

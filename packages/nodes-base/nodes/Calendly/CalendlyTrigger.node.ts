@@ -9,6 +9,7 @@ export class CalendlyTrigger extends VersionedNodeType {
 		const baseDescription: INodeTypeBaseDescription = {
 			displayName: 'Calendly Trigger',
 			name: 'calendlyTrigger',
+			schemaPath: 'Calendly',
 			icon: 'file:calendly.svg',
 			group: ['trigger'],
 			description: 'Starts the workflow when Calendly events occur',

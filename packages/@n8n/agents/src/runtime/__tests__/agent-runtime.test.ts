@@ -11,7 +11,7 @@ import { InMemoryFilesystem } from '../../__tests__/workspace/test-utils';
 import { Agent } from '../../sdk/agent';
 import { getModelCost } from '../../sdk/catalog';
 import { createCancellation } from '../../sdk/cancellation';
-import { isLlmMessage } from '../../sdk/message';
+import { isLlmMessage, isRuntimeSkillUpdate } from '../../sdk/message';
 import { Tool, Tool as ToolBuilder, wrapToolForApproval } from '../../sdk/tool';
 import { createRuntimeSkillSource } from '../../skills/registry';
 import { createRuntimeSkillTools } from '../../skills/tools';
@@ -1965,101 +1965,6 @@ describe('AgentRuntime — guardrails', () => {
 		) as Message;
 		return assistantMsg.content.find((c) => c.type === 'tool-call') as ContentToolCall;
 	}
-
-	it.each(['generate', 'stream'] as const)(
-		'%s reports an applied skill revocation when cancellation interrupts restoration',
-		async (mode) => {
-			const memory = new InMemoryMemory();
-			const persistence = { threadId: 'thread-1', resourceId: 'user-1' };
-			const scope = { ...persistence, agentName: 'test' };
-			await memory.skillState.save(scope, {
-				skillIds: ['revoked-skill'],
-				versions: { 'revoked-skill': 'v1' },
-			});
-			const controller = new AbortController();
-			const save = memory.skillState.save.bind(memory.skillState);
-			vi.spyOn(memory.skillState, 'save').mockImplementationOnce(async (scope, state) => {
-				controller.abort();
-				await save(scope, state);
-			});
-			const source = createRuntimeSkillSource([]);
-			const onContext = vi.fn();
-			source.onContext = onContext;
-			const runtime = new AgentRuntime({
-				name: 'test',
-				model: 'openai/gpt-4o-mini',
-				instructions: 'Test',
-				skillSource: source,
-				memory,
-			});
-			try {
-				const options = { persistence, abortSignal: controller.signal };
-				if (mode === 'stream') {
-					const { stream } = await runtime.stream('hi', options);
-					await collectChunks(stream);
-				} else {
-					await runtime.generate('hi', options);
-				}
-				expect(generateText).not.toHaveBeenCalled();
-				expect(streamText).not.toHaveBeenCalled();
-				expect(await memory.skillState.load(scope)).toEqual({
-					skillIds: [],
-					versions: { 'revoked-skill': null },
-				});
-				expect(onContext).toHaveBeenCalledExactlyOnceWith([
-					{ skillId: 'revoked-skill', kind: 'revoked' },
-				]);
-				onContext.mockClear();
-				generateText.mockResolvedValueOnce(makeGenerateSuccess());
-				await runtime.generate('continue', { persistence });
-				expect(onContext).toHaveBeenCalledExactlyOnceWith([]);
-			} finally {
-				await runtime.dispose();
-			}
-		},
-	);
-
-	it('reports skill context only when model-call guards allow delivery', async () => {
-		const memory = new InMemoryMemory();
-		const persistence = { threadId: 'thread-1', resourceId: 'user-1' };
-		const source = createRuntimeSkillSource([
-			{
-				id: 'test-skill',
-				name: 'test-skill',
-				description: 'Test',
-				instructions: 'Test instructions',
-			},
-		]);
-		source.shouldAppendSkillUpdates = () => true;
-		const version = source.registry.skills[0].hash;
-		await memory.skillState.save(
-			{ ...persistence, agentName: 'test' },
-			{ skillIds: ['test-skill'], versions: { 'test-skill': version } },
-		);
-		const onContext = vi.fn();
-		source.onContext = onContext;
-		const runtime = new AgentRuntime({
-			name: 'test',
-			model: 'openai/gpt-4o-mini',
-			instructions: 'Test',
-			skillSource: source,
-			memory,
-		});
-		const hook = makeGuardrail({ before: vi.fn().mockResolvedValue(stopDecision('test.stop')) });
-		try {
-			await runtime.generate('hi', { persistence, guardrails: guardrailsOption(hook) });
-			expect(onContext).not.toHaveBeenCalled();
-			expect(generateText).not.toHaveBeenCalled();
-			generateText.mockResolvedValueOnce(makeGenerateSuccess());
-			await runtime.generate('hi', { persistence });
-			expect(onContext).toHaveBeenCalledExactlyOnceWith([
-				{ skillId: 'test-skill', version, kind: 'carried' },
-			]);
-			expect(JSON.stringify(generateText.mock.calls[0][0])).toContain('Test instructions');
-		} finally {
-			await runtime.dispose();
-		}
-	});
 
 	it('ends a generate run with finishReason guardrail when before() stops', async () => {
 		const hook = makeGuardrail({ before: vi.fn().mockResolvedValue(stopDecision('test.stop')) });
@@ -8167,7 +8072,7 @@ describe('reasoning', () => {
 
 		const runtime = new AgentRuntime({
 			name: 'test',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			instructions: 'You are a test assistant.',
 			reasoning: 'high',
 		});
@@ -8470,7 +8375,7 @@ describe('promptCaching', () => {
 
 		const runtime = new AgentRuntime({
 			name: 'test',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			instructions: 'You are a test assistant.',
 			promptCaching: { enabled: true },
 		});
@@ -8538,7 +8443,7 @@ describe('promptCaching', () => {
 
 		const runtime = new AgentRuntime({
 			name: 'test',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			instructions: 'You are a test assistant.',
 			tools: [toolA, toolB],
 			promptCaching: { enabled: true },
@@ -8567,7 +8472,7 @@ describe('promptCaching', () => {
 
 		const runtime = new AgentRuntime({
 			name: 'test',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			instructions: 'You are a test assistant.',
 			tools: [coreTool],
 			deferredTools: [deferredTool],
@@ -8592,7 +8497,7 @@ describe('promptCaching', () => {
 
 		const runtime = new AgentRuntime({
 			name: 'test',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			instructions: 'You are a test assistant.',
 			memory,
 			episodicMemory: { embedder: fakeEmbedder },
@@ -9357,62 +9262,12 @@ describe('AgentRuntime — mid-run observation', () => {
 		expect(await memory.getCursor('thread-1')).not.toBeNull();
 	});
 
-	it('streams and persists a skill update before the model responds', async () => {
-		const memory = new InMemoryMemory();
-		await memory.skillState.save(
-			{ ...PERSISTENCE, agentName: 'mid-run-agent' },
-			{ skillIds: ['builder'], versions: { builder: 'previous-version' } },
-		);
-		const skillSource = {
-			...createRuntimeSkillSource([
-				{
-					id: 'builder',
-					name: 'Builder',
-					description: 'Build workflows.',
-					instructions: 'Use the latest guidance.',
-				},
-			]),
-			shouldAppendSkillUpdates: () => true,
-		};
-		const runtime = buildMidRunRuntime(memory, { skillSource });
-		streamText.mockReturnValueOnce(makeStreamSuccess('Done'));
-		const { stream } = await runtime.stream('Continue', { persistence: PERSISTENCE });
-		const chunks = await collectChunks(stream);
-		await runtime.dispose();
-		const notices = chunks
-			.filter((chunk) => chunk.type === 'message')
-			.filter((chunk) => chunk.message.type === 'custom');
-		expect(notices).toEqual([
-			{
-				type: 'message',
-				message: {
-					type: 'custom',
-					data: {
-						type: 'n8n:runtime-skill-update',
-						skillUpdate: expect.objectContaining({
-							skillId: 'builder',
-							name: 'Builder',
-							change: 'updated',
-						}),
-					},
-				},
-			},
-		]);
-		expect(chunks.indexOf(notices[0])).toBeLessThan(
-			chunks.findIndex((chunk) => chunk.type === 'text-delta'),
-		);
-		expect(await memory.getMessages(PERSISTENCE.threadId)).toContainEqual(
-			expect.objectContaining(notices[0].message),
-		);
-	});
-
-	it('persists full skill content when the memory adapter has no skill state store', async () => {
+	it('persists full skill content on the load_skill result', async () => {
 		const instructions = 'Wait for a real execution before extending the workflow.';
 		const source = createRuntimeSkillSource([
 			{ id: 'builder', name: 'builder', description: 'Build workflows.', instructions },
 		]);
 		const memory = new InMemoryMemory();
-		Object.defineProperty(memory, 'skillState', { value: undefined });
 		const runtime = buildMidRunRuntime(memory, {
 			skillSource: source,
 			tools: createRuntimeSkillTools(source),
@@ -9439,188 +9294,131 @@ describe('AgentRuntime — mid-run observation', () => {
 			}),
 		]);
 		expect(await memory.getCursor(PERSISTENCE.threadId)).not.toBeNull();
-		expect(flattenInstructions(capturedCall(1).instructions)).not.toContain('<active_skills>');
 	});
 
-	it('retains loaded skills through compaction and a new user turn', async () => {
+	it('tells the model once when a loaded skill changes or becomes unavailable', async () => {
+		const skillSource = (instructions?: string): RuntimeSkillSource => ({
+			...createRuntimeSkillSource(
+				instructions
+					? [{ id: 'hub-1', name: 'Triage', description: 'Triage cases.', instructions }]
+					: [],
+			),
+			shouldAppendSkillUpdates: (id) => id === 'hub-1',
+		});
+		const memory = new InMemoryMemory();
+		const run = async (source: RuntimeSkillSource, input: string) => {
+			// No observational memory: its compaction would hide the load result.
+			const runtime = new AgentRuntime({
+				name: 'skill-update-agent',
+				model: 'openai/gpt-4o-mini',
+				instructions: 'You are a test assistant.',
+				memory,
+				skillSource: source,
+				tools: createRuntimeSkillTools(source),
+			});
+			await runtime.generate(input, { persistence: PERSISTENCE });
+			await runtime.dispose();
+		};
+		const sentText = () => JSON.stringify(generateText.mock.calls.at(-1)?.[0].messages);
+
+		const original = skillSource('Use the inbox queue.');
+		generateText
+			.mockResolvedValueOnce(makeGenerateWithToolCall('load', 'load_skill', { skillId: 'hub-1' }))
+			.mockResolvedValueOnce(makeGenerateSuccess('Loaded.'));
+		await run(original, 'Triage this');
+		expect(sentText()).not.toContain('changed after you loaded it');
+
+		generateText.mockResolvedValueOnce(makeGenerateSuccess('Updated.'));
+		await run(skillSource('Use the review queue.'), 'Next case');
+		expect(sentText()).toContain('Skill \\"Triage\\" (id \\"hub-1\\") changed after you loaded it');
+		expect(sentText()).not.toContain('Use the review queue.');
+
+		generateText.mockResolvedValueOnce(makeGenerateSuccess('Same.'));
+		await run(skillSource('Use the review queue.'), 'Another case');
+		expect(sentText().split('changed after you loaded it')).toHaveLength(2);
+
+		generateText.mockResolvedValueOnce(makeGenerateSuccess('Gone.'));
+		await run(skillSource(), 'Last case');
+		expect(sentText()).toContain('is no longer available');
+
+		const updates = (await memory.getMessages(PERSISTENCE.threadId)).flatMap((message) =>
+			isRuntimeSkillUpdate(message) ? [message.data.skillUpdate] : [],
+		);
+		expect(updates).toEqual([
+			expect.objectContaining({ skillId: 'hub-1', name: 'Triage', change: 'updated' }),
+			expect.objectContaining({ skillId: 'hub-1', version: null, change: 'unavailable' }),
+		]);
+	});
+
+	it('sends no skill update after compaction hid the load result', async () => {
+		const memory = new InMemoryMemory();
+		const run = async (source: RuntimeSkillSource, input: string) => {
+			const runtime = buildMidRunRuntime(memory, {
+				skillSource: { ...source, shouldAppendSkillUpdates: (id) => id === 'hub-1' },
+				tools: createRuntimeSkillTools(source),
+			});
+			await runtime.generate(input, { persistence: PERSISTENCE });
+			await runtime.dispose();
+		};
+		generateText
+			.mockResolvedValueOnce(makeGenerateWithToolCall('load', 'load_skill', { skillId: 'hub-1' }))
+			.mockResolvedValueOnce(makeGenerateSuccess('Loaded.'))
+			.mockResolvedValueOnce(makeGenerateSuccess('Changed.'))
+			.mockResolvedValueOnce(makeGenerateSuccess('Gone.'));
+		const skill = { id: 'hub-1', name: 'Triage', description: 'Triage cases.' };
+		await run(createRuntimeSkillSource([{ ...skill, instructions: 'One.' }]), 'Triage this');
+		// The skill text is gone. The model must call load_skill again to use the skill.
+		await run(createRuntimeSkillSource([{ ...skill, instructions: 'Two.' }]), 'Next case');
+		expect(JSON.stringify(generateText.mock.calls.at(-1)?.[0].messages)).not.toContain(
+			'changed after you loaded it',
+		);
+
+		await run(createRuntimeSkillSource([]), 'Last case');
+		expect(JSON.stringify(generateText.mock.calls.at(-1)?.[0].messages)).not.toContain(
+			'is no longer available',
+		);
+		const stored = await memory.getMessages(PERSISTENCE.threadId);
+		expect(stored.filter(isRuntimeSkillUpdate)).toEqual([]);
+	});
+
+	it('keeps skill tool dependencies in the tool list before and after load_skill', async () => {
 		const source = createRuntimeSkillSource([
 			{
 				id: 'builder',
 				name: 'builder',
 				description: 'Build workflows.',
-				instructions: 'Wait for a real execution before extending the workflow.',
+				instructions: 'Choose a model from the catalog.',
+				dependencies: { tools: ['catalog', 'unregistered'] },
+				recommendedToolGroups: ['tools'],
 			},
 		]);
+		const catalogHandler = vi.fn(async () => ({ models: [] }));
+		const catalog = makeMockTool('catalog', catalogHandler);
+		const options = {
+			skillSource: source,
+			tools: createRuntimeSkillTools(source),
+			deferredTools: [catalog, makeMockTool('optional_tool', async () => ({ done: true }))],
+		};
 		const memory = new InMemoryMemory();
-		const options = { skillSource: source, tools: createRuntimeSkillTools(source) };
 		const runtime = buildMidRunRuntime(memory, options);
 		generateText
 			.mockResolvedValueOnce(
-				makeGenerateWithToolCall('load-builder', 'load_skill', { skillId: 'builder' }),
+				makeGenerateWithToolCall('activate', 'load_skill', { skillId: 'builder' }),
 			)
-			.mockResolvedValueOnce(makeGenerateSuccess('Please test the first workflow.'));
+			.mockResolvedValueOnce(makeGenerateSuccess('Ready to choose a model.'));
 		await runtime.generate('Build it', { persistence: PERSISTENCE });
 		await runtime.dispose();
 
-		expect(capturedCall(1).messages).toHaveLength(1);
-		expect(JSON.stringify(capturedCall(1).messages)).toContain('Build it');
-		expect(flattenInstructions(capturedCall(1).instructions)).toContain(
-			'Wait for a real execution',
-		);
+		// The tool list must not change when the skill activates, or the cached prompt is rewritten.
+		expect(Object.keys(capturedCall(1).tools)).toEqual(Object.keys(capturedCall(0).tools));
+		expect(capturedCall(0).tools).toHaveProperty('catalog');
+		expect(capturedCall(1).tools).not.toHaveProperty('optional_tool');
 		const next = buildMidRunRuntime(memory, options);
-		generateText.mockResolvedValueOnce(makeGenerateSuccess('The live test is still needed.'));
+		generateText.mockResolvedValueOnce(makeGenerateSuccess('Still ready.'));
 		await next.generate('Continue', { persistence: PERSISTENCE });
 		await next.dispose();
-		expect(flattenInstructions(capturedCall(2).instructions)).toContain(
-			'Wait for a real execution',
-		);
-		expect(JSON.stringify(capturedCall(2).messages)).not.toContain('Wait for a real execution');
-	});
-
-	it('keeps the base instructions unchanged when compaction moves a skill into the system prompt', async () => {
-		const source = createRuntimeSkillSource([
-			{
-				id: 'builder',
-				name: 'builder',
-				description: 'Build workflows.',
-				instructions: 'Wait for a real execution before extending the workflow.',
-			},
-		]);
-		const cacheOptions = { anthropic: { cacheControl: { type: 'ephemeral' } } };
-		const runtime = buildMidRunRuntime(new InMemoryMemory(), {
-			skillSource: source,
-			tools: createRuntimeSkillTools(source),
-			model: 'anthropic/claude-sonnet-4-5',
-			instructionProviderOptions: cacheOptions,
-		});
-		generateText
-			.mockResolvedValueOnce(
-				makeGenerateWithToolCall('load-builder', 'load_skill', { skillId: 'builder' }),
-			)
-			.mockResolvedValueOnce(makeGenerateSuccess('Please test the first workflow.'));
-
-		await runtime.generate('Build it', { persistence: PERSISTENCE });
-		await runtime.dispose();
-
-		const before = capturedCall(0).instructions;
-		const after = capturedCall(1).instructions;
-		if (Array.isArray(before) || !Array.isArray(after)) throw new Error('Unexpected system shape');
-		expect(after[0]).toEqual(before);
-		expect(after[1]).toEqual({
-			role: 'system',
-			content: expect.stringContaining('Wait for a real execution'),
-			providerOptions: cacheOptions,
-		});
-		expect(after[2].content).toContain('Mid-run observation captured.');
-		expect(after[2]).not.toHaveProperty('providerOptions');
-	});
-
-	it.each(['load_skill', 'inspect_node'])(
-		'keeps skill tool dependencies in the tool list before and after %s',
-		async (activationTool) => {
-			const source = createRuntimeSkillSource([
-				{
-					id: 'builder',
-					name: 'builder',
-					description: 'Build workflows.',
-					instructions: 'Choose a model from the catalog.',
-					dependencies: { tools: ['catalog', 'unregistered'] },
-					recommendedToolGroups: ['tools'],
-				},
-			]);
-			const catalogHandler = vi.fn(async () => ({ models: [] }));
-			const catalog = makeMockTool('catalog', catalogHandler);
-			const inspectNode: BuiltTool = {
-				name: 'inspect_node',
-				description: 'Inspect a node.',
-				inputSchema: z.object({}),
-				handler: async (_input, ctx) => {
-					await ctx.loadSkill?.('builder');
-					return { node: 'model' };
-				},
-			};
-			const options = {
-				skillSource: source,
-				tools: [...createRuntimeSkillTools(source), inspectNode],
-				deferredTools: [catalog, makeMockTool('optional_tool', async () => ({ done: true }))],
-			};
-			const memory = new InMemoryMemory();
-			const runtime = buildMidRunRuntime(memory, options);
-			generateText
-				.mockResolvedValueOnce(
-					makeGenerateWithToolCall('activate', activationTool, { skillId: 'builder' }),
-				)
-				.mockResolvedValueOnce(makeGenerateSuccess('Ready to choose a model.'));
-			await runtime.generate('Build it', { persistence: PERSISTENCE });
-			await runtime.dispose();
-
-			// The tool list must not change when the skill activates, or the cached prompt is rewritten.
-			expect(Object.keys(capturedCall(1).tools)).toEqual(Object.keys(capturedCall(0).tools));
-			expect(capturedCall(0).tools).toHaveProperty('catalog');
-			expect(capturedCall(1).tools).not.toHaveProperty('optional_tool');
-			expect(flattenInstructions(capturedCall(1).instructions)).toContain(
-				'Choose a model from the catalog.',
-			);
-
-			const next = buildMidRunRuntime(memory, options);
-			generateText.mockResolvedValueOnce(makeGenerateSuccess('Still ready.'));
-			await next.generate('Continue', { persistence: PERSISTENCE });
-			await next.dispose();
-			expect(capturedCall(2).tools).toHaveProperty('catalog');
-			expect(catalogHandler).not.toHaveBeenCalled();
-		},
-	);
-
-	it('restores active skills from a checkpoint with the newly selected content', async () => {
-		const source = createRuntimeSkillSource([
-			{
-				id: 'builder',
-				name: 'builder',
-				description: 'Build workflows.',
-				instructions: 'Old workflow policy.',
-			},
-		]);
-		const checkpointStore = makeClaimingCheckpointStore();
-		const memory = new InMemoryMemory();
-		const first = buildMidRunRuntime(memory, {
-			skillSource: source,
-			tools: [...createRuntimeSkillTools(source), makeInterruptibleTool()],
-			checkpointStorage: checkpointStore,
-		});
-		generateText
-			.mockResolvedValueOnce(
-				makeGenerateWithToolCall('load-builder', 'load_skill', { skillId: 'builder' }),
-			)
-			.mockResolvedValueOnce(
-				makeGenerateWithToolCall('confirm', 'approve', { question: 'Set up?' }),
-			);
-		const result = await first.generate('Build it', { persistence: PERSISTENCE });
-		const suspension = result.pendingSuspend?.[0];
-		if (!suspension) throw new Error('Expected a setup confirmation');
-
-		const current = createRuntimeSkillSource([
-			{
-				id: 'builder',
-				name: 'builder',
-				description: 'Build workflows.',
-				instructions: 'Current workflow policy.',
-			},
-		]);
-		const resumed = buildMidRunRuntime(memory, {
-			skillSource: current,
-			tools: [...createRuntimeSkillTools(current), makeInterruptibleTool()],
-			checkpointStorage: checkpointStore,
-		});
-		generateText.mockResolvedValueOnce(makeGenerateSuccess('Ready.'));
-		await resumed.resume(
-			'generate',
-			{ approved: true },
-			{ runId: suspension.runId, toolCallId: suspension.toolCallId },
-		);
-		await first.dispose();
-		await resumed.dispose();
-		expect(flattenInstructions(capturedCall(2).instructions)).toContain('Current workflow policy.');
-		expect(JSON.stringify(capturedCall(2))).not.toContain('Old workflow policy.');
+		expect(capturedCall(2).tools).toHaveProperty('catalog');
+		expect(catalogHandler).not.toHaveBeenCalled();
 	});
 
 	it('resumes a deferred tool that a skill dependency loaded', async () => {

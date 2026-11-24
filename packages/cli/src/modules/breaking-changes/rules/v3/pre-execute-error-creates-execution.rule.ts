@@ -20,7 +20,7 @@ export class PreExecuteErrorCreatesExecutionRule implements IBreakingChangeInsta
 			version: 'v3',
 			title: 'A throw from workflow.preExecute no longer creates an execution',
 			description:
-				'The N8N_PRE_EXECUTE_ERROR_CREATES_EXECUTION environment variable is removed. A throw from workflow.preExecute never creates an execution record.',
+				'The N8N_PRE_EXECUTE_ERROR_CREATES_EXECUTION environment variable is removed. A throw from workflow.preExecute never creates an execution record. If an alert or report uses these failed executions, send the alert from the workflow.preExecute hook before it throws.',
 			category: BreakingChangeCategory.instance,
 			impact: 'capabilityRemoved',
 		};

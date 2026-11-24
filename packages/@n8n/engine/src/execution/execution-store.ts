@@ -58,11 +58,37 @@ export interface StaleQueuedExecution {
 	staleAfter: Date;
 }
 
+/** An ended execution that the retention sweep can delete. */
+export interface PrunableExecution {
+	id: string;
+	workflowId: string;
+	finishedAt: Date;
+}
+
+export interface PrunableExecutionQuery {
+	/** Select only executions that ended more than this long ago. */
+	maxAgeMs: number;
+	limit: number;
+	/** The last row of the previous batch. The result starts after it. */
+	after?: Pick<PrunableExecution, 'id' | 'finishedAt'>;
+}
+
 /** Thrown by `loadExecution` when no execution exists for the given id. */
 export class ExecutionNotFoundError extends Error {
 	constructor(readonly executionId: string) {
 		super(`Execution not found: ${executionId}`);
 		this.name = 'ExecutionNotFoundError';
+	}
+}
+
+/** Thrown by `createExecution` when the parent of a sub-execution has ended. */
+export class ParentExecutionEndedError extends Error {
+	constructor(
+		readonly parentExecutionId: string,
+		readonly status: ExecutionStatus,
+	) {
+		super(`Parent execution ${parentExecutionId} is ${status}`);
+		this.name = 'ParentExecutionEndedError';
 	}
 }
 
@@ -74,7 +100,17 @@ export class ExecutionNotFoundError extends Error {
  * `queued` clears that time.
  */
 export interface ExecutionStore {
-	/** Persist a new execution record under the caller-minted `record.id`. */
+	/**
+	 * Persist a new execution record under the caller-minted `record.id`.
+	 *
+	 * A record with a parent link is written only while the parent has not
+	 * ended, and the check holds the parent row until the write commits. So an
+	 * end of the parent either waits and then finds this sub-execution, or
+	 * commits first and this write refuses.
+	 *
+	 * @throws {ExecutionNotFoundError} when the parent row is missing.
+	 * @throws {ParentExecutionEndedError} when the parent has ended.
+	 */
 	createExecution(record: NewExecutionRecord): Promise<void>;
 
 	/** Load a full execution by id. Throws `ExecutionNotFoundError` if absent. */
@@ -135,4 +171,26 @@ export interface ExecutionStore {
 	 * handlers do. Read the step rows to tell `running` from `waiting`.
 	 */
 	refreshLiveStatus(id: string): Promise<void>;
+
+	/**
+	 * The ids of the sub-executions of an execution that have not ended: `queued`,
+	 * `running` or `waiting`. A cancel cascades through them.
+	 */
+	loadLiveSubExecutionIds(parentExecutionId: string): Promise<string[]>;
+
+	/**
+	 * The ended executions that finished more than `maxAgeMs` ago, oldest first
+	 * by finish time and id, at most `limit`. The database clock sets the
+	 * cut-off. It skips an execution that still has a step that has not
+	 * settled, and an awaited sub-execution whose parent step still waits. A
+	 * plain read: it locks no row.
+	 */
+	findPrunableExecutions(query: PrunableExecutionQuery): Promise<PrunableExecution[]>;
+
+	/**
+	 * Deletes the given executions that have ended, with their step rows and
+	 * seeded rows. It skips an execution that has not ended. Returns the number
+	 * of executions it deleted.
+	 */
+	deleteEndedExecutions(ids: string[]): Promise<number>;
 }

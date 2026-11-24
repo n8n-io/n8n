@@ -13,10 +13,10 @@ export const AI_PREFERENCE_MAX_PER_SCOPE = 50;
 
 /**
  * Which surface wrote the row. `ui` is the settings area, `aia` the n8n Assistant,
- * `mcp` an MCP client. Never taken from a request body: a client must not be able
+ * `mcp` an MCP client, `api` the public API. Never taken from a request body: a client must not be able
  * to claim that the assistant wrote a row the user wrote.
  */
-export const aiPreferenceSourceSchema = z.enum(['ui', 'aia', 'mcp']);
+export const aiPreferenceSourceSchema = z.enum(['ui', 'aia', 'mcp', 'api']);
 
 export type AiPreferenceSource = z.infer<typeof aiPreferenceSourceSchema>;
 

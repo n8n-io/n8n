@@ -4,6 +4,7 @@ import { defineStore } from 'pinia';
 import { ref } from 'vue';
 
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 
 import * as api from './context.api';
 import type { Preference, PreferenceListQuery } from './context.types';
@@ -15,6 +16,7 @@ export type BulkDeleteResult = {
 
 export const useContextStore = defineStore('context', () => {
 	const rootStore = useRootStore();
+	const settingsStore = useSettingsStore();
 
 	const preferences = ref<Preference[]>([]);
 	const count = ref(0);
@@ -140,6 +142,14 @@ export const useContextStore = defineStore('context', () => {
 		return total;
 	}
 
+	async function setPreferencesEnabled(enabled: boolean) {
+		const saved = await api.updatePreferenceSettings(rootStore.restApiContext, { enabled });
+		settingsStore.settings.aiPreferences = {
+			...settingsStore.settings.aiPreferences,
+			enabled: saved.enabled,
+		};
+	}
+
 	// The settings page writes through these. Each one keeps `rowById` in step, so a chat card
 	// reading the same row does not paint the state this write replaced.
 
@@ -187,6 +197,7 @@ export const useContextStore = defineStore('context', () => {
 		setRow,
 		forgetRow,
 		fetchPreferenceCount,
+		setPreferencesEnabled,
 		createPreference,
 		updatePreference,
 		deletePreference,

@@ -2,6 +2,7 @@ import { Agent, Memory, Tool, type FetchFn } from '@n8n/agents';
 
 import { applyAgentThinking } from './apply-agent-thinking';
 import { getSandboxWorkspaceSection, UNTRUSTED_CONTENT_DOCTRINE } from './shared-prompts';
+import { getSelfHealingWorkflowEngineSection } from './workflow-engine-prompt';
 import {
 	SELF_HEALING_PROFILE_VERSION,
 	selfHealingCandidateInputSchema,
@@ -62,7 +63,7 @@ function createSelfHealingTools(
 			skillGuidance: false,
 		}),
 		createSearchNodesTool(context),
-		createGetNodeTypesTool(context),
+		createGetNodeTypesTool(context, { skillHints: false }),
 		createN8nDocsTool(context),
 		createResearchTool(context),
 		new Tool('verify_candidate')
@@ -114,7 +115,11 @@ export async function createSelfHealingAgent(
 		'Work without user interaction. Report blockers in the structured output.',
 		UNTRUSTED_CONTENT_DOCTRINE,
 		SELF_HEALING_PROMPT,
-	].join('\n\n');
+		// Empty without the `engine-v2` module, so the prompt stays the same there.
+		getSelfHealingWorkflowEngineSection(context.engineSetup),
+	]
+		.filter((section) => section !== '')
+		.join('\n\n');
 
 	setTracePromptVersion(tracing, SELF_HEALING_PROFILE_VERSION);
 	setTraceModelId(tracing, modelId);

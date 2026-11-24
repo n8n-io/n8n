@@ -32,6 +32,8 @@ and release branches. On a branch without a bake file, the pin PR edits the
 |---|---|
 | `RUNTIME_IMAGE` | `n8nio/base:<version>-<commit>` |
 | `DEBIAN_RUNTIME_IMAGE` | `n8nio/base:<version>-debian-<commit>` |
+| `N8N_RUNTIME_IMAGE` | `n8nio/node-patched:<version>-<commit>` |
+| `N8N_BUILDER_IMAGE` | `n8nio/node-patched:<version>-<commit>-dev` |
 | `PC_RUNTIME_IMAGE` | `n8nio/node-pc:<version>-<commit>` |
 | `PC_BUILDER_IMAGE` | `n8nio/node-pc:<version>-<commit>-dev` |
 | `NODE_24_RUNTIME_IMAGE` | `n8nio/base:<Node 24 version>-<commit>` |

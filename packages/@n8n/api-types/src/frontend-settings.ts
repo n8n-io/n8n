@@ -135,6 +135,8 @@ export interface FrontendSettings {
 		};
 	};
 	instanceId: string;
+	/** Random ID of this install, for telemetry. Absent while the process has none. */
+	installId?: string;
 	telemetry: ITelemetrySettings;
 	posthog: {
 		enabled: boolean;
@@ -263,6 +265,12 @@ export interface FrontendSettings {
 	};
 	ai: {
 		allowSendingParameterValues: boolean;
+		/** Whether n8n may train models on this instance's Assistant traces. */
+		allowModelTraining: boolean;
+	};
+	aiPreferences: {
+		enabled: boolean;
+		managedByEnv: boolean;
 	};
 	pruning?: {
 		isEnabled: boolean;
@@ -353,6 +361,12 @@ export type FrontendModuleSettings = {
 		serverUrl?: string;
 		/** Whether newly created workflows are auto-exposed to MCP. */
 		autoExposeNewWorkflows: boolean;
+		preferencesEnabled: boolean;
+	};
+
+	skills?: {
+		skillSyncEnabled: boolean;
+		skillSyncManagedByEnv: boolean;
 	};
 
 	/**
@@ -482,6 +496,12 @@ export type FrontendModuleSettings = {
 			/** Most bytes one knowledge base can hold across all its files. */
 			maxTotalSizeBytes: number;
 		};
+		/**
+		 * Whether the operator turned collections on with
+		 * `N8N_KNOWLEDGE_COLLECTIONS_ENABLED`. The editor combines it with the
+		 * PostHog flag `KNOWLEDGE_COLLECTIONS_FLAG`.
+		 */
+		collectionsEnabled?: boolean;
 	};
 };
 

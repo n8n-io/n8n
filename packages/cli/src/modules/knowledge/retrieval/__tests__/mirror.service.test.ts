@@ -8,7 +8,7 @@ import type { Logger } from '@n8n/backend-common';
 import type { AgentsConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
 
-import type { KnowledgeFile } from '../../entities/knowledge-file.entity';
+import type { AgentFile } from '../../entities';
 import type { KnowledgeFileStore } from '../../files/knowledge-file-store';
 import { getKnowledgeMirrorPaths } from '../../files/storage-naming';
 import type { KnowledgeConsumerScope } from '../../knowledge-consumer-scope';
@@ -27,7 +27,7 @@ type TestWorkspaceSandbox = WorkspaceSandbox & { provider: SandboxProvider } & R
 		Pick<WorkspaceSandbox, 'executeCommand'>
 	>;
 
-function makeKnowledgeFile(overrides: Partial<KnowledgeFile> = {}): KnowledgeFile {
+function makeAgentFile(overrides: Partial<AgentFile> = {}): AgentFile {
 	const id = overrides.id ?? 'file-id';
 	const fileName = overrides.fileName ?? 'file.txt';
 	return {
@@ -41,7 +41,7 @@ function makeKnowledgeFile(overrides: Partial<KnowledgeFile> = {}): KnowledgeFil
 		createdAt: new Date('2024-01-01T00:00:00.000Z'),
 		updatedAt: new Date('2024-01-01T00:00:00.000Z'),
 		...overrides,
-	} as KnowledgeFile;
+	} as AgentFile;
 }
 
 function makeKnowledgeFileStore(): ReturnType<typeof mock<KnowledgeFileStore>> {
@@ -151,7 +151,7 @@ describe('KnowledgeMirrorService', () => {
 			.mockResolvedValueOnce(undefined)
 			.mockRejectedValueOnce(new Error('project is being deleted'));
 		const fileRepository = mock<KnowledgeFileRepository>();
-		fileRepository.findByAgentId.mockResolvedValue([makeKnowledgeFile()]);
+		fileRepository.findByAgentId.mockResolvedValue([makeAgentFile()]);
 		const service = makeService({ sandboxProviderProxy, fileRepository });
 		service.syncMirrorInBackground(scope, assertWritable);
 		await vi.waitFor(() => expect(sandboxProviderProxy.destroy).toHaveBeenCalledWith(scope));
@@ -167,13 +167,13 @@ describe('KnowledgeMirrorService', () => {
 
 	describe('findFiles', () => {
 		const fixtureFiles = [
-			makeKnowledgeFile({ id: 'file-alpha', fileName: 'alpha.pdf' }),
-			makeKnowledgeFile({ id: 'file-bravo', fileName: 'bravo.pdf' }),
-			makeKnowledgeFile({ id: 'file-charlie', fileName: 'charlie.txt' }),
-			makeKnowledgeFile({ id: 'file-delta', fileName: 'delta.md' }),
+			makeAgentFile({ id: 'file-alpha', fileName: 'alpha.pdf' }),
+			makeAgentFile({ id: 'file-bravo', fileName: 'bravo.pdf' }),
+			makeAgentFile({ id: 'file-charlie', fileName: 'charlie.txt' }),
+			makeAgentFile({ id: 'file-delta', fileName: 'delta.md' }),
 		];
 
-		function makeGlobService(files: KnowledgeFile[] = fixtureFiles): KnowledgeMirrorService {
+		function makeGlobService(files: AgentFile[] = fixtureFiles): KnowledgeMirrorService {
 			const fileRepository = mock<KnowledgeFileRepository>();
 			fileRepository.findByAgentId.mockResolvedValue(files);
 			return makeService({ sandboxProviderProxy, fileRepository });
@@ -225,8 +225,8 @@ describe('KnowledgeMirrorService', () => {
 
 		it('matches regex metacharacters in the pattern literally', async () => {
 			const service = makeGlobService([
-				makeKnowledgeFile({ id: 'file-grouped', fileName: 'report(v1).pdf' }),
-				makeKnowledgeFile({ id: 'file-plain', fileName: 'reportv1-pdf' }),
+				makeAgentFile({ id: 'file-grouped', fileName: 'report(v1).pdf' }),
+				makeAgentFile({ id: 'file-plain', fileName: 'reportv1-pdf' }),
 			]);
 
 			const result = await service.findFiles(scope, {
@@ -247,7 +247,7 @@ describe('KnowledgeMirrorService', () => {
 		it('propagates glob matching timeouts', async () => {
 			const service = makeGlobService(
 				Array.from({ length: 200 }, (_, index) =>
-					makeKnowledgeFile({
+					makeAgentFile({
 						id: `file-quarterly-${index}`,
 						fileName: `quarterly-knowledge-${index}.pdf`,
 					}),
@@ -276,8 +276,8 @@ describe('KnowledgeMirrorService', () => {
 			return command.startsWith('cat ') && command.includes('/manifest');
 		}
 
-		function makeMirrorFile(id: string, fileName: string): KnowledgeFile {
-			return makeKnowledgeFile({ id, fileName });
+		function makeMirrorFile(id: string, fileName: string): AgentFile {
+			return makeAgentFile({ id, fileName });
 		}
 
 		function makeMirrorService({
@@ -368,7 +368,7 @@ describe('KnowledgeMirrorService', () => {
 				makeCommandResult(isManifestReadCommand(command) ? 'file-id\tfile.txt\n' : '0\t1\thello\n'),
 			);
 			const fileRepository = mock<KnowledgeFileRepository>();
-			fileRepository.findByAgentId.mockResolvedValue([makeKnowledgeFile()]);
+			fileRepository.findByAgentId.mockResolvedValue([makeAgentFile()]);
 			const service = makeMirrorService({ fileRepository });
 
 			const result = await service.readFile(scope, { file: 'file.txt' });
@@ -535,6 +535,191 @@ describe('KnowledgeMirrorService', () => {
 			await expect(service.searchText(scope, { pattern: 'bar' })).resolves.toBeDefined();
 			expect(fileStore.readAsBuffer).toHaveBeenCalledTimes(2);
 			expect(filesystem.writeFile).toHaveBeenCalledTimes(1);
+		});
+
+		describe('waiting times to prepare the sandbox and the mirror', () => {
+			const SANDBOX_START_MS = 3000;
+			const MANIFEST_READ_MS = 100;
+			const MIRROR_COPY_MS = 750;
+			const fullManifest = 'file-1\tdoc1.txt\n';
+
+			let now: number;
+			let manifestState: string;
+
+			function makeWaitService(files = [makeMirrorFile('file-1', 'doc1.txt')]) {
+				const agentFileRepository = mock<KnowledgeFileRepository>();
+				agentFileRepository.findByAgentId.mockResolvedValue(files);
+				return makeMirrorService({ fileRepository: agentFileRepository });
+			}
+
+			beforeEach(() => {
+				now = 0;
+				manifestState = '';
+				vi.spyOn(Date, 'now').mockImplementation(() => now);
+				const runtime = makeSandboxHandle(sandbox, filesystem);
+				sandboxProviderProxy.acquire.mockImplementation(async () => {
+					now += SANDBOX_START_MS;
+					return runtime;
+				});
+				sandbox.executeCommand.mockImplementation(async (command) => {
+					if (isManifestReadCommand(command)) {
+						now += MANIFEST_READ_MS;
+						return makeCommandResult(manifestState);
+					}
+
+					if (isMirrorSyncCommand(command)) {
+						now += MIRROR_COPY_MS;
+						manifestState = fullManifest;
+					}
+
+					return makeCommandResult();
+				});
+			});
+
+			afterEach(() => {
+				vi.restoreAllMocks();
+			});
+
+			it('reports the sandbox wait and the full mirror wait when files are copied', async () => {
+				const onPreparationWait = vi.fn();
+				const service = makeWaitService();
+
+				await service.searchText(scope, { pattern: 'foo' }, { onPreparationWait });
+
+				expect(onPreparationWait).toHaveBeenCalledExactlyOnceWith({
+					sandboxWaitMs: SANDBOX_START_MS,
+					mirrorWaitMs: MANIFEST_READ_MS + MIRROR_COPY_MS,
+				});
+			});
+
+			it('reports a mirror wait of 0 when the mirror is already up to date', async () => {
+				manifestState = fullManifest;
+				const onPreparationWait = vi.fn();
+				const service = makeWaitService();
+
+				await service.readFile(scope, { file: 'doc1.txt' }, { onPreparationWait });
+
+				expect(onPreparationWait).toHaveBeenCalledExactlyOnceWith({
+					sandboxWaitMs: SANDBOX_START_MS,
+					mirrorWaitMs: 0,
+				});
+			});
+
+			it('counts a sync that only deletes files as a mirror wait', async () => {
+				manifestState = `${fullManifest}file-2\told.txt\n`;
+				const onPreparationWait = vi.fn();
+				const service = makeWaitService();
+
+				await service.searchText(scope, { pattern: 'foo' }, { onPreparationWait });
+
+				expect(onPreparationWait).toHaveBeenCalledExactlyOnceWith({
+					sandboxWaitMs: SANDBOX_START_MS,
+					mirrorWaitMs: MANIFEST_READ_MS + MIRROR_COPY_MS,
+				});
+			});
+
+			it('reports only the rest of a background copy that is in progress', async () => {
+				sandboxProviderProxy.acquire.mockResolvedValue(makeSandboxHandle(sandbox, filesystem));
+				let releaseManifestRead!: () => void;
+				const blockedManifestRead = new Promise<void>((resolve) => {
+					releaseManifestRead = resolve;
+				});
+				let blockNextManifestRead = true;
+				sandbox.executeCommand.mockImplementation(async (command) => {
+					if (isManifestReadCommand(command)) {
+						now += MANIFEST_READ_MS;
+						if (blockNextManifestRead) {
+							blockNextManifestRead = false;
+							await blockedManifestRead;
+						}
+
+						return makeCommandResult(manifestState);
+					}
+
+					if (isMirrorSyncCommand(command)) {
+						now += MIRROR_COPY_MS;
+						manifestState = fullManifest;
+					}
+
+					return makeCommandResult();
+				});
+				const onPreparationWait = vi.fn();
+				const service = makeWaitService();
+
+				service.syncMirrorInBackground(scope, async () => {});
+				await vi.waitFor(() => expect(sandbox.executeCommand).toHaveBeenCalledOnce());
+				// The background copy has run for a while before the search starts.
+				now += 400;
+				const search = service.searchText(scope, { pattern: 'foo' }, { onPreparationWait });
+				await vi.waitFor(() => expect(sandboxProviderProxy.acquire).toHaveBeenCalledTimes(2));
+				await new Promise((resolve) => setTimeout(resolve, 0));
+				now += 200;
+				releaseManifestRead();
+				await search;
+
+				// The search waits 200 ms, then the background copy, then its own manifest check.
+				expect(onPreparationWait).toHaveBeenCalledExactlyOnceWith({
+					sandboxWaitMs: 0,
+					mirrorWaitMs: 200 + MIRROR_COPY_MS + MANIFEST_READ_MS,
+				});
+			});
+
+			it('reports the sandbox wait when the sandbox does not start', async () => {
+				const startError = new Error('sandbox unavailable');
+				sandboxProviderProxy.acquire.mockImplementation(async () => {
+					now += SANDBOX_START_MS;
+					throw startError;
+				});
+				const onPreparationWait = vi.fn();
+				const service = makeWaitService();
+
+				await expect(
+					service.searchText(scope, { pattern: 'foo' }, { onPreparationWait }),
+				).rejects.toBe(startError);
+
+				expect(onPreparationWait).toHaveBeenCalledExactlyOnceWith({
+					sandboxWaitMs: SANDBOX_START_MS,
+					mirrorWaitMs: 0,
+				});
+			});
+
+			it('reports the mirror wait when the copy fails', async () => {
+				sandbox.executeCommand.mockImplementation(async (command) => {
+					if (isManifestReadCommand(command)) {
+						now += MANIFEST_READ_MS;
+						return makeCommandResult();
+					}
+
+					if (isMirrorSyncCommand(command)) {
+						now += MIRROR_COPY_MS;
+						return makeCommandResult('', 'disk full', 1);
+					}
+
+					return makeCommandResult();
+				});
+				const onPreparationWait = vi.fn();
+				const service = makeWaitService();
+
+				await expect(
+					service.searchText(scope, { pattern: 'foo' }, { onPreparationWait }),
+				).rejects.toThrow(/Agent knowledge mirror sync failed/);
+
+				expect(onPreparationWait).toHaveBeenCalledExactlyOnceWith({
+					sandboxWaitMs: SANDBOX_START_MS,
+					mirrorWaitMs: MANIFEST_READ_MS + MIRROR_COPY_MS,
+				});
+			});
+
+			it('does not report a wait when the call ends before the sandbox step', async () => {
+				const onPreparationWait = vi.fn();
+
+				await makeWaitService([]).searchText(scope, { pattern: 'foo' }, { onPreparationWait });
+				await expect(
+					makeWaitService().readFile(scope, { file: 'missing.txt' }, { onPreparationWait }),
+				).rejects.toThrow();
+
+				expect(onPreparationWait).not.toHaveBeenCalled();
+			});
 		});
 	});
 });

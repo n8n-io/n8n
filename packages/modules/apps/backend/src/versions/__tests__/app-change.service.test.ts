@@ -112,6 +112,34 @@ describe('AppChangeService', () => {
 		expect(builds.status).not.toHaveBeenCalled();
 	});
 
+	it('tags the first commit on a scaffold draft as the initial version', async () => {
+		const { service, versions, builds } = setup();
+		versions.isScaffold.mockResolvedValue(true);
+
+		await service.commit('project', 'app', 'draft', createAppScaffold(), null, undefined, {
+			userId: 'user-1',
+			threadId: 'thread-1',
+		});
+
+		expect(versions.isScaffold).toHaveBeenCalledWith('draft');
+		expect(builds.build).toHaveBeenCalledWith('project', 'app', 'new-version', false, {
+			changeSource: 'initial',
+			userId: 'user-1',
+			threadId: 'thread-1',
+		});
+	});
+
+	it('tags a commit on a draft with code as a chat change', async () => {
+		const { service, versions, builds } = setup();
+		versions.isScaffold.mockResolvedValue(false);
+
+		await service.commit('project', 'app', 'draft', createAppScaffold());
+
+		expect(builds.build).toHaveBeenCalledWith('project', 'app', 'new-version', false, {
+			changeSource: 'chat',
+		});
+	});
+
 	it('uses the same commit path for scaffold source', async () => {
 		const { service, versions, builds } = setup();
 		await service.scaffold('project', 'app');
@@ -223,6 +251,7 @@ describe('AppChangeService', () => {
 					label: 'Draft',
 					buildStatus,
 					bundleArtifactId: null,
+					isScaffold: false,
 				} as AppVersion);
 				versions.readSource.mockResolvedValue(createAppScaffold());
 
@@ -236,6 +265,7 @@ describe('AppChangeService', () => {
 					createAppScaffold(),
 					'Draft',
 					bindings,
+					{ isScaffold: false },
 				);
 				expect(builds.startBuild).toHaveBeenCalledWith('project', 'app', 'new-version', false, {
 					changeSource: 'bindings',
@@ -261,11 +291,36 @@ describe('AppChangeService', () => {
 				createAppScaffold(),
 				null,
 				bindings,
+				{ isScaffold: true },
 			);
 			expect(builds.startBuild).toHaveBeenCalledWith('project', 'app', 'new-version', false, {
 				userId: 'user-1',
 				changeSource: 'bindings',
 			});
+		});
+
+		it('keeps the scaffold flag when it saves an unbuilt scaffold draft with new bindings', async () => {
+			const { service, versions } = setup();
+			versions.getVersion.mockResolvedValue({
+				id: 'draft',
+				label: null,
+				buildStatus: 'failed',
+				bundleArtifactId: null,
+				isScaffold: true,
+			} as AppVersion);
+			versions.readSource.mockResolvedValue(createAppScaffold());
+
+			await service.saveBindings('project', 'app', 'draft', bindings);
+
+			expect(versions.saveSource).toHaveBeenCalledWith(
+				'project',
+				'app',
+				'draft',
+				createAppScaffold(),
+				null,
+				bindings,
+				{ isScaffold: true },
+			);
 		});
 
 		it('keeps the saved bindings when the build cannot start', async () => {

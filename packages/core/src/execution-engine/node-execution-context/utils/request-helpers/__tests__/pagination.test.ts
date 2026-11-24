@@ -340,6 +340,31 @@ describe('requestWithAuthenticationPaginated', () => {
 		expect(helpers.request).not.toHaveBeenCalled();
 	});
 
+	test('evaluates the completion expression when a page has an empty body', async () => {
+		const { ctx, requestOptions, paginationOptions, request } = setup();
+		request
+			.mockResolvedValueOnce({ body: { items: [1] }, headers: {}, statusCode: 200 })
+			.mockResolvedValueOnce({ body: undefined, headers: {}, statusCode: 204 });
+		const resolveValue = vi.fn((parameterValue, _i, _r, _e, additionalKeys) => {
+			if (parameterValue === paginationOptions.request) return { url: 'https://example.com/page' };
+			if (parameterValue === paginationOptions.continue) {
+				return additionalKeys.$response.body !== undefined;
+			}
+			return 0;
+		});
+
+		const result = await requestWithAuthenticationPaginated.call(
+			ctx,
+			requestOptions,
+			0,
+			paginationOptions,
+			resolveValue,
+			node,
+		);
+
+		expect(result.map(({ statusCode }) => statusCode)).toEqual([200, 204]);
+	});
+
 	describe('execution cancellation', () => {
 		const setupMultiPage = (signal: AbortSignal) => {
 			const paginationOptions = {

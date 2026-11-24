@@ -1,5 +1,5 @@
 import type { SerializedCredential } from '@n8n/api-types';
-import { CredentialsFinderService, EventService } from '@n8n/backend-services';
+import { CredentialsFinderService, EventService, loginIdOf } from '@n8n/backend-services';
 import type { CredentialsEntity, OperationContext, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { NotFoundError, UnprocessableRequestError, UnexpectedError } from '@n8n/errors';
@@ -12,7 +12,6 @@ import { CredentialDescriptionsService } from '@/credentials/credential-descript
 import { CredentialsService } from '@/credentials/credentials.service';
 import { getExternalSecretExpressionPaths } from '@/credentials/external-secrets.utils';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
-import { loginIdOf } from '@/events/login-id';
 
 import {
 	credentialDiffers,

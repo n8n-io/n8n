@@ -219,6 +219,25 @@ describe('WorkflowPublicationOutboxConsumer (integration)', () => {
 		expect(await outboxRepository.claimNextPendingRecord()).toBeNull();
 	});
 
+	test('re-registers every unchanged trigger for a transfer record', async () => {
+		const owner = await createOwner();
+
+		const trigger = scheduleNode('only');
+		const workflow = await createWorkflowWithHistory({ active: true, nodes: [trigger] }, owner);
+		await setActiveVersion(workflow.id, workflow.versionId);
+		await publishedVersionRepository.setPublishedVersion(workflow.id, workflow.versionId);
+		await activeWorkflowManager.add(workflow.id, 'activate');
+		const responseBefore = activeWorkflowTriggers.get(workflow.id)?.get(trigger.id);
+		expect(responseBefore).toBeDefined();
+
+		await outboxRepository.enqueue(workflow.id, workflow.versionId, 'transfer');
+		const record = await outboxRepository.claimNextPendingRecord();
+		await consumer.processRecord(record!, abortSignal);
+
+		expect(activeWorkflowTriggers.get(workflow.id)?.has(trigger.id)).toBe(true);
+		expect(activeWorkflowTriggers.get(workflow.id)?.get(trigger.id)).not.toBe(responseBefore);
+	});
+
 	test('does no trigger work when only non-trigger content changed', async () => {
 		const owner = await createOwner();
 
@@ -332,8 +351,13 @@ describe('WorkflowPublicationOutboxConsumer (integration)', () => {
 			workflow.id,
 		);
 		expect(published?.publishedVersionId).toBe(workflow.versionId);
+		// The refused version replaces no triggers, so the rows keep the live state of the old version.
 		expect(await triggerStatusRepository.findByWorkflowId(workflow.id)).toEqual([
-			expect.objectContaining({ nodeId: fitting.id, status: 'failed' }),
+			expect.objectContaining({
+				nodeId: running.id,
+				status: 'activated',
+				versionId: workflow.versionId,
+			}),
 		]);
 	});
 

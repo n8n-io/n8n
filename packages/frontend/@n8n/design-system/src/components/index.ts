@@ -166,6 +166,13 @@ export {
 	type ChatInputAutoFocusTarget,
 } from './N8nChatInput';
 export { default as N8nChatMessage } from './N8nChatMessage';
+export { default as N8nChatScrollArea } from './N8nChatScrollArea';
+export type {
+	ChatScrollAreaEmits,
+	ChatScrollAreaExposed,
+	ChatScrollAreaProps,
+	ChatScrollAreaSlots,
+} from './N8nChatScrollArea/ChatScrollArea.types';
 export { default as N8nChatActions } from './N8nChatActions/ChatActions.vue';
 export type {
 	ChatActionCopyResult,
@@ -174,6 +181,8 @@ export type {
 	ChatActionReadAloudStatus,
 	ChatActionsProps,
 } from './N8nChatActions/ChatActions.types';
+export { default as N8nChatRating } from './N8nChatRating/ChatRating.vue';
+export type { ChatRatingValue } from './N8nChatRating/ChatRating.types';
 export { default as N8nPulse } from './N8nPulse';
 export { default as N8nSendStopButton } from './N8nSendStopButton';
 export { default as N8nSegmentControl } from './N8nSegmentControl';
@@ -197,6 +206,8 @@ export type {
 	VersionHistoryTogglePayload,
 	VersionHistoryTooltip,
 } from './VersionHistory';
+export { default as N8nSidebar } from './N8nSidebar';
+export type { SidebarProps, SidebarSide } from './N8nSidebar';
 export { default as N8nSelect } from './N8nSelect';
 export { default as N8nSpinner } from './N8nSpinner';
 export { default as N8nStatusDot } from './N8nStatusDot';
