@@ -77,6 +77,15 @@ export class Zammad implements INodeType {
 					},
 				},
 			},
+			{
+				name: 'zammadOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['oAuth2'],
+					},
+				},
+			},
 		],
 		properties: [
 			{
@@ -91,6 +100,10 @@ export class Zammad implements INodeType {
 					{
 						name: 'Token Auth',
 						value: 'tokenAuth',
+					},
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
 					},
 				],
 				default: 'tokenAuth',

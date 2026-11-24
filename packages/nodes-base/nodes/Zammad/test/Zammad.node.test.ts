@@ -83,6 +83,7 @@ describe('Zammad Node', () => {
 			expect(authProperty?.options).toEqual([
 				{ name: 'Basic Auth', value: 'basicAuth' },
 				{ name: 'Token Auth', value: 'tokenAuth' },
+				{ name: 'OAuth2', value: 'oAuth2' },
 			]);
 			expect(authProperty?.default).toBe('tokenAuth');
 		});

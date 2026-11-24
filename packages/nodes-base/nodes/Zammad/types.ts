@@ -3,7 +3,7 @@ import type { IDataObject } from 'n8n-workflow';
 export declare namespace Zammad {
 	export type Resource = 'group' | 'organization' | 'ticket' | 'user';
 
-	export type AuthMethod = 'basicAuth' | 'tokenAuth';
+	export type AuthMethod = 'basicAuth' | 'tokenAuth' | 'oAuth2';
 
 	export type Credentials = BasicAuthCredentials | TokenAuthCredentials;
 
@@ -22,6 +22,8 @@ export declare namespace Zammad {
 		authType: 'tokenAuth';
 		accessToken: string;
 	};
+
+	export type OAuth2Credentials = CredentialsBase;
 
 	export type UserAdditionalFields = IDataObject & CustomFieldsUi & AddressUi;
 	export type UserUpdateFields = UserAdditionalFields;
