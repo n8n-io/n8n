@@ -83,6 +83,7 @@ function onUpdate(value: boolean | 'indeterminate') {
 	align-items: center;
 	justify-content: center;
 	border: var(--border);
+	border-color: var(--border-color--strong);
 	color: var(--text-color--inverse);
 	cursor: inherit;
 	flex-shrink: 0;
@@ -90,7 +91,6 @@ function onUpdate(value: boolean | 'indeterminate') {
 	&[data-state='checked'],
 	&[data-state='indeterminate'] {
 		background-color: var(--color--primary);
-		border-color: var(--color--primary--shade-1);
 
 		&[data-disabled] {
 			background: var(--color--foreground);
@@ -99,7 +99,7 @@ function onUpdate(value: boolean | 'indeterminate') {
 	}
 
 	&[data-disabled] {
-		border-color: var(--border-color--subtle);
+		border: var(--border);
 	}
 
 	&:focus-visible {
