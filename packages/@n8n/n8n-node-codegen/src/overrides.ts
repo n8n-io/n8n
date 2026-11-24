@@ -30,5 +30,5 @@ export type Overrides = z.infer<typeof overridesSchema>;
 
 export async function loadOverrides(file: string): Promise<z.infer<typeof moduleSchema>> {
 	const loaded: unknown = await import(pathToFileURL(file).href);
-	return parse(moduleSchema, loaded, `the overrides in ${file}`);
+	return parse({ schema: moduleSchema, value: loaded, subject: `the overrides in ${file}` });
 }
