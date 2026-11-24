@@ -371,6 +371,7 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 		);
 		expect(resolveAiGatewayCredential).toHaveBeenCalledWith('anthropic');
 		expect(runtime.guardrailModel).toBeDefined();
+		expect(runtime.guardrailModelId).toBe('anthropic/claude-sonnet-5-5');
 	});
 
 	it('forwards the production n8n Chat marker to workflow tools', async () => {

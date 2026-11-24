@@ -73,7 +73,8 @@ import { buildAgentConfigurationTelemetryFromConfig } from '../agent-telemetry';
 import type { ExecutionRecorder, MessageRecord } from '../execution-recorder';
 import { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import { buildProviderToolsForModel } from '../json-config/from-json-config';
-import { withBudgetGuardrail } from '../budget-guardrail';
+import { budgetChargeOptions, withBudgetGuardrail } from '../budget-guardrail';
+import { withToolGuardrails } from '../tool-guardrails';
 import { modelStreamStallOptions } from '@/utils/model-stream-stall-options';
 import type { WorkflowToolExecutionMode } from '../tools/workflow-tool-factory';
 import { streamAgentChunks } from '../utils/agent-stream';
@@ -403,39 +404,49 @@ export class SubAgentRunner {
 									{ ...notice, agentId: notice.agentId ?? runtimeSource.source.sourceId },
 						)
 				: undefined;
-			const executionOptions = withBudgetGuardrail(
+			const budgetInput = {
+				useRootSessionCap: true,
+				budget: childConfig.config?.guardrails?.budget,
+				sessionId: context.rootSessionId,
+				agentId: runtimeSource.source.sourceId,
+				rootSessionCapUsd: context.rootSessionCapUsd,
+				...(reconstructed.modelCredentialGatewayManaged
+					? { modelCredentialGatewayManaged: true }
+					: {}),
+				...(forwardBudgetNotice !== undefined ? { onNotice: forwardBudgetNotice } : {}),
+			};
+			const executionOptions = withToolGuardrails(
+				withBudgetGuardrail(
+					{
+						approvalContext: await this.toolApprovalService.createContext(
+							recording,
+							reconstructed.toolRegistry,
+						),
+						...(context.abortSignal !== undefined ? { abortSignal: context.abortSignal } : {}),
+						...(telemetry !== undefined ? { telemetry } : {}),
+						...modelStreamStallOptions(this.aiConfig),
+						executionCounter: context.executionCounter,
+						shouldPause: context.shouldPause,
+						...(executionLinks !== undefined
+							? {
+									onSideCallUsage: (report: SideCallUsageReport) =>
+										this.usageRelay.reportDelegatedSideCall({
+											...report,
+											executionId,
+											threadId,
+											parentExecutionId: executionLinks.parentExecutionId,
+										}),
+								}
+							: {}),
+					},
+					budgetInput,
+				),
 				{
-					approvalContext: await this.toolApprovalService.createContext(
-						recording,
-						reconstructed.toolRegistry,
-					),
-					...(context.abortSignal !== undefined ? { abortSignal: context.abortSignal } : {}),
-					...(telemetry !== undefined ? { telemetry } : {}),
-					...modelStreamStallOptions(this.aiConfig),
-					executionCounter: context.executionCounter,
-					shouldPause: context.shouldPause,
-					...(executionLinks !== undefined
-						? {
-								onSideCallUsage: (report: SideCallUsageReport) =>
-									this.usageRelay.reportDelegatedSideCall({
-										...report,
-										executionId,
-										threadId,
-										parentExecutionId: executionLinks.parentExecutionId,
-									}),
-							}
-						: {}),
-				},
-				{
-					useRootSessionCap: true,
-					budget: childConfig.config?.guardrails?.budget,
-					sessionId: context.rootSessionId,
-					agentId: runtimeSource.source.sourceId,
-					rootSessionCapUsd: context.rootSessionCapUsd,
-					...(reconstructed.modelCredentialGatewayManaged
-						? { modelCredentialGatewayManaged: true }
-						: {}),
-					...(forwardBudgetNotice !== undefined ? { onNotice: forwardBudgetNotice } : {}),
+					toolGuardrails: reconstructed.toolGuardrails,
+					toolRegistry: reconstructed.toolRegistry,
+					guardrailModel: reconstructed.guardrailModel,
+					guardrailModelId: reconstructed.guardrailModelId,
+					budget: budgetChargeOptions(budgetInput),
 				},
 			);
 			context.abortSignal?.throwIfAborted();

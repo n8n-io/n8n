@@ -91,7 +91,7 @@ async function runLLM(
 	const fullPrompt = buildFullPrompt(prompt, outputParser.getFormatInstructions(), systemMessage);
 
 	try {
-		const text = await run(fullPrompt, inputText);
+		const { text } = await run(fullPrompt, inputText);
 		const { confidenceScore, flagged } = await outputParser.parse(text);
 
 		// Validate output consistency

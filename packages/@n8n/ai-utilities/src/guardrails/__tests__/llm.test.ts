@@ -1,7 +1,7 @@
 import { runLLMValidation } from '../llm';
 
 const runWith = (output: string) => ({
-	run: vi.fn().mockResolvedValue(output),
+	run: vi.fn().mockResolvedValue({ text: output }),
 	prompt: 'Test prompt',
 	threshold: 0.7,
 });
