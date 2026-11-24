@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      @font-face {
+        font-family: "Caveat";
+        src: url("assets/fonts/Caveat-700-latin.woff2") format("woff2");
+        font-weight: 700;
+        font-display: block;
+      }
+      *,
+      *::before,
+      *::after {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        background: transparent;
+        overflow: hidden;
+      }
+      /* ---- hw-underline ------------------------------------------------
+         Squiggle underline / strikethrough / bracket marks that draw on.
+         Size the wrapper over the text they annotate. Requires the hw-boil
+         helpers in the host. */
+      .hw-mark {
+        position: absolute;
+        pointer-events: none;
+      }
+      .hw-mark svg {
+        width: 100%;
+        height: 100%;
+        overflow: visible;
+      }
+      .hw-mark path {
+        fill: none;
+        stroke: var(--hw-mark-color, var(--hw-accent-warm, #ffb020));
+        stroke-width: var(--hw-mark-w, 7);
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      /* self-preview scene */
+      #hw-un-scene {
+        position: absolute;
+        inset: 0;
+        background: #17161a;
+        font-family: var(--hw-font-print, "Caveat", cursive);
+        font-weight: 700;
+        font-size: 84px;
+        color: #f4f2ec;
+      }
+      #hw-un-scene div {
+        position: absolute;
+        left: 480px;
+        white-space: nowrap;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Self-preview. WIRING: copy the .hw-mark CSS + markup pattern, the
+         hwMarkPath / hwMarkOn / hwMarkOff helpers, AND the hw-boil helpers.
+         Then:
+
+           document.querySelector("#hw-my-mark path")
+             .setAttribute("d", hwMarkPath(420, 34, "underline", 4));
+           hwMarkOn(tl, "#hw-my-mark", 2.0);
+           hwBoil(tl, "#hw-my-mark", { frameDrop: 3, seed: 4 });
+    -->
+    <div
+      id="hw-un-root"
+      data-composition-id="hw-underline"
+      data-start="0"
+      data-duration="4"
+      data-width="1920"
+      data-height="1080"
+    >
+      <div id="hw-un-scene">
+        <div style="top: 260px">underline the point</div>
+        <div style="top: 460px">cross this out</div>
+        <div style="top: 660px">bracket the aside</div>
+      </div>
+      <div
+        class="hw-mark"
+        id="hw-un-m1"
+        style="left: 470px; top: 350px; width: 620px; height: 34px"
+      >
+        <svg viewBox="0 0 620 34"><path></path></svg>
+      </div>
+      <div
+        class="hw-mark"
+        id="hw-un-m2"
+        style="left: 470px; top: 500px; width: 480px; height: 34px"
+      >
+        <svg viewBox="0 0 480 34"><path></path></svg>
+      </div>
+      <div
+        class="hw-mark"
+        id="hw-un-m3"
+        style="left: 440px; top: 650px; width: 40px; height: 110px"
+      >
+        <svg viewBox="0 0 40 110"><path></path></svg>
+      </div>
+      <div
+        id="hw-un-drv"
+        class="clip"
+        data-start="0"
+        data-duration="4"
+        data-track-index="0"
+        style="position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none"
+      ></div>
+    </div>
+    <script>
+      (function () {
+        window.__timelines = window.__timelines || {};
+
+        /* ---- hw-boil helpers (shared family runtime — copy once per host) ---- */
+        window.hwOnUpdate = function (tl, fn) {
+          if (!tl.__hwRenders) {
+            tl.__hwRenders = [];
+            tl.eventCallback("onUpdate", function () {
+              for (var i = 0; i < tl.__hwRenders.length; i++) tl.__hwRenders[i]();
+            });
+          }
+          tl.__hwRenders.push(fn);
+          fn();
+        };
+        window.hwHash = function (n, seed) {
+          var x = Math.sin(n * 127.1 + (seed || 1) * 311.7) * 43758.5453;
+          return (x - Math.floor(x)) * 2 - 1;
+        };
+        window.hwBoil = function (tl, target, opts) {
+          opts = opts || {};
+          var amp = opts.amp !== undefined ? opts.amp : 1.6;
+          var rot = opts.rot !== undefined ? opts.rot : 0.5;
+          var fps = opts.fps || 30;
+          var drop = opts.frameDrop || 3;
+          var seed = opts.seed || 1;
+          var els = gsap.utils.toArray(target);
+          window.hwOnUpdate(tl, function () {
+            var step = Math.floor((tl.time() * fps) / drop);
+            for (var i = 0; i < els.length; i++) {
+              gsap.set(els[i], {
+                x: window.hwHash(step * 3 + i * 97, seed) * amp,
+                y: window.hwHash(step * 3 + 1 + i * 97, seed) * amp,
+                rotation: (opts.baseRot || 0) + window.hwHash(step * 3 + 2 + i * 97, seed) * rot,
+              });
+            }
+          });
+        };
+
+        // ---- hw-mark helpers (copy these too) ----
+        // style: "underline" (squiggle) | "strike" (double pass) | "bracket"
+        window.hwMarkPath = function (w, h, style, seed) {
+          seed = seed || 1;
+          function wob(n, range) {
+            return window.hwHash(n, seed) * (range === undefined ? 5 : range);
+          }
+          var mid = h / 2;
+          if (style === "bracket") {
+            return (
+              "M " +
+              (w * 0.9 + wob(1, 3)) +
+              " " +
+              (2 + wob(2, 3)) +
+              " Q " +
+              wob(3, 4) +
+              " " +
+              (2 + wob(4)) +
+              " " +
+              (4 + wob(5, 3)) +
+              " " +
+              (h * 0.5 + wob(6)) +
+              " Q " +
+              wob(7, 4) +
+              " " +
+              (h - 2 + wob(8)) +
+              " " +
+              (w * 0.9 + wob(9, 3)) +
+              " " +
+              (h - 2 + wob(10, 3))
+            );
+          }
+          if (style === "strike") {
+            return (
+              "M " +
+              (2 + wob(1, 3)) +
+              " " +
+              (mid + wob(2)) +
+              " L " +
+              (w - 4 + wob(3, 3)) +
+              " " +
+              (mid - 3 + wob(4)) +
+              " M " +
+              (w - 10 + wob(5, 4)) +
+              " " +
+              (mid + 7 + wob(6)) +
+              " L " +
+              (8 + wob(7, 4)) +
+              " " +
+              (mid + 3 + wob(8))
+            );
+          }
+          /* underline squiggle */
+          var segs = Math.max(5, Math.round(w / 95));
+          var d = "M 2 " + (mid + wob(0, 4));
+          for (var i = 1; i <= segs; i++) {
+            var x = (w / segs) * i;
+            d +=
+              " Q " +
+              (x - w / segs / 2 + wob(i * 4 + 1, 9)) +
+              " " +
+              (mid + (i % 2 ? -1 : 1) * (9 + wob(i * 4 + 2, 4))) +
+              " " +
+              x.toFixed(1) +
+              " " +
+              (mid + wob(i * 4 + 3, 4));
+          }
+          return d;
+        };
+        window.hwMarkOn = function (tl, target, at, dur) {
+          var p = document.querySelector(target + " path");
+          var len = p.getTotalLength();
+          gsap.set(p, { strokeDasharray: len, strokeDashoffset: len });
+          tl.to(
+            p,
+            { strokeDashoffset: 0, duration: dur === undefined ? 0.55 : dur, ease: "power2.inOut" },
+            at,
+          );
+        };
+        window.hwMarkOff = function (tl, target, at) {
+          tl.to(target, { opacity: 0, duration: 0.3, ease: "power2.in" }, at);
+        };
+
+        // ---- self-preview ----
+        document
+          .querySelector("#hw-un-m1 path")
+          .setAttribute("d", window.hwMarkPath(620, 34, "underline", 4));
+        document
+          .querySelector("#hw-un-m2 path")
+          .setAttribute("d", window.hwMarkPath(480, 34, "strike", 6));
+        document
+          .querySelector("#hw-un-m3 path")
+          .setAttribute("d", window.hwMarkPath(40, 110, "bracket", 8));
+        var tl = gsap.timeline({ paused: true });
+        window.hwMarkOn(tl, "#hw-un-m1", 0.4);
+        window.hwMarkOn(tl, "#hw-un-m2", 1.0);
+        window.hwMarkOn(tl, "#hw-un-m3", 1.6);
+        window.hwBoil(tl, [".hw-mark"], { amp: 1.5, rot: 0.4, frameDrop: 3, seed: 5 });
+        tl.to([".hw-mark"], { opacity: 0, duration: 0.3, ease: "power2.in" }, 3.5);
+        tl.set("#hw-un-root", { visibility: "hidden" }, 3.98);
+        window.__timelines["hw-underline"] = tl;
+      })();
+    </script>
+  </body>
+</html>

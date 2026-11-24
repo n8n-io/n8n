@@ -1,0 +1,570 @@
+{
+  "summary": {
+    "evaluation_period": {
+      "start_time": "2024-01-15T09:00:00Z",
+      "end_time": "2024-01-15T11:30:45Z",
+      "total_duration_hours": 2.51
+    },
+    "overall_health": "good",
+    "key_findings": [
+      "Success rate (80.0%) below target",
+      "High average latency (16.9s)",
+      "2 high-impact error patterns identified"
+    ],
+    "critical_issues": 0,
+    "improvement_opportunities": 6
+  },
+  "system_metrics": {
+    "total_tasks": 10,
+    "successful_tasks": 8,
+    "failed_tasks": 2,
+    "partial_tasks": 1,
+    "timeout_tasks": 1,
+    "success_rate": 0.8,
+    "failure_rate": 0.2,
+    "average_duration_ms": 169800.0,
+    "median_duration_ms": 152500.0,
+    "percentile_95_duration_ms": 330000.0,
+    "min_duration_ms": 8000,
+    "max_duration_ms": 330000,
+    "total_tokens_used": 53700,
+    "average_tokens_per_task": 5370.0,
+    "total_cost_usd": 1.074,
+    "average_cost_per_task": 0.1074,
+    "cost_per_token": 0.00002,
+    "throughput_tasks_per_hour": 3.98,
+    "error_rate": 0.3,
+    "retry_rate": 0.3
+  },
+  "agent_metrics": {
+    "research_agent_1": {
+      "total_tasks": 2,
+      "successful_tasks": 2,
+      "failed_tasks": 0,
+      "partial_tasks": 0,
+      "timeout_tasks": 0,
+      "success_rate": 1.0,
+      "failure_rate": 0.0,
+      "average_duration_ms": 174500.0,
+      "median_duration_ms": 174500.0,
+      "percentile_95_duration_ms": 195000.0,
+      "min_duration_ms": 154000,
+      "max_duration_ms": 195000,
+      "total_tokens_used": 11050,
+      "average_tokens_per_task": 5525.0,
+      "total_cost_usd": 0.221,
+      "average_cost_per_task": 0.1105,
+      "cost_per_token": 0.00002,
+      "throughput_tasks_per_hour": 11.49,
+      "error_rate": 0.0,
+      "retry_rate": 0.0
+    },
+    "data_agent_1": {
+      "total_tasks": 1,
+      "successful_tasks": 1,
+      "failed_tasks": 0,
+      "partial_tasks": 0,
+      "timeout_tasks": 0,
+      "success_rate": 1.0,
+      "failure_rate": 0.0,
+      "average_duration_ms": 165000.0,
+      "median_duration_ms": 165000.0,
+      "percentile_95_duration_ms": 165000.0,
+      "min_duration_ms": 165000,
+      "max_duration_ms": 165000,
+      "total_tokens_used": 5000,
+      "average_tokens_per_task": 5000.0,
+      "total_cost_usd": 0.095,
+      "average_cost_per_task": 0.095,
+      "cost_per_token": 0.000019,
+      "throughput_tasks_per_hour": 21.82,
+      "error_rate": 0.0,
+      "retry_rate": 0.0
+    },
+    "document_agent_1": {
+      "total_tasks": 1,
+      "successful_tasks": 0,
+      "failed_tasks": 0,
+      "partial_tasks": 1,
+      "timeout_tasks": 0,
+      "success_rate": 0.0,
+      "failure_rate": 0.0,
+      "average_duration_ms": 140000.0,
+      "median_duration_ms": 140000.0,
+      "percentile_95_duration_ms": 140000.0,
+      "min_duration_ms": 140000,
+      "max_duration_ms": 140000,
+      "total_tokens_used": 8600,
+      "average_tokens_per_task": 8600.0,
+      "total_cost_usd": 0.172,
+      "average_cost_per_task": 0.172,
+      "cost_per_token": 0.00002,
+      "throughput_tasks_per_hour": 25.71,
+      "error_rate": 1.0,
+      "retry_rate": 1.0
+    }
+  },
+  "task_type_metrics": {
+    "web_research": {
+      "total_tasks": 3,
+      "successful_tasks": 2,
+      "failed_tasks": 1,
+      "partial_tasks": 0,
+      "timeout_tasks": 0,
+      "success_rate": 0.667,
+      "failure_rate": 0.333,
+      "average_duration_ms": 226333.33,
+      "median_duration_ms": 195000.0,
+      "percentile_95_duration_ms": 330000.0,
+      "min_duration_ms": 154000,
+      "max_duration_ms": 330000,
+      "total_tokens_used": 12250,
+      "average_tokens_per_task": 4083.33,
+      "total_cost_usd": 0.245,
+      "average_cost_per_task": 0.082,
+      "cost_per_token": 0.00002,
+      "throughput_tasks_per_hour": 2.65,
+      "error_rate": 0.333,
+      "retry_rate": 0.333
+    },
+    "data_analysis": {
+      "total_tasks": 2,
+      "successful_tasks": 1,
+      "failed_tasks": 0,
+      "partial_tasks": 0,
+      "timeout_tasks": 1,
+      "success_rate": 0.5,
+      "failure_rate": 0.0,
+      "average_duration_ms": 215000.0,
+      "median_duration_ms": 215000.0,
+      "percentile_95_duration_ms": 265000.0,
+      "min_duration_ms": 165000,
+      "max_duration_ms": 265000,
+      "total_tokens_used": 14000,
+      "average_tokens_per_task": 7000.0,
+      "total_cost_usd": 0.275,
+      "average_cost_per_task": 0.138,
+      "cost_per_token": 0.0000196,
+      "throughput_tasks_per_hour": 1.86,
+      "error_rate": 0.5,
+      "retry_rate": 0.0
+    }
+  },
+  "tool_usage_analysis": {
+    "web_search": {
+      "usage_count": 3,
+      "error_rate": 0.333,
+      "avg_duration": 126666.67,
+      "affected_workflows": [
+        "web_research"
+      ],
+      "retry_count": 2
+    },
+    "data_analyzer": {
+      "usage_count": 2,
+      "error_rate": 0.0,
+      "avg_duration": 205000.0,
+      "affected_workflows": [
+        "data_analysis"
+      ],
+      "retry_count": 0
+    },
+    "document_processor": {
+      "usage_count": 2,
+      "error_rate": 0.0,
+      "avg_duration": 140000.0,
+      "affected_workflows": [
+        "document_processing"
+      ],
+      "retry_count": 1
+    },
+    "notification_sender": {
+      "usage_count": 2,
+      "error_rate": 0.5,
+      "avg_duration": 18750.0,
+      "affected_workflows": [
+        "notification"
+      ],
+      "retry_count": 1
+    },
+    "task_scheduler": {
+      "usage_count": 1,
+      "error_rate": 0.0,
+      "avg_duration": 12000.0,
+      "affected_workflows": [
+        "task_scheduling"
+      ],
+      "retry_count": 0
+    }
+  },
+  "error_analysis": [
+    {
+      "error_type": "timeout",
+      "count": 2,
+      "percentage": 20.0,
+      "affected_agents": [
+        "research_agent_2",
+        "data_agent_2"
+      ],
+      "affected_task_types": [
+        "web_research",
+        "data_analysis"
+      ],
+      "common_patterns": [
+        "timeout",
+        "exceeded",
+        "limit"
+      ],
+      "suggested_fixes": [
+        "Increase timeout values",
+        "Optimize slow operations",
+        "Add retry logic with exponential backoff",
+        "Parallelize independent operations"
+      ],
+      "impact_level": "high"
+    },
+    {
+      "error_type": "authentication",
+      "count": 1,
+      "percentage": 10.0,
+      "affected_agents": [
+        "communication_agent_2"
+      ],
+      "affected_task_types": [
+        "notification"
+      ],
+      "common_patterns": [
+        "authentication",
+        "failed",
+        "invalid"
+      ],
+      "suggested_fixes": [
+        "Check credential rotation",
+        "Implement token refresh logic",
+        "Add authentication retry",
+        "Verify permission scopes"
+      ],
+      "impact_level": "high"
+    },
+    {
+      "error_type": "validation",
+      "count": 1,
+      "percentage": 10.0,
+      "affected_agents": [
+        "document_agent_1"
+      ],
+      "affected_task_types": [
+        "document_processing"
+      ],
+      "common_patterns": [
+        "validation",
+        "failed",
+        "missing"
+      ],
+      "suggested_fixes": [
+        "Strengthen input validation",
+        "Add data sanitization",
+        "Improve error messages",
+        "Add input examples"
+      ],
+      "impact_level": "medium"
+    }
+  ],
+  "bottleneck_analysis": [
+    {
+      "bottleneck_type": "tool",
+      "location": "notification_sender",
+      "severity": "medium",
+      "description": "Tool notification_sender has high error rate (50.0%)",
+      "impact_on_performance": {
+        "reliability_impact": 1.0,
+        "retry_overhead": 1000
+      },
+      "affected_workflows": [
+        "notification"
+      ],
+      "optimization_suggestions": [
+        "Review tool implementation",
+        "Add better error handling for tool",
+        "Implement tool fallbacks",
+        "Consider alternative tools"
+      ],
+      "estimated_improvement": {
+        "error_reduction": 0.35,
+        "performance_gain": 1.2
+      }
+    },
+    {
+      "bottleneck_type": "tool",
+      "location": "web_search",
+      "severity": "medium",
+      "description": "Tool web_search has high error rate (33.3%)",
+      "impact_on_performance": {
+        "reliability_impact": 1.0,
+        "retry_overhead": 2000
+      },
+      "affected_workflows": [
+        "web_research"
+      ],
+      "optimization_suggestions": [
+        "Review tool implementation",
+        "Add better error handling for tool",
+        "Implement tool fallbacks",
+        "Consider alternative tools"
+      ],
+      "estimated_improvement": {
+        "error_reduction": 0.233,
+        "performance_gain": 1.2
+      }
+    }
+  ],
+  "optimization_recommendations": [
+    {
+      "category": "reliability",
+      "priority": "high",
+      "title": "Improve System Reliability",
+      "description": "System success rate is 80.0%, below target of 90%",
+      "implementation_effort": "medium",
+      "expected_impact": {
+        "success_rate_improvement": 0.1,
+        "cost_reduction": 0.01611
+      },
+      "estimated_cost_savings": 0.1074,
+      "estimated_performance_gain": 1.2,
+      "implementation_steps": [
+        "Identify and fix top error patterns",
+        "Implement better error handling and retries",
+        "Add comprehensive monitoring and alerting",
+        "Implement graceful degradation patterns"
+      ],
+      "risks": [
+        "Temporary increase in complexity",
+        "Potential initial performance overhead"
+      ],
+      "prerequisites": [
+        "Error analysis completion",
+        "Monitoring infrastructure"
+      ]
+    },
+    {
+      "category": "performance",
+      "priority": "high",
+      "title": "Reduce Task Latency",
+      "description": "Average task duration (169.8s) exceeds target",
+      "implementation_effort": "high",
+      "expected_impact": {
+        "latency_reduction": 0.49,
+        "throughput_improvement": 1.5
+      },
+      "estimated_performance_gain": 1.4,
+      "implementation_steps": [
+        "Profile and optimize slow operations",
+        "Implement parallel processing where possible",
+        "Add caching for expensive operations",
+        "Optimize API calls and reduce round trips"
+      ],
+      "risks": [
+        "Increased system complexity",
+        "Potential resource usage increase"
+      ],
+      "prerequisites": [
+        "Performance profiling tools",
+        "Caching infrastructure"
+      ]
+    },
+    {
+      "category": "cost",
+      "priority": "medium",
+      "title": "Optimize Token Usage and Costs",
+      "description": "Average cost per task ($0.107) is above optimal range",
+      "implementation_effort": "low",
+      "expected_impact": {
+        "cost_reduction": 0.032,
+        "efficiency_improvement": 1.15
+      },
+      "estimated_cost_savings": 0.322,
+      "estimated_performance_gain": 1.05,
+      "implementation_steps": [
+        "Implement prompt optimization",
+        "Add response caching for repeated queries",
+        "Use smaller models for simple tasks",
+        "Implement token usage monitoring and alerts"
+      ],
+      "risks": [
+        "Potential quality reduction with smaller models"
+      ],
+      "prerequisites": [
+        "Token usage analysis",
+        "Caching infrastructure"
+      ]
+    },
+    {
+      "category": "reliability",
+      "priority": "high",
+      "title": "Address Timeout Errors",
+      "description": "Timeout errors occur in 20.0% of cases",
+      "implementation_effort": "medium",
+      "expected_impact": {
+        "error_reduction": 0.2,
+        "reliability_improvement": 1.1
+      },
+      "estimated_cost_savings": 0.1074,
+      "implementation_steps": [
+        "Increase timeout values",
+        "Optimize slow operations",
+        "Add retry logic with exponential backoff",
+        "Parallelize independent operations"
+      ],
+      "risks": [
+        "May require significant code changes"
+      ],
+      "prerequisites": [
+        "Root cause analysis",
+        "Testing framework"
+      ]
+    },
+    {
+      "category": "reliability",
+      "priority": "high",
+      "title": "Address Authentication Errors",
+      "description": "Authentication errors occur in 10.0% of cases",
+      "implementation_effort": "medium",
+      "expected_impact": {
+        "error_reduction": 0.1,
+        "reliability_improvement": 1.1
+      },
+      "estimated_cost_savings": 0.1074,
+      "implementation_steps": [
+        "Check credential rotation",
+        "Implement token refresh logic",
+        "Add authentication retry",
+        "Verify permission scopes"
+      ],
+      "risks": [
+        "May require significant code changes"
+      ],
+      "prerequisites": [
+        "Root cause analysis",
+        "Testing framework"
+      ]
+    },
+    {
+      "category": "performance",
+      "priority": "medium",
+      "title": "Address Tool Bottleneck",
+      "description": "Tool notification_sender has high error rate (50.0%)",
+      "implementation_effort": "medium",
+      "expected_impact": {
+        "error_reduction": 0.35,
+        "performance_gain": 1.2
+      },
+      "estimated_performance_gain": 1.2,
+      "implementation_steps": [
+        "Review tool implementation",
+        "Add better error handling for tool",
+        "Implement tool fallbacks",
+        "Consider alternative tools"
+      ],
+      "risks": [
+        "System downtime during implementation",
+        "Potential cascade effects"
+      ],
+      "prerequisites": [
+        "Impact assessment",
+        "Rollback plan"
+      ]
+    }
+  ],
+  "trends_analysis": {
+    "daily_success_rates": {
+      "2024-01-15": 0.8
+    },
+    "daily_avg_durations": {
+      "2024-01-15": 169800.0
+    },
+    "daily_costs": {
+      "2024-01-15": 1.074
+    },
+    "trend_direction": {
+      "success_rate": "stable",
+      "duration": "stable",
+      "cost": "stable"
+    }
+  },
+  "cost_breakdown": {
+    "total_cost": 1.074,
+    "cost_by_agent": {
+      "research_agent_1": 0.221,
+      "research_agent_2": 0.024,
+      "data_agent_1": 0.095,
+      "data_agent_2": 0.18,
+      "document_agent_1": 0.172,
+      "document_agent_2": 0.174,
+      "communication_agent_1": 0.007,
+      "communication_agent_2": 0.004,
+      "scheduler_agent_1": 0.01
+    },
+    "cost_by_task_type": {
+      "web_research": 0.245,
+      "data_analysis": 0.275,
+      "document_processing": 0.346,
+      "notification": 0.011,
+      "task_scheduling": 0.01
+    },
+    "cost_per_token": 0.00002,
+    "top_cost_drivers": [
+      [
+        "document_processing",
+        0.346
+      ],
+      [
+        "data_analysis",
+        0.275
+      ],
+      [
+        "web_research",
+        0.245
+      ],
+      [
+        "notification",
+        0.011
+      ],
+      [
+        "task_scheduling",
+        0.01
+      ]
+    ]
+  },
+  "sla_compliance": {
+    "overall_compliant": false,
+    "sla_details": {
+      "success_rate": {
+        "target": 0.95,
+        "actual": 0.8,
+        "compliant": false,
+        "gap": 0.15
+      },
+      "average_latency": {
+        "target": 10000,
+        "actual": 169800.0,
+        "compliant": false,
+        "gap": 159800.0
+      },
+      "error_rate": {
+        "target": 0.05,
+        "actual": 0.3,
+        "compliant": false,
+        "gap": 0.25
+      }
+    },
+    "compliance_score": 0.0
+  },
+  "metadata": {
+    "generated_at": "2024-01-15T12:00:00Z",
+    "evaluator_version": "1.0",
+    "total_logs_processed": 10,
+    "agents_analyzed": 9,
+    "task_types_analyzed": 5,
+    "analysis_completeness": "full"
+  }
+}

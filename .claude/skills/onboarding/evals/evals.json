@@ -1,0 +1,108 @@
+{
+  "skill_name": "onboarding",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Help me optimize our onboarding flow. We have a project management tool and only 30% of trial users create their first project within the first week. We need to get them to value faster.",
+      "expected_output": "Should check for product-marketing.md first. Should start by defining the activation/aha moment — in this case, creating a first project. Should evaluate the current time-to-value and identify friction points. Should recommend an onboarding flow approach (product-first, guided setup, or value-first). Should apply the checklist pattern (3-7 items for onboarding completion). Should address empty states as opportunities to guide users. Should provide experiment ideas for testing improvements. Should include measurement metrics.",
+      "assertions": [
+        "Checks for product-marketing.md",
+        "Defines the activation/aha moment",
+        "Evaluates time-to-value",
+        "Recommends onboarding flow approach",
+        "Applies checklist pattern with 3-7 items",
+        "Addresses empty states as opportunities",
+        "Provides experiment ideas",
+        "Includes measurement metrics"
+      ],
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "What should our onboarding checklist include? We're a design collaboration tool. Users need to upload a design, invite a team member, and leave a comment to get full value.",
+      "expected_output": "Should apply the checklist pattern. Should include the 3 stated activation actions (upload design, invite team, leave comment). Should recommend 3-7 total items ordered by increasing commitment. Should suggest starting with the quickest win to build momentum. Should recommend progress indicators and completion rewards. Should address what happens when users skip items. Should provide specific UX recommendations for the checklist implementation.",
+      "assertions": [
+        "Applies checklist pattern",
+        "Includes the 3 stated activation actions",
+        "Limits to 3-7 total items",
+        "Orders by increasing commitment",
+        "Starts with quickest win",
+        "Recommends progress indicators",
+        "Addresses skipped items",
+        "Provides UX recommendations"
+      ],
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "our users sign up but then never come back. like 50% don't even log in a second time. what do we do?",
+      "expected_output": "Should trigger on casual phrasing. Should address this as a stalled users problem. Should apply the handling stalled users framework: identify drop-off points, re-engagement triggers, multi-channel outreach (email, in-app, push). Should investigate root causes: is the first-run experience too complex? Is value not immediately apparent? Is the setup too long? Should recommend immediate improvements to the first session experience. Should suggest multi-channel onboarding (email sequences to bring them back). Should cross-reference emails for re-engagement emails.",
+      "assertions": [
+        "Triggers on casual phrasing",
+        "Applies stalled users framework",
+        "Identifies potential root causes for drop-off",
+        "Recommends first-session experience improvements",
+        "Suggests multi-channel onboarding",
+        "Cross-references emails for re-engagement",
+        "Provides specific re-engagement triggers"
+      ],
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "How do we handle the empty state when a new user first logs in? Right now they just see a blank dashboard.",
+      "expected_output": "Should apply the empty states as opportunities guidance. Should recommend turning the blank dashboard into a guided experience: sample data to show what the product looks like populated, a clear first action CTA, contextual tips, or a quick-start wizard. Should provide specific recommendations for empty state design: what to show, what action to prompt, how to reduce the 'blank canvas paralysis.' Should reference patterns by product type if applicable.",
+      "assertions": [
+        "Applies empty states as opportunities guidance",
+        "Recommends alternatives to blank dashboard",
+        "Suggests sample data or templates",
+        "Provides clear first action CTA",
+        "Addresses blank canvas paralysis",
+        "Provides specific empty state design recommendations"
+      ],
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "Should we use tooltips, a product tour, or a setup wizard for onboarding? What works best?",
+      "expected_output": "Should apply the tooltips/guided tours guidance. Should compare the approaches: tooltips (contextual, on-demand, less intrusive), product tours (guided walkthrough, can overwhelm), setup wizards (structured, ensures key setup steps). Should recommend based on product complexity and onboarding goals. Should note that the best approach often combines elements. Should provide best practices for each: tooltip fatigue avoidance, tour length limits, wizard step count. Should recommend testing different approaches.",
+      "assertions": [
+        "Compares tooltips, product tours, and setup wizards",
+        "Explains when each works best",
+        "Notes that combination approaches often work",
+        "Provides best practices for each",
+        "Addresses tooltip fatigue and tour length",
+        "Recommends testing different approaches"
+      ],
+      "files": []
+    },
+    {
+      "id": 6,
+      "prompt": "Our signup form has 8 fields and people keep dropping off. Can you help us fix the signup flow?",
+      "expected_output": "Should recognize this is a signup flow optimization task, not post-signup onboarding. Should defer to or cross-reference the signup skill, which handles signup form optimization, field reduction, and registration flow design. Onboarding-cro covers what happens after signup. Should make this distinction clear.",
+      "assertions": [
+        "Recognizes this as signup flow optimization, not onboarding",
+        "References or defers to signup skill",
+        "Explains that onboarding covers post-signup",
+        "Does not attempt signup form redesign using onboarding patterns"
+      ],
+      "files": []
+    },
+    {
+      "id": 7,
+      "prompt": "We're launching a new B2B analytics product and can't decide how to let people try it. Should we do a free tier, a free trial, require a credit card, or something else? And once they're in, how do we make sure they actually reach value fast?",
+      "expected_output": "Should walk through the 5 activation models (freemium, free trial with 3/7/14/30-day options, paid trial, money-back guarantee, consultation/Superhuman-style) and help choose based on Model-Market Fit (Balfour — the market dictates the model). Should explain the credit-card tradeoff without claiming universal signup losses or conversion multipliers. Should distinguish observational cross-product benchmarks from causal effects and compare visitor-to-paid conversion and retained customer economics over a consistent horizon. Should reference the Evernote-vs-Notion lesson (hook then limit vs. give away too much). Should then design the Minimum Path to Value (MPTV) — the least steps to enough value to decide — grounded in Hick's Law, using inventory → remove → reconstruct. Should cite abandonment reality (40–60% abandon after one session; 75–80% within the first day). May reference psychology mechanisms (Endowed Progress Effect, Peak-End, BJ Fogg, Mario Kart boosters/blockers). Should point to the activation-models and minimum-path-to-value references.",
+      "assertions": [
+        "Presents the 5 activation models",
+        "Applies Model-Market Fit to the choice",
+        "Explains the credit-card tradeoff using whole-funnel conversion, without unsupported universal rates",
+        "References Evernote-vs-Notion hook-then-limit lesson",
+        "Designs a Minimum Path to Value grounded in Hick's Law",
+        "Uses inventory -> remove -> reconstruct process",
+        "Cites first-session/first-day abandonment stats",
+        "Points to activation-models.md and minimum-path-to-value.md references"
+      ],
+      "files": []
+    }
+  ]
+}

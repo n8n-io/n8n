@@ -1,0 +1,671 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      @font-face {
+        font-family: "Caveat";
+        src: url("assets/fonts/Caveat-700-latin.woff2") format("woff2");
+        font-weight: 700;
+        font-display: block;
+      }
+      *,
+      *::before,
+      *::after {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        background: transparent;
+        overflow: hidden;
+      }
+      /* ---- hw-arrow ------------------------------------------------------
+         Hand-wobbled draw-on arrow, boiling, with a travel-aligned
+         arrival stretch on the head. Position the wrapper, build with a
+         CONFIG (arrowStyle / strokeType / boil), wire with a position
+         only: hwArrowBuild + hwArrowOn / hwArrowOff. Requires the hw
+         family helpers below (hwOnUpdate / hwHash / hwBoil / hwBoilPose /
+         springEase / hwStrokeApply / hwDrawOn) in the host script. */
+      .hw-arrow {
+        position: absolute;
+        pointer-events: none;
+      }
+      .hw-arrow svg {
+        width: 100%;
+        height: 100%;
+        overflow: visible;
+      }
+      .hw-arrow path {
+        fill: none;
+        stroke: var(--hw-arrow-color, var(--hw-ink, #f4f2ec));
+        stroke-width: var(--hw-arrow-w, 6);
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .hw-arrow.hw-soft path {
+        filter: blur(0.6px);
+      }
+      /* self-preview scene */
+      #hw-ar-scene {
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(135deg, #274060 0%, #123 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: var(--hw-font-print, "Caveat", cursive);
+        font-weight: 700;
+        font-size: 80px;
+        color: rgba(244, 242, 236, 0.92);
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Self-preview. WIRING (g09): copy the .hw-arrow CSS, the markup
+         pattern (positioned wrapper + empty svg with a viewBox), and the
+         helpers into your host. Build with a CONFIG, wire with a position
+         only — the helper owns its durations, eases, and seeds:
+
+           hwArrowBuild("#hw-my-arrow", {
+             arrowStyle: "swoop",  // "straight" | "gentle" | "swoop"
+             strokeType: "spray",  // "plain" | "soft" | "sharp" | "spray"
+             boil: "calm",         // "off" | "calm" | "lively"
+           });
+           hwArrowOn(tl, "#hw-my-arrow", 2.0);
+           hwArrowOff(tl, "#hw-my-arrow", 8.0);
+
+         Each built target needs a UNIQUE id — the wobble seed and the
+         sharp/spray mask id derive from it (an id-less target
+         console.errors and falls back to a shared "hw-arrow" slot).
+
+         Legacy single-path wiring (a <path> in the svg + hwArrowPath)
+         keeps working exactly as before:
+
+           document.querySelector("#hw-my-arrow path")
+             .setAttribute("d", hwArrowPath(360, 160, "swoop", 3));
+           hwArrowOn(tl, "#hw-my-arrow", 2.0);
+           hwBoil(tl, "#hw-my-arrow", { frameDrop: 3, seed: 3 });
+           hwArrowOff(tl, "#hw-my-arrow", 8.0);
+    -->
+    <div
+      id="hw-ar-root"
+      data-composition-id="hw-arrow"
+      data-start="0"
+      data-duration="4"
+      data-width="1920"
+      data-height="1080"
+    >
+      <div id="hw-ar-scene"><span>point at things</span></div>
+      <div
+        class="hw-arrow"
+        id="hw-ar-demo"
+        style="left: 560px; top: 320px; width: 380px; height: 180px"
+      >
+        <svg viewBox="0 0 380 180"></svg>
+      </div>
+      <div
+        id="hw-ar-drv"
+        class="clip"
+        data-start="0"
+        data-duration="4"
+        data-track-index="0"
+        style="position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none"
+      ></div>
+    </div>
+    <script>
+      (function () {
+        window.__timelines = window.__timelines || {};
+
+        /* ---- hw-boil helpers (shared family runtime — copy once per host) ---- */
+        window.hwOnUpdate = function (tl, fn) {
+          if (!tl.__hwRenders) {
+            tl.__hwRenders = [];
+            tl.eventCallback("onUpdate", function () {
+              for (var i = 0; i < tl.__hwRenders.length; i++) tl.__hwRenders[i]();
+            });
+          }
+          tl.__hwRenders.push(fn);
+          fn();
+        };
+        window.hwHash = function (n, seed) {
+          var x = Math.sin(n * 127.1 + (seed || 1) * 311.7) * 43758.5453;
+          return (x - Math.floor(x)) * 2 - 1;
+        };
+        window.hwBoil = function (tl, target, opts) {
+          opts = opts || {};
+          var amp = opts.amp !== undefined ? opts.amp : 1.6;
+          var rot = opts.rot !== undefined ? opts.rot : 0.5;
+          var fps = opts.fps || 30;
+          var drop = opts.frameDrop || 3;
+          var seed = opts.seed || 1;
+          var els = gsap.utils.toArray(target);
+          window.hwOnUpdate(tl, function () {
+            var step = Math.floor((tl.time() * fps) / drop);
+            for (var i = 0; i < els.length; i++) {
+              gsap.set(els[i], {
+                x: window.hwHash(step * 3 + i * 97, seed) * amp,
+                y: window.hwHash(step * 3 + 1 + i * 97, seed) * amp,
+                rotation: (opts.baseRot || 0) + window.hwHash(step * 3 + 2 + i * 97, seed) * rot,
+              });
+            }
+          });
+        };
+        // boil control: authored poses over the family-locked frameDrop.
+        // Unknown pose → default + console error (bounded-controls law).
+        window.hwBoilPose = function (tl, target, pose, opts) {
+          opts = opts || {};
+          var poses = { calm: { amp: 1.6, rot: 0.5 }, lively: { amp: 2.6, rot: 0.9 } };
+          if (pose === "off") return;
+          var p = poses[pose];
+          if (!p) {
+            console.error('hw: unknown boil pose "' + pose + '" — falling back to "calm"');
+            p = poses.calm;
+          }
+          window.hwBoil(tl, target, { amp: p.amp, rot: p.rot, frameDrop: 3, seed: opts.seed || 1 });
+        };
+
+        /* ---- spring library (snappy register; factory duration consumed verbatim) ---- */
+        var LN1000 = Math.log(1000);
+        var FEELS = {
+          snappy: { zeta: 0.9, response: 0.22 },
+        };
+        window.springEase = function (opts) {
+          var f = opts.feel ? FEELS[opts.feel] : opts;
+          var zeta = f.zeta,
+            response = f.response;
+          var w0 = (2 * Math.PI) / response;
+          var T = LN1000 / (zeta * w0);
+          var x;
+          if (zeta < 1) {
+            var wd = w0 * Math.sqrt(1 - zeta * zeta);
+            x = function (t) {
+              return (
+                1 -
+                Math.exp(-zeta * w0 * t) *
+                  (Math.cos(wd * t) + ((zeta * w0) / wd) * Math.sin(wd * t))
+              );
+            };
+          } else {
+            x = function (t) {
+              return 1 - Math.exp(-w0 * t) * (1 + w0 * t);
+            };
+          }
+          var xT = x(T);
+          return {
+            ease: function (p) {
+              return p >= 1 ? 1 : x(p * T) / xT;
+            },
+            duration: T,
+            zeta: zeta,
+            response: response,
+          };
+        };
+
+        /* ---- pen-velocity ease: pure function of the path geometry ----
+           Sample 25–75 curvature-adaptive points, speed ∝ 1/(1+k·curvature)
+           floored at 0.22 (a pen slows into curves, never stalls), integrate
+           ds/speed, invert to a normalized time→distance ease. Seek-safe:
+           no per-frame state. */
+        window.hwPenEase = function (pathEl, opts) {
+          opts = opts || {};
+          var kCurve = opts.kCurve !== undefined ? opts.kCurve : 10;
+          var L = pathEl.getTotalLength();
+          if (L <= 0)
+            return {
+              ease: function (t) {
+                return t;
+              },
+              samples: 2,
+              inkTime: 1,
+              len: 0,
+            };
+          var PRE = 48;
+          var pts = [];
+          for (var i = 0; i <= PRE; i++) pts.push(pathEl.getPointAtLength((L * i) / PRE));
+          var curv = [0];
+          for (i = 1; i < PRE; i++) {
+            var ax = pts[i].x - pts[i - 1].x,
+              ay = pts[i].y - pts[i - 1].y;
+            var bx = pts[i + 1].x - pts[i].x,
+              by = pts[i + 1].y - pts[i].y;
+            var la = Math.hypot(ax, ay) || 1e-6,
+              lb = Math.hypot(bx, by) || 1e-6;
+            var dot = Math.max(-1, Math.min(1, (ax * bx + ay * by) / (la * lb)));
+            curv.push(Math.acos(dot) / ((la + lb) / 2));
+          }
+          curv.push(0);
+          var mass = 0;
+          for (i = 0; i < curv.length; i++) mass += curv[i];
+          var N = Math.max(25, Math.min(75, Math.round(25 + mass * 18)));
+          var seg = L / N;
+          var times = [0];
+          var t = 0;
+          for (i = 1; i <= N; i++) {
+            var u = ((i - 0.5) / N) * PRE;
+            var i0 = Math.floor(u),
+              f = u - i0;
+            var c = curv[Math.min(i0, PRE)] * (1 - f) + curv[Math.min(i0 + 1, PRE)] * f;
+            var speed = Math.max(1 / (1 + kCurve * c * 14), 0.22);
+            t += seg / speed;
+            times.push(t);
+          }
+          var total = times[N];
+          for (i = 0; i <= N; i++) times[i] /= total;
+          var easeFn = function (p) {
+            if (p <= 0) return 0;
+            if (p >= 1) return 1;
+            var lo = 0,
+              hi = N;
+            while (hi - lo > 1) {
+              var mid = (lo + hi) >> 1;
+              if (times[mid] <= p) lo = mid;
+              else hi = mid;
+            }
+            var span = times[hi] - times[lo] || 1e-9;
+            return (lo + (p - times[lo]) / span) / N;
+          };
+          return { ease: easeFn, samples: N, inkTime: total, len: L };
+        };
+
+        /* ---- stroke matrix: plain | soft | sharp | spray -------------------
+           strokeType is a g09 variant control. Authored constants per type;
+           unknown value → default ("plain") + console error (bounded-controls
+           law). sharp = micro stroke-dasharray gaps (dry marker) — draw-on
+           therefore rides a MASK clone (the visible dasharray never animates).
+           spray = index-seeded deterministic dots along the path via hwHash;
+           NO feTurbulence anywhere.
+           Returns { draw: pathToDashAnimate, group: maskedGroupOrNull } */
+        window.hwStrokeTypes = {
+          plain: {},
+          soft: { blur: 0.6 },
+          sharp: { dash: [3.0, 1.55] }, // × stroke-width
+          spray: {
+            coreOpacity: 0.5,
+            coreBlur: 0.4,
+            density: 0.16,
+            scatter: 2.6,
+            rMin: 1.1,
+            rMax: 2.6,
+          },
+        };
+        window.hwStrokeApply = function (pathEl, type, opts) {
+          opts = opts || {};
+          var cfg = window.hwStrokeTypes[type];
+          if (!cfg) {
+            console.error('hw: unknown strokeType "' + type + '" — falling back to "plain"');
+            type = "plain";
+            cfg = window.hwStrokeTypes.plain;
+          }
+          var svg = pathEl.ownerSVGElement;
+          var ns = "http://www.w3.org/2000/svg";
+          var w = parseFloat(getComputedStyle(pathEl).strokeWidth) || 6;
+          if (type === "plain") return { draw: pathEl, group: null, type: type };
+          if (type === "soft") {
+            pathEl.style.filter = "blur(" + cfg.blur + "px)";
+            return { draw: pathEl, group: null, type: type };
+          }
+          // sharp + spray: wrap in a masked group, draw-on animates the mask clone
+          var id =
+            opts.id ||
+            "hwsm-" + Math.abs(Math.round(window.hwHash((opts.seed || 1) * 13.7, 5) * 1e6));
+          var defs = svg.querySelector("defs");
+          if (!defs) {
+            defs = document.createElementNS(ns, "defs");
+            svg.insertBefore(defs, svg.firstChild);
+          }
+          var mask = document.createElementNS(ns, "mask");
+          mask.setAttribute("id", id);
+          mask.setAttribute("maskUnits", "userSpaceOnUse");
+          var clone = document.createElementNS(ns, "path");
+          clone.setAttribute("d", pathEl.getAttribute("d"));
+          clone.setAttribute("fill", "none");
+          clone.setAttribute("stroke", "#fff");
+          clone.setAttribute(
+            "stroke-width",
+            w * (type === "spray" ? 2 + (cfg.scatter * 2) / w : 1.7),
+          );
+          clone.setAttribute("stroke-linecap", "round");
+          clone.setAttribute("stroke-linejoin", "round");
+          mask.appendChild(clone);
+          defs.appendChild(mask);
+          var group = document.createElementNS(ns, "g");
+          group.setAttribute("mask", "url(#" + id + ")");
+          pathEl.parentNode.insertBefore(group, pathEl);
+          group.appendChild(pathEl);
+          if (type === "sharp") {
+            pathEl.setAttribute(
+              "stroke-dasharray",
+              (cfg.dash[0] * w).toFixed(1) + " " + (cfg.dash[1] * w).toFixed(1),
+            );
+          } else {
+            // spray: faint core + seeded dots
+            pathEl.setAttribute("stroke-opacity", cfg.coreOpacity);
+            pathEl.style.filter = "blur(" + cfg.coreBlur + "px)";
+            var len = pathEl.getTotalLength();
+            var n = Math.round(len * cfg.density * (opts.densityScale || 1));
+            var seed = opts.seed || 1;
+            var dots = document.createElementNS(ns, "g");
+            for (var i = 0; i < n; i++) {
+              var t = Math.min(
+                1,
+                Math.max(0, (i + 0.5) / n + (window.hwHash(i * 7, seed) * 0.35) / n),
+              );
+              var pt = pathEl.getPointAtLength(t * len);
+              var pt2 = pathEl.getPointAtLength(Math.min(len, t * len + 0.5));
+              var tx = pt2.x - pt.x,
+                ty = pt2.y - pt.y;
+              var tl2 = Math.hypot(tx, ty) || 1;
+              var nx = -ty / tl2,
+                nyv = tx / tl2;
+              var off = window.hwHash(i * 7 + 1, seed) * (cfg.scatter + w * 0.55);
+              var r = cfg.rMin + Math.abs(window.hwHash(i * 7 + 2, seed)) * (cfg.rMax - cfg.rMin);
+              var c = document.createElementNS(ns, "circle");
+              c.setAttribute("cx", (pt.x + nx * off).toFixed(1));
+              c.setAttribute("cy", (pt.y + nyv * off).toFixed(1));
+              c.setAttribute("r", r.toFixed(2));
+              c.setAttribute("fill", getComputedStyle(pathEl).stroke);
+              dots.appendChild(c);
+            }
+            group.appendChild(dots);
+          }
+          return { draw: clone, group: group, type: type };
+        };
+
+        /* Draw-on across the stroke matrix: dash-animate whatever hwStrokeApply
+           says. The draw target is always solid (plain/soft: the path itself;
+           sharp/spray: the mask clone — the visible path keeps its texture
+           dasharray untouched). Optionally pen-velocity eased (opts.pen). */
+        window.hwDrawOn = function (tl, applied, at, dur, opts) {
+          opts = opts || {};
+          var p = applied.draw;
+          var len = p.getTotalLength();
+          // the draw target is always solid (plain/soft: the path itself; sharp/spray:
+          // the mask clone — the visible path keeps its texture dasharray untouched)
+          p.setAttribute("stroke-dasharray", len + " " + len);
+          p.setAttribute("stroke-dashoffset", len);
+          gsap.set(p, { opacity: 0 }); // kill the round-cap start nub pre-draw
+          var ease = opts.pen ? window.hwPenEase(p, opts).ease : opts.ease || "power2.inOut";
+          tl.set(p, { opacity: 1 }, at);
+          tl.to(
+            p,
+            { strokeDashoffset: 0, duration: dur === undefined ? 0.7 : dur, ease: ease },
+            at,
+          );
+        };
+
+        // ---- hw-arrow helpers (copy these too) ----
+        // Wobbled arrow path in a w x h box, tail at left, head at right.
+        // curve: "straight" | "gentle" | "swoop"
+        window.hwArrowPath = function (w, h, curve, seed) {
+          seed = seed || 1;
+          var bend = curve === "swoop" ? 0.55 : curve === "gentle" ? 0.28 : 0.06;
+          function wob(v, n, range) {
+            return v + window.hwHash(n, seed) * range;
+          }
+          var x0 = wob(4, 1, 3),
+            y0 = wob(h * 0.72, 2, 4),
+            x1 = wob(w - 10, 3, 4),
+            y1 = wob(h * 0.3, 4, 4);
+          var cx1 = wob(w * 0.35, 5, 10),
+            cy1 = wob(h * (0.72 + bend * 0.5), 6, 8);
+          var cx2 = wob(w * 0.7, 7, 10),
+            cy2 = wob(h * (0.3 + bend), 8, 8);
+          var ang = Math.atan2(y1 - cy2, x1 - cx2);
+          function head(da, len) {
+            var a = ang + Math.PI + da;
+            return (
+              "M " +
+              x1.toFixed(1) +
+              " " +
+              y1.toFixed(1) +
+              " l " +
+              (Math.cos(a) * len).toFixed(1) +
+              " " +
+              (Math.sin(a) * len).toFixed(1)
+            );
+          }
+          return (
+            "M " +
+            x0.toFixed(1) +
+            " " +
+            y0.toFixed(1) +
+            " C " +
+            cx1.toFixed(1) +
+            " " +
+            cy1.toFixed(1) +
+            ", " +
+            cx2.toFixed(1) +
+            " " +
+            cy2.toFixed(1) +
+            ", " +
+            x1.toFixed(1) +
+            " " +
+            y1.toFixed(1) +
+            " " +
+            head(0.5, wob(34, 9, 6)) +
+            " " +
+            head(-0.5, wob(34, 10, 6))
+          );
+        };
+
+        // ---- hwArrowBuild: CONFIG-reading component builder (g09) ----
+        // Builds the arrow as TWO paths (curve + head group) inside the
+        // target's svg with the same wobble math and seed slots as
+        // hwArrowPath, applies CONFIG.strokeType to the curve (the head
+        // stays plain — texture on a ~30px head reads as noise), and rigs
+        // the travel-aligned arrival wrapper: an outer g rotated to the
+        // travel direction + an inner g counter-rotated. The pair cancels,
+        // so geometry stays put while scaleX on the outer acts along
+        // travel. NO transform-box styles on these g's — they fight GSAP's
+        // baked SVG origins (the outer's fill-box would derive from its
+        // rotated child and the cancellation breaks).
+        // `seed` is internal — defaults per target from the element id
+        // (a pure hash of the id string: deterministic across page loads);
+        // it is NOT a control. Targets must carry unique ids: id-less
+        // targets fall back to a shared "hw-arrow" slot (identical wobble;
+        // duplicate mask ids cross-wire sharp/spray reveals), so that case
+        // fails loudly (bounded-controls law).
+        window.hwArrowBuild = function (target, CONFIG, seed) {
+          CONFIG = CONFIG || {};
+          var el = typeof target === "string" ? document.querySelector(target) : target;
+          var svg = el.querySelector("svg");
+          if (!el.id)
+            console.error(
+              'hw: hwArrowBuild target has no id — falling back to the shared "hw-arrow" seed/mask slot; give each built target a unique id',
+            );
+          if (seed === undefined) {
+            var idStr = el.id || "hw-arrow";
+            seed = 0;
+            for (var si = 0; si < idStr.length; si++)
+              seed = (seed * 31 + idStr.charCodeAt(si)) % 997;
+            seed = (seed % 96) + 1;
+          }
+          var style = CONFIG.arrowStyle === undefined ? "gentle" : CONFIG.arrowStyle;
+          if (style !== "straight" && style !== "gentle" && style !== "swoop") {
+            console.error('hw: unknown arrowStyle "' + style + '" — falling back to "gentle"');
+            style = "gentle";
+          }
+          var vb = svg.viewBox.baseVal;
+          var w = vb && vb.width ? vb.width : el.clientWidth;
+          var h = vb && vb.height ? vb.height : el.clientHeight;
+          // same wobble math + hash slots as hwArrowPath (1–8 body, 9/10 head)
+          var bend = style === "swoop" ? 0.55 : style === "gentle" ? 0.28 : 0.06;
+          function wob(v, n, range) {
+            return v + window.hwHash(n, seed) * range;
+          }
+          var x0 = wob(4, 1, 3),
+            y0 = wob(h * 0.72, 2, 4),
+            x1 = wob(w - 10, 3, 4),
+            y1 = wob(h * 0.3, 4, 4);
+          var cx1 = wob(w * 0.35, 5, 10),
+            cy1 = wob(h * (0.72 + bend * 0.5), 6, 8);
+          var cx2 = wob(w * 0.7, 7, 10),
+            cy2 = wob(h * (0.3 + bend), 8, 8);
+          var ang = Math.atan2(y1 - cy2, x1 - cx2);
+          function headSeg(da, len) {
+            var a = ang + Math.PI + da;
+            return (
+              "M " +
+              x1.toFixed(1) +
+              " " +
+              y1.toFixed(1) +
+              " l " +
+              (Math.cos(a) * len).toFixed(1) +
+              " " +
+              (Math.sin(a) * len).toFixed(1)
+            );
+          }
+          var ns = "http://www.w3.org/2000/svg";
+          var curve = document.createElementNS(ns, "path");
+          curve.setAttribute(
+            "d",
+            "M " +
+              x0.toFixed(1) +
+              " " +
+              y0.toFixed(1) +
+              " C " +
+              cx1.toFixed(1) +
+              " " +
+              cy1.toFixed(1) +
+              ", " +
+              cx2.toFixed(1) +
+              " " +
+              cy2.toFixed(1) +
+              ", " +
+              x1.toFixed(1) +
+              " " +
+              y1.toFixed(1),
+          );
+          svg.appendChild(curve);
+          var headG = document.createElementNS(ns, "g");
+          var headInner = document.createElementNS(ns, "g");
+          var head = document.createElementNS(ns, "path");
+          head.setAttribute("d", headSeg(0.5, wob(34, 9, 6)) + " " + headSeg(-0.5, wob(34, 10, 6)));
+          headInner.appendChild(head);
+          headG.appendChild(headInner);
+          svg.appendChild(headG);
+          // curve texture; mask id derived from the element id — deterministic
+          // and collision-free across id-bearing instances (id-less targets
+          // errored above and share the fallback)
+          var applied = window.hwStrokeApply(
+            curve,
+            CONFIG.strokeType === undefined ? "plain" : CONFIG.strokeType,
+            { seed: seed, id: (el.id || "hw-arrow") + "-sm" },
+          );
+          if (applied.group) {
+            // the item CSS (.hw-arrow path) outranks the mask clone's
+            // presentation attributes — pin them as inline styles so the
+            // reveal mask keeps its authored width and white stroke
+            applied.draw.style.stroke = "#fff";
+            applied.draw.style.strokeWidth = applied.draw.getAttribute("stroke-width");
+          }
+          // arrival rig: rotate the WRAPPER to travel, counter-rotate the
+          // content — wrapper scaleX then acts along travel
+          var angDeg = (ang * 180) / Math.PI;
+          gsap.set(headG, { transformOrigin: "50% 50%", rotation: angDeg, opacity: 0 });
+          gsap.set(headInner, { transformOrigin: "50% 50%", rotation: -angDeg });
+          el.__hwArrowBuild = {
+            el: el,
+            applied: applied,
+            headG: headG,
+            headInner: headInner,
+            seed: seed,
+            boil: CONFIG.boil === undefined ? "calm" : CONFIG.boil,
+            boiled: false,
+          };
+          return el.__hwArrowBuild;
+        };
+
+        // Draw-on. Built targets (hwArrowBuild): accelerating draw (causal
+        // arrival), then the head pops with the g21 travel-aligned stretch —
+        // v measured numerically from the draw ease end-slope, S = min(0.06
+        // × v/2000, 0.25), volume preserved (scaleX × scaleY ≈ 1, asserted),
+        // 2-frame apply + snappy spring recovery (factory duration verbatim).
+        // Legacy single-path targets keep the shipped dashoffset behavior.
+        window.hwArrowOn = function (tl, target, at, dur) {
+          var el = typeof target === "string" ? document.querySelector(target) : target;
+          var b = el && el.__hwArrowBuild;
+          if (!b) {
+            var p = document.querySelector(target + " path");
+            var len = p.getTotalLength();
+            gsap.set(p, { strokeDasharray: len, strokeDashoffset: len });
+            tl.to(
+              p,
+              {
+                strokeDashoffset: 0,
+                duration: dur === undefined ? 0.7 : dur,
+                ease: "power2.inOut",
+              },
+              at,
+            );
+            return;
+          }
+          // built targets (g09): durations are item-locked — a
+          // legacy-signature `dur` is ignored + console.error (edit the item
+          // source to change); the legacy branch above keeps honoring it
+          if (dur !== undefined)
+            console.error(
+              "hw: hwArrowOn draw duration is locked for built targets — ignoring dur=" + dur,
+            );
+          dur = 0.7;
+          // the pen ACCELERATES into the head (power2.in) so the measured
+          // arrival velocity is real — a settling ease ends at ~zero slope
+          // and would make the stretch invisible
+          var drawEase = gsap.parseEase("power2.in");
+          window.hwDrawOn(tl, b.applied, at, dur, { ease: drawEase });
+          var dlen = b.applied.draw.getTotalLength();
+          var eps = 1e-4;
+          var v = ((drawEase(1) - drawEase(1 - eps)) / eps) * (dlen / dur);
+          var S = Math.min(0.06 * (v / 2000), 0.25);
+          var rec = window.springEase({ feel: "snappy" });
+          var FPS = 30;
+          var st = { s: 0 };
+          var hg = b.headG;
+          window.hwOnUpdate(tl, function () {
+            // stretch ALONG travel (the wrapper's local x after rotation)
+            var along = 1 + st.s;
+            gsap.set(hg, { scaleX: along, scaleY: 1 / along });
+            var ax = parseFloat(gsap.getProperty(hg, "scaleX"));
+            var ay = parseFloat(gsap.getProperty(hg, "scaleY"));
+            if (Math.abs(ax * ay - 1) > 0.01)
+              console.error("hw volume law violated (arrowhead): " + (ax * ay).toFixed(4));
+          });
+          tl.set(hg, { opacity: 1 }, at + dur);
+          tl.to(st, { s: S, duration: 2 / FPS, ease: "power3.out" }, at + dur);
+          tl.to(st, { s: 0, duration: rec.duration, ease: rec.ease }, at + dur + 3 / FPS);
+          // boil pose (recorded from CONFIG at build; hwBoil needs the
+          // timeline, so it registers on first wiring). Boil owns x/y/rotation
+          // of the WRAPPER element — the arrival stretch lives on the nested
+          // head rig, never on the boiled element.
+          if (!b.boiled) {
+            b.boiled = true;
+            window.hwBoilPose(tl, el, b.boil, { seed: b.seed });
+          }
+        };
+        window.hwArrowOff = function (tl, target, at) {
+          tl.to(target, { opacity: 0, duration: 0.3, ease: "power2.in" }, at);
+        };
+
+        // ---- self-preview ----
+        var CONFIG = {
+          // ── Controls (family base + 2 item-specific; comment grammar is the published-parameter list) ──
+          arrowStyle: "gentle", // variant: "straight" | "gentle" | "swoop" — curve bend pose over the seeded wobble math (bend + both control points)
+          strokeType: "plain", //  variant: "plain" | "soft" | "sharp" | "spray" — curve texture via hwStrokeApply (sharp/spray draw on a mask clone); head stays plain
+          boil: "calm", //         variant: "off" | "calm" | "lively" — authored amp/rot pairs over the family-locked frameDrop 3; seed locked
+
+          // ── Locked (edit the item source to change) ─────────────────────
+          // seed (derived per target), draw ease (power2.in), arrival
+          // softness 0.06, snappy spring recovery, durations
+        };
+        var tl = gsap.timeline({ paused: true });
+        window.hwArrowBuild("#hw-ar-demo", CONFIG);
+        window.hwArrowOn(tl, "#hw-ar-demo", 0.4);
+        window.hwArrowOff(tl, "#hw-ar-demo", 3.4);
+        tl.set("#hw-ar-root", { visibility: "hidden" }, 3.98);
+        window.__timelines["hw-arrow"] = tl;
+      })();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,125 @@
+{
+  "skill_name": "recursive-decomposition",
+  "queries": [
+    {
+      "id": "t01",
+      "should_trigger": true,
+      "query": "Analyze error handling patterns across this entire codebase"
+    },
+    {
+      "id": "t02",
+      "should_trigger": true,
+      "query": "Find all TODO comments in the project and categorize by priority"
+    },
+    {
+      "id": "t03",
+      "should_trigger": true,
+      "query": "What features are planned across all our PRD documents?"
+    },
+    {
+      "id": "t04",
+      "should_trigger": true,
+      "query": "Summarize the key decisions from all meeting notes in docs/"
+    },
+    {
+      "id": "t05",
+      "should_trigger": true,
+      "query": "Find security issues across all TypeScript files"
+    },
+    {
+      "id": "t06",
+      "should_trigger": true,
+      "query": "hey can you aggregate every API error type in src/"
+    },
+    {
+      "id": "t07",
+      "should_trigger": true,
+      "query": "Which Q2 features depend on Q1 auth? Check every PRD."
+    },
+    {
+      "id": "t08",
+      "should_trigger": true,
+      "query": "codebase-wide catch/throw report please"
+    },
+    {
+      "id": "t09",
+      "should_trigger": true,
+      "query": "Process every markdown file under docs/product and list shipped vs planned"
+    },
+    {
+      "id": "t10",
+      "should_trigger": true,
+      "query": "I need a map of HACK comments in all files"
+    },
+    {
+      "id": "t21",
+      "should_trigger": true,
+      "query": "Summarize every PDF in this folder without swallowing them whole"
+    },
+    {
+      "id": "t22",
+      "should_trigger": true,
+      "query": "Extract the conclusions from all the papers under papers-we-love"
+    },
+    {
+      "id": "t11",
+      "should_trigger": false,
+      "query": "What does wrapError do in src/utils/wrap.ts?"
+    },
+    {
+      "id": "t12",
+      "should_trigger": false,
+      "query": "Find the definition of ApiError"
+    },
+    {
+      "id": "t13",
+      "should_trigger": false,
+      "query": "Read src/api/auth.ts and explain login"
+    },
+    {
+      "id": "t14",
+      "should_trigger": false,
+      "query": "What is the value of MAGIC_NEEDLE?"
+    },
+    {
+      "id": "t15",
+      "should_trigger": false,
+      "query": "Write a fibonacci function"
+    },
+    {
+      "id": "t16",
+      "should_trigger": false,
+      "query": "Commit the current diff"
+    },
+    {
+      "id": "t17",
+      "should_trigger": false,
+      "query": "How do I install this skill?"
+    },
+    {
+      "id": "t18",
+      "should_trigger": false,
+      "query": "Fix the typo on line 3 of README.md"
+    },
+    {
+      "id": "t19",
+      "should_trigger": false,
+      "query": "Explain what a TODO comment is"
+    },
+    {
+      "id": "t20",
+      "should_trigger": false,
+      "query": "Rename wrapError to wrapErr in src/utils/wrap.ts"
+    },
+    {
+      "id": "t23",
+      "should_trigger": false,
+      "query": "Convert this one-page receipt.pdf to markdown"
+    },
+    {
+      "id": "t24",
+      "should_trigger": false,
+      "query": "What is the MIME type of a PDF file?"
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+interface:
+  display_name: "Image Gen"
+  short_description: "Generate or edit images for websites, games, and more"
+  icon_small: "./assets/imagegen-small.svg"
+  icon_large: "./assets/imagegen.png"
+  default_prompt: "Generate or edit the visual assets for this task with the built-in `image_gen` tool by default. First confirm that the task actually calls for a raster image; if the project already has SVG/vector/code-native assets and the user wants to extend or match those, do not use this skill. If the task includes reference images, treat them as references unless the user clearly wants an existing image modified. For multi-asset requests, loop built-in calls rather than treating batch as a separate top-level mode. Only use the fallback CLI if the user explicitly asks for it, and keep CLI-only controls such as `generate-batch`, `quality`, `input_fidelity`, masks, and output paths on that fallback path."

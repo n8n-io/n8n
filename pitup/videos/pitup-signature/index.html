@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="assets/gsap.min.js"></script>
+    <style>
+      @font-face { font-family: "Poppins"; font-weight: 700; src: url(assets/fonts/poppins-700.woff2) format("woff2"); }
+      @font-face { font-family: "Poppins"; font-weight: 800; src: url(assets/fonts/poppins-800.woff2) format("woff2"); }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1080px; height: 1920px; overflow: hidden; background: #1f88c9; }
+      #root { position: relative; width: 100%; height: 100%; overflow: hidden; font-family: "Poppins", sans-serif; color: #fff; background: radial-gradient(1200px 1400px at 50% 40%, #2a97d8 0%, #1f88c9 55%, #176fa6 100%); }
+      .layer { position: absolute; inset: 0; }
+      #ring, #ring2 { position: absolute; left: 340px; top: 360px; width: 400px; height: 400px; border-radius: 50%; border: 10px solid #fff; opacity: 0; }
+      #icon { position: absolute; left: 395px; top: 415px; width: 290px; display: block; }
+      #word { position: absolute; left: 305px; top: 800px; width: 470px; display: block; }
+      #tag { position: absolute; left: 0; right: 0; top: 1050px; display: flex; justify-content: center; gap: 22px; font-weight: 800; font-size: 74px; letter-spacing: -1px; white-space: nowrap; }
+      #tag span { display: inline-block; }
+      #tag .b { color: #ffd84a; }
+      #ctaWrap { position: absolute; left: 0; right: 0; top: 1270px; display: flex; justify-content: center; }
+      #cta { display: block; padding: 26px 64px; border-radius: 999px; background: #fff; color: #1f88c9; font-weight: 800; font-size: 54px; white-space: nowrap; }
+      #stores { position: absolute; left: 0; right: 0; top: 1460px; display: flex; justify-content: center; gap: 24px; }
+      .bdg { display: flex; align-items: center; gap: 14px; height: 96px; padding: 0 28px 0 20px; border-radius: 18px; background: #000; border: 2px solid #a6a6a6; color: #fff; }
+      .bdg svg { width: 52px; height: 52px; display: block; }
+      .bdg span { display: flex; flex-direction: column; line-height: 1; }
+      .bdg small { font-weight: 500; font-size: 20px; letter-spacing: 0.5px; }
+      .bdg b { font-weight: 600; font-size: 38px; letter-spacing: -0.5px; margin-top: 4px; white-space: nowrap; }
+      #grain { position: absolute; inset: -64px; background-image: url(assets/grain.png); background-size: 512px 512px; mix-blend-mode: overlay; opacity: 0.06; pointer-events: none; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="4.5" data-width="1080" data-height="1920">
+      <audio id="sig" src="assets/sig.wav" data-start="0" data-duration="4.5" data-track-index="11"></audio>
+      <div id="scene" class="clip layer" data-start="0" data-duration="4.5" data-track-index="0">
+        <div id="ring"></div><div id="ring2"></div>
+        <img id="icon" src="assets/icon_white.png" alt="" />
+        <img id="word" src="assets/logo_word_white.png" alt="" />
+        <div id="tag"><span id="t1">Tu commandes,</span><span id="t2" class="b">on livre.</span></div>
+        <div id="ctaWrap"><div id="cta">pi-tup.com</div></div>
+        <div id="stores">
+              <div class="bdg"><svg viewBox="0 0 24 24"><path fill="#fff" d="M16.4 1.4c0 1.1-.5 2.3-1.2 3.1-.7.9-2 1.6-3 1.6-.1 0-.2 0-.3-.1 0-.1 0-.2 0-.4 0-1.1.6-2.3 1.2-3 .8-.9 2.1-1.6 3.2-1.7.1.2.1.3.1.5zm4.6 15.7c0 .1-.5 1.6-1.5 3.1-.9 1.3-1.9 2.7-3.4 2.7s-1.9-.9-3.6-.9c-1.7 0-2.3.9-3.7.9-1.4 0-2.3-1.3-3.4-2.8C4.1 18.3 3 15.5 3 12.8c0-4.3 2.8-6.5 5.6-6.5 1.4 0 2.7.9 3.6.9.9 0 2.2-1 3.9-1 .6 0 2.9.1 4.4 2.2-.1.1-2.4 1.4-2.4 4.2 0 3.3 2.9 4.4 2.9 4.5z"/></svg><span><small>Disponible sur</small><b>App Store</b></span></div>
+              <div class="bdg"><svg viewBox="0 0 24 24"><path fill="#00d7fe" d="M3.6 1.8 13.6 12 3.6 22.2c-.4-.2-.6-.6-.6-1.1V2.9c0-.5.2-.9.6-1.1z"/><path fill="#00f076" d="M3.6 1.8 16.9 9.4 13.6 12z"/><path fill="#f8384b" d="M3.6 22.2 13.6 12l3.3 2.6z"/><path fill="#fdbd00" d="M16.9 9.4 21 11.7c.5.3.5.9 0 1.2l-4.1 1.7-3.3-2.6z"/></svg><span><small>Disponible sur</small><b>Google Play</b></span></div>
+        <div id="grain"></div>
+      </div>
+    </div>
+    <script>
+      // PitUp sound signature: rising pluck, then Remy "Pitt-Up ! Tu commandes, on livre." from 0.31 s
+      // beat hits: 0.36 s (kick + stab on "Pitt-Up!") and 2.36 s (kick + stab on "on livre.")
+      const tl = gsap.timeline({ paused: true });
+      tl.fromTo("#icon", { scale: 0.3, opacity: 0, rotation: -20 }, { scale: 1.08, opacity: 1, rotation: 0, duration: 0.3, ease: "power3.out" }, 0);
+      tl.to("#icon", { scale: 1, duration: 0.18, ease: "power2.out" }, 0.3);
+      tl.fromTo("#icon", { scale: 1.18 }, { scale: 1, duration: 0.25, ease: "back.out(3)" }, 0.36);
+      tl.fromTo("#ring", { scale: 0.7, opacity: 1 }, { scale: 1.8, opacity: 0, duration: 0.6, ease: "power2.out" }, 0.36);
+      tl.fromTo("#ring2", { scale: 0.7, opacity: 0.8 }, { scale: 2.2, opacity: 0, duration: 0.8, ease: "power2.out" }, 0.42);
+      tl.fromTo("#word", { opacity: 0, scale: 1.3 }, { opacity: 1, scale: 1, duration: 0.25, ease: "back.out(2.5)" }, 0.36);
+      
+      tl.fromTo("#t1", { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: 0.22, ease: "power3.out" }, 1.40);
+      tl.fromTo("#t2", { opacity: 0, scale: 1.6 }, { opacity: 1, scale: 1, duration: 0.25, ease: "back.out(3)" }, 2.36);
+      
+      tl.fromTo("#cta", { scale: 0.7, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.3, ease: "back.out(2)" }, 2.86);
+      tl.fromTo("#stores .bdg", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.3, stagger: 0.1, ease: "back.out(1.6)" }, 3.05);
+      for (let f = 0; f < 4.5 * 12; f++) { const ox = ((f * 137) % 512) - 256, oy = ((f * 251) % 512) - 256; tl.set("#grain", { x: ox / 8, y: oy / 8 }, f / 12); }
+      tl.set({}, {}, 4.5);
+      window.__timelines["main"] = tl;
+      tl.seek(0);
+    </script>
+  </body>
+</html>

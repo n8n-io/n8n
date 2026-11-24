@@ -1,0 +1,141 @@
+{
+ "project": "pitup-tuto-boutique",
+ "song": "Tiakola___Jorja_Smith_-_Jet_Lag_Track15.mp3",
+ "song_off": 16.5,
+ "intro_vo": "tuto_0",
+ "outro_vo": "tuto_6",
+ "intro_l1": "Créer sa boutique",
+ "intro_l2": "sur PitUp.",
+ "steps": [
+  {
+   "vo": "tuto_1",
+   "head": "Marché, puis « Créer son business ».",
+   "word": "MARCHÉ",
+   "bg": [
+    "#EFE6D8",
+    "#E3D6C2"
+   ],
+   "segs": [
+    [
+     "s1",
+     9.0,
+     12.6,
+     1
+    ]
+   ],
+   "taps": [
+    [
+     1.9,
+     360,
+     592
+    ],
+    [
+     2.95,
+     238,
+     1116
+    ]
+   ]
+  },
+  {
+   "vo": "tuto_2",
+   "head": "Le nom et la description.",
+   "word": "NOM",
+   "bg": [
+    "#F6D9E2",
+    "#EEC8D4"
+   ],
+   "segs": [
+    [
+     "s2",
+     13.8,
+     22.5,
+     1.3
+    ],
+    [
+     "s3",
+     22.5,
+     35.0,
+     1.6
+    ]
+   ]
+  },
+  {
+   "vo": "tuto_3",
+   "head": "Téléphone et catégorie.",
+   "word": "CONTACT",
+   "bg": [
+    "#D9CCB6",
+    "#CDBEA5"
+   ],
+   "segs": [
+    [
+     "s4",
+     36.0,
+     45.3,
+     1.3
+    ],
+    [
+     "s5",
+     45.3,
+     51.6,
+     1
+    ]
+   ]
+  },
+  {
+   "vo": "tuto_4",
+   "head": "Adresse et position GPS.",
+   "word": "ADRESSE",
+   "bg": [
+    "#DCEBF5",
+    "#C9DFEE"
+   ],
+   "segs": [
+    [
+     "s6",
+     51.6,
+     71.4,
+     2
+    ],
+    [
+     "s7",
+     71.4,
+     73.4,
+     1
+    ]
+   ]
+  },
+  {
+   "vo": "tuto_5",
+   "head": "Logo, puis « Créer ma boutique ».",
+   "word": "LOGO",
+   "bg": [
+    "#EFE6D8",
+    "#E3D6C2"
+   ],
+   "segs": [
+    [
+     "s8",
+     82.95,
+     83.75,
+     1
+    ]
+   ],
+   "taps": [
+    [
+     1.6,
+     392,
+     1168
+    ]
+   ]
+  }
+ ],
+ "banner": "/tmp/claude-0/-home-user-n8n/3a1d2361-6d15-5131-aa88-7efcec5ec51a/scratchpad/boutique/banner_ets.png",
+ "banner_box": [
+  93,
+  619,
+  627,
+  793
+ ],
+ "banner_fit": "contain"
+}

@@ -1,0 +1,222 @@
+DATABASE SCHEMA ANALYSIS REPORT
+==================================================
+
+SCHEMA OVERVIEW
+---------------
+Total Tables: 8
+Total Columns: 52
+Tables with Primary Keys: 8
+Total Foreign Keys: 6
+Total Indexes: 15
+
+KEY RECOMMENDATIONS
+------------------
+1. Address 3 high-severity issues immediately
+2. Add primary keys to tables: 
+3. Review 4 VARCHAR(255) columns for right-sizing
+4. Consider adding 2 foreign key constraints for referential integrity
+5. Review 8 normalization issues for schema optimization
+
+NORMALIZATION ISSUES (8 total)
+------------------------------
+High: 2, Medium: 3, Low: 2, Warning: 1
+
+• products: Column 'dimensions' appears to store delimited values
+  Suggestion: Create separate table for individual values with foreign key relationship
+
+• products: Column 'tags' appears to store delimited values
+  Suggestion: Create separate table for individual values with foreign key relationship
+
+• products: Columns ['category_name'] may have transitive dependency through 'category_id'
+  Suggestion: Consider creating separate 'category' table with these columns
+
+• orders: Columns ['shipping_street', 'shipping_city', 'shipping_state', 'shipping_postal_code', 'shipping_country'] may have transitive dependency through 'shipping_address_id'
+  Suggestion: Consider creating separate 'shipping_address' table with these columns
+
+• user_preferences: Column 'preferred_categories' appears to store delimited values
+  Suggestion: Create separate table for individual values with foreign key relationship
+
+DATA TYPE ISSUES (4 total)
+--------------------------
+• products.dimensions: VARCHAR(255) antipattern
+  Current: VARCHAR(50) → Suggested: Appropriately sized VARCHAR or TEXT
+  Rationale: VARCHAR(255) is often used as default without considering actual data length requirements
+
+• products.tags: VARCHAR(255) antipattern
+  Current: VARCHAR(500) → Suggested: Appropriately sized VARCHAR or TEXT
+  Rationale: VARCHAR(255) is often used as default without considering actual data length requirements
+
+• user_preferences.preferred_categories: VARCHAR(255) antipattern
+  Current: VARCHAR(500) → Suggested: Appropriately sized VARCHAR or TEXT
+  Rationale: VARCHAR(255) is often used as default without considering actual data length requirements
+
+• user_preferences.email_notifications: VARCHAR(255) antipattern
+  Current: VARCHAR(255) → Suggested: Appropriately sized VARCHAR or TEXT
+  Rationale: VARCHAR(255) is often used as default without considering actual data length requirements
+
+CONSTRAINT ISSUES (12 total)
+-----------------------------
+High: 0, Medium: 4, Low: 8
+
+• products: Column 'price' should validate positive values
+  Suggestion: Add CHECK constraint: price > 0
+
+• products: Column 'inventory_count' should validate positive values
+  Suggestion: Add CHECK constraint: inventory_count > 0
+
+• orders: Column 'total_amount' should validate positive values
+  Suggestion: Add CHECK constraint: total_amount > 0
+
+• order_items: Column 'quantity' should validate positive values
+  Suggestion: Add CHECK constraint: quantity > 0
+
+• order_items: Column 'unit_price' should validate positive values
+  Suggestion: Add CHECK constraint: unit_price > 0
+
+MISSING INDEXES (3 total)
+-------------------------
+• addresses.user_id (foreign_key)
+  SQL: CREATE INDEX idx_addresses_user_id ON addresses (user_id);
+
+• product_reviews.product_id (foreign_key)
+  SQL: CREATE INDEX idx_product_reviews_product_id ON product_reviews (product_id);
+
+• shopping_cart.user_id (foreign_key)
+  SQL: CREATE INDEX idx_shopping_cart_user_id ON shopping_cart (user_id);
+
+MERMAID ERD
+===========
+erDiagram
+    USERS {
+        INTEGER id "PK"
+        VARCHAR(255) email "NOT NULL"
+        VARCHAR(50) username "NOT NULL"
+        VARCHAR(255) password_hash "NOT NULL"
+        VARCHAR(100) first_name
+        VARCHAR(100) last_name
+        TIMESTAMP created_at
+        TIMESTAMP updated_at
+        VARCHAR(20) status
+    }
+    
+    CATEGORIES {
+        INTEGER id "PK"
+        VARCHAR(100) name "NOT NULL"
+        VARCHAR(100) slug "NOT NULL UNIQUE"
+        INTEGER parent_id "FK"
+        TEXT description
+        BOOLEAN is_active
+        INTEGER sort_order
+        TIMESTAMP created_at
+    }
+    
+    PRODUCTS {
+        INTEGER id "PK"
+        VARCHAR(255) name "NOT NULL"
+        VARCHAR(50) sku "NOT NULL UNIQUE"
+        TEXT description
+        DECIMAL(10,2) price "NOT NULL"
+        DECIMAL(10,2) cost
+        DECIMAL(8,2) weight
+        VARCHAR(50) dimensions
+        INTEGER category_id "FK"
+        VARCHAR(100) category_name
+        VARCHAR(100) brand
+        VARCHAR(500) tags
+        INTEGER inventory_count
+        INTEGER reorder_point
+        VARCHAR(100) supplier_name
+        VARCHAR(255) supplier_contact
+        BOOLEAN is_active
+        BOOLEAN featured
+        TIMESTAMP created_at
+        TIMESTAMP updated_at
+    }
+    
+    ADDRESSES {
+        INTEGER id "PK"
+        INTEGER user_id "FK"
+        VARCHAR(20) address_type
+        VARCHAR(255) street_address "NOT NULL"
+        VARCHAR(255) street_address_2
+        VARCHAR(100) city "NOT NULL"
+        VARCHAR(50) state "NOT NULL"
+        VARCHAR(20) postal_code "NOT NULL"
+        VARCHAR(50) country "NOT NULL"
+        BOOLEAN is_default
+        TIMESTAMP created_at
+    }
+    
+    ORDERS {
+        INTEGER id "PK"
+        VARCHAR(50) order_number "NOT NULL UNIQUE"
+        INTEGER user_id "FK"
+        VARCHAR(255) user_email
+        VARCHAR(200) user_name
+        VARCHAR(50) status "NOT NULL"
+        DECIMAL(10,2) total_amount "NOT NULL"
+        DECIMAL(10,2) tax_amount "NOT NULL"
+        DECIMAL(10,2) shipping_amount "NOT NULL"
+        DECIMAL(10,2) discount_amount
+        VARCHAR(50) payment_method
+        VARCHAR(50) payment_status
+        INTEGER shipping_address_id "FK"
+        INTEGER billing_address_id "FK"
+        VARCHAR(255) shipping_street
+        VARCHAR(100) shipping_city
+        VARCHAR(50) shipping_state
+        VARCHAR(20) shipping_postal_code
+        VARCHAR(50) shipping_country
+        TEXT notes
+        TIMESTAMP created_at
+        TIMESTAMP updated_at
+        TIMESTAMP shipped_at
+        TIMESTAMP delivered_at
+    }
+    
+    ORDER_ITEMS {
+        INTEGER id "PK"
+        INTEGER order_id "FK"
+        INTEGER product_id "FK"
+        VARCHAR(255) product_name
+        VARCHAR(50) product_sku
+        INTEGER quantity "NOT NULL"
+        DECIMAL(10,2) unit_price "NOT NULL"
+        DECIMAL(10,2) total_price "NOT NULL"
+        TIMESTAMP created_at
+    }
+    
+    SHOPPING_CART {
+        INTEGER id "PK"
+        INTEGER user_id "FK"
+        VARCHAR(255) session_id
+        INTEGER product_id "FK"
+        INTEGER quantity "NOT NULL"
+        TIMESTAMP added_at
+        TIMESTAMP updated_at
+    }
+    
+    PRODUCT_REVIEWS {
+        INTEGER id "PK"
+        INTEGER product_id "FK"
+        INTEGER user_id "FK"
+        INTEGER rating "NOT NULL"
+        VARCHAR(200) title
+        TEXT review_text
+        BOOLEAN verified_purchase
+        INTEGER helpful_count
+        TIMESTAMP created_at
+        TIMESTAMP updated_at
+    }
+
+    CATEGORIES ||--o{ CATEGORIES : has
+    CATEGORIES ||--o{ PRODUCTS : has
+    USERS ||--o{ ADDRESSES : has
+    USERS ||--o{ ORDERS : has
+    USERS ||--o{ SHOPPING_CART : has
+    USERS ||--o{ PRODUCT_REVIEWS : has
+    ADDRESSES ||--o{ ORDERS : has
+    ORDERS ||--o{ ORDER_ITEMS : has
+    PRODUCTS ||--o{ ORDER_ITEMS : has
+    PRODUCTS ||--o{ SHOPPING_CART : has
+    PRODUCTS ||--o{ PRODUCT_REVIEWS : has

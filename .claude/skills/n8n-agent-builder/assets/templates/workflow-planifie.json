@@ -1,0 +1,86 @@
+{
+  "name": "Météo du jour",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": { "interval": [{ "triggerAtHour": 8 }] }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 0],
+      "id": "9a1e4f77-3b5c-4d2a-b6e1-7c8d9e0f0001",
+      "name": "Chaque jour à 8 h"
+    },
+    {
+      "parameters": {
+        "url": "https://api.open-meteo.com/v1/forecast?latitude=-11.66&longitude=27.48&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto&forecast_days=1",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [220, 0],
+      "id": "9a1e4f77-3b5c-4d2a-b6e1-7c8d9e0f0002",
+      "name": "Récupérer les données"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Voici les données du jour :\n{{ JSON.stringify($json).slice(0, 8000) }}\n\nÉcris le bulletin météo du jour pour Lubumbashi en 3 lignes, avec un conseil pratique (parapluie, chaleur).",
+        "options": {
+          "systemMessage": "Tu rédiges des résumés courts, en français, faciles à lire sur un téléphone."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [440, 0],
+      "id": "9a1e4f77-3b5c-4d2a-b6e1-7c8d9e0f0003",
+      "name": "Résumer avec l'IA"
+    },
+    {
+      "parameters": {
+        "model": { "__rl": true, "mode": "id", "value": "claude-haiku-5-5" },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.3,
+      "position": [440, 220],
+      "id": "9a1e4f77-3b5c-4d2a-b6e1-7c8d9e0f0004",
+      "name": "Claude",
+      "credentials": {
+        "anthropicApi": { "name": "Anthropic account" }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "REMPLACER_PAR_TON_CHAT_ID",
+        "text": "={{ $json.output }}",
+        "additionalFields": { "appendAttribution": false }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [660, 0],
+      "id": "9a1e4f77-3b5c-4d2a-b6e1-7c8d9e0f0005",
+      "name": "Envoyer sur Telegram",
+      "webhookId": "9a1e4f77-3b5c-4d2a-b6e1-7c8d9e0f1005",
+      "credentials": {
+        "telegramApi": { "name": "Telegram account" }
+      }
+    }
+  ],
+  "connections": {
+    "Chaque jour à 8 h": {
+      "main": [[{ "node": "Récupérer les données", "type": "main", "index": 0 }]]
+    },
+    "Récupérer les données": {
+      "main": [[{ "node": "Résumer avec l'IA", "type": "main", "index": 0 }]]
+    },
+    "Résumer avec l'IA": {
+      "main": [[{ "node": "Envoyer sur Telegram", "type": "main", "index": 0 }]]
+    },
+    "Claude": {
+      "ai_languageModel": [[{ "node": "Résumer avec l'IA", "type": "ai_languageModel", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "pinData": {}
+}

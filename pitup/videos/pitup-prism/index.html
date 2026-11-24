@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="assets/gsap.min.js"></script>
+    <style>
+      @font-face { font-family: "Poppins"; font-weight: 500; src: url(assets/fonts/poppins-500.woff2) format("woff2"); }
+      @font-face { font-family: "Poppins"; font-weight: 600; src: url(assets/fonts/poppins-600.woff2) format("woff2"); }
+      @font-face { font-family: "Poppins"; font-weight: 700; src: url(assets/fonts/poppins-700.woff2) format("woff2"); }
+      @font-face { font-family: "Poppins"; font-weight: 800; src: url(assets/fonts/poppins-800.woff2) format("woff2"); }
+      :root { --ink: #07080a; --studio: #eef0f3; --line: #9aa3ad; --fuchsia: #ff1f8f; --ciel: #b9cfe6; --roi: #3b45d8; --blue: #1f88c9; }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1080px; height: 1920px; overflow: hidden; background: var(--ink); }
+      #root { position: relative; width: 100%; height: 100%; overflow: hidden; font-family: "Poppins", sans-serif; }
+      .layer, .sc { position: absolute; inset: 0; }
+      .sc { opacity: 0; overflow: hidden; }
+      .dark { background: radial-gradient(1200px 1400px at 50% 45%, #1a1d22 0%, #07080a 70%); }
+      .lite { background: radial-gradient(1300px 1500px at 50% 40%, #ffffff 0%, var(--studio) 60%, #d9dde3 100%); }
+      /* blueprint backdrop: a technical sheet with grid, drawing and leader lines */
+      .bp { position: absolute; inset: 0; }
+      .bp .grid { position: absolute; inset: 0; opacity: 0.5;
+        background-image: linear-gradient(rgba(130,140,150,.18) 1px, transparent 1px), linear-gradient(90deg, rgba(130,140,150,.18) 1px, transparent 1px);
+        background-size: 60px 60px; }
+      .draw path { fill: none; stroke-width: 3; stroke-linejoin: round; }
+      .lbl { position: absolute; font-weight: 600; font-size: 24px; letter-spacing: 6px; color: #7d8792; white-space: nowrap; }
+      .tum { position: absolute; display: block; }
+      .tum img { display: block; width: 100%; height: 100%; object-fit: contain; }
+      .refl { position: absolute; display: block; transform: scaleY(-1); opacity: 0.22;
+        -webkit-mask-image: linear-gradient(to top, rgba(0,0,0,.9), rgba(0,0,0,0) 45%); }
+      .refl img { display: block; width: 100%; height: 100%; object-fit: contain; }
+      .floor { position: absolute; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, transparent, rgba(0,0,0,.18), transparent); }
+      .flash { position: absolute; inset: 0; }
+      #kv { background: linear-gradient(118deg, #ff1f8f 0%, #ff1f8f 30%, #f5f6f8 30.2%, #f5f6f8 52%, #b9cfe6 52.2%, #b9cfe6 70%, #0b0c10 70.2%, #0b0c10 100%); }
+      #kvTitle { position: absolute; left: 0; right: 0; top: 250px; text-align: center; font-weight: 800; font-size: 56px; letter-spacing: 10px; color: #0b0c10; }
+      #kvSub { position: absolute; left: 0; right: 0; top: 330px; text-align: center; font-weight: 600; font-size: 32px; letter-spacing: 6px; color: #3a3f47; }
+      #kvNames { position: absolute; left: 60px; right: 60px; top: 1560px; display: flex; justify-content: space-between; font-weight: 700; font-size: 22px; letter-spacing: 3px; color: #0b0c10; }
+      #kvNames span { background: rgba(255,255,255,.88); padding: 10px 14px; border-radius: 999px; }
+      #end { background: var(--blue); color: #fff; }
+      #icon { position: absolute; left: 395px; top: 470px; width: 290px; display: block; }
+      #word { position: absolute; left: 305px; top: 860px; width: 470px; display: block; }
+      #avail { position: absolute; left: 0; right: 0; top: 1110px; text-align: center; font-weight: 700; font-size: 50px; }
+      #ctaWrap { position: absolute; left: 0; right: 0; top: 1300px; display: flex; justify-content: center; }
+      #cta { display: block; padding: 28px 66px; border-radius: 999px; background: #fff; color: var(--blue); font-weight: 800; font-size: 56px; white-space: nowrap; }
+      #stores { position: absolute; left: 0; right: 0; top: 1490px; display: flex; justify-content: center; gap: 24px; }
+      .bdg { display: flex; align-items: center; gap: 14px; height: 96px; padding: 0 28px 0 20px; border-radius: 18px; background: #000; border: 2px solid #a6a6a6; color: #fff; }
+      .bdg svg { width: 52px; height: 52px; display: block; }
+      .bdg span { display: flex; flex-direction: column; line-height: 1; }
+      .bdg small { font-weight: 500; font-size: 20px; letter-spacing: 0.5px; }
+      .bdg b { font-weight: 600; font-size: 38px; letter-spacing: -0.5px; margin-top: 4px; white-space: nowrap; }
+
+      #grain { position: absolute; inset: -64px; background-image: url(assets/grain.png); background-size: 512px 512px; mix-blend-mode: overlay; opacity: 0.08; pointer-events: none; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="29.8" data-width="1080" data-height="1920">
+      <audio id="bgm" src="assets/bgm.wav" data-start="0" data-duration="29.8" data-track-index="11"></audio>
+      <div id="scene" class="clip layer" data-start="0" data-duration="29.8" data-track-index="0">
+
+        <!-- 1: x-ray line drawing on black -->
+        <div class="sc dark" id="a1">
+          <svg class="draw" id="xray" viewBox="0 0 420 800" style="position:absolute;left:240px;top:420px;width:600px;height:1143px;filter:drop-shadow(0 0 18px rgba(255,255,255,.55))"><path d="M40 112 L300 112 L292 520 L262 566 L268 780 L72 780 L78 566 L48 520 Z M28 52 L312 52 L312 112 L28 112 Z M60 22 L280 22 L280 52 L60 52 Z M300 150 C 390 150, 392 170, 392 260 L392 400 C 392 448, 380 452, 296 452" stroke="#ffffff"/></svg>
+        </div>
+
+        <!-- 2: blueprint wall with three silhouettes -->
+        <div class="sc lite" id="a2">
+          <div class="bp"><div class="grid"></div></div>
+          <svg class="draw" id="wall" viewBox="0 0 1260 800" style="position:absolute;left:-90px;top:560px;width:1260px;height:800px">
+            <path d="M40 112 L300 112 L292 520 L262 566 L268 780 L72 780 L78 566 L48 520 Z M28 52 L312 52 L312 112 L28 112 Z M60 22 L280 22 L280 52 L60 52 Z M300 150 C 390 150, 392 170, 392 260 L392 400 C 392 448, 380 452, 296 452" stroke="#8d96a1" transform="translate(0,0)"/><path d="M40 112 L300 112 L292 520 L262 566 L268 780 L72 780 L78 566 L48 520 Z M28 52 L312 52 L312 112 L28 112 Z M60 22 L280 22 L280 52 L60 52 Z M300 150 C 390 150, 392 170, 392 260 L392 400 C 392 448, 380 452, 296 452" stroke="#8d96a1" transform="translate(420,0)"/><path d="M40 112 L300 112 L292 520 L262 566 L268 780 L72 780 L78 566 L48 520 Z M28 52 L312 52 L312 112 L28 112 Z M60 22 L280 22 L280 52 L60 52 Z M300 150 C 390 150, 392 170, 392 260 L392 400 C 392 448, 380 452, 296 452" stroke="#8d96a1" transform="translate(840,0)"/>
+          </svg>
+          <div class="lbl" style="left:80px;top:430px">COUVERCLE</div><div class="lbl" style="right:80px;top:640px">POIGNÉE</div><div class="lbl" style="left:80px;top:1400px">CORPS</div>
+        </div>
+
+        <!-- 3: macro fuchsia -->
+        <div class="sc lite" id="a3"><div class="bp"><div class="grid"></div></div>
+          <div class="tum" id="m3" style="left:90px;top:300px;width:900px;height:1760px"><img src="assets/prod/fuchsia.png" alt=""></div></div>
+
+        <!-- 4: colour flash + floating ciel on blueprint -->
+        <div class="sc" id="a4" style="background:var(--fuchsia)">
+          <svg class="draw" viewBox="0 0 420 800" style="position:absolute;left:240px;top:420px;width:600px;height:1143px;opacity:.35"><path d="M40 112 L300 112 L292 520 L262 566 L268 780 L72 780 L78 566 L48 520 Z M28 52 L312 52 L312 112 L28 112 Z M60 22 L280 22 L280 52 L60 52 Z M300 150 C 390 150, 392 170, 392 260 L392 400 C 392 448, 380 452, 296 452" stroke="#ffffff"/></svg></div>
+        <div class="sc lite" id="a5"><div class="bp"><div class="grid"></div></div>
+          <svg class="draw" id="bp5" viewBox="0 0 420 800" style="position:absolute;left:170px;top:380px;width:740px;height:1410px;opacity:.6"><path d="M40 112 L300 112 L292 520 L262 566 L268 780 L72 780 L78 566 L48 520 Z M28 52 L312 52 L312 112 L28 112 Z M60 22 L280 22 L280 52 L60 52 Z M300 150 C 390 150, 392 170, 392 260 L392 400 C 392 448, 380 452, 296 452" stroke="#aab2bb"/></svg>
+          <div class="tum" id="m5" style="left:300px;top:520px;width:480px;height:940px"><img src="assets/prod/ciel.png" alt=""></div></div>
+
+        <!-- 6: the drop — fast cuts -->
+        <div class="sc dark" id="b1"><div class="tum" id="n1" style="left:300px;top:470px;width:480px;height:940px;filter:drop-shadow(0 0 26px rgba(120,170,255,.55))"><img src="assets/prod/noir.png" alt=""></div></div>
+        <div class="sc lite" id="b2"><div class="tum" id="n2" style="left:40px;top:0px;width:1000px;height:1960px"><img src="assets/prod/fuchsia.png" alt=""></div></div>
+        <div class="sc" id="b3" style="background:var(--ciel)"><div class="tum" id="n3" style="left:90px;top:120px;width:900px;height:1760px"><img src="assets/prod/ciel.png" alt=""></div></div>
+        <div class="sc dark" id="b4"><div class="tum" id="n4" style="left:140px;top:-60px;width:950px;height:1860px;filter:drop-shadow(0 0 30px rgba(255,31,143,.5))"><img src="assets/prod/noir.png" alt=""></div></div>
+        <div class="sc" id="b5" style="background:var(--fuchsia)"><div class="tum" id="n5" style="left:300px;top:470px;width:480px;height:940px"><img src="assets/prod/fuchsia.png" alt=""></div></div>
+        <div class="sc lite" id="b6"><div class="tum" id="n6" style="left:-120px;top:260px;width:1050px;height:2050px"><img src="assets/prod/ciel.png" alt=""></div></div>
+
+        <!-- 7: studio line-up with floor reflections -->
+        <div class="sc lite" id="c1"><div class="bp"><div class="grid"></div></div>
+          <div id="lineup" style="position:absolute;inset:0">
+            <div class="tum" style="left:40px;top:640px;width:330px;height:650px"><img src="assets/prod/fuchsia.png" alt=""></div>
+            <div class="tum" style="left:375px;top:640px;width:330px;height:650px"><img src="assets/prod/ciel.png" alt=""></div>
+            <div class="tum" style="left:710px;top:640px;width:330px;height:650px"><img src="assets/prod/noir.png" alt=""></div>
+            <div class="floor" style="top:1292px"></div>
+            <div class="refl" style="left:40px;top:1294px;width:330px;height:650px"><img src="assets/prod/fuchsia.png" alt=""></div>
+            <div class="refl" style="left:375px;top:1294px;width:330px;height:650px"><img src="assets/prod/ciel.png" alt=""></div>
+            <div class="refl" style="left:710px;top:1294px;width:330px;height:650px"><img src="assets/prod/noir.png" alt=""></div>
+          </div></div>
+
+        <!-- 8: key visual -->
+        <div class="sc" id="kv">
+          <div id="kvTitle">COLLECTION GOURDES</div><div id="kvSub">5 COLORIS · SUR PITUP</div>
+          <div class="tum kvt" style="left:30px;top:520px;width:250px;height:490px"><img src="assets/prod/fuchsia.png" alt=""></div>
+          <div class="tum kvt" style="left:225px;top:640px;width:250px;height:490px"><img src="assets/prod/rose.png" alt=""></div>
+          <div class="tum kvt" style="left:420px;top:760px;width:250px;height:490px"><img src="assets/prod/ciel.png" alt=""></div>
+          <div class="tum kvt" style="left:615px;top:880px;width:250px;height:490px"><img src="assets/prod/bleu.png" alt=""></div>
+          <div class="tum kvt" style="left:810px;top:1000px;width:250px;height:490px"><img src="assets/prod/noir.png" alt=""></div>
+          <div id="kvNames"><span>FUCHSIA</span><span>ROSE</span><span>BLEU CIEL</span><span>BLEU ROI</span><span>NOIR</span></div>
+        </div>
+
+        <!-- 9: end card -->
+        <div class="sc" id="end">
+          <img id="icon" src="assets/icon_white.png" alt="" />
+          <img id="word" src="assets/logo_word_white.png" alt="" />
+          <div id="avail">Disponible sur PitUp</div>
+          <div id="ctaWrap"><div id="cta">pi-tup.com</div></div>
+          <div id="stores">
+              <div class="bdg"><svg viewBox="0 0 24 24"><path fill="#fff" d="M16.4 1.4c0 1.1-.5 2.3-1.2 3.1-.7.9-2 1.6-3 1.6-.1 0-.2 0-.3-.1 0-.1 0-.2 0-.4 0-1.1.6-2.3 1.2-3 .8-.9 2.1-1.6 3.2-1.7.1.2.1.3.1.5zm4.6 15.7c0 .1-.5 1.6-1.5 3.1-.9 1.3-1.9 2.7-3.4 2.7s-1.9-.9-3.6-.9c-1.7 0-2.3.9-3.7.9-1.4 0-2.3-1.3-3.4-2.8C4.1 18.3 3 15.5 3 12.8c0-4.3 2.8-6.5 5.6-6.5 1.4 0 2.7.9 3.6.9.9 0 2.2-1 3.9-1 .6 0 2.9.1 4.4 2.2-.1.1-2.4 1.4-2.4 4.2 0 3.3 2.9 4.4 2.9 4.5z"/></svg><span><small>Disponible sur</small><b>App Store</b></span></div>
+              <div class="bdg"><svg viewBox="0 0 24 24"><path fill="#00d7fe" d="M3.6 1.8 13.6 12 3.6 22.2c-.4-.2-.6-.6-.6-1.1V2.9c0-.5.2-.9.6-1.1z"/><path fill="#00f076" d="M3.6 1.8 16.9 9.4 13.6 12z"/><path fill="#f8384b" d="M3.6 22.2 13.6 12l3.3 2.6z"/><path fill="#fdbd00" d="M16.9 9.4 21 11.7c.5.3.5.9 0 1.2l-4.1 1.7-3.3-2.6z"/></svg><span><small>Disponible sur</small><b>Google Play</b></span></div>
+        </div>
+        <div id="grain"></div>
+      </div>
+    </div>
+
+    <script>
+      const B = 0.6209;              // one beat of "SUPRACELL" (96.6 BPM, film 0 = song 5.077 s; the full beat lands on b16)
+      const T = (b) => b * B;
+      const tl = gsap.timeline({ paused: true });
+      const cut = (id, a, b) => { tl.set(id, { opacity: 1 }, a); tl.set(id, { opacity: 0 }, b); };
+      const dash = (sel) => document.querySelectorAll(sel).forEach((p) => { const l = p.getTotalLength(); p.style.strokeDasharray = l; p.style.strokeDashoffset = l; });
+
+      // 1 — x-ray line draws itself (b0 -> b4)
+      dash("#xray path");
+      cut("#a1", 0, T(4));
+      tl.to("#xray path", { strokeDashoffset: 0, duration: T(3.4), ease: "power2.inOut" }, 0.1);
+      tl.fromTo("#xray", { scale: 0.94 }, { scale: 1.04, duration: T(4), ease: "none" }, 0);
+
+      // 2 — blueprint wall, slow push (b4 -> b8)
+      dash("#wall path");
+      cut("#a2", T(4), T(8));
+      tl.to("#wall path", { strokeDashoffset: 0, duration: T(2.5), stagger: 0.15, ease: "power2.out" }, T(4));
+      tl.fromTo("#wall", { scale: 1 }, { scale: 1.12, duration: T(4), ease: "none" }, T(4));
+      tl.fromTo("#a2 .lbl", { opacity: 0 }, { opacity: 1, duration: 0.4, stagger: 0.2 }, T(5));
+
+      // 3 — macro on the fuchsia lid and handle, slow drift (b8 -> b12)
+      cut("#a3", T(8), T(12));
+      tl.fromTo("#m3", { scale: 1.35, x: -60, y: 300, rotation: -4 }, { scale: 1.2, x: -20, y: 240, rotation: 2, duration: T(4), ease: "sine.inOut" }, T(8));
+
+      // 4 — colour flash, then bleu ciel floats over its drawing (b12 -> b16)
+      cut("#a4", T(12), T(12.5));
+      dash("#bp5 path");
+      cut("#a5", T(12.5), T(16));
+      tl.to("#bp5 path", { strokeDashoffset: 0, duration: T(2.5), ease: "power2.out" }, T(12.5));
+      tl.fromTo("#m5", { y: 60, rotation: -6, opacity: 0 }, { y: -20, rotation: 3, opacity: 1, duration: T(3.5), ease: "sine.out" }, T(12.5));
+
+      // 5 — the beat drops: one cut per beat (b16 -> b24)
+      [["#b1", "#n1", { scale: 1.08 }, { scale: 1 }], ["#b2", "#n2", { x: 0 }, { x: -80 }], ["#b3", "#n3", { y: 0 }, { y: -120 }],
+       ["#b4", "#n4", { rotation: -3 }, { rotation: 3 }], ["#b5", "#n5", { scale: 1.15 }, { scale: 1 }], ["#b6", "#n6", { x: 0 }, { x: 100 }]]
+        .forEach(([sc, el, f, t], k) => {
+          const a = T(16 + k * (8 / 6)), b = T(16 + (k + 1) * (8 / 6));
+          cut(sc, a, b);
+          tl.fromTo(el, f, { ...t, duration: b - a, ease: "power2.out" }, a);
+        });
+
+      // 6 — studio line-up with reflections, slow dolly in (b24 -> b32)
+      cut("#c1", T(24), T(32));
+      tl.fromTo("#lineup", { scale: 1.12, y: 40 }, { scale: 1, y: 0, duration: T(8), ease: "power2.out" }, T(24));
+      tl.fromTo("#lineup .tum", { y: 80, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6, stagger: T(1), ease: "power3.out" }, T(24));
+
+      // 7 — key visual (b32 -> b40)
+      cut("#kv", T(32), T(40));
+      tl.fromTo("#kv .kvt", { x: 160, opacity: 0 }, { x: 0, opacity: 1, duration: 0.55, stagger: T(0.5), ease: "power3.out" }, T(32));
+      tl.fromTo(["#kvTitle", "#kvSub"], { opacity: 0, y: -20 }, { opacity: 1, y: 0, duration: 0.5, stagger: 0.15 }, T(34));
+      tl.fromTo("#kvNames span", { opacity: 0 }, { opacity: 1, duration: 0.3, stagger: 0.12 }, T(35));
+      tl.fromTo("#kv", { scale: 1.04 }, { scale: 1, duration: T(8), ease: "none" }, T(32));
+
+      // 8 — end card (b40 -> end)
+      tl.set("#end", { opacity: 1 }, T(40));
+      tl.fromTo("#icon", { scale: 1.15, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.32, ease: "expo.out" }, T(40));
+      tl.fromTo("#word", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.4, ease: "power3.out" }, T(41));
+      tl.fromTo("#avail", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.4, ease: "power3.out" }, T(42));
+      tl.fromTo("#cta", { scale: 0.7, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.42, ease: "back.out(2)" }, T(43));
+      tl.fromTo("#stores .bdg", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.35, stagger: 0.12, ease: "back.out(1.6)" }, T(44));
+
+      for (let f = 0; f < 29.8 * 12; f++) {
+        const ox = ((f * 137) % 512) - 256, oy = ((f * 251) % 512) - 256;
+        tl.set("#grain", { x: ox / 8, y: oy / 8 }, f / 12);
+      }
+      tl.set({}, {}, 29.8);
+      window.__timelines["main"] = tl;
+      tl.seek(0);
+    </script>
+  </body>
+</html>

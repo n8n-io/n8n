@@ -1,0 +1,4 @@
+interface:
+  display_name: "Video to Superprompt"
+  short_description: "Turn video references into detailed build prompts."
+  default_prompt: "Use $video-to-superprompt to analyze this video and write a super detailed prompt for the design, animations, scroll interactions, typography, colors, assets, and section-by-section storytelling."

@@ -1,0 +1,57 @@
+{
+  "goal": "Build a comprehensive research and analysis platform that can gather information from multiple sources, analyze data, and generate detailed reports",
+  "description": "The system needs to handle complex research tasks involving web searches, data analysis, document processing, and collaborative report generation. It should be able to coordinate multiple specialists working in parallel while maintaining quality control and ensuring comprehensive coverage of research topics.",
+  "tasks": [
+    "Conduct multi-source web research on specified topics",
+    "Analyze and synthesize information from various sources",
+    "Perform data processing and statistical analysis",
+    "Generate visualizations and charts from data",
+    "Create comprehensive written reports",
+    "Fact-check and validate information accuracy",
+    "Coordinate parallel research streams",
+    "Handle real-time information updates",
+    "Manage research project timelines",
+    "Provide interactive research assistance"
+  ],
+  "constraints": {
+    "max_response_time": 30000,
+    "budget_per_task": 1.0,
+    "quality_threshold": 0.9,
+    "concurrent_tasks": 10,
+    "data_retention_days": 90,
+    "security_level": "standard",
+    "compliance_requirements": ["GDPR", "data_minimization"]
+  },
+  "team_size": 6,
+  "performance_requirements": {
+    "high_throughput": true,
+    "fault_tolerance": true,
+    "low_latency": false,
+    "scalability": "medium",
+    "availability": 0.99
+  },
+  "safety_requirements": [
+    "Input validation and sanitization",
+    "Output content filtering",
+    "Rate limiting for external APIs",
+    "Error handling and graceful degradation",
+    "Human oversight for critical decisions",
+    "Audit logging for all operations"
+  ],
+  "integration_requirements": [
+    "REST API endpoints for external systems",
+    "Webhook support for real-time updates",
+    "Database integration for data persistence",
+    "File storage for documents and media",
+    "Email notifications for important events",
+    "Dashboard for monitoring and control"
+  ],
+  "scale_requirements": {
+    "initial_users": 50,
+    "peak_concurrent_users": 200,
+    "data_volume_gb": 100,
+    "requests_per_hour": 1000,
+    "geographic_regions": ["US", "EU"],
+    "growth_projection": "50% per year"
+  }
+}

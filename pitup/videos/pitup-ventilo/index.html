@@ -1,0 +1,448 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="assets/gsap.min.js"></script>
+    <style>
+      @font-face { font-family: "Poppins"; font-weight: 600; src: url(assets/fonts/poppins-600.woff2) format("woff2"); }
+      @font-face { font-family: "Poppins"; font-weight: 800; src: url(assets/fonts/poppins-800.woff2) format("woff2"); }
+      @font-face { font-family: "Caveat"; font-weight: 700; src: url(assets/fonts/Caveat-700-latin.woff2) format("woff2"); }
+      @font-face { font-family: "Playfair"; font-weight: 900; src: url(assets/fonts/PlayfairDisplay-900.woff2) format("woff2"); }
+      @font-face { font-family: "OldStd"; font-weight: 700; src: url(assets/fonts/OldStandardTT-700.woff2) format("woff2"); }
+      :root { --blue: #1f88c9; --ink: #141414; --hw-ink: #1f88c9; --red: #d6332a; }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1080px; height: 1920px; overflow: hidden; background: #f6f3ec; }
+      #root { position: relative; width: 100%; height: 100%; overflow: hidden; font-family: "Poppins", sans-serif; color: var(--ink); }
+      .layer { position: absolute; inset: 0; z-index: 0; }
+      .sheet { position: absolute; inset: 0; overflow: hidden; }
+      .paper { position: absolute; inset: 0; background: url(assets/paper.jpg) center / cover; }
+      .blue { position: absolute; inset: 0; background: var(--blue); }
+      .blue::after { content: ""; position: absolute; inset: 0; background: url(assets/paper.jpg) center / cover; mix-blend-mode: multiply; opacity: 0.55; }
+      .rim { position: absolute; inset: 0; background: #fbfaf8; }
+
+      .np { position: absolute; background: #fbf8f1; padding: 22px 28px 26px; box-shadow: 0 1px 1px rgba(0,0,0,0.06), 0 16px 28px rgba(40,30,10,0.16); }
+      .np .art { display: block; margin-top: 10px; }
+      .np .art svg { display: block; width: 100%; height: auto; }
+      #phone { position: absolute; left: 290px; top: 650px; width: 500px; height: 770px; border-radius: 64px; background: #141414; padding: 18px; box-shadow: 0 30px 50px rgba(40,30,10,0.3); }
+      #phone .scr { position: relative; width: 100%; height: 100%; border-radius: 48px; overflow: hidden; background: #fff; }
+      #phone .bar { display: flex; align-items: center; gap: 14px; height: 120px; padding: 34px 30px 0; background: var(--blue); color: #fff; font-weight: 800; font-size: 40px; }
+      #phone .bar img { width: 44px; display: block; }
+      #phone .lbl { display: block; padding: 26px 30px 12px; font-weight: 800; font-size: 30px; color: var(--ink); }
+      #phone .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; padding: 22px 24px; }
+      #phone .grid img { width: 100%; height: 200px; object-fit: cover; border-radius: 16px; display: block; }
+      #phone .row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px 0; justify-items: center; padding: 0 20px; }
+      #phone .row img { width: 112px; height: 112px; border-radius: 50%; object-fit: cover; display: block; border: 3px solid #e8e8e8; }
+      #phone .btn { position: absolute; left: 30px; right: 30px; bottom: 96px; height: 96px; border-radius: 48px; background: var(--blue); color: #fff; font-weight: 800; font-size: 32px; white-space: nowrap; display: flex; align-items: center; justify-content: center; }
+      #phone .ok { background: #1f9d55; }
+      #phone .sub { position: absolute; left: 0; right: 0; bottom: 40px; display: block; text-align: center; font-weight: 600; font-size: 24px; color: #555; }
+      #tap { position: absolute; width: 90px; height: 90px; border-radius: 50%; border: 6px solid #141414; left: 187px; top: 545px; }
+      .np .hd { display: block; font-family: "Playfair", serif; font-weight: 900; line-height: 1.02; letter-spacing: -1px; color: var(--ink); }
+      .np .hd > span { display: block; white-space: nowrap; }
+      .np .ph { display: block; width: 100%; object-fit: cover; margin-top: 4px; filter: contrast(1.05); }
+      .np .cap { display: block; font-family: "OldStd", serif; font-weight: 700; font-size: 20px; color: #555; margin-top: 8px; white-space: nowrap; }
+      .tape { position: absolute; width: 130px; height: 36px; background: rgba(236, 226, 196, 0.85); box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+        clip-path: polygon(0% 8%, 6% 0%, 12% 10%, 20% 2%, 30% 8%, 42% 0%, 55% 6%, 68% 0%, 80% 9%, 90% 1%, 100% 8%, 97% 50%, 100% 92%, 90% 100%, 78% 92%, 64% 100%, 50% 93%, 36% 100%, 22% 92%, 10% 100%, 0% 92%, 3% 50%); }
+      .stamp { position: absolute; display: block; font-family: "Poppins", sans-serif; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; color: var(--red); border: 7px solid var(--red); border-radius: 10px; padding: 6px 18px; white-space: nowrap; mix-blend-mode: multiply; }
+
+      .big { position: absolute; left: 76px; display: block; font-family: "Playfair", serif; font-weight: 900; line-height: 1.02; letter-spacing: -2px; color: var(--ink); }
+      .big > span { display: block; white-space: nowrap; }
+      .w { display: inline !important; }
+      .note { position: absolute; display: block; font-family: "Caveat", cursive; font-weight: 700; color: var(--blue); white-space: nowrap; line-height: 1; }
+      .hl { position: absolute; z-index: -1; background: rgba(31, 136, 201, 0.26); transform-origin: 0% 50%; border-radius: 4px; }
+      .dot { position: absolute; border-radius: 50%; overflow: hidden; border: 6px solid #fff; background: #000; box-shadow: 0 10px 22px rgba(40,30,10,0.25); }
+      .dot img { width: 100%; height: 100%; object-fit: cover; display: block; }
+      .hw-mark, .hw-arrow { position: absolute; pointer-events: none; }
+      .hw-mark svg, .hw-arrow svg { width: 100%; height: 100%; overflow: visible; }
+      .hw-mark path, .hw-arrow path { fill: none; stroke: var(--hw-ink); stroke-width: 7; stroke-linecap: round; stroke-linejoin: round; }
+
+
+      /* handset */
+      @font-face { font-family: "Poppins"; font-weight: 500; src: url(assets/fonts/poppins-500.woff2) format("woff2"); }
+      @font-face { font-family: "Poppins"; font-weight: 700; src: url(assets/fonts/poppins-700.woff2) format("woff2"); }
+      #dev { position: absolute; left: 190px; top: 440px; width: 540px; height: 1120px; border-radius: 84px; padding: 12px; background: linear-gradient(145deg, #5a5d63 0%, #222427 30%, #3b3e43 62%, #17181a 100%); box-shadow: 0 44px 70px rgba(30,20,5,0.38), inset 0 0 0 2px rgba(255,255,255,0.2); }
+      #dev .sbtn { position: absolute; width: 6px; border-radius: 3px; background: linear-gradient(90deg, #2a2c2f, #55585d); }
+      #dev .bez { width: 100%; height: 100%; border-radius: 72px; background: #050505; padding: 10px; }
+      #dev .scr { position: relative; width: 100%; height: 100%; border-radius: 62px; overflow: hidden; background: #fff; }
+      #dev .island { position: absolute; left: 50%; top: 13px; width: 116px; height: 34px; margin-left: -58px; border-radius: 20px; background: #000; z-index: 5; }
+      #dev .homei { position: absolute; left: 50%; bottom: 9px; width: 140px; height: 5px; margin-left: -70px; border-radius: 3px; background: #111; z-index: 5; }
+      #dev .glare { position: absolute; inset: 0; z-index: 6; background: linear-gradient(118deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.05) 26%, rgba(255,255,255,0) 40%); pointer-events: none; }
+      #touch { position: absolute; z-index: 7; width: 64px; height: 64px; margin: -32px 0 0 -32px; border-radius: 50%; background: rgba(60,60,60,0.35); border: 3px solid rgba(255,255,255,0.8); }
+      .app { position: absolute; left: 0; top: 0; width: 390px; height: 846px; transform-origin: 0 0; background: #fff; font-family: "Poppins", sans-serif; color: #111827; overflow: hidden; }
+      #dev .app { zoom: 1.2718; }
+      .app svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+      .app .sb { display: flex; justify-content: space-between; align-items: center; height: 46px; padding: 6px 30px 0 34px; font-size: 15px; }
+      .app .sb .sbi { display: flex; gap: 6px; align-items: center; } .app .sb .sbi svg { height: 12px; width: auto; fill: #111; stroke: none; }
+      .app .sb .sbi svg:nth-child(2) path { fill: none; stroke: #111; stroke-width: 1.6; }
+      .app .hdr { display: flex; justify-content: space-between; align-items: center; height: 46px; padding: 0 22px; border-bottom: 1px solid #eef0f3; }
+      .app .hdr img { width: 26px; display: block; } .app .hdr svg { width: 24px; height: 24px; }
+      .app .srch { display: flex; align-items: center; gap: 10px; margin: 12px 14px 0; height: 40px; padding: 0 14px; border-radius: 10px; background: #f1f3f6; color: #6b7280; font-size: 13px; }
+      .app .tabs { display: flex; gap: 6px; margin: 12px 14px; padding: 5px; border-radius: 12px; background: #f1f3f6; }
+      .app .tabs div { flex: 1; display: flex; align-items: center; justify-content: center; gap: 7px; height: 38px; border-radius: 9px; font-size: 13.5px; font-weight: 600; color: #4b5563; }
+      .app .tabs div.on { background: #1f88c9; color: #fff; }
+      .app .tabs svg { width: 17px; height: 17px; }
+      .app .body { display: flex; height: 560px; background: #f4f5f7; }
+      .app .cats { width: 82px; flex: none; background: #f4f5f7; }
+      .app .cats div { padding: 12px 8px 12px 11px; font-size: 10.5px; line-height: 1.25; color: #4b5563; }
+      .app .cats div.on { background: #fff; color: #1f88c9; font-weight: 600; box-shadow: inset 3px 0 0 #1f88c9; }
+      .app .main { flex: 1; padding: 10px 10px 0; }
+      .app .sort { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 9px 12px; font-size: 12px; color: #4b5563; margin-bottom: 10px; }
+      .app .sort b { color: #111827; font-weight: 600; }
+      .app .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+      .app .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 7px; }
+      .app .ch { display: flex; align-items: center; gap: 5px; margin-bottom: 6px; }
+      .app .ch img { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; } .app .ch b { flex: 1; font-size: 10.5px; font-weight: 600; white-space: nowrap; overflow: hidden; }
+      .app .ch i { display: flex; width: 20px; height: 20px; border-radius: 50%; background: #1f88c9; color: #fff; align-items: center; justify-content: center; } .app .ch i svg { width: 12px; height: 12px; }
+      .app .ci { display: block; width: 100%; height: 118px; object-fit: cover; border-radius: 8px; }
+      .app .ct { font-size: 12.5px; font-weight: 600; margin: 6px 2px; white-space: nowrap; }
+      .app .cb { display: flex; align-items: center; justify-content: center; gap: 6px; height: 32px; border-radius: 8px; background: #1f6fb5; color: #fff; font-size: 12px; font-weight: 600; } .app .cb svg { width: 15px; height: 15px; }
+      .app .nav { position: absolute; left: 0; right: 0; bottom: 0; height: 74px; display: flex; justify-content: space-around; padding-top: 9px; border-top: 1px solid #eef0f3; background: #fff; }
+      .app .nav div { display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 10.5px; color: #4b5563; } .app .nav div.on { color: #1f88c9; font-weight: 600; } .app .nav svg { width: 22px; height: 22px; }
+      .app .back { display: flex; align-items: center; gap: 8px; padding: 14px 20px; font-size: 14px; color: #374151; } .app .back svg { width: 18px; height: 18px; }
+      .app .pimg { position: relative; margin: 0 16px; height: 330px; border-radius: 16px; overflow: hidden; background: #f4f5f7; border: 1px solid #e5e7eb; }
+      .app .pimg img { width: 100%; height: 100%; object-fit: cover; display: block; }
+      .app .pimg i { position: absolute; top: 145px; width: 34px; height: 34px; border-radius: 50%; background: #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.15); font-style: normal; font-size: 26px; line-height: 30px; text-align: center; color: #111; }
+      .app .arL { left: 10px; } .app .arR { right: 10px; }
+      .app .pt { font-size: 22px; font-weight: 700; padding: 14px 20px 4px; }
+      .app .pshop { display: flex; align-items: center; gap: 10px; padding: 6px 20px 10px; } .app .pshop img { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; } .app .pshop b { font-size: 15px; font-weight: 600; }
+      .app .badge { display: inline-flex; align-items: center; gap: 8px; margin: 0 20px; padding: 8px 12px; border-radius: 8px; background: #e9f7ee; color: #15803d; font-size: 12.5px; font-weight: 500; transform-origin: 0 50%; } .app .badge svg { width: 17px; height: 17px; }
+      .app .pbtn { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 16px 20px 0; height: 48px; border-radius: 10px; background: #1f6fb5; color: #fff; font-size: 15px; font-weight: 600; }
+
+      #join { position: absolute; left: 0; right: 0; top: 740px; display: block; text-align: center; font-weight: 800; font-size: 150px; letter-spacing: -5px; color: #fff; white-space: nowrap; }
+      #creates { position: absolute; left: 0; right: 0; top: 950px; display: block; text-align: center; font-family: "Caveat", cursive; font-weight: 700; font-size: 72px; color: #fff; white-space: nowrap; }
+      #stores { position: absolute; left: 0; right: 0; top: 1060px; display: flex; justify-content: center; gap: 26px; }
+      #stores > div { display: block; padding: 18px 40px; border-radius: 22px; border: 4px solid #fff; color: #fff; font-weight: 800; font-size: 44px; white-space: nowrap; }
+      #orsur { position: absolute; left: 0; right: 0; top: 1190px; display: block; text-align: center; font-family: "Caveat", cursive; font-weight: 700; font-size: 66px; color: #fff; white-space: nowrap; }
+      #ctaWrap { position: absolute; left: 0; right: 0; top: 1280px; display: flex; justify-content: center; }
+      #fine { position: absolute; left: 0; right: 0; top: 1470px; display: block; text-align: center; font-weight: 600; font-size: 32px; color: rgba(255,255,255,0.92); white-space: nowrap; }
+      #bigBadge { position: absolute; left: 70px; top: 1010px; display: flex; align-items: center; gap: 18px; padding: 26px 34px; border-radius: 22px; background: #e9f7ee; color: #15803d; font-weight: 600; font-size: 42px; white-space: nowrap; box-shadow: 0 16px 28px rgba(40,30,10,0.16); }
+      #bigBadge svg { width: 54px; height: 54px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+      .app .reg { margin: 20px 16px 0; padding: 26px 20px 24px; border: 1px solid #e5e7eb; border-radius: 18px; text-align: center; }
+      .app .rIco { width: 64px; height: 64px; margin: 0 auto 14px; border-radius: 14px; background: #2f8fd8; color: #fff; display: flex; align-items: center; justify-content: center; } .app .rIco svg { width: 30px; height: 30px; }
+      .app .rT { font-size: 23px; font-weight: 700; } .app .rS { font-size: 14px; color: #4b5563; margin: 8px 6px 20px; line-height: 1.5; }
+      .app .rG { display: flex; align-items: center; justify-content: center; gap: 12px; height: 50px; border: 1px solid #d1d5db; border-radius: 10px; font-size: 15px; font-weight: 500; } .app .rG svg { width: 22px; height: 22px; }
+      .app .rOr { display: flex; align-items: center; gap: 10px; margin: 18px 0; font-size: 12.5px; color: #6b7280; } .app .rOr i { flex: 1; height: 1px; background: #e5e7eb; }
+      .app .rL { text-align: left; font-size: 13.5px; font-weight: 500; margin: 0 0 7px; }
+      .app .rIn { display: flex; align-items: center; gap: 10px; height: 48px; padding: 0 12px; margin-bottom: 14px; border: 1px solid #d1d5db; border-radius: 10px; background: #f9fafb; color: #6b7280; font-size: 14.5px; } .app .rIn svg { width: 20px; height: 20px; }
+      .app .rB { height: 48px; margin-top: 6px; border-radius: 10px; background: #2f8fd8; color: #fff; font-size: 15px; font-weight: 600; display: flex; align-items: center; justify-content: center; }
+
+      #end #join { top: 770px; font-size: 112px; }
+      #end #creates { top: 960px; font-size: 62px; }
+      #end #ctaWrap { top: 1070px; }
+      #cta .ch { display: inline-block; }
+      #cDuo .art svg, #cFam .art svg { width: 68%; margin: 0 auto; }
+      #fine3 { position: absolute; left: 0; right: 0; top: 1325px; display: block; text-align: center; font-weight: 800; font-size: 40px; color: #fff; white-space: nowrap; }
+      #cDuo .cap, #cFam .cap { font-family: "Caveat", cursive; font-size: 58px; color: #141414; margin-top: 6px; }
+      .app .sb, .app .hdr { position: relative; z-index: 2; background: #fff; }
+      #end #fine { top: 1270px; font-size: 40px; font-weight: 800; }
+      #fine2 { position: absolute; left: 0; right: 0; top: 1400px; display: block; text-align: center; font-weight: 600; font-size: 34px; color: rgba(255,255,255,0.92); white-space: nowrap; }
+      #dev { left: 40px !important; top: 430px !important; }
+      .app .hw { padding: 20px 18px; } .app .hwT { font-size: 22px; font-weight: 700; margin-bottom: 16px; } .app .hwB { height: 150px; border-radius: 14px; background: #eef2f7; margin-bottom: 12px; } .app .hwB.s { height: 90px; }
+      .app .mk { padding: 0 16px; } .app .mkT { font-size: 30px; font-weight: 700; margin: 18px 0 8px; } .app .mkD { font-size: 14.5px; line-height: 1.5; color: #4b5563; margin-bottom: 16px; }
+      .app .seg { display: flex; gap: 4px; padding: 5px; border-radius: 12px; background: #f1f3f6; margin-bottom: 16px; } .app .seg div { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; height: 40px; border-radius: 9px; font-size: 13.5px; font-weight: 500; color: #374151; } .app .seg div.on { background: #2f8fd8; color: #fff; } .app .seg svg { width: 16px; height: 16px; }
+      .app .mkS { display: flex; align-items: center; gap: 10px; height: 44px; padding: 0 12px; border: 1px solid #d1d5db; border-radius: 10px; font-size: 15px; color: #111827; } .app .mkS .ph { color: #9ca3af; } .app .mkS svg { width: 18px; height: 18px; color: #6b7280; }
+      .app .mkC { display: flex; align-items: center; height: 44px; padding: 0 12px; margin-top: 10px; border: 1px solid #d1d5db; border-radius: 10px; font-size: 15px; }
+      .app .mkN { font-size: 12.5px; color: #4b5563; margin: 12px 0; }
+      .app .rc { width: 175px; border: 1px solid #e5e7eb; border-radius: 14px; overflow: hidden; background: #fff; padding-bottom: 10px; }
+      .app .rcB { position: relative; height: 110px; } .app .rcB img { width: 100%; height: 100%; object-fit: cover; display: block; }
+      .app .rcB i { position: absolute; left: 8px; top: 8px; display: flex; align-items: center; gap: 4px; padding: 3px 7px; border-radius: 6px; background: #fff; font-style: normal; font-size: 10px; font-weight: 600; color: #1d4ed8; } .app .rcB i svg { width: 11px; height: 11px; }
+      .app .rcB .rcL { position: absolute; left: 14px; bottom: -22px; width: 46px; height: 46px; border-radius: 50%; border: 3px solid #fff; object-fit: cover; }
+      .app .rc b { display: block; font-size: 16px; font-weight: 700; margin: 30px 12px 2px; } .app .rc span { display: block; font-size: 11.5px; color: #6b7280; margin: 0 12px; } .app .rc .rcLoc { font-size: 10.5px; margin-top: 6px; line-height: 1.4; }
+      .app .rc em { display: flex; align-items: center; gap: 4px; margin: 8px 12px 0; font-style: normal; font-size: 10.5px; color: #15803d; } .app .rc em svg { width: 12px; height: 12px; }
+      .app .stIn { position: absolute; left: 0; right: 0; top: 92px; } .app .stB { height: 150px; overflow: hidden; } .app .stB img { width: 100%; height: 100%; object-fit: cover; display: block; }
+      .app .stL { position: relative; display: block; width: 70px; height: 70px; margin: -36px 0 0 18px; border-radius: 10px; border: 3px solid #fff; object-fit: cover; box-shadow: 0 2px 6px rgba(0,0,0,0.15); }
+      .app .stN { font-size: 22px; font-weight: 700; margin: 10px 16px 0; } .app .stD { font-size: 14px; color: #4b5563; margin: 2px 16px 0; }
+      .app .stF { display: flex; align-items: center; justify-content: center; gap: 8px; height: 44px; margin: 12px 16px 0; border-radius: 10px; background: #1d4ed8; color: #fff; font-size: 15px; font-weight: 600; } .app .stF svg { width: 18px; height: 18px; }
+      .app .stP { font-size: 18px; font-weight: 700; margin: 24px 16px 10px; } .app .stP span { color: #6b7280; font-weight: 500; }
+      .app .pg { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 0 16px; } .app .pc { border-radius: 12px; overflow: hidden; background: #fff; border: 1px solid #e5e7eb; } .app .pc img { width: 100%; height: 150px; object-fit: cover; display: block; } .app .pc b { display: block; font-size: 13.5px; font-weight: 600; padding: 8px 10px 12px; }
+      .bdgs { position: absolute; left: 0; right: 0; display: flex; justify-content: center; gap: 24px; }
+      .bdg { display: flex; align-items: center; gap: 14px; height: 96px; padding: 0 28px 0 20px; border-radius: 18px; background: #000; border: 2px solid #a6a6a6; color: #fff; font-family: "Poppins", sans-serif; }
+      .bdg svg { width: 52px; height: 52px; display: block; }
+      .bdg span { display: flex; flex-direction: column; line-height: 1; }
+      .bdg small { font-weight: 600; font-size: 20px; letter-spacing: 0.5px; }
+      .bdg b { font-weight: 600; font-size: 38px; letter-spacing: -0.5px; margin-top: 4px; white-space: nowrap; }
+      /* the narrator */
+      #guy { position: absolute; left: 0; top: 0; width: 340px; height: 470px; z-index: 30; }
+      #guy svg { width: 100%; height: 100%; overflow: visible; }
+      #bubble { position: absolute; z-index: 31; background: #fff; border: 4px solid #141414; border-radius: 26px; padding: 10px 22px; font-family: "Caveat", cursive; font-weight: 700; font-size: 54px; color: #141414; white-space: nowrap; }
+
+      #end .icon { position: absolute; left: 405px; top: 340px; width: 290px; display: block; }
+      #cta { display: block; padding: 30px 70px; border-radius: 999px; background: #fff; color: var(--blue); font-weight: 800; font-size: 58px; white-space: nowrap; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="36" data-width="1080" data-height="1920">
+      <audio id="bgm" src="assets/bgm.wav" data-start="0" data-duration="36" data-track-index="11"></audio>
+      <!-- halftone fills for the black-and-white newspaper illustrations -->
+      <svg width="0" height="0" style="position:absolute"><defs>
+        <pattern id="ht1" width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="9" height="9" fill="#fbf8f1" /><circle cx="4.5" cy="4.5" r="1.5" fill="#141414" /></pattern>
+        <pattern id="ht2" width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="9" height="9" fill="#fbf8f1" /><circle cx="4.5" cy="4.5" r="2.7" fill="#141414" /></pattern>
+        <pattern id="ht3" width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="9" height="9" fill="#fbf8f1" /><circle cx="4.5" cy="4.5" r="3.7" fill="#141414" /></pattern>
+      </defs></svg>
+      <div id="scene" class="clip layer" data-start="0" data-duration="36" data-track-index="0">
+        <div class="sheet" id="end">
+          <div class="blue"></div>
+          <img class="icon" src="assets/icon_white.png" alt="" />
+          <div id="join">Commande vite !</div>
+          <div id="creates">Mini ventilateurs · chic business, sur</div>
+          <div id="ctaWrap"><div id="cta"><span class="ch ch0">p</span><span class="ch ch1">i</span><span class="ch ch2">-</span><span class="ch ch3">t</span><span class="ch ch4">u</span><span class="ch ch5">p</span><span class="ch ch6">.</span><span class="ch ch7">c</span><span class="ch ch8">o</span><span class="ch ch9">m</span></div></div>
+          <div id="fine">Pack Duo : 29 000 FC · 12,61 $</div><div id="fine3">Pack Famille : 63 000 FC · 27,39 $</div>
+          <div id="fine2">Livraison comprise · Paiement à la livraison</div>
+          <div class="bdgs" id="bdgs" style="top:1500px"><div class="bdg"><svg viewBox="0 0 24 24"><path fill="#fff" d="M16.4 1.4c0 1.1-.5 2.3-1.2 3.1-.7.9-2 1.6-3 1.6-.1 0-.2 0-.3-.1 0-.1 0-.2 0-.4 0-1.1.6-2.3 1.2-3 .8-.9 2.1-1.6 3.2-1.7.1.2.1.3.1.5zm4.6 15.7c0 .1-.5 1.6-1.5 3.1-.9 1.3-1.9 2.7-3.4 2.7s-1.9-.9-3.6-.9c-1.7 0-2.3.9-3.7.9-1.4 0-2.3-1.3-3.4-2.8C4.1 18.3 3 15.5 3 12.8c0-4.3 2.8-6.5 5.6-6.5 1.4 0 2.7.9 3.6.9.9 0 2.2-1 3.9-1 .6 0 2.9.1 4.4 2.2-.1.1-2.4 1.4-2.4 4.2 0 3.3 2.9 4.4 2.9 4.5z"/></svg><span><small>Disponible sur</small><b>App Store</b></span></div>
+              <div class="bdg"><svg viewBox="0 0 24 24"><path fill="#00d7fe" d="M3.6 1.8 13.6 12 3.6 22.2c-.4-.2-.6-.6-.6-1.1V2.9c0-.5.2-.9.6-1.1z"/><path fill="#00f076" d="M3.6 1.8 16.9 9.4 13.6 12z"/><path fill="#f8384b" d="M3.6 22.2 13.6 12l3.3 2.6z"/><path fill="#fdbd00" d="M16.9 9.4 21 11.7c.5.3.5.9 0 1.2l-4.1 1.7-3.3-2.6z"/></svg><span><small>Disponible sur</small><b>Google Play</b></span></div></div>
+        </div>
+        <div class="sheet" id="p2Wrap"><div class="rim" id="p2Rim"></div><div class="sheet" id="p2"><div class="paper"></div><div id="dots" class="layer"></div><div id="s2" class="layer"></div></div></div>
+        <div class="sheet" id="p1Wrap"><div class="rim" id="p1Rim"></div><div class="sheet" id="p1"><div class="paper"></div><div id="s1" class="layer"></div></div></div>
+
+        <!-- narrator: a young Lushois in a PitUp tee (vector, built for this film) -->
+        <div id="guy"><svg viewBox="0 0 340 470">
+          <g id="gBody">
+            <path d="M60 470 C60 360 100 320 170 320 C240 320 280 360 280 470 Z" fill="#1f88c9" />
+            <path d="M150 322 L170 352 L190 322" fill="none" stroke="#156ea6" stroke-width="6" stroke-linecap="round" />
+            <image href="assets/icon_white.png" x="146" y="378" width="48" height="54" />
+            <g id="gArmL"><path d="M78 370 C40 400 34 440 44 470" stroke="#1f88c9" stroke-width="44" stroke-linecap="round" fill="none" /><circle cx="44" cy="470" r="22" fill="#6a3f24" /></g>
+            <g id="gArmR"><path d="M262 370 C300 400 306 440 296 470" stroke="#1f88c9" stroke-width="44" stroke-linecap="round" fill="none" /><circle id="handR" cx="296" cy="470" r="22" fill="#6a3f24" /></g>
+            <rect x="152" y="282" width="36" height="48" rx="14" fill="#5e371f" />
+          </g>
+          <g id="gHead">
+            <ellipse cx="94" cy="190" rx="18" ry="24" fill="#6a3f24" />
+            <ellipse cx="246" cy="190" rx="18" ry="24" fill="#6a3f24" />
+            <ellipse cx="170" cy="180" rx="82" ry="104" fill="#7a4a2b" />
+            <path d="M90 150 C88 70 140 58 170 58 C206 58 254 72 250 150 C236 112 210 100 170 100 C130 100 104 112 90 150 Z" fill="#1b1410" />
+            <g id="gBrows"><path d="M118 146 Q138 134 156 144" stroke="#1b1410" stroke-width="8" fill="none" stroke-linecap="round" /><path d="M184 144 Q202 134 222 146" stroke="#1b1410" stroke-width="8" fill="none" stroke-linecap="round" /></g>
+            <g id="gEyes"><ellipse cx="138" cy="172" rx="15" ry="17" fill="#fff" /><ellipse cx="202" cy="172" rx="15" ry="17" fill="#fff" /><circle cx="141" cy="175" r="8" fill="#1b1410" /><circle cx="205" cy="175" r="8" fill="#1b1410" /></g>
+            <path d="M162 196 Q170 214 180 198" stroke="#5a3218" stroke-width="5" fill="none" stroke-linecap="round" />
+            <g transform="translate(170 238)"><ellipse id="mouth" cx="0" cy="0" rx="24" ry="4" fill="#4a1414" /><rect id="teeth" x="-16" y="-6" width="32" height="6" rx="3" fill="#fff" /></g>
+          </g>
+        </svg></div>
+        <div id="bubble">On est d'accord ?</div>
+      </div>
+    </div>
+
+    <script src="assets/hw.js"></script>
+    <script src="assets/mouth.js"></script>
+    <script>
+     Promise.all(["500 14px Poppins","700 20px Poppins","900 100px Playfair","700 24px OldStd","700 80px Caveat","800 60px Poppins","600 30px Poppins"].map((f) => document.fonts.load(f))).then(() => document.fonts.ready).then(() => {
+      const tl = gsap.timeline({ paused: true });
+      let seed = 0x3a7c;
+      const rnd = () => { seed = (Math.imul(1664525, seed) + 1013904223) >>> 0; return seed / 4294967296; };
+      const $ = (id) => document.getElementById(id);
+      const N = (t) => t + 0.3;   // voice-file seconds -> film seconds
+
+      // ---------- builders ----------
+      function jag(el) {
+        const w = el.offsetWidth, h = el.offsetHeight, pts = [], st = 16, j = () => (rnd() * 5).toFixed(1);
+        for (let x = 0; x <= w; x += st) pts.push(`${x}px ${j()}px`);
+        for (let y = 0; y <= h; y += st) pts.push(`${w - j()}px ${y}px`);
+        for (let x = w; x >= 0; x -= st) pts.push(`${x}px ${h - j()}px`);
+        for (let y = h; y >= 0; y -= st) pts.push(`${j()}px ${y}px`);
+        el.style.clipPath = `polygon(${pts.join(",")})`;
+      }
+      function clipping(parent, id, o) {
+        const d = document.createElement("div"); d.className = "np"; d.id = id;
+        d.style.left = o.x + "px"; d.style.top = o.y + "px"; d.style.width = o.w + "px";
+        d.innerHTML = (o.hd ? `<div class="hd" style="font-size:${o.size}px">${o.hd.map((l) => `<span>${l}</span>`).join("")}</div>` : "") +
+          (o.img ? `<img class="ph" src="${o.img}" style="height:${o.ih}px" alt="">` : "") + (o.art ? `<div class="art">${o.art}</div>` : "") + (o.cap ? `<div class="cap">${o.cap}</div>` : "");
+        parent.appendChild(d); jag(d);
+        const tp = document.createElement("div"); tp.className = "tape"; tp.id = id + "T"; parent.appendChild(tp);
+        gsap.set(tp, { left: o.x + o.w / 2 - 65 + (rnd() - 0.5) * 60, top: o.y - 18, rotation: (rnd() - 0.5) * 10 });
+        gsap.set([d, tp], { opacity: 0 });
+        return d;
+      }
+      function slap(id, at, rot) {
+        tl.fromTo("#" + id, { opacity: 0, y: -50, scale: 1.12, rotation: rot - 8 }, { opacity: 1, y: 0, scale: 1, rotation: rot, duration: 0.3, ease: "back.out(1.5)" }, at);
+        tl.fromTo("#" + id + "T", { opacity: 0, scale: 1.4 }, { opacity: 1, scale: 1, duration: 0.16, ease: "power2.out" }, at + 0.14);
+      }
+      function pull(ids, at) {
+        ids.forEach((id, k) => {
+          const dir = k % 2 ? 1 : -1, sel = $(id + "T") ? ["#" + id, "#" + id + "T"] : ["#" + id];
+          tl.to(sel, { x: dir * 1300, y: -120 - k * 40, rotation: dir * 25, duration: 0.42, ease: "power3.in" }, at + k * 0.04);
+        });
+      }
+      function text(parent, id, cls, html, css) {
+        const d = document.createElement("div"); d.className = cls; d.id = id; d.innerHTML = html; Object.assign(d.style, css); parent.appendChild(d); gsap.set(d, { opacity: 0 }); return d;
+      }
+      function stamp(parent, id, label, css, at, rot) {
+        const d = text(parent, id, "stamp", label, css);
+        tl.fromTo(d, { opacity: 0, scale: 2.2, rotation: rot - 6 }, { opacity: 0.92, scale: 1, rotation: rot, duration: 0.18, ease: "power4.in" }, at);
+        tl.fromTo(parent.parentElement, { x: 0 }, { x: 6, duration: 0.04, yoyo: true, repeat: 3, ease: "none" }, at + 0.18);
+      }
+      function rel(el, anc) { let x = 0, y = 0, e = el; while (e && e !== anc) { x += e.offsetLeft; y += e.offsetTop; e = e.offsetParent; } return { left: x, top: y, width: el.offsetWidth, height: el.offsetHeight, bottom: y + el.offsetHeight }; }
+      function marker(parent, wordId, at, dur) {
+        const r = rel($(wordId), parent), h = document.createElement("div"); h.className = "hl";
+        Object.assign(h.style, { left: r.left - 8 + "px", top: r.top + r.height * 0.18 + "px", width: r.width + 16 + "px", height: r.height * 0.72 + "px" });
+        parent.insertBefore(h, parent.firstChild); tl.fromTo(h, { scaleX: 0 }, { scaleX: 1, duration: dur || 0.35, ease: "power2.out" }, at); return h;
+      }
+      let mk = 0;
+      function mark(parent, wordId, style, at, opt) {
+        const r = rel($(wordId), parent), id = "mk" + mk++, pad = style === "ellipse" ? 34 : 6;
+        const w = r.width + pad * 2, h = style === "ellipse" ? r.height + 40 : 40;
+        const d = document.createElement("div"); d.className = "hw-mark"; d.id = id;
+        const top = style === "ellipse" ? r.top - 20 : style === "strike" ? r.top + r.height * 0.45 : r.bottom - 8;
+        Object.assign(d.style, { left: r.left - pad + "px", top: top + "px", width: w + "px", height: h + "px" });
+        if (opt && opt.color) d.style.setProperty("--hw-ink", opt.color);
+        d.innerHTML = `<svg viewBox="0 0 ${w} ${h}"><path></path></svg>`; parent.appendChild(d);
+        d.querySelector("path").setAttribute("d", style === "ellipse" ? hwWobbleEllipse(w / 2, h / 2, w / 2 - 4, h / 2 - 4, 7 + mk, 0.07) : hwMarkPath(w, 40, style, 3 + mk));
+        gsap.set(d, { opacity: 0 }); tl.set(d, { opacity: 1 }, at);
+        hwMarkOn(tl, "#" + id, at, style === "ellipse" ? 0.45 : 0.35);
+        return id;
+      }
+      function tear(id, s, at, dur) {
+        const clipEl = $(id), rimEl = $(id + "Rim"), wrapEl = $(id + "Wrap");
+        let st = s >>> 0; const r = () => { st = (Math.imul(1664525, st) + 1013904223) >>> 0; return st / 4294967296; };
+        const noise = (k) => { const a = []; for (let i = 0; i <= k; i++) a.push(r() * 2 - 1); return (v) => { const f = v * k, i = Math.min(k - 1, Math.floor(f)); let u = f - i; u = u * u * (3 - 2 * u); return a[i] + (a[i + 1] - a[i]) * u; }; };
+        const ROWS = 160, PX = 100 / 1080, wander = noise(6), core = noise(14), edge = [];
+        for (let i = 0; i <= ROWS; i++) { const v = i / ROWS; edge.push({ y: (v * 100).toFixed(2) + "%", o: (v - 0.5) * 4 + (wander(v) * 46 + (r() * 2 - 1) * 3.5) * PX, rim: Math.min(16, Math.max(7, 7 + 9 * (core(v) * 0.5 + 0.5) + (r() * 2 - 1) * 3)) * PX }); }
+        const ease = (p) => (p < 0.3 ? 0.2 * Math.pow(p / 0.3, 2) : 0.2 + 0.8 * (1 - Math.pow(1 - (p - 0.3) / 0.7, 3)));
+        const paint = (p) => {
+          const e = ease(Math.max(0, Math.min(1, p))), bx = -12 + 124 * e;
+          let a = "100% 0%, 100% 100%", b = a;
+          for (let i = ROWS; i >= 0; i--) { const x = bx + edge[i].o; a += `, ${x.toFixed(2)}% ${edge[i].y}`; b += `, ${(x - edge[i].rim).toFixed(2)}% ${edge[i].y}`; }
+          clipEl.style.clipPath = `polygon(${a})`; rimEl.style.clipPath = `polygon(${b})`;
+          wrapEl.style.transform = `translateX(${(3 * e).toFixed(3)}%) rotate(${(1.5 * e).toFixed(3)}deg)`;
+          wrapEl.style.filter = `drop-shadow(0 ${(12 * e).toFixed(1)}px ${(24 * e).toFixed(1)}px rgba(0,0,0,0.25))`;
+          wrapEl.style.opacity = e >= 0.999 ? 0 : 1;
+        };
+        paint(0); const pr = { p: 0 };
+        tl.fromTo(pr, { p: 0 }, { p: 1, duration: dur, ease: "none", onUpdate: () => paint(pr.p) }, at);
+      }
+
+      // ================= PAGE 1 — the heat, the product, the two packs =================
+      const s1 = $("s1");
+      const ico = {
+        search: `<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>`,
+        bag: `<svg viewBox="0 0 24 24"><path d="M5 8h14l-1 12H6z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg>`,
+        fork: `<svg viewBox="0 0 24 24"><path d="M5 3l14 18M19 3L5 21"/></svg>`,
+        grid: `<svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/></svg>`,
+        user: `<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4.5 4.5-6 8-6s7 1.5 8 6"/></svg>`,
+        home: `<svg viewBox="0 0 24 24"><path d="M4 10l8-6 8 6v10h-5v-6H9v6H4z"/></svg>`,
+        offer: `<svg viewBox="0 0 24 24"><rect x="4" y="7" width="16" height="13" rx="2"/><path d="M9 7V5h6v2M4 12h16"/></svg>`,
+        shop: `<svg viewBox="0 0 24 24"><path d="M4 9l2-5h12l2 5M4 9h16v11H4zM9 20v-6h6v6"/></svg>`,
+        back: `<svg viewBox="0 0 24 24"><path d="M19 12H5M11 6l-6 6 6 6"/></svg>`,
+        pin: `<svg viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>`,
+        heart: `<svg viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg>`,
+        shield: `<svg viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg>`,
+      };
+      const nav = (on) => `<div class="nav">${[["home", "Accueil"], ["bag", "Commander"], ["offer", "Offres"], ["shop", "Marché"], ["search", "Découvrir"]].map(([i, l]) => `<div class="${l === on ? "on" : ""}">${ico[i]}<span>${l}</span></div>`).join("")}</div>`;
+      const top = `<div class="sb"><b>14:30</b><span class="sbi"><svg viewBox="0 0 18 12"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="5" width="3" height="7" rx="1"/><rect x="10" y="2.5" width="3" height="9.5" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></svg><svg viewBox="0 0 16 12"><path d="M8 11.5l2.4-2.9a3.6 3.6 0 0 0-4.8 0zM3.3 6.4a7 7 0 0 1 9.4 0l1.6-1.9a9.6 9.6 0 0 0-12.6 0zM.2 3.3a11.6 11.6 0 0 1 15.6 0" /></svg><svg viewBox="0 0 27 13"><rect x="0.5" y="0.5" width="23" height="12" rx="3.5" fill="none" stroke-width="1"/><rect x="2.5" y="2.5" width="16" height="8" rx="2"/><rect x="25" y="4" width="1.6" height="5" rx="0.8"/></svg></span></div>
+        <div class="hdr"><img src="assets/icon_blue.png" alt="">${ico.user}</div>`;
+
+      // "Il fait très chaud à Louchi, hein ?"
+      text(s1, "t0", "big", `<span>Il fait très chaud</span><span>à <span class="w" style="color:#d6332a">Lushi.</span></span>`, { top: "250px", fontSize: "128px" });
+      tl.fromTo("#t0", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.25, ease: "power3.out" }, N(0.08));
+      const rays = Array.from({ length: 14 }, (_, k) => `<polygon points="217,30 243,30 230,-14" fill="#141414" transform="rotate(${k * (360 / 14)} 230 140)" />`).join("");
+      const heat = [150, 230, 310].map((x) => `<path class="heat" d="M${x} 300 q-14 -14 0 -28 t0 -28" stroke="#141414" stroke-width="6" fill="none" stroke-linecap="round" />`).join("");
+      clipping(s1, "cSun", { x: 160, y: 620, w: 760, size: 0, art:
+        `<svg viewBox="0 0 460 360" style="overflow:hidden"><rect width="460" height="360" fill="url(#ht1)" /><g id="sunRays">${rays}</g>
+          <circle cx="230" cy="140" r="78" fill="#fbf8f1" stroke="#141414" stroke-width="7" /><circle cx="230" cy="140" r="58" fill="url(#ht2)" />${heat}
+          <rect y="318" width="460" height="42" fill="url(#ht3)" /></svg>` });
+      slap("cSun", N(0.5), -2);
+      tl.to("#sunRays", { rotation: 40, svgOrigin: "230 140", duration: 3, ease: "none" }, N(0.5));
+      tl.fromTo("#cSun .heat", { y: 8, opacity: 0.3 }, { y: -8, opacity: 1, duration: 0.35, ease: "sine.inOut", yoyo: true, repeat: 5, stagger: 0.12 }, N(0.6));
+      text(s1, "sol", "note", "PitUp a la solution…", { left: "120px", top: "1350px", fontSize: "84px", transform: "rotate(-3deg)" });
+      tl.fromTo("#sol", { opacity: 0, x: -20 }, { opacity: 1, x: 0, duration: 0.2 }, N(1.98));
+      pull(["cSun"], N(3.1)); tl.to(["#t0", "#sol"], { opacity: 0, y: -30, duration: 0.15 }, N(3.1));
+
+      // "le mini ventilateur ! Petit, il tient dans la main. Il y a plusieurs couleurs. Et pour les enfants, des modèles tout mignons."
+      const prod = (id, title, img, at, rot, pos) => { clipping(s1, id, { x: 70, y: 330, w: 940, size: 84, hd: title, img, ih: 780, pos: pos || "50% 50%" }); slap(id, at, rot); };
+      prod("cP1", ["Le mini ventilateur."], "assets/chic/fan_hand.jpg", N(3.33), -1.5, "50% 45%");
+      text(s1, "main", "note", "il tient dans la main.", { left: "130px", top: "1350px", fontSize: "80px", transform: "rotate(-3deg)" });
+      tl.fromTo("#main", { opacity: 0, x: -20 }, { opacity: 1, x: 0, duration: 0.2 }, N(5.48));
+      pull(["cP1"], N(6.5)); tl.to("#main", { opacity: 0, duration: 0.15 }, N(6.5));
+      prod("cP2", ["Plusieurs couleurs."], "assets/chic/fan_colors.jpg", N(6.64), 1.5);
+      pull(["cP2"], N(8.05));
+      prod("cP3", [`<span class="w" id="wKids">Pour les enfants.</span>`], "assets/chic/fan_kids.jpg", N(8.18), -1);
+      text(s1, "mign", "note", "tout mignons ♥", { left: "520px", top: "1350px", fontSize: "80px", color: "#d6332a", transform: "rotate(-4deg)" });
+      tl.fromTo("#mign", { opacity: 0, scale: 0.7 }, { opacity: 1, scale: 1, duration: 0.25, ease: "back.out(2)" }, N(9.65));
+      pull(["cP3"], N(10.4)); tl.to("#mign", { opacity: 0, duration: 0.15 }, N(10.4));
+
+      // "Deux offres, livraison comprise. Pack Duo… Pack Famille… Et tu paies à la livraison."
+      text(s1, "two", "note", "2 offres · livraison comprise", { left: "70px", top: "150px", fontSize: "76px", color: "#141414" });
+      tl.fromTo("#two", { opacity: 0, x: -20 }, { opacity: 1, x: 0, duration: 0.2 }, N(10.57));
+      const fans = (n) => { let g = ""; const step = 460 / n; for (let k = 0; k < n; k++) { const cx = step * k + step / 2; g += `<g transform="translate(${cx} 46)"><rect x="-6" y="18" width="12" height="26" rx="4" fill="#141414" /><circle r="26" fill="#fbf8f1" stroke="#141414" stroke-width="5" />${[0, 120, 240].map((a) => `<ellipse cx="0" cy="-12" rx="7" ry="12" fill="url(#ht3)" stroke="#141414" stroke-width="2.5" transform="rotate(${a})" />`).join("")}<circle r="5" fill="#141414" /></g>`; } return `<svg viewBox="0 0 460 92">${g}</svg>`; };
+      clipping(s1, "cDuo", { x: 60, y: 270, w: 960, size: 96, hd: ["Pack Duo", `<span class="w" style="color:#1f88c9">29 000 FC</span>`, `<span class="w" style="color:#d6332a">12,61 $</span>`], art: fans(2), cap: "2 ventilateurs · livraison comprise" });
+      slap("cDuo", N(12.95), -1.2);
+      clipping(s1, "cFam", { x: 60, y: 850, w: 960, size: 96, hd: ["Pack Famille", `<span class="w" style="color:#1f88c9">63 000 FC</span>`, `<span class="w" style="color:#d6332a">27,39 $</span>`], art: fans(5), cap: "5 ventilateurs · livraison comprise" });
+      slap("cFam", N(16.18), 1.2);
+      stamp(s1, "stPay", "Paiement à la livraison", { left: "40px", top: "1460px", fontSize: "48px" }, N(19.75), -4);
+      tear("p1", 0x3c1fa9e7, N(20.85), 0.55);
+
+      // ================= PAGE 2 — how to find it on PitUp =================
+      const s2 = $("s2");
+      text(s2, "find", "big", `<span>Pour le trouver :</span>`, { top: "190px", fontSize: "104px" });
+      tl.fromTo("#find", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.25, ease: "power3.out" }, N(21.49));
+      // real PitUp screens: Marché > search "chic business" > the shop > Mini ventilateur (prices left out)
+      const scrH = `<div class="app" id="appH">${top}<div class="hw"><div class="hwT">Bienvenue sur PitUp</div><div class="hwB"></div><div class="hwB s"></div><div class="hwB s"></div></div>${nav("Accueil")}</div>`;
+      const scrM = `<div class="app" id="appM">${top}<div class="mk">
+        <div class="mkT">Marché</div><div class="mkD">Boutiques et restaurants réunis : explorez tout ce que la communauté PitUp propose.</div>
+        <div class="seg"><div class="on">${ico.grid}Marché</div><div>${ico.bag}Boutique</div><div>${ico.fork}Restaurant</div></div>
+        <div class="mkS" id="mkS">${ico.search}<span class="q" id="qTxt"></span><span class="ph" id="qPh">Rechercher...</span></div>
+        <div class="mkC">Toutes les villes</div><div class="mkN" id="mkN">1 résultat affiché</div>
+        <div class="rc" id="rc"><div class="rcB"><img src="assets/chic/banner.jpg" alt=""><i>${ico.bag}Boutique</i><img class="rcL" src="assets/chic/logo.jpg" alt=""></div>
+          <b>chic business</b><span>divers</span><span class="rcLoc">Lubumbashi, République Démocratique du Congo</span><em>${ico.shield}Livraison assurée par PitUp</em></div>
+        </div>${nav("Marché")}</div>`;
+      const scrS = `<div class="app" id="appS">${top}<div class="stIn" id="stIn">
+        <div class="back">${ico.back}Retour</div><div class="stB"><img src="assets/chic/banner.jpg" alt=""></div><img class="stL" src="assets/chic/logo.jpg" alt="">
+        <div class="stN">chic business</div><div class="stD">divers</div><div class="badge" style="margin:8px 16px 0">${ico.shield}Les livraisons sont assurées par PitUp</div>
+        <div class="stF">${ico.heart}Suivre</div><div class="stP">Produits de la boutique <span>(7)</span></div>
+        <div class="pg"><div class="pc" id="pcFan"><img src="assets/chic/fan_kids.jpg" alt=""><b>Mini ventilateur</b></div><div class="pc"><img src="assets/chic/echarpes.jpg" alt=""><b>écharpes</b></div></div>
+        </div>${nav("Marché")}</div>`;
+      const dev = text(s2, "dev", "", `<i class="sbtn" style="left:-5px;top:190px;height:46px"></i><i class="sbtn" style="left:-5px;top:260px;height:80px"></i><i class="sbtn" style="left:-5px;top:356px;height:80px"></i><i class="sbtn" style="right:-5px;top:300px;height:130px"></i>
+        <div class="bez"><div class="scr">${scrH}${scrM}${scrS}<div class="island"></div><div class="homei"></div><div class="glare"></div><div id="touch"></div></div></div>`, {});
+      gsap.set(["#appM", "#appS"], { x: 390 }); gsap.set(["#touch", "#rc", "#mkN"], { opacity: 0 });
+      tl.fromTo(dev, { opacity: 0, y: 380, rotation: 6 }, { opacity: 1, y: 0, rotation: -2, duration: 0.45, ease: "power3.out" }, N(22.2));
+      const steps = [["st1", "1 · ouvre PitUp", 22.37], ["st2", "2 · Marché", 23.34], ["st3", "3 · chic business", 24.28], ["st4", "4 · la boutique", 25.84], ["st5", "5 · Mini ventilateur", 26.89]];
+      steps.forEach(([id, l, t], k) => { text(s2, id, "note", l, { left: "610px", top: 520 + k * 150 + "px", fontSize: "52px" }); tl.fromTo("#" + id, { opacity: 0, x: 20 }, { opacity: 1, x: 0, duration: 0.2 }, N(t)); });
+      const tap = (x, y, at) => { tl.fromTo("#touch", { opacity: 0, scale: 1.4, x, y }, { opacity: 0.9, scale: 1, duration: 0.12 }, at); tl.to("#touch", { opacity: 0, duration: 0.12 }, at + 0.22); };
+      tap(347, 1029, N(23.5));                                           // Marché tab
+      tl.to("#appM", { x: 0, duration: 0.3, ease: "power3.out" }, N(23.7)); tl.to("#appH", { x: -120, duration: 0.3 }, N(23.7));
+      tap(248, 420, N(24.2));                                            // search field
+      const q = "chic business", typed = { n: 0 };
+      tl.set("#qPh", { opacity: 0 }, N(24.4));
+      tl.fromTo(typed, { n: 0 }, { n: q.length, duration: 0.9, ease: "none", onUpdate: () => { $("qTxt").textContent = q.slice(0, Math.round(typed.n)); } }, N(24.4));
+      tl.to("#mkS", { boxShadow: "0 0 0 3px #1f88c9", duration: 0.1 }, N(24.4));
+      tl.fromTo(["#mkN", "#rc"], { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.25, stagger: 0.08 }, N(25.35));
+      tap(150, 700, N(25.95));                                           // the shop card
+      tl.to("#appS", { x: 0, duration: 0.3, ease: "power3.out" }, N(26.15)); tl.to("#appM", { x: -120, duration: 0.3 }, N(26.15));
+      tl.to("#stIn", { y: -250, duration: 0.45, ease: "power2.inOut" }, N(26.55));
+      tap(135, 560, N(27.0));                                            // Mini ventilateur
+      tl.to("#pcFan", { boxShadow: "0 0 0 4px #1f88c9", duration: 0.12 }, N(27.1));
+      tear("p2", 0x2b7e15a9, N(28.25), 0.55);
+
+      // "Commande vite sur : P. I. tiret. T. U. P. point com." — each character lights up as it is spelled
+      tl.fromTo("#end .icon", { scale: 0.8, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.3, ease: "back.out(2)" }, N(28.45));
+      tl.fromTo("#join", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.3, ease: "power3.out" }, N(28.58));
+      tl.fromTo("#creates", { opacity: 0 }, { opacity: 1, duration: 0.25 }, N(29.2));
+      tl.fromTo("#cta", { scale: 0.7, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.35, ease: "back.out(2)" }, N(29.5));
+      [[0, 29.84], [1, 30.04], [2, 30.59], [3, 31.33], [4, 31.6], [5, 32.05], [6, 32.3], [7, 32.63], [8, 32.63], [9, 32.63]].forEach(([k, t]) =>
+        tl.fromTo("#cta .ch" + k, { scale: 1, color: "#1f88c9" }, { scale: 1.45, color: "#d6332a", duration: 0.12, yoyo: true, repeat: 1, ease: "power2.out" }, N(t)));
+      tl.fromTo(["#fine", "#fine3", "#fine2"], { opacity: 0 }, { opacity: 1, duration: 0.4, stagger: 0.1 }, N(32.9));
+      tl.fromTo("#bdgs .bdg", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.35, stagger: 0.12, ease: "back.out(1.6)" }, N(33.3));
+
+      // ================= Monsieur Peter =================
+      gsap.set("#guy", { x: 740, y: 1500, transformOrigin: "50% 100%" });
+      gsap.set("#bubble", { opacity: 0 });
+      tl.fromTo("#guy", { y: 1950 }, { y: 1500, duration: 0.45, ease: "back.out(1.6)" }, 0.05);
+      const lip = { f: 0 };
+      tl.fromTo(lip, { f: 0 }, { f: MOUTH.length - 1, duration: (MOUTH.length - 1) / 30, ease: "none", onUpdate: () => {
+        const v = MOUTH[Math.round(lip.f)] || 0; $("mouth").setAttribute("ry", (3 + v * 20).toFixed(1)); $("mouth").setAttribute("rx", (24 - v * 4).toFixed(1)); $("teeth").setAttribute("opacity", v > 0.25 ? 1 : 0);
+      } }, 0);
+      tl.fromTo("#gHead", { y: 0, rotation: 0, transformOrigin: "170px 300px" }, { y: -6, rotation: 2, duration: 0.6, ease: "sine.inOut", yoyo: true, repeat: 46 }, 0);
+      for (let b = 1.6; b < 28.2; b += 2.7 + ((b * 7) % 1.3)) { tl.to("#gEyes", { scaleY: 0.1, transformOrigin: "170px 175px", duration: 0.06 }, b); tl.to("#gEyes", { scaleY: 1, duration: 0.08 }, b + 0.08); }
+      const armR = (rot, at, d) => tl.to("#gArmR", { rotation: rot, svgOrigin: "262 370", duration: d || 0.25, ease: "power2.out" }, at);
+      const armL = (rot, at, d) => tl.to("#gArmL", { rotation: rot, svgOrigin: "78 370", duration: d || 0.25, ease: "power2.out" }, at);
+      [0.4, 0.6, 0.8, 1.0, 1.2, 1.4].forEach((t, k) => armR(k % 2 ? -150 : -120, t, 0.12)); armR(0, 1.7);   // fans himself, it's hot
+      armL(120, N(3.4)); armL(0, N(4.7));                                                                 // points at the fan
+      tl.to("#guy", { scale: 1.06, duration: 0.15, yoyo: true, repeat: 1 }, N(12.95));
+      armR(-160, N(13.1)); armR(0, N(14.4)); armR(-160, N(16.3)); armR(0, N(17.6));                      // thumbs up on the packs
+      armL(120, N(22.4)); armL(0, N(23.6));                                                               // points at the phone
+      tl.to("#guy", { y: 1960, duration: 0.35, ease: "power3.in" }, N(28.1));
+
+
+      hwBoil(tl, [".hw-mark", ".note"], { amp: 1.1, rot: 0.3, frameDrop: 3, seed: 5 });
+      window.__timelines["main"] = tl;
+      tl.seek(0);
+     });
+    </script>
+  </body>
+</html>

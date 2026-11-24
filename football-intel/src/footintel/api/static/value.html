@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Vérificateur de cotes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Barlow+Semi+Condensed:wght@600;700&display=swap">
+<script>try { document.documentElement.dataset.theme = localStorage.getItem("fi_theme") || "dark"; } catch { document.documentElement.dataset.theme = "dark"; }</script>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="value.css">
+
+</head>
+<body>
+<nav class="tabbar" aria-label="Pages principales">
+  <a href="./#/hier">Hier</a><a href="./#/">Aujourd'hui</a><a href="./#/matchs">Matchs</a><a href="value.html" class="active" aria-current="page">Cote</a><a href="./#/bilan">Bilan</a>
+</nav>
+<div class="wrap" id="root" data-src="/api/dash/value-board">
+  <header class="intro">
+    <a class="back" href="./#/">Retour à Aujourd'hui</a>
+    <h1>Vérifier une cote</h1>
+    <p class="lead">Trouvez le match, tapez la cote affichée par betPawa : le site vous dit si elle vaut le coup.</p>
+    <p class="muted small" id="stamp">Chargement des prédictions…</p>
+    <label class="search"><span class="sr">Chercher une équipe</span>
+      <input type="search" id="q" placeholder="Chercher une équipe" autocomplete="off" enterkeyhint="search"></label>
+    <details class="formula small"><summary>Comment le verdict est calculé</summary>
+      Tape la cote proposée par ton bookmaker. <strong>Cote juste</strong> = 1 / probabilité du modèle.
+      <strong>Valeur théorique</strong> = probabilité × cote − 1. Une valeur positive n'est ni un gain garanti
+      ni une preuve de rentabilité : le modèle est au niveau du marché, sans avantage démontré.
+      Le verdict utilise la probabilité du marché quand elle existe, sinon celle du modèle. Le combiné
+      ajoute le Bonus Gagnant betPawa (barème relevé le 30/10/2026, sélections à 1,20 ou plus).
+    </details>
+  </header>
+  <div class="filters" role="group" aria-label="Filtrer les compétitions" id="filters"></div>
+  <section id="elo" aria-label="Sélection Elo"></section>
+  <div class="layout">
+    <main id="list" aria-live="polite"></main>
+    <aside class="coupon is-empty" id="coupon" aria-label="Combiné">
+      <button class="coupon-head" id="coupon-toggle" type="button" aria-expanded="false"><h2>Mon combiné</h2><span id="c-short" class="muted small"></span></button>
+      <ul id="sel"></ul>
+      <p class="empty" id="sel-empty">Ajoute des sélections avec « + combiné ». Une seule sélection par match.</p>
+      <div class="kv" id="sum" hidden>
+        <span>Chances de passer</span><span class="num" id="c-prob"></span>
+        <span>Cote juste</span><span class="num" id="c-fair"></span>
+        <span>Votre cote totale</span><span class="num" id="c-odds"></span>
+        <span>Bonus betPawa</span><span class="num" id="c-bonus"></span>
+        <label for="c-pay">Gain affiché par betPawa pour 1 misé</label>
+        <input type="number" id="c-pay" step="0.01" min="1" inputmode="decimal" placeholder="auto">
+        <span>Verdict</span><span class="num big" id="c-ev"></span>
+      </div>
+      <p class="note" id="c-note"></p>
+    </aside>
+  </div>
+  <p class="foot" id="foot">Sources : football-data.co.uk ; openfootball ; données OpenLigaDB (ODbL 1.0) ; Data provided by football-data.org ; cotes du marché : The Odds API.
+    Les probabilités quantifient l'incertitude ; elles ne garantissent aucun résultat.</p>
+</div>
+
+<script src="names.js"></script>
+<script src="nav.js"></script>
+<script src="value.js"></script>
+</body>
+</html>

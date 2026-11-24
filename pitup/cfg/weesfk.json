@@ -1,0 +1,84 @@
+{
+ "project": "pitup-weesfk",
+ "bpm": 93.46,
+ "song": "TEZZ_x_Thiago_Sub___Coco.mp3",
+ "song_off": 12.106,
+ "gap": 0.5,
+ "intro_vo": "fx_1",
+ "outro_vo": "fxc_1",
+ "intro_word": "WEES FK",
+ "intro_l1": "Wees fk,",
+ "intro_l2": "en lumière.",
+ "recap_l1": "Tout ça,",
+ "recap_l2": "chez Wees fk.",
+ "intro_minis": [
+  [
+   "yara",
+   60,
+   840,
+   -6
+  ],
+  [
+   "gourdes",
+   400,
+   900,
+   4
+  ],
+  [
+   "sac",
+   700,
+   830,
+   -4
+  ]
+ ],
+ "shots": [
+  [
+   "yara",
+   "fy_0",
+   "La Yara.",
+   "YARA",
+   "ROSE",
+   430
+  ],
+  [
+   "asad",
+   "fy_1",
+   "Asad.",
+   "ASAD",
+   "INK",
+   430
+  ],
+  [
+   "badee",
+   "fy_2",
+   "Badée Al Oud.",
+   "OUD",
+   "SAND",
+   520
+  ],
+  [
+   "charmes",
+   "wf_4",
+   "Les charmes.",
+   "CHARMES",
+   "CREAM",
+   250
+  ],
+  [
+   "gourdes",
+   "wf_5",
+   "Les gourdes.",
+   "GOURDES",
+   "BLUE",
+   250
+  ],
+  [
+   "sac",
+   "wf_6",
+   "Le sac pliable.",
+   "SAC",
+   "CREAM",
+   520
+  ]
+ ]
+}

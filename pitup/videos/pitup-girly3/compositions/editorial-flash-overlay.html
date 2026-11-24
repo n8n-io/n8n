@@ -1,0 +1,130 @@
+<!-- hyperframes-registry-item: editorial-flash-overlay -->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        width: 1920px;
+        height: 1080px;
+        margin: 0;
+        overflow: hidden;
+        background: transparent;
+      }
+
+      #ef-flash {
+        --hf-editorial-flash-wash: 255 253 250;
+        --hf-editorial-flash-warm: 255 174 105;
+        --hf-editorial-flash-cool: 183 218 255;
+        position: absolute;
+        inset: -12%;
+        overflow: hidden;
+        pointer-events: none;
+      }
+
+      #ef-flash .ef-layer {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+        will-change: opacity, transform;
+      }
+
+      #ef-wash {
+        background: rgb(var(--hf-editorial-flash-wash));
+      }
+
+      #ef-core {
+        inset: -18%;
+        background: radial-gradient(
+          ellipse 68% 92% at 37% 47%,
+          rgb(255 255 255) 0%,
+          rgb(255 255 255 / 98%) 20%,
+          rgb(var(--hf-editorial-flash-wash) / 86%) 45%,
+          rgb(var(--hf-editorial-flash-warm) / 32%) 67%,
+          transparent 86%
+        );
+        mix-blend-mode: screen;
+        transform-origin: 38% 48%;
+      }
+
+      #ef-sweep {
+        inset: -28%;
+        background: linear-gradient(
+          108deg,
+          transparent 21%,
+          rgb(var(--hf-editorial-flash-warm) / 10%) 38%,
+          rgb(var(--hf-editorial-flash-wash) / 90%) 49%,
+          rgb(255 255 255 / 98%) 53%,
+          rgb(var(--hf-editorial-flash-cool) / 24%) 62%,
+          transparent 79%
+        );
+        mix-blend-mode: screen;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="editorial-flash-overlay"
+      data-composition-id="editorial-flash-overlay"
+      data-start="0"
+      data-duration="4"
+      data-width="1920"
+      data-height="1080"
+    >
+      <div id="ef-flash" aria-hidden="true">
+        <div id="ef-wash" class="ef-layer"></div>
+        <div id="ef-core" class="ef-layer" data-layout-allow-overflow></div>
+        <div id="ef-sweep" class="ef-layer" data-layout-allow-overflow></div>
+      </div>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+
+      var flash = document.getElementById("ef-flash");
+      var host = flash && flash.closest("[data-composition-id]");
+      if (!host) throw new Error("Editorial Flash could not find its composition host");
+
+      var compositionId = host.getAttribute("data-composition-id");
+      var duration = Number(host.getAttribute("data-duration")) || 4;
+      var hit = Math.max(0.12, duration * 0.58);
+      var tl = gsap.timeline({ paused: true });
+
+      tl.to({}, { duration: duration, ease: "none" }, 0);
+      tl.to("#ef-wash", { opacity: 0.92, duration: 0.04, ease: "power4.in" }, hit);
+      tl.fromTo(
+        "#ef-core",
+        { opacity: 0, scale: 0.86, rotation: -5 },
+        { opacity: 1, scale: 1, rotation: -5, duration: 0.05, ease: "power4.in" },
+        hit - 0.01,
+      );
+      tl.fromTo(
+        "#ef-sweep",
+        { opacity: 0, xPercent: -12, rotation: -2 },
+        { opacity: 0.9, xPercent: 8, rotation: -2, duration: 0.04, ease: "power4.in" },
+        hit,
+      );
+      tl.to("#ef-wash", { opacity: 0, duration: 0.18, ease: "power3.out" }, hit + 0.04);
+      tl.to(
+        "#ef-core",
+        { opacity: 0, scale: 1.18, rotation: -5, duration: 0.34, ease: "power2.out" },
+        hit + 0.04,
+      );
+      tl.to(
+        "#ef-sweep",
+        { opacity: 0, xPercent: 28, rotation: -2, duration: 0.3, ease: "power2.out" },
+        hit + 0.04,
+      );
+
+      window.__timelines[compositionId] = tl;
+    </script>
+  </body>
+</html>

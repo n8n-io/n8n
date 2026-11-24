@@ -1,0 +1,150 @@
+{
+  "skill_name": "social",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Help me create a LinkedIn content strategy. I'm a SaaS founder building in public and want to grow my personal brand to drive awareness for my product. I currently have 500 followers and post maybe once a week.",
+      "expected_output": "Should check for product-marketing.md first. Should establish content pillars (3-5) appropriate for a SaaS founder building in public: industry insights, behind-the-scenes, educational content, personal stories, promotional (minimal). Should apply the platform quick reference for LinkedIn (3-5x/week recommended, carousels and stories perform well). Should provide hook formulas for LinkedIn posts. Should create a weekly content calendar. Should include engagement strategy (daily 30-min routine). Should address going from 1x/week to 3-5x/week with a batching strategy.",
+      "assertions": [
+        "Checks for product-marketing.md",
+        "Establishes 3-5 content pillars",
+        "Applies LinkedIn platform guidance",
+        "Provides hook formulas",
+        "Creates weekly content calendar",
+        "Includes engagement strategy",
+        "Addresses batching strategy for consistency",
+        "Recommends increasing from 1x to 3-5x per week"
+      ],
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Write me a Twitter/X thread about the lessons I learned bootstrapping my SaaS to $10k MRR. Include hooks and a CTA at the end.",
+      "expected_output": "Should apply the hook formulas for a story hook (e.g., '6 months ago, I had $0 MRR. Today, I hit $10k.'). Should structure the thread following platform best practices: strong hook in tweet 1, each tweet should stand alone but flow together, use specific numbers and stories, end with a CTA. Should reference the content pillar this fits into (behind-the-scenes / founder journey). Should provide the actual thread content with 8-12 tweets. Should include engagement prompts.",
+      "assertions": [
+        "Applies hook formulas from the skill",
+        "Uses a story hook for the first tweet",
+        "Structures thread with standalone but flowing tweets",
+        "Uses specific numbers and stories",
+        "Ends with clear CTA",
+        "Provides 8-12 tweet thread content",
+        "Includes engagement prompts"
+      ],
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "i have a blog post that did really well. how do i turn it into social media content for multiple platforms?",
+      "expected_output": "Should trigger on casual phrasing. Should apply the content repurposing system. Should use the Blog Post → Social Content mapping: LinkedIn (key insight post + carousel of main points), Twitter/X (thread of key takeaways), Instagram (carousel with visuals + Reel summarizing the post). Should follow the repurposing workflow: create pillar content → extract key insights (3-5) → adapt to each platform → schedule across the week. Should provide specific format recommendations per platform.",
+      "assertions": [
+        "Triggers on casual phrasing",
+        "Applies content repurposing system",
+        "Uses Blog Post → Social Content mapping",
+        "Provides format for LinkedIn, Twitter/X, and Instagram",
+        "Follows the repurposing workflow",
+        "Extracts 3-5 key insights to repurpose",
+        "Provides platform-specific format recommendations"
+      ],
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "My LinkedIn posts get like 200 impressions and almost no engagement. What am I doing wrong?",
+      "expected_output": "Should apply the analytics and optimization section, specifically the 'if engagement is low' guidance. Should diagnose potential issues: weak hooks (first line not compelling), posting at wrong times, not engaging with others' content, poor formatting (no line breaks, walls of text), content not resonating with audience. Should recommend specific fixes: test new hook formulas, post at different times, increase engagement with others (the daily engagement routine), try different formats (carousels, stories). Should provide before/after hook examples.",
+      "assertions": [
+        "Applies analytics and optimization guidance",
+        "Diagnoses potential engagement issues",
+        "Addresses hook quality",
+        "Addresses posting timing",
+        "Recommends daily engagement routine",
+        "Suggests trying different content formats",
+        "Provides specific before/after hook examples"
+      ],
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "Help me reverse-engineer what's working for top creators in the DevTools space on Twitter. I want to understand their content patterns.",
+      "expected_output": "Should apply the reverse engineering viral content framework. Should walk through the process: identify 10-20 top accounts in DevTools, collect high-performing posts, analyze patterns (hooks, formats, CTAs, topics, posting times), codify a playbook of repeatable patterns, then layer the user's authentic voice. Should provide specific guidance on what to look for in the analysis. Should recommend tools or methods for collecting the data.",
+      "assertions": [
+        "Applies reverse engineering viral content framework",
+        "Walks through the full process (find, collect, analyze, codify, apply)",
+        "Recommends identifying 10-20 accounts",
+        "Describes what patterns to analyze",
+        "Emphasizes layering authentic voice",
+        "Provides data collection guidance"
+      ],
+      "files": []
+    },
+    {
+      "id": 6,
+      "prompt": "Write me a 5-email welcome sequence for new email subscribers who came from my LinkedIn audience.",
+      "expected_output": "Should recognize this is an email sequence task, not social content. Should defer to or cross-reference the emails skill, which handles welcome sequences, drip campaigns, and lifecycle emails. May note the social-to-email bridge context but should make clear that emails is the right skill for writing email sequences.",
+      "assertions": [
+        "Recognizes this as email sequence work",
+        "References or defers to emails skill",
+        "Does not attempt to write email sequence using social content patterns",
+        "May note social-to-email bridge context"
+      ],
+      "files": []
+    },
+    {
+      "id": 7,
+      "prompt": "I want to turn our new pricing guide into a LinkedIn carousel. It has 9 negotiation tactics for SaaS buyers. Help me structure the slides.",
+      "expected_output": "Should load references/carousel-frameworks.md and pick a framework BEFORE writing slides — a list of 9 named tactics maps to Hack List (or Value-Stack; should justify the choice), not Rant Callout or Demo Walkthrough. Should produce a slide-by-slide structure: contrarian or exact-count cover (slide 1 written as a standalone scroll-stopper), one named tactic per slide, and a synthesis + single-CTA close. Should apply LinkedIn document-post notes (PDF upload, denser text tolerated, post text written as its own hook rather than 'see attached'). Should keep any count promised on the cover exactly delivered and flag that stats/claims must be real. Should mention judging performance on saves/completion rather than likes.",
+      "assertions": [
+        "Loads or applies the carousel-frameworks reference",
+        "Selects an appropriate framework (Hack List or Value-Stack) with a stated reason before drafting slides",
+        "Slide 1 is written as a standalone scroll-stopper with the count or contrarian claim",
+        "One tactic/idea per slide, each named",
+        "Final slide has a synthesis and exactly one CTA",
+        "Applies LinkedIn document-post guidance (PDF, post text as its own hook)",
+        "Does not invent stats or pad the tactic count"
+      ],
+      "files": []
+    },
+    {
+      "prompt": "Write a LinkedIn post announcing that our invoicing tool now syncs with QuickBooks. Make it punchy so it gets engagement.",
+      "expected_output": "Should write a post that leads with a specific hook (a fact, number, or customer situation) and avoids AI tells even though 'punchy' and 'engagement' invite them. No contrast reveals, no 'no X, no Y, no Z' lists, no self-answered questions or colon reveals, no em dashes. No broetry (one sentence per line for the whole post), no engagement-bait closer ('Agree?', 'Thoughts?', 'Let that sink in'), no emoji bullets. Ends on the point or a real question.",
+      "assertions": [
+        "No contrast reveal or negation list",
+        "No em dashes",
+        "Not written as broetry",
+        "No engagement-bait closer",
+        "Hook is specific rather than a generic pattern-interrupt"
+      ],
+      "files": [],
+      "id": 8
+    },
+    {
+      "id": 9,
+      "prompt": "I'm posting on X 5 times every morning between 9 and 10am and my reach keeps dropping. I mostly post quick thoughts and hot takes. What am I doing wrong?",
+      "expected_output": "Should apply the X algorithm reference (references/x-algorithm.md). Should identify post clustering as the primary problem: the author-diversity scorer decays scores of repeated authors within a feed response, so 5 posts in an hour cannibalize each other — recommend spacing original posts ~60 minutes apart or spreading across the day. Should also check hook mechanics (specific claim in the first 8 words, topic named early so topic-based distribution can route the post) and presence (staying available to reply for the first 30 minutes after each post rather than batch-firing and leaving). Should reframe goals toward DM-shares, follows, and profile clicks rather than likes, since those are separately scored signals. Should note weight values are unpublished and recommendations are directional.",
+      "assertions": [
+        "References X algorithm mechanics from x-algorithm.md",
+        "Identifies post clustering / author-diversity decay as the main issue",
+        "Recommends ~60 minute spacing between original posts",
+        "Addresses hook structure (specific claim in first 8 words)",
+        "Mentions topic-anchoring for topic-based distribution",
+        "Recommends being present to reply after posting",
+        "Reframes toward shares/follows/profile clicks over likes"
+      ],
+      "files": []
+    },
+    {
+      "id": 10,
+      "prompt": "Write an X post announcing our new AI feature. Draft: 'We're so excited to announce something HUGE is coming... 🔥🔥 You won't want to miss this. Like and retweet if you're ready!!'",
+      "expected_output": "Should rewrite rather than lightly edit, and explain why using X ranking mechanics: the draft has no specific claim in the first 8 words, doesn't name the topic (so topic-based distribution can't route it), names nothing specific (no product, no capability), and 'like and retweet if you're ready' is engagement bait — the algorithm predicts negative actions (not interested, mute, block) and subtracts them, and baity phrasing risks muted-keyword filtering. Rewrite should open with the specific capability and name the product/tools involved, make the post DM-forwardable (specific, useful claim), and optionally suggest posting mechanics: don't cluster with other posts, stay present for the first 30 minutes, and if including video make it 8+ seconds with captions.",
+      "assertions": [
+        "Rewrites the post rather than approving it",
+        "Flags the missing specific claim in the first 8 words",
+        "Flags engagement bait and explains predicted negative-action penalties",
+        "Names the specific feature/product in the rewrite",
+        "Explains topic-anchoring for distribution",
+        "Optimizes for shareability over like-solicitation",
+        "Includes posting mechanics guidance (spacing, first-30-minutes presence)"
+      ],
+      "files": []
+    }
+  ]
+}

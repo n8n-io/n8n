@@ -1,0 +1,180 @@
+<!doctype html>
+<!--
+  logo-sting: HyperFrames video primitive (brand / impact / reveal)
+
+  Concept: a wordmark lands from scale 1.15 with the slam ease. Its impact
+  triggers one accent ring and exactly one frame of white, then the finished
+  lockup holds completely still.
+
+  Variables:
+    - wordmark (string, default "HYPERFRAMES"): the brand name.
+    - accent (green | blue | violet, default green): the ring color.
+
+  Envelope (fixed IN, elastic HOLD, no OUT, never timeScale):
+    IN_BASE = 0.95s. The wordmark lands at 0.55s, then the ring resolves.
+    HOLD = max(0, D - IN). This phase is deliberately dead still.
+    OUT = 0s. The final brand frame remains established through the end.
+    If D is shorter than IN_BASE, only IN compresses and HOLD becomes zero.
+
+  Mount contract: this template is cloned into a sized host. #root fills that
+  host, establishes the container query basis, and registers one paused GSAP
+  timeline under the hardcoded logo-sting key.
+-->
+<html
+  lang="en"
+  data-composition-id="logo-sting"
+  data-composition-duration="2.2"
+  data-composition-variables='[
+    { "id": "wordmark", "type": "string", "role": "content", "label": "Wordmark", "description": "Brand name displayed in the final lockup.", "default": "HYPERFRAMES" },
+    { "id": "accent", "type": "enum", "role": "style", "label": "Accent", "description": "Color of the single impact ring.", "default": "green", "options": [{ "value": "green", "label": "Green" }, { "value": "blue", "label": "Blue" }, { "value": "violet", "label": "Violet" }] }
+  ]'
+>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Logo Sting</title>
+  </head>
+  <body>
+    <template>
+      <div id="root" data-composition-id="logo-sting" data-duration="2.2" data-fps="30">
+        <style>
+          *,
+          *::before,
+          *::after {
+            box-sizing: border-box;
+          }
+
+          #root {
+            position: absolute;
+            inset: 0;
+            overflow: hidden;
+            container-type: size;
+            background: var(--bg, #0b0c0e);
+            color: var(--fg, #f8fafc);
+            font-family: var(--font-display, Inter, system-ui, sans-serif);
+            pointer-events: none;
+          }
+
+          .ls-clip {
+            position: absolute;
+            inset: 0;
+            display: grid;
+            place-items: center;
+            overflow: hidden;
+          }
+
+          .ls-ring {
+            position: absolute;
+            z-index: 1;
+            width: min(42cqw, 72cqh);
+            aspect-ratio: 1;
+            border: min(0.34cqw, 0.62cqh) solid var(--ls-accent);
+            border-radius: 50%;
+            opacity: 0;
+            will-change: transform, opacity;
+          }
+
+          .ls-wordmark {
+            position: relative;
+            z-index: 2;
+            max-width: 90cqw;
+            color: var(--fg, #f8fafc);
+            font-size: min(10.5cqw, 18cqh);
+            font-weight: 850;
+            line-height: 0.9;
+            letter-spacing: -0.055em;
+            text-align: center;
+            white-space: nowrap;
+            transform-origin: 50% 50%;
+            will-change: transform;
+          }
+
+          .ls-flash {
+            position: absolute;
+            inset: 0;
+            z-index: 3;
+            background: #ffffff;
+            opacity: 0;
+          }
+        </style>
+
+        <div
+          id="logo-sting-clip"
+          class="ls-clip clip"
+          data-start="0"
+          data-duration="2.2"
+          data-track-index="0"
+        >
+          <div class="ls-ring" aria-hidden="true"></div>
+          <div class="ls-wordmark"></div>
+          <div class="ls-flash" aria-hidden="true"></div>
+        </div>
+
+        <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+        <script>
+          (function () {
+            "use strict";
+
+            var root = document.getElementById("root");
+            var wordmark = root.querySelector(".ls-wordmark");
+            var ring = root.querySelector(".ls-ring");
+            var flash = root.querySelector(".ls-flash");
+            var vars =
+              window.__hyperframes && window.__hyperframes.getVariables
+                ? window.__hyperframes.getVariables()
+                : {};
+
+            var accentColors = {
+              green: "var(--brand, #5df28b)",
+              blue: "var(--accent, #4da3ff)",
+              violet: "var(--accent-2, #a978ff)",
+            };
+            var accent = Object.prototype.hasOwnProperty.call(accentColors, vars.accent)
+              ? vars.accent
+              : "green";
+            var wordmarkText = vars.wordmark == null ? "HYPERFRAMES" : String(vars.wordmark);
+
+            wordmark.textContent = wordmarkText;
+            root.style.setProperty("--ls-accent", accentColors[accent]);
+
+            var IN_BASE = 0.95;
+            var IMPACT_BASE = 0.55;
+            var parsedDuration = parseFloat(root.dataset.duration);
+            var duration = Number.isFinite(parsedDuration) ? Math.max(0.001, parsedDuration) : 2.2;
+            var IN = Math.min(IN_BASE, duration);
+            var retime = IN / IN_BASE;
+            var IMPACT = IMPACT_BASE * retime;
+            var RING_DURATION = (IN_BASE - IMPACT_BASE) * retime;
+            var FLASH_FRAME = Math.min(1 / 30, RING_DURATION);
+            var HOLD = Math.max(0, duration - IN);
+
+            gsap.set(ring, { scale: 0.34, opacity: 0 });
+            gsap.set(flash, { opacity: 0 });
+
+            var tl = gsap.timeline({ paused: true });
+
+            tl.fromTo(
+              wordmark,
+              { scale: 1.15 },
+              { scale: 1, duration: IMPACT, ease: "expo.out" },
+              0,
+            );
+            tl.set(ring, { opacity: 0.92 }, IMPACT);
+            tl.to(
+              ring,
+              { scale: 2.4, opacity: 0, duration: RING_DURATION, ease: "power3.out" },
+              IMPACT,
+            );
+            tl.set(flash, { opacity: 1 }, IMPACT);
+            tl.set(flash, { opacity: 0 }, IMPACT + FLASH_FRAME);
+            tl.addLabel("hold", IN);
+            tl.addLabel("end", IN + HOLD);
+
+            tl.seek(0);
+            window.__timelines = window.__timelines || {};
+            window.__timelines["logo-sting"] = tl;
+          })();
+        </script>
+      </div>
+    </template>
+  </body>
+</html>

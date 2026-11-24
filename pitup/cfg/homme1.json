@@ -1,0 +1,90 @@
+{
+ "project": "pitup-homme1",
+ "bpm": 130.0,
+ "song": "Michael_Olise___Blockkids_thizzy52.mp3",
+ "song_off": 0.1,
+ "intro_vo": "hook_1",
+ "outro_vo": "out_4",
+ "intro_word": "POUR LUI",
+ "intro_l1": "Les sneakers",
+ "intro_l2": "sont ici.",
+ "intro_minis": [
+  [
+   "samba",
+   80,
+   820,
+   -6
+  ],
+  [
+   "tomford",
+   400,
+   900,
+   4
+  ],
+  [
+   "tn",
+   690,
+   820,
+   -4
+  ]
+ ],
+ "shots": [
+  [
+   "samba",
+   "h_1",
+   "Adidas Samba.",
+   "SAMBA",
+   "CREAM",
+   330
+  ],
+  [
+   "campus",
+   "h_2",
+   "Adidas Campus.",
+   "CAMPUS",
+   "SAND",
+   290
+  ],
+  [
+   "asics",
+   "h_3",
+   "Asics.",
+   "ASICS",
+   "BLUE",
+   330
+  ],
+  [
+   "shox",
+   "shox2_1",
+   "Nike Shox TL.",
+   "SHOX",
+   "INK",
+   400
+  ],
+  [
+   "tn",
+   "h_5",
+   "Nike TN.",
+   "TN",
+   "CREAM",
+   560
+  ],
+  [
+   "jacket",
+   "h_6",
+   "Ta veste en cuir.",
+   "CUIR",
+   "SAND",
+   420
+  ],
+  [
+   "tomford",
+   "h_7",
+   "Tes lunettes.",
+   "STYLE",
+   "INK",
+   360
+  ]
+ ],
+ "gap": 0.5
+}

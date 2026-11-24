@@ -22,6 +22,11 @@ run-name: "${{ github.event_name == 'workflow_dispatch' && format('CI: CLA Check
 on:
   pull_request_target:
     types: [opened, synchronize, reopened]
+    # Fork (benkas418-alt): skip changes that only touch the football-intel project.
+    paths-ignore:
+      - 'football-intel/**'
+      - '.claude/**'
+      - '.github/workflows/util-football-intel-*.yml'
   issue_comment:
     types: [created]
   merge_group:

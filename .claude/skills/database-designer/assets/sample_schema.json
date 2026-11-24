@@ -1,0 +1,372 @@
+{
+  "tables": {
+    "users": {
+      "columns": {
+        "id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "unique": true,
+          "cardinality_estimate": 50000
+        },
+        "email": {
+          "type": "VARCHAR(255)",
+          "nullable": false,
+          "unique": true,
+          "cardinality_estimate": 50000
+        },
+        "username": {
+          "type": "VARCHAR(50)",
+          "nullable": false,
+          "unique": true,
+          "cardinality_estimate": 50000
+        },
+        "password_hash": {
+          "type": "VARCHAR(255)",
+          "nullable": false,
+          "cardinality_estimate": 50000
+        },
+        "first_name": {
+          "type": "VARCHAR(100)",
+          "nullable": true,
+          "cardinality_estimate": 25000
+        },
+        "last_name": {
+          "type": "VARCHAR(100)",
+          "nullable": true,
+          "cardinality_estimate": 30000
+        },
+        "status": {
+          "type": "VARCHAR(20)",
+          "nullable": false,
+          "default": "active",
+          "cardinality_estimate": 5
+        },
+        "created_at": {
+          "type": "TIMESTAMP",
+          "nullable": false,
+          "default": "CURRENT_TIMESTAMP"
+        }
+      },
+      "primary_key": ["id"],
+      "unique_constraints": [
+        ["email"],
+        ["username"]
+      ],
+      "check_constraints": {
+        "chk_status_valid": "status IN ('active', 'inactive', 'suspended', 'deleted')"
+      },
+      "indexes": [
+        {
+          "name": "idx_users_email",
+          "columns": ["email"],
+          "unique": true
+        },
+        {
+          "name": "idx_users_status",
+          "columns": ["status"]
+        }
+      ]
+    },
+    "products": {
+      "columns": {
+        "id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "unique": true,
+          "cardinality_estimate": 10000
+        },
+        "name": {
+          "type": "VARCHAR(255)",
+          "nullable": false,
+          "cardinality_estimate": 9500
+        },
+        "sku": {
+          "type": "VARCHAR(50)",
+          "nullable": false,
+          "unique": true,
+          "cardinality_estimate": 10000
+        },
+        "price": {
+          "type": "DECIMAL(10,2)",
+          "nullable": false,
+          "cardinality_estimate": 5000
+        },
+        "category_id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "foreign_key": "categories.id",
+          "cardinality_estimate": 50
+        },
+        "brand": {
+          "type": "VARCHAR(100)",
+          "nullable": true,
+          "cardinality_estimate": 200
+        },
+        "is_active": {
+          "type": "BOOLEAN",
+          "nullable": false,
+          "default": true,
+          "cardinality_estimate": 2
+        },
+        "inventory_count": {
+          "type": "INTEGER",
+          "nullable": false,
+          "default": 0,
+          "cardinality_estimate": 1000
+        },
+        "created_at": {
+          "type": "TIMESTAMP",
+          "nullable": false,
+          "default": "CURRENT_TIMESTAMP"
+        }
+      },
+      "primary_key": ["id"],
+      "unique_constraints": [
+        ["sku"]
+      ],
+      "check_constraints": {
+        "chk_price_positive": "price > 0",
+        "chk_inventory_non_negative": "inventory_count >= 0"
+      },
+      "indexes": [
+        {
+          "name": "idx_products_category",
+          "columns": ["category_id"]
+        },
+        {
+          "name": "idx_products_brand",
+          "columns": ["brand"]
+        },
+        {
+          "name": "idx_products_price",
+          "columns": ["price"]
+        },
+        {
+          "name": "idx_products_active_category",
+          "columns": ["is_active", "category_id"],
+          "partial_condition": "is_active = true"
+        }
+      ]
+    },
+    "orders": {
+      "columns": {
+        "id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "unique": true,
+          "cardinality_estimate": 200000
+        },
+        "order_number": {
+          "type": "VARCHAR(50)",
+          "nullable": false,
+          "unique": true,
+          "cardinality_estimate": 200000
+        },
+        "user_id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "foreign_key": "users.id",
+          "cardinality_estimate": 40000
+        },
+        "status": {
+          "type": "VARCHAR(50)",
+          "nullable": false,
+          "default": "pending",
+          "cardinality_estimate": 8
+        },
+        "total_amount": {
+          "type": "DECIMAL(10,2)",
+          "nullable": false,
+          "cardinality_estimate": 50000
+        },
+        "payment_method": {
+          "type": "VARCHAR(50)",
+          "nullable": true,
+          "cardinality_estimate": 10
+        },
+        "created_at": {
+          "type": "TIMESTAMP",
+          "nullable": false,
+          "default": "CURRENT_TIMESTAMP"
+        },
+        "shipped_at": {
+          "type": "TIMESTAMP",
+          "nullable": true
+        }
+      },
+      "primary_key": ["id"],
+      "unique_constraints": [
+        ["order_number"]
+      ],
+      "check_constraints": {
+        "chk_total_positive": "total_amount > 0",
+        "chk_status_valid": "status IN ('pending', 'processing', 'shipped', 'delivered', 'cancelled')"
+      },
+      "indexes": [
+        {
+          "name": "idx_orders_user",
+          "columns": ["user_id"]
+        },
+        {
+          "name": "idx_orders_status",
+          "columns": ["status"]
+        },
+        {
+          "name": "idx_orders_created",
+          "columns": ["created_at"]
+        },
+        {
+          "name": "idx_orders_user_status",
+          "columns": ["user_id", "status"]
+        }
+      ]
+    },
+    "order_items": {
+      "columns": {
+        "id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "unique": true,
+          "cardinality_estimate": 800000
+        },
+        "order_id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "foreign_key": "orders.id",
+          "cardinality_estimate": 200000
+        },
+        "product_id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "foreign_key": "products.id",
+          "cardinality_estimate": 8000
+        },
+        "quantity": {
+          "type": "INTEGER",
+          "nullable": false,
+          "cardinality_estimate": 20
+        },
+        "unit_price": {
+          "type": "DECIMAL(10,2)",
+          "nullable": false,
+          "cardinality_estimate": 5000
+        },
+        "total_price": {
+          "type": "DECIMAL(10,2)",
+          "nullable": false,
+          "cardinality_estimate": 10000
+        }
+      },
+      "primary_key": ["id"],
+      "check_constraints": {
+        "chk_quantity_positive": "quantity > 0",
+        "chk_unit_price_positive": "unit_price > 0"
+      },
+      "indexes": [
+        {
+          "name": "idx_order_items_order",
+          "columns": ["order_id"]
+        },
+        {
+          "name": "idx_order_items_product",
+          "columns": ["product_id"]
+        }
+      ]
+    },
+    "categories": {
+      "columns": {
+        "id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "unique": true,
+          "cardinality_estimate": 100
+        },
+        "name": {
+          "type": "VARCHAR(100)",
+          "nullable": false,
+          "cardinality_estimate": 100
+        },
+        "parent_id": {
+          "type": "INTEGER",
+          "nullable": true,
+          "foreign_key": "categories.id",
+          "cardinality_estimate": 20
+        },
+        "is_active": {
+          "type": "BOOLEAN",
+          "nullable": false,
+          "default": true,
+          "cardinality_estimate": 2
+        }
+      },
+      "primary_key": ["id"],
+      "indexes": [
+        {
+          "name": "idx_categories_parent",
+          "columns": ["parent_id"]
+        },
+        {
+          "name": "idx_categories_active",
+          "columns": ["is_active"]
+        }
+      ]
+    },
+    "product_reviews": {
+      "columns": {
+        "id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "unique": true,
+          "cardinality_estimate": 150000
+        },
+        "product_id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "foreign_key": "products.id",
+          "cardinality_estimate": 8000
+        },
+        "user_id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "foreign_key": "users.id",
+          "cardinality_estimate": 30000
+        },
+        "rating": {
+          "type": "INTEGER",
+          "nullable": false,
+          "cardinality_estimate": 5
+        },
+        "review_text": {
+          "type": "TEXT",
+          "nullable": true
+        },
+        "created_at": {
+          "type": "TIMESTAMP",
+          "nullable": false,
+          "default": "CURRENT_TIMESTAMP"
+        }
+      },
+      "primary_key": ["id"],
+      "unique_constraints": [
+        ["product_id", "user_id"]
+      ],
+      "check_constraints": {
+        "chk_rating_valid": "rating BETWEEN 1 AND 5"
+      },
+      "indexes": [
+        {
+          "name": "idx_reviews_product",
+          "columns": ["product_id"]
+        },
+        {
+          "name": "idx_reviews_user",
+          "columns": ["user_id"]
+        },
+        {
+          "name": "idx_reviews_rating",
+          "columns": ["rating"]
+        }
+      ]
+    }
+  }
+}

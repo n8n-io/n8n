@@ -1,0 +1,61 @@
+{
+  "campaign_metrics": {
+    "platform": "instagram",
+    "total_posts": 3,
+    "total_engagements": 1521,
+    "total_reach": 18200,
+    "total_impressions": 27700,
+    "total_clicks": 430,
+    "avg_engagement_rate": 8.36,
+    "ctr": 1.55
+  },
+  "roi_metrics": {
+    "total_spend": 500.0,
+    "cost_per_engagement": 0.33,
+    "cost_per_click": 1.16,
+    "estimated_value": 3802.5,
+    "roi_percentage": 660.5
+  },
+  "top_posts": [
+    {
+      "post_id": "post_002",
+      "content_type": "video",
+      "engagement_rate": 8.18,
+      "likes": 587,
+      "reach": 8900
+    },
+    {
+      "post_id": "post_001",
+      "content_type": "image",
+      "engagement_rate": 8.27,
+      "likes": 342,
+      "reach": 5200
+    },
+    {
+      "post_id": "post_003",
+      "content_type": "carousel",
+      "engagement_rate": 8.85,
+      "likes": 298,
+      "reach": 4100
+    }
+  ],
+  "insights": {
+    "overall_health": "excellent",
+    "benchmark_comparison": {
+      "engagement_status": "excellent",
+      "engagement_benchmark": "1.22%",
+      "engagement_actual": "8.36%",
+      "ctr_status": "excellent",
+      "ctr_benchmark": "0.22%",
+      "ctr_actual": "1.55%"
+    },
+    "recommendations": [
+      "Excellent ROI (660.5%)! Consider: (1) Scaling this campaign with increased budget, (2) Replicating successful elements to other campaigns, (3) Testing similar audiences"
+    ],
+    "key_strengths": [
+      "Strong audience engagement",
+      "Excellent return on investment",
+      "High click-through rate"
+    ]
+  }
+}

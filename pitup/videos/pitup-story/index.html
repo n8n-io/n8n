@@ -1,0 +1,553 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="assets/gsap.min.js"></script>
+    <style>
+      @font-face { font-family: "Poppins"; font-weight: 600; src: url(assets/fonts/poppins-600.woff2) format("woff2"); }
+      @font-face { font-family: "Poppins"; font-weight: 800; src: url(assets/fonts/poppins-800.woff2) format("woff2"); }
+      @font-face { font-family: "Caveat"; font-weight: 700; src: url(assets/fonts/Caveat-700-latin.woff2) format("woff2"); }
+      @font-face { font-family: "Playfair"; font-weight: 900; src: url(assets/fonts/PlayfairDisplay-900.woff2) format("woff2"); }
+      @font-face { font-family: "OldStd"; font-weight: 700; src: url(assets/fonts/OldStandardTT-700.woff2) format("woff2"); }
+      :root { --blue: #1f88c9; --ink: #141414; --hw-ink: #1f88c9; --red: #d6332a; }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1080px; height: 1920px; overflow: hidden; background: #f6f3ec; }
+      #root { position: relative; width: 100%; height: 100%; overflow: hidden; font-family: "Poppins", sans-serif; color: var(--ink); }
+      .layer { position: absolute; inset: 0; z-index: 0; }
+      .sheet { position: absolute; inset: 0; overflow: hidden; }
+      .paper { position: absolute; inset: 0; background: url(assets/paper.jpg) center / cover; }
+      .blue { position: absolute; inset: 0; background: var(--blue); }
+      .blue::after { content: ""; position: absolute; inset: 0; background: url(assets/paper.jpg) center / cover; mix-blend-mode: multiply; opacity: 0.55; }
+      .rim { position: absolute; inset: 0; background: #fbfaf8; }
+
+      .np { position: absolute; background: #fbf8f1; padding: 22px 28px 26px; box-shadow: 0 1px 1px rgba(0,0,0,0.06), 0 16px 28px rgba(40,30,10,0.16); }
+      .np .art { display: block; margin-top: 10px; }
+      .np .art svg { display: block; width: 100%; height: auto; }
+      #phone { position: absolute; left: 290px; top: 650px; width: 500px; height: 770px; border-radius: 64px; background: #141414; padding: 18px; box-shadow: 0 30px 50px rgba(40,30,10,0.3); }
+      #phone .scr { position: relative; width: 100%; height: 100%; border-radius: 48px; overflow: hidden; background: #fff; }
+      #phone .bar { display: flex; align-items: center; gap: 14px; height: 120px; padding: 34px 30px 0; background: var(--blue); color: #fff; font-weight: 800; font-size: 40px; }
+      #phone .bar img { width: 44px; display: block; }
+      #phone .lbl { display: block; padding: 26px 30px 12px; font-weight: 800; font-size: 30px; color: var(--ink); }
+      #phone .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; padding: 22px 24px; }
+      #phone .grid img { width: 100%; height: 200px; object-fit: cover; border-radius: 16px; display: block; }
+      #phone .row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px 0; justify-items: center; padding: 0 20px; }
+      #phone .row img { width: 112px; height: 112px; border-radius: 50%; object-fit: cover; display: block; border: 3px solid #e8e8e8; }
+      #phone .btn { position: absolute; left: 30px; right: 30px; bottom: 96px; height: 96px; border-radius: 48px; background: var(--blue); color: #fff; font-weight: 800; font-size: 32px; white-space: nowrap; display: flex; align-items: center; justify-content: center; }
+      #phone .ok { background: #1f9d55; }
+      #phone .sub { position: absolute; left: 0; right: 0; bottom: 40px; display: block; text-align: center; font-weight: 600; font-size: 24px; color: #555; }
+      #tap { position: absolute; width: 90px; height: 90px; border-radius: 50%; border: 6px solid #141414; left: 187px; top: 545px; }
+      .np .hd { display: block; font-family: "Playfair", serif; font-weight: 900; line-height: 1.02; letter-spacing: -1px; color: var(--ink); }
+      .np .hd > span { display: block; white-space: nowrap; }
+      .np .ph { display: block; width: 100%; object-fit: cover; margin-top: 4px; filter: contrast(1.05); }
+      .np .cap { display: block; font-family: "OldStd", serif; font-weight: 700; font-size: 20px; color: #555; margin-top: 8px; white-space: nowrap; }
+      .tape { position: absolute; width: 130px; height: 36px; background: rgba(236, 226, 196, 0.85); box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+        clip-path: polygon(0% 8%, 6% 0%, 12% 10%, 20% 2%, 30% 8%, 42% 0%, 55% 6%, 68% 0%, 80% 9%, 90% 1%, 100% 8%, 97% 50%, 100% 92%, 90% 100%, 78% 92%, 64% 100%, 50% 93%, 36% 100%, 22% 92%, 10% 100%, 0% 92%, 3% 50%); }
+      .stamp { position: absolute; display: block; font-family: "Poppins", sans-serif; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; color: var(--red); border: 7px solid var(--red); border-radius: 10px; padding: 6px 18px; white-space: nowrap; mix-blend-mode: multiply; }
+
+      .big { position: absolute; left: 76px; display: block; font-family: "Playfair", serif; font-weight: 900; line-height: 1.02; letter-spacing: -2px; color: var(--ink); }
+      .big > span { display: block; white-space: nowrap; }
+      .w { display: inline !important; }
+      .note { position: absolute; display: block; font-family: "Caveat", cursive; font-weight: 700; color: var(--blue); white-space: nowrap; line-height: 1; }
+      .hl { position: absolute; z-index: -1; background: rgba(31, 136, 201, 0.26); transform-origin: 0% 50%; border-radius: 4px; }
+      .dot { position: absolute; border-radius: 50%; overflow: hidden; border: 6px solid #fff; background: #000; box-shadow: 0 10px 22px rgba(40,30,10,0.25); }
+      .dot img { width: 100%; height: 100%; object-fit: cover; display: block; }
+      .hw-mark, .hw-arrow { position: absolute; pointer-events: none; }
+      .hw-mark svg, .hw-arrow svg { width: 100%; height: 100%; overflow: visible; }
+      .hw-mark path, .hw-arrow path { fill: none; stroke: var(--hw-ink); stroke-width: 7; stroke-linecap: round; stroke-linejoin: round; }
+
+
+      /* handset */
+      @font-face { font-family: "Poppins"; font-weight: 500; src: url(assets/fonts/poppins-500.woff2) format("woff2"); }
+      @font-face { font-family: "Poppins"; font-weight: 700; src: url(assets/fonts/poppins-700.woff2) format("woff2"); }
+      #dev { position: absolute; left: 190px; top: 440px; width: 540px; height: 1120px; border-radius: 84px; padding: 12px; background: linear-gradient(145deg, #5a5d63 0%, #222427 30%, #3b3e43 62%, #17181a 100%); box-shadow: 0 44px 70px rgba(30,20,5,0.38), inset 0 0 0 2px rgba(255,255,255,0.2); }
+      #dev .sbtn { position: absolute; width: 6px; border-radius: 3px; background: linear-gradient(90deg, #2a2c2f, #55585d); }
+      #dev .bez { width: 100%; height: 100%; border-radius: 72px; background: #050505; padding: 10px; }
+      #dev .scr { position: relative; width: 100%; height: 100%; border-radius: 62px; overflow: hidden; background: #fff; }
+      #dev .island { position: absolute; left: 50%; top: 13px; width: 116px; height: 34px; margin-left: -58px; border-radius: 20px; background: #000; z-index: 5; }
+      #dev .homei { position: absolute; left: 50%; bottom: 9px; width: 140px; height: 5px; margin-left: -70px; border-radius: 3px; background: #111; z-index: 5; }
+      #dev .glare { position: absolute; inset: 0; z-index: 6; background: linear-gradient(118deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.05) 26%, rgba(255,255,255,0) 40%); pointer-events: none; }
+      #touch { position: absolute; z-index: 7; width: 64px; height: 64px; margin: -32px 0 0 -32px; border-radius: 50%; background: rgba(60,60,60,0.35); border: 3px solid rgba(255,255,255,0.8); }
+      .app { position: absolute; left: 0; top: 0; width: 390px; height: 846px; transform-origin: 0 0; background: #fff; font-family: "Poppins", sans-serif; color: #111827; overflow: hidden; }
+      #dev .app { zoom: 1.2718; }
+      .app svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+      .app .sb { display: flex; justify-content: space-between; align-items: center; height: 46px; padding: 6px 30px 0 34px; font-size: 15px; }
+      .app .sb .sbi { display: flex; gap: 6px; align-items: center; } .app .sb .sbi svg { height: 12px; width: auto; fill: #111; stroke: none; }
+      .app .sb .sbi svg:nth-child(2) path { fill: none; stroke: #111; stroke-width: 1.6; }
+      .app .hdr { display: flex; justify-content: space-between; align-items: center; height: 46px; padding: 0 22px; border-bottom: 1px solid #eef0f3; }
+      .app .hdr img { width: 26px; display: block; } .app .hdr svg { width: 24px; height: 24px; }
+      .app .srch { display: flex; align-items: center; gap: 10px; margin: 12px 14px 0; height: 40px; padding: 0 14px; border-radius: 10px; background: #f1f3f6; color: #6b7280; font-size: 13px; }
+      .app .tabs { display: flex; gap: 6px; margin: 12px 14px; padding: 5px; border-radius: 12px; background: #f1f3f6; }
+      .app .tabs div { flex: 1; display: flex; align-items: center; justify-content: center; gap: 7px; height: 38px; border-radius: 9px; font-size: 13.5px; font-weight: 600; color: #4b5563; }
+      .app .tabs div.on { background: #1f88c9; color: #fff; }
+      .app .tabs svg { width: 17px; height: 17px; }
+      .app .body { display: flex; height: 560px; background: #f4f5f7; }
+      .app .cats { width: 82px; flex: none; background: #f4f5f7; }
+      .app .cats div { padding: 12px 8px 12px 11px; font-size: 10.5px; line-height: 1.25; color: #4b5563; }
+      .app .cats div.on { background: #fff; color: #1f88c9; font-weight: 600; box-shadow: inset 3px 0 0 #1f88c9; }
+      .app .main { flex: 1; padding: 10px 10px 0; }
+      .app .sort { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 9px 12px; font-size: 12px; color: #4b5563; margin-bottom: 10px; }
+      .app .sort b { color: #111827; font-weight: 600; }
+      .app .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+      .app .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 7px; }
+      .app .ch { display: flex; align-items: center; gap: 5px; margin-bottom: 6px; }
+      .app .ch img { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; } .app .ch b { flex: 1; font-size: 10.5px; font-weight: 600; white-space: nowrap; overflow: hidden; }
+      .app .ch i { display: flex; width: 20px; height: 20px; border-radius: 50%; background: #1f88c9; color: #fff; align-items: center; justify-content: center; } .app .ch i svg { width: 12px; height: 12px; }
+      .app .ci { display: block; width: 100%; height: 118px; object-fit: cover; border-radius: 8px; }
+      .app .ct { font-size: 12.5px; font-weight: 600; margin: 6px 2px; white-space: nowrap; }
+      .app .cb { display: flex; align-items: center; justify-content: center; gap: 6px; height: 32px; border-radius: 8px; background: #1f6fb5; color: #fff; font-size: 12px; font-weight: 600; } .app .cb svg { width: 15px; height: 15px; }
+      .app .nav { position: absolute; left: 0; right: 0; bottom: 0; height: 74px; display: flex; justify-content: space-around; padding-top: 9px; border-top: 1px solid #eef0f3; background: #fff; }
+      .app .nav div { display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 10.5px; color: #4b5563; } .app .nav div.on { color: #1f88c9; font-weight: 600; } .app .nav svg { width: 22px; height: 22px; }
+      .app .back { display: flex; align-items: center; gap: 8px; padding: 14px 20px; font-size: 14px; color: #374151; } .app .back svg { width: 18px; height: 18px; }
+      .app .pimg { position: relative; margin: 0 16px; height: 330px; border-radius: 16px; overflow: hidden; background: #f4f5f7; border: 1px solid #e5e7eb; }
+      .app .pimg img { width: 100%; height: 100%; object-fit: cover; display: block; }
+      .app .pimg i { position: absolute; top: 145px; width: 34px; height: 34px; border-radius: 50%; background: #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.15); font-style: normal; font-size: 26px; line-height: 30px; text-align: center; color: #111; }
+      .app .arL { left: 10px; } .app .arR { right: 10px; }
+      .app .pt { font-size: 22px; font-weight: 700; padding: 14px 20px 4px; }
+      .app .pshop { display: flex; align-items: center; gap: 10px; padding: 6px 20px 10px; } .app .pshop img { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; } .app .pshop b { font-size: 15px; font-weight: 600; }
+      .app .badge { display: inline-flex; align-items: center; gap: 8px; margin: 0 20px; padding: 8px 12px; border-radius: 8px; background: #e9f7ee; color: #15803d; font-size: 12.5px; font-weight: 500; transform-origin: 0 50%; } .app .badge svg { width: 17px; height: 17px; }
+      .app .pbtn { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 16px 20px 0; height: 48px; border-radius: 10px; background: #1f6fb5; color: #fff; font-size: 15px; font-weight: 600; }
+
+      #join { position: absolute; left: 0; right: 0; top: 740px; display: block; text-align: center; font-weight: 800; font-size: 150px; letter-spacing: -5px; color: #fff; white-space: nowrap; }
+      #creates { position: absolute; left: 0; right: 0; top: 950px; display: block; text-align: center; font-family: "Caveat", cursive; font-weight: 700; font-size: 72px; color: #fff; white-space: nowrap; }
+      #stores { position: absolute; left: 0; right: 0; top: 1060px; display: flex; justify-content: center; gap: 26px; }
+      #stores > div { display: block; padding: 18px 40px; border-radius: 22px; border: 4px solid #fff; color: #fff; font-weight: 800; font-size: 44px; white-space: nowrap; }
+      #orsur { position: absolute; left: 0; right: 0; top: 1190px; display: block; text-align: center; font-family: "Caveat", cursive; font-weight: 700; font-size: 66px; color: #fff; white-space: nowrap; }
+      #ctaWrap { position: absolute; left: 0; right: 0; top: 1280px; display: flex; justify-content: center; }
+      #fine { position: absolute; left: 0; right: 0; top: 1470px; display: block; text-align: center; font-weight: 600; font-size: 32px; color: rgba(255,255,255,0.92); white-space: nowrap; }
+      #bigBadge { position: absolute; left: 70px; top: 1010px; display: flex; align-items: center; gap: 18px; padding: 26px 34px; border-radius: 22px; background: #e9f7ee; color: #15803d; font-weight: 600; font-size: 42px; white-space: nowrap; box-shadow: 0 16px 28px rgba(40,30,10,0.16); }
+      #bigBadge svg { width: 54px; height: 54px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+      .app .reg { margin: 20px 16px 0; padding: 26px 20px 24px; border: 1px solid #e5e7eb; border-radius: 18px; text-align: center; }
+      .app .rIco { width: 64px; height: 64px; margin: 0 auto 14px; border-radius: 14px; background: #2f8fd8; color: #fff; display: flex; align-items: center; justify-content: center; } .app .rIco svg { width: 30px; height: 30px; }
+      .app .rT { font-size: 23px; font-weight: 700; } .app .rS { font-size: 14px; color: #4b5563; margin: 8px 6px 20px; line-height: 1.5; }
+      .app .rG { display: flex; align-items: center; justify-content: center; gap: 12px; height: 50px; border: 1px solid #d1d5db; border-radius: 10px; font-size: 15px; font-weight: 500; } .app .rG svg { width: 22px; height: 22px; }
+      .app .rOr { display: flex; align-items: center; gap: 10px; margin: 18px 0; font-size: 12.5px; color: #6b7280; } .app .rOr i { flex: 1; height: 1px; background: #e5e7eb; }
+      .app .rL { text-align: left; font-size: 13.5px; font-weight: 500; margin: 0 0 7px; }
+      .app .rIn { display: flex; align-items: center; gap: 10px; height: 48px; padding: 0 12px; margin-bottom: 14px; border: 1px solid #d1d5db; border-radius: 10px; background: #f9fafb; color: #6b7280; font-size: 14.5px; } .app .rIn svg { width: 20px; height: 20px; }
+      .app .rB { height: 48px; margin-top: 6px; border-radius: 10px; background: #2f8fd8; color: #fff; font-size: 15px; font-weight: 600; display: flex; align-items: center; justify-content: center; }
+
+      #end #join { top: 770px; font-size: 112px; }
+      #end #creates { top: 960px; font-size: 62px; }
+      #end #ctaWrap { top: 1070px; }
+      #cta .ch { display: inline-block; }
+      #cDuo .art svg, #cFam .art svg { width: 68%; margin: 0 auto; }
+      #fine3 { position: absolute; left: 0; right: 0; top: 1325px; display: block; text-align: center; font-weight: 800; font-size: 40px; color: #fff; white-space: nowrap; }
+      #cDuo .cap, #cFam .cap { font-family: "Caveat", cursive; font-size: 58px; color: #141414; margin-top: 6px; }
+      .app .sb, .app .hdr { position: relative; z-index: 2; background: #fff; }
+      #end #fine { top: 1270px; font-size: 40px; font-weight: 800; }
+      #fine2 { position: absolute; left: 0; right: 0; top: 1400px; display: block; text-align: center; font-weight: 600; font-size: 34px; color: rgba(255,255,255,0.92); white-space: nowrap; }
+      #dev { left: 40px !important; top: 430px !important; }
+      .app .hw { padding: 20px 18px; } .app .hwT { font-size: 22px; font-weight: 700; margin-bottom: 16px; } .app .hwB { height: 150px; border-radius: 14px; background: #eef2f7; margin-bottom: 12px; } .app .hwB.s { height: 90px; }
+      .app .mk { padding: 0 16px; } .app .mkT { font-size: 30px; font-weight: 700; margin: 18px 0 8px; } .app .mkD { font-size: 14.5px; line-height: 1.5; color: #4b5563; margin-bottom: 16px; }
+      .app .seg { display: flex; gap: 4px; padding: 5px; border-radius: 12px; background: #f1f3f6; margin-bottom: 16px; } .app .seg div { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; height: 40px; border-radius: 9px; font-size: 13.5px; font-weight: 500; color: #374151; } .app .seg div.on { background: #2f8fd8; color: #fff; } .app .seg svg { width: 16px; height: 16px; }
+      .app .mkS { display: flex; align-items: center; gap: 10px; height: 44px; padding: 0 12px; border: 1px solid #d1d5db; border-radius: 10px; font-size: 15px; color: #111827; } .app .mkS .ph { color: #9ca3af; } .app .mkS svg { width: 18px; height: 18px; color: #6b7280; }
+      .app .mkC { display: flex; align-items: center; height: 44px; padding: 0 12px; margin-top: 10px; border: 1px solid #d1d5db; border-radius: 10px; font-size: 15px; }
+      .app .mkN { font-size: 12.5px; color: #4b5563; margin: 12px 0; }
+      .app .rc { width: 175px; border: 1px solid #e5e7eb; border-radius: 14px; overflow: hidden; background: #fff; padding-bottom: 10px; }
+      .app .rcB { position: relative; height: 110px; } .app .rcB img { width: 100%; height: 100%; object-fit: cover; display: block; }
+      .app .rcB i { position: absolute; left: 8px; top: 8px; display: flex; align-items: center; gap: 4px; padding: 3px 7px; border-radius: 6px; background: #fff; font-style: normal; font-size: 10px; font-weight: 600; color: #1d4ed8; } .app .rcB i svg { width: 11px; height: 11px; }
+      .app .rcB .rcL { position: absolute; left: 14px; bottom: -22px; width: 46px; height: 46px; border-radius: 50%; border: 3px solid #fff; object-fit: cover; }
+      .app .rc b { display: block; font-size: 16px; font-weight: 700; margin: 30px 12px 2px; } .app .rc span { display: block; font-size: 11.5px; color: #6b7280; margin: 0 12px; } .app .rc .rcLoc { font-size: 10.5px; margin-top: 6px; line-height: 1.4; }
+      .app .rc em { display: flex; align-items: center; gap: 4px; margin: 8px 12px 0; font-style: normal; font-size: 10.5px; color: #15803d; } .app .rc em svg { width: 12px; height: 12px; }
+      .app .stIn { position: absolute; left: 0; right: 0; top: 92px; } .app .stB { height: 150px; overflow: hidden; } .app .stB img { width: 100%; height: 100%; object-fit: cover; display: block; }
+      .app .stL { position: relative; display: block; width: 70px; height: 70px; margin: -36px 0 0 18px; border-radius: 10px; border: 3px solid #fff; object-fit: cover; box-shadow: 0 2px 6px rgba(0,0,0,0.15); }
+      .app .stN { font-size: 22px; font-weight: 700; margin: 10px 16px 0; } .app .stD { font-size: 14px; color: #4b5563; margin: 2px 16px 0; }
+      .app .stF { display: flex; align-items: center; justify-content: center; gap: 8px; height: 44px; margin: 12px 16px 0; border-radius: 10px; background: #1d4ed8; color: #fff; font-size: 15px; font-weight: 600; } .app .stF svg { width: 18px; height: 18px; }
+      .app .stP { font-size: 18px; font-weight: 700; margin: 24px 16px 10px; } .app .stP span { color: #6b7280; font-weight: 500; }
+      .app .pg { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 0 16px; } .app .pc { border-radius: 12px; overflow: hidden; background: #fff; border: 1px solid #e5e7eb; } .app .pc img { width: 100%; height: 150px; object-fit: cover; display: block; } .app .pc b { display: block; font-size: 13.5px; font-weight: 600; padding: 8px 10px 12px; }
+      .bdgs { position: absolute; left: 0; right: 0; display: flex; justify-content: center; gap: 24px; }
+      .bdg { display: flex; align-items: center; gap: 14px; height: 96px; padding: 0 28px 0 20px; border-radius: 18px; background: #000; border: 2px solid #a6a6a6; color: #fff; font-family: "Poppins", sans-serif; }
+      .bdg svg { width: 52px; height: 52px; display: block; }
+      .bdg span { display: flex; flex-direction: column; line-height: 1; }
+      .bdg small { font-weight: 600; font-size: 20px; letter-spacing: 0.5px; }
+      .bdg b { font-weight: 600; font-size: 38px; letter-spacing: -0.5px; margin-top: 4px; white-space: nowrap; }
+
+      #end #join { top: 760px; font-size: 140px; }
+      #end #creates { top: 960px; font-size: 64px; }
+      #end #ctaWrap { top: 1210px; }
+      #end #fine { top: 1400px; font-size: 40px; }
+      #end #fine2 { top: 1465px; }
+      .chip { position: absolute; left: 70px; top: 170px; display: flex; align-items: center; gap: 14px; padding: 12px 26px 12px 18px; border-radius: 999px; background: #141414; color: #fff; font-family: "Poppins", sans-serif; font-weight: 800; font-size: 46px; }
+      .chip i { display: block; width: 36px; height: 36px; border-radius: 50%; border: 5px solid #fff; position: relative; }
+      .chip i::after { content: ""; position: absolute; left: 50%; top: 4px; width: 4px; height: 12px; margin-left: -2px; background: #fff; box-shadow: 5px 9px 0 -1px #fff; }
+      .stamp.ok { color: #1f9d55; border-color: #1f9d55; }
+      .app .cards.wide { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 0 14px; }
+      .app .cards.wide .ci { height: 150px; }
+      .app .ch .avL { display: flex; width: 22px; height: 22px; border-radius: 50%; background: #e5e7eb; color: #6b7280; font-style: normal; font-size: 12px; font-weight: 700; align-items: center; justify-content: center; }
+      .app .pimg { height: 360px; } .app .pimg img { object-fit: contain; background: #fff; }
+      .app.call { background: linear-gradient(180deg, #13324a 0%, #0b1620 100%); color: #fff; text-align: center; }
+      .app.call .cAv { width: 130px; height: 130px; margin: 120px auto 22px; border-radius: 50%; background: #1f88c9; display: flex; align-items: center; justify-content: center; } .app.call .cAv img { width: 64px; }
+      .app.call .cN { font-size: 26px; font-weight: 600; } .app.call .cS { font-size: 16px; opacity: 0.75; margin-top: 8px; }
+      .app.call .cBt { position: absolute; left: 0; right: 0; bottom: 110px; display: flex; justify-content: space-around; }
+      .app.call .cBt div { width: 74px; height: 74px; border-radius: 50%; display: flex; align-items: center; justify-content: center; } .app.call .cBt svg { width: 34px; height: 34px; fill: #fff; stroke: none; }
+      .app.call .cNo { background: #e5484d; } .app.call .cNo svg { transform: rotate(135deg); } .app.call .cYes { background: #30a46c; }
+      .app .sb.dk { background: transparent !important; color: #fff; } .app .sb.dk .sbi svg { fill: #fff; }
+      .notif { position: absolute; left: 10px; right: 10px; top: 54px; z-index: 8; display: flex; gap: 12px; align-items: center; padding: 14px 16px; border-radius: 22px; background: rgba(245,245,247,0.97); box-shadow: 0 10px 24px rgba(0,0,0,0.25); font-family: "Poppins", sans-serif; font-size: 17px; color: #111; line-height: 1.3; }
+      .notif img { width: 44px; height: 44px; border-radius: 10px; } .notif b { display: block; font-size: 17px; }
+      .app.chat { background: #eef1f5; }
+      .app .chH { display: flex; align-items: center; gap: 10px; height: 64px; padding: 0 16px; background: #fff; border-bottom: 1px solid #e5e7eb; font-size: 16px; } .app .chH svg { width: 20px; height: 20px; }
+      .app .chA { width: 38px; height: 38px; border-radius: 50%; background: #1f88c9; display: flex; align-items: center; justify-content: center; } .app .chA img { width: 20px; }
+      .app .chB { position: relative; padding: 16px 14px; display: flex; flex-direction: column; gap: 12px; }
+      .bub { max-width: 80%; padding: 12px 14px; border-radius: 18px; font-size: 15.5px; line-height: 1.4; }
+      .bub.in { align-self: flex-start; background: #fff; color: #111; border-bottom-left-radius: 6px; }
+      .bub.out { align-self: flex-end; background: #1f88c9; color: #fff; border-bottom-right-radius: 6px; }
+      .bub.ok { background: #e9f7ee; color: #14532d; border: 1px solid #b7e4c7; }
+      .bub span, .bub b { border-radius: 6px; padding: 0 3px; }
+      /* the narrator */
+      #guy { position: absolute; left: 0; top: 0; width: 340px; height: 470px; z-index: 30; }
+      #guy svg { width: 100%; height: 100%; overflow: visible; }
+      #bubble { position: absolute; z-index: 31; background: #fff; border: 4px solid #141414; border-radius: 26px; padding: 10px 22px; font-family: "Caveat", cursive; font-weight: 700; font-size: 54px; color: #141414; white-space: nowrap; }
+
+      #end .icon { position: absolute; left: 405px; top: 340px; width: 290px; display: block; }
+      #cta { display: block; padding: 30px 70px; border-radius: 999px; background: #fff; color: var(--blue); font-weight: 800; font-size: 58px; white-space: nowrap; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="48" data-width="1080" data-height="1920">
+      <audio id="bgm" src="assets/bgm.wav" data-start="0" data-duration="48" data-track-index="11"></audio>
+      <!-- halftone fills for the black-and-white newspaper illustrations -->
+      <svg width="0" height="0" style="position:absolute"><defs>
+        <pattern id="ht1" width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="9" height="9" fill="#fbf8f1" /><circle cx="4.5" cy="4.5" r="1.5" fill="#141414" /></pattern>
+        <pattern id="ht2" width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="9" height="9" fill="#fbf8f1" /><circle cx="4.5" cy="4.5" r="2.7" fill="#141414" /></pattern>
+        <pattern id="ht3" width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="9" height="9" fill="#fbf8f1" /><circle cx="4.5" cy="4.5" r="3.7" fill="#141414" /></pattern>
+      </defs></svg>
+      <div id="scene" class="clip layer" data-start="0" data-duration="48" data-track-index="0">
+        <div class="sheet" id="end">
+          <div class="blue"></div>
+          <img class="icon" src="assets/icon_white.png" alt="" />
+          <div id="join">PitUp.</div>
+          <div id="creates">Commande sur l'application ou sur</div>
+          <div id="ctaWrap"><div id="cta"><span class="ch ch0">p</span><span class="ch ch1">i</span><span class="ch ch2">-</span><span class="ch ch3">t</span><span class="ch ch4">u</span><span class="ch ch5">p</span><span class="ch ch6">.</span><span class="ch ch7">c</span><span class="ch ch8">o</span><span class="ch ch9">m</span></div></div>
+          <div id="fine">+100 boutiques déjà sur PitUp</div>
+          <div id="fine2">Livraison comprise · Paiement à la livraison</div>
+          <div class="bdgs" id="bdgs" style="top:1070px"><div class="bdg"><svg viewBox="0 0 24 24"><path fill="#fff" d="M16.4 1.4c0 1.1-.5 2.3-1.2 3.1-.7.9-2 1.6-3 1.6-.1 0-.2 0-.3-.1 0-.1 0-.2 0-.4 0-1.1.6-2.3 1.2-3 .8-.9 2.1-1.6 3.2-1.7.1.2.1.3.1.5zm4.6 15.7c0 .1-.5 1.6-1.5 3.1-.9 1.3-1.9 2.7-3.4 2.7s-1.9-.9-3.6-.9c-1.7 0-2.3.9-3.7.9-1.4 0-2.3-1.3-3.4-2.8C4.1 18.3 3 15.5 3 12.8c0-4.3 2.8-6.5 5.6-6.5 1.4 0 2.7.9 3.6.9.9 0 2.2-1 3.9-1 .6 0 2.9.1 4.4 2.2-.1.1-2.4 1.4-2.4 4.2 0 3.3 2.9 4.4 2.9 4.5z"/></svg><span><small>Disponible sur</small><b>App Store</b></span></div>
+              <div class="bdg"><svg viewBox="0 0 24 24"><path fill="#00d7fe" d="M3.6 1.8 13.6 12 3.6 22.2c-.4-.2-.6-.6-.6-1.1V2.9c0-.5.2-.9.6-1.1z"/><path fill="#00f076" d="M3.6 1.8 16.9 9.4 13.6 12z"/><path fill="#f8384b" d="M3.6 22.2 13.6 12l3.3 2.6z"/><path fill="#fdbd00" d="M16.9 9.4 21 11.7c.5.3.5.9 0 1.2l-4.1 1.7-3.3-2.6z"/></svg><span><small>Disponible sur</small><b>Google Play</b></span></div></div>
+        </div>
+        <div class="sheet" id="p2Wrap"><div class="rim" id="p2Rim"></div><div class="sheet" id="p2"><div class="paper"></div><div id="dots" class="layer"></div><div id="s2" class="layer"></div></div></div>
+        <div class="sheet" id="p1Wrap"><div class="rim" id="p1Rim"></div><div class="sheet" id="p1"><div class="paper"></div><div id="s1" class="layer"></div></div></div>
+
+        <!-- narrator: a young Lushois in a PitUp tee (vector, built for this film) -->
+        <div id="guy"><svg viewBox="0 0 340 470">
+          <g id="gBody">
+            <path d="M60 470 C60 360 100 320 170 320 C240 320 280 360 280 470 Z" fill="#1f88c9" />
+            <path d="M150 322 L170 352 L190 322" fill="none" stroke="#156ea6" stroke-width="6" stroke-linecap="round" />
+            <image href="assets/icon_white.png" x="146" y="378" width="48" height="54" />
+            <g id="gArmL"><path d="M78 370 C40 400 34 440 44 470" stroke="#1f88c9" stroke-width="44" stroke-linecap="round" fill="none" /><circle cx="44" cy="470" r="22" fill="#6a3f24" /></g>
+            <g id="gArmR"><path d="M262 370 C300 400 306 440 296 470" stroke="#1f88c9" stroke-width="44" stroke-linecap="round" fill="none" /><circle id="handR" cx="296" cy="470" r="22" fill="#6a3f24" /></g>
+            <rect x="152" y="282" width="36" height="48" rx="14" fill="#5e371f" />
+          </g>
+          <g id="gHead">
+            <ellipse cx="94" cy="190" rx="18" ry="24" fill="#6a3f24" />
+            <ellipse cx="246" cy="190" rx="18" ry="24" fill="#6a3f24" />
+            <ellipse cx="170" cy="180" rx="82" ry="104" fill="#7a4a2b" />
+            <path d="M90 150 C88 70 140 58 170 58 C206 58 254 72 250 150 C236 112 210 100 170 100 C130 100 104 112 90 150 Z" fill="#1b1410" />
+            <g id="gBrows"><path d="M118 146 Q138 134 156 144" stroke="#1b1410" stroke-width="8" fill="none" stroke-linecap="round" /><path d="M184 144 Q202 134 222 146" stroke="#1b1410" stroke-width="8" fill="none" stroke-linecap="round" /></g>
+            <g id="gEyes"><ellipse cx="138" cy="172" rx="15" ry="17" fill="#fff" /><ellipse cx="202" cy="172" rx="15" ry="17" fill="#fff" /><circle cx="141" cy="175" r="8" fill="#1b1410" /><circle cx="205" cy="175" r="8" fill="#1b1410" /></g>
+            <path d="M162 196 Q170 214 180 198" stroke="#5a3218" stroke-width="5" fill="none" stroke-linecap="round" />
+            <g transform="translate(170 238)"><ellipse id="mouth" cx="0" cy="0" rx="24" ry="4" fill="#4a1414" /><rect id="teeth" x="-16" y="-6" width="32" height="6" rx="3" fill="#fff" /></g>
+          </g>
+        </svg></div>
+        <div id="bubble">On est d'accord ?</div>
+      </div>
+    </div>
+
+    <script src="assets/hw.js"></script>
+    <script src="assets/mouth.js"></script>
+    <script>
+     Promise.all(["500 14px Poppins","700 20px Poppins","900 100px Playfair","700 24px OldStd","700 80px Caveat","800 60px Poppins","600 30px Poppins"].map((f) => document.fonts.load(f))).then(() => document.fonts.ready).then(() => {
+      const tl = gsap.timeline({ paused: true });
+      let seed = 0x3a7c;
+      const rnd = () => { seed = (Math.imul(1664525, seed) + 1013904223) >>> 0; return seed / 4294967296; };
+      const $ = (id) => document.getElementById(id);
+      // cues after the product scene were laid out on the first take; MAP moves them onto the current one
+      const MAP = [[0, 0], [9.08, 10.73], [17.77, 19.42], [20.37, 22.01], [21.5, 23.39], [22.57, 24.46], [23.58, 25.61], [24.5, 26.51], [42.64, 44.65]];
+      const remap = (t) => { for (let i = 1; i < MAP.length; i++) if (t <= MAP[i][0]) { const [a, b] = MAP[i - 1], [c, d] = MAP[i]; return t < 9.08 ? t : b + ((t - a) / (c - a)) * (d - b); } const [a, b] = MAP[MAP.length - 1]; return b + (t - a); };
+      const N = (t) => remap(t) + 0.3;   // first-take seconds -> film seconds
+      const NR = (t) => t + 0.3;         // current-take seconds -> film seconds
+
+      // ---------- builders ----------
+      function jag(el) {
+        const w = el.offsetWidth, h = el.offsetHeight, pts = [], st = 16, j = () => (rnd() * 5).toFixed(1);
+        for (let x = 0; x <= w; x += st) pts.push(`${x}px ${j()}px`);
+        for (let y = 0; y <= h; y += st) pts.push(`${w - j()}px ${y}px`);
+        for (let x = w; x >= 0; x -= st) pts.push(`${x}px ${h - j()}px`);
+        for (let y = h; y >= 0; y -= st) pts.push(`${j()}px ${y}px`);
+        el.style.clipPath = `polygon(${pts.join(",")})`;
+      }
+      function clipping(parent, id, o) {
+        const d = document.createElement("div"); d.className = "np"; d.id = id;
+        d.style.left = o.x + "px"; d.style.top = o.y + "px"; d.style.width = o.w + "px";
+        d.innerHTML = (o.hd ? `<div class="hd" style="font-size:${o.size}px">${o.hd.map((l) => `<span>${l}</span>`).join("")}</div>` : "") +
+          (o.img ? `<img class="ph" src="${o.img}" style="height:${o.ih}px" alt="">` : "") + (o.art ? `<div class="art">${o.art}</div>` : "") + (o.cap ? `<div class="cap">${o.cap}</div>` : "");
+        parent.appendChild(d); jag(d);
+        const tp = document.createElement("div"); tp.className = "tape"; tp.id = id + "T"; parent.appendChild(tp);
+        gsap.set(tp, { left: o.x + o.w / 2 - 65 + (rnd() - 0.5) * 60, top: o.y - 18, rotation: (rnd() - 0.5) * 10 });
+        gsap.set([d, tp], { opacity: 0 });
+        return d;
+      }
+      function slap(id, at, rot) {
+        tl.fromTo("#" + id, { opacity: 0, y: -50, scale: 1.12, rotation: rot - 8 }, { opacity: 1, y: 0, scale: 1, rotation: rot, duration: 0.3, ease: "back.out(1.5)" }, at);
+        tl.fromTo("#" + id + "T", { opacity: 0, scale: 1.4 }, { opacity: 1, scale: 1, duration: 0.16, ease: "power2.out" }, at + 0.14);
+      }
+      function pull(ids, at) {
+        ids.forEach((id, k) => {
+          const dir = k % 2 ? 1 : -1, sel = $(id + "T") ? ["#" + id, "#" + id + "T"] : ["#" + id];
+          tl.to(sel, { x: dir * 1300, y: -120 - k * 40, rotation: dir * 25, duration: 0.42, ease: "power3.in" }, at + k * 0.04);
+        });
+      }
+      function text(parent, id, cls, html, css) {
+        const d = document.createElement("div"); d.className = cls; d.id = id; d.innerHTML = html; Object.assign(d.style, css); parent.appendChild(d); gsap.set(d, { opacity: 0 }); return d;
+      }
+      function stamp(parent, id, label, css, at, rot) {
+        const d = text(parent, id, "stamp", label, css);
+        tl.fromTo(d, { opacity: 0, scale: 2.2, rotation: rot - 6 }, { opacity: 0.92, scale: 1, rotation: rot, duration: 0.18, ease: "power4.in" }, at);
+        tl.fromTo(parent.parentElement, { x: 0 }, { x: 6, duration: 0.04, yoyo: true, repeat: 3, ease: "none" }, at + 0.18);
+      }
+      function rel(el, anc) { let x = 0, y = 0, e = el; while (e && e !== anc) { x += e.offsetLeft; y += e.offsetTop; e = e.offsetParent; } return { left: x, top: y, width: el.offsetWidth, height: el.offsetHeight, bottom: y + el.offsetHeight }; }
+      function marker(parent, wordId, at, dur) {
+        const r = rel($(wordId), parent), h = document.createElement("div"); h.className = "hl";
+        Object.assign(h.style, { left: r.left - 8 + "px", top: r.top + r.height * 0.18 + "px", width: r.width + 16 + "px", height: r.height * 0.72 + "px" });
+        parent.insertBefore(h, parent.firstChild); tl.fromTo(h, { scaleX: 0 }, { scaleX: 1, duration: dur || 0.35, ease: "power2.out" }, at); return h;
+      }
+      let mk = 0;
+      function mark(parent, wordId, style, at, opt) {
+        const r = rel($(wordId), parent), id = "mk" + mk++, pad = style === "ellipse" ? 34 : 6;
+        const w = r.width + pad * 2, h = style === "ellipse" ? r.height + 40 : 40;
+        const d = document.createElement("div"); d.className = "hw-mark"; d.id = id;
+        const top = style === "ellipse" ? r.top - 20 : style === "strike" ? r.top + r.height * 0.45 : r.bottom - 8;
+        Object.assign(d.style, { left: r.left - pad + "px", top: top + "px", width: w + "px", height: h + "px" });
+        if (opt && opt.color) d.style.setProperty("--hw-ink", opt.color);
+        d.innerHTML = `<svg viewBox="0 0 ${w} ${h}"><path></path></svg>`; parent.appendChild(d);
+        d.querySelector("path").setAttribute("d", style === "ellipse" ? hwWobbleEllipse(w / 2, h / 2, w / 2 - 4, h / 2 - 4, 7 + mk, 0.07) : hwMarkPath(w, 40, style, 3 + mk));
+        gsap.set(d, { opacity: 0 }); tl.set(d, { opacity: 1 }, at);
+        hwMarkOn(tl, "#" + id, at, style === "ellipse" ? 0.45 : 0.35);
+        return id;
+      }
+      function tear(id, s, at, dur) {
+        const clipEl = $(id), rimEl = $(id + "Rim"), wrapEl = $(id + "Wrap");
+        let st = s >>> 0; const r = () => { st = (Math.imul(1664525, st) + 1013904223) >>> 0; return st / 4294967296; };
+        const noise = (k) => { const a = []; for (let i = 0; i <= k; i++) a.push(r() * 2 - 1); return (v) => { const f = v * k, i = Math.min(k - 1, Math.floor(f)); let u = f - i; u = u * u * (3 - 2 * u); return a[i] + (a[i + 1] - a[i]) * u; }; };
+        const ROWS = 160, PX = 100 / 1080, wander = noise(6), core = noise(14), edge = [];
+        for (let i = 0; i <= ROWS; i++) { const v = i / ROWS; edge.push({ y: (v * 100).toFixed(2) + "%", o: (v - 0.5) * 4 + (wander(v) * 46 + (r() * 2 - 1) * 3.5) * PX, rim: Math.min(16, Math.max(7, 7 + 9 * (core(v) * 0.5 + 0.5) + (r() * 2 - 1) * 3)) * PX }); }
+        const ease = (p) => (p < 0.3 ? 0.2 * Math.pow(p / 0.3, 2) : 0.2 + 0.8 * (1 - Math.pow(1 - (p - 0.3) / 0.7, 3)));
+        const paint = (p) => {
+          const e = ease(Math.max(0, Math.min(1, p))), bx = -12 + 124 * e;
+          let a = "100% 0%, 100% 100%", b = a;
+          for (let i = ROWS; i >= 0; i--) { const x = bx + edge[i].o; a += `, ${x.toFixed(2)}% ${edge[i].y}`; b += `, ${(x - edge[i].rim).toFixed(2)}% ${edge[i].y}`; }
+          clipEl.style.clipPath = `polygon(${a})`; rimEl.style.clipPath = `polygon(${b})`;
+          wrapEl.style.transform = `translateX(${(3 * e).toFixed(3)}%) rotate(${(1.5 * e).toFixed(3)}deg)`;
+          wrapEl.style.filter = `drop-shadow(0 ${(12 * e).toFixed(1)}px ${(24 * e).toFixed(1)}px rgba(0,0,0,0.25))`;
+          wrapEl.style.opacity = e >= 0.999 ? 0 : 1;
+        };
+        paint(0); const pr = { p: 0 };
+        tl.fromTo(pr, { p: 0 }, { p: 1, duration: dur, ease: "none", onUpdate: () => paint(pr.p) }, at);
+      }
+
+      // ================= PAGE 1 — from the office to a validated order =================
+      const s1 = $("s1");
+      const ico = {
+        search: `<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>`,
+        bag: `<svg viewBox="0 0 24 24"><path d="M5 8h14l-1 12H6z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg>`,
+        fork: `<svg viewBox="0 0 24 24"><path d="M5 3l14 18M19 3L5 21"/></svg>`,
+        cart: `<svg viewBox="0 0 24 24"><path d="M3 4h2l2.5 11h10L20 7H6.5"/><circle cx="9" cy="19.5" r="1.3"/><circle cx="17" cy="19.5" r="1.3"/></svg>`,
+        user: `<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4.5 4.5-6 8-6s7 1.5 8 6"/></svg>`,
+        home: `<svg viewBox="0 0 24 24"><path d="M4 10l8-6 8 6v10h-5v-6H9v6H4z"/></svg>`,
+        offer: `<svg viewBox="0 0 24 24"><rect x="4" y="7" width="16" height="13" rx="2"/><path d="M9 7V5h6v2M4 12h16"/></svg>`,
+        shop: `<svg viewBox="0 0 24 24"><path d="M4 9l2-5h12l2 5M4 9h16v11H4zM9 20v-6h6v6"/></svg>`,
+        back: `<svg viewBox="0 0 24 24"><path d="M19 12H5M11 6l-6 6 6 6"/></svg>`,
+        shield: `<svg viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg>`,
+        phone: `<svg viewBox="0 0 24 24"><path d="M5 3h3l2 5-2.5 1.5a11 11 0 0 0 7 7L16 14l5 2v3a2 2 0 0 1-2 2A17 17 0 0 1 3 5a2 2 0 0 1 2-2z"/></svg>`,
+      };
+      const nav = (on) => `<div class="nav">${[["home", "Accueil"], ["bag", "Commander"], ["offer", "Offres"], ["shop", "Marché"], ["search", "Découvrir"]].map(([i, l]) => `<div class="${l === on ? "on" : ""}">${ico[i]}<span>${l}</span></div>`).join("")}</div>`;
+      const sbar = (dark) => `<div class="sb${dark ? " dk" : ""}"><b class="sbT">10:00</b><span class="sbi"><svg viewBox="0 0 18 12"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="5" width="3" height="7" rx="1"/><rect x="10" y="2.5" width="3" height="9.5" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></svg><svg viewBox="0 0 27 13"><rect x="0.5" y="0.5" width="23" height="12" rx="3.5" fill="none" stroke-width="1"/><rect x="2.5" y="2.5" width="16" height="8" rx="2"/><rect x="25" y="4" width="1.6" height="5" rx="0.8"/></svg></span></div>`;
+      const hdr = `<div class="hdr"><img src="assets/icon_blue.png" alt="">${ico.user}</div>`;
+      const card = (img, av, shopName, title, id) => `<div class="card" ${id ? `id="${id}"` : ""}><div class="ch">${av ? `<img src="${av}" alt="">` : `<em class="avL">${shopName[0]}</em>`}<b>${shopName}</b><i>${ico.bag}</i></div><img class="ci" src="${img}" alt=""><div class="ct">${title}</div><div class="cb">${ico.cart}Panier</div></div>`;
+      // real PitUp screens (prices left out), then a call and a plain chat with the support team
+      const scrA = `<div class="app" id="appA">${sbar()}${hdr}
+        <div class="srch">${ico.search}<span>Rechercher des produits…</span></div>
+        <div class="tabs"><div class="on">${ico.bag}Boutiques</div><div>${ico.fork}Restaurants</div></div>
+        <div class="cards wide">${card("assets/st/parfum.jpg", "", "Wees fk", "My love", "cP")}${card("assets/st/bracelet.jpg", "assets/st/av_chic.jpg", "chic business", "bracelet", "cB")}
+          ${card("assets/st/sac.jpg", "assets/st/av_bwhite.jpg", "B.white", "sac dame", "cS")}${card("assets/st/gourde.jpg", "assets/st/av_chic.jpg", "chic business", "gourde")}</div>${nav("Commander")}</div>`;
+      const scrB = `<div class="app" id="appB">${sbar()}${hdr}<div class="back">${ico.back}Retour</div>
+        <div class="pimg"><img src="assets/st/kangule.jpg" alt=""></div><div class="pt">Kangule</div>
+        <div class="pshop"><img src="assets/st/av_victor.jpg" alt=""><b>Victor</b></div>
+        <div class="badge">${ico.shield}Les livraisons sont assurées par PitUp</div>
+        <div class="pbtn" id="pbtn">${ico.cart}Panier</div>${nav("Marché")}</div>`;
+      const scrC = `<div class="app call" id="appC">${sbar(true)}<div class="cAv"><img src="assets/icon_white.png" alt=""></div><div class="cN">Service client PitUp</div><div class="cS">Appel entrant…</div>
+        <div class="cBt"><div class="cNo">${ico.phone}</div><div class="cYes" id="cYes">${ico.phone}</div></div></div>`;
+      const scrD = `<div class="app chat" id="appD">${sbar()}<div class="chH">${ico.back}<span class="chA"><img src="assets/icon_white.png" alt=""></span><b>Service client PitUp</b></div>
+        <div class="chB">
+          <div class="bub in" id="m1">Bonjour Mademoiselle Grâce, c'est le service client PitUp. Merci pour votre commande : parfum My love, bracelet et sac dame. Quelle couleur pour le sac ?</div>
+          <div class="bub out" id="m2">Le sac en <span id="mCol">marron</span>, et le parfum en <span id="mSz">50 ml</span>. Merci !</div>
+          <div class="bub in" id="m3">C'est noté. On vérifie avec les boutiques.</div>
+          <div class="bub in ok" id="m4">✓ Commande validée. Livraison aujourd'hui à <b id="mH">15 h</b>, au bureau. Paiement à la livraison.</div>
+          <div class="bub out" id="m5">Parfait, merci !</div>
+        </div></div>`;
+      const dev = text(s1, "dev", "", `<i class="sbtn" style="left:-5px;top:190px;height:46px"></i><i class="sbtn" style="left:-5px;top:260px;height:80px"></i><i class="sbtn" style="left:-5px;top:356px;height:80px"></i><i class="sbtn" style="right:-5px;top:300px;height:130px"></i>
+        <div class="bez"><div class="scr">${scrA}${scrB}${scrC}${scrD}<div class="notif" id="notif"><img src="assets/icon_blue.png" alt=""><span><b>Service client PitUp</b>Bonjour Mademoiselle Grâce, c'est le service client PitUp…</span></div><div class="island"></div><div class="homei"></div><div class="glare"></div><div id="touch"></div></div></div>`, {});
+      gsap.set(["#appB", "#appC", "#appD"], { x: 390 }); gsap.set(["#touch", "#notif", ".bub"], { opacity: 0 });
+      const tap = (x, y, at) => { tl.fromTo("#touch", { opacity: 0, scale: 1.4, x, y }, { opacity: 0.9, scale: 1, duration: 0.12 }, at); tl.to("#touch", { opacity: 0, duration: 0.12 }, at + 0.22); };
+      const swap = (from, to, at) => { tl.to(to, { x: 0, duration: 0.32, ease: "power3.out" }, at); tl.to(from, { x: -120, duration: 0.32, ease: "power3.out" }, at); };
+      // time chip: the clock of the story
+      const chip = text(s1, "chip", "chip", `<i></i><span id="chipT">10:00</span>`, {});
+      // one story clock drives the chip and every phone status bar; minutes roll forward instead of jumping
+      const clk = { m: 600 };
+      const drawClock = () => { const m = Math.floor(clk.m + 1e-6), s = `${Math.floor(m / 60)}:${String(m % 60).padStart(2, "0")}`; $("chipT").textContent = s; document.querySelectorAll(".sbT").forEach((e) => { e.textContent = s; }); };
+      let clkPrev = 600;
+      const setTime = (t, at) => {
+        const [h, mm] = t.split(":").map(Number), m = h * 60 + mm, steps = m - clkPrev;
+        tl.fromTo(clk, { m: clkPrev }, { m, duration: Math.min(1.2, 0.12 * steps + 0.2), ease: "power1.inOut", onUpdate: drawClock, immediateRender: false }, at);
+        tl.fromTo("#chip", { scale: 1.15 }, { scale: 1, duration: 0.25, ease: "back.out(2)" }, at);
+        clkPrev = m;
+      };
+      tl.set(clk, { m: 600, onComplete: drawClock }, 0);
+
+      // "Voici Grâce. Elle est au bureau, entre deux réunions."
+      text(s1, "t0", "big", `<span>Voici <span class="w" id="wG" style="color:#1f88c9">Grâce.</span></span>`, { top: "330px", fontSize: "150px" });
+      tl.fromTo("#t0", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.25, ease: "power3.out" }, N(0.05));
+      tl.fromTo("#chip", { opacity: 0, y: -20 }, { opacity: 1, y: 0, duration: 0.25 }, N(0.3));
+      clipping(s1, "cOffice", { x: 110, y: 560, w: 860, size: 0, cap: "au bureau, entre deux réunions", art:
+        `<svg viewBox="0 0 460 300"><rect width="460" height="300" fill="url(#ht1)" />
+          <rect x="250" y="20" width="180" height="120" fill="#fbf8f1" stroke="#141414" stroke-width="5" /><line x1="340" y1="20" x2="340" y2="140" stroke="#141414" stroke-width="4" /><line x1="250" y1="80" x2="430" y2="80" stroke="#141414" stroke-width="4" />
+          <rect x="40" y="200" width="400" height="16" fill="#141414" /><rect x="70" y="216" width="12" height="84" fill="#141414" /><rect x="400" y="216" width="12" height="84" fill="#141414" />
+          <path d="M260 200 L280 150 L370 150 L360 200 Z" fill="url(#ht2)" stroke="#141414" stroke-width="5" stroke-linejoin="round" />
+          <rect x="390" y="172" width="22" height="28" rx="4" fill="#fbf8f1" stroke="#141414" stroke-width="4" /><path d="M412 180 q12 4 0 14" stroke="#141414" stroke-width="4" fill="none" />
+          <g fill="#141414"><circle cx="150" cy="78" r="30" /><circle cx="150" cy="40" r="18" /><path d="M108 200 C108 140 122 116 150 116 C178 116 192 140 192 200 Z" />
+          <rect x="102" y="200" width="100" height="16" /><rect x="110" y="216" width="14" height="70" /><rect x="176" y="216" width="14" height="70" /></g>
+          <path d="M178 140 C200 150 210 130 214 112" stroke="#141414" stroke-width="16" stroke-linecap="round" fill="none" />
+          <g transform="rotate(-20 220 104)"><rect x="208" y="80" width="24" height="42" rx="5" fill="#141414" /><rect id="oScr" x="211" y="85" width="18" height="32" rx="2" fill="#1f88c9" /></g></svg>` });
+      slap("cOffice", NR(0.12), -1.5);
+      pull(["cOffice"], N(3.6)); tl.to("#t0", { opacity: 0, y: -30, duration: 0.15 }, N(3.6));
+
+      // "Elle ouvre PitUp. Un parfum, un bracelet, un sac… Elle ajoute ses articles, et elle passe sa commande."
+      setTime("10:02", NR(3.79));
+      tl.fromTo(dev, { opacity: 0, y: 380, rotation: 6 }, { opacity: 1, y: 0, rotation: -2, duration: 0.45, ease: "power3.out" }, NR(3.8));
+      const say = (id, txt, at, out, css) => { text(s1, id, "note", txt, Object.assign({ left: "620px", fontSize: "60px", transform: "rotate(-3deg)" }, css)); tl.fromTo("#" + id, { opacity: 0, x: 20 }, { opacity: 1, x: 0, duration: 0.2 }, at); if (out) tl.to("#" + id, { opacity: 0, duration: 0.15 }, out); };
+      say("n1", "elle ouvre PitUp", NR(3.95), NR(10.6), { top: "540px" });
+      [["#cP", "n2", "un parfum", 5.29, 650], ["#cB", "n2b", "un bracelet", 6.18, 740], ["#cS", "n2c", "un sac", 7.10, 830]].forEach(([c, id, l, t, y]) => {
+        tl.to(c, { boxShadow: "0 0 0 4px #1f88c9", duration: 0.15 }, NR(t)); say(id, l, NR(t), NR(10.6), { top: y + "px", fontSize: "58px" });
+      });
+      [[130, 562, 8.12], [366, 562, 8.45], [130, 899, 8.78]].forEach(([x, y, t], k) => { tap(x, y, NR(t)); tl.to(["#cP .cb", "#cB .cb", "#cS .cb"][k], { backgroundColor: "#1f9d55", duration: 0.12 }, NR(t + 0.1)); });
+      say("n3", "commande passée ✓", NR(9.48), NR(10.6), { top: "960px", color: "#1f9d55" });
+
+      // "Quelques minutes plus tard, le service client PitUp la contacte, par appel ou par message."
+      setTime("10:09", N(9.08));
+      swap("#appA", "#appC", N(10.5));
+      tl.fromTo(".cAv", { scale: 1 }, { scale: 1.08, duration: 0.3, yoyo: true, repeat: 5, ease: "sine.inOut" }, N(10.6));
+      tl.fromTo("#dev", { rotation: -2 }, { rotation: -0.5, duration: 0.05, yoyo: true, repeat: 9, ease: "none" }, N(10.7));
+      say("n4", "appel…", N(12.86), N(14.2), { top: "620px", fontSize: "72px" });
+      tl.fromTo("#notif", { opacity: 0, y: -60 }, { opacity: 1, y: 0, duration: 0.3, ease: "back.out(1.6)" }, N(13.3));
+      say("n5", "…ou message", N(13.39), N(14.2), { top: "760px", fontSize: "72px" });
+
+      // "Grâce confirme sa commande : la couleur, la taille."
+      tl.to("#notif", { opacity: 0, duration: 0.15 }, N(14.2));
+      swap("#appC", "#appD", N(14.2));
+      tl.fromTo("#m1", { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.25 }, N(14.4));
+      tl.fromTo("#m2", { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.25 }, N(15.24));
+      tl.to("#mCol", { backgroundColor: "rgba(255,255,255,0.35)", duration: 0.15 }, N(16.14));
+      tl.to("#mSz", { backgroundColor: "rgba(255,255,255,0.35)", duration: 0.15 }, N(16.98));
+      say("n6", "la couleur", N(16.14), N(17.7), { top: "620px", fontSize: "72px" });
+      say("n7", "la taille", N(16.98), N(17.7), { top: "760px", fontSize: "72px" });
+      tl.fromTo("#m3", { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.25 }, N(17.3));
+
+      // "Pendant ce temps, PitUp appelle la boutique, pour vérifier que l'article est bien disponible. C'est bon, il est en stock !"
+      setTime("10:15", N(17.77));
+      tl.to("#dev", { x: -60, y: 380, scale: 0.55, duration: 0.45, ease: "power3.inOut" }, N(17.77));
+      clipping(s1, "cDesk", { x: 60, y: 400, w: 460, size: 0, cap: "le service client PitUp", art:
+        `<svg viewBox="0 0 300 300"><rect width="300" height="300" fill="url(#ht1)" /><rect x="20" y="230" width="260" height="14" fill="#141414" />
+          <g fill="#141414"><circle cx="150" cy="110" r="44" /><path d="M86 232 C86 170 110 160 150 160 C190 160 214 170 214 232 Z" /></g>
+          <path d="M98 112 C98 50 202 50 202 112" stroke="#141414" stroke-width="10" fill="none" /><rect x="88" y="100" width="20" height="36" rx="8" fill="#1f88c9" stroke="#141414" stroke-width="3" /><rect x="192" y="100" width="20" height="36" rx="8" fill="#1f88c9" stroke="#141414" stroke-width="3" />
+          <path d="M102 132 C110 162 130 166 146 164" stroke="#141414" stroke-width="5" fill="none" /><circle cx="148" cy="164" r="7" fill="#1f88c9" /></svg>` });
+      clipping(s1, "cShop", { x: 560, y: 400, w: 460, size: 0, cap: "les boutiques", art:
+        `<svg viewBox="0 0 300 300"><rect width="300" height="300" fill="url(#ht1)" /><defs>${[0, 1, 2].map((k) => `<clipPath id="lc${k}"><circle cx="${[90, 210, 150][k]}" cy="${[95, 95, 215][k]}" r="62" /></clipPath>`).join("")}</defs>
+          <image href="assets/st/av_chic.jpg" x="28" y="33" width="124" height="124" preserveAspectRatio="xMidYMid slice" clip-path="url(#lc0)" /><circle cx="90" cy="95" r="62" fill="none" stroke="#fff" stroke-width="6" />
+          <image href="assets/st/av_bwhite.jpg" x="148" y="33" width="124" height="124" preserveAspectRatio="xMidYMid slice" clip-path="url(#lc1)" /><circle cx="210" cy="95" r="62" fill="none" stroke="#fff" stroke-width="6" />
+          <circle cx="150" cy="215" r="62" fill="#e5e7eb" stroke="#fff" stroke-width="6" /><text x="150" y="238" text-anchor="middle" font-family="Poppins" font-weight="800" font-size="64" fill="#6b7280">W</text></svg>` });
+      slap("cDesk", N(18.8), -2); slap("cShop", N(19.42), 2);
+      text(s1, "line", "", `<svg viewBox="0 0 400 80" style="width:100%;height:100%;overflow:visible"><path id="lnP" d="M10 40 C120 -10 280 90 390 40" stroke="#1f88c9" stroke-width="7" stroke-dasharray="4 16" stroke-linecap="round" fill="none" /></svg>`, { position: "absolute", left: "340px", top: "880px", width: "400px", height: "80px" });
+      tl.fromTo("#line", { opacity: 0 }, { opacity: 1, duration: 0.2 }, N(19.42));
+      tl.fromTo("#lnP", { attr: { "stroke-dashoffset": 0 } }, { attr: { "stroke-dashoffset": -200 }, duration: 3, ease: "none" }, N(19.42));
+      say("n8", "disponible ?", N(20.37), N(22.5), { left: "400px", top: "980px", fontSize: "70px", color: "#141414" });
+      const ok = text(s1, "stOk", "stamp ok", "Tout en stock ✓", { left: "500px", top: "840px", fontSize: "58px" });
+      tl.fromTo(ok, { opacity: 0, scale: 2.2, rotation: -12 }, { opacity: 0.95, scale: 1, rotation: -6, duration: 0.18, ease: "power4.in" }, N(22.57));
+      tl.fromTo("#p1", { x: 0 }, { x: 6, duration: 0.04, yoyo: true, repeat: 3, ease: "none" }, N(22.75));
+      pull(["cDesk", "cShop"], N(24.2)); tl.to(["#line", "#stOk"], { opacity: 0, duration: 0.15 }, N(24.2));
+
+      // "La commande est validée, et l'heure de livraison est fixée."
+      setTime("10:20", N(24.5));
+      tl.to("#dev", { x: 0, y: 0, scale: 1, duration: 0.4, ease: "power3.inOut" }, N(24.3));
+      tl.fromTo("#m4", { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.25 }, N(24.65));
+      tl.to("#mH", { backgroundColor: "rgba(31,157,85,0.25)", duration: 0.15 }, N(26.12));
+      say("n9", "commande validée ✓", N(25.04), N(27.7), { top: "620px", fontSize: "62px", color: "#1f9d55" });
+      say("n10", "livraison à 15 h", N(26.42), N(27.7), { top: "760px", fontSize: "62px" });
+      tl.fromTo("#m5", { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.25 }, N(26.9));
+      tear("p1", 0x6a1c33d5, N(27.45), 0.55);
+
+      // ================= PAGE 2 — the delivery =================
+      const s2 = $("s2");
+      const chip2 = text(s2, "chip2", "chip", `<i></i><span>15:00</span>`, {});
+      tl.fromTo(chip2, { opacity: 0, scale: 1.3 }, { opacity: 1, scale: 1, duration: 0.25, ease: "back.out(2)" }, N(27.88));
+      text(s2, "t7", "big", `<span>À l'heure prévue…</span>`, { top: "330px", fontSize: "110px" });
+      tl.fromTo("#t7", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.25, ease: "power3.out" }, N(27.95));
+      clipping(s2, "cDel", { x: 90, y: 520, w: 900, size: 0, cap: "le livreur arrive au lieu indiqué", art:
+        `<svg viewBox="0 0 460 300"><rect width="460" height="300" fill="url(#ht1)" /><rect y="262" width="460" height="38" fill="url(#ht3)" />
+          <rect x="300" y="40" width="130" height="222" fill="#fbf8f1" stroke="#141414" stroke-width="5" /><line x1="300" y1="70" x2="430" y2="70" stroke="#141414" stroke-width="4" /><text x="318" y="62" font-family="Poppins" font-weight="800" font-size="18" fill="#141414">BUREAU</text>
+          <g id="dRider"><g fill="#141414"><circle cx="110" cy="96" r="28" /><path d="M78 86 Q110 52 142 86 Z" /><rect x="132" y="80" width="22" height="8" rx="3" />
+          <path d="M72 262 L80 150 C82 130 96 124 110 124 C124 124 138 130 140 150 L148 262 Z" /></g>
+          <path d="M136 160 C160 170 176 176 196 176" stroke="#141414" stroke-width="18" stroke-linecap="round" fill="none" /></g>
+          <g id="dBox"><rect x="190" y="150" width="62" height="52" fill="#c89a5e" stroke="#141414" stroke-width="4" /><rect x="214" y="150" width="14" height="52" fill="#1f88c9" /></g>
+          <g fill="#141414"><circle cx="300" cy="96" r="28" /><circle cx="300" cy="62" r="15" /><path d="M262 262 L270 150 C272 130 286 124 300 124 C314 124 328 130 330 150 L338 262 Z" /></g>
+          <path d="M270 160 C250 172 240 178 252 182" stroke="#141414" stroke-width="18" stroke-linecap="round" fill="none" /></svg>` });
+      slap("cDel", N(28.97), 1);
+      tl.fromTo("#dRider", { x: -120 }, { x: 0, duration: 0.9, ease: "power2.out" }, N(29.04));
+      tl.fromTo("#dBox", { x: -120 }, { x: 0, duration: 0.9, ease: "power2.out" }, N(29.04));
+      tl.to("#dBox", { x: 14, duration: 0.4, ease: "power2.inOut" }, N(31.34));
+      const bill = text(s2, "bill", "", `<img src="assets/st/billet.png" style="width:100%;display:block;box-shadow:0 16px 28px rgba(0,0,0,0.25)">`, { position: "absolute", left: "560px", top: "1230px", width: "420px" });
+      tl.fromTo(bill, { opacity: 0, x: 400, y: -120, rotation: 30 }, { opacity: 1, x: 0, y: 0, rotation: -8, duration: 0.4, ease: "power3.out" }, N(32.6));
+      stamp(s2, "stPay", "Paiement à la livraison", { left: "70px", top: "1150px", fontSize: "54px" }, N(32.76), -5);
+      // "Simple. Sans stress."
+      pull(["cDel"], N(33.8)); tl.to(["#t7", "#bill", "#stPay"], { opacity: 0, y: -30, duration: 0.15 }, N(33.8));
+      text(s2, "s1w", "big", `<span>Simple.</span>`, { top: "620px", fontSize: "170px" });
+      text(s2, "s2w", "big", `<span style="color:#1f88c9">Sans stress.</span>`, { top: "820px", fontSize: "150px" });
+      tl.fromTo("#s1w", { opacity: 0, scale: 1.2 }, { opacity: 1, scale: 1, duration: 0.22, ease: "expo.out" }, N(33.98));
+      tl.fromTo("#s2w", { opacity: 0, scale: 1.2 }, { opacity: 1, scale: 1, duration: 0.22, ease: "expo.out" }, N(35.03));
+      tear("p2", 0x2b4f9e17, N(35.85), 0.55);
+
+      // "PitUp. Commande sur l'application, ou sur : P. I. tiret. T. U. P. point com."
+      tl.fromTo("#end .icon", { scale: 0.8, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.3, ease: "back.out(2)" }, N(36.2));
+      tl.fromTo("#join", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.3, ease: "power3.out" }, N(36.31));
+      tl.fromTo("#creates", { opacity: 0 }, { opacity: 1, duration: 0.25 }, N(37.3));
+      tl.fromTo("#bdgs .bdg", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.35, stagger: 0.12, ease: "back.out(1.6)" }, N(37.81));
+      tl.fromTo("#cta", { scale: 0.7, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.35, ease: "back.out(2)" }, N(38.95));
+      [[0, 41.69], [1, 42.25], [2, 42.71], [3, 43.44], [4, 43.99], [5, 44.39], [6, 44.84], [7, 45.01], [8, 45.01], [9, 45.01]].forEach(([k, t]) =>
+        tl.fromTo("#cta .ch" + k, { scale: 1, color: "#1f88c9" }, { scale: 1.45, color: "#d6332a", duration: 0.12, yoyo: true, repeat: 1, ease: "power2.out" }, NR(t)));
+      tl.fromTo(["#fine", "#fine2"], { opacity: 0 }, { opacity: 1, duration: 0.4, stagger: 0.1 }, NR(45.6));
+
+      // ================= Monsieur Peter =================
+      gsap.set("#guy", { x: 740, y: 1500, transformOrigin: "50% 100%" });
+      gsap.set("#bubble", { opacity: 0 });
+      tl.fromTo("#guy", { y: 1950 }, { y: 1500, duration: 0.45, ease: "back.out(1.6)" }, 0.05);
+      const lip = { f: 0 };
+      tl.fromTo(lip, { f: 0 }, { f: MOUTH.length - 1, duration: (MOUTH.length - 1) / 30, ease: "none", onUpdate: () => {
+        const v = MOUTH[Math.round(lip.f)] || 0; $("mouth").setAttribute("ry", (3 + v * 20).toFixed(1)); $("mouth").setAttribute("rx", (24 - v * 4).toFixed(1)); $("teeth").setAttribute("opacity", v > 0.25 ? 1 : 0);
+      } }, 0);
+      tl.fromTo("#gHead", { y: 0, rotation: 0, transformOrigin: "170px 300px" }, { y: -6, rotation: 2, duration: 0.6, ease: "sine.inOut", yoyo: true, repeat: 61 }, 0);
+      for (let b = 1.6; b < 37.8; b += 2.7 + ((b * 7) % 1.3)) { tl.to("#gEyes", { scaleY: 0.1, transformOrigin: "170px 175px", duration: 0.06 }, b); tl.to("#gEyes", { scaleY: 1, duration: 0.08 }, b + 0.08); }
+      const armR = (rot, at, d) => tl.to("#gArmR", { rotation: rot, svgOrigin: "262 370", duration: d || 0.25, ease: "power2.out" }, at);
+      const armL = (rot, at, d) => tl.to("#gArmL", { rotation: rot, svgOrigin: "78 370", duration: d || 0.25, ease: "power2.out" }, at);
+      armR(-150, 0.3); armR(-130, 0.55); armR(-150, 0.75); armR(0, 1.1);          // wave hello
+      armL(120, N(3.95)); armL(0, N(5.4));                                          // points at the phone
+      armL(120, N(18.8)); armL(0, N(20.4));                                         // points at the call to the shop
+      tl.to("#guy", { scale: 1.06, duration: 0.15, yoyo: true, repeat: 1 }, N(22.57));
+      armR(-160, N(22.6)); armR(0, N(23.8));                                        // thumbs up "en stock"
+      armR(-160, N(32.8)); armR(0, N(33.9));
+      tl.to("#guy", { y: 1960, duration: 0.35, ease: "power3.in" }, N(35.6));
+
+
+      hwBoil(tl, [".hw-mark", ".note"], { amp: 1.1, rot: 0.3, frameDrop: 3, seed: 5 });
+      window.__timelines["main"] = tl;
+      tl.seek(0);
+     });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,375 @@
+{
+  "queries": [
+    {
+      "id": "user_login",
+      "type": "SELECT",
+      "table": "users",
+      "description": "User authentication lookup by email",
+      "where_conditions": [
+        {
+          "column": "email",
+          "operator": "=",
+          "selectivity": 0.95
+        }
+      ],
+      "join_conditions": [],
+      "order_by": [],
+      "group_by": [],
+      "frequency": 5000,
+      "avg_execution_time_ms": 2.5
+    },
+    {
+      "id": "product_search_category",
+      "type": "SELECT",
+      "table": "products",
+      "description": "Product search within category with pagination",
+      "where_conditions": [
+        {
+          "column": "category_id",
+          "operator": "=",
+          "selectivity": 0.2
+        },
+        {
+          "column": "is_active",
+          "operator": "=",
+          "selectivity": 0.1
+        }
+      ],
+      "join_conditions": [],
+      "order_by": [
+        {"column": "created_at", "direction": "DESC"}
+      ],
+      "group_by": [],
+      "frequency": 2500,
+      "avg_execution_time_ms": 15.2
+    },
+    {
+      "id": "product_search_price_range",
+      "type": "SELECT",
+      "table": "products",
+      "description": "Product search by price range and brand",
+      "where_conditions": [
+        {
+          "column": "price",
+          "operator": "BETWEEN",
+          "selectivity": 0.3
+        },
+        {
+          "column": "brand",
+          "operator": "=",
+          "selectivity": 0.05
+        },
+        {
+          "column": "is_active",
+          "operator": "=",
+          "selectivity": 0.1
+        }
+      ],
+      "join_conditions": [],
+      "order_by": [
+        {"column": "price", "direction": "ASC"}
+      ],
+      "group_by": [],
+      "frequency": 800,
+      "avg_execution_time_ms": 25.7
+    },
+    {
+      "id": "user_orders_history",
+      "type": "SELECT",
+      "table": "orders",
+      "description": "User order history with pagination",
+      "where_conditions": [
+        {
+          "column": "user_id",
+          "operator": "=",
+          "selectivity": 0.8
+        }
+      ],
+      "join_conditions": [],
+      "order_by": [
+        {"column": "created_at", "direction": "DESC"}
+      ],
+      "group_by": [],
+      "frequency": 1200,
+      "avg_execution_time_ms": 8.3
+    },
+    {
+      "id": "order_details_with_items",
+      "type": "SELECT",
+      "table": "orders",
+      "description": "Order details with order items (JOIN query)",
+      "where_conditions": [
+        {
+          "column": "id",
+          "operator": "=",
+          "selectivity": 1.0
+        }
+      ],
+      "join_conditions": [
+        {
+          "local_column": "id",
+          "foreign_table": "order_items",
+          "foreign_column": "order_id",
+          "join_type": "INNER"
+        }
+      ],
+      "order_by": [],
+      "group_by": [],
+      "frequency": 3000,
+      "avg_execution_time_ms": 12.1
+    },
+    {
+      "id": "pending_orders_processing",
+      "type": "SELECT",
+      "table": "orders",
+      "description": "Processing queue - pending orders by date",
+      "where_conditions": [
+        {
+          "column": "status",
+          "operator": "=",
+          "selectivity": 0.15
+        },
+        {
+          "column": "created_at",
+          "operator": ">=",
+          "selectivity": 0.3
+        }
+      ],
+      "join_conditions": [],
+      "order_by": [
+        {"column": "created_at", "direction": "ASC"}
+      ],
+      "group_by": [],
+      "frequency": 150,
+      "avg_execution_time_ms": 45.2
+    },
+    {
+      "id": "user_orders_by_status",
+      "type": "SELECT",
+      "table": "orders",
+      "description": "User orders filtered by status",
+      "where_conditions": [
+        {
+          "column": "user_id",
+          "operator": "=",
+          "selectivity": 0.8
+        },
+        {
+          "column": "status",
+          "operator": "IN",
+          "selectivity": 0.4
+        }
+      ],
+      "join_conditions": [],
+      "order_by": [
+        {"column": "created_at", "direction": "DESC"}
+      ],
+      "group_by": [],
+      "frequency": 600,
+      "avg_execution_time_ms": 18.5
+    },
+    {
+      "id": "product_reviews_summary",
+      "type": "SELECT",
+      "table": "product_reviews",
+      "description": "Product review aggregation",
+      "where_conditions": [
+        {
+          "column": "product_id",
+          "operator": "=",
+          "selectivity": 0.85
+        }
+      ],
+      "join_conditions": [],
+      "order_by": [],
+      "group_by": ["product_id"],
+      "frequency": 1800,
+      "avg_execution_time_ms": 22.3
+    },
+    {
+      "id": "inventory_low_stock",
+      "type": "SELECT",
+      "table": "products",
+      "description": "Low inventory alert query",
+      "where_conditions": [
+        {
+          "column": "inventory_count",
+          "operator": "<=",
+          "selectivity": 0.1
+        },
+        {
+          "column": "is_active",
+          "operator": "=",
+          "selectivity": 0.1
+        }
+      ],
+      "join_conditions": [],
+      "order_by": [
+        {"column": "inventory_count", "direction": "ASC"}
+      ],
+      "group_by": [],
+      "frequency": 50,
+      "avg_execution_time_ms": 35.8
+    },
+    {
+      "id": "popular_products_by_category",
+      "type": "SELECT",
+      "table": "order_items",
+      "description": "Popular products analysis with category join",
+      "where_conditions": [
+        {
+          "column": "created_at",
+          "operator": ">=",
+          "selectivity": 0.2
+        }
+      ],
+      "join_conditions": [
+        {
+          "local_column": "product_id",
+          "foreign_table": "products",
+          "foreign_column": "id",
+          "join_type": "INNER"
+        },
+        {
+          "local_column": "category_id",
+          "foreign_table": "categories",
+          "foreign_column": "id",
+          "join_type": "INNER"
+        }
+      ],
+      "order_by": [
+        {"column": "total_quantity", "direction": "DESC"}
+      ],
+      "group_by": ["product_id", "category_id"],
+      "frequency": 25,
+      "avg_execution_time_ms": 180.5
+    },
+    {
+      "id": "customer_purchase_history",
+      "type": "SELECT",
+      "table": "orders",
+      "description": "Customer analytics - purchase history with items",
+      "where_conditions": [
+        {
+          "column": "user_id",
+          "operator": "=",
+          "selectivity": 0.8
+        },
+        {
+          "column": "status",
+          "operator": "IN",
+          "selectivity": 0.6
+        }
+      ],
+      "join_conditions": [
+        {
+          "local_column": "id",
+          "foreign_table": "order_items",
+          "foreign_column": "order_id",
+          "join_type": "INNER"
+        }
+      ],
+      "order_by": [
+        {"column": "created_at", "direction": "DESC"}
+      ],
+      "group_by": [],
+      "frequency": 300,
+      "avg_execution_time_ms": 65.2
+    },
+    {
+      "id": "daily_sales_report",
+      "type": "SELECT",
+      "table": "orders",
+      "description": "Daily sales aggregation report",
+      "where_conditions": [
+        {
+          "column": "created_at",
+          "operator": ">=",
+          "selectivity": 0.05
+        },
+        {
+          "column": "status",
+          "operator": "IN",
+          "selectivity": 0.6
+        }
+      ],
+      "join_conditions": [],
+      "order_by": [
+        {"column": "order_date", "direction": "DESC"}
+      ],
+      "group_by": ["DATE(created_at)"],
+      "frequency": 10,
+      "avg_execution_time_ms": 250.8
+    },
+    {
+      "id": "category_hierarchy_nav",
+      "type": "SELECT",
+      "table": "categories",
+      "description": "Category navigation - parent-child relationships",
+      "where_conditions": [
+        {
+          "column": "parent_id",
+          "operator": "=",
+          "selectivity": 0.2
+        },
+        {
+          "column": "is_active",
+          "operator": "=",
+          "selectivity": 0.1
+        }
+      ],
+      "join_conditions": [],
+      "order_by": [
+        {"column": "sort_order", "direction": "ASC"}
+      ],
+      "group_by": [],
+      "frequency": 800,
+      "avg_execution_time_ms": 5.1
+    },
+    {
+      "id": "recent_user_reviews",
+      "type": "SELECT",
+      "table": "product_reviews",
+      "description": "Recent product reviews by user",
+      "where_conditions": [
+        {
+          "column": "user_id",
+          "operator": "=",
+          "selectivity": 0.95
+        }
+      ],
+      "join_conditions": [
+        {
+          "local_column": "product_id",
+          "foreign_table": "products",
+          "foreign_column": "id",
+          "join_type": "INNER"
+        }
+      ],
+      "order_by": [
+        {"column": "created_at", "direction": "DESC"}
+      ],
+      "group_by": [],
+      "frequency": 200,
+      "avg_execution_time_ms": 12.7
+    },
+    {
+      "id": "product_avg_rating",
+      "type": "SELECT",
+      "table": "product_reviews",
+      "description": "Product average rating calculation",
+      "where_conditions": [
+        {
+          "column": "product_id",
+          "operator": "IN",
+          "selectivity": 0.1
+        }
+      ],
+      "join_conditions": [],
+      "order_by": [],
+      "group_by": ["product_id"],
+      "frequency": 400,
+      "avg_execution_time_ms": 35.4
+    }
+  ]
+}

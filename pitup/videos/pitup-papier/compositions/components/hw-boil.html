@@ -1,0 +1,504 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      /* Caveat is NOT auto-resolved by the renderer — bundle it. Asset
+         paths are ROOT-RELATIVE (the project root is the base URL for all
+         compositions; ../ traversal is a lint error). Registry installs
+         ship the woff2 as an asset file targeting assets/fonts/. */
+      @font-face {
+        font-family: "Caveat";
+        src: url("assets/fonts/Caveat-700-latin.woff2") format("woff2");
+        font-weight: 700;
+        font-display: block;
+      }
+      *,
+      *::before,
+      *::after {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        background: transparent;
+        overflow: hidden;
+      }
+      /* ---- hw-boil -----------------------------------------------------
+         The hand-drawn "boil": jitter that re-poses only every N frames
+         (quake + frame-drop style). Pose is a pure function of quantized
+         timeline time through a seeded hash — fully seek-safe, renders
+         identically on every pass over the same frame. Ships the control
+         layer on top of the raw mechanic: hwBoilPose (the "boil" control —
+         authored amp/rot poses over the family-locked frameDrop), the
+         stroke matrix (hwStrokeTypes / hwStrokeApply / hwDrawOn — the
+         "strokeType" control: plain | soft | sharp | spray; spray is
+         index-seeded deterministic dots, NO feTurbulence anywhere) and the
+         curvature-adaptive pen-velocity ease (hwPenEase).
+
+         RULES:
+         - hwBoil owns x/y/rotation of the boiled element.
+           Transform-touching entrance/exit tweens go on a WRAPPER
+           around it, never the boiled element (non-transform tweens
+           like opacity don't contend and may ride it).
+         - One timeline has ONE onUpdate — hwOnUpdate is the dispatcher
+           that lets the boil coexist with sweep scalars etc. Register
+           every onUpdate-style render through it.
+         - Never boil an element carrying an SVG transform attribute —
+           nest a positioning <g> (or div) and boil the clean inner group.
+         - A textured path (sharp/spray) lives in its OWN svg inside the
+           boiled wrapper, so the stroke-matrix mask in that svg's defs
+           rides the boil with it (a mask left in a shared static svg
+           would clip the texture at jitter extremes). */
+      #hw-boil-root {
+        --hw-font-print: "Caveat", cursive;
+        --hw-font-script: "Caveat", cursive;
+        --hw-ink: #f4f2ec;
+        --hw-accent: #6d6dff;
+
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: #17161a;
+        font-family: var(--hw-font-print, "Caveat", cursive);
+      }
+      #hw-boil-root svg {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+      }
+      #hw-boil-root path {
+        fill: none;
+        stroke: var(--hw-ink);
+        stroke-width: 6;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      #hw-b-arrow {
+        stroke: var(--hw-accent);
+        stroke-width: 7;
+      }
+      .hw-b-label {
+        position: absolute;
+        font-weight: 700;
+        font-size: 84px;
+        color: var(--hw-ink);
+        white-space: nowrap;
+      }
+      .hw-b-tag {
+        position: absolute;
+        font-family: "Inter", ui-sans-serif, sans-serif;
+        font-weight: 500;
+        font-size: 22px;
+        letter-spacing: 0.12em;
+        color: rgba(244, 242, 236, 0.62);
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Self-preview. WIRING: copy the hwOnUpdate / hwHash / hwBoil /
+         hwWobbleEllipse helpers into your host script, then:
+
+           hwBoil(tl, "#hw-my-annotation", { amp: 1.6, rot: 0.5, frameDrop: 3, seed: 2 });
+
+         frameDrop 3-4 = classic boil; 1 = frantic; boil: off = don't call it.
+
+         Control layer (copy alongside): hwBoilPose maps the "boil" control
+         ("off" | "calm" | "lively") to authored amp/rot pairs over the
+         family-locked frameDrop 3 —
+
+           hwBoilPose(tl, "#hw-my-annotation", CONFIG.boil, { seed: 2 });
+
+         The stroke matrix (hwStrokeTypes / hwStrokeApply / hwDrawOn, plus
+         hwPenEase) maps the "strokeType" control ("plain" | "soft" |
+         "sharp" | "spray") to authored textures. sharp/spray return a mask
+         clone in applied.draw and hwDrawOn animates THAT (the visible
+         texture never animates); { pen: true } rides the curvature-adaptive
+         pen-velocity ease —
+
+           var applied = hwStrokeApply(pathEl, CONFIG.strokeType, { seed: 4, id: "my-mask" });
+           hwDrawOn(tl, applied, 0.3, 0.8, { pen: true });
+
+         Unknown control values fall back to the declared default with a
+         console error (bounded-controls law). -->
+    <div
+      id="hw-boil-root"
+      data-composition-id="hw-boil"
+      data-start="0"
+      data-duration="4"
+      data-width="1920"
+      data-height="1080"
+    >
+      <svg viewBox="0 0 1920 1080">
+        <g id="hw-b-arrow-g">
+          <path
+            id="hw-b-arrow"
+            d="M 640 640 C 760 700, 980 720, 1130 620 M 1130 620 l -64 -6 M 1130 620 l -18 58"
+          ></path>
+        </g>
+      </svg>
+      <!-- the CONFIG element: own svg inside the boiled div — the
+           stroke-matrix mask (in this svg's defs) rides the boil with it -->
+      <div
+        id="hw-b-circle-w"
+        style="position: absolute; left: 250px; top: 470px; width: 420px; height: 300px"
+      >
+        <div id="hw-b-circle-g" style="position: absolute; inset: 0">
+          <svg viewBox="0 0 420 300" style="overflow: visible">
+            <path id="hw-b-circle"></path>
+          </svg>
+        </div>
+      </div>
+      <div class="hw-b-label" id="hw-b-word" style="left: 1230px; top: 560px">the boil</div>
+      <div class="hw-b-tag" id="hw-b-tag-config" style="left: 350px; top: 782px">
+        BOIL "CALM" · STROKE "PLAIN"
+      </div>
+      <div class="hw-b-tag" style="left: 940px; top: 782px">FRAME DROP 1</div>
+      <div class="hw-b-tag" style="left: 1230px; top: 700px">TEXT, AMP 1.2</div>
+      <div
+        id="hw-b-drv"
+        class="clip"
+        data-start="0"
+        data-duration="4"
+        data-track-index="0"
+        style="position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none"
+      ></div>
+    </div>
+    <script>
+      (function () {
+        window.__timelines = window.__timelines || {};
+
+        var CONFIG = {
+          // ── Controls (family base + 1 item-specific; comment grammar is the published-parameter list) ──
+          boil: "calm", //        variant: "off" | "calm" | "lively" — authored amp/rot pairs over the family-locked frameDrop 3, applied to the demo circle; seed locked (family base)
+          strokeType: "plain", // variant: "plain" | "soft" | "sharp" | "spray" — authored stroke texture on the demo circle (soft = blur; sharp = micro-dash dry marker; spray = seeded deterministic dots); draw-on rides the mask clone for textured types (4 params)
+
+          // ── Locked (edit the item source to change) ─────────────────────
+          // seeds, draw durations/eases, pen-velocity constants (kCurve 10,
+          // floor 0.22), boil pose tables, frameDrop values, demo geometry
+        };
+
+        // ---- copy these helpers into the host script ----
+
+        // Dispatcher: a GSAP timeline has ONE onUpdate. Register every
+        // per-frame render (boils, sweep scalars) through this instead of
+        // setting eventCallback directly, and they all coexist.
+        window.hwOnUpdate = function (tl, fn) {
+          if (!tl.__hwRenders) {
+            tl.__hwRenders = [];
+            tl.eventCallback("onUpdate", function () {
+              for (var i = 0; i < tl.__hwRenders.length; i++) tl.__hwRenders[i]();
+            });
+          }
+          tl.__hwRenders.push(fn);
+          fn();
+        };
+
+        // Seeded hash -> [-1, 1]. Pure function of n — no Math.random().
+        window.hwHash = function (n, seed) {
+          var x = Math.sin(n * 127.1 + (seed || 1) * 311.7) * 43758.5453;
+          return (x - Math.floor(x)) * 2 - 1;
+        };
+
+        // The boil. Owns x/y/rotation of its targets — put entrance tweens
+        // on a wrapper. frameDrop = re-pose every N frames (3-4 classic).
+        window.hwBoil = function (tl, target, opts) {
+          opts = opts || {};
+          var amp = opts.amp !== undefined ? opts.amp : 1.6;
+          var rot = opts.rot !== undefined ? opts.rot : 0.5;
+          var fps = opts.fps || 30;
+          var drop = opts.frameDrop || 3;
+          var seed = opts.seed || 1;
+          var els = gsap.utils.toArray(target);
+          window.hwOnUpdate(tl, function () {
+            var step = Math.floor((tl.time() * fps) / drop);
+            for (var i = 0; i < els.length; i++) {
+              gsap.set(els[i], {
+                x: window.hwHash(step * 3 + i * 97, seed) * amp,
+                y: window.hwHash(step * 3 + 1 + i * 97, seed) * amp,
+                rotation: (opts.baseRot || 0) + window.hwHash(step * 3 + 2 + i * 97, seed) * rot,
+              });
+            }
+          });
+        };
+
+        // The boil CONTROL: authored amp/rot poses over the family-locked
+        // frameDrop 3; seed stays locked. Unknown pose → "calm" + console
+        // error (bounded-controls law).
+        window.hwBoilPose = function (tl, target, pose, opts) {
+          opts = opts || {};
+          var poses = { calm: { amp: 1.6, rot: 0.5 }, lively: { amp: 2.6, rot: 0.9 } };
+          if (pose === "off") return;
+          var p = poses[pose];
+          if (!p) {
+            console.error('hw: unknown boil pose "' + pose + '" — falling back to "calm"');
+            p = poses.calm;
+          }
+          window.hwBoil(tl, target, { amp: p.amp, rot: p.rot, frameDrop: 3, seed: opts.seed || 1 });
+        };
+
+        // Seeded hand-wobbled ellipse path (smooth quadratic chain).
+        window.hwWobbleEllipse = function (cx, cy, rx, ry, seed, wobblePct) {
+          wobblePct = wobblePct === undefined ? 3 : wobblePct;
+          var N = 14,
+            pts = [];
+          for (var i = 0; i < N; i++) {
+            var a = (i / N) * Math.PI * 2;
+            var wr = 1 + window.hwHash(i * 13 + 5, seed) * (wobblePct / 100);
+            pts.push([cx + Math.cos(a) * rx * wr, cy + Math.sin(a) * ry * wr]);
+          }
+          var mx = (pts[0][0] + pts[N - 1][0]) / 2,
+            my = (pts[0][1] + pts[N - 1][1]) / 2;
+          var d = "M" + mx.toFixed(1) + " " + my.toFixed(1);
+          for (var j = 0; j < N; j++) {
+            var p = pts[j],
+              q = pts[(j + 1) % N];
+            d +=
+              " Q" +
+              p[0].toFixed(1) +
+              " " +
+              p[1].toFixed(1) +
+              " " +
+              ((p[0] + q[0]) / 2).toFixed(1) +
+              " " +
+              ((p[1] + q[1]) / 2).toFixed(1);
+          }
+          return d;
+        };
+
+        /* ---- pen-velocity ease: pure function of the path geometry ----
+           Sample 25–75 curvature-adaptive points, speed ∝ 1/(1+k·curvature)
+           floored at 0.22 (a pen slows into curves, never stalls), integrate
+           ds/speed, invert to a normalized time→distance ease. Seek-safe:
+           no per-frame state. */
+        window.hwPenEase = function (pathEl, opts) {
+          opts = opts || {};
+          var kCurve = opts.kCurve !== undefined ? opts.kCurve : 10;
+          var L = pathEl.getTotalLength();
+          if (L <= 0)
+            return {
+              ease: function (t) {
+                return t;
+              },
+              samples: 2,
+              inkTime: 1,
+              len: 0,
+            };
+          var PRE = 48;
+          var pts = [];
+          for (var i = 0; i <= PRE; i++) pts.push(pathEl.getPointAtLength((L * i) / PRE));
+          var curv = [0];
+          for (i = 1; i < PRE; i++) {
+            var ax = pts[i].x - pts[i - 1].x,
+              ay = pts[i].y - pts[i - 1].y;
+            var bx = pts[i + 1].x - pts[i].x,
+              by = pts[i + 1].y - pts[i].y;
+            var la = Math.hypot(ax, ay) || 1e-6,
+              lb = Math.hypot(bx, by) || 1e-6;
+            var dot = Math.max(-1, Math.min(1, (ax * bx + ay * by) / (la * lb)));
+            curv.push(Math.acos(dot) / ((la + lb) / 2));
+          }
+          curv.push(0);
+          var mass = 0;
+          for (i = 0; i < curv.length; i++) mass += curv[i];
+          var N = Math.max(25, Math.min(75, Math.round(25 + mass * 18)));
+          var seg = L / N;
+          var times = [0];
+          var t = 0;
+          for (i = 1; i <= N; i++) {
+            var u = ((i - 0.5) / N) * PRE;
+            var i0 = Math.floor(u),
+              f = u - i0;
+            var c = curv[Math.min(i0, PRE)] * (1 - f) + curv[Math.min(i0 + 1, PRE)] * f;
+            var speed = Math.max(1 / (1 + kCurve * c * 14), 0.22);
+            t += seg / speed;
+            times.push(t);
+          }
+          var total = times[N];
+          for (i = 0; i <= N; i++) times[i] /= total;
+          var easeFn = function (p) {
+            if (p <= 0) return 0;
+            if (p >= 1) return 1;
+            var lo = 0,
+              hi = N;
+            while (hi - lo > 1) {
+              var mid = (lo + hi) >> 1;
+              if (times[mid] <= p) lo = mid;
+              else hi = mid;
+            }
+            var span = times[hi] - times[lo] || 1e-9;
+            return (lo + (p - times[lo]) / span) / N;
+          };
+          return { ease: easeFn, samples: N, inkTime: total, len: L };
+        };
+
+        /* ---- stroke matrix: plain | soft | sharp | spray ------------------
+           strokeType is a variant control. Authored constants per type;
+           unknown value → default ("plain") + console error (bounded-controls
+           law). sharp = micro stroke-dasharray gaps (dry marker) — draw-on
+           must therefore ride a MASK clone (the visible dasharray never
+           animates). spray = index-seeded deterministic dots along the path
+           via hwHash: position a pure function of path parameter + seed; NO
+           feTurbulence anywhere.
+           Returns { draw: pathToDashAnimate, group: maskedGroupOrNull } */
+        window.hwStrokeTypes = {
+          plain: {},
+          soft: { blur: 0.6 },
+          sharp: { dash: [3.0, 1.55] }, // × stroke-width
+          spray: {
+            coreOpacity: 0.5,
+            coreBlur: 0.4,
+            density: 0.16,
+            scatter: 2.6,
+            rMin: 1.1,
+            rMax: 2.6,
+          },
+        };
+        window.hwStrokeApply = function (pathEl, type, opts) {
+          opts = opts || {};
+          var cfg = window.hwStrokeTypes[type];
+          if (!cfg) {
+            console.error('hw: unknown strokeType "' + type + '" — falling back to "plain"');
+            type = "plain";
+            cfg = window.hwStrokeTypes.plain;
+          }
+          var svg = pathEl.ownerSVGElement;
+          var ns = "http://www.w3.org/2000/svg";
+          var w = parseFloat(getComputedStyle(pathEl).strokeWidth) || 6;
+          if (type === "plain") return { draw: pathEl, group: null, type: type };
+          if (type === "soft") {
+            pathEl.style.filter = "blur(" + cfg.blur + "px)";
+            return { draw: pathEl, group: null, type: type };
+          }
+          // sharp + spray: wrap in a masked group, draw-on animates the mask clone
+          var id =
+            opts.id ||
+            "hwsm-" + Math.abs(Math.round(window.hwHash((opts.seed || 1) * 13.7, 5) * 1e6));
+          var defs = svg.querySelector("defs");
+          if (!defs) {
+            defs = document.createElementNS(ns, "defs");
+            svg.insertBefore(defs, svg.firstChild);
+          }
+          var mask = document.createElementNS(ns, "mask");
+          mask.setAttribute("id", id);
+          mask.setAttribute("maskUnits", "userSpaceOnUse");
+          var clone = document.createElementNS(ns, "path");
+          clone.setAttribute("d", pathEl.getAttribute("d"));
+          clone.setAttribute("fill", "none");
+          clone.setAttribute("stroke", "#fff");
+          clone.setAttribute(
+            "stroke-width",
+            w * (type === "spray" ? 2 + (cfg.scatter * 2) / w : 1.7),
+          );
+          clone.setAttribute("stroke-linecap", "round");
+          clone.setAttribute("stroke-linejoin", "round");
+          mask.appendChild(clone);
+          defs.appendChild(mask);
+          var group = document.createElementNS(ns, "g");
+          group.setAttribute("mask", "url(#" + id + ")");
+          pathEl.parentNode.insertBefore(group, pathEl);
+          group.appendChild(pathEl);
+          if (type === "sharp") {
+            pathEl.setAttribute(
+              "stroke-dasharray",
+              (cfg.dash[0] * w).toFixed(1) + " " + (cfg.dash[1] * w).toFixed(1),
+            );
+          } else {
+            // spray: faint core + seeded dots
+            pathEl.setAttribute("stroke-opacity", cfg.coreOpacity);
+            pathEl.style.filter = "blur(" + cfg.coreBlur + "px)";
+            var len = pathEl.getTotalLength();
+            var n = Math.round(len * cfg.density * (opts.densityScale || 1));
+            var seed = opts.seed || 1;
+            var dots = document.createElementNS(ns, "g");
+            for (var i = 0; i < n; i++) {
+              var t = Math.min(
+                1,
+                Math.max(0, (i + 0.5) / n + (window.hwHash(i * 7, seed) * 0.35) / n),
+              );
+              var pt = pathEl.getPointAtLength(t * len);
+              var pt2 = pathEl.getPointAtLength(Math.min(len, t * len + 0.5));
+              var tx = pt2.x - pt.x,
+                ty = pt2.y - pt.y;
+              var tl2 = Math.hypot(tx, ty) || 1;
+              var nx = -ty / tl2,
+                nyv = tx / tl2;
+              var off = window.hwHash(i * 7 + 1, seed) * (cfg.scatter + w * 0.55);
+              var r = cfg.rMin + Math.abs(window.hwHash(i * 7 + 2, seed)) * (cfg.rMax - cfg.rMin);
+              var c = document.createElementNS(ns, "circle");
+              c.setAttribute("cx", (pt.x + nx * off).toFixed(1));
+              c.setAttribute("cy", (pt.y + nyv * off).toFixed(1));
+              c.setAttribute("r", r.toFixed(2));
+              c.setAttribute("fill", getComputedStyle(pathEl).stroke);
+              dots.appendChild(c);
+            }
+            group.appendChild(dots);
+          }
+          return { draw: clone, group: group, type: type };
+        };
+
+        /* Draw-on across the stroke matrix: dash-animate whatever
+           hwStrokeApply says. Optionally pen-velocity eased (opts.pen: true). */
+        window.hwDrawOn = function (tl, applied, at, dur, opts) {
+          opts = opts || {};
+          var p = applied.draw;
+          var len = p.getTotalLength();
+          // the draw target is always solid (plain/soft: the path itself; sharp/spray:
+          // the mask clone — the visible path keeps its texture dasharray untouched)
+          p.setAttribute("stroke-dasharray", len + " " + len);
+          p.setAttribute("stroke-dashoffset", len);
+          gsap.set(p, { opacity: 0 }); // kill the round-cap start nub pre-draw
+          var ease = opts.pen ? window.hwPenEase(p, opts).ease : opts.ease || "power2.inOut";
+          tl.set(p, { opacity: 1 }, at);
+          tl.to(
+            p,
+            { strokeDashoffset: 0, duration: dur === undefined ? 0.7 : dur, ease: ease },
+            at,
+          );
+        };
+
+        // ---- self-preview (not part of the snippet you copy) ----
+        var circle = document.getElementById("hw-b-circle");
+        circle.setAttribute("d", window.hwWobbleEllipse(210, 150, 190, 130, 4, 3.2));
+
+        document.getElementById("hw-b-tag-config").textContent = (
+          'boil "' +
+          CONFIG.boil +
+          '" · stroke "' +
+          CONFIG.strokeType +
+          '"'
+        ).toUpperCase();
+
+        var tl = gsap.timeline({ paused: true });
+
+        /* the CONFIG circle rides the stroke matrix: texture from
+           CONFIG.strokeType, draw-on through the mask-safe hwDrawOn with the
+           pen-velocity ease (strokeDashoffset — never x/y, the boil owns those) */
+        var applied = window.hwStrokeApply(circle, CONFIG.strokeType, { seed: 4, id: "hw-b-mask" });
+        window.hwDrawOn(tl, applied, 0.3, 0.8, { pen: true });
+
+        /* raw draw-on entrance for the arrow (not routed through the matrix) */
+        var arrow = document.getElementById("hw-b-arrow");
+        var alen = arrow.getTotalLength();
+        gsap.set(arrow, { strokeDasharray: alen, strokeDashoffset: alen });
+        tl.to(arrow, { strokeDashoffset: 0, duration: 0.8, ease: "power2.inOut" }, 0.65);
+
+        gsap.set("#hw-b-word", { opacity: 0 });
+        tl.to("#hw-b-word", { opacity: 1, duration: 0.5, ease: "power2.out" }, 1.1);
+
+        /* three boils with different characters, one dispatcher: the circle
+           rides the boil CONTROL (CONFIG.boil → authored pose); arrow + word
+           keep raw hwBoil calls — the multi-character demo */
+        window.hwBoilPose(tl, "#hw-b-circle-g", CONFIG.boil, { seed: 2 });
+        window.hwBoil(tl, "#hw-b-arrow-g", { amp: 2.6, rot: 0.7, frameDrop: 1, seed: 5 });
+        window.hwBoil(tl, "#hw-b-word", { amp: 1.2, rot: 0.35, frameDrop: 3, seed: 9 });
+
+        tl.set("#hw-boil-root", { visibility: "hidden" }, 3.98);
+        window.__timelines["hw-boil"] = tl;
+      })();
+    </script>
+  </body>
+</html>

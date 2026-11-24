@@ -1,0 +1,105 @@
+{
+  "skill_name": "marketing-ideas",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I need marketing ideas for my SaaS product. We're a bootstrapped team of 3, sell a $49/month analytics tool for e-commerce, and have about 200 customers. Budget is tight — maybe $500/month for marketing.",
+      "expected_output": "Should check for product-marketing.md first. Should filter ideas by low budget and early-stage constraints. Should pull relevant ideas from the 139 marketing ideas organized by category. Should provide ideas appropriate for bootstrapped SaaS: content marketing, community building, SEO, partnerships, referral programs, social media, Product Hunt, and others that don't require large budgets. Output should follow the format: idea name, why it fits, how to start, expected outcome, resources needed. Should prioritize by likely impact given their stage.",
+      "assertions": [
+        "Checks for product-marketing.md",
+        "Filters ideas by low budget constraint",
+        "Provides ideas from the 139 marketing ideas catalog",
+        "Ideas are appropriate for bootstrapped SaaS stage",
+        "Output follows structured format per idea",
+        "Includes why it fits, how to start, expected outcome",
+        "Prioritizes by likely impact",
+        "Includes resources needed per idea"
+      ],
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "What's the fastest way to get more leads? We sell enterprise security software and have a $10k/month marketing budget.",
+      "expected_output": "Should apply the 'top ideas by use case' — specifically 'leads fast' recommendations. Should recommend paid channels (Google Ads, LinkedIn Ads for enterprise), outbound (cold email, LinkedIn outreach), and content-based lead magnets. Should filter for enterprise-appropriate tactics. Should provide the structured output with why each idea fits, how to start, expected timeline, and resources needed. Should note that 'fast leads' typically means paid or outbound channels.",
+      "assertions": [
+        "Applies 'leads fast' use case filter",
+        "Recommends paid channels appropriate for enterprise",
+        "Recommends outbound tactics",
+        "Filters for enterprise-appropriate tactics",
+        "Provides structured output per idea",
+        "Notes that fast leads means paid or outbound",
+        "Includes timeline expectations"
+      ],
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "how do we grow without spending money on ads? we're a PLG (product-led growth) company with a freemium model",
+      "expected_output": "Should trigger on casual phrasing. Should apply the 'PLG' use case filter from top ideas. Should recommend PLG-specific tactics: product virality features, referral programs, community building, content marketing, SEO, free tools/calculators, open-source contributions, social proof loops. Should avoid ad-dependent ideas given the constraint. Should provide structured output with implementation guidance.",
+      "assertions": [
+        "Triggers on casual phrasing",
+        "Applies PLG use case filter",
+        "Recommends PLG-specific tactics",
+        "Avoids ad-dependent ideas",
+        "Includes virality and referral tactics",
+        "Provides structured output with implementation guidance"
+      ],
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "We want to build authority and thought leadership in the HR tech space. We're a newer company and nobody knows who we are yet.",
+      "expected_output": "Should apply the 'authority building' use case filter. Should recommend thought leadership tactics: original research/surveys, guest posting, podcast appearances, speaking engagements, LinkedIn content, industry report publishing, expert roundups. Should note that authority building is a longer-term play. Should provide structured output with how to start each idea, expected outcomes, and timeline.",
+      "assertions": [
+        "Applies 'authority building' use case filter",
+        "Recommends thought leadership tactics",
+        "Includes original research and content",
+        "Includes community and media appearances",
+        "Notes authority building is longer-term",
+        "Provides structured output with timelines"
+      ],
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "Give me 20 marketing ideas. We sell project management software.",
+      "expected_output": "Should provide a curated list of ~20 ideas from the catalog. Should organize them by category or by effort/impact. Should provide brief implementation context for each. Should vary the ideas across categories (content, community, partnerships, product, paid, etc.) for a well-rounded set. Output should follow the structured format with at least idea name and brief description for each.",
+      "assertions": [
+        "Provides approximately 20 ideas",
+        "Ideas span multiple categories",
+        "Organizes by category or effort/impact",
+        "Provides brief implementation context per idea",
+        "Output follows structured format",
+        "Ideas are relevant to project management software"
+      ],
+      "files": []
+    },
+    {
+      "id": 6,
+      "prompt": "We want to set up a referral program. How should we structure it?",
+      "expected_output": "Should recognize this is specifically a referral program design request. Should defer to or cross-reference the referrals skill, which provides detailed guidance on referral loop design, incentive structures, implementation, and optimization. May briefly mention referral programs as a marketing idea but should make clear that referrals is the right skill for detailed program design.",
+      "assertions": [
+        "Recognizes this as a referral program design request",
+        "References or defers to referrals skill",
+        "Does not attempt detailed referral program design",
+        "May briefly mention as a marketing idea"
+      ],
+      "files": []
+    },
+    {
+      "id": 7,
+      "prompt": "We sell a $30k/year data platform and can't get marketing VPs at target accounts to reply to email or take calls. We have budget for something creative. What guerrilla tactics could break through?",
+      "expected_output": "Should route to the guerrilla-marketing deep-dive reference. Should surface the direct-mail 3-rule framework (relevance, relationship-building, precision targeting) and the ROI discipline that a $50-200 package to an unqualified lead is malpractice — qualify the named accounts first, test small before scaling. Should note the deal size ($30k/year) justifies high-cost mailers. Should draw on the case library for inspiration (e.g. Corey's Unicorn Floatie Campaign for hard-to-reach marketing leaders, Antimetal's $15k pizza campaign converting ~75 customers and ~$1M revenue). Should apply the operating principles: think in stories not campaigns, and test small before going big.",
+      "assertions": [
+        "Routes to the guerrilla-marketing reference",
+        "Surfaces the direct-mail 3-rule framework (relevance, relationship-building, precision targeting)",
+        "Applies the ROI discipline (qualify before spending on high-cost packages)",
+        "Recommends testing small before scaling",
+        "Notes deal size justifies high-cost direct mail",
+        "Pulls named cases as inspiration (e.g. Unicorn Floatie, Antimetal pizza)",
+        "Applies 'think in stories, not campaigns' principle"
+      ],
+      "files": []
+    }
+  ]
+}

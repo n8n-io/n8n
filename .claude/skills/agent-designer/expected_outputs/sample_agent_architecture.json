@@ -1,0 +1,488 @@
+{
+  "architecture_design": {
+    "pattern": "supervisor",
+    "agents": [
+      {
+        "name": "supervisor_agent",
+        "role": "Task Coordinator and Quality Controller",
+        "archetype": "coordinator",
+        "responsibilities": [
+          "task_decomposition",
+          "delegation",
+          "progress_monitoring",
+          "quality_assurance",
+          "result_aggregation"
+        ],
+        "capabilities": [
+          "planning",
+          "coordination",
+          "evaluation",
+          "decision_making"
+        ],
+        "tools": [
+          {
+            "name": "file_manager",
+            "description": "Manage files and directories",
+            "input_schema": {
+              "type": "object",
+              "properties": {
+                "action": {
+                  "type": "string"
+                },
+                "path": {
+                  "type": "string"
+                }
+              }
+            },
+            "output_schema": {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "boolean"
+                },
+                "content": {
+                  "type": "string"
+                }
+              }
+            },
+            "capabilities": [
+              "file_operations",
+              "data_management"
+            ],
+            "reliability": "high",
+            "latency": "low"
+          },
+          {
+            "name": "data_analyzer",
+            "description": "Analyze and process data",
+            "input_schema": {
+              "type": "object",
+              "properties": {
+                "data": {
+                  "type": "object"
+                },
+                "analysis_type": {
+                  "type": "string"
+                }
+              }
+            },
+            "output_schema": {
+              "type": "object",
+              "properties": {
+                "insights": {
+                  "type": "array"
+                },
+                "metrics": {
+                  "type": "object"
+                }
+              }
+            },
+            "capabilities": [
+              "data_analysis",
+              "statistics",
+              "visualization"
+            ],
+            "reliability": "high",
+            "latency": "medium"
+          }
+        ],
+        "communication_interfaces": [
+          "user_interface",
+          "agent_messaging"
+        ],
+        "constraints": {
+          "max_concurrent_supervisions": 5,
+          "decision_timeout": "30s"
+        },
+        "success_criteria": [
+          "successful task completion",
+          "optimal resource utilization",
+          "quality standards met"
+        ],
+        "dependencies": []
+      },
+      {
+        "name": "research_specialist",
+        "role": "Research Specialist",
+        "archetype": "specialist",
+        "responsibilities": [
+          "Conduct multi-source web research on specified topics",
+          "Handle real-time information updates"
+        ],
+        "capabilities": [
+          "research_expertise",
+          "specialized_tools",
+          "domain_knowledge"
+        ],
+        "tools": [
+          {
+            "name": "web_search",
+            "description": "Search the web for information",
+            "input_schema": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string"
+                }
+              }
+            },
+            "output_schema": {
+              "type": "object",
+              "properties": {
+                "results": {
+                  "type": "array"
+                }
+              }
+            },
+            "capabilities": [
+              "research",
+              "information_gathering"
+            ],
+            "reliability": "high",
+            "latency": "medium"
+          },
+          {
+            "name": "data_analyzer",
+            "description": "Analyze and process data",
+            "input_schema": {
+              "type": "object",
+              "properties": {
+                "data": {
+                  "type": "object"
+                },
+                "analysis_type": {
+                  "type": "string"
+                }
+              }
+            },
+            "output_schema": {
+              "type": "object",
+              "properties": {
+                "insights": {
+                  "type": "array"
+                },
+                "metrics": {
+                  "type": "object"
+                }
+              }
+            },
+            "capabilities": [
+              "data_analysis",
+              "statistics",
+              "visualization"
+            ],
+            "reliability": "high",
+            "latency": "medium"
+          }
+        ],
+        "communication_interfaces": [
+          "supervisor_messaging"
+        ],
+        "constraints": {
+          "domain_scope": "research",
+          "task_queue_size": 10
+        },
+        "success_criteria": [
+          "excel in research tasks",
+          "maintain domain expertise",
+          "provide quality output"
+        ],
+        "dependencies": [
+          "supervisor_agent"
+        ]
+      },
+      {
+        "name": "data_specialist",
+        "role": "Data Specialist",
+        "archetype": "specialist",
+        "responsibilities": [
+          "Analyze and synthesize information from various sources",
+          "Perform data processing and statistical analysis",
+          "Generate visualizations and charts from data"
+        ],
+        "capabilities": [
+          "data_expertise",
+          "specialized_tools",
+          "domain_knowledge"
+        ],
+        "tools": [
+          {
+            "name": "data_analyzer",
+            "description": "Analyze and process data",
+            "input_schema": {
+              "type": "object",
+              "properties": {
+                "data": {
+                  "type": "object"
+                },
+                "analysis_type": {
+                  "type": "string"
+                }
+              }
+            },
+            "output_schema": {
+              "type": "object",
+              "properties": {
+                "insights": {
+                  "type": "array"
+                },
+                "metrics": {
+                  "type": "object"
+                }
+              }
+            },
+            "capabilities": [
+              "data_analysis",
+              "statistics",
+              "visualization"
+            ],
+            "reliability": "high",
+            "latency": "medium"
+          },
+          {
+            "name": "file_manager",
+            "description": "Manage files and directories",
+            "input_schema": {
+              "type": "object",
+              "properties": {
+                "action": {
+                  "type": "string"
+                },
+                "path": {
+                  "type": "string"
+                }
+              }
+            },
+            "output_schema": {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "boolean"
+                },
+                "content": {
+                  "type": "string"
+                }
+              }
+            },
+            "capabilities": [
+              "file_operations",
+              "data_management"
+            ],
+            "reliability": "high",
+            "latency": "low"
+          }
+        ],
+        "communication_interfaces": [
+          "supervisor_messaging"
+        ],
+        "constraints": {
+          "domain_scope": "data",
+          "task_queue_size": 10
+        },
+        "success_criteria": [
+          "excel in data tasks",
+          "maintain domain expertise",
+          "provide quality output"
+        ],
+        "dependencies": [
+          "supervisor_agent"
+        ]
+      }
+    ],
+    "communication_topology": [
+      {
+        "from_agent": "supervisor_agent",
+        "to_agent": "research_specialist",
+        "pattern": "direct_message",
+        "data_format": "json",
+        "frequency": "on_demand",
+        "criticality": "high"
+      },
+      {
+        "from_agent": "research_specialist",
+        "to_agent": "supervisor_agent",
+        "pattern": "direct_message",
+        "data_format": "json",
+        "frequency": "on_completion",
+        "criticality": "high"
+      },
+      {
+        "from_agent": "supervisor_agent",
+        "to_agent": "data_specialist",
+        "pattern": "direct_message",
+        "data_format": "json",
+        "frequency": "on_demand",
+        "criticality": "high"
+      },
+      {
+        "from_agent": "data_specialist",
+        "to_agent": "supervisor_agent",
+        "pattern": "direct_message",
+        "data_format": "json",
+        "frequency": "on_completion",
+        "criticality": "high"
+      }
+    ],
+    "shared_resources": [
+      {
+        "type": "message_queue",
+        "capacity": 1000
+      },
+      {
+        "type": "shared_memory",
+        "size": "1GB"
+      },
+      {
+        "type": "event_store",
+        "retention": "30 days"
+      }
+    ],
+    "guardrails": [
+      {
+        "type": "input_validation",
+        "rules": "strict_schema_enforcement"
+      },
+      {
+        "type": "rate_limiting",
+        "limit": "100_requests_per_minute"
+      },
+      {
+        "type": "output_filtering",
+        "rules": "content_safety_check"
+      }
+    ],
+    "scaling_strategy": {
+      "horizontal_scaling": true,
+      "auto_scaling_triggers": [
+        "cpu > 80%",
+        "queue_depth > 100"
+      ],
+      "max_instances_per_agent": 5
+    },
+    "failure_handling": {
+      "retry_policy": "exponential_backoff",
+      "circuit_breaker": true,
+      "fallback_strategies": [
+        "graceful_degradation",
+        "human_escalation"
+      ]
+    }
+  },
+  "mermaid_diagram": "graph TD\n    supervisor_agent[Task Coordinator and Quality Controller]:::coordinator\n    research_specialist[Research Specialist]:::specialist\n    data_specialist[Data Specialist]:::specialist\n    supervisor_agent --> research_specialist\n    research_specialist --> supervisor_agent\n    supervisor_agent --> data_specialist\n    data_specialist --> supervisor_agent\n\n    classDef coordinator fill:#e1f5fe,stroke:#01579b,stroke-width:2px\n    classDef specialist fill:#f3e5f5,stroke:#4a148c,stroke-width:2px\n    classDef interface fill:#e8f5e8,stroke:#1b5e20,stroke-width:2px\n    classDef monitor fill:#fff3e0,stroke:#e65100,stroke-width:2px\n    class supervisor_agent coordinator\n    class research_specialist specialist\n    class data_specialist specialist",
+  "implementation_roadmap": {
+    "total_duration": "8-12 weeks",
+    "phases": [
+      {
+        "phase": 1,
+        "name": "Core Infrastructure",
+        "duration": "2-3 weeks",
+        "tasks": [
+          "Set up development environment",
+          "Implement basic agent framework",
+          "Create communication infrastructure",
+          "Set up monitoring and logging",
+          "Implement basic tools"
+        ],
+        "deliverables": [
+          "Agent runtime framework",
+          "Communication layer",
+          "Basic monitoring dashboard"
+        ]
+      },
+      {
+        "phase": 2,
+        "name": "Agent Implementation",
+        "duration": "3-4 weeks",
+        "tasks": [
+          "Implement individual agent logic",
+          "Create agent-specific tools",
+          "Implement communication protocols",
+          "Add error handling and recovery",
+          "Create agent configuration system"
+        ],
+        "deliverables": [
+          "Functional agent implementations",
+          "Tool integration",
+          "Configuration management"
+        ]
+      },
+      {
+        "phase": 3,
+        "name": "Integration and Testing",
+        "duration": "2-3 weeks",
+        "tasks": [
+          "Integrate all agents",
+          "End-to-end testing",
+          "Performance optimization",
+          "Security implementation",
+          "Documentation creation"
+        ],
+        "deliverables": [
+          "Integrated system",
+          "Test suite",
+          "Performance benchmarks",
+          "Security audit report"
+        ]
+      },
+      {
+        "phase": 4,
+        "name": "Deployment and Monitoring",
+        "duration": "1-2 weeks",
+        "tasks": [
+          "Production deployment",
+          "Monitoring setup",
+          "Alerting configuration",
+          "User training",
+          "Go-live support"
+        ],
+        "deliverables": [
+          "Production system",
+          "Monitoring dashboard",
+          "Operational runbooks",
+          "Training materials"
+        ]
+      }
+    ],
+    "critical_path": [
+      "Agent framework implementation",
+      "Communication layer development",
+      "Integration testing",
+      "Production deployment"
+    ],
+    "risks": [
+      {
+        "risk": "Communication complexity",
+        "impact": "high",
+        "mitigation": "Start with simple protocols, iterate"
+      },
+      {
+        "risk": "Agent coordination failures",
+        "impact": "medium",
+        "mitigation": "Implement robust error handling and fallbacks"
+      },
+      {
+        "risk": "Performance bottlenecks",
+        "impact": "medium",
+        "mitigation": "Early performance testing and optimization"
+      }
+    ],
+    "success_criteria": [
+      "Input validation and sanitization",
+      "Output content filtering",
+      "Rate limiting for external APIs",
+      "Error handling and graceful degradation",
+      "Human oversight for critical decisions",
+      "Audit logging for all operations",
+      "All agents operational",
+      "Communication working reliably",
+      "Performance targets met",
+      "Error rate below 1%"
+    ]
+  },
+  "metadata": {
+    "generated_by": "agent_planner.py",
+    "requirements_file": "sample_system_requirements.json",
+    "architecture_pattern": "supervisor",
+    "agent_count": 3
+  }
+}

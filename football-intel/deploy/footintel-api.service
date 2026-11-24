@@ -1,0 +1,20 @@
+# Dashboard and HTTP API, reachable only from the VPS itself (127.0.0.1).
+# Caddy (deploy/Caddyfile) puts HTTPS and a password in front of it.
+# Copy to /etc/systemd/system/, adjust User and paths, then:
+#   sudo systemctl daemon-reload && sudo systemctl enable --now footintel-api
+[Unit]
+Description=footintel dashboard and HTTP API
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=footintel
+WorkingDirectory=/opt/football-intel
+EnvironmentFile=/opt/football-intel/.env
+ExecStart=/opt/football-intel/.venv/bin/footintel serve --host 127.0.0.1 --port 8000
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

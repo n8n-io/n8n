@@ -1,0 +1,114 @@
+{
+  "name": "Assistant Telegram",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": ["message"],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 0],
+      "id": "0b7f6a2e-1c1d-4b6e-9a51-6f0f3c1a0001",
+      "name": "Telegram Trigger",
+      "webhookId": "0b7f6a2e-1c1d-4b6e-9a51-6f0f3c1a1001",
+      "credentials": {
+        "telegramApi": { "name": "Telegram account" }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.message.text }}",
+        "options": {
+          "systemMessage": "=Tu es l'assistant personnel de l'utilisateur. Tu réponds en français, de façon courte et directe, comme dans une conversation Telegram.\n\nDate du jour : {{ $now.format('yyyy-MM-dd') }}.\n\nOutils :\n- Wikipedia : pour vérifier un fait général.\n- Calculator : pour tout calcul, même simple.\n\nSi tu ne sais pas, dis-le. N'invente jamais un fait, un chiffre ou un lien."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [220, 0],
+      "id": "0b7f6a2e-1c1d-4b6e-9a51-6f0f3c1a0002",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": { "__rl": true, "mode": "id", "value": "claude-sonnet-5-5" },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.3,
+      "position": [60, 220],
+      "id": "0b7f6a2e-1c1d-4b6e-9a51-6f0f3c1a0003",
+      "name": "Claude",
+      "credentials": {
+        "anthropicApi": { "name": "Anthropic account" }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "contextWindowLength": 10
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [220, 220],
+      "id": "0b7f6a2e-1c1d-4b6e-9a51-6f0f3c1a0004",
+      "name": "Mémoire"
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.toolWikipedia",
+      "typeVersion": 1,
+      "position": [380, 220],
+      "id": "0b7f6a2e-1c1d-4b6e-9a51-6f0f3c1a0005",
+      "name": "Wikipedia"
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.toolCalculator",
+      "typeVersion": 1,
+      "position": [540, 220],
+      "id": "0b7f6a2e-1c1d-4b6e-9a51-6f0f3c1a0006",
+      "name": "Calculator"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "={{ $json.output }}",
+        "additionalFields": { "appendAttribution": false }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [580, 0],
+      "id": "0b7f6a2e-1c1d-4b6e-9a51-6f0f3c1a0007",
+      "name": "Répondre sur Telegram",
+      "webhookId": "0b7f6a2e-1c1d-4b6e-9a51-6f0f3c1a1007",
+      "credentials": {
+        "telegramApi": { "name": "Telegram account" }
+      }
+    }
+  ],
+  "connections": {
+    "Telegram Trigger": {
+      "main": [[{ "node": "AI Agent", "type": "main", "index": 0 }]]
+    },
+    "AI Agent": {
+      "main": [[{ "node": "Répondre sur Telegram", "type": "main", "index": 0 }]]
+    },
+    "Claude": {
+      "ai_languageModel": [[{ "node": "AI Agent", "type": "ai_languageModel", "index": 0 }]]
+    },
+    "Mémoire": {
+      "ai_memory": [[{ "node": "AI Agent", "type": "ai_memory", "index": 0 }]]
+    },
+    "Wikipedia": {
+      "ai_tool": [[{ "node": "AI Agent", "type": "ai_tool", "index": 0 }]]
+    },
+    "Calculator": {
+      "ai_tool": [[{ "node": "AI Agent", "type": "ai_tool", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "pinData": {}
+}

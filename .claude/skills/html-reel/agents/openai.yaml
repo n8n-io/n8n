@@ -1,0 +1,4 @@
+interface:
+  display_name: "HTML Reel"
+  short_description: "Turn a post, a video or a page into a reel in its own look, cut to every word"
+  default_prompt: "Use $html-reel to turn [this tweet / landing page / YouTube video] into a 30-second 9:16 reel in my voice: read the source with read-source.mjs, take its words and its look from it, pick the structure that suits it, cut its video to every word with HTML titles drawn from one clock, and assemble it in Fil's video editor."

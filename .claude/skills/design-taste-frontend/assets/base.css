@@ -1,0 +1,105 @@
+/* tasteskill / base.css
+   A neutral foundation: reset, token names, fluid type steps, a 12-column grid, states and the motion
+   helpers from references/motion.md. It has no look of its own. Copy it into the project, replace the
+   token values with the ones on the direction sheet, and build on top. Delete what you do not use. */
+
+/* ---------- tokens (replace with the dealt palette and type system) ---------- */
+:root {
+  --bg: #ffffff;
+  --surface: #f2f2f2;
+  --ink: #111111;
+  --muted: #5c5c5c;
+  --accent: #111111;
+  --accent-ink: #ffffff;
+
+  --font-display: system-ui, sans-serif;
+  --font-text: system-ui, sans-serif;
+
+  --step-small: clamp(0.8125rem, 0.79rem + 0.1vw, 0.875rem);
+  --step-body: clamp(1.0625rem, 1rem + 0.25vw, 1.1875rem);
+  --step-lead: clamp(1.25rem, 1.1rem + 0.7vw, 1.625rem);
+  --step-head: clamp(2rem, 1.3rem + 3.2vw, 4rem);
+  --step-display: clamp(3rem, 1rem + 9vw, 9rem); /* set from the hero blueprint */
+
+  --margin: clamp(1rem, 2.2vw, 2rem);    /* page side margin: tight, so content reaches the edges */
+  --gutter: clamp(1rem, 2vw, 2rem);      /* column gap */
+  --section: clamp(5rem, 12vw, 13rem);   /* space between sections */
+  --radius: 0px;                          /* one radius for the whole page: 0, or large, decided once */
+
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);        /* entrances, moving hovers, UI under 600ms */
+  --ease-expo: cubic-bezier(0.16, 1, 0.3, 1);        /* reveals of 800ms and longer, line rises, openings */
+  --ease-in-out: cubic-bezier(0.76, 0, 0.24, 1);     /* wipes, panels, things that travel while visible */
+  --ease-soft: cubic-bezier(0.33, 1, 0.68, 1);       /* slow scale and drift on photographs */
+  --ease-exit: cubic-bezier(0.55, 0.055, 0.675, 0.19); /* something leaving for good, short */
+  --t-press: 140ms;
+  --t-hover: 180ms;
+  --t-ui: 240ms;
+  --t-reveal: 800ms;
+  --t-open: 1200ms;                                  /* picture openings and clip wipes */
+  --stagger-line: 90ms;
+  --stagger-item: 70ms;
+}
+
+/* ---------- reset ---------- */
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; scroll-behavior: auto; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font-text); font-size: var(--step-body); line-height: 1.5; font-kerning: normal; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+h1, h2, h3, h4, p, figure, blockquote, ul, ol, dl, dd { margin: 0; }
+ul[class], ol[class] { padding: 0; list-style: none; }
+img, video, svg, canvas { display: block; max-width: 100%; }
+img, video { height: auto; background: var(--surface); }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { background: none; border: 0; padding: 0; cursor: pointer; }
+a { color: inherit; }
+:target { scroll-margin-top: 6rem; }
+::selection { background: var(--accent); color: var(--accent-ink); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+/* ---------- type ---------- */
+h1, h2, h3 { font-family: var(--font-display); font-weight: inherit; text-wrap: balance; hyphens: none; }
+.display { font-size: var(--step-display); line-height: 0.95; letter-spacing: -0.035em; }
+.head { font-size: var(--step-head); line-height: 1.02; letter-spacing: -0.025em; }
+.lead { font-size: var(--step-lead); line-height: 1.35; max-width: 40ch; }
+.small { font-size: var(--step-small); line-height: 1.45; }
+.muted { color: var(--muted); }
+p { max-width: 62ch; text-wrap: pretty; }
+p + p { margin-top: 0.9em; }
+.nums { font-variant-numeric: tabular-nums; }
+.only-wide { display: none; }
+@media (min-width: 48em) { .only-wide { display: inline; } }
+
+/* ---------- layout ---------- */
+.wrap { padding-inline: var(--margin); }
+.grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: var(--gutter); }
+.section { padding-block: calc(var(--section) / 2); }
+.section + .section { margin-top: 0; }
+.bleed { margin-inline: calc(var(--margin) * -1); }
+.cover { width: 100%; height: 100%; object-fit: cover; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* ---------- controls ---------- */
+.button { display: inline-flex; align-items: center; justify-content: center; min-height: 3rem; padding: 0 1.4rem; background: var(--accent); color: var(--accent-ink); border-radius: var(--radius); text-decoration: none; white-space: nowrap; transition: transform var(--t-press) var(--ease-out), background-color var(--t-hover) ease, color var(--t-hover) ease; }
+.button:active { transform: scale(0.97); }
+.link { text-decoration: underline; text-decoration-color: transparent; text-underline-offset: 0.2em; text-decoration-thickness: 0.07em; transition: text-decoration-color var(--t-hover) ease; }
+.link-plain { text-decoration: underline; text-underline-offset: 0.18em; text-decoration-thickness: 0.07em; }
+@media (hover: hover) and (pointer: fine) {
+  .link:hover { text-decoration-color: currentColor; }
+}
+.field { width: 100%; min-height: 3rem; padding: 0.7rem 0.9rem; background: var(--surface); border: 0; border-radius: var(--radius); font-size: max(1rem, var(--step-body)); }
+
+/* ---------- motion helpers (content stays visible without JavaScript) ---------- */
+.lines .line { display: block; overflow: hidden; padding-bottom: 0.08em; margin-bottom: -0.08em; }
+.lines [data-line] { display: block; }
+.shutter { overflow: hidden; }
+@media (prefers-reduced-motion: no-preference) {
+  .js [data-rise] { opacity: 0; transform: translateY(18px); animation: ad-rise var(--t-reveal) var(--ease-out) forwards; animation-delay: calc(var(--i, 0) * 90ms + 120ms); }
+  .js .lines [data-line] { transform: translateY(105%); animation: ad-line 900ms var(--ease-out) forwards; animation-delay: calc(var(--i, 0) * 110ms + 150ms); }
+  .js [data-reveal] { opacity: 0; transform: translateY(24px); transition: opacity 700ms var(--ease-out), transform 900ms var(--ease-out); }
+  .js [data-reveal].is-in { opacity: 1; transform: none; }
+  .js .shutter[data-reveal] { opacity: 1; transform: none; clip-path: inset(0 0 100% 0); transition: clip-path 1100ms var(--ease-in-out); }
+  .js .shutter[data-reveal] img { transform: scale(1.12); transition: transform 1500ms var(--ease-soft); }
+  .js .shutter[data-reveal].is-in { clip-path: inset(0); }
+  .js .shutter[data-reveal].is-in img { transform: none; }
+}
+@keyframes ad-rise { to { opacity: 1; transform: none; } }
+@keyframes ad-line { to { transform: none; } }

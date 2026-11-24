@@ -1,0 +1,24 @@
+{
+  "skill_name": "recursive-decomposition",
+  "corpus": "evals/files/mortgage-doc-rag",
+  "evals": [
+    {
+      "id": 1,
+      "name": "pdf-corpus",
+      "kind": "decompose",
+      "optional": true,
+      "prompt": "The PDF corpus is the git submodule at skills/recursive-decomposition/evals/files/mortgage-doc-rag. Size it first. Do not load any PDF binary into the main context. How many PDFs are there, and what is the total byte size? Name the 10 largest by byte size. Convert at most three of those with anydoc (`npx -y @firecrawl/anydoc FILE -o .firecrawl/FILE.md`); if anydoc exits 3, use `firecrawl parse`. Extract each title from the markdown with grep or a bounded read. Recursion depth 1.",
+      "expected_output": "pdf_count at least 131, largest list includes urar_form_1004_epa_scan.pdf, depth 1, no PDF dumped into context.",
+      "files": ["evals/files/mortgage-doc-rag"],
+      "gold": "evals/gold/pdf-corpus.json",
+      "assertions": [
+        "result.json is valid JSON",
+        "decomposed is true",
+        "depth is 1",
+        "subagents_spawned_subagents is false",
+        "pdf_count is at least 131",
+        "largest list includes urar_form_1004_epa_scan.pdf"
+      ]
+    }
+  ]
+}

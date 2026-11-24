@@ -1,0 +1,20 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "session-handoff",
+  "description": "Session handoffs and chapter-index recall for Claude Code.",
+  "owner": { "name": "David Kay", "url": "https://github.com/David-E-Kay" },
+  "plugins": [
+    {
+      "name": "session-handoff",
+      "description": "End-of-session handoffs saved to project memory, plus a local chapter index for looking up earlier work.",
+      "source": "./",
+      "category": "productivity"
+    },
+    {
+      "name": "handoff-buttons",
+      "description": "Optional mod: a cache and context line above the prompt, one-click handoff buttons, and a 10-minute cache alarm (pop-up, Windows card, optional Discord post).",
+      "source": "./mods/handoff-buttons",
+      "category": "productivity"
+    }
+  ]
+}

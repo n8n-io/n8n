@@ -1,0 +1,161 @@
+# OpenAPI 3.1 Specification Reference
+# Complete REST API specification example
+
+openapi: 3.1.0
+info:
+  title: User Service API
+  version: 1.0.0
+  description: Manages user accounts and profiles
+
+servers:
+  - url: https://api.example.com/v1
+    description: Production
+
+paths:
+  /users:
+    get:
+      operationId: listUsers
+      summary: List all users
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+        - name: cursor
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserList'
+    post:
+      operationId: createUser
+      summary: Create a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+      responses:
+        '201':
+          description: Created
+          headers:
+            Location:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+
+  /users/{userId}:
+    parameters:
+      - name: userId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      operationId: getUser
+      summary: Get user by ID
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '404':
+          description: Not Found
+
+components:
+  schemas:
+    User:
+      type: object
+      required: [id, email, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateUserRequest:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+
+    UserList:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
+        meta:
+          type: object
+          properties:
+            nextCursor:
+              type: string
+            hasMore:
+              type: boolean
+
+    ValidationError:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              enum: [VALIDATION_ERROR]
+            message:
+              type: string
+            details:
+              type: array
+              items:
+                type: object
+                properties:
+                  field:
+                    type: string
+                  issue:
+                    type: string
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - bearerAuth: []

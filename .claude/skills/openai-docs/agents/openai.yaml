@@ -1,0 +1,14 @@
+interface:
+  display_name: "OpenAI Docs"
+  short_description: "Reference OpenAI docs, Codex self-knowledge, and model migration guidance"
+  icon_small: "./assets/openai-small.svg"
+  icon_large: "./assets/openai.png"
+  default_prompt: "Use OpenAI Docs for official docs lookup, questions about Codex itself or Codex surfaces, model selection, model migration, and prompt-upgrade work."
+
+dependencies:
+  tools:
+    - type: "mcp"
+      value: "openaiDeveloperDocs"
+      description: "OpenAI Developer Docs MCP server"
+      transport: "streamable_http"
+      url: "https://developers.openai.com/mcp"

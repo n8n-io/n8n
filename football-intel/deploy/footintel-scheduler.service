@@ -1,0 +1,18 @@
+# Copy to /etc/systemd/system/, adjust User and paths, then:
+#   sudo systemctl daemon-reload && sudo systemctl enable --now footintel-scheduler
+[Unit]
+Description=footintel scheduler (daily data, predictions, reports)
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=footintel
+WorkingDirectory=/opt/football-intel
+EnvironmentFile=/opt/football-intel/.env
+ExecStart=/opt/football-intel/.venv/bin/footintel scheduler
+Restart=on-failure
+RestartSec=60
+
+[Install]
+WantedBy=multi-user.target

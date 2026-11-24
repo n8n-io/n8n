@@ -1,0 +1,4 @@
+interface:
+  display_name: "Three.js Scroll Worlds"
+  short_description: "Build detailed scroll-driven real-time 3D worlds"
+  default_prompt: "Use $build-threejs-scroll-worlds to build this experience as one detailed, interactive, persistent Three.js world with scroll-driven camera chapters."

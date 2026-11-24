@@ -1,0 +1,533 @@
+# Manual team aliases, checked by a human. One row per (source, alias).
+# team = canonical name already used in the database (football-data.co.uk spelling).
+source,alias,team
+openfootball,Paris Saint-Germain FC (FRA),Paris SG
+openfootball,Paris Saint-Germain (FRA),Paris SG
+openfootball,İstanbul Başakşehir (TUR),Buyuksehyr
+openfootball,FC Internazionale Milano (ITA),Inter
+openfootball,Lazio Roma (ITA),Lazio
+openfootball,Athletic Club (ESP),Ath Bilbao
+openfootball,AEK Athen (GRE),AEK
+openfootball,Cercle Brugge (BEL),Cercle Brugge
+openfootball,FC København (DEN),FC Copenhagen
+openfootball,Heart of Midlothian (SCO),Hearts
+openfootball,PSV (NED),PSV Eindhoven
+openfootball,Royale Union Saint-Gilloise (BEL),St. Gilloise
+openfootball,Sporting CP (POR),Sp Lisbon
+openfootball,Sporting Clube de Portugal (POR),Sp Lisbon
+openfootball,Stade Rennais (FRA),Rennes
+openfootball,AS Monaco FC (MCO),Monaco
+openfootball,FK Crvena Zvezda (SRB),Crvena Zvezda (SRB)
+openfootball,GNK Dinamo Zagreb (CRO),Dinamo Zagreb (CRO)
+openfootball,FCSB (ROU),FC Steaua Bucureşti (ROU)
+openfootball,Qarabağ Ağdam FK (AZE),Qarabağ FK (AZE)
+openfootball,FK Shakhtar Donetsk (UKR),Shakhtar Donetsk (UKR)
+openfootball,SK Slavia Praha (CZE),Slavia Praha (CZE)
+openfootball,ŠK Slovan Bratislava (SVK),Slovan Bratislava (SVK)
+openfootball,Olympiakos Piraeus (GRE),Olympiakos
+openfootball,Brighton & Hove Albion (ENG),Brighton
+openfootball,Feyenoord Rotterdam (NED),Feyenoord
+openfootball,Legia Warszawa (POL),Legia
+openfootball,Newcastle United FC (ENG),Newcastle
+openfootball,PAE Olympiakos SFP (GRE),Olympiakos
+openfootball,PAOK Saloniki (GRE),PAOK
+openfootball,Racing Club de Lens (FRA),Lens
+openfootball,Raków Częstochowa (POL),Rakow
+openfootball,Real Betis (ESP),Betis
+openfootball,Stade Brestois 29 (FRA),Brest
+openfootball,West Ham United (ENG),West Ham
+# OpenLigaDB (German names, no country). Checked one by one on 2026-10-22 against the
+# clubs already in the database. Clubs missing here are created as new teams on purpose:
+# e.g. "Viktoria Köln" is NOT Viktoria Plzeň, and "FK Kauno Žalgiris" is NOT FK Žalgiris (Vilnius).
+openligadb,AEK Athen,AEK
+openligadb,AS Rom,Roma
+openligadb,Aston Villa,Aston Villa
+openligadb,Atletico Madrid,Ath Madrid
+openligadb,Borussia Dortmund,Dortmund
+openligadb,Como 1907,Como
+openligadb,FC Arsenal,Arsenal
+openligadb,FC Barcelona,Barcelona
+openligadb,FC Bayern München,Bayern Munich
+openligadb,FC Brügge,Club Brugge
+openligadb,FC Liverpool,Liverpool
+openligadb,FC Porto,Porto
+openligadb,FK Bodö/Glimt,Bodo/Glimt
+openligadb,Fenerbahçe SK,Fenerbahce
+openligadb,Feyenoord Rotterdam,Feyenoord
+openligadb,Galatasaray Istanbul,Galatasaray
+openligadb,Inter Mailand,Inter
+openligadb,LASK,LASK
+openligadb,Lille OSC,Lille
+openligadb,Manchester City,Man City
+openligadb,Manchester United FC,Man United
+openligadb,PSV Eindhoven,PSV Eindhoven
+openligadb,Paris St. Germain,Paris SG
+openligadb,RB Leipzig,RB Leipzig
+openligadb,RC Lens,Lens
+openligadb,Real Betis,Betis
+openligadb,Real Madrid,Real Madrid
+openligadb,SSC Napoli,Napoli
+openligadb,Shakhtar Donetsk,Shakhtar Donetsk (UKR)
+openligadb,Slavia Prag,Slavia Praha (CZE)
+openligadb,Slovan Bratislava,Slovan Bratislava (SVK)
+openligadb,Sporting CP,Sp Lisbon
+openligadb,VfB Stuttgart,Stuttgart
+openligadb,Viking,Viking
+openligadb,Villarreal CF,Villarreal
+openligadb,AC Mailand,Milan
+openligadb,AFC Bournemouth,Bournemouth
+openligadb,AZ Alkmaar,AZ Alkmaar
+openligadb,Bayer 04 Leverkusen,Leverkusen
+openligadb,Benfica Lissabon,Benfica
+openligadb,Besiktas Istanbul,Besiktas
+openligadb,Celta Vigo,Celta
+openligadb,Celtic Glasgow,Celtic
+openligadb,Crystal Palace FC,Crystal Palace
+openligadb,Dinamo Zagreb,Dinamo Zagreb (CRO)
+openligadb,Ferencváros Budapest,Ferencvárosi TC (HUN)
+openligadb,Hapoel Beer Scheva,Hapoel Be'er Sheva (ISR)
+openligadb,Jagiellonia Bialystok,Jagiellonia
+openligadb,Juventus Turin,Juventus
+openligadb,Lech Poznan,Lech Poznan
+openligadb,Lillestrøm SK,Lillestrom
+openligadb,NEC Nijmegen,Nijmegen
+openligadb,NK Celje,NK Celje (SVN)
+openligadb,OFI Kreta,OFI Crete
+openligadb,Olympiakos Piräus,Olympiakos
+openligadb,Olympique Lyon,Lyon
+openligadb,Olympique Marseille,Marseille
+openligadb,Omonia Nikosia,Omonia Nikosia (CYP)
+openligadb,RB Salzburg,Salzburg
+openligadb,RSC Anderlecht,Anderlecht
+openligadb,Real Sociedad,Sociedad
+openligadb,Sparta Prag,AC Sparta Praha (CZE)
+openligadb,Stade Rennes,Rennes
+openligadb,Sturm Graz,Sturm Graz
+openligadb,Sunderland AFC,Sunderland
+openligadb,TSG Hoffenheim,Hoffenheim
+openligadb,Union Saint-Gilloise,St. Gilloise
+openligadb,Viktoria Pilsen,Viktoria Plzeň (CZE)
+openligadb,AGF Aarhus,Aarhus
+openligadb,AS Monaco,Monaco
+openligadb,Ajax Amsterdam,Ajax
+openligadb,Atalanta Bergamo,Atalanta
+openligadb,Borac Banja Luka,Borac Banja Luka (BIH)
+openligadb,Brann,Brann
+openligadb,Brighton & Hove Albion F.C.,Brighton
+openligadb,FC Getafe,Getafe
+openligadb,FC Kopenhagen,FC Copenhagen
+openligadb,FC Lugano,Lugano
+openligadb,FC Midtjylland,Midtjylland
+openligadb,FC Nordsjaelland,Nordsjaelland
+openligadb,FC Thun,Thun
+openligadb,FC Twente Enschede,Twente
+openligadb,FK Jablonec,FK Jablonec (CZE)
+openligadb,FK Kairat,FK Kairat (KAZ)
+openligadb,Heart of Midlothian FC,Hearts
+openligadb,KAA Gent,Gent
+openligadb,Lincoln Red Imps,Lincoln Red Imps (GIB)
+openligadb,Mjällby AIF,Mjallby
+openligadb,Panathinaikos FC,Panathinaikos
+openligadb,Paphos FC,Paphos FC (CYP)
+openligadb,Roter Stern Belgrad,Crvena Zvezda (SRB)
+openligadb,SC Freiburg,Freiburg
+openligadb,Sporting Braga,Sp Braga
+openligadb,Trabzonspor,Trabzonspor
+openligadb,VV Sint-Truiden,St Truiden
+openligadb,ZSKA Sofia,CSKA Sofia (BUL)
+openligadb,1. FC Heidenheim 1846,Heidenheim
+openligadb,1. FC Kaiserslautern,Kaiserslautern
+openligadb,1. FC Köln,FC Koln
+openligadb,1. FC Magdeburg,Magdeburg
+openligadb,1. FC Nürnberg,Nurnberg
+openligadb,1. FC Saarbrücken,Saarbrucken
+openligadb,1. FC Union Berlin,Union Berlin
+openligadb,1. FSV Mainz 05,Mainz
+openligadb,Borussia Mönchengladbach,M'gladbach
+openligadb,DSC Arminia Bielefeld,Bielefeld
+openligadb,Dynamo Dresden,Dresden
+openligadb,Eintracht Braunschweig,Braunschweig
+openligadb,Eintracht Frankfurt,Ein Frankfurt
+openligadb,Energie Cottbus,Cottbus
+openligadb,Erzgebirge Aue,Erzgebirge Aue
+openligadb,FC Augsburg,Augsburg
+openligadb,FC Carl Zeiss Jena,CZ Jena
+openligadb,FC Schalke 04,Schalke 04
+openligadb,FC St. Pauli,St Pauli
+openligadb,Fortuna Düsseldorf,Fortuna Dusseldorf
+openligadb,Hamburger SV,Hamburg
+openligadb,Hannover 96,Hannover
+openligadb,Hansa Rostock,Hansa Rostock
+openligadb,Hertha BSC,Hertha
+openligadb,Holstein Kiel,Holstein Kiel
+openligadb,Karlsruher SC,Karlsruhe
+openligadb,MSV Duisburg,Duisburg
+openligadb,Preußen Münster,Preußen Münster
+openligadb,Rot-Weiss Essen,Essen
+openligadb,SC Paderborn 07,Paderborn
+openligadb,SV 07 Elversberg,Elversberg
+openligadb,SV Darmstadt 98,Darmstadt
+openligadb,SV Wehen Wiesbaden,Wehen
+openligadb,SV Werder Bremen,Werder Bremen
+openligadb,SpVgg Greuther Fürth,Greuther Furth
+openligadb,TSV 1860 München,Munich 1860
+openligadb,VfL Bochum,Bochum
+openligadb,VfL Osnabrück,Osnabruck
+openligadb,VfL Wolfsburg,Wolfsburg
+# football-data.org (CL 2026-27). Checked one by one on 2026-10-22. Automatic matching
+# would have mapped "Sporting Clube de Portugal" to Porto.
+football_data_org,AS Roma,Roma
+football_data_org,Arsenal FC,Arsenal
+football_data_org,Aston Villa FC,Aston Villa
+football_data_org,Borussia Dortmund,Dortmund
+football_data_org,Club Atlético de Madrid,Ath Madrid
+football_data_org,Club Brugge KV,Club Brugge
+football_data_org,Como 1907,Como
+football_data_org,FC Barcelona,Barcelona
+football_data_org,FC Bayern München,Bayern Munich
+football_data_org,FC Internazionale Milano,Inter
+football_data_org,FC Porto,Porto
+football_data_org,FK Bodø/Glimt,Bodo/Glimt
+football_data_org,FK Shakhtar Donetsk,Shakhtar Donetsk (UKR)
+football_data_org,Fenerbahçe SK,Fenerbahce
+football_data_org,Feyenoord Rotterdam,Feyenoord
+football_data_org,Galatasaray SK,Galatasaray
+football_data_org,LASK Linz,LASK
+football_data_org,Lille OSC,Lille
+football_data_org,Liverpool FC,Liverpool
+football_data_org,Manchester City FC,Man City
+football_data_org,Manchester United FC,Man United
+football_data_org,PAE AEK,AEK
+football_data_org,PSV,PSV Eindhoven
+football_data_org,Paris Saint-Germain FC,Paris SG
+football_data_org,RB Leipzig,RB Leipzig
+football_data_org,Racing Club de Lens,Lens
+football_data_org,Real Betis Balompié,Betis
+football_data_org,Real Madrid CF,Real Madrid
+football_data_org,SK Slavia Praha,Slavia Praha (CZE)
+football_data_org,SSC Napoli,Napoli
+football_data_org,Sabah FK,Sabah
+football_data_org,Sporting Clube de Portugal,Sp Lisbon
+football_data_org,VfB Stuttgart,Stuttgart
+football_data_org,Viking FK,Viking
+football_data_org,Villarreal CF,Villarreal
+football_data_org,ŠK Slovan Bratislava,Slovan Bratislava (SVK)
+# football-data.org league teams (PL, SA, BL1, PD 2026-27). Each name was matched only
+# against the teams of its own league, then checked one by one on 2026-10-25.
+football_data_org,Chelsea FC,Chelsea
+football_data_org,Everton FC,Everton
+football_data_org,Fulham FC,Fulham
+football_data_org,Newcastle United FC,Newcastle
+football_data_org,Sunderland AFC,Sunderland
+football_data_org,Tottenham Hotspur FC,Tottenham
+football_data_org,Hull City AFC,Hull
+football_data_org,Leeds United FC,Leeds
+football_data_org,Ipswich Town FC,Ipswich
+football_data_org,Nottingham Forest FC,Nott'm Forest
+football_data_org,Crystal Palace FC,Crystal Palace
+football_data_org,Brighton & Hove Albion FC,Brighton
+football_data_org,Brentford FC,Brentford
+football_data_org,AFC Bournemouth,Bournemouth
+football_data_org,Coventry City FC,Coventry
+football_data_org,AC Milan,Milan
+football_data_org,ACF Fiorentina,Fiorentina
+football_data_org,Atalanta BC,Atalanta
+football_data_org,Bologna FC 1909,Bologna
+football_data_org,Cagliari Calcio,Cagliari
+football_data_org,Genoa CFC,Genoa
+football_data_org,Juventus FC,Juventus
+football_data_org,SS Lazio,Lazio
+football_data_org,Parma Calcio 1913,Parma
+football_data_org,Udinese Calcio,Udinese
+football_data_org,Venezia FC,Venezia
+football_data_org,Frosinone Calcio,Frosinone
+football_data_org,US Sassuolo Calcio,Sassuolo
+football_data_org,Torino FC,Torino
+football_data_org,US Lecce,Lecce
+football_data_org,AC Monza,Monza
+football_data_org,1. FC Köln,FC Koln
+football_data_org,TSG 1899 Hoffenheim,Hoffenheim
+football_data_org,Bayer 04 Leverkusen,Leverkusen
+football_data_org,FC Schalke 04,Schalke 04
+football_data_org,Hamburger SV,Hamburg
+football_data_org,SV Werder Bremen,Werder Bremen
+football_data_org,1. FSV Mainz 05,Mainz
+football_data_org,FC Augsburg,Augsburg
+football_data_org,SC Freiburg,Freiburg
+football_data_org,Borussia Mönchengladbach,M'gladbach
+football_data_org,Eintracht Frankfurt,Ein Frankfurt
+football_data_org,1. FC Union Berlin,Union Berlin
+football_data_org,SC Paderborn 07,Paderborn
+football_data_org,SV 07 Elversberg,Elversberg
+football_data_org,Athletic Club,Ath Bilbao
+football_data_org,CA Osasuna,Osasuna
+football_data_org,RCD Espanyol de Barcelona,Espanol
+football_data_org,Getafe CF,Getafe
+football_data_org,Málaga CF,Malaga
+football_data_org,Rayo Vallecano de Madrid,Vallecano
+football_data_org,Levante UD,Levante
+football_data_org,Real Sociedad de Fútbol,Sociedad
+football_data_org,Valencia CF,Valencia
+football_data_org,Deportivo Alavés,Alaves
+football_data_org,Elche CF,Elche
+football_data_org,RC Celta de Vigo,Celta
+football_data_org,Sevilla FC,Sevilla
+football_data_org,RC Deportivo La Coruña,La Coruna
+football_data_org,Real Racing Club de Santander,Santander
+
+# The Odds API (CL, EL, ECL 2026-27). Proposed by the closest team of the same competition,
+# then checked one by one on 2026-10-29. Two proposals were wrong and were corrected:
+# "FC Twente Enschede" and "Red Star Belgrade".
+the_odds_api,AEK Athens,AEK
+the_odds_api,AS Roma,Roma
+the_odds_api,Arsenal,Arsenal
+the_odds_api,Aston Villa,Aston Villa
+the_odds_api,Atlético Madrid,Ath Madrid
+the_odds_api,Barcelona,Barcelona
+the_odds_api,Bayern Munich,Bayern Munich
+the_odds_api,Bodø/Glimt,Bodo/Glimt
+the_odds_api,Borussia Dortmund,Dortmund
+the_odds_api,Club Brugge,Club Brugge
+the_odds_api,Como,Como
+the_odds_api,Fenerbahce,Fenerbahce
+the_odds_api,Feyenoord,Feyenoord
+the_odds_api,Galatasaray,Galatasaray
+the_odds_api,Inter Milan,Inter
+the_odds_api,LASK,LASK
+the_odds_api,Lille,Lille
+the_odds_api,Liverpool,Liverpool
+the_odds_api,Manchester City,Man City
+the_odds_api,Manchester United,Man United
+the_odds_api,Napoli,Napoli
+the_odds_api,PSV Eindhoven,PSV Eindhoven
+the_odds_api,Paris Saint Germain,Paris SG
+the_odds_api,Porto,Porto
+the_odds_api,RB Leipzig,RB Leipzig
+the_odds_api,RC Lens,Lens
+the_odds_api,Real Betis,Betis
+the_odds_api,Real Madrid,Real Madrid
+the_odds_api,Sabah FK,Sabah
+the_odds_api,Shakhtar Donetsk,Shakhtar Donetsk (UKR)
+the_odds_api,Slavia Praha,Slavia Praha (CZE)
+the_odds_api,Sporting Lisbon,Sp Lisbon
+the_odds_api,VfB Stuttgart,Stuttgart
+the_odds_api,Viking FK,Viking
+the_odds_api,Villarreal,Villarreal
+the_odds_api,ŠK Slovan Bratislava,Slovan Bratislava (SVK)
+the_odds_api,Inter Club d'Escaldes,Inter Club d'Escaldes
+the_odds_api,AGF Aarhus,Aarhus
+the_odds_api,AS Monaco,Monaco
+the_odds_api,Ajax,Ajax
+the_odds_api,Atalanta BC,Atalanta
+the_odds_api,Brighton and Hove Albion,Brighton
+the_odds_api,FC Copenhagen,FC Copenhagen
+the_odds_api,FC Iberia 1999,FC Iberia 1999 Tiflis
+the_odds_api,FC Kairat,FK Kairat (KAZ)
+the_odds_api,FC Lugano,Lugano
+the_odds_api,FC Midtjylland,Midtjylland
+the_odds_api,FC Nordsjaelland,Nordsjaelland
+the_odds_api,FC Thun,Thun
+the_odds_api,FC Twente Enschede,Twente
+the_odds_api,FK Borac Banja Luka,Borac Banja Luka (BIH)
+the_odds_api,FK Jablonec,FK Jablonec (CZE)
+the_odds_api,FK Kauno Žalgiris,FK Kauno Žalgiris
+the_odds_api,Gent,Gent
+the_odds_api,Getafe,Getafe
+the_odds_api,Hajduk Split,Hajduk Split
+the_odds_api,Hearts,Hearts
+the_odds_api,KF Egnatia,KF Egnatia
+the_odds_api,KuPS Kuopio,KuPS Kuopio
+the_odds_api,Lincoln Red Imps FC,Lincoln Red Imps (GIB)
+the_odds_api,Mjällby AIF,Mjallby
+the_odds_api,PFC CSKA Sofia,CSKA Sofia (BUL)
+the_odds_api,Pafos FC,Paphos FC (CYP)
+the_odds_api,Panathinaikos FC,Panathinaikos
+the_odds_api,Red Star Belgrade,Crvena Zvezda (SRB)
+the_odds_api,Riga FC,Riga FC
+the_odds_api,SC Braga,Sp Braga
+the_odds_api,SC Freiburg,Freiburg
+the_odds_api,SK Brann,Brann
+the_odds_api,Sint Truiden,St Truiden
+the_odds_api,Trabzonspor,Trabzonspor
+the_odds_api,Universitatea Craiova,Universitatea Craiova
+the_odds_api,Hapoel Be'er Sheva,Hapoel Be'er Sheva (ISR)
+the_odds_api,AC Milan,Milan
+the_odds_api,AZ Alkmaar,AZ Alkmaar
+the_odds_api,Anderlecht,Anderlecht
+the_odds_api,Bayer Leverkusen,Leverkusen
+the_odds_api,Benfica,Benfica
+the_odds_api,Besiktas JK,Besiktas
+the_odds_api,Bournemouth,Bournemouth
+the_odds_api,Celta Vigo,Celta
+the_odds_api,Celtic,Celtic
+the_odds_api,Crystal Palace,Crystal Palace
+the_odds_api,Dinamo Zagreb,Dinamo Zagreb (CRO)
+the_odds_api,FC Ararat-Armenia,FC Ararat-Armenia
+the_odds_api,Ferencváros TC,Ferencvárosi TC (HUN)
+the_odds_api,Jagiellonia Białystok,Jagiellonia
+the_odds_api,Juventus,Juventus
+the_odds_api,Lech Poznań,Lech Poznan
+the_odds_api,Lillestrom,Lillestrom
+the_odds_api,Lyon,Lyon
+the_odds_api,Marseille,Marseille
+the_odds_api,NEC Nijmegen,Nijmegen
+the_odds_api,NK Celje,NK Celje (SVN)
+the_odds_api,OFI Crete,OFI Crete
+the_odds_api,Olympiakos Piraeus,Olympiakos
+the_odds_api,Omonoia FC,Omonia Nikosia (CYP)
+the_odds_api,PFC Levski Sofia,Levski Sofia
+the_odds_api,Real Sociedad,Sociedad
+the_odds_api,Rennes,Rennes
+the_odds_api,SK Sturm Graz,Sturm Graz
+the_odds_api,Salzburg,Salzburg
+the_odds_api,Sparta Prague,AC Sparta Praha (CZE)
+the_odds_api,Sunderland,Sunderland
+the_odds_api,TSG Hoffenheim,Hoffenheim
+the_odds_api,Torreense,SC União Torreense
+the_odds_api,Union Saint-Gilloise,St. Gilloise
+the_odds_api,Viktoria Plzeň,Viktoria Plzeň (CZE)
+
+# OneFootball (PL, LaLiga, Serie A, Bundesliga 2026-27). Proposed by the closest team of the
+# same league, then checked one by one on 2026-10-29. One proposal was wrong and was
+# corrected: "Leeds United" (proposed Man United).
+onefootball,Sunderland,Sunderland
+onefootball,Leeds United,Leeds
+onefootball,Manchester United,Man United
+onefootball,AFC Bournemouth,Bournemouth
+onefootball,Liverpool FC,Liverpool
+onefootball,Brighton & Hove Albion,Brighton
+onefootball,Hull City,Hull
+onefootball,Brentford,Brentford
+onefootball,Crystal Palace,Crystal Palace
+onefootball,Newcastle United,Newcastle
+onefootball,Chelsea,Chelsea
+onefootball,Tottenham Hotspur,Tottenham
+onefootball,Coventry City,Coventry
+onefootball,Fulham,Fulham
+onefootball,Arsenal,Arsenal
+onefootball,Everton,Everton
+onefootball,Aston Villa,Aston Villa
+onefootball,Manchester City,Man City
+onefootball,Ipswich Town,Ipswich
+onefootball,Nottingham Forest,Nott'm Forest
+onefootball,Sevilla,Sevilla
+onefootball,Osasuna,Osasuna
+onefootball,Barcelona,Barcelona
+onefootball,Real Madrid,Real Madrid
+onefootball,Real Sociedad,Sociedad
+onefootball,Levante,Levante
+onefootball,Celta de Vigo,Celta
+onefootball,Real Betis,Betis
+onefootball,Athletic Bilbao,Ath Bilbao
+onefootball,Getafe,Getafe
+onefootball,Atlético de Madrid,Ath Madrid
+onefootball,Deportivo A Coruña,La Coruna
+onefootball,Valencia,Valencia
+onefootball,Villarreal,Villarreal
+onefootball,Racing de Santander,Santander
+onefootball,Espanyol,Espanol
+onefootball,Rayo Vallecano,Vallecano
+onefootball,Elche,Elche
+onefootball,Alavés,Alaves
+onefootball,Málaga,Malaga
+onefootball,Monza,Monza
+onefootball,Napoli,Napoli
+onefootball,Genoa,Genoa
+onefootball,Juventus,Juventus
+onefootball,Venezia,Venezia
+onefootball,Inter,Inter
+onefootball,Parma,Parma
+onefootball,Udinese,Udinese
+onefootball,Milan,Milan
+onefootball,Bologna,Bologna
+onefootball,Torino,Torino
+onefootball,Como,Como
+onefootball,Roma,Roma
+onefootball,Cagliari,Cagliari
+onefootball,Sassuolo,Sassuolo
+onefootball,Lazio,Lazio
+onefootball,Lecce,Lecce
+onefootball,Atalanta,Atalanta
+onefootball,Frosinone,Frosinone
+onefootball,Fiorentina,Fiorentina
+onefootball,SC Freiburg,Freiburg
+onefootball,Bayern Munich,Bayern Munich
+onefootball,Hoffenheim,Hoffenheim
+onefootball,Bayer Leverkusen,Leverkusen
+onefootball,Borussia Dortmund,Dortmund
+onefootball,Eintracht Frankfurt,Ein Frankfurt
+onefootball,Paderborn,Paderborn
+onefootball,Hamburg,Hamburg
+onefootball,Köln,FC Koln
+onefootball,Schalke 04,Schalke 04
+onefootball,Mainz,Mainz
+onefootball,Werder Bremen,Werder Bremen
+onefootball,Augsburg,Augsburg
+onefootball,Union Berlin,Union Berlin
+onefootball,RB Leipzig,RB Leipzig
+onefootball,Elversberg,Elversberg
+onefootball,VfB Stuttgart,Stuttgart
+onefootball,Borussia Mönchengladbach,M'gladbach
+onefootball,PSG,Paris SG
+onefootball,LOSC,Lille
+onefootball,Wolverhampton Wanderers,Wolves
+onefootball,Queens Park Rangers,QPR
+onefootball,West Ham United,West Ham
+onefootball,Norwich City,Norwich
+onefootball,Lincoln City,Lincoln
+onefootball,Preston North End,Preston
+onefootball,Stoke City,Stoke
+onefootball,Cardiff City,Cardiff
+onefootball,Swansea City,Swansea
+onefootball,Derby County,Derby
+onefootball,Bolton Wanderers,Bolton
+onefootball,Sporting de Gijón,Sp Gijon
+onefootball,Real Valladolid,Valladolid
+onefootball,Real Oviedo,Oviedo
+onefootball,Extremadura,Extremadura UD
+onefootball,Racing de Santander,Santander
+onefootball,Hellas Verona,Verona
+onefootball,Cambridge United,Cambridge
+onefootball,Crewe Alexandra,Crewe
+onefootball,Oxford United,Oxford
+onefootball,Rotherham United,Rotherham
+onefootball,Burton Albion,Burton
+onefootball,York City,York
+onefootball,Northampton Town,Northampton
+onefootball,Carlisle United,Carlisle
+onefootball,Salford City,Salford
+onefootball,Plymouth Argyle,Plymouth
+onefootball,Sutton United,Sutton
+onefootball,Bradford City,Bradford
+onefootball,Scunthorpe United,Scunthorpe
+onefootball,Halifax Town,Halifax
+onefootball,Luton Town,Luton
+onefootball,Colchester United,Colchester
+onefootball,Yeovil Town,Yeovil
+onefootball,Wycombe Wanderers,Wycombe
+onefootball,Peterborough United,Peterboro
+onefootball,Stockport County,Stockport
+onefootball,Truro City,Truro
+onefootball,Hartlepool United,Hartlepool
+onefootball,Dorking Wanderers,Dorking
+onefootball,Southend United,Southend
+onefootball,Ebbsfleet United,Ebbsfleet
+onefootball,Maidenhead United,Maidenhead
+onefootball,Dagenham & Redbridge,Dag and Red
+the_odds_api,Leeds United,Leeds
+the_odds_api,Nottingham Forest,Nott'm Forest
+the_odds_api,Coventry City,Coventry
+the_odds_api,Hull City,Hull
+the_odds_api,Ipswich Town,Ipswich
+the_odds_api,Tottenham Hotspur,Tottenham
+the_odds_api,Newcastle United,Newcastle
+the_odds_api,Bradford City,Bradford
+the_odds_api,Espanyol,Espanol
+the_odds_api,Rayo Vallecano,Vallecano
+the_odds_api,Real Racing Club de Santander,Santander
+the_odds_api,Deportivo La Coruña,La Coruna
+the_odds_api,CA Osasuna,Osasuna
+the_odds_api,FSV Mainz 05,Mainz
+the_odds_api,Borussia Monchengladbach,M'gladbach
+the_odds_api,Eintracht Frankfurt,Ein Frankfurt
+the_odds_api,Hamburger SV,Hamburg

@@ -1,0 +1,37 @@
+name: 'football-intel: disable the n8n workflows'
+
+# This repository is a copy of n8n. Its 100+ n8n workflows are of no use here and fill the
+# schedule queue. This run disables every workflow whose file name does not contain
+# "football-intel". To enable one again: Actions tab > the workflow > "Enable workflow".
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  disable:
+    if: github.repository == 'benkas418-alt/n8n'
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: write
+    steps:
+      - name: Disable the n8n workflows
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api --paginate "repos/$GITHUB_REPOSITORY/actions/workflows?per_page=100" \
+            -q '.workflows[] | select(.state == "active") | select(.path | contains("football-intel") | not) | "\(.id) \(.path)"' \
+            > to_disable.txt
+          echo "Workflows to disable: $(wc -l < to_disable.txt)"
+          failed=0
+          while read -r id path; do
+            if gh api -X PUT "repos/$GITHUB_REPOSITORY/actions/workflows/$id/disable" >/dev/null; then
+              echo "disabled $path"
+            else
+              echo "::warning::could not disable $path"; failed=$((failed + 1))
+            fi
+          done < to_disable.txt
+          { echo "### n8n workflows disabled"; echo "$(( $(wc -l < to_disable.txt) - failed )) disabled, $failed failed."; } >> "$GITHUB_STEP_SUMMARY"

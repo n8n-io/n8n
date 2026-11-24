@@ -1,0 +1,463 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="assets/gsap.min.js"></script>
+    <style>
+      @font-face { font-family: "Poppins"; font-weight: 600; src: url(assets/fonts/poppins-600.woff2) format("woff2"); }
+      @font-face { font-family: "Poppins"; font-weight: 800; src: url(assets/fonts/poppins-800.woff2) format("woff2"); }
+      @font-face { font-family: "Caveat"; font-weight: 700; src: url(assets/fonts/Caveat-700-latin.woff2) format("woff2"); }
+      @font-face { font-family: "Playfair"; font-weight: 900; src: url(assets/fonts/PlayfairDisplay-900.woff2) format("woff2"); }
+      @font-face { font-family: "OldStd"; font-weight: 700; src: url(assets/fonts/OldStandardTT-700.woff2) format("woff2"); }
+      :root { --blue: #1f88c9; --ink: #141414; --hw-ink: #1f88c9; --red: #d6332a; }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1080px; height: 1920px; overflow: hidden; background: #f6f3ec; }
+      #root { position: relative; width: 100%; height: 100%; overflow: hidden; font-family: "Poppins", sans-serif; color: var(--ink); }
+      .layer { position: absolute; inset: 0; z-index: 0; }
+      .sheet { position: absolute; inset: 0; overflow: hidden; }
+      .paper { position: absolute; inset: 0; background: url(assets/paper.jpg) center / cover; }
+      .blue { position: absolute; inset: 0; background: var(--blue); }
+      .blue::after { content: ""; position: absolute; inset: 0; background: url(assets/paper.jpg) center / cover; mix-blend-mode: multiply; opacity: 0.55; }
+      .rim { position: absolute; inset: 0; background: #fbfaf8; }
+
+      .np { position: absolute; background: #fbf8f1; padding: 22px 28px 26px; box-shadow: 0 1px 1px rgba(0,0,0,0.06), 0 16px 28px rgba(40,30,10,0.16); }
+      .np .art { display: block; margin-top: 10px; }
+      .np .art svg { display: block; width: 100%; height: auto; }
+      #phone { position: absolute; left: 290px; top: 650px; width: 500px; height: 770px; border-radius: 64px; background: #141414; padding: 18px; box-shadow: 0 30px 50px rgba(40,30,10,0.3); }
+      #phone .scr { position: relative; width: 100%; height: 100%; border-radius: 48px; overflow: hidden; background: #fff; }
+      #phone .bar { display: flex; align-items: center; gap: 14px; height: 120px; padding: 34px 30px 0; background: var(--blue); color: #fff; font-weight: 800; font-size: 40px; }
+      #phone .bar img { width: 44px; display: block; }
+      #phone .lbl { display: block; padding: 26px 30px 12px; font-weight: 800; font-size: 30px; color: var(--ink); }
+      #phone .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; padding: 22px 24px; }
+      #phone .grid img { width: 100%; height: 200px; object-fit: cover; border-radius: 16px; display: block; }
+      #phone .row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px 0; justify-items: center; padding: 0 20px; }
+      #phone .row img { width: 112px; height: 112px; border-radius: 50%; object-fit: cover; display: block; border: 3px solid #e8e8e8; }
+      #phone .btn { position: absolute; left: 30px; right: 30px; bottom: 96px; height: 96px; border-radius: 48px; background: var(--blue); color: #fff; font-weight: 800; font-size: 32px; white-space: nowrap; display: flex; align-items: center; justify-content: center; }
+      #phone .ok { background: #1f9d55; }
+      #phone .sub { position: absolute; left: 0; right: 0; bottom: 40px; display: block; text-align: center; font-weight: 600; font-size: 24px; color: #555; }
+      #tap { position: absolute; width: 90px; height: 90px; border-radius: 50%; border: 6px solid #141414; left: 187px; top: 545px; }
+      .np .hd { display: block; font-family: "Playfair", serif; font-weight: 900; line-height: 1.02; letter-spacing: -1px; color: var(--ink); }
+      .np .hd > span { display: block; white-space: nowrap; }
+      .np .ph { display: block; width: 100%; object-fit: cover; margin-top: 4px; filter: contrast(1.05); }
+      .np .cap { display: block; font-family: "OldStd", serif; font-weight: 700; font-size: 20px; color: #555; margin-top: 8px; white-space: nowrap; }
+      .tape { position: absolute; width: 130px; height: 36px; background: rgba(236, 226, 196, 0.85); box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+        clip-path: polygon(0% 8%, 6% 0%, 12% 10%, 20% 2%, 30% 8%, 42% 0%, 55% 6%, 68% 0%, 80% 9%, 90% 1%, 100% 8%, 97% 50%, 100% 92%, 90% 100%, 78% 92%, 64% 100%, 50% 93%, 36% 100%, 22% 92%, 10% 100%, 0% 92%, 3% 50%); }
+      .stamp { position: absolute; display: block; font-family: "Poppins", sans-serif; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; color: var(--red); border: 7px solid var(--red); border-radius: 10px; padding: 6px 18px; white-space: nowrap; mix-blend-mode: multiply; }
+
+      .big { position: absolute; left: 76px; display: block; font-family: "Playfair", serif; font-weight: 900; line-height: 1.02; letter-spacing: -2px; color: var(--ink); }
+      .big > span { display: block; white-space: nowrap; }
+      .w { display: inline !important; }
+      .note { position: absolute; display: block; font-family: "Caveat", cursive; font-weight: 700; color: var(--blue); white-space: nowrap; line-height: 1; }
+      .hl { position: absolute; z-index: -1; background: rgba(31, 136, 201, 0.26); transform-origin: 0% 50%; border-radius: 4px; }
+      .dot { position: absolute; border-radius: 50%; overflow: hidden; border: 6px solid #fff; background: #000; box-shadow: 0 10px 22px rgba(40,30,10,0.25); }
+      .dot img { width: 100%; height: 100%; object-fit: cover; display: block; }
+      .hw-mark, .hw-arrow { position: absolute; pointer-events: none; }
+      .hw-mark svg, .hw-arrow svg { width: 100%; height: 100%; overflow: visible; }
+      .hw-mark path, .hw-arrow path { fill: none; stroke: var(--hw-ink); stroke-width: 7; stroke-linecap: round; stroke-linejoin: round; }
+
+
+      /* handset */
+      @font-face { font-family: "Poppins"; font-weight: 500; src: url(assets/fonts/poppins-500.woff2) format("woff2"); }
+      @font-face { font-family: "Poppins"; font-weight: 700; src: url(assets/fonts/poppins-700.woff2) format("woff2"); }
+      #dev { position: absolute; left: 190px; top: 440px; width: 540px; height: 1120px; border-radius: 84px; padding: 12px; background: linear-gradient(145deg, #5a5d63 0%, #222427 30%, #3b3e43 62%, #17181a 100%); box-shadow: 0 44px 70px rgba(30,20,5,0.38), inset 0 0 0 2px rgba(255,255,255,0.2); }
+      #dev .sbtn { position: absolute; width: 6px; border-radius: 3px; background: linear-gradient(90deg, #2a2c2f, #55585d); }
+      #dev .bez { width: 100%; height: 100%; border-radius: 72px; background: #050505; padding: 10px; }
+      #dev .scr { position: relative; width: 100%; height: 100%; border-radius: 62px; overflow: hidden; background: #fff; }
+      #dev .island { position: absolute; left: 50%; top: 13px; width: 116px; height: 34px; margin-left: -58px; border-radius: 20px; background: #000; z-index: 5; }
+      #dev .homei { position: absolute; left: 50%; bottom: 9px; width: 140px; height: 5px; margin-left: -70px; border-radius: 3px; background: #111; z-index: 5; }
+      #dev .glare { position: absolute; inset: 0; z-index: 6; background: linear-gradient(118deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.05) 26%, rgba(255,255,255,0) 40%); pointer-events: none; }
+      #touch { position: absolute; z-index: 7; width: 64px; height: 64px; margin: -32px 0 0 -32px; border-radius: 50%; background: rgba(60,60,60,0.35); border: 3px solid rgba(255,255,255,0.8); }
+      .app { position: absolute; left: 0; top: 0; width: 390px; height: 846px; transform-origin: 0 0; background: #fff; font-family: "Poppins", sans-serif; color: #111827; overflow: hidden; }
+      #dev .app { zoom: 1.2718; }
+      .app svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+      .app .sb { display: flex; justify-content: space-between; align-items: center; height: 46px; padding: 6px 30px 0 34px; font-size: 15px; }
+      .app .sb .sbi { display: flex; gap: 6px; align-items: center; } .app .sb .sbi svg { height: 12px; width: auto; fill: #111; stroke: none; }
+      .app .sb .sbi svg:nth-child(2) path { fill: none; stroke: #111; stroke-width: 1.6; }
+      .app .hdr { display: flex; justify-content: space-between; align-items: center; height: 46px; padding: 0 22px; border-bottom: 1px solid #eef0f3; }
+      .app .hdr img { width: 26px; display: block; } .app .hdr svg { width: 24px; height: 24px; }
+      .app .srch { display: flex; align-items: center; gap: 10px; margin: 12px 14px 0; height: 40px; padding: 0 14px; border-radius: 10px; background: #f1f3f6; color: #6b7280; font-size: 13px; }
+      .app .tabs { display: flex; gap: 6px; margin: 12px 14px; padding: 5px; border-radius: 12px; background: #f1f3f6; }
+      .app .tabs div { flex: 1; display: flex; align-items: center; justify-content: center; gap: 7px; height: 38px; border-radius: 9px; font-size: 13.5px; font-weight: 600; color: #4b5563; }
+      .app .tabs div.on { background: #1f88c9; color: #fff; }
+      .app .tabs svg { width: 17px; height: 17px; }
+      .app .body { display: flex; height: 560px; background: #f4f5f7; }
+      .app .cats { width: 82px; flex: none; background: #f4f5f7; }
+      .app .cats div { padding: 12px 8px 12px 11px; font-size: 10.5px; line-height: 1.25; color: #4b5563; }
+      .app .cats div.on { background: #fff; color: #1f88c9; font-weight: 600; box-shadow: inset 3px 0 0 #1f88c9; }
+      .app .main { flex: 1; padding: 10px 10px 0; }
+      .app .sort { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 9px 12px; font-size: 12px; color: #4b5563; margin-bottom: 10px; }
+      .app .sort b { color: #111827; font-weight: 600; }
+      .app .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+      .app .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 7px; }
+      .app .ch { display: flex; align-items: center; gap: 5px; margin-bottom: 6px; }
+      .app .ch img { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; } .app .ch b { flex: 1; font-size: 10.5px; font-weight: 600; white-space: nowrap; overflow: hidden; }
+      .app .ch i { display: flex; width: 20px; height: 20px; border-radius: 50%; background: #1f88c9; color: #fff; align-items: center; justify-content: center; } .app .ch i svg { width: 12px; height: 12px; }
+      .app .ci { display: block; width: 100%; height: 118px; object-fit: cover; border-radius: 8px; }
+      .app .ct { font-size: 12.5px; font-weight: 600; margin: 6px 2px; white-space: nowrap; }
+      .app .cb { display: flex; align-items: center; justify-content: center; gap: 6px; height: 32px; border-radius: 8px; background: #1f6fb5; color: #fff; font-size: 12px; font-weight: 600; } .app .cb svg { width: 15px; height: 15px; }
+      .app .nav { position: absolute; left: 0; right: 0; bottom: 0; height: 74px; display: flex; justify-content: space-around; padding-top: 9px; border-top: 1px solid #eef0f3; background: #fff; }
+      .app .nav div { display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 10.5px; color: #4b5563; } .app .nav div.on { color: #1f88c9; font-weight: 600; } .app .nav svg { width: 22px; height: 22px; }
+      .app .back { display: flex; align-items: center; gap: 8px; padding: 14px 20px; font-size: 14px; color: #374151; } .app .back svg { width: 18px; height: 18px; }
+      .app .pimg { position: relative; margin: 0 16px; height: 330px; border-radius: 16px; overflow: hidden; background: #f4f5f7; border: 1px solid #e5e7eb; }
+      .app .pimg img { width: 100%; height: 100%; object-fit: cover; display: block; }
+      .app .pimg i { position: absolute; top: 145px; width: 34px; height: 34px; border-radius: 50%; background: #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.15); font-style: normal; font-size: 26px; line-height: 30px; text-align: center; color: #111; }
+      .app .arL { left: 10px; } .app .arR { right: 10px; }
+      .app .pt { font-size: 22px; font-weight: 700; padding: 14px 20px 4px; }
+      .app .pshop { display: flex; align-items: center; gap: 10px; padding: 6px 20px 10px; } .app .pshop img { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; } .app .pshop b { font-size: 15px; font-weight: 600; }
+      .app .badge { display: inline-flex; align-items: center; gap: 8px; margin: 0 20px; padding: 8px 12px; border-radius: 8px; background: #e9f7ee; color: #15803d; font-size: 12.5px; font-weight: 500; transform-origin: 0 50%; } .app .badge svg { width: 17px; height: 17px; }
+      .app .pbtn { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 16px 20px 0; height: 48px; border-radius: 10px; background: #1f6fb5; color: #fff; font-size: 15px; font-weight: 600; }
+
+      #join { position: absolute; left: 0; right: 0; top: 740px; display: block; text-align: center; font-weight: 800; font-size: 150px; letter-spacing: -5px; color: #fff; white-space: nowrap; }
+      #creates { position: absolute; left: 0; right: 0; top: 950px; display: block; text-align: center; font-family: "Caveat", cursive; font-weight: 700; font-size: 72px; color: #fff; white-space: nowrap; }
+      #stores { position: absolute; left: 0; right: 0; top: 1060px; display: flex; justify-content: center; gap: 26px; }
+      #orsur { position: absolute; left: 0; right: 0; top: 1190px; display: block; text-align: center; font-family: "Caveat", cursive; font-weight: 700; font-size: 66px; color: #fff; white-space: nowrap; }
+      #ctaWrap { position: absolute; left: 0; right: 0; top: 1280px; display: flex; justify-content: center; }
+      #fine { position: absolute; left: 0; right: 0; top: 1470px; display: block; text-align: center; font-weight: 600; font-size: 32px; color: rgba(255,255,255,0.92); white-space: nowrap; }
+      #bigBadge { position: absolute; left: 70px; top: 1010px; display: flex; align-items: center; gap: 18px; padding: 26px 34px; border-radius: 22px; background: #e9f7ee; color: #15803d; font-weight: 600; font-size: 42px; white-space: nowrap; box-shadow: 0 16px 28px rgba(40,30,10,0.16); }
+      #bigBadge svg { width: 54px; height: 54px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+      .app .reg { margin: 20px 16px 0; padding: 26px 20px 24px; border: 1px solid #e5e7eb; border-radius: 18px; text-align: center; }
+      .app .rIco { width: 64px; height: 64px; margin: 0 auto 14px; border-radius: 14px; background: #2f8fd8; color: #fff; display: flex; align-items: center; justify-content: center; } .app .rIco svg { width: 30px; height: 30px; }
+      .app .rT { font-size: 23px; font-weight: 700; } .app .rS { font-size: 14px; color: #4b5563; margin: 8px 6px 20px; line-height: 1.5; }
+      .app .rG { display: flex; align-items: center; justify-content: center; gap: 12px; height: 50px; border: 1px solid #d1d5db; border-radius: 10px; font-size: 15px; font-weight: 500; } .app .rG svg { width: 22px; height: 22px; }
+      .app .rOr { display: flex; align-items: center; gap: 10px; margin: 18px 0; font-size: 12.5px; color: #6b7280; } .app .rOr i { flex: 1; height: 1px; background: #e5e7eb; }
+      .app .rL { text-align: left; font-size: 13.5px; font-weight: 500; margin: 0 0 7px; }
+      .app .rIn { display: flex; align-items: center; gap: 10px; height: 48px; padding: 0 12px; margin-bottom: 14px; border: 1px solid #d1d5db; border-radius: 10px; background: #f9fafb; color: #6b7280; font-size: 14.5px; } .app .rIn svg { width: 20px; height: 20px; }
+      .app .rB { height: 48px; margin-top: 6px; border-radius: 10px; background: #2f8fd8; color: #fff; font-size: 15px; font-weight: 600; display: flex; align-items: center; justify-content: center; }
+      .bdgs { position: absolute; left: 0; right: 0; display: flex; justify-content: center; gap: 24px; }
+      .bdg { display: flex; align-items: center; gap: 14px; height: 96px; padding: 0 28px 0 20px; border-radius: 18px; background: #000; border: 2px solid #a6a6a6; color: #fff; font-family: "Poppins", sans-serif; }
+      .bdg svg { width: 52px; height: 52px; display: block; }
+      .bdg span { display: flex; flex-direction: column; line-height: 1; }
+      .bdg small { font-weight: 600; font-size: 20px; letter-spacing: 0.5px; }
+      .bdg b { font-weight: 600; font-size: 38px; letter-spacing: -0.5px; margin-top: 4px; white-space: nowrap; }
+      /* the narrator */
+      #guy { position: absolute; left: 0; top: 0; width: 340px; height: 470px; z-index: 30; }
+      #guy svg { width: 100%; height: 100%; overflow: visible; }
+      #bubble { position: absolute; z-index: 31; background: #fff; border: 4px solid #141414; border-radius: 26px; padding: 10px 22px; font-family: "Caveat", cursive; font-weight: 700; font-size: 54px; color: #141414; white-space: nowrap; }
+
+      #end .icon { position: absolute; left: 405px; top: 340px; width: 290px; display: block; }
+      #cta { display: block; padding: 30px 70px; border-radius: 999px; background: #fff; color: var(--blue); font-weight: 800; font-size: 58px; white-space: nowrap; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="36.5" data-width="1080" data-height="1920">
+      <audio id="bgm" src="assets/bgm.wav" data-start="0" data-duration="36.5" data-track-index="11"></audio>
+      <!-- halftone fills for the black-and-white newspaper illustrations -->
+      <svg width="0" height="0" style="position:absolute"><defs>
+        <pattern id="ht1" width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="9" height="9" fill="#fbf8f1" /><circle cx="4.5" cy="4.5" r="1.5" fill="#141414" /></pattern>
+        <pattern id="ht2" width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="9" height="9" fill="#fbf8f1" /><circle cx="4.5" cy="4.5" r="2.7" fill="#141414" /></pattern>
+        <pattern id="ht3" width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="9" height="9" fill="#fbf8f1" /><circle cx="4.5" cy="4.5" r="3.7" fill="#141414" /></pattern>
+      </defs></svg>
+      <div id="scene" class="clip layer" data-start="0" data-duration="36.5" data-track-index="0">
+        <div class="sheet" id="end">
+          <div class="blue"></div>
+          <img class="icon" src="assets/icon_white.png" alt="" />
+          <div id="join">PitUp.</div>
+          <div id="creates">Sur l'application,</div>
+          <div id="stores" class="bdgs" style="top:1060px"><div class="bdg"><svg viewBox="0 0 24 24"><path fill="#fff" d="M16.4 1.4c0 1.1-.5 2.3-1.2 3.1-.7.9-2 1.6-3 1.6-.1 0-.2 0-.3-.1 0-.1 0-.2 0-.4 0-1.1.6-2.3 1.2-3 .8-.9 2.1-1.6 3.2-1.7.1.2.1.3.1.5zm4.6 15.7c0 .1-.5 1.6-1.5 3.1-.9 1.3-1.9 2.7-3.4 2.7s-1.9-.9-3.6-.9c-1.7 0-2.3.9-3.7.9-1.4 0-2.3-1.3-3.4-2.8C4.1 18.3 3 15.5 3 12.8c0-4.3 2.8-6.5 5.6-6.5 1.4 0 2.7.9 3.6.9.9 0 2.2-1 3.9-1 .6 0 2.9.1 4.4 2.2-.1.1-2.4 1.4-2.4 4.2 0 3.3 2.9 4.4 2.9 4.5z"/></svg><span><small>Disponible sur</small><b>App Store</b></span></div>
+              <div class="bdg"><svg viewBox="0 0 24 24"><path fill="#00d7fe" d="M3.6 1.8 13.6 12 3.6 22.2c-.4-.2-.6-.6-.6-1.1V2.9c0-.5.2-.9.6-1.1z"/><path fill="#00f076" d="M3.6 1.8 16.9 9.4 13.6 12z"/><path fill="#f8384b" d="M3.6 22.2 13.6 12l3.3 2.6z"/><path fill="#fdbd00" d="M16.9 9.4 21 11.7c.5.3.5.9 0 1.2l-4.1 1.7-3.3-2.6z"/></svg><span><small>Disponible sur</small><b>Google Play</b></span></div></div>
+          <div id="orsur">ou sur</div>
+          <div id="ctaWrap"><div id="cta">pi-tup.com</div></div>
+          <div id="fine">+100 boutiques déjà sur PitUp · Paiement à la livraison</div>
+        </div>
+        <div class="sheet" id="p2Wrap"><div class="rim" id="p2Rim"></div><div class="sheet" id="p2"><div class="paper"></div><div id="dots" class="layer"></div><div id="s2" class="layer"></div></div></div>
+        <div class="sheet" id="p1Wrap"><div class="rim" id="p1Rim"></div><div class="sheet" id="p1"><div class="paper"></div><div id="s1" class="layer"></div></div></div>
+
+        <!-- narrator: a young Lushois in a PitUp tee (vector, built for this film) -->
+        <div id="guy"><svg viewBox="0 0 340 470">
+          <g id="gBody">
+            <path d="M60 470 C60 360 100 320 170 320 C240 320 280 360 280 470 Z" fill="#1f88c9" />
+            <path d="M150 322 L170 352 L190 322" fill="none" stroke="#156ea6" stroke-width="6" stroke-linecap="round" />
+            <image href="assets/icon_white.png" x="146" y="378" width="48" height="54" />
+            <g id="gArmL"><path d="M78 370 C40 400 34 440 44 470" stroke="#1f88c9" stroke-width="44" stroke-linecap="round" fill="none" /><circle cx="44" cy="470" r="22" fill="#6a3f24" /></g>
+            <g id="gArmR"><path d="M262 370 C300 400 306 440 296 470" stroke="#1f88c9" stroke-width="44" stroke-linecap="round" fill="none" /><circle id="handR" cx="296" cy="470" r="22" fill="#6a3f24" /></g>
+            <rect x="152" y="282" width="36" height="48" rx="14" fill="#5e371f" />
+          </g>
+          <g id="gHead">
+            <ellipse cx="94" cy="190" rx="18" ry="24" fill="#6a3f24" />
+            <ellipse cx="246" cy="190" rx="18" ry="24" fill="#6a3f24" />
+            <ellipse cx="170" cy="180" rx="82" ry="104" fill="#7a4a2b" />
+            <path d="M90 150 C88 70 140 58 170 58 C206 58 254 72 250 150 C236 112 210 100 170 100 C130 100 104 112 90 150 Z" fill="#1b1410" />
+            <g id="gBrows"><path d="M118 146 Q138 134 156 144" stroke="#1b1410" stroke-width="8" fill="none" stroke-linecap="round" /><path d="M184 144 Q202 134 222 146" stroke="#1b1410" stroke-width="8" fill="none" stroke-linecap="round" /></g>
+            <g id="gEyes"><ellipse cx="138" cy="172" rx="15" ry="17" fill="#fff" /><ellipse cx="202" cy="172" rx="15" ry="17" fill="#fff" /><circle cx="141" cy="175" r="8" fill="#1b1410" /><circle cx="205" cy="175" r="8" fill="#1b1410" /></g>
+            <path d="M162 196 Q170 214 180 198" stroke="#5a3218" stroke-width="5" fill="none" stroke-linecap="round" />
+            <g transform="translate(170 238)"><ellipse id="mouth" cx="0" cy="0" rx="24" ry="4" fill="#4a1414" /><rect id="teeth" x="-16" y="-6" width="32" height="6" rx="3" fill="#fff" /></g>
+          </g>
+        </svg></div>
+        <div id="bubble">On est d'accord ?</div>
+      </div>
+    </div>
+
+    <script src="assets/hw.js"></script>
+    <script src="assets/mouth.js"></script>
+    <script>
+     Promise.all(["500 14px Poppins","700 20px Poppins","900 100px Playfair","700 24px OldStd","700 80px Caveat","800 60px Poppins","600 30px Poppins"].map((f) => document.fonts.load(f))).then(() => document.fonts.ready).then(() => {
+      const tl = gsap.timeline({ paused: true });
+      let seed = 0x3a7c;
+      const rnd = () => { seed = (Math.imul(1664525, seed) + 1013904223) >>> 0; return seed / 4294967296; };
+      const $ = (id) => document.getElementById(id);
+      // cues were laid out on the first take; MAP moves them onto the current take's word timings
+      const MAP = [[0, 0.08], [1.45, 2.03], [2.19, 3.09], [3.44, 4.31], [3.92, 4.83], [5.08, 6.12], [5.3, 6.49], [6.4, 7.79], [6.95, 8.62], [8.34, 9.59], [8.98, 10.22], [10.06, 11.18], [12.2, 13.74], [13.49, 14.72], [14.15, 15.42], [14.75, 16.35], [15.87, 17.16], [17.15, 18.46], [18.69, 19.59], [19.35, 20.21], [20.53, 21.25], [22.48, 23.63], [25.77, 26.61], [26.96, 27.95], [28.32, 29.43], [29.75, 30.69], [30.61, 31.68], [31.9, 32.94], [32.3, 33.19]];
+      const remap = (t) => { for (let i = 1; i < MAP.length; i++) if (t <= MAP[i][0]) { const [a, b] = MAP[i - 1], [c, d] = MAP[i]; return b + ((t - a) / (c - a)) * (d - b); } const [a, b] = MAP[MAP.length - 1]; return b + (t - a); };
+      const N = (t) => remap(t) + 0.3;   // first-take voice seconds -> film seconds
+
+      // ---------- builders ----------
+      function jag(el) {
+        const w = el.offsetWidth, h = el.offsetHeight, pts = [], st = 16, j = () => (rnd() * 5).toFixed(1);
+        for (let x = 0; x <= w; x += st) pts.push(`${x}px ${j()}px`);
+        for (let y = 0; y <= h; y += st) pts.push(`${w - j()}px ${y}px`);
+        for (let x = w; x >= 0; x -= st) pts.push(`${x}px ${h - j()}px`);
+        for (let y = h; y >= 0; y -= st) pts.push(`${j()}px ${y}px`);
+        el.style.clipPath = `polygon(${pts.join(",")})`;
+      }
+      function clipping(parent, id, o) {
+        const d = document.createElement("div"); d.className = "np"; d.id = id;
+        d.style.left = o.x + "px"; d.style.top = o.y + "px"; d.style.width = o.w + "px";
+        d.innerHTML = (o.hd ? `<div class="hd" style="font-size:${o.size}px">${o.hd.map((l) => `<span>${l}</span>`).join("")}</div>` : "") +
+          (o.img ? `<img class="ph" src="${o.img}" style="height:${o.ih}px" alt="">` : "") + (o.art ? `<div class="art">${o.art}</div>` : "") + (o.cap ? `<div class="cap">${o.cap}</div>` : "");
+        parent.appendChild(d); jag(d);
+        const tp = document.createElement("div"); tp.className = "tape"; tp.id = id + "T"; parent.appendChild(tp);
+        gsap.set(tp, { left: o.x + o.w / 2 - 65 + (rnd() - 0.5) * 60, top: o.y - 18, rotation: (rnd() - 0.5) * 10 });
+        gsap.set([d, tp], { opacity: 0 });
+        return d;
+      }
+      function slap(id, at, rot) {
+        tl.fromTo("#" + id, { opacity: 0, y: -50, scale: 1.12, rotation: rot - 8 }, { opacity: 1, y: 0, scale: 1, rotation: rot, duration: 0.3, ease: "back.out(1.5)" }, at);
+        tl.fromTo("#" + id + "T", { opacity: 0, scale: 1.4 }, { opacity: 1, scale: 1, duration: 0.16, ease: "power2.out" }, at + 0.14);
+      }
+      function pull(ids, at) {
+        ids.forEach((id, k) => {
+          const dir = k % 2 ? 1 : -1, sel = $(id + "T") ? ["#" + id, "#" + id + "T"] : ["#" + id];
+          tl.to(sel, { x: dir * 1300, y: -120 - k * 40, rotation: dir * 25, duration: 0.42, ease: "power3.in" }, at + k * 0.04);
+        });
+      }
+      function text(parent, id, cls, html, css) {
+        const d = document.createElement("div"); d.className = cls; d.id = id; d.innerHTML = html; Object.assign(d.style, css); parent.appendChild(d); gsap.set(d, { opacity: 0 }); return d;
+      }
+      function stamp(parent, id, label, css, at, rot) {
+        const d = text(parent, id, "stamp", label, css);
+        tl.fromTo(d, { opacity: 0, scale: 2.2, rotation: rot - 6 }, { opacity: 0.92, scale: 1, rotation: rot, duration: 0.18, ease: "power4.in" }, at);
+        tl.fromTo(parent.parentElement, { x: 0 }, { x: 6, duration: 0.04, yoyo: true, repeat: 3, ease: "none" }, at + 0.18);
+      }
+      function rel(el, anc) { let x = 0, y = 0, e = el; while (e && e !== anc) { x += e.offsetLeft; y += e.offsetTop; e = e.offsetParent; } return { left: x, top: y, width: el.offsetWidth, height: el.offsetHeight, bottom: y + el.offsetHeight }; }
+      function marker(parent, wordId, at, dur) {
+        const r = rel($(wordId), parent), h = document.createElement("div"); h.className = "hl";
+        Object.assign(h.style, { left: r.left - 8 + "px", top: r.top + r.height * 0.18 + "px", width: r.width + 16 + "px", height: r.height * 0.72 + "px" });
+        parent.insertBefore(h, parent.firstChild); tl.fromTo(h, { scaleX: 0 }, { scaleX: 1, duration: dur || 0.35, ease: "power2.out" }, at); return h;
+      }
+      let mk = 0;
+      function mark(parent, wordId, style, at, opt) {
+        const r = rel($(wordId), parent), id = "mk" + mk++, pad = style === "ellipse" ? 34 : 6;
+        const w = r.width + pad * 2, h = style === "ellipse" ? r.height + 40 : 40;
+        const d = document.createElement("div"); d.className = "hw-mark"; d.id = id;
+        const top = style === "ellipse" ? r.top - 20 : style === "strike" ? r.top + r.height * 0.45 : r.bottom - 8;
+        Object.assign(d.style, { left: r.left - pad + "px", top: top + "px", width: w + "px", height: h + "px" });
+        if (opt && opt.color) d.style.setProperty("--hw-ink", opt.color);
+        d.innerHTML = `<svg viewBox="0 0 ${w} ${h}"><path></path></svg>`; parent.appendChild(d);
+        d.querySelector("path").setAttribute("d", style === "ellipse" ? hwWobbleEllipse(w / 2, h / 2, w / 2 - 4, h / 2 - 4, 7 + mk, 0.07) : hwMarkPath(w, 40, style, 3 + mk));
+        gsap.set(d, { opacity: 0 }); tl.set(d, { opacity: 1 }, at);
+        hwMarkOn(tl, "#" + id, at, style === "ellipse" ? 0.45 : 0.35);
+        return id;
+      }
+      function tear(id, s, at, dur) {
+        const clipEl = $(id), rimEl = $(id + "Rim"), wrapEl = $(id + "Wrap");
+        let st = s >>> 0; const r = () => { st = (Math.imul(1664525, st) + 1013904223) >>> 0; return st / 4294967296; };
+        const noise = (k) => { const a = []; for (let i = 0; i <= k; i++) a.push(r() * 2 - 1); return (v) => { const f = v * k, i = Math.min(k - 1, Math.floor(f)); let u = f - i; u = u * u * (3 - 2 * u); return a[i] + (a[i + 1] - a[i]) * u; }; };
+        const ROWS = 160, PX = 100 / 1080, wander = noise(6), core = noise(14), edge = [];
+        for (let i = 0; i <= ROWS; i++) { const v = i / ROWS; edge.push({ y: (v * 100).toFixed(2) + "%", o: (v - 0.5) * 4 + (wander(v) * 46 + (r() * 2 - 1) * 3.5) * PX, rim: Math.min(16, Math.max(7, 7 + 9 * (core(v) * 0.5 + 0.5) + (r() * 2 - 1) * 3)) * PX }); }
+        const ease = (p) => (p < 0.3 ? 0.2 * Math.pow(p / 0.3, 2) : 0.2 + 0.8 * (1 - Math.pow(1 - (p - 0.3) / 0.7, 3)));
+        const paint = (p) => {
+          const e = ease(Math.max(0, Math.min(1, p))), bx = -12 + 124 * e;
+          let a = "100% 0%, 100% 100%", b = a;
+          for (let i = ROWS; i >= 0; i--) { const x = bx + edge[i].o; a += `, ${x.toFixed(2)}% ${edge[i].y}`; b += `, ${(x - edge[i].rim).toFixed(2)}% ${edge[i].y}`; }
+          clipEl.style.clipPath = `polygon(${a})`; rimEl.style.clipPath = `polygon(${b})`;
+          wrapEl.style.transform = `translateX(${(3 * e).toFixed(3)}%) rotate(${(1.5 * e).toFixed(3)}deg)`;
+          wrapEl.style.filter = `drop-shadow(0 ${(12 * e).toFixed(1)}px ${(24 * e).toFixed(1)}px rgba(0,0,0,0.25))`;
+          wrapEl.style.opacity = e >= 0.999 ? 0 : 1;
+        };
+        paint(0); const pr = { p: 0 };
+        tl.fromTo(pr, { p: 0 }, { p: 1, duration: dur, ease: "none", onUpdate: () => paint(pr.p) }, at);
+      }
+
+      // ================= PAGE 1 — what PitUp is, steps 1 and 2 =================
+      const s1 = $("s1");
+      const ico = {
+        search: `<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>`,
+        bag: `<svg viewBox="0 0 24 24"><path d="M5 8h14l-1 12H6z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg>`,
+        fork: `<svg viewBox="0 0 24 24"><path d="M5 3l14 18M19 3L5 21"/></svg>`,
+        cart: `<svg viewBox="0 0 24 24"><path d="M3 4h2l2.5 11h10L20 7H6.5"/><circle cx="9" cy="19.5" r="1.3"/><circle cx="17" cy="19.5" r="1.3"/></svg>`,
+        user: `<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4.5 4.5-6 8-6s7 1.5 8 6"/></svg>`,
+        userAdd: `<svg viewBox="0 0 24 24"><circle cx="10" cy="8" r="4"/><path d="M3 21c1-4.5 4-6 7-6s5 1 6.5 3M19 8v6M16 11h6"/></svg>`,
+        home: `<svg viewBox="0 0 24 24"><path d="M4 10l8-6 8 6v10h-5v-6H9v6H4z"/></svg>`,
+        offer: `<svg viewBox="0 0 24 24"><rect x="4" y="7" width="16" height="13" rx="2"/><path d="M9 7V5h6v2M4 12h16"/></svg>`,
+        shop: `<svg viewBox="0 0 24 24"><path d="M4 9l2-5h12l2 5M4 9h16v11H4zM9 20v-6h6v6"/></svg>`,
+        mail: `<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>`,
+        lock: `<svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>`,
+        shield: `<svg viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg>`,
+      };
+      const gLogo = `<svg viewBox="0 0 48 48" style="stroke:none"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.9 6.1C12.5 13.6 17.8 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.7 6c4.5-4.2 6.9-10.3 6.9-17.7z"/><path fill="#FBBC05" d="M10.6 28.6c-.5-1.4-.8-3-.8-4.6s.3-3.2.8-4.6l-7.9-6.1C1 16.6 0 20.2 0 24s1 7.4 2.7 10.7l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.7-6c-2.2 1.5-5 2.3-8.2 2.3-6.2 0-11.5-4.1-13.4-9.8l-7.9 6.1C6.6 42.6 14.6 48 24 48z"/></svg>`;
+      const card = (img, av, shopName, title) => `<div class="card"><div class="ch"><img src="${av}" alt=""><b>${shopName}</b><i>${ico.bag}</i></div><img class="ci" src="${img}" alt=""><div class="ct">${title}</div><div class="cb">${ico.cart}Panier</div></div>`;
+      const nav = (on) => `<div class="nav">${[["home", "Accueil"], ["bag", "Commander"], ["offer", "Offres"], ["shop", "Marché"], ["search", "Découvrir"]].map(([i, l]) => `<div class="${l === on ? "on" : ""}">${ico[i]}<span>${l}</span></div>`).join("")}</div>`;
+      const top = `<div class="sb"><b>14:30</b><span class="sbi"><svg viewBox="0 0 18 12"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="5" width="3" height="7" rx="1"/><rect x="10" y="2.5" width="3" height="9.5" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></svg><svg viewBox="0 0 16 12"><path d="M8 11.5l2.4-2.9a3.6 3.6 0 0 0-4.8 0zM3.3 6.4a7 7 0 0 1 9.4 0l1.6-1.9a9.6 9.6 0 0 0-12.6 0zM.2 3.3a11.6 11.6 0 0 1 15.6 0" /></svg><svg viewBox="0 0 27 13"><rect x="0.5" y="0.5" width="23" height="12" rx="3.5" fill="none" stroke-width="1"/><rect x="2.5" y="2.5" width="16" height="8" rx="2"/><rect x="25" y="4" width="1.6" height="5" rx="0.8"/></svg></span></div>
+        <div class="hdr"><img src="assets/icon_blue.png" alt="">${ico.user}</div>`;
+      const cats = ["Toutes", "Vêtements & Mode", "Électronique", "Maison & Jardin", "Sports & Loisirs", "Beauté & Santé", "Alimentation", "Téléphones & Accessoires"].map((c, k) => `<div id="cat${k}" class="${k ? "" : "on"}">${c}</div>`).join("");
+      // the real sign-up screen of pi-tup.com
+      const scrR = `<div class="app" id="appR">${top}<div class="reg">
+        <div class="rIco">${ico.userAdd}</div><div class="rT">Rejoignez PitUp</div><div class="rS">Créez votre compte et commencez votre aventure</div>
+        <div class="rG" id="rG">${gLogo}Continuer avec Google</div><div class="rOr"><i></i><span>ou avec email</span><i></i></div>
+        <div class="rL">Adresse email</div><div class="rIn" id="rMail">${ico.mail}<span>votre@email.com</span></div>
+        <div class="rL">Mot de passe</div><div class="rIn">${ico.lock}<span>••••••••</span></div>
+        <div class="rB">Créer mon compte</div></div>${nav("")}</div>`;
+      // the real "Commander" screen, prices left out
+      const scrA = `<div class="app" id="appA">${top}
+        <div class="srch">${ico.search}<span>Rechercher des produits…</span></div>
+        <div class="tabs"><div class="on">${ico.bag}Boutiques</div><div id="tabResto">${ico.fork}Restaurants</div></div>
+        <div class="body"><div class="cats">${cats}</div><div class="main"><div class="sort">Trier par : <b>Recommandé</b></div><div class="cards">
+          ${card("assets/prod/p125.jpg", "assets/av_dondivin.jpg", "Don divin", "sandales")}${card("assets/prod/p072.jpg", "assets/av_chrisgold.jpg", "Chris Gold", "culotte femme")}
+          ${card("assets/prod/p077.jpg", "assets/av_chrisgold.jpg", "Chris gold", "Pilote jeans")}${card("assets/prod/p103.jpg", "assets/av_dondivin.jpg", "Don divin", "culottes")}</div></div></div>
+        ${nav("Commander")}</div>`;
+      const dev = text(s1, "dev", "", `<i class="sbtn" style="left:-5px;top:190px;height:46px"></i><i class="sbtn" style="left:-5px;top:260px;height:80px"></i><i class="sbtn" style="left:-5px;top:356px;height:80px"></i><i class="sbtn" style="right:-5px;top:300px;height:130px"></i>
+        <div class="bez"><div class="scr">${scrR}${scrA}<div class="island"></div><div class="homei"></div><div class="glare"></div><div id="touch"></div></div></div>`, {});
+      gsap.set("#appA", { x: 390 }); gsap.set("#touch", { opacity: 0 });
+
+      // "Comment ça marche, PitUp ?"
+      text(s1, "t0", "big", `<span>Comment</span><span>ça marche,</span><span style="color:#1f88c9">PitUp ?</span>`, { top: "500px", fontSize: "150px" });
+      tl.fromTo("#t0", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.25, ease: "power3.out" }, N(0));
+      tl.to("#t0", { opacity: 0, y: -40, duration: 0.18, ease: "power2.in" }, N(1.3));
+      // "C'est simple. Trois étapes." — three numbers, taped
+      text(s1, "simple", "note", "C'est simple.", { left: "80px", top: "430px", fontSize: "100px", color: "#141414" });
+      tl.fromTo("#simple", { opacity: 0, x: -20 }, { opacity: 1, x: 0, duration: 0.2 }, N(1.45));
+      ["1", "2", "3"].forEach((n, k) => { clipping(s1, "n" + n, { x: 70 + k * 330, y: 640, w: 280, size: 240, hd: [n] }); slap("n" + n, N(2.19) + k * 0.15, [-4, 2, -2][k]); });
+      text(s1, "etapes", "note", "étapes.", { left: "380px", top: "1060px", fontSize: "100px", color: "#1f88c9" });
+      tl.fromTo("#etapes", { opacity: 0, x: -20 }, { opacity: 1, x: 0, duration: 0.2 }, N(2.6));
+      pull(["n1", "n2", "n3"], N(3.25)); tl.to(["#simple", "#etapes"], { opacity: 0, duration: 0.15 }, N(3.25));
+
+      // step header: a taped number + a title next to it
+      const step = (n, title, at, color) => {
+        clipping(s1, "h" + n, { x: 50, y: 160, w: 190, size: 190, hd: [n] }); slap("h" + n, at, -3);
+        text(s1, "ht" + n, "big", title, { left: "270px", top: "200px", fontSize: "92px", color: color || "#141414" });
+        tl.fromTo("#ht" + n, { opacity: 0, x: -20 }, { opacity: 1, x: 0, duration: 0.25, ease: "power3.out" }, at + 0.1);
+      };
+      // "Un : tu crées ton compte. Avec ton numéro de téléphone, ton mail, ou Google."
+      step("1", `<span>Crée ton</span><span>compte.</span>`, N(3.44));
+      tl.fromTo(dev, { opacity: 0, y: 380, rotation: 7 }, { opacity: 1, y: 0, rotation: -2.5, duration: 0.5, ease: "power3.out" }, N(3.7));
+      const tag = (id, label, y, at) => { text(s1, id, "note", label, { left: "770px", top: y + "px", fontSize: "70px", transform: "rotate(-4deg)" }); tl.fromTo("#" + id, { opacity: 0, x: 20 }, { opacity: 1, x: 0, duration: 0.2 }, at); };
+      tag("tgTel", "téléphone", 640, N(5.3)); tag("tgMail", "mail", 900, N(6.4)); tag("tgG", "Google", 760, N(6.95));
+      tl.to("#rMail", { boxShadow: "0 0 0 3px #1f88c9", duration: 0.15 }, N(6.4));
+      tl.to("#rG", { boxShadow: "0 0 0 3px #1f88c9", duration: 0.15 }, N(6.95));
+      tl.to(["#ht1", "#tgTel", "#tgMail", "#tgG"], { opacity: 0, y: -20, duration: 0.15 }, N(8.1)); pull(["h1"], N(8.1));
+
+      // "Deux : tu choisis. Plus de cent boutiques sont déjà sur PitUp, et même des restaurants. Mode, téléphones, beauté…"
+      step("2", `<span>Tu</span><span>choisis.</span>`, N(8.34));
+      tl.to("#appA", { x: 0, duration: 0.32, ease: "power3.out" }, N(8.6));
+      tl.to("#appR", { x: -120, duration: 0.32, ease: "power3.out" }, N(8.6));
+      const ring = [[95, 560], [95, 760], [95, 960], [95, 1160], [95, 1360], [95, 1560], [925, 560], [925, 760], [925, 960], [925, 1160], [925, 1360]];
+      ring.forEach(([x, y], i) => {
+        const d = document.createElement("div"); d.className = "dot"; d.id = "sd" + i;
+        Object.assign(d.style, { left: x - 62 + "px", top: y - 62 + "px", width: "124px", height: "124px" });
+        d.innerHTML = `<img src="assets/shops/${String((i * 2) % 23).padStart(2, "0")}.jpg" alt="">`; s1.appendChild(d); gsap.set(d, { opacity: 0 });
+        tl.fromTo(d, { opacity: 0, scale: 0 }, { opacity: 1, scale: 1, duration: 0.28, ease: "back.out(2.2)" }, N(10.06) + i * 0.08);
+      });
+      text(s1, "cent", "note", "+100 boutiques déjà sur PitUp", { left: "40px", top: "1660px", fontSize: "64px", transform: "rotate(-3deg)" });
+      tl.fromTo("#cent", { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.2 }, N(10.3));
+      tl.to("#tabResto", { boxShadow: "0 0 0 3px #1f88c9", color: "#1f88c9", duration: 0.15 }, N(12.2));
+      [[1, 13.49], [7, 14.15], [5, 14.75]].forEach(([k, t]) => tl.to("#cat" + k, { backgroundColor: "#e3f1fb", color: "#1f88c9", boxShadow: "inset 3px 0 0 #1f88c9", duration: 0.15 }, N(t)));
+      tl.to(["#cent", ...ring.map((_, i) => "#sd" + i)], { opacity: 0, scale: 0.6, duration: 0.2, stagger: 0.02 }, N(15.5));
+      // "Tu ajoutes au panier, et tu commandes."
+      tl.fromTo("#touch", { opacity: 0, scale: 1.4, x: 200, y: 520 }, { opacity: 0.9, scale: 1, duration: 0.15 }, N(16.2));
+      tl.to("#appA .card:first-child .cb", { scale: 0.92, backgroundColor: "#1f88c9", duration: 0.1, yoyo: true, repeat: 1 }, N(16.3));
+      tl.to("#touch", { opacity: 0, duration: 0.12 }, N(16.5));
+      text(s1, "cmd", "note", "commandé !", { left: "740px", top: "1250px", fontSize: "76px", transform: "rotate(-5deg)" });
+      tl.fromTo("#cmd", { opacity: 0, scale: 0.7 }, { opacity: 1, scale: 1, duration: 0.25, ease: "back.out(2)" }, N(17.2));
+      tear("p1", 0x2e1f0a35, N(18.05), 0.55);
+
+      // ================= PAGE 2 — step 3, then the payoff =================
+      const s2 = $("s2");
+      const step2 = (n, title, at, color) => {
+        clipping(s2, "h" + n, { x: 50, y: 160, w: 190, size: 190, hd: [n] }); slap("h" + n, at, -3);
+        text(s2, "ht" + n, "big", title, { left: "270px", top: "200px", fontSize: "92px", color: color || "#141414" });
+        tl.fromTo("#ht" + n, { opacity: 0, x: -20 }, { opacity: 1, x: 0, duration: 0.25, ease: "power3.out" }, at + 0.1);
+      };
+      // "Trois : on te livre. Les livraisons sont assurées par PitUp."
+      step2("3", `<span>On te</span><span>livre.</span>`, N(18.69), "#1f88c9");
+      let houses = "";
+      for (let y = 18; y < 410; y += 42) for (let x = 14; x < 830; x += 44) { if (rnd() < 0.3) continue; const z = 16 + rnd() * 12; houses += `<rect x="${(x + rnd() * 10).toFixed(1)}" y="${(y + rnd() * 10).toFixed(1)}" width="${z.toFixed(1)}" height="${(z * (0.7 + rnd() * 0.5)).toFixed(1)}" fill="#141414" opacity="0.8" />`; }
+      const roads = [["M-20 300 C200 280 500 320 870 270", 34], ["M180 -20 L230 440", 22], ["M520 -20 C540 150 500 300 560 440", 22], ["M-20 120 L870 70", 18], ["M360 -20 L330 440", 14], ["M680 -20 L720 440", 14]]
+        .map(([d, w]) => `<path d="${d}" stroke="#141414" stroke-width="${w + 6}" fill="none" /><path d="${d}" stroke="#fbf8f1" stroke-width="${w}" fill="none" />`).join("");
+      const route = "M620 150 C560 230 440 170 380 250 S250 330 190 320";
+      clipping(s2, "cMap", { x: 60, y: 450, w: 960, size: 0, art:
+        `<svg viewBox="0 0 844 420"><defs><mask id="dMask" maskUnits="userSpaceOnUse" x="0" y="0" width="844" height="420"><path id="dDraw" d="${route}" stroke="#fff" stroke-width="26" fill="none" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1" /></mask></defs>
+          <rect width="844" height="420" fill="url(#ht1)" />${houses}${roads}
+          <circle cx="620" cy="150" r="40" fill="#fbf8f1" stroke="#141414" stroke-width="3" /><rect x="598" y="146" width="44" height="30" fill="#fff" stroke="#141414" stroke-width="5" /><path d="M591 148 L598 128 L642 128 L649 148 Z" fill="#141414" />
+          <circle cx="190" cy="320" r="40" fill="#fbf8f1" stroke="#141414" stroke-width="3" /><rect x="168" y="314" width="44" height="32" fill="#fff" stroke="#141414" stroke-width="5" /><polygon points="160,318 190,290 220,318" fill="#141414" />
+          <text x="660" y="214" font-family="Caveat" font-weight="700" font-size="46" fill="#141414" stroke="#fbf8f1" stroke-width="10" paint-order="stroke">la boutique</text>
+          <text x="96" y="398" font-family="Caveat" font-weight="700" font-size="50" fill="#1f88c9" stroke="#fbf8f1" stroke-width="12" paint-order="stroke">chez toi</text>
+          <path d="${route}" mask="url(#dMask)" stroke="#1f88c9" stroke-width="9" stroke-dasharray="2 16" stroke-linecap="round" fill="none" />
+          <g id="box"><rect x="232" y="252" width="44" height="38" fill="#c89a5e" stroke="#141414" stroke-width="4" /><rect x="249" y="252" width="10" height="38" fill="#1f88c9" /></g></svg>` });
+      slap("cMap", N(19.0), 1);
+      tl.fromTo("#dDraw", { attr: { "stroke-dashoffset": 1 } }, { attr: { "stroke-dashoffset": 0 }, duration: 1.0, ease: "power1.inOut" }, N(19.35));
+      tl.fromTo("#box", { opacity: 0, scale: 0, svgOrigin: "254 271" }, { opacity: 1, scale: 1, duration: 0.3, ease: "back.out(2.5)" }, N(20.3));
+      const badge = text(s2, "bigBadge", "", `${ico.shield}<span>Les livraisons sont assurées par PitUp</span>`, {});
+      tl.fromTo(badge, { opacity: 0, scale: 0.85, rotation: -4 }, { opacity: 1, scale: 1, rotation: -1.5, duration: 0.3, ease: "back.out(2)" }, N(20.53));
+      pull(["cMap"], N(22.25)); tl.to(["#bigBadge", "#ht3"], { opacity: 0, y: -30, duration: 0.18 }, N(22.25)); pull(["h3"], N(22.25));
+
+      // "Et tu paies à la livraison, quand ton colis est entre tes mains."
+      clipping(s2, "cHands", { x: 120, y: 300, w: 840, size: 92, hd: ["Tu paies", `<span class="w" style="color:#1f88c9">à la livraison.</span>`], art:
+        `<svg viewBox="0 0 460 300"><rect width="460" height="300" fill="url(#ht1)" />
+          <polygon points="150,110 320,110 352,84 182,84" fill="#e2c08f" stroke="#141414" stroke-width="5" stroke-linejoin="round" />
+          <polygon points="320,110 352,84 352,200 320,228" fill="#a87a43" stroke="#141414" stroke-width="5" stroke-linejoin="round" />
+          <rect x="150" y="110" width="170" height="118" fill="#c89a5e" stroke="#141414" stroke-width="5" />
+          <rect x="222" y="110" width="26" height="118" fill="#1f88c9" /><polygon points="222,110 248,110 280,84 254,84" fill="#1f88c9" />
+          <g stroke="#141414" stroke-linecap="round" fill="none"><path d="M10 300 C60 270 110 250 160 236" stroke-width="44" /><path d="M450 300 C400 270 360 252 314 238" stroke-width="44" /></g>
+          <ellipse cx="170" cy="230" rx="30" ry="14" fill="#141414" /><ellipse cx="302" cy="232" rx="30" ry="14" fill="#141414" />
+          <text x="36" y="60" font-family="Caveat" font-weight="700" font-size="44" fill="#1f88c9">entre tes mains</text></svg>` });
+      slap("cHands", N(22.48), -1.5);
+      tl.fromTo("#cHands svg", { y: -16 }, { y: 0, duration: 0.5, ease: "bounce.out" }, N(24.0));
+      stamp(s2, "stPay", "Paiement à la livraison", { left: "130px", top: "1110px", fontSize: "58px" }, N(23.4), -6);
+      pull(["cHands", "stPay"], N(25.5));
+
+      // "Pas de déplacement. Pas de taxi-bus. Pas de stress."
+      [["no1", "Pas de déplacement.", 25.77, "#141414"], ["no2", "Pas de taxi-bus.", 26.96, "#141414"], ["no3", "Pas de stress.", 28.32, "#1f88c9"]].forEach(([id, l, t, c], k) => {
+        text(s2, id, "big", `<span><span class="w" id="${id}w">${l}</span></span>`, { top: 520 + k * 180 + "px", fontSize: "98px", color: c, left: "60px" });
+        tl.fromTo("#" + id, { opacity: 0, x: -30 }, { opacity: 1, x: 0, duration: 0.22, ease: "power3.out" }, N(t));
+      });
+      mark(s2, "no3w", "underline", N(28.9));
+      tear("p2", 0x51f0a2c3, N(29.35), 0.55);
+
+      // "PitUp. Sur l'application, ou sur pi-tup point com."
+      tl.fromTo("#end .icon", { scale: 0.8, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.3, ease: "back.out(2)" }, N(29.6));
+      tl.fromTo("#join", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.3, ease: "power3.out" }, N(29.75));
+      tl.fromTo("#creates", { opacity: 0 }, { opacity: 1, duration: 0.25 }, N(30.61));
+      tl.fromTo("#stores > div", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.3, stagger: 0.15, ease: "back.out(2)" }, N(30.9));
+      tl.fromTo("#orsur", { opacity: 0 }, { opacity: 1, duration: 0.2 }, N(31.9));
+      tl.fromTo("#cta", { scale: 0.7, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.4, ease: "back.out(2)" }, N(32.3));
+      tl.fromTo("#fine", { opacity: 0 }, { opacity: 1, duration: 0.4 }, N(33.3));
+
+      // ================= the narrator =================
+      gsap.set("#guy", { x: 740, y: 1500, transformOrigin: "50% 100%" });
+      gsap.set("#bubble", { opacity: 0 });
+      tl.fromTo("#guy", { y: 1950 }, { y: 1500, duration: 0.45, ease: "back.out(1.6)" }, 0.05);
+      const lip = { f: 0 };
+      tl.fromTo(lip, { f: 0 }, { f: MOUTH.length - 1, duration: (MOUTH.length - 1) / 30, ease: "none", onUpdate: () => {
+        const v = MOUTH[Math.round(lip.f)] || 0; $("mouth").setAttribute("ry", (3 + v * 20).toFixed(1)); $("mouth").setAttribute("rx", (24 - v * 4).toFixed(1)); $("teeth").setAttribute("opacity", v > 0.25 ? 1 : 0);
+      } }, 0);
+      tl.fromTo("#gHead", { y: 0, rotation: 0, transformOrigin: "170px 300px" }, { y: -6, rotation: 2, duration: 0.6, ease: "sine.inOut", yoyo: true, repeat: 48 }, 0);
+      for (let b = 1.6; b < 29.3; b += 2.7 + ((b * 7) % 1.3)) { tl.to("#gEyes", { scaleY: 0.1, transformOrigin: "170px 175px", duration: 0.06 }, b); tl.to("#gEyes", { scaleY: 1, duration: 0.08 }, b + 0.08); }
+      const armR = (rot, at, d) => tl.to("#gArmR", { rotation: rot, svgOrigin: "262 370", duration: d || 0.25, ease: "power2.out" }, at);
+      const armL = (rot, at, d) => tl.to("#gArmL", { rotation: rot, svgOrigin: "78 370", duration: d || 0.25, ease: "power2.out" }, at);
+      armR(-150, 0.3); armR(-130, 0.55); armR(-150, 0.75); armR(0, 1.1);             // wave hello
+      armR(-160, N(2.19)); armR(0, N(3.2));                                            // "trois étapes"
+      armL(120, N(3.9)); armL(0, N(5.0)); armL(120, N(8.8)); armL(0, N(9.9));          // points at the phone
+      tl.to("#guy", { scale: 1.06, duration: 0.15, yoyo: true, repeat: 1 }, N(10.06)); // "+100"
+      armR(-160, N(19.35)); armR(0, N(20.4));                                          // thumbs up "on te livre"
+      tl.to("#gBrows", { y: -8, duration: 0.15 }, N(22.48)); tl.to("#gBrows", { y: 0, duration: 0.2 }, N(24.6));
+      tl.to("#guy", { y: 1960, duration: 0.35, ease: "power3.in" }, N(29.2));
+
+
+      hwBoil(tl, [".hw-mark", ".note"], { amp: 1.1, rot: 0.3, frameDrop: 3, seed: 5 });
+      window.__timelines["main"] = tl;
+      tl.seek(0);
+     });
+    </script>
+  </body>
+</html>

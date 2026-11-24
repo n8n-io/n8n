@@ -1,0 +1,4 @@
+interface:
+  display_name: "3D Orbit & Inspect"
+  short_description: "Hover-lean camera, click-to-lift full inspect view"
+  default_prompt: "Use $3d-orbit-inspect-demo to make this 3D object lean around on hover and lift into a full inspect view on click, with drag to turn, a clean return, and reduced-motion support."

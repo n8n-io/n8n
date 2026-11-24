@@ -1,0 +1,4 @@
+{
+  "name": "llm-router",
+  "description": "Selects the optimal LLM model and provider for each task based on complexity, cost budget, and capability requirements. Routes cheap tasks to Haiku/GPT-4o-mini and complex tasks to Sonnet/Opus/o1. Use when deciding which model to call, optimizing LLM costs, or building multi-model agent systems. Activate on \"which model\", \"model selection\", \"route to model\", \"LLM cost\", \"model routing\", \"cheap vs expensive model\". NOT for prompt engineering (use prompt-engineer), model fine-tuning, or training custom models."
+}

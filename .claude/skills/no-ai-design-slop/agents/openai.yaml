@@ -1,0 +1,4 @@
+interface:
+  display_name: "No Design Slops"
+  short_description: "Passive anti-slop quality gate for UI design"
+  default_prompt: "Apply $no-ai-design-slop as a passive quality gate to this design task while preserving the product's specific direction."

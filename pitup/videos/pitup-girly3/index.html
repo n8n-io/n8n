@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="assets/gsap.min.js"></script>
+    <style>
+      @font-face { font-family: "Poppins"; font-weight: 500; src: url(assets/fonts/poppins-500.woff2) format("woff2"); }
+      @font-face { font-family: "Poppins"; font-weight: 600; src: url(assets/fonts/poppins-600.woff2) format("woff2"); }
+      @font-face { font-family: "Poppins"; font-weight: 700; src: url(assets/fonts/poppins-700.woff2) format("woff2"); }
+      @font-face { font-family: "Poppins"; font-weight: 800; src: url(assets/fonts/poppins-800.woff2) format("woff2"); }
+      :root { --blue: #1f88c9; --ink: #0d0f13; --blush: #f9e3e8; }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1080px; height: 1920px; overflow: hidden; background: var(--blush); }
+      #root { position: relative; width: 100%; height: 100%; overflow: hidden; font-family: "Poppins", sans-serif; }
+      .layer { position: absolute; inset: 0; }
+
+      /* A — panorama: one long strip of pastel panels, the camera steps from product to product */
+      #pano { position: absolute; inset: 0; overflow: hidden; }
+      #track { position: absolute; left: 0; top: 0; height: 1920px; }
+      .panel { position: absolute; top: 0; width: 1080px; height: 1920px; }
+      .panel .floor { position: absolute; left: 190px; right: 190px; top: 1430px; height: 70px; border-radius: 50%;
+        background: radial-gradient(closest-side, rgba(60, 20, 40, 0.22), rgba(60, 20, 40, 0)); }
+      .panel .prod { position: absolute; left: 90px; right: 90px; top: 430px; height: 1010px; display: flex; align-items: center; justify-content: center; }
+      .panel .prod img { display: block; width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 34px 30px rgba(70, 20, 45, 0.22)); }
+
+      /* B — mosaic of every item */
+      #mosaic { position: absolute; inset: 0; opacity: 0; background: var(--blush); }
+      .tile { position: absolute; width: 236px; height: 236px; display: flex; align-items: center; justify-content: center; }
+      .tile img { display: block; width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 16px 14px rgba(70, 20, 45, 0.22)); }
+
+      /* D — brand */
+      #end { position: absolute; inset: 0; opacity: 0; background: var(--blue); }
+      #ring { position: absolute; left: 340px; top: 400px; width: 400px; height: 400px; border-radius: 50%; border: 10px solid #fff; opacity: 0; }
+      #icon { position: absolute; left: 395px; top: 455px; width: 290px; display: block; }
+      #word { position: absolute; left: 305px; top: 860px; width: 470px; display: block; }
+      #tag { position: absolute; left: 260px; top: 1090px; width: 560px; display: block; }
+      #count { position: absolute; left: 0; right: 0; top: 1220px; display: block; text-align: center; font-weight: 800; font-size: 56px; letter-spacing: -1px; color: #fff; white-space: nowrap; }
+      #ctaWrap { position: absolute; left: 0; right: 0; top: 1360px; display: flex; justify-content: center; }
+      #cta { display: block; padding: 30px 70px; border-radius: 999px; background: #fff; color: var(--blue); font-weight: 800; font-size: 58px; white-space: nowrap; }
+      #stores { position: absolute; left: 0; right: 0; top: 1540px; display: flex; justify-content: center; gap: 24px; }
+      .bdg { display: flex; align-items: center; gap: 14px; height: 96px; padding: 0 28px 0 20px; border-radius: 18px; background: #000; border: 2px solid #a6a6a6; color: #fff; }
+      .bdg svg { width: 52px; height: 52px; display: block; }
+      .bdg span { display: flex; flex-direction: column; line-height: 1; }
+      .bdg small { font-weight: 500; font-size: 20px; letter-spacing: 0.5px; }
+      .bdg b { font-weight: 600; font-size: 38px; letter-spacing: -0.5px; margin-top: 4px; white-space: nowrap; }
+
+
+      #flash { position: absolute; inset: 0; background: #fff; opacity: 0; }
+      #grain { position: absolute; inset: -64px; background-image: url(assets/grain.png); background-size: 512px 512px; mix-blend-mode: overlay; opacity: 0.08; pointer-events: none; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="24.5" data-width="1080" data-height="1920">
+      <audio id="bgm" src="assets/bgm.wav" data-start="0" data-duration="24.5" data-track-index="11"></audio>
+
+      <div id="scene" class="clip layer" data-start="0" data-duration="24.5" data-track-index="0">
+        <div id="pano"><div id="track"></div></div>
+        <div id="mosaic"></div>
+          <div id="end">
+            <div id="ring"></div>
+            <img id="icon" src="assets/icon_white.png" alt="" />
+            <img id="word" src="assets/logo_word_white.png" alt="" />
+            <img id="tag" src="assets/logo_tag_white.png" alt="" />
+            <div id="count">+100 boutiques à Lubumbashi</div>
+            <div id="ctaWrap"><div id="cta">pi-tup.com</div></div>
+            <div id="stores">
+              <div class="bdg"><svg viewBox="0 0 24 24"><path fill="#fff" d="M16.4 1.4c0 1.1-.5 2.3-1.2 3.1-.7.9-2 1.6-3 1.6-.1 0-.2 0-.3-.1 0-.1 0-.2 0-.4 0-1.1.6-2.3 1.2-3 .8-.9 2.1-1.6 3.2-1.7.1.2.1.3.1.5zm4.6 15.7c0 .1-.5 1.6-1.5 3.1-.9 1.3-1.9 2.7-3.4 2.7s-1.9-.9-3.6-.9c-1.7 0-2.3.9-3.7.9-1.4 0-2.3-1.3-3.4-2.8C4.1 18.3 3 15.5 3 12.8c0-4.3 2.8-6.5 5.6-6.5 1.4 0 2.7.9 3.6.9.9 0 2.2-1 3.9-1 .6 0 2.9.1 4.4 2.2-.1.1-2.4 1.4-2.4 4.2 0 3.3 2.9 4.4 2.9 4.5z"/></svg><span><small>Disponible sur</small><b>App Store</b></span></div>
+              <div class="bdg"><svg viewBox="0 0 24 24"><path fill="#00d7fe" d="M3.6 1.8 13.6 12 3.6 22.2c-.4-.2-.6-.6-.6-1.1V2.9c0-.5.2-.9.6-1.1z"/><path fill="#00f076" d="M3.6 1.8 16.9 9.4 13.6 12z"/><path fill="#f8384b" d="M3.6 22.2 13.6 12l3.3 2.6z"/><path fill="#fdbd00" d="M16.9 9.4 21 11.7c.5.3.5.9 0 1.2l-4.1 1.7-3.3-2.6z"/></svg><span><small>Disponible sur</small><b>Google Play</b></span></div>
+            </div>
+          </div>
+        <div id="flash"></div>
+        <div id="grain"></div>
+      </div>
+    </div>
+
+    <script>
+      const B = 60 / 140;            // one beat of "GANG" (140 BPM grid, film 0 = song 36.921 s, a kick)
+      const T = (b) => b * B;
+      const tl = gsap.timeline({ paused: true });
+
+      // ---------- A: panorama (b0 -> b38), one product every two beats ----------
+      const items = ["d10","d01","d16","d11","d03","d17","d15","d04","d08","d20","d02","d18","d12","d22","d19","d05","d24","d07","d25"];
+      const tints = ["#FCE6EE","#F1E8FB","#FFF2E6","#E6F1F6","#FBEAF4","#F5EEE6"];
+      const track = document.getElementById("track");
+      items.forEach((f, i) => {
+        const p = document.createElement("div"); p.className = "panel"; p.id = "p" + i;
+        // each panel fades into the next tint so the strip reads as one continuous set
+        const a = tints[i % tints.length], b = tints[(i + 1) % tints.length];
+        p.style.background = `linear-gradient(90deg, ${a} 0%, ${a} 70%, ${b} 100%)`;
+        p.innerHTML = `<div class="floor"></div><div class="prod"><img src="assets/prod/${f}.png" alt=""></div>`;
+        gsap.set(p, { x: i * 1080 });
+        track.appendChild(p);
+      });
+      gsap.set(track, { width: items.length * 1080 });
+      tl.set("#track", { x: 0 }, 0);
+
+      const blur = { v: 0 };
+      const setBlur = () => { document.getElementById("track").style.filter = `blur(${blur.v.toFixed(2)}px)`; };
+      items.forEach((_, i) => {
+        const land = T(i * 2);
+        if (i > 0) {
+          // every fourth move is a whip (fast, blurred) on the bar line; the others glide
+          const whip = i % 4 === 0;
+          const d = whip ? 0.26 : 0.42;
+          tl.fromTo("#track", { x: -(i - 1) * 1080 }, { x: -i * 1080, duration: d, ease: whip ? "power4.inOut" : "power3.inOut", immediateRender: false }, land - d);
+          if (whip) {
+            tl.fromTo(blur, { v: 0 }, { v: 18, duration: d / 2, ease: "power2.in", onUpdate: setBlur, immediateRender: false }, land - d);
+            tl.to(blur, { v: 0, duration: d / 2, ease: "power2.out", onUpdate: setBlur }, land - d / 2);
+          }
+        }
+        // the product settles on the beat, then breathes slowly while it holds
+        tl.fromTo(`#p${i} .prod`, { scale: 0.9, y: 30 }, { scale: 1, y: 0, duration: 0.4, ease: "back.out(1.6)" }, land);
+        tl.fromTo(`#p${i} .prod img`, { scale: 1 }, { scale: 1.045, duration: T(2) + 0.4, ease: "none" }, land);
+      });
+
+      // ---------- B: mosaic (b38 -> b46), every item pops into a grid ----------
+      const mosaic = document.getElementById("mosaic");
+      const cols = 4, w = 250, gx = (1080 - cols * w) / 2;
+      items.forEach((f, i) => {
+        const t = document.createElement("div"); t.className = "tile"; t.id = "t" + i;
+        t.innerHTML = `<img src="assets/prod/${f}.png" alt="">`; mosaic.appendChild(t);
+        const r = Math.floor(i / cols), c = i % cols;
+        const inLast = Math.floor((items.length - 1) / cols) === r;
+        const rowN = inLast ? items.length - r * cols : cols;
+        const ox = (1080 - rowN * w) / 2;
+        gsap.set(t, { left: ox + c * w, top: 330 + r * 270 });
+      });
+      tl.set("#mosaic", { opacity: 1, zIndex: 5 }, T(38));
+      tl.set("#pano", { opacity: 0 }, T(38) + 0.05);
+      tl.set("#flash", { opacity: 0.9 }, T(38));
+      tl.to("#flash", { opacity: 0, duration: 0.25, ease: "power2.out" }, T(38));
+      items.forEach((_, i) => {
+        tl.fromTo("#t" + i, { scale: 0.4, opacity: 0, rotation: i % 2 ? 8 : -8 },
+          { scale: 1, opacity: 1, rotation: 0, duration: 0.36, ease: "back.out(1.8)" }, T(38) + i * (T(4) / items.length));
+      });
+      tl.to("#mosaic", { scale: 1.06, duration: T(8), ease: "none", transformOrigin: "50% 50%" }, T(38));
+
+      // ---------- C: end card (b46 -> end) ----------
+      tl.set("#end", { opacity: 1, zIndex: 6 }, T(46));
+      tl.set("#mosaic", { opacity: 0 }, T(46) + 0.05);
+      tl.fromTo("#icon", { scale: 1.15, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.32, ease: "expo.out" }, T(46));
+      tl.fromTo("#ring", { scale: 0.7, opacity: 0.9 }, { scale: 1.5, opacity: 0, duration: 0.7, ease: "power2.out" }, T(46) + 0.05);
+      tl.fromTo("#word", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.4, ease: "power3.out" }, T(47));
+      tl.fromTo("#tag", { opacity: 0 }, { opacity: 1, duration: 0.4, ease: "power2.out" }, T(48));
+      tl.fromTo("#count", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.4, ease: "power3.out" }, T(49));
+      tl.fromTo("#cta", { scale: 0.7, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.42, ease: "back.out(2)" }, T(50) - 0.06);
+      tl.fromTo("#stores .bdg", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.35, stagger: 0.12, ease: "back.out(1.6)" }, T(51));
+
+      for (let f = 0; f < 24.5 * 12; f++) {
+        const ox = ((f * 137) % 512) - 256, oy = ((f * 251) % 512) - 256;
+        tl.set("#grain", { x: ox / 8, y: oy / 8 }, f / 12);
+      }
+      tl.set({}, {}, 24.5);
+
+      window.__timelines["main"] = tl;
+      tl.seek(0);
+    </script>
+  </body>
+</html>

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Audit AI Design Slop"
+  short_description: "Find harmful UI slop patterns with evidence"
+  default_prompt: "Use $audit-ai-design-slop to identify harmful design-slop patterns and recommend the minimum removals."

@@ -1,0 +1,4 @@
+{
+  "name": "skill-architect",
+  "description": "Design, create, audit, and improve Claude Agent Skills with expert-level progressive disclosure. Use when building new skills, reviewing existing skills, debugging activation failures, encoding domain expertise, or designing skills for subagent consumption. Activate on \"create skill\", \"improve skill\", \"skill audit\", \"skill review\", \"activation debugging\", \"shibboleth\", \"progressive disclosure\", \"skill description\". NOT for general Claude Code features, runtime debugging, non-skill coding, or MCP server implementation."
+}

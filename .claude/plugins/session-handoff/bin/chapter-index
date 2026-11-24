@@ -1,0 +1,5 @@
+#!/bin/sh
+# Chapter-index lookups (list, show, output, status...). The plugin's bin/ folder is on
+# the Bash tool's PATH, so this bare name lets one allow rule survive plugin updates.
+# ponytail: python first (on Windows python3 can be a Microsoft Store stub), python3 for macOS.
+exec "$(command -v python || command -v python3)" "$(dirname "$0")/../hooks/chapters.py" "$@"

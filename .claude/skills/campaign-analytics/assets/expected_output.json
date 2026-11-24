@@ -1,0 +1,110 @@
+{
+  "_description": "Expected output from running the 3 scripts against sample_campaign_data.json with --format json",
+
+  "attribution_analyzer": {
+    "_command": "python scripts/attribution_analyzer.py assets/sample_campaign_data.json --format json",
+    "summary": {
+      "total_journeys": 8,
+      "converted_journeys": 6,
+      "conversion_rate": 75.0,
+      "total_revenue": 3700.0,
+      "channels_observed": [
+        "direct", "display", "email", "organic_search",
+        "organic_social", "paid_search", "paid_social", "referral"
+      ]
+    },
+    "models": {
+      "first-touch": {
+        "organic_search": 700.0,
+        "paid_social": 1200.0,
+        "display": 350.0,
+        "organic_social": 800.0,
+        "referral": 650.0
+      },
+      "last-touch": {
+        "paid_search": 1500.0,
+        "direct": 2000.0,
+        "organic_search": 200.0
+      },
+      "linear": {
+        "organic_search": 666.67,
+        "email": 1003.33,
+        "paid_search": 718.33,
+        "paid_social": 300.0,
+        "direct": 460.0,
+        "display": 175.0,
+        "organic_social": 160.0,
+        "referral": 216.67
+      },
+      "time-decay": {
+        "organic_search": 582.38,
+        "email": 1053.68,
+        "paid_search": 881.03,
+        "paid_social": 178.4,
+        "direct": 638.82,
+        "display": 140.62,
+        "organic_social": 78.48,
+        "referral": 146.59
+      },
+      "position-based": {
+        "organic_search": 520.0,
+        "paid_search": 688.33,
+        "email": 456.67,
+        "paid_social": 480.0,
+        "direct": 800.0,
+        "display": 175.0,
+        "organic_social": 320.0,
+        "referral": 260.0
+      }
+    }
+  },
+
+  "funnel_analyzer": {
+    "_command": "python scripts/funnel_analyzer.py assets/sample_campaign_data.json --format json",
+    "_note": "Uses segment comparison mode since 'segments' key is present in the data",
+    "rankings": [
+      {"rank": 1, "segment": "organic", "overall_conversion_rate": 5.6, "total_entries": 5000, "total_conversions": 280},
+      {"rank": 2, "segment": "paid", "overall_conversion_rate": 3.0, "total_entries": 3000, "total_conversions": 90},
+      {"rank": 3, "segment": "email", "overall_conversion_rate": 2.5, "total_entries": 2000, "total_conversions": 50}
+    ],
+    "key_findings": {
+      "all_segments_bottleneck_absolute": "Awareness -> Interest",
+      "all_segments_bottleneck_relative": "Intent -> Purchase",
+      "best_performing_segment": "organic (5.6% overall conversion)",
+      "worst_performing_segment": "email (2.5% overall conversion)"
+    }
+  },
+
+  "campaign_roi_calculator": {
+    "_command": "python scripts/campaign_roi_calculator.py assets/sample_campaign_data.json --format json",
+    "portfolio_summary": {
+      "total_campaigns": 5,
+      "total_spend": 34000.0,
+      "total_revenue": 99000.0,
+      "total_profit": 65000.0,
+      "portfolio_roi_pct": 191.18,
+      "portfolio_roas": 2.91,
+      "blended_ctr_pct": 1.04,
+      "blended_cpl": 27.64,
+      "blended_cpa": 161.9,
+      "top_performer": "Spring Email Campaign",
+      "underperforming_campaigns": [
+        "Spring Email Campaign",
+        "Facebook Awareness Q1",
+        "LinkedIn B2B Outreach"
+      ]
+    },
+    "channel_summary": {
+      "email": {"spend": 5000.0, "revenue": 25000.0, "roi_pct": 400.0, "roas": 5.0},
+      "paid_search": {"spend": 12000.0, "revenue": 48000.0, "roi_pct": 300.0, "roas": 4.0},
+      "paid_social": {"spend": 14000.0, "revenue": 17000.0, "roi_pct": 21.43, "roas": 1.21},
+      "display": {"spend": 3000.0, "revenue": 9000.0, "roi_pct": 200.0, "roas": 3.0}
+    },
+    "key_findings": {
+      "most_profitable_channel": "paid_search ($36,000 profit)",
+      "highest_roas_channel": "email (5.0x ROAS)",
+      "unprofitable_campaign": "LinkedIn B2B Outreach (-$1,000 loss)",
+      "best_ctr": "Spring Email Campaign (5.0%)"
+    }
+  }
+}

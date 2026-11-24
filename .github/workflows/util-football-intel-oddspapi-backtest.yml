@@ -1,0 +1,53 @@
+name: 'football-intel: betPawa vs Pinnacle backtest'
+
+# D68: betPawa (Cameroon) prices against Pinnacle's fair price on finished matches.
+# Spends 6 of the 250 monthly OddsPapi requests; the price histories are free.
+
+on:
+  workflow_dispatch:
+    inputs:
+      since:
+        description: 'First kick-off date (UTC)'
+        default: '2026-08-01T00:00:00Z'
+
+permissions:
+  contents: read
+
+jobs:
+  backtest:
+    if: github.repository == 'benkas418-alt/n8n'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      ODDS_PAPI_KEY: ${{ secrets.ODDS_PAPI_KEY }}
+      OUT_DIR: oddspapi-backtest
+      SINCE: ${{ inputs.since }}
+    defaults:
+      run:
+        working-directory: football-intel
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: football-intel
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: football-intel/pyproject.toml
+
+      - name: Install
+        run: pip install -q -e .
+
+      - name: Backtest
+        run: |
+          set -o pipefail
+          python scripts/oddspapi_backtest.py | tee backtest.log
+          { echo '### betPawa vs Pinnacle'; echo '```'; sed -n '/betPawa prices against/,$p' backtest.log; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: oddspapi-backtest
+          path: football-intel/oddspapi-backtest
+          retention-days: 30

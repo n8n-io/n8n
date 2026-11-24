@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Football Intel</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='4' fill='%23000'/%3E%3Crect x='3' y='4' width='3' height='8' rx='1' fill='%23c6f24e'/%3E%3Crect x='7' y='4' width='2' height='8' rx='1' fill='%235c5c5c'/%3E%3Crect x='10' y='4' width='3' height='8' rx='1' fill='%23e6e6e6'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Barlow+Semi+Condensed:wght@600;700&display=swap">
+  <link rel="stylesheet" href="style.css">
+  <script>try { document.documentElement.dataset.theme = localStorage.getItem("fi_theme") || "dark"; } catch { document.documentElement.dataset.theme = "dark"; }</script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" integrity="sha384-9nhczxUqK87bcKHh20fSQcTGD4qq5GhayNYSYWqwBkINBhOfQLg/P5HG5lF1urn4" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar" id="sidebar" aria-label="Menu">
+      <button class="menu-close" id="menu-close" type="button">Fermer le menu</button>
+      <a class="brand" href="#/">
+        <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+        <span class="brand-title">Football Intel</span>
+      </a>
+      <nav id="nav" aria-label="Pages">
+        <div class="nav-group">
+          <a href="#/hier" data-page="hier">Hier</a>
+          <a href="#/" data-page="">Aujourd'hui</a>
+          <a href="#/matchs" data-page="matchs">Matchs</a>
+          <a href="value.html">Vérifier une cote</a>
+          <a href="#/bilan" data-page="bilan">Bilan</a></div>
+        <div class="nav-group nav-more"><span class="nav-label">Analyses</span>
+          <a href="#/picks" data-page="picks">Mes pronostics</a>
+          <a href="#/competitions" data-page="competitions">Compétitions</a>
+          <a href="#/teams" data-page="teams">Équipes</a>
+          <a href="#/performance" data-page="performance">Fiabilité du modèle</a>
+          <a href="#/tendances" data-page="tendances">Tendances</a></div>
+      </nav>
+      <div class="sidebar-foot push">
+        <nav aria-label="Réglages"><div class="nav-group"><a href="#/admin" data-page="admin">Administration</a></div></nav>
+        <button class="theme-btn" id="theme-btn" type="button">Mode clair</button>
+      </div>
+    </aside>
+    <div class="main-col">
+      <header class="topbar">
+        <button class="menu-btn" id="menu-btn" type="button" aria-controls="sidebar" aria-expanded="false">Menu</button>
+        <span class="crumb" id="crumb">Matchs</span>
+        <span class="fresh" id="brand-sub"></span>
+      </header>
+      <main id="app" aria-live="polite"><p class="loading">Chargement…</p></main>
+      <nav class="tabbar" aria-label="Pages principales">
+        <a href="#/hier" data-page="hier">Hier</a>
+        <a href="#/" data-page="">Aujourd'hui</a>
+        <a href="#/matchs" data-page="matchs">Matchs</a>
+        <a href="value.html">Cote</a>
+        <a href="#/bilan" data-page="bilan">Bilan</a>
+      </nav>
+      <footer class="footer">
+        <p>Sources : football-data.co.uk, openfootball (domaine public), <a href="https://www.openligadb.de" target="_blank" rel="noopener">OpenLigaDB</a> (licence ODbL 1.0), data provided by <a href="https://www.football-data.org" target="_blank" rel="noopener">football-data.org</a>, cotes des coupes : The Odds API.
+        Les probabilités mesurent l'incertitude : elles ne garantissent aucun résultat.</p>
+      </footer>
+    </div>
+  </div>
+  <div id="drawer" class="drawer hidden" role="dialog" aria-modal="true" aria-labelledby="drawer-title">
+    <div class="drawer-panel">
+      <button class="drawer-close" id="drawer-close" aria-label="Fermer">×</button>
+      <h3 id="drawer-title"></h3>
+      <div id="drawer-body"></div>
+    </div>
+  </div>
+  <script src="names.js"></script>
+  <script src="nav.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,34 @@
+{
+  "skill_name": "offers",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Our B2B SaaS trial-to-paid conversion is stuck. Our plan is to run a 50% off first 3 months coupon to push more people to convert. It's a $99/month email-tool competitor and the biggest thing prospects say is they're scared to migrate their list and automations off their current provider. Is the discount the right move?",
+      "expected_output": "Should push back on discounting to acquire and cite that discount-askers churn at roughly 2x the rate of full-price customers, that a coupon anchors the product as cheap, and attracts price-shoppers over value-buyers. Should state the rule: discount only for upgrades/cross-sells or real seasonal windows, never to acquire a new customer. Should reframe 'offers > discounts' — raise value instead of cutting price. Should diagnose that the real objection is switching cost / migration risk, not price, so a discount does nothing about it. Should recommend a real offer that reverses that risk — e.g. a done-for-you 'Painless Switch' style migration offer with a switching-cost guarantee (migration live/verified in N days or it's free) and a bonus that removes the secondary fear (deliverability/re-warm). May reference the value equation (lower effort/sacrifice and raise perceived likelihood rather than lower price). Should tie back to real, honest scarcity (capacity/queue) rather than a fake timer.",
+      "assertions": [
+        "Advises against discounting to acquire new customers",
+        "Cites discount-askers churn at ~2x full-price customers",
+        "States discount only for upgrades/cross-sells or seasonal moments",
+        "Frames offers as beating discounts (raise value, not cut price)",
+        "Identifies migration/switching cost as the real objection, not price",
+        "Recommends a done-for-you migration offer with a switching-cost guarantee",
+        "Suggests a bonus or risk-reversal that removes the real fear",
+        "Uses real scarcity (capacity/queue) rather than a fake timer"
+      ],
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Our offer converts at 2%. We assume one change lifts conversions 20% relatively and a second change then lifts the updated rate another 30%. Can we forecast a 2–3x increase? What should we report and test?",
+      "expected_output": "Reject a 2–3x forecast unsupported by these assumptions. Compound 1.20 × 1.30 = 1.56, giving 56% relative uplift, a 3.12% conversion rate, and a 1.12 percentage-point increase. Treat these as scenario assumptions, not proven combined causal effects or guaranteed improvements. Ask for evidence from comparable experiments, validate the combined offer, and report uncertainty. Route experimental inference to ab-testing.",
+      "assertions": [
+        "Compounds the factors to 1.56 rather than adding lifts",
+        "Gives 3.12% conversion and 1.12 percentage-point increase",
+        "Does not claim guaranteed offer lift or infer 2–3x improvement",
+        "Distinguishes scenario arithmetic from measured combined effects",
+        "Routes test design and inference to ab-testing"
+      ],
+      "files": []
+    }
+  ]
+}

@@ -2,6 +2,11 @@ name: 'CI: Pull Requests (Build, Test, Lint)'
 
 on:
   pull_request:
+    # Fork (benkas418-alt): skip changes that only touch the football-intel project.
+    paths-ignore:
+      - 'football-intel/**'
+      - '.claude/**'
+      - '.github/workflows/util-football-intel-*.yml'
   merge_group:
 
 concurrency:

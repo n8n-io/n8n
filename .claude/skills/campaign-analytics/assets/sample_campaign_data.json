@@ -1,0 +1,151 @@
+{
+  "journeys": [
+    {
+      "journey_id": "j001",
+      "touchpoints": [
+        {"channel": "organic_search", "timestamp": "2025-10-01T10:00:00", "interaction": "click"},
+        {"channel": "email", "timestamp": "2025-10-05T14:30:00", "interaction": "open"},
+        {"channel": "paid_search", "timestamp": "2025-10-08T09:15:00", "interaction": "click"}
+      ],
+      "converted": true,
+      "revenue": 500.00
+    },
+    {
+      "journey_id": "j002",
+      "touchpoints": [
+        {"channel": "paid_social", "timestamp": "2025-10-02T11:00:00", "interaction": "click"},
+        {"channel": "organic_search", "timestamp": "2025-10-06T16:45:00", "interaction": "click"},
+        {"channel": "email", "timestamp": "2025-10-09T08:00:00", "interaction": "click"},
+        {"channel": "direct", "timestamp": "2025-10-10T13:20:00", "interaction": "visit"}
+      ],
+      "converted": true,
+      "revenue": 1200.00
+    },
+    {
+      "journey_id": "j003",
+      "touchpoints": [
+        {"channel": "display", "timestamp": "2025-10-03T09:30:00", "interaction": "view"},
+        {"channel": "paid_search", "timestamp": "2025-10-07T10:00:00", "interaction": "click"}
+      ],
+      "converted": true,
+      "revenue": 350.00
+    },
+    {
+      "journey_id": "j004",
+      "touchpoints": [
+        {"channel": "organic_social", "timestamp": "2025-10-01T08:00:00", "interaction": "click"},
+        {"channel": "email", "timestamp": "2025-10-04T12:00:00", "interaction": "click"},
+        {"channel": "paid_search", "timestamp": "2025-10-08T14:00:00", "interaction": "click"},
+        {"channel": "email", "timestamp": "2025-10-11T09:00:00", "interaction": "click"},
+        {"channel": "direct", "timestamp": "2025-10-12T16:00:00", "interaction": "visit"}
+      ],
+      "converted": true,
+      "revenue": 800.00
+    },
+    {
+      "journey_id": "j005",
+      "touchpoints": [
+        {"channel": "paid_social", "timestamp": "2025-10-05T10:00:00", "interaction": "click"},
+        {"channel": "display", "timestamp": "2025-10-08T11:30:00", "interaction": "view"}
+      ],
+      "converted": false,
+      "revenue": 0
+    },
+    {
+      "journey_id": "j006",
+      "touchpoints": [
+        {"channel": "referral", "timestamp": "2025-10-06T14:00:00", "interaction": "click"},
+        {"channel": "email", "timestamp": "2025-10-10T09:30:00", "interaction": "click"},
+        {"channel": "paid_search", "timestamp": "2025-10-13T11:00:00", "interaction": "click"}
+      ],
+      "converted": true,
+      "revenue": 650.00
+    },
+    {
+      "journey_id": "j007",
+      "touchpoints": [
+        {"channel": "organic_search", "timestamp": "2025-10-04T08:30:00", "interaction": "click"}
+      ],
+      "converted": true,
+      "revenue": 200.00
+    },
+    {
+      "journey_id": "j008",
+      "touchpoints": [
+        {"channel": "paid_social", "timestamp": "2025-10-07T13:00:00", "interaction": "click"},
+        {"channel": "organic_search", "timestamp": "2025-10-09T10:00:00", "interaction": "click"},
+        {"channel": "email", "timestamp": "2025-10-12T15:00:00", "interaction": "click"}
+      ],
+      "converted": false,
+      "revenue": 0
+    }
+  ],
+  "funnel": {
+    "stages": ["Awareness", "Interest", "Consideration", "Intent", "Purchase"],
+    "counts": [10000, 5200, 2800, 1400, 420]
+  },
+  "segments": {
+    "organic": {
+      "counts": [5000, 2800, 1600, 850, 280]
+    },
+    "paid": {
+      "counts": [3000, 1500, 750, 350, 90]
+    },
+    "email": {
+      "counts": [2000, 900, 450, 200, 50]
+    }
+  },
+  "stages": ["Awareness", "Interest", "Consideration", "Intent", "Purchase"],
+  "campaigns": [
+    {
+      "name": "Spring Email Campaign",
+      "channel": "email",
+      "spend": 5000.00,
+      "revenue": 25000.00,
+      "impressions": 50000,
+      "clicks": 2500,
+      "leads": 300,
+      "customers": 45
+    },
+    {
+      "name": "Google Search - Brand",
+      "channel": "paid_search",
+      "spend": 12000.00,
+      "revenue": 48000.00,
+      "impressions": 200000,
+      "clicks": 8000,
+      "leads": 600,
+      "customers": 120
+    },
+    {
+      "name": "Facebook Awareness Q1",
+      "channel": "paid_social",
+      "spend": 8000.00,
+      "revenue": 12000.00,
+      "impressions": 500000,
+      "clicks": 5000,
+      "leads": 200,
+      "customers": 25
+    },
+    {
+      "name": "Display Retargeting",
+      "channel": "display",
+      "spend": 3000.00,
+      "revenue": 9000.00,
+      "impressions": 800000,
+      "clicks": 1200,
+      "leads": 80,
+      "customers": 15
+    },
+    {
+      "name": "LinkedIn B2B Outreach",
+      "channel": "paid_social",
+      "spend": 6000.00,
+      "revenue": 5000.00,
+      "impressions": 120000,
+      "clicks": 600,
+      "leads": 50,
+      "customers": 5
+    }
+  ]
+}

@@ -1,0 +1,72 @@
+{
+  "name": "Agent IA (chat n8n)",
+  "nodes": [
+    {
+      "parameters": { "options": {} },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.1,
+      "position": [0, 0],
+      "id": "5d3c9e10-7a2b-4c4f-8f3e-2b9d6c1a0001",
+      "name": "When chat message received",
+      "webhookId": "5d3c9e10-7a2b-4c4f-8f3e-2b9d6c1a1001"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "=Tu es un assistant utile. Tu réponds en français, de façon claire et concise.\n\nDate du jour : {{ $now.format('yyyy-MM-dd') }}.\n\nAvant une réponse qui demande plusieurs étapes, utilise l'outil Think pour organiser ton raisonnement. Si tu ne sais pas, dis-le."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [220, 0],
+      "id": "5d3c9e10-7a2b-4c4f-8f3e-2b9d6c1a0002",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": { "__rl": true, "mode": "id", "value": "claude-sonnet-5-5" },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.3,
+      "position": [60, 220],
+      "id": "5d3c9e10-7a2b-4c4f-8f3e-2b9d6c1a0003",
+      "name": "Claude",
+      "credentials": {
+        "anthropicApi": { "name": "Anthropic account" }
+      }
+    },
+    {
+      "parameters": { "contextWindowLength": 10 },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [220, 220],
+      "id": "5d3c9e10-7a2b-4c4f-8f3e-2b9d6c1a0004",
+      "name": "Mémoire"
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.toolThink",
+      "typeVersion": 1,
+      "position": [380, 220],
+      "id": "5d3c9e10-7a2b-4c4f-8f3e-2b9d6c1a0005",
+      "name": "Think"
+    }
+  ],
+  "connections": {
+    "When chat message received": {
+      "main": [[{ "node": "AI Agent", "type": "main", "index": 0 }]]
+    },
+    "Claude": {
+      "ai_languageModel": [[{ "node": "AI Agent", "type": "ai_languageModel", "index": 0 }]]
+    },
+    "Mémoire": {
+      "ai_memory": [[{ "node": "AI Agent", "type": "ai_memory", "index": 0 }]]
+    },
+    "Think": {
+      "ai_tool": [[{ "node": "AI Agent", "type": "ai_tool", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "pinData": {}
+}

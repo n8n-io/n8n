@@ -1,0 +1,121 @@
+<!-- hyperframes-registry-item: freeze-frame-dressing -->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        width: 1920px;
+        height: 1080px;
+        margin: 0;
+        overflow: hidden;
+        background: transparent;
+      }
+
+      #hf-freeze-paper {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+        background:
+          linear-gradient(115deg, rgb(248 84 73 / 86%) 0 16%, transparent 16%),
+          linear-gradient(345deg, rgb(255 221 82 / 92%) 0 17%, transparent 17%),
+          linear-gradient(rgb(244 240 224 / 78%), rgb(244 240 224 / 78%));
+        clip-path: polygon(2% 8%, 97% 2%, 94% 94%, 6% 98%);
+        mix-blend-mode: screen;
+        pointer-events: none;
+      }
+
+      .hf-freeze-tape {
+        position: absolute;
+        width: 12.5vmin;
+        height: 2.9vmin;
+        opacity: 0;
+        background: rgb(255 236 168 / 76%);
+        border: 1px solid rgb(110 91 55 / 18%);
+        box-shadow: 0 0.3vmin 0.8vmin rgb(20 16 10 / 18%);
+        pointer-events: none;
+      }
+
+      #hf-freeze-tape-a {
+        top: 8%;
+        left: 12.5%;
+        transform: rotate(-8deg);
+      }
+
+      #hf-freeze-tape-b {
+        right: 12.5%;
+        bottom: 7%;
+        transform: rotate(7deg);
+      }
+
+      #hf-freeze-flash {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+        background: #fff;
+        pointer-events: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="freeze-frame-dressing"
+      data-composition-id="freeze-frame-dressing"
+      data-start="0"
+      data-duration="4"
+      data-width="1920"
+      data-height="1080"
+    >
+      <div id="hf-freeze-paper" aria-hidden="true"></div>
+      <div id="hf-freeze-tape-a" class="hf-freeze-tape" aria-hidden="true"></div>
+      <div id="hf-freeze-tape-b" class="hf-freeze-tape" aria-hidden="true"></div>
+      <div id="hf-freeze-flash" aria-hidden="true"></div>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+
+      var paper = document.getElementById("hf-freeze-paper");
+      var host = paper && paper.closest("[data-composition-id]");
+      if (!host) throw new Error("Freeze-Frame Dressing could not find its composition host");
+
+      var compositionId = host.getAttribute("data-composition-id");
+      var duration = Number(host.getAttribute("data-duration")) || 4;
+      var hit = Math.max(0.1, duration * 0.24);
+      var exit = Math.max(hit + 0.7, duration - 0.3);
+      var tl = gsap.timeline({ paused: true });
+
+      tl.to({}, { duration: duration, ease: "none" }, 0);
+      tl.to("#hf-freeze-flash", { opacity: 0.95, duration: 0.06, ease: "power2.out" }, hit);
+      tl.to("#hf-freeze-flash", { opacity: 0, duration: 0.24, ease: "power2.in" }, hit + 0.06);
+      tl.to("#hf-freeze-paper", { opacity: 0.64, duration: 0.18, ease: "power2.out" }, hit + 0.04);
+      tl.fromTo(
+        "#hf-freeze-tape-a",
+        { opacity: 0, scale: 1.18 },
+        { opacity: 1, scale: 1, duration: 0.24, ease: "power2.out" },
+        hit + 0.3,
+      );
+      tl.fromTo(
+        "#hf-freeze-tape-b",
+        { opacity: 0, scale: 1.18 },
+        { opacity: 1, scale: 1, duration: 0.24, ease: "power2.out" },
+        hit + 0.42,
+      );
+      tl.to(
+        ["#hf-freeze-paper", "#hf-freeze-tape-a", "#hf-freeze-tape-b"],
+        { opacity: 0, duration: 0.24, ease: "power2.in" },
+        exit,
+      );
+
+      window.__timelines[compositionId] = tl;
+    </script>
+  </body>
+</html>

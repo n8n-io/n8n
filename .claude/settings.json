@@ -36,9 +36,30 @@
 				"source": "directory",
 				"path": "./"
 			}
+		},
+		"dotnet-agent-skills": {
+			"source": {
+				"source": "github",
+				"repo": "dotnet/skills"
+			}
+		},
+		"humanizer": {
+			"source": {
+				"source": "github",
+				"repo": "blader/humanizer"
+			}
+		},
+		"session-handoff": {
+			"source": {
+				"source": "directory",
+				"path": "./.claude/plugins/session-handoff"
+			}
 		}
 	},
 	"enabledPlugins": {
-		"n8n@n8n": true
+		"n8n@n8n": true,
+		"dotnet@dotnet-agent-skills": true,
+		"humanizer@humanizer": true,
+		"session-handoff@session-handoff": true
 	}
 }

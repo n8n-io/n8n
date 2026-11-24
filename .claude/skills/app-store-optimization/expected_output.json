@@ -1,0 +1,170 @@
+{
+  "request_type": "keyword_research",
+  "app_name": "TaskFlow Pro",
+  "keyword_analysis": {
+    "total_keywords_analyzed": 25,
+    "primary_keywords": [
+      {
+        "keyword": "task manager",
+        "search_volume": 45000,
+        "competition_level": "high",
+        "relevance_score": 0.95,
+        "difficulty_score": 72.5,
+        "potential_score": 78.3,
+        "recommendation": "High priority - target immediately"
+      },
+      {
+        "keyword": "productivity app",
+        "search_volume": 38000,
+        "competition_level": "high",
+        "relevance_score": 0.90,
+        "difficulty_score": 68.2,
+        "potential_score": 75.1,
+        "recommendation": "High priority - target immediately"
+      },
+      {
+        "keyword": "todo list",
+        "search_volume": 52000,
+        "competition_level": "very_high",
+        "relevance_score": 0.85,
+        "difficulty_score": 78.9,
+        "potential_score": 71.4,
+        "recommendation": "High priority - target immediately"
+      }
+    ],
+    "secondary_keywords": [
+      {
+        "keyword": "team task manager",
+        "search_volume": 8500,
+        "competition_level": "medium",
+        "relevance_score": 0.88,
+        "difficulty_score": 42.3,
+        "potential_score": 68.7,
+        "recommendation": "Good opportunity - include in metadata"
+      },
+      {
+        "keyword": "project planning app",
+        "search_volume": 12000,
+        "competition_level": "medium",
+        "relevance_score": 0.75,
+        "difficulty_score": 48.1,
+        "potential_score": 64.2,
+        "recommendation": "Good opportunity - include in metadata"
+      }
+    ],
+    "long_tail_keywords": [
+      {
+        "keyword": "ai task prioritization",
+        "search_volume": 2800,
+        "competition_level": "low",
+        "relevance_score": 0.95,
+        "difficulty_score": 25.4,
+        "potential_score": 82.6,
+        "recommendation": "Excellent long-tail opportunity"
+      },
+      {
+        "keyword": "team productivity tool",
+        "search_volume": 3500,
+        "competition_level": "low",
+        "relevance_score": 0.85,
+        "difficulty_score": 28.7,
+        "potential_score": 79.3,
+        "recommendation": "Excellent long-tail opportunity"
+      }
+    ]
+  },
+  "competitor_insights": {
+    "competitors_analyzed": 4,
+    "common_keywords": [
+      "task",
+      "todo",
+      "list",
+      "productivity",
+      "organize",
+      "manage"
+    ],
+    "keyword_gaps": [
+      {
+        "keyword": "ai prioritization",
+        "used_by": ["None of the major competitors"],
+        "opportunity": "Unique positioning opportunity"
+      },
+      {
+        "keyword": "smart task manager",
+        "used_by": ["Things 3"],
+        "opportunity": "Underutilized by most competitors"
+      }
+    ]
+  },
+  "metadata_recommendations": {
+    "apple_app_store": {
+      "title_options": [
+        {
+          "title": "TaskFlow - AI Task Manager",
+          "length": 26,
+          "keywords_included": ["task manager", "ai"],
+          "strategy": "brand_plus_primary"
+        },
+        {
+          "title": "TaskFlow: Smart Todo & Tasks",
+          "length": 29,
+          "keywords_included": ["todo", "tasks"],
+          "strategy": "brand_plus_multiple"
+        }
+      ],
+      "subtitle_recommendation": "AI-Powered Team Productivity",
+      "keyword_field": "productivity,organize,planner,schedule,workflow,reminders,collaboration,calendar,sync,priorities",
+      "description_focus": "Lead with AI differentiation, emphasize team features"
+    },
+    "google_play_store": {
+      "title_options": [
+        {
+          "title": "TaskFlow - AI Task Manager & Team Productivity",
+          "length": 48,
+          "keywords_included": ["task manager", "ai", "team", "productivity"],
+          "strategy": "keyword_rich"
+        }
+      ],
+      "short_description_recommendation": "AI task manager - Organize, prioritize, and collaborate with your team",
+      "description_focus": "Keywords naturally integrated throughout 4000 character description"
+    }
+  },
+  "strategic_recommendations": [
+    "Focus on 'AI prioritization' as unique differentiator - low competition, high relevance",
+    "Target 'team task manager' and 'team productivity' keywords - good search volume, lower competition than generic terms",
+    "Include long-tail keywords in description for additional discovery opportunities",
+    "Test title variations with A/B testing after launch",
+    "Monitor competitor keyword changes quarterly"
+  ],
+  "priority_actions": [
+    {
+      "action": "Optimize app title with primary keyword",
+      "priority": "high",
+      "expected_impact": "15-25% improvement in search visibility"
+    },
+    {
+      "action": "Create description highlighting AI features with natural keyword integration",
+      "priority": "high",
+      "expected_impact": "10-15% improvement in conversion rate"
+    },
+    {
+      "action": "Plan A/B tests for icon and screenshots post-launch",
+      "priority": "medium",
+      "expected_impact": "5-10% improvement in conversion rate"
+    }
+  ],
+  "aso_health_estimate": {
+    "current_score": "N/A (pre-launch)",
+    "potential_score_with_optimizations": "75-80/100",
+    "key_strengths": [
+      "Unique AI differentiation",
+      "Clear target audience",
+      "Strong feature set"
+    ],
+    "areas_to_develop": [
+      "Build rating volume post-launch",
+      "Monitor and respond to reviews",
+      "Continuous keyword optimization"
+    ]
+  }
+}

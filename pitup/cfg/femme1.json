@@ -1,0 +1,106 @@
+{
+ "project": "pitup-femme1",
+ "bpm": 133.99,
+ "song": "Tiakola_-_Mode_de_vie_Track3.mp3",
+ "song_off": 29.664,
+ "intro_vo": "hookf_0",
+ "outro_vo": "out_4",
+ "intro_word": "POUR ELLE",
+ "intro_l1": "Les tendances",
+ "intro_l2": "sont ici.",
+ "intro_minis": [
+  [
+   "coach_rose",
+   80,
+   820,
+   -6
+  ],
+  [
+   "kayali",
+   400,
+   900,
+   4
+  ],
+  [
+   "sandale",
+   690,
+   820,
+   -4
+  ]
+ ],
+ "shots": [
+  [
+   "sandale",
+   "f_1",
+   "Tes sandales.",
+   "TALONS",
+   "CREAM",
+   300
+  ],
+  [
+   "longchamp",
+   "f_2",
+   "Ton sac pliable.",
+   "PLIABLE",
+   "BLUE",
+   260
+  ],
+  [
+   "coach",
+   "f_3",
+   "Ton sac à main.",
+   "CHIC",
+   "SAND",
+   420
+  ],
+  [
+   "coach_rose",
+   "f_4",
+   "Version rose.",
+   "ROSE",
+   "ROSE",
+   420
+  ],
+  [
+   "robe_jean",
+   "f_5",
+   "Ta robe en jean.",
+   "DENIM",
+   "CREAM",
+   330
+  ],
+  [
+   "kayali",
+   "f_6",
+   "Ton parfum.",
+   "PARFUM",
+   "INK",
+   270
+  ],
+  [
+   "sac_dame",
+   "f_7",
+   "Ton cabas.",
+   "CABAS",
+   "SAND",
+   330
+  ],
+  [
+   "babouche",
+   "f_8",
+   "Tes mules.",
+   "MULES",
+   "ROSE",
+   330
+  ],
+  [
+   "rayban",
+   "f_9",
+   "Tes lunettes.",
+   "SOLEIL",
+   "BLUE",
+   300
+  ]
+ ],
+ "gap": 0.5
+}

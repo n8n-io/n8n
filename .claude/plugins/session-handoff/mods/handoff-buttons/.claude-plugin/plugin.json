@@ -1,0 +1,7 @@
+{ "name": "handoff-buttons", "version": "0.1.5", "description": "A cache and context line above the prompt, with Resume and Session handoff buttons, in place of the written context warning", "types": "./types/index.d.ts",
+  "author": { "name": "David Kay", "url": "https://github.com/David-E-Kay" },
+  "repository": "https://github.com/David-E-Kay/claude-session-handoff",
+  "license": "MIT",
+  "userConfig": {
+    "discordWebhook": { "type": "string", "title": "Discord webhook URL", "description": "The 10-minute cache alarm is also posted here, so it reaches your phone. Empty: no post.", "default": "" }
+  } }

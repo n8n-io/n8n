@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="assets/gsap.min.js"></script>
+    <style>
+      @font-face { font-family: "Poppins"; font-weight: 600; src: url(assets/fonts/poppins-600.woff2) format("woff2"); }
+      @font-face { font-family: "Poppins"; font-weight: 800; src: url(assets/fonts/poppins-800.woff2) format("woff2"); }
+      @font-face { font-family: "Caveat"; font-weight: 700; src: url(assets/fonts/Caveat-700-latin.woff2) format("woff2"); }
+      @font-face { font-family: "Playfair"; font-weight: 900; src: url(assets/fonts/PlayfairDisplay-900.woff2) format("woff2"); }
+      :root { --blue: #1f88c9; --ink: #141414; --hw-ink: #1f88c9; --red: #d6332a; }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1080px; height: 1920px; overflow: hidden; background: #f6f3ec; }
+      #root { position: relative; width: 100%; height: 100%; overflow: hidden; font-family: "Poppins", sans-serif; color: var(--ink); }
+      .layer { position: absolute; inset: 0; }
+      .sheet { position: absolute; inset: 0; overflow: hidden; }
+      .paper { position: absolute; inset: 0; background: url(assets/paper.jpg) center / cover; }
+      .blue { position: absolute; inset: 0; background: var(--blue); }
+      .blue::after { content: ""; position: absolute; inset: 0; background: url(assets/paper.jpg) center / cover; mix-blend-mode: multiply; opacity: 0.55; }
+      .rim { position: absolute; inset: 0; background: #fbfaf8; }
+
+      .card { position: absolute; width: 300px; background: #fbf8f1; padding: 12px 12px 6px; box-shadow: 0 1px 1px rgba(0,0,0,0.06), 0 14px 26px rgba(40,30,10,0.18); }
+      .card img { display: block; width: 100%; height: 330px; object-fit: cover; }
+      .card .lb { display: block; font-family: "Caveat", cursive; font-weight: 700; font-size: 46px; line-height: 1.15; color: var(--ink); text-align: center; white-space: nowrap; }
+      .tape { position: absolute; left: 50%; top: -16px; width: 110px; height: 32px; margin-left: -55px; background: rgba(236, 226, 196, 0.88); box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+        clip-path: polygon(0% 8%, 6% 0%, 12% 10%, 20% 2%, 30% 8%, 42% 0%, 55% 6%, 68% 0%, 80% 9%, 90% 1%, 100% 8%, 97% 50%, 100% 92%, 90% 100%, 78% 92%, 64% 100%, 50% 93%, 36% 100%, 22% 92%, 10% 100%, 0% 92%, 3% 50%); }
+      .big { position: absolute; left: 0; right: 0; display: block; text-align: center; font-family: "Playfair", serif; font-weight: 900; line-height: 1; letter-spacing: -3px; color: var(--ink); white-space: nowrap; }
+      .note { position: absolute; display: block; font-family: "Caveat", cursive; font-weight: 700; color: var(--blue); white-space: nowrap; line-height: 1; }
+      .doodle { position: absolute; pointer-events: none; overflow: visible; }
+      .doodle path { fill: none; stroke-width: 6; stroke-linecap: round; stroke-linejoin: round; }
+
+      #over { position: absolute; left: 90px; top: 690px; width: 900px; padding: 34px 30px 30px; background: #fbf8f1; box-shadow: 0 24px 50px rgba(40,30,10,0.3); text-align: center; }
+      #over .t1 { display: block; font-family: "Playfair", serif; font-weight: 900; font-size: 128px; line-height: 1.02; letter-spacing: -3px; white-space: nowrap; }
+      #over .t2 { display: block; font-family: "Caveat", cursive; font-weight: 700; font-size: 64px; color: var(--blue); margin-top: 12px; white-space: nowrap; }
+
+      #end .icon { position: absolute; left: 405px; top: 420px; width: 270px; display: block; }
+      #e1 { position: absolute; left: 0; right: 0; top: 800px; display: block; text-align: center; font-weight: 800; font-size: 104px; letter-spacing: -4px; color: #fff; white-space: nowrap; }
+      #e2 { position: absolute; left: 0; right: 0; top: 960px; display: block; text-align: center; font-family: "Caveat", cursive; font-weight: 700; font-size: 66px; color: #fff; white-space: nowrap; }
+      #ctaWrap { position: absolute; left: 0; right: 0; top: 1070px; display: flex; justify-content: center; }
+      #cta { display: block; padding: 30px 70px; border-radius: 999px; background: #fff; color: var(--blue); font-weight: 800; font-size: 60px; white-space: nowrap; }
+      #e3 { position: absolute; left: 0; right: 0; top: 1270px; display: block; text-align: center; font-weight: 600; font-size: 36px; color: rgba(255,255,255,0.94); white-space: nowrap; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="24" data-width="1080" data-height="1920">
+      <audio id="bgm" src="assets/bgm.wav" data-start="0" data-duration="24" data-track-index="11"></audio>
+      <div id="scene" class="clip layer" data-start="0" data-duration="24" data-track-index="0">
+        <div class="sheet" id="end">
+          <div class="blue"></div>
+          <img class="icon" src="assets/icon_white.png" alt="" />
+          <div id="e1">Commande-les.</div>
+          <div id="e2">Sur l'application ou sur</div>
+          <div id="ctaWrap"><div id="cta">pi-tup.com</div></div>
+          <div id="e3">Livraison PitUp · Paiement à la livraison</div>
+        </div>
+        <div class="sheet" id="p1Wrap"><div class="rim" id="p1Rim"></div><div class="sheet" id="p1"><div class="paper"></div><div id="s1" class="layer"></div></div></div>
+      </div>
+    </div>
+
+    <script>
+     Promise.all(["900 100px Playfair", "700 60px Caveat", "800 60px Poppins", "600 30px Poppins"].map((f) => document.fonts.load(f))).then(() => document.fonts.ready).then(() => {
+      const tl = gsap.timeline({ paused: true });
+      let seed = 0x7e3d;
+      const rnd = () => { seed = (Math.imul(1664525, seed) + 1013904223) >>> 0; return seed / 4294967296; };
+      const $ = (id) => document.getElementById(id);
+      // music grid: chorus beat every 0.3897 s; film 0 = song 31.95 s
+      const BEAT = 0.3897, HIT = 0.8, DROP = 3.1;
+      const s1 = $("s1");
+
+      function jag(el) {
+        const w = el.offsetWidth, h = el.offsetHeight, pts = [], st = 16, j = () => (rnd() * 5).toFixed(1);
+        for (let x = 0; x <= w; x += st) pts.push(`${x}px ${j()}px`);
+        for (let y = 0; y <= h; y += st) pts.push(`${w - j()}px ${y}px`);
+        for (let x = w; x >= 0; x -= st) pts.push(`${x}px ${h - j()}px`);
+        for (let y = h; y >= 0; y -= st) pts.push(`${j()}px ${y}px`);
+        el.style.clipPath = `polygon(${pts.join(",")})`;
+      }
+      function tear(id, s, at, dur) {
+        const clipEl = $(id), rimEl = $(id + "Rim"), wrapEl = $(id + "Wrap");
+        let st = s >>> 0; const r = () => { st = (Math.imul(1664525, st) + 1013904223) >>> 0; return st / 4294967296; };
+        const noise = (k) => { const a = []; for (let i = 0; i <= k; i++) a.push(r() * 2 - 1); return (v) => { const f = v * k, i = Math.min(k - 1, Math.floor(f)); let u = f - i; u = u * u * (3 - 2 * u); return a[i] + (a[i + 1] - a[i]) * u; }; };
+        const ROWS = 160, PX = 100 / 1080, wander = noise(6), core = noise(14), edge = [];
+        for (let i = 0; i <= ROWS; i++) { const v = i / ROWS; edge.push({ y: (v * 100).toFixed(2) + "%", o: (v - 0.5) * 4 + (wander(v) * 46 + (r() * 2 - 1) * 3.5) * PX, rim: Math.min(16, Math.max(7, 7 + 9 * (core(v) * 0.5 + 0.5) + (r() * 2 - 1) * 3)) * PX }); }
+        const ease = (p) => (p < 0.3 ? 0.2 * Math.pow(p / 0.3, 2) : 0.2 + 0.8 * (1 - Math.pow(1 - (p - 0.3) / 0.7, 3)));
+        const paint = (p) => {
+          const e = ease(Math.max(0, Math.min(1, p))), bx = -12 + 124 * e;
+          let a = "100% 0%, 100% 100%", b = a;
+          for (let i = ROWS; i >= 0; i--) { const x = bx + edge[i].o; a += `, ${x.toFixed(2)}% ${edge[i].y}`; b += `, ${(x - edge[i].rim).toFixed(2)}% ${edge[i].y}`; }
+          clipEl.style.clipPath = `polygon(${a})`; rimEl.style.clipPath = `polygon(${b})`;
+          wrapEl.style.transform = `translateX(${(3 * e).toFixed(3)}%) rotate(${(1.5 * e).toFixed(3)}deg)`;
+          wrapEl.style.filter = `drop-shadow(0 ${(12 * e).toFixed(1)}px ${(24 * e).toFixed(1)}px rgba(0,0,0,0.25))`;
+          wrapEl.style.opacity = e >= 0.999 ? 0 : 1;
+        };
+        paint(0); const pr = { p: 0 };
+        tl.fromTo(pr, { p: 0 }, { p: 1, duration: dur, ease: "none", onUpdate: () => paint(pr.p) }, at);
+      }
+      const add = (cls, html, css) => { const d = document.createElement("div"); d.className = cls; d.innerHTML = html; Object.assign(d.style, css); s1.appendChild(d); gsap.set(d, { opacity: 0 }); return d; };
+
+      // ---------- intro: three words on the build-up ----------
+      const words = [["Stylé.", HIT, "#141414"], ["Tendance.", HIT + 3 * BEAT, "#1f88c9"], ["Livré chez toi.", HIT + 5 * BEAT, "#d6332a"]];
+      words.forEach(([w, t, c], k) => {
+        const d = add("big", w, { top: 620 + k * 190 + "px", fontSize: (k === 2 ? 112 : 170) + "px", color: c });
+        tl.fromTo(d, { opacity: 0, scale: 1.6, rotation: k % 2 ? 4 : -4 }, { opacity: 1, scale: 1, rotation: k % 2 ? 1.5 : -1.5, duration: 0.22, ease: "power4.in" }, t);
+        tl.to(d, { opacity: 0, y: -60, duration: 0.2, ease: "power2.in" }, DROP - 0.2);
+      });
+      tl.fromTo("#p1", { x: 0 }, { x: 8, duration: 0.04, yoyo: true, repeat: 3, ease: "none" }, HIT + 0.22);
+
+      // ---------- the scrapbook: each item lands big on a beat, then sticks into its slot ----------
+      const head = add("note", "à shopper sur PitUp ↓", { left: "70px", top: "120px", fontSize: "78px", color: "#141414", transform: "rotate(-2deg)" });
+      tl.fromTo(head, { opacity: 0, x: -30 }, { opacity: 1, x: 0, duration: 0.25 }, DROP);
+      const items = [["sneakers", "sneakers"], ["vestes", "vestes en cuir"], ["lunettes", "lunettes"], ["top", "top rétro"], ["sacs", "sacs à dos"], ["parfum", "parfum"], ["tshirts", "basiques noirs"], ["gloss", "gloss"], ["bijoux", "bijoux"]];
+      const CW = 300, CH = 12 + 330 + 59;
+      items.forEach(([f, label], i) => {
+        const col = i % 3, row = Math.floor(i / 3);
+        const sx = 45 + col * 335 + (rnd() - 0.5) * 20, sy = 250 + row * 445 + (rnd() - 0.5) * 24, rot = (rnd() - 0.5) * 12;
+        const c = document.createElement("div"); c.className = "card"; c.id = "c" + i;
+        c.innerHTML = `<img src="assets/items/${f}.jpg" alt=""><span class="lb">${label}</span><i class="tape"></i>`;
+        Object.assign(c.style, { left: sx + "px", top: sy + "px" }); s1.appendChild(c);
+        const t = DROP + i * 4 * BEAT;
+        const cx = 540 - (sx + CW / 2), cy = 960 - (sy + CH / 2);
+        gsap.set(c, { opacity: 0, x: cx, y: cy, scale: 2.1, rotation: 0 });
+        tl.fromTo(c, { opacity: 0, x: cx, y: cy - 120, scale: 2.7, rotation: i % 2 ? 8 : -8 }, { opacity: 1, y: cy, scale: 2.1, rotation: i % 2 ? 2 : -2, duration: 0.24, ease: "back.out(1.6)" }, t);
+        tl.to(c, { x: 0, y: 0, scale: 1, rotation: rot, duration: 0.36, ease: "power3.inOut" }, t + 2.6 * BEAT);
+        // a pulse on the off-beat keeps it moving while it is big
+        tl.to(c, { scale: 2.16, duration: 0.08, yoyo: true, repeat: 1, ease: "power1.out" }, t + 2 * BEAT);
+      });
+      [...document.querySelectorAll(".card")].forEach(jag);
+
+      // doodles thrown on the board as it fills
+      const doodle = (d, x, y, w, h, color, at) => {
+        const s = document.createElementNS("http://www.w3.org/2000/svg", "svg"); s.setAttribute("class", "doodle"); s.setAttribute("viewBox", `0 0 ${w} ${h}`);
+        Object.assign(s.style, { left: x + "px", top: y + "px", width: w + "px", height: h + "px" });
+        const p = document.createElementNS("http://www.w3.org/2000/svg", "path"); p.setAttribute("d", d); p.setAttribute("stroke", color); p.setAttribute("pathLength", "1"); p.setAttribute("stroke-dasharray", "1"); p.setAttribute("stroke-dashoffset", "1");
+        s.appendChild(p); s1.appendChild(s); tl.to(p, { attr: { "stroke-dashoffset": 0 }, duration: 0.3, ease: "power2.out" }, at);
+      };
+      const star = "M30 4 L37 23 L57 23 L41 35 L47 55 L30 43 L13 55 L19 35 L3 23 L23 23 Z";
+      doodle(star, 980, 215, 60, 60, "#d6332a", DROP + 4 * BEAT * 2);
+      doodle(star, 20, 1560, 60, 60, "#1f88c9", DROP + 4 * BEAT * 5);
+      doodle("M10 40 Q60 0 110 30 T210 20", 820, 1630, 220, 60, "#1f88c9", DROP + 4 * BEAT * 7);
+      doodle(star, 1000, 1180, 60, 60, "#d6332a", DROP + 4 * BEAT * 8);
+
+      // ---------- "Tout ça, sur PitUp." over the full board ----------
+      const END = DROP + 9 * 4 * BEAT;                  // 17.13
+      tl.to(".card", { filter: "brightness(0.92)", duration: 0.3 }, END - 0.1);
+      const over = add("", `<span class="t1">Tout ça,</span><span class="t1">sur <span style="color:#1f88c9">PitUp.</span></span><span class="t2">+100 boutiques · Lubumbashi</span>`, {});
+      over.id = "over";
+      tl.fromTo(over, { opacity: 0, scale: 1.25, rotation: -6 }, { opacity: 1, scale: 1, rotation: -2, duration: 0.26, ease: "back.out(1.6)" }, END);
+      tl.fromTo("#p1", { x: 0 }, { x: 8, duration: 0.04, yoyo: true, repeat: 3, ease: "none" }, END + 0.26);
+      tear("p1", 0x4d2c91b3, END + 8 * BEAT - 0.25, 0.55);
+
+      // ---------- end card ----------
+      const E = END + 8 * BEAT + 0.15;
+      tl.fromTo("#end .icon", { scale: 0.8, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.3, ease: "back.out(2)" }, E);
+      tl.fromTo("#e1", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.3, ease: "power3.out" }, E + 1 * BEAT);
+      tl.fromTo("#e2", { opacity: 0 }, { opacity: 1, duration: 0.25 }, E + 2 * BEAT);
+      tl.fromTo("#cta", { scale: 0.7, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.4, ease: "back.out(2)" }, E + 3 * BEAT);
+      tl.fromTo("#e3", { opacity: 0 }, { opacity: 1, duration: 0.4 }, E + 5 * BEAT);
+      tl.to("#cta", { scale: 1.06, duration: 0.1, yoyo: true, repeat: 1 }, E + 7 * BEAT);
+
+      window.__timelines["main"] = tl;
+      tl.seek(0);
+     });
+    </script>
+  </body>
+</html>

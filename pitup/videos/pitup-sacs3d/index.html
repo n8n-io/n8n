@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="assets/gsap.min.js"></script>
+    <script type="importmap">{ "imports": { "three": "./assets/three.module.min.js", "three/addons/": "./assets/jsm/" } }</script>
+    <style>
+      @font-face { font-family: "Poppins"; font-weight: 600; src: url(assets/fonts/poppins-600.woff2) format("woff2"); }
+      @font-face { font-family: "Poppins"; font-weight: 700; src: url(assets/fonts/poppins-700.woff2) format("woff2"); }
+      @font-face { font-family: "Poppins"; font-weight: 800; src: url(assets/fonts/poppins-800.woff2) format("woff2"); }
+      :root { --blue: #1f88c9; }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1080px; height: 1920px; overflow: hidden; background: #07080a; }
+      #root { position: relative; width: 100%; height: 100%; overflow: hidden; font-family: "Poppins", sans-serif; }
+      .layer { position: absolute; inset: 0; }
+      #gl { position: absolute; inset: 0; width: 1080px; height: 1920px; display: block; }
+      #kvTitle { position: absolute; left: 0; right: 0; top: 250px; text-align: center; font-weight: 800; font-size: 60px; letter-spacing: 12px; color: #0b0c10; opacity: 0; }
+      #kvSub { position: absolute; left: 0; right: 0; top: 340px; text-align: center; font-weight: 600; font-size: 32px; letter-spacing: 7px; color: #4a4f57; opacity: 0; }
+      #end { position: absolute; inset: 0; opacity: 0; background: var(--blue); color: #fff; }
+      #icon { position: absolute; left: 395px; top: 470px; width: 290px; display: block; }
+      #word { position: absolute; left: 305px; top: 860px; width: 470px; display: block; }
+      #avail { position: absolute; left: 0; right: 0; top: 1110px; text-align: center; font-weight: 700; font-size: 50px; }
+      #ctaWrap { position: absolute; left: 0; right: 0; top: 1300px; display: flex; justify-content: center; }
+      #cta { display: block; padding: 28px 66px; border-radius: 999px; background: #fff; color: var(--blue); font-weight: 800; font-size: 56px; white-space: nowrap; }
+      #stores { position: absolute; left: 0; right: 0; top: 1490px; display: flex; justify-content: center; gap: 24px; }
+      .bdg { display: flex; align-items: center; gap: 14px; height: 96px; padding: 0 28px 0 20px; border-radius: 18px; background: #000; border: 2px solid #a6a6a6; color: #fff; }
+      .bdg svg { width: 52px; height: 52px; display: block; }
+      .bdg span { display: flex; flex-direction: column; line-height: 1; }
+      .bdg small { font-weight: 500; font-size: 20px; letter-spacing: 0.5px; }
+      .bdg b { font-weight: 600; font-size: 38px; letter-spacing: -0.5px; margin-top: 4px; white-space: nowrap; }
+      #flash { position: absolute; inset: 0; background: #fff; opacity: 0; }
+      #grain { position: absolute; inset: -64px; background-image: url(assets/grain.png); background-size: 512px 512px; mix-blend-mode: overlay; opacity: 0.07; pointer-events: none; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="30" data-width="1080" data-height="1920">
+      <audio id="bgm" src="assets/bgm.wav" data-start="0" data-duration="30" data-track-index="11"></audio>
+      <div id="scene" class="clip layer" data-start="0" data-duration="30" data-track-index="0">
+        <canvas id="gl" width="1080" height="1920"></canvas>
+        <div id="kvTitle">COLLECTION SACS</div>
+        <div id="kvSub">DISPONIBLE SUR PITUP</div>
+        <div id="end">
+          <img id="icon" src="assets/icon_white.png" alt="" />
+          <img id="word" src="assets/logo_word_white.png" alt="" />
+          <div id="avail">Disponible sur PitUp</div>
+          <div id="ctaWrap"><div id="cta">pi-tup.com</div></div>
+          <div id="stores">
+              <div class="bdg"><svg viewBox="0 0 24 24"><path fill="#fff" d="M16.4 1.4c0 1.1-.5 2.3-1.2 3.1-.7.9-2 1.6-3 1.6-.1 0-.2 0-.3-.1 0-.1 0-.2 0-.4 0-1.1.6-2.3 1.2-3 .8-.9 2.1-1.6 3.2-1.7.1.2.1.3.1.5zm4.6 15.7c0 .1-.5 1.6-1.5 3.1-.9 1.3-1.9 2.7-3.4 2.7s-1.9-.9-3.6-.9c-1.7 0-2.3.9-3.7.9-1.4 0-2.3-1.3-3.4-2.8C4.1 18.3 3 15.5 3 12.8c0-4.3 2.8-6.5 5.6-6.5 1.4 0 2.7.9 3.6.9.9 0 2.2-1 3.9-1 .6 0 2.9.1 4.4 2.2-.1.1-2.4 1.4-2.4 4.2 0 3.3 2.9 4.4 2.9 4.5z"/></svg><span><small>Disponible sur</small><b>App Store</b></span></div>
+              <div class="bdg"><svg viewBox="0 0 24 24"><path fill="#00d7fe" d="M3.6 1.8 13.6 12 3.6 22.2c-.4-.2-.6-.6-.6-1.1V2.9c0-.5.2-.9.6-1.1z"/><path fill="#00f076" d="M3.6 1.8 16.9 9.4 13.6 12z"/><path fill="#f8384b" d="M3.6 22.2 13.6 12l3.3 2.6z"/><path fill="#fdbd00" d="M16.9 9.4 21 11.7c.5.3.5.9 0 1.2l-4.1 1.7-3.3-2.6z"/></svg><span><small>Disponible sur</small><b>Google Play</b></span></div>
+        </div>
+        <div id="flash"></div>
+        <div id="grain"></div>
+      </div>
+    </div>
+
+    <script>
+      // HTML overlays ride a paused GSAP timeline; the 3D layer renders from hf-seek time
+      const B = 60 / 140;            // one beat of "KANAN" (140 BPM, film 0 = song 17.167 s; the drop lands on b24)
+      const T = (b) => b * B;
+      const tl = gsap.timeline({ paused: true });
+      tl.set("#flash", { opacity: 0.85 }, T(24)); tl.to("#flash", { opacity: 0, duration: 0.3 }, T(24));
+      tl.fromTo(["#kvTitle", "#kvSub"], { opacity: 0, y: -20 }, { opacity: 1, y: 0, duration: 0.5, stagger: 0.15 }, T(57));
+      tl.set("#end", { opacity: 1 }, T(62));
+      tl.fromTo("#icon", { scale: 1.15, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.32, ease: "expo.out" }, T(62));
+      tl.fromTo("#word", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.4, ease: "power3.out" }, T(63));
+      tl.fromTo("#avail", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.4, ease: "power3.out" }, T(64));
+      tl.fromTo("#cta", { scale: 0.7, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.42, ease: "back.out(2)" }, T(65));
+      tl.fromTo("#stores .bdg", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.35, stagger: 0.12, ease: "back.out(1.6)" }, T(66));
+      for (let f = 0; f < 30 * 12; f++) { const ox = ((f * 137) % 512) - 256, oy = ((f * 251) % 512) - 256; tl.set("#grain", { x: ox / 8, y: oy / 8 }, f / 12); }
+      tl.set({}, {}, 30);
+      window.__timelines["main"] = tl;
+      tl.seek(0);
+    </script>
+
+    <script type="module">
+      import * as THREE from "three";
+      import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+      import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
+      
+      const B = 60 / 140;
+      const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById("gl"), antialias: true, alpha: true, preserveDrawingBuffer: true });
+      renderer.setPixelRatio(1); renderer.setSize(1080, 1920, false);
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.55;
+      const scene = new THREE.Scene();
+      scene.environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture;
+      const camera = new THREE.PerspectiveCamera(30, 1080 / 1920, 0.1, 400);
+      const hemi = new THREE.HemisphereLight(0xffffff, 0x8a8a8a, 1.1); scene.add(hemi);
+      const key = new THREE.DirectionalLight(0xffffff, 2.2); key.position.set(-6, 10, 12); scene.add(key);
+      const fill = new THREE.DirectionalLight(0xffffff, 0.9); fill.position.set(8, 4, 10); scene.add(fill);
+      const rim = new THREE.PointLight(0x7fb0ff, 0, 40, 1.4); rim.position.set(4, 6, -6); scene.add(rim);
+      const rimP = new THREE.PointLight(0xff4fa8, 0, 40, 1.4); rimP.position.set(-4, 4, -6); scene.add(rimP);
+
+      // keep only the largest connected piece of each scan (drops loose straps, tags and specks)
+      const largestPiece = (geo) => {
+        // connectivity by vertex position only (UV seams split vertices but not the surface)
+        const pos = geo.attributes.position, n = pos.count;
+        const idx = geo.index ? geo.index.array : Array.from({ length: n }, (_, i) => i);
+        const keyOf = new Map(), pid = new Int32Array(n);
+        for (let i = 0; i < n; i++) { const k = `${Math.round(pos.getX(i) * 1e4)},${Math.round(pos.getY(i) * 1e4)},${Math.round(pos.getZ(i) * 1e4)}`; if (!keyOf.has(k)) keyOf.set(k, keyOf.size); pid[i] = keyOf.get(k); }
+        const par = new Int32Array(keyOf.size).map((_, i) => i);
+        const f = (x) => { while (par[x] !== x) { par[x] = par[par[x]]; x = par[x]; } return x; };
+        const uni = (x, y) => { x = f(x); y = f(y); if (x !== y) par[y] = x; };
+        for (let i = 0; i < idx.length; i += 3) { uni(pid[idx[i]], pid[idx[i + 1]]); uni(pid[idx[i]], pid[idx[i + 2]]); }
+        const cnt = new Map(); for (let i = 0; i < idx.length; i += 3) { const r = f(pid[idx[i]]); cnt.set(r, (cnt.get(r) || 0) + 1); }
+        let best = -1, bc = 0; cnt.forEach((c, r) => { if (c > bc) { bc = c; best = r; } });
+        const keep = []; for (let i = 0; i < idx.length; i += 3) if (f(pid[idx[i]]) === best) keep.push(idx[i], idx[i + 1], idx[i + 2]);
+        geo.setIndex(keep); return geo;
+      };
+      // each bag: normalised to 30 units wide, standing on y = 0, front facing +z
+      const BAGS = { noir: "sac_noir", rose: "sac_rose", orange: "sac_orange", bordeaux: "sac_bordeaux", croco: "sac_croco" };
+      const bag = {}, refl = {};
+      const loader = new GLTFLoader();
+      const ready = Promise.all(Object.entries(BAGS).map(([k, f]) => new Promise((res) => loader.load(`assets/glb/${f}.glb`, (g) => {
+        const m = g.scene;
+        m.traverse((o) => { if (o.isMesh) o.geometry = largestPiece(o.geometry); });
+        const box = new THREE.Box3().setFromObject(m), sz = box.getSize(new THREE.Vector3()), c = box.getCenter(new THREE.Vector3());
+        const s = 30 / Math.max(sz.x, sz.y * 1.1);
+        m.position.set(-c.x * s, -box.min.y * s, -c.z * s); m.scale.setScalar(s);
+        const g1 = new THREE.Group(); g1.add(m); bag[k] = g1; scene.add(g1);
+        const r = new THREE.Group(); r.add(m.clone()); r.scale.y = -1; refl[k] = r; scene.add(r);
+        bag[k].userData.h = sz.y * s;
+        res();
+      }))));
+      const floor = new THREE.Mesh(new THREE.PlaneGeometry(600, 600), new THREE.MeshPhysicalMaterial({ color: 0xeef0f3, roughness: 0.3, transparent: true, opacity: 0.84 }));
+      floor.rotation.x = -Math.PI / 2; scene.add(floor);
+      const grid = new THREE.GridHelper(300, 120, 0xb4bbc3, 0xd6dade); grid.position.y = 0.03; scene.add(grid);
+
+      const all = () => [...Object.values(bag), ...Object.values(refl), floor, grid];
+      const only = (...v) => all().forEach((o) => { o.visible = v.includes(o); });
+      const place = (o, x, y, z, ry, s = 1) => { o.position.set(x, y, z); o.rotation.set(0, ry, 0); o.scale.set(s, o.scale.y < 0 ? -s : s, s); };
+      const look = (px, py, pz, tx, ty, tz, fov = 30) => { camera.position.set(px, py, pz); camera.fov = fov; camera.updateProjectionMatrix(); camera.lookAt(tx, ty, tz); };
+      const bg = (c) => { scene.background = c === null ? null : new THREE.Color(c); };
+      const ease = (x) => x * x * (3 - 2 * x), seg = (t, a, b) => Math.min(1, Math.max(0, (t - a) / (b - a)));
+      const sway = (p, a) => Math.sin((p - 0.5) * Math.PI) * a;   // front-facing turn, never shows the back
+
+      function renderAt(t) {
+        if (!bag.noir) return;
+        const b = t / B;
+        rim.intensity = 0; rimP.intensity = 0; key.intensity = 2.2; hemi.intensity = 1.1;
+        if (b < 8) {                       // black bubble bag emerges from the dark
+          bg(0x07080a); only(bag.noir); rim.intensity = 260; rimP.intensity = 160; key.intensity = 1.2 + seg(b, 0, 4) * 1.2; hemi.intensity = 0.4;
+          const p = seg(b, 0, 8); place(bag.noir, 0, 0, 0, sway(p, 0.7));
+          look(0, 12, 152 - ease(p) * 20, 0, 11, 0);
+        } else if (b < 16) {               // pink bubble bag on the studio floor
+          bg(0xeef0f3); only(bag.rose, refl.rose, floor, grid);
+          const p = seg(b, 8, 16); place(bag.rose, 0, 0, 0, sway(p, 0.8)); place(refl.rose, 0, 0, 0, sway(p, 0.8));
+          look(-22 + p * 44, 18, 142 - p * 12, 0, 11, 0);
+        } else if (b < 24) {               // macro around the orange bag flap and handles
+          bg(0xf6efe8); only(bag.orange);
+          const p = ease(seg(b, 16, 24)); place(bag.orange, 0, 0, 0, sway(p, 0.6));
+          look(18 - p * 30, 34 - p * 8, 44 - p * 6, 0, 24 - p * 6, 0, 32);
+        } else if (b < 40) {               // the drop: one angle every two beats
+          const k = Math.floor((b - 24) / 2), p = seg(b, 24 + k * 2, 26 + k * 2);
+          const shots = [
+            ["bordeaux", 0xeef0f3, () => look(0, 14, 138 - p * 10, 0, 12, 0), 0.4],
+            ["croco", 0x07080a, () => { rim.intensity = 260; look(44, 22, 124, 0, 12, 0); }, -0.3],
+            ["noir", 0xa6cee4, () => look(12, 2, 126, 0, 12, 0, 34), 0.5],
+            ["rose", 0xff3ea5, () => look(0, 116, 62, 0, 8, 0, 30), -0.4],
+            ["orange", 0xeef0f3, () => look(-62, 22, 112, 0, 13, 0), 0.2],
+            ["croco", 0xf2e6e6, () => look(6, 16, 40, 0, 13, 0, 32), 0.3],
+            ["bordeaux", 0x1a0b10, () => { rimP.intensity = 240; look(-38, 22, 124, 0, 12, 0); }, -0.5],
+            ["noir", 0xeef0f3, () => look(0, 14, 140 - p * 12, 0, 11, 0), 0.0],
+          ];
+          const [name, col, cam, a] = shots[Math.min(k, 7)];
+          bg(col); only(bag[name]); place(bag[name], 0, 0, 0, a + (p - 0.5) * 0.5); cam();
+        } else if (b < 56) {               // line-up of five on the glossy floor, slow dolly
+          bg(0xeef0f3); const order = ["rose", "orange", "noir", "bordeaux", "croco"];
+          only(floor, grid, ...order.map((k) => bag[k]), ...order.map((k) => refl[k]));
+          const p = ease(seg(b, 40, 56));
+          order.forEach((k, i) => { const x = (i - 2) * 15, z = (2 - i) * 30, ry = sway(seg(b, 40, 56), 0.6) - 0.25;
+            place(bag[k], x, 0, z, ry, 0.95); place(refl[k], x, 0, z, ry, 0.95); });
+          look(-30 + p * 40, 34, 230 - p * 30, 0, 10, 0, 30);
+        } else {                           // key visual: five bags stacked in a soft pyramid
+          bg(0xf4f4f6); const order = [["rose", -9, 84], ["orange", 9, 63], ["noir", -9, 42], ["bordeaux", 9, 21], ["croco", -9, 0]];
+          only(...order.map(([k]) => bag[k]));
+          order.forEach(([k, x, y], i) => { const e = ease(seg(b, 56 + i * 0.4, 57.4 + i * 0.4)); place(bag[k], x + (1 - e) * 60 * (x < 0 ? -1 : 1), y, 0, 0.3 * Math.sin(b * 0.3 + i), 0.95); });
+          look(0, 64, 285, 0, 62, 0, 30);
+        }
+        renderer.render(scene, camera);
+      }
+      window.__hf = window.__hf || {};
+      window.__hf.buildReady = window.__hf.buildReady || {};
+      window.__hf.buildReady["bags3d"] = ready.then(() => renderAt(window.__hfThreeTime || 0));
+      window.addEventListener("hf-seek", (e) => renderAt(e.detail.time));
+    </script>
+  </body>
+</html>

@@ -1,0 +1,92 @@
+[
+ {
+  "id": "masked-headline",
+  "name": "Masked headline",
+  "description": "On load, each line of the headline rises from behind its own baseline, about 900ms with a strong ease-out, the second line 110ms after the first; the supporting sentence and the action then fade up together. Nothing else on the page performs. Because headlines are two lines at most, you author the line breaks and wrap each line yourself. Recipe: 'Masked line reveal' in references/motion.md."
+ },
+ {
+  "id": "shutter-image",
+  "name": "Shutter image",
+  "description": "The one hero or showcase image opens from an edge with a clip-path over about 1.1 seconds while the picture inside settles from 1.12 scale to rest. Use it once, on the image that matters most; later images simply are there. Recipe: 'Image shutter' in references/motion.md."
+ },
+ {
+  "id": "scaling-wordmark",
+  "name": "Scaling wordmark",
+  "description": "The giant name responds to the scroll: as the first screen leaves, the wordmark scales down a few percent (or grows from 0.94 to 1 as the footer arrives) on a scroll-linked timeline, so the monument feels heavy. Travel stays under 8%. Static fallback where scroll timelines are unsupported. Recipe: 'Scroll-linked progress' in references/motion.md, animating `scale`."
+ },
+ {
+  "id": "pinned-story",
+  "name": "Pinned story",
+  "description": "One element holds its place with `position: sticky` (a title, a frame, a product fragment) while the items that belong to it scroll past or swap inside it. The page's ordinary scrolling does the work; nothing is hijacked. Hold it for about one screen per step and three screens at most, two held stages per page at most, with a line of text on every held screen. Recipe: 'Pinned story' in references/motion.md."
+ },
+ {
+  "id": "index-preview",
+  "name": "Index with preview",
+  "description": "Rows of text are the navigation through the work; pointing at a row brings up its image in one fixed frame and dims the other rows. On touch screens each row shows its image inline instead. Fast and exact (about 240ms crossfade), no lag behind the pointer. Recipe: 'Index with preview, anchored to the row' in references/motion.md."
+ },
+ {
+  "id": "curtain-footer",
+  "name": "Curtain footer",
+  "description": "The page content slides up like a sheet to uncover the footer waiting beneath it, so the last screen is revealed rather than scrolled to. Build with a sticky footer at the bottom and a main element with its own background and a higher stacking order. No JavaScript."
+ },
+ {
+  "id": "slow-crossfade",
+  "name": "Slow crossfade",
+  "description": "The principal photograph quietly changes: three or four images of the same framing crossfade over about 1.6 seconds, holding five to six seconds each, or the fixed image changes when its matching section arrives. It should feel like light shifting in a room. Pause when the tab is hidden; under reduced motion show only the first image."
+ },
+ {
+  "id": "edge-marquee",
+  "name": "Edge-to-edge marquee",
+  "description": "One line of very large type travels sideways across the full width at a slow constant speed, as a band between two sections or as the closing statement. Linear timing, duplicated content for a seamless loop, paused on hover and under reduced motion. One marquee per page, carrying real words (the name, the claim), never a list of buzzwords."
+ },
+ {
+  "id": "drag-row",
+  "name": "Drag row",
+  "description": "A row of large items wider than the screen that the visitor pulls sideways: native horizontal scrolling with scroll snapping, the first item aligned to the page margin and the last allowed to run off the edge so the row visibly continues. No carousel library, no arrows, no dots."
+ },
+ {
+  "id": "colour-on-scroll",
+  "name": "Colour by chapter",
+  "description": "Each chapter is its own full-bleed field of one palette colour, so the ground changes exactly at section edges as you scroll, never as a global recolouring of the screen. The only movement: the fixed header (or the one pinned element) takes the ink of the chapter beneath it, switching with a 300ms colour transition as each edge passes under it. Do not drive the page background from an observer: in blind tests a page recoloured mid-section, with a paragraph sitting on two colours, read as broken twice."
+ },
+ {
+  "id": "stillness",
+  "name": "Stillness",
+  "description": "No showpiece. The page is simply there, instantly, and the discipline is the statement. Motion is limited to exact feedback: a 140ms press on the button, a 180ms colour change on links, focus rings that appear without delay. Do not add a load animation or scroll reveals to this direction."
+ },
+ {
+  "id": "opening-window",
+  "name": "Opening window",
+  "description": "A type screen hands over to the one great photograph: the picture first shows as a window about 45% of the width in the middle of a held stage and opens to full-bleed over about one screen of scroll, while the image inside settles from 1.15 scale. Scroll-linked and linear, so the reader sets the pace; it is fully open after three quarters of the hold and rests a moment before the page moves on. Use it once, for the picture that carries the subject. Where scroll timelines are unsupported, or under reduced motion, the picture is simply a full-bleed screen. Recipe: 'Opening window' in references/motion.md."
+ },
+ {
+  "id": "ink-fill",
+  "name": "Ink-fill statement",
+  "description": "One statement of three to five lines at 32px or more starts at 45% ink and fills to full ink line by line as it rises from three quarters of the way down the screen to just past half way, so the reading pace follows the scroll. Every word is readable before it fills; the fill only sets the rhythm. Once per page, never on body copy, never on a headline the visitor needs at once. Full ink without scroll timelines or under reduced motion. Recipe: 'Ink fill' in references/motion.md."
+ },
+ {
+  "id": "sheet-over",
+  "name": "Sheet over a held picture",
+  "description": "A full-bleed photograph holds its place for one screen and the next chapter, an opaque sheet in the page ground carrying its heading at the top edge, slides up over it like a page being turned. The chapter change is read, not just seen, and nothing is hijacked: the photograph is a 100svh figure with position: sticky; top: 0, followed by a section with its own background and a higher stacking order. Hold for one screen at most, use it at one or two chapter changes, and give each held photograph a caption so the held screen carries a line of text."
+ },
+ {
+  "id": "sideways-gallery",
+  "name": "Sideways gallery",
+  "description": "A short set of pictures (eight or fewer: rooms, kitchens, pieces) moves sideways while the vertical scroll holds the stage, one pixel of scroll for one pixel of travel, and the hold ends the moment the last picture reaches the margin. Only on wide screens with motion allowed and only when the row is under three screens long; phones, reduced motion and longer rows get the native drag row with snapping. Focusing a link scrolls its picture into view, and the only copy of a call to action never sits inside the moving row. Recipe: 'Sideways gallery' in references/motion.md."
+ },
+ {
+  "id": "pushed-line",
+  "name": "Pushed line",
+  "description": "One line of very large type, the name or the claim, is pushed sideways by the scroll rather than by a clock: it travels from 12% right to 12% left of its place while it crosses the screen, linear and locked to the scrollbar, and reads whole at the middle of its run. One per page, never across running text, and the words must never be cropped at the moment the line sits in the middle of the screen. Build with animation-timeline: view() on the line and a translateX keyframe; static where scroll timelines are unsupported and under reduced motion."
+ },
+ {
+  "id": "rolling-figures",
+  "name": "Rolling figures",
+  "description": "For a page whose case is a handful of numbers (a report, a fund, a practice with a founding year): three or four figures at display size roll each digit up to its value once as they come into view, about 1.1 seconds on a strong ease-out, the columns 70ms apart. Tabular figures, the real number kept in the text for screen readers and search, never in running text and never for a value that changes after load. Set at its value under reduced motion. Recipe: 'Rolling figures' in references/motion.md."
+ },
+ {
+  "id": "carried-picture",
+  "name": "Carried picture",
+  "description": "Between the index and a case page, the picture the visitor clicked travels into place as the new page's hero while the old page fades out in 200ms and the new one rises in, all within 480ms, using the browser's own cross-document view transitions with no library and no full-screen curtain. Give the card picture and the hero the same view-transition-name; each name appears once per page. Browsers without view transitions simply navigate; reduced motion turns it off. Recipe: 'Page to page' in references/motion.md."
+ }
+]

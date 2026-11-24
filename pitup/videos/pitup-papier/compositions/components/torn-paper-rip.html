@@ -1,0 +1,412 @@
+<!doctype html>
+<!--
+  torn-paper-rip: HyperFrames video primitive (transitions / texture).
+
+  A jagged, fibrous paper tear travels across the frame and splits one scene
+  into the next. The "from" sheet sits on top, its torn edge showing a
+  6-14 px band of paper core in the tone color with a feathered outer edge;
+  the "to" layer fills the whole stage underneath. As the tear runs, the
+  "from" sheet lifts away toward the tear direction on a growing shadow.
+
+  Both scenes are SLOTS. Callers supply content by placing inert templates
+  anywhere in the HOST page (templates never render, and the runtime wipes
+  the host clip's own children on mount, so slots live at document level):
+
+    <template data-slot="torn-paper-rip-from"> ... </template>
+    <template data-slot="torn-paper-rip-to"> ... </template>
+
+  Slot content may be an <img>, a muted <video>, or arbitrary HTML; direct
+  img/video children are stretched to cover the stage (packages/producer
+  drives a slotted <video>'s own data-start/data-duration exactly like any
+  other clip -- this primitive never reads or sets currentTime itself). With
+  no slot, each side renders a plain chapter card so the tear reads on its own.
+
+  Variables (declared in data-composition-variables below):
+    - direction ("left-to-right" | "right-to-left", default "left-to-right"):
+      which way the tear travels.
+    - tone ("cream" | "kraft" | "white", default "cream"): color of the
+      exposed paper cross-section riding the tear.
+    - roughness (number 20-90, default 55): how jagged and fibrous the tear
+      edge is. Low reads as a clean deckle edge, high reads as roughly torn.
+
+  Envelope, fixed IN with elastic HOLD only (never timeScale):
+    IN_BASE = 1.0s  the tear sweeps fully across, taking the "from" layer:
+                    power2.in over the first 20% of travel (the paper resists),
+                    then power3.out once it gives
+    HOLD    = max(0, D - IN); "to" stands alone, truly still
+    If D < IN_BASE, IN compresses to D (no hold).
+
+  Determinism (closed-form field law): there is NO physics state. One edge
+  table (a low-frequency wander plus a per-vertex fibre jitter) is computed
+  exactly once during synchronous timeline construction from a fixed LCG seed
+  0x7a9e11cf. Every painted frame derives the tear's clip-paths, lift
+  transform and shadow as a pure function of (table, timeline time) inside a
+  single tween's onUpdate -- fresh strings, never an incremental mutation. No Math.random, no wall clock, no requestAnimationFrame.
+  Eventful seeks land identical frames in any order and either direction.
+
+  Mount contract: the runtime clones only this template. #root fills the
+  host box (no data-width/data-height, container-type: size, cqmin units),
+  is styled via #root only, and registers one paused timeline under the
+  LITERAL "torn-paper-rip" key.
+-->
+<html
+  lang="en"
+  data-composition-id="torn-paper-rip"
+  data-composition-duration="2.4"
+  data-composition-variables='[
+    { "id": "direction", "type": "enum", "role": "motion", "label": "Direction", "description": "Which way the tear travels across the frame.", "default": "left-to-right", "options": [{ "value": "left-to-right", "label": "Left to right" }, { "value": "right-to-left", "label": "Right to left" }] },
+    { "id": "tone", "type": "enum", "role": "style", "label": "Paper tone", "description": "Color of the exposed paper cross-section riding the tear.", "default": "cream", "options": [{ "value": "cream", "label": "Cream" }, { "value": "kraft", "label": "Kraft" }, { "value": "white", "label": "White" }] },
+    { "id": "roughness", "type": "number", "role": "style", "label": "Roughness", "description": "How jagged and fibrous the tear edge is. Low is a clean deckle edge, high is roughly torn.", "default": 55, "min": 20, "max": 90, "step": 1 }
+  ]'
+>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Torn Paper Rip</title>
+  </head>
+  <body>
+    <template>
+      <div id="root" data-composition-id="torn-paper-rip" data-duration="2.4" data-fps="30">
+        <style>
+          *,
+          *::before,
+          *::after {
+            box-sizing: border-box;
+          }
+
+          #root {
+            position: absolute;
+            inset: 0;
+            overflow: hidden;
+            container-type: size;
+            isolation: isolate;
+            color: var(--fg, #1d1b16);
+            font-family: var(--font-display, "Inter", system-ui, sans-serif);
+          }
+
+          .tpr-clip {
+            position: absolute;
+            inset: 0;
+            overflow: hidden;
+            background: var(--bg, transparent);
+          }
+
+          .tpr-stage {
+            position: absolute;
+            inset: 0;
+          }
+
+          .tpr-layer {
+            position: absolute;
+            inset: 0;
+            overflow: hidden;
+          }
+
+          .tpr-layer > img,
+          .tpr-layer > video {
+            display: block;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+          }
+
+          /* .tpr-from carries the per-frame lift transform and drop-shadow.
+             Filter and clip-path never share an element: CSS applies filter
+             first, so a clip on the same node would clip the shadow away. */
+
+          .tpr-from-clip {
+            position: absolute;
+            inset: 0;
+            overflow: hidden;
+          }
+
+          .tpr-from-clip > img,
+          .tpr-from-clip > video {
+            display: block;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+          }
+
+          .tpr-rim {
+            position: absolute;
+            inset: 0;
+            filter: blur(0.12cqmin);
+          }
+
+          .tpr-rim-shape {
+            position: absolute;
+            inset: 0;
+            background: var(--tpr-rim-color, #f6f1e7);
+          }
+
+          .tpr-rim-grain {
+            position: absolute;
+            inset: 0;
+            filter: url(#tpr-grain-filter);
+            opacity: 0.5;
+            mix-blend-mode: multiply;
+          }
+
+          .tpr-default {
+            position: absolute;
+            inset: 0;
+            display: grid;
+            place-items: center;
+          }
+
+          .tpr-default-mark {
+            font-size: 5cqmin;
+            font-weight: 700;
+            letter-spacing: 0.3em;
+            text-transform: uppercase;
+            opacity: 0.5;
+          }
+
+          .tpr-from .tpr-default {
+            background: #f4f4f5;
+            color: #111318;
+          }
+
+          .tpr-to .tpr-default {
+            background: #111318;
+            color: #f4f4f5;
+          }
+        </style>
+
+        <div
+          id="torn-paper-rip-clip"
+          class="tpr-clip clip"
+          data-start="0"
+          data-duration="2.4"
+          data-track-index="0"
+        >
+          <svg aria-hidden="true" width="0" height="0" style="position: absolute">
+            <defs>
+              <!-- Seeded static paper grain: fixed seed, never animated, so
+                   it adds tooth to the exposed rim without touching
+                   determinism (same recipe as ink-bleed-reveal). -->
+              <filter
+                id="tpr-grain-filter"
+                x="0%"
+                y="0%"
+                width="100%"
+                height="100%"
+                color-interpolation-filters="sRGB"
+              >
+                <feTurbulence
+                  type="fractalNoise"
+                  baseFrequency="0.9"
+                  numOctaves="2"
+                  seed="27"
+                  stitchTiles="stitch"
+                  result="noise"
+                />
+                <feColorMatrix
+                  in="noise"
+                  type="matrix"
+                  values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0.18 0.18 0.18 0 0"
+                />
+              </filter>
+            </defs>
+          </svg>
+
+          <div class="tpr-stage">
+            <div class="tpr-layer tpr-to" id="tpr-to">
+              <div class="tpr-default">
+                <span class="tpr-default-mark" aria-hidden="true">Chapter two</span>
+              </div>
+            </div>
+            <div class="tpr-layer tpr-from" id="tpr-from">
+              <div class="tpr-rim">
+                <div class="tpr-rim-shape" id="tpr-rim">
+                  <div class="tpr-rim-grain"></div>
+                </div>
+              </div>
+              <div class="tpr-from-clip" id="tpr-from-clip">
+                <div class="tpr-default">
+                  <span class="tpr-default-mark" aria-hidden="true">Chapter one</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+        <script>
+          (function () {
+            "use strict";
+
+            var root = document.getElementById("root");
+            var fromLayer = document.getElementById("tpr-from");
+            var fromClip = document.getElementById("tpr-from-clip");
+            var toLayer = document.getElementById("tpr-to");
+            var rimLayer = document.getElementById("tpr-rim");
+
+            var vars =
+              window.__hyperframes && window.__hyperframes.getVariables
+                ? window.__hyperframes.getVariables()
+                : {};
+
+            var direction = vars.direction === "right-to-left" ? "right-to-left" : "left-to-right";
+
+            var rimColors = {
+              cream: "#f6f1e7",
+              kraft: "#d8c29c",
+              white: "#fbfaf8",
+            };
+            var tone = Object.prototype.hasOwnProperty.call(rimColors, vars.tone)
+              ? vars.tone
+              : "cream";
+            root.style.setProperty("--tpr-rim-color", rimColors[tone]);
+
+            var roughnessValue = parseFloat(vars.roughness);
+            var roughness = Number.isFinite(roughnessValue)
+              ? Math.min(90, Math.max(20, roughnessValue))
+              : 55;
+            var roughnessNorm = (roughness - 20) / 70;
+
+            // Slots. Caller templates live at the host document level (the
+            // mount wipes host-clip children, and templates never render),
+            // so the lookup deliberately goes through ownerDocument.
+            var hostDoc = root.ownerDocument;
+            function mountSlot(slotName, layer) {
+              var tpl = null;
+              try {
+                tpl = hostDoc.querySelector('template[data-slot="' + slotName + '"]');
+              } catch (error) {
+                tpl = null;
+              }
+              if (!tpl) return;
+              var defaultMark = layer.querySelector(".tpr-default");
+              if (defaultMark) defaultMark.remove();
+              layer.appendChild(hostDoc.importNode(tpl.content, true));
+            }
+            mountSlot("torn-paper-rip-from", fromClip);
+            mountSlot("torn-paper-rip-to", toLayer);
+
+            // Envelope: fixed IN, elastic HOLD, never time-scaled.
+            var IN_BASE = 1.0;
+            var duration = Math.max(0.001, parseFloat(root.dataset.duration || "2.4"));
+            var IN = Math.min(IN_BASE, duration);
+
+            // Edge table, built once. Sizes are px at 1920 wide, stored as %
+            // of width: a low-frequency wander (~40 px at roughness 55), a
+            // 2-4 px per-vertex fibre, and a 6-14 px paper-core band.
+            var PX = 100 / 1920;
+            var ROWS = 180;
+            var WANDER_PX = 22 + roughnessNorm * 36;
+            var FIBRE_PX = 2 + roughnessNorm * 2;
+            var DIAGONAL_PCT = 1 + roughnessNorm * 4;
+            var RIM_MIN_PX = 6;
+            var RIM_MAX_PX = 14;
+
+            var state = 0x7a9e11cf;
+            function rand() {
+              state = (Math.imul(1664525, state) + 1013904223) >>> 0;
+              return state / 4294967296;
+            }
+            // Seeded value noise over [0, 1] with smoothstep between knots.
+            function valueNoise(knots) {
+              var k = [];
+              for (var i = 0; i <= knots; i += 1) k.push(rand() * 2 - 1);
+              return function (v) {
+                var f = v * knots;
+                var i = Math.min(knots - 1, Math.floor(f));
+                var u = f - i;
+                u = u * u * (3 - 2 * u);
+                return k[i] + (k[i + 1] - k[i]) * u;
+              };
+            }
+            var wander = valueNoise(6);
+            var coreWidth = valueNoise(14);
+            var edge = [];
+            for (var r = 0; r <= ROWS; r += 1) {
+              var v = r / ROWS;
+              var rimPx = RIM_MIN_PX + (RIM_MAX_PX - RIM_MIN_PX) * (coreWidth(v) * 0.5 + 0.5);
+              rimPx = Math.min(
+                RIM_MAX_PX,
+                Math.max(RIM_MIN_PX, rimPx + (rand() * 2 - 1) * FIBRE_PX),
+              );
+              edge.push({
+                y: (v * 100).toFixed(2) + "%",
+                offset:
+                  (v - 0.5) * DIAGONAL_PCT +
+                  (wander(v) * WANDER_PX + (rand() * 2 - 1) * FIBRE_PX) * PX,
+                rim: rimPx * PX,
+              });
+            }
+
+            var maxOffset = edge.reduce(function (m, row) {
+              return Math.max(m, Math.abs(row.offset));
+            }, 0);
+            // Clears the worst row plus the core band and its feather, so no
+            // edge is on screen at p=0 or p=1.
+            var MARGIN = maxOffset + RIM_MAX_PX * PX + 0.5;
+            // side: which side of the boundary still shows "from" (ltr tears
+            // from the left, so "from" lives on the right; rtl mirrors).
+            var side = direction === "left-to-right" ? "right" : "left";
+            var START = side === "right" ? -MARGIN : 100 + MARGIN;
+            var END = side === "right" ? 100 + MARGIN : -MARGIN;
+            var CORNER_X = side === "right" ? "100%" : "0%";
+            var RIM_SIGN = side === "right" ? -1 : 1;
+            var LIFT_SIGN = -RIM_SIGN;
+            fromLayer.style.transformOrigin = CORNER_X + " 100%";
+
+            // power2.in over the first 20% of travel in 30% of the time,
+            // then power3.out; the speed jump is the paper giving way.
+            var RESIST_T = 0.3;
+            function tearEase(p) {
+              if (p < RESIST_T) return 0.2 * Math.pow(p / RESIST_T, 2);
+              return 0.2 + 0.8 * (1 - Math.pow(1 - (p - RESIST_T) / (1 - RESIST_T), 3));
+            }
+
+            function paint(p) {
+              var e = tearEase(Math.max(0, Math.min(1, p)));
+              var bx = START + (END - START) * e;
+
+              var fromPts = CORNER_X + " 0%, " + CORNER_X + " 100%";
+              var rimPts = fromPts;
+              for (var i = ROWS; i >= 0; i -= 1) {
+                var row = edge[i];
+                var x = bx + row.offset;
+                fromPts += ", " + x.toFixed(2) + "% " + row.y;
+                rimPts += ", " + (x + RIM_SIGN * row.rim).toFixed(2) + "% " + row.y;
+              }
+              fromClip.style.clipPath = "polygon(" + fromPts + ")";
+              rimLayer.style.clipPath = "polygon(" + rimPts + ")";
+
+              // The sheet lifts toward the tear: up to 3% travel, 1.5deg,
+              // and a shadow growing to 0 12px 24px (1080 tall).
+              fromLayer.style.transform =
+                "translateX(" +
+                (LIFT_SIGN * 3 * e).toFixed(3) +
+                "%) rotate(" +
+                (LIFT_SIGN * 1.5 * e).toFixed(3) +
+                "deg)";
+              fromLayer.style.filter =
+                "drop-shadow(0 " +
+                (1.111 * e).toFixed(3) +
+                "cqmin " +
+                (2.222 * e).toFixed(3) +
+                "cqmin rgba(0, 0, 0, 0.25))";
+            }
+
+            paint(0);
+
+            var tl = gsap.timeline({
+              paused: true,
+              onUpdate: function () {
+                paint(this.progress());
+              },
+            });
+            tl.to({}, { duration: IN, ease: "none" }, 0);
+            tl.seek(0);
+
+            window.__timelines = window.__timelines || {};
+            window.__timelines["torn-paper-rip"] = tl;
+          })();
+        </script>
+      </div>
+    </template>
+  </body>
+</html>

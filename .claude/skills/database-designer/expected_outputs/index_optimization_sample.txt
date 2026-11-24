@@ -1,0 +1,60 @@
+DATABASE INDEX OPTIMIZATION REPORT
+==================================================
+
+ANALYSIS SUMMARY
+----------------
+Tables Analyzed: 6
+Query Patterns: 15
+Existing Indexes: 12
+New Recommendations: 8
+High Priority: 4
+Redundancy Issues: 2
+
+HIGH PRIORITY RECOMMENDATIONS (4)
+----------------------------------
+1. orders: Optimize multi-column WHERE conditions: user_id, status, created_at
+   Columns: user_id, status, created_at
+   Benefit: Very High
+   SQL: CREATE INDEX idx_orders_user_status_created ON orders (user_id, status, created_at);
+
+2. products: Optimize WHERE category_id = AND is_active = queries
+   Columns: category_id, is_active
+   Benefit: High
+   SQL: CREATE INDEX idx_products_category_active ON products (category_id, is_active);
+
+3. order_items: Optimize JOIN with products table on product_id
+   Columns: product_id
+   Benefit: High (frequent JOINs)
+   SQL: CREATE INDEX idx_order_items_product_join ON order_items (product_id);
+
+4. product_reviews: Covering index for WHERE + ORDER BY optimization
+   Columns: product_id, created_at
+   Benefit: High (eliminates table lookups for SELECT)
+   SQL: CREATE INDEX idx_product_reviews_covering_product_created ON product_reviews (product_id, created_at) INCLUDE (rating, review_text);
+
+REDUNDANCY ISSUES (2)
+---------------------
+• DUPLICATE: Indexes 'idx_users_email' and 'unique_users_email' are identical
+  Recommendation: Drop one of the duplicate indexes
+  SQL: DROP INDEX idx_users_email;
+
+• OVERLAPPING: Index 'idx_products_category' overlaps 85% with 'idx_products_category_active'
+  Recommendation: Consider dropping 'idx_products_category' as it's largely covered by 'idx_products_category_active'
+  SQL: DROP INDEX idx_products_category;
+
+PERFORMANCE IMPACT ANALYSIS
+----------------------------
+Queries to be optimized: 12
+High impact optimizations: 6
+Estimated insert overhead: 40%
+
+RECOMMENDED CREATE INDEX STATEMENTS
+------------------------------------
+1. CREATE INDEX idx_orders_user_status_created ON orders (user_id, status, created_at);
+2. CREATE INDEX idx_products_category_active ON products (category_id, is_active);
+3. CREATE INDEX idx_order_items_product_join ON order_items (product_id);
+4. CREATE INDEX idx_product_reviews_covering_product_created ON product_reviews (product_id, created_at) INCLUDE (rating, review_text);
+5. CREATE INDEX idx_products_price_brand ON products (price, brand);
+6. CREATE INDEX idx_orders_status_created ON orders (status, created_at);
+7. CREATE INDEX idx_categories_parent_active ON categories (parent_id, is_active);
+8. CREATE INDEX idx_product_reviews_user_created ON product_reviews (user_id, created_at);

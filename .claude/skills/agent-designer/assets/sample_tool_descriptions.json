@@ -1,0 +1,545 @@
+{
+  "tools": [
+    {
+      "name": "web_search",
+      "purpose": "Search the web for information on specified topics with customizable filters and result limits",
+      "category": "search",
+      "inputs": [
+        {
+          "name": "query",
+          "type": "string",
+          "description": "Search query string to find relevant information",
+          "required": true,
+          "min_length": 1,
+          "max_length": 500,
+          "examples": ["artificial intelligence trends", "climate change impact", "python programming tutorial"]
+        },
+        {
+          "name": "limit",
+          "type": "integer",
+          "description": "Maximum number of search results to return",
+          "required": false,
+          "default": 10,
+          "minimum": 1,
+          "maximum": 100
+        },
+        {
+          "name": "language",
+          "type": "string",
+          "description": "Language code for search results",
+          "required": false,
+          "default": "en",
+          "enum": ["en", "es", "fr", "de", "it", "pt", "zh", "ja"]
+        },
+        {
+          "name": "time_range",
+          "type": "string",
+          "description": "Time range filter for search results",
+          "required": false,
+          "enum": ["any", "day", "week", "month", "year"]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "results",
+          "type": "array",
+          "description": "Array of search result objects",
+          "items": {
+            "type": "object",
+            "properties": {
+              "title": {"type": "string"},
+              "url": {"type": "string"},
+              "snippet": {"type": "string"},
+              "relevance_score": {"type": "number"}
+            }
+          }
+        },
+        {
+          "name": "total_found",
+          "type": "integer",
+          "description": "Total number of results available"
+        }
+      ],
+      "error_conditions": [
+        "Invalid query format",
+        "Network timeout",
+        "API rate limit exceeded",
+        "No results found",
+        "Service unavailable"
+      ],
+      "side_effects": [
+        "Logs search query for analytics",
+        "May cache results temporarily"
+      ],
+      "idempotent": true,
+      "rate_limits": {
+        "requests_per_minute": 60,
+        "requests_per_hour": 1000,
+        "burst_limit": 10
+      },
+      "dependencies": [
+        "search_api_service",
+        "content_filter_service"
+      ],
+      "examples": [
+        {
+          "description": "Basic web search",
+          "input": {
+            "query": "machine learning algorithms",
+            "limit": 5
+          },
+          "expected_output": {
+            "results": [
+              {
+                "title": "Introduction to Machine Learning Algorithms",
+                "url": "https://example.com/ml-intro",
+                "snippet": "Machine learning algorithms are computational methods...",
+                "relevance_score": 0.95
+              }
+            ],
+            "total_found": 1250
+          }
+        }
+      ],
+      "security_requirements": [
+        "Query sanitization",
+        "Rate limiting by user",
+        "Content filtering"
+      ]
+    },
+    {
+      "name": "data_analyzer",
+      "purpose": "Analyze structured data and generate statistical insights, trends, and visualizations",
+      "category": "data",
+      "inputs": [
+        {
+          "name": "data",
+          "type": "object",
+          "description": "Structured data to analyze in JSON format",
+          "required": true,
+          "properties": {
+            "columns": {"type": "array"},
+            "rows": {"type": "array"}
+          }
+        },
+        {
+          "name": "analysis_type",
+          "type": "string",
+          "description": "Type of analysis to perform",
+          "required": true,
+          "enum": ["descriptive", "correlation", "trend", "distribution", "outlier_detection"]
+        },
+        {
+          "name": "target_column",
+          "type": "string",
+          "description": "Primary column to focus analysis on",
+          "required": false
+        },
+        {
+          "name": "include_visualization",
+          "type": "boolean",
+          "description": "Whether to generate visualization data",
+          "required": false,
+          "default": true
+        }
+      ],
+      "outputs": [
+        {
+          "name": "insights",
+          "type": "array",
+          "description": "Array of analytical insights and findings"
+        },
+        {
+          "name": "statistics",
+          "type": "object",
+          "description": "Statistical measures and metrics"
+        },
+        {
+          "name": "visualization_data",
+          "type": "object",
+          "description": "Data formatted for visualization creation"
+        }
+      ],
+      "error_conditions": [
+        "Invalid data format",
+        "Insufficient data points",
+        "Missing required columns",
+        "Data type mismatch",
+        "Analysis timeout"
+      ],
+      "side_effects": [
+        "May create temporary analysis files",
+        "Logs analysis parameters for optimization"
+      ],
+      "idempotent": true,
+      "rate_limits": {
+        "requests_per_minute": 30,
+        "requests_per_hour": 500,
+        "burst_limit": 5
+      },
+      "dependencies": [
+        "statistics_engine",
+        "visualization_service"
+      ],
+      "examples": [
+        {
+          "description": "Basic descriptive analysis",
+          "input": {
+            "data": {
+              "columns": ["age", "salary", "department"],
+              "rows": [
+                [25, 50000, "engineering"],
+                [30, 60000, "engineering"],
+                [28, 55000, "marketing"]
+              ]
+            },
+            "analysis_type": "descriptive",
+            "target_column": "salary"
+          },
+          "expected_output": {
+            "insights": [
+              "Average salary is $55,000",
+              "Salary range: $50,000 - $60,000",
+              "Engineering department has higher average salary"
+            ],
+            "statistics": {
+              "mean": 55000,
+              "median": 55000,
+              "std_dev": 5000
+            }
+          }
+        }
+      ],
+      "security_requirements": [
+        "Data anonymization",
+        "Access control validation"
+      ]
+    },
+    {
+      "name": "document_processor",
+      "purpose": "Process and extract information from various document formats including PDFs, Word docs, and plain text",
+      "category": "file",
+      "inputs": [
+        {
+          "name": "document_url",
+          "type": "string",
+          "description": "URL or path to the document to process",
+          "required": true,
+          "pattern": "^(https?://|file://|/)"
+        },
+        {
+          "name": "processing_mode",
+          "type": "string",
+          "description": "How to process the document",
+          "required": false,
+          "default": "full_text",
+          "enum": ["full_text", "summary", "key_points", "metadata_only"]
+        },
+        {
+          "name": "output_format",
+          "type": "string",
+          "description": "Desired output format",
+          "required": false,
+          "default": "json",
+          "enum": ["json", "markdown", "plain_text"]
+        },
+        {
+          "name": "language_detection",
+          "type": "boolean",
+          "description": "Whether to detect document language",
+          "required": false,
+          "default": true
+        }
+      ],
+      "outputs": [
+        {
+          "name": "content",
+          "type": "string",
+          "description": "Extracted and processed document content"
+        },
+        {
+          "name": "metadata",
+          "type": "object",
+          "description": "Document metadata including author, creation date, etc."
+        },
+        {
+          "name": "language",
+          "type": "string",
+          "description": "Detected language of the document"
+        },
+        {
+          "name": "word_count",
+          "type": "integer",
+          "description": "Total word count in the document"
+        }
+      ],
+      "error_conditions": [
+        "Document not found",
+        "Unsupported file format",
+        "Document corrupted or unreadable",
+        "Access permission denied",
+        "Document too large"
+      ],
+      "side_effects": [
+        "May download and cache documents temporarily",
+        "Creates processing logs for debugging"
+      ],
+      "idempotent": true,
+      "rate_limits": {
+        "requests_per_minute": 20,
+        "requests_per_hour": 300,
+        "burst_limit": 3
+      },
+      "dependencies": [
+        "document_parser_service",
+        "language_detection_service",
+        "file_storage_service"
+      ],
+      "examples": [
+        {
+          "description": "Process PDF document for full text extraction",
+          "input": {
+            "document_url": "https://example.com/research-paper.pdf",
+            "processing_mode": "full_text",
+            "output_format": "markdown"
+          },
+          "expected_output": {
+            "content": "# Research Paper Title\n\nAbstract: This paper discusses...",
+            "metadata": {
+              "author": "Dr. Smith",
+              "creation_date": "2024-01-15",
+              "pages": 15
+            },
+            "language": "en",
+            "word_count": 3500
+          }
+        }
+      ],
+      "security_requirements": [
+        "URL validation",
+        "File type verification",
+        "Malware scanning",
+        "Access control enforcement"
+      ]
+    },
+    {
+      "name": "notification_sender",
+      "purpose": "Send notifications via multiple channels including email, SMS, and webhooks",
+      "category": "communication",
+      "inputs": [
+        {
+          "name": "recipients",
+          "type": "array",
+          "description": "List of recipient identifiers",
+          "required": true,
+          "min_items": 1,
+          "max_items": 100,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$|^\\+?[1-9]\\d{1,14}$"
+          }
+        },
+        {
+          "name": "message",
+          "type": "string",
+          "description": "Message content to send",
+          "required": true,
+          "min_length": 1,
+          "max_length": 10000
+        },
+        {
+          "name": "channel",
+          "type": "string",
+          "description": "Communication channel to use",
+          "required": false,
+          "default": "email",
+          "enum": ["email", "sms", "webhook", "push"]
+        },
+        {
+          "name": "priority",
+          "type": "string",
+          "description": "Message priority level",
+          "required": false,
+          "default": "normal",
+          "enum": ["low", "normal", "high", "urgent"]
+        },
+        {
+          "name": "template_id",
+          "type": "string",
+          "description": "Optional template ID for formatting",
+          "required": false
+        }
+      ],
+      "outputs": [
+        {
+          "name": "delivery_status",
+          "type": "object",
+          "description": "Status of message delivery to each recipient"
+        },
+        {
+          "name": "message_id",
+          "type": "string",
+          "description": "Unique identifier for the sent message"
+        },
+        {
+          "name": "delivery_timestamp",
+          "type": "string",
+          "description": "ISO timestamp when message was sent"
+        }
+      ],
+      "error_conditions": [
+        "Invalid recipient format",
+        "Message too long",
+        "Channel service unavailable",
+        "Authentication failure",
+        "Rate limit exceeded for channel"
+      ],
+      "side_effects": [
+        "Sends actual notifications to recipients",
+        "Logs delivery attempts and results",
+        "Updates delivery statistics"
+      ],
+      "idempotent": false,
+      "rate_limits": {
+        "requests_per_minute": 100,
+        "requests_per_hour": 2000,
+        "burst_limit": 20
+      },
+      "dependencies": [
+        "email_service",
+        "sms_service",
+        "webhook_service"
+      ],
+      "examples": [
+        {
+          "description": "Send email notification",
+          "input": {
+            "recipients": ["user@example.com"],
+            "message": "Your report has been completed and is ready for review.",
+            "channel": "email",
+            "priority": "normal"
+          },
+          "expected_output": {
+            "delivery_status": {
+              "user@example.com": "delivered"
+            },
+            "message_id": "msg_12345",
+            "delivery_timestamp": "2024-01-15T10:30:00Z"
+          }
+        }
+      ],
+      "security_requirements": [
+        "Recipient validation",
+        "Message content filtering",
+        "Rate limiting per user",
+        "Delivery confirmation"
+      ]
+    },
+    {
+      "name": "task_scheduler",
+      "purpose": "Schedule and manage delayed or recurring tasks within the agent system",
+      "category": "compute",
+      "inputs": [
+        {
+          "name": "task_definition",
+          "type": "object",
+          "description": "Definition of the task to be scheduled",
+          "required": true,
+          "properties": {
+            "action": {"type": "string"},
+            "parameters": {"type": "object"},
+            "retry_policy": {"type": "object"}
+          }
+        },
+        {
+          "name": "schedule",
+          "type": "object",
+          "description": "Scheduling parameters for the task",
+          "required": true,
+          "properties": {
+            "type": {"type": "string", "enum": ["once", "recurring"]},
+            "execute_at": {"type": "string"},
+            "recurrence_pattern": {"type": "string"}
+          }
+        },
+        {
+          "name": "priority",
+          "type": "integer",
+          "description": "Task priority (1-10, higher is more urgent)",
+          "required": false,
+          "default": 5,
+          "minimum": 1,
+          "maximum": 10
+        }
+      ],
+      "outputs": [
+        {
+          "name": "task_id",
+          "type": "string",
+          "description": "Unique identifier for the scheduled task"
+        },
+        {
+          "name": "next_execution",
+          "type": "string",
+          "description": "ISO timestamp of next scheduled execution"
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "description": "Current status of the scheduled task"
+        }
+      ],
+      "error_conditions": [
+        "Invalid schedule format",
+        "Past execution time specified",
+        "Task queue full",
+        "Invalid task definition",
+        "Scheduling service unavailable"
+      ],
+      "side_effects": [
+        "Creates scheduled tasks in the system",
+        "May consume system resources for task storage",
+        "Updates scheduling metrics"
+      ],
+      "idempotent": false,
+      "rate_limits": {
+        "requests_per_minute": 50,
+        "requests_per_hour": 1000,
+        "burst_limit": 10
+      },
+      "dependencies": [
+        "task_scheduler_service",
+        "task_executor_service"
+      ],
+      "examples": [
+        {
+          "description": "Schedule a one-time report generation",
+          "input": {
+            "task_definition": {
+              "action": "generate_report",
+              "parameters": {
+                "report_type": "monthly_summary",
+                "recipients": ["manager@example.com"]
+              }
+            },
+            "schedule": {
+              "type": "once",
+              "execute_at": "2024-02-01T09:00:00Z"
+            },
+            "priority": 7
+          },
+          "expected_output": {
+            "task_id": "task_67890",
+            "next_execution": "2024-02-01T09:00:00Z",
+            "status": "scheduled"
+          }
+        }
+      ],
+      "security_requirements": [
+        "Task definition validation",
+        "User authorization for scheduling",
+        "Resource limit enforcement"
+      ]
+    }
+  ]
+}

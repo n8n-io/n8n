@@ -1,0 +1,1018 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Processing Toolkit Demo</title>
+    <style>
+        :root {
+            --bg-dark: #0f0f1a;
+            --bg-card: #1a1a2e;
+            --bg-card-hover: #252542;
+            --accent-primary: #4ecdc4;
+            --accent-secondary: #ff6b6b;
+            --accent-tertiary: #ffd93d;
+            --accent-purple: #a855f7;
+            --text: #f0f0f0;
+            --text-muted: #888;
+            --border: #333;
+            --gradient-1: linear-gradient(135deg, #4ecdc4 0%, #44a8b3 100%);
+            --gradient-2: linear-gradient(135deg, #ff6b6b 0%, #ee5a5a 100%);
+            --gradient-3: linear-gradient(135deg, #a855f7 0%, #9333ea 100%);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            background: var(--bg-dark);
+            color: var(--text);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        /* Header */
+        header {
+            background: linear-gradient(180deg, var(--bg-card) 0%, var(--bg-dark) 100%);
+            padding: 3rem 2rem;
+            text-align: center;
+            border-bottom: 1px solid var(--border);
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+        }
+
+        header p {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /* Navigation */
+        nav {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            padding: 1.5rem;
+            background: var(--bg-card);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            border-bottom: 1px solid var(--border);
+            flex-wrap: wrap;
+        }
+
+        nav a {
+            color: var(--text-muted);
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            transition: all 0.2s;
+            font-size: 0.9rem;
+        }
+
+        nav a:hover, nav a.active {
+            color: var(--text);
+            background: var(--bg-card-hover);
+        }
+
+        /* Main content */
+        main {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        section {
+            margin-bottom: 4rem;
+            scroll-margin-top: 80px;
+        }
+
+        section h2 {
+            font-size: 1.8rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        section h2 .icon {
+            font-size: 1.5rem;
+        }
+
+        /* Feature cards grid */
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .feature-card {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 1.5rem;
+            border: 1px solid var(--border);
+            transition: all 0.3s;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--accent-primary);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .feature-card h3 {
+            font-size: 1.2rem;
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .feature-card p {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            margin-bottom: 1rem;
+        }
+
+        /* Code blocks */
+        .code-block {
+            background: #0d0d15;
+            border-radius: 8px;
+            padding: 1rem;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: 0.85rem;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+        }
+
+        .code-block .comment {
+            color: #6a9955;
+        }
+
+        .code-block .command {
+            color: var(--accent-primary);
+        }
+
+        .code-block .flag {
+            color: var(--accent-secondary);
+        }
+
+        .code-block .string {
+            color: var(--accent-tertiary);
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 0.5rem;
+        }
+
+        .tab {
+            padding: 0.5rem 1rem;
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+
+        .tab:hover, .tab.active {
+            color: var(--text);
+            background: var(--bg-card-hover);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Demo visualization */
+        .demo-viz {
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 2rem;
+            margin: 1.5rem 0;
+            border: 1px solid var(--border);
+        }
+
+        /* Audio waveform viz */
+        .waveform {
+            height: 100px;
+            background: linear-gradient(180deg, transparent 49%, var(--border) 49%, var(--border) 51%, transparent 51%);
+            position: relative;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .waveform-bar {
+            position: absolute;
+            bottom: 50%;
+            width: 3px;
+            background: var(--accent-primary);
+            transform-origin: bottom;
+            animation: wave 1s ease-in-out infinite;
+        }
+
+        @keyframes wave {
+            0%, 100% { transform: scaleY(0.3); }
+            50% { transform: scaleY(1); }
+        }
+
+        /* Quality meter */
+        .quality-meter {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem;
+            background: var(--bg-card-hover);
+            border-radius: 8px;
+            margin: 0.5rem 0;
+        }
+
+        .quality-bar {
+            flex: 1;
+            height: 12px;
+            background: linear-gradient(90deg, var(--accent-secondary) 0%, var(--accent-tertiary) 50%, var(--accent-primary) 100%);
+            border-radius: 6px;
+            position: relative;
+        }
+
+        .quality-marker {
+            position: absolute;
+            top: -4px;
+            width: 4px;
+            height: 20px;
+            background: white;
+            border-radius: 2px;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+        }
+
+        .quality-label {
+            font-weight: 600;
+            font-size: 1.5rem;
+            min-width: 60px;
+            text-align: center;
+        }
+
+        /* Timeline visualization */
+        .timeline {
+            background: var(--bg-card-hover);
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 1rem 0;
+        }
+
+        .timeline-track {
+            height: 40px;
+            background: var(--bg-dark);
+            border-radius: 4px;
+            margin: 0.5rem 0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .timeline-clip {
+            position: absolute;
+            height: 100%;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            padding: 0 0.5rem;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .clip-video { background: var(--gradient-1); }
+        .clip-audio { background: var(--gradient-2); }
+        .clip-graphic { background: var(--gradient-3); }
+
+        /* Thumbnail grid */
+        .thumbnail-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 1rem;
+        }
+
+        .thumbnail {
+            aspect-ratio: 16/9;
+            background: linear-gradient(135deg, var(--bg-card-hover), var(--bg-dark));
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            border: 2px solid transparent;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .thumbnail:hover {
+            border-color: var(--accent-primary);
+            transform: scale(1.05);
+        }
+
+        .thumbnail.selected {
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 20px rgba(78, 205, 196, 0.3);
+        }
+
+        .thumbnail .score {
+            position: absolute;
+            bottom: 4px;
+            right: 4px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+        }
+
+        /* Animation preview */
+        .animation-preview {
+            height: 200px;
+            background: var(--bg-dark);
+            border-radius: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .lower-third {
+            position: absolute;
+            bottom: 30px;
+            left: 0;
+            right: 0;
+            height: 80px;
+            background: rgba(26, 26, 46, 0.9);
+            display: flex;
+            align-items: center;
+            padding-left: 20px;
+            animation: slideIn 0.5s ease-out;
+        }
+
+        .lower-third::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 6px;
+            background: var(--accent-primary);
+        }
+
+        .lower-third-content h4 {
+            font-size: 1.2rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .lower-third-content p {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(-100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: var(--gradient-1);
+            color: var(--bg-dark);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(78, 205, 196, 0.3);
+        }
+
+        .btn-secondary {
+            background: var(--bg-card-hover);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-card);
+            border-color: var(--accent-primary);
+        }
+
+        /* Copy button */
+        .copy-btn {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            padding: 0.4rem 0.8rem;
+            font-size: 0.75rem;
+            background: var(--bg-card-hover);
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .copy-btn:hover {
+            color: var(--text);
+            border-color: var(--accent-primary);
+        }
+
+        .copy-btn.copied {
+            color: var(--accent-primary);
+            border-color: var(--accent-primary);
+        }
+
+        /* Code container */
+        .code-container {
+            position: relative;
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-muted);
+            border-top: 1px solid var(--border);
+            margin-top: 4rem;
+        }
+
+        footer a {
+            color: var(--accent-primary);
+            text-decoration: none;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            header h1 { font-size: 2rem; }
+            .feature-grid { grid-template-columns: 1fr; }
+            nav { gap: 0.5rem; }
+            nav a { padding: 0.4rem 0.8rem; font-size: 0.85rem; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>🎬 Video Processing Toolkit</h1>
+        <p>Professional video editing, quality assessment, motion graphics, and audio mixing powered by FFmpeg</p>
+    </header>
+
+    <nav>
+        <a href="#motion-graphics" class="active">Motion Graphics</a>
+        <a href="#quality">Quality Assessment</a>
+        <a href="#thumbnails">Thumbnails</a>
+        <a href="#timelapse">Time-Lapse</a>
+        <a href="#audio">Audio Mixing</a>
+    </nav>
+
+    <main>
+        <!-- Motion Graphics Section -->
+        <section id="motion-graphics">
+            <h2><span class="icon">✨</span> Motion Graphics & Animation</h2>
+
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <h3>🎬 Lower Thirds</h3>
+                    <p>Professional animated name plates with multiple styles: modern, minimal, corporate, creative.</p>
+
+                    <div class="animation-preview">
+                        <div class="lower-third">
+                            <div class="lower-third-content">
+                                <h4>Jane Smith</h4>
+                                <p>Senior Product Designer</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="code-container">
+                        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                        <div class="code-block">
+<span class="command">python</span> motion_graphics.py lower-third \
+  <span class="flag">--text</span> <span class="string">"Jane Smith"</span> \
+  <span class="flag">--subtitle</span> <span class="string">"Senior Product Designer"</span> \
+  <span class="flag">--style</span> modern \
+  <span class="flag">-o</span> lower_third.mov
+                        </div>
+                    </div>
+                </div>
+
+                <div class="feature-card">
+                    <h3>📝 Text Animations</h3>
+                    <p>Animated text effects including fade, typewriter, and bounce animations.</p>
+
+                    <div class="tabs">
+                        <button class="tab active" onclick="switchTab(event, 'fade')">Fade</button>
+                        <button class="tab" onclick="switchTab(event, 'typewriter')">Typewriter</button>
+                        <button class="tab" onclick="switchTab(event, 'bounce')">Bounce</button>
+                    </div>
+
+                    <div id="fade" class="tab-content active">
+                        <div class="code-container">
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                            <div class="code-block">
+<span class="command">python</span> motion_graphics.py text-animate \
+  <span class="flag">--text</span> <span class="string">"Welcome"</span> \
+  <span class="flag">--style</span> fade \
+  <span class="flag">--duration</span> 5 \
+  <span class="flag">-o</span> title.mov
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="typewriter" class="tab-content">
+                        <div class="code-container">
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                            <div class="code-block">
+<span class="command">python</span> motion_graphics.py text-animate \
+  <span class="flag">--text</span> <span class="string">"Hello World"</span> \
+  <span class="flag">--style</span> typewriter \
+  <span class="flag">-o</span> typewriter.mov
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="bounce" class="tab-content">
+                        <div class="code-container">
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                            <div class="code-block">
+<span class="command">python</span> motion_graphics.py text-animate \
+  <span class="flag">--text</span> <span class="string">"EPIC"</span> \
+  <span class="flag">--style</span> bounce \
+  <span class="flag">--font-size</span> 120 \
+  <span class="flag">-o</span> bounce.mov
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="feature-card">
+                    <h3>📊 Progress Bars & Timers</h3>
+                    <p>Animated progress indicators and countdown timers for videos.</p>
+
+                    <div class="demo-viz">
+                        <div style="background: #333; height: 20px; border-radius: 10px; overflow: hidden;">
+                            <div style="width: 65%; height: 100%; background: var(--gradient-1); animation: progress 3s ease-in-out infinite;"></div>
+                        </div>
+                        <p style="text-align: center; margin-top: 1rem; font-size: 3rem; font-weight: bold;">00:47</p>
+                    </div>
+
+                    <div class="code-container">
+                        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                        <div class="code-block">
+<span class="comment"># Progress bar</span>
+<span class="command">python</span> motion_graphics.py progress-bar \
+  <span class="flag">--duration</span> 30 <span class="flag">-o</span> progress.mov
+
+<span class="comment"># Countdown timer</span>
+<span class="command">python</span> motion_graphics.py countdown \
+  <span class="flag">--duration</span> 10 <span class="flag">-o</span> countdown.mov
+                        </div>
+                    </div>
+                </div>
+
+                <div class="feature-card">
+                    <h3>🖼️ Logo Overlay & Watermarks</h3>
+                    <p>Add logos with positioning, scaling, opacity, and animation effects.</p>
+
+                    <div class="code-container">
+                        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                        <div class="code-block">
+<span class="command">python</span> motion_graphics.py logo-overlay \
+  <span class="flag">--video</span> input.mp4 \
+  <span class="flag">--logo</span> logo.png \
+  <span class="flag">--position</span> bottom-right \
+  <span class="flag">--scale</span> 0.15 \
+  <span class="flag">--opacity</span> 0.8 \
+  <span class="flag">-o</span> branded.mp4
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Quality Assessment Section -->
+        <section id="quality">
+            <h2><span class="icon">📊</span> Video Quality Assessment</h2>
+
+            <div class="demo-viz">
+                <h3 style="margin-bottom: 1rem;">Quality Metrics Dashboard</h3>
+
+                <div class="quality-meter">
+                    <span>VMAF</span>
+                    <div class="quality-bar">
+                        <div class="quality-marker" style="left: 87%;"></div>
+                    </div>
+                    <span class="quality-label" style="color: var(--accent-primary);">87.2</span>
+                </div>
+
+                <div class="quality-meter">
+                    <span>PSNR</span>
+                    <div class="quality-bar">
+                        <div class="quality-marker" style="left: 78%;"></div>
+                    </div>
+                    <span class="quality-label">42.1 dB</span>
+                </div>
+
+                <div class="quality-meter">
+                    <span>SSIM</span>
+                    <div class="quality-bar">
+                        <div class="quality-marker" style="left: 95%;"></div>
+                    </div>
+                    <span class="quality-label" style="color: var(--accent-primary);">0.971</span>
+                </div>
+
+                <p style="text-align: center; margin-top: 1.5rem; font-size: 0.9rem; color: var(--text-muted);">
+                    Grade: <strong style="color: var(--accent-primary); font-size: 1.5rem;">A</strong> — Excellent quality, minimal artifacts
+                </p>
+            </div>
+
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <h3>🎯 Compare Videos</h3>
+                    <p>Compare encoded video against reference using VMAF, PSNR, and SSIM metrics.</p>
+
+                    <div class="code-container">
+                        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                        <div class="code-block">
+<span class="command">python</span> quality_assessment.py compare \
+  <span class="flag">--reference</span> original.mp4 \
+  <span class="flag">--distorted</span> encoded.mp4 \
+  <span class="flag">--format</span> html \
+  <span class="flag">-o</span> report.html
+                        </div>
+                    </div>
+                </div>
+
+                <div class="feature-card">
+                    <h3>📈 Batch Analysis</h3>
+                    <p>Compare multiple encodes against a reference to find optimal settings.</p>
+
+                    <div class="code-container">
+                        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                        <div class="code-block">
+<span class="command">python</span> quality_assessment.py batch \
+  <span class="flag">--reference</span> master.mp4 \
+  <span class="flag">--dir</span> ./encodes/ \
+  <span class="flag">--format</span> json
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Thumbnails Section -->
+        <section id="thumbnails">
+            <h2><span class="icon">🖼️</span> Smart Thumbnail Generation</h2>
+
+            <div class="demo-viz">
+                <h3 style="margin-bottom: 1rem;">Auto-Selected Best Frames</h3>
+                <div class="thumbnail-grid">
+                    <div class="thumbnail selected">📷<span class="score">0.92</span></div>
+                    <div class="thumbnail">📷<span class="score">0.87</span></div>
+                    <div class="thumbnail">📷<span class="score">0.84</span></div>
+                    <div class="thumbnail">📷<span class="score">0.81</span></div>
+                    <div class="thumbnail">📷<span class="score">0.79</span></div>
+                    <div class="thumbnail">📷<span class="score">0.76</span></div>
+                </div>
+                <p style="text-align: center; margin-top: 1rem; color: var(--text-muted); font-size: 0.9rem;">
+                    Frames scored by sharpness, contrast, brightness, and colorfulness
+                </p>
+            </div>
+
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <h3>🤖 Auto-Select Best</h3>
+                    <p>Automatically find the most visually appealing frame using quality analysis.</p>
+
+                    <div class="code-container">
+                        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                        <div class="code-block">
+<span class="command">python</span> thumbnail_generator.py auto \
+  <span class="flag">--video</span> input.mp4 \
+  <span class="flag">-o</span> thumbnail.jpg
+                        </div>
+                    </div>
+                </div>
+
+                <div class="feature-card">
+                    <h3>🎬 Scene Detection</h3>
+                    <p>Extract thumbnails at every scene change for key moments.</p>
+
+                    <div class="code-container">
+                        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                        <div class="code-block">
+<span class="command">python</span> thumbnail_generator.py scenes \
+  <span class="flag">--video</span> input.mp4 \
+  <span class="flag">--threshold</span> 0.3 \
+  <span class="flag">--output-dir</span> ./scenes/
+                        </div>
+                    </div>
+                </div>
+
+                <div class="feature-card">
+                    <h3>📊 Contact Sheet</h3>
+                    <p>Generate a grid overview of the entire video at regular intervals.</p>
+
+                    <div class="code-container">
+                        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                        <div class="code-block">
+<span class="command">python</span> thumbnail_generator.py grid \
+  <span class="flag">--video</span> input.mp4 \
+  <span class="flag">--cols</span> 4 <span class="flag">--rows</span> 3 \
+  <span class="flag">-o</span> contact_sheet.jpg
+                        </div>
+                    </div>
+                </div>
+
+                <div class="feature-card">
+                    <h3>🎞️ Animated GIF</h3>
+                    <p>Create animated preview GIFs for social media and previews.</p>
+
+                    <div class="code-container">
+                        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                        <div class="code-block">
+<span class="command">python</span> thumbnail_generator.py gif \
+  <span class="flag">--video</span> input.mp4 \
+  <span class="flag">--duration</span> 3 \
+  <span class="flag">--fps</span> 10 \
+  <span class="flag">-o</span> preview.gif
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Time-Lapse Section -->
+        <section id="timelapse">
+            <h2><span class="icon">⏱️</span> Time-Lapse Creation</h2>
+
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <h3>📸 From Image Sequence</h3>
+                    <p>Create time-lapse from photos with optional deflicker for smooth exposure.</p>
+
+                    <div class="code-container">
+                        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                        <div class="code-block">
+<span class="command">python</span> timelapse_creator.py from-images \
+  <span class="flag">--input</span> ./photos/ \
+  <span class="flag">--fps</span> 30 \
+  <span class="flag">--deflicker</span> \
+  <span class="flag">-o</span> timelapse.mp4
+                        </div>
+                    </div>
+                </div>
+
+                <div class="feature-card">
+                    <h3>⏩ Speed Up Video</h3>
+                    <p>Convert regular video to time-lapse with optional motion blur.</p>
+
+                    <div class="code-container">
+                        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                        <div class="code-block">
+<span class="command">python</span> timelapse_creator.py from-video \
+  <span class="flag">--input</span> long_video.mp4 \
+  <span class="flag">--speed</span> 60 \
+  <span class="flag">--motion-blur</span> \
+  <span class="flag">-o</span> timelapse.mp4
+                        </div>
+                    </div>
+                </div>
+
+                <div class="feature-card">
+                    <h3>🎥 Hyperlapse</h3>
+                    <p>Create stabilized hyperlapse from walking or driving footage.</p>
+
+                    <div class="code-container">
+                        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                        <div class="code-block">
+<span class="command">python</span> timelapse_creator.py hyperlapse \
+  <span class="flag">--input</span> walking.mp4 \
+  <span class="flag">--speed</span> 8 \
+  <span class="flag">--stabilize</span> \
+  <span class="flag">-o</span> hyperlapse.mp4
+                        </div>
+                    </div>
+                </div>
+
+                <div class="feature-card">
+                    <h3>🌅 Ken Burns Effect</h3>
+                    <p>Elegant pan and zoom slideshow from still images.</p>
+
+                    <div class="code-container">
+                        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                        <div class="code-block">
+<span class="command">python</span> timelapse_creator.py ken-burns \
+  <span class="flag">--input</span> ./photos/ \
+  <span class="flag">--duration</span> 3 \
+  <span class="flag">--zoom</span> 1.2 \
+  <span class="flag">-o</span> slideshow.mp4
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Audio Section -->
+        <section id="audio">
+            <h2><span class="icon">🎵</span> Audio Ducking & Mixing</h2>
+
+            <div class="demo-viz">
+                <h3 style="margin-bottom: 1rem;">Audio Ducking Visualization</h3>
+                <div class="timeline">
+                    <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;">Voice Track</p>
+                    <div class="timeline-track">
+                        <div class="timeline-clip clip-audio" style="left: 5%; width: 20%;">Speaking</div>
+                        <div class="timeline-clip clip-audio" style="left: 35%; width: 25%;">Speaking</div>
+                        <div class="timeline-clip clip-audio" style="left: 70%; width: 15%;">Speaking</div>
+                    </div>
+                    <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0.5rem 0;">Music Track (Auto-Ducked)</p>
+                    <div class="timeline-track" style="background: linear-gradient(90deg,
+                        var(--accent-secondary) 0%, var(--accent-secondary) 5%,
+                        rgba(255,107,107,0.3) 5%, rgba(255,107,107,0.3) 25%,
+                        var(--accent-secondary) 25%, var(--accent-secondary) 35%,
+                        rgba(255,107,107,0.3) 35%, rgba(255,107,107,0.3) 60%,
+                        var(--accent-secondary) 60%, var(--accent-secondary) 70%,
+                        rgba(255,107,107,0.3) 70%, rgba(255,107,107,0.3) 85%,
+                        var(--accent-secondary) 85%, var(--accent-secondary) 100%
+                    );">
+                    </div>
+                </div>
+                <p style="text-align: center; color: var(--text-muted); font-size: 0.85rem;">
+                    Music automatically ducks when voice is detected
+                </p>
+            </div>
+
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <h3>🎙️ Auto-Ducking</h3>
+                    <p>Automatically lower music when dialogue is detected using sidechain compression.</p>
+
+                    <div class="code-container">
+                        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                        <div class="code-block">
+<span class="command">python</span> audio_mixer.py duck \
+  <span class="flag">--video</span> interview.mp4 \
+  <span class="flag">--music</span> background.mp3 \
+  <span class="flag">--ratio</span> 4 \
+  <span class="flag">-o</span> ducked.mp4
+                        </div>
+                    </div>
+                </div>
+
+                <div class="feature-card">
+                    <h3>🎛️ Multi-Track Mix</h3>
+                    <p>Mix multiple audio tracks with individual volume, pan, and timing control.</p>
+
+                    <div class="code-container">
+                        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                        <div class="code-block">
+<span class="command">python</span> audio_mixer.py mix \
+  <span class="flag">--video</span> video.mp4 \
+  <span class="flag">--tracks</span> dialogue.wav music.mp3 sfx.wav \
+  <span class="flag">--volumes</span> 1.0 0.3 0.5 \
+  <span class="flag">-o</span> mixed.mp4
+                        </div>
+                    </div>
+                </div>
+
+                <div class="feature-card">
+                    <h3>📏 Loudness Normalization</h3>
+                    <p>Normalize audio to broadcast standards (EBU R128) for consistent playback.</p>
+
+                    <div class="code-container">
+                        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                        <div class="code-block">
+<span class="command">python</span> audio_mixer.py normalize \
+  <span class="flag">--video</span> input.mp4 \
+  <span class="flag">--target</span> -16 \
+  <span class="flag">-o</span> normalized.mp4
+                        </div>
+                    </div>
+                </div>
+
+                <div class="feature-card">
+                    <h3>🎚️ EQ Presets</h3>
+                    <p>Apply optimized EQ presets for voice, music, podcasts, and more.</p>
+
+                    <div class="code-container">
+                        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                        <div class="code-block">
+<span class="comment"># Available presets: voice, music, podcast, warm, bright</span>
+<span class="command">python</span> audio_mixer.py eq \
+  <span class="flag">--video</span> input.mp4 \
+  <span class="flag">--preset</span> podcast \
+  <span class="flag">-o</span> output.mp4
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>Built with FFmpeg • Part of the <a href="https://someclaudeskills.com">Some Claude Skills</a> collection</p>
+        <p style="margin-top: 0.5rem; font-size: 0.85rem;">All processing runs locally — no cloud services required</p>
+    </footer>
+
+    <script>
+        // Tab switching
+        function switchTab(event, tabId) {
+            const container = event.target.closest('.feature-card');
+            container.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            container.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            event.target.classList.add('active');
+            container.querySelector(`#${tabId}`).classList.add('active');
+        }
+
+        // Copy code
+        function copyCode(btn) {
+            const code = btn.nextElementSibling.textContent;
+            navigator.clipboard.writeText(code.trim()).then(() => {
+                btn.textContent = 'Copied!';
+                btn.classList.add('copied');
+                setTimeout(() => {
+                    btn.textContent = 'Copy';
+                    btn.classList.remove('copied');
+                }, 2000);
+            });
+        }
+
+        // Smooth scroll for nav links
+        document.querySelectorAll('nav a').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const target = document.querySelector(link.getAttribute('href'));
+                target.scrollIntoView({ behavior: 'smooth' });
+
+                document.querySelectorAll('nav a').forEach(l => l.classList.remove('active'));
+                link.classList.add('active');
+            });
+        });
+
+        // Update active nav on scroll
+        window.addEventListener('scroll', () => {
+            const sections = document.querySelectorAll('section');
+            let current = '';
+
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop;
+                if (scrollY >= sectionTop - 100) {
+                    current = section.getAttribute('id');
+                }
+            });
+
+            document.querySelectorAll('nav a').forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('href') === `#${current}`) {
+                    link.classList.add('active');
+                }
+            });
+        });
+
+        // Animate waveform bars
+        const waveform = document.querySelector('.waveform');
+        if (waveform) {
+            for (let i = 0; i < 50; i++) {
+                const bar = document.createElement('div');
+                bar.className = 'waveform-bar';
+                bar.style.left = `${i * 2}%`;
+                bar.style.height = `${20 + Math.random() * 60}%`;
+                bar.style.animationDelay = `${Math.random() * 1}s`;
+                waveform.appendChild(bar);
+            }
+        }
+    </script>
+</body>
+</html>

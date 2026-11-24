@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="assets/gsap.min.js"></script>
+    <style>
+      @font-face { font-family: "Poppins"; font-weight: 600; src: url(assets/fonts/poppins-600.woff2) format("woff2"); }
+      @font-face { font-family: "Poppins"; font-weight: 800; src: url(assets/fonts/poppins-800.woff2) format("woff2"); }
+      @font-face { font-family: "Caveat"; font-weight: 700; src: url(assets/fonts/Caveat-700-latin.woff2) format("woff2"); }
+      @font-face { font-family: "Playfair"; font-weight: 900; src: url(assets/fonts/PlayfairDisplay-900.woff2) format("woff2"); }
+      :root { --blue: #1f88c9; --ink: #141414; --hw-ink: #1f88c9; --red: #d6332a; }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1080px; height: 1920px; overflow: hidden; background: #f6f3ec; }
+      #root { position: relative; width: 100%; height: 100%; overflow: hidden; font-family: "Poppins", sans-serif; color: var(--ink); }
+      .layer { position: absolute; inset: 0; z-index: 0; }
+      .sheet { position: absolute; inset: 0; overflow: hidden; }
+      .paper { position: absolute; inset: 0; background: url(assets/paper.jpg) center / cover; }
+      .blue { position: absolute; inset: 0; background: var(--blue); }
+      .blue::after { content: ""; position: absolute; inset: 0; background: url(assets/paper.jpg) center / cover; mix-blend-mode: multiply; opacity: 0.55; }
+      .rim { position: absolute; inset: 0; background: #fbfaf8; }
+
+      .np { position: absolute; background: #fbf8f1; padding: 22px 22px 26px; box-shadow: 0 1px 1px rgba(0,0,0,0.06), 0 16px 28px rgba(40,30,10,0.16); }
+      .np .hd { display: block; font-family: "Playfair", serif; font-weight: 900; line-height: 1.02; letter-spacing: -1px; color: var(--ink); }
+      .np .hd > span { display: block; white-space: nowrap; }
+      .np .ph { display: block; width: 100%; object-fit: cover; }
+      .np .cap { display: block; font-family: "Caveat", cursive; font-weight: 700; font-size: 58px; line-height: 1; color: var(--ink); margin-top: 12px; white-space: nowrap; }
+      .tape { position: absolute; width: 130px; height: 36px; background: rgba(236, 226, 196, 0.85); box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+        clip-path: polygon(0% 8%, 6% 0%, 12% 10%, 20% 2%, 30% 8%, 42% 0%, 55% 6%, 68% 0%, 80% 9%, 90% 1%, 100% 8%, 97% 50%, 100% 92%, 90% 100%, 78% 92%, 64% 100%, 50% 93%, 36% 100%, 22% 92%, 10% 100%, 0% 92%, 3% 50%); }
+      .stamp { position: absolute; display: block; font-family: "Poppins", sans-serif; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; color: var(--red); border: 7px solid var(--red); border-radius: 10px; padding: 6px 18px; white-space: nowrap; mix-blend-mode: multiply; }
+      .big { position: absolute; left: 76px; display: block; font-family: "Playfair", serif; font-weight: 900; line-height: 1.02; letter-spacing: -2px; color: var(--ink); }
+      .big > span { display: block; white-space: nowrap; }
+      .w { display: inline !important; }
+      .note { position: absolute; display: block; font-family: "Caveat", cursive; font-weight: 700; color: var(--blue); white-space: nowrap; line-height: 1; }
+      .hw-mark { position: absolute; pointer-events: none; }
+      .hw-mark svg { width: 100%; height: 100%; overflow: visible; }
+      .hw-mark path { fill: none; stroke: var(--hw-ink); stroke-width: 7; stroke-linecap: round; stroke-linejoin: round; }
+
+      #phone { position: absolute; left: 250px; top: 560px; width: 580px; height: 900px; border-radius: 70px; background: #141414; padding: 20px; box-shadow: 0 30px 50px rgba(40,30,10,0.3); }
+      #phone .scr { position: relative; width: 100%; height: 100%; border-radius: 52px; overflow: hidden; background: #fff; }
+      #phone .bar { display: flex; align-items: center; gap: 14px; height: 130px; padding: 38px 32px 0; background: var(--blue); color: #fff; font-weight: 800; font-size: 42px; }
+      #phone .bar img { width: 46px; display: block; }
+      #phone .shop { display: flex; align-items: center; gap: 22px; padding: 28px 32px 18px; }
+      #phone .shop img { width: 120px; height: 120px; border-radius: 50%; object-fit: cover; display: block; border: 4px solid #e8e8e8; }
+      #phone .shop b { display: block; font-weight: 800; font-size: 40px; white-space: nowrap; }
+      #phone .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; padding: 6px 32px; }
+      #phone .grid img { width: 100%; height: 290px; object-fit: cover; border-radius: 18px; display: block; }
+      #phone .btn { position: absolute; left: 32px; right: 32px; bottom: 60px; height: 104px; border-radius: 52px; background: var(--blue); color: #fff; font-weight: 800; font-size: 36px; white-space: nowrap; display: flex; align-items: center; justify-content: center; }
+      #phone .ok { background: #1f9d55; }
+      #tap { position: absolute; width: 96px; height: 96px; border-radius: 50%; border: 6px solid #141414; left: 222px; top: 650px; }
+
+      #end .icon { position: absolute; left: 395px; top: 400px; width: 290px; display: block; }
+      #endShop { position: absolute; left: 0; right: 0; top: 820px; display: block; text-align: center; font-family: "Playfair", serif; font-weight: 900; font-size: 104px; letter-spacing: -2px; color: #fff; white-space: nowrap; line-height: 1.05; }
+      #endSub { position: absolute; left: 0; right: 0; top: 1050px; display: block; text-align: center; font-family: "Caveat", cursive; font-weight: 700; font-size: 66px; color: #fff; white-space: nowrap; }
+      #ctaWrap { position: absolute; left: 0; right: 0; top: 1160px; display: flex; justify-content: center; }
+      #cta { display: block; padding: 30px 70px; border-radius: 999px; background: #fff; color: var(--blue); font-weight: 800; font-size: 58px; white-space: nowrap; }
+      #fine { position: absolute; left: 0; right: 0; top: 1350px; display: block; text-align: center; font-weight: 600; font-size: 34px; color: rgba(255,255,255,0.92); white-space: nowrap; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="13.5" data-width="1080" data-height="1920">
+      <audio id="bgm" src="assets/bgm.wav" data-start="0" data-duration="13.5" data-track-index="11"></audio>
+      <div id="scene" class="clip layer" data-start="0" data-duration="13.5" data-track-index="0">
+        <div class="sheet" id="end">
+          <div class="blue"></div>
+          <img class="icon" src="assets/icon_white.png" alt="" />
+          <div id="endShop">Le Don Divin<br />est sur PitUp.</div>
+          <div id="endSub">Commande sur</div>
+          <div id="ctaWrap"><div id="cta">pi-tup.com</div></div>
+          <div id="fine">Livraison PitUp · Paiement à la livraison</div>
+        </div>
+        <div class="sheet" id="p1Wrap"><div class="rim" id="p1Rim"></div><div class="sheet" id="p1"><div class="paper"></div><div id="s1" class="layer"></div></div></div>
+      </div>
+    </div>
+
+    <script src="assets/hw.js"></script>
+    <script>
+     Promise.all(["900 100px Playfair","700 80px Caveat","800 60px Poppins","600 30px Poppins"].map((f) => document.fonts.load(f))).then(() => document.fonts.ready).then(() => {
+      const tl = gsap.timeline({ paused: true });
+      let seed = 0x5e11;
+      const rnd = () => { seed = (Math.imul(1664525, seed) + 1013904223) >>> 0; return seed / 4294967296; };
+      const $ = (id) => document.getElementById(id);
+      const V = (t) => t + 0.4;   // voice-file seconds -> film seconds
+
+      // ---------- builders (same paper language as the Journal film) ----------
+      function jag(el) {
+        const w = el.offsetWidth, h = el.offsetHeight, pts = [], st = 16, j = () => (rnd() * 5).toFixed(1);
+        for (let x = 0; x <= w; x += st) pts.push(`${x}px ${j()}px`);
+        for (let y = 0; y <= h; y += st) pts.push(`${w - j()}px ${y}px`);
+        for (let x = w; x >= 0; x -= st) pts.push(`${x}px ${h - j()}px`);
+        for (let y = h; y >= 0; y -= st) pts.push(`${j()}px ${y}px`);
+        el.style.clipPath = `polygon(${pts.join(",")})`;
+      }
+      function clipping(parent, id, o) {
+        const d = document.createElement("div"); d.className = "np"; d.id = id;
+        d.style.left = o.x + "px"; d.style.top = o.y + "px"; d.style.width = o.w + "px";
+        d.innerHTML = (o.hd ? `<div class="hd" style="font-size:${o.size}px">${o.hd.map((l) => `<span>${l}</span>`).join("")}</div>` : "") +
+          (o.img ? `<img class="ph" src="${o.img}" style="height:${o.ih}px;object-position:${o.pos || "50% 50%"}" alt="">` : "") + (o.cap ? `<div class="cap">${o.cap}</div>` : "");
+        parent.appendChild(d); jag(d);
+        const tp = document.createElement("div"); tp.className = "tape"; tp.id = id + "T"; parent.appendChild(tp);
+        gsap.set(tp, { left: o.x + o.w / 2 - 65 + (rnd() - 0.5) * 60, top: o.y - 18, rotation: (rnd() - 0.5) * 10 });
+        gsap.set([d, tp], { opacity: 0 });
+        return d;
+      }
+      function slap(id, at, rot) {
+        tl.fromTo("#" + id, { opacity: 0, y: -50, scale: 1.12, rotation: rot - 8 }, { opacity: 1, y: 0, scale: 1, rotation: rot, duration: 0.3, ease: "back.out(1.5)" }, at);
+        tl.fromTo("#" + id + "T", { opacity: 0, scale: 1.4 }, { opacity: 1, scale: 1, duration: 0.16, ease: "power2.out" }, at + 0.14);
+      }
+      function pull(ids, at) {
+        ids.forEach((id, k) => {
+          const dir = k % 2 ? 1 : -1, sel = $(id + "T") ? ["#" + id, "#" + id + "T"] : ["#" + id];
+          tl.to(sel, { x: dir * 1300, y: -120 - k * 40, rotation: dir * 25, duration: 0.42, ease: "power3.in" }, at + k * 0.04);
+        });
+      }
+      function text(parent, id, cls, html, css) {
+        const d = document.createElement("div"); d.className = cls; d.id = id; d.innerHTML = html; Object.assign(d.style, css); parent.appendChild(d); gsap.set(d, { opacity: 0 }); return d;
+      }
+      function stamp(parent, id, label, css, at, rot) {
+        const d = text(parent, id, "stamp", label, css);
+        tl.fromTo(d, { opacity: 0, scale: 2.2, rotation: rot - 6 }, { opacity: 0.92, scale: 1, rotation: rot, duration: 0.18, ease: "power4.in" }, at);
+        tl.fromTo("#p1", { x: 0 }, { x: 6, duration: 0.04, yoyo: true, repeat: 3, ease: "none" }, at + 0.18);
+      }
+      function rel(el, anc) { let x = 0, y = 0, e = el; while (e && e !== anc) { x += e.offsetLeft; y += e.offsetTop; e = e.offsetParent; } return { left: x, top: y, width: el.offsetWidth, height: el.offsetHeight, bottom: y + el.offsetHeight }; }
+      let mk = 0;
+      function mark(parent, wordId, style, at, opt) {
+        const r = rel($(wordId), parent), id = "mk" + mk++, pad = style === "ellipse" ? 34 : 6;
+        const w = r.width + pad * 2, h = style === "ellipse" ? r.height + 40 : 40;
+        const d = document.createElement("div"); d.className = "hw-mark"; d.id = id;
+        const top = style === "ellipse" ? r.top - 20 : r.bottom - 8;
+        Object.assign(d.style, { left: r.left - pad + "px", top: top + "px", width: w + "px", height: h + "px" });
+        if (opt && opt.color) d.style.setProperty("--hw-ink", opt.color);
+        d.innerHTML = `<svg viewBox="0 0 ${w} ${h}"><path></path></svg>`; parent.appendChild(d);
+        d.querySelector("path").setAttribute("d", style === "ellipse" ? hwWobbleEllipse(w / 2, h / 2, w / 2 - 4, h / 2 - 4, 7 + mk, 0.07) : hwMarkPath(w, 40, style, 3 + mk));
+        gsap.set(d, { opacity: 0 }); tl.set(d, { opacity: 1 }, at);
+        hwMarkOn(tl, "#" + id, at, style === "ellipse" ? 0.45 : 0.35);
+        return id;
+      }
+      function tear(id, s, at, dur) {
+        const clipEl = $(id), rimEl = $(id + "Rim"), wrapEl = $(id + "Wrap");
+        let st = s >>> 0; const r = () => { st = (Math.imul(1664525, st) + 1013904223) >>> 0; return st / 4294967296; };
+        const noise = (k) => { const a = []; for (let i = 0; i <= k; i++) a.push(r() * 2 - 1); return (v) => { const f = v * k, i = Math.min(k - 1, Math.floor(f)); let u = f - i; u = u * u * (3 - 2 * u); return a[i] + (a[i + 1] - a[i]) * u; }; };
+        const ROWS = 160, PX = 100 / 1080, wander = noise(6), core = noise(14), edge = [];
+        for (let i = 0; i <= ROWS; i++) { const v = i / ROWS; edge.push({ y: (v * 100).toFixed(2) + "%", o: (v - 0.5) * 4 + (wander(v) * 46 + (r() * 2 - 1) * 3.5) * PX, rim: Math.min(16, Math.max(7, 7 + 9 * (core(v) * 0.5 + 0.5) + (r() * 2 - 1) * 3)) * PX }); }
+        const ease = (p) => (p < 0.3 ? 0.2 * Math.pow(p / 0.3, 2) : 0.2 + 0.8 * (1 - Math.pow(1 - (p - 0.3) / 0.7, 3)));
+        const paint = (p) => {
+          const e = ease(Math.max(0, Math.min(1, p))), bx = -12 + 124 * e;
+          let a = "100% 0%, 100% 100%", b = a;
+          for (let i = ROWS; i >= 0; i--) { const x = bx + edge[i].o; a += `, ${x.toFixed(2)}% ${edge[i].y}`; b += `, ${(x - edge[i].rim).toFixed(2)}% ${edge[i].y}`; }
+          clipEl.style.clipPath = `polygon(${a})`; rimEl.style.clipPath = `polygon(${b})`;
+          wrapEl.style.transform = `translateX(${(3 * e).toFixed(3)}%) rotate(${(1.5 * e).toFixed(3)}deg)`;
+          wrapEl.style.filter = `drop-shadow(0 ${(12 * e).toFixed(1)}px ${(24 * e).toFixed(1)}px rgba(0,0,0,0.25))`;
+          wrapEl.style.opacity = e >= 0.999 ? 0 : 1;
+        };
+        paint(0); const pr = { p: 0 };
+        tl.fromTo(pr, { p: 0 }, { p: 1, duration: dur, ease: "none", onUpdate: () => paint(pr.p) }, at);
+      }
+
+      const s1 = $("s1");
+
+      // "Boutique de la semaine :" — masthead lands big, then climbs to the top on the drop
+      const mast = text(s1, "mast", "big", `<span>Boutique</span><span>de la <span class="w" id="wSem">semaine</span></span>`, { top: "640px", fontSize: "150px", transformOrigin: "0% 0%" });
+      tl.fromTo("#mast > span:nth-child(1)", { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: 0.25, ease: "power3.out" }, V(0.06));
+      tl.set(mast, { opacity: 1 }, V(0.06));
+      tl.fromTo("#mast > span:nth-child(2)", { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: 0.25, ease: "power3.out" }, V(0.6));
+      const mSem = mark(s1, "wSem", "underline", V(0.95));
+      tl.to(mast, { y: -530, scale: 0.52, duration: 0.35, ease: "power3.inOut" }, V(1.3));
+      tl.to("#" + mSem, { opacity: 0, duration: 0.1 }, V(1.3));
+
+      // "Le Don Divin !" — the real shopfront, taped on the page, on the drop
+      clipping(s1, "cShop", { x: 120, y: 420, w: 840, img: "assets/facade.jpg", ih: 900, pos: "50% 40%" });
+      slap("cShop", V(1.42), -1.5);
+      text(s1, "shopName", "big", `<span id="wName">Le Don Divin</span>`, { top: "1480px", left: "120px", fontSize: "128px" });
+      tl.fromTo("#shopName", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.25, ease: "power3.out" }, V(1.55));
+      const mName = mark(s1, "wName", "underline", V(1.95));
+      text(s1, "realNote", "note", "la vraie boutique ↑", { left: "560px", top: "1650px", fontSize: "62px", transform: "rotate(-3deg)" });
+      tl.fromTo("#realNote", { opacity: 0, x: -16 }, { opacity: 1, x: 0, duration: 0.2 }, V(2.2));
+      pull(["cShop"], V(3.2)); tl.to(["#shopName", "#realNote", "#" + mName], { opacity: 0, y: -30, duration: 0.18, ease: "power2.in" }, V(3.2));
+
+      // "Des sandales, des culottes, du style…" — three real items from its catalogue, no prices
+      clipping(s1, "cA", { x: 60, y: 430, w: 500, img: "assets/prod/a.jpg", ih: 560, cap: "sandales", pos: "50% 60%" });
+      clipping(s1, "cC", { x: 520, y: 600, w: 500, img: "assets/prod/c.jpg", ih: 560, cap: "culottes", pos: "50% 50%" });
+      clipping(s1, "cB", { x: 240, y: 1270, w: 520, img: "assets/prod/b.jpg", ih: 420, cap: "du style…", pos: "50% 55%" });
+      slap("cA", V(3.39), -4); slap("cC", V(4.0), 4); slap("cB", V(4.74), -2);
+      pull(["cA", "cC", "cB"], V(5.6));
+
+      // "Tu choisis sur PitUp. On te livre. Et tu paies à la livraison."
+      tl.to(mast, { opacity: 0, y: -60, duration: 0.2 }, V(5.6));
+      const t1 = text(s1, "t1", "big", `<span>Tu choisis</span><span>sur <span class="w" style="color:#1f88c9">PitUp.</span></span>`, { top: "190px", fontSize: "130px" });
+      tl.fromTo(t1, { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.25, ease: "power3.out" }, V(5.85));
+      const items = ["a", "b", "c"].map((k) => `<img src="assets/prod/${k}.jpg" alt="">`).join("");
+      const ph = text(s1, "phone", "", `<div class="scr"><div class="bar"><img src="assets/icon_white.png" alt="">PitUp</div>
+        <div class="shop"><img src="assets/facade.jpg" alt=""><b>Le Don Divin</b></div><div class="grid">${items}</div>
+        <div class="btn" id="phBtn">Commander</div><div class="btn ok" id="phOk">✓ Commande envoyée</div><div id="tap"></div></div>`, {});
+      gsap.set(["#phOk", "#tap"], { opacity: 0 });
+      tl.fromTo(ph, { opacity: 0, y: 360, rotation: 8 }, { opacity: 1, y: 0, rotation: -3, duration: 0.45, ease: "power3.out" }, V(5.95));
+      tl.fromTo("#tap", { opacity: 1, scale: 0.4 }, { opacity: 0, scale: 1.6, duration: 0.35, ease: "power2.out" }, V(6.75));
+      tl.fromTo("#phOk", { opacity: 0, scale: 0.9 }, { opacity: 1, scale: 1, duration: 0.2, ease: "back.out(2)" }, V(6.85));
+      tl.to(t1, { opacity: 0, y: -30, duration: 0.15 }, V(7.1));
+      const t2 = text(s1, "t2", "big", `<span>On te livre.</span>`, { top: "250px", fontSize: "130px", color: "#1f88c9" });
+      tl.fromTo(t2, { opacity: 0, scale: 1.08 }, { opacity: 1, scale: 1, duration: 0.25, ease: "expo.out" }, V(7.2));
+      stamp(s1, "stPay", "Paiement à la livraison", { left: "110px", top: "1500px", fontSize: "58px" }, V(8.4), -6);
+
+      // "Sur pi-tup point com." — the page tears away to the end card
+      tear("p1", 0x2468ace1, V(9.6), 0.6);
+      tl.fromTo("#end .icon", { scale: 0.8, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.3, ease: "back.out(2)" }, V(9.95));
+      tl.fromTo("#endShop", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.3, ease: "power3.out" }, V(10.05));
+      tl.fromTo("#endSub", { opacity: 0 }, { opacity: 1, duration: 0.25 }, V(10.3));
+      tl.fromTo("#cta", { scale: 0.7, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.4, ease: "back.out(2)" }, V(10.45));
+      tl.fromTo("#fine", { opacity: 0 }, { opacity: 1, duration: 0.4 }, V(11.3));
+
+      hwBoil(tl, [".hw-mark", ".note"], { amp: 1.1, rot: 0.3, frameDrop: 3, seed: 9 });
+      window.__timelines["main"] = tl;
+      tl.seek(0);
+     });
+    </script>
+  </body>
+</html>

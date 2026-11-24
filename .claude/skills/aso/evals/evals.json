@@ -1,0 +1,104 @@
+{
+  "skill_name": "aso",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Here's our app on the App Store: https://apps.apple.com/us/app/example/id123456789. Can you audit our listing and tell me what to fix?",
+      "expected_output": "Should check for product-marketing.md first. Should detect this is an Apple App Store URL and run the full ASO audit workflow. Should fetch the listing and extract Apple-specific fields (title 30 chars, subtitle 30 chars, description, promotional text 170 chars, category, screenshots, video, ratings). Should classify the app's brand maturity tier (Dominant/Established/Challenger) before scoring. Should score all 6 dimensions (Title & Subtitle 20%, Description 15%, Visual Assets 25%, Ratings & Reviews 20%, Metadata & Freshness 10%, Conversion Signals 10%) with weighted total out of 100 and a grade. Should output a scorecard, top 3 quick wins, detailed findings, keyword suggestions, visual recommendations, and prioritized action plan with specific 'change X from Y to Z' recommendations including character counts.",
+      "assertions": [
+        "Checks for product-marketing.md",
+        "Identifies as Apple App Store URL",
+        "Classifies brand maturity tier",
+        "Scores all 6 dimensions with weights",
+        "Provides scorecard with grade",
+        "Lists top 3 quick wins",
+        "Recommendations include character counts",
+        "Recommendations are specific (X to Y format)"
+      ],
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "We're a small fintech startup with about 5,000 downloads. Our Play Store listing has a 2.8 rating and we haven't updated the description in 8 months. Help us figure out what to fix first.",
+      "expected_output": "Should recognize this as a Challenger-tier Google Play app. Should immediately flag the always-flag issues: rating below 4.0 (critical), last update >3 months ago. Should apply strict Challenger scoring against textbook best practices. Should focus on Google Play-specific guidance: full description is indexed for search (target 2-3% keyword density), no hidden keyword field, feature graphic required (1024x500), max 8 screenshots, Android Vitals affect ranking. Should prioritize fixing the rating issue (response strategy, in-app review prompts) and refreshing the description with keyword strategy. Should recommend updating the listing soon to break the >3 month stale signal.",
+      "assertions": [
+        "Identifies as Google Play app",
+        "Classifies as Challenger tier",
+        "Flags rating below 4.0",
+        "Flags stale update (>3 months)",
+        "Notes Google Play indexes full description",
+        "Mentions feature graphic requirement",
+        "Recommends keyword strategy in description",
+        "Prioritizes rating improvement"
+      ],
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "Instagram's App Store listing has just 'Instagram' as the title and barely any keywords. Should they fix that?",
+      "expected_output": "Should classify Instagram as a Dominant-tier app and apply tier-adjusted scoring. Should explain that brand-only titles are valid for Dominant apps (score 8+ if brand IS the keyword) because users search by brand name, not generic keywords. Should NOT flag this as a missed opportunity. Should explain the key principle: 'Is this a mistake or a deliberate choice by a team that has data I don't?' Should note that other dimensions (screenshots, description, what's new) are also evaluated against tier — lifestyle/brand photography and brief release notes are acceptable for Dominant apps. Should contrast with what would be a problem for a Challenger app.",
+      "assertions": [
+        "Classifies Instagram as Dominant tier",
+        "Explains brand-only titles are valid for Dominant",
+        "Does NOT flag the title as a problem",
+        "Contrasts Dominant vs Challenger treatment",
+        "Cites the 'mistake vs deliberate choice' principle"
+      ],
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "Compare our app https://apps.apple.com/us/app/ourapp/id111 against these two competitors: https://apps.apple.com/us/app/competitor1/id222 and https://apps.apple.com/us/app/competitor2/id333",
+      "expected_output": "Should run Phase 3 competitor comparison. Should fetch and score all three apps with the same 6-dimension framework. Should build a side-by-side comparison table highlighting where the user's app is weaker or stronger across each dimension. Should identify keyword gaps — terms competitors target that the user's app doesn't. Should produce a prioritized list of competitor-informed changes. Should call out platform-specific considerations consistently across all three apps.",
+      "assertions": [
+        "Scores all 3 apps with same framework",
+        "Builds comparison table",
+        "Identifies where user's app is weaker",
+        "Identifies keyword gaps vs competitors",
+        "Produces competitor-informed action list"
+      ],
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "We only have 3 screenshots and no preview video. Does this really matter that much?",
+      "expected_output": "Should explain that screenshot count and video presence are heavily weighted in the Visual Assets dimension (25% of total score). Should cite specific data: Apple allows up to 10 screenshots per device with the first 3 visible in search, and 90% of users never scroll past the 3rd. Should note Apple screenshot captions are indexed for search since June 2025. Should cite the conversion benchmark: app preview video delivers +20-40% conversion lift on iOS (do not infer Google Play video ROI from tap-to-play rates; previews may autoplay muted for up to 30 seconds depending on device, settings, network and placement). Should recommend adding 5-8 screenshots minimum with caption text, and a 15-30s preview video. Should flag fewer than 5 screenshots as an always-flag issue across all tiers.",
+      "assertions": [
+        "Notes Visual Assets is 25% of score",
+        "Cites first 3 screenshots are most important",
+        "Mentions screenshot caption indexing (Apple, 2025)",
+        "Cites video conversion lift benchmark",
+        "Describes conditional muted Google Play autoplay without asserting universal lower ROI",
+        "Recommends specific screenshot count and video specs",
+        "Flags <5 screenshots as always-flag issue"
+      ],
+      "files": []
+    },
+    {
+      "id": 6,
+      "prompt": "Should I run a Custom Product Page experiment on iOS for our paid search campaigns?",
+      "expected_output": "Should reference Apple-specific facts: Custom Product Pages (CPP) — up to 70 — appear in organic search since July 2025 with +5.9% average conversion lift. Should explain CPPs let you test variants of screenshots, video, and promotional text against specific traffic sources (e.g., paid search keywords). Should recommend matching CPP variants to the keyword intent for the campaign. Should cross-reference the ab-testing skill for proper experiment design and the ads skill for the campaign side. Should note this is an iOS-only feature (Google Play has Store Listing Experiments and Custom Store Listings as equivalents).",
+      "assertions": [
+        "Identifies Custom Product Pages as iOS-specific",
+        "Cites +5.9% conversion lift benchmark",
+        "Explains CPP can match traffic source intent",
+        "Cross-references ab-testing or ads skill",
+        "Notes Google Play equivalents"
+      ],
+      "files": []
+    },
+    {
+      "id": 7,
+      "prompt": "We are deciding whether to create a Google Play preview video. Our team says only 6% tap play, so video cannot be worth it. Should we skip it? What should the opening show if we test one?",
+      "expected_output": "Should correct the claim that Google Play preview videos never autoplay: they may autoplay inline, muted, for up to 30 seconds depending on device, settings, network and placement. Should not promise autoplay for every visitor or derive universal conversion lift or ROI from tap-to-play rates. Should recommend showing actual app use and value early without relying on audio, and testing the creative using own listing conversion results. Should preserve the possibility that skipping a video is rational for the specific product and budget.",
+      "assertions": [
+        "Corrects never-autoplay claim with conditional muted playback",
+        "Distinguishes tap-to-play from total exposure and conversion lift",
+        "Does not guarantee playback or a conversion improvement",
+        "Recommends early app demonstration understandable without sound",
+        "Uses product-specific evidence to decide whether to invest"
+      ],
+      "files": []
+    }
+  ]
+}

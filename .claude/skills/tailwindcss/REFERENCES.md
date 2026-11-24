@@ -1,0 +1,1 @@
+- Tailwind installation docs: https://tailwindcss.com/docs/installation
