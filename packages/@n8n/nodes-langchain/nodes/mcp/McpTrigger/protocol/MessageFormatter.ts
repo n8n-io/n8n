@@ -44,18 +44,19 @@ export interface CredentialGateElicitationOutcome {
 export class MessageFormatter {
 	static formatToolResult(result: unknown, isError = false, isFromMcpTool = false): McpToolResult {
 		let content: McpContentBlock[];
+		// Proxy mode hands us a JSON string, so parse before wrapping. A failed
+		// parse or a non-MCP value falls back to the original string, never the
+		// parsed value.
+		const parsed =
+			isFromMcpTool && typeof result === 'string' ? parseMcpToolResultString(result) : null;
+		const isErrorResult = isError || parsed?.isError === true;
 
 		if (isFromMcpTool && isMcpContentArray(result)) {
 			content = result; // pass-through
 		} else if (typeof result === 'object' && result !== null) {
 			content = [{ type: 'text' as const, text: JSON.stringify(result) }];
 		} else if (typeof result === 'string') {
-			// Proxy mode hands us a JSON string, so parse before wrapping. A failed
-			// parse or a non-MCP value falls back to the original string, never the
-			// parsed value.
-			const parsed = isFromMcpTool ? parseMcpToolResultString(result) : null;
 			content = parsed?.content ?? [{ type: 'text' as const, text: result }];
-			if (parsed?.isError) return { isError: true, content };
 		} else if (result === null || result === undefined) {
 			content = [{ type: 'text' as const, text: String(result) }];
 		} else if (
@@ -74,7 +75,7 @@ export class MessageFormatter {
 			];
 		}
 
-		return isError ? { isError: true, content } : { content };
+		return isErrorResult ? { isError: true, content } : { content };
 	}
 
 	static isErrorResult(result: unknown): boolean {

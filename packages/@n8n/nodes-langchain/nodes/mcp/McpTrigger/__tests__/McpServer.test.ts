@@ -817,6 +817,34 @@ describe('McpServer', () => {
 			// Should have attempted to send tools list via transport
 			expect(transport.send).toHaveBeenCalled();
 		});
+
+		it('should set isError on a proxied MCP Client tool error sent via SSE transport', async () => {
+			const sessionId = 'test-session';
+			const transport = createMockTransport(sessionId, 'sse');
+			const content = [{ type: 'text', text: 'Weather unknown at location' }];
+
+			await (
+				mcpServer as unknown as {
+					sessionManager: { registerSession: (...a: unknown[]) => Promise<void> };
+				}
+			).sessionManager.registerSession(sessionId, createMockServer(), transport, [
+				createMockTool('fail_tool', { metadata: { isFromToolkit: true } }),
+			]);
+			mcpServer.setExecutionStrategy(
+				new QueuedExecutionStrategy(mcpServer.getPendingCallsManager()),
+			);
+
+			mcpServer.handleWorkerResponse(
+				sessionId,
+				'msg-1',
+				JSON.stringify({ isError: true, content }),
+				'fail_tool',
+			);
+
+			expect(transport.send).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'msg-1', result: { isError: true, content } }),
+			);
+		});
 	});
 
 	describe('credential gate', () => {
