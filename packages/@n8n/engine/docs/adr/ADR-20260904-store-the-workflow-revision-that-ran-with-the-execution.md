@@ -62,8 +62,7 @@ the workflow once and content-addressing it across executions.
   both.
 - Sub-workflow and error-workflow executions are unsolved. The data plane cannot build a graph, so
   a child still needs the control plane to produce both its run graph and display projection.
-- The document lives as long as the execution row. The retention sweeper deletes the row of an
-  execution that ended more than the retention period ago, and the document goes with it.
+- The document lives as long as the execution row.
 
 ## Links
 
