@@ -3,17 +3,17 @@ import type { User } from '@n8n/db';
 import { NotFoundError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
-import type { SystemAgentExecutionService } from '@/modules/agents/system-agents/system-agent-execution.service';
+import type { SystemAgentThreadMetadataService } from '@/modules/agents/system-agents/system-agent-thread-metadata.service';
 
 import { AssistantRunDebugService } from '../assistant-run-debug.service';
 
 describe('AssistantRunDebugService', () => {
 	function setup(runDebugEnabled: boolean) {
 		const config = mock<InstanceAiConfig>({ runDebugEnabled });
-		const systemAgents = mock<SystemAgentExecutionService>();
+		const threadMetadata = mock<SystemAgentThreadMetadataService>();
 		const user = mock<User>({ id: 'user-1' });
-		const service = new AssistantRunDebugService(config, systemAgents);
-		return { service, systemAgents, user };
+		const service = new AssistantRunDebugService(config, threadMetadata);
+		return { service, threadMetadata, user };
 	}
 
 	it('returns undefined hooks and rejects debug lookups when runDebugEnabled is false', async () => {
@@ -32,7 +32,7 @@ describe('AssistantRunDebugService', () => {
 	});
 
 	it('captures step hooks and authorizes run/thread lookups when runDebugEnabled is true', async () => {
-		const { service, systemAgents, user } = setup(true);
+		const { service, threadMetadata, user } = setup(true);
 		const hooks = service.stepHooksForTurn({
 			runId: 'run-1',
 			threadId: 'thread-1',
@@ -49,12 +49,12 @@ describe('AssistantRunDebugService', () => {
 			threadId: 'thread-1',
 			steps: [],
 		});
-		expect(systemAgents.getUsableThread).toHaveBeenCalledTimes(1);
-		expect(systemAgents.getUsableThread).toHaveBeenCalledWith('assistant', user, 'thread-1');
+		expect(threadMetadata.readThread).toHaveBeenCalledTimes(1);
+		expect(threadMetadata.readThread).toHaveBeenCalledWith('assistant', user, 'thread-1');
 
 		const list = await service.listThreadDebugRuns(user, 'thread-1');
-		expect(systemAgents.getUsableThread).toHaveBeenCalledTimes(2);
-		expect(systemAgents.getUsableThread).toHaveBeenLastCalledWith('assistant', user, 'thread-1');
+		expect(threadMetadata.readThread).toHaveBeenCalledTimes(2);
+		expect(threadMetadata.readThread).toHaveBeenLastCalledWith('assistant', user, 'thread-1');
 		expect(list).toEqual([
 			expect.objectContaining({
 				runId: 'run-1',

@@ -10,7 +10,7 @@ import {
 	type RunDebugRecord,
 } from '@n8n/instance-ai';
 
-import { SystemAgentExecutionService } from '@/modules/agents/system-agents/system-agent-execution.service';
+import { SystemAgentThreadMetadataService } from '@/modules/agents/system-agents/system-agent-thread-metadata.service';
 
 import { ASSISTANT_AGENT_ID } from './assistant-turn-options';
 
@@ -24,7 +24,7 @@ export class AssistantRunDebugService {
 
 	constructor(
 		private readonly instanceAiConfig: InstanceAiConfig,
-		private readonly systemAgents: SystemAgentExecutionService,
+		private readonly threadMetadata: SystemAgentThreadMetadataService,
 	) {}
 
 	isEnabled(): boolean {
@@ -68,13 +68,13 @@ export class AssistantRunDebugService {
 		if (!record) {
 			throw new NotFoundError('Run debug record not found');
 		}
-		await this.systemAgents.getUsableThread(ASSISTANT_AGENT_ID, user, record.threadId);
+		await this.threadMetadata.readThread(ASSISTANT_AGENT_ID, user, record.threadId);
 		return record;
 	}
 
 	async listThreadDebugRuns(user: User, threadId: string) {
 		this.requireEnabled();
-		await this.systemAgents.getUsableThread(ASSISTANT_AGENT_ID, user, threadId);
+		await this.threadMetadata.readThread(ASSISTANT_AGENT_ID, user, threadId);
 		return this.buffer.listByThread(threadId).map((record: RunDebugRecord) => ({
 			runId: record.runId,
 			threadId: record.threadId,
