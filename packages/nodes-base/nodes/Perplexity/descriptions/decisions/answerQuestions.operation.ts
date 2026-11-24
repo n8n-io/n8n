@@ -44,7 +44,7 @@ const properties: INodeProperties[] = [
 		],
 		default: 'pplx-decider-latest',
 		description:
-			'The decision model to use. A versioned model does not change when an alias moves. A retired version routes to the version that replaces it.',
+			'The decision model to use. A versioned model does not change when an alias moves.',
 		routing: {
 			send: {
 				type: 'body',
@@ -215,7 +215,7 @@ const properties: INodeProperties[] = [
 		placeholder:
 			'e.g. {"defect": {"type": "noul", "instructions": "Does the review report a defect?"}}',
 		description:
-			'A JSON object that maps each question name to a question with a type, instructions, and criteria',
+			'A JSON object that maps each question name to a question. Each question has a type and, depending on the type, instructions and criteria.',
 		displayOptions: {
 			show: {
 				defineQuestions: ['json'],
@@ -230,24 +230,6 @@ const properties: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Max Staleness',
-				name: 'maxStaleness',
-				type: 'number',
-				default: 86400,
-				typeOptions: {
-					minValue: 0,
-					numberPrecision: 0,
-				},
-				description:
-					'Maximum age, in seconds since its last crawl, of the page fetched when the state is a single URL. An older copy is crawled again. Used only when Mode is Web Grounding. Without this option, a stored copy of any age is used.',
-				routing: {
-					send: {
-						type: 'body',
-						property: 'max_staleness',
-					},
-				},
-			},
-			{
 				displayName: 'Mode',
 				name: 'mode',
 				type: 'options',
@@ -261,7 +243,7 @@ const properties: INodeProperties[] = [
 				],
 				default: 'web_grounding',
 				description:
-					'How the API gathers evidence beyond the state. Each web search or successful URL fetch is billed.',
+					'How the API gathers evidence beyond the state. Web searches and URL fetches are billed.',
 				routing: {
 					send: {
 						type: 'body',

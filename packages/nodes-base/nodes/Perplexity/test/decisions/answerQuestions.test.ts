@@ -156,7 +156,7 @@ describe('Perplexity Node - Decisions', () => {
 	};
 
 	harness.setupTest({
-		description: 'should send the mode and max staleness options and omit empty instructions',
+		description: 'should send the mode option and omit empty instructions',
 		input: {
 			workflowData: workflow({
 				state: 'https://example.com/pricing',
@@ -170,7 +170,7 @@ describe('Perplexity Node - Decisions', () => {
 						},
 					],
 				},
-				options: { mode: 'web_grounding', maxStaleness: 3600 },
+				options: { mode: 'web_grounding' },
 			}),
 		},
 		output: { nodeData: { Decision: [[{ json: groundedResponse }]] } },
@@ -192,7 +192,6 @@ describe('Perplexity Node - Decisions', () => {
 							},
 						},
 						mode: 'web_grounding',
-						max_staleness: 3600,
 					},
 					responseBody: groundedResponse,
 				},
