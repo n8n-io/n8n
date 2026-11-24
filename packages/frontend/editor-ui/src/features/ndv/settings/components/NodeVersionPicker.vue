@@ -19,7 +19,9 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 
+// Stays set after the dialog closes, so the title keeps the version during the close animation.
 const pendingVersion = ref<number>();
+const isConfirmOpen = ref(false);
 
 const label = computed(() =>
 	i18n.baseText('nodeSettings.versionPicker.label', { interpolate: { node: props.nodeName } }),
@@ -54,15 +56,17 @@ const items = computed(() => {
 function onSelect(version: SelectValue | undefined) {
 	if (typeof version !== 'number' || version === props.currentVersion) return;
 	pendingVersion.value = version;
+	isConfirmOpen.value = true;
 }
 
 function onConfirm() {
-	if (pendingVersion.value !== undefined) emit('update', pendingVersion.value);
-	pendingVersion.value = undefined;
+	if (!isConfirmOpen.value || pendingVersion.value === undefined) return;
+	isConfirmOpen.value = false;
+	emit('update', pendingVersion.value);
 }
 
 function onOpenChange(open: boolean) {
-	if (!open) pendingVersion.value = undefined;
+	if (!open) isConfirmOpen.value = false;
 }
 </script>
 
@@ -102,7 +106,7 @@ function onOpenChange(open: boolean) {
 			</N8nSelect2>
 		</N8nInputLabel>
 		<N8nAlertDialog
-			:open="pendingVersion !== undefined"
+			:open="isConfirmOpen"
 			:title="
 				i18n.baseText('nodeSettings.versionPicker.confirm.title', {
 					interpolate: { node: nodeName, version: String(pendingVersion) },

@@ -138,6 +138,23 @@ describe('NodeVersionPicker', () => {
 		expect(screen.getByTestId('node-version-select')).toHaveTextContent('3');
 	});
 
+	it('keeps the version in the dialog title while the dialog closes', async () => {
+		renderComponent();
+
+		await pick('4.5');
+		const dialog = await screen.findByRole('dialog');
+		const titles: Array<string | null> = [];
+		const observer = new MutationObserver(() =>
+			titles.push(within(dialog).getByRole('heading').textContent),
+		);
+		observer.observe(dialog, { characterData: true, childList: true, subtree: true });
+		await userEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+
+		await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+		observer.disconnect();
+		expect(titles.join()).not.toContain('undefined');
+	});
+
 	it('emits nothing when the user closes the dialog with Escape', async () => {
 		const { emitted } = renderComponent();
 
