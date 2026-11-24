@@ -2436,7 +2436,7 @@ describe('CloudBrowserLocalMcpServer', () => {
 
 				await server.release();
 
-				expect(server.getLoginSaveResults()).toEqual([{ domain: 'example.com', saved: true }]);
+				expect(server.getLoginSaveResults()).toEqual([{ domain: 'example.com', status: 'saved' }]);
 			});
 
 			it('returns a login that was not saved when the save failed', async () => {
@@ -2445,7 +2445,9 @@ describe('CloudBrowserLocalMcpServer', () => {
 
 				await server.release();
 
-				expect(server.getLoginSaveResults()).toEqual([{ domain: 'example.com', saved: false }]);
+				expect(server.getLoginSaveResults()).toEqual([
+					{ domain: 'example.com', status: 'notSaved' },
+				]);
 			});
 
 			it('returns a login that was not saved because the connection dropped', async () => {
@@ -2455,7 +2457,9 @@ describe('CloudBrowserLocalMcpServer', () => {
 
 				await server.release();
 
-				expect(server.getLoginSaveResults()).toEqual([{ domain: 'example.com', saved: false }]);
+				expect(server.getLoginSaveResults()).toEqual([
+					{ domain: 'example.com', status: 'notSaved' },
+				]);
 			});
 
 			it('returns a site once when the user saved its login in two sessions', async () => {
@@ -2475,7 +2479,7 @@ describe('CloudBrowserLocalMcpServer', () => {
 				await server.release();
 
 				expect(sessionProvider.saveLoginProfile).toHaveBeenCalledTimes(2);
-				expect(server.getLoginSaveResults()).toEqual([{ domain: 'example.com', saved: true }]);
+				expect(server.getLoginSaveResults()).toEqual([{ domain: 'example.com', status: 'saved' }]);
 			});
 
 			it('returns nothing when the user did not choose to save a login', async () => {

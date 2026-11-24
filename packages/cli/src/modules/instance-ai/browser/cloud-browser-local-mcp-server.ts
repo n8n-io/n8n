@@ -159,10 +159,12 @@ export type CloudBrowserReturnControlResult =
 	| { returned: false; error: string }
 	| { returned: true; loginWillBeSaved: boolean };
 
-/** A login the user chose to save, and whether it was saved when its session ended. */
+/** What happened to a login when its session ended. */
+export type CloudBrowserLoginSaveStatus = 'saved' | 'notSaved' | 'removed';
+
 export interface CloudBrowserLoginSaveResult {
 	domain: string;
-	saved: boolean;
+	status: CloudBrowserLoginSaveStatus;
 }
 
 /**
@@ -291,10 +293,10 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 	private userControlNotes: string[] = [];
 
 	/**
-	 * The logins the user chose to save, from every session that has ended, by site: whether the
-	 * login was saved. A site that is saved stays saved, also when a later save for it fails.
+	 * The logins the user chose to save, from every session that has ended, by site: what happened
+	 * to the login. A site that is saved stays saved, also when a later save for it fails.
 	 */
-	private readonly loginSaveResults = new Map<string, boolean>();
+	private readonly loginSaveResults = new Map<string, CloudBrowserLoginSaveStatus>();
 
 	constructor(private readonly options: CloudBrowserLocalMcpServerOptions) {
 		this.domainGate = options.domainGate;
@@ -450,7 +452,7 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 	 * session ends, so release the server first to get every login of the task.
 	 */
 	getLoginSaveResults(): CloudBrowserLoginSaveResult[] {
-		return [...this.loginSaveResults].map(([domain, saved]) => ({ domain, saved }));
+		return [...this.loginSaveResults].map(([domain, status]) => ({ domain, status }));
 	}
 
 	drainUserControlNotes(): string[] {
@@ -855,8 +857,8 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 
 		if (loginProfile && session.saveLoginProfileOnSessionEnd) {
 			const { domain } = loginProfile;
-			const isSavedAlready = this.loginSaveResults.get(domain) === true;
-			if (!isSavedAlready) this.loginSaveResults.set(domain, isLoginSaved);
+			const isSavedAlready = this.loginSaveResults.get(domain) === 'saved';
+			if (!isSavedAlready) this.loginSaveResults.set(domain, isLoginSaved ? 'saved' : 'notSaved');
 		}
 		if (!isLoginSaved) {
 			await this.deleteLoginProfile(loginProfile);
