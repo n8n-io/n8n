@@ -14,8 +14,8 @@ import { smallJsonCopy } from './small-json-data';
 import type { SmallJsonCopy } from './small-json-data';
 
 /**
- * Only `$json` has batched reads. It holds item data, so reading it runs no host code.
- * Other roots are host proxies, where a read can evaluate a parameter or throw.
+ * Only `$json` has batched reads. It holds item data. Other roots are host
+ * proxies, where a read can evaluate a parameter or throw.
  */
 const ITEM_DATA_ROOT = '$json';
 
@@ -48,7 +48,6 @@ export interface BatchReadBudget {
 /** The characters counted for an array item that goes across with only some of its fields. */
 const PARTIAL_ITEM_CHARS = 8;
 
-/** The most field names that one request can hold. */
 const MAX_REQUEST_NAMES = 16;
 
 /** No read of array items grows after this many reads. */
@@ -65,7 +64,7 @@ function valueCharsFor(request: unknown, limits: BatchReadLimits): number {
 	return request === WHOLE_VALUES ? limits.maxBatchChars : limits.smallValueChars;
 }
 
-/** The field names of a request. Undefined for a request that sizes whole values. */
+/** The field names of a request. Undefined for a request that is not a list. */
 function namesOf(request: unknown): string[] | undefined {
 	return Array.isArray(request)
 		? request.filter((name): name is string => typeof name === 'string').slice(0, MAX_REQUEST_NAMES)

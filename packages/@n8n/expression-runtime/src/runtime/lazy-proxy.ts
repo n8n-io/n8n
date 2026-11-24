@@ -26,9 +26,9 @@ const proxyPaths = new WeakMap<object, string[]>();
 // Batched reads.
 //
 // A proxy reads one value for each host call until the expression shows that it
-// reads many. Two patterns show this. A read of a value after a read of the key
-// list is a read of every field. A read of the array index after the last one is
-// a read of the items in order. From then on, one host call gives a batch of values.
+// reads many. A read of a value after a read of the key list is a read of every
+// field. A read of the array index after the last one is a read of the items in
+// order. Then one host call gives a batch of values.
 // ---------------------------------------------------------------------------
 
 /** Asks for each value that is small. */
@@ -56,7 +56,6 @@ interface ReadTrace {
 	names?: string[];
 }
 
-/** The most field names a trace keeps. */
 const MAX_TRACED_NAMES = 8;
 
 /** Record a read of a field by name. A trace without a name list keeps no name. */
@@ -86,13 +85,13 @@ function requestUnder(parentTrace: ReadTrace | undefined): BatchRequest {
 }
 
 /**
- * What a lazy proxy knows about the reads of its values. A proxy makes it on
- * its first use, so a proxy that reads one field makes none.
+ * What a lazy proxy knows about the reads of its values. An object proxy that
+ * reads one field makes none.
  */
 interface ChildReads {
 	/** The index after the last item that a host read gave. A read of this index is a read in order. */
 	nextInOrder: number;
-	/** The count of reads in order. Each one takes more items than the one before it. */
+	/** The count of reads in order. */
 	readAheadStep: number;
 	/** How the expression read the items that came as lazy proxies. They share this one trace. */
 	itemTrace?: ReadTrace;
@@ -113,7 +112,6 @@ function newChildReads(): ChildReads {
 	return { nextInOrder: -1, readAheadStep: 0, smallItemsAreLazy: false, keysWereListed: false };
 }
 
-/** A key list up to this length is searched. A longer one gets a lookup. */
 const MAX_SEARCHED_KEYS = 64;
 
 const keyLookups = new WeakMap<string[], Record<string, true>>();
@@ -153,10 +151,7 @@ function cacheItems(cache: Record<string, unknown>, start: number, items: unknow
 	}
 }
 
-/**
- * Keep the items that a host read gave from `start` with only some of their fields.
- * It gives the kept items by index.
- */
+/** Keep the items that a host read gave from `start` with only some of their fields. */
 function keepItemsWithSomeFields(
 	reads: ChildReads,
 	start: number,
@@ -172,7 +167,7 @@ function keepItemsWithSomeFields(
 	return kept;
 }
 
-/** The values that a host batched read gave. Undefined when the host gave one lazy value. */
+/** The values that a host batched read gave. Undefined when the host gave no batch. */
 function batchOf<T>(result: unknown, isExpected: (values: unknown) => values is T): T | undefined {
 	return isHostData(result) && isExpected(result[TRANSFER_VALUE_KEY])
 		? result[TRANSFER_VALUE_KEY]
@@ -183,7 +178,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !isArrayValue(value);
 }
 
-/** The fields that a host read gave. Undefined when the host gave no field. */
+/** The fields that a host read gave. Undefined when the host gave no batch. */
 function fieldsOf(result: unknown): Record<string, unknown> | undefined {
 	throwIfErrorSentinel(result);
 	return batchOf(result, isRecord);
@@ -345,9 +340,9 @@ export function createDeepLazyProxy(
 
 	let childReads: ChildReads | undefined;
 
-	// Fields that a host read gave and that the expression did not read yet. A
-	// field goes to the cache when the expression reads it. The cache then keeps
-	// the order of the reads, as it does without batched reads.
+	// Fields that a host read gave. A field goes to the cache when the expression
+	// reads it. The cache then keeps the order of the reads, as it does without
+	// batched reads.
 	let givenFields = firstFields;
 
 	function isInArrayBounds(prop: string): number | undefined {
@@ -397,8 +392,8 @@ export function createDeepLazyProxy(
 	// delete shallow-materializes the data into `target` and flips this flag;
 	// from then on every trap delegates to Reflect on the real target. Writes
 	// never cross the isolate boundary — the host callback surface is read-only
-	// (getValueAtPath / getArrayElement) — and the mutated copy dies with the
-	// per-evaluation context.
+	// (getValueAtPath / getArrayElement / readBatch) — and the mutated copy dies
+	// with the per-evaluation context.
 	// The guard must be in EVERY trap: after mutation, the construction-time
 	// meta (arrayLength, host key list, host `in` checks) is stale — an
 	// unguarded trap would report the pre-push length or resurrect deleted keys.
@@ -507,7 +502,6 @@ export function createDeepLazyProxy(
 		return fields[prop];
 	}
 
-	/** Cache a field that the expression reads, from the fields that the host gave or from the host. */
 	function cacheObjectValue(prop: string): unknown {
 		return givenFields !== undefined && hasOwn(givenFields, prop)
 			? cacheGivenField(givenFields, prop)

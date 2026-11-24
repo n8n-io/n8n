@@ -1,9 +1,9 @@
 import { defineOwnValue, isPlainObject, TRANSFER_FRAMING_KEYS } from '../runtime/transfer';
 
-/** Deeper data stays lazy, so a host call never sends a deeply nested value. */
+/** Deeper data stays lazy, so a batch never sends a deeply nested value. */
 const MAX_DEPTH = 16;
 
-/** The characters counted for a value that is not a string, and for each container. */
+/** The characters counted for each value, on top of the length of a string. */
 const NODE_CHARS = 8;
 
 /** The characters that a walk can still accept. */
@@ -129,9 +129,11 @@ function copyOfSmallJsonContainer(
 	return copy;
 }
 
-/** A copy of small JSON data, and the characters of keys and values that the data takes. */
+/** A copy of small JSON data, and its size. */
 export interface SmallJsonCopy {
+	/** Holds only plain objects, arrays, and JSON primitives. */
 	copy: unknown;
+	/** The characters that the walk counted. See NODE_CHARS. */
 	chars: number;
 }
 

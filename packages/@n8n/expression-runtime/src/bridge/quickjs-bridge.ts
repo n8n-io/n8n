@@ -1392,7 +1392,7 @@ export class QuickJsBridge implements RuntimeBridge {
 	 * (see execute()) instead of being set as VM globals: `execute()` can
 	 * re-enter synchronously (e.g. `$evaluateExpression`), and globals would
 	 * let the nested call's callbacks clobber the in-flight outer call's data
-	 * bindings. This mirrors IsolatedVmBridge's closure-scoped `$0`/`$1`/`$2`
+	 * bindings. This mirrors IsolatedVmBridge's closure-scoped `$0` to `$3`
 	 * evalClosureSync references.
 	 *
 	 * Callers must dispose the returned handles when the call completes.

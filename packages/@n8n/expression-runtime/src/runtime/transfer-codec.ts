@@ -6,7 +6,7 @@ import { transferTypeOf, TRANSFER_VALUE_KEY, unwrapTransferSentinels } from './t
 /** Names the wrapper the host puts around a value that holds markers. */
 export const HOST_VALUE_TYPE = 'HostValue';
 
-/** Names the wrapper the host puts around data that holds no marker and no framing key. */
+/** Names the wrapper the host puts around data that holds no framing key. */
 export const HOST_DATA_TYPE = 'HostData';
 
 interface HostValue extends TransferSentinel {
