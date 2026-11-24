@@ -323,10 +323,13 @@ export async function streamRequest<T extends object>(
 		onError?.(e);
 	};
 	const headers: Record<string, string> = {
-		[N8N_CLIENT_HEADER]: N8N_CLIENT_EDITOR_UI,
 		'browser-id': getBrowserId(),
 		'Content-Type': 'application/json',
 	};
+	// Same-origin n8n calls only, as in requestResponse.
+	if (context.baseUrl.startsWith('/')) {
+		headers[N8N_CLIENT_HEADER] = N8N_CLIENT_EDITOR_UI;
+	}
 	const assistantRequest: RequestInit = {
 		headers,
 		method: 'POST',

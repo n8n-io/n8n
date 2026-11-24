@@ -30,6 +30,16 @@ describe('Internal API usage', () => {
 		},
 	);
 
+	it('accepts a follow-up event that carries route rows and zero totals', () => {
+		const followUp = {
+			...report,
+			total_calls: 0,
+			clients: JSON.stringify({ editor_ui: 0, n8n_node: 0, other: 0 }),
+		};
+
+		expect(INTERNAL_API_USAGE.getValidationError(followUp)).toBeNull();
+	});
+
 	it('rejects a route row with a result outside 2xx, 4xx and 5xx', () => {
 		const row = { route: 'GET /rest/workflows', result: '3xx', caller: 'other', calls: 1 };
 

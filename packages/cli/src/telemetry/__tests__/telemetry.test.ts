@@ -1480,6 +1480,35 @@ describe('Telemetry', () => {
 			expect(telemetry.getInternalApiInvocationsBuffer().size).toBe(0);
 		});
 
+		test('should split a large route report into events that each fit the size limit', () => {
+			for (let i = 0; i < 250; i++) {
+				telemetry.trackInternalApiInvocation({
+					user_id: 'user1',
+					route: `GET /rest/resource-${i}/${'x'.repeat(100)}/{resourceId}`,
+					result: '2xx',
+					client: 'other',
+				});
+			}
+
+			telemetry.flushBuffers();
+
+			const reports = spyTrack.mock.calls
+				.filter(([e]) => e === TELEMETRY_EVENT.INTERNAL_API.INTERNAL_API_USAGE)
+				.map(([, report]) => report);
+			expect(
+				reports.map((report) => (jsonParse(report.routes as string) as unknown[]).length),
+			).toEqual([100, 100, 50]);
+			for (const report of reports) {
+				expect(Buffer.byteLength(JSON.stringify(report), 'utf8')).toBeLessThan(32 << 10);
+			}
+			expect(reports.map((report) => report.total_calls)).toEqual([250, 0, 0]);
+			expect(jsonParse(reports[0].clients as string)).toEqual({
+				editor_ui: 0,
+				n8n_node: 0,
+				other: 250,
+			});
+		});
+
 		test('should send nothing when RudderStack is not initialized', () => {
 			const flusher = vi.fn();
 			telemetry.addBufferFlusher(flusher);

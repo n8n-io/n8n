@@ -111,6 +111,25 @@ interface IInternalApiInvocationsBufferEntry {
 	routeCalls: Map<string, IInternalApiRouteCalls>;
 }
 
+/**
+ * `track()` drops an event above 32 KB without an error. 100 rows stay well below that,
+ * even for long route names.
+ */
+const INTERNAL_API_ROUTE_ROWS_PER_EVENT = 100;
+
+const NO_CALLS_BY_CLIENT: Record<PublicApiClient, number> = { editor_ui: 0, n8n_node: 0, other: 0 };
+
+/** An empty report still gets one batch, so its totals are sent. */
+function batchRouteRows(rows: IInternalApiRouteCalls[]): IInternalApiRouteCalls[][] {
+	if (rows.length === 0) return [[]];
+
+	const batches: IInternalApiRouteCalls[][] = [];
+	for (let start = 0; start < rows.length; start += INTERNAL_API_ROUTE_ROWS_PER_EVENT) {
+		batches.push(rows.slice(start, start + INTERNAL_API_ROUTE_ROWS_PER_EVENT));
+	}
+	return batches;
+}
+
 @Service()
 export class Telemetry implements TelemetryTracker {
 	private rudderStack?: RudderStack;
@@ -292,12 +311,19 @@ export class Telemetry implements TelemetryTracker {
 
 	private flushInternalApiInvocations() {
 		for (const [userId, entry] of this.internalApiInvocationsBuffer) {
-			this.track(TELEMETRY_EVENT.INTERNAL_API.INTERNAL_API_USAGE, {
-				user_id: userId,
-				total_calls: entry.total_calls,
-				first: entry.first.toISOString(),
-				routes: JSON.stringify([...entry.routeCalls.values()]),
-				clients: JSON.stringify(entry.clients),
+			const routeBatches = batchRouteRows([...entry.routeCalls.values()]);
+
+			routeBatches.forEach((routes, index) => {
+				// Totals go on the first event only, so summing a window's events counts each call once.
+				const isFirstEvent = index === 0;
+
+				this.track(TELEMETRY_EVENT.INTERNAL_API.INTERNAL_API_USAGE, {
+					user_id: userId,
+					total_calls: isFirstEvent ? entry.total_calls : 0,
+					first: entry.first.toISOString(),
+					routes: JSON.stringify(routes),
+					clients: JSON.stringify(isFirstEvent ? entry.clients : NO_CALLS_BY_CLIENT),
+				});
 			});
 		}
 		this.internalApiInvocationsBuffer = new Map();

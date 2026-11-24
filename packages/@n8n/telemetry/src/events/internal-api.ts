@@ -22,10 +22,14 @@ export const INTERNAL_API_TELEMETRY = defineTelemetryEvents({
 	INTERNAL_API_USAGE: {
 		name: 'Internal API usage',
 		description:
-			'Six-hourly pulse of Internal API calls, one event per user who made a call in the window, also sent on shutdown. Routes are named by their pattern, for example `GET /rest/workflows/{workflowId}`, never by the URL that was called. Per-route rows exclude the Editor UI to keep the payload bounded.',
+			'Six-hourly pulse of Internal API calls, one event per user who made a call in the window, also sent on shutdown. A large window can send several events for one user. Only the first event carries total_calls and clients, and the others carry zeros, so summing a window counts each call once. Routes are named by their pattern, for example `GET /rest/workflows/{workflowId}`, never by the URL that was called. Per-route rows exclude the Editor UI to keep the payload bounded.',
 		properties: z.object({
 			user_id: z.string(),
-			total_calls: z.number().int().positive(),
+			total_calls: z
+				.number()
+				.int()
+				.nonnegative()
+				.describe('Calls in the window. Zero on the follow-up events of a window'),
 			first: z.iso.datetime().describe('Time of the first call in the window'),
 			routes: z
 				.string()

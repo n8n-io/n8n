@@ -227,6 +227,20 @@ describe('requestResponse', () => {
 });
 
 describe('streamRequest', () => {
+	it('sends the editor client header on a same-origin stream request', async () => {
+		const mockFetch = vi.fn().mockResolvedValue({ ok: true, body: null });
+		global.fetch = mockFetch;
+
+		await streamRequest({ baseUrl: '/rest', pushRef: '' }, '/data', { key: 'value' });
+
+		expect(mockFetch).toHaveBeenCalledWith(
+			'/rest/data',
+			expect.objectContaining({
+				headers: expect.objectContaining({ [N8N_CLIENT_HEADER]: N8N_CLIENT_EDITOR_UI }),
+			}),
+		);
+	});
+
 	it('should stream data from the API endpoint', async () => {
 		const encoder = new TextEncoder();
 		const mockResponse = new ReadableStream({
@@ -266,7 +280,6 @@ describe('streamRequest', () => {
 			body: JSON.stringify({ key: 'value' }),
 			credentials: 'include',
 			headers: {
-				[N8N_CLIENT_HEADER]: N8N_CLIENT_EDITOR_UI,
 				'Content-Type': 'application/json',
 				'browser-id': expect.stringContaining('-'),
 			},
@@ -321,7 +334,6 @@ describe('streamRequest', () => {
 			body: JSON.stringify({ key: 'value' }),
 			credentials: 'include',
 			headers: {
-				[N8N_CLIENT_HEADER]: N8N_CLIENT_EDITOR_UI,
 				'Content-Type': 'application/json',
 				'browser-id': expect.stringContaining('-'),
 			},
@@ -499,7 +511,6 @@ describe('streamRequest', () => {
 			body: JSON.stringify({ key: 'value' }),
 			credentials: 'include',
 			headers: {
-				[N8N_CLIENT_HEADER]: N8N_CLIENT_EDITOR_UI,
 				'Content-Type': 'application/json',
 				'browser-id': expect.stringContaining('-'),
 			},
