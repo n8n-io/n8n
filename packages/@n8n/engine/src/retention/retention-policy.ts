@@ -6,8 +6,8 @@ const HOUR_MS = 3_600_000;
 const MAX_RETENTION_MS = 1_000 * 365 * 24 * HOUR_MS;
 
 /**
- * Gives no policy when `enabled` is false. A count below 1, or one that is not
- * a safe integer, gives no count limit. A fraction rounds down.
+ * Gives no policy when `enabled` is false. A fraction rounds down. A count below
+ * 1, or one that is not a safe integer, gives no count limit.
  */
 export function retentionPolicyFromHours({
 	enabled,
