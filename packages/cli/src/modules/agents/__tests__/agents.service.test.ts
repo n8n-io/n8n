@@ -52,6 +52,10 @@ import type { AgentTestChatService } from '../agent-test-chat.service';
 import { AgentsService } from '../agents.service';
 import type { AgentTask } from '../entities/agent-task.entity';
 import type { Agent, ProjectAgent } from '../entities/agent.entity';
+import {
+	ChatIntegrationRegistry,
+	type AgentChatIntegration,
+} from '../integrations/agent-chat-integration';
 import { ChatIntegrationService } from '../integrations/chat-integration.service';
 import type { N8nChatFlagService } from '../integrations/platforms/n8n-chat/n8n-chat-flag.service';
 import type { AgentTaskRepository } from '../repositories/agent-task.repository';
@@ -160,6 +164,8 @@ function makeService() {
 	credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([]);
 	Container.set(AgentTaskService, agentTaskService);
 	Container.set(ChatIntegrationService, chatIntegrationService);
+	const chatIntegrationRegistry = mock<ChatIntegrationRegistry>();
+	Container.set(ChatIntegrationRegistry, chatIntegrationRegistry);
 
 	const transactionRunner = mock<TransactionRunner>();
 	transactionRunner.run.mockImplementation(async (ctx, fn) => await fn(ctx));
@@ -231,6 +237,7 @@ function makeService() {
 		agentTaskService,
 		agentTaskRepository,
 		chatIntegrationService,
+		chatIntegrationRegistry,
 		subAgentCleanupService,
 		eventService,
 		agentExecutionService,
@@ -1255,6 +1262,60 @@ describe('AgentsService', () => {
 		expect(agentTaskService.requestReconcile).toHaveBeenCalledWith(agentId);
 		expect(testChatService.clearAllTestChatMessages).toHaveBeenCalledWith(agentId);
 		expect(agentKnowledgeService.destroyKnowledgeSandbox).toHaveBeenCalledWith(projectId, agentId);
+		expect(eventService.emit).toHaveBeenCalledWith('agent-deleted', { agentId, projectId });
+	});
+
+	it('removes the external resources of each integration after the agent row is removed', async () => {
+		const { service, agentRepository, chatIntegrationRegistry } = makeService();
+		const onRemove = vi.fn().mockResolvedValue(undefined);
+		chatIntegrationRegistry.get.mockImplementation((type) =>
+			type === 'slack' ? mock<AgentChatIntegration>({ onRemove }) : undefined,
+		);
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({
+				integrations: [
+					{ type: 'slack', credentialId: 'slack-1' },
+					{ type: 'telegram', credentialId: 'telegram-1' },
+				],
+			}),
+		);
+
+		await service.delete(agentId, user, projectId);
+
+		expect(onRemove).toHaveBeenCalledTimes(1);
+		expect(onRemove).toHaveBeenCalledWith({
+			agentId,
+			projectId,
+			credentialId: 'slack-1',
+			user,
+			deleteExternalResource: true,
+		});
+		expect(onRemove.mock.invocationCallOrder[0]).toBeGreaterThan(
+			agentRepository.deleteById.mock.invocationCallOrder[0],
+		);
+	});
+
+	it('still deletes the agent and removes other integrations when one removal fails', async () => {
+		const { service, agentRepository, chatIntegrationRegistry, eventService } = makeService();
+		const onRemove = vi
+			.fn()
+			.mockRejectedValueOnce(new Error('Slack down'))
+			.mockResolvedValueOnce(undefined);
+		chatIntegrationRegistry.get.mockReturnValue(mock<AgentChatIntegration>({ onRemove }));
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({
+				integrations: [
+					{ type: 'slack', credentialId: 'slack-1' },
+					{ type: 'slack', credentialId: 'slack-2' },
+				],
+			}),
+		);
+
+		await expect(service.delete(agentId, user, projectId)).resolves.toMatchObject({
+			id: agentId,
+		});
+		expect(onRemove).toHaveBeenCalledTimes(2);
+		expect(agentRepository.deleteById).toHaveBeenCalledWith(agentId, {});
 		expect(eventService.emit).toHaveBeenCalledWith('agent-deleted', { agentId, projectId });
 	});
 
