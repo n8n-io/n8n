@@ -2731,6 +2731,7 @@
 	"nodeCreator.categoryNames.otherCategories": "Results in other categories",
 	"nodeCreator.categoryNames.moreFromCommunity": "More from the community",
 	"nodeCreator.subnodes": "sub-nodes",
+	"nodeCreator.close": "Close Node Creator",
 	"nodeCreator.noResults.connectUsingSuggestedNode": "Connect to almost any service or API using our",
 	"nodeCreator.noResults.httpRequest": "HTTP Request",
 	"nodeCreator.noResults.needAnotherCapability": "Need another capability?",
