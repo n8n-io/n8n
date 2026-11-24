@@ -5,6 +5,8 @@ import type { createSchemaBuilder } from './dsl';
 
 export type DatabaseType = 'postgresdb' | 'sqlite';
 
+export type TestingType = string;
+
 export interface MigrationContext {
 	logger: Logger;
 	queryRunner: QueryRunner;

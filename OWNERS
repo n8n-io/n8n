@@ -492,3 +492,4 @@ packages/quality/testing/playwright/tests/evals/instance-ai/ @n8n-io/ai-trust
 packages/cli/src/modules/agent-evals/                    @n8n-io/ai-trust
 packages/@n8n/agents/src/evals/                          @n8n-io/ai-trust
 packages/frontend/editor-ui/src/features/ai/evaluation.ee/ @n8n-io/ai-trust
+package.json @n8n-io/qa-dx
