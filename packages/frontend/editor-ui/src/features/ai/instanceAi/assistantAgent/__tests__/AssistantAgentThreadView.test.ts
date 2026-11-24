@@ -1073,9 +1073,9 @@ describe('AssistantAgentThreadView', () => {
 			content: '',
 			toolCalls: [
 				{
-					tool: 'apps',
+					tool: 'commit_app',
 					toolCallId,
-					input: { action: 'commit', appId: 'app-1', label: 'Change' },
+					input: { appId: 'app-1', label: 'Change' },
 					output: {
 						app: { id: 'app-1', name: 'Todos', projectId: 'project-1' },
 						versionId: toolCallId,
