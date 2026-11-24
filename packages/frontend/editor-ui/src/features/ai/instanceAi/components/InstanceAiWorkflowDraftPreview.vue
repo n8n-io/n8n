@@ -10,7 +10,6 @@ import WorkflowCanvas from '@/features/workflows/canvas/components/WorkflowCanva
 
 import { useDraftWorkflowDocument } from '../composables/useDraftWorkflowDocument';
 import { useStaggeredList } from '../composables/useStaggeredList';
-import AgentBuildingIndicator from './AgentBuildingIndicator.vue';
 import { draftNodeKey, withDraftNodes } from '../instanceAi.workflowDraftCanvas';
 import type { WorkflowDraft } from '../instanceAi.workflowDrafts';
 
@@ -18,8 +17,6 @@ const props = defineProps<{
 	draft: WorkflowDraft;
 	/** The agent is still working, so a save can still replace this draft. */
 	building: boolean;
-	/** The run waits on the user in the chat, for an answer or an approval. */
-	waiting?: boolean;
 }>();
 
 const i18n = useI18n();
@@ -61,15 +58,8 @@ watch(
 			:striped-background="false"
 			:class="$style.canvas"
 		/>
-		<!-- The run waits on the user, so nothing builds. The chat asks for the answer. -->
-		<template v-if="building">
-			<AgentBuildingIndicator
-				v-if="!waiting"
-				:show-label="false"
-				data-test-id="instance-ai-draft-building-wave"
-			/>
-		</template>
-		<div v-else :class="$style.badge" data-test-id="instance-ai-workflow-draft-badge">
+		<!-- The thread view shows the building wave over the canvas while the agent works. -->
+		<div v-if="!building" :class="$style.badge" data-test-id="instance-ai-workflow-draft-badge">
 			<N8nText size="small" color="text-base">
 				{{ i18n.baseText('instanceAi.workflowDraft.unsaved') }}
 			</N8nText>

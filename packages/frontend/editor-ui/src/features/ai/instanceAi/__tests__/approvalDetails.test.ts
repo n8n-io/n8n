@@ -25,6 +25,90 @@ const rows: InstanceAiApprovalDetails = {
 };
 
 describe('approval details', () => {
+	describe('publish agent', () => {
+		const details = (
+			overrides: Partial<Extract<InstanceAiApprovalDetails, { action: 'publish-agent' }>> = {},
+		): InstanceAiApprovalDetails => ({
+			action: 'publish-agent',
+			liveAvailability: 'unpublished',
+			selectedVersion: false,
+			sendTargets: [
+				{ kind: 'channel', name: 'Slack' },
+				{ kind: 'task', name: 'Daily digest' },
+				{ kind: 'mcp-server', name: 'Linear' },
+				{ kind: 'tools', count: 3 },
+			],
+			...overrides,
+		});
+
+		it('lists what might get sent for real, as the panel does', () => {
+			expect(formatApprovalDetails(details())).toBe(
+				[
+					'Publishes your latest draft. Live uses the published agent.',
+					[
+						'These might get sent for real:',
+						'• Replies in Slack',
+						'• Runs the scheduled task "Daily digest"',
+						'• Calls tools from Linear',
+						'• Uses its 3 tools',
+					].join('\n'),
+				].join('\n\n'),
+			);
+		});
+
+		it('says that anything the agent sends is real when the targets are not known', () => {
+			expect(
+				formatApprovalDetails(
+					details({ liveAvailability: 'changed', selectedVersion: true, sendTargets: [] }),
+				),
+			).toBe(
+				[
+					'Publishes the selected version. Live uses the published agent.',
+					'It replaces the version that is live now.',
+					'Anything the agent sends will be real.',
+				].join('\n\n'),
+			);
+		});
+
+		it('says why a card replaces an earlier one', () => {
+			expect(formatApprovalDetails(details({ changedSinceAsked: true }))).toMatch(
+				/^The agent changed since you were asked\. Check what goes live again\.\n\n/,
+			);
+		});
+
+		it('counts the targets left out by the limit', () => {
+			const output = formatApprovalDetails(
+				details({
+					sendTargets: [{ kind: 'tools', count: 1 }],
+					moreSendTargets: 2,
+				}),
+			);
+			expect(output).toContain('• And 2 more\n• Uses its 1 tool');
+		});
+
+		it.each([
+			['unpublished', 'Publish Support agent and go live?'],
+			['changed', 'Republish Support agent and go live?'],
+		] as const)('titles a %s agent as the panel does', (liveAvailability, title) => {
+			expect(
+				formatApprovalTitle({
+					toolName: 'agent_builder_publish_agent',
+					resourceName: 'Support agent',
+					approvalDetails: details({ liveAvailability }),
+				}),
+			).toBe(title);
+		});
+
+		it('names the agent generically without a resource name', () => {
+			expect(
+				formatApprovalTitle({
+					toolName: 'agent_builder_publish_agent',
+					approvalDetails: details(),
+				}),
+			).toBe('Publish this agent and go live?');
+		});
+	});
+
 	describe('data table changes', () => {
 		const addEmail = { action: 'add-column', column: 'email', columnType: 'string' } as const;
 		const renameNote = { action: 'rename-column', column: 'note', newName: 'comment' } as const;

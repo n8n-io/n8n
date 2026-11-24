@@ -5,7 +5,7 @@ name: 'CI: Owners Review Recommendations'
 # own GitHub App. See n8n-io/github-actions ownership-checks/README.md.
 
 on:
-  pull_request:
+  pull_request_target:
     types:
       - opened
       - synchronize
@@ -17,10 +17,9 @@ permissions: {}
 
 jobs:
   ownership-comment:
-    uses: n8n-io/github-actions/.github/workflows/ownership-checks.yml@be626e7b43cf88fe6d1404a29ed4e2b4f9cbb294 # ownership-checks/v1.0.0
+    uses: n8n-io/github-actions/.github/workflows/ownership-checks.yml@565cebcd8f10f91c5164219e827c30b6f9d46708 # v1.1.0
     permissions:
       id-token: write
-      # The shared workflow's single job declares both permissions, also when only the comment step runs.
       pull-requests: read
     with:
       required-reviews: false

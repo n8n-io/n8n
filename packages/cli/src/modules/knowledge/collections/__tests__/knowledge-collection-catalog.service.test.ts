@@ -1,3 +1,4 @@
+import type { ProjectScopeService } from '@n8n/backend-services';
 import type { ProjectRepository, User } from '@n8n/db';
 import { ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import type { Scope } from '@n8n/permissions';
@@ -48,17 +49,24 @@ function makeService({ collectionsFlag = true }: { collectionsFlag?: boolean } =
 		mock<KnowledgeCollection>({ id: 'collection-1' }),
 	);
 	collectionRepository.findSharedSummaryById.mockResolvedValue(summary);
+	collectionRepository.findSharedSummaries.mockResolvedValue([summary]);
+
 	const projectRepository = mock<ProjectRepository>();
 	projectRepository.existsBy.mockResolvedValue(true);
+
+	const projectScopeService = mock<ProjectScopeService>();
+	projectScopeService.getProjectIds.mockResolvedValue(['project-1', 'personal-1']);
 
 	return {
 		service: new KnowledgeCollectionCatalogService(
 			collectionRepository,
 			makeKnowledgeAvailabilityService({ collectionsFlag }),
 			projectRepository,
+			projectScopeService,
 		),
 		collectionRepository,
 		projectRepository,
+		projectScopeService,
 	};
 }
 
@@ -190,6 +198,66 @@ describe('KnowledgeCollectionCatalogService', () => {
 
 			await expect(service.create(user, projectId, input)).rejects.toThrow(QueryFailedError);
 			expect(collectionRepository.insertShared).toHaveBeenCalledTimes(2);
+		});
+	});
+
+	describe('listForUser', () => {
+		const member = mock<User>({ id: 'member-1' });
+		const instanceOwner = mock<User>({ id: 'owner-1' });
+
+		it('lists the collections of the projects where the member can list agents', async () => {
+			const { service, collectionRepository, projectScopeService } = makeService();
+
+			const result = await service.listForUser(member);
+
+			expect(projectScopeService.getProjectIds).toHaveBeenCalledWith(member, ['agent:list']);
+
+			expect(collectionRepository.findSharedSummaries).toHaveBeenCalledWith(
+				['project-1', 'personal-1'],
+				{},
+			);
+
+			expect(result).toEqual({
+				count: 1,
+				data: [
+					{
+						id: 'collection-1',
+						name: input.name,
+						description: input.description,
+						slug: 'returns_playbook',
+						homeProject: { id: 'project-1', name: 'Docs', type: 'team' },
+						fileCount: 2,
+						totalFileSizeBytes: 300,
+						agentCount: 1,
+						createdAt: '2026-11-20T10:00:00.000Z',
+						updatedAt: '2026-11-20T11:00:00.000Z',
+					},
+				],
+			});
+		});
+
+		it('lists the collections of every project for a global agent:list scope', async () => {
+			const { service, collectionRepository, projectScopeService } = makeService();
+			// `getProjectIds` answers `null` for a global scope.
+			projectScopeService.getProjectIds.mockResolvedValue(null);
+
+			await service.listForUser(instanceOwner);
+
+			expect(collectionRepository.findSharedSummaries).toHaveBeenCalledWith('all', {});
+		});
+
+		it('answers an empty list when no collection matches', async () => {
+			const { service, collectionRepository } = makeService();
+			collectionRepository.findSharedSummaries.mockResolvedValue([]);
+
+			await expect(service.listForUser(member)).resolves.toEqual({ count: 0, data: [] });
+		});
+
+		it('answers not found and reads nothing when collections are off', async () => {
+			const { service, collectionRepository } = makeService({ collectionsFlag: false });
+
+			await expect(service.listForUser(member)).rejects.toThrow(NotFoundError);
+			expect(collectionRepository.findSharedSummaries).not.toHaveBeenCalled();
 		});
 	});
 });

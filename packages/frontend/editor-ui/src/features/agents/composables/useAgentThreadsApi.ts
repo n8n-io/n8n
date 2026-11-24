@@ -105,7 +105,12 @@ export interface AgentExecution {
 	author: AgentMessageAuthor | null;
 	attachments: AgentExecutionAttachment[] | null;
 	model: string | null;
+	/** Input tokens of the turn, cached input included. */
 	promptTokens: number | null;
+	/** Input tokens read from the provider prompt cache. A subset of `promptTokens`. */
+	cacheReadTokens?: number | null;
+	/** Input tokens written to the provider prompt cache. A subset of `promptTokens`. */
+	cacheWriteTokens?: number | null;
 	completionTokens: number | null;
 	totalTokens: number | null;
 	cost: number | null;

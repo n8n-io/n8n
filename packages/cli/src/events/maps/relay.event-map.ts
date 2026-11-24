@@ -1616,8 +1616,8 @@ export type RelayEventMap = ModuleEventMap & {
 	/**
 	 * Closed without a decision, by the workflow lifecycle hooks or the reconciliation
 	 * sweep. An approval closes the request too but emits 'workflow-review-decided'
-	 * instead, never both: every close path filters `state = 'open'` and `decide()`
-	 * closes in-line.
+	 * instead, and a user close emits 'workflow-review-closed-by-user', never both: every
+	 * close path filters `state = 'open'` and `decide()` closes in-line.
 	 */
 	'workflow-review-closed': {
 		workflowReviewRequestId: string;
@@ -1633,6 +1633,15 @@ export type RelayEventMap = ModuleEventMap & {
 			actorKind: 'user' | 'system';
 			userId: string | null;
 		};
+	};
+
+	/** Closed by a user without an approval. The decision keeps its last value. */
+	'workflow-review-closed-by-user': {
+		user: UserLike;
+		workflowReviewRequestId: string;
+		workflowId: string;
+		/** Null when the pinned version was pruned before the close. */
+		workflowVersionId: string | null;
 	};
 
 	'workflow-review-comment-created': {
