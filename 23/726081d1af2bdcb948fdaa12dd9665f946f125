@@ -28,6 +28,7 @@ packages/cli/src/modules/promotions.ee/__tests__/promotion-preview.revision.test
 packages/cli/src/modules/promotions.ee/package-references.ts
   s_4a494bfdece475::t_1c85721c5a9321 32-34,102,105,116,126
   s_4a494bfdece475::t_8929e9e0e30206 32-34,102,105,116
+  s_4a494bfdece475::t_9ff24f70886612 126
 packages/cli/src/modules/promotions.ee/promote-dependency-check.service.ts
   s_4a494bfdece475::t_598f6407dd22ca 1-130
   s_4a494bfdece475::t_9580a88273f633 1-126,130
@@ -37,6 +38,7 @@ packages/cli/src/modules/promotions.ee/promote-dependency-check.ts
   s_4a494bfdece475::t_9eabcb144480aa 1-12,14-20,22-46,52-57,74,77-79,81-84,86-90,93-95,97-102,104,114,116-125,127-128,131-132,134,136,147-148,150,152-153,155-156,158-161,163,182-184,186-191,193-201,202-207
   s_4a494bfdece475::t_8d8b52bc3887aa 143-145,177,181
   s_4a494bfdece475::t_abb07aba322405 21,47-51,58-73,75-76,80,85,91-92,96,103,105-113,115,126,129-130,133,135,137-142,146,149,151,154,157,162,164-176,178-180,185,192
+  s_4a494bfdece475::t_241fcede082686 13
 packages/cli/src/modules/promotions.ee/promote-preview.service.ts
   s_4a494bfdece475::t_9566dcb8dd012d 1,15,25,42,129-137,146-148,152-168
   s_4a494bfdece475::t_720cf0603bb8af 1,15,25,42,129-137,146-148,152-166
