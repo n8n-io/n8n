@@ -26,6 +26,45 @@ describe('AiThinkingBlock', () => {
 		expect(getByTestId('thinking-block-header')).toHaveTextContent('Planning the response.');
 	});
 
+	it('shows the idle label instead of "Thinking" in the title and the subline', () => {
+		const { getByTestId } = renderComponent({
+			props: { active: true, segments: [], idleLabel: 'Joining the dots' },
+		});
+
+		expect(getByTestId('thinking-block-header')).toHaveTextContent('Joining the dots');
+		expect(getByTestId('thinking-block-subline-label')).toHaveTextContent('Joining the dots');
+	});
+
+	it('shows "Thinking" when it has no idle label', () => {
+		const { getByTestId } = renderComponent({ props: { active: true, segments: [] } });
+
+		expect(getByTestId('thinking-block-header')).toHaveTextContent('Thinking');
+		expect(getByTestId('thinking-block-subline-label')).toHaveTextContent('Thinking');
+	});
+
+	it('cuts a long activity label at its end by default', () => {
+		const { getByTestId } = renderComponent({
+			props: { active: true, segments: [], activityLabel: 'Searching for gmail, slack' },
+		});
+
+		expect(getByTestId('thinking-block-subline-label')).toHaveAttribute('data-truncate', 'end');
+	});
+
+	it('can cut a long activity label at its start, so its newest words stay in view', () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				active: true,
+				segments: [],
+				activityLabel: 'Gmail can filter by label',
+				activityLabelTruncate: 'start',
+			},
+		});
+
+		const label = getByTestId('thinking-block-subline-label');
+		expect(label).toHaveAttribute('data-truncate', 'start');
+		expect(label).toHaveTextContent('Gmail can filter by label');
+	});
+
 	it('expands shared content from the header', async () => {
 		const { getByTestId } = renderComponent({
 			props: { active: true, segments: [{ content: 'Working.' }] },

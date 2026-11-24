@@ -3,12 +3,15 @@ import { EventService } from '@n8n/backend-services';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import { ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { DataSource } from '@n8n/typeorm';
 import { BadRequestError } from '@n8n/errors';
 
+import { ExecutionLimitAudit } from '../execution-limit-audit.entity';
+import { ExecutionLimitAuditRepository } from '../execution-limit-audit.repository';
 import type { ExecutionLimitsEventMap } from '../execution-limits.events';
 import { ExecutionLimitsService } from '../execution-limits.service';
 
-const USER_ID = 'user-1';
+const USER_ID = '0b0f6f3e-6a53-4f0c-9d3b-2f2a8f1c5e11';
 
 describe('ExecutionLimitsService', () => {
 	let service: ExecutionLimitsService;
@@ -25,9 +28,16 @@ describe('ExecutionLimitsService', () => {
 
 	beforeEach(async () => {
 		// The delete of a project also deletes its limit.
-		await testDb.truncate(['Project', 'Settings']);
+		await testDb.truncate(['Project', 'Settings', 'ExecutionLimitAudit']);
 		events.length = 0;
 	});
+
+	async function readAuditRows() {
+		return await Container.get(DataSource).manager.find(ExecutionLimitAudit, {
+			select: { projectId: true, field: true, oldValue: true, newValue: true, updatedBy: true },
+			order: { id: 'ASC' },
+		});
+	}
 
 	afterAll(async () => {
 		await testDb.terminate();
@@ -75,6 +85,7 @@ describe('ExecutionLimitsService', () => {
 
 			expect((await service.getSettings()).instanceMaxExecutions).toBe(1000);
 			expect(events).toHaveLength(1);
+			expect(await readAuditRows()).toHaveLength(1);
 		});
 
 		it('rejects a default limit for new projects above the instance limit', async () => {
@@ -209,6 +220,7 @@ describe('ExecutionLimitsService', () => {
 
 			expect(await service.getProjectLimits()).toEqual([]);
 			expect(events).toHaveLength(1);
+			expect(await readAuditRows()).toHaveLength(1);
 		});
 
 		it('removes the limit of the given projects only', async () => {
@@ -238,13 +250,35 @@ describe('ExecutionLimitsService', () => {
 		});
 	});
 
-	describe('audit events', () => {
-		it('emits one event for each setting that is set, changed or removed', async () => {
+	describe('default limit for new projects', () => {
+		it('copies the default limit to the project and keeps it when the default changes', async () => {
+			const project = await createTeamProject();
+			await service.updateSettings({ defaultProjectMaxExecutions: 50 }, USER_ID);
+
+			await service.applyDefaultLimitToNewProject(project.id);
+			await service.updateSettings({ defaultProjectMaxExecutions: null }, USER_ID);
+
+			expect(await service.getProjectLimits([project.id])).toEqual([
+				{ projectId: project.id, maxExecutions: 50 },
+			]);
+		});
+
+		it('sets no limit when there is no default limit', async () => {
+			const project = await createTeamProject();
+
+			await service.applyDefaultLimitToNewProject(project.id);
+
+			expect(await service.getProjectLimits()).toEqual([]);
+		});
+	});
+
+	describe('audit', () => {
+		it('records one row and emits one event for each setting that is set, changed or removed', async () => {
 			await service.updateSettings({ periodUnit: 'week', instanceMaxExecutions: 1000 }, USER_ID);
 			await service.updateSettings({ instanceMaxExecutions: 500 }, USER_ID);
 			await service.updateSettings({ instanceMaxExecutions: null }, null);
 
-			const instance = { projectId: null, updatedBy: USER_ID, loginId: undefined };
+			const instance = { projectId: null, updatedBy: USER_ID };
 			expect(events).toEqual([
 				{ ...instance, field: 'periodUnit', oldValue: 'month', newValue: 'week' },
 				{ ...instance, field: 'instanceMaxExecutions', oldValue: null, newValue: 1000 },
@@ -257,11 +291,12 @@ describe('ExecutionLimitsService', () => {
 					updatedBy: null,
 				},
 			]);
+			expect(await readAuditRows()).toEqual(events);
 		});
 
-		it('emits one event for each project limit that is set, changed or removed', async () => {
+		it('records one row and emits one event for each project limit that is set, changed or removed', async () => {
 			const [first, second] = [await createTeamProject(), await createTeamProject()];
-			const project = { field: 'projectMaxExecutions', updatedBy: USER_ID, loginId: undefined };
+			const project = { field: 'projectMaxExecutions', updatedBy: USER_ID };
 
 			await service.setProjectLimits(
 				[
@@ -279,25 +314,44 @@ describe('ExecutionLimitsService', () => {
 				{ ...project, projectId: first.id, oldValue: 10, newValue: 30 },
 				{ ...project, projectId: second.id, oldValue: 20, newValue: null },
 			]);
+			expect(await readAuditRows()).toEqual(events);
 		});
 
-		it('emits no event for a write that changes no value', async () => {
+		it('records and emits nothing for a write that changes no value', async () => {
 			const project = await createTeamProject();
 			await service.updateSettings({ instanceMaxExecutions: 1000 }, USER_ID);
 			await service.setProjectLimits([{ projectId: project.id, maxExecutions: 10 }], USER_ID);
 			events.length = 0;
+			const rowsBefore = await readAuditRows();
 
 			await service.updateSettings({ instanceMaxExecutions: 1000 }, USER_ID);
 			await service.setProjectLimits([{ projectId: project.id, maxExecutions: 10 }], USER_ID);
 			await service.removeProjectLimits(['project-with-no-limit'], USER_ID);
 
 			expect(events).toEqual([]);
+			expect(await readAuditRows()).toEqual(rowsBefore);
 		});
 
-		it('adds the login of a service account to the event', async () => {
+		it('keeps the limit and emits nothing when the row cannot be recorded', async () => {
+			vi.spyOn(Container.get(ExecutionLimitAuditRepository), 'append').mockRejectedValueOnce(
+				new Error('The audit table is not available'),
+			);
+
+			await expect(
+				service.updateSettings({ instanceMaxExecutions: 1000 }, USER_ID),
+			).rejects.toThrow('The audit table is not available');
+
+			expect((await service.getSettings()).instanceMaxExecutions).toBeNull();
+			expect(events).toEqual([]);
+		});
+
+		it('adds the login of a service account to the event and the row', async () => {
 			await service.updateSettings({ instanceMaxExecutions: 1000 }, USER_ID, 'login-1');
 
 			expect(events).toEqual([expect.objectContaining({ loginId: 'login-1' })]);
+			expect(await Container.get(DataSource).manager.find(ExecutionLimitAudit)).toEqual([
+				expect.objectContaining({ loginId: 'login-1' }),
+			]);
 		});
 	});
 });

@@ -102,12 +102,32 @@ describe('AppBindingsService', () => {
 			projectId: 'p1',
 			versionId: NEW_ID,
 			userId: 'user-1',
+			threadId: undefined,
+			source: 'user',
 			workflowCount: 1,
 			dataTableCount: 1,
 			agentCount: 0,
 			addedCount: 1,
 			removedCount: 1,
 		});
+	});
+
+	it('passes the Assistant thread to the save and the event', async () => {
+		const { service, changes, events } = setup();
+
+		await service.setBindings(user, 'p1', APP_ID, DRAFT_ID, [workflow], {
+			threadId: 'thread-1',
+			source: 'assistant',
+		});
+
+		expect(changes.saveBindings).toHaveBeenCalledWith('p1', APP_ID, DRAFT_ID, [workflow], {
+			userId: 'user-1',
+			threadId: 'thread-1',
+		});
+		expect(events.emit).toHaveBeenCalledWith(
+			'app-bindings-changed',
+			expect.objectContaining({ threadId: 'thread-1', source: 'assistant' }),
+		);
 	});
 
 	it('counts every binding as added for an app without a version', async () => {
@@ -142,7 +162,7 @@ describe('AppBindingsService', () => {
 			APP_ID,
 			DRAFT_ID,
 			[tableRead, workflow],
-			{ userId: 'user-1' },
+			{ userId: 'user-1', threadId: undefined },
 		);
 		expect(result.versionId).toBe(NEW_ID);
 		expect(result.bindings.map(({ key }) => key)).toEqual(['tasks', 'submit']);
@@ -155,6 +175,7 @@ describe('AppBindingsService', () => {
 
 		expect(changes.saveBindings).toHaveBeenCalledWith('p1', APP_ID, DRAFT_ID, [workflow], {
 			userId: 'user-1',
+			threadId: undefined,
 		});
 		expect(result.versionId).toBe(NEW_ID);
 	});
@@ -176,6 +197,7 @@ describe('AppBindingsService', () => {
 
 		expect(changes.saveBindings).toHaveBeenCalledWith('p1', APP_ID, null, [workflow], {
 			userId: 'user-1',
+			threadId: undefined,
 		});
 		expect(result.versionId).toBe(NEW_ID);
 	});

@@ -55,14 +55,16 @@ export class PromotePreviewService {
 				: null;
 		if (blocker) {
 			const source = previewSource(input);
+			const environment = previewEnvironment(input);
+			const { createBranchOnPromotion } = environment;
 			return {
 				commitSha: null,
 				source,
-				environment: previewEnvironment(input),
+				environment,
 				resources: [],
 				dependencies: [],
 				blocker,
-				revision: previewRevision({ source, resources: [], blocker }),
+				revision: previewRevision({ source, createBranchOnPromotion, resources: [], blocker }),
 			};
 		}
 		const branch = await readBranch();
@@ -89,13 +91,15 @@ export class PromotePreviewService {
 			: compared;
 		// The branch read resolves the environment again. Name the one it read.
 		const source = previewSource(branch.input);
+		const environment = previewEnvironment(branch.input);
+		const { createBranchOnPromotion } = environment;
 		return {
 			commitSha: branch.commitSha,
 			source,
-			environment: previewEnvironment(branch.input),
+			environment,
 			resources,
 			dependencies,
-			revision: previewRevision({ source, resources }),
+			revision: previewRevision({ source, createBranchOnPromotion, resources }),
 		};
 	}
 

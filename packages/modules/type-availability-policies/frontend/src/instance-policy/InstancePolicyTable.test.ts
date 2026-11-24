@@ -309,4 +309,43 @@ describe('InstancePolicyTable', () => {
 		expect(cell).toHaveTextContent('Open to project opt-in');
 		expect(within(cell).queryByRole('button')).not.toBeInTheDocument();
 	});
+
+	it('asks for the details of a row when the admin clicks the row', async () => {
+		const { getByTestId, emitted } = setup();
+		const airtableRow = within(getByTestId('instance-policy-table'))
+			.getAllByRole('row')
+			.find((tableRow) => tableRow.textContent?.includes('Airtable API'));
+
+		// A usage cell, which has no control of its own.
+		await userEvent.click(airtableRow!.querySelectorAll('td')[2]);
+
+		expect(emitted('open')).toEqual([['airtableApi']]);
+	});
+
+	it('asks for the details of a row from the keyboard, with its name', async () => {
+		const { getByTestId, emitted } = setup();
+
+		getByTestId('instance-policy-open-airtableApi').focus();
+		await userEvent.keyboard('{Enter}');
+
+		expect(emitted('open')).toEqual([['airtableApi']]);
+	});
+
+	it('does not ask for the details when the admin changes the access', async () => {
+		const { getByTestId, emitted } = setup();
+
+		await userEvent.click(accessTrigger(getByTestId, 'airtableApi'));
+		await userEvent.click(await findPopupItem(MENU_ITEM, 'Restricted'));
+
+		expect(emitted('change')).toEqual([['airtableApi', 'deny']]);
+		expect(emitted('open')).toBeUndefined();
+	});
+
+	it('asks for the details of a read-only row when the admin clicks its access', async () => {
+		const { getByTestId, emitted } = setup([row('slackApi', 'Slack API', 'delegate', false)]);
+
+		await userEvent.click(getByTestId('instance-policy-access-slackApi'));
+
+		expect(emitted('open')).toEqual([['slackApi']]);
+	});
 });

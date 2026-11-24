@@ -52,6 +52,13 @@ import {
 	reportFailedWorkflowBuildOutcome,
 	reportWorkflowBuildOutcome,
 } from './workflow-build-reporting';
+import {
+	resolveFallbackEngine,
+	resolveTargetEngine,
+	shouldReportTargetEngine,
+	targetEngineSchema,
+	type TargetEngine,
+} from './target-engine';
 import { withDeterministicRouting } from './workflow-build-routing';
 import {
 	trackWaitGateVerificationPlan,
@@ -419,6 +426,7 @@ interface ValidationFailureArgs {
 	withEscalation: (errors: string[], options?: { trackingErrors?: string[] }) => string[];
 	stage?: BuildTelemetryStage;
 	grouping?: GroupingOutcome;
+	targetEngine?: TargetEngine;
 }
 
 /**
@@ -473,8 +481,18 @@ async function handleValidationFailure(args: ValidationFailureArgs) {
 		withEscalation,
 		stage = 'validation',
 		grouping,
+		targetEngine,
 	} = args;
 
+	// Mark the blocked nodes on the draft the user is watching.
+	context.workflowDraftPublisher?.publishIssues({
+		filePath,
+		issues: blocking.map(({ code, message, nodeName }) => ({
+			code,
+			message,
+			...(nodeName ? { nodeName } : {}),
+		})),
+	});
 	const validationErrors = blocking.map(
 		(e) => `[${e.code}]${e.nodeName ? ` (${e.nodeName})` : ''}: ${e.message}`,
 	);
@@ -526,6 +544,7 @@ async function handleValidationFailure(args: ValidationFailureArgs) {
 		remediation,
 		warnings: combineWarnings(informational.map((w) => formatWarning(w.code, w.message))),
 		...(grouping ? { grouping } : {}),
+		...(targetEngine ? { targetEngine } : {}),
 	};
 }
 
@@ -553,6 +572,7 @@ const buildWorkflowOutputSchema = z.object({
 	hasUnresolvedPlaceholders: z.boolean().optional(),
 	...savedWorkflowStateSchema.shape,
 	grouping: groupingOutcomeSchema.optional(),
+	targetEngine: targetEngineSchema.optional(),
 	denied: z.boolean().optional(),
 	reason: z.string().optional(),
 	remediation: remediationMetadataSchema.optional(),
@@ -1026,7 +1046,33 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 
 			let informational: ValidationWarning[] = [];
 
-			let compiled = await compileWorkflowSource(context, filePath, sourceCode, ctx.abortSignal);
+			// Snapshot of the previously saved workflow. It gives the engine of an edit, and it
+			// tells nodes this build actually touched apart from pre-existing ones it round-tripped.
+			let savedWorkflowSnapshot: WorkflowJSON | undefined;
+			if (targetWorkflowId) {
+				try {
+					savedWorkflowSnapshot = await context.workflowService.getAsWorkflowJSON(targetWorkflowId);
+				} catch {
+					// Prior state unreadable — treat every node as changed (unscoped).
+				}
+			}
+
+			// The engine for code without `settings.engineType`, so validation checks the
+			// engine that runs the saved workflow.
+			const fallbackEngine = resolveFallbackEngine({
+				engineSetup: context.engineSetup,
+				isEdit: targetWorkflowId !== undefined,
+				savedWorkflow: savedWorkflowSnapshot,
+			});
+			const compileOptions = { engine: fallbackEngine.engine };
+
+			let compiled = await compileWorkflowSource(
+				context,
+				filePath,
+				sourceCode,
+				ctx.abortSignal,
+				compileOptions,
+			);
 			if (
 				!compiled.success &&
 				compiled.reason === 'workflow_source_build_failed' &&
@@ -1046,6 +1092,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 							filePath,
 							recovery.source,
 							ctx.abortSignal,
+							compileOptions,
 						);
 						// The corrected source is on disk; keep reported errors/hash in sync with it.
 						sourceCode = recovery.source;
@@ -1118,16 +1165,19 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				};
 			}
 
-			// Snapshot of the previously saved workflow, used to tell nodes this
-			// build actually touched apart from pre-existing ones it round-tripped.
-			let savedWorkflowSnapshot: WorkflowJSON | undefined;
-			if (targetWorkflowId) {
-				try {
-					savedWorkflowSnapshot = await context.workflowService.getAsWorkflowJSON(targetWorkflowId);
-				} catch {
-					// Prior state unreadable — treat every node as changed (unscoped).
-				}
-			}
+			// Show the compiled workflow before validation, which can block the save
+			// for several build attempts.
+			await context.workflowDraftPublisher?.publish({
+				filePath,
+				workflowId: targetWorkflowId,
+				// The save uses the name that the build passes, so the draft shows it too.
+				workflow: name ? { ...compiled.workflow, name } : compiled.workflow,
+			});
+
+			const resolvedEngine = resolveTargetEngine(compiled.workflow, fallbackEngine);
+			const targetEngine = shouldReportTargetEngine(context.engineSetup, resolvedEngine)
+				? resolvedEngine
+				: undefined;
 
 			const partitionedWarnings = partitionWarnings(
 				downgradeUnchangedNodeBlockers(compiled.warnings, compiled.workflow, savedWorkflowSnapshot),
@@ -1153,6 +1203,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					isSupportingWorkflow,
 					isAuxiliarySupportingWorkflow,
 					withEscalation,
+					targetEngine,
 				});
 			}
 
@@ -1197,6 +1248,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						'Workflow name is required for new workflows. Provide a name parameter or set it in the SDK code.',
 					],
 					remediation,
+					...(targetEngine ? { targetEngine } : {}),
 				};
 			}
 
@@ -1301,6 +1353,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					isSupportingWorkflow,
 					isAuxiliarySupportingWorkflow,
 					withEscalation,
+					targetEngine,
 				});
 			}
 
@@ -1394,6 +1447,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						withEscalation,
 						stage: 'grouping',
 						grouping,
+						targetEngine,
 					});
 				}
 
@@ -1686,6 +1740,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 							referencedWorkflowIds.length > 0 ? referencedWorkflowIds : undefined,
 						hasUnresolvedPlaceholders: hasPlaceholders || undefined,
 						grouping,
+						...(targetEngine ? { targetEngine } : {}),
 						warnings: combineWarnings(informational.map((w) => formatWarning(w.code, w.message))),
 					};
 				};
@@ -1739,6 +1794,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						workItemId: resolvedWorkItemId,
 						errors: [failureText],
 						remediation,
+						...(targetEngine ? { targetEngine } : {}),
 					};
 				}
 
@@ -1774,6 +1830,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						workItemId: resolvedWorkItemId,
 						errors: [message],
 						remediation,
+						...(targetEngine ? { targetEngine } : {}),
 					};
 				}
 
@@ -1808,6 +1865,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					workItemId: resolvedWorkItemId,
 					errors: [`Workflow save failed: ${message}`],
 					remediation,
+					...(targetEngine ? { targetEngine } : {}),
 				};
 			}
 		})

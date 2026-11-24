@@ -10,6 +10,7 @@ export interface LoadBalancerConfig {
 	webhookCount: number;
 	hostPort?: number;
 	policy: LoadBalancerPolicy;
+	pathPrefix?: string;
 }
 
 export interface LoadBalancerMeta {
@@ -33,57 +34,55 @@ function buildCaddyConfig(
 	mainUpstreams: string[],
 	webhookUpstreams: string[],
 	policy: LoadBalancerPolicy,
+	pathPrefix?: string,
 ): string {
-	const mainBackends = mainUpstreams.join(' ');
-	const webhookBackends = webhookUpstreams.join(' ');
+	const indent = (block: string) => block.replace(/^.+/gm, '  $&');
+	const reverseProxy = (upstreams: string[]) => `reverse_proxy ${upstreams.join(' ')} {
+  lb_policy ${policy}
 
-	const sharedReverseProxyBlock = `    lb_policy ${policy}
+  # Health check
+  health_uri /healthz
+  health_interval 500ms
 
-    # Health check
-    health_uri /healthz
-    health_interval 500ms
-
-    # Timeouts
-    transport http {
-      dial_timeout 60s
-      read_timeout 60s
-      write_timeout 60s
-    }`;
-
-	if (webhookUpstreams.length === 0) {
-		return `
-:80 {
-  # Reverse proxy with load balancing
-  reverse_proxy ${mainBackends} {
-${sharedReverseProxyBlock}
+  # Timeouts
+  transport http {
+    dial_timeout 60s
+    read_timeout 60s
+    write_timeout 60s
   }
+}`;
 
-  # Set max request body size
-  request_body {
-    max_size 50MB
-  }
+	const mainProxy = reverseProxy(mainUpstreams);
+	let routes = mainProxy;
+	if (webhookUpstreams.length > 0) {
+		routes = `@webhooks path ${WEBHOOK_PROC_PATHS.join(' ')}
+handle @webhooks {
+${indent(reverseProxy(webhookUpstreams))}
+}
+
+handle {
+${indent(mainProxy)}
 }`;
 	}
 
-	const webhookMatcher = WEBHOOK_PROC_PATHS.join(' ');
+	if (pathPrefix) {
+		// n8n uses N8N_PATH for public URLs but serves its routes at the root.
+		routes = `handle_path ${pathPrefix}* {
+${indent(routes)}
+}
+
+handle {
+  respond 404
+}`;
+	}
+
 	return `
 :80 {
   request_body {
     max_size 50MB
   }
 
-  @webhooks path ${webhookMatcher}
-  handle @webhooks {
-    reverse_proxy ${webhookBackends} {
-${sharedReverseProxyBlock}
-    }
-  }
-
-  handle {
-    reverse_proxy ${mainBackends} {
-${sharedReverseProxyBlock}
-    }
-  }
+${indent(routes)}
 }`;
 }
 
@@ -97,6 +96,7 @@ export const loadBalancer: Service<LoadBalancerResult> = {
 			webhookCount: ctx.webhooks,
 			hostPort: ctx.allocatedPorts.loadBalancer,
 			policy: ctx.config.lbPolicy ?? 'first',
+			pathPrefix: ctx.config.pathPrefix,
 		};
 	},
 
@@ -108,7 +108,7 @@ export const loadBalancer: Service<LoadBalancerResult> = {
 	},
 
 	async start(network, projectName, config?: unknown): Promise<LoadBalancerResult> {
-		const { mainCount, webhookCount, hostPort, policy } = config as LoadBalancerConfig;
+		const { mainCount, webhookCount, hostPort, policy, pathPrefix } = config as LoadBalancerConfig;
 		const { consumer, throwWithLogs } = createSilentLogConsumer();
 
 		// Single-main containers are named `${projectName}-n8n`, not `-n8n-main-1`.
@@ -120,7 +120,7 @@ export const loadBalancer: Service<LoadBalancerResult> = {
 			(_, index) => `${projectName}-n8n-webhook-${index + 1}:5678`,
 		);
 
-		const caddyConfig = buildCaddyConfig(mainUpstreams, webhookUpstreams, policy);
+		const caddyConfig = buildCaddyConfig(mainUpstreams, webhookUpstreams, policy, pathPrefix);
 
 		try {
 			const container = await new GenericContainer(TEST_CONTAINER_IMAGES.caddy)
@@ -131,6 +131,8 @@ export const loadBalancer: Service<LoadBalancerResult> = {
 				.withLabels({
 					'com.docker.compose.project': projectName,
 					'com.docker.compose.service': 'caddy-lb',
+					// Testcontainers does not hash copied files for reuse.
+					...(pathPrefix ? { 'n8n.path-prefix': pathPrefix } : {}),
 				})
 				.withName(`${projectName}-caddy-lb`)
 				.withReuse()
@@ -138,12 +140,14 @@ export const loadBalancer: Service<LoadBalancerResult> = {
 				.start();
 
 			const actualHostPort = container.getMappedPort(80);
+			// Use the runtime host when prefixed so remote runners can reach baseUrl; keep localhost by default.
+			const host = pathPrefix ? container.getHost() : 'localhost';
 
 			return {
 				container,
 				meta: {
 					hostPort: actualHostPort,
-					baseUrl: `http://localhost:${actualHostPort}`,
+					baseUrl: `http://${host}:${actualHostPort}${pathPrefix ?? ''}`,
 				},
 			};
 		} catch (error) {

@@ -3,6 +3,7 @@ import { hasAgentUnpublishedChanges } from '../utils/agentPublication';
 import AgentFolderDialog, { type AgentFolderAction } from '../components/AgentFolderDialog.vue';
 import { useAgentPromptInspiration } from '../composables/useAgentPromptInspiration';
 import { useAgentBuilderExperimentStore } from '@/experiments/agentBuilder/stores/agentBuilder.store';
+import { useAgentsInvocationStepExperiment } from '@/experiments/agentsInvocationStep/useAgentsInvocationStepExperiment';
 import {
 	ref,
 	computed,
@@ -35,6 +36,7 @@ import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import {
 	N8N_CHAT_INTEGRATION_TYPE,
 	addMissingAgentPersonalisation,
+	isDraftIntegration,
 	type AgentSkillAvailability,
 	type InstanceAiHandoffContext,
 	type PushMessage,
@@ -1027,9 +1029,18 @@ let configEditRevision = 0;
 function markConfigDraftEdited() {
 	configEditRevision += 1;
 }
+const agentsInvocationStepExperiment = useAgentsInvocationStepExperiment();
 const connectedTriggers = ref<string[]>([]);
 const isPublishReady = ref(false);
 const setupChecklistContext = computed(() => {
+	const connectedChannelIds = (localConfig.value?.integrations ?? [])
+		.filter((integration) => !isDraftIntegration(integration))
+		.map((integration) => integration.type);
+
+	const enabledScheduleCount = (localConfig.value?.tasks ?? []).filter(
+		(task) => task.enabled,
+	).length;
+
 	return {
 		config: {
 			loaded: initialized.value && localConfig.value !== null,
@@ -1040,10 +1051,11 @@ const setupChecklistContext = computed(() => {
 				(localConfig.value?.tools?.length ?? 0) +
 				(localConfig.value?.mcpServers?.length ?? 0) +
 				(localConfig.value?.subAgents?.agents?.length ?? 0),
+			scheduleCount: enabledScheduleCount,
 		},
 		channels: {
-			loaded: initialized.value,
-			ids: connectedTriggers.value,
+			loaded: initialized.value && localConfig.value !== null,
+			ids: connectedChannelIds,
 		},
 		publication: {
 			loaded: initialized.value,
@@ -1058,6 +1070,7 @@ const setupChecklistContext = computed(() => {
 			loaded: initialized.value && previewSessionsLoaded.value,
 			count: sessionsStore.previewThreads.length,
 		},
+		showTriggerStep: agentsInvocationStepExperiment.isEnabled.value,
 	};
 });
 const { tasks: setupTasks, isVisible: isSetupChecklistVisible } =

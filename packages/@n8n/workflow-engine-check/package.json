@@ -1,6 +1,6 @@
 {
   "name": "@n8n/workflow-engine-check",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Reports whether a workflow can run on engine v2, and why not",
   "scripts": {
     "clean": "rimraf dist .turbo",
