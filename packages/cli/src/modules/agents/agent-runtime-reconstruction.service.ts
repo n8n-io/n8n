@@ -271,6 +271,7 @@ interface ToolRunIdentity {
 	agentId?: string;
 	integrationType?: string;
 	userId?: string;
+	actingUserId?: string;
 	previewChat?: boolean;
 	publishedN8nChat?: boolean;
 	agentServiceAccountId?: string;
@@ -988,6 +989,8 @@ export class AgentRuntimeReconstructionService {
 				integrationType,
 				// An agent account is not the person who chats, so only a person goes here.
 				userId: attributionUserId ?? (user?.kind === 'person' ? user.id : undefined),
+				// A run as the agent's account: workflow tools act as it too.
+				...(user?.kind === 'service' ? { actingUserId: user.id } : {}),
 				previewChat,
 				publishedN8nChat:
 					runType === 'production' &&
@@ -1169,6 +1172,7 @@ export class AgentRuntimeReconstructionService {
 			agentId,
 			integrationType,
 			userId,
+			actingUserId,
 			previewChat,
 			publishedN8nChat,
 			agentServiceAccountId,
@@ -1193,6 +1197,7 @@ export class AgentRuntimeReconstructionService {
 			agentId,
 			integrationType,
 			userId,
+			actingUserId,
 			previewChat,
 			publishedN8nChat,
 			agentServiceAccountId,

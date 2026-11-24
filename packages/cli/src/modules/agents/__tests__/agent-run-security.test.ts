@@ -9,8 +9,8 @@ import {
 } from '../agent-run-security';
 
 const role = mock<User['role']>();
-const account = { id: 'parent-account', kind: 'service', role } as User;
-const subAgent = { id: 'sub-agent-account', kind: 'service', role } as User;
+const account = mock<User>({ id: 'parent-account', kind: 'service', role });
+const subAgent = mock<User>({ id: 'sub-agent-account', kind: 'service', role });
 
 describe('agent run security context', () => {
 	it('makes the agent account the subject', () => {

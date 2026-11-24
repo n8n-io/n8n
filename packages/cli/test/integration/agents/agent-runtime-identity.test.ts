@@ -20,6 +20,7 @@ import { Container } from '@n8n/di';
 import { LicenseMocker } from '@test-integration/license';
 
 import { CredentialsService } from '@/credentials/credentials.service';
+import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks/credentials-permission-checker';
 import { AgentAccountStatusService } from '@/modules/agents/agent-account-status.service';
 import {
 	AgentDisabledError,
@@ -399,6 +400,37 @@ describe('Agent runtime identity', () => {
 
 			expect(after).toEqual([home.id, sales.id]);
 			expect((await loader.loadWorkflow(after, reference))?.id).toBe(workflow.id);
+		});
+
+		it('lets a workflow tool run as the agent use a credential shared with the agent', async () => {
+			const owner = await createOwner();
+			const home = await createTeamProject();
+			const agent = await createAgentIn(home.id);
+			const account = await runtimeIdentity.resolveActingAccount(agent);
+			if (!account) throw new Error('Expected an acting account');
+			const credential = await createCredentials(
+				{ name: 'JWT', type: 'jwtAuth', data: '' },
+				await getPersonalProject(owner),
+			);
+			await shareCredentialWithProjects(credential, [await getPersonalProject(account)]);
+			const nodes = [
+				{
+					id: 'jwt',
+					name: 'JWT',
+					type: 'n8n-nodes-base.jwt',
+					typeVersion: 1,
+					position: [0, 0] as [number, number],
+					parameters: {},
+					credentials: { jwtAuth: { id: credential.id, name: credential.name } },
+				},
+			];
+			const workflow = await createWorkflow({ name: 'Workflow tool', nodes }, home);
+			const checker = Container.get(CredentialsPermissionChecker);
+
+			await expect(checker.check(workflow.id, nodes)).rejects.toThrow(
+				'Node "JWT" does not have access to the credential',
+			);
+			await expect(checker.check(workflow.id, nodes, account.id)).resolves.toBeDefined();
 		});
 
 		it('keeps only the own project when the flag is off', async () => {

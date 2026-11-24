@@ -197,6 +197,12 @@ export interface WorkflowToolContext {
 	previewChat?: boolean;
 	publishedN8nChat?: boolean;
 	userId?: string;
+	/**
+	 * The agent's account when the run acts as the agent (runtime identity). The
+	 * workflow run acts as this account, so its credential check also accepts the
+	 * credentials the agent can use. `userId` stays the person, for attribution.
+	 */
+	actingUserId?: string;
 	/** See `RelatedAgentRun.agentServiceAccountId`. */
 	agentServiceAccountId?: string;
 	/** Projects whose workflows the agent can call. Defaults to `projectId`. */
@@ -345,6 +351,7 @@ export async function executeWorkflow(
 	const runData: IWorkflowExecutionDataProcess = {
 		executionMode: context.executionMode,
 		workflowData,
+		...(context.actingUserId ? { userId: context.actingUserId } : {}),
 		startNodes: [{ name: triggerNode.name, sourceData: null }],
 		pinData: triggerPinData,
 		executionData: createRunExecutionData({

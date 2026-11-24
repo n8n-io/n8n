@@ -1218,6 +1218,7 @@ describe('Telemetry', () => {
 				team_projects: 2,
 				project_role_count: {
 					'project:admin': 4,
+					'project:agent': 0,
 					'project:chatUser': 0,
 					'project:editor': 0,
 					'project:personalOwner': 0,
@@ -1401,6 +1402,7 @@ const mockPulsePacketSources = () => {
 	mockInstance(ProjectRelationRepository, {
 		countPeopleByRole: async () => ({
 			'project:admin': 4,
+			'project:agent': 0,
 			'project:chatUser': 0,
 			'project:editor': 0,
 			'project:personalOwner': 0,
