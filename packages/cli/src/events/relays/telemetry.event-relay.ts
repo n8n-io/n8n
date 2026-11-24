@@ -330,6 +330,7 @@ export class TelemetryEventRelay extends EventRelay {
 			'sso-user-project-access-updated': (event) => this.ssoUserProjectAccessUpdated(event),
 			'sso-user-instance-role-updated': (event) => this.ssoUserInstanceRoleUpdated(event),
 			'sso-settings-updated': (event) => this.ssoSettingsUpdated(event),
+			'provisioning-settings-updated': (event) => this.provisioningSettingsUpdated(event),
 			'scim-settings-updated': (event) => this.scimSettingsUpdated(event),
 			'scim-request-rejected': (event) => this.scimRequestRejected(event),
 			'workflow-created': (event) => this.workflowCreated(event),
@@ -386,6 +387,7 @@ export class TelemetryEventRelay extends EventRelay {
 			'workflow-review-version-updated': (event) => this.workflowReviewVersionUpdated(event),
 			'workflow-review-decided': (event) => this.workflowReviewDecided(event),
 			'workflow-review-closed': (event) => this.workflowReviewClosed(event),
+			'workflow-review-closed-by-user': (event) => this.workflowReviewClosedByUser(event),
 			'workflow-review-comment-created': (event) => this.workflowReviewCommentCreated(event),
 			'promotion-provider-created': (event) => this.promotionProviderCreated(event),
 			'promotion-environment-created': (event) => this.promotionEnvironmentCreated(event),
@@ -719,6 +721,8 @@ export class TelemetryEventRelay extends EventRelay {
 		projectId,
 		versionId,
 		userId,
+		threadId,
+		source,
 		workflowCount,
 		dataTableCount,
 		agentCount,
@@ -730,6 +734,8 @@ export class TelemetryEventRelay extends EventRelay {
 			project_id: projectId,
 			version_id: versionId,
 			user_id: userId,
+			thread_id: threadId,
+			source,
 			workflow_count: workflowCount,
 			data_table_count: dataTableCount,
 			agent_count: agentCount,
@@ -1550,6 +1556,24 @@ export class TelemetryEventRelay extends EventRelay {
 			is_active: loginEnabled,
 			fields_changed: fieldsChanged,
 			public_api: publicApi,
+		});
+	}
+
+	private provisioningSettingsUpdated({
+		user,
+		authenticationMethod,
+		assignmentMethod,
+		roleMappingMethod,
+		instanceRuleCount,
+		projectRuleCount,
+	}: RelayEventMap['provisioning-settings-updated']) {
+		this.telemetry.track(TELEMETRY_EVENT.PROVISIONING.USER_UPDATED_PROVISIONING_SETTINGS, {
+			user_id: user.id,
+			authentication_method: authenticationMethod,
+			assignment_method: assignmentMethod,
+			role_mapping_method: roleMappingMethod,
+			instance_rule_count: instanceRuleCount,
+			project_rule_count: projectRuleCount,
 		});
 	}
 
@@ -3063,6 +3087,20 @@ export class TelemetryEventRelay extends EventRelay {
 			workflow_review_request_id: workflowReviewRequestId,
 			cause_trigger: cause.trigger,
 			cause_actor_kind: cause.actorKind,
+		});
+	}
+
+	private workflowReviewClosedByUser({
+		user,
+		workflowReviewRequestId,
+		workflowId,
+		workflowVersionId,
+	}: RelayEventMap['workflow-review-closed-by-user']) {
+		this.telemetry.track(TELEMETRY_EVENT.WORKFLOW_REVIEWS.USER_CLOSED_WORKFLOW_REVIEW, {
+			user_id: user.id,
+			workflow_review_request_id: workflowReviewRequestId,
+			workflow_id: workflowId,
+			workflow_version_id: workflowVersionId,
 		});
 	}
 

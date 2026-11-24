@@ -17,7 +17,7 @@ import type {
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { AiConfig } from '@n8n/config';
-import { UserRepository, type User } from '@n8n/db';
+import { AgentExecutionStatisticsRepository, UserRepository, type User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { OperationalError, UserError } from '@n8n/errors';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
@@ -417,7 +417,21 @@ export class AgentExecutionOrchestratorService {
 		private readonly settingsService: AgentsSettingsService,
 		private readonly agentSkillRefs: AgentSkillRefsService,
 		private readonly userRepository: UserRepository,
+		private readonly agentExecutionStatisticsRepository: AgentExecutionStatisticsRepository,
 	) {}
+
+	private async beforeProductionExecution(agentId: string): Promise<void> {
+		await this.externalHooks.run('agent.preExecute', [agentId]);
+		await this.recordProductionExecution();
+	}
+
+	private async recordProductionExecution(): Promise<void> {
+		try {
+			await this.agentExecutionStatisticsRepository.recordAgentExecution();
+		} catch (error) {
+			this.logger.error('Failed to record agent execution statistic', { error });
+		}
+	}
 
 	async getSessionMode(threadId: string): Promise<AgentSessionMode> {
 		return await this.agentExecutionService.getSessionMode(threadId);
@@ -537,6 +551,10 @@ export class AgentExecutionOrchestratorService {
 						...thread,
 						user,
 						previewChat: chatSurface === 'preview',
+						// A suspended test run already marked its chat, so its sandbox is the test chat's.
+						testChat:
+							(await this.agentExecutionService.findThreadById(memoryScope.threadId))?.testChat ===
+							true,
 					})
 				: await this.prepareN8nChat({
 						...thread,
@@ -894,9 +912,21 @@ export class AgentExecutionOrchestratorService {
 		});
 		const simulationSession = await config.simulation?.(config.memory.threadId);
 		const draft = { ...config, sessionMode, simulationSession };
+		// The session is known only after the access check, and a new test chat is marked only
+		// when its turn starts, so the test chat's own sandbox is chosen here.
+		const draftSetup = simulationSession
+			? {
+					...setup,
+					sandboxPrincipalHash: draftSandboxPrincipalHash(
+						config.user.id,
+						config.memory.threadId,
+						true,
+					),
+				}
+			: setup;
 		yield* this.withRuntimeLease(
-			async () => await this.getDraftChatRuntime(draft, setup),
-			async (runtime) => await this.streamDraftChatResponse(draft, runtime, setup),
+			async () => await this.getDraftChatRuntime(draft, draftSetup),
+			async (runtime) => await this.streamDraftChatResponse(draft, runtime, draftSetup),
 		);
 	}
 
@@ -920,7 +950,7 @@ export class AgentExecutionOrchestratorService {
 			sandboxPrincipalHash,
 			sessionMode = 'new',
 		} = config;
-		await this.externalHooks.run('agent.preExecute', [agentId]);
+		await this.beforeProductionExecution(agentId);
 
 		// Published integration runtimes have no n8n user but are isolated by
 		// their external caller's hashed workspace principal.
@@ -1023,7 +1053,7 @@ export class AgentExecutionOrchestratorService {
 			userId: user.id,
 			sessionMode,
 		});
-		await this.externalHooks.run('agent.preExecute', [agentId]);
+		await this.beforeProductionExecution(agentId);
 		yield* this.withRuntimeLease(
 			async () =>
 				await this.getRuntimeOrRecordFailure(
@@ -1095,7 +1125,7 @@ export class AgentExecutionOrchestratorService {
 		config: ExecuteForTaskPublishedConfig,
 	): AsyncGenerator<AgentExecutionStreamChunk> {
 		const { agentId, projectId, message, memory, taskId, taskVersionId } = config;
-		await this.externalHooks.run('agent.preExecute', [agentId]);
+		await this.beforeProductionExecution(agentId);
 
 		// Cron-fired runs have no n8n user and reuse the scheduled task's scope.
 		const sandboxPrincipalHash = hashAgentSandboxPrincipal({ type: 'scheduled-task', taskId });
@@ -1256,19 +1286,31 @@ export class AgentExecutionOrchestratorService {
 		const delivery = setup
 			? undefined
 			: await this.getWakeDelivery(agentId, integrationType, messageContext);
+		let usageWrite: Promise<void> | undefined;
+		const wakeConfig: ExecuteForWakeConfig = {
+			...config,
+			onRuntimeStarted: () => {
+				config.onRuntimeStarted?.();
+				if (!isDraft) usageWrite = this.recordProductionExecution();
+			},
+		};
 		const stream = this.withRuntimeLease(
 			async () => await this.getWakeRuntime(config, setup, access, integrationType),
 			(runtime) =>
 				this.streamWakeResponse(
-					this.streamWakeTurn(config, runtime, setup, access, integrationType, messageContext),
+					this.streamWakeTurn(wakeConfig, runtime, setup, access, integrationType, messageContext),
 					abortSignal,
 					delivery,
 					messageContext?.interactingUserId,
 					memory.threadId,
 				),
 		);
-		for await (const _chunk of stream) {
-			// Complete execution and reply delivery within the runtime lease.
+		try {
+			for await (const _chunk of stream) {
+				// Complete execution and reply delivery within the runtime lease.
+			}
+		} finally {
+			await usageWrite;
 		}
 	}
 
@@ -1626,9 +1668,11 @@ export class AgentExecutionOrchestratorService {
 				...encodeIntegrationMessageContext(selectedContext),
 				// The resume merge lets this metadata win, so it must not replace a stored decision.
 				// A checkpoint from before channels resolved a scope gets the integration fallback.
-				...(readEpisodicScopeDecision(memoryScope.hostMetadata)
-					? {}
-					: episodicScopeHostMetadata(memoryScope.resourceId)),
+				...(config.simulationSession
+					? episodicScopeHostMetadata(memoryScope.resourceId, { disabled: true })
+					: readEpisodicScopeDecision(memoryScope.hostMetadata)
+						? {}
+						: episodicScopeHostMetadata(memoryScope.resourceId)),
 			},
 			...(selectedContext && conversation
 				? {
@@ -1711,9 +1755,20 @@ export class AgentExecutionOrchestratorService {
 		sessionMode: AgentSessionMode;
 		/** Produces the error thrown for an inaccessible thread. Defaults to 'Session not found'. */
 		denied?: () => Error;
+		/** A test chat gets its own sandbox, apart from the user's live preview chats. */
+		testChat?: boolean;
 	}): Promise<ChatChannelSetup> {
-		const { agentId, projectId, threadId, resourceId, user, previewChat, sessionMode, denied } =
-			params;
+		const {
+			agentId,
+			projectId,
+			threadId,
+			resourceId,
+			user,
+			previewChat,
+			sessionMode,
+			denied,
+			testChat,
+		} = params;
 		const fail = denied ?? (() => new UserError('Session not found'));
 		if (
 			resourceId !== chatSurfaceMemoryResourceId('preview', user.id) ||
@@ -1727,7 +1782,7 @@ export class AgentExecutionOrchestratorService {
 		return {
 			surface: previewChat ? 'preview' : undefined,
 			access: { accessScope: 'user', ownerId: user.id },
-			sandboxPrincipalHash: hashAgentSandboxPrincipal({ type: 'n8n-user', userId: user.id }),
+			sandboxPrincipalHash: draftSandboxPrincipalHash(user.id, threadId, testChat === true),
 			alwaysSandboxed: false,
 			runtime: {
 				usePublishedVersion: false,
@@ -1893,6 +1948,7 @@ export class AgentExecutionOrchestratorService {
 			onExecutionStarted: config.onExecutionStarted,
 			sandboxPrincipalHash: setup.sandboxPrincipalHash,
 			sessionMode,
+			...simulationEpisodicScope(config.simulationSession),
 		});
 	}
 
@@ -2136,4 +2192,20 @@ export class AgentExecutionOrchestratorService {
 // No background jobs in a test run: a job would outlive the turn and run unsimulated.
 function simulationRuntimeParams(session: SimulationSession | undefined) {
 	return session ? { simulation: session, allowBackgroundTasks: false } : {};
+}
+
+/**
+ * Episodic memory is scoped to the user's draft resource, which every draft chat shares. A test
+ * run would store simulated results there that live chats then recall as fact, so it is off.
+ * Observational memory and history recall are keyed by thread, so they stay in the test chat.
+ */
+function simulationEpisodicScope(session: SimulationSession | undefined) {
+	return session ? { episodicScope: { disabled: true } as const } : {};
+}
+
+/** A test chat's sandbox is its own; every other draft chat of a user shares one. */
+function draftSandboxPrincipalHash(userId: string, threadId: string, testChat: boolean) {
+	return hashAgentSandboxPrincipal(
+		testChat ? { type: 'test-chat', userId, threadId } : { type: 'n8n-user', userId },
+	);
 }

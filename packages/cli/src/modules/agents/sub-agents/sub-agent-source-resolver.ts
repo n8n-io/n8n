@@ -31,6 +31,11 @@ export interface ResolveSubAgentSourceContext {
 
 export interface ResolvedSubAgentRuntimeSource extends AgentRuntimeAssets {
 	source: ResolvedSubAgentSource;
+	/**
+	 * The sub-agent's service account, from the live agent row, for attribution in
+	 * workflow log events. Callers must not save it into a background snapshot.
+	 */
+	agentServiceAccountId?: string;
 }
 
 @Service()
@@ -56,6 +61,8 @@ export class SubAgentSourceResolver {
 				`Sub-agent "${agent.name}" is archived. Restore it before delegating to it.`,
 			);
 		}
+		// Read from the live row on every branch, also for a saved background snapshot.
+		const attribution = agent.identityId ? { agentServiceAccountId: agent.identityId } : {};
 
 		if (context.runtimeSnapshot !== undefined) {
 			const saved = jsonParse<ResolvedSubAgentRuntimeSource | null>(context.runtimeSnapshot, {
@@ -80,6 +87,7 @@ export class SubAgentSourceResolver {
 			return {
 				...saved,
 				source: { ...saved.source, config: result.data },
+				...attribution,
 			};
 		}
 
@@ -108,6 +116,7 @@ export class SubAgentSourceResolver {
 					config: this.toRunnableConfig(toAgentDocument(version.schema, skillRefs)),
 				},
 				...getAgentRuntimeAssets(version, skills),
+				...attribution,
 			};
 		}
 
@@ -127,6 +136,7 @@ export class SubAgentSourceResolver {
 					config: this.toRunnableConfig(toAgentDocument(activeVersion.schema, skillRefs)),
 				},
 				...getAgentRuntimeAssets(activeVersion, skills),
+				...attribution,
 			};
 		}
 
@@ -141,6 +151,7 @@ export class SubAgentSourceResolver {
 				config: this.toRunnableConfig(toAgentDocument(agent.schema, skillRefs)),
 			},
 			...getAgentRuntimeAssets(agent, skills),
+			...attribution,
 		};
 	}
 

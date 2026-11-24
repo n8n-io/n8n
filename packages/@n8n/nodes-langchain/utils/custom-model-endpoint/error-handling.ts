@@ -44,8 +44,9 @@ const NAMED_ENTITIES: Record<string, string> = {
 
 function decodeEntities(text: string): string {
 	return text.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (entity: string, body: string) => {
-		const named = NAMED_ENTITIES[body.toLowerCase()];
-		if (named !== undefined) return named;
+		// Own keys only: `&constructor;` in a title would otherwise reach Object.prototype
+		const name = body.toLowerCase();
+		if (Object.hasOwn(NAMED_ENTITIES, name)) return NAMED_ENTITIES[name];
 
 		const code = /^#x/i.test(body) ? Number.parseInt(body.slice(2), 16) : Number(body.slice(1));
 		return code > 0 && code <= 0x10ffff ? String.fromCodePoint(code) : entity;

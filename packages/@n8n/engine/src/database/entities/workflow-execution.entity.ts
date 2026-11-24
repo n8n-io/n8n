@@ -26,6 +26,9 @@ import type { ResponseExpectation } from '../../response-channel';
 	where: 'parent_execution_id IS NOT NULL',
 })
 @Index('idx_workflow_execution_stale_after', ['staleAfter'], { where: "status = 'queued'" })
+@Index('idx_workflow_execution_finished_at_id', ['finishedAt', 'id'], {
+	where: 'finished_at IS NOT NULL',
+})
 export class WorkflowExecution {
 	@PrimaryColumn('uuid')
 	id!: string;

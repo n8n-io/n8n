@@ -31,6 +31,7 @@ export class BrevoTrigger implements INodeType {
 		inputs: [],
 		// keep sendinblue name for backward compatibility
 		name: 'sendInBlueTrigger',
+		schemaPath: 'Brevo',
 		outputs: [NodeConnectionTypes.Main],
 		version: 1,
 		webhooks: [

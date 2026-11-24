@@ -1,0 +1,95 @@
+{
+	"properties": {
+		"@odata.context": {
+			"type": "string"
+		},
+		"@odata.etag": {
+			"type": "string"
+		},
+		"createdBy": {
+			"properties": {
+				"user": {
+					"properties": {
+						"displayName": {
+							"type": "string"
+						},
+						"email": {
+							"type": "string"
+						},
+						"id": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				}
+			},
+			"type": "object"
+		},
+		"createdDateTime": {
+			"type": "string"
+		},
+		"description": {
+			"type": "string"
+		},
+		"displayName": {
+			"type": "string"
+		},
+		"eTag": {
+			"type": "string"
+		},
+		"id": {
+			"type": "string"
+		},
+		"lastModifiedBy": {
+			"properties": {
+				"user": {
+					"properties": {
+						"displayName": {
+							"type": "string"
+						},
+						"email": {
+							"type": "string"
+						},
+						"id": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				}
+			},
+			"type": "object"
+		},
+		"lastModifiedDateTime": {
+			"type": "string"
+		},
+		"list": {
+			"properties": {
+				"contentTypesEnabled": {
+					"type": "boolean"
+				},
+				"hidden": {
+					"type": "boolean"
+				},
+				"template": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"name": {
+			"type": "string"
+		},
+		"parentReference": {
+			"properties": {
+				"siteId": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"webUrl": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

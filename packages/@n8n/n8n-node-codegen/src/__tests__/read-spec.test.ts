@@ -133,6 +133,7 @@ describe('readSpec', () => {
 					tag: workflow,
 					deprecated: false,
 					paginated: false,
+					emptyResponse: false,
 					parameters: [
 						{
 							name: 'name',
@@ -160,6 +161,7 @@ describe('readSpec', () => {
 					tag: executions,
 					deprecated: false,
 					paginated: false,
+					emptyResponse: true,
 					parameters: [
 						{
 							name: 'id',
@@ -179,6 +181,7 @@ describe('readSpec', () => {
 					tag: workflow,
 					deprecated: false,
 					paginated: true,
+					emptyResponse: false,
 					parameters: [
 						{
 							name: 'name',
@@ -187,6 +190,13 @@ describe('readSpec', () => {
 							deprecated: false,
 							schema: { type: 'string' },
 							description: 'Only workflows with this name.',
+						},
+						{
+							name: 'limit',
+							location: 'query',
+							required: false,
+							deprecated: false,
+							schema: { type: 'number' },
 						},
 					],
 					blockers: [],
@@ -236,12 +246,37 @@ describe('readSpec', () => {
 		expect(operation.parameters.map((parameter) => parameter.schema)).toEqual([schema, schema]);
 	});
 
-	it('should keep a limit parameter when the operation has no cursor', () => {
+	it('should mark only an operation with a successful response and no body as an empty response', () => {
+		expect(readOperation({ responses: { '204': { description: 'Deleted' } } }).emptyResponse).toBe(
+			true,
+		);
+		expect(
+			readOperation({ responses: { '404': { description: 'Not found' } } }).emptyResponse,
+		).toBe(false);
+	});
+
+	it('should keep the limit and offset parameters when the operation has no cursor', () => {
 		const operation = readOperation({
-			parameters: [{ name: 'limit', in: 'query', schema: { type: 'number' } }],
+			parameters: [
+				{ name: 'limit', in: 'query', schema: { type: 'number' } },
+				{ name: 'offset', in: 'query', schema: { type: 'number' } },
+			],
 		});
 
 		expect(operation.paginated).toBe(false);
+		expect(operation.parameters.map((parameter) => parameter.name)).toEqual(['limit', 'offset']);
+	});
+
+	it('should drop the offset parameter of an operation with a cursor', () => {
+		const operation = readOperation({
+			parameters: [
+				{ name: 'limit', in: 'query', schema: { type: 'number' } },
+				{ name: 'offset', in: 'query', schema: { type: 'number' } },
+				{ name: 'cursor', in: 'query', schema: { type: 'string' } },
+			],
+		});
+
+		expect(operation.paginated).toBe(true);
 		expect(operation.parameters.map((parameter) => parameter.name)).toEqual(['limit']);
 	});
 

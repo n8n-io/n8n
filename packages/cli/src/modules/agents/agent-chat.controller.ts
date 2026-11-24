@@ -3,6 +3,7 @@ import {
 	type AgentBackgroundJobsResponse,
 	type AgentSessionFilesResponse,
 	AgentChatMessageDto,
+	AgentPreviewChatMessageDto,
 	AgentChatCancelDto,
 	AgentChatMessagesQueryDto,
 	AgentTaskCancellationDto,
@@ -257,7 +258,7 @@ export class AgentChatController {
 		req: AuthenticatedRequest<{ projectId: string }>,
 		res: FlushableResponse,
 		@Param('agentId') agentId: string,
-		@Body payload: AgentChatMessageDto,
+		@Body payload: AgentPreviewChatMessageDto,
 	) {
 		const { projectId } = req.params;
 		// The text-or-attachment invariant is enforced by the DTO schema.

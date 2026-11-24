@@ -19,6 +19,7 @@ export class ZendeskTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Zendesk Trigger',
 		name: 'zendeskTrigger',
+		schemaPath: 'Zendesk',
 		icon: 'file:zendesk.svg',
 		group: ['trigger'],
 		version: [1, 1.1],

@@ -66,7 +66,7 @@ const user = mock<User>({ id: 'user-1' });
 function makeConfig(over: Partial<AgentJsonConfig> = {}): AgentJsonConfig {
 	return {
 		name: 'Support Bot',
-		model: 'anthropic/claude-sonnet-4-5',
+		model: 'anthropic/claude-sonnet-5-5',
 		credential: 'cred-1',
 		instructions: 'Help customers with billing questions.',
 		tools: [{ type: 'node', name: 'lookupOrder', node: {} }],
@@ -107,7 +107,7 @@ describe('AgentEvalCaseGenerationService', () => {
 
 		generateMock.mockReset();
 		resolveModelMock.mockReset();
-		resolveModelMock.mockResolvedValue({ id: 'anthropic/claude-sonnet-4-5' });
+		resolveModelMock.mockResolvedValue({ id: 'anthropic/claude-sonnet-5-5' });
 		criteriaRunMock.mockReset();
 		criteriaRunMock.mockResolvedValue({ pass: true, reasoning: 'Satisfies the rule.' });
 

@@ -4,17 +4,28 @@ import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 
 import SettingsContextView from './SettingsContextView.vue';
+import { useCollectionsStore } from '../collections.store';
 import { useContextStore } from '../context.store';
 import { useSkillsStore } from '../skills.store';
 
 const push = vi.fn();
-const flags = vi.hoisted(() => ({ skills: false, preferences: true, managePreferences: false }));
+const flags = vi.hoisted(() => ({
+	skills: false,
+	preferences: true,
+	managePreferences: false,
+	collections: false,
+}));
 
 vi.mock('../context.utils', () => ({
 	isContextSkillsEnabled: () => flags.skills,
 	isContextPreferencesEnabled: () => flags.preferences,
 	canManageContextPreferences: () => flags.managePreferences,
 }));
+
+vi.mock('@/features/shared/knowledge/useIsCollectionsEnabled', async () => {
+	const { computed } = await import('vue');
+	return { useIsCollectionsEnabled: () => computed(() => flags.collections) };
+});
 const showErrorMock = vi.fn();
 
 vi.mock('@n8n/composables/useToast', () => ({
@@ -35,6 +46,7 @@ describe('SettingsContextView', () => {
 		flags.skills = false;
 		flags.preferences = true;
 		flags.managePreferences = false;
+		flags.collections = false;
 		push.mockClear();
 		showErrorMock.mockClear();
 	});
@@ -126,6 +138,65 @@ describe('SettingsContextView', () => {
 
 			await userEvent.click(row);
 			expect(push).toHaveBeenCalledWith({ name: 'SettingsContextPreferences' });
+		});
+	});
+
+	describe('collections', () => {
+		it('hides the collections row and reads no count while collections are off', async () => {
+			const collectionsStore = mockedStore(useCollectionsStore);
+			const { queryByTestId } = renderView();
+			await new Promise(process.nextTick);
+
+			expect(queryByTestId('settings-context-collections-row')).toBeNull();
+			expect(collectionsStore.fetchCollections).not.toHaveBeenCalled();
+		});
+
+		it('reads the collection count and shows "None yet" for zero', async () => {
+			flags.collections = true;
+			const collectionsStore = mockedStore(useCollectionsStore);
+			collectionsStore.count = 0;
+
+			const { getByTestId } = renderView();
+			await new Promise(process.nextTick);
+
+			expect(collectionsStore.fetchCollections).toHaveBeenCalled();
+			expect(getByTestId('settings-context-collections-row')).toHaveTextContent('None yet');
+		});
+
+		it.each([
+			[1, '1 collection'],
+			[3, '3 collections'],
+		])('shows the count for %i as "%s"', (count, expected) => {
+			flags.collections = true;
+			mockedStore(useCollectionsStore).count = count;
+
+			const { getByTestId } = renderView();
+
+			expect(getByTestId('settings-context-collections-row')).toHaveTextContent(expected);
+		});
+
+		it('reports a failed collection count', async () => {
+			flags.collections = true;
+			const error = new Error('offline');
+			mockedStore(useCollectionsStore).fetchCollections.mockRejectedValueOnce(error);
+
+			renderView();
+			await new Promise(process.nextTick);
+
+			expect(showErrorMock).toHaveBeenCalledWith(error, 'Could not load collections');
+		});
+
+		it('shows the collections row and opens the collections page', async () => {
+			flags.collections = true;
+			const { getByTestId } = renderView();
+			const row = getByTestId('settings-context-collections-row');
+
+			expect(row).toHaveTextContent('Collections');
+			expect(row).toHaveTextContent('Reusable sets of knowledge any agent can use');
+
+			await userEvent.click(row);
+
+			expect(push).toHaveBeenCalledWith({ name: 'SettingsContextCollections' });
 		});
 	});
 

@@ -25,6 +25,9 @@ describe('nodeSimulationGap', () => {
 		'n8n-nodes-base.form',
 		'n8n-nodes-base.emailReadImap',
 		'n8n-nodes-base.oracleDatabase',
+		'n8n-nodes-base.dataTable',
+		'n8n-nodes-base.evaluation',
+		'n8n-nodes-base.messageAnAgent',
 		'@n8n/n8n-nodes-langchain.lmChatOpenAi',
 		'n8n-nodes-community.anything',
 		'@acme/n8n-nodes-acme.acme',
@@ -48,6 +51,30 @@ describe('nodeSimulationGap', () => {
 		expect(nodeSimulationGap('n8n-nodes-base.github', { operation: 'dispatchAndWait' })).toEqual(
 			expect.any(String),
 		);
+	});
+
+	it.each(['removeItemsSeenInPreviousExecutions', 'clearDeduplicationHistory'])(
+		'blocks Remove Duplicates %s, which uses the history stored in n8n',
+		(operation) => {
+			expect(nodeSimulationGap('n8n-nodes-base.removeDuplicates', { operation })).toEqual(
+				expect.any(String),
+			);
+		},
+	);
+
+	it.each([
+		['n8n-nodes-base.removeDuplicates', "={{ 'clearDeduplicationHistory' }}"],
+		['n8n-nodes-base.slack', "={{ 'sendAndWait' }}"],
+	])('blocks %s when an expression sets the operation', (nodeType, operation) => {
+		expect(nodeSimulationGap(nodeType, { operation })).toEqual(expect.any(String));
+	});
+
+	it('lets Remove Duplicates run on the current items only', () => {
+		expect(
+			nodeSimulationGap('n8n-nodes-base.removeDuplicates', {
+				operation: 'removeDuplicateInputItems',
+			}),
+		).toBeUndefined();
 	});
 
 	it('blocks send-and-wait on an otherwise allowed node', () => {

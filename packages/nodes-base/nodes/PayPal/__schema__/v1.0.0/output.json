@@ -1,0 +1,30 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"event_type": {
+			"type": "string"
+		},
+		"resource": {
+			"additionalProperties": true,
+			"properties": {
+				"amount": {
+					"additionalProperties": true,
+					"properties": {
+						"currency": {
+							"type": "string"
+						},
+						"total": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
+				"id": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		}
+	},
+	"type": "object"
+}

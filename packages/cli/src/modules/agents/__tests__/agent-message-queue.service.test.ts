@@ -818,6 +818,49 @@ describe('AgentMessageQueueService', () => {
 			);
 		});
 
+		async function steerTestMessage(testChat: boolean) {
+			threadRepository.lockById.mockResolvedValue(makeThread({ testChat }));
+			executionRepository.findFirstSourceByThreadIds.mockResolvedValue(
+				new Map([['thread-1', 'chat']]),
+			);
+			repository.findItem.mockResolvedValue(
+				mock<AgentMessageQueue>({
+					id: '1',
+					payload: { kind: 'preview', mode: 'test' } as AgentMessageQueue['payload'],
+					executionId: null,
+					steeringExecutionId: null,
+				}),
+			);
+			steering.findEligible.mockResolvedValue(mock<AgentExecution>({ id: 'execution-1' }));
+			repository.reserveSteering.mockResolvedValue(true);
+			return await service.steer({
+				projectId: 'project-1',
+				agentId: 'agent-1',
+				threadId: 'thread-1',
+				userId: 'user-1',
+				queueId: '1',
+				executionId: 'execution-1',
+				kind: 'preview',
+			});
+		}
+
+		it('never steers a message that asked for a test run into a live run', async () => {
+			const steered = steerTestMessage(false);
+			await expect(steered).rejects.toThrow(ConflictError);
+			await expect(steered).rejects.toThrow('This chat runs live');
+			expect(repository.reserveSteering).not.toHaveBeenCalled();
+		});
+
+		it("steers a message that asked for a test run into a test chat's run", async () => {
+			await steerTestMessage(true);
+			expect(repository.reserveSteering).toHaveBeenCalledWith(
+				'thread-1',
+				'1',
+				'execution-1',
+				expect.anything(),
+			);
+		});
+
 		it('rejects an item whose kind does not match the request (e.g. an integration item)', async () => {
 			threadRepository.lockById.mockResolvedValue(makeThread());
 			executionRepository.findFirstSourceByThreadIds.mockResolvedValue(

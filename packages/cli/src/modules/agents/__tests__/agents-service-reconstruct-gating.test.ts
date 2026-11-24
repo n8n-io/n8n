@@ -22,7 +22,7 @@ import { Container } from '@n8n/di';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { mock } from 'vitest-mock-extended';
 
-import * as proxyTransport from '@/utils/ai-proxy-fetch';
+import type * as ProxyTransport from '@/utils/ai-proxy-fetch';
 import type { ActiveExecutions } from '@/active-executions';
 import type { CredentialsFinderService } from '@n8n/backend-services';
 import type { EphemeralNodeExecutor } from '@/node-execution';
@@ -69,6 +69,14 @@ import type { AgentSandboxFilesService } from '../agent-sandbox-files.service';
 
 const { getCachedCatalog } = vi.hoisted(() => ({ getCachedCatalog: vi.fn() }));
 vi.mock('@n8n/agents/catalog', () => ({ getCachedCatalog }));
+
+// A module mock, so the MCP transport can be replaced without changing an ESM namespace.
+const { createAiMcpFetchMock } = vi.hoisted(() => ({ createAiMcpFetchMock: vi.fn() }));
+vi.mock('@/utils/ai-proxy-fetch', async () => {
+	const actual = await vi.importActual<typeof ProxyTransport>('@/utils/ai-proxy-fetch');
+	createAiMcpFetchMock.mockImplementation(actual.createAiMcpFetch);
+	return { ...actual, createAiMcpFetch: createAiMcpFetchMock };
+});
 
 // Mock buildFromJson so reconstruction doesn't try to actually build an agent.
 const builtAgent = mock<agents.Agent>();
@@ -160,7 +168,7 @@ function makeAgentEntity(
 ): ProjectAgent {
 	const schema: AgentJsonConfig = {
 		name: 'Test',
-		model: 'anthropic/claude-sonnet-4-5',
+		model: 'anthropic/claude-sonnet-5-5',
 		instructions: 'Be helpful',
 		...(schemaConfig !== undefined ? { config: schemaConfig } : {}),
 		...(overrides ?? {}),
@@ -249,7 +257,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — MCP w
 			await service.reconstructFromResolvedSource({
 				config: {
 					name: 'Agent',
-					model: 'anthropic/claude-sonnet-4-5',
+					model: 'anthropic/claude-sonnet-5-5',
 					instructions: 'Help',
 					mcpServers: [
 						{
@@ -290,7 +298,8 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — MCP w
 			'no-override': { onMcpToolCallSettled: vi.fn() },
 			override: { mcpFetch },
 		};
-		const factory = vi.spyOn(proxyTransport, 'createAiMcpFetch').mockReturnValue(liveFetch);
+		const realFactory = createAiMcpFetchMock.getMockImplementation();
+		createAiMcpFetchMock.mockReturnValue(liveFetch);
 		try {
 			const entity = makeAgentEntity(undefined, {
 				mcpServers: [
@@ -310,14 +319,47 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — MCP w
 				undefined,
 				instrumentation[mode],
 			);
+			// The default transport stays the proxy fetch. An override replaces it as the simulated
+			// fetch, which answers every request, so no credential is read for that server.
 			expect(buildMcpClientForServerMock).toHaveBeenCalledWith(
 				expect.objectContaining({ name: 'fixture' }),
-				expect.objectContaining({ proxyFetch: mode === 'override' ? evalFetch : liveFetch }),
+				expect.objectContaining({
+					proxyFetch: liveFetch,
+					simulatedFetch: mode === 'override' ? evalFetch : undefined,
+				}),
 			);
 			if (mode === 'override') expect(mcpFetch).toHaveBeenCalledWith('fixture');
 			else expect(mcpFetch).not.toHaveBeenCalled();
+			// Auth-pending servers are attached only when the override keeps them off the network.
+			expect(buildFromJsonMock.mock.lastCall?.at(-1)).toMatchObject({
+				attachAuthPendingMcpServers: mode === 'override',
+			});
 		} finally {
-			factory.mockRestore();
+			createAiMcpFetchMock.mockImplementation(realFactory!);
+		}
+	});
+
+	it.each([
+		['hands the tool call interceptor of the instrumentation to the agent', true],
+		['installs no interceptor without one', false],
+	])('%s', async (_label, withInterceptor) => {
+		const { service, credentialProvider } = setup();
+		builtAgent.toolCallInterceptor.mockClear();
+		const toolCallInterceptor = vi.fn();
+
+		await service.reconstructFromAgentEntity(
+			storedRunSource(makeAgentEntity()),
+			credentialProvider,
+			'production',
+			undefined,
+			undefined,
+			withInterceptor ? ({ toolCallInterceptor } as never) : undefined,
+		);
+
+		if (withInterceptor) {
+			expect(builtAgent.toolCallInterceptor).toHaveBeenCalledWith(toolCallInterceptor);
+		} else {
+			expect(builtAgent.toolCallInterceptor).not.toHaveBeenCalled();
 		}
 	});
 
@@ -537,7 +579,7 @@ describe('AgentRuntimeReconstructionService — workspace attachment', () => {
 		await service.reconstructFromResolvedSource({
 			config: {
 				name: 'Inline',
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 				instructions: 'Help',
 			},
 			memoryOwnerAgentId: 'agent-1',
@@ -827,7 +869,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 		const service = makeReconstructionService({ agentRepository });
 		const config: AgentJsonConfig = {
 			name: 'Test',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			instructions: 'Be helpful',
 			subAgents: { agents: [{ agentId: 'agent-billing' }] },
 		};
@@ -847,7 +889,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 		const service = makeReconstructionService({ agentRepository });
 		const config: AgentJsonConfig = {
 			name: 'Test',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			instructions: 'Be helpful',
 			subAgents: { agents: [{ agentId: 'agent-billing' }] },
 		};
@@ -899,7 +941,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 						model: 'google-vertex/gemini-3-flash-preview',
 						credential: 'vertex-cred',
 					},
-					high: { model: 'anthropic/claude-sonnet-4-5', credential: 'high-cred' },
+					high: { model: 'anthropic/claude-sonnet-5-5', credential: 'high-cred' },
 				},
 			},
 		});
@@ -925,7 +967,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 				privateKey: 'private-key',
 			},
 			high: {
-				id: 'anthropic/claude-sonnet-4-5',
+				id: 'anthropic/claude-sonnet-5-5',
 				apiKey: 'high-key',
 			},
 		});
@@ -946,7 +988,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 				model: 'openai/gpt-4o',
 				subAgents: {
 					modelsByDifficulty: {
-						high: { model: 'anthropic/claude-sonnet-4-5', credential: 'high-cred' },
+						high: { model: 'anthropic/claude-sonnet-5-5', credential: 'high-cred' },
 					},
 				},
 			},
@@ -1125,7 +1167,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromResolvedSource — su
 
 		const config: AgentJsonConfig = {
 			name: 'Child',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			instructions: 'Help',
 		};
 
@@ -1231,7 +1273,7 @@ describe('AgentRuntimeReconstructionService — plan tools gating', () => {
 		async (runtimeProfile) => {
 			Container.get(AgentsConfig).planToolsEnabled = true;
 			await makeReconstructionService().reconstructFromResolvedSource({
-				config: { name: 'Child', model: 'anthropic/claude-sonnet-4-5', instructions: 'Help' },
+				config: { name: 'Child', model: 'anthropic/claude-sonnet-5-5', instructions: 'Help' },
 				memoryOwnerAgentId: 'child-agent-1',
 				projectId: 'project-1',
 				credentialProvider: mock<CredentialProvider>(),

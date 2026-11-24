@@ -60,12 +60,15 @@ export interface AgentRuntimeInstrumentation {
 	 * credential in the config. Provider-native web search is unaffected (it
 	 * runs inside the model call). Shape matches `FallbackWebSearchHandler`.
 	 */
-	webSearch?: (args: {
-		query: string;
-		maxResults?: number;
-		includeDomains?: string[];
-		excludeDomains?: string[];
-	}) => Promise<unknown>;
+	webSearch?: (
+		args: {
+			query: string;
+			maxResults?: number;
+			includeDomains?: string[];
+			excludeDomains?: string[];
+		},
+		options?: { signal?: AbortSignal },
+	) => Promise<unknown>;
 	/**
 	 * Decorates the `additionalData` used for node-tool executions and
 	 * workflow-tool sub-executions (e.g. plants `evalLlmMockHandler` and a

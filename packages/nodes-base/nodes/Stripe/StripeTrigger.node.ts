@@ -18,6 +18,7 @@ export class StripeTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Stripe Trigger',
 		name: 'stripeTrigger',
+		schemaPath: 'Stripe',
 		icon: 'file:stripe.svg',
 		group: ['trigger'],
 		version: 1,

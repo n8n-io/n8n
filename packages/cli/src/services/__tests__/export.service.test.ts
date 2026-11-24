@@ -130,6 +130,64 @@ describe('ExportService', () => {
 			expect(mockLogger.info).toHaveBeenCalledWith('✅ Task completed successfully! \n');
 		});
 
+		it('reads a binary table in pages of at most 64 MiB of binary data', async () => {
+			const LARGEST_VALUE_BYTES = 20 * 1024 * 1024;
+			// @ts-expect-error Accessing private property for testing
+			mockDataSource.entityMetadatas = [
+				{
+					name: 'BinaryDataFile',
+					tableName: 'binary_data',
+					columns: [
+						{ databaseName: 'fileId', type: 'uuid' },
+						{ databaseName: 'data', type: 'blob' },
+					],
+				},
+			];
+			vi.mocked(mockDataSource.query).mockImplementation(async (query: string) =>
+				query.includes('MAX(LENGTH(') ? [{ maxBytes: LARGEST_VALUE_BYTES }] : [],
+			);
+
+			await exportService.exportEntities('/test/output');
+
+			expect(mockDataSource.query).toHaveBeenCalledWith(
+				expect.stringContaining('FROM "binary_data" LIMIT 3 OFFSET 0'),
+			);
+		});
+
+		it('starts a new file before a line would take it past 500 rows', async () => {
+			const MAX_ROWS_PER_FILE = 500;
+			const ROW_COUNT = 600;
+			// @ts-expect-error Accessing private property for testing
+			mockDataSource.entityMetadatas = [
+				{
+					name: 'BinaryDataFile',
+					tableName: 'binary_data',
+					columns: [{ databaseName: 'data', type: 'blob' }],
+				},
+			];
+			let rowsLeft = ROW_COUNT;
+			vi.mocked(mockDataSource.query).mockImplementation(async (query: string) => {
+				if (query.includes('MAX(LENGTH(')) return [{ maxBytes: 20 * 1024 * 1024 }];
+				const pageRows = query.includes('FROM "binary_data"') ? Math.min(3, rowsLeft) : 0;
+				rowsLeft -= pageRows;
+				return Array.from({ length: pageRows }, () => ({ data: null }));
+			});
+
+			await exportService.exportEntities('/test/output');
+
+			const rowsPerFile = new Map<string, number>();
+			for (const [file, line] of vi.mocked(appendFile).mock.calls) {
+				const filePath = file as string;
+				const rows = String(line).trimEnd().split('\n').length;
+				if (filePath.includes('binarydatafile')) {
+					rowsPerFile.set(filePath, (rowsPerFile.get(filePath) ?? 0) + rows);
+				}
+			}
+			const exportedRows = [...rowsPerFile.values()].reduce((sum, rows) => sum + rows, 0);
+			expect(exportedRows).toBe(ROW_COUNT);
+			expect(Math.max(...rowsPerFile.values())).toBeLessThanOrEqual(MAX_ROWS_PER_FILE);
+		});
+
 		it('should export entities successfully with a custom encryption key', async () => {
 			const outputDir = '/test/output';
 			const mockEntities = [

@@ -1062,7 +1062,7 @@ describe('nodes tools', () => {
 						credentials: { slackApi: { id: 'cred-1', name: 'Slack' } },
 					},
 					input: [{ json: { text: 'hi' } }],
-					timeoutMs: 10_000,
+					timeoutMs: 120_000,
 				} as never,
 				{ resumeData: { approved: true } } as never,
 			);
@@ -1075,7 +1075,7 @@ describe('nodes tools', () => {
 					credentials: { slackApi: { id: 'cred-1', name: 'Slack' } },
 				},
 				input: [{ json: { text: 'hi' } }],
-				timeoutMs: 10_000,
+				timeoutMs: 120_000,
 			});
 			expect(result).toEqual(serviceResult);
 		});

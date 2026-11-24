@@ -71,6 +71,18 @@ export interface ExecutionSnapshot {
 	finishedAt: string | null;
 	/** Only set when the request asked for steps. Oldest first. */
 	steps?: StepDetail[];
+	/** Only set when the request asked for steps. `null` for a top-level execution. */
+	parentWorkflowId?: string | null;
+	/** Only set when the request asked for steps. The executions the steps started, oldest first. */
+	subExecutions?: SubExecutionDetail[];
+}
+
+/** An execution that a step started, as `GET /:id?includeSteps=true` reports it. */
+export interface SubExecutionDetail {
+	executionId: string;
+	workflowId: string;
+	/** The step that started it. */
+	stepId: string;
 }
 
 /**

@@ -2,7 +2,7 @@ name: 'CI: Check Unpublished Packages'
 
 on:
   schedule:
-    - cron: '0 8 * * 1'
+    - cron: '15 */2 * * 1-2'
   workflow_dispatch:
 
 permissions:
@@ -29,29 +29,25 @@ jobs:
         id: detect
         run: node .github/scripts/detect-new-packages.mjs --report-only --strict
 
-      - name: Notify Developer Platform
-        if: steps.detect.outputs.packages != ''
+      - name: Notify Developer Platform alerts channel
+        if: steps.detect.outputs.packages != '[]'
         env:
           PACKAGES: ${{ steps.detect.outputs.packages }}
           SLACK_TOKEN: ${{ secrets.QBOT_SLACK_TOKEN }}
         run: |
-          PACKAGE_LIST=''
-          IFS=',' read -ra package_names <<< "$PACKAGES"
-          for package_name in "${package_names[@]}"; do
-            PACKAGE_LIST+="- \`$package_name\`"$'\n'
-          done
+          PACKAGE_LIST=$(jq -r '.[] | "- `\(.name)` — `\(.path)`"' <<< "$PACKAGES")
           MESSAGE=$(cat <<EOF
           *Unpublished npm packages need manual setup*
 
-          The weekly check found these public packages on \`master\`:
+          The check found these public packages on \`master\`:
 
           $PACKAGE_LIST
 
-          Publish each package manually. Then configure \`release-publish.yml\` as its trusted publisher before the next release.
+          Run <${{ github.server_url }}/${{ github.repository }}/actions/workflows/release-publish-new-package.yml|Release: Setup Trusted Publishing for Package> for each package before the next release. Copy the repository path from the list into the \`package-path\` input.
 
           <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View the check>
           EOF
           )
           node .github/scripts/slack/notify.mjs \
-            --channel '#team-developer-platform' \
+            --channel '#alerts-developer-platforms' \
             --text "$MESSAGE"
