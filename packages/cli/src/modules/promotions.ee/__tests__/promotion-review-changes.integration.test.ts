@@ -1,5 +1,11 @@
 import type { PromoteSelectionResultDto, PromotionResource } from '@n8n/api-types';
-import { createTeamProject, createWorkflow, mockInstance, testDb } from '@n8n/backend-test-utils';
+import {
+	createTeamProject,
+	createWorkflow,
+	linkUserToProject,
+	mockInstance,
+	testDb,
+} from '@n8n/backend-test-utils';
 import type { Person } from '@n8n/db';
 import {
 	GLOBAL_OWNER_ROLE,
@@ -351,6 +357,8 @@ it('lists the missing dependencies that the author confirmed, as each reviewer s
 			group: 'other-project',
 			reason: 'not-on-branch',
 			accessible: true,
+			// The author can read Support, so the entry names it.
+			project: { id: support.id, name: 'Support' },
 			blocking: false,
 			consumers,
 		},
@@ -384,10 +392,26 @@ it('lists the missing dependencies that the author confirmed, as each reviewer s
 		{ id: credential.id, group: 'outside-access', reason: 'not-on-branch', accessible: false },
 		{ id: helper.id, group: 'personal', reason: 'personal-project', accessible: false },
 	]);
-	for (const shown of [changes.missingDependencies, forReviewer.missingDependencies]) {
-		expect(JSON.stringify(shown)).not.toContain(support.id);
-		expect(JSON.stringify(shown)).not.toContain('Support');
-	}
+	expect(JSON.stringify(forReviewer.missingDependencies)).not.toContain(support.id);
+	expect(JSON.stringify(forReviewer.missingDependencies)).not.toContain('Support');
+
+	// A reviewer who can read Support gets its name, as the author does.
+	const supportViewer = await createMember();
+	await linkUserToProject(supportViewer, support, 'project:viewer');
+	const forSupportViewer = await Container.get(PromotionReviewChangesService).getChanges(
+		supportViewer,
+		review.reviewId,
+	);
+	expect(forSupportViewer.missingDependencies).toMatchObject([
+		{
+			id: credential.id,
+			group: 'other-project',
+			accessible: true,
+			project: { id: support.id, name: 'Support' },
+		},
+		{ id: helper.id, group: 'personal', accessible: false },
+	]);
+	expect(forSupportViewer.missingDependencies[1]).not.toHaveProperty('project');
 
 	// A dependency that this instance no longer holds is not a missing dependency any more.
 	await Container.get(WorkflowRepository).delete(helper.id);

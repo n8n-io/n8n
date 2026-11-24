@@ -350,7 +350,10 @@ describe('Missing dependencies of a project Promote', () => {
 			],
 			warnings: [],
 		});
-		expectNoTraceOf(beta, refused.body);
+		// The owner can read Beta, so each entry of the result names it.
+		for (const entry of refused.body.missingDependencies) {
+			expect(entry).toMatchObject({ project: { id: beta.id, name: beta.name } });
+		}
 		expect(await branchHead(remoteUrl)).toBe(head);
 		expect(await checkoutState(environment.id)).toEqual(checkout);
 
@@ -389,7 +392,8 @@ describe('Missing dependencies of a project Promote', () => {
 				`- workflow: Notify (${subWorkflow.id})`,
 			].join('\n'),
 		);
-		expectNoTraceOf(beta, confirmed.body, manifest, message);
+		// The branch does not name Beta, although the result names it for the owner.
+		expectNoTraceOf(beta, manifest, message);
 	}, 60_000);
 
 	it('lists only the missing dependencies of the selection', async () => {

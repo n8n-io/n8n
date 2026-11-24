@@ -490,7 +490,7 @@ describe('markRequirementRows', () => {
 		existingCredentialIds: new Set(['C', 'C2']),
 		credentialOwners: new Map([
 			['C', BETA_OWNER],
-			['C2', { id: 'A', type: 'team' }],
+			['C2', { id: 'A', type: 'team', name: 'Alpha' }],
 		]),
 		workflowOwners: new Map([['sub', PERSONAL_OWNER]]),
 	});
