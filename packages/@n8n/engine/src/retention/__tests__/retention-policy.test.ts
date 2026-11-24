@@ -12,7 +12,7 @@ describe('retentionPolicyFromHours', () => {
 		{ maxAgeHours: 0, maxAgeMs: 0 },
 		{ maxAgeHours: -1, maxAgeMs: 0 },
 		{ maxAgeHours: 0.5, maxAgeMs: 1_800_000 },
-		{ maxAgeHours: 1 / 3, maxAgeMs: 1_200_000 },
+		{ maxAgeHours: 2.3, maxAgeMs: 8_280_000 },
 		{ maxAgeHours: 1e12, maxAgeMs: 31_536_000_000_000 },
 		{ maxAgeHours: Infinity, maxAgeMs: 31_536_000_000_000 },
 	])('keeps an execution for $maxAgeHours hours as $maxAgeMs ms', ({ maxAgeHours, maxAgeMs }) => {
