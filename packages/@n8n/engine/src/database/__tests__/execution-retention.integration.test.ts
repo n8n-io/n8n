@@ -217,6 +217,12 @@ describe('execution retention (integration)', () => {
 		it.each([
 			{ rule: 'the age rule', start: LONG_AGO, maxCount: 0, kept: 0 },
 			{ rule: 'the count rule', start: new Date(Date.now() - 60_000), maxCount: 2, kept: 2 },
+			{
+				rule: 'the count rule, where only the id separates the cutoff from the kept executions',
+				start: new Date(Date.now() - 60_000),
+				maxCount: 3,
+				kept: 3,
+			},
 		])(
 			'returns every selected row once, oldest first, across batches that share a finish time, under $rule',
 			async ({ start, maxCount, kept }) => {
