@@ -23,6 +23,8 @@ export const TEST_PATTERNS = [
 	'packages/quality/testing/**',
 	'packages/quality/environments/**',
 	'packages/quality/efficiency/microbenchmarks/**',
+	// Experimental dev tooling
+	'scripts/experimental/**',
 ];
 
 /**

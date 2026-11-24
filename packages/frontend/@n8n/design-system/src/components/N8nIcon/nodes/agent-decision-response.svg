@@ -1,0 +1,12 @@
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<mask id="agent-review-response-mask">
+<rect width="24" height="24" fill="white"/>
+<rect x="13.5" y="16" width="10.5" height="8" fill="black"/>
+</mask>
+</defs>
+<g mask="url(#agent-review-response-mask)">
+<path d="M8.75 4.5H15V15h-1.5V6h-11v9H1V4.5h6.25V.25h1.5zm-1 6.25h-1.5v-3h1.5zm4 0h-1.5v-3h1.5z" transform="scale(1.5)" fill="currentColor"/>
+</g>
+<path d="M22.5 20H15M18 17L15 20L18 23" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

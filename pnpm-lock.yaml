@@ -7759,6 +7759,9 @@ importers:
       '@n8n/backend-services':
         specifier: workspace:*
         version: link:../../../@n8n/backend-services
+      '@n8n/code-task-contract':
+        specifier: workspace:*
+        version: link:../../../@n8n/code-task-contract
       '@n8n/config':
         specifier: workspace:*
         version: link:../../../@n8n/config
@@ -7771,6 +7774,9 @@ importers:
       '@n8n/utils':
         specifier: workspace:*
         version: link:../../../@n8n/utils
+      n8n-workflow:
+        specifier: workspace:*
+        version: link:../../../workflow
     devDependencies:
       '@n8n/backend-test-utils':
         specifier: workspace:*
@@ -10370,6 +10376,55 @@ importers:
       vitest-mock-extended:
         specifier: 'catalog:'
         version: 3.1.0(typescript@7.0.2)(vitest@5.0.1)
+      zod:
+        specifier: 3.25.76
+        version: 3.25.76
+
+  scripts/experimental/rig:
+    dependencies:
+      '@clack/prompts':
+        specifier: ^1.9.0
+        version: 1.9.0
+      '@n8n/utils':
+        specifier: workspace:*
+        version: link:../../../packages/@n8n/utils
+      chokidar:
+        specifier: 4.0.3
+        version: 4.0.3
+      citty:
+        specifier: 'catalog:'
+        version: 0.1.6
+      n8n-containers:
+        specifier: workspace:*
+        version: link:../../../packages/quality/environments/containers
+      picocolors:
+        specifier: 'catalog:'
+        version: 1.0.1
+      tsx:
+        specifier: 'catalog:'
+        version: 4.19.3
+      typescript:
+        specifier: catalog:typescript-tooling
+        version: '@typescript/typescript6@6.0.2'
+      yaml:
+        specifier: 'catalog:'
+        version: 2.8.3
+    devDependencies:
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../../../packages/@n8n/oxlint-config
+      '@typescript/native':
+        specifier: catalog:typescript-tooling
+        version: typescript@7.0.2
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 7.0.2007
+      vitest:
+        specifier: 'catalog:'
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       zod:
         specifier: 3.25.76
         version: 3.25.76

@@ -136,7 +136,7 @@ export class EngineV2Runtime {
 		const stopping = new AbortController();
 		this.stopping = stopping;
 
-		const engine = createEngineRuntime({
+		this.engine = createEngineRuntime({
 			dataSource: this.dataSource,
 			// TODO(CAT-2909): placeholder policy — every execution is admitted and no
 			// limits are applied.
@@ -165,9 +165,8 @@ export class EngineV2Runtime {
 				}),
 			}),
 		});
-		engine.start();
-
-		this.engine = engine;
+		// Stored first, so the rollback can stop a queue that began consuming before `start()` threw.
+		this.engine.start();
 	}
 
 	private resumeMinters(): Pick<
