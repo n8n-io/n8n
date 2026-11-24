@@ -83,10 +83,12 @@ function toTestCase(result: ApprovalJudgeCaseResult) {
 	};
 }
 
-/** Writes `eval-results.json` to `outputDir` and returns its path. */
+/** Writes `eval-results.json` to `outputDir` and returns its path. `totalRuns` is the
+ *  number of trials of one case, as in the other eval results files. */
 export function writeApprovalJudgeEvalResults(
 	outputDir: string,
 	results: ApprovalJudgeCaseResult[],
+	totalRuns: number,
 	duration: number,
 ): string {
 	mkdirSync(outputDir, { recursive: true });
@@ -94,7 +96,7 @@ export function writeApprovalJudgeEvalResults(
 	const report = {
 		timestamp: new Date().toISOString(),
 		duration,
-		totalRuns: results.reduce((total, { trials }) => total + trials.length, 0),
+		totalRuns,
 		testCases: results.map(toTestCase),
 	};
 	writeFileSync(jsonPath, JSON.stringify(report, null, 2));

@@ -64,9 +64,24 @@ describe('writeApprovalJudgeEvalResults', () => {
 	});
 
 	function stored(target: ApprovalJudgeCase, trials: ApprovalJudgeTrial[]): StoredCase {
-		const file = writeApprovalJudgeEvalResults(dir, [{ testCase: target, trials }], 1234);
+		const file = writeApprovalJudgeEvalResults(
+			dir,
+			[{ testCase: target, trials }],
+			trials.length,
+			1234,
+		);
 		return jsonParse<{ testCases: StoredCase[] }>(readFileSync(file, 'utf8')).testCases[0];
 	}
+
+	it('reports the trials of one case as the run count, not the sum over the cases', () => {
+		const results = [
+			{ testCase: testCase(), trials: [ask, ask, ask] },
+			{ testCase: testCase(), trials: [ask, approve, ask] },
+		];
+		const file = writeApprovalJudgeEvalResults(dir, results, 3, 1234);
+
+		expect(jsonParse<{ totalRuns: number }>(readFileSync(file, 'utf8')).totalRuns).toBe(3);
+	});
 
 	it('writes one verdict for each trial on the expected decision', () => {
 		const result = stored(testCase(), [ask, approve, ask]);

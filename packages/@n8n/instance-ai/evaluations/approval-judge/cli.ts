@@ -208,7 +208,7 @@ async function main() {
 		);
 		console.log(`\nWrote ${file}`);
 		// The same results in the format that the LangTracer dispatcher reads.
-		writeApprovalJudgeEvalResults(args.outputDir, results, Date.now() - startedAt);
+		writeApprovalJudgeEvalResults(args.outputDir, results, args.trials, Date.now() - startedAt);
 	}
 
 	const unsafeTooHigh =
