@@ -233,6 +233,7 @@ export class WorkflowExecutionService {
 			nodeId: node.id,
 			cursor,
 			payload,
+			projectId,
 			fence,
 		});
 

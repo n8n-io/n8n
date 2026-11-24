@@ -110,12 +110,6 @@ describe('SecuritySettings', () => {
 	});
 
 	describe('node and credential policies', () => {
-		beforeEach(() => {
-			checkEnvFeatureFlag.mockImplementation(
-				(flag: string) => flag === 'NODE_AND_CREDENTIAL_POLICIES_SETTINGS',
-			);
-		});
-
 		it('shows the row with a Preview badge to a user who can manage the policies', async () => {
 			policyAccess.canManage = true;
 			const { findByTestId, getByTestId } = renderView();
@@ -138,16 +132,6 @@ describe('SecuritySettings', () => {
 		});
 
 		it('hides the row from a user who cannot manage the policies', async () => {
-			const { queryByTestId } = renderView();
-
-			await waitFor(() => expect(getSecuritySettings).toHaveBeenCalled());
-
-			expect(queryByTestId('security-type-policies-section')).not.toBeInTheDocument();
-		});
-
-		it('hides the row while the settings flag is off', async () => {
-			policyAccess.canManage = true;
-			checkEnvFeatureFlag.mockReturnValue(false);
 			const { queryByTestId } = renderView();
 
 			await waitFor(() => expect(getSecuritySettings).toHaveBeenCalled());

@@ -4,6 +4,7 @@ import type {
 	WorkflowProjectService,
 } from '@n8n/backend-services';
 import type { OperationContext, SharedWorkflowRepository, Transaction } from '@n8n/db';
+import { EntityNotFoundError } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
 import type { ExecutionLedgerRepository } from '../database/repositories/execution-ledger.repository';
@@ -47,7 +48,7 @@ describe('ExecutionLedgerRowWriter', () => {
 		it('uses the project id from the facts and skips the lookup', async () => {
 			const trx = mock<Transaction>();
 
-			await expect(write({ trx }, 'given')).resolves.toBe(true);
+			await expect(write({ trx }, 'given')).resolves.toEqual({ hasOwnerProject: true });
 			await write({}, 'given');
 
 			expect(repository.append).toHaveBeenCalledTimes(2);
@@ -60,7 +61,7 @@ describe('ExecutionLedgerRowWriter', () => {
 		});
 
 		it('looks the project id up when the facts have none', async () => {
-			await expect(write({})).resolves.toBe(true);
+			await expect(write({})).resolves.toEqual({ hasOwnerProject: true });
 
 			expect(workflowProjectService.getWorkflowProjectCached).toHaveBeenCalledWith('wf-1');
 			expect(repository.append).toHaveBeenCalledWith(
@@ -73,7 +74,7 @@ describe('ExecutionLedgerRowWriter', () => {
 			const ctx = { trx: mock<Transaction>() };
 			sharedWorkflowRepository.getWorkflowOwningProjectId.mockResolvedValue('owner');
 
-			await expect(write(ctx)).resolves.toBe(true);
+			await expect(write(ctx)).resolves.toEqual({ hasOwnerProject: true });
 
 			expect(sharedWorkflowRepository.getWorkflowOwningProjectId).toHaveBeenCalledWith('wf-1', ctx);
 			expect(workflowProjectService.getWorkflowProjectCached).not.toHaveBeenCalled();
@@ -81,6 +82,49 @@ describe('ExecutionLedgerRowWriter', () => {
 				expect.objectContaining({ projectId: 'owner' }),
 				ctx,
 			);
+		});
+
+		it('appends a row with no project when the transaction lookup finds none', async () => {
+			const ctx = { trx: mock<Transaction>() };
+			sharedWorkflowRepository.getWorkflowOwningProjectId.mockResolvedValue(undefined);
+
+			await expect(write(ctx)).resolves.toEqual({ hasOwnerProject: false });
+
+			expect(repository.append).toHaveBeenCalledWith(
+				expect.objectContaining({ projectId: null }),
+				ctx,
+			);
+		});
+
+		it('appends a row with no project when the cached lookup finds no workflow', async () => {
+			workflowProjectService.getWorkflowProjectCached.mockRejectedValue(
+				new EntityNotFoundError(Object, {}),
+			);
+
+			await expect(write({})).resolves.toEqual({ hasOwnerProject: false });
+
+			expect(repository.append).toHaveBeenCalledWith(
+				expect.objectContaining({ projectId: null }),
+				{},
+			);
+		});
+
+		it('looks the project id up when the facts have an empty one', async () => {
+			await expect(write({}, '')).resolves.toEqual({ hasOwnerProject: true });
+
+			expect(workflowProjectService.getWorkflowProjectCached).toHaveBeenCalledWith('wf-1');
+			expect(repository.append).toHaveBeenCalledWith(
+				expect.objectContaining({ projectId: 'looked-up' }),
+				{},
+			);
+		});
+
+		it('rethrows another lookup error and appends nothing', async () => {
+			workflowProjectService.getWorkflowProjectCached.mockRejectedValue(new Error('db down'));
+
+			await expect(write({})).rejects.toThrow('db down');
+
+			expect(repository.append).not.toHaveBeenCalled();
 		});
 	});
 

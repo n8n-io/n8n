@@ -50,6 +50,7 @@ export const SANDBOX_LINKED_WORKSPACE_PACKAGES: ReadonlySet<string> = new Set([
 	'@n8n/utils',
 	'@n8n/errors',
 	'n8n-workflow',
+	'@n8n/workflow-engine-check',
 	SANDBOX_LINK_ROOT_PACKAGE,
 ]);
 

@@ -377,26 +377,30 @@ onUnmounted(() => {
 		--chat--message--pre--background: var(--color--background--light-3);
 
 		/* Footer Container */
-		--chat--footer--padding: var(--spacing--md);
+		--chat--footer--padding: var(--spacing--xs);
 		--chat--footer--border-top: none;
 
 		/* Input Container - unified rounded container */
-		--chat--input--width: 95%;
+		--chat--input--width: 100%;
 		--chat--input--background: transparent;
 		--chat--input--container--background: var(--color--background--light-3);
 		--chat--input--container--border: 1px solid var(--color--foreground--tint-1);
-		--chat--input--container--padding: 4px 8px;
+		--chat--input--container--padding: var(--spacing--3xs);
+		--chat--input--container--border-radius: var(--radius);
 
 		/* Input Textarea */
 		--chat--input--font-size: var(--font-size--sm);
-		--chat--input--padding: var(--padding--xs) var(--padding--md);
+		--chat--input--padding: var(--spacing--2xs);
 		--chat--input--border: none;
 		--chat--input--border-active: none;
 		--chat--input--background: transparent;
 		--chat--input--text-color: var(--color--text--shade-1);
 		--chat--input--line-height: var(--line-height--md);
 		--chat--input--placeholder--font-size: var(--font-size--sm);
-		--chat--textarea--height: 52px;
+		--chat--textarea--height: calc(
+			var(--chat--input--padding) * 2 + var(--chat--input--font-size) *
+				var(--chat--input--line-height)
+		);
 		--chat--textarea--max-height: 200px;
 
 		/* Send Button - integrated into container */
@@ -418,6 +422,23 @@ onUnmounted(() => {
 		--chat--message--actions--color: var(--color--text--tint-1);
 		--chat--message--actions--gap: var(--spacing--sm);
 		--chat--message--actions--icon-size: 32px;
+	}
+
+	:global(.chat-inputs textarea) {
+		min-width: 0;
+		text-overflow: ellipsis;
+
+		&::placeholder {
+			white-space: nowrap;
+			overflow: hidden;
+			text-overflow: ellipsis;
+		}
+	}
+
+	:global(.chat-input-send-button),
+	:global(.chat-input-file-button) {
+		margin: 0;
+		flex-shrink: 0;
 	}
 
 	/* Allow action buttons to appear above the message bubble */

@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "pluralize": "catalog:",
+    "title-case": "catalog:",
     "yaml": "catalog:"
   },
   "devDependencies": {

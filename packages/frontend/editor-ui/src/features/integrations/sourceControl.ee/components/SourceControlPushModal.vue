@@ -37,10 +37,10 @@ import { useI18n } from '@n8n/i18n';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { refDebounced, useStorage } from '@vueuse/core';
 import { computed, onBeforeMount, onMounted, reactive, ref, toRaw, watch, watchEffect } from 'vue';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useRoute, useRouter } from 'vue-router';
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller';
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
-import Modal from '@/app/components/Modal.vue';
 import ProjectSharing from '@/features/collaboration/projects/components/ProjectSharing.vue';
 import { useAvailableProjectSearch } from '@/features/collaboration/projects/projects.utils';
 import { getResourcePermissions } from '@n8n/permissions';
@@ -49,7 +49,11 @@ import {
 	N8nButton,
 	N8nCallout,
 	N8nCheckbox,
-	N8nHeading,
+	N8nDialog,
+	N8nDialogBody,
+	N8nDialogFooter,
+	N8nDialogHeader,
+	N8nDialogTitle,
 	N8nIcon,
 	N8nIconButton,
 	N8nInfoTip,
@@ -63,6 +67,8 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
+
+defineOptions({ inheritAttrs: false });
 const props = defineProps<{
 	data: { eventBus: EventBus; status?: SourceControlledFile[] };
 }>();
@@ -74,6 +80,7 @@ const sourceControlStore = useSourceControlStore();
 const projectsStore = useProjectsStore();
 const route = useRoute();
 const router = useRouter();
+const uiStore = useUIStore();
 const telemetry = useTelemetry();
 const usersStore = useUsersStore();
 const settingsStore = useSettingsStore();
@@ -523,9 +530,20 @@ function onToggleSelectAll() {
 }
 
 function close() {
-	// Navigate back in history to maintain proper browser navigation
-	// The useWorkflowDiffRouting composable will handle closing the modal
+	// Clear the store here. router.back() drops the query that opened this
+	// dialog when that history entry exists. A deep link has no entry to pop.
+	uiStore.closeModal(SOURCE_CONTROL_PUSH_MODAL_KEY);
 	router.back();
+}
+
+const modalOpen = computed(() => uiStore.modalsById[SOURCE_CONTROL_PUSH_MODAL_KEY]?.open === true);
+
+function closeDialog() {
+	close();
+}
+
+function onDialogOpenUpdate(open: boolean) {
+	if (!open) closeDialog();
 }
 
 function renderUpdatedAt(file: SourceControlledFile) {
@@ -642,8 +660,6 @@ async function commitAndPush() {
 		loadingService.stopLoading();
 	}
 }
-
-const modalHeight = computed(() => (changes.value.workflow.length ? 'min(80vh, 850px)' : 'auto'));
 
 watch(
 	() => filters.value.status,
@@ -908,19 +924,18 @@ onMounted(async () => {
 </script>
 
 <template>
-	<Modal
+	<N8nDialog
 		v-if="!isLoading"
-		width="812px"
-		:event-bus="data.eventBus"
-		:name="SOURCE_CONTROL_PUSH_MODAL_KEY"
-		:height="modalHeight"
-		:custom-class="$style.sourceControlPush"
-		:before-close="close"
+		:open="modalOpen"
+		size="2xlarge"
+		:container-class="$style.fixedHeight"
+		:data-test-id="`${SOURCE_CONTROL_PUSH_MODAL_KEY}-modal`"
+		@update:open="onDialogOpenUpdate"
 	>
-		<template #header>
-			<N8nHeading tag="h1" size="xlarge">
+		<N8nDialogHeader :class="$style.dialogHeader">
+			<N8nDialogTitle>
 				{{ i18n.baseText('settings.sourceControl.modals.push.title') }}
-			</N8nHeading>
+			</N8nDialogTitle>
 
 			<div
 				v-if="changes.workflow.length || changes.credential.length || changes.datatable.length"
@@ -1045,8 +1060,8 @@ onMounted(async () => {
 					</N8nCallout>
 				</template>
 			</template>
-		</template>
-		<template #content>
+		</N8nDialogHeader>
+		<N8nDialogBody>
 			<div style="display: flex; height: 100%">
 				<div :class="$style.tabs">
 					<template v-for="tab in tabs" :key="tab.value">
@@ -1279,9 +1294,8 @@ onMounted(async () => {
 					</div>
 				</div>
 			</div>
-		</template>
-
-		<template #footer>
+		</N8nDialogBody>
+		<N8nDialogFooter :class="$style.dialogFooter">
 			<N8nNotice
 				v-if="userNotices.length || hasModifiedCredentialsSelected"
 				id="source-control-push-modal-notice"
@@ -1328,8 +1342,8 @@ onMounted(async () => {
 					{{ selectedCount ? `(${selectedCount})` : undefined }}
 				</N8nButton>
 			</div>
-		</template>
-	</Modal>
+		</N8nDialogFooter>
+	</N8nDialog>
 </template>
 
 <style module lang="scss">
@@ -1445,17 +1459,22 @@ onMounted(async () => {
 	display: flex;
 	flex-direction: row;
 	justify-content: flex-end;
-	margin-top: 8px;
 }
 
-.sourceControlPush {
-	&:global(.el-dialog) {
-		margin: 0;
-	}
+.dialogHeader {
+	flex-direction: column;
+	align-items: stretch;
+}
 
-	:global(.el-dialog__header) {
-		padding-bottom: var(--spacing--xs);
-	}
+.dialogFooter {
+	flex-direction: column;
+	align-items: stretch;
+}
+
+.fixedHeight {
+	/* Previous dialog height. No spacing token for 850px. */
+	height: min(80vh, 850px);
+	overflow: hidden;
 }
 
 .table {

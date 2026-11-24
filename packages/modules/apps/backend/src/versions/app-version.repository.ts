@@ -19,7 +19,10 @@ export class AppVersionRepository extends BaseRepository<AppVersion> {
 	}
 
 	async insertVersion(
-		data: Pick<AppVersion, 'id' | 'appId' | 'sourceArtifactId' | 'label' | 'bindings'>,
+		data: Pick<
+			AppVersion,
+			'id' | 'appId' | 'sourceArtifactId' | 'label' | 'bindings' | 'isScaffold'
+		>,
 		ctx: OperationContext,
 	): Promise<void> {
 		try {
@@ -50,6 +53,7 @@ export class AppVersionRepository extends BaseRepository<AppVersion> {
 			buildAttempts: source.buildAttempts,
 			buildStatus: source.buildStatus,
 			buildStatusUpdatedAt: source.buildStatusUpdatedAt,
+			isScaffold: source.isScaffold,
 		});
 	}
 

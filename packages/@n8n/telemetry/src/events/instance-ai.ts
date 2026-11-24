@@ -1,4 +1,6 @@
 import {
+	INSTANCE_AI_AGENT_FEEDBACK_CATEGORIES,
+	INSTANCE_AI_AGENT_FEEDBACK_SEVERITIES,
 	INSTANCE_AI_PREFILL_TYPES,
 	instanceAiApprovalModeSchema,
 	instanceAiAutoApprovalDeciderSchema,
@@ -69,8 +71,18 @@ export { ASSISTANT_RUNTIMES, type AssistantRuntime } from '../schemas';
 const freeNudgeVariant = z.enum(['control', 'variant-1', 'variant-2']);
 const freeNudgeTreatmentVariant = z.enum(['variant-1', 'variant-2']);
 const workflowPreviewsAboveAssistantVariant = z.enum(['control', 'variant']);
+const draftWorkflowPreviewVariant = z.enum(['control', 'variant']);
+const draftWorkflowPreviewProps = {
+	thread_id: z.string(),
+	run_id: z.string(),
+	variant: draftWorkflowPreviewVariant.describe(
+		'Variant of the 137_instance_ai_draft_workflow_preview feature flag the user saw',
+	),
+	// eslint-disable-next-line @typescript-eslint/naming-convention -- PostHog feature property
+	'$feature/137_instance_ai_draft_workflow_preview': draftWorkflowPreviewVariant,
+};
 const taxonomyInspirationVariant = z.enum(['control', 'variant']);
-const assistantMentionKind = z.enum(['workflow', 'node', 'group']);
+const assistantMentionKind = z.enum(['workflow', 'node', 'group', 'agent']);
 const assistantMentionTriggerSource = z.enum(['typed', 'button']);
 /** Cap on the query text the empty-search event carries; the emitter cuts to it after redaction. */
 export const ASSISTANT_MENTION_QUERY_TEXT_MAX_LENGTH = 100;
@@ -90,6 +102,7 @@ const assistantMentionCounts = z
 		workflow: mentionCount,
 		node: mentionCount,
 		group: mentionCount,
+		agent: mentionCount,
 	})
 	.describe('Picker mentions attached to the message, by kind');
 // Shared by the send and response events so context cuts use the same columns.
@@ -306,6 +319,57 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 			'$feature/105_instance_ai_free_nudge': freeNudgeVariant,
 		}),
 	},
+	// Experiment cleanup (137_instance_ai_draft_workflow_preview)
+	DRAFT_WORKFLOW_PREVIEW_EXPOSED: {
+		name: 'AI Assistant draft workflow preview exposed',
+		description:
+			'A user assigned to the draft workflow preview experiment (137), including the control variant, sent a message that made the n8n Assistant start work on a workflow. Fires once per run, when the first workflow builder or the first workflow draft of the run appears. This is the denominator for the canvas render and abandon events.',
+		properties: z.object({
+			...draftWorkflowPreviewProps,
+			is_new_workflow: z
+				.boolean()
+				.describe('True when the run builds a workflow that was not saved before'),
+		}),
+	},
+	WORKFLOW_CANVAS_FIRST_RENDERED: {
+		name: 'AI Assistant workflow canvas first rendered',
+		description:
+			'The n8n Assistant preview first showed a workflow canvas during a run of the draft workflow preview experiment (137). Fires at most once per run for each canvas kind: once for the staging canvas of a new workflow, once for the first unsaved draft, once for the first saved workflow. A staging render before exposure is sent at exposure, with the time of the render.',
+		properties: z.object({
+			...draftWorkflowPreviewProps,
+			canvas_kind: z
+				.enum(['staging', 'draft', 'saved'])
+				.describe(
+					'staging: the canvas of a new workflow with the node types the agent read, before the first compile. draft: the unsaved workflow compiled from the agent source. saved: the workflow after the build saved it',
+				),
+			ms_since_message: z
+				.number()
+				.int()
+				.describe('Milliseconds from the user message that started the run to the render'),
+			is_new_workflow: z.boolean(),
+		}),
+	},
+	RUN_ABANDONED: {
+		name: 'AI Assistant run abandoned',
+		description:
+			'The user stopped or left an n8n Assistant run while the agent was responding, in a run that fired "AI Assistant draft workflow preview exposed". Fires at most once per run. A tab close is sent on page hide and can be lost.',
+		properties: z.object({
+			...draftWorkflowPreviewProps,
+			reason: z
+				.enum(['stopped', 'left'])
+				.describe(
+					'stopped: the user pressed stop. left: the user left the thread or closed the page',
+				),
+			ms_since_message: z
+				.number()
+				.int()
+				.describe('Milliseconds from the user message that started the run to the abandon'),
+			canvas_state: z
+				.enum(['none', 'staging', 'draft', 'saved'])
+				.describe('The most complete canvas the user saw in this run before abandoning it'),
+		}),
+	},
+	// EOF Experiment cleanup
 	// Experiment cleanup (124_workflow_previews_above_assistant)
 	WORKFLOW_PREVIEWS_ABOVE_ASSISTANT_EXPOSED: {
 		name: 'AI Assistant workflow previews above assistant exposed',
@@ -370,6 +434,26 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 			mode: z.enum(instanceAiApprovalModeSchema.options),
 			previous_mode: z.enum(instanceAiApprovalModeSchema.options),
 			thread_id: z.string().optional(),
+		}),
+	},
+	ASSISTANT_SENT_FEEDBACK: {
+		name: 'AI Assistant sent feedback',
+		description:
+			'The n8n Assistant called send_feedback because it was not sure how to do something, a tool or n8n behaved wrong, or n8n could not do what the user needed. Not sent when the instance does not share data.',
+		properties: z.object({
+			user_id: z.string(),
+			thread_id: z.string().optional(),
+			run_id: z.string().optional(),
+			category: z.enum(INSTANCE_AI_AGENT_FEEDBACK_CATEGORIES),
+			severity: z
+				.enum(INSTANCE_AI_AGENT_FEEDBACK_SEVERITIES)
+				.describe(
+					'blocked: the task could not finish. workaround: the agent continued another way',
+				),
+			summary: z
+				.string()
+				.describe('Written by the agent. Secrets and personal data are removed before sending'),
+			tool_name: z.string().optional().describe('The tool that the feedback is about'),
 		}),
 	},
 	BUILDER_ASKED_FOR_INPUT: {
@@ -822,18 +906,18 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 	USER_SELECTED_AI_ASSISTANT_MENTION: {
 		name: 'User selected AI Assistant mention',
 		description:
-			'The user selected a workflow, node, or canvas group from the n8n Assistant mention picker. A pick of a mention that is already staged also counts, so every open ends in this event or in "User dismissed AI Assistant mention picker". The event contains interaction metadata but no resource names or IDs.',
+			'The user selected a workflow, node, canvas group, or agent from the n8n Assistant mention picker. A pick of a mention that is already staged also counts, so every open ends in this event or in "User dismissed AI Assistant mention picker". The event contains interaction metadata but no resource names or IDs.',
 		properties: z.object({
 			thread_id: assistantMentionThreadId,
 			kind: assistantMentionKind,
 			mode: z.enum(['browse', 'search']),
-			source: z.enum(['artifacts', 'workflows']),
+			source: z.enum(['artifacts', 'workflows', 'agents']),
 			result_position: z
 				.number()
 				.int()
 				.positive()
 				.describe(
-					'One-based position in the list the user picked from: search results, the browse list (open workflow tabs first, then recent workflows), or a submenu',
+					'One-based position in the list the user picked from: search results, the browse list (open workflow tabs first, then recent workflows, then agents), or a submenu',
 				),
 			query_length: z.number().int().nonnegative(),
 			already_artifact: z.boolean(),
@@ -848,7 +932,7 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 	USER_REMOVED_AI_ASSISTANT_MENTION: {
 		name: 'User removed AI Assistant mention',
 		description:
-			'The user removed workflow, node, or canvas group context that they added through the n8n Assistant mention picker.',
+			'The user removed workflow, node, canvas group, or agent context that they added through the n8n Assistant mention picker.',
 		properties: z.object({
 			thread_id: assistantMentionThreadId,
 			kind: assistantMentionKind,
