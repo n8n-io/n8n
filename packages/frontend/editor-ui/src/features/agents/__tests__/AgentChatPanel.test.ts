@@ -44,6 +44,7 @@ import {
 enableAutoUnmount(afterEach);
 
 type PanelVm = { sendMessageFromOutside: (message: string, files?: File[]) => void };
+type FocusVm = { focusOpenInteraction: () => void; isAwaitingUserApproval: boolean };
 const isMacOsMock = ref(false);
 const sessionFilesFlag = vi.hoisted(() => ({ value: true }));
 vi.mock('@/app/stores/posthog.store', () => ({
@@ -1486,14 +1487,42 @@ describe('AgentChatPanel', () => {
 			getSessionFilesMock.mockResolvedValue({ files: [file] });
 		});
 
-		it('shows the toggle only for a preview or n8n Chat session', () => {
+		it('shows the toggle for a session on every channel', () => {
 			expect(mountPanel({ continueSessionId: 't1' }).find(toggle).exists()).toBe(true);
 			expect(
 				mountPanel({ continueSessionId: 't1', channel: 'n8n-chat' }).find(toggle).exists(),
 			).toBe(true);
-			expect(mountPanel().find(toggle).exists()).toBe(false);
 			expect(mountPanel({ continueSessionId: 't1', channel: 'system' }).find(toggle).exists()).toBe(
-				false,
+				true,
+			);
+			expect(mountPanel().find(toggle).exists()).toBe(false);
+		});
+
+		it('shows the toggle after the host controls of the footer', () => {
+			const wrapper = mountPanel({ continueSessionId: 't1', channel: 'system' }, undefined, {
+				'footer-start': '<button data-testid="host-menu" />',
+			});
+
+			const html = wrapper.html();
+			expect(html.indexOf('data-testid="host-menu"')).toBeLessThan(
+				html.indexOf('data-test-id="agent-session-files-toggle"'),
+			);
+		});
+
+		it('lists system agent files with links to the system download route', async () => {
+			const wrapper = mountPanel({ continueSessionId: 't1', channel: 'system' });
+
+			await open(wrapper);
+
+			expect(getSessionFilesMock).toHaveBeenCalledWith(
+				{ baseUrl: '/rest' },
+				'p1',
+				'a1',
+				't1',
+				'system',
+			);
+			expect(wrapper.find('[data-test-id="session-file-link"]').attributes('href')).toContain(
+				'/agents/system/a1/chat/attachments/f-1',
 			);
 		});
 
@@ -3929,6 +3958,52 @@ describe('AgentChatPanel', () => {
 			}
 		},
 	);
+
+	it('focuses the open approval card on request, and reports it as an approval', async () => {
+		const wrapper = mountPanel({}, document.body);
+		try {
+			messagesMock.value = [
+				{
+					...openInteractiveMessage(),
+					interactive: {
+						toolName: APPROVAL_TOOL_NAME,
+						toolCallId: 'tc-1',
+						runId: 'run-1',
+						input: { type: 'approval', toolName: 'send_message', args: {} },
+					},
+				},
+			];
+			await flushPromises();
+			if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+			const vm = wrapper.vm as unknown as FocusVm;
+
+			vm.focusOpenInteraction();
+
+			expect(vm.isAwaitingUserApproval).toBe(true);
+			expect(document.activeElement).toBe(
+				wrapper.get('[data-testid="agent-chat-approvals"] button').element,
+			);
+		} finally {
+			wrapper.unmount();
+		}
+	});
+
+	it('focuses the composer for an open question on request', async () => {
+		const wrapper = mountPanel({}, document.body);
+		try {
+			messagesMock.value = [openInteractiveMessage()];
+			await flushPromises();
+			focusInputMock.mockClear();
+			const vm = wrapper.vm as unknown as FocusVm;
+
+			vm.focusOpenInteraction();
+
+			expect(vm.isAwaitingUserApproval).toBe(false);
+			expect(focusInputMock).toHaveBeenCalled();
+		} finally {
+			wrapper.unmount();
+		}
+	});
 
 	it.each(['resolved', 'stale', 'previous turn'] as const)(
 		'keeps the composer available for a %s approval',

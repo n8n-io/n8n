@@ -10,11 +10,10 @@ import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.
 
 /**
  * Workflow that a binary derives its access from. Normally the workflow of the
- * execution that owns the binary, looked up by execution id. The workflow is
- * named directly when no row can be looked up: a binary written before its
- * execution row exists names its workflow in the file path, and a binary of an
- * engine v2 execution, which has no row in the execution table, names it in
- * the file path or through the data plane.
+ * execution that owns the binary, looked up by execution id. A binary written
+ * before its execution row exists names its workflow in the file path. An
+ * engine v2 execution has no row in the execution table, so the data plane
+ * names its workflow.
  */
 type AccessSource = { executionId: string } | { workflowId: string };
 
@@ -79,20 +78,25 @@ export class BinaryDataAccessService {
 		const { workflowId, executionId } = location;
 		if (isExecutionIdV1(executionId)) return { executionId };
 
-		// The execution id column is numeric, so neither the placeholder nor an
-		// engine v2 id can be looked up, and any other id names no execution. The
-		// path is where the file was stored, so the workflow in it authorizes the read.
-		return executionId === TEMP_EXECUTION_ID || isExecutionIdV2(executionId)
-			? { workflowId }
-			: null;
+		// The placeholder names no execution yet, so the workflow in the path
+		// authorizes the read.
+		if (executionId === TEMP_EXECUTION_ID) return { workflowId };
+
+		if (!isExecutionIdV2(executionId)) return null;
+
+		// A stored file can outlive its execution.
+		const source = await this.resolveEngineV2Execution(executionId);
+		return source?.workflowId === workflowId ? source : null;
 	}
 
 	/**
-	 * A `database` row of an engine v2 execution names no workflow, so the data
-	 * plane is asked which workflow the execution belongs to. Its steps are not
-	 * needed. No data plane, or no such execution, means no access.
+	 * An engine v2 execution has no row in the execution table, so the data plane
+	 * is asked which workflow the execution belongs to. Its steps are not needed.
+	 * No data plane, or no such execution, means no access.
 	 */
-	private async resolveEngineV2Execution(executionId: ExecutionIdV2): Promise<AccessSource | null> {
+	private async resolveEngineV2Execution(
+		executionId: ExecutionIdV2,
+	): Promise<{ workflowId: string } | null> {
 		const execution = await this.dataPlane.getExecution(executionId);
 		return execution ? { workflowId: execution.workflowId } : null;
 	}

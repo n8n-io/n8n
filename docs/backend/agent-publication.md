@@ -1,6 +1,6 @@
 ---
 title: Agent publication
-last_reviewed: 2026-11-06
+last_reviewed: 2026-11-20
 contact: bjorger
 ---
 
@@ -25,7 +25,7 @@ sequenceDiagram
 
 ## Versions
 
-Like a workflow, an agent has a **draft**, which is the last saved version, and a **published version**, which answers messages in production. Publishing makes a saved version the published version. A user can also republish an older version.
+Like a workflow, an agent has a **draft** and a **published version**, which answers messages in production. The draft can follow the latest version of a skill without creating a saved agent version. If the skill versions change, publishing the draft saves a new agent version. Republishing an older version keeps the skill versions of that agent version.
 
 ## Checks
 
@@ -45,13 +45,14 @@ Each main keeps the agents that it ran recently in a cache, ready to answer. The
 
 ## Agent triggers
 
-Besides messages from the editor, two kinds of **triggers** can start an agent: chat integrations and schedules. A chat integration starts the agent when a user of the chat app sends a message. A schedule starts the agent at set times.
+Three kinds of **triggers** can start a published agent: chat integrations, the API channel, and schedules. A chat integration starts the agent when a user of the chat app sends a message. The API channel starts it on an HTTP request. A schedule starts it at set times.
 
 The main starts the triggers of the published version, and asks the other mains to start their chat integrations. Then the main answers the editor.
 
 | Trigger | Where it runs |
 |---|---|
 | Chat integration | On every main, or only on the leader if the integration polls or keeps a connection open |
+| API channel | On the main that receives the HTTP request |
 | Schedule | On the leader |
 
 In your session from [Start here](README.md), your agent had no triggers, so the main started nothing.

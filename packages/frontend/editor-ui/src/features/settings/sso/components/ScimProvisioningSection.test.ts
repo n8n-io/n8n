@@ -154,10 +154,11 @@ describe('ScimProvisioningSection', () => {
 		);
 	});
 
-	it('shows the Preview badge next to the title', async () => {
-		const { findByTestId } = renderComponent({ props: { ssoEnabled: true } });
+	it('shows the section title without a Preview badge', async () => {
+		const { findByRole, getByTestId } = renderComponent({ props: { ssoEnabled: true } });
 
-		expect(await findByTestId('sso-scim-preview-badge')).toHaveTextContent('Preview');
+		expect(await findByRole('heading', { level: 2 })).toHaveTextContent('SCIM');
+		expect(getByTestId('sso-scim-section')).not.toHaveTextContent('Preview');
 	});
 
 	it('names the select for assistive technology', async () => {

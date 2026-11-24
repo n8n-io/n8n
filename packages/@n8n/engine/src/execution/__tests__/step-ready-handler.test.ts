@@ -118,6 +118,8 @@ function makeExecutionStore(
 		renewQueuedExecution: vi.fn(),
 		refreshLiveStatus: vi.fn(),
 		loadLiveSubExecutionIds: vi.fn().mockResolvedValue([]),
+		findPrunableExecutions: vi.fn(),
+		deleteEndedExecutions: vi.fn(),
 	};
 }
 

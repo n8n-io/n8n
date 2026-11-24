@@ -1,7 +1,9 @@
 import { createTestingPinia } from '@pinia/testing';
+import { flushPromises } from '@vue/test-utils';
 import { createComponentRenderer } from '@/__tests__/render';
 import DeleteSecretsProviderModal from './DeleteSecretsProviderModal.ee.vue';
 import { DELETE_SECRETS_PROVIDER_MODAL_KEY } from '@/app/constants';
+import { STORES } from '@n8n/stores';
 import { vi } from 'vitest';
 import * as credentialsApi from '@/features/credentials/credentials.api';
 import * as secretsProviderApi from '@n8n/rest-api-client';
@@ -32,14 +34,14 @@ const mockCredentials = [
 const renderComponent = createComponentRenderer(DeleteSecretsProviderModal, {
 	global: {
 		stubs: {
-			Modal: {
-				template: `
-					<div>
-						<slot name="content" />
-						<slot name="footer" />
-					</div>
-				`,
+			Dialog: {
+				props: ['open'],
+				inheritAttrs: false,
+				template: '<div v-if="open" role="dialog" v-bind="$attrs"><slot /></div>',
 			},
+			DialogBody: { template: '<div><slot /></div>' },
+			DialogDescription: { template: '<p><slot /></p>' },
+			DialogFooter: { template: '<div><slot /></div>' },
 		},
 	},
 });
@@ -48,7 +50,15 @@ describe('DeleteSecretsProviderModal', () => {
 	let pinia: ReturnType<typeof createTestingPinia>;
 
 	beforeEach(() => {
-		pinia = createTestingPinia();
+		pinia = createTestingPinia({
+			initialState: {
+				[STORES.UI]: {
+					modalStateById: {
+						[DELETE_SECRETS_PROVIDER_MODAL_KEY]: { open: true },
+					},
+				},
+			},
+		});
 		vi.clearAllMocks();
 		vi.mocked(credentialsApi.getAllCredentials).mockResolvedValue(mockCredentials);
 	});
@@ -70,6 +80,35 @@ describe('DeleteSecretsProviderModal', () => {
 		await findByTestId('delete-confirmation-input');
 
 		expect(getByText(/aws-prod/)).toBeInTheDocument();
+		expect(await findByTestId('deleteSecretsProvider-modal')).toBeInTheDocument();
+	});
+
+	it('hides the dialog when the store marks it closed', async () => {
+		const closedPinia = createTestingPinia({
+			initialState: {
+				[STORES.UI]: {
+					modalStateById: {
+						[DELETE_SECRETS_PROVIDER_MODAL_KEY]: { open: false },
+					},
+				},
+			},
+		});
+
+		const { queryByRole } = renderComponent({
+			pinia: closedPinia,
+			props: {
+				modalName: DELETE_SECRETS_PROVIDER_MODAL_KEY,
+				data: {
+					providerKey: 'aws-prod',
+					providerName: 'aws-prod',
+					secretsCount: 5,
+				},
+			},
+		});
+
+		await flushPromises();
+
+		expect(queryByRole('dialog')).not.toBeInTheDocument();
 	});
 
 	it('should disable delete button when confirmation text does not match', async () => {

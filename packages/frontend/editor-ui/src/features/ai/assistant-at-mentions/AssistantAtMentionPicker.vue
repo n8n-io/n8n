@@ -11,6 +11,7 @@ import {
 	type DropdownMenuItemProps,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useDebounceFn, useElementSize } from '@vueuse/core';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
@@ -29,6 +30,7 @@ import type {
 } from './assistantAtMentions.types';
 import { useArtifactMentionIndex } from './composables/useArtifactMentionIndex';
 import {
+	createAgentMentionSourceProvider,
 	createArtifactMentionSourceProvider,
 	createWorkflowMentionSourceProvider,
 	useAssistantMentionSources,
@@ -84,6 +86,9 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const nodeTypesStore = useNodeTypesStore();
+const settingsStore = useSettingsStore();
+// Read once: the providers are fixed for the life of the picker.
+const includesAgents = settingsStore.isAgentsEnabled;
 const dropdownRef = ref<DropdownMenuExposed>();
 const referenceElement = computed(() => props.reference);
 const { width: referenceWidth } = useElementSize(referenceElement);
@@ -105,22 +110,35 @@ const workflowProvider = createWorkflowMentionSourceProvider({
 	artifactWorkflowIds: () => props.artifacts.map(({ id }) => id),
 	excludedWorkflowIds: () => props.excludedWorkflowIds,
 });
-const sources = useAssistantMentionSources([artifactProvider, workflowProvider], { excludedKeys });
+const sources = useAssistantMentionSources(
+	[
+		artifactProvider,
+		workflowProvider,
+		...(includesAgents
+			? [createAgentMentionSourceProvider({ projectId: () => props.projectId })]
+			: []),
+	],
+	{ excludedKeys },
+);
 const searchPending = ref(false);
 let highlightedForCurrentOpen = false;
 let submenuOpenCount = 0;
+
+function nodeCountOf(item: AssistantMentionItem): number | undefined {
+	return item.kind === 'agent' ? undefined : item.nodeCount;
+}
 
 function isMenuItem(item: MentionMenuItem | undefined): item is MentionMenuItem {
 	return item !== undefined;
 }
 
 function toMenuItem(item: AssistantMentionItem, searchMode: boolean): MentionMenuItem | undefined {
-	const indexEntry = artifactIndex.getEntry(item.workflowId);
 	const isExcluded = excludedKeys.value.has(item.key);
 	let children = item.children?.map((child) => toMenuItem(child, false)).filter(isMenuItem);
 	if (isExcluded && children?.length === 0) return undefined;
 	if (isExcluded && !item.hasChildren) return undefined;
-	if (item.hasChildren && !children) {
+	if (item.hasChildren && !children && item.kind !== 'agent') {
+		const indexEntry = artifactIndex.getEntry(item.workflowId);
 		children =
 			indexEntry?.status === 'error'
 				? [
@@ -205,9 +223,26 @@ const isLoading = computed(
 		(searchPending.value || sources.isBrowsing.value || sources.isSearching.value),
 );
 
-const emptyText = computed(() =>
+const emptyText = computed(() => {
+	if (props.query.trim()) return i18n.baseText('instanceAi.mentions.noResults');
+	return i18n.baseText(
+		includesAgents
+			? 'instanceAi.mentions.noRecentWorkflowsOrAgents'
+			: 'instanceAi.mentions.noRecentWorkflows',
+	);
+});
+const buttonLabel = computed(() =>
 	i18n.baseText(
-		props.query.trim() ? 'instanceAi.mentions.noResults' : 'instanceAi.mentions.noRecentWorkflows',
+		includesAgents
+			? 'instanceAi.mentions.buttonLabelWithAgents'
+			: 'instanceAi.mentions.buttonLabel',
+	),
+);
+const searchPlaceholder = computed(() =>
+	i18n.baseText(
+		includesAgents
+			? 'instanceAi.mentions.searchPlaceholderWithAgents'
+			: 'instanceAi.mentions.searchPlaceholder',
 	),
 );
 
@@ -362,7 +397,10 @@ function handleSelect(itemId: string): void {
 	}
 	const item = itemsById.value.get(itemId);
 	if (!item) return;
-	const selection = buildMentionAttachment(item, artifactIndex.getIndex(item.workflowId));
+	const selection = buildMentionAttachment(
+		item,
+		item.kind === 'agent' ? undefined : artifactIndex.getIndex(item.workflowId),
+	);
 	if (selection) {
 		const resultPosition = getResultPosition(itemId);
 		emit('select', {
@@ -438,7 +476,7 @@ defineExpose({ handleExternalKeydown, getOpenMetrics, flushEmptySearch });
 		:disabled="disabled"
 		:loading="isLoading"
 		:empty-text="emptyText"
-		:search-placeholder="i18n.baseText('instanceAi.mentions.searchPlaceholder')"
+		:search-placeholder="searchPlaceholder"
 		placement="top-start"
 		searchable
 		search-mode="external"
@@ -462,18 +500,15 @@ defineExpose({ handleExternalKeydown, getOpenMetrics, flushEmptySearch });
 			</div>
 		</template>
 		<template #trigger>
-			<N8nTooltip
-				as-child
-				:content="i18n.baseText('instanceAi.mentions.buttonLabel')"
-				placement="top"
-			>
+			<N8nTooltip as-child :content="buttonLabel" placement="top">
 				<N8nIconButton
 					icon="at-sign"
 					variant="ghost"
 					size="medium"
 					:disabled="disabled"
-					:title="i18n.baseText('instanceAi.mentions.buttonLabel')"
-					:aria-label="i18n.baseText('instanceAi.mentions.buttonLabel')"
+					focusable-when-disabled
+					:title="buttonLabel"
+					:aria-label="buttonLabel"
 					data-test-id="instance-ai-mention-button"
 				/>
 			</N8nTooltip>
@@ -488,6 +523,12 @@ defineExpose({ handleExternalKeydown, getOpenMetrics, flushEmptySearch });
 			<N8nIcon
 				v-else-if="item.data?.item.kind === 'group'"
 				icon="group"
+				size="large"
+				:class="ui.class"
+			/>
+			<N8nIcon
+				v-else-if="item.data?.item.kind === 'agent'"
+				icon="robot"
 				size="large"
 				:class="ui.class"
 			/>
@@ -514,12 +555,12 @@ defineExpose({ handleExternalKeydown, getOpenMetrics, flushEmptySearch });
 		</template>
 		<template #item-trailing="{ item, ui }">
 			<N8nText
-				v-if="item.data?.item.hasChildren && item.data.item.nodeCount !== undefined"
+				v-if="item.data?.item.hasChildren && nodeCountOf(item.data.item) !== undefined"
 				:class="ui.class"
 				size="small"
 				color="text-light"
 			>
-				{{ item.data.item.nodeCount }}
+				{{ nodeCountOf(item.data.item) }}
 			</N8nText>
 		</template>
 		<template
