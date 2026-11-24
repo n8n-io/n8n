@@ -132,17 +132,6 @@ export class KnowledgeCollectionRepository {
 		return await this.summarize(collections, manager);
 	}
 
-	/** A kind=shared collection, only when it belongs to the project. */
-	async findSharedInProject(
-		id: string,
-		projectId: string,
-		ctx: OperationContext,
-	): Promise<KnowledgeCollection | null> {
-		return await this.table
-			.managerFor(ctx)
-			.findOneBy(KnowledgeCollection, { id, projectId, kind: 'shared' });
-	}
-
 	/** Whether another collection of the project, not `exceptCollectionId`, uses the name. */
 	async isNameTakenInProject(
 		projectId: string,
