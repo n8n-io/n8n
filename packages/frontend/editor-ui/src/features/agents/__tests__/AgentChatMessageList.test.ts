@@ -92,41 +92,54 @@ vi.mock('@/features/agents/components/AgentMarkdownChunk.vue', () => ({
 	},
 }));
 
-vi.mock('@/features/ai/shared/components/AiThinkingBlock.vue', () => ({
-	default: {
-		name: 'AiThinkingBlock',
-		template:
-			'<section data-test-id="shared-thinking-block" :data-active="active ? \'true\' : \'false\'" :data-duration="durationSec" :data-idle-label="idleLabel"><slot /></section>',
-		props: ['segments', 'active', 'durationSec', 'idleLabel'],
-	},
-}));
-
-vi.mock('@/features/ai/shared/components/AiReasoningBlock.vue', () => ({
-	default: {
-		name: 'AiReasoningBlock',
-		template: '<div data-test-id="shared-reasoning-block">{{ entry.content }}</div>',
-		props: ['entry', 'streaming'],
-	},
-}));
-
-vi.mock('@/features/agents/components/AgentChatToolSteps.vue', () => ({
-	default: {
-		name: 'AgentChatToolSteps',
-		template: `<button
-			data-test-id="tool-steps-fix-stub"
-			@click="$emit('fixWithAssistant', [{
-				toolCallId: 'tc-1',
-				toolName: 'http_request',
-				toolDisplayName: 'HTTP request',
-				error: 'boom',
-				startedAt: 1000,
-				endedAt: 1250
-			}])"
-		/>`,
-		props: ['toolCalls', 'projectId', 'canFixWithAssistant', 'executionId', 'hostEvents'],
-		emits: ['fixWithAssistant'],
-	},
-}));
+/**
+ * Renders the `thinking` prop as the old thinking block did, so the tests can
+ * check the label, state, duration, and host events of the thinking step.
+ */
+vi.mock('@/features/agents/components/AgentChatActivity.vue', async () => {
+	const { default: AgentChatHostEvents } = await vi.importActual<
+		typeof import('@/features/agents/components/AgentChatHostEvents.vue')
+	>('@/features/agents/components/AgentChatHostEvents.vue');
+	return {
+		default: {
+			name: 'AgentChatActivity',
+			components: { AgentChatHostEvents },
+			template: `<div>
+				<section
+					v-if="thinking?.segments.length"
+					data-test-id="shared-thinking-block"
+					:data-active="thinking.active ? 'true' : 'false'"
+					:data-duration="thinking.durationSec"
+					:data-idle-label="thinking.idleLabel"
+				>
+					<AgentChatHostEvents v-if="thinking.hostEvents?.length" :items="thinking.hostEvents" />
+					<div v-for="segment in thinking.segments" :key="segment.id" data-test-id="shared-reasoning-block">{{ segment.content }}</div>
+				</section>
+				<button
+					data-test-id="tool-steps-fix-stub"
+					@click="$emit('fixWithAssistant', [{
+						toolCallId: 'tc-1',
+						toolName: 'http_request',
+						toolDisplayName: 'HTTP request',
+						error: 'boom',
+						startedAt: 1000,
+						endedAt: 1250
+					}])"
+				/>
+			</div>`,
+			props: [
+				'toolCalls',
+				'thinking',
+				'projectId',
+				'agentId',
+				'canFixWithAssistant',
+				'executionId',
+				'hostEvents',
+			],
+			emits: ['fixWithAssistant'],
+		},
+	};
+});
 
 vi.mock('@/features/agents/components/interactive/InteractiveCard.vue', () => ({
 	default: {
@@ -738,7 +751,7 @@ describe('AgentChatMessageList', () => {
 		});
 		const calls = () =>
 			wrapper
-				.findAllComponents({ name: 'AgentChatToolSteps' })
+				.findAllComponents({ name: 'AgentChatActivity' })
 				.flatMap((steps) => steps.props('toolCalls') as ToolCall[]);
 		expect(calls().map((call) => call.tool)).toEqual(['create_plan']);
 		expect(wrapper.find('[data-test-id="agent-typing-indicator"]').exists()).toBe(true);
@@ -1068,7 +1081,7 @@ describe('AgentChatMessageList', () => {
 		).toEqual([expected]);
 	});
 
-	it('renders thinking below standalone assistant output', () => {
+	it('renders thinking in the activity above standalone assistant output', () => {
 		const wrapper = mount(AgentChatMessageList, {
 			props: {
 				messages: [
@@ -1092,22 +1105,22 @@ describe('AgentChatMessageList', () => {
 		const renderOrder = wrapper
 			.findAll('[data-testid="markdown-chunk"], [data-test-id="shared-thinking-block"]')
 			.map((element) => element.attributes('data-testid') ?? element.attributes('data-test-id'));
-		expect(renderOrder).toEqual(['markdown-chunk', 'shared-thinking-block']);
-		expect(
-			wrapper
-				.get('[data-testid="shell-after-actions"]')
-				.find('[data-test-id="shared-thinking-block"]')
-				.exists(),
-		).toBe(true);
+		expect(renderOrder).toEqual(['shared-thinking-block', 'markdown-chunk']);
 		expect(
 			wrapper
 				.get('[data-testid="shell-content"]')
 				.find('[data-test-id="shared-thinking-block"]')
 				.exists(),
+		).toBe(true);
+		expect(
+			wrapper
+				.get('[data-testid="shell-after-actions"]')
+				.find('[data-test-id="shared-thinking-block"]')
+				.exists(),
 		).toBe(false);
 	});
 
-	it('keeps aggregated thinking below the final output in a tool run', () => {
+	it('keeps aggregated thinking above the final output in a tool run', () => {
 		const wrapper = mount(AgentChatMessageList, {
 			props: {
 				messages: [
@@ -1140,10 +1153,10 @@ describe('AgentChatMessageList', () => {
 		const renderOrder = wrapper
 			.findAll('[data-testid="markdown-chunk"], [data-test-id="shared-thinking-block"]')
 			.map((element) => element.attributes('data-testid') ?? element.attributes('data-test-id'));
-		expect(renderOrder).toEqual(['markdown-chunk', 'shared-thinking-block']);
+		expect(renderOrder).toEqual(['shared-thinking-block', 'markdown-chunk']);
 	});
 
-	it('moves narrated tool-step reasoning below the later final output', () => {
+	it('keeps narrated tool-step reasoning above the later final output', () => {
 		const wrapper = mount(AgentChatMessageList, {
 			props: {
 				messages: [
@@ -1170,7 +1183,7 @@ describe('AgentChatMessageList', () => {
 		const renderOrder = wrapper
 			.findAll('[data-testid="markdown-chunk"], [data-test-id="shared-thinking-block"]')
 			.map((element) => element.attributes('data-testid') ?? element.attributes('data-test-id'));
-		expect(renderOrder).toEqual(['markdown-chunk', 'markdown-chunk', 'shared-thinking-block']);
+		expect(renderOrder).toEqual(['markdown-chunk', 'shared-thinking-block', 'markdown-chunk']);
 		expect(
 			wrapper.findAll('[data-test-id="shared-reasoning-block"]').map((element) => element.text()),
 		).toEqual(['Choose a query.', 'Compose the answer.']);
@@ -1280,7 +1293,7 @@ describe('AgentChatMessageList', () => {
 			},
 		});
 
-		const toolSteps = wrapper.findComponent({ name: 'AgentChatToolSteps' });
+		const toolSteps = wrapper.findComponent({ name: 'AgentChatActivity' });
 		expect(toolSteps.props('canFixWithAssistant')).toBe(true);
 		expect(toolSteps.props('executionId')).toBe('exec-turn-1');
 
@@ -2091,7 +2104,7 @@ describe('AgentChatMessageList', () => {
 
 		function stepToolCallIds(wrapper: ReturnType<typeof mountList>): string[] {
 			return wrapper
-				.findAllComponents({ name: 'AgentChatToolSteps' })
+				.findAllComponents({ name: 'AgentChatActivity' })
 				.flatMap((steps) => (steps.props('toolCalls') as ToolCall[]).map((tc) => tc.toolCallId));
 		}
 
@@ -2135,7 +2148,7 @@ describe('AgentChatMessageList', () => {
 			const wrapper = mountList([assistantMessage([savedNote])]);
 
 			expect(wrapper.findAll('[data-testid="test-tool-result"]')).toHaveLength(1);
-			expect(wrapper.findComponent({ name: 'AgentChatToolSteps' }).exists()).toBe(false);
+			expect(wrapper.findComponent({ name: 'AgentChatActivity' }).exists()).toBe(false);
 			wrapper.unmount();
 		});
 
@@ -2370,7 +2383,7 @@ describe('AgentChatMessageList', () => {
 				]);
 
 				const hostEvents = wrapper
-					.findComponent({ name: 'AgentChatToolSteps' })
+					.findComponent({ name: 'AgentChatActivity' })
 					.props('hostEvents') as Map<string, Array<{ event: AgentsChatHostEvent }>>;
 				expect([...hostEvents.keys()]).toEqual(['tc-1']);
 				expect(hostEvents.get('tc-1')?.map(({ event }) => event.id)).toEqual(['approval']);
@@ -2389,7 +2402,7 @@ describe('AgentChatMessageList', () => {
 			]);
 
 			const content = wrapper.find('[data-testid="agent-chat-host-event"]').element.parentElement;
-			const steps = wrapper.findComponent({ name: 'AgentChatToolSteps' });
+			const steps = wrapper.findComponent({ name: 'AgentChatActivity' });
 			expect(steps.exists()).toBe(true);
 			expect(content?.firstElementChild?.getAttribute('data-placement')).toBe('start');
 			expect(renderOrder(wrapper)).toEqual(['start:s', 'text']);
@@ -2408,7 +2421,7 @@ describe('AgentChatMessageList', () => {
 				.findAll('[data-testid="agent-chat-host-event"], [data-test-id="shared-reasoning-block"]')
 				.map((element) => element.attributes('data-placement') ?? 'reasoning');
 			expect(children).toEqual(['thinking', 'reasoning']);
-			expect(renderOrder(wrapper)).toEqual(['text', 'thinking:context']);
+			expect(renderOrder(wrapper)).toEqual(['thinking:context', 'text']);
 			wrapper.unmount();
 		});
 
@@ -2426,7 +2439,7 @@ describe('AgentChatMessageList', () => {
 			expect(block.find('[data-testid="agent-chat-host-event"]').attributes('data-placement')).toBe(
 				'thinking',
 			);
-			expect(renderOrder(wrapper)).toEqual(['text', 'thinking:context']);
+			expect(renderOrder(wrapper)).toEqual(['thinking:context', 'text']);
 			wrapper.unmount();
 		});
 

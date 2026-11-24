@@ -87,7 +87,7 @@ import LimitedModeNotice from './LimitedModeNotice.vue';
 import AgentSection from './AgentSection.vue';
 import { useStopBrowserTasksPrompt } from '../composables/useStopBrowserTasksPrompt';
 import { collectActiveBuilderAgents, messageHasVisibleContent } from '../builderAgents';
-import AiThinkingBlock from '../../shared/components/AiThinkingBlock.vue';
+import { AiActivityThinkingStep } from '../../shared/components/AiActivityTrace';
 import CreditWarningBanner from '@/features/ai/assistant/components/Agent/CreditWarningBanner.vue';
 
 const props = withDefaults(
@@ -970,7 +970,7 @@ defineExpose({
 						role="assistant"
 						data-test-id="instance-ai-onboarding-thinking"
 					>
-						<AiThinkingBlock
+						<AiActivityThinkingStep
 							:segments="[]"
 							:active="true"
 							:activity-label="

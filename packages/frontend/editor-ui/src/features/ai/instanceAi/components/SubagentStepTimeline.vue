@@ -20,11 +20,12 @@ import type { AgentTestTarget } from '@/features/agents/utils/agentTestUrl';
 import { useActiveToolLabel } from '../composables/useRunActivity';
 import { HIDDEN_TOOLS, isStreamingTimelineEntry } from '../agentTimeline.utils';
 import { getToolIcon, useToolLabel } from '../toolLabels';
-import AiReasoningBlock from '../../shared/components/AiReasoningBlock.vue';
+import { AiActivityThinkingStep } from '../../shared/components/AiActivityTrace';
+import { firstSentence } from '../../shared/thinking.utils';
 import ButtonLike from './ButtonLike.vue';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
-import ToolResultJson from '@/features/ai/shared/components/ToolResult/ToolResultJson.vue';
-import ToolResultRenderer from '@/features/ai/shared/components/ToolResult/ToolResultRenderer.vue';
+import ToolResultJson from '../../shared/components/ToolResult/ToolResultJson.vue';
+import ToolResultRenderer from '../../shared/components/ToolResult/ToolResultRenderer.vue';
 
 const props = withDefaults(
 	defineProps<{
@@ -194,10 +195,12 @@ const steps = computed((): TimelineStep[] => {
 				</ButtonLike>
 			</template>
 
-			<AiReasoningBlock
+			<AiActivityThinkingStep
 				v-else-if="step.type === 'reasoning' && step.entry"
-				:entry="step.entry"
-				:streaming="isStreamingTimelineEntry(props.agentNode, step.entry)"
+				:segments="[step.entry]"
+				:active="isStreamingTimelineEntry(props.agentNode, step.entry)"
+				:settled-label="firstSentence(step.entry.content) || undefined"
+				test-id="instance-ai-subagent-thinking"
 			/>
 		</template>
 	</div>
@@ -217,10 +220,10 @@ const steps = computed((): TimelineStep[] => {
 
 .toggleTrigger {
 	--button--padding: 0;
-	--button--font-size: var(--font-size--sm);
+	--button--font-size: var(--n8n-markdown--font-size--base, var(--font-size--sm));
 
 	padding-inline: 0;
-	font-size: var(--font-size--sm);
+	font-size: var(--n8n-markdown--font-size--base, var(--font-size--sm));
 }
 
 .streamingMarkdown {

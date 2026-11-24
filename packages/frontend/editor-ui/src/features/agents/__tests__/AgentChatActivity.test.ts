@@ -6,7 +6,7 @@ import { computed } from 'vue';
 import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
 import type { PolicyViolation } from '@n8n/api-types';
 import { createTestProject } from '@/features/collaboration/projects/__tests__/utils';
-import AgentChatToolSteps from '../components/AgentChatToolSteps.vue';
+import AgentChatActivity from '../components/AgentChatActivity.vue';
 import { AGENT_TOOL_STEP_LABEL_KEY } from '../components/agentChatInjectionKeys';
 import {
 	AGENTS_CHAT_INTERACTION_EXTENSIONS,
@@ -84,10 +84,16 @@ vi.mock('@n8n/design-system', () => ({
 		template: '<a href="#" @click="$emit(\'click\', $event)"><slot /></a>',
 	},
 	N8nMarkdownEditor: {
-		template: '<div data-test-id="tool-step-details">{{ modelValue }}</div>',
+		template: '<div data-test-id="ai-activity-tool-details">{{ modelValue }}</div>',
 		props: ['modelValue', 'readonly', 'variant', 'showToolbar', 'maxHeight'],
 	},
 	N8nTooltip: { template: '<div><slot /></div>', props: ['content', 'placement'] },
+	N8nAiActivityStepResultSection: { template: '<div><slot /></div>' },
+	N8nText: { template: '<span><slot /></span>' },
+}));
+
+vi.mock('@/features/ai/shared/components/ChatMarkdown/ChatMarkdown.vue', () => ({
+	default: { props: ['content', 'streaming'], template: '<div>{{ content }}</div>' },
 }));
 
 vi.mock('@n8n/frontend-module-type-availability-policies', async (importOriginal) => ({
@@ -176,12 +182,12 @@ function mountSteps(
 		dismissedToolCallIds?: string[];
 	} = {},
 ) {
-	return mount(AgentChatToolSteps, {
+	return mount(AgentChatActivity, {
 		props: { toolCalls, projectId: 'project-1', ...extra },
 	});
 }
 
-describe('AgentChatToolSteps', () => {
+describe('AgentChatActivity', () => {
 	beforeEach(() => {
 		setActivePinia(createTestingPinia());
 	});
@@ -416,7 +422,7 @@ describe('AgentChatToolSteps', () => {
 	});
 
 	it('shows the host output of a finished call inside its step, below the default input', async () => {
-		const wrapper = mount(AgentChatToolSteps, {
+		const wrapper = mount(AgentChatActivity, {
 			props: {
 				toolCalls: [
 					{
@@ -451,7 +457,7 @@ describe('AgentChatToolSteps', () => {
 	});
 
 	it('keeps the default output of a call that failed, even when a host renders its output', async () => {
-		const wrapper = mount(AgentChatToolSteps, {
+		const wrapper = mount(AgentChatActivity, {
 			props: {
 				toolCalls: [
 					{
@@ -534,7 +540,7 @@ describe('AgentChatToolSteps', () => {
 		]);
 		expect(completed.text()).toContain('Memory noted');
 		expect(completed.find('button').exists()).toBe(false);
-		expect(completed.find('[data-test-id="tool-step-details"]').exists()).toBe(false);
+		expect(completed.find('[data-test-id="ai-activity-tool-details"]').exists()).toBe(false);
 	});
 
 	it('shows one Fix with Assistant callout with deduplicated failures', async () => {
@@ -758,7 +764,9 @@ describe('AgentChatToolSteps', () => {
 		expect(wrapper.find('[data-testid="tool-step-summary"]').text()).not.toContain('3 tasks');
 
 		await wrapper.find('button').trigger('click');
-		expect(wrapper.find('[data-test-id="tool-step-details"]').text()).toContain('Research APIs');
+		expect(wrapper.find('[data-test-id="ai-activity-tool-details"]').text()).toContain(
+			'Research APIs',
+		);
 	});
 
 	it('shows done summary when all write_todos tasks are completed', async () => {
@@ -783,8 +791,12 @@ describe('AgentChatToolSteps', () => {
 		expect(wrapper.find('[data-testid="tool-step-summary"]').text()).toContain('done');
 
 		await wrapper.find('button').trigger('click');
-		expect(wrapper.find('[data-test-id="tool-step-details"]').text()).toContain('Research APIs');
-		expect(wrapper.find('[data-test-id="tool-step-details"]').text()).toContain('Write summary');
+		expect(wrapper.find('[data-test-id="ai-activity-tool-details"]').text()).toContain(
+			'Research APIs',
+		);
+		expect(wrapper.find('[data-test-id="ai-activity-tool-details"]').text()).toContain(
+			'Write summary',
+		);
 	});
 
 	it('keeps delegate_subagent expandable behavior', async () => {
@@ -810,7 +822,7 @@ describe('AgentChatToolSteps', () => {
 		expect(metadata).toEqual(['Research api', 'High']);
 
 		await wrapper.find('button').trigger('click');
-		expect(wrapper.find('[data-test-id="tool-step-details"]').text()).toBe('Child answer');
+		expect(wrapper.find('[data-test-id="ai-activity-tool-details"]').text()).toBe('Child answer');
 	});
 
 	it('renders live child progress instead of raw input while delegate_subagent is running', async () => {
@@ -832,7 +844,7 @@ describe('AgentChatToolSteps', () => {
 		]);
 
 		await wrapper.find('button').trigger('click');
-		expect(wrapper.find('[data-test-id="agent-chat-delegate-child-progress"]').exists()).toBe(true);
+		expect(wrapper.find('[data-test-id="ai-activity-tool-children"]').exists()).toBe(true);
 		expect(wrapper.text()).toContain('Looking things up');
 		expect(wrapper.text()).not.toContain('subAgentId');
 
@@ -858,10 +870,10 @@ describe('AgentChatToolSteps', () => {
 		]);
 
 		await wrapper.find('button').trigger('click');
-		expect(wrapper.find('[data-test-id="tool-step-details"]').text()).toBe('Final child answer');
-		expect(wrapper.find('[data-test-id="agent-chat-delegate-child-progress"]').exists()).toBe(
-			false,
+		expect(wrapper.find('[data-test-id="ai-activity-tool-details"]').text()).toBe(
+			'Final child answer',
 		);
+		expect(wrapper.find('[data-test-id="ai-activity-tool-children"]').exists()).toBe(false);
 	});
 
 	it('renders the answer once alongside the child trace on a settled delegate row', async () => {
@@ -886,9 +898,11 @@ describe('AgentChatToolSteps', () => {
 		await wrapper.find('button').trigger('click');
 		// The child's streamed text is what becomes the delegate answer, so a
 		// settled row renders it once — not again from the trace.
-		expect(wrapper.findAll('[data-test-id="tool-step-details"]')).toHaveLength(1);
-		expect(wrapper.find('[data-test-id="tool-step-details"]').text()).toBe('Final child answer');
-		expect(wrapper.find('[data-test-id="agent-chat-delegate-child-progress"]').exists()).toBe(true);
+		expect(wrapper.findAll('[data-test-id="ai-activity-tool-details"]')).toHaveLength(1);
+		expect(wrapper.find('[data-test-id="ai-activity-tool-details"]').text()).toBe(
+			'Final child answer',
+		);
+		expect(wrapper.find('[data-test-id="ai-activity-tool-children"]').exists()).toBe(true);
 		expect(wrapper.text()).toContain('Web search');
 		expect(wrapper.text()).not.toContain('subAgentId');
 	});
@@ -1071,7 +1085,7 @@ describe('AgentChatToolSteps', () => {
 	});
 });
 
-describe('AgentChatToolSteps — output files', () => {
+describe('AgentChatActivity — output files', () => {
 	it('renders the files of a tool output as attachments below the step', () => {
 		const toolCall: ToolCall = {
 			tool: 'generate_image',
@@ -1083,7 +1097,7 @@ describe('AgentChatToolSteps — output files', () => {
 				files: [{ fileId: 'aid-1', fileName: 'cat.png', mimeType: 'image/png', sizeBytes: 3 }],
 			},
 		};
-		const wrapper = mount(AgentChatToolSteps, {
+		const wrapper = mount(AgentChatActivity, {
 			props: { toolCalls: [toolCall], projectId: 'p1', agentId: 'a1' },
 			global: {
 				stubs: {
@@ -1111,7 +1125,7 @@ describe('AgentChatToolSteps — output files', () => {
 				files: [{ fileId: 'aid-1', fileName: 'cat.png', mimeType: 'image/png', sizeBytes: 3 }],
 			},
 		};
-		const wrapper = mount(AgentChatToolSteps, {
+		const wrapper = mount(AgentChatActivity, {
 			props: { toolCalls: [toolCall], projectId: 'p1', agentId: 'a1' },
 			global: {
 				stubs: {
@@ -1146,7 +1160,7 @@ describe('AgentChatToolSteps — output files', () => {
 				},
 			},
 		];
-		const wrapper = mount(AgentChatToolSteps, {
+		const wrapper = mount(AgentChatActivity, {
 			props: { toolCalls, projectId: 'p1', agentId: 'a1' },
 			global: {
 				stubs: {
@@ -1168,7 +1182,7 @@ describe('AgentChatToolSteps — output files', () => {
 
 	it('renders the files that a delegated sub-agent returned below the delegate step', () => {
 		const file = { fileId: 'f-1', fileName: 'chart.png', mimeType: 'image/png', sizeBytes: 9 };
-		const wrapper = mount(AgentChatToolSteps, {
+		const wrapper = mount(AgentChatActivity, {
 			props: {
 				toolCalls: [
 					{
@@ -1197,7 +1211,7 @@ describe('AgentChatToolSteps — output files', () => {
 	});
 });
 
-describe('AgentChatToolSteps — host events', () => {
+describe('AgentChatActivity — host events', () => {
 	const item: AgentsChatHostEventItem = {
 		event: { id: 'approval-1', name: TEST_HOST_EVENT.TOOL_CALL, payload: { toolCallId: 'tc-2' } },
 		message: { id: 'assistant-1', role: 'assistant', content: '' },
@@ -1232,13 +1246,13 @@ describe('AgentChatToolSteps — host events', () => {
 		{
 			name: 'for a single step',
 			toolCalls: [{ tool: 'web_search', toolCallId: 'tc-2', state: TOOL_CALL_STATE.DONE }],
-			container: 'div',
+			container: '[data-test-id="ai-activity-trace"]',
 			expected: ['tool-call', 'Web search'],
 		},
 	])(
 		'renders the host events of a call right before its step, $name',
 		({ toolCalls, container, expected }) => {
-			const wrapper = mount(AgentChatToolSteps, {
+			const wrapper = mount(AgentChatActivity, {
 				props: { toolCalls, hostEvents: new Map([['tc-2', [item]]]) },
 			});
 
@@ -1248,7 +1262,7 @@ describe('AgentChatToolSteps — host events', () => {
 	);
 });
 
-describe('AgentChatToolSteps, host tool labels', () => {
+describe('AgentChatActivity, host tool labels', () => {
 	beforeEach(() => {
 		setActivePinia(createTestingPinia());
 	});
@@ -1261,7 +1275,7 @@ describe('AgentChatToolSteps, host tool labels', () => {
 	};
 
 	it('names a step with the label of the host', () => {
-		const wrapper = mount(AgentChatToolSteps, {
+		const wrapper = mount(AgentChatActivity, {
 			props: { toolCalls: [searchCall], projectId: 'project-1' },
 			global: {
 				provide: {
@@ -1275,7 +1289,7 @@ describe('AgentChatToolSteps, host tool labels', () => {
 	});
 
 	it('keeps its own label when the host gives none', () => {
-		const wrapper = mount(AgentChatToolSteps, {
+		const wrapper = mount(AgentChatActivity, {
 			props: { toolCalls: [searchCall], projectId: 'project-1' },
 			global: { provide: { [AGENT_TOOL_STEP_LABEL_KEY as symbol]: () => undefined } },
 		});

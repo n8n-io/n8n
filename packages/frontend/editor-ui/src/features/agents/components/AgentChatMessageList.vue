@@ -45,14 +45,12 @@ import type {
 	InteractivePayload,
 	ToolCall,
 } from '@/features/ai/shared/agentsChat/types';
-import AiReasoningBlock from '@/features/ai/shared/components/AiReasoningBlock.vue';
-import AiThinkingBlock from '@/features/ai/shared/components/AiThinkingBlock.vue';
 import AgentChatMemoryUsed from './AgentChatMemoryUsed.vue';
 import AgentChatBackgroundJobSignal from './AgentChatBackgroundJobSignal.vue';
 import AgentChatHostEvents from './AgentChatHostEvents.vue';
 import AgentChatMessageActions from './AgentChatMessageActions.vue';
 import AgentChatMessageAttachments from './AgentChatMessageAttachments.vue';
-import AgentChatToolSteps from './AgentChatToolSteps.vue';
+import AgentChatActivity from './AgentChatActivity.vue';
 import AgentChatRetryError from './AgentChatRetryError.vue';
 import AgentMarkdownChunk from './AgentMarkdownChunk.vue';
 import AgentChatTaskSummary from './AgentChatTaskSummary.vue';
@@ -709,9 +707,17 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 			>
 				<N8nChatMessage role="assistant">
 					<AgentChatHostEvents :items="getGroupHostEventItems(group.id).start" />
-					<AgentChatToolSteps
-						v-if="getGroupToolCalls(group.id).steps.length"
+					<AgentChatActivity
+						v-if="getGroupToolCalls(group.id).steps.length || group.thinkingSegments.length"
 						:tool-calls="getGroupToolCalls(group.id).steps"
+						:thinking="{
+							segments: group.thinkingSegments,
+							active: group.active || group.awaitingInput,
+							awaitingInput: group.awaitingInput,
+							durationSec: getThinkingDurationSec(group.thinkingSegments),
+							idleLabel: props.thinkingLabel,
+							hostEvents: getGroupHostEventItems(group.id).thinking,
+						}"
 						:project-id="projectId"
 						:agent-id="agentId"
 						:can-fix-with-assistant="canSendToAssistant"
@@ -794,29 +800,6 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 						@increase="emit('increase-budget', $event)"
 					/>
 					<AgentChatHostEvents :items="getGroupHostEventItems(group.id).end" />
-					<template #after-actions>
-						<AiThinkingBlock
-							:idle-label="props.thinkingLabel"
-							v-if="group.thinkingSegments.length"
-							:segments="group.thinkingSegments"
-							:active="group.active || group.awaitingInput"
-							:awaiting-input="group.awaitingInput"
-							:duration-sec="getThinkingDurationSec(group.thinkingSegments)"
-							:class="[
-								$style.thinkingBlock,
-								{ [$style.thinkingBlockLive]: group.active || group.awaitingInput },
-							]"
-							test-id="agent-chat-thinking-block"
-						>
-							<AgentChatHostEvents :items="getGroupHostEventItems(group.id).thinking" />
-							<AiReasoningBlock
-								v-for="segment in group.thinkingSegments"
-								:key="segment.id"
-								:entry="segment"
-								:streaming="group.active && segment.endTime === undefined"
-							/>
-						</AiThinkingBlock>
-					</template>
 					<template #actions v-if="shouldShowAssistantFooter(group.id)">
 						<div :class="$style.messageFooter" :data-open="openMemoryFooterGroupId === group.id">
 							<AgentChatMemoryUsed
@@ -885,9 +868,17 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 				</N8nText>
 				<N8nChatMessage :role="group.message.role">
 					<AgentChatHostEvents :items="getGroupHostEventItems(group.id).start" />
-					<AgentChatToolSteps
-						v-if="getGroupToolCalls(group.id).steps.length"
+					<AgentChatActivity
+						v-if="getGroupToolCalls(group.id).steps.length || group.thinkingSegments.length"
 						:tool-calls="getGroupToolCalls(group.id).steps"
+						:thinking="{
+							segments: group.thinkingSegments,
+							active: isThinkingActive(group.message),
+							awaitingInput: group.message.status === CHAT_MESSAGE_STATUS.AWAITING_USER,
+							durationSec: getThinkingDurationSec(group.thinkingSegments),
+							idleLabel: props.thinkingLabel,
+							hostEvents: getGroupHostEventItems(group.id).thinking,
+						}"
 						:project-id="projectId"
 						:agent-id="agentId"
 						:can-fix-with-assistant="canSendToAssistant"
@@ -1055,31 +1046,6 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 								</N8nButton>
 							</template>
 						</N8nCallout>
-
-						<AiThinkingBlock
-							:idle-label="props.thinkingLabel"
-							v-if="group.thinkingSegments.length"
-							:segments="group.thinkingSegments"
-							:active="isThinkingActive(group.message)"
-							:awaiting-input="group.message.status === CHAT_MESSAGE_STATUS.AWAITING_USER"
-							:duration-sec="getThinkingDurationSec(group.thinkingSegments)"
-							:class="[
-								$style.thinkingBlock,
-								{ [$style.thinkingBlockLive]: isThinkingActive(group.message) },
-							]"
-							test-id="agent-chat-thinking-block"
-						>
-							<AgentChatHostEvents :items="getGroupHostEventItems(group.id).thinking" />
-							<AiReasoningBlock
-								v-for="segment in group.thinkingSegments"
-								:key="segment.id"
-								:entry="segment"
-								:streaming="
-									group.message.status === CHAT_MESSAGE_STATUS.STREAMING &&
-									segment.endTime === undefined
-								"
-							/>
-						</AiThinkingBlock>
 					</template>
 					<template #actions v-if="shouldShowAssistantFooter(group.id)">
 						<div :class="$style.messageFooter" :data-open="openMemoryFooterGroupId === group.id">
@@ -1301,25 +1267,5 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 	align-items: center;
 	height: calc(var(--font-size--sm) * var(--line-height--lg));
 	margin-block: var(--spacing--4xs);
-}
-
-/* The space to the next step (the list gap and the message's top padding), so
-   the line has the same space above and below. */
-.thinkingBlock {
-	margin-top: calc(var(--spacing--sm) + var(--spacing--4xs));
-	/* Lines up with the message text, which has the same inline padding. */
-	padding-inline: var(--spacing--sm);
-}
-
-/* A live step can end with the actions row (its margin and its small buttons)
-   above the thinking line. Keep that space, so the line does not move then. */
-.thinkingBlockLive {
-	margin-top: calc(var(--spacing--xs) + var(--height--sm));
-}
-
-/* With the actions row above, or no content above, the space is already there. */
-:has(> .messageFooter) + .thinkingBlock,
-:empty + .thinkingBlock {
-	margin-top: 0;
 }
 </style>

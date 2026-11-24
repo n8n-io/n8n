@@ -233,10 +233,11 @@ describe('SubagentStepTimeline', () => {
 		expect(triggerButton).toBeTruthy();
 	});
 
-	it('renders a reasoning entry labelled with its first sentence', () => {
+	it('labels a settled reasoning entry with its first sentence', () => {
 		const { getByText } = renderComponent({
 			props: {
 				agentNode: makeAgentNode({
+					status: 'completed',
 					timeline: [
 						{
 							type: 'reasoning',
