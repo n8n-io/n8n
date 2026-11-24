@@ -58,6 +58,7 @@ const actions = computed(() => [
 		label: i18n.baseText('settings.promotions.environment.remove'),
 		value: 'remove' as const,
 		destructive: true,
+		divided: true,
 	},
 ]);
 
