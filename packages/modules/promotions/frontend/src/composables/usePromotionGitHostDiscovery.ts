@@ -74,7 +74,7 @@ export function usePromotionGitHostDiscovery(context: DiscoveryContext) {
 		const query = value.trim();
 		if (query === search.value) return;
 		search.value = query;
-		options.value = [];
+		// Keep the current options until the new ones arrive, so the list does not collapse.
 		error.value = undefined;
 		loading.value = true;
 		void debouncedLoad(++generation);
