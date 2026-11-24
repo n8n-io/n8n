@@ -51,8 +51,6 @@ export interface ToolCall {
 	 * approval for a child tool.
 	 */
 	suspendPayload?: unknown;
-	/** Safe-testing route and evidence for simulated tool calls in a test run. */
-	simulation?: ToolCallSimulation;
 	/** Live progress of a delegated child, streamed while the delegation runs
 	 *  and restored from history when a `childTrace` was persisted on the
 	 *  parent's execution timeline. */

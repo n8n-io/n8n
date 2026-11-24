@@ -45,7 +45,7 @@ describe('Safe testing labels, previews, reload persistence, and fresh test runs
 			openSuspensions: [],
 			activeExecutionId: null,
 		});
-		vi.mocked(getAgentChatQueue).mockResolvedValue({ items: [] });
+		vi.mocked(getAgentChatQueue).mockResolvedValue({ items: [], steerableExecutionId: null });
 		vi.mocked(resetAgentTestRun).mockResolvedValue({ reset: true });
 	});
 
@@ -188,7 +188,11 @@ describe('Safe testing labels, previews, reload persistence, and fresh test runs
 				projectId: 'project-1',
 				agentId: 'agent-1',
 				continueSessionId: 'session-1',
-				agentConfig: { name: 'Support Agent', instructions: 'Help users' },
+				agentConfig: {
+					name: 'Support Agent',
+					model: 'anthropic/claude-sonnet-5-5',
+					instructions: 'Help users',
+				},
 				agentStatus: 'draft',
 				connectedTriggers: [],
 				visible: true,
