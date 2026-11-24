@@ -339,6 +339,13 @@ const columnPinning = computed<ColumnPinningState>(() => {
 	return { left, right };
 });
 
+// Only the sorted header gets aria-sort, as in the WAI-ARIA sortable table pattern.
+function getAriaSort(column: Column<T, unknown>) {
+	const direction = column.getIsSorted();
+	if (!direction) return undefined;
+	return direction === 'asc' ? 'ascending' : 'descending';
+}
+
 function getPinnedCellBindings(column: Column<T, unknown>) {
 	const side = column.getIsPinned();
 	if (!side) return undefined;
@@ -574,7 +581,6 @@ const table = useVueTable({
 								<th
 									v-bind="getPinnedCellBindings(header.column)"
 									:style="{
-										cursor: header.column.getCanSort() ? 'pointer' : undefined,
 										width: `${header.getSize()}px`,
 										maxWidth: `${header.getSize()}px`,
 									}"
@@ -582,20 +588,35 @@ const table = useVueTable({
 										'cell-select': header.column.id === SELECT_COLUMN_ID,
 										[`cell-align--${getColumnMeta(header.column).cellProps.align}`]: true,
 									}"
-									@mousedown="header.column.getToggleSortingHandler()?.($event)"
+									:aria-sort="getAriaSort(header.column)"
 								>
 									<div class="cell-content">
+										<!-- A resize drag that ends on the title sends its click to the th, so it does not sort. -->
+										<button
+											v-if="header.column.getCanSort()"
+											type="button"
+											class="sort-button"
+											@click="header.column.getToggleSortingHandler()?.($event)"
+										>
+											<FlexRender
+												v-if="!header.isPlaceholder"
+												:render="header.column.columnDef.header"
+												:props="header.getContext()"
+											/>
+											<!-- aria-sort on the th already tells the direction. -->
+											<span
+												v-if="header.column.getIsSorted()"
+												class="sort-indicator"
+												aria-hidden="true"
+											>
+												{{ { asc: '↑', desc: '↓' }[header.column.getIsSorted() as string] }}
+											</span>
+										</button>
 										<FlexRender
-											v-if="!header.isPlaceholder"
+											v-else-if="!header.isPlaceholder"
 											:render="header.column.columnDef.header"
 											:props="header.getContext()"
 										/>
-										<span
-											v-if="header.column.getCanSort() && header.column.getIsSorted()"
-											class="sort-indicator"
-										>
-											{{ { asc: '↑', desc: '↓' }[header.column.getIsSorted() as string] }}
-										</span>
 									</div>
 
 									<div
@@ -721,6 +742,7 @@ const table = useVueTable({
 
 <style lang="scss" scoped>
 @use '../../css/mixins/motion';
+@use '../../css/mixins/focus';
 
 .n8n-data-table-server {
 	height: 100%;
@@ -728,6 +750,36 @@ const table = useVueTable({
 
 	.sort-indicator {
 		margin-inline-start: var(--spacing--4xs);
+	}
+
+	.sort-button {
+		/* A button is an atomic inline box, so it truncates the title itself. */
+		display: block;
+		width: 100%;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		padding: 0;
+		border: none;
+		border-radius: var(--radius);
+		background: none;
+		color: inherit;
+		font: inherit;
+		text-align: inherit;
+		cursor: pointer;
+
+		/* Clicks anywhere in the header cell sort, as before the button. The resizer stays on top. */
+		&::after {
+			content: '';
+			position: absolute;
+			inset: 0;
+		}
+
+		&:focus-visible {
+			@include focus.focus-ring;
+			/* The cell content clips what lies outside the button, so the ring sits inside it. */
+			outline-offset: calc(-1 * var(--focus--border-width));
+		}
 	}
 
 	table {

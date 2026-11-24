@@ -261,12 +261,12 @@ describe('N8nDataTableServer', () => {
 	});
 
 	it('should emit options for sorting', async () => {
-		const { container, emitted } = renderComponent({
+		const { getByRole, emitted } = renderComponent({
 			props: { items, headers, itemsLength: 100 },
 		});
 
-		await userEvent.click(container.querySelector('thead tr th')!);
-		await userEvent.click(container.querySelector('thead tr th')!);
+		await userEvent.click(getByRole('button', { name: 'Id' }));
+		await userEvent.click(getByRole('button', { name: 'Id' }));
 
 		expect(emitted('update:options').length).toBe(2);
 		expect(emitted('update:options')[0]).toStrictEqual([
@@ -311,18 +311,125 @@ describe('N8nDataTableServer', () => {
 	});
 
 	it('should emit options for sorting with initial sort', async () => {
-		const { container, emitted } = renderComponent({
+		const { getByRole, emitted } = renderComponent({
 			props: { items, headers, itemsLength: 100, sortBy: [{ id: 'id', desc: true }] },
 		});
 
-		await userEvent.click(container.querySelector('thead tr th')!);
-		await userEvent.click(container.querySelector('thead tr th')!);
+		await userEvent.click(getByRole('button', { name: 'Id' }));
+		await userEvent.click(getByRole('button', { name: 'Id' }));
 
 		expect(emitted('update:options').length).toBe(2);
 		expect(emitted('update:options')[0]).toStrictEqual([expect.objectContaining({ sortBy: [] })]);
 		expect(emitted('update:options')[1]).toStrictEqual([
 			expect.objectContaining({ sortBy: [{ id: 'id', desc: false }] }),
 		]);
+	});
+
+	describe('sort headers', () => {
+		it('should reach each sortable header with the Tab key, in column order', async () => {
+			const { getByRole } = renderComponent({ props: { items, headers, itemsLength: 3 } });
+
+			for (const name of ['Id', 'First name', 'Last name', 'Full name']) {
+				await userEvent.tab();
+				expect(getByRole('button', { name })).toHaveFocus();
+			}
+
+			await userEvent.tab();
+			expect(getByRole('columnheader', { name: 'Empty Column' })).not.toContainElement(
+				document.activeElement as HTMLElement,
+			);
+		});
+
+		it('should sort with Enter and reverse the order with Space', async () => {
+			const { getByRole, emitted } = renderComponent({
+				props: { items, headers, itemsLength: 100 },
+			});
+
+			getByRole('button', { name: 'Id' }).focus();
+			await userEvent.keyboard('{Enter}');
+			await userEvent.keyboard(' ');
+
+			expect(emitted('update:options')).toStrictEqual([
+				[expect.objectContaining({ sortBy: [{ id: 'id', desc: false }] })],
+				[expect.objectContaining({ sortBy: [{ id: 'id', desc: true }] })],
+			]);
+		});
+
+		it('should set aria-sort on the sorted header only', async () => {
+			const { getByRole, getAllByRole } = renderComponent({
+				props: { items, headers, itemsLength: 100 },
+			});
+			const idHeader = getByRole('columnheader', { name: 'Id' });
+
+			expect(getAllByRole('columnheader').filter((th) => th.hasAttribute('aria-sort'))).toEqual([]);
+
+			await userEvent.click(getByRole('button', { name: 'Id' }));
+			expect(idHeader).toHaveAttribute('aria-sort', 'ascending');
+			expect(getAllByRole('columnheader').filter((th) => th.hasAttribute('aria-sort'))).toEqual([
+				idHeader,
+			]);
+
+			await userEvent.click(getByRole('button', { name: 'Id' }));
+			expect(idHeader).toHaveAttribute('aria-sort', 'descending');
+		});
+
+		it('should not sort a column that disables sorting or has no value', async () => {
+			const { getByRole, emitted } = renderComponent({
+				props: {
+					items,
+					headers: [{ title: 'Id', key: 'id', disableSort: true }, { title: 'Empty Column' }],
+					itemsLength: 3,
+				},
+			});
+
+			for (const name of ['Id', 'Empty Column']) {
+				const header = getByRole('columnheader', { name });
+				expect(within(header).queryByRole('button')).not.toBeInTheDocument();
+				await userEvent.click(header);
+				expect(header).not.toHaveAttribute('aria-sort');
+			}
+			expect(emitted('update:options')).toBeUndefined();
+		});
+
+		it('should add a column to the sort with Shift when multiSort is on', async () => {
+			const { getByRole, emitted } = renderComponent({
+				props: { items, headers, itemsLength: 100, multiSort: true },
+			});
+
+			// The default userEvent API forgets a held key between calls, so one session holds Shift.
+			const user = userEvent.setup();
+			await user.click(getByRole('button', { name: 'Id' }));
+			await user.keyboard('{Shift>}');
+			await user.click(getByRole('button', { name: 'First name' }));
+			await user.keyboard('{/Shift}');
+
+			expect(emitted('update:options').at(-1)).toStrictEqual([
+				expect.objectContaining({
+					sortBy: [
+						{ id: 'id', desc: false },
+						{ id: 'firstName', desc: false },
+					],
+				}),
+			]);
+		});
+
+		it('should not sort when a resize drag ends on the header title', async () => {
+			const { getByRole, emitted } = renderComponent({
+				props: { items, headers, itemsLength: 100 },
+			});
+			const resizer = getByRole('columnheader', { name: 'Id' }).querySelector('.resizer')!;
+
+			await userEvent.pointer([
+				{ keys: '[MouseLeft>]', target: resizer },
+				{ target: getByRole('button', { name: 'Id' }) },
+				{ keys: '[/MouseLeft]' },
+			]);
+			expect(emitted('update:options')).toBeUndefined();
+
+			// A plain click on the same title still sorts, so the drag is what did not.
+			await userEvent.click(getByRole('button', { name: 'Id' }));
+			expect(emitted('update:options')).toHaveLength(1);
+		});
 	});
 
 	it('should not show the pagination if there are no items', async () => {
