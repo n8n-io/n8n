@@ -1127,6 +1127,7 @@ describe('EngineV2Dispatcher', () => {
 					triggerName: SET_NODE.name,
 					triggerOutputs: [[{ json: { from: 'runData' } }]],
 					seeded: [],
+					runData: {},
 				});
 				payloadFiles.claimForExecution.mockRejectedValueOnce(new Error('disk gone'));
 				const data = runData({
