@@ -1,0 +1,19 @@
+packages/frontend/@n8n/design-system/src/components/N8nTabs/Tabs.stories.ts
+  s_e6b5a03f5f8e5d::t_dfd21174b93fb2 28-30,67,92,100,138,178,214,252
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b2051132491e4c622a35a49f562963876c0dba20",
+  "prompts": {},
+  "sessions": {
+    "s_e6b5a03f5f8e5d": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a208ac-8d77-75c2-ba12-fbab5d649c74",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}
