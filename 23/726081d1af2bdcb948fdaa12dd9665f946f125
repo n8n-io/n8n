@@ -1,45 +1,77 @@
 packages/@n8n/api-types/src/dto/promotions/__tests__/promotion-apply-check.dto.test.ts
   s_4a494bfdece475::t_4568d26cfb1c49 1-101
+  s_4a494bfdece475::t_0e948bb98b47ef 1-101
 packages/@n8n/api-types/src/dto/promotions/__tests__/promotion-preview.dto.test.ts
   s_4a494bfdece475::t_2287e184753048 1-86
+  s_4a494bfdece475::t_0e948bb98b47ef 1-86
 packages/@n8n/api-types/src/dto/promotions/promotion-apply-check.dto.ts
   s_4a494bfdece475::t_02e35dc6e33ef7 261-337,394-400
+  s_4a494bfdece475::t_74331cc981f7d3 261-337,394-400
 packages/@n8n/api-types/src/dto/promotions/promotion-preview.dto.ts
   s_4a494bfdece475::t_663ef70c8faf0f 9,11,148-160,175-190,193
+  s_4a494bfdece475::t_ca35fcd20f16dd 193
+  s_4a494bfdece475::t_74331cc981f7d3 9,11,148-160,175-189
+  s_4a494bfdece475::t_1e9f98aee1d4a8 190
 packages/cli/src/modules/promotions.ee/__tests__/promote-dependency-check.integration.test.ts
   s_4a494bfdece475::t_c16151ddbe8b57 1-586
+  s_4a494bfdece475::t_498aec99e34c37 1-586
 packages/cli/src/modules/promotions.ee/__tests__/promote-dependency-check.test.ts
   s_4a494bfdece475::t_a56f743067e3d0 1-460
+  s_4a494bfdece475::t_98e2e534c23980 1-46,48-349,351-407,409-460
+  s_4a494bfdece475::t_abb07aba322405 47,350,408
 packages/cli/src/modules/promotions.ee/__tests__/promotion-change-gate.test.ts
   s_4a494bfdece475::t_612d248e96b5d3 10,57
+  s_4a494bfdece475::t_a51b333503ea06 10,57
 packages/cli/src/modules/promotions.ee/__tests__/promotion-preview.revision.test.ts
   s_4a494bfdece475::t_4735d9c3f9cac0 1-66
+  s_4a494bfdece475::t_2bbdcd471980d9 1-66
 packages/cli/src/modules/promotions.ee/package-references.ts
   s_4a494bfdece475::t_1c85721c5a9321 32-34,102,105,116,126
+  s_4a494bfdece475::t_8929e9e0e30206 32-34,102,105,116
 packages/cli/src/modules/promotions.ee/promote-dependency-check.service.ts
   s_4a494bfdece475::t_598f6407dd22ca 1-130
+  s_4a494bfdece475::t_9580a88273f633 1-126,130
+  s_4a494bfdece475::t_8d8b52bc3887aa 127-129
 packages/cli/src/modules/promotions.ee/promote-dependency-check.ts
   s_4a494bfdece475::t_24681e435aa42c 1-207
+  s_4a494bfdece475::t_9eabcb144480aa 1-12,14-20,22-46,52-57,74,77-79,81-84,86-90,93-95,97-102,104,114,116-125,127-128,131-132,134,136,147-148,150,152-153,155-156,158-161,163,182-184,186-191,193-201,202-207
+  s_4a494bfdece475::t_8d8b52bc3887aa 143-145,177,181
+  s_4a494bfdece475::t_abb07aba322405 21,47-51,58-73,75-76,80,85,91-92,96,103,105-113,115,126,129-130,133,135,137-142,146,149,151,154,157,162,164-176,178-180,185,192
 packages/cli/src/modules/promotions.ee/promote-preview.service.ts
   s_4a494bfdece475::t_9566dcb8dd012d 1,15,25,42,129-137,146-148,152-168
+  s_4a494bfdece475::t_720cf0603bb8af 1,15,25,42,129-137,146-148,152-166
+  s_4a494bfdece475::t_8ccc8ccc9d9394 167-168
 packages/cli/src/modules/promotions.ee/promotion-preview.ts
   s_4a494bfdece475::t_2d86c74f404b62 3,5,8,582,603-604,606-616
+  s_4a494bfdece475::t_720cf0603bb8af 3,5,8,582,603-604,606-616
 packages/cli/src/modules/promotions.ee/promotions.service.ts
   s_4a494bfdece475::t_1c4a57f5b4a71a 20,356-366
+  s_4a494bfdece475::t_720cf0603bb8af 356-364
+  s_4a494bfdece475::t_cb995697613a3c 20
+  s_4a494bfdece475::t_078c44f422c43a 365-366
 packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
   s_4a494bfdece475::t_be2178aebe104c 27,590-612,748
+  s_4a494bfdece475::t_cb995697613a3c 27,590-596,598-610
+  s_4a494bfdece475::t_8d8b52bc3887aa 597,748
+  s_4a494bfdece475::t_65b79a8d710da1 611-612
 packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromoteCheck.generated.yml
   s_4a494bfdece475::t_5e32f7db1ed3a6 1-54
+  s_4a494bfdece475::t_4c4a90803d926a 1-54
 packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionChanges.generated.yml
   s_4a494bfdece475::t_d4c929ce461b42 8,184-193
+  s_4a494bfdece475::t_b58146b6cf8cb8 8,184-193
 packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
   s_4a494bfdece475::t_201f7786f25d48 332-334
+  s_4a494bfdece475::t_22d43a5a9e0836 332-334
 packages/cli/src/public-api/v1/shared/spec/schemas/promotionDependencyWarning.generated.yml
   s_4a494bfdece475::t_689678824cede6 1-60
+  s_4a494bfdece475::t_e77dc963a5f66d 1-60
 packages/cli/src/public-api/v1/shared/spec/schemas/promotionMissingDependency.generated.yml
   s_4a494bfdece475::t_50004564671219 1-86
+  s_4a494bfdece475::t_3952c3934f3a72 1-86
 packages/nodes-base/nodes/N8n/n8n-api-coverage.json
   s_4a494bfdece475::t_bb8a8dcc9b79a8 329-331
+  s_4a494bfdece475::t_e55aa5339f1a51 329-331
 ---
 {
   "schema_version": "authorship/3.0.0",
