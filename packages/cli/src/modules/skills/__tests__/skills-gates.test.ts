@@ -243,8 +243,32 @@ describe('skills gates', () => {
 		expect(usage.findUsage).toHaveBeenCalledWith('skill-1', 'all', {});
 		expect(usage.countUsingAgents).toHaveBeenCalledWith(['skill-1'], ctx);
 		expect(usage.findUsingAgentIds).toHaveBeenCalledWith('skill-1', ctx);
-		expect(usage.assertRenameKeepsNamesApart).toHaveBeenCalledWith('skill-1', 'Old', 'New', ctx);
+		expect(usage.assertRenameKeepsNamesApart).toHaveBeenCalledWith(
+			'skill-1',
+			'Old',
+			'New',
+			ctx,
+			undefined,
+		);
 		expect(usage.findFollowingAgentIds).toHaveBeenCalledWith('skill-1', ctx);
 		expect(usage.refreshAgents).toHaveBeenCalledWith(['agent-1'], 'push-ref');
+	});
+
+	it('passes planned names to the registered SkillUsage', async () => {
+		const { proxy } = createGates();
+		const usage = mock<SkillUsage>();
+		proxy.register(usage);
+		const ctx = { trx: undefined };
+		const plannedNames = new Map([['skill-2', 'Renamed']]);
+
+		await proxy.assertRenameKeepsNamesApart('skill-1', 'Old', 'New', ctx, plannedNames);
+
+		expect(usage.assertRenameKeepsNamesApart).toHaveBeenCalledWith(
+			'skill-1',
+			'Old',
+			'New',
+			ctx,
+			plannedNames,
+		);
 	});
 });
