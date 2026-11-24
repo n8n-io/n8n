@@ -562,7 +562,7 @@ describe('McpClientTool', () => {
 			vi.spyOn(Client.prototype, 'callTool').mockResolvedValue({
 				isError: true,
 				toolResult: 'Weather unknown at location',
-				content: [{ text: 'Weather unknown at location' }],
+				content: [{ type: 'text', text: 'Weather unknown at location' }],
 			});
 			vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({
 				tools: [
