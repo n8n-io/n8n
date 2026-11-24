@@ -13,8 +13,10 @@ Flag:
 - a table copy with no row-count check;
 - a backfill that overwrites the old value with no way back, in a
   `ReversibleMigration`;
-- a backfill that picks the convenient value for an ambiguous row instead of
-  the safe one;
+- a backfill that gives a row the less safe value when the old data does not
+  show the correct value. For example, the column that decides the value is
+  NULL, or has two possible meanings. The safe value gives less access, or
+  keeps the old behaviour;
 - `JSON.parse` with no `try`/`catch`;
 - iteration with no `Array.isArray`, or a property read that assumes the property
   exists;
