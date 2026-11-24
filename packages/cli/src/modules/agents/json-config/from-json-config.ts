@@ -387,6 +387,9 @@ function buildFallbackWebSearchTool(
 	) {
 		return null;
 	}
+	// Provider tools are disabled so that every search goes through a handler the caller owns.
+	// Without that handler, the live search below would run for real, so there is no web search.
+	if (disableProviderTools && !fallbackWebSearch) return null;
 	if (fallbackWebSearch) {
 		return {
 			name: WEB_SEARCH_TOOL_NAME,

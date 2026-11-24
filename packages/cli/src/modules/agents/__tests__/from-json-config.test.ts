@@ -905,7 +905,37 @@ describe('buildFromJson()', () => {
 		);
 
 		expect(getProviderToolNames(agent)).toEqual([]);
-		expect(agent.declaredTools.map((tool) => tool.name)).toContain('web_search');
+		const webSearch = agent.declaredTools.find((tool) => tool.name === 'web_search');
+		expect(webSearch).toBeDefined();
+
+		// Calls go to the caller's handler with the parsed query and the run's abort signal.
+		const controller = new AbortController();
+		await webSearch!.handler!({ query: 'n8n', maxResults: 3 }, {
+			abortSignal: controller.signal,
+		} as never);
+		expect(fallbackWebSearch).toHaveBeenCalledWith(
+			{ query: 'n8n', maxResults: 3 },
+			{ signal: controller.signal },
+		);
+	});
+
+	it('attaches no live web search when provider tools are disabled without a handler', async () => {
+		const agent = await buildFromJson(
+			makeConfig({
+				model: 'anthropic/claude-sonnet-4-5',
+				config: { webSearch: { enabled: true, provider: 'brave', credential: 'cred-1' } },
+			}),
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: makeMockMemoryFactory(),
+				disableProviderTools: true,
+			},
+		);
+
+		expect(getProviderToolNames(agent)).toEqual([]);
+		expect(agent.declaredTools.map((tool) => tool.name)).not.toContain('web_search');
 	});
 
 	it('keeps native web search when an eval only replaces the fallback search', async () => {
