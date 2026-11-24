@@ -51,16 +51,6 @@ import type {
 import { parseReasoningEffort } from '../utils/custom-model-defaults';
 import { withModalSession } from '../utils/modal-session';
 
-const OPENROUTER_REASONING_EFFORTS = ['none', 'minimal', 'low', 'medium', 'high', 'xhigh'] as const;
-
-function applyOpenRouterReasoningEffort(agent: Agent, modelId: ModelConfig): void {
-	if (resolveModelProvider(modelId) !== 'openrouter') return;
-
-	const override = parseReasoningEffort(process.env.N8N_INSTANCE_AI_REASONING_EFFORT);
-	const effort = OPENROUTER_REASONING_EFFORTS.find((supported) => supported === override);
-	if (effort !== undefined) agent.reasoning(effort);
-}
-
 function resolveModalSessionModelId(
 	modelId: ModelConfig,
 	context: InstanceAiContext,
@@ -281,7 +271,10 @@ export async function createInstanceAgent(
 	if (options.thinkingEnabled !== false) {
 		applyAgentThinking(agent, modelId);
 		// Only the orchestrator agent reads this override so helpers keep their own effort.
-		applyOpenRouterReasoningEffort(agent, modelId);
+		if (resolveModelProvider(modelId) === 'openrouter') {
+			const effort = parseReasoningEffort(process.env.N8N_INSTANCE_AI_REASONING_EFFORT);
+			if (effort !== undefined && effort !== 'max') agent.reasoning(effort);
+		}
 	}
 	if (hasDeferrableTools) {
 		// Tool catalog mode keeps the toolset fixed for the whole run, so the prompt cache
