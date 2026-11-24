@@ -25,7 +25,6 @@ import {
 	type INode,
 	type INodeCredentialsDetails,
 	type IWorkflowBase,
-	type StoredVersionedSettings,
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import { z } from 'zod';
@@ -313,7 +312,7 @@ export class ImportService {
 					connections: workflow.connections,
 					nodeGroups: workflow.nodeGroups,
 					authors: 'import',
-					settings: pickVersionedSettings(workflow.settings) satisfies StoredVersionedSettings,
+					settings: pickVersionedSettings(workflow.settings),
 					name: versionMetadata?.name ?? null,
 					description: versionMetadata?.description ?? null,
 				});
