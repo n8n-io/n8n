@@ -63,7 +63,6 @@ function setup() {
 		gym: gym as unknown as McpCaller,
 		hydrator,
 		profile: FIRECRAWL_PROFILE,
-		context: { origin: '' },
 	});
 	return { router, upstream, gym, hydrator };
 }
