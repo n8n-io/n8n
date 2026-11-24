@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/parts/CanvasNodeTrigger.vue
+  s_d5f7d4dc9ef54a::t_330f3f511c4779 249-251
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b411e1eb8d2394b2b53e75a3a3db788ca492fb49",
+  "prompts": {},
+  "sessions": {
+    "s_d5f7d4dc9ef54a": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a20e55-03d6-774e-a07d-de84d17d8829",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}
