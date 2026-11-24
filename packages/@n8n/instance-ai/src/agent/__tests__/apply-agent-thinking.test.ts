@@ -1,11 +1,12 @@
 /* eslint-disable import-x/order, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-argument */
 import type { Mock } from 'vitest';
 
-const mockAgentInstances: Array<{ thinking: Mock }> = [];
+const mockAgentInstances: Array<{ thinking: Mock; reasoning: Mock }> = [];
 
 vi.mock('@n8n/agents', () => ({
 	Agent: vi.fn().mockImplementation(function Agent(this: (typeof mockAgentInstances)[number]) {
 		this.thinking = vi.fn().mockReturnThis();
+		this.reasoning = vi.fn().mockReturnThis();
 		mockAgentInstances.push(this);
 	}),
 }));
@@ -218,10 +219,57 @@ describe('applyAgentThinking', () => {
 		expect(mockAgentInstances[0]?.thinking).not.toHaveBeenCalled();
 	});
 
-	it('skips OpenRouter models (thinking unsupported)', () => {
+	it('skips reasoning for OpenRouter models without an effort', () => {
 		const agent = new Agent('test');
 		applyAgentThinking(agent, 'openrouter/moonshotai/kimi-k3');
 		expect(mockAgentInstances[0]?.thinking).not.toHaveBeenCalled();
+		expect(mockAgentInstances[0]?.reasoning).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		['none', 'none'],
+		['minimal', 'minimal'],
+		['medium', 'medium'],
+		['xhigh', 'xhigh'],
+		['max', 'xhigh'],
+	])('maps N8N_INSTANCE_AI_REASONING_EFFORT=%s to OpenRouter reasoning %s', (value, expected) => {
+		const previous = process.env.N8N_INSTANCE_AI_REASONING_EFFORT;
+		process.env.N8N_INSTANCE_AI_REASONING_EFFORT = value;
+		try {
+			const agent = new Agent('test');
+			applyAgentThinking(agent, 'openrouter/google/gemini-4-neon');
+			expect(mockAgentInstances[0]?.reasoning).toHaveBeenCalledWith(expected);
+			expect(mockAgentInstances[0]?.thinking).not.toHaveBeenCalled();
+		} finally {
+			if (previous === undefined) delete process.env.N8N_INSTANCE_AI_REASONING_EFFORT;
+			else process.env.N8N_INSTANCE_AI_REASONING_EFFORT = previous;
+		}
+	});
+
+	it('ignores an invalid N8N_INSTANCE_AI_REASONING_EFFORT for OpenRouter', () => {
+		const previous = process.env.N8N_INSTANCE_AI_REASONING_EFFORT;
+		process.env.N8N_INSTANCE_AI_REASONING_EFFORT = 'bogus';
+		try {
+			const agent = new Agent('test');
+			applyAgentThinking(agent, 'openrouter/google/gemini-4-neon');
+			expect(mockAgentInstances[0]?.reasoning).not.toHaveBeenCalled();
+		} finally {
+			if (previous === undefined) delete process.env.N8N_INSTANCE_AI_REASONING_EFFORT;
+			else process.env.N8N_INSTANCE_AI_REASONING_EFFORT = previous;
+		}
+	});
+
+	it('prefers an explicit effort over N8N_INSTANCE_AI_REASONING_EFFORT for OpenRouter', () => {
+		const previous = process.env.N8N_INSTANCE_AI_REASONING_EFFORT;
+		process.env.N8N_INSTANCE_AI_REASONING_EFFORT = 'low';
+		try {
+			const agent = new Agent('test');
+			applyAgentThinking(agent, 'openrouter/anthropic/claude-sonnet-5-5', 'high');
+			expect(mockAgentInstances[0]?.reasoning).toHaveBeenCalledWith('high');
+		} finally {
+			if (previous === undefined) delete process.env.N8N_INSTANCE_AI_REASONING_EFFORT;
+			else process.env.N8N_INSTANCE_AI_REASONING_EFFORT = previous;
+		}
 	});
 
 	it('enables medium reasoning effort for Grok 4.5 via xAI', () => {
