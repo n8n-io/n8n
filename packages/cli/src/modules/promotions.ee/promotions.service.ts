@@ -35,7 +35,7 @@ import path from 'node:path';
 import { jsonParse } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
+import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 
 import {
 	PackageDirectoryInventoryReader,
@@ -936,6 +936,7 @@ export class PromotionsService {
 
 	/** `movedWorkflowIds` comes from findCrossProjectMoves, so a moved workflow is never planned as a deletion. */
 	private async classifyApplySelection(
+		actor: User,
 		inventory: PackageDirectoryInventory,
 		projectId: string,
 		{ workflowIds, folderIds, credentialIds }: ApplySelection,
@@ -963,6 +964,11 @@ export class PromotionsService {
 			throw new BadRequestError(
 				`The following credentials are not selectable in this project: ${invalidCredentialIds.join(', ')}`,
 			);
+		}
+
+		const unreadable = await this.credentialSelection.findUnreadableOwnedIds(actor, projectId);
+		if (credentialIds.some((id) => unreadable.has(id))) {
+			throw new ForbiddenError('You cannot read one of the selected credentials');
 		}
 
 		const branchWorkflowIds = new Set(
@@ -1103,6 +1109,7 @@ export class PromotionsService {
 		const inventory = await this.inventoryReader.read(reader);
 		const moves = await this.applyPreviewService.findCrossProjectMoves(inventory, projectId);
 		const selection = await this.classifyApplySelection(
+			actor,
 			inventory,
 			projectId,
 			requested,

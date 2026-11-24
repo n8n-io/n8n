@@ -202,6 +202,7 @@ describe('PromotionsService', () => {
 		// The base commit a promote resets to holds no package by default.
 		gitService.prepareCheckoutForPromotion.mockResolvedValue({ commitSha: 'b'.repeat(40) });
 		gitService.findPathsAtCommit.mockResolvedValue(new Set());
+		credentialSelection.findUnreadableOwnedIds.mockResolvedValue(new Set());
 		n8nFolder = await mkdtemp(path.join(tmpdir(), 'n8n-promotions-'));
 		workingDirectory = new PromotionWorkingDirectoryService(mock<InstanceSettings>({ n8nFolder }));
 		environmentLock = new PromotionEnvironmentLockService(Container.get(LockService));
@@ -215,6 +216,7 @@ describe('PromotionsService', () => {
 			folderService,
 			mock(),
 			globalConfig,
+			credentialSelection,
 		);
 		service = new PromotionsService(
 			resolver,
@@ -3259,6 +3261,25 @@ describe('PromotionsService', () => {
 					expect.objectContaining({ selectedCredentialIds: ['c1'] }),
 					'enforce',
 				);
+			});
+
+			it('rejects a selected credential that the user cannot read', async () => {
+				inventoryReader.read.mockResolvedValue({
+					...inventory,
+					credentials: [
+						{
+							path: 'projects/alpha/credentials/c1/credential.json',
+							projectId: 'p1',
+							credential: { id: 'c1', name: 'Stripe', type: 'stripeApi' },
+						},
+					],
+				});
+				credentialSelection.findUnreadableOwnedIds.mockResolvedValue(new Set(['c1']));
+
+				await expect(
+					service.applyProjectSelection('p1', actor, { credentialIds: ['c1'] }, 'other'),
+				).rejects.toThrow('You cannot read one of the selected credentials');
+				expect(n8nPackagesService.planPackageSelection).not.toHaveBeenCalled();
 			});
 
 			it('rejects a credential that the branch does not hold under the project', async () => {

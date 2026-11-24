@@ -136,16 +136,29 @@ export class CredentialImporter {
 			['credential:update'],
 		);
 
+		// A type that differs from the package is not applied: the stored values belong to the stored
+		// type, so a rename writes the name only.
 		for (const { id, name, type } of requested) {
 			const destination = destinations.get(id);
 			if (!destination) {
 				selected.creations.push({ sourceId: id, name, type });
-			} else if (credentialOwnerProjectId(destination) !== context.projectId) {
+			} else if (
+				credentialOwnerProjectId(destination) !== context.projectId ||
+				destination.usageScope === 'instance'
+			) {
 				selected.ownedElsewhere.push({ id, name: destination.name });
 			} else if (destination.name === name) {
 				selected.unchanged.push({ id, name });
 			} else if (updatable.has(id)) {
-				selected.renames.push({ id, name, previousName: destination.name });
+				selected.renames.push({
+					sourceId: id,
+					targetId: id,
+					targetName: destination.name,
+					targetType: destination.type,
+					ownerProjectId: context.projectId,
+					name,
+					usedBy: [],
+				});
 			} else {
 				forbidden.push({ sourceId: id, targetId: id, targetName: destination.name, usedBy: [] });
 			}
@@ -307,6 +320,9 @@ export class CredentialImporter {
 		for (const [, [update]] of plannedCredentialUpdates(request.conflictPolicy, [plan])) {
 			await this.prepareUpdate(context.user, update);
 		}
+		for (const rename of plan.selected.renames) {
+			await this.prepareUpdate(context.user, rename);
+		}
 	}
 
 	async apply(
@@ -439,18 +455,8 @@ export class CredentialImporter {
 			);
 			created.push(sourceId);
 		}
-		for (const { id, name, previousName } of plan.selected.renames) {
-			const written = await this.writeUpdate(context, {
-				sourceId: id,
-				targetId: id,
-				targetName: previousName,
-				usedBy: [],
-				// Unused by an update: it keeps the stored type and owner.
-				targetType: '',
-				ownerProjectId: context.projectId,
-				name,
-			});
-			if (written) renamed.push(id);
+		for (const rename of plan.selected.renames) {
+			if (await this.writeUpdate(context, rename)) renamed.push(rename.sourceId);
 		}
 		return { created, renamed };
 	}

@@ -88,6 +88,18 @@ export class PromotionCredentialSelectionService {
 		}
 	}
 
+	/**
+	 * The credentials of the project that the user cannot read. Apply hides them, so that the
+	 * preview shows no name or type of a credential the user cannot see, and refuses to select them.
+	 */
+	async findUnreadableOwnedIds(user: User, projectId: string): Promise<Set<string>> {
+		const ids = (await this.findOwned(projectId)).map(({ id }) => id);
+		const readable = await this.credentialsFinder.findCredentialIdsWithScopeForUser(ids, user, [
+			'credential:read',
+		]);
+		return new Set(ids.filter((id) => !readable.has(id)));
+	}
+
 	/** A credential keeps its "no values" answer until it changes, so decrypting once per update is enough. */
 	private async isEmpty(credential: CredentialsEntity): Promise<boolean> {
 		const stamp = credential.updatedAt?.getTime();

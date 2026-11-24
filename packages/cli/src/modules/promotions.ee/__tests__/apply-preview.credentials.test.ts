@@ -33,7 +33,17 @@ describe('the planned changes of selected credentials', () => {
 		const changes = plannedChanges(
 			planWith({
 				creations: [{ sourceId: 'c-new', name: 'Stripe', type: 'stripeApi' }],
-				renames: [{ id: 'c-renamed', name: 'Stripe', previousName: 'Old Stripe' }],
+				renames: [
+					{
+						sourceId: 'c-renamed',
+						targetId: 'c-renamed',
+						targetName: 'Old Stripe',
+						targetType: 'stripeApi',
+						ownerProjectId: 'p1',
+						name: 'Stripe',
+						usedBy: [],
+					},
+				],
 				unchanged: [{ id: 'c-same', name: 'Slack' }],
 				ownedElsewhere: [{ id: 'c-foreign', name: 'Shared key' }],
 			}),

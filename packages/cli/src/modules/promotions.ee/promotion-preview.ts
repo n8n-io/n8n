@@ -342,9 +342,9 @@ function applyOperationRules(
 }
 
 /**
- * A workflow, or a project or folder that the operation adds or changes. On Promote also a
- * credential that the project owns and that the operation adds or changes. A credential outside the
- * folder of its owner project has no parent here, and only its owner project can select it.
+ * A workflow, or a project, folder or credential that the operation adds or changes. A credential
+ * is selectable on Promote and on Apply when its owner project holds it in its own folder. A
+ * credential outside that folder has no parent here, and only its owner project can select it.
  */
 function isSelectable({ type, change, parentKey }: PromotionResource): boolean {
 	if (type === 'workflow') return true;
