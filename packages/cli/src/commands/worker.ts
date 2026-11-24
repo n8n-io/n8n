@@ -48,7 +48,7 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 	override needsExpressionEngine = true;
 
-	override needsTaskRunner = true;
+	override needsCodeExecution = true;
 
 	override seedsInstanceIdentity = true;
 
@@ -224,6 +224,13 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 			const { WorkerServer } = await import('@/scaling/worker-server.js');
 			workerServer = Container.get(WorkerServer);
 			await workerServer.init(endpointsConfig);
+		}
+
+		// `WorkerServer.init()` does not run when every endpoint is off. Register
+		// here so workflow hooks still install before the worker takes jobs.
+		if ((this.externalHooks?.registerFunctions.length ?? 0) > 0) {
+			const { HooksApiService } = await import('@/hooks-api/hooks-api.service.js');
+			await Container.get(HooksApiService).register();
 		}
 
 		// After the server started, so the metrics collector is subscribed before the tasks are routed.

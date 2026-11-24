@@ -13,7 +13,7 @@ import type { CredentialsService } from '@/credentials/credentials.service';
 import type { DataTableUserOperations } from '@n8n/backend-module-data-table';
 import type { INodeTypes } from 'n8n-workflow';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
-import type { UrlService } from '@n8n/backend-services';
+import type { UrlService, TelemetryProxy } from '@n8n/backend-services';
 import type { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -37,6 +37,8 @@ import { topLevelItemsWarning } from './top-level-items-warning';
 import {
 	buildCreateVersionMetadata,
 	resolveVersionMetadata,
+	VERSION_DESCRIPTION_GUIDANCE,
+	VERSION_NAME_GUIDANCE,
 	versionDescriptionInputSchema,
 	versionNameInputSchema,
 } from './version-metadata';
@@ -50,7 +52,6 @@ import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.ty
 import { getSdkReferenceHint } from '../workflow-validation.utils';
 
 import { NotFoundError } from '@n8n/errors';
-import type { Telemetry } from '@/telemetry';
 import {
 	dropInvalidWorkflowGroups,
 	makeGetNodeTypeForGrouping,
@@ -101,10 +102,10 @@ const inputSchema = {
 		.optional()
 		.describe('Workflow description. Longer text is shortened to 255 chars before saving.'),
 	versionName: versionNameInputSchema.describe(
-		'Short summary of this initial version, shown in the workflow\'s version history (e.g. "Initial Slack notification workflow"). Always provide it.',
+		`Short title of this initial version, shown in the workflow's version history (e.g. "Initial Slack notification workflow"). ${VERSION_NAME_GUIDANCE}`,
 	),
 	versionDescription: versionDescriptionInputSchema.describe(
-		'Longer description of what this version does, shown in the version history alongside the version name.',
+		`Detailed description of what this initial version does, shown in the version history below the title. ${VERSION_DESCRIPTION_GUIDANCE}`,
 	),
 	projectId: z
 		.string()
@@ -222,7 +223,7 @@ type RecoverPersistedCreateArgs = {
 	user: User;
 	workflowFinderService: WorkflowFinderService;
 	urlService: UrlService;
-	telemetry: Telemetry;
+	telemetry: TelemetryProxy;
 	telemetryPayload: UserCalledMCPToolEventPayload;
 	error: unknown;
 	logger: Logger;
@@ -323,7 +324,7 @@ export const createCreateWorkflowFromCodeTool = (
 	workflowCreationService: WorkflowCreationService,
 	workflowFinderService: WorkflowFinderService,
 	urlService: UrlService,
-	telemetry: Telemetry,
+	telemetry: TelemetryProxy,
 	nodeTypes: INodeTypes,
 	credentialsService: CredentialsService,
 	projectRepository: ProjectRepository,

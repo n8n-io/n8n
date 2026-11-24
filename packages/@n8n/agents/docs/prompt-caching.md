@@ -10,11 +10,11 @@ explicitly (via `.instructions(text, { providerOptions })`, call-level
 ```typescript
 // Defaults tuned for agent workloads: Anthropic gets a 1h instruction
 // breakpoint, OpenAI gets 24h retention plus an auto-generated cache key.
-new Agent('assistant').model('anthropic/claude-sonnet-4-5').promptCaching().instructions(LONG_SYSTEM_PROMPT);
+new Agent('assistant').model('anthropic/claude-sonnet-5-5').promptCaching().instructions(LONG_SYSTEM_PROMPT);
 
 // Override a field, or disable a provider entirely.
 new Agent('assistant')
-  .model('anthropic/claude-sonnet-4-5')
+  .model('anthropic/claude-sonnet-5-5')
   .promptCaching({ anthropic: { ttl: '5m' } })
   .instructions(LONG_SYSTEM_PROMPT);
 
@@ -139,30 +139,12 @@ tools, the episodic-memory tools) in the cached instructions message. The
 uncached second system message carries only host volatile instructions and
 observation-log memory (see `buildSystemMessages`).
 
-Runtime skills follow the same principle. `ActiveSkills.modelMessages()`
-appends the current skill body to the tool result that activated it: a
-`load_skill` call, or any tool that calls `ctx.loadSkill`. Recorded `load_skill`
-results are collapsed to `{ skillId, active }` first, so an obsolete persisted
-body is never replayed. A programmatic activation stamps its tool call with the
-skill id, so the skill re-anchors to the same result on later turns. The
-top-level system prompt does not mention an anchored skill, so activating and
-carrying a skill never rewrites the cached prefix. The `<active_skills>` block
-is a recovery path. `instructions()` moves a skill into it only when no
-visible, successfully resolved tool result can carry it: observational memory
-masked the result, the activating call failed, or no record of the activation
-exists.
-
-The block is not part of the base instructions. `buildSystemMessages` sends it
-as its own system message, after the base instructions and before the volatile
-message. The tools and base instructions in front of it stay byte-identical, so
-they stay cached when a skill moves into the block. On the native Anthropic API
-and for Claude on Vertex, the block reuses the instruction cache options. It gets
-its own breakpoint and stays cached when memory compacts again later.
-`buildSkillInstructionCacheOptions` drops that breakpoint when it would leave
-no slot for the conversation breakpoint next to caller breakpoints on tools,
-history messages, and their content parts.
-Providers without split system messages get the block merged after the base
-instructions, as before.
+Runtime skills follow the same principle. A skill body is the plain result of
+its `load_skill` call. The runtime does not track loaded skills, re-inject
+bodies, or add skill text to the system prompt, so loading a skill never
+rewrites the cached prefix. The result stays in history like any other tool
+result. When observational memory compacts that result away, the model calls
+`load_skill` again if it still needs the skill.
 
 Tools that a registered skill lists in `dependencies.tools` are active for the
 whole run. `AgentRuntime` moves them out of the deferred set at construction.
@@ -314,8 +296,11 @@ these two options only influence routing and retention.
   or the excess traffic overflows to additional machines (each a cache miss).
 - **`promptCacheRetention: '24h'` (default).** Extends retention beyond the
   default ~5–10 minute in-memory window. It's free on `gpt-4.1`, `gpt-5`, and
-  `gpt-5.1`; on `gpt-5.5` and later, `'24h'` is the only supported value.
+  `gpt-5.1`; on `gpt-5.5` and `gpt-5.6`, `'24h'` is the only supported value.
   Pass `'in_memory'` explicitly to opt back into the short-lived default.
+  GPT-6 and later do not accept the option. For them n8n never sends a
+  retention, even when one is set, and assumes the 30 minute minimum lifetime
+  that OpenAI documents for GPT-5.6 and later.
 
 ## Reading cache usage and cost
 

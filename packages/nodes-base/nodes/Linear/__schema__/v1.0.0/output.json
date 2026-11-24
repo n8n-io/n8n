@@ -1,0 +1,186 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"action": {
+			"type": "string"
+		},
+		"actor": {
+			"additionalProperties": true,
+			"properties": {
+				"email": {
+					"type": "string"
+				},
+				"id": {
+					"type": "string"
+				},
+				"name": {
+					"type": "string"
+				},
+				"type": {
+					"type": "string"
+				},
+				"url": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"createdAt": {
+			"type": "string"
+		},
+		"data": {
+			"additionalProperties": true,
+			"properties": {
+				"addedToTeamAt": {
+					"type": "string"
+				},
+				"botActor": {
+					"type": ["null", "string"]
+				},
+				"createdAt": {
+					"type": "string"
+				},
+				"creatorId": {
+					"type": "string"
+				},
+				"description": {
+					"type": "string"
+				},
+				"id": {
+					"type": "string"
+				},
+				"identifier": {
+					"type": "string"
+				},
+				"inheritsSharedAccess": {
+					"type": "boolean"
+				},
+				"labelIds": {
+					"items": {
+						"type": "string"
+					},
+					"type": "array"
+				},
+				"labels": {
+					"items": {
+						"additionalProperties": true,
+						"properties": {
+							"color": {
+								"type": "string"
+							},
+							"id": {
+								"type": "string"
+							},
+							"name": {
+								"type": "string"
+							}
+						},
+						"type": "object"
+					},
+					"type": "array"
+				},
+				"number": {
+					"type": "number"
+				},
+				"previousIdentifiers": {
+					"items": {
+						"type": "string"
+					},
+					"type": "array"
+				},
+				"priority": {
+					"type": "number"
+				},
+				"priorityLabel": {
+					"type": "string"
+				},
+				"prioritySortOrder": {
+					"type": "number"
+				},
+				"reactionData": {
+					"items": {},
+					"type": "array"
+				},
+				"releases": {
+					"items": {},
+					"type": "array"
+				},
+				"slaType": {
+					"type": "string"
+				},
+				"sortOrder": {
+					"type": "number"
+				},
+				"state": {
+					"properties": {
+						"color": {
+							"type": "string"
+						},
+						"id": {
+							"type": "string"
+						},
+						"name": {
+							"type": "string"
+						},
+						"type": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
+				"stateId": {
+					"type": "string"
+				},
+				"subscriberIds": {
+					"items": {
+						"type": "string"
+					},
+					"type": "array"
+				},
+				"team": {
+					"properties": {
+						"id": {
+							"type": "string"
+						},
+						"key": {
+							"type": "string"
+						},
+						"name": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
+				"teamId": {
+					"type": "string"
+				},
+				"title": {
+					"type": "string"
+				},
+				"updatedAt": {
+					"type": "string"
+				},
+				"url": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"organizationId": {
+			"type": "string"
+		},
+		"type": {
+			"type": "string"
+		},
+		"url": {
+			"type": "string"
+		},
+		"webhookId": {
+			"type": "string"
+		},
+		"webhookTimestamp": {
+			"type": "number"
+		}
+	},
+	"type": "object"
+}

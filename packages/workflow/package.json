@@ -1,6 +1,6 @@
 {
   "name": "n8n-workflow",
-  "version": "2.48.0",
+  "version": "2.50.0",
   "description": "Workflow base code of n8n",
   "types": "dist/esm/index.d.ts",
   "module": "dist/esm/index.js",
@@ -23,6 +23,12 @@
     },
     "./*": "./*"
   },
+  "sideEffects": [
+    "./dist/esm/index.js",
+    "./dist/cjs/index.js",
+    "./dist/esm/utils.js",
+    "./dist/cjs/utils.js"
+  ],
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
@@ -93,7 +99,7 @@
     "md5": "2.3.0",
     "recast": "0.22.0",
     "ssh2": "catalog:",
-    "title-case": "3.0.3",
+    "title-case": "catalog:",
     "transliteration": "2.3.5",
     "uuid": "catalog:",
     "xml2js": "catalog:",

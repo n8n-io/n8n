@@ -704,7 +704,7 @@ describe('EvalThreadRestoreService', () => {
 			id: over.id ?? 'agent-original',
 			config: {
 				name: over.name ?? 'Support Triage',
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 				instructions: 'Triage inbound tickets.',
 				skills: [{ type: 'skill' as const, id: 'skill_1' }],
 			},

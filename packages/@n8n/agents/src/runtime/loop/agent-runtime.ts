@@ -52,7 +52,13 @@ import type {
 } from '../../types/sdk/agent';
 import type { GuardrailStop } from '../../types/sdk/guardrail';
 import { isRuntimeContextCue } from '../../sdk/message';
-import type { AgentMessage, ContentToolCall } from '../../types/sdk/message';
+import { detectLoadedSkills, detectSeenSkillVersions } from '../../skills/loaded-skills';
+import type {
+	AgentMessage,
+	ContentToolCall,
+	CustomAgentMessage,
+	CustomAgentMessages,
+} from '../../types/sdk/message';
 import { getCatalogModelId, getModelIdString } from '../../utils/model';
 import { removeToolResultRun } from '../../workspace';
 import { GuardrailRunner } from '../guardrails/guardrail-runner';
@@ -66,8 +72,7 @@ import {
 } from '../model/encrypted-reasoning';
 import { AgentMessageList, type SerializedMessageList } from '../model/message-list';
 import { createModelTokenCounter } from '../model/model-token-counter';
-import { getEffectiveAnthropicCacheTtl, getPromptCacheRetentionMs } from '../model/prompt-cache';
-import { ActiveSkills } from '../skills/active-skills';
+import { getEffectiveAnthropicCacheTtl } from '../model/prompt-cache';
 import { activateSkillDependencyTools } from '../skills/skill-dependency-tools';
 import { BackgroundTaskTracker } from '../state/background-task-tracker';
 import { AgentEventBus, type AgentAbortScope } from '../state/event-bus';
@@ -230,20 +235,13 @@ export class AgentRuntime {
 	private context: RuntimeContextBuilder;
 
 	private toolExecutor: ToolCallExecutor;
-	private activeSkills?: ActiveSkills;
+	/** The message list of the current loop. The tool catalog reads it to find loaded skills. */
+	private loopList?: AgentMessageList;
 
 	constructor(runtimeConfig: AgentRuntimeConfig) {
 		// Copied: the deferral choice below writes `nativeToolDeferral`.
 		const config = { ...activateSkillDependencyTools(runtimeConfig) };
 		this.config = config;
-		// Keep full tool results when the memory backend cannot persist active skill IDs.
-		if (config.skillSource && (!config.memory || config.memory.skillState)) {
-			this.activeSkills = new ActiveSkills(
-				config.skillSource,
-				config.name,
-				config.memory?.skillState,
-			);
-		}
 		const tokenCounter = createModelTokenCounter(config.model);
 		this.telemetry = new RuntimeTelemetry(config);
 		this.runId = config.runId ?? generateRunId();
@@ -262,14 +260,11 @@ export class AgentRuntime {
 					toolGroupDescriptions: config.deferredToolGroupDescriptions,
 					// A lookup for an always-available tool says to call it directly.
 					activeTools: config.tools,
-					// Without active-skill state the runtime cannot tell which skills are loaded.
 					unloadedSkillsForGroup: (group) => {
-						const activeSkills = this.activeSkills;
-						if (!activeSkills) return [];
+						const loaded = detectLoadedSkills(this.loopList?.llmVisibleMessages() ?? []);
 						return (config.skillSource?.registry.skills ?? [])
 							.filter(
-								(skill) =>
-									skill.recommendedToolGroups?.includes(group) && !activeSkills.isLoaded(skill.id),
+								(skill) => skill.recommendedToolGroups?.includes(group) && !loaded.has(skill.id),
 							)
 							.map((skill) => skill.id);
 					},
@@ -293,7 +288,7 @@ export class AgentRuntime {
 			onCancelled: () => this.updateState({ status: 'cancelled' }),
 			tokenCounter,
 			...(config.workspaceFilesystem ? { workspaceFilesystem: config.workspaceFilesystem } : {}),
-			...(this.activeSkills ? { loadSkill: this.activeSkills.load.bind(this.activeSkills) } : {}),
+			...(config.toolCallInterceptor ? { toolCallInterceptor: config.toolCallInterceptor } : {}),
 		});
 		this.modelCost = config.modelCost;
 		this.currentState = {
@@ -865,6 +860,16 @@ export class AgentRuntime {
 	 * those throws into their terminal contract.
 	 */
 	private async runAgentLoop<T>(ctx: LoopContext, sink: RunOutputSink<T>): Promise<T> {
+		this.loopList = ctx.list;
+		try {
+			return await this.runAgentLoopBody(ctx, sink);
+		} finally {
+			// Do not let a finished run's messages leak into a later run's tool catalog.
+			if (this.loopList === ctx.list) this.loopList = undefined;
+		}
+	}
+
+	private async runAgentLoopBody<T>(ctx: LoopContext, sink: RunOutputSink<T>): Promise<T> {
 		const { prepared, state } = await this.prepareLoop(ctx);
 		if (prepared.pendingResume) {
 			const settlement = await this.resumePendingTools(
@@ -961,10 +966,6 @@ export class AgentRuntime {
 		state: LoopState;
 	}> {
 		const { list, options } = ctx;
-		await this.activeSkills?.restore(list, options?.persistence, {
-			freshRun: ctx.isFreshRun,
-			cacheTtlMs: getPromptCacheRetentionMs(this.config.promptCaching, this.context.modelId),
-		});
 		// This note reaches the model but is not stored in conversation history.
 		list.mcpConnectionNote = formatMcpConnectionNote(this.config.mcpConnectionFailures ?? []);
 
@@ -1059,6 +1060,9 @@ export class AgentRuntime {
 			state.iterationCount,
 		);
 		if (settlement.suspended) return settlement;
+		// Save the resumed results before the next model call, so a reader of memory during
+		// the rest of the turn sees them settled, such as the user's answers in a question card.
+		await this.memory.persistTurnDelta(ctx.list, ctx.options);
 		// Resumed tool results form a new observation boundary before the next model call.
 		await this.memory.maybeObserveMidRun(ctx.list, ctx.options);
 		if (resumedTurnEnds(ctx.list.messages(), pendingResume.resumeToolCallId, toolMap)) {
@@ -1079,8 +1083,8 @@ export class AgentRuntime {
 		await hydrateFileParts(ctx.list.messages(), this.config.fileStore, {
 			threadId: ctx.options?.persistence?.threadId,
 		});
-		const { toolMap, modelCallContext } = await this.prepareModelCall(ctx);
-		for (const update of this.activeSkills?.takeUpdates() ?? []) {
+		const { toolMap, modelCallContext, skillUpdates } = await this.prepareModelCall(ctx);
+		for (const update of skillUpdates) {
 			await sink.emitMessage?.(update);
 		}
 		const turn = await this.callModelWithRetries(ctx, sink, state, modelCallContext);
@@ -1140,6 +1144,7 @@ export class AgentRuntime {
 			list,
 		);
 		const hostVolatileInstructions = await this.resolveVolatileInstructions(options?.persistence);
+		const skillUpdates = this.addSkillUpdates(ctx);
 		await this.addContextCues(ctx);
 		const prompt = this.context.buildModelPrompt({
 			list,
@@ -1147,7 +1152,6 @@ export class AgentRuntime {
 			instructionProviderOptions: ctx.instructionProviderOptions,
 			providerOptions: staticContext.providerOptions,
 			hostVolatileInstructions,
-			activeSkills: this.activeSkills,
 		});
 		const modelCallContext: ModelCallContext = {
 			model: staticContext.model,
@@ -1166,7 +1170,54 @@ export class AgentRuntime {
 			onToolInputStart: this.createWorkspacePrewarmHandler(tools.toolMap),
 		};
 
-		return { toolMap: tools.toolMap, modelCallContext };
+		return { toolMap: tools.toolMap, modelCallContext, skillUpdates };
+	}
+
+	/**
+	 * Tell the model when a skill it loaded changed or became unavailable since
+	 * it last saw it. Each note records the hash it announces, so the note is not
+	 * sent again. Only loads that the model can still see are checked. When
+	 * compaction hid a load, the model must call `load_skill` again, and that call
+	 * returns the current state.
+	 */
+	private addSkillUpdates(ctx: PreparedLoopContext): CustomAgentMessage[] {
+		const source = this.config.skillSource;
+		const shouldCheck = source?.shouldAppendSkillUpdates;
+		if (!source || !shouldCheck) return [];
+		const seenVersions = detectSeenSkillVersions(ctx.list.llmVisibleMessages());
+		const updates: CustomAgentMessage[] = [];
+		for (const [skillId, seen] of seenVersions) {
+			if (!shouldCheck(skillId)) continue;
+			const entry = source.registry.skills.find((skill) => skill.id === skillId);
+			const current = entry?.hash ?? null;
+			// An older load result without a hash line cannot show a change.
+			if (current === seen || (seen === undefined && current !== null)) continue;
+			const label = JSON.stringify(entry?.name ?? skillId);
+			const id = JSON.stringify(skillId);
+			let skillUpdate: CustomAgentMessages['runtimeSkillUpdate']['skillUpdate'];
+			if (current === null) {
+				skillUpdate = {
+					skillId,
+					version: null,
+					change: 'unavailable',
+					content: `Skill ${label} (id ${id}) is no longer available. Do not follow its earlier instructions or reference content.`,
+				};
+			} else {
+				const restored = seen === null;
+				skillUpdate = {
+					skillId,
+					version: current,
+					name: entry?.name,
+					change: restored ? 'restored' : 'updated',
+					content: restored
+						? `Skill ${label} (id ${id}) is available again. Load it with load_skill before you follow it.`
+						: `Skill ${label} (id ${id}) changed after you loaded it. Load it again with load_skill before you follow it. Do not use the earlier copy.`,
+				};
+			}
+			updates.push({ type: 'custom', data: { type: 'n8n:runtime-skill-update', skillUpdate } });
+		}
+		if (updates.length > 0) ctx.list.addInput(updates);
+		return updates;
 	}
 
 	/** Prepare the workspace while the model streams the input of a tool that uses it. */
@@ -1218,7 +1269,6 @@ export class AgentRuntime {
 					return undefined;
 				}
 			}
-			this.activeSkills?.reportContext();
 			let turn: ModelTurnResult;
 			try {
 				turn = await sink.callModel(modelCallContext).catch(async (error: unknown) => {
@@ -1370,10 +1420,9 @@ export class AgentRuntime {
 		const sentCueIds = new Set(
 			messages.filter(isRuntimeContextCue).flatMap((message) => message.data.cueIds),
 		);
-		const activeSkillIds = new Set(list.activeSkillIds);
 		const request = {
 			messages,
-			isSkillActive: (skillId: string) => activeSkillIds.has(skillId),
+			loadedSkillIds: list.loadedSkillIds(),
 			sentCueIds,
 			persistence: options?.persistence,
 			abortSignal: abortScope.signal,

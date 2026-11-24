@@ -1,6 +1,6 @@
 ---
 title: Observability
-last_reviewed: 2026-11-06
+last_reviewed: 2026-11-20
 contact: ivov
 ---
 
@@ -30,7 +30,7 @@ The event bus behind log streaming is also a recovery log. Each process writes e
 
 ## Telemetry
 
-Telemetry shows the product team how people use n8n. The backend sends telemetry events from the telemetry relay, or with a `Telemetry.track()` call.
+Telemetry shows the product team how people use n8n. The backend sends telemetry events from the telemetry relay, or with a `track()` call. For example, the agents, skills, and n8n Assistant modules call `track()` on `TelemetryProxy` from `@n8n/backend-services`.
 
 > [!WARNING]
 > **Never rename a telemetry event.** The data warehouse keeps one table for each event name, so a rename cuts the history of the event.

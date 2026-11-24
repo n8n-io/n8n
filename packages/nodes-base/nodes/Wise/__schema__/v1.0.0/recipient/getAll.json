@@ -1,0 +1,206 @@
+{
+	"properties": {
+		"accountHolderName": {
+			"type": "string"
+		},
+		"active": {
+			"type": "boolean"
+		},
+		"business": {
+			"type": ["null", "number"]
+		},
+		"confirmations": {
+			"properties": {
+				"acceptedAt": {},
+				"acceptedOutcomes": {
+					"type": "boolean"
+				},
+				"outcomes": {
+					"items": {
+						"properties": {
+							"fieldsChecked": {
+								"items": {
+									"type": "string"
+								},
+								"type": "array"
+							},
+							"message": {
+								"type": "string"
+							},
+							"outcome": {
+								"type": "string"
+							},
+							"providedName": {
+								"type": "string"
+							},
+							"recommendedUpdates": {
+								"items": {},
+								"type": "array"
+							},
+							"requiresCustomerAcceptance": {
+								"type": "boolean"
+							},
+							"resolvedName": {},
+							"timestamp": {
+								"type": "string"
+							},
+							"type": {
+								"type": "string"
+							}
+						},
+						"type": "object"
+					},
+					"type": "array"
+				},
+				"quoteId": {}
+			},
+			"type": ["null", "object"]
+		},
+		"country": {
+			"type": ["null", "string"]
+		},
+		"currency": {
+			"type": "string"
+		},
+		"details": {
+			"properties": {
+				"abartn": {
+					"type": ["null", "string"]
+				},
+				"accountHolderName": {},
+				"accountNumber": {
+					"type": ["null", "string"]
+				},
+				"accountType": {
+					"type": ["null", "string"]
+				},
+				"address": {
+					"properties": {
+						"city": {
+							"type": "string"
+						},
+						"country": {
+							"type": "string"
+						},
+						"countryCode": {
+							"type": "string"
+						},
+						"firstLine": {
+							"type": "string"
+						},
+						"postCode": {
+							"type": "string"
+						},
+						"state": {
+							"type": ["null", "string"]
+						}
+					},
+					"type": ["null", "object"]
+				},
+				"bankCode": {},
+				"bankgiroNumber": {},
+				"bankName": {
+					"type": ["null", "string"]
+				},
+				"bban": {},
+				"beneficiaryBankCorrespondentAccount": {},
+				"beneficiaryBankTaxId": {},
+				"bic": {
+					"type": ["null", "string"]
+				},
+				"BIC": {
+					"type": ["null", "string"]
+				},
+				"billerCode": {},
+				"branchCode": {
+					"type": ["null", "string"]
+				},
+				"branchName": {},
+				"bsbCode": {},
+				"businessNumber": {},
+				"cardToken": {},
+				"city": {},
+				"clabe": {},
+				"clearingNumber": {},
+				"cnpj": {},
+				"cpf": {},
+				"customerReferenceNumber": {},
+				"dateOfBirth": {
+					"type": ["null", "string"]
+				},
+				"email": {
+					"type": ["null", "string"]
+				},
+				"iban": {
+					"type": ["null", "string"]
+				},
+				"IBAN": {
+					"type": ["null", "string"]
+				},
+				"idCountryIso3": {},
+				"idDocumentNumber": {},
+				"idDocumentType": {},
+				"identificationNumber": {},
+				"idNumber": {},
+				"idType": {},
+				"idValidFrom": {},
+				"idValidTo": {},
+				"ifscCode": {},
+				"institutionNumber": {
+					"type": ["null", "string"]
+				},
+				"interacAccount": {},
+				"job": {},
+				"language": {},
+				"legalType": {
+					"type": "string"
+				},
+				"nationality": {},
+				"orderId": {},
+				"payinReference": {},
+				"phoneNumber": {},
+				"postCode": {},
+				"prefix": {},
+				"province": {},
+				"pspReference": {},
+				"relationship": {},
+				"routingNumber": {},
+				"russiaRegion": {},
+				"rut": {},
+				"sortCode": {},
+				"swiftCode": {},
+				"targetProfile": {
+					"type": ["null", "string"]
+				},
+				"targetUserId": {
+					"type": ["null", "string"]
+				},
+				"taxId": {},
+				"taxNumber": {},
+				"token": {},
+				"town": {},
+				"transitNumber": {
+					"type": ["null", "string"]
+				},
+				"zarIdentificationNumber": {}
+			},
+			"type": "object"
+		},
+		"id": {
+			"type": "number"
+		},
+		"ownedByCustomer": {
+			"type": "boolean"
+		},
+		"profile": {
+			"type": "number"
+		},
+		"type": {
+			"type": "string"
+		},
+		"user": {
+			"type": "number"
+		}
+	},
+	"type": "object"
+}

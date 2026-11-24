@@ -3,6 +3,8 @@ import { Container } from '@n8n/di';
 import { DataSource, type Repository } from '@n8n/typeorm';
 import { v4 as uuid } from 'uuid';
 
+import { createAgent as createTestAgent } from '@test-integration/db/agents';
+
 import type { Agent } from '@/modules/agents/entities/agent.entity';
 import { AgentChatAttachment } from '@/modules/agents/entities/agent-chat-attachment.entity';
 import { AgentChatAttachmentRepository } from '@/modules/agents/repositories/agent-chat-attachment.repository';
@@ -65,9 +67,14 @@ describe('Agent thread repository queries for system agents', () => {
 	});
 
 	async function createAgent(name: string): Promise<Agent> {
-		return await agentRepo.save(
-			agentRepo.create({ id: uuid(), name, projectId, integrations: [], tools: {}, skills: {} }),
-		);
+		return await createTestAgent({
+			id: uuid(),
+			name,
+			projectId,
+			integrations: [],
+			tools: {},
+			skills: {},
+		});
 	}
 
 	async function createThread(

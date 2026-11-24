@@ -29,6 +29,7 @@
 | Name | Definition |
 | ---- | ---------- |
 | IDX_deployment_key_data_encryption_active | CREATE UNIQUE INDEX "IDX_deployment_key_data_encryption_active" ON public.deployment_key USING btree (type) WHERE (((status)::text = 'active'::text) AND ((type)::text = 'data_encryption'::text)) |
+| IDX_deployment_key_install_id_active | CREATE UNIQUE INDEX "IDX_deployment_key_install_id_active" ON public.deployment_key USING btree (type) WHERE (((status)::text = 'active'::text) AND ((type)::text = 'install.id'::text)) |
 | IDX_deployment_key_instance_id_active | CREATE UNIQUE INDEX "IDX_deployment_key_instance_id_active" ON public.deployment_key USING btree (type) WHERE (((status)::text = 'active'::text) AND ((type)::text = 'instance.id'::text)) |
 | IDX_deployment_key_jwe_private_key_active | CREATE UNIQUE INDEX "IDX_deployment_key_jwe_private_key_active" ON public.deployment_key USING btree (type, algorithm) WHERE (((status)::text = 'active'::text) AND ((type)::text = 'jwe.private-key'::text)) |
 | IDX_deployment_key_oauth_signing_key_active | CREATE UNIQUE INDEX "IDX_deployment_key_oauth_signing_key_active" ON public.deployment_key USING btree (type, algorithm) WHERE (((status)::text = 'active'::text) AND ((type)::text = 'oauth-server.signing-key'::text)) |

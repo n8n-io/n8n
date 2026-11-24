@@ -32,6 +32,17 @@ describe('favorites.store', () => {
 	});
 
 	describe('fetchFavorites()', () => {
+		it('refreshes cached folder names when requested', async () => {
+			vi.mocked(favoritesApi.getFavorites)
+				.mockResolvedValueOnce([makeFavorite({ resourceName: 'Before' })])
+				.mockResolvedValueOnce([makeFavorite({ resourceName: 'After' })]);
+			const store = useFavoritesStore();
+			await store.fetchFavorites();
+			await store.fetchFavorites(true);
+
+			expect(store.favorites[0].resourceName).toBe('After');
+		});
+
 		it('should fetch and store favorites on first call', async () => {
 			const favorites = [makeFavorite()];
 			vi.mocked(favoritesApi.getFavorites).mockResolvedValue(favorites);

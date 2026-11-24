@@ -76,191 +76,109 @@ import DynamicModalLoader from './DynamicModalLoader.vue';
 import UpdatesPanel from './UpdatesPanel.vue';
 import type { AiGatewayTopUpVariant } from '@/app/composables/useAiGatewayTopUp';
 import { defineAsyncComponent } from 'vue';
+import { lazyModalLoaders } from '@/app/modals/lazyModals';
 
-const AboutModal = defineAsyncComponent(
-	async () => await import('@/app/components/AboutModal.vue'),
-);
-const ActivationModal = defineAsyncComponent(
-	async () => await import('@/features/workflows/components/ActivationModal.vue'),
-);
+const AboutModal = defineAsyncComponent(lazyModalLoaders[ABOUT_MODAL_KEY]);
+const ActivationModal = defineAsyncComponent(lazyModalLoaders[WORKFLOW_ACTIVE_MODAL_KEY]);
 const ApiKeyCreateOrEditModal = defineAsyncComponent(
-	async () => await import('@/features/settings/apiKeys/components/ApiKeyCreateOrEditModal.vue'),
+	lazyModalLoaders[API_KEY_CREATE_OR_EDIT_MODAL_KEY],
 );
 const NewAssistantSessionModal = defineAsyncComponent(
-	async () => await import('@/features/ai/assistant/components/Chat/NewAssistantSessionModal.vue'),
+	lazyModalLoaders[NEW_ASSISTANT_SESSION_MODAL],
 );
-const ChatEmbedModal = defineAsyncComponent(
-	async () => await import('@/app/components/ChatEmbedModal.vue'),
-);
+const ChatEmbedModal = defineAsyncComponent(lazyModalLoaders[CHAT_EMBED_MODAL_KEY]);
 const CommunityPackageInstallModal = defineAsyncComponent(
-	async () =>
-		await import('@/features/settings/communityNodes/components/CommunityPackageInstallModal.vue'),
+	lazyModalLoaders[COMMUNITY_PACKAGE_INSTALL_MODAL_KEY],
 );
 const CommunityPackageManageConfirmModal = defineAsyncComponent(
-	async () =>
-		await import(
-			'@/features/settings/communityNodes/components/CommunityPackageManageConfirmModal.vue'
-		),
+	lazyModalLoaders[COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY],
 );
 const CommunityPlusEnrollmentModal = defineAsyncComponent(
-	async () => await import('@/features/settings/usage/components/CommunityPlusEnrollmentModal.vue'),
+	lazyModalLoaders[COMMUNITY_PLUS_ENROLLMENT_MODAL],
 );
-const CredentialEdit = defineAsyncComponent(
-	async () => await import('@/features/credentials/components/CredentialEdit/CredentialEdit.vue'),
-);
-const CredentialsSelectModal = defineAsyncComponent(
-	async () => await import('@/features/credentials/components/CredentialsSelectModal.vue'),
-);
-const DebugPaywallModal = defineAsyncComponent(
-	async () => await import('@/features/execution/executions/components/DebugPaywallModal.vue'),
-);
-const DeleteFolderModal = defineAsyncComponent(
-	async () => await import('@/features/core/folders/components/DeleteFolderModal.vue'),
-);
-const MoveToFolderModal = defineAsyncComponent(
-	async () => await import('@/features/core/folders/components/MoveToFolderModal.vue'),
-);
-const DeleteUserModal = defineAsyncComponent(
-	async () => await import('@/features/settings/users/components/DeleteUserModal.vue'),
-);
-const DuplicateWorkflowDialog = defineAsyncComponent(
-	async () => await import('@/features/workflows/components/DuplicateWorkflowDialog.vue'),
-);
+const CredentialEdit = defineAsyncComponent(lazyModalLoaders[CREDENTIAL_EDIT_MODAL_KEY]);
+const CredentialsSelectModal = defineAsyncComponent(lazyModalLoaders[CREDENTIAL_SELECT_MODAL_KEY]);
+const DebugPaywallModal = defineAsyncComponent(lazyModalLoaders[DEBUG_PAYWALL_MODAL_KEY]);
+const DeleteFolderModal = defineAsyncComponent(lazyModalLoaders[DELETE_FOLDER_MODAL_KEY]);
+const MoveToFolderModal = defineAsyncComponent(lazyModalLoaders[MOVE_FOLDER_MODAL_KEY]);
+const DeleteUserModal = defineAsyncComponent(lazyModalLoaders[DELETE_USER_MODAL_KEY]);
+const DuplicateWorkflowDialog = defineAsyncComponent(lazyModalLoaders[DUPLICATE_MODAL_KEY]);
 const ExternalSecretsProviderModal = defineAsyncComponent(
-	async () =>
-		await import(
-			'@/features/integrations/externalSecrets.ee/components/ExternalSecretsProviderModal.ee.vue'
-		),
+	lazyModalLoaders[EXTERNAL_SECRETS_PROVIDER_MODAL_KEY],
 );
 const SecretsProviderConnectionModal = defineAsyncComponent(
-	async () =>
-		await import(
-			'@/features/integrations/secretsProviders.ee/components/SecretsProviderConnectionModal.ee.vue'
-		),
+	lazyModalLoaders[SECRETS_PROVIDER_CONNECTION_MODAL_KEY],
 );
 const DeleteSecretsProviderModal = defineAsyncComponent(
-	async () =>
-		await import(
-			'@/features/integrations/secretsProviders.ee/components/DeleteSecretsProviderModal.ee.vue'
-		),
+	lazyModalLoaders[DELETE_SECRETS_PROVIDER_MODAL_KEY],
 );
-const FromAiParametersModal = defineAsyncComponent(
-	async () => await import('@/features/ndv/parameters/components/FromAiParametersModal.vue'),
-);
-const ImportCurlModal = defineAsyncComponent(
-	async () => await import('@/features/ndv/parameters/components/ImportCurlModal.vue'),
-);
-const BinaryDataViewModal = defineAsyncComponent(
-	async () => await import('@/features/ndv/runData/components/BinaryDataViewModal.vue'),
-);
+const FromAiParametersModal = defineAsyncComponent(lazyModalLoaders[FROM_AI_PARAMETERS_MODAL_KEY]);
+const ImportCurlModal = defineAsyncComponent(lazyModalLoaders[IMPORT_CURL_MODAL_KEY]);
+const BinaryDataViewModal = defineAsyncComponent(lazyModalLoaders[BINARY_DATA_VIEW_MODAL_KEY]);
 const ImportWorkflowUrlModal = defineAsyncComponent(
-	async () => await import('@/features/workflows/components/ImportWorkflowUrlModal.vue'),
+	lazyModalLoaders[IMPORT_WORKFLOW_URL_MODAL_KEY],
 );
-const InviteUsersModal = defineAsyncComponent(
-	async () => await import('@/features/settings/users/components/InviteUsersModal.vue'),
-);
-const PersonalizationModal = defineAsyncComponent(
-	async () => await import('@/features/settings/users/components/PersonalizationModal.vue'),
-);
+const InviteUsersModal = defineAsyncComponent(lazyModalLoaders[INVITE_USER_MODAL_KEY]);
+const PersonalizationModal = defineAsyncComponent(lazyModalLoaders[PERSONALIZATION_MODAL_KEY]);
 const ProjectMoveResourceModal = defineAsyncComponent(
-	async () =>
-		await import('@/features/collaboration/projects/components/ProjectMoveResourceModal.vue'),
+	lazyModalLoaders[PROJECT_MOVE_RESOURCE_MODAL],
 );
 const SetupWorkflowCredentialsModal = defineAsyncComponent(
-	async () =>
-		await import('@/features/workflows/templates/components/SetupWorkflowCredentialsModal.vue'),
+	lazyModalLoaders[SETUP_CREDENTIALS_MODAL_KEY],
 );
 const SourceControlPullModal = defineAsyncComponent(
-	async () =>
-		await import('@/features/integrations/sourceControl.ee/components/SourceControlPullModal.vue'),
+	lazyModalLoaders[SOURCE_CONTROL_PULL_MODAL_KEY],
 );
 const SourceControlPullResultModal = defineAsyncComponent(
-	async () =>
-		await import(
-			'@/features/integrations/sourceControl.ee/components/SourceControlPullResultModal.vue'
-		),
+	lazyModalLoaders[SOURCE_CONTROL_PULL_RESULT_MODAL_KEY],
 );
 const SourceControlPushModal = defineAsyncComponent(
-	async () =>
-		await import('@/features/integrations/sourceControl.ee/components/SourceControlPushModal.vue'),
+	lazyModalLoaders[SOURCE_CONTROL_PUSH_MODAL_KEY],
 );
 const AnnotationTagsManager = defineAsyncComponent(
-	async () =>
-		await import('@/features/shared/tags/components/TagsManager/AnnotationTagsManager.ee.vue'),
+	lazyModalLoaders[ANNOTATION_TAGS_MANAGER_MODAL_KEY],
 );
-const WorkflowTagsManager = defineAsyncComponent(
-	async () => await import('@/features/shared/tags/components/TagsManager/WorkflowTagsManager.vue'),
-);
-const WhatsNewModal = defineAsyncComponent(
-	async () => await import('@/app/components/WhatsNewModal.vue'),
-);
+const WorkflowTagsManager = defineAsyncComponent(lazyModalLoaders[TAGS_MANAGER_MODAL_KEY]);
+const WhatsNewModal = defineAsyncComponent(lazyModalLoaders[WHATS_NEW_MODAL_KEY]);
 const WorkflowActivationConflictingWebhookModal = defineAsyncComponent(
-	async () =>
-		await import('@/features/workflows/components/WorkflowActivationConflictingWebhookModal.vue'),
+	lazyModalLoaders[WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY],
 );
 const WorkflowExtractionNameModal = defineAsyncComponent(
-	async () => await import('@/features/workflows/components/WorkflowExtractionNameModal.vue'),
+	lazyModalLoaders[WORKFLOW_EXTRACTION_NAME_MODAL_KEY],
 );
 const WorkflowHistoryVersionUnpublishModal = defineAsyncComponent(
-	async () =>
-		await import(
-			'@/features/workflows/workflowHistory/components/WorkflowHistoryVersionUnpublishModal.vue'
-		),
+	lazyModalLoaders[WORKFLOW_HISTORY_VERSION_UNPUBLISH],
 );
 const WorkflowVersionFormModal = defineAsyncComponent(
-	async () =>
-		await import('@/features/workflows/workflowHistory/components/WorkflowVersionFormModal.vue'),
+	lazyModalLoaders[WORKFLOW_HISTORY_NAME_VERSION_MODAL_KEY],
 );
-const WorkflowSettings = defineAsyncComponent(
-	async () => await import('@/features/workflows/components/WorkflowSettings/WorkflowSettings.vue'),
-);
-const WorkflowShareModal = defineAsyncComponent(
-	async () => await import('@/features/workflows/components/WorkflowShareModal.ee.vue'),
-);
-const WorkflowDiffModal = defineAsyncComponent(
-	async () => await import('@/features/workflows/workflowDiff/WorkflowDiffModal.vue'),
-);
+const WorkflowSettings = defineAsyncComponent(lazyModalLoaders[WORKFLOW_SETTINGS_MODAL_KEY]);
+const WorkflowShareModal = defineAsyncComponent(lazyModalLoaders[WORKFLOW_SHARE_MODAL_KEY]);
+const WorkflowDiffModal = defineAsyncComponent(lazyModalLoaders[WORKFLOW_DIFF_MODAL_KEY]);
 const NodeRecommendationModalV2 = defineAsyncComponent(
-	async () => await import('@/experiments/templateRecoV2/components/NodeRecommendationModal.vue'),
+	lazyModalLoaders[EXPERIMENT_TEMPLATE_RECO_V2_KEY],
 );
 const NodeRecommendationModalV3 = defineAsyncComponent(
-	async () =>
-		await import('@/experiments/personalizedTemplatesV3/components/NodeRecommendationModal.vue'),
+	lazyModalLoaders[EXPERIMENT_TEMPLATE_RECO_V3_KEY],
 );
-const VariableModal = defineAsyncComponent(
-	async () => await import('@/features/settings/environments.ee/components/VariableModal.vue'),
-);
+const VariableModal = defineAsyncComponent(lazyModalLoaders[VARIABLE_MODAL_KEY]);
 const StopManyExecutionsModal = defineAsyncComponent(
-	async () =>
-		await import('@/features/execution/executions/components/StopManyExecutionsModal.vue'),
+	lazyModalLoaders[STOP_MANY_EXECUTIONS_MODAL_KEY],
 );
 const AddExecutionToDatasetModal = defineAsyncComponent(
-	async () =>
-		await import(
-			'@/features/ai/evaluation.ee/components/AddExecutionToDataset/AddExecutionToDatasetModal.vue'
-		),
+	lazyModalLoaders[ADD_EXECUTION_TO_DATASET_MODAL_KEY],
 );
 const WorkflowDescriptionModal = defineAsyncComponent(
-	async () => await import('@/features/workflows/components/WorkflowDescriptionModal.vue'),
+	lazyModalLoaders[WORKFLOW_DESCRIPTION_MODAL_KEY],
 );
-const WorkflowPublishModal = defineAsyncComponent(
-	async () => await import('@/features/workflows/components/WorkflowPublishModal.vue'),
-);
-const MigrateWorkflowModal = defineAsyncComponent(
-	async () => await import('@/features/settings/migrationReport/MigrateWorkflowModal.vue'),
-);
+const WorkflowPublishModal = defineAsyncComponent(lazyModalLoaders[WORKFLOW_PUBLISH_MODAL_KEY]);
+const MigrateWorkflowModal = defineAsyncComponent(lazyModalLoaders[MIGRATE_WORKFLOW_MODAL_KEY]);
 const CredentialResolverEditModal = defineAsyncComponent(
-	async () => await import('@/features/resolvers/components/CredentialResolverEditModal.vue'),
+	lazyModalLoaders[CREDENTIAL_RESOLVER_EDIT_MODAL_KEY],
 );
-const AIBuilderDiffModal = defineAsyncComponent(
-	async () => await import('@/features/ai/assistant/components/Agent/AIBuilderDiffModal.vue'),
-);
-const AiGatewayTopUpModal = defineAsyncComponent(
-	async () => await import('@/features/ai/gateway/components/AiGatewayTopUpModal.vue'),
-);
-const TrialIntroModal = defineAsyncComponent(
-	async () => await import('@/experiments/trialIntroModal/components/TrialIntroModal.vue'),
-);
+const AIBuilderDiffModal = defineAsyncComponent(lazyModalLoaders[AI_BUILDER_DIFF_MODAL_KEY]);
+const AiGatewayTopUpModal = defineAsyncComponent(lazyModalLoaders[AI_GATEWAY_TOP_UP_MODAL_KEY]);
+const TrialIntroModal = defineAsyncComponent(lazyModalLoaders[TRIAL_INTRO_MODAL_KEY]);
 </script>
 
 <template>

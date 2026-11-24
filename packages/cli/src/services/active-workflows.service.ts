@@ -71,11 +71,8 @@ export class ActiveWorkflowsService {
 	}
 
 	/**
-	 * Drops the ids with a recorded activation failure. A partial publication keeps
-	 * its triggers running, so only a failed publication is dropped. Its rows mean
-	 * zero live triggers on every path but one. A policy-refused republish marks
-	 * every trigger failed, and the previous version keeps running until a restart
-	 * or the next publish.
+	 * Drops the ids with a failed publication and no live triggers. A partial
+	 * publication or a refused republish can keep triggers running.
 	 */
 	private async dropActivationFailures(workflowIds: string[]) {
 		const activationErrors = await this.activationErrorsService.getAll();
@@ -83,7 +80,10 @@ export class ActiveWorkflowsService {
 		if (!this.workflowsConfig.useWorkflowPublicationService) return candidates;
 
 		const statuses =
-			await this.workflowPublicationStatusService.getListStatusesByWorkflowIds(candidates);
-		return candidates.filter((workflowId) => statuses.get(workflowId) !== 'failed');
+			await this.workflowPublicationStatusService.getSettledStatusesByWorkflowIds(candidates);
+		return candidates.filter((workflowId) => {
+			const publication = statuses.get(workflowId);
+			return publication?.status !== 'failed' || publication.liveVersionId !== null;
+		});
 	}
 }

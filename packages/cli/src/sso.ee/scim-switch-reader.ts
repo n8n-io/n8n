@@ -1,5 +1,5 @@
 import { LicenseState, Logger } from '@n8n/backend-common';
-import { CacheService } from '@n8n/backend-services';
+import { CacheService, EventService } from '@n8n/backend-services';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import { SettingsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -24,6 +24,7 @@ export class ScimSwitchReader {
 		private readonly settingsRepository: SettingsRepository,
 		private readonly cacheService: CacheService,
 		private readonly logger: Logger,
+		private readonly eventService: EventService,
 	) {}
 
 	register(read: () => Promise<boolean>, turnOff: (protocol: 'saml' | 'oidc') => Promise<void>) {
@@ -69,5 +70,17 @@ export class ScimSwitchReader {
 		this.logger.info(
 			`SCIM provisioning turned off, because ${protocol.toUpperCase()} single sign-on turned off. The SCIM token and the SCIM settings are kept.`,
 		);
+
+		// The SSO env loader runs at startup, before the SCIM module starts. The
+		// module then finds SCIM off and reports nothing, so report it here.
+		// Without `feat:scim`, SCIM counts as off already, so nothing changed.
+		if (this.licenseState.isLicensed(LICENSE_FEATURES.SCIM)) {
+			this.eventService.emit('scim-settings-updated', {
+				user: null,
+				isActive: false,
+				change: 'disabled',
+				source: 'sso_off',
+			});
+		}
 	}
 }

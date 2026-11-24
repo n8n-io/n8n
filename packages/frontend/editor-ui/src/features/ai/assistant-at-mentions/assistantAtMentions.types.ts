@@ -3,9 +3,9 @@ import type { InstanceAiResourceAttachment } from '@n8n/api-types';
 
 import type { ArtifactOrigin } from '@/features/ai/instanceAi/useResourceRegistry';
 
-export type AssistantMentionKind = 'workflow' | 'node' | 'group';
+export type AssistantMentionKind = 'workflow' | 'node' | 'group' | 'agent';
 
-export type AssistantMentionSourceId = 'artifacts' | 'workflows';
+export type AssistantMentionSourceId = 'artifacts' | 'workflows' | 'agents';
 
 export type AssistantMentionTriggerSource = 'typed' | 'button';
 
@@ -36,24 +36,36 @@ export interface AssistantMentionPickerOpenMetrics {
 	submenuOpenCount: number;
 }
 
-export interface AssistantMentionItem {
+interface AssistantMentionItemBase {
 	key: string;
-	kind: AssistantMentionKind;
 	source: AssistantMentionSourceId;
 	label: string;
 	breadcrumbs: string[];
-	workflowId: string;
 	entityId: string;
+	description?: string;
+	hasChildren?: boolean;
+	children?: AssistantMentionItem[];
+}
+
+/** A workflow, or a node or canvas group inside one. */
+export interface AssistantWorkflowMentionItem extends AssistantMentionItemBase {
+	kind: 'workflow' | 'node' | 'group';
+	workflowId: string;
 	workflowName: string;
 	groupId?: string;
 	groupName?: string;
 	nodeTypeName?: string;
 	nodeTypeVersion?: number;
 	nodeCount?: number;
-	description?: string;
-	hasChildren?: boolean;
-	children?: AssistantMentionItem[];
 }
+
+/** An agent of the project. `entityId` is the agent id. */
+export interface AssistantAgentMentionItem extends AssistantMentionItemBase {
+	kind: 'agent';
+	projectId: string;
+}
+
+export type AssistantMentionItem = AssistantWorkflowMentionItem | AssistantAgentMentionItem;
 
 export interface AssistantMentionBrowseSection {
 	id: AssistantMentionSourceId;
@@ -129,4 +141,5 @@ export const EMPTY_ASSISTANT_MENTION_COUNTS: AssistantMentionCounts = {
 	workflow: 0,
 	node: 0,
 	group: 0,
+	agent: 0,
 };

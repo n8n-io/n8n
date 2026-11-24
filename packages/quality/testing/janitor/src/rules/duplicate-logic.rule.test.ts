@@ -1,7 +1,7 @@
 import { Project } from 'ts-morph';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 
-import { setConfig, resetConfig, defaultConfig } from '../config.js';
+import { setConfig, resetConfig, defaultConfig, getConfig } from '../config.js';
 import { DuplicateLogicRule } from './duplicate-logic.rule.js';
 
 describe('DuplicateLogicRule', () => {
@@ -149,6 +149,32 @@ describe('DuplicateLogicRule', () => {
 			expect(violations.length).toBe(1);
 			expect(violations[0].message).toContain('Duplicate test logic');
 		});
+
+		it.each([/benchmarks\//g, /tests\/infrastructure\/benchmarks\//y])(
+			'excludes consecutive benchmark specs with %s and still reports other duplicates',
+			(pattern) => {
+				const config = getConfig();
+				setConfig({
+					...config,
+					rules: { ...config.rules, 'duplicate-logic': { excludeTestBodyPaths: [pattern] } },
+				});
+
+				const body = `test('run workload', async () => {
+					const workload = await prepareWorkload();
+					await workload.measure();
+				});`;
+				const project = createTestProject({
+					'/test-root/tests/infrastructure/benchmarks/first.spec.ts': body,
+					'/test-root/tests/infrastructure/benchmarks/second.spec.ts': body,
+					'/test-root/tests/e2e/first.spec.ts': body,
+					'/test-root/tests/e2e/second.spec.ts': body,
+				});
+
+				expect(rule.analyzeProject(project).map(({ file }) => file)).toEqual([
+					'/test-root/tests/e2e/second.spec.ts',
+				]);
+			},
+		);
 	});
 
 	describe('test duplicating method', () => {

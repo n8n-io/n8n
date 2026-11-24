@@ -1,3 +1,4 @@
+import type { FolderService } from '@/services/folder.service';
 import type { AgentDefinitionService } from '@/modules/agents/agent-definition.service';
 import type { AgentServiceAccountService } from '@/modules/agents/agent-service-account.service';
 /* eslint-disable @typescript-eslint/require-await, @typescript-eslint/unbound-method -- async mock stubs, unbound-method references and short `cb` names are acceptable test idioms */
@@ -7,8 +8,8 @@ import {
 	N8N_CHAT_INTEGRATION_TYPE,
 	type ListAgentsOptions,
 } from '@n8n/api-types';
+import type { LicenseState } from '@n8n/backend-common';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
-import type { Telemetry } from '@/telemetry';
 import type { GlobalConfig } from '@n8n/config';
 import { AgentConfigPreparationService } from '../agent-config-preparation.service';
 import { AgentModificationTelemetryService } from '../agent-modification-telemetry.service';
@@ -20,23 +21,27 @@ import type {
 	CredentialsFinderService,
 	EventService,
 	ProjectScopeService,
+	TelemetryProxy,
 } from '@n8n/backend-services';
 import { mockLogger } from '@n8n/backend-test-utils';
 import {
 	GLOBAL_MEMBER_ROLE,
+	type Folder,
 	type ProjectRelationRepository,
 	type TagEntity,
 	type TransactionRunner,
 	type User,
 	type WorkflowRepository,
+	type ProjectRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { SecurityContext } from '@n8n/permissions';
 import { QueryFailedError } from '@n8n/typeorm';
 import { mock, type MockProxy } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import type { AgentsSettingsService } from '../agents-settings.service';
 
-import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
+import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import type { AgentKnowledgeService } from '../agent-knowledge.service';
@@ -93,6 +98,7 @@ function makeService() {
 	const skillRefs = createAgentSkillRefsService();
 	const agentRepository = mock<AgentRepository>();
 	const projectRelationRepository = mock<ProjectRelationRepository>();
+	const projectRepository = mock<ProjectRepository>();
 	const agentKnowledgeService = mock<AgentKnowledgeService>();
 	const runtimeCacheService = mock<AgentRuntimeCacheService>();
 	const testChatService = mock<AgentTestChatService>();
@@ -110,7 +116,7 @@ function makeService() {
 	const workflowRepository = mock<WorkflowRepository>();
 	workflowRepository.findManyByAgentToolReferences.mockResolvedValue([]);
 	agentTaskRepository.findByAgentId.mockResolvedValue([]);
-	const telemetry = mock<Telemetry>();
+	const telemetry = mock<TelemetryProxy>();
 	const broadcaster = mock<AgentUpdateBroadcaster>();
 	const saveCompletion = new AgentSaveCompletionService(
 		eventService,
@@ -164,10 +170,22 @@ function makeService() {
 			requestOrder.map((tagId) => tags.find((tag) => tag.id === tagId)) as TagEntity[],
 	);
 
+	const agentServiceAccount = mock<AgentServiceAccountService>();
+	const folderService = mock<FolderService>();
+	const licenseState = mock<LicenseState>();
+	licenseState.isFoldersLicensed.mockReturnValue(true);
+	// Like the real service: the cleanup runs after the work of the account moved, then the agent row goes.
+	agentServiceAccount.deleteForAgent.mockImplementation(
+		async (agent, _actor, _transferId, _ctx, cleanUp) => {
+			await cleanUp();
+			await agentRepository.deleteById(agent.id, {});
+		},
+	);
 	const service = new AgentsService(
 		mockLogger(),
 		agentRepository,
 		projectRelationRepository,
+		projectRepository,
 		mock<AgentChatAttachmentService>(),
 		agentKnowledgeService,
 		runtimeCacheService,
@@ -189,11 +207,15 @@ function makeService() {
 		mock<AgentDefinitionService>(),
 		globalConfig,
 		tagService,
-		mock<AgentServiceAccountService>(),
+		folderService,
+		licenseState,
+		agentServiceAccount,
 	);
 
 	return {
 		service,
+		folderService,
+		licenseState,
 		n8nChatFlag,
 		telemetry,
 		setupCompletion,
@@ -202,6 +224,7 @@ function makeService() {
 		agentPolicyService,
 		agentRepository,
 		projectRelationRepository,
+		projectRepository,
 		agentKnowledgeService,
 		runtimeCacheService,
 		testChatService,
@@ -217,6 +240,7 @@ function makeService() {
 		agentsSettingsService,
 		globalConfig,
 		tagService,
+		agentServiceAccount,
 	};
 }
 
@@ -228,6 +252,136 @@ describe('AgentsService', () => {
 	afterEach(() => {
 		vi.restoreAllMocks();
 		Container.reset();
+	});
+
+	describe('resolveOwningProjectId', () => {
+		it('falls back to the personal project when no projectId is given', async () => {
+			const { service, projectRepository } = makeService();
+			projectRepository.getPersonalProjectForUserOrFail.mockResolvedValue({
+				id: 'personal-project',
+			} as never);
+
+			await expect(service.resolveOwningProjectId(user)).resolves.toBe('personal-project');
+			expect(projectRepository.getPersonalProjectForUserOrFail).toHaveBeenCalledWith(user.id);
+		});
+
+		it('returns an existing project the user may create agents in', async () => {
+			const { service, projectRepository, projectScopeService } = makeService();
+			projectRepository.exists.mockResolvedValue(true);
+			projectScopeService.hasScopes.mockResolvedValue(true);
+
+			await expect(service.resolveOwningProjectId(user, projectId)).resolves.toBe(projectId);
+			expect(projectScopeService.hasScopes).toHaveBeenCalledWith(user, projectId, ['agent:create']);
+		});
+
+		it('rejects a project that does not exist', async () => {
+			const { service, projectRepository } = makeService();
+			projectRepository.exists.mockResolvedValue(false);
+
+			await expect(service.resolveOwningProjectId(user, 'missing-project')).rejects.toThrow(
+				NotFoundError,
+			);
+		});
+
+		it('rejects a project the user lacks agent:create on', async () => {
+			const { service, projectRepository, projectScopeService } = makeService();
+			projectRepository.exists.mockResolvedValue(true);
+			projectScopeService.hasScopes.mockResolvedValue(false);
+
+			await expect(service.resolveOwningProjectId(user, projectId)).rejects.toThrow(ForbiddenError);
+		});
+	});
+
+	it('reports a workflow folder as not found when listing Agent summaries', async () => {
+		const { service, folderService, agentRepository } = makeService();
+		folderService.getFoldersByIds.mockResolvedValue([mock<Folder>({ resourceType: 'workflow' })]);
+
+		await expect(
+			service.findSummariesInProjects(null, { parentFolderId: 'folder-1' }),
+		).rejects.toThrow(NotFoundError);
+
+		expect(agentRepository.findSummariesByProjectIds).not.toHaveBeenCalled();
+	});
+
+	describe('folder license', () => {
+		it('rejects creation in a folder without a folder license', async () => {
+			const { service, agentRepository, folderService, licenseState } = makeService();
+			licenseState.isFoldersLicensed.mockReturnValue(false);
+
+			await expect(
+				service.create(projectId, 'Support Agent', { actor, parentFolderId: 'folder-1' }),
+			).rejects.toThrow(ForbiddenError);
+
+			expect(folderService.validateDestination).not.toHaveBeenCalled();
+			expect(agentRepository.create).not.toHaveBeenCalled();
+		});
+
+		it.each([undefined, null])(
+			'allows root creation with folder membership %s',
+			async (parentFolderId) => {
+				const { service, agentRepository, licenseState } = makeService();
+				licenseState.isFoldersLicensed.mockReturnValue(false);
+				mockCreateReturning(agentRepository, makeAgent());
+
+				const result = await service.create(projectId, 'Support Agent', { actor, parentFolderId });
+
+				expect(result.parentFolderId).toBeNull();
+			},
+		);
+
+		it('validates the destination before licensed folder creation', async () => {
+			const { service, agentRepository, folderService } = makeService();
+			mockCreateReturning(agentRepository, makeAgent());
+
+			await service.create(projectId, 'Support Agent', { actor, parentFolderId: 'folder-1' });
+
+			expect(folderService.validateDestination).toHaveBeenCalledWith(
+				'folder-1',
+				projectId,
+				'agent',
+			);
+		});
+
+		it.each([
+			{ source: null, destination: 'folder-1' },
+			{ source: 'folder-1', destination: null },
+			{ source: 'folder-1', destination: 'folder-2' },
+		])(
+			'rejects a move from $source to $destination without a folder license',
+			async ({ source, destination }) => {
+				const { service, agentRepository, folderService, licenseState } = makeService();
+				licenseState.isFoldersLicensed.mockReturnValue(false);
+				agentRepository.findByIdAndProjectId.mockResolvedValue(
+					makeAgent({ parentFolderId: source }),
+				);
+
+				await expect(service.move(agentId, projectId, destination)).rejects.toThrow(ForbiddenError);
+
+				expect(folderService.validateDestination).not.toHaveBeenCalled();
+				expect(agentRepository.moveToFolder).not.toHaveBeenCalled();
+			},
+		);
+
+		it('allows root-only import placement without a folder license', async () => {
+			const { service, agentRepository, licenseState } = makeService();
+			licenseState.isFoldersLicensed.mockReturnValue(false);
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ parentFolderId: null }));
+			agentRepository.moveToFolder.mockResolvedValue(true);
+
+			await expect(service.move(agentId, projectId, null)).resolves.toBe(true);
+
+			expect(agentRepository.moveToFolder).toHaveBeenCalledWith(agentId, projectId, null);
+		});
+
+		it('does not move an Agent outside the requested project', async () => {
+			const { service, agentRepository } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(null);
+
+			await expect(service.move(agentId, projectId, 'folder-1')).resolves.toBe(false);
+
+			expect(agentRepository.findByIdAndProjectId).toHaveBeenCalledWith(agentId, projectId);
+			expect(agentRepository.moveToFolder).not.toHaveBeenCalled();
+		});
 	});
 
 	it.each([
@@ -538,6 +692,7 @@ describe('AgentsService', () => {
 			id: agentId,
 			name: 'Support Agent',
 			projectId,
+			parentFolderId: null,
 			schema: {
 				name: 'Support Agent',
 				model: '',
@@ -591,7 +746,7 @@ describe('AgentsService', () => {
 			actor,
 			schema: {
 				name: 'Support Agent',
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 				instructions: 'Triage tickets.',
 				integrations,
 			},
@@ -632,7 +787,7 @@ describe('AgentsService', () => {
 			actor,
 			schema: {
 				name: 'Support Agent',
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 				instructions: 'Triage refunds.',
 				tools: [{ type: 'custom', id: 'refund_tool' }],
 			},
@@ -661,7 +816,7 @@ describe('AgentsService', () => {
 			skillCreator,
 			schema: {
 				name: 'Support Agent',
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 				instructions: 'Triage tickets.',
 				skills: [{ type: 'skill', id: 'skill_abc' }],
 			},
@@ -696,7 +851,7 @@ describe('AgentsService', () => {
 			actor,
 			schema: {
 				name: 'Support Agent',
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 				instructions: 'Triage tickets.',
 				skills: skillRefs,
 			},
@@ -726,7 +881,7 @@ describe('AgentsService', () => {
 				actor,
 				schema: {
 					name: 'Support Agent',
-					model: 'anthropic/claude-sonnet-4-5',
+					model: 'anthropic/claude-sonnet-5-5',
 					instructions: 'Triage tickets.',
 					integrations: [
 						{ type: 'telegram', credentialId: 'cred-telegram-1' },
@@ -840,7 +995,7 @@ describe('AgentsService', () => {
 				actor,
 				schema: {
 					name: 'Support Agent',
-					model: 'anthropic/claude-sonnet-4-5',
+					model: 'anthropic/claude-sonnet-5-5',
 					instructions: 'Triage tickets.',
 				},
 				user,
@@ -850,7 +1005,7 @@ describe('AgentsService', () => {
 			expect(eventService.emit).toHaveBeenCalledWith('agent-saved', { agentId: saved.id });
 			expect(telemetry.track).toHaveBeenCalledExactlyOnceWith(
 				TELEMETRY_EVENT.AGENTS.USER_CREATED_AGENT,
-				expect.objectContaining({ event_version: '3', model: 'anthropic/claude-sonnet-4-5' }),
+				expect.objectContaining({ event_version: '3', model: 'anthropic/claude-sonnet-5-5' }),
 			);
 		});
 
@@ -873,7 +1028,7 @@ describe('AgentsService', () => {
 				actor,
 				schema: {
 					name: 'Support Agent',
-					model: 'anthropic/claude-sonnet-4-5',
+					model: 'anthropic/claude-sonnet-5-5',
 					instructions: 'Triage tickets.',
 					integrations: [{ type: 'slack', credentialId: 'cred-slack-1' }],
 				},
@@ -998,7 +1153,7 @@ describe('AgentsService', () => {
 				name: 'Support Triage',
 				schema: {
 					name: 'Support Triage',
-					model: 'anthropic/claude-sonnet-4-5',
+					model: 'anthropic/claude-sonnet-5-5',
 					instructions: 'Hi',
 				},
 				integrations: [],
@@ -1072,7 +1227,7 @@ describe('AgentsService', () => {
 
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 
-		await expect(service.delete(agentId, projectId)).resolves.toMatchObject({
+		await expect(service.delete(agentId, user, projectId)).resolves.toMatchObject({
 			id: agentId,
 			name: 'Agent',
 			projectId,
@@ -1081,9 +1236,9 @@ describe('AgentsService', () => {
 
 		expect(agentKnowledgeService.deleteAllFilesForAgent).toHaveBeenCalledWith(projectId, agentId);
 		expect(agentKnowledgeService.deleteAllFilesForAgent.mock.invocationCallOrder[0]).toBeLessThan(
-			agentRepository.remove.mock.invocationCallOrder[0],
+			agentRepository.deleteById.mock.invocationCallOrder[0],
 		);
-		expect(agentRepository.remove).toHaveBeenCalledWith(agent);
+		expect(agentRepository.deleteById).toHaveBeenCalledWith(agentId, {});
 		expect(chatIntegrationService.disconnectChannel).toHaveBeenCalledWith(agentId, {
 			type: 'slack',
 			credentialId: 'slack-1',
@@ -1107,11 +1262,11 @@ describe('AgentsService', () => {
 		const { service, agentRepository, eventService } = makeService();
 		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
 
-		await service.delete(agentId, projectId);
+		await service.delete(agentId, user, projectId);
 
 		expect(eventService.emit).toHaveBeenCalledWith('agent-deleted', { agentId, projectId });
 		expect(eventService.emit.mock.invocationCallOrder[0]).toBeGreaterThan(
-			agentRepository.remove.mock.invocationCallOrder[0],
+			agentRepository.deleteById.mock.invocationCallOrder[0],
 		);
 	});
 
@@ -1120,19 +1275,19 @@ describe('AgentsService', () => {
 		const agent = makeAgent();
 		agentRepository.findById.mockResolvedValue(agent);
 
-		await expect(service.delete(agentId)).resolves.toMatchObject({
+		await expect(service.delete(agentId, user)).resolves.toMatchObject({
 			id: agentId,
 			projectId,
 		});
 		expect(agentRepository.findByIdAndProjectId).not.toHaveBeenCalled();
-		expect(agentRepository.remove).toHaveBeenCalledWith(agent);
+		expect(agentRepository.deleteById).toHaveBeenCalledWith(agentId, {});
 	});
 
 	it('does not emit agent-deleted when the agent is missing', async () => {
 		const { service, agentRepository, eventService } = makeService();
 		agentRepository.findByIdAndProjectId.mockResolvedValue(null);
 
-		await expect(service.delete(agentId, projectId)).resolves.toBeNull();
+		await expect(service.delete(agentId, user, projectId)).resolves.toBeNull();
 		expect(eventService.emit).not.toHaveBeenCalled();
 	});
 
@@ -1144,8 +1299,8 @@ describe('AgentsService', () => {
 		agentKnowledgeService.deleteAllFilesForAgent.mockRejectedValue(new Error('storage down'));
 		testChatService.clearAllTestChatMessages.mockRejectedValue(new Error('memory down'));
 
-		await expect(service.delete(agentId, projectId)).resolves.toMatchObject({ id: agentId });
-		expect(agentRepository.remove).toHaveBeenCalledWith(agent);
+		await expect(service.delete(agentId, user, projectId)).resolves.toMatchObject({ id: agentId });
+		expect(agentRepository.deleteById).toHaveBeenCalledWith(agentId, {});
 		expect(agentKnowledgeService.destroyKnowledgeSandbox).toHaveBeenCalledWith(projectId, agentId);
 	});
 
@@ -1153,14 +1308,14 @@ describe('AgentsService', () => {
 		const { service, agentRepository } = makeService();
 
 		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
-		await expect(service.delete(agentId, projectId, { requireArchived: true })).rejects.toThrow(
-			'Agent must be archived before it can be deleted.',
-		);
-		expect(agentRepository.remove).not.toHaveBeenCalled();
+		await expect(
+			service.delete(agentId, user, projectId, { requireArchived: true }),
+		).rejects.toThrow('Agent must be archived before it can be deleted.');
+		expect(agentRepository.deleteById).not.toHaveBeenCalled();
 
 		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ isArchived: true }));
 		await expect(
-			service.delete(agentId, projectId, { requireArchived: true }),
+			service.delete(agentId, user, projectId, { requireArchived: true }),
 		).resolves.toMatchObject({ id: agentId });
 	});
 
@@ -1168,8 +1323,49 @@ describe('AgentsService', () => {
 		const { service, agentRepository } = makeService();
 		agentRepository.findByIdAndProjectId.mockResolvedValue(null);
 
-		await expect(service.delete(agentId, projectId)).resolves.toBeNull();
-		expect(agentRepository.remove).not.toHaveBeenCalled();
+		await expect(service.delete(agentId, user, projectId)).resolves.toBeNull();
+		expect(agentRepository.deleteById).not.toHaveBeenCalled();
+	});
+
+	it('moves the work of the service account into the agent project before any cleanup', async () => {
+		const { service, agentRepository, agentKnowledgeService, agentServiceAccount } = makeService();
+		const agent = makeAgent({ identityId: 'sa-1' });
+		agentRepository.findById.mockResolvedValue(agent);
+
+		const ctx = { security: mock<SecurityContext>({ subIdentityId: 'login-1' }) };
+
+		await service.delete(agentId, user, undefined, {}, ctx);
+
+		expect(agentServiceAccount.deleteForAgent).toHaveBeenCalledWith(
+			agent,
+			user,
+			projectId,
+			ctx,
+			expect.any(Function),
+		);
+		expect(agentServiceAccount.deleteForAgent.mock.invocationCallOrder[0]).toBeLessThan(
+			agentKnowledgeService.deleteAllFilesForAgent.mock.invocationCallOrder[0],
+		);
+	});
+
+	it('keeps the agent when its service account cannot be removed', async () => {
+		const { service, agentRepository, agentKnowledgeService, agentServiceAccount } = makeService();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ identityId: 'sa-1' }));
+		agentServiceAccount.deleteForAgent.mockRejectedValue(new Error('transfer blocked'));
+
+		await expect(service.delete(agentId, user, projectId)).rejects.toThrow('transfer blocked');
+		expect(agentKnowledgeService.deleteAllFilesForAgent).not.toHaveBeenCalled();
+		expect(agentRepository.deleteById).not.toHaveBeenCalled();
+	});
+
+	it('does not remove a service account when the delete needs an archived agent', async () => {
+		const { service, agentRepository, agentServiceAccount } = makeService();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ identityId: 'sa-1' }));
+
+		await expect(
+			service.delete(agentId, user, projectId, { requireArchived: true }),
+		).rejects.toThrow('Agent must be archived before it can be deleted.');
+		expect(agentServiceAccount.deleteForAgent).not.toHaveBeenCalled();
 	});
 
 	describe('findByIdForUser', () => {
@@ -1441,7 +1637,7 @@ describe('AgentsService', () => {
 				activeVersion: {
 					schema: {
 						name: 'Support',
-						model: 'anthropic/claude-sonnet-4-5',
+						model: 'anthropic/claude-sonnet-5-5',
 						instructions: 'published instructions',
 						personalisation: { icon: 'bot', gradient: { from: '#000000', to: '#FFFFFF' } },
 						description: 'Answers billing questions.',
@@ -1716,7 +1912,7 @@ describe('AgentsService', () => {
 					name: 'Support Agent',
 					schema: {
 						name: 'Support Agent',
-						model: 'anthropic/claude-sonnet-4-5',
+						model: 'anthropic/claude-sonnet-5-5',
 						instructions: 'Help the user.',
 						tools: [
 							{ type: 'custom', id: 'c1' },
@@ -1754,7 +1950,7 @@ describe('AgentsService', () => {
 			expect(summary).toEqual({
 				id: agentId,
 				name: 'Support Agent',
-				model: { provider: 'anthropic', model: 'claude-sonnet-4-5' },
+				model: { provider: 'anthropic', model: 'claude-sonnet-5-5' },
 				channels: [{ type: 'slack' }, { type: 'telegram' }],
 				tools: [
 					{ type: 'custom', name: 'Refund tool' },
@@ -1801,7 +1997,7 @@ describe('AgentsService', () => {
 					name: 'Partial Agent',
 					schema: {
 						name: 'Partial Agent',
-						model: 'claude-sonnet-4-5',
+						model: 'claude-sonnet-5-5',
 						instructions: 'Help the user.',
 						tools: [
 							{ type: 'custom', id: 'c-missing' },
@@ -1816,7 +2012,7 @@ describe('AgentsService', () => {
 
 			const summary = await service.getCapabilitySummary(agentId, projectId);
 
-			expect(summary.model).toEqual({ provider: '', model: 'claude-sonnet-4-5' });
+			expect(summary.model).toEqual({ provider: '', model: 'claude-sonnet-5-5' });
 			expect(summary.tools).toEqual([
 				{ type: 'custom', name: 'c-missing' },
 				{ type: 'workflow', name: 'wf-2' },

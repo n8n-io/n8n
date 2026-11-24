@@ -50,7 +50,7 @@ export const REVIEW_TABLES = [
 	'User',
 ] as const;
 
-/** Test workflows carry no trigger nodes, so activation must not fail on that. */
+/** Test workflows carry no trigger nodes, so activation and saves must not fail on that. */
 export function stubWorkflowValidation(
 	workflowValidationService: MockProxy<WorkflowValidationService>,
 ): void {
@@ -59,6 +59,7 @@ export function stubWorkflowValidation(
 	workflowValidationService.validatePublisherCredentialAccess.mockResolvedValue({ isValid: true });
 	workflowValidationService.validateSubWorkflowReferences.mockResolvedValue({ isValid: true });
 	workflowValidationService.validateTriggerNodeIds.mockReturnValue({ isValid: true });
+	workflowValidationService.validateCredentialNodeRestrictions.mockReturnValue({ isValid: true });
 }
 
 export interface ReviewActors {

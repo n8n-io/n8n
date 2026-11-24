@@ -1,12 +1,6 @@
 {
     "type": "object",
     "properties": {
-        "@odata.context": {
-            "type": "string"
-        },
-        "@odata.etag": {
-            "type": "string"
-        },
         "commentSettings": {
             "type": "object",
             "properties": {
@@ -164,5 +158,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

@@ -84,7 +84,10 @@ export interface DiscoveryTestCase {
 	userMessage: string;
 	/** Optional instance state overrides applied when constructing the agent. */
 	instanceState?: DiscoveryInstanceState;
-	/** Answers for the tools listed; every other suspension is approved. */
+	/**
+	 * Answers for the tools listed. Every other suspension is approved, except a
+	 * question card after the calls that the scenario requires: the turn ends there.
+	 */
 	confirmations?: DiscoveryConfirmations;
 	/** Pass condition. At least one expectation key is required. */
 	expectedToolInvocations: ExpectedToolInvocations;
@@ -114,6 +117,8 @@ export type DiscoveryStreamStatus =
 	| 'errored'
 	| 'timed-out'
 	| 'suspended'
+	/** The turn ended at a question card, after the calls that the scenario requires. */
+	| 'waiting-for-user'
 	| 'step-exhausted'
 	/** The runner ended the run before an orchestrator tool call, because the route was picked. */
 	| 'stopped-on-route';

@@ -52,6 +52,7 @@ export class GmailTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Gmail Trigger',
 		name: 'gmailTrigger',
+		schemaPath: 'Google/Gmail',
 		icon: 'file:gmail.svg',
 		group: ['trigger'],
 		version: [1, 1.1, 1.2, 1.3, 1.4],

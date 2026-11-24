@@ -1,6 +1,6 @@
 import type { BreakingChangeVersion } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { UrlService } from '@n8n/backend-services';
+import { UrlService, TelemetryProxy } from '@n8n/backend-services';
 import { WorkflowRepository, type OperationContext, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
@@ -11,7 +11,6 @@ import { RuleRegistry } from '@/modules/breaking-changes/breaking-changes.rule-r
 import { MigrationFindingQueryService } from '@/modules/breaking-changes/query/migration-finding-query.service';
 import { MigrationFindingSyncService } from '@/modules/breaking-changes/sync/migration-finding-sync.service';
 import { MigrationFindingTriageService } from '@/modules/breaking-changes/triage/migration-finding-triage.service';
-import { Telemetry } from '@/telemetry';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import type { RegisterToolFn } from '../../mcp.types';
@@ -37,7 +36,7 @@ const resolveDeps = (targetVersion: BreakingChangeVersion): MigrationReportToolD
 	workflowFinderService: Container.get(WorkflowFinderService),
 	collaborationService: Container.get(CollaborationService),
 	urlService: Container.get(UrlService),
-	telemetry: Container.get(Telemetry),
+	telemetry: Container.get(TelemetryProxy),
 	logger: Container.get(Logger).scoped('mcp'),
 });
 

@@ -578,6 +578,49 @@ describe('toolsAgentExecute', () => {
 		expect(result[0][0].json.error).toBe('Agent execution failed');
 	});
 
+	it('should abort the signal of a failed run and keep the signal of a successful run', async () => {
+		const mockNode = mock<INode>();
+		mockNode.typeVersion = 2;
+		mockContext.getNode.mockReturnValue(mockNode);
+		mockContext.getInputData.mockReturnValue([
+			{ json: { text: 'test input 1' } },
+			{ json: { text: 'test input 2' } },
+		]);
+
+		const mockModel = mock<BaseChatModel>();
+		mockModel.bindTools = vi.fn();
+		mockModel.lc_namespace = ['chat_models'];
+		mockContext.getInputConnectionData.mockResolvedValue(mockModel);
+		vi.spyOn(helpers, 'getConnectedTools').mockResolvedValue([mock<Tool>()]);
+
+		mockContext.getNodeParameter.mockImplementation((param, _i, defaultValue) => {
+			if (param === 'options.batching.batchSize') return 1;
+			if (param === 'options.batching.delayBetweenBatches') return 0;
+			if (param === 'text') return 'test input';
+			if (param === 'needsFallback') return false;
+			if (param === 'options') return { passthroughBinaryImages: true };
+			return defaultValue;
+		});
+		mockContext.continueOnFail.mockReturnValue(true);
+
+		const mockExecutor = {
+			invoke: vi
+				.fn()
+				.mockRejectedValueOnce(new Error('A tool failed'))
+				.mockResolvedValueOnce({ output: 'success' }),
+		};
+		vi.spyOn(AgentExecutor, 'fromAgentAndTools').mockReturnValue(
+			ensureWithConfig(mockExecutor) as any,
+		);
+
+		await toolsAgentExecute.call(mockContext);
+
+		const runSignals = mockExecutor.invoke.mock.calls.map(
+			([, executeOptions]) => (executeOptions as { signal: AbortSignal }).signal,
+		);
+		expect(runSignals.map((signal) => signal.aborted)).toEqual([true, false]);
+	});
+
 	it('should throw a NodeOperationError with a useful message when a tool throws Error("Error") without continueOnFail', async () => {
 		const mockNode = mock<INode>();
 		mockNode.typeVersion = 2;

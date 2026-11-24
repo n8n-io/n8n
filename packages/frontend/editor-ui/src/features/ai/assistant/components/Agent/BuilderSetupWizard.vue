@@ -192,7 +192,7 @@ watch(
 		data-test-id="builder-setup-wizard"
 		:class="$style.container"
 		role="region"
-		aria-label="Workflow setup wizard"
+		:aria-label="i18n.baseText('aiAssistant.builder.setupWizard.ariaLabel')"
 		@mouseenter="onMouseEnter"
 		@mouseleave="onMouseLeave"
 	>

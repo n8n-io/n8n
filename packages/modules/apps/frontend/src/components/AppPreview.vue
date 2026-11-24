@@ -24,6 +24,7 @@ import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from
 import { createAppPreview } from '../apps.api';
 import { getAppVersionLabel, type AppVersions } from '../composables/useAppVersions';
 import AppPreviewOptionMenu from './AppPreviewOptionMenu.vue';
+import AppFeedbackLink from './feedback/AppFeedbackLink.vue';
 
 const SCREEN_SIZES = ['desktop', 'tablet', 'mobile'] as const;
 type ScreenSize = (typeof SCREEN_SIZES)[number];
@@ -354,6 +355,7 @@ onBeforeUnmount(() => {
 				</N8nTooltip>
 			</div>
 		</div>
+		<AppFeedbackLink :app="app" />
 	</div>
 </template>
 
@@ -430,6 +432,11 @@ onBeforeUnmount(() => {
 	min-height: 0;
 	padding: 0 var(--spacing--xs) var(--spacing--xs);
 	overflow: auto;
+
+	// The feedback footer holds the bottom spacing when it shows.
+	&:not(:last-child) {
+		padding-bottom: 0;
+	}
 }
 
 .frame {
