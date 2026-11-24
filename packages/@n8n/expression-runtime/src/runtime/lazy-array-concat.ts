@@ -9,7 +9,7 @@ const { apply } = Reflect;
 
 /** Say whether `concat` spreads an array that has this `Symbol.isConcatSpreadable` value. */
 function spreadsArray(spreadable: unknown): boolean {
-	return spreadable === undefined || Boolean(spreadable);
+	return spreadable === undefined || !!spreadable;
 }
 
 /** Say whether `concat` spreads the value and the value is a lazy array. */

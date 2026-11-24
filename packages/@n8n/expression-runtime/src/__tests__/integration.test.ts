@@ -1400,6 +1400,22 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 			expect(result).toHaveLength(4);
 			expect(0 in (result as unknown[])).toBe(false);
 		});
+
+		it('keeps a non-spreadable workflow data array whole after an expression replaces Boolean', () => {
+			evaluator.evaluate(
+				'{{ (function () { this.Boolean = () => true; return "x"; })() }}',
+				data,
+				caller,
+			);
+
+			expect(
+				evaluator.evaluate(
+					'{{ (() => { const list = $json.other; list[Symbol.isConcatSpreadable] = 0; return [0].concat(list).length; })() }}',
+					{ $json: { other: ['a', 'b'] } },
+					caller,
+				),
+			).toBe(2);
+		});
 	});
 });
 
