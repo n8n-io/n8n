@@ -117,6 +117,37 @@ describe('resolveNodeTool → tool name sanitization', () => {
 		);
 	});
 
+	it('passes the agent run security context with the run as its sub-identity', async () => {
+		const executeInline = vi.fn().mockResolvedValue({ status: 'success', data: [] });
+		const getByNameAndVersion = vi.fn().mockReturnValue({
+			description: { description: 'HTTP Request Tool' },
+		});
+		Container.set(NodeTypesProxy, { getByNameAndVersion } as unknown as NodeTypesProxy);
+		Container.set(NodeTypes, { getByNameAndVersion } as unknown as NodeTypes);
+		const security = {
+			subject: { id: 'agent-account', type: 'service' as const, role: {} as never },
+			authMethod: 'agent-run' as const,
+		};
+
+		const tool = await resolveNodeTool(
+			{
+				...baseToolSchema,
+				node: { nodeType: 'n8n-nodes-base.httpRequest', nodeTypeVersion: 4, nodeParameters: {} },
+			},
+			{
+				executor: { executeInline } as unknown as EphemeralNodeExecutor,
+				projectId: 'p1',
+				security,
+			},
+		);
+
+		await tool.handler!({ url: 'https://example.com' }, { runId: 'run-1' } as never);
+
+		expect(executeInline).toHaveBeenCalledWith(
+			expect.objectContaining({ security: { ...security, subIdentityId: 'run-1' } }),
+		);
+	});
+
 	it('derives inputSchema from $fromAI node parameters', async () => {
 		const tool = await resolveNodeTool(
 			{

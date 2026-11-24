@@ -2,17 +2,22 @@ import { principalFromUser, type User } from '@n8n/db';
 import type { SecurityContext } from '@n8n/permissions';
 
 /**
- * The security context of a published agent run (runtime identity). The agent's
- * service account is the subject, so its access is what counts. The person who
- * started the run, when n8n knows them, is the actor. They go along with the
- * run, but they do not change what the agent can use.
+ * The security context of a published agent run (runtime identity). The agent
+ * acts as itself: its service account is the subject, so its access counts.
+ * There is no actor. A person who chats with the agent does not delegate
+ * anything, so they stay in the run attribution (`RelatedAgentRun.userId`),
+ * not in the security context. On behalf of a person is a later step.
  */
-export function agentRunSecurityContext(account: User, person?: User): SecurityContext {
-	return {
-		subject: principalFromUser(account),
-		...(person ? { actor: principalFromUser(person) } : {}),
-		authMethod: 'agent-run',
-	};
+export function agentRunSecurityContext(account: User): SecurityContext {
+	return { subject: principalFromUser(account), authMethod: 'agent-run' };
+}
+
+/**
+ * The context of one run. The run is the sub-identity of the service account,
+ * like a login, so each action can be traced to the run that did it.
+ */
+export function forAgentRun(security: SecurityContext, runId: string): SecurityContext {
+	return { ...security, subIdentityId: runId };
 }
 
 /**

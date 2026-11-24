@@ -789,9 +789,7 @@ describe('AgentRuntimeCacheService', () => {
 				attributionUserId: 'user-1',
 			});
 
-			expect(runtimeIdentity.resolveRunIdentity).toHaveBeenCalledWith(agent, {
-				personId: 'user-1',
-			});
+			expect(runtimeIdentity.resolveRunIdentity).toHaveBeenCalledWith(agent);
 			const [, , , , user, , , , options] =
 				reconstructionService.reconstructFromAgentEntity.mock.calls[0];
 			expect(user).toBe(account);

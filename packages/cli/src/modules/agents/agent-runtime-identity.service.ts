@@ -1,5 +1,5 @@
 import { AgentsConfig } from '@n8n/config';
-import { ServiceAccountRepository, type ServiceAccount, UserRepository } from '@n8n/db';
+import { ServiceAccountRepository, type ServiceAccount } from '@n8n/db';
 import type { SecurityContext } from '@n8n/permissions';
 import { Container, Service } from '@n8n/di';
 import { UserError } from '@n8n/errors';
@@ -31,7 +31,6 @@ export class AgentRuntimeIdentityService {
 	constructor(
 		private readonly agentsConfig: AgentsConfig,
 		private readonly agentServiceAccount: AgentServiceAccountService,
-		private readonly userRepository: UserRepository,
 		private readonly serviceAccountRepository: ServiceAccountRepository,
 		private readonly agentRepository: AgentRepository,
 	) {}
@@ -73,20 +72,14 @@ export class AgentRuntimeIdentityService {
 
 	/**
 	 * The account and the security context of a published run. The account is
-	 * the subject. `personId` is the person who started the run, when n8n knows
-	 * them (published n8n Chat). They become the actor. Returns `undefined` in
-	 * the same cases as {@link resolveActingAccount}.
+	 * the subject. Returns `undefined` in the same cases as {@link resolveActingAccount}.
 	 */
 	async resolveRunIdentity(
 		agent: Pick<Agent, 'identityId' | 'projectId'>,
-		{ personId }: { personId?: string } = {},
 	): Promise<{ account: ServiceAccount; security: SecurityContext } | undefined> {
 		const account = await this.resolveActingAccount(agent);
 		if (!account) return undefined;
-		const [person] = personId
-			? await this.userRepository.findManyByIds([personId], { includeRole: true, kind: 'person' })
-			: [];
-		return { account, security: agentRunSecurityContext(account, person) };
+		return { account, security: agentRunSecurityContext(account) };
 	}
 }
 

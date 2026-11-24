@@ -344,16 +344,14 @@ describe('Agent runtime identity', () => {
 	});
 
 	describe('security context', () => {
-		it('makes the agent account the subject and the person the actor', async () => {
-			const person = await createMember();
+		it('makes the agent account the subject, with no actor', async () => {
 			const project = await createTeamProject();
 			const agent = await createAgentIn(project.id);
 
-			const identity = await runtimeIdentity.resolveRunIdentity(agent, { personId: person.id });
+			const identity = await runtimeIdentity.resolveRunIdentity(agent);
 
 			expect(identity?.security).toEqual({
 				subject: expect.objectContaining({ id: agent.identityId, type: 'service' }),
-				actor: expect.objectContaining({ id: person.id, type: 'person' }),
 				authMethod: 'agent-run',
 			});
 		});

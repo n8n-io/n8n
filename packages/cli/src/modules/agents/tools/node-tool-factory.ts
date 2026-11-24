@@ -18,6 +18,7 @@ import { resolveToolNodeType, type EphemeralNodeExecutor } from '@/node-executio
 import { NodeTypesProviderMissingError, NodeTypesProxy } from '@n8n/backend-services';
 
 import { AgentFileBridge, FILES_INPUT_SCHEMA } from '../agent-file-bridge.service';
+import { forAgentRun } from '../agent-run-security';
 import type { InstrumentToolAdditionalData } from '../evaluation/agent-evaluation.contracts';
 import { toPolicyRefusalResult } from './policy-refusal';
 
@@ -196,7 +197,12 @@ export async function resolveNodeTool(
 					{ json: input as IDataObject, ...(inputFiles && { binary: inputFiles.binary }) },
 				],
 				projectId: ctx.projectId,
-				...(ctx.security ? { security: ctx.security } : {}),
+				// The runtime is cached for each agent, so the run id joins the context here.
+				...(ctx.security
+					? {
+							security: toolCtx.runId ? forAgentRun(ctx.security, toolCtx.runId) : ctx.security,
+						}
+					: {}),
 				...instrumentedExecution,
 			});
 			// A refusal is returned, not thrown: thrown errors reach the chat as plain text.

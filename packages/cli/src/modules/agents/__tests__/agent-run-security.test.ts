@@ -1,7 +1,12 @@
 import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import { agentRunSecurityContext, isAgentRun, onBehalfOfParent } from '../agent-run-security';
+import {
+	agentRunSecurityContext,
+	forAgentRun,
+	isAgentRun,
+	onBehalfOfParent,
+} from '../agent-run-security';
 
 const role = mock<User['role']>();
 const account = { id: 'parent-account', kind: 'service', role } as User;
@@ -16,6 +21,14 @@ describe('agent run security context', () => {
 			authMethod: 'agent-run',
 		});
 		expect(isAgentRun(security)).toBe(true);
+	});
+
+	it('names the run as the sub-identity of the account', () => {
+		const security = forAgentRun(agentRunSecurityContext(account), 'run-1');
+
+		expect(security.subject.id).toBe('parent-account');
+		expect(security.subIdentityId).toBe('run-1');
+		expect(security.actor).toBeUndefined();
 	});
 
 	it('keeps the parent as the subject and makes the sub-agent the actor', () => {

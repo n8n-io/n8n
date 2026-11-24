@@ -118,7 +118,8 @@ export interface SubAgentRunContext {
 	/**
 	 * Security context of the delegating parent run, when it acts as the parent
 	 * agent's account (runtime identity). The child keeps the parent as the
-	 * subject and becomes the actor: it acts on behalf of the parent.
+	 * subject and becomes the actor: it acts on behalf of the parent. It gets
+	 * the parent's access, not the overlap of both. The overlap comes with delegation.
 	 */
 	security?: SecurityContext;
 	/**

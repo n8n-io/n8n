@@ -79,7 +79,7 @@ export interface AgentRuntime extends ReconstructedAgentRuntime {
 	 * identity). Tool access is re-checked against it on cache hits.
 	 */
 	actingAccount?: User;
-	/** Who acts in a published run with runtime identity: the agent's account, and the person as actor. */
+	/** Who acts in a published run with runtime identity: the agent's account. */
 	security?: SecurityContext;
 	/** Epoch ms of the last passing tool-access re-check (build counts as one). */
 	toolAccessCheckedAt: number;
@@ -336,9 +336,7 @@ export class AgentRuntimeCacheService {
 		// identity). The cache key does not change, so each agent keeps one entry.
 		const runIdentity =
 			!user && usePublishedVersion
-				? await this.runtimeIdentity.resolveRunIdentity(agentEntity, {
-						personId: attributionUserId,
-					})
+				? await this.runtimeIdentity.resolveRunIdentity(agentEntity)
 				: undefined;
 		const actingAccount = runIdentity?.account;
 		const security = runIdentity?.security;
