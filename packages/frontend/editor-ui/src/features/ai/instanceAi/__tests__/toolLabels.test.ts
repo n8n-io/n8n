@@ -1,4 +1,4 @@
-import { describe, test, expect, vi, beforeEach } from 'vitest';
+import { describe, test, expect, vi, beforeEach, onTestFinished } from 'vitest';
 import { getToolIcon, useToolLabel } from '../toolLabels';
 import type { InstanceAiToolCallState } from '@n8n/api-types';
 
@@ -472,5 +472,33 @@ describe('labels for the control group of the experiment', () => {
 		expect(getToolLabel('workflow_builder_build_workflow', { filePath: path })).toBe(
 			'Generating workflow',
 		);
+	});
+});
+
+describe('specific tool labels', () => {
+	const { getSpecificToolLabel } = useToolLabel();
+	const path = 'src/workflows/daily-invoice_processing.workflow.ts';
+
+	test('gives the specific label of a node lookup or a workflow source write', () => {
+		expect(getSpecificToolLabel('search_nodes', { queries: ['gmail'] })).toBe(
+			'Searching for gmail',
+		);
+		expect(getSpecificToolLabel('workspace_write_file', { path })).toBe(
+			'Writing daily invoice processing',
+		);
+	});
+
+	test('gives no label for a tool without a specific label', () => {
+		expect(getSpecificToolLabel('list_credentials', {})).toBeUndefined();
+		expect(getSpecificToolLabel('search_nodes')).toBeUndefined();
+	});
+
+	test('gives no label in the control group of the experiment', () => {
+		draftWorkflowPreview.value = false;
+		onTestFinished(() => {
+			draftWorkflowPreview.value = true;
+		});
+
+		expect(getSpecificToolLabel('search_nodes', { queries: ['gmail'] })).toBeUndefined();
 	});
 });
