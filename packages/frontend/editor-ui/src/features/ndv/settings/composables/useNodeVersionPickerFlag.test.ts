@@ -1,10 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { ref } from 'vue';
 
 import { NODE_VERSION_PICKER_EXPERIMENT } from '@/app/constants/experiments';
 
 import { useNodeVersionPickerFlag } from './useNodeVersionPickerFlag';
 
-const posthogState = { value: undefined as boolean | string | undefined };
+const posthogState = ref<boolean | string | undefined>(undefined);
 const isFeatureEnabled = vi.fn(() => posthogState.value === true);
 
 vi.mock('@/app/stores/posthog.store', () => ({
@@ -26,5 +27,14 @@ describe('useNodeVersionPickerFlag', () => {
 
 		expect(useNodeVersionPickerFlag().value).toBe(enabled);
 		expect(isFeatureEnabled).toHaveBeenCalledWith(NODE_VERSION_PICKER_EXPERIMENT.name);
+	});
+
+	it('updates when the flag arrives after the first read', () => {
+		const isEnabled = useNodeVersionPickerFlag();
+		expect(isEnabled.value).toBe(false);
+
+		posthogState.value = true;
+
+		expect(isEnabled.value).toBe(true);
 	});
 });
