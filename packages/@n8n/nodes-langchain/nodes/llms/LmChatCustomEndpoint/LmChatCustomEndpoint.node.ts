@@ -1,5 +1,5 @@
 import { isRecord } from '@n8n/utils/is-record';
-import { ChatOpenAICompletions } from '@langchain/openai';
+import { ChatOpenAI, ChatOpenAICompletions, type ChatOpenAIFields } from '@langchain/openai';
 import {
 	getConnectionHintNoticeField,
 	makeN8nLlmFailedAttemptHandler,
@@ -26,15 +26,20 @@ import {
 } from '@utils/custom-model-endpoint/gateway-config';
 import { toHeaderRecord } from '@utils/custom-model-endpoint/headers';
 import {
+	apiFormatField,
 	chatModelOptions,
+	CHAT_COMPLETIONS_FORMAT,
 	modelField,
 	requestHeaderFields,
+	responsesFormatNotice,
+	RESPONSES_FORMAT,
 	SEARCH_ALIASES,
 } from '@utils/custom-model-endpoint/descriptions';
 import { searchModels } from '@utils/custom-model-endpoint/models';
 
 interface Options {
 	maxTokens?: number;
+	maxOutputTokens?: number;
 	frequencyPenalty?: number;
 	presencePenalty?: number;
 	temperature?: number;
@@ -43,12 +48,24 @@ interface Options {
 	stop?: string;
 	timeout?: number;
 	maxRetries?: number;
+	reasoningSummary?: string;
+	storeResponse?: boolean;
+	truncation?: string;
 }
 
 const RETRYABLE = new Set([408, 429]);
 
 function shouldRetry(status: number): boolean {
 	return RETRYABLE.has(status) || status >= 500;
+}
+
+/** The client spreads these into the body, so each one reaches the gateway as a Responses field. */
+function responsesKwargs(options: Options): Record<string, unknown> {
+	return {
+		...(options.reasoningSummary ? { reasoning: { summary: options.reasoningSummary } } : {}),
+		...(options.storeResponse === undefined ? {} : { store: options.storeResponse }),
+		...(options.truncation ? { truncation: options.truncation } : {}),
+	};
 }
 
 /**
@@ -70,9 +87,10 @@ function modelKwargsFor(
 	options: Options,
 	extraBody: unknown,
 	itemIndex: number,
+	usesResponses: boolean,
 ): Record<string, unknown> | undefined {
-	const kwargs: Record<string, unknown> = {};
-	if (options.seed !== undefined) kwargs.seed = options.seed;
+	const kwargs: Record<string, unknown> = usesResponses ? responsesKwargs(options) : {};
+	if (!usesResponses && options.seed !== undefined) kwargs.seed = options.seed;
 
 	const hasExtraBody = typeof extraBody === 'string' ? extraBody.trim() !== '' : Boolean(extraBody);
 	if (hasExtraBody) Object.assign(kwargs, parseExtraBody(ctx, extraBody, itemIndex));
@@ -151,6 +169,8 @@ export class LmChatCustomEndpoint implements INodeType {
 				default: CUSTOM_MODEL_ENDPOINT_CREDENTIAL,
 			},
 			modelField,
+			apiFormatField,
+			responsesFormatNotice,
 			...requestHeaderFields,
 			chatModelOptions,
 		],
@@ -164,6 +184,8 @@ export class LmChatCustomEndpoint implements INodeType {
 			extractValue: true,
 		}) as string;
 		const options = this.getNodeParameter('options', itemIndex, {}) as Options;
+		const usesResponses =
+			this.getNodeParameter('apiFormat', itemIndex, CHAT_COMPLETIONS_FORMAT) === RESPONSES_FORMAT;
 		const sendContextHeaders = this.getNodeParameter(
 			'sendContextHeaders',
 			itemIndex,
@@ -190,20 +212,17 @@ export class LmChatCustomEndpoint implements INodeType {
 			requestHeaders,
 		});
 
-		const chatModel = new ChatOpenAICompletions({
+		const fields: ChatOpenAIFields = {
 			// The fetch strips this: a gateway reading its key elsewhere must not see it
 			apiKey: 'custom-model-endpoint',
 			model,
 			configuration,
-			maxTokens: limitOrUnset(options.maxTokens),
-			frequencyPenalty: options.frequencyPenalty,
-			presencePenalty: options.presencePenalty,
+			maxTokens: limitOrUnset(usesResponses ? options.maxOutputTokens : options.maxTokens),
 			temperature: options.temperature,
 			topP: options.topP,
-			stop: options.stop ? options.stop.split(',').map((item) => item.trim()) : undefined,
 			timeout: options.timeout,
 			maxRetries: options.maxRetries ?? 2,
-			modelKwargs: modelKwargsFor(this, options, extraBody, itemIndex),
+			modelKwargs: modelKwargsFor(this, options, extraBody, itemIndex, usesResponses),
 			callbacks: [new N8nLlmTracing(this)],
 			// The gateways this node exists for (vLLM, LM Studio and the rest) reject
 			// `strict: null` in a tool definition, so the OpenAI sub-node turns this off too
@@ -215,8 +234,19 @@ export class LmChatCustomEndpoint implements INodeType {
 				if (status !== undefined && !shouldRetry(status)) throw error;
 				nameTransportFault(error);
 			}),
-		});
+			...(usesResponses
+				? {}
+				: {
+						frequencyPenalty: options.frequencyPenalty,
+						presencePenalty: options.presencePenalty,
+						stop: options.stop ? options.stop.split(',').map((item) => item.trim()) : undefined,
+					}),
+		};
 
-		return { response: wrapChatModelMessageInput(chatModel) };
+		// The Agent reads `useResponsesApi` off ChatOpenAI to tell the two protocols apart
+		if (usesResponses) return { response: new ChatOpenAI({ ...fields, useResponsesApi: true }) };
+
+		// The protocol-specific client, so an opaque gateway model ID cannot pick the API instead
+		return { response: wrapChatModelMessageInput(new ChatOpenAICompletions(fields)) };
 	}
 }

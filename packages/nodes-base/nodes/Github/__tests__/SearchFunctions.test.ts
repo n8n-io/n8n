@@ -1,6 +1,12 @@
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
 
-import { getUsers, getRepositories, getWorkflows, getRefs } from '../SearchFunctions';
+import {
+	getUsers,
+	getOrganizations,
+	getRepositories,
+	getWorkflows,
+	getRefs,
+} from '../SearchFunctions';
 import type { Mock } from 'vitest';
 
 const mockLoadOptionsFunctions = {
@@ -108,6 +114,28 @@ describe('Search Functions', () => {
 				expect.objectContaining({
 					method: 'GET',
 					qs: expect.objectContaining({ page: 3 }),
+				}),
+			);
+		});
+	});
+
+	describe('getOrganizations', () => {
+		it('should search organizations only', async () => {
+			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValue({
+				items: [{ login: 'n8n-io', html_url: 'https://github.com/n8n-io' }],
+				total_count: 1,
+			});
+
+			const result = await getOrganizations.call(mockLoadOptionsFunctions, 'n8n');
+
+			expect(result).toEqual({
+				results: [{ name: 'n8n-io', value: 'n8n-io', url: 'https://github.com/n8n-io' }],
+				paginationToken: undefined,
+			});
+			expect(mockLoadOptionsFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+				'githubOAuth2Api',
+				expect.objectContaining({
+					qs: expect.objectContaining({ q: 'n8n type:org', page: 1 }),
 				}),
 			);
 		});

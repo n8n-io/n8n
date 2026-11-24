@@ -134,14 +134,15 @@ export class ExecutionLedgerRepository {
 }
 
 function toLedgerRow(raw: RawLedgerRow): ExecutionLedgerRow {
-	const { entityType, event, outcome, blockedBy, origin, occurredAt } = raw;
+	const { entityType, event, outcome, blockedBy, origin, occurredAt, projectId } = raw;
 	if (
 		!isOneOf(EXECUTION_LEDGER_ENTITY_TYPES, entityType) ||
 		!isOneOf(EXECUTION_LEDGER_EVENTS, event) ||
 		!isOneOf(EXECUTION_LEDGER_OUTCOMES, outcome) ||
 		!isOneOf(EXECUTION_LEDGER_BLOCKED_BY, blockedBy) ||
 		!isOneOf(EXECUTION_LEDGER_ORIGINS, origin) ||
-		!(occurredAt instanceof Date || typeof occurredAt === 'string')
+		!(occurredAt instanceof Date || typeof occurredAt === 'string') ||
+		!(typeof projectId === 'string' || projectId === null)
 	) {
 		throw new UnexpectedError('Ledger row has an unexpected value', { extra: { id: raw.id } });
 	}
@@ -153,7 +154,7 @@ function toLedgerRow(raw: RawLedgerRow): ExecutionLedgerRow {
 		entityType,
 		entityName: String(raw.entityName),
 		entityId: String(raw.entityId),
-		projectId: String(raw.projectId),
+		projectId,
 		mode: String(raw.mode),
 		source: String(raw.source),
 		event,

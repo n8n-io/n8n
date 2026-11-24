@@ -59,6 +59,7 @@ beforeEach(() => {
 		disabledSources: [],
 	});
 	vi.mocked(selfHealingApi.fetchSelfHealingStatus).mockResolvedValue({
+		enabled: true,
 		isReviewer: false,
 		setupProjectId: 'personal',
 	});
@@ -107,7 +108,7 @@ it('keeps the loading state until the status request settles', async () => {
 	await vi.waitFor(() => expect(store.isEmpty).toBe(true));
 	expect(queryByTestId('inbox-empty')).not.toBeInTheDocument();
 
-	status.resolve({ isReviewer: false, setupProjectId: 'personal' });
+	status.resolve({ enabled: true, isReviewer: false, setupProjectId: 'personal' });
 	await refresh;
 	await vi.waitFor(() =>
 		expect(getByTestId('inbox-empty')).toHaveTextContent('Get fixes for failed workflows'),
@@ -123,6 +124,7 @@ it.each([
 	['closed', 'No closed reviews', 'Reviews that were approved or discarded appear here.'],
 ] as const)('shows self-healing copy on the %s tab once it is set up', async (tab, title, body) => {
 	vi.mocked(selfHealingApi.fetchSelfHealingStatus).mockResolvedValue({
+		enabled: true,
 		isReviewer: true,
 		setupProjectId: 'personal',
 	});

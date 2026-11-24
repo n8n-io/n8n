@@ -163,6 +163,7 @@ describe('SourceControlImportService', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		sharedWorkflowRepository.syncImportedWorkflowOwner.mockResolvedValue(false);
 		workflowPublishGuard.assertCanPublish.mockResolvedValue(undefined);
 		// Default: nothing is published, so pull deletions never wait on an unpublish.
 		workflowPublishedVersionRepository.getPublishedVersionId.mockResolvedValue(null);
@@ -360,7 +361,6 @@ describe('SourceControlImportService', () => {
 
 			workflowRepository.findByIds.mockResolvedValue([]);
 			folderRepository.find.mockResolvedValue([]);
-			sharedWorkflowRepository.findWithFields.mockResolvedValue([]);
 			workflowRepository.upsertImportedContent.mockResolvedValue('1');
 
 			fsReadFile
@@ -436,7 +436,6 @@ describe('SourceControlImportService', () => {
 
 			workflowRepository.findByIds.mockResolvedValue([]);
 			folderRepository.find.mockResolvedValue([]);
-			sharedWorkflowRepository.findWithFields.mockResolvedValue([]);
 			workflowRepository.upsertImportedContent.mockResolvedValue('1');
 			fsReadFile.mockResolvedValue(JSON.stringify(legacyWorkflowData));
 
@@ -465,7 +464,6 @@ describe('SourceControlImportService', () => {
 			);
 			workflowRepository.findByIds.mockResolvedValue([]);
 			folderRepository.find.mockResolvedValue([]);
-			sharedWorkflowRepository.findWithFields.mockResolvedValue([]);
 
 			// Mock invalid JSON that will cause parsing to fail
 			fsReadFile.mockResolvedValue('{ invalid json');
@@ -520,7 +518,6 @@ describe('SourceControlImportService', () => {
 			);
 			workflowRepository.findByIds.mockResolvedValue([]);
 			folderRepository.find.mockResolvedValue([]);
-			sharedWorkflowRepository.findWithFields.mockResolvedValue([]);
 			workflowRepository.upsertImportedContent.mockResolvedValue(mockWorkflowData.id);
 
 			fsReadFile.mockResolvedValueOnce(JSON.stringify(mockWorkflowData));
@@ -563,7 +560,6 @@ describe('SourceControlImportService', () => {
 			);
 			workflowRepository.findByIds.mockResolvedValue([]);
 			folderRepository.find.mockResolvedValue([]);
-			sharedWorkflowRepository.findWithFields.mockResolvedValue([]);
 			workflowRepository.upsertImportedContent.mockResolvedValue('workflow2');
 
 			fsReadFile
@@ -606,7 +602,6 @@ describe('SourceControlImportService', () => {
 			);
 			workflowRepository.findByIds.mockResolvedValue([]);
 			folderRepository.find.mockResolvedValue([]);
-			sharedWorkflowRepository.findWithFields.mockResolvedValue([]);
 			workflowRepository.upsertImportedContent.mockResolvedValue('wf');
 			userRepository.findOne.mockResolvedValue(Object.assign(new Person(), { id: 'user1' }));
 
@@ -639,7 +634,6 @@ describe('SourceControlImportService', () => {
 			);
 			workflowRepository.findByIds.mockResolvedValue([]);
 			folderRepository.find.mockResolvedValue([]);
-			sharedWorkflowRepository.findWithFields.mockResolvedValue([]);
 			workflowRepository.upsertImportedContent.mockResolvedValue('wf1');
 			fsReadFile.mockResolvedValue(
 				JSON.stringify({
@@ -680,7 +674,6 @@ describe('SourceControlImportService', () => {
 			);
 			workflowRepository.findByIds.mockResolvedValue([]);
 			folderRepository.find.mockResolvedValue([]);
-			sharedWorkflowRepository.findWithFields.mockResolvedValue([]);
 			workflowRepository.upsertImportedContent.mockResolvedValue('workflow1');
 
 			fsReadFile.mockResolvedValue(JSON.stringify(mockWorkflowData));
@@ -728,7 +721,6 @@ describe('SourceControlImportService', () => {
 				}),
 			]);
 			folderRepository.find.mockResolvedValue([]);
-			sharedWorkflowRepository.findWithFields.mockResolvedValue([]);
 			workflowRepository.upsertImportedContent.mockResolvedValue('workflow1');
 			userRepository.findOne.mockResolvedValue(
 				Object.assign(new Person(), { id: mockUserId, firstName: 'Test', lastName: 'User' }),
@@ -780,7 +772,6 @@ describe('SourceControlImportService', () => {
 				}),
 			]);
 			folderRepository.find.mockResolvedValue([]);
-			sharedWorkflowRepository.findWithFields.mockResolvedValue([]);
 			workflowRepository.upsertImportedContent.mockResolvedValue('workflow1');
 
 			fsReadFile.mockResolvedValue(JSON.stringify(mockWorkflowData));
@@ -827,7 +818,6 @@ describe('SourceControlImportService', () => {
 				}),
 			]);
 			folderRepository.find.mockResolvedValue([]);
-			sharedWorkflowRepository.findWithFields.mockResolvedValue([]);
 			workflowRepository.upsertImportedContent.mockResolvedValue('workflow1');
 
 			fsReadFile.mockResolvedValue(JSON.stringify(mockWorkflowData));
@@ -875,7 +865,6 @@ describe('SourceControlImportService', () => {
 			]);
 			userRepository.findOne.mockResolvedValue(mockPerson);
 			folderRepository.find.mockResolvedValue([]);
-			sharedWorkflowRepository.findWithFields.mockResolvedValue([]);
 			workflowRepository.upsertImportedContent.mockResolvedValue('workflow1');
 
 			fsReadFile.mockResolvedValue(JSON.stringify(mockWorkflowData));
@@ -894,7 +883,7 @@ describe('SourceControlImportService', () => {
 			expect(workflowService.activateWorkflowFromSourceControlPull).not.toHaveBeenCalled();
 		});
 
-		describe('workflow mutation hooks on pull-archive', () => {
+		describe('workflow mutation hooks on pull', () => {
 			const mockUserId = 'user-id-123';
 			const mockPerson = Object.assign(new Person(), { id: mockUserId });
 			const mockWorkflowFile = '/mock/workflow1.json';
@@ -932,7 +921,6 @@ describe('SourceControlImportService', () => {
 						: [],
 				);
 				folderRepository.find.mockResolvedValue([]);
-				sharedWorkflowRepository.findWithFields.mockResolvedValue([]);
 				workflowRepository.upsertImportedContent.mockResolvedValue('workflow1');
 				fsReadFile.mockResolvedValue(JSON.stringify(remoteWorkflow(options.remote)));
 
@@ -1012,6 +1000,33 @@ describe('SourceControlImportService', () => {
 
 				expect(workflowMutationHooks.afterWorkflowArchived).toHaveBeenCalledWith('workflow1', null);
 			});
+
+			it('fires the transfer hook after the owner update completes', async () => {
+				const candidates = setupPull({ existing: {} });
+				sharedWorkflowRepository.syncImportedWorkflowOwner.mockImplementationOnce(async () => {
+					expect(workflowMutationHooks.afterWorkflowsTransferred).not.toHaveBeenCalled();
+					return true;
+				});
+
+				await service.importWorkflowFromWorkFolder(candidates, mockUserId);
+
+				expect(sharedWorkflowRepository.syncImportedWorkflowOwner).toHaveBeenCalledWith(
+					'workflow1',
+					'project1',
+				);
+				expect(workflowMutationHooks.afterWorkflowsTransferred).toHaveBeenCalledExactlyOnceWith(
+					['workflow1'],
+					null,
+				);
+			});
+
+			it('does not fire the transfer hook when the owner did not change', async () => {
+				const candidates = setupPull({ existing: {} });
+
+				await service.importWorkflowFromWorkFolder(candidates, mockUserId);
+
+				expect(workflowMutationHooks.afterWorkflowsTransferred).not.toHaveBeenCalled();
+			});
 		});
 
 		describe('autoPublish parameter', () => {
@@ -1023,7 +1038,6 @@ describe('SourceControlImportService', () => {
 					Object.assign(new Project(), { id: 'project1', type: 'personal' }),
 				);
 				folderRepository.find.mockResolvedValue([]);
-				sharedWorkflowRepository.findWithFields.mockResolvedValue([]);
 				workflowRepository.upsertImportedContent.mockResolvedValue('workflow1');
 				userRepository.findOne.mockResolvedValue(mockPerson);
 			});
@@ -1469,7 +1483,6 @@ describe('SourceControlImportService', () => {
 				workflowRepository.findByIds.mockResolvedValue([]);
 				userRepository.findOne.mockResolvedValue(mockPerson);
 				folderRepository.find.mockResolvedValue([]);
-				sharedWorkflowRepository.findWithFields.mockResolvedValue([]);
 				workflowRepository.upsertImportedContent.mockResolvedValue('workflow1');
 				workflowService.activateWorkflowFromSourceControlPull.mockRejectedValue(
 					new Error('Activation failed'),
@@ -1614,7 +1627,6 @@ describe('SourceControlImportService', () => {
 					}),
 				);
 				folderRepository.find.mockResolvedValue([]);
-				sharedWorkflowRepository.findWithFields.mockResolvedValue([]);
 				workflowRepository.upsertImportedContent.mockResolvedValue('1');
 			});
 
@@ -1718,7 +1730,6 @@ describe('SourceControlImportService', () => {
 					}),
 				);
 				folderRepository.find.mockResolvedValue([]);
-				sharedWorkflowRepository.findWithFields.mockResolvedValue([]);
 				workflowRepository.upsertImportedContent.mockResolvedValue('1');
 			});
 
@@ -1797,7 +1808,6 @@ describe('SourceControlImportService', () => {
 				);
 				workflowRepository.findByIds.mockResolvedValue([]);
 				folderRepository.find.mockResolvedValue([]);
-				sharedWorkflowRepository.findWithFields.mockResolvedValue([]);
 				workflowRepository.upsertImportedContent.mockResolvedValue('1');
 				fsReadFile.mockResolvedValueOnce(JSON.stringify(mockWorkflowData));
 			});
@@ -2801,7 +2811,6 @@ describe('SourceControlImportService', () => {
 			// Assert
 			expect(result).toHaveLength(1);
 			expect(credentialsRepository.upsert).toHaveBeenCalled();
-			// Ownership sync should be handled by syncResourceOwnership
 		});
 
 		it('should sanitize credential data and exclude oauthTokenData', async () => {

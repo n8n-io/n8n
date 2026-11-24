@@ -12,11 +12,17 @@ import { ErrorReporter, FsByteStoreService, StorageConfig } from 'n8n-core';
 import type { Readable } from 'node:stream';
 import { v4 as uuid } from 'uuid';
 
-/** Where a knowledge file's bytes live, as recorded on its `agent_files` row. */
+/** Where a knowledge file's bytes live, as recorded on its `agent_files` or `knowledge_file` row. */
 export type KnowledgeFileStorageReference = {
 	storedAt: ExecutionDataStorageLocation;
 	storageKey: string;
 };
+
+/** A new knowledge file and its owner: an agent, or a collection, never both. */
+type KnowledgeFileOwnerReference = { fileId: string } & (
+	| { agentId: string; collectionId?: never }
+	| { collectionId: string; agentId?: never }
+);
 
 /**
  * Marks a key written by the former BinaryDataService layout. On `fs` those
@@ -25,10 +31,10 @@ export type KnowledgeFileStorageReference = {
 const LEGACY_KEY_SEGMENT = '/binary_data/';
 
 /**
- * Stores agent knowledge file bytes wherever the execution data storage mode
+ * Stores knowledge file bytes wherever the execution data storage mode
  * points: in `db` mode the bytes go into the `binary_data` table keyed by a
  * uuid, otherwise into a byte store keyed by a path. The `fs` byte store is
- * always available; `s3` and `az` are registered at module init when configured.
+ * always available; `s3` and `az` require registration through `registerByteStore`.
  *
  * Keys are generated on write and persisted, so files written by the former
  * BinaryDataService layout keep resolving under their original key.
@@ -51,7 +57,7 @@ export class KnowledgeFileStore {
 	}
 
 	async write(
-		ref: { agentId: string; fileId: string },
+		ref: KnowledgeFileOwnerReference,
 		body: Buffer | Readable,
 		metadata: PreWriteBlobMetadata,
 	): Promise<KnowledgeFileStorageReference> {
@@ -123,13 +129,12 @@ export class KnowledgeFileStore {
 		);
 	}
 
-	private newKeyFor(ref: { agentId: string; fileId: string }) {
-		return [
-			'agents',
-			encodeURIComponent(ref.agentId),
-			'knowledge-files',
-			encodeURIComponent(ref.fileId),
-			'content',
-		].join('/');
+	private newKeyFor(ref: KnowledgeFileOwnerReference) {
+		const ownerSegments =
+			ref.agentId !== undefined
+				? ['agents', encodeURIComponent(ref.agentId), 'knowledge-files']
+				: ['knowledge-collections', encodeURIComponent(ref.collectionId), 'files'];
+
+		return [...ownerSegments, encodeURIComponent(ref.fileId), 'content'].join('/');
 	}
 }

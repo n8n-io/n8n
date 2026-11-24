@@ -1307,6 +1307,8 @@ export class QuickJsBridge implements RuntimeBridge {
 	/**
 	 * Inject the E() error handler matching IsolatedVmBridge semantics:
 	 * - Re-throw ExpressionError / ExpressionExtensionError
+	 * - Re-throw the out of memory error. isolated-vm stops the isolate at
+	 *   its memory limit, so guest code cannot catch that error there.
 	 * - Swallow everything else (TypeErrors, generic Errors, etc.)
 	 *
 	 * Errors from host callbacks arrive as sentinel objects (not class
@@ -1320,6 +1322,9 @@ export class QuickJsBridge implements RuntimeBridge {
 				globalThis.E = function(error, _context) {
 					var name = error && error.name;
 					if (name === 'ExpressionError' || name === 'ExpressionExtensionError') {
+						throw error;
+					}
+					if (name === 'InternalError' && error.message === 'out of memory') {
 						throw error;
 					}
 					return undefined;

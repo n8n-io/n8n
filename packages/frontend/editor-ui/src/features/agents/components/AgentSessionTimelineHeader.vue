@@ -3,6 +3,7 @@ import {
 	N8nBreadcrumbs,
 	N8nButton,
 	N8nDropdownMenu,
+	N8nHoverCard,
 	N8nIcon,
 	N8nIconButton,
 	N8nText,
@@ -12,10 +13,11 @@ import {
 	type PathItem,
 } from '@n8n/design-system';
 
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import type { SessionTimelineMetadata } from '@/features/agents/types';
 import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
+import SessionUsageBreakdown from './timeline-items/SessionUsageBreakdown.vue';
 
 interface SessionDropdownData {
 	date: string;
@@ -99,6 +101,30 @@ const tokenFormatter = new Intl.NumberFormat('en-US', {
 const costFormatter = new Intl.NumberFormat('en-US', {
 	maximumFractionDigits: 4,
 });
+
+const creditsFormatter = new Intl.NumberFormat('en-US', {
+	maximumFractionDigits: 2,
+});
+
+const isUsageOpen = ref(false);
+const hasUsageBreakdown = computed(() => (props.metadata?.usage?.turns ?? 0) > 0);
+
+/** Credits where the Assistant pays with them, else the cost in dollars. */
+const usagePrice = computed(() => {
+	const metadata = props.metadata;
+	if (!metadata) return undefined;
+	if (metadata.totalCredits !== undefined) {
+		return {
+			label: i18n.baseText('agentSessions.timeline.usage.credits'),
+			value: creditsFormatter.format(metadata.totalCredits),
+		};
+	}
+	if (metadata.totalCost === null) return undefined;
+	return {
+		label: i18n.baseText('agentSessions.timeline.usage.cost'),
+		value: `$${costFormatter.format(metadata.totalCost)}`,
+	};
+});
 </script>
 
 <template>
@@ -157,13 +183,64 @@ const costFormatter = new Intl.NumberFormat('en-US', {
 					<N8nText step="xs" bold>{{ metadata.trigger.label }}</N8nText>
 				</li>
 				<li :class="$style.numericMetadata">
-					<N8nIcon color="text-light" icon="hash" />
-					<N8nText step="xs" bold>
-						{{ tokenFormatter.format(metadata.totalTokens).toUpperCase() }}
-						<span v-if="metadata.totalCost !== null" :class="$style.innerLabel"
-							>(${{ costFormatter.format(metadata.totalCost) }})</span
-						>
-					</N8nText>
+					<N8nHoverCard
+						v-model:open="isUsageOpen"
+						:open-delay="200"
+						:close-delay="100"
+						:disabled="!hasUsageBreakdown"
+						side="bottom"
+						align="end"
+						:side-offset="6"
+						max-width="22rem"
+					>
+						<template #trigger>
+							<!-- A session without saved turns has no breakdown, so its count is plain text. -->
+							<component
+								:is="hasUsageBreakdown ? 'button' : 'span'"
+								:type="hasUsageBreakdown ? 'button' : undefined"
+								:class="[$style.usageTrigger, hasUsageBreakdown && $style.interactive]"
+								data-testid="agent-session-timeline-usage"
+								@click="isUsageOpen = hasUsageBreakdown && !isUsageOpen"
+							>
+								<N8nIcon color="text-light" icon="hash" />
+								<N8nText step="xs" bold>
+									{{ tokenFormatter.format(metadata.totalTokens).toUpperCase() }}
+									<span
+										v-if="metadata.totalCredits !== undefined"
+										:class="$style.innerLabel"
+										data-testid="agent-session-timeline-credits"
+										>({{
+											i18n.baseText('agentSessions.timeline.credits', {
+												// Only a total shown as exactly 1 is singular, not 0.5 or 1.01.
+												adjustToNumber: Math.round(metadata.totalCredits * 100) === 100 ? 1 : 2,
+												interpolate: { count: creditsFormatter.format(metadata.totalCredits) },
+											})
+										}})</span
+									>
+									<span v-else-if="metadata.totalCost !== null" :class="$style.innerLabel"
+										>(${{ costFormatter.format(metadata.totalCost) }})</span
+									>
+								</N8nText>
+							</component>
+						</template>
+						<template v-if="hasUsageBreakdown && metadata.usage" #content>
+							<SessionUsageBreakdown
+								:usage="metadata.usage"
+								:title="i18n.baseText('agentSessions.timeline.usage.sessionTitle')"
+								:meta="
+									i18n.baseText('agentSessions.timeline.usage.turns', {
+										adjustToNumber: metadata.usage.turns,
+										interpolate: { count: String(metadata.usage.turns) },
+									})
+								"
+								:price="usagePrice"
+								:no-cache-data-text="
+									i18n.baseText('agentSessions.timeline.usage.sessionNoCacheData')
+								"
+								data-testid="agent-session-timeline-usage-detail"
+							/>
+						</template>
+					</N8nHoverCard>
 				</li>
 				<li :class="$style.numericMetadata">
 					<N8nIcon color="text-light" icon="clock" />
@@ -329,6 +406,27 @@ const costFormatter = new Intl.NumberFormat('en-US', {
 }
 .numericMetadata {
 	font-variant-numeric: tabular-nums;
+}
+
+.usageTrigger {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	min-width: 0;
+	padding: 0;
+	border: none;
+	background: transparent;
+	color: inherit;
+	font: inherit;
+}
+
+.interactive {
+	cursor: pointer;
+
+	&:hover,
+	&:focus-visible {
+		color: var(--text-color);
+	}
 }
 
 .descriptionList {

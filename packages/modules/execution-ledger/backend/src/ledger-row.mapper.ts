@@ -9,7 +9,7 @@ const BIGINT_COLUMN_MAX = Number.MAX_SAFE_INTEGER;
 
 export function toStartedRow(
 	facts: ExecutionLedgerStartedFacts,
-	projectId: string,
+	projectId: string | null,
 	eventId: string,
 ): NewExecutionLedgerRow {
 	return {
@@ -33,7 +33,7 @@ export function toStartedRow(
 
 export function toEndedRow(
 	facts: ExecutionLedgerEndedFacts,
-	projectId: string,
+	projectId: string | null,
 	eventId: string,
 ): NewExecutionLedgerRow {
 	const row: NewExecutionLedgerRow = {
