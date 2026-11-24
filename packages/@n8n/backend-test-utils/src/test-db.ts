@@ -63,6 +63,7 @@ export async function init() {
 		// An existing file keeps its data, as it does without a template.
 		const databasePath = getSqliteDatabasePath();
 		if (!fs.existsSync(databasePath)) {
+			await fs.promises.mkdir(path.dirname(databasePath), { recursive: true });
 			await fs.promises.copyFile(sqliteTemplate, databasePath);
 			fromTemplate = true;
 		}

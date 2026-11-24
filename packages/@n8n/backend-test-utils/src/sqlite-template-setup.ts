@@ -26,8 +26,12 @@ export function createSqliteTemplateGlobalSetup(moduleName: string) {
 		});
 
 		const originalUserFolder = process.env.N8N_USER_FOLDER;
+		const originalEncryptionKey = process.env.N8N_ENCRYPTION_KEY;
+		const originalSqliteDatabase = process.env.DB_SQLITE_DATABASE;
 		const originalTemplate = process.env.N8N_TEST_SQLITE_TEMPLATE;
 		process.env.N8N_USER_FOLDER = templateDir;
+		process.env.N8N_ENCRYPTION_KEY = 'test_key';
+		process.env.DB_SQLITE_DATABASE = 'database.sqlite';
 		let resetContainer: (() => void) | undefined;
 		try {
 			const [{ initSqliteTemplateDb }, { Container }] = await Promise.all([
@@ -44,6 +48,10 @@ export function createSqliteTemplateGlobalSetup(moduleName: string) {
 			resetContainer?.();
 			if (originalUserFolder === undefined) delete process.env.N8N_USER_FOLDER;
 			else process.env.N8N_USER_FOLDER = originalUserFolder;
+			if (originalEncryptionKey === undefined) delete process.env.N8N_ENCRYPTION_KEY;
+			else process.env.N8N_ENCRYPTION_KEY = originalEncryptionKey;
+			if (originalSqliteDatabase === undefined) delete process.env.DB_SQLITE_DATABASE;
+			else process.env.DB_SQLITE_DATABASE = originalSqliteDatabase;
 		}
 
 		return () => {
