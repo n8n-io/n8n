@@ -98,6 +98,7 @@ describe('OpenAI Integration with the AI SDK', () => {
 		});
 
 		expect(result.steps).toHaveLength(2);
+		expect(result.steps[0].finishReason).toBe('tool-calls');
 		expect(result.steps[0].toolCalls).toMatchObject([
 			{
 				toolCallId: 'call_YONsRdkCKu8Sh8WGkUiXqlYW',
@@ -169,6 +170,7 @@ describe('OpenAI Integration with the AI SDK', () => {
 
 		const steps = await result.steps;
 		expect(steps).toHaveLength(2);
+		expect(steps[0].finishReason).toBe('tool-calls');
 		expect(steps[0].toolCalls).toMatchObject([
 			{ toolCallId: 'call_StreamTest123', toolName: 'get_weather', input: { city: 'Tokyo' } },
 		]);
