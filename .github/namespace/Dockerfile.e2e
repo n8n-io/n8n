@@ -1,0 +1,24 @@
+# E2E runner image with Chromium and its system packages preinstalled.
+# Keep PLAYWRIGHT_VERSION aligned with packages/quality/testing/playwright/.playwright-version.
+# When they differ, the E2E job ignores this copy and installs browsers as usual.
+ARG NAMESPACE_BASE_IMAGE_REF
+FROM ${NAMESPACE_BASE_IMAGE_REF}
+
+ARG PLAYWRIGHT_VERSION=1.62.1
+ENV PLAYWRIGHT_BROWSERS_PATH=/opt/ms-playwright
+
+USER root
+
+# Node is only needed to run the Playwright installer, so it is removed afterwards.
+RUN mkdir -p /tmp/node "$PLAYWRIGHT_BROWSERS_PATH" \
+    && curl --fail --silent --show-error --location --retry 3 \
+        https://nodejs.org/dist/v26.5.1/node-v26.5.1-linux-x64.tar.xz -o /tmp/node.tar.xz \
+    && echo 'cc7b3484ade63bd203a9d304f21ec37a3b622b988d7bdecf1dc4d68fc44a91b7  /tmp/node.tar.xz' | sha256sum -c - \
+    && tar -xJf /tmp/node.tar.xz -C /tmp/node --strip-components=1 \
+    && PATH="/tmp/node/bin:$PATH" npx --yes "playwright@${PLAYWRIGHT_VERSION}" install --with-deps chromium \
+    && echo "$PLAYWRIGHT_VERSION" > "$PLAYWRIGHT_BROWSERS_PATH/.playwright-version" \
+    && chmod -R a+rX "$PLAYWRIGHT_BROWSERS_PATH" \
+    && rm -rf /tmp/node /tmp/node.tar.xz /root/.npm \
+    && rm -rf /var/lib/apt/lists/*
+
+USER runner
