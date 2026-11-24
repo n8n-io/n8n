@@ -99,12 +99,18 @@ export class SeededEntities {
 				if (detail && key !== undefined && this.shallow.has(key)) {
 					// Seed it again under the stored ref, so the gym updates the entity.
 					const ref = this.seeded.get(key);
-					if (ref !== undefined && typeof entity.ref === 'string') entity.ref = ref;
+					if (ref !== undefined) {
+						if (typeof entity.ref === 'string' && entity.ref.toLowerCase() !== ref.toLowerCase()) {
+							this.refs.set(entity.ref.toLowerCase(), ref);
+						}
+						entity.ref = ref;
+					}
 					return true;
 				}
 				// Another ref for the same object: references to it use the stored ref.
-				if (!heldAlready && typeof entity.ref === 'string') {
-					this.refs.set(entity.ref.toLowerCase(), stored ?? entity.ref);
+				const storedRef = (key !== undefined ? this.seeded.get(key) : undefined) ?? stored;
+				if (typeof entity.ref === 'string' && storedRef !== undefined) {
+					this.refs.set(entity.ref.toLowerCase(), storedRef);
 				}
 				return this.options.keepParents === true && hasChildren(entity);
 			});
