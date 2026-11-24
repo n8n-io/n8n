@@ -212,6 +212,7 @@ describe('WorkflowCreationService', () => {
 				'exists-without-access',
 			]);
 			expect(context.allowedCredentialIds).toEqual(new Set(['usable', 'missing']));
+			expect(context.missingCredentialIds).toEqual(new Set(['missing']));
 		});
 
 		it.each([new Error('cache down'), 'cache down'])(
@@ -577,6 +578,168 @@ describe('WorkflowCreationService', () => {
 				expect(
 					enterpriseWorkflowServiceMock.validateCredentialPermissionsToUser,
 				).toHaveBeenCalledWith(newWorkflow, new Set(), { allowUninspectableSource: false });
+			});
+		});
+
+		describe('with a credential that a package import leaves unresolved', () => {
+			const NOT_SHARED_MESSAGE =
+				'The workflow you are trying to save contains credentials that are not shared with you';
+			const user = mock<User>();
+			const project = { id: 'project-1' } as Project;
+
+			/** A batch whose workflows reference `absent-credential`, which no credential has yet. */
+			async function prepareBatchWithAbsentCredential() {
+				projectServiceMock.getProjectWithScope.mockResolvedValue(project);
+				folderServiceMock.getFoldersByIds.mockResolvedValue([]);
+				mcpSettingsService.getAutoExposeNewWorkflows.mockResolvedValue(false);
+				licenseStateMock.isSharingLicensed.mockReturnValue(true);
+				enterpriseWorkflowServiceMock.collectCredentialReferences.mockReturnValue({
+					ids: new Set(['absent-credential']),
+					hasUnresolved: false,
+					hasUninspectableSource: false,
+				});
+				credentialsFinderServiceMock.findCredentialIdsWithScopeForUser.mockResolvedValueOnce(
+					new Set(),
+				);
+				enterpriseWorkflowServiceMock.findMissingCredentialIds.mockResolvedValueOnce([
+					'absent-credential',
+				]);
+				// The rule of the real guard: the user can use every referenced credential.
+				enterpriseWorkflowServiceMock.validateCredentialPermissionsToUser.mockImplementation(
+					(_workflow, allowed) => {
+						const allowedIds = Array.isArray(allowed) ? allowed.map(({ id }) => id) : [...allowed];
+						if (!allowedIds.includes('absent-credential')) throw new Error('Not allowed');
+					},
+				);
+				setupTransactionMocks();
+
+				return await workflowCreationService.prepareBatchContext(
+					user,
+					project.id,
+					[],
+					[makeWorkflow()],
+					new Map(),
+					new Set(['absent-credential']),
+				);
+			}
+
+			it('keeps a credential that is still absent when the workflow is created', async () => {
+				const batchContext = await prepareBatchWithAbsentCredential();
+				enterpriseWorkflowServiceMock.findMissingCredentialIds.mockResolvedValueOnce([
+					'absent-credential',
+				]);
+				const newWorkflow = makeWorkflow();
+
+				// The transaction mock stops the create at the write, after every check.
+				await expect(
+					workflowCreationService.createWorkflow(user, newWorkflow, { batchContext }),
+				).rejects.toThrow('Stopping for test');
+
+				// One read for the batch and one for this create.
+				expect(enterpriseWorkflowServiceMock.findMissingCredentialIds).toHaveBeenCalledTimes(2);
+				expect(enterpriseWorkflowServiceMock.findMissingCredentialIds).toHaveBeenLastCalledWith([
+					'absent-credential',
+				]);
+				expect(WorkflowHelpers.replaceInvalidCredentials).toHaveBeenCalledWith(
+					newWorkflow,
+					project.id,
+					batchContext.credentialResolutionCache,
+					new Set(['absent-credential']),
+				);
+				// Only the batch preparation read the access of the user.
+				expect(
+					credentialsFinderServiceMock.findCredentialIdsWithScopeForUser,
+				).toHaveBeenCalledTimes(1);
+				expect(batchContext.allowedCredentialIds).toEqual(new Set(['absent-credential']));
+				expect(workflowRepositoryMock.createContent).toHaveBeenCalled();
+			});
+
+			it('checks the access to a credential that exists when the workflow is created, and refuses a credential that the user cannot use', async () => {
+				const batchContext = await prepareBatchWithAbsentCredential();
+				batchContext.credentialResolutionCache.set('key', { id: 'absent-credential', name: 'A' });
+				enterpriseWorkflowServiceMock.findMissingCredentialIds.mockResolvedValueOnce([]);
+				credentialsFinderServiceMock.findCredentialIdsWithScopeForUser.mockResolvedValueOnce(
+					new Set(),
+				);
+				const newWorkflow = makeWorkflow();
+
+				await expect(
+					workflowCreationService.createWorkflow(user, newWorkflow, { batchContext }),
+				).rejects.toThrow(NOT_SHARED_MESSAGE);
+
+				expect(
+					credentialsFinderServiceMock.findCredentialIdsWithScopeForUser,
+				).toHaveBeenLastCalledWith(['absent-credential'], user, ['credential:read']);
+				// The reference resolves as every other reference does: no allowance and no cached value.
+				expect(WorkflowHelpers.replaceInvalidCredentials).toHaveBeenCalledWith(
+					newWorkflow,
+					project.id,
+					new Map(),
+					new Set(),
+				);
+				expect(batchContext.missingCredentialIds).toEqual(new Set());
+				expect(batchContext.allowedCredentialIds).toEqual(new Set());
+				expect(workflowRepositoryMock.createContent).not.toHaveBeenCalled();
+			});
+
+			it('creates the workflow when the user can use the credential that exists now', async () => {
+				const batchContext = await prepareBatchWithAbsentCredential();
+				enterpriseWorkflowServiceMock.findMissingCredentialIds.mockResolvedValueOnce([]);
+				credentialsFinderServiceMock.findCredentialIdsWithScopeForUser.mockResolvedValueOnce(
+					new Set(['absent-credential']),
+				);
+
+				await expect(
+					workflowCreationService.createWorkflow(user, makeWorkflow(), { batchContext }),
+				).rejects.toThrow('Stopping for test');
+
+				expect(
+					credentialsFinderServiceMock.findCredentialIdsWithScopeForUser,
+				).toHaveBeenLastCalledWith(['absent-credential'], user, ['credential:read']);
+				expect(batchContext.missingCredentialIds).toEqual(new Set());
+				expect(batchContext.allowedCredentialIds).toEqual(new Set(['absent-credential']));
+				expect(workflowRepositoryMock.createContent).toHaveBeenCalled();
+			});
+
+			it('checks the access to a credential that a reference without an id resolves to', async () => {
+				const batchContext = await prepareBatchWithAbsentCredential();
+				// The workflow names no id of the batch before the resolution, and one after it.
+				enterpriseWorkflowServiceMock.collectCredentialReferences.mockReturnValueOnce({
+					ids: new Set(),
+					hasUnresolved: false,
+					hasUninspectableSource: false,
+				});
+				enterpriseWorkflowServiceMock.findMissingCredentialIds.mockResolvedValueOnce([]);
+				credentialsFinderServiceMock.findCredentialIdsWithScopeForUser.mockResolvedValueOnce(
+					new Set(),
+				);
+
+				await expect(
+					workflowCreationService.createWorkflow(user, makeWorkflow(), { batchContext }),
+				).rejects.toThrow(NOT_SHARED_MESSAGE);
+
+				expect(enterpriseWorkflowServiceMock.findMissingCredentialIds).toHaveBeenCalledTimes(2);
+				expect(
+					credentialsFinderServiceMock.findCredentialIdsWithScopeForUser,
+				).toHaveBeenLastCalledWith(['absent-credential'], user, ['credential:read']);
+				expect(workflowRepositoryMock.createContent).not.toHaveBeenCalled();
+			});
+
+			it('does not check again for a workflow that references no such credential', async () => {
+				const batchContext = await prepareBatchWithAbsentCredential();
+				enterpriseWorkflowServiceMock.collectCredentialReferences.mockReturnValue({
+					ids: new Set(),
+					hasUnresolved: false,
+					hasUninspectableSource: false,
+				});
+
+				await expect(
+					workflowCreationService.createWorkflow(user, makeWorkflow(), { batchContext }),
+				).rejects.toThrow('Stopping for test');
+
+				// Only the batch preparation read which ids are absent.
+				expect(enterpriseWorkflowServiceMock.findMissingCredentialIds).toHaveBeenCalledTimes(1);
+				expect(batchContext.missingCredentialIds).toEqual(new Set(['absent-credential']));
 			});
 		});
 
