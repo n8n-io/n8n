@@ -16,7 +16,8 @@ const operatorArb = fc.oneof(
 			type: fc.constant('string'),
 			operation: fc.constantFrom('equals', 'contains', 'notEquals'),
 		}),
-		rightValue: fc.constantFrom('a', 'b', ''),
+		// 'A' matches 'a' only when the comparison ignores case.
+		rightValue: fc.constantFrom('a', 'A', 'b', ''),
 	}),
 	fc.record({
 		operator: fc.record({
@@ -36,10 +37,15 @@ const operatorArb = fc.oneof(
 	}),
 );
 
-/** The `filter` parameter of If, Filter and Switch rules, version 2 of the filter. */
+/**
+ * The `filter` parameter of If, Filter and Switch rules, version 2 of the filter.
+ * The engine reads `caseSensitive` from this value. The node option `ignoreCase`
+ * only sets it in the editor, so the caller must keep the two in agreement.
+ */
 export function conditionsArb(
 	ctx: GenContext,
 	strict: boolean,
+	caseSensitive: boolean,
 ): fc.Arbitrary<{ conditions: ParamDraft }> {
 	return fc
 		.record({
@@ -52,7 +58,7 @@ export function conditionsArb(
 		.map(({ combinator, list }) => ({
 			conditions: {
 				options: {
-					caseSensitive: true,
+					caseSensitive,
 					leftValue: '',
 					typeValidation: strict ? 'strict' : 'loose',
 					version: 2,

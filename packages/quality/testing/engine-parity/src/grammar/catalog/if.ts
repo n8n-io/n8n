@@ -13,16 +13,20 @@ export const ifCondition: CatalogEntry = {
 	deterministic: true,
 	params: (ctx) =>
 		fc
-			// Mostly loose: strict type validation fails most cases on the first item.
-			.oneof(
-				{ arbitrary: fc.constant(false), weight: 4 },
-				{ arbitrary: fc.constant(true), weight: 1 },
-			)
-			.chain((strict) =>
-				conditionsArb(ctx, strict).map(({ conditions }) => ({
+			.record({
+				// Mostly loose: strict type validation fails most cases on the first item.
+				strict: fc.oneof(
+					{ arbitrary: fc.constant(false), weight: 4 },
+					{ arbitrary: fc.constant(true), weight: 1 },
+				),
+				// The editor default is to ignore case.
+				ignoreCase: fc.boolean(),
+			})
+			.chain(({ strict, ignoreCase }) =>
+				conditionsArb(ctx, strict, !ignoreCase).map(({ conditions }) => ({
 					conditions,
 					looseTypeValidation: !strict,
-					options: {},
+					options: { ignoreCase },
 				})),
 			),
 };

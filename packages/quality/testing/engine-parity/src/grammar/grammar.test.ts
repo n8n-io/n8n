@@ -19,7 +19,8 @@ function portsInRange({ ir }: ParityCase): boolean {
 		const to = nodes.get(edge.to);
 		if (!from || !to) return false;
 		const outputs = outputCount(getEntry(from.catalogId), from.params);
-		return edge.out < outputs && edge.in < getEntry(to.catalogId).inputs;
+		const inputs = getEntry(to.catalogId).inputs;
+		return edge.out >= 0 && edge.out < outputs && edge.in >= 0 && edge.in < inputs;
 	});
 }
 
@@ -113,6 +114,22 @@ describe('grammar', () => {
 		for (const { main } of generated) visit(main);
 
 		for (const combinator of ruleSets.smoke.combinators) expect(used).toContain(combinator);
+	});
+
+	it('makes If nodes in both case modes, with the filter in agreement with the node option', () => {
+		const modes = new Set<boolean>();
+		for (const { ir } of sample('smoke')) {
+			for (const irNode of ir.nodes.filter(({ catalogId }) => catalogId === 'if.condition')) {
+				const { conditions, options } = irNode.params as {
+					conditions: { options: { caseSensitive: boolean } };
+					options: { ignoreCase: boolean };
+				};
+				expect(conditions.options.caseSensitive).toBe(!options.ignoreCase);
+				modes.add(conditions.options.caseSensitive);
+			}
+		}
+
+		expect([...modes].sort()).toEqual([false, true]);
 	});
 
 	it('makes cases that the SDK can print as code', () => {
