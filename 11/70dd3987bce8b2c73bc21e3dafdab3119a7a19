@@ -1,0 +1,19 @@
+packages/cli/src/workflows/triggers/workflow-trigger-activator.ts
+  s_7e504039b73188::t_5ad39f7918d326 1054-1061,1063,1066,1068
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1170dd3987bce8b2c73bc21e3dafdab3119a7a19",
+  "prompts": {},
+  "sessions": {
+    "s_7e504039b73188": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "65dfb1ce-bf47-4b7e-a7af-3adac7fe13d3",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}
