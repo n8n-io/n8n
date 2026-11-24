@@ -70,6 +70,7 @@ export const DOMAIN_TOOL_IDS = {
 	CONVERSATION_HISTORY: 'conversation-history',
 	ACTIVITY: 'activity',
 	SAVE_USER_PREFERENCE: 'save_user_preference',
+	SEND_FEEDBACK: 'send_feedback',
 	SKILLS: 'skills',
 	APPS: 'apps',
 } as const;
@@ -159,6 +160,9 @@ export const ALWAYS_LOADED_TOOL_NAMES = new Set<string>([
 	// can react, which is exactly the moment it does not. Registered only when the
 	// preferences service is wired, so an instance without the feature pays nothing.
 	DOMAIN_TOOL_IDS.SAVE_USER_PREFERENCE,
+	// The agent reaches for this at the moment it is stuck. Behind `find_tools`, it
+	// would have to know the tool exists first, so it would not report the problem.
+	DOMAIN_TOOL_IDS.SEND_FEEDBACK,
 	'web-search',
 	'fetch-url',
 	DOMAIN_TOOL_IDS.SKILLS,

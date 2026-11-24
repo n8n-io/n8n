@@ -37,12 +37,13 @@ import {
 	TimeoutExecutionCancelledError,
 	isIndefiniteWait,
 } from 'n8n-workflow';
-import { OperationalError } from '@n8n/errors';
+import { OperationalError, UnexpectedError } from '@n8n/errors';
 import { v4 as uuid } from 'uuid';
 import { z } from 'zod';
 
 import { hostMetadataExecutionId } from '../types/agent-queued-message';
 import type { ActiveExecutions } from '@/active-executions';
+import { isExecutionIdV2 } from '@/executions/execution-id';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
 import type { EphemeralNodeExecutor } from '@/node-execution/ephemeral-node-executor';
@@ -66,6 +67,13 @@ import {
 import { CallableWorkflowUnavailableError } from '@/workflows/callable/callable-workflow-unavailable.error';
 
 import type { InstrumentToolAdditionalData } from '../evaluation/agent-evaluation.contracts';
+import {
+	assertInstrumentedRunStaysOnMain,
+	InstrumentedRunUnsupportedError,
+	PAUSED_INSTRUMENTED_RUN_MESSAGE,
+	SIMULATED_RUN_METADATA,
+	UNINSTRUMENTED_RUN_MESSAGE,
+} from './instrumented-run-guard';
 import { AgentFileBridge, FILES_INPUT_SCHEMA } from '../agent-file-bridge.service';
 import { decodeAgentSandboxHostMetadata } from '../agent-sandbox-principal';
 import { isTaskRunMemoryResourceId } from '../utils/agent-memory-scope';
@@ -338,6 +346,9 @@ export async function executeWorkflow(
 	const workflowData =
 		workflow.pinData === undefined ? workflow : { ...workflow, pinData: undefined };
 
+	const instrument = context.instrumentToolAdditionalData;
+	const instrumented = Boolean(instrument && instrumentedToolName);
+
 	// Build execution data following Instance AI adapter's pattern
 	const runData: IWorkflowExecutionDataProcess = {
 		executionMode: context.executionMode,
@@ -350,7 +361,14 @@ export async function executeWorkflow(
 			resultData: {
 				pinData: triggerPinData,
 				runData: {},
-				...(context.executionMetadata !== undefined && { metadata: context.executionMetadata }),
+				// Custom data on the execution. A guardrail check records which agent it
+				// covers. An instrumented run records that its requests went to a simulation.
+				...((context.executionMetadata !== undefined || instrumented) && {
+					metadata: {
+						...(instrumented ? { ...SIMULATED_RUN_METADATA } : {}),
+						...context.executionMetadata,
+					},
+				}),
 			},
 			executionData: {
 				contextData: {},
@@ -368,13 +386,16 @@ export async function executeWorkflow(
 		}),
 	};
 
-	// Eval runs decorate the sub-execution's additionalData (HTTP mock handler,
-	// mocked credentials helper). The closure does not survive queue
-	// serialization — eval callers refuse queue mode upfront.
-	const instrument = context.instrumentToolAdditionalData;
+	// Test runs and evals decorate the sub-execution's additionalData (HTTP mock
+	// handler, node guard, credentials helper). The closure only applies in this
+	// main process, so a run that would go to a queue worker or Engine v2 is
+	// refused here, before it starts.
+	let instrumentationApplied = false;
 	if (instrument && instrumentedToolName) {
+		assertInstrumentedRunStaysOnMain(workflow, context.executionMode);
 		runData.configureAdditionalData = (additionalData) => {
 			instrument(additionalData, { toolName: instrumentedToolName, toolKind: 'workflow' });
+			instrumentationApplied = true;
 		};
 	}
 
@@ -393,6 +414,21 @@ export async function executeWorkflow(
 		undefined,
 		responsePromise,
 	);
+
+	// Backstop if the guard and `WorkflowRunner.run` ever disagree: `runMainProcess` awaits
+	// the closure before `run` returns, so a run that is still going without it left this
+	// process (a queue job or Engine v2). A run that failed before it started is already
+	// finalized and reports its own error below.
+	if (
+		instrumented &&
+		!instrumentationApplied &&
+		(activeExecutions.has(executionId) || isExecutionIdV2(executionId))
+	) {
+		await stopInstrumentedRun(executionId, workflow.id, 'started without its mocks');
+		throw new UnexpectedError(UNINSTRUMENTED_RUN_MESSAGE, {
+			extra: { executionId, workflowId: workflow.id },
+		});
+	}
 
 	return await withWorkflowCancellation(executionId, workflow.id, context.abortSignal, async () => {
 		// Wait for completion with timeout protection
@@ -438,6 +474,10 @@ export async function executeWorkflow(
 			completedRun && context.executionMode === 'integrated'
 				? formatResult(executionId, completedRun.status, completedRun.data, allOutputs)
 				: await extractResult(executionId, allOutputs);
+		if (instrumented && result.status === 'waiting') {
+			await stopInstrumentedRun(executionId, workflow.id, 'paused');
+			throw new InstrumentedRunUnsupportedError(PAUSED_INSTRUMENTED_RUN_MESSAGE);
+		}
 		if (isWorkflowToolResponse(webhookResponse)) {
 			const response = await Container.get(WebhookResponseRelay).restoreOffloadedBody(
 				webhookResponse,
@@ -450,6 +490,34 @@ export async function executeWorkflow(
 		}
 		return result;
 	});
+}
+
+/**
+ * Stops an instrumented run that would go on without its instrumentation: a paused run
+ * resumes later (Wait Tracker, resume webhook) with a fresh additionalData, and a run that
+ * left this process never had it.
+ */
+async function stopInstrumentedRun(
+	executionId: string,
+	workflowId: string,
+	reason: 'paused' | 'started without its mocks',
+): Promise<void> {
+	try {
+		const { ExecutionService } = await import('@/executions/execution.service.js');
+		await Container.get(ExecutionService).stop(executionId, [workflowId]);
+	} catch (error) {
+		// Not reported as a safe refusal: the run may still go on for real.
+		Container.get(Logger).error('Failed to stop an instrumented workflow run', {
+			executionId,
+			workflowId,
+			reason,
+			error: error instanceof Error ? error.message : String(error),
+		});
+		throw new UnexpectedError(
+			`The workflow ${reason}, and its execution ${executionId} could not be stopped. Stop it in the executions list.`,
+			{ cause: error },
+		);
+	}
 }
 
 /** The foreground tool owns cancellation until it hands the workflow to a background job. */

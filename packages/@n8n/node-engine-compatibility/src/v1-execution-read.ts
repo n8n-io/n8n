@@ -14,6 +14,7 @@ import type {
 	IRunData,
 	ISourceData,
 	ITaskData,
+	ITaskMetadata,
 } from 'n8n-workflow';
 import { createRunExecutionData } from 'n8n-workflow';
 
@@ -59,13 +60,31 @@ interface StepRun {
 	taskData: ITaskData;
 }
 
+/** An execution this one is linked to, as v1 names it on a task. */
+export interface LinkedExecution {
+	executionId: string;
+	workflowId: string;
+}
+
+/**
+ * The executions this one is linked to. v1 notes the parent on the task of the
+ * sub-execution's trigger, and each sub-execution on the task of the step that started it,
+ * which is where the editor offers the links.
+ */
+export interface ExecutionLinks {
+	parent?: LinkedExecution;
+	subExecutions?: Array<LinkedExecution & { stepId: string }>;
+}
+
 /** @param pinData The pin data the run used. The canvas marks those nodes as pinned, not as executed. */
 export function toV1RunExecutionData(
 	graph: WorkflowGraph,
 	steps: StepDetail[],
 	pinData?: IPinData,
+	links: ExecutionLinks = {},
 ) {
 	const runs = toStepRuns(graph, steps);
+	noteLinks(graph, runs, links);
 
 	// By settle time, not by creation order: parallel branches settle
 	// independently, so the row created last is not the step that ran last.
@@ -86,6 +105,32 @@ export function toV1RunExecutionData(
 		// A v2 execution has no resume token. The factory otherwise mints one.
 		resumeToken: '',
 	});
+}
+
+/** Writes each link onto the task v1 keeps it on. A link to a step that is not reported is dropped. */
+function noteLinks(
+	graph: WorkflowGraph,
+	runs: StepRun[],
+	{ parent, subExecutions = [] }: ExecutionLinks,
+) {
+	const note = (run: StepRun, metadata: ITaskMetadata) => {
+		run.taskData.metadata = { ...run.taskData.metadata, ...metadata };
+	};
+
+	if (parent) {
+		const triggerIds = new Set(graph.nodes.filter((n) => n.type === 'trigger').map((n) => n.id));
+		const triggerRun = runs.find((run) => triggerIds.has(run.step.nodeId));
+		if (triggerRun) note(triggerRun, { parentExecution: parent });
+	}
+
+	for (const { stepId, ...subExecution } of subExecutions) {
+		const run = runs.find(({ step }) => step.id === stepId);
+		if (!run) continue;
+		note(run, {
+			subExecution,
+			subExecutionsCount: (run.taskData.metadata?.subExecutionsCount ?? 0) + 1,
+		});
+	}
 }
 
 /** When the step reached its current status. `createdAt` is when it was planned. */

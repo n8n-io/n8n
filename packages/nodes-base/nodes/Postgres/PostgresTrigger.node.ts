@@ -270,6 +270,10 @@ export class PostgresTrigger implements INodeType {
 		const { db } = await initDB.call(this);
 		const connection = await db.connect({ direct: true });
 
+		connection.client.on('error', (error: Error) => {
+			this.logger.error('Postgres Trigger lost its connection and stopped listening', { error });
+		});
+
 		// prepare and set up listener
 		const onNotification = async (data: IDataObject) => {
 			if (data.payload) {
@@ -302,7 +306,19 @@ export class PostgresTrigger implements INodeType {
 			throw error;
 		}
 
+		let closing = false;
+		const releaseConnection = async () => {
+			try {
+				await connection.done();
+			} catch (error) {
+				this.logger.warn('Postgres Trigger could not release its connection', { error });
+			}
+		};
+
 		const cleanUpDb = async () => {
+			if (closing) return;
+			closing = true;
+
 			try {
 				try {
 					// check if the connection is healthy
@@ -336,6 +352,7 @@ export class PostgresTrigger implements INodeType {
 				}
 			} finally {
 				connection.client.removeListener('notification', onNotification);
+				await releaseConnection();
 			}
 		};
 

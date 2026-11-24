@@ -375,13 +375,13 @@ export async function executeWorkflow(
 		throw PreExecuteBlockedError.unwrap(error);
 	}
 
-	const executionId = await activeExecutions.add(runData);
-
 	const { OwnershipService } = await import('@/services/ownership.service.js');
 	const { projectId, projectName } = await getWorkflowProjectDetailsSafe(
 		Container.get(OwnershipService),
 		workflowData.id,
 	);
+
+	const executionId = await activeExecutions.add({ ...runData, projectId });
 
 	Container.get(EventService).emit('workflow-executed', {
 		user: additionalData.userId ? { id: additionalData.userId } : undefined,

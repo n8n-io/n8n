@@ -1,4 +1,4 @@
-import type { JSONObject, SideCallUsageReport, TokenUsage } from '@n8n/agents';
+import type { AgentMessage, JSONObject, SideCallUsageReport, TokenUsage } from '@n8n/agents';
 import {
 	ASSISTANT_WORKFLOWS_ARCHIVED_EVENT,
 	InstanceAiConfirmRequestDto,
@@ -56,6 +56,8 @@ import { InstanceAiCreditService } from '../instance-ai-credit.service';
 import { InstanceAiErrorReporterService } from '../instance-ai-error-reporter.service';
 import { InstanceAiAdapterService } from '../instance-ai.adapter.service';
 import { InstanceAiSettingsService } from '../instance-ai-settings.service';
+import { extractEditorContextResourceAttachments } from '../internal-messages';
+import { extractTextFromContent } from '../message-parser';
 import {
 	getUserFacingErrorCode,
 	getUserFacingErrorMessage,
@@ -204,6 +206,16 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 	normalizeResumeData(resumeData: unknown): unknown {
 		const parsed = InstanceAiConfirmRequestDto.safeParse(resumeData);
 		return parsed.success ? buildResumeData(toConfirmationData(parsed.data)) : resumeData;
+	}
+
+	/**
+	 * The model input of a user turn keeps its resource attachments, such as
+	 * mentions, in the thread context block. Read them back like the current
+	 * runtime does, so the chat shows them again after a reload.
+	 */
+	readMessageReferences(modelInput: AgentMessage): InstanceAiResourceAttachment[] {
+		const content = 'content' in modelInput ? modelInput.content : undefined;
+		return extractEditorContextResourceAttachments(extractTextFromContent(content));
 	}
 
 	/**
@@ -630,7 +642,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 			temporaryWorkflowMarkers: createThreadTemporaryWorkflowMarkers(turn.memory, turn.thread.id),
 			getProjectId: async () => turn.thread.projectId,
 			eventBus: new AssistantEventSink(
-				turn.emitHostEvent,
+				turn,
 				this.logger,
 				trace ? (event) => trace.observeEvent(event) : undefined,
 			),

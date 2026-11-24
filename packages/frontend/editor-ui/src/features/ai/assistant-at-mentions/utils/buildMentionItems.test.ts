@@ -53,7 +53,7 @@ describe('buildMentionItems', () => {
 			'Node 2',
 			'Node 3',
 		]);
-		expect(workflow.children?.[0].nodeCount).toBe(2);
+		expect(workflow.children?.[0]).toMatchObject({ nodeCount: 2 });
 	});
 
 	it('builds flat items with workflow and group breadcrumbs', () => {

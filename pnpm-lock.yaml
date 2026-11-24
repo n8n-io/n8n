@@ -2347,6 +2347,9 @@ importers:
       '@n8n/code-task-contract':
         specifier: workspace:*
         version: link:../code-task-contract
+      '@n8n/utils':
+        specifier: workspace:*
+        version: link:../utils
       n8n-workflow:
         specifier: workspace:*
         version: link:../../workflow
@@ -3300,6 +3303,24 @@ importers:
       zod-to-json-schema:
         specifier: 'catalog:'
         version: 3.23.3(zod@3.25.76)
+
+  packages/@n8n/hooks-api:
+    devDependencies:
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../oxlint-config
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 7.0.2007
+      typescript:
+        specifier: catalog:typescript
+        version: 7.0.2
 
   packages/@n8n/imap:
     dependencies:
@@ -5003,6 +5024,9 @@ importers:
       '@n8n/utils':
         specifier: workspace:*
         version: link:../utils
+      '@n8n/workflow-engine-check':
+        specifier: workspace:*
+        version: link:../workflow-engine-check
       acorn:
         specifier: 8.14.0
         version: 8.14.0
@@ -5211,6 +5235,9 @@ importers:
       '@n8n/expression-runtime':
         specifier: workspace:*
         version: link:../@n8n/expression-runtime
+      '@n8n/hooks-api':
+        specifier: workspace:*
+        version: link:../@n8n/hooks-api
       '@n8n/inbound-auth':
         specifier: workspace:*
         version: link:../@n8n/inbound-auth
@@ -5260,8 +5287,8 @@ importers:
         specifier: 'catalog:'
         version: 1.27.0
       '@n8n_io/license-sdk':
-        specifier: 4.2.0
-        version: 4.2.0
+        specifier: 4.3.0
+        version: 4.3.0
       '@opentelemetry/api':
         specifier: 1.9.1
         version: 1.9.1
@@ -7073,6 +7100,9 @@ importers:
       '@n8n/frontend-module-apps':
         specifier: workspace:*
         version: link:../../modules/apps/frontend
+      '@n8n/frontend-module-engine-v2':
+        specifier: workspace:*
+        version: link:../../modules/engine-v2/frontend
       '@n8n/frontend-module-inbox':
         specifier: workspace:*
         version: link:../../modules/inbox/frontend
@@ -7872,6 +7902,97 @@ importers:
       vitest-mock-extended:
         specifier: 'catalog:'
         version: 3.1.0(typescript@7.0.2)(vitest@5.0.1)
+
+  packages/modules/engine-v2/frontend:
+    dependencies:
+      '@n8n/design-system':
+        specifier: workspace:*
+        version: link:../../../frontend/@n8n/design-system
+      '@n8n/frontend-module-sdk':
+        specifier: workspace:*
+        version: link:../../../frontend/@n8n/frontend-module-sdk
+      '@n8n/i18n':
+        specifier: workspace:*
+        version: link:../../../frontend/@n8n/i18n
+      '@n8n/stores':
+        specifier: workspace:*
+        version: link:../../../frontend/@n8n/stores
+      '@n8n/workflow-engine-check':
+        specifier: workspace:*
+        version: link:../../../@n8n/workflow-engine-check
+      n8n-workflow:
+        specifier: workspace:*
+        version: link:../../../workflow
+      vue:
+        specifier: catalog:frontend
+        version: 3.5.26(typescript@6.0.2)
+      vue-router:
+        specifier: catalog:frontend
+        version: 4.5.0(vue@3.5.26(typescript@6.0.2))
+    devDependencies:
+      '@iconify/json':
+        specifier: 'catalog:'
+        version: 2.2.488
+      '@n8n/frontend-test-utils':
+        specifier: workspace:*
+        version: link:../../../frontend/@n8n/frontend-test-utils
+      '@n8n/frontend-vite-config':
+        specifier: workspace:*
+        version: link:../../../frontend/@n8n/frontend-vite-config
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/oxlint-config
+      '@n8n/playwright-janitor':
+        specifier: workspace:*
+        version: link:../../../quality/testing/janitor
+      '@n8n/stylelint-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/stylelint-config
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/typescript-config
+      '@n8n/vitest-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/vitest-config
+      '@testing-library/jest-dom':
+        specifier: catalog:frontend
+        version: 6.9.1
+      '@testing-library/vue':
+        specifier: catalog:frontend
+        version: 8.1.0(@vue/compiler-sfc@3.5.26)(vue@3.5.26(typescript@6.0.2))
+      '@vitejs/plugin-vue':
+        specifier: catalog:frontend
+        version: 6.0.8(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 7.0.2007
+      stylelint:
+        specifier: 'catalog:'
+        version: 16.23.0(supports-color@8.1.1)(typescript@6.0.2)
+      typescript:
+        specifier: 'catalog:'
+        version: 6.0.2
+      unplugin-icons:
+        specifier: catalog:frontend
+        version: 23.0.1(@vue/compiler-sfc@3.5.26)
+      vite:
+        specifier: 'catalog:'
+        version: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+      vite-svg-loader:
+        specifier: catalog:frontend
+        version: 5.1.0(vue@3.5.26(typescript@6.0.2))
+      vitest:
+        specifier: 'catalog:'
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+      vize:
+        specifier: 'catalog:'
+        version: 0.715.0(vue@3.5.26(typescript@6.0.2))
+      vue-tsc:
+        specifier: ^2.2.8
+        version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)
 
   packages/modules/execution-ledger/backend:
     dependencies:
@@ -13430,8 +13551,8 @@ packages:
     resolution: {integrity: sha512-xCELByG49K24I1rVx6o3FueAH1+cu66d7ojoQepkbfsphIK0HLZisTCZ3/MmgtZUjvXMUI0Ekg46NWHvMMcJtQ==}
     engines: {node: '>=20.15', pnpm: '>=8.14'}
 
-  '@n8n_io/license-sdk@4.2.0':
-    resolution: {integrity: sha512-KEVZdD8k+N7OBSb6G4s8l8McfAk7/V2TM6SFCOMQC5oMltlk0vA0MQc08riDYLDCitESAeqI4VOvp17Pgvr7gA==}
+  '@n8n_io/license-sdk@4.3.0':
+    resolution: {integrity: sha512-JMrJoNFqNk0A7ZFzLKAOaQBy8YcgnxTHIeBDhbmKKm6vmpDTJhB+WEIWdTU+zEsLKIADWbIx0JgQ57fhIM1ouw==}
     engines: {node: '>=22.19.0'}
 
   '@napi-rs/canvas-android-arm64@1.0.11':
@@ -32137,7 +32258,7 @@ snapshots:
 
   '@n8n_io/ai-assistant-sdk@1.27.0': {}
 
-  '@n8n_io/license-sdk@4.2.0':
+  '@n8n_io/license-sdk@4.3.0':
     dependencies:
       crypto-js: 4.2.0
       node-machine-id: 1.1.12

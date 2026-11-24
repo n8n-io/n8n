@@ -155,9 +155,19 @@
 			"reason": "Event record of runs in the project at the time they happened; re-homing rows would misstate where they ran. Rows live only seconds before the fold deletes them, and no foreign key ties them to the project."
 		},
 		{
+			"name": "ExecutionLedgerParkedEntity",
+			"path": "packages/modules/execution-ledger/backend/src/database/entities/execution-ledger-parked.entity.ts",
+			"reason": "Copy of ledger rows that a fold step could not fold. A replay counts them for the project where the run happened, so re-homing rows would misstate where they ran. No foreign key ties them to the project."
+		},
+		{
 			"name": "ExecutionLimitUsage",
 			"path": "packages/modules/execution-limits/backend/src/execution-limit-usage.entity.ts",
 			"reason": "Daily usage counts of runs in the project at the time they ran; re-homing rows would misstate where they ran. No foreign key: rows outlive the project."
+		},
+		{
+			"name": "ExecutionLimitAudit",
+			"path": "packages/modules/execution-limits/backend/src/execution-limit-audit.entity.ts",
+			"reason": "History of the limit changes of the project at the time they happened; re-homing rows would misstate which project a limit belonged to. Rows are never updated, and no foreign key ties them to the project."
 		}
 	]
 }

@@ -16,20 +16,19 @@ export type TaskRunnerResult = ServiceResult<TaskRunnerMeta>;
 
 export const taskRunner: Service<TaskRunnerResult> = {
 	description: 'Task Runner',
+	// In queue mode the stack offloads manual runs to workers, and a main that
+	// offloads them starts no task broker. Without a worker there is no broker to
+	// dial, so the runner would never register.
 	shouldStart: (ctx) =>
-		(ctx.mains > 0 || ctx.workers > 0) && ctx.config.env?.N8N_RUNNERS_MODE !== 'internal',
+		(ctx.workers > 0 || (ctx.mains > 0 && !ctx.isQueueMode)) &&
+		ctx.config.env?.N8N_RUNNERS_MODE !== 'internal',
 
 	getOptions(ctx) {
 		if (ctx.external) {
 			return { taskBrokerUri: `http://${EXTERNAL_HOST}:5679` };
 		}
-		const { workers, mains, projectName } = ctx;
-		const taskBrokerHost =
-			workers > 0
-				? `${projectName}-n8n-worker-1`
-				: mains > 1
-					? `${projectName}-n8n-main-1`
-					: `${projectName}-n8n`;
+		const { workers, projectName } = ctx;
+		const taskBrokerHost = workers > 0 ? `${projectName}-n8n-worker-1` : `${projectName}-n8n`;
 		return { taskBrokerUri: `http://${taskBrokerHost}:5679` };
 	},
 

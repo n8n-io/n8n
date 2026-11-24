@@ -1,4 +1,5 @@
 import {
+	AGENT_BUILDER_TOOL_NAMES,
 	buildDataTablesSessionGrantKey,
 	buildExecuteNodeSessionGrantKey,
 	buildRunStepSessionGrantKey,
@@ -99,11 +100,15 @@ function buildSingleAlwaysAllowKey(
 	confirmationWorkflowId?: string,
 ): string | null {
 	const toolName = resolveBuilderToolName(rawToolName);
+	// Going live is always the user's decision, so publishing an agent asks every time and
+	// never offers a grant that would approve the next card on its own (TRUST-1197).
+	if (toolName === AGENT_BUILDER_TOOL_NAMES.PUBLISH_AGENT) return null;
 	if (toolName === REMOVED_BUILDER_TOOL_NAMES.SUBMIT_WORKFLOW) {
 		const isUpdate = typeof args.workflowId === 'string' && args.workflowId.length > 0;
 		return `${REMOVED_BUILDER_TOOL_NAMES.SUBMIT_WORKFLOW}:${isUpdate ? 'update' : 'create'}`;
 	}
 	const action = typeof args.action === 'string' ? args.action : '';
+	if (toolName === 'skills' && action === 'import-from-source') return null;
 	const workflowId = resolveAlwaysAllowWorkflowId(args, confirmationWorkflowId);
 	// Running a workflow grants "always allow" per workflow, so the grant applies only to the
 	// workflow the user approved. Without a workflow ID, refuse to store a key (fail closed).
