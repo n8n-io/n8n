@@ -14,7 +14,6 @@ const mockAgentInstances: Array<{
 	telemetry: Mock;
 	workspace: Mock;
 	thinking: Mock;
-	reasoning: Mock;
 	mcpConnectionFailures: Mock;
 	modelFetch: Mock;
 	functionId: Mock;
@@ -45,7 +44,6 @@ vi.mock('@n8n/agents', async (importOriginal) => ({
 		this.telemetry = vi.fn().mockReturnThis();
 		this.workspace = vi.fn().mockReturnThis();
 		this.thinking = vi.fn().mockReturnThis();
-		this.reasoning = vi.fn().mockReturnThis();
 		this.mcpConnectionFailures = vi.fn().mockReturnThis();
 		this.modelFetch = vi.fn().mockReturnThis();
 		this.functionId = vi.fn().mockReturnThis();
@@ -166,7 +164,6 @@ import {
 	setTraceModelId,
 	setTracePromptVersion,
 } from '../../tracing/langsmith-tracing';
-import type { CreateInstanceAgentOptions, ModelConfig } from '../../types';
 import { createInstanceAgent } from '../instance-agent';
 import { getSystemPrompt as getSystemPromptImport } from '../system-prompt';
 
@@ -1199,105 +1196,6 @@ describe('createInstanceAgent', () => {
 		} as never);
 
 		expect(mockAgentInstances[0]?.thinking).not.toHaveBeenCalled();
-	});
-
-	describe('OpenRouter reasoning effort', () => {
-		afterEach(() => vi.unstubAllEnvs());
-
-		async function createWithModel(
-			modelId: ModelConfig,
-			options: Pick<CreateInstanceAgentOptions, 'thinkingEnabled'> = {},
-		) {
-			await createInstanceAgent({
-				modelId,
-				context: {
-					runLabel: 'openrouter-reasoning-test',
-					browserUseState: undefined,
-					licenseHints: undefined,
-					localMcpServer: undefined,
-				},
-				orchestrationContext: {
-					runId: 'openrouter-reasoning-test',
-				},
-				memoryConfig: {},
-				mcpManager: createMcpManagerStub(),
-				...options,
-			} as never);
-		}
-
-		it.each([
-			['none', 'none'],
-			['minimal', 'minimal'],
-			['low', 'low'],
-			['medium', 'medium'],
-			['high', 'high'],
-			['xhigh', 'xhigh'],
-			[' MEDIUM ', 'medium'],
-		] as const)(
-			'passes N8N_INSTANCE_AI_REASONING_EFFORT=%s to agent.reasoning(%s) for OpenRouter models',
-			async (envValue, expected) => {
-				vi.stubEnv('N8N_INSTANCE_AI_REASONING_EFFORT', envValue);
-
-				await createWithModel('openrouter/anthropic/claude-sonnet-4.5');
-
-				expect(mockAgentInstances[0]?.reasoning).toHaveBeenCalledWith(expected);
-				expect(mockAgentInstances[0]?.thinking).not.toHaveBeenCalled();
-			},
-		);
-
-		it('passes the effort for OpenRouter ModelConfig objects', async () => {
-			vi.stubEnv('N8N_INSTANCE_AI_REASONING_EFFORT', 'medium');
-
-			await createWithModel({
-				kind: 'endpoint',
-				id: 'openrouter/anthropic/claude-sonnet-4.5',
-				url: '',
-				apiKey: 'test-key',
-			});
-
-			expect(mockAgentInstances[0]?.reasoning).toHaveBeenCalledWith('medium');
-			expect(mockAgentInstances[0]?.thinking).not.toHaveBeenCalled();
-		});
-
-		it('omits reasoning when N8N_INSTANCE_AI_REASONING_EFFORT is unset', async () => {
-			vi.stubEnv('N8N_INSTANCE_AI_REASONING_EFFORT', undefined);
-
-			await createWithModel('openrouter/anthropic/claude-sonnet-4.5');
-
-			expect(mockAgentInstances[0]?.reasoning).not.toHaveBeenCalled();
-			expect(mockAgentInstances[0]?.thinking).not.toHaveBeenCalled();
-		});
-
-		it.each(['max', 'bogus', ''])(
-			'omits reasoning when N8N_INSTANCE_AI_REASONING_EFFORT=%s is unsupported on OpenRouter',
-			async (envValue) => {
-				vi.stubEnv('N8N_INSTANCE_AI_REASONING_EFFORT', envValue);
-
-				await createWithModel('openrouter/anthropic/claude-sonnet-4.5');
-
-				expect(mockAgentInstances[0]?.reasoning).not.toHaveBeenCalled();
-			},
-		);
-
-		it('skips OpenRouter reasoning when thinking is explicitly disabled', async () => {
-			vi.stubEnv('N8N_INSTANCE_AI_REASONING_EFFORT', 'medium');
-
-			await createWithModel('openrouter/anthropic/claude-sonnet-4.5', { thinkingEnabled: false });
-
-			expect(mockAgentInstances[0]?.reasoning).not.toHaveBeenCalled();
-		});
-
-		it('does not call agent.reasoning for non-OpenRouter models', async () => {
-			vi.stubEnv('N8N_INSTANCE_AI_REASONING_EFFORT', 'high');
-
-			await createWithModel('anthropic/claude-opus-4-8');
-
-			expect(mockAgentInstances[0]?.reasoning).not.toHaveBeenCalled();
-			expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('anthropic', {
-				mode: 'adaptive',
-				effort: 'high',
-			});
-		});
 	});
 
 	it('reports MCP connection failures to the SDK agent so the runtime can inject a model note', async () => {

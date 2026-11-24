@@ -45,6 +45,11 @@ export function applyAgentThinking(
 ): void {
 	const provider = resolveModelProvider(modelId);
 
+	if (provider === 'openrouter') {
+		agent.reasoning(effort ?? resolveAnthropicEffort());
+		return;
+	}
+
 	if (!provider || !PROVIDER_CAPABILITIES[provider]?.thinking) return;
 
 	if (provider === 'custom') {

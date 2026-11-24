@@ -1,11 +1,12 @@
 /* eslint-disable import-x/order, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-argument */
 import type { Mock } from 'vitest';
 
-const mockAgentInstances: Array<{ thinking: Mock }> = [];
+const mockAgentInstances: Array<{ thinking: Mock; reasoning: Mock }> = [];
 
 vi.mock('@n8n/agents', () => ({
 	Agent: vi.fn().mockImplementation(function Agent(this: (typeof mockAgentInstances)[number]) {
 		this.thinking = vi.fn().mockReturnThis();
+		this.reasoning = vi.fn().mockReturnThis();
 		mockAgentInstances.push(this);
 	}),
 }));
@@ -218,24 +219,25 @@ describe('applyAgentThinking', () => {
 		expect(mockAgentInstances[0]?.thinking).not.toHaveBeenCalled();
 	});
 
-	it('skips OpenRouter models (thinking unsupported)', () => {
-		const agent = new Agent('test');
-		applyAgentThinking(agent, 'openrouter/moonshotai/kimi-k3');
-		expect(mockAgentInstances[0]?.thinking).not.toHaveBeenCalled();
-	});
+	describe('OpenRouter reasoning', () => {
+		afterEach(() => vi.unstubAllEnvs());
 
-	it('preserves the reasoning effort set by an OpenRouter helper', async ({ onTestFinished }) => {
-		vi.stubEnv('N8N_INSTANCE_AI_REASONING_EFFORT', 'high');
-		onTestFinished(() => {
-			vi.unstubAllEnvs();
+		it.each([
+			[undefined, 'medium'],
+			['high', 'high'],
+			['max', 'max'],
+			['minimal', 'medium'],
+		])('resolves the configured effort %s to %s', (configured, expected) => {
+			vi.stubEnv('N8N_INSTANCE_AI_REASONING_EFFORT', configured);
+			applyAgentThinking(new Agent('test'), 'openrouter/moonshotai/kimi-k3');
+			expect(mockAgentInstances[0]?.reasoning).toHaveBeenCalledWith(expected);
 		});
-		const { Agent: SdkAgent } = await vi.importActual<typeof import('@n8n/agents')>('@n8n/agents');
-		const modelId = 'openrouter/moonshotai/kimi-k3';
-		const helper = new SdkAgent('helper').model(modelId).reasoning('low');
 
-		applyAgentThinking(helper, modelId);
-
-		expect(helper.snapshot.reasoning).toBe('low');
+		it('prefers an explicit effort over the configured effort', () => {
+			vi.stubEnv('N8N_INSTANCE_AI_REASONING_EFFORT', 'high');
+			applyAgentThinking(new Agent('test'), 'openrouter/moonshotai/kimi-k3', 'low');
+			expect(mockAgentInstances[0]?.reasoning).toHaveBeenCalledWith('low');
+		});
 	});
 
 	it('enables medium reasoning effort for Grok 4.5 via xAI', () => {
