@@ -195,6 +195,10 @@ describe('NextCloud Node', () => {
 		vi.clearAllMocks();
 	});
 
+	it('gives new nodes version 1.1', () => {
+		expect(nextCloudNode.description.version).toEqual([1, 1.1]);
+	});
+
 	describe.each(['accessToken', 'oAuth2'] as const)('authentication: %s', (authentication) => {
 		it('uses the matching credential type', async () => {
 			const { executeFunctions, requestWithAuthentication } = buildExecuteFunctions({
