@@ -1181,6 +1181,62 @@ describe('ActiveWorkflowTriggers', () => {
 			expect(activeWorkflowTriggers.isActive(workflowId)).toBe(false);
 		});
 
+		it('closes the stored trigger response before a node starts again', async () => {
+			const events: string[] = [];
+			const firstResponse: ITriggerResponse = {
+				closeFunction: vi.fn(async () => {
+					events.push('close-first');
+				}),
+			};
+			const secondResponse: ITriggerResponse = { closeFunction: vi.fn() };
+			workflow.getTriggerNodes.mockReturnValue([triggerNodeA]);
+			workflow.getPollNodes.mockReturnValue([]);
+			triggersAndPollers.runTriggerFunction.mockResolvedValueOnce(firstResponse);
+			await addTriggers(['a']);
+			triggersAndPollers.runTriggerFunction.mockImplementationOnce(async () => {
+				events.push('start-second');
+				return secondResponse;
+			});
+
+			await addTriggers(['a']);
+
+			expect(events).toEqual(['close-first', 'start-second']);
+			expect(secondResponse.closeFunction).not.toHaveBeenCalled();
+		});
+
+		it('does not start a node again when closing its stored response fails', async () => {
+			const firstResponse: ITriggerResponse = {
+				closeFunction: vi.fn().mockRejectedValue(new Error('close failed')),
+			};
+			workflow.getTriggerNodes.mockReturnValue([triggerNodeA]);
+			workflow.getPollNodes.mockReturnValue([]);
+			triggersAndPollers.runTriggerFunction.mockResolvedValue(firstResponse);
+			await addTriggers(['a']);
+
+			await expect(addTriggers(['a'])).rejects.toThrow(WorkflowActivationError);
+			expect(triggersAndPollers.runTriggerFunction).toHaveBeenCalledTimes(1);
+			expect(activeWorkflowTriggers.get(workflowId)?.get('a')).toBe(firstResponse);
+		});
+
+		it('starts a node again when its stored response fails to close with a TriggerCloseError', async () => {
+			const firstResponse: ITriggerResponse = {
+				closeFunction: vi
+					.fn()
+					.mockRejectedValue(new TriggerCloseError(triggerNodeA, { level: 'warning' })),
+			};
+			const secondResponse: ITriggerResponse = { closeFunction: vi.fn() };
+			workflow.getTriggerNodes.mockReturnValue([triggerNodeA]);
+			workflow.getPollNodes.mockReturnValue([]);
+			triggersAndPollers.runTriggerFunction
+				.mockResolvedValueOnce(firstResponse)
+				.mockResolvedValueOnce(secondResponse);
+			await addTriggers(['a']);
+
+			await addTriggers(['a']);
+
+			expect(activeWorkflowTriggers.get(workflowId)?.get('a')).toBe(secondResponse);
+		});
+
 		it('shares workflow state across concurrent single-node registrations', async () => {
 			const responseA = mock<ITriggerResponse>();
 			const responseB = mock<ITriggerResponse>();

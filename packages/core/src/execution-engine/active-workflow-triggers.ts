@@ -215,6 +215,13 @@ export class ActiveWorkflowTriggers {
 			attemptedNodeIds.add(triggerNode.id);
 
 			try {
+				// Closed before the new start, since both starts of a node can share external state (e.g. Postgres trigger names).
+				const storedResponse = triggers.get(triggerNode.id);
+				if (storedResponse) {
+					await this.closeTrigger(storedResponse, workflowId);
+					triggers.delete(triggerNode.id);
+				}
+
 				const triggerResponse = await this.triggersAndPollers.runTriggerFunction(
 					workflow,
 					triggerNode,

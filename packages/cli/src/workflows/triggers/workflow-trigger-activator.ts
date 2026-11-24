@@ -3,11 +3,13 @@ import assert from 'node:assert/strict';
 
 import { Logger } from '@n8n/backend-common';
 import { WorkflowsConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
 import type { IWorkflowDb, WorkflowEntity, WorkflowPublicationTriggerKind } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ErrorReporter, SpanStatus, Tracing } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { withTimeout } from '@n8n/utils/promise/with-timeout';
 import { createResultError, createResultOk, type Result } from '@n8n/utils/result';
 import { sleep } from '@n8n/utils/sleep';
 import type {
@@ -26,7 +28,7 @@ import {
 	Workflow,
 	WorkflowActivationError,
 } from 'n8n-workflow';
-import { UserError } from '@n8n/errors';
+import { OperationalError, UserError } from '@n8n/errors';
 
 import { ActivationErrorsService } from '@/activation-errors.service';
 import {
@@ -40,9 +42,9 @@ import type {
 } from '@/events/maps/workflow-publication-metrics.event-map';
 import { NodeTypes } from '@/node-types';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+import { WorkflowPublicationLifecycleLock } from '@/workflows/publication/workflow-publication-lifecycle-lock';
 import type { WorkflowTriggerVersion } from '@/workflows/triggers/enabled-trigger-nodes';
 import { getEnabledTriggerNodes } from '@/workflows/triggers/enabled-trigger-nodes';
-import type { PreparedNonWebhookTriggerRegistration } from '@/workflows/triggers/non-webhook-trigger-registrar';
 import { NonWebhookTriggerRegistrar } from '@/workflows/triggers/non-webhook-trigger-registrar';
 import { retryTriggerActivation } from '@/workflows/triggers/trigger-activation-retry';
 import { TriggerCountService } from '@/workflows/triggers/trigger-count.service';
@@ -149,6 +151,9 @@ export type TriggerActivationOutcome = {
  */
 @Service()
 export class WorkflowTriggerActivator {
+	/** Runtime teardowns by `workflowId:nodeId`, kept until they settle, even past the lock hold. */
+	private readonly runtimeTeardownsInFlight = new Set<string>();
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,
@@ -163,6 +168,7 @@ export class WorkflowTriggerActivator {
 		private readonly activationErrorsService: ActivationErrorsService,
 		private readonly tracing: Tracing,
 		private readonly eventService: EventService,
+		private readonly lifecycleLock: WorkflowPublicationLifecycleLock,
 	) {
 		assert(
 			this.workflowsConfig.useWorkflowPublicationService,
@@ -890,7 +896,6 @@ export class WorkflowTriggerActivator {
 					node,
 					workflow,
 					workflowData,
-					registration,
 					mode,
 					activation,
 				});
@@ -1002,18 +1007,13 @@ export class WorkflowTriggerActivator {
 	}
 
 	/**
-	 * Recovers in-process from a runtime failure of an active trigger node, scoped
-	 * to the single failed node: tear it down, surface the activation error, run
-	 * the error workflow, then re-activate it with the activation backoff. The
-	 * error is cleared once the node is running again, or left surfaced if
-	 * reactivation gives up. Fired with `void`, so it owns its error handling.
+	 * Tears down a trigger node that failed at runtime and surfaces the failure; the reconciler starts it again.
 	 */
 	private async recoverFromRuntimeTriggerFailure({
 		error,
 		node,
 		workflow,
 		workflowData,
-		registration,
 		mode,
 		activation,
 	}: {
@@ -1021,7 +1021,6 @@ export class WorkflowTriggerActivator {
 		node: INode;
 		workflow: Workflow;
 		workflowData: IWorkflowDb;
-		registration: PreparedNonWebhookTriggerRegistration;
 		mode: WorkflowExecuteMode;
 		activation: WorkflowActivateMode;
 	}): Promise<void> {
@@ -1037,39 +1036,87 @@ export class WorkflowTriggerActivator {
 		});
 
 		try {
-			await this.nonWebhookTriggerRegistrar.deregister(workflowId, node.id);
+			const isTornDown = await this.lifecycleLock.runExclusive({
+				workflowId,
+				fn: async () => await this.tearDownRegisteredTrigger(workflow, node.id),
+				// Runtime recovery has no abort context; it waits for the lock however long it takes.
+				signal: new AbortController().signal,
+			});
 
-			await this.activationErrorsService.register(workflowId, error.message);
-
-			this.triggerExecutionContextFactory.executeErrorWorkflow(activationError, workflowData, mode);
-
-			// `addTriggers` does not own the expression isolate, so acquire it per attempt.
-			await retryTriggerActivation(
-				async () => {
-					await workflow.expression.acquireIsolate();
-					try {
-						await this.nonWebhookTriggerRegistrar.register(workflow, registration, node.id);
-					} finally {
-						await workflow.expression.releaseIsolate();
-					}
-				},
-				TRIGGER_ACTIVATION_MAX_ATTEMPTS,
-				// Runtime reactivation has no abort context; never aborts.
-				new AbortController().signal,
-			);
-
-			await this.workflowStaticDataService.saveStaticData(workflow);
-
-			await this.activationErrorsService.deregister(workflowId);
+			if (isTornDown) {
+				await this.activationErrorsService.register(workflowId, error.message);
+				this.triggerExecutionContextFactory.executeErrorWorkflow(
+					activationError,
+					workflowData,
+					mode,
+				);
+			}
 		} catch (e) {
-			const reactivationError = ensureError(e);
+			const recoveryError = ensureError(e);
 			this.logger.error(
-				`Failed to reactivate trigger node "${node.name}" of workflow "${workflowData.name}" after a runtime failure`,
-				{ workflowId, nodeId: node.id, nodeName: node.name, error: reactivationError },
+				`Failed to tear down trigger node "${node.name}" of workflow "${workflowData.name}" after a runtime failure`,
+				{ workflowId, nodeId: node.id, nodeName: node.name, error: recoveryError },
 			);
-			this.errorReporter.error(reactivationError, {
+			this.errorReporter.error(recoveryError, {
 				extra: { workflowId, nodeId: node.id, nodeName: node.name },
 			});
 		}
+	}
+
+	/** Whether a teardown of the node started; one that outlives the lock hold is reported and left running. */
+	private async tearDownRegisteredTrigger(
+		workflow: Workflow,
+		nodeId: INode['id'],
+	): Promise<boolean> {
+		const teardownKey = `${workflow.id}:${nodeId}`;
+		const isRegistered = this.nonWebhookTriggerRegistrar
+			.getRegisteredTriggerNodeIds(workflow.id)
+			.has(nodeId);
+		const shouldTearDown = isRegistered && !this.runtimeTeardownsInFlight.has(teardownKey);
+
+		if (shouldTearDown) {
+			this.runtimeTeardownsInFlight.add(teardownKey);
+			const teardown = this.deregisterAndSaveStaticData(workflow, nodeId).finally(() =>
+				this.runtimeTeardownsInFlight.delete(teardownKey),
+			);
+			const pendingTeardown = new OperationalError(
+				'Released the workflow lock while a runtime trigger teardown is still pending',
+				{ level: 'error' },
+			);
+			const extra = { workflowId: workflow.id, nodeId };
+
+			try {
+				await withTimeout(teardown, this.runtimeTeardownLockHoldMs, () => pendingTeardown);
+			} catch (error) {
+				if (error !== pendingTeardown) throw error;
+				this.errorReporter.error(pendingTeardown, { extra, shouldBeLogged: true });
+				void teardown.catch((lateError: unknown) =>
+					this.errorReporter.error(ensureError(lateError), { extra, shouldBeLogged: true }),
+				);
+			}
+		}
+
+		return shouldTearDown;
+	}
+
+	/** Settles only after the in-memory teardown a failed deregister left pending. */
+	private async deregisterAndSaveStaticData(
+		workflow: Workflow,
+		nodeId: INode['id'],
+	): Promise<void> {
+		const detachedWork: Array<Promise<unknown>> = [];
+		try {
+			await this.nonWebhookTriggerRegistrar.deregister(workflow.id, nodeId, (work) =>
+				detachedWork.push(work),
+			);
+			await this.workflowStaticDataService.saveStaticData(workflow);
+		} finally {
+			await Promise.allSettled(detachedWork);
+		}
+	}
+
+	/** Half a lease, below the 0.7-lease deadline of a publication queued on the same lock. */
+	private get runtimeTeardownLockHoldMs(): number {
+		return (this.workflowsConfig.publicationOutboxLeaseSeconds * Time.seconds.toMilliseconds) / 2;
 	}
 }
