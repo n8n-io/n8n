@@ -296,6 +296,13 @@ describe('carryOverNodeParameters', () => {
 			expect(result.parameters).toEqual({ assignments });
 		});
 
+		it('should set aside an assignmentCollection value with an entry that is not a record', () => {
+			const assignments = { assignments: [null] };
+			const result = carry(node(1, { assignments }), type, type, 1);
+
+			expect(names(result)).toEqual(['assignments']);
+		});
+
 		it('should set aside a string on a resourceMapper parameter', () => {
 			const result = carry(node(1, { columns: 'id' }), type, type, 1);
 
@@ -1127,6 +1134,56 @@ describe('carryOverNodeParameters', () => {
 				},
 			]);
 			expect(result.parameters).toEqual({ items: [{ label: 'x' }] });
+		});
+	});
+
+	describe('collection with multiple values and an item that is not a record', () => {
+		it('should set aside the list', () => {
+			const type = desc(1, [
+				{
+					displayName: 'Items',
+					name: 'items',
+					type: 'collection',
+					typeOptions: { multipleValues: true },
+					default: [],
+					options: [{ displayName: 'Label', name: 'label', type: 'string', default: '' }],
+				},
+			]);
+			const items = [{ label: 'x' }, 5] as INodeParameters[];
+			const result = carry(node(1, { items }), type, type, 1);
+
+			expect(result.setAside).toEqual([
+				{ name: 'items', path: ['items'], displayName: 'Items', value: items },
+			]);
+		});
+	});
+
+	describe('dependent value with a definition that does not depend on the removed value', () => {
+		it('should keep the value', () => {
+			const limit = (displayOptions?: INodeProperties['displayOptions']): INodeProperties => ({
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				default: 50,
+				displayOptions,
+			});
+			const mode = (values: string[]): INodeProperties => ({
+				displayName: 'Mode',
+				name: 'mode',
+				type: 'options',
+				options: values.map((value) => ({ name: value, value })),
+				default: 'all',
+			});
+			const current = desc(1, [mode(['all', 'legacy']), limit()]);
+			const target = desc(2, [
+				mode(['all', 'some']),
+				limit({ show: { mode: ['some'] } }),
+				limit({ show: { '@version': [2] } }),
+			]);
+			const result = carry(node(1, { mode: 'legacy', limit: 10 }), current, target, 2);
+
+			expect(names(result)).toEqual(['mode']);
+			expect(result.parameters).toEqual({ limit: 10 });
 		});
 	});
 

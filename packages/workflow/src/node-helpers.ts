@@ -1482,7 +1482,10 @@ function isValidParameterValue(property: INodeProperties, value: unknown): boole
 			(value.schema === undefined || (Array.isArray(value.schema) && value.schema.every(isRecord)))
 		);
 	}
-	if (type === 'assignmentCollection') return isRecord(value) && Array.isArray(value.assignments);
+	if (type === 'assignmentCollection') {
+		// A saved assignment can omit `id`, so the check is not `isAssignmentCollectionValue`.
+		return isRecord(value) && Array.isArray(value.assignments) && value.assignments.every(isRecord);
+	}
 
 	return true;
 }
@@ -1505,10 +1508,11 @@ function getInvalidParameterPaths(
 		if (!typeOptions?.multipleValues) {
 			return findInvalidParameterPaths(options, value, path, root, node, nodeType, saved);
 		}
-		if (!Array.isArray(value)) return [path];
+		// An item cannot be removed by its index, so one bad item rejects the list.
+		if (!Array.isArray(value) || !value.every(isParameterRecord)) return [path];
 		// `getNodeParameters` returns these items as saved, so a key without a definition is still here.
-		return value.flatMap((item: unknown, index) => [
-			...Object.keys(isParameterRecord(item) ? item : {})
+		return value.flatMap((item, index) => [
+			...Object.keys(item)
 				.filter((key) => !options.some((option) => option.name === key))
 				.map((key) => [...path, index, key]),
 			...findInvalidParameterPaths(options, item, [...path, index], root, node, nodeType, saved),
@@ -1612,10 +1616,17 @@ function findInvalidParameterPaths(
 	);
 	for (let found = removedNames.size > 0; found; ) {
 		found = false;
-		for (const { name, displayOptions } of properties) {
+		for (const { name } of properties) {
 			if (removedNames.has(name)) continue;
-			const controllers = Object.keys({ ...displayOptions?.show, ...displayOptions?.hide });
-			if (!controllers.some((controller) => removedNames.has(controller))) continue;
+			// A definition that does not depend on a removed value can still accept the value.
+			const dependent = properties
+				.filter((property) => property.name === name)
+				.every(({ displayOptions }) =>
+					Object.keys({ ...displayOptions?.show, ...displayOptions?.hide }).some((controller) =>
+						removedNames.has(controller),
+					),
+				);
+			if (!dependent) continue;
 			removedNames.add(name);
 			invalid.push([...path, name]);
 			found = true;
