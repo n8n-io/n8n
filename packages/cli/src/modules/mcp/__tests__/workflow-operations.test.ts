@@ -123,6 +123,34 @@ describe('applyOperations', () => {
 			});
 		});
 
+		test('keeps a declared top-level parameters property when resolving the path', () => {
+			const wf = baseWorkflow();
+			wf.nodes[1].parameters = {
+				parameters: { values: [{ name: 'old' }] },
+				keep: true,
+			};
+			const result = applyOperations(
+				wf,
+				[
+					{
+						type: 'setNodeParameter',
+						nodeName: 'B',
+						path: '/parameters/values/0/name',
+						value: 'new',
+					},
+				],
+				{
+					isTopLevelParameter: (_node, parameterName) => parameterName === 'parameters',
+				},
+			);
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			expect(result.workflow.nodes.find((n) => n.name === 'B')!.parameters).toEqual({
+				parameters: { values: [{ name: 'new' }] },
+				keep: true,
+			});
+		});
+
 		test('preserves sibling keys at the leaf', () => {
 			const wf = baseWorkflow();
 			wf.nodes[1].parameters = { url: 'https://old', method: 'GET' };
