@@ -155,7 +155,9 @@ describe('CredentialTypeAccessDialog', () => {
 			version: 2,
 			warnings: [],
 		}));
-		mocks.fetchNodeTypeUsage.mockResolvedValue({});
+		mocks.fetchNodeTypeUsage.mockResolvedValue({
+			'n8n-nodes-base.airtable': { uses: 1, workflows: 1, activeWorkflows: 1, projects: 1 },
+		});
 		mocks.fetchCredentialTypeUsage.mockResolvedValue({
 			airtableTokenApi: { uses: 3, workflows: 2, activeWorkflows: 0, projects: 1 },
 		});
@@ -201,7 +203,7 @@ describe('CredentialTypeAccessDialog', () => {
 			'Not used in any workflow',
 		]);
 		expect(usageIn(getByTestId('credential-type-access-related-node'))).toEqual([
-			'Not used in any workflow',
+			'Used 1 time across 1 workflow · 1 active',
 			'Not used in any workflow',
 		]);
 		expect(usageIn(getByTestId('credential-type-access-related-credential'))).toEqual([
