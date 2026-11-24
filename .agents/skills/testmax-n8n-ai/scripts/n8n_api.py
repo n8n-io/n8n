@@ -44,12 +44,12 @@ def env_files():
 
 
 @cache
-def config(*, include_empty=False):
+def config():
 	"""Merged settings: .env.local, then .env.ai-surfaces, then the process environment."""
 	merged = {}
 	for path in env_files():
-		merged.update({k: v for k, v in read_env_file(path).items() if include_empty or v != ''})
-	merged.update({k: v for k, v in os.environ.items() if include_empty or v != ''})
+		merged.update({k: v for k, v in read_env_file(path).items() if v != ''})
+	merged.update({k: v for k, v in os.environ.items() if v != ''})
 	return merged
 
 
@@ -59,17 +59,6 @@ def setting(*names, default=None):
 	for name in names:
 		if values.get(name):
 			return values[name]
-	return default
-
-
-def file_backed_setting(name, default=None):
-	"""Match n8n's @Env precedence. An explicit value, even an empty one, takes priority."""
-	values = config(include_empty=True)
-	if values.get(name) is not None:
-		return values[name]
-	path = values.get(f'{name}_FILE')
-	if path:
-		return Path(path).read_text(encoding='utf-8').strip()
 	return default
 
 
