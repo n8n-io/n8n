@@ -1,12 +1,22 @@
 import { readdirSync, realpathSync, statSync } from 'node:fs';
 import path from 'node:path';
 
-function isMissingPathError(error: unknown): boolean {
+function getErrorCode(error: unknown): string | undefined {
 	if (typeof error !== 'object' || error === null || !('code' in error)) {
-		return false;
+		return undefined;
 	}
 
-	return error.code === 'ENOENT' || error.code === 'ENOTDIR';
+	return typeof error.code === 'string' ? error.code : undefined;
+}
+
+function isMissingPathError(error: unknown): boolean {
+	const code = getErrorCode(error);
+	return code === 'ENOENT' || code === 'ENOTDIR';
+}
+
+function isIgnorableSymlinkError(error: unknown): boolean {
+	const code = getErrorCode(error);
+	return code === 'ENOENT' || code === 'ENOTDIR' || code === 'ELOOP';
 }
 
 export function collectWorkflowFilenames(testDir: string, packageDir: string): string[] {
@@ -40,8 +50,9 @@ export function collectWorkflowFilenames(testDir: string, packageDir: string): s
 					const stats = statSync(fullPath);
 					isDir = stats.isDirectory();
 					isFile = stats.isFile();
-				} catch {
-					continue;
+				} catch (error: unknown) {
+					if (isIgnorableSymlinkError(error)) continue;
+					throw error;
 				}
 			}
 
@@ -50,8 +61,9 @@ export function collectWorkflowFilenames(testDir: string, packageDir: string): s
 				if (entry.isSymbolicLink()) {
 					try {
 						nextRealDir = realpathSync(fullPath);
-					} catch {
-						continue;
+					} catch (error: unknown) {
+						if (isIgnorableSymlinkError(error)) continue;
+						throw error;
 					}
 				}
 				if (ancestorRealDirs.has(nextRealDir)) continue;

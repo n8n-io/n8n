@@ -98,4 +98,55 @@ describe('collectWorkflowFilenames', () => {
 
 		expect(() => collectWorkflowFilenames(testDir, packageDir)).toThrow(eioError);
 	});
+
+	it('skips broken symlinks and self-referential symlink loops', () => {
+		writeFile('valid.workflow.json');
+		symlinkSync(path.join(testDir, 'does-not-exist'), path.join(testDir, 'broken'));
+		symlinkSync(path.join(testDir, 'loop-b'), path.join(testDir, 'loop-a'));
+		symlinkSync(path.join(testDir, 'loop-a'), path.join(testDir, 'loop-b'));
+
+		expect(collectWorkflowFilenames(testDir, packageDir)).toEqual([
+			'nodes/Example/test/valid.workflow.json',
+		]);
+	});
+
+	it('rethrows non-missing errors from statSync on symlink entries', async () => {
+		writeFile('real/case.workflow.json');
+		const linkPath = path.join(testDir, 'alias');
+		symlinkSync(path.join(testDir, 'real'), linkPath, 'dir');
+
+		const actualFs = await vi.importActual<typeof import('node:fs')>('node:fs');
+		const eaccesError = Object.assign(new Error('EACCES: permission denied'), { code: 'EACCES' });
+		vi.mocked(fs.statSync).mockImplementation(((
+			filePath: fs.PathLike,
+			options?: Parameters<typeof fs.statSync>[1],
+		) => {
+			if (String(filePath) === linkPath) {
+				throw eaccesError;
+			}
+			return actualFs.statSync(filePath, options as never);
+		}) as typeof fs.statSync);
+
+		expect(() => collectWorkflowFilenames(testDir, packageDir)).toThrow(eaccesError);
+	});
+
+	it('rethrows non-missing errors from realpathSync on symlinked directories', async () => {
+		writeFile('real/case.workflow.json');
+		const linkPath = path.join(testDir, 'alias');
+		symlinkSync(path.join(testDir, 'real'), linkPath, 'dir');
+
+		const actualFs = await vi.importActual<typeof import('node:fs')>('node:fs');
+		const eioError = Object.assign(new Error('EIO: i/o error'), { code: 'EIO' });
+		vi.mocked(fs.realpathSync).mockImplementation(((
+			filePath: fs.PathLike,
+			options?: Parameters<typeof fs.realpathSync>[1],
+		) => {
+			if (String(filePath) === linkPath) {
+				throw eioError;
+			}
+			return actualFs.realpathSync(filePath, options as never);
+		}) as typeof fs.realpathSync);
+
+		expect(() => collectWorkflowFilenames(testDir, packageDir)).toThrow(eioError);
+	});
 });
