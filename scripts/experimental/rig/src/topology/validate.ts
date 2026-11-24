@@ -41,6 +41,15 @@ export function validateTopology(topology: Topology): void {
 		);
 	}
 
+	// n8n-containers allows queue mode in container mode, where each main has its own host.
+	// rig runs every main on localhost, so the mains would share the control plane port.
+	if (topology.engine !== 'off' && topology.queue) {
+		throw new RigError(
+			'Engine v2 does not support queue mode in rig.',
+			'Engine v2 runs with Postgres, one main, and no queue mode.',
+		);
+	}
+
 	try {
 		assertEngineSupported({
 			engine:
@@ -50,7 +59,8 @@ export function validateTopology(topology: Topology): void {
 						? 'container'
 						: 'in-process',
 			mains: topology.mains,
-			isQueueMode: topology.queue,
+			workers: topology.workers,
+			webhooks: 0,
 			usePostgres: topology.db === 'postgres',
 		});
 	} catch (error) {
