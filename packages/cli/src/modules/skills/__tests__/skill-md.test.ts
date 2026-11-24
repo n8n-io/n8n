@@ -189,6 +189,7 @@ describe('readSkillFolder', () => {
 				{ path: 'SKILL.md', content: Buffer.concat([Buffer.from(String(SKILL.content)), quote]) },
 				{ path: 'assets/data.bin', content: quote },
 				{ path: 'references/guide.md', content: quote },
+				{ path: 'references/guide.mdx', content: quote },
 				{ path: 'references/nul.md', content: Buffer.from([0x41, 0]) },
 			]);
 
@@ -196,6 +197,7 @@ describe('readSkillFolder', () => {
 			expect(content.files).toEqual([
 				{ path: 'assets/data.bin', content: quote.toString('base64'), isBinary: true },
 				{ path: 'references/guide.md', content: 'It\uFFFDs' },
+				{ path: 'references/guide.mdx', content: 'It\uFFFDs' },
 				{ path: 'references/nul.md', content: 'QQA=', isBinary: true },
 			]);
 		});

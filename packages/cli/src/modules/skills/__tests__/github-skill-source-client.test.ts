@@ -616,6 +616,24 @@ describe('GitHubSkillSourceClient', () => {
 			expect(fetched.overLimitFiles).toHaveLength(101);
 		});
 
+		it('fetches at most the skill file limit when a folder holds too many Markdown references', async () => {
+			const files: Record<string, string> = {
+				'skills/pdf/SKILL.md': skillMd('pdf'),
+			};
+			for (let index = 0; index < 520; index += 1) {
+				files[`skills/pdf/references/${String(index).padStart(3, '0')}.md`] = '# Ref\n';
+			}
+			github.push('acme/skills', files);
+			const locator = await client.parseLocator('https://github.com/acme/skills/tree/main/skills');
+
+			const { items, revision } = await client.discover(locator);
+			const fetched = await client.fetchLatest(locator, items[0], undefined, revision);
+
+			expect(github.requests.files).toBe(AGENT_SKILL_REFERENCE_MAX_COUNT + 1);
+			expect(fetched.content.files).toHaveLength(AGENT_SKILL_REFERENCE_MAX_COUNT);
+			expect(fetched.overLimitFiles).toHaveLength(20);
+		});
+
 		it('fetches a known skill path outside the discovery depth on demand', async () => {
 			const path = 'skills/1/2/3/4/5/6/7/8/9';
 			github.push('acme/skills', { [`${path}/SKILL.md`]: skillMd('linked') });

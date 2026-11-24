@@ -210,6 +210,36 @@ describe('selectSkillFiles', () => {
 		]);
 	});
 
+	it('caps Markdown references per skill by file count and size in path order', () => {
+		const manyRefs = {
+			'a/SKILL.md': 10,
+			'a/references/03.md': 1,
+			'a/references/01.md': 1,
+			'a/references/04.md': 1,
+			'a/references/02.md': 1,
+			'a/scripts/run.py': 1,
+		};
+
+		expect(select(manyRefs, ['a'], { maxFiles: 2 })).toEqual([
+			'a/SKILL.md',
+			'a/references/01.md',
+			'a/references/02.md',
+		]);
+
+		const largeRefs = {
+			'a/SKILL.md': 10,
+			'a/references/a.md': 50,
+			'a/references/b.md': 50,
+			'a/references/c.md': 5,
+		};
+
+		expect(select(largeRefs, ['a'], { maxSkillBytes: 60 })).toEqual([
+			'a/SKILL.md',
+			'a/references/a.md',
+			'a/references/c.md',
+		]);
+	});
+
 	it('selects a file over the file limit, so the reader lists it, and does not count it', () => {
 		const files = { 'a/SKILL.md': 10, 'a/assets/big.bin': 51, 'a/assets/small.bin': 50 };
 

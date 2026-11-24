@@ -126,7 +126,10 @@ export function selectSkillFiles(
 	limits: SkillFileSelectionLimits,
 ): Set<string> {
 	const keep = new Set<string>();
-	const skills = new Map<string, { files: string[]; count: number; bytes: number }>();
+	const skills = new Map<
+		string,
+		{ references: string[]; files: string[]; count: number; bytes: number }
+	>();
 	const relative = (path: string, folder: string) =>
 		folder === '' ? path : path.slice(folder.length + 1);
 	let total = 0;
@@ -137,19 +140,32 @@ export function selectSkillFiles(
 			keep.add(path);
 			continue;
 		}
-		const skill = skills.get(folder) ?? { files: [], count: 0, bytes: 0 };
+		const skill = skills.get(folder) ?? { references: [], files: [], count: 0, bytes: 0 };
 		skills.set(folder, skill);
 		const file = relative(path, folder);
 		if (file === SKILL_FILE) {
 			keep.add(path);
 			total += size;
 		} else if (skillFileRank(file) === 0 && MARKDOWN_FILE.test(file)) {
+			skill.references.push(path);
+		} else {
+			skill.files.push(path);
+		}
+	}
+	// Apply per-skill limits to Markdown references first, in path order, before other files.
+	for (const [folder, skill] of skills) {
+		skill.references.sort((left, right) =>
+			comparePaths(relative(left, folder), relative(right, folder)),
+		);
+		for (const path of skill.references) {
+			const size = sizes.get(path) ?? 0;
+			if (skill.count >= limits.maxFiles || skill.bytes + size > limits.maxSkillBytes) {
+				continue;
+			}
 			keep.add(path);
 			total += size;
 			skill.count += 1;
 			skill.bytes += size;
-		} else {
-			skill.files.push(path);
 		}
 	}
 	for (const [folder, skill] of skills) {
