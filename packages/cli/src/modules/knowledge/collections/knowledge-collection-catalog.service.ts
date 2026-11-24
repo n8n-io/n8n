@@ -1,4 +1,9 @@
-import type { CreateKnowledgeCollectionDto, KnowledgeCollectionDto } from '@n8n/api-types';
+import type {
+	CreateKnowledgeCollectionDto,
+	KnowledgeCollectionDto,
+	KnowledgeCollectionListResponse,
+} from '@n8n/api-types';
+import { ProjectScopeService } from '@n8n/backend-services';
 import { isUniqueConstraintError, ProjectRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ConflictError, ForbiddenError, NotFoundError, UnexpectedError } from '@n8n/errors';
@@ -18,8 +23,8 @@ const MAX_INSERT_ATTEMPTS = 2;
 const randomSlugSuffix = customAlphabet('abcdefghijklmnopqrstuvwxyz0123456789', SLUG_SUFFIX_LENGTH);
 
 /**
- * Creates shared knowledge collections and returns them as the collection
- * list shows them.
+ * Creates and lists shared knowledge collections, in the shape that the
+ * collection list shows.
  */
 @Service()
 export class KnowledgeCollectionCatalogService {
@@ -27,6 +32,7 @@ export class KnowledgeCollectionCatalogService {
 		private readonly collectionRepository: KnowledgeCollectionRepository,
 		private readonly availabilityService: KnowledgeAvailabilityService,
 		private readonly projectRepository: ProjectRepository,
+		private readonly projectScopeService: ProjectScopeService,
 	) {}
 
 	async create(
@@ -85,6 +91,28 @@ export class KnowledgeCollectionCatalogService {
 				}
 			}
 		}
+	}
+
+	/**
+	 * Collections have no scopes of their own yet (TBD), so the list shows the
+	 * collections of the projects where the user can list agents, as the agent
+	 * list does.
+	 */
+	async listForUser(user: User): Promise<KnowledgeCollectionListResponse> {
+		const collectionsEnabled = await this.availabilityService.isCollectionsEnabled();
+		if (!collectionsEnabled) {
+			throw new NotFoundError('Knowledge collections are not enabled');
+		}
+
+		// `null` means a global `agent:list` scope, which covers every project.
+		const listableProjectIds = await this.projectScopeService.getProjectIds(user, ['agent:list']);
+		const summaries = await this.collectionRepository.findSharedSummaries(
+			listableProjectIds ?? 'all',
+			{},
+		);
+		const data = summaries.map(toDto);
+
+		return { count: data.length, data };
 	}
 
 	private async findFreeSlug(name: string): Promise<string> {

@@ -29,13 +29,17 @@ import { DEFAULT_PROJECT_ICON } from '@/features/collaboration/projects/projects
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useCollectionsStore } from '@/features/settings/context/collections.store';
 
-/** Owned by the collections page: `open`, and `created` once the server saved the collection. */
+/**
+ * Owned by the collections page: `open`, `saved` after every save, and `created` once the server
+ * saved the collection of the current opening.
+ */
 const props = defineProps<{
 	open: boolean;
 }>();
 
 const emit = defineEmits<{
 	'update:open': [open: boolean];
+	saved: [collection: KnowledgeCollectionDto];
 	created: [collection: KnowledgeCollectionDto];
 }>();
 
@@ -154,6 +158,8 @@ async function handleSubmit() {
 	saving.value = true;
 	try {
 		const collection = await collectionsStore.createCollection(form.projectId, payload);
+		// The page reloads its list on every save, also on one from an earlier opening.
+		emit('saved', collection);
 		if (token === openToken) {
 			emit('created', collection);
 		}

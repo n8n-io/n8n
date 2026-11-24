@@ -3,14 +3,14 @@
 ## Rules
 
 - **Must** add stories and tests for components in `packages/frontend/@n8n/design-system`.
-- **Must** add comments to the public interfaces, with comments explaining what each one is for
-- **Must** put the stories and the tests in the component folder, next to the component, for example `N8nButton/Button.stories.ts` and `N8nButton/Button.test.ts`
-- **Must** add i18n translations for user-facing strings, including accessible labels
-- **Must** use `n8n:content-design` skill for copy wording
+- **Must** add a comment to each public interface. The comment tells what the interface is for.
+- **Must** put the stories and the tests in the component folder, next to the component, for example `N8nButton/Button.stories.ts` and `N8nButton/Button.test.ts`.
+- **Must** add i18n translations for all user-facing strings. This includes accessible labels.
+- **Must** load the `content-design` skill (`.agents/skills/content-design`) when you write copy.
 - **Must** use `--n8n-<component>` prefix to public CSS variables from components that can be customised by callers (e.g `--n8n-button--background-color`). Internal variables don't require the prefix.
 
 - **Should** add `N8n*` prefix to **Core** or **Experimental** components (e.g Buttons, Inputs etc). Use related area prefix instead (e.g `AssistantAiActivity`, `SettingsEnabledRow`)
-- **Should** bind fixed child component props from a fixed props object. Add comment that explain why each prop must remain fixed.
+- **Should** bind fixed props of a child component from a fixed props object. Add a comment that tells why each prop must stay fixed.
 - **Should** declare state that the parent owns as a named prop. Declare the change as `update:<name>` on the emits interface.
 - **Should** name the prop for that state. For example, `N8nSettingsEnableRow` uses `enabled`. Callers bind `:enabled` and `@update:enabled`.
 - **Should** use `defineModel` only when the component must also work with no parent binding. `N8nSettingsRow` does this for its disclosure state.

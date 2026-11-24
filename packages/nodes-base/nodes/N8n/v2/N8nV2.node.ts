@@ -6,10 +6,13 @@ import {
 } from 'n8n-workflow';
 
 import { N8N_CLIENT_HEADER, N8N_CLIENT_N8N_NODE } from '../shared/constants';
+import { searchWorkflows } from '../shared/WorkflowLocator';
 import { properties } from './generated/properties.generated';
 
 export class N8nV2 implements INodeType {
 	description: INodeTypeDescription;
+
+	methods = { listSearch: { searchWorkflows } };
 
 	constructor(baseDescription: INodeTypeBaseDescription) {
 		this.description = {
