@@ -504,7 +504,7 @@ function hasPreview(finding: SkillScanFinding): boolean {
 		}
 
 		:global(.blob-code-context) {
-			background-color: var(--callout--color--background--warning);
+			background-color: var(--n8n-callout--color--background--warning);
 		}
 	}
 }
@@ -541,7 +541,7 @@ function hasPreview(finding: SkillScanFinding): boolean {
 	padding-right: var(--spacing--xs);
 
 	&:has(.warning) {
-		background-color: var(--callout--color--background--warning);
+		background-color: var(--n8n-callout--color--background--warning);
 		box-shadow: inset var(--spacing--5xs) 0 var(--text-color--warning);
 
 		.number {
@@ -568,7 +568,7 @@ function hasPreview(finding: SkillScanFinding): boolean {
 }
 
 .blocked {
-	background-color: var(--callout--color--background--danger);
+	background-color: var(--n8n-callout--color--background--danger);
 	color: inherit;
 }
 

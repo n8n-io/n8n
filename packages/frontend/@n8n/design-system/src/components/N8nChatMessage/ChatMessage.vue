@@ -86,8 +86,8 @@ defineSlots<{
 	width: fit-content;
 	padding: var(--spacing--xs) var(--spacing--sm);
 	border-radius: var(--radius--xl);
-	background: var(--assistant--color--background--user-bubble);
-	color: var(--assistant--color--text--user-bubble, var(--text-color));
+	background: var(--n8n-assistant--color--background--user-bubble);
+	color: var(--n8n-assistant--color--text--user-bubble, var(--text-color));
 	white-space: pre-wrap;
 	word-break: break-word;
 	line-height: var(--line-height--xl);

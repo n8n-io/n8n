@@ -185,7 +185,7 @@ function isActiveRange(presetValue: number) {
 
 <style module>
 .PresetButton {
-	--button--border-color: transparent;
+	--n8n-button--border-color: transparent;
 	text-align: left;
 	display: flex;
 }

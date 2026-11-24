@@ -233,41 +233,44 @@ function getInputClass(isEmpty: boolean): string {
 	@include input-mixin.theme-variables(var(--border-color));
 
 	--tags-input--gap: calc(var(--tags-input--padding) - 1px);
-	--tag--height: calc(var(--input--height) - 2 * var(--tags-input--padding));
+	--n8n-tag--height: calc(var(--n8n-input--height) - 2 * var(--tags-input--padding));
 	--tag--gap: var(--spacing--4xs);
-	--tag--delete--size: max(var(--height--4xs), calc(var(--tag--height) - 2 * var(--spacing--4xs)));
-	--tag--padding-inline-end: calc((var(--tag--height) - var(--tag--delete--size) - 2px) / 2);
+	--tag--delete--size: max(
+		var(--height--4xs),
+		calc(var(--n8n-tag--height) - 2 * var(--spacing--4xs))
+	);
+	--tag--padding-inline-end: calc((var(--n8n-tag--height) - var(--tag--delete--size) - 2px) / 2);
 }
 
 .root {
 	display: flex;
 	flex: 1;
 	width: 100%;
-	min-height: var(--input--height);
-	max-height: var(--tags-input--max-height, none);
+	min-height: var(--n8n-input--height);
+	max-height: var(--n8n-tags-input--max-height, none);
 	padding: 1px;
 	overflow: hidden;
-	border-radius: var(--input--radius);
-	background-color: var(--input--color--background);
+	border-radius: var(--n8n-input--radius);
+	background-color: var(--n8n-input--color--background);
 	box-shadow:
-		var(--input--shadow),
-		inset var(--input--border--shadow);
-	color: var(--input--color--text);
-	font-size: var(--input--font-size);
+		var(--n8n-input--shadow),
+		inset var(--n8n-input--border--shadow);
+	color: var(--n8n-input--color--text);
+	font-size: var(--n8n-input--font-size);
 
 	@include focus.focus-within-ring;
 
 	&:not(:has([data-disabled])):hover:not(:focus-within) {
 		cursor: text;
 		box-shadow:
-			var(--input--shadow--hover),
-			inset var(--input--border--shadow--hover);
+			var(--n8n-input--shadow--hover),
+			inset var(--n8n-input--border--shadow--hover);
 	}
 
 	&:focus-within {
 		box-shadow:
-			var(--input--shadow--focus),
-			inset var(--input--border--shadow--focus);
+			var(--n8n-input--shadow--focus),
+			inset var(--n8n-input--border--shadow--focus);
 	}
 
 	&:has([data-disabled]) {
@@ -287,8 +290,8 @@ function getInputClass(isEmpty: boolean): string {
 	--tags-input--padding: var(--spacing--4xs);
 	--tags-input--input--padding-inline-start: var(--spacing--5xs);
 	--tag--padding-block-end: 1px;
-	--tag--padding: 0 var(--tag--padding-inline-end) 0 var(--spacing--4xs);
-	--tag--radius: var(--radius--4xs);
+	--n8n-tag--padding: 0 var(--tag--padding-inline-end) 0 var(--spacing--4xs);
+	--n8n-tag--radius: var(--radius--4xs);
 	--tag--font-size: var(--font-size--3xs);
 }
 
@@ -298,8 +301,8 @@ function getInputClass(isEmpty: boolean): string {
 	--tags-input--padding: var(--spacing--4xs);
 	--tags-input--input--padding-inline-start: var(--spacing--4xs);
 	--tag--padding-block-end: var(--spacing--5xs);
-	--tag--padding: 0 var(--tag--padding-inline-end) 0 var(--spacing--3xs);
-	--tag--radius: var(--radius--4xs);
+	--n8n-tag--padding: 0 var(--tag--padding-inline-end) 0 var(--spacing--3xs);
+	--n8n-tag--radius: var(--radius--4xs);
 	--tag--font-size: var(--font-size--2xs);
 }
 
@@ -309,8 +312,8 @@ function getInputClass(isEmpty: boolean): string {
 	--tags-input--padding: var(--spacing--4xs);
 	--tags-input--input--padding-inline-start: var(--spacing--4xs);
 	--tag--padding-block-end: var(--spacing--5xs);
-	--tag--padding: 0 var(--tag--padding-inline-end) 0 var(--spacing--3xs);
-	--tag--radius: var(--radius--4xs);
+	--n8n-tag--padding: 0 var(--tag--padding-inline-end) 0 var(--spacing--3xs);
+	--n8n-tag--radius: var(--radius--4xs);
 	--tag--font-size: var(--font-size--2xs);
 }
 
@@ -320,8 +323,8 @@ function getInputClass(isEmpty: boolean): string {
 	--tags-input--padding: var(--spacing--4xs);
 	--tags-input--input--padding-inline-start: var(--spacing--3xs);
 	--tag--padding-block-end: var(--spacing--5xs);
-	--tag--padding: 0 var(--tag--padding-inline-end) 0 var(--spacing--3xs);
-	--tag--radius: var(--radius--3xs);
+	--n8n-tag--padding: 0 var(--tag--padding-inline-end) 0 var(--spacing--3xs);
+	--n8n-tag--radius: var(--radius--3xs);
 	--tag--font-size: var(--font-size--xs);
 }
 
@@ -331,8 +334,8 @@ function getInputClass(isEmpty: boolean): string {
 	--tags-input--padding: var(--spacing--4xs);
 	--tags-input--input--padding-inline-start: var(--spacing--2xs);
 	--tag--padding-block-end: var(--spacing--5xs);
-	--tag--padding: 0 var(--tag--padding-inline-end) 0 var(--spacing--2xs);
-	--tag--radius: var(--radius--3xs);
+	--n8n-tag--padding: 0 var(--tag--padding-inline-end) 0 var(--spacing--2xs);
+	--n8n-tag--radius: var(--radius--3xs);
 	--tag--font-size: var(--font-size--xs);
 }
 
@@ -360,20 +363,20 @@ function getInputClass(isEmpty: boolean): string {
 	gap: var(--tag--gap);
 	max-width: 100%;
 	min-width: 0;
-	height: var(--tag--height);
-	padding: var(--tag--padding);
-	border: 1px solid var(--tag--border-color);
-	border-radius: var(--tag--radius);
-	background-color: var(--tag--color--background);
-	color: var(--tag--color--text);
+	height: var(--n8n-tag--height);
+	padding: var(--n8n-tag--padding);
+	border: 1px solid var(--n8n-tag--border-color);
+	border-radius: var(--n8n-tag--radius);
+	background-color: var(--n8n-tag--color--background);
+	color: var(--n8n-tag--color--text);
 	font-size: var(--tag--font-size);
-	font-weight: var(--tag--font-weight);
-	line-height: var(--tag--line-height);
+	font-weight: var(--n8n-tag--font-weight);
+	line-height: var(--n8n-tag--line-height);
 
 	&[data-state='active'],
 	&[aria-current='true'] {
-		background-color: var(--tag--color--background--active);
-		border-color: var(--tag--border-color--active);
+		background-color: var(--n8n-tag--color--background--active);
+		border-color: var(--n8n-tag--border-color--active);
 	}
 }
 
@@ -425,7 +428,7 @@ function getInputClass(isEmpty: boolean): string {
 	flex: 1;
 	align-self: center;
 	min-width: var(--spacing--2xl);
-	min-height: var(--tag--height);
+	min-height: var(--n8n-tag--height);
 	padding: 0;
 	padding-inline-start: var(--tags-input--input--padding-inline-start);
 	border: none;
@@ -439,7 +442,7 @@ function getInputClass(isEmpty: boolean): string {
 	}
 
 	&::placeholder {
-		color: var(--input--placeholder--color);
+		color: var(--n8n-input--placeholder--color);
 	}
 
 	&:focus,
@@ -449,15 +452,15 @@ function getInputClass(isEmpty: boolean): string {
 
 	&:disabled {
 		cursor: not-allowed;
-		color: var(--input--color--disabled);
+		color: var(--n8n-input--color--disabled);
 
 		&::placeholder {
-			color: var(--input--placeholder--color--disabled);
+			color: var(--n8n-input--placeholder--color--disabled);
 		}
 	}
 
 	&.inputEmpty {
-		padding-inline: calc(var(--input--padding) - var(--tags-input--padding));
+		padding-inline: calc(var(--n8n-input--padding) - var(--tags-input--padding));
 	}
 }
 </style>

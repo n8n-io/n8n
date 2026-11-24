@@ -33,8 +33,8 @@
 }
 
 .ai-diff-added {
-	--canvas-node--border-color: var(--diff--color--new);
-	--canvas-node--color--background: var(--diff--color--new--faint);
+	--canvas-node--border-color: var(--n8n-code-diff--color--new);
+	--canvas-node--color--background: var(--n8n-code-diff--color--new--faint);
 
 	> div {
 		--canvas-node--border-width: 2px;
@@ -42,7 +42,7 @@
 
 	&::before {
 		content: 'N';
-		background-color: var(--diff--color--new);
+		background-color: var(--n8n-code-diff--color--new);
 	}
 }
 

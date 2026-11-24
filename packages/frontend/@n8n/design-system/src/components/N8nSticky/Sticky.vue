@@ -48,10 +48,10 @@ const getCustomColorStyles = (hexColor: string) => {
 	}
 
 	return {
-		'--sticky--color--background': hexColor,
-		'--sticky--border-color--custom-light': adjustColorLightness(hexColor, -20),
-		'--sticky--border-color--custom-dark': adjustColorLightness(hexColor, 80),
-		'--sticky--color--text--custom': getContrastTextColor(hexColor),
+		'--n8n-sticky--color--background': hexColor,
+		'--n8n-sticky--border-color--custom-light': adjustColorLightness(hexColor, -20),
+		'--n8n-sticky--border-color--custom-dark': adjustColorLightness(hexColor, 80),
+		'--n8n-sticky--color--text--custom': getContrastTextColor(hexColor),
 	};
 };
 
@@ -154,27 +154,27 @@ const onInputScroll = (event: WheelEvent) => {
 	position: absolute;
 	border-radius: var(--radius);
 
-	background-color: var(--sticky--color--background);
-	border: 1px solid var(--sticky--border-color);
+	background-color: var(--n8n-sticky--color--background);
+	border: 1px solid var(--n8n-sticky--border-color);
 }
 
 // Custom colors - text contrast and theme-aware borders
 .customColor {
-	--sticky--color--text: var(--sticky--color--text--custom);
-	--sticky--border-color: var(--sticky--border-color--custom-light);
+	--n8n-sticky--color--text: var(--n8n-sticky--color--text--custom);
+	--n8n-sticky--border-color: var(--n8n-sticky--border-color--custom-light);
 	.wrapper,
 	.footer {
-		--color--text--shade-1: var(--sticky--color--text--custom);
+		--color--text--shade-1: var(--n8n-sticky--color--text--custom);
 	}
 }
 
 :global(body[data-theme='dark']) .customColor {
-	--sticky--border-color: var(--sticky--border-color--custom-dark);
+	--n8n-sticky--border-color: var(--n8n-sticky--border-color--custom-dark);
 }
 
 @media (prefers-color-scheme: dark) {
 	:global(body:not([data-theme='light'])) .customColor {
-		--sticky--border-color: var(--sticky--border-color--custom-dark);
+		--n8n-sticky--border-color: var(--n8n-sticky--border-color--custom-dark);
 	}
 }
 
@@ -194,37 +194,37 @@ const onInputScroll = (event: WheelEvent) => {
 	padding: var(--spacing--5xs) var(--spacing--2xs) 0 var(--spacing--2xs);
 	display: flex;
 	justify-content: flex-end;
-	color: var(--sticky--color--text);
+	color: var(--n8n-sticky--color--text);
 }
 
 .color-2 {
-	--sticky--color--background: var(--sticky--color--background--variant-2);
-	--sticky--border-color: var(--sticky--border-color--variant-2);
+	--n8n-sticky--color--background: var(--n8n-sticky--color--background--variant-2);
+	--n8n-sticky--border-color: var(--n8n-sticky--border-color--variant-2);
 }
 
 .color-3 {
-	--sticky--color--background: var(--sticky--color--background--variant-3);
-	--sticky--border-color: var(--sticky--border-color--variant-3);
+	--n8n-sticky--color--background: var(--n8n-sticky--color--background--variant-3);
+	--n8n-sticky--border-color: var(--n8n-sticky--border-color--variant-3);
 }
 
 .color-4 {
-	--sticky--color--background: var(--sticky--color--background--variant-4);
-	--sticky--border-color: var(--sticky--border-color--variant-4);
+	--n8n-sticky--color--background: var(--n8n-sticky--color--background--variant-4);
+	--n8n-sticky--border-color: var(--n8n-sticky--border-color--variant-4);
 }
 
 .color-5 {
-	--sticky--color--background: var(--sticky--color--background--variant-5);
-	--sticky--border-color: var(--sticky--border-color--variant-5);
+	--n8n-sticky--color--background: var(--n8n-sticky--color--background--variant-5);
+	--n8n-sticky--border-color: var(--n8n-sticky--border-color--variant-5);
 }
 
 .color-6 {
-	--sticky--color--background: var(--sticky--color--background--variant-6);
-	--sticky--border-color: var(--sticky--border-color--variant-6);
+	--n8n-sticky--color--background: var(--n8n-sticky--color--background--variant-6);
+	--n8n-sticky--border-color: var(--n8n-sticky--border-color--variant-6);
 }
 
 .color-7 {
-	--sticky--color--background: var(--sticky--color--background--variant-7);
-	--sticky--border-color: var(--sticky--border-color--variant-7);
+	--n8n-sticky--color--background: var(--n8n-sticky--color--background--variant-7);
+	--n8n-sticky--border-color: var(--n8n-sticky--border-color--variant-7);
 }
 </style>
 

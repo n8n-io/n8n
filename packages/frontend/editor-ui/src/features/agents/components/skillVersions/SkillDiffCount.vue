@@ -28,10 +28,10 @@ defineProps<{ count?: DiffCount; hideZero?: boolean }>();
 }
 
 .removed {
-	color: var(--diff--color--deleted);
+	color: var(--n8n-code-diff--color--deleted);
 }
 
 .added {
-	color: var(--diff--color--new);
+	color: var(--n8n-code-diff--color--new);
 }
 </style>

@@ -393,6 +393,6 @@ watch(hoveredSection, (section) => {
 }
 
 .actionButton {
-	--button--font-size: var(--font-size--2xs);
+	--n8n-button--font-size: var(--font-size--2xs);
 }
 </style>

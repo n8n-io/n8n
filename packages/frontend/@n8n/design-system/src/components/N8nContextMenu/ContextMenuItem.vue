@@ -300,9 +300,9 @@ function handleSubmenuOpenChange(open: boolean) {
 
 	display: flex;
 	flex-direction: column;
-	width: var(--context-menu--width, fit-content);
+	width: var(--n8n-context-menu--width, fit-content);
 	min-width: var(--spacing--4xl);
-	max-width: var(--context-menu--width, 24rem);
+	max-width: var(--n8n-context-menu--width, 24rem);
 	max-height: var(--reka-context-menu-content-available-height);
 }
 

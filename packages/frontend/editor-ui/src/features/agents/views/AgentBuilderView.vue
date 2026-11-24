@@ -3921,7 +3921,7 @@ useKeybindings({
 }
 
 .root {
-	--n8n--agent-builder-header-height: var(--height--4xl);
+	--agent-builder-header-height: var(--height--4xl);
 
 	position: relative;
 	display: flex;
@@ -4111,7 +4111,7 @@ useKeybindings({
 
 .aiToggleBar {
 	position: absolute;
-	top: calc(var(--n8n--agent-builder-header-height) + var(--spacing--2xs));
+	top: calc(var(--agent-builder-header-height) + var(--spacing--2xs));
 	left: var(--spacing--2xs);
 	z-index: 1;
 }

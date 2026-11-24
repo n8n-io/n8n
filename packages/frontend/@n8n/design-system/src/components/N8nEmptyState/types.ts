@@ -15,7 +15,7 @@ export type EmptyStateCardIcon = IconName | (string & {}) | Component;
  * provided, or when the user prefers reduced motion).
  *
  * The tiles follow the theme by default. When `sides` are fixed-colour brand marks, set
- * `--empty-state-icon-cards--tile-background` / `--empty-state-icon-cards--tile-color` on an
+ * `--n8n-empty-state-icon-cards--tile-background` / `--n8n-empty-state-icon-cards--tile-color` on an
  * ancestor to pin them to a light surface so the marks stay legible on the dark theme.
  */
 export interface EmptyStateIconCards {

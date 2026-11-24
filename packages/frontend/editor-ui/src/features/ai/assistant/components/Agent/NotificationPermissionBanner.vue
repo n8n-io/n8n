@@ -54,8 +54,8 @@ function onDismissClick() {
 	align-items: center;
 	gap: var(--spacing--xs);
 	padding: var(--spacing--sm) var(--spacing--xs);
-	background: var(--callout--color--background--info);
-	border: 1px solid var(--callout--border-color--info);
+	background: var(--n8n-callout--color--background--info);
+	border: 1px solid var(--n8n-callout--border-color--info);
 	border-radius: var(--radius--lg) var(--radius--lg) 0 0;
 	border-bottom: none;
 	margin: 0 var(--spacing--2xs);
@@ -67,13 +67,13 @@ function onDismissClick() {
 }
 
 .text {
-	color: var(--callout--color--text--info);
+	color: var(--n8n-callout--color--text--info);
 	font-size: var(--font-size--2xs);
 	flex: 1;
 }
 
 .closeIcon {
-	color: var(--callout--color--text--info);
+	color: var(--n8n-callout--color--text--info);
 	cursor: pointer;
 	flex-shrink: 0;
 

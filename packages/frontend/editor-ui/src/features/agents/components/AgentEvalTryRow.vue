@@ -457,7 +457,7 @@ watch(
 }
 
 .statusWarning {
-	color: var(--callout--color--text--secondary);
+	color: var(--n8n-callout--color--text--secondary);
 }
 
 .headerTitleText {
@@ -542,9 +542,9 @@ watch(
 .practiceBanner {
 	margin-top: -10px;
 	border: var(--border);
-	border-color: var(--callout--border-color--warning);
-	background-color: var(--callout--color--background--warning);
-	color: var(--callout--color--text--warning);
+	border-color: var(--n8n-callout--border-color--warning);
+	background-color: var(--n8n-callout--color--background--warning);
+	color: var(--n8n-callout--color--text--warning);
 	display: flex;
 	gap: 1em;
 	justify-content: space-between;

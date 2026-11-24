@@ -571,7 +571,7 @@ useKeybindings({
 	min-height: 0;
 	height: 100%;
 	overflow: hidden;
-	--n8n-session-panel--container-width: 75ch;
+	--session-panel--container-width: 75ch;
 }
 .subHeader {
 	display: flex;
@@ -580,7 +580,7 @@ useKeybindings({
 	padding-block-start: var(--spacing--md);
 	width: 100%;
 	flex-shrink: 0;
-	max-width: var(--n8n-session-panel--container-width, none);
+	max-width: var(--session-panel--container-width, none);
 	margin: 0 auto;
 }
 .search {

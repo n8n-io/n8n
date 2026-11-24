@@ -272,14 +272,14 @@ const RadioGroupCustomLabelDemo = defineComponent({
 				<RadioGroupItem id="radio-group-custom-label-terms" value="terms">
 					<template #label>
 						<N8nText bold color="text-dark">
-							I accept the <a href="#" style="color: var(--link--color--secondary)" @click.prevent>terms and conditions</a>
+							I accept the <a href="#" style="color: var(--n8n-link--color--secondary)" @click.prevent>terms and conditions</a>
 						</N8nText>
 					</template>
 				</RadioGroupItem>
 				<RadioGroupItem id="radio-group-custom-label-privacy" value="privacy">
 					<template #label>
 						<N8nText bold color="text-dark">
-							I accept the <a href="#" style="color: var(--link--color--secondary)" @click.prevent>privacy policy</a>
+							I accept the <a href="#" style="color: var(--n8n-link--color--secondary)" @click.prevent>privacy policy</a>
 						</N8nText>
 					</template>
 				</RadioGroupItem>

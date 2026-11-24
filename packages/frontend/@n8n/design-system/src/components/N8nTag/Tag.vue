@@ -26,15 +26,15 @@ withDefaults(defineProps<TagProps>(), {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	min-width: var(--tag--min-width, max-content);
-	height: var(--tag--height);
-	padding: var(--tag--padding);
-	max-width: var(--tag--max-width);
-	line-height: var(--tag--line-height);
-	color: var(--tag--color--text);
-	background-color: var(--tag--color--background);
-	border: 1px solid var(--tag--border-color);
-	border-radius: var(--tag--radius);
+	min-width: var(--n8n-tag--min-width, max-content);
+	height: var(--n8n-tag--height);
+	padding: var(--n8n-tag--padding);
+	max-width: var(--n8n-tag--max-width);
+	line-height: var(--n8n-tag--line-height);
+	color: var(--n8n-tag--color--text);
+	background-color: var(--n8n-tag--color--background);
+	border: 1px solid var(--n8n-tag--border-color);
+	border-radius: var(--n8n-tag--radius);
 	font-size: var(--tag--font-size);
 	transition: background-color 0.3s ease;
 	user-select: none;
@@ -43,8 +43,8 @@ withDefaults(defineProps<TagProps>(), {
 		cursor: pointer;
 
 		&:hover {
-			background-color: var(--tag--color--background--hover);
-			border-color: var(--tag--border-color--hover);
+			background-color: var(--n8n-tag--color--background--hover);
+			border-color: var(--n8n-tag--border-color--hover);
 		}
 	}
 }
@@ -58,20 +58,20 @@ withDefaults(defineProps<TagProps>(), {
 }
 
 .sm {
-	--tag--height: var(--height--2xs);
-	--tag--padding: 0 var(--spacing--4xs);
+	--n8n-tag--height: var(--height--2xs);
+	--n8n-tag--padding: 0 var(--spacing--4xs);
 	--tag--font-size: var(--font-size--2xs);
 }
 
 .md {
-	--tag--height: var(--height--xs);
-	--tag--padding: var(--spacing--4xs) var(--spacing--2xs);
+	--n8n-tag--height: var(--height--xs);
+	--n8n-tag--padding: var(--spacing--4xs) var(--spacing--2xs);
 	--tag--font-size: var(--font-size--xs);
 }
 
 .lg {
-	--tag--height: var(--height--sm);
-	--tag--padding: var(--spacing--4xs) var(--spacing--2xs);
+	--n8n-tag--height: var(--height--sm);
+	--n8n-tag--padding: var(--spacing--4xs) var(--spacing--2xs);
 	--tag--font-size: var(--font-size--xs);
 }
 </style>

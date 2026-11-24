@@ -111,7 +111,7 @@ onBeforeUnmount(stopCycling);
 	<!-- Purely decorative: the surrounding empty state carries the meaning. -->
 	<div
 		:class="$style.cards"
-		:style="{ '--empty-state-icon-cards--fade-duration': `${FADE_MS}ms` }"
+		:style="{ '--n8n-empty-state-icon-cards--fade-duration': `${FADE_MS}ms` }"
 		aria-hidden="true"
 	>
 		<div :class="$style.card">
@@ -156,12 +156,12 @@ onBeforeUnmount(stopCycling);
 	border-radius: var(--radius--xs);
 	// Consumers whose side icons are fixed-colour brand marks can pin the tiles to a light
 	// surface (and a matching dark icon colour) so the marks stay legible on the dark theme.
-	background: var(--empty-state-icon-cards--tile-background, var(--background--surface));
+	background: var(--n8n-empty-state-icon-cards--tile-background, var(--background--surface));
 	box-shadow: var(--shadow--xs);
 	overflow: hidden;
 	// The font-size sizes both 1em-SVG custom marks and the (sizeless) N8nIcons.
 	font-size: var(--font-size--xl);
-	color: var(--empty-state-icon-cards--tile-color, var(--text-color--subtle));
+	color: var(--n8n-empty-state-icon-cards--tile-color, var(--text-color--subtle));
 
 	&:first-child {
 		transform: rotate(-8deg);
@@ -182,8 +182,8 @@ onBeforeUnmount(stopCycling);
 	opacity: 1;
 	filter: blur(0);
 	transition:
-		opacity var(--empty-state-icon-cards--fade-duration) var(--easing--ease-in-out),
-		filter var(--empty-state-icon-cards--fade-duration) var(--easing--ease-in-out);
+		opacity var(--n8n-empty-state-icon-cards--fade-duration) var(--easing--ease-in-out),
+		filter var(--n8n-empty-state-icon-cards--fade-duration) var(--easing--ease-in-out);
 
 	// Custom marks are meant to be 1em SVGs; sizing bare `<svg>` and `<img>` roots here lets
 	// plain imported `.svg?component` assets and raster logos track the card's font-size too.

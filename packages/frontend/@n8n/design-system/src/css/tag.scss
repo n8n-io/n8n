@@ -2,9 +2,9 @@
 @use './common/var';
 
 @mixin genTheme() {
-	border-color: var(--callout--border-color--info);
-	background-color: var(--callout--color--background--info);
-	color: var(--callout--color--text--info);
+	border-color: var(--n8n-callout--border-color--info);
+	background-color: var(--n8n-callout--color--background--info);
+	color: var(--n8n-callout--color--text--info);
 	font-weight: var(--font-weight--regular);
 
 	@include mixins.when(hit) {
@@ -20,9 +20,9 @@
 	}
 
 	&.el-tag--info {
-		border-color: var(--callout--border-color--info);
-		background-color: var(--callout--color--background--info);
-		color: var(--callout--color--text--info);
+		border-color: var(--n8n-callout--border-color--info);
+		background-color: var(--n8n-callout--color--background--info);
+		color: var(--n8n-callout--color--text--info);
 		border-width: 1px;
 		border-style: solid;
 
@@ -31,7 +31,7 @@
 		}
 
 		.svg-inline--fa {
-			color: var(--callout--icon-color--info);
+			color: var(--n8n-callout--icon-color--info);
 		}
 
 		.el-tag__close {
@@ -44,14 +44,14 @@
 	}
 
 	&.el-tag--success {
-		border-color: var(--callout--border-color--success);
-		background-color: var(--callout--color--background--success);
-		color: var(--callout--color--text--success);
+		border-color: var(--n8n-callout--border-color--success);
+		background-color: var(--n8n-callout--color--background--success);
+		color: var(--n8n-callout--color--text--success);
 		border-width: 1px;
 		border-style: solid;
 
 		.svg-inline--fa {
-			color: var(--callout--icon-color--success);
+			color: var(--n8n-callout--icon-color--success);
 		}
 
 		@include mixins.when(hit) {
@@ -68,9 +68,9 @@
 	}
 
 	&.el-tag--warning {
-		border-color: var(--callout--border-color--warning);
-		background-color: var(--callout--color--background--warning);
-		color: var(--callout--color--text--warning);
+		border-color: var(--n8n-callout--border-color--warning);
+		background-color: var(--n8n-callout--color--background--warning);
+		color: var(--n8n-callout--color--text--warning);
 		border-width: 1px;
 		border-style: solid;
 
@@ -79,7 +79,7 @@
 		}
 
 		.svg-inline--fa {
-			color: var(--callout--icon-color--warning);
+			color: var(--n8n-callout--icon-color--warning);
 		}
 
 		.el-tag__close {
@@ -92,9 +92,9 @@
 	}
 
 	&.el-tag--danger {
-		border-color: var(--callout--border-color--danger);
-		background-color: var(--callout--color--background--danger);
-		color: var(--callout--color--text--danger);
+		border-color: var(--n8n-callout--border-color--danger);
+		background-color: var(--n8n-callout--color--background--danger);
+		color: var(--n8n-callout--color--text--danger);
 		border-width: 1px;
 		border-style: solid;
 
@@ -103,7 +103,7 @@
 		}
 
 		.svg-inline--fa {
-			color: var(--callout--icon-color--danger);
+			color: var(--n8n-callout--icon-color--danger);
 		}
 
 		.el-tag__close {

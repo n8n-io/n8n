@@ -209,7 +209,7 @@ export const Trailing = {
 				flexShrink: 0,
 				alignItems: 'center',
 				alignSelf: 'flex-end',
-				height: 'calc(var(--input--height) - 2px)',
+				height: 'calc(var(--n8n-input--height) - 2px)',
 				marginTop: '0',
 				paddingInline: 'var(--spacing--2xs)',
 				color: 'var(--text-color--subtle)',
@@ -385,7 +385,7 @@ export const Scrollable = {
 			return { args, xlargeValue, largeValue, mediumValue, smallValue, miniValue };
 		},
 		template: `
-		<div style="${storyContainerStyle}; --tags-input--max-height: 72px; display: flex; flex-direction: column; gap: var(--spacing--md);">
+		<div style="${storyContainerStyle}; --n8n-tags-input--max-height: 72px; display: flex; flex-direction: column; gap: var(--spacing--md);">
 			<TagsInput v-model="xlargeValue" size="xlarge" placeholder="xlarge (40px)" />
 			<TagsInput v-model="largeValue" size="large" placeholder="large (36px, default)" />
 			<TagsInput v-model="mediumValue" size="medium" placeholder="medium (32px)" />

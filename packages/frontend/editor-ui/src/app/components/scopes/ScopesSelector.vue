@@ -445,8 +445,8 @@ function toggleScope(scope: S, checked: boolean) {
 
 /* Option and checkbox labels render at 12px here, one step below the body copy. */
 .selector {
-	--radio-group-item--label--font-size: var(--font-size--2xs);
-	--checkbox--label--font-size: var(--font-size--2xs);
+	--n8n-radio-group-item--label--font-size: var(--font-size--2xs);
+	--n8n-checkbox--label--font-size: var(--font-size--2xs);
 }
 
 .modes {
@@ -518,7 +518,7 @@ function toggleScope(scope: S, checked: boolean) {
 	min-height: var(--spacing--lg);
 
 	> button:first-child {
-		--button--height: var(--spacing--lg);
+		--n8n-button--height: var(--spacing--lg);
 		width: var(--spacing--lg);
 	}
 }

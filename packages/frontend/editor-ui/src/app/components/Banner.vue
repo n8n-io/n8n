@@ -158,12 +158,12 @@ const messageClass = computed<Record<Theme, string>>(() => ({
 
 .dangerMessage {
 	composes: message;
-	color: var(--callout--color--text--danger);
+	color: var(--n8n-callout--color--text--danger);
 }
 
 .warningMessage {
 	composes: message;
-	color: var(--callout--color--text--warning);
+	color: var(--n8n-callout--color--text--warning);
 }
 
 .infoMessage {

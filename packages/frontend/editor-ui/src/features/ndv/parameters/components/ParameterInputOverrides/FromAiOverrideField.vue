@@ -48,18 +48,18 @@ const emit = defineEmits<{ close: [] }>();
 	display: flex;
 	align-items: center;
 	width: 100%;
-	height: var(--input--height);
+	height: var(--n8n-input--height);
 	box-sizing: border-box;
 	gap: var(--spacing--4xs);
 	padding: var(--spacing--5xs);
-	border-radius: var(--input--radius);
-	background-color: var(--input--color--background);
-	box-shadow: inset var(--input--border--shadow);
+	border-radius: var(--n8n-input--radius);
+	background-color: var(--n8n-input--color--background);
+	box-shadow: inset var(--n8n-input--border--shadow);
 }
 
 .tag {
-	--tag--min-width: 0;
-	--tag--max-width: 100%;
+	--n8n-tag--min-width: 0;
+	--n8n-tag--max-width: 100%;
 	gap: var(--spacing--3xs);
 	height: 100%;
 	min-height: 0;

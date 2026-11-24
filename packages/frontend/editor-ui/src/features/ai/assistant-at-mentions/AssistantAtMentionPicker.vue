@@ -579,7 +579,7 @@ defineExpose({ handleExternalKeydown, getOpenMetrics, flushEmptySearch });
 
 <style module lang="scss">
 .menuContent {
-	width: var(--n8n--dropdown-menu-width);
+	width: var(--n8n-dropdown-menu--width);
 }
 
 .loadingState {

@@ -380,6 +380,6 @@ async function handlePublish() {
 
 .nodeLinks a span {
 	text-decoration: underline;
-	color: var(--callout--color--text--danger);
+	color: var(--n8n-callout--color--text--danger);
 }
 </style>

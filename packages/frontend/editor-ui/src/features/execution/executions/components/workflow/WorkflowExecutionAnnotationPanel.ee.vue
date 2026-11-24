@@ -129,8 +129,8 @@ function onEllipsisButtonBlur(event: FocusEvent) {
 }
 
 .menu {
-	width: var(--n8n--dropdown-menu-width);
-	min-width: var(--n8n--dropdown-menu-width);
+	width: var(--n8n-dropdown-menu--width);
+	min-width: var(--n8n-dropdown-menu--width);
 }
 
 .container {

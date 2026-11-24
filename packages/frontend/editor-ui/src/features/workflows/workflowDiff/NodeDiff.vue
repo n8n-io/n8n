@@ -59,12 +59,12 @@ const props = withDefaults(
 			// deletions
 			--diff--blob--deletion-num--color--background: var(--diff--color--deleted--light);
 			--diff--blob--deletion-num--color--text: var(--color--text--tint-3);
-			--diff--color--danger--emphasis: var(--diff--color--deleted);
+			--diff--color--danger--emphasis: var(--n8n-code-diff--color--deleted);
 
 			// insertions
 			--diff--blob--addition-num--color--text: var(--color--text--tint-3);
 			--diff--blob--addition-num--color--background: var(--diff--color--new--light);
-			--diff--color--success--emphasis: var(--diff--color--new);
+			--diff--color--success--emphasis: var(--n8n-code-diff--color--new);
 
 			--diff--blob--hunk-num--color--background: var(--color--background--shade-1);
 			:global(.blob-code-hunk) {

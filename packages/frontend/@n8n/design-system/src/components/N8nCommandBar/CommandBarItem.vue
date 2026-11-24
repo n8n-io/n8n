@@ -141,7 +141,7 @@ function onClick(event: MouseEvent) {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--xs);
-	height: var(--command-bar-item--height);
+	height: var(--n8n-command-bar-item--height);
 	padding: 0 var(--spacing--xs);
 	border-radius: var(--radius--xs);
 	color: var(--text-color);

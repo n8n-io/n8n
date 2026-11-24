@@ -271,7 +271,7 @@ function handleDragEnd(event: PointerEvent) {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
-	gap: var(--input--padding);
+	gap: var(--n8n-input--padding);
 	height: var(--n8n-slider--height, var(--height--lg));
 	padding-inline: var(--n8n-slider--padding-inline, var(--spacing--xs));
 	border-radius: var(--n8n-slider--radius, var(--radius--3xs));

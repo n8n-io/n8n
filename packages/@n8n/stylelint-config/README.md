@@ -46,6 +46,21 @@ Add scripts to your `package.json`:
 
 The `@n8n/css-var-naming` rule enforces a structured naming pattern for CSS custom properties (variables).
 
+### Design system component overrides
+
+Use `--n8n-<component>--<property>` for variables that a design system component exposes to consumers.
+Use a single dash after `n8n`. Use double dashes between the component and property groups.
+
+```css
+--n8n-card--padding: var(--spacing--sm);
+--n8n-dropdown-menu--width: 24rem;
+--n8n-keyboard-shortcut--background: transparent;
+```
+
+Reserve this prefix for design system overrides. Internal component variables do not need this prefix. Editor-only variables must not use it.
+The rule checks this format in all files, in declarations and `var()` references, at error severity.
+It checks the token grammar below only in `@n8n/design-system/src/css`.
+
 ### Pattern Structure
 
 ```
@@ -57,7 +72,7 @@ The `@n8n/css-var-naming` rule enforces a structured naming pattern for CSS cust
 - `value`: Semantic name or scale value
 
 **Optional groups (in order):**
-- `namespace`: `n8n`, `chat`, or `p` (for primitives)
+- `namespace`: `chat` or `p` (for primitives)
 - `component`: Component name (e.g., `button`, `input`)
 - `part`: Sub-component (e.g., `menu`, `tab`, `arrow`)
 - `variant`: Visual style (e.g., `solid`, `outline`, `ghost`)
@@ -81,7 +96,6 @@ The `@n8n/css-var-naming` rule enforces a structured naming pattern for CSS cust
 --text-color--muted: #888;
 
 /* With namespace */
---n8n--color--primary: #0d6efd;
 --chat--button--background--primary: #0d6efd;
 --p--color--primary-500: #0d6efd;
 --color--neutral-850: #2e3440;
@@ -108,7 +122,7 @@ The `@n8n/css-var-naming` rule enforces a structured naming pattern for CSS cust
 --background--surface--dark: #000;
 
 /* Complex patterns */
---n8n--button--background--primary--solid--hover--dark: #0a58ca;
+--n8n-button--background--primary--solid--hover--dark: #0a58ca;
 ```
 
 ### Invalid Examples
@@ -254,8 +268,8 @@ Use namespaces for cross-app libraries:
 ```scss
 /* In @n8n/design-system */
 :root {
-  --n8n--color--primary: #ff6d5a;
-  --n8n--button--background--primary: var(--n8n--color--primary);
+  --color--primary: #ff6d5a;
+  --n8n-button--background--primary: var(--color--primary);
 }
 
 /* In @n8n/chat */

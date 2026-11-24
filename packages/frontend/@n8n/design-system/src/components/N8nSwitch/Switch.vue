@@ -80,8 +80,8 @@ const getRootAttrs = () => {
 	box-sizing: content-box;
 	padding: 0;
 	margin: 0;
-	background-color: var(--switch--color--background);
-	border: 1px solid var(--switch--border-color);
+	background-color: var(--n8n-switch--color--background);
+	border: 1px solid var(--n8n-switch--border-color);
 	cursor: inherit;
 	flex-shrink: 0;
 	transition:
@@ -89,8 +89,8 @@ const getRootAttrs = () => {
 		border-color 0.15s ease;
 
 	&[data-state='checked'] {
-		background-color: var(--switch--color--background--active);
-		border-color: var(--switch--color--background--active);
+		background-color: var(--n8n-switch--color--background--active);
+		border-color: var(--n8n-switch--color--background--active);
 	}
 
 	&:focus-visible {
@@ -106,7 +106,7 @@ const getRootAttrs = () => {
 	left: 2px;
 	transform: translateY(-50%);
 	display: block;
-	background-color: var(--switch--toggle--color);
+	background-color: var(--n8n-switch--toggle--color);
 	transition:
 		left var(--duration--snappy) var(--easing--ease-out),
 		width var(--duration--snappy) var(--easing--ease-out);

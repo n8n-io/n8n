@@ -518,7 +518,7 @@ describe('N8nDropdownMenu', () => {
 				if (menus.length < 2) throw new Error('Sub-menu not found');
 				return menus[1];
 			});
-			expect(subMenu.style.getPropertyValue('--n8n--dropdown-menu-width')).toBe('20rem');
+			expect(subMenu.style.getPropertyValue('--n8n-dropdown-menu--width')).toBe('20rem');
 			expect(subMenu.querySelectorAll('.n8n-loading')).toHaveLength(4);
 		});
 	});
@@ -698,7 +698,7 @@ describe('N8nDropdownMenu', () => {
 			});
 
 			const { dropdown } = await getDropdownContent();
-			expect(dropdown).toHaveStyle({ '--n8n--dropdown-menu-width': '24rem' });
+			expect(dropdown).toHaveStyle({ '--n8n-dropdown-menu--width': '24rem' });
 		});
 
 		it('should apply a custom width value', async () => {
@@ -711,7 +711,7 @@ describe('N8nDropdownMenu', () => {
 			});
 
 			const { dropdown } = await getDropdownContent();
-			expect(dropdown).toHaveStyle({ '--n8n--dropdown-menu-width': '10rem' });
+			expect(dropdown).toHaveStyle({ '--n8n-dropdown-menu--width': '10rem' });
 		});
 	});
 

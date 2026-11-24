@@ -144,11 +144,11 @@ watch(selectedAnimation, () => {
 }
 
 .box {
-	--n8n--motion-playground-size: var(--spacing--4xl);
-	--reka-collapsible-content-height: var(--n8n--motion-playground-size);
+	--motion-playground-size: var(--spacing--4xl);
+	--reka-collapsible-content-height: var(--motion-playground-size);
 
-	width: var(--n8n--motion-playground-size);
-	height: var(--n8n--motion-playground-size);
+	width: var(--motion-playground-size);
+	height: var(--motion-playground-size);
 	border-radius: var(--radius);
 	background: var(--color--primary);
 	box-shadow: var(--shadow--outline);

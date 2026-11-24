@@ -93,8 +93,8 @@ const personalisation = injectAgentPersonalisation();
 }
 
 .outdated.outdated {
-	background: var(--callout--color--background--warning);
-	border-color: var(--callout--border-color--warning);
+	background: var(--n8n-callout--color--background--warning);
+	border-color: var(--n8n-callout--border-color--warning);
 }
 
 .locked {

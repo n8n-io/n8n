@@ -196,7 +196,7 @@ describe('components', () => {
 
 			await waitFor(() => {
 				const menu = document.querySelector<HTMLElement>('[role="menu"]');
-				expect(menu?.style.getPropertyValue('--n8n--dropdown-menu-width')).toBe('13rem');
+				expect(menu?.style.getPropertyValue('--n8n-dropdown-menu--width')).toBe('13rem');
 			});
 		});
 	});

@@ -142,15 +142,15 @@ const nextStep = computed(() =>
 .row {
 	min-width: 0;
 
-	--ai-activity-step--color: var(--text-color--subtle);
+	--n8n-ai-activity-step--color: var(--text-color--subtle);
 }
 
 .header {
-	--ai-activity-step--padding: var(--spacing--4xs) var(--spacing--2xs);
-	--ai-activity-step--height: auto;
-	--button--color--background-hover: var(--background--hover);
+	--n8n-ai-activity-step--padding: var(--spacing--4xs) var(--spacing--2xs);
+	--n8n-ai-activity-step--height: auto;
+	--n8n-button--color--background-hover: var(--background--hover);
 	/* Keep the open row quiet: the rail below already ties the details to it. */
-	--button--color--background-active: var(--background--hover);
+	--n8n-button--color--background-active: var(--background--hover);
 
 	gap: var(--spacing--2xs);
 }

@@ -229,7 +229,7 @@ function onToggle(resource: PromotionResource) {
 }
 
 .resource.blocked {
-	background-color: var(--callout--color--background--warning);
+	background-color: var(--n8n-callout--color--background--warning);
 }
 
 .heading {

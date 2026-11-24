@@ -28,9 +28,9 @@ const waves = lobes.map((lobe, index) => ({
 	'--wave-position': `${lobe.x}% 100%`,
 	'--wave-width': `${lobe.width}%`,
 	'--wave-depth': `${lobe.height / 100}`,
-	'--wave-color': `var(--n8n-wave--color-${(index % 9) + 1})`,
-	'--wave-delay': `calc(var(--n8n-wave--duration) * ${-index / 7})`,
-	'--wave-duration': `calc(var(--n8n-wave--duration) * ${1 + (index % 3) * 0.17})`,
+	'--wave-color': `var(--wave--color-${(index % 9) + 1})`,
+	'--wave-delay': `calc(var(--wave--duration) * ${-index / 7})`,
+	'--wave-duration': `calc(var(--wave--duration) * ${1 + (index % 3) * 0.17})`,
 }));
 
 const whimsicalLabels: BaseTextKey[] = [
@@ -102,19 +102,19 @@ useIntervalFn(() => {
 @use '@n8n/design-system/css/mixins/motion';
 
 .wave {
-	--n8n-wave--duration: calc(var(--duration--slowest) * 2);
-	--n8n-wave--size: var(--spacing--xl);
-	--n8n-wave--border: var(--border-width, 1px);
-	--n8n-wave--glow: var(--spacing--lg);
-	--n8n-wave--color-1: var(--color--red-500);
-	--n8n-wave--color-2: var(--color--blue-400);
-	--n8n-wave--color-3: var(--color--green-500);
-	--n8n-wave--color-4: var(--color--purple-500);
-	--n8n-wave--color-5: var(--color--gold-400);
-	--n8n-wave--color-6: var(--color--purple-600);
-	--n8n-wave--color-7: var(--color--blue-500);
-	--n8n-wave--color-8: var(--color--pink-500);
-	--n8n-wave--color-9: var(--color--mint-500);
+	--wave--duration: calc(var(--duration--slowest) * 2);
+	--wave--size: var(--spacing--xl);
+	--wave--border: var(--border-width, 1px);
+	--wave--glow: var(--spacing--lg);
+	--wave--color-1: var(--color--red-500);
+	--wave--color-2: var(--color--blue-400);
+	--wave--color-3: var(--color--green-500);
+	--wave--color-4: var(--color--purple-500);
+	--wave--color-5: var(--color--gold-400);
+	--wave--color-6: var(--color--purple-600);
+	--wave--color-7: var(--color--blue-500);
+	--wave--color-8: var(--color--pink-500);
+	--wave--color-9: var(--color--mint-500);
 
 	display: grid;
 	place-items: center;
@@ -123,7 +123,7 @@ useIntervalFn(() => {
 	inset-inline: 0;
 	z-index: 10;
 	isolation: isolate;
-	border-bottom: 1px solid var(--n8n-wave--border);
+	border-bottom: 1px solid var(--wave--border);
 	pointer-events: none;
 	@include motion.fade-in-up;
 	animation-fill-mode: backwards;
@@ -215,7 +215,7 @@ useIntervalFn(() => {
 
 .ring {
 	z-index: 3;
-	padding: var(--n8n-wave--border);
+	padding: var(--wave--border);
 	mask:
 		linear-gradient(#fff 0 0) content-box,
 		linear-gradient(#fff 0 0);
@@ -237,7 +237,7 @@ useIntervalFn(() => {
 
 .bloom {
 	z-index: 1;
-	filter: blur(var(--n8n-wave--glow));
+	filter: blur(var(--wave--glow));
 	opacity: 0.5;
 	mix-blend-mode: multiply;
 }
@@ -250,8 +250,8 @@ useIntervalFn(() => {
 
 	.waveLight {
 		background: radial-gradient(
-			ellipse calc(var(--wave-width) * 0.4) calc(var(--n8n-wave--size) * var(--wave-depth) * 1.25)
-				at var(--wave-position),
+			ellipse calc(var(--wave-width) * 0.4) calc(var(--wave--size) * var(--wave-depth) * 1.25) at
+				var(--wave-position),
 			#fff 0%,
 			light-dark(rgb(255 255 255 / 90%), rgb(255 255 255 / 50%)) 12%,
 			rgb(255 255 255 / 35%) 42%,
@@ -265,8 +265,7 @@ useIntervalFn(() => {
 	position: absolute;
 	inset: 0;
 	background: radial-gradient(
-		ellipse var(--wave-width) calc(var(--n8n-wave--size) * var(--wave-depth)) at
-			var(--wave-position),
+		ellipse var(--wave-width) calc(var(--wave--size) * var(--wave-depth)) at var(--wave-position),
 		var(--wave-color) 0%,
 		color-mix(in srgb, var(--wave-color) 45%, transparent) 35%,
 		transparent 100%

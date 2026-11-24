@@ -164,13 +164,13 @@ function rendersAsMarkdown(section: DiffSection, text: string): boolean {
 }
 
 .removed {
-	background-color: var(--diff--color--deleted--faint);
-	box-shadow: inset 2px 0 0 var(--diff--color--deleted);
+	background-color: var(--n8n-code-diff--color--deleted--faint);
+	box-shadow: inset 2px 0 0 var(--n8n-code-diff--color--deleted);
 }
 
 .added {
-	background-color: var(--diff--color--new--faint);
-	box-shadow: inset 2px 0 0 var(--diff--color--new);
+	background-color: var(--n8n-code-diff--color--new--faint);
+	box-shadow: inset 2px 0 0 var(--n8n-code-diff--color--new);
 }
 
 .removed .changedWord {

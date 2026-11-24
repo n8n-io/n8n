@@ -425,7 +425,7 @@ onBeforeUnmount(() => {
 	width: 100%;
 	min-width: 0;
 	padding-block: var(--spacing--xs);
-	max-width: var(--n8n-session-panel--container-width, none);
+	max-width: var(--session-panel--container-width, none);
 	margin: 0 auto;
 }
 

@@ -898,7 +898,7 @@ watch(
    skeleton column stays centered while the table below spans the full-width layout. */
 .pageHeader {
 	width: 100%;
-	max-width: var(--settings-content--max-width, 45rem);
+	max-width: var(--n8n-settings-content--max-width, 45rem);
 	margin-inline: auto;
 }
 

@@ -310,7 +310,7 @@ defineExpose({ highlightFirstItem, focusTrigger });
 }
 
 .menuContent {
-	width: var(--n8n--dropdown-menu-width);
+	width: var(--n8n-dropdown-menu--width);
 }
 
 .itemLabel {

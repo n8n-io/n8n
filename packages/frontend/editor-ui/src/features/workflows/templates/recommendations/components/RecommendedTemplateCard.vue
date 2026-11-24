@@ -278,9 +278,9 @@ onBeforeUnmount(() => {
 }
 
 .categoryTag {
-	--tag--height: var(--spacing--lg);
-	--tag--border-color: transparent;
-	--tag--padding: var(--spacing--4xs) var(--spacing--2xs);
+	--n8n-tag--height: var(--spacing--lg);
+	--n8n-tag--border-color: transparent;
+	--n8n-tag--padding: var(--spacing--4xs) var(--spacing--2xs);
 }
 
 .statItem {

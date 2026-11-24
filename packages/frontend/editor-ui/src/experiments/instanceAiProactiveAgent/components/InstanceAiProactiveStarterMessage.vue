@@ -95,7 +95,7 @@ onBeforeUnmount(() => {
 	width: var(--spacing--xl);
 	height: var(--spacing--xl);
 	border-radius: var(--radius--full);
-	background: var(--assistant--color--highlight-gradient);
+	background: var(--n8n-assistant--color--highlight-gradient);
 	box-shadow: var(--shadow--xs);
 }
 

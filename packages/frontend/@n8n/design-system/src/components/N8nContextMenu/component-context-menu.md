@@ -17,7 +17,7 @@ A menu that opens at the pointer on right-click or long-press. Built on Reka UI 
 - `disabled?: boolean` Disables the trigger. | `default: false`
 - `loading?: boolean` Show skeleton rows instead of items. | `default: false`
 - `loadingItemCount?: number` Number of skeleton rows while loading. The same default applies to `submenu.loadingItemCount`. | `default: 3`
-- `contentClass?: ClassValue` Class on the root panel and every submenu panel (max-height and other constraints). Set `--context-menu--width` here when the panel must use a fixed width instead of hugging its content.
+- `contentClass?: ClassValue` Class on the root panel and every submenu panel (max-height and other constraints). Set `--n8n-context-menu--width` here when the panel must use a fixed width instead of hugging its content.
 - `modal?: boolean` When `true`, blocks pointer events on the rest of the page while the menu is open. Canvas menus set this to `false`. | `default: true`
 
 Put extra HTML attributes, including `class`, on the `#trigger` element. They are not forwarded from the root.
@@ -38,9 +38,9 @@ Checkbox and radio rows show a check on the trailing edge when selected. Submenu
 
 **Panel tokens**
 
-- `--context-menu--width` is unset by default. Panels then use `fit-content`, with a min of `--spacing--4xl` (8rem) and a max of `24rem`. Set it from `contentClass` to give the root panel and every submenu the same fixed width.
+- `--n8n-context-menu--width` is unset by default. Panels then use `fit-content`, with a min of `--spacing--4xl` (8rem) and a max of `24rem`. Set it from `contentClass` to give the root panel and every submenu the same fixed width.
 - Default `max-height` is `--reka-context-menu-content-available-height`. Override it from `contentClass`.
-- `--context-menu--padding` is an internal variable on the item list. It aliases `--spacing--4xs` (4px). Submenu `alignOffset` is `-4` so the first submenu row lines up with the trigger. Reka `alignOffset` is a pixel number, so `ITEMS_PADDING_PX` in `ContextMenu.constants.ts` must stay equal to `--spacing--4xs`.
+- `--n8n-context-menu--padding` is an internal variable on the item list. It aliases `--spacing--4xs` (4px). Submenu `alignOffset` is `-4` so the first submenu row lines up with the trigger. Reka `alignOffset` is a pixel number, so `ITEMS_PADDING_PX` in `ContextMenu.constants.ts` must stay equal to `--spacing--4xs`.
 - Submenu `sideOffset` is `1`, which matches the 1px inset outline (`--shadow--outline`).
 - Root and submenu panels set Reka `collisionPadding` to `--spacing--2xs` (8px) so the menu stays inset from the viewport edge. Reka `collisionPadding` is a pixel number, so `COLLISION_PADDING_PX` in `ContextMenu.constants.ts` must stay equal to `--spacing--2xs`.
 

@@ -92,37 +92,37 @@
 	--node--type-main--color: var(--color--neutral-500);
 
 	// Sticky
-	--sticky--color--background: var(--color--yellow-100);
-	--sticky--border-color: var(--color--yellow-200);
-	--sticky--color--text: var(--color--neutral-850);
-	--sticky--code--color--text: var(--color--secondary);
-	--sticky--code--color--background: var(--color--background);
+	--n8n-sticky--color--background: var(--color--yellow-100);
+	--n8n-sticky--border-color: var(--color--yellow-200);
+	--n8n-sticky--color--text: var(--color--neutral-850);
+	--n8n-sticky--code--color--text: var(--color--secondary);
+	--n8n-sticky--code--color--background: var(--color--background);
 
-	--sticky--color--background--variant-1: var(--sticky--color--background);
-	--sticky--border-color--variant-1: var(--sticky--border-color);
-	--sticky--color--background--variant-2: var(--color--gold-100);
-	--sticky--border-color--variant-2: var(--color--gold-300);
-	--sticky--color--background--variant-3: var(--color--red-100);
-	--sticky--border-color--variant-3: var(--color--red-250);
-	--sticky--color--background--variant-4: var(--color--green-100);
-	--sticky--border-color--variant-4: var(--color--green-300);
-	--sticky--color--background--variant-5: var(--color--blue-100);
-	--sticky--border-color--variant-5: var(--color--blue-200);
-	--sticky--color--background--variant-6: var(--color--purple-200);
-	--sticky--border-color--variant-6: var(--color--purple-300);
-	--sticky--color--background--variant-7: var(--color--neutral-100);
-	--sticky--border-color--variant-7: var(--color--neutral-200);
+	--sticky--color--background--variant-1: var(--n8n-sticky--color--background);
+	--sticky--border-color--variant-1: var(--n8n-sticky--border-color);
+	--n8n-sticky--color--background--variant-2: var(--color--gold-100);
+	--n8n-sticky--border-color--variant-2: var(--color--gold-300);
+	--n8n-sticky--color--background--variant-3: var(--color--red-100);
+	--n8n-sticky--border-color--variant-3: var(--color--red-250);
+	--n8n-sticky--color--background--variant-4: var(--color--green-100);
+	--n8n-sticky--border-color--variant-4: var(--color--green-300);
+	--n8n-sticky--color--background--variant-5: var(--color--blue-100);
+	--n8n-sticky--border-color--variant-5: var(--color--blue-200);
+	--n8n-sticky--color--background--variant-6: var(--color--purple-200);
+	--n8n-sticky--border-color--variant-6: var(--color--purple-300);
+	--n8n-sticky--color--background--variant-7: var(--color--neutral-100);
+	--n8n-sticky--border-color--variant-7: var(--color--neutral-200);
 
 	// AI Assistant
-	--assistant--button--color--background--gradient: linear-gradient(
+	--n8n-assistant--button--color--background--gradient: linear-gradient(
 		var(--color--background--light-3),
 		var(--color--background--light-3)
 	);
-	--assistant--button--color--background--gradient--hover: linear-gradient(
+	--n8n-assistant--button--color--background--gradient--hover: linear-gradient(
 		var(--color--background--light-3),
 		var(--color--background--light-3)
 	);
-	--assistant--button--color--background--gradient--active: linear-gradient(
+	--n8n-assistant--button--color--background--gradient--active: linear-gradient(
 		var(--color--background--light-3),
 		var(--color--background--light-3)
 	);
@@ -130,13 +130,13 @@
 	--assistant--color--highlight-1: #5b60e8;
 	--assistant--color--highlight-2: #aa7bec;
 	--assistant--color--highlight-3: #ec7b8e;
-	--assistant--color--highlight-gradient: linear-gradient(
+	--n8n-assistant--color--highlight-gradient: linear-gradient(
 		105deg,
 		var(--assistant--color--highlight-1) 0%,
 		var(--assistant--color--highlight-2) 50%,
 		var(--assistant--color--highlight-3) 100%
 	);
-	--assistant--color--highlight-gradient--reverse: linear-gradient(
+	--n8n-assistant--color--highlight-gradient--reverse: linear-gradient(
 		105deg,
 		var(--assistant--color--highlight-3) 0%,
 		var(--assistant--color--highlight-2) 50%,
@@ -144,20 +144,20 @@
 	);
 
 	// AI Chat text and icon colors
-	--assistant--color--text--subtle: var(--color--neutral-500);
-	--assistant--icon-color--subtle: var(--color--neutral-500);
-	--assistant--color--text: var(--text-color--subtle);
-	--assistant--color--text--user-bubble: var(--text-color);
-	--assistant--color--background--user-bubble: var(--color--neutral-150);
-	--assistant--text-message--collapsed--max-height: 200px;
+	--n8n-assistant--color--text--subtle: var(--color--neutral-500);
+	--n8n-assistant--icon-color--subtle: var(--color--neutral-500);
+	--n8n-assistant--color--text: var(--text-color--subtle);
+	--n8n-assistant--color--text--user-bubble: var(--text-color);
+	--n8n-assistant--color--background--user-bubble: var(--color--neutral-150);
+	--n8n-assistant--text-message--collapsed--max-height: 200px;
 
-	--assistant--button--color--background--hover: linear-gradient(
+	--n8n-assistant--button--color--background--hover: linear-gradient(
 		108.82deg,
 		rgba(236, 123, 142, 0.12) 0%,
 		rgba(170, 123, 236, 0.12) 50.5%,
 		rgba(91, 96, 232, 0.12) 100%
 	);
-	--assistant--button--color--background--active: linear-gradient(
+	--n8n-assistant--button--color--background--active: linear-gradient(
 		108.82deg,
 		rgba(236, 123, 142, 0.25) 0%,
 		rgba(170, 123, 236, 0.25) 50.5%,
@@ -248,19 +248,19 @@
 	--code--line-break--color: var(--color--purple-400);
 
 	// Tag
-	--tag--height: 20px;
-	--tag--padding: 0 var(--spacing--4xs);
-	--tag--color--background: var(--color--neutral-125);
-	--tag--color--background--hover: var(--color--neutral-150);
-	--tag--color--background--active: var(--color--neutral-200);
-	--tag--border-color: var(--color--neutral-150);
-	--tag--border-color--hover: var(--color--neutral-200);
-	--tag--border-color--active: var(--color--neutral-250);
-	--tag--radius: var(--radius);
-	--tag--color--text: var(--color--text);
+	--n8n-tag--height: 20px;
+	--n8n-tag--padding: 0 var(--spacing--4xs);
+	--n8n-tag--color--background: var(--color--neutral-125);
+	--n8n-tag--color--background--hover: var(--color--neutral-150);
+	--n8n-tag--color--background--active: var(--color--neutral-200);
+	--n8n-tag--border-color: var(--color--neutral-150);
+	--n8n-tag--border-color--hover: var(--color--neutral-200);
+	--n8n-tag--border-color--active: var(--color--neutral-250);
+	--n8n-tag--radius: var(--radius);
+	--n8n-tag--color--text: var(--color--text);
 	--tag--font-size: var(--font-size--2xs);
-	--tag--font-weight: var(--font-weight--regular);
-	--tag--line-height: 0;
+	--n8n-tag--font-weight: var(--font-weight--regular);
+	--n8n-tag--line-height: 0;
 
 	// Variables
 	--variables-usage--color--text: var(--color--success);
@@ -377,35 +377,35 @@
 	--notice--color--text: var(--color--text);
 
 	// Callout
-	--callout--border-color--info: var(--color--foreground);
-	--callout--color--background--info: var(--color--foreground--tint-2);
-	--callout--color--text--info: var(--color--text);
-	--callout--icon-color--info: var(--color--text--tint-1);
-	--callout--border-color--success: var(--color--success--tint-2);
-	--callout--color--background--success: var(--color--success--tint-4);
-	--callout--color--text--success: var(--color--success);
-	--callout--icon-color--success: var(--color--success);
-	--callout--border-color--warning: var(--color--warning--tint-1);
-	--callout--color--background--warning: var(--color--warning--tint-2);
-	--callout--color--text--warning: var(--color--warning);
-	--callout--icon-color--warning: var(--color--warning);
-	--callout--border-color--danger: var(--color--danger--tint-3);
-	--callout--color--background--danger: var(--color--danger--tint-4);
-	--callout--color--text--danger: var(--color--danger);
-	--callout--icon-color--danger: var(--color--danger);
-	--callout--border-color--secondary: var(--color--secondary--tint-1);
-	--callout--color--background--secondary: var(--color--secondary--tint-2);
-	--callout--color--text--secondary: var(--color--secondary);
-	--callout--icon-color--secondary: var(--color--secondary);
+	--n8n-callout--border-color--info: var(--color--foreground);
+	--n8n-callout--color--background--info: var(--color--foreground--tint-2);
+	--n8n-callout--color--text--info: var(--color--text);
+	--n8n-callout--icon-color--info: var(--color--text--tint-1);
+	--n8n-callout--border-color--success: var(--color--success--tint-2);
+	--n8n-callout--color--background--success: var(--color--success--tint-4);
+	--n8n-callout--color--text--success: var(--color--success);
+	--n8n-callout--icon-color--success: var(--color--success);
+	--n8n-callout--border-color--warning: var(--color--warning--tint-1);
+	--n8n-callout--color--background--warning: var(--color--warning--tint-2);
+	--n8n-callout--color--text--warning: var(--color--warning);
+	--n8n-callout--icon-color--warning: var(--color--warning);
+	--n8n-callout--border-color--danger: var(--color--danger--tint-3);
+	--n8n-callout--color--background--danger: var(--color--danger--tint-4);
+	--n8n-callout--color--text--danger: var(--color--danger);
+	--n8n-callout--icon-color--danger: var(--color--danger);
+	--n8n-callout--border-color--secondary: var(--color--secondary--tint-1);
+	--n8n-callout--color--background--secondary: var(--color--secondary--tint-2);
+	--n8n-callout--color--text--secondary: var(--color--secondary);
+	--n8n-callout--icon-color--secondary: var(--color--secondary);
 
 	// Dialogs and overlays
 	--dialog--color--background: var(--color--neutral-white);
 	--dialog--overlay--color--background: var(--color--white-alpha-800);
 	--dialog--overlay--color--background--dark: var(--color--black-alpha-600);
-	--block-ui--overlay--color: var(--color--neutral-950);
+	--n8n-block-ui--overlay--color: var(--color--neutral-950);
 
 	// Avatar
-	--avatar--color--text: var(--color--text--tint-3);
+	--n8n-avatar--color--text: var(--color--text--tint-3);
 
 	// NPS Survey
 	--nps-survey--color--background: var(--color--neutral-850);
@@ -415,13 +415,13 @@
 	--action-dropdown--item--color--background--active: var(--color--background);
 
 	// Checkbox
-	--checkbox--label--color--disabled: var(--text-color--subtler);
+	--n8n-checkbox--label--color--disabled: var(--text-color--subtler);
 
 	// Switch (Activation, boolean)
-	--switch--color--background: var(--color--neutral-400);
-	--switch--color--background--active: var(--background--brand);
-	--switch--border-color: transparent;
-	--switch--toggle--color: var(--color--neutral-white);
+	--n8n-switch--color--background: var(--color--neutral-400);
+	--n8n-switch--color--background--active: var(--background--brand);
+	--n8n-switch--border-color: transparent;
+	--n8n-switch--toggle--color: var(--color--neutral-white);
 
 	// Feature Request
 	--feature-request--color--text: var(--color--neutral-white);
@@ -608,15 +608,15 @@
 	);
 
 	// Diff colors
-	--diff--color--new: #0eab54;
+	--n8n-code-diff--color--new: #0eab54;
 	--diff--color--new--light: #b4efc4;
-	--diff--color--new--faint: #ddfbe7;
+	--n8n-code-diff--color--new--faint: #ddfbe7;
 	--diff--color--modified: #bf941f;
 	--diff--color--modified--light: #f3dca1;
 	--diff--color--modified--faint: var(--color--yellow-100);
-	--diff--color--deleted: #f51f32;
+	--n8n-code-diff--color--deleted: #f51f32;
 	--diff--color--deleted--light: var(--color--red-200);
-	--diff--color--deleted--faint: var(--color--red-50);
+	--n8n-code-diff--color--deleted--faint: var(--color--red-50);
 
 	// Various
 	--avatar--color--accent-1: var(--color--neutral-200);
@@ -627,12 +627,12 @@
 	--color--neutral: var(--color--neutral-250);
 	--color--neutral--light: var(--color--neutral-200);
 	--node--configurable-name--color: var(--color--text--shade-1);
-	--link--color--secondary: var(--color--secondary);
-	--link--color--secondary--hover: var(--color--secondary--shade-1);
+	--n8n-link--color--secondary: var(--color--secondary);
+	--n8n-link--color--secondary--hover: var(--color--secondary--shade-1);
 
 	// Menu
-	--menu--color--background: var(--color--neutral-white);
-	--menu--color--background--hover: var(--color--neutral-200);
+	--n8n-menu--color--background: var(--color--neutral-white);
+	--n8n-menu--color--background--hover: var(--color--neutral-200);
 	--menu--color--background--active: var(--color--neutral-200);
 
 	// Params
@@ -643,7 +643,7 @@
 	--grid--row--color--background--selected: var(--color--purple-200);
 	--grid--cell--border-color--editing: 2px solid var(--color--secondary);
 
-	--command-bar-item--height: 40px;
+	--n8n-command-bar-item--height: 40px;
 
 	// Animation
 	--animation--duration: var(--duration--base);
@@ -721,29 +721,29 @@
 	--assistant--color--highlight-1: #8c90f2;
 	--assistant--color--highlight-2: #a977f0;
 	--assistant--color--highlight-3: #f0778b;
-	--assistant--button--color--background--gradient: linear-gradient(
+	--n8n-assistant--button--color--background--gradient: linear-gradient(
 		var(--color--neutral-850),
 		var(--color--neutral-850)
 	);
-	--assistant--button--color--background--gradient--hover: linear-gradient(#383839, #383839);
-	--assistant--button--color--background--gradient--active: linear-gradient(
+	--n8n-assistant--button--color--background--gradient--hover: linear-gradient(#383839, #383839);
+	--n8n-assistant--button--color--background--gradient--active: linear-gradient(
 		var(--color--neutral-750),
 		var(--color--neutral-750)
 	);
-	--assistant--button--color--background--hover: var(
-		--assistant--button--color--background--gradient--hover
+	--n8n-assistant--button--color--background--hover: var(
+		--n8n-assistant--button--color--background--gradient--hover
 	);
-	--assistant--button--color--background--active: var(
-		--assistant--button--color--background--gradient--active
+	--n8n-assistant--button--color--background--active: var(
+		--n8n-assistant--button--color--background--gradient--active
 	);
 
-	--assistant--color--highlight-gradient: linear-gradient(
+	--n8n-assistant--color--highlight-gradient: linear-gradient(
 		105deg,
 		var(--assistant--color--highlight-1) 0%,
 		var(--assistant--color--highlight-2) 50%,
 		var(--assistant--color--highlight-3) 100%
 	);
-	--assistant--color--highlight-gradient--reverse: linear-gradient(
+	--n8n-assistant--color--highlight-gradient--reverse: linear-gradient(
 		105deg,
 		var(--assistant--color--highlight-3) 0%,
 		var(--assistant--color--highlight-2) 50%,
@@ -751,11 +751,11 @@
 	);
 
 	// AI Chat text and icon colors
-	--assistant--color--text--subtle: var(--color--neutral-250);
-	--assistant--icon-color--subtle: var(--color--neutral-250);
-	--assistant--color--text: var(--color--neutral-white);
-	--assistant--color--text--user-bubble: var(--color--blue-50);
-	--assistant--color--background--user-bubble: var(--color--neutral-800);
+	--n8n-assistant--color--text--subtle: var(--color--neutral-250);
+	--n8n-assistant--icon-color--subtle: var(--color--neutral-250);
+	--n8n-assistant--color--text: var(--color--neutral-white);
+	--n8n-assistant--color--text--user-bubble: var(--color--blue-50);
+	--n8n-assistant--color--background--user-bubble: var(--color--neutral-800);
 
 	// LangChain
 	--lm-chat--messages--color--background: var(--color--neutral-950);
@@ -781,26 +781,26 @@
 	--node--type-main--color: var(--color--neutral-400);
 
 	// Sticky
-	--sticky--color--background: var(--color--yellow-900);
-	--sticky--border-color: var(--color--yellow-800);
-	--sticky--color--text: var(--color--neutral-125);
-	--sticky--code--color--text: var(--color--purple-300);
-	--sticky--code--color--background: var(--color--neutral-150-alpha-100);
+	--n8n-sticky--color--background: var(--color--yellow-900);
+	--n8n-sticky--border-color: var(--color--yellow-800);
+	--n8n-sticky--color--text: var(--color--neutral-125);
+	--n8n-sticky--code--color--text: var(--color--purple-300);
+	--n8n-sticky--code--color--background: var(--color--neutral-150-alpha-100);
 
 	--sticky--color--background--variant-1: var(--color--yellow-900);
 	--sticky--border-color--variant-1: var(--color--yellow-800);
-	--sticky--color--background--variant-2: var(--color--gold-900);
-	--sticky--border-color--variant-2: var(--color--gold-800);
-	--sticky--color--background--variant-3: var(--color--red-950);
-	--sticky--border-color--variant-3: var(--color--red-900);
-	--sticky--color--background--variant-4: var(--color--green-950);
-	--sticky--border-color--variant-4: var(--color--green-900);
-	--sticky--color--background--variant-5: var(--color--blue-900);
-	--sticky--border-color--variant-5: var(--color--blue-800);
-	--sticky--color--background--variant-6: var(--color--purple-950);
-	--sticky--border-color--variant-6: var(--color--purple-800);
-	--sticky--color--background--variant-7: var(--color--neutral-900);
-	--sticky--border-color--variant-7: var(--color--neutral-800);
+	--n8n-sticky--color--background--variant-2: var(--color--gold-900);
+	--n8n-sticky--border-color--variant-2: var(--color--gold-800);
+	--n8n-sticky--color--background--variant-3: var(--color--red-950);
+	--n8n-sticky--border-color--variant-3: var(--color--red-900);
+	--n8n-sticky--color--background--variant-4: var(--color--green-950);
+	--n8n-sticky--border-color--variant-4: var(--color--green-900);
+	--n8n-sticky--color--background--variant-5: var(--color--blue-900);
+	--n8n-sticky--border-color--variant-5: var(--color--blue-800);
+	--n8n-sticky--color--background--variant-6: var(--color--purple-950);
+	--n8n-sticky--border-color--variant-6: var(--color--purple-800);
+	--n8n-sticky--color--background--variant-7: var(--color--neutral-900);
+	--n8n-sticky--border-color--variant-7: var(--color--neutral-800);
 
 	// NodeIcon
 	--node--icon--color--neutral: var(--color--neutral-200);
@@ -886,13 +886,13 @@
 	--code--line-break--color: var(--color--purple-500);
 
 	// Tag
-	--tag--color--background: var(--color--neutral-700);
-	--tag--color--background--hover: var(--color--neutral-600);
-	--tag--color--background--active: var(--color--neutral-500);
-	--tag--border-color: var(--color--neutral-800);
-	--tag--border-color--hover: var(--color--neutral-700);
-	--tag--border-color--active: var(--color--neutral-600);
-	--tag--color--text: var(--color--text--shade-1);
+	--n8n-tag--color--background: var(--color--neutral-700);
+	--n8n-tag--color--background--hover: var(--color--neutral-600);
+	--n8n-tag--color--background--active: var(--color--neutral-500);
+	--n8n-tag--border-color: var(--color--neutral-800);
+	--n8n-tag--border-color--hover: var(--color--neutral-700);
+	--n8n-tag--border-color--active: var(--color--neutral-600);
+	--n8n-tag--color--text: var(--color--text--shade-1);
 
 	// Variables
 	--variables-usage--color--text: var(--color--green-300);
@@ -992,23 +992,23 @@
 	--notice--color--text: var(--color--neutral-white);
 
 	// Callout
-	--callout--border-color--info: var(--color--foreground);
-	--callout--color--background--info: var(--color--neutral-900);
-	--callout--color--text--info: var(--color--neutral-white);
-	--callout--border-color--success: var(--color--success);
-	--callout--color--background--success: var(--color--green-900);
-	--callout--color--text--success: var(--color--neutral-white);
-	--callout--border-color--warning: var(--color--warning);
-	--callout--color--background--warning: var(--color--gold-800);
-	--callout--color--text--warning: var(--color--neutral-white);
-	--callout--border-color--danger: var(--color--red-800);
-	--callout--color--background--danger: var(--color--red-950);
-	--callout--color--text--danger: var(--color--neutral-white);
-	--callout--icon-color--danger: var(--color--danger);
-	--callout--border-color--secondary: var(--color--secondary);
-	--callout--color--background--secondary: var(--color--purple-alpha-200);
-	--callout--color--text--secondary: var(--color--neutral-white);
-	--callout--icon-color--secondary: var(--color--purple-300);
+	--n8n-callout--border-color--info: var(--color--foreground);
+	--n8n-callout--color--background--info: var(--color--neutral-900);
+	--n8n-callout--color--text--info: var(--color--neutral-white);
+	--n8n-callout--border-color--success: var(--color--success);
+	--n8n-callout--color--background--success: var(--color--green-900);
+	--n8n-callout--color--text--success: var(--color--neutral-white);
+	--n8n-callout--border-color--warning: var(--color--warning);
+	--n8n-callout--color--background--warning: var(--color--gold-800);
+	--n8n-callout--color--text--warning: var(--color--neutral-white);
+	--n8n-callout--border-color--danger: var(--color--red-800);
+	--n8n-callout--color--background--danger: var(--color--red-950);
+	--n8n-callout--color--text--danger: var(--color--neutral-white);
+	--n8n-callout--icon-color--danger: var(--color--danger);
+	--n8n-callout--border-color--secondary: var(--color--secondary);
+	--n8n-callout--color--background--secondary: var(--color--purple-alpha-200);
+	--n8n-callout--color--text--secondary: var(--color--neutral-white);
+	--n8n-callout--icon-color--secondary: var(--color--purple-300);
 
 	// Dialogs and overlays
 	--dialog--color--background: var(--color--neutral-900);
@@ -1016,19 +1016,19 @@
 	--dialog--overlay--color--background--dark: var(--color--black-alpha-600);
 
 	// Avatar
-	--avatar--color--text: var(--color--neutral-white);
+	--n8n-avatar--color--text: var(--color--neutral-white);
 
 	// NPS Survey
 	--nps-survey--color--background: var(--color--neutral-850);
 	--nps-survey--color--text: var(--color--neutral-white);
 
 	// Checkbox
-	--checkbox--label--color--disabled: var(--text-color--disabled);
+	--n8n-checkbox--label--color--disabled: var(--text-color--disabled);
 
 	// Switch (Activation, boolean)
-	--switch--color--background: var(--color--neutral-950);
-	--switch--border-color: var(--color--neutral-700);
-	--switch--toggle--color: var(--color--neutral-125);
+	--n8n-switch--color--background: var(--color--neutral-950);
+	--n8n-switch--border-color: var(--color--neutral-700);
+	--n8n-switch--toggle--color: var(--color--neutral-125);
 
 	// Action Dropdown
 	--action-dropdown--item--color--background--active: var(--color--background--light-3);
@@ -1212,15 +1212,15 @@
 	);
 
 	// Diff colors (dark theme overrides)
-	--diff--color--new: var(--color--green-500);
+	--n8n-code-diff--color--new: var(--color--green-500);
 	--diff--color--new--light: #43674f;
-	--diff--color--new--faint: #3a463e;
+	--n8n-code-diff--color--new--faint: #3a463e;
 	--diff--color--modified: #d6a625;
 	--diff--color--modified--light: #6a5c38;
 	--diff--color--modified--faint: #464236;
-	--diff--color--deleted: #fb887a;
+	--n8n-code-diff--color--deleted: #fb887a;
 	--diff--color--deleted--light: #7a524e;
-	--diff--color--deleted--faint: #4d3e3d;
+	--n8n-code-diff--color--deleted--faint: #4d3e3d;
 
 	// Various
 	--color--info--tint-1: var(--color--neutral-400);
@@ -1232,14 +1232,14 @@
 		var(--node-type--supplemental--label--color--l)
 	);
 	--node--configurable-name--color: var(--color--text--shade-1);
-	--link--color--secondary: var(--color--purple-400);
-	--link--color--secondary--hover: var(--color--purple-500);
+	--n8n-link--color--secondary: var(--color--purple-400);
+	--n8n-link--color--secondary--hover: var(--color--purple-500);
 	// Params
 	--icon--color: var(--color--text--tint-1);
 	--icon--color--hover: var(--color--pink-500);
 
-	--menu--color--background: var(--color--neutral-900);
-	--menu--color--background--hover: var(--color--neutral-700);
+	--n8n-menu--color--background: var(--color--neutral-900);
+	--n8n-menu--color--background--hover: var(--color--neutral-700);
 	--menu--color--background--active: var(--color--neutral-700);
 
 	/* Ag Grid */

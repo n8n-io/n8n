@@ -123,7 +123,7 @@ const onProjectMouseUp = () => {
 	&.dragging:hover {
 		border: var(--border-width) var(--border-style) var(--color--secondary);
 		border-radius: var(--radius);
-		background-color: var(--callout--color--background--secondary);
+		background-color: var(--n8n-callout--color--background--secondary);
 		* {
 			cursor: grabbing;
 			color: var(--color--text);

@@ -154,42 +154,42 @@ onBeforeUnmount(() => {
 	border-style: solid;
 	border-color: var(--color--foreground--shade-2);
 	border-radius: 50%;
-	background: var(--sticky--color--background);
+	background: var(--n8n-sticky--color--background);
 
 	&:hover {
 		cursor: pointer;
 	}
 
 	&.selected {
-		box-shadow: 0 0 0 1px var(--sticky--color--background);
+		box-shadow: 0 0 0 1px var(--n8n-sticky--color--background);
 	}
 
 	&.sticky-color-1 {
-		--sticky--color--background: var(--sticky--color--background--variant-1);
+		--n8n-sticky--color--background: var(--sticky--color--background--variant-1);
 	}
 
 	&.sticky-color-2 {
-		--sticky--color--background: var(--sticky--color--background--variant-2);
+		--n8n-sticky--color--background: var(--n8n-sticky--color--background--variant-2);
 	}
 
 	&.sticky-color-3 {
-		--sticky--color--background: var(--sticky--color--background--variant-3);
+		--n8n-sticky--color--background: var(--n8n-sticky--color--background--variant-3);
 	}
 
 	&.sticky-color-4 {
-		--sticky--color--background: var(--sticky--color--background--variant-4);
+		--n8n-sticky--color--background: var(--n8n-sticky--color--background--variant-4);
 	}
 
 	&.sticky-color-5 {
-		--sticky--color--background: var(--sticky--color--background--variant-5);
+		--n8n-sticky--color--background: var(--n8n-sticky--color--background--variant-5);
 	}
 
 	&.sticky-color-6 {
-		--sticky--color--background: var(--sticky--color--background--variant-6);
+		--n8n-sticky--color--background: var(--n8n-sticky--color--background--variant-6);
 	}
 
 	&.sticky-color-7 {
-		--sticky--color--background: var(--sticky--color--background--variant-7);
+		--n8n-sticky--color--background: var(--n8n-sticky--color--background--variant-7);
 	}
 }
 

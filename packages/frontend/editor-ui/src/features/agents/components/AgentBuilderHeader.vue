@@ -329,7 +329,7 @@ function onMenuSelect(id: string) {
 	background-color: var(--background--surface);
 	border-bottom: var(--border);
 	flex-shrink: 0;
-	height: var(--n8n--agent-builder-header-height, var(--height--4xl));
+	height: var(--agent-builder-header-height, var(--height--4xl));
 	overflow-x: auto;
 	overflow-y: hidden;
 	scrollbar-width: thin;
@@ -404,7 +404,7 @@ function onMenuSelect(id: string) {
 }
 
 .headerActionsMenu {
-	--n8n--dropdown-menu-width: var(--spacing--5xl);
+	--n8n-dropdown-menu--width: var(--spacing--5xl);
 }
 
 .destructiveItem,

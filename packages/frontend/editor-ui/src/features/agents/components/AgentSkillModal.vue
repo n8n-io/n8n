@@ -1929,17 +1929,17 @@ function onRemove() {
 	gap: var(--spacing--2xs);
 	padding: var(--spacing--2xs) var(--spacing--lg);
 	min-height: var(--spacing--xl);
-	border-bottom: var(--border-width) var(--border-style) var(--callout--border-color--warning);
-	background-color: var(--callout--color--background--warning);
+	border-bottom: var(--border-width) var(--border-style) var(--n8n-callout--border-color--warning);
+	background-color: var(--n8n-callout--color--background--warning);
 }
 
 .pinnedIcon {
 	flex-shrink: 0;
-	color: var(--callout--icon-color--warning);
+	color: var(--n8n-callout--icon-color--warning);
 }
 
 .pinnedText {
-	color: var(--callout--color--text--warning);
+	color: var(--n8n-callout--color--text--warning);
 }
 
 .barAction {

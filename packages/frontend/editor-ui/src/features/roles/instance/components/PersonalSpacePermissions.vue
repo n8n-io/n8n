@@ -153,7 +153,7 @@ function toggleLabel(group: PersonalSpaceGroup): string {
 	margin-top: var(--spacing--2xs);
 	/* The info callout is white by default. On the white card it needs the page
 	   background to read as a callout. */
-	--callout--color--background--info: var(--color--background);
+	--n8n-callout--color--background--info: var(--color--background);
 }
 
 /* The link keeps the callout's text color; the underline marks it as a link.

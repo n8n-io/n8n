@@ -2305,24 +2305,24 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
    the new N8nInput (--input--radius--*) and the element-plus based select
    (--input-triple--radius--*) corner variables. */
 .inputWithPrivateRow {
-	--input--radius--bottom-left: 0;
-	--input--radius--bottom-right: 0;
+	--n8n-input--radius--bottom-left: 0;
+	--n8n-input--radius--bottom-right: 0;
 	--input-triple--radius--bottom-right: 0;
-	--input--border-color: transparent;
+	--n8n-input--border-color: transparent;
 	border: var(--border-width, 1px) solid var(--border-color);
 	border-radius: var(--radius) var(--radius) 0 0;
 
-	/* N8nInput redefines --input--border-color on its own root, so the
+	/* N8nInput redefines --n8n-input--border-color on its own root, so the
 	   ancestor-level override above doesn't reach it */
 	:global(.n8n-input) {
-		--input--border-color: transparent;
+		--n8n-input--border-color: transparent;
 	}
 }
 
 /* Editable variant: select + edit pen wrapped in a shared bordered container
    whose bottom edge connects to the private connection row */
 .inputWithPrivateRowEditable {
-	--input--border-color: transparent;
+	--n8n-input--border-color: transparent;
 	--input-triple--radius--top-right: 0;
 	--input-triple--radius--bottom-right: 0;
 	border: var(--border-width, 1px) solid var(--border-color);
@@ -2340,7 +2340,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 
 .hasIssues {
 	composes: input;
-	--input--border-color: var(--color--danger);
+	--n8n-input--border-color: var(--color--danger);
 }
 
 .credentialOption {
@@ -2540,7 +2540,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 		&:hover {
 			background-color: light-dark(
 				var(--color--background--light-2),
-				var(--menu--color--background--hover)
+				var(--n8n-menu--color--background--hover)
 			);
 		}
 	}
@@ -2571,7 +2571,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 }
 
 .setupManuallyLink {
-	--link--color--secondary: var(--color--text);
+	--n8n-link--color--secondary: var(--color--text);
 
 	&:hover,
 	&:focus,

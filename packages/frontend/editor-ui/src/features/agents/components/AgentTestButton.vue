@@ -81,9 +81,9 @@ function onClick() {
 
 <style lang="scss" module>
 .pressed[aria-pressed='true'] {
-	background-color: var(--button--color--background-active);
+	background-color: var(--n8n-button--color--background-active);
 	box-shadow:
-		inset var(--button--border--shadow--active),
-		var(--button--shadow--active);
+		inset var(--n8n-button--border--shadow--active),
+		var(--n8n-button--shadow--active);
 }
 </style>

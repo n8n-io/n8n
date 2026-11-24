@@ -463,7 +463,7 @@ function warningLabel(key: string): string {
 
 .warning {
 	flex-shrink: 0;
-	--button--color: var(--text-color--warning);
+	--n8n-button--color: var(--text-color--warning);
 }
 
 .warningList {

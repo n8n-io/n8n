@@ -70,7 +70,7 @@ const styles = computed(() => {
 		styles['--dialog--max-height'] = props.maxHeight;
 	}
 	if (props.maxWidth) {
-		styles['--dialog--max-width'] = props.maxWidth;
+		styles['--n8n-dialog--max-width'] = props.maxWidth;
 	}
 	if (props.minWidth) {
 		styles['--dialog--min-width'] = props.minWidth;
@@ -197,7 +197,7 @@ function getCustomClass() {
 	&.el-dialog {
 		display: flex;
 		flex-direction: column;
-		max-width: var(--dialog--max-width, 80%);
+		max-width: var(--n8n-dialog--max-width, 80%);
 		min-width: var(--dialog--min-width, 420px);
 		height: var(--dialog--height);
 		min-height: var(--dialog--min-height);

@@ -194,13 +194,13 @@ const diffs = computed(() => {
 }
 
 .add {
-	color: var(--diff--color--new);
-	background-color: var(--diff--color--new--faint);
+	color: var(--n8n-code-diff--color--new);
+	background-color: var(--n8n-code-diff--color--new--faint);
 }
 
 .del {
-	color: var(--diff--color--deleted);
-	background-color: var(--diff--color--deleted--faint);
+	color: var(--n8n-code-diff--color--deleted);
+	background-color: var(--n8n-code-diff--color--deleted--faint);
 }
 
 .normal {

@@ -50,14 +50,14 @@ const keys = computed(() => {
 	height: 18px;
 	min-width: 18px;
 	padding: 0 var(--spacing--4xs);
-	border: 0.5px solid var(--n8n--kbd-border, var(--border-color--subtle));
+	border: 0.5px solid var(--n8n-keyboard-shortcut--border-color, var(--border-color--subtle));
 	box-shadow: var(--shadow--xs);
-	background: var(--n8n--kbd-bg, var(--color--background));
+	background: var(--n8n-keyboard-shortcut--background, var(--color--background));
 	background-clip: padding-box;
 }
 
 .key {
-	color: var(--n8n--kbd-text, var(--color--text));
+	color: var(--n8n-keyboard-shortcut--text-color, var(--color--text));
 	font-size: var(--font-size--3xs);
 	font-weight: var(--font-weight--bold);
 	font-family: var(--font-family--monospace);

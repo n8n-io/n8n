@@ -30,7 +30,7 @@ const labelKey = computed<BaseTextKey>(
 	gap: var(--spacing--3xs);
 	padding: var(--spacing--3xs) var(--spacing--2xs);
 	border-radius: var(--border-radius--base);
-	background-color: var(--callout--color--background--success);
+	background-color: var(--n8n-callout--color--background--success);
 	line-height: 1;
 }
 

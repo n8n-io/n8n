@@ -132,7 +132,7 @@ const handleOpenChange = (open: boolean) => {
 				<TooltipContent
 					data-test-id="tooltip-content"
 					:class="['n8n-tooltip', contentClass]"
-					:style="{ '--tooltip--z': zIndex }"
+					:style="{ '--n8n-tooltip--z': zIndex }"
 					:side="placementParts.side"
 					:align="placementParts.align"
 					:side-offset="offset"
@@ -177,7 +177,7 @@ const handleOpenChange = (open: boolean) => {
 
 // Global styles for teleported tooltip content
 :global(.n8n-tooltip) {
-	z-index: var(--tooltip--z);
+	z-index: var(--n8n-tooltip--z);
 	max-width: 180px;
 	padding: var(--spacing--4xs) var(--spacing--3xs);
 	min-height: var(--height--sm);

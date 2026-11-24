@@ -39,7 +39,7 @@ function onSelect(recommended: RecommendedSkillSelection) {
 <style lang="scss" module>
 /* Wide enough to keep the "Based on" source of each card on one line. */
 .dialog {
-	--dialog--max-width: min(62rem, calc(100dvw - var(--spacing--lg)));
+	--n8n-dialog--max-width: min(62rem, calc(100dvw - var(--spacing--lg)));
 }
 
 .body {

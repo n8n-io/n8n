@@ -416,7 +416,7 @@ if (typeof document !== 'undefined' && !document.getElementById(MCP_REVEAL_STYLE
 // mirroring the StatusDot / mcp-reveal injection, and are scoped under the unique
 // `.mcp-copy-input--inline` class (added only to the single-line variant) so they never leak to other
 // inputs or to the multiline textarea variant. The overrides: move the border + radius + near-white
-// background (`--input--color--background`) onto the CONTAINER with `overflow: hidden` (the one outer
+// background (`--n8n-input--color--background`) onto the CONTAINER with `overflow: hidden` (the one outer
 // field); drop the wrapper's own border so it doesn't double up; collapse the container `gap` to 0;
 // and make the append segment transparent (so the near-white shows through) keeping only a single
 // `border-left: var(--border)` divider, with its grey background and negative margins/padding zeroed.
@@ -427,7 +427,7 @@ if (typeof document !== 'undefined' && !document.getElementById(MCP_COPY_INPUT_S
 	const copyStyle = document.createElement('style');
 	copyStyle.id = MCP_COPY_INPUT_STYLE_ID;
 	copyStyle.textContent =
-		'.mcp-copy-input--inline { gap: 0; border-radius: var(--input--radius); background-color: var(--input--color--background); box-shadow: inset var(--input--border--shadow); overflow: hidden; }' +
+		'.mcp-copy-input--inline { gap: 0; border-radius: var(--n8n-input--radius); background-color: var(--n8n-input--color--background); box-shadow: inset var(--n8n-input--border--shadow); overflow: hidden; }' +
 		'.mcp-copy-input--inline .n8n-input__wrapper { box-shadow: none; background-color: transparent; }' +
 		'.mcp-copy-input--inline .n8n-input__wrapper + span { background-color: transparent; border-left: var(--border); margin: 0; padding: 0; }';
 	document.head.appendChild(copyStyle);

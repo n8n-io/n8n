@@ -17,30 +17,83 @@ async function lintCSS(code: string) {
 }
 
 describe('css-var-naming rule', () => {
+	describe('component overrides', () => {
+		it.each([
+			'--n8n-card--padding',
+			'--n8n-dialog-body--padding-inline',
+			'--n8n-chat-scroll-area--x-offset--end',
+			'--n8n-slider--fill',
+		])('should accept %s', async (variable) => {
+			const result = await lintCSS(`.component { ${variable}: 0; padding: var(${variable}); }`);
+			expect(result.warnings).toHaveLength(0);
+		});
+
+		it.each([
+			'--n8n--card--padding',
+			'--n8n--custom-helper',
+			'--n8n-card-padding',
+			'--n8n-Card--padding',
+			'--n8n-card--padding_inline',
+			'--n8n-card---padding',
+			'--n8n-card--',
+		])('should reject %s in declarations and references', async (variable) => {
+			const result = await lintCSS(`.component { ${variable}: 0; padding: var( ${variable}, 0); }`);
+			expect(result.warnings).toHaveLength(2);
+			expect(result.warnings[0].text).toContain('--n8n-<component>--<property>');
+		});
+
+		it('should keep token vocabulary checks in shared token files', async () => {
+			const result = await stylelint.lint({
+				code: ':root { --invalid-token: 0; --n8n-card--padding: 0; }',
+				codeFilename: '/repo/packages/frontend/@n8n/design-system/src/css/_tokens.scss',
+				config,
+			});
+			expect(result.results[0].warnings).toHaveLength(1);
+			expect(result.results[0].warnings[0].text).toContain('--invalid-token');
+		});
+
+		it.each([
+			'/repo/packages/frontend/@n8n/design-system/src/components/N8nCard/Card.vue',
+			'/repo/packages/frontend/editor-ui/src/app/components/Example.vue',
+			'/repo/packages/modules/inbox/frontend/src/Example.vue',
+		])('should check component names outside token files: %s', async (codeFilename) => {
+			const result = await stylelint.lint({
+				code: '.example { --local-helper: 0; --n8n--card--padding: 0; padding: var(--n8n-card-padding); }',
+				codeFilename,
+				config: { ...config, rules: { '@n8n/css-var-naming': [true, { severity: 'warning' }] } },
+			});
+			expect(result.results[0].warnings).toHaveLength(2);
+			expect(result.results[0].warnings.every((warning) => warning.severity === 'error')).toBe(
+				true,
+			);
+		});
+	});
+
 	describe('namespace validation', () => {
 		it('should accept valid n8n namespace', async () => {
 			const namespacePattern = `
 					:root {
-						--n8n--color--primary: #0d6efd;
-						--n8n--button--color--background--primary: #0d6efd;
-						--n8n--button--color--background--primary--hover: #0b5ed7;
-						--n8n--color--text--muted: #888;
+						--n8n-button--color--primary: #0d6efd;
+						--n8n-button--color--background--primary: #0d6efd;
+						--n8n-button--color--background--primary--hover: #0b5ed7;
+						--n8n-button--color--text--muted: #888;
 					}
 				`;
 			const result = await lintCSS(namespacePattern);
 			expect(result.warnings).toHaveLength(0);
 		});
 
-		it('should bypass validation for custom n8n-prefixed variables', async () => {
+		it('should reject component variables without a property group', async () => {
 			const customN8nVars = `
 					:root {
-						--n8n--my-custom-token: #0d6efd;
-						--n8n--x: 1;
-						color: var(--n8n--my-custom-token);
+						--n8n-my-custom-token: #0d6efd;
+						--n8n-x: 1;
+						color: var(--n8n-my-custom-token);
 					}
 				`;
 			const result = await lintCSS(customN8nVars);
-			expect(result.warnings).toHaveLength(0);
+			expect(result.warnings).toHaveLength(3);
+			expect(result.warnings[0].text).toContain('--n8n-<component>--<property>');
 		});
 
 		it('should accept valid chat namespace', async () => {
@@ -95,7 +148,7 @@ describe('css-var-naming rule', () => {
 
 		it('should allow non-namespace first groups (components)', async () => {
 			// Note: The rule doesn't strictly enforce namespace validation
-			// It only recognizes 'n8n' and 'chat' as namespaces for property checking
+			// Primitive and third-party namespaces use separate token groups.
 			// Other first groups are treated as components, which is valid
 			const componentFirst = `
 				:root {
@@ -110,7 +163,7 @@ describe('css-var-naming rule', () => {
 		it('should accept namespace with component and states', async () => {
 			const complexNamespace = `
 				:root {
-					--n8n--button--color--background--primary--solid--hover: #0b5ed7;
+					--n8n-button--color--background--primary--solid--hover: #0b5ed7;
 					--chat--input--border-color--primary--focus: blue;
 				}
 			`;
@@ -121,7 +174,7 @@ describe('css-var-naming rule', () => {
 		it('should accept namespace with all 8 groups', async () => {
 			const maxGroups = `
 				:root {
-					--n8n--button--part--color--text--primary--solid--hover--dark: #000;
+					--n8n-button--part--color--text--primary--solid--hover--dark: #000;
 				}
 			`;
 			const result = await lintCSS(maxGroups);
@@ -429,7 +482,7 @@ describe('css-var-naming rule', () => {
 		it('should reject namespace with primary value before color property', async () => {
 			const invalidOrder = `
 				:root {
-					--n8n--primary--color: #0d6efd;
+					--namespace--primary--color: #0d6efd;
 				}
 			`;
 			const result = await lintCSS(invalidOrder);
@@ -1156,7 +1209,7 @@ describe('css-var-naming rule', () => {
 		it('should accept shorthand properties in component patterns', async () => {
 			const componentShorthand = `
 				:root {
-					--n8n--button--border-color: #ddd;
+					--n8n-button--border-color: #ddd;
 					--button--border: 1px solid #ddd;
 					--chat--font--font-family: InterVariable, sans-serif;
 					--menu--tab--radius: 4px;

@@ -399,7 +399,9 @@ describe('components/N8nTooltip', () => {
 			hoverTooltipTrigger(wrapper.getByText('Hover me'));
 
 			const tooltip = await getTooltip();
-			expect(Number(tooltip.style.getPropertyValue('--tooltip--z'))).toBeGreaterThan(menuZIndex);
+			expect(Number(tooltip.style.getPropertyValue('--n8n-tooltip--z'))).toBeGreaterThan(
+				menuZIndex,
+			);
 		});
 
 		it('should open a visible tooltip above existing menus', async () => {
@@ -411,7 +413,9 @@ describe('components/N8nTooltip', () => {
 			});
 
 			const tooltip = await getTooltip();
-			expect(Number(tooltip.style.getPropertyValue('--tooltip--z'))).toBeGreaterThan(menuZIndex);
+			expect(Number(tooltip.style.getPropertyValue('--n8n-tooltip--z'))).toBeGreaterThan(
+				menuZIndex,
+			);
 		});
 
 		it('should update the stacking order each time the tooltip opens', async () => {
@@ -425,7 +429,9 @@ describe('components/N8nTooltip', () => {
 				const menuZIndex = nextZIndex();
 				await wrapper.rerender({ visible: true });
 				const tooltip = await getTooltip();
-				expect(Number(tooltip.style.getPropertyValue('--tooltip--z'))).toBeGreaterThan(menuZIndex);
+				expect(Number(tooltip.style.getPropertyValue('--n8n-tooltip--z'))).toBeGreaterThan(
+					menuZIndex,
+				);
 				await wrapper.rerender({ visible: false });
 			}
 		});

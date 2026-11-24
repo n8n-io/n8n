@@ -150,7 +150,7 @@ describe('N8nSettingsRow', () => {
 		});
 
 		const description = container.querySelector('[class*="description"]') as HTMLElement;
-		expect(description.style.getPropertyValue('--settings-row--description-lines')).toBe('3');
+		expect(description.style.getPropertyValue('--n8n-settings-row--description-lines')).toBe('3');
 	});
 
 	it('uses the configured description line count below the clamp', () => {
@@ -159,7 +159,7 @@ describe('N8nSettingsRow', () => {
 		});
 
 		const description = container.querySelector('[class*="description"]') as HTMLElement;
-		expect(description.style.getPropertyValue('--settings-row--description-lines')).toBe('2');
+		expect(description.style.getPropertyValue('--n8n-settings-row--description-lines')).toBe('2');
 	});
 
 	it('renders custom info slot content over the title/description', () => {

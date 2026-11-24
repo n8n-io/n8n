@@ -213,15 +213,15 @@ watch(
 }
 
 .winner {
-	background: var(--callout--color--background--success);
+	background: var(--n8n-callout--color--background--success);
 }
 
 .regression {
-	background: var(--callout--color--background--danger);
+	background: var(--n8n-callout--color--background--danger);
 }
 
 .next {
-	background: var(--callout--color--background--info);
+	background: var(--n8n-callout--color--background--info);
 }
 
 .neutral {

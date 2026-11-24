@@ -153,7 +153,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-	<div :class="$style.container" :style="{ '--n8n--color-scale-columns': columnCount }">
+	<div :class="$style.container" :style="{ '--color-scale-columns': columnCount }">
 		<div :class="$style.wrapper">
 			<div></div>
 			<div :class="$style.row">
@@ -235,13 +235,13 @@ onUnmounted(() => {
 
 <style lang="scss" module>
 .container {
-	--n8n--color-swatch-gap: var(--spacing--2xs);
-	--n8n--color-swatch-row-gap: var(--spacing--2xs);
+	--color-swatch-gap: var(--spacing--2xs);
+	--color-swatch-row-gap: var(--spacing--2xs);
 
 	position: relative;
 	display: flex;
 	flex-direction: column;
-	gap: var(--n8n--color-swatch-row-gap);
+	gap: var(--color-swatch-row-gap);
 	margin: var(--spacing--2xl) 0;
 }
 
@@ -256,8 +256,8 @@ onUnmounted(() => {
 
 .row {
 	display: grid;
-	grid-template-columns: repeat(var(--n8n--color-scale-columns), minmax(0, 1fr));
-	gap: var(--n8n--color-swatch-gap);
+	grid-template-columns: repeat(var(--color-scale-columns), minmax(0, 1fr));
+	gap: var(--color-swatch-gap);
 	width: 100%;
 	min-width: 0;
 
@@ -269,11 +269,11 @@ onUnmounted(() => {
 
 .extras {
 	display: grid;
-	grid-template-columns: repeat(var(--n8n--color-scale-columns), minmax(0, 1fr));
-	gap: var(--n8n--color-swatch-gap);
+	grid-template-columns: repeat(var(--color-scale-columns), minmax(0, 1fr));
+	gap: var(--color-swatch-gap);
 	width: 100%;
 	min-width: 0;
-	margin-top: var(--n8n--color-swatch-gap);
+	margin-top: var(--color-swatch-gap);
 
 	> * {
 		min-width: 0;

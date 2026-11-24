@@ -176,7 +176,7 @@ onMounted(() => {
 /* Doubled to win over the layout's own rules: the policy table needs the full page width, and the
    design keeps the tabs close to the header. */
 .layout.layout {
-	--settings-content--max-width: none;
+	--n8n-settings-content--max-width: none;
 
 	:global(header) + * {
 		margin-block-start: var(--spacing--lg);

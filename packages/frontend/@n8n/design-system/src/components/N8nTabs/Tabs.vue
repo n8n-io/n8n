@@ -412,7 +412,7 @@ function scroll(direction: 'left' | 'right') {
 	justify-content: center;
 	padding-inline: 0;
 	border: 0;
-	background: var(--tabs--arrow-buttons--color, transparent);
+	background: var(--n8n-tabs--arrow-buttons--color, transparent);
 	font-family: inherit;
 	line-height: inherit;
 

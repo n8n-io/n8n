@@ -443,7 +443,7 @@ onBeforeUnmount(() => {
 	display: flex;
 	flex-direction: column;
 	width: 100%;
-	max-width: var(--n8n-session-panel--container-width, none);
+	max-width: var(--session-panel--container-width, none);
 	margin: 0 auto;
 }
 

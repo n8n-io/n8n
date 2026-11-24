@@ -222,7 +222,7 @@ defineExpose<N8nSelectExposed>({
 
 <style lang="scss" module>
 .xlarge {
-	--input--font-size: var(--font-size--md);
+	--n8n-input--font-size: var(--font-size--md);
 	input {
 		height: 48px;
 	}
@@ -231,7 +231,10 @@ defineExpose<N8nSelectExposed>({
 .container {
 	display: inline-flex;
 	width: 100%;
-	--input--color--background: light-dark(var(--color--neutral-white), var(--color--neutral-950));
+	--n8n-input--color--background: light-dark(
+		var(--color--neutral-white),
+		var(--color--neutral-950)
+	);
 }
 
 .withPrepend {
@@ -251,9 +254,9 @@ defineExpose<N8nSelectExposed>({
 	display: flex;
 	align-items: center;
 	padding: 0 var(--spacing--3xs);
-	background-color: var(--input--color--background);
-	border-bottom-left-radius: var(--input--radius, var(--radius));
-	border-top-left-radius: var(--input--radius, var(--radius));
+	background-color: var(--n8n-input--color--background);
+	border-bottom-left-radius: var(--n8n-input--radius, var(--radius));
+	border-top-left-radius: var(--n8n-input--radius, var(--radius));
 	color: var(--color--text);
 	white-space: nowrap;
 }

@@ -5,7 +5,7 @@ describe('N8nKeyboardShortcut styles', () => {
 	it('accepts a border color override such as the tooltip transparent value', () => {
 		/** DOM tests do not resolve CSS custom properties. Check the declaration directly. */
 		expect(source).toContain(
-			'border: 0.5px solid var(--n8n--kbd-border, var(--border-color--subtle));',
+			'border: 0.5px solid var(--n8n-keyboard-shortcut--border-color, var(--border-color--subtle));',
 		);
 	});
 

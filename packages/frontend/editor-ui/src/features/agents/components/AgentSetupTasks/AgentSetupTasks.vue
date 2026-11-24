@@ -342,7 +342,7 @@ function handleTaskKeydown(event: KeyboardEvent): void {
 }
 
 .container {
-	--n8n-agent-setup-task-list--padding: var(--spacing--xs);
+	--agent-setup-task-list--padding: var(--spacing--xs);
 	display: flex;
 	flex-direction: column;
 	max-height: 240px;
@@ -353,7 +353,7 @@ function handleTaskKeydown(event: KeyboardEvent): void {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
-	padding: var(--n8n-agent-setup-task-list--padding);
+	padding: var(--agent-setup-task-list--padding);
 	padding-block-end: 0;
 	user-select: none;
 }
@@ -389,8 +389,8 @@ function handleTaskKeydown(event: KeyboardEvent): void {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--4xs);
-	padding-block: calc(var(--n8n-agent-setup-task-list--padding) / 2);
-	padding-inline: var(--n8n-agent-setup-task-list--padding);
+	padding-block: calc(var(--agent-setup-task-list--padding) / 2);
+	padding-inline: var(--agent-setup-task-list--padding);
 
 	@include mixins.hoverable-scroll-bar;
 }
@@ -409,11 +409,11 @@ function handleTaskKeydown(event: KeyboardEvent): void {
 .listItem {
 	display: flex;
 	align-items: center;
-	gap: calc(var(--n8n-agent-setup-task-list--padding) / 1.5);
-	padding-inline: calc(var(--n8n-agent-setup-task-list--padding) / 2);
+	gap: calc(var(--agent-setup-task-list--padding) / 1.5);
+	padding-inline: calc(var(--agent-setup-task-list--padding) / 2);
 	height: var(--height--md);
 	border-radius: var(--radius);
-	margin-inline: calc(calc(var(--n8n-agent-setup-task-list--padding) / 2) * -1);
+	margin-inline: calc(calc(var(--agent-setup-task-list--padding) / 2) * -1);
 	background-color: transparent;
 	user-select: none;
 	cursor: pointer;

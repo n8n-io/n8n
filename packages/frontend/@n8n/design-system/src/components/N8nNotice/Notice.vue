@@ -90,7 +90,7 @@ const onClick = (event: MouseEvent) => {
 	font-size: var(--font-size--2xs);
 	display: flex;
 	color: var(--notice--color--text);
-	margin: var(--notice--margin, var(--spacing--sm) 0);
+	margin: var(--n8n-notice--margin, var(--spacing--sm) 0);
 	padding: var(--spacing--2xs);
 	background-color: var(--notice--color--background);
 	border: 1px solid var(--notice--color--border-color);
