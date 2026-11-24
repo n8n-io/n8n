@@ -22,7 +22,7 @@ describe('MCP server DTOs', () => {
 		'sales--tools',
 		'sales_tools',
 		'../x',
-		'a'.repeat(129),
+		'a'.repeat(65),
 	])('rejects the slug %j', (slug) => {
 		expect(CreateMcpServerDto.safeParse({ name: 'Sales tools', slug }).success).toBe(false);
 	});
