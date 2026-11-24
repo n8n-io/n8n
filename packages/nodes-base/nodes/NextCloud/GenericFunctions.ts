@@ -72,22 +72,27 @@ const ITEM_PROPS: Record<string, string> = {
 	'd:getlastmodified': 'lastModified',
 	'd:getcontentlength': 'contentLength',
 	'd:getcontenttype': 'contentType',
-	'nc:upload_time': 'uploadTime',
 };
 
 /** A file or folder from a multistatus response, with its path relative to the user's root. */
 export function toWebDavItem(response: Record<string, unknown>): IDataObject {
 	const props = readProps(response);
 	const eTag = props['d:getetag'];
+	const uploadTime = props['nc:upload_time'];
 
 	return {
 		// Nextcloud never encodes "/" in an href, so decoding the full path adds no separator.
-		path: decodePathValue(String(response['d:href']).replace(WEBDAV_HREF_PREFIX, '')),
+		path: outputPath(decodePathValue(String(response['d:href']).replace(WEBDAV_HREF_PREFIX, ''))),
 		...Object.fromEntries(
 			Object.entries(ITEM_PROPS)
 				.filter(([propName]) => typeof props[propName] === 'string')
 				.map(([propName, key]): [string, string] => [key, String(props[propName])]),
 		),
+		// Nextcloud sends unix seconds, or 0 when it does not know the time. The format of
+		// lastModified lets a date filter read it back.
+		...(Number(uploadTime) > 0
+			? { uploadTime: new Date(Number(uploadTime) * 1000).toUTCString() }
+			: {}),
 		type: props['d:resourcetype'] === '' ? 'file' : 'folder',
 		eTag: typeof eTag === 'string' ? eTag.slice(1, -1) : undefined,
 	};

@@ -136,12 +136,12 @@ describe('NextCloud Node: folder search', () => {
 			[
 				{
 					json: {
-						path: 'Finance/2026/invoice #1.pdf',
+						path: '/Finance/2026/invoice #1.pdf',
 						fileId: '201',
 						lastModified: 'Fri, 20 Nov 2026 12:00:00 GMT',
 						contentLength: '1024',
 						contentType: 'application/pdf',
-						uploadTime: '1795176000',
+						uploadTime: 'Fri, 20 Nov 2026 12:00:00 GMT',
 						type: 'file',
 						eTag: 'e1',
 					},
@@ -149,7 +149,7 @@ describe('NextCloud Node: folder search', () => {
 				},
 				{
 					json: {
-						path: 'Finance/invoices/',
+						path: '/Finance/invoices',
 						fileId: '202',
 						lastModified: 'Fri, 20 Nov 2026 12:00:00 GMT',
 						type: 'folder',
@@ -317,7 +317,7 @@ describe('NextCloud Node: folder search', () => {
 			),
 		);
 
-		expect(output[0].map((item) => item.json.path)).toEqual(['Finance/2026/invoice #1.pdf']);
+		expect(output[0].map((item) => item.json.path)).toEqual(['/Finance/2026/invoice #1.pdf']);
 	});
 
 	it('asks for one more result than the limit and returns no more than the limit', async () => {
@@ -327,6 +327,48 @@ describe('NextCloud Node: folder search', () => {
 
 		expect(searchBody()).toContain('<d:nresults>2</d:nresults>');
 		expect(output[0]).toHaveLength(1);
+	});
+
+	it.each([['abc'], [0], [2.5]])('stops before any request when Limit is %s', async (limit) => {
+		const { request } = fakeNextcloud();
+
+		await expect(
+			run(buildExecuteFunctions({ query: 'a', path: '/', limit }, request)),
+		).rejects.toMatchObject({
+			message: '"Limit" must be a whole number of 1 or more',
+			context: expect.objectContaining({ itemIndex: 0 }),
+		});
+		expect(request).not.toHaveBeenCalled();
+	});
+
+	it('takes an uploadTime from its own output in "Uploaded After"', async () => {
+		const { request } = fakeNextcloud();
+		const [[first]] = await run(buildExecuteFunctions({ query: 'a', path: '/' }, request));
+
+		const second = fakeNextcloud();
+		await run(
+			buildExecuteFunctions(
+				{ query: 'a', path: '/', filter: { uploadedAfter: first.json.uploadTime } },
+				second.request,
+			),
+		);
+
+		expect(second.searchBody()).toContain(
+			'<d:gt><d:prop><nc:upload_time/></d:prop><d:literal>1795176000</d:literal></d:gt>',
+		);
+	});
+
+	it('leaves out an upload time of 0, which Nextcloud sends when it does not know the time', async () => {
+		const skeletonFile = result(
+			'/remote.php/dav/files/alice/Readme.md',
+			'<oc:fileid>203</oc:fileid><d:getetag>"e3"</d:getetag><d:resourcetype/><nc:upload_time>0</nc:upload_time>',
+		);
+		const { request } = fakeNextcloud([skeletonFile]);
+
+		const [[item]] = await run(buildExecuteFunctions({ query: 'readme', path: '/' }, request));
+
+		expect(item.json.path).toBe('/Readme.md');
+		expect(item.json).not.toHaveProperty('uploadTime');
 	});
 
 	it('returns no items when nothing matches', async () => {
