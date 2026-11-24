@@ -115,6 +115,8 @@ defineSlots<{
 	status?: () => unknown;
 	/** Host actions for a finished agent reply, next to the default copy action. */
 	'message-actions'?: (props: { message: ChatMessage; executionId?: string }) => unknown;
+	/** Content rendered directly below an assistant reply that executed tool calls (for example held actions). */
+	'after-reply'?: (props: { groupId: string; toolCalls: ToolCall[] }) => unknown;
 	/** The `references` of a user message, for example mentioned workflows. */
 	'user-message-references'?: (props: { message: ChatMessage }) => unknown;
 }>();
@@ -821,6 +823,12 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 						"
 						:class="$style.typingIndicator"
 					/>
+					<slot
+						v-if="$slots['after-reply'] && group.toolCalls.length > 0"
+						name="after-reply"
+						:group-id="group.id"
+						:tool-calls="group.toolCalls"
+					/>
 				</N8nChatMessage>
 			</div>
 			<div
@@ -1074,6 +1082,16 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 							!getMessageThinkingSegments(group.message).length
 						"
 						:class="$style.typingIndicator"
+					/>
+					<slot
+						v-if="
+							$slots['after-reply'] &&
+							group.message.role === CHAT_MESSAGE_ROLE.ASSISTANT &&
+							group.message.toolCalls?.length
+						"
+						name="after-reply"
+						:group-id="group.id"
+						:tool-calls="group.message.toolCalls"
 					/>
 				</N8nChatMessage>
 			</div>

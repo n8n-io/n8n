@@ -75,7 +75,11 @@ import AgentChatEmptyState from './AgentChatEmptyState.vue';
 import AgentNewTestRunButton from './AgentNewTestRunButton.vue';
 import AgentTestRunChangesNote from './AgentTestRunChangesNote.vue';
 import AgentTestRunToolsNotice from './AgentTestRunToolsNotice.vue';
-import type { ChatMessage, ChatMessageAttachment } from '@/features/ai/shared/agentsChat/types';
+import type {
+	ChatMessage,
+	ChatMessageAttachment,
+	ToolCall,
+} from '@/features/ai/shared/agentsChat/types';
 import { resolveFileMimeType } from '@/app/utils/fileUtils';
 import { isFileAcceptedByAccept } from '@/features/ai/shared/utils/fileAccept';
 import AgentChatMessageList from './AgentChatMessageList.vue';
@@ -298,6 +302,8 @@ defineSlots<{
 	 * `executionId` is the agent execution of the turn, when it is known.
 	 */
 	'message-actions'?: (props: { message: ChatMessage; executionId?: string }) => unknown;
+	/** Content rendered directly below an assistant reply that executed tool calls. */
+	'after-reply'?: (props: { groupId: string; toolCalls: ToolCall[] }) => unknown;
 	/** Content below the composer. */
 	'input-footer'?: () => unknown;
 	/** The `references` of a user message, for example mentioned workflows. */
@@ -2357,6 +2363,9 @@ onBeforeUnmount(() => {
 			>
 				<template v-if="$slots['message-actions']" #message-actions="actionProps">
 					<slot name="message-actions" v-bind="actionProps" />
+				</template>
+				<template v-if="$slots['after-reply']" #after-reply="replyProps">
+					<slot name="after-reply" v-bind="replyProps" />
 				</template>
 				<template
 					v-if="$slots['user-message-references']"
