@@ -89,13 +89,24 @@ export async function getNewEmails(
 	const buildItem = itemBuilderFor.call(this, format, imapConnection);
 	const fetchQuery = FETCH_QUERY[format] ?? {};
 
-	const processBatch = async (messages: FetchMessageObject[]) => {
+	const buildRetryItem: ItemBuilder = async (message) => {
+		try {
+			return await buildItem(message);
+		} catch (error) {
+			this.logger.warn(`Retrying email UID ${message.uid} failed, trying it again next time`, {
+				error: error as Error,
+			});
+			return undefined;
+		}
+	};
+
+	const processBatch = async (messages: FetchMessageObject[], build: ItemBuilder = buildItem) => {
 		const items: INodeExecutionData[] = [];
 		const emittedUids: number[] = [];
 		const skippedUids: number[] = [];
 
 		for (const message of messages) {
-			const item = await buildItem(message);
+			const item = await build(message);
 			if (item) {
 				items.push(item);
 				emittedUids.push(message.uid);
@@ -121,7 +132,7 @@ export async function getNewEmails(
 			toSearchObject([...withoutWindow(searchCriteria), ['UID', pendingUids.join(',')]]),
 			fetchQuery,
 		);
-		const { items, skippedUids } = await processBatch(results);
+		const { items, skippedUids } = await processBatch(results, buildRetryItem);
 		pendingUids = skippedUids;
 		staticData.pendingMessageUids = pendingUids;
 		await onEmailBatch(items);

@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/naming-convention -- keys are wire header names */
-import { ImapSimple, type ImapTransport } from '@n8n/imap';
+import { ImapSimple, type FetchMessageObject, type ImapTransport } from '@n8n/imap';
 import type {
 	IBinaryData,
 	IDataObject,
@@ -416,6 +416,68 @@ describe('getNewEmails UID tracking', () => {
 			expect(batches).toEqual([[], []]);
 			expect(connection.addFlags).not.toHaveBeenCalled();
 			expect(staticData.pendingMessageUids).toEqual([10]);
+		});
+
+		it('keeps a pending UID that throws, and still emits the rest and fresh mail', async () => {
+			const staticData: IDataObject = { lastMessageUid: 20, pendingMessageUids: [10, 15] };
+			const connection = mock<ImapSimple>({
+				search: vi
+					.fn()
+					.mockResolvedValueOnce([
+						{ uid: 10, headers: headers('a@b.com') },
+						{ uid: 15, headers: headers('b@b.com') },
+					])
+					.mockResolvedValueOnce([{ uid: 21, headers: headers('c@b.com') }]),
+				downloadText: vi.fn(async (message: FetchMessageObject) => {
+					if (message.uid === 10) throw new Error('IMAP FETCH did not complete');
+					return '';
+				}),
+			});
+
+			trigger.getNode.mockReturnValue(mock<INode>({ typeVersion: 2.1 }));
+			trigger.getNodeParameter.calledWith('format').mockReturnValue('simple');
+			trigger.getNodeParameter.calledWith('downloadAttachments').mockReturnValue(false);
+			trigger.getWorkflowStaticData.mockReturnValue(staticData);
+
+			const batches: number[][] = [];
+			await getNewEmails.call(trigger, {
+				imapConnection: connection,
+				searchCriteria: ['UNSEEN'],
+				postProcessAction: 'read',
+				onEmailBatch: async (data) => {
+					batches.push(data.map((item) => (item.json.attributes as { uid: number }).uid));
+				},
+			});
+
+			expect(batches).toEqual([[15], [21]]);
+			expect(connection.addFlags).toHaveBeenNthCalledWith(1, [15], ['\\SEEN']);
+			expect(connection.addFlags).toHaveBeenNthCalledWith(2, [21], ['\\SEEN']);
+			expect(staticData).toEqual({ lastMessageUid: 21, pendingMessageUids: [10] });
+			expect(trigger.logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('UID 10'),
+				expect.objectContaining({ error: expect.any(Error) }),
+			);
+		});
+
+		it('still throws when a fresh message fails to build', async () => {
+			const connection = mock<ImapSimple>({
+				search: vi.fn().mockResolvedValueOnce([{ uid: 21, headers: headers('a@b.com') }]),
+				downloadText: vi.fn().mockRejectedValue(new Error('IMAP FETCH did not complete')),
+			});
+
+			trigger.getNode.mockReturnValue(mock<INode>({ typeVersion: 2.1 }));
+			trigger.getNodeParameter.calledWith('format').mockReturnValue('simple');
+			trigger.getNodeParameter.calledWith('downloadAttachments').mockReturnValue(false);
+			trigger.getWorkflowStaticData.mockReturnValue({ lastMessageUid: 20 });
+
+			await expect(
+				getNewEmails.call(trigger, {
+					imapConnection: connection,
+					searchCriteria: ['UNSEEN'],
+					postProcessAction: 'nothing',
+					onEmailBatch: async () => {},
+				}),
+			).rejects.toThrow('IMAP FETCH did not complete');
 		});
 
 		it('forgets a pending UID that the server no longer returns', async () => {
