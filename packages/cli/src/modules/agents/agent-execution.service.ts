@@ -1069,6 +1069,22 @@ export class AgentExecutionService {
 	}
 
 	/**
+	 * The timeline of one execution of a thread, also when it moved to blob
+	 * storage. `null` when the thread has no execution with this id, or the
+	 * execution has no readable timeline. Does not check access to the thread.
+	 */
+	async findExecutionTimeline(
+		agentId: string,
+		threadId: string,
+		executionId: string,
+	): Promise<TimelineEvent[] | null> {
+		const execution = await this.agentExecutionRepository.findExecution(executionId);
+		if (execution?.threadId !== threadId) return null;
+		await this.hydrateTimelines(agentId, threadId, [execution]);
+		return execution.timeline;
+	}
+
+	/**
 	 * Whether `execution` continues `older`, the execution before it. A resume
 	 * from before input messages were linked has no links, but it has the
 	 * `resumed` status.

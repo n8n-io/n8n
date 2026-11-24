@@ -180,6 +180,7 @@ export const eventNamesAudit = [
 	'n8n.audit.workflow-review.approved',
 	'n8n.audit.workflow-review.changes-requested',
 	'n8n.audit.workflow-review.closed',
+	'n8n.audit.workflow-review.closed-by-user',
 	'n8n.audit.node-type-policy.scope.updated',
 	'n8n.audit.node-type-policy.document.created',
 	'n8n.audit.node-type-policy.document.updated',

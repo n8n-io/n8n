@@ -534,6 +534,26 @@ describe('domain tool construction', () => {
 		expect(withService.has('save_user_preference')).toBe(true);
 	});
 
+	it('registers send_feedback only when the feedback service is wired', () => {
+		expect(createOrchestratorDomainTools(makeContext()).get('send_feedback')).toBeUndefined();
+
+		const enabled = makeContext({ agentFeedbackService: { send: vi.fn() } });
+		expect(createOrchestratorDomainTools(enabled).get('send_feedback')).toBeDefined();
+		expect(getActiveOrchestratorDomainToolNames(enabled)).toContain('send_feedback');
+	});
+
+	it('does not register send_feedback when the instance does not share data', () => {
+		const context = makeContext({
+			agentFeedbackService: { send: vi.fn() },
+			allowSendingParameterValues: false,
+		});
+		expect(createOrchestratorDomainTools(context).get('send_feedback')).toBeUndefined();
+	});
+
+	it('never defers send_feedback behind search_tools', () => {
+		expect(ALWAYS_LOADED_TOOL_NAMES.has('send_feedback')).toBe(true);
+	});
+
 	it('never defers mcp-servers behind search_tools', () => {
 		expect(ALWAYS_LOADED_TOOL_NAMES.has('mcp-servers')).toBe(true);
 	});

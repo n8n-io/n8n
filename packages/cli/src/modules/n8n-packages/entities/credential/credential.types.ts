@@ -98,18 +98,35 @@ export interface CredentialUpdateCandidate extends CredentialMatch {
 	description?: string | null;
 }
 
+/** A credential that a selection creates, with the package payload that it seeds. */
+export interface SelectedCredentialCreation {
+	sourceId: string;
+	name: string;
+	type: string;
+	/** Expression values and the plain values that decide which fields show. Never a secret. */
+	data?: SerializedCredentialData;
+	/** Whether `data` is everything that the credential holds. */
+	dataIsComplete?: boolean;
+	description?: string | null;
+}
+
 /**
- * What a selection does with a credential that no workflow requires. A selected credential is
- * written by name and type only, never with values, and only inside its owner project.
+ * What a selection does with a credential that no workflow requires. A selected credential gets
+ * the name, the description, the expression values and the plain values that decide which fields
+ * show. A package never carries a secret, and a merge keeps the stored ones. A write stays inside
+ * the owner project of the credential.
  */
 export interface SelectedCredentialPlan {
-	/** Credentials the destination lacks. Each is created empty in the project. */
-	creations: Array<{ sourceId: string; name: string; type: string }>;
-	/** Credentials of the project that the package names differently. */
-	renames: Array<{ id: string; name: string; previousName: string }>;
+	/** Credentials the destination lacks. Each is created in the project with the package payload. */
+	creations: SelectedCredentialCreation[];
+	/**
+	 * Credentials of the project that the package changes. The stored type stays, and the package
+	 * payload merges into the stored values.
+	 */
+	updates: CredentialUpdateCandidate[];
 	/** Credentials that another project owns. They stay as they are. */
 	ownedElsewhere: Array<{ id: string; name: string }>;
-	/** Credentials of the project that the destination already holds with the package name. */
+	/** Credentials of the project that the package does not change. */
 	unchanged: Array<{ id: string; name: string }>;
 }
 
@@ -122,7 +139,7 @@ export interface CredentialImportPlan extends CredentialResolution {
 	updates: CredentialUpdateCandidate[];
 	/**
 	 * Matches in the update scope that the user cannot update. Empty under `keep-existing`, except
-	 * for a selected credential, which the user cannot rename.
+	 * for a selected credential, which the user cannot update.
 	 */
 	forbidden: CredentialMatch[];
 }

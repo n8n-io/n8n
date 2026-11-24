@@ -35,7 +35,7 @@ import path from 'node:path';
 import { jsonParse } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
+import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 
 import {
 	PackageDirectoryInventoryReader,
@@ -235,7 +235,7 @@ export class PromotionsService {
 	async promote(
 		environmentId: string,
 		actor: User,
-		request: PromotePackageDto & { canExportVariableValues: boolean },
+		request: PromotePackageDto,
 	): Promise<PromotePackageResultDto> {
 		const input = await this.resolver.resolveForEnvironment(environmentId, 'promote');
 		return await this.trackPromote(
@@ -254,7 +254,7 @@ export class PromotionsService {
 	private async promoteResolved(
 		input: PromotionOperationInput,
 		actor: User,
-		request: PromotePackageDto & { canExportVariableValues: boolean },
+		request: PromotePackageDto,
 		signal: AbortSignal,
 	): Promise<PromotePackageResultDto> {
 		this.assertInstanceScope(input, 'Promote');
@@ -288,11 +288,7 @@ export class PromotionsService {
 		let pushed: PushedPromotion;
 		try {
 			const exportResult = await this.n8nPackagesService.exportPackageToDirectory(
-				instancePromotionExportRequest({
-					user: actor,
-					projectIds,
-					canExportVariableValues: request.canExportVariableValues,
-				}),
+				instancePromotionExportRequest({ user: actor, projectIds }),
 				{ targetDir: stagingFolder },
 			);
 
@@ -450,7 +446,7 @@ export class PromotionsService {
 	private async promoteSelectionResolved(
 		input: PromotionOperationInput,
 		actor: User,
-		request: { commitMessage?: string; canExportVariableValues: boolean },
+		request: { commitMessage?: string },
 		selection: SelectivePushOptions,
 		movedTo: ReadonlyMap<string, string>,
 		signal: AbortSignal,
@@ -523,7 +519,6 @@ export class PromotionsService {
 					projectCredentialIds: selection.credentialIds,
 					includeAgents: false,
 					includeVariableValues: true,
-					canExportVariableValues: request.canExportVariableValues,
 					includeTags: true,
 					includeArchived: true,
 					// A sub-workflow nobody selected stays a reference. Failing here would
@@ -649,7 +644,7 @@ export class PromotionsService {
 	async promoteProjectSelection(
 		projectId: string,
 		actor: User,
-		request: PromoteRequest & { canExportVariableValues: boolean },
+		request: PromoteRequest,
 	): Promise<PromoteSelectionResultDto> {
 		const workflowIds = request.workflowIds ?? [];
 		const folderIds = request.folderIds ?? [];
@@ -700,10 +695,7 @@ export class PromotionsService {
 						return await this.promoteSelectionResolved(
 							current,
 							actor,
-							{
-								commitMessage: request.commitMessage,
-								canExportVariableValues: request.canExportVariableValues,
-							},
+							{ commitMessage: request.commitMessage },
 							{ ...selection, credentialIds },
 							movedTo,
 							signal,
@@ -936,6 +928,7 @@ export class PromotionsService {
 
 	/** `movedWorkflowIds` comes from findCrossProjectMoves, so a moved workflow is never planned as a deletion. */
 	private async classifyApplySelection(
+		actor: User,
 		inventory: PackageDirectoryInventory,
 		projectId: string,
 		{ workflowIds, folderIds, credentialIds }: ApplySelection,
@@ -963,6 +956,11 @@ export class PromotionsService {
 			throw new BadRequestError(
 				`The following credentials are not selectable in this project: ${invalidCredentialIds.join(', ')}`,
 			);
+		}
+
+		const unreadable = await this.credentialSelection.findUnreadableOwnedIds(actor, projectId);
+		if (credentialIds.some((id) => unreadable.has(id))) {
+			throw new ForbiddenError('You cannot read one of the selected credentials');
 		}
 
 		const branchWorkflowIds = new Set(
@@ -1103,6 +1101,7 @@ export class PromotionsService {
 		const inventory = await this.inventoryReader.read(reader);
 		const moves = await this.applyPreviewService.findCrossProjectMoves(inventory, projectId);
 		const selection = await this.classifyApplySelection(
+			actor,
 			inventory,
 			projectId,
 			requested,

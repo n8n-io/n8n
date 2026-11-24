@@ -157,9 +157,13 @@ export function requiredSharedSkillScopes(
 export function assertCredentialUpdatesAllowed(
 	apiKeyScopes: string[] | undefined,
 	policy: CredentialConflictPolicy,
-	credentialPlans: Array<Pick<CredentialImportPlan, 'updates'>>,
+	credentialPlans: Array<Pick<CredentialImportPlan, 'updates' | 'selected'>>,
 ): void {
-	if (plannedCredentialUpdates(policy, credentialPlans).size > 0) {
+	// A selected update writes under every policy, so it needs the scope too.
+	if (
+		plannedCredentialUpdates(policy, credentialPlans).size > 0 ||
+		credentialPlans.some(({ selected }) => selected.updates.length > 0)
+	) {
 		assertPackageImportApiKeyScopes(apiKeyScopes, ['credential:update']);
 	}
 }

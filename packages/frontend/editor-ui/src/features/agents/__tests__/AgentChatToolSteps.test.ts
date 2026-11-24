@@ -7,6 +7,7 @@ import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-avai
 import type { PolicyViolation } from '@n8n/api-types';
 import { createTestProject } from '@/features/collaboration/projects/__tests__/utils';
 import AgentChatToolSteps from '../components/AgentChatToolSteps.vue';
+import { AGENT_TOOL_STEP_LABEL_KEY } from '../components/agentChatInjectionKeys';
 import {
 	AGENTS_CHAT_INTERACTION_EXTENSIONS,
 	type AgentsChatHostEventItem,
@@ -1245,4 +1246,41 @@ describe('AgentChatToolSteps — host events', () => {
 			expect(wrapper.get('[data-testid="test-host-event"]').find('em').text()).toBe('assistant-1');
 		},
 	);
+});
+
+describe('AgentChatToolSteps, host tool labels', () => {
+	beforeEach(() => {
+		setActivePinia(createTestingPinia());
+	});
+
+	const searchCall: ToolCall = {
+		tool: 'search_nodes',
+		toolCallId: 'tc-search',
+		input: { queries: ['gmail'] },
+		state: TOOL_CALL_STATE.RUNNING,
+	};
+
+	it('names a step with the label of the host', () => {
+		const wrapper = mount(AgentChatToolSteps, {
+			props: { toolCalls: [searchCall], projectId: 'project-1' },
+			global: {
+				provide: {
+					[AGENT_TOOL_STEP_LABEL_KEY as symbol]: (tool: string) =>
+						tool === 'search_nodes' ? 'Searching for gmail' : undefined,
+				},
+			},
+		});
+
+		expect(wrapper.text()).toContain('Searching for gmail');
+	});
+
+	it('keeps its own label when the host gives none', () => {
+		const wrapper = mount(AgentChatToolSteps, {
+			props: { toolCalls: [searchCall], projectId: 'project-1' },
+			global: { provide: { [AGENT_TOOL_STEP_LABEL_KEY as symbol]: () => undefined } },
+		});
+
+		expect(wrapper.text()).toContain('Search nodes');
+		expect(wrapper.text()).not.toContain('Searching for gmail');
+	});
 });

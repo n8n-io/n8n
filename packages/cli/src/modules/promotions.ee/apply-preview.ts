@@ -74,8 +74,11 @@ export function plannedChanges(plan: PackageImportPlan): Map<string, PlannedChan
 		for (const { sourceId } of selected.creations) {
 			changes.set(resourceKey('credential', sourceId), { change: 'added' });
 		}
-		for (const { id, previousName } of selected.renames) {
-			changes.set(resourceKey('credential', id), { change: 'modified', previousName });
+		for (const { sourceId, name, targetName } of selected.updates) {
+			changes.set(resourceKey('credential', sourceId), {
+				change: 'modified',
+				...(targetName !== name ? { previousName: targetName } : {}),
+			});
 		}
 		for (const { id, name } of selected.unchanged) {
 			changes.set(resourceKey('credential', id), { change: 'unchanged', name });

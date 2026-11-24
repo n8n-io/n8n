@@ -17,8 +17,21 @@ to one repository and apply from another. A project can have its own environment
 for each direction. A direction without a project environment uses the instance
 environment.
 
-Requires the Promotions feature to be licensed. The API key scopes are named
-`promotions:*`.
+Requires the Promotions feature to be licensed. The API key scopes are:
+
+- `promotions:manageProviders`: create, update and delete providers, and list
+  the repositories and branches of a provider
+- `promotions:readProviders`: list and get providers
+- `promotions:manageEnvironments`: create, update and delete environments,
+  connect and disconnect them, and link projects
+- `promotions:readEnvironments`: list and get environments, their projects and
+  their missing projects
+- `promotions:promote`: preview and promote
+- `promotions:apply`: preview, apply and continue
+
+A scope lets the key start the operation. The role of the key owner still
+decides what the operation can read and write. For example, the change details
+show variable values only when that role can list variables.
 
 ## Setup example: Git over SSH
 
@@ -300,8 +313,7 @@ personal project is refused, because Apply would delete it on the destination.
 Move it back to its team project first. A workflow or folder on the branch that
 moved to another team project is also refused while its old project still
 exists, because Apply can't move it between projects. This command works on an
-`instance` Promote environment only. The API key also needs `variable:list`
-when the workflows reference variables.
+`instance` Promote environment only.
 
 ## `promotion-environment list-changes`
 
@@ -333,8 +345,9 @@ To select a workflow, pass its ID to `-w`. To select a folder, pass its ID to
 `--folder`. To select a credential, pass its ID to `--credential-id`. The flags
 work in `promote-selection` and `apply-selection`. The project is always
 included. You can select a credential only when `SELECTABLE` is `true`: the
-project owns it, and it is added or modified. Promote and Apply send its name
-and type, never its secret values. You can't select a data table, variable, or
+project owns it, and it is added or modified. Promote and Apply send its name,
+type, description, expression values, and the plain values that decide which
+fields show, never its secret values. You can't select a data table, variable, or
 tag. To send one, select a workflow from its `USEDBY` column. With
 `--format id-only`, the output lists the IDs of all types. Pass only the
 workflow, folder, and credential IDs to `-w`, `--folder`, and `--credential-id`.
@@ -433,8 +446,7 @@ Archived workflows stay on the branch as archived. A selected workflow that was
 deleted leaves this project's branch. A selected workflow that moved into or out
 of the project since the branch was written is refused: move it back
 first. The request fails before any write if the branch does not hold a
-deleted workflow under this project. The API key also needs `variable:list`
-when the workflows reference variables.
+deleted workflow under this project.
 
 ## `promotion-environment apply`
 
@@ -571,10 +583,12 @@ n8n-cli promotion-environment apply-selection proj-abc
 
 The project's name, icon, description, and telemetry tags always come from the
 branch. Without `-w`, `--folder`, and `--credential-id`, the command applies only
-the project. Selected IDs on the branch are imported. A selected credential is
-created without values when the project lacks it, and renamed when the project
-owns it under another name. Apply never writes secret values, and it leaves a
-credential of another project as it is. A selected workflow that this project
+the project. Selected IDs on the branch are imported. A selected credential gets
+its name, description, expression values, and the plain values that decide
+which fields show. Apply creates it when the project lacks it. For a credential
+that the project owns, Apply merges these values in, so the stored secrets stay.
+Apply never writes a secret, never changes the type, and leaves a credential of
+another project as it is. A selected workflow that this project
 owns but the branch does not hold is removed. Unselected content stays unchanged. A selected
 workflow or folder is created, or moves within the project to match the branch,
 together with the folders above it, and those folders take the name on the

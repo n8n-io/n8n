@@ -188,7 +188,7 @@ const applySelectionShape = {
 	}),
 	credentialIds: promotionSelectedIdsSchema('credentialIds').openapi({
 		description:
-			'Credentials of the project on the branch, to apply without a selected workflow that uses them. Apply creates a missing credential without values and renames an existing one. It never writes secret values.',
+			'Credentials of the project on the branch, to apply without a selected workflow that uses them. Apply creates a missing credential, and merges the name, description, expression values and the plain values that decide which fields show into an existing one. It never writes secret values.',
 	}),
 };
 
