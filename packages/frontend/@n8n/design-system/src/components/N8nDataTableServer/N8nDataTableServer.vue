@@ -761,7 +761,6 @@ const table = useVueTable({
 		white-space: nowrap;
 		padding: 0;
 		border: none;
-		border-radius: var(--radius);
 		background: none;
 		color: inherit;
 		font: inherit;
@@ -773,11 +772,17 @@ const table = useVueTable({
 			content: '';
 			position: absolute;
 			inset: 0;
+			border-radius: var(--radius);
 		}
 
+		/* The ring outlines the whole cell, which is the click target. */
 		&:focus-visible {
+			outline: none;
+		}
+
+		&:focus-visible::after {
 			@include focus.focus-ring;
-			/* The cell content clips what lies outside the button, so the ring sits inside it. */
+			/* Inset, so a neighbouring sticky cell cannot cover the ring. */
 			outline-offset: calc(-1 * var(--focus--border-width));
 		}
 	}
