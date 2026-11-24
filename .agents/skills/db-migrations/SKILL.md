@@ -124,7 +124,7 @@ CI checks the items marked **(CI)** on each migration file that a PR adds. The `
 - [ ] **Entity ↔ migration parity**: column types, `notNull`, defaults, FKs, `@Index` decorators all match. — [Schema/Entity Drift](#schemaentity-drift)
 - [ ] **If using `addColumns`, `dropColumns`, `addNotNull`, `dropNotNull`, `addEnumCheck`, or `dropEnumCheck`:** verified whether the target table has incoming FKs. If so, either set `withFKsDisabled = true as const` (in a `sqlite/` subclass if this is a `common/` migration) or use raw `ALTER TABLE ADD COLUMN` for nullable/defaulted columns. — [SQLite table recreation risk](#sqlite-table-recreation-risk)
 - [ ] **Each SQLite table is rebuilt at most once.** Several recreating calls on the same table copy it several times. Combine them, or use raw `ALTER TABLE ADD COLUMN` for nullable columns. — [SQLite table recreation risk](#sqlite-table-recreation-risk)
-- [ ] **A CHECK added to a busy Postgres table is `NOT VALID`, and a migration in a later release runs `VALIDATE CONSTRAINT`.** An index on a busy table has a measured build time in the PR description. — [Locks on existing Postgres tables](#locks-on-existing-postgres-tables)
+- [ ] **An index on a busy table has a measured build time** in the PR description. — [Locks on existing Postgres tables](#locks-on-existing-postgres-tables)
 - [ ] **The migration cannot block startup.** A new `NOT NULL` column without a default has its rows cleared or backfilled first. Every loop ends. A failed precondition throws, and does not skip the work silently. — [Do not block startup](#do-not-block-startup)
 - [ ] **No live-app value imports** in the migration body. Inline types/utility code locally, for example a local copy of `IUserSettings`. Helpers from `@n8n/utils`, such as `isRecord`, are allowed. **(CI)** — [Never import entities as values](#never-import-entities-as-values)
 - [ ] **Each `runInBatches` query has `ORDER BY`** on a unique column. **(CI)** — [Use Batch Operations](#use-batch-operations)
@@ -448,30 +448,6 @@ All six require a final options parameter with `recreatesOnSqlite: true` — Typ
 ### Locks on existing Postgres tables
 
 On Postgres, some changes scan the whole table while they hold a lock. This is a problem on a busy table. A busy table can hold millions of rows, or the app writes to it often. `DEFAULT_BUSY_TABLES` in the [`migration-busy-table`](../../../packages/quality/policy/code-health/src/rules/migration-busy-table.rule.ts) code-health rule lists the busy tables, for example `execution_entity` and `workflow_entity`. Use that list. Do not keep a second list in this skill.
-
-**Add a CHECK to a busy table as `NOT VALID`, then validate it in a second migration.** A normal `ADD CONSTRAINT … CHECK` reads every row while it holds an `ACCESS EXCLUSIVE` lock. This lock blocks all reads and writes. On a table that is not busy, the scan is fast, so a normal CHECK is correct. This applies to `addEnumCheck` too. Keep the inline CHECK on SQLite.
-
-`NOT VALID` skips the existing rows and checks only new writes. Postgres does not assume that the constraint holds for the old rows, so the planner cannot use it. If you use `NOT VALID`, you MUST add a second migration that runs `VALIDATE CONSTRAINT`. `VALIDATE CONSTRAINT` takes a `SHARE UPDATE EXCLUSIVE` lock, which does not block reads or writes. This is true only when the `ADD CONSTRAINT` transaction has already committed.
-
-On Postgres, n8n runs all pending migrations in one transaction (see `migrateWithAdvisoryLock` in `packages/@n8n/db/src/connection/db-connection.ts`). Two migrations in the same release thus share one transaction, and the `ACCESS EXCLUSIVE` lock stays during the scan. Put the `VALIDATE CONSTRAINT` migration in a later release. An instance that skips that release runs both migrations in one transaction. This costs the same as a normal CHECK.
-
-```typescript
-// Release N: add the constraint. This is fast and does not scan the table.
-if (isPostgres) {
-	const checkName = escape.columnName(`CHK_${tablePrefix}execution_entity_mode`);
-	await runQuery(
-		`ALTER TABLE ${table} ADD CONSTRAINT ${checkName} CHECK (${mode} IN ('manual', 'trigger')) NOT VALID`,
-	);
-}
-
-// A later release: validate the existing rows. This does not block reads or writes.
-if (isPostgres) {
-	const checkName = escape.columnName(`CHK_${tablePrefix}execution_entity_mode`);
-	await runQuery(`ALTER TABLE ${table} VALIDATE CONSTRAINT ${checkName}`);
-}
-```
-
-A CHECK on a table that this migration creates does not need `NOT VALID`.
 
 **Measure an index on a busy table.** `CREATE INDEX` blocks writes until it finishes. `CREATE INDEX CONCURRENTLY` cannot run inside a transaction, and n8n always runs migrations in a transaction. Use a normal index, measure the build time on a realistic row count, and write the result in the PR description.
 
