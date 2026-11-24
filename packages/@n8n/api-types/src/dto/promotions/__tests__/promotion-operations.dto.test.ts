@@ -7,6 +7,7 @@ import {
 	PromotePackageDto,
 	applyPackageResultSchema,
 } from '../promotion-operations.dto';
+import { PromoteSelectionRequestDto } from '../promotable-resource.dto';
 
 describe('PromotePackageDto', () => {
 	it('accepts an optional non-blank commit message and an optional force flag', () => {
@@ -206,5 +207,24 @@ describe('ApplyPackageResultDto', () => {
 		{ ...identity, status: 'applied', counts: {} },
 	])('requires the fields for each outcome: %j', (value) => {
 		expect(applyPackageResultSchema.safeParse(value).success).toBe(false);
+	});
+});
+
+describe('PromoteSelectionRequestDto', () => {
+	it('accepts credential ids, and leaves them out when the request omits them', () => {
+		expect(PromoteSelectionRequestDto.parse({ credentialIds: ['c1', 'c2'] })).toEqual({
+			credentialIds: ['c1', 'c2'],
+		});
+		expect(PromoteSelectionRequestDto.parse({}).credentialIds).toBeUndefined();
+	});
+
+	it('rejects a repeated credential id', () => {
+		expect(PromoteSelectionRequestDto.safeParse({ credentialIds: ['c1', 'c1'] }).success).toBe(
+			false,
+		);
+	});
+
+	it('still rejects an unknown key', () => {
+		expect(PromoteSelectionRequestDto.safeParse({ credentialId: 'c1' }).success).toBe(false);
 	});
 });

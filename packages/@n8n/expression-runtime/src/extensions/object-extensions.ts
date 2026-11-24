@@ -21,7 +21,10 @@ function values(value: object): unknown[] {
 
 function hasField(value: object, extraArgs: string[]): boolean {
 	const [name] = extraArgs;
-	return name in value;
+	// Count own and proxy-exposed fields; ignore names inherited from the prototype.
+	if (Object.hasOwn(value, name)) return true;
+	const proto = Object.getPrototypeOf(value) as object | null;
+	return name in value && (proto === null || !(name in proto));
 }
 
 function removeField(value: object, extraArgs: string[]): object {
