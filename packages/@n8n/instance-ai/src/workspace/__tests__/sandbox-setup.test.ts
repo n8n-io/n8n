@@ -503,6 +503,7 @@ describe('setupSandboxWorkspace', () => {
 			'/home/daytona/workspace/tsconfig.json',
 			'/home/daytona/workspace/workflow-diagnostics.mts',
 		]);
+		expect(writeFiles.mock.calls[1][0].length).toBeGreaterThan(0);
 		expect(
 			writeFiles.mock.calls[1][0].every(({ path }) =>
 				path.startsWith('/home/daytona/workspace/knowledge-base/'),

@@ -4,6 +4,7 @@ import { isQuotaExhaustedError } from '../../stream/map-chunk';
 import type { WorkspaceFileTarget } from '../workspace-files';
 import { readWorkspaceFile, writeWorkspaceFile, writeWorkspaceFileMap } from '../workspace-files';
 
+type WriteFile = NonNullable<WorkspaceFileTarget['filesystem']>['writeFile'];
 type WriteFiles = NonNullable<NonNullable<WorkspaceFileTarget['filesystem']>['writeFiles']>;
 
 class TransientWriteError extends Error {
@@ -220,7 +221,7 @@ describe('workspace-files', () => {
 	});
 
 	it('writes the files one by one when the batch fails', async () => {
-		const writeFile = vi.fn(async () => {});
+		const writeFile = vi.fn<WriteFile>(async () => {});
 		const writeFiles = vi.fn<WriteFiles>(async () => await Promise.reject(new Error('not found')));
 		const target: WorkspaceFileTarget = { filesystem: { writeFile, writeFiles } };
 
@@ -233,7 +234,14 @@ describe('workspace-files', () => {
 		);
 
 		expect(writeFiles).toHaveBeenCalledTimes(1);
-		expect(writeFile).toHaveBeenCalledTimes(2);
+		const written = writeFile.mock.calls.map(([path, content]) => ({ path, content }));
+		expect(written).toHaveLength(2);
+		expect(written).toEqual(
+			expect.arrayContaining([
+				{ path: '/tmp/b.txt', content: 'beta' },
+				{ path: '/tmp/c.txt', content: 'gamma' },
+			]),
+		);
 	});
 
 	it('does not batch a single file', async () => {
