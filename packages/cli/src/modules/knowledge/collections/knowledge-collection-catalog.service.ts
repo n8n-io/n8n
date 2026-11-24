@@ -19,6 +19,7 @@ import {
 	type KnowledgeCollectionSummary,
 } from '../repositories/knowledge-collection.repository';
 import { SLUG_SUFFIX_LENGTH, slugFromName, slugWithSuffix } from './collection-slug';
+import { Scope } from '@n8n/permissions';
 
 const MAX_SLUG_ATTEMPTS = 5;
 const MAX_INSERT_ATTEMPTS = 2;
@@ -54,7 +55,8 @@ export class KnowledgeCollectionCatalogService {
 		 * `agent:update` on the home project. The route checks it, and this method
 		 * checks it again for callers that do not go through the route.
 		 */
-		if (!(await userHasScopes(user, ['agent:update'], false, { projectId }))) {
+		const scopes = ['agent:update'] as Scope[];
+		if (!(await userHasScopes(user, scopes, false, { projectId }))) {
 			throw new ForbiddenError(
 				'You do not have permission to create a knowledge collection in this project.',
 			);
@@ -190,8 +192,8 @@ export class KnowledgeCollectionCatalogService {
 	}
 
 	/**
-	 * The lookup uses the project of the URL, so a collection of another project
-	 * answers like a missing one.
+	 * The lookup must use the project id, so a collection of another project
+	 * answers like a missing one, even if the name is the same.
 	 */
 	private async findEditableOrThrow(
 		user: User,
@@ -212,10 +214,6 @@ export class KnowledgeCollectionCatalogService {
 		return collection;
 	}
 
-	/**
-	 * Collections have no scopes of their own yet (TBD), so a change or a delete
-	 * needs `agent:update` on the home project.
-	 */
 	private async assertCanChangeCollections(
 		user: User,
 		projectId: string,
@@ -226,7 +224,12 @@ export class KnowledgeCollectionCatalogService {
 			throw new NotFoundError('Knowledge collections are not enabled');
 		}
 
-		const canUpdateAgents = await userHasScopes(user, ['agent:update'], false, { projectId });
+		/**
+		 * Collections have no scopes of their own yet (TBD), so a change or a delete
+		 * needs `agent:update` on the home project.
+		 */
+		const scopes = ['agent:update'] as Scope[];
+		const canUpdateAgents = await userHasScopes(user, scopes, false, { projectId });
 		if (!canUpdateAgents) {
 			throw new ForbiddenError(
 				`You do not have permission to ${action} a knowledge collection in this project.`,
