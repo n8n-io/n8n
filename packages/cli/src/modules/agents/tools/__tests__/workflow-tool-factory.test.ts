@@ -403,12 +403,9 @@ describe('executeWorkflow → instrumented runs stay on main', () => {
 		...workflow,
 		settings: { engineType: 'v2' },
 	} as unknown as WorkflowEntity;
-	const offloadBefore = process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS;
 
-	function setQueue(mode: 'regular' | 'queue', offload?: 'true') {
+	function setQueue(mode: 'regular' | 'queue') {
 		Container.set(ExecutionsConfig, { mode } as ExecutionsConfig);
-		if (offload) process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = offload;
-		else delete process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS;
 	}
 
 	async function runInstrumented(
@@ -436,8 +433,6 @@ describe('executeWorkflow → instrumented runs stay on main', () => {
 
 	afterEach(() => {
 		Container.reset();
-		if (offloadBefore === undefined) delete process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS;
-		else process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = offloadBefore;
 	});
 
 	it('refuses an Engine v2 workflow before it starts', async () => {
@@ -459,17 +454,17 @@ describe('executeWorkflow → instrumented runs stay on main', () => {
 		expect(run).toHaveBeenCalledOnce();
 	});
 
-	it('runs a manual workflow in queue mode while manual runs stay on main', async () => {
+	it('still runs a manual workflow in queue mode when it is not instrumented', async () => {
 		setQueue('queue');
 		const run = vi.fn().mockResolvedValue('exec-1');
 
-		await runInstrumented(workflow, run);
+		await executeWorkflow(workflow, triggerNode, {}, buildContext(run), false);
 
 		expect(run).toHaveBeenCalledOnce();
 	});
 
-	it('refuses a manual workflow in queue mode when manual runs go to workers', async () => {
-		setQueue('queue', 'true');
+	it('refuses an instrumented manual workflow in queue mode before it starts', async () => {
+		setQueue('queue');
 		const run = vi.fn().mockResolvedValue('exec-1');
 
 		await expect(runInstrumented(workflow, run)).rejects.toThrow(

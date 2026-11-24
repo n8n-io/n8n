@@ -1,7 +1,7 @@
 import { ExecutionsConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { UserError } from '@n8n/errors';
-import type { IWorkflowBase, WorkflowExecuteMode } from 'n8n-workflow';
+import type { IWorkflowBase } from 'n8n-workflow';
 
 import { runsOnQueueWorker } from '@/workflow-runner';
 
@@ -22,26 +22,20 @@ export class InstrumentedRunUnsupportedError extends UserError {
  * would. The hooks are a closure: `WorkflowRunner.run` applies them only in `runMainProcess`,
  * never on a queue worker or on the Engine v2 data plane. The tool list asks this too.
  */
-export function instrumentedRunGap(
-	workflow: Pick<IWorkflowBase, 'settings'>,
-	executionMode: WorkflowExecuteMode,
-): string | undefined {
+export function instrumentedRunGap(workflow: Pick<IWorkflowBase, 'settings'>): string | undefined {
 	// Stricter than `EngineV2Dispatcher.handlesWorkflow`, which takes only some modes: every v2
 	// workflow is refused, so a later change to which modes v2 takes cannot let a run through.
 	if (workflow.settings?.engineType === 'v2') {
 		return 'Test runs and evaluations do not support Engine v2 workflows yet.';
 	}
-	if (runsOnQueueWorker(Container.get(ExecutionsConfig), executionMode)) {
+	if (runsOnQueueWorker(Container.get(ExecutionsConfig))) {
 		return 'This workflow would run on a queue worker, which test runs and evaluations cannot reach.';
 	}
 	return undefined;
 }
 
-export function assertInstrumentedRunStaysOnMain(
-	workflow: Pick<IWorkflowBase, 'settings'>,
-	executionMode: WorkflowExecuteMode,
-): void {
-	const gap = instrumentedRunGap(workflow, executionMode);
+export function assertInstrumentedRunStaysOnMain(workflow: Pick<IWorkflowBase, 'settings'>): void {
+	const gap = instrumentedRunGap(workflow);
 	if (gap) throw new InstrumentedRunUnsupportedError(gap);
 }
 
