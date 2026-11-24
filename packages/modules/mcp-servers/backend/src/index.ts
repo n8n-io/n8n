@@ -4,3 +4,14 @@ export { McpServer } from './mcp-server.entity';
 export { McpServerTool } from './mcp-server-tool.entity';
 export { McpServerConnection } from './mcp-server-connection.entity';
 export { McpServerBlock } from './mcp-server-block.entity';
+export {
+	McpServerToolAdapters,
+	WorkflowToolPort,
+	type WorkflowToolCheck,
+	type WorkflowToolDescription,
+	type WorkflowToolInputSchema,
+	type WorkflowToolRefusal,
+	type WorkflowToolRunOptions,
+	type WorkflowToolRunResult,
+	type WorkflowToolStartedRun,
+} from './tools/workflow-tool-port';
