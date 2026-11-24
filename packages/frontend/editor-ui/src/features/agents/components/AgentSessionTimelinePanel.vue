@@ -392,6 +392,7 @@ async function fetchThreadDetail(initial: boolean) {
 			currentProjectId,
 			currentAgentId,
 			currentThreadId,
+			props.channel,
 		);
 		if (requestId !== threadDetailRequestId || identity !== threadIdentity()) {
 			return;

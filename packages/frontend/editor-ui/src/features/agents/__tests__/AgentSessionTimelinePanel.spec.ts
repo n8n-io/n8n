@@ -308,8 +308,15 @@ describe('AgentSessionTimelinePanel', () => {
 		mountPanel();
 		await flushPromises();
 
-		expect(getThreadDetail).toHaveBeenCalledWith('p1', 'a1', 't1');
+		expect(getThreadDetail).toHaveBeenCalledWith('p1', 'a1', 't1', undefined);
 		expect(track).not.toHaveBeenCalled();
+	});
+
+	it('loads the thread detail of a system agent through its channel', async () => {
+		mountPanel({ agentId: 'assistant', channel: 'system' });
+		await flushPromises();
+
+		expect(getThreadDetail).toHaveBeenCalledWith('p1', 'assistant', 't1', 'system');
 	});
 
 	it.each(['SessionTimelineChart', 'SessionTimelineTable'])(
@@ -387,7 +394,7 @@ describe('AgentSessionTimelinePanel', () => {
 		await wrapper.setProps({ threadId: 't2' });
 		await flushPromises();
 
-		expect(getThreadDetail).toHaveBeenLastCalledWith('p1', 'a1', 't2');
+		expect(getThreadDetail).toHaveBeenLastCalledWith('p1', 'a1', 't2', undefined);
 	});
 
 	it('surfaces a toast when the detail fails to load', async () => {
@@ -570,7 +577,7 @@ describe('AgentSessionTimelinePanel', () => {
 		await flushPromises();
 
 		expect(getThreadDetail).toHaveBeenCalledTimes(3);
-		expect(getThreadDetail).toHaveBeenLastCalledWith('p1', 'a1', 't2');
+		expect(getThreadDetail).toHaveBeenLastCalledWith('p1', 'a1', 't2', undefined);
 		expect(wrapper.emitted('loaded')?.at(-1)).toEqual([nextDetail]);
 	});
 
@@ -735,7 +742,7 @@ describe('AgentSessionTimelinePanel', () => {
 		await flushPromises();
 
 		expect(getThreadDetail).toHaveBeenCalledTimes(callsBeforeSettle);
-		expect(getThreadDetail).toHaveBeenLastCalledWith('p1', 'a1', 't2');
+		expect(getThreadDetail).toHaveBeenLastCalledWith('p1', 'a1', 't2', undefined);
 	});
 
 	describe('budget notice', () => {
