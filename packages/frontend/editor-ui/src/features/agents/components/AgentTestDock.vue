@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { AgentSseEvent } from '@n8n/api-types';
 import { N8nIconButton, N8nTooltip, TOOLTIP_DELAY_MS } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
@@ -52,6 +53,7 @@ const props = withDefaults(
 		connectedTriggers: string[];
 		isOpen: boolean;
 		overlay?: boolean;
+		forceDocked?: boolean;
 		inline?: boolean;
 		closable?: boolean;
 		placeholder?: string;
@@ -79,6 +81,8 @@ const props = withDefaults(
 );
 
 const emit = defineEmits<{
+	'stream-event': [event: AgentSseEvent];
+	'update:streaming': [streaming: boolean];
 	'view-trace': [];
 	'new-session': [];
 	'delete-session': [sessionId: string];
@@ -116,7 +120,10 @@ const {
 const previewChatPage = useTemplateRef<InstanceType<typeof AgentTestChatPage>>('previewChatPage');
 const storedLayout = useStorage<string>('N8N_AGENT_PREVIEW_LAYOUT', PreviewLayout.Docked);
 const layout = computed<PreviewLayout>(() =>
-	!props.inline && !props.overlay && storedLayout.value === PreviewLayout.Fullpage
+	!props.inline &&
+	!props.overlay &&
+	!props.forceDocked &&
+	storedLayout.value === PreviewLayout.Fullpage
 		? PreviewLayout.Fullpage
 		: PreviewLayout.Docked,
 );
@@ -166,7 +173,7 @@ function clearBudgetStops(fields: BudgetAmountField[]) {
 }
 
 function toggleFullWidth() {
-	if (props.overlay) return;
+	if (props.overlay || props.forceDocked) return;
 	storedLayout.value =
 		layout.value === PreviewLayout.Fullpage ? PreviewLayout.Docked : PreviewLayout.Fullpage;
 }
@@ -298,7 +305,7 @@ defineExpose({ clearBudgetStops });
 						:can-delete-session="props.canDeleteSession"
 						:is-deleting-session="props.isDeletingSession"
 						:is-full-width="layout === PreviewLayout.Fullpage"
-						:hide-layout-toggle="props.inline || props.overlay"
+						:hide-layout-toggle="props.inline || props.overlay || props.forceDocked"
 						:is-lang-smith-export-enabled="isLangSmithExportEnabled"
 						:is-exporting="isExporting"
 						:get-conversation-markdown="getConversationMarkdown"
@@ -327,6 +334,8 @@ defineExpose({ clearBudgetStops });
 			</header>
 
 			<AgentTestChatPage
+				@stream-event="emit('stream-event', $event)"
+				@update:streaming="emit('update:streaming', $event)"
 				ref="previewChatPage"
 				:visible="props.isOpen"
 				:placeholder="props.placeholder"

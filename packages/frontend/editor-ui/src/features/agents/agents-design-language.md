@@ -26,8 +26,8 @@ Hide these entry points in embedded Agent artifacts.
 
 ## Builder tabs
 
-Show Build, Knowledge, Sessions, and Settings from the first visit to a new
-Agent. Let users switch tabs before they save or configure the Agent. Keep
+In the existing form layouts, show Build, Knowledge, Sessions, and Settings
+from the first visit to a new Agent. Let users switch tabs before they save or configure the Agent. Keep
 persistence tied to edits and actions that need a saved Agent. Keep optional
 tabs under their existing feature flags.
 
@@ -175,12 +175,136 @@ the error when the row does not fit the panel. Wrap long URLs and error text.
 
 Agent artifacts inside an Assistant chat keep the handoff in that chat.
 
+## Agent visualization
+
+The standalone prototype opens Build on the canvas. Keep the Assistant open on
+its left. Give chat half the workspace. Use the workflow segmented control for
+Build and Sessions. Center it over the canvas or session workspace, with half
+its height above the header border and half below. Keep it outside the header
+scroll container. Move its center with the chat resize boundary. Keep explicit
+host layouts unchanged. Override experiment display choices in this branch
+without recording an experiment exposure. Embedded artifacts keep their existing
+editor.
+
+Open Settings from the header icon in the Agent modal shell. Open the existing
+configuration components from canvas actions. Keep the form editor out of the
+main prototype view. Keep edits in the current autosave and permission flows.
+Emit instruction and numeric setting edits immediately from modal content. The
+view owns save debouncing, so closing a dialog must not discard the last edit.
+Keep name and appearance editing in Settings.
+
+Show only configured categories. Keep deactivated configured items visible.
+Keep one incoming Start agent node on the left. Use the workflow manual-start
+icon, trigger corner shape, and output handle. Use dotted arrows with a dot
+that travels toward the parent. Apply this direction to every entry descendant.
+Show the start question when no channel or schedule is configured. Do not call invocation a trigger.
+Do not infer inbound workflow references from outgoing workflow tools.
+
+Combine files, vector stores, and skills under Knowledge. Keep memory separate.
+Keep MCP beside tools. Keep the Agent icon and gradient at the center. Keep its
+name in the accessible label. Use large icons and labels below the category
+nodes, as on the workflow canvas. Wrap labels and keep the specific service
+icons from configuration pills. Show saved tool descriptions, schedule names,
+formatted schedules with timezones, and configured channel behavior when the
+data exists. Keep unknown metadata factual.
+
+Put a plus node in the last right-hand slot for categories that are not
+configured. Use the same curved connection and layout as the other nodes. Show
+a group's plus tendril among its children when that group opens. Knowledge
+offers files, skills, and vector stores. Use the existing creation flows. Hide
+add and edit actions under edit locks and read-only access.
+
+Expand a group into separate child nodes on the graph. Highlight each open
+parent with the workflow selected ring. Do not show a back button on the Agent
+icon. Click the parent again to collapse its whole branch. Keep other open
+branches independent. Animate new children out from their parent. Keep closing
+children and their links visible while they shrink back into the parent. Remove
+them after the return animation. Keep the viewport bounds until the children
+return. Grow capability branches to the right and entry branches to the left.
+Keep the same entry node shape and incoming flow on each entry descendant.
+
+Use the rendered node bodies and label bounds to pack the graph. Use fixed node
+and two-line label bounds only until measurements are available. Keep categories
+around the hub on their resting arc. Move an opened parent outward to make a
+pocket for its children. Tuck the other spokes slightly toward the hub. Keep
+their heights and the entry point stable for a single open branch. Fan children
+along a shallow arc. Pack only open branches that overlap; do not move every
+parent into a column. Pack only node rectangles that share horizontal space. Do
+not reserve a whole subtree height beside every parent. Center each parent on
+its children. Use outward-facing connection ports so child links stay outside
+the parent column. Use parent paths as keys so two skills can each show their
+own reference file.
+
+Support background dragging and Shift+scroll panning. Zoom around the pointer
+with scrolling or trackpad pinch. Provide workflow-style zoom, 100%, and fit
+controls. Support +, -, 0, 1, and arrow keys. Keep automatic framing at a
+readable scale. After manual navigation, preserve the viewport through
+expansion, collapse, measurement updates, and animation. Fit to view explicitly
+resets the framing. Convert node drag distances through the current zoom. Keep
+closing nodes and links in the graph bounds until their return animation
+finishes.
+
+Match workflow labels with the medium font size, medium weight, small line
+height, two-line clamp, and label spacing. Do not show node content on hover.
+Click a group to toggle its children. Click a leaf to open its existing
+configuration modal. Open Instructions directly in the shared Markdown editor
+within the Agent modal shell. Do not wrap it in a builder column or form card.
+Keep one scroll area inside the editor. Keep modal dismissal in the modal.
+Escape on the graph closes the most recent open branch. Keep model selection
+available outside the graph at the bottom left. It opens the existing model and
+credential picker.
+
+Use the canvas background and workflow arrow markers. Colour links with the
+Agent gradient, including its angle and stops. Use gentle Bézier curves that
+drift with their nodes. Keep a subtle halo behind each link. Do not add tidy-up
+controls or configuration side panels.
+
+Give each node a small, slow drift around a fixed position. Do not rotate nodes
+around the Agent. Focus, expansion, and drag hold only that node still. Keep the
+others moving. Stop motion only with the explicit control or reduced motion.
+Return a dragged node to its resting position on release. Do not open it after a
+drag. Show all children in an open branch. Keep every node reachable by panning
+and zooming on small screens.
+
+Put the model picker at the top right of the canvas. Do not show a Stop motion
+button. Keep reduced-motion support. In this prototype branch, use the shared
+Build/Test composer switch as the only chat mode control. Hide the separate Test
+agent button. Default the chat and canvas to an equal width split, regardless of
+experiment enrollment. Let users resize the shared chat boundary. Save one ratio
+for Build, Test, and Sessions. Preserve that ratio when users switch tabs or
+reopen chat. Allow either chat to close. Give the canvas the full width while
+chat is closed. Reopen the selected mode without replacing either conversation.
+Test reuses the existing chat and its validation and permission checks. Keep
+both chats mounted. In the prototype, Test uses the left chat area. Selecting
+Build reveals the Assistant. On narrow screens, put chat above the canvas. Keep
+a closed Test dock hidden so its offscreen transition cannot cover the canvas.
+
+Map build validation issues to their configured items and parent categories. Use
+the workflow warning triangle and orange outline. Show translated reasons in the
+existing configuration modals and accessible node descriptions. Show core
+configuration issues beside the Agent and model control. Never show raw
+validation codes.
+
+Use live Test events for activity. Highlight configured tools and their parent
+sections while handlers run. Match workflow runtime names and MCP server
+prefixes. Match skill and file reads from their inputs. Keep concurrent calls
+independent. Keep a short completion highlight so fast calls remain visible.
+Retain failed call warnings until retry, a new run, or a session change. Do not
+mark canceled calls as failures. Clear in-flight activity when the stream stops.
+
+Use the workflow green rotating border for active items. Use the circular
+building indicator around the Agent while Test or the Assistant works. Keep
+its colour effect outside the circle. Mask the interior after blur. Respect
+reduced motion and Stop motion. Do not infer internal loading that emits no
+event. Keep runtime session-path and aggregate branching views out of scope.
+
 ## Setup checklist
 
 Show `Finish setup` after the Agent exists and the Assistant finishes building it.
 Hide it when the Agent is published, including when the draft has pending changes.
 Keep the checklist hidden while the Assistant builds or updates the Agent.
-Use this behavior in Agent artifacts and the standalone Agent Builder.
+Use this behavior in Agent artifacts. The standalone builder shows visualization
+instead.
 
 ## Item context menus
 

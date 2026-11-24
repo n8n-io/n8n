@@ -14,8 +14,13 @@ export const AGENT_BUILDER_COMPACT_WIDTH = AGENT_CONFIG_MIN_WIDTH + MIN_CHAT_WID
 export function useAgentBuilderLayout(
 	containerWidth: MaybeRefOrGetter<number>,
 	availableWidth: MaybeRefOrGetter<number> = containerWidth,
+	options: { defaultConfigRatio?: number; storageKey?: string } = {},
 ) {
-	const configRatio = useLocalStorage('N8N_AGENT_BUILDER_CONFIG_RATIO', DEFAULT_CONFIG_RATIO);
+	const initialConfigRatio = options.defaultConfigRatio ?? DEFAULT_CONFIG_RATIO;
+	const configRatio = useLocalStorage(
+		options.storageKey ?? 'N8N_AGENT_BUILDER_CONFIG_RATIO',
+		initialConfigRatio,
+	);
 	const compact = computed(() => {
 		const width = toValue(availableWidth);
 		return width > 0 && width < AGENT_BUILDER_COMPACT_WIDTH;
@@ -38,7 +43,7 @@ export function useAgentBuilderLayout(
 		Math.max(
 			MIN_CHAT_WIDTH,
 			toValue(containerWidth) -
-				Math.max(AGENT_CONFIG_MIN_WIDTH, toValue(containerWidth) * DEFAULT_CONFIG_RATIO),
+				Math.max(AGENT_CONFIG_MIN_WIDTH, toValue(containerWidth) * initialConfigRatio),
 		),
 	);
 	function resizeChat(width: number) {
@@ -47,7 +52,7 @@ export function useAgentBuilderLayout(
 		// Restore the default ratio even when a minimum panel width limits the reset size.
 		configRatio.value =
 			Math.abs(width - defaultChatWidth.value) < 1
-				? DEFAULT_CONFIG_RATIO
+				? initialConfigRatio
 				: Math.min(maxConfigWidth.value, Math.max(AGENT_CONFIG_MIN_WIDTH, totalWidth - width)) /
 					totalWidth;
 	}

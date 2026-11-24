@@ -39,6 +39,12 @@ vi.mock('vue-router', () => ({
 }));
 
 vi.mock('@n8n/design-system', () => ({
+	N8nSegmentControl: {
+		name: 'N8nSegmentControl',
+		template: '<div />',
+		props: ['options', 'modelValue'],
+		emits: ['update:modelValue'],
+	},
 	N8nText: { template: '<span><slot /></span>', props: ['step', 'color'] },
 	N8nIcon: { template: '<i v-bind="$attrs"></i>', props: ['icon', 'size'] },
 	N8nButton: {
@@ -147,6 +153,7 @@ function mountHeader(
 		headerActions: unknown[];
 		mode: 'edit' | 'preview';
 		artifactMode: boolean;
+		canvasBuilder: boolean;
 		currentSessionTitle: string;
 		sessionOptions: Array<{ id: string; label: string }>;
 		configValidationStatus: 'valid' | 'invalid' | null;
@@ -164,6 +171,7 @@ function mountHeader(
 			headerActions: (overrides.headerActions ?? []) as Array<{ id: string; label: string }>,
 			mode: overrides.mode,
 			artifactMode: overrides.artifactMode,
+			canvasBuilder: overrides.canvasBuilder,
 			currentSessionTitle: overrides.currentSessionTitle,
 			sessionOptions: overrides.sessionOptions,
 			configValidationStatus: overrides.configValidationStatus,
@@ -175,6 +183,36 @@ function mountHeader(
 }
 
 describe('AgentBuilderHeader', () => {
+	it('keeps Settings in the header while workspace navigation is outside it', async () => {
+		const wrapper = mountHeader({ canvasBuilder: true });
+		expect(wrapper.find('[data-testid="agent-visualize"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-builder-navigation"]').exists()).toBe(false);
+		await wrapper.get('[data-testid="agent-builder-settings"]').trigger('click');
+		expect(wrapper.emitted('settings')).toHaveLength(1);
+	});
+
+	it('replaces Visualise with Back to builder while visualization is open', async () => {
+		const wrapper = mountHeader();
+		await wrapper.setProps({ visualizing: true });
+		const button = wrapper.get('[data-testid="agent-visualize"]');
+		expect(button.text()).toBe('agents.builder.visualization.close');
+		expect(button.attributes('data-icon')).toBe('arrow-left');
+		await button.trigger('click');
+		expect(wrapper.emitted('visualize')).toHaveLength(1);
+	});
+	it('opens visualization for a saved standalone agent', async () => {
+		const wrapper = mountHeader();
+		await wrapper.get('[data-testid="agent-visualize"]').trigger('click');
+		expect(wrapper.emitted('visualize')).toHaveLength(1);
+	});
+	it('keeps visualization out of embedded artifacts and unsaved agents', () => {
+		expect(
+			mountHeader({ artifactMode: true }).find('[data-testid="agent-visualize"]').exists(),
+		).toBe(false);
+		expect(mountHeader({ agent: null }).find('[data-testid="agent-visualize"]').exists()).toBe(
+			false,
+		);
+	});
 	beforeEach(() => {
 		ensureLoadedMock.mockReset();
 		routerPush.mockReset();

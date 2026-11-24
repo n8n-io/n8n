@@ -617,16 +617,19 @@ describe('AgentAdvancedPanel', () => {
 		expect(last.config).not.toHaveProperty('maxIterations');
 	});
 
-	it('emits update:config with toolCallConcurrency when the concurrency field changes', async () => {
-		const wrapper = mount(AgentAdvancedPanel, {
-			props: { config: makeConfig() },
-			global: { stubs: globalStubs },
-		});
-		const input = wrapper.find('[data-testid="agent-concurrency-input"]');
-		await input.setValue('5');
-		const events = wrapper.emitted('update:config') ?? [];
-		expect(events.length).toBeGreaterThan(0);
-		const last = events[events.length - 1][0] as Partial<AgentJsonConfig>;
-		expect(last.config?.toolCallConcurrency).toBe(5);
-	});
+	it.each([false, true])(
+		'emits toolCallConcurrency with immediateUpdates=%s',
+		async (immediateUpdates) => {
+			const wrapper = mount(AgentAdvancedPanel, {
+				props: { config: makeConfig(), immediateUpdates },
+				global: { stubs: globalStubs },
+			});
+			const input = wrapper.find('[data-testid="agent-concurrency-input"]');
+			await input.setValue('5');
+			const events = wrapper.emitted('update:config') ?? [];
+			expect(events.length).toBeGreaterThan(0);
+			const last = events[events.length - 1][0] as Partial<AgentJsonConfig>;
+			expect(last.config?.toolCallConcurrency).toBe(5);
+		},
+	);
 });

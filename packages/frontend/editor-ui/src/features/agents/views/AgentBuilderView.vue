@@ -1,7 +1,11 @@
 <script setup lang="ts">
+import { useAgentVisualizationActivity } from '../composables/useAgentVisualizationActivity';
+import { toToolIconSource } from '../utils/toolIconSource';
+import AgentVisualization from '../components/AgentVisualization.vue';
+import AgentChannelModal, { type ChannelView } from '../components/AgentChannelModal.vue';
+import { buildAgentVisualization } from '../components/agentVisualization';
 import { hasAgentUnpublishedChanges } from '../utils/agentPublication';
 import { useAgentPromptInspiration } from '../composables/useAgentPromptInspiration';
-import { useAgentBuilderExperimentStore } from '@/experiments/agentBuilder/stores/agentBuilder.store';
 import {
 	ref,
 	computed,
@@ -22,6 +26,7 @@ import {
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router';
 import {
 	N8nCanvasPill,
+	N8nSegmentControl,
 	N8nIcon,
 	N8nIconButton,
 	N8nResizeWrapper,
@@ -39,6 +44,7 @@ import {
 	N8N_CHAT_INTEGRATION_TYPE,
 	addMissingAgentPersonalisation,
 	type AgentFileDto,
+	type AgentTaskDto,
 	type AgentSkillAvailability,
 	type InstanceAiHandoffContext,
 	type PushMessage,
@@ -68,6 +74,7 @@ import { copyAgentConfig } from '../utils/agentSectionEditor.utils';
 import { buildAgentTestHref } from '../utils/agentTestUrl';
 import {
 	getAgent,
+	getAgentTasks,
 	createAgent,
 	createAgentTask,
 	deleteAgent,
@@ -105,6 +112,7 @@ import {
 	type AutosaveResult,
 } from '../composables/useAgentConfigAutosave';
 import { useAgentBuilderMainTabs } from '../composables/useAgentBuilderMainTabs';
+import { useProjectAgentsList } from '../composables/useProjectAgentsList';
 import { useAgentCapabilitiesActions } from '../composables/useAgentCapabilitiesActions';
 import { useAgentSetupTasks } from '../components/AgentSetupTasks/useAgentSetupTasks';
 import {
@@ -124,6 +132,8 @@ import {
 	AGENT_DESCRIPTION_MODAL_KEY,
 	AGENT_UNPUBLISHED_WORKFLOWS_MODAL_KEY,
 	AGENT_VECTOR_STORES_MODAL_KEY,
+	AGENT_TASK_MODAL_KEY,
+	AGENT_SUB_AGENTS_MODAL_KEY,
 	ASSISTANT_THREAD_PARAM,
 	CONTINUE_SESSION_ID_PARAM,
 	NEW_SESSION_PARAM,
@@ -201,6 +211,7 @@ import {
 	type BudgetAmountField,
 } from '../utils/budget-config';
 import { hasBlockingIssues, unpublishedWorkflowTools } from '../utils/validationIssues';
+import { resolveAgentValidationIssueMessageKey } from '../utils/agentValidationIssueMessages';
 import { isNotFoundError } from '../utils/errors';
 
 const props = withDefaults(
@@ -385,8 +396,14 @@ provide(AGENT_BUILDER_STANDALONE_KEY, !isArtifactMode.value);
 const chatLayoutEnabled = computed(
 	() => !isArtifactMode.value && !isStandalonePreview.value && instanceAiReady.value,
 );
-const builderExperiment = useAgentBuilderExperimentStore();
-const builderLayout = computed(() => props.builderLayout ?? builderExperiment.layout);
+// This branch uses the shared Build/Test chat for the standalone canvas.
+const canvasBuilder = computed(
+	() => !isArtifactMode.value && !isStandalonePreview.value && !props.builderLayout,
+);
+const builderLayout = computed<AgentBuilderLayout>(
+	() => props.builderLayout ?? { chatWidth: 'wide', testChat: 'inline' },
+);
+const visualizationChatClosed = ref(false);
 const wideChat = computed(
 	() => chatLayoutEnabled.value && builderLayout.value.chatWidth === 'wide',
 );
@@ -398,7 +415,13 @@ const {
 	chatWidth: wideChatWidth,
 	defaultChatWidth,
 	resizeChat,
-} = useAgentBuilderLayout(builderContainerWidth, builderHostWidth);
+} = useAgentBuilderLayout(
+	builderContainerWidth,
+	builderHostWidth,
+	canvasBuilder.value
+		? { defaultConfigRatio: 0.5, storageKey: 'N8N_AGENT_BUILDER_CANVAS_CONFIG_RATIO' }
+		: undefined,
+);
 const compactChatLayout = computed(
 	() => chatLayoutEnabled.value && (wideChat.value || inlineTestChat.value) && compactLayout.value,
 );
@@ -410,6 +433,11 @@ watch(showConfiguration, async (visible) => {
 	mobileNavigation.value?.querySelector('button')?.focus();
 });
 function closeBuilderChat() {
+	if (canvasBuilder.value) {
+		previewRequest++;
+		visualizationChatClosed.value = true;
+		return;
+	}
 	if (compactChatLayout.value) {
 		showConfiguration.value = true;
 	} else {
@@ -417,6 +445,15 @@ function closeBuilderChat() {
 	}
 }
 function closeTestChat() {
+	if (canvasBuilder.value) {
+		previewRequest++;
+		visualizationChatClosed.value = true;
+		return;
+	}
+	if (isVisualizing.value) {
+		closePreviewDock();
+		return;
+	}
 	if (compactChatLayout.value && inlineTestChat.value) {
 		showConfiguration.value = true;
 	} else {
@@ -485,6 +522,7 @@ const openedForPendingAgent = ref(isRouteAgentPending.value);
  * refetch momentarily restores a blank config. No chip is shown for this. */
 const templateApplied = ref(false);
 watch([projectId, agentId], () => {
+	visualizationChatClosed.value = false;
 	taskPreviewPrompt.value = undefined;
 	showConfiguration.value = false;
 	aiPanelOpenForVisit.value = null;
@@ -515,7 +553,7 @@ const showAiPanel = computed(
 		!isArtifactMode.value &&
 		!isStandalonePreview.value &&
 		instanceAiReady.value &&
-		chatPanelLayout.value.showAssistant,
+		(canvasBuilder.value ? !visualizationChatClosed.value : chatPanelLayout.value.showAssistant),
 );
 const aiThreadId = computed(() =>
 	typeof route.query[ASSISTANT_THREAD_PARAM] === 'string'
@@ -720,6 +758,7 @@ const renderedSidePanelWidths = computed(function getRenderedSidePanelWidths() {
 
 function keepPreferredSidePanel() {
 	if (
+		canvasBuilder.value ||
 		inlineTestChat.value ||
 		wideChat.value ||
 		!showAiPanel.value ||
@@ -763,6 +802,11 @@ function onAiPanelResize({ width }: { width: number }) {
 	aiPanelWidth.value = width;
 }
 function toggleAiPanel() {
+	if (canvasBuilder.value && instanceAiReady.value) {
+		visualizationChatClosed.value = !visualizationChatClosed.value;
+		if (visualizationChatClosed.value) previewRequest++;
+		return;
+	}
 	if (compactChatLayout.value) {
 		showConfiguration.value = !showConfiguration.value;
 		return;
@@ -1030,6 +1074,52 @@ const {
 	refresh: refreshConfigValidation,
 } = useAgentConfigValidation();
 const localConfig = ref<AgentJsonConfig | null>(null);
+const isVisualizing = ref(canvasBuilder.value);
+const visualizationSection = ref<string>();
+const visualizationChatVisible = computed(
+	() => showAiPanel.value || (isPreviewDockOpen.value && !visualizationChatClosed.value),
+);
+const visualizationChatWidth = computed(() =>
+	compactLayout.value ? builderHostWidth.value : wideChatWidth.value,
+);
+const visualizationTasks = ref<AgentTaskDto[]>([]);
+const { list: visualizationAgents } = useProjectAgentsList(projectId);
+const visualizationRoot = computed(() =>
+	localConfig.value
+		? buildAgentVisualization(
+				localConfig.value,
+				agent.value,
+				agentFiles.value,
+				appliedSkills.value,
+				(key) => locale.baseText(key),
+				{
+					node: (name, version) => {
+						const nodeType = nodeTypesStore.getNodeType(name, version);
+						const source = nodeType ? toToolIconSource(nodeType) : undefined;
+						return source?.type === 'avatar' ? undefined : source;
+					},
+					channels: withN8nChat(integrationsCatalog.value ?? []),
+					tasks: visualizationTasks.value,
+					agentNames: new Map(
+						(visualizationAgents.value ?? []).map((item) => [item.id, item.name]),
+					),
+				},
+			)
+		: null,
+);
+const {
+	running: visualizationRunning,
+	activeNodeIds: visualizationActiveNodeIds,
+	failedNodeIds: visualizationFailedNodeIds,
+	onEvent: onVisualizationEvent,
+	setStreaming: onVisualizationStreaming,
+	reset: resetVisualizationActivity,
+} = useAgentVisualizationActivity(visualizationRoot, effectiveSessionId);
+watch(agentId, () => {
+	resetVisualizationActivity();
+	isVisualizing.value = canvasBuilder.value;
+	visualizationSection.value = undefined;
+});
 let configEditRevision = 0;
 function markConfigDraftEdited() {
 	configEditRevision += 1;
@@ -1077,12 +1167,19 @@ const areSetupTasksVisible = computed(
 		!props.artifactEditingLocked &&
 		!embeddedAiBuilding.value,
 );
-const builderHeader = useTemplateRef<{ publishAgent: () => Promise<void> | undefined }>(
-	'builderHeader',
-);
+const builderHeader = useTemplateRef<{
+	publishAgent: () => Promise<void> | undefined;
+	focusVisualize: () => void;
+}>('builderHeader');
 const editorColumn = useTemplateRef<{ onSetupTaskAction: (task: SetupTask) => void }>(
 	'editorColumn',
 );
+
+watch(isVisualizing, async (visible) => {
+	if (visible) return;
+	await nextTick();
+	builderHeader.value?.focusVisualize();
+});
 
 async function onSetupTaskAction(task: SetupTask) {
 	if (task.action.path === 'preview') {
@@ -1103,6 +1200,27 @@ function onSetupTaskPublishAgent() {
 }
 /** Bumped when the config changes outside the local editor (modal flows, version revert) so the Tasks panel reloads. */
 const tasksReloadKey = ref(0);
+watch(
+	[agentId, projectId, () => localConfig.value?.tasks, tasksReloadKey, isUnsaved, isVisualizing],
+	async ([currentAgentId, currentProjectId, tasks, , unsaved], _, onCleanup) => {
+		let stale = false;
+		onCleanup(() => {
+			stale = true;
+		});
+		visualizationTasks.value = [];
+		if (!isVisualizing.value || unsaved || !tasks?.length) return;
+		try {
+			const bodies = await getAgentTasks(
+				rootStore.restApiContext,
+				currentProjectId,
+				currentAgentId,
+			);
+			if (!stale) visualizationTasks.value = bodies;
+		} catch {
+			// Keep saved references available when schedule metadata cannot load.
+		}
+	},
+);
 const versionHistoryPanel = useTemplateRef<{ refresh: () => Promise<void> }>('versionHistoryPanel');
 const previewChatPage = useTemplateRef<InstanceType<typeof AgentTestChatPage>>('previewChatPage');
 const previewDock = useTemplateRef<InstanceType<typeof AgentTestDock>>('previewDock');
@@ -1112,7 +1230,24 @@ const { activeMainTab, mainTabOptions, executionsDescription } = useAgentBuilder
 	routeBacked: computed(() => !isArtifactMode.value),
 });
 
-const { ensureLoaded: ensureIntegrationsCatalog } = useAgentIntegrationsCatalog();
+watch(
+	[canvasBuilder, activeMainTab, agentId],
+	([enabled, tab], previous) => {
+		if (!enabled) {
+			if (previous?.[0]) {
+				isVisualizing.value = false;
+				visualizationSection.value = undefined;
+			}
+			return;
+		}
+		isVisualizing.value = tab !== 'sessions' && tab !== 'evals';
+		visualizationSection.value = tab === 'settings' || tab === 'knowledge' ? tab : undefined;
+	},
+	{ immediate: true },
+);
+
+const { catalog: integrationsCatalog, ensureLoaded: ensureIntegrationsCatalog } =
+	useAgentIntegrationsCatalog();
 // Without n8n Chat in the known trigger types, the baseline drops its chip.
 const { withN8nChat } = useN8nChatChannel();
 
@@ -1160,13 +1295,6 @@ const testValidationIssues = computed(() =>
 		: [],
 );
 defineExpose({ setChatMode });
-watch(
-	[initialized, chatLayoutEnabled, () => builderExperiment.enrollment],
-	([loaded, enabled]) => {
-		if (loaded && enabled && !props.builderLayout) builderExperiment.trackExposure();
-	},
-	{ immediate: true, flush: 'post' },
-);
 
 const showBuilderLoading = computed(() => !initialized.value);
 
@@ -1467,6 +1595,7 @@ async function onOpenPreview(
 	if (isArtifactMode.value) {
 		openArtifactPreview();
 	} else {
+		if (canvasBuilder.value) visualizationChatClosed.value = false;
 		await openPreview();
 	}
 	telemetry.track(TELEMETRY_EVENT.AGENTS.USER_OPENED_AGENT_PREVIEW, {
@@ -3452,6 +3581,155 @@ function onOpenEditVectorStoreModal(vectorStore: AgentJsonVectorStoreConfig) {
 	});
 }
 
+async function openVisualizationSettings() {
+	activeMainTab.value = 'agent';
+	await nextTick();
+	visualizationSection.value = 'settings';
+}
+
+const visualizationChannelView = ref<ChannelView>('list');
+const visualizationChannelOpen = ref(false);
+watch([projectId, agentId, isVisualizing], () => {
+	visualizationChannelOpen.value = false;
+});
+
+function onVisualizationChannelConnected(type: string) {
+	caps.onTriggerAdded({
+		triggerType: type,
+		triggers: [...new Set([...connectedTriggers.value, type])],
+	});
+}
+function onVisualizationChannelDisconnected(type: string) {
+	caps.onTriggerRemoved({
+		triggerType: type,
+		triggers: connectedTriggers.value.filter((item) => item !== type),
+	});
+}
+
+function onVisualizationEdit(section: string) {
+	if (
+		[
+			'model',
+			'settings',
+			'instructions',
+			'provider-tools',
+			'memory',
+			'knowledge',
+			'invocation',
+			'sub-agents',
+		].includes(section)
+	) {
+		visualizationSection.value = section;
+		return;
+	}
+	if (section.startsWith('channel:')) {
+		visualizationChannelView.value = `${section.slice(8)}_edit`;
+		visualizationChannelOpen.value = true;
+		return;
+	}
+	if (!effectiveCanEditAgent.value || isEditingLocked.value) return;
+	if (section.startsWith('sub-agent:')) {
+		const id = section.slice(10);
+		const subAgent = localConfig.value?.subAgents?.agents?.find((item) => item.agentId === id);
+		if (!subAgent) return;
+		const targetProjectId = projectId.value;
+		const targetAgentId = agentId.value;
+		uiStore.openModalWithData({
+			name: AGENT_SUB_AGENTS_MODAL_KEY,
+			data: {
+				selectedAgent: {
+					id,
+					name: visualizationAgents.value?.find((item) => item.id === id)?.name ?? id,
+				},
+				agentHref: `/projects/${encodeURIComponent(targetProjectId)}/agents/${encodeURIComponent(id)}`,
+				useWhen: subAgent.useWhen,
+				invalidReasons: (configValidation.value?.issues ?? [])
+					.filter((issue) => issue.capability.kind === 'subAgent' && issue.capability.id === id)
+					.map((issue) =>
+						locale.baseText(resolveAgentValidationIssueMessageKey(issue), { interpolate: { id } }),
+					),
+				onConfirm: ({ useWhen }: { useWhen?: string }) => {
+					if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
+					onConfigFieldUpdate({
+						subAgents: {
+							...localConfig.value?.subAgents,
+							agents: localConfig.value?.subAgents?.agents?.map((item) =>
+								item.agentId === id ? { ...item, useWhen } : item,
+							),
+						},
+					});
+				},
+				onRemove: () => {
+					if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
+					onConfigFieldUpdate({
+						subAgents: {
+							...localConfig.value?.subAgents,
+							agents: localConfig.value?.subAgents?.agents?.filter((item) => item.agentId !== id),
+						},
+					});
+				},
+			},
+		});
+	} else if (section.startsWith('task:')) {
+		const taskId = section.slice(5);
+		const task = visualizationTasks.value.find((item) => item.id === taskId);
+		if (!task) return;
+		const targetProjectId = projectId.value;
+		const targetAgentId = agentId.value;
+		uiStore.openModalWithData({
+			name: AGENT_TASK_MODAL_KEY,
+			data: {
+				projectId: targetProjectId,
+				agentId: targetAgentId,
+				ensureAgentPersisted,
+				task,
+				isPublished: Boolean(agent.value?.activeVersionId),
+				isRunnable: agent.value?.isRunnable === true,
+				validationIssues: configValidation.value?.issues ?? [],
+				getPreviewDisabledReason: () => previewDisabledReason.value,
+				taskState: {
+					enabled: localConfig.value?.tasks?.find((item) => item.id === taskId)?.enabled ?? true,
+				},
+				onPreview: onPreviewTask,
+				onSaved: () => {
+					if (!isStaleAgentTarget(targetProjectId, targetAgentId)) void onConfigUpdated();
+				},
+			},
+		});
+	} else if (section.startsWith('tool-')) {
+		const index = Number(section.slice(5));
+		if (localConfig.value?.tools?.[index]) caps.onOpenToolFromList(index);
+	} else if (section.startsWith('skill:')) {
+		caps.onOpenSkillFromList(section.slice(6));
+	} else if (section.startsWith('mcp:')) {
+		caps.onOpenToolFromList({ kind: 'mcpServer', serverName: section.slice(4) });
+	} else if (section.startsWith('store:')) {
+		const store = localConfig.value?.vectorStores?.[Number(section.slice(6))];
+		if (store) onOpenEditVectorStoreModal(store);
+	} else if (section === 'tools' || section === 'workflows' || section === 'mcp') {
+		caps.onOpenAddToolModal(section === 'workflows' ? 'workflows' : 'tools');
+	} else if (section === 'skills') {
+		caps.onOpenAddSkillModal();
+	}
+}
+async function onVisualizationAdd(section: string) {
+	if (!effectiveCanEditAgent.value || isEditingLocked.value) return;
+	if (section === 'memory') {
+		onConfigFieldUpdate({
+			memory: { ...localConfig.value?.memory, enabled: true, storage: 'n8n' },
+		});
+		visualizationSection.value = 'memory';
+	} else if (section === 'vector-store') {
+		await ensureAgentPersisted();
+		onOpenAddVectorStoreModal();
+	} else if (section === 'knowledge') {
+		await ensureAgentPersisted();
+		visualizationSection.value = 'knowledge';
+	} else {
+		onVisualizationEdit(section);
+	}
+}
+
 function onRemoveVectorStore(vectorStore: AgentJsonVectorStoreConfig) {
 	onConfigFieldUpdate({
 		vectorStores: (localConfig.value?.vectorStores ?? []).filter(
@@ -3536,7 +3814,7 @@ useKeybindings({
 		/>
 		<AgentBuilderHeader
 			v-else
-			v-show="!compactChatLayout || showConfiguration"
+			v-show="canvasBuilder || isVisualizing || !compactChatLayout || showConfiguration"
 			ref="builderHeader"
 			:agent="agent"
 			:project-id="projectId"
@@ -3553,6 +3831,10 @@ useKeybindings({
 			:config-validation-issues="configValidation?.issues ?? []"
 			:before-publish="refreshValidationBeforePublish"
 			:tasks="areSetupTasksVisible ? setupTasks : undefined"
+			:visualizing="isVisualizing"
+			:canvas-builder="canvasBuilder"
+			@settings="openVisualizationSettings"
+			@visualize="isVisualizing = !isVisualizing"
 			@header-action="onHeaderAction"
 			@open-publish-timeline="onOpenVersionHistory('timeline')"
 			@publish-ready="isPublishReady = $event"
@@ -3562,25 +3844,59 @@ useKeybindings({
 			@switch-agent="onSwitchAgent"
 			@setup-task-action="onSetupTaskAction"
 		/>
+		<div
+			v-if="canvasBuilder"
+			:class="$style.workspaceNavigation"
+			:style="{
+				left:
+					visualizationChatVisible && !compactLayout ? `${visualizationChatWidth}px` : undefined,
+				top:
+					isVisualizing && compactLayout && visualizationChatVisible
+						? 'calc((100% + var(--n8n--agent-builder-header-height, var(--height--4xl))) / 2)'
+						: undefined,
+			}"
+			data-testid="agent-builder-workspace-navigation"
+		>
+			<N8nSegmentControl
+				:class="$style.workspaceTabs"
+				:model-value="activeMainTab === 'sessions' ? 'sessions' : 'agent'"
+				:options="[
+					{ value: 'agent', label: locale.baseText('agents.builder.header.tab.agent') },
+					{ value: 'sessions', label: locale.baseText('agents.builder.header.tab.executions') },
+				]"
+				:aria-label="locale.baseText('agents.builder.visualization.navigation')"
+				data-testid="agent-builder-navigation"
+				@update:model-value="activeMainTab = $event === 'sessions' ? 'sessions' : 'agent'"
+			/>
+		</div>
 		<AgentCollaborationBanner v-if="!isArtifactMode" />
 		<div
 			v-if="
 				!isArtifactMode &&
+				(!isVisualizing || canvasBuilder) &&
 				instanceAiAvailable &&
 				!showAiPanel &&
-				!agentCollaborationStore.shouldBeReadOnly
+				(!agentCollaborationStore.shouldBeReadOnly || canvasBuilder)
 			"
 			:class="$style.aiToggleBar"
 		>
 			<KeyboardShortcutTooltip
-				:label="locale.baseText('agents.builder.header.editWithAi')"
+				:label="
+					locale.baseText(
+						canvasBuilder ? 'agents.builder.chatMode.chat' : 'agents.builder.header.editWithAi',
+					)
+				"
 				:shortcut="{ metaKey: true, keys: ['J'] }"
 			>
 				<N8nButton
 					variant="outline"
 					size="medium"
 					icon-only
-					:aria-label="locale.baseText('agents.builder.header.editWithAi')"
+					:aria-label="
+						locale.baseText(
+							canvasBuilder ? 'agents.builder.chatMode.chat' : 'agents.builder.header.editWithAi',
+						)
+					"
 					:disabled="!agent"
 					data-testid="agent-builder-instance-ai-btn"
 					@click="toggleAiPanel"
@@ -3592,7 +3908,7 @@ useKeybindings({
 			</KeyboardShortcutTooltip>
 		</div>
 		<div
-			v-if="compactChatLayout && showConfiguration"
+			v-if="!isVisualizing && compactChatLayout && showConfiguration"
 			ref="mobileNavigation"
 			:class="$style.mobileNavigation"
 		>
@@ -3628,12 +3944,44 @@ useKeybindings({
 				</span>
 			</N8nCanvasPill>
 		</div>
+		<AgentVisualization
+			:class="$style.visualization"
+			v-if="isVisualizing && visualizationRoot && !showBuilderLoading"
+			:root="visualizationRoot"
+			:can-edit="effectiveCanEditAgent && !isEditingLocked"
+			@edit="onVisualizationEdit"
+			@add="onVisualizationAdd"
+			:personalisation="localConfig?.personalisation"
+			:style="{
+				left:
+					visualizationChatVisible && !compactLayout ? `${visualizationChatWidth}px` : undefined,
+				top:
+					compactLayout && visualizationChatVisible
+						? 'calc((100% + var(--n8n--agent-builder-header-height, var(--height--4xl))) / 2)'
+						: undefined,
+				right: undefined,
+			}"
+			:is-running="visualizationRunning"
+			:is-building="embeddedAiWorking || embeddedAiBuilding"
+			:active-node-ids="visualizationActiveNodeIds"
+			:failed-node-ids="visualizationFailedNodeIds"
+			:hide-test-button="canvasBuilder"
+			:is-preview-open="isPreviewDockOpen"
+			:is-runnable="isBuilt"
+			:preview-disabled-reason="previewDisabledReason"
+			:validation-issues="configValidation?.issues ?? []"
+			@open-preview="onOpenPreview('primary')"
+			@close-preview="closeTestChat"
+			@close="canvasBuilder ? (visualizationSection = undefined) : (isVisualizing = false)"
+		/>
 		<div
 			ref="builderContainer"
 			data-testid="agent-builder-container"
 			:class="[
 				$style.builder,
 				{
+					[$style.visualizationLayout]: isVisualizing,
+					[$style.visualizationStacked]: isVisualizing && compactLayout,
 					[$style.previewOpen]:
 						isPreviewDockOpen && !inlineTestChat && !props.artifactPreviewChatTarget,
 					[$style.inlineTestChat]: inlineTestChat,
@@ -3644,19 +3992,22 @@ useKeybindings({
 				},
 			]"
 			:style="{
-				'--agent-ai-panel-width': `${renderedSidePanelWidths.ai}px`,
-				'--agent-preview-chat-column-width': `${renderedSidePanelWidths.preview}px`,
+				'--agent-ai-panel-width': `${isVisualizing ? visualizationChatWidth : renderedSidePanelWidths.ai}px`,
+				'--agent-preview-chat-column-width':
+					isVisualizing && compactLayout
+						? '100%'
+						: `${isVisualizing ? visualizationChatWidth : renderedSidePanelWidths.preview}px`,
 				'--agent-builder-editor-min-width': `${AGENT_BUILDER_EDITOR_MIN_WIDTH}px`,
 			}"
 		>
 			<aside
-				v-if="showAiPanel"
-				v-show="!(compactChatLayout && showConfiguration)"
+				v-if="showAiPanel || (canvasBuilder && instanceAiReady)"
+				v-show="showAiPanel && (isVisualizing || !(compactChatLayout && showConfiguration))"
 				:class="[$style.aiDock, { [$style.testModeActive]: inlineTestChat && isPreviewDockOpen }]"
 				data-testid="agent-ai-dock"
 			>
 				<N8nResizeWrapper
-					:width="renderedSidePanelWidths.ai"
+					:width="isVisualizing ? visualizationChatWidth : renderedSidePanelWidths.ai"
 					:is-resizing-enabled="!compactChatLayout"
 					:grid-size="wideChat ? 1 : 20"
 					:min-width="AGENT_MIN_PANEL_WIDTH"
@@ -3669,9 +4020,14 @@ useKeybindings({
 						ref="aiPanelRef"
 						v-show="!inlineTestChat || !isPreviewDockOpen"
 						:visible="
-							(!inlineTestChat || !isPreviewDockOpen) && !(compactChatLayout && showConfiguration)
+							showAiPanel &&
+							(!inlineTestChat || !isPreviewDockOpen) &&
+							(isVisualizing || !(compactChatLayout && showConfiguration))
 						"
-						:closable="compactChatLayout || (!inlineTestChat && !wideChat)"
+						:closable="
+							canvasBuilder ||
+							(!isVisualizing && (compactChatLayout || (!inlineTestChat && !wideChat)))
+						"
 						:show-open-full-assistant="false"
 						:composer-height="inlineTestChat ? 'var(--agent-builder-composer-height)' : undefined"
 						:placeholder="
@@ -3757,9 +4113,18 @@ useKeybindings({
 				<AgentBuilderEditorColumn
 					ref="editorColumn"
 					v-else
-					v-show="!compactChatLayout || showConfiguration"
+					v-show="
+						canvasBuilder ||
+						(isVisualizing
+							? Boolean(visualizationSection)
+							: !compactChatLayout || showConfiguration)
+					"
+					:canvas-mode="isVisualizing"
+					:canvas-shell="canvasBuilder"
+					:canvas-section="visualizationSection"
+					@close-section="visualizationSection = undefined"
 					v-model:active-main-tab="activeMainTab"
-					:class="$style.editorColumn"
+					:class="!isVisualizing && $style.editorColumn"
 					:chat-first="wideChat"
 					:embedded-ai-building="embeddedAiBuilding"
 					:local-config="localConfig"
@@ -3818,6 +4183,23 @@ useKeybindings({
 					@publish-agent="onSetupTaskPublishAgent"
 				/>
 
+				<AgentChannelModal
+					v-if="visualizationChannelOpen"
+					:key="`${projectId}:${agentId}`"
+					v-model:open="visualizationChannelOpen"
+					v-model:view="visualizationChannelView"
+					:agent-id="agentId"
+					:project-id="projectId"
+					:is-published="Boolean(agent?.activeVersionId)"
+					:disabled="!effectiveCanEditAgent || isEditingLocked"
+					:ensure-agent-persisted="ensureAgentPersisted"
+					:saved-description="localConfig?.description ?? ''"
+					:save-description="saveN8nChatDescription"
+					@channel-connected="onVisualizationChannelConnected"
+					@channel-disconnected="onVisualizationChannelDisconnected"
+					@agent-changed="refreshAgentAfterIntegrationChange"
+				/>
+
 				<AgentVersionHistoryPanel
 					v-if="!isStandalonePreview && isVersionHistoryOpen"
 					ref="versionHistoryPanel"
@@ -3849,10 +4231,15 @@ useKeybindings({
 							},
 						]"
 						:is-resizing-enabled="
-							isPreviewDockOpen && !inlineTestChat && !props.artifactPreviewChatTarget
+							isPreviewDockOpen &&
+							(isVisualizing ? !compactLayout && !inlineTestChat : !inlineTestChat) &&
+							!props.artifactPreviewChatTarget
 						"
-						v-show="!(compactChatLayout && showConfiguration)"
-						:width="renderedSidePanelWidths.preview"
+						v-show="
+							(!canvasBuilder || !visualizationChatClosed) &&
+							(isVisualizing ? isPreviewDockOpen : !(compactChatLayout && showConfiguration))
+						"
+						:width="isVisualizing ? visualizationChatWidth : renderedSidePanelWidths.preview"
 						:max-width="AGENT_MAX_PANEL_WIDTH"
 						:default-width="defaultPanelWidth"
 						:min-width="AGENT_MIN_PANEL_WIDTH"
@@ -3864,9 +4251,12 @@ useKeybindings({
 					>
 						<AgentTestDock
 							ref="previewDock"
+							@stream-event="onVisualizationEvent"
+							@update:streaming="onVisualizationStreaming"
 							:inline="inlineTestChat"
 							:overlay="!!props.artifactPreviewChatTarget"
-							:closable="compactChatLayout"
+							:force-docked="isVisualizing"
+							:closable="canvasBuilder || compactChatLayout || isVisualizing"
 							:placeholder="
 								inlineTestChat
 									? locale.baseText('agents.builder.chatMode.testPlaceholder', {
@@ -3875,7 +4265,11 @@ useKeybindings({
 									: undefined
 							"
 							@message-sent="hasSentBuilderMessage = true"
-							:is-open="isPreviewDockOpen && !(compactChatLayout && showConfiguration)"
+							:is-open="
+								isPreviewDockOpen &&
+								(!canvasBuilder || !visualizationChatClosed) &&
+								(isVisualizing || !(compactChatLayout && showConfiguration))
+							"
 							:session-title="currentSessionTitle"
 							:session-options="sessionMenu"
 							:has-session="currentSessionHasMessages"
@@ -4069,6 +4463,55 @@ useKeybindings({
 	top: var(--spacing--2xs);
 	left: var(--spacing--2xs);
 	z-index: 3;
+}
+
+.workspaceNavigation {
+	position: absolute;
+	top: var(--n8n--agent-builder-header-height, var(--height--4xl));
+	left: 0;
+	right: 0;
+	height: 0;
+	display: flex;
+	justify-content: center;
+	z-index: 15;
+	pointer-events: none;
+}
+.workspaceTabs {
+	transform: translateY(-50%);
+	pointer-events: auto;
+}
+.visualizationLayout {
+	padding-right: 0;
+}
+.visualizationStacked {
+	padding-left: 0;
+}
+.visualizationLayout .aiDock {
+	z-index: 11;
+}
+.visualizationLayout .aiDock.testModeActive {
+	z-index: 12;
+}
+.visualizationStacked .aiDock {
+	width: 100%;
+	bottom: 50%;
+}
+.visualizationLayout .previewResizeWrapper {
+	left: 0;
+	right: auto;
+	z-index: 11;
+}
+
+.visualizationLayout.visualizationStacked .previewResizeWrapper {
+	top: 0;
+	bottom: 50%;
+	width: 100%;
+}
+
+.visualization {
+	transition: right var(--duration--snappy) var(--easing--ease-out);
+	@include motion.reduced-motion;
+	top: var(--n8n--agent-builder-header-height, var(--height--4xl));
 }
 
 .editorColumn {

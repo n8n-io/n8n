@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { N8nCard, N8nIcon, N8nTabs, N8nText } from '@n8n/design-system';
+import { N8nCard, N8nIcon, N8nTabs, N8nText, N8nMarkdownEditor } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { AgentConfigValidationIssue, AgentFileDto } from '@n8n/api-types';
 
@@ -21,6 +21,7 @@ import AgentAdvancedPanel from './AgentAdvancedPanel.vue';
 import AgentBudgetPanel from './AgentBudgetPanel.vue';
 import AgentCapabilitiesSection from './AgentCapabilitiesSection.vue';
 import AgentTriggersSection from './AgentTriggersSection.vue';
+import AgentWebSearchSection from './AgentWebSearchSection.vue';
 import { provideAgentPersonalisation } from '../channels/agentPersonalisation';
 import AgentIdentityHeader from './AgentIdentityHeader.vue';
 import AgentInfoPanel from './AgentInfoPanel.vue';
@@ -34,10 +35,14 @@ import AgentBuilderTabPanel from './AgentBuilderTabPanel.vue';
 import AgentPanel from './AgentPanel.vue';
 import AgentEvalsSection from './AgentEvalsSection.vue';
 import AgentTestButton from './AgentTestButton.vue';
+import AgentModal from './modals/AgentModal.vue';
 import AgentSkillsSection from './AgentSkillsSection.vue';
 
 const props = defineProps<{
 	activeMainTab: AgentBuilderMainTab;
+	canvasMode?: boolean;
+	canvasShell?: boolean;
+	canvasSection?: string;
 	mainTabOptions: Array<{ label: string; value: AgentBuilderMainTab }>;
 	localConfig: AgentJsonConfig | null;
 	agent: AgentResource | null;
@@ -74,6 +79,34 @@ const props = defineProps<{
 	saveDescription?: (description: string) => Promise<void>;
 }>();
 
+const visibleTab = computed(() =>
+	props.canvasMode
+		? props.canvasSection === 'settings' ||
+			props.canvasSection === 'model' ||
+			props.canvasSection === 'sub-agents'
+			? 'settings'
+			: props.canvasSection === 'knowledge'
+				? 'knowledge'
+				: 'agent'
+		: props.activeMainTab,
+);
+function showSection(section: string) {
+	return !props.canvasMode || props.canvasSection === section;
+}
+const sectionTitle = computed(() => {
+	const titles: Record<string, string> = {
+		instructions: i18n.baseText('agents.builder.visualization.instructions'),
+		'provider-tools': i18n.baseText('agents.builder.visualization.tools'),
+		settings: i18n.baseText('agents.builder.visualization.settings'),
+		model: i18n.baseText('agents.builder.visualization.model'),
+		knowledge: i18n.baseText('agents.builder.visualization.knowledge'),
+		memory: i18n.baseText('agents.builder.visualization.memory'),
+		invocation: i18n.baseText('agents.builder.visualization.invocation'),
+		'sub-agents': i18n.baseText('agents.builder.visualization.subAgents'),
+	};
+	return titles[props.canvasSection ?? ''] ?? '';
+});
+
 const childrenDisabled = computed(() => !props.canEditAgent);
 provideAgentPersonalisation(
 	() => props.localConfig?.personalisation ?? props.agent?.schema?.personalisation,
@@ -97,6 +130,7 @@ watch(
 useTypeAvailability(() => props.projectId);
 
 const emit = defineEmits<{
+	'close-section': [];
 	'update:activeMainTab': [tab: AgentBuilderMainTab];
 	'update:config': [updates: Partial<AgentJsonConfig>, meta?: { source: 'auto' }];
 	/** A budget settings modal saved — the view clears matching budget stops once the save persists. */
@@ -170,23 +204,65 @@ function onSetupTaskAction(task: SetupTask) {
 	}
 }
 
+function onModalInstructionsInput(instructions: string) {
+	if (childrenDisabled.value) return;
+	emit('draft:config');
+	emit('update:config', { instructions });
+}
+
 defineExpose({ onSetupTaskAction });
 </script>
 
 <template>
-	<section
-		:class="[
-			$style.editorColumn,
-			{
-				[$style.embeddedAiBuilding]: props.embeddedAiBuilding,
-				[$style.chatFirst]: props.chatFirst,
-			},
-		]"
-		:aria-label="i18n.baseText('agents.builder.editorColumn.ariaLabel')"
+	<component
+		:is="canvasMode ? AgentModal : 'section'"
+		v-bind="
+			canvasMode
+				? {
+						open: Boolean(canvasSection),
+						title: sectionTitle,
+						showFooter: false,
+						bodyScrollable: canvasSection !== 'instructions',
+					}
+				: {}
+		"
+		@update:open="!$event && emit('close-section')"
+		:class="
+			!canvasMode && [
+				$style.editorColumn,
+				{
+					[$style.embeddedAiBuilding]: props.embeddedAiBuilding,
+					[$style.chatFirst]: props.chatFirst,
+				},
+			]
+		"
+		:aria-label="canvasMode ? sectionTitle : i18n.baseText('agents.builder.editorColumn.ariaLabel')"
 		data-testid="agent-builder-editor-column"
 	>
-		<div :class="[$style.panelArea, { [$style.preventScroll]: props.preventScroll }]">
-			<div :class="$style.identityHeaderRow" data-testid="agent-builder-identity-header">
+		<N8nMarkdownEditor
+			v-if="canvasMode && canvasSection === 'instructions'"
+			:model-value="localConfig?.instructions ?? ''"
+			:readonly="childrenDisabled"
+			:show-toolbar="childrenDisabled ? 'never' : 'always'"
+			:editor-props="{ attributes: { 'aria-label': sectionTitle } }"
+			:placeholder="i18n.baseText('agents.builder.agent.instructions.placeholder')"
+			variant="ghost"
+			max-height="min(60dvh, calc(var(--height--5xl) * 5))"
+			data-testid="agent-instructions-modal-editor"
+			@update:model-value="onModalInstructionsInput"
+		/>
+		<div
+			v-else
+			:class="[
+				$style.panelArea,
+				{ [$style.preventScroll]: props.preventScroll, [$style.canvasPanel]: canvasMode },
+			]"
+		>
+			<div
+				v-if="!canvasMode && !canvasShell"
+				:class="$style.identityHeaderRow"
+				data-testid="agent-builder-identity-header"
+			>
 				<div :class="$style.identityHeader">
 					<AgentIdentityHeader
 						:class="$style.identityContent"
@@ -206,7 +282,7 @@ defineExpose({ onSetupTaskAction });
 					/>
 				</div>
 			</div>
-			<div :class="$style.tabsRow" data-testid="agent-tabs-row">
+			<div v-if="!canvasMode && !canvasShell" :class="$style.tabsRow" data-testid="agent-tabs-row">
 				<div :class="$style.tabsRule" data-testid="agent-tabs-rule">
 					<N8nTabs
 						:model-value="activeMainTab"
@@ -218,8 +294,11 @@ defineExpose({ onSetupTaskAction });
 				</div>
 			</div>
 			<div :class="$style.panelAreaContainer">
-				<AgentBuilderTabPanel v-if="activeMainTab === 'agent'" data-testid="agent-tab-content">
+				<AgentBuilderTabPanel v-if="visibleTab === 'agent'" data-testid="agent-tab-content">
 					<AgentInfoPanel
+						v-if="showSection('instructions')"
+						:show-model="!canvasMode"
+						:immediate-updates="canvasMode"
 						ref="agentInfoPanel"
 						:config="localConfig"
 						:disabled="childrenDisabled"
@@ -229,6 +308,7 @@ defineExpose({ onSetupTaskAction });
 					/>
 
 					<AgentPanel
+						v-if="showSection('skills')"
 						:header="i18n.baseText('agents.builder.skills.title')"
 						:description="i18n.baseText('agents.builder.skills.description')"
 						data-testid="agent-skills-panel"
@@ -246,6 +326,7 @@ defineExpose({ onSetupTaskAction });
 					</AgentPanel>
 
 					<AgentPanel
+						v-if="showSection('invocation')"
 						:header="i18n.baseText('agents.builder.triggers.title')"
 						:description="i18n.baseText('agents.builder.triggers.description')"
 					>
@@ -288,6 +369,7 @@ defineExpose({ onSetupTaskAction });
 					</AgentPanel>
 
 					<AgentPanel
+						v-if="showSection('tools')"
 						:header="i18n.baseText('agents.builder.capabilities.title')"
 						:description="i18n.baseText('agents.builder.capabilities.description')"
 					>
@@ -311,8 +393,16 @@ defineExpose({ onSetupTaskAction });
 						/>
 					</AgentPanel>
 
+					<AgentWebSearchSection
+						v-if="canvasMode && showSection('provider-tools')"
+						:config="localConfig"
+						:disabled="childrenDisabled"
+						:project-id="projectId"
+						@update:config="emit('update:config', $event)"
+					/>
+
 					<AgentMemoryPanel
-						v-if="canEditAgent"
+						v-if="(canEditAgent || canvasMode) && showSection('memory')"
 						:config="localConfig"
 						:disabled="childrenDisabled"
 						data-testid="agent-memory-panel"
@@ -321,7 +411,7 @@ defineExpose({ onSetupTaskAction });
 				</AgentBuilderTabPanel>
 
 				<AgentBuilderTabPanel
-					v-else-if="activeMainTab === 'knowledge'"
+					v-else-if="visibleTab === 'knowledge'"
 					data-testid="agent-knowledge-tab-content"
 				>
 					<AgentPanel
@@ -391,7 +481,7 @@ defineExpose({ onSetupTaskAction });
 				</AgentBuilderTabPanel>
 
 				<AgentBuilderTabPanel
-					v-else-if="activeMainTab === 'sessions'"
+					v-else-if="visibleTab === 'sessions'"
 					data-testid="agent-sessions-tab-content"
 				>
 					<AgentSessionsListView
@@ -404,11 +494,26 @@ defineExpose({ onSetupTaskAction });
 				</AgentBuilderTabPanel>
 
 				<AgentBuilderTabPanel
-					v-else-if="activeMainTab === 'settings'"
+					v-else-if="visibleTab === 'settings'"
 					data-testid="agent-settings-tab-content"
 				>
 					<div :class="$style.settingsCards">
+						<AgentIdentityHeader
+							v-if="canvasMode && showSection('settings')"
+							:config="localConfig"
+							:disabled="childrenDisabled"
+							@update:config="emit('update:config', $event)"
+						/>
+						<AgentInfoPanel
+							v-if="canvasMode && !showSection('sub-agents')"
+							:config="localConfig"
+							:project-id="projectId"
+							:disabled="childrenDisabled"
+							:show-instructions="false"
+							@update:config="(changes, meta) => emit('update:config', changes, meta)"
+						/>
 						<AgentBudgetPanel
+							v-if="showSection('settings')"
 							:config="localConfig"
 							:project-id="projectId"
 							:agent-id="agentId"
@@ -416,6 +521,7 @@ defineExpose({ onSetupTaskAction });
 							@update:config="emit('update:budget-config', $event)"
 						/>
 						<AgentSubAgentsPanel
+							v-if="showSection('settings') || showSection('sub-agents')"
 							:config="localConfig"
 							:disabled="childrenDisabled"
 							:project-id="projectId"
@@ -423,7 +529,7 @@ defineExpose({ onSetupTaskAction });
 							@update:config="emit('update:config', $event)"
 						/>
 						<N8nCard
-							v-if="isMcpAvailable"
+							v-if="isMcpAvailable && showSection('settings')"
 							:class="$style.settingsCard"
 							data-testid="agent-settings-card"
 						>
@@ -435,6 +541,8 @@ defineExpose({ onSetupTaskAction });
 							/>
 						</N8nCard>
 						<AgentAdvancedPanel
+							:immediate-updates="canvasMode"
+							v-if="showSection('settings')"
 							:config="localConfig"
 							:disabled="childrenDisabled"
 							:project-id="projectId"
@@ -444,7 +552,7 @@ defineExpose({ onSetupTaskAction });
 				</AgentBuilderTabPanel>
 
 				<AgentBuilderTabPanel
-					v-else-if="activeMainTab === 'evals'"
+					v-else-if="visibleTab === 'evals'"
 					data-testid="agent-evals-tab-content"
 				>
 					<AgentEvalsSection
@@ -459,13 +567,19 @@ defineExpose({ onSetupTaskAction });
 				</AgentBuilderTabPanel>
 			</div>
 		</div>
-	</section>
+	</component>
 </template>
 
 <style lang="scss" module>
 @use '@n8n/design-system/css/mixins/_focus.scss' as focus;
 @use '@n8n/design-system/css/mixins/mixins' as scrollbar-mixins;
 
+.canvasPanel .panelAreaContainer {
+	padding: 0;
+}
+.canvasPanel {
+	overflow: visible;
+}
 .advancedTrigger {
 	display: flex;
 	align-items: center;

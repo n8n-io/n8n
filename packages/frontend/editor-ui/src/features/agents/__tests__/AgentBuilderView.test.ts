@@ -12,7 +12,12 @@ import {
 import { ResponseError } from '@n8n/rest-api-client';
 import { unsavedAgentIds } from '../composables/useCreateAgent';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
-import { N8nToggle } from '@n8n/design-system';
+import {
+	N8nMarkdownEditor,
+	N8nToggle,
+	N8nResizeWrapper,
+	N8nSegmentControl,
+} from '@n8n/design-system';
 import { AGENT_PROMPT_INSPIRATION_TIMING } from '@/app/constants/durations';
 import type { persistPendingAgent } from '@/features/ai/instanceAi/instanceAi.memory.api';
 import {
@@ -42,17 +47,23 @@ import {
 	NEW_SESSION_PARAM,
 	OPEN_PREVIEW_PARAM,
 	AGENT_TOOL_CONFIG_MODAL_KEY,
+	AGENT_TASK_MODAL_KEY,
+	AGENT_SUB_AGENTS_MODAL_KEY,
+	AGENT_TOOLS_MODAL_KEY,
 	AGENT_UNPUBLISHED_WORKFLOWS_MODAL_KEY,
 } from '../constants';
 
 const builderExperimentMock = reactive({
 	layout: { chatWidth: 'current', testChat: 'dock' },
-	enrollment: undefined,
+	enrollment: undefined as unknown,
 });
 const trackExperimentExposure = vi.fn();
 vi.mock('@/experiments/agentBuilder/stores/agentBuilder.store', () => ({
 	useAgentBuilderExperimentStore: () => ({
 		...builderExperimentMock,
+		get isEnabled() {
+			return builderExperimentMock.enrollment !== undefined;
+		},
 		trackExposure: trackExperimentExposure,
 	}),
 }));
@@ -264,9 +275,11 @@ const resetSessionStoreMock = vi.fn(() => {
 });
 const startSessionAutoRefreshMock = vi.fn();
 const stopSessionAutoRefreshMock = vi.fn();
+const getAgentTasksMock = vi.fn().mockResolvedValue([]);
 
 vi.mock('../composables/useAgentApi', () => ({
 	getAgent: getAgentMock,
+	getAgentTasks: getAgentTasksMock,
 	createAgent: createAgentMock,
 	createAgentTask: createAgentTaskMock,
 	updateAgent: updateAgentMock,
@@ -343,6 +356,8 @@ interface TestAgentConfig {
 	model?: string;
 	credential?: string;
 	tools?: AgentJsonToolRef[];
+	tasks?: AgentJsonConfig['tasks'];
+	subAgents?: AgentJsonConfig['subAgents'];
 	skills?: AgentJsonSkillRef[];
 	personalisation?: AgentJsonConfig['personalisation'];
 	config?: AgentJsonConfig['config'];
@@ -672,6 +687,7 @@ const commonStubs = {
 	},
 	AgentBuilderHeader: {
 		name: 'AgentBuilderHeader',
+		methods: { focusVisualize: vi.fn() },
 		template:
 			'<div data-testid="stub-agent-builder-header" :data-project-name="projectName" :data-artifact-mode="String(artifactMode)" :data-config-validation-status="String(configValidationStatus)" :data-save-status="String(saveStatus)"><button data-testid="stub-switch-agent" @click="$emit(\'switch-agent\', \'a2\')" /></div>',
 		props: [
@@ -688,6 +704,7 @@ const commonStubs = {
 			'saveStatus',
 			'beforePublish',
 			'tasks',
+			'canvasBuilder',
 		],
 		emits: [
 			'header-action',
@@ -698,6 +715,7 @@ const commonStubs = {
 			'switch-agent',
 			'open-publish-timeline',
 			'toggle-instance-ai',
+			'settings',
 		],
 	},
 	AgentTestDock: {
@@ -707,6 +725,7 @@ const commonStubs = {
 		props: [
 			'isOpen',
 			'overlay',
+			'forceDocked',
 			'inline',
 			'closable',
 			'placeholder',
@@ -893,6 +912,7 @@ function mockPendingAgentRow(...pendingIds: string[]) {
 }
 
 function resetViewMocks() {
+	builderExperimentMock.enrollment = undefined;
 	vi.clearAllMocks();
 	for (let index = localStorage.length - 1; index >= 0; index--) {
 		const key = localStorage.key(index);
@@ -979,6 +999,8 @@ function resetViewMocks() {
 	rootStoreMock.pushRef = 'tab-1';
 	usersStoreMock.currentUserId = 'user-1';
 	usersStoreMock.usersById = {};
+	getAgentTasksMock.mockReset();
+	getAgentTasksMock.mockResolvedValue([]);
 	listAgentFilesMock.mockReset();
 	listAgentFilesMock.mockResolvedValue([]);
 	uploadAgentFilesMock.mockReset();
@@ -1005,6 +1027,346 @@ function resetViewMocks() {
 const { default: AgentBuilderView } = await import('../views/AgentBuilderView.vue');
 
 describe('AgentBuilderView — preview routing', () => {
+	it('shares the Test dock with visualization and preserves it when returning to the builder', async () => {
+		const wrapper = await renderView({
+			stubs: {
+				AgentVisualization: {
+					name: 'AgentVisualization',
+					template: '<section data-testid="visualization-stub" />',
+					props: ['root', 'isRunning', 'activeNodeIds', 'isPreviewOpen'],
+					emits: ['open-preview', 'close-preview', 'close'],
+				},
+			},
+		});
+		wrapper.getComponent({ name: 'AgentBuilderHeader' }).vm.$emit('visualize');
+		await nextTick();
+		const visualization = wrapper.getComponent({ name: 'AgentVisualization' });
+		const dock = wrapper.getComponent({ name: 'AgentTestDock' });
+		const originalDock = dock.vm;
+		visualization.vm.$emit('open-preview');
+		await flushPromises();
+		expect(dock.props('isOpen')).toBe(true);
+		expect(dock.props('forceDocked')).toBe(true);
+		expect(dock.props('inline')).toBe(false);
+		expect(
+			wrapper
+				.getComponent({ name: 'AgentBuilderEditorColumn' })
+				.getComponent({ name: 'AgentModal' })
+				.props('open'),
+		).toBe(false);
+		expect(visualization.attributes('style')).toContain('left:');
+		dock.vm.$emit('update:streaming', true);
+		dock.vm.$emit('stream-event', {
+			type: 'tool-execution-start',
+			toolCallId: 'a',
+			toolName: 'find_file',
+			startTime: 1,
+		});
+		await nextTick();
+		expect(visualization.props('isRunning')).toBe(true);
+		expect(visualization.props('activeNodeIds')).toContain('knowledge');
+		visualization.vm.$emit('close');
+		await nextTick();
+		expect(wrapper.getComponent({ name: 'AgentTestDock' }).vm).toBe(originalDock);
+		expect(dock.props('isOpen')).toBe(true);
+		expect(dock.props('forceDocked')).toBe(false);
+	});
+	it('opens the standalone canvas by default, keeps chat open, and moves settings into a dialog', async () => {
+		const wrapper = await renderView({
+			props: { builderLayout: undefined },
+			stubs: {
+				AgentVisualization: {
+					name: 'AgentVisualization',
+					template: '<section data-testid="canvas-stub" />',
+					props: ['root', 'isRunning', 'canEdit'],
+					emits: ['edit', 'add'],
+				},
+			},
+		});
+		const header = wrapper.getComponent({ name: 'AgentBuilderHeader' });
+		const editor = wrapper.getComponent({ name: 'AgentBuilderEditorColumn' });
+		expect(header.props('canvasBuilder')).toBe(true);
+		expect(wrapper.find('[data-testid="agent-ai-dock"]').isVisible()).toBe(true);
+		expect(editor.props('canvasMode')).toBe(true);
+		expect(editor.props('canvasSection')).toBeUndefined();
+		header.vm.$emit('settings');
+		await flushPromises();
+		expect(editor.props('canvasSection')).toBe('settings');
+		editor.vm.$emit('close-section');
+		await nextTick();
+		expect(editor.props('canvasSection')).toBeUndefined();
+		wrapper.getComponent(N8nSegmentControl).vm.$emit('update:modelValue', 'sessions');
+		await flushPromises();
+		expect(editor.props('canvasMode')).toBe(false);
+		expect(editor.props('activeMainTab')).toBe('sessions');
+		expect(wrapper.find('[data-testid="canvas-stub"]').exists()).toBe(false);
+	});
+	it('shares a resized chat width across Build, Test, and Sessions and centers navigation over the workspace', async () => {
+		const wrapper = await renderView({ props: { builderLayout: undefined } });
+		const vm = wrapper.vm as unknown as { builderHostWidth: number; builderContainerWidth: number };
+		vm.builderHostWidth = 1440;
+		vm.builderContainerWidth = 1440;
+		await nextTick();
+		const dock = wrapper.get('[data-testid="agent-ai-dock"]');
+		const resize = dock.getComponent(N8nResizeWrapper);
+		expect(resize.props('isResizingEnabled')).toBe(true);
+		expect(resize.props('width')).toBe(720);
+		const navigation = wrapper.get('[data-testid="agent-builder-workspace-navigation"]');
+		expect(navigation.attributes('style')).toContain('left: 720px');
+		expect(
+			wrapper.getComponent({ name: 'AgentBuilderHeader' }).element.contains(navigation.element),
+		).toBe(false);
+		resize.vm.$emit('resize', {
+			width: 540,
+			height: 700,
+			x: 540,
+			y: 300,
+			dX: -180,
+			dY: 0,
+			direction: 'right',
+		});
+		await nextTick();
+		expect(resize.props('width')).toBe(540);
+		expect(navigation.attributes('style')).toContain('left: 540px');
+		expect(wrapper.getComponent({ name: 'AgentVisualization' }).attributes('style')).toContain(
+			'left: 540px',
+		);
+		const tabs = wrapper.getComponent(N8nSegmentControl);
+		tabs.vm.$emit('update:modelValue', 'sessions');
+		await flushPromises();
+		expect(wrapper.getComponent({ name: 'AgentBuilderEditorColumn' }).props('activeMainTab')).toBe(
+			'sessions',
+		);
+		expect(resize.props('width')).toBe(540);
+		expect(navigation.attributes('style')).toContain('left: 540px');
+		tabs.vm.$emit('update:modelValue', 'agent');
+		await flushPromises();
+		await wrapper
+			.getComponent({ name: 'InstanceAiChatPanel' })
+			.get('[data-testid="agent-builder-mode-test"]')
+			.trigger('click');
+		await flushPromises();
+		expect(dock.classes()).toContain('testModeActive');
+		expect(resize.props('isResizingEnabled')).toBe(true);
+		expect(resize.props('width')).toBe(540);
+		expect(wrapper.get('[data-testid="agent-builder-container"]').attributes('style')).toContain(
+			'--agent-preview-chat-column-width: 540px',
+		);
+	});
+
+	it('opens the configured channel directly and keeps permission checks in its modal', async () => {
+		agentPermissionsMock.canUpdate.value = false;
+		const wrapper = await renderView({
+			props: { builderLayout: undefined },
+			stubs: {
+				AgentVisualization: {
+					name: 'AgentVisualization',
+					template: '<section />',
+					emits: ['edit'],
+				},
+				AgentChannelModal: {
+					name: 'AgentChannelModal',
+					template: '<section />',
+					props: ['open', 'view', 'disabled', 'agentId', 'projectId'],
+					emits: ['update:open'],
+				},
+			},
+		});
+		const canvas = wrapper.getComponent({ name: 'AgentVisualization' });
+		canvas.vm.$emit('edit', 'channel:slack');
+		await nextTick();
+		const modal = wrapper.getComponent({ name: 'AgentChannelModal' });
+		expect(modal.props()).toMatchObject({
+			open: true,
+			view: 'slack_edit',
+			agentId: 'a1',
+			projectId: 'p1',
+			disabled: true,
+		});
+		expect(
+			wrapper.getComponent({ name: 'AgentBuilderEditorColumn' }).props('canvasSection'),
+		).toBeUndefined();
+		modal.vm.$emit('update:open', false);
+		await nextTick();
+		expect(wrapper.findComponent({ name: 'AgentChannelModal' }).exists()).toBe(false);
+	});
+	it('opens the selected schedule in the existing task modal', async () => {
+		intendedConfig = {
+			...intendedConfig!,
+			tasks: [{ type: 'task', id: 'task-1', enabled: false }],
+		};
+		const task = {
+			id: 'task-1',
+			name: 'Morning check',
+			objective: 'Check updates',
+			cronExpression: '0 9 * * *',
+			timezone: 'UTC',
+		};
+		getAgentTasksMock.mockResolvedValue([task]);
+		const wrapper = await renderView({
+			props: { builderLayout: undefined },
+			stubs: {
+				AgentVisualization: {
+					name: 'AgentVisualization',
+					template: '<section />',
+					emits: ['edit'],
+				},
+			},
+		});
+		wrapper.getComponent({ name: 'AgentVisualization' }).vm.$emit('edit', 'task:task-1');
+		await nextTick();
+		expect(openModalWithDataMock).toHaveBeenCalledWith(
+			expect.objectContaining({
+				name: AGENT_TASK_MODAL_KEY,
+				data: expect.objectContaining({
+					task,
+					taskState: { enabled: false },
+					projectId: 'p1',
+					agentId: 'a1',
+				}),
+			}),
+		);
+	});
+
+	it.each([
+		{ chatWidth: 'current', testChat: 'dock' },
+		{ chatWidth: 'wide', testChat: 'dock' },
+		{ chatWidth: 'current', testChat: 'inline' },
+	])(
+		'uses a 50/50 shared chat and canvas despite the assigned layout $chatWidth/$testChat',
+		async (layout) => {
+			builderExperimentMock.layout = layout;
+			builderExperimentMock.enrollment = { name: 'builder', variant: 'control' };
+			trackExperimentExposure.mockClear();
+			const wrapper = await renderView({ props: { builderLayout: undefined } });
+			const vm = wrapper.vm as unknown as {
+				builderHostWidth: number;
+				builderContainerWidth: number;
+			};
+			vm.builderHostWidth = 1440;
+			vm.builderContainerWidth = 1440;
+			await nextTick();
+			const canvas = wrapper.getComponent({ name: 'AgentVisualization' });
+			expect(canvas.attributes('style')).toContain('left: 720px');
+			expect(canvas.props('hideTestButton')).toBe(true);
+			expect(wrapper.find('[data-testid="agent-visualization-test"]').exists()).toBe(false);
+			const assistant = wrapper.getComponent({ name: 'InstanceAiChatPanel' });
+			const preview = wrapper.getComponent({ name: 'AgentTestDock' });
+			expect(assistant.props('closable')).toBe(true);
+			expect(preview.props('inline')).toBe(true);
+			expect(preview.props('closable')).toBe(true);
+			expect(trackExperimentExposure).not.toHaveBeenCalled();
+			const originalAssistant = assistant.vm;
+			assistant.vm.$emit('close');
+			await nextTick();
+			expect(assistant.props('visible')).toBe(false);
+			expect(canvas.attributes('style')).not.toContain('left: 720px');
+			await wrapper.get('[data-testid="agent-builder-instance-ai-btn"]').trigger('click');
+			expect(assistant.props('visible')).toBe(true);
+			expect(wrapper.getComponent({ name: 'InstanceAiChatPanel' }).vm).toBe(originalAssistant);
+			await assistant.get('[data-testid="agent-builder-mode-test"]').trigger('click');
+			await flushPromises();
+			expect(preview.props('isOpen')).toBe(true);
+			expect(assistant.props('visible')).toBe(false);
+			expect(canvas.attributes('style')).toContain('left: 720px');
+			preview.vm.$emit('close');
+			await nextTick();
+			expect(preview.props('isOpen')).toBe(false);
+			expect(canvas.attributes('style')).not.toContain('left: 720px');
+			await wrapper.get('[data-testid="agent-builder-instance-ai-btn"]').trigger('click');
+			expect(preview.props('isOpen')).toBe(true);
+			expect(wrapper.getComponent({ name: 'AgentTestDock' }).vm).toBe(preview.vm);
+		},
+	);
+
+	it('keeps the canvas and shared chat when experiment assignment arrives late', async () => {
+		const wrapper = await renderView({
+			props: { builderLayout: undefined },
+			stubs: {
+				AgentVisualization: {
+					name: 'AgentVisualization',
+					template: '<section data-testid="canvas-stub" />',
+				},
+			},
+		});
+		expect(wrapper.find('[data-testid="canvas-stub"]').exists()).toBe(true);
+		builderExperimentMock.enrollment = { name: 'builder', variant: 'control' };
+		await nextTick();
+		expect(wrapper.find('[data-testid="canvas-stub"]').exists()).toBe(true);
+		expect(wrapper.getComponent({ name: 'AgentBuilderHeader' }).props('canvasBuilder')).toBe(true);
+	});
+
+	it('uses the existing configuration actions from the standalone canvas', async () => {
+		intendedConfig = {
+			...intendedConfig!,
+			tools: [{ type: 'workflow', workflow: 'Look up records' }],
+			subAgents: { agents: [{ agentId: 'research', useWhen: 'Research a topic' }] },
+		};
+		const wrapper = await renderView({
+			props: { builderLayout: undefined },
+			stubs: {
+				AgentVisualization: {
+					name: 'AgentVisualization',
+					template: '<section />',
+					emits: ['edit', 'add'],
+				},
+			},
+		});
+		const canvas = wrapper.getComponent({ name: 'AgentVisualization' });
+		canvas.vm.$emit('edit', 'instructions');
+		await nextTick();
+		expect(wrapper.getComponent({ name: 'AgentBuilderEditorColumn' }).props('canvasSection')).toBe(
+			'instructions',
+		);
+		expect(
+			wrapper
+				.getComponent({ name: 'AgentBuilderEditorColumn' })
+				.getComponent({ name: 'AgentModal' })
+				.props(),
+		).toMatchObject({
+			open: true,
+			title: 'agents.builder.visualization.instructions',
+			bodyScrollable: false,
+		});
+		const instructionsEditor = wrapper.getComponent(N8nMarkdownEditor);
+		expect(instructionsEditor.props()).toMatchObject({
+			variant: 'ghost',
+			allowExpandedView: false,
+		});
+		expect(wrapper.find('[data-testid="agent-info-panel"]').exists()).toBe(false);
+		instructionsEditor.vm.$emit('update:modelValue', 'Use clear instructions.');
+		await nextTick();
+		expect(
+			wrapper.getComponent({ name: 'AgentBuilderEditorColumn' }).props('localConfig').instructions,
+		).toBe('Use clear instructions.');
+		canvas.vm.$emit('edit', 'tool-0');
+		await nextTick();
+		expect(openModalWithDataMock).toHaveBeenCalledWith(
+			expect.objectContaining({
+				name: AGENT_TOOL_CONFIG_MODAL_KEY,
+				data: expect.objectContaining({
+					toolRef: { type: 'workflow', workflow: 'Look up records' },
+				}),
+			}),
+		);
+		canvas.vm.$emit('edit', 'sub-agent:research');
+		await nextTick();
+		expect(openModalWithDataMock).toHaveBeenCalledWith(
+			expect.objectContaining({
+				name: AGENT_SUB_AGENTS_MODAL_KEY,
+				data: expect.objectContaining({
+					selectedAgent: { id: 'research', name: 'research' },
+					useWhen: 'Research a topic',
+				}),
+			}),
+		);
+		canvas.vm.$emit('add', 'tools');
+		await nextTick();
+		expect(openModalWithDataMock).toHaveBeenCalledWith(
+			expect.objectContaining({ name: AGENT_TOOLS_MODAL_KEY }),
+		);
+	});
+
 	beforeEach(() => {
 		resetViewMocks();
 		vi.restoreAllMocks();
@@ -7402,7 +7764,7 @@ describe('chat-first builder', () => {
 		const wrapper = await renderView({ props: { builderLayout: undefined } });
 		const assistant = wrapper.getComponent({ name: 'InstanceAiChatPanel' });
 		const preview = wrapper.getComponent({ name: 'AgentTestDock' });
-		expect(assistant.props('closable')).toBe(false);
+		expect(assistant.props('closable')).toBe(true);
 		expect(assistant.props('showOpenFullAssistant')).toBe(false);
 		expect(preview.props('inline')).toBe(true);
 		expect(assistant.props('visible')).toBe(true);
@@ -7533,6 +7895,29 @@ describe('chat-first builder', () => {
 		expect(wrapper.getComponent({ name: 'AgentTestDock' }).props('inline')).toBe(false);
 	});
 
+	it('keeps chat closed if the user closes it during a pending Test transition', async () => {
+		const wrapper = await renderView({ props: { builderLayout: undefined } });
+		const save = Promise.withResolvers<{
+			config: TestAgentConfig;
+			versionId: string;
+			stale: boolean;
+		}>();
+		updateConfigMock.mockImplementationOnce(() => save.promise);
+		wrapper
+			.getComponent({ name: 'AgentBuilderEditorColumn' })
+			.vm.$emit('update:config', { instructions: 'Answer support questions.' });
+		await nextTick();
+		const transition = wrapper.vm.setChatMode('test');
+		await flushPromises();
+		const assistant = wrapper.getComponent({ name: 'InstanceAiChatPanel' });
+		assistant.vm.$emit('close');
+		await nextTick();
+		if (!mockConfig.value) throw new Error('Agent config is missing');
+		save.resolve({ config: mockConfig.value, versionId: 'v2', stale: false });
+		expect(await transition).toBe(false);
+		expect(assistant.props('visible')).toBe(false);
+		expect(wrapper.getComponent({ name: 'AgentTestDock' }).props('isOpen')).toBe(false);
+	});
 	it('keeps configuration accessible on a narrow screen without unmounting chat', async () => {
 		const wrapper = await renderView({ props: { builderLayout: undefined } });
 		(wrapper.vm as unknown as { builderHostWidth: number }).builderHostWidth = 375;
@@ -7542,7 +7927,7 @@ describe('chat-first builder', () => {
 		assistant.vm.$emit('close');
 		await nextTick();
 		expect(assistant.props('visible')).toBe(false);
-		await wrapper.get('[data-testid="agent-builder-show-chat"]').trigger('click');
+		await wrapper.get('[data-testid="agent-builder-instance-ai-btn"]').trigger('click');
 		expect(assistant.props('visible')).toBe(true);
 		expect(wrapper.getComponent({ name: 'InstanceAiChatPanel' }).vm).toBe(assistant.vm);
 		await assistant.get('[data-testid="agent-builder-mode-test"]').trigger('click');
@@ -7552,7 +7937,7 @@ describe('chat-first builder', () => {
 		preview.vm.$emit('close');
 		await nextTick();
 		expect(preview.props('isOpen')).toBe(false);
-		await wrapper.get('[data-testid="agent-builder-show-chat"]').trigger('click');
+		await wrapper.get('[data-testid="agent-builder-instance-ai-btn"]').trigger('click');
 		expect(assistant.props('visible')).toBe(false);
 		expect(preview.props('isOpen')).toBe(true);
 		expect(wrapper.getComponent({ name: 'AgentTestDock' }).vm).toBe(preview.vm);

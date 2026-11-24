@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { AgentSseEvent } from '@n8n/api-types';
 import { inject, ref, useTemplateRef, watch } from 'vue';
 
 import { deriveAgentStatus } from '../composables/agentTelemetry.utils';
@@ -48,6 +49,8 @@ const props = withDefaults(
 );
 
 const emit = defineEmits<{
+	'stream-event': [event: AgentSseEvent];
+	'update:streaming': [streaming: boolean];
 	'continue-loaded': [event: AgentContinueLoadedEvent];
 	'usage-updated': [event: AgentUsageUpdate];
 	'session-created': [sessionId: string];
@@ -96,6 +99,8 @@ defineExpose({ focusInput, getConversationMarkdown, clearBudgetStops });
 	>
 		<div :class="$style.chatFrame">
 			<AgentChatPanel
+				@stream-event="emit('stream-event', $event)"
+				@update:streaming="emit('update:streaming', $event)"
 				v-if="initialized && effectiveSessionId"
 				:key="`preview-${effectiveSessionId}`"
 				ref="chatPanel"

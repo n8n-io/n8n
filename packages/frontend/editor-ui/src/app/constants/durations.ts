@@ -52,6 +52,9 @@ export const AGENT_SUMMARY_WAIT_TIMEOUT = 2 * TIME.MINUTE;
 /** Keeps short agent tool and skill calls perceptible without adding continuous motion. */
 export const AGENT_CAPABILITY_ACTIVE_MIN_DURATION = 300;
 
+/** Returns collapsed visualization branches to their parent before removal. */
+export const AGENT_VISUALIZATION_COLLAPSE_DURATION = 300;
+
 /** Keeps a completed setup item visible briefly before returning to the checklist. */
 export const SETUP_PANEL_SUCCESS_DELAY = 650;
 

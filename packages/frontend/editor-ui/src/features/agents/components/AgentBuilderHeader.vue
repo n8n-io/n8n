@@ -6,7 +6,7 @@
  * Navigation intents are emitted as events, except for the project breadcrumb
  * which links back to the owning project/personal page.
  */
-import { computed, onMounted, ref, useCssModule } from 'vue';
+import { computed, onMounted, ref, useCssModule, useTemplateRef } from 'vue';
 import { useRouter, type RouteLocationRaw } from 'vue-router';
 import type { AgentConfigValidationIssue } from '@n8n/api-types';
 import {
@@ -48,10 +48,14 @@ const props = defineProps<{
 	configValidationIssues?: AgentConfigValidationIssue[];
 	beforePublish?: () => Promise<boolean>;
 	tasks?: Array<SetupTask<SetupTaskId>>;
+	visualizing?: boolean;
+	canvasBuilder?: boolean;
 }>();
 
 const emit = defineEmits<{
 	'header-action': [item: string];
+	visualize: [];
+	settings: [];
 	'publish-ready': [ready: boolean];
 	published: [agent: AgentResource];
 	unpublished: [agent: AgentResource];
@@ -93,7 +97,11 @@ function publishAgent() {
 	return publishButton.value?.publish();
 }
 
-defineExpose({ publishAgent });
+const headerElement = useTemplateRef<HTMLElement>('headerElement');
+function focusVisualize() {
+	headerElement.value?.querySelector<HTMLButtonElement>('[data-testid="agent-visualize"]')?.focus();
+}
+defineExpose({ publishAgent, focusVisualize });
 
 const switcherOptions = computed<Array<DropdownMenuItemProps<string>>>(() => {
 	const list = agentsList.value ?? [];
@@ -157,7 +165,7 @@ function onMenuSelect(id: string) {
 </script>
 
 <template>
-	<header :class="$style.header" data-testid="agent-builder-header">
+	<header ref="headerElement" :class="$style.header" data-testid="agent-builder-header">
 		<div :class="$style.left">
 			<N8nBreadcrumbs
 				v-if="!props.artifactMode"
@@ -220,6 +228,15 @@ function onMenuSelect(id: string) {
 			</N8nBreadcrumbs>
 		</div>
 		<div :class="$style.right">
+			<N8nButton
+				v-if="canvasBuilder"
+				variant="ghost"
+				icon="settings"
+				icon-only
+				:aria-label="i18n.baseText('agents.builder.visualization.settings')"
+				data-testid="agent-builder-settings"
+				@click="emit('settings')"
+			/>
 			<span
 				v-if="saveStatus && saveStatus !== 'idle'"
 				:class="$style.saveStatus"
@@ -231,8 +248,25 @@ function onMenuSelect(id: string) {
 						: i18n.baseText('agents.builder.header.saved')
 				}}
 			</span>
+			<N8nButton
+				v-if="!artifactMode && agent && !canvasBuilder"
+				variant="outline"
+				:icon="visualizing ? 'arrow-left' : 'network'"
+				:class="{ [$style.visualize]: !visualizing }"
+				:aria-pressed="visualizing"
+				data-testid="agent-visualize"
+				data-attr="agent-visualize"
+				@click="emit('visualize')"
+				>{{
+					i18n.baseText(
+						visualizing
+							? 'agents.builder.visualization.close'
+							: 'agents.builder.visualization.open',
+					)
+				}}</N8nButton
+			>
 			<AgentSetupTasks
-				v-if="tasks && tasks.length > 0"
+				v-else-if="!canvasBuilder && tasks && tasks.length > 0"
 				:tasks="tasks"
 				@action="emit('setup-task-action', $event)"
 			/>
@@ -290,6 +324,14 @@ function onMenuSelect(id: string) {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
+
+.visualize {
+	--animation--shimmer--background: var(--color--purple-500);
+	--animation--shimmer--foreground: var(--color--pink-500);
+	@include motion.shimmer;
+}
+
 .header {
 	display: flex;
 	align-items: center;

@@ -95,6 +95,8 @@ const AgentTestChatPageStub = {
 	props: ['beforeSend', 'initialPrompt', 'visible'],
 	emits: [
 		'continue-loaded',
+		'stream-event',
+		'update:streaming',
 		'open-build',
 		'send-to-assistant',
 		'initial-consumed',
@@ -133,6 +135,7 @@ function mountDock(
 	overrides: Partial<{
 		hasSession: boolean;
 		overlay: boolean;
+		forceDocked: boolean;
 		inline: boolean;
 		sessionTitle: string;
 		effectiveSessionId?: string;
@@ -178,6 +181,29 @@ function mountDock(
 }
 
 describe('AgentTestDock', () => {
+	it('keeps visualization chat docked without changing the saved full-width preference', async () => {
+		localStorage.setItem('N8N_AGENT_PREVIEW_LAYOUT', 'fullpage');
+		const wrapper = mountDock({ forceDocked: true });
+		expect(wrapper.attributes('data-preview-layout')).toBe('docked');
+		expect(wrapper.classes()).not.toContain('overlay');
+		expect(wrapper.getComponent(AgentTestMoreMenuStub).props('hideLayoutToggle')).toBe(true);
+		await wrapper.setProps({ forceDocked: false });
+		expect(wrapper.attributes('data-preview-layout')).toBe('fullpage');
+	});
+	it('forwards live stream events and streaming state for the visualization', () => {
+		const wrapper = mountDock();
+		const chat = wrapper.getComponent(AgentTestChatPageStub);
+		const event = {
+			type: 'tool-execution-start',
+			toolCallId: 'a',
+			toolName: 'find_file',
+			startTime: 1,
+		};
+		chat.vm.$emit('stream-event', event);
+		chat.vm.$emit('update:streaming', true);
+		expect(wrapper.emitted('stream-event')).toEqual([[event]]);
+		expect(wrapper.emitted('update:streaming')).toEqual([[true]]);
+	});
 	beforeEach(function resetMocks() {
 		vi.clearAllMocks();
 		localStorage.removeItem('N8N_AGENT_PREVIEW_LAYOUT');
@@ -597,6 +623,20 @@ describe('AgentTestDock', () => {
 });
 
 describe('AgentTestChatPage', () => {
+	it('forwards the panel stream without opening another connection', () => {
+		const wrapper = mountChatPage();
+		const panel = wrapper.getComponent({ name: 'AgentChatPanel' });
+		const event = {
+			type: 'tool-execution-start',
+			toolCallId: 'a',
+			toolName: 'find_file',
+			startTime: 1,
+		};
+		panel.vm.$emit('stream-event', event);
+		panel.vm.$emit('update:streaming', true);
+		expect(wrapper.emitted('stream-event')).toEqual([[event]]);
+		expect(wrapper.emitted('update:streaming')).toEqual([[true]]);
+	});
 	function mountChatPage(
 		beforeSend?: () => Promise<void> | void,
 		increaseBudget?: (payload: {

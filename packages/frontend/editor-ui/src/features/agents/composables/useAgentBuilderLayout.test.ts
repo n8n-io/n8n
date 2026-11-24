@@ -14,6 +14,29 @@ describe('useAgentBuilderLayout', () => {
 		scope.stop();
 	});
 
+	it('starts the canvas at 50/50 and shares its saved ratio between page mounts', async () => {
+		const options = {
+			defaultConfigRatio: 0.5,
+			storageKey: 'N8N_AGENT_BUILDER_CANVAS_CONFIG_RATIO',
+		};
+		const scope = effectScope();
+		scope.run(() => {
+			const layout = useAgentBuilderLayout(ref(1600), undefined, options);
+			expect(layout.chatWidth.value).toBe(800);
+			layout.resizeChat(600);
+			expect(layout.chatWidth.value).toBe(600);
+		});
+		await nextTick();
+		scope.stop();
+		const restoredScope = effectScope();
+		restoredScope.run(() => {
+			const layout = useAgentBuilderLayout(ref(2400), undefined, options);
+			expect(layout.chatWidth.value).toBe(900);
+			layout.resizeChat(layout.defaultChatWidth.value);
+			expect(layout.chatWidth.value).toBe(1200);
+		});
+		restoredScope.stop();
+	});
 	it('follows workspace size changes without saving a fixed width', () => {
 		const scope = effectScope();
 		scope.run(() => {

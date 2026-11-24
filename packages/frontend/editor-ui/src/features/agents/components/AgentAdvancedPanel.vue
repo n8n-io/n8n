@@ -29,6 +29,7 @@ const props = withDefaults(
 	defineProps<{
 		config: AgentJsonConfig | null;
 		disabled?: boolean;
+		immediateUpdates?: boolean;
 		projectId?: string;
 	}>(),
 	{
@@ -123,7 +124,8 @@ function makeNumberField(key: NumberConfigKey, options: NumberFieldOptions) {
 		onChange(n: number) {
 			if (persistFallback) {
 				value.value = isNaN(n) ? displayDefault : n;
-				void debouncedEmit();
+				if (props.immediateUpdates) emitConfig(value.value);
+				else void debouncedEmit();
 				return;
 			}
 

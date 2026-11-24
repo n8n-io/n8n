@@ -2,9 +2,12 @@
 import { N8nSpinner, N8nText, N8nVisuallyHidden } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useIntervalFn } from '@vueuse/core';
-import { ref } from 'vue';
-
+import { computed, ref } from 'vue';
 import { TIME } from '@/app/constants/durations';
+
+const props = withDefaults(defineProps<{ variant?: 'bar' | 'ring'; label?: string }>(), {
+	variant: 'bar',
+});
 
 const i18n = useI18n();
 
@@ -19,14 +22,20 @@ const lobes = [
 	{ x: 96, width: 15, height: 76 },
 	{ x: 4, width: 13, height: 82 },
 ];
-const waves = lobes.map((lobe, index) => ({
-	'--wave-position': `${lobe.x}% 100%`,
-	'--wave-width': `${lobe.width}%`,
-	'--wave-depth': `${lobe.height / 100}`,
-	'--wave-color': `var(--n8n-wave--color-${(index % 9) + 1})`,
-	'--wave-delay': `calc(var(--n8n-wave--duration) * ${-index / 7})`,
-	'--wave-duration': `calc(var(--n8n-wave--duration) * ${1 + (index % 3) * 0.17})`,
-}));
+const waves = computed(() =>
+	lobes.map((lobe, index) => ({
+		'--wave-position':
+			props.variant === 'ring'
+				? `calc(${50 + Math.cos((index / lobes.length) * Math.PI * 2) * 50}% - var(--n8n-wave--outset) * ${Math.cos((index / lobes.length) * Math.PI * 2)}) calc(${50 + Math.sin((index / lobes.length) * Math.PI * 2) * 50}% - var(--n8n-wave--outset) * ${Math.sin((index / lobes.length) * Math.PI * 2)})`
+				: `${lobe.x}% 100%`,
+		'--wave-width':
+			props.variant === 'ring' ? 'calc(var(--n8n-wave--size) * 1.5)' : `${lobe.width}%`,
+		'--wave-depth': `${lobe.height / 100}`,
+		'--wave-color': `var(--n8n-wave--color-${(index % 9) + 1})`,
+		'--wave-delay': `calc(var(--n8n-wave--duration) * ${-index / 7})`,
+		'--wave-duration': `calc(var(--n8n-wave--duration) * ${1 + (index % 3) * 0.17})`,
+	})),
+);
 
 const whimsicalLabels: BaseTextKey[] = [
 	'instanceAi.agentPreview.building.imagining',
@@ -56,8 +65,13 @@ useIntervalFn(() => {
 </script>
 
 <template>
-	<div :class="$style.wave">
+	<div
+		:class="[$style.wave, { [$style.circular]: variant === 'ring' }]"
+		:role="variant === 'ring' ? 'status' : undefined"
+		:aria-label="variant === 'ring' ? label : undefined"
+	>
 		<div
+			v-if="variant === 'bar'"
 			:class="$style.buildingIndicator"
 			role="status"
 			aria-live="polite"
@@ -81,13 +95,17 @@ useIntervalFn(() => {
 				</Transition>
 			</div>
 		</div>
-		<div
-			v-for="layer in ['inner', 'ring', 'bloom', 'highlight']"
-			:key="layer"
-			:class="[$style.waveLayer, $style[layer]]"
-			aria-hidden="true"
-		>
-			<div v-for="(wave, index) in waves" :key="index" :class="$style.waveLight" :style="wave" />
+		<div :class="[$style.waveEffects, { [$style.outwardEffect]: variant === 'ring' }]">
+			<div
+				v-for="layer in variant === 'ring'
+					? ['inner', 'bloom', 'highlight']
+					: ['inner', 'ring', 'bloom', 'highlight']"
+				:key="layer"
+				:class="[$style.waveLayer, $style[layer]]"
+				aria-hidden="true"
+			>
+				<div v-for="(wave, index) in waves" :key="index" :class="$style.waveLight" :style="wave" />
+			</div>
 		</div>
 	</div>
 </template>
@@ -121,6 +139,30 @@ useIntervalFn(() => {
 	pointer-events: none;
 	@include motion.fade-in-up;
 	animation-fill-mode: backwards;
+}
+
+.circular {
+	// Match the host edge so the glow starts at the avatar border with no gap.
+	inset: 0;
+	border-bottom: none;
+	border-radius: var(--radius--full);
+	--n8n-wave--glow: var(--spacing--sm);
+	--n8n-wave--outset: calc(var(--n8n-wave--size) + var(--n8n-wave--glow));
+}
+.waveEffects {
+	display: contents;
+}
+.outwardEffect {
+	display: block;
+	position: absolute;
+	inset: calc(-1 * var(--n8n-wave--outset));
+	border-radius: inherit;
+	// Mask after the blur so colour cannot bleed into the circle.
+	mask: radial-gradient(
+		circle closest-side,
+		transparent calc(100% - var(--n8n-wave--outset) - var(--n8n-wave--border)),
+		var(--color--neutral-white) calc(100% - var(--n8n-wave--outset))
+	);
 }
 
 :global(.agent-building-indicator-leave-active) {
