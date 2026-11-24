@@ -172,16 +172,20 @@ it('shows the workflows that use a dependency as text, because the review opens 
 	}
 });
 
-it('shows no project and no owner of a dependency', async () => {
+it('shows no project and no owner in the text of a row', async () => {
 	vi.mocked(api.getPromotionReviewChanges).mockResolvedValue(
-		reviewChanges([otherProjectCredential, outsideAccessWorkflow]),
+		reviewChanges([
+			{ ...otherProjectCredential, project: { id: 'p2', name: 'Finance' } },
+			outsideAccessWorkflow,
+		]),
 	);
 
 	const { getAllByTestId, getByTestId } = render();
 	await waitAllPromises();
 
-	// "Billing" is the project of the workflows. The API sends no project for a dependency.
+	// "Billing" is the project of the workflows, and "Finance" the project of "CRM key".
 	expect(getByTestId('promotion-review-issues')).not.toHaveTextContent('Billing');
+	expect(getByTestId('promotion-review-issues')).not.toHaveTextContent('Finance');
 	for (const row of getAllByTestId('promotion-preview-blocker-row')) {
 		expect(row).not.toHaveTextContent(/project|owner/i);
 	}
