@@ -21,7 +21,11 @@ import {
 	isAssistantGroup,
 	type DisplayGroup,
 } from '@/features/ai/shared/agentsChat/displayGroups';
-import { getMessageInteractives, isRecord } from '@/features/ai/shared/agentsChat/messageMappers';
+import {
+	getMessageInteractives,
+	isRecord,
+	isStoppedMessage,
+} from '@/features/ai/shared/agentsChat/messageMappers';
 import {
 	AGENTS_CHAT_INTERACTION_EXTENSIONS,
 	appendHostEventSources,
@@ -94,6 +98,8 @@ const props = defineProps<{
 	loadOlderMessagesFailed?: boolean;
 	/** Replaces the generic "Thinking" of the thinking blocks. The Assistant sets it. */
 	thinkingLabel?: string;
+	/** Replaces the generic "Session stopped" of a stopped turn. The Assistant sets it. */
+	stoppedLabel?: string;
 }>();
 
 const emit = defineEmits<{
@@ -931,6 +937,14 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 							</N8nLink>
 						</template>
 					</div>
+					<div
+						v-else-if="isStoppedMessage(group.message)"
+						:class="$style.stoppedNotice"
+						data-testid="agent-chat-stopped"
+					>
+						<N8nIcon icon="circle-x" size="small" />
+						<span>{{ props.stoppedLabel ?? i18n.baseText('agentSessions.stopped') }}</span>
+					</div>
 					<template v-else>
 						<AgentChatRetryError
 							v-if="isRetryableChatError(group.message)"
@@ -1184,6 +1198,14 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 .toolResult {
 	margin-top: var(--spacing--2xs);
 	margin-bottom: var(--spacing--2xs);
+}
+
+.stoppedNotice {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+	font-size: var(--font-size--2xs);
+	color: var(--color--text--tint-1);
 }
 
 /* Stretches past the right-aligned user bubble it follows, and stacks the
