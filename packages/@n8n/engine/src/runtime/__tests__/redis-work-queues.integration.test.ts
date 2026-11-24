@@ -77,9 +77,13 @@ describe('engine runtimes on shared Redis work queues (integration)', () => {
 		roles?: readonly EngineRole[],
 	) {
 		const publisher = new Redis(redis.getConnectionUrl());
+		let consumersOpened = 0;
 		const workQueues = createRedisWorkQueues({
 			publisher,
-			createConsumer: () => new Redis(redis.getConnectionUrl()),
+			createConsumer: () => {
+				consumersOpened++;
+				return new Redis(redis.getConnectionUrl());
+			},
 			keyPrefix,
 			concurrency: { orchestration: 1, step: 1 },
 			logger: silentLogger,
@@ -110,7 +114,7 @@ describe('engine runtimes on shared Redis work queues (integration)', () => {
 			workQueues.close();
 			await publisher.quit();
 		};
-		return { app: runtime.app, stop };
+		return { app: runtime.app, stop, consumersOpened: () => consumersOpened };
 	}
 
 	it('runs the parallel branches of one execution on two engines and finishes it once', async () => {
@@ -225,13 +229,16 @@ describe('engine runtimes on shared Redis work queues (integration)', () => {
 			await Promise.all(Object.values(engines).map(async (engine) => await engine.stop()));
 		}
 
-		return { execution: await loadExecution(), finishedOn };
+		const consumersOpened = Object.fromEntries(
+			ENGINE_ROLES.map((role) => [role, engines[role].consumersOpened()]),
+		);
+		return { execution: await loadExecution(), finishedOn, consumersOpened };
 	}
 
-	it('runs an execution on three engines that each run one role', async () => {
+	it('runs an execution on three engines that each run one role, each with a consumer connection only for the queue it consumes', async () => {
 		const ranOn: string[] = [];
 
-		const { execution, finishedOn } = await runOnOneEnginePerRole((role) => ({
+		const { execution, finishedOn, consumersOpened } = await runOnOneEnginePerRole((role) => ({
 			execute: async ({ node }) => {
 				ranOn.push(`${node.id} on ${role}`);
 				return { outputs: [[{ json: { ran: node.id } }]] };
@@ -241,6 +248,7 @@ describe('engine runtimes on shared Redis work queues (integration)', () => {
 		expect(execution.status).toBe('completed');
 		expect(finishedOn).toEqual(['orchestrator']);
 		expect(ranOn).toEqual(['node-a on step-worker']);
+		expect(consumersOpened).toEqual({ api: 0, orchestrator: 1, 'step-worker': 1 });
 	}, 30_000);
 
 	it('ends a short time wait on time when each engine runs one role', async () => {

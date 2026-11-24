@@ -45,8 +45,10 @@ a deployable engine worker) without touching core logic.
   in-memory queues. `createRedisWorkQueues` builds the pair of Redis queues:
   the engine sets the list names and the message schemas. The host gives the
   Redis connections, the key prefix and the concurrency limits.
-  `RedisWorkQueue` never closes a connection. The factory's `close()` closes
-  only the consumer connections; the host closes the publisher. The engine has
+  `RedisWorkQueue` never closes a connection. A queue opens its consumer
+  connection on its first `start()`, so a process that only publishes to a
+  queue opens none for it. The factory's `close()` closes only the consumer
+  connections that were opened; the host closes the publisher. The engine has
   no runtime dependency on `ioredis`; the adapter declares the client commands
   it needs as interfaces.
 - **Serving infra** — `server/` (express), `serve.ts` (standalone entrypoint),
