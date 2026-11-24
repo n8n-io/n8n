@@ -706,6 +706,21 @@ describe('NodeSettings', () => {
 				{ displayName: 'URL', name: 'url', type: 'string', default: '' },
 				{ displayName: 'Timeout', name: 'timeout', type: 'number', default: 30 },
 				{ displayName: 'Method', name: 'method', type: 'string', default: 'GET' },
+				{ displayName: 'Token', name: 'token', type: 'string', default: '', required: true },
+			],
+		});
+		const typeV2AndV2Point1 = versionedType(2, {
+			version: [2, 2.1],
+			defaultVersion: 2.1,
+			properties: [
+				{ displayName: 'URL', name: 'url', type: 'string', default: '' },
+				{
+					displayName: 'Mode',
+					name: 'mode',
+					type: 'string',
+					default: 'fast',
+					displayOptions: { show: { '@version': [2.1] } },
+				},
 			],
 		});
 
@@ -716,19 +731,22 @@ describe('NodeSettings', () => {
 			parameters: { url: 'https://example.com', timeout: 10 },
 		});
 
-		const pickerStubs = {
+		const pickerStubsEmitting = (version: number) => ({
 			NodeVersionPicker: {
 				props: ['nodeName', 'currentVersion', 'latest', 'versions', 'disabled'],
 				emits: ['update'],
 				template:
-					'<button data-test-id="node-version-select" :data-node-name="nodeName" :data-current="currentVersion" :data-latest="latest" :data-versions="versions.join()" :data-disabled="String(disabled)" @click="$emit(\'update\', 2)" />',
+					'<button data-test-id="node-version-select" :data-node-name="nodeName" :data-current="currentVersion" :data-latest="latest" :data-versions="versions.join()" :data-disabled="String(disabled)" @click="$emit(\'update\', ' +
+					version +
+					')" />',
 			},
 			ParameterInputList: {
 				props: ['parameters', 'nodeValues', 'hiddenIssuesInputs'],
 				template:
 					'<div data-test-id="parameters-stub" :data-names="parameters.map((parameter) => parameter.name).join()" :data-values="JSON.stringify(nodeValues.parameters)" :data-hidden-issues="hiddenIssuesInputs.join()" />',
 			},
-		};
+		});
+		const pickerStubs = pickerStubsEmitting(2);
 
 		const renderVersioned = (options: RenderOptions = {}) =>
 			renderNodeSettings({
@@ -791,11 +809,41 @@ describe('NodeSettings', () => {
 			expect(await findByTestId('node-version-select')).toHaveAttribute('data-disabled', 'true');
 		});
 
+		it('keeps the node as it is when the picker emits on a read-only canvas', async () => {
+			const { findByTestId, workflowDocumentStore } = renderVersioned({
+				props: { readOnly: true },
+			});
+			const picker = await findByTestId('node-version-select');
+			const markStateDirty = vi.mocked(useUIStore().markStateDirty);
+			markStateDirty.mockClear();
+
+			await fireEvent.click(picker);
+
+			expect(workflowDocumentStore.getNodeByName(httpNode.name)?.typeVersion).toBe(1);
+			expect(markStateDirty).not.toHaveBeenCalled();
+		});
+
+		it('writes a version that shares its description with other versions', async () => {
+			const { findByTestId, workflowDocumentStore } = renderVersioned({
+				nodeTypes: [typeV1, typeV2AndV2Point1],
+				stubs: pickerStubsEmitting(2.1),
+			});
+
+			await fireEvent.click(await findByTestId('node-version-select'));
+
+			const node = workflowDocumentStore.getNodeByName(httpNode.name);
+			expect(node?.typeVersion).toBe(2.1);
+			expect(node?.parameters.mode).toBe('fast');
+		});
+
 		describe('after the user confirms a version', () => {
 			const renderAndUpdate = async () => {
 				const rendered = renderVersioned();
 				const settingsTab = await rendered.findByTestId('tab-settings');
 				await fireEvent.click(settingsTab.querySelector<HTMLElement>('.tab')!);
+				await waitFor(() => {
+					expect(settingsTab.querySelector('.tab')?.className).toContain('activeTab');
+				});
 				const [parametersBefore] = await rendered.findAllByTestId('parameters-stub');
 				const hiddenIssuesBefore = parametersBefore.getAttribute('data-hidden-issues');
 				const markStateDirty = vi.mocked(useUIStore().markStateDirty);
@@ -812,13 +860,21 @@ describe('NodeSettings', () => {
 				const node = workflowDocumentStore.getNodeByName(httpNode.name);
 				expect(node?.typeVersion).toBe(2);
 				// `timeout` was at the old default, so it takes the new default.
-				// `method` is new and is written with its default.
+				// `method` and `token` are new and are written with their defaults.
 				expect(node?.parameters).toEqual({
 					url: 'https://example.com',
 					timeout: 30,
 					method: 'GET',
+					token: '',
 				});
 				expect(markStateDirty).toHaveBeenCalledTimes(1);
+			});
+
+			it('reports the required parameter of that version that has no value', async () => {
+				const { workflowDocumentStore } = await renderAndUpdate();
+
+				const node = workflowDocumentStore.getNodeByName(httpNode.name);
+				expect(node?.issues?.parameters?.token).toEqual(['Parameter "Token" is required.']);
 			});
 
 			it('shows the Parameters tab with the parameters of that version', async () => {
@@ -830,11 +886,12 @@ describe('NodeSettings', () => {
 				});
 
 				const [parameters] = await findAllByTestId('parameters-stub');
-				expect(parameters).toHaveAttribute('data-names', 'url,timeout,method');
+				expect(parameters).toHaveAttribute('data-names', 'url,timeout,method,token');
 				expect(JSON.parse(parameters.getAttribute('data-values') ?? '')).toEqual({
 					url: 'https://example.com',
 					timeout: 30,
 					method: 'GET',
+					token: '',
 				});
 				expect(hiddenIssuesBefore).toBe('credentials,url,timeout');
 				expect(parameters).toHaveAttribute('data-hidden-issues', '');
