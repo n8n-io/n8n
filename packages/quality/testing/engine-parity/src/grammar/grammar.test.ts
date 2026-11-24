@@ -55,12 +55,13 @@ describe('grammar', () => {
 
 	it.each(['smoke'])('makes eligible workflows with valid ports for the "%s" rule set', (name) => {
 		const cases = sample(name);
-		const eligible = cases.filter(
-			(parityCase) => checkEngineV2Eligibility(parityCase.workflow).eligible,
-		);
+		// The combinators make every shape eligible, so one rejected case is a bug.
+		const rejected = cases
+			.map((parityCase) => checkEngineV2Eligibility(parityCase.workflow))
+			.filter((result) => !result.eligible);
 
 		expect(cases.every(portsInRange)).toBe(true);
-		expect(eligible.length / cases.length).toBeGreaterThanOrEqual(0.95);
+		expect(rejected).toEqual([]);
 	});
 
 	it('keeps each case within the node limit', () => {
