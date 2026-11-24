@@ -343,7 +343,7 @@ describe('NodeSettings', () => {
 
 		const paramsTab = await findByTestId('tab-params');
 		await waitFor(() => {
-			expect(paramsTab.querySelector('.tab')?.className).toContain('activeTab');
+			expect(paramsTab.querySelector('.tab')).toHaveAttribute('data-state', 'active');
 		});
 	});
 
@@ -354,16 +354,16 @@ describe('NodeSettings', () => {
 		const settingsTab = await findByTestId('tab-settings');
 
 		await waitFor(() => {
-			expect(paramsTab.querySelector('.tab')?.className).toContain('activeTab');
+			expect(paramsTab.querySelector('.tab')).toHaveAttribute('data-state', 'active');
 		});
 
 		const settingsTabClickable = settingsTab.querySelector<HTMLElement>('.tab');
 		expect(settingsTabClickable).not.toBeNull();
-		await fireEvent.click(settingsTabClickable!);
+		await fireEvent.mouseDown(settingsTabClickable!);
 
 		await waitFor(() => {
-			expect(settingsTab.querySelector('.tab')?.className).toContain('activeTab');
-			expect(paramsTab.querySelector('.tab')?.className).not.toContain('activeTab');
+			expect(settingsTab.querySelector('.tab')).toHaveAttribute('data-state', 'active');
+			expect(paramsTab.querySelector('.tab')).toHaveAttribute('data-state', 'inactive');
 		});
 	});
 

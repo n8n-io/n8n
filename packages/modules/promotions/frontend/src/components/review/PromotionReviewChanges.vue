@@ -36,7 +36,7 @@ const i18n = useI18n();
 const rootStore = useRootStore();
 
 // A review is read-only: nothing is selected, blocked, or included.
-const noInclusion: Inclusion = { included: new Set(), reasons: new Map() };
+const noInclusion: Inclusion = { included: new Set(), reasons: new Map(), requiredBy: new Map() };
 const noKeys: ReadonlySet<ResourceKey> = new Set();
 const noBlockers = indexBlockers([]);
 
