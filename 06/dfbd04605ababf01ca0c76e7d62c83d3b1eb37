@@ -20,7 +20,7 @@ packages/cli/src/modules/promotions.ee/promote-dependency-check.service.ts
 packages/nodes-base/nodes/N8n/n8n-api-coverage.json
   s_4a494bfdece475::t_e55aa5339f1a51 329-331
 packages/cli/src/modules/promotions.ee/promotions.service.ts
-  s_4a494bfdece475::t_720cf0603bb8af 420-423,425-427
+  s_4a494bfdece475::t_720cf0603bb8af 420-423,420-428,425-427
   s_4a494bfdece475::t_cb995697613a3c 21
   s_4a494bfdece475::t_078c44f422c43a 429-430
   s_4a494bfdece475::t_7fd217d9eb13ad 1511
@@ -31,7 +31,7 @@ packages/cli/src/modules/promotions.ee/promotions.service.ts
   s_4a494bfdece475::t_cb736b8c599fbc 47,940-944,1024,1117,1123,1144-1147,1163,1196-1201,1210,1215,1218-1229,1236-1237,1250-1251,1259,1285-1286,1308-1309,1311,1314-1318,1321-1331,1336,1357-1358,1472-1481,1483-1495,1498,1501,2032-2037,2070,2085
   s_4a494bfdece475::t_8c7d71d5d2126a 75
 packages/cli/src/modules/promotions.ee/promote-preview.service.ts
-  s_4a494bfdece475::t_720cf0603bb8af 1,15,25,42,131-136,137,148-149,160-161,163,181
+  s_4a494bfdece475::t_720cf0603bb8af 1,15,25,42,131-136,137,148-149,160-161,160-165,163,181
   s_4a494bfdece475::t_8ccc8ccc9d9394 182-183
   s_4a494bfdece475::t_c0e4282a6843aa 166-180
 packages/cli/src/modules/promotions.ee/__tests__/promote-dependency-check.test.ts
@@ -47,11 +47,12 @@ packages/cli/src/modules/promotions.ee/package-references.ts
   s_4a494bfdece475::t_71e8d6153edda3 132
   s_3327c391716409::t_72dc542516d439 37-38,120-122
 packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
-  s_4a494bfdece475::t_cb995697613a3c 27,586-592,594-605
+  s_4a494bfdece475::t_cb995697613a3c 27,586-592,594-605,594-606
   s_4a494bfdece475::t_65b79a8d710da1 607-608
   s_4a494bfdece475::t_ca16ee1d54788c 683
   s_4a494bfdece475::t_495ffd63907edd 649,862
   s_4a494bfdece475::t_bc9fff25cfa6ea 739
+  s_4a494bfdece475::t_7ab8d20f365285 593
 packages/cli/src/modules/promotions.ee/promote-dependency-check.ts
   s_4a494bfdece475::t_9eabcb144480aa 1-9,14-15,17-23,25-38,39-47,53-55,58-59,76,79-81,83-84,86,88-92,95-97,99-102,104-105,107,117,119-120,122-123,125-126,129-130,134,136,147-148,150,152-153,173,206,225-227,229-234,236-244,245-250
   s_4a494bfdece475::t_8d8b52bc3887aa 143-145,220,224
@@ -64,7 +65,7 @@ packages/cli/src/modules/promotions.ee/promotion-preview.ts
   s_4a494bfdece475::t_720cf0603bb8af 3,5,8,606-607,609-619
   s_4a494bfdece475::t_f071853da3ba78 582
 packages/cli/src/modules/promotions.ee/__tests__/promote-dependency-check.integration.test.ts
-  s_4a494bfdece475::t_498aec99e34c37 2-15,17-56,57-124,138,140,146-148,161-212,224-226,230-240,245-276,282-283,288,290-293,295-299,445-446,448-449,450,452,454-456,459,461,471-476,478,480,482-484,496-510,512-541,543-576,578-586,612-613,615-632,634-643,644-649,650-656,657-660,677-682,685,687-700,702,704,738,739,740,781-783,785-796,806,808-815,816-819,837-838,839-840,842-861
+  s_4a494bfdece475::t_498aec99e34c37 2-15,17-56,57-124,138,140,146-148,161-212,224-226,230-240,245-276,282-283,288,290-293,295-299,445-446,448-449,450,452,454-456,459,461,471-476,478,480,482-484,496-510,512-541,543-576,578-586,612-613,615-632,634-643,644-649,650-656,657-660,677-682,685,687-700,702,704,738,739,740,781-783,785-796,806,808-815,816-819,837-838,837-840,839-840,842-861
   s_4a494bfdece475::t_ab333c51349bd6 395
   s_4a494bfdece475::t_6f2f85fd8f01a0 1,16,125-137,139,141-145,149-160,213-220,227-229,241-244,277-281,284-287,289,294,300-311,315-318,322-394,396-444,447,451,453,457-458,460,462-470,477,479,481,485-495,511,542,577,587-611,614,633,661-676,683-684,686,701,703,705-737,741-780,784,797-805,807,820-836
   s_4a494bfdece475::t_9b311f8e03a142 222
@@ -75,6 +76,7 @@ packages/cli/src/modules/promotions.ee/__tests__/promotion-preview.revision.test
   s_4a494bfdece475::t_e49f2365752db2 89-90
 packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromoteCheck.generated.yml
   s_4a494bfdece475::t_4c4a90803d926a 1-7,9-54
+  s_4a494bfdece475::t_17da372c815df5 8
 packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionChanges.generated.yml
   s_4a494bfdece475::t_b58146b6cf8cb8 184-193
   s_4a494bfdece475::t_677574cc4431b3 8
