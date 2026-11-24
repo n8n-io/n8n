@@ -541,7 +541,7 @@ describe('StepSettledHandler', () => {
 			error: ExecutionNotFoundError,
 		},
 		{
-			reason: 'the step belongs to another execution',
+			reason: 'the execution has no row and the step belongs to another execution',
 			step: { executionId: 'exec-other' },
 			stepOverrides: {},
 			executionOverrides: {

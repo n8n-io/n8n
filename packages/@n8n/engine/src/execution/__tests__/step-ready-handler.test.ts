@@ -845,7 +845,7 @@ describe('StepReadyHandler', () => {
 	it.each([
 		{ reason: 'the missing execution is another one', step: {}, missingExecutionId: 'exec-2' },
 		{
-			reason: 'the claimed step belongs to another execution',
+			reason: 'the execution has no row and the claimed step belongs to another execution',
 			step: { executionId: 'exec-other' },
 			missingExecutionId: 'exec-1',
 		},
