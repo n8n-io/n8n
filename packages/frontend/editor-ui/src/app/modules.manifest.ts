@@ -13,6 +13,7 @@ import { ContextModule } from '@/features/settings/context/module.descriptor';
 import { LogStreamingModule } from '@/features/integrations/logStreaming.ee/module.descriptor';
 import { TypeAvailabilityPoliciesModule } from '@n8n/frontend-module-type-availability-policies';
 import { AppsModule } from '@n8n/frontend-module-apps';
+import { EngineV2Module } from '@n8n/frontend-module-engine-v2';
 import { HtmlDisplayModeModule } from '@n8n/frontend-module-html-display-mode';
 
 /**
@@ -46,5 +47,6 @@ export const modules: FrontendModuleDescription[] = [
 	TypeAvailabilityPoliciesModule,
 	LogStreamingModule,
 	AppsModule,
+	EngineV2Module,
 	HtmlDisplayModeModule,
 ];

@@ -7,13 +7,15 @@
  * same calls as `InstanceAiConversation`, so the panel treats both runtimes
  * the same.
  */
-import type {
-	AgentJsonConfig,
-	InstanceAiAgentAttachment,
-	InstanceAiAttachment,
-	InstanceAiHandoffContext,
-	InstanceAiPrefillPayload,
+import {
+	EXTENDED_PROMPT_MAX_LENGTH,
+	type AgentJsonConfig,
+	type InstanceAiAgentAttachment,
+	type InstanceAiAttachment,
+	type InstanceAiHandoffContext,
+	type InstanceAiPrefillPayload,
 } from '@n8n/api-types';
+import { N8nChatRating } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, provide, ref, useTemplateRef, watch, type Ref } from 'vue';
@@ -36,6 +38,7 @@ import {
 	useAssistantPreferenceCards,
 } from '../assistantAgent/assistantPreferenceCards';
 import { assistantSharedFilesExtension } from '../assistantAgent/assistantSharedFiles';
+import { useAssistantAgentFeedback } from '../assistantAgent/useAssistantAgentFeedback';
 import {
 	useAssistantAgentMessageTelemetry,
 	type AssistantAgentSendingMessage,
@@ -170,6 +173,11 @@ const handoffChip = computed(() => {
 });
 
 const panel = useTemplateRef<InstanceType<typeof AgentChatPanel>>('panel');
+
+const feedback = useAssistantAgentFeedback({
+	threadId: props.threadId,
+	messages: () => panel.value?.messages ?? [],
+});
 
 const turnTelemetry = useAssistantAgentTurnTelemetry({
 	threadId: props.threadId,
@@ -306,6 +314,7 @@ defineExpose({
 		:visible="props.visible"
 		autofocus
 		:composer-height="props.composerHeight"
+		:max-length="EXTENDED_PROMPT_MAX_LENGTH"
 		data-test-id="instance-ai-embed-assistant-agent-thread"
 		@content-change="emit('content-change', $event)"
 		@session-created="onSessionCreated"
@@ -319,6 +328,13 @@ defineExpose({
 			<div :class="$style.emptyState">
 				<slot name="empty" />
 			</div>
+		</template>
+		<template #message-actions="{ executionId }">
+			<N8nChatRating
+				v-if="feedback.isRateable(executionId)"
+				:rating="feedback.ratingOf(executionId)"
+				@rate="feedback.rate(executionId, $event)"
+			/>
 		</template>
 		<template v-if="handoffChip" #composer-attachments="{ chips, removeChip }">
 			<InstanceAiResourceChip

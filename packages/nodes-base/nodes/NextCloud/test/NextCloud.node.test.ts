@@ -56,6 +56,18 @@ const webDavFolderListResponse = `<?xml version="1.0"?>
   </d:response>
 </d:multistatus>`;
 
+const webDavEncodedFolderListResponse = `<?xml version="1.0"?>
+<d:multistatus xmlns:d="DAV:" xmlns:oc="http://owncloud.org/ns">
+  <d:response>
+    <d:href>/remote.php/webdav/My%20Folder/</d:href>
+    <d:propstat><d:prop><d:getlastmodified>Mon, 01 Jan 2024</d:getlastmodified><d:resourcetype><d:collection /></d:resourcetype><d:getetag>"folder-etag"</d:getetag></d:prop></d:propstat>
+  </d:response>
+  <d:response>
+    <d:href>/remote.php/webdav/My%20Folder/a%20b%23c%3f%25d%c3%a9.txt</d:href>
+    <d:propstat><d:prop><d:getlastmodified>Tue, 02 Jan 2024</d:getlastmodified><d:getcontentlength>1024</d:getcontentlength><d:getcontenttype>text/plain</d:getcontenttype><d:resourcetype></d:resourcetype><d:getetag>"file-etag"</d:getetag></d:prop></d:propstat>
+  </d:response>
+</d:multistatus>`;
+
 const webDavMissingFileIdResponse = `<?xml version="1.0"?>
 <d:multistatus xmlns:d="DAV:" xmlns:oc="http://owncloud.org/ns">
   <d:response>
@@ -83,6 +95,7 @@ interface BuildExecuteFunctionsOptions {
 	inputData?: INodeExecutionData[];
 	authentication?: 'accessToken' | 'oAuth2';
 	continueOnFail?: boolean;
+	typeVersion?: number;
 }
 
 const nextCloudNode = new NextCloud();
@@ -92,6 +105,7 @@ function buildExecuteFunctions({
 	inputData = [{ json: {} }],
 	authentication = 'accessToken',
 	continueOnFail = false,
+	typeVersion = 1,
 }: BuildExecuteFunctionsOptions) {
 	const requestWithAuthentication = vi.fn();
 	const getCredentials = vi.fn(async () => ({ webDavUrl }));
@@ -120,7 +134,7 @@ function buildExecuteFunctions({
 					id: 'nextcloud-node',
 					name: 'Nextcloud',
 					type: 'n8n-nodes-base.nextCloud',
-					typeVersion: 1,
+					typeVersion,
 					position: [0, 0],
 					parameters: {},
 				}) as INode,
@@ -432,6 +446,45 @@ describe('NextCloud Node', () => {
 					},
 				],
 			]);
+		});
+
+		it('keeps the encoded folder list path on version 1', async () => {
+			const { executeFunctions, requestWithAuthentication } = buildExecuteFunctions({
+				parameters: { resource: 'folder', operation: 'list', path: '/My Folder' },
+			});
+			requestWithAuthentication.mockResolvedValue(webDavEncodedFolderListResponse);
+
+			const [[listedFile]] = await executeNode(executeFunctions);
+
+			expect(listedFile.json.path).toBe('My%20Folder/a%20b%23c%3f%25d%c3%a9.txt');
+		});
+
+		it('copies a listed file by the path that the folder list returns', async () => {
+			const list = buildExecuteFunctions({
+				parameters: { resource: 'folder', operation: 'list', path: '/My Folder' },
+				typeVersion: 1.1,
+			});
+			list.requestWithAuthentication.mockResolvedValue(webDavEncodedFolderListResponse);
+
+			const [[listedFile]] = await executeNode(list.executeFunctions);
+
+			expect(listedFile.json.path).toBe('My Folder/a b#c?%dé.txt');
+
+			const copy = buildExecuteFunctions({
+				parameters: {
+					resource: 'file',
+					operation: 'copy',
+					path: listedFile.json.path as string,
+					toPath: '/archive/a b.txt',
+				},
+			});
+			copy.requestWithAuthentication.mockResolvedValue({ status: 'copied' });
+
+			await executeNode(copy.executeFunctions);
+
+			const { uri } = requestOptions(copy.requestWithAuthentication);
+			expect(uri).toBe(webDavUri('My%20Folder/a%20b%23c%3F%25d%C3%A9.txt'));
+			expect(uri).not.toContain('%2520');
 		});
 
 		it('copies a folder', async () => {

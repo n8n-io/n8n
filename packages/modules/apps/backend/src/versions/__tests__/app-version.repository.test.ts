@@ -137,6 +137,7 @@ describe('AppVersionRepository build state', () => {
 			buildStatus: 'succeeded',
 			buildStatusUpdatedAt: statusAt,
 			bindings: [],
+			isScaffold: true,
 		} as unknown as AppVersion;
 		const bindings = [{ key: 'submit', kind: 'workflow' as const, workflowId: 'w1' }];
 
@@ -152,6 +153,7 @@ describe('AppVersionRepository build state', () => {
 			buildAttempts: 1,
 			buildStatus: 'succeeded',
 			buildStatusUpdatedAt: statusAt,
+			isScaffold: true,
 		});
 	});
 

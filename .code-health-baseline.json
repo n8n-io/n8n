@@ -1872,6 +1872,14 @@
 				"message": "packages/frontend/editor-ui turns 'typescript/restrict-template-expressions' down to 'warn' for the whole package.",
 				"hash": "6c97c51e7004"
 			}
+		],
+		".github/workflows/ci-owners-review-recommendations.yml": [
+			{
+				"rule": "workflow-pr-target-safety",
+				"line": 8,
+				"message": ".github/workflows/ci-owners-review-recommendations.yml uses pull_request_target. Prefer pull_request — pull_request_target runs in the base-repo context with secrets exposed, which is unsafe when combined with PR-author-controlled code.",
+				"hash": "d8f14a75499b"
+			}
 		]
 	}
 }

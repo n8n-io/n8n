@@ -44,6 +44,7 @@ describe('BinaryDataAccessService', () => {
 				});
 				expect(executionRepository.existsForAccessibleWorkflows).toHaveBeenCalledWith('1', ['wf1']);
 				expect(binaryDataRepository.findSourceByFileId).not.toHaveBeenCalled();
+				expect(dataPlane.getExecution).not.toHaveBeenCalled();
 			});
 		});
 
@@ -114,12 +115,14 @@ describe('BinaryDataAccessService', () => {
 
 				expect(await service.hasReadAccess(user, tempId)).toBe(true);
 				expect(executionRepository.existsForAccessibleWorkflows).not.toHaveBeenCalled();
+				expect(dataPlane.getExecution).not.toHaveBeenCalled();
 			});
 
 			test('denies when the user cannot read the workflow in the path', async () => {
 				workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['wf2']);
 
 				expect(await service.hasReadAccess(user, tempId)).toBe(false);
+				expect(dataPlane.getExecution).not.toHaveBeenCalled();
 			});
 
 			test('denies a database row, which names no workflow to fall back on', async () => {
@@ -134,8 +137,8 @@ describe('BinaryDataAccessService', () => {
 		});
 
 		// An engine v2 execution has no row in the execution table, and its uuid
-		// would fail the numeric lookup. The path, or the data plane, names the
-		// workflow instead.
+		// would fail the numeric lookup. The data plane confirms the execution and
+		// names its workflow instead.
 		describe('for a binary of an engine v2 execution', () => {
 			beforeEach(() => {
 				executionRepository.existsForAccessibleWorkflows.mockRejectedValue(
@@ -148,20 +151,52 @@ describe('BinaryDataAccessService', () => {
 					`${mode}:workflows/wf1/executions/${v2ExecutionId}/binary_data/${uuid}`;
 
 				test.each(['filesystem', 'filesystem-v2', 's3', 'azure'])(
-					'grants access from the workflow in the path for mode %s, without an execution lookup',
+					'grants access for mode %s when the data plane has the execution of the workflow in the path',
 					async (mode) => {
+						dataPlane.getExecution.mockResolvedValue(
+							mock<ExecutionSnapshot>({ workflowId: 'wf1' }),
+						);
 						workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['wf1']);
 
 						expect(await service.hasReadAccess(user, v2Id(mode))).toBe(true);
+						expect(dataPlane.getExecution).toHaveBeenCalledTimes(1);
+						expect(dataPlane.getExecution).toHaveBeenCalledWith(v2ExecutionId);
+						expect(workflowSharingService.getSharedWorkflowIds).toHaveBeenCalledWith(user, {
+							scopes: ['execution:read'],
+						});
 						expect(executionRepository.existsForAccessibleWorkflows).not.toHaveBeenCalled();
-						expect(dataPlane.getExecution).not.toHaveBeenCalled();
 					},
 				);
 
-				test('denies when the user cannot read the workflow in the path', async () => {
+				test('denies when the user cannot read the workflow of the execution', async () => {
+					dataPlane.getExecution.mockResolvedValue(mock<ExecutionSnapshot>({ workflowId: 'wf1' }));
 					workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['wf2']);
 
 					expect(await service.hasReadAccess(user, v2Id('filesystem-v2'))).toBe(false);
+				});
+
+				test('denies when the data plane knows no such execution', async () => {
+					dataPlane.getExecution.mockResolvedValue(undefined);
+					workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['wf1']);
+
+					expect(await service.hasReadAccess(user, v2Id('s3'))).toBe(false);
+					expect(workflowSharingService.getSharedWorkflowIds).not.toHaveBeenCalled();
+				});
+
+				test('denies when the execution belongs to a different workflow than the path names', async () => {
+					dataPlane.getExecution.mockResolvedValue(mock<ExecutionSnapshot>({ workflowId: 'wf2' }));
+					workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['wf1', 'wf2']);
+
+					expect(await service.hasReadAccess(user, v2Id('s3'))).toBe(false);
+				});
+
+				test('fails instead of granting access when the data plane does not answer', async () => {
+					dataPlane.getExecution.mockRejectedValue(new Error('engine unreachable'));
+
+					await expect(service.hasReadAccess(user, v2Id('azure'))).rejects.toThrow(
+						'engine unreachable',
+					);
+					expect(workflowSharingService.getSharedWorkflowIds).not.toHaveBeenCalled();
 				});
 			});
 
@@ -196,7 +231,7 @@ describe('BinaryDataAccessService', () => {
 					expect(workflowSharingService.getSharedWorkflowIds).not.toHaveBeenCalled();
 				});
 
-				test('propagates a data plane error, so the controller answers with an error', async () => {
+				test('fails instead of granting access when the data plane does not answer', async () => {
 					dataPlane.getExecution.mockRejectedValue(new Error('engine unreachable'));
 
 					await expect(service.hasReadAccess(user, `database:${uuid}`)).rejects.toThrow(

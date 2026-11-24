@@ -1,4 +1,5 @@
 import {
+	AssistantAgentFeedbackRequestDto,
 	AssistantAgentTargetRequestDto,
 	AssistantPreferenceCardEditRequestDto,
 	AssistantPreferenceCardUndoRequestDto,
@@ -14,6 +15,7 @@ import { AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, GlobalScope, Param, Post, Put, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
 
+import { AssistantAgentFeedbackService } from './assistant-agent-feedback.service';
 import { AssistantAgentTargetsService } from './assistant-agent-targets.service';
 import { AssistantPreferenceCardsService } from './assistant-preference-cards.service';
 import { AssistantThreadCreditsService } from './assistant-thread-credits.service';
@@ -36,6 +38,7 @@ export class AssistantAgentController {
 		private readonly threadCredits: AssistantThreadCreditsService,
 		private readonly agentTargets: AssistantAgentTargetsService,
 		private readonly preferenceCards: AssistantPreferenceCardsService,
+		private readonly feedback: AssistantAgentFeedbackService,
 	) {}
 
 	@Get('/threads/:threadId/credits')
@@ -152,5 +155,18 @@ export class AssistantAgentController {
 			payload,
 			req.headers?.['push-ref'],
 		);
+	}
+
+	/** Rate the answer of a turn. The rating goes to the LangSmith trace of the turn. */
+	@Post('/threads/:threadId/feedback')
+	@GlobalScope('instanceAi:message')
+	async submitFeedback(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('threadId') threadId: string,
+		@Body payload: AssistantAgentFeedbackRequestDto,
+	): Promise<{ ok: true }> {
+		await this.feedback.submit(req.user, threadId, payload);
+		return { ok: true };
 	}
 }

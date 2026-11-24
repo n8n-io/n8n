@@ -246,14 +246,23 @@ export function rebuildInteractiveFromHistory(
 	return undefined;
 }
 
+function stoppedMessageId(executionId: string): string {
+	return `${executionId}:stopped`;
+}
+
 export function createStoppedMessage(executionId: string): ChatMessage {
 	return {
-		id: `${executionId}:stopped`,
+		id: stoppedMessageId(executionId),
 		role: CHAT_MESSAGE_ROLE.ASSISTANT,
 		content: useI18n().baseText('agentSessions.stopped'),
 		status: CHAT_MESSAGE_STATUS.SUCCESS,
 		executionId,
 	};
+}
+
+/** Whether the message is the notice that `createStoppedMessage` adds after a stopped turn. */
+export function isStoppedMessage(message: Pick<ChatMessage, 'id' | 'executionId'>): boolean {
+	return message.executionId !== undefined && message.id === stoppedMessageId(message.executionId);
 }
 
 /**

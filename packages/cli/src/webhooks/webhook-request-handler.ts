@@ -219,7 +219,10 @@ class WebhookRequestHandler {
 			const { allowedOrigins } = options ?? {};
 
 			if (allowedOrigins && allowedOrigins !== '*' && allowedOrigins !== req.headers.origin) {
-				const originsList = allowedOrigins.split(',');
+				const originsList = allowedOrigins
+					.split(',')
+					.map((origin) => origin.trim())
+					.filter((origin) => origin.length > 0);
 				const defaultOrigin = originsList[0];
 
 				if (originsList.length === 1) {
@@ -228,7 +231,7 @@ class WebhookRequestHandler {
 
 				if (originsList.includes(req.headers.origin as string)) {
 					res.header('Access-Control-Allow-Origin', req.headers.origin);
-				} else {
+				} else if (defaultOrigin) {
 					res.header('Access-Control-Allow-Origin', defaultOrigin);
 				}
 			} else {
