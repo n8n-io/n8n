@@ -110,12 +110,6 @@ describe('SecuritySettings', () => {
 	});
 
 	describe('node and credential policies', () => {
-		beforeEach(() => {
-			checkEnvFeatureFlag.mockImplementation(
-				(flag: string) => flag === 'NODE_AND_CREDENTIAL_POLICIES_SETTINGS',
-			);
-		});
-
 		it('shows the row with a Preview badge to a user who can manage the policies', async () => {
 			policyAccess.canManage = true;
 			const { findByTestId, getByTestId } = renderView();
@@ -138,16 +132,6 @@ describe('SecuritySettings', () => {
 		});
 
 		it('hides the row from a user who cannot manage the policies', async () => {
-			const { queryByTestId } = renderView();
-
-			await waitFor(() => expect(getSecuritySettings).toHaveBeenCalled());
-
-			expect(queryByTestId('security-type-policies-section')).not.toBeInTheDocument();
-		});
-
-		it('hides the row while the settings flag is off', async () => {
-			policyAccess.canManage = true;
-			checkEnvFeatureFlag.mockReturnValue(false);
 			const { queryByTestId } = renderView();
 
 			await waitFor(() => expect(getSecuritySettings).toHaveBeenCalled());
@@ -228,7 +212,7 @@ describe('SecuritySettings', () => {
 		expect(
 			getByText('Require two-factor authentication for users who sign in with email and password.'),
 		).toBeInTheDocument();
-		expect(getByText('Manage reviews before publishing workflows.')).toBeInTheDocument();
+		expect(queryByText('Manage reviews before publishing workflows.')).not.toBeInTheDocument();
 		expect(
 			getByText(
 				'Allow users to request approval before publishing. An open review blocks publishing.',
@@ -1026,7 +1010,7 @@ describe('SecuritySettings', () => {
 				expect(getByTestId('security-workflow-reviews-toggle')).toBeInTheDocument();
 			});
 
-			expect(getByTestId('settings-enable-row-preview-badge')).toHaveTextContent('Preview');
+			expect(getByTestId('security-workflow-reviews-preview-badge')).toHaveTextContent('Preview');
 		});
 
 		it('should persist workflow reviews toggle changes', async () => {
@@ -1103,6 +1087,9 @@ describe('SecuritySettings', () => {
 					enabled: true,
 					alwaysRequired: true,
 				});
+				expect(showToast).toHaveBeenCalledWith(
+					expect.objectContaining({ type: 'success', title: 'Approval setting updated' }),
+				);
 			});
 		});
 
@@ -1171,6 +1158,11 @@ describe('SecuritySettings', () => {
 			await waitFor(() => {
 				expect(getByRole('dialog')).toBeInTheDocument();
 			});
+
+			expect(getByRole('dialog')).toHaveTextContent('Disable publish reviews');
+			expect(getByRole('dialog')).toHaveTextContent(
+				'Publish reviews will no longer be available on this instance. Existing project-level review settings will no longer apply.',
+			);
 
 			await userEvent.click(getByRole('button', { name: 'Confirm' }));
 

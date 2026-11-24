@@ -44,6 +44,7 @@ import {
 enableAutoUnmount(afterEach);
 
 type PanelVm = { sendMessageFromOutside: (message: string, files?: File[]) => void };
+type FocusVm = { focusOpenInteraction: () => void; isAwaitingUserApproval: boolean };
 const isMacOsMock = ref(false);
 const sessionFilesFlag = vi.hoisted(() => ({ value: true }));
 vi.mock('@/app/stores/posthog.store', () => ({
@@ -3105,6 +3106,7 @@ describe('AgentChatPanel', () => {
 			backgroundJobsMock.value = [
 				job,
 				{ ...job, id: 'job-2', kind: 'workflow', title: 'Forecast refresh' },
+				{ ...job, id: 'job-3', kind: 'approval', title: 'Publish forecast' },
 			];
 			const wrapper = mountPanel({ backgroundJobsActive: true, continueSessionId: 't1' });
 			expect(wrapper.find('[data-testid="agent-background-jobs-trace"]').exists()).toBe(false);
@@ -3112,6 +3114,7 @@ describe('AgentChatPanel', () => {
 			await trigger.trigger('click');
 			const workflow = wrapper.findAll('li')[1];
 			expect(workflow.text()).toBe('Workflow — Forecast refresh');
+			expect(wrapper.findAll('li')[2].text()).toBe('Approval for Publish forecast');
 			expect(workflow.get('[role="img"]').attributes('aria-label')).toBe('Waiting');
 			expect(workflow.findComponent({ name: 'N8nIcon' }).props()).toMatchObject({
 				icon: 'circle',
@@ -3957,6 +3960,52 @@ describe('AgentChatPanel', () => {
 			}
 		},
 	);
+
+	it('focuses the open approval card on request, and reports it as an approval', async () => {
+		const wrapper = mountPanel({}, document.body);
+		try {
+			messagesMock.value = [
+				{
+					...openInteractiveMessage(),
+					interactive: {
+						toolName: APPROVAL_TOOL_NAME,
+						toolCallId: 'tc-1',
+						runId: 'run-1',
+						input: { type: 'approval', toolName: 'send_message', args: {} },
+					},
+				},
+			];
+			await flushPromises();
+			if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+			const vm = wrapper.vm as unknown as FocusVm;
+
+			vm.focusOpenInteraction();
+
+			expect(vm.isAwaitingUserApproval).toBe(true);
+			expect(document.activeElement).toBe(
+				wrapper.get('[data-testid="agent-chat-approvals"] button').element,
+			);
+		} finally {
+			wrapper.unmount();
+		}
+	});
+
+	it('focuses the composer for an open question on request', async () => {
+		const wrapper = mountPanel({}, document.body);
+		try {
+			messagesMock.value = [openInteractiveMessage()];
+			await flushPromises();
+			focusInputMock.mockClear();
+			const vm = wrapper.vm as unknown as FocusVm;
+
+			vm.focusOpenInteraction();
+
+			expect(vm.isAwaitingUserApproval).toBe(false);
+			expect(focusInputMock).toHaveBeenCalled();
+		} finally {
+			wrapper.unmount();
+		}
+	});
 
 	it.each(['resolved', 'stale', 'previous turn'] as const)(
 		'keeps the composer available for a %s approval',

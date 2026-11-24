@@ -8,6 +8,7 @@ import {
 	AiPreferenceScopeFullError,
 	type AiPreferenceService,
 	type TelemetryTracker,
+	type UrlService,
 } from '@n8n/backend-services';
 
 /**
@@ -52,6 +53,10 @@ export function isExpectedAiPreferenceRefusal(error: unknown): error is Response
 }
 
 /** Whole seconds between the write and now, for the undo-rate reading. */
+export function preferencesSettingsUrl(urlService: UrlService): string {
+	return `${urlService.getInstanceBaseUrl()}/settings/context/preferences`;
+}
+
 export function secondsSinceSaved(preference: AiPreferenceDto, now = Date.now()): number {
 	return Math.max(0, Math.round((now - new Date(preference.createdAt).getTime()) / 1000));
 }

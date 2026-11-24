@@ -233,7 +233,75 @@ export function formatApprovalDetails(details: InstanceAiApprovalDetails): strin
 		}
 		case 'data-table-changes':
 			return formatDataTableChanges(details.changes, t, preview);
+		case 'publish-agent':
+			return formatPublishAgent(details, t);
 	}
+}
+
+type PublishAgentDetails = Extract<InstanceAiApprovalDetails, { action: 'publish-agent' }>;
+
+/**
+ * The go live confirmation: what goes live, then what might get sent for real, as the panel lists it.
+ * The list copy (`agents.testRun.mode.confirm.*`) is shared with the panel's go live confirmation on
+ * purpose, so both say the same thing. Change it in one place for both.
+ */
+function formatPublishAgent(details: PublishAgentDetails, t: Translate): string {
+	const lines = [
+		...(details.changedSinceAsked ? [t('instanceAi.approval.publishAgent.changedSinceAsked')] : []),
+		t(
+			details.selectedVersion
+				? 'instanceAi.approval.publishAgent.version'
+				: 'instanceAi.approval.publishAgent.draft',
+		),
+	];
+	if (details.liveAvailability === 'changed')
+		lines.push(t('instanceAi.approval.publishAgent.replacesLive'));
+
+	if (details.sendTargets.length === 0) {
+		lines.push(t('agents.testRun.mode.confirm.noList'));
+		return lines.join('\n\n');
+	}
+	const targets = details.sendTargets.map((target) => {
+		switch (target.kind) {
+			case 'channel':
+				return t('instanceAi.approval.publishAgent.target.channel', {
+					interpolate: { name: target.name },
+				});
+			case 'task':
+				return t('instanceAi.approval.publishAgent.target.task', {
+					interpolate: { name: target.name },
+				});
+			case 'mcp-server':
+				return t('instanceAi.approval.publishAgent.target.mcpServer', {
+					interpolate: { name: target.name },
+				});
+			case 'tools':
+				return t('instanceAi.approval.publishAgent.target.tools', {
+					adjustToNumber: target.count,
+					interpolate: { count: target.count },
+				});
+		}
+	});
+	if (details.moreSendTargets) {
+		// The overflow counts channels, tasks and servers, so it goes before the tool count.
+		const toolsLast = details.sendTargets.at(-1)?.kind === 'tools';
+		targets.splice(
+			toolsLast ? targets.length - 1 : targets.length,
+			0,
+			t('instanceAi.approval.publishAgent.target.more', {
+				interpolate: { count: details.moreSendTargets },
+			}),
+		);
+	}
+	lines.push(
+		[
+			t('agents.testRun.mode.confirm.listLabel'),
+			...targets.map((target) =>
+				t('instanceAi.approval.publishAgent.listItem', { interpolate: { item: target } }),
+			),
+		].join('\n'),
+	);
+	return lines.join('\n\n');
 }
 
 type Translate = ReturnType<typeof useI18n>['baseText'];
@@ -432,6 +500,8 @@ const approvalTitleKeys = new Map<string, BaseTextKey>(
 			'instanceAi.tools.skills.update.imperativeWithResource',
 			'instanceAi.tools.skills.delete.imperative',
 			'instanceAi.tools.skills.delete.imperativeWithResource',
+			'instanceAi.tools.skills.import-from-source.imperative',
+			'instanceAi.tools.skills.import-from-source.imperativeWithResource',
 			'instanceAi.tools.workspace.tag-workflow.imperative',
 			'instanceAi.tools.workspace.cleanup-test-executions.imperative',
 			'instanceAi.tools.workspace.create-folder.imperative',
@@ -462,6 +532,16 @@ export function formatApprovalTitle(params: {
 	const { args, resourceName, approvalDetails } = params;
 	if (approvalDetails?.action === 'data-table-changes') {
 		return formatDataTableChangesTitle(approvalDetails.changes);
+	}
+	if (approvalDetails?.action === 'publish-agent') {
+		return i18n.baseText(
+			`instanceAi.approval.publishAgent.title.${approvalDetails.liveAvailability}`,
+			{
+				interpolate: {
+					name: resourceName ?? i18n.baseText('instanceAi.approval.publishAgent.unnamed'),
+				},
+			},
+		);
 	}
 	const toolName = resolveBuilderToolName(params.toolName, args?.action);
 	// A former multi-action tool resolves to a single-action tool, which takes no action suffix.

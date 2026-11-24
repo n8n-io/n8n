@@ -60,6 +60,8 @@ type ReclaimedTombstone = DeletionTarget & { mode: WorkflowExecuteMode };
 export type CreateExecutionOptions = {
 	/** Who started the run. The execution row does not store it, so the ledger gets it here. */
 	source?: WorkflowExecutionSource;
+	/** The owner project of the workflow. The ledger looks it up when this is unset or empty. */
+	projectId?: string;
 	/** For rows that copy a run from elsewhere: that run is not a run of this instance. */
 	skipLedger?: true;
 };
@@ -179,6 +181,7 @@ export class ExecutionPersistence {
 								workflowName: workflowData.name,
 								mode: executionEntity.mode,
 								source: options.source,
+								projectId: options.projectId || undefined,
 								occurredAt: executionEntity.createdAt,
 							},
 							status: executionEntity.status,

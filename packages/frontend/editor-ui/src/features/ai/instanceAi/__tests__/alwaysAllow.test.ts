@@ -3,6 +3,11 @@ import { CHANGE_DATA_TABLES_TOOL_NAME, buildDataTablesSessionGrantKey } from '@n
 import { buildAlwaysAllowKeys } from '../alwaysAllow';
 
 describe('buildAlwaysAllowKeys', () => {
+	it('never offers Always allow for publishing an agent, which asks every time', () => {
+		expect(buildAlwaysAllowKeys('agent_builder_publish_agent', {})).toEqual([]);
+		expect(buildAlwaysAllowKeys('agent_builder_publish_agent', { versionId: 'v-1' })).toEqual([]);
+	});
+
 	describe('workflow runs', () => {
 		it('scopes a run to its workflow', () => {
 			expect(
@@ -122,6 +127,10 @@ describe('buildAlwaysAllowKeys', () => {
 
 	it('falls back to the tool and the action for other tools', () => {
 		expect(buildAlwaysAllowKeys('skills', { action: 'create' })).toEqual(['skills:create']);
+	});
+
+	it('does not offer a session grant for skill source imports', () => {
+		expect(buildAlwaysAllowKeys('skills', { action: 'import-from-source' })).toEqual([]);
 	});
 
 	it.each(['unarchive', 'publish', 'restore-version', 'update-version'])(

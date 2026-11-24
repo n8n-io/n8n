@@ -70,6 +70,7 @@ import type {
 	BuiltProviderTool,
 	BuiltTool,
 	BuiltTelemetry,
+	ToolCallInterceptor,
 	CheckpointStore,
 	ExecutionOptions,
 	FinishReason,
@@ -239,6 +240,8 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	private promptCachingConfig?: PromptCachingConfig;
 
 	private concurrencyValue?: number;
+
+	private toolCallInterceptorValue?: ToolCallInterceptor;
 
 	private telemetryBuilder?: Telemetry;
 
@@ -644,6 +647,15 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			throw new Error('toolCallConcurrency must be a positive integer or Infinity');
 		}
 		this.concurrencyValue = n;
+		return this;
+	}
+
+	/**
+	 * Run a function around every tool handler, including MCP tools and the
+	 * tools of inline sub-agents. A host uses it to guard or redirect tool calls.
+	 */
+	toolCallInterceptor(interceptor: ToolCallInterceptor): this {
+		this.toolCallInterceptorValue = interceptor;
 		return this;
 	}
 
@@ -1274,6 +1286,9 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			deferredToolGroups: this.deferredToolGroups,
 			deferredToolGroupDescriptions: this.deferredToolGroupDescriptions,
 			toolCallConcurrency: this.concurrencyValue,
+			...(this.toolCallInterceptorValue !== undefined
+				? { toolCallInterceptor: this.toolCallInterceptorValue }
+				: {}),
 			titleGeneration: memoryConfig?.titleGeneration,
 			telemetry: this.telemetryConfig ?? (await this.telemetryBuilder?.build()),
 			modelCost,
@@ -1436,6 +1451,10 @@ export class Agent implements BuiltAgent, AgentBuilder {
 				...(telemetry !== undefined ? { telemetry } : {}),
 				...(options.toolCallConcurrency !== undefined
 					? { toolCallConcurrency: options.toolCallConcurrency }
+					: {}),
+				// Children run under the parent's guard, like the model transport above.
+				...(this.toolCallInterceptorValue !== undefined
+					? { toolCallInterceptor: this.toolCallInterceptorValue }
 					: {}),
 			});
 
