@@ -1,9 +1,9 @@
-import { createDataSource } from '@n8n/engine';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import type { IPairedItemData, IRunData, ITaskData } from 'n8n-workflow';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
+	acceptanceRuntime,
 	branchyLoopWorkflow,
 	chainedLoopsV1Workflow,
 	chainedLoopsWorkflow,
@@ -23,21 +23,19 @@ import { toV1RunExecutionData } from '../v1-execution-read';
 
 describe('M1 acceptance (integration)', () => {
 	let container: StartedPostgreSqlContainer;
-	let dataSource: ReturnType<typeof createDataSource>;
+	const engine = acceptanceRuntime();
 
 	beforeAll(async () => {
 		container = await new PostgreSqlContainer('postgres:18-alpine').start();
-		dataSource = createDataSource(container.getConnectionUri());
-		await dataSource.initialize();
-		await dataSource.runMigrations();
+		await engine.start(container.getConnectionUri());
 	}, 120_000);
 
 	afterAll(async () => {
-		if (dataSource?.isInitialized) await dataSource.destroy();
+		await engine.stop();
 		if (container) await container.stop();
 	});
 
-	const runWorkflow = makeRunWorkflow(() => dataSource);
+	const runWorkflow = makeRunWorkflow(() => engine);
 
 	it('runs a single v1 node (Set) workflow to completion with correct rows', async () => {
 		const graph = setWorkflow([{ name: 'greeting', value: 'hello', type: 'string' }]);
@@ -654,6 +652,43 @@ describe('M1 acceptance (integration)', () => {
 	// TODO(CAT-2874): slot-shaped IO and branching land as a PR series (#35672
 	// first); If/Merge routing is asserted once input slots beyond 0 exist.
 	it.todo('routes items through an If node and consolidates with Merge');
+
+	it('runs a Merge with an empty first input on the items of its second input only', async () => {
+		const graph = converter.convert(
+			v1Workflow(
+				[
+					TRIGGER,
+					splitOutNode('split-out-1', 'SplitOut1', 'list'),
+					splitOutNode('split-out-2', 'SplitOut2', 'n'),
+					{
+						id: 'merge',
+						name: 'Merge',
+						type: 'n8n-nodes-base.merge',
+						typeVersion: 3,
+						parameters: {},
+					},
+				],
+				{
+					'When clicking Execute': mainTo('SplitOut1'),
+					SplitOut1: {
+						main: [
+							[
+								{ node: 'SplitOut2', type: 'main' as const, index: 0 },
+								{ node: 'Merge', type: 'main' as const, index: 1 },
+							],
+						],
+					},
+					SplitOut2: { main: [[{ node: 'Merge', type: 'main' as const, index: 0 }]] },
+				},
+			),
+		);
+
+		const { execution, byNode } = await runWorkflow(graph, [[{ json: { list: [0] } }]]);
+
+		expect(execution.status).toBe('completed');
+		expect(byNode('split-out-2')?.outputs).toEqual([null]);
+		expect(byNode('merge')?.outputs).toEqual([[expect.objectContaining({ json: { list: 0 } })]]);
+	});
 
 	it('executes a loop over a back-edge, one step per node per pass', async () => {
 		const graph = loopWorkflow(1);

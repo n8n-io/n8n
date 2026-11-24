@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { toDraftWorkflowDb } from '../instanceAi.workflowDraftCanvas';
+import { draftNodeKey, toDraftWorkflowDb, withDraftNodes } from '../instanceAi.workflowDraftCanvas';
 import type { WorkflowDraft } from '../instanceAi.workflowDrafts';
 
 function draft(overrides: Partial<WorkflowDraft['workflow']> = {}): WorkflowDraft {
@@ -119,5 +119,46 @@ describe('toDraftWorkflowDb', () => {
 		expect(workflow.connections).toEqual({
 			Start: { main: [[{ node: 'Set', type: 'main', index: 0 }]] },
 		});
+	});
+});
+
+describe('withDraftNodes', () => {
+	it('keeps the given nodes and the connections between them', () => {
+		const full = draft();
+
+		const partial = withDraftNodes(full, [full.workflow.nodes[0]]);
+
+		expect(partial.workflow.nodes.map((node) => node.name)).toEqual(['Start']);
+		expect(partial.workflow.connections).toEqual({ Start: { main: [[]] } });
+		expect(partial.revision).toBe(full.revision);
+	});
+
+	it('keeps the connections between the shown nodes', () => {
+		const full = draft();
+
+		const partial = withDraftNodes(full, full.workflow.nodes);
+
+		expect(partial.workflow.connections).toEqual({
+			Start: { main: [[{ node: 'Set', type: 'main', index: 0 }]] },
+		});
+	});
+
+	it('keeps only the shown nodes in groups and drops empty groups', () => {
+		const full = draft({
+			nodeGroups: [
+				{ id: 'g-1', name: 'Both', nodeIds: ['node-1', 'missing'] },
+				{ id: 'g-2', name: 'Hidden', nodeIds: ['missing'] },
+			],
+		});
+
+		const partial = withDraftNodes(full, [full.workflow.nodes[0]]);
+
+		expect(partial.workflow.nodeGroups).toEqual([{ id: 'g-1', name: 'Both', nodeIds: ['node-1'] }]);
+	});
+
+	it('keys a node by its name, which stays the same when a compile gives new ids', () => {
+		const { nodes } = draft().workflow;
+
+		expect(nodes.map(draftNodeKey)).toEqual(['Start', 'Set']);
 	});
 });

@@ -93,6 +93,16 @@ export class WorkflowReviewRequestsController {
 		);
 	}
 
+	@Post('/:workflowReviewRequestId/close')
+	@Licensed('feat:workflowReviews')
+	async close(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('workflowReviewRequestId') workflowReviewRequestId: string,
+	) {
+		return await this.workflowReviewRequestDecisionService.close(req.user, workflowReviewRequestId);
+	}
+
 	@Get('/:workflowReviewRequestId/activity')
 	@Licensed('feat:workflowReviews')
 	async listActivity(

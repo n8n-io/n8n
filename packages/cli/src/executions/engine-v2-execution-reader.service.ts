@@ -16,6 +16,7 @@ import type {
 	Workflow,
 } from 'n8n-workflow';
 import { UnexpectedError, UserError } from '@n8n/errors';
+import type { ExecutionLinks } from '@n8n/node-engine-compatibility';
 
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
 
@@ -236,7 +237,9 @@ export class EngineV2ExecutionReader {
 			: await access(snapshot.workflowId);
 		if (!canRead) return undefined;
 
-		if (includeData) return await this.fromSnapshot(snapshot);
+		if (includeData) {
+			return await this.fromSnapshot(snapshot);
+		}
 
 		// Checked in both modes, so a metadata read and a data read agree on
 		// whether the execution exists.
@@ -261,7 +264,12 @@ export class EngineV2ExecutionReader {
 		return this.toExecutionResponse(
 			snapshot,
 			workflow,
-			toV1RunExecutionData(snapshot.graph, snapshot.steps ?? [], workflow.pinData),
+			toV1RunExecutionData(
+				snapshot.graph,
+				snapshot.steps ?? [],
+				workflow.pinData,
+				toExecutionLinks(snapshot),
+			),
 		);
 	}
 
@@ -312,4 +320,19 @@ export function asWorkflowSnapshot(document: unknown): WorkflowRunDocument | und
 	if (!Array.isArray((document as { nodes?: unknown }).nodes)) return undefined;
 
 	return document as unknown as WorkflowRunDocument;
+}
+
+/** The links the editor offers, from what the snapshot reports. */
+function toExecutionLinks({
+	parent,
+	parentWorkflowId,
+	subExecutions = [],
+}: ExecutionSnapshot): ExecutionLinks {
+	return {
+		parent:
+			parent && parentWorkflowId
+				? { executionId: parent.executionId, workflowId: parentWorkflowId }
+				: undefined,
+		subExecutions,
+	};
 }

@@ -26,6 +26,7 @@ import {
 } from './composables/useOpenArtifactTabs';
 import type { ArtifactThread } from './artifactThread';
 import type { ArtifactTurn } from './artifactTurns';
+import type { BuildTarget } from './composables/useWorkflowStaging';
 import {
 	draftTabId,
 	getDraftWorkflowId,
@@ -43,6 +44,8 @@ export interface ArtifactTab {
 	pending?: boolean;
 	/** The AI is actively mutating this artifact right now. */
 	building?: boolean;
+	/** The run that builds this artifact waits on the user. Only a draft tab sets it. */
+	waiting?: boolean;
 	/** An unsaved workflow from the builder's source file. Never stored with the thread's tabs. */
 	draft?: boolean;
 }
@@ -87,8 +90,14 @@ interface UseCanvasPreviewOptions {
 	cloudBrowserTasks?: () => CloudBrowserTask[];
 	/** Unsaved workflows the builder wrote, by source file. */
 	workflowDrafts?: () => WorkflowDraftsByFilePath;
+	/** The canvas of a new workflow before its first draft, while the agent researches. */
+	stagingDraft?: () => WorkflowDraft | undefined;
+	/** The saved workflow that a running build works on. */
+	buildTarget?: () => BuildTarget | undefined;
 	/** Drops the drafts that a saved workflow replaced. */
 	dismissWorkflowDrafts?: (workflowId: string) => void;
+	/** The active run waits on the user, for an answer or an approval. */
+	isAwaitingUser?: () => boolean;
 }
 
 interface LinkedAgentTarget {
@@ -111,13 +120,14 @@ function fileName(filePath: string): string {
 	return filePath.split('/').pop() ?? filePath;
 }
 
-function toDraftTab(draft: WorkflowDraft, building: boolean): ArtifactTab {
+function toDraftTab(draft: WorkflowDraft, building: boolean, waiting: boolean): ArtifactTab {
 	return {
 		id: draftTabId(draft.filePath),
 		type: 'workflow',
 		name: draft.workflow.name || fileName(draft.filePath),
 		icon: ARTIFACT_TAB_ICONS.workflow,
 		building,
+		waiting: building && waiting,
 		draft: true,
 	};
 }
@@ -129,9 +139,25 @@ export function useCanvasPreview({
 	tabsStorage,
 	cloudBrowserTasks: getCloudBrowserTasks,
 	workflowDrafts = () => ({}),
+	stagingDraft = () => undefined,
+	buildTarget = () => undefined,
 	dismissWorkflowDrafts,
+	isAwaitingUser = () => false,
 }: UseCanvasPreviewOptions) {
 	const i18n = useI18n();
+	/**
+	 * A staging canvas that ended because the run read a saved workflow. It stays
+	 * on screen until the tab of that workflow arrives with the result of the read.
+	 */
+	const heldStaging = ref<WorkflowDraft>();
+
+	/** The drafts, with the staging canvas as one more draft. */
+	function draftsWithStaging(): WorkflowDraft[] {
+		const staging = stagingDraft() ?? heldStaging.value;
+		const drafts = Object.values(workflowDrafts());
+		return staging ? [...drafts, staging] : drafts;
+	}
+
 	const recentWorkflowsStore = useRecentWorkflowsStore();
 	const skillsStore = useSkillsStore();
 
@@ -190,9 +216,9 @@ export function useCanvasPreview({
 		}
 
 		// A new workflow shows as a draft tab until its saved workflow joins the registry.
-		for (const draft of Object.values(workflowDrafts())) {
+		for (const draft of draftsWithStaging()) {
 			if (draft.savedWorkflowId || draft.workflowId) continue;
-			result.push(toDraftTab(draft, isAgentWorking.value));
+			result.push(toDraftTab(draft, isAgentWorking.value, isAwaitingUser()));
 		}
 
 		if (linkedAgent && !result.some((tab) => tab.id === linkedAgent.agentId)) {
@@ -299,7 +325,7 @@ export function useCanvasPreview({
 		const tabId = activeTabId.value;
 		if (tabId === undefined) return undefined;
 		let latest: WorkflowDraft | undefined;
-		for (const draft of Object.values(workflowDrafts())) {
+		for (const draft of draftsWithStaging()) {
 			if (draftTargetTabId(draft) !== tabId || isAbandonedEdit(draft)) continue;
 			if (!latest || draft.revision > latest.revision) latest = draft;
 		}
@@ -612,8 +638,12 @@ export function useCanvasPreview({
 	// Only acts when there ARE tabs but the selected one is missing (i.e. it was removed).
 	// Skips when tabs are empty to avoid a race where the registry hasn't been populated yet.
 
+	/** The staging canvas the staging watcher last saw. It picks the next tab when staging ends. */
+	let lastStaging: WorkflowDraft | undefined;
+
 	watch(openTabs, (currentTabs) => {
 		if (activeTabId.value === undefined || currentTabs.length === 0) return;
+		if (lastStaging && activeTabId.value === draftTabId(lastStaging.filePath)) return;
 		const stillExists = currentTabs.some((t) => t.id === activeTabId.value);
 		if (!stillExists) {
 			activeTabId.value = currentTabs[0].id;
@@ -837,6 +867,82 @@ export function useCanvasPreview({
 			}
 		},
 		{ flush: 'sync' },
+	);
+
+	// --- Build on a saved workflow: show its tab as soon as the build names it ---
+
+	/** The workflow whose tab the build opens. An earlier turn is only a guess, so it does not count. */
+	const openedTargetId = computed(() => {
+		const target = buildTarget();
+		return target && target.source !== 'thread' ? target.workflowId : undefined;
+	});
+
+	/** Leave the staging tab for the next tab, or close the preview when there is none. */
+	function leaveStagingTab(stagingTabId: string, nextTabId: string | undefined, keepPick: boolean) {
+		if (userTabId.value === stagingTabId) userTabId.value = keepPick ? nextTabId : undefined;
+		if (activeTabId.value !== stagingTabId) return;
+		activeTabId.value = nextTabId;
+		if (nextTabId === undefined) setPreviewOpen(false);
+	}
+
+	function releaseHeldStaging(nextTabId: string | undefined) {
+		const held = heldStaging.value;
+		if (!held) return;
+		heldStaging.value = undefined;
+		leaveStagingTab(draftTabId(held.filePath), nextTabId, nextTabId !== undefined);
+	}
+
+	// Registered before the staging watcher, so that a staging canvas that ends
+	// with the tab of its workflow already there goes straight to that tab.
+	watch(
+		() => {
+			const id = openedTargetId.value;
+			return id && tabs.hasTab(id) ? id : undefined;
+		},
+		(tabId) => {
+			if (!tabId) return;
+			releaseHeldStaging(tabId);
+			if (!thread.isHydratingThread) showAgentArtifact(tabId);
+		},
+	);
+
+	watch(openedTargetId, (id) => {
+		if (!id) releaseHeldStaging(openTabs.value.at(-1)?.id);
+	});
+
+	// --- Staging: show the canvas of a new workflow, hand it to the run's first draft ---
+
+	// Not sync: the staging canvas ends in the same update that adds the run's draft.
+	watch(
+		() => stagingDraft()?.filePath,
+		(filePath) => {
+			const previous = lastStaging;
+			lastStaging = stagingDraft();
+			if (filePath && !previous) {
+				if (!thread.isHydratingThread) showAgentArtifact(draftTabId(filePath));
+				return;
+			}
+			if (!previous || filePath) return;
+
+			const stagingTabId = draftTabId(previous.filePath);
+			const runDraft = Object.values(workflowDrafts()).find(
+				(draft) => draft.runId === previous.runId && !draft.savedWorkflowId && !draft.workflowId,
+			);
+			if (runDraft) {
+				leaveStagingTab(stagingTabId, draftTabId(runDraft.filePath), true);
+				return;
+			}
+			const targetId = openedTargetId.value;
+			if (targetId && activeTabId.value === stagingTabId) {
+				// The run reads a saved workflow. Its tab comes with the result of the read.
+				if (tabs.hasTab(targetId)) leaveStagingTab(stagingTabId, targetId, true);
+				else heldStaging.value = previous;
+				return;
+			}
+			leaveStagingTab(stagingTabId, openTabs.value.at(-1)?.id, false);
+		},
+		// A view that opens during the run shows the staging canvas that is there.
+		{ immediate: true },
 	);
 
 	// --- Signal persisted builder config mutations onto the agents event bus ---
