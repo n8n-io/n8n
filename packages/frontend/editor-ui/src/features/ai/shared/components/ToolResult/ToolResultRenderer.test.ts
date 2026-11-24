@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createComponentRenderer } from '@/__tests__/render';
-import ToolResultRenderer from '../components/ToolResultRenderer.vue';
+import ToolResultRenderer from './ToolResultRenderer.vue';
 
 const renderComponent = createComponentRenderer(ToolResultRenderer);
 

@@ -23,8 +23,8 @@ import { getToolIcon, useToolLabel } from '../toolLabels';
 import AiReasoningBlock from '../../shared/components/AiReasoningBlock.vue';
 import ButtonLike from './ButtonLike.vue';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
-import ToolResultJson from './ToolResultJson.vue';
-import ToolResultRenderer from './ToolResultRenderer.vue';
+import ToolResultJson from '@/features/ai/shared/components/ToolResult/ToolResultJson.vue';
+import ToolResultRenderer from '@/features/ai/shared/components/ToolResult/ToolResultRenderer.vue';
 
 const props = withDefaults(
 	defineProps<{

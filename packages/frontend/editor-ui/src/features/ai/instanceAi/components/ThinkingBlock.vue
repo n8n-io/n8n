@@ -22,8 +22,8 @@ import { useInstanceContextLabel } from '../instanceContextLabels';
 import { useToolLabel } from '../toolLabels';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
 import InstanceContextStep from './InstanceContextStep.vue';
-import ToolResultJson from './ToolResultJson.vue';
-import ToolResultRenderer from './ToolResultRenderer.vue';
+import ToolResultJson from '@/features/ai/shared/components/ToolResult/ToolResultJson.vue';
+import ToolResultRenderer from '@/features/ai/shared/components/ToolResult/ToolResultRenderer.vue';
 
 const props = withDefaults(
 	defineProps<{
