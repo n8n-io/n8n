@@ -22,6 +22,7 @@ import { Container } from '@n8n/di';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { mock } from 'vitest-mock-extended';
 
+import type * as ProxyTransport from '@/utils/ai-proxy-fetch';
 import type { ActiveExecutions } from '@/active-executions';
 import type { CredentialsFinderService } from '@n8n/backend-services';
 import type { EphemeralNodeExecutor } from '@/node-execution';
@@ -68,6 +69,14 @@ import type { AgentSandboxFilesService } from '../agent-sandbox-files.service';
 
 const { getCachedCatalog } = vi.hoisted(() => ({ getCachedCatalog: vi.fn() }));
 vi.mock('@n8n/agents/catalog', () => ({ getCachedCatalog }));
+
+// A module mock, so the MCP transport can be replaced without changing an ESM namespace.
+const { createAiMcpFetchMock } = vi.hoisted(() => ({ createAiMcpFetchMock: vi.fn() }));
+vi.mock('@/utils/ai-proxy-fetch', async () => {
+	const actual = await vi.importActual<typeof ProxyTransport>('@/utils/ai-proxy-fetch');
+	createAiMcpFetchMock.mockImplementation(actual.createAiMcpFetch);
+	return { ...actual, createAiMcpFetch: createAiMcpFetchMock };
+});
 
 // Mock buildFromJson so reconstruction doesn't try to actually build an agent.
 const builtAgent = mock<agents.Agent>();
@@ -273,6 +282,86 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — MCP w
 			expect(deps.nonInterrupting).toBe(nonInterrupting);
 		},
 	);
+
+	it.each([
+		['the default fetch without instrumentation', 'none'],
+		['the default fetch for instrumentation without an MCP override', 'no-override'],
+		['the override of the instrumentation', 'override'],
+	] as const)('selects %s as the MCP fetch during reconstruction', async (_label, mode) => {
+		const { service, credentialProvider } = setup();
+		const liveFetch = vi.fn();
+		const evalFetch = vi.fn();
+		const mcpFetch = vi.fn(() => evalFetch);
+		const instrumentation = {
+			none: undefined,
+			// An evaluation run that only observes MCP tool calls keeps the default fetch.
+			'no-override': { onMcpToolCallSettled: vi.fn() },
+			override: { mcpFetch },
+		};
+		const realFactory = createAiMcpFetchMock.getMockImplementation();
+		createAiMcpFetchMock.mockReturnValue(liveFetch);
+		try {
+			const entity = makeAgentEntity(undefined, {
+				mcpServers: [
+					{
+						name: 'fixture',
+						url: 'https://fixture.invalid/mcp',
+						transport: 'streamableHttp',
+						authentication: 'none',
+					},
+				],
+			});
+			await service.reconstructFromAgentEntity(
+				storedRunSource(entity),
+				credentialProvider,
+				'production',
+				undefined,
+				undefined,
+				instrumentation[mode],
+			);
+			// The default transport stays the proxy fetch. An override replaces it as the simulated
+			// fetch, which answers every request, so no credential is read for that server.
+			expect(buildMcpClientForServerMock).toHaveBeenCalledWith(
+				expect.objectContaining({ name: 'fixture' }),
+				expect.objectContaining({
+					proxyFetch: liveFetch,
+					simulatedFetch: mode === 'override' ? evalFetch : undefined,
+				}),
+			);
+			if (mode === 'override') expect(mcpFetch).toHaveBeenCalledWith('fixture');
+			else expect(mcpFetch).not.toHaveBeenCalled();
+			// Auth-pending servers are attached only when the override keeps them off the network.
+			expect(buildFromJsonMock.mock.lastCall?.at(-1)).toMatchObject({
+				attachAuthPendingMcpServers: mode === 'override',
+			});
+		} finally {
+			createAiMcpFetchMock.mockImplementation(realFactory!);
+		}
+	});
+
+	it.each([
+		['hands the tool call interceptor of the instrumentation to the agent', true],
+		['installs no interceptor without one', false],
+	])('%s', async (_label, withInterceptor) => {
+		const { service, credentialProvider } = setup();
+		builtAgent.toolCallInterceptor.mockClear();
+		const toolCallInterceptor = vi.fn();
+
+		await service.reconstructFromAgentEntity(
+			storedRunSource(makeAgentEntity()),
+			credentialProvider,
+			'production',
+			undefined,
+			undefined,
+			withInterceptor ? ({ toolCallInterceptor } as never) : undefined,
+		);
+
+		if (withInterceptor) {
+			expect(builtAgent.toolCallInterceptor).toHaveBeenCalledWith(toolCallInterceptor);
+		} else {
+			expect(builtAgent.toolCallInterceptor).not.toHaveBeenCalled();
+		}
+	});
 
 	it('forwards resolved MCP tool names through eval instrumentation', async () => {
 		const { service, credentialProvider } = setup();
@@ -920,6 +1009,35 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 		const providerTools = await resolveInlineSubAgentProviderTools?.(highModel!);
 		expect(providerTools?.map((tool) => tool.name)).toEqual(['anthropic.web_search_20250305']);
 		expect(providerTools?.map((tool) => tool.name)).not.toContain('openai.web_search');
+	});
+
+	it('gives inline children no provider tools in a test run', async () => {
+		const credentialProvider = mock<CredentialProvider>();
+		credentialProvider.resolve.mockResolvedValue({ apiKey: 'high-key' });
+		const service = makeReconstructionService();
+		const entity = makeAgentEntity(
+			{ webSearch: { enabled: true } },
+			{
+				model: 'openai/gpt-4o',
+				subAgents: {
+					modelsByDifficulty: {
+						high: { model: 'anthropic/claude-sonnet-4-5', credential: 'high-cred' },
+					},
+				},
+			},
+		);
+
+		await service.reconstructFromAgentEntity(
+			storedRunSource(entity),
+			credentialProvider,
+			'test',
+			undefined,
+			undefined,
+			{ disableProviderTools: true },
+		);
+
+		expect(getInjectedDelegateTool()).toBeDefined();
+		expect(getInjectedResolveInlineSubAgentProviderTools()).toBeUndefined();
 	});
 
 	it('omits inlineSubAgentModelsByDifficulty when no difficulty mappings are configured', async () => {

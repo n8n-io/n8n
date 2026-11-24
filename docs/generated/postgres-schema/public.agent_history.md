@@ -117,6 +117,7 @@ erDiagram
   varchar_32_ taskId
   json taskStop
   varchar_36_ taskVersionId FK
+  boolean testChat
   varchar_255_ title
   integer totalCompletionTokens
   double_precision totalCost

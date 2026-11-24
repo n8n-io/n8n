@@ -18,6 +18,7 @@
 | taskId | varchar(32) |  | true |  |  | Published task ID that triggered this session; not an FK because published runs can outlive draft task definition rows |
 | taskStop | json |  | true |  |  | Latest task stop boundary and unresolved stop errors |
 | taskVersionId | varchar(36) |  | true |  | [public.agent_history](public.agent_history.md) | Published agent_history version that supplied the task snapshot |
+| testChat | boolean | false | false |  |  | True for a test chat: its tool calls go to a simulation, not to real services. |
 | title | varchar(255) |  | true |  |  |  |
 | totalCompletionTokens | integer | 0 | false |  |  |  |
 | totalCost | double precision | 0 | false |  |  |  |
@@ -42,6 +43,7 @@
 | agent_execution_threads_id_not_null | n | NOT NULL id |
 | agent_execution_threads_projectId_not_null | n | NOT NULL "projectId" |
 | agent_execution_threads_sessionNumber_not_null | n | NOT NULL "sessionNumber" |
+| agent_execution_threads_testChat_not_null | n | NOT NULL "testChat" |
 | agent_execution_threads_totalCompletionTokens_not_null | n | NOT NULL "totalCompletionTokens" |
 | agent_execution_threads_totalCost_not_null | n | NOT NULL "totalCost" |
 | agent_execution_threads_totalDuration_not_null | n | NOT NULL "totalDuration" |
@@ -87,6 +89,7 @@ erDiagram
   varchar_32_ taskId
   json taskStop
   varchar_36_ taskVersionId FK
+  boolean testChat
   varchar_255_ title
   integer totalCompletionTokens
   double_precision totalCost

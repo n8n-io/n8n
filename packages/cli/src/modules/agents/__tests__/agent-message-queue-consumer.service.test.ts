@@ -168,6 +168,21 @@ describe('AgentMessageQueueConsumer', () => {
 		expect(queue.recordFailure).not.toHaveBeenCalled();
 	});
 
+	it('passes the chat mode of a preview message to the draft run', async () => {
+		const item = claim('session');
+		item.payload = { kind: 'preview', message: 'hi', resourceId: 'draft-chat:user', mode: 'test' };
+		repository.findThreadIds.mockResolvedValue(['session']);
+		queue.claimNext.mockResolvedValueOnce(item).mockResolvedValue(null);
+		consumer.start();
+		await vi.waitFor(() =>
+			expect(queue.settle).toHaveBeenCalledWith('session', item.admission.executionId),
+		);
+
+		expect(testRuns.executePreparedDraftRun).toHaveBeenCalledWith(
+			expect.objectContaining({ chatMode: 'test' }),
+		);
+	});
+
 	it('runs a hidden stop report and disables tools through the report mode', async () => {
 		const item = claim('session');
 		item.payload = {

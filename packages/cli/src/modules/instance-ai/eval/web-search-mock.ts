@@ -18,6 +18,10 @@ export interface WebSearchMockArgs {
 	excludeDomains?: string[];
 }
 
+/** The note of a result the mock failed to generate. */
+export const WEB_SEARCH_MOCK_FAILURE_NOTE =
+	'Mock web-search generation failed — treat a scenario failure here as a framework issue, not agent behaviour.';
+
 /** Mirrors `WebSearchResponse` from @n8n/ai-utilities — what the real tool returns. */
 export interface WebSearchMockResult {
 	query: string;
@@ -118,7 +122,7 @@ export function createWebSearchMock(
 					return {
 						query: args.query,
 						results: [],
-						note: 'Mock web-search generation failed — treat a scenario failure here as a framework issue, not agent behaviour.',
+						note: WEB_SEARCH_MOCK_FAILURE_NOTE,
 					};
 				}
 				// Enforce domain filters on the generated URLs like the real
