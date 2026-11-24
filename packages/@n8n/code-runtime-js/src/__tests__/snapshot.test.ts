@@ -1,5 +1,5 @@
 import { TASK_INPUT_PATH, TASK_RESULT_PATH } from '@n8n/code-task-contract';
-import { execFileSync, spawn } from 'node:child_process';
+import { type ChildProcess, execFileSync, spawn } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -14,6 +14,7 @@ describe('snapshot', () => {
 		const bundle = join(dir, 'bundle.js');
 		const blob = join(dir, 'snapshot.blob');
 		const taskDir = join(dir, 'task-1');
+		let spawned: ChildProcess | undefined;
 
 		try {
 			execFileSync(process.execPath, [join(__dirname, '../../esbuild.config.mts'), bundle]);
@@ -32,6 +33,7 @@ describe('snapshot', () => {
 			const runtime = spawn(process.execPath, ['--snapshot-blob', blob], {
 				stdio: ['ignore', 'ignore', 'pipe', 'pipe'],
 			});
+			spawned = runtime;
 			let stderr = '';
 			runtime.stderr?.on('data', (chunk: Buffer) => (stderr += chunk.toString()));
 			const exited = new Promise<number | null>((resolve) => runtime.on('exit', resolve));
@@ -56,6 +58,8 @@ describe('snapshot', () => {
 			expect(await exited).toBe(0);
 			expect(stderr).toBe('');
 		} finally {
+			// After a failed assertion, a running process would keep the test worker alive
+			spawned?.kill();
 			rmSync(dir, { recursive: true, force: true });
 		}
 	}, 30_000);
