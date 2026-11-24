@@ -44,9 +44,14 @@ export class PromotionPreviewPage extends BasePage {
 			.filter({ has: this.page.getByRole('heading', { name: heading }) });
 	}
 
-	/** A row of the tab "Issues", by the name of its dependency. */
+	/**
+	 * A row of the tab "Issues", by the exact name of its dependency. Only the name cell counts,
+	 * because the "Used by" cell of a different row can hold the same name.
+	 */
 	getIssueRow(name: string): Locator {
-		return this.getIssues().getByTestId('promotion-preview-blocker-row').filter({ hasText: name });
+		return this.getIssues()
+			.getByTestId('promotion-preview-blocker-row')
+			.filter({ has: this.page.locator('td:first-child').getByText(name, { exact: true }) });
 	}
 
 	/** The dialog that asks for the commit message of a Promote. */
@@ -84,8 +89,13 @@ export class PromotionPreviewPage extends BasePage {
 		return dialog.getByTestId('promotion-missing-dependency-list');
 	}
 
-	/** An unresolved dependency that a dialog lists, by its name. */
+	/**
+	 * An unresolved dependency that a dialog lists, by its exact name. The summary of a row names
+	 * the workflows that use the dependency, and an exact match ignores that text.
+	 */
 	getUnresolvedDependency(dialog: Locator, name: string): Locator {
-		return dialog.getByTestId('promotion-missing-dependency').filter({ hasText: name });
+		return dialog
+			.getByTestId('promotion-missing-dependency')
+			.filter({ has: this.page.getByText(name, { exact: true }) });
 	}
 }
