@@ -1,0 +1,49 @@
+packages/core/src/execution-engine/__tests__/active-workflow-triggers.test.ts
+  s_7e504039b73188::t_a9ab46f9146e8d 1168
+  s_7e504039b73188::t_2216ce7388f254 1243-1268
+  s_7e504039b73188::t_5bf278c526ee4f 249
+  s_7e504039b73188::t_01e4d1d90bebae 167
+packages/cli/src/workflows/triggers/workflow-trigger-activator.ts
+  s_7e504039b73188::t_067d9400124c86 1051-1052
+  s_7e504039b73188::t_8112a7efd9e18e 893-900
+  s_7e504039b73188::t_d719a9e8681b01 1027,1035
+  s_7e504039b73188::t_0c108b81a3743b 908
+  s_7e504039b73188::t_ac9cd6c779a1c1 1077-1078,1081,1084-1085
+packages/core/src/execution-engine/__tests__/triggers-and-pollers.test.ts
+  s_7e504039b73188::t_f80ef3b4a1c884 56-80
+packages/core/src/execution-engine/triggers-and-pollers.ts
+  s_7e504039b73188::t_50a2e06f51da95 95
+  s_7e504039b73188::t_7cabd3ac3d92da 87,89-94,96
+packages/core/src/execution-engine/active-workflow-triggers.ts
+  s_7e504039b73188::t_9d5ec2c0249f3e 225-231,239,242,249
+packages/cli/src/workflows/triggers/__tests__/trigger-execution-context.factory.test.ts
+  s_7e504039b73188::t_65671d5c791f70 607
+  s_7e504039b73188::t_fb80a5dc778dbb 626-634,645
+packages/cli/src/workflows/triggers/__tests__/workflow-trigger-activator.test.ts
+  s_7e504039b73188::t_3345cea0031d51 1410,1423
+  s_7e504039b73188::t_8112a7efd9e18e 1607-1610
+  s_7e504039b73188::t_4fdc6e96675eb6 1603-1605,1612-1613
+  s_7e504039b73188::t_5de511983be599 1339
+packages/cli/src/workflows/triggers/trigger-execution-context.factory.ts
+  s_7e504039b73188::t_0b1214b35b15a8 292
+  s_7e504039b73188::t_e956beffcd315c 70-71
+  s_7e504039b73188::t_de3ca2e465d16a 212-219
+packages/core/src/execution-engine/interfaces.ts
+  s_7e504039b73188::t_77d10b8d505f1a 28-29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7dbc70a8c8b9820b4c90d922a8fc236b688cbded",
+  "prompts": {},
+  "sessions": {
+    "s_7e504039b73188": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "65dfb1ce-bf47-4b7e-a7af-3adac7fe13d3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}
