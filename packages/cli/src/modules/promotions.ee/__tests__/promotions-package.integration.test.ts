@@ -3248,6 +3248,37 @@ describe('Promote a project selection — branch effects', () => {
 		expect(await row()).toMatchObject({ key: `credential:${credential.id}`, change: 'modified' });
 	});
 
+	it('promotes a credential that holds no values', async () => {
+		const remote = await createRemote();
+		const environments = await createInstanceEnvironments(remote.bareDir);
+		await service.clone(environments.promote.id, owner);
+		const { project } = await setupProjectWithWorkflows('Platform', []);
+		const credential = await saveCredential(
+			{ name: 'Empty key', type: 'httpHeaderAuth', data: {} },
+			{ project, role: 'credential:owner' },
+		);
+
+		const before = await changeService().getPreview(owner, project.id, 'promote');
+		expect(before.resources).toContainEqual(
+			expect.objectContaining({
+				key: `credential:${credential.id}`,
+				change: 'added',
+				selectable: true,
+			}),
+		);
+
+		await service.promoteProjectSelection(project.id, owner, {
+			credentialIds: [credential.id],
+			commitMessage: 'Promote credential',
+		});
+
+		const { dir } = await inspectBranch(remote.bareDir);
+		const [onBranch] = await readBranchEntities(dir, PACKAGE_ENTITY_LAYOUT.credentials.fileName);
+		expect(onBranch).toMatchObject({ id: credential.id, name: 'Empty key' });
+		const after = await changeService().getPreview(owner, project.id, 'promote');
+		expect(after.resources.find(({ type }) => type === 'credential')).toBeUndefined();
+	});
+
 	it('refuses to promote a credential that another project owns', async () => {
 		const remote = await createRemote();
 		const environments = await createInstanceEnvironments(remote.bareDir);
