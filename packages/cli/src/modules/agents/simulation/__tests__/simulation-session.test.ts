@@ -649,6 +649,23 @@ describe('SimulationSession', () => {
 		});
 	});
 
+	it.each([204, 205, 304])(
+		'returns an HTTP %i reply with a null body so core does not send the real request',
+		async (status) => {
+			const world = makeWorld({ outcome: 'served', source: 'made_up', status, body: { x: 1 } });
+			const session = new SimulationSession({
+				testChatId: 't',
+				world,
+				capabilities: [slackCapability],
+			});
+			const { tool } = slackTool(session);
+
+			const response = await runTool(session, tool);
+
+			expect(response).toEqual({ body: null, headers: {}, statusCode: status });
+		},
+	);
+
 	it.each([204, 205, 304])('returns an MCP %i reply with no body', async (status) => {
 		const world = makeWorld({ outcome: 'served', source: 'made_up', status, body: { x: 1 } });
 		const session = new SimulationSession({
