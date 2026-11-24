@@ -1,0 +1,19 @@
+packages/nodes-base/nodes/NextCloud/test/NextCloud.node.test.ts
+  s_69d18b007d0835::t_82b540ec64e461 198-201
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e94db0397f6834ebe074635ef308fd77daafd4a3",
+  "prompts": {},
+  "sessions": {
+    "s_69d18b007d0835": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2742f16a-41df-4d0f-909f-e67f21d45770",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

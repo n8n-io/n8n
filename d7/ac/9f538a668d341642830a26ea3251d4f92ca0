@@ -1,0 +1,64 @@
+packages/nodes-base/nodes/Discord/test/v2/node/message/sendAndWait.test.ts
+  s_dfe3f914c8bb46::t_3e8df6dadb0455 3
+packages/nodes-base/nodes/Slack/V2/GenericFunctions.ts
+  s_dfe3f914c8bb46::t_3e8df6dadb0455 580-582,584-585,589
+packages/cli/src/modules/agents/approval/__tests__/agent-channel-hitl.service.test.ts
+  s_dfe3f914c8bb46::t_d194c0d63d383b 111,114-122,173
+packages/nodes-base/package.json
+  s_dfe3f914c8bb46::t_47eb9dc8d91954 697
+packages/nodes-base/nodes/Slack/test/v2/utils.test.ts
+  s_dfe3f914c8bb46::t_3e8df6dadb0455 15,197,249
+packages/nodes-base/nodes/AgentChannelApproval/AgentChannelApproval.node.ts
+  s_dfe3f914c8bb46::t_47eb9dc8d91954 2-21,23-25,27-29,31-33,35-62,64-90,92-111,126-155,160-176,180-189
+  s_dfe3f914c8bb46::t_98b94aa37f1fad 91,177-179
+  s_dfe3f914c8bb46::t_c41d9a95a47a25 1,22,26,30,34,63,112-125,156-159
+packages/nodes-base/nodes/Discord/v2/helpers/utils.ts
+  s_dfe3f914c8bb46::t_3e8df6dadb0455 438,440
+packages/nodes-base/nodes/AgentChannelApproval/AgentChannelApproval.node.json
+  s_dfe3f914c8bb46::t_47eb9dc8d91954 1-7
+packages/nodes-base/nodes/Slack/V2/SlackV2.node.ts
+  s_dfe3f914c8bb46::t_3e8df6dadb0455 58
+packages/nodes-base/nodes/Telegram/GenericFunctions.ts
+  s_dfe3f914c8bb46::t_3e8df6dadb0455 502
+packages/cli/src/modules/agents/approval/agent-channel-hitl.service.ts
+  s_dfe3f914c8bb46::t_47eb9dc8d91954 67,77,79,96,219
+  s_dfe3f914c8bb46::t_82935606af6cb8 27-31
+packages/cli/src/modules/agents/approval/__tests__/agent-channel-approval-response.test.ts
+  s_dfe3f914c8bb46::t_d194c0d63d383b 60,62-63,133,141-143,148,188,208-210,212
+  s_dfe3f914c8bb46::t_81c10e0f77c49b 144-147,211
+packages/nodes-base/nodes/Discord/v2/actions/message/sendAndWait.operation.ts
+  s_dfe3f914c8bb46::t_3e8df6dadb0455 20
+packages/nodes-base/nodes/Telegram/Telegram.node.ts
+  s_dfe3f914c8bb46::t_3e8df6dadb0455 33,2060
+packages/cli/test/integration/agents/agent-channel-approval.integration.test.ts
+  s_dfe3f914c8bb46::t_d194c0d63d383b 156,172-199,248-251,305,319,322
+  s_dfe3f914c8bb46::t_1664bef8096cdf 21,28-29,35-39,96-100,106-115,117,119-134,136,323-325,373,380,500,523,543,573,593
+packages/cli/src/modules/agents/integrations/channel-hitl.ts
+  s_dfe3f914c8bb46::t_47eb9dc8d91954 22-35,37-45
+  s_dfe3f914c8bb46::t_a75277d03dc4f1 13,36
+packages/cli/src/executions/pre-execution-checks/credentials-permission-checker.ts
+  s_dfe3f914c8bb46::t_6892fefc998dde 407-408,412
+  s_dfe3f914c8bb46::t_2c41701385be32 406,409-411
+packages/nodes-base/nodes/AgentChannelApproval/AgentChannelApproval.test.ts
+  s_dfe3f914c8bb46::t_98b94aa37f1fad 42,61-62,117-118,120
+  s_dfe3f914c8bb46::t_63581ec66aca10 50-51,71-72,84,90-91,107,113-116,121-139
+  s_dfe3f914c8bb46::t_db73ff6b364298 1-41,43-49,52-60,63-70,73-83,85-89,92-106,108-112,119
+packages/cli/src/modules/agents/approval/README.md
+  s_dfe3f914c8bb46::t_87645f2ef8a230 112-116
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d7ac9f538a668d341642830a26ea3251d4f92ca0",
+  "prompts": {},
+  "sessions": {
+    "s_dfe3f914c8bb46": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a177de-1655-75e1-b502-74f6cb945148",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}
