@@ -1,0 +1,19 @@
+packages/nodes-base/nodes/EmailSend/test/smtp-egress.test.ts
+  s_637d81201b0024::t_fd917840ce9e46 165-168,177-180,207-210,218-221
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "437f0fde95a87a503503311461d93bfe8264d057",
+  "prompts": {},
+  "sessions": {
+    "s_637d81201b0024": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1c947fd2-617e-406f-9081-014b7424bd2b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}
