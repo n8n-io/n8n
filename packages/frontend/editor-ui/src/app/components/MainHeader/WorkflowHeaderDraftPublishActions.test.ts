@@ -1407,6 +1407,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			setWorkflowReviewGates();
 			vi.mocked(fetchWorkflowReviewRequests).mockResolvedValue({
 				count: 1,
+				reviewRequiredBy: null,
 				data: [
 					{
 						id: 'req-1',
