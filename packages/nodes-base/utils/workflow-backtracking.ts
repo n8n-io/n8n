@@ -2,6 +2,7 @@ import type {
 	INodeExecutionData,
 	IPairedItemData,
 	IRunExecutionData,
+	ISourceData,
 	ITaskData,
 } from 'n8n-workflow';
 import { pairedItemStateKey } from 'n8n-workflow';
@@ -41,6 +42,25 @@ export function previousTaskData(
 	const nextRunIndex = currentRunData.source?.[inputIndex]?.previousNodeRun ?? 0;
 
 	return nextRunData[nextRunIndex]; // Return the first run data for the next node
+}
+
+/**
+ * Returns the source of the item that a paired item of a task points to.
+ * The source overwrite of the paired item replaces the source of the input.
+ */
+function sourceOfPairedItem(
+	taskData: ITaskData,
+	pairedItem: IPairedItemData,
+): ISourceData | null | undefined {
+	return pairedItem.sourceOverwrite ?? taskData.source[pairedItem.input ?? 0];
+}
+
+/** Returns the task data of a source. Returns undefined when the source has no run data. */
+function taskDataOfSource(
+	runData: IRunExecutionData['resultData']['runData'],
+	source: ISourceData,
+): ITaskData | undefined {
+	return runData[source.previousNode]?.[source.previousNodeRun ?? 0];
 }
 
 /** A task without a source is the first task of the workflow run. */
@@ -120,9 +140,8 @@ export function findPairedItemThroughWorkflowData(
 		// We follow the source of that input until we reach the first task of the workflow run.
 		const sourceItems: typeof toFollow = [];
 		for (const pairedItem of pairedItems) {
-			const input = pairedItem.input ?? 0;
-			const source = taskData.source[input];
-			const sourceTaskData = previousTaskData(runData, taskData, input);
+			const source = sourceOfPairedItem(taskData, pairedItem);
+			const sourceTaskData = source ? taskDataOfSource(runData, source) : undefined;
 			if (!source || sourceTaskData === undefined) {
 				return undefined;
 			}

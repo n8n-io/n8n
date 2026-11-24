@@ -32,6 +32,7 @@ describe('paired items across a sub-workflow', () => {
 			'n8n-nodes-base.merge',
 			'n8n-nodes-base.aggregate',
 			'n8n-nodes-base.splitOut',
+			'n8n-nodes-base.splitInBatches',
 			'n8n-nodes-base.executeWorkflow',
 			'n8n-nodes-base.executeWorkflowTrigger',
 		]);
@@ -98,6 +99,41 @@ describe('paired items across a sub-workflow', () => {
 			],
 			connections: {
 				Trigger: { main: [[{ node: 'Aggregate', type: NodeConnectionTypes.Main, index: 0 }]] },
+			},
+			settings: { executionOrder: 'v1', saveDataSuccessExecution },
+		};
+	}
+
+	/** Sub: Execute Workflow Trigger -> Loop Over Items (one item for each run) <-> Body. */
+	function subWorkflowEndingWithLoop(saveDataSuccessExecution: 'all' | 'none') {
+		return {
+			nodes: [
+				{
+					parameters: { inputSource: 'passthrough' },
+					type: 'n8n-nodes-base.executeWorkflowTrigger',
+					typeVersion: 1.1,
+					id: uuid(),
+					name: 'Trigger',
+				},
+				{
+					parameters: { batchSize: 1, options: {} },
+					type: 'n8n-nodes-base.splitInBatches',
+					typeVersion: 3,
+					id: uuid(),
+					name: 'Loop',
+				},
+				{
+					parameters: { includeOtherFields: true, options: {} },
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					id: uuid(),
+					name: 'Body',
+				},
+			],
+			connections: {
+				Trigger: { main: [[{ node: 'Loop', type: NodeConnectionTypes.Main, index: 0 }]] },
+				Loop: { main: [[], [{ node: 'Body', type: NodeConnectionTypes.Main, index: 0 }]] },
+				Body: { main: [[{ node: 'Loop', type: NodeConnectionTypes.Main, index: 0 }]] },
 			},
 			settings: { executionOrder: 'v1', saveDataSuccessExecution },
 		};
@@ -247,6 +283,37 @@ describe('paired items across a sub-workflow', () => {
 				item: 0,
 			});
 			expect(runData?.Consumer?.at(-1)?.data?.main?.[0]?.[0].json).toEqual({ value: SOURCE_VALUE });
+		},
+	);
+
+	it.each(['all', 'none'] as const)(
+		'should resolve the item of a node before a sub-workflow that ends with a loop, when the sub-workflow saves "%s" successful executions',
+		async (saveDataSuccessExecution) => {
+			const child = await createWorkflow(
+				{
+					name: 'Child',
+					...subWorkflowEndingWithLoop(saveDataSuccessExecution),
+				} as unknown as IWorkflowDb,
+				owner,
+			);
+			const parent = await createWorkflow(
+				{
+					name: 'Parent',
+					...parentCallingSub(child.id, sourceOfTwoItems()),
+				} as unknown as IWorkflowDb,
+				owner,
+			);
+
+			const { status, resultData } = await runParent(parent);
+			expect(status).toBe('success');
+
+			const runData = resultData?.runData;
+			const pairedItems = runData?.['Execute Sub-workflow']
+				?.at(-1)
+				?.data?.main?.[0]?.map((item) => item.pairedItem);
+			expect(pairedItems).toEqual([{ item: 0 }, { item: 1 }]);
+			const values = runData?.Consumer?.at(-1)?.data?.main?.[0]?.map((item) => item.json);
+			expect(values).toEqual([{ value: 'A' }, { value: 'B' }]);
 		},
 	);
 

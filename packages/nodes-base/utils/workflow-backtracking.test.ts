@@ -596,6 +596,56 @@ describe('backtracking.ts', () => {
 				expect(findPairedItemThroughWorkflowData(workflowRunData, item)).toBe(firstPairedItem);
 			});
 
+			it('should follow the source overwrite of a paired item', () => {
+				const loopTask = (
+					source: ISourceData,
+					{ done = [], loop = [] }: { done?: INodeExecutionData[]; loop?: INodeExecutionData[] },
+				): ITaskData => ({ ...task([source], []), data: { main: [done, loop] } });
+				const triggerSource: ISourceData = { previousNode: 'trigger' };
+				const bodySource = (run: number): ISourceData => ({
+					previousNode: 'body',
+					previousNodeOutput: 0,
+					previousNodeRun: run,
+				});
+				const bodyTask = (run: number) =>
+					task(
+						[{ previousNode: 'loop', previousNodeOutput: 1, previousNodeRun: run }],
+						[{ json: {}, pairedItem: { item: 0 } }],
+					);
+				const doneItems: INodeExecutionData[] = [0, 1].map((run) => ({
+					json: {},
+					pairedItem: { item: 0, sourceOverwrite: bodySource(run) },
+				}));
+				const workflowRunData = createRunExecutionData({
+					resultData: {
+						runData: {
+							trigger: [
+								task(
+									[],
+									[
+										{ json: {}, pairedItem: { item: 0 } },
+										{ json: {}, pairedItem: { item: 1 } },
+									],
+								),
+							],
+							loop: [
+								loopTask(triggerSource, { loop: [{ json: {}, pairedItem: { item: 0 } }] }),
+								loopTask(bodySource(0), {
+									loop: [{ json: {}, pairedItem: { item: 1, sourceOverwrite: triggerSource } }],
+								}),
+								loopTask(bodySource(1), { done: doneItems }),
+							],
+							body: [bodyTask(0), bodyTask(1)],
+						},
+						lastNodeExecuted: 'loop',
+					},
+				});
+
+				expect(
+					doneItems.map((item) => findPairedItemThroughWorkflowData(workflowRunData, item)),
+				).toEqual([{ item: 0 }, { item: 1 }]);
+			});
+
 			it('should return undefined when the input of the paired item has no source', () => {
 				const item: INodeExecutionData = { json: {}, pairedItem: { item: 0, input: 0 } };
 				const workflowRunData = createRunExecutionData({
