@@ -54,8 +54,6 @@ const server = setupTestServer({
 	enabledFeatures: ['feat:promotions', 'feat:projectRole:admin', 'feat:folders'],
 });
 
-const PROMOTE_OPTIONS = { canExportVariableValues: true };
-
 let remoteRoot: string;
 let owner: Person;
 let alpha: Project;
@@ -247,7 +245,7 @@ describe('Missing dependencies of a project Promote', () => {
 		const afterPreview = await Container.get(PromotionsService).promoteProjectSelection(
 			alpha.id,
 			owner,
-			{ ...selection, ...PROMOTE_OPTIONS, expectedPreviewRevision: preview.revision },
+			{ ...selection, expectedPreviewRevision: preview.revision },
 		);
 		expectPushed(afterPreview);
 		const reviewedTree = await branchTree(reviewed.remoteUrl);
@@ -257,7 +255,7 @@ describe('Missing dependencies of a project Promote', () => {
 		const withoutPreview = await Container.get(PromotionsService).promoteProjectSelection(
 			alpha.id,
 			owner,
-			{ ...selection, ...PROMOTE_OPTIONS },
+			selection,
 		);
 		expectPushed(withoutPreview);
 
@@ -280,10 +278,7 @@ describe('Missing dependencies of a project Promote', () => {
 		const { remoteUrl } = await connectNewRemote('branch');
 		const promotions = Container.get(PromotionsService);
 		expectPushed(
-			await promotions.promoteProjectSelection(alpha.id, owner, {
-				workflowIds: [caller.id],
-				...PROMOTE_OPTIONS,
-			}),
+			await promotions.promoteProjectSelection(alpha.id, owner, { workflowIds: [caller.id] }),
 		);
 
 		// The Promote of Alpha wrote the credential as a top-level file, which has no owner project.
@@ -298,7 +293,6 @@ describe('Missing dependencies of a project Promote', () => {
 			await promotions.promoteProjectSelection(beta.id, owner, {
 				workflowIds: [subWorkflow.id],
 				credentialIds: [credential.id],
-				...PROMOTE_OPTIONS,
 			}),
 		);
 
@@ -310,7 +304,6 @@ describe('Missing dependencies of a project Promote', () => {
 		expect(
 			await promotions.promoteProjectSelection(alpha.id, owner, {
 				workflowIds: [caller.id],
-				...PROMOTE_OPTIONS,
 				expectedPreviewRevision: before.revision,
 			}),
 		).toMatchObject({ status: 'preview-changed' });
@@ -461,7 +454,6 @@ describe('Missing dependencies of a project Promote', () => {
 		expectPushed(
 			await Container.get(PromotionsService).promoteProjectSelection(alpha.id, owner, {
 				workflowIds: [broken.id, usesVariables.id],
-				...PROMOTE_OPTIONS,
 				expectedPreviewRevision: preview.revision,
 			}),
 		);
@@ -523,7 +515,7 @@ describe('Missing dependencies of an instance Promote', () => {
 		expectNoTraceOf(await getPersonalProject(owner), response.body);
 
 		await expect(
-			Container.get(PromotionsService).promote(environment.id, owner, PROMOTE_OPTIONS),
+			Container.get(PromotionsService).promote(environment.id, owner, {}),
 		).rejects.toThrow('1 workflow dependency not included in the package. Export aborted.');
 		expect(await branchTree(remoteUrl)).toBe('');
 	}, 60_000);
@@ -542,7 +534,7 @@ describe('Missing dependencies of an instance Promote', () => {
 		});
 		expect((await agent.get(checkPath(environment.id)).expect(200)).body).toEqual(check.body);
 
-		await Container.get(PromotionsService).promote(environment.id, owner, PROMOTE_OPTIONS);
+		await Container.get(PromotionsService).promote(environment.id, owner, {});
 		expect(await branchTree(remoteUrl)).not.toBe('');
 
 		// The revision follows the lists.
@@ -563,7 +555,7 @@ describe('Missing dependencies of an instance Promote', () => {
 
 	it('refuses an API key without the promotions:promote scope', async () => {
 		const { environment } = await connectNewRemote('branch');
-		const reader = await createOwnerWithApiKey({ scopes: ['promotions:read'] });
+		const reader = await createOwnerWithApiKey({ scopes: ['promotions:readEnvironments'] });
 
 		await server.publicApiAgentFor(reader).get(checkPath(environment.id)).expect(403);
 	}, 60_000);
