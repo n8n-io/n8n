@@ -357,6 +357,9 @@ describe('SidebarPage scope configuration', () => {
 		"this.page.getByTestId('main-sidebar-account-trigger')",
 		"this.page.getByTestId('main-sidebar-source-control-push')",
 		"this.page.getByRole('link', { name: 'Settings' }).click()",
+		"this.page.getByRole('tab', { name: 'Workflows' }).click()",
+		"this.page.getByTestId('other-tabs').getByRole('tab', { name: 'Workflows' }).click()",
+		"this.page.getByTestId('project-tabs').getByRole('tab', { name: 'Settings' }).click()",
 		"this.page.getByTestId('about-modal').getByRole('button')",
 		"this.page.locator('body').getByTestId('universal-add')",
 	])('reports an unscoped sidebar control: %s', (locator) => {

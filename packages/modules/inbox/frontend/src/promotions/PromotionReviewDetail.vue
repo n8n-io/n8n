@@ -246,7 +246,6 @@ async function onApprove() {
 			<N8nTabs
 				model-value="changes"
 				:options="tabOptions"
-				variant="modern"
 				data-test-id="inbox-promotion-review-tab-bar"
 			/>
 			<!-- In the tab row, like the Review button of workflow reviews. -->
