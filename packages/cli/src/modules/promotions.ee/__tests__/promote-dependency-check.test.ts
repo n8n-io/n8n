@@ -6,6 +6,8 @@ import type { PackageRequirements } from '@/modules/n8n-packages/spec/requiremen
 
 import {
 	checkPromoteDependencies,
+	confirmedMissingRows,
+	markRequirementRows,
 	type DependencyOwner,
 	type PromoteDependencyFacts,
 } from '../promote-dependency-check';
@@ -55,7 +57,6 @@ function check(over: Partial<PromoteDependencyFacts>) {
 		readableCredentialIds: new Set(),
 		readableWorkflowIds: new Set(),
 		variables: [],
-		stopsOnWorkflowOutsideExport: false,
 		...over,
 	});
 }
@@ -73,7 +74,6 @@ describe('checkPromoteDependencies', () => {
 						code: 'missing-on-source',
 						id: 'C',
 						name: 'CRM key',
-						blocking: false,
 						consumers: CONSUMERS,
 					},
 				],
@@ -220,7 +220,6 @@ describe('checkPromoteDependencies', () => {
 						code: 'missing-on-source',
 						id: 'sub',
 						name: 'Notify',
-						blocking: false,
 						consumers: CONSUMERS,
 					},
 				],
@@ -334,7 +333,6 @@ describe('checkPromoteDependencies', () => {
 						kind: 'variable',
 						code: 'missing-on-source',
 						name: 'region',
-						blocking: false,
 						consumers: CONSUMERS,
 					},
 				],
@@ -387,34 +385,28 @@ describe('checkPromoteDependencies', () => {
 		});
 	});
 
-	describe('an instance Promote', () => {
-		const manifest = exportOf({
-			credentials: [credentialRow],
-			workflows: [workflowRow, { id: 'gone', usedBy: usedBy('wf') }],
-			variables: [{ name: 'region', usedBy: usedBy('wf') }],
+	it('never stops the Promote on an entry, and gives a warning no `blocking`', () => {
+		const result = check({
+			manifest: exportOf({
+				credentials: [credentialRow],
+				workflows: [workflowRow, { id: 'gone', usedBy: usedBy('wf') }],
+				variables: [{ name: 'region', usedBy: usedBy('wf') }],
+			}),
+			credentialOwners: new Map([['C', PERSONAL_OWNER]]),
+			workflowOwners: new Map([['sub', PERSONAL_OWNER]]),
 		});
 
-		it('stops only on a workflow that the export does not hold', () => {
-			const result = check({
-				manifest,
-				credentialOwners: new Map([['C', PERSONAL_OWNER]]),
-				workflowOwners: new Map([['sub', PERSONAL_OWNER]]),
-				stopsOnWorkflowOutsideExport: true,
-			});
-
-			expect(
-				result.missingDependencies.map(({ kind, id, blocking }) => ({ kind, id, blocking })),
-			).toEqual([
-				{ kind: 'credential', id: 'C', blocking: false },
-				{ kind: 'workflow', id: 'sub', blocking: true },
-			]);
-			expect(result.warnings.map(({ kind, name, blocking }) => ({ kind, name, blocking }))).toEqual(
-				[
-					{ kind: 'variable', name: 'region', blocking: false },
-					{ kind: 'workflow', name: 'gone', blocking: true },
-				],
-			);
-		});
+		expect(
+			result.missingDependencies.map(({ kind, id, blocking }) => ({ kind, id, blocking })),
+		).toEqual([
+			{ kind: 'credential', id: 'C', blocking: false },
+			{ kind: 'workflow', id: 'sub', blocking: false },
+		]);
+		expect(result.warnings.map(({ kind, name }) => ({ kind, name }))).toEqual([
+			{ kind: 'variable', name: 'region' },
+			{ kind: 'workflow', name: 'gone' },
+		]);
+		for (const warning of result.warnings) expect(warning).not.toHaveProperty('blocking');
 	});
 
 	it('groups the consumers by project, and sorts the workflows by id', () => {
@@ -481,5 +473,96 @@ describe('checkPromoteDependencies', () => {
 		expect(result.missingDependencies.map(({ id }) => id)).toEqual(['C1', 'C2', 'sub1', 'sub2']);
 		expect(result.warnings.map(({ id }) => id)).toEqual(['gone1', 'gone2']);
 		expect(reversed).toEqual(result);
+	});
+});
+
+describe('markRequirementRows', () => {
+	const otherCredentialRow = { ...credentialRow, id: 'C2', name: 'Own key' };
+	const brokenRow = { id: 'gone', usedBy: usedBy('wf') };
+	const variableRow = { name: 'region', usedBy: usedBy('wf') };
+	const manifest = exportOf({
+		credentials: [credentialRow, otherCredentialRow, { ...credentialRow, id: 'deleted' }],
+		workflows: [workflowRow, brokenRow],
+		variables: [variableRow],
+	});
+	const lists = check({
+		manifest,
+		existingCredentialIds: new Set(['C', 'C2']),
+		credentialOwners: new Map([
+			['C', BETA_OWNER],
+			['C2', { id: 'A', type: 'team' }],
+		]),
+		workflowOwners: new Map([['sub', PERSONAL_OWNER]]),
+	});
+
+	it('marks the row of each confirmed entry and of each credential or workflow warning', () => {
+		const { requirements } = markRequirementRows(manifest, lists);
+
+		expect(requirements?.credentials).toEqual([
+			{ ...credentialRow, reason: 'confirmed-missing' },
+			otherCredentialRow,
+			{ ...credentialRow, id: 'deleted', reason: 'missing-on-source' },
+		]);
+		expect(requirements?.workflows).toEqual([
+			{ ...workflowRow, reason: 'confirmed-missing' },
+			{ ...brokenRow, reason: 'missing-on-source' },
+		]);
+	});
+
+	it('gives no reason to the row of a variable warning', () => {
+		expect(lists.warnings.map(({ kind }) => kind)).toContain('variable');
+
+		expect(markRequirementRows(manifest, lists).requirements?.variables).toEqual([variableRow]);
+	});
+
+	it('returns the same manifest when the lists are empty', () => {
+		expect(markRequirementRows(manifest, { missingDependencies: [], warnings: [] })).toBe(manifest);
+	});
+
+	it('does not mark a credential row with the id of a workflow entry', () => {
+		const sameId = exportOf({
+			credentials: [{ ...credentialRow, id: 'sub' }],
+			workflows: [workflowRow],
+		});
+		const result = check({
+			manifest: sameId,
+			existingCredentialIds: new Set(['sub']),
+			workflowOwners: new Map([['sub', PERSONAL_OWNER]]),
+		});
+
+		const { requirements } = markRequirementRows(sameId, result);
+
+		expect(requirements?.credentials).toEqual([{ ...credentialRow, id: 'sub' }]);
+		expect(requirements?.workflows).toEqual([{ ...workflowRow, reason: 'confirmed-missing' }]);
+	});
+});
+
+describe('confirmedMissingRows', () => {
+	it('keeps only the credential and workflow rows that a Promote confirmed', () => {
+		const confirmedCredential = { ...credentialRow, reason: 'confirmed-missing' as const };
+		const confirmedWorkflow = { ...workflowRow, reason: 'confirmed-missing' as const };
+		const manifest = exportOf({
+			credentials: [confirmedCredential, { ...credentialRow, id: 'C2' }],
+			workflows: [
+				confirmedWorkflow,
+				{ id: 'gone', reason: 'missing-on-source', usedBy: usedBy('wf') },
+			],
+			variables: [{ name: 'region', usedBy: usedBy('wf') }],
+		});
+
+		const kept = confirmedMissingRows(manifest);
+
+		expect(kept.requirements).toEqual({
+			credentials: [confirmedCredential],
+			workflows: [confirmedWorkflow],
+		});
+		expect(kept.workflows).toEqual(manifest.workflows);
+	});
+
+	it('keeps no row of a manifest without requirements', () => {
+		expect(confirmedMissingRows(exportOf({})).requirements).toEqual({
+			credentials: [],
+			workflows: [],
+		});
 	});
 });

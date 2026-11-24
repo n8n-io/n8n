@@ -44,3 +44,15 @@ export const expectedPreviewRevisionSchema = z
 			'The `revision` of the reviewed preview. The operation builds the preview again. ' +
 			'When it differs, the operation returns status `preview-changed` and changes nothing.',
 	});
+
+/** The caller accepts that the operation continues without the missing dependencies. */
+export const confirmMissingDependenciesSchema = z
+	.boolean()
+	.optional()
+	.openapi({
+		description:
+			'Confirms the `missingDependencies` that the preview reports, so that the operation continues without them. ' +
+			'Without this confirmation, an operation that has missing dependencies changes nothing and returns them. ' +
+			'Send it with `expectedPreviewRevision` to confirm exactly the list of the reviewed preview. ' +
+			'Without `expectedPreviewRevision`, the confirmation covers every missing dependency when the operation runs.',
+	});

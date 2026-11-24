@@ -833,6 +833,7 @@ describe('Promote and Apply', () => {
 
 			paused.resolve();
 			const result = await first;
+			expectPushed(result);
 
 			const remoteGit = createFixtureGit(remote.bareDir);
 			expect((await remoteGit.revparse(['main'])).trim()).toBe(result.git.commitSha);
@@ -873,6 +874,7 @@ describe('Promote and Apply', () => {
 		const result = await service.promote(environments.promote.id, owner, {
 			commitMessage: 'Export orders',
 		});
+		expectPushed(result);
 
 		const inspectionDir = path.join(testRoot, 'promote-inspection');
 		await createFixtureGit().clone(remote.bareDir, inspectionDir, [
@@ -941,6 +943,7 @@ describe('Promote and Apply', () => {
 				commitMessage: 'Promote orders',
 				force: true,
 			});
+			expectPushed(first);
 			const remoteGit = createFixtureGit(remote.bareDir);
 
 			expect(first.git.branchName).toMatch(
@@ -967,6 +970,7 @@ describe('Promote and Apply', () => {
 			const second = await service.promote(environments.promote.id, owner, {
 				commitMessage: 'Promote orders again',
 			});
+			expectPushed(second);
 
 			expect(second.git.branchName).not.toBe(first.git.branchName);
 			expect(
@@ -1006,6 +1010,7 @@ describe('Promote and Apply', () => {
 		await createWorkflow({ name: 'Ship order', nodes: [], connections: {} }, project);
 
 		const result = await promote('Second promotion');
+		expectPushed(result);
 
 		expect(result.git.commitSha).not.toBe(movedCommit);
 		expect(
@@ -1042,6 +1047,7 @@ describe('Promote and Apply', () => {
 		const request = { commitMessage: 'Promote package' };
 
 		const result = await service.promote(environments.promote.id, owner, request);
+		expectPushed(result);
 
 		expect((await checkoutGit.revparse(['HEAD'])).trim()).toBe(result.git.commitSha);
 		expect(result.git.commitSha).not.toBe(baseCommit);
@@ -1525,6 +1531,7 @@ describe('Promote and Apply', () => {
 		const promoteResult = await service.promote(environments.promote.id, owner, {
 			commitMessage: 'Promote from a main without a checkout',
 		});
+		expectPushed(promoteResult);
 		await Container.get(WorkflowRepository).delete({ id: workflow.id });
 		const applyResult = await service.apply(environments.apply.id, owner);
 
@@ -1555,6 +1562,7 @@ describe('Promote and Apply', () => {
 		const result = await service.promote(environments.promote.id, owner, {
 			commitMessage: 'Promote after a restart',
 		});
+		expectPushed(result);
 
 		expect((await createFixtureGit(remote.bareDir).revparse(['main'])).trim()).toBe(
 			result.git.commitSha,
@@ -1578,6 +1586,7 @@ describe('Promote and Apply', () => {
 		const promoteResult = await service.promote(environments.promote.id, owner, {
 			commitMessage: 'Archive order flow',
 		});
+		expectPushed(promoteResult);
 		expect(promoteResult.counts.workflows).toBe(1);
 
 		// The target still holds the active copy; the apply must archive it, not delete it.
@@ -1621,6 +1630,7 @@ describe('Promote and Apply', () => {
 		const promoteResult = await service.promote(environments.promote.id, owner, {
 			commitMessage: 'Promote to staging',
 		});
+		expectPushed(promoteResult);
 		await remote.git.raw(['fetch', 'origin']);
 		await remote.git.raw(['push', 'origin', 'refs/remotes/origin/staging:refs/heads/dev']);
 		const devHead = (await remote.git.revparse(['origin/staging'])).trim();
@@ -2740,12 +2750,13 @@ describe('Missing dependencies of an Apply', () => {
 				expect(await snapshotApplyState()).toEqual(before);
 				return workflowEntries(result.check);
 			},
-			apply: async (workflowIds: string[]) => {
-				const result = await service.applyProjectSelection(alpha.id, owner, {
-					workflowIds,
-					...applyOf(await loadApplyPreview(alpha.id)),
-				});
-				assert(result.status === 'applied');
+			/** With `confirms`, the selection has missing dependencies, so the Apply needs the confirmation. */
+			apply: async (workflowIds: string[], { confirms = false } = {}) => {
+				const reviewed = applyOf(await loadApplyPreview(alpha.id));
+				const result = confirms
+					? (await applyWithConfirmation(owner, workflowIds, reviewed)).applied
+					: await service.applyProjectSelection(alpha.id, owner, { workflowIds, ...reviewed });
+				assert(result.status === 'applied', JSON.stringify(result));
 				return result.counts.workflows;
 			},
 			entry: {
@@ -2762,8 +2773,8 @@ describe('Missing dependencies of an Apply', () => {
 	}
 
 	/**
-	 * Apply stops, as it did before the list existed. The result is the same with and without a
-	 * preview, and nothing changes on this instance.
+	 * Apply stops. The result is the same with and without a preview, and nothing changes on this
+	 * instance.
 	 */
 	async function expectBlocked(user: User, workflow: { id: string }) {
 		const before = await snapshotApplyState();
@@ -2798,10 +2809,49 @@ describe('Missing dependencies of an Apply', () => {
 	}
 
 	/**
-	 * Apply does not check a workflow reference, as before the list existed. It writes each caller
-	 * as the branch holds it, with and without a preview. Returns the check before the Apply.
+	 * The workflows have missing dependencies that do not stop the Apply. An Apply and a Continue
+	 * without the confirmation return the list and write nothing. A Continue with the confirmation
+	 * applies, and returns the list again.
 	 */
-	async function expectApplied(user: User, [first, second]: readonly WorkflowEntity[]) {
+	async function applyWithConfirmation(
+		user: User,
+		workflowIds: string[],
+		reviewed: { expectedSource: ReturnType<typeof applyOf>['expectedSource'] },
+	) {
+		const before = await snapshotApplyState();
+		const blocked = await service.applyProjectSelection(alpha.id, user, { workflowIds });
+		const unconfirmed = await service.continueApplyProjectSelection(alpha.id, user, {
+			workflowIds,
+			...reviewed,
+		});
+
+		assert(blocked.status === 'blocked', JSON.stringify(blocked));
+		expect(unconfirmed).toEqual(blocked);
+		expect(blocked.check.missingDependencies).not.toEqual([]);
+		expect(blocked.check.missingDependencies.filter(({ blocking }) => blocking)).toEqual([]);
+		expect(await snapshotApplyState()).toEqual(before);
+
+		const applied = await service.continueApplyProjectSelection(alpha.id, user, {
+			workflowIds,
+			...reviewed,
+			confirmMissingDependencies: true,
+		});
+
+		assert(applied.status === 'applied', JSON.stringify(applied));
+		expect(applied.missingDependencies).toEqual(blocked.check.missingDependencies);
+		return { blocked, applied };
+	}
+
+	/**
+	 * Apply writes each caller as the branch holds it: the first without a preview, the second with
+	 * a reviewed preview. With `confirms`, the callers have missing dependencies that do not stop
+	 * the Apply, so the Apply needs the confirmation. Returns the check before the Apply.
+	 */
+	async function expectApplied(
+		user: User,
+		[first, second]: readonly WorkflowEntity[],
+		{ confirms }: { confirms: boolean },
+	) {
 		const workflows = Container.get(WorkflowRepository);
 		const credentialCount = await Container.get(CredentialsRepository).count();
 		const publishState = async () =>
@@ -2813,15 +2863,22 @@ describe('Missing dependencies of an Apply', () => {
 		const published = await publishState();
 
 		const before = await loadApplyPreview(alpha.id, user);
-		const direct = await service.applyProjectSelection(alpha.id, user, {
-			workflowIds: [first.id],
-		});
-		const reviewed = await service.applyProjectSelection(alpha.id, user, {
+		const direct = confirms
+			? (await applyWithConfirmation(user, [first.id], applyOf(before))).applied
+			: await service.applyProjectSelection(alpha.id, user, { workflowIds: [first.id] });
+		const request = {
 			workflowIds: [second.id],
 			...applyOf(await loadApplyPreview(alpha.id, user)),
-		});
+		};
+		const reviewed = confirms
+			? await service.continueApplyProjectSelection(alpha.id, user, {
+					...request,
+					confirmMissingDependencies: true,
+				})
+			: await service.applyProjectSelection(alpha.id, user, request);
 
 		assert(direct.status === 'applied' && reviewed.status === 'applied');
+		expect(reviewed.missingDependencies.length > 0).toBe(confirms);
 		expect(direct.counts.workflows).toMatchObject({ created: 0, updated: 1 });
 		expect(reviewed.counts).toEqual(direct.counts);
 		for (const authored of [first, second]) {
@@ -2867,6 +2924,17 @@ describe('Missing dependencies of an Apply', () => {
 		]);
 		// A user with access to Alpha only reads the same check.
 		expect(await expectBlocked(await createAlphaApplier(), workflow)).toEqual(check);
+		// The confirmation covers only what does not stop the Apply.
+		expect(
+			await service.continueApplyProjectSelection(alpha.id, owner, {
+				workflowIds: [workflow.id],
+				...applyOf(await loadApplyPreview(alpha.id)),
+				confirmMissingDependencies: true,
+			}),
+		).toMatchObject({
+			status: 'blocked',
+			check: { missingDependencies: check.missingDependencies },
+		});
 	});
 
 	it('lists a missing credential of another project by the access of the user, and never names that project to a user without access', async () => {
@@ -2884,14 +2952,14 @@ describe('Missing dependencies of an Apply', () => {
 			name: 'CRM key',
 			credentialType: 'httpHeaderAuth',
 			reason: 'not-on-instance',
-			blocking: true,
 			consumers: usedBy(workflow),
 		};
 
 		const withAccess = await expectBlocked(owner, workflow);
 
+		// A user who can create the credential must create it.
 		expect(withAccess.missingDependencies).toEqual([
-			{ ...entry, group: 'needs-action', accessible: true },
+			{ ...entry, group: 'needs-action', accessible: true, blocking: true },
 		]);
 		expect(withAccess.missingBindings).toEqual([
 			expect.objectContaining({
@@ -2904,8 +2972,9 @@ describe('Missing dependencies of an Apply', () => {
 		const applier = await createAlphaApplier();
 		const withoutAccess = await expectBlocked(applier, workflow);
 
+		// The other users can only continue without it.
 		expect(withoutAccess.missingDependencies).toEqual([
-			{ ...entry, group: 'outside-access', accessible: false },
+			{ ...entry, group: 'outside-access', accessible: false, blocking: false },
 		]);
 		expect(withoutAccess.missingBindings).toEqual([]);
 		expect(withoutAccess.conflicts).toEqual([]);
@@ -2936,7 +3005,7 @@ describe('Missing dependencies of an Apply', () => {
 				group: 'outside-access',
 				reason: 'not-on-branch',
 				accessible: false,
-				blocking: true,
+				blocking: false,
 				consumers: usedBy(workflow),
 			},
 		]);
@@ -2958,7 +3027,6 @@ describe('Missing dependencies of an Apply', () => {
 			name: 'CRM key',
 			credentialType: 'httpHeaderAuth',
 			reason: 'not-on-instance',
-			blocking: true,
 			consumers: usedBy(workflow),
 		};
 
@@ -2966,7 +3034,7 @@ describe('Missing dependencies of an Apply', () => {
 		const withScope = await expectBlocked(await createAlphaApplier(['project:create']), workflow);
 
 		expect(withScope.missingDependencies).toEqual([
-			{ ...entry, group: 'needs-action', accessible: true },
+			{ ...entry, group: 'needs-action', accessible: true, blocking: true },
 		]);
 		expect(withScope.missingBindings).toEqual([
 			expect.objectContaining({
@@ -2979,8 +3047,9 @@ describe('Missing dependencies of an Apply', () => {
 		const applier = await createAlphaApplier();
 		const withoutScope = await expectBlocked(applier, workflow);
 
+		// The other users can only continue without it.
 		expect(withoutScope.missingDependencies).toEqual([
-			{ ...entry, group: 'outside-access', accessible: false },
+			{ ...entry, group: 'outside-access', accessible: false, blocking: false },
 		]);
 		expect(withoutScope).toMatchObject({ missingBindings: [], conflicts: [] });
 		expectNotNamed(beta, ...(await readPreviewAndBlocked(applier, workflow)));
@@ -3015,7 +3084,7 @@ describe('Missing dependencies of an Apply', () => {
 					group: 'outside-access',
 					reason: 'not-on-instance',
 					accessible: false,
-					blocking: true,
+					blocking: false,
 					consumers: usedBy(workflow),
 				},
 			]);
@@ -3064,7 +3133,7 @@ describe('Missing dependencies of an Apply', () => {
 		);
 	});
 
-	it('lists a sub-workflow that is not on this instance, and applies as before', async () => {
+	it('lists a sub-workflow that is not on this instance, and applies after the confirmation', async () => {
 		const helper = await createWorkflow(
 			{ name: 'Helper', nodes: [], connections: {}, settings: { callerPolicy: 'any' } },
 			beta,
@@ -3088,7 +3157,7 @@ describe('Missing dependencies of an Apply', () => {
 		};
 
 		const withoutAccess = await loadApplyPreview(alpha.id, applier);
-		const check = await expectApplied(owner, callers);
+		const check = await expectApplied(owner, callers, { confirms: true });
 
 		// The branch holds the sub-workflow in Beta, so the access to Beta decides the group.
 		expect(check.missingDependencies).toEqual([
@@ -3101,7 +3170,7 @@ describe('Missing dependencies of an Apply', () => {
 		expect(check).toMatchObject({ missingBindings: [], accessRequirements: [], conflicts: [] });
 	});
 
-	it('lists a sub-workflow that the branch archives for a selection with it, and applies as before', async () => {
+	it('lists a sub-workflow that the branch archives for a selection with it, and applies after the confirmation', async () => {
 		const helper = await createWorkflow(
 			{ name: 'Helper', nodes: [], connections: {}, isArchived: true },
 			alpha,
@@ -3115,25 +3184,44 @@ describe('Missing dependencies of an Apply', () => {
 		);
 		// Only an Apply that includes the sub-workflow archives it here.
 		await Container.get(WorkflowRepository).update(helper.id, { isArchived: false });
+		const applier = await createAlphaApplier();
+		const [first, second] = callers;
+		const entry = {
+			kind: 'workflow',
+			id: helper.id,
+			name: 'Helper',
+			group: 'needs-action',
+			reason: 'archived',
+			accessible: true,
+			blocking: false,
+		};
 
-		const check = await expectApplied(await createAlphaApplier(), callers);
+		const preview = await loadApplyPreview(alpha.id, applier);
+		// A selection without the sub-workflow leaves it as this instance holds it.
+		const withoutHelper = await service.applyProjectSelection(alpha.id, applier, {
+			workflowIds: [first.id],
+		});
+		// A selection with the sub-workflow archives it, so the caller cannot use it.
+		const { applied } = await applyWithConfirmation(
+			applier,
+			[helper.id, second.id],
+			applyOf(await loadApplyPreview(alpha.id, applier)),
+		);
 
-		expect(check.missingDependencies).toEqual([
-			{
-				kind: 'workflow',
-				id: helper.id,
-				name: 'Helper',
-				group: 'needs-action',
-				reason: 'archived',
-				accessible: true,
-				blocking: false,
-				condition: 'target-selected',
-				consumers: usedBy(...callers),
-			},
+		expect(preview.check.missingDependencies).toEqual([
+			{ ...entry, condition: 'target-selected', consumers: usedBy(...callers) },
 		]);
+		assert(withoutHelper.status === 'applied', JSON.stringify(withoutHelper));
+		expect(withoutHelper.missingDependencies).toEqual([]);
+		expect(applied.missingDependencies).toEqual([{ ...entry, consumers: usedBy(second) }]);
+		const workflows = Container.get(WorkflowRepository);
+		for (const authored of callers) {
+			expect((await workflows.findOneByOrFail({ id: authored.id })).nodes).toEqual(authored.nodes);
+		}
+		expect((await workflows.findOneByOrFail({ id: helper.id })).isArchived).toBe(true);
 	});
 
-	it('lists a sub-workflow that the branch adds only for a selection without it, and applies each selection as before', async () => {
+	it('lists a sub-workflow that the branch adds only for a selection without it, and applies that selection only after the confirmation', async () => {
 		const { helper, caller, entry, blockedOn, unblock, apply } = await exportCallerOfOwnHelper();
 		const workflows = Container.get(WorkflowRepository);
 		await workflows.delete(helper.id);
@@ -3152,8 +3240,8 @@ describe('Missing dependencies of an Apply', () => {
 			.expect(200);
 		expect(overApi.body.check.missingDependencies).toEqual([conditional]);
 
-		// The Apply does not check the call, so it writes a call to a workflow that is not here.
-		expect(await apply([caller.id])).toMatchObject({ created: 0, updated: 1 });
+		// With the confirmation, the Apply writes a call to a workflow that is not here.
+		expect(await apply([caller.id], { confirms: true })).toMatchObject({ created: 0, updated: 1 });
 		expect((await workflows.findOneByOrFail({ id: caller.id })).nodes).toEqual(caller.nodes);
 		expect(await workflows.existsBy({ id: helper.id })).toBe(false);
 
@@ -3238,14 +3326,14 @@ describe('Missing dependencies of an Apply', () => {
 			}),
 		).toMatchObject({ status: 'preview-changed' });
 
-		const check = await expectApplied(owner, callers);
+		const check = await expectApplied(owner, callers, { confirms: true });
 
 		expect(check.missingDependencies).toEqual([
 			expect.objectContaining({ id: helper.id, group: 'needs-action', accessible: true }),
 		]);
 	});
 
-	it('lists a sub-workflow whose caller policy refuses the workflow, and applies as before', async () => {
+	it('lists a sub-workflow whose caller policy refuses the workflow, and applies after the confirmation', async () => {
 		// Without a policy of its own, a sub-workflow accepts only the workflows of its project.
 		const helper = await createWorkflow({ name: 'Helper', nodes: [], connections: {} }, beta);
 		const callers = await exportCallers(
@@ -3256,7 +3344,7 @@ describe('Missing dependencies of an Apply', () => {
 				),
 		);
 
-		const check = await expectApplied(owner, callers);
+		const check = await expectApplied(owner, callers, { confirms: true });
 
 		expect(check.missingDependencies).toEqual([
 			{
@@ -3272,7 +3360,7 @@ describe('Missing dependencies of an Apply', () => {
 		]);
 	});
 
-	it('lists an error workflow that is not on this instance, and applies as before', async () => {
+	it('lists an error workflow that is not on this instance, and applies after the confirmation', async () => {
 		const handler = await createWorkflow({ name: 'Handler', nodes: [], connections: {} }, beta);
 		const callers = await exportCallers(
 			async (name) =>
@@ -3283,7 +3371,7 @@ describe('Missing dependencies of an Apply', () => {
 		);
 		await Container.get(WorkflowRepository).delete(handler.id);
 
-		const check = await expectApplied(owner, callers);
+		const check = await expectApplied(owner, callers, { confirms: true });
 
 		expect(check.missingDependencies).toEqual([
 			{
@@ -3299,7 +3387,7 @@ describe('Missing dependencies of an Apply', () => {
 		]);
 	});
 
-	it('lists an error workflow whose caller policy refuses the workflow, and applies as before', async () => {
+	it('lists an error workflow whose caller policy refuses the workflow, and applies after the confirmation', async () => {
 		// Without a policy of its own, an error workflow accepts only the workflows of its project.
 		const handler = await createWorkflow({ name: 'Handler', nodes: [], connections: {} }, beta);
 		const callers = await exportCallers(
@@ -3310,7 +3398,7 @@ describe('Missing dependencies of an Apply', () => {
 				),
 		);
 
-		const check = await expectApplied(owner, callers);
+		const check = await expectApplied(owner, callers, { confirms: true });
 
 		expect(check.missingDependencies).toEqual([
 			{
@@ -3355,7 +3443,8 @@ describe('Missing dependencies of an Apply', () => {
 				),
 		);
 
-		const check = await expectApplied(await createAlphaApplier(), callers);
+		// Without a missing dependency, an Apply needs no confirmation.
+		const check = await expectApplied(await createAlphaApplier(), callers, { confirms: false });
 
 		expect(check).toMatchObject({
 			missingBindings: [],
@@ -3428,7 +3517,7 @@ describe('Missing dependencies of an Apply', () => {
 		}
 		expect(await snapshotApplyState()).toEqual(before);
 
-		// With the credential on this instance, only the entry that does not stop the Apply is left.
+		// With the credential on this instance, only the entry that needs the confirmation is left.
 		await agent
 			.post('/credentials')
 			.send({
@@ -3445,14 +3534,523 @@ describe('Missing dependencies of an Apply', () => {
 			.expect(200);
 		expect(afterCreate.body.check.missingDependencies).toEqual([missingDependencies[1]]);
 		expect(afterCreate.body.revision).not.toBe(instancePreview.body.revision);
-		const applied = await agent
-			.post(`/promotions/environments/${environments.apply.id}/apply/continue`)
+		const reviewed = {
+			expectedSource: { ...afterCreate.body.source, commitSha: afterCreate.body.commitSha },
+			expectedPreviewRevision: afterCreate.body.revision,
+		};
+		const continueInstance = `/promotions/environments/${environments.apply.id}/apply/continue`;
+		const continueProject = `/promotions/projects/${alpha.id}/apply/continue`;
+		const selection = { workflowIds: [workflow.id], expectedSource: reviewed.expectedSource };
+
+		const unconfirmed = [
+			await agent.post(continueInstance).send(reviewed).expect(200),
+			await agent.post(continueProject).send(selection).expect(200),
+		];
+		for (const { body } of unconfirmed) {
+			expect(body.status).toBe('blocked');
+			expect(body.check.missingDependencies).toEqual([missingDependencies[1]]);
+		}
+
+		const confirmed = [
+			await agent
+				.post(continueInstance)
+				.send({ ...reviewed, confirmMissingDependencies: true })
+				.expect(200),
+			await agent
+				.post(continueProject)
+				.send({ ...selection, confirmMissingDependencies: true })
+				.expect(200),
+		];
+		for (const { body } of confirmed) {
+			expect(body.status).toBe('applied');
+			expect(body.missingDependencies).toEqual([missingDependencies[1]]);
+		}
+		expect(applyPackageResultSchema.safeParse(confirmed[0].body).success).toBe(true);
+	});
+
+	const headerCredentialData = { name: 'X-Token', value: 'secret' };
+
+	/** A credential of the personal project of the owner. The branch holds it without an owner project. */
+	async function savePersonalCredential(name: string) {
+		return await saveCredential(
+			{ name, type: 'httpHeaderAuth', data: headerCredentialData },
+			{ user: owner, role: 'credential:owner' },
+		);
+	}
+
+	const credentialRows = async () => ({
+		credentials: await Container.get(CredentialsRepository).find({ order: { id: 'ASC' } }),
+		shares: await Container.get(SharedCredentialsRepository).find({
+			order: { credentialsId: 'ASC', projectId: 'ASC' },
+		}),
+	});
+
+	const landed = async ({ id }: { id: string }) =>
+		await Container.get(WorkflowRepository).findOneByOrFail({ id });
+
+	/** Sets the reason on requirement rows of the branch, as Promote does. */
+	async function markRowsOnBranch(
+		reason: 'missing-on-source' | 'confirmed-missing',
+		ids: string[],
+	) {
+		const manifestPath = path.join(remote.workingDir, 'n8n', 'manifest.json');
+		const manifest = jsonParse<{
+			requirements?: Record<'credentials' | 'workflows', Array<{ id: string; reason?: string }>>;
+		}>(await readFile(manifestPath, 'utf-8'));
+		const rows = [
+			...(manifest.requirements?.credentials ?? []),
+			...(manifest.requirements?.workflows ?? []),
+		].filter(({ id }) => ids.includes(id));
+		expect(rows.map(({ id }) => id).sort()).toEqual([...ids].sort());
+		for (const row of rows) row.reason = reason;
+		await writeFile(manifestPath, JSON.stringify(manifest, null, 2));
+		await commitAndPushRemote(remote, 'Mark requirement rows');
+	}
+
+	it.each([
+		{
+			title: 'of a project that the user cannot access',
+			reason: 'not-on-instance',
+			seed: async () => {
+				const credential = await saveHeaderCredential('CRM key', beta);
+				await shareCredentialWithProjects(credential, [alpha]);
+				return { credential, user: await createAlphaApplier() };
+			},
+		},
+		{
+			title: 'without an owner project on the branch',
+			reason: 'not-on-branch',
+			seed: async () => ({ credential: await savePersonalCredential('My key'), user: owner }),
+		},
+	])(
+		'continues without a missing credential $title after the confirmation, and creates no credential',
+		async ({ seed, reason }) => {
+			// With sharing licensed, each workflow write checks the credentials of the nodes.
+			licenseMocker.enable('feat:sharing');
+			const { credential, user } = await seed();
+			// Alpha holds a credential with the same name and type. The workflows do not name it.
+			await saveHeaderCredential(credential.name, alpha);
+			const usesCredential = async (name: string) =>
+				await createWorkflow({ name, nodes: [headerAuthNode(credential)], connections: {} }, alpha);
+			const updated = await usesCredential('Sync');
+			const created = await usesCredential('Sync again');
+			await exportPackageToRemote(remote);
+			await Container.get(CredentialsRepository).delete(credential.id);
+			await Container.get(WorkflowRepository).update(updated.id, { nodes: [] });
+			await Container.get(WorkflowRepository).delete(created.id);
+			const rows = await credentialRows();
+
+			const { blocked, applied } = await applyWithConfirmation(
+				user,
+				[updated.id, created.id],
+				applyOf(await loadApplyPreview(alpha.id, user)),
+			);
+
+			expect(applied.missingDependencies).toEqual([
+				{
+					kind: 'credential',
+					id: credential.id,
+					name: credential.name,
+					credentialType: 'httpHeaderAuth',
+					group: 'outside-access',
+					reason,
+					accessible: false,
+					blocking: false,
+					consumers: usedBy(updated, created),
+				},
+			]);
+			expect(applied.counts.workflows).toMatchObject({ created: 1, updated: 1 });
+			expect(applied.counts.credentials).toEqual({ matched: 0, stubbed: 0, updated: 0 });
+			// Each node keeps the reference of the branch, and no project gets a credential.
+			for (const authored of [updated, created]) {
+				expect((await landed(authored)).nodes).toEqual(authored.nodes);
+			}
+			expect(await credentialRows()).toEqual(rows);
+			// No result names the project of the credential.
+			for (const result of [blocked, applied]) {
+				expect(JSON.stringify(result)).not.toContain(beta.id);
+				expect(JSON.stringify(result)).not.toContain(beta.name);
+			}
+			// The next Apply still lists the credential, because it is still missing.
+			expect((await loadApplyPreview(alpha.id, user)).check.missingDependencies).toEqual(
+				applied.missingDependencies,
+			);
+		},
+	);
+
+	it('keeps a workflow blocked on a missing credential that the user can create, with and without the confirmation, until the credential exists', async () => {
+		licenseMocker.enable('feat:sharing');
+		const credential = await saveHeaderCredential('CRM key', beta);
+		await shareCredentialWithProjects(credential, [alpha]);
+		const workflow = await createWorkflow(
+			{ name: 'Sync', nodes: [headerAuthNode(credential)], connections: {} },
+			alpha,
+		);
+		const report = await createWorkflow({ name: 'Report', nodes: [], connections: {} }, alpha);
+		await exportPackageToRemote(remote);
+		await Container.get(CredentialsRepository).delete(credential.id);
+		await Container.get(WorkflowRepository).update(report.id, { name: 'Report on this instance' });
+		const selection = { workflowIds: [workflow.id], ...applyOf(await loadApplyPreview(alpha.id)) };
+		const before = await snapshotApplyState();
+
+		const results = [
+			await service.applyProjectSelection(alpha.id, owner, selection),
+			await service.continueApplyProjectSelection(alpha.id, owner, selection),
+			await service.continueApplyProjectSelection(alpha.id, owner, {
+				...selection,
+				confirmMissingDependencies: true,
+			}),
+		];
+
+		for (const result of results) {
+			assert(result.status === 'blocked', JSON.stringify(result));
+			expect(result.check.missingDependencies).toEqual([
+				expect.objectContaining({ id: credential.id, group: 'needs-action', blocking: true }),
+			]);
+		}
+		expect(await snapshotApplyState()).toEqual(before);
+
+		// A selection without the workflow that uses the credential applies.
+		const other = await service.applyProjectSelection(alpha.id, owner, {
+			workflowIds: [report.id],
+		});
+		assert(other.status === 'applied', JSON.stringify(other));
+		expect(other.missingDependencies).toEqual([]);
+		expect((await landed(report)).name).toBe('Report');
+		expect(await Container.get(CredentialsRepository).count()).toBe(0);
+
+		// The user creates the credential in its project and shares it, as on the source instance.
+		await testServer
+			.publicApiAgentFor(owner)
+			.post('/credentials')
 			.send({
-				expectedSource: { ...afterCreate.body.source, commitSha: afterCreate.body.commitSha },
-				expectedPreviewRevision: afterCreate.body.revision,
+				id: credential.id,
+				name: credential.name,
+				type: credential.type,
+				projectId: beta.id,
+				data: headerCredentialData,
 			})
 			.expect(200);
-		expect(applied.body.status).toBe('applied');
+		await shareCredentialWithProjects(credential, [alpha]);
+
+		const applied = await service.applyProjectSelection(alpha.id, owner, {
+			workflowIds: [workflow.id],
+		});
+
+		assert(applied.status === 'applied', JSON.stringify(applied));
+		expect(applied.missingDependencies).toEqual([]);
+		expect(applied.counts.credentials).toMatchObject({ matched: 1, stubbed: 0 });
+		expect(await Container.get(CredentialsRepository).count()).toBe(1);
+	});
+
+	it('stops on a credential that exists on this instance and that the project cannot use, also for a user who cannot read it and also with the confirmation', async () => {
+		licenseMocker.enable('feat:sharing');
+		const credential = await saveHeaderCredential('CRM key', beta);
+		await shareCredentialWithProjects(credential, [alpha]);
+		const workflow = await createWorkflow(
+			{ name: 'Sync', nodes: [headerAuthNode(credential)], connections: {} },
+			alpha,
+		);
+		await exportPackageToRemote(remote);
+		// On this instance, nobody shared the credential of Beta with Alpha.
+		await Container.get(SharedCredentialsRepository).delete({
+			credentialsId: credential.id,
+			projectId: alpha.id,
+		});
+		await Container.get(WorkflowRepository).update(workflow.id, { nodes: [] });
+		const applier = await createAlphaApplier();
+
+		const check = await expectBlocked(applier, workflow);
+
+		expect(check).toMatchObject({ missingBindings: [], accessRequirements: [], conflicts: [] });
+		expect(check.missingDependencies).toEqual([
+			{
+				kind: 'credential',
+				id: credential.id,
+				name: 'CRM key',
+				credentialType: 'httpHeaderAuth',
+				group: 'outside-access',
+				reason: 'not-shared',
+				accessible: false,
+				blocking: true,
+				consumers: usedBy(workflow),
+			},
+		]);
+		expectNotNamed(beta, check);
+		const before = await snapshotApplyState();
+		expect(
+			await service.continueApplyProjectSelection(alpha.id, applier, {
+				workflowIds: [workflow.id],
+				...applyOf(await loadApplyPreview(alpha.id, applier)),
+				confirmMissingDependencies: true,
+			}),
+		).toMatchObject({ status: 'blocked' });
+		expect(await snapshotApplyState()).toEqual(before);
+	});
+
+	it('stops a confirmed Continue when the list changed after the reviewed preview, and shows the new list', async () => {
+		const credential = await savePersonalCredential('My key');
+		const helper = await createWorkflow(
+			{ name: 'Helper', nodes: [], connections: {}, settings: { callerPolicy: 'any' } },
+			beta,
+		);
+		const workflow = await createWorkflow(
+			{
+				name: 'Sync',
+				nodes: [headerAuthNode(credential), executeWorkflowNode(helper.id)],
+				connections: {},
+			},
+			alpha,
+		);
+		await exportPackageToRemote(remote);
+		await Container.get(CredentialsRepository).delete(credential.id);
+		const reviewed = await loadApplyPreview(alpha.id);
+		expect(reviewed.check.missingDependencies.map(({ id }) => id)).toEqual([credential.id]);
+
+		// After the review, a second dependency is no longer usable.
+		await Container.get(WorkflowRepository).update(helper.id, { isArchived: true });
+		const before = await snapshotApplyState();
+
+		const result = await service.continueApplyProjectSelection(alpha.id, owner, {
+			workflowIds: [workflow.id],
+			...applyOf(reviewed),
+			confirmMissingDependencies: true,
+		});
+
+		expect(result).toMatchObject({ status: 'preview-changed' });
+		expect(await snapshotApplyState()).toEqual(before);
+		const current = await loadApplyPreview(alpha.id);
+		expect(current.revision).not.toBe(reviewed.revision);
+		expect(current.check.missingDependencies.map(({ id }) => id).sort()).toEqual(
+			[credential.id, helper.id].sort(),
+		);
+
+		const applied = await service.continueApplyProjectSelection(alpha.id, owner, {
+			workflowIds: [workflow.id],
+			...applyOf(current),
+			confirmMissingDependencies: true,
+		});
+
+		assert(applied.status === 'applied', JSON.stringify(applied));
+		expect(applied.missingDependencies).toEqual(current.check.missingDependencies);
+	});
+
+	it('applies without a confirmation when Promote marked the references as broken on the source instance, and returns them as warnings', async () => {
+		licenseMocker.enable('feat:sharing');
+		const credential = await savePersonalCredential('My key');
+		const helper = await createWorkflow({ name: 'Helper', nodes: [], connections: {} }, beta);
+		const workflow = await createWorkflow(
+			{
+				name: 'Sync',
+				nodes: [headerAuthNode(credential), executeWorkflowNode(helper.id)],
+				connections: {},
+			},
+			alpha,
+		);
+		await exportPackageToRemote(remote);
+		await markRowsOnBranch('missing-on-source', [credential.id, helper.id]);
+		await Container.get(CredentialsRepository).delete(credential.id);
+		await Container.get(WorkflowRepository).delete(helper.id);
+		await Container.get(WorkflowRepository).update(workflow.id, { nodes: [] });
+		const rows = await credentialRows();
+		const preview = await loadApplyPreview(alpha.id);
+
+		const applied = await service.applyProjectSelection(alpha.id, owner, {
+			workflowIds: [workflow.id],
+			...applyOf(preview),
+		});
+
+		assert(applied.status === 'applied', JSON.stringify(applied));
+		expect(applied.missingDependencies).toEqual([]);
+		expect(preview.check.missingDependencies).toEqual([]);
+		expect(applied.warnings).toEqual(preview.check.warnings);
+		const byKind = (a: { kind: string }, b: { kind: string }) => (a.kind < b.kind ? -1 : 1);
+		expect([...applied.warnings].sort(byKind)).toEqual([
+			{
+				kind: 'credential',
+				code: 'missing-on-source',
+				id: credential.id,
+				name: 'My key',
+				consumers: usedBy(workflow),
+			},
+			{
+				kind: 'workflow',
+				code: 'missing-on-source',
+				id: helper.id,
+				name: 'Helper',
+				consumers: usedBy(workflow),
+			},
+		]);
+		expect((await landed(workflow)).nodes).toEqual(workflow.nodes);
+		expect(await credentialRows()).toEqual(rows);
+	});
+
+	it('keeps a reference that Promote marked as confirmed in the list that needs the confirmation', async () => {
+		const credential = await savePersonalCredential('My key');
+		const workflow = await createWorkflow(
+			{ name: 'Sync', nodes: [headerAuthNode(credential)], connections: {} },
+			alpha,
+		);
+		await exportPackageToRemote(remote);
+		await markRowsOnBranch('confirmed-missing', [credential.id]);
+		await Container.get(CredentialsRepository).delete(credential.id);
+
+		const check = await expectBlocked(owner, workflow);
+
+		expect(check.warnings).toEqual([]);
+		expect(check.missingDependencies).toEqual([
+			expect.objectContaining({ id: credential.id, group: 'outside-access', blocking: false }),
+		]);
+	});
+
+	it('keeps the published version of a workflow that the Apply updates with a missing credential', async () => {
+		licenseMocker.enable('feat:sharing');
+		const credential = await savePersonalCredential('My key');
+		const workflow = await createActiveWorkflow({ name: 'Live' }, alpha);
+		const workflows = Container.get(WorkflowRepository);
+		const publishedNodes = workflow.nodes;
+		const branchNodes = [...publishedNodes, headerAuthNode(credential)];
+		// The branch holds a later version of the workflow, which uses the credential.
+		await workflows.update(workflow.id, { nodes: branchNodes });
+		await exportPackageToRemote(remote);
+		await workflows.update(workflow.id, { nodes: publishedNodes });
+		await Container.get(CredentialsRepository).delete(credential.id);
+		const publishedVersions = Container.get(WorkflowPublishedVersionRepository);
+		const publishedBefore = await publishedVersions.findBy({ workflowId: workflow.id });
+		expect(workflow.activeVersionId).toEqual(expect.any(String));
+
+		const { applied } = await applyWithConfirmation(
+			owner,
+			[workflow.id],
+			applyOf(await loadApplyPreview(alpha.id)),
+		);
+
+		expect(applied.counts.workflows).toMatchObject({ created: 0, updated: 1 });
+		expect(applied.counts.workflows.publishing).toMatchObject({
+			published: 0,
+			unpublished: 0,
+			blocked: 0,
+			failed: 0,
+		});
+		const current = await landed(workflow);
+		expect(current.nodes).toEqual(branchNodes);
+		// The Apply saved a new version, and the published one stays live.
+		expect(current.versionId).not.toBe(workflow.versionId);
+		expect(current).toMatchObject({ active: true, activeVersionId: workflow.activeVersionId });
+		expect(await publishedVersions.findBy({ workflowId: workflow.id })).toEqual(publishedBefore);
+	});
+
+	it('leaves a credential that another project owns on this instance as it is, with its shares', async () => {
+		licenseMocker.enable('feat:sharing');
+		const gamma = await createTeamProject('Gamma team', owner);
+		const credential = await saveHeaderCredential('CRM key', beta);
+		await shareCredentialWithProjects(credential, [alpha, gamma]);
+		const workflow = await createWorkflow(
+			{ name: 'Sync', nodes: [headerAuthNode(credential)], connections: {} },
+			alpha,
+		);
+		await exportPackageToRemote(remote);
+		// The branch holds the credential under Beta. On this instance, Gamma owns it.
+		const shares = Container.get(SharedCredentialsRepository);
+		await shares.update(
+			{ credentialsId: credential.id, projectId: beta.id },
+			{ role: 'credential:user' },
+		);
+		await shares.update(
+			{ credentialsId: credential.id, projectId: gamma.id },
+			{ role: 'credential:owner' },
+		);
+		await Container.get(CredentialsRepository).update(credential.id, {
+			name: 'Name on this instance',
+		});
+		await Container.get(WorkflowRepository).update(workflow.id, { nodes: [] });
+		const rows = await credentialRows();
+		expect(rows.shares.map(({ projectId }) => projectId).sort()).toEqual(
+			[alpha.id, beta.id, gamma.id].sort(),
+		);
+
+		const applied = await service.applyProjectSelection(alpha.id, await createAlphaApplier(), {
+			workflowIds: [workflow.id],
+		});
+
+		assert(applied.status === 'applied', JSON.stringify(applied));
+		expect(applied.missingDependencies).toEqual([]);
+		expect(applied.counts.credentials).toEqual({ matched: 1, stubbed: 0, updated: 0 });
+		expect(await credentialRows()).toEqual(rows);
+		expect((await landed(workflow)).nodes[0].credentials).toEqual({
+			httpHeaderAuth: { id: credential.id, name: 'Name on this instance' },
+		});
+	});
+
+	it('needs each confirmation of an Apply of the whole instance, and continues only with both', async () => {
+		licenseMocker.enable('feat:sharing');
+		const credential = await savePersonalCredential('My key');
+		const workflow = await createWorkflow(
+			{ name: 'Sync', nodes: [headerAuthNode(credential)], connections: {} },
+			alpha,
+		);
+		const exported = await exportPackageToRemote(remote);
+		await Container.get(CredentialsRepository).delete(credential.id);
+		await Container.get(WorkflowRepository).update(workflow.id, { nodes: [] });
+		// The package does not hold this project, so the Apply deletes it.
+		const targetOnly = await createTeamProject('Target only', owner);
+		const rows = await credentialRows();
+		const environmentId = environments.apply.id;
+		const reviewed = {
+			expectedSource: { environmentId, branchName: 'main', commitSha: exported.git.commitSha },
+		};
+		const missing = {
+			kind: 'credential',
+			id: credential.id,
+			name: 'My key',
+			credentialType: 'httpHeaderAuth',
+			group: 'outside-access',
+			reason: 'not-on-branch',
+			accessible: false,
+			blocking: false,
+			consumers: usedBy(workflow),
+		};
+		const before = await snapshotApplyState();
+
+		const stopped = [
+			await service.apply(environmentId, owner),
+			await service.continueApply(environmentId, owner, reviewed),
+			await service.continueApply(environmentId, owner, {
+				...reviewed,
+				confirmDestructiveChanges: true,
+			}),
+			await service.continueApply(environmentId, owner, {
+				...reviewed,
+				confirmMissingDependencies: true,
+			}),
+		];
+
+		for (const result of stopped) {
+			assert(result.status === 'blocked', JSON.stringify(result));
+			expect(result.check.missingDependencies).toEqual([missing]);
+			expect(result.check.conflicts).toEqual([
+				{
+					kind: 'project',
+					code: 'project-deletion',
+					project: { id: targetOnly.id, name: 'Target only' },
+				},
+			]);
+		}
+		expect(await snapshotApplyState()).toEqual(before);
+
+		const applied = await service.continueApply(environmentId, owner, {
+			...reviewed,
+			confirmDestructiveChanges: true,
+			confirmMissingDependencies: true,
+		});
+
+		assert(applied.status === 'applied', JSON.stringify(applied));
+		expect(applied.missingDependencies).toEqual([missing]);
+		expect(applied.counts.projects.deleted).toBe(1);
+		expect(applied.counts.credentials).toEqual({ matched: 0, stubbed: 0, updated: 0 });
+		expect(await projectRepository.findOneBy({ id: targetOnly.id })).toBeNull();
+		expect((await landed(workflow)).nodes).toEqual(workflow.nodes);
+		expect(await credentialRows()).toEqual(rows);
 	});
 });
 
@@ -4351,6 +4949,7 @@ describe('Promote a project selection — branch effects', () => {
 			commitMessage: 'Full promote',
 			force: true,
 		});
+		expectPushed(full);
 		await createFixtureGit(remote.bareDir).raw([
 			'update-ref',
 			'refs/heads/main',
@@ -4855,6 +5454,7 @@ describe('Promote from a clean checkout', () => {
 		const result = await service.promote(environments.promote.id, owner, {
 			commitMessage: 'Direct promotion',
 		});
+		expectPushed(result);
 
 		expect(result.git.branchName).toBe('main');
 		expect((await remoteGit.raw(['rev-list', 'main'])).trim().split('\n')).toEqual([
@@ -4893,6 +5493,7 @@ describe('Promote from a clean checkout', () => {
 		const result = await service.promote(environments.promote.id, owner, {
 			commitMessage: 'Direct promotion',
 		});
+		expectPushed(result);
 
 		expect(result.git.branchName).toBe('main');
 		expect((await remoteGit.raw(['rev-list', 'main'])).trim().split('\n')).toEqual([
@@ -4958,6 +5559,7 @@ describe('Promote from a clean checkout', () => {
 		const result = await service.promote(environments.promote.id, owner, {
 			commitMessage: 'First promotion',
 		});
+		expectPushed(result);
 
 		const remoteGit = createFixtureGit(bareDir);
 		expect((await remoteGit.raw(['rev-list', 'main'])).trim().split('\n')).toEqual([
@@ -5033,6 +5635,7 @@ describe('Promote from a clean checkout', () => {
 		const result = await service.promote(environments.promote.id, owner, {
 			commitMessage: 'Promote after a crash',
 		});
+		expectPushed(result);
 
 		expect((await createFixtureGit(remote.bareDir).revparse(['main'])).trim()).toBe(
 			result.git.commitSha,
@@ -5111,6 +5714,8 @@ describe('Promotion base branch listing', () => {
 
 		await service.promote(environments.promote.id, owner, {
 			commitMessage: 'Export projects',
+			// The credential of the personal project is a missing dependency.
+			confirmMissingDependencies: true,
 		});
 		const manifest = packageManifestSchema.parse(
 			jsonParse(await createFixtureGit(remote.bareDir).show(['main:n8n/manifest.json'])),
@@ -5137,13 +5742,14 @@ describe('Promotion base branch listing', () => {
 				{ entityId: parentFolder.id, type: 'folder' },
 				{ entityId: childFolder.id, type: 'folder' },
 				{ entityId: workflow.id, type: 'workflow' },
-				{ entityId: credential.id, type: 'credential' },
 				{ entityId: variable.id, type: 'variable' },
 				{ entityId: tag.id, type: 'tag' },
 				{ entityId: projectTable.id, type: 'dataTable' },
 				{ entityId: sharedTable.id, type: 'dataTable' },
 			]),
 		);
+		// A Promote writes no file for a credential that no promoted project owns.
+		expect(files.map(({ entityId }) => entityId)).not.toContain(credential.id);
 		expect(files.map(({ path }) => path).sort()).toEqual(expectedPaths.sort());
 
 		for (const file of files) {

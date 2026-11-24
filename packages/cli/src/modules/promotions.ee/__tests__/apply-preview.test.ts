@@ -1,3 +1,8 @@
+import type {
+	PromotionApplyCheck,
+	PromotionBindingConflict,
+	PromotionMissingDependency,
+} from '@n8n/api-types';
 import type { INode } from 'n8n-workflow';
 
 import type { PackageImportPlan } from '@/modules/n8n-packages/engine/project-package-importer';
@@ -12,7 +17,7 @@ import type { BlockingIssue } from '@/modules/n8n-packages/n8n-packages.types';
 import type { PackageRequirements } from '@/modules/n8n-packages/spec/requirements.schema';
 
 import type { ApplyDependencyFacts } from '../apply-dependency-check';
-import { toPreviewCheck } from '../apply-preview';
+import { credentialsLeftUnresolved, stopsApply, toPreviewCheck } from '../apply-preview';
 import {
 	collectCredentialReferences,
 	collectVariableReferences,
@@ -85,6 +90,7 @@ const consumer = (project: typeof ALPHA, ...ids: string[]) => ({
 /** The user holds no access outside the projects of the workflows, and no workflow is applied. */
 const NO_ACCESS: ApplyDependencyFacts = {
 	credentialProjectIds: new Set(),
+	unusableCredentials: new Map(),
 	appliedWorkflowIds: new Set(),
 	removedWorkflowIds: new Set(),
 	selectableWorkflowIds: new Set(),
@@ -317,11 +323,12 @@ describe('toPreviewCheck: missing dependencies', () => {
 		]);
 	});
 
-	it('lists a missing credential of a project that the user cannot access, without its binding', () => {
+	it('lists a missing credential of a project that the user cannot access, without its binding, and does not stop on it', () => {
 		const check = checkPackage({
 			workflows: [usesCredential('wf-1', ALPHA.id)],
 			credentials: [credentialFile('cred-1', BETA.id, 'GitHub key')],
-			issues: [credentialIssue('cred-1', ['wf-1'])],
+			// The import gives no reason to a user who cannot read all credentials.
+			issues: [credentialIssue('cred-1', ['wf-1'], { reason: undefined })],
 		});
 
 		expect(check.missingBindings).toEqual([]);
@@ -331,6 +338,7 @@ describe('toPreviewCheck: missing dependencies', () => {
 				...credentialEntry,
 				...outsideAccess,
 				reason: 'not-on-instance',
+				blocking: false,
 				consumers: [consumer(ALPHA, 'wf-1')],
 			},
 		]);
@@ -361,7 +369,7 @@ describe('toPreviewCheck: missing dependencies', () => {
 		['a file at the top level', [credentialFile('cred-1', null, 'GitHub key')], 'GitHub key'],
 		['no file', [], 'Row name'],
 	])(
-		'lists a missing credential with %s only in the list as not on the branch, and reports no conflict',
+		'lists a missing credential with %s only in the list as not on the branch, reports no conflict, and does not stop on it',
 		(_case, credentials, name) => {
 			const check = checkPackage({
 				workflows: [usesCredential('wf-1', ALPHA.id)],
@@ -389,9 +397,18 @@ describe('toPreviewCheck: missing dependencies', () => {
 					name,
 					...outsideAccess,
 					reason: 'not-on-branch',
+					blocking: false,
 					consumers: [consumer(ALPHA, 'wf-1')],
 				},
 			]);
+			// The Apply needs the confirmation, then it leaves the reference as it is.
+			expect(stopsApply(check, { destructiveChanges: true, missingDependencies: false })).toBe(
+				true,
+			);
+			expect(stopsApply(check, { destructiveChanges: false, missingDependencies: true })).toBe(
+				false,
+			);
+			expect(credentialsLeftUnresolved(check)).toEqual(['cred-1']);
 		},
 	);
 
@@ -451,6 +468,46 @@ describe('toPreviewCheck: missing dependencies', () => {
 			},
 		]);
 	});
+
+	it.each([
+		['project', 'not-shared'],
+		['instance', 'incompatible-usage-scope'],
+	] as const)(
+		'stops on a credential that this instance holds with the usage scope %s, for a user who gets no reason from the import',
+		(usageScope, reason) => {
+			const check = checkPackage({
+				workflows: [usesCredential('wf-1', ALPHA.id)],
+				credentials: [credentialFile('cred-1', BETA.id, 'GitHub key')],
+				requirements: {
+					credentials: [
+						{
+							id: 'cred-1',
+							type: 'githubApi',
+							// A marker of Promote does not change the rule for a credential that exists here.
+							reason: 'missing-on-source',
+							usedBy: [{ kind: 'workflow', id: 'wf-1' }],
+						},
+					],
+				},
+				issues: [credentialIssue('cred-1', ['wf-1'], { reason: undefined })],
+				// The user can create credentials in Beta, but this id is taken.
+				dependencies: {
+					credentialProjectIds: new Set([BETA.id]),
+					unusableCredentials: new Map([['cred-1', usageScope]]),
+				},
+			});
+
+			expect(check).toMatchObject({
+				missingBindings: [],
+				accessRequirements: [],
+				conflicts: [],
+				warnings: [],
+			});
+			expect(check.missingDependencies).toEqual([
+				{ ...credentialEntry, ...outsideAccess, reason, consumers: [consumer(ALPHA, 'wf-1')] },
+			]);
+		},
+	);
 
 	it('does not list a reference without an id, or an id with two types', () => {
 		const check = checkPackage({
@@ -605,5 +662,397 @@ describe('toPreviewCheck: missing dependencies', () => {
 			{ ...entry, reason: 'caller-policy', condition: 'target-not-selected' },
 		]);
 		expect(check).toMatchObject({ missingBindings: [], accessRequirements: [], conflicts: [] });
+	});
+});
+
+describe('toPreviewCheck: references that Promote marked as broken on the source instance', () => {
+	const usesCredential = (id: string, projectId: string, credentialId = 'cred-1') =>
+		workflow(id, projectId, [credentialNode('Request', 'githubApi', credentialId, 'Node name')]);
+	const callsWorkflow = (id: string, projectId: string, calledId = 'sub-1') =>
+		workflow(id, projectId, [
+			node('Call', {
+				type: 'n8n-nodes-base.executeWorkflow',
+				parameters: { workflowId: calledId },
+			}),
+		]);
+	const row = (
+		id: string,
+		workflowIds: string[],
+		reason?: 'confirmed-missing' | 'missing-on-source',
+	) => ({
+		id,
+		name: `Row ${id}`,
+		...(reason ? { reason } : {}),
+		usedBy: workflowIds.map((workflowId) => ({ kind: 'workflow' as const, id: workflowId })),
+	});
+
+	it('reports a marked credential that this instance does not hold as a warning, not as a missing dependency', () => {
+		const check = checkPackage({
+			workflows: [usesCredential('wf-1', ALPHA.id), usesCredential('wf-2', BETA.id)],
+			requirements: {
+				credentials: [
+					{ ...row('cred-1', ['wf-1', 'wf-2'], 'missing-on-source'), type: 'githubApi' },
+				],
+			},
+			// An Apply of the whole instance raises the issue once for each project.
+			issues: [credentialIssue('cred-1', ['wf-2']), credentialIssue('cred-1', ['wf-1'])],
+		});
+
+		expect(check.warnings).toEqual([
+			{
+				kind: 'credential',
+				code: 'missing-on-source',
+				id: 'cred-1',
+				name: 'Row cred-1',
+				consumers: [consumer(ALPHA, 'wf-1'), consumer(BETA, 'wf-2')],
+			},
+		]);
+		expect(check).toMatchObject({
+			missingDependencies: [],
+			missingBindings: [],
+			accessRequirements: [],
+			conflicts: [],
+		});
+	});
+
+	it('reports a marked credential that the branch holds without an owner project as a warning, and leaves it unresolved without a confirmation', () => {
+		const check = checkPackage({
+			workflows: [usesCredential('wf-1', ALPHA.id)],
+			credentials: [credentialFile('cred-1', null, 'GitHub key')],
+			requirements: {
+				credentials: [{ ...row('cred-1', ['wf-1'], 'missing-on-source'), type: 'githubApi' }],
+			},
+			issues: [credentialIssue('cred-1', ['wf-1'])],
+		});
+
+		expect(check.warnings).toEqual([
+			{
+				kind: 'credential',
+				code: 'missing-on-source',
+				id: 'cred-1',
+				name: 'GitHub key',
+				consumers: [consumer(ALPHA, 'wf-1')],
+			},
+		]);
+		expect(check.missingDependencies).toEqual([]);
+		expect(stopsApply(check, { destructiveChanges: false, missingDependencies: false })).toBe(
+			false,
+		);
+		expect(credentialsLeftUnresolved(check)).toEqual(['cred-1']);
+	});
+
+	it.each([['confirmed-missing'], [undefined]] as const)(
+		'keeps a credential whose row has the reason %s as a missing dependency',
+		(reason) => {
+			const check = checkPackage({
+				workflows: [usesCredential('wf-1', ALPHA.id)],
+				requirements: {
+					credentials: [{ ...row('cred-1', ['wf-1'], reason), type: 'githubApi' }],
+				},
+				issues: [credentialIssue('cred-1', ['wf-1'])],
+			});
+
+			expect(check.warnings).toEqual([]);
+			expect(check.missingDependencies).toEqual([
+				expect.objectContaining({ kind: 'credential', id: 'cred-1', blocking: false }),
+			]);
+		},
+	);
+
+	it('keeps a marked credential with another blocker in the lists that stop the Apply', () => {
+		const check = checkPackage({
+			workflows: [usesCredential('wf-1', ALPHA.id)],
+			requirements: {
+				credentials: [{ ...row('cred-1', ['wf-1'], 'missing-on-source'), type: 'githubApi' }],
+			},
+			issues: [credentialIssue('cred-1', ['wf-1'], { reason: 'access-required' })],
+		});
+
+		expect(check.warnings).toEqual([]);
+		expect(check.accessRequirements).toHaveLength(1);
+		expect(check.missingDependencies).toEqual([
+			expect.objectContaining({ id: 'cred-1', reason: 'not-shared', blocking: true }),
+		]);
+	});
+
+	it('reports a marked sub-workflow that the workflows cannot use as a warning, and an unmarked one as a missing dependency', () => {
+		const check = checkPackage({
+			workflows: [callsWorkflow('wf-1', ALPHA.id), callsWorkflow('wf-2', ALPHA.id, 'sub-2')],
+			requirements: {
+				workflows: [
+					row('sub-1', ['wf-1'], 'missing-on-source'),
+					row('sub-2', ['wf-2'], 'confirmed-missing'),
+				],
+			},
+			dependencies: { appliedWorkflowIds: new Set(['wf-1', 'wf-2']) },
+		});
+
+		expect(check.warnings).toEqual([
+			{
+				kind: 'workflow',
+				code: 'missing-on-source',
+				id: 'sub-1',
+				name: 'Row sub-1',
+				consumers: [consumer(ALPHA, 'wf-1')],
+			},
+		]);
+		expect(check.missingDependencies).toEqual([
+			expect.objectContaining({ kind: 'workflow', id: 'sub-2', blocking: false }),
+		]);
+	});
+
+	it('reports one warning for a marked sub-workflow whose entries depend on the selection', () => {
+		const archived = {
+			...workflow('sub-1', ALPHA.id, []),
+			content: { name: 'Workflow sub-1', nodes: [], connections: {}, isArchived: true },
+		} as unknown as InventoryWorkflow;
+
+		// The branch archives the sub-workflow. This instance holds it with a caller policy that
+		// refuses the caller. So the preview of the project has one entry for each selection.
+		const check = checkPackage({
+			workflows: [callsWorkflow('wf-1', ALPHA.id), archived],
+			requirements: { workflows: [row('sub-1', ['wf-1'], 'missing-on-source')] },
+			dependencies: {
+				appliedWorkflowIds: new Set(['wf-1', 'sub-1']),
+				selectableWorkflowIds: new Set(['wf-1', 'sub-1']),
+				instanceWorkflows: new Map([
+					['sub-1', { isArchived: false, settings: { callerPolicy: 'none' }, projectId: ALPHA.id }],
+				]),
+			},
+		});
+
+		expect(check.warnings).toEqual([
+			{
+				kind: 'workflow',
+				code: 'missing-on-source',
+				id: 'sub-1',
+				name: 'Row sub-1',
+				consumers: [consumer(ALPHA, 'wf-1')],
+			},
+		]);
+		expect(check.missingDependencies).toEqual([]);
+	});
+
+	it('reports no warning for a marked sub-workflow that the workflows can use here', () => {
+		const check = checkPackage({
+			workflows: [callsWorkflow('wf-1', ALPHA.id)],
+			requirements: { workflows: [row('sub-1', ['wf-1'], 'missing-on-source')] },
+			dependencies: {
+				appliedWorkflowIds: new Set(['wf-1']),
+				instanceWorkflows: new Map([['sub-1', { isArchived: false, projectId: ALPHA.id }]]),
+			},
+		});
+
+		expect(check.warnings).toEqual([]);
+		expect(check.missingDependencies).toEqual([]);
+	});
+
+	it('gives the warnings in the same order for any order of the plan issues', () => {
+		const input = (issues: BlockingIssue[]) => ({
+			workflows: [
+				workflow('wf-1', ALPHA.id, [
+					credentialNode('B', 'githubApi', 'cred-b', 'B'),
+					credentialNode('A', 'githubApi', 'cred-a', 'A'),
+					node('Call', {
+						type: 'n8n-nodes-base.executeWorkflow',
+						parameters: { workflowId: 'sub-1' },
+					}),
+				]),
+			],
+			requirements: {
+				credentials: [
+					{ ...row('cred-b', ['wf-1'], 'missing-on-source'), type: 'githubApi' },
+					{ ...row('cred-a', ['wf-1'], 'missing-on-source'), type: 'githubApi' },
+				],
+				workflows: [row('sub-1', ['wf-1'], 'missing-on-source')],
+			},
+			issues,
+			dependencies: { appliedWorkflowIds: new Set(['wf-1']) },
+		});
+		const issues = [credentialIssue('cred-b', ['wf-1']), credentialIssue('cred-a', ['wf-1'])];
+
+		const check = checkPackage(input(issues));
+
+		expect(check.warnings.map((warning) => ('id' in warning ? warning.id : warning.name))).toEqual([
+			'cred-a',
+			'cred-b',
+			'sub-1',
+		]);
+		expect(checkPackage(input([...issues].reverse())).warnings).toEqual(check.warnings);
+	});
+});
+
+describe('stopsApply', () => {
+	const entry = (
+		blocking: boolean,
+		kind: PromotionMissingDependency['kind'] = 'credential',
+		id = 'cred-1',
+	): PromotionMissingDependency => ({
+		kind,
+		id,
+		name: 'Name',
+		group: blocking ? 'needs-action' : 'outside-access',
+		reason: 'not-on-instance',
+		accessible: blocking,
+		blocking,
+		consumers: [consumer(ALPHA, 'wf-1')],
+	});
+	const checkWith = (overrides: Partial<PromotionApplyCheck> = {}): PromotionApplyCheck => ({
+		missingProjects: [],
+		missingBindings: [],
+		accessRequirements: [],
+		conflicts: [],
+		warnings: [],
+		missingDependencies: [],
+		...overrides,
+	});
+	const projectDeletion: PromotionBindingConflict = {
+		kind: 'project',
+		code: 'project-deletion',
+		project: ALPHA,
+	};
+	const confirmationStates = [
+		{ destructiveChanges: false, missingDependencies: false },
+		{ destructiveChanges: true, missingDependencies: false },
+		{ destructiveChanges: false, missingDependencies: true },
+		{ destructiveChanges: true, missingDependencies: true },
+	];
+
+	it.each(confirmationStates)(
+		'stops on an entry that stops the Apply, with the confirmations %j',
+		(confirmations) => {
+			expect(stopsApply(checkWith({ missingDependencies: [entry(true)] }), confirmations)).toBe(
+				true,
+			);
+		},
+	);
+
+	it.each(confirmationStates)(
+		'stops on an entry that does not stop the Apply only without its confirmation, with the confirmations %j',
+		(confirmations) => {
+			for (const kind of ['credential', 'workflow'] as const) {
+				expect(
+					stopsApply(checkWith({ missingDependencies: [entry(false, kind)] }), confirmations),
+				).toBe(!confirmations.missingDependencies);
+			}
+		},
+	);
+
+	it.each(confirmationStates)(
+		'stops on a deletion of a project only without its confirmation, with the confirmations %j',
+		(confirmations) => {
+			expect(stopsApply(checkWith({ conflicts: [projectDeletion] }), confirmations)).toBe(
+				!confirmations.destructiveChanges,
+			);
+		},
+	);
+
+	it.each(confirmationStates)(
+		'continues past a deletion of a project and a missing dependency only with both confirmations, with the confirmations %j',
+		(confirmations) => {
+			const check = checkWith({
+				conflicts: [projectDeletion],
+				missingDependencies: [entry(false)],
+			});
+
+			expect(stopsApply(check, confirmations)).toBe(
+				!(confirmations.destructiveChanges && confirmations.missingDependencies),
+			);
+		},
+	);
+
+	it('never stops on a warning', () => {
+		const check = checkWith({
+			warnings: [
+				{
+					kind: 'credential',
+					code: 'missing-on-source',
+					id: 'cred-1',
+					name: 'Name',
+					consumers: [consumer(ALPHA, 'wf-1')],
+				},
+			],
+		});
+
+		expect(stopsApply(check, { destructiveChanges: false, missingDependencies: false })).toBe(
+			false,
+		);
+	});
+
+	it('stops on the other blockers with both confirmations', () => {
+		const both = { destructiveChanges: true, missingDependencies: true };
+		const accessRequirement: PromotionApplyCheck['accessRequirements'][number] = {
+			kind: 'credential',
+			code: 'access-required',
+			sourceId: 'cred-1',
+			name: 'Name',
+			credentialType: 'githubApi',
+			consumers: [consumer(ALPHA, 'wf-1')],
+		};
+		const moved: PromotionBindingConflict = {
+			kind: 'workflow',
+			code: 'moved',
+			id: 'wf-1',
+			name: 'Workflow wf-1',
+			project: ALPHA,
+			projectExists: true,
+			instanceProject: BETA,
+		};
+
+		expect(stopsApply(checkWith({ accessRequirements: [accessRequirement] }), both)).toBe(true);
+		expect(stopsApply(checkWith({ conflicts: [moved] }), both)).toBe(true);
+		expect(stopsApply(checkWith(), both)).toBe(false);
+	});
+});
+
+describe('credentialsLeftUnresolved', () => {
+	it('gives the credentials that the Apply continues without, once each and in order', () => {
+		const dependency = (
+			kind: PromotionMissingDependency['kind'],
+			id: string,
+			blocking: boolean,
+		): PromotionMissingDependency => ({
+			kind,
+			id,
+			name: id,
+			group: 'outside-access',
+			reason: 'not-on-instance',
+			accessible: false,
+			blocking,
+			consumers: [consumer(ALPHA, 'wf-1')],
+		});
+		const warning = (kind: 'credential' | 'workflow', id: string) => ({
+			kind,
+			code: 'missing-on-source' as const,
+			id,
+			name: id,
+			consumers: [consumer(ALPHA, 'wf-1')],
+		});
+
+		const ids = credentialsLeftUnresolved({
+			missingProjects: [],
+			missingBindings: [],
+			accessRequirements: [],
+			conflicts: [],
+			warnings: [
+				warning('credential', 'cred-broken'),
+				warning('workflow', 'sub-broken'),
+				{
+					kind: 'variable',
+					code: 'variable-shadowed',
+					name: 'ZONE',
+					scope: { kind: 'global' },
+					consumers: [consumer(ALPHA, 'wf-1')],
+				},
+			],
+			missingDependencies: [
+				dependency('credential', 'cred-outside', false),
+				dependency('credential', 'cred-outside', false),
+				dependency('credential', 'cred-to-create', true),
+				dependency('workflow', 'sub-missing', false),
+			],
+		});
+
+		expect(ids).toEqual(['cred-broken', 'cred-outside']);
 	});
 });

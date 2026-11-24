@@ -2,6 +2,7 @@ import type {
 	PromotionApplyCheck,
 	PromotionBindingConflict,
 	PromotionBindingConsumer,
+	PromotionDependencyWarning,
 	PromotionMissingDependency,
 	PromotionMissingDependencyReason,
 	PromotionPreviewCheck,
@@ -24,9 +25,11 @@ import type { PackageManifest } from '@/modules/n8n-packages/spec/manifest.schem
 import type { PackageRequirementConsumer } from '@/modules/n8n-packages/spec/requirements.schema';
 
 import {
+	idsMissingOnSource,
 	missingWorkflowDependencies,
 	placementOf,
 	sortDependencies,
+	toSourceWarning,
 	type ApplyDependencyFacts,
 } from './apply-dependency-check';
 import {
@@ -179,6 +182,7 @@ export type ApplyCheckInput = {
  *
  * `missingDependencies` lists what the planned workflows cannot use after the Apply. It repeats
  * the entries of the other lists that are a dependency, and it adds the ones that only it shows.
+ * A reference that Promote marked as broken on the source instance is a warning instead.
  */
 export function toPreviewCheck(input: ApplyCheckInput): PromotionPreviewCheck {
 	const { plan, inventory, moves } = input;
@@ -197,6 +201,16 @@ export function toPreviewCheck(input: ApplyCheckInput): PromotionPreviewCheck {
 			projectOf,
 		);
 
+	const brokenOnSource = idsMissingOnSource(plan.manifest.requirements?.workflows);
+	const isBrokenOnSource = ({ id }: PromotionMissingDependency) =>
+		id !== undefined && brokenOnSource.has(id);
+	const unusableWorkflows = missingWorkflowDependencies({
+		references: input.workflows,
+		inventory,
+		manifest: plan.manifest,
+		facts: input.dependencies,
+		projectOf,
+	});
 	const result: PromotionApplyCheck = {
 		missingProjects: plan.projectPlan.items
 			.filter(({ action }) => action === 'create')
@@ -217,14 +231,8 @@ export function toPreviewCheck(input: ApplyCheckInput): PromotionPreviewCheck {
 		missingBindings: [],
 		accessRequirements: [],
 		conflicts: [],
-		warnings: [],
-		missingDependencies: missingWorkflowDependencies({
-			references: input.workflows,
-			inventory,
-			manifest: plan.manifest,
-			facts: input.dependencies,
-			projectOf,
-		}),
+		warnings: sourceWarnings(unusableWorkflows.filter(isBrokenOnSource)),
+		missingDependencies: unusableWorkflows.filter((workflow) => !isBrokenOnSource(workflow)),
 	};
 
 	const handled = new Set<BlockingIssue>();
@@ -274,6 +282,48 @@ export function toPreviewCheck(input: ApplyCheckInput): PromotionPreviewCheck {
 		movedWorkflows: moves.workflows,
 		movedFolders: moves.folders,
 	};
+}
+
+/** What the caller of an Apply accepts. One confirmation does not include the other. */
+export type ApplyConfirmations = {
+	/** Continue past a `destructive-change` or `project-deletion` conflict. */
+	destructiveChanges: boolean;
+	/** Continue without the missing dependencies that do not stop the Apply. */
+	missingDependencies: boolean;
+};
+
+function isConfirmableConflict(code: PromotionBindingConflict['code']): boolean {
+	return code === 'destructive-change' || code === 'project-deletion';
+}
+
+/**
+ * Whether the Apply stops on the check. A missing dependency with `blocking: false` stops it
+ * until the caller confirms the list. A warning never stops it.
+ */
+export function stopsApply(check: PromotionApplyCheck, confirmations: ApplyConfirmations): boolean {
+	const conflicts = confirmations.destructiveChanges
+		? check.conflicts.filter(({ code }) => !isConfirmableConflict(code))
+		: check.conflicts;
+	return (
+		check.missingBindings.length > 0 ||
+		check.accessRequirements.length > 0 ||
+		conflicts.length > 0 ||
+		check.missingDependencies.some(({ blocking }) => blocking || !confirmations.missingDependencies)
+	);
+}
+
+/**
+ * The credentials that an Apply leaves unresolved: the missing dependencies that do not stop it,
+ * and the references that Promote marked as broken on the source instance.
+ */
+export function credentialsLeftUnresolved(check: PromotionApplyCheck): string[] {
+	const ids = [
+		...check.missingDependencies.filter(({ kind, blocking }) => kind === 'credential' && !blocking),
+		...check.warnings.filter(
+			(warning) => warning.code === 'missing-on-source' && warning.kind === 'credential',
+		),
+	].flatMap((entry) => ('id' in entry && entry.id !== undefined ? entry.id : []));
+	return [...new Set(ids)].sort(compare);
 }
 
 /** Names a blocking issue of the plan. A project-wide issue names `projectId` by default. */
@@ -455,27 +505,31 @@ function addCredentialRules(
 	type Binding = { reference: CredentialReference; consumers: PromotionBindingConsumer[] };
 	const missing = new Map<string, Binding & { file: InventoryCredential; projectId: string }>();
 	const access = new Map<string, Binding>();
+	const brokenOnSource = new Map<string, Binding>();
+	const markedBrokenOnSource = idsMissingOnSource(plan.manifest.requirements?.credentials);
 	// A workflow file holds no credential name, so a credential without a file takes the name of
 	// its requirement row.
 	const rowNames = new Map(
 		(plan.manifest.requirements?.credentials ?? []).map(({ id, name }) => [id, name ?? id]),
 	);
+	const nameOf = (sourceId: string, reference: CredentialReference) =>
+		reference.file ? reference.name : (rowNames.get(sourceId) ?? sourceId);
 	// The list names a credential once for each reason, also when two projects raise the issue.
 	const listed = new Map<string, PromotionMissingDependency>();
 	const list = (
 		sourceId: string,
 		{ reference, consumers }: Binding,
 		reason: PromotionMissingDependencyReason,
-		accessible = true,
+		{ accessible = true, blocking = true } = {},
 	) => {
 		const key = JSON.stringify([sourceId, reason]);
 		listed.set(key, {
 			kind: 'credential',
 			id: sourceId,
-			name: reference.file ? reference.name : (rowNames.get(sourceId) ?? sourceId),
+			name: nameOf(sourceId, reference),
 			credentialType: reference.expectedTypes[0],
 			...placementOf(reason, accessible),
-			blocking: true,
+			blocking,
 			consumers: mergeConsumers(listed.get(key)?.consumers, consumers),
 		});
 	};
@@ -497,6 +551,7 @@ function addCredentialRules(
 			...(file ? { filePath: file.path } : {}),
 			referenceFiles: referenceFiles(usedWorkflows(issue.usedBy)),
 		});
+		const usageScope = dependencies.unusableCredentials.get(sourceId);
 		for (const issue of issues) {
 			const consumers = consumersOfIds(issue.usedBy);
 			if (consumers.length === 0) continue;
@@ -523,9 +578,27 @@ function addCredentialRules(
 					reference,
 					consumers: mergeConsumers(access.get(sourceId)?.consumers, consumers),
 				});
+			} else if (usageScope !== undefined) {
+				// The import gives the reason only to a user who can read all credentials. The
+				// credential exists here, so the Apply cannot leave the reference as it is.
+				list(
+					sourceId,
+					{ reference, consumers },
+					usageScope === 'project' ? 'not-shared' : 'incompatible-usage-scope',
+					{ accessible: false },
+				);
+			} else if (markedBrokenOnSource.has(sourceId)) {
+				brokenOnSource.set(sourceId, {
+					reference,
+					consumers: mergeConsumers(brokenOnSource.get(sourceId)?.consumers, consumers),
+				});
 			} else if (!file || file.projectId === null) {
-				// Nobody can create a credential that has no owner project on the branch.
-				list(sourceId, { reference, consumers }, 'not-on-branch', false);
+				// Nobody can create a credential that has no owner project on the branch, so the
+				// Apply continues without it when the user confirms.
+				list(sourceId, { reference, consumers }, 'not-on-branch', {
+					accessible: false,
+					blocking: false,
+				});
 			} else {
 				missing.set(sourceId, {
 					reference,
@@ -554,7 +627,12 @@ function addCredentialRules(
 		const canCreate =
 			consumers.some(({ project }) => project.id === projectId) ||
 			dependencies.credentialProjectIds.has(projectId);
-		list(sourceId, { reference, consumers }, 'not-on-instance', canCreate);
+		// A user who can create the credential must create it. Apply never creates a credential
+		// of another project, so it continues without the others when the user confirms.
+		list(sourceId, { reference, consumers }, 'not-on-instance', {
+			accessible: canCreate,
+			blocking: canCreate,
+		});
 		// The binding names the owner project and holds the expressions of the credential, so only
 		// a user who can create the credential there gets it.
 		if (!canCreate) continue;
@@ -566,6 +644,15 @@ function addCredentialRules(
 			consumers,
 			ownerProject: projectOf(projectId),
 			...(file.credential.data !== undefined ? { expressionData: file.credential.data } : {}),
+		});
+	}
+	for (const [sourceId, { reference, consumers }] of brokenOnSource) {
+		result.warnings.push({
+			kind: 'credential',
+			code: 'missing-on-source',
+			id: sourceId,
+			name: nameOf(sourceId, reference),
+			consumers,
 		});
 	}
 	result.missingDependencies.push(...listed.values());
@@ -645,6 +732,24 @@ function addVariableRules(
 			}
 		}
 	}
+}
+
+/**
+ * One warning for each workflow that Promote marked as broken on the source instance. The preview
+ * of a project can hold two entries of one workflow, each for a condition on the selection. A
+ * warning holds for every selection, so it names the workflows of both entries.
+ */
+function sourceWarnings(entries: PromotionMissingDependency[]): PromotionDependencyWarning[] {
+	const byId = new Map<string, PromotionDependencyWarning>();
+	for (const entry of entries) {
+		const warning = toSourceWarning(entry);
+		const key = entry.id ?? entry.name;
+		byId.set(key, {
+			...warning,
+			consumers: mergeConsumers(byId.get(key)?.consumers, warning.consumers),
+		});
+	}
+	return [...byId.values()];
 }
 
 function mergeConsumers(

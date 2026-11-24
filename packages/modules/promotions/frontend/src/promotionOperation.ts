@@ -280,6 +280,8 @@ export function listBlockers(
 		});
 	}
 	for (const warning of warnings) {
+		// A reference that is broken on the source instance marks no row.
+		if (warning.code !== 'variable-shadowed') continue;
 		blockers.push({
 			kind: 'warning',
 			resourceKey: variableKey(warning.name, warning.scope),

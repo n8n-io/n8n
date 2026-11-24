@@ -154,9 +154,7 @@ const APPLY_LISTS = [
 const PROMOTE_PREVIEW_WITH_LISTS: PromotionPreview = {
 	...PREVIEW,
 	missingDependencies: [OTHER_PROJECT],
-	warnings: [
-		{ kind: 'variable', code: 'missing-on-source', name: 'API_URL', blocking: false, consumers },
-	],
+	warnings: [{ kind: 'variable', code: 'missing-on-source', name: 'API_URL', consumers }],
 };
 
 const applyPreview = (missingDependencies: PromotionMissingDependency[]) =>

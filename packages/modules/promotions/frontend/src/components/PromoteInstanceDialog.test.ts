@@ -9,7 +9,6 @@ import {
 	otherProjectCredential,
 	outsideAccessWorkflow,
 	personalCredential,
-	personalWorkflow,
 	usedBy,
 } from '../__tests__/missingDependencies.fixtures';
 import type * as PromotionsApi from '../promotionsSettings.api';
@@ -29,19 +28,15 @@ vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError: mockShowError, showMessage: mockShowMessage }),
 }));
 
-const promoteResult = (branchName = 'main'): PromotePackageResultDto =>
-	({
-		environmentId: 'environment-1',
-		counts: {
-			workflows: 12,
-			folders: 2,
-			credentials: 5,
-			dataTables: 0,
-			variables: 3,
-			tags: 1,
-		},
-		git: { commitSha: 'abc123', branchName },
-	}) as unknown as PromotePackageResultDto;
+const promoteResult = (
+	branchName = 'main',
+): Extract<PromotePackageResultDto, { status: 'promoted' }> => ({
+	status: 'promoted',
+	environmentId: 'environment-1',
+	counts: { workflows: 12, folders: 2, credentials: 5, dataTables: 0, variables: 3, tags: 1 },
+	git: { commitSha: 'abc123', branchName },
+	missingDependencies: [],
+});
 
 const promoteCheck = (fields: Partial<PromotionPromoteCheck> = {}): PromotionPromoteCheck => ({
 	missingDependencies: [],
@@ -179,7 +174,6 @@ describe('PromoteInstanceDialog', () => {
 				expect(api.fetchPromoteCheck).toHaveBeenCalledWith(expect.anything(), 'environment-1'),
 			);
 			expect(queryByTestId('promote-missing-dependencies')).not.toBeInTheDocument();
-			expect(queryByTestId('promote-missing-blocking')).not.toBeInTheDocument();
 		});
 
 		it('lists the missing dependencies and the warnings above the commit message', async () => {
@@ -200,7 +194,7 @@ describe('PromoteInstanceDialog', () => {
 					warnings: [deletedWorkflowWarning],
 				}),
 			);
-			const { findByTestId, getAllByTestId, getByTestId, queryByTestId } = renderComponent();
+			const { findByTestId, getAllByTestId, getByTestId } = renderComponent();
 
 			const section = await findByTestId('promote-missing-dependencies');
 			expect(section).toHaveTextContent(
@@ -215,8 +209,6 @@ describe('PromoteInstanceDialog', () => {
 				section.compareDocumentPosition(getByTestId('promote-commit-message')) &
 					Node.DOCUMENT_POSITION_FOLLOWING,
 			).toBeTruthy();
-			// Nothing in the list stops the Promote.
-			expect(queryByTestId('promote-missing-blocking')).not.toBeInTheDocument();
 			expect(getByTestId('promote-confirm-button')).toBeEnabled();
 		});
 
@@ -239,37 +231,44 @@ describe('PromoteInstanceDialog', () => {
 			expect(list).not.toHaveTextContent(/project|owner/i);
 		});
 
-		it('names the references that stop the Promote, and still lets the user promote', async () => {
-			api.fetchPromoteCheck.mockResolvedValue(
-				promoteCheck({
-					missingDependencies: [otherProjectCredential, personalWorkflow],
-					warnings: [{ ...deletedWorkflowWarning, blocking: true }],
-				}),
-			);
-			api.promotePackage.mockResolvedValue(promoteResult('main'));
-			const { findByTestId, getByTestId } = renderComponent();
+		it.each([
+			[
+				'missing-dependencies',
+				{
+					status: 'missing-dependencies',
+					environmentId: 'environment-1',
+					missingDependencies: [otherProjectCredential],
+					warnings: [deletedWorkflowWarning],
+				},
+			],
+			['preview-changed', { status: 'preview-changed', environmentId: 'environment-1' }],
+		] satisfies Array<[string, PromotePackageResultDto]>)(
+			'shows an error and keeps the form when the server answers %s',
+			async (_status, answer) => {
+				api.fetchPromoteCheck.mockResolvedValue(
+					promoteCheck({ missingDependencies: [otherProjectCredential] }),
+				);
+				api.promotePackage.mockResolvedValue(answer);
+				const { findByTestId, getByTestId, queryByTestId, emitted } = renderComponent();
 
-			expect(await findByTestId('promote-missing-blocking')).toHaveTextContent(
-				'Promote stops on these references: "Draft helper", "Archive invoices". Move the workflows to a team project, or remove the references to workflows that no longer exist. Then promote again.',
-			);
-			expect(getByTestId('promote-confirm-button')).toBeEnabled();
+				await findByTestId('promote-missing-dependencies');
+				await userEvent.click(getByTestId('promote-confirm-button'));
 
-			await userEvent.click(getByTestId('promote-confirm-button'));
-			await waitFor(() =>
-				expect(api.promotePackage).toHaveBeenCalledWith(expect.anything(), 'environment-1', {}),
-			);
-		});
-
-		it('tells the user to remove a reference to a workflow that no longer exists', async () => {
-			api.fetchPromoteCheck.mockResolvedValue(
-				promoteCheck({ warnings: [{ ...deletedWorkflowWarning, blocking: true }] }),
-			);
-			const { findByTestId } = renderComponent();
-
-			expect(await findByTestId('promote-missing-blocking')).toHaveTextContent(
-				'Promote stops on this reference: "Archive invoices". Move the workflow to a team project, or remove the reference if the workflow no longer exists. Then promote again.',
-			);
-		});
+				// The server pushed nothing, so the dialog must not show a result.
+				await waitFor(() =>
+					expect(mockShowMessage).toHaveBeenCalledWith({
+						title: "Couldn't promote the instance",
+						message: 'Nothing changed.',
+						type: 'error',
+					}),
+				);
+				expect(api.promotePackage).toHaveBeenCalledWith(expect.anything(), 'environment-1', {});
+				expect(queryByTestId('promote-result-summary')).not.toBeInTheDocument();
+				expect(queryByTestId('promote-close-button')).not.toBeInTheDocument();
+				expect(getByTestId('promote-confirm-button')).toBeEnabled();
+				expect(emitted('update:open')).toBeUndefined();
+			},
+		);
 
 		it('shows a loading row while the check runs, then the list in the same status region', async () => {
 			let resolveCheck: (check: PromotionPromoteCheck) => void = () => {};

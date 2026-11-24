@@ -472,7 +472,9 @@ function removedColumns(
 		.join(', ');
 }
 
-const warnings = computed(() => props.check?.warnings ?? []);
+const warnings = computed(() =>
+	(props.check?.warnings ?? []).filter(({ code }) => code === 'variable-shadowed'),
+);
 
 // Apply: the sub-workflows and error workflows that users can access, and that the workflows
 // cannot use on this instance. They do not stop the Apply, and this page cannot add them.

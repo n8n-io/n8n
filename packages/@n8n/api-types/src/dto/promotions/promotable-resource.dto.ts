@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { n8nIdSchema } from '../../schemas/id.schema';
 import { Z } from '../../zod-class';
 import {
+	confirmMissingDependenciesSchema,
 	expectedPreviewRevisionSchema,
 	promotionCommitMessageSchema,
 	promotionSelectedIdsSchema,
@@ -26,6 +27,7 @@ export const promoteRequestSchema = z.object({
 	}),
 	commitMessage: promotionCommitMessageSchema,
 	expectedPreviewRevision: expectedPreviewRevisionSchema,
+	confirmMissingDependencies: confirmMissingDependenciesSchema,
 });
 
 export type PromoteRequest = z.infer<typeof promoteRequestSchema>;

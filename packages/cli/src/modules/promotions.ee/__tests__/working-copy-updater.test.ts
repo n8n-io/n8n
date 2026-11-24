@@ -878,6 +878,124 @@ describe('WorkingCopyUpdater', () => {
 			expect((await readWrittenManifest()).requirements?.tags).toBeUndefined();
 		});
 
+		describe('the reason of a requirement row', () => {
+			const beta = { id: 'p2', name: 'Beta', target: 'projects/beta' };
+			const betaWorkflow = {
+				id: 'w-beta',
+				name: 'W-BETA',
+				target: 'projects/beta/workflows/w-beta',
+				isArchived: false,
+			};
+			const usedBy = (...ids: string[]) => ids.map((id) => ({ kind: 'workflow' as const, id }));
+			const branchFiles = {
+				'projects/alpha/project.json': projectFile,
+				'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
+				'projects/beta/project.json': JSON.stringify({ id: beta.id, name: beta.name }),
+				'projects/beta/workflows/w-beta/workflow.json': workflowFile('w-beta'),
+			};
+			const stagingFiles = {
+				'projects/alpha/project.json': projectFile,
+				'projects/alpha/workflows/w1/workflow.json': workflowFile('w1', { v: 2 }),
+			};
+			const branchWith = (requirements: PackageManifest['requirements']): Side => ({
+				manifest: makeManifest({
+					projects: [alpha, beta],
+					workflows: [wf('w1'), betaWorkflow],
+					requirements,
+				}),
+				files: branchFiles,
+			});
+			const stagingWith = (requirements: PackageManifest['requirements']): Side => ({
+				manifest: makeManifest({ projects: [alpha], workflows: [wf('w1')], requirements }),
+				files: stagingFiles,
+			});
+
+			it('takes the reason of the staged row, also when the branch row has none', async () => {
+				await apply(
+					branchWith({
+						credentials: [{ id: 'c1', name: 'CRM', type: 't', usedBy: usedBy('w1', 'w-beta') }],
+						workflows: [{ id: 'sub', usedBy: usedBy('w1') }],
+					}),
+					stagingWith({
+						credentials: [
+							{
+								id: 'c1',
+								name: 'CRM',
+								type: 't',
+								reason: 'confirmed-missing',
+								usedBy: usedBy('w1'),
+							},
+						],
+						workflows: [{ id: 'sub', reason: 'missing-on-source', usedBy: usedBy('w1') }],
+					}),
+					{ workflowIds: ['w1'] },
+				);
+
+				const { requirements } = await readWrittenManifest();
+				expect(requirements?.credentials).toEqual([
+					{
+						id: 'c1',
+						name: 'CRM',
+						type: 't',
+						reason: 'confirmed-missing',
+						usedBy: usedBy('w-beta', 'w1'),
+					},
+				]);
+				expect(requirements?.workflows).toEqual([
+					{ id: 'sub', reason: 'missing-on-source', usedBy: usedBy('w1') },
+				]);
+			});
+
+			it('clears an older reason when the staged row has none', async () => {
+				await apply(
+					branchWith({
+						credentials: [
+							{
+								id: 'c1',
+								name: 'CRM',
+								type: 't',
+								reason: 'confirmed-missing',
+								usedBy: usedBy('w1'),
+							},
+						],
+						workflows: [{ id: 'sub', reason: 'confirmed-missing', usedBy: usedBy('w1') }],
+					}),
+					stagingWith({
+						credentials: [{ id: 'c1', name: 'CRM', type: 't', usedBy: usedBy('w1') }],
+						workflows: [{ id: 'sub', usedBy: usedBy('w1') }],
+					}),
+					{ workflowIds: ['w1'] },
+				);
+
+				const { requirements } = await readWrittenManifest();
+				expect(requirements?.credentials).toEqual([
+					{ id: 'c1', name: 'CRM', type: 't', usedBy: usedBy('w1') },
+				]);
+				expect(requirements?.workflows).toEqual([{ id: 'sub', usedBy: usedBy('w1') }]);
+			});
+
+			it('keeps the reason of a row that only another project uses', async () => {
+				const betaRows = {
+					credentials: [
+						{
+							id: 'c-beta',
+							name: 'Billing',
+							type: 't',
+							reason: 'confirmed-missing' as const,
+							usedBy: usedBy('w-beta'),
+						},
+					],
+					workflows: [
+						{ id: 'gone', reason: 'missing-on-source' as const, usedBy: usedBy('w-beta') },
+					],
+				};
+
+				await apply(branchWith(betaRows), stagingWith(undefined), { workflowIds: ['w1'] });
+
+				expect((await readWrittenManifest()).requirements).toEqual(betaRows);
+			});
+		});
+
 		it('leaves an unused credential stub the selection dropped', async () => {
 			await apply(
 				{

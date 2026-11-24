@@ -14,6 +14,7 @@ import {
 	type PromotionBindingConflict,
 	type PromotionCheckoutPublicDto,
 	type PromotionDirection,
+	type PromotionMissingDependency,
 	type PromotionMissingProjectListPublicDto,
 	type PromotionPreviewCheck,
 	type PromotionPreview,
@@ -31,7 +32,7 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
-import { cp, mkdir, mkdtemp, rename, rm, stat } from 'node:fs/promises';
+import { cp, mkdir, mkdtemp, rename, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { jsonParse } from 'n8n-workflow';
 import { z } from 'zod';
@@ -42,6 +43,8 @@ import {
 	PackageDirectoryInventoryReader,
 	type PackageDirectoryInventory,
 } from '@/modules/n8n-packages/io/directory/package-directory-inventory-reader';
+import { formatEntityFile } from '@/modules/n8n-packages/io/entity-file-format';
+import type { PackageImportPlan } from '@/modules/n8n-packages/engine/project-package-importer';
 import { PackageImportConfig } from '@/modules/n8n-packages/n8n-packages.config';
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
 import { MANIFEST_FILE } from '@/modules/n8n-packages/spec/constants';
@@ -61,11 +64,15 @@ import { BASE_BRANCH_DIRECTORIES, parseBaseBranchFiles } from './base-branch-fil
 import { projectHolding } from './branch-placement';
 import { crossProjectMoves, describePromotedMoves } from './cross-project-moves';
 import { GIT_DEFAULT_COMMIT_EMAIL, GIT_DEFAULT_COMMIT_NAME, PACKAGE_SUBFOLDER } from './constants';
+import { readLeftoverManifest } from './import-manifest-bridge';
+import { markRequirementRows } from './promote-dependency-check';
 import {
+	appendMissingDependencies,
 	buildInstancePromotionCommitMessage,
 	buildSelectionPromotionCommitMessage,
 } from './promotion-commit-message';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
+import { credentialsLeftUnresolved, stopsApply, type ApplyConfirmations } from './apply-preview';
 import {
 	applySelectionRequest,
 	ApplyPreviewService,
@@ -111,10 +118,14 @@ import {
 
 type ProjectReconciliationResult = { deletedProjectIds: string[] };
 
+type PromotedResult = Extract<PromotePackageResultDto, { status: 'promoted' }>;
+
 type PushedPromotion = {
 	commitSha: string;
-	counts: PromotePackageResultDto['counts'];
+	counts: PromotedResult['counts'];
 	commitMessage: string;
+	/** The missing dependencies that the caller confirmed. */
+	missingDependencies: PromotionMissingDependency[];
 };
 
 type ApplyHead = {
@@ -134,11 +145,6 @@ type PreviewChangedResult = Extract<ApplyPackageResultDto, { status: 'preview-ch
 
 const NO_APPLY_PACKAGE_MESSAGE =
 	'The remote branch has no exported package to import. Promote to it first.';
-
-/** Conflicts that `confirmDestructiveChanges` lets the apply continue past. */
-function isConfirmableConflict(code: PromotionBindingConflict['code']): boolean {
-	return code === 'destructive-change' || code === 'project-deletion';
-}
 
 /**
  * Runs the package operations against a resolved configuration. Every entry point
@@ -293,6 +299,26 @@ export class PromotionsService {
 				{ targetDir: stagingFolder },
 			);
 
+			// An instance Promote replaces the whole package, so the branch adds nothing to the export.
+			const check = await this.promotePreviewService.checkExport({
+				user: actor,
+				manifest: exportResult.manifest,
+				projectIds,
+				branchManifest: null,
+			});
+			if (
+				request.expectedPreviewRevision !== undefined &&
+				check.revision !== request.expectedPreviewRevision
+			) {
+				return this.promotePreviewChanged(input);
+			}
+			const refusal = this.refuseUnconfirmed(input, check, request.confirmMissingDependencies);
+			if (refusal) return refusal;
+			const manifest = markRequirementRows(exportResult.manifest, check);
+			if (manifest !== exportResult.manifest) {
+				await writeFile(path.join(stagingFolder, MANIFEST_FILE), formatEntityFile(manifest));
+			}
+
 			// The lease can expire during the long export. Check before the package changes,
 			// because another operation can own the folder after that.
 			throwIfLockLost(signal);
@@ -308,12 +334,14 @@ export class PromotionsService {
 				await this.workingDirectory.invalidateDescriptor(input.environmentId);
 			}
 
-			const commitMessage =
+			const commitMessage = appendMissingDependencies(
 				request.commitMessage ??
-				buildInstancePromotionCommitMessage({
-					projectCount: projectIds.length,
-					workflowCount: exportResult.counts.workflows,
-				});
+					buildInstancePromotionCommitMessage({
+						projectCount: projectIds.length,
+						workflowCount: exportResult.counts.workflows,
+					}),
+				check.missingDependencies,
+			);
 			const { commitSha } = await this.gitService.commitAndPush({
 				remoteUrl: repositoryUrl(input),
 				credentials,
@@ -331,21 +359,61 @@ export class PromotionsService {
 				// Staging and the commit take time, so check again just before the push.
 				beforePush: () => throwIfLockLost(signal),
 			});
-			pushed = { commitSha, counts: exportResult.counts, commitMessage };
+			pushed = {
+				commitSha,
+				counts: exportResult.counts,
+				commitMessage,
+				missingDependencies: check.missingDependencies,
+			};
 		} finally {
 			await rm(stagingFolder, { recursive: true, force: true });
 		}
 
 		return {
+			status: 'promoted',
 			environmentId: input.environmentId,
 			counts: pushed.counts,
 			git: { commitSha: pushed.commitSha, branchName: targetBranchName ?? branchName },
+			missingDependencies: pushed.missingDependencies,
 			...(await this.openReview(input, actor, {
 				promotionBranchName: targetBranchName,
 				commitSha: pushed.commitSha,
 				commitMessage: pushed.commitMessage,
 				promotionRunContents: { projectIds },
 			})),
+		};
+	}
+
+	private promotePreviewChanged(
+		input: PromotionOperationInput,
+	): Extract<PromotePackageResultDto, { status: 'preview-changed' }> {
+		this.logger.info('Promote stopped because the preview changed', {
+			status: 'preview-changed',
+			environmentId: input.environmentId,
+		});
+		return { status: 'preview-changed', environmentId: input.environmentId };
+	}
+
+	/**
+	 * Stops a Promote whose export has missing dependencies that the caller did not confirm. The
+	 * caller runs it before the package changes, so a refusal writes nothing.
+	 */
+	private refuseUnconfirmed(
+		input: PromotionOperationInput,
+		{ missingDependencies, warnings }: PromotionPromoteCheck,
+		confirmed: boolean | undefined,
+	): Extract<PromotePackageResultDto, { status: 'missing-dependencies' }> | null {
+		if (missingDependencies.length === 0 || confirmed === true) return null;
+		this.logger.info('Promote stopped because of missing dependencies', {
+			status: 'missing-dependencies',
+			environmentId: input.environmentId,
+			missingDependencyCount: missingDependencies.length,
+		});
+		return {
+			status: 'missing-dependencies',
+			environmentId: input.environmentId,
+			missingDependencies,
+			warnings,
 		};
 	}
 
@@ -370,7 +438,7 @@ export class PromotionsService {
 			commitMessage: string;
 			promotionRunContents: PromotionRunContents;
 		},
-	): Promise<Pick<PromotePackageResultDto, 'review' | 'warnings'>> {
+	): Promise<Pick<PromotedResult, 'review' | 'warnings'>> {
 		const recorded = await this.recordPromoteRun(input, actor, {
 			branchName: push.promotionBranchName ?? checkoutBranchName(input.config),
 			commitSha: push.commitSha,
@@ -458,11 +526,11 @@ export class PromotionsService {
 	private async promoteSelectionResolved(
 		input: PromotionOperationInput,
 		actor: User,
-		request: { commitMessage?: string },
+		request: { commitMessage?: string; confirmMissingDependencies?: boolean },
 		selection: SelectivePushOptions,
 		movedTo: ReadonlyMap<string, string>,
 		signal: AbortSignal,
-	): Promise<Extract<PromoteSelectionResultDto, { status: 'promoted' }>> {
+	): Promise<PromoteSelectionResultDto> {
 		// NOTE: This assertion needs adjusting once we add full support for project-scoped promotions.
 		this.assertInstanceScope(input, 'Promote');
 
@@ -522,7 +590,7 @@ export class PromotionsService {
 
 			// The exporter does the selecting: it writes the selected workflows and
 			// what they need, so nothing has to be filtered out afterwards.
-			const { manifest: staging, counts } = await this.n8nPackagesService.exportPackageToDirectory(
+			const { manifest: exported, counts } = await this.n8nPackagesService.exportPackageToDirectory(
 				{
 					user: actor,
 					projectIds: [selection.projectId],
@@ -537,9 +605,23 @@ export class PromotionsService {
 					// block a promote whose sub-workflow the branch already holds.
 					dependencyPolicy: ExportDependencyPolicy.ReferenceOnly,
 					versionPolicy: ExportVersionPolicy.Latest,
+					// A Promote does not add a credential of another project to the branch.
+					omitCredentialsOutsideExportedProjects: true,
 				},
 				{ targetDir: stagingFolder },
 			);
+
+			// The export holds only the selection, so the lists are the lists of the selection. The
+			// checkout is on the latest base, so its manifest is the manifest of the branch.
+			const check = await this.promotePreviewService.checkExport({
+				user: actor,
+				manifest: exported,
+				projectIds: [selection.projectId],
+				branchManifest: (await readLeftoverManifest(packageFolder)) ?? null,
+			});
+			const refusal = this.refuseUnconfirmed(input, check, request.confirmMissingDependencies);
+			if (refusal) return refusal;
+			const staging = markRequirementRows(exported, check);
 
 			// The lease can expire during the long export. Check before the package changes,
 			// because another operation can own the folder after that.
@@ -561,9 +643,11 @@ export class PromotionsService {
 				await this.workingDirectory.invalidateDescriptor(input.environmentId);
 			}
 
-			const commitMessage =
+			const commitMessage = appendMissingDependencies(
 				request.commitMessage ??
-				this.defaultSelectionCommitMessage(project.name, selection, staging, branch);
+					this.defaultSelectionCommitMessage(project.name, selection, staging, branch),
+				check.missingDependencies,
+			);
 			const { commitSha } = await this.gitService.commitAndPush({
 				remoteUrl: repositoryUrl(input),
 				credentials,
@@ -582,7 +666,7 @@ export class PromotionsService {
 				// Staging and the commit take time, so check again just before the push.
 				beforePush: () => throwIfLockLost(signal),
 			});
-			pushed = { commitSha, counts, commitMessage };
+			pushed = { commitSha, counts, commitMessage, missingDependencies: check.missingDependencies };
 		} catch (error) {
 			// After a lost lock, another operation can own the package and the backup. Leave them.
 			// The next Promote resets the package to the remote branch before it writes.
@@ -637,6 +721,7 @@ export class PromotionsService {
 			environmentId: input.environmentId,
 			counts: pushed.counts,
 			git: { commitSha: pushed.commitSha, branchName: targetBranchName ?? branchName },
+			missingDependencies: pushed.missingDependencies,
 			...(await this.openReview(input, actor, {
 				promotionBranchName: targetBranchName,
 				commitSha: pushed.commitSha,
@@ -691,11 +776,7 @@ export class PromotionsService {
 								readBranch: async () => await this.readBranchPackageResolved(current, projectId),
 							});
 							if (preview.revision !== request.expectedPreviewRevision) {
-								this.logger.info('Promote stopped because the preview changed', {
-									status: 'preview-changed',
-									environmentId: current.environmentId,
-								});
-								return { status: 'preview-changed', environmentId: current.environmentId };
+								return this.promotePreviewChanged(current);
 							}
 						}
 						const { selection, movedTo } = await this.classifySelection(
@@ -707,7 +788,10 @@ export class PromotionsService {
 						return await this.promoteSelectionResolved(
 							current,
 							actor,
-							{ commitMessage: request.commitMessage },
+							{
+								commitMessage: request.commitMessage,
+								confirmMissingDependencies: request.confirmMissingDependencies,
+							},
 							{ ...selection, credentialIds },
 							movedTo,
 							signal,
@@ -853,7 +937,11 @@ export class PromotionsService {
 			environmentId,
 			actor,
 			publicApi,
-			{ ...request, confirmDestructiveChanges: request.confirmDestructiveChanges === true },
+			{
+				...request,
+				confirmDestructiveChanges: request.confirmDestructiveChanges === true,
+				confirmMissingDependencies: request.confirmMissingDependencies === true,
+			},
 			ctx,
 		);
 	}
@@ -933,6 +1021,7 @@ export class PromotionsService {
 				expectedSource: request.expectedSource,
 				expectedPreviewRevision: request.expectedPreviewRevision,
 				confirmDestructiveChanges: request.confirmDestructiveChanges === true,
+				confirmMissingDependencies: request.confirmMissingDependencies === true,
 			},
 			ctx,
 		);
@@ -1025,11 +1114,13 @@ export class PromotionsService {
 			expectedSource,
 			expectedPreviewRevision,
 			confirmDestructiveChanges = false,
+			confirmMissingDependencies = false,
 		}: {
 			publicApi: PublicApiCaller;
 			expectedSource?: ApplySelectionDto['expectedSource'];
 			expectedPreviewRevision?: string;
 			confirmDestructiveChanges?: boolean;
+			confirmMissingDependencies?: boolean;
 		},
 		ctx: OperationContext = {},
 	): Promise<ApplyPackageResultDto> {
@@ -1050,7 +1141,10 @@ export class PromotionsService {
 							publicApi,
 							selection,
 							expectedSource,
-							confirmDestructiveChanges,
+							{
+								destructiveChanges: confirmDestructiveChanges,
+								missingDependencies: confirmMissingDependencies,
+							},
 							signal,
 							expectedPreviewRevision,
 							ctx,
@@ -1066,7 +1160,7 @@ export class PromotionsService {
 		publicApi: PublicApiCaller,
 		requested: ApplySelection,
 		expectedSource: ApplySelectionDto['expectedSource'],
-		confirmDestructiveChanges: boolean,
+		confirmations: ApplyConfirmations,
 		signal: AbortSignal,
 		expectedPreviewRevision?: string,
 		ctx: OperationContext = {},
@@ -1099,8 +1193,12 @@ export class PromotionsService {
 			requested,
 			new Set(moves.workflows.map(({ id }) => id)),
 		);
-		const plan = await this.n8nPackagesService.planPackageSelection(
-			{ ...applySelectionRequest(actor, publicApi, confirmDestructiveChanges), ctx },
+		const request = {
+			...applySelectionRequest(actor, publicApi, confirmations.destructiveChanges),
+			ctx,
+		};
+		const checkedPlan = await this.n8nPackagesService.planPackageSelection(
+			request,
 			reader,
 			selection,
 			'enforce',
@@ -1109,21 +1207,34 @@ export class PromotionsService {
 		// every selection, so the user moves it back first.
 		const requestedWorkflowIds = new Set(requested.workflowIds);
 		const check = blockingCheck(
-			await this.applyPreviewService.check(plan, inventory, selection, {
+			await this.applyPreviewService.check(checkedPlan, inventory, selection, {
 				...moves,
 				workflows: moves.workflows.filter(({ id }) => requestedWorkflowIds.has(id)),
 			}),
 		);
-		if (this.isBlocked(check, confirmDestructiveChanges, identity)) {
+		if (this.isBlocked(check, confirmations, identity)) {
 			return { status: 'blocked', ...identity, check };
 		}
+		const plan = await this.writablePlan(
+			checkedPlan,
+			check,
+			async (allowUnresolvedCredentialIds) =>
+				await this.n8nPackagesService.planPackageSelection(
+					{ ...request, allowUnresolvedCredentialIds },
+					reader,
+					selection,
+					'enforce',
+				),
+		);
+		if (!plan) return this.changedAfterCheck(identity);
 
 		this.logger.info('Importing a package selection', {
 			...identity,
 			projectId,
 			selectedCount: selection.selectedWorkflowIds.length,
 			deletedCount: selection.deletedWorkflowIds?.length ?? 0,
-			confirmDestructiveChanges,
+			confirmDestructiveChanges: confirmations.destructiveChanges,
+			confirmMissingDependencies: confirmations.missingDependencies,
 		});
 		throwIfLockLost(signal);
 		const result = await this.n8nPackagesService.applyPackagePlan(plan);
@@ -1136,6 +1247,8 @@ export class PromotionsService {
 				projectReconciliation: { deletedProjectIds: [] },
 			}),
 			warnings: check.warnings,
+			// Nothing in the list stops the Apply here, so the caller confirmed all of it.
+			missingDependencies: check.missingDependencies,
 		};
 	}
 
@@ -1143,7 +1256,7 @@ export class PromotionsService {
 		environmentId: string,
 		actor: User,
 		publicApi: PublicApiCaller,
-		request: ApplyPackageDto & { confirmDestructiveChanges?: boolean },
+		request: ApplyPackageDto & InstanceApplyConfirmations,
 		ctx: OperationContext = {},
 	): Promise<ApplyPackageResultDto> {
 		const input = await this.resolver.resolveForEnvironment(environmentId, 'apply');
@@ -1169,7 +1282,8 @@ export class PromotionsService {
 			expectedSource,
 			expectedPreviewRevision,
 			confirmDestructiveChanges = false,
-		}: ApplyPackageDto & { confirmDestructiveChanges?: boolean },
+			confirmMissingDependencies = false,
+		}: ApplyPackageDto & InstanceApplyConfirmations,
 		signal: AbortSignal,
 		ctx: OperationContext = {},
 	): Promise<ApplyPackageResultDto> {
@@ -1191,22 +1305,35 @@ export class PromotionsService {
 		const reader = new GitCommitPackageReader(files);
 		const inventory = await this.inventoryReader.read(reader);
 		const moves = await this.applyPreviewService.findCrossProjectMoves(inventory);
-		const plan = await this.n8nPackagesService.planPackage(
-			{ ...instanceApplyRequest(actor, publicApi, confirmDestructiveChanges), ctx },
-			reader,
-			'enforce',
-		);
+		const request = { ...instanceApplyRequest(actor, publicApi, confirmDestructiveChanges), ctx };
+		const checkedPlan = await this.n8nPackagesService.planPackage(request, reader, 'enforce');
 		const check = blockingCheck(
-			await this.applyPreviewService.check(plan, inventory, undefined, moves),
+			await this.applyPreviewService.check(checkedPlan, inventory, undefined, moves),
 			await this.applyPreviewService.projectDeletions(inventory),
 		);
-		if (this.isBlocked(check, confirmDestructiveChanges, identity)) {
+		const confirmations = {
+			destructiveChanges: confirmDestructiveChanges,
+			missingDependencies: confirmMissingDependencies,
+		};
+		if (this.isBlocked(check, confirmations, identity)) {
 			return { status: 'blocked', ...identity, check };
 		}
+		const plan = await this.writablePlan(
+			checkedPlan,
+			check,
+			async (allowUnresolvedCredentialIds) =>
+				await this.n8nPackagesService.planPackage(
+					{ ...request, allowUnresolvedCredentialIds },
+					reader,
+					'enforce',
+				),
+		);
+		if (!plan) return this.changedAfterCheck(identity);
 
 		this.logger.info('Importing a package', {
 			environmentId: input.environmentId,
 			confirmDestructiveChanges,
+			confirmMissingDependencies,
 		});
 		throwIfLockLost(signal);
 		const result = await this.n8nPackagesService.applyPackagePlan(plan);
@@ -1227,6 +1354,8 @@ export class PromotionsService {
 			...identity,
 			counts: this.toApplyCounts({ importResult: result, projectReconciliation }),
 			warnings: check.warnings,
+			// Nothing in the list stops the Apply here, so the caller confirmed all of it.
+			missingDependencies: check.missingDependencies,
 		};
 	}
 
@@ -1340,20 +1469,36 @@ export class PromotionsService {
 		});
 	}
 
+	/**
+	 * The plan that the Apply writes. The checked plan stops on every unresolved credential, so an
+	 * Apply that continues without some of them plans again and names them. `null` when the second
+	 * plan has an issue, because this instance changed after the check.
+	 */
+	private async writablePlan(
+		checked: PackageImportPlan,
+		check: PromotionApplyCheck,
+		planAgain: (allowUnresolvedCredentialIds: string[]) => Promise<PackageImportPlan>,
+	): Promise<PackageImportPlan | null> {
+		const credentialIds = credentialsLeftUnresolved(check);
+		if (credentialIds.length === 0) return checked;
+		const plan = await planAgain(credentialIds);
+		return plan.issues.length === 0 ? plan : null;
+	}
+
+	private changedAfterCheck(identity: ApplyHead['identity']): PreviewChangedResult {
+		this.logger.info('Apply stopped because the instance changed after the check', {
+			status: 'preview-changed',
+			...identity,
+		});
+		return { status: 'preview-changed', ...identity };
+	}
+
 	private isBlocked(
 		check: PromotionApplyCheck,
-		confirmDestructiveChanges: boolean,
+		confirmations: ApplyConfirmations,
 		identity: { environmentId: string; git: { commitSha: string; branchName: string } },
 	): boolean {
-		const blockingConflicts = confirmDestructiveChanges
-			? check.conflicts.filter(({ code }) => !isConfirmableConflict(code))
-			: check.conflicts;
-		// A dependency outside the access of the user is only in `missingDependencies`.
-		const blocked =
-			check.missingBindings.length > 0 ||
-			check.accessRequirements.length > 0 ||
-			blockingConflicts.length > 0 ||
-			check.missingDependencies.some(({ blocking }) => blocking);
+		const blocked = stopsApply(check, confirmations);
 		if (blocked) {
 			this.logger.info('Apply blocked', {
 				status: 'blocked',
@@ -1884,6 +2029,12 @@ async function pathExists(target: string): Promise<boolean> {
 /** What a project Apply selects. The project details always come along. */
 type ApplySelection = { workflowIds: string[]; folderIds: string[] };
 
+/** The confirmations of a Continue. An Apply sends none. */
+type InstanceApplyConfirmations = Pick<
+	ContinueApplyPackageDto,
+	'confirmDestructiveChanges' | 'confirmMissingDependencies'
+>;
+
 function toApplySelection(request: ApplySelectionDto | ContinueApplySelectionDto): ApplySelection {
 	return { workflowIds: request.workflowIds ?? [], folderIds: request.folderIds ?? [] };
 }
@@ -1892,17 +2043,17 @@ function promotedOutcome(
 	observed: ObservedOperation<PromotePackageResultDto | PromoteSelectionResultDto>,
 ): Pick<
 	RelayEventMap['promotion-promoted'],
-	'outcome' | 'failureKind' | 'counts' | 'openedReview'
+	'outcome' | 'failureKind' | 'counts' | 'openedReview' | 'confirmedMissingDependencyCount'
 > {
 	if (!observed.ok) return { outcome: 'failed', failureKind: observed.failureKind };
 	const { result } = observed;
-	if ('status' in result && result.status === 'preview-changed') {
-		return { outcome: 'preview_changed' };
-	}
+	if (result.status === 'preview-changed') return { outcome: 'preview_changed' };
+	if (result.status === 'missing-dependencies') return { outcome: 'missing_dependencies' };
 	return {
 		outcome: result.warnings?.length ? 'success_with_warnings' : 'success',
 		counts: result.counts,
 		openedReview: !!result.review,
+		confirmedMissingDependencyCount: result.missingDependencies.length,
 	};
 }
 
@@ -1916,6 +2067,7 @@ function appliedOutcome(
 	| 'workflowsFailedToPublish'
 	| 'foldersChanged'
 	| 'projectsChanged'
+	| 'confirmedMissingDependencyCount'
 > {
 	if (!observed.ok) return { outcome: 'failed', failureKind: observed.failureKind };
 	const { result } = observed;
@@ -1930,6 +2082,7 @@ function appliedOutcome(
 		workflowsFailedToPublish: workflows.publishing.failed,
 		foldersChanged: folders.created + folders.updated + folders.removed,
 		projectsChanged: projects.created + projects.updated + projects.deleted,
+		confirmedMissingDependencyCount: result.missingDependencies.length,
 	};
 }
 

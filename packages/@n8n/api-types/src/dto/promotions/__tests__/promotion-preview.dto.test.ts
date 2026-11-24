@@ -16,7 +16,6 @@ const warning = {
 	kind: 'variable',
 	code: 'missing-on-source',
 	name: 'region',
-	blocking: false,
 	consumers: missingDependency.consumers,
 };
 

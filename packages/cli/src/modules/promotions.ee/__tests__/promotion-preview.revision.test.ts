@@ -25,7 +25,6 @@ const warning: PromotionDependencyWarning = {
 	code: 'missing-on-source',
 	id: 'sub',
 	name: 'sub',
-	blocking: false,
 	consumers,
 };
 

@@ -75,7 +75,6 @@ export const deletedWorkflowWarning: PromotionDependencyWarning = {
 	code: 'missing-on-source',
 	id: 'w8',
 	name: 'Archive invoices',
-	blocking: false,
 	consumers: usedBy(reconciliation),
 };
 

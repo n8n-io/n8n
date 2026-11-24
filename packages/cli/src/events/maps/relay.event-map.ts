@@ -1785,7 +1785,12 @@ export type RelayEventMap = ModuleEventMap & {
 		environmentId: string;
 		scope: 'instance' | 'project';
 		projectId?: string;
-		outcome: 'success' | 'success_with_warnings' | 'failed' | 'preview_changed';
+		outcome:
+			| 'success'
+			| 'success_with_warnings'
+			| 'failed'
+			| 'preview_changed'
+			| 'missing_dependencies';
 		failureKind?: PromotionFailureKind;
 		durationMs: number;
 		/** Set when the outcome is 'success' or 'success_with_warnings'. */
@@ -1803,6 +1808,8 @@ export type RelayEventMap = ModuleEventMap & {
 		selectedFolderCount?: number;
 		/** Set when the outcome is 'success' or 'success_with_warnings'. */
 		openedReview?: boolean;
+		/** Set when the outcome is 'success' or 'success_with_warnings'. */
+		confirmedMissingDependencyCount?: number;
 	};
 
 	'promotion-applied': {
@@ -1821,6 +1828,8 @@ export type RelayEventMap = ModuleEventMap & {
 		foldersChanged?: number;
 		/** Set when the outcome is 'applied'. */
 		projectsChanged?: number;
+		/** Set when the outcome is 'applied'. */
+		confirmedMissingDependencyCount?: number;
 	};
 
 	'promotion-merge-request-opened': {

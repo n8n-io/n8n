@@ -120,9 +120,15 @@ export const PROMOTIONS_TELEMETRY = defineTelemetryEvents({
 			scope,
 			project_id: z.string().optional().describe("Set only when the scope is 'project'"),
 			outcome: z
-				.enum(['success', 'success_with_warnings', 'preview_changed', 'failed'])
+				.enum([
+					'success',
+					'success_with_warnings',
+					'preview_changed',
+					'missing_dependencies',
+					'failed',
+				])
 				.describe(
-					"'success_with_warnings' = the push worked, but a follow-up step, such as opening the merge request, failed; 'preview_changed' = the project or its branch changed after the user reviewed the preview, so nothing was pushed",
+					"'success_with_warnings' = the push worked, but a follow-up step, such as opening the merge request, failed; 'preview_changed' = the project or its branch changed after the user reviewed the preview, so nothing was pushed; 'missing_dependencies' = the promoted workflows use dependencies that the branch does not hold after the push, and the user did not confirm them, so nothing was pushed",
 				),
 			failure_kind: failureKind,
 			duration_ms: z.number(),
@@ -164,6 +170,12 @@ export const PROMOTIONS_TELEMETRY = defineTelemetryEvents({
 				.describe(
 					"Set when the outcome is 'success' or 'success_with_warnings'. True when the push opened a merge request",
 				),
+			confirmed_missing_dependency_count: z
+				.number()
+				.optional()
+				.describe(
+					"Set when the outcome is 'success' or 'success_with_warnings'. Dependencies of the promoted workflows that the branch does not hold after the push, and that the user confirmed. 0 when the push left nothing out",
+				),
 		}),
 	},
 	USER_APPLIED_PROMOTION_CHANGES: {
@@ -178,7 +190,7 @@ export const PROMOTIONS_TELEMETRY = defineTelemetryEvents({
 			outcome: z
 				.enum(['applied', 'blocked', 'source_changed', 'preview_changed', 'failed'])
 				.describe(
-					"'blocked' = the check found blocking issues, so nothing was imported; 'source_changed' = the branch changed after the user reviewed it; 'preview_changed' = the instance changed after the user reviewed it. Neither imports changes",
+					"'blocked' = the check found blocking issues, or missing dependencies that the user did not confirm, so nothing was imported; 'source_changed' = the branch changed after the user reviewed it; 'preview_changed' = the instance changed after the user reviewed it. Neither imports changes",
 				),
 			failure_kind: failureKind,
 			duration_ms: z.number(),
@@ -200,6 +212,12 @@ export const PROMOTIONS_TELEMETRY = defineTelemetryEvents({
 				.number()
 				.optional()
 				.describe("Set when the outcome is 'applied'. Projects created, updated and deleted"),
+			confirmed_missing_dependency_count: z
+				.number()
+				.optional()
+				.describe(
+					"Set when the outcome is 'applied'. Dependencies of the applied workflows that are still missing on this instance after the Apply, and that the user confirmed. 0 when nothing is missing",
+				),
 		}),
 	},
 	USER_OPENED_PROMOTION_MERGE_REQUEST: {

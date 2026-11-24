@@ -1,13 +1,8 @@
 <script setup lang="ts">
-import type {
-	PromotePackageResultDto,
-	PromotionPromoteCheck,
-	PromotionProviderType,
-} from '@n8n/api-types';
+import type { PromotionPromoteCheck, PromotionProviderType } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import {
 	N8nButton,
-	N8nCallout,
 	N8nDialog,
 	N8nDialogBody,
 	N8nDialogFooter,
@@ -21,7 +16,7 @@ import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 
-import { httpUrl, warningSegments } from '../promotionResult';
+import { httpUrl, warningSegments, type PromotedResult } from '../promotionResult';
 import { fetchPromoteCheck, promotePackage } from '../promotionsSettings.api';
 import PromotionCommitMessageField from './PromotionCommitMessageField.vue';
 import PromotionMissingDependencyList from './PromotionMissingDependencyList.vue';
@@ -45,7 +40,7 @@ const rootStore = useRootStore();
 
 const commitMessage = ref('');
 const isSubmitting = ref(false);
-const result = ref<PromotePackageResultDto | null>(null);
+const result = ref<PromotedResult | null>(null);
 const messageField = useTemplateRef('messageField');
 
 // The instance Promote has no preview, so the dialog reads what the Promote leaves out.
@@ -72,9 +67,6 @@ const leftOut = computed(() => [
 	...(check.value?.missingDependencies ?? []),
 	...(check.value?.warnings ?? []),
 ]);
-const blockingNames = computed(() =>
-	leftOut.value.filter(({ blocking }) => blocking).map(({ name }) => `"${name}"`),
-);
 
 const dialogTitle = computed(() =>
 	i18n.baseText(
@@ -136,11 +128,21 @@ async function submit() {
 	const message = commitMessage.value.trim();
 	isSubmitting.value = true;
 	try {
-		result.value = await promotePackage(
+		const answer = await promotePackage(
 			rootStore.publicApiContext,
 			props.environmentId,
 			message ? { commitMessage: message } : {},
 		);
+		if (answer.status === 'promoted') {
+			result.value = answer;
+			return;
+		}
+		// The server pushed nothing. This dialog cannot confirm the missing dependencies yet.
+		toast.showMessage({
+			title: i18n.baseText('settings.promotions.promote.toast.error'),
+			message: i18n.baseText('promotions.preview.error.explained'),
+			type: 'error',
+		});
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.promotions.promote.toast.error'));
 	} finally {
@@ -182,19 +184,6 @@ async function submit() {
 								{{ i18n.baseText('settings.promotions.promote.dialog.missing.description') }}
 							</N8nText>
 							<PromotionMissingDependencyList :dependencies="leftOut" show-status />
-							<!-- The server still decides. The callout says what stops the Promote today. -->
-							<N8nCallout
-								v-if="blockingNames.length > 0"
-								theme="warning"
-								data-test-id="promote-missing-blocking"
-							>
-								{{
-									i18n.baseText('settings.promotions.promote.dialog.missing.blocking', {
-										adjustToNumber: blockingNames.length,
-										interpolate: { names: blockingNames.join(', ') },
-									})
-								}}
-							</N8nCallout>
 						</div>
 					</div>
 

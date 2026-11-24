@@ -543,7 +543,7 @@ export function buildPreview({
 }
 
 /** Raise when the preview changes shape, so that a revision from an older version never matches. */
-const PREVIEW_SCHEMA_VERSION = 2;
+const PREVIEW_SCHEMA_VERSION = 3;
 
 /** JSON with object keys in a fixed order, so equal values give equal text. */
 export function canonicalJson(value: unknown): string {

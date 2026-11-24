@@ -1,4 +1,9 @@
-import type { PromotionMissingDependency, PromotionMissingDependencyReason } from '@n8n/api-types';
+import type {
+	PromotionDependencyWarning,
+	PromotionMissingDependency,
+	PromotionMissingDependencyReason,
+} from '@n8n/api-types';
+import type { CredentialUsageScope } from '@n8n/db';
 import type { IWorkflowSettings, WorkflowSettings } from 'n8n-workflow';
 
 import type {
@@ -6,6 +11,7 @@ import type {
 	PackageDirectoryInventory,
 } from '@/modules/n8n-packages/io/directory/package-directory-inventory-reader';
 import type { PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
+import type { PackageRequirementReason } from '@/modules/n8n-packages/spec/requirements.schema';
 
 import {
 	compare,
@@ -27,6 +33,11 @@ export type ReferencedWorkflowState = {
 export type ApplyDependencyFacts = {
 	/** The package projects in which the user can create a credential. */
 	credentialProjectIds: ReadonlySet<string>;
+	/**
+	 * The credentials that the plan did not resolve and that this instance holds, with their usage
+	 * scope. The import tells only a user who can read all credentials that they exist.
+	 */
+	unusableCredentials: ReadonlyMap<string, CredentialUsageScope>;
 	/** The workflows that the Apply imports. The branch gives their state after the Apply. */
 	appliedWorkflowIds: ReadonlySet<string>;
 	/** The referenced workflows that the Apply deletes. A reference to one does not resolve after it. */
@@ -242,6 +253,27 @@ function unusableFor(
 
 function branchState({ content, projectId }: InventoryWorkflow): ReferencedWorkflowState {
 	return { isArchived: content.isArchived, settings: content.settings, projectId };
+}
+
+/**
+ * The dependencies that Promote marked as broken on the source instance. A reference to one of
+ * them is not a missing dependency of the Apply.
+ */
+export function idsMissingOnSource(
+	rows: ReadonlyArray<{ id: string; reason?: PackageRequirementReason }> | undefined,
+): Set<string> {
+	return new Set(
+		(rows ?? []).filter(({ reason }) => reason === 'missing-on-source').map(({ id }) => id),
+	);
+}
+
+export function toSourceWarning({
+	kind,
+	id,
+	name,
+	consumers,
+}: PromotionMissingDependency): PromotionDependencyWarning {
+	return { kind, code: 'missing-on-source', ...(id !== undefined ? { id } : {}), name, consumers };
 }
 
 /** The preview revision hashes the list, so its order must not depend on the order of a lookup. */

@@ -144,7 +144,6 @@ describe('promotionDependencyWarningSchema', () => {
 		code: 'missing-on-source',
 		id: 'workflow2',
 		name: 'Notify',
-		blocking: false,
 		consumers,
 	};
 

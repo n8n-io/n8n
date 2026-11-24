@@ -1,4 +1,3 @@
-import type { PromotePackageResultDto } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
 import { useI18n } from '@n8n/i18n';
@@ -7,7 +6,7 @@ import { getProject, ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUsersStore } from '@n8n/stores/users.store';
 
-import { promoteSuccessToast, withFolderNotes } from '../promotionResult';
+import { promoteSuccessToast, withFolderNotes, type PromotedResult } from '../promotionResult';
 import { promotionEventBus } from '../promotions.eventBus';
 import type { AppliedResult } from '../promotions.types';
 
@@ -19,7 +18,7 @@ export function usePromotionOutcome() {
 	const projectContext = capabilityRegistry.use(capabilities.projectContext);
 	const usersStore = useUsersStore();
 
-	function showPromoted(projectId: string, result: PromotePackageResultDto) {
+	function showPromoted(projectId: string, result: PromotedResult) {
 		promotionEventBus.emit('promoted', { projectId });
 		toast.showMessage({
 			title: i18n.baseText('promotions.operation.toast.success.title'),

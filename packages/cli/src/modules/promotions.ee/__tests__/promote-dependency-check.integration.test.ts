@@ -1,4 +1,4 @@
-import type { PromotionPreview } from '@n8n/api-types';
+import type { PromoteRequest, PromotionPreview } from '@n8n/api-types';
 import {
 	createTeamProject,
 	createWorkflow,
@@ -13,7 +13,7 @@ import { Container } from '@n8n/di';
 import type { InstanceSettings } from 'n8n-core';
 import { jsonParse, type INode } from 'n8n-workflow';
 import { mkdtempSync } from 'node:fs';
-import { cp, mkdtemp, rm } from 'node:fs/promises';
+import { cp, mkdtemp, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { mock } from 'vitest-mock-extended';
@@ -122,15 +122,42 @@ async function branchTree(remoteUrl: string): Promise<string> {
 	return refs === '' ? '' : await git.raw(['ls-tree', '-r', 'main']);
 }
 
+async function branchHead(remoteUrl: string): Promise<string> {
+	return await createFixtureGit(remoteUrl).raw(['for-each-ref', 'refs/heads/main']);
+}
+
+async function headCommitMessage(remoteUrl: string): Promise<string> {
+	return await createFixtureGit(remoteUrl).raw(['log', '-1', '--format=%B', 'main']);
+}
+
+async function branchFile(remoteUrl: string, filePath: string): Promise<string> {
+	return await createFixtureGit(remoteUrl).raw(['show', `main:${filePath}`]);
+}
+
+type RawRow = { id: string; reason?: string; usedBy: object[] };
 type RawManifest = {
+	workflows?: Array<{ id: string; target: string }>;
 	credentials?: Array<{ id: string; target: string }>;
-	requirements?: { credentials?: object[]; workflows?: object[] };
+	requirements?: {
+		credentials?: RawRow[];
+		workflows?: RawRow[];
+		variables?: Array<{ name: string; reason?: string }>;
+	};
 };
 
 async function branchManifest(remoteUrl: string): Promise<RawManifest> {
-	return jsonParse<RawManifest>(
-		await createFixtureGit(remoteUrl).raw(['show', 'main:n8n/manifest.json']),
-	);
+	return jsonParse<RawManifest>(await branchFile(remoteUrl, 'n8n/manifest.json'));
+}
+
+/** The commit, the uncommitted changes and the entries of the checkout of an environment. */
+async function checkoutState(environmentId: string) {
+	const { repositoryFolder } = Container.get(PromotionWorkingDirectoryService).paths(environmentId);
+	const git = createFixtureGit(repositoryFolder);
+	return {
+		head: await git.revparse(['HEAD']),
+		uncommitted: await git.raw(['status', '--porcelain', '--untracked-files=all']),
+		entries: (await readdir(repositoryFolder)).sort(),
+	};
 }
 
 async function previewOf(user: User, projectId: string) {
@@ -183,18 +210,23 @@ const consumersOf = (workflow: { id: string; name: string }) => [
 const byId = <T extends { id?: string }>(entries: T[] | undefined, id: string) =>
 	entries?.find((entry) => entry.id === id);
 
-/** The two lists must not show this project. */
-function expectNoTraceOf(
-	project: Project,
-	{ missingDependencies, warnings }: Pick<PromotionPreview, 'missingDependencies' | 'warnings'>,
-) {
-	const shown = JSON.stringify([missingDependencies, warnings]);
-	expect(shown).not.toContain(project.id);
-	expect(shown).not.toContain(project.name);
+const idsOf = (entries: Array<{ id?: string }> | undefined) => entries?.map(({ id }) => id).sort();
+
+/** Nothing in the given values may show this project. */
+function expectNoTraceOf(project: Project, ...shown: unknown[]) {
+	const text = JSON.stringify(shown);
+	expect(text).not.toContain(project.id);
+	expect(text).not.toContain(project.name);
+}
+
+async function promoteSelection(user: User, projectId: string, request: PromoteRequest) {
+	return await Container.get(PromotionsService).promoteProjectSelection(projectId, user, request);
 }
 
 describe('Missing dependencies of a project Promote', () => {
-	it('lists what the project uses from another project, and writes the same branch as a Promote without a preview', async () => {
+	const promotePath = (projectId: string) => `/promotions/projects/${projectId}/promote`;
+
+	it('lists what the project uses from another project, and a confirmed Promote writes the same branch with or without a preview', async () => {
 		const { credential, subWorkflow, caller } = await seedCrossProjectUse();
 		const ownCredential = await saveHeaderCredential('Own key', alpha);
 		const ownSubWorkflow = await createWorkflow({ name: 'Own helper', nodes: [] }, alpha);
@@ -206,7 +238,10 @@ describe('Missing dependencies of a project Promote', () => {
 			},
 			alpha,
 		);
-		const selection = { workflowIds: [caller.id, local.id, ownSubWorkflow.id] };
+		const selection = {
+			workflowIds: [caller.id, local.id, ownSubWorkflow.id],
+			confirmMissingDependencies: true,
+		};
 		const reviewed = await connectNewRemote('reviewed');
 
 		const response = await server
@@ -241,73 +276,220 @@ describe('Missing dependencies of a project Promote', () => {
 			consumers: consumersOf(caller),
 		});
 		expect(preview.warnings).toEqual([]);
+		// The changes list the credential of Alpha. The Promote does not write the one of Beta.
+		expect(preview.resources.filter(({ type }) => type === 'credential')).toEqual([
+			expect.objectContaining({ id: ownCredential.id, change: 'added' }),
+		]);
 		expect((await previewOf(owner, alpha.id)).revision).toBe(preview.revision);
 
-		const afterPreview = await Container.get(PromotionsService).promoteProjectSelection(
-			alpha.id,
-			owner,
-			{ ...selection, expectedPreviewRevision: preview.revision },
-		);
+		const afterPreview = await promoteSelection(owner, alpha.id, {
+			...selection,
+			expectedPreviewRevision: preview.revision,
+		});
 		expectPushed(afterPreview);
+		expect(afterPreview.missingDependencies).toEqual(preview.missingDependencies);
 		const reviewedTree = await branchTree(reviewed.remoteUrl);
 
 		await disconnectEnvironments();
 		const direct = await connectNewRemote('direct');
-		const withoutPreview = await Container.get(PromotionsService).promoteProjectSelection(
-			alpha.id,
-			owner,
-			selection,
-		);
+		const withoutPreview = await promoteSelection(owner, alpha.id, selection);
 		expectPushed(withoutPreview);
 
 		expect(reviewedTree).not.toBe('');
 		expect(await branchTree(direct.remoteUrl)).toBe(reviewedTree);
 		expect(withoutPreview.counts).toEqual(afterPreview.counts);
-		const { requirements } = await branchManifest(direct.remoteUrl);
-		expect(requirements?.credentials).toHaveLength(2);
-		for (const row of requirements?.credentials ?? []) {
-			expect(Object.keys(row).sort()).toEqual(['id', 'name', 'type', 'usedBy']);
-		}
-		expect(requirements?.workflows).toHaveLength(2);
-		for (const row of requirements?.workflows ?? []) {
-			expect(Object.keys(row).sort()).toEqual(['id', 'name', 'usedBy']);
-		}
+		const manifest = await branchManifest(direct.remoteUrl);
+		// The credential of Alpha itself is written under Alpha. The one of Beta has no file.
+		expect(manifest.credentials).toHaveLength(1);
+		expect(byId(manifest.credentials, ownCredential.id)?.target).toMatch(
+			/^projects\/.+\/credentials\//,
+		);
+		expect(reviewedTree).not.toContain(credential.id);
+		// Only the rows of the confirmed entries say why the package does not hold them.
+		expect(manifest.requirements?.credentials).toHaveLength(2);
+		expect(byId(manifest.requirements?.credentials, credential.id)?.reason).toBe(
+			'confirmed-missing',
+		);
+		expect(byId(manifest.requirements?.credentials, ownCredential.id)).not.toHaveProperty('reason');
+		expect(manifest.requirements?.workflows).toHaveLength(2);
+		expect(byId(manifest.requirements?.workflows, subWorkflow.id)?.reason).toBe(
+			'confirmed-missing',
+		);
+		expect(byId(manifest.requirements?.workflows, ownSubWorkflow.id)).not.toHaveProperty('reason');
+		expectNoTraceOf(beta, manifest, await headCommitMessage(direct.remoteUrl));
 	}, 60_000);
 
-	it('stops listing a dependency when the branch holds it under its project, and changes the revision', async () => {
+	it('writes nothing without the confirmation, then writes the branch without the credential of the other project', async () => {
+		const { credential, subWorkflow, caller } = await seedCrossProjectUse();
+		const local = await createWorkflow({ name: 'Local', nodes: [], connections: {} }, alpha);
+		const { remoteUrl, environment } = await connectNewRemote('branch');
+		const agent = server.publicApiAgentFor(owner);
+		// Nothing of this selection is missing, so it needs no confirmation.
+		const first = await agent.post(promotePath(alpha.id)).send({ workflowIds: [local.id] });
+		expect(first.body).toMatchObject({ status: 'promoted', missingDependencies: [] });
+		expect((await branchManifest(remoteUrl)).requirements).toBeUndefined();
+		const head = await branchHead(remoteUrl);
+		const checkout = await checkoutState(environment.id);
+		expect(checkout.uncommitted).toBe('');
+
+		const refused = await agent
+			.post(promotePath(alpha.id))
+			.send({ workflowIds: [caller.id] })
+			.expect(200);
+
+		expect(refused.body).toEqual({
+			status: 'missing-dependencies',
+			environmentId: environment.id,
+			missingDependencies: [
+				expect.objectContaining({ kind: 'credential', id: credential.id, name: 'CRM key' }),
+				expect.objectContaining({ kind: 'workflow', id: subWorkflow.id, name: 'Notify' }),
+			],
+			warnings: [],
+		});
+		expectNoTraceOf(beta, refused.body);
+		expect(await branchHead(remoteUrl)).toBe(head);
+		expect(await checkoutState(environment.id)).toEqual(checkout);
+
+		const confirmed = await agent
+			.post(promotePath(alpha.id))
+			.send({
+				workflowIds: [caller.id],
+				commitMessage: 'Promote the sync',
+				confirmMissingDependencies: true,
+			})
+			.expect(200);
+
+		expect(confirmed.body).toMatchObject({
+			status: 'promoted',
+			missingDependencies: refused.body.missingDependencies,
+		});
+		expect(await branchHead(remoteUrl)).not.toBe(head);
+		const manifest = await branchManifest(remoteUrl);
+		// No file for the credential of Beta: not at the top level, and not under Beta.
+		expect(manifest.credentials).toBeUndefined();
+		expect(await branchTree(remoteUrl)).not.toContain('credential.json');
+		expect(idsOf(manifest.workflows)).toEqual([caller.id, local.id].sort());
+		expect(byId(manifest.requirements?.credentials, credential.id)?.reason).toBe(
+			'confirmed-missing',
+		);
+		expect(byId(manifest.requirements?.workflows, subWorkflow.id)?.reason).toBe(
+			'confirmed-missing',
+		);
+		const message = await headCommitMessage(remoteUrl);
+		expect(message.trim()).toBe(
+			[
+				'Promote the sync',
+				'',
+				'Missing dependencies:',
+				`- credential: CRM key (${credential.id})`,
+				`- workflow: Notify (${subWorkflow.id})`,
+			].join('\n'),
+		);
+		expectNoTraceOf(beta, confirmed.body, manifest, message);
+	}, 60_000);
+
+	it('lists only the missing dependencies of the selection', async () => {
+		await seedCrossProjectUse();
+		const local = await createWorkflow({ name: 'Local', nodes: [], connections: {} }, alpha);
+		const { remoteUrl } = await connectNewRemote('branch');
+		// The preview covers the whole project, so it lists what `Sync` uses.
+		expect((await previewOf(owner, alpha.id)).missingDependencies).toHaveLength(2);
+
+		const result = await promoteSelection(owner, alpha.id, { workflowIds: [local.id] });
+
+		expectPushed(result);
+		expect(result.missingDependencies).toEqual([]);
+		expect(idsOf((await branchManifest(remoteUrl)).workflows)).toEqual([local.id]);
+	}, 60_000);
+
+	it('confirms exactly the reviewed lists with the revision, and the lists of the Promote without it', async () => {
 		const { credential, subWorkflow, caller } = await seedCrossProjectUse();
 		const { remoteUrl } = await connectNewRemote('branch');
-		const promotions = Container.get(PromotionsService);
-		expectPushed(
-			await promotions.promoteProjectSelection(alpha.id, owner, { workflowIds: [caller.id] }),
+		const reviewed = await previewOf(owner, alpha.id);
+		expect(idsOf(reviewed.missingDependencies)).toEqual([credential.id, subWorkflow.id].sort());
+
+		// The workflow starts to use one more credential of Beta after the review.
+		const added = await saveHeaderCredential('Billing key', beta);
+		await shareCredentialWithProjects(added, [alpha]);
+		await Container.get(WorkflowRepository).update(caller.id, {
+			nodes: [
+				headerAuthNode(credential),
+				headerAuthNode(added),
+				executeWorkflowNode(subWorkflow.id),
+			],
+		});
+
+		const stale = await promoteSelection(owner, alpha.id, {
+			workflowIds: [caller.id],
+			confirmMissingDependencies: true,
+			expectedPreviewRevision: reviewed.revision,
+		});
+
+		expect(stale).toEqual({ status: 'preview-changed', environmentId: expect.any(String) });
+		expect(await branchTree(remoteUrl)).toBe('');
+		const current = await previewOf(owner, alpha.id);
+		expect(idsOf(current.missingDependencies)).toEqual(
+			[credential.id, added.id, subWorkflow.id].sort(),
 		);
 
-		// The Promote of Alpha wrote the credential as a top-level file, which has no owner project.
-		const topLevel = byId((await branchManifest(remoteUrl)).credentials, credential.id);
-		expect(topLevel?.target.startsWith('credentials/')).toBe(true);
-		const before = await previewOf(owner, alpha.id);
-		expect(before.missingDependencies?.map(({ id }) => id).sort()).toEqual(
-			[credential.id, subWorkflow.id].sort(),
-		);
+		const atRunTime = await promoteSelection(owner, alpha.id, {
+			workflowIds: [caller.id],
+			confirmMissingDependencies: true,
+		});
 
+		expectPushed(atRunTime);
+		expect(atRunTime.missingDependencies).toEqual(current.missingDependencies);
+	}, 60_000);
+
+	it('stops listing a dependency when the branch holds it under its project, and a later Promote removes its reason', async () => {
+		const { credential, subWorkflow, caller } = await seedCrossProjectUse();
+		const { remoteUrl } = await connectNewRemote('branch');
 		expectPushed(
-			await promotions.promoteProjectSelection(beta.id, owner, {
-				workflowIds: [subWorkflow.id],
-				credentialIds: [credential.id],
+			await promoteSelection(owner, alpha.id, {
+				workflowIds: [caller.id],
+				confirmMissingDependencies: true,
 			}),
+		);
+
+		// The Promote of Alpha wrote no file for the credential of Beta.
+		expect((await branchManifest(remoteUrl)).credentials).toBeUndefined();
+		const before = await previewOf(owner, alpha.id);
+		expect(idsOf(before.missingDependencies)).toEqual([credential.id, subWorkflow.id].sort());
+
+		// Beta holds nothing of another project, so its Promote needs no confirmation.
+		const fromBeta = await promoteSelection(owner, beta.id, {
+			workflowIds: [subWorkflow.id],
+			credentialIds: [credential.id],
+		});
+		expectPushed(fromBeta);
+		expect(fromBeta.missingDependencies).toEqual([]);
+		expect(byId((await branchManifest(remoteUrl)).credentials, credential.id)?.target).toMatch(
+			/^projects\/.+\/credentials\//,
 		);
 
 		const after = await previewOf(owner, alpha.id);
 		expect(after.missingDependencies).toEqual([]);
 		expect(after.warnings).toEqual([]);
 		expect(after.revision).not.toBe(before.revision);
-		// A Promote that reviewed the old lists stops.
+		// A Promote that reviewed the old lists stops, also with a confirmation.
 		expect(
-			await promotions.promoteProjectSelection(alpha.id, owner, {
+			await promoteSelection(owner, alpha.id, {
 				workflowIds: [caller.id],
+				confirmMissingDependencies: true,
 				expectedPreviewRevision: before.revision,
 			}),
 		).toMatchObject({ status: 'preview-changed' });
+
+		// The next Promote of the workflow writes its rows again, without a reason.
+		const again = await promoteSelection(owner, alpha.id, { workflowIds: [caller.id] });
+		expectPushed(again);
+		expect(again.missingDependencies).toEqual([]);
+		const { requirements } = await branchManifest(remoteUrl);
+		expect(byId(requirements?.credentials, credential.id)).toBeDefined();
+		expect(byId(requirements?.workflows, subWorkflow.id)).toBeDefined();
+		for (const row of [...(requirements?.credentials ?? []), ...(requirements?.workflows ?? [])]) {
+			expect(row).not.toHaveProperty('reason');
+		}
 	}, 60_000);
 
 	it('stops listing a dependency when the workflow no longer uses it, and changes the revision', async () => {
@@ -323,7 +505,7 @@ describe('Missing dependencies of a project Promote', () => {
 		expect(after.revision).not.toBe(before.revision);
 	}, 60_000);
 
-	it('shows a user without access to the other project only what the workflow shows', async () => {
+	it('shows a user without access to the other project only what the workflow shows, also in what the Promote writes', async () => {
 		const { credential, subWorkflow, caller } = await seedCrossProjectUse();
 		// Alpha does not share this credential of Beta, and the node holds an old name of it.
 		const hidden = await saveHeaderCredential('Beta billing key', beta);
@@ -354,7 +536,7 @@ describe('Missing dependencies of a project Promote', () => {
 			{ roleType: 'project' },
 		);
 		await linkUserToProject(promoter, alpha, projectRole.slug);
-		await connectNewRemote('branch');
+		const { remoteUrl } = await connectNewRemote('branch');
 
 		const preview = await previewOf(promoter, alpha.id);
 
@@ -389,7 +571,7 @@ describe('Missing dependencies of a project Promote', () => {
 			...outsideAccess,
 			consumers: consumersOf(caller),
 		});
-		expectNoTraceOf(beta, preview);
+		expectNoTraceOf(beta, preview.missingDependencies, preview.warnings);
 		const shown = JSON.stringify([preview.missingDependencies, preview.warnings]);
 		expect(shown).not.toContain('Beta billing key');
 		expect(shown).not.toContain('Notify');
@@ -404,9 +586,33 @@ describe('Missing dependencies of a project Promote', () => {
 				project: { id: beta.id, name: beta.name },
 			});
 		}
+
+		const selection = { workflowIds: [caller.id, legacy.id] };
+		const refused = await promoteSelection(promoter, alpha.id, selection);
+		expect(refused).toMatchObject({
+			status: 'missing-dependencies',
+			missingDependencies: preview.missingDependencies,
+		});
+		expect(await branchTree(remoteUrl)).toBe('');
+		const confirmed = await promoteSelection(promoter, alpha.id, {
+			...selection,
+			confirmMissingDependencies: true,
+			expectedPreviewRevision: preview.revision,
+		});
+		expectPushed(confirmed);
+
+		const manifest = await branchManifest(remoteUrl);
+		expect(manifest.credentials).toBeUndefined();
+		expect(idsOf(manifest.requirements?.credentials?.filter((row) => row.reason))).toEqual(
+			[credential.id, hidden.id].sort(),
+		);
+		const written = [refused, confirmed, manifest, await headCommitMessage(remoteUrl)];
+		expectNoTraceOf(beta, ...written);
+		expect(JSON.stringify(written)).not.toContain('Beta billing key');
+		expect(JSON.stringify(written)).not.toContain('Notify');
 	}, 60_000);
 
-	it('warns about references to something that this instance does not hold, and still promotes', async () => {
+	it('warns about references to something that this instance does not hold, and promotes them without a confirmation', async () => {
 		const deletedCredential = await saveHeaderCredential('Deleted key', beta);
 		const deletedSubWorkflow = await createWorkflow({ name: 'Deleted helper', nodes: [] }, beta);
 		const broken = await createWorkflow(
@@ -425,7 +631,7 @@ describe('Missing dependencies of a project Promote', () => {
 		});
 		await Container.get(WorkflowRepository).delete(deletedSubWorkflow.id);
 		await testDb.truncate(['CredentialsEntity', 'SharedCredentials']);
-		await connectNewRemote('branch');
+		const { remoteUrl } = await connectNewRemote('branch');
 
 		const preview = await previewOf(owner, alpha.id);
 
@@ -436,14 +642,12 @@ describe('Missing dependencies of a project Promote', () => {
 				code: 'missing-on-source',
 				id: deletedCredential.id,
 				name: 'Deleted key',
-				blocking: false,
 				consumers: consumersOf(broken),
 			},
 			{
 				kind: 'variable',
 				code: 'missing-on-source',
 				name: 'missing_region',
-				blocking: false,
 				consumers: consumersOf(usesVariables),
 			},
 			{
@@ -451,25 +655,36 @@ describe('Missing dependencies of a project Promote', () => {
 				code: 'missing-on-source',
 				id: deletedSubWorkflow.id,
 				name: deletedSubWorkflow.id,
-				blocking: false,
 				consumers: consumersOf(broken),
 			},
 		]);
 
-		expectPushed(
-			await Container.get(PromotionsService).promoteProjectSelection(alpha.id, owner, {
-				workflowIds: [broken.id, usesVariables.id],
-				expectedPreviewRevision: preview.revision,
-			}),
-		);
+		const result = await promoteSelection(owner, alpha.id, {
+			workflowIds: [broken.id, usesVariables.id],
+			expectedPreviewRevision: preview.revision,
+		});
+
+		expectPushed(result);
+		expect(result.missingDependencies).toEqual([]);
+		const { requirements } = await branchManifest(remoteUrl);
+		expect(byId(requirements?.credentials, deletedCredential.id)?.reason).toBe('missing-on-source');
+		expect(byId(requirements?.workflows, deletedSubWorkflow.id)?.reason).toBe('missing-on-source');
+		expect(requirements?.variables?.map(({ name }) => name).sort()).toEqual([
+			'defined_region',
+			'missing_region',
+		]);
+		for (const row of requirements?.variables ?? []) expect(row).not.toHaveProperty('reason');
+		expect(await headCommitMessage(remoteUrl)).not.toContain('Missing dependencies');
 	}, 60_000);
 });
 
 describe('Missing dependencies of an instance Promote', () => {
 	const checkPath = (environmentId: string) =>
 		`/promotions/environments/${environmentId}/promote/check`;
+	const promotePath = (environmentId: string) =>
+		`/promotions/environments/${environmentId}/promote`;
 
-	it('lists a sub-workflow of a personal project as blocking, and the Promote still stops on it', async () => {
+	it('refuses a sub-workflow of a personal project without the confirmation, then promotes the reference as authored', async () => {
 		const personalSubWorkflow = await createWorkflow({ name: 'My helper', nodes: [] }, owner);
 		const personalCredential = await saveCredential(
 			{ name: 'My key', type: 'httpHeaderAuth', data: { name: 'X-Token', value: 'secret' } },
@@ -484,49 +699,90 @@ describe('Missing dependencies of an instance Promote', () => {
 			alpha,
 		);
 		const { remoteUrl, environment } = await connectNewRemote('branch');
+		const agent = server.publicApiAgentFor(owner);
 
-		const response = await server
-			.publicApiAgentFor(owner)
-			.get(checkPath(environment.id))
+		const check = await agent.get(checkPath(environment.id)).expect(200);
+
+		const missingDependencies = [
+			{
+				kind: 'credential',
+				id: personalCredential.id,
+				name: 'My key',
+				credentialType: 'httpHeaderAuth',
+				group: 'personal',
+				reason: 'personal-project',
+				accessible: true,
+				blocking: false,
+				consumers: consumersOf(caller),
+			},
+			{
+				kind: 'workflow',
+				id: personalSubWorkflow.id,
+				name: 'My helper',
+				group: 'personal',
+				reason: 'personal-project',
+				accessible: true,
+				blocking: false,
+				consumers: consumersOf(caller),
+			},
+		];
+		expect(check.body).toEqual({ missingDependencies, warnings: [], revision: expect.any(String) });
+		const personalProject = await getPersonalProject(owner);
+		expectNoTraceOf(personalProject, check.body);
+
+		const refused = await agent.post(promotePath(environment.id)).send({}).expect(200);
+
+		expect(refused.body).toEqual({
+			status: 'missing-dependencies',
+			environmentId: environment.id,
+			missingDependencies,
+			warnings: [],
+		});
+		expect(await branchTree(remoteUrl)).toBe('');
+
+		const confirmed = await agent
+			.post(promotePath(environment.id))
+			.send({ confirmMissingDependencies: true, expectedPreviewRevision: check.body.revision })
 			.expect(200);
 
-		expect(response.body).toEqual({
-			missingDependencies: [
-				{
-					kind: 'credential',
-					id: personalCredential.id,
-					name: 'My key',
-					credentialType: 'httpHeaderAuth',
-					group: 'personal',
-					reason: 'personal-project',
-					accessible: true,
-					blocking: false,
-					consumers: consumersOf(caller),
-				},
-				{
-					kind: 'workflow',
-					id: personalSubWorkflow.id,
-					name: 'My helper',
-					group: 'personal',
-					reason: 'personal-project',
-					accessible: true,
-					blocking: true,
-					consumers: consumersOf(caller),
-				},
-			],
-			warnings: [],
-			revision: expect.any(String),
-		});
-		expectNoTraceOf(await getPersonalProject(owner), response.body);
-
-		await expect(
-			Container.get(PromotionsService).promote(environment.id, owner, {}),
-		).rejects.toThrow('1 workflow dependency not included in the package. Export aborted.');
-		expect(await branchTree(remoteUrl)).toBe('');
+		expect(confirmed.body).toMatchObject({ status: 'promoted', missingDependencies });
+		const manifest = await branchManifest(remoteUrl);
+		const target = byId(manifest.workflows, caller.id)?.target;
+		const written = jsonParse<{ nodes: INode[] }>(
+			await branchFile(remoteUrl, `n8n/${target}/workflow.json`),
+		);
+		// The branch holds the workflow with both references as the author wrote them. The export
+		// keeps only the id of a credential reference.
+		expect(
+			written.nodes.map(({ parameters, credentials }) => ({ parameters, credentials })),
+		).toEqual([
+			{
+				parameters: headerAuthNode(personalCredential).parameters,
+				credentials: { httpHeaderAuth: { id: personalCredential.id } },
+			},
+			{ parameters: executeWorkflowNode(personalSubWorkflow.id).parameters },
+		]);
+		expect(idsOf(manifest.workflows)).toEqual([caller.id]);
+		expect(manifest.credentials).toBeUndefined();
+		expect(manifest.requirements?.credentials).toEqual([
+			expect.objectContaining({ id: personalCredential.id, reason: 'confirmed-missing' }),
+		]);
+		expect(manifest.requirements?.workflows).toEqual([
+			expect.objectContaining({ id: personalSubWorkflow.id, reason: 'confirmed-missing' }),
+		]);
+		const message = await headCommitMessage(remoteUrl);
+		expect(message).toContain(
+			[
+				'Missing dependencies:',
+				`- credential: My key (${personalCredential.id})`,
+				`- workflow: My helper (${personalSubWorkflow.id})`,
+			].join('\n'),
+		);
+		expectNoTraceOf(personalProject, refused.body, confirmed.body, manifest, message);
 	}, 60_000);
 
 	it('does not list what another team project holds, because the same Promote writes it', async () => {
-		const { subWorkflow, caller } = await seedCrossProjectUse();
+		const { credential, subWorkflow, caller } = await seedCrossProjectUse();
 		const { remoteUrl, environment } = await connectNewRemote('branch');
 		const agent = server.publicApiAgentFor(owner);
 
@@ -539,10 +795,17 @@ describe('Missing dependencies of an instance Promote', () => {
 		});
 		expect((await agent.get(checkPath(environment.id)).expect(200)).body).toEqual(check.body);
 
-		await Container.get(PromotionsService).promote(environment.id, owner, {});
-		expect(await branchTree(remoteUrl)).not.toBe('');
+		// Nothing is missing, so the Promote needs no confirmation and writes no reason.
+		const promoted = await agent.post(promotePath(environment.id)).send({}).expect(200);
+		expect(promoted.body).toMatchObject({ status: 'promoted', missingDependencies: [] });
+		const manifest = await branchManifest(remoteUrl);
+		expect(byId(manifest.credentials, credential.id)?.target).toMatch(
+			/^projects\/.+\/credentials\//,
+		);
+		expect(JSON.stringify(manifest)).not.toContain('"reason"');
+		expect(await headCommitMessage(remoteUrl)).not.toContain('Missing dependencies');
 
-		// The revision follows the lists.
+		// The revision follows the lists, and a Promote that reviewed the old lists stops.
 		await Container.get(WorkflowRepository).delete(subWorkflow.id);
 		const afterDelete = await agent.get(checkPath(environment.id)).expect(200);
 		expect(afterDelete.body.warnings).toEqual([
@@ -551,11 +814,27 @@ describe('Missing dependencies of an instance Promote', () => {
 				code: 'missing-on-source',
 				id: subWorkflow.id,
 				name: subWorkflow.id,
-				blocking: true,
 				consumers: consumersOf(caller),
 			},
 		]);
 		expect(afterDelete.body.revision).not.toBe(check.body.revision);
+		const head = await branchHead(remoteUrl);
+		const stale = await agent
+			.post(promotePath(environment.id))
+			.send({ expectedPreviewRevision: check.body.revision })
+			.expect(200);
+		expect(stale.body).toEqual({ status: 'preview-changed', environmentId: environment.id });
+		expect(await branchHead(remoteUrl)).toBe(head);
+
+		// A warning needs no confirmation. Its row says that the source does not hold the workflow.
+		const withWarning = await agent
+			.post(promotePath(environment.id))
+			.send({ expectedPreviewRevision: afterDelete.body.revision })
+			.expect(200);
+		expect(withWarning.body).toMatchObject({ status: 'promoted', missingDependencies: [] });
+		expect((await branchManifest(remoteUrl)).requirements?.workflows).toEqual([
+			expect.objectContaining({ id: subWorkflow.id, reason: 'missing-on-source' }),
+		]);
 	}, 60_000);
 
 	it('refuses an API key without the promotions:promote scope', async () => {

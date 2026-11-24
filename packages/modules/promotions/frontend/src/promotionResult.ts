@@ -4,7 +4,8 @@ import { h, type VNode } from 'vue';
 
 import type { AppliedResult } from './promotions.types';
 
-type PromoteOutcome = Pick<PromotePackageResultDto, 'git' | 'review' | 'warnings'>;
+export type PromotedResult = Extract<PromotePackageResultDto, { status: 'promoted' }>;
+type PromoteOutcome = Pick<PromotedResult, 'git' | 'review' | 'warnings'>;
 type PromoteWarning = NonNullable<PromoteOutcome['warnings']>[number];
 
 export type WarningSegment = { kind: 'text'; text: string } | { kind: 'link'; url: string };

@@ -1,4 +1,4 @@
-import type { PromotionResource } from '@n8n/api-types';
+import type { PromoteSelectionResultDto, PromotionResource } from '@n8n/api-types';
 import { createTeamProject, createWorkflow, mockInstance, testDb } from '@n8n/backend-test-utils';
 import type { Person } from '@n8n/db';
 import {
@@ -17,10 +17,13 @@ import path from 'node:path';
 import { mock } from 'vitest-mock-extended';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { buildWorkflowReferencingCredential } from '@/modules/n8n-packages/__tests__/utils/test-builders';
+import {
+	buildWorkflowReferencingCredential,
+	executeWorkflowNode,
+} from '@/modules/n8n-packages/__tests__/utils/test-builders';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
-import { saveCredential } from '@test-integration/db/credentials';
-import { createOwner, createUserShell } from '@test-integration/db/users';
+import { saveCredential, shareCredentialWithProjects } from '@test-integration/db/credentials';
+import { createMember, createOwner, createUserShell } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
 import { PromotionEnvironmentRepository } from '../database/repositories/promotion-environment.repository';
@@ -29,12 +32,13 @@ import { PromotionReviewRepository } from '../database/repositories/promotion-re
 import { PromotionRunRepository } from '../database/repositories/promotion-run.repository';
 import { GitLabMergeRequestClient } from '../git-hosts/gitlab-merge-request.client';
 import type { GitLabMergeRequest } from '../git-hosts/gitlab-merge-request.types';
+import { PromotionReviewChangesService } from '../promotion-review-changes.service';
 import { PromotionReviewHostResolver } from '../promotion-review-host.resolver';
 import { PromotionWorkingDirectoryService } from '../promotion-working-directory.service';
 import { PromotionsService } from '../promotions.service';
 
 import { createFixtureGit, createGitRemoteSeed, type TestRemote } from './utils/git-remote-fixture';
-import { insertTokenProvider } from './utils/promotion-fixtures';
+import { expectPushed, insertTokenProvider } from './utils/promotion-fixtures';
 
 const instanceFolder = mkdtempSync(path.join(tmpdir(), 'promotion-review-changes-'));
 const remoteSeedRoot = path.join(instanceFolder, 'remote-seed');
@@ -137,9 +141,16 @@ afterEach(async () => {
 
 /** Promotes to a new branch, opens its merge request, and publishes the GitLab head ref. */
 async function promote(commitMessage: string) {
-	const result = await Container.get(PromotionsService).promote(environmentId, owner, {
-		commitMessage,
-	});
+	return await publishReview(
+		await Container.get(PromotionsService).promote(environmentId, owner, {
+			commitMessage,
+		}),
+	);
+}
+
+/** Publishes the GitLab head ref of the review that a Promote opened. */
+async function publishReview(result: PromoteSelectionResultDto) {
+	expectPushed(result);
 	if (!result.review) throw new Error('The promotion opened no review');
 	const { reviewId, number: iid } = result.review;
 	await moveReviewHead(iid, result.git.commitSha);
@@ -243,7 +254,11 @@ it('lists the workflows and dependencies that an open review changes in several 
 
 	const changes = await changesOf(second.reviewId);
 
-	expect(changes).toMatchObject({ baselineCommitSha: first.commitSha, warnings: [] });
+	expect(changes).toMatchObject({
+		baselineCommitSha: first.commitSha,
+		warnings: [],
+		missingDependencies: [],
+	});
 	expect(changes.headCommitSha).toBe(second.commitSha);
 	expect(changed(changes.resources)).toEqual([
 		[`workflow:${ticket.id}`, 'added'],
@@ -281,6 +296,103 @@ it('lists the workflows and dependencies that an open review changes in several 
 			before: expect.objectContaining({ name: 'Quote' }),
 			after: expect.objectContaining({ name: 'Send quote' }),
 		}),
+	]);
+}, 60_000);
+
+it('lists the missing dependencies that the author confirmed, as each reviewer sees them now', async () => {
+	const sales = await createTeamProject('Sales', owner);
+	const support = await createTeamProject('Support', owner);
+	const credential = await saveCredential(
+		{ name: 'Helpdesk API', type: 'httpHeaderAuth', data: {} },
+		{ project: support, role: 'credential:owner' },
+	);
+	await shareCredentialWithProjects(credential, [sales]);
+	const helper = await createWorkflow({ name: 'My helper', nodes: [], connections: {} }, owner);
+	const ticket = await createWorkflow(
+		{
+			name: 'Open ticket',
+			nodes: [
+				{
+					id: 'http',
+					name: 'HTTP',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+					credentials: { httpHeaderAuth: { id: credential.id, name: credential.name } },
+				},
+				executeWorkflowNode(helper.id),
+			],
+			connections: {},
+		},
+		sales,
+	);
+	const review = await publishReview(
+		await Container.get(PromotionsService).promoteProjectSelection(sales.id, owner, {
+			workflowIds: [ticket.id],
+			confirmMissingDependencies: true,
+		}),
+	);
+
+	const changes = await changesOf(review.reviewId);
+
+	const consumers = [
+		{
+			project: { id: sales.id, name: 'Sales' },
+			workflows: [{ id: ticket.id, name: 'Open ticket' }],
+		},
+	];
+	expect(changes.missingDependencies).toEqual([
+		{
+			kind: 'credential',
+			id: credential.id,
+			name: 'Helpdesk API',
+			credentialType: 'httpHeaderAuth',
+			group: 'other-project',
+			reason: 'not-on-branch',
+			accessible: true,
+			blocking: false,
+			consumers,
+		},
+		{
+			kind: 'workflow',
+			id: helper.id,
+			name: 'My helper',
+			group: 'personal',
+			reason: 'personal-project',
+			accessible: true,
+			blocking: false,
+			consumers,
+		},
+	]);
+	// The description of the merge request lists the same entries.
+	expect(hostMergeRequests.get(review.iid)?.description).toContain(
+		[
+			'Missing dependencies:',
+			`- credential: Helpdesk API (${credential.id})`,
+			`- workflow: My helper (${helper.id})`,
+		].join('\n'),
+	);
+
+	// A reviewer without access to Support or to the personal project of the author.
+	const reviewer = await createMember();
+	const forReviewer = await Container.get(PromotionReviewChangesService).getChanges(
+		reviewer,
+		review.reviewId,
+	);
+	expect(forReviewer.missingDependencies).toMatchObject([
+		{ id: credential.id, group: 'outside-access', reason: 'not-on-branch', accessible: false },
+		{ id: helper.id, group: 'personal', reason: 'personal-project', accessible: false },
+	]);
+	for (const shown of [changes.missingDependencies, forReviewer.missingDependencies]) {
+		expect(JSON.stringify(shown)).not.toContain(support.id);
+		expect(JSON.stringify(shown)).not.toContain('Support');
+	}
+
+	// A dependency that this instance no longer holds is not a missing dependency any more.
+	await Container.get(WorkflowRepository).delete(helper.id);
+	expect((await changesOf(review.reviewId)).missingDependencies).toMatchObject([
+		{ id: credential.id },
 	]);
 }, 60_000);
 
@@ -375,6 +487,7 @@ describe('when the host dropped the commits of a finished review', () => {
 				by: 'Ada Lovelace',
 				webUrl: hostMergeRequests.get(review.iid)?.web_url,
 			},
+			missingDependencies: [],
 		});
 	}, 60_000);
 
@@ -471,6 +584,7 @@ describe('when the host dropped the commits of a finished review', () => {
 			dependencies: [],
 			warnings: ['commitsUnavailable'],
 			outcome: closedByN8n,
+			missingDependencies: [],
 		});
 
 		finishOnHost(review.iid, {
