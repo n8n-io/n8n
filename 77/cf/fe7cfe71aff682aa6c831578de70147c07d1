@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/agents/composables/useAgentBuilderMainTabs.ts
+  s_d8911b797fa494::t_2598c167f0c680 92-94
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "77cffe7cfe71aff682aa6c831578de70147c07d1",
+  "prompts": {},
+  "sessions": {
+    "s_d8911b797fa494": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1c550-06ca-728a-aad4-dd077b3cba8a",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

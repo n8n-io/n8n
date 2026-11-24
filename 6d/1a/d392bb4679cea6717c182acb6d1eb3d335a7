@@ -1,0 +1,39 @@
+packages/cli/src/modules/agents/system-agents/system-agent-execution.service.ts
+  s_abe416d94b4232::t_6b4398e7164c90 410-415
+packages/cli/test/integration/agents/agent-project-cleanup.test.ts
+  s_abe416d94b4232::t_c9cf94d78e0a13 9-10,91-113,142-145
+  s_abe416d94b4232::t_401aaffb0091a9 114
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_abe416d94b4232::t_6b4398e7164c90 766-767,771,780-782
+  s_abe416d94b4232::t_c9cf94d78e0a13 768-770,772-779
+packages/cli/src/services/project.service.ee.ts
+  s_abe416d94b4232::t_6b4398e7164c90 326
+packages/cli/src/modules/agents/system-agents/__tests__/system-agent-execution.service.test.ts
+  s_abe416d94b4232::t_c9cf94d78e0a13 2052-2083
+packages/cli/src/services/__tests__/project.service.ee.test.ts
+  s_abe416d94b4232::t_c9cf94d78e0a13 1054-1056
+  s_abe416d94b4232::t_6b4398e7164c90 1050,1057-1058,1244
+packages/cli/src/modules/agents/repositories/agent-execution.repository.ts
+  s_abe416d94b4232::t_c9cf94d78e0a13 472-474,481-483
+  s_abe416d94b4232::t_6b4398e7164c90 471,475-480,484-487
+packages/cli/src/modules/agents/integrations/__tests__/n8n-memory.test.ts
+  s_abe416d94b4232::t_6b4398e7164c90 519,526
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_abe416d94b4232::t_0438e02bc551d0 2350-2367
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6d1ad392bb4679cea6717c182acb6d1eb3d335a7",
+  "prompts": {},
+  "sessions": {
+    "s_abe416d94b4232": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a19c1e-ab9b-7db2-b5b6-6f22b848d545",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

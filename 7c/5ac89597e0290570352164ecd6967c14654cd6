@@ -1,0 +1,29 @@
+packages/frontend/editor-ui/src/features/settings/security/rateLimits/ApiKeyRateLimitsDialog.vue
+  s_925dcfedebf0c9::t_d703ea3fd5fa01 276
+packages/frontend/editor-ui/src/app/constants/urls.ts
+  s_925dcfedebf0c9::t_d703ea3fd5fa01 20
+packages/frontend/editor-ui/src/features/settings/security/rateLimits/ApiKeyRateLimitsSection.test.ts
+  s_925dcfedebf0c9::t_8f3dd4d607d860 97-108,163,168-175
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_925dcfedebf0c9::t_d703ea3fd5fa01 6947,6949,6968
+packages/frontend/editor-ui/src/features/settings/security/rateLimits/ApiKeyRateLimitsSection.vue
+  s_925dcfedebf0c9::t_d703ea3fd5fa01 121,128-131,135-144
+  s_925dcfedebf0c9::t_54096eb2c101d5 19,214-219
+  s_925dcfedebf0c9::t_b2804e42341176 174-178,242,245-249
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7c5ac89597e0290570352164ecd6967c14654cd6",
+  "prompts": {},
+  "sessions": {
+    "s_925dcfedebf0c9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e954afe-0aa2-4cb1-89bb-81545b98a90a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Uddish Verma <uddish.verma@n8n.io>"
+    }
+  }
+}

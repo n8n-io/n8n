@@ -1,0 +1,33 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_064da93d6e6ef0::t_f46390b11c9e34 1901-1902
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_064da93d6e6ef0::t_95ebb7bdbcb2e1 2,2121-2122,2124-2130
+  s_064da93d6e6ef0::t_6c50691566c95d 2123
+packages/frontend/editor-ui/src/features/agents/views/AgentSessionsListView.vue
+  s_064da93d6e6ef0::t_b6389f0d17e465 9-15,108,351-352,357-358,364-370,372
+  s_064da93d6e6ef0::t_686bf1d7fcf85f 109,350,353-356,359-362,371,373-376
+  s_064da93d6e6ef0::t_f5202f7f79a4c2 363
+  s_064da93d6e6ef0::t_3304e8b800d951 377-379
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_064da93d6e6ef0::t_776eb2619a59ed 1646-1648,1652
+  s_064da93d6e6ef0::t_7ecc0611975e3f 1643-1645
+  s_064da93d6e6ef0::t_0e6b1c315f1495 1649-1651
+  s_064da93d6e6ef0::t_7681fda0144f21 1653-1655
+  s_064da93d6e6ef0::t_725551d358ecc1 22,1007,1640-1642,1656-1685
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "972705ad5ad8793842f3f8fefd9fcc9a4656b838",
+  "prompts": {},
+  "sessions": {
+    "s_064da93d6e6ef0": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a15f32-8871-70a9-b3fb-ea249b7f3f21",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,33 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_54765fb5fe9a63::t_69f2c5508671e8 3549,5289,5294-5296
+packages/frontend/editor-ui/src/features/workflows/components/WorkflowSettings/WorkflowSettings.test.ts
+  s_54765fb5fe9a63::t_d8598117f4ded5 851,855,861-886,890-916
+  s_54765fb5fe9a63::t_5d2065c6f98874 887-889
+  s_54765fb5fe9a63::t_cf4b8a882b9a38 1020
+  s_54765fb5fe9a63::t_0c83ebddc320ee 14
+  s_cb799745023198::t_288b0d1c0c575a 917
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3c44bf865a5c9463f3cf271c404415a647e6adfa",
+  "prompts": {},
+  "sessions": {
+    "s_54765fb5fe9a63": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5361ea7b-9b51-4959-8f1e-a3e59b772b6e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    },
+    "s_cb799745023198": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "55e54be6-2bdf-4517-9014-4d8fc7d935b0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

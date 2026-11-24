@@ -1,0 +1,40 @@
+packages/cli/src/manual-execution.service.ts
+  s_407a683d3f7f4f::t_b742dcaccba91a 62,102,184,207
+packages/cli/src/__tests__/manual-execution.service.test.ts
+  s_407a683d3f7f4f::t_fb740ff94d2201 295-325
+packages/cli/src/webhooks/__tests__/waiting-forms.test.ts
+  s_d1aac1653601d5::t_db9ff600cdd057 283-316
+  s_407a683d3f7f4f::t_876bd9132bdd5c 262-282
+packages/cli/src/scaling/__tests__/job-processor.service.test.ts
+  s_407a683d3f7f4f::t_9b5fa1adc32ac3 832,873
+packages/cli/src/scaling/job-processor.ts
+  s_407a683d3f7f4f::t_b742dcaccba91a 370
+packages/cli/src/webhooks/waiting-forms.ts
+  s_407a683d3f7f4f::t_2cb29c65de487f 187-190,233-237
+  s_407a683d3f7f4f::t_ba412131679c3a 238-239
+  s_d1aac1653601d5::t_e45639ddae1c00 162,181,193,255,259
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "347c156072eeeb289a3b86a705586d2c13456e42",
+  "prompts": {},
+  "sessions": {
+    "s_407a683d3f7f4f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f67ca8bb-346c-4282-bfb0-dc20ba6c10bd",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    },
+    "s_d1aac1653601d5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f23df10a-e74a-4bdb-943c-f7896e6d6bf4",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

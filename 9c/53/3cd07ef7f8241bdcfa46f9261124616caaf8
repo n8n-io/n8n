@@ -1,0 +1,23 @@
+packages/core/src/execution-engine/__tests__/declarative-webhook.test.ts
+  s_db33480b8c9c64::t_b3cfff44766110 980,997-1017
+packages/core/src/execution-engine/declarative-webhook.ts
+  s_db33480b8c9c64::t_b3cfff44766110 338-342
+packages/workflow/src/interfaces.ts
+  s_db33480b8c9c64::t_ed41d941777d7a 3102
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9c533cd07ef7f8241bdcfa46f9261124616caaf8",
+  "prompts": {},
+  "sessions": {
+    "s_db33480b8c9c64": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3a809806-fcd2-4a06-904e-42634dd34dd8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jonathan <jon@n8n.io>"
+    }
+  }
+}

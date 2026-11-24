@@ -1,0 +1,86 @@
+packages/cli/src/modules/promotions.ee/promotion-owner-request.service.ts
+  s_3dd47ea0104342::t_b618a0a6db0a2b 155-159
+  s_3dd47ea0104342::t_c2e1a7720b92b4 289-290,293-294,296-300
+  s_3dd47ea0104342::t_b8213eeb6d313f 1-117,119-121,128-154,160-288,291-292,295,301-375,377-479
+  s_3dd47ea0104342::t_a52b08b1a62f1f 118,122-127
+  s_3dd47ea0104342::t_b243d213fa2685 376
+packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
+  s_3dd47ea0104342::t_c9f3be5dd5e0e1 894-928
+  s_3dd47ea0104342::t_35d88c73816628 8
+  s_3dd47ea0104342::t_ccfc69c0def4b2 27
+packages/cli/src/modules/promotions.ee/promotion-owner-requests.controller.ts
+  s_3dd47ea0104342::t_eb4d3320ee2b15 1-26
+packages/cli/src/modules/promotions.ee/database/repositories/promotion-owner-request.repository.ts
+  s_3dd47ea0104342::t_d5e199eed1ea48 1-234
+packages/@n8n/api-types/src/inbox.ts
+  s_3dd47ea0104342::t_951331c1df386b 90-91
+  s_3dd47ea0104342::t_0d1ce55bd6e031 77-78
+spike/ligo-1159/poc/decisions.md
+  s_3dd47ea0104342::t_eefb3c8d126502 112-142
+packages/cli/src/modules/promotions.ee/promotions.module.ts
+  s_3dd47ea0104342::t_0d102109e822e5 56-58,65
+  s_3dd47ea0104342::t_a91652679aef3d 33-43
+packages/@n8n/db/src/migrations/common/1794948393402-CreatePromotionOwnerRequestTable.ts
+  s_3dd47ea0104342::t_783f74339e16cb 1-41,43-104
+  s_3dd47ea0104342::t_ace04d6a0224ed 42
+packages/cli/src/modules/promotions.ee/database/entities/promotion-owner-request.entity.ts
+  s_3dd47ea0104342::t_da8b117cc9d5a7 1-91
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/createPromotionOwnerRequest.generated.yml
+  s_3dd47ea0104342::t_48f464de3b1f56 1-82
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  s_3dd47ea0104342::t_b5c33b654eece3 350-352
+packages/cli/src/services/ownership-transfer/ownership-transfer.manifest.json
+  s_3dd47ea0104342::t_9fc66499336e3b 102-106
+docs/generated/postgres-schema/README.md
+  s_402e765710e31b::t_9a4b37d14ef474 132,405-407,1742-1757
+docs/generated/postgres-schema/public.project.md
+  s_402e765710e31b::t_12d0ee42d870d4 12,57,259-274
+docs/generated/postgres-schema/public.promotion_environment.md
+  s_402e765710e31b::t_bb20b511af6154 9,49,72-87
+docs/generated/postgres-schema/public.promotion_owner_request.md
+  s_402e765710e31b::t_fcfe8c689aae65 1-125
+docs/generated/postgres-schema/public.user.md
+  s_402e765710e31b::t_2c3e1674097fcd 11,82,434-449
+docs/generated/sqlite-schema/README.md
+  s_b7b13575e78da5::t_ac2f8d14411f53 132,387-389,1728-1743
+docs/generated/sqlite-schema/project.md
+  s_b7b13575e78da5::t_215fb890cd5e17 23,63,265-280
+docs/generated/sqlite-schema/promotion_environment.md
+  s_b7b13575e78da5::t_5cc9001a3b28ff 20,52,75-90
+docs/generated/sqlite-schema/promotion_owner_request.md
+  s_b7b13575e78da5::t_e241c9567705be 1-126
+docs/generated/sqlite-schema/user.md
+  s_b7b13575e78da5::t_5bce53b9bfb755 22,86,438-453
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "13ca3b366c5fdea9f9a6df22d1affc4819e363f1",
+  "prompts": {},
+  "sessions": {
+    "s_3dd47ea0104342": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c1a45d57-85a1-465a-839a-d3b98e3073fc",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_402e765710e31b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-af08e4e5911b564ef",
+        "model": "unknown"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_b7b13575e78da5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a518632057e785d0d",
+        "model": "unknown"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

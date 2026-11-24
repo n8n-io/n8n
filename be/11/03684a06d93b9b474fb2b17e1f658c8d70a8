@@ -1,0 +1,26 @@
+packages/cli/src/telemetry/index.ts
+  s_1002c4e88ae523::t_6ca96e6aa9b2b9 583
+  s_1002c4e88ae523::t_698a8a3bccc28c 598-605
+  s_1002c4e88ae523::t_58f44f9e4db105 73-79
+  s_1002c4e88ae523::t_ef4fbac3f455d7 86
+packages/cli/src/telemetry/__tests__/telemetry.test.ts
+  s_1002c4e88ae523::t_d31bbf53075138 1177-1180
+  s_1002c4e88ae523::t_cb2941ce1802b9 1273-1277
+  s_1002c4e88ae523::t_a96288b93cf007 1736-1738
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "be1103684a06d93b9b474fb2b17e1f658c8d70a8",
+  "prompts": {},
+  "sessions": {
+    "s_1002c4e88ae523": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9fc1200c-7bf7-4cbf-886d-8c6a5681056f",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

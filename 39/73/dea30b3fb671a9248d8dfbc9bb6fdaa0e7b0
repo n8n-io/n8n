@@ -1,0 +1,14 @@
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-sandbox.service.test.ts
+  h_8fb27e0cdf6d1e 1414-1429
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3973dea30b3fb671a9248d8dfbc9bb6fdaa0e7b0",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

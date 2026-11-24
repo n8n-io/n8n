@@ -1,0 +1,25 @@
+spike/ligo-1159/review/final/solution-condensed-notion.md
+  s_9aec6af7587d8a::t_af0b4488cd74c4 1-2
+spike/ligo-1159/review/final/solution.md
+  s_9aec6af7587d8a::t_4a9b1c79c6ab26 1,3-7,11,13,15,17-22,26-71,73-76,81-83,85-91,94-98,102-117,120-122,124,126-132,134,136-139,141,143,145,147,149,151-153,155,157-158,160,162-166,168,170,172-175,177,179-181,183,185-188,190,192-195,197,199-203,205,207-214,216,218,220,222-225,227,229-232,234,236-238,240,242-246,248,250,252-262,266,268-276,278,280,282-320
+spike/ligo-1159/review/final/decision-log.md
+  s_9aec6af7587d8a::t_af0b4488cd74c4 441-488
+spike/ligo-1159/review/final/solution-condensed.md
+  s_9aec6af7587d8a::t_af0b4488cd74c4 1-2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "46888b4a96127ac0d421f5426bbabba8c48311e9",
+  "prompts": {},
+  "sessions": {
+    "s_9aec6af7587d8a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "725afcf1-5141-49d6-adb9-2132ab2aad68",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,47 @@
+packages/frontend/editor-ui/src/features/execution/executions/components/ExecutionsFilter.vue
+  s_cdca0ffb67006b::t_7019ca82a776ca 9-10,307
+  s_cdca0ffb67006b::t_400c880892c613 155-158
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_cdca0ffb67006b::t_7019ca82a776ca 2103-2104
+packages/frontend/editor-ui/src/features/execution/executions/components/workflow/WorkflowExecutionsCard.vue
+  s_cdca0ffb67006b::t_7019ca82a776ca 15
+packages/frontend/editor-ui/src/features/execution/executions/executions.utils.ts
+  s_cdca0ffb67006b::t_7019ca82a776ca 258-260
+packages/frontend/editor-ui/src/features/execution/executions/components/global/GlobalExecutionsListItem.vue
+  s_cdca0ffb67006b::t_7019ca82a776ca 26-27,63,299
+packages/frontend/@n8n/stores/src/settings.store.test.ts
+  s_cdca0ffb67006b::t_48fc9ec731c60c 23-27
+  s_cdca0ffb67006b::t_7019ca82a776ca 11-12,19,28-29
+  s_cdca0ffb67006b::t_400c880892c613 13-18,20-22
+  s_cdca0ffb67006b::t_06075c0425eb05 10
+packages/frontend/@n8n/stores/src/settings.store.ts
+  s_cdca0ffb67006b::t_5af0b76c1622b9 206
+  s_cdca0ffb67006b::t_7019ca82a776ca 207,603
+packages/frontend/editor-ui/src/features/execution/executions/components/ExecutionEngineBadge.vue
+  s_cdca0ffb67006b::t_400c880892c613 20-22
+  s_cdca0ffb67006b::t_7019ca82a776ca 5-8,16
+packages/frontend/editor-ui/src/features/execution/executions/components/ExecutionsFilter.test.ts
+  s_cdca0ffb67006b::t_36a912de9f0409 201,226
+packages/frontend/editor-ui/src/features/execution/executions/components/global/GlobalExecutionsListItem.test.ts
+  s_cdca0ffb67006b::t_ccf94462d17fdf 43,242
+packages/frontend/editor-ui/src/features/execution/executions/components/workflow/WorkflowExecutionsCard.test.ts
+  s_cdca0ffb67006b::t_7863f7bfe955bb 353,361
+packages/frontend/editor-ui/src/features/execution/executions/executions.utils.test.ts
+  s_cdca0ffb67006b::t_b81b0b43f9f3fe 61-64,68,951-954
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ff5233ae744ad3a1d8a26bc22c7016673fb30ff0",
+  "prompts": {},
+  "sessions": {
+    "s_cdca0ffb67006b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f443b2e4-3325-43af-879b-834762b1d7fd",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

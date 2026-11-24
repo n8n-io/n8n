@@ -24,6 +24,14 @@ packages/cli/src/modules/n8n-packages/entities/workflow/auto-included-workflow-r
         "model": "gpt-6-astra"
       },
       "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_cf7e00ffefe182": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11bae-5950-7d02-881b-ef39fcf7c2bf",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
     }
   }
 }

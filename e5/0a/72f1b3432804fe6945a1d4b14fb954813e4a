@@ -1,0 +1,29 @@
+packages/@n8n/cli/docs/commands/promotions.md
+  s_3577b5c5c8d1c1::t_d8f013bc5e4158 344-345,547-550
+packages/@n8n/cli/src/commands/promotion-environment/apply-selection.ts
+  s_3577b5c5c8d1c1::t_d8f013bc5e4158 49
+packages/@n8n/cli/src/commands/promotion-environment/apply-selection-continue.ts
+  s_3577b5c5c8d1c1::t_d8f013bc5e4158 55
+packages/@n8n/cli/src/commands/promotion-environment/apply-command.ts
+  s_3577b5c5c8d1c1::t_d8f013bc5e4158 59,132-135,144
+packages/cli/src/modules/promotions.ee/__tests__/promotion-changes.integration.test.ts
+  s_3577b5c5c8d1c1::t_2b272b37904b93 51,383-384,412,414-424,426-429
+packages/@n8n/cli/src/commands/promotion-environment/list-changes.ts
+  s_3577b5c5c8d1c1::t_d8f013bc5e4158 41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e50a72f1b3432804fe6945a1d4b14fb954813e4a",
+  "prompts": {},
+  "sessions": {
+    "s_3577b5c5c8d1c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9385f1cb-01a1-4804-b347-ae01a2d5700b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

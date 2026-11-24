@@ -1,0 +1,21 @@
+packages/cli/src/modules/apps/bindings/__tests__/app-data-table.adapter.test.ts
+  s_4bcab537e8dd3b::t_04cbf6935f141b 3-8
+packages/cli/src/modules/apps/bindings/app-data-table.adapter.ts
+  s_4bcab537e8dd3b::t_848943301d95e0 24-26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ee64c085f2acfb0d267e52300f9d09b2cc0c053f",
+  "prompts": {},
+  "sessions": {
+    "s_4bcab537e8dd3b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c53408b8-c507-4016-9fc2-cf73b75fcf99",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

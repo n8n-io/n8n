@@ -1,0 +1,21 @@
+packages/cli/src/license.ts
+  s_04773c2312f779::t_5b7fd60b0c72d6 484-491
+packages/cli/src/__tests__/license.test.ts
+  s_04773c2312f779::t_87ecb54b4cde28 233-247
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "de0d59d5cc6c2c40a28b35c6d2f4a31ccfa1d060",
+  "prompts": {},
+  "sessions": {
+    "s_04773c2312f779": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f56a231e-27d5-4f26-9c3e-d8d10f9ca895",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jessie Auguste <jessie.auguste@n8n.io>"
+    }
+  }
+}

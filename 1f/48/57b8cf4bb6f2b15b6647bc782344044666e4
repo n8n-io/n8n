@@ -1,0 +1,22 @@
+packages/cli/src/modules/agents/tools/read-binary-data.tool.ts
+  s_bccf3616ba1e3f::t_7696223b95eca2 16
+  ai_agent 73
+packages/cli/src/modules/agents/BUILT_IN_TOOLS.md
+  s_bccf3616ba1e3f::t_7696223b95eca2 59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1f4857b8cf4bb6f2b15b6647bc782344044666e4",
+  "prompts": {},
+  "sessions": {
+    "s_bccf3616ba1e3f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b57198ee-528d-418e-810c-e4b7c30fb793",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

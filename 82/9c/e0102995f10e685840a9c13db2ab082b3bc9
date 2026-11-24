@@ -1,0 +1,21 @@
+packages/modules/promotions/frontend/src/components/preview/PromotionWorkflowLinks.vue
+  s_b7777e773ad24d::t_a71034024ac675 8-12,32-44,60-66,74
+packages/modules/promotions/frontend/src/components/preview/PromotionBlockers.vue
+  s_b7777e773ad24d::t_a71034024ac675 318,410
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "829ce0102995f10e685840a9c13db2ab082b3bc9",
+  "prompts": {},
+  "sessions": {
+    "s_b7777e773ad24d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d8e8c299-48a3-41c1-9580-4f18eeaa0beb",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

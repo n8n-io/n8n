@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiMarkdown.test.ts
+  s_412e852068513f::t_4e6fffb1e9e995 76-85
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b61688546aa02dde8dfbb6e67bd07acfd9cf0b57",
+  "prompts": {},
+  "sessions": {
+    "s_412e852068513f": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1c025-3ff5-7349-8ca5-35ed6f0240a4",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

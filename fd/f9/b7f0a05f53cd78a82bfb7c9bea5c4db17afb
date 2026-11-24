@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionPreviewBadges.vue
+  s_86b27213bc2b8e::t_b3628b1df8cd25 105-106,123-127,159
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "fdf9b7f0a05f53cd78a82bfb7c9bea5c4db17afb",
+  "prompts": {},
+  "sessions": {
+    "s_86b27213bc2b8e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d83e1035-2d29-4746-a810-f5d0c8717097",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

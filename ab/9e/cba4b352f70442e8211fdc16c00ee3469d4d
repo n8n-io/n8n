@@ -1,0 +1,33 @@
+.github/WORKFLOWS.md
+  s_ee09121db36145::t_e4751e7b640f76 254-256
+  s_ee09121db36145::t_3d58747eb91b8d 889
+.github/workflows/util-bump-migration.yml
+  s_ee09121db36145::t_f146039a8cc13f 36
+.github/scripts/migration-bump/handle-bump-migration.mjs
+  s_ee09121db36145::t_b60852729f6e4e 31-41
+  s_ee09121db36145::t_17aa39ddc296ba 145,148
+  s_ee09121db36145::t_49399ae399f9c5 193
+  s_ee09121db36145::t_e05becf6445fd7 176
+  s_ee09121db36145::t_99b859fc0163f2 119
+  s_ee09121db36145::t_84c5522019e25e 30
+.github/scripts/migration-bump/handle-bump-migration.test.mjs
+  s_ee09121db36145::t_b87d9815e80b89 175,184-185,190-191,193
+  s_ee09121db36145::t_4a8c37c376d5e8 192
+  s_ee09121db36145::t_16c249232352d7 33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ab9ecba4b352f70442e8211fdc16c00ee3469d4d",
+  "prompts": {},
+  "sessions": {
+    "s_ee09121db36145": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ccf088c3-9596-4a0b-a5f9-3a0121cac9b0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

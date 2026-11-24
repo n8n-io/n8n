@@ -1,0 +1,213 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderHeader.test.ts
+  s_ba2ae60894487d::t_dc59bc95d3a534 239,242-245,247
+packages/cli/test/migration/1792738285739-expand-node-id-columns.test.ts
+  s_ba2ae60894487d::t_dc59bc95d3a534 1-218
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-sandbox.service.test.ts
+  s_ba2ae60894487d::t_dc59bc95d3a534 11,33,102,535-583
+packages/cli/src/modules/mcp/__tests__/mcp-scopes.test.ts
+  s_ba2ae60894487d::t_dc59bc95d3a534 148-150,155
+.agents/skills/create-agent-builder-eval/local-setup.md
+  s_ba2ae60894487d::t_dc59bc95d3a534 79
+packages/cli/src/modules/instance-ai/eval/thread-restore.service.ts
+  s_ba2ae60894487d::t_dc59bc95d3a534 657
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/LimitedModeNotice.test.ts
+  s_ba2ae60894487d::t_dc59bc95d3a534 3,7,25-26,58-76
+.github/workflows/release-publish.yml
+  s_ba2ae60894487d::t_dc59bc95d3a534 10-13,27,32,35-43,53-54,113,120,215-227,254,271
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.module-init.test.ts
+  s_ba2ae60894487d::t_dc59bc95d3a534 21-31,62-65,83-86,128-140
+packages/cli/test/integration/workflows/workflow-publication-outbox-consumer.test.ts
+  s_ba2ae60894487d::t_dc59bc95d3a534 8,12,57,87,252-270
+.github/scripts/determine-version-info.test.mjs
+  s_ba2ae60894487d::t_dc59bc95d3a534 16-23,88-132
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionProviderDialog.vue
+  s_ba2ae60894487d::t_dc59bc95d3a534 321,335,423,442
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/list/columns.ts
+  s_ba2ae60894487d::t_dc59bc95d3a534 9,26,110-139,150,152-153
+docs/generated/postgres-schema/public.scheduled_job.md
+  ai_agent 23,98
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentHeaders.test.ts
+  s_ba2ae60894487d::t_dc59bc95d3a534 75-80,129,131,133
+packages/cli/src/modules/mcp/evaluations/README.md
+  s_ba2ae60894487d::t_dc59bc95d3a534 45
+packages/quality/testing/playwright/tests/e2e/settings/environments/promotion-environments.spec.ts
+  s_ba2ae60894487d::t_dc59bc95d3a534 35
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderHeader.vue
+  s_ba2ae60894487d::t_dc59bc95d3a534 85
+docs/generated/postgres-schema/public.workflow_entity.md
+  ai_agent 257,363
+.github/workflows/test-evals-instance-ai.yml
+  s_ba2ae60894487d::t_dc59bc95d3a534 460
+packages/frontend/@n8n/design-system/src/components/N8nBreadcrumbs/Breadcrumbs.stories.ts
+  s_ba2ae60894487d::t_dc59bc95d3a534 73-96
+packages/nodes-base/nodes/Microsoft/SharePoint/v1/methods/resourceMapping.ts
+  s_ba2ae60894487d::t_dc59bc95d3a534 8,37-59,67
+docs/generated/postgres-schema/README.md
+  ai_agent 1549,1684,2049
+packages/frontend/@n8n/design-system/src/components/N8nNavigationDropdown/NavigationDropdown.vue
+  s_ba2ae60894487d::t_dc59bc95d3a534 234-238
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_ba2ae60894487d::t_dc59bc95d3a534 1625,4262-4263,4266,4280,4290
+docs/generated/postgres-schema/public.workflow_publication_trigger_status.md
+  ai_agent 9,50
+packages/@n8n/agents/src/workspace/filesystem/n8n-sandbox-filesystem.ts
+  s_ba2ae60894487d::t_dc59bc95d3a534 53-56
+.github/scripts/bump-versions.mjs
+  s_ba2ae60894487d::t_dc59bc95d3a534 156-163,176,203,217-220,274
+packages/nodes-base/nodes/Microsoft/SharePoint/test/methods/resourceMapping.test.ts
+  s_ba2ae60894487d::t_dc59bc95d3a534 3-4,7,854-895
+packages/nodes-base/nodes/Microsoft/SharePoint/helpers/utils.ts
+  s_ba2ae60894487d::t_dc59bc95d3a534 1,95-144
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionEnvironmentView.vue
+  s_ba2ae60894487d::t_dc59bc95d3a534 192-193,196,276,339,378,418,449,503-514
+.github/workflows/release-merge-tag-to-branch.yml
+  s_ba2ae60894487d::t_dc59bc95d3a534 15-19,55-56,60-64
+packages/nodes-base/nodes/Microsoft/SharePoint/test/v2/list/columns.test.ts
+  s_ba2ae60894487d::t_dc59bc95d3a534 6,14,505-549
+packages/frontend/@n8n/design-system/src/components/N8nFormInput/FormInput.test.ts
+  s_ba2ae60894487d::t_dc59bc95d3a534 1,84-94
+.github/workflows/release-create-pr.yml
+  s_ba2ae60894487d::t_dc59bc95d3a534 17-22,47-51,68-85,138-139,145-150,152-156,168
+packages/@n8n/agents/src/__tests__/workspace/sandbox/n8n-sandbox-filesystem.test.ts
+  s_ba2ae60894487d::t_dc59bc95d3a534 10-11,31-32,53-54,117-150
+packages/cli/src/modules/mcp/mcp-scopes.ts
+  s_ba2ae60894487d::t_dc59bc95d3a534 87-88
+packages/cli/src/modules/mcp/__tests__/mcp-protected-resource.test.ts
+  s_ba2ae60894487d::t_dc59bc95d3a534 112
+.env.eval.example
+  s_ba2ae60894487d::t_dc59bc95d3a534 17-18
+packages/cli/src/modules/mcp/tools/skills/skill-tools.service.ts
+  s_ba2ae60894487d::t_dc59bc95d3a534 42,111,116,124
+.github/test-metrics/e2e-impact-map.json
+  s_ba2ae60894487d::t_dc59bc95d3a534 1
+packages/@n8n/instance-ai/src/workspace/sandbox-setup.ts
+  s_ba2ae60894487d::t_dc59bc95d3a534 489-513,532,609
+.github/scripts/determine-version-info.mjs
+  s_ba2ae60894487d::t_dc59bc95d3a534 4-5,14,16,21-53,107,120-133,189
+packages/cli/src/modules/instance-ai/eval/__tests__/eval.controller.test.ts
+  s_ba2ae60894487d::t_dc59bc95d3a534 1-691
+docs/generated/postgres-schema/public.poller_state.md
+  ai_agent 11,46
+packages/nodes-base/nodes/Microsoft/SharePoint/test/fixtures/listColumnsReply.ts
+  s_ba2ae60894487d::t_dc59bc95d3a534 1-194
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionEnvironmentView.test.ts
+  s_ba2ae60894487d::t_dc59bc95d3a534 194-236
+packages/frontend/@n8n/design-system/src/components/N8nBreadcrumbs/Breadcrumbs.vue
+  s_ba2ae60894487d::t_dc59bc95d3a534 7-8,18-19,82,275-300,354-365
+packages/@n8n/instance-ai/src/workspace/__tests__/sandbox-setup.test.ts
+  s_ba2ae60894487d::t_dc59bc95d3a534 75,981-1010
+packages/nodes-base/nodes/Databricks/test/lakebaseResourceMapping.test.ts
+  s_ba2ae60894487d::t_dc59bc95d3a534 110-114,145-169
+packages/cli/src/wait-tracker.ts
+  s_ba2ae60894487d::t_dc59bc95d3a534 447
+packages/@n8n/constants/src/scheduler.ts
+  s_ba2ae60894487d::t_dc59bc95d3a534 11-12,183-184
+packages/@n8n/db/src/entities/scheduled-job.ts
+  s_ba2ae60894487d::t_dc59bc95d3a534 4,78
+packages/cli/src/modules/instance-ai/eval/eval.controller.ts
+  s_ba2ae60894487d::t_dc59bc95d3a534 1-361
+.github/scripts/bump-versions.test.mjs
+  s_ba2ae60894487d::t_dc59bc95d3a534 17,22-35,57-60
+packages/@n8n/db/src/migrations/postgresdb/1792738285739-ExpandNodeIdColumns.ts
+  s_ba2ae60894487d::t_dc59bc95d3a534 1-61
+packages/@n8n/agents/src/__tests__/workspace/sandbox/n8n-sandbox-sandbox.test.ts
+  s_ba2ae60894487d::t_dc59bc95d3a534 326-425
+packages/cli/src/modules/instance-ai/sandbox/instance-ai-sandbox.service.ts
+  s_ba2ae60894487d::t_dc59bc95d3a534 9,424-436
+packages/cli/src/modules/mcp/__tests__/skill-tools.service.test.ts
+  s_ba2ae60894487d::t_dc59bc95d3a534 91,95,123
+packages/cli/src/modules/instance-ai/instance-ai.module.ts
+  s_ba2ae60894487d::t_dc59bc95d3a534 34-36
+packages/nodes-base/nodes/Databricks/transport/lakebaseErrors.ts
+  s_ba2ae60894487d::t_dc59bc95d3a534 8-11,15,78,80-81,83-91,95-97
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionGitHostSelect.vue
+  s_ba2ae60894487d::t_dc59bc95d3a534 86
+packages/cli/src/modules/instance-ai/instance-ai.controller.ts
+  s_ba2ae60894487d::t_dc59bc95d3a534 45,201-202,205,207-209
+packages/@n8n/permissions/src/constants.ee.ts
+  s_ba2ae60894487d::t_dc59bc95d3a534 115
+packages/@n8n/config/src/configs/instance-ai.config.ts
+  s_ba2ae60894487d::t_dc59bc95d3a534 131-133
+.github/workflows/release-publish-post-release.yml
+  s_ba2ae60894487d::t_dc59bc95d3a534 30-33,90-91,101
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/item/index.ts
+  s_ba2ae60894487d::t_dc59bc95d3a534 15,165-168,172-176
+packages/cli/test/integration/workflow-publication-trigger-status.repository.test.ts
+  s_ba2ae60894487d::t_dc59bc95d3a534 2,97-112
+docs/generated/postgres-schema/public.workflow_history.md
+  ai_agent 93
+packages/@n8n/db/src/entities/workflow-publication-trigger-status.ts
+  s_ba2ae60894487d::t_dc59bc95d3a534 1,32
+packages/nodes-base/nodes/Microsoft/SharePoint/test/v1/helpers/utils.test.ts
+  s_ba2ae60894487d::t_dc59bc95d3a534 4-11,115-173
+packages/cli/src/__tests__/wait-tracker.test.ts
+  s_ba2ae60894487d::t_dc59bc95d3a534 1253-1270
+packages/@n8n/agents/src/workspace/sandbox/n8n-sandbox-sandbox.ts
+  s_ba2ae60894487d::t_dc59bc95d3a534 8-18,45-47,56-57,123-135,150-173,178-197
+packages/nodes-base/nodes/Microsoft/SharePoint/v1/helpers/utils.ts
+  s_ba2ae60894487d::t_dc59bc95d3a534 15,129-136
+docs/generated/postgres-schema/public.scheduled_task.md
+  ai_agent 105
+packages/@n8n/constants/src/nodes.ts
+  s_ba2ae60894487d::t_dc59bc95d3a534 8-13
+packages/@n8n/db/src/entities/poller-state.ts
+  s_ba2ae60894487d::t_dc59bc95d3a534 1,17
+packages/frontend/@n8n/design-system/src/components/N8nFormInput/FormInput.vue
+  s_ba2ae60894487d::t_dc59bc95d3a534 137-138
+packages/cli/src/modules/agents/integrations/__tests__/teams-integration.test.ts
+  s_ba2ae60894487d::t_dc59bc95d3a534 72,75
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/LimitedModeNotice.vue
+  s_ba2ae60894487d::t_dc59bc95d3a534 4-5,8-9,14,17-22,28,45-55
+.github/workflows/test-evals-mcp.yml
+  s_ba2ae60894487d::t_dc59bc95d3a534 203
+packages/nodes-base/nodes/Databricks/test/lakebaseErrors.test.ts
+  s_ba2ae60894487d::t_dc59bc95d3a534 90-190
+packages/@n8n/scheduler/src/core/provisioning/__tests__/provisioner.test.ts
+  s_ba2ae60894487d::t_dc59bc95d3a534 189-192,200-208
+packages/frontend/editor-ui/src/features/agents/components/AgentSessionsFilter.vue
+  s_ba2ae60894487d::t_dc59bc95d3a534 47
+packages/frontend/editor-ui/src/app/constants/localStorage.ts
+  s_ba2ae60894487d::t_dc59bc95d3a534 40-41
+packages/frontend/editor-ui/src/features/agents/components/AgentSessionTimelineHeader.vue
+  s_ba2ae60894487d::t_dc59bc95d3a534 18,55-60,67
+packages/nodes-base/nodes/Databricks/methods/resourceMapping.ts
+  s_ba2ae60894487d::t_dc59bc95d3a534 70-71,73-77
+.agents/skills/create-instance-ai-eval/running-evals.md
+  s_ba2ae60894487d::t_dc59bc95d3a534 15-16,150
+.boundaries-baseline.json
+  s_ba2ae60894487d::t_dc59bc95d3a534 2
+.github/WORKFLOWS.md
+  s_ba2ae60894487d::t_dc59bc95d3a534 472-473,511-540
+packages/cli/src/modules/agents/integrations/platforms/teams/teams-integration.ts
+  s_ba2ae60894487d::t_dc59bc95d3a534 157
+packages/@n8n/instance-ai/evaluations/README.md
+  s_ba2ae60894487d::t_dc59bc95d3a534 69,71,76,101,368
+packages/@n8n/instance-ai/src/index.ts
+  s_ba2ae60894487d::t_dc59bc95d3a534 540-541
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.controller.test.ts
+  s_ba2ae60894487d::t_dc59bc95d3a534 43,216-217,222-227,230-233,235-237,239-246,248-255,258-265
+packages/frontend/@n8n/design-system/src/components/N8nBreadcrumbs/BreadCrumbs.test.ts
+  s_ba2ae60894487d::t_dc59bc95d3a534 85-117
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionEnvironmentCard.vue
+  s_ba2ae60894487d::t_dc59bc95d3a534 59-63,76,95
+packages/nodes-base/nodes/Microsoft/SharePoint/test/v2/item/create.test.ts
+  s_ba2ae60894487d::t_dc59bc95d3a534 157-166
+packages/@n8n/instance-ai/evaluations/discovery/runner.ts
+  s_ba2ae60894487d::t_dc59bc95d3a534 48-53,228-229,231,445,453,459-460
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "debcd46dfdd81dc3672d7901d13ac63d6ba3735c",
+  "prompts": {},
+  "sessions": {
+    "s_ba2ae60894487d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "04a467cb-e333-46a5-b84f-448b11db34b5",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

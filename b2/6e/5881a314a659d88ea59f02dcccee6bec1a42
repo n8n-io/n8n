@@ -1,0 +1,91 @@
+packages/modules/promotions/frontend/src/promotionDependencies.ts
+  s_3dd47ea0104342::t_4ff9763b37a096 1-256
+packages/modules/promotions/frontend/src/composables/usePromotionPreview.ts
+  s_3dd47ea0104342::t_f416668082af27 15
+  s_3dd47ea0104342::t_40747a2952cb42 162
+  s_3dd47ea0104342::t_cb213e7043a334 153-154
+  s_3dd47ea0104342::t_4c7050cc6fd76c 1-8,17,50-59,62-63,68,87-94,117-118,148,158-161,163,169-173,177-178,189-207,213-215,218-223,238-247,249,263-264
+  s_3dd47ea0104342::t_4b5bb7d6d9d996 155
+packages/modules/promotions/frontend/src/promotionFixtures.ts
+  s_3dd47ea0104342::t_cb213e7043a334 17-22,25
+  s_3dd47ea0104342::t_2ecb38f4468e8b 1-16,23-24,26
+packages/modules/promotions/frontend/src/promotionPreview.projects.ts
+  s_3dd47ea0104342::t_82fce52147ffb7 197,204-205,219-220,224-225,242-256
+  s_3dd47ea0104342::t_0b1b6cfbcb5b78 1-196,198-203,206-218,221-223,226-241,257
+packages/modules/promotions/frontend/src/composables/usePromotionDependencies.ts
+  s_3dd47ea0104342::t_fd9a16262d02a5 1-29,31-37,40-43,52-63,65-81,89-123
+  s_3dd47ea0104342::t_82fce52147ffb7 30,38-39,44-51,64,82-88
+packages/modules/promotions/frontend/src/composables/usePromotionSelection.ts
+  s_3dd47ea0104342::t_82fce52147ffb7 88
+  s_3dd47ea0104342::t_ca478f3efe51ea 1,10,21-27,29-31,35-43,46-50,53,62-63,65-74,76,89-92,99-130,133-134,137-145,148-150,152-155
+  s_3dd47ea0104342::t_a709ee42adfc5d 64
+packages/modules/promotions/frontend/src/promotions.constants.ts
+  s_3dd47ea0104342::t_ea0256f4242d0f 23,25-30
+packages/modules/promotions/frontend/src/promotions.api.ts
+  s_3dd47ea0104342::t_fdfcb46d3dfebd 2,6,10
+  s_3dd47ea0104342::t_b585b275857692 59-85,89-90,101-143
+packages/modules/promotions/frontend/src/promotionSelectionHandoff.ts
+  s_3dd47ea0104342::t_4a21d7b79331e6 1-35
+packages/modules/promotions/frontend/src/composables/usePromotionOperation.ts
+  s_3dd47ea0104342::t_82fce52147ffb7 226-228,289-291
+  s_3dd47ea0104342::t_2e141407205e3e 1-8,18,20,23,25,27,31,46-56,60-65,88,97-99,104-109,123-127,132,164,167,184-186,189-190,192,194,198-206,211,215-225,229-267,273,275,279,284,286-288,292,295-304,307-327,338-344,348-350,381
+packages/modules/promotions/frontend/src/composables/usePromotionDependencyLabels.ts
+  s_3dd47ea0104342::t_094ecb71b3a329 1-39,47,49-108
+  s_3dd47ea0104342::t_6793dc2e9f034f 40-46,48
+packages/modules/promotions/frontend/src/composables/usePromotionOutcome.ts
+  s_3dd47ea0104342::t_3c55cba19ab45e 4
+  s_3dd47ea0104342::t_c029799bf61aab 116-126,129-130
+  s_3dd47ea0104342::t_0eac15d372a2fc 22-51
+  s_3dd47ea0104342::t_be8486409f1b42 92,94,99
+packages/modules/promotions/frontend/src/__fixtures__/dependencyReport.fixtures.ts
+  s_3dd47ea0104342::t_09728a07fb1dd5 573-587,597,615,623
+  s_3dd47ea0104342::t_82fce52147ffb7 318-323,342-347,375,407-412,639-644,648-650,677
+  s_3dd47ea0104342::t_3efe8fc26b81c4 676,679
+  s_3dd47ea0104342::t_1142945dd2d67a 1-317,324-341,348-374,376-406,413-572,588-596,598-614,616-622,624-638,645-647,651-675,678,680-699
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_c75b3efff4dddf::t_ea980d33c8269f 11202-11354
+packages/modules/promotions/frontend/src/promotionPreview.selection.ts
+  s_a18917ee43e665::t_892b52bf443cad 130-133,137,140,206,262-265,279-287,298-309
+packages/modules/promotions/frontend/src/promotionPreview.tree.ts
+  s_e05d1fd29d331f::t_32e924dbbe4ae9 19-25,33,65,86,96,164,171,183
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b26e5881a314a659d88ea59f02dcccee6bec1a42",
+  "prompts": {},
+  "sessions": {
+    "s_3dd47ea0104342": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c1a45d57-85a1-465a-839a-d3b98e3073fc",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_a18917ee43e665": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-afc6e4fc30a89dc1e",
+        "model": "unknown"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_c75b3efff4dddf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-af54370a55e032c6b",
+        "model": "unknown"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_e05d1fd29d331f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a0b0be5243deec8fe",
+        "model": "unknown"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

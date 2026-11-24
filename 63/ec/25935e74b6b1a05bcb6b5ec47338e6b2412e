@@ -1,0 +1,28 @@
+scripts/zero-trust-vault/attack.test.mjs
+  s_293d023a29dd97::t_ecc5c3edc7b8fc 159-180
+scripts/zero-trust-vault/broker.mjs
+  s_293d023a29dd97::t_ecc5c3edc7b8fc 121-123,125,163-166
+scripts/zero-trust-vault/DEMO.md
+  s_293d023a29dd97::t_3f173b1e2e5f13 166,180,238
+  s_293d023a29dd97::t_3b66820e144d14 1-165,167-179,181-237,239-274
+packages/cli/src/credentials/vault/__tests__/vault-credential-resolver.test.ts
+  s_293d023a29dd97::t_ecc5c3edc7b8fc 164-175
+packages/cli/src/credentials/vault/vault-credential-resolver.ts
+  s_293d023a29dd97::t_ecc5c3edc7b8fc 106-110
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "63ec25935e74b6b1a05bcb6b5ec47338e6b2412e",
+  "prompts": {},
+  "sessions": {
+    "s_293d023a29dd97": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "20ed4163-15ff-44f2-a2f6-48db5f846d4f",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

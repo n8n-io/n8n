@@ -1,0 +1,39 @@
+packages/frontend/editor-ui/src/features/sensitive-data-map/components/SensitiveDataNodeBadge.vue
+  s_4ea71e2ba1183f::t_18c653baa59db2 1-65,69-76,78-81,85-87
+  s_4ea71e2ba1183f::t_86aaeb5fd70ed9 66-68,77,82-84
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/buttons/CanvasControlButtons.vue
+  s_4ea71e2ba1183f::t_068891897b78f3 9,36-56,162-175
+  s_4ea71e2ba1183f::t_627c181d41accb 5
+packages/frontend/editor-ui/src/features/sensitive-data-map/sensitiveDataMap.store.test.ts
+  s_4ea71e2ba1183f::t_0eb8b717f4ba20 1-3,5-68
+  s_4ea71e2ba1183f::t_eff32c0e34ea2b 4
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeDefault.vue
+  s_4ea71e2ba1183f::t_6795fb63bfde85 22-23,83-86,118-119,244
+  s_4ea71e2ba1183f::t_41ef7beac19f0c 420-428
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_4ea71e2ba1183f::t_069d27feac64ec 3998-4003
+packages/frontend/editor-ui/src/features/sensitive-data-map/sensitiveDataMap.store.ts
+  s_4ea71e2ba1183f::t_f594d9d9ec0366 1-120
+packages/frontend/editor-ui/src/features/sensitive-data-map/components/SensitiveDataNodeBadge.test.ts
+  s_4ea71e2ba1183f::t_c7110cfc119a59 1-49
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/buttons/__snapshots__/CanvasControlButtons.test.ts.snap
+  s_4ea71e2ba1183f::t_d34d0706e65d72 16
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/__snapshots__/CanvasNodeDefault.test.ts.snap
+  s_4ea71e2ba1183f::t_5b41d6bdc60341 9,52,88,124,167
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "aa880701bd05465135ef1078f3b202edc2f67bac",
+  "prompts": {},
+  "sessions": {
+    "s_4ea71e2ba1183f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "79c66528-1553-4a0f-a9b2-b8474eca94f5",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

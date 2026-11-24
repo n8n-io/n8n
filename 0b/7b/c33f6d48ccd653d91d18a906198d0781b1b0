@@ -1,0 +1,24 @@
+packages/core/docs/adr/ADR-20261117-carry-the-root-trigger-item-to-subworkflows-in-the-execution-context.md
+  s_5631e4fb1157e6::t_edc702efa1f97a 1-95
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0b7bc33f6d48ccd653d91d18a906198d0781b1b0",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_5631e4fb1157e6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fa70ca35-8c1d-451e-9aca-ed24413b8763",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,30 @@
+packages/cli/src/workflows/__tests__/workflow.service.ee.test.ts
+  s_f1a804119197eb::t_3af2ac6cb57009 884
+  s_f1a804119197eb::t_0cd192297e59dc 902,923,944,968,986,1005,1049,1080,1101
+  s_f1a804119197eb::t_7d75460511bcb1 1014
+  s_f1a804119197eb::t_774a2503a66054 1397
+  s_f1a804119197eb::t_1f0e8881163b04 885
+  s_f1a804119197eb::t_424853ff9d56f6 1407
+packages/cli/src/public-api/v1/controllers/workflows.public.controller.ts
+  s_f1a804119197eb::t_360276f34c65aa 444
+packages/cli/src/workflows/workflow.service.ee.ts
+  s_f1a804119197eb::t_3e8ee293139bb0 98-99
+packages/cli/src/workflows/workflow.service.ts
+  s_f1a804119197eb::t_fd3c98ffac6332 149-150
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8d4c59e9c05cef17eea4a165a723b0ed44976036",
+  "prompts": {},
+  "sessions": {
+    "s_f1a804119197eb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "df616428-5500-4fc2-8350-ef5e605e2487",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

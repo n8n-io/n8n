@@ -1,0 +1,19 @@
+packages/@n8n/ai-utilities/src/node-catalog/types.ts
+  s_126e90b504d18d::t_92ea0ef4429b82 29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c8a67cf9c9e3d0d2038d7c4f48739c72223f292d",
+  "prompts": {},
+  "sessions": {
+    "s_126e90b504d18d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "53d0ed1b-1ddd-4373-8a47-d0ff0bb754c7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

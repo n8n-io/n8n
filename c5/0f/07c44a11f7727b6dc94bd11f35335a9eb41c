@@ -1,0 +1,39 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatMessageList.test.ts
+  s_82789c69de1855::t_7e57ea6f8668e3 161,165,169,182,188,204,209,214,216,219,229,231,233,237,240,256,260,262,277,282,284,288,291,304,310,330,339,343,345,348,369,375
+packages/cli/src/modules/agents/__tests__/execution-recorder.test.ts
+  s_82789c69de1855::t_7e57ea6f8668e3 97,108
+packages/frontend/editor-ui/src/features/agents/utils/agent-plan.ts
+  s_82789c69de1855::t_7e57ea6f8668e3 90,93,95,99,103,106,108,112,114,126,129,131,133,136,138,140,142,144,149,152,164,167,170,335
+packages/frontend/editor-ui/src/features/agents/__tests__/agent-plan.test.ts
+  s_82789c69de1855::t_7e57ea6f8668e3 37,60,83,95,98,109,113,115,136,164,193
+packages/cli/src/modules/agents/execution-recorder.ts
+  s_82789c69de1855::t_7e57ea6f8668e3 316
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatTaskControls.ts
+  s_82789c69de1855::t_ce92dceb91ed31 348-350
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_82789c69de1855::t_7e57ea6f8668e3 3522,3527
+packages/frontend/editor-ui/src/features/agents/components/AgentChatTaskSummary.vue
+  s_82789c69de1855::t_7e57ea6f8668e3 16
+packages/cli/src/modules/agents/background/agent-wake.service.ts
+  s_82789c69de1855::t_7e57ea6f8668e3 368,380
+packages/frontend/editor-ui/src/features/agents/components/AgentChatMessageList.vue
+  s_82789c69de1855::t_7e57ea6f8668e3 264
+packages/cli/src/modules/agents/background/__tests__/agent-wake.service.test.ts
+  s_82789c69de1855::t_7e57ea6f8668e3 161,163,178,180,193,195,210,212,216,222,224,339
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c50f07c44a11f7727b6dc94bd11f35335a9eb41c",
+  "prompts": {},
+  "sessions": {
+    "s_82789c69de1855": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a159bb-d082-7922-91e3-bcc90434d8c6",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

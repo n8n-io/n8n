@@ -1,0 +1,33 @@
+packages/frontend/editor-ui/src/app/stores/executionData.store.ts
+  s_45aef5820f3574::t_e356197b425f1b 656,665-667,669,671
+packages/frontend/editor-ui/src/features/ndv/runData/components/RunData.vue
+  s_45aef5820f3574::t_e356197b425f1b 85-88,487,492-501,505
+packages/frontend/editor-ui/src/features/ndv/runData/components/RunData.test.ts
+  s_45aef5820f3574::t_58c29259073d66 30,1655-1670,1673,1681-1687,1690,1707,1710-1711,1715-1719,1722,1725,1729,1732-1733,1736-1741,1743,1756,1907,1934-1935,2095
+packages/frontend/editor-ui/src/app/stores/executionData.store.test.ts
+  s_45aef5820f3574::t_91cffe6cb5dbef 398,400-424,426-429,431-435,440,448,450-456
+packages/frontend/editor-ui/src/features/ndv/runData/composables/useTrimmedRunDataFill.test.ts
+  s_45aef5820f3574::t_91cffe6cb5dbef 2,56-58,89-93,191-199
+  s_45aef5820f3574::t_b215e7a1d74717 200-201
+packages/frontend/editor-ui/src/features/ndv/runData/composables/useTrimmedRunDataFill.ts
+  s_45aef5820f3574::t_e356197b425f1b 87-91
+packages/frontend/editor-ui/src/app/composables/useExecutingNode.test.ts
+  s_45aef5820f3574::t_3283ce776246a7 129,186,197
+  s_45aef5820f3574::t_91cffe6cb5dbef 118,145,160,175,213
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e5d68c35d9d87f8add493d55891c31ec5744b0b7",
+  "prompts": {},
+  "sessions": {
+    "s_45aef5820f3574": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4d6f157c-93a5-4aec-ad84-ede30ca964ee",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

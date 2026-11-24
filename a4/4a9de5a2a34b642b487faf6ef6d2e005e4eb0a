@@ -1,0 +1,41 @@
+packages/cli/src/public-api/v1/handlers/agents/spec/paths/createAgent.generated.yml
+  ai_agent 1-149
+docs/generated/sqlite-schema/credentials_entity.md
+  ai_agent 167
+docs/generated/sqlite-schema/skill_source_link.md
+  ai_agent 88
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  ai_agent 9-11
+docs/generated/sqlite-schema/user.md
+  ai_agent 524
+docs/generated/postgres-schema/public.credentials_entity.md
+  ai_agent 167
+docs/generated/postgres-schema/public.skill_source_link.md
+  ai_agent 85
+docs/generated/postgres-schema/public.user.md
+  ai_agent 520
+pnpm-lock.yaml
+  ai_agent 1123,3023-3031,3041-3046,3054-3056,3901,5017-5019,7584-7635,16600-16602,19318-19321,30854,31419,35220-35221,38315
+docs/generated/sqlite-schema/project.md
+  ai_agent 341
+docs/generated/postgres-schema/public.skill_source.md
+  ai_agent 10,32,63
+docs/generated/postgres-schema/public.project.md
+  ai_agent 335
+docs/generated/sqlite-schema/skill_source.md
+  ai_agent 9,21,67
+packages/frontend/editor-ui/src/features/shared/banners/components/banners/__snapshots__/V1Banner.test.ts.snap
+  ai_agent 23,91
+docs/generated/postgres-schema/README.md
+  ai_agent 151,1916
+docs/generated/sqlite-schema/README.md
+  ai_agent 151,1902
+packages/frontend/@n8n/design-system/src/components/N8nCallout/__snapshots__/Callout.test.ts.snap
+  ai_agent 9,21,32,43,54,65,76
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a44a9de5a2a34b642b487faf6ef6d2e005e4eb0a",
+  "prompts": {}
+}

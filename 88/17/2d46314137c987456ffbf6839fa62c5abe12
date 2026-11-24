@@ -1,0 +1,51 @@
+packages/frontend/editor-ui/src/features/execution/executions/executions.utils.test.ts
+  s_cdca0ffb67006b::t_1e7d68c1ead16b 6-7,152-160,934-935,937,942
+  s_cdca0ffb67006b::t_1eb17c677f2fda 936,938-941
+  s_cdca0ffb67006b::t_bbd8d3c69c73a4 943
+packages/frontend/editor-ui/src/features/execution/executions/components/ExecutionsFilter.test.ts
+  s_cdca0ffb67006b::t_f94f7c84172452 50,199-233
+  s_cdca0ffb67006b::t_5ab672f76c30f8 234-235
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_cdca0ffb67006b::t_7577b2a1925cd7 2072-2074,2156-2157
+packages/frontend/editor-ui/src/features/execution/executions/components/workflow/WorkflowExecutionsCard.test.ts
+  s_cdca0ffb67006b::t_fc45a5b56f777e 11-12,339-368
+  s_cdca0ffb67006b::t_c192d7482ee61f 369
+packages/frontend/editor-ui/src/features/execution/executions/components/ExecutionEngineBadge.vue
+  s_cdca0ffb67006b::t_83b82a3d81957d 1-14,16-20
+  s_cdca0ffb67006b::t_b7481175232ea9 15
+packages/frontend/editor-ui/src/features/execution/executions/components/global/GlobalExecutionsListItem.test.ts
+  s_cdca0ffb67006b::t_5f62515b2d0c84 2,7-10,38-45,224-273,277
+  s_cdca0ffb67006b::t_3671a305c9d464 274-276,278
+packages/frontend/editor-ui/src/features/execution/executions/executions.utils.ts
+  s_cdca0ffb67006b::t_83b82a3d81957d 252,254-258
+  s_cdca0ffb67006b::t_b7481175232ea9 253
+  s_cdca0ffb67006b::t_e6b60fbf01a5b5 66,90-91
+  s_cdca0ffb67006b::t_2bb4831e29c955 92-93
+packages/frontend/editor-ui/src/features/execution/executions/components/workflow/WorkflowExecutionsCard.vue
+  s_cdca0ffb67006b::t_b7481175232ea9 15,111
+packages/frontend/editor-ui/src/features/execution/executions/components/ExecutionsFilter.vue
+  s_cdca0ffb67006b::t_1f6fc94e6b3fc2 305-307
+  s_cdca0ffb67006b::t_b7481175232ea9 9,69-70,81,153-158,172,304,308-316
+  s_cdca0ffb67006b::t_5e70c24ffe8dd0 317-321
+packages/frontend/editor-ui/src/features/execution/executions/components/global/GlobalExecutionsListItem.vue
+  s_cdca0ffb67006b::t_b7481175232ea9 25-27,59-67,301-307
+packages/frontend/editor-ui/src/features/execution/executions/executions.types.ts
+  s_cdca0ffb67006b::t_aba137c5ade585 30,45
+  s_cdca0ffb67006b::t_e6b60fbf01a5b5 10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "88172d46314137c987456ffbf6839fa62c5abe12",
+  "prompts": {},
+  "sessions": {
+    "s_cdca0ffb67006b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f443b2e4-3325-43af-879b-834762b1d7fd",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

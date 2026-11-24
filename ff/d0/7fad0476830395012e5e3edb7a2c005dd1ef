@@ -1,0 +1,45 @@
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_dddd9c68314b1b::t_9dcd1a3ba9f2b3 602-609
+packages/frontend/editor-ui/src/features/agents/composables/useAgentVersionHistory.ts
+  s_dddd9c68314b1b::t_9dcd1a3ba9f2b3 196
+packages/frontend/editor-ui/src/features/agents/components/VersionHistory/AgentVersionHistoryPanel.vue
+  s_dddd9c68314b1b::t_9f055dab4707d6 68,102
+  s_dddd9c68314b1b::t_9dcd1a3ba9f2b3 76,84-92,110,118-126
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentPublish.test.ts
+  s_dddd9c68314b1b::t_3c4c1ed0a0334a 193-195
+packages/frontend/editor-ui/src/features/agents/components/AgentVersionMetadataModal.vue
+  s_dddd9c68314b1b::t_dd51cc96f6c1bf 55,71
+  s_dddd9c68314b1b::t_9dcd1a3ba9f2b3 2,10,17,28-31,35,46,52-53,66,69,75,98,101,105,110-115
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentVersionHistoryPanel.test.ts
+  s_dddd9c68314b1b::t_3c4c1ed0a0334a 104-109,129,169,203
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentVersionMetadataModal.test.ts
+  s_dddd9c68314b1b::t_3c4c1ed0a0334a 27,42,59
+  s_dddd9c68314b1b::t_cf7967c12319a7 53-57
+packages/frontend/editor-ui/src/features/agents/composables/useAgentPublish.ts
+  s_dddd9c68314b1b::t_9dcd1a3ba9f2b3 87
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentVersionHistory.test.ts
+  s_dddd9c68314b1b::t_cf7967c12319a7 374-379
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_dddd9c68314b1b::t_9dcd1a3ba9f2b3 9490,9513-9515
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentVersionMetadataModal.test.ts
+  s_dddd9c68314b1b::t_3c4c1ed0a0334a 1-2,14-16,20-22,30-31,40,42,49-62,67-80,84-88,91-97,99,103-104
+  s_dddd9c68314b1b::t_67dcf1a44a713b 81-83,89-90
+  s_dddd9c68314b1b::t_dd51cc96f6c1bf 33
+  s_dddd9c68314b1b::t_cf7967c12319a7 23-29,63-65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ffd07fad0476830395012e5e3edb7a2c005dd1ef",
+  "prompts": {},
+  "sessions": {
+    "s_dddd9c68314b1b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1c624-7b80-77f3-88b5-5b4ee2a2590e",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+packages/quality/testing/playwright/composables/ExecutionsComposer.ts
+  s_46da3de198e646::t_34c91098a281ef 32
+  s_46da3de198e646::t_82563e33c5b932 13-14
+  s_46da3de198e646::t_6c829a4664e0b9 1-2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "10761c7cedbbf74bdc6f29050cf492e26fef4a05",
+  "prompts": {},
+  "sessions": {
+    "s_46da3de198e646": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9251ee03-4bf6-45ae-a1d0-0f49b1c1d546",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

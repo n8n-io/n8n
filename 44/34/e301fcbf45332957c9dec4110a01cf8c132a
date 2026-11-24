@@ -1,0 +1,20 @@
+packages/nodes-base/nodes/Github/Github.node.ts
+  h_52a137d26d774c 827-848,3230-3232,3334-3337
+packages/nodes-base/nodes/Github/__tests__/node/Github.node.test.ts
+  h_52a137d26d774c 153
+packages/nodes-base/nodes/Github/__tests__/workflow/Github.workflow.test.ts
+  h_52a137d26d774c 94-104
+packages/nodes-base/nodes/Github/__tests__/workflow/requests.workflow.json
+  h_52a137d26d774c 1196-1199,1659-1663
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4434e301fcbf45332957c9dec4110a01cf8c132a",
+  "prompts": {},
+  "humans": {
+    "h_52a137d26d774c": {
+      "author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

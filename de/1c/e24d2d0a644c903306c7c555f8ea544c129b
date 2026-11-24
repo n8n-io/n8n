@@ -1,0 +1,51 @@
+packages/frontend/@n8n/design-system/src/components/N8nApprovalCard/ApprovalCard.vue
+  s_f2a7ccd3a07caa::t_34d3060f23780e 236-246
+packages/frontend/@n8n/design-system/src/components/N8nApprovalCard/ApprovalCard.test.ts
+  s_f2a7ccd3a07caa::t_d8d337c9bf786b 105-124
+packages/frontend/editor-ui/src/features/agents/__tests__/SessionTimelineTable.spec.ts
+  s_f2a7ccd3a07caa::t_beedf7cf6c451e 1,86,95,727
+  s_f2a7ccd3a07caa::t_887820b8cfcc1f 155-156
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSessionTimelinePanel.spec.ts
+  s_fa72cf278d91cb::t_45c1cf50ad3e75 222,258
+  s_f2a7ccd3a07caa::t_f98888d8a2995f 1,194
+  s_529de94556a3fc::t_efbda026e4bfd8 221,257
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_f2a7ccd3a07caa::t_50f29773015c19 2816,2818
+  s_f2a7ccd3a07caa::t_2cc8555c7a968e 1,110-111,145,432,526,3933
+  s_f2a7ccd3a07caa::t_1ada0a6f631db6 2817
+packages/frontend/editor-ui/src/features/agents/__tests__/SessionBackgroundTaskItem.test.ts
+  s_f2a7ccd3a07caa::t_76728fc3201a23 1,41,121,144,163
+  s_f2a7ccd3a07caa::t_663684993a9f9c 63-65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "de1ce24d2d0a644c903306c7c555f8ea544c129b",
+  "prompts": {},
+  "sessions": {
+    "s_529de94556a3fc": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a178b0-fa81-777a-a61d-3456493aaf69",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_f2a7ccd3a07caa": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a178be-056f-75d8-a4d6-8143b1210788",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_fa72cf278d91cb": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a178b4-855f-7712-aa36-b1c552d15fd6",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

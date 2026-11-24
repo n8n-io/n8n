@@ -1,0 +1,18 @@
+packages/frontend/@n8n/design-system/src/components/N8nChatMessage/ChatMessage.vue
+  h_f8b427917eda26 70
+packages/frontend/@n8n/design-system/src/css/markdown.scss
+  h_f8b427917eda26 24-26
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/TimelineTextSegment.vue
+  h_f8b427917eda26 21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "78075da85700f14c8fcdafc624da286c67abb1f3",
+  "prompts": {},
+  "humans": {
+    "h_f8b427917eda26": {
+      "author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

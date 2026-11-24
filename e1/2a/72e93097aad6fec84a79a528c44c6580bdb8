@@ -1,0 +1,38 @@
+packages/frontend/@n8n/design-system/src/components/N8nBadge/component-badge.md
+  s_d8911b797fa494::t_3cb429d079a4cc 43-52,64,83,91,99,108,113,121,129-134
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSessionsListView.spec.ts
+  s_d8911b797fa494::t_dd03886e07aa70 106-108,295,310,324,338,544,829,835,838
+  s_d8911b797fa494::t_b6ec322f34b8e4 112-113,116
+  s_d8911b797fa494::t_3cb429d079a4cc 114-115
+packages/frontend/editor-ui/src/features/agents/components/AgentSessionListItem.vue
+  s_d8911b797fa494::t_949e3144cd7dca 285
+packages/frontend/editor-ui/src/features/agents/views/AgentSessionsListView.vue
+  s_d8911b797fa494::t_a4e6fe5bf234da 387
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_d8911b797fa494::t_3cb429d079a4cc 1617-1668,1673-1704
+  s_d8911b797fa494::t_c347d7810da35b 1616
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_d8911b797fa494::t_4ba53eb2e519d1 2117-2118
+packages/frontend/editor-ui/src/features/agents/components/AgentSessionTimelineHeader.vue
+  s_d8911b797fa494::t_730eebfb04aea4 18,158
+packages/frontend/editor-ui/src/features/agents/utils/__tests__/token-count.test.ts
+  s_d8911b797fa494::t_4b8febe2c874b3 2-18
+packages/frontend/editor-ui/src/features/agents/utils/token-count.ts
+  s_d8911b797fa494::t_8f6c64c3ff4b33 4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e12a72e93097aad6fec84a79a528c44c6580bdb8",
+  "prompts": {},
+  "sessions": {
+    "s_d8911b797fa494": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1c550-06ca-728a-aad4-dd077b3cba8a",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

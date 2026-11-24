@@ -1,0 +1,36 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useAppAssistantHandoff.ts
+  s_771457c926e571::t_a961f964cfddfa 30-33,36-52,73-85,96,99-111
+packages/frontend/editor-ui/src/features/ai/instanceAi/embed/AssistantAgentPanelThread.vue
+  s_771457c926e571::t_eeacc183fd70fc 6-8
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/AssistantAgentThreadView.vue
+  s_771457c926e571::t_77bb5c3eec3d63 340-343,347,349,361,363
+  s_771457c926e571::t_70e94de742e854 337-338,345
+  s_771457c926e571::t_c7a132b84c06d2 339,346,348,350-354,356,362
+packages/@n8n/instance-ai/src/tools/thread-subject-binding.ts
+  s_771457c926e571::t_4b014a2fced0a2 3-4,17,19
+packages/@n8n/instance-ai/src/tools/apps/__tests__/app-target-binding.test.ts
+  s_771457c926e571::t_4b014a2fced0a2 10,32,41,48,56-57,63
+packages/@n8n/instance-ai/src/tools/apps/app-target-binding.ts
+  s_771457c926e571::t_4b014a2fced0a2 53-54,58
+packages/@n8n/instance-ai/src/tools/orchestration/agent-target-binding.ts
+  s_771457c926e571::t_64d3d749f8654f 336,340,344
+  s_771457c926e571::t_4b014a2fced0a2 325-329,331,333
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_771457c926e571::t_c11d4abb41dad3 1608-1611,1825-1828
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ec70d92acf2fdbb169e290df3768207572856cc6",
+  "prompts": {},
+  "sessions": {
+    "s_771457c926e571": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ad7fc79a-2f23-40ab-a02a-a0ca28c6c53c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,28 @@
+packages/@n8n/agents/src/runtime/memory/tool-result-memory.ts
+  s_33c2aad0b369a2::t_8fcece2b7cce6d 9-10,14-15,18,20-21,23-30,39-40,43,45,63,86-87
+  s_33c2aad0b369a2::t_3ee0978a50d5ee 11,13,22
+  s_33c2aad0b369a2::t_5daa9faae62cdf 68-70,74-76
+packages/@n8n/agents/src/runtime/tools/tool-result-guard.ts
+  s_33c2aad0b369a2::t_3ee0978a50d5ee 16
+packages/@n8n/agents/src/runtime/__tests__/memory-orchestrator-mid-run.test.ts
+  s_33c2aad0b369a2::t_04c1cb152d0348 586-639
+packages/@n8n/agents/src/runtime/__tests__/memory-orchestrator-persist-input.test.ts
+  s_33c2aad0b369a2::t_04c1cb152d0348 356,358-360,367,376,388,390
+  s_33c2aad0b369a2::t_3ee0978a50d5ee 14,357
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "dd068e81a0d8ef339cec8d9a4aef7973ef542f05",
+  "prompts": {},
+  "sessions": {
+    "s_33c2aad0b369a2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5cc131e-b2ad-48de-a503-0405d08ad515",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

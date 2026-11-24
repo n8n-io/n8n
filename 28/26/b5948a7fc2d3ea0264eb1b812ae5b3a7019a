@@ -1,0 +1,64 @@
+packages/cli/src/modules/sso-saml/saml.service.ee.ts
+  s_d7411aa4ac03d5::t_f1370696ac3716 404
+packages/cli/src/modules/token-exchange/services/identity-resolution.service.ts
+  s_d7411aa4ac03d5::t_f1370696ac3716 109-113,119-123,126-130,199,201
+packages/cli/src/modules/ldap.ee/__tests__/ldap.service.test.ts
+  s_d7411aa4ac03d5::t_1f7b45b479ffda 459-460,480-481,488-489,509-510,517-518,547-548
+packages/@n8n/db/src/repositories/auth-identity.repository.ts
+  s_d7411aa4ac03d5::t_933997c13546a4 2,4,7-14,17-21,32,34,39-140
+packages/cli/test/integration/oidc/oidc.service.ee.test.ts
+  s_d7411aa4ac03d5::t_1f7b45b479ffda 17,25,769
+packages/cli/test/integration/token-exchange/token-exchange.controller.test.ts
+  s_d7411aa4ac03d5::t_d7dc7516835a4e 182-189
+  s_d7411aa4ac03d5::t_1f7b45b479ffda 2,4,228
+packages/cli/src/modules/sso-saml/__tests__/saml.service.ee.test.ts
+  s_d7411aa4ac03d5::t_1f7b45b479ffda 558
+packages/cli/src/modules/sso-saml/saml-helpers.ts
+  s_d7411aa4ac03d5::t_f1370696ac3716 96
+packages/cli/test/integration/shared/db/users.ts
+  s_d7411aa4ac03d5::t_1f7b45b479ffda 15,66-68
+  s_d7411aa4ac03d5::t_d7dc7516835a4e 203-208
+packages/cli/src/modules/sso-oidc/oidc.service.ee.ts
+  s_d7411aa4ac03d5::t_f1370696ac3716 345-349,372
+packages/cli/test/integration/token-exchange/embed-auth.api.test.ts
+  s_d7411aa4ac03d5::t_1f7b45b479ffda 5,7,197,215
+packages/cli/test/integration/database/repositories/person.repository.test.ts
+  s_d7411aa4ac03d5::t_1f7b45b479ffda 61
+packages/cli/src/modules/ldap.ee/helpers.ee.ts
+  s_d7411aa4ac03d5::t_f1370696ac3716 76-80,117,121,303-306,332
+packages/cli/src/modules/sso-oidc/__tests__/oidc.service.ee.test.ts
+  s_d7411aa4ac03d5::t_d7dc7516835a4e 893-895
+  s_d7411aa4ac03d5::t_1f7b45b479ffda 656,768,808,905,944,977,999,1231,1241,1253,1264,1277,1284
+packages/cli/test/integration/saml/saml.api.test.ts
+  s_d7411aa4ac03d5::t_1f7b45b479ffda 25,66-68,1161-1163
+packages/@n8n/db/src/repositories/__tests__/auth-identity.repository.test.ts
+  s_d7411aa4ac03d5::t_9d7b14bc503877 109
+  s_d7411aa4ac03d5::t_78edde5bcb274f 1-108,110-135
+packages/cli/test/integration/token-exchange/identity-resolution.service.test.ts
+  s_d7411aa4ac03d5::t_239eae4432ae52 19,29,71,98,182,214,296,316,351,359,380,404,435,496,506,519,543
+  s_d7411aa4ac03d5::t_d7dc7516835a4e 3
+  s_d7411aa4ac03d5::t_bd57d25f8f2d29 531
+  s_d7411aa4ac03d5::t_1f7b45b479ffda 5
+packages/cli/src/modules/token-exchange/services/__tests__/identity-resolution.service.test.ts
+  s_d7411aa4ac03d5::t_1f7b45b479ffda 81,90,279
+  s_d7411aa4ac03d5::t_d7dc7516835a4e 183-185
+packages/cli/src/commands/ldap/reset.ts
+  s_d7411aa4ac03d5::t_f1370696ac3716 76-79,85,124-125
+  s_d7411aa4ac03d5::t_d7dc7516835a4e 80-81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2826b5948a7fc2d3ea0264eb1b812ae5b3a7019a",
+  "prompts": {},
+  "sessions": {
+    "s_d7411aa4ac03d5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cc012f68-1d81-4f88-b069-8c24d294d575",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

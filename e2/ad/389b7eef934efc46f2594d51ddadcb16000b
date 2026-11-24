@@ -1,0 +1,26 @@
+demos/canvas-delight/real-workflow.json
+  s_c33bde4687101e::t_8c2ccb6eeae6e6 2-60
+  s_c33bde4687101e::t_26ad3d2b032c7d 1,61
+demos/canvas-delight/README.md
+  s_c33bde4687101e::t_ac2ed6aa913ce3 1-26
+demos/canvas-delight/REPORT.md
+  s_c33bde4687101e::t_01fe111bdc2e0d 3-18,78,80
+demos/canvas-delight/evidence/real-app/animation-results.json
+  s_c33bde4687101e::t_0f3b61966f15c3 1-9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e2ad389b7eef934efc46f2594d51ddadcb16000b",
+  "prompts": {},
+  "sessions": {
+    "s_c33bde4687101e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1edf6-ffe6-77f0-898f-eea7d7b98df2",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

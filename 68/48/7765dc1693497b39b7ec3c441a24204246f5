@@ -1,0 +1,35 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentFolderBrowser.test.ts
+  s_b86bd8b73ec329::t_8272be99d81754 149-154
+  s_b86bd8b73ec329::t_94256a843ea1cc 54-56,59,70-74,81,130,139,166-172,187-189
+  s_b86bd8b73ec329::t_49283fa0691c19 131-138,173-174,177,183,185
+  s_b86bd8b73ec329::t_01f65d2276d650 144-145,175-176,178-182,184,186
+packages/frontend/editor-ui/src/features/core/folders/components/FolderCardSubtitle.vue
+  s_b86bd8b73ec329::t_2bdab4263e08bd 1-83
+packages/frontend/editor-ui/src/features/core/folders/components/FolderCard.vue
+  s_b86bd8b73ec329::t_01f65d2276d650 14,240-241,245-248
+  s_b86bd8b73ec329::t_e329165fdafc22 242-244
+packages/frontend/editor-ui/src/features/core/folders/components/FolderCard.test.ts
+  s_b86bd8b73ec329::t_01f65d2276d650 81,97
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_b86bd8b73ec329::t_8272be99d81754 20-27
+packages/frontend/editor-ui/src/features/agents/components/AgentFolderBrowser.vue
+  s_b86bd8b73ec329::t_94256a843ea1cc 279,292
+  s_b86bd8b73ec329::t_e329165fdafc22 282,286
+  s_b86bd8b73ec329::t_01f65d2276d650 19,92-101,280-281,287-291
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "68487765dc1693497b39b7ec3c441a24204246f5",
+  "prompts": {},
+  "sessions": {
+    "s_b86bd8b73ec329": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1c5ff-a9a5-7263-8c36-bf54b75e063d",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

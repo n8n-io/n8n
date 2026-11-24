@@ -1,0 +1,67 @@
+packages/cli/src/modules/instance-ai/turn-setup/__tests__/assistant-turn-input.builder.test.ts
+  s_5631b188ce818f::t_a3399c96ca2f6e 2-6,10-14,201-209,211-212,215,217-224,226-230,232
+  s_5631b188ce818f::t_2afa5fdf0e8279 213-214,216,225,231
+  s_5631b188ce818f::t_9451448c8d7552 210
+  s_5631b188ce818f::t_04aa620694ca1f 233-234
+packages/cli/src/modules/instance-ai/turn-setup/assistant-turn-environment.factory.ts
+  s_5631b188ce818f::t_b75dd0949da668 494
+  s_b6d332c56aa1c5::t_c5a00b1d90d2e7 480-493
+packages/modules/apps/backend/src/app.repository.ts
+  s_5631b188ce818f::t_39fa9ba9e7a95b 93-94,101-102
+packages/@n8n/instance-ai/src/tools/apps/__tests__/apps.tool.test.ts
+  s_5631b188ce818f::t_9451448c8d7552 131-133
+  s_5631b188ce818f::t_ce353f601bf671 118-126,130,134-136
+  s_5631b188ce818f::t_250e503848727b 127-129
+packages/@n8n/instance-ai/src/tools/apps/apps.tool.ts
+  s_5631b188ce818f::t_dce4f1bca55a01 88
+packages/@n8n/instance-ai/src/workspace/lazy-runtime-workspace.ts
+  s_5631b188ce818f::t_aad14943cead5a 6-7,64,68,73-77
+packages/@n8n/instance-ai/evaluations/__tests__/workspace-tool-contract.test.ts
+  s_5631b188ce818f::t_a4b8e6893b4d34 1-6,15,17-21
+packages/cli/src/modules/instance-ai/turn-setup/__tests__/assistant-turn-environment.factory.test.ts
+  s_5631b188ce818f::t_fb90a3a08342ee 189
+  s_5631b188ce818f::t_6509abeb9c5923 175-181,187-188,190,192,195,198-199
+packages/@n8n/instance-ai/evaluations/harness/langsmith-seed.ts
+  s_5631b188ce818f::t_73a5900261ea76 539
+packages/@n8n/agents/src/__tests__/workspace/workspace-tools.test.ts
+  s_5631b188ce818f::t_afe27902ca104f 194-195,207-208
+  s_5631b188ce818f::t_a4b8e6893b4d34 2-3,108,129,164,186
+packages/@n8n/instance-ai/docs/sandboxing.md
+  s_5631b188ce818f::t_a4b8e6893b4d34 44-47
+packages/@n8n/instance-ai/evaluations/__tests__/langsmith-seed.test.ts
+  s_5631b188ce818f::t_ce353f601bf671 548-569
+packages/@n8n/agents/src/workspace/index.ts
+  s_5631b188ce818f::t_aad14943cead5a 14-15
+packages/@n8n/agents/src/index.ts
+  s_5631b188ce818f::t_aad14943cead5a 511-512
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiMarkdown.test.ts
+  s_5631b188ce818f::t_169f3b2535fb00 337-358
+packages/@n8n/agents/src/workspace/tools/read-files.ts
+  s_5631b188ce818f::t_1f8398cf9f6a4d 26-28
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiMarkdown.vue
+  s_5631b188ce818f::t_5fc8f3b854f213 243,345
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "af6cf1a806f8f0129d9d53390026ec0c46332db9",
+  "prompts": {},
+  "sessions": {
+    "s_5631b188ce818f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84992bfe-521e-4b79-80af-ca4ae976b51f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_b6d332c56aa1c5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f6b2437c-b582-4a87-95e4-7349acfdcb64",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

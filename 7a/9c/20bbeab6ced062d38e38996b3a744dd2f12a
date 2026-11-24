@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/agents/views/AgentSessionsListView.vue
+  s_da7579d473bc86::t_a31dea8fdaa3c3 744-750
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSessionsListView.spec.ts
+  s_da7579d473bc86::t_8c93eec843864e 7,472-482
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7a9c20bbeab6ced062d38e38996b3a744dd2f12a",
+  "prompts": {},
+  "sessions": {
+    "s_da7579d473bc86": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e530fb64-8306-4fe2-a10e-1704e1fe6b66",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

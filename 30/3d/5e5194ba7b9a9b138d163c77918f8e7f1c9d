@@ -1,0 +1,9 @@
+packages/@n8n/api-types/src/constants/public-api-rate-limit.ts
+  ai_agent 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "303d5e5194ba7b9a9b138d163c77918f8e7f1c9d",
+  "prompts": {}
+}

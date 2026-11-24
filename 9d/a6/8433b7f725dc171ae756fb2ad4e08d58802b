@@ -1,0 +1,27 @@
+packages/cli/src/modules/n8n-packages/engine/n8n-package-parser.ts
+  s_f0ccaac41280b8::t_0a15d8ae4b3ea9 30,511-517
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential-display-controllers.test.ts
+  s_f0ccaac41280b8::t_efbd81a2eef41f 1,9,389-452
+packages/cli/src/modules/n8n-packages/entities/credential/credential-display-controllers.ts
+  s_f0ccaac41280b8::t_0a15d8ae4b3ea9 1,168-188
+packages/cli/src/modules/n8n-packages/io/directory/package-directory-inventory-reader.ts
+  s_f0ccaac41280b8::t_0a15d8ae4b3ea9 20-22,117-120,229-233
+packages/cli/src/modules/n8n-packages/io/__tests__/package-directory-inventory-reader.test.ts
+  s_f0ccaac41280b8::t_efbd81a2eef41f 1-5,46-75
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9da68433b7f725dc171ae756fb2ad4e08d58802b",
+  "prompts": {},
+  "sessions": {
+    "s_f0ccaac41280b8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f810e460-60cf-474c-95a5-0bbc8d1b96b6",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

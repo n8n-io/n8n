@@ -1,0 +1,30 @@
+packages/@n8n/api-types/src/dto/packages/import-result.dto.ts
+  s_952e2dc69e6ab3::t_7c4aadaf94b251 25
+  s_952e2dc69e6ab3::t_79410de9d10dd2 25
+packages/@n8n/cli/docs/commands/package.md
+  s_952e2dc69e6ab3::t_ef1c727d944b18 147-154
+  s_952e2dc69e6ab3::t_9c66594239a7eb 151-154
+  s_952e2dc69e6ab3::t_97c31c737643f5 147-150
+packages/cli/src/public-api/v1/shared/spec/schemas/importResultDto.generated.yml
+  s_952e2dc69e6ab3::t_ee33cc91f887dd 49,181
+  s_952e2dc69e6ab3::t_e150346fb76e75 49,181
+packages/cli/test/integration/public-api/n8n-packages-import-agents.test.ts
+  s_952e2dc69e6ab3::t_f22546ab57c99a 342-349
+  s_952e2dc69e6ab3::t_9c66594239a7eb 342-349
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6238d858c700db9ac6625bc94c921de70ed5e6bb",
+  "prompts": {},
+  "sessions": {
+    "s_952e2dc69e6ab3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e1a0aea3-1f8c-4dd8-8134-765698a7bfc4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

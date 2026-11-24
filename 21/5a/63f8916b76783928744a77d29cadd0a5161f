@@ -1,0 +1,47 @@
+packages/workflow/src/interfaces.ts
+  s_0f4e16b2c3bd63::t_59adc3eb1c33b2 3961-3962,4159-4161
+packages/@n8n/db/src/repositories/execution.repository.ts
+  s_0f4e16b2c3bd63::t_59adc3eb1c33b2 86-91
+packages/cli/src/modules/otel/__tests__/execution-level-tracer.test.ts
+  s_0f4e16b2c3bd63::t_3f27028e9f7ac9 4-9,1079-1115
+packages/cli/src/modules/otel/__tests__/tracing-context.test.ts
+  s_0f4e16b2c3bd63::t_3f27028e9f7ac9 3-8,11-36
+packages/@n8n/db/src/entities/types-db.ts
+  s_0f4e16b2c3bd63::t_59adc3eb1c33b2 71,73
+packages/cli/src/modules/otel/README.md
+  s_0f4e16b2c3bd63::t_bc161dccbb7bd5 33-37,59-60,67-68,92-93,101
+packages/cli/src/public-api/v1/controllers/executions.public.controller.ts
+  s_0f4e16b2c3bd63::t_0ba3ee007b1e3b 439-441
+packages/cli/src/modules/otel/otel.module.ts
+  s_0f4e16b2c3bd63::t_dfbd6e22aa8d39 33,38
+packages/cli/src/webhooks/__tests__/webhook-helpers.test.ts
+  s_0f4e16b2c3bd63::t_9d8e341b02e237 2680
+  s_0f4e16b2c3bd63::t_bd86e0b1453ea1 1627,2484,2867,3537
+packages/cli/src/modules/otel/execution-level-tracer.ts
+  s_0f4e16b2c3bd63::t_49fccc9a3794bd 329
+  s_0f4e16b2c3bd63::t_15ee890dbac460 280-282,285-291,300-301
+  s_0f4e16b2c3bd63::t_a812fef265859e 4-5,28,61,98,188,231
+packages/cli/src/modules/otel/tracing-context.ts
+  s_0f4e16b2c3bd63::t_a4b9d4aebe7a23 4-15,19-40,65-66
+  s_0f4e16b2c3bd63::t_4913c8044a25da 2,17
+packages/cli/src/webhooks/webhook-helpers.ts
+  s_0f4e16b2c3bd63::t_59adc3eb1c33b2 1341
+packages/@n8n/db/src/entities/execution-entity.ts
+  s_0f4e16b2c3bd63::t_59adc3eb1c33b2 99,101
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "215a63f8916b76783928744a77d29cadd0a5161f",
+  "prompts": {},
+  "sessions": {
+    "s_0f4e16b2c3bd63": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "24b72644-fa4d-4fed-b88a-ff65b01be832",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "sim <olivier.dejong@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,59 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_38d78cd106326f::t_33a42c40a2a2b1 28,326-327,329-332
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderEditorColumn.spec.ts
+  s_38d78cd106326f::t_1db66a5bc83123 121-128
+packages/@n8n/api-types/src/agents/types.ts
+  s_38d78cd106326f::t_bb526ae0b1aba1 249-265,267-286
+packages/cli/src/modules/agents/__tests__/agent-memory-entries.service.test.ts
+  s_38d78cd106326f::t_f59b0a453fc445 1-92,109-117,119-120,122-159
+  s_38d78cd106326f::t_a4e103e25842f9 118,121
+  s_38d78cd106326f::t_d54fcc7f5de9f5 101
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_38d78cd106326f::t_b139e0daa32d8c 9037-9055
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentMemoryEntriesPanel.test.ts
+  s_38d78cd106326f::t_f8bb002711746e 1-100,110-134,203-204,208-217,240-268
+packages/cli/src/modules/agents/agent-memory.controller.ts
+  s_38d78cd106326f::t_9d4a25fd69433f 1-36
+packages/cli/src/modules/agents/utils/memory-entry-source.ts
+  s_38d78cd106326f::t_675e3a512640f8 1-14,16,21-48,51-68,72-80
+  s_38d78cd106326f::t_19abf960018cc5 15,17-20,69-71
+packages/@n8n/api-types/src/agents/dto.ts
+  s_38d78cd106326f::t_bb526ae0b1aba1 129-133
+packages/cli/test/integration/database/repositories/agent-memory-entry.repository.test.ts
+  s_38d78cd106326f::t_22b152c9bcbb2f 1-82,84-90,92-118
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_38d78cd106326f::t_757567cc29683f 19,397-423
+  s_38d78cd106326f::t_48127104e59bcd 424
+packages/cli/src/modules/agents/agents.module.ts
+  s_38d78cd106326f::t_8dd010b1420753 33
+packages/frontend/editor-ui/src/features/agents/components/AgentMemoryEntriesPanel.vue
+  s_38d78cd106326f::t_5e40536675472b 1,3-36,38,41,45-61,66,69-71,73-74,77-80,83-85,87-91,93-119,122-175,177-183,185-189,231,247,275,280-282,296-344
+packages/cli/src/modules/agents/agent-memory-entries.service.ts
+  s_38d78cd106326f::t_88dce19e810fdc 43-52,99
+  s_38d78cd106326f::t_9d4a25fd69433f 1-42,56-98,100-129,136-137
+packages/cli/src/modules/agents/repositories/agent-memory-entry.repository.ts
+  s_38d78cd106326f::t_1a55ccf981a59c 10,30-52,57-59,63
+  s_38d78cd106326f::t_485566e6da5528 61-62,64
+packages/cli/src/modules/agents/__tests__/agent-memory.controller.test.ts
+  s_38d78cd106326f::t_f59b0a453fc445 1-46
+packages/cli/src/modules/agents/utils/__tests__/memory-entry-source.test.ts
+  s_38d78cd106326f::t_f59b0a453fc445 1-28,51-134
+docs/generated/sqlite-schema/README.md
+  s_38d78cd106326f::t_47244f9c589e6d 238
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "08cfc081f8be2c749830abb8fa39174c9e0108ae",
+  "prompts": {},
+  "sessions": {
+    "s_38d78cd106326f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "72f82e0e-bc8a-42f7-9266-687432dab6a9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

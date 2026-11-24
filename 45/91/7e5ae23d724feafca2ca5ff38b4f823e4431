@@ -1,0 +1,50 @@
+packages/cli/src/services/workflow-review-policy.service.ts
+  s_3d42f5aac10616::t_a0b037aa6ac4ec 1,15,31-40
+packages/cli/src/modules/workflow-reviews.ee/__tests__/support/workflow-review-test-data.ts
+  s_3d42f5aac10616::t_56ab2a0e4ea855 53,62
+packages/cli/src/modules/source-control.ee/source-control-import.service.ee.ts
+  s_3d42f5aac10616::t_19aef5330433ba 938,1097,2385,2393,2421-2424
+packages/@n8n/backend-services/src/index.ts
+  s_3d42f5aac10616::t_b08451089cd58f 139
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-publish-guard.service.test.ts
+  s_3d42f5aac10616::t_2a04cfa273d958 1-5,9,17-24,28,34,43,52,67,85
+packages/cli/src/modules/mcp/tools/publish-workflow.tool.ts
+  s_3d42f5aac10616::t_46e51e932ce402 58
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-publish-guard.service.ts
+  s_3d42f5aac10616::t_da860e521966f2 2,6-7,16-17,20,27-29,31-47,50-51,54-61
+packages/@n8n/backend-services/src/workflows/workflow-publish-guard-proxy.service.ts
+  s_3d42f5aac10616::t_645c8389cd45c5 9-15,26-27
+packages/@n8n/backend-services/src/workflows/__tests__/workflow-publish-guard-proxy.service.test.ts
+  s_3d42f5aac10616::t_276919aefec9ff 12-14
+  s_3d42f5aac10616::t_645c8389cd45c5 22,25
+packages/@n8n/db/src/repositories/workflow-review-request.repository.ts
+  s_3d42f5aac10616::t_bd71274eb4f2d3 171-191
+packages/cli/src/modules/source-control.ee/__tests__/source-control-import.service.ee.test.ts
+  s_3d42f5aac10616::t_09ffe876e09d7d 1463-1465
+  s_3d42f5aac10616::t_4f1f92ef833f53 692,740,788,834,883,1056,1096,1131,1134-1135,1178,1181-1182,1222,1256,1338,1341,1344,1347,1381,1431,1434-1435,1524,1579
+  s_3d42f5aac10616::t_3973d8c3c507db 1217-1220
+packages/cli/src/workflows/workflow.service.ts
+  s_3d42f5aac10616::t_fb897fe4ff296a 170-179,1287-1317,1320-1321,1354,1386,1449-1452,1552,1573
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-publish-guard.integration.test.ts
+  s_3d42f5aac10616::t_b74ffa258c93e7 3,13,30,65,91-109,114-123,262-326,328-329,331-417
+  s_3d42f5aac10616::t_2f5a912dfe3edb 327,330
+  s_3d42f5aac10616::t_09ffe876e09d7d 110-113
+packages/cli/src/workflows/__tests__/workflow.service.test.ts
+  s_3d42f5aac10616::t_7f66b3b3723aea 2074-2077
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "45917e5ae23d724feafca2ca5ff38b4f823e4431",
+  "prompts": {},
+  "sessions": {
+    "s_3d42f5aac10616": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "14440739-a8bf-40e4-b7b8-ad261dcda974",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

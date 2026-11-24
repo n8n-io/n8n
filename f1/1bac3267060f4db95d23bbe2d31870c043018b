@@ -1,0 +1,114 @@
+packages/cli/src/modules/apps/bindings/__tests__/app-workflow.adapter.test.ts
+  s_4bcab537e8dd3b::t_5fb22cf23827a6 77,79
+  s_4bcab537e8dd3b::t_c255c024429ff5 67
+  s_4bcab537e8dd3b::t_0b851dd446c925 25
+  s_4bcab537e8dd3b::t_c40ed88e3e0514 140,143,146-152
+  s_4bcab537e8dd3b::t_0f049d466477cd 153-157,164
+packages/modules/apps/backend/src/runtime/app-runtime.controller.ts
+  s_4bcab537e8dd3b::t_e14fcb2d513c0b 151-156
+  s_4bcab537e8dd3b::t_5f6dd8ab6ac181 324
+  s_4bcab537e8dd3b::t_65f5608438b9cc 389
+  s_4bcab537e8dd3b::t_41a937f57027e2 139
+  s_4bcab537e8dd3b::t_8b1919ac3f0828 420
+  s_4bcab537e8dd3b::t_6c70f5c6cd5223 70,79
+packages/cli/src/modules/apps/bindings/__tests__/app-agent.adapter.test.ts
+  s_4bcab537e8dd3b::t_0b851dd446c925 31,184
+packages/@n8n/db/src/migrations/common/1793610863974-AddBindingsToAppVersion.ts
+  s_4bcab537e8dd3b::t_09a1c141ea45f6 3
+packages/cli/src/modules/apps/bindings/__tests__/app-data-table.adapter.test.ts
+  s_4bcab537e8dd3b::t_0b851dd446c925 22
+packages/@n8n/instance-ai/src/tools/apps/apps.tool.ts
+  s_4bcab537e8dd3b::t_7738a87abaa1e6 57-58
+  s_4bcab537e8dd3b::t_ccc7484b7002f7 11
+  s_4bcab537e8dd3b::t_340158cc6667ee 3,6
+  s_4bcab537e8dd3b::t_4fa51addb7c100 54-56
+packages/@n8n/app-sdk/src/types.ts
+  s_4bcab537e8dd3b::t_8da46926c43e03 39-40
+packages/modules/apps/backend/src/__tests__/apps.service.test.ts
+  s_4bcab537e8dd3b::t_f4c9f428d9fc32 156,179
+packages/@n8n/app-sdk/src/index.ts
+  s_4bcab537e8dd3b::t_47d88b25d0a06d 129
+packages/@n8n/api-types/src/schemas/app-binding.schema.ts
+  s_4bcab537e8dd3b::t_2c389d16ca2d9d 3
+  s_4bcab537e8dd3b::t_f39f39a4cbf5fd 134-135
+  s_4bcab537e8dd3b::t_9cad117af5885a 111
+packages/modules/apps/frontend/src/components/AppView.test.ts
+  s_4bcab537e8dd3b::t_71ca44f1ee4787 21
+packages/modules/apps/backend/src/auth/__tests__/app-auth.service.test.ts
+  s_4bcab537e8dd3b::t_4d8b5d678144dd 69-76,79
+packages/modules/apps/backend/src/runtime/__tests__/app-runtime.controller.test.ts
+  s_4bcab537e8dd3b::t_585de5a053ef1f 78
+  s_4bcab537e8dd3b::t_b6a9048bdce38f 230
+packages/@n8n/api-types/src/dto/app/__tests__/app.dto.test.ts
+  s_4bcab537e8dd3b::t_f4c9f428d9fc32 38,45
+packages/@n8n/instance-ai/src/tools/apps/__tests__/apps.tool.test.ts
+  s_4bcab537e8dd3b::t_f248d481dff9d1 355-365
+packages/cli/src/modules/apps/bindings/app-workflow.adapter.ts
+  s_4bcab537e8dd3b::t_30acb89badaa58 234
+  s_4bcab537e8dd3b::t_38b265a1f81ff2 340-341
+  s_4bcab537e8dd3b::t_c6d9aafbe477b2 278
+  s_4bcab537e8dd3b::t_2aca5bfbac1d52 77-78
+packages/cli/test/migration/1793612194540-move-public-apps-to-project-visibility.test.ts
+  s_4bcab537e8dd3b::t_b9747d07d18245 1-71,73-90
+  s_4bcab537e8dd3b::t_1334173cadb459 72
+packages/@n8n/app-sdk/src/__tests__/index.test.ts
+  s_4bcab537e8dd3b::t_417dcd2017a15d 37-41,45
+packages/cli/src/workflows/callable/callable-workflow-result.ts
+  s_4bcab537e8dd3b::t_b66c27dd37c61c 9
+packages/modules/apps/backend/src/bindings/app-binding-ports.ts
+  s_4bcab537e8dd3b::t_699f6b30698e79 33-34
+packages/@n8n/instance-ai/skills/app-builder/SKILL.md
+  s_4bcab537e8dd3b::t_5ce9acfe4402a2 98-101
+  s_4bcab537e8dd3b::t_36211e38bbeea2 140
+  s_4bcab537e8dd3b::t_80f00b91eae43b 106-110
+  s_4bcab537e8dd3b::t_fcf2cd9310f134 130
+packages/modules/apps/backend/src/auth/__tests__/app-protected-resource.test.ts
+  s_4bcab537e8dd3b::t_b2ff96c6f690d9 142
+packages/cli/src/modules/apps/bindings/app-agent.adapter.ts
+  s_4bcab537e8dd3b::t_1b32d011d9b43f 218,220
+packages/cli/src/modules/agents/background/agent-background-job.service.ts
+  s_4bcab537e8dd3b::t_bf7bcf876bff2c 13-16
+packages/modules/apps/backend/src/versions/__tests__/app-version.service.test.ts
+  s_4bcab537e8dd3b::t_53beb5e5c390f3 52-57
+packages/modules/apps/backend/src/auth/app-auth.service.ts
+  s_4bcab537e8dd3b::t_2ac10f9dcf36b0 26
+packages/@n8n/api-types/src/schemas/app.schema.ts
+  s_4bcab537e8dd3b::t_3cd5fddb40cff2 16
+packages/modules/apps/backend/src/bindings/app-bindings.service.ts
+  s_4bcab537e8dd3b::t_6d7a1829da1b7d 90
+packages/@n8n/db/src/migrations/common/1793612194540-MovePublicAppsToProjectVisibility.ts
+  s_4bcab537e8dd3b::t_44b5fd08d1cef6 2,9-10
+  s_4bcab537e8dd3b::t_a657c7fd17b9d5 1,3-8
+docs/generated/postgres-schema/README.md
+  s_4bcab537e8dd3b::t_a0e1a6114b7fc0 55,57,1001
+docs/generated/postgres-schema/public.app.md
+  s_4bcab537e8dd3b::t_577fc12cc62112 67
+docs/generated/postgres-schema/public.app_artifact.md
+  s_4bcab537e8dd3b::t_a150f6b93b6f3b 58
+docs/generated/postgres-schema/public.app_version.md
+  s_4bcab537e8dd3b::t_d8fa352353ebb3 8,29,59
+docs/generated/sqlite-schema/README.md
+  s_4bcab537e8dd3b::t_291d938f1693fc 55,57,987
+docs/generated/sqlite-schema/app.md
+  s_4bcab537e8dd3b::t_a053f76b0bd3f3 9,72
+docs/generated/sqlite-schema/app_artifact.md
+  s_4bcab537e8dd3b::t_b6de2df84fe0be 55
+docs/generated/sqlite-schema/app_version.md
+  s_4bcab537e8dd3b::t_64070494ad26c2 9,19,63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f11bac3267060f4db95d23bbe2d31870c043018b",
+  "prompts": {},
+  "sessions": {
+    "s_4bcab537e8dd3b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c53408b8-c507-4016-9fc2-cf73b75fcf99",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

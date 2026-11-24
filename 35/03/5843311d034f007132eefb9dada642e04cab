@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/settings/context/catalog/SkillCatalog.vue
+  s_bc27ac3adda411::t_1ec68a0dfbb999 183-187
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "35035843311d034f007132eefb9dada642e04cab",
+  "prompts": {},
+  "sessions": {
+    "s_bc27ac3adda411": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1e944-3dbf-7aa3-9124-352b45e22dd3",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

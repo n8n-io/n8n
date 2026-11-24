@@ -1,0 +1,76 @@
+packages/cli/src/telemetry/index.ts
+  s_1002c4e88ae523::t_7ae87606999c5c 300
+  s_1002c4e88ae523::t_8c438f6bb0a411 66-67,73-78,84
+  s_1002c4e88ae523::t_3dba045b68ab8d 574,581,588,593,599
+  s_1002c4e88ae523::t_0416b7d414e006 64-65
+  s_1002c4e88ae523::t_4e3a7c3202e9ec 30
+  s_1002c4e88ae523::t_2531fa469554df 596-598
+packages/cli/src/public-api/__tests__/public-api-controller.registry.test.ts
+  s_1002c4e88ae523::t_319b1b6a11eed2 298-300,303-311,314,321,324,326
+  s_1002c4e88ae523::t_7a36f001851a39 301-302
+  s_1002c4e88ae523::t_9b6b0571502ed1 297,312-313,315-320,322-323,325,327-329
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_1002c4e88ae523::t_1036473e51d7d7 2000-2001,2013-2014
+  s_1002c4e88ae523::t_9d3b912b7a8a1a 1999,2012
+  s_1002c4e88ae523::t_a9381d364ca792 1999
+  s_1002c4e88ae523::t_24d04376f38d22 2012
+  s_1002c4e88ae523::t_cac06483e3df36 1998
+  s_1002c4e88ae523::t_37cdf3e58a103d 2011
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_1002c4e88ae523::t_44ad8ddc7056c9 1095-1096,1105-1106
+  s_1002c4e88ae523::t_488bda100beb13 1093-1094,1103-1104
+packages/cli/test/integration/public-api/workflow-route-order.test.ts
+  s_1002c4e88ae523::t_26e0d627312326 87-89
+packages/cli/src/public-api/public-api-controller.registry.ts
+  s_1002c4e88ae523::t_3394cc94c28180 141
+  s_1002c4e88ae523::t_0cf4c9973f8402 307-311
+  s_1002c4e88ae523::t_6f32ae07c57b92 216
+  s_1002c4e88ae523::t_6a5a3a544dd4b2 327-331,333-339
+  s_1002c4e88ae523::t_875ecfcbe39751 46-48,50,52-53
+  s_1002c4e88ae523::t_b80507b5084d36 49,332
+  s_1002c4e88ae523::t_684a3688f60c17 51
+packages/cli/src/telemetry/__tests__/telemetry.test.ts
+  s_1002c4e88ae523::t_ea020cdf64ff35 1722-1723,1737
+  s_1002c4e88ae523::t_e2aa7c87a62be0 1104-1105,1115-1116,1126-1127,1144-1146,1149-1156,1159-1166,1169-1184,1190-1191,1207-1208,1218-1219,1238-1239,1248-1249,1258-1259,1275-1278,1293-1294
+  s_1002c4e88ae523::t_9d3b912b7a8a1a 1102,1113,1124,1147,1157,1167,1188,1205,1216,1236,1246,1256,1291,1720
+  s_1002c4e88ae523::t_1113e8854b76da 1103,1114,1125,1148,1158,1168,1189,1206,1217,1237,1247,1257,1292,1721
+  s_1002c4e88ae523::t_93cd7b51ce7a17 1097
+  s_1002c4e88ae523::t_1d03c0c9da8d83 1760-1761
+packages/cli/src/events/maps/relay.event-map.ts
+  s_1002c4e88ae523::t_c59e52c018debf 519-520
+  s_1002c4e88ae523::t_b505e8f9d4efdc 517-518
+  s_1002c4e88ae523::t_3e135bf4d4ad52 60
+packages/cli/src/public-api/types.ts
+  s_1002c4e88ae523::t_c498f7d4b18aec 28-29
+packages/cli/src/public-api/public-api-controller.utils.ts
+  s_1002c4e88ae523::t_aea50324196dd5 10-14
+  s_1002c4e88ae523::t_b80507b5084d36 43
+  s_1002c4e88ae523::t_b371a0138a7c28 1-7,9,15-42,44-58
+  s_1002c4e88ae523::t_578d76ec0c7bbe 59-68
+  s_1002c4e88ae523::t_0327ac5a0f1aa8 8
+packages/cli/src/public-api/__tests__/public-api-controller.utils.test.ts
+  s_1002c4e88ae523::t_3f9145e8ff3ddc 1-7,9,11-21,26-28,30-59,61-63,65-67,69-71,73-75,77-106
+  s_1002c4e88ae523::t_b80507b5084d36 8,60,64,68,72,76
+  s_1002c4e88ae523::t_aea50324196dd5 29
+  s_1002c4e88ae523::t_2131e0a9f14426 22-25
+  s_1002c4e88ae523::t_6f4aed743fdba9 107-124
+  s_1002c4e88ae523::t_e3d7344139f6d7 10
+packages/cli/src/telemetry/__tests__/telemetry-shutdown.test.ts
+  s_1002c4e88ae523::t_adc251dd0ec61c 75-76,95-96
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d38477335ffe43df5b902fc3439cc6fb455c5d37",
+  "prompts": {},
+  "sessions": {
+    "s_1002c4e88ae523": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9fc1200c-7bf7-4cbf-886d-8c6a5681056f",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

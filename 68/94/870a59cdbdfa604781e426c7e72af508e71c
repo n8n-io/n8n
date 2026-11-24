@@ -1,0 +1,28 @@
+packages/workflow/src/constants.ts
+  s_f41dac1d19efae::t_1be4b78b43b23a 67-68
+packages/workflow/src/interfaces.ts
+  s_f41dac1d19efae::t_bd100a9e1260dd 4391-4392
+packages/workflow/test/telemetry-helpers.test.ts
+  s_f41dac1d19efae::t_d37f2564c54826 2078-2135
+  s_f41dac1d19efae::t_71ecf5a131d775 9-10
+packages/workflow/src/telemetry-helpers.ts
+  s_f41dac1d19efae::t_ba6df5467ba4f2 561-577
+  s_f41dac1d19efae::t_337beeff68de09 37
+  s_f41dac1d19efae::t_0526fbabbb2a94 24-25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6894870a59cdbdfa604781e426c7e72af508e71c",
+  "prompts": {},
+  "sessions": {
+    "s_f41dac1d19efae": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e0c2af37-97c5-4dd5-983a-175446e57b55",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

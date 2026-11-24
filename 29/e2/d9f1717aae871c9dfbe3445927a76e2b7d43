@@ -1,0 +1,72 @@
+packages/modules/ui-extensions/backend/package.json
+  s_85c95d3931e97d::t_0b472fcf695ec8 38-43,45-47,55-57
+  s_85c95d3931e97d::t_47e84d6fe21811 1-37,44,48-54,58-60
+packages/modules/ui-extensions/backend/src/__tests__/ui-extension-views.service.test.ts
+  s_85c95d3931e97d::t_160b41820e573e 1-39,41-183
+  s_85c95d3931e97d::t_a53e6ce3bcd85e 40
+packages/cli/src/modules/modules.manifest.ts
+  s_85c95d3931e97d::t_47e84d6fe21811 31
+packages/@n8n/api-types/src/push/ui-extensions.ts
+  s_85c95d3931e97d::t_df737f9b169528 1-10
+packages/modules/ui-extensions/backend/src/ui-extension-views.controller.ts
+  s_85c95d3931e97d::t_dbd7ab024c3541 1-19
+packages/modules/ui-extensions/backend/src/ui-extensions.module.ts
+  s_85c95d3931e97d::t_47e84d6fe21811 1-4
+  s_85c95d3931e97d::t_dbd7ab024c3541 5-11
+packages/cli/package.json
+  s_85c95d3931e97d::t_47e84d6fe21811 172
+packages/modules/ui-extensions/backend/src/__tests__/ui-extension-views.controller.test.ts
+  s_85c95d3931e97d::t_160b41820e573e 1-21,23-33
+  s_85c95d3931e97d::t_a53e6ce3bcd85e 22
+packages/modules/ui-extensions/backend/src/__tests__/ui-extensions.module.test.ts
+  s_85c95d3931e97d::t_47e84d6fe21811 2-8,20-21
+  s_85c95d3931e97d::t_160b41820e573e 1,9-19
+packages/modules/ui-extensions/backend/README.md
+  s_85c95d3931e97d::t_47e84d6fe21811 1-27
+packages/@n8n/api-types/src/index.ts
+  s_85c95d3931e97d::t_df737f9b169528 1093
+packages/@n8n/backend-common/src/modules/module-registry.ts
+  s_85c95d3931e97d::t_d00aef6e861e21 101
+packages/@n8n/api-types/src/schemas/mcp.schema.ts
+  s_85c95d3931e97d::t_df737f9b169528 42
+packages/modules/ui-extensions/backend/tsconfig.build.json
+  s_85c95d3931e97d::t_47e84d6fe21811 1-10
+packages/modules/ui-extensions/backend/tsconfig.json
+  s_85c95d3931e97d::t_47e84d6fe21811 1-17
+packages/modules/ui-extensions/backend/oxlint.config.mts
+  s_85c95d3931e97d::t_47e84d6fe21811 1-8
+packages/modules/ui-extensions/backend/src/index.ts
+  s_85c95d3931e97d::t_47e84d6fe21811 1
+  s_85c95d3931e97d::t_dbd7ab024c3541 2-7
+packages/@n8n/api-types/src/push/index.ts
+  s_85c95d3931e97d::t_df737f9b169528 10,29-30
+packages/@n8n/backend-common/src/modules/__tests__/module-registry.test.ts
+  s_85c95d3931e97d::t_d00aef6e861e21 184,235
+packages/@n8n/api-types/src/ui-extensions.ts
+  s_85c95d3931e97d::t_84f800f64593d7 1-103
+packages/@n8n/backend-common/src/modules/modules.config.ts
+  s_85c95d3931e97d::t_47e84d6fe21811 54
+packages/modules/ui-extensions/backend/vitest.config.ts
+  s_85c95d3931e97d::t_47e84d6fe21811 1-3
+packages/modules/ui-extensions/backend/src/ui-extension-views.service.ts
+  s_85c95d3931e97d::t_0b472fcf695ec8 78,85-88
+  s_85c95d3931e97d::t_dbd7ab024c3541 1-77,79-84,89-124
+pnpm-lock.yaml
+  s_85c95d3931e97d::t_2f84b1205f66da 5014-5016,6945-6947,7780,8872-9023,31380,36261-36266,44346,44350-44354,44379,44386-44396
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "29e2d9f1717aae871c9dfbe3445927a76e2b7d43",
+  "prompts": {},
+  "sessions": {
+    "s_85c95d3931e97d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5414b146-7e78-4316-b391-228e75b753d9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

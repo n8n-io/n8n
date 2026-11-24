@@ -1,0 +1,45 @@
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.security.test.ts
+  s_442fddecb5db3a::t_3c0e458a8cc5a8 906,908-910,912-913
+packages/cli/src/credentials/__tests__/credentials.service.test.ts
+  s_442fddecb5db3a::t_dc06c9ac39dba0 589-594
+  s_442fddecb5db3a::t_3c0e458a8cc5a8 588,595-608
+packages/cli/src/modules/mcp/__tests__/mcp-scopes.test.ts
+  s_442fddecb5db3a::t_dc06c9ac39dba0 314-319
+packages/@n8n/instance-ai/docs/tools.md
+  s_442fddecb5db3a::t_373b40c419a6ff 846-848,854-855
+packages/@n8n/api-types/src/schemas/credential-description.schema.ts
+  s_442fddecb5db3a::t_373b40c419a6ff 16-18,21
+packages/cli/src/modules/mcp/mcp.service.ts
+  s_442fddecb5db3a::t_373b40c419a6ff 4,406-408,412-413
+packages/cli/src/credentials/credentials.service.ts
+  s_442fddecb5db3a::t_373b40c419a6ff 1153
+packages/@n8n/instance-ai/src/tools/credentials.tool.ts
+  s_442fddecb5db3a::t_373b40c419a6ff 9,1096
+packages/@n8n/instance-ai/src/tools/__tests__/credentials.tool.test.ts
+  s_442fddecb5db3a::t_3c0e458a8cc5a8 2335-2342
+packages/@n8n/api-types/src/index.ts
+  s_442fddecb5db3a::t_373b40c419a6ff 211
+packages/cli/src/modules/mcp/tools/update-credential-description.tool.ts
+  s_442fddecb5db3a::t_373b40c419a6ff 1-5,23
+packages/cli/src/modules/mcp/__tests__/mcp-protected-resource.test.ts
+  s_442fddecb5db3a::t_3c0e458a8cc5a8 172,175-176,180-181
+  s_442fddecb5db3a::t_dc06c9ac39dba0 177-179
+packages/cli/src/modules/mcp/__tests__/update-credential-description.tool.test.ts
+  s_442fddecb5db3a::t_3c0e458a8cc5a8 15-22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1ed9a1207d9719a7de95b978f903eec58358d777",
+  "prompts": {},
+  "sessions": {
+    "s_442fddecb5db3a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1822e-a82a-7650-8aca-70edc33a562f",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

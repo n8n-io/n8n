@@ -1,0 +1,32 @@
+packages/frontend/editor-ui/src/app/composables/useDataSchema.test.ts
+  s_116a4363ad8589::t_26dfc4527d7ebf 10,17-18,1003-1066,1074-1089,1091-1114
+  s_116a4363ad8589::t_fb0dcc367c0749 1090
+  s_116a4363ad8589::t_deb5521203ece1 1067-1073
+  s_116a4363ad8589::t_feb9f222d075a4 1115
+packages/frontend/editor-ui/src/features/ndv/runData/components/VirtualSchema.test.ts
+  s_116a4363ad8589::t_fd23ee1b820152 10,30,227-251,771-829,831-864
+  s_116a4363ad8589::t_deb5521203ece1 830
+  s_116a4363ad8589::t_ba59dceadcc589 865
+packages/frontend/editor-ui/src/features/ndv/runData/components/VirtualSchema.vue
+  s_116a4363ad8589::t_32624e6631f13b 327-328,330,332-333,341-343
+  s_116a4363ad8589::t_636a229c12207c 123,183,187,276-277,281,285,288-291,314-317,319,322-326,329,331,334,340,344-345
+  s_116a4363ad8589::t_0ee01954c69e59 346
+packages/frontend/editor-ui/src/app/composables/useDataSchema.ts
+  s_116a4363ad8589::t_b6b4d0ce41f040 26,105-106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "08c7e8dcfa8b21923bd58870c95f20130c8e967a",
+  "prompts": {},
+  "sessions": {
+    "s_116a4363ad8589": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "274330d2-abeb-4c63-912f-7c982e587535",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

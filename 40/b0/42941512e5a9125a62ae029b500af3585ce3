@@ -1,0 +1,61 @@
+packages/cli/src/modules/agents/integrations/n8n-memory.ts
+  s_7a118b07ee147d::t_f6378dc9927f61 163-164
+packages/cli/src/modules/agents/repositories/agent-memory-entry.repository.ts
+  s_7a118b07ee147d::t_f6378dc9927f61 87-92
+packages/@n8n/agents/src/runtime/loop/runtime-context.ts
+  s_7a118b07ee147d::t_e2ea2236f83fd4 109-111,360-380,396
+  s_7a118b07ee147d::t_7d5d204784cfdc 59,98-99
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/recalls-corrected-current-state-without-treating-stale-values-as-current.json
+  s_7a118b07ee147d::t_007e8baa648205 68,75,113,168-169,171,452,631,641,759
+  s_7a118b07ee147d::t_6e74eb584cdbc2 12,55,57-62,65-67,70,74,77,79,95,116,130,165,167,170,172,175-178,180,184-185,187,189,201-203,212,312,314,317,319-320,326-327,398,449,451,454,458,461,463,476,486,600,623,628,632,644,681,683,763,841,845
+  s_7a118b07ee147d::t_2f28373611ec62 207,215-216,225,228,242,259,263-271,274,307,309-311,313,318,322,329,331,347,365,368,382,391,395-397,399-403,406,439,441-446,450,459,481,489-490,499,502,574,581,583-588,591-594,596,601,603,605,618,658,675,679-680,682,684-687,690,723,725-730,733-736,738,742-743,745,747,768,771-772,781,784,798,816,819,832-833,846-853,856,889,891-896,899-902,904,908-909,911,913
+packages/@n8n/agents/src/runtime/memory/episodic-memory.ts
+  s_7a118b07ee147d::t_c0820cef21b2c9 49-50,52-58,160,165-167,169,171,186,207-232
+  s_7a118b07ee147d::t_178cc4d4f10a9a 233-234
+packages/@n8n/agents/src/runtime/memory/episodic-memory-defaults.ts
+  s_7a118b07ee147d::t_c0820cef21b2c9 20-25
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/isolates-episodic-memory-between-resources-for-the-same-agent.json
+  s_7a118b07ee147d::t_007e8baa648205 62,65
+  s_7a118b07ee147d::t_6e74eb584cdbc2 12,55,57-61,66,168,170,172,214,249,365
+  s_7a118b07ee147d::t_d10c11d12c4464 67-68,70,74-75,77,79,95,113,130,165,167,169,171,175-178,180,184-185,187,189,210,213,226,245,248,261,280,283-284,296,310,353,355-360,363-364,366,368,372-373,375,377
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/recalls-exact-artifacts-across-threads-when-explicitly-asked-for-prior-context.json
+  s_7a118b07ee147d::t_007e8baa648205 68
+  s_7a118b07ee147d::t_6e74eb584cdbc2 12,55,57-62,65-67,70,74-75,77,79,95,168,170,172,180,187,212,251,352,354,357,364,403,529,532
+  s_7a118b07ee147d::t_be51621f72371a 113,130,165,167,169,171,175-178,184-185,189,215-216,228,247,250,263,277,294,298-306,309,342,344-349,353,355,361-362,366,387,390-391,417,435,438-440,453,462,466-474,477,510,512-517,520-523,525,530,534
+packages/@n8n/agents/src/runtime/memory/memory-store.ts
+  s_7a118b07ee147d::t_e2ea2236f83fd4 157-163
+packages/@n8n/agents/src/types/sdk/memory.ts
+  s_7a118b07ee147d::t_e2ea2236f83fd4 240-245
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_7a118b07ee147d::t_f19749529334a7 8651,8654
+  s_7a118b07ee147d::t_598ae384bf25dc 8246-8249,8274-8315
+  s_7a118b07ee147d::t_91ebd579ca1b46 8316-8317
+packages/@n8n/agents/src/runtime/__tests__/episodic-memory.test.ts
+  s_7a118b07ee147d::t_f19749529334a7 282,298,305-319,321-325,327-330,332-334,336-339,343-351,353,368,383-384,386,393,413
+  s_7a118b07ee147d::t_ec39daa2908e31 320,326,331
+  s_7a118b07ee147d::t_4f3cc3a95af825 1,335,340-342
+  s_7a118b07ee147d::t_09bf815d4440d0 385,394,401,420,454
+packages/cli/test/integration/database/repositories/agent-memory-entry.repository.test.ts
+  s_7a118b07ee147d::t_54fdf314552b7b 108-118
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/keeps-similar-customer-cases-distinct-during-cross-session-recall.json
+  s_7a118b07ee147d::t_6e74eb584cdbc2 12,55,57-62,65-68,70,74-75,77,79,95,111-114,117,129,141,144,158,163,168,203,205-210,213-216,218,225,252,303,352,354,357,359-360,366-367,405,469,476,478,527,529-530,532,536,539,541,667,676,680,685,706,710,771,795,839,847,883,886-887,899,931,962,968-970
+  s_7a118b07ee147d::t_8e2dd2c764a8d9 222-223,227,242,247,255-256,268,282,299,304-311,314,347,349-351,353,358,362,369,371,387,409,421,424,433,436-437,450,455,460,473-475,477,479-481,484,517,519-524,528,537,555-556,561,566,569-570,579,582,654,661,663-666,668,671-674,681,683,709,722,741,744,757,788,792-794,796-800,803,836,838,840-843,846,848-849,851,855-856,858,860,913,934-936,949-950,958,963-967,973,1006,1008-1013,1016-1019,1021,1025-1026,1028,1030
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_7a118b07ee147d::t_2c83722935643f 699
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "40b042941512e5a9125a62ae029b500af3585ce3",
+  "prompts": {},
+  "sessions": {
+    "s_7a118b07ee147d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5e0ec06a-e91b-466d-8b5a-495d558044e2",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

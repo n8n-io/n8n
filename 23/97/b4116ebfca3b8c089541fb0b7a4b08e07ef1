@@ -1,0 +1,9 @@
+packages/@n8n/expression-runtime/src/bridge/__tests__/bridge-item-data.test.ts
+  ai_agent 343-365
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2397b4116ebfca3b8c089541fb0b7a4b08e07ef1",
+  "prompts": {}
+}

@@ -1,0 +1,36 @@
+packages/@n8n/instance-ai/skills/app-builder/SKILL.md
+  s_41e65c2b02ffda::t_a32035b43ce185 110-111,115,120-121,124,127
+  s_41e65c2b02ffda::t_327eb75b23cb1a 112-114
+  s_41e65c2b02ffda::t_b885270fde6efe 65
+  s_41e65c2b02ffda::t_a59c09d26fbee0 116-119,122-123
+  s_41e65c2b02ffda::t_e159f629d67d15 62
+  s_41e65c2b02ffda::t_7580c17bb105ff 63-64
+  s_41e65c2b02ffda::t_fdfdd36e07de0f 125-126
+  s_41e65c2b02ffda::t_962b1cbab9366e 98-99
+packages/@n8n/instance-ai/src/skills/__tests__/skills.test.ts
+  s_41e65c2b02ffda::t_a1f115fe73f8ec 187
+  s_41e65c2b02ffda::t_2c8f85aa9faab2 191
+  s_41e65c2b02ffda::t_0e93b598af159d 188-190,195-196
+  s_41e65c2b02ffda::t_83d299fb96cda1 192-194
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1ff29c95cd35e3bde5d9f5c35ebea0efdc1d79e3",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_41e65c2b02ffda": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8157c004-9d27-4a7c-a0ef-f13f741554d3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

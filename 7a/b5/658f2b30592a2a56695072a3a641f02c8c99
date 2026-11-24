@@ -1,0 +1,46 @@
+packages/modules/promotions/frontend/README.md
+  s_f3039407b71bd6::t_c813ae45dd4a15 1-52
+packages/frontend/@n8n/frontend-vite-config/index.ts
+  s_f3039407b71bd6::t_c813ae45dd4a15 47
+OWNERS
+  s_f3039407b71bd6::t_96a1d4ec103a91 150
+packages/modules/promotions/frontend/tsconfig.json
+  s_f3039407b71bd6::t_c813ae45dd4a15 1-21
+packages/frontend/editor-ui/package.json
+  s_f3039407b71bd6::t_c813ae45dd4a15 63
+packages/modules/promotions/frontend/biome.jsonc
+  s_f3039407b71bd6::t_c813ae45dd4a15 1-4
+packages/modules/promotions/frontend/stylelint.config.mjs
+  s_f3039407b71bd6::t_c813ae45dd4a15 1-9
+packages/modules/promotions/frontend/src/__tests__/design-system-icons.test.ts
+  s_f3039407b71bd6::t_c813ae45dd4a15 1-24
+packages/modules/promotions/frontend/package.json
+  s_f3039407b71bd6::t_ff1561a1dc01dc 26,32-35,38,40,52,54,56-57,59,67
+  s_f3039407b71bd6::t_c813ae45dd4a15 1-25,27-31,36-37,39,41-51,53,55,58,60-66,68-71
+packages/modules/promotions/frontend/eslint.config.mjs
+  s_f3039407b71bd6::t_c813ae45dd4a15 1-4
+packages/modules/promotions/frontend/src/__tests__/setup.ts
+  s_f3039407b71bd6::t_c813ae45dd4a15 1-4
+packages/modules/promotions/frontend/vite.config.ts
+  s_f3039407b71bd6::t_c813ae45dd4a15 1-52
+pnpm-lock.yaml
+  s_f3039407b71bd6::t_9d909cad1cb6e0 6676-6678,8061-8196
+packages/frontend/editor-ui/tsconfig.json
+  s_f3039407b71bd6::t_c813ae45dd4a15 28-29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7ab5658f2b30592a2a56695072a3a641f02c8c99",
+  "prompts": {},
+  "sessions": {
+    "s_f3039407b71bd6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9d1d42e2-0ae1-44cd-9118-b0182793683b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

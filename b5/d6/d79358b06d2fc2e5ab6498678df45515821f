@@ -1,0 +1,24 @@
+packages/quality/policy/code-health/src/single-instance/verify-npm-install.ts
+  s_05b78bc80227e1::t_9788c636d75d46 31-36,38-49,51-54,373
+  s_05b78bc80227e1::t_45157064cc2b1d 37,50,407-409
+  s_05b78bc80227e1::t_abfa313bf0775d 30
+packages/quality/policy/code-health/src/single-instance/verify-npm-install.test.ts
+  s_05b78bc80227e1::t_9788c636d75d46 5,13-23
+  s_05b78bc80227e1::t_77ddcc5588ca07 24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b5d6d79358b06d2fc2e5ab6498678df45515821f",
+  "prompts": {},
+  "sessions": {
+    "s_05b78bc80227e1": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e8389c9a1ffenqwshS91TZY8sP",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

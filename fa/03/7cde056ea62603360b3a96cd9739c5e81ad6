@@ -1,0 +1,25 @@
+packages/@n8n/test/src/engine/workflow-data.ts
+  s_1a2087067112a6::t_e3453fd068898a 93,97
+packages/@n8n/test/src/execute-workflow.ts
+  s_1a2087067112a6::t_c41506bee6b731 129-133,138
+  s_1a2087067112a6::t_6db98f3a2a6521 134-135,137
+packages/@n8n/test/src/engine/node-type-check.ts
+  s_1a2087067112a6::t_244b4ee305d804 18,20
+  s_1a2087067112a6::t_f4b23cf1137528 28-29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "fa037cde056ea62603360b3a96cd9739c5e81ad6",
+  "prompts": {},
+  "sessions": {
+    "s_1a2087067112a6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6300bd3e-1cc9-4e36-ad69-be897cb35d93",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}
