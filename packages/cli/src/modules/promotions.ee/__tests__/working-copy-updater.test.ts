@@ -160,6 +160,12 @@ describe('WorkingCopyUpdater', () => {
 			expect(() => updater.validateSelection(selection())).not.toThrow();
 		});
 
+		it('rejects duplicate credential ids', () => {
+			expect(() => updater.validateSelection(selection({ credentialIds: ['c1', 'c1'] }))).toThrow(
+				'credentialIds contains duplicates',
+			);
+		});
+
 		it('rejects duplicate workflowIds', () => {
 			expect(() => updater.validateSelection(selection({ workflowIds: ['w1', 'w1'] }))).toThrow(
 				'workflowIds contains duplicates',
@@ -187,6 +193,15 @@ describe('WorkingCopyUpdater', () => {
 					selection({ workflowIds: ['w1', 'w2'] }),
 				),
 			).toThrow('The export does not match the selection (missing w2)');
+		});
+
+		it('rejects selected credentials the export did not write', () => {
+			expect(() =>
+				updater.assertStagingMatchesSelection(
+					makeManifest({ workflows: [] }),
+					selection({ credentialIds: ['c1'] }),
+				),
+			).toThrow('The export does not match the selection (missing c1)');
 		});
 
 		it('rejects extra workflows the export wrote', () => {

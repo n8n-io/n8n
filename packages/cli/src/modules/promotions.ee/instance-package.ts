@@ -24,18 +24,15 @@ export type InstancePackage = {
 export function instancePromotionExportRequest({
 	user,
 	projectIds,
-	canExportVariableValues,
 }: {
 	user: User;
 	projectIds: string[];
-	canExportVariableValues: boolean;
 }): ExportPackageRequest {
 	return {
 		user,
 		projectIds,
 		includeAgents: false,
 		includeVariableValues: true,
-		canExportVariableValues,
 		includeTags: true,
 		// Archived workflows travel too, so the target archives them instead of removing them.
 		includeArchived: true,
@@ -50,7 +47,14 @@ export async function exportInstancePackage(
 	packagesService: N8nPackagesService,
 	user: User,
 	projectIds: string[],
-	{ keepContent }: { keepContent?: (path: string) => boolean } = {},
+	{
+		keepContent,
+		credentialIds,
+	}: {
+		keepContent?: (path: string) => boolean;
+		/** Credentials of the exported projects to write although no workflow uses them. */
+		credentialIds?: string[];
+	} = {},
 ): Promise<InstancePackage> {
 	const writer = new HashingPackageWriter();
 	const contents = new Map<string, string>();
@@ -58,6 +62,7 @@ export async function exportInstancePackage(
 		{
 			user,
 			projectIds,
+			projectCredentialIds: credentialIds,
 			includeAgents: false,
 			includeArchived: true,
 			includeTags: true,
