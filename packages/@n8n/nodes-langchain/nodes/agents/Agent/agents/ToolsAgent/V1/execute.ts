@@ -5,6 +5,7 @@ import omit from 'lodash/omit';
 import { jsonParse, NodeOperationError } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
+import { createRunCancellation } from '@utils/agent-execution/createRunCancellation';
 import { getPromptInputByType } from '@utils/helpers';
 import { wrapLangChainParserError } from '@utils/output_parsers/langchainParserError';
 import { getOptionalOutputParser } from '@utils/output_parsers/N8nOutputParser';
@@ -104,14 +105,17 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 			);
 
 			// Invoke the executor with the given input and system message.
-			const response = await executorWithTracing.invoke(
-				{
-					input,
-					system_message: options.systemMessage ?? SYSTEM_MESSAGE,
-					formatting_instructions:
-						'IMPORTANT: For your response to user, you MUST use the `format_final_json_response` tool with your complete answer formatted according to the required schema. Do not attempt to format the JSON manually - always use this tool. Your response will be rejected if it is not properly formatted through this tool. Only use this tool once you are ready to provide your final answer.',
-				},
-				{ signal: this.getExecutionCancelSignal() },
+			const runCancellation = createRunCancellation(this.getExecutionCancelSignal());
+			const response = await runCancellation.abortOnFailure(
+				executorWithTracing.invoke(
+					{
+						input,
+						system_message: options.systemMessage ?? SYSTEM_MESSAGE,
+						formatting_instructions:
+							'IMPORTANT: For your response to user, you MUST use the `format_final_json_response` tool with your complete answer formatted according to the required schema. Do not attempt to format the JSON manually - always use this tool. Your response will be rejected if it is not properly formatted through this tool. Only use this tool once you are ready to provide your final answer.',
+					},
+					{ signal: runCancellation.signal },
+				),
 			);
 
 			// If memory and outputParser are connected, parse the output.

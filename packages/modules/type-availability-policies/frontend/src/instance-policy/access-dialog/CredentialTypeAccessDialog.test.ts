@@ -17,6 +17,8 @@ const mocks = vi.hoisted(() => ({
 	fetchInstancePolicy: vi.fn(),
 	fetchInstanceAccess: vi.fn(),
 	saveInstancePolicy: vi.fn(),
+	fetchNodeTypeUsage: vi.fn(),
+	fetchCredentialTypeUsage: vi.fn(),
 }));
 
 const toast = vi.hoisted(() => ({ showError: vi.fn(), showMessage: vi.fn() }));
@@ -127,6 +129,11 @@ async function setup(name: string, scopes: Scope[] = BOTH_SCOPES) {
 	return rendered;
 }
 
+const usageIn = (section: HTMLElement) =>
+	within(section)
+		.queryAllByTestId('type-access-item-usage')
+		.map((line) => line.textContent?.trim());
+
 const selectsIn = (section: HTMLElement) => within(section).getAllByTestId('type-access-select');
 
 describe('CredentialTypeAccessDialog', () => {
@@ -148,6 +155,12 @@ describe('CredentialTypeAccessDialog', () => {
 			version: 2,
 			warnings: [],
 		}));
+		mocks.fetchNodeTypeUsage.mockResolvedValue({
+			'n8n-nodes-base.airtable': { uses: 1, workflows: 1, activeWorkflows: 1, projects: 1 },
+		});
+		mocks.fetchCredentialTypeUsage.mockResolvedValue({
+			airtableTokenApi: { uses: 3, workflows: 2, activeWorkflows: 0, projects: 1 },
+		});
 		componentRegistry.register('node-type-icon', {
 			props: ['nodeType', 'size'],
 			template: '<span data-test-id="node-icon" :data-type="nodeType?.name" />',
@@ -181,6 +194,33 @@ describe('CredentialTypeAccessDialog', () => {
 			'data-value',
 			'allow',
 		);
+	});
+
+	it('shows the usage of the credential type and of each related type', async () => {
+		const { getByTestId } = await setup('airtableApi');
+
+		expect(usageIn(getByTestId('credential-type-access-credential'))).toEqual([
+			'Not used in any workflow',
+		]);
+		expect(usageIn(getByTestId('credential-type-access-related-node'))).toEqual([
+			'Used 1 time across 1 workflow · 1 active',
+			'Not used in any workflow',
+		]);
+		expect(usageIn(getByTestId('credential-type-access-related-credential'))).toEqual([
+			'Not used in any workflow',
+			'Used 3 times across 2 workflows · 0 active',
+		]);
+	});
+
+	it('shows no usage of node types to a user who cannot manage them', async () => {
+		const { getByTestId } = await setup('airtableApi', ['credentialTypePolicy:manage']);
+
+		expect(usageIn(getByTestId('credential-type-access-related-credential'))).toEqual([
+			'Not used in any workflow',
+			'Used 3 times across 2 workflows · 0 active',
+		]);
+		expect(usageIn(getByTestId('credential-type-access-related-node'))).toEqual([]);
+		expect(mocks.fetchNodeTypeUsage).not.toHaveBeenCalled();
 	});
 
 	it('lists the related node types and credential types with their access', async () => {

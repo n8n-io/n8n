@@ -1,21 +1,5 @@
-import type {
-	createDataSource,
-	ExecutionMode,
-	ExecutionSnapshot,
-	StartExecutionResult,
-	TriggerOutputs,
-	WorkflowGraph,
-} from '@n8n/engine';
-import {
-	AllowAllAdmittance,
-	createEngineRuntime,
-	createInMemoryWorkQueues,
-	noopExecutionResponseSender,
-	mintIdentityToken,
-	SharedSecretIdentityVerifier,
-	WorkflowExecution,
-	WorkflowStepExecution,
-} from '@n8n/engine';
+import type { ExecutionMode, TriggerOutputs, WorkflowGraph } from '@n8n/engine';
+import { WorkflowExecution, WorkflowStepExecution } from '@n8n/engine';
 import { UnrecognizedNodeTypeError } from 'n8n-core';
 import { ExecuteWorkflow } from 'n8n-nodes-base/dist/nodes/ExecuteWorkflow/ExecuteWorkflow/ExecuteWorkflow.node';
 import { ExecuteWorkflowTrigger } from 'n8n-nodes-base/dist/nodes/ExecuteWorkflow/ExecuteWorkflowTrigger/ExecuteWorkflowTrigger.node';
@@ -27,15 +11,11 @@ import { NoOp } from 'n8n-nodes-base/nodes/NoOp/NoOp.node';
 import { SplitOut } from 'n8n-nodes-base/nodes/Transform/SplitOut/SplitOut.node';
 import type { IDataObject, INodeType, INodeTypes, IVersionedNodeType } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
-import request from 'supertest';
-import { v7 as uuidv7 } from 'uuid';
-import { vi } from 'vitest';
 
-import { createEngineStepDataLoader } from '../engine-step-data-loader';
 import type { SubWorkflowResolver } from '../types';
-import { V1StepExecutor } from '../v1-step-executor';
+import { EngineTestRuntime } from '../testing';
 import { V1WorkflowConverter } from '../v1-workflow-converter';
-import { noSubWorkflows, testAdditionalDataFactory, v1Workflow } from './fixtures';
+import { testAdditionalDataFactory, v1Workflow } from './fixtures';
 
 const registry = new Map<string, INodeType | IVersionedNodeType>([
 	['n8n-nodes-base.set', new SetNode()],
@@ -61,9 +41,6 @@ export const realNodeTypes: INodeTypes = {
 };
 
 export const converter = new V1WorkflowConverter();
-
-const authSecret = 'a'.repeat(32);
-const caller = { cpId: 'cp-1', tenantId: 'tenant-1' };
 
 export type Assignment = { name: string; value: string | number; type: string };
 
@@ -338,112 +315,52 @@ export const selfLoopWorkflow = (...args: Parameters<typeof selfLoopV1Workflow>)
 export const setWorkflow = (...args: Parameters<typeof setV1Workflow>) =>
 	converter.convert(setV1Workflow(...args));
 
-type EngineDataSource = ReturnType<typeof createDataSource>;
+/** Engine v2 with the real nodes. Start it with a migrated Postgres database. */
+export const acceptanceRuntime = () =>
+	new EngineTestRuntime({
+		nodeTypes: realNodeTypes,
+		additionalDataFactory: testAdditionalDataFactory,
+	});
 
-export function makeRunWorkflow(getDataSource: () => EngineDataSource) {
+export function makeRunWorkflow(getRuntime: () => EngineTestRuntime) {
 	return async function runWorkflow(
 		graph: WorkflowGraph,
 		triggerOutputs: TriggerOutputs | null,
 		mode?: ExecutionMode,
 		{
-			resolveSubWorkflow = noSubWorkflows,
-			finishCount = 1,
+			resolveSubWorkflow,
 		}: {
 			/** Resolves the sub-workflows the run calls, as the control plane would. */
 			resolveSubWorkflow?: SubWorkflowResolver;
-			/** How many executions must finish first: a sub-execution finishes before its parent. */
-			finishCount?: number;
 		} = {},
 	) {
-		const dataSource = getDataSource();
-
-		let done!: () => void;
-		const finished = new Promise<void>((resolve) => (done = resolve));
-		let finishedCount = 0;
-
-		const runtime = createEngineRuntime({
-			dataSource,
-			admittance: new AllowAllAdmittance(),
-			identityVerifier: new SharedSecretIdentityVerifier(authSecret),
-			// Nothing here waits for a response; the fixture reads the run over the API.
-			responseSender: noopExecutionResponseSender,
-			queues: createInMemoryWorkQueues(),
-			// also how the test reaches the stores the runtime owns
-			externalDependencies: ({ executionStore, stepStore }) => {
-				const finishExecution = executionStore.finishExecution.bind(executionStore);
-				vi.spyOn(executionStore, 'finishExecution').mockImplementation(async (id, status) => {
-					const recorded = await finishExecution(id, status);
-					if (recorded && ++finishedCount === finishCount) done();
-					return recorded;
-				});
-
-				return {
-					v1StepExecutor: new V1StepExecutor({
-						nodeTypes: realNodeTypes,
-						additionalDataFactory: testAdditionalDataFactory,
-						loadStepData: createEngineStepDataLoader(executionStore, stepStore),
-						resolveSubWorkflow,
-					}),
-				};
-			},
+		const engine = getRuntime();
+		const start = await engine.startExecution({
+			workflowId: 'wf-m1',
+			graph,
+			triggerOutputs,
+			mode,
+			// the v1 mode of an unattended run is `trigger`
+			callerContext: { hostMode: mode === 'manual' ? 'manual' : 'trigger' },
+			resolveSubWorkflow,
 		});
-		runtime.start();
+		if (!start.started) {
+			throw new Error(
+				`The engine refused the execution: ${start.status} ${JSON.stringify(start.body)}`,
+			);
+		}
+		const { executionId } = start;
+		await engine.waitForFinish(executionId);
 
-		// over HTTP, because that is the engine's only boundary
-		const response = await request(runtime.app)
-			.post('/api/workflow-executions')
-			.set('Authorization', `Bearer ${mintIdentityToken(authSecret, caller)}`)
-			// The caller mints the execution id; the engine never mints one.
-			.send({
-				workflowId: 'wf-m1',
-				graph,
-				// Opaque to the engine, and no acceptance case reads it back.
-				workflow: {},
-				triggerOutputs,
-				mode,
-				executionId: uuidv7(),
-				// the v1 mode of an unattended run is `trigger`
-				callerContext: { hostMode: mode === 'manual' ? 'manual' : 'trigger' },
-			})
-			.expect(201);
-		const { executionId } = response.body as StartExecutionResult;
+		const { dataSource } = engine;
+		// A fire-and-forget sub-execution can finish after its parent.
+		const subExecutions = await dataSource
+			.getRepository(WorkflowExecution)
+			.find({ where: { parentExecutionId: executionId } });
+		for (const { id } of subExecutions) await engine.waitForFinish(id);
 
 		// the run as the control plane reads it, steps included
-		let view: ExecutionSnapshot;
-		try {
-			await Promise.race([
-				finished,
-				new Promise((_, reject) => {
-					setTimeout(() => {
-						// The step rows say where it stalled, so a failing case reads as one.
-						void dataSource
-							.getRepository(WorkflowStepExecution)
-							.find({ where: { executionId } })
-							.then((rows) => {
-								const states = rows.map(({ nodeId, status, error }) =>
-									[nodeId, status, error?.message].filter(Boolean).join(':'),
-								);
-								reject(
-									new Error(
-										`execution ${executionId} never recorded an outcome: the engine stalled without calling finishExecution. Steps: ${states.join(', ')}`,
-									),
-								);
-							})
-							.catch(reject);
-					}, 10_000).unref();
-				}),
-			]);
-			view = (
-				await request(runtime.app)
-					.get(`/api/workflow-executions/${executionId}`)
-					.query({ includeSteps: 'true' })
-					.set('Authorization', `Bearer ${mintIdentityToken(authSecret, caller)}`)
-					.expect(200)
-			).body as ExecutionSnapshot;
-		} finally {
-			await runtime.stop();
-		}
-
+		const view = await engine.getExecution(executionId);
 		const steps = await dataSource
 			.getRepository(WorkflowStepExecution)
 			.find({ where: { executionId } });

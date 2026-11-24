@@ -75,6 +75,16 @@ export class N8nSandboxFilesystem extends BaseFilesystem {
 		});
 	}
 
+	/** Upload many files in one request. The service creates missing parent directories. */
+	async writeFiles(
+		files: Array<{ path: string; content: FileContent }>,
+		options?: AbortableOptions,
+	): Promise<void> {
+		await this.withSandbox(options?.abortSignal, async (client, sandboxId) => {
+			await client.writeFiles(sandboxId, files);
+		});
+	}
+
 	async appendFile(path: string, content: FileContent, options?: AppendOptions): Promise<void> {
 		await this.withSandbox(options?.abortSignal, async (client, sandboxId) => {
 			await client.appendFile(sandboxId, path, content);

@@ -13,6 +13,8 @@
  *   1 – One or more public packages have never been published
  */
 
+import { relative } from 'node:path';
+
 import { writeGithubOutput } from './github-helpers.mjs';
 import { getMonorepoProjects } from './pnpm-utils.mjs';
 
@@ -24,7 +26,7 @@ const packages = await getMonorepoProjects();
 const newPackages = [];
 let registryCheckFailed = false;
 
-for (const { name, private: isPrivate } of packages) {
+for (const { name, path, private: isPrivate } of packages) {
 	if (isPrivate) continue;
 
 	// Scoped packages must be encoded: @n8n/foo → @n8n%2Ffoo
@@ -35,7 +37,7 @@ for (const { name, private: isPrivate } of packages) {
 		console.log(`Checking if ${name} exists...`);
 		const response = await fetch(url, { method: 'HEAD' });
 		if (response.status === 404) {
-			newPackages.push(name);
+			newPackages.push({ name, path: relative(process.cwd(), path) });
 		} else if (!response.ok && response.status !== 405) {
 			// 405 = Method Not Allowed for HEAD (some registries), not an error
 			registryCheckFailed = true;
@@ -50,7 +52,7 @@ for (const { name, private: isPrivate } of packages) {
 }
 
 const output = {
-	packages: newPackages.join(','),
+	packages: JSON.stringify(newPackages),
 };
 console.log(` -- Writing to github output: ${JSON.stringify(output)}`);
 writeGithubOutput(output);
@@ -75,15 +77,14 @@ OIDC Trusted Publishing until they have had an initial token-based publish:
 
 `);
 
-for (const name of newPackages) {
+for (const { name } of newPackages) {
 	console.log(
 		`::error::Package "${name}" has never been published to npm. An initial token-based publish is required before it can use OIDC Trusted Publishing.`,
 	);
 }
 
 console.log(`
-Publish each package manually. Then configure release-publish.yml as its
-trusted publisher before the next release.
+Run release-publish-new-package.yml for each package before the next release.
 
 `);
 

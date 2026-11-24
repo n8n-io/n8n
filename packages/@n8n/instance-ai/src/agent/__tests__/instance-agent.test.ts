@@ -658,6 +658,25 @@ describe('createInstanceAgent', () => {
 		);
 	});
 
+	it('passes the engine setup to the prompt so the workflow engine section renders', async () => {
+		const engineSetup = { engineV2Available: true, newWorkflowEngine: 'v2' };
+		await createInstanceAgent({
+			modelId: 'test-model',
+			context: {
+				runLabel: 'engine-prompt',
+				engineSetup,
+				browserUseState: undefined,
+				licenseHints: undefined,
+				localMcpServer: undefined,
+			},
+			orchestrationContext: { runId: 'engine-prompt' },
+			memoryConfig: {},
+			mcpManager: createMcpManagerStub(new Map()),
+		} as never);
+
+		expect(getSystemPrompt).toHaveBeenCalledWith(expect.objectContaining({ engineSetup }));
+	});
+
 	it.each([
 		{ startCloudBrowserTask: vi.fn(), cloudBrowserEnabled: true },
 		{ startCloudBrowserTask: undefined, cloudBrowserEnabled: false },

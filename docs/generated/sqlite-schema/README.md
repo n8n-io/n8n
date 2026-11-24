@@ -23,6 +23,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [agent_eval_run](agent_eval_run.md) | 14 |  | table |
 | [agent_execution](agent_execution.md) | 28 |  | table |
 | [agent_execution_message_links](agent_execution_message_links.md) | 5 |  | table |
+| [agent_execution_statistics](agent_execution_statistics.md) | 2 |  | table |
 | [agent_execution_threads](agent_execution_threads.md) | 20 |  | table |
 | [agent_file_grants](agent_file_grants.md) | 4 |  | table |
 | [agent_files](agent_files.md) | 10 |  | table |
@@ -56,7 +57,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [annotation_tag_entity](annotation_tag_entity.md) | 4 |  | table |
 | [app](app.md) | 9 |  | table |
 | [app_artifact](app_artifact.md) | 8 |  | table |
-| [app_version](app_version.md) | 12 |  | table |
+| [app_version](app_version.md) | 13 |  | table |
 | [auth_identity](auth_identity.md) | 5 |  | table |
 | [auth_provider_sync_history](auth_provider_sync_history.md) | 11 |  | table |
 | [binary_data](binary_data.md) | 9 |  | table |
@@ -291,9 +292,9 @@ erDiagram
 "agents_tags" |o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "ai_builder_temporary_workflow" }o--|| "instance_ai_threads" : "FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "ai_builder_temporary_workflow" |o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"ai_preference" }o--o| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"ai_preference" }o--o| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "ai_preference" }o--o| "user" : "FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"ai_preference" }o--o| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"ai_preference" }o--o| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "app" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "app" }o--o| "app_version" : "FOREIGN KEY (draftVersionId) REFERENCES app_version (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "app" }o--o| "app_version" : "FOREIGN KEY (publishedVersionId) REFERENCES app_version (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
@@ -706,6 +707,10 @@ erDiagram
   varchar_36_ messageId PK
   INTEGER position
 }
+"agent_execution_statistics" {
+  bigint count
+  datetime_3_ periodStart PK
+}
 "agent_execution_threads" {
   varchar_16_ accessScope
   varchar_36_ agentId FK
@@ -1050,6 +1055,7 @@ erDiagram
   datetime_3_ createdAt
   TEXT description
   varchar id PK
+  BOOLEAN isScaffold
   varchar_255_ label
   INTEGER sourceArtifactId FK
   datetime_3_ updatedAt

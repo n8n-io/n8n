@@ -1,4 +1,3 @@
-import type { FolderRepository } from '@n8n/db';
 import { AgentProjectDeletionRepository } from '@/modules/agents/repositories/agent-project-deletion.repository';
 import type {
 	AgentSessionOrigin,
@@ -18,6 +17,8 @@ import {
 	ServiceAccountRepository,
 	SettingsRepository,
 	UserRepository,
+	type AgentExecutionStatisticsRepository,
+	type FolderRepository,
 	type OperationContext,
 	type User,
 } from '@n8n/db';
@@ -1569,6 +1570,7 @@ describe('AgentExecutionRepository', () => {
 				mock<AgentsSettingsService>(),
 				mock<AgentSkillRefsService>(),
 				mock<UserRepository>(),
+				mock<AgentExecutionStatisticsRepository>(),
 			);
 			const resume = async (
 				user: User,
