@@ -159,10 +159,10 @@ export function assertCredentialUpdatesAllowed(
 	policy: CredentialConflictPolicy,
 	credentialPlans: Array<Pick<CredentialImportPlan, 'updates' | 'selected'>>,
 ): void {
-	// A selected rename writes under every policy, so it needs the scope too.
+	// A selected update writes under every policy, so it needs the scope too.
 	if (
 		plannedCredentialUpdates(policy, credentialPlans).size > 0 ||
-		credentialPlans.some(({ selected }) => selected.renames.length > 0)
+		credentialPlans.some(({ selected }) => selected.updates.length > 0)
 	) {
 		assertPackageImportApiKeyScopes(apiKeyScopes, ['credential:update']);
 	}

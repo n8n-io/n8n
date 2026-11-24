@@ -107,7 +107,7 @@ describe('workflow publication scopes', () => {
 	});
 });
 
-const noSelected = { creations: [], renames: [], ownedElsewhere: [], unchanged: [] };
+const noSelected = { creations: [], updates: [], ownedElsewhere: [], unchanged: [] };
 
 describe('assertCredentialUpdatesAllowed', () => {
 	const update: CredentialUpdateCandidate = {
@@ -145,7 +145,7 @@ describe('assertCredentialUpdatesAllowed', () => {
 	it.each(['fail', 'keep-existing', 'overwrite'] as const)(
 		'requires credential:update for a selected rename under %s',
 		(policy) => {
-			const plans = [{ updates: [], selected: { ...noSelected, renames: [update] } }];
+			const plans = [{ updates: [], selected: { ...noSelected, updates: [update] } }];
 
 			expect(() => assertCredentialUpdatesAllowed(['workflow:import'], policy, plans)).toThrow(
 				ForbiddenError,

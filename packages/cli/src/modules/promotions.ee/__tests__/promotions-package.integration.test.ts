@@ -3248,6 +3248,42 @@ describe('Promote a project selection — branch effects', () => {
 		expect(await row()).toMatchObject({ key: `credential:${credential.id}`, change: 'modified' });
 	});
 
+	it('lists a promoted credential whose exported values become complete or incomplete', async () => {
+		const remote = await createRemote();
+		const environments = await createInstanceEnvironments(remote.bareDir);
+		await service.clone(environments.promote.id, owner);
+		const { project } = await setupProjectWithWorkflows('Platform', []);
+		const credential = await saveCredential(
+			{
+				name: 'CRM key',
+				type: 'httpHeaderAuth',
+				data: { name: '={{ $vars.HEADER }}', value: '={{ $vars.CRM_TOKEN }}' },
+			},
+			{ project, role: 'credential:owner' },
+		);
+		// Every value is an expression, so the file holds all of them and says so.
+		await service.promoteProjectSelection(project.id, owner, {
+			credentialIds: [credential.id],
+			commitMessage: 'Promote credential',
+		});
+		const row = async () =>
+			(await changeService().getPreview(owner, project.id, 'promote')).resources.find(
+				({ type }) => type === 'credential',
+			);
+		expect(await row()).toBeUndefined();
+
+		// A secret joins the stored values. The file keeps the expressions and now says it is partial.
+		const repository = Container.get(CredentialsRepository);
+		const stored = await repository.findOneByOrFail({ id: credential.id });
+		Object.assign(stored, {
+			data: { name: '={{ $vars.HEADER }}', value: '={{ $vars.CRM_TOKEN }}', extra: 'secret' },
+		});
+		await encryptCredentialData(stored);
+		await repository.update({ id: credential.id }, { data: stored.data });
+
+		expect(await row()).toMatchObject({ key: `credential:${credential.id}`, change: 'modified' });
+	});
+
 	it('refuses to promote a credential that another project owns', async () => {
 		const remote = await createRemote();
 		const environments = await createInstanceEnvironments(remote.bareDir);

@@ -33,7 +33,7 @@ describe('the planned changes of selected credentials', () => {
 		const changes = plannedChanges(
 			planWith({
 				creations: [{ sourceId: 'c-new', name: 'Stripe', type: 'stripeApi' }],
-				renames: [
+				updates: [
 					{
 						sourceId: 'c-renamed',
 						targetId: 'c-renamed',

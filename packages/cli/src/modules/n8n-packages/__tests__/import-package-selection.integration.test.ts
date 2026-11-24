@@ -827,7 +827,14 @@ describe('importPackageSelectionFromDirectory with selected credentials', () => 
 	/** A package whose project folder holds the credential, as Promote writes it. */
 	async function importCredentials(
 		projectId: string,
-		credentials: Array<{ id: string; name: string; target?: string }>,
+		credentials: Array<{
+			id: string;
+			name: string;
+			target?: string;
+			data?: Record<string, string>;
+			dataIsComplete?: boolean;
+			description?: string;
+		}>,
 		selectedCredentialIds: string[],
 	) {
 		const dir = await mkdtemp(path.join(tmpdir(), 'n8n-import-selection-'));
@@ -836,9 +843,9 @@ describe('importPackageSelectionFromDirectory with selected credentials', () => 
 			projects: [
 				{ target: 'projects/p1', project: serializedProject({ id: projectId, name: 'p1' }) },
 			],
-			credentials: credentials.map(({ id, name, target }) => ({
+			credentials: credentials.map(({ id, name, target, ...payload }) => ({
 				target: target ?? `projects/p1/credentials/credential-${id}`,
-				credential: serializedCredential({ id, name }),
+				credential: serializedCredential({ id, name, ...payload }),
 			})),
 		});
 		return await Container.get(N8nPackagesService).importPackageSelectionFromDirectory(
@@ -898,6 +905,65 @@ describe('importPackageSelectionFromDirectory with selected credentials', () => 
 		const after = await read();
 		expect(after.row.name).toBe('New name');
 		expect(after.data).toEqual(before);
+	});
+
+	it('creates a credential with the expressions and visibility fields of the package', async () => {
+		const project = await createTeamProject('Alpha', owner);
+
+		const result = await importCredentials(
+			project.id,
+			[
+				{
+					id: 'CRED2',
+					name: 'GitHub',
+					data: { server: '={{ $vars.GITHUB_URL }}' },
+					dataIsComplete: false,
+				},
+			],
+			['CRED2'],
+		);
+
+		expect(result.credentials.incomplete).toEqual(['CRED2']);
+		const stored = await Container.get(CredentialsRepository).findOneByOrFail({ id: 'CRED2' });
+		const data = await new Credentials(
+			{ id: stored.id, name: stored.name },
+			stored.type,
+			stored.data,
+		).getData();
+		expect(data).toEqual({ server: '={{ $vars.GITHUB_URL }}' });
+	});
+
+	it('updates the name and the expressions of a credential and keeps its secrets', async () => {
+		const project = await createTeamProject('Alpha', owner);
+		const existing = await saveCredential(
+			githubCredentialPayload({
+				name: 'Old name',
+				data: { accessToken: 'stored-secret', server: 'https://api.github.com' },
+			}),
+			{ project, role: 'credential:owner' },
+		);
+
+		const result = await importCredentials(
+			project.id,
+			[
+				{
+					id: existing.id,
+					name: 'New name',
+					data: { server: '={{ $vars.GITHUB_URL }}' },
+				},
+			],
+			[existing.id],
+		);
+
+		expect(result.credentials.updated).toEqual([existing.id]);
+		const row = await Container.get(CredentialsRepository).findOneByOrFail({ id: existing.id });
+		expect(row.name).toBe('New name');
+		const data = await new Credentials(
+			{ id: row.id, name: row.name },
+			row.type,
+			row.data,
+		).getData();
+		expect(data).toEqual({ accessToken: 'stored-secret', server: '={{ $vars.GITHUB_URL }}' });
 	});
 
 	it('leaves a credential of another project as it is', async () => {
