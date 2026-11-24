@@ -11,7 +11,7 @@ parameters:
   - schema:
       type: string
     required: true
-    description: The ID of the workflow.
+    description: The ID of the workflow
     name: workflowId
     in: path
 requestBody:
@@ -25,10 +25,10 @@ requestBody:
             description: The specific version ID to publish. If not provided, the latest version is used.
           name:
             type: string
-            description: Optional name for the workflow version during publication.
+            description: Optional name for the workflow version during publication
           description:
             type: string
-            description: Optional description for the workflow version during publication.
+            description: Optional description for the workflow version during publication
 responses:
   '200':
     description: Operation successful.

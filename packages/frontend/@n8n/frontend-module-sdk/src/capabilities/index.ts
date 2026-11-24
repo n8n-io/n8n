@@ -1,3 +1,4 @@
+export { appsFeedbackFormUrl } from './appsFeedbackFormUrl';
 export { createAppAssistantHandoff } from './createAppAssistantHandoff';
 export { createSelfHealingChatHandoff } from './createSelfHealingChatHandoff';
 export { environmentsSettings } from './environmentsSettings';
