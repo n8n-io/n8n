@@ -46,14 +46,18 @@ const savedLoginSitesLabel = computed(() =>
 	),
 );
 
-// The site list as the admin edits it. It is saved with the Save button.
 const savedLoginSitesText = ref('');
-const showStoredSavedLoginSites = () => {
-	savedLoginSitesText.value = (store.settings?.cloudBrowserSavedLoginSites ?? []).join('\n');
-};
-watch(() => store.settings?.cloudBrowserSavedLoginSites, showStoredSavedLoginSites, {
-	immediate: true,
-});
+const storedSavedLoginSitesText = computed(() =>
+	(store.settings?.cloudBrowserSavedLoginSites ?? []).join('\n'),
+);
+// Watch the text, not the array, so a save of another setting keeps the unsaved sites.
+watch(
+	storedSavedLoginSitesText,
+	(storedText) => {
+		savedLoginSitesText.value = storedText;
+	},
+	{ immediate: true },
+);
 
 const enteredSavedLoginSites = computed(() =>
 	savedLoginSitesText.value.split(/[\s,]+/).filter(Boolean),
@@ -66,6 +70,8 @@ const hasUnsavedLoginSites = computed(
 
 async function handleSavedLoginsModeChange(value: InstanceAiSavedLoginsMode) {
 	if (!(await confirmClearingSavedLoginSites(value))) return;
+	// The server deletes the list on a mode change.
+	savedLoginSitesText.value = '';
 	store.setField('cloudBrowserSavedLoginsMode', value);
 	void store.save();
 }
@@ -98,21 +104,18 @@ async function confirmClearingSavedLoginSites(
 	return confirmed === MODAL_CONFIRM;
 }
 
-/** Why the server rejected the list. The typed list stays, so the admin can fix it. */
+/** Why the server rejected the list. */
 const savedLoginSitesError = ref<string>();
 watch(savedLoginSitesText, () => {
 	savedLoginSitesError.value = undefined;
 });
 
-/** Saves the list with the Save button, which shows only while the list has changes. */
 async function saveSavedLoginSites() {
 	store.setField('cloudBrowserSavedLoginSites', enteredSavedLoginSites.value);
 	if (await store.save()) return;
 	savedLoginSitesError.value = invalidSitesMessage(store.lastSaveError);
 }
 
-// Leaving with an unsaved list loses it without a word. With "All sites except", the admin would
-// think sites are blocked that are not.
 onBeforeRouteLeave(async (_to, _from, next) => {
 	if (!hasUnsavedLoginSites.value) {
 		next();
@@ -131,7 +134,7 @@ onBeforeRouteLeave(async (_to, _from, next) => {
 	);
 
 	if (response === MODAL_CONFIRM) {
-		// A failed save keeps the changes, so the admin stays on the page and sees why.
+		// Stay on the page when the save fails, so the admin sees the error.
 		await saveSavedLoginSites();
 		next(!hasUnsavedLoginSites.value);
 		return;
@@ -156,8 +159,7 @@ function invalidSitesMessage(error: unknown): string | undefined {
 </script>
 
 <template>
-	<!-- One root for the lint rule. The row group hides only a direct last row's divider, so the
-	rows here set their own. -->
+	<!-- The row group hides only a direct last row's divider, so these rows set their own. -->
 	<div :class="$style.rows">
 		<N8nSettingsRow
 			:class="{ [$style.dim]: disabled }"

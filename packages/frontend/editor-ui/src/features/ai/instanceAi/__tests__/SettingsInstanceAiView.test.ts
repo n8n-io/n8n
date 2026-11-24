@@ -1212,6 +1212,24 @@ describe('SettingsInstanceAiView', () => {
 				);
 			});
 
+			it('empties the box when the mode changes, also of sites that were not saved', async () => {
+				setSavedLogins({ cloudBrowserSavedLoginsMode: 'only' });
+				confirmMock.mockResolvedValue(MODAL_CONFIRM);
+				vi.spyOn(store, 'save').mockResolvedValue(true);
+				const { getByTestId } = renderComponent();
+				await flushPromises();
+				const sites = getByTestId('n8n-agent-saved-login-sites');
+				await fireEvent.update(sites, 'bank.com');
+
+				await selectOption(
+					getByTestId('n8n-agent-saved-logins-mode'),
+					'settings.n8nAgent.savedLogins.mode.except',
+				);
+				await flushPromises();
+
+				expect(sites).toHaveValue('');
+			});
+
 			it('changes the mode without asking when the list is empty', async () => {
 				setSavedLogins({ cloudBrowserSavedLoginsMode: 'only' });
 				const save = vi.spyOn(store, 'save').mockResolvedValue(true);
@@ -1422,6 +1440,37 @@ describe('SettingsInstanceAiView', () => {
 
 					expect(next).toHaveBeenCalledWith(false);
 				});
+			});
+
+			it('keeps the typed list when another setting is saved', async () => {
+				setSavedLogins({
+					cloudBrowserSavedLoginsMode: 'only',
+					cloudBrowserSavedLoginSites: ['github.com'],
+				});
+				const { getByTestId } = renderComponent();
+				await flushPromises();
+				const sites = getByTestId('n8n-agent-saved-login-sites');
+				await fireEvent.update(sites, 'github.com\ngitlab.com');
+
+				// A save of another setting replaces the settings, with the same stored sites.
+				store.settings = { ...store.settings!, cloudBrowserSavedLoginSites: ['github.com'] };
+				await flushPromises();
+
+				expect(sites).toHaveValue('github.com\ngitlab.com');
+			});
+
+			it('shows the stored list when the stored sites change', async () => {
+				setSavedLogins({
+					cloudBrowserSavedLoginsMode: 'only',
+					cloudBrowserSavedLoginSites: ['github.com'],
+				});
+				const { getByTestId } = renderComponent();
+				await flushPromises();
+
+				store.settings = { ...store.settings!, cloudBrowserSavedLoginSites: ['gitlab.com'] };
+				await flushPromises();
+
+				expect(getByTestId('n8n-agent-saved-login-sites')).toHaveValue('gitlab.com');
 			});
 
 			it('hides the error when the admin edits the list', async () => {
