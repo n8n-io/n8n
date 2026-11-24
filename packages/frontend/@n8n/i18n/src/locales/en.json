@@ -4439,6 +4439,7 @@
 	"settings.context.preferences.source.aia": "n8n assistant",
 	"settings.context.preferences.source.mcp": "MCP",
 	"settings.context.preferences.source.api": "API",
+	"settings.context.preferences.source.import": "Imported",
 	"settings.context.preferences.scope.user": "Just you · All projects",
 	"settings.context.preferences.scope.personalProject": "Just you · Personal project",
 	"settings.context.preferences.scope.otherUser": "{name} · All projects",
