@@ -58,8 +58,8 @@ export const CUSTOM_MCP_SERVERS_TELEMETRY = defineTelemetryEvents({
 			client_name: clientName,
 		}),
 	},
-	CUSTOM_MCP_SERVER_TOOL_CALLED: {
-		name: 'Custom MCP server tool called',
+	USER_CALLED_CUSTOM_MCP_SERVER_TOOL: {
+		name: 'User called custom MCP server tool',
 		description: 'An AI client called a tool of a custom MCP server. Fires once per call.',
 		properties: z.object({
 			server_id: serverId,
