@@ -938,7 +938,7 @@ export class PromotionsService {
 	private async classifyApplySelection(
 		inventory: PackageDirectoryInventory,
 		projectId: string,
-		{ workflowIds, folderIds }: ApplySelection,
+		{ workflowIds, folderIds, credentialIds }: ApplySelection,
 		movedWorkflowIds: ReadonlySet<string>,
 	): Promise<ImportSelection> {
 		const branchFolderIds = new Set(
@@ -950,6 +950,18 @@ export class PromotionsService {
 		if (invalidFolderIds.length > 0) {
 			throw new BadRequestError(
 				`The following folders are not in this project's branch: ${invalidFolderIds.join(', ')}`,
+			);
+		}
+
+		const branchCredentialIds = new Set(
+			inventory.credentials
+				.filter((credential) => credential.projectId === projectId)
+				.map(({ credential }) => credential.id),
+		);
+		const invalidCredentialIds = credentialIds.filter((id) => !branchCredentialIds.has(id));
+		if (invalidCredentialIds.length > 0) {
+			throw new BadRequestError(
+				`The following credentials are not selectable in this project: ${invalidCredentialIds.join(', ')}`,
 			);
 		}
 
@@ -987,6 +999,7 @@ export class PromotionsService {
 			selectedWorkflowIds,
 			deletedWorkflowIds,
 			selectedFolderIds: folderIds,
+			selectedCredentialIds: credentialIds,
 		};
 	}
 
@@ -1875,10 +1888,14 @@ async function pathExists(target: string): Promise<boolean> {
 }
 
 /** What a project Apply selects. The project details always come along. */
-type ApplySelection = { workflowIds: string[]; folderIds: string[] };
+type ApplySelection = { workflowIds: string[]; folderIds: string[]; credentialIds: string[] };
 
 function toApplySelection(request: ApplySelectionDto | ContinueApplySelectionDto): ApplySelection {
-	return { workflowIds: request.workflowIds ?? [], folderIds: request.folderIds ?? [] };
+	return {
+		workflowIds: request.workflowIds ?? [],
+		folderIds: request.folderIds ?? [],
+		credentialIds: request.credentialIds ?? [],
+	};
 }
 
 function promotedOutcome(

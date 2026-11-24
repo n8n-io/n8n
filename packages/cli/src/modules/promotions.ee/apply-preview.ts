@@ -70,6 +70,19 @@ export function plannedChanges(plan: PackageImportPlan): Map<string, PlannedChan
 				...(targetName !== name ? { previousName: targetName } : {}),
 			});
 		}
+		const { selected } = scope.credentialPlan;
+		for (const { sourceId } of selected.creations) {
+			changes.set(resourceKey('credential', sourceId), { change: 'added' });
+		}
+		for (const { id, previousName } of selected.renames) {
+			changes.set(resourceKey('credential', id), { change: 'modified', previousName });
+		}
+		for (const { id, name } of selected.unchanged) {
+			changes.set(resourceKey('credential', id), { change: 'unchanged', name });
+		}
+		for (const { id } of selected.ownedElsewhere) {
+			changes.set(resourceKey('credential', id), { change: 'unchanged' });
+		}
 		for (const { reason, sourceId } of scope.credentialPlan.failures) {
 			if (reason === 'access-required' || reason === 'incompatible-usage-scope') {
 				changes.set(resourceKey('credential', sourceId), { change: 'unchanged' });

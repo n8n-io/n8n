@@ -185,6 +185,7 @@ export function usePromotionOperation(
 		const expected = {
 			workflowIds: request.workflowIds,
 			folderIds: request.folderIds,
+			credentialIds: request.credentialIds,
 			expectedSource: { environmentId: source.environmentId, ...source.git },
 			expectedPreviewRevision: preview.value?.revision,
 		};

@@ -245,7 +245,12 @@ export class ImportOrchestrator {
 			options.apiKeyScopes,
 			plans.map((plan) => plan.removalPlan),
 		);
-		if (plans.some(({ credentialPlan }) => credentialPlan.stubIds.size > 0)) {
+		if (
+			plans.some(
+				({ credentialPlan }) =>
+					credentialPlan.stubIds.size > 0 || credentialPlan.selected.creations.length > 0,
+			)
+		) {
 			assertPackageImportApiKeyScopes(options.apiKeyScopes, ['credential:create']);
 		}
 		if (plans.length > 0) {
@@ -603,6 +608,8 @@ export class ImportOrchestrator {
 			credentialRequest,
 			credentialPlan,
 		);
+
+		await this.credentialImporter.applySelected(context, credentialPlan);
 
 		// After the workflow writes: a failed write then leaves the existing folders as they were.
 		// Before the removals, which plan with the folders in their new places.

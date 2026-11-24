@@ -93,6 +93,7 @@ describe('CredentialImporter', () => {
 		candidates: [],
 		updates: [],
 		forbidden: [],
+		selected: { creations: [], renames: [], ownedElsewhere: [], unchanged: [] },
 	});
 
 	const packageCredential = (
@@ -754,6 +755,7 @@ describe('CredentialImporter', () => {
 			candidates: updates,
 			updates,
 			forbidden: [],
+			selected: { creations: [], renames: [], ownedElsewhere: [], unchanged: [] },
 		});
 
 		const stored = (overrides: Partial<CredentialsEntity> = {}) =>
@@ -1142,6 +1144,96 @@ describe('CredentialImporter', () => {
 			expect(result.stubbed).toEqual(['missing-cred']);
 			expect(result.seeded).toEqual([]);
 			expect(result.incomplete).toEqual([]);
+		});
+	});
+
+	describe('selected credentials', () => {
+		const selectedRequest = (): CredentialBindingRequest => ({
+			...bindingRequest([]),
+			selectedCredentials: [{ id: 'cred-sel', name: 'Stripe', type: 'stripeApi' }],
+		});
+		const owned = (projectId: string, name: string) =>
+			mock<CredentialsEntity>({
+				id: 'cred-sel',
+				name,
+				type: 'stripeApi',
+				shared: [{ role: 'credential:owner', projectId }] as SharedCredentials[],
+			});
+
+		beforeEach(() => {
+			credentialsFinder.findCredentialIdsWithScopeForUser.mockResolvedValue(new Set(['cred-sel']));
+		});
+
+		it('plans a missing credential as a creation', async () => {
+			credentialsFinder.findById.mockResolvedValue(null);
+
+			const { selected } = await importer.plan(context, selectedRequest());
+
+			expect(selected).toEqual({
+				creations: [{ sourceId: 'cred-sel', name: 'Stripe', type: 'stripeApi' }],
+				renames: [],
+				ownedElsewhere: [],
+				unchanged: [],
+			});
+		});
+
+		it('creates it empty in the project', async () => {
+			credentialsFinder.findById.mockResolvedValue(null);
+			credentialsService.createStubCredential.mockResolvedValue(mock<CredentialsEntity>());
+			const plan = await importer.plan(context, selectedRequest());
+
+			await importer.applySelected(context, plan);
+
+			expect(credentialsService.createStubCredential).toHaveBeenCalledWith(
+				{ id: 'cred-sel', name: 'Stripe', type: 'stripeApi', projectId: targetProject.id },
+				user,
+			);
+		});
+
+		it('plans no write for a credential of the project that has the package name', async () => {
+			credentialsFinder.findById.mockResolvedValue(owned(targetProject.id, 'Stripe'));
+
+			const { selected } = await importer.plan(context, selectedRequest());
+
+			expect(selected.unchanged).toEqual([{ id: 'cred-sel', name: 'Stripe' }]);
+			expect(selected.creations).toEqual([]);
+			expect(selected.renames).toEqual([]);
+		});
+
+		it('plans a rename for a credential of the project with another name', async () => {
+			credentialsFinder.findById.mockResolvedValue(owned(targetProject.id, 'Old name'));
+
+			const { selected, forbidden } = await importer.plan(context, selectedRequest());
+
+			expect(selected.renames).toEqual([
+				{ id: 'cred-sel', name: 'Stripe', previousName: 'Old name' },
+			]);
+			expect(forbidden).toEqual([]);
+		});
+
+		it('plans nothing for a credential that another project owns', async () => {
+			credentialsFinder.findById.mockResolvedValue(owned('project-other', 'Old name'));
+
+			const { selected } = await importer.plan(context, selectedRequest());
+
+			expect(selected).toEqual({
+				creations: [],
+				renames: [],
+				ownedElsewhere: [{ id: 'cred-sel', name: 'Old name' }],
+				unchanged: [],
+			});
+		});
+
+		it('blocks a rename that the user cannot update', async () => {
+			credentialsFinder.findById.mockResolvedValue(owned(targetProject.id, 'Old name'));
+			credentialsFinder.findCredentialIdsWithScopeForUser.mockResolvedValue(new Set());
+
+			const { selected, forbidden } = await importer.plan(context, selectedRequest());
+
+			expect(selected.renames).toEqual([]);
+			expect(forbidden).toEqual([
+				{ sourceId: 'cred-sel', targetId: 'cred-sel', targetName: 'Old name', usedBy: [] },
+			]);
 		});
 	});
 });

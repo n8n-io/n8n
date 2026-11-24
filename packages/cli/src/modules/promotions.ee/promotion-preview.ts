@@ -36,9 +36,10 @@ export type PreviewSide = {
 	manifest: PackageManifest | null;
 	blobByPath: ReadonlyMap<string, string>;
 	/**
-	 * Promote only. Lists the credentials that the project holds in its own folder, even when no
-	 * workflow uses them, and compares them by name and type, never by value. The caller gives the
-	 * name and type of each credential file in `credentialFields`, by package path.
+	 * Lists the credentials that the project holds in its own folder, even when no workflow uses
+	 * them. With `credentialFields`, it compares them by name and type, never by value. The caller
+	 * gives the name and type of each credential file there, by package path. Apply sets it only
+	 * on the branch side, and the import plan decides what changes.
 	 */
 	ownedCredentials?: boolean;
 	/**
@@ -345,14 +346,11 @@ function applyOperationRules(
  * credential that the project owns and that the operation adds or changes. A credential outside the
  * folder of its owner project has no parent here, and only its owner project can select it.
  */
-function isSelectable(
-	{ type, change, parentKey }: PromotionResource,
-	direction: PromotionDirection,
-): boolean {
+function isSelectable({ type, change, parentKey }: PromotionResource): boolean {
 	if (type === 'workflow') return true;
 	const changed = change === 'added' || change === 'modified';
 	// `parentKey` is set only when the credential sits in the folder of a project or a folder in it.
-	if (type === 'credential') return direction === 'promote' && changed && parentKey !== null;
+	if (type === 'credential') return changed && parentKey !== null;
 	return (type === 'project' || type === 'folder') && changed;
 }
 
@@ -506,12 +504,7 @@ export function buildPreview({
 		const compared = compareResource(current, before, after);
 		const resource = operation ? applyOperationRules(compared, { ...operation, before }) : compared;
 		if (resource)
-			all.set(
-				key,
-				operation
-					? { ...resource, selectable: isSelectable(resource, operation.direction) }
-					: resource,
-			);
+			all.set(key, operation ? { ...resource, selectable: isSelectable(resource) } : resource);
 	}
 
 	const { links, missingWorkflows } = dependencyLinks(desired, desiredIndex, projectIds);

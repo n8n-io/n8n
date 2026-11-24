@@ -334,6 +334,12 @@ export interface ImportSelection {
 	selectedWorkflowIds: string[];
 	/** Source folder IDs from the selected project. Their parents come along. */
 	selectedFolderIds?: string[];
+	/**
+	 * Source credential IDs from the selected project. Promotion-only. Each one is created as an
+	 * empty credential of the project when it is missing, and renamed when it differs. No values
+	 * are written. A credential that another project owns is left as it is.
+	 */
+	selectedCredentialIds?: string[];
 	/** Destination workflow IDs to remove. */
 	deletedWorkflowIds?: string[];
 }

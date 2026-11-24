@@ -190,6 +190,7 @@ export class ApplyPreviewService {
 			files,
 			manifest: plan?.manifest ?? (await reader.readManifest()),
 			tagsDisabled: this.globalConfig.tags.disabled,
+			ownedCredentials: true,
 		});
 		return await this.finish(resources, dependencies, check);
 	}
@@ -396,7 +397,10 @@ function compareWithBranch({
 	files,
 	manifest,
 	tagsDisabled,
+	ownedCredentials = false,
 }: Pick<Parameters<typeof buildPreview>[0], 'operation' | 'projectIds'> & {
+	/** Lists the credentials that the branch holds in the project folder, with no workflow using them. */
+	ownedCredentials?: boolean;
 	instance: InstancePackage;
 	files: ReadonlyMap<string, Buffer>;
 	manifest: PreviewSide['manifest'];
@@ -415,6 +419,7 @@ function compareWithBranch({
 			blobByPath: new Map(instance.files.map(({ path, blobSha }) => [path, blobSha])),
 		},
 		desired: {
+			ownedCredentials,
 			manifest: manifest && tagsDisabled ? withoutTags(manifest) : manifest,
 			blobByPath: new Map(
 				[...files].map(([path, content]) => [
@@ -472,6 +477,10 @@ function classifyProjectWorkflows(
 		deletedWorkflowIds: ownedWorkflowIds.filter(
 			(id) => !selected.has(id) && !movedWorkflowIds.has(id),
 		),
+		// The preview lists every credential that the branch holds under the project.
+		selectedCredentialIds: inventory.credentials
+			.filter(({ projectId: owner }) => owner === projectId)
+			.map(({ credential }) => credential.id),
 	};
 }
 

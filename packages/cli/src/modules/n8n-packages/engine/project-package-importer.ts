@@ -1,7 +1,7 @@
 import type { SerializedCredential, SerializedVariable } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 
-import { UnexpectedError } from '@n8n/errors';
+import { BadRequestError, UnexpectedError } from '@n8n/errors';
 
 import {
 	credentialUpdateScope,
@@ -153,6 +153,7 @@ export class ProjectPackageImporter {
 		)
 			? await this.packageParser.getCredentials(reader)
 			: undefined;
+		const selectedCredentials = await this.readSelectedCredentials(reader, manifest, selection);
 		// Read once: Agents in any project can reference an instance skill.
 		const packageSkills =
 			!request.selection && manifest.agents?.length
@@ -181,6 +182,7 @@ export class ProjectPackageImporter {
 				{
 					bundledVariables,
 					packageCredentials,
+					selectedCredentials,
 					packageSkills,
 					credentialUpdateScope: updateScope,
 				},
@@ -341,6 +343,7 @@ export class ProjectPackageImporter {
 		importWide: {
 			bundledVariables: Map<string, SerializedVariable> | undefined;
 			packageCredentials: Map<string, SerializedCredential> | undefined;
+			selectedCredentials: SerializedCredential[];
 			packageSkills: SerializedSkill[];
 			credentialUpdateScope: CredentialUpdateScope;
 		},
@@ -386,6 +389,7 @@ export class ProjectPackageImporter {
 			personalRoute: request.credentialPersonalRoute,
 			packageCredentials: importWide.packageCredentials,
 			updateScope: importWide.credentialUpdateScope,
+			selectedCredentials: importWide.selectedCredentials,
 		};
 
 		const dataTableRequest: DataTableImportRequest = {
@@ -445,6 +449,38 @@ export class ProjectPackageImporter {
 			explicitDeleteWorkflowIds: deletesForProject(request.selection, project.id),
 			checkRootPlacement: true,
 		};
+	}
+
+	/**
+	 * The package files of the credentials that a selection names. A credential must sit in the
+	 * folder of the selected project in the package: Apply writes only what that project owns. The
+	 * selection came from a preview of this package, so anything else is a bad request.
+	 */
+	private async readSelectedCredentials(
+		reader: PackageReader,
+		manifest: PackageManifest,
+		selection: ImportSelection | undefined,
+	): Promise<SerializedCredential[]> {
+		const ids = new Set(selection?.selectedCredentialIds);
+		if (ids.size === 0) return [];
+
+		const projectTarget = manifest.projects?.find(
+			({ id }) => id === selection?.selectedProjectId,
+		)?.target;
+		const owned = new Set(
+			(manifest.credentials ?? [])
+				.filter(
+					({ target }) => projectTarget !== undefined && target.startsWith(`${projectTarget}/`),
+				)
+				.map(({ id }) => id),
+		);
+		const notSelectable = [...ids].filter((id) => !owned.has(id));
+		if (notSelectable.length > 0) {
+			throw new BadRequestError(
+				`The following credentials are not selectable in this project: ${notSelectable.join(', ')}`,
+			);
+		}
+		return [...(await this.packageParser.getCredentials(reader, ids)).values()];
 	}
 
 	private assertAdequatePermissions(
