@@ -92,10 +92,7 @@ export class ParentExecutionEndedError extends Error {
 	}
 }
 
-/**
- * Whether `error` says that execution `executionId` has no row. The retention
- * sweep deletes an ended execution, and a queue message can outlive it.
- */
+/** Whether `error` says that execution `executionId` has no row. */
 export function isMissingExecution(error: unknown, executionId: string): boolean {
 	return error instanceof ExecutionNotFoundError && error.executionId === executionId;
 }
