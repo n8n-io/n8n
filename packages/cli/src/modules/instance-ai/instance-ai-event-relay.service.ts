@@ -1,7 +1,6 @@
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { Service } from '@n8n/di';
-
-import { EventService } from '@/events/event.service';
 
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiMcpRegistryConnectionRepository } from './repositories/instance-ai-mcp-registry-connection.repository';
@@ -39,11 +38,14 @@ export class InstanceAiEventRelay {
 	private async handleUserDeleted(userId: string): Promise<void> {
 		try {
 			const deletedThreads = await this.memoryService.deleteThreadsForUser(userId);
-			const { affected } = await this.mcpRegistryConnectionRepository.delete({ userId });
+			const deletedMcpConnections = await this.mcpRegistryConnectionRepository.deleteByUserId(
+				userId,
+				{},
+			);
 			this.logger.debug('Cleaned up Instance AI data for deleted user', {
 				userId,
 				deletedThreads,
-				deletedMcpConnections: affected ?? 0,
+				deletedMcpConnections,
 			});
 		} catch (error) {
 			this.logger.error('Failed to clean up Instance AI data for deleted user', { userId, error });

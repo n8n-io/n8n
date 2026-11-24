@@ -170,6 +170,7 @@ describe('Expression — compatibility corpus', () => {
 				selectedCardId: 'c1',
 				dimensions: ['2026-08-24 10:30:00', 'DE'],
 				metrics: [10, 20],
+				pathId: 'a/b c',
 				jsonString: '{"k":[1,2,3]}',
 				key: 'dimensions',
 				zero: 0,
@@ -249,8 +250,6 @@ describe('Expression — compatibility corpus', () => {
 		$secrets: { vault: { token: 'placeholder' } },
 		$pageCount: 2,
 	};
-
-	const ENGINE = process.env.N8N_EXPRESSION_ENGINE ?? 'vm';
 
 	const evaluate = (expr: string) =>
 		expression.getParameterValue(
@@ -471,6 +470,11 @@ describe('Expression — compatibility corpus', () => {
 		['typeof', '={{ typeof $json.id }}', 'number'],
 		['instanceof', '={{ $json.metadata instanceof Object }}', true],
 		['nested template literal', '={{ `outer ${`inner ${$json.id}`}` }}', 'outer inner 42'],
+		[
+			'template literal with new lines keeps text next to interpolations',
+			'={{ `\nid_${$json.id}\n${$json.name}_${$json.id}\n` }}',
+			'\nid_42\nAda_42\n',
+		],
 		['optional call on missing member', '={{ $json.nope?.call?.() ?? "none" }}', 'none'],
 		['block comment inside interpolation', '={{ /* comment */ $json.id }}', 42],
 		['line comment inside interpolation', '={{ $json.id // trailing comment\n }}', 42],
@@ -820,6 +824,7 @@ describe('Expression — compatibility corpus', () => {
 		['$prevNode.outputIndex', '={{ $prevNode.outputIndex }}', 0],
 		['$execution.id', '={{ $execution.id }}', 'exec-1'],
 		['$workflow.active', '={{ $workflow.active }}', false],
+		['toPathSegment($json.pathId)', '={{ toPathSegment($json.pathId) }}', 'a%2Fb%20c'],
 		['`${$runIndex}:${$itemIndex}`', '={{ `${$runIndex}:${$itemIndex}` }}', '0:0'],
 		['$("Rates").first()?.json?.cardId', '={{ $("Rates").first()?.json?.cardId }}', 'c1'],
 		[
@@ -827,6 +832,7 @@ describe('Expression — compatibility corpus', () => {
 			'={{ $("Rates").isExecuted ? $("Rates").last().json.cardId : "not run" }}',
 			'c2',
 		],
+		['Number.format() with an invalid locale', "={{ (1234.5678).format('0,0.00') }}", undefined],
 	];
 
 	it.each(CASES)('%s', (_name, expr, want) => {
@@ -873,18 +879,10 @@ describe('Expression — compatibility corpus', () => {
 		['"}}"', '={{ "}}" }}'],
 		['"{{" + "}}"', '={{ "{{" + "}}" }}'],
 		['literal {{ }} braces? {{ 1 + 1', '=literal {{ }} braces? {{ 1 + 1 }}'],
+		['dot URL path segment', '={{ toPathSegment("..") }}'],
 	];
 
 	it.each(REJECTED)('rejects: %s', (_name, expr) => {
 		expect(() => evaluate(expr)).toThrow();
-	});
-
-	// ── known engine divergences ──────────────────────────────────────────
-	const ENGINE_DIVERGENCES: Array<[string, string, unknown, unknown]> = [
-		['Number.format()', "={{ (1234.5678).format('0,0.00') }}", undefined, '1234.5678'],
-	];
-
-	it.each(ENGINE_DIVERGENCES)('divergent: %s', (_name, expr, legacyWant, vmWant) => {
-		expect(evaluate(expr)).toStrictEqual(ENGINE === 'legacy' ? legacyWant : vmWant);
 	});
 });

@@ -73,7 +73,7 @@ const onLabelClick = (event: MouseEvent) => {
 							}"
 						>
 							{{ label }}
-							<N8nText v-if="required" color="primary" :bold="bold" :size="size">*</N8nText>
+							<N8nText v-if="required" color="danger" :bold="bold" :size="size">*</N8nText>
 						</N8nText>
 					</div>
 					<span

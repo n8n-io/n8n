@@ -1,5 +1,10 @@
 import type { Mock } from 'vitest';
 
+import {
+	agentToolNode,
+	agentToolWorkflow,
+	mcpToolWorkflow,
+} from '../../../__tests__/agent-tool-workflow';
 import { executeTool } from '../../../__tests__/tool-test-utils';
 import { successfulVerification } from '../../../__tests__/verification-fixtures';
 import type { WorkflowLoopStorage } from '../../../storage/workflow-loop-storage';
@@ -12,9 +17,18 @@ import type {
 } from '../../../types';
 import { createRemediation, MAX_VERIFY_ATTEMPTS } from '../../../workflow-loop/remediation';
 import { deriveWorkflowVerificationObligationFromOutcome } from '../../../workflow-loop/verification-obligation';
-import type { WorkflowBuildOutcome } from '../../../workflow-loop/workflow-loop-state';
+import type {
+	VerificationClaim,
+	WorkflowBuildOutcome,
+} from '../../../workflow-loop/workflow-loop-state';
 import { WorkflowTaskCoordinator } from '../../../workflow-loop/workflow-task-service';
+import { CREDENTIALLESS_AI_ROOT_SIMULATION_REASON } from '../../workflows/plan-verification-simulation';
+import { emitWorkflowVerificationMetric } from '../verification/verification-metric';
 import { createVerifyBuiltWorkflowTool } from '../verify-built-workflow.tool';
+
+vi.mock('../verification/verification-metric', () => ({
+	emitWorkflowVerificationMetric: vi.fn(async () => await Promise.resolve()),
+}));
 
 type VerifyBuiltWorkflowOutput = {
 	success: boolean;
@@ -51,6 +65,9 @@ type VerifyBuiltWorkflowOutput = {
 	nodesNotReached?: string[];
 	nodeErrors?: Array<{ nodeName: string; message?: string }>;
 	coverageNote?: string;
+	emptyOutputNote?: string;
+	liveStateNote?: string;
+	claim?: VerificationClaim;
 	data?: Record<string, unknown>;
 	remediation?: { category: string; shouldEdit: boolean; reason?: string };
 };
@@ -98,6 +115,9 @@ function createContext(overrides: Partial<OrchestrationContext> = {}): Orchestra
 			userId: 'user_1',
 			workflowService: {
 				getAsWorkflowJSON: vi.fn().mockResolvedValue({ nodes: [] }),
+				getWorkflowHead: vi
+					.fn()
+					.mockResolvedValue({ versionId: 'draft-v1', activeVersionId: null, updatedAt: 0 }),
 			} as unknown as InstanceAiWorkflowService,
 			executionService: {
 				run: vi.fn().mockResolvedValue({
@@ -116,7 +136,7 @@ function createContext(overrides: Partial<OrchestrationContext> = {}): Orchestra
 	} as OrchestrationContext;
 }
 
-describe('verify-built-workflow tool — remediation guard', () => {
+describe('workflow_builder_verify_built_workflow tool — remediation guard', () => {
 	it('routes mocked-credential verification failures to setup and records terminal verdict', async () => {
 		const context = createContext();
 		vi.mocked(context.workflowTaskService!.getBuildOutcome).mockResolvedValue({
@@ -288,11 +308,11 @@ describe('verify-built-workflow tool — remediation guard', () => {
 		expect(context.workflowTaskService!.reportVerificationVerdict).toHaveBeenCalled();
 		expect(trackTelemetry).toHaveBeenCalled();
 		expect(context.logger.warn).toHaveBeenCalledWith(
-			'verify-built-workflow: failed to persist terminal verdict',
+			'workflow_builder_verify_built_workflow: failed to persist terminal verdict',
 			expect.objectContaining({ error: 'storage unavailable' }),
 		);
 		expect(context.logger.warn).toHaveBeenCalledWith(
-			'verify-built-workflow: failed to emit remediation telemetry',
+			'workflow_builder_verify_built_workflow: failed to emit remediation telemetry',
 			expect.objectContaining({ error: 'telemetry unavailable' }),
 		);
 	});
@@ -454,14 +474,17 @@ type ExecutionRunResult = {
 	status: 'success' | 'error' | 'waiting' | 'running' | 'unknown';
 	data?: Record<string, unknown>;
 	executedNodeNames?: string[];
+	binaryOutputNodeNames?: string[];
 	lastNodeExecuted?: string;
 	nodeErrors?: Array<{ nodeName: string; message?: string }>;
+	workflowVersionId?: string | null;
 	error?: string;
 };
 
 interface VerifyToolContext {
 	workflowTaskService: WorkflowTaskService;
 	domainContext: {
+		permissions?: Partial<Record<'runWorkflow', 'require_approval' | 'always_allow' | 'blocked'>>;
 		executionService: {
 			run: Mock<
 				(
@@ -514,6 +537,7 @@ function makeContext(
 		workflowConnections?: Record<string, unknown>;
 		tableRows?: Record<string, Array<Record<string, unknown>>>;
 		availableCredentials?: Array<{ id: string; name: string; type: string }>;
+		workflowHead?: { versionId: string; activeVersionId: string | null };
 		/** Replayed parameter resolution per simulated node; nodes not listed make the replay throw. */
 		resolvedParameters?: Record<string, ResolvedNodeParametersResult>;
 	} = {},
@@ -580,7 +604,13 @@ function makeContext(
 					})) ??
 					[],
 				connections: overrides.workflowConnections ?? {},
+				settings: { executionOrder: 'v1' },
 			};
+		}),
+		getWorkflowHead: vi.fn().mockResolvedValue({
+			versionId: overrides.workflowHead?.versionId ?? 'draft-v1',
+			activeVersionId: overrides.workflowHead?.activeVersionId ?? null,
+			updatedAt: 0,
 		}),
 	} as unknown as InstanceAiWorkflowService;
 
@@ -655,7 +685,25 @@ async function runTool(
 	return await executeTool<VerifyBuiltWorkflowOutput>(tool, input);
 }
 
-describe('verify-built-workflow tool', () => {
+describe('workflow_builder_verify_built_workflow tool', () => {
+	it('finalizes verification when cancellation arrives after it starts', async () => {
+		const controller = new AbortController();
+		const ctx = createContext({ abortSignal: controller.signal });
+		vi.mocked(ctx.workflowTaskService!.startVerification).mockImplementationOnce(async () => {
+			controller.abort(new Error('Verification canceled.'));
+			return undefined;
+		});
+		const tool = createVerifyBuiltWorkflowTool(ctx);
+
+		await expect(executeTool(tool, { workItemId: 'wi_1', workflowId: 'wf_1' })).rejects.toThrow(
+			'Verification canceled.',
+		);
+		expect(ctx.domainContext?.executionService.run).not.toHaveBeenCalled();
+		expect(ctx.workflowTaskService!.updateBuildOutcome).toHaveBeenCalledWith('wi_1', {
+			verification: expect.objectContaining({ status: 'error', success: false, attempted: true }),
+		});
+	});
+
 	it('persists a success verification record onto the build outcome', async () => {
 		const { ctx, updateBuildOutcome } = makeContext(makeBuildOutcome(), {
 			executionId: 'exec-1',
@@ -682,6 +730,16 @@ describe('verify-built-workflow tool', () => {
 		});
 		expect(update.verification?.evidence?.nodesExecuted).toEqual(['Form Trigger', 'Insert Row']);
 		expect(typeof update.verification?.verifiedAt).toBe('string');
+		expect(emitWorkflowVerificationMetric).toHaveBeenCalledWith(
+			undefined,
+			expect.objectContaining({
+				source: 'verify',
+				workflowId: 'wf-1',
+				workItemId: 'wi-1',
+				executionId: 'exec-1',
+				claim: expect.objectContaining({ level: expect.any(String) }),
+			}),
+		);
 	});
 
 	it('increments the verify attempt count on the build outcome each run', async () => {
@@ -710,7 +768,7 @@ describe('verify-built-workflow tool', () => {
 			shouldEdit: false,
 			reason: 'verify_budget_exhausted',
 		});
-		expect(result.error).toContain('executions(action="run")');
+		expect(result.error).toContain('run_workflow');
 		expect(ctx.domainContext.executionService.run).not.toHaveBeenCalled();
 		expect(updateBuildOutcome).not.toHaveBeenCalled();
 	});
@@ -748,6 +806,55 @@ describe('verify-built-workflow tool', () => {
 			}),
 		]);
 		expect(result.nodePreviews?.[1].preview.length).toBeLessThanOrEqual(43);
+	});
+
+	it('flags a real node that returns only empty items', async () => {
+		const { ctx } = makeContext(
+			makeBuildOutcome(),
+			{
+				executionId: 'exec-empty',
+				status: 'success',
+				data: {
+					Trigger: wrapExecutionOutput([{}]),
+					'Tag Record': wrapExecutionOutput([{}]),
+				},
+			},
+			{
+				workflowConnections: {
+					Trigger: { main: [[{ node: 'Tag Record', type: 'main', index: 0 }]] },
+				},
+			},
+		);
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result.success).toBe(true);
+		expect(result.emptyOutputNote).toContain('Node(s) Tag Record returned only empty items');
+	});
+
+	it('does not flag a node that outputs a file', async () => {
+		const { ctx } = makeContext(
+			makeBuildOutcome(),
+			{
+				executionId: 'exec-file',
+				status: 'success',
+				data: {
+					Trigger: wrapExecutionOutput([{}]),
+					'Convert to File': wrapExecutionOutput([{}]),
+				},
+				binaryOutputNodeNames: ['Convert to File'],
+			},
+			{
+				workflowConnections: {
+					Trigger: { main: [[{ node: 'Convert to File', type: 'main', index: 0 }]] },
+				},
+			},
+		);
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result.success).toBe(true);
+		expect(result.emptyOutputNote).toBeUndefined();
 	});
 
 	it('returns full execution data when includeData is true', async () => {
@@ -1060,7 +1167,7 @@ describe('verify-built-workflow tool', () => {
 	});
 });
 
-describe('verify-built-workflow tool — node simulation plan', () => {
+describe('workflow_builder_verify_built_workflow tool — node simulation plan', () => {
 	const simulateVerdict = (nodeName: string, reason = 'Sends a message') => ({
 		nodeName,
 		verdict: 'simulate' as const,
@@ -1223,7 +1330,7 @@ describe('verify-built-workflow tool — node simulation plan', () => {
 			{ nodeName: 'Send Slack', reason: 'Sends a message to a Slack channel' },
 		]);
 		expect(result.simulationNote).toContain('Send Slack');
-		expect(result.simulationNote).toContain('no real external writes');
+		expect(result.simulationNote).toContain('with fixture output');
 	});
 
 	it('surfaces parameters of reached simulated nodes that resolved to empty or threw', async () => {
@@ -1288,7 +1395,7 @@ describe('verify-built-workflow tool — node simulation plan', () => {
 				issue: 'empty',
 			},
 		]);
-		expect(result.simulationNote).toContain('no real external writes');
+		expect(result.simulationNote).toContain('with fixture output');
 		expect(result.simulationNote).toContain('Send Slack: `channel`');
 		expect(result.simulationNote).toContain('`text` (={{ $json.query.caller }}) resolved to empty');
 	});
@@ -1310,7 +1417,7 @@ describe('verify-built-workflow tool — node simulation plan', () => {
 			{ nodeName: 'Send Slack', executionId: 'exec-sim', reason: 'replay-failed' },
 		]);
 		expect(result.skippedParameterCheckCount).toBe(1);
-		expect(result.simulationNote).toContain('no real external writes');
+		expect(result.simulationNote).toContain('with fixture output');
 		expect(result.simulationNote).toContain('Parameter check skipped');
 		expect(result.simulationNote).toContain('unchecked dynamic fields');
 		expect(ctx.logger.debug).toHaveBeenCalledWith(
@@ -1354,8 +1461,61 @@ describe('verify-built-workflow tool — node simulation plan', () => {
 			}),
 		);
 		expect(ctx.logger.warn).toHaveBeenCalledWith(
-			expect.stringContaining('no simulation plan'),
+			expect.stringContaining('preflight blocked verification'),
 			expect.objectContaining({ workItemId: 'wi-1' }),
+		);
+	});
+
+	it.each([
+		{ path: 'standard run', scripted: false },
+		{ path: 'scripted gate run', scripted: true },
+	])('does not execute the $path when an admin blocks running workflows', async ({ scripted }) => {
+		const { ctx, updateBuildOutcome } = makeContext(
+			makeBuildOutcome(
+				scripted
+					? {
+							nodeSimulationPlan: [
+								{
+									nodeName: 'Gate',
+									verdict: 'simulate',
+									reason: 'Waits for approval',
+									confidence: 'high',
+									source: 'deterministic',
+									haltBranch: true,
+								},
+							],
+							waitGateScripts: [
+								{
+									nodeName: 'Gate',
+									cutEdge: { source: 'Revise', target: 'Format' },
+									decisions: [{ label: 'approve', items: [{ approved: true }] }],
+								},
+							],
+						}
+					: {},
+			),
+			{ executionId: 'exec-blocked', status: 'success', data: {} },
+		);
+		ctx.domainContext.permissions = { runWorkflow: 'blocked' };
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result).toMatchObject({
+			success: false,
+			remediation: { category: 'blocked', shouldEdit: false, reason: 'permission_blocked' },
+		});
+		expect(ctx.domainContext.executionService.run).not.toHaveBeenCalled();
+		expect(ctx.workflowTaskService.startVerification).not.toHaveBeenCalled();
+		expect(updateBuildOutcome.mock.calls.at(-1)![1].verification).toMatchObject({
+			attempted: true,
+			success: false,
+			failureSignature: 'permission_blocked',
+		});
+		expect(ctx.workflowTaskService.reportVerificationVerdict).toHaveBeenCalledWith(
+			expect.objectContaining({
+				verdict: 'failed_terminal',
+				failureSignature: 'permission_blocked',
+			}),
 		);
 	});
 
@@ -1484,10 +1644,14 @@ describe('verify-built-workflow tool — node simulation plan', () => {
 		]);
 		expect(result.coverageNote).toContain('UNVERIFIED');
 		expect(result.coverageNote).toContain('Look Up Order');
-		expect(result.coverageNote).toContain('Seed matching test data');
+		expect(result.coverageNote).toContain('Agent tool calls');
+		expect(result.coverageNote).toContain('If a live lookup or query returned no matching records');
+		expect(result.coverageNote).toContain(
+			'seed matching test data only when the user has authorized that write',
+		);
 	});
 
-	it('flags an items-dropped collapse with $input.all() guidance when a collection ran dry', async () => {
+	it('reports incomplete coverage without assuming why a collection stopped', async () => {
 		// INS-662: HTTP split a top-level array into N items, a Code node read $input.first() and emitted zero, downstream was skipped.
 		const { ctx } = makeContext(
 			makeBuildOutcome({
@@ -1514,10 +1678,11 @@ describe('verify-built-workflow tool — node simulation plan', () => {
 
 		expect(result.success).toBe(true);
 		expect(result.nodesNotReached).toEqual(['Post to Slack']);
-		expect(result.coverageNote).toContain('$input.all()');
-		expect(result.coverageNote).toContain('$input.first()');
-		// Must NOT misattribute the dead-end to an empty lookup.
-		expect(result.coverageNote).not.toContain('Seed matching test data');
+		expect(result.coverageNote).toContain('input items');
+		expect(result.coverageNote).toContain('If a Code node dropped a collection');
+		expect(result.coverageNote).toContain('$input.first().json');
+		expect(result.coverageNote).toContain('$input.all().map(i => i.json)');
+		expect(result.coverageNote).toContain('Do not report unreached nodes as verified');
 	});
 
 	it('persists unreached nodes in the verification evidence', async () => {
@@ -1573,7 +1738,7 @@ describe('verify-built-workflow tool — node simulation plan', () => {
 	});
 });
 
-describe('verify-built-workflow tool — stale mocked-credential plan', () => {
+describe('workflow_builder_verify_built_workflow tool — stale mocked-credential plan', () => {
 	const mockedCredentialVerdict = {
 		nodeName: 'Notion',
 		verdict: 'simulate' as const,
@@ -1650,7 +1815,7 @@ describe('verify-built-workflow tool — stale mocked-credential plan', () => {
 		});
 	});
 
-	it('proceeds with the stored plan when the live workflow cannot be loaded', async () => {
+	it('blocks when credential reconciliation cannot load the live workflow', async () => {
 		const { ctx } = makeContext(staleOutcome(), {
 			executionId: 'exec-1',
 			status: 'success',
@@ -1662,19 +1827,18 @@ describe('verify-built-workflow tool — stale mocked-credential plan', () => {
 
 		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
 
-		expect(result.success).toBe(true);
+		expect(result.success).toBe(false);
+		expect(result.remediation?.reason).toBe('verification_graph_unavailable');
 		const run = vi.mocked(ctx.domainContext.executionService.run);
-		expect(run.mock.calls[0][2]).toMatchObject({
-			verificationPinData: { Notion: [{ page: 'mock' }] },
-		});
+		expect(run).not.toHaveBeenCalled();
 		expect(ctx.logger.warn).toHaveBeenCalledWith(
-			'verify-built-workflow: could not reconcile mocked-credential plan',
+			'workflow_builder_verify_built_workflow: could not reconcile mocked-credential plan',
 			expect.objectContaining({ workItemId: 'wi-1' }),
 		);
 	});
 });
 
-describe('verify-built-workflow tool — trigger selection', () => {
+describe('workflow_builder_verify_built_workflow tool — trigger selection', () => {
 	type TriggerInput = { workItemId: string; workflowId: string; triggerNodeName?: string };
 
 	const triggerNodes = [
@@ -1815,7 +1979,7 @@ describe('verify-built-workflow tool — trigger selection', () => {
 		);
 	});
 
-	it('preserves verification state when the workflow graph cannot be loaded', async () => {
+	it('records a blocked result and preserves prior trigger passes when the graph cannot be loaded', async () => {
 		const outcome = makeTrackedOutcome({ verificationProgress: passedA, verifyAttempts: 1 });
 		const { ctx, getOutcome } = makeContext(outcome, successfulA, { workflowConnections });
 		vi.mocked(ctx.domainContext.workflowService!.getAsWorkflowJSON).mockRejectedValueOnce(
@@ -1825,7 +1989,11 @@ describe('verify-built-workflow tool — trigger selection', () => {
 		const result = await runTool(ctx, triggerAInput);
 
 		expect(result.success).toBe(false);
-		expect(getOutcome()).toEqual(outcome);
+		expect(getOutcome().verificationProgress).toEqual(outcome.verificationProgress);
+		expect(getOutcome().verification).toMatchObject({
+			success: false,
+			failureSignature: 'verification_graph_unavailable',
+		});
 		expect(ctx.domainContext.executionService.run).not.toHaveBeenCalled();
 	});
 
@@ -1938,5 +2106,450 @@ describe('verify-built-workflow tool — trigger selection', () => {
 
 		const run = vi.mocked(ctx.domainContext.executionService.run);
 		expect(run.mock.calls[0][2]).toMatchObject({ triggerNodeName: undefined });
+	});
+});
+
+describe('workflow_builder_verify_built_workflow tool — attached tools', () => {
+	const verdict = (nodeName: string, simulated = false) => ({
+		nodeName,
+		verdict: simulated ? ('simulate' as const) : ('execute' as const),
+		reason: simulated ? 'Writes data' : 'Reads data',
+		confidence: 'high' as const,
+		source: 'deterministic' as const,
+	});
+	const plan = [verdict('Agent'), verdict('Write', true)];
+
+	it('blocks MCP tool simulation before execution without a named trigger', async () => {
+		const { ctx, getOutcome } = makeContext(
+			makeBuildOutcome({ nodeSimulationPlan: [verdict('Write', true)] }),
+			{ status: 'success' },
+		);
+		vi.mocked(ctx.domainContext.workflowService!.getAsWorkflowJSON).mockResolvedValue(
+			mcpToolWorkflow(),
+		);
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result).toMatchObject({
+			success: false,
+			remediation: { category: 'blocked', reason: 'unsupported_tool_simulation' },
+			nodesNotReached: expect.arrayContaining(['MCP Server', 'Write']),
+		});
+		expect(result.error).toContain('Write (called by MCP Server)');
+		expect(ctx.domainContext.executionService.run).not.toHaveBeenCalled();
+		expect(ctx.workflowTaskService.startVerification).not.toHaveBeenCalled();
+		expect(getOutcome().verification).toMatchObject({
+			success: false,
+			failureSignature: 'unsupported_tool_simulation',
+		});
+	});
+
+	it('records a blocked result when the saved pin summary cannot be loaded', async () => {
+		const { ctx, getOutcome } = makeContext(makeBuildOutcome({ nodeSimulationPlan: plan }), {
+			status: 'success',
+		});
+		const workflowService = ctx.domainContext.workflowService!;
+		vi.mocked(workflowService.getAsWorkflowJSON).mockResolvedValue(agentToolWorkflow());
+		workflowService.getPinnedDataSummary = vi
+			.fn<NonNullable<InstanceAiWorkflowService['getPinnedDataSummary']>>()
+			.mockRejectedValue(new Error('Pin summary unavailable'));
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result).toMatchObject({
+			success: false,
+			status: 'unknown',
+			resolvedWorkItemId: 'wi-1',
+			remediation: {
+				category: 'blocked',
+				shouldEdit: false,
+				reason: 'verification_pin_summary_unavailable',
+			},
+		});
+		expect(result.error).toContain('Retry verification');
+		expect(result.executionId).toBeUndefined();
+		expect(ctx.domainContext.executionService.run).not.toHaveBeenCalled();
+		expect(ctx.workflowTaskService.startVerification).not.toHaveBeenCalled();
+		expect(getOutcome().verification).toMatchObject({
+			attempted: true,
+			success: false,
+			status: 'unknown',
+			failureSignature: 'verification_pin_summary_unavailable',
+			evidence: { errorMessage: result.error },
+		});
+		expect(ctx.workflowTaskService.reportVerificationVerdict).toHaveBeenCalledWith(
+			expect.objectContaining({
+				verdict: 'failed_terminal',
+				failureSignature: 'verification_pin_summary_unavailable',
+			}),
+		);
+	});
+
+	it.each([
+		{ scripted: false, incomplete: false },
+		{ scripted: true, incomplete: false },
+		{ scripted: false, incomplete: true },
+	])(
+		'blocks after restoring model credentials, scripted=$scripted, incomplete=$incomplete',
+		async ({ scripted, incomplete }) => {
+			const workflow = agentToolWorkflow(2);
+			const reason = incomplete ? 'incomplete_tool_simulation_plan' : 'unsupported_tool_simulation';
+			const buildOutcome = makeBuildOutcome({
+				mockedNodeNames: ['Model'],
+				mockedCredentialsByNode: { Model: ['openAiApi'] },
+				simulationFixtures: { Agent: [{ output: 'Fixture' }] },
+				nodeSimulationPlan: [
+					{ ...verdict('Agent', true), reason: CREDENTIALLESS_AI_ROOT_SIMULATION_REASON },
+					...(incomplete ? [] : [verdict('Write', true)]),
+					...(scripted ? [{ ...verdict('Gate', true), haltBranch: true }] : []),
+				],
+				waitGateScripts: scripted
+					? [
+							{
+								nodeName: 'Gate',
+								cutEdge: { source: 'Revise', target: 'Format' },
+								decisions: [{ label: 'approve', items: [{ approved: true }] }],
+							},
+						]
+					: undefined,
+			});
+			const { ctx, getOutcome } = makeContext(
+				buildOutcome,
+				{ status: 'success' },
+				{
+					availableCredentials: [
+						{ id: 'model-credential', name: 'Model account', type: 'openAiApi' },
+					],
+				},
+			);
+			vi.mocked(ctx.domainContext.workflowService!.getAsWorkflowJSON).mockResolvedValue(workflow);
+			const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+			expect(result).toMatchObject({
+				success: false,
+				remediation: {
+					category: 'blocked',
+					shouldEdit: false,
+					reason,
+				},
+			});
+			expect(result.error).toContain('Write');
+			expect(result.executionId).toBeUndefined();
+			expect(result.simulatedNodes).toBeUndefined();
+			expect(result.nodesNotReached).toContain('Write');
+			expect(ctx.domainContext.executionService.run).not.toHaveBeenCalled();
+			expect(getOutcome().nodeSimulationPlan).toContainEqual(
+				expect.objectContaining({ nodeName: 'Agent', verdict: 'execute' }),
+			);
+			expect(getOutcome().verification).toMatchObject({
+				success: false,
+				failureSignature: reason,
+				evidence: { nodesNotReached: expect.arrayContaining(['Write']) },
+			});
+			expect(ctx.workflowTaskService.reportVerificationVerdict).toHaveBeenCalledWith(
+				expect.objectContaining({
+					verdict: 'failed_terminal',
+					failureSignature: reason,
+				}),
+			);
+		},
+	);
+
+	it.each([0, 1])(
+		'keeps tools beneath a saved pinned Agent v2 unverified with %i pinned items',
+		async (itemCount) => {
+			const workflow = agentToolWorkflow(2);
+			const { ctx, getOutcome } = makeContext(makeBuildOutcome({ nodeSimulationPlan: plan }), {
+				executionId: 'exec-parent',
+				status: 'success',
+				executedNodeNames: ['Trigger', 'Agent'],
+			});
+			const workflowService = ctx.domainContext.workflowService!;
+			vi.mocked(workflowService.getAsWorkflowJSON).mockResolvedValue(workflow);
+			workflowService.getPinnedDataSummary = vi
+				.fn<NonNullable<InstanceAiWorkflowService['getPinnedDataSummary']>>()
+				.mockResolvedValue([{ nodeName: 'Agent', itemCount }]);
+
+			const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+			expect(result.success).toBe(true);
+			expect(result.executionId).toBe('exec-parent');
+			expect(result.nodesNotReached).toEqual(['Write']);
+			expect(result.simulatedNodes).toBeUndefined();
+			expect(ctx.domainContext.executionService.run).toHaveBeenCalledWith(
+				'wf-1',
+				undefined,
+				expect.objectContaining({ verificationPinData: { Write: [{}] } }),
+			);
+			expect(getOutcome().verification).toMatchObject({
+				success: true,
+				evidence: { nodesNotReached: ['Write'] },
+			});
+		},
+	);
+
+	it('rejects a non-trigger with a simulated tool without recording a verification failure', async () => {
+		const workflow = agentToolWorkflow(2);
+		const { ctx, getOutcome, updateBuildOutcome } = makeContext(
+			makeBuildOutcome({ nodeSimulationPlan: plan }),
+			{ status: 'success' },
+		);
+		vi.mocked(ctx.domainContext.workflowService!.getAsWorkflowJSON).mockResolvedValue(workflow);
+
+		const result = await runTool(ctx, {
+			workItemId: 'wi-1',
+			workflowId: 'wf-1',
+			triggerNodeName: 'Agent',
+		});
+
+		expect(result.success).toBe(false);
+		expect(result.error).toContain('Could not find trigger "Agent" in this workflow.');
+		expect(result.remediation).toBeUndefined();
+		expect(result.executionId).toBeUndefined();
+		expect(ctx.domainContext.executionService.run).not.toHaveBeenCalled();
+		expect(ctx.workflowTaskService.startVerification).not.toHaveBeenCalled();
+		expect(ctx.workflowTaskService.reportVerificationVerdict).not.toHaveBeenCalled();
+		expect(updateBuildOutcome).not.toHaveBeenCalled();
+		expect(getOutcome().verification).toBeUndefined();
+	});
+
+	it('keeps tools beneath a simulated parent unverified', async () => {
+		const workflow = agentToolWorkflow(2, 3);
+		const { ctx } = makeContext(
+			makeBuildOutcome({
+				nodeSimulationPlan: [verdict('Agent', true), verdict('Nested'), verdict('Write', true)],
+			}),
+			{ executionId: 'exec-parent', status: 'success', executedNodeNames: ['Trigger', 'Agent'] },
+		);
+		vi.mocked(ctx.domainContext.workflowService!.getAsWorkflowJSON).mockResolvedValue(workflow);
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+		expect(result.success).toBe(true);
+		expect(result.nodesNotReached).toEqual(['Nested', 'Write']);
+		expect(result.simulatedNodes?.some((node) => node.nodeName === 'Write')).not.toBe(true);
+		expect(result.coverageNote).toContain('Agent tool calls, and simulated parents');
+		expect(ctx.domainContext.executionService.run).toHaveBeenCalledTimes(1);
+	});
+
+	it('includes tools in scoped coverage and aggregates successful trigger passes', async () => {
+		const workflow = agentToolWorkflow();
+		workflow.nodes.push(
+			agentToolNode('Other Trigger', 'n8n-nodes-base.manualTrigger'),
+			agentToolNode('Other Agent', '@n8n/n8n-nodes-langchain.agent', { typeVersion: 3.1 }),
+			agentToolNode('Other Write', 'n8n-nodes-base.slackTool'),
+		);
+		workflow.connections['Other Trigger'] = {
+			main: [[{ node: 'Other Agent', type: 'main', index: 0 }]],
+		};
+		workflow.connections['Other Write'] = {
+			ai_tool: [[{ node: 'Other Agent', type: 'ai_tool', index: 0 }]],
+		};
+		const { ctx, getOutcome } = makeContext(
+			makeBuildOutcome({
+				nodeSimulationPlan: [...plan, verdict('Other Agent'), verdict('Other Write', true)],
+				triggerNodes: [
+					{ nodeName: 'Trigger', nodeType: 'n8n-nodes-base.manualTrigger' },
+					{ nodeName: 'Other Trigger', nodeType: 'n8n-nodes-base.manualTrigger' },
+				],
+				verificationProgress: {},
+			}),
+			{ status: 'success' },
+			{ workflowNodes: workflow.nodes, workflowConnections: workflow.connections },
+		);
+		ctx.domainContext.executionService.run
+			.mockResolvedValueOnce({
+				status: 'success',
+				executionId: 'exec-a',
+				executedNodeNames: ['Trigger', 'Agent'],
+			})
+			.mockResolvedValueOnce({
+				status: 'success',
+				executionId: 'exec-b',
+				executedNodeNames: ['Other Trigger', 'Other Agent', 'Other Write'],
+			})
+			.mockResolvedValueOnce({
+				status: 'success',
+				executionId: 'exec-c',
+				executedNodeNames: ['Trigger', 'Agent', 'Write'],
+			});
+		const first = await runTool(ctx, {
+			workItemId: 'wi-1',
+			workflowId: 'wf-1',
+			triggerNodeName: 'Trigger',
+		});
+		expect(first.nodesNotReached).toEqual(['Write']);
+		expect(first.simulatedNodes).toBeUndefined();
+		expect(first.simulationNote).toBeUndefined();
+		expect(ctx.domainContext.executionService.run.mock.calls[0][2].verificationPinData).toEqual({
+			Write: [{}],
+			'Other Write': [{}],
+		});
+		const second = await runTool(ctx, {
+			workItemId: 'wi-1',
+			workflowId: 'wf-1',
+			triggerNodeName: 'Other Trigger',
+		});
+		expect(second.simulatedNodes).toEqual([{ nodeName: 'Other Write', reason: 'Writes data' }]);
+		expect(second.simulationNote).toContain('Other Write');
+		expect(second.simulationNote).not.toContain('no real external writes');
+		expect(getOutcome().verification?.claim?.nodesNotReached).toEqual(['Write']);
+		await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1', triggerNodeName: 'Trigger' });
+		expect(getOutcome().verification?.claim?.nodesNotReached).toEqual([]);
+		expect(
+			getOutcome()
+				.verification?.claim?.simulatedNodes.map((node) => node.nodeName)
+				.sort(),
+		).toEqual(['Other Write', 'Write']);
+	});
+});
+
+describe('workflow_builder_verify_built_workflow tool — publish state', () => {
+	it('warns that the fix is not live when the published version is an older one', async () => {
+		const { ctx, getOutcome } = makeContext(
+			makeBuildOutcome(),
+			{
+				executionId: 'exec-1',
+				status: 'success',
+				data: { 'Form Trigger': {} },
+				workflowVersionId: 'draft-2',
+			},
+			{ workflowHead: { versionId: 'draft-2', activeVersionId: 'published-1' } },
+		);
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result.claim?.liveState).toBe('live-stale');
+		expect(result.claim?.verifiedVersionId).toBe('draft-2');
+		expect(result.liveStateNote).toContain('The live version is still the previous one');
+		expect(result.liveStateNote).toContain('Do NOT describe the workflow as live');
+		// The persisted claim carries it too: later turns read this record, not
+		// the tool result.
+		expect(getOutcome().verification?.claim?.liveState).toBe('live-stale');
+	});
+
+	it('states the stale live version without asking to publish a failed run', async () => {
+		const { ctx } = makeContext(
+			makeBuildOutcome(),
+			{
+				executionId: 'exec-1',
+				status: 'error',
+				error: 'Send Email failed',
+				data: { 'Form Trigger': {} },
+				workflowVersionId: 'draft-2',
+			},
+			{ workflowHead: { versionId: 'draft-2', activeVersionId: 'published-1' } },
+		);
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result.claim?.level).toBe('failed');
+		expect(result.liveStateNote).toContain('The live version is still the previous one');
+		expect(result.liveStateNote).not.toMatch(/ask the user whether/i);
+	});
+
+	it('says nothing about publishing when the published version is the verified one', async () => {
+		const { ctx } = makeContext(
+			makeBuildOutcome(),
+			{
+				executionId: 'exec-1',
+				status: 'success',
+				data: { 'Form Trigger': {} },
+				workflowVersionId: 'draft-2',
+			},
+			{ workflowHead: { versionId: 'draft-2', activeVersionId: 'draft-2' } },
+		);
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result.claim?.liveState).toBe('live-current');
+		expect(result.liveStateNote).toBeUndefined();
+	});
+
+	it('names the version the execution ran, not one saved while the run was in flight', async () => {
+		// A save landing mid-run moves the workflow head. The execution keeps
+		// running the version it started with, and the claim must name that one.
+		const { ctx } = makeContext(
+			makeBuildOutcome(),
+			{
+				executionId: 'exec-1',
+				status: 'success',
+				data: { 'Form Trigger': {} },
+				workflowVersionId: 'draft-2',
+			},
+			{ workflowHead: { versionId: 'draft-3', activeVersionId: 'published-1' } },
+		);
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result.claim?.verifiedVersionId).toBe('draft-2');
+		expect(result.claim?.liveState).toBe('live-stale');
+	});
+
+	it('reads the published version after the run, so a publish mid-run is not called stale', async () => {
+		// Starts stale, and the user publishes the verified draft while the run
+		// is in flight. Only a lookup that happens after the run sees that.
+		const { ctx } = makeContext(
+			makeBuildOutcome(),
+			{
+				executionId: 'exec-1',
+				status: 'success',
+				data: { 'Form Trigger': {} },
+				workflowVersionId: 'draft-2',
+			},
+			{ workflowHead: { versionId: 'draft-2', activeVersionId: 'published-1' } },
+		);
+		const head = vi.mocked(ctx.domainContext.workflowService!.getWorkflowHead);
+		vi.mocked(ctx.domainContext.executionService.run).mockImplementation(async () => {
+			head.mockResolvedValue({
+				versionId: 'draft-2',
+				activeVersionId: 'draft-2',
+				updatedAt: 0,
+			});
+			await Promise.resolve();
+			return {
+				executionId: 'exec-1',
+				status: 'success',
+				data: { 'Form Trigger': {} },
+				workflowVersionId: 'draft-2',
+			};
+		});
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result.claim?.liveState).toBe('live-current');
+		expect(result.liveStateNote).toBeUndefined();
+	});
+
+	it('leaves publish state unknown when the run reported no version', async () => {
+		// The head is published and equals its own draft, so substituting it
+		// would report `live-current` — "production is proven" — for a run whose
+		// version nobody knows.
+		const { ctx } = makeContext(
+			makeBuildOutcome(),
+			{ executionId: 'exec-1', status: 'success', data: { 'Form Trigger': {} } },
+			{ workflowHead: { versionId: 'published-1', activeVersionId: 'published-1' } },
+		);
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result.success).toBe(true);
+		expect(result.claim?.liveState).toBeUndefined();
+		expect(result.claim?.verifiedVersionId).toBeUndefined();
+	});
+
+	it('leaves the claim without publish state when the lookup fails', async () => {
+		const { ctx } = makeContext(makeBuildOutcome(), {
+			executionId: 'exec-1',
+			status: 'success',
+			data: { 'Form Trigger': {} },
+			workflowVersionId: 'draft-2',
+		});
+		vi.mocked(ctx.domainContext.workflowService!.getWorkflowHead).mockRejectedValue(
+			new Error('no access'),
+		);
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result.success).toBe(true);
+		expect(result.claim?.liveState).toBeUndefined();
+		expect(result.liveStateNote).toBeUndefined();
 	});
 });

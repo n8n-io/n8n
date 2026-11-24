@@ -3,7 +3,7 @@ import { In, type SelectQueryBuilder } from '@n8n/typeorm';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { Project } from '../../entities';
+import type { CredentialsEntity, Project } from '../../entities';
 import { SharedCredentials } from '../../entities';
 import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
 import { SharedCredentialsRepository } from '../shared-credentials.repository';
@@ -96,6 +96,32 @@ describe('SharedCredentialsRepository', () => {
 			const result = await sharedCredentialsRepository.getSharedPersonalCredentialsCount();
 
 			expect(result).toBe(8);
+		});
+	});
+
+	describe('findOwnedCredentialsByProjects', () => {
+		it('returns an empty list without querying for an empty projectIds list', async () => {
+			const result = await sharedCredentialsRepository.findOwnedCredentialsByProjects([]);
+
+			expect(result).toEqual([]);
+			expect(entityManager.find).not.toHaveBeenCalled();
+		});
+
+		it('returns the owned credentials for the given projects', async () => {
+			const credA = mock<CredentialsEntity>({ id: 'cred-1' });
+			const credB = mock<CredentialsEntity>({ id: 'cred-2' });
+			entityManager.find.mockResolvedValueOnce([
+				{ credentials: credA },
+				{ credentials: credB },
+			] as unknown as SharedCredentials[]);
+
+			const result = await sharedCredentialsRepository.findOwnedCredentialsByProjects(['proj-1']);
+
+			expect(entityManager.find).toHaveBeenCalledWith(SharedCredentials, {
+				relations: { credentials: true },
+				where: { projectId: In(['proj-1']), role: 'credential:owner' },
+			});
+			expect(result).toEqual([credA, credB]);
 		});
 	});
 });

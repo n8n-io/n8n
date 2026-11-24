@@ -139,6 +139,98 @@ describe('RelayConnection', () => {
 		relay = new RelayConnection(ws as unknown as WebSocket);
 	});
 
+	describe('auto-attach debugger pause', () => {
+		// Playwright always asks for the pause. Chrome then freezes every
+		// auto-attached child target until a session nothing can address resumes
+		// it — `chrome.debugger` has no session field — so a page that fetches
+		// through a worker spins until the debugger detaches.
+		const PLAYWRIGHT_PARAMS = { autoAttach: true, waitForDebuggerOnStart: true, flatten: true };
+
+		const appliedAutoAttach = () =>
+			chrome.debugger.sendCommand.mock.calls
+				.filter((call) => call[1] === 'Target.setAutoAttach')
+				.map((call) => call[2] as Record<string, unknown> | undefined);
+
+		const send = async (params: Record<string, unknown>) => {
+			ws.onmessage?.({ data: JSON.stringify({ id: 1, method: 'forwardCDPCommand', params }) });
+			await tick();
+		};
+
+		/** Lazy attach happens on the first CDP command, so drive one per tab. */
+		const attachTab = async (chromeTabId: number) => {
+			await send({ method: 'Runtime.evaluate', params: {}, id: targetIdForTab(chromeTabId) });
+		};
+
+		it('declines the pause when broadcasting auto-attach to attached tabs', async () => {
+			chrome.debugger.getTargets.mockResolvedValueOnce([mockTarget(10), mockTarget(20)]);
+			await relay.registerSelectedTabs([10, 20]);
+			await attachTab(10);
+			await attachTab(20);
+			chrome.debugger.sendCommand.mockClear();
+
+			await send({ method: 'Target.setAutoAttach', params: PLAYWRIGHT_PARAMS });
+
+			const applied = appliedAutoAttach();
+			expect(applied).toHaveLength(2);
+			for (const params of applied) {
+				expect(params).toMatchObject({ autoAttach: true, flatten: true });
+				expect(params?.waitForDebuggerOnStart).toBe(false);
+			}
+		});
+
+		it('declines the pause on a tab-scoped call too', async () => {
+			chrome.debugger.getTargets.mockResolvedValueOnce([mockTarget(10)]);
+			await relay.registerSelectedTabs([10]);
+			await attachTab(10);
+			chrome.debugger.sendCommand.mockClear();
+
+			await send({
+				method: 'Target.setAutoAttach',
+				params: PLAYWRIGHT_PARAMS,
+				id: targetIdForTab(10),
+			});
+
+			const applied = appliedAutoAttach();
+			expect(applied).toHaveLength(1);
+			expect(applied[0]?.waitForDebuggerOnStart).toBe(false);
+		});
+
+		it('reapplies the sanitised params to a tab attached later', async () => {
+			chrome.debugger.getTargets.mockResolvedValueOnce([mockTarget(10), mockTarget(20)]);
+			await relay.registerSelectedTabs([10, 20]);
+			await attachTab(10);
+			await send({ method: 'Target.setAutoAttach', params: PLAYWRIGHT_PARAMS });
+			chrome.debugger.sendCommand.mockClear();
+
+			// Tab 20 attaches now and gets the cached params replayed.
+			await attachTab(20);
+
+			const applied = appliedAutoAttach();
+			expect(applied.length).toBeGreaterThan(0);
+			for (const params of applied) {
+				expect(params?.waitForDebuggerOnStart).toBe(false);
+			}
+		});
+
+		it('leaves other commands untouched', async () => {
+			chrome.debugger.getTargets.mockResolvedValueOnce([mockTarget(10)]);
+			await relay.registerSelectedTabs([10]);
+			await attachTab(10);
+			chrome.debugger.sendCommand.mockClear();
+
+			await send({
+				method: 'Page.navigate',
+				params: { url: 'https://example.com' },
+				id: targetIdForTab(10),
+			});
+
+			const navigate = chrome.debugger.sendCommand.mock.calls.find(
+				(call) => call[1] === 'Page.navigate',
+			);
+			expect(navigate?.[2]).toEqual({ url: 'https://example.com' });
+		});
+	});
+
 	it('should register chrome.debugger listeners on construction', () => {
 		expect(chrome.debugger.onEvent.addListener).toHaveBeenCalledTimes(1);
 		expect(chrome.debugger.onDetach.addListener).toHaveBeenCalledTimes(1);

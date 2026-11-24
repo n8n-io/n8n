@@ -33,7 +33,9 @@ import {
 	nodeCanReachItself,
 } from './workflow-json-utils';
 import type { Logger } from '../../logger';
-import type { ModelConfig } from '../../types';
+import type { FetchFn } from '@n8n/agents';
+
+import type { HelperUsageHook, ModelConfig } from '../../types';
 import { itemsForNode } from '../../utils/node-keyed-items';
 import type {
 	NodeSimulationVerdict,
@@ -53,8 +55,14 @@ export interface PlanVerificationSimulationInput {
 	workflowId: string;
 	/** Node output `__schema__` lookup used to shape generated fixtures. */
 	outputSchemaLookup?: OutputSchemaLookup;
-	/** Host-resolved model used when no eval model API key is configured in the environment. */
-	fallbackModelConfig?: ModelConfig;
+	/** Host-resolved main model for the run. */
+	model?: ModelConfig;
+	/** Host-resolved utility model. Classification and fixture generation prefer it over `model`. */
+	utilityModel?: ModelConfig;
+	/** Transport for the helper's model call. */
+	modelFetch?: FetchFn;
+	/** Receives each helper call's token usage so the host can bill it. */
+	onHelperUsage?: HelperUsageHook;
 	logger?: Logger;
 }
 
@@ -65,7 +73,8 @@ export interface VerificationSimulationPlan {
 	simulationFixtures?: SimulationFixtures;
 }
 
-const DECLARED_OUTPUT_SIMULATION_REASON = 'Source declares verification output for this node';
+export const DECLARED_OUTPUT_SIMULATION_REASON =
+	'Source declares verification output for this node';
 
 const TRIGGER_SIMULATION_REASON = 'Trigger event is simulated during verification';
 
@@ -177,7 +186,7 @@ export function findCredentiallessAiRoots(
  * credentials get their `execute` verdict overridden to `simulate`: the real
  * run would die at the root with a credential error ("Node does not have any
  * credentials set"), leaving every downstream simulated node unreached. The
- * classifier marks AI roots safe by type and never visits `ai_*` sub-nodes,
+ * classifier marks AI roots and Agent Tool containers safe by type,
  * so — like the trigger pass above — this is the single injection point.
  * Roots already `simulate` (declared fixtures, mocked credentials) keep
  * their verdict and reason.
@@ -343,7 +352,10 @@ export async function planVerificationSimulation({
 	declaredOutputFixtures,
 	workflowId,
 	outputSchemaLookup,
-	fallbackModelConfig,
+	model,
+	utilityModel,
+	modelFetch,
+	onHelperUsage,
 	logger,
 }: PlanVerificationSimulationInput): Promise<VerificationSimulationPlan> {
 	let nodeSimulationPlan: NodeSimulationVerdict[] | undefined;
@@ -354,7 +366,11 @@ export async function planVerificationSimulation({
 		nodeSimulationPlan = await classifyNodesForSimulation({
 			workflow,
 			mockedNodeNames,
-			fallbackModelConfig,
+			model,
+			utilityModel,
+			modelFetch,
+			onHelperUsage,
+			logger,
 		});
 		nodeSimulationPlan = withDeclaredOutputVerdicts(nodeSimulationPlan, declaredFixtures);
 		nodeSimulationPlan = withSimulatedTriggerVerdicts(nodeSimulationPlan, workflow);
@@ -379,7 +395,10 @@ export async function planVerificationSimulation({
 							workflow,
 							plan: planNeedingGeneratedFixtures,
 							outputSchemaLookup,
-							fallbackModelConfig,
+							model,
+							utilityModel,
+							modelFetch,
+							onHelperUsage,
 							logger,
 						})
 					: {};

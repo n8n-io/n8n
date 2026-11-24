@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "credentials_entity" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(128) NOT NULL, "data" text NOT NULL, "type" varchar(32) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "isManaged" boolean NOT NULL DEFAULT (0), "isGlobal" boolean NOT NULL DEFAULT (0), "isResolvable" boolean NOT NULL DEFAULT (false), "resolvableAllowFallback" boolean NOT NULL DEFAULT (false), "resolverId" varchar(16), "usageScope" VARCHAR(16) NOT NULL DEFAULT 'project' CONSTRAINT "CHK_credentials_entity_usageScope" CHECK ("usageScope" IN ('project', 'instance')), CONSTRAINT "credentials_entity_resolverId_foreign" FOREIGN KEY ("resolverId") REFERENCES "dynamic_credential_resolver" ("id") ON DELETE SET NULL)
+CREATE TABLE "credentials_entity" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(128) NOT NULL, "data" text NOT NULL, "type" varchar(32) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "isManaged" boolean NOT NULL DEFAULT (0), "isGlobal" boolean NOT NULL DEFAULT (0), "isResolvable" boolean NOT NULL DEFAULT (false), "resolvableAllowFallback" boolean NOT NULL DEFAULT (false), "resolverId" varchar(16), "usageScope" VARCHAR(16) NOT NULL DEFAULT 'project' CONSTRAINT "CHK_credentials_entity_usageScope" CHECK ("usageScope" IN ('project', 'instance')), "description" TEXT, "pendingAuthorizationExpiresAt" DATETIME, CONSTRAINT "credentials_entity_resolverId_foreign" FOREIGN KEY ("resolverId") REFERENCES "dynamic_credential_resolver" ("id") ON DELETE SET NULL)
 ```
 
 </details>
@@ -17,11 +17,13 @@ CREATE TABLE "credentials_entity" ("id" varchar(36) PRIMARY KEY NOT NULL, "name"
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | data | TEXT |  | false |  |  |  |
-| id | varchar(36) |  | false | [agent_credential_dependency](agent_credential_dependency.md) [chat_hub_agents](chat_hub_agents.md) [chat_hub_sessions](chat_hub_sessions.md) [credential_dependency](credential_dependency.md) [dynamic_credential_entry](dynamic_credential_entry.md) [dynamic_credential_user_entry](dynamic_credential_user_entry.md) [instance_ai_mcp_registry_connections](instance_ai_mcp_registry_connections.md) [instance_credential_assignment](instance_credential_assignment.md) [shared_credentials](shared_credentials.md) |  |  |
+| description | TEXT |  | true |  |  |  |
+| id | varchar(36) |  | false | [agent_credential_dependency](agent_credential_dependency.md) [chat_hub_agents](chat_hub_agents.md) [chat_hub_sessions](chat_hub_sessions.md) [credential_dependency](credential_dependency.md) [dynamic_credential_entry](dynamic_credential_entry.md) [dynamic_credential_user_entry](dynamic_credential_user_entry.md) [instance_ai_mcp_registry_connections](instance_ai_mcp_registry_connections.md) [instance_credential_assignment](instance_credential_assignment.md) [knowledge_vector_store](knowledge_vector_store.md) [shared_credentials](shared_credentials.md) [skill_source](skill_source.md) |  |  |
 | isGlobal | boolean | 0 | false |  |  |  |
 | isManaged | boolean | 0 | false |  |  |  |
 | isResolvable | boolean | false | false |  |  |  |
 | name | varchar(128) |  | false |  |  |  |
+| pendingAuthorizationExpiresAt | DATETIME |  | true |  |  |  |
 | resolvableAllowFallback | boolean | false | false |  |  |  |
 | resolverId | varchar(16) |  | true |  | [dynamic_credential_resolver](dynamic_credential_resolver.md) |  |
 | type | varchar(32) |  | false |  |  |  |
@@ -58,17 +60,22 @@ erDiagram
 "dynamic_credential_user_entry" |o--|| "credentials_entity" : "FOREIGN KEY (credentialId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_ai_mcp_registry_connections" }o--|| "credentials_entity" : "FOREIGN KEY (credentialId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_credential_assignment" }o--|| "credentials_entity" : "FOREIGN KEY (credentialId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE RESTRICT MATCH NONE"
+"knowledge_vector_store" }o--o| "credentials_entity" : "FOREIGN KEY (embeddingCredentialId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"knowledge_vector_store" }o--o| "credentials_entity" : "FOREIGN KEY (credentialId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "shared_credentials" |o--|| "credentials_entity" : "FOREIGN KEY (credentialsId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"skill_source" }o--o| "credentials_entity" : "FOREIGN KEY (credentialId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "credentials_entity" }o--o| "dynamic_credential_resolver" : "FOREIGN KEY (resolverId) REFERENCES dynamic_credential_resolver (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 
 "credentials_entity" {
   datetime_3_ createdAt
   TEXT data
+  TEXT description
   varchar_36_ id PK
   boolean isGlobal
   boolean isManaged
   boolean isResolvable
   varchar_128_ name
+  DATETIME pendingAuthorizationExpiresAt
   boolean resolvableAllowFallback
   varchar_16_ resolverId FK
   varchar_32_ type
@@ -138,7 +145,7 @@ erDiagram
   varchar_36_ credentialId FK
   varchar id PK
   varchar_255_ serverSlug FK
-  TEXT toolFilter
+  TEXT toolPermissions
   datetime_3_ updatedAt
   varchar userId FK
 }
@@ -148,11 +155,42 @@ erDiagram
   varchar_128_ credentialUseId PK
   datetime_3_ updatedAt
 }
+"knowledge_vector_store" {
+  TEXT config
+  datetime_3_ createdAt
+  varchar createdById FK
+  varchar_36_ credentialId FK
+  varchar_512_ description
+  varchar_36_ embeddingCredentialId FK
+  varchar_255_ embeddingModel
+  varchar_16_ id PK
+  varchar_16_ knowledgeCollectionId FK
+  varchar_64_ name
+  varchar_16_ provider
+  datetime_3_ updatedAt
+}
 "shared_credentials" {
   datetime_3_ createdAt
   varchar_36_ credentialsId PK
   varchar_36_ projectId PK
   TEXT role
+  datetime_3_ updatedAt
+}
+"skill_source" {
+  datetime_3_ createdAt
+  varchar createdById FK
+  varchar_36_ credentialId FK
+  boolean credentialRequired
+  varchar id PK
+  varchar_255_ identityKey
+  datetime_3_ lastCheckedAt
+  varchar_32_ lastErrorReason
+  TEXT locator
+  TEXT probeCursor
+  varchar_36_ projectId FK
+  varchar_32_ status
+  varchar_16_ type
+  TEXT unlinkedSkills
   datetime_3_ updatedAt
 }
 "dynamic_credential_resolver" {

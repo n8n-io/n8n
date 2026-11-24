@@ -1,4 +1,4 @@
-import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
+import { useMCPStore } from '@n8n/frontend-module-mcp';
 import { computed, ref, watch, type Ref } from 'vue';
 import { useSurfaceMcpToNewCloudUsersStore } from '../stores/surfaceMcpToNewCloudUsers.store';
 import { useSurfaceMcpToNewCloudUsersEligibility } from './useSurfaceMcpToNewCloudUsersEligibility';

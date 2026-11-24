@@ -8,4 +8,10 @@ export class InstanceAiObservationCursorRepository extends Repository<InstanceAi
 	constructor(dataSource: DataSource) {
 		super(InstanceAiObservationCursor, dataSource.manager);
 	}
+
+	/** Observational memory is thread-scoped, so the scope id is the thread id.
+	 *  Null means the observer never ran for this thread. */
+	async findForThread(threadId: string): Promise<InstanceAiObservationCursor | null> {
+		return await this.findOneBy({ observationScopeId: threadId });
+	}
 }

@@ -4,21 +4,20 @@ import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { WEBHOOK_NODE_TYPE } from 'n8n-workflow';
 
-import type {
-	ProtectedResource,
-	ProtectedResourceResolver,
-} from '@/services/protected-resource.registry';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
+import { type ProtectedResource, type ProtectedResourceResolver } from '@n8n/backend-services/auth';
 import { WebhookService } from '@/webhooks/webhook.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { triggerResourceGate } from '../resource-gate';
 import {
+	acceptedTrustedSourceIds,
 	WEBHOOK_TRIGGER_SCOPES,
 	methodQueryString,
 	parseMethodParam,
 	trimSlashes,
 	trimTrailingSlash,
+	webhookAllowsBrowserFlow,
 	webhookPathFromResourceUrl,
 	webhookResourcePath,
 } from './utils';
@@ -166,13 +165,16 @@ export class WorkflowWebhookTriggerResourceResolver implements ProtectedResource
 				id: `workflow-webhook:${workflow.id}:${resourcePath}`,
 				// Canonical URL = the method being resolved, so the metadata document served
 				// at `?method=POST` advertises `?method=POST` back (RFC 9728 §3.1).
+				surface: 'trigger' as const,
 				getResourceUrl: () => urlFor(requestedMethod),
 				// A token minted for any of this trigger's methods is accepted at all of
 				// them; cross-trigger replay stays impossible because the list is built
 				// only from rows sharing this (workflowId, node).
 				getAudiences: () => audiences,
+				getAcceptedSourceIds: () => acceptedTrustedSourceIds(node),
 				scopes: WEBHOOK_TRIGGER_SCOPES,
 				displayName: workflow.name,
+				...(webhookAllowsBrowserFlow(node, requestedMethod) && { isFirstParty: true }),
 				...triggerResourceGate(this.workflowFinderService, {
 					audiences,
 					executeAccessWorkflowId: requireExecute ? workflow.id : undefined,

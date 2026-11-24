@@ -33,6 +33,11 @@ const meta = {
 		max: { control: 'number' },
 		step: { control: 'number' },
 		precision: { control: 'number' },
+		useGrouping: {
+			control: 'boolean',
+			description:
+				'Opt in to locale-specific digit grouping (e.g. 1,433). Off by default, matching the previous input.',
+		},
 		controls: { control: 'boolean' },
 		controlsPosition: {
 			control: 'select',
@@ -325,6 +330,33 @@ export const Precision = {
 					controls-position="right"
 				/>
 			</div>
+		</div>
+		`,
+	}),
+} satisfies Story;
+
+export const UseGrouping = {
+	render: () => ({
+		components: { InputNumber, N8nInputLabel, N8nText },
+		setup() {
+			const grouped = ref(1433);
+			const ungrouped = ref(1433);
+			return { grouped, ungrouped };
+		},
+		template: `
+		<div style="${storyStack}">
+			<N8nInputLabel label="Without grouping (default)">
+				<InputNumber v-model="ungrouped" :controls="false" />
+			</N8nInputLabel>
+			<N8nText size="small" color="text-light">
+				Renders as <code>1433</code>. Use this for ports, indexes, and other identifiers.
+			</N8nText>
+			<N8nInputLabel label="With grouping">
+				<InputNumber v-model="grouped" :controls="false" :use-grouping="true" />
+			</N8nInputLabel>
+			<N8nText size="small" color="text-light">
+				Renders as <code>1,433</code> in en-US. Opt in for large quantities.
+			</N8nText>
 		</div>
 		`,
 	}),

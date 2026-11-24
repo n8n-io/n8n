@@ -1,10 +1,21 @@
 import { Service } from '@n8n/di';
-import { And, DataSource, In, LessThan, LessThanOrEqual, MoreThan, Repository } from '@n8n/typeorm';
+import {
+	And,
+	DataSource,
+	In,
+	IsNull,
+	LessThan,
+	LessThanOrEqual,
+	MoreThan,
+	Not,
+	Repository,
+} from '@n8n/typeorm';
 import type { FindOperator, FindOptionsWhere } from '@n8n/typeorm';
 import type { IDataObject } from 'n8n-workflow';
 
 import { ActivityEvent } from '../entities';
 import type { ActivityResourceType } from '../entities';
+import { chunkIds } from '../utils/chunk-ids';
 
 /** Long enough for any name a list needs to show, short enough that a row stays a pointer. */
 export const activityResourceNameMaxLength = 128;
@@ -32,6 +43,19 @@ export type ActivityEventInput = Pick<ActivityEvent, 'category' | 'action' | 'pr
 		data?: IDataObject | null;
 	};
 
+/**
+ * The projects whose entries a caller may see.
+ *
+ * A list, or the explicit `'all-projects'` for a reader whose scope is genuinely the whole
+ * instance. Spelling that case out beats enumerating every project id and binding them: a global
+ * reader on a large estate would otherwise bind one parameter per project — one exists per user —
+ * which crosses sqlite's ceiling and pushes Postgres off the `(projectId, id)` index.
+ *
+ * It is a literal rather than an optional field on purpose. An omitted scope reading everything is
+ * the failure this type exists to prevent, so the widest scope has to be asked for by name.
+ */
+export type ActivityProjectScope = string[] | 'all-projects';
+
 export type ActivityFeedQuery = {
 	limit: number;
 	/**
@@ -39,10 +63,13 @@ export type ActivityFeedQuery = {
 	 * would read every project on the instance, including ones the user cannot open. Entries
 	 * with no project are excluded, since there is no way to prove they are in scope.
 	 */
-	projectIds: string[];
+	projectIds: ActivityProjectScope;
 	userId?: string;
 	resourceId?: string;
-	category?: ActivityEvent['category'];
+	/** Optional category filter. It must be in `allowedCategories`. */
+	filterCategory?: ActivityEvent['category'];
+	/** The categories the caller has permission to read. */
+	allowedCategories: Array<ActivityEvent['category']>;
 	/**
 	 * Exclusive lower bound — entries newer than an id a caller has already seen. Ids are not a
 	 * completeness watermark; see `ActivityEvent.id` before using this to tail the feed.
@@ -51,6 +78,25 @@ export type ActivityFeedQuery = {
 	/** Exclusive upper bound, for paging backwards through older entries. */
 	beforeId?: number;
 };
+
+/** Nothing in scope means nothing is visible, which is not the same as no filter. */
+function isEmptyScope(scope: ActivityProjectScope): boolean {
+	return scope !== 'all-projects' && scope.length === 0;
+}
+
+/** No project predicate at all for a whole-instance reader, so the scope costs no bind parameters. */
+function projectScopeWhere(scope: ActivityProjectScope): FindOptionsWhere<ActivityEvent> {
+	return scope === 'all-projects' ? {} : { projectId: In(scope) };
+}
+
+/** How many rows one page of the attributed-activity scan reads. */
+const ATTRIBUTED_PAGE_SIZE = 500;
+
+/** A user and when they acted on a resource. */
+export interface AttributedActivity {
+	userId: string;
+	at: Date;
+}
 
 @Service()
 export class ActivityEventRepository extends Repository<ActivityEvent> {
@@ -85,14 +131,20 @@ export class ActivityEventRepository extends Repository<ActivityEvent> {
 	 */
 	async findFeed(query: ActivityFeedQuery): Promise<ActivityEvent[]> {
 		if (isEmptyPage(query.limit)) return [];
-		// An empty allowance means nothing is visible, not everything — `In([])` would match no
-		// row on Postgres but is worth being explicit about rather than relying on it.
-		if (query.projectIds.length === 0) return [];
+		// Empty project or category permissions must not widen the query.
+		if (isEmptyScope(query.projectIds) || query.allowedCategories.length === 0) return [];
+		if (
+			query.filterCategory !== undefined &&
+			!query.allowedCategories.includes(query.filterCategory)
+		)
+			return [];
 
-		const where: FindOptionsWhere<ActivityEvent> = { projectId: In(query.projectIds) };
+		const where: FindOptionsWhere<ActivityEvent> = {
+			...projectScopeWhere(query.projectIds),
+			category: query.filterCategory ?? In(query.allowedCategories),
+		};
 		if (query.userId !== undefined) where.userId = query.userId;
 		if (query.resourceId !== undefined) where.resourceId = query.resourceId;
-		if (query.category !== undefined) where.category = query.category;
 
 		// Both bounds can apply at once — "what arrived while this page was open" pages an
 		// already-bounded range — so they combine rather than overwrite each other.
@@ -113,45 +165,85 @@ export class ActivityEventRepository extends Repository<ActivityEvent> {
 	 *
 	 * Scoped here rather than by the caller, so the guarantee holds for every future caller.
 	 */
-	async findEntry(query: { id: number; projectIds: string[] }): Promise<ActivityEvent | null> {
-		if (query.projectIds.length === 0) return null;
+	async findEntry(query: {
+		id: number;
+		projectIds: ActivityProjectScope;
+		allowedCategories: Array<ActivityEvent['category']>;
+	}): Promise<ActivityEvent | null> {
+		if (isEmptyScope(query.projectIds) || query.allowedCategories.length === 0) return null;
 
 		return await this.findOne({
-			where: { id: query.id, projectId: In(query.projectIds) },
+			where: {
+				id: query.id,
+				...projectScopeWhere(query.projectIds),
+				category: In(query.allowedCategories),
+			},
 		});
 	}
 
-	/**
-	 * Everything the feed holds about one resource, newest first — the history shown when a reader
-	 * expands a single entry.
-	 *
-	 * There is no `(resourceType, resourceId, id)` index yet, so this walks the project index and
-	 * filters. That is affordable because it runs only when a reader expands an entry, never on the
-	 * per-turn path, and the scan is bounded by one project's entries. A dedicated index is worth
-	 * adding if expansion becomes common; this is the highest-write table in the schema, so the
-	 * insert cost of a third index should be paid for by a read that needs it.
-	 *
-	 * `resourceType` is part of the query, not just the index prefix: ids are unique per resource
-	 * kind but nothing in the schema says so, and an entry is a dangling pointer by design.
-	 */
 	async findByResource(query: {
 		resourceType: ActivityResourceType;
 		resourceId: string;
-		projectIds: string[];
+		projectIds: ActivityProjectScope;
 		limit: number;
 	}): Promise<ActivityEvent[]> {
 		if (isEmptyPage(query.limit)) return [];
-		if (query.projectIds.length === 0) return [];
+		if (isEmptyScope(query.projectIds)) return [];
 
 		return await this.find({
 			where: {
 				resourceType: query.resourceType,
 				resourceId: query.resourceId,
-				projectId: In(query.projectIds),
+				...projectScopeWhere(query.projectIds),
 			},
 			order: { id: 'DESC' },
 			take: query.limit,
 		});
+	}
+
+	/**
+	 * The newest entries per resource that name a user, newest first and at most
+	 * `perResource` each, keyed by resource id. Reduced here, not in SQL: `DISTINCT ON`
+	 * is Postgres-only. Pages by id so an uncapped table is never loaded whole; the
+	 * page stops as soon as every resource of the chunk has its share. Resources
+	 * without such an entry are absent from the result.
+	 */
+	async findRecentAttributedByResource(
+		resourceType: ActivityResourceType,
+		resourceIds: string[],
+		perResource: number,
+	): Promise<Map<string, AttributedActivity[]>> {
+		const recent = new Map<string, AttributedActivity[]>();
+		if (resourceIds.length === 0 || perResource <= 0) return recent;
+
+		for (const chunk of chunkIds([...new Set(resourceIds)])) {
+			const pending = new Set(chunk);
+			let beforeId: number | undefined;
+			while (pending.size > 0) {
+				const rows = await this.find({
+					select: ['id', 'resourceId', 'userId', 'createdAt'],
+					where: {
+						resourceType,
+						resourceId: In([...pending]),
+						userId: Not(IsNull()),
+						...(beforeId !== undefined ? { id: LessThan(beforeId) } : {}),
+					},
+					order: { id: 'DESC' },
+					take: ATTRIBUTED_PAGE_SIZE,
+				});
+				for (const row of rows) {
+					if (row.resourceId === null || row.userId === null) continue;
+					const entries = recent.get(row.resourceId) ?? [];
+					if (entries.length >= perResource) continue;
+					entries.push({ userId: row.userId, at: row.createdAt });
+					recent.set(row.resourceId, entries);
+					if (entries.length >= perResource) pending.delete(row.resourceId);
+				}
+				if (rows.length < ATTRIBUTED_PAGE_SIZE) break;
+				beforeId = rows[rows.length - 1].id;
+			}
+		}
+		return recent;
 	}
 
 	/** Retention by age. Returns how many entries went, so a caller can log a sweep worth noticing. */

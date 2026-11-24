@@ -23,7 +23,7 @@ describe('components/N8nToggle', () => {
 		expect(wrapper.getByTestId('tooltip')).toHaveAttribute('data-content', 'Bold');
 	});
 
-	it.each(['solid', 'subtle', 'ghost', 'outline', 'destructive', 'success'] as const)(
+	it.each(['solid', 'brand', 'ghost', 'outline', 'destructive', 'success'] as const)(
 		'renders %s variant like N8nButton',
 		(variant) => {
 			const wrapper = render(N8nToggle, {

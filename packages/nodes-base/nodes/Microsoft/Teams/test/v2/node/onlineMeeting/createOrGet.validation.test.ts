@@ -1,6 +1,7 @@
 import type { Mock } from 'vitest';
 import type { MockProxy } from 'vitest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { createExecuteContext, meetingHeaders, setParams } from '../helpers';
 import { versionDescription } from '../../../../v2/actions/versionDescription';
@@ -17,7 +18,7 @@ vi.mock('../../../../v2/transport', async () => {
 });
 
 describe('Microsoft Teams V2 — onlineMeeting:createOrGet', () => {
-	const endpoint = '/v1.0/me/onlineMeetings/createOrGet';
+	const endpoint = requestPath`/v1.0/me/onlineMeetings/createOrGet`;
 	let node: MicrosoftTeamsV2;
 	let ctx: MockProxy<IExecuteFunctions>;
 
@@ -134,7 +135,7 @@ describe('Microsoft Teams V2 — onlineMeeting:createOrGet', () => {
 		);
 	});
 
-	it('offers only the subject and the two times as options', () => {
+	it('offers only the attendees, the subject and the two times as options', () => {
 		const options = versionDescription.properties.find(
 			(property) =>
 				property.name === 'options' &&
@@ -143,6 +144,6 @@ describe('Microsoft Teams V2 — onlineMeeting:createOrGet', () => {
 		);
 		const names = (options?.options ?? []).map((option) => option.name);
 
-		expect(names).toEqual(['endDateTime', 'startDateTime', 'subject']);
+		expect(names).toEqual(['attendees', 'endDateTime', 'startDateTime', 'subject']);
 	});
 });

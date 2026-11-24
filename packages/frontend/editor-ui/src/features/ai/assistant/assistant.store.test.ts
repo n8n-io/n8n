@@ -58,7 +58,7 @@ const track = vi.fn();
 const setAssistantEnabled = (enabled: boolean) => {
 	settingsStore.setSettings(
 		merge({}, defaultSettings, {
-			aiAssistant: { enabled, setup: true },
+			aiAssistant: { enabled, setup: true, cloudUbbEnabled: false },
 		}),
 	);
 };
@@ -93,7 +93,7 @@ describe('AI Assistant store', () => {
 		settingsStore.setSettings(
 			merge({}, defaultSettings, {
 				posthog: DEFAULT_POSTHOG_SETTINGS,
-				aiAssistant: { enabled: true, setup: true },
+				aiAssistant: { enabled: true, setup: true, cloudUbbEnabled: false },
 			}),
 		);
 		window.posthog = {

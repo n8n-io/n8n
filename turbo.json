@@ -1,10 +1,17 @@
 {
 	"globalEnv": ["CI", "BUILD_WITH_COVERAGE"],
-	"globalPassThroughEnv": ["CODECOV_TOKEN", "COVERAGE_ENABLED", "SENTRY_AUTH_TOKEN"],
+	// VITEST_RETRY is not hashed, so a merge queue run can still use cached master test results.
+	"globalPassThroughEnv": ["CODECOV_TOKEN", "COVERAGE_ENABLED", "SENTRY_AUTH_TOKEN", "VITEST_RETRY"],
 	"boundaries": {
 		// `~icons/*` is a vite virtual module injected by unplugin-icons (design-system
 		// icon barrel), not a real package — declare it so boundaries doesn't flag it.
-		"implicitDependencies": ["~icons"]
+		// `k6` modules are provided by the k6 runtime that runs the benchmark scenario
+		// scripts. npm only has their types (`@types/k6`).
+		"implicitDependencies": ["~icons", "k6"]
+	},
+	"futureFlags": {
+		// `--affected` uses task `inputs`, so it selects a task that reads a file from another package.
+		"affectedUsingTaskInputs": true
 	},
 	"tasks": {
 		"clean": { "cache": false },
@@ -55,12 +62,20 @@
 		"format": {},
 		"format:check": {},
 		"lint": {
-			"dependsOn": ["^build", "@n8n/eslint-config#build"]
+			"dependsOn": ["^build", "@n8n/eslint-config#build", "@n8n/oxlint-config#build"]
 		},
 		// The n8n-nodes-base lint script also validates load-options methods
 		// against dist/methods/*.json, which only its own build emits.
 		"n8n-nodes-base#lint": {
 			"dependsOn": ["^build", "build", "@n8n/eslint-config#build"]
+		},
+		// The @n8n/db lint configs read this manifest from the cli package.
+		"@n8n/db#lint": {
+			"dependsOn": ["^build", "@n8n/eslint-config#build", "@n8n/oxlint-config#build"],
+			"inputs": [
+				"$TURBO_DEFAULT$",
+				"$TURBO_ROOT$/packages/cli/src/services/ownership-transfer/ownership-transfer.manifest.json"
+			]
 		},
 		"lint:fix": {},
 		"lint:styles": {
@@ -72,34 +87,51 @@
 		"test": {
 			"dependsOn": ["^build", "build"],
 			"outputs": ["coverage/**", "*.xml"],
-			"env": ["COVERAGE_ENABLED"]
+			"env": ["COVERAGE_ENABLED", "COVERAGE_SCOPE"],
+			"passThroughEnv": ["CHANGED_FILES"]
 		},
 		"test:changed": {
 			"dependsOn": ["^build", "build"],
 			"outputs": ["coverage/**", "*.xml"],
-			"env": ["COVERAGE_ENABLED", "CHANGED_FILES"],
+			"env": ["COVERAGE_ENABLED", "CHANGED_FILES", "LOCKFILE_IMPACTED_PACKAGES"],
 			"cache": false
 		},
 		"test:unit": {
 			"dependsOn": ["^build", "build"],
 			"outputs": ["coverage/**", "*.xml"],
-			"env": ["COVERAGE_ENABLED"]
+			"env": ["COVERAGE_ENABLED", "COVERAGE_SCOPE"],
+			"passThroughEnv": ["CHANGED_FILES"]
 		},
 		"test:unit:changed": {
 			"dependsOn": ["^build", "build"],
 			"outputs": ["coverage/**", "*.xml"],
-			"env": ["COVERAGE_ENABLED", "CHANGED_FILES"],
+			"env": ["COVERAGE_ENABLED", "CHANGED_FILES", "LOCKFILE_IMPACTED_PACKAGES"],
 			"cache": false
 		},
 		"test:integration": {
 			"dependsOn": ["^build", "build"],
 			"outputs": ["coverage/**", "*.xml"],
-			"env": ["COVERAGE_ENABLED"]
+			"env": ["COVERAGE_ENABLED", "COVERAGE_SCOPE"],
+			"passThroughEnv": ["CHANGED_FILES"]
+		},
+		// DB suites (testcontainers). The image is part of the hash, so each
+		// Postgres version caches its own result.
+		"test:postgres:integration:tc": {
+			"dependsOn": ["^build", "build"],
+			"outputs": ["coverage/**", "*.xml"],
+			"env": ["COVERAGE_ENABLED", "COVERAGE_SCOPE", "TEST_IMAGE_POSTGRES"],
+			"passThroughEnv": ["CHANGED_FILES", "DOCKER_HOST", "TESTCONTAINERS_*"]
+		},
+		"test:postgres": {
+			"dependsOn": ["^build", "build"],
+			"outputs": ["coverage/**", "*.xml"],
+			"env": ["COVERAGE_ENABLED", "COVERAGE_SCOPE", "TEST_IMAGE_POSTGRES"],
+			"passThroughEnv": ["CHANGED_FILES", "DOCKER_HOST", "TESTCONTAINERS_*"]
 		},
 		"test:integration:changed": {
 			"dependsOn": ["^build", "build"],
 			"outputs": ["coverage/**", "*.xml"],
-			"env": ["COVERAGE_ENABLED", "CHANGED_FILES"],
+			"env": ["COVERAGE_ENABLED", "CHANGED_FILES", "LOCKFILE_IMPACTED_PACKAGES"],
 			"cache": false
 		},
 		"watch": { "cache": false, "persistent": true },

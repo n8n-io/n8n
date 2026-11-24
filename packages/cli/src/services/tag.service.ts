@@ -38,8 +38,8 @@ export class TagService {
 	}
 
 	/**
-	 * Re-keys an existing tag to a new id, moving its workflow and folder
-	 * mappings along. Does not run the `tag.beforeUpdate`/`afterUpdate`
+	 * Re-keys an existing tag to a new id, moving its workflow, folder and
+	 * agent mappings along. Does not run the `tag.beforeUpdate`/`afterUpdate`
 	 * external hooks: those model name edits, and no id-change hook contract
 	 * exists.
 	 */
@@ -64,17 +64,10 @@ export class TagService {
 		options?: T,
 	): Promise<GetAllResult<T>> {
 		if (options?.withUsageCount) {
-			const qb = this.tagRepository
-				.createQueryBuilder('tag')
-				.select(['tag.id', 'tag.name', 'tag.createdAt', 'tag.updatedAt'])
-				.loadRelationCountAndMap('tag.usageCount', 'tag.workflowMappings', 'wm', (qb2) =>
-					qb2.leftJoin('wm.workflows', 'workflow').where('workflow.isArchived = :isArchived', {
-						isArchived: false,
-					}),
-				);
-			if (options.orderByName) qb.orderBy('tag.name', 'ASC');
-			if (options.limit !== undefined) qb.limit(options.limit);
-			const tags = await qb.getMany();
+			const tags = await this.tagRepository.findAllWithUsageCount({
+				orderByName: options.orderByName,
+				limit: options.limit,
+			});
 
 			return tags as GetAllResult<T>;
 		}
@@ -117,6 +110,10 @@ export class TagService {
 
 	async getAllByWorkflowId(workflowId: string): Promise<TagEntity[]> {
 		return await this.tagRepository.findBy({ workflows: { id: workflowId } });
+	}
+
+	async getAllByAgentId(agentId: string): Promise<TagEntity[]> {
+		return await this.tagRepository.findAllByAgentId(agentId);
 	}
 
 	/**

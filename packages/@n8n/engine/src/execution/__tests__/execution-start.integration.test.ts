@@ -13,13 +13,18 @@ import {
 } from '../../database';
 import { generateId } from '../../database/generate-id';
 import type { WorkflowGraph } from '../../graph';
-import { noopLifecycleEventPublisher } from '../../lifecycle-events';
+import {
+	LifecycleEventPublisherFactory,
+	noopLifecycleEventPublisher,
+} from '../../lifecycle-events';
 import {
 	InMemoryWorkQueue,
 	type OrchestrationMessage,
 	type StepMessage,
 	type WorkQueue,
 } from '../../queue';
+import { noopExecutionResponseSender } from '../../response-channel';
+import type { CancelExecutionService } from '../cancel-execution.service';
 import { ExecutionStartHandler } from '../execution-start-handler';
 import { OrchestrationWorker } from '../orchestration-worker';
 import { StartExecutionService } from '../start-execution.service';
@@ -32,6 +37,10 @@ const graph: WorkflowGraph = {
 	],
 	edges: [{ from: 'trigger', to: 'step-a', outputIndex: 0, inputIndex: 0 }],
 };
+
+const lifecycleEventPublisherFactory = new LifecycleEventPublisherFactory(
+	noopLifecycleEventPublisher,
+);
 
 describe('execution start (integration)', () => {
 	let container: StartedPostgreSqlContainer;
@@ -66,20 +75,23 @@ describe('execution start (integration)', () => {
 				executionStore,
 				stepStore,
 				orchestrationQueue,
-				noopLifecycleEventPublisher,
+				lifecycleEventPublisherFactory,
 			),
 			new StepSettledHandler(
 				executionStore,
 				stepStore,
 				stepQueue,
 				orchestrationQueue,
-				noopLifecycleEventPublisher,
+				lifecycleEventPublisherFactory,
+				noopExecutionResponseSender,
+				{ cancelSubExecutions: vi.fn() } as unknown as CancelExecutionService,
 			),
 		);
 		worker.start();
 		const startExecution = new StartExecutionService(
 			new AllowAllAdmittance(),
 			executionStore,
+			stepStore,
 			orchestrationQueue,
 		);
 
@@ -100,7 +112,7 @@ describe('execution start (integration)', () => {
 			workflow: {},
 			triggerOutputs: [[{ json: { hello: 'world' } }]],
 			executionId: generateId(),
-			callerContext: {},
+			callerContext: { hostMode: 'trigger' },
 		});
 		await ready;
 
@@ -135,7 +147,7 @@ describe('execution start (integration)', () => {
 			executionStore,
 			stepStore,
 			queue,
-			noopLifecycleEventPublisher,
+			lifecycleEventPublisherFactory,
 		);
 
 		const executionId = generateId();
@@ -144,10 +156,12 @@ describe('execution start (integration)', () => {
 			workflowId: 'wf-2',
 			status: 'queued',
 			mode: 'production',
-			graph,
+			graph: { ...graph, seeded: [] },
 			workflow: {},
 			triggerOutputs: null,
-			callerContext: {},
+			callerContext: { hostMode: 'trigger' },
+			responseExpectation: { kind: 'none' },
+			parent: null,
 		});
 
 		// Delivered twice, both awaited — the CAS is what makes the second a no-op.

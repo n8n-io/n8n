@@ -22,8 +22,10 @@ vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: mockTrack }),
 }));
 
-import { MCP_JSON_NUDGE_MODAL_KEY } from '@/experiments/mcpJsonNudge/constants';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
+
+import { MCP_JSON_NUDGE_MODAL_KEY } from '@/experiments/mcpJsonNudge/constants';
+
 import { useMcpJsonNudgeTrigger } from './useMcpJsonNudgeTrigger';
 
 describe('useMcpJsonNudgeTrigger', () => {

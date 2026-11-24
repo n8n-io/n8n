@@ -98,6 +98,33 @@ export function injectDomainRestrictionFields(credentialType: ICredentialType): 
 	return [...properties, ...DOMAIN_RESTRICTION_FIELDS];
 }
 
+/**
+ * Rewrites a configured domain into the ASCII form `URL#hostname` reports, so an
+ * allowlist entry written in its unicode form (`münchen.de`) still matches the
+ * punycode hostname the URL parser produces (`xn--mnchen-3ya.de`).
+ *
+ * Entries that are not a plain hostname (`example.com:8080`, `foo bar`) are kept
+ * verbatim, so they keep behaving as before and never match by accident. That
+ * includes a backslash or a percent sign: `URL` treats `\` as a separator, so
+ * `example.com\evil.com` would otherwise collapse to `example.com` and match a
+ * domain the customer never configured.
+ */
+function normalizeAllowedDomain(domain: string): string {
+	const isWildcard = domain.startsWith('*.');
+	const host = isWildcard ? domain.slice(2) : domain;
+	if (host === '' || /[\s\\/:?#@%]/.test(host)) return domain;
+
+	let asciiHost: string;
+	try {
+		asciiHost = new URL(`https://${host}`).hostname;
+	} catch {
+		return domain;
+	}
+	if (asciiHost === '') return domain;
+
+	return isWildcard ? `*.${asciiHost}` : asciiHost;
+}
+
 /** `*.example.com` matches subdomains only, never the bare domain. */
 export function isDomainAllowed(options: { url: string; allowedDomains: string }): boolean {
 	const { url: urlString, allowedDomains } = options;
@@ -110,7 +137,7 @@ export function isDomainAllowed(options: { url: string; allowedDomains: string }
 
 	const allowedDomainsList = allowedDomains
 		.split(',')
-		.map((domain) => domain.trim().toLowerCase().replace(/\.$/, ''))
+		.map((domain) => normalizeAllowedDomain(domain.trim().toLowerCase().replace(/\.$/, '')))
 		.filter(Boolean);
 
 	for (const allowedDomain of allowedDomainsList) {
@@ -142,7 +169,7 @@ function toDisplayHost(url: string): string {
 }
 
 /** Hostname of an absolute URL, normalised for matching. `undefined` when there is none. */
-function toHostname(url: string | undefined): string | undefined {
+export function toHostname(url: string | undefined): string | undefined {
 	if (!url) return undefined;
 	try {
 		return new URL(url).hostname.toLowerCase().replace(/\.$/, '') || undefined;
@@ -270,4 +297,35 @@ export function assertCredentialAllowsUrl(options: {
 	}
 
 	return undefined;
+}
+
+/**
+ * Allowlist for a request the credential itself issues — its own token exchange, against a
+ * host the credential declares. `undefined` means unrestricted.
+ *
+ * This is a credential-owned surface in the sense `getCredentialAllowedDomains` means it,
+ * so `'none'` is a no-op here for the same reason it is there: the editor writes `'none'`
+ * by default when it creates OAuth and quick-connect credentials, and blocking on it would
+ * stop those credentials obtaining a token at all. Only an explicit `'domains'` list
+ * applies. Unlike that function it takes no `INode`, because `runPreAuthentication` has
+ * none to give.
+ *
+ * The list is never widened by the host being requested: unlike a node endpoint declared
+ * in a node definition, a hook's target is read from a credential field the user typed.
+ *
+ * @throws {UserError} if `'domains'` is set with an empty list.
+ */
+export function getCredentialOwnRequestAllowedDomains(
+	credentialData: ICredentialDataDecryptedObject,
+): string | undefined {
+	if (readMode(credentialData) !== 'domains') return undefined;
+
+	const allowedDomains = readAllowedDomainsField(credentialData);
+	if (!allowedDomains) {
+		throw new UserError(
+			'No allowed domains specified. Configure allowed domains or change restriction setting.',
+		);
+	}
+
+	return allowedDomains;
 }

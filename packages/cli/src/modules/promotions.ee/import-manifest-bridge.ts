@@ -1,0 +1,380 @@
+import { getN8nVersion } from '@n8n/backend-common';
+import { isRecord } from '@n8n/utils/is-record';
+import { jsonParse } from 'n8n-workflow';
+import * as fs from 'node:fs/promises';
+import path from 'node:path';
+
+import { MANIFEST_FILE } from '@/modules/n8n-packages/spec/constants';
+import type { ManifestEntry, PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
+import { packageManifestSchema } from '@/modules/n8n-packages/spec/manifest.schema';
+import type {
+	PackageRequirementConsumer,
+	PackageRequirements,
+} from '@/modules/n8n-packages/spec/requirements.schema';
+
+import { remapPath, type ContainerMove } from './branch-placement';
+
+/**
+ * TEMPORARY bridge: import still inventories a directory package from
+ * `manifest.json`. Apply writes that file after overlay.
+ *
+ * To drop this step: delete this file, its test, and the call in
+ * `applySelection`.
+ */
+
+const SNAPSHOT_FILES = {
+	'project.json': 'projects',
+	'folder.json': 'folders',
+	'workflow.json': 'workflows',
+	'agent.json': 'agents',
+	'skill.json': 'skills',
+	'credential.json': 'credentials',
+	'data-table.json': 'dataTables',
+	'tag.json': 'tags',
+} as const;
+
+type SnapshotKind = (typeof SNAPSHOT_FILES)[keyof typeof SNAPSHOT_FILES];
+
+export async function readLeftoverManifest(
+	exportFolder: string,
+): Promise<PackageManifest | undefined> {
+	let raw: string;
+	try {
+		raw = await fs.readFile(path.join(exportFolder, MANIFEST_FILE), 'utf-8');
+	} catch {
+		return undefined;
+	}
+	try {
+		const parsed = packageManifestSchema.safeParse(jsonParse(raw));
+		return parsed.success ? parsed.data : undefined;
+	} catch {
+		return undefined;
+	}
+}
+
+/** Drop selected workflows from leftover requirement users before merging staging. */
+function dropSelectedRequirementUsers(
+	leftover: PackageManifest | undefined,
+	selectedWorkflowIds: readonly string[],
+): PackageManifest | undefined {
+	if (leftover?.requirements === undefined || selectedWorkflowIds.length === 0) {
+		return leftover;
+	}
+
+	const selected = new Set(selectedWorkflowIds);
+	const requirements = compactRequirements({
+		credentials: dropSelectedUsers(leftover.requirements.credentials, selected),
+		dataTables: dropSelectedUsers(leftover.requirements.dataTables, selected),
+		workflows: dropSelectedUsers(leftover.requirements.workflows, selected),
+		agents: dropSelectedUsers(leftover.requirements.agents, selected),
+		variables: dropSelectedUsers(leftover.requirements.variables, selected),
+		tags: dropSelectedUsers(leftover.requirements.tags, selected),
+		nodeTypes: dropSelectedUsers(leftover.requirements.nodeTypes, selected),
+	});
+
+	return { ...leftover, ...(requirements ? { requirements } : { requirements: undefined }) };
+}
+
+function dropSelectedUsers<T extends { usedBy: PackageRequirementConsumer[] }>(
+	rows: T[] | undefined,
+	selectedWorkflowIds: Set<string>,
+): T[] | undefined {
+	if (rows === undefined) return undefined;
+	const kept = rows
+		.map((row) => ({
+			...row,
+			usedBy: row.usedBy.filter(
+				({ kind, id }) => kind !== 'workflow' || !selectedWorkflowIds.has(id),
+			),
+		}))
+		.filter((row) => row.usedBy.length > 0);
+	return kept.length > 0 ? kept : undefined;
+}
+
+export async function writeImportManifest(options: {
+	exportFolder: string;
+	staging: PackageManifest;
+	sourceId: string;
+	selectedWorkflowIds?: readonly string[];
+	/** Container renames already applied to the export, so leftover targets resolve. */
+	containerMoves?: readonly ContainerMove[];
+}): Promise<void> {
+	const {
+		exportFolder,
+		staging,
+		sourceId,
+		selectedWorkflowIds = [],
+		containerMoves = [],
+	} = options;
+	const selected = [...selectedWorkflowIds, ...(staging.workflows ?? []).map((entry) => entry.id)];
+	const leftover = dropSelectedRequirementUsers(await readLeftoverManifest(exportFolder), selected);
+	const collections = await walkSnapshotCollections(exportFolder);
+	const remainingWorkflowIds = new Set((collections.workflows ?? []).map((entry) => entry.id));
+	const selectedSet = new Set(selected);
+	const variables = await collectVariables(exportFolder, leftover, staging, containerMoves);
+
+	const written = {
+		packageFormatVersion: '1',
+		sourceN8nVersion: getN8nVersion(),
+		sourceId,
+		...collections,
+		...(variables.length > 0 ? { variables } : {}),
+		...requirementsBlock(leftover, staging, remainingWorkflowIds, selectedSet),
+	} satisfies PackageManifest;
+	const manifest = packageManifestSchema.parse(written);
+
+	await fs.writeFile(path.join(exportFolder, MANIFEST_FILE), JSON.stringify(manifest, null, '\t'));
+}
+
+async function walkSnapshotCollections(
+	exportFolder: string,
+): Promise<Pick<PackageManifest, SnapshotKind>> {
+	const state: { [K in SnapshotKind]: NonNullable<PackageManifest[K]> } = {
+		projects: [],
+		folders: [],
+		workflows: [],
+		agents: [],
+		skills: [],
+		credentials: [],
+		dataTables: [],
+		tags: [],
+	};
+
+	const walk = async (absDir: string): Promise<void> => {
+		const entries = await fs.readdir(absDir, { withFileTypes: true });
+		for (const entry of entries) {
+			const fullPath = path.join(absDir, entry.name);
+			if (entry.isDirectory()) {
+				await walk(fullPath);
+				continue;
+			}
+			if (!entry.isFile()) continue;
+			const kind = SNAPSHOT_FILES[entry.name as keyof typeof SNAPSHOT_FILES];
+			if (kind === undefined) continue;
+			const relativeFile = path.relative(exportFolder, fullPath).split(path.sep).join('/');
+			const target = path.posix.dirname(relativeFile);
+			const item = await readIdNameFile(fullPath, target, kind);
+			if (!item) continue;
+			const { entry: listed, isArchived } = item;
+			// Only a workflow entry carries the flag; the other kinds list id, name and target.
+			if (kind === 'workflows') {
+				state.workflows.push({ ...listed, isArchived });
+				continue;
+			}
+			state[kind].push(listed);
+		}
+	};
+
+	await walk(exportFolder);
+	return {
+		...(state.projects.length > 0 ? { projects: state.projects } : {}),
+		...(state.folders.length > 0 ? { folders: state.folders } : {}),
+		...(state.workflows.length > 0 ? { workflows: state.workflows } : {}),
+		...(state.agents.length > 0 ? { agents: state.agents } : {}),
+		...(state.skills.length > 0 ? { skills: state.skills } : {}),
+		...(state.credentials.length > 0 ? { credentials: state.credentials } : {}),
+		...(state.dataTables.length > 0 ? { dataTables: state.dataTables } : {}),
+		...(state.tags.length > 0 ? { tags: state.tags } : {}),
+	};
+}
+
+async function readIdNameFile(
+	file: string,
+	target: string,
+	kind: SnapshotKind,
+): Promise<{ entry: ManifestEntry; isArchived: boolean } | undefined> {
+	let parsed: unknown;
+	try {
+		parsed = jsonParse(await fs.readFile(file, 'utf-8'));
+	} catch {
+		return undefined;
+	}
+
+	const nameSource = isRecord(parsed) && kind === 'skills' ? parsed.skill : parsed;
+	const name = isRecord(nameSource) ? nameSource.name : undefined;
+
+	if (!isRecord(parsed) || typeof parsed.id !== 'string' || typeof name !== 'string') {
+		return undefined;
+	}
+
+	return { entry: { id: parsed.id, name, target }, isArchived: parsed.isArchived === true };
+}
+
+async function collectVariables(
+	exportFolder: string,
+	leftover: PackageManifest | undefined,
+	staging: PackageManifest,
+	containerMoves: readonly ContainerMove[],
+): Promise<ManifestEntry[]> {
+	const byId = new Map<string, ManifestEntry>();
+	for (const entry of leftover?.variables ?? []) {
+		byId.set(entry.id, { ...entry, target: remapPath(entry.target, containerMoves) });
+	}
+	for (const entry of staging.variables ?? []) {
+		byId.set(entry.id, entry);
+	}
+
+	const kept: ManifestEntry[] = [];
+	for (const entry of byId.values()) {
+		const file = resolveContainedFile(exportFolder, entry.target, 'variable.json');
+		if (file === undefined) continue;
+		try {
+			const info = await fs.lstat(file);
+			if (!info.isFile()) continue;
+			kept.push(entry);
+		} catch {
+			continue;
+		}
+	}
+	return kept;
+}
+
+/** Leftover targets are untrusted. Keep only a regular file inside the export. */
+function resolveContainedFile(
+	exportFolder: string,
+	target: string,
+	fileName: string,
+): string | undefined {
+	const segments = target.split(/[\\/]/).filter(Boolean);
+	if (segments.length === 0 || segments.some((segment) => segment === '.' || segment === '..')) {
+		return undefined;
+	}
+
+	const resolvedBase = path.resolve(exportFolder);
+	const resolvedDir = path.resolve(exportFolder, ...segments);
+	if (resolvedDir !== resolvedBase && !resolvedDir.startsWith(resolvedBase + path.sep)) {
+		return undefined;
+	}
+	return path.join(resolvedDir, fileName);
+}
+
+function requirementsBlock(
+	leftover: PackageManifest | undefined,
+	staging: PackageManifest,
+	remainingWorkflowIds: Set<string>,
+	selectedWorkflowIds: Set<string>,
+): Pick<PackageManifest, 'requirements'> {
+	const requirements = compactRequirements({
+		credentials: mergeRequirementRows(
+			leftover?.requirements?.credentials,
+			staging.requirements?.credentials,
+			remainingWorkflowIds,
+			selectedWorkflowIds,
+			(row) => row.id,
+		),
+		dataTables: mergeRequirementRows(
+			leftover?.requirements?.dataTables,
+			staging.requirements?.dataTables,
+			remainingWorkflowIds,
+			selectedWorkflowIds,
+			(row) => row.id,
+		),
+		workflows: mergeRequirementRows(
+			leftover?.requirements?.workflows,
+			staging.requirements?.workflows,
+			remainingWorkflowIds,
+			selectedWorkflowIds,
+			(row) => row.id,
+		),
+		agents: mergeRequirementRows(
+			leftover?.requirements?.agents,
+			staging.requirements?.agents,
+			remainingWorkflowIds,
+			selectedWorkflowIds,
+			(row) => row.id,
+		),
+		variables: mergeRequirementRows(
+			leftover?.requirements?.variables,
+			staging.requirements?.variables,
+			remainingWorkflowIds,
+			selectedWorkflowIds,
+			(row) => row.name,
+		),
+		tags: mergeRequirementRows(
+			leftover?.requirements?.tags,
+			staging.requirements?.tags,
+			remainingWorkflowIds,
+			selectedWorkflowIds,
+			(row) => row.id,
+		),
+		nodeTypes: mergeRequirementRows(
+			leftover?.requirements?.nodeTypes,
+			staging.requirements?.nodeTypes,
+			remainingWorkflowIds,
+			selectedWorkflowIds,
+			(row) => `${row.type}@${row.typeVersion}`,
+		),
+	});
+	return requirements ? { requirements } : {};
+}
+
+function mergeRequirementRows<T extends { usedBy: PackageRequirementConsumer[] }>(
+	leftover: T[] | undefined,
+	staging: T[] | undefined,
+	remainingWorkflowIds: Set<string>,
+	selectedWorkflowIds: Set<string>,
+	keyOf: (row: T) => string,
+): T[] | undefined {
+	const byKey = new Map<string, T>();
+	for (const row of leftover ?? []) {
+		const usedBy = remainingUsers(
+			row.usedBy.filter(({ kind, id }) => kind !== 'workflow' || !selectedWorkflowIds.has(id)),
+			remainingWorkflowIds,
+		);
+		if (usedBy.length === 0) continue;
+		byKey.set(keyOf(row), { ...row, usedBy });
+	}
+	for (const row of staging ?? []) {
+		const key = keyOf(row);
+		const usedBy = remainingUsers(
+			[...(byKey.get(key)?.usedBy ?? []), ...row.usedBy],
+			remainingWorkflowIds,
+		);
+		if (usedBy.length === 0) {
+			byKey.delete(key);
+			continue;
+		}
+		byKey.set(key, { ...row, usedBy });
+	}
+	const rows = [...byKey.values()];
+	return rows.length > 0 ? rows : undefined;
+}
+
+function remainingUsers(
+	usedBy: PackageRequirementConsumer[],
+	remainingWorkflowIds: Set<string>,
+): PackageRequirementConsumer[] {
+	const kept = new Map<string, PackageRequirementConsumer>();
+
+	for (const consumer of usedBy) {
+		if (consumer.kind === 'workflow' && !remainingWorkflowIds.has(consumer.id)) {
+			continue;
+		}
+
+		kept.set(`${consumer.kind}:${consumer.id}`, consumer);
+	}
+
+	return [...kept.values()].sort((a, b) => `${a.kind}:${a.id}`.localeCompare(`${b.kind}:${b.id}`));
+}
+
+function compactRequirements(input: {
+	credentials: PackageRequirements['credentials'];
+	dataTables: PackageRequirements['dataTables'];
+	workflows: PackageRequirements['workflows'];
+	agents: PackageRequirements['agents'];
+	variables: PackageRequirements['variables'];
+	tags: PackageRequirements['tags'];
+	nodeTypes: PackageRequirements['nodeTypes'];
+}): PackageRequirements | undefined {
+	const { credentials, dataTables, workflows, agents, variables, tags, nodeTypes } = input;
+	const requirements: PackageRequirements = {
+		...(credentials?.length ? { credentials } : {}),
+		...(dataTables?.length ? { dataTables } : {}),
+		...(workflows?.length ? { workflows } : {}),
+		...(agents?.length ? { agents } : {}),
+		...(variables?.length ? { variables } : {}),
+		...(tags?.length ? { tags } : {}),
+		...(nodeTypes?.length ? { nodeTypes } : {}),
+	};
+	return Object.keys(requirements).length > 0 ? requirements : undefined;
+}

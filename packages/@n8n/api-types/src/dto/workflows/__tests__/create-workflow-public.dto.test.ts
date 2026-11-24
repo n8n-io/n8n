@@ -1,3 +1,4 @@
+import { PUBLIC_API_IGNORED_NODE_FIELDS } from '../base-workflow-public.dto';
 import { CreateWorkflowPublicDto } from '../create-workflow-public.dto';
 
 const validPayload = {
@@ -17,6 +18,22 @@ const validPayload = {
 };
 
 describe('CreateWorkflowPublicDto', () => {
+	test('accepts an optional workflow description', () => {
+		const payload = { ...validPayload, description: 'What this workflow does' };
+
+		expect(CreateWorkflowPublicDto.safeParse(payload)).toMatchObject({
+			success: true,
+			data: { description: payload.description },
+		});
+		expect(CreateWorkflowPublicDto.safeParse(validPayload).success).toBe(true);
+	});
+
+	test('rejects a non-string workflow description', () => {
+		expect(CreateWorkflowPublicDto.safeParse({ ...validPayload, description: 42 }).success).toBe(
+			false,
+		);
+	});
+
 	test('rejects an unknown key through both the DTO and its schema', () => {
 		const payload = { ...validPayload, notAWorkflowField: 'x' };
 
@@ -72,6 +89,51 @@ describe('CreateWorkflowPublicDto', () => {
 
 		expect(result.success).toBe(true);
 	});
+
+	test('accepts node.extendsCredential but ignores it', () => {
+		const result = CreateWorkflowPublicDto.safeParse({
+			...validPayload,
+			nodes: [{ ...validPayload.nodes[0], extendsCredential: 'datadogApi' }],
+		});
+
+		expect(result.success).toBe(true);
+		if (result.success) {
+			expect(result.data.nodes[0]).not.toHaveProperty('extendsCredential');
+		}
+	});
+
+	test('drops every node field listed in PUBLIC_API_IGNORED_NODE_FIELDS', () => {
+		const ignoredFields = Object.fromEntries(
+			PUBLIC_API_IGNORED_NODE_FIELDS.map((field) => [field, 'ignored']),
+		);
+
+		const result = CreateWorkflowPublicDto.safeParse({
+			...validPayload,
+			nodes: [{ ...validPayload.nodes[0], ...ignoredFields }],
+		});
+
+		expect(result.success).toBe(true);
+		if (result.success) {
+			for (const field of PUBLIC_API_IGNORED_NODE_FIELDS) {
+				expect(result.data.nodes[0]).not.toHaveProperty(field);
+			}
+		}
+	});
+
+	test.each([['v2'], ['v1'], [null], ['unknown']])(
+		'accepts settings.engineType %s but ignores it',
+		(engineType) => {
+			const result = CreateWorkflowPublicDto.safeParse({
+				...validPayload,
+				settings: { ...validPayload.settings, engineType },
+			});
+
+			expect(result.success).toBe(true);
+			if (result.success) {
+				expect(result.data.settings).toEqual({ executionOrder: 'v1' });
+			}
+		},
+	);
 
 	test.each([
 		['accepts', 155, true],

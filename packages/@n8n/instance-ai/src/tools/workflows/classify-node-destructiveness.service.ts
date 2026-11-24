@@ -1,7 +1,7 @@
 /**
  * Node Destructiveness Classification
  *
- * Decides, per main-flow node, whether a verification execution may run the
+ * Decides, per main-flow node and attached tool, whether verification may run the
  * node for real (`execute`) or must mock its output via per-execution pin
  * data (`simulate`) because the node would create, update, or delete data in
  * an external system.
@@ -18,14 +18,18 @@
 
 import { isRecord } from '@n8n/utils/is-record';
 import { isAiRootNodeType, type WorkflowJSON } from '@n8n/workflow-sdk';
-import type { IConnections } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { isTriggerNodeType } from './workflow-json-utils';
-import type { ModelConfig } from '../../types';
-import { HAIKU_MODEL } from '../../utils/eval-agents';
+import { AGENT_TOOL_NODE_TYPE, createVerificationGraph } from './verification-graph';
+import type { Logger } from '../../logger';
+import type { AnthropicThinkingEffort, FetchFn } from '@n8n/agents';
+
+import type { HelperUsageHook, ModelConfig } from '../../types';
 import { generateValidatedJson } from '../../utils/generate-validated-json';
 import type { NodeSimulationVerdict } from '../../workflow-loop/workflow-loop-state';
+
+export const DESTRUCTIVENESS_CLASSIFIER_EFFORT: AnthropicThinkingEffort = 'low';
 
 type WorkflowNode = WorkflowJSON['nodes'][number];
 
@@ -33,8 +37,17 @@ export interface ClassifyNodesForSimulationInput {
 	workflow: WorkflowJSON;
 	/** Node names whose credentials were mocked — always simulated. */
 	mockedNodeNames?: string[];
-	/** Host-resolved model used when no eval model API key is configured in the environment. */
-	fallbackModelConfig?: ModelConfig;
+	/** Classify only these names. Keep the full graph for tool discovery. */
+	nodeNames?: ReadonlySet<string>;
+	/** Host-resolved main model for the run. */
+	model?: ModelConfig;
+	/** Host-resolved utility model. The classifier prefers it over `model`. */
+	utilityModel?: ModelConfig;
+	/** Transport for the helper's model call. */
+	modelFetch?: FetchFn;
+	/** Receives the helper call's token usage so the host can bill it. */
+	onHelperUsage?: HelperUsageHook;
+	logger?: Logger;
 }
 
 const STICKY_NOTE_TYPE = 'n8n-nodes-base.stickyNote';
@@ -74,12 +87,14 @@ const SAFE_NODE_TYPES = new Set([
  * AI roots (agent/chain/extractor/classifier nodes) call an LLM but are
  * read-only towards user systems, so they classify as safe — the set lives in
  * `@n8n/workflow-sdk` (`isAiRootNodeType`), shared with fixture shaping. Write
- * operations living as agent *tools* are a known gap. Roots whose LLM
+ * tools receive separate classifications. Roots whose LLM
  * sub-node has no usable credentials are overridden to `simulate` later, in
  * `plan-verification-simulation.ts`.
  */
 function isSafeNodeType(nodeType: string): boolean {
-	return SAFE_NODE_TYPES.has(nodeType) || isAiRootNodeType(nodeType);
+	return (
+		SAFE_NODE_TYPES.has(nodeType) || isAiRootNodeType(nodeType) || nodeType === AGENT_TOOL_NODE_TYPE
+	);
 }
 
 /** Node types that are destructive by their very type (no operation param needed). */
@@ -89,6 +104,15 @@ const DESTRUCTIVE_NODE_TYPES = new Map<string, string>([
 	['n8n-nodes-base.ssh', 'Runs commands on a remote machine'],
 	// Simulating the call skips the sub-workflow entirely, side effects included.
 	['n8n-nodes-base.executeWorkflow', 'Executes another workflow which may have side effects'],
+	[
+		'@n8n/n8n-nodes-langchain.toolWorkflow',
+		'Executes another workflow which may have side effects',
+	],
+	['@n8n/n8n-nodes-langchain.mcpClientTool', 'Calls remote MCP tools which may have side effects'],
+	[
+		'@n8n/n8n-nodes-langchain.mcpRegistryClientTool',
+		'Calls remote MCP tools which may have side effects',
+	],
 ]);
 
 const CODE_NODE_TYPES = new Set([
@@ -99,19 +123,6 @@ const CODE_NODE_TYPES = new Set([
 
 const FORM_NODE_TYPE = 'n8n-nodes-base.form';
 const WAIT_NODE_TYPE = 'n8n-nodes-base.wait';
-
-/**
- * A real wait this short is harmless during verification and — unlike a
- * simulated one — preserves pass-through data for downstream expressions.
- */
-const MAX_EXECUTABLE_WAIT_SECONDS = 60;
-
-const WAIT_UNIT_SECONDS: Record<string, number> = {
-	seconds: 1,
-	minutes: 60,
-	hours: 3600,
-	days: 86_400,
-};
 
 const HTTP_REQUEST_NODE_TYPE = 'n8n-nodes-base.httpRequest';
 
@@ -184,27 +195,6 @@ function getStringParam(node: WorkflowNode, key: string): string | undefined {
 	return typeof value === 'string' && value.length > 0 ? value : undefined;
 }
 
-/**
- * Node names reachable over `main` connections (sources and destinations).
- * Sub-nodes (ai_tool, ai_languageModel, …) and disconnected nodes never carry
- * pin data, so the plan excludes them.
- */
-function collectMainFlowNodeNames(workflow: WorkflowJSON): Set<string> {
-	const connections = (workflow.connections ?? {}) as IConnections;
-	const names = new Set<string>();
-	for (const [sourceName, outputs] of Object.entries(connections)) {
-		const main = outputs.main;
-		if (!main) continue;
-		names.add(sourceName);
-		for (const port of main) {
-			for (const target of port ?? []) {
-				names.add(target.node);
-			}
-		}
-	}
-	return names;
-}
-
 function deterministic(
 	nodeName: string,
 	verdict: 'simulate' | 'execute',
@@ -217,20 +207,25 @@ function deterministicVerdict(
 	node: WorkflowNode & { name: string },
 	mockedNodeNames: Set<string>,
 ): NodeSimulationVerdict | 'ambiguous' {
+	// Generated node tools use the same operations as their base node.
+	const nodeType =
+		node.type.startsWith('n8n-nodes-base.') && node.type.endsWith('Tool')
+			? node.type.slice(0, -4)
+			: node.type;
 	if (mockedNodeNames.has(node.name)) {
 		return deterministic(node.name, 'simulate', 'Credentials are not configured for this node');
 	}
 
-	if (isSafeNodeType(node.type)) {
+	if (isSafeNodeType(nodeType)) {
 		return deterministic(node.name, 'execute', 'Transforms data without touching external systems');
 	}
 
-	const destructiveByType = DESTRUCTIVE_NODE_TYPES.get(node.type);
+	const destructiveByType = DESTRUCTIVE_NODE_TYPES.get(nodeType);
 	if (destructiveByType) {
 		return deterministic(node.name, 'simulate', destructiveByType);
 	}
 
-	if (node.type === HTTP_REQUEST_NODE_TYPE) {
+	if (nodeType === HTTP_REQUEST_NODE_TYPE) {
 		const method = (getStringParam(node, 'method') ?? 'GET').toUpperCase();
 		if (['GET', 'HEAD', 'OPTIONS'].includes(method)) {
 			return deterministic(
@@ -248,7 +243,7 @@ function deterministicVerdict(
 	// parks the run in `waiting` and everything downstream is never verified.
 	// Pinning them lets execution flow past (a pinned node never calls
 	// putExecutionToWait).
-	if (node.type === FORM_NODE_TYPE) {
+	if (nodeType === FORM_NODE_TYPE) {
 		return deterministic(
 			node.name,
 			'simulate',
@@ -256,32 +251,26 @@ function deterministicVerdict(
 		);
 	}
 
-	if (node.type === WAIT_NODE_TYPE) {
-		// Wait node defaults: resume='timeInterval', amount=1, unit='hours'.
+	if (nodeType === WAIT_NODE_TYPE) {
+		// Wait node defaults: resume='timeInterval'. A verification run removes the
+		// delay of time-based waits, so they run for real and keep pass-through data.
 		const params = isRecord(node.parameters) ? node.parameters : {};
 		const resume = typeof params.resume === 'string' ? params.resume : 'timeInterval';
-		if (resume === 'timeInterval') {
-			const amount = typeof params.amount === 'number' ? params.amount : 1;
-			const unit = typeof params.unit === 'string' ? params.unit : 'hours';
-			const seconds = amount * (WAIT_UNIT_SECONDS[unit] ?? 3600);
-			if (seconds <= MAX_EXECUTABLE_WAIT_SECONDS) {
-				return deterministic(
-					node.name,
-					'execute',
-					`Short wait (${seconds}s) — runs for real to preserve pass-through data`,
-				);
-			}
+		if (resume === 'timeInterval' || resume === 'specificTime') {
+			return deterministic(
+				node.name,
+				'execute',
+				'Time-based wait — verification runs it without the delay',
+			);
 		}
 		return deterministic(
 			node.name,
 			'simulate',
-			resume === 'timeInterval' || resume === 'specificTime'
-				? 'Pauses the workflow for longer than verification can wait'
-				: 'Pauses the workflow until a user or external system resumes it',
+			'Pauses the workflow until a user or external system resumes it',
 		);
 	}
 
-	if (CODE_NODE_TYPES.has(node.type)) {
+	if (CODE_NODE_TYPES.has(nodeType)) {
 		const source = (
 			getStringParam(node, 'jsCode') ??
 			getStringParam(node, 'pythonCode') ??
@@ -357,7 +346,10 @@ function formatNodeBlock(node: WorkflowNode & { name: string }): string {
 
 async function classifyAmbiguousNodes(
 	nodes: Array<WorkflowNode & { name: string }>,
-	fallbackModelConfig?: ModelConfig,
+	model?: ModelConfig,
+	logger?: Logger,
+	modelFetch?: FetchFn,
+	onHelperUsage?: HelperUsageHook,
 ): Promise<NodeSimulationVerdict[]> {
 	const userText = [
 		'Classify the following n8n workflow nodes.',
@@ -368,12 +360,19 @@ async function classifyAmbiguousNodes(
 	].join('\n');
 
 	const result = await generateValidatedJson('verification-destructiveness-classifier', {
-		model: HAIKU_MODEL,
+		model,
+		effort: DESTRUCTIVENESS_CLASSIFIER_EFFORT,
 		instructions: SYSTEM_INSTRUCTIONS,
 		userText,
 		schema: LlmVerdictSchema,
-		fallbackModelConfig,
+		modelFetch,
+		onHelperUsage,
 	});
+	if (!result.ok) {
+		logger?.warn(
+			`Node destructiveness classification failed (${result.message ?? result.reason}); ${nodes.length} ambiguous node(s) are simulated`,
+		);
+	}
 	const parsed = result.ok ? result.data : undefined;
 
 	return nodes.map((node) => {
@@ -395,14 +394,14 @@ function nodeHasName(node: WorkflowNode): node is WorkflowNode & { name: string 
 
 /**
  * Classify every main-flow, non-trigger node of the workflow. Returns one
- * verdict per node, ordered as the nodes appear in the workflow. Triggers and
- * user-action nodes are out of scope (Mechanism A handles them); sub-nodes
- * and disconnected nodes are excluded because pin data cannot apply to them.
+ * verdict per node, ordered as the nodes appear in the workflow. Include
+ * attached tools. Exclude triggers, other sub-nodes, and disconnected nodes.
  */
 export async function classifyNodesForSimulation(
 	input: ClassifyNodesForSimulationInput,
 ): Promise<NodeSimulationVerdict[]> {
-	const mainFlowNames = collectMainFlowNodeNames(input.workflow);
+	const graph = createVerificationGraph(input.workflow);
+	const candidateNames = graph.withTools(graph.rootNodeNames);
 	const mockedNodeNames = new Set(input.mockedNodeNames ?? []);
 
 	const candidates = (input.workflow.nodes ?? []).filter(
@@ -411,7 +410,8 @@ export async function classifyNodesForSimulation(
 			node.disabled !== true &&
 			node.type !== STICKY_NOTE_TYPE &&
 			!isTriggerNodeType(node.type) &&
-			mainFlowNames.has(node.name),
+			candidateNames.has(node.name) &&
+			(input.nodeNames === undefined || input.nodeNames.has(node.name)),
 	);
 	if (candidates.length === 0) return [];
 
@@ -431,7 +431,13 @@ export async function classifyNodesForSimulation(
 		// retired, the plan is the only source of verification pin data, so a
 		// throw here would leave every node executing for real. Fail destructive.
 		try {
-			for (const verdict of await classifyAmbiguousNodes(ambiguous, input.fallbackModelConfig)) {
+			for (const verdict of await classifyAmbiguousNodes(
+				ambiguous,
+				input.utilityModel ?? input.model,
+				input.logger,
+				input.modelFetch,
+				input.onHelperUsage,
+			)) {
 				verdictByName.set(verdict.nodeName, verdict);
 			}
 		} catch {

@@ -1,3 +1,6 @@
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import type { Mock } from 'vitest';
 import type { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import type { GlobalConfig, SecurityConfig } from '@n8n/config';
@@ -5,18 +8,20 @@ import type { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 import type { BinaryDataConfig, InstanceSettings } from 'n8n-core';
-import type { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
+import { jsonParse, type ICredentialType, type INodeTypeDescription } from 'n8n-workflow';
 
 import type { CredentialTypes } from '@/credential-types';
 import type { CredentialsOverwrites } from '@/credentials-overwrites';
 import { License } from '@/license';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { MfaService } from '@/mfa/mfa.service';
+import type { InboxService } from '@/modules/inbox/inbox.service';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 import type { PushConfig } from '@/push/push.config';
+import type { AiPreferenceSettingsService } from '@/services/ai-preference-settings.service';
 import type { AiUsageService } from '@/services/ai-usage.service';
 import { FrontendService, type PublicFrontendSettings } from '@/services/frontend.service';
-import type { UrlService } from '@/services/url.service';
+import type { UrlService } from '@n8n/backend-services';
 import type { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 import type { UserManagementMailer } from '@/user-management/email';
 import type { OwnershipService } from '../ownership.service';
@@ -38,6 +43,7 @@ describe('FrontendService', () => {
 		tags: { disabled: false },
 		collaboration: { crdt: 'off' },
 		logging: { level: 'info' },
+		expressionEngine: { frontendEngine: 'legacy' },
 		hiringBanner: { enabled: false },
 		versionNotifications: {
 			enabled: false,
@@ -79,14 +85,23 @@ describe('FrontendService', () => {
 		userManagement: {
 			password: { minLength: 8 },
 		},
+		ai: { allowSendingParameterValues: true },
 		aiAssistant: { baseUrl: '' },
 		aiGateway: { enabled: false },
+		evaluation: {
+			collectionsEnabled: false,
+			configEvalsEnabled: false,
+			agentEvalsEnabled: false,
+			agentEvalsRunTimeoutMinutes: 60,
+			forceAgentWorthTesting: false,
+		},
 		queue: { workerPool: { enabled: false } },
 	});
 
 	const instanceSettings = mock<InstanceSettings>({
 		isDocker: false,
 		instanceId: 'test-instance',
+		installId: 'test-install',
 		isMultiMain: false,
 		hostId: 'test-host',
 		staticCacheDir: '/tmp/test-cache',
@@ -117,6 +132,7 @@ describe('FrontendService', () => {
 
 	const credentialsOverwrites = mock<CredentialsOverwrites>({
 		getAll: vi.fn().mockReturnValue({}),
+		getNewerAppProperties: vi.fn().mockReturnValue([]),
 	});
 
 	const license = mock<License>({
@@ -186,7 +202,7 @@ describe('FrontendService', () => {
 	});
 
 	const aiUsageService = mock<AiUsageService>({
-		getAiUsageSettings: vi.fn().mockResolvedValue(true),
+		isParameterValueSharingAllowed: vi.fn().mockResolvedValue(true),
 	});
 
 	const workflowRepository = mock<WorkflowRepository>({
@@ -194,6 +210,11 @@ describe('FrontendService', () => {
 	});
 
 	const workflowReviewPolicyService = mock<WorkflowReviewPolicyService>();
+	const inboxService = mock<InboxService>();
+	const aiPreferenceSettingsService = mock<AiPreferenceSettingsService>({
+		isSwitchOn: true,
+		isManagedByEnv: false,
+	});
 
 	const createMockService = () => {
 		Container.set(
@@ -206,36 +227,49 @@ describe('FrontendService', () => {
 		// constructor-injected mock above must also be registered here.
 		Container.set(License, license);
 
-		return {
-			service: new FrontendService(
-				globalConfig,
-				logger,
-				loadNodesAndCredentials,
-				credentialTypes,
-				credentialsOverwrites,
+		// Suppress the constructor's background write so it cannot outlive the test.
+		// Restore the method so tests and reload handlers can call it explicitly.
+		const generateTypes = vi
+			.spyOn(FrontendService.prototype, 'generateTypes')
+			.mockResolvedValueOnce();
+		try {
+			return {
+				service: new FrontendService(
+					globalConfig,
+					logger,
+					loadNodesAndCredentials,
+					credentialTypes,
+					credentialsOverwrites,
+					license,
+					mailer,
+					instanceSettings,
+					urlService,
+					securityConfig,
+					pushConfig,
+					binaryDataConfig,
+					licenseState,
+					moduleRegistry,
+					mfaService,
+					ownershipService,
+					aiUsageService,
+					workflowRepository,
+					workflowReviewPolicyService,
+					inboxService,
+					aiPreferenceSettingsService,
+				),
 				license,
-				mailer,
-				instanceSettings,
-				urlService,
-				securityConfig,
-				pushConfig,
-				binaryDataConfig,
-				licenseState,
-				moduleRegistry,
-				mfaService,
-				ownershipService,
-				aiUsageService,
-				workflowRepository,
-				workflowReviewPolicyService,
-			),
-			license,
-		};
+			};
+		} finally {
+			generateTypes.mockRestore();
+		}
 	};
 
 	beforeEach(() => {
 		originalEnv = { ...process.env };
 		vi.clearAllMocks();
+		moduleRegistry.isActive.mockReturnValue(false);
 		globalConfig.diagnostics.enabled = false;
+		globalConfig.endpoints.frontendHealthCheckTimeoutMs = 5000;
 		globalConfig.aiAssistant.baseUrl = '';
 		globalConfig.aiGateway.enabled = false;
 		licenseState.isAiGatewayLicensed.mockReturnValue(false);
@@ -267,6 +301,44 @@ describe('FrontendService', () => {
 	});
 
 	describe('getSettings', () => {
+		it('refreshes Inbox availability from registered sources on each request', async () => {
+			moduleRegistry.isActive.mockReturnValue(true);
+			inboxService.getSettings
+				.mockResolvedValueOnce({
+					enabled: true,
+					availableTypes: ['workflow_review'],
+					failedTypes: [],
+				})
+				.mockResolvedValueOnce({
+					enabled: true,
+					availableTypes: [],
+					failedTypes: ['workflow_review'],
+				});
+			const { service } = createMockService();
+
+			expect((await service.getSettings()).inbox).toEqual({
+				enabled: true,
+				availableTypes: ['workflow_review'],
+				failedTypes: [],
+			});
+			expect((await service.getSettings()).inbox).toEqual({
+				enabled: true,
+				availableTypes: [],
+				failedTypes: ['workflow_review'],
+			});
+			expect(inboxService.getSettings).toHaveBeenCalledTimes(2);
+		});
+
+		it('does not query Inbox sources when its module is inactive', async () => {
+			const { service } = createMockService();
+			expect((await service.getSettings()).inbox).toEqual({
+				enabled: false,
+				availableTypes: [],
+				failedTypes: [],
+			});
+			expect(inboxService.getSettings).not.toHaveBeenCalled();
+		});
+
 		it('should return frontend settings', async () => {
 			const { service } = createMockService();
 			const settings = await service.getSettings();
@@ -276,6 +348,15 @@ describe('FrontendService', () => {
 					settingsMode: 'authenticated',
 				}),
 			);
+		});
+
+		it('should expose the configured health check timeout', async () => {
+			globalConfig.endpoints.frontendHealthCheckTimeoutMs = 1500;
+			const { service } = createMockService();
+
+			const settings = await service.getSettings();
+
+			expect(settings.healthCheckTimeoutMs).toBe(1500);
 		});
 
 		it('should expose excluded node types from NODES_EXCLUDE', async () => {
@@ -318,6 +399,28 @@ describe('FrontendService', () => {
 			const settings = await service.getSettings();
 
 			expect(settings.aiGateway).toMatchObject({ enabled: true, cloudUbbEnabled: true });
+		});
+
+		it('should surface the assistant Cloud UBB entitlement when the AI Assistant is enabled and entitled', async () => {
+			globalConfig.aiAssistant.baseUrl = 'https://ai-assistant.n8n.io';
+			licenseState.isAiAssistantCloudUbbEntitlementLicensed.mockReturnValue(true);
+			const { service, license } = createMockService();
+			license.isAiAssistantEnabled.mockReturnValue(true);
+
+			const settings = await service.getSettings();
+
+			expect(settings.aiAssistant).toMatchObject({ enabled: true, cloudUbbEnabled: true });
+		});
+
+		it('should keep the assistant Cloud UBB entitlement off when the AI Assistant is disabled', async () => {
+			globalConfig.aiAssistant.baseUrl = '';
+			licenseState.isAiAssistantCloudUbbEntitlementLicensed.mockReturnValue(true);
+			const { service, license } = createMockService();
+			license.isAiAssistantEnabled.mockReturnValue(false);
+
+			const settings = await service.getSettings();
+
+			expect(settings.aiAssistant).toMatchObject({ enabled: false, cloudUbbEnabled: false });
 		});
 
 		it('should normalize configured postMessage origins', async () => {
@@ -523,6 +626,18 @@ describe('FrontendService', () => {
 			expect(settings.evaluationConcurrencyLimit).toBe(4);
 		});
 
+		it('surfaces the forceAgentWorthTesting operator override', async () => {
+			globalConfig.evaluation = {
+				...globalConfig.evaluation,
+				forceAgentWorthTesting: true,
+			} as GlobalConfig['evaluation'];
+
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+
+			expect(settings.evaluation.forceAgentWorthTesting).toBe(true);
+		});
+
 		it('should surface whether custom OpenTelemetry span attributes are licensed', async () => {
 			licenseState.isOtelCustomSpanAttributesLicensed.mockReturnValue(true);
 
@@ -610,6 +725,8 @@ describe('FrontendService', () => {
 				communityNodesEnabled: false,
 				previewMode: false,
 				enterprise: { saml: false, ldap: false, oidc: false },
+				activeModules: [],
+				expressionEngine: 'legacy',
 			};
 
 			const { service } = createMockService();
@@ -640,6 +757,8 @@ describe('FrontendService', () => {
 				communityNodesEnabled: false,
 				previewMode: false,
 				enterprise: { saml: false, ldap: false, oidc: false },
+				activeModules: [],
+				expressionEngine: 'legacy',
 				mfa: {
 					enabled: false,
 					enforced: false,
@@ -650,6 +769,31 @@ describe('FrontendService', () => {
 			const settings = await service.getPublicSettings(true);
 
 			expect(settings).toEqual(expectedPublicSettings);
+		});
+
+		it('should include the install ID in the settings for signed-in users', async () => {
+			const { service } = createMockService();
+
+			const settings = await service.getSettings();
+
+			expect(settings.instanceId).toBe('test-instance');
+			expect(settings.installId).toBe('test-install');
+		});
+
+		it('should include the active modules and no settings that need a user', async () => {
+			moduleRegistry.getActiveModules.mockReturnValue(['data-table', 'insights']);
+
+			const { service } = createMockService();
+			const publicSettings = await service.getPublicSettings(false);
+
+			expect(publicSettings.activeModules).toEqual(['data-table', 'insights']);
+			expect(publicSettings).not.toHaveProperty('instanceId');
+			expect(publicSettings).not.toHaveProperty('installId');
+			expect(publicSettings).not.toHaveProperty('urlBaseWebhook');
+			expect(publicSettings).not.toHaveProperty('telemetry');
+			expect(publicSettings).not.toHaveProperty('mfa');
+
+			moduleRegistry.getActiveModules.mockReturnValue([]);
 		});
 
 		it('should expose configured passwordMinLength in settings', async () => {
@@ -780,6 +924,35 @@ describe('FrontendService', () => {
 		});
 	});
 
+	describe('expressionEngine setting', () => {
+		afterEach(() => {
+			globalConfig.expressionEngine.frontendEngine = 'legacy';
+		});
+
+		it('should surface the frontend expression engine from config', async () => {
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+			expect(settings.expressionEngine).toBe('legacy');
+		});
+
+		// The default alone would still pass if the value were hard-coded.
+		it('should surface quickjs when the config selects it', async () => {
+			globalConfig.expressionEngine.frontendEngine = 'quickjs';
+
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+			expect(settings.expressionEngine).toBe('quickjs');
+		});
+
+		it('should surface the engine in the public settings', async () => {
+			globalConfig.expressionEngine.frontendEngine = 'quickjs';
+
+			const { service } = createMockService();
+			const publicSettings = await service.getPublicSettings(false);
+			expect(publicSettings.expressionEngine).toBe('quickjs');
+		});
+	});
+
 	describe('aiBuilder setting', () => {
 		it('should initialize aiBuilder setting as disabled by default', async () => {
 			const { service } = createMockService();
@@ -810,6 +983,66 @@ describe('FrontendService', () => {
 			const settings = await service.getSettings();
 
 			expect(settings.aiBuilder.enabled).toBe(false);
+		});
+	});
+
+	describe('ai.allowSendingParameterValues setting', () => {
+		afterEach(() => {
+			globalConfig.ai.allowSendingParameterValues = true;
+		});
+
+		it('should use the effective value from AiUsageService', async () => {
+			const { service } = createMockService();
+			aiUsageService.isParameterValueSharingAllowed.mockResolvedValueOnce(false);
+
+			const settings = await service.getSettings();
+
+			expect(settings.ai.allowSendingParameterValues).toBe(false);
+		});
+
+		it('should fall back to the env value when the stored value cannot be read', async () => {
+			const { service } = createMockService();
+			globalConfig.ai.allowSendingParameterValues = false;
+			aiUsageService.isParameterValueSharingAllowed.mockRejectedValueOnce(new Error('DB error'));
+
+			const settings = await service.getSettings();
+
+			expect(settings.ai.allowSendingParameterValues).toBe(false);
+		});
+	});
+
+	describe('ai.allowModelTraining setting', () => {
+		it('should use the value from AiUsageService', async () => {
+			const { service } = createMockService();
+			aiUsageService.isModelTrainingAllowed.mockResolvedValueOnce(false);
+
+			const settings = await service.getSettings();
+
+			expect(settings.ai.allowModelTraining).toBe(false);
+		});
+
+		it('should report opted out when the stored value cannot be read', async () => {
+			const { service } = createMockService();
+			aiUsageService.isModelTrainingAllowed.mockRejectedValueOnce(new Error('DB error'));
+
+			const settings = await service.getSettings();
+
+			expect(settings.ai.allowModelTraining).toBe(false);
+		});
+	});
+
+	describe('aiPreferences setting', () => {
+		afterEach(() => {
+			Object.assign(aiPreferenceSettingsService, { isSwitchOn: true, isManagedByEnv: false });
+		});
+
+		it('reports the switch and whether the env manages it', async () => {
+			const { service } = createMockService();
+			Object.assign(aiPreferenceSettingsService, { isSwitchOn: false, isManagedByEnv: true });
+
+			const settings = await service.getSettings();
+
+			expect(settings.aiPreferences).toEqual({ enabled: false, managedByEnv: true });
 		});
 	});
 
@@ -1002,6 +1235,32 @@ describe('FrontendService', () => {
 			expect(credential.__skipManagedCreation).toBeUndefined();
 		});
 
+		it('should hide the fields that only the newer app of a rollout sets', () => {
+			const credential = {
+				name: 'notionOAuth2Api',
+				displayName: 'Notion OAuth2 API',
+				properties: [],
+			} as ICredentialType;
+			loadNodesAndCredentials.types = { credentials: [credential], nodes: [] };
+			(globalConfig as any).credentials = { overwrite: { skipTypes: [] } };
+			(credentialsOverwrites.getAll as Mock).mockReturnValue({
+				notionOAuth2Api: { clientId: 'id', clientSecret: 'secret' },
+			});
+			(credentialsOverwrites.getNewerAppProperties as Mock).mockReturnValue([
+				'clientId',
+				'clientSecret',
+				'scope',
+			]);
+
+			const { service } = createMockService();
+			(service as any).overwriteCredentialsProperties();
+
+			expect(credential.__overwrittenProperties).toEqual(['clientId', 'clientSecret', 'scope']);
+
+			(credentialsOverwrites.getAll as Mock).mockReturnValue({});
+			(credentialsOverwrites.getNewerAppProperties as Mock).mockReturnValue([]);
+		});
+
 		it('should not propagate __skipManagedCreation from a skip-listed parent to extending types', () => {
 			// An overwrite keyed at a base type is inherited by extending types
 			// (__overwrittenProperties), but the skip list is exact-name: skipping the
@@ -1179,6 +1438,53 @@ describe('FrontendService', () => {
 			} finally {
 				writeStaticJSONSpy.mockRestore();
 			}
+		});
+
+		describe('concurrent calls', () => {
+			let cacheDir: string;
+
+			const createNodes = (count: number) =>
+				Array.from({ length: count }, (_, index) => ({
+					name: `n8n-nodes-base.node${index}`,
+					version: 1,
+					description: 'x'.repeat(200),
+				}));
+
+			const readTypesFile = (name: string) =>
+				jsonParse<unknown>(readFileSync(join(cacheDir, 'types', `${name}.json`), 'utf-8'));
+
+			beforeEach(() => {
+				cacheDir = mkdtempSync(join(tmpdir(), 'n8n-frontend-types-'));
+				Object.assign(instanceSettings, { staticCacheDir: cacheDir });
+			});
+
+			afterEach(() => {
+				rmSync(cacheDir, { recursive: true, force: true });
+				Object.assign(instanceSettings, { staticCacheDir: '/tmp/test-cache' });
+			});
+
+			it('should leave complete types files when calls overlap', async () => {
+				const largeNodes = createNodes(5000);
+				const smallNodes = createNodes(1);
+				const collectTypes = loadNodesAndCredentials.collectTypes as Mock;
+
+				const { service } = createMockService();
+				expect(collectTypes).not.toHaveBeenCalled();
+
+				for (let attempt = 0; attempt < 10; attempt++) {
+					collectTypes
+						.mockResolvedValueOnce({ nodes: largeNodes, credentials: [] })
+						.mockResolvedValueOnce({ nodes: smallNodes, credentials: [] });
+
+					await Promise.all([service.generateTypes(), service.generateTypes()]);
+
+					expect([largeNodes, smallNodes]).toContainEqual(readTypesFile('nodes'));
+					expect(readTypesFile('credentials')).toEqual([]);
+					expect(readTypesFile('node-versions')).toEqual(expect.any(Array));
+				}
+
+				expect(collectTypes).toHaveBeenCalledTimes(20);
+			});
 		});
 	});
 });

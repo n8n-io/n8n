@@ -35,6 +35,7 @@
 | Name | Definition |
 | ---- | ---------- |
 | IDX_activity_event_project | CREATE INDEX "IDX_activity_event_project" ON public.activity_event USING btree ("projectId", id) |
+| IDX_activity_event_resource | CREATE INDEX "IDX_activity_event_resource" ON public.activity_event USING btree ("resourceId", id) |
 | IDX_activity_event_user | CREATE INDEX "IDX_activity_event_user" ON public.activity_event USING btree ("userId", id) |
 | PK_c2c1e9fdda754a6bf7f664d7e04 | CREATE UNIQUE INDEX "PK_c2c1e9fdda754a6bf7f664d7e04" ON public.activity_event USING btree (id) |
 
@@ -76,6 +77,7 @@ erDiagram
   varchar_255_ email
   varchar_32_ firstName
   uuid id
+  varchar_16_ kind
   date lastActiveAt
   varchar_32_ lastName
   boolean mfaEnabled

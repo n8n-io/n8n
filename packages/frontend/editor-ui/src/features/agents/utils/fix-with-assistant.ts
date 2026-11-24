@@ -1,7 +1,7 @@
+import { EXTENDED_PROMPT_MAX_LENGTH } from '@n8n/api-types';
 import type { BaseTextKey, I18nClass } from '@n8n/i18n';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 
-import { EXTENDED_PROMPT_MAX_LENGTH } from '@/features/ai/shared/constants';
 import type { AgentFixWithAssistantFailure } from '../types';
 
 export const MAX_FIX_WITH_ASSISTANT_DRAFT_LENGTH = Math.min(16_000, EXTENDED_PROMPT_MAX_LENGTH);
@@ -11,7 +11,8 @@ const MAX_ERROR_DETAILS_TOTAL_LENGTH = 10_000;
 const MAX_METADATA_VALUE_LENGTH = 160;
 const MAX_TOOL_CALLS_PER_ERROR = 8;
 const UNTRUSTED_DATA_CLOSE_TAG_PATTERN = /<\/untrusted_data/gi;
-const SERVICE_CONTEXT_TAG_PATTERN = /<(\/?(?:current-date-time|project-context))/gi;
+const SERVICE_CONTEXT_TAG_PATTERN =
+	/<(\/?(?:thread-context|thread-artifacts|current-date-time|project-context))/gi;
 const INVISIBLE_UNICODE_PATTERN =
 	// eslint-disable-next-line no-misleading-character-class
 	/[\u200B-\u200F\u2028-\u202F\u2060-\u2064\u2066-\u206F\uFEFF\uFFF9-\uFFFB\u00AD\u034F\u061C\u180E\u{E0001}\u{E0020}-\u{E007F}]/gu;

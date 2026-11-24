@@ -3,6 +3,7 @@ import { Container } from '@n8n/di';
 
 import { ControllerRegistryMetadata } from '../controller-registry-metadata';
 import { Licensed } from '../licensed';
+import { Get } from '../route';
 import type { Controller } from '../types';
 
 describe('@Licensed Decorator', () => {
@@ -63,18 +64,6 @@ describe('@Licensed Decorator', () => {
 	});
 
 	it('should work alongside other decorators', () => {
-		// Assuming we have a Get decorator imported
-		const Get = (path: string) => {
-			return (target: object, handlerName: string | symbol) => {
-				const routeMetadata = controllerRegistryMetadata.getRouteMetadata(
-					target.constructor as Controller,
-					String(handlerName),
-				);
-				routeMetadata.method = 'get';
-				routeMetadata.path = path;
-			};
-		};
-
 		class TestController {
 			@Get('/test')
 			@Licensed('feat:variables')

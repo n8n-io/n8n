@@ -1,3 +1,4 @@
+import { createWorkflowToolRouter } from './workflow-tools-test-utils';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { mock } from 'vitest-mock-extended';
 
@@ -7,7 +8,6 @@ import {
 	getWorkflowSourceFileBinding,
 	saveWorkflowSourceFileBinding,
 } from '../workflows/workflow-file-bindings';
-import { createWorkflowsTool } from '../workflows.tool';
 
 interface GetAsCodeResult {
 	workflowId: string;
@@ -83,7 +83,7 @@ describe('workflows get-as-code integration', () => {
 			workflowVersionId: 'v-stale',
 			workflowChecksum: 'checksum-stale',
 		});
-		const tool = createWorkflowsTool(context);
+		const tool = createWorkflowToolRouter(context);
 
 		const result = await executeTool<GetAsCodeResult>(tool, {
 			action: 'get-as-code',

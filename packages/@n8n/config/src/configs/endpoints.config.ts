@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { Config, Env, Nested } from '../decorators';
+import { positiveIntSchema } from '../schemas';
 
 @Config
 export class PrometheusMetricsConfig {
@@ -72,6 +73,10 @@ export class PrometheusMetricsConfig {
 	@Env('N8N_METRICS_INCLUDE_POLL_TRIGGER_METRICS')
 	includePollTriggerMetrics: boolean = false;
 
+	/** Whether to include system task metrics (run duration, skips, in-flight runs, last success, scheduling failures). */
+	@Env('N8N_METRICS_INCLUDE_SYSTEM_TASK_METRICS')
+	includeSystemTaskMetrics: boolean = false;
+
 	/** How often (in seconds) to update active workflow metric */
 	@Env('N8N_METRICS_ACTIVE_WORKFLOW_METRIC_INTERVAL')
 	activeWorkflowCountInterval: number = 60;
@@ -124,7 +129,7 @@ export class PrometheusMetricsConfig {
 	@Env('N8N_METRICS_WORKFLOW_INFO_METRIC_INTERVAL')
 	workflowInfoMetricInterval: number = 60;
 
-	/** Whether to include metrics for the database connection pool (size, usage, wait queue, acquire latency). */
+	/** Whether to include database pool metrics for usage, acquisition, connection state, and recovery. */
 	@Env('N8N_METRICS_INCLUDE_DB_POOL_METRICS')
 	includeDbPoolMetrics: boolean = false;
 
@@ -132,9 +137,28 @@ export class PrometheusMetricsConfig {
 	@Env('N8N_METRICS_INCLUDE_WORKFLOW_PUBLICATION_METRICS')
 	includeWorkflowPublicationMetrics: boolean = false;
 
+	/** Whether to include MCP workflow-builder post-save failure metrics. */
+	@Env('N8N_METRICS_INCLUDE_MCP_POST_SAVE_METRICS')
+	includeMcpPostSaveMetrics: boolean = false;
+
+	/**
+	 * Whether to include metrics for agent runs, including the n8n Assistant. The metrics cover
+	 * run counts by status, run duration, tool calls, tokens, estimated cost, and runs in progress.
+	 */
+	@Env('N8N_METRICS_INCLUDE_AGENT_METRICS')
+	includeAgentMetrics: boolean = false;
+
 	/** How often (in seconds) to refresh the cached workflow publication outbox gauges. */
 	@Env('N8N_METRICS_WORKFLOW_PUBLICATION_METRIC_INTERVAL')
 	workflowPublicationMetricInterval: number = 60;
+
+	/**
+	 * Whether to include metrics for the `execution-ledger` module: runs waiting to be
+	 * counted, the time of the last successful count, and failures for each counting step.
+	 * Only main instances report them, and only when you enable the module.
+	 */
+	@Env('N8N_METRICS_INCLUDE_EXECUTION_LEDGER_METRICS')
+	includeExecutionLedgerMetrics: boolean = false;
 }
 
 @Config
@@ -178,6 +202,10 @@ export class EndpointsConfig {
 	@Env('N8N_ENDPOINT_WEBHOOK_WAIT')
 	webhookWaiting: string = 'webhook-waiting';
 
+	/** Path segment for agent webhook channel endpoints. */
+	@Env('N8N_ENDPOINT_AGENT_WEBHOOK')
+	agentWebhook: string = 'agent-webhook';
+
 	/** Path segment for MCP endpoints. */
 	@Env('N8N_ENDPOINT_MCP')
 	mcp: string = 'mcp';
@@ -197,14 +225,6 @@ export class EndpointsConfig {
 	 */
 	@Env('N8N_MCP_APPS_ENABLED')
 	mcpAppsEnabled: boolean = false;
-
-	/**
-	 * Force-enable Canvas node-group support in the MCP workflow-builder tools.
-	 * Acts as an operator-level override of the PostHog rollout flag.
-	 * Cannot force-disable: setting this to `false` falls back to PostHog.
-	 */
-	@Env('N8N_MCP_CANVAS_GROUPS_ENABLED')
-	mcpCanvasGroupsEnabled: boolean = false;
 
 	/** Maximum number of OAuth clients that can be registered for MCP. */
 	@Env('N8N_MCP_MAX_REGISTERED_CLIENTS')
@@ -228,4 +248,8 @@ export class EndpointsConfig {
 		z.string().transform((val) => (val.startsWith('/') ? val : `/${val}`)),
 	)
 	health: string = '/healthz';
+
+	/** Milliseconds the editor waits for a health check response before showing offline status. */
+	@Env('N8N_FRONTEND_HEALTH_CHECK_TIMEOUT_MS', positiveIntSchema.max(2_147_483_647))
+	frontendHealthCheckTimeoutMs: number = 5000;
 }

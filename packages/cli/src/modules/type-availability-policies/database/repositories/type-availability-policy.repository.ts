@@ -36,18 +36,22 @@ export class TypeAvailabilityPolicyRepository extends BaseRepository<TypeAvailab
 	}
 
 	/**
+	 * Scoped by `kind` as well as `id`: a caller that manages one kind must not reach a
+	 * document of another kind whose id it happens to know.
+	 *
 	 * Pass `forUpdate: true` inside a write transaction that checks `expectedVersion` — see
 	 * `TypeAvailabilityPolicyScopeRepository.findScopeByKindAndProject` for why the lock
 	 * matters: without it, two concurrent writers can both pass the version check.
 	 */
-	async findById(
+	async findByIdAndKind(
 		id: string,
+		kind: string,
 		ctx: OperationContext,
 		forUpdate = false,
 	): Promise<TypeAvailabilityPolicy | null> {
 		const manager = this.managerFor(ctx);
 		return await manager.findOne(TypeAvailabilityPolicy, {
-			where: { id },
+			where: { id, kind },
 			...(forUpdate ? this.forUpdateLock(manager) : {}),
 		});
 	}
@@ -86,6 +90,27 @@ export class TypeAvailabilityPolicyRepository extends BaseRepository<TypeAvailab
 	/** Every policy document of one kind, for the document-library listing screen. */
 	async findByKind(kind: string, ctx: OperationContext): Promise<TypeAvailabilityPolicy[]> {
 		return await this.managerFor(ctx).findBy(TypeAvailabilityPolicy, { kind });
+	}
+
+	/**
+	 * One page of policy documents of one kind, for the public API's cursor pagination. Ordered
+	 * by `createdAt` then `id` so a cursor walks a stable sequence when two rows share a
+	 * timestamp.
+	 */
+	async findPageByKind(
+		kind: string,
+		offset: number,
+		limit: number,
+		ctx: OperationContext,
+	): Promise<{ items: TypeAvailabilityPolicy[]; count: number }> {
+		const [items, count] = await this.managerFor(ctx).findAndCount(TypeAvailabilityPolicy, {
+			where: { kind },
+			order: { createdAt: 'ASC', id: 'ASC' },
+			skip: offset,
+			take: limit,
+		});
+
+		return { items, count };
 	}
 
 	async createPolicy(input: NewPolicy, ctx: OperationContext): Promise<TypeAvailabilityPolicy> {

@@ -1,5 +1,5 @@
 import { DateTime } from 'luxon';
-import { NodeApiError, NodeConnectionTypes } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes, requestPath } from 'n8n-workflow';
 import type {
 	IDataObject,
 	IPollFunctions,
@@ -24,6 +24,7 @@ export class SalesforceTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Salesforce Trigger',
 		name: 'salesforceTrigger',
+		schemaPath: 'Salesforce',
 		icon: 'file:salesforce.svg',
 		group: ['trigger'],
 		version: [1, 1.1],
@@ -200,7 +201,11 @@ export class SalesforceTrigger implements INodeType {
 			async getCustomObjects(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				// TODO: find a way to filter this object to get just the lead sources instead of the whole object
-				const { sobjects: objects } = await salesforceApiRequest.call(this, 'GET', '/sobjects');
+				const { sobjects: objects } = await salesforceApiRequest.call(
+					this,
+					'GET',
+					requestPath`/sobjects`,
+				);
 				for (const object of objects) {
 					if (object.custom === true) {
 						const objectName = object.label;
@@ -289,7 +294,7 @@ export class SalesforceTrigger implements INodeType {
 					this,
 					'records',
 					'GET',
-					'/query',
+					requestPath`/query`,
 					{},
 					qs,
 				);

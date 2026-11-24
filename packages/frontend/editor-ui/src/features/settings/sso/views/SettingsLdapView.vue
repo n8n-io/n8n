@@ -28,6 +28,7 @@ import {
 	N8nHeading,
 	N8nInfoTip,
 } from '@n8n/design-system';
+import AuthenticationBackLink from '../components/AuthenticationBackLink.vue';
 type TableRow = {
 	status: string;
 	startAt: string;
@@ -58,6 +59,7 @@ type LDAPConfigForm = {
 	pageSize: string;
 	searchTimeout: string;
 	enforceEmailUniqueness: boolean;
+	linkExistingAccountsByEmail: boolean;
 };
 
 type CellClassStyleMethodParams<T> = {
@@ -175,6 +177,7 @@ const onSubmit = async () => {
 		searchPageSize: +formValues.pageSize,
 		searchTimeout: +formValues.searchTimeout,
 		enforceEmailUniqueness: formValues.enforceEmailUniqueness,
+		linkExistingAccountsByEmail: formValues.linkExistingAccountsByEmail,
 	};
 
 	let saveForm = true;
@@ -567,6 +570,17 @@ const getLdapConfig = async () => {
 				},
 				shouldDisplay: whenLoginEnabled,
 			},
+			{
+				name: 'linkExistingAccountsByEmail',
+				initialValue: adConfig.value.linkExistingAccountsByEmail,
+				properties: {
+					type: 'toggle',
+					label: i18n.baseText('settings.ldap.form.linkExistingAccountsByEmail.label'),
+					tooltipText: i18n.baseText('settings.ldap.form.linkExistingAccountsByEmail.tooltip'),
+					required: false,
+				},
+				shouldDisplay: whenLoginEnabled,
+			},
 		];
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.ldap.configurationError'));
@@ -628,6 +642,7 @@ onMounted(async () => {
 
 <template>
 	<div v-if="!isLDAPFeatureEnabled">
+		<AuthenticationBackLink />
 		<div :class="[$style.header, 'mb-2xl']">
 			<N8nHeading size="2xlarge">
 				{{ i18n.baseText('settings.ldap') }}
@@ -648,6 +663,7 @@ onMounted(async () => {
 		</N8nEmptyState>
 	</div>
 	<div v-else>
+		<AuthenticationBackLink />
 		<div :class="$style.container">
 			<div :class="$style.header">
 				<N8nHeading size="2xlarge">
@@ -740,7 +756,7 @@ onMounted(async () => {
 			</div>
 			<div :class="['pb-3xl', $style.buttonContainer]">
 				<N8nButton
-					variant="subtle"
+					variant="outline"
 					:label="i18n.baseText('settings.ldap.dryRun')"
 					size="large"
 					class="mr-s"
@@ -786,7 +802,7 @@ onMounted(async () => {
 
 	> span {
 		font-size: var(--font-size--sm);
-		font-weight: var(--font-weight--bold);
+		font-weight: var(--font-weight--medium);
 		padding: 0;
 	}
 

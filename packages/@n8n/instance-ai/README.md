@@ -60,7 +60,7 @@ Expected response:
 In a second terminal:
 
 ```bash
-export N8N_INSTANCE_AI_MODEL=anthropic/claude-sonnet-4-5
+export N8N_INSTANCE_AI_MODEL=anthropic/claude-sonnet-5-5
 export N8N_INSTANCE_AI_MODEL_API_KEY="$ANTHROPIC_API_KEY"
 
 export N8N_INSTANCE_AI_SANDBOX_ENABLED=true
@@ -123,7 +123,6 @@ pnpm --filter @n8n/instance-ai eval:instance-ai
 - [Engineering standards](docs/ENGINEERING.md)
 - [Configuration](docs/configuration.md)
 - [Sandboxing](docs/sandboxing.md)
-- [Local Computer Use gateway](docs/filesystem-access.md)
 - [Tools](docs/tools.md)
 - [Memory](docs/memory.md)
 - [Streaming protocol](docs/streaming-protocol.md)

@@ -97,6 +97,9 @@ export const useKeyboardNavigation = defineStore('nodeCreatorKeyboardNavigation'
 			return;
 		}
 
+		// A dialog or popover over the node creator owns its keys, for example Enter on its buttons.
+		if (e.target instanceof Element && e.target.closest('[role="dialog"]')) return;
+
 		const pressedKey = e.key;
 		if (!WATCHED_KEYS.includes(pressedKey)) return;
 

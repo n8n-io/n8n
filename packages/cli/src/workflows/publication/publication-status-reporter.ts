@@ -3,17 +3,22 @@ import { Logger } from '@n8n/backend-common';
 import {
 	WorkflowPublicationOutbox,
 	WorkflowPublicationOutboxRepository,
+	WorkflowPublicationRetryStateRepository,
 	WorkflowPublicationTriggerStatusRepository,
+	TransactionRunner,
+	type OperationContext,
 	type TriggerStatusRow,
 } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError, UserError } from '@n8n/errors';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { errorChain } from '@n8n/utils/errors/error-chain';
 
 import { ActivationErrorsService } from '@/activation-errors.service';
 import { isPolicyRefusal } from '@/policy/policy-violation.error';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { Publisher } from '@n8n/backend-services';
 import { formatNodeFailures } from '@/workflows/publication/format-node-failures';
 import type {
 	FailedTriggerPublicationStatus,
@@ -22,7 +27,20 @@ import type {
 	TriggerPublicationStatus,
 } from '@/workflows/publication/publication-result';
 import { WorkflowPushNotifier } from '@/workflows/workflow-push-notifier.service';
+import { isTransientActivationError } from '@/workflows/triggers/trigger-activation-retry';
 import type { TriggerTeardownFailure } from '@/workflows/triggers/workflow-trigger-activator';
+
+/** A failure that only a user change can fix, for every failed trigger, so automatic retries never run it again. */
+function isPermanentFailure(error: Error): boolean {
+	return error instanceof AggregateError
+		? error.errors.every((triggerError) => isPermanentFailure(ensureError(triggerError)))
+		: errorChain(error).some(
+				(level) =>
+					level instanceof UserError ||
+					isPolicyRefusal(level) ||
+					(level instanceof Error && !isTransientActivationError(level)),
+			);
+}
 
 /**
  * Turns a {@link PublicationResult} into terminal state. This is the only place
@@ -42,6 +60,8 @@ export class PublicationStatusReporter {
 		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,
 		private readonly outboxRepository: WorkflowPublicationOutboxRepository,
+		private readonly retryStateRepository: WorkflowPublicationRetryStateRepository,
+		private readonly transactionRunner: TransactionRunner,
 		private readonly activationErrorsService: ActivationErrorsService,
 		private readonly publisher: Publisher,
 		private readonly triggerStatusRepository: WorkflowPublicationTriggerStatusRepository,
@@ -85,7 +105,14 @@ export class PublicationStatusReporter {
 					publishedVersionId: record.publishedVersionId,
 					outboxId: record.id,
 				});
-				await this.outboxRepository.markFailed(record.id, errorMessage);
+				await this.transactionRunner.run({}, async (ctx) => {
+					await this.retryStateRepository.suppressRetry(
+						record.workflowId,
+						record.publishedVersionId,
+						ctx,
+					);
+					await this.outboxRepository.markFailed(record.id, errorMessage, ctx);
+				});
 				await this.pushFailedToActivate(record.workflowId, errorMessage);
 				return;
 			}
@@ -94,32 +121,62 @@ export class PublicationStatusReporter {
 				// The record's failure stays the activation error; the abandoned
 				// deregistrations (whose teardown already ran) get their own report.
 				this.surfaceTeardownFailures(result.teardownFailures);
-				const { triggerStatuses } = result;
-				await this.outboxRepository.manager.transaction(async (trx) => {
-					if (triggerStatuses) {
+				const { triggerState } = result;
+				await this.transactionRunner.run({}, async (ctx) => {
+					if (triggerState) {
 						await this.triggerStatusRepository.replaceForWorkflow(
 							record.workflowId,
-							this.toRows(record, triggerStatuses),
-							trx,
+							this.toRows(
+								{ publishedVersionId: triggerState.versionId },
+								triggerState.triggerStatuses,
+							),
+							ctx,
 						);
 					}
-					await this.outboxRepository.markFailed(record.id, result.error.message, trx);
+					await this.updateRetryNote(record, result.error, ctx);
+					await this.outboxRepository.markFailed(record.id, result.error.message, ctx);
 				});
 				// An expected denial, already logged as a warning by the applier — the
 				// terminal state and the UI push stand, the fault report does not.
-				if (!isPolicyRefusal(result.error)) {
+				const policyRefusal = isPolicyRefusal(result.error);
+				if (!policyRefusal) {
 					this.errorReporter.error(result.error, { shouldBeLogged: true });
 				}
-				await this.pushFailedToActivate(record.workflowId, result.error.message);
+				await this.pushFailedToActivate(
+					record.workflowId,
+					result.error.message,
+					policyRefusal ? undefined : result.nodeId,
+				);
 				return;
 			}
 
 			case 'partial': {
 				// As on 'failed': the stored/pushed message stays about activation.
 				this.surfaceTeardownFailures(result.teardownFailures);
-				await this.reportPartial(record, result.triggerStatuses);
+				await this.reportPartial(record, result.triggerStatuses, result.error);
 				return;
 			}
+		}
+	}
+
+	/** Ends the retries of a permanent failure and schedules the next retry of any other failure. */
+	private async updateRetryNote(
+		record: WorkflowPublicationOutbox,
+		error: Error,
+		ctx: OperationContext,
+	): Promise<void> {
+		if (isPermanentFailure(error)) {
+			await this.retryStateRepository.suppressRetry(
+				record.workflowId,
+				record.publishedVersionId,
+				ctx,
+			);
+		} else {
+			await this.retryStateRepository.scheduleRetry(
+				record.workflowId,
+				record.publishedVersionId,
+				ctx,
+			);
 		}
 	}
 
@@ -132,11 +189,12 @@ export class PublicationStatusReporter {
 	private async reportPartial(
 		record: WorkflowPublicationOutbox,
 		triggerStatuses: TriggerPublicationStatus[],
+		error: Error,
 	): Promise<void> {
 		const failures = triggerStatuses.filter(
 			(s): s is FailedTriggerPublicationStatus => s.status === 'failed',
 		);
-		const errorMessage = this.formatActivationError(failures);
+		const errorMessage = this.formatPartialActivationError(failures);
 
 		this.logger.warn('Workflow partially published; some triggers failed to activate', {
 			workflowId: record.workflowId,
@@ -144,13 +202,14 @@ export class PublicationStatusReporter {
 			failedNodeIds: failures.map((s) => s.nodeId),
 		});
 
-		await this.outboxRepository.manager.transaction(async (trx) => {
+		await this.transactionRunner.run({}, async (ctx) => {
 			await this.triggerStatusRepository.replaceForWorkflow(
 				record.workflowId,
 				this.toRows(record, triggerStatuses),
-				trx,
+				ctx,
 			);
-			await this.outboxRepository.markPartialSuccess(record.id, errorMessage, trx);
+			await this.updateRetryNote(record, error, ctx);
+			await this.outboxRepository.markPartialSuccess(record.id, errorMessage, ctx);
 		});
 
 		await this.pushStatus({
@@ -170,7 +229,7 @@ export class PublicationStatusReporter {
 
 	/** Maps trigger publication statuses to repository row objects, stamping the published version. */
 	private toRows(
-		record: WorkflowPublicationOutbox,
+		record: Pick<WorkflowPublicationOutbox, 'publishedVersionId'>,
 		statuses: TriggerPublicationStatus[],
 	): TriggerStatusRow[] {
 		return statuses.map((triggerStatus) => ({
@@ -183,7 +242,7 @@ export class PublicationStatusReporter {
 	}
 
 	/** Builds a human-readable message naming each failed node and its error. */
-	private formatActivationError(failures: FailedTriggerPublicationStatus[]): string {
+	private formatPartialActivationError(failures: FailedTriggerPublicationStatus[]): string {
 		const detail = formatNodeFailures(
 			failures.map(({ nodeName, errorMessage }) => ({ nodeName, message: errorMessage })),
 		);
@@ -192,10 +251,14 @@ export class PublicationStatusReporter {
 	}
 
 	/** Pushes a failed-to-activate status to clients connected to any main. */
-	private async pushFailedToActivate(workflowId: string, errorMessage: string): Promise<void> {
+	private async pushFailedToActivate(
+		workflowId: string,
+		errorMessage: string,
+		nodeId?: string,
+	): Promise<void> {
 		await this.pushStatus({
 			type: 'workflowFailedToActivate',
-			data: { workflowId, errorMessage },
+			data: { workflowId, errorMessage, nodeId },
 		});
 	}
 
@@ -259,15 +322,16 @@ export class PublicationStatusReporter {
 		triggerStatuses?: TriggerStatusRow[],
 		warningMessage?: string,
 	): Promise<void> {
-		await this.outboxRepository.manager.transaction(async (trx) => {
+		await this.transactionRunner.run({}, async (ctx) => {
 			if (triggerStatuses !== undefined) {
 				await this.triggerStatusRepository.replaceForWorkflow(
 					record.workflowId,
 					triggerStatuses,
-					trx,
+					ctx,
 				);
 			}
-			await this.outboxRepository.markCompleted(record.id, trx, warningMessage);
+			await this.retryStateRepository.clearRetrySuppression(record.workflowId, ctx);
+			await this.outboxRepository.markCompleted(record.id, ctx, warningMessage);
 		});
 		await this.activationErrorsService.deregister(record.workflowId);
 	}

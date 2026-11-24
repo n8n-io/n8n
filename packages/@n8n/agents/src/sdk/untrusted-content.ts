@@ -1,3 +1,5 @@
+import { escapeXmlAttribute } from '@n8n/utils/string/escape-xml';
+
 /**
  * Remove invisible Unicode characters that can hide content inside otherwise
  * innocuous text. Normal whitespace and common formatting are preserved.
@@ -10,14 +12,6 @@ export function stripInvisibleUnicode(text: string): string {
 	return text.replace(INVISIBLE_UNICODE_PATTERN, '');
 }
 
-function escapeAttribute(value: string): string {
-	return value
-		.replace(/&/g, '&amp;')
-		.replace(/"/g, '&quot;')
-		.replace(/</g, '&lt;')
-		.replace(/>/g, '&gt;');
-}
-
 /**
  * System-prompt rule that defines the `<untrusted_data>` boundary for the
  * model. The runtime injects it once per run whenever any tool declares
@@ -28,8 +22,8 @@ export const UNTRUSTED_OUTPUT_DOCTRINE =
 
 /** Mark externally sourced text as reference data for the model. */
 export function wrapUntrustedData(content: string, source: string, label?: string): string {
-	const safeSource = escapeAttribute(source);
-	const safeLabel = label ? ` label="${escapeAttribute(label)}"` : '';
+	const safeSource = escapeXmlAttribute(source);
+	const safeLabel = label ? ` label="${escapeXmlAttribute(label)}"` : '';
 	const safeContent = content.replace(/<(\s*\/\s*untrusted_data)/gi, '&lt;$1');
 	return `<untrusted_data source="${safeSource}"${safeLabel}>\n${safeContent}\n</untrusted_data>`;
 }

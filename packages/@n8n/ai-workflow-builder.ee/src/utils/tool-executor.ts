@@ -1,10 +1,11 @@
 import type { BaseMessage } from '@langchain/core/messages';
-import { isAIMessage, ToolMessage } from '@langchain/core/messages';
+import { ToolMessage } from '@langchain/core/messages';
 import { ToolInputParsingException } from '@langchain/core/tools';
 import { isCommand } from '@langchain/langgraph';
 
 import { ToolExecutionError, WorkflowStateError } from '../errors';
 import type { ToolExecutorOptions } from '../types/config';
+import { isAIMessage } from '../types/langchain';
 import type { WorkflowMetadata } from '../types/tools';
 import type { WorkflowOperation } from '../types/workflow';
 import type { WorkflowState } from '../workflow-state';
@@ -56,6 +57,7 @@ function createToolErrorMessage(toolName: string, toolCallId: string, error: unk
 		content: errorContent,
 		tool_call_id: toolCallId,
 		name: toolName,
+		// oxlint-disable-next-line typescript/no-deprecated -- Keep the error marker in the existing message format.
 		additional_kwargs: { error: true },
 	});
 }

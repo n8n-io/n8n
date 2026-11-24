@@ -9,6 +9,7 @@ export class MicrosoftSharePoint extends VersionedNodeType {
 		const baseDescription: INodeTypeBaseDescription = {
 			displayName: 'Microsoft SharePoint',
 			name: 'microsoftSharePoint',
+			schemaPath: 'Microsoft/SharePoint',
 			icon: {
 				light: 'file:microsoftSharePoint.svg',
 				dark: 'file:microsoftSharePoint.svg',

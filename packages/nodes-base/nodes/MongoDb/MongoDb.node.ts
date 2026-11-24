@@ -8,7 +8,8 @@ import type {
 	MongoClient,
 } from 'mongodb';
 import { MongoBulkWriteError, ObjectId } from 'mongodb';
-import { NodeConnectionTypes, NodeOperationError, UserError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import type {
 	IExecuteFunctions,
 	ICredentialsDecrypted,
@@ -26,6 +27,7 @@ import { parseAndResolveQueryParameters } from '@utils/query-parameters';
 
 import {
 	buildParameterizedConnString,
+	buildUpdateFilter,
 	connectMongoClient,
 	prepareFields,
 	prepareItems,
@@ -37,6 +39,17 @@ import {
 import type { IMongoParametricCredentials } from './mongoDb.types';
 import { nodeProperties } from './MongoDbProperties';
 import { generatePairedItemData } from '../../utils/utilities';
+
+const aggregationExpressionFields = [
+	'$expr',
+	'$addFields',
+	'$project',
+	'$group',
+	'$set',
+	'$replaceWith',
+	'$redact',
+	'$sortByCount',
+];
 
 function resolveIndexDefinition(
 	ctx: IExecuteFunctions,
@@ -98,9 +111,8 @@ async function executeBulkUpdate(
 				});
 			}
 
-			const filter: IDataObject = { [updateKey]: item[updateKey] };
+			const filter = buildUpdateFilter(ctx.getNode(), item, updateKey, i);
 			if (updateKey === '_id') {
-				filter[updateKey] = new ObjectId(item[updateKey] as string);
 				delete item._id;
 			}
 
@@ -277,6 +289,8 @@ export class MongoDb implements INodeType {
 							this.getNodeParameter('queryParameters', i, []),
 							node,
 							i,
+							'Query',
+							{ escapeDollarStringsInFields: aggregationExpressionFields },
 						) as IDataObject;
 
 						if (queryParameter._id && typeof queryParameter._id === 'string') {
@@ -311,6 +325,8 @@ export class MongoDb implements INodeType {
 							this.getNodeParameter('queryParameters', i, []),
 							node,
 							i,
+							'Query',
+							{ rejectNull: true, escapeDollarStringsInFields: ['$expr'] },
 						) as Document;
 						const { deletedCount } = await mdb
 							.collection(this.getNodeParameter('collection', i) as string)
@@ -341,6 +357,8 @@ export class MongoDb implements INodeType {
 							this.getNodeParameter('queryParameters', i, []),
 							node,
 							i,
+							'Query',
+							{ escapeDollarStringsInFields: ['$expr'] },
 						) as IDataObject;
 
 						if (queryParameter._id && typeof queryParameter._id === 'string') {
@@ -362,6 +380,11 @@ export class MongoDb implements INodeType {
 								node,
 								i,
 								'Projection',
+								{
+									escapeDollarStrings: true,
+									escapeDollarStringsInFields: ['$expr'],
+									preserveDollarStringsInFields: ['$elemMatch'],
+								},
 							) as Document);
 						const sort =
 							options.sort &&
@@ -445,9 +468,8 @@ export class MongoDb implements INodeType {
 								);
 							}
 
-							const filter = { [updateKey]: item[updateKey] };
+							const filter = buildUpdateFilter(this.getNode(), item, updateKey, i);
 							if (updateKey === '_id') {
-								filter[updateKey] = new ObjectId(item[updateKey] as string);
 								delete item._id;
 							}
 
@@ -495,9 +517,8 @@ export class MongoDb implements INodeType {
 
 					for (const item of updateItems) {
 						try {
-							const filter = { [updateKey]: item[updateKey] };
+							const filter = buildUpdateFilter(this.getNode(), item, updateKey);
 							if (updateKey === '_id') {
-								filter[updateKey] = new ObjectId(item[updateKey] as string);
 								delete item._id;
 							}
 
@@ -561,9 +582,8 @@ export class MongoDb implements INodeType {
 								);
 							}
 
-							const filter = { [updateKey]: item[updateKey] };
+							const filter = buildUpdateFilter(this.getNode(), item, updateKey, i);
 							if (updateKey === '_id') {
-								filter[updateKey] = new ObjectId(item[updateKey] as string);
 								delete item._id;
 							}
 
@@ -612,9 +632,8 @@ export class MongoDb implements INodeType {
 
 					for (const item of updateItems) {
 						try {
-							const filter = { [updateKey]: item[updateKey] };
+							const filter = buildUpdateFilter(this.getNode(), item, updateKey);
 							if (updateKey === '_id') {
-								filter[updateKey] = new ObjectId(item[updateKey] as string);
 								delete item._id;
 							}
 
@@ -804,9 +823,8 @@ export class MongoDb implements INodeType {
 								);
 							}
 
-							const filter = { [updateKey]: item[updateKey] };
+							const filter = buildUpdateFilter(this.getNode(), item, updateKey, i);
 							if (updateKey === '_id') {
-								filter[updateKey] = new ObjectId(item[updateKey] as string);
 								delete item._id;
 							}
 
@@ -855,9 +873,8 @@ export class MongoDb implements INodeType {
 
 					for (const item of updateItems) {
 						try {
-							const filter = { [updateKey]: item[updateKey] };
+							const filter = buildUpdateFilter(this.getNode(), item, updateKey);
 							if (updateKey === '_id') {
-								filter[updateKey] = new ObjectId(item[updateKey] as string);
 								delete item._id;
 							}
 

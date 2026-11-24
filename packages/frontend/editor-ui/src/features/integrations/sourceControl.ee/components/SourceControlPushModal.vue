@@ -37,18 +37,23 @@ import { useI18n } from '@n8n/i18n';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { refDebounced, useStorage } from '@vueuse/core';
 import { computed, onBeforeMount, onMounted, reactive, ref, toRaw, watch, watchEffect } from 'vue';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useRoute, useRouter } from 'vue-router';
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller';
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
-import Modal from '@/app/components/Modal.vue';
 import ProjectSharing from '@/features/collaboration/projects/components/ProjectSharing.vue';
 import { useAvailableProjectSearch } from '@/features/collaboration/projects/projects.utils';
+import { getResourcePermissions } from '@n8n/permissions';
 import {
 	N8nBadge,
 	N8nButton,
 	N8nCallout,
 	N8nCheckbox,
-	N8nHeading,
+	N8nDialog,
+	N8nDialogBody,
+	N8nDialogFooter,
+	N8nDialogHeader,
+	N8nDialogTitle,
 	N8nIcon,
 	N8nIconButton,
 	N8nInfoTip,
@@ -62,6 +67,8 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
+
+defineOptions({ inheritAttrs: false });
 const props = defineProps<{
 	data: { eventBus: EventBus; status?: SourceControlledFile[] };
 }>();
@@ -73,6 +80,7 @@ const sourceControlStore = useSourceControlStore();
 const projectsStore = useProjectsStore();
 const route = useRoute();
 const router = useRouter();
+const uiStore = useUIStore();
 const telemetry = useTelemetry();
 const usersStore = useUsersStore();
 const settingsStore = useSettingsStore();
@@ -96,8 +104,8 @@ async function loadSourceControlStatus() {
 
 		if (!freshStatus.length) {
 			toast.showMessage({
-				title: 'No changes to commit',
-				message: 'Everything is up to date',
+				title: i18n.baseText('settings.sourceControl.modals.push.noChanges.title'),
+				message: i18n.baseText('settings.sourceControl.modals.push.everythingIsUpToDate'),
 				type: 'info',
 			});
 			// Close modal since there's nothing to show
@@ -134,7 +142,7 @@ const projectAdminCalloutDismissed = useStorage(
 
 const searchFnForFilters = useAvailableProjectSearch();
 const filterFnForFilters = (project: ProjectListItem) =>
-	!project.role || project.role === 'project:admin';
+	Boolean(getResourcePermissions(project.scopes)?.sourceControl?.push);
 
 onBeforeMount(async () => {
 	// Load projects for file→project mapping display and for member search
@@ -302,7 +310,7 @@ function clearProjectFilter() {
 
 const statusFilterOptions: Array<{ label: string; value: SourceControlledFileStatus }> = [
 	{
-		label: 'New',
+		label: i18n.baseText('generic.new'),
 		value: SOURCE_CONTROL_FILE_STATUS.created,
 	},
 	{
@@ -522,9 +530,20 @@ function onToggleSelectAll() {
 }
 
 function close() {
-	// Navigate back in history to maintain proper browser navigation
-	// The useWorkflowDiffRouting composable will handle closing the modal
+	// Clear the store here. router.back() drops the query that opened this
+	// dialog when that history entry exists. A deep link has no entry to pop.
+	uiStore.closeModal(SOURCE_CONTROL_PUSH_MODAL_KEY);
 	router.back();
+}
+
+const modalOpen = computed(() => uiStore.modalsById[SOURCE_CONTROL_PUSH_MODAL_KEY]?.open === true);
+
+function closeDialog() {
+	close();
+}
+
+function onDialogOpenUpdate(open: boolean) {
+	if (!open) closeDialog();
 }
 
 function renderUpdatedAt(file: SourceControlledFile) {
@@ -641,8 +660,6 @@ async function commitAndPush() {
 		loadingService.stopLoading();
 	}
 }
-
-const modalHeight = computed(() => (changes.value.workflow.length ? 'min(80vh, 850px)' : 'auto'));
 
 watch(
 	() => filters.value.status,
@@ -802,19 +819,19 @@ const activeSelection = computed(() => {
 const tabs = computed(() => {
 	return [
 		{
-			label: 'Workflows',
+			label: i18n.baseText('settings.sourceControl.modals.tabs.workflows'),
 			value: SOURCE_CONTROL_FILE_TYPE.workflow,
 			selected: selectedWorkflows.size,
 			total: changes.value.workflow.length,
 		},
 		{
-			label: 'Credentials',
+			label: i18n.baseText('settings.sourceControl.modals.tabs.credentials'),
 			value: SOURCE_CONTROL_FILE_TYPE.credential,
 			selected: selectedCredentials.size,
 			total: changes.value.credential.length,
 		},
 		{
-			label: 'Data Tables',
+			label: i18n.baseText('settings.sourceControl.modals.tabs.dataTables'),
 			value: SOURCE_CONTROL_FILE_TYPE.datatable,
 			selected: selectedDataTables.size,
 			total: changes.value.datatable.length,
@@ -907,19 +924,18 @@ onMounted(async () => {
 </script>
 
 <template>
-	<Modal
+	<N8nDialog
 		v-if="!isLoading"
-		width="812px"
-		:event-bus="data.eventBus"
-		:name="SOURCE_CONTROL_PUSH_MODAL_KEY"
-		:height="modalHeight"
-		:custom-class="$style.sourceControlPush"
-		:before-close="close"
+		:open="modalOpen"
+		size="2xlarge"
+		:container-class="$style.fixedHeight"
+		:data-test-id="`${SOURCE_CONTROL_PUSH_MODAL_KEY}-modal`"
+		@update:open="onDialogOpenUpdate"
 	>
-		<template #header>
-			<N8nHeading tag="h1" size="xlarge">
+		<N8nDialogHeader :class="$style.dialogHeader">
+			<N8nDialogTitle>
 				{{ i18n.baseText('settings.sourceControl.modals.push.title') }}
-			</N8nHeading>
+			</N8nDialogTitle>
 
 			<div
 				v-if="changes.workflow.length || changes.credential.length || changes.datatable.length"
@@ -930,7 +946,7 @@ onMounted(async () => {
 					<N8nInput
 						v-model="search"
 						data-test-id="source-control-push-search"
-						placeholder="Filter by title"
+						:placeholder="i18n.baseText('settings.sourceControl.modals.push.search.placeholder')"
 						clearable
 						style="width: 234px"
 					>
@@ -946,13 +962,13 @@ onMounted(async () => {
 					>
 						<template #trigger>
 							<N8nButton
-								variant="subtle"
+								variant="outline"
 								icon="funnel"
 								:class="$style.filterButton"
 								:active="Boolean(filterCount)"
 								data-test-id="source-control-filter-dropdown"
 							>
-								<N8nBadge v-if="filterCount" theme="primary" class="mr-4xs">
+								<N8nBadge v-if="filterCount" variant="primary" class="mr-4xs">
 									{{ filterCount }}
 								</N8nBadge>
 							</N8nButton>
@@ -1035,7 +1051,7 @@ onMounted(async () => {
 						<template #trailingContent>
 							<N8nIcon
 								icon="x"
-								title="Dismiss"
+								:title="i18n.baseText('generic.dismiss')"
 								size="medium"
 								type="secondary"
 								@click="projectAdminCalloutDismissed = true"
@@ -1044,8 +1060,8 @@ onMounted(async () => {
 					</N8nCallout>
 				</template>
 			</template>
-		</template>
-		<template #content>
+		</N8nDialogHeader>
+		<N8nDialogBody>
 			<div style="display: flex; height: 100%">
 				<div :class="$style.tabs">
 					<template v-for="tab in tabs" :key="tab.value">
@@ -1057,7 +1073,11 @@ onMounted(async () => {
 						>
 							<div>{{ tab.label }}</div>
 							<N8nText tag="div" color="text-light">
-								{{ tab.selected }} / {{ tab.total }} selected
+								{{
+									i18n.baseText('settings.sourceControl.modals.push.selectedCount', {
+										interpolate: { selected: `${tab.selected}`, total: `${tab.total}` },
+									})
+								}}
 							</N8nText>
 						</button>
 					</template>
@@ -1074,7 +1094,9 @@ onMounted(async () => {
 								@update:model-value="onToggleSelectAll"
 							>
 								<template #label>
-									<N8nText> Title </N8nText>
+									<N8nText>{{
+										i18n.baseText('settings.sourceControl.modals.tableHeader.title')
+									}}</N8nText>
 								</template>
 							</N8nCheckbox>
 							<N8nInfoTip
@@ -1242,10 +1264,7 @@ onMounted(async () => {
 																:disabled="!renderMovedTooltip(row.file)"
 																placement="top"
 															>
-																<N8nBadge
-																	:theme="getStatusTheme(row.file.status)"
-																	style="height: 25px"
-																>
+																<N8nBadge :variant="getStatusTheme(row.file.status)" size="xsmall">
 																	{{ getStatusText(row.file.status) }}
 																</N8nBadge>
 															</N8nTooltip>
@@ -1256,7 +1275,7 @@ onMounted(async () => {
 																	placement="top"
 																>
 																	<N8nIconButton
-																		variant="subtle"
+																		variant="outline"
 																		data-test-id="source-control-workflow-diff-button"
 																		icon="file-diff"
 																		@click="openDiffModal(row.file.id, row.file.status)"
@@ -1275,9 +1294,8 @@ onMounted(async () => {
 					</div>
 				</div>
 			</div>
-		</template>
-
-		<template #footer>
+		</N8nDialogBody>
+		<N8nDialogFooter :class="$style.dialogFooter">
 			<N8nNotice
 				v-if="userNotices.length || hasModifiedCredentialsSelected"
 				id="source-control-push-modal-notice"
@@ -1324,8 +1342,8 @@ onMounted(async () => {
 					{{ selectedCount ? `(${selectedCount})` : undefined }}
 				</N8nButton>
 			</div>
-		</template>
-	</Modal>
+		</N8nDialogFooter>
+	</N8nDialog>
 </template>
 
 <style module lang="scss">
@@ -1441,17 +1459,22 @@ onMounted(async () => {
 	display: flex;
 	flex-direction: row;
 	justify-content: flex-end;
-	margin-top: 8px;
 }
 
-.sourceControlPush {
-	&:global(.el-dialog) {
-		margin: 0;
-	}
+.dialogHeader {
+	flex-direction: column;
+	align-items: stretch;
+}
 
-	:global(.el-dialog__header) {
-		padding-bottom: var(--spacing--xs);
-	}
+.dialogFooter {
+	flex-direction: column;
+	align-items: stretch;
+}
+
+.fixedHeight {
+	/* Previous dialog height. No spacing token for 850px. */
+	height: min(80vh, 850px);
+	overflow: hidden;
 }
 
 .table {

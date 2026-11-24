@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatRelativeTimestamp } from '../utils/relative-time';
+import { formatChatDividerTimestamp, formatRelativeTimestamp } from '../utils/relative-time';
 
 const i18n = {
 	justNow: 'just now',
@@ -48,5 +48,39 @@ describe('formatRelativeTimestamp', () => {
 	it('clamps future timestamps to "just now" rather than rendering "in N"', () => {
 		const future = new Date(NOW.getTime() + 60_000);
 		expect(formatRelativeTimestamp(future, i18n, NOW)).toBe('just now');
+	});
+});
+
+const dividerI18n = {
+	today: (time: string) => `Today at ${time}`,
+	yesterday: (time: string) => `Yesterday at ${time}`,
+	date: (date: string, time: string) => `${date} at ${time}`,
+};
+
+const at = (d: Date) => d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+
+describe('formatChatDividerTimestamp', () => {
+	it('returns "Today at {time}" for a timestamp on the same local day', () => {
+		const today = new Date('2026-04-26T10:20:00');
+		expect(formatChatDividerTimestamp(today, dividerI18n, NOW)).toBe(`Today at ${at(today)}`);
+	});
+
+	it('returns "Yesterday at {time}" for a timestamp on the previous local day', () => {
+		const yesterday = new Date('2026-04-25T10:20:00');
+		expect(formatChatDividerTimestamp(yesterday, dividerI18n, NOW)).toBe(
+			`Yesterday at ${at(yesterday)}`,
+		);
+	});
+
+	it('returns "{weekday}, {month} {day} at {time}" for an older timestamp', () => {
+		const older = new Date('2026-04-20T10:20:00');
+		const expectedDate = older.toLocaleDateString(undefined, {
+			weekday: 'short',
+			month: 'short',
+			day: 'numeric',
+		});
+		expect(formatChatDividerTimestamp(older, dividerI18n, NOW)).toBe(
+			`${expectedDate} at ${at(older)}`,
+		);
 	});
 });

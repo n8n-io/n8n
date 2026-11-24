@@ -2,7 +2,7 @@ import type { AuthenticatedRequest, Project } from '@n8n/db';
 import { hasGlobalScope } from '@n8n/permissions';
 import { mock } from 'vitest-mock-extended';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ForbiddenError } from '@n8n/errors';
 
 import type { SourceControlContextFactory } from '../source-control-context.factory';
 import { SourceControlScopedService } from '../source-control-scoped.service';
@@ -68,5 +68,30 @@ describe('SourceControlScopedService', () => {
 				usageScope: 'project',
 			});
 		});
+	});
+
+	describe('getFoldersInAdminProjectsFromContextFilter', () => {
+		it.each([true, false])(
+			'limits folders to workflows when access to all projects is %s',
+			(hasAccessToAllProjects) => {
+				const context = mock<SourceControlContext>({
+					user: req.user,
+					hasAccessToAllProjects: () => hasAccessToAllProjects,
+				});
+
+				expect(service.getFoldersInAdminProjectsFromContextFilter(context)).toEqual({
+					resourceType: 'workflow',
+					...(!hasAccessToAllProjects && {
+						homeProject: {
+							type: 'team',
+							projectRelations: {
+								role: { scopes: { slug: 'sourceControl:push' } },
+								userId: req.user.id,
+							},
+						},
+					}),
+				});
+			},
+		);
 	});
 });

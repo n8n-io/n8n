@@ -1,4 +1,10 @@
-import { randomCredentialPayload, testDb } from '@n8n/backend-test-utils';
+import {
+	createTeamProject,
+	linkUserToProject,
+	randomCredentialPayload,
+	testDb,
+} from '@n8n/backend-test-utils';
+import type { AssignableProjectRole } from '@n8n/permissions';
 import { Container } from '@n8n/di';
 import type {
 	INodeListSearchResult,
@@ -11,7 +17,8 @@ import { mock } from 'vitest-mock-extended';
 import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import * as AdditionalData from '@/workflow-execute-additional-data';
 
-import { saveCredential } from '../shared/db/credentials';
+import { saveCredential, shareCredentialWithUsers } from '../shared/db/credentials';
+import { createCustomRoleWithScopeSlugs } from '../shared/db/roles';
 import { createMember, createOwner } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import { setupTestServer } from '../shared/utils';
@@ -19,7 +26,11 @@ import { setupTestServer } from '../shared/utils';
 describe('DynamicNodeParametersController', () => {
 	const additionalData = mock<IWorkflowExecuteAdditionalData>();
 
-	const testServer = setupTestServer({ endpointGroups: ['dynamic-node-parameters'] });
+	const testServer = setupTestServer({
+		endpointGroups: ['dynamic-node-parameters'],
+		enabledFeatures: ['feat:sharing'],
+		quotas: { 'quota:maxTeamProjects': -1 },
+	});
 	let ownerAgent: SuperAgentTest;
 	let service: DynamicNodeParametersService;
 
@@ -356,6 +367,164 @@ describe('DynamicNodeParametersController', () => {
 			});
 
 			expect(status).not.toBe(403);
+		});
+	});
+
+	describe('see-only credential access', () => {
+		// A project viewer and a custom project role with only `credential:read`
+		// can see a credential but must not make the instance call a service
+		// with it. Every role that holds more than see-rights keeps loading.
+		type Route = {
+			path: string;
+			body: Record<string, unknown>;
+			stub: () => void;
+			method: () => unknown;
+		};
+
+		const routes: Route[] = [
+			{
+				path: '/dynamic-node-parameters/options',
+				body: { methodName: 'testMethod' },
+				stub: () => vi.spyOn(service, 'getOptionsViaMethodName').mockResolvedValue([]),
+				method: () => service.getOptionsViaMethodName,
+			},
+			{
+				path: '/dynamic-node-parameters/resource-locator-results',
+				body: { methodName: 'searchItems' },
+				stub: () =>
+					vi.spyOn(service, 'getResourceLocatorResults').mockResolvedValue({ results: [] }),
+				method: () => service.getResourceLocatorResults,
+			},
+			{
+				path: '/dynamic-node-parameters/resource-mapper-fields',
+				body: { methodName: 'getFields' },
+				stub: () => vi.spyOn(service, 'getResourceMappingFields').mockResolvedValue({ fields: [] }),
+				method: () => service.getResourceMappingFields,
+			},
+			{
+				path: '/dynamic-node-parameters/action-result',
+				body: { handler: 'handleAction', payload: {} },
+				stub: () => vi.spyOn(service, 'getActionResult').mockResolvedValue({}),
+				method: () => service.getActionResult,
+			},
+		];
+
+		const credentialsFor = (credential: { id: string; name: string }) => ({
+			httpBasicAuth: { id: credential.id, name: credential.name },
+		});
+
+		beforeEach(async () => {
+			await testDb.truncate(['SharedCredentials', 'CredentialsEntity']);
+		});
+
+		test.each(routes)('$path refuses a project viewer', async ({ path, body, stub, method }) => {
+			const project = await createTeamProject();
+			const credential = await saveCredential(randomCredentialPayload(), {
+				project,
+				role: 'credential:owner',
+			});
+			const viewer = await createMember();
+			await linkUserToProject(viewer, project, 'project:viewer');
+			stub();
+
+			const { status } = await testServer
+				.authAgentFor(viewer)
+				.post(path)
+				.send({ ...commonRequestParams, ...body, credentials: credentialsFor(credential) });
+
+			expect(status).toBe(403);
+			expect(method()).not.toHaveBeenCalled();
+		});
+
+		test('refuses a custom project role that only holds see-rights', async () => {
+			const project = await createTeamProject();
+			const credential = await saveCredential(randomCredentialPayload(), {
+				project,
+				role: 'credential:owner',
+			});
+			const role = await createCustomRoleWithScopeSlugs(['credential:list', 'credential:read'], {
+				roleType: 'project',
+			});
+			const user = await createMember();
+			await linkUserToProject(user, project, role.slug as AssignableProjectRole);
+			vi.spyOn(service, 'getOptionsViaMethodName').mockResolvedValue([]);
+
+			const { status } = await testServer
+				.authAgentFor(user)
+				.post('/dynamic-node-parameters/options')
+				.send({
+					...commonRequestParams,
+					methodName: 'testMethod',
+					credentials: credentialsFor(credential),
+				});
+
+			expect(status).toBe(403);
+			expect(service.getOptionsViaMethodName).not.toHaveBeenCalled();
+		});
+
+		test('allows a project editor', async () => {
+			const project = await createTeamProject();
+			const credential = await saveCredential(randomCredentialPayload(), {
+				project,
+				role: 'credential:owner',
+			});
+			const editor = await createMember();
+			await linkUserToProject(editor, project, 'project:editor');
+			vi.spyOn(service, 'getOptionsViaMethodName').mockResolvedValue([]);
+
+			const { status } = await testServer
+				.authAgentFor(editor)
+				.post('/dynamic-node-parameters/options')
+				.send({
+					...commonRequestParams,
+					methodName: 'testMethod',
+					credentials: credentialsFor(credential),
+				});
+
+			expect(status).toBe(200);
+		});
+
+		test('allows a user the credential is shared with', async () => {
+			const owner = await createOwner();
+			const credential = await saveCredential(randomCredentialPayload(), {
+				user: owner,
+				role: 'credential:owner',
+			});
+			const member = await createMember();
+			await shareCredentialWithUsers(credential, [member]);
+			vi.spyOn(service, 'getOptionsViaMethodName').mockResolvedValue([]);
+
+			const { status } = await testServer
+				.authAgentFor(member)
+				.post('/dynamic-node-parameters/options')
+				.send({
+					...commonRequestParams,
+					methodName: 'testMethod',
+					credentials: credentialsFor(credential),
+				});
+
+			expect(status).toBe(200);
+		});
+
+		test('allows the instance owner on a project they are not a member of', async () => {
+			const project = await createTeamProject();
+			const credential = await saveCredential(randomCredentialPayload(), {
+				project,
+				role: 'credential:owner',
+			});
+			const owner = await createOwner();
+			vi.spyOn(service, 'getOptionsViaMethodName').mockResolvedValue([]);
+
+			const { status } = await testServer
+				.authAgentFor(owner)
+				.post('/dynamic-node-parameters/options')
+				.send({
+					...commonRequestParams,
+					methodName: 'testMethod',
+					credentials: credentialsFor(credential),
+				});
+
+			expect(status).toBe(200);
 		});
 	});
 });

@@ -9,7 +9,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import {
@@ -112,7 +112,13 @@ export class Wise implements INodeType {
 					profileId: this.getNodeParameter('profileId', 0),
 				};
 
-				const accounts = await wiseApiRequest.call(this, 'GET', 'v1/borderless-accounts', {}, qs);
+				const accounts = await wiseApiRequest.call(
+					this,
+					'GET',
+					requestPath`v1/borderless-accounts`,
+					{},
+					qs,
+				);
 
 				return accounts.map(({ id, balances }: BorderlessAccount) => ({
 					name: balances.map(({ currency }) => currency).join(' - '),
@@ -121,7 +127,7 @@ export class Wise implements INodeType {
 			},
 
 			async getProfiles(this: ILoadOptionsFunctions) {
-				const profiles = await wiseApiRequest.call(this, 'GET', 'v1/profiles');
+				const profiles = await wiseApiRequest.call(this, 'GET', requestPath`v1/profiles`);
 
 				return profiles.map(({ id, type }: Profile) => ({
 					name: type.charAt(0).toUpperCase() + type.slice(1),
@@ -137,7 +143,7 @@ export class Wise implements INodeType {
 				const recipients = (await wiseApiRequest.call(
 					this,
 					'GET',
-					'v1/accounts',
+					requestPath`v1/accounts`,
 					{},
 					qs,
 				)) as Recipient[];
@@ -185,36 +191,42 @@ export class Wise implements INodeType {
 						//      account: getBalances
 						// ----------------------------------
 
-						// https://api-docs.transferwise.com/#borderless-accounts-get-account-balance
+						// https://docs.wise.com/api-reference/legacy/balance
 
 						const qs = {
 							profileId: this.getNodeParameter('profileId', i),
 						};
 
-						responseData = await wiseApiRequest.call(this, 'GET', 'v1/borderless-accounts', {}, qs);
+						responseData = await wiseApiRequest.call(
+							this,
+							'GET',
+							requestPath`v1/borderless-accounts`,
+							{},
+							qs,
+						);
 					} else if (operation === 'getCurrencies') {
 						// ----------------------------------
 						//      account: getCurrencies
 						// ----------------------------------
 
-						// https://api-docs.transferwise.com/#borderless-accounts-get-available-currencies
+						// https://docs.wise.com/api-reference/legacy/multi-currency-account
 
 						responseData = await wiseApiRequest.call(
 							this,
 							'GET',
-							'v1/borderless-accounts/balance-currencies',
+							requestPath`v1/borderless-accounts/balance-currencies`,
 						);
 					} else if (operation === 'getStatement') {
 						// ----------------------------------
 						//      account: getStatement
 						// ----------------------------------
 
-						// https://api-docs.transferwise.com/#borderless-accounts-get-account-statement
+						// https://docs.wise.com/api-reference/legacy/balance-statement
 
 						const profileId = this.getNodeParameter('profileId', i);
 						const borderlessAccountId = this.getNodeParameter('borderlessAccountId', i);
 						const format = this.getNodeParameter('format', i) as 'json' | 'csv' | 'pdf' | 'xml';
-						const endpoint = `v3/profiles/${profileId}/borderless-accounts/${borderlessAccountId}/statement.${format}`;
+						const endpoint = requestPath`v3/profiles/${profileId}/borderless-accounts/${borderlessAccountId}/statement.${format}`;
 
 						const qs = {
 							currency: this.getNodeParameter('currency', i),
@@ -271,7 +283,7 @@ export class Wise implements INodeType {
 						//       exchangeRate: get
 						// ----------------------------------
 
-						// https://api-docs.transferwise.com/#exchange-rates-list
+						// https://docs.wise.com/api-reference/legacy/rate/rateget
 
 						const qs = {
 							source: this.getNodeParameter('source', i),
@@ -299,7 +311,7 @@ export class Wise implements INodeType {
 							qs.to = moment().utc().format();
 						}
 
-						responseData = await wiseApiRequest.call(this, 'GET', 'v1/rates', {}, qs);
+						responseData = await wiseApiRequest.call(this, 'GET', requestPath`v1/rates`, {}, qs);
 					}
 				} else if (resource === 'profile') {
 					// *********************************************************************
@@ -311,18 +323,22 @@ export class Wise implements INodeType {
 						//          profile: get
 						// ----------------------------------
 
-						// https://api-docs.transferwise.com/#user-profiles-get-by-id
+						// https://docs.wise.com/api-reference/legacy/profile
 
 						const profileId = this.getNodeParameter('profileId', i);
-						responseData = await wiseApiRequest.call(this, 'GET', `v1/profiles/${profileId}`);
+						responseData = await wiseApiRequest.call(
+							this,
+							'GET',
+							requestPath`v1/profiles/${profileId}`,
+						);
 					} else if (operation === 'getAll') {
 						// ----------------------------------
 						//         profile: getAll
 						// ----------------------------------
 
-						// https://api-docs.transferwise.com/#user-profiles-list
+						// https://docs.wise.com/api-reference/legacy/profile
 
-						responseData = await wiseApiRequest.call(this, 'GET', 'v1/profiles');
+						responseData = await wiseApiRequest.call(this, 'GET', requestPath`v1/profiles`);
 					}
 				} else if (resource === 'recipient') {
 					// *********************************************************************
@@ -334,9 +350,9 @@ export class Wise implements INodeType {
 						//       recipient: getAll
 						// ----------------------------------
 
-						// https://api-docs.transferwise.com/#recipient-accounts-list
+						// https://docs.wise.com/api-reference/legacy/recipient/recipientlistv1
 
-						responseData = await wiseApiRequest.call(this, 'GET', 'v1/accounts');
+						responseData = await wiseApiRequest.call(this, 'GET', requestPath`v1/accounts`);
 
 						const returnAll = this.getNodeParameter('returnAll', i);
 
@@ -355,7 +371,7 @@ export class Wise implements INodeType {
 						//          quote: create
 						// ----------------------------------
 
-						// https://api-docs.transferwise.com/#quotes-create
+						// https://docs.wise.com/api-reference/legacy/quote
 
 						const body = {
 							profile: this.getNodeParameter('profileId', i),
@@ -371,16 +387,26 @@ export class Wise implements INodeType {
 							body.targetAmount = this.getNodeParameter('amount', i);
 						}
 
-						responseData = await wiseApiRequest.call(this, 'POST', 'v2/quotes', body, {});
+						responseData = await wiseApiRequest.call(
+							this,
+							'POST',
+							requestPath`v2/quotes`,
+							body,
+							{},
+						);
 					} else if (operation === 'get') {
 						// ----------------------------------
 						//          quote: get
 						// ----------------------------------
 
-						// https://api-docs.transferwise.com/#quotes-get-by-id
+						// https://docs.wise.com/api-reference/legacy/quote
 
 						const quoteId = this.getNodeParameter('quoteId', i);
-						responseData = await wiseApiRequest.call(this, 'GET', `v2/quotes/${quoteId}`);
+						responseData = await wiseApiRequest.call(
+							this,
+							'GET',
+							requestPath`v2/quotes/${quoteId}`,
+						);
 					}
 				} else if (resource === 'transfer') {
 					// *********************************************************************
@@ -392,7 +418,7 @@ export class Wise implements INodeType {
 						//         transfer: create
 						// ----------------------------------
 
-						// https://api-docs.transferwise.com/#transfers-create
+						// https://docs.wise.com/api-reference/legacy/standard-transfer/transfercreate
 
 						const body = {
 							quoteUuid: this.getNodeParameter('quoteId', i),
@@ -408,31 +434,37 @@ export class Wise implements INodeType {
 							body.details = { reference };
 						}
 
-						responseData = await wiseApiRequest.call(this, 'POST', 'v1/transfers', body, {});
+						responseData = await wiseApiRequest.call(
+							this,
+							'POST',
+							requestPath`v1/transfers`,
+							body,
+							{},
+						);
 					} else if (operation === 'delete') {
 						// ----------------------------------
 						//        transfer: delete
 						// ----------------------------------
 
-						// https://api-docs.transferwise.com/#transfers-cancel
+						// https://docs.wise.com/api-reference/legacy/transfer/transfercancel
 
 						const transferId = this.getNodeParameter('transferId', i);
 						responseData = await wiseApiRequest.call(
 							this,
 							'PUT',
-							`v1/transfers/${transferId}/cancel`,
+							requestPath`v1/transfers/${transferId}/cancel`,
 						);
 					} else if (operation === 'execute') {
 						// ----------------------------------
 						//        transfer: execute
 						// ----------------------------------
 
-						// https://api-docs.transferwise.com/#transfers-fund
+						// https://docs.wise.com/api-reference/legacy/transfer/transferfund
 
 						const profileId = this.getNodeParameter('profileId', i);
 						const transferId = this.getNodeParameter('transferId', i) as string;
 
-						const endpoint = `v3/profiles/${profileId}/transfers/${transferId}/payments`;
+						const endpoint = requestPath`v3/profiles/${profileId}/transfers/${transferId}/payments`;
 						responseData = await wiseApiRequest.call(
 							this,
 							'POST',
@@ -454,7 +486,7 @@ export class Wise implements INodeType {
 								await wiseApiRequest.call(
 									this,
 									'GET',
-									`v1/simulation/transfers/${transferId}/${testEndpoint}`,
+									requestPath`v1/simulation/transfers/${transferId}/${testEndpoint}`,
 								);
 							}
 						}
@@ -467,12 +499,12 @@ export class Wise implements INodeType {
 						const downloadReceipt = this.getNodeParameter('downloadReceipt', i) as boolean;
 
 						if (downloadReceipt) {
-							// https://api-docs.transferwise.com/#transfers-get-receipt-pdf
+							// https://docs.wise.com/api-reference/legacy/transfer/transferreceiptget
 
 							const data = await wiseApiRequest.call(
 								this,
 								'GET',
-								`v1/transfers/${transferId}/receipt.pdf`,
+								requestPath`v1/transfers/${transferId}/receipt.pdf`,
 								{},
 								{},
 								{ encoding: 'arraybuffer' },
@@ -488,16 +520,20 @@ export class Wise implements INodeType {
 							responseData = items;
 							binaryOutput = true;
 						} else {
-							// https://api-docs.transferwise.com/#transfers-get-by-id
+							// https://docs.wise.com/api-reference/legacy/transfer/transferget
 
-							responseData = await wiseApiRequest.call(this, 'GET', `v1/transfers/${transferId}`);
+							responseData = await wiseApiRequest.call(
+								this,
+								'GET',
+								requestPath`v1/transfers/${transferId}`,
+							);
 						}
 					} else if (operation === 'getAll') {
 						// ----------------------------------
 						//        transfer: getAll
 						// ----------------------------------
 
-						// https://api-docs.transferwise.com/#transfers-list
+						// https://docs.wise.com/api-reference/legacy/standard-transfer/transferlist
 
 						const qs = {
 							profile: this.getNodeParameter('profileId', i),
@@ -529,7 +565,13 @@ export class Wise implements INodeType {
 							qs.limit = this.getNodeParameter('limit', i);
 						}
 
-						responseData = await wiseApiRequest.call(this, 'GET', 'v1/transfers', {}, qs);
+						responseData = await wiseApiRequest.call(
+							this,
+							'GET',
+							requestPath`v1/transfers`,
+							{},
+							qs,
+						);
 					}
 				}
 			} catch (error) {

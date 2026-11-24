@@ -170,6 +170,7 @@ async function main(): Promise<void> {
 			evaluation,
 			outcome,
 			gate,
+			subject: args.tier === 'agents' ? 'agent' : 'workflow',
 			slugByTestCase,
 			commitSha,
 			outputDir: args.outputDir,
@@ -178,7 +179,11 @@ async function main(): Promise<void> {
 			experimentName: args.experimentName,
 		});
 	} finally {
-		await cleanupLanes(lanes, cleanupBuiltWorkflows, logger);
+		await cleanupLanes(
+			lanes,
+			{ workflows: cleanupBuiltWorkflows, buildUsers: !args.keepWorkflows },
+			logger,
+		);
 	}
 }
 

@@ -5,8 +5,10 @@ import type {
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
 	JsonObject,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestUrl } from 'n8n-workflow';
 
 interface IFormIoCredentials {
 	environment: 'cloudHosted' | ' selfHosted';
@@ -21,7 +23,7 @@ interface IFormIoCredentials {
 export async function formIoApiRequest(
 	this: IHookFunctions | ILoadOptionsFunctions | IWebhookFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body = {},
 	qs = {},
 ): Promise<any> {
@@ -29,18 +31,18 @@ export async function formIoApiRequest(
 
 	const base = credentials.domain || 'https://api.form.io';
 
-	const options: IHttpRequestOptions = {
-		headers: {
-			'Content-Type': 'application/json',
-		},
-		method,
-		body,
-		qs,
-		url: `${base}${endpoint}`,
-		json: true,
-	};
-
 	try {
+		const options: WithRequestTarget<IHttpRequestOptions> = {
+			headers: {
+				'Content-Type': 'application/json',
+			},
+			method,
+			body,
+			qs,
+			url: requestUrl`${base}${endpoint}`,
+			json: true,
+		};
+
 		return await this.helpers.httpRequestWithAuthentication.call(this, 'formIoApi', options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);

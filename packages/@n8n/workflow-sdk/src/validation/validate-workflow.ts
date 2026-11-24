@@ -1,10 +1,15 @@
 import { isRecord } from '@n8n/utils/is-record';
 import get from 'lodash/get';
-import type { INodeType, INodeTypes, IDisplayOptions } from 'n8n-workflow';
+import type { INodeType, INodeTypes, IDisplayOptions, WorkflowEngineType } from 'n8n-workflow';
 import { mapConnectionsByDestination, NodeVersionNotFoundError } from 'n8n-workflow';
 
 import { matchesDisplayOptions } from './display-options';
 import type { DisplayOptions, DisplayOptionsContext } from './display-options';
+import {
+	findEngineV2SupportIssues,
+	resolveValidationEngine,
+	type EngineV2ValidationCode,
+} from './engine-v2-support';
 import { validateNodeConfig } from './node-parameter-schema/schema-validator';
 import { resolveMainInputCount } from './node-port-resolvers/resolve-main-input-count';
 import { resolveMainOutputCount } from './node-port-resolvers/resolve-main-output-count';
@@ -35,6 +40,7 @@ export type ValidationErrorCode =
 	| 'TOOL_NO_PARAMETERS'
 	| 'FROM_AI_IN_NON_TOOL'
 	| 'MISSING_EXPRESSION_PREFIX'
+	| 'UNSUPPORTED_EXPRESSION'
 	| 'INVALID_PARAMETER'
 	| 'INVALID_INPUT_INDEX'
 	| 'INVALID_OUTPUT_INDEX'
@@ -53,7 +59,9 @@ export type ValidationErrorCode =
 	| 'INVALID_DATE_METHOD'
 	| 'UNKNOWN_CONFIG_KEY'
 	| 'UNKNOWN_NODE_VERSION'
-	| 'DEPRECATED_NODE_TYPE';
+	| 'DEPRECATED_NODE_TYPE'
+	| 'MOCK_OUTPUT_JSON_ENVELOPE'
+	| EngineV2ValidationCode;
 
 /**
  * Validation error class
@@ -163,6 +171,12 @@ export interface ValidationOptions {
 	validateSchema?: boolean;
 	/** Optional node types provider for dynamic input index validation */
 	nodeTypesProvider?: INodeTypes;
+	/**
+	 * The engine that runs a workflow without `settings.engineType`. The workflow's own
+	 * `engineType` always wins. On `v2`, each node or setting that engine v2 cannot run
+	 * is an error. Default: `v1`.
+	 */
+	engine?: WorkflowEngineType;
 }
 
 /**
@@ -776,6 +790,13 @@ export function validateWorkflow(
 	checkDuplicateSingleValueAiConnections(json, warnings);
 	checkFallbackModelFlag(json, warnings);
 
+	// A passing test run does not prove that engine v2 can run the workflow, so check it here.
+	if (resolveValidationEngine(json, options.engine) === 'v2') {
+		for (const issue of findEngineV2SupportIssues(json)) {
+			errors.push(new ValidationError(issue.code, issue.message, issue.nodeName));
+		}
+	}
+
 	return {
 		valid: errors.length === 0,
 		errors,
@@ -1323,6 +1344,8 @@ function validateSwitchHasOutgoingConnections(
 ): void {
 	for (const sourceNode of json.nodes) {
 		if (!sourceNode.name || sourceNode.type !== 'n8n-nodes-base.switch') continue;
+		// Disabled nodes pass data through without evaluating Switch routing rules.
+		if (sourceNode.disabled === true) continue;
 		if (hasAnyMainOutputConnection(json.connections[sourceNode.name])) continue;
 
 		warnings.push(

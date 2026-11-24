@@ -3,7 +3,7 @@ import type { WorkflowDataTableRequirement } from '../data-table/data-table.type
 import { mergeRequirements } from '../requirements.types';
 import type { WorkflowTagUsage } from '../tag/tag.types';
 import type { WorkflowVariableRequirement } from '../variable/variable.types';
-import type { WorkflowNodeTypeSource } from '../workflow/node-type-usage';
+import type { NodeTypeSource } from '../workflow/node-type-usage';
 
 function cred(credentialId: string, workflowId: string): WorkflowCredentialRequirement {
 	return {
@@ -26,7 +26,7 @@ function tagUsage(tagId: string, workflowId: string): WorkflowTagUsage {
 	return { workflowId, tag: { id: tagId, name: `Tag ${tagId}` } };
 }
 
-function nodeTypeSource(workflowId: string): WorkflowNodeTypeSource {
+function nodeTypeSource(workflowId: string): NodeTypeSource {
 	return { workflowId, nodes: [] };
 }
 

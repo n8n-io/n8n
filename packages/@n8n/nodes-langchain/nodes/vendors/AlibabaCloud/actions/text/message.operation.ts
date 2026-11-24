@@ -5,7 +5,12 @@ import type {
 	IExecuteFunctions,
 	INodeExecutionData,
 } from 'n8n-workflow';
-import { accumulateTokenUsage, NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
+import {
+	accumulateTokenUsage,
+	NodeOperationError,
+	requestPath,
+	updateDisplayOptions,
+} from 'n8n-workflow';
 import zodToJsonSchema from 'zod-to-json-schema';
 
 import { getConnectedTools } from '@utils/helpers';
@@ -256,7 +261,8 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
-const TEXT_ONLY_PATTERNS = ['coder', 'math'];
+// DeepSeek V4 Pro and V4 Flash (incl. dated snapshots) are text-only; V4.1 Flash has vision.
+const TEXT_ONLY_PATTERNS = ['coder', 'math', 'deepseek-v4-pro', 'deepseek-v4-flash'];
 
 function isMultimodalModel(model: string): boolean {
 	const lower = model.toLowerCase();
@@ -345,8 +351,8 @@ export async function execute(
 	}
 
 	const endpoint = isMultimodal
-		? '/api/v1/services/aigc/multimodal-generation/generation'
-		: '/api/v1/services/aigc/text-generation/generation';
+		? requestPath`/api/v1/services/aigc/multimodal-generation/generation`
+		: requestPath`/api/v1/services/aigc/text-generation/generation`;
 
 	let response = await apiRequest.call(this, 'POST', endpoint, { body });
 

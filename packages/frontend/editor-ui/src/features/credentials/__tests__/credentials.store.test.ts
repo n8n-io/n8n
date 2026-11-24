@@ -1,3 +1,5 @@
+import { CREDENTIAL_DESCRIPTIONS_FLAG } from '@n8n/api-types';
+import { usePostHog } from '@/app/stores/posthog.store';
 import { createPinia, setActivePinia } from 'pinia';
 import { mock } from 'vitest-mock-extended';
 import type { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
@@ -46,6 +48,37 @@ describe('credentials.store', () => {
 		vi.clearAllMocks();
 		setActivePinia(createPinia());
 	});
+
+	it.each([false, undefined])(
+		'omits descriptions from create and update requests when the flag is %s',
+		async (flag) => {
+			usePostHog().overrides =
+				flag === undefined ? {} : { [CREDENTIAL_DESCRIPTIONS_FLAG]: { value: flag } };
+			const store = useCredentialsStore();
+			const saved = mock<ICredentialsResponse>({
+				id: 'credential-id',
+				description: 'Saved description',
+			});
+			vi.mocked(credentialsApi.createNewCredential).mockResolvedValue(saved);
+			vi.mocked(credentialsApi.updateCredential).mockResolvedValue(saved);
+			const payload = {
+				id: saved.id,
+				name: 'Renamed credential',
+				type: 'httpBasicAuth',
+				data: {},
+				description: 'Hidden edit',
+			};
+			await store.createNewCredential(payload);
+			await store.updateCredential({ id: saved.id, data: payload });
+			expect(vi.mocked(credentialsApi.createNewCredential).mock.calls[0][1]).not.toHaveProperty(
+				'description',
+			);
+			expect(vi.mocked(credentialsApi.updateCredential).mock.calls[0][2]).not.toHaveProperty(
+				'description',
+			);
+			expect(payload.description).toBe('Hidden edit');
+		},
+	);
 
 	describe('isCredentialTypeTestable', () => {
 		/**
@@ -160,8 +193,44 @@ describe('credentials.store', () => {
 				includeScopes: true,
 				onlySharedWithMe: false,
 				includeGlobal: true,
+				includeRestrictions: false,
 				externalSecretsStore: undefined,
 			});
+		});
+
+		it('asks the API for restrictions when requested', async () => {
+			const store = useCredentialsStore();
+			vi.spyOn(credentialsApi, 'getAllCredentials').mockResolvedValue([]);
+
+			await store.fetchAllCredentials({ includeRestrictions: true });
+
+			expect(credentialsApi.getAllCredentials).toHaveBeenCalledWith(
+				mockRootStore.restApiContext,
+				expect.objectContaining({ includeRestrictions: true }),
+			);
+		});
+
+		it('keeps the restrictions of the last fetch that asked for them', async () => {
+			const store = useCredentialsStore();
+			const restriction = {
+				reason: 'typeRestricted' as const,
+				restriction: { name: 'slackApi', available: false, scope: 'instance' as const },
+			};
+			const credential = (id: string, extra = {}) =>
+				({ id, name: id, type: 'slackApi', ...extra }) as ICredentialsResponse;
+			const getAll = vi.spyOn(credentialsApi, 'getAllCredentials');
+
+			getAll.mockResolvedValueOnce([credential('cred-1', { restriction }), credential('cred-2')]);
+			await store.fetchAllCredentials({ includeRestrictions: true });
+			expect(store.restrictionsById).toEqual({ 'cred-1': restriction });
+
+			getAll.mockResolvedValueOnce([credential('cred-1')]);
+			await store.fetchAllCredentials();
+			expect(store.restrictionsById).toEqual({ 'cred-1': restriction });
+
+			getAll.mockResolvedValueOnce([credential('cred-1')]);
+			await store.fetchAllCredentials({ includeRestrictions: true });
+			expect(store.restrictionsById).toEqual({});
 		});
 
 		it('should pass includeGlobal as true when not provided', async () => {
@@ -185,6 +254,7 @@ describe('credentials.store', () => {
 				includeScopes: true,
 				onlySharedWithMe: false,
 				includeGlobal: true,
+				includeRestrictions: false,
 				externalSecretsStore: undefined,
 			});
 		});
@@ -251,6 +321,29 @@ describe('credentials.store', () => {
 			expect(store.getUsableCredentialByType('httpBasicAuth')).toEqual([inScope]);
 			// The flat map keeps its existing replace semantics.
 			expect(store.allCredentials).toEqual([inScope]);
+		});
+
+		it('does not treat the agent slice and the non-agent slice of a scope as interchangeable', async () => {
+			const store = useCredentialsStore();
+
+			vi.spyOn(credentialsApi, 'getUsableCredentials').mockResolvedValue([inScope]);
+			await store.fetchUsableCredentials({ projectId: 'project-1' });
+
+			expect(store.hasUsableCredentialsForScope({ projectId: 'project-1' })).toBe(true);
+			expect(store.hasUsableCredentialsForScope({ projectId: 'project-1', forAgent: true })).toBe(
+				false,
+			);
+
+			await store.fetchUsableCredentials({ projectId: 'project-1', forAgent: true });
+
+			expect(credentialsApi.getUsableCredentials).toHaveBeenLastCalledWith(
+				mockRootStore.restApiContext,
+				{ projectId: 'project-1', forAgent: true },
+			);
+			expect(store.hasUsableCredentialsForScope({ projectId: 'project-1', forAgent: true })).toBe(
+				true,
+			);
+			expect(store.hasUsableCredentialsForScope({ projectId: 'project-1' })).toBe(false);
 		});
 
 		it('reads an unfetched slice as empty rather than falling back to the flat map', async () => {
@@ -438,6 +531,50 @@ describe('credentials.store', () => {
 	});
 
 	describe('createNewCredential', () => {
+		it('passes pendingAuthorization through to the API', async () => {
+			const store = useCredentialsStore();
+			vi.spyOn(credentialsApi, 'createNewCredential').mockResolvedValue(
+				mock<ICredentialsResponse>({ id: 'pending-1' }),
+			);
+
+			await store.createNewCredential(
+				{ id: '', name: 'Pending account', type: 'slackOAuth2Api', data: {} },
+				'project-123',
+				undefined,
+				{ skipStoreUpdate: true, pendingAuthorization: true },
+			);
+
+			expect(credentialsApi.createNewCredential).toHaveBeenCalledWith(
+				mockRootStore.restApiContext,
+				expect.objectContaining({ pendingAuthorization: true }),
+			);
+			expect(store.getCredentialById('pending-1')).toBeUndefined();
+		});
+
+		it.each(['Use for production reports', null])(
+			'passes description %j as credential metadata',
+			async (description) => {
+				usePostHog().overrides = { [CREDENTIAL_DESCRIPTIONS_FLAG]: { value: true } };
+				const store = useCredentialsStore();
+				const credential = mock<ICredentialsResponse>({ id: 'new-cred', description });
+				vi.mocked(credentialsApi.createNewCredential).mockResolvedValue(credential);
+
+				await store.createNewCredential({
+					id: '',
+					name: 'Reporting account',
+					type: 'httpBasicAuth',
+					data: { user: 'reports' },
+					description,
+				});
+
+				expect(credentialsApi.createNewCredential).toHaveBeenCalledExactlyOnceWith(
+					mockRootStore.restApiContext,
+					expect.objectContaining({ description, data: { user: 'reports' } }),
+				);
+				expect(store.getCredentialById(credential.id)?.description).toBe(description);
+			},
+		);
+
 		it('should pass isGlobal parameter to API when creating credential', async () => {
 			const store = useCredentialsStore();
 

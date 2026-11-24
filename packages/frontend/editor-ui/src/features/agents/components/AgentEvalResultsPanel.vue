@@ -202,7 +202,7 @@ onBeforeUnmount(store.stopPollingRun);
 
 		<div v-if="hasMore" :class="$style.loadMore">
 			<N8nButton
-				variant="subtle"
+				variant="outline"
 				size="small"
 				:loading="review.loadingMore"
 				data-testid="agent-eval-load-more"
@@ -234,11 +234,17 @@ onBeforeUnmount(store.stopPollingRun);
 			</div>
 			<!-- Disabled until the assistant can act on a run's feedback: nothing
 			     reads these ratings back yet, so a working button would be a lie. -->
-			<N8nTooltip
-				:content="i18n.baseText('agents.builder.agentEvals.review.footer.sendUnavailable')"
-				placement="top"
-			>
-				<N8nButton variant="solid" size="medium" disabled data-testid="agent-eval-send-feedback">
+			<N8nTooltip as-child placement="top">
+				<template #content>{{
+					i18n.baseText('agents.builder.agentEvals.review.footer.sendUnavailable')
+				}}</template>
+				<N8nButton
+					variant="solid"
+					size="medium"
+					disabled
+					focusable-when-disabled
+					data-testid="agent-eval-send-feedback"
+				>
 					{{ i18n.baseText('agents.builder.agentEvals.review.footer.send') }}
 				</N8nButton>
 			</N8nTooltip>

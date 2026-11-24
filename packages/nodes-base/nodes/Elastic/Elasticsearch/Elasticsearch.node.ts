@@ -7,10 +7,9 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeApiError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeApiError, requestPath } from 'n8n-workflow';
 
 import { parseAndResolveQueryParameters } from '@utils/query-parameters';
-import { toPathSegment } from '@utils/url';
 
 import { documentFields, documentOperations, indexFields, indexOperations } from './descriptions';
 import {
@@ -102,7 +101,7 @@ export class Elasticsearch implements INodeType {
 							},
 						});
 					} else {
-						const endpoint = `/${toPathSegment(indexId)}/_doc/${toPathSegment(documentId)}`;
+						const endpoint = requestPath`/${indexId}/_doc/${documentId}`;
 						responseData = await elasticsearchApiRequest.call(this, 'DELETE', endpoint);
 					}
 				} else if (operation === 'get') {
@@ -123,7 +122,7 @@ export class Elasticsearch implements INodeType {
 						qs._source = true;
 					}
 
-					const endpoint = `/${toPathSegment(indexId)}/_doc/${toPathSegment(documentId)}`;
+					const endpoint = requestPath`/${indexId}/_doc/${documentId}`;
 					responseData = await elasticsearchApiRequest.call(this, 'GET', endpoint, {}, qs);
 
 					const simple = this.getNodeParameter('simple', i) as IDataObject;
@@ -181,7 +180,7 @@ export class Elasticsearch implements INodeType {
 							responseData = await elasticsearchApiRequest.call(
 								this,
 								'POST',
-								`/${toPathSegment(indexId)}/_search`,
+								requestPath`/${indexId}/_search`,
 								body,
 								qs,
 							);
@@ -193,7 +192,7 @@ export class Elasticsearch implements INodeType {
 						responseData = await elasticsearchApiRequest.call(
 							this,
 							'POST',
-							`/${toPathSegment(indexId)}/_search`,
+							requestPath`/${indexId}/_search`,
 							body,
 							qs,
 						);
@@ -257,10 +256,10 @@ export class Elasticsearch implements INodeType {
 						bulkBody[i] += `\n${JSON.stringify(body)}`;
 					} else {
 						if (documentId) {
-							const endpoint = `/${toPathSegment(indexId)}/_doc/${toPathSegment(documentId)}`;
+							const endpoint = requestPath`/${indexId}/_doc/${documentId}`;
 							responseData = await elasticsearchApiRequest.call(this, 'PUT', endpoint, body);
 						} else {
-							const endpoint = `/${toPathSegment(indexId)}/_doc`;
+							const endpoint = requestPath`/${indexId}/_doc`;
 							responseData = await elasticsearchApiRequest.call(this, 'POST', endpoint, body);
 						}
 					}
@@ -303,7 +302,7 @@ export class Elasticsearch implements INodeType {
 						});
 						bulkBody[i] += `\n${JSON.stringify(body)}`;
 					} else {
-						const endpoint = `/${toPathSegment(indexId)}/_update/${toPathSegment(documentId)}`;
+						const endpoint = requestPath`/${indexId}/_update/${documentId}`;
 						responseData = await elasticsearchApiRequest.call(this, 'POST', endpoint, body);
 					}
 				}
@@ -333,11 +332,7 @@ export class Elasticsearch implements INodeType {
 						Object.assign(qs, rest);
 					}
 
-					responseData = await elasticsearchApiRequest.call(
-						this,
-						'PUT',
-						`/${toPathSegment(indexId)}`,
-					);
+					responseData = await elasticsearchApiRequest.call(this, 'PUT', requestPath`/${indexId}`);
 					responseData = { id: indexId, ...responseData };
 					delete responseData.index;
 				} else if (operation === 'delete') {
@@ -352,7 +347,7 @@ export class Elasticsearch implements INodeType {
 					responseData = await elasticsearchApiRequest.call(
 						this,
 						'DELETE',
-						`/${toPathSegment(indexId)}`,
+						requestPath`/${indexId}`,
 					);
 					responseData = { success: true };
 				} else if (operation === 'get') {
@@ -374,7 +369,7 @@ export class Elasticsearch implements INodeType {
 					responseData = await elasticsearchApiRequest.call(
 						this,
 						'GET',
-						`/${toPathSegment(indexId)}`,
+						requestPath`/${indexId}`,
 						{},
 						qs,
 					);
@@ -386,7 +381,7 @@ export class Elasticsearch implements INodeType {
 
 					// https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-aliases.html
 
-					responseData = await elasticsearchApiRequest.call(this, 'GET', '/_aliases');
+					responseData = await elasticsearchApiRequest.call(this, 'GET', requestPath`/_aliases`);
 					responseData = Object.keys(responseData as IDataObject).map((index) => ({
 						indexId: index,
 					}));

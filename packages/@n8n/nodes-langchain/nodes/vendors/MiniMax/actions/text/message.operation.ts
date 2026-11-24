@@ -5,7 +5,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
-import { accumulateTokenUsage, jsonParse, updateDisplayOptions } from 'n8n-workflow';
+import { accumulateTokenUsage, jsonParse, requestPath, updateDisplayOptions } from 'n8n-workflow';
 import zodToJsonSchema from 'zod-to-json-schema';
 
 import { getConnectedTools } from '@utils/helpers';
@@ -42,7 +42,37 @@ const properties: INodeProperties[] = [
 		description: 'The model to use for generating the response',
 		displayOptions: {
 			show: {
-				'@version': [{ _cnd: { gte: 1.1 } }],
+				'@version': [1.1],
+			},
+		},
+	},
+	{
+		displayName: 'Model',
+		name: 'modelId',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: 'MiniMax-M3' },
+		required: true,
+		description: 'The model to use for generating the response',
+		modes: [
+			{
+				displayName: 'From List',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'modelSearch',
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'ID',
+				name: 'id',
+				type: 'string',
+				placeholder: 'e.g. MiniMax-M3',
+			},
+		],
+		displayOptions: {
+			show: {
+				'@version': [{ _cnd: { gte: 1.2 } }],
 			},
 		},
 	},
@@ -195,7 +225,7 @@ interface MessageOptions {
 }
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
-	const model = this.getNodeParameter('modelId', i) as string;
+	const model = this.getNodeParameter('modelId', i, '', { extractValue: true }) as string;
 	const rawMessages = this.getNodeParameter('messages.values', i, []) as Array<{
 		content: string;
 		role: string;
@@ -234,7 +264,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		body.tools = tools;
 	}
 
-	let response = (await apiRequest.call(this, 'POST', '/v1/chat/completions', {
+	let response = (await apiRequest.call(this, 'POST', requestPath`/v1/chat/completions`, {
 		body,
 	})) as ChatCompletionResponse;
 
@@ -278,7 +308,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		await handleToolUse.call(this, choice.message.tool_calls, messages, connectedTools);
 		currentIteration++;
 
-		response = (await apiRequest.call(this, 'POST', '/v1/chat/completions', {
+		response = (await apiRequest.call(this, 'POST', requestPath`/v1/chat/completions`, {
 			body,
 		})) as ChatCompletionResponse;
 

@@ -51,4 +51,22 @@ describe('buildFixWithAiPrompt', () => {
 			}),
 		).toContain('instanceAi.fixWithAi.prompt.multipleInWorkflow');
 	});
+
+	it('keeps short errors and cuts long errors to a prefix', () => {
+		const longError = 'x'.repeat(30_000);
+		const single = buildFixWithAiPrompt({
+			errors: [{ nodeName: 'Node A', errorMessage: longError }],
+		});
+		const multiple = buildFixWithAiPrompt({
+			errors: [
+				{ nodeName: 'Node A', errorMessage: 'Parameter URL is required' },
+				{ nodeName: 'Node B', errorMessage: longError },
+			],
+		});
+
+		expect(single).toContain(`${'x'.repeat(500)}...`);
+		expect(single).not.toContain('x'.repeat(501));
+		expect(multiple).toContain('Parameter URL is required');
+		expect(multiple).not.toContain('x'.repeat(501));
+	});
 });

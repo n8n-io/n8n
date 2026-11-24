@@ -10,6 +10,7 @@ const props = defineProps<{
 	projectId?: string;
 	showApprovalSetting?: boolean;
 	approvalRequired?: boolean;
+	submitCount?: number;
 }>();
 
 const emit = defineEmits<{
@@ -64,6 +65,7 @@ defineExpose({
 		ref="contentRef"
 		:initial-ref="props.initialRef"
 		:project-id="props.projectId"
+		:submit-count="props.submitCount"
 		@update:valid="emit('update:valid', $event)"
 		@update:node-name="emit('update:node-name', $event)"
 	>

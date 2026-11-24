@@ -1,11 +1,12 @@
 import { Request } from 'mssql';
 import type { IResult } from 'mssql';
 import type mssql from 'mssql';
-import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INode, INodeExecutionData } from 'n8n-workflow';
 
 import type { MockInstance } from 'vitest';
 
 import {
+	bindQueryParameters,
 	configurePool,
 	copyInputItem,
 	createTableStruct,
@@ -265,6 +266,7 @@ describe('MSSQL tests', () => {
 		}));
 		const thisArg = {
 			helpers: { prepareBinaryData },
+			getNode: () => ({ typeVersion: 1.2, parameters: {} }),
 		} as unknown as IExecuteFunctions;
 
 		it('should handle SELECT query with single record', async () => {
@@ -526,6 +528,35 @@ describe('MSSQL tests', () => {
 			await executeSqlQueryAndPrepareResults.call(thisArg, pool, 'SELECT * FROM users', 0, []);
 
 			expect(querySpy).toHaveBeenCalledWith('SELECT * FROM users');
+		});
+
+		it('should pass a [bracketed] identifier containing $1 through unchanged when no values are set', async () => {
+			const pool = { request: () => new Request() } as any as mssql.ConnectionPool;
+			await executeSqlQueryAndPrepareResults.call(
+				thisArg,
+				pool,
+				'SELECT * FROM [Company$1]',
+				0,
+				[],
+			);
+
+			expect(querySpy).toHaveBeenCalledWith('SELECT * FROM [Company$1]');
+		});
+	});
+
+	describe('bindQueryParameters', () => {
+		const node = { name: 'Microsoft SQL' } as unknown as INode;
+
+		it('should not throw for a $N inside a [bracketed] identifier when no values are set', () => {
+			expect(bindQueryParameters(node, new Request(), 'SELECT * FROM [Company$1]')).toBe(
+				'SELECT * FROM [Company$1]',
+			);
+		});
+
+		it('should throw naming the unbound placeholder outside the [bracketed] identifier', () => {
+			expect(() =>
+				bindQueryParameters(node, new Request(), '[Co$Tbl$9] WHERE a = $1 AND b = $2', ['x']),
+			).toThrow('The query references $2, but only 1 query parameter(s) are set');
 		});
 	});
 

@@ -1,5 +1,5 @@
 /**
- * Browser/computer-use *discoverability* asserts on the sub-agent protocol.
+ * Browser Use *discoverability* asserts on the sub-agent protocol.
  *
  * The protocol is injected into every sub-agent. If a future copy edit
  * accidentally tells sub-agents "ask the user to fill the form" instead of
@@ -13,9 +13,7 @@ import { SUB_AGENT_PROTOCOL, buildSubAgentPrompt } from '../sub-agent-factory';
 describe('SUB_AGENT_PROTOCOL — browser-tool discovery preservation', () => {
 	it('keeps the secret-handling guardrail (route through credential setup, not chat)', () => {
 		expect(SUB_AGENT_PROTOCOL).toContain('Never ask the user to paste passwords');
-		expect(SUB_AGENT_PROTOCOL).toContain(
-			'credential setup or Computer Use browser credential capture',
-		);
+		expect(SUB_AGENT_PROTOCOL).toContain('credential setup or Browser Use credential capture');
 	});
 
 	it('does not blanket-instruct sub-agents to ask the user to fill the credential form', () => {

@@ -131,7 +131,7 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 												}}</template>
 											</I18nT>
 										</template>
-										<N8nIcon :class="$style.icon" icon="info" size="medium" />
+										<N8nIcon icon="info" size="medium" />
 									</N8nTooltip>
 								</small>
 							</span>
@@ -142,6 +142,7 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 								<small v-if="deviation !== null" :class="getImpactStyle(id, deviation)">
 									<N8nIcon
 										:class="[$style.icon, getImpactStyle(id, deviation)]"
+										:size="12"
 										:icon="
 											deviation === 0
 												? 'chevron-right'
@@ -249,6 +250,8 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 				align-items: baseline;
 
 				&.empty {
+					align-items: center;
+
 					em {
 						color: var(--color--text--tint-2);
 						body[data-theme='dark'] & {
@@ -257,14 +260,7 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 					}
 					small {
 						padding: 0;
-						height: 21px;
-						font-weight: var(--font-weight--bold);
-
-						.icon {
-							top: 5px;
-							transform: translateY(0);
-							color: var(--color--text--tint-1);
-						}
+						color: var(--color--text--tint-1);
 					}
 				}
 			}
@@ -276,7 +272,7 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 				color: var(--color--text--shade-1);
 				font-size: 24px;
 				line-height: 100%;
-				font-weight: 600;
+				font-weight: var(--font-weight--medium);
 				font-style: normal;
 				gap: var(--spacing--5xs);
 
@@ -293,7 +289,7 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 				padding: 0 0 0 14px;
 				margin: 0 0 0 var(--spacing--xs);
 				font-size: var(--font-size--2xs);
-				font-weight: var(--font-weight--bold);
+				font-weight: var(--font-weight--medium);
 				white-space: nowrap;
 			}
 		}

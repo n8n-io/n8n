@@ -34,11 +34,13 @@ import { nodeViewEventBus } from '@/app/event-bus';
 import { telemetry } from '@/app/plugins/telemetry';
 
 const mockMcpNudgeCanShow = vi.hoisted(() => vi.fn(() => true));
+const mockMcpNudgeIsEligibleApartFromExperiment = vi.hoisted(() => vi.fn(() => true));
 const saveAsMock = vi.hoisted(() => vi.fn());
 
 vi.mock('@/experiments/mcpJsonNudge/composables/useMcpJsonNudgeEligibility', () => ({
 	useMcpJsonNudgeEligibility: () => ({
 		canShow: mockMcpNudgeCanShow,
+		isEligibleApartFromExperiment: mockMcpNudgeIsEligibleApartFromExperiment,
 		recordImpression: vi.fn(),
 	}),
 }));
@@ -233,6 +235,7 @@ describe('WorkflowDetails', () => {
 		mockSaveCurrentWorkflow.mockClear();
 		mockSaveCurrentWorkflow.mockResolvedValue(true);
 		mockMcpNudgeCanShow.mockReturnValue(true);
+		mockMcpNudgeIsEligibleApartFromExperiment.mockReturnValue(true);
 		workflowsListStore.workflowsById = {
 			'1': workflow,
 			'123': workflow,
@@ -289,6 +292,21 @@ describe('WorkflowDetails', () => {
 	});
 
 	describe('Workflow menu', () => {
+		it('should keep the name input in edit mode after the rename action', async () => {
+			workflowDocumentStoreRef.value?.setScopes(['workflow:update']);
+			const { getByTestId, queryByTestId } = renderComponent({
+				props: { ...defaultProps },
+			});
+
+			await userEvent.click(getByTestId('workflow-menu'));
+			await userEvent.click(getByTestId('workflow-menu-item-rename'));
+
+			await vi.waitFor(() =>
+				expect(queryByTestId('workflow-menu-item-rename')).not.toBeInTheDocument(),
+			);
+			expect(getByTestId('inline-edit-input')).toHaveFocus();
+		});
+
 		it('should not show a dependencies entry when the workflow has none', async () => {
 			workflowDocumentStoreRef.value?.setScopes(['workflow:read']);
 			const { getByTestId, queryByTestId } = renderComponent({
@@ -399,7 +417,10 @@ describe('WorkflowDetails', () => {
 			};
 			onContinue();
 
-			expect(emitSpy).toHaveBeenCalledWith('importWorkflowData', { data: workflowData });
+			expect(emitSpy).toHaveBeenCalledWith('importWorkflowData', {
+				data: workflowData,
+				warnRestrictedNodes: true,
+			});
 		});
 
 		it('imports the file immediately when the MCP JSON nudge is not eligible', async () => {
@@ -420,7 +441,10 @@ describe('WorkflowDetails', () => {
 			);
 
 			await vi.waitFor(() =>
-				expect(emitSpy).toHaveBeenCalledWith('importWorkflowData', { data: workflowData }),
+				expect(emitSpy).toHaveBeenCalledWith('importWorkflowData', {
+					data: workflowData,
+					warnRestrictedNodes: true,
+				}),
 			);
 			expect(openModalSpy).not.toHaveBeenCalledWith(
 				expect.objectContaining({ name: MCP_JSON_NUDGE_MODAL_KEY }),

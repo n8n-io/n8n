@@ -295,7 +295,7 @@ watch(filter, () => {
 
 .flag-panel-title {
 	font-size: var(--font-size--xs);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 }
 
 .flag-panel-header-actions {
@@ -347,7 +347,7 @@ watch(filter, () => {
 	gap: var(--spacing--2xs);
 	padding: var(--spacing--3xs) var(--spacing--xs);
 	font-size: var(--font-size--3xs);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	letter-spacing: 0.5px;
 	text-transform: uppercase;
 	color: color-mix(in srgb, var(--color--neutral-50) 50%, transparent);
@@ -475,7 +475,7 @@ watch(filter, () => {
 	border: none;
 	background: color-mix(in srgb, var(--color--warning) 25%, transparent);
 	color: var(--color--warning);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 }
 
 .flag-override-chip--variant {
@@ -505,7 +505,7 @@ watch(filter, () => {
 	border-radius: var(--radius);
 	font-family: inherit;
 	font-size: var(--font-size--2xs);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	cursor: pointer;
 }
 
@@ -579,7 +579,7 @@ watch(filter, () => {
 	border-radius: var(--radius--sm);
 	font-family: inherit;
 	font-size: var(--font-size--3xs);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	cursor: pointer;
 }
 </style>

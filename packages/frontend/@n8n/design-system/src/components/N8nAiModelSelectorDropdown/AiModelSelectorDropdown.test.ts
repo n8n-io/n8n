@@ -121,6 +121,76 @@ describe('N8nAiModelSelectorDropdown', () => {
 		expect(getByText('Connected')).toBeVisible();
 	});
 
+	it('shows the restricted badge in the trigger instead of the credential name', () => {
+		const { getByTestId, queryByTestId } = render(N8nAiModelSelectorDropdown, {
+			props: {
+				...defaultProps,
+				selectedCredentialName: 'Production OpenAI credential',
+				restrictedLabel: 'Restricted',
+			},
+		});
+
+		expect(getByTestId('ai-model-selector-restricted-badge')).toHaveTextContent('Restricted');
+		expect(queryByTestId('ai-model-selector-credential')).not.toBeInTheDocument();
+	});
+
+	it('hides the restricted badge while loading', () => {
+		const { queryByTestId } = render(N8nAiModelSelectorDropdown, {
+			props: { ...defaultProps, restrictedLabel: 'Restricted', isLoading: true },
+		});
+
+		expect(queryByTestId('ai-model-selector-restricted-badge')).not.toBeInTheDocument();
+	});
+
+	it('renders the scope line and lock on a restricted item', async () => {
+		const { getByTestId } = render(N8nAiModelSelectorDropdown, {
+			props: {
+				...defaultProps,
+				items: [
+					...baseItems,
+					{
+						id: 'anthropic',
+						label: 'Anthropic',
+						disabled: true,
+						data: { restrictedLabel: 'Restricted on this instance' },
+					},
+				],
+			},
+		});
+
+		await userEvent.click(getByTestId('ai-model-selector'));
+
+		await waitFor(() =>
+			expect(getByTestId('ai-model-selector-restriction')).toHaveTextContent(
+				'Restricted on this instance',
+			),
+		);
+		expect(getByTestId('ai-model-selector-restricted-icon')).toBeInTheDocument();
+	});
+
+	it('renders the item-restricted slot in place of the lock', async () => {
+		const { getByTestId, queryByTestId } = render(N8nAiModelSelectorDropdown, {
+			props: {
+				...defaultProps,
+				items: [
+					...baseItems,
+					{
+						id: 'anthropic',
+						label: 'Anthropic',
+						disabled: true,
+						data: { restrictedLabel: 'Restricted on this instance' },
+					},
+				],
+			},
+			slots: { 'item-restricted': '<span data-test-id="custom-restricted-marker" />' },
+		});
+
+		await userEvent.click(getByTestId('ai-model-selector'));
+
+		await waitFor(() => expect(getByTestId('custom-restricted-marker')).toBeInTheDocument());
+		expect(queryByTestId('ai-model-selector-restricted-icon')).not.toBeInTheDocument();
+	});
+
 	it('emits select and search events', async () => {
 		const { getByTestId, getByText, emitted } = render(N8nAiModelSelectorDropdown, {
 			props: {

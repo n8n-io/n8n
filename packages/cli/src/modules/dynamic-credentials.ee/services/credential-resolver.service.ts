@@ -9,7 +9,8 @@ import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import { Not } from '@n8n/typeorm';
 import { Cipher } from 'n8n-core';
-import { jsonParse, UnexpectedError } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 
@@ -249,6 +250,7 @@ export class DynamicCredentialResolverService {
 				}
 				// Deactivate the workflow so UI state reflects reality
 				await this.workflowRepository.update(workflowId, {
+					// oxlint-disable-next-line typescript/no-deprecated -- Keep the legacy active column in sync with publication state.
 					active: false,
 					activeVersionId: null,
 				});

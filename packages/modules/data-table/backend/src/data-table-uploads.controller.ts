@@ -1,0 +1,65 @@
+import { Post, RestController } from '@n8n/decorators';
+import { Container } from '@n8n/di';
+import multer from 'multer';
+
+import { BadRequestError } from '@n8n/errors';
+
+import { CsvParserService, type CsvMetadata } from './csv-parser.service';
+import { DataTableFileCleanupService } from './data-table-file-cleanup.service';
+import { FileUploadError } from './errors/data-table-file-upload.error';
+import { MulterUploadMiddleware } from './multer-upload-middleware';
+import { AuthenticatedRequestWithFile, hasStringProperty } from './types';
+
+const uploadMiddleware = Container.get(MulterUploadMiddleware);
+
+@RestController('/data-tables/uploads')
+export class DataTableUploadsController {
+	constructor(
+		private readonly csvParserService: CsvParserService,
+		private readonly fileCleanupService: DataTableFileCleanupService,
+	) {}
+
+	@Post('/', {
+		middlewares: [uploadMiddleware.single('file')],
+	})
+	async uploadFile(req: AuthenticatedRequestWithFile, _res: Response) {
+		if (req.fileUploadError) {
+			const error = req.fileUploadError;
+			if (error instanceof multer.MulterError) {
+				throw new BadRequestError(`File upload error: ${error.message}`);
+			} else if (error instanceof BadRequestError) {
+				throw error;
+			} else {
+				throw new BadRequestError('File upload failed');
+			}
+		}
+
+		if (!req.file) {
+			throw new BadRequestError('No file uploaded');
+		}
+
+		// Extract hasHeaders parameter from request body (multer parses form fields to body), default to true
+		const hasHeaders =
+			hasStringProperty(req.body, 'hasHeaders') && req.body.hasHeaders === 'false' ? false : true;
+
+		let metadata: CsvMetadata;
+		try {
+			metadata = await this.csvParserService.parseFile(req.file.filename, hasHeaders);
+		} catch (error) {
+			await this.fileCleanupService.deleteFile(req.file.filename);
+			if (error instanceof FileUploadError) {
+				throw new BadRequestError(error.message);
+			}
+
+			throw error;
+		}
+
+		return {
+			originalName: req.file.originalname,
+			id: req.file.filename,
+			rowCount: metadata.rowCount,
+			columnCount: metadata.columnCount,
+			columns: metadata.columns,
+		};
+	}
+}

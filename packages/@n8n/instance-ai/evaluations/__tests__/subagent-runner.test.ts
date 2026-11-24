@@ -14,6 +14,7 @@ import { runBinaryChecks } from '../binaryChecks/index';
 import type { N8nClient, WorkflowResponse } from '../clients/n8n-client';
 import { buildWorkflow, type BuildResult } from '../harness/build-workflow';
 import { cleanupBuild } from '../harness/cleanup';
+import { JUDGE_MODEL } from '../../src/utils/eval-agents';
 import { runWorkflowBuildEval } from '../subagent/runner';
 
 const mockedBuildWorkflow = vi.mocked(buildWorkflow);
@@ -108,6 +109,33 @@ describe('runWorkflowBuildEval', () => {
 		expect(result.text).toBe('Built the workflow.');
 		expect(result.capturedWorkflows).toHaveLength(1);
 		expect(result.error).toBeUndefined();
+	});
+
+	it('runs binary checks on the judge model when no model is set', async () => {
+		const workflow = makeWorkflow();
+		mockedBuildWorkflow.mockResolvedValue({
+			success: true,
+			workflowId: workflow.id,
+			workflowJsons: [workflow],
+			createdWorkflowIds: [workflow.id],
+			createdDataTableIds: [],
+		});
+
+		await runWorkflowBuildEval(
+			{ id: 'case-judge', prompt: 'Build a webhook workflow' },
+			{ timeoutMs: 1234, verbose: false },
+			{
+				client: makeClient(),
+				deleteAfterRun: true,
+				preRunWorkflowIds: new Set(),
+				claimedWorkflowIds: new Set(),
+			},
+		);
+
+		expect(mockedRunBinaryChecks).toHaveBeenCalledWith(
+			workflow,
+			expect.objectContaining({ modelId: JUDGE_MODEL }),
+		);
 	});
 
 	it('returns failed feedback when the orchestrator produces no workflow', async () => {

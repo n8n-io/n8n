@@ -2,6 +2,9 @@ export const RUNTIME_SKILL_REGISTRY_SCHEMA_VERSION = 1 as const;
 
 export const RUNTIME_SKILL_FILE_NAME = 'SKILL.md';
 
+/** Maximum UTF-8 bytes of instruction or linked-file content before truncation. */
+export const RUNTIME_SKILL_MAX_OUTPUT_BYTES = 72 * 1024;
+
 export const SKILL_LOAD_TOOL_NAME = 'load_skill';
 
 export const RUNTIME_SKILL_LINKED_FILE_GROUPS = [
@@ -14,8 +17,9 @@ export const RUNTIME_SKILL_LINKED_FILE_GROUPS = [
 
 export interface RuntimeSkillLinkedFile {
 	path: string;
-	bytes: number;
-	sha256: string;
+	/** Content metadata can be absent until a deferred file is read. */
+	bytes?: number;
+	sha256?: string;
 }
 
 export type RuntimeSkillLinkedFileGroup =
@@ -34,7 +38,8 @@ export interface RuntimeSkillLinkedFiles {
 export interface RuntimeSkillIndexEntry {
 	name: string;
 	description: string;
-	recommendedTools?: string[];
+	/** Tool groups in the tool catalog whose tools this skill uses, such as `workflows` or `credentials`. */
+	recommendedToolGroups?: string[];
 }
 
 export interface RuntimeSkillInterfaceContract {
@@ -59,12 +64,32 @@ export interface RuntimeSkillMcpServerDependency {
 }
 
 export interface RuntimeSkillDependenciesContract {
+	/** Keep matching deferred tools active for the whole run, so loading the skill never changes the tool list. Tools must be registered on the agent. */
 	tools?: string[];
 	secrets?: string[];
 	mcpServers?: RuntimeSkillMcpServerDependency[];
 }
 
-export interface RuntimeSkill extends RuntimeSkillIndexEntry {
+/** Where a reference skill's file lives: a path relative to the owning skill's directory. */
+export interface RuntimeSkillReferenceLocation {
+	owner: string;
+	path: string;
+}
+
+/**
+ * A reference skill is a `references/*.md` file with skill frontmatter. It is
+ * hidden from the catalog and listed, with its description, when a parent
+ * skill loads. It loads like any other skill.
+ */
+export interface RuntimeSkillReferenceContract {
+	/** Skills that list this reference. The owner comes first. */
+	parents?: string[];
+	reference?: RuntimeSkillReferenceLocation;
+	/** Ids of references owned by other skills that this skill also lists. */
+	sharedReferences?: string[];
+}
+
+export interface RuntimeSkill extends RuntimeSkillIndexEntry, RuntimeSkillReferenceContract {
 	id: string;
 	instructions: string;
 	sourceName?: string;
@@ -85,7 +110,9 @@ export interface RuntimeSkill extends RuntimeSkillIndexEntry {
 	linkedFiles?: RuntimeSkillLinkedFiles;
 }
 
-export interface RuntimeSkillRegistryEntry extends RuntimeSkillIndexEntry {
+export interface RuntimeSkillRegistryEntry
+	extends RuntimeSkillIndexEntry,
+		RuntimeSkillReferenceContract {
 	id: string;
 	hash: string;
 	sourceName?: string;
@@ -112,7 +139,7 @@ export interface RuntimeSkillRegistry {
 	skills: RuntimeSkillRegistryEntry[];
 }
 
-export interface RuntimeSkillContent extends RuntimeSkillIndexEntry {
+export interface RuntimeSkillContent extends RuntimeSkillIndexEntry, RuntimeSkillReferenceContract {
 	id: string;
 	instructions: string;
 	sourceName?: string;
@@ -146,25 +173,40 @@ export interface RuntimeSkillFileContent {
 export type RuntimeSkillFileLoader = (
 	skillId: string,
 	filePath: string,
+	/** Keep failure details local to this read when calls run concurrently. */
+	onError?: (error: RuntimeSkillLoadError) => void,
 ) => Promise<RuntimeSkillFileContent | null>;
+
+export interface RuntimeSkillLoadError {
+	message: string;
+	/** The content is temporarily unavailable, so a later load can succeed. */
+	retryable: boolean;
+}
 
 export interface RuntimeSkillSource {
 	registry: RuntimeSkillRegistry;
+	/** Keep these entries out of cached instructions. Send snapshots in user messages instead. */
+	dynamicCatalog?: {
+		skillIds: string[];
+		/** Current availability and loading guidance for these skills. */
+		notice?: string;
+	};
+	/**
+	 * Skills whose content can change or be revoked while a thread is open, for
+	 * example Hub skills. At each model call, the runtime tells the model when a
+	 * loaded skill of this kind has a new hash or is no longer in the catalog.
+	 */
+	shouldAppendSkillUpdates?: (skillId: string) => boolean;
+	/**
+	 * Lazy setup that runs before a skill is loaded, not when the agent is built.
+	 * It must not change catalog fields (id, name, description, category,
+	 * recommendedToolGroups), because the catalog is rendered before it runs.
+	 * Only load_skill calls it, so loadSkill and loadFile must not depend on it.
+	 */
 	prepare?: () => Promise<void>;
 	loadSkill: RuntimeSkillLoader;
 	loadFile?: RuntimeSkillFileLoader;
-}
-
-export interface RuntimeSkillStateScope {
-	threadId: string;
-	resourceId: string;
-	agentName: string;
-}
-
-/** Stores active IDs separately from conversation text that memory can compact. */
-export interface RuntimeSkillStateStore {
-	load(scope: RuntimeSkillStateScope): Promise<string[] | undefined>;
-	save(scope: RuntimeSkillStateScope, skillIds: string[]): Promise<void>;
+	getLoadError?: (skillId: string) => RuntimeSkillLoadError | undefined;
 }
 
 export interface RuntimeSkillValidationError {

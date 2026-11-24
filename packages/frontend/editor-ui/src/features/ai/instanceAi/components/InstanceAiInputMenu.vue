@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, useTemplateRef, watch } from 'vue';
 import {
+	N8nButton,
 	N8nDropdownMenu,
 	N8nIcon,
 	N8nIconButton,
 	N8nNodeIcon,
+	N8nPopover,
 	N8nSpinner,
 	N8nText,
 	N8nTooltip,
@@ -17,16 +19,27 @@ import {
 	type InputMenuItem,
 	useInstanceAiInputMenuItems,
 } from '../composables/useInstanceAiInputMenuItems';
+import { useLocalBrowserCoachmark } from '../composables/useLocalBrowserCoachmark';
 
-const props = withDefaults(defineProps<{ disabled?: boolean }>(), { disabled: false });
+const props = withDefaults(
+	defineProps<{ disabled?: boolean; isStreaming?: boolean; projectId?: string }>(),
+	{
+		disabled: false,
+		isStreaming: false,
+	},
+);
 const emit = defineEmits<{ attachFiles: [] }>();
 const i18n = useI18n();
 const telemetry = useTelemetry();
-const { menuItems, disconnectedConnectionCount } = useInstanceAiInputMenuItems(() =>
-	emit('attachFiles'),
+const { menuItems, disconnectedConnectionCount, refreshSkills } = useInstanceAiInputMenuItems(
+	() => emit('attachFiles'),
+	() => props.projectId,
 );
 
 const tooltip = computed(() => {
+	if (props.disabled && props.isStreaming) {
+		return i18n.baseText('instanceAi.inputMenu.stopResponse');
+	}
 	const count = disconnectedConnectionCount.value;
 	if (count === 0) return i18n.baseText('instanceAi.inputMenu.open');
 	if (count === 1) return i18n.baseText('instanceAi.inputMenu.connectionNeedsAttention');
@@ -58,16 +71,61 @@ function trackInputPlusButtonClick() {
 	telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.USER_CLICKED_AI_ASSISTANT_INPUT_PLUS_BUTTON, {});
 }
 
+const isOpen = ref(false);
+
+watch(
+	() => props.disabled,
+	(disabled) => {
+		if (disabled) isOpen.value = false;
+	},
+);
+
 function handleUpdateDropdownModelValue(open: boolean) {
+	isOpen.value = open;
 	if (open) {
+		void refreshSkills();
 		trackInputPlusButtonClick();
 	}
 }
+
+const localBrowserCoachmark = useLocalBrowserCoachmark();
+const menuAnchor = useTemplateRef<HTMLElement>('menuAnchor');
 </script>
 
 <template>
-	<N8nTooltip :content="tooltip" :content-class="$style.triggerTooltip" placement="top">
+	<span ref="menuAnchor" :class="$style.menuAnchor">
+		<N8nPopover
+			:open="localBrowserCoachmark.shouldShowCoachmark.value"
+			:reference="menuAnchor ?? undefined"
+			side="right"
+			align="center"
+			:side-offset="8"
+			show-arrow
+			:enable-scrolling="false"
+			suppress-auto-focus
+			:z-index="2200"
+			:content-class="$style.coachmark"
+		>
+			<template #content>
+				<div data-test-id="instance-ai-local-browser-coachmark">
+					<span :class="$style.coachmarkTitle">{{
+						i18n.baseText('instanceAi.cloudBrowser.localBrowserCoachmark.title')
+					}}</span>
+					<p :class="$style.coachmarkBody">
+						{{ i18n.baseText('instanceAi.cloudBrowser.localBrowserCoachmark.body') }}
+					</p>
+					<N8nButton
+						size="small"
+						:label="i18n.baseText('instanceAi.cloudBrowser.localBrowserCoachmark.gotIt')"
+						:class="$style.coachmarkButton"
+						data-test-id="instance-ai-local-browser-coachmark-got-it"
+						@click="localBrowserCoachmark.onDismissCoachmark()"
+					/>
+				</div>
+			</template>
+		</N8nPopover>
 		<N8nDropdownMenu
+			:model-value="isOpen"
 			:items="menuItems"
 			placement="top-start"
 			:disabled="props.disabled"
@@ -76,21 +134,32 @@ function handleUpdateDropdownModelValue(open: boolean) {
 			@update:model-value="handleUpdateDropdownModelValue"
 		>
 			<template #trigger>
-				<span :class="$style.trigger">
+				<!-- Keep the explanation available when the dropdown disables its trigger. -->
+				<N8nTooltip
+					as-child
+					:disabled="false"
+					:content-class="$style.triggerTooltip"
+					placement="top"
+				>
+					<template #content>{{ tooltip }}</template>
 					<N8nIconButton
 						icon="plus"
 						variant="ghost"
 						size="medium"
 						icon-size="large"
 						:disabled="props.disabled"
-						:aria-label="tooltip"
+						:focusable-when-disabled="props.isStreaming"
+						:aria-label="
+							props.disabled && props.isStreaming
+								? i18n.baseText('instanceAi.inputMenu.open')
+								: tooltip
+						"
+						:class="[
+							$style.trigger,
+							{ [$style.triggerWithStatus]: disconnectedConnectionCount > 0 },
+						]"
 					/>
-					<span
-						v-if="disconnectedConnectionCount > 0"
-						:class="$style.triggerStatusDot"
-						aria-hidden="true"
-					/>
-				</span>
+				</N8nTooltip>
 			</template>
 
 			<template #item-leading="{ item, ui }">
@@ -147,13 +216,53 @@ function handleUpdateDropdownModelValue(open: boolean) {
 				</N8nText>
 			</template>
 		</N8nDropdownMenu>
-	</N8nTooltip>
+	</span>
 </template>
 
 <style lang="scss" module>
+.menuAnchor {
+	display: inline-flex;
+}
+
+// Same look as the canvas and Ask mode coachmarks.
+.coachmark {
+	width: 250px;
+	padding: var(--spacing--xs);
+	background: var(--color--background--shade-2);
+	color: var(--color--foreground--tint-2);
+
+	svg {
+		fill: var(--color--background--shade-2);
+		stroke: var(--color--background--shade-2);
+	}
+}
+
+.coachmarkTitle {
+	display: block;
+	padding-bottom: var(--spacing--4xs);
+	font-size: var(--font-size--sm);
+	font-weight: var(--font-weight--medium);
+	line-height: 1.45;
+}
+
+.coachmarkBody {
+	margin: 0;
+	font-size: var(--font-size--sm);
+	line-height: var(--line-height--xl);
+}
+
+.coachmarkButton {
+	margin-top: var(--spacing--2xs);
+	background-color: var(--color--primary);
+
+	&:hover {
+		background-color: var(--color--primary--shade-1);
+	}
+}
+
 .triggerTooltip {
-	max-width: none;
-	white-space: nowrap;
+	max-width: calc(100vw - 2 * var(--spacing--sm));
+	white-space: normal;
 }
 
 .trigger {
@@ -161,10 +270,11 @@ function handleUpdateDropdownModelValue(open: boolean) {
 	display: inline-flex;
 }
 
-.triggerStatusDot {
+.triggerWithStatus::after {
+	content: '';
 	position: absolute;
-	top: 2px;
-	right: 2px;
+	top: var(--spacing--5xs);
+	right: var(--spacing--5xs);
 	width: var(--spacing--2xs);
 	height: var(--spacing--2xs);
 	border-radius: 50%;

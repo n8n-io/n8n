@@ -1,10 +1,9 @@
-import type { JsonObject } from 'n8n-workflow';
 import { EventMessageTypeNames } from 'n8n-workflow';
 
-import type { McpResolvedAuthType } from '@/services/oauth-token-verifier-proxy.service';
+import type { McpResolvedAuthType } from '@n8n/backend-services/auth';
 
 import type { EventNamesMcpType } from '.';
-import { AbstractEventMessage, isEventMessageOptionsWithType } from './abstract-event-message';
+import { AbstractEventMessage } from './abstract-event-message';
 import type { AbstractEventMessageOptions } from './abstract-event-message-options';
 import type { AbstractEventPayload } from './abstract-event-payload';
 
@@ -19,6 +18,8 @@ export interface EventPayloadMcp extends AbstractEventPayload {
 	_firstName?: string;
 	_lastName?: string;
 	globalRole?: string;
+	/** Login of the service account that acted. Absent for people. */
+	loginId?: string;
 	toolName?: string;
 	workflowId?: string;
 	status?: 'success' | 'error';
@@ -52,14 +53,6 @@ export class EventMessageMcp extends AbstractEventMessage {
 
 	setPayload(payload: EventPayloadMcp): this {
 		this.payload = payload;
-		return this;
-	}
-
-	deserialize(data: JsonObject): this {
-		if (isEventMessageOptionsWithType(data, this.__type)) {
-			this.setOptionsOrDefault(data);
-			if (data.payload) this.setPayload(data.payload);
-		}
 		return this;
 	}
 }

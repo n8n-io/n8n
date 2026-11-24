@@ -1,4 +1,4 @@
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 export class ExecutionNotFoundError extends UnexpectedError {
 	constructor(executionId: string) {

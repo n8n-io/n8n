@@ -134,6 +134,7 @@ describe('WorkflowTaskCoordinator', () => {
 			run,
 			context: mock<OrchestrationContext>({
 				runId: 'run-1',
+				abortSignal: new AbortController().signal,
 				setupPanelEnabled: true,
 				workflowTaskService: coordinator,
 				logger: mock<OrchestrationContext['logger']>(),
@@ -430,6 +431,7 @@ describe('WorkflowTaskCoordinator', () => {
 			});
 			const context = mock<OrchestrationContext>({
 				runId,
+				abortSignal: new AbortController().signal,
 				setupPanelEnabled,
 				workflowTaskService: coordinator,
 				logger: mock<OrchestrationContext['logger']>(),

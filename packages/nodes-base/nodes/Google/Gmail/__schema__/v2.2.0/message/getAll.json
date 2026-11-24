@@ -1,6 +1,12 @@
 {
     "type": "object",
     "properties": {
+        "Bcc": {
+            "type": "string"
+        },
+        "Cc": {
+            "type": "string"
+        },
         "From": {
             "type": "string"
         },
@@ -51,5 +57,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

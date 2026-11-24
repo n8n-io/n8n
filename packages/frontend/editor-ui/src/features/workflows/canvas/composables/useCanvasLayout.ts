@@ -13,18 +13,26 @@ import {
 } from '../canvas.types';
 import { isPresent } from '@/app/utils/typesUtils';
 import {
+	AI_X_SPACING,
+	AI_Y_SPACING,
 	DEFAULT_NODE_SIZE,
 	GRID_SIZE,
 	NODE_X_SPACING,
+	NODE_Y_SPACING,
 	snapToGrid,
 } from '@/app/utils/nodeViewUtils';
-import { AGENT_NODE_SIZE, getAgentNodeHandleOffset } from '@/features/agents/utils/agentNode';
+import { DEFAULT_AGENT_HEIGHT, DEFAULT_AGENT_WIDTH } from '@/features/agents/utils/agentNode';
 import {
 	GROUP_HEADER_HEIGHT,
 	GROUP_HEADER_WIDTH_COLLAPSED,
 } from '../stores/canvasNodeGroups.constants';
 import type { ComputedRef, Ref } from 'vue';
-import { computeNodeDisplaySize, type CanvasRenderData } from '../canvas.utils';
+import {
+	computeNodeDisplaySize,
+	getMainHandleOffset,
+	parseCanvasConnectionHandleString,
+	type CanvasRenderData,
+} from '../canvas.utils';
 import { computeGroupFrameRects } from './useCanvasMapping.groups';
 import {
 	hasMeasuredDimensions,
@@ -59,7 +67,13 @@ export type CanvasLayoutEvent = {
 export type CanvasLayoutOptions = { nodeIdsFilter?: string[] };
 
 type CanvasLayoutNodeDictionary = Record<string, CanvasLayoutNode>;
-type LayoutConnection = { source: string; target: string; targetX?: number; targetY?: number };
+type LayoutConnection = {
+	source: string;
+	target: string;
+	targetX?: number;
+	targetY?: number;
+	sourceHandle?: string | null;
+};
 
 type CanvasLayoutTargetData = {
 	nodes: CanvasLayoutNode[];
@@ -96,10 +110,7 @@ interface CanvasLayoutGroupUnit {
 	memberBoxesInFrame?: Map<string, BoundingBox>;
 }
 
-const NODE_Y_SPACING = GRID_SIZE * 6;
 const SUBGRAPH_SPACING = GRID_SIZE * 8;
-const AI_X_SPACING = GRID_SIZE * 3;
-const AI_Y_SPACING = GRID_SIZE * 8;
 const STICKY_BOTTOM_PADDING = GRID_SIZE * 4;
 
 /** Moves a box by an offset without changing its size. */
@@ -508,6 +519,15 @@ export function useCanvasLayout(
 	}
 
 	function sortEdgesByPosition(edgeA: LayoutConnection, edgeB: LayoutConnection): number {
+		if (
+			edgeA.source === edgeB.source &&
+			findNode<CanvasNodeData>(edgeA.source)?.data.type === 'n8n-nodes-base.if'
+		) {
+			const indexA = parseCanvasConnectionHandleString(edgeA.sourceHandle).index;
+			const indexB = parseCanvasConnectionHandleString(edgeB.sourceHandle).index;
+			if (indexA !== indexB) return indexA - indexB;
+		}
+
 		return sortByPosition(positionFromEdge(edgeA), positionFromEdge(edgeB));
 	}
 
@@ -572,7 +592,7 @@ export function useCanvasLayout(
 		// The agent card is far larger than the default node — without this the
 		// unmeasured fallback below would feed dagre a 96x96 box for it
 		if (node.data.render?.type === CanvasNodeRenderType.Agent) {
-			return { width: AGENT_NODE_SIZE[0], height: AGENT_NODE_SIZE[1] };
+			return { width: DEFAULT_AGENT_WIDTH, height: DEFAULT_AGENT_HEIGHT };
 		}
 
 		// Fallback to default size
@@ -1167,10 +1187,10 @@ export function useCanvasLayout(
 		const finalNodes = positionedRegularNodes
 			.map(({ id, boundingBox }) => {
 				const handleX = boundingBox.width / 2;
-				const handleY =
-					findNode<CanvasNodeData>(id)?.data?.render?.type === CanvasNodeRenderType.Agent
-						? getAgentNodeHandleOffset(boundingBox.height)
-						: boundingBox.height / 2;
+				const handleY = getMainHandleOffset(
+					boundingBox.height,
+					findNode<CanvasNodeData>(id)?.data?.render?.type === CanvasNodeRenderType.Agent,
+				);
 				return {
 					id,
 					x: snapToGrid(boundingBox.x - anchor.x + handleX) - handleX,

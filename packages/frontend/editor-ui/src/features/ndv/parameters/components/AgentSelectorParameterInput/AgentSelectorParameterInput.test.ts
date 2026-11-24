@@ -3,6 +3,7 @@
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import userEvent from '@testing-library/user-event';
+import { waitFor } from '@testing-library/vue';
 import AgentSelectorParameterInput, { type Props } from './AgentSelectorParameterInput.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
@@ -84,6 +85,45 @@ describe('AgentSelectorParameterInput', () => {
 		vi.clearAllMocks();
 	});
 
+	it.each([undefined, 'Previously selected agent'])(
+		'hides setup markers while preserving the cached name: %s',
+		async (cachedResultName) => {
+			const view = renderComponent({
+				props: makeProps({
+					modelValue: {
+						__rl: true,
+						mode: 'list',
+						value: '<__PLACEHOLDER_VALUE__Choose an agent__>',
+						cachedResultName,
+					},
+				}),
+			});
+			await flushPromises();
+			const input = view.getByRole('textbox');
+			expect(input).not.toHaveDisplayValue(/__PLACEHOLDER_VALUE__/);
+			expect(input).toHaveValue(cachedResultName ?? '');
+			expect(getAgent).not.toHaveBeenCalled();
+			expect(view.queryByTestId('rlc-open-resource-link')).not.toBeInTheDocument();
+			expect(view.emitted('update:modelValue')).toBeUndefined();
+		},
+	);
+
+	it('closes with Escape and reopens its agent list', async () => {
+		listAgentsPage.mockResolvedValue({
+			count: 1,
+			data: [{ id: 'agent-choice', name: 'Agent option', projectId: 'proj-1' }],
+		});
+		const view = renderComponent({ props: makeProps() });
+		await flushPromises();
+		await userEvent.click(view.getByTestId('rlc-input'));
+		expect(await view.findByText('Agent option')).toBeVisible();
+		await userEvent.click(view.getByTestId('rlc-search'));
+		await userEvent.keyboard('{Escape}');
+		await waitFor(() => expect(view.queryByText('Agent option')).toBeNull());
+		await userEvent.click(view.getByTestId('rlc-input'));
+		expect(await view.findByText('Agent option')).toBeVisible();
+	});
+
 	it('fetches the first project-scoped page on mount', async () => {
 		renderComponent({ props: makeProps() });
 		await flushPromises();
@@ -91,7 +131,7 @@ describe('AgentSelectorParameterInput', () => {
 		expect(listAgentsPage).toHaveBeenCalledWith(
 			expect.anything(),
 			'proj-1',
-			expect.objectContaining({ skip: 0, take: 40, sortBy: 'updatedAt:desc' }),
+			expect.objectContaining({ offset: 0, limit: 40, sortBy: 'updatedAt:desc' }),
 		);
 		expect(listAgentsPageGlobal).not.toHaveBeenCalled();
 	});
@@ -106,7 +146,7 @@ describe('AgentSelectorParameterInput', () => {
 		expect(listAgentsPage).toHaveBeenCalledWith(
 			expect.anything(),
 			'personal-1',
-			expect.objectContaining({ skip: 0, take: 40 }),
+			expect.objectContaining({ offset: 0, limit: 40 }),
 		);
 		expect(listAgentsPageGlobal).not.toHaveBeenCalled();
 	});
@@ -149,7 +189,7 @@ describe('AgentSelectorParameterInput', () => {
 		expect(listAgentsPage).toHaveBeenLastCalledWith(
 			expect.anything(),
 			'proj-1',
-			expect.objectContaining({ skip: 0, filter: { query: 'support' } }),
+			expect.objectContaining({ offset: 0, filter: { query: 'support' } }),
 		);
 	});
 
@@ -210,6 +250,35 @@ describe('AgentSelectorParameterInput', () => {
 		await flushPromises();
 
 		expect(emitted()['update:modelValue']).toBeUndefined();
+	});
+
+	it('lists the selected archived agent after a switch from ID mode to list mode', async () => {
+		getAgent.mockResolvedValue({
+			id: 'agent-1',
+			name: 'Archived Agent',
+			projectId: 'proj-1',
+			isArchived: true,
+		});
+
+		const { getByTestId, getAllByTestId, rerender } = renderComponent({
+			props: makeProps({ modelValue: { __rl: true, value: 'agent-1', mode: 'id' } }),
+		});
+		await flushPromises();
+		expect(getAgent).not.toHaveBeenCalled();
+
+		await rerender({ modelValue: { __rl: true, value: 'agent-1', mode: 'list' } });
+		await flushPromises();
+
+		expect(getAgent).toHaveBeenCalledWith(expect.anything(), 'proj-1', 'agent-1');
+		await userEvent.click(getByTestId('rlc-input'));
+		await flushPromises();
+		const archivedItem = getAllByTestId('rlc-item').find((el) =>
+			el.textContent?.includes('Archived Agent'),
+		);
+		expect(archivedItem).toBeDefined();
+		expect(archivedItem?.querySelector('[data-test-id="workflow-archived-tag"]')).toHaveTextContent(
+			'Archived',
+		);
 	});
 
 	it('shows an error with retry that re-fetches the catalog', async () => {

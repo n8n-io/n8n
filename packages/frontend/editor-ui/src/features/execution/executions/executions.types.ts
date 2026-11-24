@@ -4,9 +4,11 @@ import type {
 	ExecutionSummary,
 	WorkflowExecuteMode,
 	IRunExecutionData,
+	WorkflowEngineType,
 } from 'n8n-workflow';
 import type { IWorkflowDb } from '@/Interface';
 import type { Scope } from '@n8n/permissions';
+import type { ExecutionListPagination } from '@n8n/api-types';
 
 export type ExecutionFilterMetadata = {
 	key: string;
@@ -26,6 +28,7 @@ export type ExecutionFilterType = {
 	vote: ExecutionFilterVote;
 	metadata: ExecutionFilterMetadata[];
 	workflowVersionId: 'all' | string;
+	engine: 'all' | WorkflowEngineType;
 };
 
 export type ExecutionsQueryFilter = {
@@ -40,6 +43,7 @@ export type ExecutionsQueryFilter = {
 	annotationTags?: string[];
 	vote?: ExecutionFilterVote;
 	workflowVersionId?: string;
+	engine?: WorkflowEngineType;
 };
 
 export interface IExecutionBase {
@@ -69,6 +73,7 @@ export interface IExecutionFlattedResponse extends IExecutionFlatted {
 export interface IExecutionPushResponse {
 	executionId?: string;
 	waitingForWebhook?: boolean;
+	formTestUrls?: string[];
 }
 
 export interface IExecutionResponse extends IExecutionBase {
@@ -83,7 +88,7 @@ export interface IExecutionResponse extends IExecutionBase {
 
 export type ExecutionSummaryWithScopes = ExecutionSummary & { scopes: Scope[] };
 
-export interface IExecutionsListResponse {
+export interface IExecutionsListResponse extends ExecutionListPagination {
 	count: number;
 	results: ExecutionSummaryWithScopes[];
 	estimated: boolean;

@@ -9,18 +9,20 @@
  * Adapted from PlanQuestionsMessage.vue for the instance AI confirmation flow.
  */
 import { ref, computed, watch, nextTick } from 'vue';
-import { N8nButton, N8nCheckbox, N8nIcon, N8nInput, N8nText } from '@n8n/design-system';
+import type { InstanceAiQuestion } from '@n8n/api-types';
+import { N8nButton, N8nCard, N8nCheckbox, N8nIcon, N8nInput, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import ConfirmationFooter from './ConfirmationFooter.vue';
 
 const OTHER_SENTINEL = '__other__';
 
-export interface QuestionItem {
-	id: string;
-	question: string;
-	type: 'single' | 'multi' | 'text';
-	options?: string[];
+/** An option of two lines is a title and a description; the card shows the second line under the first. */
+function splitOption(option: string) {
+	const [label, ...rest] = option.split('\n');
+	return { label, description: rest.join(' ').trim() };
 }
+
+export type QuestionItem = InstanceAiQuestion;
 
 export interface QuestionAnswer {
 	questionId: string;
@@ -54,11 +56,19 @@ const currentQuestion = computed(() => props.questions[currentIndex.value]);
 const isFirstQuestion = computed(() => currentIndex.value === 0);
 const isLastQuestion = computed(() => currentIndex.value === props.questions.length - 1);
 
+// Options that follow an earlier answer track the option selected for that question.
+const resolvedOptions = computed(() => {
+	const q = currentQuestion.value;
+	const dependency = q?.optionsByAnswer;
+	const picked = dependency
+		? answers.value.get(dependency.questionId)?.selectedOptions[0]
+		: undefined;
+	return (picked === undefined ? undefined : dependency?.options[picked]) ?? q?.options ?? [];
+});
+
 // Filter LLM-provided "Other" variants — we render our own "Something else" option
 const filteredOptions = computed(() => {
-	return (currentQuestion.value.options ?? []).filter(
-		(opt) => !opt.toLowerCase().trim().startsWith('other'),
-	);
+	return resolvedOptions.value.filter((opt) => !opt.toLowerCase().trim().startsWith('other'));
 });
 
 const currentAnswer = computed(() => {
@@ -82,6 +92,7 @@ const hasValidAnswer = computed(() => {
 });
 
 const showSkipButton = computed(() => {
+	if (currentQuestion.value?.required) return false;
 	if (currentQuestion.value?.type === 'single' && hasCustomText.value) return false;
 	return true;
 });
@@ -96,7 +107,7 @@ const isNextEnabled = computed(() => {
 	const q = currentQuestion.value;
 	if (!q) return false;
 	// Blank text is a valid submission — it advances marked as skipped
-	if (q.type === 'text') return true;
+	if (q.type === 'text') return !q.required || hasCustomText.value;
 	if (q.type === 'single') return hasValidAnswer.value;
 	if (q.type === 'multi') {
 		const answer = currentAnswer.value;
@@ -124,6 +135,13 @@ watch(
 				customText: '',
 				skipped: false,
 			});
+		}
+		// A changed earlier answer can remove options this question already had selected.
+		const answer = q?.optionsByAnswer ? answers.value.get(q.id) : undefined;
+		if (answer) {
+			answer.selectedOptions = answer.selectedOptions.filter(
+				(option) => option === OTHER_SENTINEL || resolvedOptions.value.includes(option),
+			);
 		}
 		selectedIndex.value = null;
 		highlightedIndex.value = currentQuestion.value?.type === 'text' ? -1 : 0;
@@ -379,194 +397,206 @@ function onOptionMouseEnter(idx: number) {
 
 <template>
 	<div :class="$style.wrapper" data-test-id="instance-ai-questions">
-		<div
-			v-if="currentQuestion && currentAnswer"
-			ref="containerRef"
-			:class="$style.container"
-			tabindex="0"
-			@keydown="onKeydown"
-		>
-			<Transition :name="$style.questionFade" mode="out-in">
-				<div :key="currentQuestion.id" :class="$style.question">
-					<N8nText tag="p" :bold="true" :class="$style.questionText">
-						{{ currentQuestion.question }}
-					</N8nText>
+		<N8nCard v-if="currentQuestion && currentAnswer" :class="$style.card">
+			<div ref="containerRef" :class="$style.container" tabindex="0" @keydown="onKeydown">
+				<Transition :name="$style.questionFade" mode="out-in">
+					<div :key="currentQuestion.id" :class="$style.question">
+						<N8nText tag="p" :bold="true" :class="$style.questionText">
+							{{ currentQuestion.question }}
+						</N8nText>
 
-					<!-- Single choice (number badge rows) -->
-					<div v-if="currentQuestion.type === 'single'" :class="$style.options">
-						<button
-							v-for="(option, idx) in filteredOptions"
-							:key="option"
-							:class="[
-								$style.optionRow,
-								{ [$style.highlighted]: highlightedIndex === idx },
-								{ [$style.activeSelected]: selectedIndex === idx },
-							]"
-							:data-option-index="idx"
-							:disabled="disabled"
-							type="button"
-							tabindex="-1"
-							@click="onSingleSelectAndAdvance(option)"
-							@mouseenter="onOptionMouseEnter(idx)"
-						>
-							<span :class="$style.numberBadge">{{ idx + 1 }}</span>
-							<span :class="$style.optionLabel">{{ option }}</span>
-							<span :class="$style.arrowIndicator">
-								<N8nIcon
-									:class="$style.arrowIcon"
-									icon="arrow-right"
-									size="large"
-									:stroke-width="2.5"
+						<!-- Single choice (number badge rows) -->
+						<div v-if="currentQuestion.type === 'single'" :class="$style.options">
+							<button
+								v-for="(option, idx) in filteredOptions"
+								:key="option"
+								:class="[
+									$style.optionRow,
+									{ [$style.highlighted]: highlightedIndex === idx },
+									{ [$style.activeSelected]: selectedIndex === idx },
+								]"
+								:data-option-index="idx"
+								:disabled="disabled"
+								type="button"
+								tabindex="-1"
+								@click="onSingleSelectAndAdvance(option)"
+								@mouseenter="onOptionMouseEnter(idx)"
+							>
+								<span :class="$style.numberBadge">{{ idx + 1 }}</span>
+								<span :class="$style.optionText">
+									<span :class="$style.optionLabel">{{ splitOption(option).label }}</span>
+									<span v-if="splitOption(option).description" :class="$style.optionDescription">
+										{{ splitOption(option).description }}
+									</span>
+								</span>
+								<span :class="$style.arrowIndicator">
+									<N8nIcon
+										:class="$style.arrowIcon"
+										icon="arrow-right"
+										size="large"
+										:stroke-width="2.5"
+									/>
+								</span>
+							</button>
+
+							<div
+								:class="[
+									$style.somethingElseRow,
+									{ [$style.highlighted]: highlightedIndex === filteredOptions.length },
+								]"
+								:data-option-index="filteredOptions.length"
+								@mouseenter="onOptionMouseEnter(filteredOptions.length)"
+							>
+								<div :class="$style.pencilIconContainer">
+									<N8nIcon :class="$style.pencilIcon" icon="pen" size="medium" />
+								</div>
+								<N8nInput
+									:model-value="currentAnswer.customText"
+									:disabled="disabled"
+									:placeholder="
+										currentQuestion.freeTextLabel ??
+										i18n.baseText('aiAssistant.builder.planMode.questions.somethingElse')
+									"
+									size="small"
+									:class="$style.somethingElseInput"
+									data-test-id="instance-ai-something-else-input"
+									@update:model-value="onCustomTextChange"
 								/>
-							</span>
-						</button>
-
-						<div
-							:class="[
-								$style.somethingElseRow,
-								{ [$style.highlighted]: highlightedIndex === filteredOptions.length },
-							]"
-							:data-option-index="filteredOptions.length"
-							@mouseenter="onOptionMouseEnter(filteredOptions.length)"
-						>
-							<div :class="$style.pencilIconContainer">
-								<N8nIcon :class="$style.pencilIcon" icon="pen" size="medium" />
 							</div>
-							<N8nInput
-								:model-value="currentAnswer.customText"
-								:disabled="disabled"
-								:placeholder="i18n.baseText('aiAssistant.builder.planMode.questions.somethingElse')"
-								size="small"
-								:class="$style.somethingElseInput"
-								data-test-id="instance-ai-something-else-input"
-								@update:model-value="onCustomTextChange"
-							/>
 						</div>
+
+						<!-- Multi choice (checkbox rows) -->
+						<div v-else-if="currentQuestion.type === 'multi'" :class="$style.options">
+							<label
+								v-for="(option, idx) in filteredOptions"
+								:key="option"
+								:class="[
+									$style.checkboxRow,
+									{ [$style.highlighted]: highlightedIndex === idx },
+									{ [$style.selected]: currentAnswer.selectedOptions.includes(option) },
+								]"
+								:data-option-index="idx"
+								@mouseenter="onOptionMouseEnter(idx)"
+							>
+								<N8nCheckbox
+									:model-value="currentAnswer.selectedOptions.includes(option)"
+									:disabled="disabled"
+									@update:model-value="(checked: boolean) => onMultiToggle(option, checked)"
+								/>
+								<span :class="$style.optionText">
+									<span :class="$style.optionLabel">{{ splitOption(option).label }}</span>
+									<span v-if="splitOption(option).description" :class="$style.optionDescription">
+										{{ splitOption(option).description }}
+									</span>
+								</span>
+							</label>
+
+							<div
+								:class="[
+									$style.somethingElseRowMulti,
+									{ [$style.highlighted]: highlightedIndex === filteredOptions.length },
+								]"
+								:data-option-index="filteredOptions.length"
+								@mouseenter="onOptionMouseEnter(filteredOptions.length)"
+							>
+								<N8nCheckbox
+									:model-value="!!currentAnswer.customText?.trim()"
+									:disabled="disabled"
+									@update:model-value="
+										(checked: boolean) => {
+											if (!checked) onCustomTextChange('');
+										}
+									"
+								/>
+								<N8nInput
+									:model-value="currentAnswer.customText"
+									:disabled="disabled"
+									:placeholder="
+										currentQuestion.freeTextLabel ??
+										i18n.baseText('aiAssistant.builder.planMode.questions.somethingElse')
+									"
+									size="small"
+									:class="$style.somethingElseInput"
+									data-test-id="instance-ai-something-else-input"
+									@update:model-value="onCustomTextChange"
+								/>
+							</div>
+						</div>
+
+						<!-- Text input -->
+						<N8nInput
+							v-else-if="currentQuestion.type === 'text'"
+							:class="$style.textareaInput"
+							:model-value="currentAnswer.customText"
+							type="textarea"
+							:autosize="{ minRows: 3, maxRows: 8 }"
+							:disabled="disabled"
+							:placeholder="
+								i18n.baseText('aiAssistant.builder.planMode.questions.clarifyPlaceholder')
+							"
+							@update:model-value="onCustomTextChange"
+						/>
+					</div>
+				</Transition>
+
+				<!-- Footer -->
+				<ConfirmationFooter layout="row-between" bordered>
+					<div :class="$style.pagination">
+						<N8nButton
+							variant="ghost"
+							size="medium"
+							icon-only
+							:disabled="isFirstQuestion"
+							data-test-id="instance-ai-questions-back"
+							aria-label="Previous question"
+							@click="goToPrevious"
+						>
+							<N8nIcon icon="chevron-left" size="xsmall" />
+						</N8nButton>
+						<N8nText :class="$style.paginationText" size="small">
+							{{ currentIndex + 1 }}
+							{{ i18n.baseText('aiAssistant.builder.planMode.questions.paginationOf') }}
+							{{ questions.length }}
+						</N8nText>
+						<N8nButton
+							variant="ghost"
+							size="medium"
+							icon-only
+							:disabled="isLastQuestion || (!!currentQuestion.required && !hasValidAnswer)"
+							data-test-id="instance-ai-questions-forward"
+							aria-label="Next question"
+							@click="goToNextWithoutAnswer"
+						>
+							<N8nIcon icon="chevron-right" size="xsmall" />
+						</N8nButton>
 					</div>
 
-					<!-- Multi choice (checkbox rows) -->
-					<div v-else-if="currentQuestion.type === 'multi'" :class="$style.options">
-						<label
-							v-for="(option, idx) in filteredOptions"
-							:key="option"
-							:class="[
-								$style.checkboxRow,
-								{ [$style.highlighted]: highlightedIndex === idx },
-								{ [$style.selected]: currentAnswer.selectedOptions.includes(option) },
-							]"
-							:data-option-index="idx"
-							@mouseenter="onOptionMouseEnter(idx)"
+					<div :class="$style.navigation">
+						<N8nButton
+							v-if="showSkipButton"
+							variant="outline"
+							size="medium"
+							:disabled="disabled"
+							data-test-id="instance-ai-questions-skip"
+							@click="skipQuestion"
 						>
-							<N8nCheckbox
-								:model-value="currentAnswer.selectedOptions.includes(option)"
-								:disabled="disabled"
-								@update:model-value="(checked: boolean) => onMultiToggle(option, checked)"
-							/>
-							<span :class="$style.optionLabel">{{ option }}</span>
-						</label>
+							{{ i18n.baseText('aiAssistant.builder.planMode.questions.skip') }}
+						</N8nButton>
 
-						<div
-							:class="[
-								$style.somethingElseRowMulti,
-								{ [$style.highlighted]: highlightedIndex === filteredOptions.length },
-							]"
-							:data-option-index="filteredOptions.length"
-							@mouseenter="onOptionMouseEnter(filteredOptions.length)"
+						<N8nButton
+							v-if="showNextButton"
+							:variant="isNextEnabled ? 'solid' : 'outline'"
+							size="medium"
+							:disabled="disabled || isSubmitted || !isNextEnabled"
+							data-test-id="instance-ai-questions-next"
+							@click="goToNext"
 						>
-							<N8nCheckbox
-								:model-value="!!currentAnswer.customText?.trim()"
-								:disabled="disabled"
-								@update:model-value="
-									(checked: boolean) => {
-										if (!checked) onCustomTextChange('');
-									}
-								"
-							/>
-							<N8nInput
-								:model-value="currentAnswer.customText"
-								:disabled="disabled"
-								:placeholder="i18n.baseText('aiAssistant.builder.planMode.questions.somethingElse')"
-								size="small"
-								:class="$style.somethingElseInput"
-								data-test-id="instance-ai-something-else-input"
-								@update:model-value="onCustomTextChange"
-							/>
-						</div>
+							{{ nextButtonLabel }}
+						</N8nButton>
 					</div>
-
-					<!-- Text input -->
-					<N8nInput
-						v-else-if="currentQuestion.type === 'text'"
-						:class="$style.textareaInput"
-						:model-value="currentAnswer.customText"
-						type="textarea"
-						:autosize="{ minRows: 3, maxRows: 8 }"
-						:disabled="disabled"
-						:placeholder="
-							i18n.baseText('aiAssistant.builder.planMode.questions.clarifyPlaceholder')
-						"
-						@update:model-value="onCustomTextChange"
-					/>
-				</div>
-			</Transition>
-
-			<!-- Footer -->
-			<ConfirmationFooter layout="row-between" bordered>
-				<div :class="$style.pagination">
-					<N8nButton
-						variant="ghost"
-						size="medium"
-						icon-only
-						:disabled="isFirstQuestion"
-						data-test-id="instance-ai-questions-back"
-						aria-label="Previous question"
-						@click="goToPrevious"
-					>
-						<N8nIcon icon="chevron-left" size="xsmall" />
-					</N8nButton>
-					<N8nText :class="$style.paginationText" size="small">
-						{{ currentIndex + 1 }}
-						{{ i18n.baseText('aiAssistant.builder.planMode.questions.paginationOf') }}
-						{{ questions.length }}
-					</N8nText>
-					<N8nButton
-						variant="ghost"
-						size="medium"
-						icon-only
-						:disabled="isLastQuestion"
-						data-test-id="instance-ai-questions-forward"
-						aria-label="Next question"
-						@click="goToNextWithoutAnswer"
-					>
-						<N8nIcon icon="chevron-right" size="xsmall" />
-					</N8nButton>
-				</div>
-
-				<div :class="$style.navigation">
-					<N8nButton
-						v-if="showSkipButton"
-						variant="outline"
-						size="medium"
-						:disabled="disabled"
-						data-test-id="instance-ai-questions-skip"
-						@click="skipQuestion"
-					>
-						{{ i18n.baseText('aiAssistant.builder.planMode.questions.skip') }}
-					</N8nButton>
-
-					<N8nButton
-						v-if="showNextButton"
-						:variant="isNextEnabled ? 'solid' : 'outline'"
-						size="medium"
-						:disabled="disabled || isSubmitted || !isNextEnabled"
-						data-test-id="instance-ai-questions-next"
-						@click="goToNext"
-					>
-						{{ nextButtonLabel }}
-					</N8nButton>
-				</div>
-			</ConfirmationFooter>
-		</div>
+				</ConfirmationFooter>
+			</div>
+		</N8nCard>
 	</div>
 </template>
 
@@ -587,11 +617,16 @@ function onOptionMouseEnter(idx: number) {
 	color: var(--color--text--tint-1);
 }
 
-.container {
-	outline: none;
+.card {
+	padding: 0;
+	border: 0;
 	border-radius: var(--radius--lg);
 	background-color: var(--color--background--light-3);
 	box-shadow: var(--shadow--sm), var(--shadow--outline);
+}
+
+.container {
+	outline: none;
 }
 
 .question {
@@ -633,7 +668,7 @@ function onOptionMouseEnter(idx: number) {
 	justify-content: center;
 	border-radius: var(--radius--full);
 	background-color: var(--color--primary);
-	color: var(--color--neutral-white);
+	color: var(--text-color--inverse);
 	flex-shrink: 0;
 }
 
@@ -644,6 +679,19 @@ function onOptionMouseEnter(idx: number) {
 
 .optionLabel {
 	@include questionOptions.option-label;
+}
+
+.optionText {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+}
+
+.optionDescription {
+	color: var(--color--text--tint-1);
+	font-size: var(--font-size--sm);
+	font-weight: var(--font-weight--regular);
+	line-height: var(--line-height--lg);
 }
 
 .checkboxRow {

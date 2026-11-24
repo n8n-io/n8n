@@ -10,7 +10,7 @@ import type {
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { NodeExecutionContext } from './node-execution-context';
 import { getBinaryHelperFunctions } from './utils/binary-helper-functions';
@@ -71,7 +71,12 @@ export class PollContext extends NodeExecutionContext implements IPollFunctions 
 		return this.activation;
 	}
 
+	override getExecutionContext() {
+		// Poll contexts have no run data, so preserve context established by the entry point.
+		return super.getExecutionContext() ?? this.additionalData.executionContext;
+	}
+
 	async getCredentials<T extends object = ICredentialDataDecryptedObject>(type: string) {
-		return await this._getRunlessCredentials<T>(type);
+		return await this._getRunlessCredentials<T>(type, { credentialUsage: 'trigger' });
 	}
 }

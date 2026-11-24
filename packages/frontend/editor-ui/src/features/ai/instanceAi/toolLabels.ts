@@ -1,16 +1,50 @@
 import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
 import type { IconName } from '@n8n/design-system';
+import {
+	AGENT_BUILDER_TOOL_NAMES,
+	CHANGE_DATA_TABLES_TOOL_NAME,
+	REMOVED_BUILDER_TOOL_NAMES,
+	SHARED_BUILDER_TOOL_NAMES,
+	WORKFLOW_BUILDER_TOOL_NAMES,
+	WORKFLOW_TOOL_NAMES,
+	getDataTableCallAction,
+	getExecutionCallAction,
+	getWorkspaceCallAction,
+	isFormerExecutionsTool,
+	EXECUTION_TOOL_NAMES,
+	isFormerWorkflowsTool,
+	resolveBuilderToolName,
+} from '@n8n/api-types';
 import type { InstanceAiToolCallState } from '@n8n/api-types';
+import { isRecord } from '@n8n/utils/is-record';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useDraftWorkflowPreviewEnabled } from '@/experiments/instanceAiDraftWorkflowPreview/useDraftWorkflowPreviewEnabled';
+import {
+	formatToolNameForDisplay,
+	stripBuilderToolPrefix,
+} from '@/features/agents/utils/toolDisplayName';
 
-const NO_TOGGLE_TOOLS = new Set(['updateWorkingMemory', 'task-control']);
-const SKILL_TOOLS = new Set([
-	'create_skills',
+const NO_TOGGLE_TOOLS = new Set<string>([
+	'updateWorkingMemory',
+	WORKFLOW_BUILDER_TOOL_NAMES.TASK_CONTROL,
+]);
+const SKILL_TOOLS = new Set<string>([
+	AGENT_BUILDER_TOOL_NAMES.CREATE_SKILLS,
 	'list_skills',
 	'read_skill',
-	'update_skill',
+	AGENT_BUILDER_TOOL_NAMES.UPDATE_SKILL,
 	'load_skill',
+	'skills',
 ]);
+const CREDENTIAL_TOOL_NAMES = new Set<string>([
+	SHARED_BUILDER_TOOL_NAMES.LIST_CREDENTIALS,
+	SHARED_BUILDER_TOOL_NAMES.SEARCH_CREDENTIAL_TYPES,
+	SHARED_BUILDER_TOOL_NAMES.SETUP_CREDENTIALS,
+	SHARED_BUILDER_TOOL_NAMES.TEST_CREDENTIAL,
+	SHARED_BUILDER_TOOL_NAMES.DELETE_CREDENTIAL,
+]);
+const WORKFLOW_BUILDER_PREFIX_PATTERN = /^workflow_builder_/;
 const N8N_SKILL_DIR_TEMPLATE = '$' + '{N8N_SKILL_DIR}';
 type I18n = ReturnType<typeof useI18n>;
 type SkillFileGroup = 'references' | 'scripts' | 'templates' | 'examples' | 'assets';
@@ -51,7 +85,8 @@ function getBasename(path: string): string {
 	return cleanPath.split('/').filter(Boolean).at(-1) ?? cleanPath;
 }
 
-function humanizeFileLabel(path: string): string {
+/** A file path or skill name as lower-case words, e.g. `references/aiAgents.md` → "ai agents". */
+export function humanizeFileLabel(path: string): string {
 	const basename = getBasename(path);
 	const withoutExtension = basename.replace(/\.[^.]+$/, '');
 	return withoutExtension
@@ -102,48 +137,211 @@ function extractSkillScriptPath(command: string): string | undefined {
 	return sandboxSkillDirMatch?.[1];
 }
 
-export function getToolIcon(toolName: string): IconName {
-	if (toolName === 'complete-checkpoint') return 'circle-check';
+function getBuildAgentOperationKey(operation: unknown): BaseTextKey | undefined {
+	switch (operation) {
+		case 'editing':
+			return 'instanceAi.tools.agent_builder_build_agent.editing';
+		case 'exploring':
+			return 'instanceAi.tools.agent_builder_build_agent.exploring';
+		case 'testing':
+			return 'instanceAi.tools.agent_builder_build_agent.testing';
+		case 'publishing':
+			return 'instanceAi.tools.agent_builder_build_agent.publishing';
+		default:
+			return undefined;
+	}
+}
+
+const REMOVED_WORKFLOWS_TOOL_LABEL_NAME = 'workflow_builder_workflows';
+/** Data table tools share the labels of the former multi-action tool, keyed by action. */
+const DATA_TABLE_LABEL_TOOL_NAME = 'data_tables';
+/** Execution tools reuse the per-action labels of the former executions tool. */
+const EXECUTION_LABEL_TOOL_NAME = 'workflow_builder_executions';
+/** Workspace tools reuse the per-action labels of the former workspace tool. */
+const WORKSPACE_LABEL_TOOL_NAME = 'workspace';
+const LABEL_LIST_LIMIT = 3;
+const WORKFLOW_SOURCE_EXTENSION = /\.workflow\.(ts|json)$/;
+
+type SourceAction = 'writing' | 'editing' | 'building';
+
+/** Tools that write workflow source, and what each does to it. */
+const WORKFLOW_SOURCE_ACTIONS: Readonly<Record<string, SourceAction>> = {
+	workspace_write_file: 'writing',
+	workspace_str_replace_file: 'editing',
+	[WORKFLOW_BUILDER_TOOL_NAMES.BUILD_WORKFLOW]: 'building',
+};
+
+const WORKFLOW_SOURCE_LABEL_KEYS: Record<SourceAction, BaseTextKey> = {
+	writing: 'instanceAi.tools.workflowSource.writing',
+	editing: 'instanceAi.tools.workflowSource.editing',
+	building: 'instanceAi.tools.workflowSource.building',
+};
+
+/** The workflow a source file holds, in words. The user never sees the file name. */
+function workflowSourceName(args: Record<string, unknown> | undefined): string | undefined {
+	const path = args?.path ?? args?.filePath;
+	if (typeof path !== 'string' || !WORKFLOW_SOURCE_EXTENSION.test(path)) return undefined;
+	return humanizeFileLabel(getBasename(path).replace(WORKFLOW_SOURCE_EXTENSION, '')) || undefined;
+}
+
+function searchQueries(args: Record<string, unknown> | undefined): string[] {
+	const queries = Array.isArray(args?.queries) ? args.queries : [];
+	const query = args?.query;
+	return [...queries, ...(query !== undefined ? [query] : [])].filter(
+		(item): item is string => typeof item === 'string' && item.length > 0,
+	);
+}
+
+function requestedNodeTypes(args: Record<string, unknown> | undefined): string[] {
+	const nodeTypes = Array.isArray(args?.nodeTypes) ? args.nodeTypes : [];
+	return nodeTypes.flatMap((request: unknown) => {
+		if (typeof request === 'string') return [request];
+		return isRecord(request) && typeof request.nodeType === 'string' ? [request.nodeType] : [];
+	});
+}
+
+export function getToolIcon(rawToolName: string): IconName {
+	const toolName = resolveBuilderToolName(rawToolName);
 	if (toolName.endsWith('-with-agent')) return 'share';
 	if (toolName === 'resolve_integration') return 'share';
 	if (SKILL_TOOLS.has(toolName) || toolName === 'n8n-docs') return 'book-open';
-	if (toolName === 'data-tables') return 'table';
+	if (
+		getDataTableCallAction(rawToolName) ||
+		toolName === DATA_TABLE_LABEL_TOOL_NAME ||
+		toolName === CHANGE_DATA_TABLES_TOOL_NAME
+	)
+		return 'table';
+	if (toolName === 'activity') return 'history';
+	if (toolName === 'conversation-history') return 'message-square';
 	if (toolName === 'mcp-servers') return 'plug';
 	if (
-		toolName === 'workflows' ||
-		toolName === 'executions' ||
-		toolName === 'nodes' ||
+		WORKFLOW_TOOL_NAMES.includes(toolName) ||
+		EXECUTION_TOOL_NAMES.includes(toolName) ||
+		isFormerExecutionsTool(rawToolName) ||
+		toolName === WORKFLOW_BUILDER_TOOL_NAMES.NODES ||
+		toolName === SHARED_BUILDER_TOOL_NAMES.SEARCH_NODES ||
+		toolName === SHARED_BUILDER_TOOL_NAMES.GET_NODE_TYPES ||
+		toolName === SHARED_BUILDER_TOOL_NAMES.GET_NODE_PARAMETER_OPTIONS ||
+		toolName === SHARED_BUILDER_TOOL_NAMES.EXECUTE_NODE ||
 		toolName === 'templates' ||
-		toolName === 'search_nodes' ||
-		toolName === 'get_node_types'
+		toolName === AGENT_BUILDER_TOOL_NAMES.SEARCH_NODES ||
+		toolName === AGENT_BUILDER_TOOL_NAMES.GET_NODE_TYPES
 	)
 		return 'workflow';
 	if (toolName === 'research') return 'search';
-	if (toolName === 'credentials') return 'key-round';
-	if (toolName === 'task-control' || toolName === 'updateWorkingMemory') return 'brain';
+	if (CREDENTIAL_TOOL_NAMES.has(toolName)) return 'key-round';
+	if (toolName === WORKFLOW_BUILDER_TOOL_NAMES.TASK_CONTROL || toolName === 'updateWorkingMemory')
+		return 'brain';
 	if (toolName === 'filesystem') return 'file-text';
-	if (toolName === 'workspace' || toolName.startsWith('workspace_')) return 'folder';
-	if (toolName.includes('data-table')) return 'table';
 	if (
-		toolName.includes('workflow') ||
-		toolName === 'submit-workflow' ||
+		toolName === WORKSPACE_LABEL_TOOL_NAME ||
+		getWorkspaceCallAction(toolName) ||
+		toolName.startsWith('workspace_')
+	)
+		return 'folder';
+	// The prefix contains "workflow", so match on the rest of the name only.
+	const unprefixedName = toolName.replace(WORKFLOW_BUILDER_PREFIX_PATTERN, '');
+	if (unprefixedName.includes('data-table')) return 'table';
+	if (
+		unprefixedName.includes('workflow') ||
+		toolName === REMOVED_BUILDER_TOOL_NAMES.SUBMIT_WORKFLOW ||
 		toolName === 'materialize-node-type'
 	) {
 		return 'workflow';
 	}
-	if (toolName.includes('credential')) return 'key-round';
+	if (unprefixedName.includes('credential')) return 'key-round';
 	// Fallback for tools without a dedicated mapping.
 	return 'wrench';
 }
 
 /**
  * Returns a human-readable display label for an instance AI tool name.
- * Falls back to the raw tool name if no mapping exists in i18n.
+ * Without an i18n mapping, it formats the tool name without its builder prefix.
+ * MCP tools have dynamic names, so they always use this fallback.
  */
 export function useToolLabel() {
 	const i18n = useI18n();
+	// The control group of the experiment keeps the short labels.
+	const specificLabels = useDraftWorkflowPreviewEnabled();
 
-	function getToolLabel(toolName: string, args?: Record<string, unknown>): string {
+	function formatList(items: string[]): string {
+		const unique = [...new Set(items)];
+		const shown = unique.slice(0, LABEL_LIST_LIMIT).join(', ');
+		if (unique.length <= LABEL_LIST_LIMIT) return shown;
+		return i18n.baseText('instanceAi.tools.list.more', {
+			interpolate: { items: shown, count: String(unique.length - LABEL_LIST_LIMIT) },
+		});
+	}
+
+	/** Node search and schema reads name what they look up. Undefined without details. */
+	function getNodeLookupLabel(
+		toolName: string,
+		args: Record<string, unknown> | undefined,
+	): string | undefined {
+		if (toolName === SHARED_BUILDER_TOOL_NAMES.SEARCH_NODES) {
+			const queries = searchQueries(args);
+			if (queries.length === 0) return undefined;
+			return i18n.baseText('instanceAi.tools.search_nodes.detail', {
+				interpolate: { list: formatList(queries) },
+			});
+		}
+		if (toolName === SHARED_BUILDER_TOOL_NAMES.GET_NODE_TYPES) {
+			const nodeTypes = requestedNodeTypes(args);
+			if (nodeTypes.length === 0) return undefined;
+			const nodeTypesStore = useNodeTypesStore();
+			const names = nodeTypes.map(
+				(nodeType) => nodeTypesStore.getNodeType(nodeType)?.displayName ?? nodeType,
+			);
+			return i18n.baseText('instanceAi.tools.get_node_types.detail', {
+				interpolate: { list: formatList(names) },
+			});
+		}
+		return undefined;
+	}
+
+	/** Workflow source writes name the workflow, never the file. */
+	function getWorkflowSourceLabel(
+		toolName: string,
+		args: Record<string, unknown> | undefined,
+	): string | undefined {
+		const action = Object.hasOwn(WORKFLOW_SOURCE_ACTIONS, toolName)
+			? WORKFLOW_SOURCE_ACTIONS[toolName]
+			: undefined;
+		if (!action) return undefined;
+		const name = workflowSourceName(args);
+		return name
+			? i18n.baseText(WORKFLOW_SOURCE_LABEL_KEYS[action], { interpolate: { name } })
+			: undefined;
+	}
+
+	/**
+	 * The label that names what a node lookup or a workflow source write works on, for
+	 * the variant of the experiment. Undefined for other tools and without details.
+	 */
+	function getSpecificToolLabel(
+		rawToolName: string,
+		args?: Record<string, unknown>,
+	): string | undefined {
+		if (!specificLabels.value) return undefined;
+		const toolName = resolveBuilderToolName(rawToolName, args?.action);
+		return getWorkflowSourceLabel(toolName, args) ?? getNodeLookupLabel(toolName, args);
+	}
+
+	function getToolLabel(rawToolName: string, args?: Record<string, unknown>): string {
+		const toolName = resolveBuilderToolName(rawToolName, args?.action);
+		const sourceLabel = specificLabels.value ? getWorkflowSourceLabel(toolName, args) : undefined;
+		if (sourceLabel) return sourceLabel;
+		if (toolName === AGENT_BUILDER_TOOL_NAMES.BUILD_AGENT) {
+			const operationKey = getBuildAgentOperationKey(args?.operation);
+			if (operationKey) return i18n.baseText(operationKey);
+		}
+		if (toolName === 'agent-context' && typeof args?.type === 'string') {
+			const lookupKey = `instanceAi.tools.agent-context.${args.type}` as BaseTextKey;
+			const lookupLabel = i18n.baseText(lookupKey);
+			if (lookupLabel !== lookupKey) return lookupLabel;
+		}
+		const nodeLookupLabel = specificLabels.value ? getNodeLookupLabel(toolName, args) : undefined;
+		if (nodeLookupLabel) return nodeLookupLabel;
 		if (toolName === 'load_skill') {
 			const name = typeof args?.name === 'string' ? args.name : undefined;
 			const filePath = typeof args?.filePath === 'string' ? args.filePath : undefined;
@@ -176,26 +374,49 @@ export function useToolLabel() {
 			return i18n.baseText('instanceAi.tools.workspace_execute_command.skill');
 		}
 
-		const action = typeof args?.action === 'string' ? args.action : undefined;
+		const dataTableAction = getDataTableCallAction(toolName, args?.action);
+		const executionAction = getExecutionCallAction(toolName, args?.action);
+		const workspaceAction = getWorkspaceCallAction(toolName, args?.action);
+		// Stored calls of removed workflows actions keep the former tool's labels.
+		const labelToolName = isFormerWorkflowsTool(toolName)
+			? REMOVED_WORKFLOWS_TOOL_LABEL_NAME
+			: dataTableAction
+				? DATA_TABLE_LABEL_TOOL_NAME
+				: executionAction
+					? EXECUTION_LABEL_TOOL_NAME
+					: workspaceAction
+						? WORKSPACE_LABEL_TOOL_NAME
+						: toolName;
+		const action =
+			dataTableAction ??
+			executionAction ??
+			workspaceAction ??
+			(typeof args?.action === 'string' ? args.action : undefined);
 		if (action) {
-			const actionKey = `instanceAi.tools.${toolName}.${action}` as BaseTextKey;
+			const actionKey = `instanceAi.tools.${labelToolName}.${action}` as BaseTextKey;
 			const actionTranslated = i18n.baseText(actionKey);
 			if (actionTranslated !== actionKey) return actionTranslated;
 		}
-		const key = `instanceAi.tools.${toolName}` as BaseTextKey;
+		const key = `instanceAi.tools.${labelToolName}` as BaseTextKey;
 		const translated = i18n.baseText(key);
-		return translated === key ? toolName : translated;
+		if (translated !== key) return translated;
+		if (rawToolName !== toolName) {
+			const rawKey = `instanceAi.tools.${rawToolName}` as BaseTextKey;
+			const rawTranslated = i18n.baseText(rawKey);
+			if (rawTranslated !== rawKey) return rawTranslated;
+		}
+		return formatToolNameForDisplay(stripBuilderToolPrefix(rawToolName)) || rawToolName;
 	}
 
 	function getToggleLabel(toolCall: InstanceAiToolCallState): string | undefined {
-		if (NO_TOGGLE_TOOLS.has(toolCall.toolName)) return undefined;
+		if (NO_TOGGLE_TOOLS.has(resolveBuilderToolName(toolCall.toolName))) return undefined;
 		return i18n.baseText('instanceAi.stepTimeline.showData');
 	}
 
 	function getHideLabel(toolCall: InstanceAiToolCallState): string | undefined {
-		if (NO_TOGGLE_TOOLS.has(toolCall.toolName)) return undefined;
+		if (NO_TOGGLE_TOOLS.has(resolveBuilderToolName(toolCall.toolName))) return undefined;
 		return i18n.baseText('instanceAi.stepTimeline.hideData');
 	}
 
-	return { getToolLabel, getToggleLabel, getHideLabel };
+	return { getToolLabel, getSpecificToolLabel, getToggleLabel, getHideLabel };
 }

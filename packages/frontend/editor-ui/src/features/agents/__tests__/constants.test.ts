@@ -17,15 +17,6 @@ describe('Agent constants', () => {
 		expect(PROJECT_AGENTS).toBe('ProjectAgents');
 	});
 
-	it('registers the new-agent transition route', () => {
-		expect(AgentsModule.routes).toContainEqual(
-			expect.objectContaining({
-				name: 'NewAgentView',
-				path: '/new-agent',
-			}),
-		);
-	});
-
 	it('registers a standalone agent preview route', function registersPreviewRoute() {
 		const agentRoute = AgentsModule.routes?.find(function isAgentRoute(route) {
 			return route.name === 'AgentView';

@@ -16,7 +16,8 @@ const BREADCRUMBS_SEPARATOR = '/';
 
 type Props = {
 	dataTable: DataTable;
-	readOnly: boolean;
+	/** Locks rename and delete, for example on a protected instance. */
+	schemaReadOnly: boolean;
 };
 
 const props = defineProps<Props>();
@@ -36,7 +37,7 @@ const toast = useToast();
 const editableName = ref(props.dataTable.name);
 
 const isRenameDisabled = computed(
-	() => !dataTableStore.projectPermissions.dataTable.update || props.readOnly,
+	() => !dataTableStore.projectPermissions.dataTable.update || props.schemaReadOnly,
 );
 
 const project = computed(() => {
@@ -127,7 +128,7 @@ watch(
 					data-test-id="data-table-header-name-input"
 					:placeholder="i18n.baseText('dataTable.add.input.name.label')"
 					:class="$style['breadcrumb-current']"
-					:read-only="readOnly"
+					:read-only="schemaReadOnly"
 					:disabled="isRenameDisabled"
 					@update:model-value="onNameSubmit"
 				/>
@@ -136,7 +137,7 @@ watch(
 		<div :class="$style['data-table-actions']">
 			<DataTableActions
 				:data-table="props.dataTable"
-				:is-read-only="readOnly"
+				:schema-read-only="schemaReadOnly"
 				location="breadcrumbs"
 				@rename="onRename"
 				@on-deleted="onDelete"

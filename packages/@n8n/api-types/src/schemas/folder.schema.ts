@@ -1,8 +1,11 @@
 import { z } from 'zod';
 
+export const folderResourceTypeSchema = z.enum(['workflow', 'agent']);
+export type FolderResourceType = z.infer<typeof folderResourceTypeSchema>;
+
 const illegalCharacterRegex = /[[\]^\\/:*?"<>|]/;
 const dotsOnlyRegex = /^\.+$/;
-const FOLDER_NAME_MAX_LENGTH = 128;
+export const FOLDER_NAME_MAX_LENGTH = 128;
 
 export const folderNameSchema = z
 	.string()

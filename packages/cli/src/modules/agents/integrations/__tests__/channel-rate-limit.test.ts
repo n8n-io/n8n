@@ -89,6 +89,10 @@ describe('channel-rate-limit', () => {
 			expect(channelRateLimitMessage('slack')).toContain('Slack');
 			expect(channelRateLimitMessage('discord')).toContain('Discord');
 		});
+
+		it('uses the WhatsApp override instead of capitalize-first-letter', () => {
+			expect(channelRateLimitMessage('whatsapp')).toContain('WhatsApp');
+		});
 	});
 
 	describe('rateLimitMessageFromError', () => {
@@ -150,6 +154,28 @@ describe('channel-rate-limit', () => {
 	});
 
 	describe('caughtIntegrationError', () => {
+		it('does not block the connection for a recipient-scoped 429', () => {
+			const guard = new ChannelRateLimitGuard();
+			const error = Object.assign(new Error('recipient limited'), {
+				response: { status: 429 },
+				rateLimitScope: 'recipient',
+			});
+			const result = caughtIntegrationError(error, {
+				connectionId: 'whatsapp:cred-a',
+				platform: 'whatsapp',
+				guard,
+				failedCode: INTEGRATION_ERROR_CODES.ACTION_FAILED,
+			});
+			expect(result).toEqual({
+				ok: false,
+				error: {
+					code: INTEGRATION_ERROR_CODES.RATE_LIMIT_EXCEEDED,
+					message: 'recipient limited',
+				},
+			});
+			expect(guard.isBlocked('whatsapp:cred-a')).toBe(false);
+		});
+
 		it('records the guard and returns RATE_LIMIT_EXCEEDED on a 429', () => {
 			const guard = new ChannelRateLimitGuard();
 			const error = Object.assign(new Error('rate limited'), {
@@ -167,6 +193,29 @@ describe('channel-rate-limit', () => {
 				expect(result.error.message).toContain('Slack');
 			}
 			expect(guard.isBlocked('slack:cred-a')).toBe(true);
+		});
+
+		it('records the connection cooldown for a Slack SDK rate-limit error', () => {
+			const guard = new ChannelRateLimitGuard();
+			const error = Object.assign(new Error('rate limited'), {
+				code: 'slack_webapi_rate_limited_error',
+			});
+			const result = caughtIntegrationError(error, {
+				connectionId: 'slack:cred-a',
+				platform: 'slack',
+				guard,
+				failedCode: INTEGRATION_ERROR_CODES.CONTEXT_QUERY_FAILED,
+			});
+
+			expect(result).toEqual({
+				ok: false,
+				error: {
+					code: INTEGRATION_ERROR_CODES.RATE_LIMIT_EXCEEDED,
+					message: expect.stringContaining('Slack'),
+				},
+			});
+			expect(guard.isBlocked('slack:cred-a')).toBe(true);
+			expect(guard.isBlocked('slack:cred-b')).toBe(false);
 		});
 
 		it('returns the failedCode for a non-429 error', () => {

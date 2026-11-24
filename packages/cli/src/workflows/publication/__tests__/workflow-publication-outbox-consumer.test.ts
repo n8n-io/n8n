@@ -1,11 +1,11 @@
 import type { Logger } from '@n8n/backend-common';
+import type { EventService } from '@n8n/backend-services';
 import type { WorkflowsConfig } from '@n8n/config';
 import type { WorkflowPublicationOutbox, WorkflowPublicationOutboxRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 import type { ErrorReporter, InstanceSettings, Span, Tracing } from 'n8n-core';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
-import type { EventService } from '@/events/event.service';
 import type { PublicationResult } from '@/workflows/publication/publication-result';
 import type { PublicationStatusReporter } from '@/workflows/publication/publication-status-reporter';
 import { WorkflowPublicationLifecycleLock } from '@/workflows/publication/workflow-publication-lifecycle-lock';
@@ -808,7 +808,11 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			[{ type: 'unpublished' }, 'unpublished', 'none'],
 			[{ type: 'skipped', reason: 'workflow-not-found' }, 'skipped', 'workflow_not_found'],
 			[{ type: 'version-missing' }, 'failed', 'version_missing'],
-			[{ type: 'partial', triggerStatuses: [] }, 'partial_success', 'none'],
+			[
+				{ type: 'partial', triggerStatuses: [], error: new Error('boom') },
+				'partial_success',
+				'none',
+			],
 			[{ type: 'failed', error: new Error('boom') }, 'failed', 'none'],
 		] as Array<[PublicationResult, string, string]>)(
 			'emits result=%o as result=%s reason=%s',

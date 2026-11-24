@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { N8nIcon, N8nIconButton, N8nInlineTextEdit, N8nTooltip } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
+import { Handle, Position, useVueFlow } from '@vue-flow/core';
 import {
 	computed,
 	inject,
@@ -10,26 +13,26 @@ import {
 	useTemplateRef,
 	watch,
 } from 'vue';
-import { useI18n } from '@n8n/i18n';
-import { N8nIcon, N8nIconButton, N8nInlineTextEdit, N8nTooltip } from '@n8n/design-system';
-import { Handle, Position, useVueFlow } from '@vue-flow/core';
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import CanvasNodeStatusMark from '../nodes/render-types/parts/CanvasNodeStatusMark.vue';
+import CanvasHandleDot from '../handles/render-types/parts/CanvasHandleDot.vue';
+import {
+	CANVAS_NODE_GROUP_INPUT_HANDLE,
+	CANVAS_NODE_GROUP_OUTPUT_HANDLE,
+	CanvasConnectionMode,
+	createCanvasGroupNodeId,
+	type CanvasGroupNodeData,
+} from '../../../canvas.types';
+import { computeGroupFrameRects } from '../../../composables/useCanvasMapping.groups';
+import { NodeGroupDescriptionVisibilityKey } from '../../../composables/useCanvasNodeGroupDescriptionVisibility';
 import { useZoomAdjustedValues } from '../../../composables/useZoomAdjustedValues';
-import { HOVER_DELAY } from '@/app/constants';
 import {
 	GROUP_HEADER_HEIGHT as HEADER_HEIGHT,
 	GROUP_DESCRIPTION_MAX_LENGTH,
 	GROUP_DESCRIPTION_MIN_ZOOM,
 } from '../../../stores/canvasNodeGroups.constants';
-import { computeGroupFrameRects } from '../../../composables/useCanvasMapping.groups';
-import { NodeGroupDescriptionVisibilityKey } from '../../../composables/useCanvasNodeGroupDescriptionVisibility';
-import {
-	CANVAS_NODE_GROUP_HANDLE_LEFT,
-	CANVAS_NODE_GROUP_HANDLE_RIGHT,
-	createCanvasGroupNodeId,
-	type CanvasGroupNodeData,
-} from '../../../canvas.types';
+import { HOVER_DELAY } from '@/app/constants';
+import { useNodeConnections } from '@/app/composables/useNodeConnections';
 import { useIsNodeContextEnabled } from '@/features/ai/instanceAi/composables/useIsNodeContextEnabled';
 
 const UNGROUP_NODES_SHORTCUT = { metaKey: true, shiftKey: true, keys: ['G'] };
@@ -49,12 +52,14 @@ const props = withDefaults(
 		/** Whether the group's members form a selection that can be converted
 		 * to a sub-workflow (extraction is stricter than grouping). */
 		canExtract?: boolean;
+		hasTrigger?: boolean;
 	}>(),
 	{
 		autofocusGroupId: null,
 		readOnly: false,
 		selected: false,
 		canExtract: false,
+		hasTrigger: false,
 	},
 );
 
@@ -84,14 +89,32 @@ const isCollapsed = computed(() => props.data.isCollapsed);
 const isDescriptionEmpty = computed(() => !group.value.description?.trim());
 const executionStatus = computed(() => props.data.executionStatus);
 const allNodesDisabled = computed(() => props.data.allNodesDisabled ?? false);
+const isEmptyGroup = computed(() => props.data.isEmptyGroup === true);
+const isConnectable = computed(() => isEmptyGroup.value && isCollapsed.value && !props.readOnly);
+const { isValidConnection } = useNodeConnections({
+	inputs: [],
+	outputs: [],
+	connections: {
+		[CanvasConnectionMode.Input]: {},
+		[CanvasConnectionMode.Output]: {},
+	},
+});
 
 // Statuses rendered as a status mark; running/waiting render as the animated border.
 const MARK_STATUSES = ['success', 'error', 'warning'] as const;
 const markStatus = computed(() => MARK_STATUSES.find((status) => status === executionStatus.value));
+// Validation statuses mirror the single node icon: red triangle, or the amber setup key.
+const ISSUE_ICONS = { issues: 'node-validation-error', setup: 'key-round' } as const;
+const issueStatus = computed(() =>
+	executionStatus.value === 'issues' || executionStatus.value === 'setup'
+		? executionStatus.value
+		: undefined,
+);
 
 const wrapperClasses = computed(() => [
 	$style.wrapper,
 	{
+		[$style.emptyGroup]: isEmptyGroup.value,
 		[$style.collapsed]: isCollapsed.value,
 		[$style.selected]: props.selected,
 		[$style.deactivated]: allNodesDisabled.value,
@@ -418,20 +441,34 @@ function onWrapperPointerDown(event: PointerEvent) {
 		@mouseleave="onGroupMouseLeave"
 	>
 		<div :class="$style.titleBar">
+			<span
+				v-if="isCollapsed && (executionStatus === 'running' || executionStatus === 'waiting')"
+				:class="$style.statusRing"
+			/>
 			<Handle
-				:id="CANVAS_NODE_GROUP_HANDLE_LEFT"
+				:id="CANVAS_NODE_GROUP_INPUT_HANDLE"
 				type="target"
 				:position="Position.Left"
-				:class="$style.handle"
-				:is-connectable="false"
-			/>
+				:class="[$style.handle, { [$style.connectableHandle]: isConnectable }]"
+				:connectable="isConnectable"
+				:connectable-start="isConnectable"
+				:connectable-end="isConnectable"
+				:is-valid-connection="isValidConnection"
+			>
+				<CanvasHandleDot v-if="isConnectable" handle-classes="target" />
+			</Handle>
 			<Handle
-				:id="CANVAS_NODE_GROUP_HANDLE_RIGHT"
+				:id="CANVAS_NODE_GROUP_OUTPUT_HANDLE"
 				type="source"
 				:position="Position.Right"
-				:class="$style.handle"
-				:is-connectable="false"
-			/>
+				:class="[$style.handle, { [$style.connectableHandle]: isConnectable }]"
+				:connectable="isConnectable"
+				:connectable-start="isConnectable"
+				:connectable-end="isConnectable"
+				:is-valid-connection="isValidConnection"
+			>
+				<CanvasHandleDot v-if="isConnectable" handle-classes="source" />
+			</Handle>
 
 			<div
 				v-if="!readOnly"
@@ -440,6 +477,7 @@ function onWrapperPointerDown(event: PointerEvent) {
 			>
 				<div :class="$style.toolbarItems">
 					<KeyboardShortcutTooltip
+						v-if="!isEmptyGroup"
 						:label="i18n.baseText('canvas.selection.toolbar.ungroup')"
 						:shortcut="UNGROUP_NODES_SHORTCUT"
 					>
@@ -447,14 +485,14 @@ function onWrapperPointerDown(event: PointerEvent) {
 							class="nodrag"
 							variant="ghost"
 							size="small"
-							icon="ungroup"
+							icon="node-ungroup"
 							:aria-label="i18n.baseText('canvas.selection.toolbar.ungroup')"
 							data-test-id="canvas-node-group-ungroup"
 							@click.stop="onUngroupClick"
 						/>
 					</KeyboardShortcutTooltip>
 					<KeyboardShortcutTooltip
-						v-if="canExtract"
+						v-if="canExtract && !isEmptyGroup"
 						:label="extractLabel"
 						:shortcut="EXTRACT_WORKFLOW_SHORTCUT"
 					>
@@ -462,7 +500,7 @@ function onWrapperPointerDown(event: PointerEvent) {
 							class="nodrag"
 							variant="ghost"
 							size="small"
-							icon="workflow"
+							icon="node-extract"
 							:aria-label="extractLabel"
 							data-test-id="canvas-node-group-extract"
 							@click.stop="onExtractClick"
@@ -476,13 +514,24 @@ function onWrapperPointerDown(event: PointerEvent) {
 							class="nodrag"
 							variant="ghost"
 							size="small"
-							icon="sparkles"
+							icon="node-sparkle"
 							:aria-label="i18n.baseText('canvas.nodeGroup.addToChat')"
 							data-test-id="canvas-node-group-add-to-chat"
 							@click.stop="onAddToChatClick"
 						/>
 					</KeyboardShortcutTooltip>
 				</div>
+			</div>
+
+			<!-- N8nIcon marks its svg aria-hidden, so the name lives on this wrapper. -->
+			<div
+				v-if="hasTrigger && isCollapsed"
+				:class="$style.triggerMark"
+				role="img"
+				:aria-label="i18n.baseText('canvas.nodeGroup.holdsTrigger')"
+				data-test-id="canvas-node-group-trigger-mark"
+			>
+				<N8nIcon icon="bolt-filled" size="large" />
 			</div>
 
 			<div :class="$style.content" data-test-id="canvas-node-group-header">
@@ -581,11 +630,11 @@ function onWrapperPointerDown(event: PointerEvent) {
 				<CanvasNodeStatusMark :status="markStatus" />
 			</div>
 			<div
-				v-else-if="isCollapsed && executionStatus === 'issues'"
-				:class="[$style.statusIcons, $style.issues]"
-				data-test-id="canvas-node-group-status-issues"
+				v-else-if="isCollapsed && issueStatus"
+				:class="[$style.statusIcons, $style[issueStatus]]"
+				:data-test-id="`canvas-node-group-status-${issueStatus}`"
 			>
-				<N8nIcon icon="node-validation-error" size="large" />
+				<N8nIcon :icon="ISSUE_ICONS[issueStatus]" size="large" />
 			</div>
 		</div>
 
@@ -715,6 +764,7 @@ function onWrapperPointerDown(event: PointerEvent) {
 
 <style lang="scss" module>
 @use '@n8n/design-system/css/common/var';
+@use '../handles/_canvasHandleStyles.scss' as handleStyles;
 @use '../../../components/elements/nodes/render-types/_canvasNodeStyles.scss' as styles;
 
 .wrapper {
@@ -762,21 +812,23 @@ function onWrapperPointerDown(event: PointerEvent) {
 	}
 }
 
-/* stylelint-disable */
-.wrapper.collapsed.running .titleBar::after,
-.wrapper.collapsed.waiting .titleBar::after {
-	@include styles.status-animated-after;
+.wrapper.emptyGroup .titleBar {
+	background: var(--background--hover);
+	@include styles.canvas-node-border(dashed);
+}
+
+.statusRing {
+	@include styles.status-animated-ring;
 	border-radius: var(--radius--lg);
 }
-.wrapper.collapsed.running .titleBar::after {
+.wrapper.running .statusRing {
 	@include styles.status-running-animation;
 }
-.wrapper.collapsed.waiting .titleBar::after {
+.wrapper.waiting .statusRing {
 	@include styles.status-waiting-animation;
 }
 
 @include styles.status-animation-definitions;
-/* stylelint-enable */
 
 .content {
 	display: flex;
@@ -878,6 +930,18 @@ function onWrapperPointerDown(event: PointerEvent) {
 	white-space: nowrap;
 }
 
+.triggerMark {
+	position: absolute;
+	right: 100%;
+	top: 0;
+	pointer-events: none;
+	display: flex;
+	align-items: center;
+	height: 100%;
+	padding-right: var(--spacing--sm);
+	color: var(--color--primary);
+}
+
 .infoIcon {
 	flex-shrink: 0;
 	color: var(--text-color--subtler);
@@ -893,9 +957,13 @@ function onWrapperPointerDown(event: PointerEvent) {
 	align-items: center;
 }
 
-// Validation issues mirror the single node: red triangle, no status border.
+// Validation statuses have no status border, only the icon colour.
 .issues {
 	color: var(--color--danger);
+}
+
+.setup {
+	color: var(--color--warning);
 }
 
 .toolbar {
@@ -934,6 +1002,12 @@ function onWrapperPointerDown(event: PointerEvent) {
 	z-index: 0;
 }
 
+.wrapper.emptyGroup .frame {
+	background: var(--background--hover);
+	@include styles.canvas-node-border(dashed);
+	border-top: none;
+}
+
 .selectionRing {
 	position: absolute;
 	top: 0;
@@ -947,6 +1021,16 @@ function onWrapperPointerDown(event: PointerEvent) {
 .handle {
 	opacity: 0;
 	pointer-events: none;
+}
+
+:global(.vue-flow__handle).connectableHandle {
+	opacity: 1;
+	pointer-events: all;
+	@include handleStyles.outer-handle;
+
+	> * {
+		pointer-events: none;
+	}
 }
 
 // Floating description shown below a collapsed group on hover or when pinned.
@@ -1016,5 +1100,9 @@ function onWrapperPointerDown(event: PointerEvent) {
 
 .descriptionEmpty {
 	color: var(--text-color--disabled);
+}
+
+.wrapper.emptyGroup .descriptionEmpty {
+	color: var(--text-color--subtler);
 }
 </style>

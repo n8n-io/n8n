@@ -6,6 +6,7 @@ import {
 	type IExecuteFunctions,
 	type INode,
 	type NodeParameterValueType,
+	requestPath,
 } from 'n8n-workflow';
 
 import { versionDescription } from '../../../v2/actions/versionDescription';
@@ -26,7 +27,7 @@ vi.mock('../../../v2/transport', async () => {
 	};
 });
 
-describe('Microsoft Teams V2 — Service Principal runtime guards', () => {
+describe('Microsoft Teams V2, Service Principal runtime guards', () => {
 	let node: MicrosoftTeamsV2;
 	let ctx: MockProxy<IExecuteFunctions>;
 
@@ -58,62 +59,35 @@ describe('Microsoft Teams V2 — Service Principal runtime guards', () => {
 		);
 	};
 
+	// One case per resource: the router throws before it reads `operation`, so every operation
+	// of a hidden resource takes the same path. The `description` is pinned too, so a swapped
+	// entry in the router's guard map fails here.
 	it.each([
-		['create', 'create'],
-		['get', 'get'],
-		['getAll', 'getAll'],
-	])('chatMessage:%s throws a static error and issues no request under SP', async (_label, op) => {
-		selectSp({ resource: 'chatMessage', operation: op, chatId: 'chatID', returnAll: true });
-
-		await expect(node.execute.call(ctx)).rejects.toThrow(
+		[
+			'chat',
+			'Chats are not available with the Service Principal credential',
+			'App-only Microsoft Graph has no signed-in user to read or create chats for. Use an OAuth2 credential for chat actions.',
+		],
+		[
+			'chatMember',
+			'Chat members are not available with the Service Principal credential',
+			'The chat picker cannot list chats app-only. Use an OAuth2 credential for chat actions.',
+		],
+		[
+			'chatMessage',
 			'Chat messages are not available with the Service Principal credential',
-		);
-		expect(transport.microsoftApiRequest).not.toHaveBeenCalled();
-		expect(transport.microsoftApiRequestAllItems).not.toHaveBeenCalled();
-	});
+			'App-only Microsoft Graph has no signed-in user. Use an OAuth2 credential for chat actions.',
+		],
+	])(
+		'%s throws a static error and issues no request under SP',
+		async (resource, message, description) => {
+			selectSp({ resource, operation: 'create' });
 
-	it.each(['add', 'getAll'])(
-		'chatMember:%s throws a static error and issues no request under SP',
-		async (operation) => {
-			selectSp({
-				resource: 'chatMember',
-				operation,
-				chatId: 'chatID',
-				userId: 'e76f456f-5c3f-4f1e-9d5e-4d8f0f6ab111',
-				returnAll: true,
-				options: {},
-			});
-
-			await expect(node.execute.call(ctx)).rejects.toThrow(
-				'Chat members are not available with the Service Principal credential',
-			);
+			await expect(node.execute.call(ctx)).rejects.toMatchObject({ message, description });
 			expect(transport.microsoftApiRequest).not.toHaveBeenCalled();
 			expect(transport.microsoftApiRequestAllItems).not.toHaveBeenCalled();
 			// the guard reads only the `authentication` parameter, never the credential itself
 			expect(ctx.getCredentials).not.toHaveBeenCalled();
-		},
-	);
-
-	it.each([
-		['createOrGet', { externalId: 'order-4711', options: {} }],
-		['deleteMeeting', { meetingId: { __rl: true, mode: 'id', value: 'meeting-id' } }],
-		[
-			'update',
-			{
-				meetingId: { __rl: true, mode: 'id', value: 'meeting-id' },
-				updateFields: { subject: 'Renamed' },
-			},
-		],
-	])(
-		'onlineMeeting:%s throws a static error and issues no request under SP',
-		async (op, params) => {
-			selectSp({ resource: 'onlineMeeting', operation: op, ...params });
-
-			await expect(node.execute.call(ctx)).rejects.toThrow(
-				'This online meeting operation is not available with the Service Principal credential yet',
-			);
-			expect(transport.microsoftApiRequest).not.toHaveBeenCalled();
-			expect(transport.microsoftApiRequestAllItems).not.toHaveBeenCalled();
 		},
 	);
 
@@ -144,6 +118,10 @@ describe('Microsoft Teams V2 — Service Principal runtime guards', () => {
 			contentType: 'text',
 			message: 'hi',
 			options: {},
+			// a mention row, so moving the guard below resolveMentions fires a GET /v1.0/users/...
+			'mentions.mention': [
+				{ userId: { __rl: true, mode: 'id', value: '714c1202-cbac-40ff-9160-53ab5c4df9b8' } },
+			],
 		});
 
 		await expect(node.execute.call(ctx)).rejects.toThrow(
@@ -162,6 +140,10 @@ describe('Microsoft Teams V2 — Service Principal runtime guards', () => {
 			contentType: 'text',
 			message: 'hi',
 			options: {},
+			// a mention row, so moving the guard below resolveMentions fires a GET /v1.0/users/...
+			'mentions.mention': [
+				{ userId: { __rl: true, mode: 'id', value: '714c1202-cbac-40ff-9160-53ab5c4df9b8' } },
+			],
 		});
 
 		await expect(node.execute.call(ctx)).rejects.toThrow(
@@ -191,9 +173,10 @@ describe('Microsoft Teams V2 — Service Principal runtime guards', () => {
 		expect(transport.microsoftApiRequestAllItems).toHaveBeenCalledWith(
 			'value',
 			'GET',
-			'/beta/teams/1111-2222-3333/channels/19:abc@thread.tacv2/messages',
+			requestPath`/beta/teams/1111-2222-3333/channels/19:abc@thread.tacv2/messages`,
 		);
-		const calledPath = (transport.microsoftApiRequestAllItems as Mock).mock.calls[0][2] as string;
+		const calledPath = (transport.microsoftApiRequestAllItems as Mock).mock.calls[0][2]
+			.value as string;
 		expect(calledPath).not.toContain('%3A');
 		// no `/me` user-scope segment (the `me` in `/messages` is not a segment)
 		expect(calledPath).not.toMatch(/\/me(\/|$)/);
@@ -221,10 +204,11 @@ describe('Microsoft Teams V2 — Service Principal runtime guards', () => {
 			expect(transport.microsoftApiRequestAllItems).toHaveBeenCalledWith(
 				'value',
 				'GET',
-				'/v1.0/planner/plans/plan-123/tasks',
+				requestPath`/v1.0/planner/plans/plan-123/tasks`,
 			);
 			// app-only must never hit /me
-			const calledPath = (transport.microsoftApiRequestAllItems as Mock).mock.calls[0][2] as string;
+			const calledPath = (transport.microsoftApiRequestAllItems as Mock).mock.calls[0][2]
+				.value as string;
 			expect(calledPath).not.toContain('/me');
 		});
 
@@ -261,9 +245,9 @@ describe('Microsoft Teams V2 — Service Principal runtime guards', () => {
 
 			expect(transport.microsoftApiRequest).toHaveBeenCalledWith(
 				'GET',
-				'/v1.0/teams/1111-2222-3333/channels/19:abc@thread.tacv2',
+				requestPath`/v1.0/teams/1111-2222-3333/channels/19:abc@thread.tacv2`,
 			);
-			const calledPath = (transport.microsoftApiRequest as Mock).mock.calls[0][1] as string;
+			const calledPath = (transport.microsoftApiRequest as Mock).mock.calls[0][1].value as string;
 			expect(calledPath).not.toContain('%3A');
 			expect(calledPath).not.toContain('%40');
 			expect(calledPath).not.toContain('/me');
@@ -351,7 +335,7 @@ describe('Microsoft Teams V2 — Service Principal runtime guards', () => {
 
 			expect(transport.microsoftApiRequest).toHaveBeenCalledWith(
 				'POST',
-				'/v1.0/planner/tasks',
+				requestPath`/v1.0/planner/tasks`,
 				expect.objectContaining({
 					planId: 'plan-1',
 					bucketId: 'bucket-1',
@@ -407,11 +391,31 @@ describe('Microsoft Teams V2 — Service Principal runtime guards', () => {
 			expect(transport.microsoftApiRequestAllItems).toHaveBeenCalledWith(
 				'value',
 				'GET',
-				'/beta/teams/1111-2222-3333/channels/19:abc@thread.tacv2/messages',
+				requestPath`/beta/teams/1111-2222-3333/channels/19:abc@thread.tacv2/messages`,
 				{},
 				{ $top: 1 },
 				1,
 			);
 		});
+	});
+
+	describe('channelMessage delete actions under SP', () => {
+		it.each(['softDeleteMessage', 'undoSoftDeleteMessage'])(
+			'channelMessage:%s throws a static error and issues no request under SP',
+			async (operation) => {
+				selectSp({
+					resource: 'channelMessage',
+					operation,
+					teamId: 'teamID',
+					channelId: 'channelID',
+					messageId: '1698378560692',
+				});
+
+				await expect(node.execute.call(ctx)).rejects.toThrow(
+					'Deleting and restoring channel messages is not available with the Service Principal credential',
+				);
+				expect(transport.microsoftApiRequest).not.toHaveBeenCalled();
+			},
+		);
 	});
 });
