@@ -8,6 +8,8 @@ import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
 import AgentHeldActionsTray from '../components/chatMode/AgentHeldActionsTray.vue';
 import AgentTestRunEmptyState from '../components/chatMode/AgentTestRunEmptyState.vue';
 import {
+	actionObject,
+	actionOutcome,
 	extractHeldActions,
 	formatCommitTime,
 	isHeldWriteToolCall,
@@ -86,6 +88,20 @@ describe('heldActions helpers', () => {
 	});
 });
 
+describe('actionObject and actionOutcome', () => {
+	it.each([
+		['Send email', 'Gmail', 'email', 'sent'],
+		['Post message', 'Slack', 'message', 'sent'],
+		['Append row', 'Google Sheets', 'row', 'saved'],
+		['Create contact', 'HubSpot', 'contact', 'saved'],
+		['Reply', 'Gmail', 'reply', 'sent'],
+		['Gmail', 'Gmail', 'action', 'saved'],
+	] as const)('%s in %s is a %s that is %s', (actionLabel, appName, object, outcome) => {
+		expect(actionObject({ actionLabel, appName })).toBe(object);
+		expect(actionOutcome({ actionLabel, appName })).toBe(outcome);
+	});
+});
+
 describe('AgentTestRunEmptyState', () => {
 	const renderEmptyState = createComponentRenderer(AgentTestRunEmptyState);
 
@@ -140,6 +156,12 @@ describe('AgentHeldActionsTray', () => {
 			),
 		);
 		expect(getAllByTestId('agent-held-action-preview')).toHaveLength(2);
+		expect(
+			getAllByTestId('agent-held-action-preview-toggle').map((row) => row.textContent),
+		).toEqual([
+			expect.stringContaining('Slack: message'),
+			expect.stringContaining('Linear: issue'),
+		]);
 
 		// Expand first per-app preview
 		const previewToggles = getAllByTestId('agent-held-action-preview-toggle');
@@ -157,7 +179,7 @@ describe('AgentHeldActionsTray', () => {
 		expect(emitted('run-actions')).toEqual([[sampleActions]]);
 	});
 
-	it('updates in place to committed banner and done summary after commit', () => {
+	it('updates in place to the done count and done summary after commit', () => {
 		const committedAt = new Date(2026, 10, 20, 14, 7, 0).toISOString();
 		const { getByTestId, queryByTestId } = renderTray({
 			props: {
@@ -172,12 +194,52 @@ describe('AgentHeldActionsTray', () => {
 			},
 		});
 
-		expect(getByTestId('agent-held-actions-committed-banner')).toHaveTextContent(
-			'2 actions sent to your apps',
-		);
+		expect(getByTestId('agent-held-actions-committed-banner')).toHaveTextContent('2 actions done');
 		expect(getByTestId('agent-held-actions-done-summary')).toHaveTextContent(
 			'Done in your real apps at 14:07.',
 		);
 		expect(queryByTestId('agent-held-actions-run-btn')).not.toBeInTheDocument();
+	});
+	it('says what each action did once it ran, and keeps a failed one as it was', async () => {
+		const { getByTestId, getAllByTestId } = renderTray({
+			props: {
+				actions: sampleActions,
+				committed: {
+					committedAt: new Date(2026, 10, 20, 14, 7, 0).toISOString(),
+					results: [
+						{ actionId: 'call-1', toolName: 'slack__post_message', status: 'done' },
+						{ actionId: 'call-2', toolName: 'linear__create_issue', status: 'failed' },
+					],
+				},
+			},
+		});
+
+		await waitFor(() => expect(getAllByTestId('agent-held-action-preview')).toHaveLength(2));
+		const rows = getAllByTestId('agent-held-action-preview-toggle');
+		expect(rows[0]).toHaveTextContent('Slack: message sent');
+		expect(rows[1]).toHaveTextContent('Linear: issue');
+		expect(rows[1]).not.toHaveTextContent('Linear: issue saved');
+		expect(getByTestId('agent-held-action-failed')).toHaveTextContent('Failed');
+		expect(getByTestId('agent-held-actions-committed-banner')).toHaveTextContent('1 action done');
+	});
+
+	it('shows a saved row for an action that changed data', async () => {
+		const { getAllByTestId } = renderTray({
+			props: {
+				actions: [sampleActions[1]],
+				committed: {
+					committedAt: new Date(2026, 10, 20, 14, 7, 0).toISOString(),
+					results: [
+						{ actionId: 'call-2', toolName: 'linear__create_issue', status: 'already_committed' },
+					],
+				},
+			},
+		});
+
+		await waitFor(() =>
+			expect(getAllByTestId('agent-held-action-preview-toggle')[0]).toHaveTextContent(
+				'Linear: issue saved',
+			),
+		);
 	});
 });

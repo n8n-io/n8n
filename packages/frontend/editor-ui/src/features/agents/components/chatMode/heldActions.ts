@@ -198,6 +198,37 @@ export function extractHeldActions(toolCalls: readonly ToolCall[]): AgentHeldAct
 	});
 }
 
+// Objects that an action sends. Any other object is saved.
+const SENT_OBJECTS: ReadonlySet<string> = new Set([
+	'email',
+	'mail',
+	'message',
+	'reply',
+	'notification',
+	'sms',
+	'dm',
+	'post',
+]);
+const SEND_VERBS: ReadonlySet<string> = new Set(['send', 'post', 'reply', 'forward', 'notify']);
+
+/**
+ * What an action makes or sends, in lower case: `email` for `Send email`, `row` for `Append row`.
+ * An action without a verb and an object, such as a tool named after its app, is an `action`.
+ */
+export function actionObject(action: Pick<AgentHeldAction, 'actionLabel' | 'appName'>): string {
+	const words = action.actionLabel.toLowerCase().split(/\s+/).filter(Boolean);
+	if (words.length === 0 || action.actionLabel === action.appName) return 'action';
+	return words[words.length - 1];
+}
+
+/** Whether a run action was sent (an email, a message) or saved (a row, a contact). */
+export function actionOutcome(
+	action: Pick<AgentHeldAction, 'actionLabel' | 'appName'>,
+): 'sent' | 'saved' {
+	const verb = action.actionLabel.toLowerCase().split(/\s+/)[0] ?? '';
+	return SEND_VERBS.has(verb) || SENT_OBJECTS.has(actionObject(action)) ? 'sent' : 'saved';
+}
+
 /** The app and the target of an action on one line, such as `Gmail · alex@acme.io`. */
 export function formatActionMeta(action: Pick<AgentHeldAction, 'appName' | 'target'>): string {
 	return [action.appName, action.target].filter(Boolean).join(' · ');
