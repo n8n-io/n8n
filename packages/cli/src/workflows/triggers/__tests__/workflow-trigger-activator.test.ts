@@ -1315,7 +1315,6 @@ describe('WorkflowTriggerActivator', () => {
 				mock<PreparedNonWebhookTriggerRegistration>(),
 			);
 			deps.nonWebhookTriggerRegistrar.getTriggerNodeIds.mockReturnValue(['t']);
-			deps.nonWebhookTriggerRegistrar.getRegisteredTriggerNodeIds.mockReturnValue(new Set(['t']));
 
 			const activator = buildActivator({ webhookTriggerRegistrar, ...deps });
 
@@ -1337,6 +1336,7 @@ describe('WorkflowTriggerActivator', () => {
 			workflowData: mock<IWorkflowDb>({ id: 'wf-1', name: 'Test workflow' }),
 			mode: 'trigger' as const,
 			activation: 'update' as const,
+			isCurrentRegistration: () => true,
 		};
 
 		test('tears the node down, saves static data, surfaces the error and runs the error workflow, without starting the node again', async () => {
@@ -1407,7 +1407,7 @@ describe('WorkflowTriggerActivator', () => {
 			expect(passedMode).toBe('trigger');
 		});
 
-		test('reports only, when the failed node is no longer registered', async () => {
+		test('reports only, when the failing registration is no longer current', async () => {
 			const nonWebhookTriggerRegistrar = mock<NonWebhookTriggerRegistrar>();
 			const triggerExecutionContextFactory = mock<TriggerExecutionContextFactory>();
 			const activationErrorsService = mock<ActivationErrorsService>();
@@ -1418,10 +1418,9 @@ describe('WorkflowTriggerActivator', () => {
 				activationErrorsService,
 				errorReporter,
 			});
-			nonWebhookTriggerRegistrar.getRegisteredTriggerNodeIds.mockReturnValue(new Set());
 			errorReporter.warn.mockClear();
 
-			onTriggerFailure(failure);
+			onTriggerFailure({ ...failure, isCurrentRegistration: () => false });
 			await flushPromises();
 
 			expect(errorReporter.warn).toHaveBeenCalledTimes(1);
@@ -1601,16 +1600,17 @@ describe('WorkflowTriggerActivator', () => {
 				nonWebhookTriggerRegistrar,
 				triggerExecutionContextFactory,
 			});
-			const registeredNodeIds = new Set(['t']);
-			nonWebhookTriggerRegistrar.getRegisteredTriggerNodeIds.mockImplementation(
-				() => new Set(registeredNodeIds),
-			);
-			nonWebhookTriggerRegistrar.deregister.mockImplementation(async (_workflowId, nodeId) => {
-				registeredNodeIds.delete(nodeId);
+			let isRegistrationCurrent = true;
+			nonWebhookTriggerRegistrar.deregister.mockImplementation(async () => {
+				isRegistrationCurrent = false;
 			});
+			const sameConnectionFailure = {
+				...failure,
+				isCurrentRegistration: () => isRegistrationCurrent,
+			};
 
-			onTriggerFailure(failure);
-			onTriggerFailure(failure);
+			onTriggerFailure(sameConnectionFailure);
+			onTriggerFailure(sameConnectionFailure);
 			await flushPromises();
 
 			expect(triggerExecutionContextFactory.executeErrorWorkflow).toHaveBeenCalledTimes(1);

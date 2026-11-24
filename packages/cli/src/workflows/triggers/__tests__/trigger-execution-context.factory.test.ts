@@ -604,7 +604,7 @@ describe('TriggerExecutionContextFactory', () => {
 		});
 
 		describe('emitError', () => {
-			test('delegates to the injected onTriggerFailure callback', () => {
+			test('delegates to the injected onTriggerFailure callback with the registration check', () => {
 				const onTriggerFailure =
 					vi.fn<(...args: Parameters<TriggerFailureHandler>) => () => void>();
 				const workflowData = mock<WorkflowEntity>({ id: 'wf-1', name: 'Test Workflow' });
@@ -623,7 +623,15 @@ describe('TriggerExecutionContextFactory', () => {
 					onTriggerFailure,
 					scheduleCollectionSession,
 				);
-				const context = getTriggerFunctions(workflow, node, additionalData, mode, activation);
+				const isCurrentRegistration = () => true;
+				const context = getTriggerFunctions(
+					workflow,
+					node,
+					additionalData,
+					mode,
+					activation,
+					isCurrentRegistration,
+				);
 
 				const error = new Error('Trigger connection failed');
 				context.emitError(error);
@@ -634,6 +642,7 @@ describe('TriggerExecutionContextFactory', () => {
 					workflowData,
 					mode,
 					activation,
+					isCurrentRegistration,
 				});
 			});
 		});

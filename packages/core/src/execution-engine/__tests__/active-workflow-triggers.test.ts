@@ -164,6 +164,7 @@ describe('ActiveWorkflowTriggers', () => {
 					additionalData,
 					mode,
 					activation,
+					expect.any(Function),
 				);
 			});
 
@@ -245,6 +246,7 @@ describe('ActiveWorkflowTriggers', () => {
 					additionalData,
 					mode,
 					activation,
+					expect.any(Function),
 				);
 				expect(scheduledTaskManager.register).toHaveBeenCalled();
 				expect(triggersAndPollers.runPollFunction).toHaveBeenCalledWith(
@@ -1163,6 +1165,7 @@ describe('ActiveWorkflowTriggers', () => {
 				additionalData,
 				mode,
 				activation,
+				expect.any(Function),
 			);
 			expect(activeWorkflowTriggers.isActive(workflowId)).toBe(true);
 		});
@@ -1235,6 +1238,32 @@ describe('ActiveWorkflowTriggers', () => {
 			await addTriggers(['a']);
 
 			expect(activeWorkflowTriggers.get(workflowId)?.get('a')).toBe(secondResponse);
+		});
+
+		it('reports a trigger registration as replaced once its node starts again', async () => {
+			workflow.getTriggerNodes.mockReturnValue([triggerNodeA]);
+			workflow.getPollNodes.mockReturnValue([]);
+			triggersAndPollers.runTriggerFunction.mockResolvedValue({ closeFunction: vi.fn() });
+			await addTriggers(['a']);
+			await addTriggers(['a']);
+
+			const [isFirstCurrent, isSecondCurrent] =
+				triggersAndPollers.runTriggerFunction.mock.calls.map((call) => call[6]);
+
+			expect(isFirstCurrent?.()).toBe(false);
+			expect(isSecondCurrent?.()).toBe(true);
+		});
+
+		it('reports a trigger registration as not current once its node is removed', async () => {
+			workflow.getTriggerNodes.mockReturnValue([triggerNodeA]);
+			workflow.getPollNodes.mockReturnValue([]);
+			triggersAndPollers.runTriggerFunction.mockResolvedValue({ closeFunction: vi.fn() });
+			await addTriggers(['a']);
+			const isCurrent = triggersAndPollers.runTriggerFunction.mock.calls[0][6];
+
+			await activeWorkflowTriggers.removeTriggers(workflowId, new Set(['a']));
+
+			expect(isCurrent?.()).toBe(false);
 		});
 
 		it('shares workflow state across concurrent single-node registrations', async () => {

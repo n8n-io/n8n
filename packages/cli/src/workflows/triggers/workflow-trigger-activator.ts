@@ -890,7 +890,14 @@ export class WorkflowTriggerActivator {
 			executionMode: 'trigger',
 			additionalData,
 			resolveWorkflowData,
-			onTriggerFailure: ({ error, node, workflowData, mode, activation }) => {
+			onTriggerFailure: ({
+				error,
+				node,
+				workflowData,
+				mode,
+				activation,
+				isCurrentRegistration,
+			}) => {
 				void this.recoverFromRuntimeTriggerFailure({
 					error,
 					node,
@@ -898,6 +905,7 @@ export class WorkflowTriggerActivator {
 					workflowData,
 					mode,
 					activation,
+					isCurrentRegistration,
 				});
 			},
 		});
@@ -1016,6 +1024,7 @@ export class WorkflowTriggerActivator {
 		workflowData,
 		mode,
 		activation,
+		isCurrentRegistration,
 	}: {
 		error: Error;
 		node: INode;
@@ -1023,6 +1032,7 @@ export class WorkflowTriggerActivator {
 		workflowData: IWorkflowDb;
 		mode: WorkflowExecuteMode;
 		activation: WorkflowActivateMode;
+		isCurrentRegistration: () => boolean;
 	}): Promise<void> {
 		const workflowId = workflow.id;
 
@@ -1038,7 +1048,8 @@ export class WorkflowTriggerActivator {
 		try {
 			const isTornDown = await this.lifecycleLock.runExclusive({
 				workflowId,
-				fn: async () => await this.tearDownRegisteredTrigger(workflow, node.id),
+				fn: async () =>
+					await this.tearDownCurrentRegistration(workflow, node.id, isCurrentRegistration),
 				// Runtime recovery has no abort context; it waits for the lock however long it takes.
 				signal: new AbortController().signal,
 			});
@@ -1063,16 +1074,15 @@ export class WorkflowTriggerActivator {
 		}
 	}
 
-	/** Whether a teardown of the node started; one that outlives the lock hold is reported and left running. */
-	private async tearDownRegisteredTrigger(
+	/** Whether a teardown of the failing registration started; one that outlives the lock hold is reported and left running. */
+	private async tearDownCurrentRegistration(
 		workflow: Workflow,
 		nodeId: INode['id'],
+		isCurrentRegistration: () => boolean,
 	): Promise<boolean> {
 		const teardownKey = `${workflow.id}:${nodeId}`;
-		const isRegistered = this.nonWebhookTriggerRegistrar
-			.getRegisteredTriggerNodeIds(workflow.id)
-			.has(nodeId);
-		const shouldTearDown = isRegistered && !this.runtimeTeardownsInFlight.has(teardownKey);
+		const shouldTearDown =
+			isCurrentRegistration() && !this.runtimeTeardownsInFlight.has(teardownKey);
 
 		if (shouldTearDown) {
 			this.runtimeTeardownsInFlight.add(teardownKey);

@@ -67,6 +67,8 @@ export type TriggerFailureHandler = (opts: {
 	workflowData: IWorkflowDb;
 	mode: WorkflowExecuteMode;
 	activation: WorkflowActivateMode;
+	/** Whether the registration whose trigger failed is still the current one of the node. */
+	isCurrentRegistration: () => boolean;
 }) => void;
 
 /** A poll run by a claimed occurrence: the fence of its writes, and the timeout of the occurrence. */
@@ -207,7 +209,14 @@ export class TriggerExecutionContextFactory {
 		// attempt collected, never a concurrent attempt's.
 		scheduleCollectionSession: ScheduleTriggerCollectionSession,
 	): IGetExecuteTriggerFunctions {
-		return (workflow: Workflow, node: INode) => {
+		return (
+			workflow: Workflow,
+			node: INode,
+			_additionalData,
+			_mode,
+			_activation,
+			isCurrentRegistration = () => false,
+		) => {
 			const emit = (
 				data: INodeExecutionData[][],
 				responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
@@ -280,7 +289,7 @@ export class TriggerExecutionContextFactory {
 			};
 
 			const emitError = (error: Error): void => {
-				onTriggerFailure({ error, node, workflowData, mode, activation });
+				onTriggerFailure({ error, node, workflowData, mode, activation, isCurrentRegistration });
 			};
 
 			const saveFailedExecution = (error: ExecutionError) => {

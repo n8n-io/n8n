@@ -222,6 +222,13 @@ export class ActiveWorkflowTriggers {
 					triggers.delete(triggerNode.id);
 				}
 
+				// False until this start records its registration, and again once another start or a removal replaces it.
+				let token: TriggerRegistrationToken | undefined;
+				const isCurrentRegistration = () =>
+					token !== undefined &&
+					(this.activeTriggersByWorkflowId.get(workflowId)?.isCurrent(triggerNode.id, token) ??
+						false);
+
 				const triggerResponse = await this.triggersAndPollers.runTriggerFunction(
 					workflow,
 					triggerNode,
@@ -229,16 +236,17 @@ export class ActiveWorkflowTriggers {
 					additionalData,
 					mode,
 					activation,
+					isCurrentRegistration,
 				);
 				if (triggerResponse !== undefined) {
-					triggers.addTriggerResponse(triggerNode.id, triggerResponse);
+					token = triggers.addTriggerResponse(triggerNode.id, triggerResponse);
 					registeredNodeIds.add(triggerNode.id);
 
 					this.logTriggerActivation(workflow, triggerNode);
 				} else if (
 					this.scheduledTaskManager.hasTarget(workflowScheduleGroup(workflowId), triggerNode.id)
 				) {
-					triggers.addScheduledTrigger(triggerNode.id);
+					token = triggers.addScheduledTrigger(triggerNode.id);
 					registeredNodeIds.add(triggerNode.id);
 
 					this.logTriggerActivation(workflow, triggerNode);
