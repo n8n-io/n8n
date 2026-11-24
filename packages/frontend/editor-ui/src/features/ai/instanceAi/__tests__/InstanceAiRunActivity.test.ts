@@ -2,13 +2,13 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import type { InstanceAiAgentNode, InstanceAiMessage } from '@n8n/api-types';
 import { createThreadComponentRenderer } from './createThreadComponentRenderer';
-import InstanceAiStatusBar from '../components/InstanceAiStatusBar.vue';
+import InstanceAiRunActivity from '../components/InstanceAiRunActivity.vue';
 import type { ThreadRuntime } from '../instanceAi.store';
 import { ThinkingWordKey } from '../composables/useThinkingWords';
 import { ref } from 'vue';
 
 let thread: ThreadRuntime;
-const renderComponent = createThreadComponentRenderer(InstanceAiStatusBar, {}, () => thread);
+const renderComponent = createThreadComponentRenderer(InstanceAiRunActivity, {}, () => thread);
 
 function makeAgentNode(overrides: Partial<InstanceAiAgentNode> = {}): InstanceAiAgentNode {
 	return {
@@ -47,7 +47,7 @@ function messageWithActiveBuilder(builder: Partial<InstanceAiAgentNode>): Instan
 	};
 }
 
-describe('InstanceAiStatusBar', () => {
+describe('InstanceAiRunActivity', () => {
 	beforeEach(() => {
 		createTestingPinia();
 	});
@@ -65,17 +65,17 @@ describe('InstanceAiStatusBar', () => {
 	it('labels the bar with the active builder title', () => {
 		const { getByTestId } = renderWith({ title: 'Building workflow' });
 
-		expect(getByTestId('instance-ai-status-bar')).toHaveTextContent('Building workflow');
+		expect(getByTestId('instance-ai-run-activity')).toHaveTextContent('Building workflow');
 	});
 
 	it('falls back to the role label when the title is blank', () => {
 		const { getByTestId } = renderWith({ title: '' });
 
-		expect(getByTestId('instance-ai-status-bar')).toHaveTextContent('Building workflow');
+		expect(getByTestId('instance-ai-run-activity')).toHaveTextContent('Building workflow');
 	});
 });
 
-describe('InstanceAiStatusBar, thinking word', () => {
+describe('InstanceAiRunActivity, thinking word', () => {
 	beforeEach(() => {
 		createTestingPinia();
 	});
@@ -95,8 +95,8 @@ describe('InstanceAiStatusBar, thinking word', () => {
 	it('shows the thinking word of the thread instead of "Thinking"', () => {
 		const { getByTestId } = renderStreaming([]);
 
-		expect(getByTestId('instance-ai-status-bar')).toHaveTextContent('Joining the dots');
-		expect(getByTestId('instance-ai-status-bar')).not.toHaveTextContent('Thinking');
+		expect(getByTestId('instance-ai-run-activity')).toHaveTextContent('Joining the dots');
+		expect(getByTestId('instance-ai-run-activity')).not.toHaveTextContent('Thinking');
 	});
 
 	it('shows the active builder instead of the thinking word', () => {
@@ -104,7 +104,7 @@ describe('InstanceAiStatusBar, thinking word', () => {
 			messageWithActiveBuilder({ title: 'Building workflow' }),
 		]);
 
-		expect(getByTestId('instance-ai-status-bar')).toHaveTextContent('Building workflow');
-		expect(getByTestId('instance-ai-status-bar')).not.toHaveTextContent('Joining the dots');
+		expect(getByTestId('instance-ai-run-activity')).toHaveTextContent('Building workflow');
+		expect(getByTestId('instance-ai-run-activity')).not.toHaveTextContent('Joining the dots');
 	});
 });

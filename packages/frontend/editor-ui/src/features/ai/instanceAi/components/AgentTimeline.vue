@@ -29,9 +29,9 @@ import InstanceAiAppBlueprint from './InstanceAiAppBlueprint.vue';
 import InstanceAiMcpConnect from './InstanceAiMcpConnect.vue';
 import PreferenceCard from './PreferenceCard.vue';
 import TaskChecklist from './TaskChecklist.vue';
-import TimelineActivityIndicator from './TimelineActivityIndicator.vue';
 import TimelineTextSegment from './TimelineTextSegment.vue';
 import { AiActivityTrace } from '../../shared/components/AiActivityTrace';
+import AiTypingIndicator from '../../shared/components/AiTypingIndicator.vue';
 import { useInstanceAiActivityItems } from '../composables/useInstanceAiActivityItems';
 
 const thread = useThread();
@@ -96,20 +96,6 @@ const childrenById = computed(() => {
 		map[child.agentId] = child;
 	}
 	return map;
-});
-
-/**
- * Changes whenever the run visibly advances: a new run, a new timeline entry,
- * or the tail entry growing. Drives the activity indicator's clock — an
- * entry-derived key can't, because the tail entry's identity is stable while
- * its content streams.
- */
-const progressToken = computed(() => {
-	const entries = timelineEntries.value;
-	const tail = entries.at(-1);
-	const tailSize =
-		tail && (tail.type === 'text' || tail.type === 'reasoning') ? tail.content.length : 0;
-	return `${thread.activeRunId}:${entries.length}:${tailSize}`;
 });
 
 const renderBlocks = computed(() =>
@@ -332,9 +318,9 @@ function resolveAppBlueprint(tc: InstanceAiToolCallState): AppBlueprint | undefi
 					/>
 
 					<!-- The run is live but a committed answer settled the block behind it -->
-					<TimelineActivityIndicator
+					<AiTypingIndicator
 						v-else-if="block.type === 'activity' && !thread.isAwaitingConfirmation"
-						:progress-token="progressToken"
+						:class="$style.typingIndicator"
 					/>
 
 					<!-- Child agent — flat section -->
@@ -348,6 +334,10 @@ function resolveAppBlueprint(tc: InstanceAiToolCallState): AppBlueprint | undefi
 </template>
 
 <style lang="scss" module>
+.typingIndicator {
+	margin-top: var(--spacing--xs);
+}
+
 .timeline {
 	/** Keep the activity rail extension equal to the gap between blocks. */
 	--n8n-ai-activity-step--gap: var(--spacing--2xs);

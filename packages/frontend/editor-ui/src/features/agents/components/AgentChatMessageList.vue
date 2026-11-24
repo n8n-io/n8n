@@ -54,7 +54,7 @@ import AgentChatActivity from './AgentChatActivity.vue';
 import AgentChatRetryError from './AgentChatRetryError.vue';
 import AgentMarkdownChunk from './AgentMarkdownChunk.vue';
 import AgentChatTaskSummary from './AgentChatTaskSummary.vue';
-import AgentTypingIndicator from './AgentTypingIndicator.vue';
+import AiTypingIndicator from '@/features/ai/shared/components/AiTypingIndicator.vue';
 import AgentBudgetNoticeCard from './AgentBudgetNoticeCard.vue';
 import InteractiveCard from './interactive/InteractiveCard.vue';
 import type { AgentFixWithAssistantFailure, AgentSendToAssistantEvent } from '../types';
@@ -783,13 +783,11 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 						v-else-if="group.finalMessage?.content"
 						:class="{ [$style.chatMessageError]: group.finalMessage.status === 'error' }"
 					>
-						<div :class="$style.markdownContent">
-							<AgentMarkdownChunk
-								:source="group.finalMessage.content"
-								:can-open-build="standaloneBuilder && canSendToAssistant"
-								@open-build="onBuildLink($event, group.finalMessage)"
-							/>
-						</div>
+						<AgentMarkdownChunk
+							:source="group.finalMessage.content"
+							:can-open-build="standaloneBuilder && canSendToAssistant"
+							@open-build="onBuildLink($event, group.finalMessage)"
+						/>
 					</div>
 					<AgentBudgetNoticeCard
 						v-for="notice in group.budgetNotices"
@@ -822,7 +820,7 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 							</AgentChatMessageActions>
 						</div>
 					</template>
-					<AgentTypingIndicator
+					<AiTypingIndicator
 						v-if="
 							group.id === streamingGroupId &&
 							!taskSummaryGroupIds.has(group.id) &&
@@ -942,7 +940,7 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 								group.message.status !== CHAT_MESSAGE_STATUS.STREAMING
 							"
 						>
-							<div :class="[$style.chatMessage, $style.markdownContent, $style.stopReplyText]">
+							<div :class="[$style.chatMessage, , $style.stopReplyText]">
 								<AgentMarkdownChunk
 									v-if="group.message.content.trim()"
 									:source="group.message.content"
@@ -983,13 +981,11 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 								v-if="item.type === 'text'"
 								:class="{ [$style.chatMessageError]: group.message.status === 'error' }"
 							>
-								<div :class="$style.markdownContent">
-									<AgentMarkdownChunk
-										:source="item.text"
-										:can-open-build="standaloneBuilder && canSendToAssistant"
-										@open-build="onBuildLink($event, group.message)"
-									/>
-								</div>
+								<AgentMarkdownChunk
+									:source="item.text"
+									:can-open-build="standaloneBuilder && canSendToAssistant"
+									@open-build="onBuildLink($event, group.message)"
+								/>
 							</div>
 							<div v-else :class="$style.interactives">
 								<InteractiveCard
@@ -1069,7 +1065,7 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 							/>
 						</div>
 					</template>
-					<AgentTypingIndicator
+					<AiTypingIndicator
 						v-if="
 							group.message.role === CHAT_MESSAGE_ROLE.ASSISTANT &&
 							!taskSummaryGroupIds.has(group.id) &&
@@ -1092,7 +1088,7 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 			:class="$style.message"
 		>
 			<div :class="$style.content">
-				<AgentTypingIndicator :class="$style.typingIndicator" />
+				<AiTypingIndicator :class="$style.typingIndicator" />
 			</div>
 		</div>
 		<div v-if="$slots.status" :class="$style.message">

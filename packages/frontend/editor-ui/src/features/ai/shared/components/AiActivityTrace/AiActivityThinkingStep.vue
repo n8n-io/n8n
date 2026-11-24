@@ -71,6 +71,8 @@ const hasContent = computed(() => visibleSegments.value.length > 0 || Boolean(sl
 </template>
 
 <style module lang="scss">
+@use '@n8n/design-system/css/mixins/mixins' as mixins;
+
 .panel {
 	display: flex;
 	flex-direction: column;
@@ -78,19 +80,20 @@ const hasContent = computed(() => visibleSegments.value.length > 0 || Boolean(sl
 	max-width: 90%;
 	min-width: 0;
 	max-height: 240px;
-	margin: var(--spacing--3xs) 0 var(--spacing--2xs) var(--spacing--xs);
-	padding-left: var(--spacing--2xs);
-	border-left: var(--border);
+	margin-block: var(--spacing--3xs);
+	margin-inline-start: var(--spacing--4xs);
+	padding-inline-start: var(--spacing--2xs);
+	border-inline-start: var(--border);
 	overflow-x: hidden;
 	overflow-y: auto;
-	scrollbar-width: thin;
-	scrollbar-color: light-dark(var(--color--neutral-300), var(--color--neutral-700)) transparent;
+	padding-block-end: var(--spacing--2xs);
+	@include mixins.scroll-bar;
+	@include mixins.scroll-mask(bottom, var(--spacing--2xs));
 }
 
 .segment {
 	--n8n-markdown--font-size--base: var(--font-size--sm);
-
-	color: var(--color--text--tint-1);
+	--n8n-markdown--color: var(--text-color--subtler);
 	overflow-wrap: anywhere;
 	word-break: break-word;
 }

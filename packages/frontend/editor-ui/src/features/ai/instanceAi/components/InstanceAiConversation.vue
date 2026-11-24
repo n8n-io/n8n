@@ -80,7 +80,7 @@ import InstanceAiMessage from './InstanceAiMessage.vue';
 import InstanceAiInput from './InstanceAiInput.vue';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
 import AttachmentPreview from './AttachmentPreview.vue';
-import InstanceAiStatusBar from './InstanceAiStatusBar.vue';
+import InstanceAiRunActivity from './InstanceAiRunActivity.vue';
 import InstanceAiConfirmationPanel from './InstanceAiConfirmationPanel.vue';
 import WorkflowBuilderUnavailableNotice from './WorkflowBuilderUnavailableNotice.vue';
 import LimitedModeNotice from './LimitedModeNotice.vue';
@@ -1005,7 +1005,7 @@ defineExpose({
 						 conversation flow — below any pending questions/confirmations
 						 and not pinned above the input — so it trails the active
 						 content and scrolls away when reading back. -->
-				<InstanceAiStatusBar />
+				<InstanceAiRunActivity />
 			</div>
 
 			<!-- Extra scroll space for a host panel that overlays the messages above the input. -->

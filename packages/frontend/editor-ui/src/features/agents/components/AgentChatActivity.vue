@@ -153,10 +153,6 @@ function emitFixWithAssistant() {
 </template>
 
 <style module>
-.activity {
-	margin: 0 0 var(--spacing--sm);
-}
-
 .fixCallout {
 	flex-wrap: wrap;
 	gap: var(--spacing--2xs);

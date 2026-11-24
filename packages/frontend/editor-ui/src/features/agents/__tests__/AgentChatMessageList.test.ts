@@ -262,7 +262,7 @@ describe('AgentChatMessageList', () => {
 		expect(summary().get('[role="status"]').text()).toBe('agents.chat.tasks.summary.preparing');
 		expect(summary().get('a').attributes('href')).toBe('/trace');
 		expect(wrapper.find('[data-testid="agent-chat-background-job-signal"]').exists()).toBe(false);
-		expect(wrapper.findComponent({ name: 'AgentTypingIndicator' }).exists()).toBe(false);
+		expect(wrapper.findComponent({ name: 'AiTypingIndicator' }).exists()).toBe(false);
 
 		await wrapper.setProps({ messages: [{ ...message, content: 'Found 12 unresolved threads.' }] });
 
@@ -358,7 +358,7 @@ describe('AgentChatMessageList', () => {
 			'agents.chat.tasks.summary.preparing',
 		);
 		expect(wrapper.find('a[href="/trace"]').exists()).toBe(true);
-		expect(wrapper.findComponent({ name: 'AgentTypingIndicator' }).exists()).toBe(false);
+		expect(wrapper.findComponent({ name: 'AiTypingIndicator' }).exists()).toBe(false);
 
 		wrapper.unmount();
 	});
@@ -486,7 +486,7 @@ describe('AgentChatMessageList', () => {
 		expect(wrapper.get('[data-testid="agent-chat-stop-reply"]').text()).toContain(
 			'agents.chat.tasks.inline.reportFailed',
 		);
-		expect(wrapper.findComponent({ name: 'AgentTypingIndicator' }).exists()).toBe(false);
+		expect(wrapper.findComponent({ name: 'AiTypingIndicator' }).exists()).toBe(false);
 		expect(wrapper.find('a').exists()).toBe(false);
 
 		wrapper.unmount();
@@ -689,7 +689,7 @@ describe('AgentChatMessageList', () => {
 		expect(wrapper.emitted('increase-budget')).toEqual([
 			[{ field: 'sessionCostCapUsd', amount: 10 }],
 		]);
-		expect(wrapper.find('[data-test-id="agent-typing-indicator"]').exists()).toBe(false);
+		expect(wrapper.find('[data-test-id="ai-typing-indicator"]').exists()).toBe(false);
 		wrapper.unmount();
 	});
 
@@ -709,16 +709,16 @@ describe('AgentChatMessageList', () => {
 			const wrapper = mount(AgentChatMessageList, {
 				props: { messages: [previous, progress], messagingState: 'receiving' },
 			});
-			expect(wrapper.findAll('[data-test-id="agent-typing-indicator"]')).toHaveLength(1);
+			expect(wrapper.findAll('[data-test-id="ai-typing-indicator"]')).toHaveLength(1);
 
 			const finalMessage: ChatMessage = { id: 'final', role: 'assistant', content: '', status };
 			await wrapper.setProps({ messages: [previous, progress, finalMessage] });
-			expect(wrapper.find('[data-test-id="agent-typing-indicator"]').exists()).toBe(false);
+			expect(wrapper.find('[data-test-id="ai-typing-indicator"]').exists()).toBe(false);
 
 			await wrapper.setProps({
 				messages: [previous, progress, { ...finalMessage, status: 'streaming' }],
 			});
-			expect(wrapper.findAll('[data-test-id="agent-typing-indicator"]')).toHaveLength(1);
+			expect(wrapper.findAll('[data-test-id="ai-typing-indicator"]')).toHaveLength(1);
 
 			await wrapper.setProps({
 				messages: [
@@ -727,7 +727,7 @@ describe('AgentChatMessageList', () => {
 					{ ...finalMessage, status: 'streaming', content: 'Found candidates.' },
 				],
 			});
-			expect(wrapper.find('[data-test-id="agent-typing-indicator"]').exists()).toBe(false);
+			expect(wrapper.find('[data-test-id="ai-typing-indicator"]').exists()).toBe(false);
 			wrapper.unmount();
 		},
 	);
@@ -754,7 +754,7 @@ describe('AgentChatMessageList', () => {
 				.findAllComponents({ name: 'AgentChatActivity' })
 				.flatMap((steps) => steps.props('toolCalls') as ToolCall[]);
 		expect(calls().map((call) => call.tool)).toEqual(['create_plan']);
-		expect(wrapper.find('[data-test-id="agent-typing-indicator"]').exists()).toBe(true);
+		expect(wrapper.find('[data-test-id="ai-typing-indicator"]').exists()).toBe(true);
 		const completed: ChatMessage = {
 			...pending,
 			status: 'success',
@@ -764,7 +764,7 @@ describe('AgentChatMessageList', () => {
 		};
 		await wrapper.setProps({ messages: [previous, completed], messagingState: 'idle' });
 		expect(calls().map((call) => call.tool)).toEqual(['create_plan']);
-		expect(wrapper.find('[data-test-id="agent-typing-indicator"]').exists()).toBe(false);
+		expect(wrapper.find('[data-test-id="ai-typing-indicator"]').exists()).toBe(false);
 		expect(wrapper.findAll('[data-testid="markdown-chunk"]')).toHaveLength(1);
 		await wrapper.setProps({
 			messages: [previous, { ...completed, content: 'Found candidates.' }],
@@ -1013,7 +1013,7 @@ describe('AgentChatMessageList', () => {
 		expect(wrapper.find('[data-test-id="shared-reasoning-block"]').text()).toBe(
 			'Inspect the request. Then answer.',
 		);
-		expect(wrapper.find('[data-test-id="agent-typing-indicator"]').exists()).toBe(false);
+		expect(wrapper.find('[data-test-id="ai-typing-indicator"]').exists()).toBe(false);
 	});
 
 	describe('thinking label', () => {

@@ -1,8 +1,7 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import { createThreadComponentRenderer } from './createThreadComponentRenderer';
 import AgentTimeline from '../components/AgentTimeline.vue';
-import { ACTIVITY_INDICATOR_DELAY_MS } from '../agentTimeline.utils';
 import type { InstanceAiAgentNode } from '@n8n/api-types';
 
 const renderComponent = createThreadComponentRenderer(AgentTimeline, {
@@ -18,66 +17,34 @@ const PLAN = 'I found your new BigQuery credential and got the Supabase node def
 	4,
 );
 
-function agentNode(text: string): InstanceAiAgentNode {
+function agentNode(status: 'active' | 'completed'): InstanceAiAgentNode {
 	return {
 		agentId: 'a1',
-		status: 'active',
+		status,
 		toolCalls: [],
 		children: [],
 		timeline: [
 			{ type: 'reasoning', responseId: 'r1', content: 'Checking the credential type.' },
-			{ type: 'text', responseId: 'r1', content: text },
+			{ type: 'text', responseId: 'r1', content: PLAN },
 		],
 	} as unknown as InstanceAiAgentNode;
-}
-
-function indicatorText(container: Element): string | undefined {
-	return container
-		.querySelector('[data-test-id="timeline-activity-indicator"]')
-		?.textContent?.replace(/\s+/g, ' ')
-		.trim();
 }
 
 describe('AgentTimeline activity indicator', () => {
 	beforeEach(() => {
 		createTestingPinia({ stubActions: false });
-		vi.useFakeTimers();
 	});
 
-	afterEach(() => {
-		vi.useRealTimers();
+	it('shows typing dots when a committed answer settles the block mid-run', () => {
+		/** INS-1224: the transcript claimed done while the composer stayed on stop. */
+		const { container } = renderComponent({ props: { agentNode: agentNode('active') } });
+
+		expect(container.querySelector('[data-test-id="ai-typing-indicator"]')).toBeTruthy();
 	});
 
-	it('surfaces a counting indicator when a committed answer settles the block mid-run', async () => {
-		// INS-1224: the transcript claimed done while the composer stayed on stop.
-		const { container } = renderComponent({ props: { agentNode: agentNode(PLAN) } });
+	it('hides typing dots when the run is complete', () => {
+		const { container } = renderComponent({ props: { agentNode: agentNode('completed') } });
 
-		await vi.advanceTimersByTimeAsync(ACTIVITY_INDICATOR_DELAY_MS + 4_000);
-		expect(indicatorText(container)).toBe('Thinking · 9s');
-	});
-
-	it('stays hidden while the run is only briefly quiet', async () => {
-		// A run wrapping up after its last token would otherwise put "Thinking"
-		// under every answer longer than the narration cap.
-		const { container } = renderComponent({ props: { agentNode: agentNode(PLAN) } });
-
-		await vi.advanceTimersByTimeAsync(ACTIVITY_INDICATOR_DELAY_MS - 1_000);
-		expect(indicatorText(container)).toBeUndefined();
-	});
-
-	it('restarts the clock while text is still streaming into the tail entry', async () => {
-		// Guards the progressToken wiring: the tail entry's identity never changes
-		// as it grows, so without it the stall would be overstated by however long
-		// the answer took to write.
-		const { container, rerender } = renderComponent({ props: { agentNode: agentNode(PLAN) } });
-
-		await vi.advanceTimersByTimeAsync(ACTIVITY_INDICATOR_DELAY_MS + 4_000);
-		expect(indicatorText(container)).toBe('Thinking · 9s');
-
-		await rerender({ agentNode: agentNode(`${PLAN} My plan for Code-node elimination:`) });
-		expect(indicatorText(container)).toBeUndefined();
-
-		await vi.advanceTimersByTimeAsync(ACTIVITY_INDICATOR_DELAY_MS);
-		expect(indicatorText(container)).toBe('Thinking · 5s');
+		expect(container.querySelector('[data-test-id="ai-typing-indicator"]')).toBeNull();
 	});
 });

@@ -3060,7 +3060,7 @@ describe('InstanceAiThreadView', () => {
 			expect(queryByTestId('instance-ai-workflow-draft-preview-stub')).toBeNull();
 		});
 
-		it('shows a thinking word of the thread in the status bar', async () => {
+		it('shows a thinking word of the thread in the run activity row', async () => {
 			mockedStore(usePostHog).getVariant.mockImplementation((name) =>
 				name === INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.name ? 'variant' : undefined,
 			);
@@ -3071,11 +3071,11 @@ describe('InstanceAiThreadView', () => {
 
 			thread.isStreaming = true;
 
-			const bar = await findByTestId('instance-ai-status-bar');
+			const bar = await findByTestId('instance-ai-run-activity');
 			expect(bar).toHaveTextContent('Tracing the connections');
 		});
 
-		it('shows "Thinking" in the status bar in the control arm', async () => {
+		it('shows "Thinking" in the run activity row in the control arm', async () => {
 			mockedStore(usePostHog).getVariant.mockImplementation((name) =>
 				name === INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.name ? 'control' : undefined,
 			);
@@ -3085,7 +3085,7 @@ describe('InstanceAiThreadView', () => {
 
 			thread.isStreaming = true;
 
-			const bar = await findByTestId('instance-ai-status-bar');
+			const bar = await findByTestId('instance-ai-run-activity');
 			expect(bar).toHaveTextContent('Thinking');
 			expect(bar).not.toHaveTextContent('Tracing the connections');
 		});

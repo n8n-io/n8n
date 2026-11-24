@@ -1,8 +1,9 @@
 <script lang="ts" setup>
+import { N8nAiActivityStep } from '@n8n/design-system';
 import { ref, computed, watch, onUnmounted } from 'vue';
 import type { InstanceAiMessage, InstanceAiTimelineEntry } from '@n8n/api-types';
 import { useThread } from '../instanceAi.store';
-import { collectActiveBuilderAgents } from '../builderAgents';
+import { collectActiveBuilderAgents, isAwaitingFirstOutput } from '../builderAgents';
 import { useSteadyRunActivity } from '../composables/useRunActivity';
 
 const thread = useThread();
@@ -39,10 +40,12 @@ function hasActiveThinkingTrace(messages: InstanceAiMessage[]): boolean {
 // Hidden while a confirmation is pending — the thinking-block header reads
 // "Waiting for your input" then, and the pending card itself is the prompt —
 // and while an active thinking block is the live activity surface.
+// The typing dots of the message cover the wait for its first output.
 const isVisible = computed(
 	() =>
 		!thread.isAwaitingConfirmation &&
 		!hasActiveThinkingTrace(thread.messages) &&
+		!thread.messages.some(isAwaitingFirstOutput) &&
 		(thread.isStreaming || collectActiveBuilderAgents(thread.messages).length > 0),
 );
 
@@ -75,64 +78,30 @@ onUnmounted(() => {
 		clearInterval(timer);
 	}
 });
+
+const label = computed(() => {
+	const current = activity.value;
+	if (!current) return '';
+	return current.detail ? `${current.label} · ${current.detail}` : current.label;
+});
 </script>
 
 <template>
-	<Transition name="status-bar">
-		<div v-if="isVisible && activity" :class="$style.bar" data-test-id="instance-ai-status-bar">
-			<span :class="$style.label">{{ activity.label }}</span>
-			<span v-if="activity.detail">&middot;</span>
-			<span v-if="activity.detail">{{ activity.detail }}</span>
-			<span>&middot;</span>
-			<span :class="$style.elapsed">{{ formattedElapsed }}</span>
-		</div>
-	</Transition>
+	<div v-if="isVisible && activity" :class="$style.row">
+		<N8nAiActivityStep
+			:label="label"
+			:meta="elapsed >= 1 ? formattedElapsed : undefined"
+			:loading="!activity.waiting"
+			:has-content="false"
+			data-test-id="instance-ai-run-activity"
+		/>
+	</div>
 </template>
 
 <style lang="scss" module>
-@use '@n8n/design-system/css/mixins/motion';
-
-/* Styled to match the thinking block's subline — the bar hands off to it
- * once trace content arrives, so the two must read as the same element. */
-.bar {
-	display: flex;
-	align-items: baseline;
-	gap: var(--spacing--4xs);
-	padding: var(--spacing--4xs) var(--spacing--2xs) var(--spacing--2xs) 0;
-	font-size: var(--font-size--sm);
-	line-height: var(--line-height--lg);
-	color: var(--text-color--subtler);
-	pointer-events: none;
-}
-
-.label {
-	--animation--shimmer--duration: 1.5s;
-	--animation--shimmer--background: color-mix(
-		in srgb,
-		var(--text-color--subtler) 30%,
-		var(--background--subtle) 70%
-	);
-	--animation--shimmer--foreground: var(--text-color--subtler);
-	@include motion.shimmer;
-}
-
-.elapsed {
-	font-variant-numeric: tabular-nums;
-}
-</style>
-
-<style lang="scss">
-.status-bar-enter-from,
-.status-bar-leave-to {
-	opacity: 0;
-	transform: translateY(-4px);
-}
-
-.status-bar-enter-active {
-	transition: all 0.2s ease-out;
-}
-
-.status-bar-leave-active {
-	transition: all 0.15s ease-in;
+/** Matches the inline padding of assistant content, so the row lines up with the trace. */
+.row {
+	padding-inline: var(--spacing--sm);
+	padding-block-end: var(--spacing--lg);
 }
 </style>
