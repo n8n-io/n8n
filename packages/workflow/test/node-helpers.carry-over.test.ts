@@ -419,7 +419,9 @@ describe('carryOverNodeParameters', () => {
 			const value = ['literal', '={{ $json.value }}'];
 
 			expect(names(carry(node(1, { tags: value }), tags(false), tags(true), 1))).toEqual(['tags']);
-			expect(carry(node(1, { tags: value }), tags(true), tags(false), 1).setAside).toEqual([]);
+			const kept = carry(node(1, { tags: value }), tags(true), tags(false), 1);
+			expect(kept.setAside).toEqual([]);
+			expect(kept.parameters).toEqual({ tags: value });
 		});
 
 		it('should set aside a dependent value with the expression', () => {
