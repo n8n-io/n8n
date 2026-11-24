@@ -9,6 +9,7 @@ import { BadRequestError, ConflictError, NotFoundError, UserError } from '@n8n/e
 import type { AgentConfigService } from '@/modules/agents/agent-config.service';
 import type { AgentCustomToolsService } from '@/modules/agents/agent-custom-tools.service';
 import type { AgentDefaultModelResolverService } from '@/modules/agents/agent-default-model-resolver.service';
+import type { AgentPublishService } from '@/modules/agents/agent-publish.service';
 import { toAgentPublicDto, type AgentResponseMapper } from '@/modules/agents/agent-response.mapper';
 import type { AgentsService, DeletedAgentSnapshot } from '@/modules/agents/agents.service';
 
@@ -20,12 +21,14 @@ describe('AgentsPublicController route metadata', () => {
 	);
 	const routes = new Map(metadata.routes);
 
-	it('registers the create, read, list, update, and delete routes', () => {
+	it('registers the agent routes', () => {
 		expect([...routes.keys()].sort()).toEqual([
 			'createAgent',
 			'deleteAgent',
 			'getAgent',
 			'listAgents',
+			'publishAgent',
+			'unpublishAgent',
 			'updateAgent',
 		]);
 	});
@@ -102,6 +105,37 @@ describe('AgentsPublicController route metadata', () => {
 		expect(route?.errorResponses?.some((response) => response.status === 404)).toBe(true);
 		expect(route?.errorResponses?.some((response) => response.status === 409)).toBe(true);
 	});
+
+	it('publishAgent requires the agent:publish API key scope and project RBAC check', () => {
+		expect(routes.get('publishAgent')?.apiKeyScope).toBe('agent:publish');
+		expect(routes.get('publishAgent')?.accessScope).toEqual({
+			scope: 'agent:publish',
+			globalOnly: false,
+		});
+	});
+
+	it('publishAgent answers 200 and declares not-found and unprocessable responses', () => {
+		const route = routes.get('publishAgent');
+		expect(route?.successStatus).toBe(200);
+		expect(route?.responseDto).toBeDefined();
+		expect(route?.errorResponses?.some((response) => response.status === 404)).toBe(true);
+		expect(route?.errorResponses?.some((response) => response.status === 422)).toBe(true);
+	});
+
+	it('unpublishAgent requires the agent:unpublish API key scope and project RBAC check', () => {
+		expect(routes.get('unpublishAgent')?.apiKeyScope).toBe('agent:unpublish');
+		expect(routes.get('unpublishAgent')?.accessScope).toEqual({
+			scope: 'agent:unpublish',
+			globalOnly: false,
+		});
+	});
+
+	it('unpublishAgent answers 200 and declares the not-found response', () => {
+		const route = routes.get('unpublishAgent');
+		expect(route?.successStatus).toBe(200);
+		expect(route?.responseDto).toBeDefined();
+		expect(route?.errorResponses?.some((response) => response.status === 404)).toBe(true);
+	});
 });
 
 const fullAgentDto = {
@@ -140,6 +174,7 @@ describe('AgentsPublicController createAgent', () => {
 		agentDefaultModelResolverService,
 		agentCustomToolsService,
 		mock<AgentConfigService>(),
+		mock<AgentPublishService>(),
 	);
 	const req = mock<AuthenticatedRequest>();
 	const res = mock<Response>();
@@ -279,6 +314,7 @@ describe('AgentsPublicController getAgent', () => {
 		mock<AgentDefaultModelResolverService>(),
 		mock<AgentCustomToolsService>(),
 		mock<AgentConfigService>(),
+		mock<AgentPublishService>(),
 	);
 	const req = mock<AuthenticatedRequest>();
 	const res = mock<Response>();
@@ -333,6 +369,7 @@ describe('AgentsPublicController listAgents', () => {
 		mock<AgentDefaultModelResolverService>(),
 		mock<AgentCustomToolsService>(),
 		mock<AgentConfigService>(),
+		mock<AgentPublishService>(),
 	);
 	const req = mock<AuthenticatedRequest>();
 	const res = mock<Response>();
@@ -440,6 +477,7 @@ describe('AgentsPublicController updateAgent', () => {
 		mock<AgentDefaultModelResolverService>(),
 		mock<AgentCustomToolsService>(),
 		agentConfigService,
+		mock<AgentPublishService>(),
 	);
 	const req = mock<AuthenticatedRequest>();
 	const res = mock<Response>();
@@ -583,6 +621,7 @@ describe('AgentsPublicController deleteAgent', () => {
 		agentDefaultModelResolverService,
 		mock<AgentCustomToolsService>(),
 		mock<AgentConfigService>(),
+		mock<AgentPublishService>(),
 	);
 	const req = mock<AuthenticatedRequest>();
 	const res = mock<Response>();

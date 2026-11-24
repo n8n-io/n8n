@@ -17,6 +17,12 @@
 		"POST /agents": {
 			"status": "gap"
 		},
+		"POST /agents/{agentId}/publish": {
+			"status": "gap"
+		},
+		"POST /agents/{agentId}/unpublish": {
+			"status": "gap"
+		},
 		"PUT /agents/{agentId}": {
 			"status": "gap"
 		},
