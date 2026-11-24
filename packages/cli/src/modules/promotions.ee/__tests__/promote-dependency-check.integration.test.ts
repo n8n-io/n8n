@@ -310,12 +310,16 @@ describe('Missing dependencies of a project Promote', () => {
 		expect(byId(manifest.requirements?.credentials, credential.id)?.reason).toBe(
 			'confirmed-missing',
 		);
-		expect(byId(manifest.requirements?.credentials, ownCredential.id)).not.toHaveProperty('reason');
+		const ownCredentialRow = byId(manifest.requirements?.credentials, ownCredential.id);
+		expect(ownCredentialRow).toMatchObject({ id: ownCredential.id });
+		expect(ownCredentialRow).not.toHaveProperty('reason');
 		expect(manifest.requirements?.workflows).toHaveLength(2);
 		expect(byId(manifest.requirements?.workflows, subWorkflow.id)?.reason).toBe(
 			'confirmed-missing',
 		);
-		expect(byId(manifest.requirements?.workflows, ownSubWorkflow.id)).not.toHaveProperty('reason');
+		const ownSubWorkflowRow = byId(manifest.requirements?.workflows, ownSubWorkflow.id);
+		expect(ownSubWorkflowRow).toMatchObject({ id: ownSubWorkflow.id });
+		expect(ownSubWorkflowRow).not.toHaveProperty('reason');
 		expectNoTraceOf(beta, manifest, await headCommitMessage(direct.remoteUrl));
 	}, 60_000);
 

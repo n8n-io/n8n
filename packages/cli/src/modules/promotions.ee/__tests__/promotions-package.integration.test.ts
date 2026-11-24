@@ -3614,20 +3614,24 @@ describe('Missing dependencies of an Apply', () => {
 			seed: async () => {
 				const credential = await saveHeaderCredential('CRM key', beta);
 				await shareCredentialWithProjects(credential, [alpha]);
-				return { credential, user: await createAlphaApplier() };
+				return { credential, user: await createAlphaApplier(), ownerProject: beta };
 			},
 		},
 		{
 			title: 'without an owner project on the branch',
 			reason: 'not-on-branch',
-			seed: async () => ({ credential: await savePersonalCredential('My key'), user: owner }),
+			seed: async () => ({
+				credential: await savePersonalCredential('My key'),
+				user: owner,
+				ownerProject: await getPersonalProject(owner),
+			}),
 		},
 	])(
 		'continues without a missing credential $title after the confirmation, and creates no credential',
 		async ({ seed, reason }) => {
 			// With sharing licensed, each workflow write checks the credentials of the nodes.
 			licenseMocker.enable('feat:sharing');
-			const { credential, user } = await seed();
+			const { credential, user, ownerProject } = await seed();
 			// Alpha holds a credential with the same name and type. The workflows do not name it.
 			await saveHeaderCredential(credential.name, alpha);
 			const usesCredential = async (name: string) =>
@@ -3666,11 +3670,8 @@ describe('Missing dependencies of an Apply', () => {
 				expect((await landed(authored)).nodes).toEqual(authored.nodes);
 			}
 			expect(await credentialRows()).toEqual(rows);
-			// No result names the project of the credential.
-			for (const result of [blocked, applied]) {
-				expect(JSON.stringify(result)).not.toContain(beta.id);
-				expect(JSON.stringify(result)).not.toContain(beta.name);
-			}
+			// No result names the project that owns the credential.
+			expectNotNamed(ownerProject, blocked, applied);
 			// The next Apply still lists the credential, because it is still missing.
 			expect((await loadApplyPreview(alpha.id, user)).check.missingDependencies).toEqual(
 				applied.missingDependencies,
@@ -3789,6 +3790,7 @@ describe('Missing dependencies of an Apply', () => {
 	});
 
 	it('names a credential that the project cannot use from its requirement row, when the branch holds no file for it', async () => {
+		licenseMocker.enable('feat:sharing');
 		const credential = await saveHeaderCredential('CRM key', beta);
 		await shareCredentialWithProjects(credential, [alpha]);
 		const workflow = await createWorkflow(

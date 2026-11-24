@@ -947,6 +947,7 @@ describe('WorkingCopyUpdater', () => {
 			});
 
 			it('clears an older reason when the staged row has none', async () => {
+				// w-beta is not selected. It keeps the branch rows, so the staged rows merge into them.
 				await apply(
 					branchWith({
 						credentials: [
@@ -955,10 +956,10 @@ describe('WorkingCopyUpdater', () => {
 								name: 'CRM',
 								type: 't',
 								reason: 'confirmed-missing',
-								usedBy: usedBy('w1'),
+								usedBy: usedBy('w1', 'w-beta'),
 							},
 						],
-						workflows: [{ id: 'sub', reason: 'confirmed-missing', usedBy: usedBy('w1') }],
+						workflows: [{ id: 'sub', reason: 'confirmed-missing', usedBy: usedBy('w1', 'w-beta') }],
 					}),
 					stagingWith({
 						credentials: [{ id: 'c1', name: 'CRM', type: 't', usedBy: usedBy('w1') }],
@@ -969,9 +970,9 @@ describe('WorkingCopyUpdater', () => {
 
 				const { requirements } = await readWrittenManifest();
 				expect(requirements?.credentials).toEqual([
-					{ id: 'c1', name: 'CRM', type: 't', usedBy: usedBy('w1') },
+					{ id: 'c1', name: 'CRM', type: 't', usedBy: usedBy('w-beta', 'w1') },
 				]);
-				expect(requirements?.workflows).toEqual([{ id: 'sub', usedBy: usedBy('w1') }]);
+				expect(requirements?.workflows).toEqual([{ id: 'sub', usedBy: usedBy('w-beta', 'w1') }]);
 			});
 
 			it('keeps the reason of a row that only another project uses', async () => {
