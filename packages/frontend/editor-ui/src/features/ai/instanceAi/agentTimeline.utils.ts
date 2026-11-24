@@ -11,6 +11,7 @@ import type {
 import { isRecord } from '@n8n/utils/is-record';
 import { firstNonBlank, isActiveBuilderAgent, isBuilderAgent } from './builderAgents';
 import { isCloudBrowserAgent } from './cloudBrowserAgents';
+import { isSimulatedTestRunOutcome } from './assistantTestRunCard.utils';
 import { isPreferenceWriteOutcome, SAVE_USER_PREFERENCE_TOOL_NAME } from './preferenceCard.utils';
 
 /** Tool calls that are internal bookkeeping and should not be shown to the user.
@@ -67,6 +68,7 @@ export type TimelineBlock =
 	| { type: 'app-blueprint'; key: string; toolCall: InstanceAiToolCallState }
 	| { type: 'questions'; key: string; toolCall: InstanceAiToolCallState }
 	| { type: 'preference'; key: string; toolCall: InstanceAiToolCallState }
+	| { type: 'assistant-test-run'; key: string; toolCall: InstanceAiToolCallState }
 	| { type: 'child'; key: string; child: InstanceAiAgentNode }
 	| { type: 'activity'; key: string };
 
@@ -78,6 +80,7 @@ type ToolCallKind =
 	| 'questions'
 	| 'questions-pending'
 	| 'preference'
+	| 'assistant-test-run'
 	| 'trace';
 
 /**
@@ -104,6 +107,7 @@ function classifyToolCall(tc: InstanceAiToolCallState, preferencesEnabled: boole
 	if (tc.confirmation?.inputType === 'questions') {
 		return tc.isLoading ? 'questions-pending' : 'questions';
 	}
+	if (isSimulatedTestRunOutcome(tc)) return 'assistant-test-run';
 	return 'trace';
 }
 
@@ -263,6 +267,13 @@ export function buildTimelineBlocks(
 				return;
 			case 'preference':
 				pushStandalone({ type: 'preference', key: `preference-${idx}`, toolCall: tc });
+				return;
+			case 'assistant-test-run':
+				pushStandalone({
+					type: 'assistant-test-run',
+					key: `assistant-test-run-${idx}`,
+					toolCall: tc,
+				});
 				return;
 			case 'trace':
 				pushTrace(entry, idx);

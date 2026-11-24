@@ -410,13 +410,20 @@ function consumeAgentReturnNodeId() {
 	agentReturnNodeId.value = undefined;
 }
 
-function openAgentChatPreview(agentId: string, projectId: string): boolean {
+const requestedAgentPreviewSession = ref<{ agentId: string; threadId: string }>();
+
+function openAgentChatPreview(agentId: string, projectId: string, sessionId?: string): boolean {
+	requestedAgentPreviewSession.value = sessionId ? { agentId, threadId: sessionId } : undefined;
 	preview.openAgentPreview(agentId, projectId);
 	isAgentTestDockOpen.value = true;
 	return true;
 }
 
 const activeAgentPreviewSessionId = computed(() => {
+	if (requestedAgentPreviewSession.value?.agentId === preview.activeAgentId.value) {
+		return requestedAgentPreviewSession.value.threadId;
+	}
+
 	const context = handoffContext.value;
 	if (context?.source === 'agent-preview' && context.agentId === preview.activeAgentId.value) {
 		return context.threadId;

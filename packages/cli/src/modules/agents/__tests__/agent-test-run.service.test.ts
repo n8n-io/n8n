@@ -739,5 +739,102 @@ describe('AgentTestRunService', () => {
 				simulation: { toolCalls: [expect.objectContaining({ route: 'blocked' })] },
 			});
 		});
+
+		it('captures tool call input for simulated calls and records local tool calls', async () => {
+			const { service, agentExecutionOrchestratorService, simulationSessions } = makeService();
+			const session = mock<SimulationSession>({ worldId: 'world-1' });
+			session.takeDecision.mockImplementation((toolCallId) =>
+				toolCallId === 'tc-1'
+					? { route: 'simulated_made_up', reason: 'invented_by_llm' }
+					: undefined,
+			);
+			simulationSessions.openForDraftRun.mockResolvedValue(session);
+
+			const result = await runWithStream(service, agentExecutionOrchestratorService, [
+				{
+					type: 'tool-call',
+					toolCallId: 'tc-1',
+					toolName: 'send_email',
+					input: { to: 'user@example.com', subject: 'Hello' },
+				},
+				{
+					type: 'tool-result',
+					toolCallId: 'tc-1',
+					toolName: 'send_email',
+					output: { ok: true },
+					isError: false,
+				},
+				{
+					type: 'tool-call',
+					toolCallId: 'tc-local',
+					toolName: 'load_skill',
+					input: { name: 'triage' },
+				},
+				{
+					type: 'tool-result',
+					toolCallId: 'tc-local',
+					toolName: 'load_skill',
+					output: { loaded: true },
+					isError: false,
+				},
+			]);
+
+			expect(result.simulation).toEqual({
+				worldId: 'world-1',
+				toolCalls: [
+					{
+						toolCallId: 'tc-1',
+						toolName: 'send_email',
+						route: 'simulated_made_up',
+						reason: 'invented_by_llm',
+						input: { to: 'user@example.com', subject: 'Hello' },
+					},
+				],
+				localToolCalls: [{ toolCallId: 'tc-local', toolName: 'load_skill' }],
+			});
+		});
+
+		it('forwards chatMode test on executeDraftRun and resumePreparedDraftRun', async () => {
+			const { service, agentExecutionOrchestratorService, simulationSessions } = makeService();
+			agentExecutionOrchestratorService.executeForChat.mockImplementation(async function* (config) {
+				await config.simulation?.(config.memory.threadId);
+				yield* [];
+				config.onExecutionRecorded?.('execution-1');
+			});
+			agentExecutionOrchestratorService.resumeForChat.mockImplementation(async function* (config) {
+				await config.simulation?.('session-1');
+				yield* [];
+				config.onExecutionRecorded?.('execution-2');
+			});
+
+			await service.executeDraftRun({
+				agentId,
+				projectId,
+				user,
+				message: 'Send email',
+				credentialProvider,
+				chatMode: 'test',
+			});
+
+			expect(simulationSessions.openForDraftRun).toHaveBeenCalledWith(
+				expect.objectContaining({ testRunRequested: true }),
+			);
+
+			simulationSessions.openForDraftRun.mockClear();
+
+			await service.resumePreparedDraftRun({
+				agentId,
+				projectId,
+				runId: 'run-1',
+				toolCallId: 'tc-1',
+				resumeData: { approved: true },
+				user,
+				chatMode: 'test',
+			});
+
+			expect(simulationSessions.openForDraftRun).toHaveBeenCalledWith(
+				expect.objectContaining({ testRunRequested: true }),
+			);
+		});
 	});
 });
