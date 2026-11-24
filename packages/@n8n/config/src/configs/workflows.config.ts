@@ -2,7 +2,7 @@ import { Time } from '@n8n/constants';
 import { z } from 'zod';
 
 import { Config, Env } from '../decorators';
-import { positiveIntSchema } from '../schemas';
+import { nonnegativeIntSchema, positiveIntSchema } from '../schemas';
 
 const callerPolicySchema = z.enum(['any', 'none', 'workflowsFromAList', 'workflowsFromSameOwner']);
 type CallerPolicy = z.infer<typeof callerPolicySchema>;
@@ -66,6 +66,10 @@ export class WorkflowsConfig {
 	 *  re-publish workflows whose in-memory triggers went missing (e.g. after a leader transition). */
 	@Env('N8N_WORKFLOW_PUBLICATION_RECONCILE_INTERVAL_SECONDS', positiveIntSchema)
 	publicationReconcileIntervalSeconds: number = 10;
+
+	/** Maximum workflows that run at the same time as tools in each main process, for example for tool calls from an MCP client. These runs don't count toward the production concurrency limit. Calls above this limit get a busy error until a run finishes. Set to 0 to remove the limit. */
+	@Env('N8N_CALLABLE_WORKFLOW_MAX_CONCURRENT_RUNS', nonnegativeIntSchema)
+	callableMaxConcurrentRuns: number = 20;
 
 	/** Whether to disable automatic workflow saving in the editor */
 	@Env('N8N_WORKFLOWS_AUTOSAVE_DISABLED')

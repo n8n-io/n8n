@@ -267,6 +267,7 @@ describe('GlobalConfig', () => {
 			publicationOutboxCleanupIntervalSeconds: 1200,
 			publicationOutboxCleanupBatchSize: 1000,
 			publicationReconcileIntervalSeconds: 10,
+			callableMaxConcurrentRuns: 20,
 			autosaveDisabled: false,
 			groupsWithTriggersEnabled: false,
 			groupsWithManyBoundariesEnabled: false,
