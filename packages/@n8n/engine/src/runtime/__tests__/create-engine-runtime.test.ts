@@ -451,6 +451,19 @@ describe('createEngineRuntime', () => {
 		).toThrow(UnexpectedError);
 	});
 
+	it('accepts a retention policy that sets only a maximum age of 0', () => {
+		expect(() =>
+			createEngineRuntime({
+				dataSource: fakeDataSource(),
+				admittance: new AllowAllAdmittance(),
+				identityVerifier,
+				responseSender,
+				queues: createInMemoryWorkQueues(),
+				retention: { maxAgeMs: 0 },
+			}),
+		).not.toThrow();
+	});
+
 	it.each([Number.NaN, Number.POSITIVE_INFINITY, 0, -1, 1.5])(
 		'refuses a staleness threshold of %s',
 		(queuedMs) => {
