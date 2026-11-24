@@ -1,7 +1,6 @@
 {
   "name": "@n8n/code-task-contract",
   "version": "0.1.0",
-  "private": true,
   "description": "Format of the input and result files of code tasks, shared by n8n and the code runtimes",
   "scripts": {
     "clean": "rimraf dist .turbo",

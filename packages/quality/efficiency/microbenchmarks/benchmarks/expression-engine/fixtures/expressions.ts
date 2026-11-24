@@ -37,6 +37,18 @@ export const CONDITIONAL = [
 	'={{ $json.status === "active" ? "yes" : "no" }}',
 ] as const;
 
+/** Reads of many item data values, which the engines read in batches */
+export const BATCHED_READ = [
+	'={{ JSON.stringify($json) }}',
+	'={{ $json }}',
+	'={{ $json.items.slice(0, 5) }}',
+	'={{ $json.items.map(i => JSON.stringify(i)) }}',
+	'={{ JSON.stringify($json.items.slice()) }}',
+	// The reads of these two copy more data than the expression uses.
+	'={{ $json.rows.map(r => r[0] + r[1]) }}',
+	'={{ $json.items.filter(i => i.isNotEmpty()).map(i => i.id) }}',
+] as const;
+
 /** All groups for iteration */
 export const ALL_GROUPS = {
 	'Simple Property': SIMPLE_PROPERTY,
@@ -44,4 +56,5 @@ export const ALL_GROUPS = {
 	'Extension Call': EXTENSION_CALL,
 	'Array Iteration': ARRAY_ITERATION,
 	Conditional: CONDITIONAL,
+	'Batched Read': BATCHED_READ,
 } as const;

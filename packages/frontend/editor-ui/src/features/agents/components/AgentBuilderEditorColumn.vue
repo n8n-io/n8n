@@ -224,6 +224,7 @@ defineExpose({ onSetupTaskAction });
 						:model-value="activeMainTab"
 						:options="mainTabOptions"
 						:class="$style.mainTabs"
+						show-border
 						data-testid="agent-header-tabs"
 						@update:model-value="onMainTabSelect"
 					/>
@@ -641,11 +642,6 @@ defineExpose({ onSetupTaskAction });
 
 .mainTabs {
 	width: 100%;
-	border-bottom: var(--border);
-
-	:global([data-test-id='tab-agent'] > *) {
-		padding-left: 0;
-	}
 }
 
 .setupTasks {

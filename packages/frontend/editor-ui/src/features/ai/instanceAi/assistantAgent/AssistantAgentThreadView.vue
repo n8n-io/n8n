@@ -117,6 +117,7 @@ import {
 	getAssistantAgentLaunch,
 	type PendingAssistantAgentMessage,
 } from './assistantAgentThreads';
+import { assistantAnsweredQuestionsExtension } from './assistantAnsweredQuestions';
 import { assistantAutoApprovalExtension } from './assistantAutoApproval';
 import { assistantConfirmationExtension } from './assistantConfirmation';
 import { assistantHostEventExtensions } from './assistantHostEvents';
@@ -302,6 +303,7 @@ function messageReferences(context: Record<string, unknown> | undefined): unknow
 
 const interactionExtensions = [
 	assistantConfirmationExtension,
+	assistantAnsweredQuestionsExtension,
 	assistantAutoApprovalExtension,
 	assistantPreferenceCardExtension,
 	...assistantHostEventExtensions,
