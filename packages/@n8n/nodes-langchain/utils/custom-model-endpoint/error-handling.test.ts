@@ -730,6 +730,30 @@ describe('every shape a gateway can answer with', () => {
 		return JSON.stringify(JSON.parse(payload));
 	};
 
+	// A gateway that declares a stream but frames nothing still sends a refusal, and PHP
+	// escapes a slash while Python escapes non-ASCII, both by default
+	it.each([
+		['declaring a stream', 'text/event-stream'],
+		['declaring nothing', null],
+	])('loses an escaped credential from an unframed body %s', async (_name, contentType) => {
+		const slashed = 'sk-local/abc123XYZ';
+		const body = JSON.stringify({ error: { message: `Invalid token: ${slashed}` } }).replace(
+			'/',
+			'\\/',
+		);
+		const baseFetch = (async () =>
+			new Response(body, {
+				status: 200,
+				headers: contentType === null ? {} : { 'content-type': contentType },
+			})) as typeof fetch;
+
+		const surfaced = await (
+			await wrapCustomModelEndpointErrorFetch(baseFetch, [slashed])(BASE_URL)
+		).text();
+
+		expect(JSON.stringify(JSON.parse(surfaced))).not.toContain(slashed);
+	});
+
 	// A client parses the escape back into the credential, so the bytes alone are not enough
 	it.each([
 		['on a 200', 'application/json', '{"error":{"message":"bad key \\u006fllama"}}'],

@@ -227,7 +227,9 @@ function endOfLastFrame(text: string): number {
 function withoutSecretsInFrame(frame: string, secrets: string[]): string {
 	const filtered = withoutKnownSecrets(frame, secrets);
 	const data = frameData(frame);
-	if (data === undefined) return filtered;
+	// A gateway that frames nothing still sends a body, and it reaches here rather than the
+	// branch below, so it takes the same decoded filter that branch uses.
+	if (data === undefined) return withoutSecretsInJson(frame, secrets);
 
 	const safe = withoutSecretsInJson(data, secrets);
 	return safe === data ? filtered : withoutKnownSecrets(frame.split(data).join(safe), secrets);
