@@ -115,8 +115,8 @@ export interface CloudBrowserRunOptions {
 	tracing?: InstanceAiTraceContext;
 	/** The run's site approvals and permissions. */
 	domainGate: BrowserDomainGate;
-	/** The admin's rules for saved logins when the run started. */
-	savedLoginPolicy: SavedLoginPolicy;
+	/** Returns the admin's current rules for saved logins. */
+	getSavedLoginPolicy: () => SavedLoginPolicy;
 	/**
 	 * The run's credential type lookup, for the credentials the task creates. Empty for an
 	 * unknown type. Absent when the host cannot look up credential types.
@@ -340,7 +340,7 @@ export class InstanceAiCloudBrowserTaskService {
 				threadId,
 				taskId,
 				run.domainGate,
-				run.savedLoginPolicy,
+				run.getSavedLoginPolicy,
 			);
 			mcpServer.setCurrentWindowListener(() =>
 				eventBus.publish(threadId, {

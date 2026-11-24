@@ -204,10 +204,11 @@ export interface CloudBrowserLocalMcpServerOptions {
 	scope: CloudBrowserSessionScope;
 	sessionProvider: CloudBrowserSessionProvider;
 	/**
-	 * Gives each session on an allowed site a login profile, so the user can save the logins they
-	 * make in it. Without it, sessions open without a login profile.
+	 * Returns the admin's current rules for saved logins. Each session on an allowed site gets a
+	 * login profile, so the user can save the logins they make in it. Read at each check, so a
+	 * change applies to a running task. Without it, sessions open without a login profile.
 	 */
-	savedLoginPolicy?: SavedLoginPolicy;
+	getSavedLoginPolicy?: () => SavedLoginPolicy;
 	createToolkit: (connectUrl?: string) => BrowserToolkit;
 	toolContext: ToolContext;
 	/**
@@ -528,6 +529,8 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 		}
 		// The agent did not ask the user to sign in.
 		if (!this.userControl?.isLoginRequest) return false;
+		// The admin can turn saved logins off for the site while the session runs.
+		if (!this.isSavedLoginAllowedNow(loginProfile.domain)) return false;
 		// The user must be on the site of the login profile. Otherwise we cannot tell where they
 		// signed in. SSO sign-ins redirect back to this site, so this check still holds.
 		const currentDomain = await registrableDomainOf(currentHostOf(session));
@@ -923,12 +926,17 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 	 * IP address.
 	 */
 	private async loginProfileDomainOf(host: string): Promise<string | undefined> {
-		const { savedLoginPolicy } = this.options;
-		if (!savedLoginPolicy) return undefined;
 		const domain = await registrableDomainOf(host);
 		if (!domain) return undefined;
-		if (!isSavedLoginAllowed(savedLoginPolicy, domain)) return undefined;
+		if (!this.isSavedLoginAllowedNow(domain)) return undefined;
 		return domain;
+	}
+
+	/** Whether the admin's current rules allow saved logins for `domain`. False without rules. */
+	private isSavedLoginAllowedNow(domain: string): boolean {
+		const policy = this.options.getSavedLoginPolicy?.();
+		if (!policy) return false;
+		return isSavedLoginAllowed(policy, domain);
 	}
 
 	/** The user's saved login for the site of `host`, when the site gets a login profile. */
@@ -1133,6 +1141,8 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 		location: SessionLocation,
 	): Promise<boolean> {
 		if (loginProfile.savedAt) return true;
+		// The admin can turn saved logins off for the site after the user chose to save.
+		if (!this.isSavedLoginAllowedNow(loginProfile.domain)) return false;
 		return await this.saveLoginProfile(loginProfile, location);
 	}
 

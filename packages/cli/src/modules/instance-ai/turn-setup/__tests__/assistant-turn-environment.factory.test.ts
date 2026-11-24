@@ -296,15 +296,11 @@ describe('AssistantTurnEnvironmentFactory', () => {
 			},
 		);
 
-		it("passes the admin's saved login rules when the cloud browser task starts", async () => {
+		it("passes the cloud browser task a way to read the admin's current saved login rules", async () => {
 			const { factory, fields } = createSetupFactory();
 			fields.settingsService.getAdminSettings.mockResolvedValue({
 				browserUseEnabled: false,
 				cloudBrowserEnabled: true,
-			});
-			fields.settingsService.getCloudBrowserSavedLoginPolicy.mockReturnValue({
-				mode: 'all',
-				sites: [],
 			});
 			const cloudBrowser = {
 				isAvailable: vi.fn(async () => true),
@@ -315,19 +311,18 @@ describe('AssistantTurnEnvironmentFactory', () => {
 				params,
 				createRuntime({ cloudBrowser }),
 			);
-			// The admin changes the rules after the turn was set up.
+			await orchestrationContext.startCloudBrowserTask?.({ title: 'Sign in', goal: 'Sign in' });
+			const [, runOptions] = cloudBrowser.startTask.mock.calls[0] as unknown as [
+				unknown,
+				{ getSavedLoginPolicy: () => unknown },
+			];
+			// The admin changes the rules while the task runs.
 			fields.settingsService.getCloudBrowserSavedLoginPolicy.mockReturnValue({
 				mode: 'except',
 				sites: ['github.com'],
 			});
-			await orchestrationContext.startCloudBrowserTask?.({ title: 'Sign in', goal: 'Sign in' });
 
-			expect(cloudBrowser.startTask).toHaveBeenCalledWith(
-				expect.anything(),
-				expect.objectContaining({
-					savedLoginPolicy: { mode: 'except', sites: ['github.com'] },
-				}),
-			);
+			expect(runOptions.getSavedLoginPolicy()).toEqual({ mode: 'except', sites: ['github.com'] });
 		});
 
 		it('creates no workflow draft publisher when the draft preview gate is off', async () => {

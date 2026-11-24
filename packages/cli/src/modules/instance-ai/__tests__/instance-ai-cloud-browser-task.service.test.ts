@@ -121,7 +121,7 @@ function setup() {
 		messageGroupId: 'group-1',
 		modelId: 'anthropic/claude-sonnet-4-5',
 		domainGate: mock<BrowserDomainGate>(),
-		savedLoginPolicy: { mode: 'all', sites: [] },
+		getSavedLoginPolicy: () => ({ mode: 'all', sites: [] }),
 		getCredentialFields: vi.fn(async (type: string) =>
 			type === 'httpBasicAuth' ? basicAuthFields : [],
 		),
@@ -299,7 +299,7 @@ describe('InstanceAiCloudBrowserTaskService', () => {
 				THREAD_ID,
 				taskId,
 				run.domainGate,
-				run.savedLoginPolicy,
+				run.getSavedLoginPolicy,
 			);
 			expect(runCloudBrowserAgent).toHaveBeenCalledWith(
 				expect.objectContaining({

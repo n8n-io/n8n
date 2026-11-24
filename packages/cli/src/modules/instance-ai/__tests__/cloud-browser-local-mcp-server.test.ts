@@ -168,8 +168,12 @@ describe('CloudBrowserLocalMcpServer', () => {
 
 	function setup(options: { savedLoginPolicy?: SavedLoginPolicy } = {}) {
 		// A test can pass `savedLoginPolicy: undefined` to open the server without a policy.
-		const savedLoginPolicy: SavedLoginPolicy | undefined =
+		let savedLoginPolicy: SavedLoginPolicy | undefined =
 			'savedLoginPolicy' in options ? options.savedLoginPolicy : { mode: 'all', sites: [] };
+		/** Changes the admin's rules while the server runs. */
+		const setSavedLoginPolicy = (policy: SavedLoginPolicy) => {
+			savedLoginPolicy = policy;
+		};
 		const sessionProvider = mock<CloudBrowserSessionProvider>();
 		// Sessions created and not yet released, so a test can check what is left open.
 		const openSessions = new Set<string>();
@@ -200,7 +204,7 @@ describe('CloudBrowserLocalMcpServer', () => {
 		const server = new CloudBrowserLocalMcpServer({
 			scope,
 			sessionProvider,
-			savedLoginPolicy,
+			getSavedLoginPolicy: savedLoginPolicy && (() => savedLoginPolicy!),
 			createToolkit,
 			toolContext: { dir: '/tmp' },
 			domainGate,
@@ -218,6 +222,7 @@ describe('CloudBrowserLocalMcpServer', () => {
 			logger,
 			tracker,
 			domainGate,
+			setSavedLoginPolicy,
 		};
 	}
 
@@ -2649,6 +2654,44 @@ describe('CloudBrowserLocalMcpServer', () => {
 						{ domain: 'example.com', status: 'saved' },
 					]);
 				});
+			});
+		});
+
+		describe('when the admin changes the rules while the task runs', () => {
+			it('opens the next session without a saved login or a login profile', async () => {
+				const { sessionProvider, start, setSavedLoginPolicy } = setup();
+				await start({ url: 'https://example.com' });
+				sessionProvider.listSavedLoginProfiles.mockResolvedValue([savedResult]);
+				setSavedLoginPolicy({ mode: 'off', sites: [] });
+
+				const result = await start({ url: 'https://example.com' });
+
+				expect(result.isError).toBeUndefined();
+				expect(sessionProvider.createSession).toHaveBeenLastCalledWith(
+					scope,
+					expect.objectContaining({ loginProfileId: undefined }),
+				);
+			});
+
+			it('does not offer to save a login on a site that is no longer allowed', async () => {
+				const { server, setSavedLoginPolicy } = await setupSignIn();
+				await askToSignIn(server);
+				setSavedLoginPolicy({ mode: 'except', sites: ['example.com'] });
+
+				expect(await server.getLoginToSave()).toBeUndefined();
+			});
+
+			it('does not save a login that the user chose to save before the change', async () => {
+				const { server, sessionProvider, setSavedLoginPolicy } = await setupSavedLogin();
+				setSavedLoginPolicy({ mode: 'off', sites: [] });
+
+				await server.release();
+
+				expect(sessionProvider.saveLoginProfile).not.toHaveBeenCalled();
+				expect(sessionProvider.deleteLoginProfile).toHaveBeenCalledWith(scope, 'login-profile-1');
+				expect(server.getLoginSaveResults()).toEqual([
+					{ domain: 'example.com', status: 'notSaved' },
+				]);
 			});
 		});
 

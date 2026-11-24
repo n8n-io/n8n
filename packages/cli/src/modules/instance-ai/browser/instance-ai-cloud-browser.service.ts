@@ -87,15 +87,15 @@ export class InstanceAiCloudBrowserService {
 	/**
 	 * Returns the task's server, and creates it on first use. `domainGate` holds the sites the user
 	 * approved and the admin's permissions. Each call replaces the gate of the task's server, so
-	 * the newest permissions apply. `savedLoginPolicy` holds the admin's rules for saved logins
-	 * when the task starts.
+	 * the newest permissions apply. `getSavedLoginPolicy` returns the admin's current rules for
+	 * saved logins.
 	 */
 	async createServer(
 		userId: string,
 		threadId: string,
 		taskId: string,
 		domainGate: BrowserDomainGate,
-		savedLoginPolicy: SavedLoginPolicy,
+		getSavedLoginPolicy: () => SavedLoginPolicy,
 	): Promise<CloudBrowserLocalMcpServer> {
 		const isAvailable = await this.isAvailable();
 		if (!isAvailable) throw new UserError('The cloud browser is not available on this instance');
@@ -116,7 +116,7 @@ export class InstanceAiCloudBrowserService {
 		const server = new CloudBrowserLocalMcpServer({
 			scope: { userId, threadId, taskId },
 			sessionProvider: this.getSessionProvider(),
-			savedLoginPolicy,
+			getSavedLoginPolicy,
 			createToolkit: (connectUrl) =>
 				createBrowserTools(
 					{ mode: 'remote' },
