@@ -37,6 +37,19 @@ function newRequest(
 		staticData: { global: { cursor: 1 } },
 	});
 	const runExecutionData = createRunExecutionData({
+		resultData: {
+			runData: {
+				Trigger: [
+					{
+						startTime: 0,
+						executionTime: 1,
+						executionIndex: 0,
+						source: [],
+						data: { main: [items] },
+					},
+				],
+			},
+		},
 		executionData: {
 			nodeExecutionStack: [{ node: code, data: { main: [items] }, source: null }],
 		},
@@ -101,6 +114,7 @@ describe('buildTaskInput', () => {
 			},
 		});
 		expect(input.data.workflow.nodes.map((node) => node.name)).toEqual(['Trigger', 'Code']);
+		expect(input.data.runExecutionData.resultData.runData.Trigger).toHaveLength(1);
 		expect(input.data.runExecutionData.executionData?.nodeExecutionStack).toEqual([]);
 		expect(input.data.additionalData).not.toHaveProperty('hooks');
 	});
