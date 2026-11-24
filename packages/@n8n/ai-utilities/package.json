@@ -169,6 +169,7 @@
     "fast-glob": "catalog:",
     "tsx": "catalog:",
     "typescript": "catalog:typescript",
+    "ai": "catalog:",
     "axios": "catalog:",
     "nock": "catalog:",
     "oxlint": "catalog:",

@@ -1536,6 +1536,9 @@ importers:
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1)
+      ai:
+        specifier: 'catalog:'
+        version: 7.0.150(zod@3.25.76)
       axios:
         specifier: 1.20.0
         version: 1.20.0(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)
