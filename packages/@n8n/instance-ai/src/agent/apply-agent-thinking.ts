@@ -1,4 +1,4 @@
-import type { Agent, AnthropicThinkingEffort, ModelConfig } from '@n8n/agents';
+import type { Agent, AnthropicThinkingEffort, ModelConfig, ReasoningLevel } from '@n8n/agents';
 import { PROVIDER_CAPABILITIES } from '@n8n/api-types';
 
 import { resolveModelIdString, resolveModelProvider } from './model-config-identity';
@@ -37,6 +37,15 @@ function resolveAnthropicEffort(): AnthropicEffort {
 	return ANTHROPIC_EFFORTS.find((supported) => supported === effort) ?? 'medium';
 }
 
+/**
+ * OpenRouter takes `reasoning.effort` up to `xhigh`. The agents runtime maps the
+ * provider-agnostic reasoning level onto it. No default: omit unless asked for.
+ */
+function resolveOpenRouterReasoning(effort?: AnthropicThinkingEffort): ReasoningLevel | undefined {
+	const level = effort ?? parseReasoningEffort(process.env.N8N_INSTANCE_AI_REASONING_EFFORT);
+	return level === 'max' ? 'xhigh' : level;
+}
+
 /** An explicit effort wins over the env override and the OpenAI per-model default. */
 export function applyAgentThinking(
 	agent: Agent,
@@ -44,6 +53,13 @@ export function applyAgentThinking(
 	effort?: AnthropicThinkingEffort,
 ): void {
 	const provider = resolveModelProvider(modelId);
+
+	// OpenRouter has no `.thinking()` quirk; it uses the provider-agnostic reasoning level.
+	if (provider === 'openrouter') {
+		const reasoning = resolveOpenRouterReasoning(effort);
+		if (reasoning !== undefined) agent.reasoning(reasoning);
+		return;
+	}
 
 	if (!provider || !PROVIDER_CAPABILITIES[provider]?.thinking) return;
 

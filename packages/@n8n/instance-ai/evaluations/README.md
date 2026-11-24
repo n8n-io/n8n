@@ -1464,6 +1464,10 @@ When unset, the runtime looks up
 `packages/@n8n/instance-ai/src/utils/custom-model-defaults.ts` (substring match on the model id).
 If still unresolved, the field is omitted from the request (no blanket custom default).
 
+For `openrouter/*`, `reasoning-effort` sets OpenRouter's `reasoning.effort`. OpenRouter
+accepts values up to `xhigh`, so `max` is sent as `xhigh`. When it is unset, the request
+omits `reasoning` and the model runs at its OpenRouter default.
+
 ## Architecture
 
 ```
