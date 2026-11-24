@@ -1,9 +1,10 @@
-ARG NODE_VERSION=26.7.0
+# check=skip=InvalidDefaultArgInFrom
 ARG N8N_VERSION=snapshot
 
-# The digest pins node:26.7.0-alpine3.24 for amd64 and arm64. Change the tag and the digest together.
-ARG BUILDER_IMAGE=node:26.7.0-alpine3.24@sha256:aadf416b2cdce311a8811ba3f0608a61b77dbf997500e2eafe781b51f6a0b019
-ARG RUNTIME_IMAGE=n8nio/base:26.7.0@sha256:33687300c4e94dc00f42ec79ae15082ae07330ecd82ae1167125905b65908ff8
+# docker/docker-bake.hcl sets these. Build with `pnpm build:docker` or
+# `docker buildx bake`, not plain `docker build`.
+ARG BUILDER_IMAGE
+ARG RUNTIME_IMAGE
 
 # The runtime base has no compiler, so this stage supplies one.
 FROM ${BUILDER_IMAGE} AS toolchain
@@ -45,7 +46,7 @@ WORKDIR /build/node_modules/@confluentinc/kafka-javascript
 RUN BUILD_LIBRDKAFKA=0 node "$NODE_GYP" rebuild --release
 
 # A separate workflow builds the base image. A new base reaches this image only
-# when you change RUNTIME_IMAGE above.
+# when you change its pin in docker/docker-bake.hcl.
 FROM ${RUNTIME_IMAGE}
 
 ARG N8N_VERSION
@@ -54,6 +55,8 @@ ARG IMAGE_DESCRIPTION="Workflow Automation Tool"
 ENV NODE_ENV=production
 ENV N8N_RELEASE_TYPE=${N8N_RELEASE_TYPE}
 ENV SHELL=/bin/sh
+# Restrict GraphicsMagick to its commonly used coder set.
+ENV MAGICK_CODER_STABILITY=PRIMARY
 
 WORKDIR /home/node
 
@@ -74,6 +77,14 @@ COPY --from=native-builder /build/node_modules/@confluentinc/kafka-javascript/bu
 # The base image keeps node in /usr/bin and has no /usr/local/bin.
 RUN set -e; \
     N8N=/usr/local/lib/node_modules/n8n; \
+    for coder in msl mvg pcd svg url; do \
+        rm -f \
+            /usr/lib/GraphicsMagick-*/modules-*/coders/$coder.la \
+            /usr/lib/GraphicsMagick-*/modules-*/coders/$coder.so; \
+    done; \
+    ! find /usr/lib/GraphicsMagick-* -path '*/coders/*' \
+        \( -name 'msl.*' -o -name 'mvg.*' -o -name 'pcd.*' -o -name 'svg.*' -o -name 'url.*' \) \
+        -print -quit | grep -q .; \
     kafka=$(echo "$N8N"/node_modules/.pnpm/@confluentinc+kafka-javascript@*/node_modules/@confluentinc/kafka-javascript); \
     install -D /tmp/confluent-kafka-javascript.node "$kafka/build/Release/confluent-kafka-javascript.node"; \
     rm -rf "$N8N"/node_modules/.pnpm/isolated-vm@*/node_modules/isolated-vm/prebuilds; \

@@ -7,8 +7,12 @@ import type {
 	JsonObject,
 	IHttpRequestMethods,
 	IRequestOptions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, requestUrl } from 'n8n-workflow';
+
+import { assertNoQueryDelimiters } from '@utils/query-escaping';
 
 import type {
 	AddressFixedCollection,
@@ -21,21 +25,21 @@ import type {
 export async function freshserviceApiRequest(
 	this: IExecuteFunctions | IHookFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
 	const { apiKey, domain } = await this.getCredentials<FreshserviceCredentials>('freshserviceApi');
 	const encodedApiKey = Buffer.from(`${apiKey}:X`).toString('base64');
 
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {
 			Authorization: `Basic ${encodedApiKey}`,
 		},
 		method,
 		body,
 		qs,
-		uri: `https://${domain}.freshservice.com/api/v2${endpoint}`,
+		uri: requestUrl`https://${domain}.freshservice.com/api/v2${endpoint}`,
 		json: true,
 	};
 
@@ -75,7 +79,7 @@ export async function freshserviceApiRequest(
 export async function freshserviceApiRequestAllItems(
 	this: IExecuteFunctions | IHookFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
@@ -98,7 +102,7 @@ export async function freshserviceApiRequestAllItems(
 export async function handleListing(
 	this: IExecuteFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
@@ -171,10 +175,13 @@ export function adjustAgentRoles(roles: RolesParameter) {
 	};
 }
 
-export function formatFilters(filters: IDataObject) {
+export function formatFilters(this: IExecuteFunctions, filters: IDataObject, itemIndex: number) {
 	const query = Object.keys(filters)
 		.map((key) => {
 			const value = filters[key];
+
+			// Before the branches below, because every one of them quotes the value.
+			assertNoQueryDelimiters.call(this, key, value, ["'", '"'], itemIndex);
 
 			if (!isNaN(Number(value))) {
 				return `${key}:${filters[key]}`; // number
@@ -189,6 +196,8 @@ export function formatFilters(filters: IDataObject) {
 		.join(' AND ');
 
 	return {
+		// Safe by the assertion above: no value can carry either quote character.
+		// eslint-disable-next-line n8n-local-rules/require-escaped-query-values
 		query: `"${query}"`,
 	};
 }

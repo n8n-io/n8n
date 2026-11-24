@@ -1,8 +1,10 @@
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
-import { DataSource, type EntityManager, QueryFailedError, Repository } from '@n8n/typeorm';
-import { UnexpectedError } from 'n8n-workflow';
+import { DataSource, type EntityManager, In, QueryFailedError, Repository } from '@n8n/typeorm';
+import { UnexpectedError } from '@n8n/errors';
+
+import { buildStatisticsDeltaClaimQuery } from './statistics-delta';
 
 import {
 	ProjectRelation,
@@ -13,6 +15,9 @@ import {
 } from '../entities';
 import type { User } from '../entities';
 import { StatisticsNames } from '../entities/types-db';
+import type { OperationContext } from '../services/transaction';
+import { entityManagerOf } from '../services/typeorm-transaction';
+import { chunkIds } from '../utils/chunk-ids';
 
 type StatisticsInsertResult = 'insert' | 'failed' | 'alreadyExists';
 type StatisticsUpsertResult = StatisticsInsertResult | 'update';
@@ -45,6 +50,17 @@ export class WorkflowStatisticsRepository extends Repository<WorkflowStatistics>
 		private readonly globalConfig: GlobalConfig,
 	) {
 		super(WorkflowStatistics, dataSource.manager);
+	}
+
+	/** All counter rows of the given workflows. Ids are chunked to stay under the bind limit. */
+	async findByWorkflowIds(workflowIds: string[]): Promise<WorkflowStatistics[]> {
+		if (workflowIds.length === 0) return [];
+
+		const rows: WorkflowStatistics[] = [];
+		for (const chunk of chunkIds(workflowIds)) {
+			rows.push(...(await this.find({ where: { workflowId: In(chunk) } })));
+		}
+		return rows;
 	}
 
 	async insertWorkflowStatistics(
@@ -141,12 +157,24 @@ export class WorkflowStatisticsRepository extends Repository<WorkflowStatistics>
 		);
 	}
 
+	async rollupIncrementsInContext(ctx: OperationContext, batchSize: number) {
+		const manager = ctx.trx ? entityManagerOf(ctx.trx) : this.manager;
+		return await this.rollupIncrements(manager, batchSize);
+	}
+
 	async rollupIncrements(
 		manager: EntityManager,
 		batchSize: number,
 	): Promise<{ increments: number; firstOccurrences: FirstOccurrenceRow[] }> {
 		const stats = this.manager.connection.driver.escape(this.metadata.tableName);
 		const delta = this.deltaTableName();
+		const claimBatch = buildStatisticsDeltaClaimQuery(delta, [
+			'"workflowId"',
+			'"name"',
+			'"rootCountDelta"',
+			'"createdAt"',
+			'"workflowName"',
+		]);
 
 		/**
 		 * Query walkthrough
@@ -161,9 +189,7 @@ export class WorkflowStatisticsRepository extends Repository<WorkflowStatistics>
 		 */
 		const rows = await manager.query<FoldRow[]>(
 			`WITH batch AS (
-				DELETE FROM ${delta}
-				WHERE id IN (SELECT id FROM ${delta} ORDER BY id LIMIT $1)
-				RETURNING "workflowId", "name", "rootCountDelta", "createdAt", "workflowName"
+				${claimBatch}
 			),
 			agg AS (
 				SELECT "workflowId", "name",

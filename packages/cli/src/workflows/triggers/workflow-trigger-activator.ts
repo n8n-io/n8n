@@ -1,3 +1,4 @@
+import { EventService } from '@n8n/backend-services';
 import assert from 'node:assert/strict';
 
 import { Logger } from '@n8n/backend-common';
@@ -22,10 +23,10 @@ import {
 	ERROR_TRIGGER_NODE_TYPE,
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
-	UserError,
 	Workflow,
 	WorkflowActivationError,
 } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { ActivationErrorsService } from '@/activation-errors.service';
 import {
@@ -33,7 +34,6 @@ import {
 	TRIGGER_TEARDOWN_MAX_ATTEMPTS,
 	TRIGGER_TEARDOWN_RETRY_INITIAL_DELAY_MS,
 } from '@/constants';
-import { EventService } from '@/events/event.service';
 import type {
 	PublicationOperationResult,
 	PublicationTriggerOperation,
@@ -62,6 +62,14 @@ export type { WorkflowTriggerVersion };
 export interface TriggerOperationAbort {
 	signal: AbortSignal;
 	onDetached: (work: Promise<unknown>) => void;
+}
+
+/** A trigger on the retry schedule gets one try, because the schedule already spaces its attempts. */
+function maxActivationAttempts(
+	nodeId: INode['id'],
+	retriedNodeIds: ReadonlySet<INode['id']>,
+): number {
+	return retriedNodeIds.has(nodeId) ? 1 : TRIGGER_ACTIVATION_MAX_ATTEMPTS;
 }
 
 /**
@@ -288,6 +296,7 @@ export class WorkflowTriggerActivator {
 	 * in the returned outcome's `failures` and the remaining nodes are still
 	 * attempted, so a single broken trigger does not prevent the others from
 	 * running. The caller decides whether the result is a full or partial success.
+	 * A node in `retriedNodeIds` gets a single in-process try.
 	 */
 	async activate(
 		dbWorkflow: WorkflowEntity,
@@ -295,6 +304,7 @@ export class WorkflowTriggerActivator {
 		nodeIds: Set<INode['id']>,
 		activationMode: WorkflowActivateMode,
 		abort: TriggerOperationAbort,
+		retriedNodeIds: ReadonlySet<INode['id']> = new Set(),
 	): Promise<TriggerActivationOutcome> {
 		const startedAt = Date.now();
 		try {
@@ -304,6 +314,7 @@ export class WorkflowTriggerActivator {
 				nodeIds,
 				activationMode,
 				abort,
+				retriedNodeIds,
 			);
 			this.emitTriggerOperation(
 				'activate',
@@ -324,6 +335,7 @@ export class WorkflowTriggerActivator {
 		nodeIds: Set<INode['id']>,
 		activationMode: WorkflowActivateMode,
 		abort: TriggerOperationAbort,
+		retriedNodeIds: ReadonlySet<INode['id']>,
 	): Promise<TriggerActivationOutcome> {
 		return await this.tracing.startSpan(
 			{
@@ -360,6 +372,7 @@ export class WorkflowTriggerActivator {
 							outcome,
 							activationMode,
 							abort,
+							retriedNodeIds,
 						),
 						this.registerNonWebhookTriggers(
 							dbWorkflow,
@@ -370,6 +383,7 @@ export class WorkflowTriggerActivator {
 							outcome,
 							activationMode,
 							abort,
+							retriedNodeIds,
 						),
 					]);
 					this.throwRejectedPhaseError(phaseResults);
@@ -433,6 +447,39 @@ export class WorkflowTriggerActivator {
 			this.emitTriggerNodeOperations('deactivate', 0, nodeIds.size);
 			throw error;
 		}
+	}
+
+	/**
+	 * Tears down the local state of nodes whose type this instance cannot load.
+	 * Both registrars key on workflow and node id or name, not on type, so the
+	 * webhook rows, in-memory registrations and durable jobs go even though no
+	 * `Workflow` can be built around these nodes. External webhook
+	 * deregistration needs the node type and is left behind, as an abandoned
+	 * teardown would be.
+	 */
+	async deregisterUnresolvableNodes(
+		workflowId: WorkflowId,
+		nodes: INode[],
+		abort: TriggerOperationAbort,
+	): Promise<void> {
+		if (nodes.length === 0) return;
+
+		await this.webhookTriggerRegistrar.clearWorkflowWebhooksForNodes(
+			workflowId,
+			nodes.map((node) => node.name),
+		);
+		// Settle every node before rethrowing: the caller releases the workflow
+		// lock on a throw, and a sibling still tearing down must not outlive it.
+		const results = await Promise.allSettled(
+			nodes.map(
+				async (node) =>
+					await raceAbort(
+						this.nonWebhookTriggerRegistrar.deregister(workflowId, node.id, abort.onDetached),
+						abort,
+					),
+			),
+		);
+		this.throwRejectedPhaseError(results);
 	}
 
 	private async deactivateInternal(
@@ -579,6 +626,7 @@ export class WorkflowTriggerActivator {
 		outcome: TriggerActivationOutcome,
 		activationMode: WorkflowActivateMode,
 		abort: TriggerOperationAbort,
+		retriedNodeIds: ReadonlySet<INode['id']>,
 	) {
 		const webhooksByNode = this.groupWebhookTriggersByNode(workflow, additionalData, nodeIds);
 
@@ -591,6 +639,7 @@ export class WorkflowTriggerActivator {
 					webhooks,
 					activationMode,
 					abort,
+					maxActivationAttempts(nodeId, retriedNodeIds),
 				),
 		);
 
@@ -612,6 +661,7 @@ export class WorkflowTriggerActivator {
 		webhooks: IWebhookData[],
 		activationMode: WorkflowActivateMode,
 		abort: TriggerOperationAbort,
+		maxAttempts: number,
 	): Promise<Result<{ nodeId: INode['id'] }, TriggerActivationFailure>> {
 		try {
 			for (const webhookData of webhooks) {
@@ -624,7 +674,7 @@ export class WorkflowTriggerActivator {
 								mode: 'trigger',
 								activation: activationMode,
 							}),
-						TRIGGER_ACTIVATION_MAX_ATTEMPTS,
+						maxAttempts,
 						abort.signal,
 					),
 					abort,
@@ -824,6 +874,7 @@ export class WorkflowTriggerActivator {
 		outcome: TriggerActivationOutcome,
 		activationMode: WorkflowActivateMode,
 		abort: TriggerOperationAbort,
+		retriedNodeIds: ReadonlySet<INode['id']>,
 	) {
 		const triggerNodeIds = this.getNonWebhookTriggerNodeIdsForNodeIds(workflow, nodeIds);
 		if (triggerNodeIds.length === 0) return;
@@ -855,7 +906,7 @@ export class WorkflowTriggerActivator {
 						retryTriggerActivation(
 							async () =>
 								await this.nonWebhookTriggerRegistrar.register(workflow, registration, nodeId),
-							TRIGGER_ACTIVATION_MAX_ATTEMPTS,
+							maxActivationAttempts(nodeId, retriedNodeIds),
 							abort.signal,
 						),
 						abort,

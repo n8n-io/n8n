@@ -3,6 +3,7 @@ import type { ComponentPublicInstance } from 'vue';
 import { computed, ref, onMounted, onUnmounted, watch } from 'vue';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
+import { isPlaceholderValue } from '@n8n/utils/placeholder';
 import type {
 	INodeParameterResourceLocator,
 	INodeProperties,
@@ -95,6 +96,7 @@ const { resolveProjectName } = useAgentProjectNameResolver();
 
 const {
 	agentsResources,
+	archivedSelection,
 	isLoadingResources,
 	loadError,
 	hasMoreAgentsToLoad,
@@ -105,6 +107,13 @@ const {
 	setAgentsResources,
 	refreshAgentName,
 } = useAgentResourcesLocator(projectId, resolveProjectName);
+
+// The dropdown shows an archived item only while it is the selected value.
+const dropdownResources = computed(() => {
+	const archived = archivedSelection.value;
+	if (!archived || archived.value !== props.modelValue?.value) return agentsResources.value;
+	return [archived, ...agentsResources.value];
+});
 
 const { isListMode, getUpdatedModePayload, selectedMode, supportedModes, getModeLabel } =
 	useResourceLocatorModes(
@@ -118,15 +127,11 @@ const { hideDropdown, isDropdownVisible, showDropdown } = useResourceLocatorDrop
 );
 
 const valueToDisplay = computed<INodeParameterResourceLocator['value']>(() => {
-	if (typeof props.modelValue !== 'object') {
-		return props.modelValue ?? '';
-	}
-
-	if (isListMode.value) {
-		return props.modelValue ? (props.modelValue.cachedResultName ?? props.modelValue.value) : '';
-	}
-
-	return props.modelValue ? props.modelValue.value : '';
+	const value = typeof props.modelValue === 'object' ? props.modelValue?.value : props.modelValue;
+	const fallback = isPlaceholderValue(value) ? '' : (value ?? '');
+	return isListMode.value && typeof props.modelValue === 'object'
+		? (props.modelValue?.cachedResultName ?? fallback)
+		: fallback;
 });
 
 const placeholder = computed(() => {
@@ -143,7 +148,7 @@ const placeholder = computed(() => {
 const agentUrl = computed(() => {
 	if (!isListMode.value || !projectId.value) return null;
 	const agentId = props.modelValue?.value;
-	if (typeof agentId !== 'string' || !agentId) return null;
+	if (typeof agentId !== 'string' || !agentId || isPlaceholderValue(agentId)) return null;
 	return router.resolve({
 		name: AGENT_BUILDER_VIEW,
 		params: { projectId: projectId.value, agentId },
@@ -229,7 +234,12 @@ async function refreshCachedAgent() {
 	// Read-only surfaces (execution preview, history) must never write the param.
 	if (props.isReadOnly) return;
 	const modelValue = props.modelValue;
-	if (modelValue?.mode !== 'list' || typeof modelValue.value !== 'string' || !modelValue.value) {
+	if (
+		modelValue?.mode !== 'list' ||
+		typeof modelValue.value !== 'string' ||
+		!modelValue.value ||
+		isPlaceholderValue(modelValue.value)
+	) {
 		return;
 	}
 	const freshName = await refreshAgentName(modelValue.value);
@@ -268,6 +278,11 @@ onUnmounted(() => {
 	window.removeEventListener('resize', setWidth);
 });
 
+// The mount refresh skips ID mode. Refresh again when the mode or the selected agent changes.
+watch([() => props.modelValue?.mode, () => props.modelValue?.value], () => {
+	void refreshCachedAgent();
+});
+
 watch(
 	() => props.isValueExpression,
 	(isValueExpression) => {
@@ -298,7 +313,7 @@ defineExpose({ showDropdown });
 			:show="isDropdownVisible"
 			:filterable="true"
 			:filter-required="false"
-			:resources="agentsResources"
+			:resources="dropdownResources"
 			:loading="isLoadingResources"
 			:filter="searchFilter"
 			:has-more="hasMoreAgentsToLoad"
@@ -308,6 +323,7 @@ defineExpose({ showDropdown });
 			:model-value="modelValue"
 			:disable-inactive-items="false"
 			@update:model-value="onListItemSelected"
+			@update:show="!$event && hideDropdown()"
 			@filter="onSearchFilter"
 			@load-more="loadMore"
 		>

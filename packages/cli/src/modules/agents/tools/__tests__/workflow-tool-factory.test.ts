@@ -1,8 +1,9 @@
 import { Logger } from '@n8n/backend-common';
-import { GlobalConfig } from '@n8n/config';
+import { N8N_CHAT_INTEGRATION_TYPE, type AgentToolSkippedFile } from '@n8n/api-types';
+import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
 import type { WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import { createDeferredPromise, type IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { sleep } from '@n8n/utils/sleep';
 import type {
 	IExecuteResponsePromiseData,
@@ -15,19 +16,29 @@ import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
+import { ExecutionService } from '@/executions/execution.service';
 import type { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
+import type { EphemeralNodeExecutor } from '@/node-execution/ephemeral-node-executor';
 import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
 import type { WorkflowRunner } from '@/workflow-runner';
+import type { CallableWorkflowLoader } from '@/workflows/callable/callable-workflow-loader.service';
 
+import { AgentFileBridge } from '../../agent-file-bridge.service';
+import {
+	encodeAgentSandboxHostMetadata,
+	hashAgentSandboxPrincipal,
+} from '../../agent-sandbox-principal';
 import { AgentBackgroundJobService } from '../../background/agent-background-job.service';
+import { InstrumentedRunUnsupportedError } from '../instrumented-run-guard';
 import {
 	executeWorkflow,
 	resolveWorkflowTool,
 	type WorkflowToolContext,
 } from '../workflow-tool-factory';
-import type { WorkflowToolWorkflowLoader } from '../workflow-tool-workflow-loader.service';
 
 vi.mock('@n8n/utils/sleep', () => ({ sleep: vi.fn().mockResolvedValue(undefined) }));
+
+const parentPrincipalHash = hashAgentSandboxPrincipal({ type: 'n8n-user', userId: 'user-1' });
 
 const triggerNode: INode = {
 	id: 'trigger-1',
@@ -48,6 +59,7 @@ const workflow = {
 function buildContext(run: ReturnType<typeof vi.fn>, extras: Partial<WorkflowToolContext> = {}) {
 	return {
 		workflowLoader: {} as never,
+		executor: mock<EphemeralNodeExecutor>(),
 		workflowRunner: { run } as unknown as WorkflowRunner,
 		subworkflowPolicyChecker: mock<SubworkflowPolicyChecker>(),
 		activeExecutions: { has: vi.fn().mockReturnValue(false) } as unknown as ActiveExecutions,
@@ -88,6 +100,96 @@ describe('executeWorkflow → execution classification', () => {
 			).toEqual({ value: 1 });
 		},
 	);
+
+	it('passes a foreground abort to workflow stopping and releases the wait', async () => {
+		const controller = new AbortController();
+		const started = createDeferredPromise<undefined>();
+		const finished = createDeferredPromise<IRun>();
+		const stop = vi.fn().mockResolvedValue(undefined);
+		Container.set(ExecutionService, mock<ExecutionService>({ stop }));
+		const pending = executeWorkflow(
+			workflow,
+			triggerNode,
+			{},
+			{
+				...buildContext(vi.fn().mockResolvedValue('exec-1'), {
+					activeExecutions: mock<ActiveExecutions>({
+						has: () => true,
+						getPostExecutePromise: async () => {
+							started.resolve(undefined);
+							return await finished.promise;
+						},
+					}),
+				}),
+				abortSignal: controller.signal,
+			},
+		);
+		await started.promise;
+		controller.abort(new Error('Response stopped'));
+		await expect(pending).rejects.toThrow('Response stopped');
+		expect(stop).toHaveBeenCalledExactlyOnceWith('exec-1', ['wf-1']);
+		finished.resolve(mock<IRun>({ status: 'canceled' }));
+	});
+
+	it.each([false, true])(
+		'waits for workflow stopping when its callback rejects (stop fails: %s)',
+		async (stopFails) => {
+			const controller = new AbortController();
+			const started = createDeferredPromise<undefined>();
+			const finished = createDeferredPromise<IRun>();
+			const stopped = createDeferredPromise<undefined>();
+			const stop = vi.fn().mockReturnValue(stopped.promise);
+			Container.set(ExecutionService, mock<ExecutionService>({ stop }));
+			let settled = false;
+			const outcome = executeWorkflow(
+				workflow,
+				triggerNode,
+				{},
+				{
+					...buildContext(vi.fn().mockResolvedValue('exec-1'), {
+						activeExecutions: mock<ActiveExecutions>({
+							has: () => true,
+							getPostExecutePromise: async () => {
+								started.resolve(undefined);
+								return await finished.promise;
+							},
+						}),
+					}),
+					abortSignal: controller.signal,
+				},
+			).catch((error: unknown) => {
+				settled = true;
+				return error;
+			});
+			await started.promise;
+			const reason = new Error('Response stopped');
+			controller.abort(reason);
+			finished.reject(reason);
+			await vi.dynamicImportSettled();
+			expect(stop).toHaveBeenCalledExactlyOnceWith('exec-1', ['wf-1']);
+			expect(settled).toBe(false);
+
+			const stopError = new Error('Workflow stop failed');
+			if (stopFails) stopped.reject(stopError);
+			else stopped.resolve(undefined);
+			expect(await outcome).toBe(stopFails ? stopError : reason);
+		},
+	);
+
+	it('does not cancel a workflow after the foreground tool has returned', async () => {
+		const controller = new AbortController();
+		const stop = vi.fn();
+		Container.set(ExecutionService, mock<ExecutionService>({ stop }));
+		await executeWorkflow(
+			workflow,
+			triggerNode,
+			{},
+			{ ...buildContext(vi.fn().mockResolvedValue('exec-1')), abortSignal: controller.signal },
+		);
+		controller.abort();
+		await vi.dynamicImportSettled();
+		expect(stop).not.toHaveBeenCalled();
+	});
 
 	it('checks the caller policy before starting the workflow', async () => {
 		const run = vi.fn().mockResolvedValue('exec-1');
@@ -254,6 +356,22 @@ describe('executeWorkflow → eval instrumentation', () => {
 		});
 	});
 
+	it('marks the workflow execution as simulated in its custom data when instrumented', async () => {
+		const run = vi.fn().mockResolvedValue('exec-1');
+
+		await executeWorkflow(
+			workflow,
+			triggerNode,
+			{},
+			buildContext(run, { instrumentToolAdditionalData: vi.fn() }),
+			false,
+			'Lookup_workflow',
+		);
+
+		const runData = run.mock.calls[0][0] as IWorkflowExecutionDataProcess;
+		expect(runData.executionData?.resultData.metadata).toEqual({ simulated: 'true' });
+	});
+
 	it('leaves the run data untouched when not instrumented', async () => {
 		const run = vi.fn().mockResolvedValue('exec-1');
 
@@ -261,6 +379,7 @@ describe('executeWorkflow → eval instrumentation', () => {
 
 		const runData = run.mock.calls[0][0] as IWorkflowExecutionDataProcess;
 		expect(runData.configureAdditionalData).toBeUndefined();
+		expect(runData.executionData?.resultData.metadata).toBeUndefined();
 	});
 
 	it('leaves the run data untouched when instrumented but no tool name is bound', async () => {
@@ -276,6 +395,197 @@ describe('executeWorkflow → eval instrumentation', () => {
 
 		const runData = run.mock.calls[0][0] as IWorkflowExecutionDataProcess;
 		expect(runData.configureAdditionalData).toBeUndefined();
+	});
+});
+
+describe('executeWorkflow → instrumented runs stay on main', () => {
+	const v2Workflow = {
+		...workflow,
+		settings: { engineType: 'v2' },
+	} as unknown as WorkflowEntity;
+	const offloadBefore = process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS;
+
+	function setQueue(mode: 'regular' | 'queue', offload?: 'true') {
+		Container.set(ExecutionsConfig, { mode } as ExecutionsConfig);
+		if (offload) process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = offload;
+		else delete process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS;
+	}
+
+	async function runInstrumented(
+		target: WorkflowEntity,
+		run: ReturnType<typeof vi.fn>,
+		executionMode: 'manual' | 'integrated' = 'manual',
+	) {
+		return await executeWorkflow(
+			target,
+			triggerNode,
+			{},
+			buildContext(run, { instrumentToolAdditionalData: vi.fn(), executionMode }),
+			false,
+			'Lookup_workflow',
+		);
+	}
+
+	beforeEach(() => {
+		Container.set(ExecutionPersistence, {
+			findSingleExecution: vi
+				.fn()
+				.mockResolvedValue({ status: 'success', data: { resultData: { runData: {} } } }),
+		} as unknown as ExecutionPersistence);
+	});
+
+	afterEach(() => {
+		Container.reset();
+		if (offloadBefore === undefined) delete process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS;
+		else process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = offloadBefore;
+	});
+
+	it('refuses an Engine v2 workflow before it starts', async () => {
+		setQueue('regular');
+		const run = vi.fn().mockResolvedValue('exec-1');
+
+		await expect(runInstrumented(v2Workflow, run)).rejects.toThrow(
+			'Test runs and evaluations do not support Engine v2 workflows yet.',
+		);
+		expect(run).not.toHaveBeenCalled();
+	});
+
+	it('still runs an Engine v2 workflow that is not instrumented', async () => {
+		setQueue('regular');
+		const run = vi.fn().mockResolvedValue('exec-1');
+
+		await executeWorkflow(v2Workflow, triggerNode, {}, buildContext(run), false);
+
+		expect(run).toHaveBeenCalledOnce();
+	});
+
+	it('runs a manual workflow in queue mode while manual runs stay on main', async () => {
+		setQueue('queue');
+		const run = vi.fn().mockResolvedValue('exec-1');
+
+		await runInstrumented(workflow, run);
+
+		expect(run).toHaveBeenCalledOnce();
+	});
+
+	it('refuses a manual workflow in queue mode when manual runs go to workers', async () => {
+		setQueue('queue', 'true');
+		const run = vi.fn().mockResolvedValue('exec-1');
+
+		await expect(runInstrumented(workflow, run)).rejects.toThrow(
+			'This workflow would run on a queue worker',
+		);
+		expect(run).not.toHaveBeenCalled();
+	});
+
+	it('refuses an integrated workflow in queue mode, which always goes to workers', async () => {
+		setQueue('queue');
+		const run = vi.fn().mockResolvedValue('exec-1');
+
+		await expect(runInstrumented(workflow, run, 'integrated')).rejects.toThrow(
+			InstrumentedRunUnsupportedError,
+		);
+		expect(run).not.toHaveBeenCalled();
+	});
+
+	it('stops a run that paused and refuses its result', async () => {
+		setQueue('regular');
+		const stop = vi.fn().mockResolvedValue(undefined);
+		Container.set(ExecutionService, mock<ExecutionService>({ stop }));
+		Container.set(ExecutionPersistence, {
+			findSingleExecution: vi.fn().mockResolvedValue({
+				status: 'waiting',
+				waitTill: new Date(Date.now() + 10 * 60_000),
+				data: { resultData: { runData: {} }, waitTill: new Date(Date.now() + 10 * 60_000) },
+			}),
+		} as unknown as ExecutionPersistence);
+		const run = vi.fn().mockResolvedValue('exec-1');
+
+		await expect(runInstrumented(workflow, run)).rejects.toThrow('This workflow paused to wait');
+		expect(stop).toHaveBeenCalledExactlyOnceWith('exec-1', ['wf-1']);
+	});
+
+	describe('backstop when the runner skips the instrumentation', () => {
+		const configuringRun = vi.fn(async (runData: IWorkflowExecutionDataProcess) => {
+			await runData.configureAdditionalData?.(mock());
+			return 'exec-1';
+		});
+
+		async function runWith(run: ReturnType<typeof vi.fn>, stillActive: boolean) {
+			return await executeWorkflow(
+				workflow,
+				triggerNode,
+				{},
+				buildContext(run, {
+					instrumentToolAdditionalData: vi.fn(),
+					activeExecutions: mock<ActiveExecutions>({
+						has: () => stillActive,
+						getPostExecutePromise: async () =>
+							await Promise.resolve({
+								status: 'success',
+								data: { resultData: { runData: {} } },
+							} as unknown as IRun),
+					}),
+				}),
+				false,
+				'Lookup_workflow',
+			);
+		}
+
+		it('stops a run that went on without the instrumentation and fails loudly', async () => {
+			setQueue('regular');
+			const stop = vi.fn().mockResolvedValue(undefined);
+			Container.set(ExecutionService, mock<ExecutionService>({ stop }));
+			const run = vi.fn().mockResolvedValue('exec-1');
+
+			const failure = runWith(run, true);
+
+			await expect(failure).rejects.toThrow('started outside the test run, without its mocks');
+			await expect(failure).rejects.not.toBeInstanceOf(InstrumentedRunUnsupportedError);
+			expect(stop).toHaveBeenCalledWith('exec-1', ['wf-1']);
+		});
+
+		it('lets a run through when the runner applied the instrumentation', async () => {
+			setQueue('regular');
+			const stop = vi.fn();
+			Container.set(ExecutionService, mock<ExecutionService>({ stop }));
+
+			await expect(runWith(configuringRun, true)).resolves.toMatchObject({
+				executionId: 'exec-1',
+			});
+			expect(stop).not.toHaveBeenCalled();
+		});
+
+		it('reports the result of a run that failed before it started', async () => {
+			setQueue('regular');
+			const stop = vi.fn();
+			Container.set(ExecutionService, mock<ExecutionService>({ stop }));
+			const run = vi.fn().mockResolvedValue('exec-1');
+
+			await expect(runWith(run, false)).resolves.toMatchObject({ executionId: 'exec-1' });
+			expect(stop).not.toHaveBeenCalled();
+		});
+	});
+
+	it('fails loudly, not as a safe refusal, when the paused run cannot be stopped', async () => {
+		setQueue('regular');
+		Container.set(Logger, mock<Logger>());
+		Container.set(
+			ExecutionService,
+			mock<ExecutionService>({ stop: vi.fn().mockRejectedValue(new Error('db down')) }),
+		);
+		Container.set(ExecutionPersistence, {
+			findSingleExecution: vi.fn().mockResolvedValue({
+				status: 'waiting',
+				data: { resultData: { runData: {} }, waitTill: new Date(Date.now() + 10 * 60_000) },
+			}),
+		} as unknown as ExecutionPersistence);
+		const run = vi.fn().mockResolvedValue('exec-1');
+
+		const failure = runInstrumented(workflow, run);
+
+		await expect(failure).rejects.toThrow('could not be stopped');
+		await expect(failure).rejects.not.toBeInstanceOf(InstrumentedRunUnsupportedError);
 	});
 });
 
@@ -451,7 +761,7 @@ describe('workflow tool → Wait-node handoff', () => {
 	}
 
 	async function buildWaitTool(activeExecutions: ActiveExecutions) {
-		const workflowLoader = mock<WorkflowToolWorkflowLoader>();
+		const workflowLoader = mock<CallableWorkflowLoader>();
 		workflowLoader.loadWorkflow.mockResolvedValue(waitWorkflow);
 		const run = vi.fn().mockResolvedValue('exec-1');
 		const tool = await resolveWorkflowTool({ type: 'workflow', workflow: 'Approval workflow' }, {
@@ -517,7 +827,7 @@ describe('workflow tool → Wait-node handoff', () => {
 	// No resumable checkpoint (inline, sub-agent) or a context that throws on suspend.
 	it('reports the waiting status instead of parking when the run cannot be resumed', async () => {
 		setPersistence(parkedInDb(WAIT_INDEFINITELY));
-		const workflowLoader = mock<WorkflowToolWorkflowLoader>();
+		const workflowLoader = mock<CallableWorkflowLoader>();
 		workflowLoader.loadWorkflow.mockResolvedValue(waitWorkflow);
 		const tool = await resolveWorkflowTool({ type: 'workflow', workflow: 'Approval workflow' }, {
 			...buildContext(vi.fn().mockResolvedValue('exec-1'), {
@@ -718,7 +1028,7 @@ describe('workflow tool → parentAgentRun stamping', () => {
 	};
 
 	async function runToolWith(contextExtras: Partial<WorkflowToolContext>, ctx: object) {
-		const workflowLoader = mock<WorkflowToolWorkflowLoader>();
+		const workflowLoader = mock<CallableWorkflowLoader>();
 		workflowLoader.loadWorkflow.mockResolvedValue(workflow);
 		const run = vi.fn().mockResolvedValue('exec-1');
 		const tool = await resolveWorkflowTool({ type: 'workflow', workflow: 'Lookup workflow' }, {
@@ -758,6 +1068,81 @@ describe('workflow tool → parentAgentRun stamping', () => {
 		});
 	});
 
+	// The preview marker cannot be inferred on wake-up: MCP and AI Assistant test
+	// runs are `n8n_chat` too, so it has to travel on the marker itself.
+	it('stamps the preview marker so the wake-up resumes in preview mode', async () => {
+		const executionData = await runToolWith(
+			{ agentId: 'agent-1', integrationType: N8N_CHAT_INTEGRATION_TYPE, previewChat: true },
+			agentCtx,
+		);
+
+		expect(executionData?.parentAgentRun).toEqual(expect.objectContaining({ previewChat: true }));
+	});
+
+	it('stamps the production n8n Chat marker so the wake-up uses the published runtime', async () => {
+		const executionData = await runToolWith(
+			{
+				agentId: 'agent-1',
+				integrationType: N8N_CHAT_INTEGRATION_TYPE,
+				userId: 'user-1',
+				publishedN8nChat: true,
+			},
+			agentCtx,
+		);
+
+		expect(executionData?.parentAgentRun).toEqual(
+			expect.objectContaining({ publishedN8nChat: true, userId: 'user-1' }),
+		);
+	});
+
+	it('omits the preview marker for every other draft surface', async () => {
+		const executionData = await runToolWith(
+			{ agentId: 'agent-1', integrationType: N8N_CHAT_INTEGRATION_TYPE },
+			agentCtx,
+		);
+
+		expect(executionData?.parentAgentRun).not.toHaveProperty('previewChat');
+	});
+
+	it('stamps the service account and the delegating agent for log attribution', async () => {
+		const executionData = await runToolWith(
+			{
+				agentId: 'agent-1',
+				integrationType: 'slack',
+				agentServiceAccountId: 'sa-1',
+				delegatingAgentId: 'parent-agent-1',
+			},
+			agentCtx,
+		);
+
+		expect(executionData?.parentAgentRun).toEqual({
+			agentId: 'agent-1',
+			projectId: 'project-1',
+			threadId: 'agent-1:slack:C123',
+			runId: 'run-1',
+			toolCallId: 'call-1',
+			integrationType: 'slack',
+			agentServiceAccountId: 'sa-1',
+			delegatingAgentId: 'parent-agent-1',
+		});
+	});
+
+	it('does not run the execution as the agent or its service account', async () => {
+		const workflowLoader = mock<CallableWorkflowLoader>();
+		workflowLoader.loadWorkflow.mockResolvedValue(workflow);
+		const run = vi.fn().mockResolvedValue('exec-1');
+		const tool = await resolveWorkflowTool({ type: 'workflow', workflow: 'Lookup workflow' }, {
+			...buildContext(run, { workflowLoader, agentId: 'agent-1', agentServiceAccountId: 'sa-1' }),
+			projectId: 'project-1',
+			executionMode: 'integrated',
+		} as WorkflowToolContext);
+		await tool.handler?.({}, agentCtx as never);
+
+		const runData = run.mock.calls[0][0] as IWorkflowExecutionDataProcess;
+		expect(runData.executionData?.parentAgentRun?.agentServiceAccountId).toBe('sa-1');
+		expect(runData.userId).toBeUndefined();
+	});
+
 	it('omits the integration type for a run with no chat platform', async () => {
 		const executionData = await runToolWith({ agentId: 'agent-1' }, agentCtx);
 
@@ -777,6 +1162,99 @@ describe('workflow tool → parentAgentRun stamping', () => {
 		const executionData = await runToolWith(contextExtras, ctx);
 
 		expect(executionData?.parentAgentRun).toBeUndefined();
+	});
+
+	// Attribution rides on the marker, so a tool call without a full marker names no agent.
+	it.each([
+		['no thread', { ...agentCtx, persistence: undefined }],
+		['no runId', { ...agentCtx, runId: undefined }],
+		['no toolCallId', { ...agentCtx, toolCallId: undefined }],
+	])('writes no attribution when there is %s', async (_label, ctx) => {
+		const executionData = await runToolWith(
+			{ agentId: 'agent-1', agentServiceAccountId: 'sa-1' },
+			ctx,
+		);
+
+		expect(executionData?.parentAgentRun).toBeUndefined();
+	});
+});
+
+describe('workflow tool → binary output', () => {
+	const binaryItem = {
+		json: { revisedPrompt: 'a cat' },
+		binary: { data: { id: 'filesystem-v2:x', data: 'filesystem-v2', mimeType: 'image/png' } },
+	};
+	const file = { fileId: 'aid-1', fileName: 'data.png', mimeType: 'image/png', sizeBytes: 3 };
+
+	async function runTool(ctx: object, skippedFiles: AgentToolSkippedFile[] = []) {
+		Container.set(ExecutionPersistence, {
+			findSingleExecution: vi.fn().mockResolvedValue({
+				status: 'success',
+				data: { resultData: { runData: { OpenAI: [{ data: { main: [[binaryItem]] } }] } } },
+			}),
+		} as unknown as ExecutionPersistence);
+		const bridge = mock<AgentFileBridge>();
+		bridge.adoptFromItems.mockResolvedValue({
+			items: [{ json: { revisedPrompt: 'a cat' }, binary: { data: 'aid-1' } }],
+			files: [file],
+			skippedFiles,
+		});
+		Container.set(AgentFileBridge, bridge);
+
+		const workflowLoader = mock<CallableWorkflowLoader>();
+		workflowLoader.loadWorkflow.mockResolvedValue(workflow);
+		const tool = await resolveWorkflowTool(
+			{ type: 'workflow', workflow: 'Lookup workflow' },
+			buildContext(vi.fn().mockResolvedValue('exec-1'), { workflowLoader, agentId: 'agent-1' }),
+		);
+		const output = await tool.handler?.({}, ctx as never);
+		return { output, bridge, tool };
+	}
+
+	afterEach(() => {
+		Container.reset();
+	});
+
+	it('adopts binary output as agent files and lists them as metadata', async () => {
+		const { output, bridge, tool } = await runTool({
+			persistence: { threadId: 't-1', resourceId: 'draft-chat:user-1' },
+		});
+
+		expect(bridge.adoptFromItems).toHaveBeenCalledWith(
+			[binaryItem],
+			{ agentId: 'agent-1', projectId: 'p1', threadId: 't-1', resourceId: 'draft-chat:user-1' },
+			expect.any(Map),
+			expect.any(Set),
+		);
+		expect(output).toEqual({
+			executionId: 'exec-1',
+			status: 'success',
+			data: { OpenAI: [{ revisedPrompt: 'a cat', binary: { data: 'aid-1' } }] },
+			files: [file],
+		});
+		// The model sees the same JSON, with no file parts.
+		expect(tool.toModelOutput).toBeUndefined();
+	});
+
+	it('lists the files that are too large to store', async () => {
+		const skipped = { fileName: 'big.mp4', reason: 'larger than 50 MB' };
+		const { output } = await runTool(
+			{ persistence: { threadId: 't-1', resourceId: 'draft-chat:user-1' } },
+			[skipped],
+		);
+
+		expect(output).toMatchObject({ files: [file], skippedFiles: [skipped] });
+	});
+
+	it('drops the binary when the run has no thread', async () => {
+		const { output, bridge } = await runTool({});
+
+		expect(bridge.adoptFromItems).not.toHaveBeenCalled();
+		expect(output).toEqual({
+			executionId: 'exec-1',
+			status: 'success',
+			data: { OpenAI: [{ revisedPrompt: 'a cat' }] },
+		});
 	});
 });
 
@@ -845,7 +1323,7 @@ describe('workflow tool → background job handoff', () => {
 	}
 
 	async function buildBackgroundTool(waitTill = WAIT_INDEFINITELY) {
-		const workflowLoader = mock<WorkflowToolWorkflowLoader>();
+		const workflowLoader = mock<CallableWorkflowLoader>();
 		workflowLoader.loadWorkflow.mockResolvedValue(waitWorkflow);
 		const tool = await resolveWorkflowTool({ type: 'workflow', workflow: 'Approval workflow' }, {
 			...buildContext(vi.fn().mockResolvedValue('exec-1'), {
@@ -859,14 +1337,22 @@ describe('workflow tool → background job handoff', () => {
 		return tool;
 	}
 
-	function makeParentCtx() {
+	function makeParentCtx(resourceId = 'resource-1') {
 		const suspend = vi.fn().mockResolvedValue(undefined);
+
 		return {
 			ctx: {
 				suspend,
 				runId: 'run-1',
 				toolCallId: 'call-1',
-				persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
+				persistence: {
+					threadId: 'thread-1',
+					resourceId,
+					hostMetadata: encodeAgentSandboxHostMetadata({
+						projectId: 'p1',
+						principalHash: parentPrincipalHash,
+					}),
+				},
 			} as never,
 			suspend,
 		};
@@ -875,6 +1361,24 @@ describe('workflow tool → background job handoff', () => {
 	afterEach(() => {
 		vi.restoreAllMocks();
 		Container.reset();
+	});
+
+	it('registers a draft workflow only when it becomes a background task', async () => {
+		setPersistence({ status: 'waiting' });
+		const jobService = setJobService();
+		const tool = await buildBackgroundTool();
+		const { ctx } = makeParentCtx('draft-chat:user-1');
+		await tool.handler?.({}, ctx);
+
+		expect(jobService.registerWorkflowJob).toHaveBeenNthCalledWith(
+			1,
+			expect.objectContaining({
+				executionId: 'exec-1',
+				parentThreadId: 'thread-1',
+				parentResourceId: 'draft-chat:user-1',
+			}),
+		);
+		expect(jobService.registerWorkflowJob).toHaveBeenCalledTimes(1);
 	});
 
 	it('returns a receipt for a waiting execution instead of polling or suspending', async () => {
@@ -889,12 +1393,14 @@ describe('workflow tool → background job handoff', () => {
 			executionId: 'exec-1',
 			status: 'running_in_background',
 			jobId: 'job-1',
-			note: expect.stringContaining('check_background_jobs'),
+			note: expect.stringContaining('background_jobs with action "check"'),
 		});
 		expect(jobService.registerWorkflowJob).toHaveBeenCalledWith({
 			id: expect.any(String),
 			parentAgentId: 'agent-1',
 			parentThreadId: 'thread-1',
+			parentResourceId: 'resource-1',
+			parentPrincipalHash,
 			title: 'Approval workflow',
 			workflowId: 'wf-1',
 			executionId: 'exec-1',
@@ -902,6 +1408,35 @@ describe('workflow tool → background job handoff', () => {
 		expect(suspend).not.toHaveBeenCalled();
 		// One recheck read; the inline wait polling stays off.
 		expect(findSingleExecution).toHaveBeenCalledTimes(1);
+	});
+
+	it('stops the workflow when the foreground run is aborted during registration', async () => {
+		setPersistence({ status: 'canceled' });
+		const jobService = setJobService();
+		const controller = new AbortController();
+		const registering = createDeferredPromise<undefined>();
+		const registered = createDeferredPromise<{ status: 'started'; jobId: string }>();
+		jobService.registerWorkflowJob.mockImplementation(async () => {
+			registering.resolve(undefined);
+			return await registered.promise;
+		});
+		const stop = vi.fn().mockResolvedValue(undefined);
+		Container.set(ExecutionService, mock<ExecutionService>({ stop }));
+		const tool = await buildBackgroundTool();
+		const { ctx, suspend } = makeParentCtx();
+		const pending = tool.handler?.({}, {
+			...(ctx as object),
+			abortSignal: controller.signal,
+		} as never);
+		await registering.promise;
+
+		controller.abort(new Error('Response stopped'));
+		await expect(pending).rejects.toThrow('Response stopped');
+		expect(stop).toHaveBeenCalledExactlyOnceWith('exec-1', ['wf-1']);
+
+		registered.resolve({ status: 'started', jobId: 'job-1' });
+		await vi.dynamicImportSettled();
+		expect(suspend).not.toHaveBeenCalled();
 	});
 
 	it('polls a wait due soon to completion instead of backgrounding it', async () => {
@@ -933,13 +1468,66 @@ describe('workflow tool → background job handoff', () => {
 			status: 'completed',
 			result: '{"Result":[{"approved":true}]}',
 			error: null,
+			files: null,
+			skippedFiles: null,
 		});
+		expect(jobService.markMailConsumed).toHaveBeenCalledWith('thread-1', ['job-1']);
 		expect(result).toMatchObject({
 			status: 'success',
 			jobId: 'job-1',
 			data: { Result: [{ approved: true }] },
 		});
 		expect(suspend).not.toHaveBeenCalled();
+	});
+
+	it('keeps the input files when the workflow finished during registration', async () => {
+		const binary = { data: { id: 'fs:x', data: 'fs', mimeType: 'image/png' } };
+		const settled = settledInDb();
+		settled.data.resultData.runData.Result[0].data = { main: [[{ json: {}, binary }]] };
+		setPersistence(settled);
+		setJobService();
+		const inputFile = { fileId: 'aid-1', fileName: 'cat.png', mimeType: 'image/png', sizeBytes: 3 };
+		const bridge = mock<AgentFileBridge>();
+		bridge.toBinary.mockResolvedValue({ binary, stored: new Map([['fs:x', inputFile]]) });
+		bridge.adoptFromItems.mockResolvedValue({ items: [], files: [], skippedFiles: [] });
+		Container.set(AgentFileBridge, bridge);
+		const tool = await buildBackgroundTool();
+		const { ctx } = makeParentCtx();
+
+		const result = await tool.handler?.({ files: { data: 'aid-1' } }, ctx);
+
+		expect(result).toMatchObject({ status: 'success', jobId: 'job-1' });
+		const stored = bridge.adoptFromItems.mock.calls[0][2];
+		expect(stored?.get('fs:x')).toEqual(inputFile);
+	});
+
+	it('returns the inline result when marking it as delivered fails', async () => {
+		setPersistence(settledInDb());
+		const jobService = setJobService();
+		jobService.markMailConsumed.mockRejectedValue(new Error('database unavailable'));
+		const logger = mock<Logger>();
+		Container.set(Logger, logger);
+		const tool = await buildBackgroundTool();
+		const { ctx, suspend } = makeParentCtx();
+
+		const result = await tool.handler?.({}, ctx);
+
+		expect(result).toMatchObject({ status: 'success', jobId: 'job-1' });
+		expect(suspend).not.toHaveBeenCalled();
+		expect(logger.warn).toHaveBeenCalled();
+	});
+
+	it('marks the inline result as delivered even if the settle hook settled the job first', async () => {
+		setPersistence(settledInDb());
+		const jobService = setJobService();
+		jobService.settle.mockResolvedValue(false);
+		const tool = await buildBackgroundTool();
+		const { ctx } = makeParentCtx();
+
+		const result = await tool.handler?.({}, ctx);
+
+		expect(result).toMatchObject({ status: 'success', jobId: 'job-1' });
+		expect(jobService.markMailConsumed).toHaveBeenCalledWith('thread-1', ['job-1']);
 	});
 
 	it('settles a failed inline finish with its error and no result', async () => {
@@ -957,7 +1545,41 @@ describe('workflow tool → background job handoff', () => {
 			status: 'failed',
 			result: null,
 			error: 'boom',
+			files: null,
+			skippedFiles: null,
 		});
+	});
+
+	it.each([
+		[
+			'the host scope belongs to another project',
+			{
+				hostMetadata: encodeAgentSandboxHostMetadata({
+					projectId: 'p-other',
+					principalHash: parentPrincipalHash,
+				}),
+			},
+		],
+		['the thread carries no host metadata', { hostMetadata: undefined }],
+		['the thread has no memory resource', { resourceId: undefined }],
+		['the session belongs to a task run', { resourceId: 'task:task-1' }],
+	])('falls back to suspending when %s', async (_name, persistenceOverrides) => {
+		setPersistence({
+			status: 'waiting',
+			data: createRunExecutionData({ resultData: { runData: {} } }),
+		});
+		const jobService = setJobService();
+		const tool = await buildBackgroundTool();
+		const { ctx, suspend } = makeParentCtx();
+		const persistence = {
+			...(ctx as { persistence: object }).persistence,
+			...persistenceOverrides,
+		};
+
+		await tool.handler?.({}, { ...(ctx as object), persistence } as never);
+
+		expect(jobService.registerWorkflowJob).not.toHaveBeenCalled();
+		expect(suspend).toHaveBeenCalledTimes(1);
 	});
 
 	it('falls back to suspending when the run has no parent identity', async () => {
@@ -1005,6 +1627,7 @@ describe('workflow tool → background job handoff', () => {
 			status: 'failed',
 			error: expect.stringContaining('outcome is unknown'),
 		});
+		expect(jobService.markMailConsumed).toHaveBeenCalledWith('thread-1', ['job-1']);
 		expect(result).toMatchObject({
 			executionId: 'exec-1',
 			status: 'unknown',
@@ -1029,7 +1652,7 @@ describe('workflow tool → background job handoff', () => {
 		expect(result).toMatchObject({ status: 'unknown', jobId: 'job-1' });
 	});
 
-	it('points at check_background_jobs when the settle hook already recorded the outcome', async () => {
+	it('points at the background jobs check when the settle hook already recorded the outcome', async () => {
 		setPersistence(undefined);
 		const jobService = setJobService();
 		jobService.settle.mockResolvedValue(false);
@@ -1041,7 +1664,155 @@ describe('workflow tool → background job handoff', () => {
 		expect(result).toMatchObject({
 			status: 'unknown',
 			jobId: 'job-1',
-			note: expect.stringContaining('check_background_jobs'),
+			note: expect.stringContaining('background_jobs with action "check"'),
 		});
+		// The settle hook recorded the actual outcome. Leave it pending for delivery.
+		expect(jobService.markMailConsumed).not.toHaveBeenCalled();
+	});
+});
+
+describe('workflow tool → file input', () => {
+	afterEach(() => {
+		Container.reset();
+	});
+
+	it('passes file IDs to the trigger item as binary', async () => {
+		Container.set(ExecutionPersistence, {
+			findSingleExecution: vi.fn().mockResolvedValue({
+				status: 'success',
+				data: { resultData: { runData: {} } },
+			}),
+		} as unknown as ExecutionPersistence);
+		const binary = { data: { id: 'fs:x', data: 'fs', mimeType: 'image/png' } };
+		const bridge = mock<AgentFileBridge>();
+		bridge.toBinary.mockResolvedValue({ binary, stored: new Map() });
+		Container.set(AgentFileBridge, bridge);
+		const workflowLoader = mock<CallableWorkflowLoader>();
+		workflowLoader.loadWorkflow.mockResolvedValue(workflow);
+		const run = vi.fn().mockResolvedValue('exec-1');
+		const tool = await resolveWorkflowTool(
+			{ type: 'workflow', workflow: 'Lookup workflow' },
+			buildContext(run, { workflowLoader }),
+		);
+
+		await tool.handler?.({ files: { data: 'aid-1' } }, {
+			persistence: { threadId: 't-1', resourceId: 'draft-chat:user-1' },
+		} as never);
+
+		expect(bridge.toBinary).toHaveBeenCalledWith(
+			{ data: 'aid-1' },
+			{ projectId: 'p1', threadId: 't-1' },
+		);
+		const { pinData } = run.mock.calls[0][0] as IWorkflowExecutionDataProcess;
+		const [triggerItems] = Object.values(pinData ?? {});
+		expect(triggerItems[0].binary).toEqual(binary);
+		expect(triggerItems[0].json).not.toHaveProperty('files');
+	});
+
+	it('passes the input files to adoptFromItems, so an unchanged file keeps its ID', async () => {
+		const binary = { data: { id: 'fs:x', data: 'fs', mimeType: 'image/png' } };
+		const inputFile = { fileId: 'aid-1', fileName: 'cat.png', mimeType: 'image/png', sizeBytes: 3 };
+		Container.set(ExecutionPersistence, {
+			findSingleExecution: vi.fn().mockResolvedValue({
+				status: 'success',
+				data: { resultData: { runData: { Edit: [{ data: { main: [[{ json: {}, binary }]] } }] } } },
+			}),
+		} as unknown as ExecutionPersistence);
+		const bridge = mock<AgentFileBridge>();
+		bridge.toBinary.mockResolvedValue({ binary, stored: new Map([['fs:x', inputFile]]) });
+		bridge.adoptFromItems.mockResolvedValue({
+			items: [{ json: {}, binary: { data: 'aid-1' } }],
+			files: [],
+			skippedFiles: [],
+		});
+		Container.set(AgentFileBridge, bridge);
+		const workflowLoader = mock<CallableWorkflowLoader>();
+		workflowLoader.loadWorkflow.mockResolvedValue(workflow);
+		const tool = await resolveWorkflowTool(
+			{ type: 'workflow', workflow: 'Lookup workflow' },
+			buildContext(vi.fn().mockResolvedValue('exec-1'), { workflowLoader }),
+		);
+
+		const output = await tool.handler?.({ files: { data: 'aid-1' } }, {
+			persistence: { threadId: 't-1', resourceId: 'draft-chat:user-1' },
+		} as never);
+
+		const stored = bridge.adoptFromItems.mock.calls[0][2];
+		expect(stored?.get('fs:x')).toEqual(inputFile);
+		expect(output).toMatchObject({ data: { Edit: [{ binary: { data: 'aid-1' } }] }, files: [] });
+	});
+
+	it('keeps a workflow input named files in the JSON and does not resolve it as files', async () => {
+		Container.set(ExecutionPersistence, {
+			findSingleExecution: vi.fn().mockResolvedValue({
+				status: 'success',
+				data: { resultData: { runData: {} } },
+			}),
+		} as unknown as ExecutionPersistence);
+		const bridge = mock<AgentFileBridge>();
+		Container.set(AgentFileBridge, bridge);
+		const fieldsTrigger = {
+			...triggerNode,
+			parameters: {
+				inputSource: 'workflowInputs',
+				workflowInputs: { values: [{ name: 'files', type: 'string' }] },
+			},
+		};
+		const workflowLoader = mock<CallableWorkflowLoader>();
+		workflowLoader.loadWorkflow.mockResolvedValue({
+			...workflow,
+			nodes: [fieldsTrigger],
+		} as unknown as WorkflowEntity);
+		const run = vi.fn().mockResolvedValue('exec-1');
+		const tool = await resolveWorkflowTool(
+			{ type: 'workflow', workflow: 'Lookup workflow' },
+			buildContext(run, { workflowLoader }),
+		);
+
+		await tool.handler?.({ files: 'a.txt' }, {
+			persistence: { threadId: 't-1', resourceId: 'draft-chat:user-1' },
+		} as never);
+
+		expect(bridge.toBinary).not.toHaveBeenCalled();
+		const { pinData } = run.mock.calls[0][0] as IWorkflowExecutionDataProcess;
+		const [triggerItems] = Object.values(pinData ?? {});
+		expect(triggerItems[0].json).toEqual({ files: 'a.txt' });
+		expect(triggerItems[0].binary).toBeUndefined();
+	});
+
+	it('restores the input files on resume, so an unchanged file keeps its ID', async () => {
+		const binary = { data: { id: 'fs:x', data: 'fs', mimeType: 'image/png' } };
+		const inputFile = { fileId: 'aid-1', fileName: 'cat.png', mimeType: 'image/png', sizeBytes: 3 };
+		Container.set(ExecutionPersistence, {
+			findSingleExecution: vi.fn().mockResolvedValue({
+				status: 'success',
+				data: { resultData: { runData: { Edit: [{ data: { main: [[{ json: {}, binary }]] } }] } } },
+			}),
+		} as unknown as ExecutionPersistence);
+		const bridge = mock<AgentFileBridge>();
+		bridge.adoptFromItems.mockResolvedValue({
+			items: [{ json: {}, binary: { data: 'aid-1' } }],
+			files: [],
+			skippedFiles: [],
+		});
+		Container.set(AgentFileBridge, bridge);
+		const workflowLoader = mock<CallableWorkflowLoader>();
+		workflowLoader.loadWorkflow.mockResolvedValue(workflow);
+		const run = vi.fn();
+		const tool = await resolveWorkflowTool(
+			{ type: 'workflow', workflow: 'Lookup workflow' },
+			buildContext(run, { workflowLoader }),
+		);
+
+		const output = await tool.handler?.({}, {
+			persistence: { threadId: 't-1', resourceId: 'draft-chat:user-1' },
+			continuation: { executionId: 'exec-1', inputFiles: { 'fs:x': inputFile } },
+		} as never);
+
+		expect(run).not.toHaveBeenCalled();
+		expect(bridge.toBinary).not.toHaveBeenCalled();
+		const stored = bridge.adoptFromItems.mock.calls[0][2];
+		expect(stored?.get('fs:x')).toEqual(inputFile);
+		expect(output).toMatchObject({ data: { Edit: [{ binary: { data: 'aid-1' } }] } });
 	});
 });

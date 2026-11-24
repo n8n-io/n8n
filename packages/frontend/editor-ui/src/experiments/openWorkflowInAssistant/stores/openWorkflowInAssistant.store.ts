@@ -68,10 +68,9 @@ export const useOpenWorkflowInAssistantStore = defineStore(
 		}
 
 		/**
-		 * Called by the thread view right after it consumes and sends a stashed
-		 * first message. That one-shot consumption is the only reliable "fresh
-		 * redirect landing" signal — the thread's metadata source persists
-		 * forever and would re-fire on every revisit of an old thread.
+		 * Called by the thread view after a one-shot landing signal: a stashed
+		 * first message, or a workflow-list auto redirect marker. Thread metadata
+		 * source persists forever and would re-fire on every revisit.
 		 */
 		function handleRedirectLanding(threadId: string) {
 			if (!isTreatment.value) return;

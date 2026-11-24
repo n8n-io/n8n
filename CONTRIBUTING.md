@@ -14,7 +14,6 @@ Great that you are here and you want to contribute to n8n
 			- [Node.js](#nodejs)
 			- [pnpm](#pnpm)
 				- [pnpm workspaces](#pnpm-workspaces)
-			- [corepack](#corepack)
 			- [Build tools](#build-tools)
 		- [Actual n8n setup](#actual-n8n-setup)
 		- [Start](#start)
@@ -82,26 +81,21 @@ If you already have VS Code and Docker installed, you can click [here](https://v
 
 #### pnpm
 
-[pnpm](https://pnpm.io/) version 10.22 or newer is required for development purposes. We recommend installing it with [corepack](#corepack).
+[pnpm](https://pnpm.io/) is required for development. Install it globally with npm:
+
+```bash
+npm i -g pnpm@12.4.2
+```
+
+The root [package.json](package.json) pins the exact version in its `packageManager` field. Always install that version, and update your global install when the pin changes.
+
+If `npm` is not available on your machine, use one of the other methods in the [pnpm installation guide](https://pnpm.io/installation).
 
 ##### pnpm workspaces
 
 n8n is split up into different modules which are all in a single mono repository.
 To facilitate the module management, [pnpm workspaces](https://pnpm.io/workspaces) are used.
 This automatically sets up file-links between modules which depend on each other.
-
-#### corepack
-
-We recommend enabling [Node.js corepack](https://nodejs.org/docs/latest-v16.x/api/corepack.html)  and pnpm with:
-
-```bash
-corepack enable
-corepack prepare pnpm@10.22.0 --activate
-```
-
-**IMPORTANT**: If you have installed Node.js via homebrew, you'll need to run `brew install corepack`, since homebrew explicitly removes `npm` and `corepack` from [the `node` formula](https://github.com/Homebrew/homebrew-core/blob/master/Formula/node.rb#L66).
-
-**IMPORTANT**: If you are on windows, you'd need to run `corepack enable` and `corepack prepare --activate` in a terminal as an administrator.
 
 #### Build tools
 
@@ -245,6 +239,22 @@ N8N_PORT=5699 pnpm dev:be
 N8N_PORT=5699 N8N_EDITOR_PORT=8082 pnpm dev:fe:editor
 ```
 
+### See telemetry events locally
+
+To see the telemetry events that your instance sends, start a local listener in
+one terminal and the backend in another. The listener shows one line for each
+event, from the backend and from the editor, and writes each event to
+`.output/telemetry.ndjson`. Run `pnpm telemetry:sink --help` for its options.
+
+`pnpm dev:be:telemetry` loads `.env.local` and `.env` when they exist, like
+`dotenvx` in the examples above. It always points the diagnostics settings at the
+listener, also when those files set them to other values.
+
+```bash
+pnpm telemetry:sink
+pnpm dev:be:telemetry
+```
+
 ### Basic Development Workflow Example (most used within n8n)
 
 If you're working on API and FE, a lot of team members run the following steps:
@@ -355,6 +365,20 @@ When developing custom nodes or credentials, you can enable hot reload to automa
 N8N_DEV_RELOAD=true pnpm dev:be
 ```
 
+This enables two mechanisms:
+
+- a **file watcher** over the loaded node directories, and
+- `POST /rest/dev/reload`, an unauthenticated (rate-limited) endpoint that re-reads the node
+  files already on disk. `@n8n/node-cli`'s `dev` command uses this to push a
+  reload after each successful compile, because a container cannot watch a bind
+  mount and the Alpine image has no `@parcel/watcher` prebuild.
+
+The variable is honoured regardless of `NODE_ENV`, so it also applies to
+production builds and the published Docker image. Never set it on an instance
+reachable by anyone you would not give a shell to. It also disables the crash
+journal, so a dev container that was killed rather than shut down gracefully
+does not pay the 10 second crash-loop penalty on its next boot.
+
 **Performance considerations:**
 - File watching adds overhead to your system, especially on slower machines
 - The watcher monitors potentially thousands of files, which can impact CPU and memory usage
@@ -424,7 +448,7 @@ Each instance gets its own port, and the webhook URL matches the main URL. Multi
 >- This does not work with Podman out of the box. You need to [configure Testcontainers for Podman](https://podman-desktop.io/tutorial/testcontainers-with-podman) first.
 >- Alternatively, you can use colima and set DOCKER_HOST and TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE environment variables as described [here](https://node.testcontainers.org/supported-container-runtimes/#colima)
 
-Refer to [packages/testing/containers/README.md](packages/testing/containers/README.md) for more information.
+Refer to [packages/quality/environments/containers/README.md](packages/quality/environments/containers/README.md) for more information.
 
 ### Work locally with syslog
 
@@ -557,7 +581,7 @@ Please address the requested changes or provide feedback within 14 days. If ther
 #### **3. General Requirements**
 
 - **Describe Your Change:**
-  - Every PR needs a clear description of what you changed, why, and why you took this approach over the alternatives. Link the issue or forum topic. Write the description in your own words. A PR with no real description will be closed.
+  - Every PR needs a concise description of what you changed and why. Keep its length in proportion to the complexity of the change. Link the issue or forum topic. Write the description in your own words. A PR with no real description will be closed.
   - Where possible try to include a short video or screenshots. This is useful if you are working on a feature or updating a node.
 - **Follow the Style Guide:**
   - Ensure your code adheres to n8n's coding standards and conventions (e.g., formatting, naming, indentation). Use linting tools where applicable.
@@ -575,6 +599,7 @@ Please address the requested changes or provide feedback within 14 days. If ther
     - Workflow tests for nodes (example [here](https://github.com/n8n-io/n8n/tree/master/packages/nodes-base/nodes/Switch/V3/test))
     - UI tests (if applicable)
     - Detailed steps under the "How to test" section of the PR template to cover how to manually test the feature or bug fix.
+    - The command that runs your tests, also under the "How to test" section.
   - For a **bug fix**, include at least one regression test that **fails against the latest `master`** without your change and passes with it. Tell us in the description how to see it fail, so we can verify the fix actually fixes something.
 - **Typos:**
   - Use a spell-checking tool, such as [**Code Spell Checker**](https://marketplace.visualstudio.com/items?itemName=streetsidesoftware.code-spell-checker), to avoid typos.
@@ -653,7 +678,7 @@ E2E tests can be started via one of the following commands:
 - `pnpm --filter=n8n-playwright test:local --ui` - Run tests in interactive UI mode (useful for debugging)
 - `pnpm --filter=n8n-playwright test:local --grep="test-name"` - Run specific tests matching pattern
 
-See `packages/testing/playwright/README.md` for more test commands and `packages/testing/playwright/CONTRIBUTING.md` for writing guidelines.
+See `packages/quality/testing/playwright/README.md` for more test commands and `packages/quality/testing/playwright/CONTRIBUTING.md` for writing guidelines.
 
 ## Create custom nodes
 

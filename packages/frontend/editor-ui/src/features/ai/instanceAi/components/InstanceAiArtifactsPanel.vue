@@ -6,13 +6,17 @@ import {
 	N8nHeading,
 	N8nIcon,
 	N8nIconButton,
+	N8nLoading,
 	type IconName,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, inject, type Ref } from 'vue';
 import { useBuildingArtifactIds } from '../composables/useBuildingArtifactIds';
-import { useInstanceAiStore, useThread } from '../instanceAi.store';
+import InstanceAiCloudBrowsersCard from './InstanceAiCloudBrowsersCard.vue';
+import { useArtifactThread } from '../artifactThread';
+import { useInstanceAiStore } from '../instanceAi.store';
 import type { ResourceEntry } from '../useResourceRegistry';
+import { useArtifactLinks } from '../artifactLinks';
 import {
 	agentPreviewContextIcon,
 	formatAgentPreviewContextLabel,
@@ -25,8 +29,12 @@ const projectsStore = useProjectsStore();
 const store = useInstanceAiStore();
 
 const i18n = useI18n();
-const thread = useThread();
+const { artifactHref: resolveArtifactHref } = useArtifactLinks();
+const thread = useArtifactThread();
 const project = computed(() => {
+	// The project id arrives with thread hydration. Until then the lookup is
+	// pending, not unknown, so the template shows a skeleton instead.
+	if (!thread.projectId && thread.hydrationStatus !== 'ready') return undefined;
 	const match = projectsStore.myProjects.find((p) => p.id === thread.projectId);
 	if (!match)
 		return {
@@ -51,6 +59,8 @@ const openAgentPreview = inject<((id: string, projectId: string) => void) | unde
 	'openAgentPreview',
 	undefined,
 );
+const openSkillPreview = inject<((id: string) => void) | undefined>('openSkillPreview', undefined);
+const openAppPreview = inject<((id: string) => void) | undefined>('openAppPreview', undefined);
 const pendingComposerContext = inject<Readonly<Ref<InstanceAiHandoffContext | null>> | undefined>(
 	'pendingComposerContext',
 	undefined,
@@ -83,6 +93,16 @@ function handleArtifactClick(artifact: ResourceEntry, e: MouseEvent) {
 		if (!artifact.projectId || !openAgentPreview) return;
 		e.preventDefault();
 		openAgentPreview(artifact.id, artifact.projectId);
+	} else if (artifact.type === 'skill' && artifact.id) {
+		if (!openSkillPreview) return;
+		// Always prevent: this row has no target="_blank", so the browser would
+		// navigate the chat tab away even when the skill tab is already active.
+		e.preventDefault();
+		openSkillPreview(artifact.id);
+	} else if (artifact.type === 'app' && artifact.id) {
+		if (!openAppPreview) return;
+		e.preventDefault();
+		openAppPreview(artifact.id);
 	}
 }
 
@@ -108,7 +128,13 @@ const buildingArtifactIds = useBuildingArtifactIds();
 const artifacts = computed((): ResourceEntry[] => {
 	const result: ResourceEntry[] = [];
 	for (const entry of thread.producedArtifacts.values()) {
-		if (entry.type === 'workflow' || entry.type === 'data-table' || entry.type === 'agent') {
+		if (
+			entry.type === 'workflow' ||
+			entry.type === 'data-table' ||
+			entry.type === 'agent' ||
+			entry.type === 'skill' ||
+			entry.type === 'app'
+		) {
 			result.push(entry);
 		}
 	}
@@ -119,22 +145,13 @@ const artifactIconMap: Record<string, IconName> = {
 	workflow: 'workflow',
 	'data-table': 'table',
 	agent: 'robot',
+	skill: 'book-open',
+	app: 'layout-template',
 };
 
 function artifactHref(artifact: ResourceEntry) {
-	if (artifact.type === 'workflow') return `/workflow/${artifact.id}`;
-	if (artifact.type === 'data-table') {
-		return artifact.projectId
-			? `/projects/${artifact.projectId}/datatables/${artifact.id}`
-			: '/data-tables';
-	}
-	if (artifact.type === 'agent') {
-		if (artifact.pending) return '#';
-		return artifact.projectId
-			? `/projects/${artifact.projectId}/agents/${artifact.id}`
-			: '/home/agents';
-	}
-	return '#';
+	if (artifact.type === 'agent' && artifact.pending) return '#';
+	return resolveArtifactHref(artifact.type, artifact.id, artifact.projectId) ?? '#';
 }
 
 function openArtifactLabel(name: string) {
@@ -146,6 +163,8 @@ function contextEntryFor(context: InstanceAiHandoffContext): ContextEntry | unde
 
 	// A control signal, not user-added context — no sidebar entry.
 	if (context.source === 'setup-panel-execute') return undefined;
+	// The workflow attachment already shows the workflow the finding is about.
+	if (context.source === 'migration-report') return undefined;
 
 	if (context.source === 'agent-preview') {
 		return {
@@ -182,12 +201,12 @@ const contextEntries = computed<ContextEntry[]>(() => {
 		entries.push(pendingEntry);
 	}
 
-	for (const message of [...thread.messages].reverse()) {
-		if (message.role !== 'user' || !message.context) continue;
+	for (const turn of [...thread.artifactTurns].reverse()) {
+		if (turn.role !== 'user' || !turn.context) continue;
 
-		const key = handoffContextKey(message.context);
+		const key = handoffContextKey(turn.context);
 		if (seen.has(key) || dismissedKeys.has(key)) continue;
-		const entry = contextEntryFor(message.context);
+		const entry = contextEntryFor(turn.context);
 		if (!entry) continue;
 		seen.add(key);
 		entries.push(entry);
@@ -222,11 +241,23 @@ async function dismissContext(key: string) {
 				</div>
 
 				<div :class="$style.artifactList">
-					<div :class="[$style.artifactRow]">
+					<div v-if="project" :class="[$style.artifactRow]">
 						<span :class="$style.artifactIconWrap">
 							<ProjectIcon :icon="project.icon" size="small" border-less />
 						</span>
 						<span :class="$style.artifactName">{{ project.name }}</span>
+					</div>
+					<div
+						v-else
+						:class="$style.artifactRow"
+						data-test-id="instance-ai-artifacts-project-loading"
+					>
+						<span :class="[$style.artifactIconWrap, $style.iconSkeleton]">
+							<N8nLoading variant="custom" />
+						</span>
+						<span :class="$style.nameSkeleton">
+							<N8nLoading variant="custom" />
+						</span>
 					</div>
 				</div>
 			</div>
@@ -308,6 +339,21 @@ async function dismissContext(key: string) {
 					</a>
 				</div>
 
+				<div
+					v-else-if="thread.hydrationStatus !== 'ready'"
+					:class="$style.artifactList"
+					data-test-id="instance-ai-artifacts-list-loading"
+				>
+					<div :class="[$style.artifactRow, $style.artifactRowSkeleton]">
+						<span :class="[$style.artifactIconWrap, $style.artifactIconSkeleton]">
+							<N8nLoading variant="custom" />
+						</span>
+						<span :class="$style.nameSkeleton">
+							<N8nLoading variant="custom" />
+						</span>
+					</div>
+				</div>
+
 				<div v-else :class="$style.emptyState">
 					<span>{{ i18n.baseText('instanceAi.artifactsPanel.noArtifacts') }}</span>
 				</div>
@@ -345,6 +391,7 @@ async function dismissContext(key: string) {
 				</div>
 			</div>
 		</div>
+		<InstanceAiCloudBrowsersCard />
 	</aside>
 </template>
 
@@ -497,6 +544,28 @@ async function dismissContext(key: string) {
 	white-space: nowrap;
 	flex: 1;
 	min-width: 0;
+}
+
+/* Same footprint as the resolved project row (small ProjectIcon + one text line) */
+.iconSkeleton {
+	width: var(--spacing--lg);
+	height: var(--spacing--lg);
+}
+
+.nameSkeleton {
+	flex: 1;
+	max-width: 50%;
+	height: var(--font-size--sm);
+}
+
+/* Artifact rows are shorter: one text line at its line height, plus the row padding (border-box) */
+.artifactRowSkeleton {
+	min-height: calc(var(--font-size--sm) * var(--line-height--lg) + 2 * var(--spacing--2xs));
+}
+
+.artifactIconSkeleton {
+	width: var(--spacing--sm);
+	height: var(--spacing--sm);
 }
 
 .artifactRowArchived {

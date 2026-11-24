@@ -119,12 +119,18 @@ export class OAuth2Api implements ICredentialType {
 			displayName: 'Private Key',
 			name: 'privateKey',
 			type: 'hidden',
+			typeOptions: {
+				password: true,
+			},
 			default: '',
 		},
 		{
 			displayName: 'Certificate',
 			name: 'certificate',
 			type: 'hidden',
+			typeOptions: {
+				password: true,
+			},
 			default: '',
 		},
 		// WARNING: if you are extending from this credentials and allow user to set their own scopes
@@ -232,7 +238,6 @@ export class OAuth2Api implements ICredentialType {
 			default: false,
 			description:
 				'Whether the IdP returns tokens encrypted as JWE to the public key at this instance’s JWKS endpoint. The response must contain at least one JWE-encrypted token (access or ID token); fully plaintext responses are rejected.',
-			envFeatureFlag: 'OAUTH2_JWE',
 			doNotInherit: true,
 		},
 		{
@@ -258,9 +263,6 @@ export class OAuth2Api implements ICredentialType {
 			doNotInherit: true,
 		},
 		{
-			// Transitively gated by `envFeatureFlag: 'OAUTH2_JWE'` on
-			// `jweEnabled`: when the flag is off, `jweEnabled` is hidden, so this
-			// toggle's `displayOptions.show: jweEnabled: [true]` can never match.
 			displayName: 'Inline JWKS in Client Registration',
 			name: 'inlineJwks',
 			type: 'boolean',

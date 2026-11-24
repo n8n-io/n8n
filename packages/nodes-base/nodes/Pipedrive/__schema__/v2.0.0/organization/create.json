@@ -22,15 +22,27 @@
         "is_deleted": {
             "type": "boolean"
         },
+        "label_ids": {
+            "type": "array",
+            "items": {
+                "type": "integer"
+            }
+        },
         "linkedin": {
             "type": "null"
         },
         "name": {
             "type": "string"
         },
+        "update_time": {
+            "type": "null"
+        },
+        "visible_to": {
+            "type": "integer"
+        },
         "website": {
             "type": "null"
         }
     },
-    "version": 1
+    "version": 3
 }

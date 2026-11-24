@@ -1,3 +1,4 @@
+import { isRecord } from '@n8n/utils/is-record';
 import { z } from 'zod';
 
 import { Tool } from '../../sdk/tool';
@@ -121,6 +122,7 @@ export function createReadToolResultTool(filesystem: WorkspaceFilesystem): Built
 		.input(inputSchema)
 		.output(outputSchema)
 		.handler(async (input, ctx) => await readToolResult(filesystem, input, ctx.abortSignal))
+		.untrustedOutput()
 		.build();
 }
 
@@ -176,7 +178,7 @@ function readJsonValue(value: unknown, pointer: string, input: ToolResultInput):
 			input.limit ?? DEFAULT_CONTAINER_LIMIT,
 		);
 	}
-	if (isJsonObject(value)) {
+	if (isRecord(value)) {
 		return readContainerPage(
 			value,
 			pointer,
@@ -196,7 +198,7 @@ function describeValue(value: unknown, pointer: string): DescribeOutput {
 		output.charCount = value.length;
 	} else if (Array.isArray(value)) {
 		output.childCount = value.length;
-	} else if (isJsonObject(value)) {
+	} else if (isRecord(value)) {
 		output.childCount = Object.keys(value).length;
 	}
 	return output;
@@ -329,7 +331,7 @@ function describeChild(
 		if (value.length <= MAX_INLINE_STRING_CHARS) child.value = value;
 	} else if (Array.isArray(value)) {
 		child.childCount = value.length;
-	} else if (isJsonObject(value)) {
+	} else if (isRecord(value)) {
 		child.childCount = Object.keys(value).length;
 	} else if (value === null || typeof value === 'boolean' || typeof value === 'number') {
 		child.value = value;
@@ -345,26 +347,39 @@ function resolveJsonPointer(root: unknown, pointer: string): unknown {
 	}
 
 	let value = root;
+	let parentPointer = '';
 	for (const encodedSegment of pointer.slice(1).split('/')) {
 		const segment = decodeJsonPointerSegment(encodedSegment);
 		if (Array.isArray(value)) {
-			if (!/^(0|[1-9]\d*)$/.test(segment)) {
-				throw new Error('JSON Pointer does not reference a stored value');
-			}
-			const index = Number(segment);
+			const index = /^(0|[1-9]\d*)$/.test(segment) ? Number(segment) : Number.NaN;
 			if (!Number.isSafeInteger(index) || index >= value.length) {
-				throw new Error('JSON Pointer does not reference a stored value');
+				throw unresolvedPointerError(pointer, parentPointer, `has no index "${segment}"`);
 			}
 			value = value[index];
-			continue;
-		}
-		if (isJsonObject(value) && Object.hasOwn(value, segment)) {
+		} else if (isRecord(value) && Object.hasOwn(value, segment)) {
 			value = value[segment];
-			continue;
+		} else {
+			const reason = isRecord(value)
+				? `has no key "${segment}"`
+				: `is a ${getJsonValueType(value)} without children`;
+			throw unresolvedPointerError(pointer, parentPointer, reason);
 		}
-		throw new Error('JSON Pointer does not reference a stored value');
+		parentPointer = appendJsonPointer(parentPointer, segment);
 	}
 	return value;
+}
+
+function unresolvedPointerError(pointer: string, parentPointer: string, reason: string): Error {
+	// "/" is the most common guess for the root, but RFC 6901 reads it as an empty-string key.
+	if (pointer === '/') {
+		return new Error(
+			'JSON Pointer "/" does not select the root value. To read the root value, omit the pointer or set it to an empty string.',
+		);
+	}
+	const location = parentPointer === '' ? 'The root value' : `The value at "${parentPointer}"`;
+	return new Error(
+		`JSON Pointer does not reference a stored value: ${location} ${reason}. Copy pointer values from the children of a view=json result.`,
+	);
 }
 
 function decodeJsonPointerSegment(segment: string): string {
@@ -381,15 +396,11 @@ function appendJsonPointer(pointer: string, segment: string): string {
 function getJsonValueType(value: unknown): JsonValueType {
 	if (value === null) return 'null';
 	if (Array.isArray(value)) return 'array';
-	if (isJsonObject(value)) return 'object';
+	if (isRecord(value)) return 'object';
 	if (typeof value === 'string') return 'string';
 	if (typeof value === 'number') return 'number';
 	if (typeof value === 'boolean') return 'boolean';
 	throw new Error('Stored tool result contains an unsupported JSON value');
-}
-
-function isJsonObject(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function isWithinOutputBudget(output: ToolResultOutput): boolean {

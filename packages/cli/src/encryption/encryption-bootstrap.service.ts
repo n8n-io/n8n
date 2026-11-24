@@ -25,6 +25,7 @@ export class EncryptionBootstrapService {
 		// the provider is wired for commands too.
 		if (this.instanceSettings.instanceType === 'main' && this.canSeed) {
 			try {
+				await this.keyManager.repairLegacyDataEncryptionKeys();
 				await this.keyManager.bootstrapLegacyCbcKey(this.instanceSettings.encryptionKey);
 				await this.keyManager.bootstrapGcmKey();
 			} catch (error) {

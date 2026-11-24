@@ -6,21 +6,18 @@ import type {
 	WorkflowReviewEligibleReviewer,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import {
 	TransactionRunner,
 	UserRepository,
 	WorkflowReviewActivityCommentRepository,
 	WorkflowReviewActivityRepository,
-	WorkflowReviewRequestRepository,
 	type User,
 	type WorkflowReviewActivityFeedEntry,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { EventService } from '@/events/event.service';
+import { BadRequestError, ForbiddenError } from '@n8n/errors';
 
 import { WorkflowReviewAuthorizationService } from './workflow-review-authorization.service';
 import { WorkflowReviewFeatureGate } from './workflow-review-feature-gate.service';
@@ -33,7 +30,6 @@ export class WorkflowReviewActivityService {
 		private readonly authorizationService: WorkflowReviewAuthorizationService,
 		private readonly activityRepository: WorkflowReviewActivityRepository,
 		private readonly activityCommentRepository: WorkflowReviewActivityCommentRepository,
-		private readonly requestRepository: WorkflowReviewRequestRepository,
 		private readonly userRepository: UserRepository,
 		private readonly txRunner: TransactionRunner,
 		private readonly logger: Logger,
@@ -84,15 +80,6 @@ export class WorkflowReviewActivityService {
 		// pooled connection while the transaction holds one — a deadlock on a
 		// single-connection pool.
 		const { activity, message } = await this.txRunner.run({}, async (ctx) => {
-			// Re-read inside the transaction, not from the pre-transaction access lookup, so a
-			// close committed in between is seen. A close that commits between this read and
-			// the comment commit can still slip one comment in — accepted: closing that window
-			// would serialize every comment instance-wide for a benign outcome.
-			const request = await this.requestRepository.findById(workflowReviewRequestId, ctx);
-			if (!request || request.state === 'closed') {
-				throw new ConflictError('The review request is no longer open');
-			}
-
 			const activity = await this.activityRepository.createActivity(
 				{
 					workflowReviewRequestId,

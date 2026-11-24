@@ -310,3 +310,22 @@ describe('Workspace', () => {
 		});
 	});
 });
+
+describe('Workspace prewarm', () => {
+	it('handles a rejection from an async prewarm hook', async () => {
+		const unhandled = vi.fn();
+		process.on('unhandledRejection', unhandled);
+		try {
+			const workspace = new Workspace({
+				prewarm: async () => await Promise.reject(new Error('sandbox unavailable')),
+			});
+
+			workspace.prewarm();
+			await new Promise((resolve) => setTimeout(resolve, 0));
+
+			expect(unhandled).not.toHaveBeenCalled();
+		} finally {
+			process.off('unhandledRejection', unhandled);
+		}
+	});
+});

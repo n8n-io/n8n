@@ -1,4 +1,8 @@
-import { loadEvalCasesFromDir, type WorkflowTestCaseWithFile } from '../../utils/load-eval-cases';
+import {
+	loadEvalCasesFromDir,
+	type LoadEvalCasesOptions,
+	type WorkflowTestCaseWithFile,
+} from '../../utils/load-eval-cases';
 
 export type { WorkflowTestCaseWithFile } from '../../utils/load-eval-cases';
 
@@ -6,6 +10,7 @@ export type { WorkflowTestCaseWithFile } from '../../utils/load-eval-cases';
 export function loadWorkflowTestCasesWithFiles(
 	filter?: string,
 	exclude?: string,
+	options?: LoadEvalCasesOptions,
 ): WorkflowTestCaseWithFile[] {
-	return loadEvalCasesFromDir(__dirname, filter, exclude);
+	return loadEvalCasesFromDir(__dirname, filter, exclude, undefined, options);
 }

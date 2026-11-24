@@ -87,6 +87,11 @@ export interface NewCredentialValue {
  */
 export type OnError = 'stopWorkflow' | 'continueRegularOutput' | 'continueErrorOutput';
 
+/** Custom OpenTelemetry span attributes, set for each node in the node's Settings tab. */
+export interface CustomTelemetryTags {
+	tag?: Array<{ key: string; value: string }>;
+}
+
 // =============================================================================
 // Workflow Settings (with extensibility)
 // =============================================================================
@@ -103,6 +108,8 @@ export interface WorkflowSettings {
 	saveExecutionProgress?: boolean;
 	executionTimeout?: number;
 	executionOrder?: 'v0' | 'v1';
+	/** The engine that runs the workflow. A workflow without an engine runs on `v1`. */
+	engineType?: 'v1' | 'v2';
 	callerPolicy?: 'any' | 'none' | 'workflowsFromAList' | 'workflowsFromSameOwner';
 	callerIds?: string;
 	/** Allow additional settings fields */
@@ -152,27 +159,58 @@ export interface IConnections {
  * Minimal node-info shape needed to resolve a node's error-output index.
  * Accepts either a NodeJSON or a GraphNode instance config, so callers on
  * both import and export paths can hand theirs off without conversion.
+ * Without `typeVersion`, the latest node version is assumed.
  */
 interface ErrorIndexNodeInfo {
 	name?: string;
 	type: string;
+	typeVersion?: number;
 	parameters?: IDataObject;
+}
+
+function readOption(value: unknown, key: string): unknown {
+	return typeof value === 'object' && value !== null ? Reflect.get(value, key) : undefined;
+}
+
+function countSwitchRules(parameters: IDataObject | undefined): number | undefined {
+	const rules = parameters?.rules;
+	const rulesArray = readOption(rules, 'values') ?? readOption(rules, 'rules');
+	return Array.isArray(rulesArray) ? rulesArray.length : undefined;
+}
+
+/**
+ * Count the outputs of a Switch node, as each node version defines them:
+ * - V1 always has 4 outputs.
+ * - V2 and V3 in expression mode have `outputsAmount` (V2) or `numberOutputs`
+ *   (V3) outputs, 4 by default.
+ * - V2 in rules mode has one output for each rule, no rules by default.
+ * - V3 in rules mode has one output for each rule (one rule by default), plus
+ *   one when `options.fallbackOutput` is `'extra'`.
+ */
+function countSwitchOutputs(parameters: IDataObject | undefined, typeVersion = 3): number {
+	if (typeVersion < 2) return 4;
+	const isV2 = typeVersion < 3;
+
+	if (parameters?.mode === 'expression') {
+		const amount = parameters[isV2 ? 'outputsAmount' : 'numberOutputs'];
+		return typeof amount === 'number' ? amount : 4;
+	}
+
+	const rulesCount = countSwitchRules(parameters) ?? (isV2 ? 0 : 1);
+	const hasFallbackOutput = !isV2 && readOption(parameters?.options, 'fallbackOutput') === 'extra';
+	return hasFallbackOutput ? rulesCount + 1 : rulesCount;
 }
 
 /**
  * Resolve the output index at which a node's error pin should live in the
- * modern (main[n]) format. Kept in sync with the NODE_SEMANTICS table in
- * codegen/semantic-registry.ts — the rule is always `natural output count`,
- * with 1 as the fallback for community / unknown nodes.
+ * modern (main[n]) format. The serializer, the codegen and the validators
+ * share this rule. The rule is always `natural output count`, with 1 as the
+ * fallback for community / unknown nodes.
  */
-export function resolveErrorOutputIndex(type: string, parameters?: IDataObject): number {
+export function resolveErrorOutputIndex(node: ErrorIndexNodeInfo): number {
+	const { type, parameters, typeVersion } = node;
 	if (type === 'n8n-nodes-base.if') return 2; // trueBranch + falseBranch
-	if (type === 'n8n-nodes-base.switch') {
-		const rules = parameters?.rules as { rules?: unknown[]; values?: unknown[] } | undefined;
-		const rulesArray = rules?.rules ?? rules?.values;
-		const numCases = Array.isArray(rulesArray) ? rulesArray.length : 4;
-		return numCases + 1; // cases + fallback
-	}
+	if (type === 'n8n-nodes-base.switch') return countSwitchOutputs(parameters, typeVersion);
 	if (type === 'n8n-nodes-base.splitInBatches') return 2; // done + loop
 	if (type === 'n8n-nodes-base.merge') return 1; // single output
 	return 1;
@@ -216,7 +254,7 @@ export function foldLegacyErrorConnections(
 		if (!Array.isArray(errorTargets) || errorTargets.length === 0) continue;
 
 		const node = nodeLookup.get(nodeName);
-		const targetIndex = node ? resolveErrorOutputIndex(node.type, node.parameters) : 1;
+		const targetIndex = node ? resolveErrorOutputIndex(node) : 1;
 
 		const main = Array.isArray(nodeConns.main) ? nodeConns.main : [];
 		// Pad any missing earlier output slots with empty arrays so the error
@@ -323,6 +361,7 @@ export interface NodeJSON {
 	alwaysOutputData?: boolean;
 	onError?: OnError;
 	extendsCredential?: string;
+	customTelemetryTags?: CustomTelemetryTags;
 }
 
 /**
@@ -462,6 +501,7 @@ export interface NodeConfig<TParams = IDataObject> {
 	alwaysOutputData?: boolean;
 	onError?: OnError;
 	extendsCredential?: string;
+	customTelemetryTags?: CustomTelemetryTags;
 	pinData?: IDataObject[];
 	/**
 	 * Declared output shape for data flow validation.
@@ -493,6 +533,17 @@ export interface StickyNoteConfig {
  * Subnode configuration for AI nodes
  */
 export interface SubnodeConfig {
+	/**
+	 * Language model(s) for the parent node.
+	 *
+	 * - single instance, or `[m]` — the primary model, on input index 0.
+	 * - flat `[primary, fallback]` — sequential input indices (0, 1, …). On an Agent
+	 *   or Basic LLM Chain, index 1 is the Fallback Model input, which the node only
+	 *   declares when its `needsFallback` parameter is `true` — set that alongside,
+	 *   or the fallback never runs. Model Selector takes many models this way and
+	 *   has no such toggle.
+	 * - nested `[[m1, m2]]` — every model on the SAME input index; not a fallback.
+	 */
 	model?: LanguageModelInstance | LanguageModelInstance[] | LanguageModelInstance[][];
 	memory?: MemoryInstance;
 	tools?: ToolInstance[];
@@ -1038,9 +1089,25 @@ export interface GeneratePinDataOptions {
 	beforeWorkflow?: WorkflowJSON;
 }
 
+/** The ports that set a node's size on the canvas. */
+export interface NodePorts {
+	mainInputs: number;
+	mainOutputs: number;
+	nonMainInputs: number;
+	/** Has a non-main output, as a chat model or a tool does. */
+	configuration: boolean;
+	/** Has a non-main input, as an AI agent does. */
+	configurable: boolean;
+}
+
 export interface ToJSONOptions {
 	/** Use Dagre-based layout matching the FE's tidy-up algorithm. Defaults to false (BFS layout). */
 	tidyUp?: boolean;
+	/**
+	 * Node ports for the tidy-up layout, from `resolveNodePorts`. With them, each node gets
+	 * the size the canvas draws for it. Without them, the size comes from the wired ports only.
+	 */
+	nodePorts?: ReadonlyMap<string, NodePorts>;
 	/**
 	 * Reuse existing group IDs (keyed by group name) instead of deriving deterministic ones.
 	 * Lets an edit of an existing workflow keep its (UI-assigned, random) group IDs so the diff
@@ -1114,6 +1181,13 @@ export interface WorkflowBuilder {
 	 * `.to(switchNode).onCase(0, a).onCase(1, b)`. Throws if the current node is not a Switch.
 	 */
 	onCase(index: number, target: SwitchCaseTarget): WorkflowBuilder;
+	/**
+	 * Route the error output of the node the cursor is on to `handler`, e.g.
+	 * `.to(httpNode).onError(notifyFailure).to(next)`. The cursor stays on that node,
+	 * so a following `.to()` continues the main branch. Equivalent to
+	 * `.to(httpNode.onError(notifyFailure))`.
+	 */
+	onError(handler: NodeInstance<string, string, unknown> | InputTarget): WorkflowBuilder;
 
 	settings(settings: WorkflowSettings): WorkflowBuilder;
 
@@ -1225,11 +1299,23 @@ export interface WorkflowBuilderOptions {
 }
 
 /**
+ * Options for `workflow.fromJSON()`
+ */
+export interface FromJSONOptions {
+	/**
+	 * Mock `output` items by node name, as `generatePinData()` returns them.
+	 * WorkflowJSON does not carry `output`, so pass them to give validators the
+	 * authored mocks back.
+	 */
+	declaredOutputs?: Record<string, IDataObject[]>;
+}
+
+/**
  * Static workflow builder methods
  */
 export interface WorkflowBuilderStatic {
 	(id: string, name: string, options?: WorkflowSettings | WorkflowBuilderOptions): WorkflowBuilder;
-	fromJSON(json: WorkflowJSON): WorkflowBuilder;
+	fromJSON(json: WorkflowJSON, options?: FromJSONOptions): WorkflowBuilder;
 }
 
 // =============================================================================

@@ -193,6 +193,24 @@ describe('braveSearch', () => {
 		expect(result.results).toHaveLength(0);
 	});
 
+	it('uses an injected fetch implementation instead of the global one', async () => {
+		const injectedFetch = vi.fn().mockResolvedValue({
+			ok: true,
+			json: async () => MOCK_BRAVE_RESPONSE,
+		});
+
+		const result = await braveSearch(
+			'BSA-key',
+			'test',
+			{},
+			injectedFetch as unknown as typeof fetch,
+		);
+
+		expect(injectedFetch).toHaveBeenCalledTimes(1);
+		expect(mockFetch).not.toHaveBeenCalled();
+		expect(result.results).toHaveLength(2);
+	});
+
 	describe('proxy mode', () => {
 		const proxyConfig = {
 			apiUrl: 'https://proxy.example.com/brave-search',

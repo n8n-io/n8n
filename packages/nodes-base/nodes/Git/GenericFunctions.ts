@@ -1,5 +1,6 @@
 import type { INode, ResolvedFilePath } from 'n8n-workflow';
-import { NodeOperationError, OperationalError } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 import { isAbsolute, parse, sep } from 'node:path';
 import type { ConfigListSummary, SimpleGit } from 'simple-git';
 
@@ -27,6 +28,8 @@ const GPG_SSH_DEFAULT_KEY_COMMAND_CONFIG_KEY_PATTERN = /^gpg\.ssh\.defaultkeycom
 
 const URL_REWRITE_CONFIG_KEY_PATTERN = /^url\.(.*)\.(?:insteadof|pushinsteadof)$/i;
 
+const CREDENTIAL_URL_HELPER_CONFIG_KEY_PATTERN = /^credential\.(.*)\.helper$/i;
+
 const KEY_BLACKLIST = [
 	FILTER_COMMAND_CONFIG_KEY_PATTERN,
 	MERGE_DRIVER_CONFIG_KEY_PATTERN,
@@ -40,6 +43,7 @@ const KEY_BLACKLIST = [
 	SEQUENCE_EDITOR_CONFIG_KEY_PATTERN,
 	GPG_SSH_DEFAULT_KEY_COMMAND_CONFIG_KEY_PATTERN,
 	URL_REWRITE_CONFIG_KEY_PATTERN,
+	CREDENTIAL_URL_HELPER_CONFIG_KEY_PATTERN,
 ];
 
 export function findBlacklistedKeys(

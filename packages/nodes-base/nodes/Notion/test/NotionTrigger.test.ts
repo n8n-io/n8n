@@ -1,5 +1,5 @@
 import moment from 'moment-timezone';
-import { deepCopy } from 'n8n-workflow';
+import { deepCopy, requestPath } from 'n8n-workflow';
 
 import * as GenericFunctions from '../shared/GenericFunctions';
 import * as Transport from '../v3/transport';
@@ -27,8 +27,8 @@ function createPollContext(
 		getWorkflowStaticData: vi.fn().mockReturnValue(staticData),
 		getNodeParameter: vi.fn().mockImplementation((name: string) => {
 			const params: Record<string, unknown> = {
-				databaseId: 'test-db-id',
-				dataSourceId: 'test-data-source-id',
+				databaseId: 'parent/child?view#section',
+				dataSourceId: 'parent/child?view#section',
 				event: 'pageAddedToDatabase',
 				simple: false,
 			};
@@ -131,7 +131,7 @@ describe('NotionTrigger', () => {
 			expect(result).toBeNull();
 			expect(mockNotionApiRequestV3).toHaveBeenCalledWith(
 				'POST',
-				'/data_sources/test-data-source-id/query',
+				requestPath`/data_sources/parent%2Fchild%3Fview%23section/query`,
 				expect.objectContaining({ page_size: 1 }),
 			);
 		});
@@ -148,10 +148,9 @@ describe('NotionTrigger', () => {
 			expect(result).toBeNull();
 			expect(mockNotionApiRequest).toHaveBeenCalledWith(
 				'POST',
-				'/databases/test-db-id/query',
+				requestPath`/databases/parent%2Fchild%3Fview%23section/query`,
 				expect.objectContaining({ page_size: 1 }),
 				{},
-				'',
 				expect.objectContaining({
 					headers: { 'Notion-Version': '2022-02-22' },
 				}),

@@ -4,8 +4,9 @@ import type {
 	ILoadOptionsFunctions,
 	INodeParameterResourceLocator,
 	INodeProperties,
+	RequestPath,
 } from 'n8n-workflow';
-import { jsonParse, NodeOperationError } from 'n8n-workflow';
+import { jsonParse, NodeOperationError, requestPath } from 'n8n-workflow';
 
 import {
 	confluenceApiRequest,
@@ -329,7 +330,7 @@ export async function resolveSpaceKey(
 	const space = await confluenceApiRequest.call(
 		this,
 		'GET',
-		`/wiki/api/v2/spaces/${encodeURIComponent(spaceId)}`,
+		requestPath`/wiki/api/v2/spaces/${spaceId}`,
 	);
 	if (typeof space.key !== 'string' || space.key === '') return undefined;
 	spaceKeyCache.set(cacheKey, space.key);
@@ -450,7 +451,7 @@ export function parsePositiveInt(
  * cursor, which would otherwise loop forever when `max` is Infinity. */
 export async function fetchPaginatedResults(
 	this: IExecuteFunctions,
-	endpoint: string,
+	endpoint: RequestPath,
 	max: number,
 	qs: IDataObject = {},
 ): Promise<IDataObject[]> {
@@ -475,6 +476,43 @@ function asString(value: unknown): string {
 	return typeof value === 'string' || typeof value === 'number' ? String(value) : '';
 }
 
+/** Resolves space IDs to the `Name (KEY)` label the Space dropdown shows, in one
+ * request. Keyed by the ID the API echoes back, so a space the lookup does not
+ * cover keeps its numeric ID. */
+async function resolveSpaceLabels(
+	this: IExecuteFunctions,
+	spaceIds: string[],
+): Promise<Map<string, string>> {
+	const ids = [...new Set(spaceIds)].filter((id) => id !== '');
+	if (ids.length === 0) return new Map();
+
+	let response: IDataObject;
+	try {
+		response = await confluenceApiRequest.call(
+			this,
+			'GET',
+			requestPath`/wiki/api/v2/spaces`,
+			{},
+			{ ids: ids.join(','), limit: PAGE_LIMIT },
+		);
+	} catch {
+		// The ambiguity error matters more than the labels decorating it
+		return new Map();
+	}
+
+	const spaces = Array.isArray(response.results) ? (response.results as IDataObject[]) : [];
+	return new Map(
+		spaces
+			.map((space) => ({
+				id: asString(space.id),
+				name: asString(space.name),
+				key: asString(space.key),
+			}))
+			.filter(({ id, name }) => id !== '' && name !== '')
+			.map(({ id, name, key }) => [id, key === '' ? name : `${name} (${key})`]),
+	);
+}
+
 async function resolvePageIdByTitle(
 	this: IExecuteFunctions,
 	itemIndex: number,
@@ -485,7 +523,13 @@ async function resolvePageIdByTitle(
 	const qs: IDataObject = { title, limit: PAGE_LIMIT };
 	if (spaceId !== '') qs['space-id'] = spaceId;
 
-	const response = await confluenceApiRequest.call(this, 'GET', '/wiki/api/v2/pages', {}, qs);
+	const response = await confluenceApiRequest.call(
+		this,
+		'GET',
+		requestPath`/wiki/api/v2/pages`,
+		{},
+		qs,
+	);
 	const results = Array.isArray(response.results) ? (response.results as IDataObject[]) : [];
 
 	if (results.length === 0) {
@@ -496,12 +540,17 @@ async function resolvePageIdByTitle(
 		);
 	}
 	if (results.length > 1) {
-		const candidates = results
-			.slice(0, 5)
-			.map(
-				(page) =>
-					`"${asString(page.title)}" (space ${asString(page.spaceId)}, ID ${asString(page.id)})`,
-			)
+		const shown = results.slice(0, 5);
+		const spaceLabels = await resolveSpaceLabels.call(
+			this,
+			shown.map((page) => asString(page.spaceId)),
+		);
+		const candidates = shown
+			.map((page) => {
+				const pageSpaceId = asString(page.spaceId);
+				const space = spaceLabels.get(pageSpaceId) ?? pageSpaceId;
+				return `"${asString(page.title)}" (space ${space}, ID ${asString(page.id)})`;
+			})
 			.join(', ');
 		throw new NodeOperationError(
 			this.getNode(),

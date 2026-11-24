@@ -1,28 +1,56 @@
+import { LicenseState, Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
+import { AuthStrategyRegistry } from '@n8n/backend-services/auth';
 import type { BooleanLicenseFeature } from '@n8n/constants';
+import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { ControllerRegistryMetadata } from '@n8n/decorators';
-import type { AccessScope, ApiKeyScopeRequirement, Controller } from '@n8n/decorators';
+import type {
+	AccessScope,
+	ApiKeyScopeRequirement,
+	Controller,
+	DeprecationInfo,
+	RequestBodyMedia,
+} from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import type { Request, RequestHandler, Response, Router } from 'express';
 import { Router as createRouter } from 'express';
 
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { EventService } from '@/events/event.service';
+import {
+	createIdempotencyMiddleware,
+	takeIdempotencyClaimId,
+} from '@/idempotency/idempotency.middleware';
+import { IdempotencyKeyService } from '@/public-api/idempotency-key.service';
+import { N8N_CLIENT_HEADER } from '@n8n/api-types';
+import { BadRequestError, UnsupportedMediaTypeError } from '@n8n/errors';
 import { License } from '@/license';
+import { assertContentType } from '@/public-api/media-types/content-type';
+import { sendBinaryResponse } from '@/public-api/media-types/binary-response';
+import type { RequestBodyHandler } from '@/public-api/media-types/request-body';
 import { userHasScopes } from '@/permissions.ee/check-access';
-import { assertJsonContentType } from '@/public-api/public-api-media-type';
+import { USER_QUOTA_FORBIDDEN_MESSAGE } from '@/public-api/constants';
+import type { ValidatedParamArg } from '@/public-api/public-api-route-resolver';
 import {
 	apiKeyScopesSatisfy,
-	isDtoArg,
+	findBodyArg,
+	findValidatedParamArgs,
 	isRequestBodyRequired,
+	resolvePublicApiRoutes,
 	resolveRouteArgs,
 	resolveSuccessStatus,
 } from '@/public-api/public-api-route-resolver';
 import { formatValidationError } from '@/public-api/public-api-validation-error';
-import { deprecated } from '@/public-api/v1/shared/middlewares/global.middleware';
+import { PublicApiRateLimitService } from '@/public-api/public-api-rate-limit.service';
+import { type PublicApiRequest, resolvePublicApiClient } from '@/public-api/public-api-client';
+import {
+	matchesPathTemplate,
+	parsePathParam,
+	toEndpointPath,
+	toPublicApiResult,
+	toRouteName,
+} from '@/public-api/public-api-controller.utils';
 import { sendPublicApiErrorResponse } from '@/public-api/v1/public-api-error-response';
-import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
 import { LastActiveAtService } from '@/services/last-active-at.service';
 
 @Service()
@@ -32,17 +60,72 @@ export class PublicApiControllerRegistry {
 		private readonly authStrategyRegistry: AuthStrategyRegistry,
 		private readonly lastActiveAtService: LastActiveAtService,
 		private readonly eventService: EventService,
+		private readonly rateLimitService: PublicApiRateLimitService,
+		private readonly idempotencyKeyService: IdempotencyKeyService,
+		private readonly logger: Logger,
 	) {}
 
 	activate(router: Router, apiVersion: string) {
+		const idempotency = createIdempotencyMiddleware(this.idempotencyKeyService);
+		const methodsByTemplate = new Map<string, string[]>();
+		for (const route of resolvePublicApiRoutes()) {
+			const methods = methodsByTemplate.get(route.path) ?? [];
+			methods.push(route.method.toUpperCase());
+			methodsByTemplate.set(route.path, methods);
+		}
+
+		// A URL can match several templates, for example `/:id/archive` and `/:id/:versionId`.
+		// Allow lists the methods of every template that matches this URL.
+		const allowedMethodsFor = (path: string): string[] => {
+			const allowed = new Set<string>();
+			for (const [template, methods] of methodsByTemplate) {
+				if (!matchesPathTemplate(template, path)) {
+					continue;
+				}
+				for (const method of methods) {
+					allowed.add(method);
+				}
+			}
+			return [...allowed];
+		};
+
+		// HEAD is not supported. Express would otherwise run the GET handler for it.
+		router.use((req, res, next) => {
+			if (req.method !== 'HEAD') {
+				return next();
+			}
+
+			const allowed = allowedMethodsFor(req.path);
+			if (allowed.length === 0) {
+				return next();
+			}
+
+			res.set('Allow', allowed.join(', '));
+			res.status(405).json({ message: 'HEAD method not allowed' });
+		});
+
 		for (const controllerClass of this.metadata.controllerClasses) {
 			const metadata = this.metadata.getControllerMetadata(controllerClass);
 			if (!metadata.isPublicApi) continue;
-			this.activateController(router, controllerClass, apiVersion);
+			this.activateController(router, controllerClass, apiVersion, idempotency);
+		}
+
+		// A known path with a method no controller serves.
+		// Registered after every controller, so it only runs when no route matched.
+		for (const path of methodsByTemplate.keys()) {
+			router.all(path, (req, res) => {
+				res.set('Allow', allowedMethodsFor(req.path).join(', '));
+				res.status(405).json({ message: `${req.method} method not allowed` });
+			});
 		}
 	}
 
-	private activateController(parent: Router, controllerClass: Controller, apiVersion: string) {
+	private activateController(
+		parent: Router,
+		controllerClass: Controller,
+		apiVersion: string,
+		idempotency: RequestHandler,
+	) {
 		const metadata = this.metadata.getControllerMetadata(controllerClass);
 		const controllerRouter = createRouter({ mergeParams: true });
 		const prefix = metadata.basePath.replace(/\/+/g, '/').replace(/\/$/, '') || '/';
@@ -54,6 +137,7 @@ export class PublicApiControllerRegistry {
 		);
 
 		for (const [handlerName, route] of metadata.routes) {
+			const routeName = toRouteName(route.method, prefix, route.path);
 			const resolvedArgs = resolveRouteArgs(controllerClass, handlerName, route.args);
 
 			const successStatus = resolveSuccessStatus(
@@ -62,50 +146,88 @@ export class PublicApiControllerRegistry {
 				route.successStatus,
 			);
 
-			const bodyDto = resolvedArgs.find((arg) => isDtoArg(arg, 'body'))?.dto;
-			const bodyRequired = bodyDto ? isRequestBodyRequired(bodyDto) : false;
+			const bodyArg = findBodyArg(resolvedArgs);
+			const bodyRequired = bodyArg
+				? (bodyArg.required ?? isRequestBodyRequired(bodyArg.dto))
+				: false;
 
 			const handler = async (req: Request, res: Response) => {
-				if (bodyDto) assertJsonContentType(req.headers['content-type'], bodyRequired);
-
 				const args: unknown[] = [req, res];
 				for (const arg of resolvedArgs) {
 					if (arg.type === 'param') {
-						args.push(req.params[arg.key]);
-					} else {
-						const output = arg.dto.safeParse(req[arg.type]);
-						if (output.success) {
-							args.push(output.data);
-						} else {
-							throw new BadRequestError(formatValidationError(arg.type, output.error));
-						}
+						args.push(
+							arg.schema ? parsePathParam(arg.key, arg.schema, req.params) : req.params[arg.key],
+						);
+						continue;
 					}
+
+					const isBodyArg = arg.type === 'body' && bodyArg;
+					const input = isBodyArg ? bodyArg.handler.readInput(req) : req[arg.type];
+
+					const output = arg.dto.safeParse(input);
+					if (output.success) {
+						args.push(output.data);
+					} else {
+						const message = isBodyArg
+							? bodyArg.handler.formatValidationError(output.error)
+							: formatValidationError(arg.type, output.error);
+						throw new BadRequestError(message);
+					}
+				}
+
+				if (route.binaryResponse) {
+					const result = await controller[handlerName](...args);
+					await sendBinaryResponse(
+						res,
+						route.binaryResponse,
+						successStatus,
+						`${controllerClass.name}.${handlerName}`,
+						result,
+					);
+					await this.releaseIdempotencyClaim(res);
+					return;
 				}
 
 				const result = await controller[handlerName](...args);
 
-				if (res.headersSent) return;
-
-				if (successStatus === 204) {
-					res.status(204).send();
+				if (res.headersSent) {
+					await this.releaseIdempotencyClaim(res);
 					return;
 				}
 
-				if (route.responseDto) {
-					res.status(successStatus).json(route.responseDto.parse(result));
+				if (successStatus === 204 || (!route.responseDto && result === undefined)) {
+					await this.storeIdempotencyResponse(res, successStatus, null);
+					res.status(successStatus).send();
 					return;
 				}
 
-				res.status(successStatus).json(result);
+				const body = route.responseDto ? route.responseDto.parse(result) : result;
+				await this.storeIdempotencyResponse(res, successStatus, body);
+				res.status(successStatus).json(body);
 			};
 
 			const middlewares: RequestHandler[] = [];
 
 			if (route.deprecated) {
-				middlewares.push(deprecated(route.deprecated));
+				middlewares.push(this.createDeprecationMiddleware(route.deprecated));
 			}
 
-			middlewares.push(this.createAuthMiddleware(apiVersion));
+			middlewares.push(this.createAuthMiddleware(apiVersion, routeName));
+			middlewares.push(
+				...this.rateLimitService.createRouteLimiters(
+					route.method,
+					toEndpointPath(apiVersion, prefix, route.path),
+					route.rateLimitAccess,
+				),
+			);
+
+			// Path param validation must run before the scope checks, so that a malformed param always
+			// returns 400, rather than 404 or 403 depending on the caller's access.
+			const paramArgs = findValidatedParamArgs(resolvedArgs);
+
+			if (paramArgs.length) {
+				middlewares.push(this.createPathParamMiddleware(paramArgs));
+			}
 
 			if (route.apiKeyScope) {
 				middlewares.push(this.createApiKeyScopeMiddleware(route.apiKeyScope));
@@ -119,12 +241,22 @@ export class PublicApiControllerRegistry {
 				middlewares.push(this.createLicenseMiddleware(route.licenseFeature));
 			}
 
-			middlewares.push(...controllerMiddlewares, ...(route.middlewares ?? []));
+			if (route.requiresUserQuota) {
+				middlewares.push(this.createUserQuotaMiddleware());
+			}
+
+			// After every access gate, the body's Content-Type is checked and then parsed.
+			if (bodyArg) {
+				middlewares.push(this.createBodyMiddleware(bodyArg.media, bodyRequired, bodyArg.handler));
+			}
+
+			middlewares.push(...controllerMiddlewares, ...(route.middlewares ?? []), idempotency);
 
 			const finalHandler: RequestHandler = async (req, res, next) => {
 				try {
 					await handler(req, res);
 				} catch (error) {
+					await this.releaseIdempotencyClaim(res);
 					if (res.headersSent) {
 						next(error);
 						return;
@@ -140,29 +272,84 @@ export class PublicApiControllerRegistry {
 		}
 	}
 
-	private createAuthMiddleware(apiVersion: string): RequestHandler {
-		return async (req, res, next) => {
-			const authenticated = await this.authStrategyRegistry.authenticate(
-				req as AuthenticatedRequest,
-			);
+	private async storeIdempotencyResponse(
+		res: Response,
+		status: number,
+		body: unknown,
+	): Promise<void> {
+		const id = takeIdempotencyClaimId(res);
+		if (!id) return;
 
-			if (!authenticated) {
+		try {
+			await this.idempotencyKeyService.complete(id, status, body);
+		} catch (error) {
+			this.logger.error('Failed to store an idempotency response', { error });
+			await this.releaseIdempotencyClaimById(id);
+		}
+	}
+
+	private async releaseIdempotencyClaim(res: Response): Promise<void> {
+		const id = takeIdempotencyClaimId(res);
+		if (!id) return;
+
+		await this.releaseIdempotencyClaimById(id);
+	}
+
+	private async releaseIdempotencyClaimById(id: string): Promise<void> {
+		try {
+			await this.idempotencyKeyService.release(id);
+		} catch (error) {
+			this.logger.error('Failed to release an idempotency key', { error });
+		}
+	}
+
+	private createAuthMiddleware(apiVersion: string, routeName: string): RequestHandler {
+		return async (req, res, next) => {
+			const result = await this.authStrategyRegistry.authenticate(req as AuthenticatedRequest);
+
+			if (!result.authenticated) {
+				// RFC 7235 §4.1: one header, the challenges comma-separated.
+				if (result.challenges.length > 0) {
+					res.setHeader('WWW-Authenticate', result.challenges.join(', '));
+				}
 				res.status(401).json({ message: 'Unauthorized' });
 				return;
 			}
 
+			const publicApiClient = resolvePublicApiClient(req.headers[N8N_CLIENT_HEADER]);
+			// Handlers read it from the request, so each route does not resolve the header again.
+			(req as PublicApiRequest).publicApiClient = publicApiClient;
+
 			const userId = (req as AuthenticatedRequest).user?.id;
 			if (userId) {
 				this.lastActiveAtService.updateLastActiveIfStale(userId).catch(() => undefined);
-				this.eventService.emit('public-api-invoked', {
-					userId,
-					path: req.path,
-					method: req.method,
-					apiVersion,
-					userAgent: req.headers['user-agent'],
+
+				// Invocation event must be emitted after the response is sent, so that the event's result matches the actual response.
+				res.once('finish', () => {
+					this.eventService.emit('public-api-invoked', {
+						userId,
+						route: routeName,
+						apiVersion,
+						userAgent: req.headers['user-agent'],
+						client: publicApiClient,
+						result: toPublicApiResult(res.statusCode),
+					});
 				});
 			}
 
+			next();
+		};
+	}
+
+	/**
+	 * Sets the RFC 9745 `Deprecation` header. The wire format (`@<unix-seconds>`) is built here, so
+	 * call sites pass a `Date`. `since` is fixed per route, so the header is the same on every request.
+	 */
+	private createDeprecationMiddleware({ since }: DeprecationInfo): RequestHandler {
+		const deprecation = `@${Math.floor(since.getTime() / 1000)}`;
+
+		return (_req, res, next) => {
+			res.setHeader('Deprecation', deprecation);
 			next();
 		};
 	}
@@ -184,6 +371,73 @@ export class PublicApiControllerRegistry {
 		return (_req, res, next) => {
 			if (!Container.get(License).isLicensed(feature)) {
 				res.status(403).json({ message: new FeatureNotLicensedError(feature).message });
+				return;
+			}
+
+			next();
+		};
+	}
+
+	private createUserQuotaMiddleware(): RequestHandler {
+		return (_req, res, next) => {
+			if (Container.get(LicenseState).getMaxUsers() !== UNLIMITED_LICENSE_QUOTA) {
+				res.status(403).json({ message: USER_QUOTA_FORBIDDEN_MESSAGE });
+				return;
+			}
+
+			next();
+		};
+	}
+
+	private createBodyMiddleware(
+		media: RequestBodyMedia,
+		bodyRequired: boolean,
+		handler: RequestBodyHandler,
+	): RequestHandler {
+		return async (req, res, next) => {
+			let matched: boolean;
+			try {
+				matched = assertContentType({
+					header: req.headers['content-type'],
+					expected: media.mediaType,
+					bodyRequired,
+				});
+			} catch (error) {
+				sendPublicApiErrorResponse(
+					res,
+					error instanceof UnsupportedMediaTypeError ? error : new Error(String(error)),
+				);
+				return;
+			}
+
+			if (!matched || !handler.parseBody) {
+				next();
+				return;
+			}
+
+			try {
+				await handler.parseBody(media, req, res);
+			} catch (error) {
+				sendPublicApiErrorResponse(res, error instanceof Error ? error : new Error(String(error)));
+				return;
+			}
+
+			next();
+		};
+	}
+
+	/**
+	 * Rejects a path param that breaks its `@Param` schema, ahead of the scope middlewares. The
+	 * handler parses the params again to bind its arguments; by then they are known to be valid.
+	 */
+	private createPathParamMiddleware(args: ValidatedParamArg[]): RequestHandler {
+		return (req, res, next) => {
+			try {
+				for (const { key, schema } of args) {
+					parsePathParam(key, schema, req.params);
+				}
+			} catch (error) {
+				sendPublicApiErrorResponse(res, error instanceof Error ? error : new Error(String(error)));
 				return;
 			}
 

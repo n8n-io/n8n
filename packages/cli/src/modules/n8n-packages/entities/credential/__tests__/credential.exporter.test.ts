@@ -3,12 +3,17 @@ import { CredentialDataError, Credentials } from 'n8n-core';
 import { jsonParse, type ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import type { CredentialsFinderService } from '@n8n/backend-services';
+
+import type { CredentialTypes } from '@/credential-types';
+import type { CredentialDescriptionsService } from '@/credentials/credential-descriptions.service';
 
 import { CapturingWriter } from '../../../io/__tests__/utils/capturing-writer';
 import { CredentialExporter } from '../credential.exporter';
 import { CredentialSerializer } from '../credential.serializer';
-import type { WorkflowCredentialRequirement } from '../credential.types';
+import type { CredentialRequirement, WorkflowCredentialRequirement } from '../credential.types';
+import { postgresLikeCredentialType } from './postgres-like-credential-type';
+import type { CredentialExportPolicy } from '../../../n8n-packages.types';
 
 const user = mock<User>({ id: 'user-1' });
 
@@ -26,7 +31,7 @@ beforeAll(async () => {
 
 function makeCredential(overrides: Partial<CredentialsEntity> = {}): CredentialsEntity {
 	return {
-		id: 'cred-1',
+		id: 'cred_1',
 		name: 'My Credential',
 		type: 'httpHeaderAuth',
 		data: literalOnlyCiphertext,
@@ -45,7 +50,7 @@ function makeRequirement(
 ): WorkflowCredentialRequirement {
 	return {
 		workflowId: 'wf-1',
-		credentialId: 'cred-1',
+		credentialId: 'cred_1',
 		credentialName: 'My Credential',
 		credentialType: 'httpHeaderAuth',
 		...overrides,
@@ -54,11 +59,63 @@ function makeRequirement(
 
 function makeExporter() {
 	const finder = mock<CredentialsFinderService>();
-	const exporter = new CredentialExporter(finder, new CredentialSerializer());
-	return { exporter, finder };
+	const credentialTypes = mock<CredentialTypes>();
+	const descriptions = mock<CredentialDescriptionsService>();
+	descriptions.isEnabled.mockResolvedValue(false);
+	const exporter = new CredentialExporter(
+		finder,
+		new CredentialSerializer(),
+		credentialTypes,
+		descriptions,
+	);
+	return { exporter, finder, credentialTypes, descriptions };
 }
 
 describe('CredentialExporter', () => {
+	it.each([
+		{ selection: 'agent-only', usedBy: [{ kind: 'agent', id: 'wf-1' }] },
+		{
+			selection: 'agent-first',
+			usedBy: [
+				{ kind: 'agent', id: 'wf-1' },
+				{ kind: 'workflow', id: 'wf-1' },
+			],
+		},
+		{
+			selection: 'workflow-first',
+			usedBy: [
+				{ kind: 'workflow', id: 'wf-1' },
+				{ kind: 'agent', id: 'wf-1' },
+			],
+		},
+	])(
+		'preserves credential metadata and attribution for $selection consumers',
+		async ({ selection, usedBy }) => {
+			const { exporter, finder } = makeExporter();
+			finder.findCredentialForUser.mockResolvedValue(null);
+			const agent = { agentId: 'wf-1', projectId: 'proj-1', credentialId: 'cred_1' };
+			const requirements: CredentialRequirement[] = [agent, agent];
+			if (selection === 'agent-first') requirements.push(makeRequirement());
+			if (selection === 'workflow-first') requirements.unshift(makeRequirement());
+			const before = structuredClone(requirements);
+			const result = await exporter.export({
+				user,
+				requirements,
+				writer: new CapturingWriter(),
+				credentialExportPolicy: 'no-values',
+			});
+			expect(result.entries).toEqual([]);
+			expect(result.requirements).toEqual([
+				{
+					id: 'cred_1',
+					...(selection === 'agent-only' ? {} : { name: 'My Credential', type: 'httpHeaderAuth' }),
+					usedBy,
+				},
+			]);
+			expect(requirements).toEqual(before);
+		},
+	);
+
 	describe('empty input', () => {
 		it('returns empty result and writes nothing when given no requirements', async () => {
 			const { exporter, finder } = makeExporter();
@@ -78,6 +135,36 @@ describe('CredentialExporter', () => {
 		});
 	});
 
+	describe('description', () => {
+		const exportDescription = async (enabled: boolean, description: string | null) => {
+			const { exporter, finder, descriptions } = makeExporter();
+			descriptions.isEnabled.mockResolvedValue(enabled);
+			finder.findCredentialForUser.mockResolvedValue(makeCredential({ description }));
+			const writer = new CapturingWriter();
+
+			await exporter.export({
+				user,
+				requirements: [makeRequirement()],
+				writer,
+				credentialExportPolicy: 'no-values',
+			});
+
+			return jsonParse<Record<string, unknown>>(writer.files[0].content);
+		};
+
+		it('writes the description when the source has descriptions on', async () => {
+			expect(await exportDescription(true, 'Prod key')).toMatchObject({ description: 'Prod key' });
+		});
+
+		it('writes null for an empty description, so an import can clear it', async () => {
+			expect(await exportDescription(true, null)).toMatchObject({ description: null });
+		});
+
+		it('writes no description when the source has descriptions off', async () => {
+			expect(await exportDescription(false, 'Prod key')).not.toHaveProperty('description');
+		});
+	});
+
 	describe('happy path', () => {
 		it('writes one accessible credential to its slugged folder and emits matching entry + requirement', async () => {
 			const { exporter, finder } = makeExporter();
@@ -91,35 +178,35 @@ describe('CredentialExporter', () => {
 				credentialExportPolicy: 'expression-values-only',
 			});
 
-			expect(finder.findCredentialForUser).toHaveBeenCalledWith('cred-1', user, [
+			expect(finder.findCredentialForUser).toHaveBeenCalledWith('cred_1', user, [
 				'credential:read',
 			]);
 
 			expect(result.entries).toEqual([
-				{ id: 'cred-1', name: 'My Credential', target: 'credentials/my-credential-cred-1' },
+				{ id: 'cred_1', name: 'My Credential', target: 'credentials/my-credential-cred_1' },
 			]);
 			expect(result.requirements).toEqual([
 				{
-					id: 'cred-1',
+					id: 'cred_1',
 					name: 'My Credential',
 					type: 'httpHeaderAuth',
-					usedByWorkflows: ['wf-1'],
+					usedBy: [{ kind: 'workflow', id: 'wf-1' }],
 				},
 			]);
 
-			expect(writer.directories).toEqual(['credentials/my-credential-cred-1']);
+			expect(writer.directories).toEqual(['credentials/my-credential-cred_1']);
 			expect(writer.files).toHaveLength(1);
-			expect(writer.files[0].path).toBe('credentials/my-credential-cred-1/credential.json');
+			expect(writer.files[0].path).toBe('credentials/my-credential-cred_1/credential.json');
 
 			const parsed = jsonParse<Record<string, unknown>>(writer.files[0].content);
 			expect(parsed).toEqual({
-				id: 'cred-1',
+				id: 'cred_1',
 				name: 'My Credential',
 				type: 'httpHeaderAuth',
 			});
 		});
 
-		it('dedupes by credential id and aggregates usedByWorkflows when requirements come from multiple workflows', async () => {
+		it('dedupes by credential id and aggregates workflow consumers when requirements come from multiple workflows', async () => {
 			const { exporter, finder } = makeExporter();
 			finder.findCredentialForUser.mockResolvedValue(makeCredential());
 			const writer = new CapturingWriter();
@@ -129,6 +216,7 @@ describe('CredentialExporter', () => {
 				requirements: [
 					makeRequirement({ workflowId: 'wf-a' }),
 					makeRequirement({ workflowId: 'wf-b' }),
+					makeRequirement({ workflowId: 'wf-a' }),
 				],
 				writer,
 				credentialExportPolicy: 'expression-values-only',
@@ -136,14 +224,17 @@ describe('CredentialExporter', () => {
 
 			expect(finder.findCredentialForUser).toHaveBeenCalledTimes(1);
 			expect(result.entries).toEqual([
-				{ id: 'cred-1', name: 'My Credential', target: 'credentials/my-credential-cred-1' },
+				{ id: 'cred_1', name: 'My Credential', target: 'credentials/my-credential-cred_1' },
 			]);
 			expect(result.requirements).toEqual([
 				{
-					id: 'cred-1',
+					id: 'cred_1',
 					name: 'My Credential',
 					type: 'httpHeaderAuth',
-					usedByWorkflows: ['wf-a', 'wf-b'],
+					usedBy: [
+						{ kind: 'workflow', id: 'wf-a' },
+						{ kind: 'workflow', id: 'wf-b' },
+					],
 				},
 			]);
 			expect(writer.files).toHaveLength(1);
@@ -152,26 +243,26 @@ describe('CredentialExporter', () => {
 		it('disambiguates targets when two credentials share a name', async () => {
 			const { exporter, finder } = makeExporter();
 			finder.findCredentialForUser
-				.mockResolvedValueOnce(makeCredential({ id: 'cred-a', name: 'Same Name' }))
-				.mockResolvedValueOnce(makeCredential({ id: 'cred-b', name: 'Same Name' }));
+				.mockResolvedValueOnce(makeCredential({ id: 'cred_a', name: 'Same Name' }))
+				.mockResolvedValueOnce(makeCredential({ id: 'cred_b', name: 'Same Name' }));
 			const writer = new CapturingWriter();
 
 			const result = await exporter.export({
 				user,
 				requirements: [
-					makeRequirement({ credentialId: 'cred-a', credentialName: 'Same Name' }),
-					makeRequirement({ credentialId: 'cred-b', credentialName: 'Same Name' }),
+					makeRequirement({ credentialId: 'cred_a', credentialName: 'Same Name' }),
+					makeRequirement({ credentialId: 'cred_b', credentialName: 'Same Name' }),
 				],
 				writer,
 				credentialExportPolicy: 'expression-values-only',
 			});
 
 			const targets = result.entries.map((e) => e.target);
-			expect(targets).toEqual(['credentials/same-name-cred-a', 'credentials/same-name-cred-b']);
+			expect(targets).toEqual(['credentials/same-name-cred_a', 'credentials/same-name-cred_b']);
 
 			const writtenPaths = writer.files.map((f) => f.path);
-			expect(writtenPaths).toContain('credentials/same-name-cred-a/credential.json');
-			expect(writtenPaths).toContain('credentials/same-name-cred-b/credential.json');
+			expect(writtenPaths).toContain('credentials/same-name-cred_a/credential.json');
+			expect(writtenPaths).toContain('credentials/same-name-cred_b/credential.json');
 		});
 
 		it('emits a requirements-only entry when the credential is unfindable for the caller', async () => {
@@ -188,7 +279,7 @@ describe('CredentialExporter', () => {
 				user,
 				requirements: [
 					makeRequirement({
-						credentialId: 'cred-unavailable',
+						credentialId: 'cred_unavailable',
 						credentialName: 'Stale node name',
 						credentialType: 'httpHeaderAuth',
 						workflowId: 'wf-1',
@@ -198,17 +289,17 @@ describe('CredentialExporter', () => {
 				credentialExportPolicy: 'expression-values-only',
 			});
 
-			expect(finder.findCredentialForUser).toHaveBeenCalledWith('cred-unavailable', user, [
+			expect(finder.findCredentialForUser).toHaveBeenCalledWith('cred_unavailable', user, [
 				'credential:read',
 			]);
 
 			expect(result.entries).toEqual([]);
 			expect(result.requirements).toEqual([
 				{
-					id: 'cred-unavailable',
+					id: 'cred_unavailable',
 					name: 'Stale node name',
 					type: 'httpHeaderAuth',
-					usedByWorkflows: ['wf-1'],
+					usedBy: [{ kind: 'workflow', id: 'wf-1' }],
 				},
 			]);
 			expect(writer.files).toEqual([]);
@@ -219,16 +310,16 @@ describe('CredentialExporter', () => {
 			const { exporter, finder } = makeExporter();
 			finder.findCredentialForUser.mockImplementation(async (id) => {
 				await Promise.resolve();
-				return id === 'cred-1' ? makeCredential() : null;
+				return id === 'cred_1' ? makeCredential() : null;
 			});
 			const writer = new CapturingWriter();
 
 			const result = await exporter.export({
 				user,
 				requirements: [
-					makeRequirement({ credentialId: 'cred-1', workflowId: 'wf-1' }),
+					makeRequirement({ credentialId: 'cred_1', workflowId: 'wf-1' }),
 					makeRequirement({
-						credentialId: 'cred-unavailable',
+						credentialId: 'cred_unavailable',
 						credentialName: 'Unavailable',
 						credentialType: 'slackOAuth2Api',
 						workflowId: 'wf-1',
@@ -239,20 +330,20 @@ describe('CredentialExporter', () => {
 			});
 
 			expect(result.entries).toEqual([
-				{ id: 'cred-1', name: 'My Credential', target: 'credentials/my-credential-cred-1' },
+				{ id: 'cred_1', name: 'My Credential', target: 'credentials/my-credential-cred_1' },
 			]);
 			expect(result.requirements).toEqual([
 				{
-					id: 'cred-1',
+					id: 'cred_1',
 					name: 'My Credential',
 					type: 'httpHeaderAuth',
-					usedByWorkflows: ['wf-1'],
+					usedBy: [{ kind: 'workflow', id: 'wf-1' }],
 				},
 				{
-					id: 'cred-unavailable',
+					id: 'cred_unavailable',
 					name: 'Unavailable',
 					type: 'slackOAuth2Api',
-					usedByWorkflows: ['wf-1'],
+					usedBy: [{ kind: 'workflow', id: 'wf-1' }],
 				},
 			]);
 			expect(writer.files).toHaveLength(1);
@@ -297,7 +388,7 @@ describe('CredentialExporter', () => {
 			});
 
 			expect(jsonParse<Record<string, unknown>>(writer.files[0].content)).toEqual({
-				id: 'cred-1',
+				id: 'cred_1',
 				name: 'My Credential',
 				type: 'httpHeaderAuth',
 			});
@@ -316,6 +407,106 @@ describe('CredentialExporter', () => {
 					credentialExportPolicy: 'expression-values-only',
 				}),
 			).rejects.toThrow(CredentialDataError);
+		});
+	});
+
+	describe('fields that control which credential fields show', () => {
+		async function exportPostgresLike(
+			data: ICredentialDataDecryptedObject,
+			{
+				policy = 'expression-values-only',
+				recognized = true,
+			}: { policy?: CredentialExportPolicy; recognized?: boolean } = {},
+		) {
+			const { exporter, finder, credentialTypes } = makeExporter();
+			credentialTypes.recognizes.mockReturnValue(recognized);
+			credentialTypes.getByName.mockReturnValue(postgresLikeCredentialType);
+			finder.findCredentialForUser.mockResolvedValue(
+				makeCredential({ type: 'postgres', data: await encryptedData(data) }),
+			);
+			const writer = new CapturingWriter();
+
+			await exporter.export({
+				user,
+				requirements: [makeRequirement({ credentialType: 'postgres' })],
+				writer,
+				credentialExportPolicy: policy,
+			});
+
+			return jsonParse<{ data?: Record<string, unknown>; dataIsComplete?: boolean }>(
+				writer.files[0].content,
+			);
+		}
+
+		it('exports the plain controllers of a hidden field that carries an expression', async () => {
+			const parsed = await exportPostgresLike({
+				host: 'db.internal',
+				password: 'plain-secret',
+				allowUnauthorizedCerts: false,
+				ssl: 'require',
+				caCertificate: '={{ $secrets.ca }}',
+			});
+
+			expect(parsed.data).toEqual({
+				caCertificate: '={{ $secrets.ca }}',
+				ssl: 'require',
+				allowUnauthorizedCerts: false,
+			});
+			expect(parsed.dataIsComplete).toBe(false);
+		});
+
+		it('exports a needed controller even when it equals its default', async () => {
+			const parsed = await exportPostgresLike({
+				ssl: 'disable',
+				allowUnauthorizedCerts: false,
+				caCertificate: '={{ $secrets.ca }}',
+			});
+
+			expect(parsed.data).toMatchObject({ ssl: 'disable', allowUnauthorizedCerts: false });
+		});
+
+		it('adds nothing when the credential has no expression', async () => {
+			const parsed = await exportPostgresLike({ ssl: 'require', host: 'db.internal' });
+
+			expect(parsed.data).toBeUndefined();
+		});
+
+		it('adds nothing under no-values', async () => {
+			const parsed = await exportPostgresLike(
+				{ ssl: 'require', caCertificate: '={{ $secrets.ca }}' },
+				{ policy: 'no-values' },
+			);
+
+			expect(parsed.data).toBeUndefined();
+		});
+
+		it('exports as before when the credential type is not recognized', async () => {
+			const parsed = await exportPostgresLike(
+				{ ssl: 'require', caCertificate: '={{ $secrets.ca }}' },
+				{ recognized: false },
+			);
+
+			expect(parsed.data).toEqual({ caCertificate: '={{ $secrets.ca }}' });
+		});
+
+		it('does not export a controller value that the field cannot hold', async () => {
+			const parsed = await exportPostgresLike({
+				ssl: 'hunter2',
+				allowUnauthorizedCerts: 'false',
+				caCertificate: '={{ $secrets.ca }}',
+			});
+
+			expect(parsed.data).toEqual({ caCertificate: '={{ $secrets.ca }}' });
+		});
+
+		it('marks the data as complete when the controllers were the only omitted values', async () => {
+			const parsed = await exportPostgresLike({
+				ssl: 'require',
+				allowUnauthorizedCerts: false,
+				caCertificate: '={{ $secrets.ca }}',
+			});
+
+			expect(parsed.dataIsComplete).toBe(true);
 		});
 	});
 });

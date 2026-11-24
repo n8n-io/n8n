@@ -6,24 +6,41 @@
 // for post-run verification.
 // ---------------------------------------------------------------------------
 
-import type {
-	InstanceAiConfirmRequest,
-	InstanceAiRichMessagesResponse,
-	InstanceAiEvalAgentExecutionResult,
-	InstanceAiEvalExecutionResult,
-	InstanceAiRunDebugResponse,
-	InstanceAiThreadDebugRunsResponse,
-	InstanceAiThreadStatusResponse,
-	InstanceAiEvalSeedAgent,
-	InstanceAiEvalSeedDataTable,
-	InstanceAiEvalSeedWorkflow,
-	InstanceAiWorkflowAttachment,
-	AgentJsonConfig,
-	AgentSkill,
-	EvaluationConfigDto,
+import {
+	type InstanceAiHandoffContext,
+	type InstanceAiSendMessageRequest,
+	type AgentConfigResponse,
+	type InstanceAiConfirmRequest,
+	type InstanceAiRichMessagesResponse,
+	type InstanceAiEvalAgentExecutionResult,
+	type InstanceAiEvalExecutionResult,
+	type InstanceAiRunDebugResponse,
+	type InstanceAiEvalThreadMemoryResponse,
+	type InstanceAiThreadDebugRunsResponse,
+	type InstanceAiThreadStatusResponse,
+	type InstanceAiEvalSeedAgent,
+	type InstanceAiEvalSeedDataTable,
+	type InstanceAiEvalSeedFolder,
+	type InstanceAiEvalSeedWorkflow,
+	type InstanceAiResourceAttachment,
+	type AgentJsonConfig,
+	type AgentSkill,
+	type EvaluationConfigDto,
+	instanceAiEvalFailedExecutionEnvelopeSchema,
+	type InstanceAiEvalFailedExecutionEnvelope,
+	type ProjectIcon,
 } from '@n8n/api-types';
+import type { ExecutionStatus } from 'n8n-workflow';
 import { Agent, setGlobalDispatcher } from 'undici';
 import { z } from 'zod';
+
+import {
+	AssistantAgentsApi,
+	readSseUntil,
+	type AssistantRuntime,
+	type AssistantSseEvent,
+} from './assistant-agents-api';
+import { recordEvalUsage } from '../../src/utils/eval-usage';
 
 // Disable undici's 300s timeouts — mocked eval runs take minutes; the per-request
 // AbortSignal is the real bound. This is process-global: only ever imported by the
@@ -34,6 +51,9 @@ setGlobalDispatcher(new Agent({ headersTimeout: 0, bodyTimeout: 0 }));
  *  unbounded, so a silent lane would hang rather than fail. Sized for a plain
  *  REST call — slower callers pass their own. */
 const DEFAULT_REQUEST_TIMEOUT_MS = 120_000;
+
+/** Eval routes of the Instance AI runtime. The Agents runtime has its own base. */
+const INSTANCE_AI_EVAL_BASE = '/rest/instance-ai/eval';
 
 /** Bulk creation of seed workflows + data tables; slower than a plain REST call. */
 const RESTORE_THREAD_TIMEOUT_MS = 300_000;
@@ -64,6 +84,14 @@ const InvitedUsersEnvelope = z.object({
 
 // -- Conversation seeding response shapes -------------------------------------
 
+const ExportExecutionEnvelope = z.object({
+	data: z.object({ envelope: instanceAiEvalFailedExecutionEnvelopeSchema }),
+});
+
+const RestoreExecutionEnvelope = z.object({
+	data: z.object({ ok: z.literal(true), executionId: z.string().min(1) }),
+});
+
 const RestoreThreadEnvelope = z.object({
 	data: z.object({
 		ok: z.literal(true),
@@ -72,36 +100,16 @@ const RestoreThreadEnvelope = z.object({
 		workflowIds: z.array(z.string()),
 		dataTableIds: z.array(z.string()).default([]),
 		agentIds: z.array(z.string()).default([]),
+		folderIds: z.array(z.string()).default([]),
 	}),
 });
 
 // ---------------------------------------------------------------------------
-// Computer-use gateway response shapes (Zod-validated to keep the client
-// honest about API drift instead of trusting `as` casts)
+// Browser-use relay response shapes (Zod-validated to keep the client honest
+// about API drift instead of trusting `as` casts). The server owns the CDP
+// relay and the extension dials in.
 // ---------------------------------------------------------------------------
 
-const GatewayLinkSchema = z.object({
-	token: z.string(),
-	command: z.string(),
-});
-const GatewayLinkEnvelope = z.object({ data: GatewayLinkSchema });
-export type GatewayLink = z.infer<typeof GatewayLinkSchema>;
-
-const GatewayStatusSchema = z.object({
-	connected: z.boolean(),
-	directory: z.string().nullable(),
-	toolCategories: z.array(
-		z.object({
-			name: z.string(),
-			enabled: z.boolean(),
-		}),
-	),
-});
-const GatewayStatusEnvelope = z.object({ data: GatewayStatusSchema });
-export type GatewayStatus = z.infer<typeof GatewayStatusSchema>;
-
-// Browser-use relay (a different channel from the computer-use gateway above:
-// the server owns the CDP relay and the extension dials in).
 const BrowserLinkSchema = z.object({
 	connectUrl: z.string(),
 	expiresAt: z.string().nullable(),
@@ -168,6 +176,7 @@ export interface WorkflowResponse {
 	connections: Record<string, unknown>;
 	nodeGroups?: WorkflowNodeGroupResponse[];
 	pinData?: Record<string, unknown>;
+	settings?: Record<string, unknown> | null;
 }
 
 interface WorkflowListItem {
@@ -175,6 +184,27 @@ interface WorkflowListItem {
 	name: string;
 	active: boolean;
 	nodes: WorkflowNodeResponse[];
+	/** The folder the workflow sits in; absent or null at the project root. */
+	parentFolder?: { id: string } | null;
+}
+
+/** One page of a project's folder list, trimmed to the fields the harness reads. */
+const FolderListEnvelope = z.object({
+	count: z.number(),
+	data: z.array(
+		z.object({
+			id: z.string(),
+			name: z.string(),
+			parentFolder: z.object({ id: z.string() }).nullable().optional(),
+		}),
+	),
+});
+
+export interface FolderPlacement {
+	id: string;
+	name: string;
+	/** `null` at the project root. */
+	parentFolderId: string | null;
 }
 
 interface ExecutionListItem {
@@ -186,7 +216,7 @@ interface ExecutionListItem {
 export interface ExecutionDetail {
 	id: string;
 	workflowId: string;
-	status: string;
+	status: ExecutionStatus;
 	/** Flatted-serialized execution data (contains error details, run data per node) */
 	data: string;
 }
@@ -238,10 +268,38 @@ export class N8nApiError extends Error {
 
 export class N8nClient {
 	private sessionCookie?: string;
+	/** Memoized per login: every cleanup, eviction and snapshot asks for it. */
+	private personalProjectId?: Promise<string>;
+	/** Whether the logged-in user holds `workflow:delete` globally. Read off the
+	 *  login payload, and the reason a 403 can be read as "already gone". See
+	 *  `isWorkflowGone`. False until `login` says otherwise, so a client that
+	 *  never logged in takes the strict path. */
+	private hasGlobalWorkflowDelete = false;
+
+	/** The logged-in user's name, when the login payload carries both parts. */
+	userName?: { firstName: string; lastName: string };
+
+	/** Which Assistant runtime the thread-tied calls drive. */
+	readonly assistantRuntime: AssistantRuntime;
+
+	/** Set only on the Agents runtime. Every thread-tied method checks this one
+	 *  field and sends the call to the Agents transport when it is set. */
+	private readonly agents?: AssistantAgentsApi;
 
 	/** Public: the browser runtime needs to know where n8n ACTUALLY is, which is
 	 *  not always what n8n reports as its own base URL (see `planRelayConnection`). */
-	constructor(readonly baseUrl: string) {}
+	constructor(
+		readonly baseUrl: string,
+		options: { assistantRuntime?: AssistantRuntime } = {},
+	) {
+		this.assistantRuntime = options.assistantRuntime ?? 'instance-ai';
+		if (this.assistantRuntime === 'agents') {
+			this.agents = new AssistantAgentsApi({
+				request: async (path, requestOptions) => await this.fetch(path, requestOptions),
+				postSseUntil: async (path, body, stop) => await this.postSseUntil(path, body, stop),
+			});
+		}
+	}
 
 	// -- Auth ----------------------------------------------------------------
 
@@ -254,10 +312,25 @@ export class N8nClient {
 		const loginEmail = email ?? process.env.N8N_EVAL_EMAIL ?? 'nathan@n8n.io';
 		const loginPassword = password ?? process.env.N8N_EVAL_PASSWORD ?? 'PlaywrightTest123';
 
-		await this.fetch('/rest/login', {
+		const result = (await this.fetch('/rest/login', {
 			method: 'POST',
 			body: { emailOrLdapLoginId: loginEmail, password: loginPassword },
-		});
+		})) as {
+			data?: {
+				globalScopes?: string[];
+				isOwner?: boolean;
+				firstName?: string | null;
+				lastName?: string | null;
+			};
+		};
+
+		// `/rest/login` returns the public user with `withScopes: true`. `isOwner`
+		// is the fallback for a payload that carries no scope list: an owner always
+		// holds the scope, so the two agree wherever both are present.
+		this.hasGlobalWorkflowDelete =
+			result.data?.globalScopes?.includes('workflow:delete') ?? result.data?.isOwner ?? false;
+		const { firstName, lastName } = result.data ?? {};
+		this.userName = firstName && lastName ? { firstName, lastName } : undefined;
 
 		if (!this.sessionCookie) {
 			throw new Error('Failed to authenticate with n8n — no session cookie received');
@@ -280,6 +353,12 @@ export class N8nClient {
 		sourceContext?: Record<string, string | number | boolean>,
 	): Promise<void> {
 		const resolvedProjectId = projectId ?? (await this.getPersonalProjectId());
+		if (this.agents) {
+			return await this.agents.createThread(threadId, resolvedProjectId, {
+				source: 'evals',
+				...(sourceContext ? { sourceContext } : {}),
+			});
+		}
 		await this.fetch('/rest/instance-ai/threads', {
 			method: 'POST',
 			body: {
@@ -298,18 +377,39 @@ export class N8nClient {
 	 *
 	 * `attachments` are resource references the agent resolves with its tools — the
 	 *  same channel the editor uses when a user opens the assistant with a workflow
-	 * in front of them, so the agent is handed it by id instead of hunting by name.
+	 *  or Agent in front of them. The assistant receives the resource by id.
 	 */
 	async sendMessage(
 		threadId: string,
 		message: string,
-		attachments?: InstanceAiWorkflowAttachment[],
+		attachments?: InstanceAiResourceAttachment[],
+		promptVersion?: string,
+		handoffContext?: InstanceAiHandoffContext,
+		observerThresholdTokens?: number,
 	): Promise<{ runId: string }> {
+		if (this.agents) {
+			// The Agents runtime sets the overrides once per thread, so a repeat here is ignored.
+			await this.agents.sendMessage(threadId, message, {
+				attachments,
+				context: handoffContext,
+				// The Assistant agent has no observer threshold override.
+				overrides: promptVersion ? { promptVersion } : {},
+			});
+			// The Agents runtime has no run id before the turn starts. The events carry the execution id.
+			return { runId: '' };
+		}
 		const result = await this.fetch(`/rest/instance-ai/chat/${threadId}`, {
 			method: 'POST',
-			body: attachments && attachments.length > 0 ? { message, attachments } : { message },
+			body: {
+				message,
+				...(attachments?.length ? { attachments } : {}),
+				...(promptVersion ? { promptVersion } : {}),
+				...(handoffContext ? { context: handoffContext } : {}),
+				// Per-thread, so other cases in the suite keep the instance default.
+				...(observerThresholdTokens ? { observerThresholdTokens } : {}),
+			} satisfies InstanceAiSendMessageRequest,
 		});
-		return result as { runId: string };
+		return this.unwrapRestData<{ runId: string }>(result);
 	}
 
 	/**
@@ -318,6 +418,8 @@ export class N8nClient {
 	 * body: kind-tagged `InstanceAiConfirmRequest` discriminated union.
 	 */
 	async confirmAction(requestId: string, payload: InstanceAiConfirmRequest): Promise<void> {
+		// The Agents runtime answers cards through `/chat/resume` in its wait loop.
+		this.assertV1Only('confirmAction');
 		await this.fetch(`/rest/instance-ai/confirm/${requestId}`, {
 			method: 'POST',
 			body: payload,
@@ -329,6 +431,7 @@ export class N8nClient {
 	 * POST /rest/instance-ai/chat/:threadId/cancel
 	 */
 	async cancelRun(threadId: string): Promise<void> {
+		if (this.agents) return await this.agents.cancel(threadId);
 		await this.fetch(`/rest/instance-ai/chat/${threadId}/cancel`, {
 			method: 'POST',
 		});
@@ -338,9 +441,13 @@ export class N8nClient {
 	 * Get the current status of a thread (active run, suspended, background tasks).
 	 * GET /rest/instance-ai/threads/:threadId/status
 	 */
-	async getThreadStatus(threadId: string): Promise<InstanceAiThreadStatusResponse> {
+	async getThreadStatus(
+		threadId: string,
+		timeoutMs?: number,
+	): Promise<InstanceAiThreadStatusResponse> {
+		this.assertV1Only('getThreadStatus');
 		return this.unwrapRestData<InstanceAiThreadStatusResponse>(
-			await this.fetch(`/rest/instance-ai/threads/${threadId}/status`),
+			await this.fetch(`/rest/instance-ai/threads/${threadId}/status`, { timeoutMs }),
 		);
 	}
 
@@ -349,6 +456,8 @@ export class N8nClient {
 	 * GET /rest/instance-ai/threads/:threadId/messages
 	 */
 	async getThreadMessages(threadId: string): Promise<InstanceAiRichMessagesResponse> {
+		// The Agents runtime builds the outcome from the events that the wait loop rebuilds from history.
+		if (this.agents) return { threadId, messages: [], nextEventId: 0 };
 		const result = (await this.fetch(`/rest/instance-ai/threads/${threadId}/messages`)) as {
 			data: InstanceAiRichMessagesResponse;
 		};
@@ -360,6 +469,7 @@ export class N8nClient {
 	 * DELETE /rest/instance-ai/threads/:threadId
 	 */
 	async deleteThread(threadId: string): Promise<void> {
+		if (this.agents) return await this.agents.deleteThread(threadId);
 		await this.fetch(`/rest/instance-ai/threads/${threadId}`, { method: 'DELETE' });
 	}
 
@@ -371,6 +481,8 @@ export class N8nClient {
 		threadId: string,
 		timeoutMs?: number,
 	): Promise<InstanceAiThreadDebugRunsResponse> {
+		// The Agents runtime has no run debug. `captureThreadRunDebug` reads the usage route instead.
+		this.assertV1Only('listThreadDebugRuns');
 		return this.unwrapRestData<InstanceAiThreadDebugRunsResponse>(
 			await this.fetch(`/rest/instance-ai/debug/threads/${threadId}/runs`, { timeoutMs }),
 		);
@@ -381,32 +493,22 @@ export class N8nClient {
 	 * GET /rest/instance-ai/debug/runs/:runId
 	 */
 	async getRunDebug(runId: string, timeoutMs?: number): Promise<InstanceAiRunDebugResponse> {
+		this.assertV1Only('getRunDebug');
 		return this.unwrapRestData<InstanceAiRunDebugResponse>(
 			await this.fetch(`/rest/instance-ai/debug/runs/${runId}`, { timeoutMs }),
 		);
 	}
 
-	// -- Computer-use gateway (pairing + status) -----------------------------
-
-	/**
-	 * Generate a one-shot pairing token for the local computer-use daemon.
-	 * POST /rest/instance-ai/gateway/create-link
-	 */
-	async createGatewayLink(): Promise<GatewayLink> {
-		const result = await this.fetch('/rest/instance-ai/gateway/create-link', {
-			method: 'POST',
-		});
-		return GatewayLinkEnvelope.parse(result).data;
-	}
-
-	/**
-	 * Read the local gateway status. The daemon flips this to `connected: true`
-	 * once it has registered its capabilities.
-	 * GET /rest/instance-ai/gateway/status
-	 */
-	async getGatewayStatus(): Promise<GatewayStatus> {
-		const result = await this.fetch('/rest/instance-ai/gateway/status');
-		return GatewayStatusEnvelope.parse(result).data;
+	/** Live observations + the compaction cursor for a thread. */
+	async getThreadMemory(
+		threadId: string,
+		timeoutMs?: number,
+	): Promise<InstanceAiEvalThreadMemoryResponse> {
+		// The Assistant agent has no memory read route. Compaction cases are skipped on it.
+		this.assertV1Only('getThreadMemory');
+		return this.unwrapRestData<InstanceAiEvalThreadMemoryResponse>(
+			await this.fetch(`${INSTANCE_AI_EVAL_BASE}/threads/${threadId}/memory`, { timeoutMs }),
+		);
 	}
 
 	// -- Browser-use relay (extension pairing + status) ----------------------
@@ -519,8 +621,8 @@ export class N8nClient {
 	 * Get a single workflow by ID.
 	 * GET /rest/workflows/:id
 	 */
-	async getWorkflow(id: string): Promise<WorkflowResponse> {
-		const result = (await this.fetch(`/rest/workflows/${id}`)) as {
+	async getWorkflow(id: string, timeoutMs?: number): Promise<WorkflowResponse> {
+		const result = (await this.fetch(`/rest/workflows/${id}`, { timeoutMs })) as {
 			data: WorkflowResponse;
 		};
 		return result.data;
@@ -533,8 +635,8 @@ export class N8nClient {
 	async getAgentConfig(projectId: string, agentId: string): Promise<AgentJsonConfig> {
 		const result = (await this.fetch(
 			`/rest/projects/${projectId}/agents/v2/${agentId}/config`,
-		)) as { data: AgentJsonConfig };
-		return result.data;
+		)) as { data: AgentConfigResponse };
+		return result.data.config;
 	}
 
 	/**
@@ -581,12 +683,14 @@ export class N8nClient {
 	async executeWorkflow(
 		workflowId: string,
 		triggerNodeName?: string,
+		timeoutMs?: number,
 	): Promise<{ executionId: string }> {
 		const body: Record<string, unknown> = {};
 		if (triggerNodeName) {
 			body.triggerToStartFrom = { name: triggerNodeName };
 		}
 		const result = (await this.fetch(`/rest/workflows/${workflowId}/run`, {
+			timeoutMs,
 			method: 'POST',
 			body,
 		})) as { data: { executionId: string } };
@@ -597,11 +701,15 @@ export class N8nClient {
 	 * Get a single execution by ID.
 	 * GET /rest/executions/:id
 	 */
-	async getExecution(executionId: string): Promise<ExecutionDetail> {
-		const result = (await this.fetch(`/rest/executions/${executionId}`)) as {
+	async getExecution(executionId: string, timeoutMs?: number): Promise<ExecutionDetail> {
+		const result = (await this.fetch(`/rest/executions/${executionId}`, { timeoutMs })) as {
 			data: ExecutionDetail;
 		};
 		return result.data;
+	}
+
+	async stopExecution(executionId: string): Promise<void> {
+		await this.fetch(`/rest/executions/${executionId}/stop`, { method: 'POST', timeoutMs: 5_000 });
 	}
 
 	/**
@@ -694,26 +802,71 @@ export class N8nClient {
 	}
 
 	/**
-	 * Delete a workflow by ID. The workflow must be archived first.
+	 * Delete a workflow by ID. The workflow must be archived first. The archive
+	 * step's only 400 is "already archived" (a folder delete archives what the
+	 * folder held), so a 400 there goes straight to the delete, which refuses a
+	 * live workflow on its own. Refusing here left every such leftover
+	 * undeletable by eviction and cleanup alike.
+	 *
+	 * A workflow that is already gone is a success, not a failure. A cleanup
+	 * retry re-runs on the same build, and an eviction deletes what it listed a
+	 * moment earlier, so both meet ids another pass already took. See
+	 * `isWorkflowGone` for which status says so.
 	 * DELETE /rest/workflows/:id
 	 */
 	async deleteWorkflow(id: string): Promise<void> {
-		await this.archiveWorkflow(id);
-		await this.fetch(`/rest/workflows/${id}`, { method: 'DELETE' });
+		try {
+			await this.archiveWorkflow(id);
+		} catch (error: unknown) {
+			if (!(error instanceof N8nApiError)) throw error;
+			if (this.isWorkflowGone(error.status)) return;
+			if (error.status !== 400) throw error;
+		}
+		try {
+			await this.fetch(`/rest/workflows/${id}`, { method: 'DELETE' });
+		} catch (error: unknown) {
+			if (!(error instanceof N8nApiError && this.isWorkflowGone(error.status))) throw error;
+		}
 	}
 
 	/**
-	 * Create a credential.
-	 * POST /rest/credentials  body: { name, type, data }
+	 * Whether a failed archive or delete means the workflow is already gone.
+	 *
+	 * n8n reports a missing workflow differently per user. A user holding
+	 * `workflow:delete` globally passes the scope middleware on the global check
+	 * alone, so the lookup runs unfiltered and the controller answers the missing
+	 * row with `ForbiddenError`, which is a 403. Everyone else reaches the
+	 * middleware's own `SharedWorkflow` lookup, which throws `NotFoundError`, a 404.
+	 *
+	 * So 403 only means gone for the global user. For anyone else it is a real
+	 * permission failure on a workflow that exists, and swallowing it would
+	 * report a cleanup as clean while leaving the workflow behind.
+	 */
+	private isWorkflowGone(status: number): boolean {
+		if (status === 404) return true;
+		return status === 403 && this.hasGlobalWorkflowDelete;
+	}
+
+	/**
+	 * Create a credential, in `projectId` when given (else the caller's personal project).
+	 * POST /rest/credentials  body: { name, type, data, projectId? }
 	 */
 	async createCredential(
 		name: string,
 		type: string,
 		data: Record<string, unknown>,
+		description?: string | null,
+		projectId?: string,
 	): Promise<{ id: string }> {
 		const result = (await this.fetch('/rest/credentials', {
 			method: 'POST',
-			body: { name, type, data },
+			body: {
+				name,
+				type,
+				data,
+				...(description !== undefined ? { description } : {}),
+				...(projectId !== undefined ? { projectId } : {}),
+			},
 		})) as { data: { id: string } };
 		return { id: result.data.id };
 	}
@@ -781,6 +934,29 @@ export class N8nClient {
 			);
 		}
 		return data.apiKey;
+	}
+
+	/**
+	 * Expose workflows to MCP. MCP tools skip a workflow whose `availableInMCP`
+	 * is off, and a restored seed workflow starts with it off.
+	 * PATCH /rest/mcp/workflows/toggle-access
+	 */
+	async setWorkflowsAvailableInMcp(workflowIds: string[]): Promise<void> {
+		await this.fetch('/rest/mcp/workflows/toggle-access', {
+			method: 'PATCH',
+			body: { availableInMCP: true, workflowIds },
+		});
+	}
+
+	/**
+	 * Expose Agents to MCP, for the same reason as workflows.
+	 * PATCH /rest/mcp/agents/toggle-access
+	 */
+	async setAgentsAvailableInMcp(agentIds: string[]): Promise<void> {
+		await this.fetch('/rest/mcp/agents/toggle-access', {
+			method: 'PATCH',
+			body: { availableInMCP: true, agentIds },
+		});
 	}
 
 	/**
@@ -856,7 +1032,7 @@ export class N8nClient {
 		credentialIds: string[],
 		bypassCredentialTest?: string[],
 	): Promise<void> {
-		await this.fetch('/rest/instance-ai/eval/thread-credential-allowlist', {
+		await this.fetch(`${this.threadEvalBase}/thread-credential-allowlist`, {
 			method: 'POST',
 			// Omit an empty list so the request stays byte-identical to before for
 			// threads with no credentials at all.
@@ -865,6 +1041,17 @@ export class N8nClient {
 				credentialIds,
 				...(bypassCredentialTest?.length ? { bypassCredentialTest } : {}),
 			},
+		});
+	}
+
+	/** Send the thread's connection tests for one credential type to a provider stand-in. */
+	async setThreadCredentialTestTarget(
+		threadId: string,
+		target: { credentialType: string; baseUrl: string; urlField: string },
+	): Promise<void> {
+		await this.fetch(`${this.threadEvalBase}/thread-credential-test-target`, {
+			method: 'POST',
+			body: { threadId, ...target },
 		});
 	}
 
@@ -881,6 +1068,9 @@ export class N8nClient {
 	 * EXACT declared names, so a freshly-built workflow's by-name references
 	 * resolve (TRUST-311 scenario seeding). `messages`/`workflows` may be empty to
 	 * seed only data tables.
+	 *
+	 * `options.folders` are created first, in the thread's project, and the
+	 * seed workflows' `parentFolderId` references resolve to them server-side.
 	 * POST /rest/instance-ai/eval/restore-thread
 	 */
 	async restoreThread(
@@ -889,16 +1079,25 @@ export class N8nClient {
 		workflows: InstanceAiEvalSeedWorkflow[],
 		dataTables: InstanceAiEvalSeedDataTable[] = [],
 		agents: InstanceAiEvalSeedAgent[] = [],
-		options: { uniquifyNames?: boolean } = {},
+		options: { uniquifyNames?: boolean; folders?: InstanceAiEvalSeedFolder[] } = {},
 	): Promise<{
 		restored: number;
 		workflowIds: string[];
 		dataTableIds: string[];
 		agentIds: string[];
+		folderIds: string[];
 	}> {
-		const body: Record<string, unknown> = { threadId, messages, workflows, dataTables, agents };
+		const folders = options.folders ?? [];
+		const body: Record<string, unknown> = {
+			threadId,
+			messages,
+			workflows,
+			dataTables,
+			agents,
+			folders,
+		};
 		if (options.uniquifyNames !== undefined) body.uniquifyNames = options.uniquifyNames;
-		const result = await this.fetch('/rest/instance-ai/eval/restore-thread', {
+		const result = await this.fetch(`${this.threadEvalBase}/restore-thread`, {
 			method: 'POST',
 			body,
 			timeoutMs: RESTORE_THREAD_TIMEOUT_MS,
@@ -912,7 +1111,39 @@ export class N8nClient {
 				`Restore was asked to seed ${String(agents.length)} agent(s) but the response carried ${String(restored.agentIds.length)} — the backend likely predates agent seeding.`,
 			);
 		}
+		// Same guard for folders: a backend that ignores the field would leave the
+		// case grading the agent against a folder that does not exist.
+		if (folders.length > 0 && restored.folderIds.length !== folders.length) {
+			throw new Error(
+				`Restore was asked to seed ${String(folders.length)} folder(s) but the response carried ${String(restored.folderIds.length)} — the backend likely predates folder seeding.`,
+			);
+		}
 		return restored;
+	}
+
+	/** Export one failed execution of the thread's project as a portable envelope. */
+	async exportExecution(
+		threadId: string,
+		executionId: string,
+	): Promise<{ envelope: InstanceAiEvalFailedExecutionEnvelope }> {
+		const result = await this.fetch(`${this.threadEvalBase}/export-execution`, {
+			method: 'POST',
+			body: { threadId, executionId },
+		});
+		return ExportExecutionEnvelope.parse(result).data;
+	}
+
+	/** Restore an exported failed execution onto a seeded workflow; returns the new execution id. */
+	async restoreExecution(
+		threadId: string,
+		workflowId: string,
+		envelope: InstanceAiEvalFailedExecutionEnvelope,
+	): Promise<{ executionId: string }> {
+		const result = await this.fetch(`${this.threadEvalBase}/restore-execution`, {
+			method: 'POST',
+			body: { threadId, workflowId, envelope },
+		});
+		return RestoreExecutionEnvelope.parse(result).data;
 	}
 
 	/**
@@ -928,8 +1159,10 @@ export class N8nClient {
 		threadId: string,
 		tableId: string,
 		rows: Array<Record<string, string | number | boolean | null>>,
+		timeoutMs?: number,
 	): Promise<void> {
-		await this.fetch('/rest/instance-ai/eval/seed-data-table-rows', {
+		await this.fetch(`${this.threadEvalBase}/seed-data-table-rows`, {
+			timeoutMs,
 			method: 'POST',
 			body: { threadId, tableId, rows },
 		});
@@ -942,19 +1175,39 @@ export class N8nClient {
 	 * GET /rest/projects/personal
 	 */
 	async getPersonalProjectId(): Promise<string> {
-		const result = (await this.fetch('/rest/projects/personal')) as {
-			data: { id: string };
-		};
-		if (!result.data?.id) {
-			throw new Error('Could not determine personal project ID');
-		}
-		return result.data.id;
+		this.personalProjectId ??= (async () => {
+			const result = (await this.fetch('/rest/projects/personal')) as {
+				data: { id: string };
+			};
+			if (!result.data?.id) {
+				throw new Error('Could not determine personal project ID');
+			}
+			return result.data.id;
+		})().catch((error: unknown) => {
+			// A failed lookup must not stick: the next caller retries.
+			this.personalProjectId = undefined;
+			throw error;
+		});
+		return await this.personalProjectId;
 	}
 
 	/**
-	 * Create a team project. Used to seed the extra projects a project-scope case
-	 * needs: a second project the eval user can see but whose writes are barred,
-	 * so `isCurrentProject` has something to distinguish the bound project from.
+	 * Whether the license allows team projects (`quota:maxTeamProjects` is not 0).
+	 * GET /rest/settings
+	 */
+	async canCreateTeamProjects(): Promise<boolean> {
+		const result = (await this.fetch('/rest/settings')) as {
+			data?: { enterprise?: { projects?: { team?: { limit?: number } } } };
+		};
+		const limit = result.data?.enterprise?.projects?.team?.limit;
+		return limit !== undefined && limit !== 0;
+	}
+
+	/**
+	 * Create a team project. Used for a build's own project, and to seed the extra
+	 * projects a project-scope case needs: a second project the eval user can see
+	 * but whose writes are barred, so `isCurrentProject` has something to
+	 * distinguish the bound project from.
 	 *
 	 * Team projects are licensed AND quota'd (`@Licensed('feat:projectRole:admin')`
 	 * plus `quota:maxTeamProjects`, which defaults to 0), so this fails on an
@@ -963,11 +1216,11 @@ export class N8nClient {
 	 * against a project list it never saw, and pass for the wrong reason.
 	 * POST /rest/projects
 	 */
-	async createTeamProject(name: string): Promise<{ id: string; name: string }> {
+	async createTeamProject(name: string, icon?: ProjectIcon): Promise<{ id: string; name: string }> {
 		try {
 			const result = (await this.fetch('/rest/projects', {
 				method: 'POST',
-				body: { name },
+				body: { name, ...(icon ? { icon } : {}) },
 			})) as { data?: { id?: string; name?: string } };
 			const id = result.data?.id;
 			if (!id) {
@@ -977,7 +1230,7 @@ export class N8nClient {
 		} catch (error: unknown) {
 			if (error instanceof N8nApiError && (error.status === 403 || error.status === 400)) {
 				throw new Error(
-					`Could not create the seed project "${name}" (${String(error.status)}): team projects are licensed ` +
+					`Could not create the team project "${name}" (${String(error.status)}): team projects are licensed ` +
 						'and quota-limited, and `quota:maxTeamProjects` defaults to 0.\n' +
 						'  - CI/real instance: needs N8N_LICENSE_ACTIVATION_KEY + N8N_LICENSE_CERT.\n' +
 						'  - Local run with E2E_TESTS=true: /rest/e2e/reset stubs the license to ALL-FALSE, so a real ' +
@@ -997,13 +1250,27 @@ export class N8nClient {
 	 * are filtered out — they're never seeded and must never be deleted.
 	 * GET /rest/projects
 	 */
-	async listTeamProjects(): Promise<Array<{ id: string; name: string }>> {
+	async listTeamProjects(): Promise<
+		Array<{ id: string; name: string; icon?: ProjectIcon | null }>
+	> {
 		const result = (await this.fetch('/rest/projects')) as {
-			data?: Array<{ id?: string; name?: string; type?: string }>;
+			data?: Array<{ id?: string; name?: string; type?: string; icon?: ProjectIcon | null }>;
 		};
-		return (result.data ?? []).flatMap(({ id, name, type }) =>
-			type === 'team' && id !== undefined && name !== undefined ? [{ id, name }] : [],
+		return (result.data ?? []).flatMap(({ id, name, type, icon }) =>
+			type === 'team' && id !== undefined && name !== undefined ? [{ id, name, icon }] : [],
 		);
+	}
+
+	/**
+	 * Let a user see a team project without writing to it. An MCP build acts as its
+	 * own member, who sees no team project the owner did not share.
+	 * POST /rest/projects/:projectId/users
+	 */
+	async addProjectViewer(projectId: string, userId: string): Promise<void> {
+		await this.fetch(`/rest/projects/${projectId}/users`, {
+			method: 'POST',
+			body: { relations: [{ userId, role: 'project:viewer' }] },
+		});
 	}
 
 	/**
@@ -1012,6 +1279,72 @@ export class N8nClient {
 	 */
 	async deleteProject(projectId: string): Promise<void> {
 		await this.fetch(`/rest/projects/${projectId}`, { method: 'DELETE' });
+	}
+
+	// -- Folders -------------------------------------------------------------
+
+	/**
+	 * Every folder in a project, flat, with the parent each one sits under. One
+	 * request: the pre-run snapshot, the eviction and the tree delete all derive
+	 * what they need (the root level, a subtree) from this list in memory.
+	 * GET /rest/projects/:projectId/folders
+	 */
+	async listFolders(projectId: string): Promise<FolderPlacement[]> {
+		// Paged to the end: the eviction must see every folder, and a page that
+		// stops short would let a leftover hide behind the cut. No `select`: a custom
+		// select that includes `parentFolder` 500s on the server ("column
+		// distinctAlias.folder_updatedAt does not exist"), so the default select it is.
+		const pageSize = 250;
+		const folders: FolderPlacement[] = [];
+		for (let skip = 0; ; skip += pageSize) {
+			const page = FolderListEnvelope.parse(
+				await this.fetch(
+					`/rest/projects/${projectId}/folders?take=${String(pageSize)}&skip=${String(skip)}`,
+				),
+			);
+			for (const { id, name, parentFolder } of page.data) {
+				folders.push({ id, name, parentFolderId: parentFolder?.id ?? null });
+			}
+			if (page.data.length < pageSize || folders.length >= page.count) break;
+		}
+		return folders;
+	}
+
+	/**
+	 * Delete a folder the run created. n8n archives any workflow still inside
+	 * and moves it to the root, so call it after the run's workflows are gone.
+	 * DELETE /rest/projects/:projectId/folders/:folderId
+	 */
+	async deleteFolder(projectId: string, folderId: string): Promise<void> {
+		await this.fetch(`/rest/projects/${projectId}/folders/${folderId}`, { method: 'DELETE' });
+	}
+
+	/**
+	 * Delete a folder the run did NOT create, with everything in it: every
+	 * workflow anywhere in its subtree (unpublished and deleted through the
+	 * normal path, so no trigger stays registered), then the folder, whose
+	 * delete cascades to the emptied subfolders. Used to evict a crashed run's
+	 * leftover seed folder. Returns how many workflows it deleted.
+	 */
+	async deleteFolderTree(projectId: string, folderId: string): Promise<number> {
+		const folders = await this.listFolders(projectId);
+		// A Set iterates over members added during the loop, so each folder's
+		// children join the walk as it reaches them.
+		const subtree = new Set<string>([folderId]);
+		for (const parentId of subtree) {
+			for (const folder of folders) {
+				if (folder.parentFolderId === parentId) subtree.add(folder.id);
+			}
+		}
+		const inside = (await this.listWorkflows()).filter(
+			(workflow) =>
+				workflow.parentFolder?.id !== undefined && subtree.has(workflow.parentFolder.id),
+		);
+		for (const workflow of inside) {
+			await this.deleteWorkflow(workflow.id);
+		}
+		await this.deleteFolder(projectId, folderId);
+		return inside.length;
 	}
 
 	/**
@@ -1096,17 +1429,30 @@ export class N8nClient {
 	 * sub-nodes actually run instead of being short-circuited by pin data;
 	 * pass `pinNodes` to keep specific roots on the pinned baseline (e.g. for
 	 * A/B comparison). Gated server-side behind the
-	 * `085_eval_vendor_sdk_interception` PostHog flag.
+	 * `085_eval_vendor_sdk_interception` PostHog flag. The server keeps the rows of
+	 * `seededDataTableIds` and fills every other Data Table the workflow uses.
 	 */
 	async executeWithLlmMock(
 		workflowId: string,
 		scenarioHints?: string,
 		timeoutMs: number = 120_000,
 		pinNodes?: string[],
+		seededDataTableIds?: string[],
+		scenarioDescription?: string,
 	): Promise<InstanceAiEvalExecutionResult> {
-		const body: { scenarioHints?: string; pinNodes?: string[]; timeoutMs?: number } = {};
+		const body: {
+			scenarioHints?: string;
+			scenarioDescription?: string;
+			pinNodes?: string[];
+			timeoutMs?: number;
+			seededDataTableIds?: string[];
+		} = {};
 		if (scenarioHints) body.scenarioHints = scenarioHints;
+		if (scenarioDescription) body.scenarioDescription = scenarioDescription;
 		if (pinNodes && pinNodes.length > 0) body.pinNodes = pinNodes;
+		if (seededDataTableIds && seededDataTableIds.length > 0) {
+			body.seededDataTableIds = seededDataTableIds;
+		}
 		// Forwarded so the server stops the run rather than leaving it burning CPU.
 		const serverBudgetMs = serverBudgetFor(timeoutMs);
 		body.timeoutMs = serverBudgetMs;
@@ -1116,6 +1462,7 @@ export class N8nClient {
 			body,
 			timeoutMs: serverBudgetMs + CLIENT_ABORT_MARGIN_MS,
 		})) as { data: InstanceAiEvalExecutionResult };
+		recordEvalUsage(result.data.llmUsage);
 		return result.data;
 	}
 
@@ -1143,6 +1490,7 @@ export class N8nClient {
 				timeoutMs: serverBudgetMs + CLIENT_ABORT_MARGIN_MS,
 			},
 		)) as { data: InstanceAiEvalAgentExecutionResult };
+		recordEvalUsage(result.data.llmUsage);
 		return result.data;
 	}
 
@@ -1150,6 +1498,57 @@ export class N8nClient {
 		await this.fetch(`/rest/projects/${projectId}/agents/v2/${agentId}`, {
 			method: 'DELETE',
 		});
+	}
+
+	// -- Runtime switch ------------------------------------------------------
+
+	/** The transport on the Agents runtime, else undefined. The harness code
+	 *  outside this client branches on this call only. */
+	assistantAgents(): AssistantAgentsApi | undefined {
+		return this.agents;
+	}
+
+	/** Base of the thread-tied eval routes. Same bodies on both runtimes. */
+	private get threadEvalBase(): string {
+		return this.agents?.evalBase ?? INSTANCE_AI_EVAL_BASE;
+	}
+
+	/** Instance AI routes with no Agents route. Fail loudly when a caller reaches one on the Agents runtime. */
+	private assertV1Only(method: string): void {
+		if (this.agents) {
+			throw new Error(`N8nClient.${method} is not available on the Agents runtime`);
+		}
+	}
+
+	/** POST and read the SSE response until `stop` accepts an event, then close it. */
+	private async postSseUntil(
+		path: string,
+		body: unknown,
+		stop: (event: AssistantSseEvent) => boolean,
+	): Promise<AssistantSseEvent | undefined> {
+		const controller = new AbortController();
+		const timer = setTimeout(() => controller.abort(), DEFAULT_REQUEST_TIMEOUT_MS);
+		try {
+			const res = await fetch(`${this.baseUrl}${path}`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					Accept: 'text/event-stream',
+					cookie: this.cookie,
+				},
+				body: JSON.stringify(body),
+				signal: controller.signal,
+			});
+			if (!res.ok || !res.body) {
+				const text = await res.text().catch(() => '');
+				throw new N8nApiError(`n8n API POST ${path} failed (${res.status}): ${text}`, res.status);
+			}
+			return await readSseUntil(res.body, stop);
+		} finally {
+			clearTimeout(timer);
+			// Close the stream. The turn runs on the server without it.
+			controller.abort();
+		}
 	}
 
 	// -- SSE helpers ---------------------------------------------------------

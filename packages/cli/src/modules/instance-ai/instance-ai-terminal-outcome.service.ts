@@ -1,5 +1,6 @@
 import type { InstanceAiErrorEvent, InstanceAiEvent } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
+import type { TelemetryProxy } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import {
 	InstanceAiTerminalResponseGuard,
@@ -16,9 +17,7 @@ import {
 } from '@n8n/instance-ai';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 
-import { OperationalError } from 'n8n-workflow';
-
-import type { Telemetry } from '@/telemetry';
+import { OperationalError } from '@n8n/errors';
 
 import type { InProcessEventBus } from './event-bus/in-process-event-bus';
 import type { InstanceAiErrorReporterService } from './instance-ai-error-reporter.service';
@@ -47,7 +46,7 @@ export type InstanceAiTerminalOutcomeEventBus = Pick<InProcessEventBus, 'publish
 	): InstanceAiEvent[] | Promise<InstanceAiEvent[]>;
 };
 
-export type InstanceAiTerminalOutcomeTelemetry = Pick<Telemetry, 'track'>;
+export type InstanceAiTerminalOutcomeTelemetry = Pick<TelemetryProxy, 'track'>;
 
 export type InstanceAiTerminalOutcomeErrorReporter = Pick<InstanceAiErrorReporterService, 'report'>;
 
@@ -84,6 +83,7 @@ export interface InstanceAiTerminalOutcomeServiceOptions {
 		runId: string,
 		status: 'completed' | 'cancelled' | 'errored',
 		reason?: string,
+		promptVersion?: string,
 	) => void;
 }
 
@@ -149,7 +149,6 @@ export class InstanceAiTerminalOutcomeService {
 			workSummary?: WorkSummary;
 			errorMessage?: string;
 			errorCode?: InstanceAiErrorCode;
-			suppressCompletedFallback?: boolean;
 		} = {},
 	): Promise<TerminalResponseDecision | undefined> {
 		const guard = new InstanceAiTerminalResponseGuard({
@@ -165,7 +164,6 @@ export class InstanceAiTerminalOutcomeService {
 				workSummary: options.workSummary,
 				errorMessage: options.errorMessage,
 				errorCode: options.errorCode,
-				suppressCompletedFallback: options.suppressCompletedFallback,
 			},
 		);
 		this.handleTerminalResponseDecision(threadId, runId, decision, options.messageGroupId);
@@ -267,6 +265,7 @@ export class InstanceAiTerminalOutcomeService {
 	async finishInvalidConfirmationRun(args: {
 		threadId: string;
 		runId: string;
+		promptVersion?: string;
 		abortController: AbortController;
 		tracing?: InstanceAiTraceContext;
 	}): Promise<MessageTraceFinalization> {
@@ -282,6 +281,7 @@ export class InstanceAiTerminalOutcomeService {
 			args.runId,
 			'errored',
 			'I need your input to continue, but I could not display the prompt. Please try again.',
+			args.promptVersion,
 		);
 		return {
 			status: 'error',
@@ -413,6 +413,8 @@ export class InstanceAiTerminalOutcomeService {
 	}
 
 	async recordBackgroundTerminalOutcome(task: ManagedBackgroundTask): Promise<void> {
+		// A task detached from its turn reports how it ended in its own follow-up run.
+		if (task.detachedFromTurn) return;
 		const outcome = this.buildBackgroundTerminalOutcome(task);
 		let persisted = false;
 		try {

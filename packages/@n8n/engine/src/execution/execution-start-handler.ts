@@ -1,6 +1,6 @@
 import { UnexpectedError } from '../common';
 import { findTriggerNode } from '../graph';
-import type { LifecycleEventPublisher } from '../lifecycle-events';
+import type { LifecycleEventPublisherFactory } from '../lifecycle-events';
 import type { ExecutionEnqueuedEvent, OrchestrationMessage, WorkQueue } from '../queue';
 import type { ExecutionStore } from './execution-store';
 import { DEFAULT_TRIGGER_OUTPUTS } from './execution.types';
@@ -8,9 +8,9 @@ import type { StepStore } from './step-store';
 
 /**
  * Handles the `execution:enqueued` orchestration event: claims the execution
- * (`queued -> running`), records the trigger as a completed step, and announces
- * that completion. The first step(s) are planned by the step completion handler
- * that handles the trigger completion.
+ * (`queued -> running`), records the trigger as completed, and announces that
+ * completion. The first step(s) are planned by the step completion handler
+ * that handles that completion.
  * NOTE: this means an extra trip through the queue, but it eliminates some
  * special-casing for triggers and simplifies the completion logic.
  */
@@ -19,7 +19,7 @@ export class ExecutionStartHandler {
 		private readonly executionStore: ExecutionStore,
 		private readonly stepStore: StepStore,
 		private readonly orchestrationQueue: WorkQueue<OrchestrationMessage>,
-		private readonly lifecycleEventPublisher: LifecycleEventPublisher,
+		private readonly lifecycleEventPublisherFactory: LifecycleEventPublisherFactory,
 	) {}
 
 	async handle(event: ExecutionEnqueuedEvent): Promise<void> {
@@ -35,11 +35,12 @@ export class ExecutionStartHandler {
 
 		// This worker won the claim, so it is the one that announces the start.
 		// After the load, because the ids it carries save consumers a round trip.
-		this.lifecycleEventPublisher.publish({
+		this.lifecycleEventPublisherFactory.create(execution).publish({
 			type: 'execution:started',
 			executionId: execution.id,
 			workflowId: execution.workflowId,
 			mode: execution.mode,
+			hostMode: execution.callerContext.hostMode,
 			at: new Date().toISOString(),
 		});
 
@@ -54,7 +55,7 @@ export class ExecutionStartHandler {
 		// already completed so successors read them like any predecessor's slots.
 		// No payload means no slots at all: every successor edge reads undefined
 		// and is treated as dead, same as any other step that produced nothing.
-		// The claim above makes this the only writer, so the row cannot exist yet.
+		// The claim above makes this the only writer, so no row can exist yet.
 		const [triggerStep] = await this.stepStore.createSteps(event.executionId, [
 			{
 				nodeId: trigger.id,

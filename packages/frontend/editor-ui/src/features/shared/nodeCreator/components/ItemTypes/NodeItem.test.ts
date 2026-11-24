@@ -1,5 +1,9 @@
 import type { Pinia } from 'pinia';
 import { createPinia, setActivePinia } from 'pinia';
+import type { IWorkflowSettings } from 'n8n-workflow';
+import { nextTick, reactive } from 'vue';
+import { screen } from '@testing-library/vue';
+import userEvent from '@testing-library/user-event';
 
 import {
 	AI_CATEGORY_OTHER_TOOLS,
@@ -8,17 +12,29 @@ import {
 	MESSAGE_AN_AGENT_NODE_TYPE,
 } from '@/app/constants';
 import { createComponentRenderer } from '@/__tests__/render';
-import { mockSimplifiedNodeType } from '../../__tests__/utils';
+import {
+	mockRestrictedCredentialTypes,
+	mockRestrictedNodeTypes,
+} from '@n8n/frontend-module-type-availability-policies/__tests__/mocks';
+import { mockEngineV2Compatibility } from '@n8n/frontend-module-engine-v2/__tests__/mocks';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import {
+	mockActionCreateElement,
+	mockSimplifiedNodeType,
+} from '@/features/shared/nodeCreator/__tests__/utils';
 import { useViewStacks } from '../../composables/useViewStacks';
+import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import NodeItem from './NodeItem.vue';
 import type { AddedNodesAndConnections } from '@/Interface';
 
-const mockDocumentStoreState = {
+const mockDocumentStoreState = reactive({
 	allNodes: [],
+	connectionsBySourceNode: {},
+	settings: {} as IWorkflowSettings,
 	workflowTriggerNodes: [],
 	aiNodes: [],
 	getExpressionHandler: () => null,
-};
+});
 vi.mock('@/app/stores/workflowDocument.store', () => ({
 	useWorkflowDocumentStore: () => mockDocumentStoreState,
 	createWorkflowDocumentId: (id: string) => `${id}@latest`,
@@ -211,6 +227,211 @@ describe('NodeItem', () => {
 			});
 
 			expect(getDescription(container)).toBe('Interact with Anthropic AI models');
+		});
+	});
+
+	describe('restricted node type', () => {
+		const gmail = () =>
+			mockSimplifiedNodeType({
+				name: 'n8n-nodes-base.gmail',
+				displayName: 'Gmail',
+				group: ['output'],
+			});
+
+		it('is greyed, locked, not draggable and has no action arrow', () => {
+			mockRestrictedNodeTypes({ 'n8n-nodes-base.gmail': 'instance' });
+
+			const { container, getByTestId } = render({ pinia, props: { nodeType: gmail() } });
+
+			const row = getByTestId('node-creator-restricted-item');
+			expect(row.getAttribute('draggable')).toBe('false');
+			expect(row.className).toContain('disabled');
+			expect(getByTestId('node-restricted-icon')).toBeInTheDocument();
+			expect(container.querySelector('[data-icon="arrow-right"]')).not.toBeInTheDocument();
+		});
+
+		it('opens the explanation for the hovered row, anchored to the row', async () => {
+			mockRestrictedNodeTypes({ 'n8n-nodes-base.gmail': 'instance' });
+
+			const { getByTestId } = render({ pinia, props: { nodeType: gmail() } });
+			expect(screen.queryByTestId('node-restricted-popover')).not.toBeInTheDocument();
+
+			await userEvent.hover(getByTestId('node-creator-restricted-item'));
+
+			expect(await screen.findByText('Restricted on this instance')).toBeInTheDocument();
+		});
+
+		it('opens the explanation for the keyboard-active row with its scope', async () => {
+			mockRestrictedNodeTypes({ 'n8n-nodes-base.gmail': 'project' });
+
+			render({ pinia, props: { nodeType: gmail(), active: true } });
+
+			expect(await screen.findByText('Restricted in this project')).toBeInTheDocument();
+		});
+
+		it('treats a credential-only node like the HTTP Request node it wraps', () => {
+			mockRestrictedNodeTypes({ 'n8n-nodes-base.httpRequest': 'instance' });
+
+			const { queryByTestId } = render({
+				pinia,
+				props: {
+					nodeType: mockSimplifiedNodeType({
+						name: 'n8n-creds-base.sysdigApi',
+						displayName: 'Sysdig',
+						group: ['output'],
+					}),
+				},
+			});
+
+			expect(queryByTestId('node-creator-restricted-item')).toBeInTheDocument();
+		});
+
+		it('treats a credential-only node as restricted when its credential type is restricted', () => {
+			mockRestrictedNodeTypes();
+			mockRestrictedCredentialTypes({ sysdigApi: 'project' });
+
+			const { queryByTestId } = render({
+				pinia,
+				props: {
+					nodeType: mockSimplifiedNodeType({
+						name: 'n8n-creds-base.sysdigApi',
+						displayName: 'Sysdig',
+						group: ['output'],
+					}),
+				},
+			});
+
+			expect(queryByTestId('node-creator-restricted-item')).toBeInTheDocument();
+		});
+
+		describe('trigger with events', () => {
+			const acmeTrigger = () =>
+				mockSimplifiedNodeType({
+					name: 'n8n-nodes-base.acmeTrigger',
+					displayName: 'Acme Trigger',
+					group: ['trigger'],
+				});
+
+			beforeEach(() => {
+				useNodeCreatorStore().setActions({
+					'n8n-nodes-base.acmeTrigger': [
+						mockActionCreateElement().properties,
+						mockActionCreateElement().properties,
+					],
+				});
+			});
+
+			it('drops "Trigger" from the name when the trigger is allowed', () => {
+				mockRestrictedNodeTypes();
+
+				const { getByTestId } = render({ pinia, props: { nodeType: acmeTrigger() } });
+
+				expect(getByTestId('node-creator-action-item')).toHaveTextContent('Acme');
+				expect(getByTestId('node-creator-action-item')).not.toHaveTextContent('Acme Trigger');
+			});
+
+			it('keeps the full name when the trigger is allowed but its app node is restricted', () => {
+				mockRestrictedNodeTypes({ 'n8n-nodes-base.acme': 'instance' });
+
+				const { getByTestId } = render({ pinia, props: { nodeType: acmeTrigger() } });
+
+				expect(getByTestId('node-creator-action-item')).toHaveTextContent('Acme Trigger');
+			});
+
+			it('keeps the full name in the row and the explanation when the trigger is restricted', async () => {
+				mockRestrictedNodeTypes({ 'n8n-nodes-base.acmeTrigger': 'instance' });
+
+				const { getByTestId } = render({ pinia, props: { nodeType: acmeTrigger() } });
+
+				expect(getByTestId('node-creator-restricted-item')).toHaveTextContent('Acme Trigger');
+				await userEvent.hover(getByTestId('node-creator-restricted-item'));
+				expect(await screen.findByTestId('node-restricted-popover')).toHaveTextContent(
+					'Acme Trigger',
+				);
+			});
+		});
+
+		it('renders a normal row when the type is not restricted', () => {
+			mockRestrictedNodeTypes();
+
+			const { container, queryByTestId } = render({ pinia, props: { nodeType: gmail() } });
+
+			expect(queryByTestId('node-creator-restricted-item')).not.toBeInTheDocument();
+			expect(queryByTestId('node-restricted-icon')).not.toBeInTheDocument();
+			expect(container.querySelector('[draggable="true"]')).toBeInTheDocument();
+		});
+	});
+
+	describe('engine v2 compatibility', () => {
+		const set = () =>
+			mockSimplifiedNodeType({
+				name: 'n8n-nodes-base.set',
+				displayName: 'Edit Fields',
+				group: ['input'],
+			});
+
+		beforeEach(() => {
+			useSettingsStore().settings.activeModules = ['engine-v2'];
+			mockDocumentStoreState.settings = { engineType: 'v2' };
+		});
+
+		afterEach(() => {
+			mockDocumentStoreState.settings = {};
+		});
+
+		it('disables and labels a node type that engine v2 does not support', () => {
+			mockEngineV2Compatibility({ unsupportedNodeTypes: ['n8n-nodes-base.set'] });
+
+			const { container, getByTestId, getByText } = render({ pinia, props: { nodeType: set() } });
+
+			const row = getByTestId('node-creator-node-item');
+			expect(row.getAttribute('draggable')).toBe('false');
+			expect(row.className).toContain('disabled');
+			expect(getByText('Not compatible')).toBeInTheDocument();
+			expect(container.querySelector('[data-icon="arrow-right"]')).not.toBeInTheDocument();
+		});
+
+		it('removes the label when the workflow changes to engine v1', async () => {
+			mockEngineV2Compatibility({ unsupportedNodeTypes: ['n8n-nodes-base.set'] });
+			const { getByTestId, queryByText } = render({ pinia, props: { nodeType: set() } });
+			expect(queryByText('Not compatible')).toBeInTheDocument();
+
+			mockDocumentStoreState.settings = { engineType: 'v1' };
+			await nextTick();
+
+			const row = getByTestId('node-creator-node-item');
+			expect(queryByText('Not compatible')).not.toBeInTheDocument();
+			expect(row.getAttribute('draggable')).toBe('true');
+			expect(row.className).not.toContain('disabled');
+		});
+
+		it('shows no label when the engine-v2 module is off', () => {
+			useSettingsStore().settings.activeModules = [];
+			mockEngineV2Compatibility({ unsupportedNodeTypes: ['n8n-nodes-base.set'] });
+
+			const { getByTestId, queryByText } = render({ pinia, props: { nodeType: set() } });
+
+			expect(queryByText('Not compatible')).not.toBeInTheDocument();
+			expect(getByTestId('node-creator-node-item').getAttribute('draggable')).toBe('true');
+		});
+
+		it('renders a normal row for a supported node type', () => {
+			mockEngineV2Compatibility({ unsupportedNodeTypes: ['n8n-nodes-base.webhook'] });
+
+			const { getByTestId, queryByText } = render({ pinia, props: { nodeType: set() } });
+
+			expect(queryByText('Not compatible')).not.toBeInTheDocument();
+			expect(getByTestId('node-creator-node-item').getAttribute('draggable')).toBe('true');
+		});
+
+		it('keeps the policy explanation for a type that is also restricted', () => {
+			mockRestrictedNodeTypes({ 'n8n-nodes-base.set': 'instance' });
+			mockEngineV2Compatibility({ unsupportedNodeTypes: ['n8n-nodes-base.set'] });
+
+			const { getByTestId, queryByText } = render({ pinia, props: { nodeType: set() } });
+
+			expect(getByTestId('node-restricted-icon')).toBeInTheDocument();
+			expect(queryByText('Not compatible')).not.toBeInTheDocument();
 		});
 	});
 });

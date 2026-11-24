@@ -1,4 +1,4 @@
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 import { createServer } from 'node:http';
 
 /** Methods that Node's HTTP listener replaces on every inbound socket. */
@@ -18,6 +18,7 @@ export class HealthCheckServer {
 				// Keep the exception local to health-check sockets rather than weakening
 				// the shared stream prototypes for sandboxed code.
 				Object.defineProperty(socket, method, {
+					// eslint-disable-next-line @typescript-eslint/unbound-method -- reinstalled as a property, not called here
 					value: socket[method],
 					writable: true,
 					configurable: true,

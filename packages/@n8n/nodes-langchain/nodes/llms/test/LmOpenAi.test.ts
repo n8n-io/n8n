@@ -1,7 +1,13 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import { OpenAI } from '@langchain/openai';
-import { makeN8nLlmFailedAttemptHandler, N8nLlmTracing, getProxyAgent } from '@n8n/ai-utilities';
+import {
+	makeN8nLlmFailedAttemptHandler,
+	N8nLlmTracing,
+	getProxyAgent,
+	aiClientFetch,
+} from '@n8n/ai-utilities';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
+import { requestUrl } from 'n8n-workflow';
 import type { ILoadOptionsFunctions, INode, ISupplyDataFunctions } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 
@@ -13,6 +19,7 @@ vi.mock('@n8n/ai-utilities');
 const MockedN8nLlmTracing = vi.mocked(N8nLlmTracing);
 const mockedMakeN8nLlmFailedAttemptHandler = vi.mocked(makeN8nLlmFailedAttemptHandler);
 const mockedGetProxyAgent = vi.mocked(getProxyAgent);
+const mockedAiClientFetch = vi.mocked(aiClientFetch);
 
 describe('LmOpenAi', () => {
 	let lmOpenAi: LmOpenAi;
@@ -65,6 +72,20 @@ describe('LmOpenAi', () => {
 				expect.objectContaining({
 					model: 'gpt-3.5-turbo-instruct',
 					callbacks: expect.arrayContaining([expect.any(Object)]),
+				}),
+			);
+		});
+
+		it('should wire the bounded aiClientFetch into the OpenAI client', async () => {
+			const mockContext = setupMockContext();
+
+			await lmOpenAi.supplyData.call(mockContext, 0);
+
+			expect(OpenAI).toHaveBeenCalledWith(
+				expect.objectContaining({
+					configuration: expect.objectContaining({
+						fetch: mockedAiClientFetch,
+					}),
 				}),
 			);
 		});
@@ -183,7 +204,7 @@ describe('LmOpenAi', () => {
 			expect(mockLoadContext.helpers.requestWithAuthentication).toHaveBeenCalledWith(
 				'openAiApi',
 				expect.objectContaining({
-					uri: 'https://api.openai.com/v1/models',
+					uri: requestUrl`https://api.openai.com/v1/models`,
 					allowedDomains: 'api.openai.com',
 				}),
 			);

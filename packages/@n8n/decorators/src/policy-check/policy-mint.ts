@@ -1,4 +1,4 @@
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { brand } from './policy-brand';
 import type { EnforcementPoint, PolicyDecision } from './policy-check';

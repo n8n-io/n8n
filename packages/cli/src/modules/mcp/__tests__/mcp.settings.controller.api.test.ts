@@ -194,6 +194,7 @@ describe('PATCH /mcp/settings', () => {
 		// Clear the in-memory cache so subsequent reads hit the DB.
 		await Container.get(McpSettingsService).setEnabled(false);
 		await Container.get(SettingsRepository).delete({ key: settingsKey });
+		await Container.get(SettingsRepository).delete({ key: 'mcp.preferences.enabled' });
 	});
 
 	test('owner can enable MCP access', async () => {
@@ -203,7 +204,11 @@ describe('PATCH /mcp/settings', () => {
 			.send({ mcpAccessEnabled: true });
 
 		expect(response.statusCode).toBe(200);
-		expect(response.body.data).toEqual({ mcpAccessEnabled: true, autoExposeNewWorkflows: false });
+		expect(response.body.data).toEqual({
+			mcpAccessEnabled: true,
+			autoExposeNewWorkflows: false,
+			preferencesEnabled: true,
+		});
 
 		const stored = await Container.get(SettingsRepository).findByKey(settingsKey);
 		expect(stored?.value).toBe('true');
@@ -218,9 +223,26 @@ describe('PATCH /mcp/settings', () => {
 			.send({ mcpAccessEnabled: false });
 
 		expect(response.statusCode).toBe(200);
-		expect(response.body.data).toEqual({ mcpAccessEnabled: false, autoExposeNewWorkflows: false });
+		expect(response.body.data).toEqual({
+			mcpAccessEnabled: false,
+			autoExposeNewWorkflows: false,
+			preferencesEnabled: true,
+		});
 
 		const stored = await Container.get(SettingsRepository).findByKey(settingsKey);
+		expect(stored?.value).toBe('false');
+	});
+
+	test('owner can turn the preferences switch off', async () => {
+		const response = await testServer
+			.authAgentFor(owner)
+			.patch('/mcp/settings')
+			.send({ preferencesEnabled: false });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toMatchObject({ preferencesEnabled: false });
+
+		const stored = await Container.get(SettingsRepository).findByKey('mcp.preferences.enabled');
 		expect(stored?.value).toBe('false');
 	});
 

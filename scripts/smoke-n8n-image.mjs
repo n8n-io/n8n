@@ -131,19 +131,27 @@ async function runWorkspaceDedupCheck() {
 	}
 }
 
-// The image compiles this binding from source, so a bad build shows only at
-// require() time. This is the same script the release build uses.
-const KAFKA_CHECK = path.resolve(
+// Scripts that run inside the image with its own node. Each one loads and uses
+// a native binding or asset that the image build supplies, because a bad build
+// shows only at load time.
+const DOCKER_SCRIPTS_DIR = path.resolve(
 	path.dirname(fileURLToPath(import.meta.url)),
-	'../.github/scripts/docker/kafka-native-smoke-check.mjs',
+	'../.github/scripts/docker',
 );
+const IMAGE_SCRIPT_CHECKS = [
+	['kafka native binding loads in image', 'kafka-native-smoke-check.mjs'],
+	['Edit Image native bindings and fonts work in image', 'edit-image-native-smoke-check.mjs'],
+	['native addons work and no build toolchain in image', 'native-addons-smoke-check.mjs'],
+];
+const EXPECTED_PNPM_VERSION = (
+	await fs.readJson(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../package.json'))
+).packageManager.replace('pnpm@', '');
 
-async function runKafkaBindingCheck() {
-	const name = 'kafka native binding loads in image';
+async function runImageScriptCheck([name, script]) {
 	try {
 		await $({
 			timeout: TIMEOUT,
-		})`docker run --rm --entrypoint node -v ${`${KAFKA_CHECK}:/tmp/kafka-check.mjs:ro`} ${IMAGE} /tmp/kafka-check.mjs`;
+		})`docker run --rm --entrypoint node -v ${`${path.join(DOCKER_SCRIPTS_DIR, script)}:/tmp/check.mjs:ro`} ${IMAGE} /tmp/check.mjs`;
 		echo(chalk.green(`✓ ${name}`));
 		return true;
 	} catch (err) {
@@ -172,6 +180,22 @@ async function runRunnersInterpreterCheck(image) {
 	}
 }
 
+async function runRunnersPnpmCheck(image) {
+	const name = `pnpm ${EXPECTED_PNPM_VERSION} runs offline in ${image}`;
+	try {
+		const { stdout } = await $({
+			timeout: TIMEOUT,
+		})`docker run --rm --network none --entrypoint pnpm ${image} --version`;
+		if (stdout.trim() !== EXPECTED_PNPM_VERSION) {
+			throw new Error(`expected ${EXPECTED_PNPM_VERSION}, got ${stdout.trim()}`);
+		}
+		echo(chalk.green(`✓ ${name}`));
+		return true;
+	} catch (err) {
+		return reportFailure(name, err);
+	}
+}
+
 // Derived images add packages with `pnpm add` in the JS runner directory (docs:
 // "Adding extra dependencies"). pnpm prunes packages the recorded importer no
 // longer needs, so a deploy that records the closure differently makes this
@@ -186,7 +210,7 @@ async function runRunnersExtensionCheck(image) {
 	const script = [
 		`cd ${RUNNER_JS_DIR}`,
 		'before=$(ls node_modules/.pnpm | wc -l)',
-		'pnpm add uuid --prod --no-lockfile --config.minimum-release-age=0',
+		'pnpm add uuid --save-prod --no-lockfile --config.minimum-release-age=0',
 		'after=$(ls node_modules/.pnpm | wc -l)',
 		'[ "$after" -gt "$before" ] || { echo "pnpm add pruned the closure: $before -> $after packages"; exit 1; }',
 		`node -e "require('uuid'); require('moment'); require.resolve('n8n-core')"`,
@@ -238,9 +262,10 @@ const ok = (
 	await Promise.all([
 		...invocations.map(run),
 		runWorkspaceDedupCheck(),
-		runKafkaBindingCheck(),
+		...IMAGE_SCRIPT_CHECKS.map(runImageScriptCheck),
 		...RUNNERS_IMAGES.map(runRunnersInterpreterCheck),
 		// The distroless image ships no shell or pnpm; only the standard image is extendable.
+		...RUNNERS_IMAGES.filter((image) => !image.endsWith('-distroless')).map(runRunnersPnpmCheck),
 		...RUNNERS_IMAGES.filter((image) => !image.endsWith('-distroless')).map(
 			runRunnersExtensionCheck,
 		),

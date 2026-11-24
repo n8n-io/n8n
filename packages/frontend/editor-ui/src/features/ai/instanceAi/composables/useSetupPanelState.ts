@@ -1,7 +1,15 @@
-import { computed, toValue, type MaybeRefOrGetter } from 'vue';
+import { computed, shallowReactive, toValue, watch, type MaybeRefOrGetter } from 'vue';
 
+import {
+	REMOVED_BUILDER_TOOL_NAMES,
+	SHARED_BUILDER_TOOL_NAMES,
+	WORKFLOW_BUILDER_TOOL_NAMES,
+	resolveBuilderToolName,
+} from '@n8n/api-types';
 import type { InstanceAiAgentNode, InstanceAiSetupItem } from '@n8n/api-types';
+import { isRecord } from '@n8n/utils/is-record';
 import { useWorkflowSetupItems } from '@/features/setupPanel/composables/useWorkflowSetupItems';
+import type { ArtifactTurn } from '../artifactTurns';
 import { isAgentEditingWorkflow } from '../canvasPreview.utils';
 
 export interface SetupPanelRow {
@@ -16,7 +24,30 @@ export interface SetupPanelRow {
  */
 export interface SetupPanelThreadSource {
 	messages: ReadonlyArray<{ agentTree?: InstanceAiAgentNode }>;
+	artifactTurns: readonly ArtifactTurn[];
 	setupItemsByWorkflowId: Record<string, InstanceAiSetupItem[]>;
+}
+
+function completeCredentialContext(
+	item: InstanceAiSetupItem,
+	fallback: InstanceAiSetupItem | undefined,
+): InstanceAiSetupItem {
+	if (
+		item.kind !== 'credential' ||
+		fallback?.kind !== 'credential' ||
+		item.id !== fallback.id ||
+		item.credentialType !== fallback.credentialType
+	) {
+		return item;
+	}
+	return {
+		...item,
+		nodeBindings: item.nodeBindings?.length ? item.nodeBindings : fallback.nodeBindings,
+		setupHint: item.setupHint ?? fallback.setupHint,
+		reason: item.reason ?? fallback.reason,
+		preferNew: item.preferNew ?? fallback.preferNew,
+		appDisplayName: item.appDisplayName ?? fallback.appDisplayName,
+	};
 }
 
 /**
@@ -39,9 +70,7 @@ export function useSetupPanelState(options: {
 	const isAgentBuilding = computed(() => {
 		const id = toValue(options.workflowId);
 		if (!id) return false;
-		return thread.messages.some(
-			(message) => message.agentTree && isAgentEditingWorkflow(message.agentTree, id),
-		);
+		return isAgentEditingWorkflow(thread.artifactTurns, id);
 	});
 
 	const derivation = useWorkflowSetupItems(options.workflowId, {
@@ -56,6 +85,62 @@ export function useSetupPanelState(options: {
 		if (!id || !Object.hasOwn(thread.setupItemsByWorkflowId, id)) return [];
 		return thread.setupItemsByWorkflowId[id];
 	});
+	// Reads the agent tree, not the artifact turns: it compares `completedAt`,
+	// and only the current runtime mounts this panel.
+	const isAwaitingFirstBuild = computed(() => {
+		const id = toValue(options.workflowId);
+		let pending = false;
+		let latestCompletedAt: string | undefined;
+		function visit(node: InstanceAiAgentNode) {
+			for (const call of node.toolCalls) {
+				if (!isRecord(call.result) || call.result.success !== true || call.result.workflowId !== id)
+					continue;
+				const earlySetup =
+					resolveBuilderToolName(call.toolName, call.args.action) ===
+						SHARED_BUILDER_TOOL_NAMES.SETUP_CREDENTIALS && call.result.preBuild === true;
+				if (
+					!earlySetup &&
+					call.toolName !== WORKFLOW_BUILDER_TOOL_NAMES.BUILD_WORKFLOW &&
+					call.toolName !== REMOVED_BUILDER_TOOL_NAMES.SUBMIT_WORKFLOW
+				)
+					continue;
+				if (latestCompletedAt && call.completedAt && call.completedAt < latestCompletedAt) continue;
+				pending = earlySetup;
+				latestCompletedAt = call.completedAt;
+			}
+			for (const child of node.children) visit(child);
+		}
+		for (const message of thread.messages) {
+			if (message.agentTree) visit(message.agentTree);
+		}
+		return pending;
+	});
+	const credentialContext = shallowReactive(new Map<string, InstanceAiSetupItem>());
+	watch(
+		[() => toValue(options.workflowId), eventItems],
+		([id, items], [previousId]) => {
+			if (id !== previousId) credentialContext.clear();
+			// Later snapshots can omit the recipe while the workflow still needs the credential.
+			for (const item of items) {
+				if (item.kind === 'credential') {
+					credentialContext.set(
+						item.id,
+						completeCredentialContext(item, credentialContext.get(item.id)),
+					);
+				}
+			}
+		},
+		{ immediate: true, flush: 'sync' },
+	);
+
+	watch(
+		[eventItems, isAgentBuilding],
+		([items, building]) => {
+			// The SDK saves resolved credentials before announcing setup, while its tool is still active.
+			if (building && items.length > 0) void derivation.refreshWorkflow({ force: true });
+		},
+		{ immediate: true, flush: 'sync' },
+	);
 
 	/**
 	 * Reconciliation: while the agent edits the workflow, its events are the
@@ -66,12 +151,32 @@ export function useSetupPanelState(options: {
 	 * right after a thread refresh.
 	 */
 	const rowSource = computed<'events' | 'derived'>(() =>
-		!isAgentBuilding.value && derivation.isWorkflowAvailable.value ? 'derived' : 'events',
+		!isAgentBuilding.value &&
+		derivation.isWorkflowAvailable.value &&
+		(!isAwaitingFirstBuild.value ||
+			derivation.hasWorkflowNodes.value ||
+			eventItems.value.length === 0)
+			? 'derived'
+			: 'events',
 	);
 
 	const rows = computed<SetupPanelRow[]>(() => {
 		if (rowSource.value === 'events') {
-			return eventItems.value.map((item) => ({ item, isDone: derivation.isItemDone(item) }));
+			// Resolve bindings without remembering temporary parameter issues during a build.
+			const derivedById = new Map(
+				derivation.derivedCredentialItems.value.map((item) => [item.id, item]),
+			);
+			const announcedIds = new Set(eventItems.value.map((item) => item.id));
+			const stillRequired = derivation.derivedCredentialItems.value.filter(
+				(item) => credentialContext.has(item.id) && !announcedIds.has(item.id),
+			);
+			return [...eventItems.value, ...stillRequired].map((event) => {
+				const item = completeCredentialContext(
+					completeCredentialContext(event, derivedById.get(event.id)),
+					credentialContext.get(event.id),
+				);
+				return { item, isDone: derivation.isItemDone(item) };
+			});
 		}
 		const derived = derivation.derivedItems.value;
 		const derivedIds = new Set(derived.map((item) => item.id));
@@ -85,11 +190,26 @@ export function useSetupPanelState(options: {
 			(item) =>
 				item.kind === 'parameters' && !derivedIds.has(item.id) && derivation.isItemDone(item),
 		);
-		return [...derived, ...settledEventItems].map((item) => ({
-			item,
-			isDone: derivation.isItemDone(item),
-		}));
+		return [...derived, ...settledEventItems].map((derivedItem) => {
+			const item = completeCredentialContext(derivedItem, credentialContext.get(derivedItem.id));
+			return { item, isDone: derivation.isItemDone(item) };
+		});
 	});
 
-	return { rows, rowSource, isAgentBuilding };
+	return {
+		credentialsAvailable: derivation.credentialsAvailable,
+		workflowNodes: derivation.workflowNodes,
+		savedWorkflowChecksum: derivation.savedWorkflowChecksum,
+		isCheckingOAuthCredentials: derivation.isCheckingOAuthCredentials,
+		isRefreshingWorkflow: derivation.isRefreshingWorkflow,
+		rows,
+		rowSource,
+		isAgentBuilding,
+		isAwaitingFirstBuild,
+		getNodeByName: derivation.getNodeByName,
+		workflowProjectId: derivation.workflowProjectId,
+		refreshWorkflow: derivation.refreshWorkflow,
+		isItemDone: derivation.isItemDone,
+		isCredentialConfigured: derivation.isCredentialConfigured,
+	};
 }

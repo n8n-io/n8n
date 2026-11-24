@@ -350,6 +350,86 @@ export function validateMemberExpression(node: MemberExpression, sourceCode: str
 	}
 }
 
+const BUILT_IN_PROTOTYPES: ReadonlySet<unknown> = new Set<unknown>([
+	Object.prototype,
+	Function.prototype,
+	Array.prototype,
+	String.prototype,
+	Number.prototype,
+	Boolean.prototype,
+	Symbol.prototype,
+	BigInt.prototype,
+	Date.prototype,
+	RegExp.prototype,
+	Error.prototype,
+	EvalError.prototype,
+	RangeError.prototype,
+	ReferenceError.prototype,
+	SyntaxError.prototype,
+	TypeError.prototype,
+	URIError.prototype,
+	AggregateError.prototype,
+	Map.prototype,
+	Set.prototype,
+	WeakMap.prototype,
+	WeakSet.prototype,
+	WeakRef.prototype,
+	FinalizationRegistry.prototype,
+	Promise.prototype,
+	ArrayBuffer.prototype,
+	SharedArrayBuffer.prototype,
+	DataView.prototype,
+	Object.getPrototypeOf(Uint8Array.prototype),
+	Int8Array.prototype,
+	Uint8Array.prototype,
+	Uint8ClampedArray.prototype,
+	Int16Array.prototype,
+	Uint16Array.prototype,
+	Int32Array.prototype,
+	Uint32Array.prototype,
+	Float32Array.prototype,
+	Float64Array.prototype,
+	BigInt64Array.prototype,
+	BigUint64Array.prototype,
+]);
+
+function collectPrototypeFunctions(prototypes: Iterable<unknown>): ReadonlySet<unknown> {
+	const functions = new Set<unknown>();
+	for (const prototype of prototypes) {
+		const descriptors = Object.getOwnPropertyDescriptors(prototype);
+		for (const descriptor of Object.values(descriptors)) {
+			for (const member of [descriptor.value, descriptor.get, descriptor.set]) {
+				if (typeof member === 'function') functions.add(member);
+			}
+		}
+	}
+	return functions;
+}
+
+const BUILT_IN_PROTOTYPE_FUNCTIONS = collectPrototypeFunctions(BUILT_IN_PROTOTYPES);
+
+export function isBuiltInPrototype(value: unknown): boolean {
+	return BUILT_IN_PROTOTYPES.has(value);
+}
+
+export function isBuiltInPrototypeFunction(value: unknown): boolean {
+	return BUILT_IN_PROTOTYPE_FUNCTIONS.has(value);
+}
+
+export function isResolvedFromBuiltInPrototype(
+	target: unknown,
+	propertyName: string | number,
+): boolean {
+	let current: object | null = Object(target);
+	while (current !== null) {
+		if (Object.hasOwn(current, propertyName)) {
+			return BUILT_IN_PROTOTYPES.has(current);
+		}
+		current = Object.getPrototypeOf(current);
+	}
+	return false;
+}
+
 /**
  * Check if an identifier is an allowed SDK function.
  */

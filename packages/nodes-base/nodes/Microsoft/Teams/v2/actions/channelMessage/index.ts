@@ -5,9 +5,11 @@ import * as get from './get.operation';
 import * as getAll from './getAll.operation';
 import * as getAllReplies from './getAllReplies.operation';
 import * as reply from './reply.operation';
+import * as softDeleteMessage from './softDeleteMessage.operation';
+import * as undoSoftDeleteMessage from './undoSoftDeleteMessage.operation';
 import { SERVICE_PRINCIPAL_AUTH } from '../../transport';
 
-export { create, get, getAll, getAllReplies, reply };
+export { create, get, getAll, getAllReplies, reply, softDeleteMessage, undoSoftDeleteMessage };
 
 export const description: INodeProperties[] = [
 	{
@@ -26,6 +28,12 @@ export const description: INodeProperties[] = [
 				value: 'create',
 				description: 'Create a message in a channel',
 				action: 'Create message',
+			},
+			{
+				name: 'Delete',
+				value: 'softDeleteMessage',
+				description: 'Delete a message from a channel',
+				action: 'Delete message',
 			},
 			{
 				name: 'Get',
@@ -50,6 +58,12 @@ export const description: INodeProperties[] = [
 				value: 'reply',
 				description: 'Reply to a message in a channel',
 				action: 'Reply to message',
+			},
+			{
+				name: 'Undo Delete',
+				value: 'undoSoftDeleteMessage',
+				description: 'Restore a deleted message in a channel',
+				action: 'Undo delete message',
 			},
 		],
 		default: 'create',
@@ -82,10 +96,26 @@ export const description: INodeProperties[] = [
 			},
 		},
 	},
+	{
+		displayName:
+			'Deleting and restoring channel messages is not available with the Service Principal credential. Microsoft Graph offers these actions only for a signed-in user; use an OAuth2 credential.',
+		name: 'channelMessageDeleteServicePrincipalNotice',
+		type: 'notice',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: ['channelMessage'],
+				operation: ['softDeleteMessage', 'undoSoftDeleteMessage'],
+				authentication: [SERVICE_PRINCIPAL_AUTH],
+			},
+		},
+	},
 
 	...create.description,
 	...get.description,
 	...getAll.description,
 	...getAllReplies.description,
 	...reply.description,
+	...softDeleteMessage.description,
+	...undoSoftDeleteMessage.description,
 ];

@@ -566,34 +566,32 @@ function extractUnionErrorSummary(
 		}
 	}
 
+	const messages: string[] = [];
 	if (typeMismatches.length > 0) {
 		// Find unique type mismatches
-		const uniqueMismatches = new Map<string, { expected: string; received: string }>();
+		const uniqueMismatches = new Map<
+			string,
+			{ path: string; expected: string; received: string }
+		>();
 		for (const m of typeMismatches) {
-			if (!uniqueMismatches.has(m.path)) {
-				uniqueMismatches.set(m.path, { expected: m.expected, received: m.received });
-			}
+			uniqueMismatches.set(JSON.stringify(m), m);
 		}
 
 		if (uniqueMismatches.size === 1) {
-			const [path, { expected, received }] = [...uniqueMismatches.entries()][0];
-			return { message: `Field "${path}" has wrong type: expected ${expected}, got ${received}.` };
+			const { path, expected, received } = [...uniqueMismatches.values()][0];
+			messages.push(`Field "${path}" has wrong type: expected ${expected}, got ${received}.`);
+		} else {
+			const summaries = [...uniqueMismatches.values()].map(
+				({ path, expected, received }) => `"${path}" (expected ${expected}, got ${received})`,
+			);
+			messages.push(`Type mismatches: ${summaries.join(', ')}.`);
 		}
-
-		// Multiple type mismatches - summarize
-		const paths = [...uniqueMismatches.keys()].slice(0, 3);
-		const summaries = paths.map((p) => {
-			const { expected, received } = uniqueMismatches.get(p)!;
-			return `"${p}" (expected ${expected}, got ${received})`;
-		});
-		const more = uniqueMismatches.size > 3 ? ` and ${uniqueMismatches.size - 3} more` : '';
-		return { message: `Type mismatches: ${summaries.join(', ')}${more}.` };
 	}
 
-	// Fallback: show the first few specific issues
-	const specificIssues = bestPathIssues
-		.filter((i: ZodIssue) => i.code !== 'invalid_union')
-		.slice(0, 3);
+	// Include other failures from the selected variant, even when types also fail.
+	const specificIssues = bestPathIssues.filter(
+		(i) => i.code !== 'invalid_union' && i.code !== 'invalid_type',
+	);
 	if (specificIssues.length > 0) {
 		const summaries = specificIssues.map((iss: ZodIssue) => {
 			const path = iss.path.join('.') || 'config';
@@ -602,10 +600,10 @@ function extractUnionErrorSummary(
 			}
 			return `"${path}": ${iss.message}`;
 		});
-		return { message: `Validation failed: ${summaries.join('; ')}.` };
+		messages.push(`Validation failed: ${[...new Set(summaries)].join('; ')}.`);
 	}
 
-	return null;
+	return messages.length > 0 ? { message: messages.join(' ') } : null;
 }
 
 /**

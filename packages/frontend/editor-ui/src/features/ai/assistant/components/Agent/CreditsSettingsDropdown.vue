@@ -5,7 +5,7 @@ import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { N8nButton, N8nIcon, N8nTooltip } from '@n8n/design-system';
-import type { ButtonSize } from '@n8n/design-system';
+import type { ButtonSize, IconSize } from '@n8n/design-system';
 import { round2 } from './creditFormatting';
 
 const props = withDefaults(
@@ -14,11 +14,13 @@ const props = withDefaults(
 		creditsQuota?: number;
 		isLowCredits: boolean;
 		buttonSize?: ButtonSize;
+		iconSize?: IconSize;
 		// Per-thread running total (decimal); optional — shared with the builder UI.
 		creditsUsed?: number;
 	}>(),
 	{
 		buttonSize: 'large',
+		iconSize: 'large',
 	},
 );
 
@@ -106,9 +108,10 @@ function onGetMoreCredits() {
 <template>
 	<div ref="dropdownRef" :class="$style.wrapper">
 		<N8nButton
-			icon="circle-dollar-sign"
+			icon="n8n-assistant-circle"
 			variant="ghost"
 			:size="props.buttonSize"
+			:icon-size="props.iconSize"
 			icon-only
 			:class="{ [$style.active]: isOpen }"
 			data-test-id="credits-dropdown-button"
@@ -194,7 +197,7 @@ function onGetMoreCredits() {
 	align-items: center;
 	gap: var(--spacing--4xs);
 	font-size: var(--font-size--sm);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	color: var(--color--text--shade-1);
 }
 

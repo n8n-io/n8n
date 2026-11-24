@@ -198,7 +198,7 @@ function stringifySorted(value: unknown): string {
 function sortKeysReplacer(_key: string, value: unknown): unknown {
 	if (value === null || typeof value !== 'object' || Array.isArray(value)) return value;
 	const sorted: Record<string, unknown> = {};
-	for (const key of Object.keys(value as Record<string, unknown>).sort()) {
+	for (const key of Object.keys(value).sort()) {
 		sorted[key] = (value as Record<string, unknown>)[key];
 	}
 	return sorted;

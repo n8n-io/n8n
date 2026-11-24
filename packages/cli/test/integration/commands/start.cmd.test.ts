@@ -24,11 +24,11 @@ import type { INode } from 'n8n-workflow';
 import { ActiveExecutions } from '@/active-executions';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { Start } from '@/commands/start';
+import { CrashLoopRecovery } from '@/crash-loop/crash-loop-recovery';
 import { EnqueuedExecutionRecoveryService } from '@/executions/enqueued-execution-recovery.service';
 import { ExternalHooks } from '@/external-hooks';
-import { N8NCheckpointStorage } from '@/modules/agents/integrations/n8n-checkpoint-storage';
 import { Push } from '@/push';
-import { PubSubEventBus } from '@/scaling/pubsub/pubsub.eventbus';
+import { PubSubEventBus } from '@n8n/backend-services';
 import { DurableScheduler } from '@/scheduling/durable-scheduler';
 import { Server } from '@/server';
 import { OwnershipService } from '@/services/ownership.service';
@@ -55,8 +55,8 @@ mockInstance(ExternalHooks);
 mockInstance(ExecutionsPruningService);
 mockInstance(WorkflowHistoryCompactionService);
 mockInstance(WorkflowStatisticsRollupService);
-mockInstance(N8NCheckpointStorage);
 mockInstance(DurableScheduler);
+mockInstance(CrashLoopRecovery);
 // Also proves `run()`'s dynamic `.js` import resolves to the same module as this
 // static one - otherwise the mock would silently not apply and the real recovery
 // would query the test DB.
@@ -83,14 +83,10 @@ afterAll(async () => {
 	const { WorkflowPublicationOutboxConsumer } = await import(
 		'@/workflows/publication/workflow-publication-outbox-consumer.js'
 	);
-	const { WorkflowPublicationOutboxCleanupService } = await import(
-		'@/workflows/publication/workflow-publication-outbox-cleanup.service.js'
-	);
 	const { WorkflowPublicationReconciler } = await import(
 		'@/workflows/publication/workflow-publication-reconciler.service.js'
 	);
 	Container.get(WorkflowPublicationOutboxConsumer).stopPolling();
-	Container.get(WorkflowPublicationOutboxCleanupService).stopCleanup();
 	Container.get(WorkflowPublicationReconciler).shutdown();
 	await Container.get(ActiveWorkflowManager).removeAll();
 	await testDb.terminate();

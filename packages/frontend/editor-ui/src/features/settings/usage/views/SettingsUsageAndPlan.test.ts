@@ -1,7 +1,11 @@
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
+import { nextTick } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore, waitAllPromises } from '@/__tests__/utils';
+import { isModalPrefetchEnabled } from '@/__tests__/prefetchModals';
+
+vi.mock('@/app/composables/usePrefetchModals');
 import { useUsageStore } from '../usage.store';
 import SettingsUsageAndPlan from './SettingsUsageAndPlan.vue';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -55,7 +59,12 @@ const pinia = createTestingPinia({ stubActions: false });
 const renderComponent = createComponentRenderer(SettingsUsageAndPlan, { pinia });
 
 describe('SettingsUsageAndPlan', () => {
-	beforeEach(() => {
+	beforeEach(async () => {
+		// A dialog can leave pointer-events set to none on the body after it unmounts.
+		// Flush that update, then clear the style before the next test clicks the page.
+		await nextTick();
+		document.body.style.pointerEvents = '';
+
 		usageStore = mockedStore(useUsageStore);
 		uiStore = mockedStore(useUIStore);
 		usersStore = mockedStore(useUsersStore);
@@ -117,10 +126,30 @@ describe('SettingsUsageAndPlan', () => {
 	it('should show community registered badge', async () => {
 		usageStore.isLoading = false;
 		usageStore.planName = 'Registered Community';
-		const { getByRole, container } = renderComponent();
-		expect(getByRole('heading', { level: 3 })).toHaveTextContent('Community Edition');
-		expect(getByRole('heading', { level: 3 })).toContain(container.querySelector('.n8n-badge'));
-		expect(container.querySelector('.n8n-badge')).toHaveTextContent('Registered');
+		const { getByRole, getByText } = renderComponent();
+		const heading = getByRole('heading', { level: 3 });
+		const badgeLabel = getByText('Registered');
+		expect(heading).toHaveTextContent('Community Edition');
+		expect(heading).toContainElement(badgeLabel);
+	});
+
+	it('should render the community registered badge as a direct child of the centering container', async () => {
+		usageStore.isLoading = false;
+		usageStore.planName = 'Registered Community';
+		const { container } = renderComponent();
+
+		const badge = container.querySelector('.n8n-badge');
+		// The element that centers the badge against the heading text
+		// (`display: flex; align-items: center`).
+		const centeringContainer = container.querySelector('.titleTooltip');
+
+		expect(badge).not.toBeNull();
+		expect(centeringContainer).not.toBeNull();
+
+		// Only a direct child is a flex item. A tooltip trigger wrapper in between
+		// would take the centering instead, and the inline-flex badge would sit on
+		// the wrapper's line box baseline rather than on the optical center.
+		expect(badge?.parentElement).toBe(centeringContainer);
 	});
 
 	it('should prompt for a restart after license activation', async () => {
@@ -361,6 +390,79 @@ describe('SettingsUsageAndPlan', () => {
 				{ timeout: 2000 },
 			);
 		});
+
+		describe('when the license from the query param requires EULA acceptance', () => {
+			const eulaRequiredError = {
+				httpStatusCode: 400,
+				meta: { eulaUrl: 'https://example.com/eula.pdf' },
+			};
+
+			beforeEach(() => {
+				Object.assign(mockRouteQuery, { key: 'query-param-key' });
+				usersStore.currentUser = {
+					globalScopes: ['license:manage'],
+				} as IUser;
+				rbacStore.setGlobalScopes(['license:manage']);
+			});
+
+			it('should open the EULA modal and show no error toast', async () => {
+				usageStore.activateLicense.mockRejectedValueOnce(eulaRequiredError);
+
+				const { findByTestId } = renderComponent();
+
+				expect(await findByTestId('eula-acceptance-modal')).toBeInTheDocument();
+				expect(await findByTestId('eula-link')).toHaveAttribute(
+					'href',
+					'https://example.com/eula.pdf',
+				);
+				expect(mockToast.showError).not.toHaveBeenCalled();
+			});
+
+			it('should resend the activation with the EULA URL and clear the query param on accept', async () => {
+				usageStore.activateLicense
+					.mockRejectedValueOnce(eulaRequiredError)
+					.mockResolvedValueOnce(undefined);
+
+				const { findByTestId } = renderComponent();
+
+				await userEvent.click(await findByTestId('eula-checkbox'));
+				await userEvent.click(await findByTestId('eula-accept-button'));
+
+				await waitFor(
+					() => {
+						expect(usageStore.activateLicense).toHaveBeenCalledTimes(2);
+						expect(usageStore.activateLicense).toHaveBeenLastCalledWith(
+							'query-param-key',
+							'https://example.com/eula.pdf',
+						);
+					},
+					{ timeout: 2000 },
+				);
+
+				expect(mockReplace).toHaveBeenCalledWith({ query: {} });
+				expect(await findByTestId('license-activation-success-dialog')).toHaveTextContent(
+					'Restart n8n to make all licensed features available.',
+				);
+			});
+
+			it('should not activate and should clear the query param on cancel', async () => {
+				usageStore.activateLicense.mockRejectedValueOnce(eulaRequiredError);
+
+				const { findByTestId } = renderComponent();
+
+				await userEvent.click(await findByTestId('eula-cancel-button'));
+
+				await waitFor(
+					() => {
+						expect(mockReplace).toHaveBeenCalledWith({ query: {} });
+					},
+					{ timeout: 2000 },
+				);
+
+				expect(usageStore.activateLicense).toHaveBeenCalledTimes(1);
+				expect(mockToast.showError).not.toHaveBeenCalled();
+			});
+		});
 	});
 
 	describe('License management token refresh', () => {
@@ -505,6 +607,46 @@ describe('SettingsUsageAndPlan', () => {
 				const reopenedInput = await findByPlaceholderText('Activation key');
 				expect(reopenedInput).toHaveValue('');
 			});
+		});
+	});
+
+	describe('modal prefetch', () => {
+		beforeEach(() => {
+			usersStore.currentUser = { globalScopes: ['community:register'] } as IUser;
+		});
+
+		it('prefetches the enrollment modal after the Community plan loads', async () => {
+			usageStore.planName = 'Community';
+			// The page catches errors from this call, so record the value and assert it below.
+			let enabledWhileLoading: boolean | undefined;
+			usageStore.getLicenseInfo = vi.fn(async () => {
+				enabledWhileLoading = isModalPrefetchEnabled(COMMUNITY_PLUS_ENROLLMENT_MODAL);
+			});
+
+			renderComponent();
+			await waitAllPromises();
+
+			expect(enabledWhileLoading).toBe(false);
+			expect(isModalPrefetchEnabled(COMMUNITY_PLUS_ENROLLMENT_MODAL)).toBe(true);
+		});
+
+		it('does not prefetch the enrollment modal on another plan', async () => {
+			usageStore.planName = 'Enterprise';
+
+			renderComponent();
+			await waitAllPromises();
+
+			expect(isModalPrefetchEnabled(COMMUNITY_PLUS_ENROLLMENT_MODAL)).toBe(false);
+		});
+
+		it('does not prefetch the enrollment modal for a user who cannot register', async () => {
+			usageStore.planName = 'Community';
+			usersStore.currentUser = { globalScopes: [] } as unknown as IUser;
+
+			renderComponent();
+			await waitAllPromises();
+
+			expect(isModalPrefetchEnabled(COMMUNITY_PLUS_ENROLLMENT_MODAL)).toBe(false);
 		});
 	});
 });

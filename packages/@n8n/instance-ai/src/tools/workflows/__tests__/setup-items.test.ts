@@ -1,10 +1,15 @@
-import { instanceAiEventSchema, type InstanceAiEvent } from '@n8n/api-types';
+import {
+	instanceAiEventSchema,
+	type InstanceAiEvent,
+	type InstanceAiSetupItem,
+} from '@n8n/api-types';
 
 import {
 	buildSetupItemsFromAnnouncement,
 	buildSetupItemsFromCredentialRequests,
 	buildSetupItemsFromSetupRequests,
 	createSetupItemsEmitter,
+	requestsCredentialReplacement,
 } from '../setup-items';
 import type { SetupRequest } from '../setup-workflow.schema';
 
@@ -62,7 +67,114 @@ function setupRequest(overrides: {
 	};
 }
 
+describe('requestsCredentialReplacement', () => {
+	it.each([
+		{ boundCredential: undefined, replacement: false },
+		{ boundCredential: { id: '', name: 'Unconnected' }, replacement: false },
+		{ boundCredential: { id: 'existing', name: 'Existing' }, replacement: true },
+		{ boundCredential: { id: null, name: 'Gateway credits' }, replacement: true },
+	])('requires an existing account for replacement: %j', ({ boundCredential, replacement }) => {
+		const request = setupRequest({
+			nodeName: 'Slack',
+			credentialType: 'slackApi',
+			boundCredential,
+		});
+		expect(requestsCredentialReplacement([request], ['slackApi'])).toBe(replacement);
+		expect(requestsCredentialReplacement([request], ['gmailOAuth2'])).toBe(false);
+	});
+});
+
 describe('createSetupItemsEmitter', () => {
+	it('waits for persisted state before it completes the final announcement', async () => {
+		const items: InstanceAiSetupItem[] = [
+			{ id: 'wf-1:credential:slackApi', kind: 'credential', credentialType: 'slackApi' },
+		];
+		let resolve!: (items: InstanceAiSetupItem[]) => void;
+		const promise = new Promise<InstanceAiSetupItem[]>((done) => {
+			resolve = done;
+		});
+		const emitter = createSetupItemsEmitter({
+			eventBus: { publish: vi.fn() },
+			threadId: 'thread-1',
+			runId: 'run-1',
+			agentId: 'orchestrator',
+			readPersistedSnapshot: async () => await promise,
+		});
+		const completed = vi.fn();
+
+		const announcement = emitter.announce('wf-1', items).then(completed);
+		await Promise.resolve();
+		expect(completed).not.toHaveBeenCalled();
+		resolve(items);
+		await announcement;
+		expect(completed).toHaveBeenCalledOnce();
+	});
+
+	it.each(['missing', 'read failure', 'publish failure'])(
+		'retries a final announcement after %s',
+		async (failure) => {
+			const items: InstanceAiSetupItem[] = [
+				{ id: 'wf-1:credential:slackApi', kind: 'credential', credentialType: 'slackApi' },
+			];
+			const publish = vi.fn();
+			const readPersistedSnapshot = vi.fn().mockResolvedValue(items);
+			if (failure === 'missing') readPersistedSnapshot.mockResolvedValueOnce(undefined);
+			if (failure === 'read failure') {
+				readPersistedSnapshot.mockRejectedValueOnce(new Error('read failed'));
+			}
+			if (failure === 'publish failure') {
+				publish.mockImplementationOnce(() => {
+					throw new Error('publish failed');
+				});
+			}
+			const emitter = createSetupItemsEmitter({
+				eventBus: { publish },
+				threadId: 'thread-1',
+				runId: 'run-1',
+				agentId: 'orchestrator',
+				readPersistedSnapshot,
+			});
+
+			await expect(emitter.announce('wf-1', items)).resolves.toBeUndefined();
+			expect(publish).toHaveBeenCalledTimes(2);
+		},
+	);
+
+	it('rejects an announcement that never reaches storage and allows a later retry', async () => {
+		const publish = vi.fn();
+		const readPersistedSnapshot = vi.fn().mockResolvedValue(undefined);
+		const emitter = createSetupItemsEmitter({
+			eventBus: { publish },
+			threadId: 'thread-1',
+			runId: 'run-1',
+			agentId: 'orchestrator',
+			readPersistedSnapshot,
+		});
+
+		await expect(emitter.announce('wf-1', [])).rejects.toThrow('not persisted');
+		readPersistedSnapshot.mockResolvedValue([]);
+		await expect(emitter.announce('wf-1', [])).resolves.toBeUndefined();
+		expect(publish).toHaveBeenCalledTimes(3);
+	});
+
+	it('confirms a deduplicated announcement against storage', async () => {
+		const publish = vi.fn();
+		const readPersistedSnapshot = vi.fn().mockResolvedValue([]);
+		const emitter = createSetupItemsEmitter({
+			eventBus: { publish },
+			threadId: 'thread-1',
+			runId: 'run-1',
+			agentId: 'orchestrator',
+			initialSnapshots: [{ workflowId: 'wf-1', items: [] }],
+			readPersistedSnapshot,
+		});
+
+		await emitter.announce('wf-1', []);
+
+		expect(publish).not.toHaveBeenCalled();
+		expect(readPersistedSnapshot).toHaveBeenCalledWith('wf-1');
+	});
+
 	it('publishes a durable setup-items snapshot for the workflow', () => {
 		const { emitter, published } = makeEmitter();
 
@@ -261,6 +373,28 @@ const templatedAuthHint = {
 };
 
 describe('buildSetupItemsFromCredentialRequests', () => {
+	it.each([
+		[undefined, true],
+		[true, undefined],
+	])('preserves preferNew across duplicate requests (%s, %s)', (first, second) => {
+		const requests = [first, second].map((preferNew) => ({
+			credentialType: 'slackApi',
+			preferNew,
+		}));
+		const analyzed = [
+			setupRequest({ nodeName: 'Slack', credentialType: 'slackApi', credentialNeedsAction: true }),
+		];
+
+		for (const items of [
+			buildSetupItemsFromCredentialRequests('wf-1', requests),
+			buildSetupItemsFromAnnouncement('wf-1', requests, analyzed),
+		]) {
+			expect(items).toEqual([
+				expect.objectContaining({ credentialType: 'slackApi', preferNew: true }),
+			]);
+		}
+	});
+
 	it('builds one service-keyed credential item per type, carrying reason and setupHint', () => {
 		const items = buildSetupItemsFromCredentialRequests('wf-1', [
 			{ credentialType: 'slackApi', reason: 'to post alerts' },
@@ -482,5 +616,59 @@ describe('buildSetupItemsFromSetupRequests', () => {
 		]);
 
 		expect(items[0]).toMatchObject({ credentialType: 'httpTemplatedCustomAuth', setupHint });
+	});
+});
+
+describe('createSetupItemsEmitter — seeded from persisted snapshots', () => {
+	const slack = {
+		id: 'wf-1:credential:slackApi',
+		kind: 'credential' as const,
+		credentialType: 'slackApi',
+		nodeBindings: [{ nodeName: 'Slack' }],
+	};
+
+	function seededEmitter() {
+		const published: InstanceAiEvent[] = [];
+		const emitter = createSetupItemsEmitter({
+			eventBus: { publish: (_threadId, event) => published.push(event) },
+			threadId: 'thread-1',
+			runId: 'run-2',
+			agentId: 'orchestrator-run-2',
+			initialSnapshots: [
+				{ workflowId: 'wf-0', items: [] },
+				{ workflowId: 'wf-1', items: [slack] },
+			],
+		});
+		return { emitter, published };
+	}
+
+	it('publishes nothing for a recomputed list that matches the persisted snapshot', () => {
+		const { emitter, published } = seededEmitter();
+
+		expect(emitter.emit('wf-1', [{ ...slack }])).toBe(false);
+		expect(published).toEqual([]);
+	});
+
+	it('merges onto the persisted snapshot from an earlier run', () => {
+		const { emitter, published } = seededEmitter();
+
+		emitter.merge('wf-1', [
+			{ id: 'wf-1:credential:gmailOAuth2', kind: 'credential', credentialType: 'gmailOAuth2' },
+		]);
+
+		expect(published).toHaveLength(1);
+		expect(published[0].type === 'setup-items' && published[0].payload.items).toEqual([
+			slack,
+			{ id: 'wf-1:credential:gmailOAuth2', kind: 'credential', credentialType: 'gmailOAuth2' },
+		]);
+	});
+
+	it('lists known workflows with the most recently announced last', () => {
+		const { emitter } = seededEmitter();
+		expect(emitter.workflowIds()).toEqual(['wf-0', 'wf-1']);
+
+		emitter.emit('wf-0', [{ ...slack, id: 'wf-0:credential:slackApi' }]);
+
+		expect(emitter.workflowIds()).toEqual(['wf-1', 'wf-0']);
 	});
 });

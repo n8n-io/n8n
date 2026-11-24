@@ -16,6 +16,9 @@
                 "duration": {
                     "type": "string"
                 },
+                "hasCustomThumbnail": {
+                    "type": "boolean"
+                },
                 "licensedContent": {
                     "type": "boolean"
                 },
@@ -36,6 +39,17 @@
         "localizations": {
             "type": "object",
             "properties": {
+                "ar": {
+                    "type": "object",
+                    "properties": {
+                        "description": {
+                            "type": "string"
+                        },
+                        "title": {
+                            "type": "string"
+                        }
+                    }
+                },
                 "de-DE": {
                     "type": "object",
                     "properties": {
@@ -337,6 +351,9 @@
                 "publicStatsViewable": {
                     "type": "boolean"
                 },
+                "selfDeclaredMadeForKids": {
+                    "type": "boolean"
+                },
                 "uploadStatus": {
                     "type": "string"
                 }
@@ -354,5 +371,5 @@
             }
         }
     },
-    "version": 6
+    "version": 8
 }

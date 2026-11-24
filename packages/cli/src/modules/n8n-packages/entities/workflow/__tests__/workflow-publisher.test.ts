@@ -1,10 +1,10 @@
 import type { Mock } from 'vitest';
 import type { Logger } from '@n8n/backend-common';
-import type { Project, User, WorkflowEntity } from '@n8n/db';
+import type { OperationContext, Project, User, WorkflowEntity } from '@n8n/db';
+import type { SecurityContext } from '@n8n/permissions';
 import { mock } from 'vitest-mock-extended';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import type { ProjectService } from '@/services/project.service.ee';
 import type { WebhookService } from '@/webhooks/webhook.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
@@ -90,6 +90,8 @@ describe('WorkflowPublisher', () => {
 			sourceWorkflowId: 'wf-1',
 			decidedId: 'wf-1',
 			sourcePublished,
+			publishingAction: sourcePublished ? 'publish' : 'noop',
+			sourceArchived: false,
 			parentFolderId: null,
 			entity: mock<WorkflowEntity>(),
 		});
@@ -101,12 +103,7 @@ describe('WorkflowPublisher', () => {
 				isArchived: false,
 			});
 
-			const result = await publisher.apply(
-				user,
-				createItem(false),
-				workflow,
-				WorkflowPublishingPolicy.PreservePublishedState,
-			);
+			const result = await publisher.apply(user, createItem(false), workflow);
 
 			expect(result.workflow).toBe(workflow);
 			expect(result.publishing).toEqual({ state: 'unchanged' });
@@ -124,17 +121,14 @@ describe('WorkflowPublisher', () => {
 			const published = mock<WorkflowEntity>({ id: 'wf-1', activeVersionId: 'v1' });
 			workflowService.activateWorkflow.mockResolvedValue(published);
 
-			const result = await publisher.apply(
-				user,
-				createItem(true),
-				workflow,
-				WorkflowPublishingPolicy.PublishAll,
-			);
+			const result = await publisher.apply(user, createItem(true), workflow);
 
-			expect(workflowService.activateWorkflow).toHaveBeenCalledWith(user, 'wf-1', {
-				versionId: 'v1',
-				source: 'import',
-			});
+			expect(workflowService.activateWorkflow).toHaveBeenCalledWith(
+				user,
+				'wf-1',
+				{ versionId: 'v1', source: 'import', publicApi: false },
+				{},
+			);
 			expect(result.workflow).toBe(published);
 			expect(result.publishing).toEqual({ state: 'published' });
 		});
@@ -148,12 +142,7 @@ describe('WorkflowPublisher', () => {
 			});
 			workflowService.activateWorkflow.mockRejectedValue(new Error('no trigger node'));
 
-			const result = await publisher.apply(
-				user,
-				createItem(true),
-				workflow,
-				WorkflowPublishingPolicy.PublishAll,
-			);
+			const result = await publisher.apply(user, createItem(true), workflow);
 
 			expect(result.workflow).toBe(workflow);
 			expect(result.publishing).toEqual({
@@ -179,25 +168,24 @@ describe('WorkflowPublisher', () => {
 			const updateItem: PersistedWorkflowPlanItem = {
 				action: 'update',
 				archiveTransition: null,
+				publishingAction: 'unpublish',
 				sourceWorkflowId: 'wf-stubbed',
 				sourcePublished: false,
+				sourceArchived: false,
 				parentFolderId: null,
 				entity: mock<WorkflowEntity>(),
 				existing: mock<WorkflowEntity>({ id: 'wf-1' }),
 			};
 
-			const result = await publisher.apply(
-				user,
-				updateItem,
-				workflow,
-				WorkflowPublishingPolicy.MatchSource,
-				'stub-credential',
-			);
+			const result = await publisher.apply(user, updateItem, workflow, 'stub-credential');
 
 			expect(workflowService.activateWorkflow).not.toHaveBeenCalled();
-			expect(workflowService.deactivateWorkflow).toHaveBeenCalledWith(user, 'wf-1', {
-				source: 'import',
-			});
+			expect(workflowService.deactivateWorkflow).toHaveBeenCalledWith(
+				user,
+				'wf-1',
+				{ source: 'import', publicApi: false },
+				{},
+			);
 			expect(result.workflow).toBe(unpublished);
 			expect(result.publishing).toEqual({ state: 'unpublished' });
 		});
@@ -210,13 +198,7 @@ describe('WorkflowPublisher', () => {
 				isArchived: false,
 			});
 
-			const result = await publisher.apply(
-				user,
-				createItem(true),
-				workflow,
-				WorkflowPublishingPolicy.PublishAll,
-				'stub-credential',
-			);
+			const result = await publisher.apply(user, createItem(true), workflow, 'stub-credential');
 
 			expect(workflowService.activateWorkflow).not.toHaveBeenCalled();
 			expect(result.workflow).toBe(workflow);
@@ -237,20 +219,16 @@ describe('WorkflowPublisher', () => {
 			const updateItem: PersistedWorkflowPlanItem = {
 				action: 'update',
 				archiveTransition: null,
+				publishingAction: 'publish',
 				sourceWorkflowId: 'wf-stubbed',
 				sourcePublished: true,
+				sourceArchived: false,
 				parentFolderId: null,
 				entity: mock<WorkflowEntity>(),
 				existing: mock<WorkflowEntity>({ id: 'wf-1' }),
 			};
 
-			const result = await publisher.apply(
-				user,
-				updateItem,
-				workflow,
-				WorkflowPublishingPolicy.PreservePublishedState,
-				'stub-credential',
-			);
+			const result = await publisher.apply(user, updateItem, workflow, 'stub-credential');
 
 			expect(workflowService.activateWorkflow).not.toHaveBeenCalled();
 			expect(result.workflow).toBe(workflow);
@@ -273,25 +251,24 @@ describe('WorkflowPublisher', () => {
 			const updateItem: PersistedWorkflowPlanItem = {
 				action: 'update',
 				archiveTransition: null,
+				publishingAction: 'unpublish',
 				sourceWorkflowId: 'wf-broken',
 				sourcePublished: true,
+				sourceArchived: false,
 				parentFolderId: null,
 				entity: mock<WorkflowEntity>(),
 				existing: mock<WorkflowEntity>({ id: 'wf-1' }),
 			};
 
-			const result = await publisher.apply(
-				user,
-				updateItem,
-				workflow,
-				WorkflowPublishingPolicy.UnpublishAll,
-				'missing-node-type',
-			);
+			const result = await publisher.apply(user, updateItem, workflow, 'missing-node-type');
 
 			expect(workflowService.activateWorkflow).not.toHaveBeenCalled();
-			expect(workflowService.deactivateWorkflow).toHaveBeenCalledWith(user, 'wf-1', {
-				source: 'import',
-			});
+			expect(workflowService.deactivateWorkflow).toHaveBeenCalledWith(
+				user,
+				'wf-1',
+				{ source: 'import', publicApi: false },
+				{},
+			);
 			expect(result.workflow).toBe(unpublished);
 			expect(result.publishing).toEqual({ state: 'unpublished' });
 		});
@@ -308,9 +285,11 @@ describe('WorkflowPublisher', () => {
 			}),
 			item: {
 				action: 'create',
+				publishingAction: 'publish',
 				sourceWorkflowId,
 				decidedId: `local-${sourceWorkflowId}`,
 				sourcePublished: false,
+				sourceArchived: false,
 				parentFolderId: null,
 				entity: mock<WorkflowEntity>(),
 			},
@@ -333,19 +312,49 @@ describe('WorkflowPublisher', () => {
 			// rejects a parent whose referenced sub-workflow is not yet published.
 			const published = await publisher.applyToPackage({
 				user,
+				publicApi: 'editor_ui',
 				persisted: [persisted('CHEDDAR'), persisted('BRIE')],
 				policy: WorkflowPublishingPolicy.PublishAll,
-				subWorkflowRequirements: [{ id: 'BRIE', name: 'BRIE', usedByWorkflows: ['CHEDDAR'] }],
+				subWorkflowRequirements: [
+					{ id: 'BRIE', name: 'BRIE', usedBy: [{ kind: 'workflow', id: 'CHEDDAR' }] },
+				],
 			});
 
 			expect(activationOrder()).toEqual(['BRIE', 'CHEDDAR']);
+			expect(workflowService.activateWorkflow.mock.calls.map(([, , options]) => options)).toEqual([
+				expect.objectContaining({ source: 'import', publicApi: 'editor_ui' }),
+				expect.objectContaining({ source: 'import', publicApi: 'editor_ui' }),
+			]);
 			expect(published.get('BRIE')?.publishing).toEqual({ state: 'published' });
 			expect(published.get('CHEDDAR')?.publishing).toEqual({ state: 'published' });
+		});
+
+		it('passes the operation context to each publish', async () => {
+			const ctx: OperationContext = {
+				security: mock<SecurityContext>({ subIdentityId: 'login-1' }),
+			};
+
+			await publisher.applyToPackage({
+				user,
+				publicApi: false,
+				ctx,
+				persisted: [persisted('BRIE')],
+				policy: WorkflowPublishingPolicy.PublishAll,
+				subWorkflowRequirements: undefined,
+			});
+
+			expect(workflowService.activateWorkflow).toHaveBeenCalledExactlyOnceWith(
+				user,
+				'local-BRIE',
+				{ versionId: 'v1', source: 'import', publicApi: false },
+				ctx,
+			);
 		});
 
 		it('keeps written order when no sub-workflow dependencies are declared', async () => {
 			await publisher.applyToPackage({
 				user,
+				publicApi: false,
 				persisted: [persisted('CHEDDAR'), persisted('BRIE')],
 				policy: WorkflowPublishingPolicy.PublishAll,
 				subWorkflowRequirements: undefined,
@@ -357,6 +366,7 @@ describe('WorkflowPublisher', () => {
 		it('never publishes a skipped workflow and reports it as unchanged', async () => {
 			const published = await publisher.applyToPackage({
 				user,
+				publicApi: false,
 				persisted: [
 					{
 						status: 'skipped' as const,

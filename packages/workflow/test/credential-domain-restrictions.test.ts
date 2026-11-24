@@ -3,6 +3,7 @@ import {
 	assertCredentialAllowsUrl,
 	assertUrlAllowed,
 	getCredentialAllowedDomains,
+	getCredentialOwnRequestAllowedDomains,
 	injectDomainRestrictionFields,
 	isDomainAllowed,
 } from '../src/credential-domain-restrictions';
@@ -136,6 +137,59 @@ describe('isDomainAllowed', () => {
 
 		it('should handle empty wildcard suffix', () => {
 			expect(isDomainAllowed({ url: 'https://example.com', allowedDomains: '*.' })).toBe(false);
+		});
+	});
+
+	describe('with internationalised domain names', () => {
+		it('should allow an exact match against a non-ASCII allowlist entry', () => {
+			expect(isDomainAllowed({ url: 'https://münchen.de/api', allowedDomains: 'münchen.de' })).toBe(
+				true,
+			);
+		});
+
+		it('should allow a wildcard match against a non-ASCII allowlist entry', () => {
+			expect(
+				isDomainAllowed({ url: 'https://shop.münchen.de', allowedDomains: '*.münchen.de' }),
+			).toBe(true);
+		});
+
+		it('should allow an allowlist entry that is already written in punycode', () => {
+			expect(
+				isDomainAllowed({ url: 'https://münchen.de', allowedDomains: 'xn--mnchen-3ya.de' }),
+			).toBe(true);
+		});
+
+		it('should still block a different IDN host', () => {
+			expect(isDomainAllowed({ url: 'https://köln.de', allowedDomains: 'münchen.de' })).toBe(false);
+		});
+	});
+
+	describe('with malformed allowlist entries', () => {
+		it('should not treat a backslash as a hostname separator', () => {
+			expect(
+				isDomainAllowed({
+					url: 'https://example.com/data',
+					allowedDomains: 'example.com\\evil.com',
+				}),
+			).toBe(false);
+		});
+
+		it('should not treat a backslash as a hostname separator in a wildcard entry', () => {
+			expect(
+				isDomainAllowed({
+					url: 'https://shop.example.com/data',
+					allowedDomains: '*.example.com\\evil.com',
+				}),
+			).toBe(false);
+		});
+
+		it('should keep a percent-encoded entry verbatim', () => {
+			expect(
+				isDomainAllowed({
+					url: 'https://example.com/data',
+					allowedDomains: 'example.com%2Fevil.com',
+				}),
+			).toBe(false);
 		});
 	});
 
@@ -920,5 +974,42 @@ describe('DOMAIN_RESTRICTION_FIELDS', () => {
 		expect(DOMAIN_RESTRICTION_FIELDS).toHaveLength(2);
 		expect(DOMAIN_RESTRICTION_FIELDS[0].name).toBe('allowedHttpRequestDomains');
 		expect(DOMAIN_RESTRICTION_FIELDS[1].name).toBe('allowedDomains');
+	});
+});
+
+describe('getCredentialOwnRequestAllowedDomains', () => {
+	it('returns the list a credential declares', () => {
+		expect(
+			getCredentialOwnRequestAllowedDomains({
+				allowedHttpRequestDomains: 'domains',
+				allowedDomains: 'login.example.com, *.api.example.com',
+			}),
+		).toBe('login.example.com, *.api.example.com');
+	});
+
+	it.each([
+		['unset', {}],
+		['all', { allowedHttpRequestDomains: 'all' }],
+		['none', { allowedHttpRequestDomains: 'none' }],
+		['unrecognised', { allowedHttpRequestDomains: 'nonsense' }],
+	])('leaves the request unrestricted when the mode is %s', (_mode, credentialData) => {
+		expect(
+			getCredentialOwnRequestAllowedDomains({
+				...credentialData,
+				allowedDomains: 'ignored.example.com',
+			}),
+		).toBeUndefined();
+	});
+
+	it.each([
+		['omitted', {}],
+		['empty', { allowedDomains: '' }],
+		['whitespace', { allowedDomains: '   ' }],
+	])('refuses an explicit list that is %s', (_shape, list) => {
+		const read = () =>
+			getCredentialOwnRequestAllowedDomains({ allowedHttpRequestDomains: 'domains', ...list });
+
+		expect(read).toThrow(UserError);
+		expect(read).toThrow('No allowed domains specified');
 	});
 });

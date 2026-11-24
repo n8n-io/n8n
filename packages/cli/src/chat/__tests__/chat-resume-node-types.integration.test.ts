@@ -1,4 +1,4 @@
-import type { ExecutionRepository, IExecutionResponse } from '@n8n/db';
+import type { IExecutionResponse } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 import path from 'node:path';
 import { readFileSync } from 'node:fs';
@@ -8,6 +8,7 @@ import { CHAT_NODE_TYPE, CHAT_TOOL_NODE_TYPE, RESPOND_TO_WEBHOOK_NODE_TYPE } fro
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 
 import { NodeTypes } from '../../node-types';
+import type { ExecutionCancelService } from '../../executions/execution-cancel.service';
 import { ChatExecutionManager } from '../chat-execution-manager';
 import type { ChatMessage } from '../chat-service.types';
 
@@ -59,6 +60,7 @@ function makeRealNodeTypes(): NodeTypes {
 		recognizesNode: (name: string) => name in baseTypes,
 		getNode: (name: string) => baseTypes[name],
 		loadedNodes: {} as Record<string, LoadedClass<INodeType>>,
+		excludeNodes: [] as string[],
 	};
 
 	return new NodeTypes(mock(), loader as never);
@@ -79,15 +81,15 @@ function makeExecution(nodeType: string, parameters: Record<string, unknown> = {
 describe('chat resume — real node-type onMessage mapping', () => {
 	let nodeTypes: NodeTypes;
 	let manager: ChatExecutionManager;
-	let executionRepository: ReturnType<typeof mock<ExecutionRepository>>;
+	let executionCancelService: ReturnType<typeof mock<ExecutionCancelService>>;
 	let executionPersistence: ReturnType<typeof mock<ExecutionPersistence>>;
 
 	beforeAll(() => {
 		nodeTypes = makeRealNodeTypes();
-		executionRepository = mock<ExecutionRepository>();
+		executionCancelService = mock<ExecutionCancelService>();
 		executionPersistence = mock<ExecutionPersistence>();
 		manager = new ChatExecutionManager(
-			executionRepository,
+			executionCancelService,
 			executionPersistence,
 			mock(),
 			mock(),
@@ -161,7 +163,7 @@ describe('chat resume — real node-type onMessage mapping', () => {
 		}
 
 		beforeEach(() => {
-			executionRepository.update.mockClear();
+			executionCancelService.markAsCanceled.mockClear();
 		});
 
 		it('cancels an abandoned chat execution', async () => {
@@ -169,7 +171,10 @@ describe('chat resume — real node-type onMessage mapping', () => {
 
 			await manager.cancelExecution('1');
 
-			expect(executionRepository.update).toHaveBeenCalledWith({ id: '1' }, { status: 'canceled' });
+			expect(executionCancelService.markAsCanceled).toHaveBeenCalledWith(
+				['1'],
+				['running', 'waiting', 'unknown'],
+			);
 		});
 
 		it('does not cancel a Telegram Send-and-Wait execution the socket does not drive', async () => {
@@ -179,7 +184,7 @@ describe('chat resume — real node-type onMessage mapping', () => {
 
 			await manager.cancelExecution('1');
 
-			expect(executionRepository.update).not.toHaveBeenCalled();
+			expect(executionCancelService.markAsCanceled).not.toHaveBeenCalled();
 		});
 
 		it('does not cancel a plain Wait execution the socket does not drive', async () => {
@@ -189,7 +194,7 @@ describe('chat resume — real node-type onMessage mapping', () => {
 
 			await manager.cancelExecution('1');
 
-			expect(executionRepository.update).not.toHaveBeenCalled();
+			expect(executionCancelService.markAsCanceled).not.toHaveBeenCalled();
 		});
 	});
 

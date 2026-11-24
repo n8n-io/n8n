@@ -1,12 +1,15 @@
 import {
+	PullWorkFolderRequestDto,
+	SourceControlPullResponsePublicDto,
 	SourceControlPushConflictErrorPublicDto,
 	SourceControlPushRequestPublicDto,
 	SourceControlPushResponsePublicDto,
 	SourceControlStatusPublicDto,
 	SourceControlStatusQueryPublicDto,
+	type SourceControlledFile,
 } from '@n8n/api-types';
+import { EventService } from '@n8n/backend-services';
 import { LICENSE_FEATURES } from '@n8n/constants';
-import type { AuthenticatedRequest } from '@n8n/db';
 import {
 	ApiDescription,
 	ApiErrorResponse,
@@ -23,11 +26,12 @@ import {
 } from '@n8n/decorators';
 import type { Response } from 'express';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { BadRequestError, ConflictError } from '@n8n/errors';
+import { getTrackingInformationFromPullResult } from '@/modules/source-control.ee/source-control-helper.ee';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { SourceControlScopedService } from '@/modules/source-control.ee/source-control-scoped.service';
 import { SourceControlService } from '@/modules/source-control.ee/source-control.service.ee';
+import type { PublicApiRequest } from '@/public-api/public-api-client';
 
 const tags = ['SourceControl'];
 
@@ -37,6 +41,7 @@ export class SourceControlPublicController {
 		private readonly sourceControlService: SourceControlService,
 		private readonly sourceControlPreferencesService: SourceControlPreferencesService,
 		private readonly sourceControlScopedService: SourceControlScopedService,
+		private readonly eventService: EventService,
 	) {}
 
 	@Get('/status')
@@ -44,12 +49,12 @@ export class SourceControlPublicController {
 	@ApiKeyScope('sourceControl:read')
 	@ApiSummary('Preview pending source control changes')
 	@ApiDescription(
-		'Previews the pending changes between the instance and the connected Git repository in either the `push` or `pull` direction.',
+		'Previews the pending changes between the instance and the connected Git branch in either the `push` or `pull` direction.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, SourceControlStatusPublicDto)
 	async getSourceControlStatus(
-		req: AuthenticatedRequest,
+		req: PublicApiRequest,
 		_res: Response,
 		@Query query: SourceControlStatusQueryPublicDto,
 	): Promise<SourceControlStatusPublicDto> {
@@ -63,7 +68,7 @@ export class SourceControlPublicController {
 			direction: query.direction,
 			preferLocalVersion: query.direction === 'push',
 			verbose: false,
-			origin: 'publicApi',
+			publicApi: req.publicApiClient,
 		});
 
 		// `verbose: false` above guarantees a flat file list at runtime, narrow explicitly rather than casting.
@@ -77,7 +82,7 @@ export class SourceControlPublicController {
 	@ApiKeyScope('sourceControl:push')
 	@ApiSummary('Push local source control changes')
 	@ApiDescription(
-		'Commits and pushes the selected files to the connected Git repository. Each entry in ' +
+		'Commits and pushes the selected files to the connected Git branch. Each entry in ' +
 			'`fileNames` is resolved against a fresh preview of the pending changes.',
 	)
 	@ApiTags(tags)
@@ -90,7 +95,7 @@ export class SourceControlPublicController {
 			'The push includes files with unresolved conflicts. Retry with `force: true` to push anyway.',
 	})
 	async pushSourceControl(
-		req: AuthenticatedRequest,
+		req: PublicApiRequest,
 		_res: Response,
 		@Body body: SourceControlPushRequestPublicDto,
 	): Promise<SourceControlPushResponsePublicDto> {
@@ -107,7 +112,7 @@ export class SourceControlPublicController {
 				fileNames: body.fileNames,
 				force: body.force,
 			},
-			'publicApi',
+			req.publicApiClient,
 		);
 
 		if (result.statusCode === 409) {
@@ -120,5 +125,55 @@ export class SourceControlPublicController {
 		}
 
 		return { data: result.statusResult };
+	}
+
+	@Post('/pull')
+	@Licensed(LICENSE_FEATURES.SOURCE_CONTROL)
+	@ApiKeyScope('sourceControl:pull')
+	@ApiSummary('Pull changes from the remote repository')
+	@ApiDescription('Fetches changes from the connected Git branch into the instance.')
+	@ApiTags(tags)
+	@ApiResponse(200, SourceControlPullResponsePublicDto)
+	@ApiErrorResponse(400)
+	@ApiErrorResponse(409, {
+		dto: SourceControlPullResponsePublicDto,
+		description:
+			'Conflict due to uncommitted local changes or merge conflicts. The response body lists ' +
+			'every file in the pull diff; files causing the conflict have `conflict: true` or ' +
+			'`status: modified`. Retry with `force: true` to discard local changes.',
+	})
+	async pullSourceControl(
+		req: PublicApiRequest,
+		res: Response,
+		@Body({ required: true }) body: PullWorkFolderRequestDto,
+	): Promise<SourceControlledFile[] | undefined> {
+		if (!this.sourceControlPreferencesService.isSourceControlConnected()) {
+			res
+				.status(400)
+				.json({ status: 'Error', message: 'Source Control is not connected to a repository' });
+			return;
+		}
+
+		try {
+			const result = await this.sourceControlService.pullWorkfolder(
+				req.user,
+				body,
+				req.publicApiClient,
+			);
+
+			if (result.statusCode === 200) {
+				this.eventService.emit('source-control-user-pulled-api', {
+					...getTrackingInformationFromPullResult(req.user.id, result.statusResult),
+					forced: body.force ?? false,
+				});
+				return result.statusResult;
+			}
+
+			res.status(409).json(result.statusResult);
+			return;
+		} catch (error) {
+			res.status(400).send((error as { message: string }).message);
+			return;
+		}
 	}
 }

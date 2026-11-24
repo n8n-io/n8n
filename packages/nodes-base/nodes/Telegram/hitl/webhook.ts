@@ -1,9 +1,9 @@
 import { timingSafeEqual } from 'crypto';
-import { parseHitlCallbackReference } from 'n8n-core';
+import { isTelegramInteractionRequest, parseHitlCallbackReference } from 'n8n-core';
 import type { IWebhookFunctions, IWebhookResponseData } from 'n8n-workflow';
 
 import type { TelegramChatApprovalOptions } from './descriptions';
-import { deriveHitlSecretToken } from './tokens';
+import { deriveHitlSecretToken, deriveLegacyHitlSecretToken } from './tokens';
 import type { SendAndWaitResponder } from '../../../utils/sendAndWait/interfaces';
 import { sendAndWaitWebhook } from '../../../utils/sendAndWait/utils';
 import { apiRequest } from '../GenericFunctions';
@@ -82,7 +82,8 @@ async function applyPostDecisionEdit(
  * verification, approver allow-list, acknowledgement, message edit); any
  * other request (link-button GET, freeText/customForm POST) delegates to the
  * shared `sendAndWaitWebhook` unchanged, so flag/section-off behavior and
- * degraded (link-button) mode are untouched.
+ * degraded (link-button) mode are untouched. Requests on the fixed interaction
+ * route are the exception: that route serves the chat-approval branch only.
  */
 export async function telegramSendAndWaitWebhook(
 	this: IWebhookFunctions,
@@ -94,6 +95,12 @@ export async function telegramSendAndWaitWebhook(
 	const chatApproval = this.getNodeParameter('chatApproval', false) as boolean;
 
 	if (!bodyData.callback_query || !chatApproval) {
+		// The fixed interaction route serves the chat-approval branch below and nothing else.
+		if (isTelegramInteractionRequest(this.getRequestObject())) {
+			// Fail closed: the execution stays waiting.
+			this.getResponseObject().status(403).send('');
+			return { noWebhookResponse: true };
+		}
 		return await sendAndWaitWebhook.call(this);
 	}
 
@@ -111,7 +118,14 @@ export async function telegramSendAndWaitWebhook(
 	const expectedToken = deriveHitlSecretToken(credentials.accessToken as string);
 	const providedToken = String(this.getHeaderData()['x-telegram-bot-api-secret-token'] ?? '');
 
-	if (!safeTokensMatch(providedToken, expectedToken)) {
+	// Both compares run every time, so an accepted tap has one timing shape.
+	const matchesCurrent = safeTokensMatch(providedToken, expectedToken);
+	const matchesLegacy = safeTokensMatch(
+		providedToken,
+		deriveLegacyHitlSecretToken(credentials.accessToken as string),
+	);
+
+	if (!matchesCurrent && !matchesLegacy) {
 		// Fail closed: the execution stays waiting.
 		res.status(403).send('');
 		return { noWebhookResponse: true };

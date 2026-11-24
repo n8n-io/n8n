@@ -5,7 +5,6 @@ import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
 import type { IWorkflowSettings, Workflow } from 'n8n-workflow';
-import { UnexpectedError } from 'n8n-workflow';
 
 import { parseWorkflowMessage } from './collaboration.message';
 import type {
@@ -14,13 +13,18 @@ import type {
 	WriteAccessRequestedMessage,
 	WriteAccessReleaseRequestedMessage,
 	WriteAccessHeartbeatMessage,
+	AgentOpenedMessage,
+	AgentClosedMessage,
+	AgentWriteAccessRequestedMessage,
+	AgentWriteAccessReleaseRequestedMessage,
+	AgentWriteAccessHeartbeatMessage,
 } from './collaboration.message';
 
-import { CollaborationState } from '@/collaboration/collaboration.state';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { LockedError } from '@/errors/response-errors/locked.error';
+import { AgentProjectLookupProxy, CollaborationState } from '@n8n/backend-services';
+import { ConflictError, LockedError, UnexpectedError } from '@n8n/errors';
 import { Push } from '@/push';
 import type { OnPushMessage } from '@/push/types';
+import { userHasScopes } from '@/permissions.ee/check-access';
 import { AccessService } from '@/services/access.service';
 
 const OPEN_WORKFLOW_CHECK_BATCH_SIZE = 100;
@@ -38,6 +42,7 @@ export class CollaborationService {
 		private readonly state: CollaborationState,
 		private readonly userRepository: UserRepository,
 		private readonly accessService: AccessService,
+		private readonly agentProjectLookup: AgentProjectLookupProxy,
 	) {}
 
 	init() {
@@ -88,6 +93,16 @@ export class CollaborationService {
 			await this.handleWriteAccessReleaseRequested(userId, clientId, workflowMessage);
 		} else if (workflowMessage.type === 'writeAccessHeartbeat') {
 			await this.handleWriteAccessHeartbeat(userId, clientId, workflowMessage);
+		} else if (workflowMessage.type === 'agentOpened') {
+			await this.handleAgentOpened(userId, clientId, workflowMessage);
+		} else if (workflowMessage.type === 'agentClosed') {
+			await this.handleAgentClosed(userId, clientId, workflowMessage);
+		} else if (workflowMessage.type === 'agentWriteAccessRequested') {
+			await this.handleAgentWriteAccessRequested(userId, clientId, workflowMessage);
+		} else if (workflowMessage.type === 'agentWriteAccessReleaseRequested') {
+			await this.handleAgentWriteAccessReleaseRequested(userId, clientId, workflowMessage);
+		} else if (workflowMessage.type === 'agentWriteAccessHeartbeat') {
+			await this.handleAgentWriteAccessHeartbeat(userId, clientId, workflowMessage);
 		}
 	}
 
@@ -119,9 +134,8 @@ export class CollaborationService {
 		}
 
 		// If the user closing the workflow holds the write lock, release it
-		const currentLock = await this.state.getWriteLock(workflowId);
-		if (currentLock?.clientId === clientId) {
-			await this.state.releaseWriteLock(workflowId);
+		const released = await this.state.releaseWriteLockIfHolder(workflowId, clientId, userId);
+		if (released) {
 			await this.sendWriteAccessReleasedMessage(workflowId);
 		}
 
@@ -169,43 +183,39 @@ export class CollaborationService {
 				return;
 			}
 		} else {
-			const currentLock = await this.state.getWriteLock(workflowId);
-			if (currentLock && currentLock.clientId !== clientId) {
+			const acquired = await this.state.acquireWriteLock(workflowId, clientId, userId);
+			if (!acquired) {
 				return;
 			}
-
-			await this.state.setWriteLock(workflowId, clientId, userId);
 		}
 
 		await this.sendWriteAccessAcquiredMessage(workflowId, userId, clientId);
 	}
 
 	private async handleWriteAccessReleaseRequested(
-		_userId: User['id'],
+		userId: User['id'],
 		clientId: string,
 		msg: WriteAccessReleaseRequestedMessage,
 	) {
 		const { workflowId } = msg;
 
-		const currentLock = await this.state.getWriteLock(workflowId);
-
-		if (currentLock?.clientId !== clientId) {
+		const released = await this.state.releaseWriteLockIfHolder(workflowId, clientId, userId);
+		if (!released) {
 			return;
 		}
 
-		await this.state.releaseWriteLock(workflowId);
 		await this.sendWriteAccessReleasedMessage(workflowId);
 	}
 
 	private async handleWriteAccessHeartbeat(
-		_userId: User['id'],
+		userId: User['id'],
 		clientId: string,
 		msg: WriteAccessHeartbeatMessage,
 	) {
 		const { workflowId } = msg;
 
 		// Renew the write lock TTL if the client holds it
-		await this.state.renewWriteLock(workflowId, clientId);
+		await this.state.renewWriteLock(workflowId, clientId, userId);
 	}
 
 	private async sendWriteAccessAcquiredMessage(
@@ -214,11 +224,12 @@ export class CollaborationService {
 		clientId: string,
 	) {
 		const collaborators = await this.state.getCollaborators(workflowId);
-		const userIds = collaborators.map((user) => user.userId);
-
-		if (userIds.length === 0) {
-			return;
-		}
+		const collaboratorUserIds = collaborators.map((user) => user.userId);
+		// Always include the requesting user, even if their workflowOpened
+		// message hasn't been processed yet — push messages are handled
+		// concurrently, so collaborator registration may lag behind lock
+		// acquisition and the requesting tab would never receive this.
+		const userIds = [...new Set([...collaboratorUserIds, userId])];
 
 		const msgData: PushPayload<'writeAccessAcquired'> = {
 			workflowId,
@@ -389,7 +400,11 @@ export class CollaborationService {
 		}
 
 		if (lock.clientId === clientId) {
-			return;
+			if (lock.userId === userId) {
+				return;
+			}
+			// clientId was copied — a different user is impersonating the holder
+			throw new LockedError(`Cannot ${action} workflow - another user currently has write access`);
 		}
 
 		if (lock.userId === userId) {
@@ -401,5 +416,171 @@ export class CollaborationService {
 			// Different user
 			throw new LockedError(`Cannot ${action} workflow - another user currently has write access`);
 		}
+	}
+
+	// --- Agent-scoped collaboration --------------------------------------
+
+	/**
+	 * Whether the user holds `scope` in the agent's project. Agents have no
+	 * sharing table, so the check is the project-level scope on the agent's
+	 * owning project. The agent and user lookups are independent, so they run
+	 * in parallel — this runs on every collaboration push message.
+	 */
+	private async hasAgentScope(
+		userId: User['id'],
+		agentId: string,
+		scope: 'agent:read' | 'agent:update',
+	): Promise<boolean> {
+		const [projectId, user] = await Promise.all([
+			this.agentProjectLookup.getProjectIdById(agentId),
+			this.userRepository.findOne({ where: { id: userId }, relations: ['role'] }),
+		]);
+		if (!projectId || !user) return false;
+		return await userHasScopes(user, [scope], false, { projectId });
+	}
+
+	private async hasAgentReadAccess(userId: User['id'], agentId: string): Promise<boolean> {
+		return await this.hasAgentScope(userId, agentId, 'agent:read');
+	}
+
+	private async hasAgentWriteAccess(userId: User['id'], agentId: string): Promise<boolean> {
+		return await this.hasAgentScope(userId, agentId, 'agent:update');
+	}
+
+	private async handleAgentOpened(userId: User['id'], clientId: string, msg: AgentOpenedMessage) {
+		const { agentId } = msg;
+
+		if (!(await this.hasAgentReadAccess(userId, agentId))) {
+			return;
+		}
+
+		await this.state.addAgentCollaborator(agentId, userId, clientId);
+
+		await this.sendAgentUsersChangedMessage(agentId);
+	}
+
+	private async handleAgentClosed(userId: User['id'], clientId: string, msg: AgentClosedMessage) {
+		const { agentId } = msg;
+
+		if (!(await this.hasAgentReadAccess(userId, agentId))) {
+			return;
+		}
+
+		// If the user closing the agent holds the write lock, release it
+		const released = await this.state.releaseAgentWriteLockIfHolder(agentId, clientId, userId);
+		if (released) {
+			await this.sendAgentWriteAccessReleasedMessage(agentId);
+		}
+
+		await this.state.removeAgentCollaborator(agentId, clientId);
+
+		await this.sendAgentUsersChangedMessage(agentId);
+	}
+
+	private async sendAgentUsersChangedMessage(agentId: string) {
+		const collaborators = await this.state.getAgentCollaborators(agentId);
+		const userIds = collaborators.map((user) => user.userId);
+
+		if (userIds.length === 0) {
+			return;
+		}
+		const users = await this.userRepository.getByIds(this.userRepository.manager, userIds);
+		const activeCollaborators = users.map((user) => ({
+			user: user.toIUser(),
+			lastSeen: collaborators.find(({ userId }) => userId === user.id)!.lastSeen,
+		}));
+		const msgData: PushPayload<'collaboratorsChanged'> = {
+			agentId,
+			collaborators: activeCollaborators,
+		};
+
+		this.push.sendToUsers({ type: 'collaboratorsChanged', data: msgData }, userIds);
+	}
+
+	private async handleAgentWriteAccessRequested(
+		userId: User['id'],
+		clientId: string,
+		msg: AgentWriteAccessRequestedMessage,
+	) {
+		const { agentId, force } = msg;
+
+		if (!(await this.hasAgentWriteAccess(userId, agentId))) {
+			return;
+		}
+
+		if (force) {
+			const acquired = await this.state.acquireAgentWriteLockForce(agentId, clientId, userId);
+			if (!acquired) {
+				return;
+			}
+		} else {
+			const acquired = await this.state.acquireAgentWriteLock(agentId, clientId, userId);
+			if (!acquired) {
+				return;
+			}
+		}
+
+		await this.sendAgentWriteAccessAcquiredMessage(agentId, userId, clientId);
+	}
+
+	private async handleAgentWriteAccessReleaseRequested(
+		userId: User['id'],
+		clientId: string,
+		msg: AgentWriteAccessReleaseRequestedMessage,
+	) {
+		const { agentId } = msg;
+
+		const released = await this.state.releaseAgentWriteLockIfHolder(agentId, clientId, userId);
+		if (!released) {
+			return;
+		}
+
+		await this.sendAgentWriteAccessReleasedMessage(agentId);
+	}
+
+	private async handleAgentWriteAccessHeartbeat(
+		userId: User['id'],
+		clientId: string,
+		msg: AgentWriteAccessHeartbeatMessage,
+	) {
+		const { agentId } = msg;
+
+		// Renew the write lock TTL if the client holds it
+		await this.state.renewAgentWriteLock(agentId, clientId, userId);
+	}
+
+	private async sendAgentWriteAccessAcquiredMessage(
+		agentId: string,
+		userId: User['id'],
+		clientId: string,
+	) {
+		const collaborators = await this.state.getAgentCollaborators(agentId);
+		const collaboratorUserIds = collaborators.map((user) => user.userId);
+		// Always include the requesting user — push messages are handled
+		// concurrently, so agentOpened may not have registered this tab yet.
+		const userIds = [...new Set([...collaboratorUserIds, userId])];
+
+		const msgData: PushPayload<'writeAccessAcquired'> = {
+			agentId,
+			userId,
+			clientId,
+		};
+
+		this.push.sendToUsers({ type: 'writeAccessAcquired', data: msgData }, userIds);
+	}
+
+	private async sendAgentWriteAccessReleasedMessage(agentId: string) {
+		const collaborators = await this.state.getAgentCollaborators(agentId);
+		const userIds = collaborators.map((user) => user.userId);
+
+		if (userIds.length === 0) {
+			return;
+		}
+
+		const msgData: PushPayload<'writeAccessReleased'> = {
+			agentId,
+		};
+
+		this.push.sendToUsers({ type: 'writeAccessReleased', data: msgData }, userIds);
 	}
 }

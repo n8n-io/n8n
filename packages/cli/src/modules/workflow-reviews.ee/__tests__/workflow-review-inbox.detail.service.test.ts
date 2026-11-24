@@ -10,7 +10,7 @@ import type {
 } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ForbiddenError } from '@n8n/errors';
 import type { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 
@@ -106,6 +106,7 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 			canDecide: true,
 			decisionIneligibilityReason: null,
 			canComment: true,
+			canClose: true,
 		});
 	});
 
@@ -224,6 +225,7 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 				canDecide: false,
 				decisionIneligibilityReason: 'author',
 				canComment: true,
+				canClose: false,
 			});
 
 			const detail = await service.getDetail(requester, requestId);
@@ -246,6 +248,7 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 				canDecide: false,
 				decisionIneligibilityReason: 'missing_permission',
 				canComment: false,
+				canClose: false,
 			});
 
 			const detail = await service.getDetail(requester, requestId);

@@ -18,6 +18,7 @@ import type { AgentResult } from '../types';
 import { checkMaxIterations } from './checkMaxIterations';
 import { createAgentSequence } from './createAgentSequence';
 import { finalizeResult } from './finalizeResult';
+import { mergeRequestMetadata } from './mergeRequestMetadata';
 import { prepareItemContext } from './prepareItemContext';
 import { runAgent } from './runAgent';
 
@@ -56,7 +57,7 @@ export async function executeBatch(
 
 	// Process HITL (Human-in-the-Loop) tool responses before running the agent
 	// If there are approved HITL tools, we need to execute the gated tools first
-	const hitlResult = processHitlResponses(response, startIndex);
+	const hitlResult = processHitlResponses(response, startIndex, batch.length);
 
 	if (hitlResult.hasApprovedHitlTools && hitlResult.pendingGatedToolRequest) {
 		// Return the gated tool request immediately
@@ -82,7 +83,7 @@ export async function executeBatch(
 
 		const itemContext = await prepareItemContext(ctx, itemIndex, processedResponse, model);
 
-		const { tools, prompt, options, outputParser } = itemContext;
+		const { tools, prompt, options, outputParser, steps } = itemContext;
 
 		// Create executors for primary and fallback models
 		const executor: AgentRunnableSequence = createAgentSequence(
@@ -93,6 +94,7 @@ export async function executeBatch(
 			outputParser,
 			memory,
 			fallbackModel,
+			options.forceToolCallOnFirstIteration === true && steps.length === 0,
 		);
 
 		// Run the agent with processed response
@@ -134,6 +136,8 @@ export async function executeBatch(
 				};
 			} else {
 				request.actions.push.apply(request.actions, batchResult.actions);
+				// Preserve each item's previousRequests so buildSteps can rebuild conversation history per item
+				request.metadata = mergeRequestMetadata(request.metadata, batchResult.metadata);
 			}
 			return;
 		}

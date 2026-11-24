@@ -36,6 +36,7 @@ describe('reap decision (fast-check)', () => {
 					scheduledFor: new Date('2026-01-01T00:00:00.000Z'),
 					runAt: new Date('2026-01-01T00:00:00.000Z'),
 					status: 'running',
+					timeoutSeconds: 300,
 					dispatchedAt: dispatched ? new Date('2026-01-01T00:00:00.000Z') : null,
 					...row,
 				}),
@@ -51,7 +52,7 @@ describe('reap decision (fast-check)', () => {
 				store.deadLetterExpired.mockResolvedValue(1);
 				store.completeExpired.mockResolvedValue(1);
 
-				const result = await reap(store, { batchSize: rows.length || 1 });
+				const result = await reap(store, { batchSize: rows.length || 1, maxRetireBatches: 1 });
 
 				const lastAttempt = (r: ExpiredLeaseRow) => r.attempts + 1 >= r.maxAttempts;
 				// Effect boundary first: any dispatched row is completed regardless of attempts.

@@ -63,7 +63,8 @@ vi.mock('@/features/integrations/sourceControl.ee/sourceControl.store', () => ({
 	})),
 }));
 
-vi.mock('@n8n/permissions', () => ({
+vi.mock('@n8n/permissions', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/permissions')>()),
 	getResourcePermissions: vi.fn((scopes: string[] = []) => ({
 		workflow: {
 			update: scopes.includes('workflow:update'),
@@ -739,6 +740,70 @@ describe('useWorkflowsStore', () => {
 				timezone: 'Asia/Tokyo',
 			});
 		});
+	});
+
+	describe('updateWorkflow', () => {
+		it('takes the version-scoped settings of the saved workflow and keeps the local live settings', async () => {
+			workflowsStore.setWorkflowId('w1');
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('w1'));
+			workflowDocumentStore.setSettings({
+				executionOrder: 'v1',
+				timezone: 'Europe/Berlin',
+				engineType: 'v2',
+			});
+
+			vi.spyOn(apiUtils, 'makeRestApiRequest').mockResolvedValue(
+				createTestWorkflow({
+					id: 'w1',
+					versionId: 'v2',
+					checksum: 'checksum-2',
+					nodes: [],
+					connections: {},
+					settings: { executionOrder: 'v1', timezone: 'UTC', engineType: 'v1' },
+				}),
+			);
+
+			await workflowsStore.updateWorkflow('w1', {
+				nodes: [],
+				connections: {},
+				restoredFromVersionId: 'old',
+			});
+
+			expect(workflowDocumentStore.settings).toEqual(
+				expect.objectContaining({ engineType: 'v1', timezone: 'Europe/Berlin' }),
+			);
+		});
+
+		it.each([
+			{ when: 'clears', savedVersionId: 'v2', expected: { name: null, description: null } },
+			{
+				when: 'keeps',
+				savedVersionId: 'v1',
+				expected: { name: 'Version v1', description: 'Notes' },
+			},
+		])(
+			'$when the version name when the save returns version $savedVersionId',
+			async ({ savedVersionId, expected }) => {
+				workflowsStore.setWorkflowId('w1');
+				const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('w1'));
+				workflowDocumentStore.setVersionData({
+					versionId: 'v1',
+					name: 'Version v1',
+					description: 'Notes',
+				});
+
+				vi.spyOn(apiUtils, 'makeRestApiRequest').mockResolvedValue(
+					createTestWorkflow({ id: 'w1', versionId: savedVersionId, checksum: 'checksum-2' }),
+				);
+
+				await workflowsStore.updateWorkflow('w1', { settings: { engineType: 'v2' } });
+
+				expect(workflowDocumentStore.versionData).toEqual({
+					versionId: savedVersionId,
+					...expected,
+				});
+			},
+		);
 	});
 
 	describe('fetchPublicationStatus', () => {

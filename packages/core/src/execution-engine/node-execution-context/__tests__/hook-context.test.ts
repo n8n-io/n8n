@@ -1,4 +1,4 @@
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsHelper,
@@ -114,6 +114,7 @@ describe('HookContext', () => {
 				mode,
 				expect.objectContaining({ node }),
 				false,
+				undefined,
 				undefined,
 			);
 		});

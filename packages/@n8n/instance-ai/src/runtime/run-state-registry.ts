@@ -1,17 +1,15 @@
-import type {
-	InstanceAiCredentialDestinationDecision,
-	InstanceAiThreadStatusResponse,
-} from '@n8n/api-types';
+import type { InstanceAiPromptConfiguration, InstanceAiThreadStatusResponse } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 
 import type { InstanceAiTraceContext, ModelConfig, OrchestrationContext } from '../types';
+import type { ConfirmationData } from './confirmation-payload';
 import type {
 	InstanceAiLivenessPolicy,
 	InstanceAiLivenessSurface,
 	InstanceAiLivenessTimeoutReason,
 } from './liveness-policy';
 import type { OrchestratorRunHandoffState } from './orchestrator-run-control';
-import type { WorkflowBuildOutcome } from '../workflow-loop/workflow-loop-state';
+import type { SuspendedInstanceContext } from './instance-context-state';
 
 export interface ActiveRunState {
 	runId: string;
@@ -26,6 +24,8 @@ export interface ActiveRunState {
 	lastActivityAt?: number;
 	/** Owner of the run, resolved at entry so concurrency can be counted per user. */
 	userId?: string;
+	/** The user stopped the run. The run reads it when it ends. */
+	stoppedByUser?: boolean;
 }
 
 export interface SuspendedRunState<TUser = unknown> extends ActiveRunState {
@@ -42,55 +42,10 @@ export interface SuspendedRunState<TUser = unknown> extends ActiveRunState {
 	suspendPayload?: Record<string, unknown>;
 	requestId: string;
 	createdAt: number;
-	/** Set when the suspended run was a planned-task checkpoint follow-up.
-	 *  Preserved across suspend/resume so the resumed run's finalizer can
-	 *  run the deadlock fallback and reschedule. */
-	checkpoint?: { isCheckpointFollowUp: true; checkpointTaskId: string };
-	/** Set when the suspended run was a planned build-workflow follow-up. */
-	plannedBuild?: {
-		isPlannedBuildFollowUp: true;
-		buildTaskId: string;
-		workItemId: string;
-		isSupportingWorkflowTask?: boolean;
-		savedOutcome?: WorkflowBuildOutcome;
-	};
 	/** Shared signal used to stop resumed orchestration after durable work is handed off. */
 	runHandoff?: OrchestratorRunHandoffState;
-}
-
-/**
- * Flat confirmation payload consumed by native tool `resumeSchema`s and sub-agent HITL.
- * The service layer constructs this from the typed `InstanceAiConfirmRequest` discriminated
- * union sent by the frontend — only one subset of fields is populated per call, matching
- * the confirmation kind that was originally requested.
- */
-export interface ConfirmationData {
-	approved: boolean;
-	credentials?: Record<string, string>;
-	nodeCredentials?: Record<string, Record<string, string>>;
-	userInput?: string;
-	domainAccessAction?: string;
-	action?: 'apply' | 'test-trigger';
-	nodeParameters?: Record<string, Record<string, unknown>>;
-	/** Workflow-setup cards the user actively skipped, by node name. */
-	skippedNodes?: string[];
-	testTriggerNode?: string;
-	answers?: Array<{
-		questionId: string;
-		selectedOptions: string[];
-		customText?: string;
-		skipped?: boolean;
-	}>;
-	/** User's resource-access decision (e.g. 'allowForSession'). */
-	resourceDecision?: string;
-	/** Plan-review hard denial — distinct from a feedback-driven rejection. */
-	denied?: boolean;
-	/** `'session'` means the user chose "always allow": the resuming tool should
-	 *  persist a thread-level grant so the same action isn't re-asked. */
-	scope?: 'once' | 'session';
-	autoSetup?: { credentialType: string; attemptId?: string };
-	credentialDestination?: InstanceAiCredentialDestinationDecision;
-	connectedSlugs?: string[];
+	/** Keep the injection and gate results across suspension. Resumed segments build no new block. */
+	instanceContext?: SuspendedInstanceContext;
 }
 
 export interface PendingConfirmation {
@@ -111,6 +66,7 @@ export interface BackgroundTaskStatusSnapshot {
 	runId: string;
 	messageGroupId?: string;
 	threadId: string;
+	detachedFromTurn?: boolean;
 }
 
 export interface RunStateTimeoutDetails {
@@ -123,6 +79,7 @@ export interface RunStateTimeoutDetails {
 
 export interface StartRunOptions<TUser> {
 	threadId: string;
+	runId?: string;
 	user: TUser;
 	messageGroupId?: string;
 }
@@ -147,6 +104,18 @@ export class RunStateRegistry<TUser = unknown> {
 	/** IANA time zone captured at initial-run entry and reused by follow-up runs. */
 	private readonly threadTimeZones = new Map<string, string>();
 
+	/** Whether the client reported the Browser Use entry, reused by follow-up runs.
+	 *  Only the client can see its own device, and a resumed or background run has
+	 *  no request of its own to ask. */
+	private readonly threadBrowserUseAvailable = new Map<string, boolean>();
+
+	private readonly threadSetupPanelEnabled = new Map<string, boolean>();
+
+	private readonly threadObserverThresholds = new Map<string, number>();
+	private readonly threadPromptSelections = new Map<
+		string,
+		{ version: string; metadata?: InstanceAiPromptConfiguration }
+	>();
 	/**
 	 * Resolves a user id from the opaque `TUser` the registry is parameterised over.
 	 * Required rather than optional: per-user concurrency counting depends on it, and a
@@ -155,7 +124,7 @@ export class RunStateRegistry<TUser = unknown> {
 	constructor(private readonly getUserId: (user: TUser) => string) {}
 
 	startRun(options: StartRunOptions<TUser>): StartedRunState {
-		const runId = `run_${nanoid()}`;
+		const runId = options.runId ?? `run_${nanoid()}`;
 		const abortController = new AbortController();
 		const messageGroupId = options.messageGroupId ?? `mg_${nanoid()}`;
 		const now = Date.now();
@@ -225,6 +194,7 @@ export class RunStateRegistry<TUser = unknown> {
 					startedAt: task.startedAt,
 					runId: task.runId,
 					messageGroupId: task.messageGroupId,
+					...(task.detachedFromTurn ? { detachedFromTurn: true } : {}),
 				})),
 		};
 	}
@@ -446,7 +416,7 @@ export class RunStateRegistry<TUser = unknown> {
 		data: ConfirmationData,
 	): boolean {
 		const pending = this.pendingConfirmations.get(requestId);
-		if (!pending || pending.userId !== requestingUserId) return false;
+		if (pending?.userId !== requestingUserId) return false;
 
 		this.pendingConfirmations.delete(requestId);
 		pending.resolve(data);
@@ -479,12 +449,80 @@ export class RunStateRegistry<TUser = unknown> {
 		return this.threadUsers.get(threadId);
 	}
 
+	/**
+	 * Threads with a live run for this user. Active runs come first, then
+	 * suspended runs. A thread that is both is listed once.
+	 */
+	listLiveThreadIdsForUser(userId: string): string[] {
+		const seen = new Set<string>();
+		const threadIds: string[] = [];
+		const add = (threadId: string) => {
+			if (seen.has(threadId)) return;
+			seen.add(threadId);
+			threadIds.push(threadId);
+		};
+
+		for (const run of this.activeRuns.values()) {
+			if (run.userId === userId) add(run.threadId);
+		}
+		for (const run of this.suspendedRuns.values()) {
+			const ownerId = run.userId ?? this.getUserId(run.user);
+			if (ownerId === userId) add(run.threadId);
+		}
+		return threadIds;
+	}
+
 	setTimeZone(threadId: string, timeZone: string): void {
 		this.threadTimeZones.set(threadId, timeZone);
 	}
 
 	getTimeZone(threadId: string): string | undefined {
 		return this.threadTimeZones.get(threadId);
+	}
+
+	/** An omitted value clears it, so a client that stops reporting advertises nothing. */
+	setBrowserUseAvailable(threadId: string, available: boolean | undefined): void {
+		if (available === undefined) this.threadBrowserUseAvailable.delete(threadId);
+		else this.threadBrowserUseAvailable.set(threadId, available);
+	}
+
+	getBrowserUseAvailable(threadId: string): boolean | undefined {
+		return this.threadBrowserUseAvailable.get(threadId);
+	}
+
+	setSetupPanelEnabled(threadId: string, enabled: boolean): void {
+		this.threadSetupPanelEnabled.set(threadId, enabled);
+	}
+
+	isSetupPanelEnabled(threadId: string): boolean {
+		return this.threadSetupPanelEnabled.get(threadId) === true;
+	}
+
+	/** Per-thread observer threshold; an omitted value clears it. */
+	setObserverThresholdTokens(threadId: string, tokens: number | undefined): void {
+		if (tokens === undefined) this.threadObserverThresholds.delete(threadId);
+		else this.threadObserverThresholds.set(threadId, tokens);
+	}
+
+	getObserverThresholdTokens(threadId: string): number | undefined {
+		return this.threadObserverThresholds.get(threadId);
+	}
+
+	setPromptVersion(threadId: string, version: string | undefined): void {
+		if (version === undefined) this.threadPromptSelections.delete(threadId);
+		else this.threadPromptSelections.set(threadId, { version });
+	}
+
+	getPromptVersion(threadId: string): string | undefined {
+		return this.threadPromptSelections.get(threadId)?.version;
+	}
+
+	setPromptConfiguration(threadId: string, metadata: InstanceAiPromptConfiguration): void {
+		this.threadPromptSelections.set(threadId, { version: metadata.version, metadata });
+	}
+
+	getPromptConfiguration(threadId: string): InstanceAiPromptConfiguration | undefined {
+		return this.threadPromptSelections.get(threadId)?.metadata;
 	}
 
 	/**
@@ -637,6 +675,10 @@ export class RunStateRegistry<TUser = unknown> {
 
 		this.threadUsers.delete(threadId);
 		this.threadTimeZones.delete(threadId);
+		this.threadBrowserUseAvailable.delete(threadId);
+		this.threadSetupPanelEnabled.delete(threadId);
+		this.threadObserverThresholds.delete(threadId);
+		this.threadPromptSelections.delete(threadId);
 
 		const groupId = this.threadMessageGroupId.get(threadId);
 		if (groupId) this.runIdsByMessageGroup.delete(groupId);
@@ -653,7 +695,7 @@ export class RunStateRegistry<TUser = unknown> {
 	 * inline HITL (`waitForConfirmation(...)`) with `{ approved: false }`
 	 * causes the awaiting agent tool to run to completion as "denied" before
 	 * the process exits, which then mutates the snapshot tree mid-shutdown
-	 * and clobbers the plan/ask card the user would otherwise see on reload.
+	 * and clobbers the ask card the user would otherwise see on reload.
 	 * Letting the Promises dangle is safe: the process is exiting, the
 	 * abortController for each active run is aborted next, and the
 	 * `instance_ai_pending_confirmations` row survives so the user can still
@@ -666,11 +708,15 @@ export class RunStateRegistry<TUser = unknown> {
 	 * confirmation Promise.
 	 */
 	shutdown(): {
-		activeRuns: ActiveRunState[];
+		activeRuns: Array<ActiveRunState & { promptVersion?: string }>;
 		suspendedRuns: Array<SuspendedRunState<TUser>>;
 		pendingThreadIds: string[];
 	} {
-		const activeRuns = [...this.activeRuns.values()];
+		// Capture the selected version before clearing per-thread state.
+		const activeRuns = [...this.activeRuns.values()].map((run) => ({
+			...run,
+			promptVersion: this.getPromptVersion(run.threadId),
+		}));
 		const suspendedRuns = [...this.suspendedRuns.values()];
 		const pendingThreadIds = [
 			...new Set([...this.pendingConfirmations.values()].map((p) => p.threadId)),
@@ -681,6 +727,10 @@ export class RunStateRegistry<TUser = unknown> {
 		this.pendingConfirmations.clear();
 		this.threadUsers.clear();
 		this.threadTimeZones.clear();
+		this.threadBrowserUseAvailable.clear();
+		this.threadSetupPanelEnabled.clear();
+		this.threadObserverThresholds.clear();
+		this.threadPromptSelections.clear();
 		this.threadMessageGroupId.clear();
 		this.runIdsByMessageGroup.clear();
 

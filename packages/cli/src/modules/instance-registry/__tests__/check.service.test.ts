@@ -1,5 +1,6 @@
 import type { InstanceRegistration } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
+import type { PushProxy } from '@n8n/backend-services';
 import type {
 	ClusterCheckContext,
 	ClusterCheckMetadata,
@@ -11,7 +12,6 @@ import type { MockInstance, Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
-import type { Push } from '@/push';
 
 import { CheckService, computeDiff } from '../checks/check.service';
 import type { InstanceRegistryService } from '../instance-registry.service';
@@ -45,7 +45,7 @@ describe('CheckService', () => {
 	let registryService: Mocked<InstanceRegistryService>;
 	let clusterCheckMetadata: Mocked<ClusterCheckMetadata>;
 	let messageEventBus: Mocked<MessageEventBus>;
-	let push: Mocked<Push>;
+	let push: Mocked<PushProxy>;
 	let containerGet: MockInstance;
 	let service: CheckService | undefined;
 
@@ -57,11 +57,15 @@ describe('CheckService', () => {
 		registryService = mock<InstanceRegistryService>();
 		clusterCheckMetadata = mock<ClusterCheckMetadata>();
 		messageEventBus = mock<MessageEventBus>();
-		push = mock<Push>();
+		push = mock<PushProxy>();
 
 		clusterCheckMetadata.getClasses.mockReturnValue([]);
 		registryService.getAllInstances.mockResolvedValue([]);
 		registryService.getLastKnownState.mockResolvedValue(new Map());
+		registryService.readClusterState.mockResolvedValue({
+			instances: [],
+			lastKnownState: new Map(),
+		});
 		registryService.saveLastKnownState.mockResolvedValue();
 		messageEventBus.sendAuditEvent.mockResolvedValue(undefined);
 
@@ -101,7 +105,7 @@ describe('CheckService', () => {
 		});
 	});
 
-	it('reconcile forwards warnings/audit/push from runChecks and saves current state', async () => {
+	it('reconcile forwards warnings/audit/push from the checks and saves current state', async () => {
 		const WorkingCheck = namedClass('WorkingCheck');
 		const workingRun = vi
 			.fn<(...args: [ClusterCheckContext]) => Promise<ClusterCheckResult>>()
@@ -117,7 +121,10 @@ describe('CheckService', () => {
 		});
 
 		const inst = makeInstance({ instanceKey: 'k1' });
-		registryService.getAllInstances.mockResolvedValue([inst]);
+		registryService.readClusterState.mockResolvedValue({
+			instances: [inst],
+			lastKnownState: new Map(),
+		});
 
 		service = buildService();
 		service.init();
@@ -160,6 +167,50 @@ describe('CheckService', () => {
 
 		expect(workingRun).not.toHaveBeenCalled();
 		expect(registryService.saveLastKnownState).not.toHaveBeenCalled();
+	});
+
+	it('reconcile rejects before any audit event is sent when the cluster state read fails', async () => {
+		const WorkingCheck = namedClass('WorkingCheck');
+		clusterCheckMetadata.getClasses.mockReturnValue([WorkingCheck]);
+		containerGet.mockReturnValue({
+			checkDescription: { name: 'cluster.work' },
+			run: vi.fn().mockResolvedValue({
+				auditEvents: [{ eventName: 'n8n.audit.cluster.foo', payload: {} }],
+			}),
+		});
+		const error = new Error('Redis down');
+		registryService.readClusterState.mockRejectedValue(error);
+
+		service = buildService();
+		service.init();
+
+		await expect(service.reconcile(new AbortController().signal)).rejects.toBe(error);
+		expect(messageEventBus.sendAuditEvent).not.toHaveBeenCalled();
+		expect(registryService.saveLastKnownState).not.toHaveBeenCalled();
+	});
+
+	it('reconcile rejects after the audit events are sent when the baseline save fails', async () => {
+		const WorkingCheck = namedClass('WorkingCheck');
+		clusterCheckMetadata.getClasses.mockReturnValue([WorkingCheck]);
+		containerGet.mockReturnValue({
+			checkDescription: { name: 'cluster.work' },
+			run: vi.fn().mockResolvedValue({
+				auditEvents: [{ eventName: 'n8n.audit.cluster.foo', payload: {} }],
+			}),
+		});
+		const inst = makeInstance({ instanceKey: 'k1' });
+		registryService.readClusterState.mockResolvedValue({
+			instances: [inst],
+			lastKnownState: new Map(),
+		});
+		const error = new Error('Redis down');
+		registryService.saveLastKnownState.mockRejectedValue(error);
+
+		service = buildService();
+		service.init();
+
+		await expect(service.reconcile(new AbortController().signal)).rejects.toBe(error);
+		expect(messageEventBus.sendAuditEvent).toHaveBeenCalledTimes(1);
 	});
 
 	describe('runChecks', () => {

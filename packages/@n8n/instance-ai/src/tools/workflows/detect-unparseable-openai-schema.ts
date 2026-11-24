@@ -43,7 +43,7 @@ export function detectUnparseableOpenAiSchema(json: WorkflowJSON): ValidationWar
 		const params = node.parameters;
 		if (!isRecord(params)) continue;
 		const resolved = getTextOptions(params);
-		if (!resolved || resolved.options.type !== 'json_schema') continue;
+		if (resolved?.options.type !== 'json_schema') continue;
 		const nodeName = typeof node.name === 'string' ? node.name : undefined;
 
 		if (resolved.storedAsArray) {

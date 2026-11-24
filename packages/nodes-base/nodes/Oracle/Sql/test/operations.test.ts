@@ -8,6 +8,7 @@ import {
 	type INodeParameters,
 } from 'n8n-workflow';
 import * as oracleDBTypes from 'oracledb';
+import type { Mock } from 'vitest';
 
 import * as deleteTable from '../actions/database/deleteTable.operation';
 import * as executeSQL from '../actions/database/executeQuery.operation';
@@ -18,7 +19,6 @@ import * as upsert from '../actions/database/upsert.operation';
 import type { OracleDBNodeCredentials, QueryWithValues } from '../helpers/interfaces';
 import { configureQueryRunner } from '../helpers/utils';
 import { configureOracleDB } from '../transport';
-import type { Mock } from 'vitest';
 
 const mockConnection = {
 	execute: vi.fn((_query = '') => {
@@ -238,7 +238,7 @@ export function getRunQueriesFn(mockThis: any, pool: oracleDBTypes.Pool): Mock<R
 
 		// Wrap the real one with a spy to track calls
 		return vi.fn(async (...args: Parameters<RunQueriesFn>) => {
-			return await realRunQueries(...args);
+			return await realRunQueries.apply(undefined, args);
 		});
 	}
 
@@ -678,6 +678,34 @@ VALUES (
 				expect(runQueries).toHaveBeenCalledWith(queries, emptyInputItems, nodeOptions);
 			},
 		);
+
+		it('should neutralise an injected Drop table name by escaping the string literal', async () => {
+			const nodeParameters: IDataObject = {
+				operation: 'deleteTable',
+				schema: { __rl: true, mode: 'list', value: CONFIG.user },
+				table: {
+					__rl: true,
+					mode: 'list',
+					value: "X') PURGE; EXECUTE IMMEDIATE 'DROP TABLE SENSITIVE_DATA",
+				},
+				deleteCommand: 'drop',
+				options: {},
+			};
+			const mockThis = createMockExecuteFunction(nodeParameters);
+			const items = [{ json: {}, pairedItem: { item: 0, input: undefined } }];
+			const runQueries = getRunQueriesFn(mockThis, pool);
+
+			await deleteTable.execute.call(mockThis, runQueries, items, {}, pool);
+
+			expect(runQueries).toHaveBeenCalledTimes(1);
+			const { query } = runQueries.mock.calls[0][0][0];
+			// The injected quotes are doubled, so they stay inside the identifier and
+			// cannot terminate the EXECUTE IMMEDIATE literal.
+			expect(query).toContain(
+				".\"X'') PURGE; EXECUTE IMMEDIATE ''DROP TABLE SENSITIVE_DATA\" PURGE')",
+			);
+			expect(query).not.toContain("X') PURGE");
+		});
 	});
 
 	describe('Test execute operation', () => {
@@ -853,6 +881,34 @@ VALUES (
 
 			delete node.onError;
 		});
+
+		it.each([
+			{ nodeVersion: 1.2, expected: "select '1$&2', '1$$2', '^[0-9]+$'" },
+			{ nodeVersion: 1.1, expected: "select '1{{ $json.sql }}2', '1$2', '^[0-9]+" },
+		])(
+			'should insert the resolved query for version $nodeVersion',
+			async ({ nodeVersion, expected }) => {
+				const nodeParameters: IDataObject = {
+					operation: 'execute',
+					query: '{{ $json.sql }}',
+					resource: 'database',
+					options: { nodeVersion },
+				};
+				const nodeOptions = nodeParameters.options as IDataObject;
+				const mockThis = createMockExecuteFunction(nodeParameters);
+				mockThis.evaluateExpression = vi.fn().mockReturnValue("select '1$&2', '1$$2', '^[0-9]+$'");
+				const runQueries = vi.fn<RunQueriesFn>();
+				const items: INodeExecutionData[] = [{ json: {} }];
+
+				await executeSQL.execute.call(mockThis, runQueries, items, nodeOptions, pool);
+
+				expect(runQueries).toHaveBeenCalledWith(
+					[{ query: expected, values: [] }],
+					items,
+					nodeOptions,
+				);
+			},
+		);
 
 		it('should call runQueries with binds passed using bindInfo and single item', async () => {
 			const expectedQuery = 'SELECT :en as name, dname from dept where deptno = :dno';

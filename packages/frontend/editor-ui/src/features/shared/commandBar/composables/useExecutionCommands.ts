@@ -47,6 +47,11 @@ export function useExecutionCommands(): CommandGroup {
 		() =>
 			getResourcePermissions(workflowsListStore.getWorkflowById(workflowId.value)?.scopes).workflow,
 	);
+	const executionPermissions = computed(
+		() =>
+			getResourcePermissions(workflowsListStore.getWorkflowById(workflowId.value)?.scopes)
+				.execution,
+	);
 
 	const isAnnotationEnabled = computed(
 		() =>
@@ -306,7 +311,7 @@ export function useExecutionCommands(): CommandGroup {
 			});
 		}
 
-		if (workflowPermissions.value.update) {
+		if (executionPermissions.value.delete) {
 			commands.push({
 				id: ITEM_ID.DELETE_EXECUTION,
 				title: i18n.baseText('executionDetails.deleteExecution'),

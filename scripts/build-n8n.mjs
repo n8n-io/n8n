@@ -8,7 +8,7 @@
  * 4. Create a pruned production deployment in 'compiled'
  */
 
-import { $, echo, fs, chalk } from 'zx';
+import { $, echo, fs, chalk, YAML } from 'zx';
 import path from 'path';
 import os from 'os';
 
@@ -95,7 +95,8 @@ startTimer('package_build');
 
 echo(chalk.yellow('INFO: Running pnpm install and build...'));
 try {
-	const installProcess = $`cd ${config.rootDir} && pnpm install --frozen-lockfile`;
+	const installFlags = ['--frozen-lockfile', ...(isCI ? ['--trust-lockfile'] : [])];
+	const installProcess = $`cd ${config.rootDir} && pnpm install ${installFlags}`;
 	installProcess.pipe(process.stdout);
 	await installProcess;
 
@@ -191,7 +192,7 @@ try {
 	// top level, so cdxgen would miss the transitive tree (the manifest would be incomplete).
 	// Re-enable hoisting for the licenses build only — shipped images keep the non-hoisted
 	// layout, since regular builds leave N8N_GENERATE_LICENSES unset.
-	// `PNPM_CONFIG_*` and not `npm_config_*`: pnpm 11 no longer reads npm-style env config,
+	// `PNPM_CONFIG_*` and not `npm_config_*`: pnpm no longer reads npm-style env config,
 	// so an `npm_config_` name here is silently ignored and the SBOM comes out incomplete.
 	const generateLicenses = process.env.N8N_GENERATE_LICENSES === 'true';
 	if (generateLicenses) {
@@ -206,7 +207,13 @@ try {
 	// The closure is lockfile-derived, so a workspace package only stays out of the image by
 	// declaring build-time deps as devDependencies — editing manifests at build time does
 	// nothing here.
-	const deployFlags = ['--prod', '--config.inject-workspace-packages=true'];
+	// pnpm 12's clone path leaves its intermediate links tree in macOS deploy outputs.
+	// Linux already falls back to copying, so make deploy output consistent across platforms.
+	const deployFlags = [
+		'--prod',
+		'--config.inject-workspace-packages=true',
+		'--config.package-import-method=copy',
+	];
 
 	// The dedicated-lockfile deploy leaves pnpm's own files in the closure, which the
 	// legacy deploy did not write. They are not needed to run the closure, they point at
@@ -221,9 +228,69 @@ try {
 	const removePnpmDeployFiles = async (dir) => {
 		for (const file of pnpmDeployFiles) await fs.remove(path.join(dir, file));
 	};
+	const verifyNoPnpmIntermediateLinks = async (dir) => {
+		const linksDir = path.join(dir, 'node_modules/.pnpm/@');
+		if (await fs.pathExists(linksDir)) {
+			throw new Error(`pnpm left its intermediate links tree in ${linksDir}`);
+		}
+	};
 
 	await $`cd ${config.rootDir} && NODE_ENV=production DOCKER_BUILD=true pnpm --filter=n8n ${deployFlags} deploy --no-optional ./compiled`;
+	await verifyNoPnpmIntermediateLinks(config.compiledAppDir);
 	await removePnpmDeployFiles(config.compiledAppDir);
+
+	// The napi-rs wrappers list their native bindings as optional dependencies, so
+	// `--no-optional` drops them. They cannot be regular dependencies of a published
+	// package: npm rejects every binding that does not match the host. Add the musl
+	// bindings for both image architectures, because the build host does not always
+	// match the image platform. The wrapper pins the exact version it loads, and the
+	// tarball must match the integrity that pnpm-lock.yaml records for that version.
+	// The bindings go to the top-level node_modules: the wrapper finds them there, and
+	// cdxgen inventories only that level for the release SBOM.
+	echo(chalk.yellow('INFO: Adding musl bindings for @napi-rs/canvas and @napi-rs/image...'));
+	// pnpm-lock.yaml holds two documents: pnpm's own install, then the workspace.
+	const lockfilePackages = Object.assign(
+		{},
+		...YAML.parseAllDocuments(
+			await fs.readFile(path.join(config.rootDir, 'pnpm-lock.yaml'), 'utf8'),
+		).map((doc) => doc.toJS()?.packages),
+	);
+	const virtualStoreDir = path.join(config.compiledAppDir, 'node_modules/.pnpm');
+	const scopeDir = path.join(config.compiledAppDir, 'node_modules/@napi-rs');
+	const bindingTarballDir = await fs.mkdtemp(path.join(os.tmpdir(), 'n8n-napi-bindings-'));
+	for (const name of ['canvas', 'image']) {
+		const entries = (await fs.readdir(virtualStoreDir)).filter((e) =>
+			e.startsWith(`@napi-rs+${name}@`),
+		);
+		// One top-level directory per binding holds one version only.
+		if (entries.length !== 1) {
+			throw new Error(`Expected one @napi-rs/${name} in the closure, found ${entries.length}`);
+		}
+		const { optionalDependencies } = await fs.readJson(
+			path.join(virtualStoreDir, entries[0], 'node_modules/@napi-rs', name, 'package.json'),
+		);
+		for (const arch of ['x64', 'arm64']) {
+			const binding = `@napi-rs/${name}-linux-${arch}-musl`;
+			const version = optionalDependencies[binding];
+			if (!version) throw new Error(`@napi-rs/${name} does not list ${binding}`);
+
+			const expected = lockfilePackages[`${binding}@${version}`]?.resolution?.integrity;
+			if (!expected) throw new Error(`pnpm-lock.yaml has no integrity for ${binding}@${version}`);
+
+			const [{ filename, integrity }] = JSON.parse(
+				(await $`npm pack ${binding}@${version} --pack-destination ${bindingTarballDir} --json`)
+					.stdout,
+			);
+			if (integrity !== expected) {
+				throw new Error(`${binding}@${version} does not match the pnpm-lock.yaml integrity`);
+			}
+			const bindingDir = path.join(scopeDir, `${name}-linux-${arch}-musl`);
+			await fs.ensureDir(bindingDir);
+			await $`tar -xzf ${path.join(bindingTarballDir, filename)} -C ${bindingDir} --strip-components=1`;
+		}
+	}
+	await fs.remove(bindingTarballDir);
+	echo(chalk.green('✅ musl bindings added'));
 
 	// Strip test/example/benchmark dirs shipped inside production deps that lack a
 	// `files` field in their package.json. These are valid runtime deps but their
@@ -408,6 +475,11 @@ try {
 		'*agent-browser/bin/*linux-musl*',
 		// The launcher that package.json's `bin` resolves to.
 		'*agent-browser/bin/agent-browser.js',
+		// Edit Image v2 fails without these.
+		'*/@napi-rs/canvas-linux-x64-musl/*.node',
+		'*/@napi-rs/canvas-linux-arm64-musl/*.node',
+		'*/@napi-rs/image-linux-x64-musl/*.node',
+		'*/@napi-rs/image-linux-arm64-musl/*.node',
 	];
 
 	echo(chalk.yellow('INFO: Verifying Runtime assets'));
@@ -451,6 +523,7 @@ try {
 	// only, not the shipped total.
 	startTimer('task_runner_deploy');
 	await $`cd ${config.rootDir} && NODE_ENV=production DOCKER_BUILD=true pnpm --filter=@n8n/task-runner ${deployFlags} deploy --no-optional ${config.compiledTaskRunnerDir}`;
+	await verifyNoPnpmIntermediateLinks(config.compiledTaskRunnerDir);
 	echo(
 		chalk.green(
 			`✅ Task runner deployment completed in ${formatDuration(getElapsedTime('task_runner_deploy'))}`,
@@ -514,7 +587,7 @@ try {
 		// `--dir` rather than `--filter`: a filter that matches nothing exits 0, so a renamed or moved
 		// package would report a passing check having run no verifier at all.
 		const verifyProcess =
-			$`cd ${config.rootDir} && pnpm --dir packages/testing/code-health exec tsx src/cli.ts verify-closure ${dir}`.nothrow();
+			$`cd ${config.rootDir} && pnpm --dir packages/quality/policy/code-health exec tsx src/cli.ts verify-closure ${dir}`.nothrow();
 		verifyProcess.pipe(process.stdout);
 		const { exitCode } = await verifyProcess;
 		// 0 and 3 are the only codes the verifier itself produces; everything else (tsx failing to load,
@@ -548,13 +621,14 @@ try {
 	// scripts, so we don't carry a second isolated install.
 	//
 	// Default: skip. cdxgen + license rendering adds ~minutes to every build:deploy and
-	// is only needed for the release SBOM job. The release-publish workflow opts in by
-	// setting N8N_GENERATE_LICENSES=true; regular CI Docker prepare runs skip it.
+	// is only needed for release and nightly SBOM validation. Those workflows opt in
+	// with N8N_GENERATE_LICENSES=true; regular CI Docker prepare runs skip it.
 	if (generateLicenses) {
 		echo(chalk.yellow('INFO: Generating SBOM and rendering THIRD_PARTY_LICENSES.md...'));
 		try {
 			const toolingDir = path.join(config.rootDir, '.github', 'scripts');
-			await $`cd ${config.rootDir} && pnpm install --frozen-lockfile --dir .github/scripts --ignore-workspace`;
+			// pnpm resolves a relative --lockfile-dir against --dir, so pass an absolute path.
+			await $`cd ${config.rootDir} && pnpm install --frozen-lockfile --dir .github/scripts --lockfile-dir ${toolingDir} --ignore-workspace`;
 			const generateProcess = $`cd ${toolingDir} && pnpm generate-licenses`;
 			generateProcess.pipe(process.stdout);
 			await generateProcess;

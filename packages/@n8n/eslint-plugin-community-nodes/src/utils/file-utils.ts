@@ -77,7 +77,7 @@ function readPackageJsonRaw(packageJsonPath: string): Record<string, unknown> | 
 	try {
 		const content = readFileSync(packageJsonPath, 'utf8');
 		const parsed: unknown = JSON.parse(content);
-		return isValidPackageJson(parsed) ? (parsed as Record<string, unknown>) : null;
+		return isValidPackageJson(parsed) ? parsed : null;
 	} catch {
 		return null;
 	}
@@ -104,7 +104,7 @@ export function readPackageJsonDevDependencies(packageJsonPath: string | null): 
 	if (!parsed) return new Set();
 	const devDeps = parsed.devDependencies;
 	if (typeof devDeps !== 'object' || devDeps === null) return new Set();
-	return new Set(Object.keys(devDeps as Record<string, unknown>));
+	return new Set(Object.keys(devDeps));
 }
 
 function resolveN8nFilePaths(packageJsonPath: string, filePaths: string[]): string[] {
@@ -121,6 +121,39 @@ function resolveN8nFilePaths(packageJsonPath: string, filePaths: string[]): stri
 	}
 
 	return resolvedFiles;
+}
+
+export interface RegisteredFile {
+	/** The path as written in "n8n.nodes" or "n8n.credentials", e.g. `dist/nodes/Foo/Foo.node.js`. */
+	registeredPath: string;
+	/** Absolute path of the file that was found on disk for it. */
+	filePath: string;
+}
+
+/**
+ * Resolves every entry of "n8n.nodes" and "n8n.credentials" to a file on disk.
+ * A published package ships the registered (compiled) file itself, while a
+ * source checkout only has the TypeScript source, so the registered path is
+ * tried first and its source second. Entries found in neither form are skipped.
+ */
+export function readPackageJsonRegisteredFiles(packageJsonPath: string): RegisteredFile[] {
+	const n8nConfig = readPackageJsonN8n(packageJsonPath);
+	const packageDir = dirname(packageJsonPath);
+	const registeredPaths = [...(n8nConfig.nodes ?? []), ...(n8nConfig.credentials ?? [])];
+	const registeredFiles: RegisteredFile[] = [];
+
+	for (const registeredPath of registeredPaths) {
+		const sourcePath = registeredPath.replace(/^dist\//, '').replace(/\.js$/, '.ts');
+		const filePath = [registeredPath, sourcePath]
+			.map((candidate) => safeJoinPath(packageDir, candidate))
+			.find((candidate) => existsSync(candidate));
+
+		if (filePath) {
+			registeredFiles.push({ registeredPath, filePath });
+		}
+	}
+
+	return registeredFiles;
 }
 
 export function readPackageJsonCredentials(packageJsonPath: string): Set<string> {
@@ -301,10 +334,7 @@ function checkCredentialUsageInFile(
 			enter(node: TSESTree.Node) {
 				if (node.type === AST_NODE_TYPES.ClassDeclaration && isNodeTypeClass(node)) {
 					const descriptionProperty = findClassProperty(node, 'description');
-					if (
-						!descriptionProperty?.value ||
-						descriptionProperty.value.type !== AST_NODE_TYPES.ObjectExpression
-					) {
+					if (descriptionProperty?.value?.type !== AST_NODE_TYPES.ObjectExpression) {
 						return;
 					}
 

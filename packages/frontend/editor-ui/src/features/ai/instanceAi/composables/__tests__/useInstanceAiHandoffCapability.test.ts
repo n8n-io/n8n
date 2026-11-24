@@ -5,7 +5,9 @@ const mocks = vi.hoisted(() => ({
 		value: {
 			documentId: 'temporary-workflow-id',
 			workflowId: 'temporary-workflow-id',
+			name: 'My Workflow',
 			homeProject: { id: 'team-project-id' } as { id: string } | undefined,
+			getSnapshot: vi.fn(() => ({ id: 'temporary-workflow-id', name: 'My Workflow' })),
 		},
 	},
 	personalProject: { id: 'personal-project-id' } as { id: string } | undefined,
@@ -13,7 +15,13 @@ const mocks = vi.hoisted(() => ({
 	handoffContext: { source: 'credential-modal' },
 	routerPush: vi.fn(),
 	startThread: vi.fn(),
+	openWorkflowThread: vi.fn(),
 	telemetryTrack: vi.fn(),
+	unsetActiveNodeName: vi.fn(),
+	activeNode: null as { name: string } | null,
+	activeExecutionId: undefined as string | undefined,
+	displayedExecutionId: undefined as string | undefined,
+	getExecutionSnapshot: vi.fn(() => null as { status: string; workflowId: string } | null),
 }));
 
 vi.mock('vue-router', () => ({
@@ -44,11 +52,43 @@ vi.mock('@n8n/composables/useTelemetry', () => ({
 vi.mock('../useInstanceAiHandoff', () => ({
 	buildInstanceAiCredentialHandoffContext: vi.fn(() => mocks.handoffContext),
 	buildInstanceAiCredentialQuestion: vi.fn(() => 'credential question'),
-	useInstanceAiHandoff: () => ({ startThread: mocks.startThread }),
+	useInstanceAiHandoff: () => ({
+		startThread: mocks.startThread,
+		openWorkflowThread: mocks.openWorkflowThread,
+	}),
 }));
 
 vi.mock('../../instanceAi.store', () => ({
-	useInstanceAiStore: () => ({}),
+	useInstanceAiStore: () => ({
+		getOrCreateRuntime: vi.fn(() => ({ setPendingHandoff: vi.fn() })),
+	}),
+}));
+
+vi.mock('@/features/ndv/shared/ndv.store', () => ({
+	useNDVStore: () => ({
+		get activeNode() {
+			return mocks.activeNode;
+		},
+		unsetActiveNodeName: mocks.unsetActiveNodeName,
+	}),
+}));
+
+vi.mock('@/app/stores/executionData.store', () => ({
+	createExecutionDataId: (id: string) => id,
+	useExecutionDataStore: () => ({
+		getExecutionSnapshot: mocks.getExecutionSnapshot,
+	}),
+}));
+
+vi.mock('@/app/stores/workflowExecutionState.store', () => ({
+	useWorkflowExecutionStateStore: () => ({
+		get activeExecutionId() {
+			return mocks.activeExecutionId;
+		},
+		get displayedExecutionId() {
+			return mocks.displayedExecutionId;
+		},
+	}),
 }));
 
 import {
@@ -73,6 +113,7 @@ function expectCredentialThread(projectId: string) {
 	expect(mocks.startThread).toHaveBeenCalledWith(
 		projectId,
 		'credential question',
+		{ kind: 'prefill', prefillType: 'handoff_credential_setup' },
 		{ source: 'credential_edit', origin: 'internal' },
 		undefined,
 		undefined,
@@ -86,7 +127,13 @@ describe('useInstanceAiHandoffCapability', () => {
 		// No entry in the list store → the editor's workflow reads as unsaved.
 		mocks.getWorkflowById.mockReset();
 		mocks.documentStore.value.homeProject = { id: 'team-project-id' };
+		mocks.documentStore.value.workflowId = 'temporary-workflow-id';
+		mocks.documentStore.value.name = 'My Workflow';
 		mocks.personalProject = { id: 'personal-project-id' };
+		mocks.activeNode = null;
+		mocks.activeExecutionId = undefined;
+		mocks.displayedExecutionId = undefined;
+		mocks.getExecutionSnapshot.mockReturnValue(null);
 	});
 
 	describe('openWorkflow', () => {
@@ -126,6 +173,66 @@ describe('useInstanceAiHandoffCapability', () => {
 				name: INSTANCE_AI_VIEW,
 				query: { [INSTANCE_AI_SOURCE_QUERY]: 'canvas_choice_prompt' },
 			});
+		});
+
+		it('opens a persisted workflow without an opening LLM turn', async () => {
+			mocks.getWorkflowById.mockReturnValue({ id: 'temporary-workflow-id' });
+
+			await openWorkflowFromCanvas();
+
+			expect(mocks.openWorkflowThread).toHaveBeenCalledWith(
+				'team-project-id',
+				{
+					type: 'workflow',
+					id: 'temporary-workflow-id',
+					name: 'My Workflow',
+				},
+				{
+					source: 'canvas_choice_prompt',
+					origin: 'internal',
+					sourceContext: { workflowId: 'temporary-workflow-id' },
+				},
+				expect.any(Function),
+			);
+			expect(mocks.startThread).not.toHaveBeenCalled();
+			expect(mocks.telemetryTrack).toHaveBeenCalledWith('Instance AI opened from editor', {
+				source: 'canvas_choice_prompt',
+				workflow_id: 'temporary-workflow-id',
+				execution_id: null,
+			});
+		});
+
+		it('sends an opening turn when the shown execution failed', async () => {
+			mocks.getWorkflowById.mockReturnValue({ id: 'temporary-workflow-id' });
+			mocks.activeExecutionId = 'exec-1';
+			mocks.getExecutionSnapshot.mockReturnValue({
+				status: 'error',
+				workflowId: 'temporary-workflow-id',
+			});
+
+			await openWorkflowFromCanvas();
+
+			expect(mocks.startThread).toHaveBeenCalledWith(
+				'team-project-id',
+				'The execution failed. Look into what went wrong and help me fix it.',
+				{ kind: 'prefill', prefillType: 'handoff_execution_error' },
+				{
+					source: 'canvas_choice_prompt',
+					origin: 'internal',
+					sourceContext: { workflowId: 'temporary-workflow-id', executionId: 'exec-1' },
+				},
+				[
+					{
+						type: 'workflow',
+						id: 'temporary-workflow-id',
+						name: 'My Workflow',
+						executionId: 'exec-1',
+					},
+				],
+				expect.any(Function),
+				{ newTab: false },
+			);
+			expect(mocks.openWorkflowThread).not.toHaveBeenCalled();
 		});
 	});
 

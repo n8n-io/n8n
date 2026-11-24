@@ -1,6 +1,15 @@
 import get from 'lodash/get';
+import set from 'lodash/set';
+import toPath from 'lodash/toPath';
 import unset from 'lodash/unset';
-import { NodeOperationError, deepCopy, NodeConnectionTypes } from 'n8n-workflow';
+import {
+	NodeOperationError,
+	deepCopy,
+	isSafeObjectProperty,
+	NodeConnectionTypes,
+	READ_ONLY_ANNOTATIONS,
+	setSafeObjectProperty,
+} from 'n8n-workflow';
 import type {
 	IBinaryData,
 	IDataObject,
@@ -21,8 +30,9 @@ export class SplitOut implements INodeType {
 		iconColor: 'violet',
 		group: ['transform'],
 		subtitle: '',
-		version: 1,
+		version: [1, 1.1],
 		description: 'Turn a list inside item(s) into separate items',
+		annotations: READ_ONLY_ANNOTATIONS,
 		defaults: {
 			name: 'Split Out',
 		},
@@ -127,6 +137,7 @@ export class SplitOut implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 		const items = this.getInputData();
 		const fieldsTracker = new FieldsTracker();
+		const nodeVersion = this.getNode().typeVersion;
 
 		for (let i = 0; i < items.length; i++) {
 			const fieldsToSplitOut = prepareFieldsArray(
@@ -142,6 +153,8 @@ export class SplitOut implements INodeType {
 				.split(',')
 				.filter((field) => field.trim() !== '')
 				.map((field) => field.trim());
+			const supportsDestinationPaths =
+				nodeVersion >= 1.1 && !disableDotNotation && destinationFields.length > 0;
 
 			if (destinationFields.length && destinationFields.length !== fieldsToSplitOut.length) {
 				throw new NodeOperationError(
@@ -159,8 +172,37 @@ export class SplitOut implements INodeType {
 
 			const item = { ...items[i].json };
 			const splited: INodeExecutionData[] = [];
+			const pendingDestinationWrites: Array<Array<[field: string, value: IDataObject[string]]>> =
+				[];
+			const setOutputField = (
+				target: IDataObject,
+				elementIndex: number,
+				field: string,
+				value: IDataObject[string],
+			) => {
+				if (supportsDestinationPaths) {
+					pendingDestinationWrites[elementIndex] ??= [];
+					pendingDestinationWrites[elementIndex].push([field, deepCopy(value)]);
+				} else {
+					setSafeObjectProperty(target, field, value);
+				}
+			};
+			const assertSafeOutputField = (field: string) => {
+				const path = supportsDestinationPaths ? toPath(field) : [field];
+				const reservedProperty = path.find((segment) => !isSafeObjectProperty(segment));
+				if (reservedProperty !== undefined) {
+					throw new NodeOperationError(
+						this.getNode(),
+						`The output field "${field}" contains the reserved property "${reservedProperty}"`,
+						{ description: 'Change the field name and try again.' },
+					);
+				}
+			};
+
 			for (const [entryIndex, fieldToSplitOut] of fieldsToSplitOut.entries()) {
 				const destinationFieldName = destinationFields[entryIndex] || '';
+				const fieldName = destinationFieldName || fieldToSplitOut;
+				if (fieldToSplitOut !== '$binary') assertSafeOutputField(fieldName);
 
 				let entityToSplit: IDataObject[] = [];
 
@@ -199,8 +241,6 @@ export class SplitOut implements INodeType {
 						splited[elementIndex] = { json: {}, pairedItem: { item: i } };
 					}
 
-					const fieldName = destinationFieldName || fieldToSplitOut;
-
 					if (fieldToSplitOut === '$binary') {
 						if (splited[elementIndex].binary === undefined) {
 							splited[elementIndex].binary = {};
@@ -219,15 +259,15 @@ export class SplitOut implements INodeType {
 								pairedItem: { item: i },
 							};
 						} else {
-							splited[elementIndex].json[fieldName] = element;
+							setOutputField(splited[elementIndex].json, elementIndex, fieldName, element);
 						}
 					} else {
-						splited[elementIndex].json[fieldName] = element;
+						setOutputField(splited[elementIndex].json, elementIndex, fieldName, element);
 					}
 				}
 			}
 
-			for (const splitEntry of splited) {
+			for (const [elementIndex, splitEntry] of splited.entries()) {
 				let newItem: INodeExecutionData = splitEntry;
 
 				if (include === 'allOtherFields') {
@@ -263,6 +303,14 @@ export class SplitOut implements INodeType {
 					}
 
 					newItem = splitEntry;
+				}
+
+				const destinationWrites = pendingDestinationWrites[elementIndex] ?? [];
+				if (destinationWrites.length > 0) {
+					newItem.json = deepCopy(newItem.json);
+				}
+				for (const [field, value] of destinationWrites) {
+					set(newItem.json, field, value);
 				}
 
 				const includeBinary = options.includeBinary as boolean;

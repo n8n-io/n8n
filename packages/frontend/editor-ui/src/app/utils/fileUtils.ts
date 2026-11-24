@@ -16,17 +16,39 @@ export function getBinaryDataFileName({
 	return `${name}.${fileExtension}`;
 }
 
+/** Generic types that some browsers report for a CSV file, for example on Windows. */
+const GENERIC_CSV_MIME_TYPES = new Set([
+	'',
+	'application/vnd.ms-excel',
+	'application/octet-stream',
+]);
+
+export function resolveFileMimeType(fileName: string, mimeType: string): string {
+	const extension = getFileExtension(fileName).toLowerCase();
+	if (extension === 'csv' && GENERIC_CSV_MIME_TYPES.has(mimeType)) return 'text/csv';
+	if (mimeType) return mimeType;
+	if (extension === 'md' || extension === 'markdown') return 'text/markdown';
+	return '';
+}
+
+/** Inverse of `convertFileToBinaryData`: decodes base64 file data back into a `File`. */
+export function base64ToFile(data: string, fileName: string, mimeType: string): File {
+	const bytes = Uint8Array.from(atob(data), (char) => char.charCodeAt(0));
+	return new File([bytes], fileName, { type: mimeType });
+}
+
 export async function convertFileToBinaryData(file: File): Promise<IBinaryData> {
 	const reader = new FileReader();
 	return await new Promise((resolve, reject) => {
 		reader.onload = () => {
+			const mimeType = resolveFileMimeType(file.name, file.type);
 			const binaryData: IBinaryData = {
 				data: (reader.result as string).split('base64,')?.[1] ?? '',
-				mimeType: file.type,
+				mimeType,
 				fileName: file.name,
 				fileSize: `${file.size} bytes`,
 				fileExtension: getFileExtension(file.name) || undefined,
-				fileType: fileTypeFromMimeType(file.type),
+				fileType: fileTypeFromMimeType(mimeType),
 			};
 			resolve(binaryData);
 		};

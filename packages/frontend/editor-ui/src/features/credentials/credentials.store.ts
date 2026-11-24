@@ -1,6 +1,8 @@
+import { useCredentialDescriptionsExperiment } from '@/experiments/credentialDescriptions/useCredentialDescriptionsExperiment';
 import type { INodeUi } from '@/Interface';
 import type {
 	CredentialFetchScope,
+	CredentialPayload,
 	ICredentialMap,
 	ICredentialsDecryptedResponse,
 	ICredentialsResponse,
@@ -8,6 +10,7 @@ import type {
 	ICredentialTypeMap,
 	IUsedCredential,
 } from './credentials.types';
+import type { CredentialRestriction } from '@n8n/api-types';
 import * as credentialsApi from './credentials.api';
 import * as credentialsEeApi from './credentials.ee.api';
 import { EnterpriseEditionFeature } from '@/app/constants';
@@ -42,9 +45,10 @@ export type CredentialsStore = ReturnType<typeof useCredentialsStore>;
 export type { CredentialFetchScope };
 
 const scopeKey = (scope: CredentialFetchScope): string =>
-	'workflowId' in scope ? `workflow:${scope.workflowId}` : `project:${scope.projectId}`;
+	`${'workflowId' in scope ? `workflow:${scope.workflowId}` : `project:${scope.projectId}`}${scope.forAgent ? ':agent' : ''}${scope.forAssistant ? ':assistant' : ''}`;
 
 export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
+	const { isEnabled: credentialDescriptionsEnabled } = useCredentialDescriptionsExperiment();
 	const state = ref<ICredentialsState>({ credentialTypes: {}, credentials: {} });
 
 	/**
@@ -54,6 +58,11 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 	 * fetch to resolve would otherwise own the credential picker.
 	 */
 	const usableCredentials = ref<ICredentialMap>({});
+	/**
+	 * Restrictions from the last fetch that asked for them, by credential id. Kept apart from
+	 * `state.credentials` for the same reason: other fetches replace it without restrictions.
+	 */
+	const restrictionsById = ref<Record<string, CredentialRestriction>>({});
 	/**
 	 * An unfetched slice reads as empty, never as a fallback to the flat map —
 	 * falling back is the bug. Callers that must not act on "no credentials yet"
@@ -175,6 +184,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 			return allUsableCredentialsByType.value[credentialType] || [];
 		};
 	});
+	const getUsableCredentialById = (id: string) => usableCredentials.value[id];
 
 	const isCredentialTypeTestable = computed(() => {
 		return (credentialTypeName: string): boolean => {
@@ -328,6 +338,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 			includeScopes?: boolean;
 			onlySharedWithMe?: boolean;
 			includeGlobal?: boolean;
+			includeRestrictions?: boolean;
 			externalSecretsStore?: string;
 		} = {},
 	): Promise<ICredentialsResponse[]> => {
@@ -336,6 +347,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 			includeScopes = true,
 			onlySharedWithMe = false,
 			includeGlobal = true,
+			includeRestrictions = false,
 			externalSecretsStore,
 		} = options;
 
@@ -348,9 +360,15 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 			includeScopes,
 			onlySharedWithMe,
 			includeGlobal,
+			includeRestrictions,
 			externalSecretsStore,
 		});
 		setCredentials(credentials);
+		if (includeRestrictions) {
+			restrictionsById.value = Object.fromEntries(
+				credentials.flatMap(({ id, restriction }) => (restriction ? [[id, restriction]] : [])),
+			);
+		}
 		return credentials;
 	};
 
@@ -370,10 +388,6 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 			rootStore.restApiContext,
 			options,
 		);
-		// The flat map keeps replace semantics for its existing consumers; the slice is
-		// what the credential picker reads.
-		setCredentials(credentials);
-
 		// Only the newest request publishes. Several scoped fetches can be in flight at
 		// once — a mount racing the refresh a quick connect triggers, say — and an older
 		// response landing last would reinstate a list we already know is out of date,
@@ -381,6 +395,8 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		if (requestId !== usableCredentialsRequestId) {
 			return credentials;
 		}
+		// Keep the flat map and the scoped picker on the same response.
+		setCredentials(credentials);
 
 		usableCredentials.value = credentials.reduce((accu: ICredentialMap, cred) => {
 			if (cred.id) {
@@ -439,14 +455,17 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 	};
 
 	const createNewCredential = async (
-		data: ICredentialsDecrypted,
+		data: CredentialPayload,
 		projectId?: string,
 		uiContext?: string,
-		options?: { skipStoreUpdate?: boolean },
+		options?: { skipStoreUpdate?: boolean; pendingAuthorization?: boolean },
 	): Promise<ICredentialsResponse> => {
 		const settingsStore = useSettingsStore();
 		const credential = await credentialsApi.createNewCredential(rootStore.restApiContext, {
 			name: data.name,
+			...(credentialDescriptionsEnabled.value && data.description !== undefined
+				? { description: data.description }
+				: {}),
 			type: data.type,
 			data: data.data ?? {},
 			projectId,
@@ -454,6 +473,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 			isGlobal: data.isGlobal,
 			isResolvable: data.isResolvable,
 			usageScope: data.usageScope,
+			pendingAuthorization: options?.pendingAuthorization,
 		});
 
 		if (data?.homeProject && !credential.homeProject) {
@@ -477,25 +497,31 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 	};
 
 	const updateCredential = async (params: {
-		data: ICredentialsDecrypted;
+		data: CredentialPayload;
 		id: string;
 	}): Promise<ICredentialsResponse> => {
-		const { id, data } = params;
+		const { id } = params;
+		const { description, ...data } = params.data;
+		const payload = {
+			...data,
+			...(credentialDescriptionsEnabled.value && description !== undefined ? { description } : {}),
+		};
 		credentialTestResults.value.delete(id);
-		const credential = await credentialsApi.updateCredential(rootStore.restApiContext, id, data);
+		const credential = await credentialsApi.updateCredential(rootStore.restApiContext, id, payload);
 
 		upsertCredential(credential);
 
 		return credential;
 	};
 
-	const deleteCredential = async ({ id }: { id: string }) => {
+	const deleteCredential = async ({ id }: { id: string }): Promise<boolean> => {
 		const deleted = await credentialsApi.deleteCredential(rootStore.restApiContext, id);
 		if (deleted) {
 			const { [id]: deletedCredential, ...rest } = state.value.credentials;
 			state.value.credentials = rest;
 			credentialTestResults.value.delete(id);
 		}
+		return deleted;
 	};
 
 	const disconnectMyConnection = async ({ id }: { id: string }) => {
@@ -517,6 +543,9 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		connectedByMe: boolean,
 		connectedAccountIdentifier?: string,
 	) => {
+		const usable = usableCredentials.value[id];
+		if (usable)
+			usableCredentials.value[id] = { ...usable, connectedByMe, connectedAccountIdentifier };
 		const existing = state.value.credentials[id];
 		if (existing) {
 			state.value.credentials = {
@@ -642,6 +671,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		getCredentialByIdAndType,
 		isCredentialTypeTestable,
 		getUsableCredentialByType,
+		getUsableCredentialById,
 		credentialTypesById,
 		httpOnlyCredentialTypes,
 		getScopesByCredentialType,
@@ -661,6 +691,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		fetchCredentialTypes,
 		fetchAllCredentials,
 		fetchUsableCredentials,
+		restrictionsById,
 		createNewCredential,
 		updateCredential,
 		getCredentialData,
@@ -698,6 +729,8 @@ export const listenForCredentialChanges = (opts: {
 
 			switch (name) {
 				case 'createNewCredential':
+					// Connection flows publish only after authorization or testing succeeds.
+					if (args[3]?.skipStoreUpdate) return;
 					const createdCredential = returnValue as unknown as ICredentialsResponse;
 					onCredentialCreated?.(createdCredential);
 					break;
@@ -708,6 +741,8 @@ export const listenForCredentialChanges = (opts: {
 					break;
 
 				case 'deleteCredential':
+					// Action returns the API delete flag; do not treat failures as deletes.
+					if (returnValue !== true) return;
 					const credentialId = args[0].id;
 					onCredentialDeleted?.(credentialId);
 					break;

@@ -13,8 +13,12 @@ import {
 	MCP_REGISTRY_BASE_NODE_NAME,
 	MCP_REGISTRY_PACKAGE_NAME,
 } from '../node-description-transform';
+import { pairAiGatewayServers } from '../registry/mcp-registry-ai-gateway';
 import type { McpRegistryServer } from '../registry/mcp-registry.types';
 import {
+	databricksGenieTemplatedMockServer,
+	firecrawlAiGatewayMockServer,
+	firecrawlMockServer,
 	gmailDirectExtendMockServer,
 	githubUsesCredentialsMockServer,
 	notionMockServer,
@@ -379,6 +383,116 @@ describe('McpRegistryNodeLoader', () => {
 
 			expect(loader.types.nodes).toHaveLength(1);
 			expect(loader.types.nodes[0].name).toBe('deprecatedServer');
+		});
+
+		it.each([
+			{ status: 'active' as const, registersCredential: true },
+			{ status: 'deprecated' as const, registersCredential: false },
+		])(
+			'registers the Gateway credits credential type of an $status AI Gateway row: $registersCredential',
+			async ({ status, registersCredential }) => {
+				const { loadNodesAndCredentials } = createLoadNodesAndCredentials();
+				const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger);
+				loader.setServers([{ ...firecrawlAiGatewayMockServer, status }]);
+
+				await loader.loadAll();
+
+				expect(loader.types.nodes.map(({ name }) => name)).toEqual(['n8nConnectFirecrawl']);
+				expect('n8nConnectFirecrawlMcpAiGatewayApi' in loader.known.credentials).toBe(
+					registersCredential,
+				);
+			},
+		);
+
+		it('keeps the Gateway credits binding of a paired server, with the AI Gateway endpoint', async () => {
+			const { loadNodesAndCredentials } = createLoadNodesAndCredentials();
+			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger);
+			loader.setServers(
+				pairAiGatewayServers([firecrawlMockServer, firecrawlAiGatewayMockServer], () => true),
+			);
+
+			await loader.loadAll();
+
+			expect(loader.getConnection('@n8n/mcp-registry.firecrawl')?.credentialBindings).toEqual([
+				{ credentialType: 'firecrawlMcpOAuth2Api', selector: 'oAuth2' },
+				{
+					credentialType: 'n8nConnectFirecrawlMcpAiGatewayApi',
+					selector: 'aiGateway',
+					endpoint: {
+						url: 'https://gateway.n8n.test/v1/gateway/mcp/firecrawl',
+						hostname: 'gateway.n8n.test',
+						transport: 'httpStreamable',
+					},
+				},
+			]);
+		});
+	});
+
+	describe('registryRuntime.prepareConnection', () => {
+		function getRegisteredPrepareConnection(baseNode: INodeType) {
+			const setRegistryRuntime = (
+				baseNode as INodeType & { setRegistryRuntime: ReturnType<typeof vi.fn> }
+			).setRegistryRuntime;
+			const runtime = setRegistryRuntime.mock.calls[0][0] as {
+				prepareConnection: (input: unknown) => unknown;
+			};
+			return runtime.prepareConnection;
+		}
+
+		it('merges the registry-configured headers (e.g. the Databricks partner User-Agent) into the connection headers', async () => {
+			const { loadNodesAndCredentials, baseNode } = createLoadNodesAndCredentials({
+				knownCredentialTypes: ['databricksOAuth2Api'],
+			});
+			(
+				loadNodesAndCredentials.knownCredentials as Record<string, unknown>
+			).databricksGenieMcpOAuth2Api = { extends: ['databricksOAuth2Api'] };
+
+			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger);
+			loader.setServers([databricksGenieTemplatedMockServer]);
+			await loader.loadAll();
+
+			const connection = loader.getConnection('@n8n/mcp-registry.databricksGenie');
+			const result = getRegisteredPrepareConnection(baseNode)({
+				connection,
+				credentialType: 'databricksGenieMcpOAuth2Api',
+				credentialData: {
+					oauthTokenData: { access_token: 'token' },
+					serverUrl: 'https://acme.cloud.databricks.com',
+				},
+			});
+
+			expect(result).toMatchObject({
+				ok: true,
+				value: {
+					headers: { Authorization: 'Bearer token', 'User-Agent': 'n8n_DatabricksNode' },
+				},
+			});
+		});
+
+		it('does not add any extra header for a server with no headers configured on its remote', async () => {
+			const { loadNodesAndCredentials, baseNode } = createLoadNodesAndCredentials();
+			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger);
+			loader.setServers([notionMockServer]);
+			await loader.loadAll();
+
+			const connection = loader.getConnection('@n8n/mcp-registry.notion');
+			const result = getRegisteredPrepareConnection(baseNode)({
+				connection,
+				credentialType: 'notionMcpOAuth2Api',
+				credentialData: { oauthTokenData: { access_token: 'token' } },
+			});
+
+			expect(result).toMatchObject({
+				ok: true,
+				value: { headers: { Authorization: 'Bearer token' } },
+			});
+			expect(
+				(
+					result as {
+						value: { headers: Record<string, string> };
+					}
+				).value.headers,
+			).not.toHaveProperty('User-Agent');
 		});
 	});
 

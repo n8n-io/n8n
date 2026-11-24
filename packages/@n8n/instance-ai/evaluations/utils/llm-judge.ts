@@ -1,12 +1,13 @@
 /**
  * Shared LLM-as-judge helpers.
  *
- * Used by both the workflow binary-check factory and the computer-use eval
+ * Used by the workflow binary-check factory
  * graders. Centralizes the "respond with a JSON verdict" instruction suffix,
  * the parsing of fenced/bare JSON, and the verdict shape.
  */
 
-const FENCED_JSON = /```(?:json)?\s*\n?([\s\S]*?)```/;
+import { extractFencedJson } from '@n8n/ai-utilities/llm-output';
+
 const BARE_JSON_OBJECT = /\{[\s\S]*\}/;
 
 /**
@@ -42,13 +43,16 @@ function tryParseMarkdownVerdict(text: string): JudgeVerdict | undefined {
 	return undefined;
 }
 
+/** Judge instruction to reach the verdict from the reasoning, not to justify a verdict already given. */
+export const REASONING_FIRST_RULE = 'Write your reasoning FIRST, then decide pass or fail.';
+
 /**
  * Suffix appended to a judge's system prompt. Forces the model to commit to
  * a binary verdict in a parseable shape.
  */
 export const REASONING_FIRST_SUFFIX = `
 
-IMPORTANT: Write your reasoning FIRST, then decide pass or fail. Be concise — focus only on critical issues.
+IMPORTANT: ${REASONING_FIRST_RULE} Be concise — focus only on critical issues.
 
 Respond with a JSON object (inside a markdown code fence) with exactly two fields:
 - "reasoning": brief analysis (max 3-4 sentences)
@@ -81,9 +85,9 @@ function isJudgeVerdict(value: unknown): value is JudgeVerdict {
  * Returns `undefined` when no valid verdict is found.
  */
 export function parseJudgeVerdict(text: string): JudgeVerdict | undefined {
-	const fenceMatch = text.match(FENCED_JSON);
-	const fenced = fenceMatch ? tryParse(fenceMatch[1].trim()) : tryParse(text.trim());
-	if (fenced) return fenced;
+	const fenced = extractFencedJson(text);
+	const first = tryParse(fenced ?? text.trim());
+	if (first) return first;
 
 	const objectMatch = text.match(BARE_JSON_OBJECT);
 	const bare = objectMatch ? tryParse(objectMatch[0]) : undefined;

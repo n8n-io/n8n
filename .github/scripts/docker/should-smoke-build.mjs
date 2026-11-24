@@ -14,11 +14,21 @@ import { appendFileSync, readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
 const WORKSPACE_FILE = 'pnpm-workspace.yaml';
+const ROOT_MANIFEST = 'package.json';
+const NODES_BASE_MANIFEST = 'packages/nodes-base/package.json';
+const EDIT_IMAGE_NATIVE_PACKAGES = new Set([
+	'@napi-rs/canvas',
+	'@napi-rs/image',
+]);
 
 const BUMP_ONLY = [/^pnpm-workspace\.yaml$/, /^pnpm-lock\.yaml$/, /(^|\/)package\.json$/];
 
 export function isBumpOnly(files) {
-	return files.length > 0 && files.every((f) => BUMP_ONLY.some((re) => re.test(f)));
+	return (
+		files.length > 0 &&
+		!files.includes(NODES_BASE_MANIFEST) &&
+		files.every((f) => BUMP_ONLY.some((re) => re.test(f)))
+	);
 }
 
 // Packages pnpm may run build scripts for — read from the file so a newly
@@ -53,7 +63,7 @@ function pinsFor(text, deps) {
 export function nativePinsChanged(baseText, headText) {
 	const baseDeps = buildableDeps(baseText);
 	const headDeps = buildableDeps(headText);
-	const union = new Set([...baseDeps, ...headDeps]);
+	const union = new Set([...baseDeps, ...headDeps, ...EDIT_IMAGE_NATIVE_PACKAGES]);
 
 	if (
 		baseDeps.size !== headDeps.size ||
@@ -67,6 +77,14 @@ export function nativePinsChanged(baseText, headText) {
 	}
 
 	return { changed: false, reason: 'no buildable dependency pin changed' };
+}
+
+export function packageManagerChanged(baseText, headText) {
+	try {
+		return JSON.parse(baseText).packageManager !== JSON.parse(headText).packageManager;
+	} catch {
+		return true;
+	}
 }
 
 function fileAt(ref, path) {
@@ -88,12 +106,25 @@ function main(argv) {
 	let reason = 'a Docker-chain file changed';
 
 	if (isBumpOnly(files)) {
-		const baseText = fileAt(base, WORKSPACE_FILE);
-		const headText = fileAt('HEAD', WORKSPACE_FILE);
-		if (baseText === null || headText === null) {
-			reason = `could not read ${WORKSPACE_FILE} on both sides of the diff`;
+		const baseManifest = fileAt(base, ROOT_MANIFEST);
+		const headManifest = fileAt('HEAD', ROOT_MANIFEST);
+		if (files.includes(ROOT_MANIFEST) && (baseManifest === null || headManifest === null)) {
+			reason = `could not read ${ROOT_MANIFEST} on both sides of the diff`;
+		} else if (
+			files.includes(ROOT_MANIFEST) &&
+			baseManifest !== null &&
+			headManifest !== null &&
+			packageManagerChanged(baseManifest, headManifest)
+		) {
+			reason = 'the package manager pin changed';
 		} else {
-			({ changed: build, reason } = nativePinsChanged(baseText, headText));
+			const baseWorkspace = fileAt(base, WORKSPACE_FILE);
+			const headWorkspace = fileAt('HEAD', WORKSPACE_FILE);
+			if (baseWorkspace === null || headWorkspace === null) {
+				reason = `could not read ${WORKSPACE_FILE} on both sides of the diff`;
+			} else {
+				({ changed: build, reason } = nativePinsChanged(baseWorkspace, headWorkspace));
+			}
 		}
 	}
 

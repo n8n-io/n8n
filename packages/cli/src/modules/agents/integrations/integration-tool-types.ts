@@ -1,4 +1,9 @@
-import type { AgentIntegrationConfig, N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
+import type {
+	AgentApproval,
+	AgentIntegrationConfig,
+	N8N_CHAT_INTEGRATION_TYPE,
+	RichCardComponentType,
+} from '@n8n/api-types';
 import type { z } from 'zod';
 
 import type { IntegrationErrorCode } from './integration-error-codes';
@@ -29,6 +34,24 @@ export type IntegrationMessageTarget =
  */
 export type ReplyExpectation = 'required' | 'optional';
 
+export const CONVERSATION_TOOL_NAMES = ['do_not_respond'] as const;
+export type ConversationToolName = (typeof CONVERSATION_TOOL_NAMES)[number];
+
+export interface TelegramMessageAttachmentContext {
+	type: 'image' | 'file' | 'video' | 'audio';
+	file_id: string;
+	file_unique_id?: string;
+}
+
+/** Allow-listed platform data from the inbound message. */
+export type IntegrationPlatformMessageContext = {
+	type: 'telegram';
+	chat_id: string;
+	message_id: string;
+	message_thread_id?: string;
+	attachments: TelegramMessageAttachmentContext[];
+};
+
 export interface IntegrationMessageContext {
 	integrationConnectionId: string;
 	platform: string;
@@ -36,11 +59,14 @@ export interface IntegrationMessageContext {
 	messageId?: string;
 	interactingUserId?: string;
 	agentUserId?: string;
+	platformMessage?: IntegrationPlatformMessageContext;
 	subject?: IntegrationMessageSubject;
 	replyExpectation?: ReplyExpectation;
 	/** Inbound target whose automatic reply is controlled by `replyExpectation`. */
 	replyTarget?: IntegrationMessageTarget;
 	replyMessageId?: string;
+	/** Files that respond queued for the final reply of a run. */
+	queuedFiles?: { runId: string; fileIds: string[] };
 	updatedAt: string;
 }
 
@@ -51,6 +77,10 @@ export interface IntegrationMessageSubject {
 	description?: string;
 	url?: string;
 	status?: string;
+	/** The project the subject belongs to, when the platform reports one. */
+	projectId?: string;
+	/** The team the subject belongs to, when the platform reports one. */
+	teamId?: string;
 	labels?: string[];
 	assignee?: IntegrationSubjectPerson;
 	author?: IntegrationSubjectPerson;
@@ -62,9 +92,8 @@ export interface IntegrationSubjectPerson {
 }
 
 /**
- * Source of a tool connection: a persisted credential integration, or the
- * implicit credential-less in-app chat channel (injected per-run, never
- * stored on the agent).
+ * Source of a tool connection: a configured integration, or the implicit
+ * preview chat channel injected per run.
  */
 export type IntegrationToolConnectionSource =
 	| AgentIntegrationConfig
@@ -86,7 +115,8 @@ export type IntegrationContextQuery =
 	| 'search_labels'
 	| 'search_issue_states'
 	| 'get_issue'
-	| 'search_issues';
+	| 'search_issues'
+	| 'list_templates';
 
 export type IntegrationAction =
 	| 'respond'
@@ -97,7 +127,8 @@ export type IntegrationAction =
 	| 'add_reaction'
 	| 'create_issue'
 	| 'update_issue'
-	| 'create_comment';
+	| 'create_comment'
+	| 'send_template';
 
 export interface IntegrationToolOperationDefinition<Name extends string = string> {
 	name: Name;
@@ -108,7 +139,13 @@ export interface IntegrationToolOperationDefinition<Name extends string = string
 export type IntegrationContextQueryDefinition =
 	IntegrationToolOperationDefinition<IntegrationContextQuery>;
 
-export type IntegrationActionDefinition = IntegrationToolOperationDefinition<IntegrationAction>;
+export type IntegrationActionDefinition = IntegrationToolOperationDefinition<IntegrationAction> & {
+	/**
+	 * The action reaches outside the conversation the agent was addressed in.
+	 * These are the actions a channel pre-selects when approval is turned on.
+	 */
+	sensitive?: boolean;
+};
 
 export interface IntegrationToolConnectionDescriptor {
 	agentId?: string;
@@ -122,6 +159,11 @@ export interface IntegrationToolConnectionDescriptor {
 	actionToolDefinitions: IntegrationActionDefinition[];
 	contextToolGuidance?: string[];
 	actionToolGuidance?: string[];
+	supportedComponents?: readonly RichCardComponentType[];
+	/** Eager tools supported by this channel in the current conversation. */
+	conversationTools?: readonly ConversationToolName[];
+	/** Actions this channel gates behind human approval. Absent = none. */
+	approval?: AgentApproval;
 }
 
 export interface IntegrationMessageContextStore {
@@ -131,10 +173,27 @@ export interface IntegrationMessageContextStore {
 		resourceId: string,
 		context: IntegrationMessageContext,
 	): Promise<void>;
-	bindSession(derivedThreadId: string, origin: SessionBinding): Promise<void>;
+	/**
+	 * `recipientId` names the person or channel, so many threads of one recipient
+	 * count once. `outboundText` is the message the task sent to this recipient.
+	 */
+	bindSession(
+		derivedThreadId: string,
+		origin: SessionBinding,
+		options?: { recipientId?: string; outboundText?: string },
+	): Promise<void>;
 	resolveSession(derivedThreadId: string): Promise<SessionBinding | null>;
+	resolveSessionReplyScope(derivedThreadId: string): Promise<SessionReplyScope | null>;
+	/** Removes the task messages a turn carried, once it has accepted them. */
+	consumeOutboundMessages(derivedThreadId: string, carried: string[]): Promise<void>;
 	unbindSession(derivedThreadId: string): Promise<void>;
-	clearSessionBindings(originThreadId: string): Promise<void>;
+	/** Remembers which session sent a message, so a later delivery failure reaches that session. */
+	recordSentMessage(
+		derivedThreadId: string,
+		messageId: string,
+		origin: SessionBinding,
+	): Promise<void>;
+	resolveSentMessage(derivedThreadId: string, messageId: string): Promise<SessionBinding | null>;
 }
 
 export interface SessionBinding {
@@ -142,25 +201,50 @@ export interface SessionBinding {
 	resourceId: string;
 }
 
-export interface IntegrationContextQueryExecutor {
-	execute(params: {
-		descriptor: IntegrationToolConnectionDescriptor;
-		query: IntegrationContextQuery;
-		input: Record<string, unknown>;
-		persistence?: { threadId: string; resourceId: string };
-	}): Promise<unknown>;
+/** What a reply on a task-bound thread may see of the task's session. */
+export interface SessionReplyScope {
+	binding: SessionBinding;
+	/** True when the task also messaged other recipients. */
+	sharedWithOtherRecipients: boolean;
+	/** Messages the task sent to this recipient, oldest first. */
+	outboundMessages: string[];
 }
 
+export interface IntegrationContextQueryParams {
+	abortSignal?: AbortSignal;
+	descriptor: IntegrationToolConnectionDescriptor;
+	query: IntegrationContextQuery;
+	input: Record<string, unknown>;
+	persistence?: { threadId: string; resourceId: string };
+}
+
+export interface IntegrationContextQueryExecutor {
+	execute(params: IntegrationContextQueryParams): Promise<unknown>;
+}
+
+export interface IntegrationActionParams {
+	descriptor: IntegrationToolConnectionDescriptor;
+	action: IntegrationAction;
+	input: Record<string, unknown>;
+	awaitResponse: boolean;
+	runId?: string;
+	toolCallId?: string;
+	currentMessageContext?: IntegrationMessageContext;
+	/** Memory scope of the run. It shows what started the run. */
+	resourceId?: string;
+	/** Read scope for `input.fileIds`. Undefined when the run has no thread. */
+	fileScope?: { projectId: string; threadId: string };
+}
+
+export type IntegrationRecipientCheckParams = Pick<
+	IntegrationActionParams,
+	'descriptor' | 'action' | 'input' | 'resourceId' | 'currentMessageContext'
+>;
+
 export interface IntegrationActionExecutor {
-	execute(params: {
-		descriptor: IntegrationToolConnectionDescriptor;
-		action: IntegrationAction;
-		input: Record<string, unknown>;
-		awaitResponse: boolean;
-		runId?: string;
-		toolCallId?: string;
-		currentMessageContext?: IntegrationMessageContext;
-	}): Promise<IntegrationActionResult>;
+	execute(params: IntegrationActionParams): Promise<IntegrationActionResult>;
+	/** Returns the reason when the integration refuses the recipient, or undefined to allow it. */
+	checkRecipient?(params: IntegrationRecipientCheckParams): string | undefined;
 }
 
 export type IntegrationActionResult =

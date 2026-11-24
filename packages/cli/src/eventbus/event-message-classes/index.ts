@@ -66,6 +66,10 @@ export const eventNamesWorkflow = [
 	'n8n.workflow.cancelled',
 ] as const;
 export const eventNamesGeneric = ['n8n.worker.started', 'n8n.worker.stopped'] as const;
+export const eventNamesInstanceReporting = [
+	'n8n.instanceReporting.success',
+	'n8n.instanceReporting.failed',
+] as const;
 export const eventNamesNode = ['n8n.node.started', 'n8n.node.finished'] as const;
 export const eventNamesExecution = [
 	'n8n.execution.throttled',
@@ -74,6 +78,8 @@ export const eventNamesExecution = [
 export const eventNamesAudit = [
 	'n8n.audit.user.login.success',
 	'n8n.audit.user.login.failed',
+	'n8n.audit.user.login.emailConflict',
+	'n8n.audit.user.logout',
 	'n8n.audit.user.signedup',
 	'n8n.audit.user.updated',
 	'n8n.audit.user.deleted',
@@ -88,6 +94,8 @@ export const eventNamesAudit = [
 	'n8n.audit.user.credentials.updated',
 	'n8n.audit.user.credentials.deleted',
 	'n8n.audit.user.credentials.userDisconnected',
+	'n8n.audit.user.credentials.data.read',
+	'n8n.audit.user.credentials.list.data.read',
 	'n8n.audit.user.api.created',
 	'n8n.audit.user.api.deleted',
 	'n8n.audit.user.api.rotated',
@@ -109,6 +117,10 @@ export const eventNamesAudit = [
 	'n8n.audit.workflow.resumed',
 	'n8n.audit.workflow.archived',
 	'n8n.audit.workflow.unarchived',
+	'n8n.audit.agent.archived',
+	'n8n.audit.agent.unarchived',
+	'n8n.audit.agent.service-account.created',
+	'n8n.audit.agent.service-account.deleted',
 	'n8n.audit.workflow.activated',
 	'n8n.audit.workflow.deactivated',
 	'n8n.audit.workflow.version.updated',
@@ -144,6 +156,8 @@ export const eventNamesAudit = [
 	'n8n.audit.role-mapping.rule.updated',
 	'n8n.audit.role-mapping.rule.deleted',
 	'n8n.audit.role-mapping.rules.bulk-deleted',
+	'n8n.audit.sso.settings.updated',
+	'n8n.audit.provisioning.settings.updated',
 	'n8n.audit.cluster.version-mismatch.detected',
 	'n8n.audit.cluster.version-mismatch.resolved',
 	'n8n.audit.cluster.hostid-clash.detected',
@@ -156,16 +170,40 @@ export const eventNamesAudit = [
 	'n8n.audit.credentials.authorize.rejected',
 	'n8n.audit.workflow-reviews.enabled',
 	'n8n.audit.workflow-reviews.disabled',
+	'n8n.audit.workflow-reviews.approval-required.enabled',
+	'n8n.audit.workflow-reviews.approval-required.disabled',
+	'n8n.audit.public-api-rate-limit.enabled',
+	'n8n.audit.public-api-rate-limit.disabled',
+	'n8n.audit.public-api-rate-limit.updated',
 	'n8n.audit.workflow-review.requested',
 	'n8n.audit.workflow-review.version-updated',
 	'n8n.audit.workflow-review.approved',
 	'n8n.audit.workflow-review.changes-requested',
 	'n8n.audit.workflow-review.closed',
+	'n8n.audit.workflow-review.closed-by-user',
 	'n8n.audit.node-type-policy.scope.updated',
 	'n8n.audit.node-type-policy.document.created',
 	'n8n.audit.node-type-policy.document.updated',
 	'n8n.audit.node-type-policy.document.deleted',
 	'n8n.audit.node-type-policy.attachments.updated',
+	'n8n.audit.execution-limit.updated',
+	'n8n.audit.policy.decision.blocked',
+	'n8n.audit.trusted-source.created',
+	'n8n.audit.trusted-source.updated',
+	'n8n.audit.trusted-source.deleted',
+	'n8n.audit.scim.enabled',
+	'n8n.audit.scim.disabled',
+	'n8n.audit.scim.token.created',
+	'n8n.audit.scim.token.rotated',
+	'n8n.audit.scim.token.revoked',
+	'n8n.audit.scim.deprovisioning.updated',
+	'n8n.audit.scim.request.rejected',
+	'n8n.audit.promotions.provider.created',
+	'n8n.audit.promotions.provider.updated',
+	'n8n.audit.promotions.provider.deleted',
+	'n8n.audit.promotions.environment.created',
+	'n8n.audit.promotions.environment.updated',
+	'n8n.audit.promotions.environment.deleted',
 ] as const;
 
 // Instance MCP server events. Kept as their own list and message class because the payload
@@ -183,6 +221,7 @@ export type EventNamesAuditType = (typeof eventNamesAudit)[number];
 export type EventNamesNodeType = (typeof eventNamesNode)[number];
 export type EventNamesExecutionType = (typeof eventNamesExecution)[number];
 export type EventNamesGenericType = (typeof eventNamesGeneric)[number];
+export type EventNamesInstanceReportingType = (typeof eventNamesInstanceReporting)[number];
 
 export type EventNamesTypes =
 	| EventNamesAuditType
@@ -190,6 +229,7 @@ export type EventNamesTypes =
 	| EventNamesNodeType
 	| EventNamesExecutionType
 	| EventNamesGenericType
+	| EventNamesInstanceReportingType
 	| EventNamesAiNodesType
 	| EventNamesRunnerType
 	| EventNamesQueueType
@@ -201,6 +241,7 @@ export const eventNamesAll = [
 	...eventNamesWorkflow,
 	...eventNamesNode,
 	...eventNamesGeneric,
+	...eventNamesInstanceReporting,
 	...eventNamesAiNodes,
 	...eventNamesRunner,
 	...eventNamesQueue,

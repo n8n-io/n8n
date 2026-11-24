@@ -19,8 +19,7 @@ export const confluenceNodeDescription: INodeTypeDescription = {
 	defaults: {
 		name: 'Confluence',
 	},
-	// Hidden shell: operations land per-ticket; unhide + usableAsTool + docs at ENT-311
-	hidden: true,
+	usableAsTool: true,
 	inputs: [NodeConnectionTypes.Main],
 	outputs: [NodeConnectionTypes.Main],
 	credentials: [

@@ -2,8 +2,9 @@ import { jsonParse } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { Z } from '../../zod-class';
+import { folderResourceTypeSchema } from '../../schemas/folder.schema';
 
-const VALID_SELECT_FIELDS = [
+export const VALID_SELECT_FIELDS = [
 	'id',
 	'name',
 	'createdAt',
@@ -12,11 +13,13 @@ const VALID_SELECT_FIELDS = [
 	'tags',
 	'parentFolder',
 	'workflowCount',
+	'agentCount',
+	'resourceType',
 	'subFolderCount',
 	'path',
 ] as const;
 
-const VALID_SORT_OPTIONS = [
+export const VALID_SORT_OPTIONS = [
 	'name:asc',
 	'name:desc',
 	'createdAt:asc',
@@ -40,7 +43,7 @@ export const filterSchema = z
 // ---------------------
 
 // Filter parameter validation
-const filterValidator = z
+export const filterValidator = z
 	.string()
 	.optional()
 	.transform((val, ctx) => {
@@ -53,7 +56,6 @@ const filterValidator = z
 				ctx.addIssue({
 					code: z.ZodIssueCode.custom,
 					message: 'Invalid filter fields',
-					path: ['filter'],
 				});
 				return z.NEVER;
 			}
@@ -61,14 +63,13 @@ const filterValidator = z
 			ctx.addIssue({
 				code: z.ZodIssueCode.custom,
 				message: 'Invalid filter format',
-				path: ['filter'],
 			});
 			return z.NEVER;
 		}
 	});
 
 // Skip parameter validation
-const skipValidator = z
+export const skipValidator = z
 	.string()
 	.optional()
 	.transform((val) => (val ? parseInt(val, 10) : 0))
@@ -77,7 +78,7 @@ const skipValidator = z
 	});
 
 // Take parameter validation
-const takeValidator = z
+export const takeValidator = z
 	.string()
 	.optional()
 	.transform((val) => (val ? parseInt(val, 10) : 10))
@@ -87,7 +88,7 @@ const takeValidator = z
 
 // Select parameter validation
 const selectFieldsValidator = z.array(z.enum(VALID_SELECT_FIELDS));
-const selectValidator = z
+export const selectValidator = z
 	.string()
 	.optional()
 	.transform((val, ctx) => {
@@ -106,7 +107,6 @@ const selectValidator = z
 				ctx.addIssue({
 					code: z.ZodIssueCode.custom,
 					message: `Invalid select fields. Valid fields are: ${VALID_SELECT_FIELDS.join(', ')}`,
-					path: ['select'],
 				});
 				return z.NEVER;
 			}
@@ -114,7 +114,6 @@ const selectValidator = z
 			ctx.addIssue({
 				code: z.ZodIssueCode.custom,
 				message: 'Invalid select format',
-				path: ['select'],
 			});
 			return z.NEVER;
 		}
@@ -126,6 +125,7 @@ const sortByValidator = z
 	.optional();
 
 export class ListFolderQueryDto extends Z.class({
+	resourceType: folderResourceTypeSchema.default('workflow'),
 	filter: filterValidator,
 	skip: skipValidator,
 	take: takeValidator,

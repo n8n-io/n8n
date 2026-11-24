@@ -1,6 +1,7 @@
 import type { InstanceAiVerificationFailure } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { OutboundHttp } from '@n8n/backend-network';
+import type { TelemetryProxy } from '@n8n/backend-services';
 import type { GlobalConfig, InstanceAiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
@@ -11,7 +12,10 @@ vi.mock('@n8n/agents', () => ({ createModel: vi.fn(), raceWithAbort: raceWithAbo
 vi.mock('ai', () => ({ generateText: vi.fn() }));
 vi.mock('@n8n/instance-ai', () => ({ createSandbox: vi.fn(), createWorkspace: vi.fn() }));
 vi.mock('@n8n/ai-utilities', () => ({ braveSearch: vi.fn(), searxngSearch: vi.fn() }));
-vi.mock('@/utils/ai-proxy-fetch', () => ({ createAiProxyFetch: vi.fn(() => vi.fn()) }));
+vi.mock('@/utils/ai-proxy-fetch', () => ({
+	createAiProxyFetch: vi.fn(() => vi.fn()),
+	createWebSearchFetch: vi.fn(() => vi.fn()),
+}));
 
 import { braveSearch, searxngSearch } from '@n8n/ai-utilities';
 import { createModel } from '@n8n/agents';
@@ -22,8 +26,6 @@ import { generateText } from 'ai';
 import type { InstanceAiModelService } from '../instance-ai-model.service';
 import type { InstanceAiSettingsService } from '../instance-ai-settings.service';
 import { InstanceAiVerificationService } from '../instance-ai-verification.service';
-
-import type { Telemetry } from '@/telemetry';
 
 describe('InstanceAiVerificationService', () => {
 	const globalConfig = mock<GlobalConfig>({
@@ -38,7 +40,7 @@ describe('InstanceAiVerificationService', () => {
 		} as unknown as InstanceAiConfig,
 	});
 	const logger = mock<Logger>();
-	const telemetry = mock<Telemetry>();
+	const telemetry = mock<TelemetryProxy>();
 	const settingsService = mock<InstanceAiSettingsService>();
 	const modelService = mock<InstanceAiModelService>();
 	const outboundHttp = mock<OutboundHttp>();
@@ -88,7 +90,12 @@ describe('InstanceAiVerificationService', () => {
 		it('verifies a draft connection with restored credential data', async () => {
 			const connection = { type: 'openAiApi', data: { apiKey: '__redacted__' } };
 			const restored = { type: 'openAiApi', data: { apiKey: 'saved-key' } };
-			const modelConfig = { id: 'openai/gpt-5.4', url: '', apiKey: 'saved-key' } as const;
+			const modelConfig = {
+				kind: 'endpoint',
+				id: 'openai/gpt-5.4',
+				url: '',
+				apiKey: 'saved-key',
+			} as const;
 			settingsService.resolveModelConnectionForVerification.mockResolvedValue(restored);
 			settingsService.buildModelConfigForConnection.mockReturnValue(modelConfig);
 
@@ -219,6 +226,7 @@ describe('InstanceAiVerificationService', () => {
 				serviceUrl: 'https://draft.sandbox',
 				apiKey: 'saved-key',
 				timeout: 60,
+				ephemeral: true,
 			});
 			expect(timeoutSpy).toHaveBeenCalledWith(60);
 			expect(workspace.sandbox.executeCommand).toHaveBeenCalledWith('printf', ['ok'], {
@@ -311,6 +319,7 @@ describe('InstanceAiVerificationService', () => {
 				serviceUrl: 'https://saved.sandbox',
 				apiKey: 'saved-key',
 				timeout: 60,
+				ephemeral: true,
 			});
 		});
 
@@ -374,6 +383,7 @@ describe('InstanceAiVerificationService', () => {
 				'saved-key',
 				'n8n workflow automation',
 				expect.objectContaining({ maxResults: 10 }),
+				expect.any(Function),
 			);
 			expect(searxngSearchMock).not.toHaveBeenCalled();
 		});
@@ -390,6 +400,7 @@ describe('InstanceAiVerificationService', () => {
 				'https://saved.searxng',
 				'n8n workflow automation',
 				expect.objectContaining({ maxResults: 10 }),
+				expect.any(Function),
 			);
 		});
 

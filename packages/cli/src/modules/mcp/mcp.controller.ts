@@ -1,12 +1,11 @@
 import { Logger } from '@n8n/backend-common';
+import { TelemetryProxy } from '@n8n/backend-services';
 import { AuthenticatedRequest } from '@n8n/db';
 import { createIpRateLimit, Get, Head, Post, RootLevelController } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { lazyImport } from '@n8n/utils/lazy-import';
 import type { Request, Response } from 'express';
 import { ErrorReporter } from 'n8n-core';
-
-import { Telemetry } from '@/telemetry';
 
 import { McpProtectedResource } from './mcp-protected-resource';
 import { McpServerMiddlewareService } from './mcp-server-middleware.service';
@@ -17,6 +16,7 @@ import {
 	MCP_DISCOVER_METHOD,
 	HANDSHAKE_FAILED_ERROR_MESSAGE,
 	MISSING_PROTOCOL_VERSION_ERROR_MESSAGE,
+	MCP_EMPTY_PREFERENCES_NOTE_FLAG,
 } from './mcp.constants';
 import { McpService, type McpFeatureFlags } from './mcp.service';
 import { isJSONRPCRequest } from './mcp.typeguards';
@@ -25,7 +25,7 @@ import type {
 	McpAuthenticatedRequest,
 	UserConnectedToMCPEventPayload,
 } from './mcp.types';
-import { getClientInfo, getProtocolVersion } from './mcp.utils';
+import { getClientInfo, getProtocolVersion, isConnectionHandshake } from './mcp.utils';
 
 export type FlushableResponse = Response & { flush: () => void };
 
@@ -39,7 +39,7 @@ export class McpController {
 	constructor(
 		private readonly errorReporter: ErrorReporter,
 		private readonly mcpService: McpService,
-		private readonly telemetry: Telemetry,
+		private readonly telemetry: TelemetryProxy,
 		private readonly logger: Logger,
 		private readonly mcpProtectedResource: McpProtectedResource,
 	) {}
@@ -131,8 +131,7 @@ export class McpController {
 		// telemetry. Legacy clients on the stateless fallback still send
 		// `initialize`.
 		const isDiscoverHandshake = isJSONRPCRequest(body) && body.method === MCP_DISCOVER_METHOD;
-		const isConnectionHandshake =
-			isDiscoverHandshake || (isJSONRPCRequest(body) && body.method === 'initialize');
+		const isHandshake = isConnectionHandshake(body);
 		const isToolCallRequest = isJSONRPCRequest(body) ? body.method === 'tools/call' : false;
 		const clientInfo = getClientInfo(req);
 
@@ -146,7 +145,7 @@ export class McpController {
 			auth_type: (req as McpAuthenticatedRequest).mcpCaller?.authType,
 			mcp_apps_enabled: featureFlags.mcpApps.enabled,
 			mcp_apps_variant: featureFlags.mcpApps.variant,
-			mcp_canvas_groups_enabled: featureFlags.canvasGroupsEnabled,
+			[`$feature/${MCP_EMPTY_PREFERENCES_NOTE_FLAG}`]: featureFlags.preferencesNoteVariant,
 		};
 
 		// In stateless mode, create a new instance of transport and server for each request
@@ -154,7 +153,7 @@ export class McpController {
 		// when multiple clients connect concurrently.
 		try {
 			const transportError = await this.handleTransportRequest(req, res, featureFlags, req.body);
-			if (isConnectionHandshake) {
+			if (isHandshake) {
 				// The SDK answers a failed handshake with an error response instead of
 				// throwing, so a resolved call says nothing about the outcome: the
 				// status it wrote is what tells us whether the client connected.
@@ -167,6 +166,14 @@ export class McpController {
 				// otherwise count as connected.
 				const unservableDiscover = isDiscoverHandshake && !telemetryPayload.protocol_version;
 				const failed = res.statusCode >= 400 || unservableDiscover;
+				// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+				if (!failed && !transportError)
+					this.mcpService.recordDiscoveryConnection(
+						req.user.id,
+						clientInfo?.name,
+						(req as McpAuthenticatedRequest).mcpCaller,
+					);
+				// EOF Experiment cleanup
 				this.trackConnectionEvent({
 					...telemetryPayload,
 					mcp_connection_status: failed ? 'error' : 'success',
@@ -182,7 +189,7 @@ export class McpController {
 			}
 		} catch (error) {
 			this.errorReporter.error(error);
-			if (isConnectionHandshake) {
+			if (isHandshake) {
 				this.trackConnectionEvent({
 					...telemetryPayload,
 					mcp_connection_status: 'error',
@@ -237,7 +244,14 @@ export class McpController {
 		// 2026-07-28 protocol and, via the stateless legacy fallback, 2025-era
 		// clients on this same endpoint.
 		const handler = createMcpHandler(
-			async () => await this.mcpService.getServer(req.user, featureFlags, getClientInfo(req), auth),
+			async () =>
+				await this.mcpService.getServer(
+					req.user,
+					featureFlags,
+					getClientInfo(req),
+					auth,
+					req.ctx ?? {},
+				),
 			{
 				legacy: 'stateless',
 				onerror: (error) => {

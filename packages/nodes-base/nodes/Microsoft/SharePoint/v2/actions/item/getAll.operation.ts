@@ -1,4 +1,5 @@
 import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { returnAllOrLimit } from '../../../../../../utils/descriptions';
 import { updateDisplayOptions } from '../../../../../../utils/utilities';
@@ -9,10 +10,10 @@ import {
 	NON_INDEXED_QUERY_HEADERS,
 	nonIndexedFilterThresholdError,
 	simplifyItem,
-} from '../../helpers/utils';
-import { listRLC, untilSiteSelected } from '../../list';
-import { resolveSiteId, siteRLC } from '../../site';
-import { microsoftApiRequestAllItems } from '../../transport';
+} from '../../../helpers/utils';
+import { listRLC, untilSiteSelected } from '../../../list';
+import { resolveSiteId, siteRLC } from '../../../site';
+import { microsoftApiRequestAllItems } from '../../../transport';
 
 const properties: INodeProperties[] = [
 	{
@@ -134,7 +135,7 @@ export async function execute(
 			this,
 			'value',
 			'GET',
-			`/v1.0/sites/${encodeURIComponent(siteId)}/lists/${encodeURIComponent(listIdOrTitle)}/items`,
+			requestPath`/v1.0/sites/${siteId}/lists/${listIdOrTitle}/items`,
 			{},
 			qs,
 			limit,

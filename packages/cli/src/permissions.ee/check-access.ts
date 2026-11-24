@@ -5,6 +5,7 @@ import {
 	CredentialsRepository,
 	Project,
 	ProjectRepository,
+	RoleRepository,
 	SharedCredentials,
 	SharedCredentialsRepository,
 	SharedWorkflow,
@@ -12,11 +13,9 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
-import { UnexpectedError } from 'n8n-workflow';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { RoleService } from '@/services/role.service';
+import { CredentialsFinderService, RoleService } from '@n8n/backend-services';
+import { NotFoundError, UnexpectedError } from '@n8n/errors';
 
 const INSTANCE_CREDENTIAL_MANAGEMENT_SCOPES = new Set<Scope>([
 	'credential:read',
@@ -61,11 +60,13 @@ export async function userHasScopes(
 		workflowId,
 		projectId,
 		dataTableId,
+		agentId,
 	}: {
 		credentialId?: string;
 		workflowId?: string;
 		projectId?: string;
 		dataTableId?: string;
+		agentId?: string;
 	} /* only one */,
 	entityManager?: EntityManager,
 ): Promise<boolean> {
@@ -114,6 +115,13 @@ export async function userHasScopes(
 	// Then find at least one of the above qualifying projects having one of
 	// those resource roles over the resource being checked.
 	const roleService = Container.get(RoleService);
+	const loadRoles = entityManager
+		? async () => await Container.get(RoleRepository).findAll(entityManager)
+		: undefined;
+	const rolesWithScope = async (namespace: 'credential' | 'workflow') =>
+		loadRoles
+			? await roleService.rolesWithScope(namespace, scopes, loadRoles)
+			: await roleService.rolesWithScope(namespace, scopes);
 
 	if (credentialId) {
 		const credentialRepo = entityManager
@@ -125,7 +133,7 @@ export async function userHasScopes(
 			throw new NotFoundError(`Credential with ID "${credentialId}" not found.`);
 		}
 
-		const validRoles = await roleService.rolesWithScope('credential', scopes, entityManager);
+		const validRoles = await rolesWithScope('credential');
 
 		const hasValidRoles = credentials.some(
 			(c) => userProjectIds.includes(c.projectId) && validRoles.includes(c.role),
@@ -150,7 +158,7 @@ export async function userHasScopes(
 			throw new NotFoundError(`Workflow with ID "${workflowId}" not found.`);
 		}
 
-		const validRoles = await roleService.rolesWithScope('workflow', scopes, entityManager);
+		const validRoles = await rolesWithScope('workflow');
 
 		return workflows.some(
 			(w) => userProjectIds.includes(w.projectId) && validRoles.includes(w.role),
@@ -163,7 +171,7 @@ export async function userHasScopes(
 			throw new NotFoundError(`Data table with ID "${dataTableId}" not found.`);
 		}
 
-		const { DataTableRepository } = await import('@/modules/data-table/data-table.repository.js');
+		const { DataTableRepository } = await import('@n8n/backend-module-data-table');
 		const dataTable = await Container.get(DataTableRepository).findOne({
 			where: { id: dataTableId },
 			relations: ['project'],
@@ -177,9 +185,28 @@ export async function userHasScopes(
 		return userProjectIds.includes(dataTable.project.id);
 	}
 
+	if (agentId) {
+		const moduleRegistry = Container.get(ModuleRegistry);
+		if (!moduleRegistry.isActive('agents')) {
+			throw new NotFoundError(`Agent with ID "${agentId}" not found.`);
+		}
+
+		const { AgentRepository } = await import('@/modules/agents/repositories/agent.repository.js');
+		// Project-scoped lookup: an instance agent resolves to no agent, same
+		// as a missing one, so both read as not found.
+		const agent = await Container.get(AgentRepository).findById(agentId);
+
+		if (!agent) {
+			throw new NotFoundError(`Agent with ID "${agentId}" not found.`);
+		}
+
+		// Agents don't have resource-level roles, only project-level access
+		return userProjectIds.includes(agent.projectId);
+	}
+
 	if (projectId) return userProjectIds.includes(projectId);
 
 	throw new UnexpectedError(
-		"`@ProjectScope` decorator was used but does not have a `credentialId`, `workflowId`, `dataTableId`, or `projectId` in its URL parameters. This is likely an implementation error. If you're a developer, please check your URL is correct or that this should be using `@GlobalScope`.",
+		"`@ProjectScope` decorator was used but does not have a `credentialId`, `workflowId`, `dataTableId`, `agentId`, or `projectId` in its URL parameters. This is likely an implementation error. If you're a developer, please check your URL is correct or that this should be using `@GlobalScope`.",
 	);
 }

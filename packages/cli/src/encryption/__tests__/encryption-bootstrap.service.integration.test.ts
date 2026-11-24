@@ -1,11 +1,15 @@
 import { mockInstance, testDb } from '@n8n/backend-test-utils';
-import { DeploymentKeyRepository } from '@n8n/db';
+import { DeploymentKey, DeploymentKeyRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { DataSource, type Repository } from '@n8n/typeorm';
 import { Cipher, InstanceSettings } from 'n8n-core';
+import { randomBytes } from 'node:crypto';
 
 import { EncryptionBootstrapService } from '../encryption-bootstrap.service';
+import { KeyManagerService } from '../key-manager.service';
 
 const INSTANCE_ENCRYPTION_KEY = 'legacy-encryption-key';
+let keyStore: Repository<DeploymentKey>;
 
 beforeAll(async () => {
 	mockInstance(InstanceSettings, {
@@ -15,10 +19,11 @@ beforeAll(async () => {
 		canSeedDeploymentState: true,
 	});
 	await testDb.init();
+	keyStore = Container.get(DataSource).getRepository(DeploymentKey);
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['DeploymentKey']);
+	await testDb.resetDeploymentKeys();
 });
 
 afterAll(async () => {
@@ -29,7 +34,7 @@ describe('EncryptionBootstrapService (integration)', () => {
 	it('creates an inactive CBC key seeded from the instance encryption key', async () => {
 		await Container.get(EncryptionBootstrapService).run();
 
-		const rows = await Container.get(DeploymentKeyRepository).find({
+		const rows = await keyStore.find({
 			where: { type: 'data_encryption', algorithm: 'aes-256-cbc' },
 		});
 		expect(rows).toHaveLength(1);
@@ -43,7 +48,7 @@ describe('EncryptionBootstrapService (integration)', () => {
 	it('creates an active GCM key', async () => {
 		await Container.get(EncryptionBootstrapService).run();
 
-		const rows = await Container.get(DeploymentKeyRepository).find({
+		const rows = await keyStore.find({
 			where: { type: 'data_encryption', algorithm: 'aes-256-gcm', status: 'active' },
 		});
 		expect(rows).toHaveLength(1);
@@ -53,7 +58,7 @@ describe('EncryptionBootstrapService (integration)', () => {
 		await Container.get(EncryptionBootstrapService).run();
 		await Container.get(EncryptionBootstrapService).run();
 
-		const all = await Container.get(DeploymentKeyRepository).find({
+		const all = await keyStore.find({
 			where: { type: 'data_encryption' },
 		});
 		const cbcKeys = all.filter((k) => k.algorithm === 'aes-256-cbc');
@@ -67,7 +72,7 @@ describe('EncryptionBootstrapService (integration)', () => {
 
 		await Promise.all([...Array(5)].map(async () => await service.run()));
 
-		const all = await Container.get(DeploymentKeyRepository).find({
+		const all = await keyStore.find({
 			where: { type: 'data_encryption' },
 		});
 		const cbcKeys = all.filter((k) => k.algorithm === 'aes-256-cbc');
@@ -85,10 +90,25 @@ describe('EncryptionBootstrapService (integration)', () => {
 			[...Array(5)].map(async (_, i) => await repository.seedLegacyCbcKey(`value-${i}`)),
 		);
 
-		const rows = await repository.find({
+		const rows = await keyStore.find({
 			where: { type: 'data_encryption', algorithm: 'aes-256-cbc' },
 		});
 		expect(rows).toHaveLength(1);
+	});
+
+	it('keeps the active key when the activation target does not exist', async () => {
+		await Container.get(EncryptionBootstrapService).run();
+		const repository = Container.get(DeploymentKeyRepository);
+		const activeBefore = await keyStore.findOne({
+			where: { type: 'data_encryption', status: 'active' },
+		});
+
+		await expect(repository.activateDataEncryptionKey('missing')).rejects.toThrow('not found');
+
+		const activeAfter = await keyStore.findOne({
+			where: { type: 'data_encryption', status: 'active' },
+		});
+		expect(activeAfter?.id).toBe(activeBefore?.id);
 	});
 
 	describe('end-to-end write path (real key store, real cipher)', () => {
@@ -115,13 +135,101 @@ describe('EncryptionBootstrapService (integration)', () => {
 
 				const encrypted = await cipher.encryptV2('e2e-on');
 
-				const active =
-					await Container.get(DeploymentKeyRepository).findActiveByType('data_encryption');
+				const active = await keyStore.findOne({
+					where: { type: 'data_encryption', status: 'active' },
+				});
 				expect(encrypted.startsWith(`${active!.id}:`)).toBe(true);
 				expect(await cipher.decryptV2(encrypted)).toBe('e2e-on');
 			} finally {
 				delete process.env.N8N_ENV_FEAT_ENCRYPTION_KEY_ROTATION;
 			}
+		});
+	});
+
+	describe('legacy DEK repair', () => {
+		const seed = async (value: string) => {
+			await keyStore.save(
+				keyStore.create({
+					type: 'data_encryption',
+					value,
+					algorithm: 'aes-256-gcm',
+					status: 'active',
+				}),
+			);
+		};
+
+		const onlyRow = async () => {
+			const rows = await keyStore.find({
+				where: { type: 'data_encryption' },
+			});
+			expect(rows).toHaveLength(1);
+			return rows[0];
+		};
+
+		// Seeds an inactive row and returns it — the partial unique index allows
+		// only one active row per type, so a multi-row test must stay inactive.
+		const seedRow = async (value: string) => {
+			return await keyStore.save(
+				keyStore.create({
+					type: 'data_encryption',
+					value,
+					algorithm: 'aes-256-gcm',
+					status: 'inactive',
+				}),
+			);
+		};
+
+		it.each<[string, (cipher: Cipher, rawKey: string) => string]>([
+			['raw 2.18.x', (_cipher, rawKey) => rawKey],
+			['CBC 2.19.x', (cipher, rawKey) => cipher.encryptWithInstanceKey(rawKey)],
+		])('repairs a seeded %s key losslessly and idempotently', async (_name, build) => {
+			const cipher = Container.get(Cipher);
+			const rawKey = randomBytes(32).toString('hex');
+			await seed(build(cipher, rawKey));
+			const km = Container.get(KeyManagerService);
+
+			await km.repairLegacyDataEncryptionKeys();
+			const afterFirst = await onlyRow();
+			expect(cipher.decryptDEKWithInstanceKey(afterFirst.value)).toBe(rawKey);
+
+			// A second run leaves the now-GCM value untouched.
+			await km.repairLegacyDataEncryptionKeys();
+			const afterSecond = await onlyRow();
+			expect(afterSecond.value).toBe(afterFirst.value);
+		});
+
+		it('repairs every legacy row in a mixed set and keeps going past a skipped row', async () => {
+			const cipher = Container.get(Cipher);
+			const rawA = randomBytes(32).toString('hex');
+			const rawB = randomBytes(32).toString('hex');
+			const rawC = randomBytes(32).toString('hex');
+
+			const rawRow = await seedRow(rawA);
+			const gcmRow = await seedRow(cipher.encryptDEKWithInstanceKey(rawB));
+			const cbcRow = await seedRow(cipher.encryptWithInstanceKey(rawC));
+
+			await Container.get(KeyManagerService).repairLegacyDataEncryptionKeys();
+
+			const rows = await keyStore.find({ where: { type: 'data_encryption' } });
+			const byId = (id: string) => rows.find((r) => r.id === id)!;
+
+			// Both legacy rows are now GCM-readable and recover their exact keys.
+			expect(cipher.decryptDEKWithInstanceKey(byId(rawRow.id).value)).toBe(rawA);
+			expect(cipher.decryptDEKWithInstanceKey(byId(cbcRow.id).value)).toBe(rawC);
+			// The already-GCM row is untouched, byte for byte.
+			expect(byId(gcmRow.id).value).toBe(gcmRow.value);
+		});
+
+		it('leaves a properly GCM-wrapped key untouched', async () => {
+			const cipher = Container.get(Cipher);
+			const rawKey = randomBytes(32).toString('hex');
+			await seed(cipher.encryptDEKWithInstanceKey(rawKey));
+			const before = await onlyRow();
+
+			await Container.get(KeyManagerService).repairLegacyDataEncryptionKeys();
+
+			const after = await onlyRow();
+			expect(after.value).toBe(before.value);
 		});
 	});
 });

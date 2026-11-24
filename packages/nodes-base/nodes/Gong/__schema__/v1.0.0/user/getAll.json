@@ -1,0 +1,99 @@
+{
+	"properties": {
+		"active": {
+			"type": "boolean"
+		},
+		"conferencingProviders": {
+			"items": {
+				"properties": {
+					"isDefault": {
+						"type": "boolean"
+					},
+					"provider": {
+						"type": "string"
+					}
+				},
+				"type": "object"
+			},
+			"type": ["array", "null"]
+		},
+		"created": {
+			"type": "string"
+		},
+		"emailAddress": {
+			"type": "string"
+		},
+		"emailAliases": {
+			"items": {
+				"type": "string"
+			},
+			"type": "array"
+		},
+		"extension": {},
+		"firstName": {
+			"type": "string"
+		},
+		"id": {
+			"type": "string"
+		},
+		"lastName": {
+			"type": "string"
+		},
+		"managerId": {
+			"type": ["null", "string"]
+		},
+		"meetingConsentPageUrl": {
+			"type": ["null", "string"]
+		},
+		"personalMeetingUrls": {
+			"items": {},
+			"type": "array"
+		},
+		"phoneNumber": {},
+		"settings": {
+			"properties": {
+				"emailsImported": {
+					"type": "boolean"
+				},
+				"gongConnectEnabled": {
+					"type": "boolean"
+				},
+				"nonRecordedMeetingsImported": {
+					"type": "boolean"
+				},
+				"preventEmailImport": {
+					"type": "boolean"
+				},
+				"preventWebConferenceRecording": {
+					"type": "boolean"
+				},
+				"telephonyCallsImported": {
+					"type": "boolean"
+				},
+				"webConferencesRecorded": {
+					"type": "boolean"
+				}
+			},
+			"type": "object"
+		},
+		"spokenLanguages": {
+			"items": {
+				"properties": {
+					"language": {
+						"type": "string"
+					},
+					"primary": {
+						"type": "boolean"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"title": {
+			"type": ["null", "string"]
+		},
+		"trustedEmailAddress": {}
+	},
+	"type": "object"
+}

@@ -3,6 +3,7 @@ import type { WorkflowEntity } from '@n8n/db';
 import { BreakingChangeRule } from '@n8n/decorators';
 import type { INode } from 'n8n-workflow';
 
+import { reportAffectedNodes } from '../../detection-report';
 import type {
 	BreakingChangeRuleMetadata,
 	IBreakingChangeWorkflowRule,
@@ -21,9 +22,10 @@ export class AiTransformDeprecatedRule implements IBreakingChangeWorkflowRule {
 			version: 'v3',
 			title: 'AI Transform node is deprecated',
 			description:
-				'The AI Transform node is deprecated. Its generated code runs as a Code node instead.',
+				'The AI Transform node is deprecated, and workflows that use it fail after the update.',
 			category: BreakingChangeCategory.workflow,
-			severity: 'medium',
+			impact: 'executionsFail',
+			assistant: 'fix',
 		};
 	}
 
@@ -35,7 +37,7 @@ export class AiTransformDeprecatedRule implements IBreakingChangeWorkflowRule {
 			{
 				action: 'Replace AI Transform with a Code node',
 				description:
-					'The AI Transform node runs its generated JavaScript in the same sandbox as the Code node. Migrate it to a Code node to keep it working.',
+					'Give the Code node the same name and connections as the AI Transform node. Set Language to JavaScript and Mode to Run Once for All Items, then copy in the generated code and node settings such as Always Output Data. If the AI Transform node has no generated code, generate it first.',
 			},
 		];
 	}
@@ -46,18 +48,12 @@ export class AiTransformDeprecatedRule implements IBreakingChangeWorkflowRule {
 		nodesGroupedByType: Map<string, INode[]>,
 	): Promise<WorkflowDetectionReport> {
 		const affectedNodes = nodesGroupedByType.get(AI_TRANSFORM_NODE_TYPE) ?? [];
-		if (affectedNodes.length === 0) return { isAffected: false, issues: [] };
 
-		return {
-			isAffected: true,
-			issues: affectedNodes.map((node) => ({
-				title: `Node '${node.name}' uses the deprecated AI Transform node`,
-				description:
-					'The AI Transform node is deprecated. Migrate it to a Code node to keep it working.',
-				level: 'warning',
-				nodeId: node.id,
-				nodeName: node.name,
-			})),
-		};
+		return reportAffectedNodes(affectedNodes, (node) => ({
+			title: `Node '${node.name}' uses the deprecated AI Transform node`,
+			description:
+				'The AI Transform node is deprecated. Migrate it to a Code node to keep it working.',
+			level: 'warning',
+		}));
 	}
 }

@@ -1,17 +1,17 @@
 import type { Folder, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import { FolderFinderService } from '@/services/folder-finder.service';
+import { FolderFinderService } from '@n8n/backend-services';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { FolderSerializer } from './folder.serializer';
 import { packageDirectory, writeManifestEntry } from '../../io/manifest-entry';
 import type { PackageWriter } from '../../io/package-writer';
-import type { ManifestEntry } from '../../spec/manifest.schema';
-import type { WorkflowVersionPolicy } from '../../n8n-packages.types';
+import type { ManifestEntry, WorkflowManifestEntry } from '../../spec/manifest.schema';
+import type { ExportVersionPolicy } from '../../n8n-packages.types';
 import { assertEveryRequestedEntityAccessible } from '../package-export.errors';
 import { mergeRequirements } from '../requirements.types';
-import type { WorkflowExportRequirements } from '../requirements.types';
+import type { ExportRequirements } from '../requirements.types';
 import { WorkflowExporter } from '../workflow/workflow.exporter';
 import type { WorkflowExportResult } from '../workflow/workflow.exporter';
 
@@ -20,28 +20,39 @@ export interface FolderExportRequest {
 	folderIds: string[];
 	writer: PackageWriter;
 	includeTags: boolean;
-	workflowVersionPolicy: WorkflowVersionPolicy;
-	includeArchivedWorkflows: boolean;
+	versionPolicy: ExportVersionPolicy;
+	includeArchived: boolean;
+	includeAgentFolders?: boolean;
 	/**
 	 * Directory the folder tree is written under. Empty for a top-level folder
 	 * export (`folders/...`); a project exporter passes `projects/<slug>-<id>` so
 	 * the same walk nests under `projects/<slug>-<id>/folders/...`.
 	 */
 	basePrefix?: string;
+	/**
+	 * Export only these workflows and the folders on the path to them. Slug-based
+	 * targets are stable per entity, so a partial export names what it writes
+	 * exactly as a full export would.
+	 */
+	selectedWorkflowIds?: ReadonlySet<string>;
+	/** With `selectedWorkflowIds`, also export these folders and the folders above them. */
+	selectedFolderIds?: ReadonlySet<string>;
 }
 
 export interface FolderExportResult {
 	/** Folder shells → `manifest.folders[]`. */
 	entries: ManifestEntry[];
 	/** Workflows contained in the exported folders → `manifest.workflows[]`. */
-	workflowEntries: ManifestEntry[];
+	workflowEntries: WorkflowManifestEntry[];
 	/** What the contained workflows need, gathered at the package top level (credentials today). */
-	requirements: WorkflowExportRequirements;
+	requirements: ExportRequirements;
 }
 
 interface FolderWriteContext {
 	childrenByParent: Map<string, Folder[]>;
 	workflowIdsByFolder: Map<string, string[]>;
+	/** Folders to write; `undefined` means all of them. */
+	foldersToWrite: ReadonlySet<string> | undefined;
 	request: FolderExportRequest;
 }
 
@@ -55,7 +66,7 @@ export class FolderExporter {
 	) {}
 
 	async export(request: FolderExportRequest): Promise<FolderExportResult> {
-		const folders = await this.folderFinder.findFolderSubtreesForUser(
+		const accessibleFolders = await this.folderFinder.findFolderSubtreesForUser(
 			request.folderIds,
 			request.user,
 			['folder:read'],
@@ -64,23 +75,61 @@ export class FolderExporter {
 		await assertEveryRequestedEntityAccessible(
 			'folder',
 			request.folderIds,
-			folders,
+			accessibleFolders,
 			async (ids) => await this.folderFinder.findExistingFolderIds(ids),
 		);
 
+		const folders =
+			request.includeAgentFolders === false
+				? accessibleFolders.filter((folder) => folder.resourceType === 'workflow')
+				: accessibleFolders;
 		const { roots, childrenByParent } = this.buildForest(folders);
 
 		const workflowIdsByFolder = await this.workflowFinder.findWorkflowIdsByFolder(
 			folders.map((folder) => folder.id),
-			{ includeArchived: request.includeArchivedWorkflows },
+			{ includeArchived: request.includeArchived },
 		);
+
+		const foldersToWrite = request.selectedWorkflowIds
+			? this.foldersContaining(
+					request.selectedWorkflowIds,
+					request.selectedFolderIds ?? new Set(),
+					folders,
+					workflowIdsByFolder,
+				)
+			: undefined;
 
 		const foldersDir = packageDirectory('folders', request.basePrefix);
 		return await this.exportLevel(roots, foldersDir, null, {
 			childrenByParent,
 			workflowIdsByFolder,
+			foldersToWrite,
 			request,
 		});
+	}
+
+	/** The selected folders and the folders that hold a selected workflow, plus their in-set ancestors. */
+	private foldersContaining(
+		selectedWorkflowIds: ReadonlySet<string>,
+		selectedFolderIds: ReadonlySet<string>,
+		folders: Folder[],
+		workflowIdsByFolder: Map<string, string[]>,
+	): Set<string> {
+		const parentById = new Map(folders.map((folder) => [folder.id, folder.parentFolderId]));
+		const result = new Set<string>();
+
+		const holding = [...workflowIdsByFolder]
+			.filter(([, workflowIds]) => workflowIds.some((id) => selectedWorkflowIds.has(id)))
+			.map(([folderId]) => folderId);
+		for (const folderId of [...selectedFolderIds, ...holding]) {
+			for (let current: string | null | undefined = folderId; current; ) {
+				if (result.has(current)) break;
+				result.add(current);
+				current = parentById.get(current);
+			}
+		}
+
+		return result;
 	}
 
 	/**
@@ -119,6 +168,7 @@ export class FolderExporter {
 	): Promise<FolderExportResult> {
 		const results: FolderExportResult[] = [];
 		for (const folder of this.orderedByCreation(siblings)) {
+			if (context.foldersToWrite && !context.foldersToWrite.has(folder.id)) continue;
 			results.push(await this.exportFolder(folder, parentDir, effectiveParentId, context));
 		}
 
@@ -165,16 +215,23 @@ export class FolderExporter {
 		basePrefix: string,
 		request: FolderExportRequest,
 	): Promise<WorkflowExportResult> {
-		if (workflowIds.length === 0) {
+		const { selectedWorkflowIds } = request;
+		// A folder on the path to a selection may hold none of it, so narrow before
+		// the empty check. Filtering the source list keeps the manifest order stable.
+		const selected = selectedWorkflowIds
+			? workflowIds.filter((id) => selectedWorkflowIds.has(id))
+			: workflowIds;
+
+		if (selected.length === 0) {
 			return { entries: [], requirements: mergeRequirements() };
 		}
 
 		return await this.workflowExporter.export({
 			user: request.user,
 			writer: request.writer,
-			workflowIds,
+			workflowIds: selected,
 			includeTags: request.includeTags,
-			workflowVersionPolicy: request.workflowVersionPolicy,
+			versionPolicy: request.versionPolicy,
 			basePrefix,
 		});
 	}

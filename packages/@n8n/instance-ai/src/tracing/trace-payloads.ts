@@ -1,20 +1,22 @@
 import {
 	redactText,
-	SUPPORTED_PII_CATEGORIES,
 	type AttributeValue,
 	type RedactionOptions,
 	type RuntimeSkillRegistry,
 } from '@n8n/agents';
+import type { InstanceAiPromptConfiguration } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
+import { SUPPORTED_PII_CATEGORIES } from '@n8n/utils/redaction/pii-patterns';
+import { isSensitiveKey } from '@n8n/utils/redaction/sensitive-key';
 import { createHash } from 'node:crypto';
 
 import {
-	DOMAIN_TOOL_IDS,
 	ORCHESTRATION_TOOL_IDS,
 	ORCHESTRATION_TOOL_NAMES,
 	WORKSPACE_TOOL_IDS,
 } from '../tools/tool-ids';
 import type { InstanceAiToolRegistry } from '../types';
+import { classifyToolCategory, classifyToolSideEffect } from './tool-classification';
 import { formatAgentRoleLabel, formatTraceLabel } from './trace-labels';
 import { modelConfigId } from '../utils/model-config-id';
 
@@ -25,11 +27,25 @@ const MAX_TOOL_IO_TRACE_DEPTH = 8;
  *  beyond real workflow nesting; scrubbing still applies at every level. */
 const MAX_RAW_PAYLOAD_TRACE_DEPTH = 64;
 const MAX_TRACE_STRING_LENGTH = 2_000;
+/** The user's message and the assistant's reply are the most useful trace fields, so they get a much higher cap. */
+const MAX_TRACE_CONVERSATION_TEXT_LENGTH = 100_000;
+const TRACE_CONVERSATION_TEXT_KEYS = new Set(['message', 'response']);
+const TRUNCATED_MARKER_PATTERN = /^\[truncated \d+ chars\]$/;
+/** Scrub this much past the cap, so a long secret (a PEM key) that crosses the cut is still matched whole. */
+const CONVERSATION_TEXT_SCRUB_MARGIN = 10_000;
+/**
+ * The redactor's cost grows with the square of an unbroken run's length (40k
+ * characters of base64 take ~1 s), so a pasted blob keeps only its start.
+ */
+const MAX_TRACE_UNBROKEN_RUN_LENGTH = 2_000;
+/** The lookbehind tries a match only at the start of a run, which keeps the scan linear. */
+const LONG_UNBROKEN_RUN_PATTERN = new RegExp(
+	`(?<!\\S)\\S{${MAX_TRACE_UNBROKEN_RUN_LENGTH + 1},}`,
+	'g',
+);
 const MAX_TOOL_ACTION_DISPLAY_LENGTH = 64;
 const MAX_TRACE_ARRAY_ITEMS = 20;
 const MAX_TRACE_OBJECT_KEYS = 30;
-const SENSITIVE_TELEMETRY_KEY_PATTERN =
-	/(api[_-]?key|authorization|bearer|cookie|credentials?|password|secret|access[_-]?token|refresh[_-]?token|id[_-]?token|session[_-]?token|auth[_-]?token|(?:^|[._-])token$)/i;
 
 /**
  * LangSmith structural identifier attributes. These carry the run/trace/span IDs
@@ -75,7 +91,7 @@ export const DEFAULT_TELEMETRY_REDACTION_OPTIONS: RedactionOptions = {
 };
 
 /** Redact secrets + all PII from a free-text telemetry value before it egresses. */
-function scrubTelemetryText(value: string): string {
+export function scrubTelemetryText(value: string): string {
 	return redactText(value, DEFAULT_TELEMETRY_REDACTION_OPTIONS).text;
 }
 
@@ -98,11 +114,12 @@ const LLM_AI_SDK_OPERATION_IDS = new Set([
 ]);
 
 export interface AgentTraceInputOptions {
+	promptConfiguration?: InstanceAiPromptConfiguration;
 	systemPrompt?: string;
 	tools?: InstanceAiToolRegistry;
 	deferredTools?: InstanceAiToolRegistry;
 	runtimeTools?: InstanceAiToolRegistry;
-	runtimeSkills?: RuntimeSkillRegistry;
+	skills?: RuntimeSkillRegistry;
 	modelId?: unknown;
 	memory?: unknown;
 	toolSearchEnabled?: boolean;
@@ -185,7 +202,7 @@ function redactTelemetryJsonValue(
 		return '[redacted-depth-limit]';
 	}
 
-	if (keyHint && SENSITIVE_TELEMETRY_KEY_PATTERN.test(keyHint)) {
+	if (keyHint && isSensitiveKey(keyHint)) {
 		return '[redacted]';
 	}
 
@@ -231,7 +248,7 @@ function redactTelemetryAttribute(key: string, value: unknown, completionDepth?:
 		return value;
 	}
 
-	if (SENSITIVE_TELEMETRY_KEY_PATTERN.test(key)) {
+	if (isSensitiveKey(key)) {
 		return '[redacted]';
 	}
 
@@ -712,6 +729,12 @@ function buildLangSmithUsageMetadata(
 		inputTokenDetails.ephemeral_5m_input_tokens = cacheCreationTokens;
 	}
 
+	const reasoningTokens =
+		firstNumberAttribute(attributes, [
+			'ai.usage.outputTokenDetails.reasoningTokens',
+			'ai.usage.reasoningTokens',
+		]) ?? 0;
+
 	return {
 		input_tokens: totalInputTokens,
 		output_tokens: outputTokens,
@@ -719,6 +742,47 @@ function buildLangSmithUsageMetadata(
 		...(Object.keys(inputTokenDetails).length > 0
 			? { input_token_details: inputTokenDetails }
 			: {}),
+		...(reasoningTokens > 0 ? { output_token_details: { reasoning: reasoningTokens } } : {}),
+	};
+}
+
+/** Same precedence as the LangSmith exporter, so `outputs.text` keeps its current value. */
+const LANGSMITH_COMPLETION_SOURCE_KEYS = [
+	'ai.response.toolCalls',
+	'ai.response.object',
+	'ai.response.choices',
+	'ai.response.text',
+];
+
+function nonEmptyString(value: unknown): string | undefined {
+	return typeof value === 'string' && value.length > 0 ? value : undefined;
+}
+
+/**
+ * LangSmith keeps an attribute only as metadata, which it drops above ~500
+ * characters. On a tool-call step `outputs.text` holds the tool calls, so the
+ * visible text is lost too. Add both to the completion so the outputs keep them whole.
+ */
+function addLostTextToCompletion(attributes: Record<string, unknown>): void {
+	if (GEN_AI_COMPLETION in attributes) return;
+
+	const text = readStringAttribute(attributes, LANGSMITH_COMPLETION_SOURCE_KEYS);
+	const lostText = readLostText(attributes, text);
+	if (Object.keys(lostText).length === 0) return;
+
+	attributes[GEN_AI_COMPLETION] = JSON.stringify({ ...(text ? { text } : {}), ...lostText });
+}
+
+/** Visible text that `outputs.text` does not already hold, and the reasoning text. */
+function readLostText(
+	attributes: Record<string, unknown>,
+	outputText: string | undefined,
+): { assistant_text?: string; reasoning?: string } {
+	const visibleText = nonEmptyString(attributes['ai.response.text']);
+	const reasoning = nonEmptyString(attributes['ai.response.reasoning']);
+	return {
+		...(visibleText && visibleText !== outputText ? { assistant_text: visibleText } : {}),
+		...(reasoning ? { reasoning } : {}),
 	};
 }
 
@@ -1027,10 +1091,24 @@ export function redactLangSmithTelemetrySpan(span: unknown): unknown {
 	}
 	enrichLangSmithPromptAttribute(attributes);
 	normalizeUsageForLangSmith(attributes);
+	if (isLangSmithLlmSpan(attributes)) addLostTextToCompletion(attributes);
 	renameNativeLlmSpanForLangSmith(span, attributes);
 	renameNativeToolSpanForLangSmith(span, attributes);
 	moveNonLlmUsageAttributes(attributes);
 	span.attributes = attributes;
+	if (isRecord(span.status) && typeof span.status.message === 'string') {
+		span.status = {
+			...span.status,
+			message: truncateString(scrubTelemetryText(span.status.message)),
+		};
+	}
+	if (Array.isArray(span.events)) {
+		span.events = span.events.map((event: unknown) =>
+			isRecord(event) && isRecord(event.attributes)
+				? { ...event, attributes: redactTelemetryJsonValue(event.attributes) }
+				: event,
+		);
+	}
 	return span;
 }
 
@@ -1098,47 +1176,6 @@ function classifyToolSource(name: string, toolRecord: Record<string, unknown>): 
 	}
 
 	return 'domain';
-}
-
-function classifyToolCategory(name: string): string {
-	if (name.includes('credential')) return 'credential';
-	if (name.includes('browser')) return 'browser';
-	if (name.includes('data-table')) return 'data-table';
-	if (name.includes('workflow')) {
-		return 'workflow';
-	}
-	if (name === DOMAIN_TOOL_IDS.NODES || name === 'materialize-node-type') return 'node';
-	if (name === DOMAIN_TOOL_IDS.EXECUTIONS) return 'execution';
-	if (name.includes('research')) return 'research';
-	if (name.includes('plan') || name === ORCHESTRATION_TOOL_IDS.CREATE_TASKS) {
-		return 'planning';
-	}
-	if (name.startsWith('workspace_')) return 'workspace';
-	if (name.includes('file') || name.includes('filesystem')) return 'filesystem';
-	return 'other';
-}
-
-function classifyToolSideEffect(name: string): string {
-	if (name.includes('browser')) return 'browser';
-	if (name.includes('research')) return 'network';
-	if (name === DOMAIN_TOOL_IDS.EXECUTIONS || name.includes('execute') || name.includes('run')) {
-		return 'execute';
-	}
-	if (
-		name.includes('write') ||
-		name.includes('submit') ||
-		name.includes('apply') ||
-		name.includes('build') ||
-		name.includes('create') ||
-		name.includes('update') ||
-		name.includes('delete') ||
-		name.includes('remove') ||
-		name.includes('complete')
-	) {
-		return 'write';
-	}
-	if (name.includes(DOMAIN_TOOL_IDS.ASK_USER) || name.includes('pause-for-user')) return 'none';
-	return 'read';
 }
 
 function getToolInputSchema(tool: unknown): unknown {
@@ -1238,7 +1275,8 @@ function summarizeMemoryBinding(memory: unknown): Record<string, unknown> {
 	};
 }
 
-function summarizeRuntimeSkillRegistry(
+/** The `runtime_skill_*` keys stay as they are, because trace queries read them. */
+function summarizeSkillRegistry(
 	registry: RuntimeSkillRegistry | undefined,
 ): Record<string, unknown> {
 	if (!registry || registry.skills.length === 0) {
@@ -1312,11 +1350,56 @@ export function sanitizeTraceValue(value: unknown, depth = 0): unknown {
 	return truncateString(Object.prototype.toString.call(value));
 }
 
-export function sanitizeTracePayload(value: unknown): Record<string, unknown> {
+/**
+ * Scrub before the cut: a secret that crosses the cap would otherwise lose the
+ * tail the redactor needs to match. Idempotent, because inputs are
+ * re-sanitized on every merge.
+ */
+function capConversationText(value: string): string {
+	if (TRUNCATED_MARKER_PATTERN.test(value.slice(MAX_TRACE_CONVERSATION_TEXT_LENGTH))) {
+		return value;
+	}
+	// Cut runs over the whole text first, so a run that crosses the scan window
+	// is counted once and the text after it is still scanned.
+	const cut = cutLongUnbrokenRuns(value);
+	const scanLength = MAX_TRACE_CONVERSATION_TEXT_LENGTH + CONVERSATION_TEXT_SCRUB_MARGIN;
+	const scrubbed = scrubTelemetryText(cut.slice(0, scanLength));
+	const kept = scrubbed.slice(0, MAX_TRACE_CONVERSATION_TEXT_LENGTH);
+	const unscanned = Math.max(cut.length - scanLength, 0);
+	const dropped = scrubbed.length - kept.length + unscanned;
+	if (dropped === 0) {
+		return scrubbed;
+	}
+	return `${kept}[truncated ${dropped} chars]`;
+}
+
+/** The space before the marker keeps the kept run at the limit, so a second pass leaves it unchanged. */
+function cutLongUnbrokenRuns(value: string): string {
+	return value.replace(
+		LONG_UNBROKEN_RUN_PATTERN,
+		(run) =>
+			`${run.slice(0, MAX_TRACE_UNBROKEN_RUN_LENGTH)} [truncated ${run.length - MAX_TRACE_UNBROKEN_RUN_LENGTH} chars]`,
+	);
+}
+
+export interface SanitizeTracePayloadOptions {
+	/** Give the user message and the assistant reply the higher cap. Only a turn root sets this. */
+	conversationText?: boolean;
+}
+
+export function sanitizeTracePayload(
+	value: unknown,
+	options: SanitizeTracePayloadOptions = {},
+): Record<string, unknown> {
 	if (isRecord(value)) {
 		const sanitized: Record<string, unknown> = {};
 		for (const [key, entryValue] of Object.entries(value)) {
-			sanitized[key] = sanitizeTraceValue(entryValue);
+			sanitized[key] =
+				options.conversationText &&
+				TRACE_CONVERSATION_TEXT_KEYS.has(key) &&
+				typeof entryValue === 'string'
+					? capConversationText(entryValue)
+					: sanitizeTraceValue(entryValue);
 		}
 		return sanitized;
 	}
@@ -1369,6 +1452,14 @@ export function mergeTraceInputs(
 
 export function buildAgentTraceInputs(options: AgentTraceInputOptions): Record<string, unknown> {
 	return sanitizeTracePayload({
+		...(options.promptConfiguration
+			? {
+					prompt_configuration: options.promptConfiguration,
+					system_prompt_hash: createHash('sha256')
+						.update(options.systemPrompt ?? '')
+						.digest('hex'),
+				}
+			: {}),
 		...(options.systemPrompt ? { system_prompt: serializeTraceText(options.systemPrompt) } : {}),
 		...(options.modelId !== undefined ? { model: serializeModelIdForTrace(options.modelId) } : {}),
 		...(options.toolSearchEnabled !== undefined
@@ -1379,6 +1470,6 @@ export function buildAgentTraceInputs(options: AgentTraceInputOptions): Record<s
 		...summarizeToolSet('loaded', options.tools),
 		...summarizeToolSet('deferred', options.deferredTools),
 		...summarizeToolSet('runtime', options.runtimeTools),
-		...summarizeRuntimeSkillRegistry(options.runtimeSkills),
+		...summarizeSkillRegistry(options.skills),
 	});
 }

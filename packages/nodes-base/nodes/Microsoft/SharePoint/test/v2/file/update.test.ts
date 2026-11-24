@@ -1,5 +1,5 @@
 import type { IBinaryData, IExecuteFunctions, INode } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import type { DeepMockProxy } from 'vitest-mock-extended';
 import { mock, mockDeep } from 'vitest-mock-extended';
@@ -8,14 +8,14 @@ import { execute } from '../../../v2/actions/file/update.operation';
 import {
 	MAX_SIMPLE_UPLOAD_BYTES,
 	SHAREPOINT_ILLEGAL_FILE_NAME_CHARS,
-} from '../../../v2/helpers/utils';
-import * as transport from '../../../v2/transport';
-import type * as _importType0 from '../../../v2/transport';
+} from '../../../helpers/utils';
+import * as transport from '../../../transport';
+import type * as _importType0 from '../../../transport';
 
 // Real transport module except the network helper, so getSharePointCredentialType
 // keeps its real behavior; only microsoftApiRequest is stubbed.
-vi.mock('../../../v2/transport', async () => {
-	const originalModule = await vi.importActual<typeof _importType0>('../../../v2/transport');
+vi.mock('../../../transport', async () => {
+	const originalModule = await vi.importActual<typeof _importType0>('../../../transport');
 	return {
 		...originalModule,
 		microsoftApiRequest: vi.fn(),
@@ -24,9 +24,8 @@ vi.mock('../../../v2/transport', async () => {
 
 const SITE_ID =
 	'contoso.sharepoint.com,2C712604-1370-44E7-A1F5-426573FDA80A,2D2244C3-251A-49EA-93A8-39E1C3A060FE';
-const ENCODED_SITE_ID = encodeURIComponent(SITE_ID);
 const FILE_ID = '01SPEVVYELNAJ4S3XKNBBIEUJZOWXGE64U';
-const ITEM_PATH = `/v1.0/sites/${ENCODED_SITE_ID}/drive/items/${FILE_ID}`;
+const ITEM_PATH = requestPath`/v1.0/sites/${SITE_ID}/drive/items/${FILE_ID}`;
 const FILE_BYTES = Buffer.from('new,contents\n3,4\n');
 
 const PATCH_REPLY = { id: FILE_ID, name: 'renamed.csv' };
@@ -88,7 +87,7 @@ describe('Microsoft SharePoint v2 — File: Update', () => {
 		expect(apiRequest).toHaveBeenCalledTimes(1);
 		const [method, resource, body, , , headers] = apiRequest.mock.calls[0];
 		expect(method).toBe('PUT');
-		expect(resource).toBe(`${ITEM_PATH}/content`);
+		expect(resource).toEqual(requestPath`${ITEM_PATH}/content`);
 		expect((body as Buffer).equals(FILE_BYTES)).toBe(true);
 		expect(headers).toEqual({ 'Content-Type': 'text/csv' });
 		expect(result).toEqual(PUT_REPLY);

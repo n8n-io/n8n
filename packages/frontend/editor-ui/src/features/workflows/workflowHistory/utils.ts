@@ -2,9 +2,10 @@ import type { IWorkflowDb } from '@/Interface';
 import type {
 	WorkflowPublishHistory,
 	WorkflowHistory,
+	WorkflowVersion,
 } from '@n8n/rest-api-client/api/workflowHistory';
-import { useI18n } from '@n8n/i18n';
 import dateformat from 'dateformat';
+import { pickVersionedSettings } from 'n8n-workflow';
 
 export const getLastPublishedVersion = (
 	workflowPublishHistory: readonly WorkflowPublishHistory[],
@@ -12,27 +13,10 @@ export const getLastPublishedVersion = (
 	return workflowPublishHistory.findLast((history) => history.event === 'activated');
 };
 
-export const generateVersionLabelFromId = (versionId: string) => {
-	return `Version ${versionId.substring(0, 8)}`;
-};
-
-export const getVersionLabel = ({
-	workflowHistory,
-	currentVersionId,
-}: {
-	workflowHistory: Pick<WorkflowHistory, 'versionId' | 'name'>;
-	currentVersionId?: string;
-}) => {
-	const i18n = useI18n();
-	if (workflowHistory.name) {
-		return workflowHistory.name;
-	}
-
-	const isCurrentVersion = workflowHistory.versionId === currentVersionId;
-	return isCurrentVersion
-		? i18n.baseText('workflowHistory.item.currentChanges')
-		: generateVersionLabelFromId(workflowHistory.versionId);
-};
+export {
+	generateVersionLabelFromId,
+	getVersionLabel,
+} from '@n8n/composables/useWorkflowVersionLabel';
 
 export const formatTimestamp = (value: string) => {
 	const currentYear = new Date().getFullYear().toString();
@@ -111,7 +95,31 @@ export const computeTimelineEntries = (items: WorkflowHistory[]): TimelineEntry[
 	return entries;
 };
 
-export const getPublishedVersionId = (workflow: IWorkflowDb | null): string | undefined => {
+/**
+ * Returns the workflow as it was in the given version, for the compare view.
+ * Live settings stay those of the workflow. Version-scoped settings come from the version.
+ */
+export const toVersionDiffWorkflow = (
+	workflow: IWorkflowDb,
+	version: WorkflowVersion,
+): IWorkflowDb => ({
+	...workflow,
+	versionId: version.versionId,
+	nodes: version.nodes,
+	connections: version.connections,
+	nodeGroups: version.nodeGroups ?? [],
+	settings: {
+		...workflow.settings,
+		...pickVersionedSettings(version.settings),
+		// The editor settings type requires an execution order, so `applyVersionedSettings`
+		// does not fit here. A workflow without one runs with the legacy `v0` order.
+		executionOrder: workflow.settings?.executionOrder ?? 'v0',
+	},
+});
+
+export const getPublishedVersionId = (
+	workflow: IWorkflowDb | null | undefined,
+): string | undefined => {
 	if (!workflow) {
 		return;
 	}

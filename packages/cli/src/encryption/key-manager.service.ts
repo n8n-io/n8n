@@ -16,9 +16,15 @@ import {
 } from 'n8n-core';
 import { randomBytes } from 'node:crypto';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NotFoundError } from '@n8n/errors';
 
 import { isKeyRotationEnabled } from './key-rotation-flag';
+
+/** Raw DEK format: 64 hex chars stored directly as key material (n8n 2.18.x). */
+const RAW_DEK_PATTERN = /^[0-9a-f]{64}$/i;
+
+/** AES-256-CBC (OpenSSL Salted__) wrapped DEK, base64 prefix (n8n 2.19.x). */
+const CBC_WRAPPED_PREFIX = 'U2FsdGVk';
 
 /**
  * How long a process trusts its database view of the active key. A rotation
@@ -43,7 +49,10 @@ export class KeyManagerService implements IEncryptionKeyProvider {
 	 */
 	private cachedInstanceKeyInfo?: KeyInfo;
 
-	/** Memoized stored legacy CBC row — immutable once seeded, never deleted. */
+	/**
+	 * Memoized legacy read descriptor: the stored CBC row, or the instance key when
+	 * the row does not match it. The row is immutable once seeded, never deleted.
+	 */
 	private cachedStoredLegacyKey?: KeyInfo;
 
 	/** In-process LRU for by-id lookups. See {@link KEY_BY_ID_CACHE_CAPACITY}. */
@@ -76,9 +85,7 @@ export class KeyManagerService implements IEncryptionKeyProvider {
 			return this.activeKeyMemo.info;
 		}
 
-		const activeKeys = await this.deploymentKeyRepository.find({
-			where: { type: 'data_encryption', status: 'active' },
-		});
+		const activeKeys = await this.deploymentKeyRepository.findActiveDataEncryptionKeys();
 		if (activeKeys.length === 0) {
 			throw new NotFoundError('No active encryption key found');
 		}
@@ -110,7 +117,7 @@ export class KeyManagerService implements IEncryptionKeyProvider {
 			return cached;
 		}
 
-		const key = await this.deploymentKeyRepository.findOne({ where: { id } });
+		const key = await this.deploymentKeyRepository.findDataEncryptionKeyById(id);
 		if (!key) return null;
 		const keyInfo: KeyInfo = {
 			id: key.id,
@@ -123,6 +130,80 @@ export class KeyManagerService implements IEncryptionKeyProvider {
 	}
 
 	/**
+	 * Returns the raw DEK for a legacy-format value, or null if the value is already
+	 * GCM-wrapped or cannot be recovered with this instance key.
+	 */
+	private recoverLegacyDek(keyInfo: DeploymentKey): string | null {
+		const { value } = keyInfo;
+		// Older seed: the DEK stored as the instance key verbatim, unwrapped. Checked
+		// first so a value equal to the instance key is recovered whatever its shape.
+		if (value === this.instanceSettings.encryptionKey) {
+			return value;
+		}
+
+		// 2.18.x: raw key material, used directly. Re-wrap as-is, no decrypt needed.
+		if (RAW_DEK_PATTERN.test(value)) {
+			return value;
+		}
+
+		// 2.19.x: DEK wrapped with the instance key via AES-256-CBC.
+		if (value.startsWith(CBC_WRAPPED_PREFIX)) {
+			let recovered: string;
+			try {
+				recovered = this.cipher.decryptWithInstanceKey(value);
+			} catch {
+				this.logger.warn(
+					`Failed to decrypt legacy CBC-wrapped DEK ${keyInfo.id} with the instance key, this was probably wrapped with a different instance key`,
+				);
+				return null;
+			}
+
+			if (!RAW_DEK_PATTERN.test(recovered)) {
+				this.logger.warn(`Recovered legacy DEK ${keyInfo.id} is not valid raw key material`);
+				return null;
+			}
+
+			return recovered;
+		}
+
+		// A value that already unwraps is current-format and needs no repair. Warn
+		// about anything else. A silent skip leaves every no-prefix read failing
+		// with a message that blames the instance key.
+		try {
+			this.cipher.decryptDEKWithInstanceKey(value);
+		} catch (error) {
+			this.logger.warn(
+				`DEK ${keyInfo.id} is in an unrecognized format. n8n cannot re-wrap it with this instance key, so reads of data without a key-id prefix will fail.`,
+				{ error },
+			);
+		}
+		return null;
+	}
+
+	/**
+	 * Re-wraps data-encryption keys stored in a pre-2.20 legacy format. Early key
+	 * managers stored the DEK either as raw 64-hex key material (2.18.x) or wrapped
+	 * with the instance key via AES-256-CBC (2.19.x). The current unwrap path expects
+	 * a GCM blob, so both fail to decrypt. Both wrap the same 64-hex DEK; recovering
+	 * it and re-wrapping with GCM restores the exact same key, so data stays readable.
+	 * Idempotent: a GCM value matches neither legacy detector and is left untouched.
+	 */
+	async repairLegacyDataEncryptionKeys(): Promise<void> {
+		const rows = await this.deploymentKeyRepository.findDataEncryptionKeys();
+		for (const row of rows) {
+			const rawKey = this.recoverLegacyDek(row);
+			if (rawKey === null) continue;
+			const wrapped = this.cipher.encryptDEKWithInstanceKey(rawKey);
+			await this.deploymentKeyRepository.rewrapLegacyDataEncryptionValue(
+				row.id,
+				row.value,
+				wrapped,
+			);
+			this.logger.info(`Re-wrapped legacy DEK ${row.id} with the instance key`);
+		}
+	}
+
+	/**
 	 * Returns the legacy CBC key used to decrypt old rows (no keyId prefix).
 	 *
 	 * Prefers the stored key so the real read path stays exercised. If the store
@@ -130,21 +211,32 @@ export class KeyManagerService implements IEncryptionKeyProvider {
 	 * back to the instance key directly. Old data is plain CBC under the instance
 	 * key, and the seeded legacy key IS the instance key, so both paths yield the
 	 * same result. This keeps reads of old data working while the store is degraded.
+	 * A row seeded under a different instance key is also skipped: writes always
+	 * use the current instance key, so reads must use it too.
 	 */
 	async getLegacyKey(): Promise<KeyInfo> {
 		if (this.cachedStoredLegacyKey) return this.cachedStoredLegacyKey;
 
 		try {
-			const key = await this.deploymentKeyRepository.findOne({
-				where: { type: 'data_encryption', algorithm: 'aes-256-cbc' },
-			});
+			const key =
+				await this.deploymentKeyRepository.findDataEncryptionKeyByAlgorithm('aes-256-cbc');
 			if (key) {
-				this.cachedStoredLegacyKey = {
-					id: key.id,
-					value: key.value,
-					algorithm: key.algorithm!,
-					format: 'no-prefix',
-				};
+				if (this.unwrapsToInstanceKey(key.value)) {
+					this.cachedStoredLegacyKey = {
+						id: key.id,
+						value: key.value,
+						algorithm: key.algorithm!,
+						format: 'no-prefix',
+					};
+					return this.cachedStoredLegacyKey;
+				}
+				// The row was seeded under another instance key. Writes use the current
+				// instance key, so reads must use it too. The row is immutable, so remember
+				// the decision and warn once.
+				this.logger.warn(
+					`The encryption key differs from the key this database was set up with (deployment key ${key.id}). Using N8N_ENCRYPTION_KEY to read data. Data encrypted with the previous key stays unreadable.`,
+				);
+				this.cachedStoredLegacyKey = this.instanceKeyLegacyInfo();
 				return this.cachedStoredLegacyKey;
 			}
 			if (!this.cachedInstanceKeyInfo) {
@@ -161,6 +253,14 @@ export class KeyManagerService implements IEncryptionKeyProvider {
 		return this.instanceKeyLegacyInfo();
 	}
 
+	private unwrapsToInstanceKey(wrapped: string): boolean {
+		try {
+			return this.cipher.decryptDEKWithInstanceKey(wrapped) === this.instanceSettings.encryptionKey;
+		} catch {
+			return false;
+		}
+	}
+
 	/**
 	 * Seeds an inactive aes-256-cbc key from the instance encryption key if none exists.
 	 * The value is wrapped with the instance key via AES-256-GCM before storage.
@@ -169,9 +269,8 @@ export class KeyManagerService implements IEncryptionKeyProvider {
 	 * skip the lock on every startup after the first.
 	 */
 	async bootstrapLegacyCbcKey(instanceEncryptionKey: string): Promise<void> {
-		const existing = await this.deploymentKeyRepository.findOne({
-			where: { type: 'data_encryption', algorithm: 'aes-256-cbc' },
-		});
+		const existing =
+			await this.deploymentKeyRepository.findDataEncryptionKeyByAlgorithm('aes-256-cbc');
 		if (existing) return;
 
 		const encryptedValue = this.cipher.encryptDEKWithInstanceKey(instanceEncryptionKey);
@@ -200,19 +299,13 @@ export class KeyManagerService implements IEncryptionKeyProvider {
 	 * (type, status='active') serializes inserts, and losers are silently ignored.
 	 */
 	async bootstrapGcmKey(): Promise<void> {
-		const existing = await this.deploymentKeyRepository.findOne({
-			where: { type: 'data_encryption', algorithm: 'aes-256-gcm', status: 'active' },
-		});
+		const existing =
+			await this.deploymentKeyRepository.findActiveDataEncryptionKeyByAlgorithm('aes-256-gcm');
 		if (existing) return;
 
 		const rawKey = randomBytes(32).toString('hex');
 		const encryptedValue = this.cipher.encryptDEKWithInstanceKey(rawKey);
-		await this.deploymentKeyRepository.insertOrIgnore({
-			type: 'data_encryption',
-			value: encryptedValue,
-			algorithm: 'aes-256-gcm',
-			status: 'active',
-		});
+		await this.deploymentKeyRepository.seedActiveDataEncryptionKey(encryptedValue, 'aes-256-gcm');
 	}
 
 	/**
@@ -265,24 +358,16 @@ export class KeyManagerService implements IEncryptionKeyProvider {
 		const encryptedValue = this.cipher.encryptDEKWithInstanceKey(plaintextValue);
 
 		if (!setAsActive) {
-			const entity = this.deploymentKeyRepository.create({
-				type: 'data_encryption',
-				value: encryptedValue,
+			return await this.deploymentKeyRepository.insertInactiveDataEncryptionKey(
+				encryptedValue,
 				algorithm,
-				status: 'inactive',
-			});
-			return await this.deploymentKeyRepository.save(entity);
+			);
 		}
 
-		const entity = Object.assign(
-			this.deploymentKeyRepository.create({
-				type: 'data_encryption',
-				value: encryptedValue,
-				algorithm,
-			}),
-			{ status: 'active' as const },
+		const saved = await this.deploymentKeyRepository.insertAndActivateDataEncryptionKey(
+			encryptedValue,
+			algorithm,
 		);
-		const saved = await this.deploymentKeyRepository.insertAsActive(entity);
 		// Update the memo only after the commit — otherwise this instance could
 		// encrypt with a key that never landed in the database. Local writes
 		// switch immediately; other instances follow within the memo window.
@@ -299,14 +384,16 @@ export class KeyManagerService implements IEncryptionKeyProvider {
 
 	/** Atomically deactivates the current active key and promotes the given key. */
 	async setActiveKey(id: string): Promise<void> {
-		await this.deploymentKeyRepository.promoteToActive(id, 'data_encryption');
+		await this.deploymentKeyRepository.activateDataEncryptionKey(id);
 		this.activeKeyMemo = undefined;
 	}
 
-	/** Transitions key to 'inactive'. Usage count guard to be added in T13. */
+	/**
+	 * Transitions a key to inactive. The repository exposes no delete operation,
+	 * and the database rejects direct deletion.
+	 */
 	async markInactive(id: string): Promise<void> {
-		// TODO: T13 will add usage check — throw ConflictError if usage count > 0
-		await this.deploymentKeyRepository.update(id, { status: 'inactive' });
+		await this.deploymentKeyRepository.deactivateDataEncryptionKey(id);
 		// The active key may be gone now: force the next write to re-read the store.
 		this.activeKeyMemo = undefined;
 	}

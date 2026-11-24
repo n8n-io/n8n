@@ -1,3 +1,4 @@
+import { NATIVE_NODE_PREFERENCE } from '@n8n/workflow-sdk/prompts/node-selection';
 import { jsonParse } from 'n8n-workflow';
 
 import type { SandboxWorkspace } from '../../workspace/sandbox-fs';
@@ -5,12 +6,10 @@ import {
 	buildKnowledgeBaseWorkspaceBundle,
 	KNOWLEDGE_BASE_INDEX_FILE,
 	KNOWLEDGE_BASE_MANIFEST_FILE,
-	KNOWLEDGE_BASE_TEMPLATES_DIR,
 	loadPrebakedKnowledgeBaseBundle,
 	materializeKnowledgeBaseIntoWorkspace,
 	SANDBOX_KNOWLEDGE_BASE_DIR,
 } from '../materialize-knowledge-base';
-import { makeBuilderTemplatesTarGz } from './builder-templates-archive.fixtures';
 
 const ROOT = '/home/daytona/workspace';
 
@@ -106,28 +105,33 @@ describe('buildKnowledgeBaseWorkspaceBundle', () => {
 			),
 		).toContain('# Workflow Builder Guardrails');
 
-		expect(
-			bundle.files.get(`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}/reference/workflow-sdk-language.md`),
-		).toContain('# Workflow SDK language reference');
+		const sdkLanguageReference = bundle.files.get(
+			`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}/reference/workflow-sdk-language.md`,
+		);
+		expect(sdkLanguageReference).toContain('# Workflow SDK language reference');
+		// The Code-node-to-native-node mapping table rides along in the same file.
+		expect(sdkLanguageReference).toContain('## Native node mappings');
+		expect(sdkLanguageReference).toContain(NATIVE_NODE_PREFERENCE);
 
-		// Generated from two constants: the rules, then the when-to-group guidance.
+		// Rules only: the when-to-group guidance already lives in the skill's
+		// always-loaded "## Node Groups" section, so it is not repeated here.
 		const nodeGroupsReference = bundle.files.get(
 			`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}/reference/node-groups.md`,
 		);
 		expect(nodeGroupsReference).toContain('## Node groups');
-		expect(nodeGroupsReference).toContain('## Grouping');
+		expect(nodeGroupsReference).not.toContain('## Grouping');
 
 		const rootIndex = jsonParse<{
 			bestPractices: { indexFile: string; entries: Array<{ id: string }> };
-			templates: { indexFile: string; entries?: unknown[] };
+			templates?: unknown;
 			reference: { indexFile: string; entries: Array<{ id: string; file: string }> };
 		}>(
 			bundle.files.get(`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}/${KNOWLEDGE_BASE_INDEX_FILE}`) ?? '',
 		);
 		expect(rootIndex.bestPractices.indexFile).toBe('best-practices/index.json');
-		expect(rootIndex.templates.indexFile).toBe('templates/index.json');
 		expect(rootIndex.reference.indexFile).toBe('reference/index.json');
-		expect(rootIndex.templates.entries).toBeUndefined();
+		expect(rootIndex.templates).toBeUndefined();
+		expect([...bundle.files.keys()].some((path) => path.includes('/templates/'))).toBe(false);
 		expect(rootIndex.reference.entries).toEqual([
 			expect.objectContaining({
 				id: 'trigger-input-data-shapes',
@@ -153,104 +157,20 @@ describe('buildKnowledgeBaseWorkspaceBundle', () => {
 				id: 'node-groups',
 				file: 'reference/node-groups.md',
 			}),
+			expect.objectContaining({
+				id: 'sdk-additional-functions',
+				file: 'reference/sdk-additional-functions.md',
+			}),
 		]);
+		expect(
+			bundle.files.has(
+				`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}/reference/sdk-additional-functions.md`,
+			),
+		).toBe(true);
 		expect(rootIndex.bestPractices.entries.some((entry) => entry.id === 'scheduling')).toBe(true);
 		expect(bundle.indexPath).toBe(
 			`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}/${KNOWLEDGE_BASE_INDEX_FILE}`,
 		);
-	});
-
-	it('materializes CDN index.txt archives as templates/index.json', async () => {
-		const archive = makeBuilderTemplatesTarGz([
-			{ name: 'index.txt', content: 'example.ts | Example template' },
-			{ name: 'example.ts', content: 'export default {};' },
-		]);
-		const bundle = await buildKnowledgeBaseWorkspaceBundle({
-			logger: mockLogger,
-			root: ROOT,
-			templatesArchive: archive,
-		});
-
-		const templatesIndex = jsonParse<{ entries: Array<{ id: string; description: string }> }>(
-			bundle.files.get(
-				`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}/${KNOWLEDGE_BASE_TEMPLATES_DIR}/index.json`,
-			) ?? '',
-		);
-		expect(templatesIndex.entries).toEqual([
-			{
-				id: 'example',
-				description: 'Example template',
-				file: 'templates/example.ts',
-			},
-		]);
-		expect(
-			bundle.files.has(
-				`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}/${KNOWLEDGE_BASE_TEMPLATES_DIR}/index.txt`,
-			),
-		).toBe(false);
-	});
-
-	it('materializes templates in templates/index.json without duplicating them in the root index', async () => {
-		const withoutTemplates = await buildKnowledgeBaseWorkspaceBundle({
-			root: ROOT,
-			logger: mockLogger,
-		});
-		const archive = makeBuilderTemplatesTarGz([
-			{
-				name: 'index.json',
-				content: JSON.stringify({
-					entries: [
-						{
-							id: 'example',
-							description: 'Example template',
-							file: 'templates/example.ts',
-						},
-					],
-				}),
-			},
-			{ name: 'example.ts', content: 'export default {};' },
-		]);
-		const withTemplates = await buildKnowledgeBaseWorkspaceBundle({
-			logger: mockLogger,
-			root: ROOT,
-			templatesArchive: archive,
-		});
-
-		const templatesIndex = jsonParse<{
-			entries: Array<{ id: string; description: string; file: string }>;
-		}>(
-			withTemplates.files.get(
-				`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}/${KNOWLEDGE_BASE_TEMPLATES_DIR}/index.json`,
-			) ?? '',
-		);
-		expect(templatesIndex.entries).toEqual([
-			{
-				id: 'example',
-				description: 'Example template',
-				file: 'templates/example.ts',
-			},
-		]);
-		expect(
-			withTemplates.files.get(
-				`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}/${KNOWLEDGE_BASE_TEMPLATES_DIR}/example.ts`,
-			),
-		).toBe('export default {};\n');
-		expect(
-			withTemplates.files.has(
-				`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}/${KNOWLEDGE_BASE_TEMPLATES_DIR}/index.json`,
-			),
-		).toBe(true);
-
-		const rootIndex = jsonParse<{
-			templates: { indexFile: string; entries?: unknown[] };
-		}>(
-			withTemplates.files.get(
-				`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}/${KNOWLEDGE_BASE_INDEX_FILE}`,
-			) ?? '',
-		);
-		expect(rootIndex.templates.indexFile).toBe('templates/index.json');
-		expect(rootIndex.templates.entries).toBeUndefined();
-		expect(withTemplates.contentHash).not.toBe(withoutTemplates.contentHash);
 	});
 });
 
@@ -293,7 +213,7 @@ describe('materializeKnowledgeBaseIntoWorkspace', () => {
 		expect(writes.size).toBe(0);
 	});
 
-	it('rematerializes when prebaked manifest exists but payload is incomplete', async () => {
+	it('trusts a matching prebaked manifest without checking each payload file', async () => {
 		const bundle = await buildKnowledgeBaseWorkspaceBundle({ root: ROOT, logger: mockLogger });
 		const files = new Map<string, string>([
 			[bundle.manifestPath, bundle.files.get(bundle.manifestPath) ?? ''],
@@ -307,7 +227,6 @@ describe('materializeKnowledgeBaseIntoWorkspace', () => {
 		});
 
 		expect(materialized.contentHash).toBe(bundle.contentHash);
-		expect(writes.has(bundle.indexPath)).toBe(true);
-		expect(writes.size).toBeGreaterThan(1);
+		expect(writes.size).toBe(0);
 	});
 });

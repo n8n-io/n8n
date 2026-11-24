@@ -1,9 +1,9 @@
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath, requestUrl } from 'n8n-workflow';
+import type { Mock } from 'vitest';
 
 import { sheetsSearch, spreadSheetsSearch } from '../../../v2/methods/listSearch';
 import { apiRequest } from '../../../v2/transport';
-import type { Mock } from 'vitest';
 
 vi.mock('../../../v2/transport', () => ({
 	apiRequest: {
@@ -41,7 +41,7 @@ describe('Google Sheets Search Functions', () => {
 			expect(apiRequest.call).toHaveBeenCalledWith(
 				mockLoadOptionsFunctions,
 				'GET',
-				'',
+				requestPath``,
 				{},
 				{
 					q: "mimeType = 'application/vnd.google-apps.spreadsheet'",
@@ -50,7 +50,7 @@ describe('Google Sheets Search Functions', () => {
 					includeItemsFromAllDrives: true,
 					supportsAllDrives: true,
 				},
-				'https://www.googleapis.com/drive/v3/files',
+				requestUrl`https://www.googleapis.com/drive/v3/files`,
 			);
 
 			expect(result).toEqual({
@@ -77,7 +77,7 @@ describe('Google Sheets Search Functions', () => {
 			expect(apiRequest.call).toHaveBeenCalledWith(
 				mockLoadOptionsFunctions,
 				'GET',
-				'',
+				requestPath``,
 				{},
 				{
 					q: "name contains 'Test' and mimeType = 'application/vnd.google-apps.spreadsheet'",
@@ -86,7 +86,7 @@ describe('Google Sheets Search Functions', () => {
 					includeItemsFromAllDrives: true,
 					supportsAllDrives: true,
 				},
-				'https://www.googleapis.com/drive/v3/files',
+				requestUrl`https://www.googleapis.com/drive/v3/files`,
 			);
 
 			expect(result.results).toHaveLength(1);
@@ -105,12 +105,46 @@ describe('Google Sheets Search Functions', () => {
 			expect(apiRequest.call).toHaveBeenCalledWith(
 				expect.anything(),
 				'GET',
-				'',
+				requestPath``,
 				{},
 				expect.objectContaining({
 					q: "name contains 'Test\\'s Sheet' and mimeType = 'application/vnd.google-apps.spreadsheet'",
 				}),
-				expect.any(String),
+				requestUrl`https://www.googleapis.com/drive/v3/files`,
+			);
+		});
+
+		it('should escape every single quote in the filter, not just the first', async () => {
+			(apiRequest.call as Mock).mockResolvedValue({ files: [] });
+
+			await spreadSheetsSearch.call(mockLoadOptionsFunctions as ILoadOptionsFunctions, "a'b'c");
+
+			expect(apiRequest.call).toHaveBeenCalledWith(
+				expect.anything(),
+				'GET',
+				requestPath``,
+				{},
+				expect.objectContaining({
+					q: "name contains 'a\\'b\\'c' and mimeType = 'application/vnd.google-apps.spreadsheet'",
+				}),
+				requestUrl`https://www.googleapis.com/drive/v3/files`,
+			);
+		});
+
+		it('should escape backslashes so a trailing one cannot consume the escape', async () => {
+			(apiRequest.call as Mock).mockResolvedValue({ files: [] });
+
+			await spreadSheetsSearch.call(mockLoadOptionsFunctions as ILoadOptionsFunctions, "x\\'");
+
+			expect(apiRequest.call).toHaveBeenCalledWith(
+				expect.anything(),
+				'GET',
+				requestPath``,
+				{},
+				expect.objectContaining({
+					q: "name contains 'x\\\\\\'' and mimeType = 'application/vnd.google-apps.spreadsheet'",
+				}),
+				requestUrl`https://www.googleapis.com/drive/v3/files`,
 			);
 		});
 
@@ -127,12 +161,12 @@ describe('Google Sheets Search Functions', () => {
 			expect(apiRequest.call).toHaveBeenCalledWith(
 				expect.anything(),
 				'GET',
-				'',
+				requestPath``,
 				{},
 				expect.objectContaining({
 					pageToken: 'page-token',
 				}),
-				expect.any(String),
+				requestUrl`https://www.googleapis.com/drive/v3/files`,
 			);
 		});
 	});
@@ -186,7 +220,7 @@ describe('Google Sheets Search Functions', () => {
 			expect(apiRequest.call).toHaveBeenCalledWith(
 				mockLoadOptionsFunctions,
 				'GET',
-				'/v4/spreadsheets/spreadsheet-id',
+				requestPath`/v4/spreadsheets/spreadsheet-id`,
 				{},
 				{ fields: 'sheets.properties' },
 			);

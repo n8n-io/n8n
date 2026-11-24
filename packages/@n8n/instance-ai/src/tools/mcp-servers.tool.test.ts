@@ -1,4 +1,5 @@
-import { isZodSchema, zodToJsonSchema } from '@n8n/agents';
+import { isZodSchema } from '@n8n/agents';
+import { zodToJsonSchema } from '@n8n/ai-utilities/json-schema';
 import { mock } from 'vitest-mock-extended';
 
 import { executeTool } from '../__tests__/tool-test-utils';
@@ -503,8 +504,7 @@ describe('mcp-servers tool', () => {
 			);
 
 			expect(output.connectedSlugs).toEqual(['notion']);
-			expect(output.message).toContain('search_tools');
-			expect(output.message).toContain('available now');
+			expect(output.message).toContain('next message');
 		});
 
 		it('ignores a client claim the server cannot confirm', async () => {

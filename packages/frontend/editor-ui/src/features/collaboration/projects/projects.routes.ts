@@ -1,6 +1,7 @@
 import type { RouteLocationNormalized, RouteRecordRaw } from 'vue-router';
 import { VIEWS } from '@/app/constants';
 import { useProjectsStore } from './projects.store';
+import { ProjectTypes } from './projects.types';
 import { getResourcePermissions } from '@n8n/permissions';
 import { CHAT_VIEW } from '@/features/ai/chatHub/constants';
 import { hasRole } from '@/app/utils/rbac/checks';
@@ -15,7 +16,7 @@ const ExecutionsView = async () =>
 const ProjectVariables = async () => await import('./views/ProjectVariables.vue');
 
 function refreshInsightsSummary() {
-	void import('@/features/execution/insights')
+	void import('@n8n/frontend-module-insights')
 		.then(({ useInsightsStore }) => {
 			const insightsStore = useInsightsStore();
 			if (insightsStore.isSummaryEnabled) {
@@ -158,12 +159,13 @@ export const projectsRoutes: RouteRecordRaw[] = [
 											(p) => p.id === options?.to.params.projectId,
 										);
 										const permissions = getResourcePermissions(project?.scopes);
-										// Mirrors ProjectHeader's showSettings: any one section's
-										// scope is enough to enter the settings page.
+										// Mirrors ProjectHeader's showSettings: only team projects have
+										// settings, and any one section's scope is enough to enter.
 										return (
-											!!permissions.project.update ||
-											!!permissions.project.manageMembers ||
-											!!permissions.externalSecretsProvider.read
+											project?.type === ProjectTypes.Team &&
+											(!!permissions.project.update ||
+												!!permissions.project.manageMembers ||
+												!!permissions.externalSecretsProvider.read)
 										);
 									},
 								},

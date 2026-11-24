@@ -1,6 +1,6 @@
 import type { ListWorkflowReviewRequestsQueryDto } from '@n8n/api-types';
 import type { LicenseState } from '@n8n/backend-common';
-import { User } from '@n8n/db';
+import { Person, type User } from '@n8n/db';
 import type {
 	UserRepository,
 	WorkflowEntity,
@@ -9,8 +9,7 @@ import type {
 } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import type { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -21,8 +20,8 @@ import { WorkflowReviewRequestStatusService } from '../workflow-review-request-s
 const user = mock<User>({ id: 'user-1' });
 
 /** Build a loaded user with the computed pending state. */
-function loadedUser(fields: Partial<User> & { id: string; email: string }): User {
-	const loaded = Object.assign(new User(), { password: 'hashed', authIdentities: [], ...fields });
+function loadedUser(fields: Partial<Person> & { id: string; email: string }): Person {
+	const loaded = Object.assign(new Person(), { password: 'hashed', authIdentities: [], ...fields });
 	loaded.computeIsPending();
 	return loaded;
 }

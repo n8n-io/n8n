@@ -2,6 +2,7 @@ import type { SuspensionInfo } from '../../../src/utils/stream-helpers';
 import { discoveryTestCaseSchema } from '../../data/discovery';
 import {
 	buildConfirmationPolicy,
+	declaresAnswer,
 	resolveConfirmation,
 	unmatchedConfirmations,
 } from '../confirmation-policy';
@@ -146,22 +147,37 @@ describe('resolveConfirmation', () => {
 	it('keeps an approve approved even when resumeWith claims refusal', () => {
 		const policy = buildConfirmationPolicy(
 			scenario({
-				confirmations: { 'ask-user': { decision: 'approve', resumeWith: { approved: false } } },
+				confirmations: {
+					ask_user: { decision: 'approve', resumeWith: { approved: false } },
+				},
 			}),
 		);
-		expect(resolveConfirmation(suspension('ask-user'), policy)).toEqual({ approved: true });
+		expect(resolveConfirmation(suspension('ask_user'), policy)).toEqual({
+			approved: true,
+		});
 	});
 
 	it('carries resumeWith when no responder recognises the payload', () => {
 		const policy = buildConfirmationPolicy(
 			scenario({
-				confirmations: { 'ask-user': { decision: 'approve', resumeWith: { answer: 'yes' } } },
+				confirmations: {
+					ask_user: { decision: 'approve', resumeWith: { answer: 'yes' } },
+				},
 			}),
 		);
-		expect(resolveConfirmation(suspension('ask-user'), policy)).toEqual({
+		expect(resolveConfirmation(suspension('ask_user'), policy)).toEqual({
 			approved: true,
 			answer: 'yes',
 		});
+	});
+});
+
+describe('declaresAnswer', () => {
+	const policy = buildConfirmationPolicy(scenario({ confirmations: { ask_user: 'approve' } }));
+
+	it('is true only for a tool that the scenario answers', () => {
+		expect(declaresAnswer(suspension('ask_user'), policy)).toBe(true);
+		expect(declaresAnswer(suspension('mcp-servers'), policy)).toBe(false);
 	});
 });
 
@@ -170,7 +186,10 @@ describe('unmatchedConfirmations', () => {
 		scenario({
 			confirmations: {
 				'mcp_notion_notion-search': 'deny',
-				credentials: { decision: 'approve', resumeWith: { autoSetup: { credentialType: 'x' } } },
+				credentials: {
+					decision: 'approve',
+					resumeWith: { autoSetup: { credentialType: 'x' } },
+				},
 			},
 		}),
 	);
@@ -184,9 +203,19 @@ describe('unmatchedConfirmations', () => {
 		expect(unmatchedConfirmations(policy, asked)).toEqual([]);
 	});
 
+	it('matches an answer keyed by a former builder tool name', () => {
+		const legacyPolicy = buildConfirmationPolicy(
+			scenario({ confirmations: { credentials: 'deny' } }),
+		);
+		expect(resolveConfirmation(suspension('credentials'), legacyPolicy)).toEqual({
+			approved: false,
+		});
+		expect(unmatchedConfirmations(legacyPolicy, [suspension('credentials')])).toEqual([]);
+	});
+
 	it('exempts a bare approve, which only asks for the default', () => {
 		const approveOnly = buildConfirmationPolicy(
-			scenario({ confirmations: { 'ask-user': 'approve' } }),
+			scenario({ confirmations: { ask_user: 'approve' } }),
 		);
 		expect(unmatchedConfirmations(approveOnly, [])).toEqual([]);
 	});
@@ -202,7 +231,9 @@ describe('unmatchedConfirmations', () => {
 
 	it('ignores suspensions the scenario never declared', () => {
 		expect(
-			unmatchedConfirmations(buildConfirmationPolicy(scenario()), [suspension('nodes')]),
+			unmatchedConfirmations(buildConfirmationPolicy(scenario()), [
+				suspension('workflow_builder_nodes'),
+			]),
 		).toEqual([]);
 	});
 });

@@ -28,13 +28,13 @@ import {
 	tryToParseUrl,
 	BINARY_MODE_COMBINED,
 	tryToParseJsonToFormFields,
-	UnexpectedError,
 	buildCredentialConnectionsRequiredResponse,
 } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import * as a from 'node:assert';
 import sanitize from 'sanitize-html';
 
-import { getResolvables } from '../../../utils/utilities';
+import { resolveExpressions } from '../../../utils/utilities';
 import { WebhookAuthorizationError } from '../../Webhook/error';
 import {
 	generateFormPostBasicAuthToken,
@@ -1161,18 +1161,21 @@ async function authenticateFormUserOrRespond(
 			}
 			return null;
 		} else {
-			// For POST requests, the OAuth2 flow is not applicable. We fall through to the cookie and token checks below.
+			// For POST requests, the OAuth2 flow is not applicable: the page presents the token
+			// it was given. An absent token is validated too, so the 401 carries the challenge
+			// that names the resource metadata either way.
 			const formToken = req.headers['x-auth-token'];
-			if (typeof formToken === 'string' && formToken) {
-				const validation = await context.validateN8nOAuth2Token(formToken, resourceUrl);
-				if (validation.valid) {
-					await context.establishTriggerIdentity(formToken, resourceUrl); // seeds the run
-					return {
-						user: validation.user,
-						token: null,
-					};
-				}
+			const token = typeof formToken === 'string' ? formToken : '';
+			const validation = await context.validateN8nOAuth2Token(token, resourceUrl);
+			if (validation.valid) {
+				// Seeds the run. The subject rides in the seal, so a worker never needs the token.
+				await context.establishTriggerIdentity(token, resourceUrl, validation.user.id);
+				return {
+					user: validation.user,
+					token: null,
+				};
 			}
+			if (validation.challenge) res.setHeader('WWW-Authenticate', validation.challenge);
 			res.status(401).send();
 			return null;
 		}
@@ -1439,11 +1442,11 @@ export async function formWebhook(
 
 	for (const field of formFields) {
 		if (field.fieldType === 'html') {
-			let html = field.html ?? '';
-			for (const resolvable of getResolvables(html)) {
-				html = html.replace(resolvable, context.evaluateExpression(resolvable) as string);
-			}
-			field.html = html;
+			field.html = resolveExpressions(
+				field.html ?? '',
+				(resolvable) => context.evaluateExpression(resolvable),
+				{ legacy: isLegacyExpressionResolution(node) },
+			);
 		}
 	}
 
@@ -1619,32 +1622,36 @@ export async function formWebhook(
 	};
 }
 
-type ExpressionResolutionContext = Pick<IWebhookFunctions, 'evaluateExpression'>;
+// Older versions resolve expressions with String.replace, which interprets `$` patterns in
+// resolved values. They keep that output so existing workflows render the same.
+const FIRST_LITERAL_EXPRESSION_RESOLUTION_VERSION: Partial<Record<string, number>> = {
+	[FORM_TRIGGER_NODE_TYPE]: 2.7,
+	[FORM_NODE_TYPE]: 2.6,
+	[WAIT_NODE_TYPE]: 1.2,
+};
+
+function isLegacyExpressionResolution(node: INode): boolean {
+	const firstLiteralVersion = FIRST_LITERAL_EXPRESSION_RESOLUTION_VERSION[node.type];
+	return firstLiteralVersion === undefined || node.typeVersion < firstLiteralVersion;
+}
+
+type ExpressionResolutionContext = Pick<IWebhookFunctions, 'evaluateExpression' | 'getNode'>;
 
 export function resolveRawData(context: ExpressionResolutionContext, rawData: string) {
 	if (!rawData) return rawData;
 
-	const resolvables = getResolvables(rawData);
-	let returnData: string = rawData;
+	if (!rawData.startsWith('=')) return rawData;
 
-	if (returnData.startsWith('=')) {
-		returnData = returnData.replace(/^=+/, '');
-	} else {
-		return returnData;
-	}
-
-	if (resolvables.length) {
-		for (const resolvable of resolvables) {
-			const resolvedValue = context.evaluateExpression(`${resolvable}`);
-
-			if (typeof resolvedValue === 'object' && resolvedValue !== null) {
-				returnData = returnData.replace(resolvable, JSON.stringify(resolvedValue));
-			} else {
-				returnData = returnData.replace(resolvable, resolvedValue as string);
-			}
-		}
-	}
-	return returnData;
+	return resolveExpressions(
+		rawData.replace(/^=+/, ''),
+		(resolvable) => {
+			const resolvedValue = context.evaluateExpression(resolvable);
+			return typeof resolvedValue === 'object' && resolvedValue !== null
+				? JSON.stringify(resolvedValue)
+				: resolvedValue;
+		},
+		{ legacy: isLegacyExpressionResolution(context.getNode()) },
+	);
 }
 
 type ParseFormFieldsOptions = {
@@ -1666,11 +1673,11 @@ export function parseFormFields(context: IWebhookFunctions, options: ParseFormFi
 		fields = context.getNodeParameter(options.fieldsParameterName, []) as FormFieldsParameter;
 		for (const field of fields) {
 			if (field.fieldType === 'html') {
-				let html = field.html ?? '';
-				for (const resolvable of getResolvables(html)) {
-					html = html.replace(resolvable, context.evaluateExpression(resolvable) as string);
-				}
-				field.html = html;
+				field.html = resolveExpressions(
+					field.html ?? '',
+					(resolvable) => context.evaluateExpression(resolvable),
+					{ legacy: isLegacyExpressionResolution(context.getNode()) },
+				);
 			}
 		}
 	}

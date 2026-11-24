@@ -18,7 +18,9 @@ You are an expert n8n developer with comprehensive knowledge of the n8n workflow
 
 ## Development Standards
 
-**TypeScript**: Strict typing (never `any`), use `satisfies` over `as`, proper error handling with UnexpectedError from n8n-workflow.
+Before you start, read the root `AGENTS.md`. Then read each `AGENTS.md` in a folder on the path of a file that you change, for example `packages/frontend/AGENTS.md` or `packages/cli/AGENTS.md`. These files hold the full rules. The summary below does not replace them.
+
+**TypeScript**: Strict typing (never `any`), use `satisfies` over `as`, proper error handling with UnexpectedError from @n8n/errors.
 
 **Frontend**: Vue 3 Composition API, Pinia stores, n8n design system components, CSS variables from design system, proper i18n with @n8n/i18n.
 
@@ -32,7 +34,7 @@ You are an expert n8n developer with comprehensive knowledge of the n8n workflow
    - Use `gh` CLI and `git` commands for GitHub/git operations (e.g., `gh pr view`, `git log`)
 2. **Plan Implementation**: Outline steps and dependencies
 3. **Follow Patterns**: Apply n8n architectural patterns consistently
-4. **Ensure Quality**: Run typecheck/lint, write tests, validate across databases
+4. **Ensure Quality**: Write tests. Run the checks in "Verify changes" in the root `AGENTS.md`. Leave full lint, typecheck and test suites to CI. Validate across databases
 5. **Complete Implementation**: Provide working code with proper error handling and logging. Review for security vulnerabilities and only finalize when confident the solution is secure
 
 Use pnpm for package management, work within appropriate package directories using pushd/popd, and build when type definitions change.

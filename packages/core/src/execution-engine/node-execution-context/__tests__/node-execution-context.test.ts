@@ -14,6 +14,7 @@ import { CHAT_TRIGGER_NODE_TYPE, createRunExecutionData, NodeConnectionTypes } f
 import { mock } from 'vitest-mock-extended';
 
 import { InstanceSettings } from '@/instance-settings';
+import { validateUrlSignature } from '@/utils/signature-helpers';
 
 import { NodeExecutionContext } from '../node-execution-context';
 
@@ -86,8 +87,18 @@ describe('NodeExecutionContext', () => {
 
 	describe('getChildNodes', () => {
 		it('should return an array of NodeTypeAndVersion objects for the child nodes of the given node', () => {
-			const childNode1 = mock<INode>({ name: 'Child Node 1', type: 'testType1', typeVersion: 1 });
-			const childNode2 = mock<INode>({ name: 'Child Node 2', type: 'testType2', typeVersion: 2 });
+			const childNode1 = mock<INode>({
+				id: 'child-id-1',
+				name: 'Child Node 1',
+				type: 'testType1',
+				typeVersion: 1,
+			});
+			const childNode2 = mock<INode>({
+				id: 'child-id-2',
+				name: 'Child Node 2',
+				type: 'testType2',
+				typeVersion: 2,
+			});
 			workflow.getChildNodes.mockReturnValue(['Child Node 1', 'Child Node 2']);
 			workflow.nodes = {
 				'Child Node 1': childNode1,
@@ -97,16 +108,26 @@ describe('NodeExecutionContext', () => {
 			const result = testContext.getChildNodes('Test Node');
 
 			expect(result).toMatchObject([
-				{ name: 'Child Node 1', type: 'testType1', typeVersion: 1 },
-				{ name: 'Child Node 2', type: 'testType2', typeVersion: 2 },
+				{ id: 'child-id-1', name: 'Child Node 1', type: 'testType1', typeVersion: 1 },
+				{ id: 'child-id-2', name: 'Child Node 2', type: 'testType2', typeVersion: 2 },
 			]);
 		});
 	});
 
 	describe('getParentNodes', () => {
 		it('should return an array of NodeTypeAndVersion objects for the parent nodes of the given node', () => {
-			const parentNode1 = mock<INode>({ name: 'Parent Node 1', type: 'testType1', typeVersion: 1 });
-			const parentNode2 = mock<INode>({ name: 'Parent Node 2', type: 'testType2', typeVersion: 2 });
+			const parentNode1 = mock<INode>({
+				id: 'parent-id-1',
+				name: 'Parent Node 1',
+				type: 'testType1',
+				typeVersion: 1,
+			});
+			const parentNode2 = mock<INode>({
+				id: 'parent-id-2',
+				name: 'Parent Node 2',
+				type: 'testType2',
+				typeVersion: 2,
+			});
 			workflow.getParentNodes.mockReturnValue(['Parent Node 1', 'Parent Node 2']);
 			workflow.nodes = {
 				'Parent Node 1': parentNode1,
@@ -116,8 +137,8 @@ describe('NodeExecutionContext', () => {
 			const result = testContext.getParentNodes('Test Node');
 
 			expect(result).toMatchObject([
-				{ name: 'Parent Node 1', type: 'testType1', typeVersion: 1 },
-				{ name: 'Parent Node 2', type: 'testType2', typeVersion: 2 },
+				{ id: 'parent-id-1', name: 'Parent Node 1', type: 'testType1', typeVersion: 1 },
+				{ id: 'parent-id-2', name: 'Parent Node 2', type: 'testType2', typeVersion: 2 },
 			]);
 		});
 	});
@@ -255,6 +276,7 @@ describe('NodeExecutionContext', () => {
 				undefined,
 				false,
 				undefined,
+				undefined,
 			);
 		});
 
@@ -306,6 +328,9 @@ describe('NodeExecutionContext', () => {
 				{ id: null, name: 'slackApi' },
 				'slackApi',
 				'internal',
+				undefined,
+				undefined,
+				undefined,
 				undefined,
 			);
 		});
@@ -361,6 +386,39 @@ describe('NodeExecutionContext', () => {
 			);
 
 			await expect(ctx['_getCredentials']('someCred')).resolves.toEqual({ token: 'ok' });
+		});
+	});
+
+	describe('_getRunlessCredentials', () => {
+		it('should pass placeholder execute data that only carries the node', async () => {
+			const credentialDetails = { id: 'cred-runless', name: 'Runless Cred' };
+			const runlessNode = mock<INode>({ type: 'n8n-nodes-base.httpRequest' });
+			runlessNode.credentials = { someCred: credentialDetails };
+
+			const mockCredentialsHelper = {
+				getDecrypted: vi.fn().mockResolvedValue({ token: 'ok' }),
+				getCredentialsProperties: vi.fn(),
+				isCredentialUsableByNode: vi.fn().mockReturnValue(true),
+			};
+
+			const ctx = new TestContext(
+				workflow,
+				runlessNode,
+				mock<IWorkflowExecuteAdditionalData>({ credentialsHelper: mockCredentialsHelper }),
+				mode,
+			);
+
+			await expect(ctx['_getRunlessCredentials']('someCred')).resolves.toEqual({ token: 'ok' });
+			expect(mockCredentialsHelper.getDecrypted).toHaveBeenCalledWith(
+				expect.anything(),
+				credentialDetails,
+				'someCred',
+				mode,
+				{ data: {}, node: runlessNode, source: null },
+				false,
+				undefined,
+				undefined,
+			);
 		});
 	});
 
@@ -557,6 +615,19 @@ describe('NodeExecutionContext', () => {
 			);
 			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
 		});
+
+		it('rejects signed resume URLs in the engine process', () => {
+			const previousInstanceType = instanceSettings.instanceType;
+			Object.assign(instanceSettings, { instanceType: 'engine' });
+			try {
+				expect(() => testContext.getSignedResumeUrl()).toThrow(
+					'Engine v2 does not support signed resume URLs yet',
+				);
+			} finally {
+				Object.assign(instanceSettings, { instanceType: previousInstanceType });
+			}
+		});
+
 		it('should return a resume URL with HMAC signature', () => {
 			const result = testContext.getSignedResumeUrl();
 
@@ -584,6 +655,48 @@ describe('NodeExecutionContext', () => {
 			const token2 = new URL(result2).searchParams.get('signature');
 
 			expect(token1).toBe(token2);
+		});
+
+		describe('when the node id is not a plain path segment', () => {
+			const NODE_ID = '../43/dddd2020-0000-4000-8000-000000002099';
+
+			const signedUrlForNodeId = (nodeId: string) =>
+				new URL(
+					new TestContext(
+						workflow,
+						mock<INode>({ id: nodeId }),
+						mock<IWorkflowExecuteAdditionalData>({
+							executionId: '123',
+							webhookWaitingBaseUrl: 'http://localhost/waiting-webhook',
+							formWaitingBaseUrl: 'http://localhost/form-waiting',
+						}),
+						mode,
+						createRunExecutionData({ resultData: { runData: {} } }),
+					).getSignedResumeUrl({ approved: 'true' }),
+				);
+
+			it('should keep the node id inside its own path segment', () => {
+				expect(signedUrlForNodeId(NODE_ID).pathname).toBe(
+					'/waiting-webhook/123/..%2F43%2Fdddd2020-0000-4000-8000-000000002099',
+				);
+			});
+
+			it('should keep the signature scoped to the escaped path', () => {
+				const signature = signedUrlForNodeId(NODE_ID).searchParams.get('signature')!;
+
+				// Unescaped, the same ids normalise to a different path, so the signature over the
+				// escaped one must not validate against it.
+				const normalisedUrl = new URL(
+					`http://localhost/waiting-webhook/123/${NODE_ID}?approved=true&signature=${signature}`,
+				);
+				expect(normalisedUrl.pathname).toBe(
+					'/waiting-webhook/43/dddd2020-0000-4000-8000-000000002099',
+				);
+
+				expect(
+					validateUrlSignature(signature, normalisedUrl, instanceSettings.hmacSignatureSecret),
+				).toBe(false);
+			});
 		});
 	});
 

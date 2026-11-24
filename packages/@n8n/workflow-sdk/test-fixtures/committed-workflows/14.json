@@ -1,0 +1,89 @@
+{
+	"id": "structured-output-parser-schema-in-example",
+	"name": "Structured Output Parser: JSON Schema pasted as the example",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "00000000-0000-4000-8000-0000000000141",
+			"name": "Manual Trigger",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"promptType": "define",
+				"text": "={{ $json.chatInput }}",
+				"hasOutputParser": true,
+				"options": {
+					"systemMessage": "You are a helpful assistant. Reply with the requested fields only."
+				}
+			},
+			"id": "00000000-0000-4000-8000-0000000000142",
+			"name": "AI Agent",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"typeVersion": 3.1,
+			"position": [220, 0]
+		},
+		{
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "id",
+					"value": "gpt-4.1-mini"
+				},
+				"options": {}
+			},
+			"id": "00000000-0000-4000-8000-0000000000143",
+			"name": "OpenAI Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"typeVersion": 1.3,
+			"position": [200, 200]
+		},
+		{
+			"parameters": {
+				"jsonSchemaExample": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"name\": { \"type\": \"string\" },\n    \"score\": { \"type\": \"number\" },\n    \"feedback\": { \"type\": \"string\" },\n    \"selected\": { \"type\": \"boolean\" }\n  },\n  \"required\": [\"name\", \"score\", \"feedback\", \"selected\"]\n}"
+			},
+			"id": "00000000-0000-4000-8000-0000000000144",
+			"name": "Structured Output Parser",
+			"type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+			"typeVersion": 1.3,
+			"position": [400, 200]
+		}
+	],
+	"connections": {
+		"Manual Trigger": {
+			"main": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Structured Output Parser": {
+			"ai_outputParser": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_outputParser",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

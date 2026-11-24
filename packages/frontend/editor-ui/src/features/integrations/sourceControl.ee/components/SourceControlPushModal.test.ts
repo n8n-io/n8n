@@ -11,7 +11,9 @@ import { VIEWS } from '@/app/constants';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
-import { reactive } from 'vue';
+import { nextTick, reactive } from 'vue';
+import { useUIStore } from '@/app/stores/ui.store';
+import { SOURCE_CONTROL_PUSH_MODAL_KEY } from '../sourceControl.constants';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { defaultSettings } from '@n8n/frontend-test-utils';
 
@@ -103,11 +105,15 @@ const projects = [
 		id: '1',
 		name: 'Nathan member',
 		type: 'personal',
+		role: 'project:personalOwner',
+		scopes: ['sourceControl:push'],
 	},
 	{
 		id: '2',
 		name: 'Other project',
 		type: 'team',
+		role: 'project:admin',
+		scopes: ['sourceControl:push'],
 	},
 ] as const;
 
@@ -116,16 +122,16 @@ const renderModal = createComponentRenderer(SourceControlPushModal, {
 		stubs: {
 			DynamicScroller: DynamicScrollerStub,
 			DynamicScrollerItem: DynamicScrollerItemStub,
-			Modal: {
-				template: `
-					<div>
-						<slot name="header" />
-						<slot name="title" />
-						<slot name="content" />
-						<slot name="footer" />
-					</div>
-				`,
+			Dialog: {
+				props: ['open'],
+				emits: ['update:open'],
+				template:
+					'<div role="dialog" :data-open="String(open === true)"><button type="button" data-test-id="stub-dialog-request-close" @click="$emit(\'update:open\', false)"></button><slot /></div>',
 			},
+			DialogHeader: { template: '<div><slot /></div>' },
+			DialogTitle: { template: '<h2><slot /></h2>' },
+			DialogDescription: { template: '<p><slot /></p>' },
+			DialogFooter: { template: '<div><slot /></div>' },
 			RouterLink: {
 				template: '<a><slot /></a>',
 				props: ['to'],
@@ -177,6 +183,75 @@ describe('SourceControlPushModal', () => {
 
 		await waitFor(() => {
 			expect(getByText('Commit and push changes')).toBeInTheDocument();
+		});
+	});
+
+	it('follows the modal store and closes through the router', async () => {
+		const files: SourceControlledFile[] = [
+			{
+				id: 'workflow-open',
+				name: 'Open workflow',
+				type: 'workflow',
+				status: 'modified',
+				location: 'local',
+				conflict: false,
+				file: '/workflow-open.json',
+				updatedAt: '2024-09-20T10:31:40.000Z',
+			},
+		];
+		sourceControlStore.getAggregatedStatus.mockResolvedValue(files);
+
+		const { getByRole, getByTestId } = renderModal({
+			pinia,
+			props: {
+				data: {
+					eventBus,
+					status: files,
+				},
+			},
+		});
+
+		await waitFor(() => {
+			expect(getByRole('dialog')).toHaveAttribute('data-open', 'false');
+		});
+
+		const uiStore = useUIStore();
+		uiStore.modalStateById[SOURCE_CONTROL_PUSH_MODAL_KEY] = { open: true };
+		await nextTick();
+		expect(getByRole('dialog')).toHaveAttribute('data-open', 'true');
+
+		await userEvent.click(getByTestId('stub-dialog-request-close'));
+
+		expect(mockRouterInstance.back).toHaveBeenCalled();
+		expect(uiStore.closeModal).toHaveBeenCalledWith(SOURCE_CONTROL_PUSH_MODAL_KEY);
+	});
+
+	it.each(['created', 'modified'] as const)('shows the correct badge for %s', async (status) => {
+		const files: SourceControlledFile[] = [
+			{
+				id: 'workflow-status',
+				name: 'Status workflow',
+				type: 'workflow',
+				status,
+				location: 'local',
+				conflict: false,
+				file: '/workflow-status.json',
+				updatedAt: '2024-09-20T10:31:40.000Z',
+			},
+		];
+		sourceControlStore.getAggregatedStatus.mockResolvedValue(files);
+
+		const { getByText } = renderModal({
+			pinia,
+			props: { data: { eventBus, status: files } },
+		});
+
+		await waitFor(() => {
+			const fileRow = getByText('Status workflow').closest('[data-workflow-id]');
+			const badge = fileRow?.querySelector('.n8n-badge');
+			expect(badge).toBeInTheDocument();
+			expect(badge).toHaveTextContent(status === 'created' ? 'New' : 'Modified');
+			expect(badge?.className).toContain(status === 'created' ? 'success' : 'warning');
 		});
 	});
 
@@ -1700,6 +1775,112 @@ describe('SourceControlPushModal', () => {
 
 			const items = getAllByTestId('source-control-push-modal-file-checkbox');
 			expect(items).toHaveLength(1);
+		});
+	});
+
+	describe('owner filter scope check', () => {
+		const ownerStatus: SourceControlledFile[] = [
+			{
+				id: 'wf-owner-filter',
+				name: 'My workflow',
+				type: 'workflow',
+				status: 'created',
+				location: 'local',
+				conflict: false,
+				file: '/home/user/.n8n/git/workflows/wf-owner-filter.json',
+				updatedAt: '2024-09-20T10:31:40.000Z',
+			},
+		];
+
+		const renderAndOpenOwnerFilter = async (ownerProjects: ProjectListItem[]) => {
+			const projectsStore = mockedStore(useProjectsStore);
+			projectsStore.searchProjects.mockResolvedValue({
+				count: ownerProjects.length,
+				data: ownerProjects,
+			});
+
+			sourceControlStore.getAggregatedStatus.mockResolvedValue(ownerStatus);
+
+			const rendered = renderModal({
+				pinia,
+				props: {
+					data: {
+						eventBus,
+						status: ownerStatus,
+					},
+				},
+			});
+
+			await waitFor(() => {
+				expect(rendered.getByText('Commit and push changes')).toBeInTheDocument();
+			});
+
+			await waitFor(() => {
+				expect(rendered.getAllByTestId('source-control-push-modal-file-checkbox')).toHaveLength(1);
+			});
+
+			await userEvent.click(rendered.getByTestId('source-control-filter-dropdown'));
+			await userEvent.click(rendered.getByTestId('source-control-push-modal-project-search'));
+
+			return rendered;
+		};
+
+		it('shows a project where a custom role grants the push scope', async () => {
+			const ownerProjects = [
+				{
+					id: 'custom-role-project',
+					name: 'Custom role project',
+					type: 'team',
+					role: 'project:customRole',
+					scopes: ['sourceControl:push'],
+				},
+			] as unknown as ProjectListItem[];
+
+			const { getAllByTestId } = await renderAndOpenOwnerFilter(ownerProjects);
+
+			await waitFor(() => {
+				const options = getAllByTestId('project-sharing-info');
+				expect(options).toHaveLength(1);
+				expect(options[0]).toHaveTextContent('Custom role project');
+			});
+		});
+
+		it('hides a project whose role does not grant the push scope', async () => {
+			const ownerProjects = [
+				{
+					id: 'viewer-project',
+					name: 'Viewer project',
+					type: 'team',
+					role: 'project:viewer',
+					scopes: ['workflow:read'],
+				},
+			] as unknown as ProjectListItem[];
+
+			const { queryAllByTestId } = await renderAndOpenOwnerFilter(ownerProjects);
+
+			await waitFor(() => {
+				expect(queryAllByTestId('project-sharing-info')).toHaveLength(0);
+			});
+		});
+
+		it('shows a project for an instance admin without a project relation', async () => {
+			const ownerProjects = [
+				{
+					id: 'admin-no-relation-project',
+					name: 'Admin no relation project',
+					type: 'team',
+					role: 'global:admin',
+					scopes: ['sourceControl:push'],
+				},
+			] as unknown as ProjectListItem[];
+
+			const { getAllByTestId } = await renderAndOpenOwnerFilter(ownerProjects);
+
+			await waitFor(() => {
+				const options = getAllByTestId('project-sharing-info');
+				expect(options).toHaveLength(1);
+				expect(options[0]).toHaveTextContent('Admin no relation project');
+			});
 		});
 	});
 

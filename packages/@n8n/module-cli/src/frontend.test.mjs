@@ -107,7 +107,8 @@ describe('createFrontend', () => {
 				'package.json',
 				'tsconfig.json',
 				'vite.config.ts',
-				'eslint.config.mjs',
+				'oxlint.config.mts',
+				'vize-lint.config.mjs',
 				'stylelint.config.mjs',
 				'biome.jsonc',
 				'README.md',
@@ -133,6 +134,32 @@ describe('createFrontend', () => {
 			expect(readFileSync(join(packageDir, `src/${NAME}.store.ts`), 'utf8')).toContain(
 				"defineStore('myFeature'",
 			);
+
+			// `defineFrontendModule()` is the canonical descriptor form: it is the SDK's
+			// one seam for validation and dev-mode checks. A scaffold that emits a bare
+			// annotated object starts every new module outside that seam.
+			const descriptor = readFileSync(join(packageDir, `src/${NAME}.module.ts`), 'utf8');
+			expect(descriptor).toContain(
+				"import { defineFrontendModule } from '@n8n/frontend-module-sdk';",
+			);
+			expect(descriptor).toContain('export const MyFeatureModule = defineFrontendModule({');
+		});
+
+		it('lints with Oxlint and Vize, and not with ESLint', () => {
+			scaffold(root);
+			const packageDir = join(root, 'packages', 'modules', NAME, 'frontend');
+			const manifest = JSON.parse(readFileSync(join(packageDir, 'package.json'), 'utf8'));
+
+			expect(manifest.scripts.lint).toBe(
+				'oxlint src --quiet && vize lint -c vize-lint.config.mjs "src/**/*.vue"',
+			);
+			for (const dependency of ['@n8n/oxlint-config', 'oxlint', 'oxlint-tsgolint', 'vize']) {
+				expect(Object.keys(manifest.devDependencies)).toContain(dependency);
+			}
+			expect(
+				Object.keys(manifest.devDependencies).filter((name) => name.includes('eslint')),
+			).toEqual([]);
+			expect(existsSync(join(packageDir, 'eslint.config.mjs'))).toBe(false);
 		});
 
 		it('registers the plugins a design-system consumer needs, and declares them', () => {

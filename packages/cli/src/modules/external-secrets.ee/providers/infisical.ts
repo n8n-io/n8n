@@ -5,16 +5,20 @@ import {
 	isConnectionRefusedError,
 	OutboundHttp,
 } from '@n8n/backend-network';
+import { Time } from '@n8n/constants';
 import { Container } from '@n8n/di';
-import { type INodeProperties, UnexpectedError } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { DOCS_HELP_NOTICE } from '../constants';
+import { ExternalSecretsConfig } from '../external-secrets.config';
 import {
 	buildHttpProviderErrorContext,
 	logSecretsProviderOperationFailure,
 	type LogContext,
 	type SecretsProviderOperationFailureParams,
 } from '../errors/secrets-provider-errors';
+import { formatSecretPath } from '../secret-path';
 import type { SecretsProviderSettings } from '../types';
 import { SecretsProvider } from '../types';
 
@@ -171,11 +175,15 @@ export class InfisicalProvider extends SecretsProvider {
 
 	async init(settings: SecretsProviderSettings): Promise<void> {
 		this.settings = settings.settings as unknown as InfisicalSettings;
+		const config = Container.get(ExternalSecretsConfig);
 
 		this.http = this.outboundHttp.requests({
 			baseURL: this.settings.siteURL,
 			headers: () => this.buildAuthHeaders(),
 			useDefaultSsrfPolicy: 'unsafe', // admin-configured infrastructure
+			// Aborts the socket, so a request a caller stopped waiting for does not stay open. The
+			// larger bound, so no single request is cut before its operation's own deadline.
+			timeout: Math.max(config.connectTimeout, config.refreshTimeout) * Time.seconds.toMilliseconds,
 		});
 
 		this.logger.debug('Infisical provider initialized');
@@ -366,7 +374,7 @@ export class InfisicalProvider extends SecretsProvider {
 	}
 
 	getSecretNames(): string[] {
-		return Object.keys(this.cachedSecrets);
+		return Object.keys(this.cachedSecrets).map((name) => formatSecretPath([name]));
 	}
 
 	hasSecret(name: string): boolean {

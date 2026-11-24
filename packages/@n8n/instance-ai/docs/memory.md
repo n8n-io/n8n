@@ -10,9 +10,7 @@ The memory system serves two purposes:
 - **Conversation history** — the stored messages for the current thread
   (thread-scoped)
 
-The eval-setup background agent does not share the orchestrator's observational
-memory. It receives a briefing and uses a dedicated persistence wrapper for
-checkpoint and suspension state.
+Embedded specialist agents do not share the orchestrator's observational memory.
 
 ## Tiers
 
@@ -61,12 +59,6 @@ Both jobs use the configured Instance AI model.
 Observational memory is **thread-scoped** — it tracks the operational history
 of the current task.
 
-### Tier 3: Plan Storage
-
-The `create-tasks` tool stores execution plans in thread-scoped storage. Plans
-are structured task graphs that persist across reconnects within a conversation.
-See the [tools](./tools.md) documentation for the task graph schema.
-
 ## Scoping Model
 
 All memory is thread-scoped (isolated per conversation):
@@ -75,16 +67,10 @@ All memory is thread-scoped (isolated per conversation):
 - **Observational memory** — compressed operational history
 - **Plan** — the current execution plan
 
-### Sub-agent memory
+### Embedded agent memory
 
-The eval-setup background agent receives its task briefing and optional
-`conversationContext` from `eval-setup-with-agent`. It does not read or write
-the orchestrator's observational memory. Its agent persistence stores the
-checkpoint data needed for resume and HITL handling.
-
-An `IterationLog` database adapter is available through the dedicated
-`instance_ai_iteration_logs` table. The briefing builder can include these
-entries when supplied by a caller.
+The Agent Builder owns its session state separately from the orchestrator's
+observational memory. Generic background-task state stays thread-scoped.
 
 ### Cross-user isolation
 
@@ -95,8 +81,15 @@ conversations.
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
-| `N8N_INSTANCE_AI_OBSERVER_MESSAGE_TOKENS` | number | 30000 | Observer trigger threshold |
-| `N8N_INSTANCE_AI_REFLECTOR_OBSERVATION_TOKENS` | number | 40000 | Reflector trigger threshold |
+| `N8N_INSTANCE_AI_OBSERVATION_MAX_WINDOW_TOKENS` | number | 200000 | Largest window for memory thresholds. Thresholds are shares of the model window or this value, whichever is smaller. `0` uses the full model window |
+| `N8N_INSTANCE_AI_OBSERVER_MESSAGE_TOKENS` | number | 30000 | Fixed Observer threshold. Applies only when the max window is `0` and the model window is unknown |
+| `N8N_INSTANCE_AI_REFLECTOR_OBSERVATION_TOKENS` | number | unset | Fixed Reflector threshold. When unset, the threshold is a share of the memory window. When set, it replaces that share |
+| `N8N_INSTANCE_AI_MID_RUN_OBSERVATION` | boolean | true | Summarize during a long turn, between tool calls |
+| `N8N_INSTANCE_AI_OBSERVATION_LOG_PLACEMENT` | `system` \| `message` | message | Where the summary goes |
+| `N8N_INSTANCE_AI_OBSERVATION_FAILURE_POLICY` | `disableForRun` \| `retry` | retry | What to do when an Observer call fails |
+| `N8N_INSTANCE_AI_OBSERVER_MAX_BATCHES` | number | 5 | Maximum Observer calls after one turn. `0` means no limit |
+| `N8N_INSTANCE_AI_REFLECTION_MODE` | `background` \| `afterObserve` | background | When the Reflector runs |
+| `N8N_INSTANCE_AI_HISTORY_RECALL` | boolean | true | Enable the `read_history` tool |
 | `N8N_INSTANCE_AI_THREAD_TTL_DAYS` | number | 30 | Thread TTL. Threads older than this expire, taking their memory with them. `0` disables expiry. |
 
-Observer and Reflector use the orchestrator agent's model.
+Observer and Reflector run on the utility model (`N8N_INSTANCE_AI_UTILITY_MODEL`). Without a utility model they use the orchestrator agent's model.

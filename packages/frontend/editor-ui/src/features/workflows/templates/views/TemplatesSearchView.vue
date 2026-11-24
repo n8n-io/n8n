@@ -246,8 +246,8 @@ const onLoadMore = async () => {
 		});
 	} catch (e) {
 		toast.showMessage({
-			title: 'Error',
-			message: 'Could not load more workflows',
+			title: i18n.baseText('error'),
+			message: i18n.baseText('templates.loadMoreWorkflowsError'),
 			type: 'error',
 		});
 	} finally {
@@ -345,7 +345,7 @@ watch(workflows, (newWorkflows) => {
 				</div>
 				<div :class="$style.button">
 					<N8nButton
-						variant="subtle"
+						variant="outline"
 						size="large"
 						:href="CREATOR_HUB_URL"
 						:label="i18n.baseText('templates.shareWorkflow')"
@@ -417,6 +417,8 @@ watch(workflows, (newWorkflows) => {
 </template>
 
 <style lang="scss" module>
+@use '@/app/css/variables' as *;
+
 .wrapper {
 	display: flex;
 	justify-content: space-between;

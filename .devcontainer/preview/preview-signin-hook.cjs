@@ -1,6 +1,6 @@
 /**
  * One-click sign-in for preview instances. Loaded through EXTERNAL_HOOK_FILES by
- * scripts/preview-serve.mjs, so it is never part of a packaged n8n.
+ * scripts/codespace-preview/preview-serve.mjs, so it is never part of a packaged n8n.
  *
  * The route performs an ordinary login on the visitor's behalf: it calls
  * /rest/login with the preview instance's own seeded credentials and forwards the

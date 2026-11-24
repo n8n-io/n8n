@@ -1,9 +1,15 @@
 import {
+	type AgentDbMessage,
+	type AgentMessage,
+	type BuiltMemory,
 	type BuiltObservationLogStore,
 	type BuiltObservationLogTaskLockStore,
+	type BuiltObservationResumeStore,
 	type MemoryDescriptor,
 	type NewObservationLogEntry,
 	type ObservationCursor,
+	type ObservationLogBatch,
+	type ObservationLogBatchCommitResult,
 	type ObservationLogEntry,
 	type ObservationLogReadOptions,
 	type ObservationLogReflection,
@@ -11,8 +17,10 @@ import {
 	type ObservationLogScope,
 	type ObservationLogTaskKind,
 	type ObservationLogTaskLockHandle,
+	type ObservationResumeState,
 	type JSONObject,
 	type JSONValue,
+	type Thread,
 } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
@@ -20,17 +28,11 @@ import { isRecord } from '@n8n/utils/is-record';
 import {
 	SUB_AGENT_RESOURCE_PREFIX,
 	createSubAgentResourceIdPrefix,
-	type AgentDbMessage,
-	type AgentMessage,
-	type BuiltMemory,
-	type Thread,
 	type ThreadPatch,
 } from '@n8n/instance-ai';
 import { In, LessThan, Like } from '@n8n/typeorm';
-import { UnexpectedError } from 'n8n-workflow';
 
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ConflictError, ForbiddenError, UnexpectedError } from '@n8n/errors';
 
 import { TypeORMObservationLogStore } from './typeorm-observation-log-store';
 import type { InstanceAiMessage } from '../entities/instance-ai-message.entity';
@@ -147,8 +149,6 @@ function workingMemoryKey(params: {
 }
 
 const PATCH_ONLY_METADATA_KEYS = new Set([
-	'instanceAiIterationLog',
-	'instanceAiPlannedTasks',
 	'instanceAiTasks',
 	'instanceAiTerminalOutcomes',
 	'instanceAiWorkflowLoop',
@@ -177,7 +177,11 @@ function mergeSaveThreadMetadata(
 
 @Service()
 export class TypeORMAgentMemory
-	implements BuiltMemory, BuiltObservationLogStore, BuiltObservationLogTaskLockStore
+	implements
+		BuiltMemory,
+		BuiltObservationLogStore,
+		BuiltObservationLogTaskLockStore,
+		BuiltObservationResumeStore
 {
 	private readonly threadMutationQueues = new Map<string, Promise<unknown>>();
 	private readonly observationLog: TypeORMObservationLogStore;
@@ -216,6 +220,15 @@ export class TypeORMAgentMemory
 		return thread ? toThread(thread) : null;
 	}
 
+	async listThreadHistory(
+		resourceId: string,
+		limit: number,
+		search?: string,
+		before?: { updatedAt: Date; id: string },
+	): Promise<Thread[]> {
+		return (await this.threadRepo.listHistoryPage(resourceId, limit, search, before)).map(toThread);
+	}
+
 	async listThreads(args: {
 		filter?: { resourceId?: string };
 		perPage?: number;
@@ -243,15 +256,17 @@ export class TypeORMAgentMemory
 
 	async saveThread(thread: Omit<Thread, 'createdAt' | 'updatedAt'>): Promise<Thread> {
 		return await this.serializeThreadMutation(thread.id, async () => {
-			const existing = await this.threadRepo.findOneBy({ id: thread.id });
-			if (existing) {
-				existing.resourceId = thread.resourceId;
-				if (thread.title !== undefined) existing.title = thread.title;
-				if (thread.metadata !== undefined) {
-					existing.metadata = mergeSaveThreadMetadata(existing.metadata, thread.metadata);
-				}
-				return toThread(await this.threadRepo.save(existing));
-			}
+			const updated = await this.threadRepo.updateThread({
+				threadId: thread.id,
+				update: (current) => ({
+					resourceId: thread.resourceId,
+					...(thread.title !== undefined ? { title: thread.title } : {}),
+					...(thread.metadata !== undefined
+						? { metadata: mergeSaveThreadMetadata(current.metadata, thread.metadata) }
+						: {}),
+				}),
+			});
+			if (updated) return updated;
 
 			const saved = await this.threadRepo.save(
 				this.threadRepo.create({
@@ -323,18 +338,14 @@ export class TypeORMAgentMemory
 		threadId: string;
 		update: (current: Thread) => ThreadPatch | null | undefined;
 	}): Promise<Thread | null> {
-		return await this.serializeThreadMutation(args.threadId, async () => {
-			const existing = await this.threadRepo.findOneBy({ id: args.threadId });
-			if (!existing) return null;
-
-			const current = toThread(existing);
-			const patch = args.update(cloneThreadForPatch(current));
-			if (!patch) return current;
-
-			if (patch.title !== undefined) existing.title = patch.title;
-			if (patch.metadata !== undefined) existing.metadata = patch.metadata;
-			return toThread(await this.threadRepo.save(existing));
-		});
+		return await this.serializeThreadMutation(
+			args.threadId,
+			async () =>
+				await this.threadRepo.updateThread({
+					threadId: args.threadId,
+					update: (current) => args.update(cloneThreadForPatch(current)),
+				}),
+		);
 	}
 
 	async deleteThread(threadId: string): Promise<void> {
@@ -365,7 +376,7 @@ export class TypeORMAgentMemory
 	/**
 	 * Delete every thread owned by `resourceId` (a user), the sub-agent threads
 	 * spawned under those threads, and all of their working-memory resources.
-	 * Downstream rows (messages, checkpoints, event-log entries, iteration logs,
+	 * Downstream rows (messages, checkpoints, event-log entries, thread tabs,
 	 * grants, pending confirmations, observations) cascade via their `threadId`
 	 * FK; resources have no FK to threads and are removed explicitly. Returns the
 	 * number of owner threads deleted.
@@ -425,36 +436,41 @@ export class TypeORMAgentMemory
 		});
 	}
 
+	/**
+	 * One page of a thread's messages, returned oldest-first, plus one lookahead
+	 * row so the caller can tell whether older rows exist. `before` is the oldest
+	 * row of the previous page and replaces `page`: keyset paging on
+	 * (createdAt, id) stays stable while new rows arrive.
+	 */
 	async listMessages(args: {
 		threadId: string;
 		limit?: number;
 		page?: number;
-		/** Also resolve `newerBoundaryAt`: the createdAt of the row immediately
-		 *  newer than the page, i.e. where the next page starts. Read in the same
-		 *  scan as the page itself (one extra row), not a second query. */
-		withNewerBoundary?: boolean;
-	}): Promise<{ messages: AgentDbMessage[]; newerBoundaryAt?: Date }> {
+		before?: { createdAt: Date; id: string };
+	}): Promise<{ messages: AgentDbMessage[]; hasMore: boolean }> {
+		const { threadId, before } = args;
 		const limit = args.limit ?? 50;
-		const page = args.page ?? 0;
-		const offset = page * limit;
-		// The newest page has no newer neighbour — its span is open-ended.
-		const withBoundary = args.withNewerBoundary === true && offset > 0;
 		const entities = await this.messageRepo.find({
-			where: { threadId: args.threadId },
+			where: before
+				? [
+						{ threadId, createdAt: LessThan(before.createdAt) },
+						{ threadId, createdAt: before.createdAt, id: LessThan(before.id) },
+					]
+				: { threadId },
 			order: { createdAt: 'DESC', id: 'DESC' },
-			take: withBoundary ? limit + 1 : limit,
-			skip: withBoundary ? offset - 1 : offset,
+			take: limit + 1,
+			skip: before ? 0 : (args.page ?? 0) * limit,
 		});
-		// Rows are newest-first, so the extra row is the neighbour, not part of
-		// the page.
-		const boundary = withBoundary ? entities.shift() : undefined;
 
 		return {
-			messages: entities.reverse().flatMap((entity) => {
-				const message = this.toAgentMessage(entity);
-				return message ? [message] : [];
-			}),
-			newerBoundaryAt: boundary?.createdAt,
+			messages: entities
+				.slice(0, limit)
+				.reverse()
+				.flatMap((entity) => {
+					const message = this.toAgentMessage(entity);
+					return message ? [message] : [];
+				}),
+			hasMore: entities.length > limit,
 		};
 	}
 
@@ -480,6 +496,7 @@ export class TypeORMAgentMemory
 		});
 
 		await this.messageRepo.save(entities);
+		await this.threadRepo.update(args.threadId, { updatedAt: new Date() });
 	}
 
 	async deleteMessages(messageIds: string[]): Promise<void> {
@@ -515,6 +532,12 @@ export class TypeORMAgentMemory
 				metadata: { scope: params.scope },
 			}),
 		);
+	}
+
+	async commitObservationLogBatch(
+		batch: ObservationLogBatch,
+	): Promise<ObservationLogBatchCommitResult> {
+		return await this.observationLog.commitObservationLogBatch(batch);
 	}
 
 	async appendObservationLogEntries(
@@ -561,6 +584,14 @@ export class TypeORMAgentMemory
 
 	async setCursor(cursor: ObservationCursor): Promise<void> {
 		return await this.observationLog.setCursor(cursor);
+	}
+
+	async getResumeState(observationScopeId: string): Promise<ObservationResumeState | null> {
+		return await this.observationLog.getResumeState(observationScopeId);
+	}
+
+	async saveResumeState(state: ObservationResumeState): Promise<void> {
+		return await this.observationLog.saveResumeState(state);
 	}
 
 	async acquireObservationLogTaskLock(

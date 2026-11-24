@@ -4,6 +4,7 @@ import type {
 	INodeListSearchItems,
 	INodeListSearchResult,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import type { IDriveItem, IList, IListItem, ISite } from '../helpers/interfaces';
 import { escapeFilterValue } from '../helpers/utils';
@@ -22,7 +23,7 @@ export async function getFiles(
 		response = await microsoftSharePointApiRequest.call(
 			this,
 			'GET',
-			`/sites/${site}/drive/items/${folder}/children`,
+			requestPath`/sites/${site}/drive/items/${folder}/children`,
 			{},
 			undefined,
 			undefined,
@@ -40,18 +41,18 @@ export async function getFiles(
 		response = await microsoftSharePointApiRequest.call(
 			this,
 			'GET',
-			`/sites/${site}/drive/items/${folder}/children`,
+			requestPath`/sites/${site}/drive/items/${folder}/children`,
 			{},
 			qs,
 		);
 	}
 
-	const items: IDriveItem[] = response.value;
+	const items: IDriveItem[] = response.value ?? [];
 
 	const results: INodeListSearchItems[] = items
 		.filter((x) => x.file)
 		.map((g) => ({
-			name: g.name,
+			name: g.name ?? g.id,
 			value: g.id,
 		}))
 		.sort((a, b) =>
@@ -73,7 +74,7 @@ export async function getFolders(
 		response = await microsoftSharePointApiRequest.call(
 			this,
 			'GET',
-			`/sites/${site}/drive/items`,
+			requestPath`/sites/${site}/drive/items`,
 			{},
 			undefined,
 			undefined,
@@ -89,18 +90,18 @@ export async function getFolders(
 		response = await microsoftSharePointApiRequest.call(
 			this,
 			'GET',
-			`/sites/${site}/drive/items`,
+			requestPath`/sites/${site}/drive/items`,
 			{},
 			qs,
 		);
 	}
 
-	const items: IDriveItem[] = response.value;
+	const items: IDriveItem[] = response.value ?? [];
 
 	const results: INodeListSearchItems[] = items
 		.filter((x) => x.folder && (!filter || x.name?.toLowerCase()?.includes?.(filter.toLowerCase())))
 		.map((g) => ({
-			name: g.name,
+			name: g.name ?? g.id,
 			value: g.id,
 		}))
 		.sort((a, b) =>
@@ -123,7 +124,7 @@ export async function getItems(
 		response = await microsoftSharePointApiRequest.call(
 			this,
 			'GET',
-			`/sites/${site}/lists/${list}/items`,
+			requestPath`/sites/${site}/lists/${list}/items`,
 			{},
 			undefined,
 			undefined,
@@ -140,17 +141,17 @@ export async function getItems(
 		response = await microsoftSharePointApiRequest.call(
 			this,
 			'GET',
-			`/sites/${site}/lists/${list}/items`,
+			requestPath`/sites/${site}/lists/${list}/items`,
 			{},
 			qs,
 		);
 	}
 
-	const items: IListItem[] = response.value;
+	const items: IListItem[] = response.value ?? [];
 
 	const results: INodeListSearchItems[] = items
 		.map((g) => ({
-			name: g.fields.Title ?? g.id,
+			name: g.fields?.Title ?? g.id,
 			value: g.id,
 		}))
 		.sort((a, b) =>
@@ -172,7 +173,7 @@ export async function getLists(
 		response = await microsoftSharePointApiRequest.call(
 			this,
 			'GET',
-			`/sites/${site}/lists`,
+			requestPath`/sites/${site}/lists`,
 			{},
 			undefined,
 			undefined,
@@ -188,17 +189,17 @@ export async function getLists(
 		response = await microsoftSharePointApiRequest.call(
 			this,
 			'GET',
-			`/sites/${site}/lists`,
+			requestPath`/sites/${site}/lists`,
 			{},
 			qs,
 		);
 	}
 
-	const lists: IList[] = response.value;
+	const lists: IList[] = response.value ?? [];
 
 	const results: INodeListSearchItems[] = lists
 		.map((g) => ({
-			name: g.displayName,
+			name: g.displayName ?? g.id,
 			value: g.id,
 		}))
 		.sort((a, b) =>
@@ -218,7 +219,7 @@ export async function getSites(
 		response = await microsoftSharePointApiRequest.call(
 			this,
 			'GET',
-			'/sites',
+			requestPath`/sites`,
 			{},
 			undefined,
 			undefined,
@@ -232,14 +233,14 @@ export async function getSites(
 		if (filter) {
 			qs.$search = filter;
 		}
-		response = await microsoftSharePointApiRequest.call(this, 'GET', '/sites', {}, qs);
+		response = await microsoftSharePointApiRequest.call(this, 'GET', requestPath`/sites`, {}, qs);
 	}
 
-	const sites: ISite[] = response.value;
+	const sites: ISite[] = response.value ?? [];
 
 	const results: INodeListSearchItems[] = sites
 		.map((g) => ({
-			name: g.title,
+			name: g.title ?? g.id,
 			value: g.id,
 		}))
 		.sort((a, b) =>

@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router';
 import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
 import { createComponentRenderer } from '@/__tests__/render';
-import { type MockedStore, mockedStore, getTooltip } from '@/__tests__/utils';
+import { type MockedStore, mockedStore, getTooltip, queryTooltip } from '@/__tests__/utils';
 import { mockNode, mockNodeTypeDescription } from '@/__tests__/mocks';
 import { nodeViewEventBus } from '@/app/event-bus';
 import {
@@ -156,6 +156,18 @@ describe('NodeExecuteButton', () => {
 		expect(() => renderComponent()).not.toThrow();
 	});
 
+	it('keeps the tooltip trigger around a natively disabled button', async () => {
+		const { getByRole, emitted } = renderComponent({
+			props: { disabled: true, tooltip: 'Execute this node' },
+		});
+		const button = getByRole('button');
+		expect(button).toBeDisabled();
+		await userEvent.hover(button.parentElement!);
+		await waitFor(() => expect(getTooltip()).toHaveTextContent('Execute this node'));
+		await userEvent.click(button);
+		expect(emitted('execute')).toBeUndefined();
+	});
+
 	it('displays correct button label for regular node', () => {
 		const { getByRole } = renderComponent();
 		expect(getByRole('button').textContent).toBe('Execute step');
@@ -260,13 +272,59 @@ describe('NodeExecuteButton', () => {
 		const { getByRole } = renderComponent();
 
 		const button = getByRole('button');
-		expect(button).toBeDisabled();
+		expect(button).toHaveAttribute('aria-disabled', 'true');
+		expect(button).not.toBeDisabled();
 
 		await userEvent.hover(button);
 
 		await waitFor(() => {
 			const tooltip = getTooltip();
 			expect(tooltip).toHaveTextContent('Enable node to execute');
+		});
+	});
+
+	describe('test step tooltip visibility', () => {
+		const POPUP_COUNT_KEY = 'N8N_NODE_TEST_STEP_POPUP_COUNT';
+		const tooltip = 'Execute previous nodes';
+
+		beforeEach(() => {
+			vi.spyOn(workflowDocumentStore, 'getNodeByName').mockReturnValue(
+				mockNode({ name: 'test-node', type: SET_NODE_TYPE }),
+			);
+		});
+
+		afterEach(() => {
+			localStorage.removeItem(POPUP_COUNT_KEY);
+		});
+
+		it('keeps showing the tooltip on an icon-only button past the popup limit', async () => {
+			localStorage.setItem(POPUP_COUNT_KEY, '10');
+
+			const { getByRole } = renderComponent({ props: { tooltip, iconOnly: true } });
+
+			await userEvent.hover(getByRole('button'));
+
+			await waitFor(() => expect(getTooltip()).toHaveTextContent(tooltip));
+		});
+
+		it('shows the tooltip on a labeled button below the popup limit', async () => {
+			localStorage.setItem(POPUP_COUNT_KEY, '0');
+
+			const { getByRole } = renderComponent({ props: { tooltip } });
+
+			await userEvent.hover(getByRole('button'));
+
+			await waitFor(() => expect(getTooltip()).toHaveTextContent(tooltip));
+		});
+
+		it('stops showing the tooltip on a labeled button past the popup limit', async () => {
+			localStorage.setItem(POPUP_COUNT_KEY, '10');
+
+			const { getByRole } = renderComponent({ props: { tooltip } });
+
+			await userEvent.hover(getByRole('button'));
+
+			expect(queryTooltip()).toBeNull();
 		});
 	});
 
@@ -284,7 +342,8 @@ describe('NodeExecuteButton', () => {
 		const { getByRole } = renderComponent();
 
 		const button = getByRole('button');
-		expect(button).toBeDisabled();
+		expect(button).toHaveAttribute('aria-disabled', 'true');
+		expect(button).not.toBeDisabled();
 
 		await userEvent.hover(button);
 
@@ -308,7 +367,8 @@ describe('NodeExecuteButton', () => {
 
 		const { getByRole } = renderComponent();
 
-		expect(getByRole('button')).toBeDisabled();
+		expect(getByRole('button')).toHaveAttribute('aria-disabled', 'true');
+		expect(getByRole('button')).not.toBeDisabled();
 	});
 
 	it('stops webhook when clicking button while listening for events', async () => {

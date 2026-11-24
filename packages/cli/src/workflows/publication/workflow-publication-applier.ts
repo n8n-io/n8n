@@ -1,10 +1,12 @@
 import { Logger } from '@n8n/backend-common';
+import { isNodeIdTooLong } from '@n8n/constants';
 import {
 	WorkflowEntity,
 	WorkflowHistory,
 	WorkflowHistoryRepository,
 	WorkflowPublicationOutbox,
 	WorkflowPublicationReason,
+	WorkflowPublicationTriggerStatusRepository,
 	WorkflowPublishedVersionRepository,
 	WorkflowRepository,
 	type WorkflowPublicationTriggerKind,
@@ -13,22 +15,33 @@ import { Service } from '@n8n/di';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { INode, WorkflowActivateMode } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
+import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import { NodeTypes } from '@/node-types';
+import { enforceWorkflowPublishPolicy } from '@/policy/enforce-workflow-publish';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
 import { DurableJobProvisioner } from '@/scheduling/durable-job-provisioner';
 import { WorkflowScheduledJobOwner } from '@/scheduling/workflow-scheduled-job-owner';
 import { OwnershipService } from '@/services/ownership.service';
 import { Telemetry } from '@/telemetry';
-import { formatNodeFailures } from '@/workflows/publication/format-node-failures';
+import {
+	formatFailedActivationError,
+	formatNodeFailures,
+} from '@/workflows/publication/format-node-failures';
 import { healNodeIds } from '@/workflows/publication/heal-node-ids';
 import type {
 	PublicationResult,
 	TriggerPublicationStatus,
 } from '@/workflows/publication/publication-result';
-import { computeTriggerDiff } from '@/workflows/publication/trigger-diff';
-import { isTriggerLikeNodeType } from '@/workflows/triggers/enabled-trigger-nodes';
+import { computeTriggerDiff, type TriggerDiff } from '@/workflows/publication/trigger-diff';
+import { TriggerNodeIdTooLongError } from '@/workflows/publication/trigger-node-id-too-long.error';
+import {
+	isTriggerLikeNodeType,
+	type WorkflowTriggerVersion,
+} from '@/workflows/triggers/enabled-trigger-nodes';
+import { WorkflowPublisherService } from '@/workflows/workflow-publisher.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 import {
 	WorkflowTriggerActivator,
@@ -37,14 +50,20 @@ import {
 	type TriggerOperationAbort,
 	type TriggerTeardownFailure,
 } from '@/workflows/triggers/workflow-trigger-activator';
-import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
+import { WorkflowPublishedDataService } from '@n8n/backend-services';
+
+/** A node whose type this instance cannot load, with the loader's error. */
+type UnresolvableNode = { node: INode; error: Error };
+
+/** A version split into the part a `Workflow` can be built from and the nodes it cannot include. */
+type PartitionedVersion = { runnable: WorkflowTriggerVersion; unresolvable: UnresolvableNode[] };
 
 /**
  * The activation mode reported to trigger nodes for each enqueue reason, so
  * e.g. the n8n Trigger's "Instance Started" event fires exactly for the
  * leader's startup pass. Records from before the `reason` column existed
  * default to `publish` at the DB level, i.e. today's `update` behavior.
- * A first publication overrides `publish` → `activate`; see
+ * A first publication overrides `publish` or `transfer` → `activate`; see
  * {@link WorkflowPublicationApplier.resolveActivationMode}.
  */
 const ACTIVATION_MODE_BY_REASON: Record<WorkflowPublicationReason, WorkflowActivateMode> = {
@@ -52,7 +71,24 @@ const ACTIVATION_MODE_BY_REASON: Record<WorkflowPublicationReason, WorkflowActiv
 	[WorkflowPublicationReason.Startup]: 'init',
 	[WorkflowPublicationReason.LeadershipTakeover]: 'leadershipChange',
 	[WorkflowPublicationReason.Reconcile]: 'update',
+	[WorkflowPublicationReason.Transfer]: 'update',
 };
+
+/** Whether a user asked for the publication; records from before the `reason` column count as `publish`. */
+function isUserIntent(record: WorkflowPublicationOutbox): boolean {
+	const reason = record.reason ?? WorkflowPublicationReason.Publish;
+	return (
+		reason === WorkflowPublicationReason.Publish || reason === WorkflowPublicationReason.Transfer
+	);
+}
+
+/** Removes every old trigger and adds every new one, so unchanged triggers also register again. */
+function replaceAllTriggers(oldTriggers: INode[], newTriggers: INode[]): TriggerDiff {
+	return {
+		toRemove: new Set(oldTriggers.map((node) => node.id)),
+		toAdd: new Set(newTriggers.map((node) => node.id)),
+	};
+}
 
 /**
  * Reconciles a workflow's triggers to a published version, one outbox record at
@@ -79,6 +115,9 @@ export class WorkflowPublicationApplier {
 		private readonly ownershipService: OwnershipService,
 		private readonly workflowScheduledJobOwner: WorkflowScheduledJobOwner,
 		private readonly durableJobProvisioner: DurableJobProvisioner,
+		private readonly credentialsPermissionChecker: CredentialsPermissionChecker,
+		private readonly workflowPublisherService: WorkflowPublisherService,
+		private readonly triggerStatusRepository: WorkflowPublicationTriggerStatusRepository,
 	) {
 		this.logger = this.logger.scoped('workflow-publication');
 	}
@@ -142,14 +181,39 @@ export class WorkflowPublicationApplier {
 		const healSkip = await this.healBrokenNodeIds(workflow, newVersion);
 		if (healSkip !== null) return healSkip;
 
-		const blocked = await this.enforcePublishPolicy(workflow, newVersion);
-		if (blocked !== null) return blocked;
+		const oversized = this.rejectOversizedTriggerNodeIds(workflow, newVersion);
+		if (oversized !== null) {
+			return await this.preserveRunningTriggerStatuses(workflow, oldVersion, oversized);
+		}
 
-		const oldTriggerNodes = this.workflowTriggerActivator.getEnabledTriggerNodes(oldVersion);
+		const unrunnable = await this.handleUnrunnableVersion(
+			workflow,
+			oldVersion,
+			newVersion,
+			record,
+			abort,
+		);
+		if (unrunnable !== null) return unrunnable;
+
+		const blocked = await this.enforcePublishPolicy(workflow, newVersion);
+		if (blocked !== null) {
+			return await this.preserveRunningTriggerStatuses(workflow, oldVersion, blocked);
+		}
+
+		const refused = await this.refuseUnusableTriggerCredentials(workflow, newVersion);
+		if (refused !== null) {
+			return await this.preserveRunningTriggerStatuses(workflow, oldVersion, refused);
+		}
+
+		const { old, oldTriggerCandidates } = this.resolveOldTriggerCandidates(oldVersion);
 		const desiredTriggerNodes = this.workflowTriggerActivator.getEnabledTriggerNodes(newVersion);
 		const triggerKinds = this.workflowTriggerActivator.getTriggerKinds(desiredTriggerNodes);
 
-		const { toAdd, toRemove } = computeTriggerDiff(oldTriggerNodes, desiredTriggerNodes);
+		const versionChanged = oldVersion !== null && oldVersion.versionId !== newVersion.versionId;
+		const { toAdd, toRemove } =
+			record.reason === WorkflowPublicationReason.Transfer
+				? replaceAllTriggers(oldTriggerCandidates, desiredTriggerNodes)
+				: computeTriggerDiff(oldTriggerCandidates, desiredTriggerNodes, { versionChanged });
 
 		this.logger.debug(
 			`Calculated trigger diff for workflow publication: ${toAdd.size} to add, ${toRemove.size} to remove`,
@@ -200,19 +264,12 @@ export class WorkflowPublicationApplier {
 		// result rather than blocking the new version behind a third party. Only
 		// a failure that leaves local trigger state possibly live (a non-webhook
 		// close failure, or an abort) bubbles up so the version is not advanced.
-		let teardownFailures: TriggerTeardownFailure[] = [];
-		if (toRemove.size > 0 && oldVersion) {
-			({ externalTeardownFailures: teardownFailures } =
-				await this.workflowTriggerActivator.deactivate(workflow, oldVersion, toRemove, abort));
-		}
+		const teardownFailures = await this.teardownOldVersionNodes(workflow, old, toRemove, abort);
 		// Whatever the activation outcome, the remove phase already ran (and the
 		// version advances below), so its abandoned external deregistrations must
 		// ride along for the reporter to surface.
 		const withTeardownFailures = (result: PublicationResult): PublicationResult =>
-			(result.type === 'completed' || result.type === 'partial' || result.type === 'failed') &&
-			teardownFailures.length > 0
-				? { ...result, teardownFailures }
-				: result;
+			this.withTeardownFailures(result, teardownFailures);
 
 		// Inside the try: once teardown has run, any failure — advancing the
 		// version included — must return a `failed` result (not throw) so the
@@ -223,15 +280,29 @@ export class WorkflowPublicationApplier {
 			abort.signal.throwIfAborted();
 			if (toAdd.size > 0) {
 				const activationMode = this.resolveActivationMode(record, oldVersion);
+				// A user publication keeps the full attempt budget even when a retry note exists.
+				let retriedNodeIds = new Set<INode['id']>();
+				if (!isUserIntent(record)) {
+					retriedNodeIds = await this.triggerStatusRepository.findRetriedTriggerNodeIds(
+						record.workflowId,
+						newVersion.versionId,
+					);
+				}
 				const outcome = await this.workflowTriggerActivator.activate(
 					workflow,
 					newVersion,
 					toAdd,
 					activationMode,
 					abort,
+					retriedNodeIds,
 				);
 				return withTeardownFailures(
-					this.classifyActivationOutcome(outcome, desiredTriggerNodes, triggerKinds),
+					this.classifyActivationOutcome(
+						outcome,
+						desiredTriggerNodes,
+						triggerKinds,
+						newVersion.versionId,
+					),
 				);
 			}
 
@@ -252,6 +323,181 @@ export class WorkflowPublicationApplier {
 	}
 
 	/**
+	 * Splits a version's nodes by whether this instance can load their type.
+	 * Disabled nodes count too: execution resolves every node when it constructs
+	 * the workflow, so one unknown type anywhere makes the version unrunnable here.
+	 * `runnable` is the version without those nodes, so the activator can still
+	 * build a `Workflow` from it.
+	 */
+	private partitionByResolvability(version: WorkflowTriggerVersion): PartitionedVersion {
+		const unresolvable: UnresolvableNode[] = [];
+		const resolvable: INode[] = [];
+		for (const node of version.nodes) {
+			try {
+				this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+				resolvable.push(node);
+			} catch (e) {
+				unresolvable.push({ node, error: ensureError(e) });
+			}
+		}
+		// The version itself when everything resolves, so callers see the same object.
+		const runnable =
+			unresolvable.length === 0 ? version : { nodes: resolvable, connections: version.connections };
+		return { runnable, unresolvable };
+	}
+
+	/**
+	 * Lists the previously published version's enabled trigger nodes and every
+	 * unresolvable node as conservative trigger candidates. The applier cannot
+	 * inspect an unknown type to determine whether it owns trigger state, so the
+	 * remove phase tries type-agnostic cleanup by node ID and name. It is a no-op
+	 * for an unresolvable node that never owned trigger state.
+	 */
+	private resolveOldTriggerCandidates(oldVersion: WorkflowHistory | null): {
+		old: PartitionedVersion | null;
+		oldTriggerCandidates: INode[];
+	} {
+		const old = oldVersion === null ? null : this.partitionByResolvability(oldVersion);
+		const oldTriggerCandidates = [
+			...this.workflowTriggerActivator.getEnabledTriggerNodes(old?.runnable ?? null),
+			...(old?.unresolvable ?? []).map(({ node }) => node),
+		];
+		return { old, oldTriggerCandidates };
+	}
+
+	/**
+	 * Handles a version that holds node types this instance cannot load, or
+	 * returns `null` when every node resolves and the normal publication applies.
+	 *
+	 * This can happen when a node type lands in `NODES_EXCLUDE` or is uninstalled
+	 * after publication: on the next start, reconciliation re-publishes the
+	 * active triggers through the outbox. Every path into publication refuses a
+	 * version with unresolvable nodes, so this never arises in normal operation.
+	 *
+	 * The version is published as a failed activation of every trigger: the
+	 * published triggers come down, the version advances, nothing is activated.
+	 * Refusing the version instead would not help, since on a restart the
+	 * previous version is this same version. The `failed` rows are what stops
+	 * reconciliation from re-enqueueing the workflow; the unresolvable nodes get
+	 * rows too, so a workflow whose only trigger is unknown is not left row-less.
+	 */
+	private async handleUnrunnableVersion(
+		workflow: WorkflowEntity,
+		oldVersion: WorkflowHistory | null,
+		newVersion: WorkflowHistory,
+		record: WorkflowPublicationOutbox,
+		abort: TriggerOperationAbort,
+	): Promise<PublicationResult | null> {
+		const { runnable, unresolvable } = this.partitionByResolvability(newVersion);
+		if (unresolvable.length === 0) return null;
+
+		this.logger.warn('Published version holds node types this instance cannot load', {
+			workflowId: workflow.id,
+			versionId: record.publishedVersionId,
+			nodeTypes: [...new Set(unresolvable.map(({ node }) => node.type))],
+		});
+
+		// The old version may hold the unknown node too; tear down what can be built.
+		const { old, oldTriggerCandidates } = this.resolveOldTriggerCandidates(oldVersion);
+		const toRemove = new Set(oldTriggerCandidates.map((node) => node.id));
+
+		abort.signal.throwIfAborted();
+		const teardownFailures = await this.teardownOldVersionNodes(workflow, old, toRemove, abort);
+
+		try {
+			await this.advancePublishedVersion(record);
+			// The count describes the published version, not what runs; keep it on
+			// the version's known triggers, as a failed activation would.
+			await this.workflowTriggerActivator.updateTriggerCount(workflow, runnable);
+		} catch (e) {
+			return this.withTeardownFailures({ type: 'failed', error: ensureError(e) }, teardownFailures);
+		}
+
+		const error = new UserError(
+			`Workflow cannot run on this instance: ${formatNodeFailures(
+				unresolvable.map(({ node, error }) => ({ nodeName: node.name, message: error.message })),
+			)}`,
+		);
+		const desiredTriggerNodes = this.workflowTriggerActivator.getEnabledTriggerNodes(runnable);
+		const triggerKinds = this.workflowTriggerActivator.getTriggerKinds(desiredTriggerNodes);
+		const triggerStatuses: TriggerPublicationStatus[] = [
+			...this.buildTriggerStatuses(desiredTriggerNodes, triggerKinds, {
+				activated: [],
+				failures: desiredTriggerNodes.map((node) => ({
+					nodeId: node.id,
+					nodeName: node.name,
+					error,
+				})),
+			}),
+			...unresolvable.map(
+				({ node, error }): TriggerPublicationStatus => ({
+					nodeId: node.id,
+					nodeName: node.name,
+					status: 'failed',
+					triggerKind: 'persisted',
+					errorMessage: error.message,
+				}),
+			),
+		];
+
+		return this.withTeardownFailures(
+			{
+				type: 'failed',
+				error,
+				nodeId: triggerStatuses.length === 1 ? triggerStatuses[0].nodeId : undefined,
+				triggerState: { versionId: newVersion.versionId, triggerStatuses },
+			},
+			teardownFailures,
+		);
+	}
+
+	/**
+	 * Tears down the requested node IDs from the previously published version and
+	 * returns the abandoned external deregistrations. Nodes whose type this
+	 * instance cannot load are not in the version the activator can build, so
+	 * their local state (keyed by ID and name, not type) comes down separately.
+	 */
+	private async teardownOldVersionNodes(
+		workflow: WorkflowEntity,
+		old: PartitionedVersion | null,
+		nodeIds: Set<INode['id']>,
+		abort: TriggerOperationAbort,
+	): Promise<TriggerTeardownFailure[]> {
+		if (!old || nodeIds.size === 0) return [];
+
+		abort.signal.throwIfAborted();
+
+		const unresolvableIds = new Set(old.unresolvable.map(({ node }) => node.id));
+		const resolvable = new Set([...nodeIds].filter((id) => !unresolvableIds.has(id)));
+
+		let teardownFailures: TriggerTeardownFailure[] = [];
+		if (resolvable.size > 0) {
+			({ externalTeardownFailures: teardownFailures } =
+				await this.workflowTriggerActivator.deactivate(workflow, old.runnable, resolvable, abort));
+		}
+		await this.workflowTriggerActivator.deregisterUnresolvableNodes(
+			workflow.id,
+			old.unresolvable.map(({ node }) => node).filter((node) => nodeIds.has(node.id)),
+			abort,
+		);
+		return teardownFailures;
+	}
+
+	/**
+	 * Attaches abandoned external deregistrations from the remove phase to a
+	 * version-advancing result, so the reporter can surface them.
+	 */
+	private withTeardownFailures(
+		result: PublicationResult,
+		teardownFailures: TriggerTeardownFailure[],
+	): PublicationResult {
+		return (result.type === 'completed' || result.type === 'partial' || result.type === 'failed') &&
+			teardownFailures.length > 0
+			? { ...result, teardownFailures }
+			: result;
+	}
+
+	/**
 	 * Blocks a version that policy objects to, or `null` to carry on.
 	 *
 	 * Runs before the trigger diff: the no-change branch still advances the
@@ -261,17 +507,13 @@ export class WorkflowPublicationApplier {
 		workflow: WorkflowEntity,
 		newVersion: WorkflowHistory,
 	): Promise<PublicationResult | null> {
-		if (!this.policyEnforcementService.hasChecksFor('workflowPublish')) return null;
-
-		// Unguarded, as in `PolicyLifecycleHandler`: an unevaluated project rule is not
-		// a passed one, so a failed lookup fails the publication.
-		const project = await this.ownershipService.getWorkflowProjectCached(workflow.id);
-
 		try {
-			await this.policyEnforcementService.enforceWorkflowPublish({
-				workflow: { id: workflow.id, name: workflow.name, nodes: newVersion.nodes },
-				projectId: project.id,
-			});
+			await enforceWorkflowPublishPolicy(
+				this.policyEnforcementService,
+				this.ownershipService,
+				{ id: workflow.id, name: workflow.name, nodes: newVersion.nodes },
+				{ kind: 'system', reason: 'publication' },
+			);
 
 			return null;
 		} catch (e) {
@@ -285,24 +527,137 @@ export class WorkflowPublicationApplier {
 				violations: e.violations.map((violation) => violation.kind),
 			});
 
-			// Report every trigger as failed: `activated` rows left behind read as drift
-			// to the reconciler, which would then re-enqueue this forever.
-			const desiredTriggerNodes = this.workflowTriggerActivator.getEnabledTriggerNodes(newVersion);
-			const triggerKinds = this.workflowTriggerActivator.getTriggerKinds(desiredTriggerNodes);
+			return this.failAllTriggers(newVersion, e);
+		}
+	}
 
-			return {
-				type: 'failed',
-				error: e,
+	/**
+	 * Blocks a version that uses a credential that its runs cannot use.
+	 * Registration uses the node's credentials before any run starts, so it must
+	 * pass the same check, as the same user: the publisher of this version.
+	 * It checks every node, not only triggers: a trigger can load its sub-nodes,
+	 * with their credentials, while it answers a webhook and before a run starts.
+	 */
+	private async refuseUnusableTriggerCredentials(
+		workflow: WorkflowEntity,
+		newVersion: WorkflowHistory,
+	): Promise<PublicationResult | null> {
+		// A failed lookup throws, so the record is retried rather than refused.
+		const publisherUserId = await this.workflowPublisherService.findPublisherUserIdForAccessCheck(
+			workflow.id,
+			newVersion.versionId,
+		);
+
+		try {
+			await this.credentialsPermissionChecker.check(workflow.id, newVersion.nodes, publisherUserId);
+
+			return null;
+		} catch (e) {
+			// Any other error is transient, so the record is retried.
+			if (!(e instanceof UserError)) throw e;
+
+			this.logger.warn('Workflow publication blocked by credential access', {
+				workflowId: workflow.id,
+				versionId: newVersion.versionId,
+				error: e.message,
+			});
+
+			return this.failAllTriggers(newVersion, e);
+		}
+	}
+
+	/** Keep live trigger state separate from a request refused before trigger changes. */
+	private async preserveRunningTriggerStatuses(
+		workflow: WorkflowEntity,
+		oldVersion: WorkflowHistory | null,
+		result: PublicationResult,
+	): Promise<PublicationResult> {
+		if (result.type !== 'failed' || oldVersion === null || oldVersion.nodes.length === 0) {
+			return result;
+		}
+
+		const { runnable } = this.partitionByResolvability(oldVersion);
+		const triggers = this.workflowTriggerActivator.getEnabledTriggerNodes(runnable);
+		const missingTriggers = await this.findUnregisteredTriggers(workflow, runnable, triggers);
+		if (missingTriggers === undefined) {
+			// The refusal did not change registrations. Keep the stored state if its check fails.
+			return { ...result, triggerState: undefined };
+		}
+		if (missingTriggers.length === triggers.length) return result;
+
+		// The refusal did not stop these triggers, so do not report it as their cause.
+		const notRegistered = new Error('Trigger is not registered');
+		return {
+			...result,
+			triggerState: {
+				versionId: oldVersion.versionId,
+				triggerStatuses: this.buildTriggerStatuses(
+					triggers,
+					this.workflowTriggerActivator.getTriggerKinds(triggers),
+					{
+						activated: [],
+						failures: missingTriggers.map((node) => ({
+							nodeId: node.id,
+							nodeName: node.name,
+							error: notRegistered,
+						})),
+					},
+				),
+			},
+		};
+	}
+
+	private async findUnregisteredTriggers(
+		workflow: WorkflowEntity,
+		runnable: WorkflowTriggerVersion,
+		triggers: INode[],
+	): Promise<INode[] | undefined> {
+		try {
+			const missingNonWebhooks =
+				this.workflowTriggerActivator.getUnregisteredNonWebhookTriggerNodeIds(
+					workflow.id,
+					triggers,
+				);
+			const missingWebhooks = await this.workflowTriggerActivator.getNodesWithUnregisteredWebhooks(
+				workflow,
+				runnable,
+			);
+			// Stored activation rows alone do not prove that triggers survived a restart.
+			return triggers.filter(
+				(node) => missingNonWebhooks.has(node.id) || missingWebhooks.has(node.id),
+			);
+		} catch (error) {
+			this.logger.warn('Could not check the triggers of the previous version after a refusal', {
+				workflowId: workflow.id,
+				error: ensureError(error).message,
+			});
+			return undefined;
+		}
+	}
+
+	/**
+	 * Report the refused request's trigger failures. Retry suppression prevents
+	 * reconciliation from retrying it when the previous version stays live.
+	 */
+	private failAllTriggers(newVersion: WorkflowHistory, error: Error): PublicationResult {
+		const desiredTriggerNodes = this.workflowTriggerActivator.getEnabledTriggerNodes(newVersion);
+		const triggerKinds = this.workflowTriggerActivator.getTriggerKinds(desiredTriggerNodes);
+
+		return {
+			type: 'failed',
+			error,
+			triggerState: {
+				versionId: newVersion.versionId,
 				triggerStatuses: this.buildTriggerStatuses(desiredTriggerNodes, triggerKinds, {
 					activated: [],
 					failures: desiredTriggerNodes.map((node) => ({
 						nodeId: node.id,
 						nodeName: node.name,
-						error: e,
+						error,
 					})),
 				}),
-			};
-		}
+			},
+		};
 	}
 
 	/**
@@ -313,9 +668,8 @@ export class WorkflowPublicationApplier {
 		record: WorkflowPublicationOutbox,
 		oldVersion: WorkflowHistory | null,
 	): WorkflowActivateMode {
-		const reason = record.reason ?? WorkflowPublicationReason.Publish;
-		if (reason === WorkflowPublicationReason.Publish && oldVersion === null) return 'activate';
-		return ACTIVATION_MODE_BY_REASON[reason];
+		if (isUserIntent(record) && oldVersion === null) return 'activate';
+		return ACTIVATION_MODE_BY_REASON[record.reason ?? WorkflowPublicationReason.Publish];
 	}
 
 	/**
@@ -348,16 +702,10 @@ export class WorkflowPublicationApplier {
 		// If there is no oldVersion we may be retrying an unpublish that was
 		// interrupted after removing the mapping: nothing to tear down, but we
 		// still complete as `unpublished`.
-		const toRemove = new Set(
-			this.workflowTriggerActivator.getEnabledTriggerNodes(oldVersion).map((node) => node.id),
-		);
+		const { old, oldTriggerCandidates } = this.resolveOldTriggerCandidates(oldVersion);
+		const toRemove = new Set(oldTriggerCandidates.map((node) => node.id));
 
-		let teardownFailures: TriggerTeardownFailure[] = [];
-		if (oldVersion && toRemove.size > 0) {
-			abort.signal.throwIfAborted();
-			({ externalTeardownFailures: teardownFailures } =
-				await this.workflowTriggerActivator.deactivate(workflow, oldVersion, toRemove, abort));
-		}
+		const teardownFailures = await this.teardownOldVersionNodes(workflow, old, toRemove, abort);
 
 		// Invalidate before the mapping is removed, so reads fall through to the
 		// database instead of the cache ever serving a version for an unpublished
@@ -392,6 +740,7 @@ export class WorkflowPublicationApplier {
 		outcome: TriggerActivationOutcome,
 		desiredTriggerNodes: INode[],
 		triggerKinds: Map<INode['id'], WorkflowPublicationTriggerKind>,
+		versionId: string,
 	): PublicationResult {
 		const triggerStatuses = this.buildTriggerStatuses(desiredTriggerNodes, triggerKinds, outcome);
 		if (outcome.failures.length === 0) return { type: 'completed', triggerStatuses };
@@ -400,10 +749,19 @@ export class WorkflowPublicationApplier {
 		// has been activated successfully, it's partial.
 		const hasRunningTrigger = triggerStatuses.some((s) => s.status === 'activated');
 		if (!hasRunningTrigger) {
-			return { type: 'failed', error: this.toActivationError(outcome.failures), triggerStatuses };
+			return {
+				type: 'failed',
+				error: this.toActivationError(outcome.failures),
+				nodeId: outcome.failures.length === 1 ? outcome.failures[0].nodeId : undefined,
+				triggerState: { versionId, triggerStatuses },
+			};
 		}
 
-		return { type: 'partial', triggerStatuses };
+		return {
+			type: 'partial',
+			triggerStatuses,
+			error: this.toActivationError(outcome.failures),
+		};
 	}
 
 	/**
@@ -439,13 +797,15 @@ export class WorkflowPublicationApplier {
 	 * Combines multiple per trigger failures into a single error.
 	 */
 	private toActivationError(failures: TriggerActivationFailure[]): Error {
+		// The lone error keeps its class: the reporter checks it for a policy refusal.
 		if (failures.length === 1) return failures[0].error;
 
-		const detail = formatNodeFailures(
-			failures.map(({ nodeName, error }) => ({ nodeName, message: error.message })),
+		return new AggregateError(
+			failures.map(({ error }) => error),
+			formatFailedActivationError(
+				failures.map(({ nodeName, error }) => ({ nodeName, message: error.message })),
+			),
 		);
-
-		return new Error(`Triggers failed to activate: ${detail}`);
 	}
 
 	/**
@@ -515,6 +875,7 @@ export class WorkflowPublicationApplier {
 				nodes: healed.nodes,
 				connections: newVersion.connections,
 				nodeGroups: newVersion.nodeGroups,
+				settings: newVersion.settings,
 			},
 			newVersion.versionId,
 		);
@@ -528,6 +889,47 @@ export class WorkflowPublicationApplier {
 		});
 
 		return { type: 'skipped', reason: published.published ? 'node-ids-healed' : 'superseded' };
+	}
+
+	/**
+	 * Fails a version whose trigger node ids cannot be stored in status rows. This
+	 * runs before trigger changes, so the old version keeps running.
+	 */
+	private rejectOversizedTriggerNodeIds(
+		workflow: WorkflowEntity,
+		newVersion: WorkflowHistory,
+	): PublicationResult | null {
+		const { runnable, unresolvable } = this.partitionByResolvability(newVersion);
+		const enabledTriggerNodes = this.workflowTriggerActivator.getEnabledTriggerNodes(runnable);
+		const oversized = [...enabledTriggerNodes, ...unresolvable.map(({ node }) => node)].filter(
+			(node) => isNodeIdTooLong(node.id),
+		);
+		if (oversized.length === 0) return null;
+
+		this.logger.warn('Published version carries trigger node ids that are too long', {
+			workflowId: workflow.id,
+			versionId: newVersion.versionId,
+			nodeNames: oversized.map((node) => node.name),
+		});
+
+		const error = new TriggerNodeIdTooLongError(oversized);
+		const storable = enabledTriggerNodes.filter((node) => !isNodeIdTooLong(node.id));
+		return {
+			type: 'failed',
+			error,
+			nodeId: oversized.length === 1 ? oversized[0].id : undefined,
+			triggerState: {
+				versionId: newVersion.versionId,
+				triggerStatuses: this.buildTriggerStatuses(
+					storable,
+					this.workflowTriggerActivator.getTriggerKinds(storable),
+					{
+						activated: [],
+						failures: storable.map((node) => ({ nodeId: node.id, nodeName: node.name, error })),
+					},
+				),
+			},
+		};
 	}
 
 	private isTriggerLikeNode(node: INode): boolean {

@@ -1,10 +1,9 @@
+import type { TelemetryProxy } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { toEngineConnections, toGroupValidationNodes } from '@n8n/workflow-sdk';
-import { validateWorkflowGroups } from 'n8n-workflow';
+import { validateWorkflowGroups, type INodeTypes } from 'n8n-workflow';
 import z from 'zod';
 
-import type { NodeTypes } from '@/node-types';
-import type { Telemetry } from '@/telemetry';
 import { makeGetNodeTypeForGrouping } from '@/workflow-helpers';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
@@ -12,16 +11,7 @@ import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.ty
 import { getSdkReferenceHint } from '../workflow-validation.utils';
 import { buildInvalidAiToolSourceErrorResponse } from './connection-structure-check';
 import { CODE_BUILDER_VALIDATE_TOOL, MAX_WORKFLOW_CODE_LENGTH } from './constants';
-
-export type ValidateWorkflowCodeToolOptions = {
-	/**
-	 * `102_mcp_canvas_groups` rollout flag: when true, node-group rule violations
-	 * are reported as validation errors (`valid: false`) — they hard-block the
-	 * save path — and traced in telemetry. Off by default — the tool then
-	 * behaves exactly as before groups were validated.
-	 */
-	canvasGroupsEnabled?: boolean;
-};
+import { validateScheduleTriggerIntervals } from './schedule-trigger-validation';
 
 const inputSchema = {
 	code: z
@@ -64,9 +54,8 @@ const outputSchema = {
  */
 export const createValidateWorkflowCodeTool = (
 	user: User,
-	telemetry: Telemetry,
-	nodeTypes: NodeTypes,
-	options: ValidateWorkflowCodeToolOptions = {},
+	telemetry: TelemetryProxy,
+	nodeTypes: INodeTypes,
 ): ToolDefinition<typeof inputSchema> => ({
 	name: CODE_BUILDER_VALIDATE_TOOL.toolName,
 	config: {
@@ -99,6 +88,7 @@ export const createValidateWorkflowCodeTool = (
 			});
 			const strippedCode = stripImportStatements(code);
 			const result = await handler.parseAndValidate(strippedCode);
+			await validateScheduleTriggerIntervals(result.workflow.nodes);
 
 			const invalidToolSourceResponse = buildInvalidAiToolSourceErrorResponse(
 				result.workflow,
@@ -109,11 +99,10 @@ export const createValidateWorkflowCodeTool = (
 			);
 			if (invalidToolSourceResponse) return invalidToolSourceResponse;
 
-			// `102_mcp_canvas_groups` rollout: report node-group rule violations as
-			// validation errors, with the same messages the save path rejects with —
-			// like the ai_tool-source check above, they hard-block saving. Flag off:
-			// output and telemetry are identical to before groups existed.
-			if (options.canvasGroupsEnabled && (result.workflow.nodeGroups?.length ?? 0) > 0) {
+			// Report node-group rule violations as validation errors, with the same
+			// messages the save path rejects with — like the ai_tool-source check
+			// above, they hard-block saving.
+			if ((result.workflow.nodeGroups?.length ?? 0) > 0) {
 				const groupsResult = validateWorkflowGroups({
 					nodes: toGroupValidationNodes(result.workflow.nodes),
 					connectionsBySourceNode: toEngineConnections(result.workflow.connections),
@@ -150,11 +139,7 @@ export const createValidateWorkflowCodeTool = (
 				data: {
 					nodeCount: result.workflow.nodes.length,
 					warningCount: result.warnings.length,
-					// Rollout monitoring for `102_mcp_canvas_groups`; absent when the
-					// flag is off so the payload stays identical across cohorts.
-					...(options.canvasGroupsEnabled
-						? { groupCount: result.workflow.nodeGroups?.length ?? 0 }
-						: {}),
+					groupCount: result.workflow.nodeGroups?.length ?? 0,
 				},
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);

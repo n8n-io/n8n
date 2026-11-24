@@ -232,7 +232,7 @@ export class ChatSetupHandler {
 			tools = [...tools, TEXT_EDITOR_TOOL, VALIDATE_TOOL, BATCH_STR_REPLACE_TOOL];
 		}
 
-		return this.llm.bindTools(tools) as LlmWithTools;
+		return this.llm.bindTools(tools);
 	}
 
 	/**

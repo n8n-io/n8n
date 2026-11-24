@@ -5,9 +5,16 @@ import { computed, nextTick, ref, useAttrs, useCssModule, useTemplateRef, watch 
 import N8nButton from '@n8n/design-system/components/N8nButton/Button.vue';
 import N8nTooltip from '@n8n/design-system/components/N8nTooltip/Tooltip.vue';
 import { useI18n } from '@n8n/design-system/composables/useI18n';
+import type { SelectValue } from '@n8n/design-system/v2/components/Select/Select.types';
 import N8nSelect from '@n8n/design-system/v2/components/Select/Select.vue';
 
-import type { PaginationEmits, PaginationProps, PaginationSlots } from './Pagination.types';
+import {
+	PAGINATION_ALL_ITEMS_PER_PAGE,
+	type PaginationEmits,
+	type PaginationProps,
+	type PaginationSlots,
+} from './Pagination.types';
+
 import {
 	PaginationRoot,
 	PaginationList,
@@ -29,6 +36,7 @@ const $style = useCssModule();
 const props = withDefaults(defineProps<PaginationProps>(), {
 	size: 'medium',
 	pageSizes: () => [10, 20, 30, 40, 50, 100],
+	showAll: false,
 	showTotal: true,
 	showSizes: true,
 	showJumper: false,
@@ -102,9 +110,18 @@ watch(
 	{ immediate: true },
 );
 
+function isAllPageSize() {
+	return currentItemsPerPage.value === PAGINATION_ALL_ITEMS_PER_PAGE;
+}
+
 function resolvedPageCount() {
-	if (!props.total || !currentItemsPerPage.value) return 1;
+	if (isAllPageSize() || !props.total || !currentItemsPerPage.value) return 1;
 	return Math.ceil(props.total / currentItemsPerPage.value);
+}
+
+function rootItemsPerPage() {
+	if (isAllPageSize()) return Math.max(props.total, 1);
+	return currentItemsPerPage.value;
 }
 
 function shouldHide() {
@@ -120,10 +137,16 @@ function isNextDisabled(page: number, pageCount: number) {
 }
 
 function pageSizeItems() {
-	return props.pageSizes.map((s) => ({
+	const items = props.pageSizes.map((s) => ({
 		value: String(s),
 		label: t('pagination.pageSizeOption', { size: s }),
 	}));
+
+	if (props.showAll) {
+		items.push({ value: String(PAGINATION_ALL_ITEMS_PER_PAGE), label: t('pagination.all') });
+	}
+
+	return items;
 }
 
 function handlePageUpdate(newPage: number) {
@@ -134,10 +157,11 @@ function handlePageUpdate(newPage: number) {
 	emit('update:page', newPage);
 }
 
-function handleItemsPerPageUpdate(newSize: number | string) {
-	if (props.disabled) return;
+function handleItemsPerPageUpdate(newSize: SelectValue | undefined) {
+	if (props.disabled || newSize === undefined) return;
 
 	const size = typeof newSize === 'string' ? parseInt(newSize, 10) : newSize;
+	if (!Number.isFinite(size)) return;
 	if (!isItemsPerPageControlled.value) {
 		uncontrolledItemsPerPage.value = size;
 	}
@@ -243,7 +267,7 @@ function handlePagerKeydown(event: KeyboardEvent) {
 			v-slot="{ page: rootPage, pageCount: rootPageCount }"
 			v-bind="rootProps"
 			:page="currentPage"
-			:items-per-page="currentItemsPerPage"
+			:items-per-page="rootItemsPerPage()"
 			:total="total"
 			@update:page="handlePageUpdate"
 		>
@@ -355,6 +379,10 @@ function handlePagerKeydown(event: KeyboardEvent) {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--xs);
+
+	.pageSizes {
+		width: max-content;
+	}
 }
 
 .medium {
@@ -373,12 +401,6 @@ function handlePagerKeydown(event: KeyboardEvent) {
 		--jumper-inset: var(--spacing--xs);
 		--jumper-font-size: var(--font-size--sm);
 		--jumper-radius: var(--radius--3xs);
-	}
-
-	// Temporary: Select medium is 36px; match jumper / --height--md (32px)
-	.pageSizes {
-		height: var(--height--md);
-		min-height: var(--height--md);
 	}
 }
 
@@ -401,12 +423,6 @@ function handlePagerKeydown(event: KeyboardEvent) {
 		--jumper-inset: var(--spacing--2xs);
 		--jumper-font-size: var(--font-size--xs);
 		--jumper-radius: var(--radius--3xs);
-	}
-
-	// Temporary: match jumper / --height--sm until Select size tokens align
-	.pageSizes {
-		height: var(--height--sm);
-		min-height: var(--height--sm);
 	}
 }
 

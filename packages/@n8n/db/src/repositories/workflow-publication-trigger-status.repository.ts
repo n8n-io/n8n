@@ -1,11 +1,14 @@
 import { Service } from '@n8n/di';
-import { DataSource, EntityManager, Repository } from '@n8n/typeorm';
+import { DataSource, In } from '@n8n/typeorm';
 
-import { WorkflowPublicationTriggerStatus } from '../entities';
+import { BaseRepository } from './base-repository';
+import { WorkflowPublicationRetryState, WorkflowPublicationTriggerStatus } from '../entities';
 import {
 	WorkflowPublicationOutbox,
 	WorkflowPublicationOutboxStatus,
 } from '../entities/workflow-publication-outbox';
+import type { OperationContext } from '../services/transaction';
+import { TransactionRunner } from '../services/transaction';
 import { chunkIds } from '../utils/chunk-ids';
 
 export type TriggerStatusRow = {
@@ -23,30 +26,57 @@ export type InMemoryTriggerRef = {
 };
 
 @Service()
-export class WorkflowPublicationTriggerStatusRepository extends Repository<WorkflowPublicationTriggerStatus> {
-	constructor(dataSource: DataSource) {
-		super(WorkflowPublicationTriggerStatus, dataSource.manager);
+export class WorkflowPublicationTriggerStatusRepository extends BaseRepository<WorkflowPublicationTriggerStatus> {
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(WorkflowPublicationTriggerStatus, dataSource.manager, transactionRunner);
 	}
 
-	/** Replace all rows for a workflow with `rows`, atomically. Pass `trx` to enroll in an existing transaction. */
+	/** Replace all rows for a workflow with `rows`, atomically. */
 	async replaceForWorkflow(
 		workflowId: string,
 		rows: TriggerStatusRow[],
-		trx?: EntityManager,
+		ctx: OperationContext = {},
 	): Promise<void> {
-		const run = async (em: EntityManager) => {
+		await this.runInTransaction(ctx, async (em) => {
 			await em.delete(WorkflowPublicationTriggerStatus, { workflowId });
 			if (rows.length === 0) return;
 			await em.insert(
 				WorkflowPublicationTriggerStatus,
 				rows.map((row) => ({ workflowId, ...row })),
 			);
-		};
-		await (trx ? run(trx) : this.manager.transaction(run));
+		});
 	}
 
-	async findByWorkflowId(workflowId: string): Promise<WorkflowPublicationTriggerStatus[]> {
-		return await this.findBy({ workflowId });
+	async findByWorkflowId(
+		workflowId: string,
+		ctx: OperationContext = {},
+	): Promise<WorkflowPublicationTriggerStatus[]> {
+		return await this.managerFor(ctx).findBy(WorkflowPublicationTriggerStatus, { workflowId });
+	}
+
+	async findByWorkflowIds(workflowIds: string[]): Promise<WorkflowPublicationTriggerStatus[]> {
+		const rows: WorkflowPublicationTriggerStatus[] = [];
+		for (const chunk of chunkIds(workflowIds)) {
+			rows.push(...(await this.findBy({ workflowId: In(chunk) })));
+		}
+		return rows;
+	}
+
+	/** The triggers that failed at this version while the workflow has a retry note for it. */
+	async findRetriedTriggerNodeIds(workflowId: string, versionId: string): Promise<Set<string>> {
+		const failedStatus: WorkflowPublicationTriggerStatus['status'] = 'failed';
+		const rows = await this.createQueryBuilder('ts')
+			.select('ts.nodeId', 'nodeId')
+			.innerJoin(
+				WorkflowPublicationRetryState,
+				'retry',
+				'retry.workflowId = ts.workflowId AND retry.targetVersionId = ts.versionId',
+			)
+			.where('ts.workflowId = :workflowId', { workflowId })
+			.andWhere('ts.versionId = :versionId', { versionId })
+			.andWhere('ts.status = :failedStatus', { failedStatus })
+			.getRawMany<{ nodeId: string }>();
+		return new Set(rows.map((row) => row.nodeId));
 	}
 
 	/**

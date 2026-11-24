@@ -1,6 +1,7 @@
 import { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
 import type { INodeTypeBaseDescription, IRun, Logger } from 'n8n-workflow';
-import { TriggerCloseError, UserError } from 'n8n-workflow';
+import { TriggerCloseError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import type { Mock, Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -48,7 +49,7 @@ const baseDescription: INodeTypeBaseDescription = {
 	name: 'kafkaTrigger',
 	icon: { light: 'file:kafka.svg', dark: 'file:kafka.dark.svg' },
 	group: ['trigger'],
-	defaultVersion: 1.3,
+	defaultVersion: 2,
 	description: 'Consume messages from a Kafka topic',
 };
 

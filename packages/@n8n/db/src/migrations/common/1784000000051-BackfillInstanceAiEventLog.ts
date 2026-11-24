@@ -334,7 +334,7 @@ function parseTree(tree: string | null): TreeNode | null {
 	try {
 		const parsed: unknown = JSON.parse(tree);
 		if (parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed)) {
-			return parsed as TreeNode;
+			return parsed;
 		}
 	} catch {
 		// fall through

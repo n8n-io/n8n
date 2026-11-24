@@ -226,19 +226,18 @@ can omit it.
 // Domain tools are action-based: one tool, a discriminated union of actions.
 const listAction = z.object({
   action: z.literal('list'),
-  query: z.string().optional().describe('Filter workflows by name'),
-  limit: z.number().int().min(1).max(100).default(50).describe('Max results'),
+  projectId: z.string().optional().describe('Project to list data tables from'),
 });
 
-export function createWorkflowsTool(context: InstanceAiContext) {
-  return new Tool(DOMAIN_TOOL_IDS.WORKFLOWS)
-    .description('Read and manage workflows.')
+export function createDataTablesTool(context: InstanceAiContext) {
+  return new Tool(DOMAIN_TOOL_IDS.DATA_TABLES)
+    .description('Read and manage data tables.')
     .input(z.discriminatedUnion('action', [listAction, /* ...other actions */]))
     .handler(async (input) => {
       // `input` is narrowed by `action`, so each branch is type-checked
       if (input.action === 'list') {
-        const { workflows } = await context.workflowService.list(input);
-        return { workflows };
+        const tables = await context.dataTableService.list({ projectId: input.projectId });
+        return { tables };
       }
       // ...
     })

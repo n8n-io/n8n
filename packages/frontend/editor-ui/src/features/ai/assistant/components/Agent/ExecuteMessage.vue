@@ -227,7 +227,7 @@ watch(hasValidationIssues, (hasIssues, hadIssues) => {
 		ref="containerRef"
 		:class="$style.container"
 		role="region"
-		aria-label="Workflow execution panel"
+		:aria-label="i18n.baseText('aiAssistant.builder.executeMessage.panelAriaLabel')"
 	>
 		<BuilderSetupWizard
 			v-if="showWizard"
@@ -254,7 +254,7 @@ watch(hasValidationIssues, (hasIssues, hadIssues) => {
 						tag="ul"
 						:class="$style.issuesList"
 						role="list"
-						aria-label="Workflow validation issues"
+						:aria-label="i18n.baseText('aiAssistant.builder.executeMessage.issuesAriaLabel')"
 					>
 						<NodeIssueItem
 							v-for="issue in issuesByType.other"
@@ -505,7 +505,7 @@ watch(hasValidationIssues, (hasIssues, hadIssues) => {
 
 .followUpsTitle {
 	font-size: var(--font-size--md);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	line-height: 1.45;
 	color: var(--color--text);
 	margin-bottom: var(--spacing--2xs);

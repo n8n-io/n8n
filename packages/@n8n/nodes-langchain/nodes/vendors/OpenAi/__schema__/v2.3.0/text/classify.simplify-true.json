@@ -1,0 +1,8 @@
+{
+	"properties": {
+		"flagged": {
+			"type": "boolean"
+		}
+	},
+	"type": "object"
+}

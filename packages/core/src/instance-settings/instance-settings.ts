@@ -5,12 +5,14 @@ import { Memoized } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { toResult } from '@n8n/utils/result';
 import { createHash, randomBytes } from 'crypto';
-import { UserError, jsonParse, ALPHABET } from 'n8n-workflow';
+import { jsonParse, ALPHABET } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import { customAlphabet } from 'nanoid';
 import { chmodSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'path';
 
+import { instanceTypeFromArgv } from './instance-type';
 import { WorkerMissingEncryptionKey } from './worker-missing-encryption-key.error';
 
 const nanoid = customAlphabet(ALPHABET, 16);
@@ -34,13 +36,8 @@ type Settings = ReadOnlySettings & WritableSettings;
  * package dependency: `@n8n/db` depends on `n8n-core` at runtime.
  */
 export type DeploymentStateRepo = {
-	findActiveByType(type: string): Promise<{ value: string } | null>;
-	insertOrIgnore(entity: {
-		type: string;
-		value: string;
-		status: string;
-		algorithm: null;
-	}): Promise<void>;
+	findActiveIdentifier(type: string): Promise<{ value: string } | null>;
+	seedActiveIdentifier(type: string, value: string): Promise<void>;
 	findActiveSigningSecret(type: string, opts?: { rewrapLegacy?: boolean }): Promise<string | null>;
 	seedSigningSecret(type: string, secret: string): Promise<void>;
 };
@@ -70,7 +67,8 @@ export class InstanceSettings {
 
 	/**
 	 * Fixed ID of this n8n instance, for telemetry.
-	 * Derived from encryption key on first boot, then read from DB.
+	 * Set on first boot (random, or derived from the encryption key when a
+	 * license certificate exists), then read from DB.
 	 * Do not confuse with `hostId`.
 	 *
 	 * @example '258fce876abf5ea60eb86a2e777e5e190ff8f3e36b5b37aafec6636c31d4d1f9'
@@ -83,6 +81,15 @@ export class InstanceSettings {
 	 * fingerprint when the override is too short for the license server.
 	 */
 	readonly derivedInstanceId: string;
+
+	/**
+	 * Random ID of this install (one database, shared by all its mains and
+	 * workers), for telemetry. Unlike `instanceId`, it is never derived from
+	 * the encryption key or set from the environment, so installs that share
+	 * a key still get different values. Set by `initialize()`; undefined when
+	 * no row exists and this process may not seed one.
+	 */
+	installId: string | undefined;
 
 	hmacSignatureSecret: string;
 
@@ -102,8 +109,7 @@ export class InstanceSettings {
 		private readonly config: InstanceSettingsConfig,
 		private readonly logger: Logger,
 	) {
-		const command = process.argv[2] as InstanceType;
-		this.instanceType = ['webhook', 'worker'].includes(command) ? command : 'main';
+		this.instanceType = instanceTypeFromArgv(process.argv);
 
 		this.hostId = `${this.instanceType}-${this.isDocker ? os.hostname() : nanoid()}`;
 		this.settings = this.loadOrCreate();
@@ -113,10 +119,11 @@ export class InstanceSettings {
 	}
 
 	/**
-	 * Two-phase init: reads or creates deployment-key rows for instance.id and signing.hmac.
+	 * Two-phase init: reads or creates deployment-key rows for instance.id, install.id and signing.hmac.
 	 * Must be called after DB migrations complete, before license init.
 	 *
-	 * Precedence for each key: env var → DB active row → derive-from-key (and persist).
+	 * Precedence for each key: env var → DB active row → new value (and persist).
+	 * The new instance.id is random unless `keepDerivedInstanceId` is set.
 	 *
 	 * When `canSeed` is false, missing rows are not created: only server
 	 * processes hold the deployment's encryption key, so a one-off CLI command
@@ -127,7 +134,10 @@ export class InstanceSettings {
 	 */
 	async initialize(
 		repo: DeploymentStateRepo,
-		{ canSeed = true }: { canSeed?: boolean } = {},
+		{
+			canSeed = true,
+			keepDerivedInstanceId = true,
+		}: { canSeed?: boolean; keepDerivedInstanceId?: boolean } = {},
 	): Promise<void> {
 		this.canSeedDeploymentState = canSeed;
 		await this.initIdentifier(
@@ -135,9 +145,20 @@ export class InstanceSettings {
 			'instance.id',
 			process.env.N8N_INSTANCE_ID,
 			canSeed,
-			() => this.instanceId,
+			// A license certificate is bound to the derived ID, so only installs without one get a random ID.
+			() => (keepDerivedInstanceId ? this.instanceId : randomBytes(32).toString('hex')),
 			(v) => {
 				this.instanceId = v;
+			},
+		);
+		await this.initIdentifier(
+			repo,
+			'install.id',
+			undefined,
+			canSeed,
+			() => randomBytes(32).toString('hex'),
+			(v) => {
+				this.installId = v;
 			},
 		);
 		await this.initSecret(
@@ -165,14 +186,14 @@ export class InstanceSettings {
 			set(envValue);
 			return;
 		}
-		const existing = await repo.findActiveByType(type);
+		const existing = await repo.findActiveIdentifier(type);
 		if (existing) {
 			set(existing.value);
 			return;
 		}
 		if (!canSeed) return;
-		await repo.insertOrIgnore({ type, value: get(), status: 'active', algorithm: null });
-		const winner = await repo.findActiveByType(type);
+		await repo.seedActiveIdentifier(type, get());
+		const winner = await repo.findActiveIdentifier(type);
 		if (winner) set(winner.value);
 	}
 
@@ -336,7 +357,7 @@ export class InstanceSettings {
 
 			if (encryptionKeyFromEnv && encryptionKey !== encryptionKeyFromEnv) {
 				throw new UserError(
-					`Mismatching encryption keys. The encryption key in the settings file ${this.settingsFile} does not match the N8N_ENCRYPTION_KEY env var. Please make sure both keys match. More information: https://docs.n8n.io/hosting/environment-variables/configuration-methods/#encryption-key`,
+					`Mismatching encryption keys. The encryption key in the settings file ${this.settingsFile} does not match the N8N_ENCRYPTION_KEY env var. Please make sure both keys match. More information: https://docs.n8n.io/deploy/host-n8n/configure-n8n/basic-configuration/configuration-examples/set-a-custom-encryption-key`,
 				);
 			}
 

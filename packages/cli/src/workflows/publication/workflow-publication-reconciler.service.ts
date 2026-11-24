@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { WorkflowsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import {
@@ -18,7 +19,6 @@ import {
 } from 'n8n-core';
 import type { WorkflowId } from 'n8n-workflow';
 
-import { EventService } from '@/events/event.service';
 import { NonWebhookTriggerRegistrar } from '@/workflows/triggers/non-webhook-trigger-registrar';
 
 import { PublishedWorkflowTriggerDeactivator } from './published-workflow-trigger-deactivator';
@@ -54,7 +54,8 @@ import { WorkflowPublicationOutboxConsumer } from './workflow-publication-outbox
  * trigger-status rows recorded for a version other than the active one, and
  * published workflows with no trigger-status rows at all (also the expected
  * state for anything published before the service was enabled). All heal
- * through the same enqueue path.
+ * through the same enqueue path, as does a failed publication whose retry
+ * note is due.
  */
 @Service()
 export class WorkflowPublicationReconciler {
@@ -116,6 +117,10 @@ export class WorkflowPublicationReconciler {
 		this.reconcileInterval = undefined;
 	}
 
+	private get leaseMs(): number {
+		return this.workflowsConfig.publicationOutboxLeaseSeconds * Time.seconds.toMilliseconds;
+	}
+
 	/**
 	 * One tick of the loop, gated by the instance's role at this moment. On the
 	 * leader: diff the triggers that should be active in memory against what is
@@ -142,29 +147,40 @@ export class WorkflowPublicationReconciler {
 				const startedAt = Date.now();
 				try {
 					const surplus = await this.removeGhostTriggers(await this.findSurplusWorkflowIds());
-					const missing = await this.republishWorkflows(
+					const enqueuedThisPass = new Set<WorkflowId>();
+					const republish = async (
+						workflowIds: WorkflowId[],
+						logMessage: string,
+					): Promise<number> => {
+						for (const workflowId of workflowIds) enqueuedThisPass.add(workflowId);
+						return await this.republishWorkflows(workflowIds, logMessage, reason);
+					};
+
+					const missing = await republish(
 						await this.findMissingActiveWorkflows(),
 						'Re-publishing workflows with missing in-memory triggers',
-						reason,
 					);
 					// After the missing-trigger drain, so workflows that pass already
 					// converged are not re-detected (and double-counted) as skewed.
-					const versionSkew = await this.republishWorkflows(
+					const versionSkew = await republish(
 						await this.outboxRepository.findVersionSkewedWorkflowIds(),
 						'Re-enqueuing workflows whose published version diverged from the active version',
-						reason,
 					);
 					// Also after the earlier drains, for the same reason: rows those
 					// passes already converged must not be re-detected here.
-					const statusDrift = await this.republishWorkflows(
+					const statusDrift = await republish(
 						await this.outboxRepository.findTriggerStatusDriftedWorkflowIds(),
 						'Re-enqueuing workflows whose trigger-status rows lag the active version',
-						reason,
 					);
-					const unreported = await this.republishWorkflows(
+					const unreported = await republish(
 						await this.outboxRepository.findUnreportedPublishedWorkflowIds(),
 						'Re-enqueuing published workflows that no publication reported trigger statuses for',
-						reason,
+					);
+					// Last, so dead workflows never delay healthy ones; a workflow an
+					// earlier step already tried in this pass gets no second attempt.
+					await republish(
+						(await this.findRetryWorkflowIds(reason)).filter((id) => !enqueuedThisPass.has(id)),
+						'Retrying failed publications on their backoff schedule',
 					);
 
 					span.setAttribute('n8n.publication.deficient_workflows', missing);
@@ -229,15 +245,32 @@ export class WorkflowPublicationReconciler {
 	private async removeGhostTriggers(workflowIds: WorkflowId[]): Promise<number> {
 		let surplusRepairs = 0;
 		for (const workflowId of workflowIds) {
+			// Never queue on a held lock: a holder that does not release (an
+			// abandoned record's orphaned work) would wedge this pass and every
+			// later tick behind it. Like the stepdown teardown, skip and let the
+			// next tick retry once the lock is free.
+			if (this.lifecycleLock.isLocked(workflowId)) {
+				this.logger.debug('Skipped ghost trigger teardown: workflow publication lock is held', {
+					workflowId,
+				});
+				continue;
+			}
+
 			try {
-				await this.lifecycleLock.runExclusive(workflowId, async () => {
-					const workflow = await this.workflowRepository.findOneBy({ id: workflowId });
+				await this.lifecycleLock.runExclusive({
+					workflowId,
+					fn: async () => {
+						const workflow = await this.workflowRepository.findOneBy({ id: workflowId });
 
-					if (workflow?.activeVersionId) return;
-					if (await this.outboxRepository.findInFlightByWorkflowId(workflowId)) return;
+						if (workflow?.activeVersionId) return;
+						if (await this.outboxRepository.findInFlightByWorkflowId(workflowId)) return;
 
-					await this.activeWorkflowTriggers.remove(workflowId);
-					surplusRepairs++;
+						await this.activeWorkflowTriggers.remove(workflowId);
+						surplusRepairs++;
+					},
+					// The lock was free a moment ago; a holder that took it since is a
+					// record in flight, which settles within its lease.
+					signal: AbortSignal.timeout(this.leaseMs),
 				});
 			} catch (error) {
 				this.errorReporter.error(error, { shouldBeLogged: true });
@@ -266,6 +299,18 @@ export class WorkflowPublicationReconciler {
 		}
 
 		return missing;
+	}
+
+	/**
+	 * A restart or takeover pass retries every scheduled retry once; an interval
+	 * pass takes only due ones, within the worker pool's free capacity.
+	 */
+	private async findRetryWorkflowIds(reason: WorkflowPublicationReason): Promise<WorkflowId[]> {
+		return reason === WorkflowPublicationReason.Reconcile
+			? await this.outboxRepository.findRetryDueWorkflowIds(
+					this.workflowsConfig.workflowPublicationConcurrency,
+				)
+			: await this.outboxRepository.findRetryScheduledWorkflowIds();
 	}
 
 	private async republishWorkflows(

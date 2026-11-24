@@ -4,8 +4,8 @@ import z from 'zod';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { ProjectService } from '@/services/project.service.ee';
-import type { RoleService } from '@/services/role.service';
-import type { Telemetry } from '@/telemetry';
+import type { CredentialsFinderService, RoleService, TelemetryProxy } from '@n8n/backend-services';
+import type { WorkflowPublicationStatusService } from '@/workflows/publication/workflow-publication-status.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { SUPPORTED_MCP_TRIGGERS, USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
@@ -15,11 +15,13 @@ import type {
 	UserCalledMCPToolEventPayload,
 } from '../mcp.types';
 import {
+	ensureNodeParameters,
 	sanitizeNodeCredentials,
 	toNodeGroupSummary,
 	toTagSummary,
 	workflowDetailsOutputSchema,
 } from './schemas';
+import { trackAndRethrowToolError } from './tool-error.utils';
 import { getTriggerDetails, type WebhookEndpoints } from './webhook-utils';
 import { getMcpWorkflow, type FoundWorkflow } from './workflow-validation.utils';
 
@@ -66,7 +68,7 @@ const toActiveVersionSummary = (workflow: FoundWorkflow) => {
 	if (!workflow.activeVersionId || !workflow.activeVersion) return null;
 	if (workflow.activeVersionId === workflow.versionId) return { sameAsDraft: true as const };
 
-	const publishedNodes = workflow.activeVersion.nodes ?? [];
+	const publishedNodes = ensureNodeParameters(workflow.activeVersion.nodes ?? []);
 	return {
 		sameAsDraft: false as const,
 		nodes: publishedNodes.map(sanitizeNodeCredentials),
@@ -85,12 +87,14 @@ export const createWorkflowDetailsTool = (
 	baseWebhookUrl: string,
 	workflowFinderService: WorkflowFinderService,
 	credentialsService: CredentialsService,
+	credentialsFinderService: CredentialsFinderService,
 	nodeTypes: INodeTypes,
 	endpoints: WebhookEndpoints,
-	telemetry: Telemetry,
+	telemetry: TelemetryProxy,
 	roleService: RoleService,
 	projectService: ProjectService,
 	testBaseWebhookUrl: string = baseWebhookUrl,
+	publicationStatusService?: WorkflowPublicationStatusService,
 ): ToolDefinition<typeof inputSchema> => {
 	return {
 		name: 'get_workflow_details',
@@ -128,12 +132,14 @@ export const createWorkflowDetailsTool = (
 					baseWebhookUrl,
 					workflowFinderService,
 					credentialsService,
+					credentialsFinderService,
 					nodeTypes,
 					endpoints,
 					roleService,
 					projectService,
 					{ workflowId, detailLevel },
 					testBaseWebhookUrl,
+					publicationStatusService,
 				);
 
 				// Track successful execution
@@ -153,13 +159,7 @@ export const createWorkflowDetailsTool = (
 					structuredContent: payload,
 				};
 			} catch (error) {
-				// Track failed execution
-				telemetryPayload.results = {
-					success: false,
-					error: error instanceof Error ? error.message : String(error),
-				};
-				telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
-				throw error;
+				trackAndRethrowToolError(telemetry, telemetryPayload, error);
 			}
 		},
 	};
@@ -170,12 +170,14 @@ export async function getWorkflowDetails(
 	baseWebhookUrl: string,
 	workflowFinderService: WorkflowFinderService,
 	credentialsService: CredentialsService,
+	credentialsFinderService: CredentialsFinderService,
 	nodeTypes: INodeTypes,
 	endpoints: WebhookEndpoints,
 	roleService: RoleService,
 	projectService: ProjectService,
 	{ workflowId, detailLevel = 'full' }: { workflowId: string; detailLevel?: WorkflowDetailsLevel },
 	testBaseWebhookUrl: string = baseWebhookUrl,
+	publicationStatusService?: WorkflowPublicationStatusService,
 ): Promise<WorkflowDetailsResult> {
 	const includeGraph = detailLevel === 'full';
 	// The published version is loaded in both modes: execution mode omits its
@@ -186,7 +188,12 @@ export async function getWorkflowDetails(
 		user,
 		['workflow:read'],
 		workflowFinderService,
-		{ includeActiveVersion: true, includeTags: true, includeParentFolder: true },
+		{
+			includeActiveVersion: true,
+			includeTags: true,
+			includeParentFolder: true,
+			publishHistory: 'none',
+		},
 	);
 
 	// Compute user scopes for this workflow
@@ -195,7 +202,7 @@ export async function getWorkflowDetails(
 	const scopes = workflowWithScopes.scopes ?? [];
 	const canExecute = scopes.includes('workflow:execute');
 
-	const nodes = workflow.nodes ?? [];
+	const nodes = ensureNodeParameters(workflow.nodes ?? []);
 
 	const noticeFor = async ({ supported, unsupported }: ReturnType<typeof splitTriggers>) =>
 		await getTriggerDetails(
@@ -204,6 +211,7 @@ export async function getWorkflowDetails(
 			unsupported,
 			baseWebhookUrl,
 			credentialsService,
+			credentialsFinderService,
 			nodeTypes,
 			endpoints,
 			workflow.id,
@@ -228,7 +236,9 @@ export async function getWorkflowDetails(
 	const publishedNodes = hasDivergedPublishedVersion ? workflow.activeVersion?.nodes : undefined;
 	let activeVersionTriggerNotice: string | undefined;
 	if (publishedNodes) {
-		const publishedTriggers = splitTriggers(publishedNodes);
+		// Normalized like the draft nodes, so a node differing only by a missing
+		// `parameters` key does not read as a trigger divergence.
+		const publishedTriggers = splitTriggers(ensureNodeParameters(publishedNodes));
 		if (JSON.stringify(publishedTriggers) !== JSON.stringify(draftTriggers)) {
 			const publishedNotice = await noticeFor(publishedTriggers);
 			if (publishedNotice !== triggerNotice) {
@@ -237,10 +247,14 @@ export async function getWorkflowDetails(
 		}
 	}
 
+	const publicationStatus = await publicationStatusService?.getLatestStatus(workflowId);
 	const sanitizedWorkflow: WorkflowDetailsResult['workflow'] = {
 		id: workflow.id,
 		name: workflow.name,
-		active: workflow.activeVersionId !== null,
+		active: publicationStatus
+			? publicationStatus.liveVersionId !== null
+			: workflow.activeVersionId !== null,
+		...(publicationStatus ? { publicationStatus } : {}),
 		isArchived: workflow.isArchived,
 		versionId: workflow.versionId,
 		activeVersionId: workflow.activeVersionId,
