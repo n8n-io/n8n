@@ -37,6 +37,27 @@ test.describe(
 			}
 		});
 
+		test('should show the progress of a test run as it happens @engine:v2', async ({ n8n }) => {
+			await n8n.canvas.addNode('Webhook');
+			await n8n.ndv.setupHelper.webhook({ httpMethod: 'GET' });
+			const webhookPath = await n8n.ndv.setupHelper.getWebhookPath();
+			await n8n.ndv.close();
+			await addEditFieldsNode(n8n);
+			await n8n.canvas.logsPanel.open();
+
+			await n8n.canvas.clickExecuteWorkflowButton();
+			await expect(n8n.canvas.waitingForTriggerEvent()).toBeVisible();
+			const response = await n8n.api.webhooks.trigger(`/webhook-test/${webhookPath}`);
+			expect(response.ok()).toBe(true);
+
+			const entries = n8n.canvas.logsPanel.getLogEntries();
+			await expect(entries.nth(0)).toContainText('Webhook');
+			await expect(entries.nth(1)).toContainText('Edit Fields');
+			await expect(
+				n8n.canvas.logsPanel.getOverviewStatus().filter({ hasText: /Success in [\d.]+m?s/ }),
+			).toBeVisible();
+		});
+
 		test('should listen for a GET request and respond with Respond to Webhook node', async ({
 			n8n,
 		}) => {
