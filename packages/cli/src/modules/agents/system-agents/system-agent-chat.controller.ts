@@ -7,7 +7,7 @@ import {
 	type AgentChatQueueResponse,
 	type AgentSessionFilesResponse,
 	AgentChatQueueSteerDto,
-	AgentChatQueueUpdateDto,
+	SystemAgentChatQueueUpdateDto,
 	AgentChatResumeDto,
 	type AgentThreadUsageResponse,
 	ListSystemAgentThreadsQueryDto,
@@ -349,7 +349,7 @@ export class SystemAgentChatController {
 	async updateQueuedMessage(
 		req: AuthenticatedRequest<{ agentId: string; threadId: string; queueId: string }>,
 		_res: Response,
-		@Body payload: AgentChatQueueUpdateDto,
+		@Body payload: SystemAgentChatQueueUpdateDto,
 	): Promise<void> {
 		const thread = await this.usableQueueThread(req);
 		await this.messageQueue.updatePending({

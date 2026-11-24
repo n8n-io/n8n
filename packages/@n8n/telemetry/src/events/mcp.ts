@@ -59,6 +59,36 @@ export const MCP_TELEMETRY = defineTelemetryEvents({
 		}),
 	},
 	// EOF Experiment cleanup
+	PREFERENCES_ENTRY_POINT_CLICKED: {
+		name: 'User clicked MCP preferences entry point',
+		description:
+			'A user in experiment 150 clicked a link to the preferences page from the MCP settings page or the connect-client dialog. The click opens the preferences page.',
+		properties: z.looseObject({
+			variant: z.enum(['banner', 'connection_row']),
+			entry_point: z
+				.enum(['banner', 'connection_row', 'connect_dialog'])
+				.describe(
+					'The banner at the top of the page, the row in Connection details, or the link at the end of the connect-client dialog',
+				),
+		}),
+	},
+	PREFERENCES_PROMPT_COPIED: {
+		name: 'User copied MCP preferences prompt',
+		description:
+			'A user in experiment 150 copied the prompt in the connect-client dialog that asks the client to interview them and save the answers as preferences.',
+		properties: z.looseObject({
+			variant: z.enum(['banner', 'connection_row']),
+			client: z.string().describe('The client selected in the dialog, for example `claude-ai`'),
+		}),
+	},
+	PREFERENCES_BANNER_DISMISSED: {
+		name: 'User dismissed MCP preferences banner',
+		description:
+			'A user in the banner arm of experiment 150 closed the preferences banner on the MCP settings page. The banner then stays hidden in this browser.',
+		properties: z.looseObject({
+			variant: z.enum(['banner']),
+		}),
+	},
 	MCP_NUDGE_VIEWED: {
 		name: 'User viewed MCP nudge',
 		description:

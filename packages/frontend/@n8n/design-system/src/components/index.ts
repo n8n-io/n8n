@@ -180,6 +180,8 @@ export type {
 	ChatActionReadAloudStatus,
 	ChatActionsProps,
 } from './N8nChatActions/ChatActions.types';
+export { default as N8nChatRating } from './N8nChatRating/ChatRating.vue';
+export type { ChatRatingValue } from './N8nChatRating/ChatRating.types';
 export { default as N8nPulse } from './N8nPulse';
 export { default as N8nSendStopButton } from './N8nSendStopButton';
 export { default as N8nSegmentControl } from './N8nSegmentControl';

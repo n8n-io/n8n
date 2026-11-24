@@ -1,7 +1,8 @@
-import type {
-	InstanceAiAgentAttachment,
-	InstanceAiHandoffContext,
-	InstanceAiResourceAttachment,
+import {
+	EXTENDED_PROMPT_MAX_LENGTH,
+	type InstanceAiAgentAttachment,
+	type InstanceAiHandoffContext,
+	type InstanceAiResourceAttachment,
 } from '@n8n/api-types';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { createTestingPinia } from '@pinia/testing';
@@ -166,6 +167,11 @@ describe('AssistantAgentPanelThread', () => {
 		const onContentChange = panelProps.current.onContentChange as (hasContent: boolean) => void;
 		onContentChange(true);
 		expect(wrapper.emitted('content-change')).toEqual([[true]]);
+	});
+
+	it('lets the composer take a message up to the Assistant limit', async () => {
+		await render();
+		expect(panelProps.current['max-length']).toBe(EXTENDED_PROMPT_MAX_LENGTH);
 	});
 
 	it('opens a new thread of the Assistant agent on the system channel', async () => {

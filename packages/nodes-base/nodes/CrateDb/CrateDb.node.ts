@@ -279,8 +279,7 @@ export class CrateDb implements INodeType {
 			...config,
 			// Return date/timestamp columns as strings so node output stays JSON-safe
 			...(this.getNode().typeVersion >= 1.1
-				? // No version of this node opts in to the zoneless timestamp output that
-					// Postgres 2.9 added. Keep the older reading until one does, see ENT-882.
+				? // CrateDB sends a UTC value, so the zoneless reading would strip a real offset, ENT-882
 					{ types: getDateAsStringTypeParsers(pgp, { legacyUtcTimestamps: true }) }
 				: {}),
 		});

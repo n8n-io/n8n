@@ -119,7 +119,7 @@ describe('ExecutionLedgerRowWriter', () => {
 			expect(await claimAll()).toEqual([]);
 		});
 
-		it('skips a workflow without an owner project and keeps the transaction usable', async () => {
+		it('writes a row with no project for a workflow without an owner project', async () => {
 			const unowned = await createWorkflow({ name: 'Unowned' });
 
 			await txRunner.run({}, async (ctx) => {
@@ -127,7 +127,10 @@ describe('ExecutionLedgerRowWriter', () => {
 				await ledger.recordStarted(startedFacts({ executionId: 'exec-2' }), ctx);
 			});
 
-			expect((await claimAll()).map((r) => r.executionId)).toEqual(['exec-2']);
+			expect(await claimAll()).toEqual([
+				expect.objectContaining({ executionId: 'exec-1', entityId: unowned.id, projectId: null }),
+				expect.objectContaining({ executionId: 'exec-2', projectId: project.id }),
+			]);
 			expect(logger.error).toHaveBeenCalledTimes(1);
 			expect(errorReporter.error).toHaveBeenCalledTimes(1);
 		});
@@ -197,12 +200,16 @@ describe('ExecutionLedgerRowWriter', () => {
 			expect(logger.error).not.toHaveBeenCalled();
 		});
 
-		it('logs a workflow without an owner project and does not throw', async () => {
+		it('writes a row with no project for a workflow without an owner project', async () => {
 			const unowned = await createWorkflow({ name: 'Unowned' });
 
 			await ledger.recordEnded(endedFacts({ workflowId: unowned.id }));
 
-			expect(await claimAll()).toEqual([]);
+			expect(await claimAll()).toEqual([
+				expect.objectContaining({ event: 'ended', entityId: unowned.id, projectId: null }),
+			]);
+			expect(errorReporter.error).toHaveBeenCalledTimes(1);
+			expect(logger.error).toHaveBeenCalledTimes(1);
 			expect(logger.error).toHaveBeenCalledWith(
 				expect.stringContaining('no owner project'),
 				expect.objectContaining({ workflowId: unowned.id }),
