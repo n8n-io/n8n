@@ -25,7 +25,7 @@ function formatRelativeTime(isoTime: string): string {
 function formatCreatedDate(isoTime: string): string {
 	const date = new Date(isoTime);
 	const day = date.getDate();
-	const month = date.toLocaleString('en', { month: 'long' });
+	const month = date.toLocaleString(i18n.locale, { month: 'long' });
 	return i18n.baseText('instanceAi.artifactCard.createdAt', {
 		interpolate: { date: `${day} ${month}` },
 	});
