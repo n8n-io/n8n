@@ -7,6 +7,7 @@ import type { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.ser
 
 import type { ApplyPreviewService } from '../apply-preview.service';
 import type { LocalPackageEntities } from '../local-package-entities.service';
+import { PromotePreviewService } from '../promote-preview.service';
 import { PromotionChangeService } from '../promotion-change.service';
 import type { PromotionEnvironmentResolver } from '../promotion-environment.resolver';
 import type { PromotionReviewGateService } from '../promotion-review-gate.service';
@@ -29,6 +30,8 @@ const nobody = userWith();
 const branched = (createBranchOnPromotion: boolean) =>
 	mock<PromotionOperationInput>({
 		environmentId: 'env-1',
+		environmentName: 'Staging',
+		providerType: 'gitlab',
 		config: {
 			direction: 'promote',
 			settings: { schemaVersion: 1, baseBranchName: 'staging', createBranchOnPromotion },
@@ -44,10 +47,14 @@ describe('PromotionChangeService.getPreview review gate', () => {
 		promotionsService,
 		mock<N8nPackagesService>(),
 		mock<ApplyPreviewService>(),
-		mock<SharedWorkflowRepository>(),
+		new PromotePreviewService(
+			mock<N8nPackagesService>(),
+			mock<SharedWorkflowRepository>(),
+			reviewGate,
+		),
 		mock<LocalPackageEntities>(),
 		environmentResolver,
-		reviewGate,
+		mock(),
 	);
 
 	beforeEach(() => {
@@ -67,9 +74,11 @@ describe('PromotionChangeService.getPreview review gate', () => {
 		expect(preview).toEqual({
 			commitSha: null,
 			source: { environmentId: 'env-1', branchName: 'staging' },
+			environment: { name: 'Staging', providerType: 'gitlab', createBranchOnPromotion: true },
 			resources: [],
 			dependencies: [],
 			blocker: { code: 'reviewOpen', reviewId: 'review-1' },
+			revision: expect.any(String),
 		});
 		expect(reviewGate.findPromoteBlocker).toHaveBeenCalledWith('project-1', 'env-1');
 		expect(promotionsService.readBranchPackage).not.toHaveBeenCalled();

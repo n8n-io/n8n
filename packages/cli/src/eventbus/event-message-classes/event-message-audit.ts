@@ -16,6 +16,8 @@ export interface EventPayloadAudit extends AbstractEventPayload {
 	userEmail?: string;
 	firstName?: string;
 	lastName?: string;
+	/** Login of the service account that acted. Absent for people. */
+	loginId?: string;
 	credentialName?: string;
 	credentialType?: string;
 	credentialId?: string | null;
@@ -37,7 +39,7 @@ export interface EventPayloadAudit extends AbstractEventPayload {
 	userAgent?: string;
 	redactionPolicy?: WorkflowSettings.RedactionPolicy;
 	rejectionReason?: string;
-	updatedBy?: string;
+	updatedBy?: string | null;
 	kind?: string;
 	scopeId?: string;
 	policyId?: string;

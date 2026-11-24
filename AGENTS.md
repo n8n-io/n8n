@@ -357,10 +357,11 @@ extends one of those layers):
   that file and the rule files require security (IAM) approval via OWNERS.
 
 ### Frontend Development
-- Refer to `packages/frontend/AGENTS.md`
+- Before frontend work, read `packages/frontend/AGENTS.md` and each `AGENTS.md`
+  in a folder that you change
 - **All UI text must use i18n** - add translations to `@n8n/i18n` package
 - **Use CSS variables directly** - never hardcode spacing as px values
-- **data-testid must be a single value** (no spaces or multiple values)
+- **data-test-id must be a single value** (no spaces or multiple values)
 - Always use the `n8n:ui-design` skill in reviews
 
 ### Verify changes

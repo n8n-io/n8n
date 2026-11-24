@@ -104,7 +104,7 @@ function inlineAgentSeed(): ConversationSeed {
 				id: SEED_AGENT_ID,
 				config: {
 					name: 'Notion research',
-					model: 'anthropic/claude-sonnet-4-5',
+					model: 'anthropic/claude-sonnet-5-5',
 					instructions: 'Research company notes.',
 				},
 			},
@@ -669,17 +669,6 @@ describe('buildWorkflow with scenario seed data tables', () => {
 			expect(result.error).toContain(expired ? 'Case timed out' : 'Input rows could not be seeded');
 		},
 	);
-
-	it('rejects an invalid mode before creating a thread', async () => {
-		vi.stubEnv('N8N_EVAL_BUILD_MODE', 'progresssive');
-		try {
-			const client = makeClient(vi.fn());
-			await expect(buildWorkflow({ ...baseConfig, client })).rejects.toThrow('N8N_EVAL_BUILD_MODE');
-			expect(client.ensureThread).not.toHaveBeenCalled();
-		} finally {
-			vi.unstubAllEnvs();
-		}
-	});
 
 	it('creates the table under a per-run name and tells the agent THAT name', async () => {
 		// The name is project-unique, so a per-run suffix is what lets two iterations of

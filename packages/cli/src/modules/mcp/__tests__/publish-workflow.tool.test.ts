@@ -2,32 +2,36 @@ import {
 	WORKFLOW_VERSION_DESCRIPTION_MAX_LENGTH,
 	WORKFLOW_VERSION_NAME_MAX_LENGTH,
 } from '@n8n/api-types';
+import { TelemetryProxy } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
-import { User } from '@n8n/db';
+import { type OperationContext, User } from '@n8n/db';
+import type { SecurityContext } from '@n8n/permissions';
 import { v4 as uuid } from 'uuid';
 import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 import z from 'zod';
 
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { WorkflowPublishBlockedError } from '@/errors/response-errors/workflow-publish-blocked.error';
-import { Telemetry } from '@/telemetry';
+import { WorkflowPublicationStatusService } from '@/workflows/publication/workflow-publication-status.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 import { createWorkflow } from './mock.utils';
+import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import { createPublishWorkflowTool } from '../tools/publish-workflow.tool';
 
 describe('publish-workflow MCP tool', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
 	let workflowFinderService: WorkflowFinderService;
 	let workflowService: WorkflowService;
-	let telemetry: Telemetry;
+	let telemetry: TelemetryProxy;
 	let collaborationService: CollaborationService;
 
 	beforeEach(() => {
 		workflowFinderService = mockInstance(WorkflowFinderService);
 		workflowService = mockInstance(WorkflowService);
-		telemetry = mockInstance(Telemetry, {
+		telemetry = mockInstance(TelemetryProxy, {
 			track: vi.fn(),
 		});
 		collaborationService = mockInstance(CollaborationService, {
@@ -197,13 +201,18 @@ describe('publish-workflow MCP tool', () => {
 					activeVersionId,
 				});
 
-				expect(workflowService.activateWorkflow).toHaveBeenCalledWith(user, 'wf-1', {
-					versionId: undefined,
-					name: undefined,
-					description: undefined,
-					source: 'n8n-mcp',
-					publishHistory: 'none',
-				});
+				expect(workflowService.activateWorkflow).toHaveBeenCalledWith(
+					user,
+					'wf-1',
+					{
+						versionId: workflow.versionId,
+						name: undefined,
+						description: undefined,
+						source: 'n8n-mcp',
+						publishHistory: 'none',
+					},
+					{},
+				);
 
 				expect(collaborationService.broadcastWorkflowUpdate).toHaveBeenCalledWith('wf-1', user.id);
 			});
@@ -240,13 +249,18 @@ describe('publish-workflow MCP tool', () => {
 					activeVersionId: versionId,
 				});
 
-				expect(workflowService.activateWorkflow).toHaveBeenCalledWith(user, 'wf-1', {
-					versionId,
-					name: 'Add Slack notification',
-					description: 'Sends a Slack message when the order fails.',
-					source: 'n8n-mcp',
-					publishHistory: 'none',
-				});
+				expect(workflowService.activateWorkflow).toHaveBeenCalledWith(
+					user,
+					'wf-1',
+					{
+						versionId,
+						name: 'Add Slack notification',
+						description: 'Sends a Slack message when the order fails.',
+						source: 'n8n-mcp',
+						publishHistory: 'none',
+					},
+					{},
+				);
 			});
 
 			test('publishes specific version when versionId provided', async () => {
@@ -276,15 +290,176 @@ describe('publish-workflow MCP tool', () => {
 					activeVersionId: versionId,
 				});
 
-				expect(workflowService.activateWorkflow).toHaveBeenCalledWith(user, 'wf-1', {
-					versionId,
-					name: undefined,
-					description: undefined,
-					source: 'n8n-mcp',
-					publishHistory: 'none',
-				});
+				expect(workflowService.activateWorkflow).toHaveBeenCalledWith(
+					user,
+					'wf-1',
+					{
+						versionId,
+						name: undefined,
+						description: undefined,
+						source: 'n8n-mcp',
+						publishHistory: 'none',
+					},
+					{},
+				);
+			});
+
+			test('passes the operation context to the workflow service', async () => {
+				const workflow = createWorkflow({ settings: { availableInMCP: true } });
+				(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(workflow);
+				(workflowService.activateWorkflow as Mock).mockResolvedValue(workflow);
+				const ctx: OperationContext = {
+					security: mock<SecurityContext>({ subIdentityId: 'login-1' }),
+				};
+
+				const tool = createPublishWorkflowTool(
+					user,
+					workflowFinderService,
+					workflowService,
+					telemetry,
+					collaborationService,
+					undefined,
+					ctx,
+				);
+				await tool.handler(
+					{ workflowId: 'wf-1', versionId: undefined },
+					{} as Parameters<typeof tool.handler>[1],
+				);
+
+				expect((workflowService.activateWorkflow as Mock).mock.calls[0][3]).toBe(ctx);
 			});
 		});
+
+		test('keeps a pending publication pollable when the activation response has no active version', async () => {
+			const workflow = createWorkflow();
+			const publicationStatus = {
+				status: 'in_progress',
+				versionId: workflow.versionId,
+				liveVersionId: null,
+				pendingVersionId: workflow.versionId,
+				triggers: [],
+				errorMessage: null,
+			};
+			const publicationStatusService = mockInstance(WorkflowPublicationStatusService, {
+				waitForPublication: vi.fn().mockResolvedValue(publicationStatus),
+			});
+			vi.mocked(workflowFinderService.findWorkflowForUser).mockResolvedValue(workflow);
+			vi.mocked(workflowService.activateWorkflow).mockResolvedValue(workflow);
+			const tool = createPublishWorkflowTool(
+				user,
+				workflowFinderService,
+				workflowService,
+				telemetry,
+				collaborationService,
+				publicationStatusService,
+			);
+
+			const result = await tool.handler({ workflowId: workflow.id });
+
+			expect(publicationStatusService.waitForPublication).toHaveBeenCalledWith(
+				workflow.id,
+				workflow.versionId,
+			);
+			expect(result.structuredContent).toEqual({
+				success: false,
+				workflowId: workflow.id,
+				activeVersionId: null,
+				publicationStatus,
+			});
+			expect(z.object(tool.config.outputSchema!).parse(result.structuredContent)).toEqual(
+				result.structuredContent,
+			);
+			expect(result.content).toEqual([
+				{ type: 'text', text: JSON.stringify(result.structuredContent) },
+			]);
+			expect(telemetry.track).toHaveBeenCalledWith(
+				'User called mcp tool',
+				expect.objectContaining({ results: expect.objectContaining({ success: false }) }),
+			);
+		});
+
+		test.each(['in_progress', 'failed', 'partial'] as const)(
+			'keeps the published version separate from the live version after a %s publication',
+			async (status) => {
+				const workflow = createWorkflow({ versionId: 'v-2', activeVersionId: 'v-2' });
+				const publicationStatus = {
+					status,
+					versionId: 'v-2',
+					liveVersionId: 'v-1',
+					pendingVersionId: status === 'in_progress' ? 'v-2' : null,
+					triggers: [],
+					errorMessage: status === 'in_progress' ? null : 'Activation failed',
+				};
+				const publicationStatusService = mockInstance(WorkflowPublicationStatusService, {
+					waitForPublication: vi.fn().mockResolvedValue(publicationStatus),
+				});
+				vi.mocked(workflowFinderService.findWorkflowForUser).mockResolvedValue(workflow);
+				vi.mocked(workflowService.activateWorkflow).mockResolvedValue(workflow);
+				const tool = createPublishWorkflowTool(
+					user,
+					workflowFinderService,
+					workflowService,
+					telemetry,
+					collaborationService,
+					publicationStatusService,
+				);
+
+				const result = await tool.handler({ workflowId: workflow.id });
+
+				expect(result.structuredContent).toMatchObject({
+					success: false,
+					activeVersionId: 'v-2',
+					publicationStatus,
+				});
+				expect(telemetry.track).toHaveBeenCalledWith(
+					USER_CALLED_MCP_TOOL_EVENT,
+					expect.objectContaining({
+						results: expect.objectContaining({
+							success: false,
+							data: { workflow_id: workflow.id, active_version_id: 'v-2' },
+						}),
+					}),
+				);
+			},
+		);
+
+		test.each([
+			{ status: 'published', versionId: 'v-3', liveVersionId: 'v-3', replaced: true },
+			{ status: 'not_published', versionId: null, liveVersionId: null, replaced: true },
+			{ status: 'published', versionId: 'v-2', liveVersionId: 'v-1', replaced: false },
+		] as const)(
+			'does not confirm the requested version for $status with version=$versionId and live=$liveVersionId',
+			async ({ status, versionId, liveVersionId, replaced }) => {
+				const workflow = createWorkflow({ versionId: 'v-2', activeVersionId: 'v-2' });
+				const publicationStatusService = mockInstance(WorkflowPublicationStatusService, {
+					waitForPublication: vi.fn().mockResolvedValue({
+						status,
+						versionId,
+						liveVersionId,
+						pendingVersionId: null,
+						triggers: [],
+						errorMessage: null,
+					}),
+				});
+				vi.mocked(workflowFinderService.findWorkflowForUser).mockResolvedValue(workflow);
+				vi.mocked(workflowService.activateWorkflow).mockResolvedValue(workflow);
+				const tool = createPublishWorkflowTool(
+					user,
+					workflowFinderService,
+					workflowService,
+					telemetry,
+					collaborationService,
+					publicationStatusService,
+				);
+
+				const result = await tool.handler({ workflowId: workflow.id });
+
+				expect(result.structuredContent).toMatchObject({
+					success: false,
+					...(replaced ? { error: expect.stringContaining('Another publication replaced') } : {}),
+				});
+			},
+		);
 
 		describe('telemetry tracking', () => {
 			test('tracks successful publish', async () => {

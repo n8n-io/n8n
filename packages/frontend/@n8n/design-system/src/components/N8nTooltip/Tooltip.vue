@@ -33,6 +33,13 @@ const props = withDefaults(defineProps<N8nTooltipProps>(), {
 	avoidCollisions: true,
 });
 
+const emit = defineEmits<{
+	/** Emitted when the tooltip starts to open */
+	'before-show': [];
+	/** Emitted when the tooltip closes */
+	hide: [];
+}>();
+
 // Get append-to target from composable, defaulting to body for proper z-index stacking
 const injectedAppendTo = useInjectTooltipAppendTo();
 const appendTo = computed(() => injectedAppendTo.value ?? 'body');
@@ -61,6 +68,18 @@ const disableHoverableContent = computed(() => !props.enterable);
 const isOpen = ref(false);
 const { nextZIndex } = useZIndex();
 const zIndex = ref<number>();
+
+// Emit on every open state change, from user interaction or from the `visible` prop.
+// Consumers use these events to lazy-load the tooltip content.
+// Register before the `visible` watcher so that a tooltip mounted open also emits.
+watch(isOpen, (open, wasOpen) => {
+	if (open === wasOpen) return;
+	if (open) {
+		emit('before-show');
+	} else {
+		emit('hide');
+	}
+});
 
 watch(
 	() => props.visible,

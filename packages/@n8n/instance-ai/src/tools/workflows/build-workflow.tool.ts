@@ -4,10 +4,9 @@ import {
 	instanceAiApprovalResumeSchema,
 	instanceAiConfirmationSeveritySchema,
 } from '@n8n/api-types';
-import { Tool, type RuntimeSkillLoader } from '@n8n/agents';
+import { Tool } from '@n8n/agents';
 import { hasPlaceholderDeep } from '@n8n/utils/placeholder';
 import { SDK_IMPORTABLE_FUNCTIONS, type WorkflowJSON } from '@n8n/workflow-sdk';
-import { UnexpectedError } from '@n8n/errors';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
@@ -53,6 +52,13 @@ import {
 	reportFailedWorkflowBuildOutcome,
 	reportWorkflowBuildOutcome,
 } from './workflow-build-reporting';
+import {
+	resolveFallbackEngine,
+	resolveTargetEngine,
+	shouldReportTargetEngine,
+	targetEngineSchema,
+	type TargetEngine,
+} from './target-engine';
 import { withDeterministicRouting } from './workflow-build-routing';
 import {
 	trackWaitGateVerificationPlan,
@@ -122,7 +128,6 @@ const confirmationSuspendSchema = z.object({
 const confirmationResumeSchema = instanceAiApprovalResumeSchema;
 
 interface BuildCtx {
-	loadSkill?: RuntimeSkillLoader;
 	toolCallId?: string;
 	resumeData?: z.infer<typeof confirmationResumeSchema>;
 	suspend?: (payload: z.infer<typeof confirmationSuspendSchema>) => Promise<never>;
@@ -338,38 +343,20 @@ export function autoImportMissingSdkSymbols(
 const POST_BUILD_FLOW_SKILL_ID = 'post-build-flow';
 const ONE_OFF_OPERATIONS_SKILL_ID = 'one-off-operations';
 
-/**
- * An activated skill rides on this tool result. Without activation, the agent
- * loads the skill itself.
- */
-function followInstructionsClause(skillId: string, activated: boolean): string {
-	return activated
-		? `Follow the active ${skillId} skill instructions now (do NOT call load_skill for it — it is already active)`
-		: `Load the ${skillId} skill with load_skill now and follow it`;
+function followInstructionsClause(skillId: string): string {
+	return `Load the ${skillId} skill with load_skill now and follow it`;
 }
 
-function oneOffOperationsGuidance(activated: boolean): string {
-	return `This one-off build is not complete yet. ${followInstructionsClause(ONE_OFF_OPERATIONS_SKILL_ID, activated)}. Simulated verification is NOT required and NOT the completion criterion: route setup if needed, then run the workflow live with the user’s approval, read back the actual node output, and report only what you read. Offer to keep or delete the workflow when the operation is done.`;
+function oneOffOperationsGuidance(): string {
+	return `This one-off build is not complete yet. ${followInstructionsClause(ONE_OFF_OPERATIONS_SKILL_ID)}. Simulated verification is NOT required and NOT the completion criterion: route setup if needed, then run the workflow live with the user’s approval, read back the actual node output, and report only what you read. Offer to keep or delete the workflow when the operation is done.`;
 }
 
-function postBuildFlowGuidance(activated: boolean): string {
-	return `This direct build is not complete yet. ${followInstructionsClause(POST_BUILD_FLOW_SKILL_ID, activated)} before verification, setup, error-workflow follow-up, publishing, testing, or any final user-visible summary. Follow-up order is verification/setup first, then mocked/no-mock live-test when latest verification used mocks or simulations, then generic testing prompts. Until a non-simulated execution succeeds, never offer publishing as an alternative to the live test. A user-run execution counts only after \`list_executions\` and \`get_execution\` confirm that it succeeded and ran the required path; the user's statement alone is not execution evidence. Honor an explicit publish request before live execution only after warning that the live path remains untested. Offer the explicit error-workflow opt-in for direct new primary workflows only after the primary workflow is successfully published. Do not replace the error-workflow opt-in with a generic add-anything, publish, or test question.`;
+function postBuildFlowGuidance(): string {
+	return `This direct build is not complete yet. ${followInstructionsClause(POST_BUILD_FLOW_SKILL_ID)} before verification, setup, error-workflow follow-up, publishing, testing, or any final user-visible summary. Follow-up order is verification/setup first, then mocked/no-mock live-test when latest verification used mocks or simulations, then generic testing prompts. Until a non-simulated execution succeeds, never offer publishing as an alternative to the live test. A user-run execution counts only after \`list_executions\` and \`get_execution\` confirm that it succeeded and ran the required path; the user's statement alone is not execution evidence. Honor an explicit publish request before live execution only after warning that the live path remains untested. Offer the explicit error-workflow opt-in for direct new primary workflows only after the primary workflow is successfully published. Do not replace the error-workflow opt-in with a generic add-anything, publish, or test question.`;
 }
 
-/** Activates the follow-up skill, and returns whether it is active. */
-async function activateFollowUpSkill(
-	skillId: string,
-	activate: RuntimeSkillLoader | undefined,
-): Promise<boolean> {
-	if (!activate) return false;
-	if (!(await activate(skillId))) throw new UnexpectedError(`Skill "${skillId}" is missing`);
-	return true;
-}
-
-function followUpInstructions(skillId: string, activated: boolean): string {
-	return activated
-		? `Follow the active ${skillId} skill instructions.`
-		: `Load the ${skillId} skill with load_skill.`;
+function followUpInstructions(skillId: string): string {
+	return `Load the ${skillId} skill with load_skill.`;
 }
 
 // Discriminated on skillId so a mismatched skillId/reason pair cannot validate.
@@ -391,11 +378,10 @@ const postBuildFlowOutputSchema = z.discriminatedUnion('skillId', [
 	}),
 ]);
 
-async function directPostBuildFlowHandoff(
+function directPostBuildFlowHandoff(
 	isAuxiliarySupportingWorkflow: boolean,
 	outcome: WorkflowBuildOutcome,
-	activate?: RuntimeSkillLoader,
-): Promise<z.infer<typeof postBuildFlowOutputSchema> | undefined> {
+): z.infer<typeof postBuildFlowOutputSchema> | undefined {
 	if (isAuxiliarySupportingWorkflow) return undefined;
 
 	// One-off instructions only apply when the workflow can actually run — their
@@ -403,23 +389,21 @@ async function directPostBuildFlowHandoff(
 	// build falls back to the standard post-build flow, which handles
 	// not_verifiable outcomes.
 	if (outcome.executionIntent === 'one-off' && outcome.verificationReadiness?.status === 'ready') {
-		const activated = await activateFollowUpSkill(ONE_OFF_OPERATIONS_SKILL_ID, activate);
 		return {
 			required: true,
 			skillId: ONE_OFF_OPERATIONS_SKILL_ID,
 			reason: 'direct-one-off-build-succeeded',
-			guidance: oneOffOperationsGuidance(activated),
-			instructions: followUpInstructions(ONE_OFF_OPERATIONS_SKILL_ID, activated),
+			guidance: oneOffOperationsGuidance(),
+			instructions: followUpInstructions(ONE_OFF_OPERATIONS_SKILL_ID),
 		};
 	}
 
-	const activated = await activateFollowUpSkill(POST_BUILD_FLOW_SKILL_ID, activate);
 	return {
 		required: true,
 		skillId: POST_BUILD_FLOW_SKILL_ID,
 		reason: 'direct-build-succeeded',
-		guidance: postBuildFlowGuidance(activated),
-		instructions: followUpInstructions(POST_BUILD_FLOW_SKILL_ID, activated),
+		guidance: postBuildFlowGuidance(),
+		instructions: followUpInstructions(POST_BUILD_FLOW_SKILL_ID),
 	};
 }
 
@@ -442,6 +426,7 @@ interface ValidationFailureArgs {
 	withEscalation: (errors: string[], options?: { trackingErrors?: string[] }) => string[];
 	stage?: BuildTelemetryStage;
 	grouping?: GroupingOutcome;
+	targetEngine?: TargetEngine;
 }
 
 /**
@@ -496,8 +481,18 @@ async function handleValidationFailure(args: ValidationFailureArgs) {
 		withEscalation,
 		stage = 'validation',
 		grouping,
+		targetEngine,
 	} = args;
 
+	// Mark the blocked nodes on the draft the user is watching.
+	context.workflowDraftPublisher?.publishIssues({
+		filePath,
+		issues: blocking.map(({ code, message, nodeName }) => ({
+			code,
+			message,
+			...(nodeName ? { nodeName } : {}),
+		})),
+	});
 	const validationErrors = blocking.map(
 		(e) => `[${e.code}]${e.nodeName ? ` (${e.nodeName})` : ''}: ${e.message}`,
 	);
@@ -549,6 +544,7 @@ async function handleValidationFailure(args: ValidationFailureArgs) {
 		remediation,
 		warnings: combineWarnings(informational.map((w) => formatWarning(w.code, w.message))),
 		...(grouping ? { grouping } : {}),
+		...(targetEngine ? { targetEngine } : {}),
 	};
 }
 
@@ -576,6 +572,7 @@ const buildWorkflowOutputSchema = z.object({
 	hasUnresolvedPlaceholders: z.boolean().optional(),
 	...savedWorkflowStateSchema.shape,
 	grouping: groupingOutcomeSchema.optional(),
+	targetEngine: targetEngineSchema.optional(),
 	denied: z.boolean().optional(),
 	reason: z.string().optional(),
 	remediation: remediationMetadataSchema.optional(),
@@ -604,7 +601,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				'Load `workflow-builder` via `load_skill` before calling this tool. ' +
 				'When the workflow creates or writes Data Tables, also load `data-table-manager` first. ' +
 				'Use TypeScript SDK .workflow.ts source for new and existing workflows. ' +
-				'Prefer writing the file with `workspace_write_file` / `workspace_str_replace_file` then call this tool with filePath. This tool validates the source and returns the findings. ' +
+				'Prefer writing the file with `workspace_write_file` / `workspace_str_replace_file` (`workspace_edit_files` for several files in one call) then call this tool with filePath. This tool validates the source and returns the findings. ' +
 				'For a one-shot create/rewrite you may pass `sourceCode` instead (the tool writes filePath and builds).',
 		)
 		.input(pickBuildWorkflowInputSchema(context))
@@ -1049,7 +1046,33 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 
 			let informational: ValidationWarning[] = [];
 
-			let compiled = await compileWorkflowSource(context, filePath, sourceCode, ctx.abortSignal);
+			// Snapshot of the previously saved workflow. It gives the engine of an edit, and it
+			// tells nodes this build actually touched apart from pre-existing ones it round-tripped.
+			let savedWorkflowSnapshot: WorkflowJSON | undefined;
+			if (targetWorkflowId) {
+				try {
+					savedWorkflowSnapshot = await context.workflowService.getAsWorkflowJSON(targetWorkflowId);
+				} catch {
+					// Prior state unreadable — treat every node as changed (unscoped).
+				}
+			}
+
+			// The engine for code without `settings.engineType`, so validation checks the
+			// engine that runs the saved workflow.
+			const fallbackEngine = resolveFallbackEngine({
+				engineSetup: context.engineSetup,
+				isEdit: targetWorkflowId !== undefined,
+				savedWorkflow: savedWorkflowSnapshot,
+			});
+			const compileOptions = { engine: fallbackEngine.engine };
+
+			let compiled = await compileWorkflowSource(
+				context,
+				filePath,
+				sourceCode,
+				ctx.abortSignal,
+				compileOptions,
+			);
 			if (
 				!compiled.success &&
 				compiled.reason === 'workflow_source_build_failed' &&
@@ -1069,6 +1092,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 							filePath,
 							recovery.source,
 							ctx.abortSignal,
+							compileOptions,
 						);
 						// The corrected source is on disk; keep reported errors/hash in sync with it.
 						sourceCode = recovery.source;
@@ -1141,16 +1165,19 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				};
 			}
 
-			// Snapshot of the previously saved workflow, used to tell nodes this
-			// build actually touched apart from pre-existing ones it round-tripped.
-			let savedWorkflowSnapshot: WorkflowJSON | undefined;
-			if (targetWorkflowId) {
-				try {
-					savedWorkflowSnapshot = await context.workflowService.getAsWorkflowJSON(targetWorkflowId);
-				} catch {
-					// Prior state unreadable — treat every node as changed (unscoped).
-				}
-			}
+			// Show the compiled workflow before validation, which can block the save
+			// for several build attempts.
+			await context.workflowDraftPublisher?.publish({
+				filePath,
+				workflowId: targetWorkflowId,
+				// The save uses the name that the build passes, so the draft shows it too.
+				workflow: name ? { ...compiled.workflow, name } : compiled.workflow,
+			});
+
+			const resolvedEngine = resolveTargetEngine(compiled.workflow, fallbackEngine);
+			const targetEngine = shouldReportTargetEngine(context.engineSetup, resolvedEngine)
+				? resolvedEngine
+				: undefined;
 
 			const partitionedWarnings = partitionWarnings(
 				downgradeUnchangedNodeBlockers(compiled.warnings, compiled.workflow, savedWorkflowSnapshot),
@@ -1176,6 +1203,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					isSupportingWorkflow,
 					isAuxiliarySupportingWorkflow,
 					withEscalation,
+					targetEngine,
 				});
 			}
 
@@ -1220,6 +1248,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						'Workflow name is required for new workflows. Provide a name parameter or set it in the SDK code.',
 					],
 					remediation,
+					...(targetEngine ? { targetEngine } : {}),
 				};
 			}
 
@@ -1324,6 +1353,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					isSupportingWorkflow,
 					isAuxiliarySupportingWorkflow,
 					withEscalation,
+					targetEngine,
 				});
 			}
 
@@ -1417,6 +1447,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						withEscalation,
 						stage: 'grouping',
 						grouping,
+						targetEngine,
 					});
 				}
 
@@ -1536,8 +1567,10 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 							declaredOutputFixtures: compiled.declaredOutputFixtures,
 							workflowId: saved.id,
 							outputSchemaLookup: context.outputSchemaLookup,
-							fallbackModelConfig: context.modelId,
+							model: context.modelId,
+							utilityModel: context.utilityModelId,
 							modelFetch: context.modelFetch,
+							onHelperUsage: context.onHelperUsage,
 							logger: context.logger,
 						});
 					trackWaitGateVerificationPlan(context, {
@@ -1633,11 +1666,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						grouping,
 						summary,
 					});
-					const postBuildFlow = await directPostBuildFlowHandoff(
-						isAuxiliarySupportingWorkflow,
-						outcome,
-						ctx.loadSkill,
-					);
+					const postBuildFlow = directPostBuildFlowHandoff(isAuxiliarySupportingWorkflow, outcome);
 
 					await promoteMainWorkflow(context, saved.id);
 					await reportWorkflowBuildOutcome(context, outcome, {
@@ -1711,6 +1740,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 							referencedWorkflowIds.length > 0 ? referencedWorkflowIds : undefined,
 						hasUnresolvedPlaceholders: hasPlaceholders || undefined,
 						grouping,
+						...(targetEngine ? { targetEngine } : {}),
 						warnings: combineWarnings(informational.map((w) => formatWarning(w.code, w.message))),
 					};
 				};
@@ -1764,6 +1794,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						workItemId: resolvedWorkItemId,
 						errors: [failureText],
 						remediation,
+						...(targetEngine ? { targetEngine } : {}),
 					};
 				}
 
@@ -1799,6 +1830,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						workItemId: resolvedWorkItemId,
 						errors: [message],
 						remediation,
+						...(targetEngine ? { targetEngine } : {}),
 					};
 				}
 
@@ -1833,6 +1865,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					workItemId: resolvedWorkItemId,
 					errors: [`Workflow save failed: ${message}`],
 					remediation,
+					...(targetEngine ? { targetEngine } : {}),
 				};
 			}
 		})

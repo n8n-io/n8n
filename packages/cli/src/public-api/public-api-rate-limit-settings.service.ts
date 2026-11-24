@@ -4,9 +4,9 @@ import {
 	type PublicApiRateLimitSettingsResponse,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { EventService, Publisher } from '@n8n/backend-services';
+import { EventService, Publisher, loginIdOf } from '@n8n/backend-services';
 import { GlobalConfig, PublicApiRateLimitConfig } from '@n8n/config';
-import { SettingsRepository } from '@n8n/db';
+import { SettingsRepository, type OperationContext } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { BadRequestError } from '@n8n/errors';
@@ -79,6 +79,7 @@ export class PublicApiRateLimitSettingsService {
 	async saveSettings(
 		incoming: PublicApiRateLimitSettings,
 		actor: UserLike,
+		ctx: OperationContext = {},
 	): Promise<PublicApiRateLimitSettingsResponse> {
 		const settings = this.mergeWithEnvAndConfig(incoming);
 
@@ -105,6 +106,7 @@ export class PublicApiRateLimitSettingsService {
 				user,
 				settingName: 'public_api_rate_limit',
 				value: settings.enabled,
+				loginId: loginIdOf(ctx),
 			});
 		}
 

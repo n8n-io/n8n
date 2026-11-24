@@ -2,6 +2,7 @@ import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
+import type { FolderService } from '@/services/folder.service';
 import { LockedError } from '@n8n/errors';
 
 import type { AgentPublishService } from '../agent-publish.service';
@@ -9,7 +10,7 @@ import { AgentPublishController } from '../agent-publish.controller';
 import { AgentResponseMapper } from '../agent-response.mapper';
 import { AgentRunnableStateService } from '../agent-runnable-state.service';
 import type { AgentValidationService } from '../agent-validation.service';
-import type { CollaborationService } from '@/collaboration/collaboration.service';
+import type { AgentWriteLockService } from '../agent-write-lock.service';
 import {
 	expectProjectScopedAgentRoutes,
 	getRoutesByHandlerName,
@@ -20,12 +21,12 @@ function makeController({
 	agentPublishService = mock<AgentPublishService>(),
 	agentValidationService = mock<AgentValidationService>(),
 	credentialsService = mock<CredentialsService>(),
-	collaborationService = mock<CollaborationService>(),
+	agentWriteLockService = mock<AgentWriteLockService>(),
 }: {
 	agentPublishService?: Mocked<AgentPublishService>;
 	agentValidationService?: Mocked<AgentValidationService>;
 	credentialsService?: Mocked<CredentialsService>;
-	collaborationService?: Mocked<CollaborationService>;
+	agentWriteLockService?: Mocked<AgentWriteLockService>;
 } = {}) {
 	const agentRunnableStateService = new AgentRunnableStateService(
 		credentialsService,
@@ -37,12 +38,12 @@ function makeController({
 	return {
 		controller: new AgentPublishController(
 			agentPublishService,
-			new AgentResponseMapper(agentRunnableStateService),
-			collaborationService,
+			new AgentResponseMapper(agentRunnableStateService, mock<FolderService>()),
+			agentWriteLockService,
 		),
 		agentPublishService,
 		agentValidationService,
-		collaborationService,
+		agentWriteLockService,
 	};
 }
 
@@ -136,7 +137,7 @@ describe('AgentPublishController revert to version', () => {
 	});
 
 	it('validates the write lock before reverting to a version', async () => {
-		const { controller, collaborationService, agentPublishService, agentValidationService } =
+		const { controller, agentWriteLockService, agentPublishService, agentValidationService } =
 			makeController();
 		agentPublishService.revertToVersion.mockResolvedValue({
 			id: 'agent-1',
@@ -158,7 +159,7 @@ describe('AgentPublishController revert to version', () => {
 			{ versionId: 'v1' } as never,
 		);
 
-		expect(collaborationService.validateAgentWriteLock).toHaveBeenCalledWith(
+		expect(agentWriteLockService.validateAgentWriteLock).toHaveBeenCalledWith(
 			'user-1',
 			'push-ref-1',
 			'project-1',
@@ -168,8 +169,8 @@ describe('AgentPublishController revert to version', () => {
 	});
 
 	it('propagates a LockedError from validateAgentWriteLock', async () => {
-		const { controller, collaborationService, agentPublishService } = makeController();
-		collaborationService.validateAgentWriteLock.mockRejectedValue(
+		const { controller, agentWriteLockService, agentPublishService } = makeController();
+		agentWriteLockService.validateAgentWriteLock.mockRejectedValue(
 			new LockedError('Cannot revert to version agent - another user currently has write access'),
 		);
 
@@ -195,7 +196,7 @@ describe('AgentPublishController archive state', () => {
 		['archive', 'archiveAgent'],
 		['unarchive', 'unarchiveAgent'],
 	] as const)('%s validates the write lock and calls %s', async (handlerName, serviceMethod) => {
-		const { controller, collaborationService, agentPublishService, agentValidationService } =
+		const { controller, agentWriteLockService, agentPublishService, agentValidationService } =
 			makeController();
 		agentPublishService[serviceMethod].mockResolvedValue({
 			id: 'agent-1',
@@ -216,7 +217,7 @@ describe('AgentPublishController archive state', () => {
 			'agent-1',
 		);
 
-		expect(collaborationService.validateAgentWriteLock).toHaveBeenCalledWith(
+		expect(agentWriteLockService.validateAgentWriteLock).toHaveBeenCalledWith(
 			'user-1',
 			'push-ref-1',
 			'project-1',
@@ -234,8 +235,8 @@ describe('AgentPublishController archive state', () => {
 
 describe('version metadata access', () => {
 	it('checks the Agent write lock before editing a version', async () => {
-		const { controller, collaborationService, agentPublishService } = makeController();
-		collaborationService.validateAgentWriteLock.mockRejectedValue(new LockedError('Locked'));
+		const { controller, agentWriteLockService, agentPublishService } = makeController();
+		agentWriteLockService.validateAgentWriteLock.mockRejectedValue(new LockedError('Locked'));
 		await expect(
 			controller.updateVersion(
 				{

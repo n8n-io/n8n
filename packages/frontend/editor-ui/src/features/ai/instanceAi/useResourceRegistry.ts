@@ -13,7 +13,11 @@ import {
 import type { InstanceAiWorkflowAttachment, InstanceAiAppTarget } from '@n8n/api-types';
 
 import type { ArtifactToolCall, ArtifactTurn } from './artifactTurns';
-import { getAppArtifactFromToolCall, getSkillArtifactFromToolCall } from './canvasPreview.utils';
+import {
+	getAppArtifactFromToolCall,
+	getChangedDataTablesFromBatch,
+	getSkillArtifactFromToolCall,
+} from './canvasPreview.utils';
 
 export type ResourceEntry = {
 	type: 'workflow' | 'credential' | 'data-table' | 'agent' | 'skill' | 'app';
@@ -243,8 +247,16 @@ function extractFromAppsResult(tc: ArtifactToolCall, col: Collections): void {
 	recordProduced(col, { type: 'app', id: app.appId, name: app.name, projectId: app.projectId });
 }
 
+/** Batch data table results: every table the batch changed and kept. Deleted tables stay out. */
+function extractFromDataTableBatch(tc: ArtifactToolCall, col: Collections): void {
+	for (const table of getChangedDataTablesFromBatch(tc)) {
+		recordProduced(col, { type: 'data-table', ...table });
+	}
+}
+
 function extractFromToolCall(tc: ArtifactToolCall, col: Collections): void {
 	extractFromAgentBuilderResult(tc, col);
+	extractFromDataTableBatch(tc, col);
 	extractFromSkillsResult(tc, col);
 	extractFromAppsResult(tc, col);
 	const isFormerWorkflowsCall = isFormerWorkflowsTool(tc.toolName);

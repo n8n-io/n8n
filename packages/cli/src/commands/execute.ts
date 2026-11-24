@@ -19,6 +19,7 @@ const flagsSchema = z.object({
 	id: z.string().describe('id of the workflow to execute').optional(),
 	rawOutput: z.boolean().describe('Outputs only JSON data, with no other text').optional(),
 	/**@deprecated */
+	// oxlint-disable-next-line typescript/no-deprecated -- Parse the removed flag so the command can explain how to replace it.
 	file: z.string().describe('DEPRECATED: Please use --id instead').optional(),
 });
 
@@ -33,7 +34,7 @@ export class Execute extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 	override needsExpressionEngine = true;
 
-	override needsTaskRunner = true;
+	override needsCodeExecution = true;
 
 	async init() {
 		await super.init();

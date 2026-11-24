@@ -10,6 +10,7 @@ export class Column {
 		| 'json'
 		| 'timestamptz'
 		| 'timestamp'
+		| 'date'
 		| 'uuid'
 		| 'double'
 		| 'bigint'
@@ -95,6 +96,12 @@ export class Column {
 	timestampNoTimezone(msPrecision = 3) {
 		this.type = 'timestamp';
 		this.length = msPrecision ?? 'auto';
+		return this;
+	}
+
+	/** A calendar day with no time and no time zone. */
+	get date() {
+		this.type = 'date';
 		return this;
 	}
 
@@ -257,7 +264,7 @@ export class Column {
 	private assertCanAutogenerate(method: string) {
 		assert(
 			this.type !== 'uuid',
-			`${method} on UUID columns emits DEFAULT uuid_generate_v4(), which fails on managed Postgres (e.g. Supabase). Use column.uuid.primary.notNull and generate UUIDs in application code instead.`,
+			`${method} on UUID columns emits DEFAULT uuid_generate_v4(), which fails on managed Postgres (e.g. Supabase). Use column.uuid.primary and generate UUIDs in application code instead.`,
 		);
 	}
 }

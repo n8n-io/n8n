@@ -29,6 +29,7 @@ import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { useInstanceAiCredentialHelp } from '../composables/useInstanceAiCredentialHelp';
 import { useBrowserUseConnection } from '../composables/useBrowserUseConnection';
+import { useAssistantRuntime } from '../assistantRuntime';
 import { AI_GATEWAY_MANAGED_TAG, INSTANCE_AI_BROWSER_CREDENTIAL_SETUP_ENABLED } from '../constants';
 import ConfirmationFooter from './ConfirmationFooter.vue';
 
@@ -59,6 +60,7 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const rootStore = useRootStore();
+const runtime = useAssistantRuntime();
 const credentialsStore = useCredentialsStore();
 const uiStore = useUIStore();
 const { ensureConnected: ensureBrowserConnected } = useBrowserUseConnection();
@@ -531,6 +533,7 @@ function trackCredentialInput() {
 		provided_inputs: provided,
 		skipped_inputs: skipped,
 		num_tasks: props.credentialRequests.length,
+		runtime,
 	});
 }
 

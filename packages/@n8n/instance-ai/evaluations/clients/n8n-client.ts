@@ -10,7 +10,6 @@ import {
 	type InstanceAiHandoffContext,
 	type InstanceAiSendMessageRequest,
 	type AgentConfigResponse,
-	type InstanceAiBuildMode,
 	type InstanceAiConfirmRequest,
 	type InstanceAiRichMessagesResponse,
 	type InstanceAiEvalAgentExecutionResult,
@@ -177,6 +176,7 @@ export interface WorkflowResponse {
 	connections: Record<string, unknown>;
 	nodeGroups?: WorkflowNodeGroupResponse[];
 	pinData?: Record<string, unknown>;
+	settings?: Record<string, unknown> | null;
 }
 
 interface WorkflowListItem {
@@ -383,7 +383,6 @@ export class N8nClient {
 		threadId: string,
 		message: string,
 		attachments?: InstanceAiResourceAttachment[],
-		mode: InstanceAiBuildMode = 'default',
 		promptVersion?: string,
 		handoffContext?: InstanceAiHandoffContext,
 		observerThresholdTokens?: number,
@@ -394,7 +393,7 @@ export class N8nClient {
 				attachments,
 				context: handoffContext,
 				// The Assistant agent has no observer threshold override.
-				overrides: { mode, ...(promptVersion ? { promptVersion } : {}) },
+				overrides: promptVersion ? { promptVersion } : {},
 			});
 			// The Agents runtime has no run id before the turn starts. The events carry the execution id.
 			return { runId: '' };
@@ -404,7 +403,6 @@ export class N8nClient {
 			body: {
 				message,
 				...(attachments?.length ? { attachments } : {}),
-				mode,
 				...(promptVersion ? { promptVersion } : {}),
 				...(handoffContext ? { context: handoffContext } : {}),
 				// Per-thread, so other cases in the suite keep the instance default.
@@ -1440,14 +1438,17 @@ export class N8nClient {
 		timeoutMs: number = 120_000,
 		pinNodes?: string[],
 		seededDataTableIds?: string[],
+		scenarioDescription?: string,
 	): Promise<InstanceAiEvalExecutionResult> {
 		const body: {
 			scenarioHints?: string;
+			scenarioDescription?: string;
 			pinNodes?: string[];
 			timeoutMs?: number;
 			seededDataTableIds?: string[];
 		} = {};
 		if (scenarioHints) body.scenarioHints = scenarioHints;
+		if (scenarioDescription) body.scenarioDescription = scenarioDescription;
 		if (pinNodes && pinNodes.length > 0) body.pinNodes = pinNodes;
 		if (seededDataTableIds && seededDataTableIds.length > 0) {
 			body.seededDataTableIds = seededDataTableIds;

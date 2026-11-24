@@ -5,7 +5,7 @@ import type {
 } from '@n8n/api-types';
 import type { Scope } from '@n8n/permissions';
 import type { Project } from '@n8n/rest-api-client';
-import type { ICredentialsDecrypted } from 'n8n-workflow';
+import type { ICredentialsDecrypted, INodeTypeDescription } from 'n8n-workflow';
 import type { ComputedRef, Ref } from 'vue';
 
 /**
@@ -38,6 +38,20 @@ export interface ProjectPermissions {
 	defaultProjectId?(): string | undefined;
 	/** Whether the instance blocks writes (source control read-only branch). Reads reactive state. */
 	isReadOnly(): boolean;
+}
+
+export type McpPreferencesEntryPoint = 'banner' | 'connection_row';
+
+export type McpPreferencesEntrySource = McpPreferencesEntryPoint | 'connect_dialog';
+
+export interface McpPreferencesEntryPoints {
+	entryPoint(): McpPreferencesEntryPoint | undefined;
+	trackExposure(): void;
+	fetchPreferenceCount(): Promise<number>;
+	isBannerDismissed(): boolean;
+	dismissBanner(): void;
+	trackEntryPointClicked(source: McpPreferencesEntrySource): void;
+	trackPromptCopied(client: string): void;
 }
 
 export interface McpExposeAllOffer {
@@ -169,6 +183,16 @@ export interface EnvironmentsSettings {
 	setProtected(value: boolean): Promise<void>;
 	/** Call during component setup, because the switch uses the router and the message box. */
 	useVersionSwitch(): EnvironmentsVersionSwitch;
+}
+
+/** The node and credential types that the editor loaded. */
+export interface TypeDescriptions {
+	/** Loads the node and credential types once. */
+	load(): Promise<void>;
+	/** Every loaded version of every node type, with the generated tool variants. Reads reactive state. */
+	nodeTypes(): INodeTypeDescription[];
+	/** `undefined` when the type is unknown or not loaded. Reads reactive state. */
+	credentialTypeDisplayName(name: string): string | undefined;
 }
 
 /** The tag names of this instance. */

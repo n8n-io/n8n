@@ -1,7 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { setActivePinia, createPinia, getActivePinia } from 'pinia';
-import { defineComponent, shallowRef, type ShallowRef } from 'vue';
+import { defineComponent, nextTick, shallowRef, type ShallowRef } from 'vue';
 import { mount } from '@vue/test-utils';
+import {
+	runDataDisplayModeRegistry,
+	type RunDataDisplayModeContribution,
+} from '@n8n/frontend-module-sdk';
 import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
@@ -9,6 +13,10 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import { disposeNDVStore, injectNDVStore, useNDVStore } from './ndv.store';
+import {
+	LOCAL_STORAGE_NDV_INPUT_PANEL_DISPLAY_MODE,
+	LOCAL_STORAGE_NDV_OUTPUT_PANEL_DISPLAY_MODE,
+} from './ndv.constants';
 
 describe('ndv.store', () => {
 	beforeEach(() => {
@@ -48,6 +56,63 @@ describe('ndv.store', () => {
 		expect(storeB.activeNodeName).toBeNull();
 		// Re-deriving by the same id returns the same scoped instance.
 		expect(useNDVStore(createWorkflowDocumentId('wf-a')).activeNodeName).toBe('Node A');
+	});
+
+	describe('panel display mode', () => {
+		const map: RunDataDisplayModeContribution = {
+			id: 'map',
+			label: () => 'Map',
+			icon: 'globe',
+			component: defineComponent({ render: () => null }),
+			canRender: () => true,
+		};
+
+		const createStore = () => useNDVStore(createWorkflowDocumentId('wf-display-mode'));
+
+		beforeEach(() => {
+			localStorage.clear();
+			runDataDisplayModeRegistry.clear();
+		});
+
+		it('returns a stored built-in mode', () => {
+			localStorage.setItem(LOCAL_STORAGE_NDV_OUTPUT_PANEL_DISPLAY_MODE, 'json');
+
+			expect(createStore().outputPanelDisplayMode).toBe('json');
+		});
+
+		it.each([
+			['a rollback removed the mode', 'map'],
+			['the mode was renamed', 'map-legacy'],
+		])('falls back to the pane default when %s, and keeps the stored id', async (_, storedId) => {
+			localStorage.setItem(LOCAL_STORAGE_NDV_INPUT_PANEL_DISPLAY_MODE, storedId);
+			localStorage.setItem(LOCAL_STORAGE_NDV_OUTPUT_PANEL_DISPLAY_MODE, storedId);
+
+			const store = createStore();
+
+			expect(store.inputPanelDisplayMode).toBe('schema');
+			expect(store.outputPanelDisplayMode).toBe('table');
+			// A write-back would land on the next tick
+			await nextTick();
+			expect(localStorage.getItem(LOCAL_STORAGE_NDV_INPUT_PANEL_DISPLAY_MODE)).toBe(storedId);
+			expect(localStorage.getItem(LOCAL_STORAGE_NDV_OUTPUT_PANEL_DISPLAY_MODE)).toBe(storedId);
+		});
+
+		it('follows the registry when a selected mode is unregistered and registered again', async () => {
+			runDataDisplayModeRegistry.register(map);
+			const store = createStore();
+			store.setPanelDisplayMode({ pane: 'output', mode: 'map' });
+			expect(store.outputPanelDisplayMode).toBe('map');
+			// useLocalStorage writes in a watcher
+			await nextTick();
+
+			runDataDisplayModeRegistry.unregister('map');
+			expect(store.outputPanelDisplayMode).toBe('table');
+			await nextTick();
+			expect(localStorage.getItem(LOCAL_STORAGE_NDV_OUTPUT_PANEL_DISPLAY_MODE)).toBe('map');
+
+			runDataDisplayModeRegistry.register(map);
+			expect(store.outputPanelDisplayMode).toBe('map');
+		});
 	});
 
 	describe('injectNDVStore', () => {

@@ -1,7 +1,9 @@
 import {
 	type AgentCapabilitySummary,
+	AgentJsonConfigSchema,
 	CreateAgentDto,
 	ListAgentsQueryDto,
+	MoveAgentDto,
 	UpdateAgentDto,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
@@ -11,6 +13,8 @@ import {
 	Get,
 	Param,
 	Post,
+	Patch,
+	Licensed,
 	ProjectScope,
 	Put,
 	Query,
@@ -19,7 +23,7 @@ import {
 import type { Response } from 'express';
 
 import { NotFoundError } from '@n8n/errors';
-import { CollaborationService } from '@/collaboration/collaboration.service';
+import { AgentWriteLockService } from './agent-write-lock.service';
 
 import { AgentConfigService } from './agent-config.service';
 import { AgentDefaultModelResolverService } from './agent-default-model-resolver.service';
@@ -32,7 +36,7 @@ export class AgentsController {
 		private readonly agentsService: AgentsService,
 		private readonly agentResponseMapper: AgentResponseMapper,
 		private readonly agentDefaultModelResolverService: AgentDefaultModelResolverService,
-		private readonly collaborationService: CollaborationService,
+		private readonly agentWriteLockService: AgentWriteLockService,
 		private readonly agentConfigService: AgentConfigService,
 	) {}
 
@@ -57,9 +61,11 @@ export class AgentsController {
 			{
 				actor: { kind: 'user', user: req.user },
 				user: req.user,
+				ctx: req.ctx,
 				createdBy: 'user',
 				pushRef: req.headers?.['push-ref'],
 				id: payload.id,
+				parentFolderId: payload.parentFolderId,
 				config: payload.config,
 				tagIds: payload.tags,
 				...(defaultModel ? { defaultModel } : {}),
@@ -69,13 +75,14 @@ export class AgentsController {
 				// required fields (model, instructions) stay required for the service.
 				...(isDuplicate && payload.schema
 					? {
-							schema: { ...payload.schema, name: payload.name },
+							schema: { ...AgentJsonConfigSchema.parse(payload.schema), name: payload.name },
 							skills: payload.skills,
 							tools: payload.tools,
 						}
 					: {}),
 			},
 		);
+
 		return {
 			...(await this.agentResponseMapper.toAgentDto(agent, projectId, req.user)),
 			adopted: creationState.adopted,
@@ -111,7 +118,7 @@ export class AgentsController {
 	) {
 		const { projectId } = req.params;
 		const clientId = req.headers?.['push-ref'];
-		await this.collaborationService.validateAgentWriteLock(
+		await this.agentWriteLockService.validateAgentWriteLock(
 			req.user.id,
 			clientId,
 			projectId,
@@ -163,12 +170,37 @@ export class AgentsController {
 		_res: Response,
 		@Param('agentId') agentId: string,
 	) {
-		const deleted = await this.agentsService.delete(agentId, req.params.projectId, {
-			requireArchived: true,
-		});
+		const deleted = await this.agentsService.delete(
+			agentId,
+			req.user,
+			req.params.projectId,
+			{ requireArchived: true },
+			req.ctx,
+		);
 
 		if (!deleted) {
 			throw new NotFoundError(`Agent "${agentId}" not found`);
+		}
+
+		return { success: true };
+	}
+
+	@Patch('/:agentId/move')
+	@Licensed('feat:folders')
+	@ProjectScope('agent:update')
+	async move(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string }>,
+		_res: Response,
+		@Body payload: MoveAgentDto,
+	) {
+		const moved = await this.agentsService.move(
+			req.params.agentId,
+			req.params.projectId,
+			payload.parentFolderId,
+		);
+
+		if (!moved) {
+			throw new NotFoundError('Agent not found');
 		}
 
 		return { success: true };
@@ -181,6 +213,6 @@ export class AgentsController {
 		_res: Response,
 		@Param('agentId') agentId: string,
 	) {
-		return await this.collaborationService.getAgentWriteLock(req.params.projectId, agentId);
+		return await this.agentWriteLockService.getAgentWriteLock(req.params.projectId, agentId);
 	}
 }

@@ -1,6 +1,12 @@
 import { LruCache } from '@n8n/utils/lru-cache';
 import { readFileSync } from 'node:fs';
 import * as path from 'node:path';
+import type {
+	QuickJSContext,
+	QuickJSHandle,
+	QuickJSRuntime,
+	QuickJSWASMModule as QuickJSWasm,
+} from 'quickjs-emscripten-core';
 
 import type { RuntimeBridge, BridgeConfig, ExecuteOptions, Logger, WorkflowData } from '../types';
 import {
@@ -24,6 +30,7 @@ import {
 	TRANSFER_TYPE_KEY,
 } from '../runtime/transfer';
 import { HostDataResolver } from './host-data-resolver';
+import { errorOriginOf, tagErrorOrigin } from '../evaluator/error-classification';
 import {
 	dispatchHostCall,
 	escapeHostResult,
@@ -33,11 +40,6 @@ import {
 	reconstructError,
 	serializeError,
 } from './host-functions';
-
-// Lazy-loaded QuickJS — avoids loading WASM when the barrel
-// file is statically imported (e.g. for error classes). The module is
-// only loaded when QuickJsBridge.initialize() is actually called.
-type QuickJSWasm = import('quickjs-emscripten-core').QuickJSWASMModule;
 
 /**
  * The instantiated WASM module that new bridges use, cached after the first
@@ -52,6 +54,7 @@ let _runtimeBundle: string | null = null;
 
 /** Loads only the release-sync variant. The quickjs-emscripten package makes a bundler ship all four variants. */
 async function newQuickJSWasm(): Promise<QuickJSWasm> {
+	// Load WASM only when a bridge initializes, not when the barrel file is imported.
 	const { newQuickJSWASMModuleFromVariant } = await import('quickjs-emscripten-core');
 	return await newQuickJSWASMModuleFromVariant(import('@jitl/quickjs-wasmfile-release-sync'));
 }
@@ -97,6 +100,86 @@ const BUNDLE_RELATIVE_PATH = ['dist', 'bundle', 'runtime.iife.js'].join('/');
 // even if the global is later replaced.
 const safeStringify = JSON.stringify;
 
+/** A C string ends at its first NUL, so only a string without NUL survives vm.newString(). */
+function fitsInCString(value: string): boolean {
+	return !value.includes('\0');
+}
+
+const LONE_SURROGATE = /[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/;
+
+/** vm.newString() encodes a string as UTF-8, which has no form for a lone surrogate. */
+function fitsInUtf8(value: string): boolean {
+	return !LONE_SURROGATE.test(value);
+}
+
+/** True when the guest string that vm.newString() builds has the same code units as `value`. */
+function survivesNewString(value: string): boolean {
+	return fitsInCString(value) && fitsInUtf8(value);
+}
+
+/** A guest value read on the host, or the guest error that stopped the read. The caller owns `error`. */
+type GuestRead = { value: unknown } | { error: QuickJSHandle };
+
+/**
+ * Read a guest value on the host. A top-level string that vm.dump() changed is
+ * read again as JSON text through `guestStringify`. The guest can stop that
+ * read, for example at its memory limit.
+ */
+function readGuestValue(
+	vm: QuickJSContext,
+	handle: QuickJSHandle,
+	guestStringify: QuickJSHandle,
+): GuestRead {
+	const dump: unknown = vm.dump(handle);
+	// vm.dump() also gives a string for an object with a toJSON() that returns one.
+	if (
+		typeof dump === 'string' &&
+		vm.typeof(handle) === 'string' &&
+		isChangedStringDump(vm, handle, dump)
+	) {
+		return readGuestString(vm, handle, guestStringify);
+	}
+	return { value: dump };
+}
+
+/**
+ * vm.dump() reads a string as a C string. It stops at the first NUL and turns
+ * a lone surrogate into U+FFFD, so a changed dump has a different length or a U+FFFD.
+ */
+function isChangedStringDump(vm: QuickJSContext, handle: QuickJSHandle, dump: string): boolean {
+	return dump.length !== guestStringLength(vm, handle) || dump.includes('\uFFFD');
+}
+
+/** vm.getLength() reads only object lengths, so a string length is read as a property. */
+function guestStringLength(vm: QuickJSContext, handle: QuickJSHandle): number {
+	const length = vm.getProp(handle, 'length');
+	try {
+		return vm.getNumber(length);
+	} finally {
+		length.dispose();
+	}
+}
+
+/**
+ * Read a guest string as JSON text, which has an escape for NUL and for a lone surrogate.
+ * A string has no toJSON() hook, so guest code cannot change the text.
+ */
+function readGuestString(
+	vm: QuickJSContext,
+	handle: QuickJSHandle,
+	guestStringify: QuickJSHandle,
+): GuestRead {
+	const result = vm.callFunction(guestStringify, vm.undefined, handle);
+	if (!result.error) {
+		try {
+			return { value: JSON.parse(vm.getString(result.value)) as unknown };
+		} finally {
+			result.value.dispose();
+		}
+	}
+	return { error: result.error };
+}
+
 // ============================================================================
 // Sentinel helpers
 //
@@ -133,6 +216,22 @@ function isUndefinedSentinel(value: unknown): value is { __isUndefined: true } {
 		(value as Record<string, unknown>).__isUndefined === true &&
 		Object.keys(value).length === 1
 	);
+}
+
+/** The name of a thrown value: the `name` of an Error, else its `typeof`. */
+function errorNameOf(error: unknown): string {
+	return error instanceof Error ? error.name : typeof error;
+}
+
+/** The `name` of an error that QuickJS dumped, if it has one. */
+function guestErrorName(dump: unknown): string | undefined {
+	if (typeof dump === 'object' && dump !== null) {
+		const { name } = dump as Record<string, unknown>;
+		if (typeof name === 'string') {
+			return name;
+		}
+	}
+	return undefined;
 }
 
 function isErrorValueSentinel(value: unknown): value is {
@@ -352,9 +451,9 @@ function loadRuntimeBundle(): string {
  * into QuickJS via evalCode. Handles undefined (not valid JSON) by returning
  * the string "undefined".
  *
- * Only objects/arrays reach this — primitives (including top-level NaN via
- * newNumber) and Date are handled directly by the caller. Everything else
- * (lazy-proxy metadata, Intl outputs, typed-RPC results, error-sentinel
+ * Only objects/arrays and strings with NUL or a lone surrogate reach this — other primitives
+ * (including top-level NaN via newNumber) and Date are handled directly by
+ * the caller. Everything else (lazy-proxy metadata, Intl outputs, typed-RPC results, error-sentinel
  * extras) is sentinel-wrapped first so nested Date/NaN/Map/Set survive the
  * JSON round-trip and rebuild in the guest via __unwrapFromHost — matching
  * what isolated-vm's structured clone delivers.
@@ -520,8 +619,8 @@ type GuestOutcome = { kind: 'compileError' | 'error' | 'value'; dump: unknown };
  */
 export class QuickJsBridge implements RuntimeBridge {
 	private wasm: QuickJSWasm | undefined;
-	private runtime: import('quickjs-emscripten-core').QuickJSRuntime | undefined;
-	private vm: import('quickjs-emscripten-core').QuickJSContext | undefined;
+	private runtime: QuickJSRuntime | undefined;
+	private vm: QuickJSContext | undefined;
 	private initialized = false;
 	private disposed = false;
 
@@ -543,7 +642,14 @@ export class QuickJsBridge implements RuntimeBridge {
 	private logger: Required<BridgeConfig>['logger'];
 
 	// Long-lived host-callback handles (Intl polyfill, character map) — disposed on dispose()
-	private hostFunctionHandles: Array<import('quickjs-emscripten-core').QuickJSHandle> = [];
+	private hostFunctionHandles: QuickJSHandle[] = [];
+
+	// The guest JSON.stringify from context setup. An expression can replace the global one.
+	private guestStringify?: QuickJSHandle;
+
+	// The guest error that stopped a string read in a host callback of the current
+	// guest call. It replaces the outcome of the call, because the guest can catch it.
+	private stoppedRead?: GuestOutcome;
 
 	// Memoized host Intl formatters keyed by ctor + locales + options.
 	// Construction dominates per-call cost (~39µs for a DateTimeFormat vs ~1µs
@@ -647,6 +753,8 @@ export class QuickJsBridge implements RuntimeBridge {
 		// Wrap __prepareForTransfer to mark Date/NaN/Map/Set/Error so they survive vm.dump()
 		this.injectTransferWrapper();
 
+		this.captureGuestStringify();
+
 		// Inject E() error handler matching IsolatedVmBridge's E() semantics
 		this.injectErrorHandler();
 
@@ -706,7 +814,7 @@ export class QuickJsBridge implements RuntimeBridge {
 		const vm = this.vm;
 
 		const intlFn = vm.newFunction('__intl', (...handles) => {
-			const args = handles.map((h) => vm.dump(h));
+			const args = handles.map((h) => this.dumpGuestArgument(vm, h));
 			try {
 				return this.hostValueToQuickJSHandle(
 					this.dispatchIntl(
@@ -1149,9 +1257,58 @@ export class QuickJsBridge implements RuntimeBridge {
 		this.logger.debug('[QuickJsBridge] Transfer wrapper injected');
 	}
 
+	/** Keep a handle to the guest JSON.stringify for string reads. */
+	private captureGuestStringify(): void {
+		if (!this.vm) {
+			throw new Error('Context not initialized');
+		}
+
+		const result = this.vm.evalCode('JSON.stringify');
+		if (result.error) {
+			result.error.dispose();
+			throw new Error('Failed to capture the string reader');
+		}
+		this.guestStringify = result.value;
+		this.hostFunctionHandles.push(result.value);
+	}
+
+	private readGuestValue(vm: QuickJSContext, handle: QuickJSHandle): GuestRead {
+		if (!this.guestStringify) {
+			throw new Error('Context not initialized');
+		}
+		return readGuestValue(vm, handle, this.guestStringify);
+	}
+
+	/** Dump a guest value to the host with every string intact. */
+	private dumpGuestValue(vm: QuickJSContext, handle: QuickJSHandle): GuestOutcome {
+		const read = this.readGuestValue(vm, handle);
+		if ('error' in read) {
+			const dump: unknown = vm.dump(read.error);
+			read.error.dispose();
+			return { kind: 'error', dump };
+		}
+		return { kind: 'value', dump: read.value };
+	}
+
+	/**
+	 * Dump a host-callback argument with every string intact.
+	 * @throws {QuickJSHandle} the guest error that stopped the read. It also becomes
+	 * the stopped read of the current guest call.
+	 */
+	private dumpGuestArgument(vm: QuickJSContext, handle: QuickJSHandle): unknown {
+		const read = this.readGuestValue(vm, handle);
+		if ('error' in read) {
+			this.stoppedRead ??= { kind: 'error', dump: vm.dump(read.error) };
+			throw read.error;
+		}
+		return read.value;
+	}
+
 	/**
 	 * Inject the E() error handler matching IsolatedVmBridge semantics:
 	 * - Re-throw ExpressionError / ExpressionExtensionError
+	 * - Re-throw the out of memory error. isolated-vm stops the isolate at
+	 *   its memory limit, so guest code cannot catch that error there.
 	 * - Swallow everything else (TypeErrors, generic Errors, etc.)
 	 *
 	 * Errors from host callbacks arrive as sentinel objects (not class
@@ -1165,6 +1322,9 @@ export class QuickJsBridge implements RuntimeBridge {
 				globalThis.E = function(error, _context) {
 					var name = error && error.name;
 					if (name === 'ExpressionError' || name === 'ExpressionExtensionError') {
+						throw error;
+					}
+					if (name === 'InternalError' && error.message === 'out of memory') {
 						throw error;
 					}
 					return undefined;
@@ -1219,13 +1379,11 @@ export class QuickJsBridge implements RuntimeBridge {
 	 *
 	 * Callers must dispose the returned handles when the call completes.
 	 */
-	private createCallbackHandles(
-		resolver: HostDataResolver,
-	): Array<import('quickjs-emscripten-core').QuickJSHandle> {
+	private createCallbackHandles(resolver: HostDataResolver): QuickJSHandle[] {
 		if (!this.vm) throw new Error('Context not initialized');
 
 		const vm = this.vm;
-		const handles: Array<import('quickjs-emscripten-core').QuickJSHandle> = [];
+		const handles: QuickJSHandle[] = [];
 
 		try {
 			handles.push(
@@ -1273,10 +1431,31 @@ export class QuickJsBridge implements RuntimeBridge {
 					// Throw the build error, not a dispose error.
 				}
 			}
-			throw error;
+			throw tagErrorOrigin(error, { kind: 'callback_setup', errorName: errorNameOf(error) });
 		}
 
 		return handles;
+	}
+
+	/**
+	 * Dispose every per-call host callback, then throw the first dispose error.
+	 * That error keeps its message and records its origin.
+	 */
+	private disposeCallbackHandles(handles: QuickJSHandle[]) {
+		const errors = handles.flatMap((handle) => {
+			try {
+				handle.dispose();
+				return [];
+			} catch (error) {
+				return [error];
+			}
+		});
+		if (errors.length > 0) {
+			throw tagErrorOrigin(errors[0], {
+				kind: 'callback_cleanup',
+				errorName: errorNameOf(errors[0]),
+			});
+		}
 	}
 
 	/**
@@ -1285,9 +1464,7 @@ export class QuickJsBridge implements RuntimeBridge {
 	 * For primitives, uses the dedicated vm.newXxx() methods.
 	 * For complex objects (arrays, objects), uses JSON round-trip via evalCode.
 	 */
-	private hostValueToQuickJSHandle(
-		value: unknown,
-	): import('quickjs-emscripten-core').QuickJSHandle {
+	private hostValueToQuickJSHandle(value: unknown): QuickJSHandle {
 		if (!this.vm) throw new Error('Context not initialized');
 
 		// Building a value runs guest code, which a broken runtime must not do.
@@ -1297,7 +1474,7 @@ export class QuickJsBridge implements RuntimeBridge {
 		if (typeof value === 'number') {
 			return this.vm.newNumber(value);
 		}
-		if (typeof value === 'string') return this.vm.newString(value);
+		if (typeof value === 'string' && survivesNewString(value)) return this.vm.newString(value);
 		if (typeof value === 'boolean') {
 			return value ? this.vm.true : this.vm.false;
 		}
@@ -1406,14 +1583,16 @@ export class QuickJsBridge implements RuntimeBridge {
 				outcome = this.runInGuest(vm, wrappedCode, callbackHandles);
 			} catch (error) {
 				if (!this.broken) {
-					this.hostErrorName = error instanceof Error ? error.name : typeof error;
+					this.hostErrorName = errorNameOf(error);
 				}
 				this.broken = true;
 				throw error;
 			}
 
 			if (outcome.kind === 'compileError') {
-				throw new Error(`Expression compilation failed: ${String(outcome.dump)}`);
+				throw tagErrorOrigin(new Error(`Expression compilation failed: ${String(outcome.dump)}`), {
+					kind: 'compile',
+				});
 			}
 
 			if (outcome.kind === 'error') {
@@ -1428,20 +1607,30 @@ export class QuickJsBridge implements RuntimeBridge {
 				if (errStr.includes('interrupted')) {
 					throw this.timeoutError(nested);
 				}
+				const uncaught = {
+					kind: 'guest_uncaught',
+					errorName: guestErrorName(errDump),
+				} as const;
 				if (
 					typeof errDump === 'object' &&
 					errDump !== null &&
 					typeof (errDump as Record<string, unknown>).message === 'string'
 				) {
-					throw new Error((errDump as Record<string, unknown>).message as string);
+					throw tagErrorOrigin(
+						new Error((errDump as Record<string, unknown>).message as string),
+						uncaught,
+					);
 				}
-				throw new Error(`Expression evaluation failed: ${errStr}`);
+				throw tagErrorOrigin(new Error(`Expression evaluation failed: ${errStr}`), uncaught);
 			}
 
 			// Only a thrown error reaches the host as a bare sentinel. The guest walk
 			// escapes any user object with the same flag.
 			if (isErrorSentinel(outcome.dump)) {
-				throw reconstructError(outcome.dump);
+				throw tagErrorOrigin(reconstructError(outcome.dump), {
+					kind: outcome.dump.fromHost === true ? 'host_callback' : 'guest',
+					errorName: outcome.dump.name,
+				});
 			}
 
 			const result = unwrapSentinels(outcome.dump);
@@ -1477,14 +1666,15 @@ export class QuickJsBridge implements RuntimeBridge {
 					{},
 				);
 			}
-			throw new Error(`Expression evaluation failed: ${errorMessage}`);
+			throw tagErrorOrigin(
+				new Error(`Expression evaluation failed: ${errorMessage}`),
+				errorOriginOf(error) ?? { kind: 'bridge', errorName: errorNameOf(error) },
+			);
 		} finally {
 			resolver.dispose();
 			this.deadlines.pop();
 			if (!this.broken) {
-				for (const handle of callbackHandles) {
-					handle.dispose();
-				}
+				this.disposeCallbackHandles(callbackHandles);
 			} else if (this.deadlines.length === 0) {
 				// Only the outermost call drops the runtime. A nested call returns
 				// into the frames of the outer call, which still use the runtime.
@@ -1498,9 +1688,24 @@ export class QuickJsBridge implements RuntimeBridge {
 	 * reports guest errors as results, so a throw from here is a host error.
 	 */
 	private runInGuest(
-		vm: import('quickjs-emscripten-core').QuickJSContext,
+		vm: QuickJSContext,
 		wrappedCode: string,
-		callbackHandles: Array<import('quickjs-emscripten-core').QuickJSHandle>,
+		callbackHandles: QuickJSHandle[],
+	): GuestOutcome {
+		const outerStoppedRead = this.stoppedRead;
+		this.stoppedRead = undefined;
+		try {
+			const outcome = this.runWrappedCode(vm, wrappedCode, callbackHandles);
+			return this.stoppedRead ?? outcome;
+		} finally {
+			this.stoppedRead = outerStoppedRead;
+		}
+	}
+
+	private runWrappedCode(
+		vm: QuickJSContext,
+		wrappedCode: string,
+		callbackHandles: QuickJSHandle[],
 	): GuestOutcome {
 		const wrapperResult = vm.evalCode(wrappedCode);
 		if (wrapperResult.error) {
@@ -1519,9 +1724,9 @@ export class QuickJsBridge implements RuntimeBridge {
 			execResult.error.dispose();
 			return { kind: 'error', dump };
 		}
-		const dump: unknown = vm.dump(execResult.value);
+		const outcome = this.dumpGuestValue(vm, execResult.value);
 		execResult.value.dispose();
-		return { kind: 'value', dump };
+		return outcome;
 	}
 
 	/**
@@ -1550,7 +1755,7 @@ export class QuickJsBridge implements RuntimeBridge {
 		} catch (error) {
 			// Clears this.vm, so the next execute() tries the rebuild again.
 			this.discardFailedRuntime();
-			throw error;
+			throw tagErrorOrigin(error, { kind: 'rebuild', errorName: errorNameOf(error) });
 		}
 	}
 
@@ -1567,6 +1772,7 @@ export class QuickJsBridge implements RuntimeBridge {
 			if (this.wasm) retireQuickJSWasm(this.wasm, this.logger);
 		} finally {
 			this.hostFunctionHandles = [];
+			this.guestStringify = undefined;
 			this.vm = undefined;
 			this.runtime = undefined;
 			this.wasm = undefined;
@@ -1584,6 +1790,7 @@ export class QuickJsBridge implements RuntimeBridge {
 		this.vm = undefined;
 		this.runtime = undefined;
 		this.hostFunctionHandles = [];
+		this.guestStringify = undefined;
 		this.initialized = false;
 		this.logger.warn('[QuickJsBridge] Discarded the runtime after a host error in a guest call');
 	}
@@ -1623,6 +1830,7 @@ export class QuickJsBridge implements RuntimeBridge {
 			handle.dispose();
 		}
 		this.hostFunctionHandles = [];
+		this.guestStringify = undefined;
 
 		if (this.vm) {
 			this.vm.dispose();

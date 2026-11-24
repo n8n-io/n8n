@@ -58,6 +58,11 @@ export function parseReasoningEffort(
 	return parsed.success ? parsed.data : undefined;
 }
 
+/** `N8N_INSTANCE_AI_REPLAY_REASONING`: only `conversation` changes the default. */
+export function parseReplayReasoning(value: string | undefined): 'conversation' | undefined {
+	return value?.trim().toLowerCase() === 'conversation' ? 'conversation' : undefined;
+}
+
 export function parseSupportsStructuredOutputs(value: string | undefined): boolean | undefined {
 	const trimmed = value?.trim().toLowerCase();
 	if (!trimmed) return undefined;

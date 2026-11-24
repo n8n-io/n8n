@@ -1,3 +1,4 @@
+import type { EventService } from '@n8n/backend-services';
 import { mockLogger, testDb, testModules } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import {
@@ -75,6 +76,7 @@ describe('ExecutionLedgerFoldService', () => {
 			Container.get(DbLockService),
 			repository,
 			registry,
+			mock<EventService>(),
 		);
 	});
 
@@ -90,6 +92,22 @@ describe('ExecutionLedgerFoldService', () => {
 		expect(await service.foldBatch()).toBe(2);
 
 		expect(await ledgerExecutionIds()).toEqual(['first:2', 'second:2']);
+	});
+
+	it('commits a batch that holds a row with no project', async () => {
+		let seenProjectIds: Array<string | null> = [];
+		registry.register(
+			markerStep('reader', async (rows) => {
+				seenProjectIds = rows.map((r) => r.projectId);
+			}),
+		);
+		await repository.append(ledgerRow({ projectId: null }), {});
+		await repository.append(ledgerRow(), {});
+
+		expect(await service.foldBatch()).toBe(2);
+
+		expect(seenProjectIds).toEqual([null, 'project-1']);
+		expect(await ledgerExecutionIds()).toEqual([]);
 	});
 
 	it('leaves the rows in the ledger when no step is registered', async () => {

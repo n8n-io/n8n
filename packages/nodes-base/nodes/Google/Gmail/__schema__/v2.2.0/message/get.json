@@ -10,12 +10,6 @@
 		"From": {
 			"type": "string"
 		},
-		"Subject": {
-			"type": "string"
-		},
-		"To": {
-			"type": "string"
-		},
 		"historyId": {
 			"type": "string"
 		},
@@ -53,9 +47,15 @@
 		"snippet": {
 			"type": "string"
 		},
+		"Subject": {
+			"type": "string"
+		},
 		"threadId": {
+			"type": "string"
+		},
+		"To": {
 			"type": "string"
 		}
 	},
-	"version": 1
+	"version": 2
 }

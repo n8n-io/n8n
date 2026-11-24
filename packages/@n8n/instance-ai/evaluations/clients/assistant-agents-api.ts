@@ -28,7 +28,7 @@ export const ASSISTANT_AGENT_BASE = '/rest/agents/system/assistant';
 /** Eval-only routes of the Assistant agent. Same bodies as `/rest/instance-ai/eval`. */
 export const ASSISTANT_AGENT_EVAL_BASE = '/rest/assistant/eval';
 
-/** Turn overrides of a thread: build mode and prompt version. */
+/** Turn overrides of a thread: the prompt version. */
 export type AssistantEvalThreadOverridesBody = InstanceAiAssistantEvalThreadOverridesRequest;
 
 /** The fields of an Agents chat message that the harness sets. */
@@ -226,8 +226,11 @@ export class AssistantAgentsApi {
 		}
 		const projectId = this.projectByThread.get(threadId);
 		const query = projectId ? `?projectId=${encodeURIComponent(projectId)}` : '';
+		// An attached Agent stands for the Agent Builder hand-off, which also binds the thread to it.
+		const subject = options.attachments?.find((attachment) => attachment.type === 'agent');
 		const clientContext = {
 			...(options.attachments?.length ? { attachments: options.attachments } : {}),
+			...(subject ? { subject } : {}),
 			...(options.context ? { context: options.context } : {}),
 		};
 		const first = await this.transport.postSseUntil(

@@ -1,0 +1,9 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"videoUrl": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

@@ -4,6 +4,8 @@ import { DataSource, type Repository } from '@n8n/typeorm';
 import { BinaryDataService } from 'n8n-core';
 import { v4 as uuid } from 'uuid';
 
+import { createAgent } from '@test-integration/db/agents';
+
 import { AgentChatAttachmentService } from '@/modules/agents/agent-chat-attachment.service';
 import { AgentChatAttachment } from '@/modules/agents/entities/agent-chat-attachment.entity';
 import { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
@@ -31,16 +33,14 @@ describe('Agent file read grants', () => {
 	beforeEach(async () => {
 		projectId = (await createTeamProject()).id;
 		agentId = (
-			await agentRepo.save(
-				agentRepo.create({
-					id: uuid(),
-					name: 'Agent',
-					projectId,
-					integrations: [],
-					tools: {},
-					skills: {},
-				}),
-			)
+			await createAgent({
+				id: uuid(),
+				name: 'Agent',
+				projectId,
+				integrations: [],
+				tools: {},
+				skills: {},
+			})
 		).id;
 		let id = 0;
 		binaryDataService.store.mockImplementation(async () => ({

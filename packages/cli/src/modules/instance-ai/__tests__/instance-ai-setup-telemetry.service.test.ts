@@ -1,13 +1,12 @@
 import type { InstanceAiAdminSettingsResponse } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
-import type { EventService } from '@n8n/backend-services';
+import type { EventService, TelemetryProxy } from '@n8n/backend-services';
 import type { GlobalConfig, InstanceAiConfig } from '@n8n/config';
 import type { SettingsRepository } from '@n8n/db';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { mock } from 'vitest-mock-extended';
 
 import type { InstanceCredentialBroker } from '@/credentials/instance-credential-broker';
-import type { Telemetry } from '@/telemetry';
 
 import type {
 	AdminCredentialSelection,
@@ -26,7 +25,7 @@ const emptySelection: AdminCredentialSelection = {
 describe('InstanceAiSetupTelemetryService', () => {
 	const logger = mock<Logger>();
 	const eventService = mock<EventService>();
-	const telemetry = mock<Telemetry>();
+	const telemetry = mock<TelemetryProxy>();
 	const settingsRepository = mock<SettingsRepository>();
 	const instanceCredentialBroker = mock<InstanceCredentialBroker>();
 	const settingsService = mock<InstanceAiSettingsService>();
