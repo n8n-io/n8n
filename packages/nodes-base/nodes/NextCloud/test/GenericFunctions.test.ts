@@ -564,24 +564,24 @@ describe('NextCloud GenericFunctions', () => {
 			[
 				'a standard WebDAV URL',
 				[response('/remote.php/webdav/projects/file1.txt', fileProps)],
-				[{ path: 'projects/file1.txt', ...file }],
+				[{ path: '/projects/file1.txt', ...file }],
 			],
 			[
 				'a sub-path install',
 				[response('/nextcloud/remote.php/webdav/projects/file1.txt', fileProps)],
-				[{ path: 'projects/file1.txt', ...file }],
+				[{ path: '/projects/file1.txt', ...file }],
 			],
 			[
 				'a per-user dav URL',
 				[response('/remote.php/dav/files/alice/projects/file1.txt', fileProps)],
-				[{ path: 'projects/file1.txt', ...file }],
+				[{ path: '/projects/file1.txt', ...file }],
 			],
 			[
 				'a folder entry',
 				[response('/remote.php/webdav/projects/archive/', folderProps)],
 				[
 					{
-						path: 'projects/archive/',
+						path: '/projects/archive',
 						lastModified: 'Mon, 01 Jan 2024',
 						type: 'folder',
 						eTag: 'folder-etag',
@@ -591,7 +591,7 @@ describe('NextCloud GenericFunctions', () => {
 			[
 				'an encoded name',
 				[response('/remote.php/webdav/My%20Folder/a%20b%23c%3F%25d%C3%A9.txt', fileProps)],
-				[{ path: 'My Folder/a b#c?%dé.txt', ...file }],
+				[{ path: '/My Folder/a b#c?%dé.txt', ...file }],
 			],
 			[
 				'an href without a WebDAV root',
@@ -616,7 +616,7 @@ describe('NextCloud GenericFunctions', () => {
 
 			expect(nextCloudRootUrl(url)).toBe(root);
 			expect(await parseFolderList(multistatus([response(href, fileProps)]))).toEqual([
-				{ path: 'a.txt', ...file },
+				{ path: '/a.txt', ...file },
 			]);
 		});
 	});

@@ -216,10 +216,17 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<IData
 	const folder = `/${segments.join('/')}`;
 	const returnAll = this.getNodeParameter('returnAll', i, false) as boolean;
 	const limit = returnAll ? RETURN_ALL_LIMIT : Number(this.getNodeParameter('limit', i, 100));
+	if (!Number.isInteger(limit) || limit < 1) {
+		throw new NodeOperationError(this.getNode(), '"Limit" must be a whole number of 1 or more', {
+			itemIndex: i,
+		});
+	}
 	const filter = this.getNodeParameter('filter', i, {}) as Filter;
 	const options = this.getNodeParameter('options', i, {}) as { exactName?: boolean };
 	const where = whereClause.call(this, query, options.exactName === true, filter, i);
 
+	// Nextcloud reads a relative scope href as it is and never decodes it (SearchDAV
+	// PathHelper::getPathFromUri), so the names stay raw. toPathSegment only rejects "." and "..".
 	const scopeSegment = (segment: string) => decodePathValue(toPathSegment(segment));
 	const scopeSegments = segments.map(scopeSegment);
 

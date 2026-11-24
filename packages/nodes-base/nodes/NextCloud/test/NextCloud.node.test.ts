@@ -472,7 +472,7 @@ describe('NextCloud Node', () => {
 
 			const [[listedFile]] = await executeNode(list.executeFunctions);
 
-			expect(listedFile.json.path).toBe('My Folder/a b#c?%dé.txt');
+			expect(listedFile.json.path).toBe('/My Folder/a b#c?%dé.txt');
 
 			const copy = buildExecuteFunctions({
 				parameters: {
@@ -487,7 +487,7 @@ describe('NextCloud Node', () => {
 			await executeNode(copy.executeFunctions);
 
 			const { uri } = requestOptions(copy.requestWithAuthentication);
-			expect(uri).toBe(webDavUri('My%20Folder/a%20b%23c%3F%25d%C3%A9.txt'));
+			expect(uri).toBe(webDavUri('/My%20Folder/a%20b%23c%3F%25d%C3%A9.txt'));
 			expect(uri).not.toContain('%2520');
 		});
 
