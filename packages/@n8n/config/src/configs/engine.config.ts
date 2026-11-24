@@ -98,11 +98,10 @@ export class EngineConfig {
 	orchestrationConcurrency: number = 1;
 
 	/**
-	 * Which engine roles an `n8n engine` process runs, as a comma-separated list
-	 * of `api`, `orchestrator` and `step-worker`, for example `api,orchestrator`.
-	 * When unset or empty, the process runs every role. The `--roles` flag takes
-	 * precedence over this variable. An n8n instance in `in-process` mode always
-	 * runs every role.
+	 * Comma-separated list of the engine roles an `n8n engine` process runs, for
+	 * example `api,orchestrator`. `api` serves the engine API, `orchestrator`
+	 * plans executions, and `step-worker` runs the nodes. When unset, the process
+	 * runs all three, and the command's `--roles` flag overrides this variable.
 	 *
 	 * This is in development and not ready for use.
 	 */
@@ -131,8 +130,10 @@ export class EngineConfig {
 	databaseConnectionTimeoutMs: number = 20_000;
 
 	/**
-	 * Shared secret the control plane signs its identity token with and the engine
-	 * verifies against. Both planes must hold the same value.
+	 * Shared secret, at least 32 characters, that authenticates calls between the
+	 * n8n main and the engine. Set the same value on the main and on every
+	 * `n8n engine` process that runs the `api` or `step-worker` role. In
+	 * `in-process` mode, n8n generates one when it's unset.
 	 *
 	 * This is in development and not ready for use.
 	 */
@@ -158,7 +159,12 @@ export class EngineConfig {
 	@Env('N8N_ENGINE_CONTROL_PLANE_HOST')
 	controlPlaneHost: string = '127.0.0.1';
 
-	/** Where the engine dials the control plane server. Defaults to loopback; set it when that is not reachable. */
+	/**
+	 * URL that the engine uses to reach the control plane server of the n8n main,
+	 * for example `https://n8n-main:3001`. An `n8n engine` process that runs the
+	 * `step-worker` role needs it. In `in-process` mode, the engine uses loopback
+	 * when it's unset.
+	 */
 	@Env('N8N_ENGINE_CONTROL_PLANE_BASE_URL')
 	controlPlaneBaseUrl: string = '';
 

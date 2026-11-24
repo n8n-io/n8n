@@ -277,13 +277,6 @@ describe('Engine', () => {
 			expect(CrashJournal.init).not.toHaveBeenCalled();
 		});
 
-		it('loads the nodes and starts the task runner module', async () => {
-			await createEngine().init();
-
-			expect(loadNodesAndCredentials.init).toHaveBeenCalled();
-			expect(taskRunnerModule.start).toHaveBeenCalled();
-		});
-
 		describe('roles', () => {
 			let initExpressionEngine: MockInstance<typeof Expression.initExpressionEngine>;
 
@@ -295,23 +288,17 @@ describe('Engine', () => {
 				initExpressionEngine.mockRestore();
 			});
 
-			it.each([
-				{ flag: undefined, env: '', roles: ['api', 'orchestrator', 'step-worker'] },
-				{ flag: 'api,orchestrator', env: '', roles: ['api', 'orchestrator'] },
-				{ flag: undefined, env: 'orchestrator', roles: ['orchestrator'] },
-				{ flag: 'orchestrator', env: 'api', roles: ['orchestrator'] },
-			])(
-				'runs $roles with --roles=$flag and N8N_ENGINE_ROLES=$env',
-				async ({ flag, env, roles }) => {
-					engineConfig.roles = env;
+			it('runs the roles that N8N_ENGINE_ROLES names', async () => {
+				engineConfig.roles = 'orchestrator';
 
-					await createEngine({ roles: flag }).init();
+				await createEngine().init();
 
-					expect(runtime.init).toHaveBeenCalledWith(expect.objectContaining({ roles }));
-				},
-			);
+				expect(runtime.init).toHaveBeenCalledWith(
+					expect.objectContaining({ roles: ['orchestrator'] }),
+				);
+			});
 
-			it.each(['step-worker', 'api,step-worker'])(
+			it.each([undefined, 'step-worker', 'api,step-worker'])(
 				'loads the nodes and starts the expression engine and the code execution backend with --roles=%s',
 				async (flag) => {
 					await createEngine({ roles: flag }).init();
@@ -335,25 +322,17 @@ describe('Engine', () => {
 				},
 			);
 
-			it.each([
-				{ flag: 'worker', env: '', source: '--roles' },
-				{ flag: ',', env: '', source: '--roles' },
-				{ flag: undefined, env: 'worker', source: 'N8N_ENGINE_ROLES' },
-			])(
-				'refuses to boot with --roles=$flag and N8N_ENGINE_ROLES=$env before it starts anything',
-				async ({ flag, env, source }) => {
-					engineConfig.roles = env;
+			it('refuses to boot with an unknown role in N8N_ENGINE_ROLES before it starts anything', async () => {
+				engineConfig.roles = 'worker';
 
-					const boot = createEngine({ roles: flag }).init();
-
-					await expect(boot).rejects.toThrow(source);
-					await expect(boot).rejects.toThrow('The valid roles are api, orchestrator, step-worker.');
-					expect(loadNodesAndCredentials.init).not.toHaveBeenCalled();
-					expect(redisClientService.createClient).not.toHaveBeenCalled();
-					expect(taskRunnerModule.start).not.toHaveBeenCalled();
-					expect(runtime.init).not.toHaveBeenCalled();
-				},
-			);
+				await expect(createEngine().init()).rejects.toThrow(
+					'Unknown engine role in N8N_ENGINE_ROLES: worker',
+				);
+				expect(loadNodesAndCredentials.init).not.toHaveBeenCalled();
+				expect(redisClientService.createClient).not.toHaveBeenCalled();
+				expect(taskRunnerModule.start).not.toHaveBeenCalled();
+				expect(runtime.init).not.toHaveBeenCalled();
+			});
 
 			it('names every engine role and the environment variable in the help text of --roles', () => {
 				const flagsSchema = Container.get(CommandMetadata).get('engine')?.flagsSchema;

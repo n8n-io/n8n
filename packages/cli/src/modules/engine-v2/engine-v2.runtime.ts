@@ -13,6 +13,7 @@ import {
 	AllowAllAdmittance,
 	createDataSource,
 	createEngineRuntime,
+	ENGINE_ROLES,
 	mintApprovalCallback,
 	mintResumeToken,
 	mintStepBoundResumeToken,
@@ -139,7 +140,7 @@ export class EngineV2Runtime {
 
 		const stopping = new AbortController();
 		this.stopping = stopping;
-		const runsApi = roles?.includes('api') ?? true;
+		const runsApi = (roles ?? ENGINE_ROLES).includes('api');
 
 		this.engine = createEngineRuntime({
 			roles,

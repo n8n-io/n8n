@@ -25,7 +25,7 @@ const flagsSchema = z.object({
 @Command({
 	name: 'engine',
 	description:
-		'Starts the engine v2 data plane. Needs a control plane (`n8n start` with N8N_ENGINE_MODE=remote) to resolve credentials from, and Redis for its work queues, execution responses and lifecycle events. The `api` role serves the engine API, the `orchestrator` role plans executions, and the `step-worker` role runs the nodes.',
+		'Starts the engine v2 data plane, with the work queues, execution responses and lifecycle events in Redis. The `api` role serves the engine API, the `orchestrator` role plans executions, and the `step-worker` role runs the nodes and resolves their credentials from a control plane (`n8n start` with N8N_ENGINE_MODE=remote).',
 	examples: [
 		'',
 		'--roles=api',
