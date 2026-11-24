@@ -1,7 +1,15 @@
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 
-import { createCollection, fetchCollections } from './collections.api';
+import {
+	createCollection,
+	deleteCollectionFile,
+	fetchCollections,
+	getCollection,
+	listCollectionAgents,
+	listCollectionFiles,
+	uploadCollectionFiles,
+} from './collections.api';
 
 vi.mock('@n8n/rest-api-client', () => ({
 	makeRestApiRequest: vi.fn(),
@@ -36,6 +44,71 @@ describe('collections.api', () => {
 			'POST',
 			'/projects/proj-1/knowledge/collections',
 			{ name: 'Support', description: 'Refunds' },
+		);
+	});
+
+	it('gets one collection', async () => {
+		vi.mocked(makeRestApiRequest).mockResolvedValue({ id: 'c1' });
+
+		await getCollection(context, 'proj-1', 'c1');
+
+		expect(makeRestApiRequest).toHaveBeenCalledWith(
+			context,
+			'GET',
+			'/projects/proj-1/knowledge/collections/c1',
+		);
+	});
+
+	it('lists the files of a collection', async () => {
+		const list = { count: 0, totalSizeBytes: 0, data: [] };
+		vi.mocked(makeRestApiRequest).mockResolvedValue(list);
+
+		await expect(listCollectionFiles(context, 'proj-1', 'c1')).resolves.toBe(list);
+
+		expect(makeRestApiRequest).toHaveBeenCalledWith(
+			context,
+			'GET',
+			'/projects/proj-1/knowledge/collections/c1/files',
+		);
+	});
+
+	it('uploads the files as the "files" parts of one multipart request', async () => {
+		vi.mocked(makeRestApiRequest).mockResolvedValue([]);
+		const files = [new File(['a'], 'a.txt'), new File(['b'], 'b.txt')];
+
+		await uploadCollectionFiles(context, 'proj-1', 'c1', files);
+
+		expect(makeRestApiRequest).toHaveBeenCalledWith(
+			context,
+			'POST',
+			'/projects/proj-1/knowledge/collections/c1/files',
+			expect.any(FormData),
+		);
+		const formData = vi.mocked(makeRestApiRequest).mock.calls[0][3] as FormData;
+		expect(formData.getAll('files')).toEqual(files);
+	});
+
+	it('deletes one file of a collection', async () => {
+		vi.mocked(makeRestApiRequest).mockResolvedValue({ success: true });
+
+		await deleteCollectionFile(context, 'proj-1', 'c1', 'f1');
+
+		expect(makeRestApiRequest).toHaveBeenCalledWith(
+			context,
+			'DELETE',
+			'/projects/proj-1/knowledge/collections/c1/files/f1',
+		);
+	});
+
+	it('lists the agents that use a collection', async () => {
+		vi.mocked(makeRestApiRequest).mockResolvedValue([]);
+
+		await expect(listCollectionAgents(context, 'proj-1', 'c1')).resolves.toEqual([]);
+
+		expect(makeRestApiRequest).toHaveBeenCalledWith(
+			context,
+			'GET',
+			'/projects/proj-1/knowledge/collections/c1/agents',
 		);
 	});
 });
