@@ -111,7 +111,7 @@ export function getArrayElement(
 }
 
 /** Describe objects and arrays without reading their contents. */
-function toHostMetadata(value: unknown): unknown {
+export function toHostMetadata(value: unknown): unknown {
 	// Host functions use the callHost channel, not the lazy data path.
 	if (typeof value === 'function') {
 		return undefined;

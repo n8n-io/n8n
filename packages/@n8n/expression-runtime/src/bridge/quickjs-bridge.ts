@@ -40,6 +40,8 @@ import {
 	reconstructError,
 	serializeError,
 } from './host-functions';
+import { BATCH_READ_LIMITS, readBatchAtPath } from './batch-read';
+import type { BatchRequest } from '../runtime/lazy-proxy';
 
 /**
  * The instantiated WASM module that new bridges use, cached after the first
@@ -324,6 +326,11 @@ function wrapSpecialValuesForGuest(value: unknown): unknown {
 	return collides ? { __isEscaped: true, __value: result } : result;
 }
 
+/** Matches a marker key as it reads in JSON. No marker key holds a regular expression character. */
+const MARKER_KEY_IN_JSON = new RegExp(
+	[...TRANSFER_MARKER_KEYS].map((key) => safeStringify(key)).join('|'),
+);
+
 /** JSON drops the named keys of an array, so an array with named keys goes across in a sentinel. */
 function wrapArrayForGuest(value: unknown[]): unknown {
 	const items = value.map(wrapSpecialValuesForGuest);
@@ -363,6 +370,14 @@ function loadRuntimeBundle(): string {
 	throw new Error(
 		`Could not find runtime bundle (${BUNDLE_RELATIVE_PATH}) in any parent of ${__dirname}`,
 	);
+}
+
+/**
+ * False only when the JSON of a host value holds no sentinel of
+ * wrapSpecialValuesForGuest. The guest can then use the parsed JSON as it is.
+ */
+function mayHoldGuestSentinel(json: string): boolean {
+	return MARKER_KEY_IN_JSON.test(json);
 }
 
 /**
@@ -1114,8 +1129,9 @@ export class QuickJsBridge implements RuntimeBridge {
 
 	// Reverse direction: rebuild real instances from the sentinels the host's
 	// wrapSpecialValuesForGuest() produces for callback results.
-	globalThis.__unwrapFromHost = function(json) {
-		return unwrapFromHost(parseJSON(json));
+	globalThis.__unwrapFromHost = function(json, holdsSentinel) {
+		var parsed = parseJSON(json);
+		return holdsSentinel ? unwrapFromHost(parsed) : parsed;
 	};
 	function unwrapFromHost(v) {
 		if (v === null || typeof v !== 'object') return v;
@@ -1276,6 +1292,24 @@ export class QuickJsBridge implements RuntimeBridge {
 			);
 
 			handles.push(
+				vm.newFunction('__readBatchImpl', (pathHandle, startHandle, stepHandle, requestHandle) => {
+					try {
+						const result = readBatchAtPath(
+							resolver,
+							vm.dump(pathHandle) as string[],
+							vm.dump(startHandle) as number,
+							vm.dump(stepHandle) as number,
+							vm.dump(requestHandle) as BatchRequest,
+							BATCH_READ_LIMITS,
+						);
+						return this.hostValueToQuickJSHandle(result);
+					} catch (err) {
+						return this.hostValueToQuickJSHandle(serializeError(err));
+					}
+				}),
+			);
+
+			handles.push(
 				vm.newFunction('__callHostImpl', (msgHandle) => {
 					const rawMsg = vm.dump(msgHandle);
 					try {
@@ -1360,7 +1394,12 @@ export class QuickJsBridge implements RuntimeBridge {
 		// JSON keys must keep their data meaning, including __proto__.
 		const unwrapFn = this.vm.getProp(this.vm.global, '__unwrapFromHost');
 		const jsonHandle = this.vm.newString(json);
-		const result = this.vm.callFunction(unwrapFn, this.vm.undefined, jsonHandle);
+		const result = this.vm.callFunction(
+			unwrapFn,
+			this.vm.undefined,
+			jsonHandle,
+			mayHoldGuestSentinel(json) ? this.vm.true : this.vm.false,
+		);
 		jsonHandle.dispose();
 		unwrapFn.dispose();
 		if (result.error) {
@@ -1414,10 +1453,11 @@ export class QuickJsBridge implements RuntimeBridge {
 			// as plain functions; the isolated-vm bridge wires ivm.Callback there,
 			// while QuickJS host functions are already plain functions in the context.
 			const wrappedCode = `
-(function(__getValueAtPathImpl, __getArrayElementImpl, __callHostImpl) {
+(function(__getValueAtPathImpl, __getArrayElementImpl, __readBatchImpl, __callHostImpl) {
   var __ctx = buildContext({
     getValueAtPath: __getValueAtPathImpl,
     getArrayElement: __getArrayElementImpl,
+    readBatch: __readBatchImpl,
     callHost: __callHostImpl,
   }, ${timezone});
   try {
