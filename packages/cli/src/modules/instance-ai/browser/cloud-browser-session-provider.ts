@@ -34,7 +34,7 @@ export interface CloudBrowserSessionLocation {
 /** A new session runs where it is asked to. Without a region, the provider picks one. */
 export interface CloudBrowserSessionOptions extends Partial<CloudBrowserSessionLocation> {
 	/**
-	 * A login profile from `createLoginProfile` or `findSavedLoginProfileForDomain`. The session
+	 * A login profile from `createLoginProfile` or `listSavedLoginProfiles`. The session
 	 * keeps its sign-ins in it.
 	 */
 	loginProfileId?: string;
@@ -84,11 +84,6 @@ export interface CloudBrowserSessionProvider {
 	 * can be saved later. Returns its id.
 	 */
 	createLoginProfile(scope: CloudBrowserSessionScope): Promise<string>;
-	/** The user's most recently used saved login profile for `domain`, if they have one. */
-	findSavedLoginProfileForDomain(
-		scope: CloudBrowserUserScope,
-		domain: string,
-	): Promise<CloudBrowserLoginProfile | undefined>;
 	/**
 	 * Saves a login profile for `domain`, and returns it as saved. `location` is where its session
 	 * runs.
@@ -99,6 +94,9 @@ export interface CloudBrowserSessionProvider {
 	): Promise<CloudBrowserLoginProfile>;
 	/** Deletes a login profile, saved or not. */
 	deleteLoginProfile(scope: CloudBrowserUserScope, id: string): Promise<void>;
-	/** The user's saved login profiles, most recently used first. */
-	listSavedLoginProfiles(scope: CloudBrowserUserScope): Promise<CloudBrowserLoginProfile[]>;
+	/** The user's saved login profiles, most recently used first. With `domain`, only those for the site. */
+	listSavedLoginProfiles(
+		scope: CloudBrowserUserScope,
+		domain?: string,
+	): Promise<CloudBrowserLoginProfile[]>;
 }

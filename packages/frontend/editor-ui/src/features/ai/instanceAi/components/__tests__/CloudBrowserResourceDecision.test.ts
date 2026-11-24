@@ -38,6 +38,16 @@ const credentialProps: Props = {
 	taskTitle: 'Get the API key',
 };
 
+const savedLoginProps: Props = {
+	requestId: 'req-3',
+	kind: 'host-with-saved-login',
+	resource: 'mail.example.com',
+	description: 'Browser: mail.example.com',
+	options: ['allowWithSavedLogin', 'allowWithoutSavedLogin', 'denyOnce'],
+	savedLogin: { domain: 'example.com', savedAt: '2025-11-12T10:00:00.000Z' },
+	taskTitle: 'Read my inbox',
+};
+
 describe('CloudBrowserResourceDecision', () => {
 	beforeEach(() => {
 		thread.confirmResourceDecision.mockReset();
@@ -84,6 +94,50 @@ describe('CloudBrowserResourceDecision', () => {
 		expect(queryByTestId('cloud-browser-decision-allow-session')).not.toBeInTheDocument();
 		expect(getByTestId('cloud-browser-decision-allow-once')).toBeInTheDocument();
 		expect(getByTestId('cloud-browser-decision-deny')).toBeInTheDocument();
+	});
+
+	it('names the saved login for the site and its date', () => {
+		const { getByText, getByRole } = renderComponent({ props: savedLoginProps });
+
+		expect(
+			getByText('Allow n8n Assistant to open mail.example.com in the "Read my inbox" browser?'),
+		).toBeInTheDocument();
+		expect(getByRole('region')).toHaveTextContent(
+			'You have a saved login for example.com from Nov 12, 2025.',
+		);
+	});
+
+	it('offers to open with or without the saved login, or to deny, and no session option', () => {
+		const { container, getByTestId } = renderComponent({ props: savedLoginProps });
+
+		const options = container.querySelectorAll('[data-test-id^="cloud-browser-decision-"]');
+		expect([...options].map((option) => option.getAttribute('data-test-id'))).toEqual([
+			'cloud-browser-decision-allow-with-saved-login',
+			'cloud-browser-decision-allow-without-saved-login',
+			'cloud-browser-decision-deny',
+		]);
+		expect(getByTestId('cloud-browser-decision-allow-with-saved-login')).toHaveTextContent(
+			'Open with my saved login',
+		);
+		expect(getByTestId('cloud-browser-decision-allow-without-saved-login')).toHaveTextContent(
+			'Open without my saved login',
+		);
+	});
+
+	it.each([
+		['cloud-browser-decision-allow-with-saved-login', 'allowWithSavedLogin'],
+		['cloud-browser-decision-allow-without-saved-login', 'allowWithoutSavedLogin'],
+		['cloud-browser-decision-deny', 'denyOnce'],
+	])('sends the saved-login decision for %s', async (testId, decision) => {
+		const { getByTestId } = renderComponent({ props: savedLoginProps });
+
+		await fireEvent.click(getByTestId(testId));
+
+		expect(thread.confirmResourceDecision).toHaveBeenCalledWith('req-3', decision);
+		expect(track).toHaveBeenCalledWith(
+			'User finished providing input',
+			expect.objectContaining({ resource_kind: 'host-with-saved-login' }),
+		);
 	});
 
 	it('tracks the decision with the kind of resource', async () => {

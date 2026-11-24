@@ -587,6 +587,27 @@ describe('InstanceAiBrowserPreview', () => {
 			);
 		});
 
+		it('says which saved login the save replaces', async () => {
+			vi.mocked(fetchCloudBrowserLoginToSave).mockResolvedValue({
+				domain: 'example.com',
+				replacesSavedLoginFrom: '2025-11-12T10:00:00.000Z',
+			});
+
+			const { getByTestId } = await takeOverAndFinish(liveWithLogin, loginRequest);
+
+			expect(getByTestId('instance-ai-browser-preview-save-login-replaces')).toHaveTextContent(
+				'This replaces your saved login for example.com from Nov 12, 2025.',
+			);
+		});
+
+		it('says nothing about a replace when the user has no saved login for the site', async () => {
+			const { queryByTestId } = await takeOverAndFinish(liveWithLogin, loginRequest);
+
+			expect(
+				queryByTestId('instance-ai-browser-preview-save-login-replaces'),
+			).not.toBeInTheDocument();
+		});
+
 		it('returns control without asking when the server says the user cannot save a login', async () => {
 			vi.mocked(fetchCloudBrowserLoginToSave).mockResolvedValue({});
 

@@ -1,4 +1,7 @@
 import type { InstanceAiAgentNode } from '@n8n/api-types';
+import { i18n } from '@n8n/i18n';
+
+import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 
 import type { PendingConfirmationItem } from './instanceAi.store';
 
@@ -13,4 +16,11 @@ export function isCloudBrowserResourceDecision(item: PendingConfirmationItem): b
 		item.toolCall.confirmation.inputType === 'resource-decision' &&
 		isCloudBrowserAgent(item.agentNode)
 	);
+}
+
+/** The date the user saved a login, as the user reads it: "today", or a date such as "Nov 12". */
+export function formatSavedLoginDate(savedAt: string): string {
+	const isToday = new Date(savedAt).toDateString() === new Date().toDateString();
+	if (isToday) return i18n.baseText('instanceAi.cloudBrowser.savedLoginToday');
+	return convertToDisplayDate(savedAt).date;
 }

@@ -691,12 +691,7 @@ export class InstanceAiController {
 	): Promise<InstanceAiCloudBrowserLoginToSaveResponse> {
 		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, threadId);
-		const domain = await this.cloudBrowserService.getLoginDomainToSave(
-			req.user.id,
-			threadId,
-			taskId,
-		);
-		return domain ? { domain } : {};
+		return await this.cloudBrowserService.getLoginToSave(req.user.id, threadId, taskId);
 	}
 
 	/** The user gives control of a cloud browser task's browser back to its agent. */

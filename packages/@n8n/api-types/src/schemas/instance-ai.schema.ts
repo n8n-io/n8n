@@ -824,17 +824,33 @@ export const instanceGatewayResourceDecisionSchema = z.enum([
 	'denyOnce',
 	'allowOnce',
 	'allowForSession',
+	/** Open the site with the user's saved login for it. Only for `host-with-saved-login`. */
+	'allowWithSavedLogin',
+	/** Open the site with a new, blank login profile. Only for `host-with-saved-login`. */
+	'allowWithoutSavedLogin',
 ]);
 export type InstanceGatewayResourceDecision = z.infer<typeof instanceGatewayResourceDecisionSchema>;
 
 export const gatewayConfirmationRequiredWirePayloadSchema = z.object({
 	toolGroup: z.string(),
-	/** What resource the approval is for: a site to open (`host`) or a credential to save (`credential-write`). */
-	kind: z.enum(['host', 'credential-write']).optional(),
+	/**
+	 * What the approval is for: a site to open (`host`), a site to open where the user has a saved
+	 * login (`host-with-saved-login`), or a credential to save (`credential-write`).
+	 */
+	kind: z.enum(['host', 'host-with-saved-login', 'credential-write']).optional(),
 	resource: z.string(),
 	description: z.string(),
 	/** Available decision options. */
 	options: z.array(z.string()),
+	/** The user's saved login for the site. Only for `host-with-saved-login`. */
+	savedLogin: z
+		.object({
+			/** The site of the saved login, for example "google.com" for "mail.google.com". */
+			domain: z.string(),
+			/** ISO date. */
+			savedAt: z.string(),
+		})
+		.optional(),
 });
 
 export type GatewayConfirmationRequiredWirePayload = z.infer<
@@ -2050,6 +2066,8 @@ export interface InstanceAiSavedLoginsResponse {
  */
 export interface InstanceAiCloudBrowserLoginToSaveResponse {
 	domain?: string;
+	/** ISO date of the user's saved login for the site, which a save replaces. */
+	replacesSavedLoginFrom?: string;
 }
 
 /**

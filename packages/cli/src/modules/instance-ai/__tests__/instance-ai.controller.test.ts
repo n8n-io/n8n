@@ -1253,23 +1253,25 @@ describe('InstanceAiController', () => {
 			});
 		});
 
-		it('should return the site of the login the user can save', async () => {
+		it('should return the login the user can save', async () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('owned');
-			cloudBrowserService.getLoginDomainToSave.mockResolvedValue('example.com');
+			cloudBrowserService.getLoginToSave.mockResolvedValue({
+				domain: 'example.com',
+				replacesSavedLoginFrom: '2026-11-12T10:00:00.000Z',
+			});
 
 			const result = await controller.cloudBrowserLoginToSave(req, res, THREAD_ID, 'task-1');
 
-			expect(result).toEqual({ domain: 'example.com' });
-			expect(cloudBrowserService.getLoginDomainToSave).toHaveBeenCalledWith(
-				USER_ID,
-				THREAD_ID,
-				'task-1',
-			);
+			expect(result).toEqual({
+				domain: 'example.com',
+				replacesSavedLoginFrom: '2026-11-12T10:00:00.000Z',
+			});
+			expect(cloudBrowserService.getLoginToSave).toHaveBeenCalledWith(USER_ID, THREAD_ID, 'task-1');
 		});
 
 		it('should return no site when the user cannot save a login', async () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('owned');
-			cloudBrowserService.getLoginDomainToSave.mockResolvedValue(undefined);
+			cloudBrowserService.getLoginToSave.mockResolvedValue({});
 
 			const result = await controller.cloudBrowserLoginToSave(req, res, THREAD_ID, 'task-1');
 
@@ -1282,7 +1284,7 @@ describe('InstanceAiController', () => {
 			await expect(
 				controller.cloudBrowserLoginToSave(req, res, THREAD_ID, 'task-1'),
 			).rejects.toThrow(ForbiddenError);
-			expect(cloudBrowserService.getLoginDomainToSave).not.toHaveBeenCalled();
+			expect(cloudBrowserService.getLoginToSave).not.toHaveBeenCalled();
 		});
 
 		it('should not check when Instance AI is disabled', async () => {
@@ -1291,7 +1293,7 @@ describe('InstanceAiController', () => {
 			await expect(
 				controller.cloudBrowserLoginToSave(req, res, THREAD_ID, 'task-1'),
 			).rejects.toThrow(ForbiddenError);
-			expect(cloudBrowserService.getLoginDomainToSave).not.toHaveBeenCalled();
+			expect(cloudBrowserService.getLoginToSave).not.toHaveBeenCalled();
 		});
 	});
 

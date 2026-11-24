@@ -259,32 +259,43 @@ describe('InstanceAiCloudBrowserService', () => {
 		});
 	});
 
-	describe('getLoginDomainToSave', () => {
-		it("passes on the server's answer to its owner", async () => {
+	describe('getLoginToSave', () => {
+		it("passes on the server's answer to its owner, with ISO dates", async () => {
 			const server = await service.createServer('user-1', 'thread-1', 'task-1', domainGate);
-			const getLoginDomainToSave = vi
-				.spyOn(server, 'getLoginDomainToSave')
-				.mockResolvedValue('example.com');
+			const getLoginToSave = vi.spyOn(server, 'getLoginToSave').mockResolvedValue({
+				domain: 'example.com',
+				replacesSavedLoginFrom: new Date('2026-11-12T10:00:00.000Z'),
+			});
 
-			expect(await service.getLoginDomainToSave('user-1', 'thread-1', 'task-1')).toBe(
-				'example.com',
-			);
-			expect(getLoginDomainToSave).toHaveBeenCalledTimes(1);
+			expect(await service.getLoginToSave('user-1', 'thread-1', 'task-1')).toEqual({
+				domain: 'example.com',
+				replacesSavedLoginFrom: '2026-11-12T10:00:00.000Z',
+			});
+			expect(getLoginToSave).toHaveBeenCalledTimes(1);
+		});
+
+		it('returns only the site when the save replaces no saved login', async () => {
+			const server = await service.createServer('user-1', 'thread-1', 'task-1', domainGate);
+			vi.spyOn(server, 'getLoginToSave').mockResolvedValue({ domain: 'example.com' });
+
+			expect(await service.getLoginToSave('user-1', 'thread-1', 'task-1')).toEqual({
+				domain: 'example.com',
+			});
 		});
 
 		it.each([
 			['another user', 'user-2', 'thread-1'],
 			['another thread', 'user-1', 'thread-2'],
-		])('returns nothing for %s', async (_, userId, threadId) => {
+		])('returns no site for %s', async (_, userId, threadId) => {
 			const server = await service.createServer('user-1', 'thread-1', 'task-1', domainGate);
-			const getLoginDomainToSave = vi.spyOn(server, 'getLoginDomainToSave');
+			const getLoginToSave = vi.spyOn(server, 'getLoginToSave');
 
-			expect(await service.getLoginDomainToSave(userId, threadId, 'task-1')).toBeUndefined();
-			expect(getLoginDomainToSave).not.toHaveBeenCalled();
+			expect(await service.getLoginToSave(userId, threadId, 'task-1')).toEqual({});
+			expect(getLoginToSave).not.toHaveBeenCalled();
 		});
 
-		it('returns nothing for a task with no server', async () => {
-			expect(await service.getLoginDomainToSave('user-1', 'thread-1', 'task-1')).toBeUndefined();
+		it('returns no site for a task with no server', async () => {
+			expect(await service.getLoginToSave('user-1', 'thread-1', 'task-1')).toEqual({});
 		});
 	});
 
@@ -694,27 +705,17 @@ describe('InstanceAiCloudBrowserService', () => {
 			});
 		});
 
-		it("finds the user's saved login profile for a domain", async () => {
-			const olderContext = { ...savedContext, id: 'ctx-2' };
-			aiGatewayBrowserUseService.listSavedContexts.mockResolvedValue([savedContext, olderContext]);
+		it("lists the user's saved login profiles for a domain", async () => {
+			aiGatewayBrowserUseService.listSavedContexts.mockResolvedValue([savedContext]);
 			const { sessionProvider, scope } = await getSessionProvider();
 
-			await expect(
-				sessionProvider.findSavedLoginProfileForDomain(scope, 'example.com'),
-			).resolves.toEqual(savedLoginProfile);
+			await expect(sessionProvider.listSavedLoginProfiles(scope, 'example.com')).resolves.toEqual([
+				savedLoginProfile,
+			]);
 			expect(aiGatewayBrowserUseService.listSavedContexts).toHaveBeenCalledWith({
 				userId: 'user-1',
 				domain: 'example.com',
 			});
-		});
-
-		it('finds no saved login profile when the user has none for the domain', async () => {
-			aiGatewayBrowserUseService.listSavedContexts.mockResolvedValue([]);
-			const { sessionProvider, scope } = await getSessionProvider();
-
-			await expect(
-				sessionProvider.findSavedLoginProfileForDomain(scope, 'example.com'),
-			).resolves.toBeUndefined();
 		});
 	});
 });

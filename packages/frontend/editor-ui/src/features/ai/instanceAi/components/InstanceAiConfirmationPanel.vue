@@ -618,6 +618,7 @@ function handleQuestionsSubmit(conf: InstanceAiConfirmation, answers: QuestionAn
 				:resource="chunk.item.toolCall.confirmation.resourceDecision.resource"
 				:description="chunk.item.toolCall.confirmation.resourceDecision.description"
 				:options="chunk.item.toolCall.confirmation.resourceDecision.options"
+				:saved-login="chunk.item.toolCall.confirmation.resourceDecision.savedLogin"
 				:task-title="chunk.item.agentNode.title ?? ''"
 			/>
 

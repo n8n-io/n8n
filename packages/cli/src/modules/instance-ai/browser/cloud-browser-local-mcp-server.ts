@@ -28,9 +28,12 @@ import {
 	browserErrorResult,
 	executeBrowserTool,
 	gateBrowserAccess,
+	gateSavedLoginAccess,
 	isBrowserAccessAllowed,
+	isSavedLoginDecision,
 	toBrowserMcpTool,
 	type BrowserDomainGate,
+	type SavedLoginDecision,
 } from './browser.helpers';
 import type {
 	CloudBrowserLoginProfile,
@@ -221,6 +224,19 @@ interface SessionLocation {
 	proxyCity?: string;
 }
 
+/** A login the user can save now. */
+export interface CloudBrowserLoginToSave {
+	/** The site of the login. */
+	domain: string;
+	/** When the user saved their login for the site, which a save replaces. */
+	replacesSavedLoginFrom?: Date;
+}
+
+/** Whether a new session may open, and how the user chose to use their saved login for the site. */
+type StartSessionAccess =
+	| { isAllowed: false; result: McpToolCallResult }
+	| { isAllowed: true; savedLoginDecision?: SavedLoginDecision };
+
 interface ActiveSession {
 	id: string;
 	location: SessionLocation;
@@ -306,6 +322,13 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 	 * to the login. A site that is saved stays saved, also when a later save for it fails.
 	 */
 	private readonly loginSaveResults = new Map<string, CloudBrowserLoginSaveStatus>();
+
+	/**
+	 * The user's answers on the saved-login card, by host, as hosts are approved. A later session on
+	 * the host in this task uses the answer and does not ask again, and the browser tools on the
+	 * host run. "Deny" is not kept.
+	 */
+	private readonly savedLoginDecisions = new Map<string, SavedLoginDecision>();
 
 	constructor(private readonly options: CloudBrowserLocalMcpServerOptions) {
 		this.domainGate = options.domainGate;
@@ -482,11 +505,14 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 		return (await userControl?.result.promise) ?? { returned: true };
 	}
 
-	/** The site of the login the user can save now, or nothing when they cannot save one. */
-	async getLoginDomainToSave(): Promise<string | undefined> {
+	/** The login the user can save now, or nothing when they cannot save one. */
+	async getLoginToSave(): Promise<CloudBrowserLoginToSave | undefined> {
 		const session = this.activeSession;
 		if (!session?.loginProfile || !(await this.canSaveLogin(session))) return undefined;
-		return session.loginProfile.domain;
+		const { domain } = session.loginProfile;
+		// A save replaces the user's saved login for the site, so the user is told before they save.
+		const savedLoginProfile = await this.findSavedLoginProfileForDomain(domain);
+		return { domain, replacesSavedLoginFrom: savedLoginProfile?.savedAt };
 	}
 
 	/** Whether the user can save the login they just made in the session. */
@@ -568,13 +594,14 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 				return browserErrorResult(SESSION_UNAVAILABLE_MESSAGES.userControlTimeout);
 			}
 
+			// Looked up under the session lock, so a saved login that a released session deletes
+			// is gone before this lookup.
+			const savedLoginProfile = await this.findSavedLoginProfileForHost(host);
+
 			// Check before a session opens, so a denied site costs no browser. The check never
 			// waits for the user: it returns a request, and the agent pauses outside this call.
-			const accessResult = await this.gateAccess(
-				this.getAffectedResourcesForStartSessionTool(host),
-				confirmation,
-			);
-			if (accessResult) return accessResult;
+			const access = await this.gateStartSession(host, savedLoginProfile, confirmation);
+			if (!access.isAllowed) return access.result;
 
 			// we should only have one active session at a time, so close any existing one first
 			await this.endActiveSession();
@@ -583,7 +610,12 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 			let session: ActiveSession;
 			this.isOpeningSession = true;
 			try {
-				session = await this.openSession(host, { proxyCountry: args.data.proxyCountry });
+				const loginProfile = await this.chooseLoginProfile(
+					host,
+					savedLoginProfile,
+					access.savedLoginDecision,
+				);
+				session = await this.openSession(loginProfile, { proxyCountry: args.data.proxyCountry });
 			} catch (error) {
 				return browserErrorResult(
 					`Could not open a browser session: ${ensureError(error).message}`,
@@ -695,6 +727,65 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 	}
 
 	/**
+	 * Checks a new session on `host`. With a saved login for the site, the saved-login card decides.
+	 * Without one, the host is checked like any other site.
+	 */
+	private async gateStartSession(
+		host: string,
+		savedLoginProfile: CloudBrowserLoginProfile | undefined,
+		confirmation: unknown,
+	): Promise<StartSessionAccess> {
+		if (savedLoginProfile?.savedAt) {
+			const savedLogin = {
+				domain: savedLoginProfile.domain,
+				savedAt: savedLoginProfile.savedAt,
+			};
+			return this.gateStartSessionWithSavedLogin(host, savedLogin, confirmation);
+		}
+		return await this.gateStartSessionWithoutSavedLogin(host, confirmation);
+	}
+
+	/** Checks a new session on a host where the user has no saved login: the normal host check. */
+	private async gateStartSessionWithoutSavedLogin(
+		host: string,
+		confirmation: unknown,
+	): Promise<StartSessionAccess> {
+		// The user can answer the saved-login card after the saved login was deleted. The answer
+		// still opens the session, without a saved login.
+		let hostConfirmation = confirmation;
+		if (isSavedLoginDecision(confirmation)) hostConfirmation = 'allowOnce';
+
+		const resources = this.getAffectedResourcesForStartSessionTool(host);
+		const result = await this.gateAccess(resources, hostConfirmation);
+		if (result) return { isAllowed: false, result };
+		return { isAllowed: true };
+	}
+
+	/**
+	 * Checks a new session on a host where the user has a saved login. The user chooses on a card
+	 * whether the session uses it. The answer is kept for the host for the rest of the task, so a
+	 * later session on the host does not ask again.
+	 */
+	private gateStartSessionWithSavedLogin(
+		host: string,
+		savedLogin: { domain: string; savedAt: Date },
+		confirmation: unknown,
+	): StartSessionAccess {
+		// The answer from the card, or else the answer from earlier in the task.
+		let decision = confirmation;
+		if (decision === undefined) decision = this.savedLoginDecisions.get(host);
+
+		const [resource] = this.getAffectedResourcesForStartSessionTool(host);
+		const result = gateSavedLoginAccess(this.domainGate, resource, savedLogin, decision);
+		if (result) return { isAllowed: false, result };
+
+		// The gate opens the session only with a saved-login answer. This check narrows the type.
+		if (!isSavedLoginDecision(decision)) return { isAllowed: true };
+		this.savedLoginDecisions.set(host, decision);
+		return { isAllowed: true, savedLoginDecision: decision };
+	}
+
+	/**
 	 * Checks each site and credential write that a call touches, with the same gate as the
 	 * extension browser. A call on a page with no host is refused. Returns a result that stops
 	 * the call, or `undefined` when the call can run. When the call runs again after a request,
@@ -709,12 +800,24 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 		for (const resource of resources) {
 			if (isNoHostResource(resource)) return browserErrorResult(NO_HOST_MESSAGE);
 			if (isBrowserAccessAllowed(domainGate, resource)) continue;
+			if (this.isHostAllowedForTask(resource)) continue;
 
 			const result = await gateBrowserAccess(domainGate, resource, answer);
 			answer = undefined;
 			if (result) return result;
 		}
 		return undefined;
+	}
+
+	/**
+	 * Whether the user answered the saved-login card for this host in this task. Opening the host
+	 * was part of that answer, so the browser tools on the host do not ask again. Unlike a run
+	 * approval, it lasts for the whole task. An admin block still applies.
+	 */
+	private isHostAllowedForTask(resource: AffectedResource): boolean {
+		if (resource.kind !== 'host') return false;
+		if (this.domainGate.permissionMode === 'blocked') return false;
+		return this.savedLoginDecisions.has(resource.resource);
 	}
 
 	/**
@@ -734,16 +837,12 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 		return undefined;
 	}
 
-	/**
-	 * Creates a session for a site and connects the browser tools to it. The session gets a new
-	 * login profile, so the sign-ins made in it can be saved.
-	 */
+	/** Creates a session with the login profile and connects the browser tools to it. */
 	private async openSession(
-		host: string,
+		loginProfile: CloudBrowserLoginProfile | undefined,
 		requestedLocation: Partial<CloudBrowserSessionLocation>,
 	): Promise<ActiveSession> {
-		const { scope, sessionProvider, enableLoginProfiles, createToolkit, logger } = this.options;
-		const loginProfile = enableLoginProfiles ? await this.resolveLoginProfile(host) : undefined;
+		const { scope, sessionProvider, createToolkit, logger } = this.options;
 		// A saved login must open where it was saved, regardless of what the agent asked for.
 		const locationToOpen = loginProfile?.savedLocation ?? requestedLocation;
 		let createdSession: CloudBrowserSession;
@@ -815,16 +914,35 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 	}
 
 	/**
-	 * The login profile for a session on `host`: the user's saved login for the site, or else a new
-	 * login profile. Returns nothing when the host has no registrable domain, for example an IP
-	 * address, or when no login profile could be created. The session then opens without one: a
-	 * failure here must not stop the task from browsing.
+	 * The user's saved login for the site of `host`. Returns nothing without login profiles, or when
+	 * the host has no registrable domain, for example an IP address.
 	 */
-	private async resolveLoginProfile(host: string): Promise<CloudBrowserLoginProfile | undefined> {
+	private async findSavedLoginProfileForHost(
+		host: string,
+	): Promise<CloudBrowserLoginProfile | undefined> {
+		if (!this.options.enableLoginProfiles) return undefined;
 		const domain = await registrableDomainOf(host);
 		if (!domain) return undefined;
-		const savedLoginProfile = await this.findSavedLoginProfileForDomain(domain);
-		if (savedLoginProfile) return savedLoginProfile;
+		return await this.findSavedLoginProfileForDomain(domain);
+	}
+
+	/**
+	 * The login profile for a new session on `host`: the saved login when the user chose to use it,
+	 * or else a new login profile. Returns nothing without login profiles, when the host has no
+	 * registrable domain, or when no login profile could be created. The session then opens without
+	 * one: a failure here must not stop the task from browsing.
+	 */
+	private async chooseLoginProfile(
+		host: string,
+		savedLoginProfile: CloudBrowserLoginProfile | undefined,
+		savedLoginDecision: SavedLoginDecision | undefined,
+	): Promise<CloudBrowserLoginProfile | undefined> {
+		if (!this.options.enableLoginProfiles) return undefined;
+		if (savedLoginProfile && savedLoginDecision === 'allowWithSavedLogin') {
+			return savedLoginProfile;
+		}
+		const domain = await registrableDomainOf(host);
+		if (!domain) return undefined;
 		return await this.createLoginProfile(domain);
 	}
 
@@ -837,7 +955,8 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 	): Promise<CloudBrowserLoginProfile | undefined> {
 		const { scope, sessionProvider, logger } = this.options;
 		try {
-			return await sessionProvider.findSavedLoginProfileForDomain(scope, domain);
+			const [savedLoginProfile] = await sessionProvider.listSavedLoginProfiles(scope, domain);
+			return savedLoginProfile;
 		} catch (error) {
 			logger.warn('Failed to find a saved cloud browser login, opening the session without one', {
 				taskId: scope.taskId,
@@ -1016,7 +1135,6 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 				domain: loginProfile.domain,
 				location: { regionId, proxyCountry, proxyCity },
 			});
-			return true;
 		} catch (error) {
 			logger.warn('Failed to save a cloud browser login', {
 				taskId: scope.taskId,
@@ -1024,6 +1142,35 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 			});
 			return false;
 		}
+		// Only after the save worked, so a failed save never loses the old login.
+		await this.deleteOtherSavedLogins(loginProfile);
+		return true;
+	}
+
+	/**
+	 * Deletes the user's other saved logins for the site of a login that was just saved, so that the
+	 * user has one saved login for each site. A failure is only logged: the new login is saved.
+	 */
+	private async deleteOtherSavedLogins(savedLoginProfile: CloudBrowserLoginProfile): Promise<void> {
+		const { scope, sessionProvider, logger } = this.options;
+		let savedLoginProfiles: CloudBrowserLoginProfile[];
+		try {
+			savedLoginProfiles = await sessionProvider.listSavedLoginProfiles(
+				scope,
+				savedLoginProfile.domain,
+			);
+		} catch (error) {
+			logger.warn('Failed to list the other saved cloud browser logins for a site', {
+				taskId: scope.taskId,
+				...safeErrorDetails(error),
+			});
+			return;
+		}
+		const otherLoginProfiles = savedLoginProfiles.filter(({ id }) => id !== savedLoginProfile.id);
+		// Each delete logs its own failure and does not throw, so this waits for all of them.
+		await Promise.all(
+			otherLoginProfiles.map(async (loginProfile) => await this.deleteLoginProfile(loginProfile)),
+		);
 	}
 
 	/**

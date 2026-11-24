@@ -1,6 +1,7 @@
 import {
 	INSTANCE_AI_CLOUD_BROWSER_FLAG,
 	type InstanceAiCloudBrowserLiveViewResponse,
+	type InstanceAiCloudBrowserLoginToSaveResponse,
 	type InstanceAiSavedLogin,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
@@ -173,17 +174,20 @@ export class InstanceAiCloudBrowserService {
 	}
 
 	/**
-	 * The site of the login the user can save in the task's browser, for its owner only. Nothing
-	 * when they cannot save one.
+	 * The login the user can save in the task's browser, for its owner only. No domain when they
+	 * cannot save one.
 	 */
-	async getLoginDomainToSave(
+	async getLoginToSave(
 		userId: string,
 		threadId: string,
 		taskId: string,
-	): Promise<string | undefined> {
+	): Promise<InstanceAiCloudBrowserLoginToSaveResponse> {
 		const entry = this.serversByTaskId.get(taskId);
-		if (entry?.userId !== userId || entry.threadId !== threadId) return undefined;
-		return await entry.server.getLoginDomainToSave();
+		if (entry?.userId !== userId || entry.threadId !== threadId) return {};
+		const loginToSave = await entry.server.getLoginToSave();
+		if (!loginToSave) return {};
+		const { domain, replacesSavedLoginFrom } = loginToSave;
+		return { domain, replacesSavedLoginFrom: replacesSavedLoginFrom?.toISOString() };
 	}
 
 	/**
@@ -295,13 +299,6 @@ export class InstanceAiCloudBrowserService {
 				});
 				return id;
 			},
-			findSavedLoginProfileForDomain: async ({ userId }, domain) => {
-				const [context] = await this.aiGatewayBrowserUseService.listSavedContexts({
-					userId,
-					domain,
-				});
-				return context && toLoginProfile(context);
-			},
 			saveLoginProfile: async ({ userId, threadId, taskId }, { id, domain, location }) => {
 				const context = await this.aiGatewayBrowserUseService.saveContext({
 					userId,
@@ -316,8 +313,10 @@ export class InstanceAiCloudBrowserService {
 			},
 			deleteLoginProfile: async ({ userId }, id) =>
 				await this.aiGatewayBrowserUseService.deleteContext({ userId, contextId: id }),
-			listSavedLoginProfiles: async ({ userId }) =>
-				(await this.aiGatewayBrowserUseService.listSavedContexts({ userId })).map(toLoginProfile),
+			listSavedLoginProfiles: async ({ userId }, domain) =>
+				(await this.aiGatewayBrowserUseService.listSavedContexts({ userId, domain })).map(
+					toLoginProfile,
+				),
 		};
 	}
 }
