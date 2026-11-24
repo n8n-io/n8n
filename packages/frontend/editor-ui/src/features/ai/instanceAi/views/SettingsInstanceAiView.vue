@@ -463,9 +463,28 @@ function handleCloudBrowserToggle(value: boolean) {
 	void store.save();
 }
 
-function handleSavedLoginsModeChange(value: InstanceAiSavedLoginsMode) {
+async function handleSavedLoginsModeChange(value: InstanceAiSavedLoginsMode) {
+	if (!(await confirmClearingSavedLoginSites())) return;
 	store.setField('cloudBrowserSavedLoginsMode', value);
 	void store.save();
+}
+
+/** A mode change clears the list of sites, so ask first when it has sites. */
+async function confirmClearingSavedLoginSites(): Promise<boolean> {
+	const count = enteredSavedLoginSites.value.length;
+	if (count === 0) return true;
+	const confirmed = await message.confirm(
+		i18n.baseText('settings.n8nAgent.savedLogins.clearSites.description', {
+			adjustToNumber: count,
+			interpolate: { count: String(count) },
+		}),
+		{
+			title: i18n.baseText('settings.n8nAgent.savedLogins.clearSites.title'),
+			confirmButtonText: i18n.baseText('settings.n8nAgent.savedLogins.clearSites.confirm'),
+			cancelButtonText: i18n.baseText('generic.cancel'),
+		},
+	);
+	return confirmed === MODAL_CONFIRM;
 }
 
 const enteredSavedLoginSites = computed(() =>

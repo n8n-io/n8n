@@ -1143,6 +1143,70 @@ describe('SettingsInstanceAiView', () => {
 				expect(save).toHaveBeenCalled();
 			});
 
+			describe('a mode change with sites in the list', () => {
+				beforeEach(() => {
+					setSavedLogins({
+						cloudBrowserSavedLoginsMode: 'only',
+						cloudBrowserSavedLoginSites: ['github.com', 'gitlab.com'],
+					});
+				});
+
+				it('asks before it clears the sites, then saves the mode', async () => {
+					confirmMock.mockResolvedValue(MODAL_CONFIRM);
+					const setField = vi.spyOn(store, 'setField');
+					const save = vi.spyOn(store, 'save').mockResolvedValue(true);
+					const { getByTestId } = renderComponent();
+					await flushPromises();
+
+					await selectOption(
+						getByTestId('n8n-agent-saved-logins-mode'),
+						'settings.n8nAgent.savedLogins.mode.except',
+					);
+					await flushPromises();
+
+					expect(confirmMock).toHaveBeenCalledWith(
+						'settings.n8nAgent.savedLogins.clearSites.description',
+						expect.objectContaining({
+							title: 'settings.n8nAgent.savedLogins.clearSites.title',
+						}),
+					);
+					expect(setField).toHaveBeenCalledWith('cloudBrowserSavedLoginsMode', 'except');
+					expect(save).toHaveBeenCalled();
+				});
+
+				it('keeps the mode and the sites when the admin cancels', async () => {
+					confirmMock.mockResolvedValue(MODAL_CANCEL);
+					const save = vi.spyOn(store, 'save').mockResolvedValue(true);
+					const { getByTestId } = renderComponent();
+					await flushPromises();
+
+					await selectOption(
+						getByTestId('n8n-agent-saved-logins-mode'),
+						'settings.n8nAgent.savedLogins.mode.except',
+					);
+					await flushPromises();
+
+					expect(save).not.toHaveBeenCalled();
+					expect(getByTestId('n8n-agent-saved-login-sites')).toHaveValue('github.com\ngitlab.com');
+				});
+			});
+
+			it('changes the mode without asking when the list is empty', async () => {
+				setSavedLogins({ cloudBrowserSavedLoginsMode: 'only' });
+				const save = vi.spyOn(store, 'save').mockResolvedValue(true);
+				const { getByTestId } = renderComponent();
+				await flushPromises();
+
+				await selectOption(
+					getByTestId('n8n-agent-saved-logins-mode'),
+					'settings.n8nAgent.savedLogins.mode.all',
+				);
+				await flushPromises();
+
+				expect(confirmMock).not.toHaveBeenCalled();
+				expect(save).toHaveBeenCalled();
+			});
+
 			it('locks the mode when the virtual browser is off', () => {
 				setSavedLogins({ cloudBrowserEnabled: false });
 
@@ -1310,10 +1374,11 @@ describe('SettingsInstanceAiView', () => {
 				it('stays on the page when the save fails', async () => {
 					await renderWithUnsavedSites();
 					confirmMock.mockResolvedValue(MODAL_CONFIRM);
-					vi.spyOn(store, 'save').mockResolvedValue(false);
+					const save = vi.spyOn(store, 'save').mockResolvedValue(false);
 
 					const next = await leave();
 
+					expect(save).toHaveBeenCalledTimes(1);
 					expect(next).toHaveBeenCalledWith(false);
 				});
 
