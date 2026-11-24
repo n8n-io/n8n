@@ -365,10 +365,12 @@ Key points:
   `Outside your access`, and `Cannot be promoted` for Promote, `Needs your action`
   and `Outside your access` for Apply. Promote also lists `Warnings`: references
   to something that does not exist on the source instance. `Other` holds the
-  entries of a group that this CLI version does not know. The output never names
-  the project of a dependency. `list-changes` and `list-apply-changes` print the
+  entries of a group that this CLI version does not know. The output names the
+  project of a dependency only in the group `In another project`, as
+  `in project "<name>"`. `list-changes` and `list-apply-changes` print the
   lists on stderr, after the table. With `--json`, read `missingDependencies` and
-  `warnings` (Promote) or `check.missingDependencies` (Apply) instead.
+  `warnings` (Promote) or `check.missingDependencies` (Apply) instead. There, an
+  entry of the group `other-project` holds the project in `project`.
 - An entry outside your access can be the only cause of a `blocked` Apply. Someone
   with access must add the dependency to the instance. The `Outside your access`
   count of a `blocked` Apply holds only the entries that stop the Apply.

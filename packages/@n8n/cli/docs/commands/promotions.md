@@ -419,7 +419,7 @@ workflow  wf-2  Invoices       added     -       -       true
 
 In another project (1)
 These dependencies are in other projects that you can access. This Promote does not include them.
-  Credential "CRM" (hubspotApi): used by Weekly report, Invoices
+  Credential "CRM" (hubspotApi): in project "Sales"; used by Weekly report, Invoices
 
 Outside your access (1)
 You do not have access to these dependencies.
@@ -512,9 +512,19 @@ These commands list the missing dependencies and the warnings:
 | `list-apply-changes <id>` | The missing dependencies of a whole-instance Apply. |
 | `apply`, `apply-continue`, `apply-selection`, `apply-selection-continue` | The missing dependencies of an Apply that is `blocked`. |
 
-The output never names the project or the owner of a dependency. It shows the
-name, the type, and the workflows that use the dependency. A workflow that does
-not exist, or whose name you can't read, shows its ID as its name.
+The output never names the owner of a dependency. It shows the name, the type,
+and the workflows that use the dependency. A workflow that does not exist, or
+whose name you can't read, shows its ID as its name.
+
+The output names the project of a dependency only in the group
+`In another project`, because you can access that project:
+
+```text
+  Credential "CRM" (hubspotApi): in project "Sales"; used by Weekly report
+```
+
+With `--json`, the entry holds the project in `project`, with its `id` and
+`name`. An entry of another group has no `project`.
 
 The groups are the same as in the n8n UI. Each group shows its count. A group
 without entries is not printed.

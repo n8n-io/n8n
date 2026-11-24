@@ -398,7 +398,24 @@ describe('applyDependencyLines', () => {
 });
 
 describe('the project of a dependency', () => {
-	it('is never in the output, although each consumer carries a project', () => {
+	it('is in the line of an entry that has one, by its name', () => {
+		const lines = promoteDependencyLines(
+			[
+				{ ...OTHER_PROJECT, project: { id: 'proj-sales', name: 'Sales' } },
+				OUTSIDE_ACCESS,
+				PERSONAL,
+			],
+			[],
+		);
+
+		expect(lines).toContain(
+			'  Credential "Billing API" (httpHeaderAuth): in project "Sales"; used by Weekly report',
+		);
+		expect(lines.filter((line) => line.includes('Sales'))).toHaveLength(1);
+		expect(lines.join('\n')).not.toContain('proj-sales');
+	});
+
+	it('is not in the output of an entry without one, although each consumer carries a project', () => {
 		const text = [
 			...promoteDependencyLines([OTHER_PROJECT, OUTSIDE_ACCESS, PERSONAL], [warning()]),
 			...applyDependencyLines([NEEDS_ACTION, { ...OUTSIDE_ACCESS, reason: 'archived' }]),

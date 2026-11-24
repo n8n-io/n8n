@@ -154,8 +154,9 @@ function sectionLines(
 }
 
 /**
- * The output must not show where a dependency is, so a line names no project. That includes the
- * project of each consumer.
+ * A line names the project of a dependency only when the entry has one. The server sends it only
+ * for the group "In another project", where the user can access that project. A line never names
+ * the project of a consumer.
  */
 function entryLine(
 	entry: PromotionMissingDependency | PromotionDependencyWarning,
@@ -171,6 +172,7 @@ function entryLine(
 		workflows.map(({ name }) => name),
 	);
 	const facts = [
+		'project' in entry && entry.project ? `in project "${entry.project.name}"` : undefined,
 		dependency ? applyReason(dependency) : undefined,
 		entry.blocking ? `stops the ${operation}` : undefined,
 		`used by ${listNames(workflowNames)}`,

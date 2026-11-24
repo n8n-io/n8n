@@ -10,7 +10,7 @@ const MAX_LISTED_WORKFLOWS = 3;
 
 export default class PromotionEnvironmentListChanges extends BaseCommand {
 	static override description =
-		'Preview what Promote or Apply changes in a project: its projects, folders, workflows, credentials, data tables, variables and tags. The table lists each changed resource with its ID, so you can select it. Select workflows with --workflow and folders with --folder. Credentials, data tables and variables come with the workflows in USEDBY. After the table, the command lists the missing dependencies of the workflows by group, and for Promote the warnings. It never names the project of a dependency. Use --json for the full preview, including the revision for --expected-preview-revision.';
+		'Preview what Promote or Apply changes in a project: its projects, folders, workflows, credentials, data tables, variables and tags. The table lists each changed resource with its ID, so you can select it. Select workflows with --workflow and folders with --folder. Credentials, data tables and variables come with the workflows in USEDBY. After the table, the command lists the missing dependencies of the workflows by group, and for Promote the warnings. It names the project of a dependency only in the group "In another project". Use --json for the full preview, including the revision for --expected-preview-revision.';
 
 	static override examples = [
 		'<%= config.bin %> promotion-environment list-changes proj-abc promote',
