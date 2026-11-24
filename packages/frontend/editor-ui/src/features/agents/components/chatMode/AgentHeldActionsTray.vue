@@ -17,7 +17,8 @@ import type {
 } from '../../composables/useAgentApi';
 import AgentHeldActionIcon from './AgentHeldActionIcon.vue';
 import {
-	formatActionMeta,
+	actionObject,
+	actionOutcome,
 	formatCommitTime,
 	formatPreviewEntries,
 	type AgentHeldAction,
@@ -94,12 +95,24 @@ const runButtonLabel = computed(() =>
 	}),
 );
 
-const committedBannerText = computed(() =>
-	i18n.baseText('agents.testRun.holdReplay.committedBanner', {
+const doneCountText = computed(() =>
+	i18n.baseText('agents.testRun.holdReplay.doneCount', {
 		adjustToNumber: committedSucceededCount.value,
 		interpolate: { count: committedSucceededCount.value },
 	}),
 );
+
+/** One row per action: `Gmail: email` while held, `Gmail: email sent` once it ran. */
+function actionRowLabel(action: AgentHeldAction): string {
+	const interpolate = { app: action.appName, object: actionObject(action) };
+	const status = actionStatus(action.actionId);
+	if (status !== 'done' && status !== 'already_committed') {
+		return i18n.baseText('agents.testRun.holdReplay.actionRow', { interpolate });
+	}
+	return actionOutcome(action) === 'sent'
+		? i18n.baseText('agents.testRun.holdReplay.actionRowSent', { interpolate })
+		: i18n.baseText('agents.testRun.holdReplay.actionRowSaved', { interpolate });
+}
 
 const doneSummaryText = computed(() =>
 	i18n.baseText('agents.testRun.holdReplay.doneSummary', {
@@ -145,7 +158,7 @@ function onRunClick() {
 							props.committed ? 'agent-held-actions-committed-banner' : 'agent-held-actions-count'
 						"
 					>
-						{{ props.committed ? committedBannerText : onHoldLabel }}
+						{{ props.committed ? doneCountText : onHoldLabel }}
 					</span>
 					<template #suffix>
 						<span :class="$style.appIcons">
@@ -197,10 +210,7 @@ function onRunClick() {
 										<template #prefix>
 											<AgentHeldActionIcon :action="action" :size="16" />
 										</template>
-										<span :class="$style.itemLabel">{{ action.actionLabel }}</span>
-										<span v-if="formatActionMeta(action)" :class="$style.itemMeta">
-											{{ formatActionMeta(action) }}
-										</span>
+										<span :class="$style.itemLabel">{{ actionRowLabel(action) }}</span>
 										<template #suffix>
 											<span
 												v-if="actionStatus(action.actionId) === 'failed'"
@@ -351,11 +361,6 @@ function onRunClick() {
 .itemLabel {
 	color: var(--text-color);
 	font-weight: var(--font-weight--medium);
-}
-
-.itemMeta {
-	margin-inline-start: var(--spacing--2xs);
-	color: var(--text-color--subtle);
 }
 
 .failedTag {
