@@ -158,6 +158,9 @@ export function createEngineRuntime({
 		);
 	}
 	const runs = new Set(roles);
+	if (runs.has('api') && !identityVerifier) {
+		throw new UnexpectedError('The api role needs an identity verifier');
+	}
 
 	// Refused here and not at the first write: an invalid threshold would
 	// otherwise fail every write of a row that becomes `queued` or `running`.
@@ -256,8 +259,7 @@ export function createEngineRuntime({
 	);
 
 	let apiDeps: EngineServerDeps | undefined;
-	if (runs.has('api')) {
-		if (!identityVerifier) throw new UnexpectedError('The api role needs an identity verifier');
+	if (runs.has('api') && identityVerifier) {
 		apiDeps = {
 			startExecution,
 			cancelExecution,
