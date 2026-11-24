@@ -214,7 +214,9 @@ n8n-cli promotion-environment promote-check <promoteId>
 n8n-cli promotion-environment promote <promoteId>
 # Exit 4: the workflows have missing dependencies. Nothing was pushed. The output lists
 # them and shows the same command with --confirm-missing-dependencies. Run that command
-# only when the user accepts to promote without them.
+# only when the user accepts to promote without them. When stdout is not a terminal, the
+# output is JSON with `status: "missing-dependencies"` and no command: see "JSON results"
+# in the key points.
 n8n-cli promotion-environment apply <applyId>
 
 # A project that exists only in the Apply package must exist here before you
@@ -250,14 +252,19 @@ n8n-cli promotion-environment apply <applyId> \
   --expected-environment-id=<source.environmentId> --expected-branch=<source.branchName> \
   --expected-commit-sha=<commitSha> --expected-preview-revision=<revision>
 # Exit 3: the source or this instance changed since the review. Review again.
-# Exit 4, first line "Apply is blocked.": the Apply check found missing bindings, access
+# Exit 4: nothing was imported. With text output (stdout is a terminal, or --format table),
+# the first line on stderr tells the case. When stdout is not a terminal, the output is JSON
+# and stderr is empty: use "JSON results" in the key points to tell the two cases.
+# First line "Apply is blocked.": the Apply check found missing bindings, access
 # requirements, conflicts, or dependencies that stop the Apply. The output lists the missing
 # dependencies by group. Resolve them, then run the apply-continue command that apply printed:
 n8n-cli promotion-environment apply-continue <applyId> \
   --expected-environment-id=<applyId> --expected-branch=<branch> --expected-commit-sha=<full sha>
-# Exit 4, first line "Apply needs a confirmation.": nothing stops the Apply, but dependencies
+# First line "Apply needs a confirmation.": nothing must be resolved, but dependencies
 # stay missing on this instance. The printed apply-continue command has
-# --confirm-missing-dependencies. Run it only when the user accepts to apply without them.
+# --confirm-missing-dependencies, and it keeps the --expected-preview-revision and
+# --confirm-destructive-changes that you passed. Run it only when the user accepts to
+# apply without them.
 # Setting up bindings changes the preview. To continue only with a reviewed preview, run
 # list-apply-changes again and add --expected-preview-revision=<new revision>.
 # To also apply destructive data table changes and delete the team projects that the
@@ -279,9 +286,10 @@ n8n-cli promotion-environment list-changes <projectId> promote --json > preview.
 n8n-cli promotion-environment promote-selection <projectId> -w <workflowId> \
   --expected-preview-revision="$(jq -r .revision preview.json)"
 # Exit 3: the project or its branch changed since the review. Review again.
-# Exit 4: the selected workflows have missing dependencies. Nothing was pushed. To promote
-# without them, add --confirm-missing-dependencies. With --expected-preview-revision, the
-# confirmation covers only the list of that preview.
+# Exit 4 (JSON `status: "missing-dependencies"`): the selected workflows have missing
+# dependencies. Nothing was pushed. To promote without them, add
+# --confirm-missing-dependencies. With --expected-preview-revision, the confirmation covers
+# only the list of that preview.
 
 # Apply only the reviewed selection. Take the source and the revision from the same preview.
 n8n-cli promotion-environment list-changes <projectId> apply --json > preview.json
@@ -364,6 +372,32 @@ Key points:
 - `promote` and `promote-selection` push nothing on exit code `3`
   (`preview-changed`) or `4` (`missing-dependencies`). Only the status `promoted`
   pushed.
+- JSON results. When stdout is not a terminal, these commands print JSON and
+  nothing on stderr: no first line, no list, and no printed command. Each result
+  has the same indented format, and `--jq` works on each, for example
+  `--jq .status`. Pass `--format table` for the text output, or read the JSON:
+  - Promote: `status` is `promoted`, `preview-changed`, or
+    `missing-dependencies`. For `missing-dependencies`, run the same command
+    again with `--confirm-missing-dependencies` when the user accepts to promote
+    without the entries of `missingDependencies`. To confirm exactly the reviewed
+    list, also pass `--expected-preview-revision` with the `revision` from
+    `promote-check <id> --json`, or from `list-changes <projectId> promote --json`
+    for a selection.
+  - Apply: a `blocked` result needs only a confirmation when
+    `check.missingBindings` and `check.accessRequirements` are empty,
+    `check.conflicts` holds no entry other than `destructive-change` and
+    `project-deletion` entries that you confirmed with
+    `--confirm-destructive-changes`, and no entry of `check.missingDependencies`
+    has `blocking: true`. `check.missingProjects` never stops an Apply. Then,
+    when the user accepts to apply without those dependencies, run
+    `apply-continue <id>` (or `apply-selection-continue <projectId>` with the same
+    `-w` and `--folder` flags) with `--expected-environment-id=<environmentId>`,
+    `--expected-branch=<git.branchName>`, `--expected-commit-sha=<git.commitSha>`
+    from the result, and `--confirm-missing-dependencies`. Keep the
+    `--expected-preview-revision` and `--confirm-destructive-changes` that you
+    passed. In every other case, resolve the causes first. A `destructive-change`
+    or `project-deletion` conflict has nothing to resolve: it needs
+    `--confirm-destructive-changes`. Do not add that flag on your own: ask the user.
 - The `--expected-environment-id`, `--expected-branch`, and
   `--expected-commit-sha` flags go together: pass all three or none. The commit
   SHA must be the full SHA. `--expected-preview-revision` is separate. It works
@@ -395,14 +429,16 @@ Key points:
   confirmation, for example a credential that is in a project that you can't access,
   or that the branch does not hold. Apply does not create it. The
   `Outside your access` count of a `blocked` Apply holds only the entries that stop
-  the Apply, so it is `0` when the Apply only needs a confirmation.
+  the Apply. An Apply that only needs a confirmation prints no counts.
 - A conditional entry of `list-changes <projectId> apply` ends with
   `only when the Apply includes <id>` or `only when the Apply does not include <id>`.
   The ID is the ID of the missing sub-workflow or error workflow, not of a
   workflow after `used by`.
 - After a confirmed Promote or Apply, the command exits `0` and lists on stderr the
-  dependencies that are still missing. With `--json`, read `missingDependencies` of
-  the result.
+  dependencies that are still missing: the group titles and the entries, without
+  the group descriptions. With `--json`, read `missingDependencies` of the result.
+- A control character in a name shows as its escape in the lists, for example
+  `\n` for a line break. Each entry is one line.
 - API key scopes for this group are named `promotions:*`:
   - `promotion-provider create`, `update`, `delete`, `list-repositories` and
     `list-branches` need `manageProviders`. `promotion-provider list` and `get`

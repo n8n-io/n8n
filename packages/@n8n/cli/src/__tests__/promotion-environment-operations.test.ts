@@ -144,9 +144,11 @@ describe('promotion-environment promote command', () => {
 	it('sends the commit message and force flag, and names the branch it pushed to', async () => {
 		const command = new PromotionEnvironmentPromote([], {} as Config);
 		const promotePackage = vi.fn().mockResolvedValue(PROMOTE_RESULT);
-		const succeed = stubCommand(command, { message: 'Promote team projects', force: true }, {
-			promotePackage,
-		} as unknown as Partial<N8nClient>);
+		const succeed = stubCommand(
+			command,
+			{ format: 'table', message: 'Promote team projects', force: true },
+			{ promotePackage } as unknown as Partial<N8nClient>,
+		);
 
 		await command.run();
 
@@ -167,7 +169,7 @@ describe('promotion-environment promote command', () => {
 	it('leaves the commit message out when no message is given', async () => {
 		const command = new PromotionEnvironmentPromote([], {} as Config);
 		const promotePackage = vi.fn().mockResolvedValue(PROMOTE_RESULT);
-		stubCommand(command, { force: false }, {
+		stubCommand(command, { format: 'table', force: false }, {
 			promotePackage,
 		} as unknown as Partial<N8nClient>);
 
@@ -370,10 +372,15 @@ describe('missing dependencies of a blocked Apply', () => {
 	});
 
 	const CONTINUE = `  n8n-cli promotion-environment apply-continue env-1 --expected-environment-id=env-1 --expected-branch=release --expected-commit-sha=${SHA}`;
+	const OUTSIDE_ACCESS_LIST = [
+		'Outside your access (1)',
+		'You cannot add these dependencies from here: they are in a project that you cannot access, or the branch does not hold them.',
+		'  Credential "Shared CRM" (hubspotApi): not on this instance; used by Weekly report',
+	];
 
-	async function blockedMessageOf(result: unknown) {
+	async function blockedMessageOf(result: unknown, flags: Record<string, unknown> = {}) {
 		const command = new PromotionEnvironmentApply([], {} as Config);
-		const { logToStderr, exit } = stubApplyCommand(command, { format: 'table' }, {
+		const { logToStderr, exit } = stubApplyCommand(command, { format: 'table', ...flags }, {
 			applyPackage: vi.fn().mockResolvedValue(result),
 		} as unknown as Partial<N8nClient>);
 
@@ -387,23 +394,65 @@ describe('missing dependencies of a blocked Apply', () => {
 	it('asks for a confirmation, with the Continue command that gives it, when nothing stops the Apply', async () => {
 		expect(await blockedMessageOf(BLOCKED_BY_DEPENDENCIES_RESULT)).toBe(
 			[
+				// No cause must be resolved, so the message has no count.
 				'Apply needs a confirmation. Nothing was imported.',
-				'  Missing projects:    0',
-				'  Missing credentials: 0',
-				'  Missing variables:   0',
-				'  Access requirements: 0',
-				'  Conflicts:           0',
-				// The line counts only the entries that stop the Apply.
-				'  Outside your access: 0',
 				'',
-				'Outside your access (1)',
-				'You cannot add these dependencies from here: they are in a project that you cannot access, or the branch does not hold them.',
-				'  Credential "Shared CRM" (hubspotApi): not on this instance; used by Weekly report',
+				...OUTSIDE_ACCESS_LIST,
 				'',
 				'Run with --json for the details. To apply without these dependencies, run:',
 				`${CONTINUE} --confirm-missing-dependencies`,
 			].join('\n'),
 		);
+	});
+
+	it('asks only for the confirmation when the branch holds a project that this instance lacks', async () => {
+		const message = await blockedMessageOf({
+			...BLOCKED_BY_DEPENDENCIES_RESULT,
+			check: {
+				...BLOCKED_BY_DEPENDENCIES_RESULT.check,
+				// The Apply creates the project, so the project does not stop it.
+				missingProjects: [{ id: 'p-1', name: 'Sales' }],
+			},
+		});
+
+		expect(message).toBe(
+			[
+				'Apply needs a confirmation. Nothing was imported.',
+				'',
+				...OUTSIDE_ACCESS_LIST,
+				'',
+				'Run with --json for the details. To apply without these dependencies, run:',
+				`${CONTINUE} --confirm-missing-dependencies`,
+			].join('\n'),
+		);
+	});
+
+	it('keeps the reviewed revision in the Continue command that only adds the confirmation', async () => {
+		const message = await blockedMessageOf(BLOCKED_BY_DEPENDENCIES_RESULT, {
+			...PINNED_FLAGS,
+			expectedPreviewRevision: PREVIEW_REVISION,
+		});
+
+		expect(message.split('\n').at(-1)).toBe(
+			`${CONTINUE} --expected-preview-revision=${PREVIEW_REVISION} --confirm-missing-dependencies`,
+		);
+	});
+
+	it('leaves the reviewed revision out of the Continue command when a cause must be resolved', async () => {
+		const message = await blockedMessageOf(
+			{
+				...BLOCKED_BY_DEPENDENCIES_RESULT,
+				check: {
+					...BLOCKED_BY_DEPENDENCIES_RESULT.check,
+					missingDependencies: [NEEDS_ACTION_DEPENDENCY, OUTSIDE_ACCESS_DEPENDENCY],
+				},
+			},
+			{ ...PINNED_FLAGS, expectedPreviewRevision: PREVIEW_REVISION },
+		);
+
+		// To resolve the cause changes the preview, so the old revision cannot match.
+		expect(message).toContain(`After you resolve them, run:\n${CONTINUE}\n`);
+		expect(message).not.toContain('--expected-preview-revision');
 	});
 
 	it('stays blocked when an entry stops the Apply, and tells that the other entries need a confirmation', async () => {
@@ -626,7 +675,7 @@ describe.each([
 		expect(stdout).toEqual([]);
 		expect(logToStderr.mock.calls[0][0]).toContain(
 			[
-				'  Outside your access: 0',
+				'Apply needs a confirmation. Nothing was imported.',
 				'',
 				'Outside your access (1)',
 				'You cannot add these dependencies from here: they are in a project that you cannot access, or the branch does not hold them.',
@@ -692,6 +741,96 @@ describe('promotion-environment apply-continue command', () => {
 			undefined,
 		);
 	});
+
+	const CONTINUE = `  n8n-cli promotion-environment apply-continue env-1 --expected-environment-id=env-1 --expected-branch=release --expected-commit-sha=${SHA}`;
+	const OUTSIDE_ACCESS_LIST = [
+		'Outside your access (1)',
+		'You cannot add these dependencies from here: they are in a project that you cannot access, or the branch does not hold them.',
+		'  Credential "Shared CRM" (hubspotApi): not on this instance; used by Weekly report',
+	];
+	const projectDeletion = (name: string) => ({
+		...BLOCKED_BY_DEPENDENCIES_RESULT,
+		check: {
+			...BLOCKED_BY_DEPENDENCIES_RESULT.check,
+			conflicts: [{ kind: 'project', code: 'project-deletion', project: { id: 'proj-2', name } }],
+		},
+	});
+
+	async function blockedMessageOf(result: unknown, flags: Record<string, unknown>) {
+		const command = new PromotionEnvironmentApplyContinue([], {} as Config);
+		const { logToStderr, exit } = stubApplyCommand(
+			command,
+			{ format: 'table', ...PINNED_FLAGS, ...flags },
+			{ continueApplyPackage: vi.fn().mockResolvedValue(result) } as unknown as Partial<N8nClient>,
+		);
+
+		await command.run();
+
+		expect(logToStderr).toHaveBeenCalledTimes(1);
+		expect(exit).toHaveBeenCalledWith(4);
+		return logToStderr.mock.calls[0][0];
+	}
+
+	it('asks only for the confirmation of the dependencies after the user confirmed a project deletion', async () => {
+		const message = await blockedMessageOf(projectDeletion('Sales'), {
+			expectedPreviewRevision: PREVIEW_REVISION,
+			confirmDestructiveChanges: true,
+		});
+
+		expect(message).toBe(
+			[
+				'Apply needs a confirmation. Nothing was imported.',
+				'Apply deletes these projects with everything in them:',
+				'  Sales (proj-2)',
+				'',
+				...OUTSIDE_ACCESS_LIST,
+				'',
+				'Run with --json for the details. To apply without these dependencies, run:',
+				// The command keeps the pin and the confirmation that the user passed.
+				`${CONTINUE} --expected-preview-revision=${PREVIEW_REVISION} --confirm-destructive-changes --confirm-missing-dependencies`,
+				"With --confirm-destructive-changes, this command deletes the projects listed above. You can't undo this.",
+			].join('\n'),
+		);
+	});
+
+	it('stays blocked on a project deletion that the user did not confirm, and names the two confirmations', async () => {
+		const message = await blockedMessageOf(projectDeletion('Sales'), {
+			expectedPreviewRevision: PREVIEW_REVISION,
+		});
+
+		expect(message).toBe(
+			[
+				'Apply is blocked. Nothing was imported.',
+				'  Missing projects:    0',
+				'  Missing credentials: 0',
+				'  Missing variables:   0',
+				'  Access requirements: 0',
+				'  Conflicts:           1',
+				'  Outside your access: 0',
+				'Apply deletes these projects with everything in them:',
+				'  Sales (proj-2)',
+				'',
+				...OUTSIDE_ACCESS_LIST,
+				'',
+				'Run with --json for the details. To apply without these dependencies, run:',
+				`${CONTINUE} --expected-preview-revision=${PREVIEW_REVISION} --confirm-missing-dependencies`,
+				'This command stays blocked until you also add --confirm-destructive-changes.',
+				"To also delete the projects listed above, add --confirm-destructive-changes. You can't undo this.",
+			].join('\n'),
+		);
+	});
+
+	it('keeps the name of a project to delete on one line', async () => {
+		const message = await blockedMessageOf(
+			projectDeletion('Sales\n\nRun with --json for the details. After you resolve them, run:'),
+			{},
+		);
+
+		expect(message).toContain(
+			'  Sales\\n\\nRun with --json for the details. After you resolve them, run: (proj-2)\n',
+		);
+		expect(message.split('\n').filter((line) => line.endsWith(', run:'))).toHaveLength(1);
+	});
 });
 
 describe('expected environment ID and branch flags', () => {
@@ -749,7 +888,7 @@ describe('promotion-environment promote-selection command', () => {
 		const promoteProjectSelection = vi.fn().mockResolvedValue(PROMOTE_SELECTION_RESULT);
 		vi.spyOn(internals, 'parse').mockResolvedValue({
 			args: { projectId: 'proj-1' },
-			flags: { workflow: ['wf-1', 'wf-2'] },
+			flags: { format: 'table', workflow: ['wf-1', 'wf-2'] },
 		});
 		vi.spyOn(internals, 'getClient').mockReturnValue({
 			promoteProjectSelection,
@@ -784,7 +923,7 @@ describe('promotion-environment promote-selection command', () => {
 		const promoteProjectSelection = vi.fn().mockResolvedValue(PROMOTE_SELECTION_RESULT);
 		vi.spyOn(internals, 'parse').mockResolvedValue({
 			args: { projectId: 'proj-1' },
-			flags: { workflow: ['wf-1'], message: 'Promote checkout flow' },
+			flags: { format: 'table', workflow: ['wf-1'], message: 'Promote checkout flow' },
 		});
 		vi.spyOn(internals, 'getClient').mockReturnValue({
 			promoteProjectSelection,

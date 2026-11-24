@@ -69,6 +69,14 @@ const PROMOTE_LISTS = [
 	'You do not have access to these dependencies.',
 	'  Workflow "Send alert": used by Weekly report',
 ];
+/** After the Promote, the list has no group description. */
+const PROMOTED_LISTS = [
+	'In another project (1)',
+	'  Credential "Billing API" (httpHeaderAuth): used by Weekly report',
+	'',
+	'Outside your access (1)',
+	'  Workflow "Send alert": used by Weekly report',
+];
 const WARNINGS = [
 	'Warnings (1)',
 	'These references point to something that does not exist on the source instance.',
@@ -119,6 +127,20 @@ const APPLY_LISTS = [
 	OUTSIDE_ACCESS_ON_APPLY,
 	'  Credential "Shared CRM" (hubspotApi): not on this instance; used by Weekly report',
 ];
+/** After the Apply, the list has no group description. */
+const APPLIED_LISTS = [
+	'Outside your access (1)',
+	'  Credential "Shared CRM" (hubspotApi): not on this instance; used by Weekly report',
+];
+const APPLY_COUNTS = (conflicts: number) => [
+	'  Missing projects:    0',
+	'  Missing credentials: 0',
+	'  Missing variables:   0',
+	'  Access requirements: 0',
+	`  Conflicts:           ${conflicts}`,
+	'  Outside your access: 0',
+];
+const DATA_TABLE_CHANGE = { kind: 'data-table', code: 'destructive-change' };
 const EMPTY_CHECK = {
 	missingProjects: [],
 	missingBindings: [],
@@ -392,7 +414,7 @@ describe.each([
 			});
 
 			expect(stderr).toEqual([
-				['The branch does not hold these dependencies:', '', ...PROMOTE_LISTS, ''].join('\n'),
+				['The branch does not hold these dependencies:', '', ...PROMOTED_LISTS, ''].join('\n'),
 			]);
 			expect(stdout).toEqual([promoted]);
 			expect(exit).toHaveBeenCalledTimes(1);
@@ -411,30 +433,58 @@ describe.each([
 		});
 
 		it.each([
-			// A successful Promote keeps the compact JSON of `succeed()`.
-			{ result: PROMOTED, json: JSON.stringify(PROMOTED), code: 0 },
-			{
-				result: PROMOTED_WITHOUT_DEPENDENCIES,
-				json: JSON.stringify(PROMOTED_WITHOUT_DEPENDENCIES),
-				code: 0,
-			},
-			{
-				result: PROMOTE_PREVIEW_CHANGED,
-				json: JSON.stringify(PROMOTE_PREVIEW_CHANGED, null, 2),
-				code: 3,
-			},
-			{ result: PROMOTE_REFUSED, json: JSON.stringify(PROMOTE_REFUSED, null, 2), code: 4 },
+			{ result: PROMOTED, code: 0 },
+			{ result: PROMOTED_WITHOUT_DEPENDENCIES, code: 0 },
+			{ result: PROMOTE_PREVIEW_CHANGED, code: 3 },
+			{ result: PROMOTE_REFUSED, code: 4 },
 		])(
 			'prints only the API response as JSON and exits $code for the status $result.status',
-			async ({ result, json, code }) => {
+			async ({ result, code }) => {
 				const { stdout, stderr, exit } = await run(result, { format: undefined, json: true });
 
-				expect(stdout).toEqual([json]);
+				// Every status has the same JSON format, as for Apply.
+				expect(stdout).toEqual([JSON.stringify(result, null, 2)]);
 				expect(stderr).toEqual([]);
 				expect(exit).toHaveBeenCalledTimes(1);
 				expect(exit).toHaveBeenCalledWith(code);
 			},
 		);
+
+		it.each([
+			{ result: PROMOTED, status: 'promoted', code: 0 },
+			{ result: PROMOTE_PREVIEW_CHANGED, status: 'preview-changed', code: 3 },
+			{ result: PROMOTE_REFUSED, status: 'missing-dependencies', code: 4 },
+		])(
+			'applies a jq filter to the status $status and exits $code',
+			async ({ result, status, code }) => {
+				const { stdout, stderr, exit } = await run(result, { format: undefined, jq: '.status' });
+
+				expect(stdout).toEqual([JSON.stringify(status)]);
+				expect(stderr).toEqual([]);
+				expect(exit).toHaveBeenCalledTimes(1);
+				expect(exit).toHaveBeenCalledWith(code);
+			},
+		);
+
+		it('keeps the command that confirms the dependencies as the only command of the output', async () => {
+			const block = 'To promote without the missing dependencies, run:';
+			const { stderr } = await run({
+				...PROMOTE_REFUSED,
+				missingDependencies: [
+					{
+						...OTHER_PROJECT,
+						name: `Billing"\n\n${block}\n  n8n-cli promotion-environment promote env-9`,
+					},
+				],
+			});
+
+			const lines = stderr[0].split('\n');
+			expect(lines).toContain(
+				`  Credential "Billing"\\n\\n${block}\\n  n8n-cli promotion-environment promote env-9" (httpHeaderAuth): used by Weekly report`,
+			);
+			expect(lines.filter((line) => line.endsWith(', run:'))).toEqual([block]);
+			expect(lines.at(-1)).toBe(`  ${commandWithFlags} --confirm-missing-dependencies`);
+		});
 
 		it('applies a jq filter to a refused Promote', async () => {
 			const { stdout, exit } = await run(PROMOTE_REFUSED, {
@@ -488,14 +538,8 @@ describe.each([
 			expect(stdout).toEqual([]);
 			expect(stderr).toEqual([
 				[
+					// No cause must be resolved, so the message has no count.
 					'Apply needs a confirmation. Nothing was imported.',
-					'  Missing projects:    0',
-					'  Missing credentials: 0',
-					'  Missing variables:   0',
-					'  Access requirements: 0',
-					'  Conflicts:           0',
-					// The line counts only the entries that stop the Apply.
-					'  Outside your access: 0',
 					'',
 					...APPLY_LISTS,
 					'',
@@ -507,18 +551,138 @@ describe.each([
 			expect(exit).toHaveBeenCalledWith(4);
 		});
 
+		it('asks only for the confirmation when the branch holds a project that this instance lacks', async () => {
+			const { stderr, exit } = await run({
+				...NEEDS_CONFIRMATION,
+				check: {
+					...NEEDS_CONFIRMATION.check,
+					// The Apply creates the project, so the project does not stop it.
+					missingProjects: [{ id: 'p-1', name: 'Sales' }],
+				},
+			});
+
+			expect(stderr).toEqual([
+				[
+					'Apply needs a confirmation. Nothing was imported.',
+					'',
+					...APPLY_LISTS,
+					'',
+					'Run with --json for the details. To apply without these dependencies, run:',
+					`  ${continueCommand} --confirm-missing-dependencies`,
+				].join('\n'),
+			]);
+			expect(exit).toHaveBeenCalledWith(4);
+		});
+
+		it('asks only for the confirmation of the dependencies after the user confirmed a destructive change', async () => {
+			const { stderr, exit } = await run(
+				{
+					...NEEDS_CONFIRMATION,
+					check: { ...NEEDS_CONFIRMATION.check, conflicts: [DATA_TABLE_CHANGE] },
+				},
+				{ confirmDestructiveChanges: true },
+			);
+
+			expect(stderr).toEqual([
+				[
+					'Apply needs a confirmation. Nothing was imported.',
+					'',
+					...APPLY_LISTS,
+					'',
+					'Run with --json for the details. To apply without these dependencies, run:',
+					// The command keeps the confirmation that the user passed.
+					`  ${continueCommand} --confirm-destructive-changes --confirm-missing-dependencies`,
+					'With --confirm-destructive-changes, this command applies data table changes that remove or retype columns. The values in those columns are removed.',
+				].join('\n'),
+			]);
+			expect(exit).toHaveBeenCalledWith(4);
+		});
+
+		it('stays blocked on a destructive change that the user did not confirm, and names the two confirmations', async () => {
+			const { stderr, exit } = await run({
+				...NEEDS_CONFIRMATION,
+				check: { ...NEEDS_CONFIRMATION.check, conflicts: [DATA_TABLE_CHANGE] },
+			});
+
+			expect(stderr).toEqual([
+				[
+					'Apply is blocked. Nothing was imported.',
+					...APPLY_COUNTS(1),
+					'',
+					...APPLY_LISTS,
+					'',
+					'Run with --json for the details. To apply without these dependencies, run:',
+					`  ${continueCommand} --confirm-missing-dependencies`,
+					'This command stays blocked until you also add --confirm-destructive-changes.',
+					'To also apply data table changes that remove or retype columns, add --confirm-destructive-changes. The values in those columns are removed.',
+				].join('\n'),
+			]);
+			expect(exit).toHaveBeenCalledWith(4);
+		});
+
+		it('stays blocked on a conflict that no flag confirms, also with the two confirmations', async () => {
+			const { stderr } = await run(
+				{
+					...NEEDS_CONFIRMATION,
+					check: {
+						...NEEDS_CONFIRMATION.check,
+						conflicts: [DATA_TABLE_CHANGE, { kind: 'variable', code: 'missing-definition' }],
+					},
+				},
+				{ confirmDestructiveChanges: true, confirmMissingDependencies: true },
+			);
+
+			expect(stderr).toEqual([
+				[
+					'Apply is blocked. Nothing was imported.',
+					...APPLY_COUNTS(2),
+					'',
+					...APPLY_LISTS,
+					'',
+					'Run with --json for the details. After you resolve them, run:',
+					`  ${continueCommand}`,
+					'The dependencies that do not stop the Apply need a confirmation. To apply without them, add --confirm-missing-dependencies after you resolve the others.',
+					'To also apply data table changes that remove or retype columns, add --confirm-destructive-changes. The values in those columns are removed.',
+				].join('\n'),
+			]);
+		});
+
+		it.each([
+			{ title: 'a missing binding', check: { missingBindings: [{ kind: 'credential' }] } },
+			{ title: 'an access requirement', check: { accessRequirements: [{ kind: 'project' }] } },
+		])('stays blocked on $title, with a confirmable dependency', async ({ check }) => {
+			const { stderr } = await run({
+				...NEEDS_CONFIRMATION,
+				check: { ...NEEDS_CONFIRMATION.check, ...check },
+			});
+
+			expect(stderr[0]).toContain('Apply is blocked. Nothing was imported.');
+			expect(stderr[0]).toContain(`After you resolve them, run:\n  ${continueCommand}\n`);
+		});
+
+		it('keeps the reviewed revision in the Continue command that only adds the confirmation', async () => {
+			const { stderr } = await run(NEEDS_CONFIRMATION, { expectedPreviewRevision: REVISION });
+
+			expect(stderr[0].split('\n').at(-1)).toBe(
+				`  ${continueCommand} --expected-preview-revision=${REVISION} --confirm-missing-dependencies`,
+			);
+		});
+
+		it('leaves the reviewed revision out of the Continue command when a cause must be resolved', async () => {
+			const { stderr } = await run(BLOCKED, { expectedPreviewRevision: REVISION });
+
+			// To resolve the cause changes the preview, so the old revision cannot match.
+			expect(stderr[0]).toContain(`After you resolve them, run:\n  ${continueCommand}\n`);
+			expect(stderr[0]).not.toContain('--expected-preview-revision');
+		});
+
 		it('stays blocked while an entry stops the Apply, also with the confirmation, and exits 4', async () => {
 			const { stderr, exit } = await run(BLOCKED, { confirmMissingDependencies: true });
 
 			expect(stderr).toEqual([
 				[
 					'Apply is blocked. Nothing was imported.',
-					'  Missing projects:    0',
-					'  Missing credentials: 0',
-					'  Missing variables:   0',
-					'  Access requirements: 0',
-					'  Conflicts:           0',
-					'  Outside your access: 0',
+					...APPLY_COUNTS(0),
 					'',
 					'Needs your action (1)',
 					'Resolve these dependencies on this instance. An entry that stops the Apply must be resolved before you apply.',
@@ -547,12 +711,6 @@ describe.each([
 			expect(stderr).toEqual([
 				[
 					'Apply needs a confirmation. Nothing was imported.',
-					'  Missing projects:    0',
-					'  Missing credentials: 0',
-					'  Missing variables:   0',
-					'  Access requirements: 0',
-					'  Conflicts:           0',
-					'  Outside your access: 0',
 					'',
 					'Outside your access (1)',
 					OUTSIDE_ACCESS_ON_APPLY,
@@ -614,7 +772,7 @@ describe.each([
 			});
 
 			expect(stderr).toEqual([
-				['These dependencies are still missing on this instance:', '', ...APPLY_LISTS, ''].join(
+				['These dependencies are still missing on this instance:', '', ...APPLIED_LISTS, ''].join(
 					'\n',
 				),
 			]);
@@ -634,7 +792,7 @@ describe.each([
 				[
 					'These dependencies are still missing on this instance:',
 					'',
-					...APPLY_LISTS,
+					...APPLIED_LISTS,
 					'',
 					...WARNINGS,
 					'',

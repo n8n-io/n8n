@@ -551,7 +551,9 @@ With `--json`, the entry holds the project in `project`, with its `id` and
 `name`. An entry of another group has no `project`.
 
 The groups are the same as in the n8n UI. Each group shows its count. A group
-without entries is not printed.
+without entries is not printed. Before the operation, each group also shows a
+description line that tells what to do. The list after a confirmed Promote or
+Apply has no such line. `Warnings` always keeps its line.
 
 | Group | Operation | Meaning |
 |-------|-----------|---------|
@@ -572,7 +574,9 @@ Each line shows one entry:
 - The type: `Credential`, `Variable`, or `Workflow`. A sub-workflow and an error
   workflow are both `Workflow`. A type that this version of the CLI does not
   know shows as the server sent it.
-- The name, and for a credential its credential type.
+- The name, and for a credential its credential type. A control character in a
+  name, a credential type, or a workflow name shows as its escape, for example
+  `\n` for a line break. Thus each entry stays on one line.
 - For Apply, the reason. See the table below.
 - `stops the Apply` when the Apply stops on the entry: resolve it first. Without
   it, the Apply continues without the dependency when you confirm. Nothing stops
@@ -629,10 +633,13 @@ get the table and the lists there too. `--format id-only` prints the IDs in
 place of the table, and keeps the lists. `--format json` gives JSON. `--json`
 and `--jq` give JSON too, also when you pass another `--format`.
 
-With JSON, each command prints the API response and no list. The response holds
-the same entries: `missingDependencies` and `warnings` for Promote, and
+With JSON, each command prints the API response and no list. Nothing goes to
+stderr: no first line and no command to run. The response holds the same
+entries: `missingDependencies` and `warnings` for Promote, and
 `check.missingDependencies` for Apply. A `promoted` or `applied` result holds
-the confirmed entries in `missingDependencies`.
+the confirmed entries in `missingDependencies`. Each result of a Promote or an
+Apply has the same indented JSON format, and `--jq` works on each of them, for
+example `--jq .status`. See [Read the JSON result](#read-the-json-result).
 
 With `--quiet`, `list-changes`, `list-apply-changes`, and `promote-check` print
 nothing: no table, no list, and no JSON. An Apply that is `blocked` and a
@@ -706,8 +713,57 @@ if [ "$(jq -r .status result.json)" = "blocked" ]; then
     --expected-branch="$(jq -r .git.branchName result.json)" \
     --expected-commit-sha="$(jq -r .git.commitSha result.json)" \
     --confirm-missing-dependencies
-  # Exit 0: applied. Exit 4: an entry that stops the Apply remains. Resolve it first.
+  # Exit 0: applied. Exit 4: a cause that the confirmation does not cover remains.
 fi
+```
+
+### Read the JSON result
+
+When stdout is not a terminal, the CLI prints JSON and nothing on stderr. A
+script or an agent has no first line to read and no printed command to run. Use
+the JSON result.
+
+Promote (`promote`, `promote-selection`): read `status`.
+
+| `status` | Exit code | What to do |
+|----------|-----------|------------|
+| `promoted` | `0` | Nothing. The branch has the commit `git.commitSha`. |
+| `preview-changed` | `3` | Review again, then promote with the new revision. |
+| `missing-dependencies` | `4` | Run the same command again with `--confirm-missing-dependencies`. To confirm exactly the list that was reviewed, also pass `--expected-preview-revision` with the `revision` of `promote-check <id> --json`, or of `list-changes <projectId> promote --json` for a selection. |
+
+Apply (`apply`, `apply-continue`, `apply-selection`, `apply-selection-continue`):
+a `blocked` result needs only a confirmation when all of these are true:
+
+- `check.missingBindings` is empty.
+- `check.accessRequirements` is empty.
+- `check.conflicts` is empty, or it holds only `destructive-change` and
+  `project-deletion` entries, and you passed `--confirm-destructive-changes`.
+- No entry of `check.missingDependencies` has `blocking: true`.
+
+`check.missingProjects` never stops an Apply. Then run the Continue command of
+the same kind (`apply-continue <id>`, or `apply-selection-continue <projectId>`
+with the same `-w` and `--folder` flags). Build its flags from the result:
+
+| Flag | Value |
+|------|-------|
+| `--expected-environment-id` | `environmentId` |
+| `--expected-branch` | `git.branchName` |
+| `--expected-commit-sha` | `git.commitSha` |
+| `--confirm-missing-dependencies` | No value. |
+
+Keep the `--expected-preview-revision` and `--confirm-destructive-changes`
+flags that you passed. When one condition is false, resolve that cause first.
+When `check.conflicts` holds only `destructive-change` and `project-deletion`
+entries and you did not pass `--confirm-destructive-changes`, nothing must be
+resolved, but the Apply needs that flag too.
+
+```bash
+# True when a blocked Apply without --confirm-destructive-changes needs only the confirmation.
+jq -e '.status == "blocked"
+  and (.check.missingBindings | length) == 0
+  and (.check.accessRequirements | length) == 0
+  and (.check.conflicts | length) == 0
+  and ((.check.missingDependencies // []) | any(.blocking) | not)' result.json
 ```
 
 ## `promotion-environment promote-selection`
@@ -766,23 +822,24 @@ To promote without the missing dependencies, run:
 ```
 
 A confirmed Promote exits `0`. It lists on stderr the dependencies that it left
-out, and prints the success line on stdout:
+out, without the description lines of the groups, and prints the success line
+on stdout:
 
 ```text
 The branch does not hold these dependencies:
 
 In another project (1)
-These dependencies are in other projects that you can access. This Promote does not include them.
   Credential "Billing API" (httpHeaderAuth): used by Weekly report, Invoices
 
 Outside your access (1)
-You do not have access to these dependencies.
   Workflow "Send alert": used by Weekly report
 
 Promoted selection to main as commit 4f2a9c1d.
 ```
 
-With `--json`, the output is the API response for each result, and no list.
+With `--json`, the output is the API response for each result, and no list. A
+`promoted` result has the same indented format as the other results, and `--jq`
+works on it.
 
 The project's own details (name, icon, description, and telemetry tags) are
 always pushed. Without `-w` and `--folder`, the command promotes only the
@@ -828,8 +885,9 @@ instance still matches the preview that you reviewed.
 | `preview-changed` | `3` | Only with `--expected-preview-revision`: the Apply preview changed since you reviewed it, because this instance or the branch changed. Nothing was imported. Review the changes again. |
 | `blocked` | `4` | The Apply check found missing bindings, access requirements, or conflicts, or missing dependencies that stop the Apply or that need a confirmation. A conflict can be a destructive data table change or a project deletion. Nothing was imported. The output shows the `apply-continue` command to run. |
 
-A `blocked` Apply prints the count of each cause, and then the
-[missing dependencies](#missing-dependencies) by group. `Outside your access`
+A `blocked` Apply with a cause that you must resolve prints the count of each
+cause, and then the [missing dependencies](#missing-dependencies) by group. An
+Apply that only needs a confirmation prints no counts. `Outside your access`
 counts the dependencies that stop the Apply and that you can't resolve from
 here: a credential that exists on this instance, that the project of the
 workflow can't use, and that you can't access. Such a dependency is in no other
@@ -840,13 +898,22 @@ group below the counts shows the count of all its entries.
 
 The first line tells which case you have:
 
-- `Apply is blocked.` An entry stops the Apply. Resolve the missing bindings,
+- `Apply is blocked.` A cause stops the Apply. Resolve the missing bindings,
   access requirements, and conflicts, and each dependency with
-  `stops the Apply`. Then run the `apply-continue` command of the output.
-- `Apply needs a confirmation.` Nothing stops the Apply, but dependencies stay
+  `stops the Apply`. Then run the `apply-continue` command of the output. That
+  command has no `--expected-preview-revision`, because the preview changes
+  when you resolve a cause.
+- `Apply needs a confirmation.` Nothing must be resolved, but dependencies stay
   missing. The output shows the `apply-continue` command with
-  `--confirm-missing-dependencies`. See
+  `--confirm-missing-dependencies`. The command keeps the
+  `--expected-preview-revision` and `--confirm-destructive-changes` flags that
+  you passed, so the confirmation covers the list that you read. See
   [Confirm missing dependencies](#confirm-missing-dependencies).
+
+A project that the branch holds and that this instance does not have does not
+stop the Apply. A destructive data table change or a project deletion does not
+stop it when you passed `--confirm-destructive-changes`. Without that flag, the
+first line is `Apply is blocked.`: see the last example of this section.
 
 ```text
 Apply is blocked. Nothing was imported.
@@ -875,12 +942,6 @@ An Apply that only needs a confirmation:
 
 ```text
 Apply needs a confirmation. Nothing was imported.
-  Missing projects:    0
-  Missing credentials: 0
-  Missing variables:   0
-  Access requirements: 0
-  Conflicts:           0
-  Outside your access: 0
 
 Needs your action (1)
 Resolve these dependencies on this instance. An entry that stops the Apply must be resolved before you apply.
@@ -895,22 +956,62 @@ Run with --json for the details. To apply without these dependencies, run:
 ```
 
 An Apply that you confirmed exits `0`. It lists on stderr the dependencies that
-are still missing on this instance, and prints the success line on stdout. The
-list also holds a `Warnings` group for the references that were already missing
-on the source instance.
+are still missing on this instance, without the description lines of the
+groups, and prints the success line on stdout. The list also holds a `Warnings`
+group for the references that were already missing on the source instance.
 
 ```text
 These dependencies are still missing on this instance:
 
 Needs your action (1)
-Resolve these dependencies on this instance. An entry that stops the Apply must be resolved before you apply.
   Workflow "Send alert": archived on this instance; used by Weekly report
+
+Outside your access (1)
+  Credential "Shared CRM" (hubspotApi): not on this instance; used by Invoices
+
+Applied main at commit <full sha> to the instance.
+```
+
+An `apply-continue` with `--confirm-destructive-changes`, when the only other
+cause is a dependency that needs a confirmation:
+
+```text
+Apply needs a confirmation. Nothing was imported.
+Apply deletes these projects with everything in them:
+  Sales (proj-2)
 
 Outside your access (1)
 You cannot add these dependencies from here: they are in a project that you cannot access, or the branch does not hold them.
   Credential "Shared CRM" (hubspotApi): not on this instance; used by Invoices
 
-Applied main at commit <full sha> to the instance.
+Run with --json for the details. To apply without these dependencies, run:
+  n8n-cli promotion-environment apply-continue env-2 --expected-environment-id=env-2 --expected-branch=main --expected-commit-sha=<full sha> --expected-preview-revision=<revision> --confirm-destructive-changes --confirm-missing-dependencies
+With --confirm-destructive-changes, this command deletes the projects listed above. You can't undo this.
+```
+
+The same Apply without `--confirm-destructive-changes` needs the two
+confirmations. The CLI never adds `--confirm-destructive-changes` to a command
+on its own:
+
+```text
+Apply is blocked. Nothing was imported.
+  Missing projects:    0
+  Missing credentials: 0
+  Missing variables:   0
+  Access requirements: 0
+  Conflicts:           1
+  Outside your access: 0
+Apply deletes these projects with everything in them:
+  Sales (proj-2)
+
+Outside your access (1)
+You cannot add these dependencies from here: they are in a project that you cannot access, or the branch does not hold them.
+  Credential "Shared CRM" (hubspotApi): not on this instance; used by Invoices
+
+Run with --json for the details. To apply without these dependencies, run:
+  n8n-cli promotion-environment apply-continue env-2 --expected-environment-id=env-2 --expected-branch=main --expected-commit-sha=<full sha> --expected-preview-revision=<revision> --confirm-missing-dependencies
+This command stays blocked until you also add --confirm-destructive-changes.
+To also delete the projects listed above, add --confirm-destructive-changes. You can't undo this.
 ```
 
 With `--json`, the output is the full result for each status. For `blocked`, the
@@ -958,7 +1059,8 @@ server keeps no session, so run the command again when it exits `4`.
 Setting up bindings changes the preview, so an earlier
 `--expected-preview-revision` no longer matches. To continue only with a preview
 that you reviewed, run `list-apply-changes env-2 --json` again and pass its new
-`revision`.
+`revision`. When the Apply only needs a confirmation, you set up nothing, so the
+preview is the same: the printed command keeps the revision that you passed.
 
 Add `--confirm-destructive-changes` to also apply destructive data table
 changes and delete projects:
@@ -998,9 +1100,11 @@ n8n-cli promotion-environment apply env-2 \
 #    "Apply is blocked.": resolve the missing bindings, access requirements, and conflicts,
 #    and each dependency with "stops the Apply". Then run the apply-continue command that
 #    step 2 printed.
-#    "Apply needs a confirmation.": nothing stops the Apply, but dependencies stay missing.
+#    "Apply needs a confirmation.": nothing must be resolved, but dependencies stay missing.
 #    To apply without them, run the apply-continue command that step 2 printed. It has
-#    --confirm-missing-dependencies.
+#    --confirm-missing-dependencies and the revision from step 1.
+#    These lines are on stderr when stdout is a terminal. In a script, read the JSON result:
+#    see "Read the JSON result".
 ```
 
 ## `promotion-environment apply-selection`
@@ -1047,7 +1151,8 @@ the `apply-selection-continue` command to run after you resolve the bindings; it
 resends the same selection. It also shows the
 [missing dependencies](#missing-dependencies) by group, as `apply` does. When
 the Apply only needs a confirmation, that command has
-`--confirm-missing-dependencies`. With
+`--confirm-missing-dependencies`, and it keeps the
+`--expected-preview-revision` that you passed. With
 `--json`, the output is the full result for each status.
 
 The API key needs `promotions:apply`. The environment is the project's own
@@ -1072,7 +1177,8 @@ Resend the same `-w` and `--folder` flags. The three `--expected-environment-id`
 reported. Setting up bindings changes the preview, so an earlier
 `--expected-preview-revision` no longer matches. To apply only a preview that you
 reviewed, run `list-changes proj-abc apply --json` again and pass its new
-`revision`. The command runs the Apply check again. The results and exit codes are
+`revision`. When the Apply only needs a confirmation, the preview is the same,
+and the printed command keeps the revision that you passed. The command runs the Apply check again. The results and exit codes are
 the same as for `apply-selection`. The server keeps no session, so run the
 command again when it exits `4`.
 

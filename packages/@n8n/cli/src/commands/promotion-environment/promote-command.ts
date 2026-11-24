@@ -1,6 +1,6 @@
 import { shellQuote, type ReportFlags } from './apply-command';
 import { promoteDependencyLines } from './missing-dependencies';
-import { BaseCommand, EXIT_BLOCKED, EXIT_SOURCE_CHANGED } from '../../base-command';
+import { BaseCommand, EXIT_BLOCKED, EXIT_SOURCE_CHANGED, EXIT_SUCCESS } from '../../base-command';
 import type { PromotePackageResult } from '../../client';
 
 /** The Promote result that waits for the confirmation of its missing dependencies. */
@@ -23,18 +23,30 @@ export abstract class PromotionPromoteCommand extends BaseCommand {
 		flags: ReportFlags,
 		report: PromoteReport,
 	): void {
-		if (result.status === 'preview-changed') {
-			this.stop(result, flags, report.previewChanged, EXIT_SOURCE_CHANGED);
-			return;
-		}
-		if (result.status === 'missing-dependencies') {
-			this.stop(result, flags, refusedMessage(result, report.confirmCommand), EXIT_BLOCKED);
+		// `succeed()` ignores --jq, so JSON output for every status goes through `output()`.
+		if (this.isJsonMode(flags)) {
+			this.output(result, flags);
+			this.exit(exitCodeFor(result));
 			return;
 		}
 
-		const leftOut = promoteDependencyLines(result.missingDependencies);
+		if (result.status === 'preview-changed' || result.status === 'missing-dependencies') {
+			if (!flags.quiet) {
+				this.logToStderr(
+					result.status === 'preview-changed'
+						? report.previewChanged
+						: refusedMessage(result, report.confirmCommand),
+				);
+			}
+			this.exit(exitCodeFor(result));
+			return;
+		}
+
+		const leftOut = promoteDependencyLines(result.missingDependencies, [], {
+			descriptions: false,
+		});
 		// On stderr, so stdout holds only the success line.
-		if (leftOut.length > 0 && !flags.quiet && !this.isJsonMode(flags)) {
+		if (leftOut.length > 0 && !flags.quiet) {
 			this.logToStderr(
 				['The branch does not hold these dependencies:', '', ...leftOut, ''].join('\n'),
 			);
@@ -45,19 +57,11 @@ export abstract class PromotionPromoteCommand extends BaseCommand {
 			result,
 		);
 	}
+}
 
-	/** Reports a Promote that pushed nothing. */
-	private stop(
-		result: PromotePackageResult,
-		flags: ReportFlags,
-		message: string,
-		exitCode: number,
-	): void {
-		// `succeed()` ignores --jq, so JSON output goes through `output()`.
-		if (this.isJsonMode(flags)) this.output(result, flags);
-		else if (!flags.quiet) this.logToStderr(message);
-		this.exit(exitCode);
-	}
+function exitCodeFor(result: PromotePackageResult): number {
+	if (result.status === 'preview-changed') return EXIT_SOURCE_CHANGED;
+	return result.status === 'missing-dependencies' ? EXIT_BLOCKED : EXIT_SUCCESS;
 }
 
 function refusedMessage(result: RefusedResult, confirmCommand: string): string {

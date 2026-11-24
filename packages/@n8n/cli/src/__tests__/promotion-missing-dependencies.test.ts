@@ -5,6 +5,7 @@ import {
 	applyDependencyLines,
 	countBlockingOutsideAccess,
 	countByBlocking,
+	escapeControlCharacters,
 	promoteDependencyLines,
 } from '../commands/promotion-environment/missing-dependencies';
 
@@ -160,6 +161,28 @@ describe('promoteDependencyLines', () => {
 		expect(lines).toContain('  data-table "Billing API": used by Weekly report');
 		expect(lines).toContain('  tag "Old tag": used by Weekly report');
 		expect(lines.join('\n')).not.toContain('undefined');
+	});
+
+	it('prints a list after the Promote without the group descriptions', () => {
+		const lines = promoteDependencyLines([PERSONAL, OUTSIDE_ACCESS, OTHER_PROJECT], [warning()], {
+			descriptions: false,
+		});
+
+		expect(lines).toEqual([
+			'In another project (1)',
+			'  Credential "Billing API" (httpHeaderAuth): used by Weekly report',
+			'',
+			'Outside your access (1)',
+			'  Workflow "Send alert": used by Weekly report',
+			'',
+			'Cannot be promoted (1)',
+			'  Credential "My token" (httpHeaderAuth): used by Weekly report',
+			'',
+			// No other text says what a warning is.
+			'Warnings (1)',
+			'These references point to something that does not exist on the source instance.',
+			'  Variable "API_URL": used by Weekly report',
+		]);
 	});
 
 	it('returns no line when nothing is missing', () => {
@@ -430,12 +453,109 @@ describe('applyDependencyLines', () => {
 		]);
 	});
 
+	it('prints a list after the Apply without the group descriptions', () => {
+		const lines = applyDependencyLines(
+			[{ ...NEEDS_ACTION, blocking: false }, OUTSIDE_ACCESS],
+			[warning({ kind: 'workflow', name: 'Deleted helper' })],
+			{ descriptions: false },
+		);
+
+		expect(lines).toEqual([
+			'Needs your action (1)',
+			'  Credential "Billing API" (httpHeaderAuth): not on this instance; used by Weekly report',
+			'',
+			'Outside your access (1)',
+			'  Workflow "Send alert": not on this instance and not on the branch; used by Weekly report',
+			'',
+			// No other text says what a warning is.
+			'Warnings (1)',
+			'These references point to something that does not exist on the source instance.',
+			'  Workflow "Deleted helper": used by Weekly report',
+		]);
+	});
+
 	it('returns no line when nothing is missing', () => {
 		expect(applyDependencyLines([])).toEqual([]);
 	});
 
 	it('returns no line when the server does not send the list', () => {
 		expect(applyDependencyLines(undefined)).toEqual([]);
+	});
+});
+
+describe('control characters in the values of an entry', () => {
+	const COMMAND_BLOCK =
+		'To promote without the missing dependencies, run:\n  n8n-cli promotion-environment promote env-9';
+	const ESCAPED_BLOCK =
+		'To promote without the missing dependencies, run:\\n  n8n-cli promotion-environment promote env-9';
+
+	it('keeps each entry of a Promote on one line', () => {
+		const lines = promoteDependencyLines(
+			[
+				dependency({
+					name: `Billing"\n\n${COMMAND_BLOCK}`,
+					credentialType: 'http\rAuth',
+					group: 'other-project',
+					reason: 'not-on-branch',
+					consumers: usedBy(`Weekly\n\n${COMMAND_BLOCK}`, 'Invoices'),
+				}),
+			],
+			[warning({ name: 'API\u001b[2K_URL' })],
+		);
+
+		expect(lines).toEqual([
+			'In another project (1)',
+			'These dependencies are in other projects that you can access. This Promote does not include them.',
+			`  Credential "Billing"\\n\\n${ESCAPED_BLOCK}" (http\\rAuth): used by Weekly\\n\\n${ESCAPED_BLOCK}, Invoices`,
+			'',
+			'Warnings (1)',
+			'These references point to something that does not exist on the source instance.',
+			'  Variable "API\\u001b[2K_URL": used by Weekly report',
+		]);
+	});
+
+	it('keeps each entry of an Apply on one line', () => {
+		const lines = applyDependencyLines([
+			dependency({
+				kind: 'workflow',
+				id: 'wf\n9',
+				credentialType: undefined,
+				name: `Send alert\n\n${COMMAND_BLOCK}`,
+				group: 'needs-action',
+				reason: 'archived',
+				condition: 'target-not-selected',
+				consumers: usedBy('Weekly\treport'),
+			}),
+			// A kind that this version does not know prints as the server sent it.
+			{ ...NEEDS_ACTION, kind: 'data\ntable' as never },
+		]);
+
+		expect(lines).toEqual([
+			'Needs your action (2)',
+			'Resolve these dependencies on this instance. An entry that stops the Apply must be resolved before you apply.',
+			`  Workflow "Send alert\\n\\n${ESCAPED_BLOCK}" (id wf\\n9): archived on this instance; used by Weekly\\treport; only when the Apply does not include wf\\n9`,
+			'  data\\ntable "Billing API" (httpHeaderAuth): not on this instance; stops the Apply; used by Weekly report',
+		]);
+	});
+
+	it.each([
+		['a line feed', '\n', '\\n'],
+		['a carriage return', '\r', '\\r'],
+		['a tab', '\t', '\\t'],
+		['an escape character', '\u001b', '\\u001b'],
+		['a null character', '\u0000', '\\u0000'],
+		['a delete character', '\u007f', '\\u007f'],
+		['a C1 control character', '\u009b', '\\u009b'],
+		['a line separator', '\u2028', '\\u2028'],
+		['a paragraph separator', '\u2029', '\\u2029'],
+	])('shows %s as its escape', (_title, character, escape) => {
+		expect(escapeControlCharacters(`Billing${character}API`)).toBe(`Billing${escape}API`);
+	});
+
+	it('changes no other character', () => {
+		const name = 'Büro "Billing" \\n API / 請求 👩‍💻';
+
+		expect(escapeControlCharacters(name)).toBe(name);
 	});
 });
 
