@@ -10,7 +10,7 @@ import type {
 	AiPreferencesAppliedPayload,
 } from '@n8n/api-types';
 import { AI_PREFERENCE_MAX_PER_SCOPE, aiPreferenceTargetOf } from '@n8n/api-types';
-import type { AiPreference, Project, User } from '@n8n/db';
+import type { AiPreference, OperationContext, Project, User } from '@n8n/db';
 import { AiPreferenceRepository, ProjectRepository, UserRepository, accountSummary } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
@@ -229,18 +229,24 @@ export class AiPreferenceService {
 	): Promise<AiPreferenceDto> {
 		const access = this.projectAccess(user);
 		const target = await this.resolveTarget(user, request, 'create', access);
-		await this.assertScopeHasRoom(target);
-		await this.assertNotDuplicate(target, request.content);
-
-		const row = await this.aiPreferenceRepository.save(
-			this.aiPreferenceRepository.create({
-				id: randomUUID(),
-				content: request.content,
-				source,
-				userId: target.userId,
-				projectId: target.projectId,
-				createdById: user.id,
-			}),
+		const row = await this.aiPreferenceRepository.withWriteLock(
+			[aiPreferenceTargetOf(target)],
+			{},
+			async (ctx) => {
+				await this.assertScopeHasRoom(target, ctx);
+				await this.assertNotDuplicate(target, request.content, undefined, ctx);
+				return await this.aiPreferenceRepository.savePreference(
+					this.aiPreferenceRepository.create({
+						id: randomUUID(),
+						content: request.content,
+						source,
+						userId: target.userId,
+						projectId: target.projectId,
+						createdById: user.id,
+					}),
+					ctx,
+				);
+			},
 		);
 		row.project = target.project;
 		row.user = target.user;
@@ -278,21 +284,26 @@ export class AiPreferenceService {
 		}
 		await this.assertCanWrite(user, row, moved ? 'delete' : 'update', access);
 		const target = await this.resolveTarget(user, resolved, moved ? 'create' : 'update', access);
-		// A move adds a row to the scope it lands in. An edit in place adds nothing.
-		if (moved) await this.assertScopeHasRoom(target);
-		if (moved || row.content !== resolved.content) {
-			await this.assertNotDuplicate(target, resolved.content, row.id);
-		}
+		const saved = await this.aiPreferenceRepository.withWriteLock(
+			[aiPreferenceTargetOf(row), aiPreferenceTargetOf(target)],
+			{},
+			async (ctx) => {
+				await this.aiPreferenceRepository.assertUnchanged(row, ctx);
+				// An edit in place adds no row to the scope.
+				if (moved) await this.assertScopeHasRoom(target, ctx);
+				if (moved || row.content !== resolved.content) {
+					await this.assertNotDuplicate(target, resolved.content, row.id, ctx);
+				}
 
-		// `source` is not touched: it records the surface that created the row. An assistant
-		// edit of a row a person wrote does not make that row the assistant's.
-		row.content = resolved.content;
-		row.userId = target.userId;
-		row.user = target.user;
-		row.projectId = target.projectId;
-		row.project = target.project;
-
-		const saved = await this.aiPreferenceRepository.save(row);
+				// Creation source and creator stay with the row.
+				row.content = resolved.content;
+				row.userId = target.userId;
+				row.user = target.user;
+				row.projectId = target.projectId;
+				row.project = target.project;
+				return await this.aiPreferenceRepository.savePreference(row, ctx);
+			},
+		);
 		return this.toDto(saved, await this.scopesFor(user, saved, access));
 	}
 
@@ -312,10 +323,16 @@ export class AiPreferenceService {
 			throw new NotFoundError(`Preference with id ${id} is not one of your personal preferences`);
 		}
 		await this.assertCanWrite(user, row, 'update', access);
-		if (row.content !== content) await this.assertNotDuplicate(row, content, row.id);
-
-		row.content = content;
-		const saved = await this.aiPreferenceRepository.save(row);
+		const saved = await this.aiPreferenceRepository.withWriteLock(
+			[aiPreferenceTargetOf(row)],
+			{},
+			async (ctx) => {
+				await this.aiPreferenceRepository.assertUnchanged(row, ctx);
+				if (row.content !== content) await this.assertNotDuplicate(row, content, row.id, ctx);
+				row.content = content;
+				return await this.aiPreferenceRepository.savePreference(row, ctx);
+			},
+		);
 		return this.toDto(saved, await this.scopesFor(user, saved, access));
 	}
 
@@ -525,15 +542,11 @@ export class AiPreferenceService {
 	 * assistant then refuse at the same number, so the assistant cannot save text that the
 	 * settings modal would have rejected.
 	 *
-	 * The count and the insert are not atomic, so every write in flight when the scope is one
-	 * short can pass, and the scope lands one row over for each of them. The cap is a safety net
-	 * and not a quota, the next write refuses, and nothing downstream reads the count, so
-	 * serializing every write for this would cost more than the overshoot. A hard bound belongs
-	 * in the repository, with the count and the insert in one transaction.
+	 * Call inside the repository's scope lock and write transaction.
 	 */
-	private async assertScopeHasRoom(target: PreferenceTarget) {
+	private async assertScopeHasRoom(target: PreferenceTarget, ctx: OperationContext) {
 		const scope = aiPreferenceTargetOf(target);
-		const saved = await this.aiPreferenceRepository.countForTarget(scope);
+		const saved = await this.aiPreferenceRepository.countForTarget(scope, ctx);
 		if (saved >= AI_PREFERENCE_MAX_PER_SCOPE) {
 			throw new AiPreferenceScopeFullError(scope.scope, {
 				limit: AI_PREFERENCE_MAX_PER_SCOPE,
@@ -544,12 +557,18 @@ export class AiPreferenceService {
 
 	/** Every surface refuses a restatement at this one point. A duplicate is a
 	 *  409, not a 400: the request is well formed, the state conflicts. */
-	private async assertNotDuplicate(target: PreferenceTarget, content: string, excludeId?: string) {
+	private async assertNotDuplicate(
+		target: PreferenceTarget,
+		content: string,
+		excludeId: string | undefined,
+		ctx: OperationContext,
+	) {
 		const scope = aiPreferenceTargetOf(target);
 		const exists = await this.aiPreferenceRepository.existsForTargetWithContent(
 			scope,
 			content,
 			excludeId,
+			ctx,
 		);
 		if (exists) {
 			throw new ConflictError(`This ${scope.scope} already has a preference with the same text`);

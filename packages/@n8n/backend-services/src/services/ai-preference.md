@@ -120,18 +120,19 @@ so one value serves every reader:
 - `AI_PREFERENCE_CONTENT_MAX_LENGTH` is 2,000 characters for one preference. The request
   DTO validates it through `aiPreferenceContentSchema`, and the settings modal reads the
   same constant.
-- `AI_PREFERENCE_MAX_PER_SCOPE` is 50 preferences for one scope. The service is its only
-  reader: `create()` counts the target scope, and `update()` counts it again when the write
-  moves a row to another scope. A full scope refuses with `AiPreferenceScopeFullError`,
-  whose `meta` carries the limit and the count, so the `save_user_preference` tool can
-  return both numbers to the model instead of the message alone.
+- `AI_PREFERENCE_MAX_PER_SCOPE` is 50 preferences for one scope. Creation and moves count
+  the destination rows in the same transaction as the write. PostgreSQL holds an advisory
+  lock for each affected scope. SQLite serializes write transactions. A full scope refuses
+  with `AiPreferenceScopeFullError`, whose `meta` carries the limit and the count.
+  The `save_user_preference` tool returns both numbers to the model.
 
 The `describe()` text on `aiPreferenceContentSchema` states both limits for a model, and
 the `save_user_preference` tool reuses that schema for its content field.
 
-The caps apply on the write, never on the read. A read that dropped a row would hide a
-colleague's preference with no way to tell. A write can refuse the text while the person
-who wrote it is still looking at it.
+Prompt reads return the oldest 50 rows of each scope, ordered by creation time and ID.
+This also bounds reads from scopes that exceeded the limit before write serialization.
+Settings and API lists still show all stored rows. The read limit deletes no data.
+An edit checks that the row has not changed since the service checked its permissions.
 
 Nothing bounds the rendered block itself, and that is the number to watch. One scope at the
 cap renders about 100,000 characters, and the block adds a group for every project the

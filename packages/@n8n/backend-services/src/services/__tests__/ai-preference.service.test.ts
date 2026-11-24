@@ -84,6 +84,9 @@ describe('AiPreferenceService', () => {
 
 	beforeEach(() => {
 		vi.resetAllMocks();
+		aiPreferenceRepository.withWriteLock.mockImplementation(
+			async (_targets, ctx, write) => await write(ctx),
+		);
 	});
 
 	describe('getApplicable', () => {
@@ -388,7 +391,7 @@ describe('AiPreferenceService', () => {
 			// the full set would have the client offer buttons the service then refuses.
 			allowProjectOperations('projectAiPreference:create');
 			aiPreferenceRepository.create.mockImplementation((row) => row as AiPreference);
-			aiPreferenceRepository.save.mockImplementation(
+			aiPreferenceRepository.savePreference.mockImplementation(
 				async (row) => ({ ...row, createdAt: new Date(), updatedAt: new Date() }) as AiPreference,
 			);
 
@@ -408,7 +411,7 @@ describe('AiPreferenceService', () => {
 				'projectAiPreference:delete',
 			);
 			aiPreferenceRepository.create.mockImplementation((row) => row as AiPreference);
-			aiPreferenceRepository.save.mockImplementation(
+			aiPreferenceRepository.savePreference.mockImplementation(
 				async (row) => ({ ...row, createdAt: new Date(), updatedAt: new Date() }) as AiPreference,
 			);
 
@@ -425,7 +428,7 @@ describe('AiPreferenceService', () => {
 				'projectAiPreference:delete',
 			);
 			aiPreferenceRepository.create.mockImplementation((row) => row as AiPreference);
-			aiPreferenceRepository.save.mockImplementation(
+			aiPreferenceRepository.savePreference.mockImplementation(
 				async (row) => ({ ...row, createdAt: new Date(), updatedAt: new Date() }) as AiPreference,
 			);
 
@@ -454,7 +457,7 @@ describe('AiPreferenceService', () => {
 
 		beforeEach(() => {
 			aiPreferenceRepository.create.mockImplementation((row) => row as AiPreference);
-			aiPreferenceRepository.save.mockImplementation(
+			aiPreferenceRepository.savePreference.mockImplementation(
 				async (row) => ({ ...row, createdAt: new Date(), updatedAt: new Date() }) as AiPreference,
 			);
 			aiPreferenceRepository.countForTarget.mockResolvedValue(0);
@@ -495,10 +498,13 @@ describe('AiPreferenceService', () => {
 		it('counts the target scope before it writes', async () => {
 			await service.create(member, { content: 'Rule.', scope: 'user' }, 'ui');
 
-			expect(aiPreferenceRepository.countForTarget).toHaveBeenCalledWith({
-				scope: 'user',
-				userId: 'user-1',
-			});
+			expect(aiPreferenceRepository.countForTarget).toHaveBeenCalledWith(
+				{
+					scope: 'user',
+					userId: 'user-1',
+				},
+				{},
+			);
 		});
 
 		it('accepts the write that fills the last slot', async () => {
@@ -515,7 +521,7 @@ describe('AiPreferenceService', () => {
 			await expect(
 				service.create(member, { content: 'Rule.', scope: 'user' }, 'ui'),
 			).rejects.toThrow(`A user cannot hold more than ${AI_PREFERENCE_MAX_PER_SCOPE} preferences`);
-			expect(aiPreferenceRepository.save).not.toHaveBeenCalled();
+			expect(aiPreferenceRepository.savePreference).not.toHaveBeenCalled();
 		});
 
 		it('names the limit and the saved count on the cap error, so a caller can relay the numbers', async () => {
@@ -541,10 +547,13 @@ describe('AiPreferenceService', () => {
 
 			await service.create(owner, { content: 'Rule.', scope: 'user', userId: 'user-2' }, 'ui');
 
-			expect(aiPreferenceRepository.countForTarget).toHaveBeenCalledWith({
-				scope: 'user',
-				userId: 'user-2',
-			});
+			expect(aiPreferenceRepository.countForTarget).toHaveBeenCalledWith(
+				{
+					scope: 'user',
+					userId: 'user-2',
+				},
+				{},
+			);
 		});
 
 		it("refuses an admin's write when the target user's scope is full", async () => {
@@ -554,7 +563,7 @@ describe('AiPreferenceService', () => {
 			await expect(
 				service.create(owner, { content: 'Rule.', scope: 'user', userId: 'user-2' }, 'ui'),
 			).rejects.toThrow(`A user cannot hold more than ${AI_PREFERENCE_MAX_PER_SCOPE} preferences`);
-			expect(aiPreferenceRepository.save).not.toHaveBeenCalled();
+			expect(aiPreferenceRepository.savePreference).not.toHaveBeenCalled();
 		});
 
 		it.each(['ui', 'import'] as const)('keeps the %s creation source on edit', async (source) => {
@@ -570,8 +579,9 @@ describe('AiPreferenceService', () => {
 			});
 
 			expect(updated.source).toBe(source);
-			expect(aiPreferenceRepository.save).toHaveBeenCalledWith(
+			expect(aiPreferenceRepository.savePreference).toHaveBeenCalledWith(
 				expect.objectContaining({ content: 'A better rule.', source }),
+				{},
 			);
 		});
 
@@ -583,7 +593,7 @@ describe('AiPreferenceService', () => {
 			await expect(
 				service.update(owner, 'pref-1', { content: 'A better rule.', scope: 'user' }),
 			).rejects.toThrow('An edit of a user preference must name the user');
-			expect(aiPreferenceRepository.save).not.toHaveBeenCalled();
+			expect(aiPreferenceRepository.savePreference).not.toHaveBeenCalled();
 		});
 
 		it('checks the scope a move lands in, not the one it leaves', async () => {
@@ -593,7 +603,7 @@ describe('AiPreferenceService', () => {
 
 			await service.update(owner, 'pref-1', { content: 'Rule.', scope: 'instance' });
 
-			expect(aiPreferenceRepository.countForTarget).toHaveBeenCalledWith({ scope: 'instance' });
+			expect(aiPreferenceRepository.countForTarget).toHaveBeenCalledWith({ scope: 'instance' }, {});
 		});
 
 		// A caller that holds no scope it can trust, such as the chat card, names none. The
@@ -607,12 +617,13 @@ describe('AiPreferenceService', () => {
 
 			await service.update(owner, 'pref-1', { content: 'A better rule.' });
 
-			expect(aiPreferenceRepository.save).toHaveBeenCalledWith(
+			expect(aiPreferenceRepository.savePreference).toHaveBeenCalledWith(
 				expect.objectContaining({
 					content: 'A better rule.',
 					userId: null,
 					projectId: 'project-1',
 				}),
+				{},
 			);
 			// Nothing moved, so nothing lands in another scope.
 			expect(aiPreferenceRepository.countForTarget).not.toHaveBeenCalled();
@@ -625,12 +636,13 @@ describe('AiPreferenceService', () => {
 
 			await service.update(owner, 'pref-1', { content: 'A better rule.' });
 
-			expect(aiPreferenceRepository.save).toHaveBeenCalledWith(
+			expect(aiPreferenceRepository.savePreference).toHaveBeenCalledWith(
 				expect.objectContaining({
 					content: 'A better rule.',
 					userId: 'owner-1',
 					projectId: null,
 				}),
+				{},
 			);
 		});
 
@@ -641,8 +653,9 @@ describe('AiPreferenceService', () => {
 
 			await service.update(owner, 'pref-1', { content: 'A better rule.' });
 
-			expect(aiPreferenceRepository.save).toHaveBeenCalledWith(
+			expect(aiPreferenceRepository.savePreference).toHaveBeenCalledWith(
 				expect.objectContaining({ content: 'A better rule.', userId: null, projectId: null }),
+				{},
 			);
 		});
 
@@ -666,11 +679,12 @@ describe('AiPreferenceService', () => {
 			await expect(
 				service.create(member, { content: 'Keep replies short.', scope: 'user' }, 'aia'),
 			).rejects.toThrow('This user already has a preference with the same text');
-			expect(aiPreferenceRepository.save).not.toHaveBeenCalled();
+			expect(aiPreferenceRepository.savePreference).not.toHaveBeenCalled();
 			expect(aiPreferenceRepository.existsForTargetWithContent).toHaveBeenCalledWith(
 				{ scope: 'user', userId: 'user-1' },
 				'Keep replies short.',
 				undefined,
+				{},
 			);
 		});
 
@@ -679,7 +693,7 @@ describe('AiPreferenceService', () => {
 
 			await service.create(member, { content: 'Use British English.', scope: 'user' }, 'aia');
 
-			expect(aiPreferenceRepository.save).toHaveBeenCalledTimes(1);
+			expect(aiPreferenceRepository.savePreference).toHaveBeenCalledTimes(1);
 		});
 
 		it('runs the cap check before the duplicate check, so a full scope reports the cap', async () => {
@@ -709,6 +723,7 @@ describe('AiPreferenceService', () => {
 				{ scope: 'user', userId: 'owner-1' },
 				'A better rule.',
 				'pref-1',
+				{},
 			);
 		});
 
@@ -728,7 +743,7 @@ describe('AiPreferenceService', () => {
 		const member = makePerson({ id: 'user-1', role: GLOBAL_MEMBER_ROLE });
 
 		beforeEach(() => {
-			aiPreferenceRepository.save.mockImplementation(
+			aiPreferenceRepository.savePreference.mockImplementation(
 				async (row) => ({ ...row, createdAt: new Date(), updatedAt: new Date() }) as AiPreference,
 			);
 			aiPreferenceRepository.existsForTargetWithContent.mockResolvedValue(false);
@@ -742,8 +757,9 @@ describe('AiPreferenceService', () => {
 			const updated = await service.updateContent(member, 'pref-1', 'A better rule.');
 
 			expect(updated).toMatchObject({ content: 'A better rule.', userId: 'user-1', source: 'ui' });
-			expect(aiPreferenceRepository.save).toHaveBeenCalledWith(
+			expect(aiPreferenceRepository.savePreference).toHaveBeenCalledWith(
 				expect.objectContaining({ content: 'A better rule.', userId: 'user-1', source: 'ui' }),
+				{},
 			);
 			// An edit in place never moves the row, so the cap is not the edit's business.
 			expect(aiPreferenceRepository.countForTarget).not.toHaveBeenCalled();
@@ -757,7 +773,7 @@ describe('AiPreferenceService', () => {
 			await expect(service.updateContent(member, 'pref-1', 'Mine now.')).rejects.toBeInstanceOf(
 				NotFoundError,
 			);
-			expect(aiPreferenceRepository.save).not.toHaveBeenCalled();
+			expect(aiPreferenceRepository.savePreference).not.toHaveBeenCalled();
 		});
 
 		it('refuses a row the caller may see but not edit, such as an instance rule for a member', async () => {
@@ -768,7 +784,7 @@ describe('AiPreferenceService', () => {
 			await expect(service.updateContent(member, 'pref-1', 'Mine now.')).rejects.toBeInstanceOf(
 				NotFoundError,
 			);
-			expect(aiPreferenceRepository.save).not.toHaveBeenCalled();
+			expect(aiPreferenceRepository.savePreference).not.toHaveBeenCalled();
 		});
 
 		// The owner may edit all three in settings. Over this path they are shared rules or somebody
@@ -786,7 +802,7 @@ describe('AiPreferenceService', () => {
 			await expect(service.updateContent(owner, 'pref-1', 'Mine now.')).rejects.toBeInstanceOf(
 				NotFoundError,
 			);
-			expect(aiPreferenceRepository.save).not.toHaveBeenCalled();
+			expect(aiPreferenceRepository.savePreference).not.toHaveBeenCalled();
 		});
 
 		it('refuses a text another row in the scope already holds, through the shared rule', async () => {
@@ -802,6 +818,7 @@ describe('AiPreferenceService', () => {
 				{ scope: 'user', userId: 'user-1' },
 				'Other.',
 				'pref-1',
+				{},
 			);
 		});
 

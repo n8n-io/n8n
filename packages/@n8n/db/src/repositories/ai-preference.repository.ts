@@ -1,10 +1,14 @@
 import type { AiPreferenceScope, AiPreferenceSortOption, AiPreferenceTarget } from '@n8n/api-types';
+import { AI_PREFERENCE_MAX_PER_SCOPE } from '@n8n/api-types';
 import { Service } from '@n8n/di';
+import { ConflictError } from '@n8n/errors';
 import { DataSource, In, IsNull, Not, Raw } from '@n8n/typeorm';
 import type { FindOptionsOrder, FindOptionsWhere } from '@n8n/typeorm';
 
 import { AiPreference } from '../entities';
 import { BaseRepository } from './base-repository';
+import { DbLock } from '../services/db-lock.service';
+import type { OperationContext } from '../services/transaction';
 import { TransactionRunner } from '../services/transaction';
 import { escapeLike, LIKE_ESCAPE_CLAUSE } from '../utils/escape-like';
 
@@ -34,13 +38,80 @@ export type AiPreferencePageQuery = VisibleAiPreferencesQuery & {
 
 @Service()
 export class AiPreferenceRepository extends BaseRepository<AiPreference> {
-	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
-		super(AiPreference, dataSource.manager, transactionRunner);
+	constructor(
+		dataSource: DataSource,
+		private readonly txRunner: TransactionRunner,
+	) {
+		super(AiPreference, dataSource.manager, txRunner);
 	}
 
-	/** Oldest first, so the prompt text is stable across reads. */
+	/** Limit each scope in SQL so existing excess rows do not enter prompts. */
 	async findApplicable(query: ApplicableAiPreferencesQuery): Promise<AiPreference[]> {
-		return await this.find({ where: visibleTo(query, false), order: ORDER });
+		const ranked = this.createQueryBuilder('candidate')
+			.select('candidate.id', 'id')
+			.addSelect(
+				'ROW_NUMBER() OVER (PARTITION BY candidate.userId, candidate.projectId ORDER BY candidate.createdAt, candidate.id)',
+				'scopePosition',
+			)
+			.where(visibleTo(query, false));
+		return await this.createQueryBuilder('preference')
+			.where(
+				`preference.id IN (SELECT id FROM (${ranked.getQuery()}) ranked WHERE "scopePosition" <= :scopeLimit)`,
+			)
+			.setParameters({ ...ranked.getParameters(), scopeLimit: AI_PREFERENCE_MAX_PER_SCOPE })
+			.orderBy('preference.createdAt', 'ASC')
+			.addOrderBy('preference.id', 'ASC')
+			.getMany();
+	}
+
+	/** Hold scope locks until all checks and writes commit. Moves lock both scopes. */
+	async withWriteLock<T>(
+		targets: AiPreferenceTarget[],
+		ctx: OperationContext,
+		write: (ctx: OperationContext) => Promise<T>,
+	): Promise<T> {
+		return await this.txRunner.run(ctx, async (ctx) => {
+			const manager = this.managerFor(ctx);
+			// SQLite leases its single write connection for the transaction.
+			if (manager.connection.options.type === 'postgres') {
+				// Sort the lock IDs because distinct scopes can share a hash.
+				const keys: Array<{ key: number }> = await manager.query(
+					'SELECT DISTINCT hashtext(scope) AS key FROM unnest($1::text[]) AS scope ORDER BY key',
+					[targets.map(scopeLockKey)],
+				);
+				for (const { key } of keys) {
+					await manager.query('SELECT pg_advisory_xact_lock($1, $2)', [
+						DbLock.AI_PREFERENCE_SCOPES,
+						key,
+					]);
+				}
+			}
+			return await write(ctx);
+		});
+	}
+
+	/** Refuse a write if the row changed after its permission check. */
+	async assertUnchanged(previous: AiPreference, ctx: OperationContext): Promise<void> {
+		const manager = this.managerFor(ctx);
+		const current = await manager.findOne(AiPreference, {
+			where: { id: previous.id },
+			...(manager.connection.options.type === 'postgres'
+				? { lock: { mode: 'pessimistic_write' as const } }
+				: {}),
+		});
+		if (
+			!current ||
+			current.content !== previous.content ||
+			current.userId !== previous.userId ||
+			current.projectId !== previous.projectId ||
+			current.updatedAt.getTime() !== previous.updatedAt.getTime()
+		) {
+			throw new ConflictError('The Preference changed. Reload it and try again.');
+		}
+	}
+
+	async savePreference(row: AiPreference, ctx: OperationContext): Promise<AiPreference> {
+		return await this.managerFor(ctx).save(AiPreference, row);
 	}
 
 	/** Wider than `findApplicable`: an admin sees rows that never reach their own prompts. */
@@ -75,8 +146,8 @@ export class AiPreferenceRepository extends BaseRepository<AiPreference> {
 	 * Counts the target itself, not what a caller may see: a cap is a property of the
 	 * scope, and an admin writing into another user's scope fills the same bucket.
 	 */
-	async countForTarget(target: AiPreferenceTarget): Promise<number> {
-		return await this.count({ where: whereTarget(target) });
+	async countForTarget(target: AiPreferenceTarget, ctx: OperationContext = {}): Promise<number> {
+		return await this.managerFor(ctx).count(AiPreference, { where: whereTarget(target) });
 	}
 
 	/** Exact-match duplicate probe for a write. Content is stored trimmed by the
@@ -86,8 +157,9 @@ export class AiPreferenceRepository extends BaseRepository<AiPreference> {
 		target: AiPreferenceTarget,
 		content: string,
 		excludeId?: string,
+		ctx: OperationContext = {},
 	): Promise<boolean> {
-		const count = await this.count({
+		const count = await this.managerFor(ctx).count(AiPreference, {
 			where: {
 				...whereTarget(target),
 				content,
@@ -100,6 +172,17 @@ export class AiPreferenceRepository extends BaseRepository<AiPreference> {
 	/** No visibility filter. The service authorizes the row before it returns or acts on it. */
 	async findByIdWithRelations(id: string): Promise<AiPreference | null> {
 		return await this.findOne({ where: { id }, relations: RELATIONS });
+	}
+}
+
+function scopeLockKey(target: AiPreferenceTarget): string {
+	switch (target.scope) {
+		case 'project':
+			return `project:${target.projectId}`;
+		case 'user':
+			return `user:${target.userId}`;
+		case 'instance':
+			return 'instance';
 	}
 }
 

@@ -14,34 +14,6 @@ describe('AiPreferenceRepository', () => {
 		vi.resetAllMocks();
 	});
 
-	describe('findApplicable', () => {
-		it('reads instance, user and project rows in one query, oldest first', async () => {
-			entityManager.find.mockResolvedValueOnce([]);
-
-			await repository.findApplicable({ userId: 'user-1', projectIds: ['p-1', 'p-2'] });
-
-			expect(entityManager.find).toHaveBeenCalledWith(AiPreference, {
-				where: [
-					{ userId: IsNull(), projectId: IsNull() },
-					{ userId: 'user-1' },
-					{ projectId: In(['p-1', 'p-2']) },
-				],
-				order: { createdAt: 'ASC', id: 'ASC' },
-			});
-		});
-
-		it('omits the project clause when the user has no projects', async () => {
-			entityManager.find.mockResolvedValueOnce([]);
-
-			await repository.findApplicable({ userId: 'user-1', projectIds: [] });
-
-			expect(entityManager.find).toHaveBeenCalledWith(AiPreference, {
-				where: [{ userId: IsNull(), projectId: IsNull() }, { userId: 'user-1' }],
-				order: { createdAt: 'ASC', id: 'ASC' },
-			});
-		});
-	});
-
 	describe('findPageVisible', () => {
 		it('narrows every visibility branch to the requested ids', async () => {
 			entityManager.findAndCount.mockResolvedValueOnce([[], 0]);
