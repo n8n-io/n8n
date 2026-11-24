@@ -1,0 +1,57 @@
+packages/@n8n/api-types/src/schemas/agent-safe-testing.schema.ts
+  s_ca144c28df83ba::t_bd789a94d84da4 143
+  s_ca144c28df83ba::t_7c7aee3cadb3cb 132-142,144-158
+packages/@n8n/api-types/src/index.ts
+  s_ca144c28df83ba::t_a1c7ea609b464a 1172-1175,1186-1189
+packages/cli/src/modules/agents/simulation/simulation-session.service.ts
+  s_ca144c28df83ba::t_83f5d4428c4715 73-86,507-516
+packages/cli/src/modules/agents/simulation/__tests__/held-action-commit.service.test.ts
+  s_ca144c28df83ba::t_f388ac8bda51b2 46
+  s_ca144c28df83ba::t_bd789a94d84da4 75-78
+  s_ca144c28df83ba::t_f354c2e80d0f3a 1-45,47-74,79-299
+packages/cli/src/modules/agents/simulation/tool-action-classifier.ts
+  s_ca144c28df83ba::t_2e3c28cb11cb05 1-231
+packages/cli/src/modules/agents/__tests__/agent-test-run.controller.test.ts
+  s_ca144c28df83ba::t_bd789a94d84da4 153-163,165
+  s_ca144c28df83ba::t_eed7b3088c46b0 1-2,4,6,9,11,13,15,26-30,40,44-48,55-152,164,166-186
+packages/cli/src/modules/agents/simulation/simulation-session.ts
+  s_ca144c28df83ba::t_9db97aab843d28 28,78-80,104-116,126,149-150,165-166,178-181,188,222-264,274,280,305-312,402,404-415,418
+packages/cli/src/modules/agents/simulation/held-action-commit.service.ts
+  s_ca144c28df83ba::t_da4cd1f36d1790 1,3-52,54-174
+  s_ca144c28df83ba::t_bd789a94d84da4 2
+  s_ca144c28df83ba::t_89e449f28ca77e 53
+packages/cli/src/modules/agents/simulation/__tests__/tool-action-classifier.test.ts
+  s_ca144c28df83ba::t_db723253489ffa 1-334
+packages/cli/src/modules/agents/agent-test-run.controller.ts
+  s_ca144c28df83ba::t_c53838a8334f4e 1-5,7-8,11,21,36-59
+  s_5b60edc27245af::t_97ae9600b70e89 60
+packages/@n8n/api-types/src/schemas/__tests__/agent-safe-testing.schema.test.ts
+  s_ca144c28df83ba::t_0b4096192cd14f 2-4,83-105,110-137
+  s_ca144c28df83ba::t_bd789a94d84da4 106-109
+packages/cli/src/modules/agents/simulation/__tests__/simulation-session.test.ts
+  s_ca144c28df83ba::t_4a9f2725f48572 869-958
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1d0d0052c57770399a0833316fa44a049adefc83",
+  "prompts": {},
+  "sessions": {
+    "s_5b60edc27245af": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a20dd9-5b4e-7234-b950-6ad8d07a6e65",
+        "model": "gemini-4-neon"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    },
+    "s_ca144c28df83ba": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a20df1-1194-711d-8646-7f9df342a0ee",
+        "model": "gemini-4-neon"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}
