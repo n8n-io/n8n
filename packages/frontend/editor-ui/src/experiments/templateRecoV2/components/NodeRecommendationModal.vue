@@ -4,7 +4,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import type { ITemplatesWorkflowFull } from '@n8n/rest-api-client';
-import { computed, ref, watchEffect } from 'vue';
+import { computed, onBeforeUnmount, ref, watchEffect } from 'vue';
 import { usePersonalizedTemplatesV2Store } from '../stores/templateRecoV2.store';
 import TemplateCard from './TemplateCard.vue';
 import YoutubeCard from './YoutubeCard.vue';
@@ -100,6 +100,32 @@ function onSelectedNodeChange(val: string) {
 	selectedNode.value = val;
 }
 
+// A horizontal card row is a scroll container. A vertical wheel over it does not
+// reach the dialog body, so forward that gesture to the body.
+const rowScrollCleanups = new Map<HTMLElement, () => void>();
+
+function bindHorizontalRow(element: Element | null) {
+	if (!(element instanceof HTMLElement) || rowScrollCleanups.has(element)) return;
+
+	const onWheel = (event: WheelEvent) => {
+		if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
+		const scroller = element.closest('[data-slot="dialog-body"]');
+		if (!(scroller instanceof HTMLElement)) return;
+		scroller.scrollBy({ top: event.deltaY });
+		event.preventDefault();
+	};
+
+	element.addEventListener('wheel', onWheel, { passive: false });
+	rowScrollCleanups.set(element, () => {
+		element.removeEventListener('wheel', onWheel);
+		rowScrollCleanups.delete(element);
+	});
+}
+
+onBeforeUnmount(() => {
+	for (const cleanup of rowScrollCleanups.values()) cleanup();
+});
+
 watchEffect(async () => {
 	if (!selectedNode.value) return;
 
@@ -174,7 +200,7 @@ watchEffect(async () => {
 					{{ locale.baseText('workflows.templateRecoV2.seeMoreStarterTemplates') }}
 				</N8nLink>
 			</div>
-			<div :class="$style.suggestions">
+			<div :ref="bindHorizontalRow" :class="$style.suggestions">
 				<div v-if="isLoadingTemplates" :class="$style.loading">
 					<N8nSpinner size="small" />
 					<N8nText size="small">{{
@@ -197,7 +223,7 @@ watchEffect(async () => {
 					{{ locale.baseText('workflows.templateRecoV2.seeMorePopularTemplates') }}</N8nLink
 				>
 			</div>
-			<div :class="$style.suggestions">
+			<div :ref="bindHorizontalRow" :class="$style.suggestions">
 				<div v-if="isLoadingTemplates" :class="$style.loading">
 					<N8nSpinner size="small" />
 					<N8nText size="small">{{
@@ -233,7 +259,9 @@ watchEffect(async () => {
 	&.body {
 		/* Keep vertical scroll on the dialog body. The card rows must not become scrollports. */
 		min-width: 0;
+		min-height: 0;
 		overflow-x: hidden;
+		overflow-y: auto;
 	}
 }
 
@@ -266,8 +294,6 @@ watchEffect(async () => {
 	gap: var(--spacing--md);
 	min-width: 0;
 	max-width: 100%;
-	overflow-x: auto;
-	overflow-y: hidden;
 }
 
 .loading {
