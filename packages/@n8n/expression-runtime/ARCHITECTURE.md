@@ -165,7 +165,7 @@ reads it, and the host never guesses.
 
 A value crosses whole when it is plain JSON data and its size is at most
 `smallValueChars`. The size counts 8 for each value, object and array, plus the
-length of each string and key. The host counts while it copies and stops when
+length of each string and object key. The host counts while it copies and stops when
 the size is too large. A larger object or array stays a lazy proxy with the same
 rules. A whole value can be as large as `maxBatchChars`. All reads of one
 evaluation share one character budget. When the budget is spent, a proxy reads

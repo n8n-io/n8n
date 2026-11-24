@@ -27,7 +27,10 @@ export interface BatchReadLimits {
 	firstBatchChars: number;
 	/** The most that one read takes. */
 	maxBatchChars: number;
-	/** The most that all reads of one evaluation take. After that, each read gives one value. */
+	/**
+	 * A batched read starts only while the reads of one evaluation took less. So
+	 * they can take up to one read more. After that, each read gives one value.
+	 */
 	maxCharsPerEvaluation: number;
 }
 
