@@ -7,8 +7,8 @@ description: |-
 
   A provider used by an environment cannot be deleted.
 
-  Requires the `promotions:delete` API key scope.
-x-required-scope: promotions:delete
+  Requires the `promotions:manageProviders` API key scope.
+x-required-scope: promotions:manageProviders
 parameters:
   - schema:
       type: string
